@@ -827,6 +827,23 @@ Ltac Msimpl :=
   | _                           => autorewrite with M_db
   end.
 
+(* For when it needs a bit more help on kron_mixed_product (slow!) *)
+Ltac Msimpl' := 
+  repeat match goal with 
+  | [ |- context[(?A ⊗ ?B)†]]    => let H := fresh "H" in 
+                                  specialize (kron_adjoint _ _ _ _ A B) as H;
+                                  simpl in H; rewrite H; clear H
+  | [ |- context[(control ?U)†]] => let H := fresh "H" in 
+                                  specialize (control_sa _ U) as H;
+                                  simpl in H; rewrite H; 
+                                  [clear H | Msimpl; reflexivity]
+  | [|- context[(?A ⊗ ?B) × (?C ⊗ ?D)]] => setoid_rewrite kron_mixed_product';
+                                         try omega; try unify_pows_two
+  | _                           => autorewrite with M_db
+  end.
+
+
+
 
 (*****************************)
 (* Positive Semidefiniteness *)
@@ -1026,9 +1043,7 @@ Proof.
   induction H.
   - destruct H as [φ [[WFφ IP1] Eρ]].
     destruct (lt_dec i n). 
-    Focus 2.
-      rewrite Eρ. unfold Mmult, adjoint. simpl. rewrite WFφ. simpl. lra.
-      omega.
+    2: rewrite Eρ; unfold Mmult, adjoint; simpl; rewrite WFφ; simpl; [lra|omega].
     rewrite Eρ.
     unfold Mmult, adjoint in *.
     simpl in *.

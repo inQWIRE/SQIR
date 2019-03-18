@@ -1190,7 +1190,16 @@ Proof.
     apply functional_extensionality.
     intros; clra.
     omega.
-Qed.  
+Qed.
+
+(* A more explicit version, for when typechecking fails *)
+Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
+    (A : Matrix m n) (B : Matrix p q) (C : Matrix n o) (D : Matrix q r),
+    n = n' -> q = q' ->    
+    mp = m * p -> nq = n * q -> or = o * r ->
+  (@Mmult mp nq or (@kron m n p q A B) (@kron n' o q' r C D)) =
+  (@kron m o p r (@Mmult m n o A C) (@Mmult p q r B D)).
+Proof. intros. subst. apply kron_mixed_product. Qed.
 
 Lemma Mplus_tranpose : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
   (A .+ B)⊤ = A⊤ .+ B⊤.
