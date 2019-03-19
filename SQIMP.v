@@ -102,8 +102,29 @@ Definition teleport := bell00 ; alice; bob.
 
 End Teleport.
 
+(* Superdense Coding Example *)
 
+Section Superdense.
 
-    
+Variable a b : Var.
+
+Definition encode (b1 b2 : bool): com :=
+    if b2 then a *= _X else skip;
+    if b1 then a *= _Z else skip.
+
+(* note: 'decode' is just the reverse of bell00, can we define it in terms 
+   of bell00 instead? *)
+Definition decode : com :=
+    [a,b] *= CNOT;
+    a *= _H.
+
+Definition superdense (b1 b2 : bool) := 
+    bell00 a b; 
+    encode b1 b2; 
+    decode; 
+    measure a; 
+    measure b.
+
+End Superdense.    
 
   
