@@ -770,7 +770,7 @@ Proof. intros. destruct x,y; solve_matrix. Qed.
 
 (* Automation *)
 
-Hint Rewrite Mmult_plus_distr_l Mscale_plus_distr Mscale_mult_dist_r Mscale_mult_dist_l : ket_db.
+Hint Rewrite Mmult_plus_distr_l Mscale_plus_distr_r Mscale_mult_dist_r Mscale_mult_dist_l : ket_db.
 Hint Rewrite Mscale_assoc Mmult_assoc: ket_db.
 Hint Rewrite Mscale_0_l Mscale_1_l : ket_db.
 Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec

@@ -1051,7 +1051,13 @@ Proof.
   rewrite Cmult_assoc; reflexivity.
 Qed.
 
-Lemma Mscale_plus_distr : forall (m n : nat) (x : C) (A B : Matrix m n),
+Lemma Mscale_plus_distr_l : forall (m n : nat) (x y : C) (A : Matrix m n),
+  (x + y) .* A = x .* A .+ y .* A.
+Proof.
+  intros. unfold Mplus, scale. prep_matrix_equality. apply Cmult_plus_distr_r.
+Qed.
+
+Lemma Mscale_plus_distr_r : forall (m n : nat) (x : C) (A B : Matrix m n),
   x .* (A .+ B) = x .* A .+ x .* B.
 Proof.
   intros. unfold Mplus, scale. prep_matrix_equality. apply Cmult_plus_distr_l.
