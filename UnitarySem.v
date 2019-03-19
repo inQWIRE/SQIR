@@ -11,21 +11,29 @@ Fixpoint uc_eval (dim : nat) (c : ucom) : Matrix (2^dim) (2^dim) :=
   | c1 ; c2 => uc_eval dim c2 × uc_eval dim c1 
   end.
 
+Lemma WF_uc_eval_uapp : forall dim n (u : Unitary n) l, uc_well_typed dim (l *= u) -> WF_Matrix _ _ (apply_unitary dim u l).
+Proof.
+  intros dim n u l H.
+  inversion H; subst.
+  apply apply_unitary_unitary; trivial.
+  unfold SQIMP.bounded in H5.
+  destruct (forallb_forall (fun x : nat => x <? dim) l) as [H2 _].
+  specialize (H2 H5).
+  intros x H3.
+  specialize (H2 _ H3).
+  apply Nat.ltb_lt; easy.
+Qed.  
+  
 Lemma WF_uc_eval : forall dim c, uc_well_typed dim c -> WF_Matrix _ _ (uc_eval dim c).
 Proof.
   intros dim c H.
   induction H; simpl; auto with wf_db.
-  apply apply_unitary_unitary; trivial.
-  Search forallb.
-  unfold SQIMP.bounded in H0.
-  destruct (forallb_forall (fun x : nat => x <? dim) l) as [H2 _].
-  specialize (H2 H0).
-  intros x H3.
-  specialize (H2 _ H3).
-  Search (_ <? _).
-  apply Nat.ltb_lt; easy.
+  apply WF_uc_eval_uapp.
+  constructor; easy.
 Qed.
-  
+
+Hint Resolve WF_uc_eval_uapp WF_uc_eval : wf_db.
+
 (* Basic Lemmas *)
 
 Lemma uskip_id_l : forall (dim : nat) (c : ucom), uc_well_typed dim c -> uc_eval dim (uskip ; c) = uc_eval dim c.
@@ -48,7 +56,31 @@ Fixpoint rm_uskips (c : ucom) : ucom :=
   | c'      => c'
   end.
 
-Hint Resolve WF_uc_eval : wf_db.
+Hint Constructors uc_well_typed : type_db.
+
+Lemma WT_rm_uskips : forall c dim, uc_well_typed dim c <-> uc_well_typed dim (rm_uskips c).
+Proof.
+  intros c dim.
+  split; intros H.
+  - induction H.
+    + constructor.
+    + simpl.
+      destruct (rm_uskips c1), (rm_uskips c2); auto with type_db.
+    + simpl. auto with type_db.
+  - induction c.
+    + constructor.
+    + destruct (rm_uskips (c1; c2)) eqn:E.
+      * simpl in E.
+        destruct (rm_uskips c1), (rm_uskips c2); auto with type_db; discriminate.
+      * simpl in E.
+        destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; auto with type_db;
+        rewrite <- E in H; inversion H; auto with type_db.
+      * simpl in E.
+        destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; auto with type_db;
+        rewrite <- E in H; inversion H; auto with type_db.
+    + simpl in H; easy.
+Qed.
+      
 
 Lemma rm_uskips_sound : forall c dim,
   uc_well_typed dim c ->
@@ -57,25 +89,20 @@ Proof.
   intros c dim WT.
   induction WT; trivial.
   simpl.
-  destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; trivial.
-  - rewrite IHWT1, IHWT2.
-    simpl. Msimpl. reflexivity.
-  - rewrite IHWT1, IHWT2 in *.
-    
-(* Need to show that rm_uskips preserves WT *)
-    simpl. Msimpl.
-    rewrite Mmult_1_r.
-    reflexivity.
-    apply WF_mult.
-    apply WF_uc_eval; auto.
-Abort.
+  apply WT_rm_uskips in WT1.
+  apply WT_rm_uskips in WT2.
+  destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; trivial;
+    rewrite IHWT1, IHWT2; simpl; Msimpl; trivial.
+  - inversion WT2; simpl; Msimpl; easy.
+  - inversion WT1; simpl; Msimpl; easy.
+Qed.    
 
 Open Scope ucom.
 Close Scope C_scope.
 Close Scope R_scope.
 
 (* Note: Make singleton coercions work! *)
-Lemma reorder1 : forall (m n dim : nat) (U V : Unitary 1),
+Lemma slide1 : forall (m n dim : nat) (U V : Unitary 1),
   m <> n ->
   (m < dim) ->
   (n < dim) -> 
