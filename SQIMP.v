@@ -22,7 +22,9 @@ Notation CCNOT := (ctrl (ctrl _X)).
 Notation _S := (_R_ (PI / 2)). 
 Notation _T := (_R_ (PI / 4)). (* π / 8 gate *)
 
+(**********************)
 (** Unitary Programs **)
+(**********************)
 
 Inductive ucom : Set :=
 | uskip : ucom
@@ -38,14 +40,28 @@ Open Scope ucom.
 Definition bounded (l : list nat) (max : nat) :=
   forallb (fun x => x <? max) l = true.
 
+(* Alternatively: *)
+Definition bounded' (l : list nat) (max : nat) :=
+  forall x, In x l -> x < max. 
+
 Inductive uc_well_typed : nat -> ucom -> Prop :=
 | WT_uskip : forall dim, uc_well_typed dim uskip
 | WT_seq : forall dim c1 c2, uc_well_typed dim c1 -> uc_well_typed dim c2 -> uc_well_typed dim (c1; c2)
 | WT_app : forall dim n l (u : Unitary n), length l = n -> bounded l dim -> NoDup l -> uc_well_typed dim (l *= u).
 
+(* Equivalent boolean version *)
+Fixpoint uc_well_typed_b (dim : nat) (c : ucom) : bool :=
+  match c with
+  | uskip    => true
+  | c1 ; c2  => uc_well_typed_b dim c1 && uc_well_typed_b dim c2 
+  | @uapp n u l => (length l =? n) && forallb (fun x => x <? dim) l (* && boolean_do_dup *)
+  end.
+
 Close Scope ucom.
 
+(**********************)
 (** General Programs **)
+(**********************)
 
 Delimit Scope com_scope with com.
 Local Open Scope com_scope.
