@@ -1,26 +1,14 @@
 Require Import Reals.
 Require Export List.
-
 Export ListNotations.
 
-Definition Var := nat.
-Definition vList := (list Var).
-Definition singleton (v : Var) : vList := [v].
-Coercion singleton : Var >-> vList. 
-Notation "[ x , y , .. , z ]" := (cons x (cons y .. (cons z (nil)) ..)) : list_scope.
-
 Inductive Unitary : nat -> Set := 
-  | _H         : Unitary 1 
-  | _X         : Unitary 1
-  | _Y         : Unitary 1
-  | _Z         : Unitary 1
-  | _R_        : R -> Unitary 1 
-  | ctrl      : forall {n} (U : Unitary n), Unitary (S n).
-
-Notation CNOT := (ctrl _X).
-Notation CCNOT := (ctrl (ctrl _X)).
-Notation _S := (_R_ (PI / 2)). 
-Notation _T := (_R_ (PI / 4)). (* π / 8 gate *)
+  | U_H         : Unitary 1 
+  | U_X         : Unitary 1
+  | U_Y         : Unitary 1
+  | U_Z         : Unitary 1
+  | U_R         : R -> Unitary 1 
+  | U_CNOT      : Unitary 2.
 
 (**********************)
 (** Unitary Programs **)
@@ -29,13 +17,38 @@ Notation _T := (_R_ (PI / 4)). (* π / 8 gate *)
 Inductive ucom : Set :=
 | uskip : ucom
 | useq : ucom -> ucom -> ucom
-| uapp : forall {n}, Unitary n -> vList -> ucom.
+| uapp : forall {n}, Unitary n -> list nat -> ucom.
+
+(* Gate application definitions and notations *)
 
 Delimit Scope ucom_scope with ucom.
 Notation "p1 ; p2" := (useq p1 p2) (at level 50) : ucom_scope.
-Notation "v *= u" := (uapp u v) (at level 20) : ucom_scope.
+Open Scope ucom_scope.
 
-Open Scope ucom.
+(*
+Notation "'H' a" := (uapp U_H [a]) (at level 0). 
+Notation "'X' a" := (uapp U_X [a]) (at level 0). 
+Notation "'Y' a" := (uapp U_Y [a]) (at level 0). 
+Notation "'Z' a" := (uapp U_Z [a]) (at level 0). 
+Notation "'R_' θ . a" := (uapp (U_R θ) [a]) (at level 0). (* not working *)
+Notation "'CNOT' a ',' b" := (uapp U_CNOT (a::b::nil)) (at level 0). 
+*)
+
+Definition H a := uapp U_H [a].  
+Definition X a := uapp U_X [a].  
+Definition Y a := uapp U_Y [a].  
+Definition Z a := uapp U_Z [a].  
+Definition CNOT a b := uapp U_H (a::b::nil).  
+(* Definition S (a : nat) := uapp (U_R (PI / 2)) [a]. Dangerous clash *)
+Definition T (a : nat) := uapp (U_R (PI / 4)) [a]. 
+
+Definition CZ (a b : nat) : ucom :=
+  H b ; CNOT a b ; H b.
+
+Definition SWAP (a b : nat) : ucom :=
+  CNOT a b; CNOT b a; CNOT a b.
+
+(* Well Typed Circuits *)
 
 Definition bounded (l : list nat) (max : nat) :=
   forallb (fun x => x <? max) l = true.
@@ -47,7 +60,7 @@ Definition bounded' (l : list nat) (max : nat) :=
 Inductive uc_well_typed : nat -> ucom -> Prop :=
 | WT_uskip : forall dim, uc_well_typed dim uskip
 | WT_seq : forall dim c1 c2, uc_well_typed dim c1 -> uc_well_typed dim c2 -> uc_well_typed dim (c1; c2)
-| WT_app : forall dim n l (u : Unitary n), length l = n -> bounded l dim -> NoDup l -> uc_well_typed dim (l *= u).
+| WT_app : forall dim n l (u : Unitary n), length l = n -> bounded l dim -> NoDup l -> uc_well_typed dim (uapp u l).
 
 (* Equivalent boolean version *)
 Fixpoint uc_well_typed_b (dim : nat) (c : ucom) : bool :=
@@ -69,17 +82,26 @@ Local Open Scope com_scope.
 Inductive com : Set :=
 | skip : com
 | seq : com -> com -> com
-| app : forall {n}, Unitary n -> vList -> com
-| meas : Var -> com -> com -> com
-| reset : Var -> com.
+| app : forall {n}, Unitary n -> list nat -> com
+| meas : nat -> com -> com -> com
+| reset : nat -> com.
+
+Fixpoint from_ucom (c : ucom) : com :=
+  match c with
+  | uskip => skip
+  | useq c1 c2 => seq (from_ucom c1) (from_ucom c2)
+  | uapp u l => app u l
+  end.
+
+Coercion from_ucom : ucom >-> com.
 
 Notation "p1 ; p2" := (seq p1 p2) (at level 50) : com_scope.
-Notation "v *= u" := (app u v) (at level 20) : com_scope.
 Notation "'mif' v 'then' p1 'else' p2" := (meas v p1 p2) (at level 40) : com_scope.
 Notation "'measure' v" := (meas v skip skip) (at level 40) : com_scope.
 Notation "v <- 0" := (reset v) (at level 20) : com_scope.
-Notation "v <- 1" := (reset v ; v *= _X)%com (at level 20) : com_scope.
+Notation "v <- 1" := (reset v ; X v) (at level 20) : com_scope.
 
+(* Notation "v *= u" := (app u v) (at level 20) : com_scope. *)
 
 Fixpoint crepeat (n : nat) (p : com) : com :=
   match n with
@@ -87,32 +109,48 @@ Fixpoint crepeat (n : nat) (p : com) : com :=
   | S n' => p ; crepeat n' p
   end.
 
-Fixpoint while (n : nat) (v : Var) (p : com) : com :=
-  match n with
-  | 0    => skip
-  | S n' => mif v then p ; while n' v p else skip
+Fixpoint while (iters : nat) (v : nat) (p : com) : com :=
+  match iters with
+  | 0        => skip
+  | S iters' => mif v then p ; while iters' v p else skip
 end.
+
+(* Simple order reversal: No transposing, measurements and resets stay as they are. *)
+Fixpoint reverse (c : com) :=
+  match c with              
+  | seq c1 c2 => seq (reverse c2) (reverse c1)
+  | _ => c
+  end.
+
+(* Order reversal exchanging inits and measurements *)
+Fixpoint reverse_m (c : com) :=
+  match c with              
+  | seq c1 c2        => seq (reverse c2) (reverse c1) 
+  | reset v          => measure v
+  | meas v skip skip => reset v
+  | _ => c
+  end.
 
 (* Teleport Example *)
 
 Section Teleport.
   
-Variable q a b : Var.
+Variable q a b : nat.
 
 Definition bell00 : com :=
   a <- 0; b <- 0;
-  a *= _H;
-  [a,b] *= CNOT.
+  H a;
+  CNOT a b.
 
 Definition alice : com :=
-  [q,a] *= CNOT;
-  q *= _H      ;
+  CNOT q a;
+  H q;
   measure q;
   measure a.
 
 Definition bob : com :=
-  [q,b] *= ctrl _X;
-  [q,a] *= ctrl _Z.
+  CNOT q b;
+  CZ q a.
 
 Definition teleport := bell00 ; alice; bob.
 
@@ -122,17 +160,20 @@ End Teleport.
 
 Section Superdense.
 
-Variable a b : Var.
+Variable a b : nat.
 
 Definition encode (b1 b2 : bool): com :=
-    if b2 then a *= _X else skip;
-    if b1 then a *= _Z else skip.
+  if b2 then X a else skip;
+  if b1 then Z a else skip.
 
 (* note: 'decode' is just the reverse of bell00, can we define it in terms 
    of bell00 instead? *)
+(* RNR: In principle, but it's not the reverse of the bell00 as currently defined. 
+   (See the reverse functions above)
+  *)
 Definition decode : com :=
-    [a,b] *= CNOT;
-    a *= _H.
+  CNOT a b;
+  H a.
 
 Definition superdense (b1 b2 : bool) := 
     bell00 a b; 
@@ -142,5 +183,4 @@ Definition superdense (b1 b2 : bool) :=
     measure b.
 
 End Superdense.    
-
   

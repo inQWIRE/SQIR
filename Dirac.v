@@ -175,7 +175,20 @@ Proposition HZH : forall α β,
 Proof.
   ket_eq_solver.
 Abort.
-*)
+
+Proposition HXH : forall α β,
+  hadamard × σx × hadamard × (α .* ∣ 0 ⟩ .+ β .* ∣ 1 ⟩) = σz × (α .* ∣ 0 ⟩ .+ β .* ∣ 1 ⟩).
+Proof.
+  ket_eq_solver.
+Abort.
+
+Proposition H_CNOT_H : (I 2 ⊗ hadamard) × cnot × (I 2 ⊗ hadamard) = control σz .
+Proof.
+Abort.
+
+ *)
+
+
 
 
 (* Unitary superdense coding example (in-progress *)
