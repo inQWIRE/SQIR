@@ -97,9 +97,57 @@ Proof.
   - inversion WT1; simpl; Msimpl; easy.
 Qed.    
 
-Open Scope ucom.
 Close Scope C_scope.
 Close Scope R_scope.
+
+Inductive skip_free : ucom -> Prop :=
+  | SF_seq : forall c1 c2, skip_free c1 -> skip_free c2 -> skip_free (c1; c2)
+  | SF_app : forall n l (u : Unitary n), skip_free (l *= u).
+
+Lemma rm_uskips_correct : forall c,
+  (rm_uskips c) = uskip \/ skip_free (rm_uskips c).
+Proof.
+  intro c.
+  induction c.
+  - left; easy.
+  - destruct IHc1; destruct IHc2.
+    + left. simpl. rewrite H. rewrite H0. reflexivity.
+    + right. simpl. rewrite H. assumption.
+    + right. simpl. rewrite H0. 
+      (* I'm sure there's a better way to do this... *)
+      assert (rm_uskips c1 = match rm_uskips c1 with
+                             | uskip => uskip
+                             | u; u0 => u; u0
+                             | @uapp n u v => v *= u
+                             end).
+      destruct (rm_uskips c1); try easy.
+      rewrite <- H1. assumption.
+    + right. simpl. 
+      destruct (rm_uskips c1); try assumption;
+      destruct (rm_uskips c2); try (apply SF_seq); easy. 
+  - right; simpl. apply SF_app.
+Qed.
+
+Fixpoint count_ops (c : ucom) : nat :=
+  match c with
+  | c1; c2 => (count_ops c1) + (count_ops c2)
+  | _ => 1
+  end.
+
+Lemma rm_uskips_reduces_count : forall c,
+  count_ops (rm_uskips c) <= count_ops c.
+Proof.
+  intro c.
+  induction c.
+  - simpl. omega.
+  - simpl. destruct (rm_uskips c1); try omega; 
+    destruct (rm_uskips c2); 
+    simpl; simpl in IHc1; simpl in IHc2;
+    omega.
+  - simpl. omega.
+Qed.
+
+Open Scope ucom.
 
 (* Note: Make singleton coercions work! *)
 Lemma slide1 : forall (m n dim : nat) (U V : Unitary 1),
@@ -145,4 +193,3 @@ Proof.
     Msimpl'.
     reflexivity.
 Qed.
-    
