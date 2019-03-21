@@ -38,7 +38,7 @@ Definition H a := uapp U_H [a].
 Definition X a := uapp U_X [a].  
 Definition Y a := uapp U_Y [a].  
 Definition Z a := uapp U_Z [a].  
-Definition CNOT a b := uapp U_H (a::b::nil).  
+Definition CNOT a b := uapp U_CNOT (a::b::nil).  
 (* Definition S (a : nat) := uapp (U_R (PI / 2)) [a]. Dangerous clash *)
 Definition T (a : nat) := uapp (U_R (PI / 4)) [a]. 
 
