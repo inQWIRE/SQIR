@@ -1,47 +1,130 @@
-Require Export Denote_Ctrls.
+Require Export SQIMP.
+Require Export Quantum.
 
 Open Scope ucom_scope.
+
+(** Denotation of Unitaries *)
+
+Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
+  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else I _.
+
+Lemma WF_pad : forall n start dim (A : Square (2^n)),
+  WF_Matrix _ _ A ->
+  WF_Matrix _ _ (pad start dim A).
+Proof.
+  intros n start dim A. unfold pad.
+  bdestruct (start + n <=? dim); auto with wf_db.
+Qed.  
+
+(* k must be 1, but dependent types... *)
+Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
+  @pad 1 n dim
+  match u with  
+  | U_H         => hadamard 
+  | U_X         => σx
+  | U_Y         => σy
+  | U_Z         => σz
+  | U_R ϕ       => phase_shift ϕ
+  | _           => I (2^1)
+  end.
+
+(* Restriction: m <> n and m, n < dim *)
+Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
+  if (m <? n) then
+    @pad (1+(n-m-1)+1) m dim (∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-m)))
+  else if (n <? m) then
+    @pad (1+(m-n-1)+1) n dim (σx ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ .+ I (2^(m-n)) ⊗ ∣0⟩⟨0∣)
+  else
+    I (2^dim).
+
+Definition ueval {n} (dim : nat) (u : Unitary n) (l : list nat) : Square (2^dim) :=
+  match n, l with
+  | 1, [i]   => ueval1 dim i u
+  | 2, i::[j] => ueval_cnot dim i j
+  | _, _     => I _
+  end.
 
 (** Denotation of ucoms **)
 
 Fixpoint uc_eval (dim : nat) (c : ucom) : Matrix (2^dim) (2^dim) :=
   match c with
-  | uskip   => I (2^dim)
-  | l *= u  => apply_unitary dim u l
-  | c1 ; c2 => uc_eval dim c2 × uc_eval dim c1 
+  | uskip    => I (2^dim)
+  | uapp u l => ueval dim u l
+  | c1 ; c2  => uc_eval dim c2 × uc_eval dim c1 
   end.
 
-Lemma WF_uc_eval_uapp : forall dim n (u : Unitary n) l, uc_well_typed dim (l *= u) -> WF_Matrix _ _ (apply_unitary dim u l).
+(* Well-formedness *)
+
+Lemma WF_ueval1 : forall dim n (u : Unitary 1), WF_Matrix _ _ (ueval1 dim n u).
 Proof.
-  intros dim n u l H.
-  inversion H; subst.
-  apply apply_unitary_unitary; trivial.
-  unfold SQIMP.bounded in H5.
-  destruct (forallb_forall (fun x : nat => x <? dim) l) as [H2 _].
-  specialize (H2 H5).
-  intros x H3.
-  specialize (H2 _ H3).
-  apply Nat.ltb_lt; easy.
+  intros dim n u.
+  apply WF_pad.
+  destruct u; auto with wf_db.
 Qed.  
   
-Lemma WF_uc_eval : forall dim c, uc_well_typed dim c -> WF_Matrix _ _ (uc_eval dim c).
+Lemma WF_ueval_cnot : forall dim m n, WF_Matrix _ _ (ueval_cnot dim m n). 
 Proof.
-  intros dim c H.
-  induction H; simpl; auto with wf_db.
-  apply WF_uc_eval_uapp.
-  constructor; easy.
+  intros dim m n.
+  unfold ueval_cnot.
+  bdestruct (m <? n); [|bdestruct (n <? m)];
+    try apply WF_pad; unify_pows_two; auto 10 with wf_db.    
+Qed.  
+
+Lemma WF_ueval : forall n dim (u : Unitary n) l, WF_Matrix _ _ (ueval dim u l).
+Proof.
+  intros n dim u l.
+  destruct n as [|[|[|n']]]; simpl; auto with wf_db.
+  - destruct l as [|i [| j l]]; simpl; auto with wf_db.
+    apply WF_ueval1.
+  - destruct l as [|i [| j [| k l]]]; simpl; auto with wf_db.
+    apply WF_ueval_cnot.
+Qed.  
+
+Lemma WF_uc_eval : forall dim c, WF_Matrix _ _ (uc_eval dim c).
+Proof.
+  intros dim c.
+  induction c; simpl; auto with wf_db.
+  apply WF_ueval.
 Qed.
 
-Hint Resolve WF_uc_eval_uapp WF_uc_eval : wf_db.
+Hint Resolve WF_ueval WF_uc_eval : wf_db.
+
+
+(* Some unit tests *)
+
+Lemma eval_H : uc_eval 1 (H 0) = hadamard.
+Proof.
+  simpl. unfold ueval1, pad. (* have these automatically simplify *)
+  simpl. Msimpl. reflexivity.
+Qed.
+
+Lemma eval_HHpar : uc_eval 2 (H 0; H 1) = hadamard ⊗ hadamard.
+Proof.
+  simpl. unfold ueval1, pad. (* have these automatically simplify *)
+  simpl. Msimpl. reflexivity.
+Qed.
+
+Lemma eval_HHseq : uc_eval 2 (H 0; H 0) = I 4.
+Proof.
+  simpl. unfold ueval1, pad. (* have these automatically simplify *)
+  simpl. Msimpl. solve_matrix.
+Qed.
+
+Lemma eval_CNOT : uc_eval 2 (CNOT 0 1) = cnot.
+Proof.
+  unfold uc_eval. simpl.
+  simpl. unfold ueval_cnot, pad. (* have these automatically simplify *)
+  simpl. Msimpl. solve_matrix.
+Qed.
+
 
 (* Basic Lemmas *)
 
-Lemma uskip_id_l : forall (dim : nat) (c : ucom), uc_well_typed dim c -> uc_eval dim (uskip ; c) = uc_eval dim c.
+Lemma uskip_id_l : forall (dim : nat) (c : ucom),
+  uc_eval dim (uskip ; c) = uc_eval dim c.
 Proof.
-  intros WT dim c.
-  simpl.
-  rewrite Mmult_1_r. reflexivity.
-  apply WF_uc_eval. easy.
+  intros dim c.
+  simpl; Msimpl; reflexivity.
 Qed.
 
 (* Minor optimizations *)
@@ -56,6 +139,7 @@ Fixpoint rm_uskips (c : ucom) : ucom :=
   | c'      => c'
   end.
 
+(* We don't really need this anymore *)
 Hint Constructors uc_well_typed : type_db.
 
 Lemma WT_rm_uskips : forall c dim, uc_well_typed dim c <-> uc_well_typed dim (rm_uskips c).
@@ -83,26 +167,21 @@ Qed.
       
 
 Lemma rm_uskips_sound : forall c dim,
-  uc_well_typed dim c ->
   uc_eval dim c = uc_eval dim (rm_uskips c).
 Proof.
-  intros c dim WT.
-  induction WT; trivial.
+  intros c dim.
+  induction c; trivial.
   simpl.
-  apply WT_rm_uskips in WT1.
-  apply WT_rm_uskips in WT2.
   destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; trivial;
-    rewrite IHWT1, IHWT2; simpl; Msimpl; trivial.
-  - inversion WT2; simpl; Msimpl; easy.
-  - inversion WT1; simpl; Msimpl; easy.
-Qed.    
+    rewrite IHc1, IHc2; simpl; Msimpl; trivial.
+Qed.
 
 Close Scope C_scope.
 Close Scope R_scope.
 
 Inductive skip_free : ucom -> Prop :=
   | SF_seq : forall c1 c2, skip_free c1 -> skip_free c2 -> skip_free (c1; c2)
-  | SF_app : forall n l (u : Unitary n), skip_free (l *= u).
+  | SF_app : forall n l (u : Unitary n), skip_free (uapp u l).
 
 Lemma rm_uskips_correct : forall c,
   (rm_uskips c) = uskip \/ skip_free (rm_uskips c).
@@ -114,14 +193,7 @@ Proof.
     + left. simpl. rewrite H. rewrite H0. reflexivity.
     + right. simpl. rewrite H. assumption.
     + right. simpl. rewrite H0. 
-      (* I'm sure there's a better way to do this... *)
-      assert (rm_uskips c1 = match rm_uskips c1 with
-                             | uskip => uskip
-                             | u; u0 => u; u0
-                             | @uapp n u v => v *= u
-                             end).
       destruct (rm_uskips c1); try easy.
-      rewrite <- H1. assumption.
     + right. simpl. 
       destruct (rm_uskips c1); try assumption;
       destruct (rm_uskips c2); try (apply SF_seq); easy. 
@@ -149,28 +221,35 @@ Qed.
 
 Open Scope ucom.
 
-(* Note: Make singleton coercions work! *)
+
+Local Notation "a *= U" := (uapp U [a]) (at level 0).
+
 Lemma slide1 : forall (m n dim : nat) (U V : Unitary 1),
   m <> n ->
-  (m < dim) ->
-  (n < dim) -> 
-  uc_eval dim ([m] *= U ; [n] *= V) = uc_eval dim ([n] *= V ; [m] *= U). 
+  uc_eval dim (m *= U ; n *= V) = uc_eval dim (n *= V ; m *= U). 
 Proof.
-  intros m n dim U V NE Lm Ln.
+  intros m n dim U V NE.
   simpl.
-  destruct (unitary_gate_unitary U) as [WFU _].
-  destruct (unitary_gate_unitary V) as [WFV _].
   simpl in *.
-  remember (denote_unitary U) as DU.
-  remember (denote_unitary V) as DV.
-  clear HeqDU HeqDV.
+  unfold ueval1. 
+  repeat match goal with
+  | [|- context [pad m _ ?U ]] => remember U as U'
+  | [|- context [pad n _ ?V ]] => remember V as V'
+  end.
+  assert (WFU : WF_Matrix _ _ U') by 
+      (destruct U; subst; auto with wf_db).
+  assert (WFV : WF_Matrix _ _ V') by 
+      (destruct V; subst; auto with wf_db).
+  clear HeqU' HeqV' U V.
+  unfold pad.
+  bdestruct (n + 1 <=? dim); bdestruct (m + 1 <=? dim);
+    try Msimpl; trivial.
   bdestruct (m <? n).
   - remember (n - m - 1) as k.
     replace n with (m + 1 + k) by omega.
     replace (2 ^ (m+1+k)) with (2^m * 2 * 2^k) by unify_pows_two.
-    repeat rewrite <- id_kron.
-    remember (dim - (m + 1 + k) - 1) as j.
-    replace (dim - m - 1) with (k + 1 + j) by omega.
+    remember (dim - 1 - (m + 1 + k)) as j.
+    replace (dim - 1 - m) with (k + 1 + j) by omega.
     replace (2 ^ (k + 1 + j)) with (2^k * 2 * 2^ j) by unify_pows_two.
     repeat rewrite <- id_kron.
     simpl in *.
@@ -182,9 +261,8 @@ Proof.
     remember (n - m - 1) as k.
     replace n with (m + 1 + k) by omega.
     replace (2 ^ (m+1+k)) with (2^m * 2 * 2^k) by unify_pows_two.
-    repeat rewrite <- id_kron.
-    remember (dim - (m + 1 + k) - 1) as j.
-    replace (dim - m - 1) with (k + 1 + j) by omega.
+    remember (dim - 1 - (m + 1 + k)) as j.
+    replace (dim - 1 - m) with (k + 1 + j) by omega.
     replace (2 ^ (k + 1 + j)) with (2^k * 2 * 2^ j) by unify_pows_two.
     repeat rewrite <- id_kron.
     simpl in *.
@@ -194,6 +272,11 @@ Proof.
     reflexivity.
 Qed.
 
+(* Prove associativity:
+⟦c1 ; (c2 ; c3)⟧ = ⟦(c1 ; c2) ; c3⟧.  
+ *)
+
+(* Prove congruence *)
 Fixpoint flat_append (c1 c2 : ucom) : ucom := 
   match c1 with
   | c1'; c2' => c1' ; (flat_append c2' c2)
@@ -271,3 +354,4 @@ Definition q2 : Var := 1.
 Definition q3 : Var := 2.
 Definition example1 : ucom := ((q1 *= _X; q2 *= _H); ((q1 *= _X; q2 *= _X); ([q3,q2] *= CNOT; q2 *= _X))).
 Compute (flatten example1).
+
