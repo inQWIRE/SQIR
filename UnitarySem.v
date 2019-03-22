@@ -5,7 +5,6 @@ Open Scope ucom_scope.
 
 (** Denotation of Unitaries *)
 
-(* k must be 1, but dependent types... *)
 Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
   if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else I _.
 
@@ -17,6 +16,7 @@ Proof.
   bdestruct (start + n <=? dim); auto with wf_db.
 Qed.  
 
+(* k must be 1, but dependent types... *)
 Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
   @pad 1 n dim
   match u with  
@@ -28,6 +28,7 @@ Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
   | _           => I (2^1)
   end.
 
+(* Restriction: m <> n and m, n < dim *)
 Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
   if (m <? n) then
     @pad (1+(n-m-1)+1) m dim (∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-m)))
@@ -166,17 +167,14 @@ Qed.
       
 
 Lemma rm_uskips_sound : forall c dim,
-  uc_well_typed dim c ->
   uc_eval dim c = uc_eval dim (rm_uskips c).
 Proof.
-  intros c dim WT.
-  induction WT; trivial.
+  intros c dim.
+  induction c; trivial.
   simpl.
-  apply WT_rm_uskips in WT1.
-  apply WT_rm_uskips in WT2.
   destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; trivial;
-    rewrite IHWT1, IHWT2; simpl; Msimpl; trivial.
-Qed.    
+    rewrite IHc1, IHc2; simpl; Msimpl; trivial.
+Qed.
 
 Close Scope C_scope.
 Close Scope R_scope.
@@ -222,9 +220,6 @@ Proof.
 Qed.
 
 Open Scope ucom.
-
-
-
 
 
 Local Notation "a *= U" := (uapp U [a]) (at level 0).
@@ -277,3 +272,8 @@ Proof.
     reflexivity.
 Qed.
 
+(* Prove associativity:
+⟦c1 ; (c2 ; c3)⟧ = ⟦(c1 ; c2) ; c3⟧.  
+ *)
+
+(* Prove congruence *)
