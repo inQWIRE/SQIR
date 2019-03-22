@@ -298,3 +298,43 @@ Proof.
     Msimpl'.
     reflexivity.
 Qed.
+
+(** Flattening sequences **)
+Fixpoint flat_append (c1 c2 : ucom) : ucom := 
+  match c1 with
+  | c1'; c2' => c1' ; (flat_append c2' c2)
+  | _ => c1 ; c2
+  end.
+
+Fixpoint flatten (c: ucom) : ucom :=
+  match c with
+  | c1; c2 => flat_append (flatten c1) (flatten c2)
+  | _ => c
+  end.
+
+Lemma denote_flat_append : forall c1 c2 dim,
+  uc_eval dim (flat_append c1 c2) = uc_eval dim c2 × uc_eval dim c1.
+Proof.
+  intros c1 c2 dim.
+  induction c1; try easy.
+  simpl.
+  rewrite IHc1_2.
+  apply Mmult_assoc.
+Qed.
+
+Lemma flatten_sound : forall c,  
+  c ≡ flatten c.
+Proof.
+  intros c dim.
+  induction c; try easy.
+  simpl.
+  rewrite IHc1, IHc2.
+  rewrite denote_flat_append.
+  reflexivity.
+Qed.
+
+Definition q1 : nat := 0.
+Definition q2 : nat := 1.
+Definition q3 : nat := 2.
+Definition example1 : ucom := ((X q1; H q2); ((X q1; X q2); (CNOT q3 q2; X q2))).
+Compute (flatten example1).
