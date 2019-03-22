@@ -193,3 +193,81 @@ Proof.
     Msimpl'.
     reflexivity.
 Qed.
+
+Fixpoint flat_append (c1 c2 : ucom) : ucom := 
+  match c1 with
+  | c1'; c2' => c1' ; (flat_append c2' c2)
+  | _ => c1 ; c2
+  end.
+
+Fixpoint flatten (c: ucom) : ucom :=
+  match c with
+  | c1; c2 => flat_append (flatten c1) (flatten c2)
+  | _ => c
+  end.
+
+Lemma flatten_sound : forall c dim,  
+  uc_well_typed dim c ->
+  uc_eval dim c = uc_eval dim (flatten c).
+Proof.
+  intros c dim WT.
+  induction WT; try easy.
+  simpl.
+  rewrite IHWT1. rewrite IHWT2.
+Admitted.
+
+(* Cancel a single X gate on qubit q, if possible. This will either 
+   return None or (Some c') where c' is the result of removing the 
+   appropriate X gate from c.
+   
+   This function will insert an extra uskip instruction if the cancelled
+   gate is at the end of the circuit... I should probably fix that. *)
+Fixpoint cancel_X (c : ucom) (q : Var) : ucom option :=
+  match c with
+  | [q'] *= X => 
+      if q =? q' then Some uskip else None
+  | [q'] *= X; c' => 
+      if q =? q' then Some c' else None
+  | [q1, q2] *= CNOT; c' => 
+      if q =? q2 
+      then match cancel_not c' q with
+           | None => None
+           | Some c'' => Some ([q1, q2] *= CNOT; c'')
+           end
+      else if q =? q1 then None
+           else match cancel_not c' q with
+                | None => None
+                | Some c'' => Some ([q1, q2] *= CNOT; c'')
+                end
+  | l *= U; c' => 
+      if (inb q l)
+      then None
+      else match cancel_X c' q with
+           | None => None
+           | Some c'' => Some (l *= U; c'')
+           end
+  end
+
+let (c', b) = cancel_not c q in
+              (other gate; c', b)
+
+  | _ => None
+
+(* Call cancel_X on all X gates in the circuit. *)
+Fixpoint rm_nots (c : ucom) : ucom :=
+  match c with
+  | [q] *= X; c' => 
+      match cancel_not c' q with
+      | None => [q] *= X; (rm_nots c')
+      | Some c'' => rm_nots c''
+      end
+  | c1'; c2' => c1'; (rm_nots c2')
+  | _ => c
+
+Definition rm_nots (c : ucom) : ucom := rm_nots' (flatten c)
+
+Definition q1 : Var := 0.
+Definition q2 : Var := 1.
+Definition q3 : Var := 2.
+Definition example1 : ucom := ((q1 *= _X; q2 *= _H); ((q1 *= _X; q2 *= _X); ([q3,q2] *= CNOT; q2 *= _X))).
+Compute (flatten example1).
