@@ -53,7 +53,7 @@ Fixpoint uc_eval (dim : nat) (c : ucom) : Matrix (2^dim) (2^dim) :=
   | c1 ; c2  => uc_eval dim c2 × uc_eval dim c1 
   end.
 
-(* Well-formedness *)
+(** Well-formedness **)
 
 Lemma WF_ueval1 : forall dim n (u : Unitary 1), WF_Matrix _ _ (ueval1 dim n u).
 Proof.
@@ -118,16 +118,45 @@ Proof.
 Qed.
 
 
-(* Basic Lemmas *)
+(** Equivalence and Structural Rules **)
 
-Lemma uskip_id_l : forall (dim : nat) (c : ucom),
-  uc_eval dim (uskip ; c) = uc_eval dim c.
+(* Precondition about typing? *)
+Definition uc_equiv (c1 c2 : ucom) := forall dim, uc_eval dim c1 = uc_eval dim c2.
+
+Infix "≡" := uc_equiv : ucom_scope.
+
+Lemma useq_assoc : forall c1 c2 c3, ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
 Proof.
-  intros dim c.
+  intros c1 c2 c3 dim. simpl.
+  rewrite Mmult_assoc. easy.
+Qed.
+
+Lemma useq_congruence : forall c1 c1' c2 c2',
+    c1 ≡ c1' ->
+    c2 ≡ c2' ->
+    c1 ; c2 ≡ c1' ; c2'.
+Proof.
+  intros c1 c1' c2 c2' Ec1 Ec2 dim.
+  simpl.
+  rewrite Ec1, Ec2.
+  reflexivity.
+Qed.
+
+(* Optimization: Remove skips *)
+
+Lemma uskip_id_l : forall (c : ucom),
+   (uskip ; c) ≡ c.
+Proof.
+  intros c dim.
   simpl; Msimpl; reflexivity.
 Qed.
 
-(* Minor optimizations *)
+Lemma uskip_id_r : forall (c : ucom),
+   (c ; uskip) ≡ c.
+Proof.
+  intros c dim.
+  simpl; Msimpl; reflexivity.
+Qed.
 
 Fixpoint rm_uskips (c : ucom) : ucom :=
   match c with
@@ -166,18 +195,14 @@ Proof.
 Qed.
       
 
-Lemma rm_uskips_sound : forall c dim,
-  uc_eval dim c = uc_eval dim (rm_uskips c).
+Lemma rm_uskips_sound : forall c,
+  c ≡ (rm_uskips c).
 Proof.
-  intros c dim.
-  induction c; trivial.
+  induction c; intros dim; trivial.
   simpl.
   destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; trivial;
     rewrite IHc1, IHc2; simpl; Msimpl; trivial.
 Qed.
-
-Close Scope C_scope.
-Close Scope R_scope.
 
 Inductive skip_free : ucom -> Prop :=
   | SF_seq : forall c1 c2, skip_free c1 -> skip_free c2 -> skip_free (c1; c2)
@@ -200,6 +225,9 @@ Proof.
   - right; simpl. apply SF_app.
 Qed.
 
+Close Scope C_scope.
+Close Scope R_scope.
+
 Fixpoint count_ops (c : ucom) : nat :=
   match c with
   | c1; c2 => (count_ops c1) + (count_ops c2)
@@ -219,13 +247,15 @@ Proof.
   - simpl. omega.
 Qed.
 
-Local Notation "a *= U" := (uapp U [a]) (at level 0).
+Open Scope ucom.
 
-Lemma slide1 : forall (m n dim : nat) (U V : Unitary 1),
+Local Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope.
+
+Lemma slide1 : forall (m n : nat) (U V : Unitary 1),
   m <> n ->
-  uc_eval dim (m *= U ; n *= V) = uc_eval dim (n *= V ; m *= U). 
+  (m *= U ; n *= V) ≡ (n *= V ; m *= U). 
 Proof.
-  intros m n dim U V NE.
+  intros m n U V NE dim.
   simpl.
   simpl in *.
   unfold ueval1. 
@@ -346,6 +376,7 @@ Proof.
   - admit.
 Admitted.
 
+(** Flattening sequences **)
 Fixpoint flat_append (c1 c2 : ucom) : ucom := 
   match c1 with
   | c1'; c2' => c1' ; (flat_append c2' c2)
@@ -368,8 +399,8 @@ Proof.
   apply Mmult_assoc.
 Qed.
 
-Lemma flatten_sound : forall c dim,  
-  uc_eval dim c = uc_eval dim (flatten c).
+Lemma flatten_sound : forall c,  
+  c ≡ flatten c.
 Proof.
   intros c dim.
   induction c; try easy.
