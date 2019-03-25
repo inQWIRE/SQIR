@@ -219,9 +219,6 @@ Proof.
   - simpl. omega.
 Qed.
 
-Open Scope ucom.
-
-
 Local Notation "a *= U" := (uapp U [a]) (at level 0).
 
 Lemma slide1 : forall (m n dim : nat) (U V : Unitary 1),
@@ -272,12 +269,82 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma useq_assoc : forall c1 c2 c3 dim,
-  uc_eval dim (c1; (c2; c3)) = uc_eval dim ((c1; c2); c3).
+(* help deal with the cases where a circuit is not well-typed *)
+Ltac solve_non_WT_cases :=
+  try (rewrite Mmult_1_l); 
+  try (rewrite Mmult_1_r);
+  try (apply WF_ueval1);
+  easy.
+
+(* more general version of slide *)
+Lemma slide : forall (m q : nat) (l : list nat) (dim : nat) (U : Unitary 1) (V : Unitary m),
+  (inb q l) = false ->
+  uc_eval dim (uapp U [q] ; uapp V l) = uc_eval dim (uapp V l ; uapp U [q]). 
 Proof.
-  intros c1 c2 c3 dim.
-  simpl; apply Mmult_assoc.
-Qed.
+  intros m q l dim U V NE.
+  destruct V;
+  (* use slide1 to prove all single-qubit gate cases *)
+  try (
+    destruct l; try (destruct l); simpl;
+    try solve_non_WT_cases;
+    simpl in NE;
+    rewrite orb_false_r in NE;
+    apply beq_nat_false in NE;
+    apply not_eq_sym in NE;
+    apply slide1;
+
+    easy
+  ).
+  (* all that's left is the cnot case *)
+  destruct l; try (destruct l); try (destruct l); simpl; try solve_non_WT_cases.
+  unfold ueval1, ueval_cnot. 
+  match goal with
+  | [|- context [pad q _ ?U ]] => remember U as U'
+  end.
+  assert (WFU : WF_Matrix _ _ U') by 
+      (destruct U; subst; auto with wf_db).
+  clear HeqU' U.
+  simpl in NE;
+  rewrite orb_false_r in NE;
+  apply orb_false_elim in NE;
+  destruct NE as [NE1 NE2];
+  apply beq_nat_false in NE1;
+  apply beq_nat_false in NE2.
+  bdestruct (n <? n0).
+  - unfold pad.
+    bdestruct (q + 1 <=? dim); bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim).
+    + bdestruct (n0 <? q).
+      (* n < n0 < q *)
+      * remember (1 + (n0 - n - 1) + 1) as k.
+        replace (dim - k - n) with ((q - k - n) + 1 + (dim - 1 - q)) by omega.
+        replace (2 ^ ((q - k - n) + 1 + (dim - 1 - q))) with (2^(q - k - n) * 2 * 2^(dim - 1 - q)) by (repeat rewrite Nat.pow_add_r; easy).
+        repeat rewrite <- id_kron.
+        repeat rewrite <- kron_assoc.
+        show_dimensions.
+        admit.   
+      * apply le_lt_eq_dec in H2.
+        (* get rid of the q = n0 case *) 
+        destruct H2; try (contradict e; apply not_eq_sym; easy).
+        bdestruct (n <? q).
+        (* n < q < n0 *)
+        admit.
+        (* q < n < n0 *)
+        admit.
+    (* the next 3 cases handle the behavior when the circuit is not well typed *)
+    + rewrite Mmult_1_l;
+      try rewrite Mmult_1_r;
+      try reflexivity;
+      try (apply WF_kron;
+              try (repeat rewrite <- Nat.pow_add_r;
+                   replace (q + 1 + (dim - 1 - q)) with dim by omega;
+                   easy);
+              try apply WF_kron;
+              try apply WF_I;
+              try easy).
+    + admit.
+    + Msimpl; reflexivity.
+  - admit.
+Admitted.
 
 Fixpoint flat_append (c1 c2 : ucom) : ucom := 
   match c1 with
@@ -312,9 +379,154 @@ Proof.
   reflexivity.
 Qed.
 
+Require Export List. (* Why do I need this here? *)
+
+(* Cancel a single X gate on qubit q, if possible. This will either 
+   return None or (Some c') where c' is the result of removing the 
+   appropriate X gate from c.
+   
+   This function will insert an extra uskip instruction if the cancelled
+   gate is at the end of the circuit... I should probably fix that. *)
+Fixpoint cancel_X (c : ucom) (q : nat) : option ucom :=
+  match c with
+  | uapp U_X [q'] => 
+      if q =? q' then Some uskip else None
+  | uapp U_X [q']; c' => 
+      if q =? q' then Some c' else None
+  | uapp U_CNOT (q1::q2::nil); c' => 
+      if q =? q1 then None 
+      else match cancel_X c' q with
+           | None => None
+           | Some c'' => Some (uapp U_CNOT (q1::q2::nil); c'')
+           end
+  | uapp U l; c' => 
+      if (inb q l)
+      then None
+      else match cancel_X c' q with
+           | None => None
+           | Some c'' => Some (uapp U l; c'')
+           end
+  | _ => None
+  end.
+
+(* Call cancel_X on all X gates in the circuit. The extra n argument
+   is to help Coq recognize termination. *)
+Fixpoint cancel_all_X (c : ucom) (n: nat) : ucom :=
+  match n with
+  | 0 => c (* impossible case *)
+  | S n' => match c with
+           | uapp U_X [q]; c2 => 
+               match cancel_X c2 q with
+               | None => uapp U_X [q]; (cancel_all_X c2 n')
+               | Some c2' => cancel_all_X c2' n'
+               end
+           | c1; c2 => c1; (cancel_all_X c2 n')
+           | _ => c
+           end
+  end.
+
+Definition rm_X (c : ucom) : ucom := cancel_all_X (flatten c) (count_ops c).
+
+Lemma XX_I : σx × σx = I (2 ^ 1).
+Proof. solve_matrix. Qed.
+
+(*Lemma X_CNOT_CNOT_X : σx × σx = I (2 ^ 1).
+Proof. solve_matrix. Qed.*)
+
+Lemma cancel_X_sound : forall c q dim,
+  match cancel_X c q with
+  | None => True
+  | Some c' => uc_eval dim c' = uc_eval dim (uapp U_X [q]; c)
+  end.
+Proof.
+  intros c q dim.
+  induction c.
+  - (* The skip case is trivial. *)
+    easy.
+  - (*clear IHWT1.
+    destruct WT1; try easy.
+    destruct u.
+    + 
+   admit.
+    + destruct l. 
+      contradict H; easy.
+      assert (l = []) by (inversion H; apply length_zero_iff_nil; easy); subst.
+      simpl. bdestruct (q =? n); try easy; subst.
+      simpl; unfold ueval1, pad.
+      unfold SQIMP.bounded in H0; simpl in H0; destruct H0 as [H0 _].
+      assert (n + 1 <=? dim = true) by (apply Nat.leb_le; omega). 
+      rewrite H0.
+      admit.
+    + admit.
+    + admit.
+    + admit.
+    + destruct l.
+      contradict H; easy.
+      destruct l.
+      contradict H; easy.
+      assert (l = []) by (inversion H; apply length_zero_iff_nil; easy); subst.
+      admit.
+  - (* All unitary applications, except the "uapp U_X [q]" case, are trivial. *)
+    destruct u; try easy.
+    destruct l; try easy.
+    assert (l = []) by (inversion H; apply length_zero_iff_nil; easy); subst.
+    simpl. bdestruct (q =? n); try easy; subst.
+    (* At this point, we have to prove that adjacent X gates will cancel:
+        
+         uc_eval dim uskip = ueval1 dim n U_X × ueval1 dim n U_X
+    *)
+    simpl; unfold ueval1, pad.
+    unfold SQIMP.bounded in H0; simpl in H0; destruct H0 as [H0 _].
+    assert (n + 1 <=? dim = true) by (apply Nat.leb_le; omega). 
+    rewrite H0.
+    Msimpl'.
+    simpl; rewrite XX_I.
+    rewrite id_kron.
+    replace (2 ^ n * 2 ^ 1) with (2 ^ (n + 1)) by unify_pows_two.
+    rewrite id_kron.
+    replace (2 ^ (n + 1) * 2 ^ (dim - 1 - n)) with (2 ^ dim) by unify_pows_two.
+    reflexivity.*)
+Admitted.    
+    
+Lemma cancel_all_X_sound : forall c n dim,
+  uc_eval dim c = uc_eval dim (cancel_all_X c n).
+Proof.
+  intros c n dim.
+  generalize dependent c.
+  induction n; try easy.
+  intros c.
+  induction c; try easy.
+  induction c1; 
+  try destruct u; 
+  try destruct l; try destruct l; 
+  try (simpl; rewrite <- IHn; easy).
+  simpl.
+  specialize (cancel_X_sound c2 n0 dim) as H.
+  destruct (cancel_X c2 n0).
+  - simpl in H.
+    rewrite <- H.
+    apply IHn.
+  - simpl; rewrite <- IHn; easy.
+Qed.
+ 
+Lemma rm_X_sound : forall c dim, 
+  uc_eval dim c = uc_eval dim (rm_X c).
+Proof.
+  intros c dim.
+  unfold rm_X.
+  rewrite <- cancel_all_X_sound.
+  apply flatten_sound.
+Qed.
+
 Definition q1 : nat := 0.
 Definition q2 : nat := 1.
 Definition q3 : nat := 2.
 Definition example1 : ucom := ((X q1; H q2); ((X q1; X q2); (CNOT q3 q2; X q2))).
 Compute (flatten example1).
+Compute (rm_X example1).
+Definition example2 : ucom := ((X q1; X q2); X q3).
+Compute (flatten example2).
+Compute (rm_X example2).
+
+
 

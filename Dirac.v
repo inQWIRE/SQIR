@@ -197,8 +197,8 @@ Require Import SQIMP.
 Require Import UnitarySem.
 Open Scope ucom_scope.
 
-Definition a : Var := O.
-Definition b : Var := S O.
+Definition a : nat := O.
+Definition b : nat := S O.
 
 Definition bell00_u : ucom :=
     a *= _H;
