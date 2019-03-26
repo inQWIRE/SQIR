@@ -63,6 +63,9 @@ Ltac bdestructΩ X := bdestruct X; simpl; try omega.
 Lemma if_dist : forall (A B : Type) (b : bool) (f : A -> B) (x y : A), f (if b then x else y) = if b then f x else f y.
 Proof. destruct b; reflexivity. Qed.
 
+Lemma if_dist2 : forall (A B C : Type) (b : bool) (f : A -> B -> C) (x y : A) (z : B), f (if b then x else y) z = if b then f x z else f y z.
+Proof. destruct b; reflexivity. Qed.
+
 (* Currying *)
 
 Definition curry {A B C : Type} (f : A * B -> C) : (A -> B -> C) :=

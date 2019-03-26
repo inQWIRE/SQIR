@@ -23,6 +23,8 @@ Inductive ucom : Set :=
 
 Delimit Scope ucom_scope with ucom.
 Notation "p1 ; p2" := (useq p1 p2) (at level 50) : ucom_scope.
+Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope.
+
 Open Scope ucom_scope.
 
 (*

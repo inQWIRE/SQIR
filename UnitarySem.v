@@ -6,7 +6,7 @@ Open Scope ucom_scope.
 (** Denotation of Unitaries *)
 
 Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
-  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else I _.
+  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else I (2^dim).
 
 Lemma WF_pad : forall n start dim (A : Square (2^n)),
   WF_Matrix _ _ A ->
@@ -204,7 +204,7 @@ Proof.
   induction c; intros dim; trivial.
   simpl.
   destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; trivial;
-    rewrite IHc1, IHc2; simpl; Msimpl; trivial.
+    rewrite IHc1, IHc2; simpl; Msimpl; easy.
 Qed.
 
 Inductive skip_free : ucom -> Prop :=
@@ -250,9 +250,71 @@ Proof.
   - simpl. omega.
 Qed.
 
-Open Scope ucom.
+Lemma if_dist2 : forall (A B C : Type) (b : bool) (f : A -> B -> C) (x y : A) (z : B), f (if b then x else y) z = if b then f x z else f y z.
+Proof. destruct b; reflexivity. Qed.
 
-Local Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope.
+Lemma pad_dims : forall c n k,
+  uc_well_typed n c ->
+  (uc_eval n c) ⊗ I (2^k) = uc_eval (n + k) c.  
+Proof.
+  intros c n k H.
+  induction c.
+  - simpl. rewrite id_kron. unify_pows_two. reflexivity.
+  - inversion H; subst.
+    simpl. rewrite <- IHc1, <- IHc2; trivial.
+    Msimpl'; reflexivity.
+  - simpl.
+    unfold ueval.
+    destruct n0 as [|[|[|]]]; simpl; try (rewrite id_kron; unify_pows_two; reflexivity).
+    + destruct l as [| a []]; try (rewrite id_kron; unify_pows_two; reflexivity).
+      unfold ueval1.
+      repeat match goal with
+      | [|- context [pad _ _ ?U ]] => remember U as U'
+      end.
+      unfold pad.
+      assert(L : a + 1 <= n).
+      { inversion H; subst.
+        unfold SQIMP.bounded in H5; simpl in H5.
+        rewrite andb_true_r in H5.
+        apply Nat.ltb_lt in H5.
+        omega. }
+      bdestruct (a + 1 <=? n); bdestructΩ (a + 1 <=? n+k).
+      setoid_rewrite (kron_assoc _ _ _ _ _ _ (I (2^a) ⊗ U')).
+      rewrite id_kron. unify_pows_two.
+      replace (n - 1 - a + k) with (n + k - 1 - a) by omega.
+      reflexivity.
+    + destruct l as [| a [|b[|]]]; try (rewrite id_kron; unify_pows_two; reflexivity).
+      unfold ueval_cnot.
+      inversion H; subst.
+      inversion H5; subst.
+      apply andb_true_iff in H2 as [La Lb].
+      clear -La Lb.
+      rewrite andb_true_r in Lb.
+      apply Nat.ltb_lt in La.
+      apply Nat.ltb_lt in Lb.
+      unfold pad.
+      bdestruct (a <? b); bdestructΩ (b <? a); try (rewrite id_kron; unify_pows_two; reflexivity).
+      * bdestructΩ (a + S (b - a - 1 + 1) <=? n).
+        bdestructΩ (a + S (b - a - 1 + 1) <=? n + k).
+        setoid_rewrite (kron_assoc _ _ _ _ _ _ _ _  (I (2^k))).
+        rewrite id_kron.
+        unify_pows_two.
+        rewrite Nat.sub_add by omega.
+        rewrite Nat.add_sub_swap by omega.
+        rewrite Nat.add_sub_swap by omega.
+        reflexivity.
+      * bdestructΩ (b + S (a - b - 1 + 1) <=? n).
+        bdestructΩ (b + S (a - b - 1 + 1) <=? n + k).
+        setoid_rewrite (kron_assoc _ _ _ _ _ _ _ _  (I (2^k))).
+        rewrite id_kron.
+        unify_pows_two.
+        rewrite Nat.sub_add by omega.
+        rewrite Nat.add_sub_swap by omega.
+        rewrite Nat.add_sub_swap by omega.
+        reflexivity.
+Qed.
+  
+Open Scope ucom.
 
 Lemma slide1 : forall (m n : nat) (U V : Unitary 1),
   m <> n ->
