@@ -125,6 +125,9 @@ Definition uc_equiv (c1 c2 : ucom) := forall dim, uc_eval dim c1 = uc_eval dim c
 
 Infix "≡" := uc_equiv : ucom_scope.
 
+Lemma uc_equiv_sym : forall c1 c2, c1 ≡ c2 -> c2 ≡ c1. 
+Proof. easy. Qed.
+
 Lemma useq_assoc : forall c1 c2 c3, ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
 Proof.
   intros c1 c2 c3 dim. simpl.
@@ -299,19 +302,34 @@ Proof.
     reflexivity.
 Qed.
 
-(* help deal with the cases where a circuit is not well-typed *)
+(* This just tries to get rid of extra identity matrices (faster than Msimpl).
+   It is mainly intended to be used in solve_non_WT_cases. *)
+Ltac remove_id_gates :=
+  repeat rewrite Mmult_1_l;
+  repeat rewrite Mmult_1_r;
+  try apply WF_ueval1;
+  try apply WF_ueval_cnot;
+  try apply WF_uc_eval;
+  repeat apply WF_kron;
+  try apply WF_I;
+  try apply WF_σx;
+  try apply WF_braqubit1;
+  try apply WF_braqubit0.
+
+(* When circuits are not well-typed, the semantics functions will add
+   extra identity matrices. This tactic is intended to handle these cases
+   by removing the identity matrices and proving equality. *)
 Ltac solve_non_WT_cases :=
-  try (rewrite Mmult_1_l); 
-  try (rewrite Mmult_1_r);
-  try (apply WF_ueval1);
+  remove_id_gates;
+  try unify_pows_two;
   easy.
 
-(* more general version of slide *)
-Lemma slide : forall (m q : nat) (l : list nat) (dim : nat) (U : Unitary 1) (V : Unitary m),
+(* More general version of slide1. -- IN PROGRESS *)
+Lemma slide : forall (m q : nat) (l : list nat) (U : Unitary 1) (V : Unitary m),
   (inb q l) = false ->
-  uc_eval dim (uapp U [q] ; uapp V l) = uc_eval dim (uapp V l ; uapp U [q]). 
+  (uapp U [q] ; uapp V l) ≡ (uapp V l ; uapp U [q]). 
 Proof.
-  intros m q l dim U V NE.
+  intros m q l U V NE dim.
   destruct V;
   (* use slide1 to prove all single-qubit gate cases *)
   try (
@@ -352,9 +370,8 @@ Proof.
         repeat rewrite <- kron_assoc.
         show_dimensions.
         admit.   
-      * apply le_lt_eq_dec in H2.
-        (* get rid of the q = n0 case *) 
-        destruct H2; try (contradict e; apply not_eq_sym; easy).
+      * (* get rid of the q = n0 case *) 
+        apply le_lt_eq_dec in H2; destruct H2; try (contradict e; apply not_eq_sym; easy).
         bdestruct (n <? q).
         (* n < q < n0 *)
         admit.
@@ -377,6 +394,7 @@ Proof.
 Admitted.
 
 (** Flattening sequences **)
+
 Fixpoint flat_append (c1 c2 : ucom) : ucom := 
   match c1 with
   | c1'; c2' => c1' ; (flat_append c2' c2)
@@ -410,117 +428,247 @@ Proof.
   reflexivity.
 Qed.
 
-Require Export List. (* Why do I need this here? *)
+(** Optimization: 'not propagation' **)
 
-(* Cancel a single X gate on qubit q, if possible. This will either 
-   return None or (Some c') where c' is the result of removing the 
-   appropriate X gate from c.
+Require Export List.
+
+(* Propagate an X gate on qubit q as far right as possible, cancelling
+   the gate if possible.
+   
+   This will return None if no cancellation is possible or (Some c') 
+   where c' is the result of removing the appropriate X gate from c.
    
    This function will insert an extra uskip instruction if the cancelled
    gate is at the end of the circuit... I should probably fix that. *)
-Fixpoint cancel_X (c : ucom) (q : nat) : option ucom :=
+Fixpoint propagate_not (c : ucom) (q : nat) : option ucom :=
   match c with
-  | uapp U_X [q'] => 
+  | q' *= U_X => 
       if q =? q' then Some uskip else None
-  | uapp U_X [q']; c' => 
-      if q =? q' then Some c' else None
-  | uapp U_CNOT (q1::q2::nil); c' => 
-      if q =? q1 then None 
-      else match cancel_X c' q with
+  | q' *= U_X ; c2 => 
+      if q =? q' then Some c2 
+      else match propagate_not c2 q with
            | None => None
-           | Some c'' => Some (uapp U_CNOT (q1::q2::nil); c'')
+           | Some c2' => Some (q' *= U_X ; c2')
            end
-  | uapp U l; c' => 
+  | uapp U_CNOT (q1::q2::nil) ; c2 => 
+      if q =? q1 then None 
+      else match propagate_not c2 q with
+           | None => None
+           | Some c2' => Some (uapp U_CNOT (q1::q2::nil) ; c2')
+           end
+  | uapp U l ; c2 => 
       if (inb q l)
       then None
-      else match cancel_X c' q with
+      else match propagate_not c2 q with
            | None => None
-           | Some c'' => Some (uapp U l; c'')
+           | Some c2' => Some (uapp U l ; c2')
            end
   | _ => None
   end.
 
-(* Call cancel_X on all X gates in the circuit. The extra n argument
-   is to help Coq recognize termination. *)
-Fixpoint cancel_all_X (c : ucom) (n: nat) : ucom :=
+(* Call propagate_not on all X gates in the circuit. 
+   
+   The extra n argument is to help Coq recognize termination.
+   We start with n = (count_ops c), which is the maximum
+   number of times that propagate_nots can be called. *)
+Fixpoint propagate_nots (c : ucom) (n: nat) : ucom :=
   match n with
-  | 0 => c (* impossible case *)
+  | 0 => c
   | S n' => match c with
-           | uapp U_X [q]; c2 => 
-               match cancel_X c2 q with
-               | None => uapp U_X [q]; (cancel_all_X c2 n')
-               | Some c2' => cancel_all_X c2' n'
+           | q *= U_X ; c2 => 
+               match propagate_not c2 q with
+               | None => q *= U_X ; (propagate_nots c2 n')
+               | Some c2' => propagate_nots c2' n'
                end
-           | c1; c2 => c1; (cancel_all_X c2 n')
+           | c1; c2 => c1; (propagate_nots c2 n')
            | _ => c
            end
   end.
 
-Definition rm_X (c : ucom) : ucom := cancel_all_X (flatten c) (count_ops c).
+Definition rm_nots (c : ucom) : ucom := propagate_nots (flatten c) (count_ops c).
 
-Lemma XX_I : σx × σx = I (2 ^ 1).
-Proof. solve_matrix. Qed.
+Lemma XX_id : forall q, uskip ≡ q *= U_X; q *= U_X.
+Proof. 
+  intros q dim. 
+  simpl; unfold ueval1, pad. 
+  bdestruct (q + 1 <=? dim); Msimpl'; try easy.
+  simpl; replace (σx × σx) with (I (2 ^ 1)) by solve_matrix.
+  rewrite id_kron.
+  replace (2 ^ q * 2 ^ 1) with (2 ^ (q + 1)) by unify_pows_two.
+  rewrite id_kron.
+  replace (2 ^ (q + 1) * 2 ^ (dim - 1 - q)) with (2 ^ (q + 1 + dim - 1 - q)) by unify_pows_two.
+  replace (q + 1 + dim - 1 - q) with dim by omega.
+  reflexivity.
+Qed.
 
-(*Lemma X_CNOT_CNOT_X : σx × σx = I (2 ^ 1).
-Proof. solve_matrix. Qed.*)
+Lemma X_CNOT_comm : forall c t, t *= U_X; uapp U_CNOT (c::t::[]) ≡ uapp U_CNOT (c::t::[]); t *= U_X.
+Proof.
+  intros c t dim.
+  simpl; unfold ueval1, pad. 
+  bdestruct (t + 1 <=? dim); try solve_non_WT_cases. 
+  unfold ueval_cnot, pad. 
+  bdestruct (c <? t).
+  - bdestruct (c + (1 + (t - c - 1) + 1) <=? dim); try solve_non_WT_cases.
+    (* c < t *)
+    replace (I (2 ^ t)) with (I (2 ^ (c + 1 + (t - c - 1)))).
+    2: { replace (c + 1 + (t - c - 1)) with t by omega; easy. }
+    replace (2 ^ (c + 1 + (t - c - 1))) with (2 ^ c * 2 * 2 ^ (t - c - 1)) by unify_pows_two.
+    repeat rewrite <- id_kron.
+    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) (I 2) (I (2 ^ (t - c - 1)))).
+    replace (2 ^ t) with (2 ^ c * 2 ^ (t - c)) by unify_pows_two.
+    replace (2 ^ 1) with 2 by easy.
+    replace (2 * (2 ^ (t - c - 1))) with (2 ^ (t - c)) by unify_pows_two.
+    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) _ σx).
+    replace (1 + (t - c - 1) + 1) with (t - c + 1) by omega.
+    replace (dim - (t - c + 1) - c) with (dim - 1 - t) by omega.
+    replace (2 ^ c * 2 ^ (t - c + 1)) with (2 ^ (t + 1)) by unify_pows_two.
+    replace (2 ^ c * 2 ^ (t - c) * 2) with (2 ^ (t + 1)) by unify_pows_two. 
+    repeat rewrite kron_mixed_product' with (mp:=2 ^ dim); 
+      try easy; try unify_pows_two.
+    repeat rewrite kron_mixed_product' with (mp:=2^(t + 1));
+      try easy; try unify_pows_two.
+    replace (2 ^ (t - c + 1)) with (2 * 2 ^ (t - c - 1) * 2) by unify_pows_two.
+    replace (2 ^ (t - c)) with (2 * 2 ^ ((t - c) - 1)) by unify_pows_two.
+    rewrite Mmult_plus_distr_l.
+    rewrite Mmult_plus_distr_r.
+    replace (2 * 2 ^ (t - c - 1)) with (2 ^ (t - c - 1) * 2) by apply Nat.mul_comm.
+    rewrite <- id_kron.
+    rewrite <- (kron_assoc _ _ _ _ _ _ ∣0⟩⟨0∣ _ _).
+    replace (2 ^ (t - c - 1) * 2) with (2 * 2 ^ (t - c - 1)) by apply Nat.mul_comm.
+    repeat rewrite kron_mixed_product'; try easy.
+    remove_id_gates.
+    easy.
+  - bdestruct (t <? c); try solve_non_WT_cases.
+    bdestruct (t + (1 + (c - t - 1) + 1) <=? dim); try solve_non_WT_cases.
+    (* t < c *)
+    replace (1 + (c - t - 1) + 1) with (c - t + 1) by omega.
+    replace (dim - (c - t + 1) - t) with (dim - 1 - c) by omega.
+    replace (I (2 ^ (dim - 1 - t))) with (I (2 ^ ((c - t - 1) + 1 + (dim - 1 - c)))).
+    2: { replace ((c - t - 1) + 1 + (dim - 1 - c)) with (dim - 1 - t) by omega; easy. }
+    replace (2 ^ ((c - t - 1) + 1 + (dim - 1 - c))) with (2 ^ (c - t - 1) * 2 ^ 1 * 2 ^ (dim - 1 - c)).
+    2: { repeat rewrite <- Nat.pow_add_r; easy. }
+    repeat rewrite <- id_kron.
+    replace (2 ^ (dim - 1 - t)) with (2 ^ (c - t - 1) * 2 ^ 1 * 2 ^ (dim - 1 - c)) by unify_pows_two.
+    replace (2 ^ 1) with 2 by easy.
+    rewrite <- (kron_assoc _ _ _ _ _ _ (I (2 ^ t) ⊗ σx) (I (2 ^ (c - t - 1)) ⊗ I 2) (I (2 ^ (dim - 1 - c)))).
+    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ t)) σx (I (2 ^ (c - t - 1)) ⊗ I 2)).
+    rewrite <- (kron_assoc _ _ _ _ _ _ σx (I (2 ^ (c - t - 1))) (I 2)).
+    replace (2 * (2 ^ (c - t - 1) * 2)) with (2 ^ (c - t + 1)) by unify_pows_two.
+    repeat rewrite kron_mixed_product' with (mp:=(2 ^ dim));
+      try easy; try unify_pows_two.
+    replace (t + 1 + (c - t - 1) + 1) with (t + (c - t) + 1) by omega.
+    repeat rewrite kron_mixed_product' with (mp:=(2 ^ (t + (c - t) + 1)));
+    try easy; try unify_pows_two.
+    replace (2 ^ ((S (c - t - 1)) + 1)) with (2 ^ (c - t + 1)) by unify_pows_two.
+    rewrite Mmult_plus_distr_l.
+    rewrite Mmult_plus_distr_r.
+    replace (2 ^ (c - t)) with (2 * 2 ^ (c - t - 1)) by unify_pows_two.
+    rewrite <- id_kron.       
+    repeat rewrite kron_mixed_product' with (mp:=2 ^ (c - t + 1)); 
+    try easy; try unify_pows_two.
+    replace (2 ^ S (c - t - 1)) with (2 * 2 ^ (c - t - 1)) by unify_pows_two.
+    repeat rewrite kron_mixed_product' with (mp:=2 ^ S (c - t - 1));
+    try easy; try unify_pows_two.
+    remove_id_gates.
+    easy.
+Qed.
 
-Lemma cancel_X_sound : forall c q dim,
-  match cancel_X c q with
+(* Is there a more natural way to write this property? *)
+Lemma propagate_not_sound : forall c q,
+  match propagate_not c q with
   | None => True
-  | Some c' => uc_eval dim c' = uc_eval dim (uapp U_X [q]; c)
+  | Some c' => c' ≡ (q *= U_X; c)
   end.
 Proof.
-  intros c q dim.
+  intros c q.
   induction c.
-  - (* The skip case is trivial. *)
-    easy.
-  - (*clear IHWT1.
-    destruct WT1; try easy.
-    destruct u.
-    + 
-   admit.
-    + destruct l. 
-      contradict H; easy.
-      assert (l = []) by (inversion H; apply length_zero_iff_nil; easy); subst.
-      simpl. bdestruct (q =? n); try easy; subst.
-      simpl; unfold ueval1, pad.
-      unfold SQIMP.bounded in H0; simpl in H0; destruct H0 as [H0 _].
-      assert (n + 1 <=? dim = true) by (apply Nat.leb_le; omega). 
-      rewrite H0.
-      admit.
-    + admit.
-    + admit.
-    + admit.
-    + destruct l.
-      contradict H; easy.
-      destruct l.
-      contradict H; easy.
-      assert (l = []) by (inversion H; apply length_zero_iff_nil; easy); subst.
-      admit.
-  - (* All unitary applications, except the "uapp U_X [q]" case, are trivial. *)
-    destruct u; try easy.
-    destruct l; try easy.
-    assert (l = []) by (inversion H; apply length_zero_iff_nil; easy); subst.
+  - easy.
+  - clear IHc1.
+    destruct c1; try easy.
+    remember u as U.
+    destruct u;
+    (* U = H, Y, Z, R *)
+    try (rewrite HeqU; simpl; rewrite <- HeqU;
+         remember (inb q l) as b; 
+         destruct b; try easy;
+         destruct (propagate_not c2 q); try easy;
+         intros dim;
+         rewrite <- useq_assoc;
+         rewrite (useq_congruence _ (uapp U l; q *= U_X) c2 c2);
+         try apply slide; try easy;
+         rewrite useq_assoc;
+         rewrite (useq_congruence (uapp U l) (uapp U l) _ (q *= U_X; c2)); 
+         easy);
+    subst.
+    (* U = X *)
+    + (* solve the cases where l is empty, or l has >1 element *)
+      destruct l; simpl; try destruct l;
+      try destruct ((n =? q) || inb q (n0 :: l)); try easy;
+      try (destruct (propagate_not c2 q); easy);
+      try (destruct (propagate_not c2 q); try easy;
+           intros dim; simpl; remove_id_gates;
+           unfold uc_equiv in IHc2; simpl in IHc2;
+           easy).
+      (* solve the case where l has exactly 1 element *)
+      bdestruct (q =? n).
+      * subst. 
+        intros dim.
+        rewrite <- useq_assoc.
+        rewrite (useq_congruence _ uskip _ c2); try easy.
+        rewrite uskip_id_l; easy.
+        apply uc_equiv_sym.
+        apply XX_id.
+      * destruct (propagate_not c2 q); try easy.
+        intros dim.
+        rewrite <- useq_assoc.
+        rewrite (useq_congruence _ (n *= U_X; q *= U_X) c2 c2); try easy.
+        rewrite useq_assoc.
+        rewrite (useq_congruence (n *= U_X) (n *= U_X) _ (q *= U_X; c2)); try easy.
+        apply slide1; easy.
+    (* U = CNOT *)
+    + (* solve the cases where l has <2 or >2 elements *)
+      destruct l; simpl; try destruct l; simpl; try destruct l;
+      [ | destruct ((n =? q) || false) | | destruct ((n =? q) || ((n0 =? q) || (inb q (n1::l)))) ];
+      try easy;
+      try (destruct (propagate_not c2 q); easy);
+      try (destruct (propagate_not c2 q); try easy;
+           intros dim; simpl; remove_id_gates;
+           unfold uc_equiv in IHc2; simpl in IHc2;
+           easy).
+      (* solve the case where l has exactly 2 elements *)
+      bdestruct (q =? n); try easy.
+      bdestruct (q =? n0).
+      * subst.
+        destruct (propagate_not c2 n0); try easy.
+        intros dim.
+        rewrite <- useq_assoc.
+        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[]); n0 *= U_X) c2 c2); try easy.
+        rewrite useq_assoc.
+        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[])) u (n0 *= U_X; c2)); try easy.
+        apply X_CNOT_comm.
+      * assert (forall n m : nat, (n =? m) = (m =? n)).
+        { induction n1; destruct m; auto. apply IHn1. }
+        assert (inb q (n::n0::[]) = false). 
+        { simpl. 
+          apply beq_nat_false_iff in H.
+          apply beq_nat_false_iff in H0.
+          repeat apply orb_false_intro;
+          try rewrite H1;
+          easy. }
+        destruct (propagate_not c2 q); try easy.
+        intros dim.
+        rewrite <- useq_assoc.
+        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[]); q *= U_X) c2 c2); try easy.
+        rewrite useq_assoc.
+        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[])) u (q *= U_X; c2)); try easy.
+        apply slide; easy.
+  - destruct u; try easy. 
+    destruct l; try destruct l; try easy.
     simpl. bdestruct (q =? n); try easy; subst.
-    (* At this point, we have to prove that adjacent X gates will cancel:
-        
-         uc_eval dim uskip = ueval1 dim n U_X × ueval1 dim n U_X
-    *)
-    simpl; unfold ueval1, pad.
-    unfold SQIMP.bounded in H0; simpl in H0; destruct H0 as [H0 _].
-    assert (n + 1 <=? dim = true) by (apply Nat.leb_le; omega). 
-    rewrite H0.
-    Msimpl'.
-    simpl; rewrite XX_I.
-    rewrite id_kron.
-    replace (2 ^ n * 2 ^ 1) with (2 ^ (n + 1)) by unify_pows_two.
-    rewrite id_kron.
-    replace (2 ^ (n + 1) * 2 ^ (dim - 1 - n)) with (2 ^ dim) by unify_pows_two.
-    reflexivity.*)
-Admitted.    
+    apply XX_id.
+Qed.   
     
-Lemma cancel_all_X_sound : forall c n dim,
-  uc_eval dim c = uc_eval dim (cancel_all_X c n).
+Lemma propagate_nots_sound : forall c n, c ≡ propagate_nots c n.
 Proof.
   intros c n dim.
   generalize dependent c.
@@ -532,20 +680,19 @@ Proof.
   try destruct l; try destruct l; 
   try (simpl; rewrite <- IHn; easy).
   simpl.
-  specialize (cancel_X_sound c2 n0 dim) as H.
-  destruct (cancel_X c2 n0).
-  - simpl in H.
+  specialize (propagate_not_sound c2 n0 ) as H.
+  destruct (propagate_not c2 n0).
+  - unfold uc_equiv in H. simpl in H.
     rewrite <- H.
     apply IHn.
   - simpl; rewrite <- IHn; easy.
 Qed.
  
-Lemma rm_X_sound : forall c dim, 
-  uc_eval dim c = uc_eval dim (rm_X c).
+Lemma rm_nots_sound : forall c, c ≡ rm_nots c.
 Proof.
   intros c dim.
-  unfold rm_X.
-  rewrite <- cancel_all_X_sound.
+  unfold rm_nots.
+  rewrite <- propagate_nots_sound.
   apply flatten_sound.
 Qed.
 
@@ -554,10 +701,7 @@ Definition q2 : nat := 1.
 Definition q3 : nat := 2.
 Definition example1 : ucom := ((X q1; H q2); ((X q1; X q2); (CNOT q3 q2; X q2))).
 Compute (flatten example1).
-Compute (rm_X example1).
+Compute (rm_nots example1).
 Definition example2 : ucom := ((X q1; X q2); X q3).
 Compute (flatten example2).
-Compute (rm_X example2).
-
-
-
+Compute (rm_nots example2).
