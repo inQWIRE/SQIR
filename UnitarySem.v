@@ -314,7 +314,10 @@ Proof.
         reflexivity.
 Qed.
   
-Open Scope ucom.
+Open Scope ucom_scope.
+
+(* Shouldn't need this here? *)
+Local Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope. 
 
 Lemma slide1 : forall (m n : nat) (U V : Unitary 1),
   m <> n ->
@@ -563,6 +566,15 @@ Proof.
   reflexivity.
 Qed.
 
+(* I did my best to keep this proof clean, but I struggled with 
+   getting matrix dimension types to line up. Below is the result
+   after a couple hours of trying to minimize calls to 'replace'.
+
+   I've marked every location that I manipulate types behind the
+   scenes with (* * *).
+
+   This might be an interesting point of comparison for the F* code.
+*)
 Lemma X_CNOT_comm : forall c t, t *= U_X; uapp U_CNOT (c::t::[]) ≡ uapp U_CNOT (c::t::[]); t *= U_X.
 Proof.
   intros c t dim.
@@ -572,66 +584,46 @@ Proof.
   bdestruct (c <? t).
   - bdestruct (c + (1 + (t - c - 1) + 1) <=? dim); try solve_non_WT_cases.
     (* c < t *)
-    replace (I (2 ^ t)) with (I (2 ^ (c + 1 + (t - c - 1)))).
-    2: { replace (c + 1 + (t - c - 1)) with t by omega; easy. }
-    replace (2 ^ (c + 1 + (t - c - 1))) with (2 ^ c * 2 * 2 ^ (t - c - 1)) by unify_pows_two.
+    remember (t - c - 1) as i.
+    replace (dim - (1 + i + 1) - c) with (dim - 1 - t) by omega.
+    remember (dim - 1 - t) as j.
+    replace (2 ^ t) with (2 ^ c * 2 * 2 ^ i) by unify_pows_two.
+    replace (2 ^ (t - c)) with (2 ^ i * 2) by unify_pows_two.
     repeat rewrite <- id_kron.
-    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) (I 2) (I (2 ^ (t - c - 1)))).
-    replace (2 ^ t) with (2 ^ c * 2 ^ (t - c)) by unify_pows_two.
-    replace (2 ^ 1) with 2 by easy.
-    replace (2 * (2 ^ (t - c - 1))) with (2 ^ (t - c)) by unify_pows_two.
+    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) _ (I (2 ^ i))).
+    (* * *) replace (2 ^ c * 2 * 2 ^ i) with (2 ^ c * (2 * 2 ^ i)) by unify_pows_two.
     rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) _ σx).
-    replace (1 + (t - c - 1) + 1) with (t - c + 1) by omega.
-    replace (dim - (t - c + 1) - c) with (dim - 1 - t) by omega.
-    replace (2 ^ c * 2 ^ (t - c + 1)) with (2 ^ (t + 1)) by unify_pows_two.
-    replace (2 ^ c * 2 ^ (t - c) * 2) with (2 ^ (t + 1)) by unify_pows_two. 
-    repeat rewrite kron_mixed_product' with (mp:=2 ^ dim); 
-      try easy; try unify_pows_two.
-    repeat rewrite kron_mixed_product' with (mp:=2^(t + 1));
-      try easy; try unify_pows_two.
-    replace (2 ^ (t - c + 1)) with (2 * 2 ^ (t - c - 1) * 2) by unify_pows_two.
-    replace (2 ^ (t - c)) with (2 * 2 ^ ((t - c) - 1)) by unify_pows_two.
+    (* * *) replace (2 ^ dim) with (2 ^ c * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
+    (* * *) replace (2 ^ 1) with 2 by easy.
+    (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+    (* * *) replace (2 ^ c * (2 * 2 ^ i) * 2) with (2 ^ c * (2 * 2 ^ i * 2)) by unify_pows_two.
+    repeat rewrite kron_mixed_product; remove_id_gates.
+    rewrite <- (kron_assoc _ _ _ _ _ _ (∣0⟩⟨0∣) (I (2 ^ i)) (I 2)).
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
-    replace (2 * 2 ^ (t - c - 1)) with (2 ^ (t - c - 1) * 2) by apply Nat.mul_comm.
-    rewrite <- id_kron.
-    rewrite <- (kron_assoc _ _ _ _ _ _ ∣0⟩⟨0∣ _ _).
-    replace (2 ^ (t - c - 1) * 2) with (2 * 2 ^ (t - c - 1)) by apply Nat.mul_comm.
-    repeat rewrite kron_mixed_product'; try easy.
-    remove_id_gates.
-    easy.
+    repeat rewrite kron_mixed_product; remove_id_gates.
+    reflexivity.
   - bdestruct (t <? c); try solve_non_WT_cases.
     bdestruct (t + (1 + (c - t - 1) + 1) <=? dim); try solve_non_WT_cases.
     (* t < c *)
-    replace (1 + (c - t - 1) + 1) with (c - t + 1) by omega.
-    replace (dim - (c - t + 1) - t) with (dim - 1 - c) by omega.
-    replace (I (2 ^ (dim - 1 - t))) with (I (2 ^ ((c - t - 1) + 1 + (dim - 1 - c)))).
-    2: { replace ((c - t - 1) + 1 + (dim - 1 - c)) with (dim - 1 - t) by omega; easy. }
-    replace (2 ^ ((c - t - 1) + 1 + (dim - 1 - c))) with (2 ^ (c - t - 1) * 2 ^ 1 * 2 ^ (dim - 1 - c)).
-    2: { repeat rewrite <- Nat.pow_add_r; easy. }
+    remember (c - t - 1) as i.
+    replace (dim - (1 + i + 1) - t) with (dim - 1 - c) by omega.
+    remember (dim - 1 - c) as j.
+    replace (2 ^ (dim - 1 - t)) with (2 ^ i * 2 * 2 ^ j) by unify_pows_two.
+    replace (2 ^ (c - t)) with (2 * 2 ^ i) by unify_pows_two.
     repeat rewrite <- id_kron.
-    replace (2 ^ (dim - 1 - t)) with (2 ^ (c - t - 1) * 2 ^ 1 * 2 ^ (dim - 1 - c)) by unify_pows_two.
-    replace (2 ^ 1) with 2 by easy.
-    rewrite <- (kron_assoc _ _ _ _ _ _ (I (2 ^ t) ⊗ σx) (I (2 ^ (c - t - 1)) ⊗ I 2) (I (2 ^ (dim - 1 - c)))).
-    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ t)) σx (I (2 ^ (c - t - 1)) ⊗ I 2)).
-    rewrite <- (kron_assoc _ _ _ _ _ _ σx (I (2 ^ (c - t - 1))) (I 2)).
-    replace (2 * (2 ^ (c - t - 1) * 2)) with (2 ^ (c - t + 1)) by unify_pows_two.
-    repeat rewrite kron_mixed_product' with (mp:=(2 ^ dim));
-      try easy; try unify_pows_two.
-    replace (t + 1 + (c - t - 1) + 1) with (t + (c - t) + 1) by omega.
-    repeat rewrite kron_mixed_product' with (mp:=(2 ^ (t + (c - t) + 1)));
-    try easy; try unify_pows_two.
-    replace (2 ^ ((S (c - t - 1)) + 1)) with (2 ^ (c - t + 1)) by unify_pows_two.
+    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ t)) σx _).
+    rewrite <- (kron_assoc _ _ _ _ _ _ σx _ (I (2 ^ j))).
+    rewrite <- (kron_assoc _ _ _ _ _ _ σx (I (2 ^ i)) (I 2)).
+    (* * *) replace (2 * (2 ^ i * 2 * 2 ^ j)) with (2 * (2 ^ i * 2) * 2 ^ j) by unify_pows_two.
+    rewrite <- (kron_assoc _ _ _ _ _ _ (I (2 ^ t)) _ (I (2 ^ j))).
+    (* * *) replace (2 ^ dim) with (2 ^ t * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
+    (* * *) replace (2 ^ (1 + i + 1)) with (2 * (2 ^ i * 2)) by unify_pows_two.
+    repeat rewrite kron_mixed_product; remove_id_gates.
+    (* * *) replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by unify_pows_two.
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
-    replace (2 ^ (c - t)) with (2 * 2 ^ (c - t - 1)) by unify_pows_two.
-    rewrite <- id_kron.       
-    repeat rewrite kron_mixed_product' with (mp:=2 ^ (c - t + 1)); 
-    try easy; try unify_pows_two.
-    replace (2 ^ S (c - t - 1)) with (2 * 2 ^ (c - t - 1)) by unify_pows_two.
-    repeat rewrite kron_mixed_product' with (mp:=2 ^ S (c - t - 1));
-    try easy; try unify_pows_two.
-    remove_id_gates.
+    repeat rewrite kron_mixed_product; remove_id_gates.
     easy.
 Qed.
 
