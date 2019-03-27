@@ -87,7 +87,7 @@ Proof.
   apply WF_ueval.
 Qed.
 
-Hint Resolve WF_ueval WF_uc_eval : wf_db.
+Hint Resolve WF_pad WF_ueval1 WF_ueval_cnot WF_ueval WF_uc_eval : wf_db.
 
 
 (* Some unit tests *)
@@ -370,22 +370,7 @@ Qed.
 Ltac remove_id_gates :=
   repeat rewrite Mmult_1_l;
   repeat rewrite Mmult_1_r;
-  try apply WF_I;
-  try apply WF_σx;
-  try apply WF_braqubit1;
-  try apply WF_braqubit0;
-  try apply WF_ueval1;
-  try apply WF_ueval_cnot;
-  try apply WF_uc_eval;
-  try apply WF_pad;
-  repeat apply WF_kron;
-  try apply WF_plus;
-  repeat apply WF_kron;
-  try apply WF_I;
-  try apply WF_σx;
-  try apply WF_braqubit1;
-  try apply WF_braqubit0;
-  try easy.
+  auto with wf_db.
 
 (* When circuits are not well-typed, the semantics functions will add
    extra identity matrices. This tactic is intended to handle these cases
@@ -440,9 +425,10 @@ Proof.
     replace (2 ^ (n0 - n)) with (2 ^ i * 2) by unify_pows_two.
     repeat rewrite <- id_kron.
     rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I 2)).
-    (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
     bdestruct (q + 1 <=? dim); bdestruct (n + (1 + i + 1) <=? dim); 
-    try solve_non_WT_cases.
+    try solve_non_WT_cases;
+    (* a couple well-formedness proofs need a little extra help *)
+    try (remove_id_gates; apply WF_kron; try unify_pows_two; auto with wf_db).
     bdestruct (n0 <? q).
     (* Case 1/6: n < n0 < q *)
     + remember (q - (1 + i + 1) - n) as j.
@@ -451,7 +437,8 @@ Proof.
       replace (2 ^ (dim - (1 + i + 1) - n)) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.
       repeat rewrite <- id_kron.
       rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I (2 ^ k))).
-      rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I 2)).      
+      rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I 2)).  
+      (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
       (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j * 2 * 2 ^ k) by unify_pows_two.
       (* * *) replace (2 ^ n * (2 * 2 ^ i * 2) * (2 ^ j * 2)) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j * 2) by rewrite_assoc.
       (* * *) replace (2 ^ 1) with 2 by easy.
@@ -466,6 +453,7 @@ Proof.
       * remember (q - n - 1) as j.
         remember (i - j - 1) as k.
         remember (dim - (1 + i + 1) - n) as m.
+        (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
         (* TODO: You can use unify_pows_two here, but it's super slow! 
                  How can we help Coq solve these faster? *)
         replace (2 ^ q) with (2 ^ n * 2 * 2 ^ j) by admit. 
@@ -484,6 +472,7 @@ Proof.
         (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2) * 2 ^ m) by unify_pows_two.
         (* * *) replace (2 * (2 ^ j * 2 * 2 ^ k) * 2) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by rewrite_assoc.
         (* * *) replace (2 ^ n * (2 * 2 ^ j * 2) * (2 ^ k * 2)) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2)) by rewrite_assoc.
+        rewrite kron_mixed_product.
         repeat rewrite kron_mixed_product; remove_id_gates.
         rewrite Mmult_plus_distr_l.
         rewrite Mmult_plus_distr_r.
@@ -498,7 +487,9 @@ Proof.
     remember (n - n0 - 1) as i.
     (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
     bdestruct (q + 1 <=? dim); bdestruct (n0 + (1 + i + 1) <=? dim); 
-    try solve_non_WT_cases.
+    try solve_non_WT_cases;
+    (* a couple well-formedness proofs need a little extra help *)
+    try (remove_id_gates; apply WF_kron; try unify_pows_two; auto with wf_db).
     bdestruct (n <? q).
     (* Case 4/6: n0 < n < q *)
     + admit.
