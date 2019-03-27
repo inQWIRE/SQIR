@@ -250,9 +250,6 @@ Proof.
   - simpl. omega.
 Qed.
 
-Lemma if_dist2 : forall (A B C : Type) (b : bool) (f : A -> B -> C) (x y : A) (z : B), f (if b then x else y) z = if b then f x z else f y z.
-Proof. destruct b; reflexivity. Qed.
-
 Lemma pad_dims : forall c n k,
   uc_well_typed n c ->
   (uc_eval n c) ⊗ I (2^k) = uc_eval (n + k) c.  
@@ -815,3 +812,20 @@ Compute (rm_nots example1).
 Definition example2 : ucom := ((X q1; X q2); X q3).
 Compute (flatten example2).
 Compute (rm_nots example2).
+
+
+Ltac prove_wt :=
+  repeat match goal with
+         | |- context [ uc_well_typed ?d uskip ] => apply WT_uskip
+         | |- context [ uc_well_typed ?d (useq ?c1 ?c2) ] => apply WT_seq
+         | |- context [ uc_well_typed ?d (uapp ?u ?l) ] => try unfold CNOT; apply WT_app
+         end.
+
+
+Lemma typed_pad : forall (n k : nat)(c : ucom), uc_well_typed n c -> uc_well_typed (k + n) c.
+Proof.
+  intros. generalize dependent n.
+  induction c; intros; prove_wt; induction k;
+  [| apply IHc1 | apply IHc2 | apply IHc2 | | | | apply (bounded_pad _ _ 1%nat) | | ]; 
+  inversion H; assumption.
+Qed.
