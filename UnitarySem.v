@@ -247,9 +247,6 @@ Proof.
   - simpl. omega.
 Qed.
 
-Lemma if_dist2 : forall (A B C : Type) (b : bool) (f : A -> B -> C) (x y : A) (z : B), f (if b then x else y) z = if b then f x z else f y z.
-Proof. destruct b; reflexivity. Qed.
-
 Lemma pad_dims : forall c n k,
   uc_well_typed n c ->
   (uc_eval n c) ⊗ I (2^k) = uc_eval (n + k) c.  
