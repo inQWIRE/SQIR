@@ -1200,7 +1200,7 @@ Qed.
 
 (* A more explicit version, for when typechecking fails *)
 Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
-    (A : Matrix m n) (B : Matrix p q) (C : Matrix n o) (D : Matrix q r),
+    (A : Matrix m n) (B : Matrix p q) (C : Matrix n' o) (D : Matrix q' r),
     n = n' -> q = q' ->    
     mp = m * p -> nq = n * q -> or = o * r ->
   (@Mmult mp nq or (@kron m n p q A B) (@kron n' o q' r C D)) =
