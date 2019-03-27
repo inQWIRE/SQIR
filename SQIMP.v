@@ -198,4 +198,20 @@ Definition superdense (b1 b2 : bool) :=
     measure b.
 
 End Superdense.    
+
+Require Import Omega.
+
+(* Weakening for reasoning about a list being bounded. *)
+Lemma bounded_pad : forall (l : list nat) (n k : nat), bounded l n -> bounded l (k + n).
+Proof.
+  induction l; intros n k H; trivial.
+  unfold bounded in *.
+  simpl in *.
+  apply Bool.andb_true_iff in H as [H1 H2].
+  rewrite IHl, Bool.andb_true_r; trivial.
+  apply Nat.ltb_lt in H1.
+  apply Nat.ltb_lt.
+  omega.
+Qed.  
+
   

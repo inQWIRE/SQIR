@@ -87,7 +87,7 @@ Proof.
   apply WF_ueval.
 Qed.
 
-Hint Resolve WF_ueval WF_uc_eval : wf_db.
+Hint Resolve WF_pad WF_ueval1 WF_ueval_cnot WF_ueval WF_uc_eval : wf_db.
 
 
 (* Some unit tests *)
@@ -365,18 +365,12 @@ Proof.
 Qed.
 
 (* This just tries to get rid of extra identity matrices (faster than Msimpl).
-   It is mainly intended to be used in solve_non_WT_cases. *)
+   It is mainly intended to be used in solve_non_WT_cases, but I also use it
+   in a few places to simplify the goal. *)
 Ltac remove_id_gates :=
   repeat rewrite Mmult_1_l;
   repeat rewrite Mmult_1_r;
-  try apply WF_ueval1;
-  try apply WF_ueval_cnot;
-  try apply WF_uc_eval;
-  repeat apply WF_kron;
-  try apply WF_I;
-  try apply WF_σx;
-  try apply WF_braqubit1;
-  try apply WF_braqubit0.
+  auto with wf_db.
 
 (* When circuits are not well-typed, the semantics functions will add
    extra identity matrices. This tactic is intended to handle these cases
@@ -386,8 +380,14 @@ Ltac solve_non_WT_cases :=
   try unify_pows_two;
   easy.
 
-(* More general version of slide1. -- IN PROGRESS *)
-Lemma slide : forall (m q : nat) (l : list nat) (U : Unitary 1) (V : Unitary m),
+(* Several of the type rewrites are just associativity issues, and omega
+   is a little slow solving these. *)
+Ltac rewrite_assoc :=
+  repeat rewrite mult_assoc;
+  easy.
+
+(* More general version of slide1. *)
+Lemma slide12 : forall (m q : nat) (l : list nat) (U : Unitary 1) (V : Unitary m),
   (inb q l) = false ->
   (uapp U [q] ; uapp V l) ≡ (uapp V l ; uapp U [q]). 
 Proof.
@@ -402,10 +402,9 @@ Proof.
     apply beq_nat_false in NE;
     apply not_eq_sym in NE;
     apply slide1;
-
     easy
   ).
-  (* all that's left is the cnot case *)
+  (* all that's left is the CNOT case *)
   destruct l; try (destruct l); try (destruct l); simpl; try solve_non_WT_cases.
   unfold ueval1, ueval_cnot. 
   match goal with
@@ -422,37 +421,87 @@ Proof.
   apply beq_nat_false in NE2.
   bdestruct (n <? n0).
   - unfold pad.
-    bdestruct (q + 1 <=? dim); bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim).
-    + bdestruct (n0 <? q).
-      (* n < n0 < q *)
-      * remember (1 + (n0 - n - 1) + 1) as k.
-        replace (dim - k - n) with ((q - k - n) + 1 + (dim - 1 - q)) by omega.
-        replace (2 ^ ((q - k - n) + 1 + (dim - 1 - q))) with (2^(q - k - n) * 2 * 2^(dim - 1 - q)) by (repeat rewrite Nat.pow_add_r; easy).
+    remember (n0 - n - 1) as i.
+    replace (2 ^ (n0 - n)) with (2 ^ i * 2) by unify_pows_two.
+    repeat rewrite <- id_kron.
+    rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I 2)).
+    bdestruct (q + 1 <=? dim); bdestruct (n + (1 + i + 1) <=? dim); 
+    try solve_non_WT_cases;
+    (* a couple well-formedness proofs need a little extra help *)
+    try (remove_id_gates; apply WF_kron; try unify_pows_two; auto with wf_db).
+    bdestruct (n0 <? q).
+    (* Case 1/6: n < n0 < q *)
+    + remember (q - (1 + i + 1) - n) as j.
+      remember (dim - 1 - q) as k.
+      replace (2 ^ q) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j) by unify_pows_two.
+      replace (2 ^ (dim - (1 + i + 1) - n)) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.
+      repeat rewrite <- id_kron.
+      rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I (2 ^ k))).
+      rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I 2)).  
+      (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+      (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j * 2 * 2 ^ k) by unify_pows_two.
+      (* * *) replace (2 ^ n * (2 * 2 ^ i * 2) * (2 ^ j * 2)) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j * 2) by rewrite_assoc.
+      (* * *) replace (2 ^ 1) with 2 by easy.
+      repeat rewrite kron_mixed_product; remove_id_gates.
+      rewrite Mmult_plus_distr_l.
+      rewrite Mmult_plus_distr_r.
+      repeat rewrite kron_mixed_product; remove_id_gates.
+    + apply le_lt_eq_dec in H2; destruct H2; 
+        try (contradict e; apply not_eq_sym; easy).
+      bdestruct (n <? q).
+      (* Case 2/6: n < q < n0 *)
+      * remember (q - n - 1) as j.
+        remember (i - j - 1) as k.
+        remember (dim - (1 + i + 1) - n) as m.
+        (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+        (* TODO: You can use unify_pows_two here, but it's super slow! 
+                 How can we help Coq solve these faster? *)
+        replace (2 ^ q) with (2 ^ n * 2 * 2 ^ j) by admit. 
+        replace (2 ^ i) with (2 ^ j * 2 * 2 ^ k) by admit.    
+        replace (2 ^ (dim - 1 - q)) with (2 ^ k * 2 * 2 ^ m) by admit.
         repeat rewrite <- id_kron.
         repeat rewrite <- kron_assoc.
-        show_dimensions.
-        admit.   
-      * (* get rid of the q = n0 case *) 
-        apply le_lt_eq_dec in H2; destruct H2; try (contradict e; apply not_eq_sym; easy).
-        bdestruct (n <? q).
-        (* n < q < n0 *)
-        admit.
-        (* q < n < n0 *)
-        admit.
-    (* the next 3 cases handle the behavior when the circuit is not well typed *)
-    + rewrite Mmult_1_l;
-      try rewrite Mmult_1_r;
-      try reflexivity;
-      try (apply WF_kron;
-              try (repeat rewrite <- Nat.pow_add_r;
-                   replace (q + 1 + (dim - 1 - q)) with dim by omega;
-                   easy);
-              try apply WF_kron;
-              try apply WF_I;
-              try easy).
+        rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ n)) _ (I (2 ^ j))).
+        (* * *) replace (2 ^ n * 2 * 2 ^ j) with (2 ^ n * (2 * 2 ^ j)) by rewrite_assoc.
+        rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ n)) _ U').
+        (* * *) replace (2 ^ 1) with 2 by easy.
+        (* * *) replace (2 ^ n * (2 * 2 ^ j) * 2) with (2 ^ n * (2 * 2 ^ j * 2)) by rewrite_assoc.
+        rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ n)) _ (I (2 ^ k))).
+        (* * *) replace (2 ^ n * (2 * 2 ^ j * 2) * 2 ^ k) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k)) by rewrite_assoc.
+        rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ n)) _ (I 2)).
+        (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2) * 2 ^ m) by unify_pows_two.
+        (* * *) replace (2 * (2 ^ j * 2 * 2 ^ k) * 2) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by rewrite_assoc.
+        (* * *) replace (2 ^ n * (2 * 2 ^ j * 2) * (2 ^ k * 2)) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2)) by rewrite_assoc.
+        rewrite kron_mixed_product.
+        repeat rewrite kron_mixed_product; remove_id_gates.
+        rewrite Mmult_plus_distr_l.
+        rewrite Mmult_plus_distr_r.
+        (* * *) replace (2 * (2 ^ j * 2 * 2 ^ k)) with (2 * 2 ^ j * 2 ^ 1 * 2 ^ k) by rewrite_assoc.
+        repeat rewrite kron_mixed_product. 
+        (* * *) replace (2 * (2 ^ j * 2)) with (2 * 2 ^ j * 2) by rewrite_assoc.
+        repeat rewrite kron_mixed_product; remove_id_gates.
+      (* Case 3/6: q < n < n0 *)
+      * admit.
+  - bdestruct (n0 <? n); try solve_non_WT_cases.
+    unfold pad.
+    remember (n - n0 - 1) as i.
+    (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+    bdestruct (q + 1 <=? dim); bdestruct (n0 + (1 + i + 1) <=? dim); 
+    try solve_non_WT_cases;
+    (* a couple well-formedness proofs need a little extra help *)
+    try (remove_id_gates; apply WF_kron; try unify_pows_two; auto with wf_db).
+    bdestruct (n <? q).
+    (* Case 4/6: n0 < n < q *)
     + admit.
-    + Msimpl; reflexivity.
-  - admit.
+    + apply le_lt_eq_dec in H3; destruct H3; 
+        try (contradict e; apply not_eq_sym; easy).
+      bdestruct (n0 <? q).
+      (* Case 5/6: n0 < q < n *)
+      * admit.
+      * apply le_lt_eq_dec in H3; destruct H3; 
+        try (contradict e; apply not_eq_sym; easy).
+        (* Case 6/6: q < n0 < n *)
+        admit.
 Admitted.
 
 (** Flattening sequences **)
@@ -588,18 +637,17 @@ Proof.
     replace (2 ^ (t - c)) with (2 ^ i * 2) by unify_pows_two.
     repeat rewrite <- id_kron.
     rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) _ (I (2 ^ i))).
-    (* * *) replace (2 ^ c * 2 * 2 ^ i) with (2 ^ c * (2 * 2 ^ i)) by unify_pows_two.
+    (* * *) replace (2 ^ c * 2 * 2 ^ i) with (2 ^ c * (2 * 2 ^ i)) by rewrite_assoc.
     rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) _ σx).
     (* * *) replace (2 ^ dim) with (2 ^ c * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
     (* * *) replace (2 ^ 1) with 2 by easy.
     (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-    (* * *) replace (2 ^ c * (2 * 2 ^ i) * 2) with (2 ^ c * (2 * 2 ^ i * 2)) by unify_pows_two.
+    (* * *) replace (2 ^ c * (2 * 2 ^ i) * 2) with (2 ^ c * (2 * 2 ^ i * 2)) by rewrite_assoc.
     repeat rewrite kron_mixed_product; remove_id_gates.
     rewrite <- (kron_assoc _ _ _ _ _ _ (∣0⟩⟨0∣) (I (2 ^ i)) (I 2)).
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
     repeat rewrite kron_mixed_product; remove_id_gates.
-    reflexivity.
   - bdestruct (t <? c); try solve_non_WT_cases.
     bdestruct (t + (1 + (c - t - 1) + 1) <=? dim); try solve_non_WT_cases.
     (* t < c *)
@@ -612,16 +660,15 @@ Proof.
     rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ t)) σx _).
     rewrite <- (kron_assoc _ _ _ _ _ _ σx _ (I (2 ^ j))).
     rewrite <- (kron_assoc _ _ _ _ _ _ σx (I (2 ^ i)) (I 2)).
-    (* * *) replace (2 * (2 ^ i * 2 * 2 ^ j)) with (2 * (2 ^ i * 2) * 2 ^ j) by unify_pows_two.
+    (* * *) replace (2 * (2 ^ i * 2 * 2 ^ j)) with (2 * (2 ^ i * 2) * 2 ^ j) by rewrite_assoc.
     rewrite <- (kron_assoc _ _ _ _ _ _ (I (2 ^ t)) _ (I (2 ^ j))).
     (* * *) replace (2 ^ dim) with (2 ^ t * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
     (* * *) replace (2 ^ (1 + i + 1)) with (2 * (2 ^ i * 2)) by unify_pows_two.
     repeat rewrite kron_mixed_product; remove_id_gates.
-    (* * *) replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by unify_pows_two.
+    (* * *) replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by rewrite_assoc.
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
     repeat rewrite kron_mixed_product; remove_id_gates.
-    easy.
 Qed.
 
 (* Is there a more natural way to write this property? *)
@@ -646,7 +693,7 @@ Proof.
          intros dim;
          rewrite <- useq_assoc;
          rewrite (useq_congruence _ (uapp U l; q *= U_X) c2 c2);
-         try apply slide; try easy;
+         try apply slide12; try easy;
          rewrite useq_assoc;
          rewrite (useq_congruence (uapp U l) (uapp U l) _ (q *= U_X; c2)); 
          easy);
@@ -712,7 +759,7 @@ Proof.
         rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[]); q *= U_X) c2 c2); try easy.
         rewrite useq_assoc.
         rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[])) u (q *= U_X; c2)); try easy.
-        apply slide; easy.
+        apply slide12; easy.
   - destruct u; try easy. 
     destruct l; try destruct l; try easy.
     simpl. bdestruct (q =? n); try easy; subst.
@@ -756,3 +803,20 @@ Compute (rm_nots example1).
 Definition example2 : ucom := ((X q1; X q2); X q3).
 Compute (flatten example2).
 Compute (rm_nots example2).
+
+
+Ltac prove_wt :=
+  repeat match goal with
+         | |- context [ uc_well_typed ?d uskip ] => apply WT_uskip
+         | |- context [ uc_well_typed ?d (useq ?c1 ?c2) ] => apply WT_seq
+         | |- context [ uc_well_typed ?d (uapp ?u ?l) ] => try unfold CNOT; apply WT_app
+         end.
+
+
+Lemma typed_pad : forall (n k : nat)(c : ucom), uc_well_typed n c -> uc_well_typed (k + n) c.
+Proof.
+  intros. generalize dependent n.
+  induction c; intros; prove_wt; induction k;
+  [| apply IHc1 | apply IHc2 | apply IHc2 | | | | apply (bounded_pad _ _ 1%nat) | | ]; 
+  inversion H; assumption.
+Qed.
