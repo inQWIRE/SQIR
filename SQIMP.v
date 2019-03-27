@@ -1,6 +1,7 @@
 Require Import Reals.
 Require Export List.
 Export ListNotations.
+Require Import Omega.
 
 Inductive Unitary : nat -> Set := 
   | U_H         : Unitary 1 
@@ -58,6 +59,18 @@ Definition bounded (l : list nat) (max : nat) :=
 (* Alternatively: *)
 Definition bounded' (l : list nat) (max : nat) :=
   forall x, In x l -> x < max. 
+
+Lemma bounded_pad : forall (l : list nat) (n k : nat), bounded l n -> bounded l (k + n).
+Proof.
+  induction l; intros n k H; trivial.
+  unfold bounded in *.
+  simpl in *.
+  apply Bool.andb_true_iff in H as [H1 H2].
+  rewrite IHl, Bool.andb_true_r; trivial.
+  apply Nat.ltb_lt in H1.
+  apply Nat.ltb_lt.
+  omega.
+Qed.  
 
 Inductive uc_well_typed : nat -> ucom -> Prop :=
 | WT_uskip : forall dim, uc_well_typed dim uskip
