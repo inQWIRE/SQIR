@@ -5,6 +5,8 @@ Require Import SQIMP.
 Require Import UnitarySem.
 Open Scope ucom_scope.
 
+Require Import Complex.    
+
 Definition a : nat := O.
 Definition b : nat := S O.
 
@@ -13,8 +15,8 @@ Definition bell00_u : ucom :=
   CNOT a b.
 
 Definition encode_u (b1 b2 : bool): ucom :=
-    (if b2 then X a else uskip);
-    (if b1 then X a else uskip).
+  (if b2 then X a else uskip);
+  (if b1 then Z a else uskip).
 
 Definition decode_u : ucom := (* note: this is the reverse of bell00 *)
   CNOT a b;
@@ -32,7 +34,11 @@ Proof. intros. rewrite kron_mixed_product. reflexivity. Qed.
 Hint Rewrite kron_mixed_prod2 : ket_db.
 
 (*Set Printing All.*)
-Lemma superdense_correct : forall b1 b2, (uc_eval 2 (superdense_u b1 b2)) × ∣ 0,0 ⟩ = ∣ if b1 then S O else O,if b2 then S O else O ⟩.
+
+Definition bool_to_nat (b : bool) : nat := if b then 1 else 0.
+Coercion bool_to_nat : bool >-> nat.
+
+Lemma superdense_correct : forall b1 b2, (uc_eval 2 (superdense_u b1 b2)) × ∣ 0,0 ⟩ = ∣ b1,b2 ⟩.
 Proof.
   intros; simpl.
   replace (ueval_cnot 2 a b) with cnot.
@@ -44,44 +50,20 @@ Proof.
   - autorewrite with ket_db; auto with wf_db.
     setoid_rewrite CNOT00_spec.
     setoid_rewrite CNOT10_spec.
-    autorewrite with ket_db; auto with wf_db.
-    
-    (* What? This is |0,0⟩! *)
-
-    Abort.
-(*
-    unify_pows_two.
-    
-    Set Printing All.
-
-    repeat rewrite Mmult_assoc.
-    
-    
-
-    Search (
-    simpl.
-    Search 
-    Msimpl.
-
-
-    autorewrite with ket_db C_db.
-    replace (Init.Nat.mul (S (S O)) (S (S O))) with (S (S (S (S O)))) by easy.
-    autorewrite with ket_db C_db. ; try show_wf.
-    replace (Init.Nat.mul (S (S O)) (S (S O))) with (S (S (S (S O)))) by easy.
-    autorewrite with ket_db C_db; try show_wf.
-    (* need to use coqeulicot tactics to prove this *)
-    replace (Cmult (Cmult (Cinv (RtoC (sqrt (IZR (Zpos (xO xH))))))
-                          (RtoC (IZR (Zneg xH)))) 
-                   (Cinv (RtoC (sqrt (IZR (Zpos (xO xH))))))) 
-      with (Copp (Cinv (RtoC (IZR (Zpos (xO xH)))))) by admit.
-    repeat (rewrite <- Mplus_assoc).
-    replace (S (S (S (S O)))) with (Init.Nat.mul (S (S O)) (S (S O))) by easy.
-    simpl_ket_2_qubit.
+    autorewrite with ket_db C_db; auto with wf_db. (* wf_db shouldn't be req'd *)
+    setoid_rewrite CNOT10_spec.
+    autorewrite with ket_db C_db; auto with wf_db.
+    replace (RtoC (-1)%R) with (- C1)%C by clra. (* There shouldn't be Rs here... *)
+    autorewrite with C_db.
+    rewrite <- Mplus_assoc.
+    rewrite (Mplus_comm _ _ (_ .*  ∣ 0, 1 ⟩)).
+    rewrite (Mplus_assoc _ _ (_ .*  ∣ 1, 1 ⟩)).    
+    simpl_ket_2_qubit. 
     autorewrite with ket_db C_db.
     reflexivity.
-  - autorewrite with ket_db C_db; try show_wf.
-    replace (Init.Nat.mul (S (S O)) (S (S O))) with (S (S (S (S O)))) by easy.
-    autorewrite with ket_db C_db; try show_wf.
-    replace (Init.Nat.mul (S (S O)) (S (S O))) with (S (S (S (S O)))) by easy.
-    autorewrite with ket_db C_db; try show_wf.
-Abort. *)
+  - solve_matrix.
+  - solve_matrix.
+  - solve_matrix.
+Qed.    
+
+(* Maybe a manual proof would be more illustrative? *)
