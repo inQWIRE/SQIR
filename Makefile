@@ -1,4 +1,4 @@
-all: Quantum.vo SQIMP.vo UnitarySem.vo
+all: UnitarySem.vo Dirac.vo
 
 Prelim.vo: Prelim.v 
 	coqc Prelim.v
@@ -12,10 +12,13 @@ Matrix.vo: Matrix.v Complex.vo
 Quantum.vo: Quantum.v Matrix.vo
 	coqc Quantum.v
 
+Dirac.vo: Dirac.v Quantum.vo 
+	coqc Dirac.v
+
 SQIMP.vo : SQIMP.v
 	coqc SQIMP.v
 
-UnitarySem.vo: UnitarySem.v
+UnitarySem.vo: UnitarySem.v SQIMP.vo Quantum.vo
 	coqc UnitarySem.v
 
 clean:
