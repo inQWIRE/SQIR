@@ -109,7 +109,8 @@ Inductive com : Set :=
 | skip : com
 | seq : com -> com -> com
 | app : forall {n}, Unitary n -> list nat -> com
-| meas : nat -> com -> com -> com
+(* | meas : nat -> com -> com -> com *)
+| meas : nat -> com 
 | reset : nat -> com.
 
 Fixpoint from_ucom (c : ucom) : com :=
@@ -122,8 +123,16 @@ Fixpoint from_ucom (c : ucom) : com :=
 Coercion from_ucom : ucom >-> com.
 
 Notation "p1 ; p2" := (seq p1 p2) (at level 50) : com_scope.
+
+(* Notations for general measure_if: 
 Notation "'mif' v 'then' p1 'else' p2" := (meas v p1 p2) (at level 40) : com_scope.
 Notation "'measure' v" := (meas v skip skip) (at level 40) : com_scope.
+Notation "'reset' v" := (meas v (X v) skip) (at level 40) : com_scope.
+Notation "v <- 0" := (meas v (X v) skip) (at level 20) : com_scope.
+Notation "v <- 1" := (meas v skip (X v)) (at level 20) : com_scope.
+*)
+
+Notation "'measure'" := meas : com_scope.
 Notation "v <- 0" := (reset v) (at level 20) : com_scope.
 Notation "v <- 1" := (reset v ; X v) (at level 20) : com_scope.
 
@@ -135,11 +144,13 @@ Fixpoint crepeat (n : nat) (p : com) : com :=
   | S n' => p ; crepeat n' p
   end.
 
+(*
 Fixpoint while (iters : nat) (v : nat) (p : com) : com :=
   match iters with
   | 0        => skip
   | S iters' => mif v then p ; while iters' v p else skip
-end.
+  end.
+ *)
 
 (* Simple order reversal: No transposing, measurements and resets stay as they are. *)
 Fixpoint reverse (c : com) :=
@@ -152,8 +163,8 @@ Fixpoint reverse (c : com) :=
 Fixpoint reverse_m (c : com) :=
   match c with              
   | seq c1 c2        => seq (reverse c2) (reverse c1) 
-  | reset v          => measure v
-  | meas v skip skip => reset v
+  | reset v          => meas v
+  | meas v           => reset v
   | _ => c
   end.
 

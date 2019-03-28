@@ -594,17 +594,18 @@ Fixpoint propagate_nots (c : ucom) (n: nat) : ucom :=
 
 Definition rm_nots (c : ucom) : ucom := propagate_nots (flatten c) (count_ops c).
 
-Lemma XX_id : forall q, uskip ≡ q *= U_X; q *= U_X.
+Lemma XX_id : forall q, uskip ≡ X q; X q.
 Proof. 
   intros q dim. 
   simpl; unfold ueval1, pad. 
   bdestruct (q + 1 <=? dim); Msimpl'; try easy.
   simpl; replace (σx × σx) with (I (2 ^ 1)) by solve_matrix.
+  Msimpl.
   rewrite id_kron.
   replace (2 ^ q * 2 ^ 1) with (2 ^ (q + 1)) by unify_pows_two.
   rewrite id_kron.
-  replace (2 ^ (q + 1) * 2 ^ (dim - 1 - q)) with (2 ^ (q + 1 + dim - 1 - q)) by unify_pows_two.
-  replace (q + 1 + dim - 1 - q) with dim by omega.
+  unify_pows_two.
+  replace (q + 1 + (dim - 1 - q)) with dim by omega.
   reflexivity.
 Qed.
 
@@ -617,7 +618,7 @@ Qed.
 
    This might be an interesting point of comparison for the F* code.
 *)
-Lemma X_CNOT_comm : forall c t, t *= U_X; uapp U_CNOT (c::t::[]) ≡ uapp U_CNOT (c::t::[]); t *= U_X.
+Lemma X_CNOT_comm : forall c t, X t; CNOT c t ≡ CNOT c t ; X t.
 Proof.
   intros c t dim.
   simpl; unfold ueval1, pad. 
@@ -667,11 +668,18 @@ Proof.
     repeat rewrite kron_mixed_product; remove_id_gates.
 Qed.
 
+
 (* Is there a more natural way to write this property? *)
+(* RNR: Yup *)
+Lemma propagate_not_sound : forall c c' q,
+  propagate_not c q = Some c' ->
+  c' ≡ (X q; c).
+Abort.
+
 Lemma propagate_not_sound : forall c q,
   match propagate_not c q with
   | None => True
-  | Some c' => c' ≡ (q *= U_X; c)
+  | Some c' => c' ≡ (X q; c)
   end.
 Proof.
   intros c q.
@@ -688,10 +696,10 @@ Proof.
          destruct (propagate_not c2 q); try easy;
          intros dim;
          rewrite <- useq_assoc;
-         rewrite (useq_congruence _ (uapp U l; q *= U_X) c2 c2);
+         rewrite (useq_congruence _ (uapp U l; X q) c2 c2);
          try apply slide12; try easy;
          rewrite useq_assoc;
-         rewrite (useq_congruence (uapp U l) (uapp U l) _ (q *= U_X; c2)); 
+         rewrite (useq_congruence (uapp U l) (uapp U l) _ (X q; c2)); 
          easy);
     subst.
     (* U = X *)
@@ -715,9 +723,9 @@ Proof.
       * destruct (propagate_not c2 q); try easy.
         intros dim.
         rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (n *= U_X; q *= U_X) c2 c2); try easy.
+        rewrite (useq_congruence _ (X n ; X q) c2 c2); try easy.
         rewrite useq_assoc.
-        rewrite (useq_congruence (n *= U_X) (n *= U_X) _ (q *= U_X; c2)); try easy.
+        rewrite (useq_congruence (X n) (X n) _ (X q; c2)); try easy.
         apply slide1; easy.
     (* U = CNOT *)
     + (* solve the cases where l has <2 or >2 elements *)
@@ -736,26 +744,18 @@ Proof.
         destruct (propagate_not c2 n0); try easy.
         intros dim.
         rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[]); n0 *= U_X) c2 c2); try easy.
+        rewrite (useq_congruence _ (CNOT n n0; X n0) c2 c2); try easy.
         rewrite useq_assoc.
-        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[])) u (n0 *= U_X; c2)); try easy.
+        rewrite (useq_congruence _ (CNOT n n0) u (X n0; c2)); try easy.
         apply X_CNOT_comm.
-      * assert (forall n m : nat, (n =? m) = (m =? n)).
-        { induction n1; destruct m; auto. apply IHn1. }
-        assert (inb q (n::n0::[]) = false). 
-        { simpl. 
-          apply beq_nat_false_iff in H.
-          apply beq_nat_false_iff in H0.
-          repeat apply orb_false_intro;
-          try rewrite H1;
-          easy. }
-        destruct (propagate_not c2 q); try easy.
+      * destruct (propagate_not c2 q); try easy.
         intros dim.
         rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[]); q *= U_X) c2 c2); try easy.
+        rewrite (useq_congruence _ (CNOT n n0; X q) c2 c2); try easy.
         rewrite useq_assoc.
-        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[])) u (q *= U_X; c2)); try easy.
-        apply slide12; easy.
+        rewrite (useq_congruence _ (CNOT n n0) u (X q; c2)); try easy.
+        apply slide12.
+        simpl. bdestructΩ (n =? q); bdestructΩ (n0 =? q); easy.
   - destruct u; try easy. 
     destruct l; try destruct l; try easy.
     simpl. bdestruct (q =? n); try easy; subst.
