@@ -354,17 +354,18 @@ Proof.
         admit.
 Admitted.
 
-Lemma XX_id : forall q, uskip ≡ q *= U_X; q *= U_X.
+Lemma XX_id : forall q, uskip ≡ X q; X q.
 Proof. 
   intros q dim. 
   simpl; unfold ueval1, pad. 
   bdestruct (q + 1 <=? dim); Msimpl'; try easy.
   simpl; replace (σx × σx) with (I (2 ^ 1)) by solve_matrix.
+  Msimpl.
   rewrite id_kron.
   replace (2 ^ q * 2 ^ 1) with (2 ^ (q + 1)) by unify_pows_two.
   rewrite id_kron.
-  replace (2 ^ (q + 1) * 2 ^ (dim - 1 - q)) with (2 ^ (q + 1 + dim - 1 - q)) by unify_pows_two.
-  replace (q + 1 + dim - 1 - q) with dim by omega.
+  unify_pows_two.
+  replace (q + 1 + (dim - 1 - q)) with dim by omega.
   reflexivity.
 Qed.
 
@@ -377,7 +378,7 @@ Qed.
 
    This might be an interesting point of comparison for the F* code.
 *)
-Lemma X_CNOT_comm : forall c t, t *= U_X; uapp U_CNOT (c::t::[]) ≡ uapp U_CNOT (c::t::[]); t *= U_X.
+Lemma X_CNOT_comm : forall c t, X t; CNOT c t ≡ CNOT c t ; X t.
 Proof.
   intros c t dim.
   simpl; unfold ueval1, pad. 
@@ -449,10 +450,9 @@ Proof.
       unfold pad.
       assert(L : a + 1 <= n).
       { inversion H; subst.
-        unfold SQIMP.bounded in H5; simpl in H5.
-        rewrite andb_true_r in H5.
-        apply Nat.ltb_lt in H5.
-        omega. }
+        specialize (H5 a (or_introl eq_refl)).
+        omega.
+      }
       bdestruct (a + 1 <=? n); bdestructΩ (a + 1 <=? n+k).
       setoid_rewrite (kron_assoc _ _ _ _ _ _ (I (2^a) ⊗ U')).
       rewrite id_kron. unify_pows_two.
@@ -461,12 +461,9 @@ Proof.
     + destruct l as [| a [|b[|]]]; try (rewrite id_kron; unify_pows_two; reflexivity).
       unfold ueval_cnot.
       inversion H; subst.
-      inversion H5; subst.
-      apply andb_true_iff in H2 as [La Lb].
+      assert (La : a < n) by (apply H5; simpl; auto).
+      assert (Lb : b < n) by (apply H5; simpl; auto).
       clear -La Lb.
-      rewrite andb_true_r in Lb.
-      apply Nat.ltb_lt in La.
-      apply Nat.ltb_lt in Lb.
       unfold pad.
       bdestruct (a <? b); bdestructΩ (b <? a); try (rewrite id_kron; unify_pows_two; reflexivity).
       * bdestructΩ (a + S (b - a - 1 + 1) <=? n).
@@ -501,7 +498,7 @@ Lemma typed_pad : forall (n k : nat)(c : ucom), uc_well_typed n c -> uc_well_typ
 Proof.
   intros. generalize dependent n.
   induction c; intros; prove_wt; induction k;
-  [| apply IHc1 | apply IHc2 | apply IHc2 | | | | apply (bounded_pad _ _ 1%nat) | | ]; 
+  [| apply IHc1 | apply IHc2 | apply IHc2 | | | | apply (in_bounds_pad _ _ 1%nat) | | ]; 
   inversion H; assumption.
 Qed.
 

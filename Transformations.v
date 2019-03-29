@@ -146,13 +146,13 @@ Fixpoint propagate_not (c : ucom) (q : nat) : option ucom :=
       if q =? q' then Some c2 
       else match propagate_not c2 q with
            | None => None
-           | Some c2' => Some (q' *= U_X ; c2')
+           | Some c2' => Some (X q' ; c2')
            end
   | uapp U_CNOT (q1::q2::nil) ; c2 => 
       if q =? q1 then None 
       else match propagate_not c2 q with
            | None => None
-           | Some c2' => Some (uapp U_CNOT (q1::q2::nil) ; c2')
+           | Some c2' => Some (CNOT q1 q2 ; c2')
            end
   | uapp U l ; c2 => 
       if (inb q l)
@@ -173,9 +173,9 @@ Fixpoint propagate_nots (c : ucom) (n: nat) : ucom :=
   match n with
   | 0 => c
   | S n' => match c with
-           | q *= U_X ; c2 => 
+           | uapp U_X [q] ; c2 => 
                match propagate_not c2 q with
-               | None => q *= U_X ; (propagate_nots c2 n')
+               | None => X q ; (propagate_nots c2 n')
                | Some c2' => propagate_nots c2' n'
                end
            | c1; c2 => c1; (propagate_nots c2 n')
@@ -186,10 +186,16 @@ Fixpoint propagate_nots (c : ucom) (n: nat) : ucom :=
 Definition rm_nots (c : ucom) : ucom := propagate_nots (flatten c) (count_ops c).
 
 (* Is there a more natural way to write this property? *)
+(* RNR: Yup *)
+Lemma propagate_not_sound : forall c c' q,
+  propagate_not c q = Some c' ->
+  c' ≡ (X q; c).
+Abort.
+
 Lemma propagate_not_sound : forall c q,
   match propagate_not c q with
   | None => True
-  | Some c' => c' ≡ (q *= U_X; c)
+  | Some c' => c' ≡ (X q; c)
   end.
 Proof.
   intros c q.
@@ -206,10 +212,10 @@ Proof.
          destruct (propagate_not c2 q); try easy;
          intros dim;
          rewrite <- useq_assoc;
-         rewrite (useq_congruence _ (uapp U l; q *= U_X) c2 c2);
+         rewrite (useq_congruence _ (uapp U l; X q) c2 c2);
          try apply slide12; try easy;
          rewrite useq_assoc;
-         rewrite (useq_congruence (uapp U l) (uapp U l) _ (q *= U_X; c2)); 
+         rewrite (useq_congruence (uapp U l) (uapp U l) _ (X q; c2)); 
          easy);
     subst.
     (* U = X *)
@@ -233,9 +239,9 @@ Proof.
       * destruct (propagate_not c2 q); try easy.
         intros dim.
         rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (n *= U_X; q *= U_X) c2 c2); try easy.
+        rewrite (useq_congruence _ (X n; X q) c2 c2); try easy.
         rewrite useq_assoc.
-        rewrite (useq_congruence (n *= U_X) (n *= U_X) _ (q *= U_X; c2)); try easy.
+        rewrite (useq_congruence (X n) (X n) _ (X q; c2)); try easy.
         apply slide1; easy.
     (* U = CNOT *)
     + (* solve the cases where l has <2 or >2 elements *)
@@ -254,9 +260,9 @@ Proof.
         destruct (propagate_not c2 n0); try easy.
         intros dim.
         rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[]); n0 *= U_X) c2 c2); try easy.
+        rewrite (useq_congruence _ (CNOT n n0; X n0) c2 c2); try easy.
         rewrite useq_assoc.
-        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[])) u (n0 *= U_X; c2)); try easy.
+        rewrite (useq_congruence _ (CNOT n n0) u (X n0; c2)); try easy.
         apply X_CNOT_comm.
       * assert (forall n m : nat, (n =? m) = (m =? n)).
         { induction n1; destruct m; auto. apply IHn1. }
@@ -270,9 +276,9 @@ Proof.
         destruct (propagate_not c2 q); try easy.
         intros dim.
         rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[]); q *= U_X) c2 c2); try easy.
+        rewrite (useq_congruence _ (CNOT n n0; X q) c2 c2); try easy.
         rewrite useq_assoc.
-        rewrite (useq_congruence _ (uapp U_CNOT (n::n0::[])) u (q *= U_X; c2)); try easy.
+        rewrite (useq_congruence _ (CNOT n n0) u (X q; c2)); try easy.
         apply slide12; easy.
   - destruct u; try easy. 
     destruct l; try destruct l; try easy.
@@ -324,7 +330,7 @@ Compute (rm_nots example2).
 Inductive respects_LNN : nat -> ucom -> Prop :=
   | LNN_skip : forall dim, respects_LNN dim uskip
   | LNN_seq : forall dim c1 c2, respects_LNN dim c1 -> respects_LNN dim c2 -> respects_LNN dim (c1; c2)
-  | LNN_app_cnot : forall dim n1 n2, n1 < dim -> n2 < dim -> n1 = n2 - 1 \/ n1 = n2 + 1 -> respects_LNN dim (uapp U_CNOT (n1::n2::[]))
+  | LNN_app_cnot : forall dim n1 n2, n1 < dim -> n2 < dim -> n1 = n2 - 1 \/ n1 = n2 + 1 -> respects_LNN dim (CNOT n1 n2)
   | LNN_app_u : forall dim u n, n < dim -> respects_LNN dim (@uapp 1 u [n]).
 
 Fixpoint move_target_left (base dist : nat) : ucom :=
@@ -351,7 +357,7 @@ Fixpoint map_to_lnn (c : ucom) : ucom :=
       then move_target_left n1 (n2 - n1 - 1)
       else if n2 <? n1
            then move_target_right (n1 - 1) (n1 - n2 - 1)
-           else uapp U_CNOT (n1::n2::[])
+           else CNOT n1 n2
   | _ => c
   end.
 

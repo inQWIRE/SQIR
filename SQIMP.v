@@ -1,6 +1,7 @@
 Require Import Reals.
 Require Export List.
 Export ListNotations.
+Require Import Omega.
 
 Inductive Unitary : nat -> Set := 
   | U_H         : Unitary 1 
@@ -50,26 +51,49 @@ Definition CZ (a b : nat) : ucom :=
 Definition SWAP (a b : nat) : ucom :=
   CNOT a b; CNOT b a; CNOT a b.
 
+(***********************)
 (* Well Typed Circuits *)
+(***********************)
 
-Definition bounded (l : list nat) (max : nat) :=
-  forallb (fun x => x <? max) l = true.
+Definition in_bounds (l : list nat) (max : nat) : Prop :=
+  forall x, In x l -> x < max.
 
-(* Alternatively: *)
-Definition bounded' (l : list nat) (max : nat) :=
-  forall x, In x l -> x < max. 
+Definition in_bounds_b (l : list nat) (max : nat) :=
+  forallb (fun x => x <? max) l.
+
+Definition in_bounds_eq : forall l max, in_bounds_b l max = true <-> in_bounds l max.
+Proof.
+  intros l max.
+  unfold in_bounds.
+  setoid_rewrite forallb_forall.
+  setoid_rewrite Nat.ltb_lt.
+  reflexivity.
+Qed.
+  
+Lemma in_bounds_pad : forall (l : list nat) (n k : nat), in_bounds l n -> in_bounds l (k + n).
+Proof.
+  intros l n k B x IN.
+  apply B in IN.
+  omega.
+Qed.  
+
+Lemma in_bounds_b_pad : forall (l : list nat) (n k : nat), in_bounds_b l n = true -> in_bounds_b l (k + n) = true.
+Proof.
+  setoid_rewrite in_bounds_eq.
+  apply in_bounds_pad.
+Qed.  
 
 Inductive uc_well_typed : nat -> ucom -> Prop :=
 | WT_uskip : forall dim, uc_well_typed dim uskip
 | WT_seq : forall dim c1 c2, uc_well_typed dim c1 -> uc_well_typed dim c2 -> uc_well_typed dim (c1; c2)
-| WT_app : forall dim n l (u : Unitary n), length l = n -> bounded l dim -> NoDup l -> uc_well_typed dim (uapp u l).
+| WT_app : forall dim n l (u : Unitary n), length l = n -> in_bounds l dim -> NoDup l -> uc_well_typed dim (uapp u l).
 
 (* Equivalent boolean version *)
 Fixpoint uc_well_typed_b (dim : nat) (c : ucom) : bool :=
   match c with
   | uskip    => true
   | c1 ; c2  => uc_well_typed_b dim c1 && uc_well_typed_b dim c2 
-  | @uapp n u l => (length l =? n) && forallb (fun x => x <? dim) l (* && boolean_do_dup *)
+  | @uapp n u l => (length l =? n) && in_bounds_b l dim (* && boolean_no_dup *)
   end.
 
 Close Scope ucom.
@@ -85,7 +109,8 @@ Inductive com : Set :=
 | skip : com
 | seq : com -> com -> com
 | app : forall {n}, Unitary n -> list nat -> com
-| meas : nat -> com -> com -> com
+(* | meas : nat -> com -> com -> com *)
+| meas : nat -> com 
 | reset : nat -> com.
 
 Fixpoint from_ucom (c : ucom) : com :=
@@ -98,8 +123,16 @@ Fixpoint from_ucom (c : ucom) : com :=
 Coercion from_ucom : ucom >-> com.
 
 Notation "p1 ; p2" := (seq p1 p2) (at level 50) : com_scope.
+
+(* Notations for general measure_if: 
 Notation "'mif' v 'then' p1 'else' p2" := (meas v p1 p2) (at level 40) : com_scope.
 Notation "'measure' v" := (meas v skip skip) (at level 40) : com_scope.
+Notation "'reset' v" := (meas v (X v) skip) (at level 40) : com_scope.
+Notation "v <- 0" := (meas v (X v) skip) (at level 20) : com_scope.
+Notation "v <- 1" := (meas v skip (X v)) (at level 20) : com_scope.
+*)
+
+Notation "'measure'" := meas : com_scope.
 Notation "v <- 0" := (reset v) (at level 20) : com_scope.
 Notation "v <- 1" := (reset v ; X v) (at level 20) : com_scope.
 
@@ -111,11 +144,13 @@ Fixpoint crepeat (n : nat) (p : com) : com :=
   | S n' => p ; crepeat n' p
   end.
 
+(*
 Fixpoint while (iters : nat) (v : nat) (p : com) : com :=
   match iters with
   | 0        => skip
   | S iters' => mif v then p ; while iters' v p else skip
-end.
+  end.
+ *)
 
 (* Simple order reversal: No transposing, measurements and resets stay as they are. *)
 Fixpoint reverse (c : com) :=
@@ -128,8 +163,8 @@ Fixpoint reverse (c : com) :=
 Fixpoint reverse_m (c : com) :=
   match c with              
   | seq c1 c2        => seq (reverse c2) (reverse c1) 
-  | reset v          => measure v
-  | meas v skip skip => reset v
+  | reset v          => meas v
+  | meas v           => reset v
   | _ => c
   end.
 
@@ -186,19 +221,5 @@ Definition superdense (b1 b2 : bool) :=
 
 End Superdense.    
 
-Require Import Omega.
-
-(* Weakening for reasoning about a list being bounded. *)
-Lemma bounded_pad : forall (l : list nat) (n k : nat), bounded l n -> bounded l (k + n).
-Proof.
-  induction l; intros n k H; trivial.
-  unfold bounded in *.
-  simpl in *.
-  apply Bool.andb_true_iff in H as [H1 H2].
-  rewrite IHl, Bool.andb_true_r; trivial.
-  apply Nat.ltb_lt in H1.
-  apply Nat.ltb_lt.
-  omega.
-Qed.  
 
   
