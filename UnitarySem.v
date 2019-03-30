@@ -117,7 +117,6 @@ Proof.
   simpl. Msimpl. solve_matrix.
 Qed.
 
-
 (** Equivalence and Structural Rules **)
 
 (* Precondition about typing? *)
@@ -145,7 +144,7 @@ Proof.
   reflexivity.
 Qed.
 
-(* Optimization: Remove skips *)
+(** Example Equivalences **)
 
 Lemma uskip_id_l : forall (c : ucom),
    (uskip ; c) ≡ c.
@@ -161,153 +160,8 @@ Proof.
   simpl; Msimpl; reflexivity.
 Qed.
 
-Fixpoint rm_uskips (c : ucom) : ucom :=
-  match c with
-  | c1 ; c2 => match rm_uskips c1, rm_uskips c2 with
-              | uskip, c2' => c2'
-              | c1', uskip => c1'
-              | c1', c2'   => c1'; c2'
-              end
-  | c'      => c'
-  end.
-
-(* We don't really need this anymore *)
-Hint Constructors uc_well_typed : type_db.
-
-Lemma WT_rm_uskips : forall c dim, uc_well_typed dim c <-> uc_well_typed dim (rm_uskips c).
-Proof.
-  intros c dim.
-  split; intros H.
-  - induction H.
-    + constructor.
-    + simpl.
-      destruct (rm_uskips c1), (rm_uskips c2); auto with type_db.
-    + simpl. auto with type_db.
-  - induction c.
-    + constructor.
-    + destruct (rm_uskips (c1; c2)) eqn:E.
-      * simpl in E.
-        destruct (rm_uskips c1), (rm_uskips c2); auto with type_db; discriminate.
-      * simpl in E.
-        destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; auto with type_db;
-        rewrite <- E in H; inversion H; auto with type_db.
-      * simpl in E.
-        destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; auto with type_db;
-        rewrite <- E in H; inversion H; auto with type_db.
-    + simpl in H; easy.
-Qed.
-      
-
-Lemma rm_uskips_sound : forall c,
-  c ≡ (rm_uskips c).
-Proof.
-  induction c; intros dim; trivial.
-  simpl.
-  destruct (rm_uskips c1) eqn:E1, (rm_uskips c2) eqn:E2; trivial;
-    rewrite IHc1, IHc2; simpl; Msimpl; easy.
-Qed.
-
-Inductive skip_free : ucom -> Prop :=
-  | SF_seq : forall c1 c2, skip_free c1 -> skip_free c2 -> skip_free (c1; c2)
-  | SF_app : forall n l (u : Unitary n), skip_free (uapp u l).
-
-Lemma rm_uskips_correct : forall c,
-  (rm_uskips c) = uskip \/ skip_free (rm_uskips c).
-Proof.
-  intro c.
-  induction c.
-  - left; easy.
-  - destruct IHc1; destruct IHc2.
-    + left. simpl. rewrite H. rewrite H0. reflexivity.
-    + right. simpl. rewrite H. assumption.
-    + right. simpl. rewrite H0. 
-      destruct (rm_uskips c1); try easy.
-    + right. simpl. 
-      destruct (rm_uskips c1); try assumption;
-      destruct (rm_uskips c2); try (apply SF_seq); easy. 
-  - right; simpl. apply SF_app.
-Qed.
-
 Close Scope C_scope.
 Close Scope R_scope.
-
-Fixpoint count_ops (c : ucom) : nat :=
-  match c with
-  | c1; c2 => (count_ops c1) + (count_ops c2)
-  | _ => 1
-  end.
-
-Lemma rm_uskips_reduces_count : forall c,
-  count_ops (rm_uskips c) <= count_ops c.
-Proof.
-  intro c.
-  induction c.
-  - simpl. omega.
-  - simpl. destruct (rm_uskips c1); try omega; 
-    destruct (rm_uskips c2); 
-    simpl; simpl in IHc1; simpl in IHc2;
-    omega.
-  - simpl. omega.
-Qed.
-
-Lemma pad_dims : forall c n k,
-  uc_well_typed n c ->
-  (uc_eval n c) ⊗ I (2^k) = uc_eval (n + k) c.  
-Proof.
-  intros c n k H.
-  induction c.
-  - simpl. rewrite id_kron. unify_pows_two. reflexivity.
-  - inversion H; subst.
-    simpl. rewrite <- IHc1, <- IHc2; trivial.
-    Msimpl'; reflexivity.
-  - simpl.
-    unfold ueval.
-    destruct n0 as [|[|[|]]]; simpl; try (rewrite id_kron; unify_pows_two; reflexivity).
-    + destruct l as [| a []]; try (rewrite id_kron; unify_pows_two; reflexivity).
-      unfold ueval1.
-      repeat match goal with
-      | [|- context [pad _ _ ?U ]] => remember U as U'
-      end.
-      unfold pad.
-      assert(L : a + 1 <= n).
-      { inversion H; subst.
-        specialize (H5 a (or_introl eq_refl)).
-        omega.
-      }
-      bdestruct (a + 1 <=? n); bdestructΩ (a + 1 <=? n+k).
-      setoid_rewrite (kron_assoc _ _ _ _ _ _ (I (2^a) ⊗ U')).
-      rewrite id_kron. unify_pows_two.
-      replace (n - 1 - a + k) with (n + k - 1 - a) by omega.
-      reflexivity.
-    + destruct l as [| a [|b[|]]]; try (rewrite id_kron; unify_pows_two; reflexivity).
-      unfold ueval_cnot.
-      inversion H; subst.
-      assert (La : a < n) by (apply H5; simpl; auto).
-      assert (Lb : b < n) by (apply H5; simpl; auto).
-      clear -La Lb.
-      unfold pad.
-      bdestruct (a <? b); bdestructΩ (b <? a); try (rewrite id_kron; unify_pows_two; reflexivity).
-      * bdestructΩ (a + S (b - a - 1 + 1) <=? n).
-        bdestructΩ (a + S (b - a - 1 + 1) <=? n + k).
-        setoid_rewrite (kron_assoc _ _ _ _ _ _ _ _  (I (2^k))).
-        rewrite id_kron.
-        unify_pows_two.
-        rewrite Nat.sub_add by omega.
-        rewrite Nat.add_sub_swap by omega.
-        rewrite Nat.add_sub_swap by omega.
-        reflexivity.
-      * bdestructΩ (b + S (a - b - 1 + 1) <=? n).
-        bdestructΩ (b + S (a - b - 1 + 1) <=? n + k).
-        setoid_rewrite (kron_assoc _ _ _ _ _ _ _ _  (I (2^k))).
-        rewrite id_kron.
-        unify_pows_two.
-        rewrite Nat.sub_add by omega.
-        rewrite Nat.add_sub_swap by omega.
-        rewrite Nat.add_sub_swap by omega.
-        reflexivity.
-Qed.
-  
-Open Scope ucom_scope.
 
 (* Shouldn't need this here? *)
 Local Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope. 
@@ -500,100 +354,6 @@ Proof.
         admit.
 Admitted.
 
-(** Flattening sequences **)
-
-Fixpoint flat_append (c1 c2 : ucom) : ucom := 
-  match c1 with
-  | c1'; c2' => c1' ; (flat_append c2' c2)
-  | _ => c1 ; c2
-  end.
-
-Fixpoint flatten (c: ucom) : ucom :=
-  match c with
-  | c1; c2 => flat_append (flatten c1) (flatten c2)
-  | _ => c
-  end.
-
-Lemma denote_flat_append : forall c1 c2 dim,
-  uc_eval dim (flat_append c1 c2) = uc_eval dim c2 × uc_eval dim c1.
-Proof.
-  intros c1 c2 dim.
-  induction c1; try easy.
-  simpl.
-  rewrite IHc1_2.
-  apply Mmult_assoc.
-Qed.
-
-Lemma flatten_sound : forall c,  
-  c ≡ flatten c.
-Proof.
-  intros c dim.
-  induction c; try easy.
-  simpl.
-  rewrite IHc1, IHc2.
-  rewrite denote_flat_append.
-  reflexivity.
-Qed.
-
-(** Optimization: 'not propagation' **)
-
-Require Export List.
-
-(* Propagate an X gate on qubit q as far right as possible, cancelling
-   the gate if possible.
-   
-   This will return None if no cancellation is possible or (Some c') 
-   where c' is the result of removing the appropriate X gate from c.
-   
-   This function will insert an extra uskip instruction if the cancelled
-   gate is at the end of the circuit... I should probably fix that. *)
-Fixpoint propagate_not (c : ucom) (q : nat) : option ucom :=
-  match c with
-  | q' *= U_X => 
-      if q =? q' then Some uskip else None
-  | q' *= U_X ; c2 => 
-      if q =? q' then Some c2 
-      else match propagate_not c2 q with
-           | None => None
-           | Some c2' => Some (q' *= U_X ; c2')
-           end
-  | uapp U_CNOT (q1::q2::nil) ; c2 => 
-      if q =? q1 then None 
-      else match propagate_not c2 q with
-           | None => None
-           | Some c2' => Some (uapp U_CNOT (q1::q2::nil) ; c2')
-           end
-  | uapp U l ; c2 => 
-      if (inb q l)
-      then None
-      else match propagate_not c2 q with
-           | None => None
-           | Some c2' => Some (uapp U l ; c2')
-           end
-  | _ => None
-  end.
-
-(* Call propagate_not on all X gates in the circuit. 
-   
-   The extra n argument is to help Coq recognize termination.
-   We start with n = (count_ops c), which is the maximum
-   number of times that propagate_nots can be called. *)
-Fixpoint propagate_nots (c : ucom) (n: nat) : ucom :=
-  match n with
-  | 0 => c
-  | S n' => match c with
-           | q *= U_X ; c2 => 
-               match propagate_not c2 q with
-               | None => q *= U_X ; (propagate_nots c2 n')
-               | Some c2' => propagate_nots c2' n'
-               end
-           | c1; c2 => c1; (propagate_nots c2 n')
-           | _ => c
-           end
-  end.
-
-Definition rm_nots (c : ucom) : ucom := propagate_nots (flatten c) (count_ops c).
-
 Lemma XX_id : forall q, uskip ≡ X q; X q.
 Proof. 
   intros q dim. 
@@ -669,137 +429,62 @@ Proof.
 Qed.
 
 
-(* Is there a more natural way to write this property? *)
-(* RNR: Yup *)
-Lemma propagate_not_sound : forall c c' q,
-  propagate_not c q = Some c' ->
-  c' ≡ (X q; c).
-Abort.
-
-Lemma propagate_not_sound : forall c q,
-  match propagate_not c q with
-  | None => True
-  | Some c' => c' ≡ (X q; c)
-  end.
+Lemma pad_dims : forall c n k,
+  uc_well_typed n c ->
+  (uc_eval n c) ⊗ I (2^k) = uc_eval (n + k) c.  
 Proof.
-  intros c q.
+  intros c n k H.
   induction c.
-  - easy.
-  - clear IHc1.
-    destruct c1; try easy.
-    remember u as U.
-    destruct u;
-    (* U = H, Y, Z, R *)
-    try (rewrite HeqU; simpl; rewrite <- HeqU;
-         remember (inb q l) as b; 
-         destruct b; try easy;
-         destruct (propagate_not c2 q); try easy;
-         intros dim;
-         rewrite <- useq_assoc;
-         rewrite (useq_congruence _ (uapp U l; X q) c2 c2);
-         try apply slide12; try easy;
-         rewrite useq_assoc;
-         rewrite (useq_congruence (uapp U l) (uapp U l) _ (X q; c2)); 
-         easy);
-    subst.
-    (* U = X *)
-    + (* solve the cases where l is empty, or l has >1 element *)
-      destruct l; simpl; try destruct l;
-      try destruct ((n =? q) || inb q (n0 :: l)); try easy;
-      try (destruct (propagate_not c2 q); easy);
-      try (destruct (propagate_not c2 q); try easy;
-           intros dim; simpl; remove_id_gates;
-           unfold uc_equiv in IHc2; simpl in IHc2;
-           easy).
-      (* solve the case where l has exactly 1 element *)
-      bdestruct (q =? n).
-      * subst. 
-        intros dim.
-        rewrite <- useq_assoc.
-        rewrite (useq_congruence _ uskip _ c2); try easy.
-        rewrite uskip_id_l; easy.
-        apply uc_equiv_sym.
-        apply XX_id.
-      * destruct (propagate_not c2 q); try easy.
-        intros dim.
-        rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (X n ; X q) c2 c2); try easy.
-        rewrite useq_assoc.
-        rewrite (useq_congruence (X n) (X n) _ (X q; c2)); try easy.
-        apply slide1; easy.
-    (* U = CNOT *)
-    + (* solve the cases where l has <2 or >2 elements *)
-      destruct l; simpl; try destruct l; simpl; try destruct l;
-      [ | destruct ((n =? q) || false) | | destruct ((n =? q) || ((n0 =? q) || (inb q (n1::l)))) ];
-      try easy;
-      try (destruct (propagate_not c2 q); easy);
-      try (destruct (propagate_not c2 q); try easy;
-           intros dim; simpl; remove_id_gates;
-           unfold uc_equiv in IHc2; simpl in IHc2;
-           easy).
-      (* solve the case where l has exactly 2 elements *)
-      bdestruct (q =? n); try easy.
-      bdestruct (q =? n0).
-      * subst.
-        destruct (propagate_not c2 n0); try easy.
-        intros dim.
-        rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (CNOT n n0; X n0) c2 c2); try easy.
-        rewrite useq_assoc.
-        rewrite (useq_congruence _ (CNOT n n0) u (X n0; c2)); try easy.
-        apply X_CNOT_comm.
-      * destruct (propagate_not c2 q); try easy.
-        intros dim.
-        rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (CNOT n n0; X q) c2 c2); try easy.
-        rewrite useq_assoc.
-        rewrite (useq_congruence _ (CNOT n n0) u (X q; c2)); try easy.
-        apply slide12.
-        simpl. bdestructΩ (n =? q); bdestructΩ (n0 =? q); easy.
-  - destruct u; try easy. 
-    destruct l; try destruct l; try easy.
-    simpl. bdestruct (q =? n); try easy; subst.
-    apply XX_id.
-Qed.   
-    
-Lemma propagate_nots_sound : forall c n, c ≡ propagate_nots c n.
-Proof.
-  intros c n dim.
-  generalize dependent c.
-  induction n; try easy.
-  intros c.
-  induction c; try easy.
-  induction c1; 
-  try destruct u; 
-  try destruct l; try destruct l; 
-  try (simpl; rewrite <- IHn; easy).
-  simpl.
-  specialize (propagate_not_sound c2 n0 ) as H.
-  destruct (propagate_not c2 n0).
-  - unfold uc_equiv in H. simpl in H.
-    rewrite <- H.
-    apply IHn.
-  - simpl; rewrite <- IHn; easy.
+  - simpl. rewrite id_kron. unify_pows_two. reflexivity.
+  - inversion H; subst.
+    simpl. rewrite <- IHc1, <- IHc2; trivial.
+    Msimpl'; reflexivity.
+  - simpl.
+    unfold ueval.
+    destruct n0 as [|[|[|]]]; simpl; try (rewrite id_kron; unify_pows_two; reflexivity).
+    + destruct l as [| a []]; try (rewrite id_kron; unify_pows_two; reflexivity).
+      unfold ueval1.
+      repeat match goal with
+      | [|- context [pad _ _ ?U ]] => remember U as U'
+      end.
+      unfold pad.
+      assert(L : a + 1 <= n).
+      { inversion H; subst.
+        specialize (H5 a (or_introl eq_refl)).
+        omega.
+      }
+      bdestruct (a + 1 <=? n); bdestructΩ (a + 1 <=? n+k).
+      setoid_rewrite (kron_assoc _ _ _ _ _ _ (I (2^a) ⊗ U')).
+      rewrite id_kron. unify_pows_two.
+      replace (n - 1 - a + k) with (n + k - 1 - a) by omega.
+      reflexivity.
+    + destruct l as [| a [|b[|]]]; try (rewrite id_kron; unify_pows_two; reflexivity).
+      unfold ueval_cnot.
+      inversion H; subst.
+      assert (La : a < n) by (apply H5; simpl; auto).
+      assert (Lb : b < n) by (apply H5; simpl; auto).
+      clear -La Lb.
+      unfold pad.
+      bdestruct (a <? b); bdestructΩ (b <? a); try (rewrite id_kron; unify_pows_two; reflexivity).
+      * bdestructΩ (a + S (b - a - 1 + 1) <=? n).
+        bdestructΩ (a + S (b - a - 1 + 1) <=? n + k).
+        setoid_rewrite (kron_assoc _ _ _ _ _ _ _ _  (I (2^k))).
+        rewrite id_kron.
+        unify_pows_two.
+        rewrite Nat.sub_add by omega.
+        rewrite Nat.add_sub_swap by omega.
+        rewrite Nat.add_sub_swap by omega.
+        reflexivity.
+      * bdestructΩ (b + S (a - b - 1 + 1) <=? n).
+        bdestructΩ (b + S (a - b - 1 + 1) <=? n + k).
+        setoid_rewrite (kron_assoc _ _ _ _ _ _ _ _  (I (2^k))).
+        rewrite id_kron.
+        unify_pows_two.
+        rewrite Nat.sub_add by omega.
+        rewrite Nat.add_sub_swap by omega.
+        rewrite Nat.add_sub_swap by omega.
+        reflexivity.
 Qed.
- 
-Lemma rm_nots_sound : forall c, c ≡ rm_nots c.
-Proof.
-  intros c dim.
-  unfold rm_nots.
-  rewrite <- propagate_nots_sound.
-  apply flatten_sound.
-Qed.
-
-Definition q1 : nat := 0.
-Definition q2 : nat := 1.
-Definition q3 : nat := 2.
-Definition example1 : ucom := ((X q1; H q2); ((X q1; X q2); (CNOT q3 q2; X q2))).
-Compute (flatten example1).
-Compute (rm_nots example1).
-Definition example2 : ucom := ((X q1; X q2); X q3).
-Compute (flatten example2).
-Compute (rm_nots example2).
-
 
 Ltac prove_wt :=
   repeat match goal with
@@ -816,3 +501,5 @@ Proof.
   [| apply IHc1 | apply IHc2 | apply IHc2 | | | | apply (in_bounds_pad _ _ 1%nat) | | ]; 
   inversion H; assumption.
 Qed.
+
+
