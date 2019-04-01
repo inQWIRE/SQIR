@@ -1,4 +1,4 @@
-all: UnitarySem.vo Dirac.vo
+all: Teleport.vo 
 
 Prelim.vo: Prelim.v 
 	coqc Prelim.v
@@ -20,6 +20,15 @@ SQIMP.vo : SQIMP.v
 
 UnitarySem.vo: UnitarySem.v SQIMP.vo Quantum.vo
 	coqc UnitarySem.v
+
+DensitySem.vo: DensitySem.v UnitarySem.vo
+	coqc DensitySem.v
+
+NDSem.vo: NDSem.v UnitarySem.vo
+	coqc NDSem.v
+
+Teleport.vo: Teleport.v DensitySem.vo NDSem.vo Dirac.vo
+	coqc Teleport.v
 
 clean:
 	rm -f *.vo *.glob
