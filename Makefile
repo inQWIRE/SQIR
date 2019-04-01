@@ -1,4 +1,6 @@
-all: Teleport.vo 
+core: NDSem.vo DensitySem.vo 
+
+all: GHZ.vo Transformations.vo Deutsch.vo Superdense.vo Teleport.vo 
 
 Prelim.vo: Prelim.v 
 	coqc Prelim.v
@@ -26,6 +28,20 @@ DensitySem.vo: DensitySem.v UnitarySem.vo
 
 NDSem.vo: NDSem.v UnitarySem.vo
 	coqc NDSem.v
+
+# Examples
+
+GHZ.vo : GHZ.v UnitarySem.vo
+	coqc GHZ.v
+
+Transformations.vo : Transformations.v UnitarySem.vo
+	coqc Transformations.v
+
+Superdense.vo : Superdense.v UnitarySem.vo
+	coqc Superdense.v
+
+Deutsch.vo : Deutsch.v UnitarySem.vo
+	coqc Deutsch.v
 
 Teleport.vo: Teleport.v DensitySem.vo NDSem.vo Dirac.vo
 	coqc Teleport.v
