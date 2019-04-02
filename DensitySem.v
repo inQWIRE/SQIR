@@ -1,6 +1,9 @@
 Require Export SQIMP.
 Require Export Quantum.
 Require Export UnitarySem.
+Require Import Setoid.
+
+Local Open Scope com_scope.
 
 Fixpoint c_eval (dim : nat) (c : com) : Superoperator (2^dim) (2^dim) :=
   match c with
@@ -39,3 +42,46 @@ Proof.
   - simpl. reflexivity.
 Qed.
 *)
+
+Definition c_equiv (c1 c2 : com) := forall dim, c_eval dim c1 = c_eval dim c2.
+
+Infix "≡" := c_equiv : com_scope.
+
+Lemma c_equiv_refl : forall c1, c1 ≡ c1. 
+Proof. easy. Qed.
+
+Lemma c_equiv_sym : forall c1 c2, c1 ≡ c2 -> c2 ≡ c1. 
+Proof. easy. Qed.
+
+Lemma c_equiv_trans : forall c1 c2 c3, c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
+Proof. intros c1 c2 c3 H12 H23 dim. rewrite H12. easy. Qed.
+
+Lemma seq_assoc : forall c1 c2 c3, ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
+Proof.
+  intros c1 c2 c3 dim. simpl.
+  unfold compose_super.
+  easy.
+Qed.
+
+Lemma seq_congruence : forall c1 c1' c2 c2',
+    c1 ≡ c1' ->
+    c2 ≡ c2' ->
+    c1 ; c2 ≡ c1' ; c2'.
+Proof.
+  intros c1 c1' c2 c2' Ec1 Ec2 dim.
+  simpl.
+  rewrite Ec1, Ec2.
+  reflexivity.
+Qed.
+
+(* "Parametric" isn't necessary, just displays better *)
+Add Parametric Relation : com c_equiv 
+  reflexivity proved by c_equiv_refl
+  symmetry proved by c_equiv_sym
+  transitivity proved by c_equiv_trans
+  as uc_equiv_rel.
+
+Add Parametric Morphism : seq 
+  with signature c_equiv ==> c_equiv ==> c_equiv as useq_mor.
+Proof. intros x y H x0 y0 H0. apply seq_congruence; easy. Qed.
+

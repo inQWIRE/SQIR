@@ -1,5 +1,6 @@
 Require Export SQIMP.
 Require Export Quantum.
+Require Import Setoid.
 
 Open Scope ucom_scope.
 
@@ -124,8 +125,14 @@ Definition uc_equiv (c1 c2 : ucom) := forall dim, uc_eval dim c1 = uc_eval dim c
 
 Infix "≡" := uc_equiv : ucom_scope.
 
+Lemma uc_equiv_refl : forall c1, c1 ≡ c1. 
+Proof. easy. Qed.
+
 Lemma uc_equiv_sym : forall c1 c2, c1 ≡ c2 -> c2 ≡ c1. 
 Proof. easy. Qed.
+
+Lemma uc_equiv_trans : forall c1 c2 c3, c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
+Proof. intros c1 c2 c3 H12 H23 dim. rewrite H12. easy. Qed.
 
 Lemma useq_assoc : forall c1 c2 c3, ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
 Proof.
@@ -143,6 +150,22 @@ Proof.
   rewrite Ec1, Ec2.
   reflexivity.
 Qed.
+
+Add Relation ucom uc_equiv 
+  reflexivity proved by uc_equiv_refl
+  symmetry proved by uc_equiv_sym
+  transitivity proved by uc_equiv_trans
+  as uc_equiv_rel.
+
+Add Morphism useq 
+  with signature (@uc_equiv) ==> (@uc_equiv) ==> (@uc_equiv) as useq_mor.
+Proof. intros x y H x0 y0 H0. apply useq_congruence; easy. Qed.
+
+Lemma test_rel : forall c1 c2, c1 ≡ c2 -> c2 ≡ c1.
+Proof. intros. rewrite H. reflexivity. Qed.
+
+Lemma test_mor : forall c1 c2, c1 ≡ c2 -> c2 ; c1 ≡ c1 ; c1.
+Proof. intros. rewrite H. reflexivity. Qed.
 
 (** Example Equivalences **)
 
