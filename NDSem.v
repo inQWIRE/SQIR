@@ -29,6 +29,7 @@ Inductive nd_eval {dim : nat} : com -> Vector (2^dim) -> Vector (2^dim) -> Prop 
       meas n / ψ ⇩ (scale (/(norm ψ')) ψ') 
   | nd_reset0 : forall n (ψ : Vector (2^dim)),
       let ψ' := @pad 2 n dim (∣0⟩⟨0∣) × ψ in 
+      norm ψ' <> 0%R ->
       meas n / ψ ⇩ (scale (/(norm ψ')) ψ') 
   | nd_reset1 : forall n (ψ : Vector (2^dim)),
       let ψ' := @pad 2 n dim (∣0⟩⟨1∣) × ψ in (* is this right? *)
@@ -65,3 +66,20 @@ Proof.
       simpl; rewrite Mmult_assoc; easy.
     + simpl; constructor.
 Qed.
+
+Lemma nd_seq_assoc : forall dim c1 c2 c3 (ψ ψ' : Vector (2^dim)),
+    ((c1 ; c2) ; c3) / ψ ⇩ ψ' <-> (c1 ; (c2 ; c3)) / ψ ⇩ ψ'.
+Proof.
+  intros dim c1 c2 c3 ψ ψ'.
+  split; intros E.
+  - dependent destruction E.
+    dependent destruction E1.
+    econstructor; eauto.
+    econstructor; eauto.
+  - dependent destruction E.
+    dependent destruction E2.
+    econstructor; eauto.
+    econstructor; eauto.
+Qed.
+
+
