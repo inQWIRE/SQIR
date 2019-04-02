@@ -592,6 +592,9 @@ Proof. unfold Cexp. rewrite cos_PI, sin_PI. easy. Qed.
 Lemma eulers_identity2 : Cexp (PI/2) = Ci.
 Proof. unfold Cexp. rewrite cos_PI2, sin_PI2. easy. Qed.
 
+Lemma eulers0 : Cexp 0 = 1.
+Proof. unfold Cexp. rewrite cos_0, sin_0. easy. Qed.
+
 
 (*
 Definition Cexp' (θ : R) : C := cos θ + Ci * (sin θ).
