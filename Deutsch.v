@@ -9,6 +9,20 @@ Definition c1 (q r : nat) : ucom := X r.
 Definition b0 (q r : nat) : ucom := CNOT q r.
 Definition b1 (q r : nat) : ucom := CNOT q r; X r.
 
+Inductive boolean : forall dim : nat, ucom -> Set :=
+  | boolean_I : forall u, u ≡ uskip -> boolean 1 u
+  | boolean_X : forall u, u ≡ (X 0) -> boolean 1 u
+  | boolean_U : forall u u1 u2 dim, boolean dim u1 -> boolean dim u2 ->
+                uc_eval (S dim) u = (∣0⟩⟨0∣ ⊗ uc_eval dim u1) .+ (∣1⟩⟨1∣ ⊗ uc_eval dim u2) ->
+                boolean (S dim) u.
+  
+Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U)  : nat :=
+  match P with
+  | boolean_I _ _ => 0
+  | boolean_X _ _ => 1
+  | boolean_U u u1 u2 dim P1 P2 P => count P1 + count P2
+  end.
+
 Definition deutsch (U : nat -> nat -> ucom) := H 0; H 1; U 0 1; H 0.
 
 Definition balanced (q r : nat) (U : nat -> nat -> ucom) := 
