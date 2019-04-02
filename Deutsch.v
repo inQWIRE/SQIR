@@ -9,12 +9,12 @@ Definition c1 (q r : nat) : ucom := X r.
 Definition b0 (q r : nat) : ucom := CNOT q r.
 Definition b1 (q r : nat) : ucom := CNOT q r; X r.
 
-Definition deutsch (U : nat -> nat -> ucom) := H 0; H 1; U 0 1; H 0.
+Definition deutsch1 (U : nat -> nat -> ucom) := H 0; H 1; U 0 1; H 0.
 
-Definition balanced (q r : nat) (U : nat -> nat -> ucom) := 
+Definition balanced1 (q r : nat) (U : nat -> nat -> ucom) := 
   uc_eval 2 (U q r) = uc_eval 2 (b0 q r) \/ uc_eval 2 (U q r) = uc_eval 2 (b1 q r). 
 
-Definition constant (q r : nat) (U : nat -> nat -> ucom) := 
+Definition constant1 (q r : nat) (U : nat -> nat -> ucom) := 
   uc_eval 2 (U q r) = uc_eval 2 (c0 q r) \/ uc_eval 2 (U q r) = uc_eval 2 (c1 q r). 
 
 Open Scope R_scope.
@@ -35,38 +35,44 @@ Proof.
   symmetry. rewrite <- Mscale_1_l. apply f_equal2. clra. reflexivity.
 Qed.
 
-Lemma deutsch_constant_correct : 
-  forall (U : nat -> nat -> ucom), (constant 0 1 U) -> 
-     op (uc_eval 2 (deutsch U) × (∣0⟩ ⊗ ∣1⟩)) = op (∣0⟩ ⊗ ∣-⟩).
+Definition proportional {n : nat} (ψ ϕ : Vector n) := 
+  exists θ, ψ = Cexp θ .* ϕ. 
+
+Notation "ψ ∝ ϕ" := (proportional ψ ϕ) (at level 20).
+
+Lemma deutsch1_constant_correct :
+  forall (U : nat -> nat -> ucom), (constant1 0 1 U) ->
+     (uc_eval 2 (deutsch1 U) × (∣0⟩ ⊗ ∣1⟩)) ∝ (∣0⟩ ⊗ ∣-⟩).
 Proof.
   intros.
   unfold constant in H.
-  destruct H; unfold deutsch; simpl; rewrite H.
-  - unfold uc_eval, ueval1; simpl; unfold pad; simpl. 
-    rewrite kron_1_l by (apply WF_hadamard). rewrite kron_1_r. apply f_equal.
+  destruct H; unfold deutsch1; simpl; rewrite H.
+  - exists 0. rewrite eulers0. unfold uc_eval, ueval1; simpl; unfold pad; simpl. 
+    rewrite kron_1_l by (apply WF_hadamard). rewrite kron_1_r. 
     solve_matrix.
-  - unfold uc_eval, ueval1. simpl. unfold ueval1. unfold pad. simpl.
-    rewrite global_phase. apply f_equal. solve_matrix.
+  - exists PI. rewrite eulers_identity. 
+    unfold uc_eval, ueval1. simpl. unfold ueval1. unfold pad. simpl.
+    solve_matrix. 
 Qed.
 
-Lemma deutsch_balanced_correct :
-  forall (U : nat -> nat -> ucom), (balanced 0 1 U) -> 
-     op (uc_eval 2 (deutsch U) × (∣0⟩ ⊗ ∣1⟩)) = op (∣1⟩ ⊗ ∣-⟩).
+Lemma deutsch1_balanced_correct :
+  forall (U : nat -> nat -> ucom), (balanced1 0 1 U) -> 
+     (uc_eval 2 (deutsch1 U) × (∣0⟩ ⊗ ∣1⟩)) ∝ (∣1⟩ ⊗ ∣-⟩).
 Proof.
-  intros. unfold balanced in H.
-  destruct H; unfold deutsch; simpl; rewrite H.
-  - unfold uc_eval, ueval1. simpl. unfold pad. simpl. unfold ueval_cnot. simpl.
-    rewrite kron_1_l by (apply WF_hadamard). rewrite kron_1_r. apply f_equal.
+  intros. unfold balanced1 in H.
+  destruct H; unfold deutsch1; simpl; rewrite H.
+  - exists 0. rewrite eulers0. 
+    unfold uc_eval, ueval1. simpl. unfold pad. simpl. unfold ueval_cnot. simpl.
+    rewrite kron_1_l by (apply WF_hadamard). rewrite kron_1_r. 
     unfold pad. simpl.
     solve_matrix.
-  - unfold uc_eval, ueval1. simpl. unfold ueval_cnot, ueval1. simpl.
+  - exists PI. rewrite eulers_identity. 
+    unfold uc_eval, ueval1. simpl. unfold ueval_cnot, ueval1. simpl.
     unfold pad. simpl.
     repeat rewrite kron_1_l by (apply WF_hadamard). 
     repeat rewrite kron_1_r. 
-    rewrite global_phase. apply f_equal.
     solve_matrix.
 Qed.
-
 
 (* MOVE ELSEWHERE! *)
 Fixpoint enumerate_bool_lists (len : nat) : list (list bool) :=
