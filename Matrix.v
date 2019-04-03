@@ -13,6 +13,9 @@ Bind Scope nat_scope with nat.
 Bind Scope R_scope with R.
 Bind Scope C_scope with C.
 
+(* TODO: Use matrix equality everywhere, declare equivalence relation *)
+(* TODO: Make all nat arguments to matrix lemmas implicit *)
+
 (*******************************************)
 (** Matrix Definitions and Infrastructure **)
 (*******************************************)
@@ -21,7 +24,7 @@ Definition Matrix (m n : nat) := nat -> nat -> C.
 
 (* Definition Vector (n : nat) := Matrix n 1. *)
 
-Definition WF_Matrix (m n: nat) (A : Matrix m n) : Prop := 
+Definition WF_Matrix {m n: nat} (A : Matrix m n) : Prop := 
   forall x y, x >= m \/ y >= n -> A x y = C0. 
 
 Notation Vector n := (Matrix n 1).
@@ -47,8 +50,8 @@ Lemma mat_equiv_refl : forall m n (A : Matrix m n), mat_equiv A A.
 Proof. unfold mat_equiv; reflexivity. Qed.
 
 Lemma mat_equiv_eq : forall {m n : nat} (A B : Matrix m n),
-  WF_Matrix m n A -> 
-  WF_Matrix m n B -> 
+  WF_Matrix A -> 
+  WF_Matrix B -> 
   mat_equiv A B ->
   A = B.
 Proof.
@@ -87,7 +90,7 @@ Definition list2D_to_matrix (l : list (list C)) :
 Lemma WF_list2D_to_matrix : forall m n li, 
     length li = m ->
     (forall li', In li' li -> length li' = n)  ->
-    WF_Matrix m n (list2D_to_matrix li).
+    @WF_Matrix m n (list2D_to_matrix li).
 Proof.
   intros m n li L F x y [l | r].
   - unfold list2D_to_matrix. 
@@ -469,19 +472,19 @@ Qed.
 
 Open Scope nat_scope.
 
-Lemma WF_Zero : forall m n : nat, WF_Matrix m n (@Zero m n).
+Lemma WF_Zero : forall m n : nat, WF_Matrix (@Zero m n).
 Proof. intros m n. unfold WF_Matrix. reflexivity. Qed.
 
-Lemma WF_I : forall n : nat, WF_Matrix n n (I n). 
+Lemma WF_I : forall n : nat, WF_Matrix (I n). 
 Proof. 
   unfold WF_Matrix, I. intros n x y H. simpl.
   destruct H; bdestruct (x =? y); bdestruct (x <? n); trivial; omega.
 Qed.
 
-Lemma WF_I1 : WF_Matrix 1 1 (I 1). Proof. apply WF_I. Qed.
+Lemma WF_I1 : WF_Matrix (I 1). Proof. apply WF_I. Qed.
 
 Lemma WF_scale : forall {m n : nat} (r : C) (A : Matrix m n), 
-  WF_Matrix m n A -> WF_Matrix m n (scale r A).
+  WF_Matrix A -> WF_Matrix (scale r A).
 Proof.
   unfold WF_Matrix, scale.
   intros m n r A H x y H0. simpl.
@@ -491,7 +494,7 @@ Proof.
 Qed.
 
 Lemma WF_plus : forall {m n} (A B : Matrix m n), 
-  WF_Matrix m n A -> WF_Matrix m n B -> WF_Matrix m n (A .+ B).
+  WF_Matrix A -> WF_Matrix B -> WF_Matrix (A .+ B).
 Proof.
   unfold WF_Matrix, Mplus.
   intros m n A B H H0 x y H1. simpl.
@@ -501,7 +504,7 @@ Proof.
 Qed.
 
 Lemma WF_mult : forall {m n o : nat} (A : Matrix m n) (B : Matrix n o), 
-  WF_Matrix m n A -> WF_Matrix n o B -> WF_Matrix m o (A × B).
+  WF_Matrix A -> WF_Matrix B -> WF_Matrix (A × B).
 Proof.
   unfold WF_Matrix, Mmult.
   intros m n o A B H H0 x y D. simpl.
@@ -513,7 +516,7 @@ Qed.
 
 Lemma WF_kron : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix o p), 
                   q = m * o -> r = n * p -> 
-                  WF_Matrix m n A -> WF_Matrix o p B -> WF_Matrix q r (A ⊗ B).
+                  WF_Matrix A -> WF_Matrix B -> @WF_Matrix q r (A ⊗ B).
 Proof.
   unfold WF_Matrix, kron.
   intros m n o p q r A B Nn No H H0 x y H1. subst.
@@ -533,25 +536,49 @@ Proof.
   assumption.
 Qed. 
 
+
+(* More succinct but sometimes doesn't succeed 
+Lemma WF_kron : forall {m n o p: nat} (A : Matrix m n) (B : Matrix o p), 
+                  WF_Matrix A -> WF_Matrix B -> WF_Matrix (A ⊗ B).
+Proof.
+  unfold WF_Matrix, kron.
+  intros m n o p A B WFA WFB x y H.
+  bdestruct (o =? 0). rewrite WFB; [clra|omega]. 
+  bdestruct (p =? 0). rewrite WFB; [clra|omega].  
+  rewrite WFA.
+  rewrite Cmult_0_l; reflexivity.
+  destruct H.
+  unfold ge in *.
+  left. 
+  apply Nat.div_le_lower_bound; trivial.
+  rewrite Nat.mul_comm.
+  assumption.
+  right.
+  apply Nat.div_le_lower_bound; trivial.
+  rewrite Nat.mul_comm.
+  assumption.
+Qed. 
+*)
+
 Lemma WF_transpose : forall {m n : nat} (A : Matrix m n), 
-                     WF_Matrix m n A -> WF_Matrix n m A⊤. 
+                     WF_Matrix A -> WF_Matrix A⊤. 
 Proof. unfold WF_Matrix, transpose. intros m n A H x y H0. apply H. 
        destruct H0; auto. Qed.
 
 Lemma WF_adjoint : forall {m n : nat} (A : Matrix m n), 
-      WF_Matrix m n A -> WF_Matrix n m A†. 
+      WF_Matrix A -> WF_Matrix A†. 
 Proof. unfold WF_Matrix, adjoint, Cconj. intros m n A H x y H0. simpl. 
 rewrite H. clra. omega. Qed.
 
 Lemma WF_outer_product : forall {n} (u v : Vector n),
-    WF_Matrix n 1 u ->
-    WF_Matrix n 1 v ->
-    WF_Matrix n n (outer_product u v).
+    WF_Matrix u ->
+    WF_Matrix v ->
+    WF_Matrix (outer_product u v).
 Proof. intros. apply WF_mult; [|apply WF_adjoint]; assumption. Qed.
 
 Lemma WF_big_kron : forall n m (l : list (Matrix m n)) (A : Matrix m n), 
-                        (forall i, WF_Matrix m n (nth i l A)) ->
-                         WF_Matrix (m^(length l)) (n^(length l)) (⨂ l). 
+                        (forall i, WF_Matrix (nth i l A)) ->
+                         WF_Matrix (⨂ l). 
 Proof.                         
   intros n m l A H.
   induction l.
@@ -605,7 +632,7 @@ Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
 (** Basic Matrix Lemmas **)
 
-Lemma WF0_Zero_l :forall (n : nat) (A : Matrix 0%nat n), WF_Matrix _ _ A -> A = Zero.
+Lemma WF0_Zero_l :forall (n : nat) (A : Matrix 0%nat n), WF_Matrix A -> A = Zero.
 Proof.
   intros n A WFA.
   prep_matrix_equality.
@@ -614,7 +641,7 @@ Proof.
   omega.
 Qed.
 
-Lemma WF0_Zero_r :forall (n : nat) (A : Matrix n 0%nat), WF_Matrix _ _ A -> A = Zero.
+Lemma WF0_Zero_r :forall (n : nat) (A : Matrix n 0%nat), WF_Matrix A -> A = Zero.
 Proof.
   intros n A WFA.
   prep_matrix_equality.
@@ -623,7 +650,7 @@ Proof.
   omega.
 Qed.
 
-Lemma WF0_Zero :forall (A : Matrix 0%nat 0%nat), WF_Matrix _ _ A -> A = Zero.
+Lemma WF0_Zero :forall (A : Matrix 0%nat 0%nat), WF_Matrix A -> A = Zero.
 Proof.
   apply WF0_Zero_l.
 Qed.
@@ -723,7 +750,7 @@ Proof.
 Qed.  
 
 Lemma Mmult_1_l: forall (m n : nat) (A : Matrix m n), 
-  WF_Matrix m n A -> I m × A = A.
+  WF_Matrix A -> I m × A = A.
 Proof.
   intros m n A H.
   apply mat_equiv_eq; trivial.
@@ -771,7 +798,7 @@ Proof.
 Qed.  
 
 Lemma Mmult_1_r: forall (m n : nat) (A : Matrix m n), 
-  WF_Matrix m n A -> A × I n = A.
+  WF_Matrix A -> A × I n = A.
 Proof.
   intros m n A H.
   apply mat_equiv_eq; trivial.
@@ -781,7 +808,7 @@ Qed.
 
 (* Cool facts about I∞, not used in the development *) 
 Lemma Mmult_inf_l : forall(m n : nat) (A : Matrix m n),
-  WF_Matrix m n A -> I∞ × A = A.
+  WF_Matrix A -> I∞ × A = A.
 Proof. 
   intros m n A H.
   prep_matrix_equality.
@@ -803,7 +830,7 @@ Proof.
 Qed.
 
 Lemma Mmult_inf_r : forall(m n : nat) (A : Matrix m n),
-  WF_Matrix m n A -> A × I∞ = A.
+  WF_Matrix A -> A × I∞ = A.
 Proof. 
   intros m n A H.
   prep_matrix_equality.
@@ -825,7 +852,7 @@ Proof.
 Qed.
 
 Lemma kron_0_l : forall (m n o p : nat) (A : Matrix o p), 
-  @Zero m n ⊗ A = @Zero (m * o) (n * p).
+  @Zero m n ⊗ A = Zero.
 Proof.
   intros m n o p A.
   prep_matrix_equality.
@@ -835,7 +862,7 @@ Proof.
 Qed.
 
 Lemma kron_0_r : forall (m n o p : nat) (A : Matrix m n), 
-   A ⊗ @Zero o p = @Zero (m * o) (n * p).
+   A ⊗ @Zero o p = Zero.
 Proof.
   intros m n o p A.
   prep_matrix_equality.
@@ -858,7 +885,7 @@ Qed.
 
 (* This side is more limited *)
 Lemma kron_1_l : forall (m n : nat) (A : Matrix m n), 
-  WF_Matrix m n A -> I 1 ⊗ A = A.
+  WF_Matrix A -> I 1 ⊗ A = A.
 Proof.
   intros m n A WF.
   prep_matrix_equality.
@@ -937,7 +964,7 @@ Proof.
 Qed.
 
 
-Theorem Mmult_assoc : forall (m n o p : nat) (A : Matrix m n) (B : Matrix n o) 
+Theorem Mmult_assoc : forall {m n o p : nat} (A : Matrix m n) (B : Matrix n o) 
   (C: Matrix o p), A × B × C = A × (B × C).
 Proof.
   intros m n o p A B C.
@@ -1131,7 +1158,7 @@ Qed.
 Definition Minv {n : nat} (A B : Square n) : Prop := A × B = I n /\ B × A = I n.
 
 Lemma Minv_unique : forall (n : nat) (A B C : Square n), 
-                      WF_Matrix n n A -> WF_Matrix n n B -> WF_Matrix n n C ->
+                      WF_Matrix A -> WF_Matrix B -> WF_Matrix C ->
                       Minv A B -> Minv A C -> B = C.
 Proof.
   intros n A B C WFA WFB WFC [HAB HBA] [HAC HCA].
@@ -1166,7 +1193,7 @@ Proof.
 Qed.
 
 
-Axiom kron_assoc : forall (m n o p q r : nat) (A : Matrix m n) (B : Matrix o p) 
+Axiom kron_assoc : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix o p) 
   (C : Matrix q r), (A ⊗ B ⊗ C) = A ⊗ (B ⊗ C).
 
 (*
@@ -1179,7 +1206,7 @@ Proof.
 Abort.
 *)    
 
-Lemma kron_mixed_product : forall (m n o p q r : nat) (A : Matrix m n) (B : Matrix p q ) 
+Lemma kron_mixed_product : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix p q ) 
   (C : Matrix n o) (D : Matrix q r), (A ⊗ B) × (C ⊗ D) = (A × C) ⊗ (B × D).
 Proof.
   intros m n o p q r A B C D.
@@ -1198,6 +1225,10 @@ Proof.
     omega.
 Qed.
 
+(* Arguments kron_mixed_product [m n o p q r]. *)
+
+
+(*
 (* A more explicit version, for when typechecking fails *)
 Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
     (A : Matrix m n) (B : Matrix p q) (C : Matrix n' o) (D : Matrix q' r),
@@ -1206,6 +1237,7 @@ Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
   (@Mmult mp nq or (@kron m n p q A B) (@kron n' o q' r C D)) =
   (@kron m o p r (@Mmult m n o A C) (@Mmult p q r B D)).
 Proof. intros. subst. apply kron_mixed_product. Qed.
+*)
 
 Lemma Mplus_tranpose : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
   (A .+ B)⊤ = A⊤ .+ B⊤.
@@ -1238,7 +1270,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma Mmult_adjoint : forall (m n o : nat) (A : Matrix m n) (B : Matrix n o),
+Lemma Mmult_adjoint : forall {m n o : nat} (A : Matrix m n) (B : Matrix n o),
       (A × B)† = B† × A†.
 Proof.
   intros m n o A B.
@@ -1252,7 +1284,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma kron_adjoint : forall (m n o p : nat) (A : Matrix m n) (B : Matrix o p ),
+Lemma kron_adjoint : forall {m n o p : nat} (A : Matrix m n) (B : Matrix o p),
   (A ⊗ B)† = A† ⊗ B†.
 Proof. 
   intros. unfold adjoint, kron. 
@@ -1313,15 +1345,15 @@ Lemma outer_product_kron : forall m n (φ : Matrix m 1) (ψ : Matrix n 1),
     outer_product φ φ ⊗ outer_product ψ ψ = outer_product (φ ⊗ ψ) (φ ⊗ ψ).
 Proof. 
   intros. unfold outer_product. 
-  specialize (kron_adjoint _ _ _ _ φ ψ) as KT. 
+  specialize (kron_adjoint φ ψ) as KT. 
   simpl in *. rewrite KT.
-  specialize (kron_mixed_product _ _ _ _ _ _ φ ψ (φ†) (ψ†)) as KM. 
+  specialize (kron_mixed_product φ ψ (φ†) (ψ†)) as KM. 
   simpl in *. rewrite KM.
   reflexivity.
 Qed.
 
 Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_adjoint_eq
-     Mmult_adjoint Mplus_adjoint kron_adjoint
+     @Mmult_adjoint Mplus_adjoint @kron_adjoint @kron_mixed_product
      id_adjoint_eq adjoint_involutive using 
      (auto 100 with wf_db; autorewrite with M_db; auto 100 with wf_db; omega) : M_db.
 
@@ -1332,6 +1364,75 @@ Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_adjoint_eq
    kron_1_l requires proofs of (n > 0)%nat, here we use omega. *)
 
 (* *)
+
+
+(**************)
+(* Automation *)
+(**************)
+
+(* For when autorewrite needs some extra help *)
+
+(* restore_dims: Gives default dimensions to matrix expressions 
+   (for concrete dimensions) *)
+Ltac restore_dims :=
+  repeat match goal with
+  | [ |- context[@Mmult ?m ?n ?o ?A ?B]] => progress match type of A with 
+                                          | Matrix ?m' ?n' =>
+                                            match type of B with 
+                                            | Matrix ?n'' ?o' =>
+                                              replace (@Mmult m n o A B) with
+                                                  (@Mmult m' n' o' A B) by reflexivity 
+                                            end
+                                          end
+  | [ |- context[@kron ?m ?n ?o ?p ?A ?B]] => progress match type of A with 
+                                            | Matrix ?m' ?n' =>
+                                              match type of B with 
+                                              | Matrix ?o' ?p' =>
+                                                replace (@kron m n o p A B) with
+                                                    (@kron m' n' o' p' A B) by reflexivity 
+                                              end
+                                            end
+  | [ |- context[@adjoint ?m ?n ?A]]       => progress match type of A with
+                                            | Matrix ?m' ?n' =>
+                                              replace (@adjoint m n A) with (@adjoint m' n' A) by reflexivity
+                                            end
+         end.
+
+Ltac Msimpl := autorewrite with M_db.
+
+(* Neither of these should be needed anymore. 
+Ltac Msimpl := 
+  repeat match goal with 
+  | [ |- context[(?A ⊗ ?B)†]]    => let H := fresh "H" in 
+                                  specialize (kron_adjoint _ _ _ _ A B) as H;
+                                  simpl in H; rewrite H; clear H
+  | [ |- context[(control ?U)†]] => let H := fresh "H" in 
+                                  specialize (control_sa _ U) as H;
+                                  simpl in H; rewrite H; 
+                                  [clear H | Msimpl; reflexivity]
+  | [|- context[(?A ⊗ ?B) × (?C ⊗ ?D)]] => 
+                                  let H := fresh "H" in 
+                                  specialize (kron_mixed_product _ _ _ _ _ _ A B C D);
+                                  intros H; simpl in H; rewrite H; clear H
+  | _                           => autorewrite with M_db
+  end.
+
+(* For when it needs a bit more help on kron_mixed_product (slow!) *)
+Ltac Msimpl' := 
+  repeat match goal with 
+  | [ |- context[(?A ⊗ ?B)†]]    => let H := fresh "H" in 
+                                  specialize (kron_adjoint _ _ _ _ A B) as H;
+                                  simpl in H; rewrite H; clear H
+  | [ |- context[(control ?U)†]] => let H := fresh "H" in 
+                                  specialize (control_sa _ U) as H;
+                                  simpl in H; rewrite H; 
+                                  [clear H | Msimpl; reflexivity]
+  | [|- context[(?A ⊗ ?B) × (?C ⊗ ?D)]] => setoid_rewrite kron_mixed_product';
+                                         try omega; try unify_pows_two
+  | _                           => autorewrite with M_db
+  end.
+*)
+
 
 
 
@@ -1373,6 +1474,8 @@ Ltac tac_lt m n :=
             end
   end.
 
+(* Possible TODO: We could have the tactic below use restore_dims instead of 
+   simplifying before rewriting. *)
 (* Reassociate matrices so that smallest dimensions are multiplied first:
 For (m x n) × (n x o) × (o x p):
 If m or o is the smallest, associate left
@@ -1385,24 +1488,25 @@ Ltac assoc_least :=
   repeat (simpl; match goal with
   | [|- context[@Mmult ?m ?o ?p (@Mmult ?m ?n ?o ?A ?B) ?C]] => tac_lt p o; tac_lt p m; 
        let H := fresh "H" in 
-       specialize (Mmult_assoc _ _ _ _ A B C) as H; simpl in H; rewrite H; clear H
+       specialize (Mmult_assoc A B C) as H; simpl in H; rewrite H; clear H
   | [|- context[@Mmult ?m ?o ?p (@Mmult ?m ?n ?o ?A ?B) ?C]] => tac_lt n o; tac_lt n m; 
        let H := fresh "H" in 
-       specialize (Mmult_assoc _ _ _ _ A B C) as H; simpl in H; rewrite H; clear H
+       specialize (Mmult_assoc  A B C) as H; simpl in H; rewrite H; clear H
   | [|- context[@Mmult ?m ?n ?p ?A (@Mmult ?n ?o ?p ?B ?C)]] => tac_lt m n; tac_lt m p; 
        let H := fresh "H" in 
-       specialize (Mmult_assoc _ _ _ _ A B C) as H; simpl in H; rewrite <- H; clear H
+       specialize (Mmult_assoc A B C) as H; simpl in H; rewrite <- H; clear H
   | [|- context[@Mmult ?m ?n ?p ?A (@Mmult ?n ?o ?p ?B ?C)]] => tac_lt o n; tac_lt o p; 
        let H := fresh "H" in 
-       specialize (Mmult_assoc _ _ _ _ A B C) as H; simpl in H; rewrite <- H; clear H
+       specialize (Mmult_assoc A B C) as H; simpl in H; rewrite <- H; clear H
   end).
+
 
 (* Helper function for crunch_matrix *)
 Ltac solve_out_of_bounds := 
   repeat match goal with 
-  | [H : WF_Matrix _ _ ?M |- context[?M ?a ?b] ] => 
+  | [H : WF_Matrix ?M |- context[?M ?a ?b] ] => 
       rewrite (H a b) by (left; simpl; omega) 
-  | [H : WF_Matrix _ _ ?M |- context[?M ?a ?b] ] => 
+  | [H : WF_Matrix ?M |- context[?M ?a ?b] ] => 
       rewrite (H a b) by (right; simpl; omega) 
   end;
   autorewrite with C_db; auto.
