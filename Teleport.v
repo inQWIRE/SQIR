@@ -145,15 +145,27 @@ Ltac simpl' :=
   repeat rewrite <- mult_lock;
   repeat rewrite <- pow_lock.
 
-(* Normalize: Gives default dimensions to matrix expressions *)
+(* restore_dims: Gives default dimensions to matrix expressions 
+   (for concrete dimensions) *)
 Ltac restore_dims :=
   repeat match goal with
-  | [ |- context[@Mmult ?m ?n ?o ?A ?B]] => let Matrix m' n' := type of A in 
-                                          let Matrix n'' o' := type of B in 
-                                          replace m with m' by easy
+  | [ |- context[@Mmult ?m ?n ?o ?A ?B]] => progress match type of A with 
+                                          | Matrix ?m' ?n' =>
+                                            match type of B with 
+                                            | Matrix ?n'' ?o' =>
+                                            replace (@Mmult m n o A B) with
+                                                    (@Mmult m' n' o' A B) by reflexivity 
+                                            end
+                                          end
+  | [ |- context[@kron ?m ?n ?o ?p ?A ?B]] => progress match type of A with 
+                                            | Matrix ?m' ?n' =>
+                                              match type of B with 
+                                              | Matrix ?o' ?p' =>
+                                              replace (@kron m n o p A B) with
+                                                      (@kron m' n' o' p' A B) by reflexivity 
+                                              end
+                                            end
          end.
-
-
 
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix _ _ ψ ->
@@ -164,8 +176,23 @@ Proof.
   evar (e : Vector (2^3)).  
   assert ((ueval 3 U_H [a] × (ueval 3 U_CNOT (q::[a]) × (ueval 3 U_CNOT (a::[b]) × (ueval 3 U_H [a] × (ψ ⊗ ∣ 0, 0 ⟩))))) = e).
   rewrite (ket_decomposition ψ); auto.
-  unfold ueval, ueval_cnot, ueval1, pad; simpl'; Msimpl.
+  unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl.
   setoid_rewrite cnot_decomposition.
+
+  restore_dims.
+  autorewrite with ket_db.
+  restore_dims.
+  rewrite <- kron_assoc.
+  rewrite <- kron_assoc.
+  repeat rewrite kron_mixed_product.
+  autorewrite with M_db.  
+  repeat rewrite kron_assoc.
+  autorewrite with M_db.  
+  Msimpl
+  
+  Set Printing All.
+  restore_dims.
+
   autorewrite with ket_db.
   rewrite <- kron_assoc.
   rewrite <- kron_assoc.

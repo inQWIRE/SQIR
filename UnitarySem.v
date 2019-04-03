@@ -10,10 +10,10 @@ Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
   if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else I (2^dim).
 
 Lemma WF_pad : forall n start dim (A : Square (2^n)),
-  WF_Matrix _ _ A ->
-  WF_Matrix _ _ (pad start dim A).
+  WF_Matrix A ->
+  WF_Matrix (pad start dim A).
 Proof.
-  intros n start dim A. unfold pad.
+  intros n start dim A WFA. unfold pad.
   bdestruct (start + n <=? dim); auto with wf_db.
 Qed.  
 
@@ -56,14 +56,14 @@ Fixpoint uc_eval (dim : nat) (c : ucom) : Matrix (2^dim) (2^dim) :=
 
 (** Well-formedness **)
 
-Lemma WF_ueval1 : forall dim n (u : Unitary 1), WF_Matrix _ _ (ueval1 dim n u).
+Lemma WF_ueval1 : forall dim n (u : Unitary 1), WF_Matrix (ueval1 dim n u).
 Proof.
   intros dim n u.
   apply WF_pad.
   destruct u; auto with wf_db.
 Qed.  
   
-Lemma WF_ueval_cnot : forall dim m n, WF_Matrix _ _ (ueval_cnot dim m n). 
+Lemma WF_ueval_cnot : forall dim m n, WF_Matrix (ueval_cnot dim m n). 
 Proof.
   intros dim m n.
   unfold ueval_cnot.
@@ -71,7 +71,7 @@ Proof.
     try apply WF_pad; unify_pows_two; auto 10 with wf_db.    
 Qed.  
 
-Lemma WF_ueval : forall n dim (u : Unitary n) l, WF_Matrix _ _ (ueval dim u l).
+Lemma WF_ueval : forall n dim (u : Unitary n) l, WF_Matrix (ueval dim u l).
 Proof.
   intros n dim u l.
   destruct n as [|[|[|n']]]; simpl; auto with wf_db.
@@ -81,7 +81,7 @@ Proof.
     apply WF_ueval_cnot.
 Qed.  
 
-Lemma WF_uc_eval : forall dim c, WF_Matrix _ _ (uc_eval dim c).
+Lemma WF_uc_eval : forall dim c, WF_Matrix (uc_eval dim c).
 Proof.
   intros dim c.
   induction c; simpl; auto with wf_db.
@@ -102,7 +102,9 @@ Qed.
 Lemma eval_HHpar : uc_eval 2 (H 0; H 1) = hadamard ⊗ hadamard.
 Proof.
   simpl. unfold ueval1, pad. (* have these automatically simplify *)
-  simpl. Msimpl. reflexivity.
+  simpl. restore_dims.  Msimpl. 
+  restore_dims. Msimpl. 
+  reflexivity.
 Qed.
 
 Lemma eval_HHseq : uc_eval 2 (H 0; H 0) = I 4.
@@ -186,6 +188,50 @@ Qed.
 Close Scope C_scope.
 Close Scope R_scope.
 
+Ltac unify_matrices := 
+  match goal with
+  | |- @Mmult ?m ?n ?o ?A ?B = @Mmult ?m' ?n' ?o' ?A ?B => 
+    try replace m with m' by unify_pows_two;
+    try replace n with n' by unify_pows_two;
+    try replace o with o' by unify_pows_two;
+    reflexivity
+  | |- @kron ?m ?n ?o ?p ?A ?B = @kron ?m' ?n' ?o' ?p' ?A ?B => 
+    try replace m with m' by unify_pows_two;
+    try replace n with n' by unify_pows_two;
+    try replace o with o' by unify_pows_two;
+    try replace p with p' by unify_pows_two;
+    reflexivity
+  | |- @adjoint ?m ?n ?A ?B = @adjoint ?m' ?n' ?A ?B => 
+    try replace m with m' by unify_pows_two;
+    try replace n with n' by unify_pows_two;
+    reflexivity                               
+  end.
+
+Ltac restore_dims_strong :=
+  repeat match goal with
+  | [ |- context[@Mmult ?m ?n ?o ?A ?B]] => progress match type of A with 
+                                          | Matrix ?m' ?n' =>
+                                            match type of B with 
+                                            | Matrix ?n'' ?o' =>
+                                              replace (@Mmult m n o A B) with
+                                                  (@Mmult m' n' o' A B) by unify_matrices 
+                                            end
+                                          end
+  | [ |- context[@kron ?m ?n ?o ?p ?A ?B]] => progress match type of A with 
+                                            | Matrix ?m' ?n' =>
+                                              match type of B with 
+                                              | Matrix ?o' ?p' =>
+                                                replace (@kron m n o p A B) with
+                                                    (@kron m' n' o' p' A B) by unify_matrices 
+                                              end
+                                            end
+  | [ |- context[@adjoint ?m ?n ?A]]       => progress match type of A with
+                                            | Matrix ?m' ?n' =>
+                                              replace (@adjoint m n A) with (@adjoint m' n' A) by unify_matrices
+                                            end
+         end.
+
+
 (* Shouldn't need this here? *)
 Local Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope. 
 
@@ -201,9 +247,9 @@ Proof.
   | [|- context [pad m _ ?U ]] => remember U as U'
   | [|- context [pad n _ ?V ]] => remember V as V'
   end.
-  assert (WFU : WF_Matrix _ _ U') by 
+  assert (WFU : WF_Matrix U') by 
       (destruct U; subst; auto with wf_db).
-  assert (WFV : WF_Matrix _ _ V') by 
+  assert (WFV : WF_Matrix V') by 
       (destruct V; subst; auto with wf_db).
   clear HeqU' HeqV' U V.
   unfold pad.
@@ -216,11 +262,14 @@ Proof.
     remember (dim - 1 - (m + 1 + k)) as j.
     replace (dim - 1 - m) with (k + 1 + j) by omega.
     replace (2 ^ (k + 1 + j)) with (2^k * 2 * 2^ j) by unify_pows_two.
-    repeat rewrite <- id_kron.
     simpl in *.
-    repeat rewrite kron_assoc.
-    repeat rewrite Nat.mul_assoc.
-    Msimpl'.
+    repeat rewrite <- id_kron.
+    restore_dims.
+    repeat (rewrite kron_assoc; restore_dims).
+    replace (2^dim) with (2 ^ m * 2 * 2 ^ k * 2 * 2 ^ j) by unify_pows_two.
+    clear -WFU WFV.
+    restore_dims_strong. 
+    Msimpl.
     reflexivity.
   - rename m into n, n into m.
     remember (n - m - 1) as k.
@@ -233,7 +282,12 @@ Proof.
     simpl in *.
     repeat rewrite kron_assoc.
     repeat rewrite Nat.mul_assoc.
-    Msimpl'.
+    restore_dims.
+    repeat (rewrite kron_assoc; restore_dims).
+    replace (2^dim) with (2 ^ m * 2 * 2 ^ k * 2 * 2 ^ j) by unify_pows_two.
+    clear -WFU WFV.
+    restore_dims_strong.
+    Msimpl.
     reflexivity.
 Qed.
 
@@ -283,7 +337,7 @@ Proof.
   match goal with
   | [|- context [pad q _ ?U ]] => remember U as U'
   end.
-  assert (WFU : WF_Matrix _ _ U') by 
+  assert (WFU : WF_Matrix U') by 
       (destruct U; subst; auto with wf_db).
   clear HeqU' U.
   simpl in NE;
@@ -297,7 +351,7 @@ Proof.
     remember (n0 - n - 1) as i.
     replace (2 ^ (n0 - n)) with (2 ^ i * 2) by unify_pows_two.
     repeat rewrite <- id_kron.
-    rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I 2)).
+    rewrite <- (kron_assoc _ _ (I 2)).
     bdestruct (q + 1 <=? dim); bdestruct (n + (1 + i + 1) <=? dim); 
     try solve_non_WT_cases;
     (* a couple well-formedness proofs need a little extra help *)
@@ -309,8 +363,8 @@ Proof.
       replace (2 ^ q) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j) by unify_pows_two.
       replace (2 ^ (dim - (1 + i + 1) - n)) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.
       repeat rewrite <- id_kron.
-      rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I (2 ^ k))).
-      rewrite <- (kron_assoc _ _ _ _ _ _ _ _ (I 2)).  
+      rewrite <- (kron_assoc _ _ (I (2 ^ k))).
+      rewrite <- (kron_assoc _ _ (I 2)).  
       (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
       (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j * 2 * 2 ^ k) by unify_pows_two.
       (* * *) replace (2 ^ n * (2 * 2 ^ i * 2) * (2 ^ j * 2)) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j * 2) by rewrite_assoc.
@@ -328,20 +382,29 @@ Proof.
         remember (dim - (1 + i + 1) - n) as m.
         (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
         (* TODO: You can use unify_pows_two here, but it's super slow! 
-                 How can we help Coq solve these faster? *)
-        replace (2 ^ q) with (2 ^ n * 2 * 2 ^ j) by admit. 
-        replace (2 ^ i) with (2 ^ j * 2 * 2 ^ k) by admit.    
-        replace (2 ^ (dim - 1 - q)) with (2 ^ k * 2 * 2 ^ m) by admit.
+                 How can we help Coq solve these faster? GO GO LIA!!! *)
+        replace (2 ^ q) with (2 ^ n * 2 * 2 ^ j) by unify_pows_two. 
+        replace (2 ^ i) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.    
+        replace (2 ^ (dim - 1 - q)) with (2 ^ k * 2 * 2 ^ m) by unify_pows_two.
         repeat rewrite <- id_kron.
         repeat rewrite <- kron_assoc.
-        rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ n)) _ (I (2 ^ j))).
+        rewrite (kron_assoc (I (2 ^ n)) _ (I (2 ^ j))).
+        
+        (* Something along these lines may help 
+        repeat (restore_dims; rewrite kron_assoc).
+        (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2) * 2 ^ m) by unify_pows_two.
+        clear -WFU.
+        restore_dims_strong.
+        *)
+
+
         (* * *) replace (2 ^ n * 2 * 2 ^ j) with (2 ^ n * (2 * 2 ^ j)) by rewrite_assoc.
-        rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ n)) _ U').
+        rewrite (kron_assoc (I (2 ^ n)) _ U').
         (* * *) replace (2 ^ 1) with 2 by easy.
         (* * *) replace (2 ^ n * (2 * 2 ^ j) * 2) with (2 ^ n * (2 * 2 ^ j * 2)) by rewrite_assoc.
-        rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ n)) _ (I (2 ^ k))).
+        rewrite (kron_assoc (I (2 ^ n)) _ (I (2 ^ k))).
         (* * *) replace (2 ^ n * (2 * 2 ^ j * 2) * 2 ^ k) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k)) by rewrite_assoc.
-        rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ n)) _ (I 2)).
+        rewrite (kron_assoc (I (2 ^ n)) _ (I 2)).
         (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2) * 2 ^ m) by unify_pows_two.
         (* * *) replace (2 * (2 ^ j * 2 * 2 ^ k) * 2) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by rewrite_assoc.
         (* * *) replace (2 ^ n * (2 * 2 ^ j * 2) * (2 ^ k * 2)) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2)) by rewrite_assoc.
@@ -381,15 +444,11 @@ Lemma XX_id : forall q, uskip ≡ X q; X q.
 Proof. 
   intros q dim. 
   simpl; unfold ueval1, pad. 
-  bdestruct (q + 1 <=? dim); Msimpl'; try easy.
-  simpl; replace (σx × σx) with (I (2 ^ 1)) by solve_matrix.
-  Msimpl.
-  rewrite id_kron.
-  replace (2 ^ q * 2 ^ 1) with (2 ^ (q + 1)) by unify_pows_two.
-  rewrite id_kron.
+  bdestruct (q + 1 <=? dim); restore_dims_strong; Msimpl; try easy.
+  simpl; replace (σx × σx) with (I 2) by solve_matrix.
+  repeat rewrite id_kron.
+  apply f_equal.
   unify_pows_two.
-  replace (q + 1 + (dim - 1 - q)) with dim by omega.
-  reflexivity.
 Qed.
 
 (* I did my best to keep this proof clean, but I struggled with 
@@ -416,15 +475,15 @@ Proof.
     replace (2 ^ t) with (2 ^ c * 2 * 2 ^ i) by unify_pows_two.
     replace (2 ^ (t - c)) with (2 ^ i * 2) by unify_pows_two.
     repeat rewrite <- id_kron.
-    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) _ (I (2 ^ i))).
+    rewrite (kron_assoc (I (2 ^ c)) _ (I (2 ^ i))).
     (* * *) replace (2 ^ c * 2 * 2 ^ i) with (2 ^ c * (2 * 2 ^ i)) by rewrite_assoc.
-    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ c)) _ σx).
+    rewrite (kron_assoc (I (2 ^ c)) _ σx).
     (* * *) replace (2 ^ dim) with (2 ^ c * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
     (* * *) replace (2 ^ 1) with 2 by easy.
     (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
     (* * *) replace (2 ^ c * (2 * 2 ^ i) * 2) with (2 ^ c * (2 * 2 ^ i * 2)) by rewrite_assoc.
     repeat rewrite kron_mixed_product; remove_id_gates.
-    rewrite <- (kron_assoc _ _ _ _ _ _ (∣0⟩⟨0∣) (I (2 ^ i)) (I 2)).
+    rewrite <- (kron_assoc (∣0⟩⟨0∣) (I (2 ^ i)) (I 2)).
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
     repeat rewrite kron_mixed_product; remove_id_gates.
@@ -437,11 +496,11 @@ Proof.
     replace (2 ^ (dim - 1 - t)) with (2 ^ i * 2 * 2 ^ j) by unify_pows_two.
     replace (2 ^ (c - t)) with (2 * 2 ^ i) by unify_pows_two.
     repeat rewrite <- id_kron.
-    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ t)) σx _).
-    rewrite <- (kron_assoc _ _ _ _ _ _ σx _ (I (2 ^ j))).
-    rewrite <- (kron_assoc _ _ _ _ _ _ σx (I (2 ^ i)) (I 2)).
+    rewrite (kron_assoc (I (2 ^ t)) σx _).
+    rewrite <- (kron_assoc σx _ (I (2 ^ j))).
+    rewrite <- (kron_assoc σx (I (2 ^ i)) (I 2)).
     (* * *) replace (2 * (2 ^ i * 2 * 2 ^ j)) with (2 * (2 ^ i * 2) * 2 ^ j) by rewrite_assoc.
-    rewrite <- (kron_assoc _ _ _ _ _ _ (I (2 ^ t)) _ (I (2 ^ j))).
+    rewrite <- (kron_assoc (I (2 ^ t)) _ (I (2 ^ j))).
     (* * *) replace (2 ^ dim) with (2 ^ t * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
     (* * *) replace (2 ^ (1 + i + 1)) with (2 * (2 ^ i * 2)) by unify_pows_two.
     repeat rewrite kron_mixed_product; remove_id_gates.
@@ -461,7 +520,7 @@ Proof.
   - simpl. rewrite id_kron. unify_pows_two. reflexivity.
   - inversion H; subst.
     simpl. rewrite <- IHc1, <- IHc2; trivial.
-    Msimpl'; reflexivity.
+    restore_dims_strong; Msimpl; reflexivity.
   - simpl.
     unfold ueval.
     destruct n0 as [|[|[|]]]; simpl; try (rewrite id_kron; unify_pows_two; reflexivity).
@@ -477,7 +536,8 @@ Proof.
         omega.
       }
       bdestruct (a + 1 <=? n); bdestructΩ (a + 1 <=? n+k).
-      setoid_rewrite (kron_assoc _ _ _ _ _ _ (I (2^a) ⊗ U')).
+      restore_dims.
+      rewrite (kron_assoc (I (2^a) ⊗ U')).
       rewrite id_kron. unify_pows_two.
       replace (n - 1 - a + k) with (n + k - 1 - a) by omega.
       reflexivity.
@@ -491,7 +551,7 @@ Proof.
       bdestruct (a <? b); bdestructΩ (b <? a); try (rewrite id_kron; unify_pows_two; reflexivity).
       * bdestructΩ (a + S (b - a - 1 + 1) <=? n).
         bdestructΩ (a + S (b - a - 1 + 1) <=? n + k).
-        setoid_rewrite (kron_assoc _ _ _ _ _ _ _ _  (I (2^k))).
+        restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
         rewrite id_kron.
         unify_pows_two.
         rewrite Nat.sub_add by omega.
@@ -500,7 +560,7 @@ Proof.
         reflexivity.
       * bdestructΩ (b + S (a - b - 1 + 1) <=? n).
         bdestructΩ (b + S (a - b - 1 + 1) <=? n + k).
-        setoid_rewrite (kron_assoc _ _ _ _ _ _ _ _  (I (2^k))).
+        restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
         rewrite id_kron.
         unify_pows_two.
         rewrite Nat.sub_add by omega.
