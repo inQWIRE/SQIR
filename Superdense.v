@@ -53,7 +53,7 @@ Proof.
     autorewrite with ket_db C_db; auto with wf_db. (* wf_db shouldn't be req'd *)
     setoid_rewrite CNOT10_spec.
     autorewrite with ket_db C_db; auto with wf_db.
-    replace (RtoC (-1)%R) with (- C1)%C by clra. (* There shouldn't be Rs here... *)
+    replace (RtoC (-1)%R) with (- C1)%C by lca. (* There shouldn't be Rs here... *)
     autorewrite with C_db.
     rewrite <- Mplus_assoc.
     rewrite (Mplus_comm _ _ (_ .*  ∣ 0, 1 ⟩)).

@@ -94,7 +94,7 @@ Proof. solve_matrix. Qed.
 Require Import Dirac.
 
 Ltac kmp_rewrite A B C D :=
-  rewrite (kron_mixed_product' _ _ _ _ _ _ _ _ _ _ _ A B C D); simpl; unify_pows_two; try omega.
+  rewrite (kron_mixed_product' _ _ _ _ _ _ _ _ _ _ _ A B C D); simpl; unify_pows_two; try lia.
 
 Ltac destruct_seqs := 
   repeat match goal with
@@ -117,13 +117,13 @@ Proof.
   prep_matrix_equality.
   unfold scale, Mplus.
   destruct y as [|y']. 
-  2:{ rewrite H; try omega. 
+  2:{ rewrite H; try lia. 
       unfold ket, qubit0, qubit1. simpl. 
-      repeat (destruct x; try clra). 
+      repeat (destruct x; try lca). 
   }
-  destruct x as [| [| n]]; unfold ket, qubit0, qubit1; simpl; try clra.  
-  rewrite H; try omega.
-  clra.
+  destruct x as [| [| n]]; unfold ket, qubit0, qubit1; simpl; try lca.  
+  rewrite H; try lia.
+  lca.
 Qed. 
 
 Notation "∣+⟩" := (1/√2 .* ∣0⟩ .+ 1/√2 .* ∣1⟩)%C.

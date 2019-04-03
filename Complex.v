@@ -460,16 +460,16 @@ Qed.
 Lemma c_proj_eq : forall (c1 c2 : C), fst c1 = fst c2 -> snd c1 = snd c2 -> c1 = c2.  
 Proof. intros c1 c2 H1 H2. destruct c1, c2. simpl in *. subst. reflexivity. Qed.
 
-Ltac clra := eapply c_proj_eq; simpl; lra.
+Ltac lca := eapply c_proj_eq; simpl; lra.
 
-Lemma Ci2 : Ci * Ci = -C1. Proof. clra. Qed.
+Lemma Ci2 : Ci * Ci = -C1. Proof. lca. Qed.
 Lemma Copp_mult_distr_r : forall c1 c2 : C, - (c1 * c2) = c1 * - c2.
-Proof. intros; clra. Qed.
+Proof. intros; lca. Qed.
 Lemma Copp_mult_distr_l : forall c1 c2 : C, - (c1 * c2) = - c1 * c2.
-Proof. intros; clra. Qed.
-Lemma Cplus_opp_l : forall c : C, - c + c = 0. Proof. intros; clra. Qed.
-Lemma Cdouble : forall c : C, 2 * c = c + c. Proof. intros; clra. Qed.
-Lemma Copp_involutive: forall c : C, - - c = c. Proof. intros; clra. Qed.
+Proof. intros; lca. Qed.
+Lemma Cplus_opp_l : forall c : C, - c + c = 0. Proof. intros; lca. Qed.
+Lemma Cdouble : forall c : C, 2 * c = c + c. Proof. intros; lca. Qed.
+Lemma Copp_involutive: forall c : C, - - c = c. Proof. intros; lca. Qed.
 
 Lemma C0_imp : forall c : C, c <> 0 -> (fst c <> 0 \/ snd c <> 0)%R.  
 Proof. intros c H. destruct c. simpl.
@@ -542,14 +542,14 @@ Proof. intros. eapply c_proj_eq; simpl; try rewrite sqrt_sqrt; lra. Qed.
 
 (* Lemmas about Conjugates *)
 
-Lemma Cconj_R : forall r : R, r^* = r.         Proof. intros; clra. Qed.
-Lemma Cconj_0 : 0^* = 0.                  Proof. clra. Qed.
+Lemma Cconj_R : forall r : R, r^* = r.         Proof. intros; lca. Qed.
+Lemma Cconj_0 : 0^* = 0.                  Proof. lca. Qed.
 Lemma Cconj_opp : forall C, (- C)^* = - (C^*). Proof. reflexivity. Qed.
-Lemma Cconj_rad2 : (/ √2)^* = / √2.       Proof. clra. Qed.
-Lemma Cplus_div2 : /2 + /2 = 1.           Proof. clra. Qed.
-Lemma Cconj_involutive : forall c, (c^*)^* = c. Proof. intros; clra. Qed.
-Lemma Cconj_plus_distr : forall (x y : C), (x + y)^* = x^* + y^*. Proof. intros; clra. Qed.
-Lemma Cconj_mult_distr : forall (x y : C), (x * y)^* = x^* * y^*. Proof. intros; clra. Qed.
+Lemma Cconj_rad2 : (/ √2)^* = / √2.       Proof. lca. Qed.
+Lemma Cplus_div2 : /2 + /2 = 1.           Proof. lca. Qed.
+Lemma Cconj_involutive : forall c, (c^*)^* = c. Proof. intros; lca. Qed.
+Lemma Cconj_plus_distr : forall (x y : C), (x + y)^* = x^* + y^*. Proof. intros; lca. Qed.
+Lemma Cconj_mult_distr : forall (x y : C), (x * y)^* = x^* * y^*. Proof. intros; lca. Qed.
 
 Lemma Cmult_conj_real : forall (c : C), snd (c * c^*) = 0.
 Proof.
@@ -598,7 +598,7 @@ Proof. unfold Cexp. rewrite cos_0, sin_0. easy. Qed.
 
 (*
 Definition Cexp' (θ : R) : C := cos θ + Ci * (sin θ).
-Lemma Cexp_eq : forall θ, Cexp θ = Cexp' θ. Proof. intros. clra. Qed.
+Lemma Cexp_eq : forall θ, Cexp θ = Cexp' θ. Proof. intros. lca. Qed.
 *)
 
 (**************)

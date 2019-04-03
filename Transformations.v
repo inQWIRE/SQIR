@@ -112,12 +112,12 @@ Lemma rm_uskips_reduces_count : forall c,
 Proof.
   intro c.
   induction c.
-  - simpl. omega.
-  - simpl. destruct (rm_uskips c1); try omega; 
+  - simpl. lia.
+  - simpl. destruct (rm_uskips c1); try lia; 
     destruct (rm_uskips c2); 
     simpl; simpl in IHc1; simpl in IHc2;
-    omega.
-  - simpl. omega.
+    lia.
+  - simpl. lia.
 Qed.
 
 
@@ -438,10 +438,10 @@ Lemma denote_SWAP_adjacent : forall n dim,
 Proof.
   intros n dim HWT.
   simpl; unfold ueval_cnot, pad.
-  replace (n <? n + 1) with true by (symmetry; apply Nat.ltb_lt; omega).
-  bdestruct (n + 1 <? n); try (contradict H; omega).
-  replace (n + 1 - n) with 1 by omega; simpl.
-  replace (n + 2 <=? dim) with true by (symmetry; apply leb_iff; omega). 
+  replace (n <? n + 1) with true by (symmetry; apply Nat.ltb_lt; lia).
+  bdestruct (n + 1 <? n); try (contradict H; lia).
+  replace (n + 1 - n) with 1 by lia; simpl.
+  replace (n + 2 <=? dim) with true by (symmetry; apply leb_iff; lia). 
   Msimpl'.
   repeat rewrite Mmult_plus_distr_l.
   repeat rewrite Mmult_plus_distr_r.
@@ -482,11 +482,11 @@ Proof.
     replace (2 ^ (a + 2) * 2 ^ (dim - 2 - a)) with (2 ^ dim) by unify_pows_two.
     reflexivity.
   - subst. simpl; unfold ueval_cnot, pad.
-    replace (a <? a + 1) with true by (symmetry; apply Nat.ltb_lt; omega).
-    replace (a + (1 + (a + 1 - a - 1) + 1)) with (a + 2) by omega.
+    replace (a <? a + 1) with true by (symmetry; apply Nat.ltb_lt; lia).
+    replace (a + (1 + (a + 1 - a - 1) + 1)) with (a + 2) by lia.
     bdestruct (a + 2 <=? dim); bdestruct (a + 1 <? a);
-    try (contradict H0; omega);
-    try (contradict H1; omega).
+    try (contradict H0; lia);
+    try (contradict H1; lia).
     remove_id_gates.
 Qed.
 
@@ -497,16 +497,16 @@ Proof.
   remember (SWAP b (b + 1)) as s.
   simpl; unfold ueval_cnot, pad.
   bdestruct (a <? b).
-  - replace (a <? b + 1) with true  by (symmetry; apply Nat.ltb_lt; omega).
-    replace (a + (1 + (b - a - 1) + 1)) with (b + 1) by omega.
-    replace (a + (1 + (b + 1 - a - 1) + 1)) with (b + 2) by omega.
+  - replace (a <? b + 1) with true  by (symmetry; apply Nat.ltb_lt; lia).
+    replace (a + (1 + (b - a - 1) + 1)) with (b + 1) by lia.
+    replace (a + (1 + (b + 1 - a - 1) + 1)) with (b + 2) by lia.
     bdestruct (b + 2 <=? dim).
-    + replace (b + 1 <=? dim) with true by (symmetry; apply Nat.leb_le; omega).
-      subst; rewrite denote_SWAP_adjacent; try omega.
+    + replace (b + 1 <=? dim) with true by (symmetry; apply Nat.leb_le; lia).
+      subst; rewrite denote_SWAP_adjacent; try lia.
       remember (b - a - 1) as i.
-      replace (b + 1 - a - 1) with (i + 1) by omega.
+      replace (b + 1 - a - 1) with (i + 1) by lia.
       replace (2 ^ (dim - (1 + i + 1) - a)) with (2 * 2 ^ (dim - (1 + (i + 1) + 1) - a)) by unify_pows_two.
-      replace (dim - (1 + (i + 1) + 1) - a) with (dim - 2 - b) by omega.
+      replace (dim - (1 + (i + 1) + 1) - a) with (dim - 2 - b) by lia.
       replace (2 ^ (b - a)) with (2 ^ i * 2) by unify_pows_two.
       replace (2 ^ (i + 1)) with (2 ^ i * 2) by unify_pows_two.
       replace (2 ^ (b + 1 - a)) with (2 ^ i * 2 ^ 2) by unify_pows_two.
@@ -574,13 +574,13 @@ Lemma move_target_left_equiv_cnot : forall base dist,
 Proof.
   intros base dist.
   induction dist.
-  - replace (base + 0 + 1) with (base + 1) by omega; easy.
+  - replace (base + 0 + 1) with (base + 1) by lia; easy.
   - simpl; intros dim.
     remember (SWAP (base + S dist) (base + S dist + 1)) as s.
     rewrite (useq_congruence _ (s; CNOT base (base + dist + 1)) s s); try easy. 
     2: { intros dim'. apply useq_congruence; easy. }
     subst.
-    replace (base + S dist) with (base + dist + 1) by omega.
+    replace (base + S dist) with (base + dist + 1) by lia.
     apply (swap_cnot_adjacent1 base (base + dist + 1)). 
 Qed. 
 
@@ -589,14 +589,14 @@ Lemma move_target_right_equiv_cnot : forall base dist,
 Proof.
   intros base dist H.
   induction dist.
-  - replace (base - 0) with base by omega; easy.
+  - replace (base - 0) with base by lia; easy.
   - simpl; intros dim.
     remember (SWAP (base - S dist) (base - S dist + 1)) as s.
     rewrite (useq_congruence _ (s; CNOT (base + 1) (base - dist)) s s); try easy. 
     2: { intros dim'. apply useq_congruence; try easy. 
-         apply IHdist. omega. }
+         apply IHdist. lia. }
     subst.
-    replace (base - dist) with (base - S dist + 1) by omega.
+    replace (base - dist) with (base - S dist + 1) by lia.
     apply (swap_cnot_adjacent2 (base + 1) (base - S dist)). 
 Qed.
 
@@ -613,12 +613,12 @@ Proof.
     repeat (destruct l; try easy).
     bdestruct (n <? n0).
     + rewrite (move_target_left_equiv_cnot n (n0 - n - 1)).
-      replace (n + (n0 - n - 1) + 1) with n0 by omega.
+      replace (n + (n0 - n - 1) + 1) with n0 by lia.
       easy.
     + bdestruct (n0 <? n); try easy.
-      rewrite (move_target_right_equiv_cnot (n - 1) (n - n0 - 1)) by omega.
-      replace (n - 1 - (n - n0 - 1)) with n0 by omega.
-      replace (n - 1 + 1) with n by omega.
+      rewrite (move_target_right_equiv_cnot (n - 1) (n - n0 - 1)) by lia.
+      replace (n - 1 - (n - n0 - 1)) with n0 by lia.
+      replace (n - 1 + 1) with n by lia.
       easy.
 Qed.
 
@@ -638,10 +638,10 @@ Lemma move_target_left_respects_lnn : forall base dist dim,
 Proof.
   intros base dist dim H.
   induction dist.
-  - simpl. apply LNN_app_cnot; omega. 
+  - simpl. apply LNN_app_cnot; lia. 
   - simpl. 
-    repeat apply LNN_seq; try apply LNN_app_cnot; try omega.
-    apply IHdist; omega.
+    repeat apply LNN_seq; try apply LNN_app_cnot; try lia.
+    apply IHdist; lia.
 Qed. 
 
 Lemma move_target_right_respects_lnn : forall base dist dim,
@@ -650,10 +650,10 @@ Lemma move_target_right_respects_lnn : forall base dist dim,
 Proof.
   intros base dist dim H1 H2.
   induction dist.
-  - simpl. apply LNN_app_cnot; omega. 
+  - simpl. apply LNN_app_cnot; lia. 
   - simpl.
-    repeat apply LNN_seq; try apply LNN_app_cnot; try omega.
-    apply IHdist; omega.
+    repeat apply LNN_seq; try apply LNN_app_cnot; try lia.
+    apply IHdist; lia.
 Qed.
 
 (* map_to_lnn produces programs that satisfy the LNN constraint.
@@ -675,11 +675,11 @@ Proof.
     simpl. 
     assert (n < dim). { apply H0. left. reflexivity. }
     assert (n0 < dim). { apply H0. right. left. reflexivity. }
-    assert (n <> n0). { inversion H1; subst. simpl in H7. omega. }
+    assert (n <> n0). { inversion H1; subst. simpl in H7. lia. }
     bdestruct (n <? n0).
-    + apply move_target_left_respects_lnn; omega.
-    + bdestruct (n0 <? n); try (contradict H5; omega).
-      apply move_target_right_respects_lnn; omega. 
+    + apply move_target_left_respects_lnn; lia.
+    + bdestruct (n0 <? n); try (contradict H5; lia).
+      apply move_target_right_respects_lnn; lia. 
 Qed.
 
 

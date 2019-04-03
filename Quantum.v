@@ -285,7 +285,7 @@ Lemma WF_bools_to_matrix : forall l,
 Proof. 
   induction l; auto with wf_db.
   unfold bools_to_matrix in *; simpl.
-  apply WF_kron; try rewrite map_length; try omega.
+  apply WF_kron; try rewrite map_length; try lia.
   apply WF_bool_to_matrix.
   apply IHl.
 Qed.
@@ -309,8 +309,8 @@ Proof.
   unfold control, WF_Matrix in *.
   intros x y [Hx | Hy];
   bdestruct (x <? n); bdestruct (y =? x); bdestruct (n <=? x); bdestruct (n <=? y);
-    simpl; try reflexivity; try omega. 
-  all: rewrite WFU; [reflexivity|omega].
+    simpl; try reflexivity; try lia. 
+  all: rewrite WFU; [reflexivity|lia].
 Qed.
 
 Hint Resolve WF_hadamard WF_σx WF_σy WF_σz WF_cnot WF_swap WF_phase WF_control : wf_db.
@@ -350,11 +350,11 @@ Proof.
   show_wf.
   unfold Mmult, I.
   prep_matrix_equality.
-  destruct x as [| [|x]]; destruct y as [|[|y]]; try clra.
+  destruct x as [| [|x]]; destruct y as [|[|y]]; try lca.
   simpl.
   replace ((S (S x) <? 2)) with false by reflexivity.
   rewrite andb_false_r.
-  clra.
+  lca.
 Qed.
 
 Lemma σy_unitary : WF_Unitary σy.
@@ -363,11 +363,11 @@ Proof.
   show_wf.
   unfold Mmult, I.
   prep_matrix_equality.
-  destruct x as [| [|x]]; destruct y as [|[|y]]; try clra.
+  destruct x as [| [|x]]; destruct y as [|[|y]]; try lca.
   simpl.
   replace ((S (S x) <? 2)) with false by reflexivity.
   rewrite andb_false_r.
-  clra.
+  lca.
 Qed.
 
 Lemma σz_unitary : WF_Unitary σz.
@@ -376,11 +376,11 @@ Proof.
   show_wf.
   unfold Mmult, I.
   prep_matrix_equality.
-  destruct x as [| [|x]]; destruct y as [|[|y]]; try clra.
+  destruct x as [| [|x]]; destruct y as [|[|y]]; try lca.
   simpl.
   replace ((S (S x) <? 2)) with false by reflexivity.
   rewrite andb_false_r.
-  clra.
+  lca.
 Qed.
 
 Lemma phase_unitary : forall ϕ, @WF_Unitary 2 (phase_shift ϕ).
@@ -389,7 +389,7 @@ Proof.
   split; [show_wf|].
   unfold Mmult, I, phase_shift, adjoint, Cexp.
   prep_matrix_equality.
-  destruct x as [| [|x]]; destruct y as [|[|y]]; try clra.
+  destruct x as [| [|x]]; destruct y as [|[|y]]; try lca.
   - simpl.
     Csimpl.
     unfold Cconj, Cmult.
@@ -401,11 +401,11 @@ Proof.
     replace (sin ϕ * sin ϕ)%R with ((sin ϕ)²) by easy. 
     rewrite Rplus_comm.
     rewrite sin2_cos2.
-    clra.
+    lca.
   - simpl. Csimpl.
     replace ((S (S x) <? 2)) with false by reflexivity.
     rewrite andb_false_r.
-    clra.
+    lca.
 Qed.
 
 Lemma control_unitary : forall n (A : Matrix n n), 
@@ -441,38 +441,38 @@ Proof.
            bdestructΩ (y =? x).
            rewrite andb_false_r.
            bdestructΩ (n <=? x).
-           simpl. clra.
+           simpl. lca.
       * rewrite (Csum_unique 1). 
         rewrite Csum_0_bounded.
-        ++ clra.
+        ++ lca.
         ++ intros.
            rewrite andb_false_r.
            bdestructΩ (n + x <? n).
            simpl.
-           clra.
+           lca.
         ++ exists y.
            repeat rewrite andb_false_r.
            split. easy.
            split. 
            rewrite Nat.eqb_refl.
            bdestructΩ (y <? n).
-           simpl. clra.
+           simpl. lca.
            intros x Ne.
            bdestructΩ (y =? x ).
            repeat rewrite andb_false_r.
-           clra.
-    + rewrite 2 Csum_0_bounded; [clra| |].
+           lca.
+    + rewrite 2 Csum_0_bounded; [lca| |].
       * intros x L.
-        rewrite WF by (right; omega).
+        rewrite WF by (right; lia).
         bdestructΩ (n + x <? n).
         bdestructΩ (n <=? n + x).
         bdestructΩ (n <=? y).
-        clra.
+        lca.
       * intros x L.
         bdestructΩ (y =? x).
         rewrite andb_false_r.
         bdestructΩ (n <=? x).
-        simpl. clra.
+        simpl. lca.
   - simpl.
     rewrite Csum_sum.
     bdestructΩ (y <? n + (n + 0)).
@@ -501,39 +501,39 @@ Proof.
         ++ intros z L.
            bdestructΩ (z <? n).
            bdestructΩ (n <=? z).
-           bdestructΩ (x =? z); bdestructΩ (y =? z); try clra. 
+           bdestructΩ (x =? z); bdestructΩ (y =? z); try lca. 
       * bdestructΩ (n <=? x).        
         ++ rewrite Csum_0_bounded.
-           rewrite Csum_0_bounded. clra.
+           rewrite Csum_0_bounded. lca.
            ** intros z L.
               bdestructΩ (n + z <? n).
               rewrite andb_false_r.
-              clra.
+              lca.
            ** intros z L.
               bdestructΩ (z <? n).
               rewrite andb_false_r.
-              bdestructΩ (x =? z); bdestructΩ (y =? z); try clra.
+              bdestructΩ (x =? z); bdestructΩ (y =? z); try lca.
               bdestructΩ (n <=? z).
-              clra.
-        ++ rewrite 2 Csum_0_bounded; [clra| |].
+              lca.
+        ++ rewrite 2 Csum_0_bounded; [lca| |].
            ** intros z L.
               rewrite andb_false_r.
-              bdestructΩ (x =? n + z); bdestructΩ (y =? n + z); rewrite andb_false_r; clra.
+              bdestructΩ (x =? n + z); bdestructΩ (y =? n + z); rewrite andb_false_r; lca.
            ** intros z L.
               rewrite andb_false_r.
-              bdestructΩ (x =? z); bdestructΩ (y =? z); rewrite andb_false_r; clra.
-    + rewrite 2 Csum_0_bounded; [clra| |].
+              bdestructΩ (x =? z); bdestructΩ (y =? z); rewrite andb_false_r; lca.
+    + rewrite 2 Csum_0_bounded; [lca| |].
       * intros z L.
         bdestructΩ (n + z <? n). 
         bdestructΩ (n <=? n + z). 
         bdestructΩ (n <=? y).
-        rewrite (WF _ (y-n)%nat) by (right; omega).
-        clra.
+        rewrite (WF _ (y-n)%nat) by (right; lia).
+        lca.
       * intros z L.
         bdestructΩ (y =? z).
         rewrite andb_false_r.
-        rewrite (WF _ (y-n)%nat) by (right; omega).
-        destruct ((n <=? z) && (n <=? y)); clra.
+        rewrite (WF _ (y-n)%nat) by (right; lia).
+        destruct ((n <=? z) && (n <=? y)); lca.
 Qed.
 
 Lemma transpose_unitary : forall n (A : Matrix n n), WF_Unitary A -> WF_Unitary (A†).
@@ -555,10 +555,10 @@ Proof.
   apply WF_cnot.
   unfold Mmult, I.
   prep_matrix_equality.
-  do 4 (try destruct x; try destruct y; try clra).
+  do 4 (try destruct x; try destruct y; try lca).
   replace ((S (S (S (S x))) <? 4)) with (false) by reflexivity.
   rewrite andb_false_r.
-  clra.
+  lca.
 Qed.
 
 Lemma id_unitary : forall n, WF_Unitary (I n). 
@@ -577,10 +577,10 @@ Proof.
   apply WF_swap.
   unfold WF_Unitary, Mmult, I.
   prep_matrix_equality.
-  do 4 (try destruct x; try destruct y; try clra).
+  do 4 (try destruct x; try destruct y; try lca).
   replace ((S (S (S (S x))) <? 4)) with (false) by reflexivity.
   rewrite andb_false_r.
-  clra.
+  lca.
 Qed.
 
 
@@ -626,37 +626,37 @@ Definition id_sa := id_adjoint_eq.
 Lemma hadamard_sa : hadamard† = hadamard.
 Proof.
   prep_matrix_equality.
-  repeat (try destruct x; try destruct y; try clra; trivial).
+  repeat (try destruct x; try destruct y; try lca; trivial).
 Qed.
 
 Lemma σx_sa : σx† = σx.
 Proof. 
   prep_matrix_equality. 
-  repeat (try destruct x; try destruct y; try clra; trivial).
+  repeat (try destruct x; try destruct y; try lca; trivial).
 Qed.
 
 Lemma σy_sa : σy† = σy.
 Proof.
   prep_matrix_equality. 
-  repeat (try destruct x; try destruct y; try clra; trivial).
+  repeat (try destruct x; try destruct y; try lca; trivial).
 Qed.
 
 Lemma σz_sa : σz† = σz.
 Proof.
   prep_matrix_equality. 
-  repeat (try destruct x; try destruct y; try clra; trivial).
+  repeat (try destruct x; try destruct y; try lca; trivial).
 Qed.
 
 Lemma cnot_sa : cnot† = cnot.
 Proof.
   prep_matrix_equality. 
-  repeat (try destruct x; try destruct y; try clra; trivial).
+  repeat (try destruct x; try destruct y; try lca; trivial).
 Qed.
 
 Lemma swap_sa : swap† = swap.
 Proof.
   prep_matrix_equality. 
-  repeat (try destruct x; try destruct y; try clra; trivial).
+  repeat (try destruct x; try destruct y; try lca; trivial).
 Qed.
 
 Lemma control_adjoint : forall n (U : Square n), (control U)† = control (U†).
@@ -667,7 +667,7 @@ Proof.
   rewrite Nat.eqb_sym.
   bdestruct (y =? x). 
   - subst.
-    bdestruct (x <? n); bdestruct (n <=? x); try omega; simpl; clra.
+    bdestruct (x <? n); bdestruct (n <=? x); try lia; simpl; lca.
   - rewrite 2 andb_false_r.
     rewrite andb_comm.
     rewrite (if_dist _ _ _ Cconj).
@@ -689,14 +689,14 @@ Proof.
   intros ϕ.
   unfold phase_shift, adjoint.
   prep_matrix_equality.
-  destruct_m_eq; try clra.
+  destruct_m_eq; try lca.
   unfold Cexp, Cconj. 
   rewrite cos_neg, sin_neg.
   easy.
 Qed.
 
-Lemma braqubit0_sa : ∣0⟩⟨0∣† = ∣0⟩⟨0∣. Proof. mlra. Qed.
-Lemma braqubit1_sa : ∣1⟩⟨1∣† = ∣1⟩⟨1∣. Proof. mlra. Qed.
+Lemma braqubit0_sa : ∣0⟩⟨0∣† = ∣0⟩⟨0∣. Proof. lma. Qed.
+Lemma braqubit1_sa : ∣1⟩⟨1∣† = ∣1⟩⟨1∣. Proof. lma. Qed.
 
 Hint Rewrite hadamard_sa σx_sa σy_sa σz_sa cnot_sa swap_sa 
              braqubit1_sa braqubit0_sa control_adjoint phase_adjoint : M_db.
@@ -895,7 +895,7 @@ Proof.
   - rewrite trace_plus_dist.
     rewrite 2 trace_mult_dist.
     rewrite IHMixed_State1, IHMixed_State2.
-    clra.
+    lca.
 Qed.
 
 (* The following two lemmas say that for any mixed states, the elements along the 
@@ -908,7 +908,7 @@ Proof.
   induction H.
   - destruct H as [φ [[WFφ IP1] Eρ]].
     destruct (lt_dec i n). 
-    2: rewrite Eρ; unfold Mmult, adjoint; simpl; rewrite WFφ; simpl; [lra|omega].
+    2: rewrite Eρ; unfold Mmult, adjoint; simpl; rewrite WFφ; simpl; [lra|lia].
     rewrite Eρ.
     unfold Mmult, adjoint in *.
     simpl in *.
@@ -980,7 +980,7 @@ Proof.
   + apply pure_dim1; trivial.
   + rewrite IHMixed_State1, IHMixed_State2.
     prep_matrix_equality.
-    clra.
+    lca.
 Qed.  
 
 
@@ -1148,22 +1148,22 @@ Lemma swap_spec : forall (q q' : Vector 2), WF_Matrix q ->
 Proof.
   intros q q' WF WF'.
   solve_matrix.
-  - destruct y. clra. 
-    rewrite WF by omega. 
-    rewrite (WF' O (S y)) by omega.
-    clra.
-  - destruct y. clra. 
-    rewrite WF by omega. 
-    rewrite (WF' O (S y)) by omega.
-    clra.
-  - destruct y. clra. 
-    rewrite WF by omega. 
-    rewrite (WF' 1%nat (S y)) by omega.
-    clra.
-  - destruct y. clra. 
-    rewrite WF by omega. 
-    rewrite (WF' 1%nat (S y)) by omega.
-    clra.
+  - destruct y. lca. 
+    rewrite WF by lia. 
+    rewrite (WF' O (S y)) by lia.
+    lca.
+  - destruct y. lca. 
+    rewrite WF by lia. 
+    rewrite (WF' O (S y)) by lia.
+    lca.
+  - destruct y. lca. 
+    rewrite WF by lia. 
+    rewrite (WF' 1%nat (S y)) by lia.
+    lca.
+  - destruct y. lca. 
+    rewrite WF by lia. 
+    rewrite (WF' 1%nat (S y)) by lia.
+    lca.
 Qed.  
 
 Hint Rewrite swap_spec using (auto 100 with wf_db) : M_db.

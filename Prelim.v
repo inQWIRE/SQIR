@@ -2,16 +2,10 @@ Require Export Bool.
 Require Export Arith.
 Require Export Reals.
 Require Export Psatz.
-Require Export Omega.
 Require Export Program.
 Require Export List.
-Require Export Psatz.
 
 Export ListNotations.
-
-(* Experiment for potential speedup *)
-
-Ltac omega := try lia; Omega.omega.
 
 (* Boolean notations, lemmas *)
 
@@ -59,7 +53,7 @@ Ltac bdestruct X :=
     | destruct H as [H|H];
        [ | try first [apply not_lt in H | apply not_le in H]]].
 
-Ltac bdestructΩ X := bdestruct X; simpl; try omega.
+Ltac bdestructΩ X := bdestruct X; simpl; try lia.
 
 
 (* Distribute functions over lists *)
@@ -156,7 +150,7 @@ Proof.
   intros n L.
   destruct n; [inversion L|].  
   simpl.
-  rewrite IHm by Omega.omega.
+  rewrite IHm by lia. 
   reflexivity.
 Qed.
 
@@ -168,7 +162,7 @@ Proof.
   - apply firstn_nil.
   - destruct m; [inversion L|].
     simpl.
-    rewrite IHn by Omega.omega.
+    rewrite IHn by lia.
     reflexivity.
 Qed.
 
@@ -177,7 +171,7 @@ Proof.
   intros.
   bdestruct (m <=? n).
   - rewrite firstn_repeat_le, Min.min_l; easy.
-  - rewrite firstn_repeat_ge, Min.min_r; try omega; easy.
+  - rewrite firstn_repeat_ge, Min.min_r; try lia; easy.
 Qed.
 
 Lemma skipn_repeat : forall A (a : A) m n, skipn m (repeat a n) = repeat a (n-m).
@@ -366,7 +360,7 @@ Tactic Notation "gen" ident(X1) ident(X2) ident(X3) ident(X4) ident(X5) :=
 (* Powers of 2 *)
 (***************)
 
-Lemma double_mult : forall (n : nat), (n + n = 2 * n)%nat. Proof. intros. omega. Qed.
+Lemma double_mult : forall (n : nat), (n + n = 2 * n)%nat. Proof. intros. lia. Qed.
 Lemma pow_two_succ_l : forall x, (2^x * 2 = 2 ^ (x + 1))%nat.
 Proof. intros. rewrite mult_comm. rewrite <- Nat.pow_succ_r'. intuition. Qed.
 Lemma pow_two_succ_r : forall x, (2 * 2^x = 2 ^ (x + 1))%nat.
@@ -389,5 +383,5 @@ Ltac unify_pows_two :=
   | [ |- context[ (2^?x + 2^?x)%nat]]       => rewrite double_pow 
   | [ |- context[ (2^?x * 2^?y)%nat]]       => rewrite <- Nat.pow_add_r 
   | [ |- context[ (?a + (?b + ?c))%nat ]]   => rewrite plus_assoc 
-  | [ |- (2^?x = 2^?y)%nat ]                => apply pow_components; try omega 
+  | [ |- (2^?x = 2^?y)%nat ]                => apply pow_components; try lia 
   end.

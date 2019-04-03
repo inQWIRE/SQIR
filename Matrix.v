@@ -61,8 +61,8 @@ Proof.
   bdestruct (x <? m).
   bdestruct (y <? n).
   + specialize (Eq (exist _ x H) (exist _ y H0)). apply Eq.
-  + rewrite WFA, WFB; trivial; right; try omega.
-  + rewrite WFA, WFB; trivial; left; try omega.
+  + rewrite WFA, WFB; trivial; right; try lia.
+  + rewrite WFA, WFB; trivial; left; try lia.
 Qed.
 
 (* Printing *)
@@ -105,7 +105,7 @@ Proof.
     apply F in IN.
     rewrite IN. apply r.
     rewrite DEF.
-    simpl; omega.
+    simpl; lia.
 Qed.
 
 (* Example *)
@@ -234,11 +234,11 @@ Ltac destruct_m_1 :=
   end.
 Ltac destruct_m_eq := repeat (destruct_m_1; simpl).
 
-Ltac mlra := 
+Ltac lma := 
   autounfold with M_db;
   prep_matrix_equality;
   destruct_m_eq; 
-  clra.
+  lca.
 
 (******************************)
 (** Proofs about finite sums **)
@@ -253,7 +253,7 @@ Proof.
   - reflexivity.
   - simpl.
     rewrite IHn, H. 
-    clra.
+    lca.
 Qed.
 
 Lemma Csum_1 : forall f n, (forall x, f x = C1) -> Csum f n = INR n. 
@@ -263,17 +263,17 @@ Proof.
   - reflexivity.
   - simpl.
     rewrite IHn, H. 
-    destruct n; clra.    
+    destruct n; lca.    
 Qed.
 
 Lemma Csum_constant : forall c n, Csum (fun x => c) n = INR n * c.
 Proof.
   intros c n.
   induction n.
-  + simpl; clra.
+  + simpl; lca.
   + simpl.
     rewrite IHn.
-    destruct n; clra.
+    destruct n; lca.
 Qed.
 
 Lemma Csum_eq : forall f g n, f = g -> Csum f n = Csum g n.
@@ -286,11 +286,11 @@ Proof.
   - reflexivity.
   - simpl.
     rewrite IHn, H. 
-    clra.
-    omega.
+    lca.
+    lia.
     intros.
     apply H.
-    omega.
+    lia.
 Qed.
 
 Lemma Csum_eq_bounded : forall f g n, (forall x, (x < n)%nat -> f x = g x) -> Csum f n = Csum g n.
@@ -299,8 +299,8 @@ Proof.
   induction n.
   + simpl. reflexivity.
   + simpl. 
-    rewrite H by omega.
-    rewrite IHn by (intros; apply H; omega).
+    rewrite H by lia.
+    rewrite IHn by (intros; apply H; lia).
     reflexivity.
 Qed.
 
@@ -308,15 +308,15 @@ Lemma Csum_plus : forall f g n, Csum (fun x => f x + g x) n = Csum f n + Csum g 
 Proof.
   intros f g n.
   induction n.
-  + simpl. clra.
-  + simpl. rewrite IHn. clra.
+  + simpl. lca.
+  + simpl. rewrite IHn. lca.
 Qed.
 
 Lemma Csum_mult_l : forall c f n, c * Csum f n = Csum (fun x => c * f x) n.
 Proof.
   intros c f n.
   induction n.
-  + simpl; clra.
+  + simpl; lca.
   + simpl.
     rewrite Cmult_plus_distr_l.
     rewrite IHn.
@@ -327,7 +327,7 @@ Lemma Csum_mult_r : forall c f n, Csum f n * c = Csum (fun x => f x * c) n.
 Proof.
   intros c f n.
   induction n.
-  + simpl; clra.
+  + simpl; lca.
   + simpl.
     rewrite Cmult_plus_distr_r.
     rewrite IHn.
@@ -338,7 +338,7 @@ Lemma Csum_conj_distr : forall f n, (Csum f n) ^* = Csum (fun x => (f x)^*) n.
 Proof. 
   intros f n.
   induction n.
-  + simpl; clra.
+  + simpl; lca.
   + simpl. 
     rewrite Cconj_plus_distr.
     rewrite IHn.
@@ -352,7 +352,7 @@ Lemma Csum_extend_l : forall n f, f O + Csum (fun x => f (S x)) n = Csum f (S n)
 Proof.
   intros n f.
   induction n.
-  + simpl; clra.
+  + simpl; lca.
   + simpl.
     rewrite Cplus_assoc.
     rewrite IHn.
@@ -365,20 +365,20 @@ Lemma Csum_unique : forall k (f : nat -> C) n,
   Csum f n = k.
 Proof.                    
   intros k f n [x [L [Eq Unique]]].
-  induction n; try omega.
+  induction n; try lia.
   Search Csum.
   rewrite <- Csum_extend_r.
   destruct (Nat.eq_dec x n).
   - subst. 
     rewrite Csum_0_bounded.
-    clra.
+    lca.
     intros.
     apply Unique.
-    omega.
+    lia.
   - rewrite Unique by easy.
     Csimpl.
     apply IHn.
-    omega.
+    lia.
 Qed.    
 
 Lemma Csum_sum : forall m n f, Csum f (m + n) = 
@@ -408,7 +408,7 @@ Lemma Csum_product : forall m n f g, n <> O ->
 Proof.
   intros.
   induction m.
-  + simpl; clra.
+  + simpl; lca.
   + simpl.      
     rewrite Cmult_plus_distr_r.
     rewrite IHm. clear IHm.
@@ -455,7 +455,7 @@ Proof.
       apply Rplus_le_compat.
       apply IHn; easy.
       apply H.
-    + assert (E: x = n) by omega.
+    + assert (E: x = n) by lia.
       rewrite E.
       simpl.
       rewrite <- Rplus_0_l at 1.
@@ -478,7 +478,7 @@ Proof. intros m n. unfold WF_Matrix. reflexivity. Qed.
 Lemma WF_I : forall n : nat, WF_Matrix (I n). 
 Proof. 
   unfold WF_Matrix, I. intros n x y H. simpl.
-  destruct H; bdestruct (x =? y); bdestruct (x <? n); trivial; omega.
+  destruct H; bdestruct (x =? y); bdestruct (x <? n); trivial; lia.
 Qed.
 
 Lemma WF_I1 : WF_Matrix (I 1). Proof. apply WF_I. Qed.
@@ -510,8 +510,8 @@ Proof.
   intros m n o A B H H0 x y D. simpl.
   apply Csum_0.
   destruct D; intros z.
-  + rewrite H; [clra | auto].
-  + rewrite H0; [clra | auto].
+  + rewrite H; [lca | auto].
+  + rewrite H0; [lca | auto].
 Qed.
 
 Lemma WF_kron : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix o p), 
@@ -520,8 +520,8 @@ Lemma WF_kron : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix o p),
 Proof.
   unfold WF_Matrix, kron.
   intros m n o p q r A B Nn No H H0 x y H1. subst.
-  bdestruct (o =? 0). rewrite H0; [clra|omega]. 
-  bdestruct (p =? 0). rewrite H0; [clra|omega]. 
+  bdestruct (o =? 0). rewrite H0; [lca|lia]. 
+  bdestruct (p =? 0). rewrite H0; [lca|lia]. 
   rewrite H.
   rewrite Cmult_0_l; reflexivity.
   destruct H1.
@@ -543,8 +543,8 @@ Lemma WF_kron : forall {m n o p: nat} (A : Matrix m n) (B : Matrix o p),
 Proof.
   unfold WF_Matrix, kron.
   intros m n o p A B WFA WFB x y H.
-  bdestruct (o =? 0). rewrite WFB; [clra|omega]. 
-  bdestruct (p =? 0). rewrite WFB; [clra|omega].  
+  bdestruct (o =? 0). rewrite WFB; [lca|lia]. 
+  bdestruct (p =? 0). rewrite WFB; [lca|lia].  
   rewrite WFA.
   rewrite Cmult_0_l; reflexivity.
   destruct H.
@@ -568,7 +568,7 @@ Proof. unfold WF_Matrix, transpose. intros m n A H x y H0. apply H.
 Lemma WF_adjoint : forall {m n : nat} (A : Matrix m n), 
       WF_Matrix A -> WF_Matrix A†. 
 Proof. unfold WF_Matrix, adjoint, Cconj. intros m n A H x y H0. simpl. 
-rewrite H. clra. omega. Qed.
+rewrite H. lca. lia. Qed.
 
 Lemma WF_outer_product : forall {n} (u v : Vector n),
     WF_Matrix u ->
@@ -608,8 +608,8 @@ Ltac show_wf :=
   let y := fresh "y" in
   let H := fresh "H" in
   intros x y [H | H];
-    repeat (destruct x; try reflexivity; try omega);
-    repeat (destruct y; try reflexivity; try omega).
+    repeat (destruct x; try reflexivity; try lia);
+    repeat (destruct y; try reflexivity; try lia).
 *)
 
 (* Much less awful *)
@@ -622,7 +622,7 @@ Ltac show_wf :=
   apply le_plus_minus in H; rewrite H;
   cbv;
   destruct_m_eq;
-  try clra.
+  try lca.
 
 (* Create HintDb wf_db. *)
 Hint Resolve WF_Zero WF_I WF_I1 WF_mult WF_plus WF_scale WF_transpose 
@@ -638,7 +638,7 @@ Proof.
   prep_matrix_equality.
   rewrite WFA.
   reflexivity.
-  omega.
+  lia.
 Qed.
 
 Lemma WF0_Zero_r :forall (n : nat) (A : Matrix n 0%nat), WF_Matrix A -> A = Zero.
@@ -647,7 +647,7 @@ Proof.
   prep_matrix_equality.
   rewrite WFA.
   reflexivity.
-  omega.
+  lia.
 Qed.
 
 Lemma WF0_Zero :forall (A : Matrix 0%nat 0%nat), WF_Matrix A -> A = Zero.
@@ -667,8 +667,8 @@ Proof.
   intros.
   unfold trace, Mplus.
   induction n.
-  - simpl. clra.
-  - simpl. rewrite IHn. clra.
+  - simpl. lca.
+  - simpl. rewrite IHn. lca.
 Qed.
 
 Lemma trace_mult_dist : forall n p (A : Square n), trace (p .* A) = (p * trace A)%C. 
@@ -676,15 +676,15 @@ Proof.
   intros.
   unfold trace, scale.
   induction n.
-  - simpl. clra.
-  - simpl. rewrite IHn. clra.
+  - simpl. lca.
+  - simpl. rewrite IHn. lca.
 Qed.
 
 Lemma Mplus_0_l : forall (m n : nat) (A : Matrix m n), Zero .+ A = A.
-Proof. intros. mlra. Qed.
+Proof. intros. lma. Qed.
 
 Lemma Mplus_0_r : forall (m n : nat) (A : Matrix m n), A .+ Zero = A.
-Proof. intros. mlra. Qed.
+Proof. intros. lma. Qed.
     
 Lemma Mmult_0_l : forall (m n o : nat) (A : Matrix n o), @Zero m n × A = Zero.
 Proof.
@@ -718,22 +718,22 @@ Lemma Mmult_1_l_gen: forall (m n : nat) (A : Matrix m n) (x z k : nat),
 Proof.  
   intros m n A x z k B.
   induction k.
-  * simpl. split. reflexivity. omega.
-  * destruct IHk as [IHl IHr]. omega.  
+  * simpl. split. reflexivity. lia.
+  * destruct IHk as [IHl IHr]. lia.  
     split.
     + intros leSkx.
       simpl.
       unfold I.
-      bdestruct (x =? k); try omega.
+      bdestruct (x =? k); try lia.
       autorewrite with C_db.
       apply IHl.
-      omega.
+      lia.
     + intros gtSkx.
       simpl in *.
       unfold I in *.
-      bdestruct (x =? k); bdestruct (x <? m); subst; try omega.
-      rewrite IHl by omega; simpl; clra.
-      rewrite IHr by omega; simpl; clra.
+      bdestruct (x =? k); bdestruct (x <? m); subst; try lia.
+      rewrite IHl by lia; simpl; lca.
+      rewrite IHr by lia; simpl; lca.
 Qed.
 
 Lemma Mmult_1_l_mat_eq : forall (m n : nat) (A : Matrix m n), I m × A ≡ A.
@@ -746,7 +746,8 @@ Proof.
   apply Nat.le_refl.
   unfold get.
   apply Hr.
-  simpl; omega.
+  simpl in *.
+  lia.
 Qed.  
 
 Lemma Mmult_1_l: forall (m n : nat) (A : Matrix m n), 
@@ -765,23 +766,23 @@ Lemma Mmult_1_r_gen: forall (m n : nat) (A : Matrix m n) (x z k : nat),
 Proof.  
   intros m n A x z k B.
   induction k.
-  simpl. split. reflexivity. omega.
+  simpl. split. reflexivity. lia.
   destruct IHk as [IHl IHr].
-  omega.
+  lia.
   split.
   + intros leSkz.
     simpl in *.
     unfold I.
-    bdestruct (k =? z); try omega.
+    bdestruct (k =? z); try lia.
     autorewrite with C_db.
-    apply IHl; omega.
+    apply IHl; lia.
   + intros gtSkz.
     simpl in *.
     unfold I in *.
     bdestruct (k =? z); subst.
-    - bdestruct (z <? n); try omega.
-      rewrite IHl by omega; clra.
-    - rewrite IHr by omega; simpl; clra.
+    - bdestruct (z <? n); try lia.
+      rewrite IHl by lia; lca.
+    - rewrite IHr by lia; simpl; lca.
 Qed.
 
 Lemma Mmult_1_r_mat_eq : forall (m n : nat) (A : Matrix m n), A × I n ≡ A.
@@ -794,7 +795,7 @@ Proof.
   apply Nat.le_refl.
   unfold get; simpl.
   apply Hr.
-  omega.
+  lia.
 Qed.  
 
 Lemma Mmult_1_r: forall (m n : nat) (A : Matrix m n), 
@@ -820,12 +821,12 @@ Proof.
   apply Csum_0_bounded.
   intros z L. 
   unfold I__inf, I.
-  bdestruct (x =? z). omega. clra.  
+  bdestruct (x =? z). lia. lca.  
   unfold I__inf, I in *.
   erewrite Csum_eq.
   apply Hr.
   assumption.
-  bdestruct (x <? m); [|omega]. 
+  bdestruct (x <? m); [|lia]. 
   apply functional_extensionality. intros. rewrite andb_true_r. reflexivity.
 Qed.
 
@@ -842,13 +843,13 @@ Proof.
   apply Csum_0_bounded.
   intros z L. 
   unfold I__inf, I.
-  bdestruct (z =? y). omega. clra.  
+  bdestruct (z =? y). lia. lca.  
   unfold I__inf, I in *.
   erewrite Csum_eq.
   apply Hr.
   assumption.
   apply functional_extensionality. intros z. 
-  bdestruct (z =? y); bdestruct (z <? n); simpl; try clra; try omega. 
+  bdestruct (z =? y); bdestruct (z <? n); simpl; try lca; try lia. 
 Qed.
 
 Lemma kron_0_l : forall (m n o p : nat) (A : Matrix o p), 
@@ -891,29 +892,29 @@ Proof.
   prep_matrix_equality.
   unfold kron.
   unfold I, kron.
-  bdestruct (m =? 0). rewrite 2 WF by omega. clra. 
-  bdestruct (n =? 0). rewrite 2 WF by omega. clra.
+  bdestruct (m =? 0). rewrite 2 WF by lia. lca. 
+  bdestruct (n =? 0). rewrite 2 WF by lia. lca.
   bdestruct (x / m <? 1); rename H1 into Eq1.
   bdestruct (x / m =? y / n); rename H1 into Eq2; simpl.
-  + assert (x / m = 0) by omega. clear Eq1. rename H1 into Eq1.
+  + assert (x / m = 0) by lia. clear Eq1. rename H1 into Eq1.
     rewrite Eq1 in Eq2.     
     symmetry in Eq2.
-    rewrite Nat.div_small_iff in Eq2 by omega.
-    rewrite Nat.div_small_iff in Eq1 by omega.
+    rewrite Nat.div_small_iff in Eq2 by lia.
+    rewrite Nat.div_small_iff in Eq1 by lia.
     rewrite 2 Nat.mod_small; trivial.
-    clra.
-  + assert (x / m = 0) by omega. clear Eq1.
+    lca.
+  + assert (x / m = 0) by lia. clear Eq1.
     rewrite H1 in Eq2. clear H1.
-    assert (y / n <> 0) by omega. clear Eq2.
-    rewrite Nat.div_small_iff in H1 by omega.
+    assert (y / n <> 0) by lia. clear Eq2.
+    rewrite Nat.div_small_iff in H1 by lia.
     rewrite Cmult_0_l.
-    destruct WF with (x := x) (y := y). omega.
+    destruct WF with (x := x) (y := y). lia.
     reflexivity.
   + rewrite andb_false_r.
-    assert (x / m <> 0) by omega. clear Eq1.
-    rewrite Nat.div_small_iff in H1 by omega.
+    assert (x / m <> 0) by lia. clear Eq1.
+    rewrite Nat.div_small_iff in H1 by lia.
     rewrite Cmult_0_l.
-    destruct WF with (x := x) (y := y). omega.
+    destruct WF with (x := x) (y := y). lia.
     reflexivity.
 Qed.
 
@@ -921,14 +922,14 @@ Theorem transpose_involutive : forall (m n : nat) (A : Matrix m n), (A⊤)⊤ = 
 Proof. reflexivity. Qed.
 
 Theorem adjoint_involutive : forall (m n : nat) (A : Matrix m n), A†† = A.
-Proof. intros. mlra. Qed.  
+Proof. intros. lma. Qed.  
 
 Lemma id_transpose_eq : forall n, (I n)⊤ = (I n).
 Proof.
   intros n. unfold transpose, I.
   prep_matrix_equality.
   bdestruct (y =? x); bdestruct (x =? y); bdestruct (y <? n); bdestruct (x <? n);
-    trivial; omega.
+    trivial; lia.
 Qed.
 
 Lemma zero_transpose_eq : forall m n, (@Zero m n)⊤ = @Zero m n.
@@ -940,7 +941,7 @@ Proof.
   unfold adjoint, I.
   prep_matrix_equality.
   bdestruct (y =? x); bdestruct (x =? y); bdestruct (y <? n); bdestruct (x <? n);
-    try omega; clra.
+    try lia; lca.
 Qed.
 
 Lemma zero_adjoint_eq : forall m n, (@Zero m n)† = @Zero n m.
@@ -974,7 +975,7 @@ Proof.
   + simpl.
     clear B.
     induction o. reflexivity.
-    simpl. rewrite IHo. clra.
+    simpl. rewrite IHo. lca.
   + simpl. 
     rewrite <- IHn.
     simpl.
@@ -1221,8 +1222,8 @@ Proof.
   + rewrite Csum_product.
     apply Csum_eq.
     apply functional_extensionality.
-    intros; clra.
-    omega.
+    intros; lca.
+    lia.
 Qed.
 
 (* Arguments kron_mixed_product [m n o p q r]. *)
@@ -1303,10 +1304,10 @@ Proof.
     destruct n.
     - simpl.
       rewrite mult_0_r.
-      bdestruct (y <? 0); try omega.
+      bdestruct (y <? 0); try lia.
       autorewrite with C_db; reflexivity.
     - bdestruct (y mod S n <? S n). 
-      2: specialize (Nat.mod_upper_bound y (S n)); intros; omega. 
+      2: specialize (Nat.mod_upper_bound y (S n)); intros; lia. 
       rewrite Cmult_1_r.
       destruct (y / S n <? m) eqn:L1, (y <? m * S n) eqn:L2; trivial.
       * apply Nat.ltb_lt in L1. 
@@ -1314,26 +1315,26 @@ Proof.
         contradict L2. 
         (* Why doesn't this lemma exist??? *)
         destruct m.
-        omega.
-        apply Nat.div_small_iff; try omega.
+        lia.
+        apply Nat.div_small_iff; try lia.
         simpl. apply Nat.neq_succ_0. 
         apply Nat.div_small in L1.
-        rewrite Nat.div_div in L1; try omega.
+        rewrite Nat.div_div in L1; try lia.
         rewrite mult_comm.
         assumption.
       * apply Nat.ltb_nlt in L1. 
         apply Nat.ltb_lt in L2. 
         contradict L1. 
-        apply Nat.div_lt_upper_bound. omega.
+        apply Nat.div_lt_upper_bound. lia.
         rewrite mult_comm.
         assumption.
   + simpl.
-    bdestruct (x / n =? y / n); simpl; try clra.
-    bdestruct (x mod n =? y mod n); simpl; try clra.
-    destruct n; try clra.    
+    bdestruct (x / n =? y / n); simpl; try lca.
+    bdestruct (x mod n =? y mod n); simpl; try lca.
+    destruct n; try lca.    
     contradict Eq.
-    rewrite (Nat.div_mod x (S n)) by omega.
-    rewrite (Nat.div_mod y (S n)) by omega.
+    rewrite (Nat.div_mod x (S n)) by lia.
+    rewrite (Nat.div_mod y (S n)) by lia.
     rewrite H, H0; reflexivity.
 Qed.
 
@@ -1355,13 +1356,13 @@ Qed.
 Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_adjoint_eq
      @Mmult_adjoint Mplus_adjoint @kron_adjoint @kron_mixed_product
      id_adjoint_eq adjoint_involutive using 
-     (auto 100 with wf_db; autorewrite with M_db; auto 100 with wf_db; omega) : M_db.
+     (auto 100 with wf_db; autorewrite with M_db; auto 100 with wf_db; lia) : M_db.
 
 (* Note on "using [tactics]": Most generated subgoals will be of the form 
    WF_Matrix M, where auto with wf_db will work.
    Occasionally WF_Matrix M will rely on rewriting to match an assumption in the 
    context, here we recursively autorewrite (which adds time). 
-   kron_1_l requires proofs of (n > 0)%nat, here we use omega. *)
+   kron_1_l requires proofs of (n > 0)%nat, here we use lia. *)
 
 (* *)
 
@@ -1428,7 +1429,7 @@ Ltac Msimpl' :=
                                   simpl in H; rewrite H; 
                                   [clear H | Msimpl; reflexivity]
   | [|- context[(?A ⊗ ?B) × (?C ⊗ ?D)]] => setoid_rewrite kron_mixed_product';
-                                         try omega; try unify_pows_two
+                                         try lia; try unify_pows_two
   | _                           => autorewrite with M_db
   end.
 *)
@@ -1505,9 +1506,9 @@ Ltac assoc_least :=
 Ltac solve_out_of_bounds := 
   repeat match goal with 
   | [H : WF_Matrix ?M |- context[?M ?a ?b] ] => 
-      rewrite (H a b) by (left; simpl; omega) 
+      rewrite (H a b) by (left; simpl; lia) 
   | [H : WF_Matrix ?M |- context[?M ?a ?b] ] => 
-      rewrite (H a b) by (right; simpl; omega) 
+      rewrite (H a b) by (right; simpl; lia) 
   end;
   autorewrite with C_db; auto.
 
@@ -1516,12 +1517,12 @@ Lemma divmod_eq : forall x y n z,
   fst (Nat.divmod x y n z) = (n + fst (Nat.divmod x y 0 z))%nat.
 Proof.
   induction x.
-  + intros. simpl. omega.
+  + intros. simpl. lia.
   + intros. simpl. 
     destruct z.
     rewrite IHx.
     rewrite IHx with (n:=1%nat).
-    omega.
+    lia.
     rewrite IHx.
     reflexivity.
 Qed.
@@ -1546,11 +1547,11 @@ Lemma divmod_0q0 : forall x q, fst (Nat.divmod x 0 q 0) = (x + q)%nat.
 Proof.
   induction x.
   - intros. simpl. reflexivity.
-  - intros. simpl. rewrite IHx. omega.
+  - intros. simpl. rewrite IHx. lia.
 Qed.
 
 Lemma divmod_0 : forall x, fst (Nat.divmod x 0 0 0) = x. 
-Proof. intros. rewrite divmod_0q0. omega. Qed.
+Proof. intros. rewrite divmod_0q0. lia. Qed.
 
 Ltac destruct_m_eq' := repeat 
   (progress (try destruct_m_1'; try rewrite divmod_0; try rewrite divmod_S; simpl)).
@@ -1623,7 +1624,7 @@ Ltac solve_matrix := assoc_least;
                      (* handle out-of-bounds *)
                      unfold Nat.ltb; simpl; try rewrite andb_false_r; 
                      (* try to solve complex equalities *)
-                     autorewrite with C_db; try clra.
+                     autorewrite with C_db; try lca.
        
 (* Tactics to show implicit arguments *)
 Definition kron' := @kron.      

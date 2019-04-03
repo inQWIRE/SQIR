@@ -56,7 +56,7 @@ Proof. solve_matrix. Qed.
 
 Lemma CNOT_spec : forall (x y : nat), (x < 2)%nat -> (y < 2)%nat -> cnot × ∣ x,y ⟩ = ∣ x, (x + y) mod 2 ⟩.
 Proof.
-  intros; destruct x as [| [|x]], y as [| [|y]]; try omega; solve_matrix.
+  intros; destruct x as [| [|x]], y as [| [|y]]; try lia; solve_matrix.
 Qed.
 
 Lemma CNOT00_spec : cnot × ∣ 0,0 ⟩ = ∣ 0,0 ⟩.
@@ -98,7 +98,7 @@ Proof. autorewrite with ket_db C_db; easy. Qed.
 Lemma XYZ1 : -Ci .* σx × σy × σz × ∣ 1 ⟩ = ∣ 1 ⟩.
 Proof. 
   autorewrite with ket_db C_db. 
-  replace (Ci * -1 * Ci) with (RtoC 1) by clra. 
+  replace (Ci * -1 * Ci) with (RtoC 1) by lca. 
   rewrite Mscale_1_l; reflexivity.
   Qed.
 
@@ -141,10 +141,10 @@ Ltac simpl_ket_2_qubit :=
        but this seemed cleaner. I don't know how this style impacts
        automation efficiency. *) 
     | [ |- context[ ?a .* ∣ ?x,?y ⟩ .+ ?b .* ∣ ?x',?y' ⟩ ] ] => 
-          assert ((x' < x) \/ (x' = x /\ y' < y)) by omega;
+          assert ((x' < x) \/ (x' = x /\ y' < y)) by lia;
           rewrite (Mplus_comm _ _ (a .* ∣ x,y ⟩) (b .* ∣ x',y' ⟩))
     | [ |- context[ ?a .+ ?b .* ∣ ?x,?y ⟩ .+ ?c .* ∣ ?x',?y' ⟩ ] ] => 
-          assert ((x' < x) \/ (x' = x /\ y' < y)) by omega;
+          assert ((x' < x) \/ (x' = x /\ y' < y)) by lia;
           rewrite (Mplus_assoc _ _ a (b .* ∣ x,y ⟩) (c .* ∣ x',y' ⟩));
           rewrite (Mplus_comm _ _ (b .* ∣ x,y ⟩) (c .* ∣ x',y' ⟩)); 
           rewrite <- (Mplus_assoc _ _ a (c .* ∣ x',y' ⟩) (b .* ∣ x,y ⟩))   
@@ -162,7 +162,7 @@ Ltac ket_eq_solver :=
   intros; autorewrite with ket_db C_db;
   try match goal with
   | [ |- ?a .* ∣ 0 ⟩ .+ ?b .* ∣ 1 ⟩ = ?a' .* ∣ 0 ⟩ .+ ?b' .* ∣ 1 ⟩ ] =>
-    replace a with a' by clra; replace b with b' by clra; reflexivity
+    replace a with a' by lca; replace b with b' by lca; reflexivity
   end.      
 
 Lemma XYZ : forall α β, -Ci .* σx × σy × σz × (α .* ∣ 0 ⟩ .+ β .* ∣ 1 ⟩) = α .* ∣ 0 ⟩ .+ β .* ∣ 1 ⟩.

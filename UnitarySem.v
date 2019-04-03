@@ -257,10 +257,10 @@ Proof.
     try Msimpl; trivial.
   bdestruct (m <? n).
   - remember (n - m - 1) as k.
-    replace n with (m + 1 + k) by omega.
+    replace n with (m + 1 + k) by lia.
     replace (2 ^ (m+1+k)) with (2^m * 2 * 2^k) by unify_pows_two.
     remember (dim - 1 - (m + 1 + k)) as j.
-    replace (dim - 1 - m) with (k + 1 + j) by omega.
+    replace (dim - 1 - m) with (k + 1 + j) by lia.
     replace (2 ^ (k + 1 + j)) with (2^k * 2 * 2^ j) by unify_pows_two.
     simpl in *.
     repeat rewrite <- id_kron.
@@ -273,10 +273,10 @@ Proof.
     reflexivity.
   - rename m into n, n into m.
     remember (n - m - 1) as k.
-    replace n with (m + 1 + k) by omega.
+    replace n with (m + 1 + k) by lia.
     replace (2 ^ (m+1+k)) with (2^m * 2 * 2^k) by unify_pows_two.
     remember (dim - 1 - (m + 1 + k)) as j.
-    replace (dim - 1 - m) with (k + 1 + j) by omega.
+    replace (dim - 1 - m) with (k + 1 + j) by lia.
     replace (2 ^ (k + 1 + j)) with (2^k * 2 * 2^ j) by unify_pows_two.
     repeat rewrite <- id_kron.
     simpl in *.
@@ -307,7 +307,7 @@ Ltac solve_non_WT_cases :=
   try unify_pows_two;
   easy.
 
-(* Several of the type rewrites are just associativity issues, and omega
+(* Several of the type rewrites are just associativity issues, and lia
    is a little slow solving these. *)
 Ltac rewrite_assoc :=
   repeat rewrite mult_assoc;
@@ -470,7 +470,7 @@ Proof.
   - bdestruct (c + (1 + (t - c - 1) + 1) <=? dim); try solve_non_WT_cases.
     (* c < t *)
     remember (t - c - 1) as i.
-    replace (dim - (1 + i + 1) - c) with (dim - 1 - t) by omega.
+    replace (dim - (1 + i + 1) - c) with (dim - 1 - t) by lia.
     remember (dim - 1 - t) as j.
     replace (2 ^ t) with (2 ^ c * 2 * 2 ^ i) by unify_pows_two.
     replace (2 ^ (t - c)) with (2 ^ i * 2) by unify_pows_two.
@@ -491,7 +491,7 @@ Proof.
     bdestruct (t + (1 + (c - t - 1) + 1) <=? dim); try solve_non_WT_cases.
     (* t < c *)
     remember (c - t - 1) as i.
-    replace (dim - (1 + i + 1) - t) with (dim - 1 - c) by omega.
+    replace (dim - (1 + i + 1) - t) with (dim - 1 - c) by lia.
     remember (dim - 1 - c) as j.
     replace (2 ^ (dim - 1 - t)) with (2 ^ i * 2 * 2 ^ j) by unify_pows_two.
     replace (2 ^ (c - t)) with (2 * 2 ^ i) by unify_pows_two.
@@ -533,13 +533,13 @@ Proof.
       assert(L : a + 1 <= n).
       { inversion H; subst.
         specialize (H5 a (or_introl eq_refl)).
-        omega.
+        lia.
       }
       bdestruct (a + 1 <=? n); bdestructΩ (a + 1 <=? n+k).
       restore_dims.
       rewrite (kron_assoc (I (2^a) ⊗ U')).
       rewrite id_kron. unify_pows_two.
-      replace (n - 1 - a + k) with (n + k - 1 - a) by omega.
+      replace (n - 1 - a + k) with (n + k - 1 - a) by lia.
       reflexivity.
     + destruct l as [| a [|b[|]]]; try (rewrite id_kron; unify_pows_two; reflexivity).
       unfold ueval_cnot.
@@ -554,18 +554,18 @@ Proof.
         restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
         rewrite id_kron.
         unify_pows_two.
-        rewrite Nat.sub_add by omega.
-        rewrite Nat.add_sub_swap by omega.
-        rewrite Nat.add_sub_swap by omega.
+        rewrite Nat.sub_add by lia.
+        rewrite Nat.add_sub_swap by lia.
+        rewrite Nat.add_sub_swap by lia.
         reflexivity.
       * bdestructΩ (b + S (a - b - 1 + 1) <=? n).
         bdestructΩ (b + S (a - b - 1 + 1) <=? n + k).
         restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
         rewrite id_kron.
         unify_pows_two.
-        rewrite Nat.sub_add by omega.
-        rewrite Nat.add_sub_swap by omega.
-        rewrite Nat.add_sub_swap by omega.
+        rewrite Nat.sub_add by lia.
+        rewrite Nat.add_sub_swap by lia.
+        rewrite Nat.add_sub_swap by lia.
         reflexivity.
 Qed.
 

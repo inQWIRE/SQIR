@@ -46,7 +46,7 @@ Proof.
   intros. unfold op.
   rewrite Mscale_adj. rewrite Mscale_mult_dist_r. rewrite Mscale_mult_dist_l.
   rewrite Cconj_R. rewrite Mscale_assoc.
-  symmetry. rewrite <- Mscale_1_l. apply f_equal2. clra. reflexivity.
+  symmetry. rewrite <- Mscale_1_l. apply f_equal2. lca. reflexivity.
 Qed.
 
 Definition proportional {n : nat} (ψ ϕ : Vector n) := 
