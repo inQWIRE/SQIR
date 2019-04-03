@@ -9,6 +9,10 @@ Require Export Psatz.
 
 Export ListNotations.
 
+(* Experiment for potential speedup *)
+
+Ltac omega := try lia; Omega.omega.
+
 (* Boolean notations, lemmas *)
 
 Notation "¬ b" := (negb b) (at level 10).
@@ -152,7 +156,7 @@ Proof.
   intros n L.
   destruct n; [inversion L|].  
   simpl.
-  rewrite IHm by omega.
+  rewrite IHm by Omega.omega.
   reflexivity.
 Qed.
 
@@ -164,7 +168,7 @@ Proof.
   - apply firstn_nil.
   - destruct m; [inversion L|].
     simpl.
-    rewrite IHn by omega.
+    rewrite IHn by Omega.omega.
     reflexivity.
 Qed.
 
