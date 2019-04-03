@@ -357,7 +357,18 @@ Qed.
 (** Circuit Mapping Example **)
 (*****************************)
 
-(* Mapping algorithm. *)
+(* Naive mapping algorithm.
+
+   Note that this definition requires the input programs to be well-typed 
+   in order to make sense. For one thing, the map_to_lnn function doesn't
+   do anything smart when a CNOT gate is applied to two arguments that are
+   the same (n1 = n2). Another issue is that move_target_left and 
+   move_target_right can produce circuits containing gate applications
+   that are well-typed starting from a CNOT that is not well-typed.
+   For example, consider the mapping of (CNOT 2 5) where dim = 4.
+
+   As a result, our soundness and correctness lemmas will need to have
+   assumptions about the well-typedness of the input circuit. *)
 Fixpoint move_target_left (base dist : nat) : ucom :=
   match dist with 
   | O => CNOT base (base + 1)
@@ -392,7 +403,7 @@ Definition q5 : nat := 5.
 Definition example3 : ucom := CNOT q1 q4; CNOT q5 q2.
 Compute (map_to_lnn example3).
 
-(* There are more interesting & general properties we can prove about SWAP, e.g.
+(* There are many more interesting & general properties we can prove about SWAP, e.g.
 
        forall a b, SWAP a b; U b; SWAP a b ≡ U a
 
@@ -490,61 +501,71 @@ Proof.
     remove_id_gates.
 Qed.
 
-Lemma swap_cnot_adjacent1 : forall a b,
-  SWAP b (b+1); CNOT a b; SWAP b (b+1) ≡ CNOT a (b+1).
+Lemma swap_cnot_adjacent1 : forall a b dim,
+  uc_well_typed dim (CNOT a (b+1)) -> 
+  uc_eval dim (SWAP b (b+1); CNOT a b; SWAP b (b+1)) = uc_eval dim (CNOT a (b+1)).
 Proof.
-  intros a b dim.
-  remember (SWAP b (b + 1)) as s.
+  intros a b dim WT.
+  inversion WT.
+(*  remember (SWAP b (b + 1)) as s.
   simpl; unfold ueval_cnot, pad.
   bdestruct (a <? b).
   - replace (a <? b + 1) with true  by (symmetry; apply Nat.ltb_lt; omega).
-    replace (a + (1 + (b - a - 1) + 1)) with (b + 1) by omega.
-    replace (a + (1 + (b + 1 - a - 1) + 1)) with (b + 2) by omega.
-    bdestruct (b + 2 <=? dim).
-    + replace (b + 1 <=? dim) with true by (symmetry; apply Nat.leb_le; omega).
-      subst; rewrite denote_SWAP_adjacent; try omega.
-      remember (b - a - 1) as i.
-      replace (b + 1 - a - 1) with (i + 1) by omega.
-      replace (2 ^ (dim - (1 + i + 1) - a)) with (2 * 2 ^ (dim - (1 + (i + 1) + 1) - a)) by unify_pows_two.
-      replace (dim - (1 + (i + 1) + 1) - a) with (dim - 2 - b) by omega.
-      replace (2 ^ (b - a)) with (2 ^ i * 2) by unify_pows_two.
-      replace (2 ^ (i + 1)) with (2 ^ i * 2) by unify_pows_two.
-      replace (2 ^ (b + 1 - a)) with (2 ^ i * 2 ^ 2) by unify_pows_two.
-      replace (2 ^ b) with (2 ^ a * 2 * 2 ^ i) by unify_pows_two.      
-      repeat rewrite <- id_kron.
-      rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) _).
-      replace (2 ^ a * 2 * 2 ^ i) with (2 ^ a * (2 * 2 ^ i)) by rewrite_assoc.
-      rewrite (kron_assoc _ _ _ _ _ _ _ _ swap).
-      rewrite <- (kron_assoc _ _ _ _ _ _ ∣0⟩⟨0∣ _ (I 2)).
-      rewrite <- (kron_assoc _ _ _ _ _ _ ∣0⟩⟨0∣ _ (I (2 ^ 2))).
-      rewrite <- (kron_assoc _ _ _ _ _ _ ∣1⟩⟨1∣ _ (I 2)).
-      replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by rewrite_assoc.
-      rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) σx).
-      rewrite <- (kron_assoc _ _ _ _ _ _ _ (I 2) (I (2 ^ (dim - 2 - b)))).
-      rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ a)) _ (I 2)).
-      replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-      rewrite kron_plus_distr_r.
-      rewrite (kron_assoc _ _ _ _ _ _ _ σx (I 2)).
-      rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) (I 2)).
-      Msimpl'.
-      (*replace (2 ^ (S i + 1 + 1)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
-      replace (2 * 2) with (2 ^ 2) by easy.
-      replace (2 ^ (S i + 2)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.*)
-      rewrite Mmult_plus_distr_r.
-      replace (2 ^ (S i + 1 + 1)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
-      replace (2 ^ (S i + 2)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
-      replace (2 ^ 2) with (2 * 2) by easy.
-      rewrite Mmult_plus_distr_l.
-      Msimpl'; try easy.
-      repeat rewrite <- (Mmult_assoc _ _ _ _ swap _ swap).
-      repeat rewrite swap_spec_general; try auto with wf_db.
-      rewrite <- id_kron.
-      simpl.
-      (* almost there *)
-      admit.
+    remember (b - a - 1) as i.
+    replace (b + 1 - a - 1) with (i + 1) by omega.
+    replace (a + (1 + i + 1) <=? dim) with true.
+    2: { symmetry; apply Nat.leb_le. omega. }
+    replace (a + (1 + (i + 1) + 1) <=? dim) with true.
+    2: { symmetry; apply Nat.leb_le. omega. }
+    (* step 1: rewrite I matrices so that the dimensions will line up *)
+    replace (2 ^ (b - a)) with (2 ^ i * 2) by unify_pows_two.
+    replace (2 ^ (i + 1)) with (2 ^ i * 2) by unify_pows_two.
+    replace (2 ^ (b + 1 - a)) with (2 ^ i * 2 ^ 2) by unify_pows_two.
+    remember (dim - (1 + (i + 1) + 1) - a) as j.
+    replace (2 ^ (dim - (1 + i + 1) - a)) with (2 * 2 ^ j) by unify_pows_two.
+    subst s. rewrite denote_SWAP_adjacent; try omega.
+    replace (2 ^ b) with (2 ^ a * 2 * 2 ^ i) by unify_pows_two.
+    replace (2 ^ (dim - 2 - b)) with (2 ^ j) by unify_pows_two.
+    repeat rewrite <- id_kron.
+    (* step 2: manually fuss with association of kronecker product *)
+    rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) _).
+    replace (2 ^ a * 2 * 2 ^ i) with (2 ^ a * (2 * 2 ^ i)) by rewrite_assoc.
+    rewrite (kron_assoc _ _ _ _ _ _ _ _ swap).
+    rewrite <- (kron_assoc _ _ _ _ _ _ ∣0⟩⟨0∣ _ (I 2)).
+    rewrite <- (kron_assoc _ _ _ _ _ _ ∣0⟩⟨0∣ _ (I (2 ^ 2))).
+    rewrite <- (kron_assoc _ _ _ _ _ _ ∣1⟩⟨1∣ _ (I 2)).
+    replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by rewrite_assoc.
+    rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) σx).
+    rewrite <- (kron_assoc _ _ _ _ _ _ _ (I 2) (I (2 ^ j))).
+    rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ a)) _ (I 2)).
+    replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+    rewrite kron_plus_distr_r.
+    rewrite (kron_assoc _ _ _ _ _ _ _ σx (I 2)).
+    rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) (I 2)).
+    (* step 3: simplify! *)
+    Msimpl'.
+    rewrite Mmult_plus_distr_r.
+    replace (2 ^ (S i + 1 + 1)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
+    replace (2 ^ (S i + 2)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
+    replace (2 ^ 2) with (2 * 2) by easy.
+    rewrite Mmult_plus_distr_l.
+    Msimpl'; try easy.
+    (* step 4: apply swap_spec_general *)
+    repeat rewrite <- (Mmult_assoc _ _ _ _ swap _ swap).
+    repeat rewrite swap_spec_general; try auto with wf_db.
+    (* step 5: fuss with types to get relfexivity to hold *)
+    rewrite <- id_kron.
+    show_dimensions.
+    replace (2 ^ (a + 1 + i + 1 + 1)) with (2 ^ (a + S i + 2)) by unify_pows_two.
+    replace (2 ^ (1 + i + 1 + 1)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
+    replace (2 ^ 2) with (2 * 2) by easy.
+    reflexivity.
+  - 
+*)
 Admitted.
 
-Lemma swap_cnot_adjacent2 : forall a b,
+
+(*Lemma swap_cnot_adjacent2 : forall a b,
   SWAP b (b+1); CNOT a (b+1); SWAP b (b+1) ≡ CNOT a b.
 Proof.
   intros a b dim.
@@ -567,15 +588,26 @@ Proof.
   2: { subst; apply swap_swap_id_adjacent. }
   rewrite uskip_id_r.
   apply uskip_id_l.  
-Qed.
+Qed.*)
 
-Lemma move_target_left_equiv_cnot : forall base dist,
-  move_target_left base dist ≡ CNOT base (base + dist + 1).
+
+Opaque SWAP.
+Lemma move_target_left_equiv_cnot : forall base dist dim,
+  uc_well_typed dim (CNOT base (base + dist + 1)) -> 
+  uc_eval dim (move_target_left base dist) = uc_eval dim (CNOT base (base + dist + 1)).
 Proof.
-  intros base dist.
+  intros base dist dim WT.
   induction dist.
   - replace (base + 0 + 1) with (base + 1) by omega; easy.
-  - simpl; intros dim.
+  - remember (SWAP (base + S dist) (base + S dist + 1)) as s.
+    rewrite (useq_congruence _ (s; CNOT base (base + dist + 1)) s s); try easy. 
+    2: { intros dim'. apply useq_congruence; easy. }
+    subst.
+    replace (base + S dist) with (base + dist + 1) by omega.
+    apply (swap_cnot_adjacent1 base (base + dist + 1)). 
+
+
+    simpl; intros dim.
     remember (SWAP (base + S dist) (base + S dist + 1)) as s.
     rewrite (useq_congruence _ (s; CNOT base (base + dist + 1)) s s); try easy. 
     2: { intros dim'. apply useq_congruence; easy. }
@@ -602,7 +634,7 @@ Qed.
 
 (* map_to_lnn is semantics-preserving *)
 Lemma map_to_lnn_sound : forall c dim, 
-  uc_eval dim c = uc_eval dim (map_to_lnn c).
+  uc_well_typed dim c -> uc_eval dim c = uc_eval dim (map_to_lnn c).
 Proof.
   intros c dim.
   induction c.
@@ -686,5 +718,73 @@ Qed.
 (*********************************)
 (** Boolean Circuit Compilation **)
 (*********************************)
+(* This is a trimmed down version of QWIRE/Oracles.v. *)
 
-(* TODO *)
+Inductive bexp := 
+| b_t   : bexp
+| b_f   : bexp
+| b_var : nat -> bexp
+| b_not : bexp -> bexp
+| b_and : bexp -> bexp -> bexp 
+| b_xor : bexp -> bexp -> bexp.
+
+Reserved Notation "⌈ b | f ⌉" (at level 0). 
+
+Fixpoint interpret_bexp (b : bexp) (f : nat -> bool) : bool :=
+  match b with
+  | b_t         => true 
+  | b_f         => false 
+  | b_var v     => f v 
+  | b_not b     => ¬ ⌈ b | f ⌉
+  | b_and b1 b2 => ⌈ b1 | f⌉ && ⌈ b2 | f⌉
+  | b_xor b1 b2 => ⌈ b1 | f⌉ ⊕ ⌈ b2 | f⌉
+  end where "⌈ b | f ⌉" := (interpret_bexp b f).  
+
+(* This def. of Toffoli is from https://en.wikipedia.org/wiki/Toffoli_gate *)
+Definition TDAG a := uapp (U_R (- PI / 4)) [a].
+Definition TOFFOLI (a b c : nat) : ucom :=
+  H c; CNOT b c; TDAG c; CNOT a c; T c; CNOT b c; TDAG c; CNOT a c; T b; T c; CNOT a b; H c; T a; TDAG b; CNOT a b.
+(* TODO: prove that the Toffoli gate implements the Toffoli spec. *)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Fixpoint compile (b : bexp) (dim : nat) : ucirc :=
+  match b with
+  | b_t          => TRUE ∥ id_circ 
+  | b_f          => FALSE ∥ id_circ
+  | b_var v      => CNOT_at (1 + ⟦Γ⟧) (1 + position_of v Γ) 0
+  | b_not b      => init_at true (1 + ⟦Γ⟧) 1 ;;
+                   id_circ ∥ (compile b Γ)  ;;
+                   CNOT_at (2 + ⟦Γ⟧) 1 0    ;;
+                   id_circ ∥ (compile b Γ)  ;;
+                   assert_at true (1+⟦Γ⟧) 1 
+  | b_and b1 b2  => init_at false (1 + ⟦Γ⟧) 1        ;;
+                   id_circ ∥ compile b1 Γ           ;;
+                   init_at false (2 + ⟦Γ⟧) 2        ;;
+                   id_circ ∥ id_circ ∥ compile b2 Γ ;;
+                   Toffoli_at (3 + ⟦Γ⟧) 1 2 0       ;;
+                   id_circ ∥ id_circ ∥ compile b2 Γ ;;
+                   assert_at false (2 + ⟦Γ⟧) 2      ;;
+                   id_circ ∥ compile b1 Γ           ;;
+                   assert_at false (1 + ⟦Γ⟧) 1 
+  | b_xor b1 b2  => init_at false (1 + ⟦Γ⟧) 1 ;;
+                   id_circ ∥ compile b1 Γ    ;;
+                   CNOT_at (2 + ⟦Γ⟧) 1 0     ;;                    
+                   id_circ ∥ compile b1 Γ    ;; 
+                   id_circ ∥ compile b2 Γ    ;; (* reusing ancilla *)
+                   CNOT_at (2 + ⟦Γ⟧) 1 0     ;;                    
+                   id_circ ∥ compile b2 Γ    ;;
+                   assert_at false (1 + ⟦Γ⟧) 1
+  end.
