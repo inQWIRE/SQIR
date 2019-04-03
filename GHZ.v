@@ -52,7 +52,7 @@ Proof.
   intros. induction n as [| [| n']].
   - simpl. apply WT_uskip.
   - simpl. apply WT_app. easy.
-    unfold in_bounds. intros. inversion H. rewrite H0. omega.
+    unfold in_bounds. intros. inversion H. rewrite H0. lia.
     inversion H0. constructor. intro. inversion H. constructor.
   - remember (S n') as k. simpl. destruct k. 
     + apply WT_app. easy. easy. constructor. easy. constructor.
@@ -60,9 +60,9 @@ Proof.
       simpl. rewrite <- minus_n_O.
       apply WT_app. 
       * easy. 
-      * unfold in_bounds. intros. inversion H. rewrite H0. omega.
-        inversion H0. rewrite H1. omega. inversion H1. 
-      * constructor. intro. inversion H. omega.
+      * unfold in_bounds. intros. inversion H. rewrite H0. lia.
+        inversion H0. rewrite H1. lia. inversion H1. 
+      * constructor. intro. inversion H. lia.
         inversion H0. constructor. intro. inversion H. constructor.
 Qed.      
 
@@ -82,16 +82,16 @@ Proof.
     rewrite Mmult_assoc.
     replace (2 ^ 1)%nat with 2%nat by (simpl; reflexivity).
     replace (2 ^ S m)%nat with (2 ^ m * 2)%nat by unify_pows_two.
-    replace (2 ^ m + (2 ^ m + 0))%nat with (2 ^ m * 2)%nat by omega.
-    replace 1%nat with (1 * 1)%nat by omega.
+    replace (2 ^ m + (2 ^ m + 0))%nat with (2 ^ m * 2)%nat by lia.
+    replace 1%nat with (1 * 1)%nat by lia.
     rewrite kron_mixed_product. simpl.
     rewrite IHn.
     rewrite Mmult_1_l by prove_wf.
     unfold ueval_cnot. simpl.
     replace (m-1 <? m) with true.
     2 : { symmetry. rewrite Nat.ltb_lt.
-          rewrite Heqk. simpl. rewrite <- minus_n_O. omega. }
-    replace (m - (m - 1))%nat with 1%nat by omega. 
+          rewrite Heqk. simpl. rewrite <- minus_n_O. lia. }
+    replace (m - (m - 1))%nat with 1%nat by lia. 
     simpl.
     unfold pad.
     replace (m-1 + 2 <=? S m)%nat with true.
@@ -106,10 +106,10 @@ Proof.
     rewrite Heqm.
     simpl.
     rewrite kron_plus_distr_r.
-    replace (k-0)%nat with k by omega.
+    replace (k-0)%nat with k by lia.
     replace (2^k + (2^k+0))%nat with (2 ^ k * 2)%nat by unify_pows_two. 
     remember (nket k ∣0⟩) as ψ0. remember (nket k ∣1⟩) as ψ1.
-    replace 4%nat with (2*2)%nat by omega.
+    replace 4%nat with (2*2)%nat by lia.
     rewrite Mmult_plus_distr_l.
     repeat rewrite <- kron_assoc.
     repeat rewrite Mscale_kron_dist_l.
@@ -118,7 +118,7 @@ Proof.
     + show_dimensions.
       replace (kron' (2 ^ k * 2) 1 2 1 (kron' (2 ^ k) 1 2 1 ψ0 ∣0⟩) ∣0⟩) with (ψ0 ⊗ (∣0⟩ ⊗ ∣0⟩)).
       hide_dimensions.
-      replace ((2 ^ k) * 2 * 2)%nat with ((2 ^ k) * (2 * 2))%nat by omega.
+      replace ((2 ^ k) * 2 * 2)%nat with ((2 ^ k) * (2 * 2))%nat by lia.
       rewrite kron_mixed_product.
       apply f_equal2.
       * rewrite Mmult_1_l. reflexivity. rewrite Heqψ0. apply WF_nket. prove_wf.
@@ -128,7 +128,7 @@ Proof.
       replace (kron' (2 ^ k * 2) 1 2 1 (kron' (2 ^ k) 1 2 1 ψ1 ∣1⟩) ∣0⟩) with (ψ1 ⊗ (∣1⟩ ⊗ ∣0⟩)).
       replace (kron' (2 ^ k * 2) 1 2 1 (kron' (2 ^ k) 1 2 1 ψ1 ∣1⟩) ∣1⟩) with (ψ1 ⊗ (∣1⟩ ⊗ ∣1⟩)).
       hide_dimensions.
-      replace ((2 ^ k) * 2 * 2)%nat with ((2 ^ k) * (2 * 2))%nat by omega.
+      replace ((2 ^ k) * 2 * 2)%nat with ((2 ^ k) * (2 * 2))%nat by lia.
       rewrite kron_mixed_product.
       apply f_equal2.
       * rewrite Mmult_1_l. reflexivity. rewrite Heqψ1. apply WF_nket. prove_wf.

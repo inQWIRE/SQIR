@@ -1,7 +1,7 @@
 Require Import Reals.
 Require Export List.
 Export ListNotations.
-Require Import Omega.
+Require Import Psatz.
 
 Inductive Unitary : nat -> Set := 
   | U_H         : Unitary 1 
@@ -74,7 +74,7 @@ Lemma in_bounds_pad : forall (l : list nat) (n k : nat), in_bounds l n -> in_bou
 Proof.
   intros l n k B x IN.
   apply B in IN.
-  omega.
+  lia.
 Qed.  
 
 Lemma in_bounds_b_pad : forall (l : list nat) (n k : nat), in_bounds_b l n = true -> in_bounds_b l (k + n) = true.
