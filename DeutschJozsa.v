@@ -192,5 +192,17 @@ Proof.
     apply (deutsch_jozsa_constant1 _ _ P). assumption.
 Qed.   
 
+Definition perpendicular {n : nat} (ψ ϕ : Vector n) :=
+  dot ψ ϕ = 0%R.
+
+Notation "ψ ⟂ ϕ" := (perpendicular ψ ϕ) (at level 20). 
+
+
+Theorem deutsch_jozsa_balanced_correct : 
+  forall (dim : nat) (U : ucom) (P : boolean dim U) (ψ : Vector 2),
+  balanced dim P -> 
+  ((uc_eval (S dim) U) × (∣1⟩ ⊗ (nket dim ∣0⟩))) ⟂ (ψ ⊗ (nket dim ∣0⟩)).
+Proof.
+Admitted.
 
 
