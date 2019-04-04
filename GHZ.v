@@ -1,13 +1,18 @@
 Require Export SQIMP.
 Require Import UnitarySem.
+Require Import Dirac.
 
-Fixpoint ghzc (n : nat) : ucom :=
+Close Scope R_scope.
+Open Scope nat_scope.
+
+Fixpoint GHZ (n : nat) : ucom :=
   match n with
   | 0 => uskip
   | 1 => H 0
-  | S n' => ghzc n'; CNOT (n'-1) n'
+  | S n' => GHZ n'; CNOT (n'-1) n'
 end.
 
+(* Maybe just define as big_kron (repeat n ψ)? *)
 Fixpoint nket (n : nat) (ψ : Matrix 2 1) : Matrix (2^n) 1 :=
   match n with
   | 0 => I 1
@@ -16,38 +21,25 @@ Fixpoint nket (n : nat) (ψ : Matrix 2 1) : Matrix (2^n) 1 :=
 
 Open Scope R_scope.
 
-Definition ghzs (n : nat) : Matrix (2^n) 1 :=
+Definition ghz (n : nat) : Matrix (2^n) 1 :=
   match n with 
   | 0 => I 1 
   | S n' => 1/ √2 .* (nket n ∣0⟩) .+ 1/ √2 .* (nket n ∣1⟩)
-end.
+  end.
 
-(* Move somewhere. *)
-Ltac prove_wf :=
-  repeat match goal with
-         | |- context [ WF_Matrix _ _ (?a .+ ?b) ] => apply WF_plus
-         | |- context [ WF_Matrix _ _ (?a × ?b) ] => apply WF_mult
-         | |- context [ WF_Matrix _ _ (?a ⊗ ?b) ] => apply WF_kron
-         | |- context [ WF_Matrix _ _ (?a .* ?b) ] => apply WF_scale
-         | |- context [ WF_Matrix _ _ (?a)† ] => apply WF_adjoint
-         | |- context [ WF_Matrix _ _ (I ?n) ] => apply WF_I
-         | |- context [ WF_Matrix _ _ ∣0⟩ ] => apply WF_qubit0
-         | |- context [ WF_Matrix _ _ ∣1⟩ ] => apply WF_qubit1
-         | |- context [ WF_Matrix _ _ σx ] => apply WF_σx
-         | |- context [ WF_Matrix _ _ (outer_product ?u ?v) ] => apply WF_outer_product
-         end; auto.
-
-Lemma WF_nket : forall (n : nat)(ψ : Matrix 2 1), WF_Matrix _ _ ψ -> WF_Matrix _ _ (nket n ψ).
+Lemma WF_nket : forall (n : nat)(ψ : Matrix 2 1), WF_Matrix ψ -> WF_Matrix (nket n ψ).
 Proof.
-  intros n ψ H. induction n; simpl; prove_wf. unify_pows_two.
+  intros n ψ H. induction n; simpl; auto with wf_db. (* <- use this! *)
 Qed.
 
-Lemma WF_ghzs : forall n : nat, WF_Matrix _ _ (ghzs n).
+Hint Resolve WF_nket : wf_db.
+
+Lemma WF_ghz : forall n : nat, WF_Matrix (ghz n).
 Proof.
-  induction n; simpl; prove_wf; unify_pows_two; apply WF_nket; prove_wf.
+  induction n; simpl; auto with wf_db.
 Qed.
 
-Lemma typed_ghz : forall n : nat, uc_well_typed n (ghzc n).
+Lemma typed_GHZ : forall n : nat, uc_well_typed n (GHZ n).
 Proof.
   intros. induction n as [| [| n']].
   - simpl. apply WT_uskip.
@@ -66,7 +58,7 @@ Proof.
         inversion H0. constructor. intro. inversion H. constructor.
 Qed.      
 
-Theorem ghz_correct : forall n : nat, uc_eval n (ghzc n) × nket n ∣0⟩ = ghzs n.
+Theorem ghz_correct : forall n : nat, uc_eval n (GHZ n) × nket n ∣0⟩ = ghz n.
 Proof.
   intros.
   induction n as [| [| n']].
@@ -77,64 +69,39 @@ Proof.
     simpl. destruct k. inversion Heqk.
     remember (S k) as m.
     simpl.
-    replace (uc_eval (S m)%nat (ghzc m)) with (uc_eval (m + 1)%nat (ghzc m)) by (rewrite plus_comm; reflexivity).
-    rewrite <- pad_dims by (apply typed_ghz).
+    replace (uc_eval (S m) (GHZ m)) with (uc_eval (m + 1) (GHZ m)) by (rewrite plus_comm; reflexivity).
+    rewrite <- pad_dims by (apply typed_GHZ).
     rewrite Mmult_assoc.
-    replace (2 ^ 1)%nat with 2%nat by (simpl; reflexivity).
-    replace (2 ^ S m)%nat with (2 ^ m * 2)%nat by unify_pows_two.
-    replace (2 ^ m + (2 ^ m + 0))%nat with (2 ^ m * 2)%nat by lia.
-    replace 1%nat with (1 * 1)%nat by lia.
-    rewrite kron_mixed_product. simpl.
+    restore_dims_strong.
+    rewrite kron_mixed_product.
     rewrite IHn.
-    rewrite Mmult_1_l by prove_wf.
     unfold ueval_cnot. simpl.
-    replace (m-1 <? m) with true.
-    2 : { symmetry. rewrite Nat.ltb_lt.
-          rewrite Heqk. simpl. rewrite <- minus_n_O. lia. }
-    replace (m - (m - 1))%nat with 1%nat by lia. 
-    simpl.
+    bdestructΩ (m - 1 <? m).
     unfold pad.
-    replace (m-1 + 2 <=? S m)%nat with true.
-    2 : { rewrite plus_comm. simpl.
-          destruct m. inversion Heqm.
-          simpl. rewrite <- minus_n_O.
-          symmetry. apply Nat.leb_refl. }
-    simpl.
+    bdestructΩ (m - 1 + S (m - (m - 1) - 1 + 1) <=? S m).
+    clear H H0.
+    replace (m - (m - 1))%nat with 1%nat by lia. simpl.
     rewrite Nat.sub_diag. simpl.
-    repeat rewrite kron_1_r.
-    unfold ghzs.
-    rewrite Heqm.
-    simpl.
-    rewrite kron_plus_distr_r.
-    replace (k-0)%nat with k by lia.
-    replace (2^k + (2^k+0))%nat with (2 ^ k * 2)%nat by unify_pows_two. 
-    remember (nket k ∣0⟩) as ψ0. remember (nket k ∣1⟩) as ψ1.
-    replace 4%nat with (2*2)%nat by lia.
-    rewrite Mmult_plus_distr_l.
-    repeat rewrite <- kron_assoc.
-    repeat rewrite Mscale_kron_dist_l.
-    repeat rewrite Mscale_mult_dist_r.
-    repeat apply f_equal2; try reflexivity.
-    + show_dimensions.
-      replace (kron' (2 ^ k * 2) 1 2 1 (kron' (2 ^ k) 1 2 1 ψ0 ∣0⟩) ∣0⟩) with (ψ0 ⊗ (∣0⟩ ⊗ ∣0⟩)).
-      hide_dimensions.
-      replace ((2 ^ k) * 2 * 2)%nat with ((2 ^ k) * (2 * 2))%nat by lia.
-      rewrite kron_mixed_product.
-      apply f_equal2.
-      * rewrite Mmult_1_l. reflexivity. rewrite Heqψ0. apply WF_nket. prove_wf.
-      * solve_matrix.
-      * rewrite <- kron_assoc. simpl. reflexivity.
-    + show_dimensions.
-      replace (kron' (2 ^ k * 2) 1 2 1 (kron' (2 ^ k) 1 2 1 ψ1 ∣1⟩) ∣0⟩) with (ψ1 ⊗ (∣1⟩ ⊗ ∣0⟩)).
-      replace (kron' (2 ^ k * 2) 1 2 1 (kron' (2 ^ k) 1 2 1 ψ1 ∣1⟩) ∣1⟩) with (ψ1 ⊗ (∣1⟩ ⊗ ∣1⟩)).
-      hide_dimensions.
-      replace ((2 ^ k) * 2 * 2)%nat with ((2 ^ k) * (2 * 2))%nat by lia.
-      rewrite kron_mixed_product.
-      apply f_equal2.
-      * rewrite Mmult_1_l. reflexivity. rewrite Heqψ1. apply WF_nket. prove_wf.
-      * solve_matrix.
-      * rewrite <- kron_assoc. simpl. reflexivity.
-      * rewrite <- kron_assoc. simpl. reflexivity.
+    Msimpl.
+    setoid_rewrite cnot_decomposition.
+    unfold ghz.
+    rewrite Heqm. simpl. rewrite Nat.sub_0_r.
+    autorewrite with ket_db.
+    restore_dims_strong.
+    rewrite (Mmult_plus_distr_l _ _ _  (I (2 ^ k) ⊗ cnot) (1 / √ 2 .* (nket k ∣0⟩ ⊗ ∣0⟩ ⊗ ∣0⟩))
+      (1 / √ 2 .* (nket k ∣1⟩ ⊗ ∣1⟩ ⊗ ∣0⟩))).
+    restore_dims_strong.
+    rewrite 2 kron_assoc. restore_dims.
+    restore_dims_strong.
+    setoid_rewrite (Mscale_mult_dist_r _ _ _ (1 / √ 2) (I (2 ^ k) ⊗ cnot) (nket k ∣0⟩ ⊗ (∣0⟩ ⊗ ∣0⟩))).
+    setoid_rewrite (Mscale_mult_dist_r _ _ _ (1 / √ 2) (I (2 ^ k) ⊗ cnot) (nket k ∣1⟩ ⊗ (∣1⟩ ⊗ ∣0⟩))).
+    rewrite 2 kron_mixed_product.
+    replace (∣0⟩) with ∣ 0 ⟩ by reflexivity. 
+    replace (∣1⟩) with ∣ 1 ⟩ by reflexivity. 
+    rewrite CNOT00_spec, CNOT10_spec.
+    Msimpl.
+    rewrite kron_assoc.
+    reflexivity.
 Qed.
 
 

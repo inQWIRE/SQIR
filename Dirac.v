@@ -81,10 +81,10 @@ Proof. intros. destruct x,y; solve_matrix. Qed.
 (* General matrix rewrites *)
 Hint Rewrite Mmult_plus_distr_l Mmult_plus_distr_r kron_plus_distr_l kron_plus_distr_r Mscale_plus_distr_r : ket_db.
 Hint Rewrite Mscale_mult_dist_l Mscale_mult_dist_r Mscale_kron_dist_l Mscale_kron_dist_r : ket_db.
-Hint Rewrite Mscale_assoc Mmult_assoc : ket_db.
+Hint Rewrite Mscale_assoc @Mmult_assoc : ket_db.
 (*Hint Rewrite <- Mplus_assoc kron_assoc : ket_db.*)
 Hint Rewrite Mmult_1_l Mmult_1_r kron_1_l kron_1_r Mscale_0_l Mscale_1_l Mplus_0_l Mplus_0_r : ket_db.
-Hint Rewrite kron_mixed_product.
+Hint Rewrite @kron_mixed_product.
 
 (* Quantum-specific identities *)
 Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec
