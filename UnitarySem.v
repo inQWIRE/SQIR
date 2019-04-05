@@ -314,131 +314,169 @@ Ltac rewrite_assoc :=
   repeat rewrite mult_assoc;
   easy.
 
-(* More general version of slide1.
-
-   NOTE: This is a work in progress, we should be able to clean it up
-   with restore_dims! *)
-Lemma slide12 : forall (m q : nat) (l : list nat) (U : Unitary 1) (V : Unitary m),
-  (inb q l) = false ->
-  (uapp U [q] ; uapp V l) ≡ (uapp V l ; uapp U [q]). 
+(* Version of slide for 1 and 2 qubit gate.
+   
+   This proof can still be cleaned up. Cases 4-6 are exactly the same as 1-3,
+   except with n2 and n1 switched. *)
+Lemma slide12 : forall (q n1 n2 : nat) (U : Unitary 1),
+  q <> n1 ->
+  q <> n2 ->
+  (q *= U ; CNOT n1 n2) ≡ (CNOT n1 n2 ; q *= U). 
 Proof.
-  intros m q l U V NE dim.
-  destruct V;
-  (* use slide1 to prove all single-qubit gate cases *)
-  try (
-    destruct l; try (destruct l); simpl;
-    remove_zero_gates; trivial;
-    simpl in NE;
-    rewrite orb_false_r in NE;
-    apply beq_nat_false in NE;
-    apply not_eq_sym in NE;
-    apply slide1;
-    easy
-  ).
-  (* all that's left is the CNOT case *)
-  destruct l; try (destruct l); try (destruct l); simpl; remove_zero_gates; trivial.
-  unfold ueval1, ueval_cnot. 
+  intros q n1 n2 U NE1 NE2 dim.
+  simpl; unfold ueval1, ueval_cnot. 
   match goal with
   | [|- context [pad q _ ?U ]] => remember U as U'
   end.
   assert (WFU : WF_Matrix U') by 
       (destruct U; subst; auto with wf_db).
   clear HeqU' U.
-  simpl in NE;
-  rewrite orb_false_r in NE;
-  apply orb_false_elim in NE;
-  destruct NE as [NE1 NE2];
-  apply beq_nat_false in NE1;
-  apply beq_nat_false in NE2.
-  bdestruct (n <? n0).
+  bdestruct (n1 <? n2).
   - unfold pad.
-    remember (n0 - n - 1) as i.
-    replace (2 ^ (n0 - n)) with (2 ^ i * 2) by unify_pows_two.
+    remember (n2 - n1 - 1) as i.
+    replace (2 ^ (n2 - n1)) with (2 ^ i * 2) by unify_pows_two.
     repeat rewrite <- id_kron.
     rewrite <- (kron_assoc _ _ (I 2)).
-    bdestruct (q + 1 <=? dim); bdestruct (n + (1 + i + 1) <=? dim); 
+    bdestruct (q + 1 <=? dim); bdestruct (n1 + (1 + i + 1) <=? dim); 
     remove_zero_gates; trivial.
-    bdestruct (n0 <? q).
-    (* Case 1/6: n < n0 < q *)
-    + remember (q - (1 + i + 1) - n) as j.
+    bdestruct (n2 <? q).
+    (* Case 1/6: n1 < n2 < q *)
+    + remember (q - (1 + i + 1) - n1) as j.
       remember (dim - 1 - q) as k.
-      replace (2 ^ q) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j) by unify_pows_two.
-      replace (2 ^ (dim - (1 + i + 1) - n)) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.
+      replace (2 ^ q) with (2 ^ n1 * (2 * 2 ^ i * 2) * 2 ^ j) by unify_pows_two.
+      replace (2 ^ (dim - (1 + i + 1) - n1)) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.
       repeat rewrite <- id_kron.
       rewrite <- (kron_assoc _ _ (I (2 ^ k))).
-      rewrite <- (kron_assoc _ _ (I 2)).  
-      (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-      (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j * 2 * 2 ^ k) by unify_pows_two.
-      (* * *) replace (2 ^ n * (2 * 2 ^ i * 2) * (2 ^ j * 2)) with (2 ^ n * (2 * 2 ^ i * 2) * 2 ^ j * 2) by rewrite_assoc.
-      (* * *) replace (2 ^ 1) with 2 by easy.
-      repeat rewrite kron_mixed_product; remove_id_gates.
+      rewrite <- (kron_assoc _ _ (I 2)). 
+      replace (2 ^ dim) with (2 ^ n1 * (2 * 2 ^ i * 2) * 2 ^ j * 2 * 2 ^ k) by unify_pows_two. 
+      clear - WFU.
+      restore_dims_strong.
+      Msimpl.
       rewrite Mmult_plus_distr_l.
       rewrite Mmult_plus_distr_r.
-      repeat rewrite kron_mixed_product; remove_id_gates.
-    + apply le_lt_eq_dec in H2; destruct H2; 
-        try (contradict e; apply not_eq_sym; easy).
-      bdestruct (n <? q).
-      (* Case 2/6: n < q < n0 *)
-      * remember (q - n - 1) as j.
+      Msimpl. 
+      reflexivity.
+    + apply le_lt_eq_dec in H2; destruct H2;
+        try (contradict e; assumption).
+      bdestruct (n1 <? q).
+      (* Case 2/6: n1 < q < n2 *)
+      * remember (q - n1 - 1) as j.
         remember (i - j - 1) as k.
-        remember (dim - (1 + i + 1) - n) as m.
-        (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-        (* TODO: You can use unify_pows_two here, but it's super slow! 
-                 How can we help Coq solve these faster? GO GO LIA!!! *)
-        replace (2 ^ q) with (2 ^ n * 2 * 2 ^ j) by unify_pows_two. 
-        replace (2 ^ i) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.    
+        remember (dim - (1 + i + 1) - n1) as m.
+        replace (2 ^ q) with (2 ^ n1 * 2 * 2 ^ j) by unify_pows_two.
+        replace (2 ^ i) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.   
+        replace (2 ^ (1 + i + 1)) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by unify_pows_two.    
         replace (2 ^ (dim - 1 - q)) with (2 ^ k * 2 * 2 ^ m) by unify_pows_two.
         repeat rewrite <- id_kron.
         repeat rewrite <- kron_assoc.
-        rewrite (kron_assoc (I (2 ^ n)) _ (I (2 ^ j))).
-        
-        (* Something along these lines may help 
-        repeat (restore_dims; rewrite kron_assoc).
-        (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2) * 2 ^ m) by unify_pows_two.
-        clear -WFU.
+        replace (2 ^ dim) with (2 ^ n1 * (2 * 2 ^ j * 2 * 2 ^ k * 2) * 2 ^ m) by unify_pows_two.
+        clear - WFU.
+        rewrite (kron_assoc (I (2 ^ n1)) _ (I (2 ^ j))).
         restore_dims_strong.
-        *)
-
-
-        (* * *) replace (2 ^ n * 2 * 2 ^ j) with (2 ^ n * (2 * 2 ^ j)) by rewrite_assoc.
-        rewrite (kron_assoc (I (2 ^ n)) _ U').
-        (* * *) replace (2 ^ 1) with 2 by easy.
-        (* * *) replace (2 ^ n * (2 * 2 ^ j) * 2) with (2 ^ n * (2 * 2 ^ j * 2)) by rewrite_assoc.
-        rewrite (kron_assoc (I (2 ^ n)) _ (I (2 ^ k))).
-        (* * *) replace (2 ^ n * (2 * 2 ^ j * 2) * 2 ^ k) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k)) by rewrite_assoc.
-        rewrite (kron_assoc (I (2 ^ n)) _ (I 2)).
-        (* * *) replace (2 ^ dim) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2) * 2 ^ m) by unify_pows_two.
-        (* * *) replace (2 * (2 ^ j * 2 * 2 ^ k) * 2) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by rewrite_assoc.
-        (* * *) replace (2 ^ n * (2 * 2 ^ j * 2) * (2 ^ k * 2)) with (2 ^ n * (2 * 2 ^ j * 2 * 2 ^ k * 2)) by rewrite_assoc.
-        rewrite kron_mixed_product.
-        repeat rewrite kron_mixed_product; remove_id_gates.
+        rewrite (kron_assoc (I (2 ^ n1)) _ U').
+        restore_dims_strong.
+        rewrite (kron_assoc (I (2 ^ n1)) _ (I (2 ^ k))).
+        restore_dims_strong.
+        rewrite (kron_assoc (I (2 ^ n1)) _ (I 2)).
+        replace (2 ^ 1) with 2 by easy.
+        replace (2 * (2 ^ j * 2 * 2 ^ k) * 2) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by unify_pows_two.
+        replace (2 ^ n1 * (2 * 2 ^ j * 2 * 2 ^ k) * 2) with (2 ^ n1 * (2 * 2 ^ j * 2 * 2 ^ k * 2)) by unify_pows_two.
+        Msimpl.
         rewrite Mmult_plus_distr_l.
         rewrite Mmult_plus_distr_r.
-        (* * *) replace (2 * (2 ^ j * 2 * 2 ^ k)) with (2 * 2 ^ j * 2 ^ 1 * 2 ^ k) by rewrite_assoc.
-        repeat rewrite kron_mixed_product. 
-        (* * *) replace (2 * (2 ^ j * 2)) with (2 * 2 ^ j * 2) by rewrite_assoc.
-        repeat rewrite kron_mixed_product; remove_id_gates.
-      (* Case 3/6: q < n < n0 *)
-      * admit.
-  - bdestruct (n0 <? n); remove_zero_gates; trivial.
+        Msimpl.
+        reflexivity.
+      (* Case 3/6: q < n1 < n2 *)
+      * remember (n1 - q - 1) as j.
+        remember (dim - (1 + i + 1) - n1) as k.
+        replace (2 ^ n1) with (2 ^ q * 2 * 2 ^ j) by unify_pows_two.
+        replace (2 ^ (dim - 1 - q)) with (2 ^ j * 2 ^ (1 + i + 1) * 2 ^ k) by unify_pows_two.
+        repeat rewrite <- id_kron.
+        replace (2 ^ dim) with (2 ^ q * 2 * 2 ^ j * 2 ^ (1 + i + 1) * 2 ^ k) by unify_pows_two.
+        clear - WFU.
+        repeat rewrite <- kron_assoc.
+        replace (2 ^ 1) with 2 by easy.
+        replace (2 ^ q * 2 * (2 ^ j * 2 ^ (1 + i + 1))) with (2 ^ q * 2 * 2 ^ j * 2 ^ (1 + i + 1)) by rewrite_assoc.
+        Msimpl. 
+        replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+        rewrite Mmult_plus_distr_l.
+        rewrite Mmult_plus_distr_r.
+        Msimpl.
+        reflexivity.
+  - bdestruct (n2 <? n1); remove_zero_gates; trivial.
     unfold pad.
-    remember (n - n0 - 1) as i.
-    (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-    bdestruct (q + 1 <=? dim); bdestruct (n0 + (1 + i + 1) <=? dim); 
-    remove_zero_gates; trivial.
-    bdestruct (n <? q).
-    (* Case 4/6: n0 < n < q *)
-    + admit.
+    remember (n1 - n2 - 1) as i.
+    replace (2 ^ (n1 - n2)) with (2 * 2 ^ i) by unify_pows_two.
+    repeat rewrite <- id_kron.
+    bdestruct (q + 1 <=? dim); bdestruct (n2 + (1 + i + 1) <=? dim); 
+      remove_zero_gates; trivial.
+    bdestruct (n1 <? q).
+    (* Case 4/6: n2 < n1 < q *)
+    + remember (q - (1 + i + 1) - n2) as j.
+      remember (dim - 1 - q) as k.
+      replace (2 ^ q) with (2 ^ n2 * (2 * 2 ^ i * 2) * 2 ^ j) by unify_pows_two.
+      replace (2 ^ (dim - (1 + i + 1) - n2)) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.
+      repeat rewrite <- id_kron.
+      rewrite <- (kron_assoc _ _ (I (2 ^ k))).
+      rewrite <- (kron_assoc _ _ (I 2)). 
+      replace (2 ^ dim) with (2 ^ n2 * (2 * 2 ^ i * 2) * 2 ^ j * 2 * 2 ^ k) by unify_pows_two. 
+      clear - WFU. 
+      restore_dims_strong.
+      Msimpl.
+      rewrite Mmult_plus_distr_l.
+      rewrite Mmult_plus_distr_r.
+      Msimpl. 
+      reflexivity.
     + apply le_lt_eq_dec in H3; destruct H3; 
-        try (contradict e; apply not_eq_sym; easy).
-      bdestruct (n0 <? q).
-      (* Case 5/6: n0 < q < n *)
-      * admit.
+        try (contradict e; assumption).
+      bdestruct (n2 <? q).
+      (* Case 5/6: n2 < q < n1 *)
+      * remember (q - n2 - 1) as j.
+        remember (i - j - 1) as k.
+        remember (dim - (1 + i + 1) - n2) as m.
+        replace (2 ^ q) with (2 ^ n2 * 2 * 2 ^ j) by unify_pows_two.
+        replace (2 ^ i) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two.   
+        replace (2 ^ (1 + i + 1)) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by unify_pows_two.    
+        replace (2 ^ (dim - 1 - q)) with (2 ^ k * 2 * 2 ^ m) by unify_pows_two.
+        repeat rewrite <- id_kron.
+        repeat rewrite <- kron_assoc.
+        replace (2 ^ dim) with (2 ^ n2 * (2 * 2 ^ j * 2 * 2 ^ k * 2) * 2 ^ m) by unify_pows_two.
+        clear - WFU.
+        rewrite (kron_assoc (I (2 ^ n2)) _ (I (2 ^ j))).
+        restore_dims_strong.
+        rewrite (kron_assoc (I (2 ^ n2)) _ U').
+        restore_dims_strong.
+        rewrite (kron_assoc (I (2 ^ n2)) _ (I (2 ^ k))).
+        restore_dims_strong.
+        rewrite (kron_assoc (I (2 ^ n2)) _ (I 2)).
+        replace (2 ^ 1) with 2 by easy.
+        replace (2 * (2 ^ j * 2 * 2 ^ k) * 2) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by unify_pows_two.
+        replace (2 ^ n2 * (2 * 2 ^ j * 2 * 2 ^ k) * 2) with (2 ^ n2 * (2 * 2 ^ j * 2 * 2 ^ k * 2)) by unify_pows_two.
+        Msimpl.
+        rewrite Mmult_plus_distr_l.
+        rewrite Mmult_plus_distr_r.
+        Msimpl.
+        reflexivity.
       * apply le_lt_eq_dec in H3; destruct H3; 
-        try (contradict e; apply not_eq_sym; easy).
-        (* Case 6/6: q < n0 < n *)
-        admit.
-Admitted.
+          try (contradict e; assumption).
+        (* Case 6/6: q < n2 < n1 *)
+        remember (n2 - q - 1) as j.
+        remember (dim - (1 + i + 1) - n2) as k.
+        replace (2 ^ n2) with (2 ^ q * 2 * 2 ^ j) by unify_pows_two.
+        replace (2 ^ (dim - 1 - q)) with (2 ^ j * 2 ^ (1 + i + 1) * 2 ^ k) by unify_pows_two.
+        repeat rewrite <- id_kron.
+        replace (2 ^ dim) with (2 ^ q * 2 * 2 ^ j * 2 ^ (1 + i + 1) * 2 ^ k) by unify_pows_two.
+        clear - WFU.
+        repeat rewrite <- kron_assoc.
+        replace (2 ^ 1) with 2 by easy.
+        replace (2 ^ q * 2 * (2 ^ j * 2 ^ (1 + i + 1))) with (2 ^ q * 2 * 2 ^ j * 2 ^ (1 + i + 1)) by rewrite_assoc.
+        Msimpl. 
+        replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+        rewrite Mmult_plus_distr_l.
+        rewrite Mmult_plus_distr_r.
+        Msimpl.
+        reflexivity.
+Qed.
 
 Lemma XX_id : forall q dim, 
   uc_well_typed dim (X q) -> uc_eval dim uskip = uc_eval dim (X q; X q).

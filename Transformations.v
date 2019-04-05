@@ -202,12 +202,12 @@ Fixpoint propagate_not (c : ucom) (q : nat) : option ucom :=
            | None => None
            | Some c2' => Some (CNOT q1 q2 ; c2')
            end
-  | uapp U l ; c2 => 
-      if (inb q l)
+  | q' *= U ; c2 => 
+      if (q =? q')
       then None
       else match propagate_not c2 q with
            | None => None
-           | Some c2' => Some (uapp U l ; c2')
+           | Some c2' => Some (q' *= U ; c2')
            end
   | _ => None
   end.
@@ -273,8 +273,8 @@ Proof.
     destruct c1; try easy.
     destruct u;
     (* U = H, Y, Z, R *)
-    try (simpl in H;
-         destruct (inb q l); try easy;
+    try (destruct l; try destruct l; simpl in H; try easy;
+         destruct (q =? n); try easy;
          destruct (propagate_not c2 q); try easy;
          inversion H; constructor; try easy;
          apply IHc2; easy);
@@ -321,15 +321,16 @@ Proof.
     destruct u;
     (* U = H, Y, Z, R *)
     try (rewrite HeqU in H; simpl in H; rewrite <- HeqU in H;
-         remember (inb q l) as b; destruct b; try easy;
+         destruct l; try destruct l; try easy;
+         bdestruct (q =? n); try easy;
          destruct (propagate_not c2 q); try easy;
          inversion H;
-         rewrite (useq_congruence' _ (uapp U l) u (X q; c2));
+         rewrite (useq_congruence' _ (n *= U) u (X q; c2));
          try apply IHc2; try easy;
          repeat rewrite <- useq_assoc;
          apply useq_congruence;
          try reflexivity;
-         symmetry; apply slide12; easy);
+         apply slide1; apply Nat.neq_sym; assumption);
     subst.
     (* U = X *)
     + (* solve the cases where l is empty or has >1 element *)
@@ -353,10 +354,10 @@ Proof.
         apply slide1; easy.
     (* U = CNOT *)
     + (* solve the cases where l has <2 or >2 elements *)
-      destruct l; simpl in H; try destruct l; simpl in H; try destruct l;
-      [ | destruct ((n =? q) || false) | | destruct ((n =? q) || ((n0 =? q) || (inb q (n1::l)))) ];
-      try (destruct (propagate_not c2 q);
-           inversion H; simpl; remove_zero_gates; reflexivity). 
+      destruct l; simpl in H; try destruct l; simpl in H; try destruct l; try easy;
+      try (destruct (q =? n); try easy;
+           destruct (propagate_not c2 q); try easy;
+           inversion H; simpl; remove_zero_gates; reflexivity).
       (* solve the case where l has exactly 2 elements *)
       bdestruct (q =? n); try easy.
       bdestruct (q =? n0).
@@ -365,11 +366,7 @@ Proof.
         repeat rewrite <- useq_assoc.
         apply useq_congruence; try reflexivity.
         symmetry; apply X_CNOT_comm.
-      * assert (inb q (n::n0::[]) = false). 
-        { apply not_eq_sym in H0; apply beq_nat_false_iff in H0.
-          apply not_eq_sym in H1; apply beq_nat_false_iff in H1.
-          simpl. repeat apply orb_false_intro; easy. }
-        destruct (propagate_not c2 q); inversion H.
+      * destruct (propagate_not c2 q); inversion H.
         rewrite (useq_congruence' _ (CNOT n n0) u (X q; c2)); try apply IHc2; try easy.
         repeat rewrite <- useq_assoc.
         apply useq_congruence; try reflexivity.
