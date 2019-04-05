@@ -7,7 +7,7 @@ Open Scope ucom_scope.
 (** Denotation of Unitaries *)
 
 Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
-  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else I (2^dim).
+  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else Zero.
 
 Lemma WF_pad : forall n start dim (A : Square (2^n)),
   WF_Matrix A ->
@@ -26,7 +26,7 @@ Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
   | U_Y         => σy
   | U_Z         => σz
   | U_R ϕ       => phase_shift ϕ
-  | _           => I (2^1)
+  | _           => Zero
   end.
 
 (* Restriction: m <> n and m, n < dim *)
@@ -36,13 +36,13 @@ Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
   else if (n <? m) then
     @pad (1+(m-n-1)+1) n dim (σx ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ .+ I (2^(m-n)) ⊗ ∣0⟩⟨0∣)
   else
-    I (2^dim).
+    Zero.
 
 Definition ueval {n} (dim : nat) (u : Unitary n) (l : list nat) : Square (2^dim) :=
   match n, l with
   | 1, [i]   => ueval1 dim i u
   | 2, i::[j] => ueval_cnot dim i j
-  | _, _     => I _
+  | _, _     => Zero
   end.
 
 (** Denotation of ucoms **)
@@ -231,8 +231,24 @@ Ltac restore_dims_strong :=
                                             end
          end.
 
+(* For handling non well-typed cases. (Shouldn't Msimpl do this?) *)
+Ltac remove_zero_gates :=
+  repeat rewrite Mmult_0_l;
+  repeat rewrite Mmult_0_r;
+  repeat rewrite Mmult_0_l; (* hacky *)
+  repeat rewrite Mmult_0_r;
+  repeat rewrite kron_0_l;
+  repeat rewrite kron_0_r;
+  repeat rewrite kron_0_l;
+  repeat rewrite kron_0_r.
 
-(* Shouldn't need this here? *)
+(* Remove extra identity gates. (Shouldn't Msimpl do this too?) *)
+Ltac remove_id_gates :=
+  repeat rewrite Mmult_1_l;
+  repeat rewrite Mmult_1_r;
+  try auto with wf_db.
+
+
 Local Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope. 
 
 Lemma slide1 : forall (m n : nat) (U V : Unitary 1),
@@ -254,7 +270,7 @@ Proof.
   clear HeqU' HeqV' U V.
   unfold pad.
   bdestruct (n + 1 <=? dim); bdestruct (m + 1 <=? dim);
-    try Msimpl; trivial.
+    remove_zero_gates; trivial.
   bdestruct (m <? n).
   - remember (n - m - 1) as k.
     replace n with (m + 1 + k) by lia.
@@ -291,21 +307,6 @@ Proof.
     reflexivity.
 Qed.
 
-(* This just tries to get rid of extra identity matrices (faster than Msimpl).
-   It is mainly intended to be used in solve_non_WT_cases, but I also use it
-   in a few places to simplify the goal. *)
-Ltac remove_id_gates :=
-  repeat rewrite Mmult_1_l;
-  repeat rewrite Mmult_1_r;
-  auto with wf_db.
-
-(* When circuits are not well-typed, the semantics functions will add
-   extra identity matrices. This tactic is intended to handle these cases
-   by removing the identity matrices and proving equality. *)
-Ltac solve_non_WT_cases :=
-  remove_id_gates;
-  try unify_pows_two;
-  easy.
 
 (* Several of the type rewrites are just associativity issues, and lia
    is a little slow solving these. *)
@@ -313,7 +314,10 @@ Ltac rewrite_assoc :=
   repeat rewrite mult_assoc;
   easy.
 
-(* More general version of slide1. *)
+(* More general version of slide1.
+
+   NOTE: This is a work in progress, we should be able to clean it up
+   with restore_dims! *)
 Lemma slide12 : forall (m q : nat) (l : list nat) (U : Unitary 1) (V : Unitary m),
   (inb q l) = false ->
   (uapp U [q] ; uapp V l) ≡ (uapp V l ; uapp U [q]). 
@@ -323,7 +327,7 @@ Proof.
   (* use slide1 to prove all single-qubit gate cases *)
   try (
     destruct l; try (destruct l); simpl;
-    try solve_non_WT_cases;
+    remove_zero_gates; trivial;
     simpl in NE;
     rewrite orb_false_r in NE;
     apply beq_nat_false in NE;
@@ -332,7 +336,7 @@ Proof.
     easy
   ).
   (* all that's left is the CNOT case *)
-  destruct l; try (destruct l); try (destruct l); simpl; try solve_non_WT_cases.
+  destruct l; try (destruct l); try (destruct l); simpl; remove_zero_gates; trivial.
   unfold ueval1, ueval_cnot. 
   match goal with
   | [|- context [pad q _ ?U ]] => remember U as U'
@@ -353,9 +357,7 @@ Proof.
     repeat rewrite <- id_kron.
     rewrite <- (kron_assoc _ _ (I 2)).
     bdestruct (q + 1 <=? dim); bdestruct (n + (1 + i + 1) <=? dim); 
-    try solve_non_WT_cases;
-    (* a couple well-formedness proofs need a little extra help *)
-    try (remove_id_gates; apply WF_kron; try unify_pows_two; auto with wf_db).
+    remove_zero_gates; trivial.
     bdestruct (n0 <? q).
     (* Case 1/6: n < n0 < q *)
     + remember (q - (1 + i + 1) - n) as j.
@@ -418,14 +420,12 @@ Proof.
         repeat rewrite kron_mixed_product; remove_id_gates.
       (* Case 3/6: q < n < n0 *)
       * admit.
-  - bdestruct (n0 <? n); try solve_non_WT_cases.
+  - bdestruct (n0 <? n); remove_zero_gates; trivial.
     unfold pad.
     remember (n - n0 - 1) as i.
     (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
     bdestruct (q + 1 <=? dim); bdestruct (n0 + (1 + i + 1) <=? dim); 
-    try solve_non_WT_cases;
-    (* a couple well-formedness proofs need a little extra help *)
-    try (remove_id_gates; apply WF_kron; try unify_pows_two; auto with wf_db).
+    remove_zero_gates; trivial.
     bdestruct (n <? q).
     (* Case 4/6: n0 < n < q *)
     + admit.
@@ -440,34 +440,29 @@ Proof.
         admit.
 Admitted.
 
-Lemma XX_id : forall q, uskip ≡ X q; X q.
+Lemma XX_id : forall q dim, 
+  uc_well_typed dim (X q) -> uc_eval dim uskip = uc_eval dim (X q; X q).
 Proof. 
-  intros q dim. 
+  intros q dim WT. 
   simpl; unfold ueval1, pad. 
-  bdestruct (q + 1 <=? dim); restore_dims_strong; Msimpl; try easy.
-  simpl; replace (σx × σx) with (I 2) by solve_matrix.
+  inversion WT; subst. 
+  assert (q < dim). { apply H4. left. easy. }
+  replace (q + 1 <=? dim) with true by (symmetry; apply Nat.leb_le; lia).
+  restore_dims_strong; Msimpl.
+  replace (σx × σx) with (I 2) by solve_matrix.
   repeat rewrite id_kron.
   apply f_equal.
   unify_pows_two.
 Qed.
 
-(* I did my best to keep this proof clean, but I struggled with 
-   getting matrix dimension types to line up. Below is the result
-   after a couple hours of trying to minimize calls to 'replace'.
-
-   I've marked every location that I manipulate types behind the
-   scenes with (* * *).
-
-   This might be an interesting point of comparison for the F* code.
-*)
 Lemma X_CNOT_comm : forall c t, X t; CNOT c t ≡ CNOT c t ; X t.
 Proof.
   intros c t dim.
   simpl; unfold ueval1, pad. 
-  bdestruct (t + 1 <=? dim); try solve_non_WT_cases. 
+  bdestruct (t + 1 <=? dim); remove_zero_gates; trivial. 
   unfold ueval_cnot, pad. 
   bdestruct (c <? t).
-  - bdestruct (c + (1 + (t - c - 1) + 1) <=? dim); try solve_non_WT_cases.
+  - bdestruct (c + (1 + (t - c - 1) + 1) <=? dim); remove_zero_gates; trivial. 
     (* c < t *)
     remember (t - c - 1) as i.
     replace (dim - (1 + i + 1) - c) with (dim - 1 - t) by lia.
@@ -476,19 +471,18 @@ Proof.
     replace (2 ^ (t - c)) with (2 ^ i * 2) by unify_pows_two.
     repeat rewrite <- id_kron.
     rewrite (kron_assoc (I (2 ^ c)) _ (I (2 ^ i))).
-    (* * *) replace (2 ^ c * 2 * 2 ^ i) with (2 ^ c * (2 * 2 ^ i)) by rewrite_assoc.
+    replace dim with (c + (1 + i + 1) + j) by lia.
+    clear.
+    restore_dims_strong.
     rewrite (kron_assoc (I (2 ^ c)) _ σx).
-    (* * *) replace (2 ^ dim) with (2 ^ c * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
-    (* * *) replace (2 ^ 1) with 2 by easy.
-    (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-    (* * *) replace (2 ^ c * (2 * 2 ^ i) * 2) with (2 ^ c * (2 * 2 ^ i * 2)) by rewrite_assoc.
+    restore_dims_strong.
     repeat rewrite kron_mixed_product; remove_id_gates.
-    rewrite <- (kron_assoc (∣0⟩⟨0∣) (I (2 ^ i)) (I 2)).
+    rewrite <- (kron_assoc ∣0⟩⟨0∣ (I (2 ^ i)) (I 2)).
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
     repeat rewrite kron_mixed_product; remove_id_gates.
-  - bdestruct (t <? c); try solve_non_WT_cases.
-    bdestruct (t + (1 + (c - t - 1) + 1) <=? dim); try solve_non_WT_cases.
+  - bdestruct (t <? c); remove_zero_gates; trivial.
+    bdestruct (t + (1 + (c - t - 1) + 1) <=? dim); remove_zero_gates; trivial.
     (* t < c *)
     remember (c - t - 1) as i.
     replace (dim - (1 + i + 1) - t) with (dim - 1 - c) by lia.
@@ -499,17 +493,16 @@ Proof.
     rewrite (kron_assoc (I (2 ^ t)) σx _).
     rewrite <- (kron_assoc σx _ (I (2 ^ j))).
     rewrite <- (kron_assoc σx (I (2 ^ i)) (I 2)).
-    (* * *) replace (2 * (2 ^ i * 2 * 2 ^ j)) with (2 * (2 ^ i * 2) * 2 ^ j) by rewrite_assoc.
+    replace dim with (t + (1 + i + 1) + j) by lia.
+    clear.
+    restore_dims_strong.
     rewrite <- (kron_assoc (I (2 ^ t)) _ (I (2 ^ j))).
-    (* * *) replace (2 ^ dim) with (2 ^ t * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
-    (* * *) replace (2 ^ (1 + i + 1)) with (2 * (2 ^ i * 2)) by unify_pows_two.
+    restore_dims_strong.
     repeat rewrite kron_mixed_product; remove_id_gates.
-    (* * *) replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by rewrite_assoc.
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
     repeat rewrite kron_mixed_product; remove_id_gates.
 Qed.
-
 
 Lemma pad_dims : forall c n k,
   uc_well_typed n c ->
@@ -523,8 +516,8 @@ Proof.
     restore_dims_strong; Msimpl; reflexivity.
   - simpl.
     unfold ueval.
-    destruct n0 as [|[|[|]]]; simpl; try (rewrite id_kron; unify_pows_two; reflexivity).
-    + destruct l as [| a []]; try (rewrite id_kron; unify_pows_two; reflexivity).
+    destruct n0 as [|[|[|]]]; simpl; remove_zero_gates; trivial.
+    + destruct l as [| a []]; remove_zero_gates; trivial.
       unfold ueval1.
       repeat match goal with
       | [|- context [pad _ _ ?U ]] => remember U as U'
@@ -541,14 +534,14 @@ Proof.
       rewrite id_kron. unify_pows_two.
       replace (n - 1 - a + k) with (n + k - 1 - a) by lia.
       reflexivity.
-    + destruct l as [| a [|b[|]]]; try (rewrite id_kron; unify_pows_two; reflexivity).
+    + destruct l as [| a [|b[|]]]; remove_zero_gates; trivial.
       unfold ueval_cnot.
       inversion H; subst.
       assert (La : a < n) by (apply H5; simpl; auto).
       assert (Lb : b < n) by (apply H5; simpl; auto).
       clear -La Lb.
       unfold pad.
-      bdestruct (a <? b); bdestructΩ (b <? a); try (rewrite id_kron; unify_pows_two; reflexivity).
+      bdestruct (a <? b); bdestructΩ (b <? a); remove_zero_gates; trivial.
       * bdestructΩ (a + S (b - a - 1 + 1) <=? n).
         bdestructΩ (a + S (b - a - 1 + 1) <=? n + k).
         restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
