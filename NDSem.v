@@ -43,7 +43,7 @@ Inductive nd_eval {dim : nat} : com -> Vector (2^dim) -> Vector (2^dim) -> Prop 
 where "c '/' ψ '⇩' ψ'" := (nd_eval c ψ ψ').              
 
 Lemma nd_eval_ucom : forall (c : ucom) (dim : nat) (ψ ψ' : Vector (2^dim)),
-    WF_Matrix _ _ ψ ->
+    WF_Matrix ψ ->
     c / ψ ⇩ ψ' <-> (uc_eval dim c) × ψ = ψ'.
 Proof.
   intros c dim ψ ψ' WF.
