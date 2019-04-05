@@ -54,7 +54,7 @@ Proof.
     + simpl.
       rewrite Mmult_assoc.
       rewrite (IHc1 ψ'); trivial. 
-      assert (WF_Matrix _ _ ψ') by (rewrite <- (IHc1 _ ψ) ; auto with wf_db).      
+      assert (WF_Matrix ψ') by (rewrite <- (IHc1 _ ψ) ; auto with wf_db).      
       rewrite (IHc2 ψ''); easy.
     + easy.
   - gen ψ' ψ.

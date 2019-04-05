@@ -51,27 +51,16 @@ Proof.
     rewrite IHc1, IHc2; simpl; Msimpl; easy.
 Qed.
 
-(* Alternative (verbose) soundness proof using congruence. *)
+(* Alternate proof using congruence instead of Msimpl. *)
 Lemma rm_uskips_sound' : forall c,
   c ≡ (rm_uskips c).
 Proof.
   induction c; try easy.
   simpl.
-  destruct (rm_uskips c1); destruct (rm_uskips c2); intros dim.
-  - rewrite (useq_congruence _ uskip _ uskip); try easy.
-    apply uskip_id_l.
-  - rewrite (useq_congruence _ uskip _ (u1;u2)); try easy.
-    apply uskip_id_l.
-  - rewrite (useq_congruence _ uskip _ (uapp u l)); try easy.
-    apply uskip_id_l.
-  - rewrite (useq_congruence _ (u1;u2) _ uskip); try easy.
-    apply uskip_id_r.
-  - rewrite (useq_congruence _ (u1;u2) _ (u3;u4)); easy.
-  - rewrite (useq_congruence _ (u1;u2) _ (uapp u l)); easy.
-  - rewrite (useq_congruence _ (uapp u l) _ uskip); try easy.
-    apply uskip_id_r.
-  - rewrite (useq_congruence _ (uapp u l) _ (u0_1;u0_2)); easy.
-  - rewrite (useq_congruence _ (uapp u l) _ (uapp u0 l0)); easy.
+  destruct (rm_uskips c1); destruct (rm_uskips c2);
+    rewrite IHc1, IHc2; 
+    try apply uskip_id_l; try apply uskip_id_r;
+    reflexivity.
 Qed.
 
 (* The output of rm_uskips is either a single skip intruction, or a program
@@ -139,6 +128,28 @@ Fixpoint flatten (c: ucom) : ucom :=
   | _ => c
   end.
 
+Lemma flat_append_WT : forall c1 c2 dim,
+  uc_well_typed dim c1 -> uc_well_typed dim c2 
+    -> uc_well_typed dim (flat_append c1 c2).
+Proof.
+  intros c1 c2 dim WTc1 WTc2.
+  induction WTc1; simpl; apply WT_seq;
+  try apply WT_uskip; 
+  try apply WT_app; 
+  try apply IHWTc1_2;
+  assumption.
+Qed.
+
+Lemma flatten_WT : forall c dim,
+  uc_well_typed dim c -> uc_well_typed dim (flatten c).
+Proof.
+  intros c dim WT.
+  induction WT; simpl.
+  - apply WT_uskip.
+  - apply flat_append_WT; assumption.
+  - apply WT_app; assumption.
+Qed.
+
 Lemma denote_flat_append : forall c1 c2 dim,
   uc_eval dim (flat_append c1 c2) = uc_eval dim c2 × uc_eval dim c1.
 Proof.
@@ -191,12 +202,12 @@ Fixpoint propagate_not (c : ucom) (q : nat) : option ucom :=
            | None => None
            | Some c2' => Some (CNOT q1 q2 ; c2')
            end
-  | uapp U l ; c2 => 
-      if (inb q l)
+  | q' *= U ; c2 => 
+      if (q =? q')
       then None
       else match propagate_not c2 q with
            | None => None
-           | Some c2' => Some (uapp U l ; c2')
+           | Some c2' => Some (q' *= U ; c2')
            end
   | _ => None
   end.
@@ -233,15 +244,76 @@ Definition example2 : ucom := ((X q1; X q2); X q3).
 Compute (flatten example2).
 Compute (rm_nots example2).
 
-(* propagate_not is semantics-preserving. *)
-Lemma propagate_not_sound : forall c c' q,
-  propagate_not c q = Some c' ->
-  c' ≡ (X q; c).
+(* Weaker congruence relationship, needed in propagate_not because dim
+   is directly referenced in the well-typedness constraint. *)
+Lemma useq_congruence' : forall c1 c1' c2 c2' dim,
+    uc_eval dim c1 = uc_eval dim c1' ->
+    uc_eval dim c2 = uc_eval dim c2' ->
+    uc_eval dim (c1 ; c2) = uc_eval dim (c1' ; c2').
 Proof.
-  intros c c' q.
+  intros c1 c1' c2 c2' dim Ec1 Ec2.
+  simpl.
+  rewrite Ec1, Ec2.
+  reflexivity.
+Qed.
+
+(* propagate_not preserves well-typedness. *)
+Lemma propagate_not_WT : forall c c' q dim,
+  uc_well_typed dim c ->
+  propagate_not c q = Some c' ->
+  uc_well_typed dim c'.
+Proof.
+  intros c c' q dim WT.
   generalize dependent c'.
-  induction c.
-  - easy.
+  induction c; try easy.
+  - inversion WT; subst.
+    specialize (IHc2 H3).
+    clear - IHc2 H2 H3. 
+    intros c' H.
+    destruct c1; try easy.
+    destruct u;
+    (* U = H, Y, Z, R *)
+    try (destruct l; try destruct l; simpl in H; try easy;
+         destruct (q =? n); try easy;
+         destruct (propagate_not c2 q); try easy;
+         inversion H; constructor; try easy;
+         apply IHc2; easy);
+    subst.
+    (* U = X *)
+    + destruct l; try destruct l; try (inversion H2; contradict H5; easy).
+      simpl in H. bdestruct (q =? n).
+      * inversion H; subst; easy.
+      * destruct (propagate_not c2 q); inversion H.
+        constructor; try easy.
+        apply IHc2; easy.
+    (* U = CNOT *)
+    + destruct l; try destruct l; try destruct l; 
+        try (inversion H2; contradict H5; easy).
+      simpl in H. bdestruct (q =? n); try easy.
+      bdestruct (q =? n0).
+      * subst. destruct (propagate_not c2 n0); inversion H.
+        constructor; try easy.
+        apply IHc2; easy.
+      * destruct (propagate_not c2 q); inversion H.
+        constructor; try easy.
+        apply IHc2; easy.
+  - destruct u; try easy. 
+    destruct l; try destruct l; try easy.
+    simpl. bdestruct (q =? n); try easy; subst.
+    intros c' H. 
+    inversion H.
+    constructor.
+Qed.
+
+(* propagate_not is semantics-preserving. *)
+Lemma propagate_not_sound : forall c c' q dim,
+  uc_well_typed dim (X q) ->
+  propagate_not c q = Some c' ->
+  uc_eval dim c' = uc_eval dim (X q; c).
+Proof.
+  intros c c' q dim WT_X.
+  generalize dependent c'.
+  induction c; try easy.
   - clear IHc1.
     intros c' H.
     destruct c1; try easy.
@@ -249,107 +321,101 @@ Proof.
     destruct u;
     (* U = H, Y, Z, R *)
     try (rewrite HeqU in H; simpl in H; rewrite <- HeqU in H;
-         remember (inb q l) as b; 
-         destruct b; try easy;
+         destruct l; try destruct l; try easy;
+         bdestruct (q =? n); try easy;
          destruct (propagate_not c2 q); try easy;
          inversion H;
-         intros dim;
-         rewrite <- useq_assoc;
-         rewrite (useq_congruence _ (uapp U l; X q) c2 c2);
-         try apply slide12; try easy;
-         rewrite useq_assoc;
-         rewrite (useq_congruence (uapp U l) (uapp U l) _ (X q; c2)); 
-         try apply IHc2; easy);
+         rewrite (useq_congruence' _ (n *= U) u (X q; c2));
+         try apply IHc2; try easy;
+         repeat rewrite <- useq_assoc;
+         apply useq_congruence;
+         try reflexivity;
+         apply slide1; apply Nat.neq_sym; assumption);
     subst.
     (* U = X *)
     + (* solve the cases where l is empty or has >1 element *)
       destruct l; simpl in H; try destruct l;
       try destruct ((n =? q) || inb q (n0 :: l)); try easy;
       try (destruct (propagate_not c2 q); 
-           inversion H; intros dim;
-           simpl; rewrite (IHc2 u); 
-           remove_id_gates; easy).
+           inversion H; simpl; remove_zero_gates; reflexivity).
       (* solve the case where l has exactly 1 element *)
       bdestruct (q =? n).
       * inversion H; subst.
-        intros dim.
         rewrite <- useq_assoc.
-        rewrite (useq_congruence _ uskip _ c'); try easy.
-        rewrite uskip_id_l; easy.
-        apply uc_equiv_sym.
-        apply XX_id.
+        rewrite (useq_congruence' _ uskip _ c'); 
+        try rewrite uskip_id_l; 
+        try reflexivity.
+        symmetry; apply XX_id; assumption.
       * destruct (propagate_not c2 q); inversion H.
-        intros dim.
         rewrite <- useq_assoc.
         rewrite (useq_congruence _ (X n; X q) c2 c2); try easy.
         rewrite useq_assoc.
-        rewrite (useq_congruence _ (X n) u (X q; c2)); try apply IHc2; easy.
+        rewrite (useq_congruence' _ (X n) u (X q; c2)); try apply IHc2; easy.
         apply slide1; easy.
     (* U = CNOT *)
     + (* solve the cases where l has <2 or >2 elements *)
-      destruct l; simpl in H; try destruct l; simpl in H; try destruct l;
-      [ | destruct ((n =? q) || false) | | destruct ((n =? q) || ((n0 =? q) || (inb q (n1::l)))) ];
-      try (destruct (propagate_not c2 q); 
-           inversion H; intros dim;
-           simpl; rewrite IHc2;
-           remove_id_gates; easy).
+      destruct l; simpl in H; try destruct l; simpl in H; try destruct l; try easy;
+      try (destruct (q =? n); try easy;
+           destruct (propagate_not c2 q); try easy;
+           inversion H; simpl; remove_zero_gates; reflexivity).
       (* solve the case where l has exactly 2 elements *)
       bdestruct (q =? n); try easy.
       bdestruct (q =? n0).
       * subst. destruct (propagate_not c2 n0); inversion H.
-        intros dim.
-        rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (CNOT n n0; X n0) c2 c2); try easy.
-        rewrite useq_assoc.
-        rewrite (useq_congruence _ (CNOT n n0) u (X n0; c2)); try apply IHc2; easy.
-        apply X_CNOT_comm.
-      * assert (inb q (n::n0::[]) = false). 
-        { apply not_eq_sym in H0; apply beq_nat_false_iff in H0.
-          apply not_eq_sym in H1; apply beq_nat_false_iff in H1.
-          simpl. repeat apply orb_false_intro; easy. }
-        destruct (propagate_not c2 q); inversion H.
-        intros dim.
-        rewrite <- useq_assoc.
-        rewrite (useq_congruence _ (CNOT n n0; X q) c2 c2); try easy.
-        rewrite useq_assoc.
-        rewrite (useq_congruence _ (CNOT n n0) u (X q; c2)); try apply IHc2; easy.
-        apply slide12; easy.
+        rewrite (useq_congruence' _ (CNOT n n0) u (X n0; c2)); try apply IHc2; try easy.
+        repeat rewrite <- useq_assoc.
+        apply useq_congruence; try reflexivity.
+        symmetry; apply X_CNOT_comm.
+      * destruct (propagate_not c2 q); inversion H.
+        rewrite (useq_congruence' _ (CNOT n n0) u (X q; c2)); try apply IHc2; try easy.
+        repeat rewrite <- useq_assoc.
+        apply useq_congruence; try reflexivity.
+        symmetry; apply slide12; assumption.
   - destruct u; try easy. 
     destruct l; try destruct l; try easy.
     simpl. bdestruct (q =? n); try easy; subst.
     intros c' H.
     inversion H.
-    apply XX_id.
+    apply XX_id; assumption.
 Qed.   
-    
+
 (* propagate_nots is semantics-preserving. *)
-Lemma propagate_nots_sound : forall c n, c ≡ propagate_nots c n.
+Lemma propagate_nots_sound : forall c n dim, 
+  uc_well_typed dim c -> uc_eval dim c = uc_eval dim (propagate_nots c n).
 Proof.
   intros c n dim.
   generalize dependent c.
   induction n; try easy.
-  intros c.
+  intros c WT.
   destruct c; try easy.
   destruct c1; 
   try destruct u; 
-  try destruct l; try destruct l; 
-  try (simpl; rewrite <- IHn; easy).
-  simpl.
-  destruct (propagate_not c2 n0) eqn:H.
-  - specialize (propagate_not_sound c2 u n0 H) as H1.
-    unfold uc_equiv in H1. simpl in H1.
-    rewrite <- H1.
+  try destruct l; try destruct l;
+  try (inversion WT; subst; simpl; rewrite <- IHn; easy).
+  simpl; destruct (propagate_not c2 n0) eqn:H.
+  - inversion WT; subst.
+    specialize (propagate_not_sound c2 u n0 dim H3 H) as H'.
+    simpl in H'; rewrite <- H'.
     apply IHn.
-  - simpl; rewrite <- IHn; easy.
+    apply (propagate_not_WT c2 _ n0); assumption.
+  - inversion WT; subst. simpl. rewrite <- IHn; easy.
 Qed.
 
-(* rm_nots is semantics-preserving. *)
-Lemma rm_nots_sound : forall c, c ≡ rm_nots c.
+(* rm_nots is semantics-preserving. 
+   
+   The well-typedness constraint is required because rm_nots can actually
+   return a well-typed circuit given a circuit that is not well-typed.
+     ==> Consider the program X 4; X 4 where dim = 3
+   The output of the denotation function may change in this case. 
+*)
+Lemma rm_nots_sound : forall c dim, 
+  uc_well_typed dim c -> uc_eval dim c = uc_eval dim (rm_nots c).
 Proof.
-  intros c dim.
+  intros c dim WT.
   unfold rm_nots.
   rewrite <- propagate_nots_sound.
   apply flatten_sound.
+  apply flatten_WT; assumption.
 Qed.
 
 
@@ -357,7 +423,7 @@ Qed.
 (** Circuit Mapping Example **)
 (*****************************)
 
-(* Mapping algorithm. *)
+(* Naive mapping algorithm. *)
 Fixpoint move_target_left (base dist : nat) : ucom :=
   match dist with 
   | O => CNOT base (base + 1)
@@ -392,7 +458,7 @@ Definition q5 : nat := 5.
 Definition example3 : ucom := CNOT q1 q4; CNOT q5 q2.
 Compute (map_to_lnn example3).
 
-(* There are more interesting & general properties we can prove about SWAP, e.g.
+(* There are many more interesting & general properties we can prove about SWAP, e.g.
 
        forall a b, SWAP a b; U b; SWAP a b ≡ U a
 
@@ -409,14 +475,14 @@ Compute (map_to_lnn example3).
 
 (* TODO: clean up denote_swap_adjacent by adding the lemmas below to M_db. *)
 Lemma swap_spec_general : forall (A B : Matrix 2 2),
-  WF_Matrix 2 2 A -> WF_Matrix 2 2 B -> swap × (A ⊗ B) × swap = B ⊗ A.
+  WF_Matrix A -> WF_Matrix B -> swap × (A ⊗ B) × swap = B ⊗ A.
 Proof.
   intros A B WF_A WF_B.
   solve_matrix.
 Qed.
 
 Lemma rewrite_ket_prod00 : forall (q1 :  Matrix 2 1) (q2 : Matrix 1 2),
-  WF_Matrix 2 1 q1 -> WF_Matrix 1 2 q2 -> (q1 × ⟨0∣) × (∣0⟩ × q2) = q1 × q2.
+  WF_Matrix q1 -> WF_Matrix q2 -> (q1 × ⟨0∣) × (∣0⟩ × q2) = q1 × q2.
 Proof. intros. solve_matrix. Qed.
 
 Lemma rewrite_ket_prod01 : forall (q1 :  Matrix 2 1) (q2 : Matrix 1 2),
@@ -428,145 +494,201 @@ Lemma rewrite_ket_prod10 : forall (q1 :  Matrix 2 1) (q2 : Matrix 1 2),
 Proof. intros. solve_matrix. Qed.
 
 Lemma rewrite_ket_prod11 : forall (q1 :  Matrix 2 1) (q2 : Matrix 1 2),
-  WF_Matrix 2 1 q1 -> WF_Matrix 1 2 q2 -> (q1 × ⟨1∣) × (∣1⟩ × q2) = q1 × q2.
+  WF_Matrix q1 -> WF_Matrix q2 -> (q1 × ⟨1∣) × (∣1⟩ × q2) = q1 × q2.
 Proof. intros. solve_matrix. Qed.
 
 (* Show that SWAP ≡ swap. *)
 Lemma denote_SWAP_adjacent : forall n dim,
-  n + 1 < dim ->
+  uc_well_typed dim (SWAP n (n + 1)) ->
   uc_eval dim (SWAP n (n + 1)) = (I (2 ^ n)) ⊗ swap ⊗ (I (2 ^ (dim - 2 - n))).
 Proof.
-  intros n dim HWT.
+  intros n dim WT.
+  assert (n + 1 < dim).
+  { inversion WT; inversion H3; subst.
+    apply H9. right. left. easy. }
+  clear WT.
   simpl; unfold ueval_cnot, pad.
   replace (n <? n + 1) with true by (symmetry; apply Nat.ltb_lt; lia).
   bdestruct (n + 1 <? n); try (contradict H; lia).
   replace (n + 1 - n) with 1 by lia; simpl.
   replace (n + 2 <=? dim) with true by (symmetry; apply leb_iff; lia). 
-  Msimpl'.
+  clear H0.
+  restore_dims_strong; Msimpl.
   repeat rewrite Mmult_plus_distr_l.
-  repeat rewrite Mmult_plus_distr_r.
-  Msimpl'; try easy.
+  repeat rewrite Mmult_plus_distr_r. 
+  restore_dims_strong; Msimpl.
   repeat rewrite Mmult_plus_distr_l.
-  Msimpl'; try easy.
-  replace (σx × ∣1⟩⟨1∣) with (∣0⟩⟨1∣) by (rewrite <- Mmult_assoc; Msimpl'; easy).
-  replace (σx × ∣0⟩⟨0∣) with (∣1⟩⟨0∣) by (rewrite <- Mmult_assoc; Msimpl'; easy).
-  replace (∣0⟩⟨0∣ × σx) with (∣0⟩⟨1∣) by (rewrite Mmult_assoc; Msimpl'; easy).
-  replace (∣1⟩⟨1∣ × σx) with (∣1⟩⟨0∣) by (rewrite Mmult_assoc; Msimpl'; easy).
+  restore_dims_strong; Msimpl.
+  replace (σx × ∣1⟩⟨1∣) with (∣0⟩⟨1∣) by (rewrite <- Mmult_assoc; Msimpl; reflexivity).
+  replace (σx × ∣0⟩⟨0∣) with (∣1⟩⟨0∣) by (rewrite <- Mmult_assoc; Msimpl; reflexivity).
+  replace (∣0⟩⟨0∣ × σx) with (∣0⟩⟨1∣) by (rewrite Mmult_assoc; Msimpl; reflexivity).
+  replace (∣1⟩⟨1∣ × σx) with (∣1⟩⟨0∣) by (rewrite Mmult_assoc; Msimpl; reflexivity).
   repeat rewrite rewrite_ket_prod00; try auto with wf_db.
   repeat rewrite rewrite_ket_prod11; try auto with wf_db.
   repeat rewrite rewrite_ket_prod01.
   repeat rewrite rewrite_ket_prod10.
   repeat rewrite kron_0_l. 
   repeat rewrite Mplus_0_l, Mplus_0_r.
-  replace (σx × ∣0⟩⟨1∣) with (∣1⟩⟨1∣) by (rewrite <- Mmult_assoc; Msimpl'; easy).
+  replace (σx × ∣0⟩⟨1∣) with (∣1⟩⟨1∣) by (rewrite <- Mmult_assoc; Msimpl; reflexivity).
   repeat rewrite <- Mplus_assoc.
   assert (swap = ∣1⟩⟨1∣ ⊗ ∣1⟩⟨1∣ .+ ∣0⟩⟨1∣ ⊗ ∣1⟩⟨0∣ .+ ∣1⟩⟨0∣ ⊗ ∣0⟩⟨1∣ .+ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) by solve_matrix.
   rewrite H0.
   reflexivity.
 Qed.
 
-Lemma swap_swap_id_adjacent: forall a,
-  SWAP a (a+1); SWAP a (a+1) ≡ uskip.
+Lemma swap_adjacent_WT: forall b dim,
+  b + 1 < dim -> uc_well_typed dim (SWAP b (b + 1)).
 Proof.
-  intros a dim.
-  remember (SWAP a (a+1)) as s.
-  simpl.
-  bdestruct (a + 1 <? dim).
-  - subst; rewrite denote_SWAP_adjacent; try easy.
-    Msimpl'.
-    replace (2 ^ 2) with 4 by easy.
-    rewrite swap_swap.
-    rewrite id_kron.
-    replace (2 ^ a * 4) with (2 ^ (a + 2)) by unify_pows_two.
-    rewrite id_kron.
-    replace (2 ^ (a + 2) * 2 ^ (dim - 2 - a)) with (2 ^ dim) by unify_pows_two.
-    reflexivity.
-  - subst. simpl; unfold ueval_cnot, pad.
-    replace (a <? a + 1) with true by (symmetry; apply Nat.ltb_lt; lia).
-    replace (a + (1 + (a + 1 - a - 1) + 1)) with (a + 2) by lia.
-    bdestruct (a + 2 <=? dim); bdestruct (a + 1 <? a);
-    try (contradict H0; lia);
-    try (contradict H1; lia).
-    remove_id_gates.
+  intros b dim H.
+  repeat apply WT_seq; apply WT_app; 
+    try (unfold in_bounds; intros; repeat destruct H0; subst; lia);
+    try easy;
+    repeat apply NoDup_cons; try apply NoDup_nil; try easy;
+    intros [H0 | H0];  contradict H0; lia.
 Qed.
 
-Lemma swap_cnot_adjacent1 : forall a b,
+Lemma swap_adjacent_not_WT: forall b dim,
+  b + 1 >= dim -> uc_eval dim (SWAP b (b + 1)) = Zero.
+Proof.
+  intros b dim H.
+  simpl; unfold ueval_cnot, pad.
+  replace (b <? b + 1) with true by (symmetry; apply Nat.ltb_lt; lia).
+  bdestruct (b + (1 + (b + 1 - b - 1) + 1) <=? dim).
+  contradict H0. lia.
+  remove_zero_gates; trivial.
+Qed.
+
+Lemma swap_swap_id_adjacent: forall a dim,
+  uc_well_typed dim (SWAP a (a+1)) ->
+  uc_eval dim (SWAP a (a+1); SWAP a (a+1)) = uc_eval dim uskip.
+Proof.
+  intros a dim WT.
+  assert (a + 1 < dim).
+  { inversion WT; inversion H3; subst. 
+    apply H9. right. left. easy. }
+  remember (SWAP a (a+1)) as s; simpl; subst.
+  rewrite denote_SWAP_adjacent; try assumption.
+  replace (2 ^ dim) with (2 ^ a * (2 ^ 1 * 2 ^ 1) * 2 ^ (dim - 2 - a)) by unify_pows_two.
+  replace (2 ^ 1) with 2 by easy.
+  repeat rewrite kron_mixed_product.
+  rewrite swap_swap.
+  Msimpl.
+  repeat rewrite id_kron.
+  reflexivity.
+Qed.
+
+Opaque SWAP.
+Lemma swap_cnot_adjacent_left : forall a b,
+  a < b ->
   SWAP b (b+1); CNOT a b; SWAP b (b+1) ≡ CNOT a (b+1).
 Proof.
-  intros a b dim.
-  remember (SWAP b (b + 1)) as s.
+  intros a b H dim.
   simpl; unfold ueval_cnot, pad.
-  bdestruct (a <? b).
-  - replace (a <? b + 1) with true  by (symmetry; apply Nat.ltb_lt; lia).
-    replace (a + (1 + (b - a - 1) + 1)) with (b + 1) by lia.
-    replace (a + (1 + (b + 1 - a - 1) + 1)) with (b + 2) by lia.
-    bdestruct (b + 2 <=? dim).
-    + replace (b + 1 <=? dim) with true by (symmetry; apply Nat.leb_le; lia).
-      subst; rewrite denote_SWAP_adjacent; try lia.
-      remember (b - a - 1) as i.
-      replace (b + 1 - a - 1) with (i + 1) by lia.
-      replace (2 ^ (dim - (1 + i + 1) - a)) with (2 * 2 ^ (dim - (1 + (i + 1) + 1) - a)) by unify_pows_two.
-      replace (dim - (1 + (i + 1) + 1) - a) with (dim - 2 - b) by lia.
-      replace (2 ^ (b - a)) with (2 ^ i * 2) by unify_pows_two.
-      replace (2 ^ (i + 1)) with (2 ^ i * 2) by unify_pows_two.
-      replace (2 ^ (b + 1 - a)) with (2 ^ i * 2 ^ 2) by unify_pows_two.
-      replace (2 ^ b) with (2 ^ a * 2 * 2 ^ i) by unify_pows_two.      
-      repeat rewrite <- id_kron.
-      rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) _).
-      replace (2 ^ a * 2 * 2 ^ i) with (2 ^ a * (2 * 2 ^ i)) by rewrite_assoc.
-      rewrite (kron_assoc _ _ _ _ _ _ _ _ swap).
-      rewrite <- (kron_assoc _ _ _ _ _ _ ∣0⟩⟨0∣ _ (I 2)).
-      rewrite <- (kron_assoc _ _ _ _ _ _ ∣0⟩⟨0∣ _ (I (2 ^ 2))).
-      rewrite <- (kron_assoc _ _ _ _ _ _ ∣1⟩⟨1∣ _ (I 2)).
-      replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by rewrite_assoc.
-      rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) σx).
-      rewrite <- (kron_assoc _ _ _ _ _ _ _ (I 2) (I (2 ^ (dim - 2 - b)))).
-      rewrite (kron_assoc _ _ _ _ _ _ (I (2 ^ a)) _ (I 2)).
-      replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-      rewrite kron_plus_distr_r.
-      rewrite (kron_assoc _ _ _ _ _ _ _ σx (I 2)).
-      rewrite (kron_assoc _ _ _ _ _ _ _ (I 2) (I 2)).
-      Msimpl'.
-      (*replace (2 ^ (S i + 1 + 1)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
-      replace (2 * 2) with (2 ^ 2) by easy.
-      replace (2 ^ (S i + 2)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.*)
-      rewrite Mmult_plus_distr_r.
-      replace (2 ^ (S i + 1 + 1)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
-      replace (2 ^ (S i + 2)) with (2 ^ (S i) * (2 ^ 2)) by unify_pows_two.
-      replace (2 ^ 2) with (2 * 2) by easy.
-      rewrite Mmult_plus_distr_l.
-      Msimpl'; try easy.
-      repeat rewrite <- (Mmult_assoc _ _ _ _ swap _ swap).
-      repeat rewrite swap_spec_general; try auto with wf_db.
-      rewrite <- id_kron.
-      simpl.
-      (* almost there *)
-      admit.
-Admitted.
+  replace (a <? b) with true by (symmetry; apply Nat.ltb_lt; assumption).
+  replace (a <? b + 1) with true  by (symmetry; apply Nat.ltb_lt; lia).
+  remember (b - a - 1) as i.
+  replace (b + 1 - a - 1) with (i + 1) by lia.
+  bdestruct (a + (1 + (i + 1) + 1) <=? dim).
+  2: { rewrite swap_adjacent_not_WT; try lia; remove_zero_gates; trivial. }
+  replace (a + (1 + i + 1) <=? dim) with true by (symmetry; apply Nat.leb_le; lia).
+  assert (b + 1 < dim) by lia.
+  rewrite denote_SWAP_adjacent.
+  2: { apply swap_adjacent_WT; assumption. }
+  (* 1: rewrite identity matrices *)
+  replace (2 ^ (dim - (1 + i + 1) - a)) with (2 * 2 ^ (dim - (1 + (i + 1) + 1) - a)) by unify_pows_two.
+  replace (dim - (1 + (i + 1) + 1) - a) with (dim - 2 - b) by lia.
+  replace (2 ^ (b - a)) with (2 ^ i * 2) by unify_pows_two.
+  replace (2 ^ (i + 1)) with (2 ^ i * 2) by unify_pows_two.
+  replace (2 ^ (b + 1 - a)) with (2 ^ i * 2 ^ 2) by unify_pows_two.
+  replace (2 ^ b) with (2 ^ a * 2 * 2 ^ i) by unify_pows_two.  
+  repeat rewrite <- id_kron.
+  replace (2 ^ dim) with (2 ^ a * (2 ^ 1 * 2 ^ i * (2 ^ 2)) * 2 ^ (dim - 2 - b)) by unify_pows_two.
+  replace (2 ^ 1) with 2 by easy.
+  replace (2 ^ 2) with (2 * 2) by easy.
+  clear.
+  (* 2: manually mess with associativity *)
+  rewrite (kron_assoc _ (I 2) _).
+  restore_dims_strong.
+  rewrite (kron_assoc _ _ swap).
+  rewrite <- (kron_assoc ∣0⟩⟨0∣ _ (I 2)).
+  rewrite <- (kron_assoc ∣0⟩⟨0∣ _ (I (2 ^ 2))).
+  rewrite <- (kron_assoc ∣1⟩⟨1∣ _ (I 2)).
+  restore_dims_strong.
+  rewrite (kron_assoc _ (I 2) σx).
+  rewrite <- (kron_assoc _ (I 2) (I (2 ^ (dim - 2 - b)))).
+  rewrite (kron_assoc (I (2 ^ a)) _ (I 2)).
+  rewrite kron_plus_distr_r.
+  rewrite (kron_assoc _ σx (I 2)).
+  rewrite (kron_assoc _ (I 2) (I 2)).
+  (* 3: simplify *)
+  replace (2 ^ a * (2 * 2 ^ i * 2) * 2) with (2 ^ a * (2 * 2 ^ i * (2 * 2))) by rewrite_assoc.
+  replace (2 * 2 ^ i * 2 * 2) with (2 * 2 ^ i * (2 * 2)) by rewrite_assoc.
+  Msimpl. 
+  rewrite Mmult_plus_distr_r.
+  rewrite Mmult_plus_distr_l.
+  Msimpl. 
+  repeat rewrite <- (Mmult_assoc swap _ swap).
+  repeat rewrite swap_spec_general; try auto with wf_db.
+  replace (2 ^ 2) with (2 * 2) by easy.
+  rewrite id_kron.
+  replace (2 * (2 ^ i * 2) * 2) with (2 * 2 ^ i * (2 * 2)) by rewrite_assoc.
+  reflexivity.
+Qed.
 
-Lemma swap_cnot_adjacent2 : forall a b,
+Lemma swap_cnot_adjacent_right : forall a b,
+  b + 1 < a ->
   SWAP b (b+1); CNOT a (b+1); SWAP b (b+1) ≡ CNOT a b.
 Proof.
-  intros a b dim.
-  remember (SWAP b (b+1)) as s.
-  remember (CNOT a (b+1)) as c.
-  remember (CNOT a b) as c'.
-  rewrite (useq_congruence _ (s; (s; c'; s)) s s); try easy.
-  2: { unfold uc_equiv. 
-       apply (useq_congruence s s _ ((s; c'); s)); try easy.
-       apply uc_equiv_sym. subst. apply swap_cnot_adjacent1. }
-  rewrite (useq_congruence _ (((s; s); c'); s) s s); try easy.
-  2: { intros dim0. 
-       rewrite <- useq_assoc.
-       rewrite (useq_congruence _ ((s; s); c') s s); try easy.
-       intros dim1. rewrite useq_assoc. reflexivity. }
-  rewrite useq_assoc.
-  rewrite (useq_congruence _ (uskip; c') _ uskip).
-  2: { intros dim0; rewrite (useq_congruence _ uskip _ c'); try easy.
-       subst; apply swap_swap_id_adjacent. }
-  2: { subst; apply swap_swap_id_adjacent. }
-  rewrite uskip_id_r.
-  apply uskip_id_l.  
+  intros a b H dim.
+  simpl; unfold ueval_cnot, pad.
+  replace (b + 1 <? a) with true by (symmetry; apply Nat.ltb_lt; assumption).
+  replace (b <? a) with true by (symmetry; apply Nat.ltb_lt; lia).
+  bdestruct (a <? b + 1). contradict H0. lia.
+  bdestruct (a <? b). contradict H1. lia.
+  remember (a - b - 1) as i.
+  remember (dim - (1 + i + 1) - b) as j.
+  replace (a - (b + 1)) with i by lia.
+  replace (dim - (1 + (i - 1) + 1) - (b + 1)) with j by lia.
+  replace (b + 1 + (1 + (i - 1) + 1)) with (b + (1 + i + 1)) by lia.
+  bdestruct (b + (1 + i + 1) <=? dim).
+  2: { remove_zero_gates; trivial. }
+  rewrite denote_SWAP_adjacent.
+  2: { apply swap_adjacent_WT. lia. }
+  (* 1: rewrite identity matrices *)
+  replace (2 ^ (b + 1)) with (2 ^ b * 2) by unify_pows_two.
+  replace (2 ^ i) with (2 * 2 ^ (i - 1)) by unify_pows_two.
+  replace (2 ^ (a - b)) with ((2 ^ 2) * 2 ^ (i - 1)) by unify_pows_two.
+  replace (2 ^ (dim - 2 - b)) with (2 ^ (i - 1) * 2 * 2 ^ j) by unify_pows_two.
+  repeat rewrite <- id_kron.
+  replace (2 ^ dim) with (2 ^ b * (2 ^ 2 * 2 ^ (i - 1) * 2) * 2 ^ j) by unify_pows_two.
+  replace (2 ^ 2) with (2 * 2) by easy.
+  replace (2 ^ (1 + i + 1)) with (2 ^ 1 * 2 ^ 1 * 2 ^ (i - 1) * 2 ^ 1) by unify_pows_two.
+  replace (2 ^ 1) with 2 by easy.
+  clear.
+  (* 2: manually mess with associativity *)
+  rewrite (kron_assoc _ swap _).
+  rewrite <- (kron_assoc swap _ _).
+  replace (2 * 2 * (2 ^ (i - 1) * 2 * 2 ^ j)) with (2 * 2 * 2 ^ (i - 1) * 2 * 2 ^ j) by rewrite_assoc.
+  replace (2 * 2 * (2 ^ (i - 1) * 2)) with (2 * 2 * 2 ^ (i - 1) * 2) by rewrite_assoc.
+  rewrite <- (kron_assoc (I (2 ^ b)) _ _).
+  rewrite <- (kron_assoc swap _ _).
+  rewrite <- (kron_assoc σx _ _).
+  rewrite (kron_assoc (I (2 ^ b)) (I 2) _).
+  restore_dims_strong.
+  rewrite kron_plus_distr_l.
+  repeat rewrite <- (kron_assoc (I 2) _ _).
+  (* 3: simplify *)
+  replace (2 ^ b * (2 * (2 * 2 ^ (i - 1) * 2))) with (2 ^ b * (2 * 2 * 2 ^ (i - 1) * 2)) by rewrite_assoc. 
+  replace (2 * (2 * 2 ^ (i - 1) * 2)) with (2 * 2 * 2 ^ (i - 1) * 2) by rewrite_assoc.
+  Msimpl.
+  rewrite Mmult_plus_distr_r.
+  rewrite Mmult_plus_distr_l.
+  restore_dims_strong.
+  Msimpl. 
+  repeat rewrite <- (Mmult_assoc swap _ swap).
+  repeat rewrite swap_spec_general; try auto with wf_db.
+  rewrite id_kron.
+  reflexivity.
 Qed.
 
 Lemma move_target_left_equiv_cnot : forall base dist,
@@ -575,13 +697,11 @@ Proof.
   intros base dist.
   induction dist.
   - replace (base + 0 + 1) with (base + 1) by lia; easy.
-  - simpl; intros dim.
-    remember (SWAP (base + S dist) (base + S dist + 1)) as s.
-    rewrite (useq_congruence _ (s; CNOT base (base + dist + 1)) s s); try easy. 
-    2: { intros dim'. apply useq_congruence; easy. }
-    subst.
+  - simpl.
+    rewrite IHdist.
     replace (base + S dist) with (base + dist + 1) by lia.
-    apply (swap_cnot_adjacent1 base (base + dist + 1)). 
+    apply swap_cnot_adjacent_left.
+    lia.
 Qed. 
 
 Lemma move_target_right_equiv_cnot : forall base dist,
@@ -590,24 +710,18 @@ Proof.
   intros base dist H.
   induction dist.
   - replace (base - 0) with base by lia; easy.
-  - simpl; intros dim.
-    remember (SWAP (base - S dist) (base - S dist + 1)) as s.
-    rewrite (useq_congruence _ (s; CNOT (base + 1) (base - dist)) s s); try easy. 
-    2: { intros dim'. apply useq_congruence; try easy. 
-         apply IHdist. lia. }
-    subst.
+  - simpl.
+    rewrite IHdist; try lia.
     replace (base - dist) with (base - S dist + 1) by lia.
-    apply (swap_cnot_adjacent2 (base + 1) (base - S dist)). 
+    apply swap_cnot_adjacent_right.
+    lia.
 Qed.
 
 (* map_to_lnn is semantics-preserving *)
-Lemma map_to_lnn_sound : forall c dim, 
-  uc_eval dim c = uc_eval dim (map_to_lnn c).
+Lemma map_to_lnn_sound : forall c, c ≡ map_to_lnn c.
 Proof.
-  intros c dim.
-  induction c.
-  - easy.
-  - simpl. rewrite IHc1, IHc2. easy.
+  induction c; try easy.
+  - simpl. rewrite <- IHc1. rewrite <- IHc2. reflexivity.
   - simpl.
     destruct u; try easy.
     repeat (destruct l; try easy).
@@ -623,68 +737,97 @@ Proof.
 Qed.
 
 (* linear nearest neighbor: 'all CNOTs are on adjacent qubits' *)
-Inductive respects_LNN : nat -> ucom -> Prop :=
-  | LNN_skip : forall dim, respects_LNN dim uskip
-  | LNN_seq : forall dim c1 c2, 
-      respects_LNN dim c1 -> respects_LNN dim c2 -> respects_LNN dim (c1; c2)
-  | LNN_app_cnot : forall dim n1 n2, 
-      n1 < dim -> n2 < dim -> 
-        n1 = n2 - 1 \/ n1 = n2 + 1 -> respects_LNN dim (CNOT n1 n2)
-  | LNN_app_u : forall dim u n, n < dim -> respects_LNN dim (@uapp 1 u [n]).
+Inductive respects_LNN : ucom -> Prop :=
+  | LNN_skip : respects_LNN uskip
+  | LNN_seq : forall c1 c2, 
+      respects_LNN c1 -> respects_LNN c2 -> respects_LNN (c1; c2)
+  | LNN_app_u : forall (u : Unitary 1) q, respects_LNN (q *= u)
+  | LNN_app_cnot_left : forall n, respects_LNN (CNOT n (n+1))
+  | LNN_app_cnot_right : forall n, respects_LNN (CNOT (n+1) n).
 
-Lemma move_target_left_respects_lnn : forall base dist dim,
-  base + dist + 1 < dim ->
-  respects_LNN dim (move_target_left base dist).
+Transparent SWAP.
+Lemma move_target_left_respects_lnn : forall base dist,
+  respects_LNN (move_target_left base dist).
 Proof.
-  intros base dist dim H.
+  intros base dist.
   induction dist.
-  - simpl. apply LNN_app_cnot; lia. 
+  - simpl. apply LNN_app_cnot_left.
   - simpl. 
-    repeat apply LNN_seq; try apply LNN_app_cnot; try lia.
-    apply IHdist; lia.
+    repeat apply LNN_seq; 
+    try apply LNN_app_cnot_left;
+    try apply LNN_app_cnot_right.
+    apply IHdist.
 Qed. 
 
-Lemma move_target_right_respects_lnn : forall base dist dim,
-   base >= dist -> base + 1 < dim -> 
-   respects_LNN dim (move_target_right base dist).
+Lemma move_target_right_respects_lnn : forall base dist,
+   base >= dist -> 
+   respects_LNN (move_target_right base dist).
 Proof.
-  intros base dist dim H1 H2.
+  intros base dist H.
   induction dist.
-  - simpl. apply LNN_app_cnot; lia. 
+  - simpl. apply LNN_app_cnot_right.
   - simpl.
-    repeat apply LNN_seq; try apply LNN_app_cnot; try lia.
-    apply IHdist; lia.
+    repeat apply LNN_seq; 
+    try apply LNN_app_cnot_left;
+    try apply LNN_app_cnot_right.
+    apply IHdist.
+    lia.
 Qed.
 
-(* map_to_lnn produces programs that satisfy the LNN constraint.
+(* map_to_lnn produces programs that satisfy the LNN constraint. 
 
-   The well-typedness constraint is necessary because respects_LNN
-   requires some aspects of well-typedness that are not enforced
-   by map_to_lnn (namely, for CNOT n1 n2, n1 <> n2 and n1 and n2 
-   are bounded by dim). *)
+   The well-typedness constraint is necessary because gates applied
+   to the incorrect number of arguments do not satisfy our LNN 
+   property. (We can change this if we want). *)
 Lemma map_to_lnn_correct : forall c dim, 
-  uc_well_typed dim c -> respects_LNN dim (map_to_lnn c).
+  uc_well_typed dim c -> respects_LNN (map_to_lnn c).
 Proof.
-  intros c dim c_WT.
-  induction c_WT.
+  intros c dim WT.
+  induction WT.
   - apply LNN_skip.
-  - simpl. apply LNN_seq; easy.
-  - destruct u; destruct l; try destruct l; inversion H;
-    try (apply LNN_app_u; apply H0; left; reflexivity).
-    destruct l; inversion H.
+  - simpl. apply LNN_seq; assumption.
+  - destruct u; destruct l; try destruct l; try destruct l; 
+    try inversion H; try apply LNN_app_u.
     simpl. 
-    assert (n < dim). { apply H0. left. reflexivity. }
-    assert (n0 < dim). { apply H0. right. left. reflexivity. }
-    assert (n <> n0). { inversion H1; subst. simpl in H7. lia. }
     bdestruct (n <? n0).
-    + apply move_target_left_respects_lnn; lia.
-    + bdestruct (n0 <? n); try (contradict H5; lia).
-      apply move_target_right_respects_lnn; lia. 
+    apply move_target_left_respects_lnn.
+    bdestruct (n0 <? n).
+    apply move_target_right_respects_lnn; lia.
+    inversion H1; subst. contradict H6. left. lia.
 Qed.
 
 
 (*********************************)
 (** Boolean Circuit Compilation **)
 (*********************************)
+(* The plan is to reproduce QWIRE/Oracles.v, time permitting.
+   Nothing is done yet. *)
 
-(* TODO *)
+Inductive bexp := 
+| b_t   : bexp
+| b_f   : bexp
+| b_var : nat -> bexp
+| b_not : bexp -> bexp
+| b_and : bexp -> bexp -> bexp 
+| b_xor : bexp -> bexp -> bexp.
+
+Reserved Notation "⌈ b | f ⌉" (at level 0). 
+
+Fixpoint interpret_bexp (b : bexp) (f : nat -> bool) : bool :=
+  match b with
+  | b_t         => true 
+  | b_f         => false 
+  | b_var v     => f v 
+  | b_not b     => ¬ ⌈ b | f ⌉
+  | b_and b1 b2 => ⌈ b1 | f⌉ && ⌈ b2 | f⌉
+  | b_xor b1 b2 => ⌈ b1 | f⌉ ⊕ ⌈ b2 | f⌉
+  end where "⌈ b | f ⌉" := (interpret_bexp b f).  
+
+(* This def. of Toffoli is from https://en.wikipedia.org/wiki/Toffoli_gate *)
+Definition TDAG a := uapp (U_R (- PI / 4)) [a].
+Definition TOFFOLI (a b c : nat) : ucom :=
+  H c; CNOT b c; TDAG c; CNOT a c; T c; CNOT b c; TDAG c; CNOT a c; T b; T c; CNOT a b; H c; T a; TDAG b; CNOT a b.
+
+(* TODO: prove that the Toffoli gate implements the Toffoli spec. *)
+
+
