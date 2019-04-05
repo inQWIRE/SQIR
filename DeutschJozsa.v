@@ -21,10 +21,10 @@ Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U)  : nat :=
   end.
 
 Definition balanced (dim : nat) {U : ucom} (P : boolean dim U) : Prop :=
-  count P = (2 ^ (dim - 1))%nat.
+  dim >= 2 /\ count P = (2 ^ (dim - 2))%nat.
 
 Definition constant (dim : nat) {U : ucom} (P : boolean dim U) : Prop :=
-  count P = 0%nat \/ count P = (2 ^ dim)%nat.
+  count P = 0%nat \/ count P = (2 ^ (dim - 1))%nat.
 
 Fixpoint cpar1 (n : nat) (u : nat -> ucom) : ucom :=
   match n with
@@ -233,11 +233,25 @@ Proof.
       rewrite Heqplus. reflexivity.
 Qed.
 
+Lemma count_limit :
+   forall (dim : nat) (U : ucom) (P : boolean dim U), count P <= 2 ^ (dim - 1).
+Proof.
+  intros. induction P.
+  - simpl. lia.
+  - simpl. lia.
+  - simpl. 
+    replace (2 ^ (dim - 0))%nat with (2 ^ (dim - 1) + 2 ^ (dim - 1))%nat.
+    apply plus_le_compat; assumption.
+    destruct dim.
+    + inversion P1.
+    + unify_pows_two. 
+Qed.
+
 Lemma deutsch_jozsa_constant1 : 
   forall (dim : nat) (U : ucom) (P : boolean dim U),
-  (count P = 2 ^ dim)%nat -> 
+  (count P = 2 ^ (dim - 1))%nat -> 
   ((uc_eval (S dim) U) × (∣-⟩ ⊗ (nket dim ∣+⟩))) = (-1)%R .* (∣-⟩ ⊗ (nket dim ∣+⟩)).
-Proof.
+Proof.  
 Admitted.
 
 Definition proportional {n : nat} (ψ ϕ : Vector n) := 
