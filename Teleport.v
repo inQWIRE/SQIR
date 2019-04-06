@@ -1,6 +1,8 @@
 Require Import SQIMP.
-Require Import UnitarySem.
 Require Import Dirac.
+Require UnitarySem.
+Require DensitySem.
+Require NDSem.
 
 Ltac restore_dims_rec A :=
    match A with
@@ -83,7 +85,10 @@ Ltac cancel_terms t :=
                                   rewrite <- (Cmult_assoc x y z)
   end.  
 
+(* Unitary Teleportation Circuit and Proof *)
 Module UTeleport.
+
+Import UnitarySem.
 
 Open Scope ucom.
 
@@ -92,14 +97,11 @@ Definition alice (a c : nat) : ucom := CNOT a c ; H a.
 Definition bob (a c b: nat) : ucom := CNOT c b; CZ a b.
 Definition teleport (a c b : nat) : ucom := alice a c; bob a c b.
 
-Local Close Scope R_scope.
-Local Close Scope nat_scope.
-
 Definition epr00 : Vector 4 :=
   fun x y => match x, y with
-             | 0, 0 => (1/√2)%C
-             | 3, 0 => (1/√2)%C
-             | _, _ => 0%C
+             | 0, 0 => 1/√2
+             | 3, 0 => 1/√2
+             | _, _ => 0
              end.
 
 Lemma epr_correct : 
@@ -117,46 +119,35 @@ Proof.
   unfold teleport. simpl.
   unfold ueval1.
   unfold ueval_cnot, pad. simpl.
-  solve_matrix;
-  remember (ψ 0%nat 0%nat) as a; remember (ψ 1%nat 0%nat) as b.
-  all : try rewrite (Cmult_comm a _); try rewrite (Cmult_comm b _).
-  all : repeat rewrite Cmult_assoc.
-  all : remember (/ √ 2 * / √ 2 * / √ 2 * b)%C as β.
-  all : remember (/ √ 2 * / √ 2 * / √ 2 * a)%C as α.
-  all : try rewrite (Copp_mult_distr_r (/√2)%C _).
-  all : rewrite <- Cmult_plus_distr_l.
-  all : repeat rewrite Cplus_assoc.
-  all : try rewrite Copp_plus_distr; try rewrite Copp_involutive.
-  all : try rewrite Cplus_assoc.
-  all : try rewrite <- (Cplus_assoc α β α); try rewrite <- (Cplus_assoc α β (-α)). 
-  all : rewrite (Cplus_comm β _); rewrite Cplus_assoc.
-  all : autorewrite with C_db; try rewrite <- Cplus_assoc; autorewrite with C_db; rewrite Cdouble.
-  all : try rewrite Heqα; try rewrite Heqβ.
-  all : rewrite <- Cmult_plus_distr_l; repeat rewrite Cmult_assoc.
-  all : autorewrite with C_db.
-  all : rewrite <- (Cmult_assoc (/2) _ _); autorewrite with C_db.
-  all : rewrite Cmult_assoc.
-  all : rewrite <- (Cmult_assoc (/2) _ _); autorewrite with C_db; reflexivity.
-Qed.
+  solve_matrix.
+  all: repeat (try rewrite Cmult_plus_distr_l; 
+               try rewrite Cmult_plus_distr_r;
+               try rewrite <- Copp_mult_distr_r;
+               try rewrite <- Copp_mult_distr_l).
+  all: group_radicals.
+  all: cancel_terms 2%C.
+  all: lca.
+Qed.  
 
 End UTeleport.
 
+(* Non-unitary teleport, proof with density matrices *)
 Module DensityTeleport.
 
-Require Import DensitySem.
+Import DensitySem.
 
 Local Open Scope com.
 
-Definition q := 0. (* qubit for transmission *)
-Definition a := 1. (* alice's qubit *)
-Definition b := 2. (* bob's qubit *)
+Definition q : nat := 0. (* qubit for transmission *)
+Definition a : nat := 1. (* alice's qubit *)
+Definition b : nat := 2. (* bob's qubit *)
 
 Definition bell : com := H a ; CNOT a b.
 Definition alice : com := CNOT q a ; H q ; meas q ; meas a.
 Definition bob : com := CNOT a b; CZ q b; reset q; reset a.
 Definition teleport : com := bell; alice; bob.
 
-Lemma teleport_correct : forall (ρ : Density 2),
+Lemma teleport_correct : forall (ρ : Density (2^1)),
   WF_Matrix ρ -> 
   c_eval 3 teleport (ρ ⊗ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) = (∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣ ⊗ ρ).  
 Proof.
@@ -180,11 +171,22 @@ End DensityTeleport.
 
 Module NDTeleport.
 
-Require Import NDSem.
+Import UnitarySem.
+Import NDSem.
 
-Definition q := 0. (* qubit for transmission *)
-Definition a := 1. (* alice's qubit *)
-Definition b := 2. (* bob's qubit *)
+Local Open Scope com.
+
+(* More general than the notion in Deutsch.v
+   Figure out which is desired and move to Quantum. *)
+Definition proportional {n : nat} (ψ ϕ : Vector n) := 
+  exists s, s .* ψ = ϕ. 
+
+Notation "ψ ∝ ϕ" := (proportional ψ ϕ) (at level 100).
+
+
+Definition q : nat := 0. (* qubit for transmission *)
+Definition a : nat := 1. (* alice's qubit *)
+Definition b : nat := 2. (* bob's qubit *)
 
 Definition bell : com := H a ; CNOT a b.
 Definition alice : com := CNOT q a ; H q ; meas q ; meas a.
@@ -224,7 +226,7 @@ Ltac destruct_apps :=
 (* Via Matrix Multiplying *)
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix ψ ->
-  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' = ∣ 0 , 0 ⟩ ⊗ ψ.   
+  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' ∝ ∣ 0 , 0 ⟩ ⊗ ψ.   
 Proof.
   intros ψ ψ' WF H.
   destruct_seqs; destruct_apps.
@@ -240,34 +242,39 @@ Proof.
       autorewrite with C_db. 
       unfold e; reflexivity. }
   subst e.
-  remember (measure q) as c.
-  destruct H0_2; try discriminate. 
-  1:{ 
-inversion Heqc.
-  
-  dependent destruction H0_2.
-  
+  dependent destruction H0_2;
+  dependent destruction H0_0;
+  dependent destruction H0_3;
+  dependent destruction H0_4;
+  subst ψ' ψ'0 ψ'1 ψ'2.
 
+  (* solves the contradictory (0) cases *)
+  all: try (
+           contradict H1;
+           unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl;
+           repeat reduce_matrices;
+           unfold norm; (* easier to change condition to norm^2 <> 0 *)
+           simpl; autorewrite with R_db; rewrite sqrt_0; reflexivity
+         ).
 
-  (* Can do first, but need a well-formedness lemma *)
-  match goal with 
-  | H : reset q / ?x ⇩ ?y |- _ => replace x with e in H
-  end.
-  2:{ unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl.
-      repeat reduce_matrices.
-      unfold Cdiv.
-      repeat rewrite <- Copp_mult_distr_l.
-      group_radicals.
-      autorewrite with C_db. 
-      unfold e; reflexivity. }
-  
+  (* solves the four possible cases *)
+  all: try (
+       clear;
+       unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl;
+       repeat reduce_matrices;
+       unfold Cdiv;
+       repeat (try rewrite Cmult_plus_distr_l; 
+               try rewrite Cmult_plus_distr_r;
+               try rewrite <- Copp_mult_distr_r;
+               try rewrite <- Copp_mult_distr_l);
+       autorewrite with C_db;
+       group_radicals;
+       cancel_terms 2%R;
+       exists 2; solve_matrix
+       ).
+Qed.
 
-  rewrite H in H0_2.
-  crunch_matrix.
-  reduce_matrices.
-solve_matrix.                                                                                                                       all: try reflexivity.      
-  2: reflexivity.
-
+(* Alternative teleport proofs 
 Require Import Dirac.
 
 
@@ -534,4 +541,4 @@ kmp_rewrite hadamard (I 2) ∣0⟩ ∣0⟩.
   dependent destruction H0.
   
   
-  
+  *)
