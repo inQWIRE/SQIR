@@ -20,11 +20,11 @@ Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U)  : nat :=
   | boolean_U u u1 u2 dim WT1 P1 WT2 P2 WT P => count P1 + count P2
   end.
 
-Definition balanced (dim : nat) {U : ucom} (P : boolean dim U) : Prop :=
-  count P = (2 ^ (dim - 1))%nat.
+Definition balanced {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
+  dim >= 2 /\ count P = (2 ^ (dim - 2))%nat.
 
-Definition constant (dim : nat) {U : ucom} (P : boolean dim U) : Prop :=
-  count P = 0%nat \/ count P = (2 ^ dim)%nat.
+Definition constant {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
+  count P = 0%nat \/ count P = (2 ^ (dim - 1))%nat.
 
 Fixpoint cpar1 (n : nat) (u : nat -> ucom) : ucom :=
   match n with
@@ -233,11 +233,98 @@ Proof.
       rewrite Heqplus. reflexivity.
 Qed.
 
+Lemma count_limit :
+   forall (dim : nat) (U : ucom) (P : boolean dim U), count P <= 2 ^ (dim - 1).
+Proof.
+  intros. induction P.
+  - simpl. lia.
+  - simpl. lia.
+  - simpl. 
+    replace (2 ^ (dim - 0))%nat with (2 ^ (dim - 1) + 2 ^ (dim - 1))%nat.
+    apply plus_le_compat; assumption.
+    destruct dim.
+    + inversion P1.
+    + unify_pows_two. 
+Qed.
+
+Lemma aux4 : forall a b c d: nat, a <= c -> b <= d -> a + b = c + d -> a = c /\ b = d.
+Proof.
+  intros. split. lia. lia.
+Qed.
+
+Lemma constant_induction :
+  forall u u1 u2 dim WT1 P1 WT2 P2 WT P, 
+  count (boolean_U u u1 u2 dim WT1 P1 WT2 P2 WT P) = 2 ^ dim ->
+  count P1 = 2 ^ (dim - 1) /\ count P2 = 2 ^ (dim - 1).
+Proof.
+  intros. inversion H.
+  destruct dim. 
+  - inversion P2.
+  - replace (S dim - 1) with dim by lia.
+    replace (2 ^ S dim) with (2 ^ dim + 2 ^ dim) in H1 by unify_pows_two.
+    assert (count P1 <= 2 ^ dim).
+    replace (2 ^ dim) with (2 ^ (S dim - 1)) by unify_pows_two. apply count_limit.
+    assert (count P2 <= 2 ^ dim).
+    replace (2 ^ dim) with (2 ^ (S dim - 1)) by unify_pows_two. apply count_limit.
+    apply aux4; assumption.
+Qed.    
+
 Lemma deutsch_jozsa_constant1 : 
   forall (dim : nat) (U : ucom) (P : boolean dim U),
-  (count P = 2 ^ dim)%nat -> 
+  (count P = 2 ^ (dim - 1))%nat -> 
   ((uc_eval (S dim) U) × (∣-⟩ ⊗ (nket dim ∣+⟩))) = (-1)%R .* (∣-⟩ ⊗ (nket dim ∣+⟩)).
-Proof.
+Proof.  
+  intros. induction P; intros.
+  - inversion H.
+  - rewrite u1. simpl. unfold ueval1, pad. simpl. 
+    (* rewrite eulers_identity. *)
+    solve_matrix.
+  - replace (S dim - 1) with dim in H by lia.
+    apply constant_induction in H.
+    inversion H. apply IHP1 in H0. apply IHP2 in H1.
+    remember ∣+⟩ as ψp. remember ∣-⟩ as ψm.
+    replace (S (S dim)) with (S dim + 1) by lia. 
+    rewrite <- pad_dims by apply u4.
+    rewrite e.
+    replace (S dim) with (dim + 1) in H0 by lia. 
+    rewrite <- pad_dims in H0 by apply u0.
+    replace (S dim) with (dim + 1) in H1 by lia. 
+    rewrite <- pad_dims in H1 by apply u3.
+    destruct dim. inversion P1.
+    replace (nket (S dim) ψp) with (nket dim ψp ⊗ ψp) in * by reflexivity.
+    replace (2 ^ 1) with 2 in * by (simpl; reflexivity).
+    show_dimensions.
+    replace (2 ^ S dim) with (2 ^ dim * 2) in * by unify_pows_two.
+    replace  
+       (kron' 2 1 (2 ^ dim * 2) 1 ψm (kron' (2 ^ dim) 1 2 1 (nket dim ψp) ψp))
+    with 
+       (kron' 2 1 (2 ^ dim * 2) (1 * 1) ψm (kron' (2 ^ dim) 1 2 1 (nket dim ψp) ψp)) in * by (simpl; reflexivity).
+    rewrite <- kron_assoc in *.
+    replace (2 ^ (S dim + 1)) with (2 * 2 ^ dim * 2) in * by unify_pows_two.
+    hide_dimensions. show_dimensions.
+    replace
+      (Mmult' (2 * 2 ^ dim * 2) (2 * 2 ^ dim * 2) (1 * 1)
+         (kron' (2 ^ dim * 2) (2 ^ dim * 2) 2 2 (uc_eval (S dim) u1) (I 2))
+         (kron' (2 * 2 ^ dim) (1 * 1) 2 1 (kron' 2 1 (2 ^ dim) 1 ψm (nket dim ψp))
+            ψp))
+    with
+      (Mmult' (2 * 2 ^ dim * 2) (2 * 2 ^ dim * 2) (1 * 1 * 1)
+         (kron' (2 * 2 ^ dim) (2 * 2 ^ dim) 2 2 (uc_eval (S dim) u1) (I 2))
+         (kron' (2 * 2 ^ dim) (1 * 1) 2 1 (kron' 2 1 (2 ^ dim) 1 ψm (nket dim ψp))
+            ψp)) in H0 by (simpl; reflexivity).
+    replace
+      (Mmult' (2 * 2 ^ dim * 2) (2 * 2 ^ dim * 2) (1 * 1)
+         (kron' (2 ^ dim * 2) (2 ^ dim * 2) 2 2 (uc_eval (S dim) u2) (I 2))
+         (kron' (2 * 2 ^ dim) (1 * 1) 2 1 (kron' 2 1 (2 ^ dim) 1 ψm (nket dim ψp))
+            ψp))
+    with
+      (Mmult' (2 * 2 ^ dim * 2) (2 * 2 ^ dim * 2) (1 * 1 * 1)
+         (kron' (2 * 2 ^ dim) (2 * 2 ^ dim) 2 2 (uc_eval (S dim) u2) (I 2))
+         (kron' (2 * 2 ^ dim) (1 * 1) 2 1 (kron' 2 1 (2 ^ dim) 1 ψm (nket dim ψp))
+            ψp)) in H1 by (simpl; reflexivity).
+    rewrite kron_mixed_product in *.
+    hide_dimensions.
+    rewrite Mmult_1_l in *; try (rewrite Heqψp; auto with wf_db).
 Admitted.
 
 Definition proportional {n : nat} (ψ ϕ : Vector n) := 
@@ -247,7 +334,7 @@ Notation "ψ ∝ ϕ" := (proportional ψ ϕ) (at level 20).
 
 Theorem deutsch_jozsa_constant_correct :
   forall (dim : nat) (U : ucom) (P : boolean dim U),
-  constant dim P -> 
+  constant P -> 
   ((uc_eval (S dim) U) × (∣-⟩ ⊗ (nket dim ∣+⟩))) ∝ (∣-⟩ ⊗ (nket dim ∣+⟩)).
 Proof.
   intros. inversion H.
@@ -264,7 +351,7 @@ Notation "ψ ⟂ ϕ" := (perpendicular ψ ϕ) (at level 20).
 
 Theorem deutsch_jozsa_balanced_correct : 
   forall (dim : nat) (U : ucom) (P : boolean dim U) (ψ : Vector 2),
-  balanced dim P -> 
+  balanced P -> 
   ((uc_eval (S dim) U) × (∣-⟩ ⊗ (nket dim ∣+⟩))) ⟂ (ψ ⊗ (nket dim ∣+⟩)).
 Proof.
 Admitted.
