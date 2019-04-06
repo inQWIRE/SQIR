@@ -7,9 +7,9 @@ Require Export Matrix.
 
 (* Using our (complex, unbounded) matrices, their complex numbers *)
 
-Open Scope R_scope.
-Open Scope C_scope.
-Open Scope matrix_scope.
+Local Open Scope R_scope.
+Local Open Scope C_scope.
+Local Open Scope matrix_scope.
 
 (*******************************************)
 (* Quantum basis states *)

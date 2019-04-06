@@ -26,7 +26,7 @@ Delimit Scope ucom_scope with ucom.
 Notation "p1 ; p2" := (useq p1 p2) (at level 50) : ucom_scope.
 Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope.
 
-Open Scope ucom_scope.
+Local Open Scope ucom_scope.
 
 (*
 Notation "'H' a" := (uapp U_H [a]) (at level 0). 
@@ -96,7 +96,7 @@ Fixpoint uc_well_typed_b (dim : nat) (c : ucom) : bool :=
   | @uapp n u l => (length l =? n) && in_bounds_b l dim (* && boolean_no_dup *)
   end.
 
-Close Scope ucom.
+Local Close Scope ucom.
 
 (**********************)
 (** General Programs **)
@@ -167,59 +167,5 @@ Fixpoint reverse_m (c : com) :=
   | meas v           => reset v
   | _ => c
   end.
-
-(* Teleport Example *)
-
-Section Teleport.
-  
-Variable q a b : nat.
-
-Definition bell00 : com :=
-  a <- 0; b <- 0;
-  H a;
-  CNOT a b.
-
-Definition alice : com :=
-  CNOT q a;
-  H q;
-  measure q;
-  measure a.
-
-Definition bob : com :=
-  CNOT q b;
-  CZ q a.
-
-Definition teleport := bell00 ; alice; bob.
-
-End Teleport.
-
-(* Superdense Coding Example *)
-
-Section Superdense.
-
-Variable a b : nat.
-
-Definition encode (b1 b2 : bool): com :=
-  if b2 then X a else skip;
-  if b1 then Z a else skip.
-
-(* note: 'decode' is just the reverse of bell00, can we define it in terms 
-   of bell00 instead? *)
-(* RNR: In principle, but it's not the reverse of the bell00 as currently defined. 
-   (See the reverse functions above)
-  *)
-Definition decode : com :=
-  CNOT a b;
-  H a.
-
-Definition superdense (b1 b2 : bool) := 
-    bell00 a b; 
-    encode b1 b2; 
-    decode; 
-    measure a; 
-    measure b.
-
-End Superdense.    
-
 
   

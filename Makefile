@@ -31,7 +31,7 @@ NDSem.vo: NDSem.v UnitarySem.vo
 
 # Examples
 
-GHZ.vo : GHZ.v UnitarySem.vo
+GHZ.vo : GHZ.v UnitarySem.vo Dirac.vo
 	coqc GHZ.v
 
 Transformations.vo : Transformations.v UnitarySem.vo

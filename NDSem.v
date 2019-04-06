@@ -8,7 +8,7 @@ Require Import UnitarySem.
 Definition norm {n} (ψ : Vector n) :=
   sqrt (fst (ψ ∘ ψ†)).  
 
-Open Scope com.
+Local Open Scope com.
 
 (* With scaling *)
 

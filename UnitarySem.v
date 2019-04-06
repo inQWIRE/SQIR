@@ -2,7 +2,8 @@ Require Export SQIMP.
 Require Export Quantum.
 Require Import Setoid.
 
-Open Scope ucom_scope.
+Local Open Scope matrix_scope.
+Local Open Scope ucom_scope.
 
 (** Denotation of Unitaries *)
 
@@ -185,8 +186,8 @@ Proof.
   simpl; Msimpl; reflexivity.
 Qed.
 
-Close Scope C_scope.
-Close Scope R_scope.
+Local Close Scope C_scope.
+Local Close Scope R_scope.
 
 Ltac unify_matrices := 
   match goal with

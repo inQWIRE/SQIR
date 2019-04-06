@@ -85,13 +85,15 @@ Ltac cancel_terms t :=
 
 Module UTeleport.
 
+Open Scope ucom.
+
 Definition bell (c b : nat) : ucom := H c ; CNOT c b.
 Definition alice (a c : nat) : ucom := CNOT a c ; H a.
 Definition bob (a c b: nat) : ucom := CNOT c b; CZ a b.
 Definition teleport (a c b : nat) : ucom := alice a c; bob a c b.
 
-Open Scope R_scope.
-Open Scope nat_scope.
+Local Close Scope R_scope.
+Local Close Scope nat_scope.
 
 Definition epr00 : Vector 4 :=
   fun x y => match x, y with
@@ -139,7 +141,7 @@ Qed.
 
 End UTeleport.
 
-Section DensityTeleport.
+Module DensityTeleport.
 
 Require Import DensitySem.
 
@@ -189,7 +191,7 @@ Definition alice : com := CNOT q a ; H q ; meas q ; meas a.
 Definition bob : com := CNOT a b; CZ q b; reset q; reset a.
 Definition teleport : com := bell; alice; bob.
 
-Open Scope R_scope.
+Local Open Scope R_scope.
 
 Definition epr00 : Vector 4 := / √ 2 .* ∣ 0, 0 ⟩ .+ / √ 2 .* ∣ 1, 1 ⟩.
 
@@ -218,24 +220,6 @@ Ltac destruct_apps :=
   repeat match goal with
   | [H : app _ _ / _ ⇩ _ |- _] => dependent destruction H
   end.
-
-(* Copied from above module *)
-Ltac has_term t exp  := 
-  match exp with
-    | context[t] => idtac 
-  end.
-
-Ltac group_radicals := 
-  repeat match goal with
-  | _ => rewrite square_rad2
-  | |- context[(?x * ?y)%C] => tryif has_term (√2) x then fail else (has_term (√2) y; 
-                             rewrite (Cmult_comm x y))
-  | |- context[(?x * ?y * ?z)%C] => tryif has_term (√2) y then fail else (has_term (√2) x; has_term (√2) z; 
-                                  rewrite <- (Cmult_assoc x y z))
-  | |- context[(?x * (?y * ?z))%C] => has_term (√2) x; has_term (√2) y; 
-                                    rewrite (Cmult_assoc x y z)
-  end.  
-
 
 (* Via Matrix Multiplying *)
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),

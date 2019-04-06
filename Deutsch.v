@@ -3,6 +3,8 @@ Require Import List.
 Require Import SQIMP.
 Require Import UnitarySem.
 
+Open Scope ucom.
+
 (* Boolean functions {0,1} -> {0,1} *)
 Definition c0 (q r : nat) : ucom := uskip.
 Definition c1 (q r : nat) : ucom := X r.
@@ -23,7 +25,7 @@ Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U)  : nat :=
   | boolean_U u u1 u2 dim P1 P2 P => count P1 + count P2
   end.
 
-Definition deutsch1 (U : nat -> nat -> ucom) := H 0; H 1; U 0 1; H 0.
+Definition deutsch1 (U : nat -> nat -> ucom) := (H 0; H 1; U 0 1; H 0)%nat.
 
 Definition balanced1 (q r : nat) (U : nat -> nat -> ucom) := 
   uc_eval 2 (U q r) = uc_eval 2 (b0 q r) \/ uc_eval 2 (U q r) = uc_eval 2 (b1 q r). 
@@ -31,17 +33,13 @@ Definition balanced1 (q r : nat) (U : nat -> nat -> ucom) :=
 Definition constant1 (q r : nat) (U : nat -> nat -> ucom) := 
   uc_eval 2 (U q r) = uc_eval 2 (c0 q r) \/ uc_eval 2 (U q r) = uc_eval 2 (c1 q r). 
 
-Open Scope R_scope.
-
 Notation "∣-⟩" := (/√2 .* ∣0⟩ .+ (-/√2) .* ∣1⟩)%C.
 
 (* outer product *)
 Definition op {n : nat} (ψ : Vector n) : Density n := ψ × ψ†.
 
-Open Scope C_scope.
-
 (* Remove global phase. *)
-Lemma global_phase : forall (n : nat)(ψ : Vector n), op ψ = op ((-1) .* ψ).
+Lemma global_phase : forall (n : nat) (ψ : Vector n), op ψ = op (-1 .* ψ).
 Proof.
   intros. unfold op.
   rewrite Mscale_adj. rewrite Mscale_mult_dist_r. rewrite Mscale_mult_dist_l.

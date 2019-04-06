@@ -3,7 +3,7 @@
 Require Import Dirac.
 Require Import SQIMP.
 Require Import UnitarySem.
-Open Scope ucom_scope.
+Local Open Scope ucom.
 
 Require Import Complex.    
 
@@ -24,7 +24,7 @@ Definition decode_u : ucom := (* note: this is the reverse of bell00 *)
 
 Definition superdense_u (b1 b2 : bool) := bell00_u ; encode_u b1 b2; decode_u.
 
-Close Scope ucom_scope.
+Local Close Scope ucom.
 
 (* Rewriting seems to be more cooperative with this definition of 
    kron_mixed_product *)
@@ -52,13 +52,16 @@ Proof.
     setoid_rewrite CNOT10_spec.
     autorewrite with ket_db C_db; auto with wf_db. (* wf_db shouldn't be req'd *)
     setoid_rewrite CNOT10_spec.
+    setoid_rewrite CNOT01_spec.
     autorewrite with ket_db C_db; auto with wf_db.
     replace (RtoC (-1)%R) with (- C1)%C by lca. (* There shouldn't be Rs here... *)
     autorewrite with C_db.
     rewrite <- Mplus_assoc.
     rewrite (Mplus_comm _ _ (_ .*  ∣ 0, 1 ⟩)).
-    rewrite (Mplus_assoc _ _ (_ .*  ∣ 1, 1 ⟩)).    
-    simpl_ket_2_qubit. 
+    rewrite (Mplus_assoc _ _ (_ .*  ∣ 1, 1 ⟩)).
+    rewrite <- Mscale_plus_distr_l. 
+    autorewrite with ket_db C_db.
+    rewrite <- Mscale_plus_distr_l. 
     autorewrite with ket_db C_db.
     reflexivity.
   - solve_matrix.

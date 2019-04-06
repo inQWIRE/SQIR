@@ -2,8 +2,8 @@ Require Export SQIMP.
 Require Import UnitarySem.
 Require Import Dirac.
 
-Close Scope R_scope.
-Open Scope nat_scope.
+Local Open Scope nat_scope.
+Local Open Scope ucom_scope.
 
 Fixpoint GHZ (n : nat) : ucom :=
   match n with
@@ -19,7 +19,8 @@ Fixpoint nket (n : nat) (ψ : Matrix 2 1) : Matrix (2^n) 1 :=
   | S n' => (nket n' ψ) ⊗ ψ
   end.
 
-Open Scope R_scope.
+Local Open Scope R_scope.
+Local Open Scope C_scope.
 
 Definition ghz (n : nat) : Matrix (2^n) 1 :=
   match n with 

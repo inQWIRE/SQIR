@@ -1,17 +1,8 @@
-Require Import Reals.
-Require Import Complex.
 Require Import Psatz.
 Require Import String.
+Require Import Program.
+Require Export Complex.
 
-Require Export Prelim.
-
-Open Scope R_scope.
-Open Scope C_scope.
-Open Scope nat_scope.
-
-Bind Scope nat_scope with nat.
-Bind Scope R_scope with R.
-Bind Scope C_scope with C.
 
 (* TODO: Use matrix equality everywhere, declare equivalence relation *)
 (* TODO: Make all nat arguments to matrix lemmas implicit *)
@@ -19,6 +10,8 @@ Bind Scope C_scope with C.
 (*******************************************)
 (** Matrix Definitions and Infrastructure **)
 (*******************************************)
+
+Local Open Scope nat_scope.
 
 Definition Matrix (m n : nat) := nat -> nat -> C.
 
@@ -37,7 +30,6 @@ Ltac prep_matrix_equality :=
   let y := fresh "y" in 
   apply functional_extensionality; intros x;
   apply functional_extensionality; intros y.
-
 
 (* Matrix Equivalence *)
 Definition get {m n} (A : Matrix m n) (a : nat | a < m) (b : nat | b < n) := 
@@ -152,7 +144,7 @@ Notation "I  n" := (I n) (at level 10).
 
 (* This isn't used, but is interesting *)
 Definition I__inf := fun x y => if x =? y then C1 else C0.
-Notation "I∞" := I__inf.
+Notation "I∞" := I__inf : matrix_scope.
 
 (* sum to n exclusive *)
 Fixpoint Csum (f : nat -> C) (n : nat) : C := 
@@ -244,7 +236,7 @@ Ltac lma :=
 (** Proofs about finite sums **)
 (******************************)
 
-Close Scope nat_scope.
+Local Close Scope nat_scope.
 
 Lemma Csum_0 : forall f n, (forall x, f x = C0) -> Csum f n = 0. 
 Proof.
@@ -395,8 +387,8 @@ Proof.
     replace (f (m + n)%nat) with (g n) by (subst; reflexivity).
     replace (Csum (fun x : nat => f (S (m + x))) n) with
             (Csum (fun x : nat => g (S x)) n).
-    Focus 2. apply Csum_eq. subst. apply functional_extensionality.
-    intros; rewrite <- plus_n_Sm. reflexivity.
+    2:{ apply Csum_eq. subst. apply functional_extensionality.
+    intros; rewrite <- plus_n_Sm. reflexivity. }
     rewrite Csum_extend_l.
     rewrite Csum_extend_r.
     reflexivity.
@@ -416,7 +408,7 @@ Proof.
     remember ((fun x : nat => f (x / n)%nat * g (x mod n)%nat)) as h.
     replace (Csum (fun x : nat => f m * g x) n) with
             (Csum (fun x : nat => h ((m * n) + x)%nat) n). 
-    Focus 2.
+    2:{
       subst.
       apply Csum_eq_bounded.
       intros x Hx.
@@ -426,7 +418,7 @@ Proof.
       rewrite Nat.add_mod by assumption.
       rewrite Nat.mod_mul by assumption.
       rewrite plus_0_l.
-      repeat rewrite Nat.mod_small; trivial.
+      repeat rewrite Nat.mod_small; trivial. }
     rewrite <- Csum_sum.
     rewrite plus_comm.
     reflexivity.
@@ -470,7 +462,7 @@ Qed.
 (** Proofs about Well-Formedness **)
 (**********************************)
 
-Open Scope nat_scope.
+Local Open Scope nat_scope.
 
 Lemma WF_Zero : forall m n : nat, WF_Matrix (@Zero m n).
 Proof. intros m n. unfold WF_Matrix. reflexivity. Qed.
@@ -587,9 +579,15 @@ Proof.
     apply IHl. intros i. apply (H (S i)).
 Qed.
 
+Local Close Scope nat_scope.
+
 (***************************************)
 (* Tactics for showing well-formedness *)
 (***************************************)
+
+Local Open Scope nat.
+Local Open Scope R.
+Local Open Scope C.
 
 (*
 Ltac show_wf := 
@@ -712,9 +710,9 @@ Qed.
 
 (* using <= because our form Csum is exclusive. *)
 Lemma Mmult_1_l_gen: forall (m n : nat) (A : Matrix m n) (x z k : nat), 
-  k <= m ->
-  (k <= x -> Csum (fun y : nat => (I m x y * A y z)%C) k = C0) /\
-  (k > x -> Csum (fun y : nat => (I m x y * A y z)%C) k = A x z).
+  (k <= m)%nat ->
+  ((k <= x)%nat -> Csum (fun y : nat => I m x y * A y z) k = 0) /\
+  ((k > x)%nat -> Csum (fun y : nat => I m x y * A y z) k = A x z).
 Proof.  
   intros m n A x z k B.
   induction k.
@@ -760,9 +758,9 @@ Proof.
 Qed.
 
 Lemma Mmult_1_r_gen: forall (m n : nat) (A : Matrix m n) (x z k : nat), 
-  k <= n ->
-  (k <= z -> Csum (fun y : nat => (A x y * (I n) y z)%C) k = C0) /\
-  (k > z -> Csum (fun y : nat => (A x y * (I n) y z)%C) k = A x z).
+  (k <= n)%nat ->
+  ((k <= z)%nat -> Csum (fun y : nat => A x y * (I n) y z) k = 0) /\
+  ((k > z)%nat -> Csum (fun y : nat => A x y * (I n) y z) k = A x z).
 Proof.  
   intros m n A x z k B.
   induction k.
@@ -896,22 +894,22 @@ Proof.
   bdestruct (n =? 0). rewrite 2 WF by lia. lca.
   bdestruct (x / m <? 1); rename H1 into Eq1.
   bdestruct (x / m =? y / n); rename H1 into Eq2; simpl.
-  + assert (x / m = 0) by lia. clear Eq1. rename H1 into Eq1.
+  + assert (x / m = 0)%nat by lia. clear Eq1. rename H1 into Eq1.
     rewrite Eq1 in Eq2.     
     symmetry in Eq2.
     rewrite Nat.div_small_iff in Eq2 by lia.
     rewrite Nat.div_small_iff in Eq1 by lia.
     rewrite 2 Nat.mod_small; trivial.
     lca.
-  + assert (x / m = 0) by lia. clear Eq1.
+  + assert (x / m = 0)%nat by lia. clear Eq1.
     rewrite H1 in Eq2. clear H1.
-    assert (y / n <> 0) by lia. clear Eq2.
+    assert (y / n <> 0)%nat by lia. clear Eq2.
     rewrite Nat.div_small_iff in H1 by lia.
     rewrite Cmult_0_l.
     destruct WF with (x := x) (y := y). lia.
     reflexivity.
   + rewrite andb_false_r.
-    assert (x / m <> 0) by lia. clear Eq1.
+    assert (x / m <> 0)%nat by lia. clear Eq1.
     rewrite Nat.div_small_iff in H1 by lia.
     rewrite Cmult_0_l.
     destruct WF with (x := x) (y := y). lia.

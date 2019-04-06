@@ -26,8 +26,13 @@ by Robert Rand and Jennifer Paykin (June 2017).
 
 *)
 
-Require Import Prelim.
+Require Export Prelim.
+Open Scope nat_scope.
 Open Scope R_scope.
+
+Bind Scope nat_scope with nat.
+Bind Scope R_scope with R.
+Bind Scope C_scope with C.
 
 
 (******************************************)
@@ -101,7 +106,7 @@ Definition Cdiv (x y : C) : C := Cmult x (Cinv y).
 
 
 Delimit Scope C_scope with C.
-Local Open Scope C_scope.
+Open Scope C_scope.
 
 Infix "+" := Cplus : C_scope.
 Notation "- x" := (Copp x) : C_scope.
@@ -130,7 +135,7 @@ Definition Cmod (x : C) : R := sqrt (fst x ^ 2 + snd x ^ 2).
 
 Definition Cconj (x : C) : C := (fst x, (- snd x)%R).
 
-Notation "a ^*" := (Cconj a) (at level 10).
+Notation "a ^*" := (Cconj a) (at level 10) : C_scope.
 
 
 Lemma Cmod_0 : Cmod 0 = R0.
@@ -444,7 +449,7 @@ Add Field C_field_field : C_field_theory.
 Notation C0 := (RtoC 0). 
 Notation C1 := (RtoC 1).
 Notation C2 := (RtoC 2).
-Notation "√ n" := (sqrt n) (at level 20).
+Notation "√ n" := (sqrt n) (at level 20) : C_scope.
 
 Lemma RtoC_pow : forall r n, (RtoC r) ^ n = RtoC (r ^ n).
 Proof.
@@ -667,9 +672,43 @@ Ltac Rsolve := repeat (Rsimpl; try group_radicals); lra.
 Ltac Csolve := eapply c_proj_eq; simpl; Rsolve.
 *)
 
+Ltac has_term t exp  := 
+  match exp with
+    | context[t] => idtac 
+  end.
+
+Ltac group_radicals := 
+  repeat match goal with
+  | _ => rewrite square_rad2
+  | |- context[(?x * ?y)%C] => tryif has_term (√2) x then fail else (has_term (√2) y; 
+                             rewrite (Cmult_comm x y))
+  | |- context[(?x * ?y * ?z)%C] => tryif has_term (√2) y then fail else (has_term (√2) x; has_term (√2) z; 
+                                  rewrite <- (Cmult_assoc x y z))
+  | |- context[(?x * (?y * ?z))%C] => has_term (√2) x; has_term (√2) y; 
+                                    rewrite (Cmult_assoc x y z)
+  end.  
+
+Ltac cancel_terms t := 
+  repeat rewrite Cmult_plus_distr_l;
+  repeat rewrite Cmult_plus_distr_r; 
+  repeat match goal with
+  | _ => rewrite Cmult_1_l
+  | _ => rewrite Cmult_1_r
+  | _ => rewrite Cinv_r; try nonzero  
+  | _ => rewrite Cinv_l; try nonzero
+  | |- context[(?x * ?y)%C]        => tryif has_term (/ t)%C y then fail else has_term (/ t)%C x; has_term t y; 
+                                    rewrite (Cmult_comm x y)
+  | |- context[(?x * (?y * ?z))%C] => has_term t x; has_term (/ t)%C y; 
+                                    rewrite (Cmult_assoc x y z)
+  | |- context[(?x * (?y * ?z))%C] => tryif has_term t y then fail else has_term t x; has_term (/ t)%C z; 
+                                    rewrite (Cmult_comm y z)
+  | |- context[(?x * ?y * ?z)%C]   => tryif has_term t x then fail else has_term t y; has_term (/ t)%C z; 
+                                    rewrite <- (Cmult_assoc x y z)
+  end.  
+
 
 (* Seems like this could loop forever *)
-Ltac group_radicals := 
+Ltac group_radicals_old := 
   repeat (
   match goal with
     | [ |- context[(?r1 * √ ?r2)%R] ] => rewrite (Rmult_comm r1 (√r2)) 

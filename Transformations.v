@@ -1,5 +1,5 @@
 Require Export UnitarySem.
-
+Open Scope ucom.
 
 (********************************)
 (** Optimization: remove skips **)
@@ -87,8 +87,8 @@ Proof.
 Qed.
 
 (* The output of rm_uskips has no more operations than the input program. *)
-Close Scope C_scope.
-Close Scope R_scope.
+Local Close Scope C_scope.
+Local Close Scope R_scope.
 
 Fixpoint count_ops (c : ucom) : nat :=
   match c with
