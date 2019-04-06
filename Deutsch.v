@@ -87,19 +87,3 @@ Proof.
     repeat rewrite kron_1_r. 
     solve_matrix.
 Qed.
-
-(* MOVE ELSEWHERE! *)
-Fixpoint enumerate_bool_lists (len : nat) : list (list bool) :=
-  match len with
-  | 0 => []
-  | S len' => map (cons true) (enumerate_bool_lists len') ++ map (cons false) (enumerate_bool_lists len')
-  end.
-
-Compute (enumerate_bool_lists 2%nat).
-
- (* Assumes f's domain is {t,f}^len *)
-(* Returns the arity of {x | f x = b} *)
-Definition count (len : nat) (f : list bool -> bool) (b : bool): nat :=
-  length (filter (fun l => (bool_eq (f l) b)) (enumerate_bool_lists len)).
-
-
