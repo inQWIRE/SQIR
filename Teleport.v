@@ -1,5 +1,87 @@
 Require Import SQIMP.
 Require Import UnitarySem.
+Require Import Dirac.
+
+Ltac restore_dims_rec A :=
+   match A with
+  | ?A × ?B   => let A' := restore_dims_rec A in 
+                let B' := restore_dims_rec B in 
+                match type of A' with 
+                | Matrix ?m' ?n' =>
+                  match type of B' with 
+                  | Matrix ?n'' ?o' => constr:(@Mmult m' n' o' A' B')
+                  end
+                end 
+  | ?A ⊗ ?B   => let A' := restore_dims_rec A in 
+                let B' := restore_dims_rec B in 
+                match type of A' with 
+                | Matrix ?m' ?n' =>
+                  match type of B' with 
+                  | Matrix ?o' ?p' => constr:(@kron m' n' o' p' A' B')
+                  end
+                end
+  | ?A †      => let A' := restore_dims_rec A in 
+                match type of A' with
+                | Matrix ?m' ?n' => constr:(@adjoint m' n' A')
+                end
+  | ?A .+ ?B => let A' := restore_dims_rec A in 
+               let B' := restore_dims_rec B in 
+               match type of A' with 
+               | Matrix ?m' ?n' =>
+                 match type of B' with 
+                 | Matrix ?m'' ?n'' => constr:(@Mplus m' n' A' B')
+                 end
+               end
+  | ?c .* ?A => let A' := restore_dims_rec A in 
+               match type of A' with
+               | Matrix ?m' ?n' => constr:(@scale m' n' c A')
+               end
+  | ?A       => A
+   end.
+
+Ltac restore_dims_fast := 
+  match goal with
+  | |- ?A = ?B => let A' := restore_dims_rec A in 
+                let B' := restore_dims_rec B in 
+                idtac A; idtac A';
+                idtac B; idtac B';
+                replace A with A' by reflexivity; 
+                replace B with B' by reflexivity
+  end.
+
+Ltac has_term t exp  := 
+  match exp with
+    | context[t] => idtac 
+  end.
+
+Ltac group_radicals := 
+  repeat match goal with
+  | _ => rewrite square_rad2
+  | |- context[(?x * ?y)%C] => tryif has_term (√2) x then fail else (has_term (√2) y; 
+                             rewrite (Cmult_comm x y))
+  | |- context[(?x * ?y * ?z)%C] => tryif has_term (√2) y then fail else (has_term (√2) x; has_term (√2) z; 
+                                  rewrite <- (Cmult_assoc x y z))
+  | |- context[(?x * (?y * ?z))%C] => has_term (√2) x; has_term (√2) y; 
+                                    rewrite (Cmult_assoc x y z)
+  end.  
+
+Ltac cancel_terms t := 
+  repeat rewrite Cmult_plus_distr_l;
+  repeat rewrite Cmult_plus_distr_r; 
+  repeat match goal with
+  | _ => rewrite Cmult_1_l
+  | _ => rewrite Cmult_1_r
+  | _ => rewrite Cinv_r; try nonzero  
+  | _ => rewrite Cinv_l; try nonzero
+  | |- context[(?x * ?y)%C]        => tryif has_term (/ t)%C y then fail else has_term (/ t)%C x; has_term t y; 
+                                    rewrite (Cmult_comm x y)
+  | |- context[(?x * (?y * ?z))%C] => has_term t x; has_term (/ t)%C y; 
+                                    rewrite (Cmult_assoc x y z)
+  | |- context[(?x * (?y * ?z))%C] => tryif has_term t y then fail else has_term t x; has_term (/ t)%C z; 
+                                    rewrite (Cmult_comm y z)
+  | |- context[(?x * ?y * ?z)%C] => tryif has_term t x then fail else has_term t y; has_term (/ t)%C z; 
+                                  rewrite <- (Cmult_assoc x y z)
+  end.  
 
 Module UTeleport.
 
@@ -8,10 +90,8 @@ Definition alice (a c : nat) : ucom := CNOT a c ; H a.
 Definition bob (a c b: nat) : ucom := CNOT c b; CZ a b.
 Definition teleport (a c b : nat) : ucom := alice a c; bob a c b.
 
-
 Open Scope R_scope.
-
-Notation "∣+⟩" := (1/√2 .* ∣0⟩ .+ 1/√2 .* ∣1⟩)%C.
+Open Scope nat_scope.
 
 Definition epr00 : Vector 4 :=
   fun x y => match x, y with
@@ -21,7 +101,7 @@ Definition epr00 : Vector 4 :=
              end.
 
 Lemma epr_correct : 
-  forall (ψ : Vector 2), WF_Matrix _ _ ψ -> (uc_eval 3 (bell 1 2)) × (ψ ⊗ ∣0⟩ ⊗ ∣0⟩) = ψ ⊗ epr00. 
+  forall (ψ : Vector 2), WF_Matrix ψ -> (uc_eval 3 (bell 1 2)) × (ψ ⊗ ∣0⟩ ⊗ ∣0⟩) = ψ ⊗ epr00. 
 Proof.
   intros.
   unfold bell. simpl. unfold ueval_cnot, ueval1. simpl. unfold pad. simpl.
@@ -29,7 +109,7 @@ Proof.
 Qed.
 
 Lemma teleport_correct : forall (ψ : Vector 2), 
-    WF_Matrix _ _ ψ -> uc_eval 3 (teleport 0 1 2) × (ψ ⊗ epr00) = (∣+⟩ ⊗ ∣+⟩ ⊗ ψ).
+    WF_Matrix ψ -> uc_eval 3 (teleport 0 1 2) × (ψ ⊗ epr00) = (∣ + ⟩ ⊗ ∣ + ⟩ ⊗ ψ).
 Proof.
   intros.
   unfold teleport. simpl.
@@ -59,17 +139,54 @@ Qed.
 
 End UTeleport.
 
-Section NDTeleport.
+Section DensityTeleport.
+
+Require Import DensitySem.
+
+Local Open Scope com.
 
 Definition q := 0. (* qubit for transmission *)
 Definition a := 1. (* alice's qubit *)
 Definition b := 2. (* bob's qubit *)
 
+Definition bell : com := H a ; CNOT a b.
+Definition alice : com := CNOT q a ; H q ; meas q ; meas a.
+Definition bob : com := CNOT a b; CZ q b; reset q; reset a.
+Definition teleport : com := bell; alice; bob.
+
+Lemma teleport_correct : forall (ρ : Density 2),
+  WF_Matrix ρ -> 
+  c_eval 3 teleport (ρ ⊗ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) = (∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣ ⊗ ρ).  
+Proof.
+  intros.
+  simpl.
+  unfold compose_super, Splus, super, pad; simpl.
+  unfold ueval_cnot, ueval1, pad; simpl.
+  restore_dims_fast.
+  Msimpl.
+  solve_matrix.
+  all: repeat (try rewrite Cmult_plus_distr_l; 
+               try rewrite Cmult_plus_distr_r;
+               try rewrite <- Copp_mult_distr_r;
+               try rewrite <- Copp_mult_distr_l).
+  all: group_radicals.
+  all: cancel_terms 2%R.
+  all: lca.
+Qed.
+
+End DensityTeleport.
+
+Module NDTeleport.
+
 Require Import NDSem.
 
+Definition q := 0. (* qubit for transmission *)
+Definition a := 1. (* alice's qubit *)
+Definition b := 2. (* bob's qubit *)
+
 Definition bell : com := H a ; CNOT a b.
-Definition alice : com := CNOT q a ; H a ; meas q ; meas a.
-Definition bob : com := CNOT q b; CZ q a; reset q; reset a.
+Definition alice : com := CNOT q a ; H q ; meas q ; meas a.
+Definition bob : com := CNOT a b; CZ q b; reset q; reset a.
 Definition teleport : com := bell; alice; bob.
 
 Open Scope R_scope.
@@ -91,11 +208,6 @@ Proof. solve_matrix. Qed.
 Lemma notc_decomposition : σx ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ ∣0⟩⟨0∣ = notc.
 Proof. solve_matrix. Qed.                                               
 
-Require Import Dirac.
-
-Ltac kmp_rewrite A B C D :=
-  rewrite (kron_mixed_product' _ _ _ _ _ _ _ _ _ _ _ A B C D); simpl; unify_pows_two; try lia.
-
 Ltac destruct_seqs := 
   repeat match goal with
   | [H : ?a / _ ⇩ _ |- _] => unfold a in H
@@ -106,6 +218,74 @@ Ltac destruct_apps :=
   repeat match goal with
   | [H : app _ _ / _ ⇩ _ |- _] => dependent destruction H
   end.
+
+(* Copied from above module *)
+Ltac has_term t exp  := 
+  match exp with
+    | context[t] => idtac 
+  end.
+
+Ltac group_radicals := 
+  repeat match goal with
+  | _ => rewrite square_rad2
+  | |- context[(?x * ?y)%C] => tryif has_term (√2) x then fail else (has_term (√2) y; 
+                             rewrite (Cmult_comm x y))
+  | |- context[(?x * ?y * ?z)%C] => tryif has_term (√2) y then fail else (has_term (√2) x; has_term (√2) z; 
+                                  rewrite <- (Cmult_assoc x y z))
+  | |- context[(?x * (?y * ?z))%C] => has_term (√2) x; has_term (√2) y; 
+                                    rewrite (Cmult_assoc x y z)
+  end.  
+
+
+(* Via Matrix Multiplying *)
+Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
+  WF_Matrix ψ ->
+  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' = ∣ 0 , 0 ⟩ ⊗ ψ.   
+Proof.
+  intros ψ ψ' WF H.
+  destruct_seqs; destruct_apps.
+  evar (e : Vector (2^3)).  
+  match goal with 
+  | H : measure q / ?x ⇩ ?y |- _ => replace x with e in H
+  end.
+  2:{ unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl.
+      repeat reduce_matrices.
+      unfold Cdiv.
+      repeat rewrite <- Copp_mult_distr_l.
+      group_radicals.
+      autorewrite with C_db. 
+      unfold e; reflexivity. }
+  subst e.
+  remember (measure q) as c.
+  destruct H0_2; try discriminate. 
+  1:{ 
+inversion Heqc.
+  
+  dependent destruction H0_2.
+  
+
+
+  (* Can do first, but need a well-formedness lemma *)
+  match goal with 
+  | H : reset q / ?x ⇩ ?y |- _ => replace x with e in H
+  end.
+  2:{ unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl.
+      repeat reduce_matrices.
+      unfold Cdiv.
+      repeat rewrite <- Copp_mult_distr_l.
+      group_radicals.
+      autorewrite with C_db. 
+      unfold e; reflexivity. }
+  
+
+  rewrite H in H0_2.
+  crunch_matrix.
+  reduce_matrices.
+solve_matrix.                                                                                                                       all: try reflexivity.      
+  2: reflexivity.
+
+Require Import Dirac.
+
 
 (* Thought I had this. *)
 (* Generalizable? *)
@@ -129,43 +309,6 @@ Qed.
 Notation "∣+⟩" := (1/√2 .* ∣0⟩ .+ 1/√2 .* ∣1⟩)%C.
 Notation "∣-⟩" := (1/√2 .* ∣0⟩ .+ (- 1/√2) .* ∣1⟩)%C.
 
-Definition mult' := mult.
-Definition pow' := Nat.pow.
-Lemma mult_lock : mult = mult'. reflexivity. Qed.
-Lemma pow_lock : Nat.pow = pow'. reflexivity. Qed.
-Opaque mult'.
-Opaque pow'.
-
-(* Simplifies without simplifying Matrix dimensions. *)
-Ltac simpl' := 
-  repeat rewrite Nat.pow_1_r in *;
-  repeat rewrite pow_lock;
-  repeat rewrite mult_lock;
-  simpl;
-  repeat rewrite <- mult_lock;
-  repeat rewrite <- pow_lock.
-
-(* restore_dims: Gives default dimensions to matrix expressions 
-   (for concrete dimensions) *)
-Ltac restore_dims :=
-  repeat match goal with
-  | [ |- context[@Mmult ?m ?n ?o ?A ?B]] => progress match type of A with 
-                                          | Matrix ?m' ?n' =>
-                                            match type of B with 
-                                            | Matrix ?n'' ?o' =>
-                                            replace (@Mmult m n o A B) with
-                                                    (@Mmult m' n' o' A B) by reflexivity 
-                                            end
-                                          end
-  | [ |- context[@kron ?m ?n ?o ?p ?A ?B]] => progress match type of A with 
-                                            | Matrix ?m' ?n' =>
-                                              match type of B with 
-                                              | Matrix ?o' ?p' =>
-                                              replace (@kron m n o p A B) with
-                                                      (@kron m' n' o' p' A B) by reflexivity 
-                                              end
-                                            end
-         end.
 
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix _ _ ψ ->

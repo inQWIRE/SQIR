@@ -10,8 +10,8 @@ Fixpoint c_eval (dim : nat) (c : com) : Superoperator (2^dim) (2^dim) :=
   | skip      => super (I _) (*or: fun ρ => ρ  *)
   | seq c1 c2 => compose_super (c_eval dim c2) (c_eval dim c1)  
   | app u l   => super (ueval dim u l)
-  | meas n    => Splus (super (@pad 2 n dim (∣0⟩⟨0∣))) (super (@pad 2 n dim (∣1⟩⟨1∣))) 
-  | reset n   => Splus (super (@pad 2 n dim (∣0⟩⟨0∣))) (super (@pad 2 n dim (∣0⟩⟨1∣)))
+  | meas n    => Splus (super (@pad 1 n dim (∣0⟩⟨0∣))) (super (@pad 1 n dim (∣1⟩⟨1∣))) 
+  | reset n   => Splus (super (@pad 1 n dim (∣0⟩⟨0∣))) (super (@pad 1 n dim (∣0⟩⟨1∣)))
   end.
 
 Lemma c_eval_ucom : forall (c : ucom) (dim : nat),

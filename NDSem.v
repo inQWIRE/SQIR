@@ -30,11 +30,11 @@ Inductive nd_eval {dim : nat} : com -> Vector (2^dim) -> Vector (2^dim) -> Prop 
   | nd_reset0 : forall n (ψ : Vector (2^dim)),
       let ψ' := @pad 2 n dim (∣0⟩⟨0∣) × ψ in 
       norm ψ' <> 0%R ->
-      meas n / ψ ⇩ (scale (/(norm ψ')) ψ') 
+      reset n / ψ ⇩ (scale (/(norm ψ')) ψ') 
   | nd_reset1 : forall n (ψ : Vector (2^dim)),
       let ψ' := @pad 2 n dim (∣0⟩⟨1∣) × ψ in (* is this right? *)
       norm ψ' <> 0%R ->
-      meas n / ψ ⇩ (scale (/(norm ψ')) ψ')
+      reset n / ψ ⇩ (scale (/(norm ψ')) ψ')
   | nd_seq : forall (c1 c2 : com) (ψ ψ' ψ'' : Vector (2^dim)),
       c1 / ψ ⇩ ψ' ->
       c2 / ψ' ⇩ ψ'' ->

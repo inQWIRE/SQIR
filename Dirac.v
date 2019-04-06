@@ -126,7 +126,7 @@ Ltac simpl_ket_1_qubit :=
 (* Simplify left-associated sums of terms of the form (a .* ∣ x,y ⟩).
    The end result should have the form
        a .* ∣ 0,0 ⟩ .+ b .* ∣ 0,1 ⟩ .+ c .* ∣ 1,0 ⟩ .+ d .* ∣ 1,1 ⟩ *)
-Open Scope nat_scope.
+Local Open Scope nat_scope.
 Ltac simpl_ket_2_qubit :=
   repeat
   (match goal with
@@ -149,7 +149,7 @@ Ltac simpl_ket_2_qubit :=
           rewrite (Mplus_comm _ _ (b .* ∣ x,y ⟩) (c .* ∣ x',y' ⟩)); 
           rewrite <- (Mplus_assoc _ _ a (c .* ∣ x',y' ⟩) (b .* ∣ x,y ⟩))   
   end). 
-Close Scope nat_scope. 
+Local Close Scope nat_scope. 
 
 (* The main issue with simpl_ket_1_qubit and simpl_ket_2_qubit is that
    they expect the goal to be in a particular form, so I need to write
