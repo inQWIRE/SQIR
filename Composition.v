@@ -48,22 +48,84 @@ Proof.
         lia.
 Qed.
 
-Lemma denote_pad : forall (n k : nat)(c : ucom), 
-  uc_well_typed n c ->
-  uc_eval n c ⊗ (I (2 ^ k)) = uc_eval (n + k) c.
+(* Similar to pad_dims in UnitarySem.v *)
+Lemma pad_dims_l : forall c n k,
+  I (2^n) ⊗ (uc_eval k c) = uc_eval (n + k) (map_qubits (fun q => q + n) c).  
 Proof.
-  intros. generalize dependent n.
-  induction c; intros.
-  - simpl; rewrite id_kron. 
-    replace (2 ^ n * 2 ^ k) with (2 ^ (n + k)) by unify_pows_two.
-    reflexivity.
-  - simpl. inversion H; subst. 
-    rewrite <- IHc1; try assumption.
-    rewrite <- IHc2; try assumption.
-    restore_dims_strong; Msimpl.
-    reflexivity.
+  intros c n k.
+  induction c.
+  - simpl. rewrite id_kron. unify_pows_two. reflexivity.
+  - simpl. rewrite <- IHc1, <- IHc2.
+    restore_dims_strong; Msimpl. reflexivity.
   - simpl.
-Admitted.
+    unfold ueval.
+    destruct n0 as [|[|[|]]]; simpl; remove_zero_gates; trivial.
+    + destruct l as [| a []]; simpl; remove_zero_gates; trivial.
+      unfold ueval1.
+      repeat match goal with
+      | [|- context [pad _ _ ?U ]] => remember U as U'
+      end.
+      clear.
+      unfold pad.
+      bdestruct (a + 1 <=? k).
+      2: { bdestruct (a + n + 1 <=? n + k). 
+           contradict H0; lia.
+           remove_zero_gates; trivial. }
+      replace (a + n + 1 <=? n + k) with true.
+      2: { symmetry; apply Nat.leb_le; lia. }
+      restore_dims_strong.
+      repeat rewrite <- (kron_assoc (I (2^n))). 
+      rewrite id_kron; unify_pows_two.
+      replace (n + k - 1 - (a + n)) with (k - 1 - a) by lia.
+      replace (n + a) with (a + n) by lia.
+      reflexivity.
+    + destruct l as [| a [|b[|]]]; simpl; remove_zero_gates; trivial.
+      unfold ueval_cnot.
+      bdestruct (a <? b).
+      * replace (a + n <? b + n) with true by (symmetry; apply Nat.ltb_lt; lia).
+        unfold pad.
+        remember (b - a - 1) as i.
+        replace (b + n - (a + n) - 1) with i by lia.
+        bdestruct (a + (1 + i + 1) <=? k).
+        2: { bdestruct (a + n + (1 + i + 1) <=? n + k).
+             contradict H1; lia.
+             remove_zero_gates; trivial. }
+        replace (a + n + (1 + i + 1) <=? n + k) with true.
+        2: { symmetry; apply Nat.leb_le; lia. }
+        replace (n + k - (1 + i + 1) - (a + n)) with (k - (1 + i + 1) - a) by lia.
+        replace (b + n - (a + n)) with (b - a) by lia.
+        restore_dims_strong.
+        repeat rewrite <- (kron_assoc (I (2^n))). 
+        rewrite id_kron.
+        replace (2 ^ n * 2 ^ a) with (2 ^ (a + n)) by unify_pows_two.
+        reflexivity.
+      * bdestruct (b <? a).
+        2: { bdestruct (a + n <? b + n). 
+             contradict H1; lia.
+             bdestruct (b + n <? a + n). 
+             contradict H2; lia.
+             remove_zero_gates; trivial. }
+        bdestruct (a + n <? b + n).
+        contradict H1; lia.
+        replace (b + n <? a + n) with true by (symmetry; apply Nat.ltb_lt; lia).
+        unfold pad.
+        remember (a - b - 1) as i.
+        replace (a + n - (b + n) - 1) with i by lia.
+        bdestruct (b + (1 + i + 1) <=? k).
+        2: { bdestruct (b + n + (1 + i + 1) <=? n + k).
+             contradict H1; lia.
+             remove_zero_gates; trivial. }
+        replace (b + n + (1 + i + 1) <=? n + k) with true.
+        2: { symmetry; apply Nat.leb_le; lia. }
+        replace (n + k - (1 + i + 1) - (b + n)) with (k - (1 + i + 1) - b) by lia.
+        replace (a + n - (b + n)) with (a - b) by lia.
+        restore_dims_strong.
+        repeat rewrite <- (kron_assoc (I (2^n))). 
+        rewrite id_kron.
+        replace (2 ^ n * 2 ^ b) with (2 ^ (b + n)) by unify_pows_two.
+        reflexivity.
+Qed.
+
 
 (* I think you only need a well-typedness constraint on c1.
  
@@ -75,6 +137,11 @@ Lemma inPar_correct : forall c1 c2 dim1 dim2,
   uc_eval (dim1 + dim2) (inPar c1 c2 dim1 dim2) = (uc_eval dim1 c1) ⊗ (uc_eval dim2 c2).
 Proof.
   intros c1 c2 dim1 dim2 WTc1.
-  induction c2.
-  - simpl. rewrite <- denote_pad; try assumption. Msimpl. reflexivity.
-Admitted.
+  simpl.
+  rewrite <- (pad_dims c1); try assumption.
+  rewrite <- pad_dims_l.
+  restore_dims_strong.
+  rewrite kron_mixed_product.
+  Msimpl.
+  reflexivity.
+Qed.
