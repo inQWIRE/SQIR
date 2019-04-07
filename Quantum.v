@@ -1,15 +1,9 @@
 Require Import Psatz.
 Require Import Reals.
 
-Require Export Prelim.
-Require Export Complex.
 Require Export Matrix.
 
 (* Using our (complex, unbounded) matrices, their complex numbers *)
-
-Local Open Scope R_scope.
-Local Open Scope C_scope.
-Local Open Scope matrix_scope.
 
 (*******************************************)
 (* Quantum basis states *)
@@ -39,7 +33,7 @@ Notation "∣1⟩⟨1∣" := (∣1⟩×⟨1∣).
 Notation "∣1⟩⟨0∣" := (∣1⟩×⟨0∣).
 Notation "∣0⟩⟨1∣" := (∣0⟩×⟨1∣).
 
-Definition bra (x : nat) : Matrix 2 1 := if x =? 0 then ⟨0∣ else ⟨1∣.
+Definition bra (x : nat) : Matrix 1 2 := if x =? 0 then ⟨0∣ else ⟨1∣.
 Definition ket (x : nat) : Matrix 2 1 := if x =? 0 then ∣0⟩ else ∣1⟩.
 
 (* Note the 'mid' symbol for these *)
