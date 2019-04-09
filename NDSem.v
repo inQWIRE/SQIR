@@ -1,6 +1,6 @@
 Require Import Quantum.
 Require Import List.
-Require Import SQIMP.
+Require Import SQIRE.
 Require Import UnitarySem.
 Require Import Setoid.
 

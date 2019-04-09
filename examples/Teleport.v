@@ -1,8 +1,7 @@
-Require Import SQIMP.
-Require Import Dirac.
 Require UnitarySem.
 Require DensitySem.
 Require NDSem.
+Require Import Dirac.
 
 Ltac restore_dims_rec A :=
    match A with

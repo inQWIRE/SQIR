@@ -1,5 +1,4 @@
-Require Export SQIMP.
-Require Import UnitarySem.
+Require Import Composition.
 Require Import Dirac.
 
 Local Open Scope nat_scope.
@@ -71,7 +70,7 @@ Proof.
     remember (S k) as m.
     simpl.
     replace (uc_eval (S m) (GHZ m)) with (uc_eval (m + 1) (GHZ m)) by (rewrite plus_comm; reflexivity).
-    rewrite <- pad_dims by (apply typed_GHZ).
+    rewrite <- pad_dims_r by (apply typed_GHZ).
     rewrite Mmult_assoc.
     restore_dims_strong.
     rewrite kron_mixed_product.

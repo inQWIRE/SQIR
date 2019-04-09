@@ -1,4 +1,4 @@
-Require Export SQIMP.
+Require Export SQIRE.
 Require Export Quantum.
 Require Export UnitarySem.
 Require Import Setoid.
