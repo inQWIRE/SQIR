@@ -18,6 +18,32 @@ Notation "∣-⟩" := minus_state.
 Notation "∣ + ⟩" := (/√2 .* ∣ 0 ⟩ .+ /√2 .* ∣ 1 ⟩).
 Notation "∣ - ⟩" := (/√2 .* ∣ 0 ⟩ .+ (-/√2) .* ∣ 1 ⟩).
 
+(* Bra-Ket properties *)
+
+Lemma bra0_equiv : ⟨0∣ = bra 0.
+Proof. reflexivity. Qed.
+
+Lemma bra1_equiv : ⟨1∣ = bra 1.
+Proof. reflexivity. Qed.
+
+Lemma ket0_equiv : ∣0⟩ = ket 0.
+Proof. reflexivity. Qed.
+
+Lemma ket1_equiv : ∣1⟩ = ket 1.
+Proof. reflexivity. Qed.
+
+Lemma bra0ket0 : bra 0 × ket 0 = I 1.
+Proof. solve_matrix. Qed.
+
+Lemma bra0ket1 : bra 0 × ket 1 = Zero.
+Proof. solve_matrix. Qed.
+
+Lemma bra1ket0 : bra 1 × ket 0 = Zero.
+Proof. solve_matrix. Qed.
+
+Lemma bra1ket1 : bra 1 × ket 1 = I 1.
+Proof. solve_matrix. Qed.
+
 (* Hadamard properties *)
 Lemma H0_spec : hadamard × ∣ 0 ⟩ = ∣ + ⟩.
 Proof. solve_matrix. Qed.
@@ -79,6 +105,8 @@ Proof. intros. destruct x,y; solve_matrix. Qed.
 (* Automation *)
 
 (* General matrix rewrites *)
+Hint Rewrite bra0_equiv bra1_equiv ket0_equiv ket1_equiv : ket_db.
+Hint Rewrite bra0ket0 bra0ket1 bra1ket0 bra1ket1 : ket_db.
 Hint Rewrite Mmult_plus_distr_l Mmult_plus_distr_r kron_plus_distr_l kron_plus_distr_r Mscale_plus_distr_r : ket_db.
 Hint Rewrite Mscale_mult_dist_l Mscale_mult_dist_r Mscale_kron_dist_l Mscale_kron_dist_r : ket_db.
 Hint Rewrite Mscale_assoc @Mmult_assoc : ket_db.

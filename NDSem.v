@@ -44,7 +44,6 @@ Inductive nd_eval {dim : nat} : com -> Vector (2^dim) -> Vector (2^dim) -> Prop 
 where "c '/' ψ '⇩' ψ'" := (nd_eval c ψ ψ').              
 *)
 
-(* Without scaling *)
 Inductive nd_eval {dim : nat} : com -> Vector (2^dim) -> Vector (2^dim) -> Prop :=
   | nd_skip : forall ψ, nd_eval skip ψ ψ
   | nd_app : forall n (u : Unitary n) (l : list nat) (ψ : Vector (2^dim)),

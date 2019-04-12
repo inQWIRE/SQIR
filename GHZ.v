@@ -97,11 +97,8 @@ Proof.
     setoid_rewrite (Mscale_mult_dist_r _ _ _ (1 / √ 2) (I (2 ^ k) ⊗ cnot) (nket k ∣0⟩ ⊗ (∣0⟩ ⊗ ∣0⟩))).
     setoid_rewrite (Mscale_mult_dist_r _ _ _ (1 / √ 2) (I (2 ^ k) ⊗ cnot) (nket k ∣1⟩ ⊗ (∣1⟩ ⊗ ∣0⟩))).
     rewrite 2 kron_mixed_product.
-    replace (∣0⟩) with ∣ 0 ⟩ by reflexivity. 
-    replace (∣1⟩) with ∣ 1 ⟩ by reflexivity. 
-    rewrite CNOT00_spec, CNOT10_spec.
-    Msimpl.
-    rewrite kron_assoc.
+    autorewrite with ket_db; auto with wf_db.
+    repeat rewrite kron_assoc.
     reflexivity.
 Qed.
 

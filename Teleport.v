@@ -131,6 +131,7 @@ Qed.
 
 End UTeleport.
 
+(*
 (* Non-unitary teleport, proof with density matrices *)
 Module DensityTeleport.
 
@@ -168,6 +169,8 @@ Proof.
 Qed.
 
 End DensityTeleport.
+*)
+
 
 Module NDTeleport.
 
@@ -194,16 +197,17 @@ Definition bob : com := CNOT a b; CZ q b; reset q; reset a.
 Definition teleport : com := bell; alice; bob.
 
 Local Open Scope R_scope.
+Local Open Scope C_scope.
 
 Definition epr00 : Vector 4 := / √ 2 .* ∣ 0, 0 ⟩ .+ / √ 2 .* ∣ 1, 1 ⟩.
 
 Definition notc : Matrix 4 4 :=
   fun x y => match x, y with 
-          | 1, 3 => 1%C
-          | 3, 1 => 1%C
-          | 0, 0 => 1%C
-          | 2, 2 => 1%C
-          | _, _ => 0%C
+          | 1, 3 => 1
+          | 3, 1 => 1
+          | 0, 0 => 1
+          | 2, 2 => 1
+          | _, _ => 0
           end.          
 
 Lemma cnot_decomposition : ∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2 = cnot.
@@ -222,6 +226,117 @@ Ltac destruct_apps :=
   repeat match goal with
   | [H : app _ _ / _ ⇩ _ |- _] => dependent destruction H
   end.
+
+(* Thought I had this. *)
+(* Generalizable? *)
+Lemma ket_decomposition : forall (ψ : Vector 2), 
+  WF_Matrix ψ ->
+  ψ = (ψ 0%nat 0%nat) .* ∣ 0 ⟩ .+ (ψ 1%nat 0%nat) .* ∣ 1 ⟩.
+Proof.
+  intros.
+  prep_matrix_equality.
+  unfold scale, Mplus.
+  destruct y as [|y']. 
+  2:{ rewrite H; try lia. 
+      unfold ket, qubit0, qubit1. simpl. 
+      repeat (destruct x; try lca). 
+  }
+  destruct x as [| [| n]]; unfold ket, qubit0, qubit1; simpl; try lca.  
+  rewrite H; try lia.
+  lca.
+Qed. 
+
+
+(* Via bra-ket reasoning *)
+Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
+  WF_Matrix ψ ->
+  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' ∝ ∣ 0 , 0 ⟩ ⊗ ψ.   
+Proof.
+  intros ψ ψ' WF S.
+  dependent destruction S.
+  dependent destruction S1.
+  rename S1_1 into Bell.
+  rename S1_2 into Alice.
+  rename S2 into Bob.
+  assert (E00 : ψ' = ψ ⊗ epr00).
+  { clear Alice Bob.
+    destruct_seqs; destruct_apps.
+    simpl.
+    unfold ueval_cnot, ueval1, pad. simpl.
+    Msimpl.
+    setoid_rewrite cnot_decomposition.
+    restore_dims.
+    rewrite kron_assoc. restore_dims.
+    rewrite kron_mixed_product.
+    autorewrite with M_db ket_db; auto.
+    unfold epr00. autorewrite with ket_db.
+    reflexivity.
+  }
+  subst. clear Bell.
+  dependent destruction Alice.
+  dependent destruction Alice1.  
+  evar (ψA : Vector (2^3)).
+  assert (EA : ψ' = ψA).
+  { clear Alice1_2 Alice2 Bob.
+    destruct_seqs; destruct_apps.
+    simpl.
+    unfold ueval_cnot, ueval1, pad, epr00. simpl.
+    Msimpl.
+    setoid_rewrite cnot_decomposition.
+    restore_dims.
+    autorewrite with M_db ket_db; auto.
+    restore_dims.
+    repeat rewrite <- kron_assoc.
+    rewrite kron_mixed_product.
+    autorewrite with M_db ket_db; auto.
+    rewrite (ket_decomposition ψ); auto.
+    autorewrite with M_db ket_db; auto.
+    repeat rewrite kron_assoc.
+    restore_dims.
+    repeat rewrite kron_mixed_product.
+    autorewrite with M_db ket_db; auto.
+    try rewrite <- Copp_mult_distr_r.
+    group_radicals.
+    restore_dims.
+    repeat rewrite <- kron_assoc.
+    unfold ψA. reflexivity.
+  }    
+  subst ψA. rewrite EA in *. clear EA Alice1_1.
+  dependent destruction Alice1_2; subst ψ'0;
+  dependent destruction Alice2.
+  - (* Measured 0, 0 *)
+    evar (ψb : Vector (2^3)).
+    assert(Eb : ψ'0 = ψb).
+    subst ψ'0.
+    unfold ueval_cnot, ueval1, pad. simpl.
+    autorewrite with ket_db M_db; auto with wf_db.
+    restore_dims_fast.
+    repeat rewrite kron_assoc.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.
+    autorewrite with ket_db M_db; auto with wf_db.
+    (* need bra  adjoint lemmas in ket_db *)
+    replace (⟨0∣) with (bra 0) by reflexivity.
+    replace (∣0⟩) with (ket 0) by reflexivity.
+    replace (⟨1∣) with (bra 1) by reflexivity.
+    replace (∣1⟩) with (ket 1) by reflexivity. (* Have ket_db do these *)
+
+    
+  
+    
+
+    simpl.
+    unfold ueval_cnot, ueval1, pad. simpl.
+    Msimpl.
+    setoid_rewrite cnot_decomposition.
+    restore_dims.
+    rewrite kron_assoc. restore_dims.
+    rewrite kron_mixed_product.
+    autorewrite with M_db ket_db; auto.
+    unfold epr00. autorewrite with ket_db.
+    reflexivity.
+  }
+  
 
 (* Via Matrix Multiplying *)
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
