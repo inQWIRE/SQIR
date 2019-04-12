@@ -1,6 +1,4 @@
-Require Import Quantum.
 Require Import List.
-Require Import SQIMP.
 Require Import UnitarySem.
 
 Open Scope ucom.

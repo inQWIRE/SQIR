@@ -1,7 +1,6 @@
 (* Unitary superdense coding example (in-progress *)
 
 Require Import Dirac.
-Require Import SQIMP.
 Require Import UnitarySem.
 Local Open Scope ucom.
 
