@@ -279,6 +279,18 @@ Proof.
     rewrite Heqc. apply WF_cpar_H.
 Qed.
 
+Lemma nket_assoc :
+  forall (n : nat) (ψ : Matrix 2 1), WF_Matrix ψ -> nket (S n) ψ = ψ ⊗ nket n ψ.
+Proof.
+  intros. induction n.
+  - simpl. rewrite kron_1_l by auto with wf_db. rewrite kron_1_r. reflexivity.
+  - replace (nket (S n) ψ) with (nket n ψ ⊗ ψ) by auto.
+    replace (nket (S (S n)) ψ) with (nket (S n) ψ ⊗ ψ) by auto.
+    replace (2 ^ S n) with (2 ^ n * 2) by unify_pows_two.
+    rewrite <- (@kron_assoc 2 1 (2 ^ n) 1 2 1 _ _ _).
+    rewrite IHn. reflexivity.
+Qed.
+
 Definition deutsch_jozsa (n : nat) (U : ucom) : ucom :=
   X 0 ; cpar n H ; U; cpar n H.
 
@@ -322,16 +334,16 @@ Proof.
 Qed.
 
 Definition accept {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-    exists (ψ : Matrix 2 1), WF_Matrix ψ -> ((ψ ⊗ nket dim ∣0⟩)† × (uc_eval (S dim) (deutsch_jozsa (S dim) U) × (∣0⟩ ⊗ nket dim ∣0⟩))) 0 0 = 1%R. 
+    exists (ψ : Matrix 2 1), WF_Matrix ψ -> ((ψ ⊗ nket dim ∣0⟩)† × (uc_eval (S dim) (deutsch_jozsa (S dim) U) × (nket (S dim) ∣0⟩))) 0 0 = 1%R. 
 
 Definition reject {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-    forall (ψ : Matrix 2 1), WF_Matrix ψ -> ((ψ ⊗ nket dim ∣0⟩)† × (uc_eval (S dim) (deutsch_jozsa (S dim) U) × (∣0⟩ ⊗ nket dim ∣0⟩))) 0 0 = 0%R. 
+    forall (ψ : Matrix 2 1), WF_Matrix ψ -> ((ψ ⊗ nket dim ∣0⟩)† × (uc_eval (S dim) (deutsch_jozsa (S dim) U) × (nket (S dim) ∣0⟩))) 0 0 = 0%R. 
 
 Theorem deutsch_jozsa_constant_correct :
   forall (dim : nat) (U : ucom) (P : boolean dim U), constant P -> accept P.
 Proof.
   intros. 
-  unfold accept. destruct H.
+  unfold accept. rewrite nket_assoc by auto with wf_db. destruct H.
   - exists ∣1⟩.
     rewrite (deutsch_jozsa_success_probability P _) by auto with wf_db. 
     rewrite H. 
@@ -358,6 +370,7 @@ Theorem deutsch_jozsa_balanced_correct :
   forall (dim : nat) (U : ucom) (P : boolean dim U), balanced P -> reject P.
 Proof.
   unfold reject. intros. 
+  rewrite nket_assoc by auto with wf_db.
   rewrite (deutsch_jozsa_success_probability P _) by auto with wf_db.
   destruct dim. inversion P.
   replace (S dim - 1) with dim in * by lia.
