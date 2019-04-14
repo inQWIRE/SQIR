@@ -296,10 +296,10 @@ Definition deutsch_jozsa (n : nat) (U : ucom) : ucom :=
 
 Lemma deutsch_jozsa_success_probability :
   forall {dim : nat} {U : ucom} (P : boolean dim U) (ψ : Matrix 2 1) (WF : WF_Matrix ψ),
-    (ψ ⊗ nket dim ∣0⟩)† × ((uc_eval (S dim) (deutsch_jozsa (S dim) U)) × (∣0⟩ ⊗ nket dim ∣0⟩)) = (1%R - 2%R * count P * /2%R ^ (dim - 1))%C .* (ψ† × ∣1⟩).
+    (ψ ⊗ nket dim ∣0⟩)† × ((uc_eval (S dim) (deutsch_jozsa (S dim) U)) × (nket (S dim) ∣0⟩)) = (1%R - 2%R * count P * /2%R ^ (dim - 1))%C .* (ψ† × ∣1⟩).
 Proof.
   intros.
-  unfold deutsch_jozsa.
+  unfold deutsch_jozsa. rewrite nket_assoc by auto with wf_db.
   replace (uc_eval (S dim) (((X 0; cpar (S dim) H); U); cpar (S dim) H))
   with (uc_eval (S dim) (cpar (S dim) H) × uc_eval (S dim) U × uc_eval (S dim) (cpar (S dim) H) × uc_eval (S dim) (X 0)).
   2 : { simpl. repeat rewrite Mmult_assoc. reflexivity. }
@@ -343,7 +343,7 @@ Theorem deutsch_jozsa_constant_correct :
   forall (dim : nat) (U : ucom) (P : boolean dim U), constant P -> accept P.
 Proof.
   intros. 
-  unfold accept. rewrite nket_assoc by auto with wf_db. destruct H.
+  unfold accept. destruct H.
   - exists ∣1⟩.
     rewrite (deutsch_jozsa_success_probability P _) by auto with wf_db. 
     rewrite H. 
@@ -370,7 +370,6 @@ Theorem deutsch_jozsa_balanced_correct :
   forall (dim : nat) (U : ucom) (P : boolean dim U), balanced P -> reject P.
 Proof.
   unfold reject. intros. 
-  rewrite nket_assoc by auto with wf_db.
   rewrite (deutsch_jozsa_success_probability P _) by auto with wf_db.
   destruct dim. inversion P.
   replace (S dim - 1) with dim in * by lia.
