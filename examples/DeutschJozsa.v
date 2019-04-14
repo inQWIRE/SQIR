@@ -6,19 +6,30 @@ Local Close Scope C_scope.
 Local Close Scope R_scope.
 
 Inductive boolean : nat -> ucom -> Set :=
-  | boolean_I : forall u, uc_well_typed 1 u -> u ≡ uskip -> boolean 1 u
-  | boolean_X : forall u, uc_well_typed 1 u -> u ≡ (X 0) -> boolean 1 u
+  | boolean_I : boolean 1 uskip
+  | boolean_X : boolean 1 (X 0)
   | boolean_U : forall u u1 u2 dim,
-                uc_well_typed dim u1 -> boolean dim u1 ->
-                uc_well_typed dim u2 -> boolean dim u2 ->
+                boolean dim u1 -> boolean dim u2 ->
+                uc_well_typed (S dim) u ->
                 uc_eval (S dim) u = (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) ->
-                uc_well_typed (S dim) u -> boolean (S dim) u.
+                boolean (S dim) u.
+
+Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed dim u.
+Proof.
+  intros.
+  induction H; try constructor; try assumption.
+  (* prove that (X 0) is well-typed with dim = 1 *)
+  - easy.
+  - unfold in_bounds. intros.
+    destruct H; try inversion H. constructor.
+  - constructor; try easy. constructor.
+Qed.
   
 Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U) : C :=
   match P with
-  | boolean_I _ _ _ => 0%R
-  | boolean_X _ _ _ => 1%R
-  | boolean_U u u1 u2 dim WT1 P1 WT2 P2 WT P => (count P1 + count P2)%C
+  | boolean_I => 0%R
+  | boolean_X => 1%R
+  | boolean_U _ _ _ _ P1 P2 _ _ => (count P1 + count P2)%C
   end.
 
 Fixpoint nket (n : nat) (ψ : Matrix 2 1) : Matrix (2^n) 1 :=
@@ -49,7 +60,7 @@ Proof.
   intros.
   remember ∣+⟩ as ψp. remember ∣-⟩ as ψm.
   induction P.
-  - simpl. rewrite u1. simpl. 
+  - simpl.  
     rewrite Mmult_1_l by (rewrite Heqψp; rewrite Heqψm; auto with wf_db).
     autorewrite with C_db. 
     rewrite kron_1_l by (rewrite Heqψp; auto with wf_db).
@@ -58,7 +69,7 @@ Proof.
     replace (ψp† × ψp) with (I 1) by (rewrite Heqψp; solve_matrix).
     rewrite kron_1_r. symmetry. 
     apply Mscale_1_l.
-  - simpl. rewrite u1. unfold uc_eval. simpl. unfold ueval1, pad. simpl.
+  - simpl. unfold uc_eval. unfold ueval1, pad. simpl.
     rewrite kron_1_l by (rewrite Heqψp; auto with wf_db).
     rewrite kron_1_l by (auto with wf_db).
     autorewrite with C_db.
@@ -84,6 +95,8 @@ Proof.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ dim) 1 2 1 _ _ _) in IHP1.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ dim) 1 2 1 _ _ _) in IHP2.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ (S dim)) 1 2 1 _ _ _).
+    specialize (boolean_WT _ _ P1) as WTu1.
+    specialize (boolean_WT _ _ P2) as WTu2.
     rewrite <- pad_dims_r in * by assumption.
     replace (2 ^ 1) with 2 in * by (simpl; reflexivity).
     rewrite kron_mixed_product in IHP1.
@@ -102,7 +115,7 @@ Proof.
     replace (nket (S dim) ψp) with (nket dim ψp ⊗ ψp) by reflexivity.
     replace (2 ^ S dim) with (2 ^ dim * 2) by unify_pows_two.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ dim) 1 2 1 _ _ _).
-    replace (count (boolean_U u u1 u2 (S dim) u0 P1 u3 P2 e u4)) with (count P1 + count P2)%C by reflexivity.
+    replace (count (boolean_U u u1 u2 (S dim) P1 P2 u0 e)) with (count P1 + count P2)%C by reflexivity.
     rewrite e.
     replace (2 ^ S dim) with (2 * 2 ^ dim) by unify_pows_two.
     rewrite mult_assoc.
