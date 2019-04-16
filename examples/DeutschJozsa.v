@@ -6,30 +6,40 @@ Local Close Scope C_scope.
 Local Close Scope R_scope.
 
 Inductive boolean : nat -> ucom -> Set :=
-  | boolean_I : boolean 1 uskip
-  | boolean_X : boolean 1 (X 0)
+  | boolean_I : forall u, u ≡ uskip -> boolean 1 u
+  | boolean_X : forall u, u ≡ X 0 -> boolean 1 u
   | boolean_U : forall u u1 u2 dim,
                 boolean dim u1 -> boolean dim u2 ->
-                uc_well_typed (S dim) u ->
                 uc_eval (S dim) u = (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) ->
                 boolean (S dim) u.
 
+
+(* This should be true, but may require some effort to prove.
+   The basic fact we need to prove is:
+       not (uc_well_typed dim u) <-> uc_eval dim u = Zero
+   or
+      uc_well_typed dim u <-> not (uc_eval dim u = Zero)
+   
+   Given this fact, we can prove boolean_WT by induction on (boolean dim u):
+
+   - if u is equivalent to uskip, then (uc_eval dim u) is nonzero, 
+     so u must be well-typed.
+   - if u is equivalent to (X 0), then (uc_eval dim u) is nonzero, 
+     so u must be well-typed.
+   - if u1 and u2 are well-typed, then (uc_eval dim u1) and (uc_eval dim u2)
+     are nonzero, which means that
+         (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) 
+     is nonzero. This means that (uc_eval (S dim) u) is nonzero,
+     so u must be well-typed. 
+*) 
 Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed dim u.
-Proof.
-  intros.
-  induction H; try constructor; try assumption.
-  (* prove that (X 0) is well-typed with dim = 1 *)
-  - easy.
-  - unfold in_bounds. intros.
-    destruct H; try inversion H. constructor.
-  - constructor; try easy. constructor.
-Qed.
+Proof. Admitted.
   
 Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U) : C :=
   match P with
-  | boolean_I => 0%R
-  | boolean_X => 1%R
-  | boolean_U _ _ _ _ P1 P2 _ _ => (count P1 + count P2)%C
+  | boolean_I _ _ => 0%R
+  | boolean_X _ _ => 1%R
+  | boolean_U _ _ _ _ P1 P2 _ => (count P1 + count P2)%C
   end.
 
 Fixpoint nket (n : nat) (ψ : Matrix 2 1) : Matrix (2^n) 1 :=
@@ -59,8 +69,9 @@ Lemma deutsch_jozsa_count :
 Proof.
   intros.
   remember ∣+⟩ as ψp. remember ∣-⟩ as ψm.
+  specialize (boolean_WT _ _ P) as WTu.
   induction P.
-  - simpl.  
+  - simpl. rewrite u0. simpl.
     rewrite Mmult_1_l by (rewrite Heqψp; rewrite Heqψm; auto with wf_db).
     autorewrite with C_db. 
     rewrite kron_1_l by (rewrite Heqψp; auto with wf_db).
@@ -69,7 +80,7 @@ Proof.
     replace (ψp† × ψp) with (I 1) by (rewrite Heqψp; solve_matrix).
     rewrite kron_1_r. symmetry. 
     apply Mscale_1_l.
-  - simpl. unfold uc_eval. unfold ueval1, pad. simpl.
+  - simpl. rewrite u0. unfold uc_eval. simpl. unfold ueval1, pad. simpl.
     rewrite kron_1_l by (rewrite Heqψp; auto with wf_db).
     rewrite kron_1_l by (auto with wf_db).
     autorewrite with C_db.
@@ -97,7 +108,9 @@ Proof.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ (S dim)) 1 2 1 _ _ _).
     specialize (boolean_WT _ _ P1) as WTu1.
     specialize (boolean_WT _ _ P2) as WTu2.
-    rewrite <- pad_dims_r in * by assumption.
+    rewrite <- pad_dims_r in *;
+      try replace (S (S dim)) with (S dim + 1) by lia;
+      try assumption.
     replace (2 ^ 1) with 2 in * by (simpl; reflexivity).
     rewrite kron_mixed_product in IHP1.
     rewrite kron_mixed_product in IHP2.
@@ -115,7 +128,7 @@ Proof.
     replace (nket (S dim) ψp) with (nket dim ψp ⊗ ψp) by reflexivity.
     replace (2 ^ S dim) with (2 ^ dim * 2) by unify_pows_two.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ dim) 1 2 1 _ _ _).
-    replace (count (boolean_U u u1 u2 (S dim) P1 P2 u0 e)) with (count P1 + count P2)%C by reflexivity.
+    replace (count (boolean_U u u1 u2 (S dim) P1 P2 e)) with (count P1 + count P2)%C by reflexivity.
     rewrite e.
     replace (2 ^ S dim) with (2 * 2 ^ dim) by unify_pows_two.
     rewrite mult_assoc.
@@ -131,7 +144,7 @@ Proof.
     rewrite <- Mscale_plus_distr_r.
     replace (S dim - 1) with dim in * by lia.
     replace (S (S dim) - 1) with (S dim) by lia.
-    rewrite IHP1. rewrite IHP2.
+    rewrite (IHP1 WTu1). rewrite (IHP2 WTu2).
     rewrite <- Mscale_plus_distr_l.
     rewrite Mscale_assoc.
     apply f_equal2. simpl.
