@@ -31,9 +31,75 @@ Inductive boolean : nat -> ucom -> Set :=
          (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) 
      is nonzero. This means that (uc_eval (S dim) u) is nonzero,
      so u must be well-typed. 
-*) 
+ *)
+
+Lemma WT_if_nonzero : forall (dim : nat) (u : ucom),
+  uc_eval dim u <> Zero -> uc_well_typed dim u.
+Proof.
+  intros dim u.
+  induction u; intros H.
+  - constructor.
+  - simpl in *.
+    constructor.
+    + apply IHu1.
+      intros F. rewrite F in *.
+      rewrite Mmult_0_r in H.
+      contradiction.
+    + apply IHu2.
+      intros F. rewrite F in *.
+      rewrite Mmult_0_l in H.
+      contradiction.
+  - destruct n as [|[|[|]]]; try solve [inversion u].
+    + simpl in *.
+      destruct l as [|a [|b[|]]]; try contradiction.
+      unfold ueval1, pad in H.
+      bdestruct (a + 1 <=? dim).
+      constructor; trivial.
+      unfold in_bounds. intros x I. simpl in I. inversion I. lia.
+      easy.
+      constructor; auto. constructor.
+      contradiction.
+    + simpl in *.
+      destruct l as [|a [|b[|]]]; try contradiction.
+      unfold ueval_cnot, pad in H.
+      bdestruct (a <? b).
+      * bdestruct (a + (1 + (b - a - 1) + 1) <=? dim); try contradiction.
+        constructor; trivial.
+        unfold in_bounds. intros x I. simpl in I. inversion I. lia.
+        inversion H2. lia. contradiction.
+        constructor; auto.
+        simpl; intros F.
+        inversion F. lia.
+        easy.
+        constructor; auto; constructor.
+      * bdestructΩ (b <? a); try contradiction. clear H0.
+        bdestruct (b + (1 + (a - b - 1) + 1) <=? dim); try contradiction.
+        constructor; trivial.
+        unfold in_bounds. intros x I. simpl in I. inversion I. lia.
+        inversion H2. lia. contradiction.
+        constructor; auto.
+        simpl; intros F.
+        inversion F. lia.
+        easy.
+        constructor; auto; constructor.
+Qed.
+
 Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed dim u.
-Proof. Admitted.
+Proof.
+  intros dim u H.
+  apply WT_if_nonzero.
+  induction H.
+  - rewrite u0.
+    simpl. intros F.
+    apply (f_equal2_inv 0 0) in F.
+    contradict F; nonzero.
+  - rewrite u0.
+    simpl. intros F.
+    apply (f_equal2_inv 0 1) in F.
+    contradict F; nonzero.
+  - rewrite e.
+    (* This is true but non-trivial *)
+Admitted.
   
 Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U) : C :=
   match P with
