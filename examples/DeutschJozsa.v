@@ -97,21 +97,32 @@ Proof.
     simpl. intros F.
     apply (f_equal2_inv 0 1) in F.
     contradict F; nonzero.
-  - rewrite e.
-    (* This is true but non-trivial *)
+  - rewrite e. clear -IHboolean1.
     intros F.
-    (* Proof idea:
-
-       Let A = uc_eval dim u1 and B = uc_eval dim u2.
-
-       If A ⊗ ∣0⟩⟨0∣ .+ B ⊗ ∣1⟩⟨1∣ = Zero, then for every i, j, 
-       (A ⊗ ∣0⟩⟨0∣ .+ B ⊗ ∣1⟩⟨1∣) i j = 0. Consider the case where i % 2 = 0 
-       and j % 2 = 0. In this case, (A ⊗ ∣0⟩⟨0∣ .+ B ⊗ ∣1⟩⟨1∣) i j = A (i/2) (j/2).
-
-       But if A (i/2) (j/2) = 0 for every i and j divisible by 2, then A
-       must be the zero matrix.
-    *)
-Admitted.
+    assert (Z01 : forall i j, i mod 2 = 0 -> j mod 2 = 0 ->
+                   (uc_eval dim u1 ⊗ ∣0⟩⟨0∣ .+ uc_eval dim u2 ⊗ ∣1⟩⟨1∣) i j = C0).
+    { rewrite F. reflexivity. }
+    assert (Z1 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) i j = C0).
+    { clear. intros. unfold kron. rewrite H, H0.  replace (∣1⟩⟨1∣ 0 0) with C0 by solve_matrix. lca. }
+    assert (Z0 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) i j = C0).
+    { intros.
+      specialize (Z01 _ _ H H0).
+      unfold Mplus in Z01. rewrite Z1 in Z01; trivial.
+      rewrite Cplus_0_r in Z01.
+      apply Z01.
+    }
+    contradict IHboolean1.
+    prep_matrix_equality.
+    specialize (Z0 (x*2) (y*2)).
+    revert Z0. clear.
+    unfold kron.
+    rewrite 2 Nat.div_mul by lia.
+    rewrite 2 Nat.mod_mul by lia.
+    replace (∣0⟩⟨0∣ 0 0) with C1 by solve_matrix.
+    rewrite Cmult_1_r.
+    unfold Zero; simpl.
+    auto.
+Qed.          
   
 Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U) : C :=
   match P with
