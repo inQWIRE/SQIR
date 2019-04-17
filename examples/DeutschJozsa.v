@@ -99,6 +99,18 @@ Proof.
     contradict F; nonzero.
   - rewrite e.
     (* This is true but non-trivial *)
+    intros F.
+    (* Proof idea:
+
+       Let A = uc_eval dim u1 and B = uc_eval dim u2.
+
+       If A ⊗ ∣0⟩⟨0∣ .+ B ⊗ ∣1⟩⟨1∣ = Zero, then for every i, j, 
+       (A ⊗ ∣0⟩⟨0∣ .+ B ⊗ ∣1⟩⟨1∣) i j = 0. Consider the case where i % 2 = 0 
+       and j % 2 = 0. In this case, (A ⊗ ∣0⟩⟨0∣ .+ B ⊗ ∣1⟩⟨1∣) i j = A (i/2) (j/2).
+
+       But if A (i/2) (j/2) = 0 for every i and j divisible by 2, then A
+       must be the zero matrix.
+    *)
 Admitted.
   
 Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U) : C :=
