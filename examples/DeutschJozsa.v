@@ -99,17 +99,14 @@ Proof.
     contradict F; nonzero.
   - rewrite e. clear -IHboolean1.
     intros F.
-    assert (Z01 : forall i j, i mod 2 = 0 -> j mod 2 = 0 ->
-                   (uc_eval dim u1 ⊗ ∣0⟩⟨0∣ .+ uc_eval dim u2 ⊗ ∣1⟩⟨1∣) i j = C0).
-    { rewrite F. reflexivity. }
     assert (Z1 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) i j = C0).
     { clear. intros. unfold kron. rewrite H, H0.  replace (∣1⟩⟨1∣ 0 0) with C0 by solve_matrix. lca. }
     assert (Z0 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) i j = C0).
     { intros.
-      specialize (Z01 _ _ H H0).
-      unfold Mplus in Z01. rewrite Z1 in Z01; trivial.
-      rewrite Cplus_0_r in Z01.
-      apply Z01.
+      apply (f_equal2_inv i j) in F.      
+      unfold Mplus in F. rewrite Z1 in F; trivial.
+      rewrite Cplus_0_r in F.
+      apply F.
     }
     contradict IHboolean1.
     prep_matrix_equality.
