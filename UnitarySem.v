@@ -170,53 +170,241 @@ Proof. intros. rewrite H. reflexivity. Qed.
 Lemma test_mor : forall c1 c2, c1 ≡ c2 -> c2 ; c1 ≡ c1 ; c1.
 Proof. intros. rewrite H. reflexivity. Qed.
 
+(** uc_eval is unitary iff well-typed **)
+
+Lemma pad_unitary : forall n (u : Square (2^n)) start dim,
+    (start + n <= dim)%nat -> 
+    WF_Unitary u ->
+    WF_Unitary (pad start dim u).
+Proof.
+  intros n u start dim B [WF U].
+  split. apply WF_pad; auto.
+  unfold pad.
+  bdestructΩ (start + n <=? dim).
+  restore_dims_strong.
+  setoid_rewrite kron_adjoint.
+  restore_dims_strong. Msimpl.
+  rewrite U.
+  Msimpl.
+  unify_matrices.
+Qed.
+  
+Lemma ueval1_unitary : forall dim n (u : Unitary 1),
+    (n < dim)%nat ->
+    WF_Unitary (ueval1 dim n u).
+Proof.
+  intros dim n u H.
+  unfold ueval1.
+  apply pad_unitary. lia.
+  dependent destruction u.
+  - apply H_unitary.
+  - apply σx_unitary.
+  - apply σy_unitary.
+  - apply σz_unitary.
+  - apply phase_unitary.
+Qed.  
+
+Lemma ueval_cnot_unitary : forall dim m n,
+    m <> n ->
+    (m < dim)%nat ->
+    (n < dim)%nat ->
+    WF_Unitary (ueval_cnot dim m n).
+Proof.
+  intros dim m n NE Lm Ln.
+  unfold ueval_cnot.
+  bdestruct (m <? n).
+  - apply pad_unitary. lia.
+    split. unify_pows_two; auto with wf_db.
+    restore_dims.
+    rewrite Mplus_adjoint.
+    Msimpl.
+    restore_dims.
+    rewrite kron_adjoint.
+    Msimpl.
+    restore_dims_strong.
+    rewrite Mmult_plus_distr_l.
+    rewrite 2 Mmult_plus_distr_r.
+    rewrite kron_assoc.
+    restore_dims_strong.
+    Msimpl.
+    unify_pows_two.
+    rewrite Nat.sub_add by lia.
+    remember (I (2 ^ (n - m - 1)) ⊗ σx) as A.
+    gen A. unify_pows_two. rewrite Nat.sub_add by lia. intros A EA.
+    restore_dims_strong.
+    rewrite 2 kron_mixed_product.
+    replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2)%nat by solve_matrix.
+    replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2)%nat by solve_matrix.
+    replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
+    replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
+    rewrite 2 kron_0_l.
+    replace (σx × σx) with (I 2) by solve_matrix.
+    Msimpl.
+    unify_pows_two.
+    rewrite Nat.sub_add by lia.
+    (* For some reason I can't rewrite with Mplus_0_l or r here, so manually... *)
+    match goal with
+      |- ?A = ?B => replace A with (∣1⟩⟨1∣ ⊗ I (2 ^ (n - m)) .+ ∣0⟩⟨0∣ ⊗ I (2 ^ (n - m)))
+    end.
+    2:{ 
+    prep_matrix_equality. unfold Mplus.
+    unfold Zero. rewrite Cplus_0_l, Cplus_0_r.
+    reflexivity.
+    }
+    Search Mplus kron.
+    rewrite <- kron_plus_distr_r.
+    replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
+    Msimpl.
+    unify_matrices.
+  - bdestructΩ (n <? m). clear H NE.
+    apply pad_unitary. lia.
+    split.
+    { unify_pows_two.
+      replace ((m - n - 1 + 1 + 1))%nat with (S (m - n - 1 + 1))%nat by lia.
+      auto with wf_db.
+    }
+    restore_dims.
+    rewrite Mplus_adjoint.
+    Msimpl.
+    restore_dims.
+    rewrite kron_adjoint.
+    Msimpl.
+    restore_dims_strong.
+    rewrite Mmult_plus_distr_l.
+    rewrite 2 Mmult_plus_distr_r.
+    Msimpl.
+    remember (σx ⊗ I (2 ^ (m - n - 1))) as A.
+    gen A. unify_pows_two. replace (S (m - n - 1)) with (m - n)%nat by lia. intros A EA.
+    restore_dims_strong.
+    repeat rewrite kron_mixed_product.
+    replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2)%nat by solve_matrix.
+    replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2)%nat by solve_matrix.
+    replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
+    replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
+    replace (σx × σx) with (I 2) by solve_matrix.
+    rewrite 2 kron_0_r.
+    Msimpl.
+    unify_pows_two.
+    rewrite Nat.sub_add by lia.
+    rewrite Mplus_0_r.
+    rewrite Mplus_0_l.
+    replace (S (m - n - 1)) with (m - n)%nat by lia.
+    restore_dims_strong.
+    setoid_rewrite <- kron_plus_distr_l.
+    replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
+    Msimpl.
+    unify_matrices.
+Qed.  
+
+Lemma uc_eval_unitary : forall (dim : nat) (u : ucom),
+    uc_well_typed dim u -> WF_Unitary (uc_eval dim u).
+Proof.
+  intros dim u H.
+  unfold WF_Unitary.
+  split. apply WF_uc_eval.
+  induction u.
+  - simpl. Msimpl. reflexivity.
+  - inversion H; subst.
+    simpl. Msimpl. rewrite <- Mmult_assoc. rewrite (Mmult_assoc (_)†).
+    rewrite IHu2; trivial. Msimpl.
+    rewrite IHu1; easy.
+  - dependent destruction H.
+    destruct l as [|a [|b [|]]]; try solve [inversion u].
+    + simpl. destruct (ueval1_unitary dim a u) as [_ UU].
+      specialize (H0 _ (or_introl eq_refl)); trivial.
+      assumption.
+    + simpl. destruct (ueval_cnot_unitary dim a b) as [_ UU].
+      inversion H1; subst.
+      intros F. apply H3. subst. constructor. auto.
+      specialize (H0 _ (or_introl eq_refl)); trivial.
+      specialize (H0 _ (or_intror (or_introl eq_refl))); trivial.
+      assumption.
+Qed.
+
+Lemma WT_if_nonzero : forall (dim : nat) (u : ucom),
+  uc_eval dim u <> Zero -> uc_well_typed dim u.
+Proof.
+  intros dim u.
+  induction u; intros H.
+  - constructor.
+  - simpl in *.
+    constructor.
+    + apply IHu1.
+      intros F. rewrite F in *.
+      rewrite Mmult_0_r in H.
+      contradiction.
+    + apply IHu2.
+      intros F. rewrite F in *.
+      rewrite Mmult_0_l in H.
+      contradiction.
+  - destruct n as [|[|[|]]]; try solve [inversion u].
+    + simpl in *.
+      destruct l as [|a [|b[|]]]; try contradiction.
+      unfold ueval1, pad in H.
+      bdestruct (a + 1 <=? dim).
+      constructor; trivial.
+      unfold in_bounds. intros x I. simpl in I. inversion I. lia.
+      easy.
+      constructor; auto. constructor.
+      contradiction.
+    + simpl in *.
+      destruct l as [|a [|b[|]]]; try contradiction.
+      unfold ueval_cnot, pad in H.
+      bdestruct (a <? b).
+      * bdestruct (a + (1 + (b - a - 1) + 1) <=? dim); try contradiction.
+        constructor; trivial.
+        unfold in_bounds. intros x I. simpl in I. inversion I. lia.
+        inversion H2. lia. contradiction.
+        constructor; auto.
+        simpl; intros F.
+        inversion F. lia.
+        easy.
+        constructor; auto; constructor.
+      * bdestructΩ (b <? a); try contradiction. clear H0.
+        bdestruct (b + (1 + (a - b - 1) + 1) <=? dim); try contradiction.
+        constructor; trivial.
+        unfold in_bounds. intros x I. simpl in I. inversion I. lia.
+        inversion H2. lia. contradiction.
+        constructor; auto.
+        simpl; intros F.
+        inversion F. lia.
+        easy.
+        constructor; auto; constructor.
+Qed.
+
+(* Now we get bidirectionality for free! *)
+
+Lemma uc_eval_unitary_iff : forall (dim : nat) (u : ucom),
+    uc_well_typed dim u <-> WF_Unitary (uc_eval dim u).
+Proof.
+  split.
+  - apply uc_eval_unitary.
+  - intros H.
+    apply WT_if_nonzero.
+    intros F.
+    rewrite F in H.
+    apply zero_not_unitary in H.
+    easy.
+Qed.
+
+Lemma uc_eval_nonzero_iff : forall (dim : nat) (u : ucom),
+  uc_eval dim u <> Zero <-> uc_well_typed dim u.
+Proof.
+  split.
+  - apply WT_if_nonzero.
+  - intros H.
+    intros F.
+    apply uc_eval_unitary in H.
+    rewrite F in H.
+    apply zero_not_unitary in H.
+    easy.
+Qed.
+
+
 (** Automation **)
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
-
-Ltac unify_matrices := 
-  match goal with
-  | |- @Mmult ?m ?n ?o ?A ?B = @Mmult ?m' ?n' ?o' ?A ?B => 
-    try replace m with m' by unify_pows_two;
-    try replace n with n' by unify_pows_two;
-    try replace o with o' by unify_pows_two;
-    reflexivity
-  | |- @kron ?m ?n ?o ?p ?A ?B = @kron ?m' ?n' ?o' ?p' ?A ?B => 
-    try replace m with m' by unify_pows_two;
-    try replace n with n' by unify_pows_two;
-    try replace o with o' by unify_pows_two;
-    try replace p with p' by unify_pows_two;
-    reflexivity
-  | |- @adjoint ?m ?n ?A ?B = @adjoint ?m' ?n' ?A ?B => 
-    try replace m with m' by unify_pows_two;
-    try replace n with n' by unify_pows_two;
-    reflexivity                               
-  end.
-
-Ltac restore_dims_strong :=
-  repeat match goal with
-  | [ |- context[@Mmult ?m ?n ?o ?A ?B]] => progress match type of A with 
-                                          | Matrix ?m' ?n' =>
-                                            match type of B with 
-                                            | Matrix ?n'' ?o' =>
-                                              replace (@Mmult m n o A B) with
-                                                  (@Mmult m' n' o' A B) by unify_matrices 
-                                            end
-                                          end
-  | [ |- context[@kron ?m ?n ?o ?p ?A ?B]] => progress match type of A with 
-                                            | Matrix ?m' ?n' =>
-                                              match type of B with 
-                                              | Matrix ?o' ?p' =>
-                                                replace (@kron m n o p A B) with
-                                                    (@kron m' n' o' p' A B) by unify_matrices 
-                                              end
-                                            end
-  | [ |- context[@adjoint ?m ?n ?A]]       => progress match type of A with
-                                            | Matrix ?m' ?n' =>
-                                              replace (@adjoint m n A) with (@adjoint m' n' A) by unify_matrices
-                                            end
-         end.
 
 (* For handling non well-typed cases. (Shouldn't Msimpl do this?) *)
 Ltac remove_zero_gates :=

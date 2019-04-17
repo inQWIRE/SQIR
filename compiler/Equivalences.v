@@ -114,9 +114,6 @@ Proof.
       clear - WFU.
       restore_dims_strong.
       Msimpl.
-      rewrite Mmult_plus_distr_l.
-      rewrite Mmult_plus_distr_r.
-      Msimpl. 
       reflexivity.
     + apply le_lt_eq_dec in H2; destruct H2;
         try (contradict e; assumption).
@@ -185,9 +182,6 @@ Proof.
       clear - WFU. 
       restore_dims_strong.
       Msimpl.
-      rewrite Mmult_plus_distr_l.
-      rewrite Mmult_plus_distr_r.
-      Msimpl. 
       reflexivity.
     + apply le_lt_eq_dec in H3; destruct H3; 
         try (contradict e; assumption).

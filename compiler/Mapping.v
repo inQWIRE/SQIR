@@ -218,7 +218,6 @@ Proof.
   repeat rewrite <- (Mmult_assoc swap _ swap).
   repeat rewrite swap_spec_general; try auto with wf_db.
   replace (2 ^ 2) with (2 * 2) by easy.
-  rewrite id_kron.
   replace (2 * (2 ^ i * 2) * 2) with (2 * 2 ^ i * (2 * 2)) by rewrite_assoc.
   reflexivity.
 Qed.
@@ -275,8 +274,6 @@ Proof.
   Msimpl. 
   repeat rewrite <- (Mmult_assoc swap _ swap).
   repeat rewrite swap_spec_general; try auto with wf_db.
-  rewrite id_kron.
-  reflexivity.
 Qed.
 
 Lemma move_target_left_equiv_cnot : forall base dist,

@@ -1351,7 +1351,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_adjoint_eq
+Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_kron id_adjoint_eq
      @Mmult_adjoint Mplus_adjoint @kron_adjoint @kron_mixed_product
      id_adjoint_eq adjoint_involutive using 
      (auto 100 with wf_db; autorewrite with M_db; auto 100 with wf_db; lia) : M_db.
@@ -1369,7 +1369,27 @@ Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_adjoint_eq
 (* Automation *)
 (**************)
 
-(* For when autorewrite needs some extra help *)
+Ltac unify_matrices := 
+  match goal with
+  | |- I ?n = I ?n' =>
+    try replace n with n' by unify_pows_two;
+    reflexivity
+  | |- @Mmult ?m ?n ?o ?A ?B = @Mmult ?m' ?n' ?o' ?A ?B => 
+    try replace m with m' by unify_pows_two;
+    try replace n with n' by unify_pows_two;
+    try replace o with o' by unify_pows_two;
+    reflexivity
+  | |- @kron ?m ?n ?o ?p ?A ?B = @kron ?m' ?n' ?o' ?p' ?A ?B => 
+    try replace m with m' by unify_pows_two;
+    try replace n with n' by unify_pows_two;
+    try replace o with o' by unify_pows_two;
+    try replace p with p' by unify_pows_two;
+    reflexivity
+  | |- @adjoint ?m ?n ?A ?B = @adjoint ?m' ?n' ?A ?B => 
+    try replace m with m' by unify_pows_two;
+    try replace n with n' by unify_pows_two;
+    reflexivity                               
+  end.
 
 (* restore_dims: Gives default dimensions to matrix expressions 
    (for concrete dimensions) *)
@@ -1396,6 +1416,32 @@ Ltac restore_dims :=
                                               replace (@adjoint m n A) with (@adjoint m' n' A) by reflexivity
                                             end
          end.
+
+
+Ltac restore_dims_strong :=
+  repeat match goal with
+  | [ |- context[@Mmult ?m ?n ?o ?A ?B]] => progress match type of A with 
+                                          | Matrix ?m' ?n' =>
+                                            match type of B with 
+                                            | Matrix ?n'' ?o' =>
+                                              replace (@Mmult m n o A B) with
+                                                  (@Mmult m' n' o' A B) by unify_matrices 
+                                            end
+                                          end
+  | [ |- context[@kron ?m ?n ?o ?p ?A ?B]] => progress match type of A with 
+                                            | Matrix ?m' ?n' =>
+                                              match type of B with 
+                                              | Matrix ?o' ?p' =>
+                                                replace (@kron m n o p A B) with
+                                                    (@kron m' n' o' p' A B) by unify_matrices 
+                                              end
+                                            end
+  | [ |- context[@adjoint ?m ?n ?A]]       => progress match type of A with
+                                            | Matrix ?m' ?n' =>
+                                              replace (@adjoint m n A) with (@adjoint m' n' A) by unify_matrices
+                                            end
+         end.
+
 
 Ltac Msimpl := autorewrite with M_db.
 

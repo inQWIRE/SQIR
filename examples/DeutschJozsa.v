@@ -33,57 +33,6 @@ Inductive boolean : nat -> ucom -> Set :=
      so u must be well-typed. 
  *)
 
-Lemma WT_if_nonzero : forall (dim : nat) (u : ucom),
-  uc_eval dim u <> Zero -> uc_well_typed dim u.
-Proof.
-  intros dim u.
-  induction u; intros H.
-  - constructor.
-  - simpl in *.
-    constructor.
-    + apply IHu1.
-      intros F. rewrite F in *.
-      rewrite Mmult_0_r in H.
-      contradiction.
-    + apply IHu2.
-      intros F. rewrite F in *.
-      rewrite Mmult_0_l in H.
-      contradiction.
-  - destruct n as [|[|[|]]]; try solve [inversion u].
-    + simpl in *.
-      destruct l as [|a [|b[|]]]; try contradiction.
-      unfold ueval1, pad in H.
-      bdestruct (a + 1 <=? dim).
-      constructor; trivial.
-      unfold in_bounds. intros x I. simpl in I. inversion I. lia.
-      easy.
-      constructor; auto. constructor.
-      contradiction.
-    + simpl in *.
-      destruct l as [|a [|b[|]]]; try contradiction.
-      unfold ueval_cnot, pad in H.
-      bdestruct (a <? b).
-      * bdestruct (a + (1 + (b - a - 1) + 1) <=? dim); try contradiction.
-        constructor; trivial.
-        unfold in_bounds. intros x I. simpl in I. inversion I. lia.
-        inversion H2. lia. contradiction.
-        constructor; auto.
-        simpl; intros F.
-        inversion F. lia.
-        easy.
-        constructor; auto; constructor.
-      * bdestructΩ (b <? a); try contradiction. clear H0.
-        bdestruct (b + (1 + (a - b - 1) + 1) <=? dim); try contradiction.
-        constructor; trivial.
-        unfold in_bounds. intros x I. simpl in I. inversion I. lia.
-        inversion H2. lia. contradiction.
-        constructor; auto.
-        simpl; intros F.
-        inversion F. lia.
-        easy.
-        constructor; auto; constructor.
-Qed.
-
 Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed dim u.
 Proof.
   intros dim u H.

@@ -577,6 +577,21 @@ Proof.
   lca.
 Qed.
 
+Lemma zero_not_unitary : forall n, ~ (WF_Unitary (@Zero (2^n) (2^n))).
+Proof.
+  intros n.
+  intros F.
+  destruct F as [_ U].
+  apply (f_equal2_inv 0 0)%nat in U.
+  revert U.
+  rewrite Mmult_0_r.
+  unfold I, Zero.
+  simpl.
+  bdestruct (0 <? 2 ^ n).
+  intros F. inversion F. lra.
+  specialize (pow_positive 2 n) as P.
+  lia.
+Qed.
 
 Lemma kron_unitary : forall {m n} (A : Matrix m m) (B : Matrix n n),
   WF_Unitary A -> WF_Unitary B -> WF_Unitary (A ⊗ B).
@@ -607,7 +622,6 @@ Proof.
   autorewrite with M_db.
   apply UB.
 Qed.
-
 
 (********************)
 (* Self-adjointness *)
