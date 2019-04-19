@@ -6,34 +6,14 @@ Local Close Scope C_scope.
 Local Close Scope R_scope.
 
 Inductive boolean : nat -> ucom -> Set :=
-  | boolean_I : forall u, u ≡ uskip -> boolean 1 u
-  | boolean_X : forall u, u ≡ X 0 -> boolean 1 u
+  | boolean_I : forall u, u ≡ uskip -> boolean 0 u
+  | boolean_X : forall u, u ≡ X 0 -> boolean 0 u
   | boolean_U : forall u u1 u2 dim,
                 boolean dim u1 -> boolean dim u2 ->
-                uc_eval (S dim) u = (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) ->
+                uc_eval (S (S dim)) u = (uc_eval (S dim) u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval (S dim) u2 ⊗ ∣1⟩⟨1∣) ->
                 boolean (S dim) u.
 
-
-(* This should be true, but may require some effort to prove.
-   The basic fact we need to prove is:
-       not (uc_well_typed dim u) <-> uc_eval dim u = Zero
-   or
-      uc_well_typed dim u <-> not (uc_eval dim u = Zero)
-   
-   Given this fact, we can prove boolean_WT by induction on (boolean dim u):
-
-   - if u is equivalent to uskip, then (uc_eval dim u) is nonzero, 
-     so u must be well-typed.
-   - if u is equivalent to (X 0), then (uc_eval dim u) is nonzero, 
-     so u must be well-typed.
-   - if u1 and u2 are well-typed, then (uc_eval dim u1) and (uc_eval dim u2)
-     are nonzero, which means that
-         (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) 
-     is nonzero. This means that (uc_eval (S dim) u) is nonzero,
-     so u must be well-typed. 
- *)
-
-Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed dim u.
+Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed (S dim) u.
 Proof.
   intros dim u H.
   apply WT_if_nonzero.
@@ -48,9 +28,9 @@ Proof.
     contradict F; nonzero.
   - rewrite e. clear -IHboolean1.
     intros F.
-    assert (Z1 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) i j = C0).
+    assert (Z1 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval (S dim) u2 ⊗ ∣1⟩⟨1∣) i j = C0).
     { clear. intros. unfold kron. rewrite H, H0.  replace (∣1⟩⟨1∣ 0 0) with C0 by solve_matrix. lca. }
-    assert (Z0 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) i j = C0).
+    assert (Z0 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval (S dim) u1 ⊗ ∣0⟩⟨0∣) i j = C0).
     { intros.
       apply (f_equal2_inv i j) in F.      
       unfold Mplus in F. rewrite Z1 in F; trivial.
@@ -68,7 +48,7 @@ Proof.
     rewrite Cmult_1_r.
     unfold Zero; simpl.
     auto.
-Qed.          
+Qed.
   
 Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U) : C :=
   match P with
@@ -87,151 +67,53 @@ Notation "∣+⟩" := (/√2 .* ∣0⟩ .+ /√2 .* ∣1⟩)%C.
 Notation "∣-⟩" := (/√2 .* ∣0⟩ .+ (-/√2) .* ∣1⟩)%C.
 
 Definition balanced {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-  dim >= 2 /\ count P = (2%R ^ (dim - 2))%C.
+  dim >= 1 /\ count P = (2%R ^ (dim - 1))%C.
 
 Definition constant {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-  count P = 0%R \/ count P = (2%R ^ (dim - 1))%C.
+  count P = 0%R \/ count P = (2%R ^ dim)%C.
 
-Definition accept' {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-    exists ψ : Matrix 2 1, ((ψ ⊗ nket dim ∣+⟩)† × (uc_eval (S dim) U × (∣-⟩ ⊗ nket dim ∣+⟩))) 0 0 = 1%R. 
-
-Definition reject' {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-    forall ψ : Matrix 2 1, ((ψ ⊗ nket dim ∣+⟩)† × (uc_eval (S dim) U × (∣-⟩ ⊗ nket dim ∣+⟩))) 0 0 = 0%R. 
- 
 Lemma deutsch_jozsa_count :
   forall {dim : nat} {U : ucom} (P : boolean dim U) (ψ : Matrix 2 1),
-    (ψ ⊗ nket dim ∣+⟩)† × (uc_eval (S dim) U × (∣-⟩ ⊗ nket dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ (dim - 1))%C .* (ψ† × ∣-⟩).
+    (ψ ⊗ nket dim ∣+⟩)† × (uc_eval (S dim) U × (∣-⟩ ⊗ nket dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣-⟩).
 Proof.
   intros.
   remember ∣+⟩ as ψp. remember ∣-⟩ as ψm.
-  specialize (boolean_WT _ _ P) as WTu.
   induction P.
   - simpl. rewrite u0. simpl.
-    rewrite Mmult_1_l by (rewrite Heqψp; rewrite Heqψm; auto with wf_db).
-    autorewrite with C_db. 
-    rewrite kron_1_l by (rewrite Heqψp; auto with wf_db).
-    rewrite (@kron_adjoint 2 1 2 1 _ _).
-    rewrite (@kron_mixed_product 1 2 1 1 2 1 _ _ _ _).
-    replace (ψp† × ψp) with (I 1) by (rewrite Heqψp; solve_matrix).
-    rewrite kron_1_r. symmetry. 
-    apply Mscale_1_l.
-  - simpl. rewrite u0. unfold uc_eval. simpl. unfold ueval1, pad. simpl.
-    rewrite kron_1_l by (rewrite Heqψp; auto with wf_db).
-    rewrite kron_1_l by (auto with wf_db).
+    repeat rewrite kron_1_r. rewrite Mmult_1_l by (rewrite Heqψm; auto with wf_db).
     autorewrite with C_db.
-    rewrite (@kron_mixed_product 2 2 1 2 2 1 _ _ _ _).
-    rewrite Mmult_1_l by (rewrite Heqψp; auto with wf_db).
+    symmetry. apply Mscale_1_l.
+  - simpl. rewrite u0. unfold uc_eval. simpl. unfold ueval1, pad. simpl.
+    simpl.
+    repeat rewrite kron_1_r. rewrite kron_1_l by auto with wf_db.
     replace (σx × ψm) with ((-1)%R .* ψm) by (rewrite Heqψm; solve_matrix).
-    rewrite Mscale_kron_dist_l. rewrite Mscale_mult_dist_r.
-    rewrite (@kron_adjoint 2 1 2 1 _ _).
-    rewrite (@kron_mixed_product 1 2 1 1 2 1 _ _ _ _).
-    replace (ψp† × ψp) with (I 1) by (rewrite Heqψp; solve_matrix).
-    rewrite kron_1_r.
+    rewrite Mscale_mult_dist_r.
     apply f_equal2. lca. reflexivity.
-  - destruct dim. inversion P1.
-    replace (nket (S dim) ψp) with (nket dim ψp ⊗ ψp) in * by reflexivity.
-    replace (nket (S (S dim)) ψp) with (nket (S dim) ψp ⊗ ψp) by reflexivity.
-    replace (S (S dim)) with (S dim + 1) in * by lia.
-    replace (S (S (S dim))) with (S (S dim) + 1) by lia.
-    replace (2 ^ (S dim + 1)) with (2 * 2 ^ dim * 2) in * by unify_pows_two.
-    replace (2 ^ (S (S dim) + 1)) with (2 * 2 ^ (S dim) * 2) by unify_pows_two.
-    replace (2 ^ S dim) with (2 ^ dim * 2) in IHP1 by unify_pows_two.
-    replace (2 ^ S dim) with (2 ^ dim * 2) in IHP2 by unify_pows_two.
-    replace (2 ^ S (S dim)) with (2 ^ (S dim) * 2) by unify_pows_two.
-    repeat rewrite <- (@kron_assoc 2 1 (2 ^ dim) 1 2 1 _ _ _) in IHP1.
-    repeat rewrite <- (@kron_assoc 2 1 (2 ^ dim) 1 2 1 _ _ _) in IHP2.
-    repeat rewrite <- (@kron_assoc 2 1 (2 ^ (S dim)) 1 2 1 _ _ _).
-    specialize (boolean_WT _ _ P1) as WTu1.
-    specialize (boolean_WT _ _ P2) as WTu2.
-    rewrite <- pad_dims_r in *;
-      try replace (S (S dim)) with (S dim + 1) by lia;
-      try assumption.
-    replace (2 ^ 1) with 2 in * by (simpl; reflexivity).
-    rewrite kron_mixed_product in IHP1.
-    rewrite kron_mixed_product in IHP2.
-    rewrite kron_mixed_product.
-    rewrite mult_assoc in *.
-    rewrite (@kron_adjoint (2 * 2 ^ dim) 1 2 1 _ _) in IHP1.
-    rewrite (@kron_adjoint (2 * 2 ^ dim) 1 2 1 _ _) in IHP2.
-    rewrite (@kron_adjoint (2 * 2 ^ (S dim)) 1 2 1 _ _).
-    rewrite kron_mixed_product in IHP1.
-    rewrite kron_mixed_product in IHP2.
-    rewrite kron_mixed_product.
-    rewrite Mmult_1_l in * by (rewrite Heqψp; auto with wf_db).
-    replace ((ψp) † × ψp) with (I 1) in * by (rewrite Heqψp; solve_matrix).
-    rewrite kron_1_r in *.
-    replace (nket (S dim) ψp) with (nket dim ψp ⊗ ψp) by reflexivity.
+  - replace (count (boolean_U u u1 u2 dim P1 P2 e))%C with (count P1 + count P2)%C by reflexivity.
+    repeat replace (nket (S dim) ψp) with (nket dim ψp ⊗ ψp) by reflexivity.
+    rewrite e.
     replace (2 ^ S dim) with (2 ^ dim * 2) by unify_pows_two.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ dim) 1 2 1 _ _ _).
-    replace (count (boolean_U u u1 u2 (S dim) P1 P2 e)) with (count P1 + count P2)%C by reflexivity.
-    rewrite e.
-    replace (2 ^ S dim) with (2 * 2 ^ dim) by unify_pows_two.
-    rewrite mult_assoc.
+    replace (2 ^ (S (S dim))) with (2 * 2 ^ dim * 2) by unify_pows_two. 
+    rewrite mult_assoc. replace (2 ^ dim * 2) with (2 * 2 ^ dim) by lia.
     rewrite Mmult_plus_distr_r.
-    rewrite (@kron_adjoint (2 * 2 ^ dim) 1 2 1 _ _).
+    rewrite kron_adjoint.
     rewrite Mmult_plus_distr_l.
-    repeat rewrite (@kron_mixed_product (2 * 2 ^ dim) (2 * 2 ^ dim) 1 2 2 1 _ _ _ _).
-    repeat rewrite (@kron_mixed_product 1 (2 * 2 ^ dim) 1 1 2 1 _ _ _ _).
+    repeat rewrite kron_mixed_product.
     replace ((ψp) † × (∣0⟩⟨0∣ × ψp)) with ((1/2)%R .* I 1) by (rewrite Heqψp; solve_matrix).
     replace ((ψp) † × (∣1⟩⟨1∣ × ψp)) with ((1/2)%R .* I 1) by (rewrite Heqψp; solve_matrix).
     repeat rewrite Mscale_kron_dist_r.
     repeat rewrite kron_1_r.
+    simpl in *. rewrite IHP1. rewrite IHP2.
     rewrite <- Mscale_plus_distr_r.
-    replace (S dim - 1) with dim in * by lia.
-    replace (S (S dim) - 1) with (S dim) by lia.
-    rewrite (IHP1 WTu1). rewrite (IHP2 WTu2).
     rewrite <- Mscale_plus_distr_l.
     rewrite Mscale_assoc.
-    apply f_equal2. simpl.
+    apply f_equal2.
     rewrite Cinv_mult_distr. lca. 
     apply C0_fst. simpl. lra.
     apply Cpow_nonzero. lra.
     reflexivity.
 Qed.
-
-Theorem deutsch_jozsa_constant_correct' :
-  forall (dim : nat) (U : ucom) (P : boolean dim U), constant P -> accept' P.
-Proof.
-  intros. 
-  unfold accept'. destruct H.
-  - exists ∣-⟩. rewrite (deutsch_jozsa_count P _). rewrite H. 
-    destruct dim. inversion P.
-    replace (S dim - 1) with dim in * by lia.
-    autorewrite with C_db. rewrite Mscale_1_l. 
-    replace (∣-⟩† × ∣-⟩) with (I 1) by solve_matrix.
-    unfold I. simpl. reflexivity.
-  - exists ((-1)%R .* ∣-⟩). rewrite (deutsch_jozsa_count P _). rewrite H.
-    destruct dim. inversion P.
-    replace (S dim - 1) with dim in * by lia.
-    autorewrite with C_db. 
-    rewrite <- Cmult_assoc. rewrite Cinv_r by (apply Cpow_nonzero; lra).
-    rewrite Cmult_1_r.
-    rewrite <- Cminus_unfold.
-    replace (((-1)%R .* ∣-⟩)† × ∣-⟩) with ((-1)%R .* I 1).
-    unfold I, scale. simpl. lca.
-    solve_matrix. 
-    rewrite Cconj_mult_distr. 
-    rewrite Cconj_rad2.
-    rewrite Cconj_R.
-    group_radicals. lca.
-Qed.
-
-Theorem deutsch_jozsa_balanced_correct' :
-  forall (dim : nat) (U : ucom) (P : boolean dim U), balanced P -> reject' P.
-Proof.
-  intros. unfold reject'. intros. rewrite (deutsch_jozsa_count P _).
-  destruct dim. inversion P.
-  replace (S dim - 1) with dim in * by lia.
-  unfold balanced in H. inversion H.
-  destruct dim. inversion H0. inversion H3.
-  replace (S (S dim) - 2) with dim in * by lia.
-  rewrite H1. simpl. rewrite Cinv_r.
-  autorewrite with C_db.
-  rewrite Mscale_0_l. unfold Zero. reflexivity.
-  replace (2%R * 2%R ^ dim)%C with (2%R ^ S dim)%C.
-  apply Cpow_nonzero. lra.
-  simpl. reflexivity.
-Qed.  
 
 Fixpoint cpar (n : nat) (u : nat -> ucom) : ucom :=
   match n with
@@ -357,7 +239,7 @@ Definition deutsch_jozsa (n : nat) (U : ucom) : ucom :=
 
 Lemma deutsch_jozsa_success_probability :
   forall {dim : nat} {U : ucom} (P : boolean dim U) (ψ : Matrix 2 1) (WF : WF_Matrix ψ),
-    (ψ ⊗ nket dim ∣0⟩)† × ((uc_eval (S dim) (deutsch_jozsa (S dim) U)) × (nket (S dim) ∣0⟩)) = (1%R - 2%R * count P * /2%R ^ (dim - 1))%C .* (ψ† × ∣1⟩).
+    (ψ ⊗ nket dim ∣0⟩)† × ((uc_eval (S dim) (deutsch_jozsa (S dim) U)) × (nket (S dim) ∣0⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣1⟩).
 Proof.
   intros.
   unfold deutsch_jozsa. rewrite nket_assoc by auto with wf_db.
@@ -385,7 +267,7 @@ Proof.
   { intros. simpl. reflexivity. } rewrite F.
   (* remember (hadamard × ψ) as ϕ. *)
   assert (forall ψ : Matrix 2 1,   
-  (ψ ⊗ nket dim ∣+⟩)† × (uc_eval (S dim) U × (∣-⟩ ⊗ nket dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ (dim - 1))%C .* (ψ† × ∣-⟩)).
+  (ψ ⊗ nket dim ∣+⟩)† × (uc_eval (S dim) U × (∣-⟩ ⊗ nket dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣-⟩)).
   { intro. rewrite (deutsch_jozsa_count P). reflexivity. }
   rewrite H.
   rewrite Mmult_adjoint.
@@ -395,7 +277,7 @@ Proof.
 Qed.
 
 Definition accept {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-    exists (ψ : Matrix 2 1), WF_Matrix ψ -> ((ψ ⊗ nket dim ∣0⟩)† × (uc_eval (S dim) (deutsch_jozsa (S dim) U) × (nket (S dim) ∣0⟩))) 0 0 = 1%R. 
+    exists (ψ : Matrix 2 1), ((ψ ⊗ nket dim ∣0⟩)† × (uc_eval (S dim) (deutsch_jozsa (S dim) U) × (nket (S dim) ∣0⟩))) 0 0 = 1%R. 
 
 Definition reject {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
     forall (ψ : Matrix 2 1), WF_Matrix ψ -> ((ψ ⊗ nket dim ∣0⟩)† × (uc_eval (S dim) (deutsch_jozsa (S dim) U) × (nket (S dim) ∣0⟩))) 0 0 = 0%R. 
@@ -404,26 +286,12 @@ Theorem deutsch_jozsa_constant_correct :
   forall (dim : nat) (U : ucom) (P : boolean dim U), constant P -> accept P.
 Proof.
   intros. 
-  unfold accept. destruct H.
-  - exists ∣1⟩.
-    rewrite (deutsch_jozsa_success_probability P _) by auto with wf_db. 
-    rewrite H. 
-    destruct dim. inversion P.
-    replace (S dim - 1) with dim in * by lia.
-    autorewrite with C_db. rewrite Mscale_1_l. 
-    replace (∣1⟩† × ∣1⟩) with (I 1) by solve_matrix.
-    unfold I. simpl. reflexivity.
-  - exists ((-1)%R .* ∣1⟩). intros.
-    rewrite (deutsch_jozsa_success_probability P _) by auto with wf_db. 
-    rewrite H.
-    destruct dim. inversion P.
-    replace (S dim - 1) with dim in * by lia.
-    autorewrite with C_db. 
-    rewrite <- Cmult_assoc. rewrite Cinv_r by (apply Cpow_nonzero; lra).
-    rewrite Cmult_1_r.
-    rewrite <- Cminus_unfold.
-    replace (((-1)%R .* ∣1⟩)† × ∣1⟩) with ((-1)%R .* I 1).
-    unfold I, scale. simpl. lca.
+  unfold accept.
+  destruct H; [exists ∣1⟩ | exists ((-1)%R .* ∣1⟩) ];
+  rewrite (deutsch_jozsa_success_probability P _) by auto with wf_db; rewrite H.
+  - autorewrite with C_db. rewrite Mscale_1_l. solve_matrix.
+  - rewrite <- Cmult_assoc.
+    rewrite Cinv_r by (apply Cpow_nonzero; lra).
     solve_matrix.
 Qed.
 
@@ -432,17 +300,13 @@ Theorem deutsch_jozsa_balanced_correct :
 Proof.
   unfold reject. intros. 
   rewrite (deutsch_jozsa_success_probability P _) by auto with wf_db.
-  destruct dim. inversion P.
-  replace (S dim - 1) with dim in * by lia.
-  unfold balanced in H. inversion H.
-  destruct dim. inversion H1. inversion H4.
-  replace (S (S dim) - 2) with dim in * by lia.
-  rewrite H2. simpl. rewrite Cinv_r.
-  autorewrite with C_db.
-  rewrite Mscale_0_l. unfold Zero. reflexivity.
-  replace (2%R * 2%R ^ dim)%C with (2%R ^ S dim)%C.
-  apply Cpow_nonzero. lra.
-  simpl. reflexivity.
+  destruct dim; inversion H.
+  - inversion H1.
+  - replace (S dim - 1) with dim in H2 by lia.
+    rewrite H2.
+    replace (2%R * 2%R ^ dim)%C with (2%R ^ S dim)%C by (simpl; reflexivity).
+    autorewrite with C_db. rewrite Cinv_r by (apply Cpow_nonzero; lra).
+    solve_matrix.
 Qed.  
 
 
