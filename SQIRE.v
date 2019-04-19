@@ -138,6 +138,10 @@ Notation "v <- 1" := (reset v ; X v) (at level 20) : com_scope.
 
 (* Notation "v *= u" := (app u v) (at level 20) : com_scope. *)
 
+(***************************)
+(** High-level Constructs **)
+(***************************)
+
 Fixpoint crepeat (n : nat) (p : com) : com :=
   match n with
   | 0    => skip
@@ -152,20 +156,30 @@ Fixpoint while (iters : nat) (v : nat) (p : com) : com :=
   end.
  *)
 
-(* Simple order reversal: No transposing, measurements and resets stay as they are. *)
+Fixpoint reverse_gate {n : nat} (u : Unitary n) : Unitary n := 
+  match u with
+  | U_H => U_H
+  | U_X => U_X
+  | U_Y => U_Y
+  | U_Z => U_Z
+  | U_R ϕ => U_R (-ϕ)
+  | U_CNOT => U_CNOT
+  end.
+
+(* Reverse for unitary circuits. *)
+Fixpoint reverse_u (c : ucom) :=
+  match c with
+  | uskip => uskip
+  | useq c1 c2 => useq (reverse_u c2) (reverse_u c1)
+  | uapp u l => uapp (reverse_gate u) l
+  end.
+
+(* Reverse for general circuits. *)
 Fixpoint reverse (c : com) :=
-  match c with              
+  match c with
+  | skip => skip              
   | seq c1 c2 => seq (reverse c2) (reverse c1)
-  | _ => c
+  | app u l => app (reverse_gate u) l
+  | meas v => reset v
+  | reset v => meas v
   end.
-
-(* Order reversal exchanging inits and measurements *)
-Fixpoint reverse_m (c : com) :=
-  match c with              
-  | seq c1 c2        => seq (reverse c2) (reverse c1) 
-  | reset v          => meas v
-  | meas v           => reset v
-  | _ => c
-  end.
-
-  

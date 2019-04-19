@@ -5,7 +5,7 @@ Require Import Setoid.
 Local Open Scope matrix_scope.
 Local Open Scope ucom_scope.
 
-(** Denotation of Unitaries *)
+(** Denotation of Unitaries **)
 
 Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
   if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else Zero.
@@ -251,7 +251,6 @@ Proof.
     unfold Zero. rewrite Cplus_0_l, Cplus_0_r.
     reflexivity.
     }
-    Search Mplus kron.
     rewrite <- kron_plus_distr_r.
     replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
     Msimpl.
@@ -400,11 +399,58 @@ Proof.
     easy.
 Qed.
 
-
-(** Automation **)
+(** Proofs about high-level functions over unitary programs **)
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
+
+Lemma reverse_u_correct : forall (dim : nat) (u : ucom),
+  (uc_eval dim u)† = uc_eval dim (reverse_u u).
+Proof.
+  intros.
+  induction u.
+  - simpl. Msimpl. reflexivity.
+  - simpl. Msimpl. rewrite IHu1. rewrite IHu2. reflexivity.
+  - simpl. 
+    destruct u;
+    destruct l as [|a [|b [|]]]; simpl; try apply zero_adjoint_eq;
+    unfold ueval1, ueval_cnot, pad.
+    + bdestruct (a + 1 <=? dim); try apply zero_adjoint_eq;
+      repeat setoid_rewrite kron_adjoint; Msimpl. 
+      setoid_rewrite hadamard_sa. reflexivity.
+    + bdestruct (a + 1 <=? dim); try apply zero_adjoint_eq;
+      repeat setoid_rewrite kron_adjoint; Msimpl. 
+      setoid_rewrite σx_sa. reflexivity.
+    + bdestruct (a + 1 <=? dim); try apply zero_adjoint_eq;
+      repeat setoid_rewrite kron_adjoint; Msimpl. 
+      setoid_rewrite σy_sa. reflexivity.
+    + bdestruct (a + 1 <=? dim); try apply zero_adjoint_eq;
+      repeat setoid_rewrite kron_adjoint; Msimpl. 
+      setoid_rewrite σz_sa. reflexivity.
+    + bdestruct (a + 1 <=? dim); try apply zero_adjoint_eq;
+      repeat setoid_rewrite kron_adjoint; Msimpl. 
+      reflexivity.
+    + bdestruct (a <? b).
+      * bdestruct (a + (1 + (b - a - 1) + 1) <=? dim); try apply zero_adjoint_eq.
+        repeat setoid_rewrite kron_adjoint; Msimpl.
+        replace (2 ^ (1 + (b - a - 1) + 1)) with (2 * 2 ^ (b - a - 1) * 2) by unify_pows_two.
+        rewrite Mplus_adjoint.
+        repeat setoid_rewrite kron_adjoint; Msimpl.
+        replace (2 * 2 ^ (b - a - 1) * 2) with (2 * 2 ^ (b - a)) by unify_pows_two.
+        rewrite kron_adjoint; Msimpl.
+        reflexivity.
+      * bdestruct (b <? a); try apply zero_adjoint_eq.
+        bdestruct (b + (1 + (a - b - 1) + 1) <=? dim); try apply zero_adjoint_eq.
+        repeat setoid_rewrite kron_adjoint; Msimpl.
+        replace (2 ^ (1 + (a - b - 1) + 1)) with (2 * 2 ^ (a - b - 1) * 2) by unify_pows_two.
+        rewrite Mplus_adjoint.
+        repeat setoid_rewrite kron_adjoint; Msimpl.
+        replace (2 * 2 ^ (a - b - 1) * 2) with (2 ^ (a - b) * 2) by unify_pows_two.
+        rewrite kron_adjoint; Msimpl.
+        reflexivity.
+Qed.
+
+(** Automation **)
 
 (* For handling non well-typed cases. (Shouldn't Msimpl do this?) *)
 Ltac remove_zero_gates :=
