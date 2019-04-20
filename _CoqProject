@@ -1,13 +1,14 @@
 -R . Top
 
-Complex.v
+lib/QWIRE/Complex.v
+lib/QWIRE/Dirac.v
+lib/QWIRE/Matrix.v
+lib/QWIRE/Prelim.v
+lib/QWIRE/Quantum.v
+
 Composition.v
 DensitySem.v
-Dirac.v
-Matrix.v
 NDSem.v
-Prelim.v
-Quantum.v
 SQIRE.v
 UnitarySem.v
 

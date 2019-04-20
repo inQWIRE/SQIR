@@ -1,5 +1,5 @@
 Require Import Composition.
-Require Import Dirac.
+Require Import QWIRE.Dirac.
 
 Local Open Scope nat_scope.
 Local Open Scope ucom_scope.

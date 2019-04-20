@@ -1,10 +1,8 @@
 (* Unitary superdense coding example (in-progress *)
 
-Require Import Dirac.
+Require Import QWIRE.Dirac.
 Require Import UnitarySem.
-Local Open Scope ucom.
-
-Require Import Complex.    
+Local Open Scope ucom.    
 
 Definition a : nat := O.
 Definition b : nat := S O.

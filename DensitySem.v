@@ -1,5 +1,5 @@
 Require Export SQIRE.
-Require Export Quantum.
+Require Export QWIRE.Quantum.
 Require Export UnitarySem.
 Require Import Setoid.
 

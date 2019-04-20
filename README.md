@@ -16,14 +16,6 @@ The development has only been tested with Coq version 8.8.2.
 
 ### Core files
 
-The files below are generally useful for verification of quantum programs. They are taken directly from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
-
-- Prelim.v : A variety of general purpose definitions and tactics.
-- Complex.v : Complex number library, modified from Coquelicot.
-- Matrix.v : Matrix library.
-- Quantum.v : Definition of unitary matrices and quantum operations.
-- Dirac.v : Library for reasoning about quantum states using Dirac (bra-ket) notation.
-
 The files below are specific to SQIRE.
 
 - SQIRE.v : General definition of the SQIRE language.
@@ -31,6 +23,11 @@ The files below are specific to SQIRE.
 - DensitySem.v : Density matrix semantics for general SQIRE programs.
 - NDSem.v : Non-deterministic semantics for general SQIRE programs.
 - composition.v : Composition of unitary SQIRE programs.
+
+We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
+
+- Quantum.v : Definition of unitary matrices and quantum operations.
+- Dirac.v : Library for reasoning about quantum states using Dirac (bra-ket) notation.
 
 ### SQIRE as an IR
 

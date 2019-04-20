@@ -1,7 +1,7 @@
 Require UnitarySem.
 Require DensitySem.
 Require NDSem.
-Require Import Dirac.
+Require Import QWIRE.Dirac.
 
 Ltac restore_dims_rec A :=
    match A with
@@ -389,8 +389,6 @@ Proof.
 Qed.
 
 (* Alternative teleport proofs 
-Require Import Dirac.
-
 
 (* Thought I had this. *)
 (* Generalizable? *)

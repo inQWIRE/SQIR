@@ -1,4 +1,4 @@
-Require Import Quantum.
+Require Import QWIRE.Quantum.
 Require Import List.
 Require Import SQIRE.
 Require Import UnitarySem.

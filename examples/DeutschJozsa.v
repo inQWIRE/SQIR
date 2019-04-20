@@ -13,26 +13,6 @@ Inductive boolean : nat -> ucom -> Set :=
                 uc_eval (S dim) u = (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) ->
                 boolean (S dim) u.
 
-
-(* This should be true, but may require some effort to prove.
-   The basic fact we need to prove is:
-       not (uc_well_typed dim u) <-> uc_eval dim u = Zero
-   or
-      uc_well_typed dim u <-> not (uc_eval dim u = Zero)
-   
-   Given this fact, we can prove boolean_WT by induction on (boolean dim u):
-
-   - if u is equivalent to uskip, then (uc_eval dim u) is nonzero, 
-     so u must be well-typed.
-   - if u is equivalent to (X 0), then (uc_eval dim u) is nonzero, 
-     so u must be well-typed.
-   - if u1 and u2 are well-typed, then (uc_eval dim u1) and (uc_eval dim u2)
-     are nonzero, which means that
-         (uc_eval dim u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval dim u2 ⊗ ∣1⟩⟨1∣) 
-     is nonzero. This means that (uc_eval (S dim) u) is nonzero,
-     so u must be well-typed. 
- *)
-
 Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed dim u.
 Proof.
   intros dim u H.
