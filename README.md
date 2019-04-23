@@ -5,10 +5,14 @@ A Small Quantum Intermediate Representation
 
 To compile the code, use:
 ```
+git submodule init
+git submodule update
 ./configure.sh
 make
 ```
-Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. The teleport example is not currently compiled because it is slow.
+Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. In case of compilation trouble, try `make clean` before running `./configure.sh`. You should only need to run the submodule commands once. 
+
+Note that the teleport example is not currently compiled.
 
 The development has only been tested with Coq version 8.8.2.
 
@@ -26,9 +30,6 @@ The files below are specific to SQIRE.
 
 We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
 
-- Quantum.v : Definition of unitary matrices and quantum operations.
-- Dirac.v : Library for reasoning about quantum states using Dirac (bra-ket) notation.
-
 ### SQIRE as an IR
 
 The primary use case for SQIRE is as an IR in a verified compiler. The compiler directory contains current progress on transformations of SQIRE programs.
@@ -36,6 +37,7 @@ The primary use case for SQIRE is as an IR in a verified compiler. The compiler 
 - compiler/Equivalences.v : verifies several circuit equivalences useful for the optimizations in Transformations.v.
 - compiler/Mapping.v : verifies a simple circuit mapping example.
 - compiler/Optimizations.v : verifies several simple optimizations of SQIRE programs including skip removal and not propagation.
+- compiler/CompileFromQwire.v : current progress on verified compilation from QWIRE programs to SQIRE programs.
 
 ### SQIRE for General Verification
 
