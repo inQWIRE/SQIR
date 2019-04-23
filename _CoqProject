@@ -14,7 +14,7 @@ lib/QWIRE/Prelim.v
 lib/QWIRE/Quantum.v
 lib/QWIRE/TypeChecking.v
 
-Composition.v
+Compose.v
 DensitySem.v
 NDSem.v
 SQIRE.v

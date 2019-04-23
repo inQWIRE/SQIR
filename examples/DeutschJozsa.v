@@ -1,5 +1,5 @@
 Require Import List.
-Require Import Composition.
+Require Import Compose.
 
 Open Scope ucom.
 Local Close Scope C_scope.
