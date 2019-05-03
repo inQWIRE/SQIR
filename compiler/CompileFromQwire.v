@@ -83,12 +83,18 @@ Lemma compile_correct : forall {W : WType} (c : DeBruijn_Circuit W) (Γ : Ctx),
   is_supported c ->
   c_eval (⟦ Γ ⟧) (compile_from_db_circuit c) = denote_db_circuit false 0 (⟦ Γ ⟧) c.
 Proof. 
+(*  intros.
+  induction c; simpl.
+  - admit.
+  - *)
 Admitted.
 
 (* Example - unitary superdense coding *)
 (* TODO - Fix scoping issue. Why doesn't Open Scope circ_scope work? *)
 Local Close Scope com_scope.
+Close Scope ucom_scope.
 Local Open Scope circ_scope.
+Close Scope list_scope.
 
 Definition bell00 : Box (Qubit ⊗ Qubit) (Qubit ⊗ Qubit) :=
   box_ (p,q) ⇒ (ctrl _X) $ (_H $ p, q).
