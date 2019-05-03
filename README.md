@@ -5,12 +5,10 @@ A Small Quantum Intermediate Representation
 
 To compile the code, use:
 ```
-git submodule init
-git submodule update
 ./configure.sh
 make
 ```
-Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. In case of compilation trouble, try `make clean` before running `./configure.sh`. You should only need to run the submodule commands once. 
+Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. In case of compilation trouble, try `make clean` before running `./configure.sh`. 
 
 Note that the teleport example is not currently compiled.
 
@@ -37,7 +35,6 @@ The primary use case for SQIRE is as an IR in a verified compiler. The compiler 
 - compiler/Equivalences.v : verifies several circuit equivalences useful for the optimizations in Transformations.v.
 - compiler/Mapping.v : verifies a simple circuit mapping example.
 - compiler/Optimizations.v : verifies several simple optimizations of SQIRE programs including skip removal and not propagation.
-- compiler/CompileFromQwire.v : current progress on verified compilation from QWIRE programs to SQIRE programs.
 
 ### SQIRE for General Verification
 
