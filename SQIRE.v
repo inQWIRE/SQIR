@@ -11,6 +11,43 @@ Inductive Unitary : nat -> Set :=
   | U_R         : R -> Unitary 1 
   | U_CNOT      : Unitary 2.
 
+(* One possible alternative, inspired by Open QASM:
+
+Inductive Unitary : nat -> Set := 
+  | U_R         : R -> R -> R -> Unitary 1 
+  | U_CNOT      : Unitary 2.
+
+This gate set allows arbitrary single-qubit unitaries (parameterized by 
+rotation angles around the x, y, and z axes) and the two-qubit CNOT unitary.
+This is the base gate set used by Open QASM. It's attractive because of its
+simplicity and generality, but it might introduce some challenges with writing
+functions over programs (how can you easily pattern match on a X gate with 
+this definition?). Working with the semantics (which involves Cexp and sin/cos)
+might also be tricky.
+
+The denotation of U_R is described as follows.
+
+Definition rotation (θ ϕ λ : R) : Matrix 2 2 :=
+  fun x y => match x, y with
+             | 0, 0 => (Cexp (-(ϕ + λ)/2)) * (cos (θ/2))
+             | 0, 1 => - (Cexp (-(ϕ - λ)/2)) * (sin (θ/2))
+             | 1, 0 => (Cexp ((ϕ - λ)/2)) * (sin (θ/2))
+             | 1, 1 => (Cexp ((ϕ + λ)/2)) * (cos (θ/2))
+             | _, _ => C0
+             end.
+
+The standard gates can be defined in terms of U_R as follows.
+
+Definition R λ a := uapp (U_R 0 0 λ) [a].
+Definition H a := uapp (U_R (PI/2) 0 PI) [a].  
+Definition X a := uapp (U_R PI 0 PI) [a].  
+Definition Y a := uapp (U_R PI (PI/2) (PI/2)) [a].
+Definition Z a := uapp (U_R 0 0 PI) [a]. 
+
+See the Open QASM tech report for more example gates in terms of U_R.
+
+*)
+
 (**********************)
 (** Unitary Programs **)
 (**********************)
