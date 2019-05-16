@@ -32,12 +32,12 @@ We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) deve
 
 The primary use case for SQIRE is as an IR in a verified compiler. The compiler directory contains current progress on transformations of SQIRE programs.
 
-- compiler/Equivalences.v : verifies several circuit equivalences useful for the optimizations in Transformations.v.
-- compiler/Mapping.v : verifies a simple circuit mapping example.
-- compiler/Optimizations.v : verifies several simple optimizations of SQIRE programs including skip removal and not propagation.
-- compiler/CompileFromQwire.v : (IN PROGRESS) current progress on verified compilation from QWIRE programs to SQIRE programs.
-- compiler/BooleanCompilation.v : (IN PROGRESS) current progress on compiling boolean oracles.
-- compiler/CircuitDAG.v : (IN PROGRESS) notes on representing SQIRE programs using graphs.
+- compiler/Equivalences.v : Verified circuit equivalences useful for Optimizations.v.
+- compiler/Mapping.v : Verified (basic) circuit mapping example.
+- compiler/Optimizations.v : Verified optimizations of SQIRE programs including skip removal and not propagation.
+- compiler/CompileFromQwire.v : (IN PROGRESS) Current progress on verified compilation from QWIRE programs to SQIRE programs.
+- compiler/BooleanCompilation.v : Verified compilation from boolean expressions to unitary SQIRE programs.
+- compiler/CircuitDAG.v : (IN PROGRESS) Notes on representing SQIRE programs using graphs.
 
 ### SQIRE for General Verification
 

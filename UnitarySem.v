@@ -27,6 +27,8 @@ Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
   | U_Y         => σy
   | U_Z         => σz
   | U_R ϕ       => phase_shift ϕ
+  | U_P         => phase_shift (PI/2)
+  | U_PDAG      => phase_shift (-(PI/2))
   | _           => Zero
   end.
 
@@ -201,6 +203,8 @@ Proof.
   - apply σx_unitary.
   - apply σy_unitary.
   - apply σz_unitary.
+  - apply phase_unitary.
+  - apply phase_unitary.
   - apply phase_unitary.
 Qed.  
 
@@ -404,8 +408,8 @@ Qed.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-Lemma reverse_u_correct : forall (dim : nat) (u : ucom),
-  (uc_eval dim u)† = uc_eval dim (reverse_u u).
+Lemma inverse_u_correct : forall (dim : nat) (u : ucom),
+  (uc_eval dim u)† = uc_eval dim (inverse_u u).
 Proof.
   intros.
   induction u.
@@ -429,6 +433,13 @@ Proof.
       setoid_rewrite σz_sa. reflexivity.
     + bdestruct (a + 1 <=? dim); try apply zero_adjoint_eq;
       repeat setoid_rewrite kron_adjoint; Msimpl. 
+      reflexivity.
+    + bdestruct (a + 1 <=? dim); try apply zero_adjoint_eq;
+      repeat setoid_rewrite kron_adjoint; Msimpl. 
+      reflexivity.
+    + bdestruct (a + 1 <=? dim); try apply zero_adjoint_eq;
+      repeat setoid_rewrite kron_adjoint; Msimpl. 
+      replace (- - (PI/2))%R with (PI/2)%R by lra.
       reflexivity.
     + bdestruct (a <? b).
       * bdestruct (a + (1 + (b - a - 1) + 1) <=? dim); try apply zero_adjoint_eq.

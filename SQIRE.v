@@ -9,6 +9,8 @@ Inductive Unitary : nat -> Set :=
   | U_Y         : Unitary 1
   | U_Z         : Unitary 1
   | U_R         : R -> Unitary 1 
+  | U_P         : Unitary 1
+  | U_PDAG      : Unitary 1
   | U_CNOT      : Unitary 2.
 
 (* One possible alternative, inspired by Open QASM:
@@ -193,7 +195,7 @@ Fixpoint while (iters : nat) (v : nat) (p : com) : com :=
   end.
  *)
 
-Fixpoint reverse_gate {n : nat} (u : Unitary n) : Unitary n := 
+Fixpoint inverse_gate {n : nat} (u : Unitary n) : Unitary n := 
   match u with
   | U_H => U_H
   | U_X => U_X
@@ -201,22 +203,24 @@ Fixpoint reverse_gate {n : nat} (u : Unitary n) : Unitary n :=
   | U_Z => U_Z
   | U_R ϕ => U_R (-ϕ)
   | U_CNOT => U_CNOT
+  | U_P => U_PDAG
+  | U_PDAG => U_P
   end.
 
 (* Reverse for unitary circuits. *)
-Fixpoint reverse_u (c : ucom) :=
+Fixpoint inverse_u (c : ucom) :=
   match c with
   | uskip => uskip
-  | useq c1 c2 => useq (reverse_u c2) (reverse_u c1)
-  | uapp u l => uapp (reverse_gate u) l
+  | useq c1 c2 => useq (inverse_u c2) (inverse_u c1)
+  | uapp u l => uapp (inverse_gate u) l
   end.
 
 (* Reverse for general circuits. *)
-Fixpoint reverse (c : com) :=
+Fixpoint inverse (c : com) :=
   match c with
   | skip => skip              
-  | seq c1 c2 => seq (reverse c2) (reverse c1)
-  | app u l => app (reverse_gate u) l
+  | seq c1 c2 => seq (inverse c2) (inverse c1)
+  | app u l => app (inverse_gate u) l
   | meas v => reset v
   | reset v => meas v
   end.
