@@ -297,3 +297,55 @@ Proof.
     rewrite Mmult_plus_distr_r.
     repeat rewrite kron_mixed_product; remove_id_gates.
 Qed.
+
+(* Alternative proof of X_CNOT_comm that does not use restore_dims.
+   Every place that we rewrite types is marked with '***' *)
+Lemma X_CNOT_comm' : forall c t, t *= U_X; uapp U_CNOT (c::t::[]) ≡ uapp U_CNOT (c::t::[]); t *= U_X.
+Proof.
+  intros c t dim.
+  simpl; unfold ueval1, pad. 
+  bdestruct (t + 1 <=? dim); remove_zero_gates; trivial. 
+  unfold ueval_cnot, pad. 
+  bdestruct (c <? t).
+  - bdestruct (c + (1 + (t - c - 1) + 1) <=? dim); remove_zero_gates; trivial.
+    (* c < t *)
+    remember (t - c - 1) as i.
+    replace (dim - (1 + i + 1) - c) with (dim - 1 - t) by lia.
+    remember (dim - 1 - t) as j.
+    replace (2 ^ t) with (2 ^ c * 2 * 2 ^ i) by unify_pows_two.
+    replace (2 ^ (t - c)) with (2 ^ i * 2) by unify_pows_two.
+    repeat rewrite <- id_kron.
+    rewrite (kron_assoc (I (2 ^ c)) _ (I (2 ^ i))).
+    (* * *) replace (2 ^ c * 2 * 2 ^ i) with (2 ^ c * (2 * 2 ^ i)) by unify_pows_two.
+    rewrite (kron_assoc (I (2 ^ c)) _ σx).
+    (* * *) replace (2 ^ dim) with (2 ^ c * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
+    (* * *) replace (2 ^ 1) with 2 by easy.
+    (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+    (* * *) replace (2 ^ c * (2 * 2 ^ i) * 2) with (2 ^ c * (2 * 2 ^ i * 2)) by unify_pows_two.
+    repeat rewrite kron_mixed_product; remove_id_gates.
+    rewrite <- (kron_assoc (∣0⟩⟨0∣) (I (2 ^ i)) (I 2)).
+    rewrite Mmult_plus_distr_l.
+    rewrite Mmult_plus_distr_r.
+    repeat rewrite kron_mixed_product; remove_id_gates.
+  - bdestruct (t <? c); try remove_zero_gates; trivial. 
+    bdestruct (t + (1 + (c - t - 1) + 1) <=? dim); remove_zero_gates; trivial. 
+    (* t < c *)
+    remember (c - t - 1) as i.
+    replace (dim - (1 + i + 1) - t) with (dim - 1 - c) by lia.
+    remember (dim - 1 - c) as j.
+    replace (2 ^ (dim - 1 - t)) with (2 ^ i * 2 * 2 ^ j) by unify_pows_two.
+    replace (2 ^ (c - t)) with (2 * 2 ^ i) by unify_pows_two.
+    repeat rewrite <- id_kron.
+    rewrite (kron_assoc (I (2 ^ t)) σx _).
+    rewrite <- (kron_assoc σx _ (I (2 ^ j))).
+    rewrite <- (kron_assoc σx (I (2 ^ i)) (I 2)).
+    (* * *) replace (2 * (2 ^ i * 2 * 2 ^ j)) with (2 * (2 ^ i * 2) * 2 ^ j) by unify_pows_two.
+    rewrite <- (kron_assoc (I (2 ^ t)) _ (I (2 ^ j))).
+    (* * *) replace (2 ^ dim) with (2 ^ t * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
+    (* * *) replace (2 ^ (1 + i + 1)) with (2 * (2 ^ i * 2)) by unify_pows_two.
+    repeat rewrite kron_mixed_product; remove_id_gates.
+    (* * *) replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by unify_pows_two.
+    rewrite Mmult_plus_distr_l.
+    rewrite Mmult_plus_distr_r.
+    repeat rewrite kron_mixed_product; remove_id_gates.
+Qed.
