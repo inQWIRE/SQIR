@@ -45,3 +45,5 @@ We also include several examples of using SQIRE for general verification. The fi
 - examples/GHZ.v
 - examples/Superdense.v
 - examples/Teleport.v    
+
+*This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040*
