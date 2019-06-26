@@ -6,28 +6,28 @@ Local Close Scope R_scope.
 
 (** Example equivalences of unitary circuits. **)
 
-Lemma uskip_id_l : forall (c : ucom),
+Lemma uskip_id_l : forall {dim} (c : ucom dim),
    (uskip ; c) ≡ c.
 Proof.
-  intros c dim.
+  intros dim c. 
+  unfold uc_equiv.
   simpl; Msimpl; reflexivity.
 Qed.
 
-Lemma uskip_id_r : forall (c : ucom),
+Lemma uskip_id_r : forall {dim} (c : ucom dim),
    (c ; uskip) ≡ c.
 Proof.
-  intros c dim.
+  intros dim c.
+  unfold uc_equiv.
   simpl; Msimpl; reflexivity.
 Qed.
 
-Local Notation "a *= U" := (uapp U [a]) (at level 0) : ucom_scope. 
-
-Lemma U_V_comm : forall (m n : nat) (U V : Unitary 1),
+Lemma U_V_comm : forall {dim} (m n : nat) (U V : Unitary 1),
   m <> n ->
-  (m *= U ; n *= V) ≡ (n *= V ; m *= U). 
+  @uc_equiv dim (uapp1 U m ; uapp1 V n) (uapp1 V n ; uapp1 U m). 
 Proof.
-  intros m n U V NE dim.
-  simpl.
+  intros dim m n U V NE.
+  unfold uc_equiv; simpl.
   simpl in *.
   unfold ueval1. 
   repeat match goal with
@@ -80,12 +80,13 @@ Qed.
 
 (* This proof can still be cleaned up. Cases 4-6 are exactly the same as 1-3,
    except with n2 and n1 switched. *)
-Lemma U_CNOT_comm : forall (q n1 n2 : nat) (U : Unitary 1),
+Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) (U : Unitary 1),
   q <> n1 ->
   q <> n2 ->
-  (q *= U ; CNOT n1 n2) ≡ (CNOT n1 n2 ; q *= U). 
+  @uc_equiv dim (uapp1 U q ; CNOT n1 n2) (CNOT n1 n2 ; uapp1 U q). 
 Proof.
-  intros q n1 n2 U NE1 NE2 dim.
+  intros dim q n1 n2 U NE1 NE2.
+  unfold uc_equiv.
   simpl; unfold ueval1, ueval_cnot. 
   match goal with
   | [|- context [pad q _ ?U ]] => remember U as U'
@@ -234,14 +235,15 @@ Proof.
         reflexivity.
 Qed.
 
-Lemma XX_id : forall q dim, 
-  uc_well_typed dim (X q) -> uc_eval dim uskip = uc_eval dim (X q; X q).
+Lemma XX_id : forall {dim} q, 
+  @uc_well_typed dim (X q) -> 
+  @uc_equiv dim uskip (X q; X q).
 Proof. 
-  intros q dim WT. 
+  intros dim q WT. 
+  unfold uc_equiv.
   simpl; unfold ueval1, pad. 
   inversion WT; subst. 
-  assert (q < dim). { apply H4. left. easy. }
-  replace (q + 1 <=? dim) with true by (symmetry; apply Nat.leb_le; lia).
+  bdestruct (q + 1 <=? dim); try lia.
   restore_dims_strong; Msimpl.
   replace (σx × σx) with (I 2) by solve_matrix.
   repeat rewrite id_kron.
@@ -249,9 +251,11 @@ Proof.
   unify_pows_two.
 Qed.
 
-Lemma X_CNOT_comm : forall c t, X t; CNOT c t ≡ CNOT c t ; X t.
+Lemma X_CNOT_comm : forall {dim} c t, 
+  @uc_equiv dim (X t; CNOT c t) (CNOT c t ; X t).
 Proof.
-  intros c t dim.
+  intros dim c t.
+  unfold uc_equiv.
   simpl; unfold ueval1, pad. 
   bdestruct (t + 1 <=? dim); remove_zero_gates; trivial. 
   unfold ueval_cnot, pad. 
@@ -293,58 +297,6 @@ Proof.
     rewrite <- (kron_assoc (I (2 ^ t)) _ (I (2 ^ j))).
     restore_dims_strong.
     repeat rewrite kron_mixed_product; remove_id_gates.
-    rewrite Mmult_plus_distr_l.
-    rewrite Mmult_plus_distr_r.
-    repeat rewrite kron_mixed_product; remove_id_gates.
-Qed.
-
-(* Alternative proof of X_CNOT_comm that does not use restore_dims.
-   Every place that we rewrite types is marked with '***' *)
-Lemma X_CNOT_comm' : forall c t, t *= U_X; uapp U_CNOT (c::t::[]) ≡ uapp U_CNOT (c::t::[]); t *= U_X.
-Proof.
-  intros c t dim.
-  simpl; unfold ueval1, pad. 
-  bdestruct (t + 1 <=? dim); remove_zero_gates; trivial. 
-  unfold ueval_cnot, pad. 
-  bdestruct (c <? t).
-  - bdestruct (c + (1 + (t - c - 1) + 1) <=? dim); remove_zero_gates; trivial.
-    (* c < t *)
-    remember (t - c - 1) as i.
-    replace (dim - (1 + i + 1) - c) with (dim - 1 - t) by lia.
-    remember (dim - 1 - t) as j.
-    replace (2 ^ t) with (2 ^ c * 2 * 2 ^ i) by unify_pows_two.
-    replace (2 ^ (t - c)) with (2 ^ i * 2) by unify_pows_two.
-    repeat rewrite <- id_kron.
-    rewrite (kron_assoc (I (2 ^ c)) _ (I (2 ^ i))).
-    (* * *) replace (2 ^ c * 2 * 2 ^ i) with (2 ^ c * (2 * 2 ^ i)) by unify_pows_two.
-    rewrite (kron_assoc (I (2 ^ c)) _ σx).
-    (* * *) replace (2 ^ dim) with (2 ^ c * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
-    (* * *) replace (2 ^ 1) with 2 by easy.
-    (* * *) replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-    (* * *) replace (2 ^ c * (2 * 2 ^ i) * 2) with (2 ^ c * (2 * 2 ^ i * 2)) by unify_pows_two.
-    repeat rewrite kron_mixed_product; remove_id_gates.
-    rewrite <- (kron_assoc (∣0⟩⟨0∣) (I (2 ^ i)) (I 2)).
-    rewrite Mmult_plus_distr_l.
-    rewrite Mmult_plus_distr_r.
-    repeat rewrite kron_mixed_product; remove_id_gates.
-  - bdestruct (t <? c); try remove_zero_gates; trivial. 
-    bdestruct (t + (1 + (c - t - 1) + 1) <=? dim); remove_zero_gates; trivial. 
-    (* t < c *)
-    remember (c - t - 1) as i.
-    replace (dim - (1 + i + 1) - t) with (dim - 1 - c) by lia.
-    remember (dim - 1 - c) as j.
-    replace (2 ^ (dim - 1 - t)) with (2 ^ i * 2 * 2 ^ j) by unify_pows_two.
-    replace (2 ^ (c - t)) with (2 * 2 ^ i) by unify_pows_two.
-    repeat rewrite <- id_kron.
-    rewrite (kron_assoc (I (2 ^ t)) σx _).
-    rewrite <- (kron_assoc σx _ (I (2 ^ j))).
-    rewrite <- (kron_assoc σx (I (2 ^ i)) (I 2)).
-    (* * *) replace (2 * (2 ^ i * 2 * 2 ^ j)) with (2 * (2 ^ i * 2) * 2 ^ j) by unify_pows_two.
-    rewrite <- (kron_assoc (I (2 ^ t)) _ (I (2 ^ j))).
-    (* * *) replace (2 ^ dim) with (2 ^ t * 2 ^ (1 + i + 1) * 2 ^ j) by unify_pows_two.
-    (* * *) replace (2 ^ (1 + i + 1)) with (2 * (2 ^ i * 2)) by unify_pows_two.
-    repeat rewrite kron_mixed_product; remove_id_gates.
-    (* * *) replace (2 * (2 ^ i * 2)) with (2 * 2 ^ i * 2) by unify_pows_two.
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
     repeat rewrite kron_mixed_product; remove_id_gates.

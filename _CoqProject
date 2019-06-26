@@ -22,12 +22,7 @@ UnitarySem.v
 
 compiler/Equivalences.v
 compiler/Mapping.v
-compiler/Optimizations.v
-compiler/CompileFromQwire.v
-compiler/BooleanCompilation.v
 
 examples/Deutsch.v
-examples/DeutschJozsa.v
 examples/GHZ.v
 examples/Superdense.v
-

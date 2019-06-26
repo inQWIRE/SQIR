@@ -4,12 +4,12 @@ Open Scope ucom.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-(*****************************)
-(** Circuit Mapping Example **)
-(*****************************)
+(*************************)
+(** LNN Mapping Example **)
+(*************************)
 
 (* Naive mapping algorithm. *)
-Fixpoint move_target_left (base dist : nat) : ucom :=
+Fixpoint move_target_left {dim} (base dist : nat) : ucom dim :=
   match dist with 
   | O => CNOT base (base + 1)
   | S n' => SWAP (base + dist) (base + dist + 1); 
@@ -17,7 +17,7 @@ Fixpoint move_target_left (base dist : nat) : ucom :=
            SWAP (base + dist) (base + dist + 1)
   end.
 
-Fixpoint move_target_right (base dist : nat) : ucom :=
+Fixpoint move_target_right {dim} (base dist : nat) : ucom dim :=
   match dist with 
   | O => CNOT (base + 1) base
   | S n' => SWAP (base - dist) (base - dist + 1); 
@@ -25,10 +25,10 @@ Fixpoint move_target_right (base dist : nat) : ucom :=
            SWAP (base - dist) (base - dist + 1)
   end.
 
-Fixpoint map_to_lnn (c : ucom) : ucom :=
+Fixpoint map_to_lnn {dim} (c : ucom dim) : ucom dim :=
   match c with
   | c1; c2 => map_to_lnn c1; map_to_lnn c2
-  | uapp U_CNOT (n1::n2::[]) =>
+  | uapp2 U_CNOT n1 n2 =>
       if n1 <? n2
       then move_target_left n1 (n2 - n1 - 1)
       else if n2 <? n1
@@ -38,12 +38,12 @@ Fixpoint map_to_lnn (c : ucom) : ucom :=
   end.
 
 (* Small test case. *)
+Definition q0 : nat := 0.
 Definition q1 : nat := 1.
 Definition q2 : nat := 2.
 Definition q3 : nat := 3.
 Definition q4 : nat := 4.
-Definition q5 : nat := 5.
-Definition example3 : ucom := CNOT q1 q4; CNOT q5 q2.
+Definition example3 : ucom 5 := CNOT q0 q3; CNOT q4 q1.
 Compute (map_to_lnn example3).
 
 (* There are many more interesting & general properties we can prove about SWAP, e.g.
@@ -86,21 +86,20 @@ Lemma rewrite_ket_prod11 : forall (q1 :  Matrix 2 1) (q2 : Matrix 1 2),
 Proof. intros. solve_matrix. Qed.
 
 (* Show that SWAP ≡ swap. *)
-Lemma denote_SWAP_adjacent : forall n dim,
-  uc_well_typed dim (SWAP n (n + 1)) ->
-  uc_eval dim (SWAP n (n + 1)) = (I (2 ^ n)) ⊗ swap ⊗ (I (2 ^ (dim - 2 - n))).
+Lemma denote_SWAP_adjacent : forall {dim} n,
+  @uc_well_typed dim (SWAP n (n + 1)) ->
+  @uc_eval dim (SWAP n (n + 1)) = (I (2 ^ n)) ⊗ swap ⊗ (I (2 ^ (dim - 2 - n))).
 Proof.
-  intros n dim WT.
+  intros dim n WT.
   assert (n + 1 < dim).
-  { inversion WT; inversion H3; subst.
-    apply H9. right. left. easy. }
+  { inversion WT; inversion H2. assumption. }
   clear WT.
   simpl; unfold ueval_cnot, pad.
-  replace (n <? n + 1) with true by (symmetry; apply Nat.ltb_lt; lia).
-  bdestruct (n + 1 <? n); try (contradict H; lia).
+  bdestruct (n <? n + 1); try lia.
+  bdestruct (n + 1 <? n); try lia.
   replace (n + 1 - n) with 1 by lia; simpl.
-  replace (n + 2 <=? dim) with true by (symmetry; apply leb_iff; lia). 
-  clear H0.
+  bdestruct (n + 2 <=? dim); try lia.
+  clear - H.
   restore_dims_strong; Msimpl.
   repeat rewrite Mmult_plus_distr_l.
   repeat rewrite Mmult_plus_distr_r. 
@@ -125,35 +124,30 @@ Proof.
 Qed.
 
 Lemma swap_adjacent_WT: forall b dim,
-  b + 1 < dim -> uc_well_typed dim (SWAP b (b + 1)).
+  b + 1 < dim -> @uc_well_typed dim (SWAP b (b + 1)).
 Proof.
   intros b dim H.
-  repeat apply WT_seq; apply WT_app; 
-    try (unfold in_bounds; intros; repeat destruct H0; subst; lia);
-    try easy;
-    repeat apply NoDup_cons; try apply NoDup_nil; try easy;
-    intros [H0 | H0];  contradict H0; lia.
+  repeat apply WT_seq; apply WT_app2; lia.
 Qed.
 
 Lemma swap_adjacent_not_WT: forall b dim,
-  b + 1 >= dim -> uc_eval dim (SWAP b (b + 1)) = Zero.
+  b + 1 >= dim -> @uc_eval dim (SWAP b (b + 1)) = Zero.
 Proof.
   intros b dim H.
   simpl; unfold ueval_cnot, pad.
-  replace (b <? b + 1) with true by (symmetry; apply Nat.ltb_lt; lia).
-  bdestruct (b + (1 + (b + 1 - b - 1) + 1) <=? dim).
-  contradict H0. lia.
+  bdestruct (b <? b + 1); try lia.
+  bdestruct (b + (1 + (b + 1 - b - 1) + 1) <=? dim); try lia.
   remove_zero_gates; trivial.
 Qed.
 
 Lemma swap_swap_id_adjacent: forall a dim,
-  uc_well_typed dim (SWAP a (a+1)) ->
-  uc_eval dim (SWAP a (a+1); SWAP a (a+1)) = uc_eval dim uskip.
+  @uc_well_typed dim (SWAP a (a+1)) ->
+  @uc_equiv dim (SWAP a (a+1); SWAP a (a+1)) uskip.
 Proof.
   intros a dim WT.
   assert (a + 1 < dim).
-  { inversion WT; inversion H3; subst. 
-    apply H9. right. left. easy. }
+  { inversion WT; inversion H2; assumption. }
+  unfold uc_equiv.
   remember (SWAP a (a+1)) as s; simpl; subst.
   rewrite denote_SWAP_adjacent; try assumption.
   replace (2 ^ dim) with (2 ^ a * (2 ^ 1 * 2 ^ 1) * 2 ^ (dim - 2 - a)) by unify_pows_two.
@@ -161,24 +155,24 @@ Proof.
   repeat rewrite kron_mixed_product.
   rewrite swap_swap.
   Msimpl.
-  repeat rewrite id_kron.
   reflexivity.
 Qed.
 
 Opaque SWAP.
-Lemma swap_cnot_adjacent_left : forall a b,
+Lemma swap_cnot_adjacent_left : forall {dim} a b,
   a < b ->
-  SWAP b (b+1); CNOT a b; SWAP b (b+1) ≡ CNOT a (b+1).
+  @uc_equiv dim (SWAP b (b+1); CNOT a b; SWAP b (b+1)) (CNOT a (b+1)).
 Proof.
-  intros a b H dim.
+  intros dim a b H.
+  unfold uc_equiv.
   simpl; unfold ueval_cnot, pad.
-  replace (a <? b) with true by (symmetry; apply Nat.ltb_lt; assumption).
-  replace (a <? b + 1) with true  by (symmetry; apply Nat.ltb_lt; lia).
+  bdestruct (a <? b); try lia.
+  bdestruct (a <? b + 1); try lia.
   remember (b - a - 1) as i.
   replace (b + 1 - a - 1) with (i + 1) by lia.
   bdestruct (a + (1 + (i + 1) + 1) <=? dim).
   2: { rewrite swap_adjacent_not_WT; try lia; remove_zero_gates; trivial. }
-  replace (a + (1 + i + 1) <=? dim) with true by (symmetry; apply Nat.leb_le; lia).
+  bdestruct (a + (1 + i + 1) <=? dim); try lia.
   assert (b + 1 < dim) by lia.
   rewrite denote_SWAP_adjacent.
   2: { apply swap_adjacent_WT; assumption. }
@@ -222,16 +216,17 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma swap_cnot_adjacent_right : forall a b,
+Lemma swap_cnot_adjacent_right : forall {dim} a b,
   b + 1 < a ->
-  SWAP b (b+1); CNOT a (b+1); SWAP b (b+1) ≡ CNOT a b.
+  @uc_equiv dim (SWAP b (b+1); CNOT a (b+1); SWAP b (b+1)) (CNOT a b).
 Proof.
-  intros a b H dim.
+  intros dim a b H.
+  unfold uc_equiv.
   simpl; unfold ueval_cnot, pad.
-  replace (b + 1 <? a) with true by (symmetry; apply Nat.ltb_lt; assumption).
-  replace (b <? a) with true by (symmetry; apply Nat.ltb_lt; lia).
-  bdestruct (a <? b + 1). contradict H0. lia.
-  bdestruct (a <? b). contradict H1. lia.
+  bdestruct (b + 1 <? a); try lia.
+  bdestruct (b <? a); try lia.
+  bdestruct (a <? b + 1); try lia.
+  bdestruct (a <? b); try lia.
   remember (a - b - 1) as i.
   remember (dim - (1 + i + 1) - b) as j.
   replace (a - (b + 1)) with i by lia.
@@ -276,10 +271,10 @@ Proof.
   repeat rewrite swap_spec_general; try auto with wf_db.
 Qed.
 
-Lemma move_target_left_equiv_cnot : forall base dist,
-  move_target_left base dist ≡ CNOT base (base + dist + 1).
+Lemma move_target_left_equiv_cnot : forall {dim} base dist,
+  @uc_equiv dim (move_target_left base dist) (CNOT base (base + dist + 1)).
 Proof.
-  intros base dist.
+  intros dim base dist.
   induction dist.
   - replace (base + 0 + 1) with (base + 1) by lia; easy.
   - simpl.
@@ -289,10 +284,10 @@ Proof.
     lia.
 Qed. 
 
-Lemma move_target_right_equiv_cnot : forall base dist,
-   base >= dist -> move_target_right base dist ≡ CNOT (base + 1) (base - dist).
+Lemma move_target_right_equiv_cnot : forall {dim} base dist,
+   base >= dist -> @uc_equiv dim (move_target_right base dist) (CNOT (base + 1) (base - dist)).
 Proof.
-  intros base dist H.
+  intros dim base dist H.
   induction dist.
   - replace (base - 0) with base by lia; easy.
   - simpl.
@@ -303,13 +298,11 @@ Proof.
 Qed.
 
 (* map_to_lnn is semantics-preserving *)
-Lemma map_to_lnn_sound : forall c, c ≡ map_to_lnn c.
+Lemma map_to_lnn_sound : forall {dim} (c : ucom dim), c ≡ map_to_lnn c.
 Proof.
   induction c; try easy.
   - simpl. rewrite <- IHc1. rewrite <- IHc2. reflexivity.
-  - simpl.
-    destruct u; try easy.
-    repeat (destruct l; try easy).
+  - simpl. dependent destruction u.
     bdestruct (n <? n0).
     + rewrite (move_target_left_equiv_cnot n (n0 - n - 1)).
       replace (n + (n0 - n - 1) + 1) with n0 by lia.
@@ -322,19 +315,19 @@ Proof.
 Qed.
 
 (* linear nearest neighbor: 'all CNOTs are on adjacent qubits' *)
-Inductive respects_LNN : ucom -> Prop :=
+Inductive respects_LNN {dim} : ucom dim -> Prop :=
   | LNN_skip : respects_LNN uskip
   | LNN_seq : forall c1 c2, 
       respects_LNN c1 -> respects_LNN c2 -> respects_LNN (c1; c2)
-  | LNN_app_u : forall (u : Unitary 1) q, respects_LNN (q *= u)
+  | LNN_app_u : forall (u : Unitary 1) n, respects_LNN (uapp1 u n)
   | LNN_app_cnot_left : forall n, respects_LNN (CNOT n (n+1))
   | LNN_app_cnot_right : forall n, respects_LNN (CNOT (n+1) n).
 
 Transparent SWAP.
-Lemma move_target_left_respects_lnn : forall base dist,
-  respects_LNN (move_target_left base dist).
+Lemma move_target_left_respects_lnn : forall {dim} base dist,
+  @respects_LNN dim (move_target_left base dist).
 Proof.
-  intros base dist.
+  intros dim base dist.
   induction dist.
   - simpl. apply LNN_app_cnot_left.
   - simpl. 
@@ -344,11 +337,11 @@ Proof.
     apply IHdist.
 Qed. 
 
-Lemma move_target_right_respects_lnn : forall base dist,
+Lemma move_target_right_respects_lnn : forall {dim} base dist,
    base >= dist -> 
-   respects_LNN (move_target_right base dist).
+   @respects_LNN dim (move_target_right base dist).
 Proof.
-  intros base dist H.
+  intros dim base dist H.
   induction dist.
   - simpl. apply LNN_app_cnot_right.
   - simpl.
@@ -364,20 +357,17 @@ Qed.
    The well-typedness constraint is necessary because gates applied
    to the incorrect number of arguments do not satisfy our LNN 
    property. (We can change this if we want). *)
-Lemma map_to_lnn_correct : forall c dim, 
-  uc_well_typed dim c -> respects_LNN (map_to_lnn c).
+Lemma map_to_lnn_correct : forall {dim} (c : ucom dim), 
+  uc_well_typed c -> respects_LNN (map_to_lnn c).
 Proof.
-  intros c dim WT.
+  intros dim c WT.
   induction WT.
   - apply LNN_skip.
   - simpl. apply LNN_seq; assumption.
-  - destruct u; destruct l; try destruct l; try destruct l; 
-    try inversion H; try apply LNN_app_u.
-    simpl. 
-    bdestruct (n <? n0).
+  - dependent destruction u; apply LNN_app_u.
+  - dependent destruction u; simpl.
+    bdestruct (m <? n).
     apply move_target_left_respects_lnn.
-    bdestruct (n0 <? n).
+    bdestruct (n <? m); try lia.
     apply move_target_right_respects_lnn; lia.
-    inversion H1; subst. contradict H6. left. lia.
 Qed.
-

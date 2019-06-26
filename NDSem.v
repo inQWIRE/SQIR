@@ -1,10 +1,8 @@
 Require Import QWIRE.Quantum.
-Require Import List.
-Require Import SQIRE.
 Require Import UnitarySem.
 Require Import Setoid.
 
-(* Also move *)
+(* TODO: move *)
 
 Definition norm {n} (ψ : Vector n) :=
   sqrt (fst (ψ ∘ ψ†)).  
@@ -14,68 +12,36 @@ Local Open Scope com.
 Reserved Notation "c '/' ψ '⇩' ψ'"
                   (at level 40, ψ at level 39).
 
-(* With scaling *)
-(*
-Inductive nd_eval {dim : nat} : com -> Vector (2^dim) -> Vector (2^dim) -> Prop :=
+Inductive nd_eval {dim : nat} : com dim -> Vector (2^dim) -> Vector (2^dim) -> Prop :=
   | nd_skip : forall ψ, nd_eval skip ψ ψ
-  | nd_app : forall n (u : Unitary n) (l : list nat) (ψ : Vector (2^dim)),
-      app u l / ψ ⇩ ((ueval dim u l) × ψ)
-  | nd_meas0 : forall n (ψ : Vector (2^dim)),
-      let ψ' := @pad 2 n dim (∣0⟩⟨0∣) × ψ in 
-      norm ψ' <> 0%R ->
-      meas n / ψ ⇩ (scale (/(norm ψ')) ψ') 
-  | nd_meas1 : forall n (ψ : Vector (2^dim)),
-      let ψ' := @pad 2 n dim (∣1⟩⟨1∣) × ψ in
-      norm ψ' <> 0%R ->
-      meas n / ψ ⇩ (scale (/(norm ψ')) ψ') 
-  | nd_reset0 : forall n (ψ : Vector (2^dim)),
-      let ψ' := @pad 2 n dim (∣0⟩⟨0∣) × ψ in 
-      norm ψ' <> 0%R ->
-      reset n / ψ ⇩ (scale (/(norm ψ')) ψ') 
-  | nd_reset1 : forall n (ψ : Vector (2^dim)),
-      let ψ' := @pad 2 n dim (∣0⟩⟨1∣) × ψ in (* is this right? *)
-      norm ψ' <> 0%R ->
-      reset n / ψ ⇩ (scale (/(norm ψ')) ψ')
-  | nd_seq : forall (c1 c2 : com) (ψ ψ' ψ'' : Vector (2^dim)),
-      c1 / ψ ⇩ ψ' ->
-      c2 / ψ' ⇩ ψ'' ->
-      (c1 ; c2) / ψ ⇩ ψ''
-
-where "c '/' ψ '⇩' ψ'" := (nd_eval c ψ ψ').              
-*)
-
-Inductive nd_eval {dim : nat} : com -> Vector (2^dim) -> Vector (2^dim) -> Prop :=
-  | nd_skip : forall ψ, nd_eval skip ψ ψ
-  | nd_app : forall n (u : Unitary n) (l : list nat) (ψ : Vector (2^dim)),
-      app u l / ψ ⇩ ((ueval dim u l) × ψ)
-  | nd_meas0 : forall n (ψ : Vector (2^dim)),
+  | nd_app1 : forall (u : Unitary 1) (n : nat) (ψ : Vector (2^dim)),
+      app1 u n / ψ ⇩ ((ueval1 dim n u) × ψ)
+  | nd_app2 : forall (u : Unitary 2) (m n : nat) (ψ : Vector (2^dim)),
+      app2 u m n / ψ ⇩ ((ueval_cnot dim m n) × ψ)
+  | nd_meas0 : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
       let ψ' := @pad 1 n dim (∣0⟩⟨0∣) × ψ in 
       norm ψ' <> 0%R -> (* better way to say this in terms of partial trace? *)
-      meas n / ψ ⇩ ψ' 
-  | nd_meas1 : forall n (ψ : Vector (2^dim)),
+      c1 / ψ' ⇩ ψ'' ->
+      meas n c1 c2 / ψ ⇩ ψ'' 
+      (* Alternatively, we could scale the output state:
+           meas n c1 c2 / ψ ⇩ (scale (/(norm ψ'')) ψ'') *)
+  | nd_meas1 : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
       let ψ' := @pad 1 n dim (∣1⟩⟨1∣) × ψ in
       norm ψ' <> 0%R ->
-      meas n / ψ ⇩ ψ' 
-  | nd_reset0 : forall n (ψ : Vector (2^dim)),
-      let ψ' := @pad 1 n dim (∣0⟩⟨0∣) × ψ in 
-      norm ψ' <> 0%R ->
-      reset n / ψ ⇩ ψ' 
-  | nd_reset1 : forall n (ψ : Vector (2^dim)),
-      let ψ' := @pad 1 n dim (∣0⟩⟨1∣) × ψ in (* is this right? *)
-      norm ψ' <> 0%R ->
-      reset n / ψ ⇩ ψ'
-  | nd_seq : forall (c1 c2 : com) (ψ ψ' ψ'' : Vector (2^dim)),
+      c2 / ψ' ⇩ ψ'' ->
+      meas n c1 c2 / ψ ⇩ ψ'' 
+  | nd_seq : forall (c1 c2 : com dim) (ψ ψ' ψ'' : Vector (2^dim)),
       c1 / ψ ⇩ ψ' ->
       c2 / ψ' ⇩ ψ'' ->
       (c1 ; c2) / ψ ⇩ ψ''
 
 where "c '/' ψ '⇩' ψ'" := (nd_eval c ψ ψ').              
 
-Lemma nd_eval_ucom : forall (c : ucom) (dim : nat) (ψ ψ' : Vector (2^dim)),
+Lemma nd_eval_ucom : forall {dim} (c : ucom dim) (ψ ψ' : Vector (2^dim)),
     WF_Matrix ψ ->
-    c / ψ ⇩ ψ' <-> (uc_eval dim c) × ψ = ψ'.
+    c / ψ ⇩ ψ' <-> (uc_eval c) × ψ = ψ'.
 Proof.
-  intros c dim ψ ψ' WF.
+  intros dim c ψ ψ' WF.
   split; intros H.
   - gen ψ' ψ.
     induction c; intros ψ' ψ WF E; dependent destruction E; subst.
@@ -86,26 +52,28 @@ Proof.
       assert (WF_Matrix ψ') by (rewrite <- (IHc1 _ ψ) ; auto with wf_db).      
       rewrite (IHc2 ψ''); easy.
     + easy.
+    + easy.
   - gen ψ' ψ.
     induction c; intros ψ' ψ WF E; subst.
     + simpl; Msimpl. constructor.
-    + apply nd_seq with (uc_eval dim c1 × ψ).
+    + apply nd_seq with (uc_eval c1 × ψ).
       apply IHc1; trivial.
       apply IHc2; auto with wf_db.
       simpl; rewrite Mmult_assoc; easy.
     + simpl; constructor.
+    + simpl; constructor.
 Qed.
 
-Definition nd_equiv (c1 c2 : com) := forall dim (ψ ψ' : Vector (2^dim)), 
+Definition nd_equiv {dim} (c1 c2 : com dim) := forall (ψ ψ' : Vector (2^dim)), 
   c1 / ψ ⇩ ψ' <-> c2 / ψ ⇩ ψ'.
 
 (* Maybe a new scope is warranted? *)
 Infix "≡" := nd_equiv : com_scope.
 
-Lemma nd_seq_assoc : forall c1 c2 c3,
+Lemma nd_seq_assoc : forall {dim} (c1 c2 c3 : com dim),
     ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
 Proof.
-  intros c1 c2 c3 dim ψ ψ'.
+  intros dim c1 c2 c3 ψ ψ'.
   split; intros E.
   - dependent destruction E.
     dependent destruction E1.
@@ -117,32 +85,32 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Lemma nd_equiv_refl : forall c1, c1 ≡ c1. 
+Lemma nd_equiv_refl : forall {dim} (c1 : com dim), c1 ≡ c1. 
 Proof. easy. Qed.
 
-Lemma nd_equiv_sym : forall c1 c2, c1 ≡ c2 -> c2 ≡ c1. 
+Lemma nd_equiv_sym : forall {dim} (c1 c2 : com dim), c1 ≡ c2 -> c2 ≡ c1. 
 Proof. easy. Qed.
 
-Lemma nd_equiv_trans : forall c1 c2 c3, c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
+Lemma nd_equiv_trans : forall {dim} (c1 c2 c3 : com dim), c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
 Proof. 
-  intros c1 c2 c3 H12 H23 dim ψ ψ'. 
-  specialize (H12 dim ψ ψ') as [L12 R12].
-  specialize (H23 dim ψ ψ') as [L23 R23].
+  intros dim c1 c2 c3 H12 H23 ψ ψ'. 
+  specialize (H12 ψ ψ') as [L12 R12].
+  specialize (H23 ψ ψ') as [L23 R23].
   split; auto.
 Qed.
 
-Add Parametric Relation : com nd_equiv 
+Add Parametric Relation (dim : nat) : (com dim) nd_equiv 
   reflexivity proved by nd_equiv_refl
   symmetry proved by nd_equiv_sym
   transitivity proved by nd_equiv_trans
   as nd_equiv_rel.
 
-Lemma nd_seq_congruence : forall c1 c1' c2 c2',
+Lemma nd_seq_congruence : forall {dim} (c1 c1' c2 c2' : com dim),
     c1 ≡ c1' ->
     c2 ≡ c2' ->
     c1 ; c2 ≡ c1' ; c2'.
 Proof.
-  intros c1 c1' c2 c2' Ec1 Ec2 dim ψ ψ'.
+  intros dim c1 c1' c2 c2' Ec1 Ec2 ψ ψ'.
   split; intros H; dependent destruction H.
   - (* rewrite Ec1 in H. //Fails? *)
     apply Ec1 in H.
@@ -153,89 +121,99 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Add Parametric Morphism : seq 
+Add Parametric Morphism (dim : nat) : (@seq dim)
   with signature nd_equiv ==> nd_equiv ==> nd_equiv as useq_mor.
 Proof. intros x y H x0 y0 H0. apply nd_seq_congruence; easy. Qed.
 
-Lemma meas_reset : forall q, meas q ; reset q ≡ reset q.
+Lemma double_pad_00 : forall dim q (ψ : Vector (2^dim)),
+  @pad 1 q dim ∣0⟩⟨0∣ × (@pad 1 q dim ∣0⟩⟨0∣ × ψ) = @pad 1 q dim ∣0⟩⟨0∣ × ψ.
 Proof.
-  intros q dim ψ ψ'.
+  intros.
+  unfold pad.
+  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  rewrite <- Mmult_assoc. 
+  restore_dims_strong; repeat rewrite kron_mixed_product.
+  Msimpl.
+  replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with ∣0⟩⟨0∣ by solve_matrix.
+  reflexivity.
+Qed.  
+
+Lemma double_pad_01 : forall dim q (ψ : Vector (2^dim)),
+  @pad 1 q dim ∣1⟩⟨1∣ × (@pad 1 q dim ∣0⟩⟨0∣ × ψ) = Zero.
+Proof.
+  intros.
+  unfold pad.
+  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  rewrite <- Mmult_assoc. 
+  restore_dims_strong; repeat rewrite kron_mixed_product.
+  Msimpl.
+  replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
+  repeat remove_zero_gates.
+  reflexivity.
+Qed.  
+
+Lemma double_pad_10 : forall dim q (ψ : Vector (2^dim)),
+  @pad 1 q dim ∣0⟩⟨0∣ × (@pad 1 q dim ∣1⟩⟨1∣ × ψ) = Zero.
+Proof.
+  intros.
+  unfold pad.
+  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  rewrite <- Mmult_assoc. 
+  restore_dims_strong; repeat rewrite kron_mixed_product.
+  Msimpl.
+  replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
+  repeat remove_zero_gates.
+  reflexivity.
+Qed.  
+
+Lemma double_pad_11 : forall dim q (ψ : Vector (2^dim)),
+  @pad 1 q dim ∣1⟩⟨1∣ × (@pad 1 q dim ∣1⟩⟨1∣ × ψ) = @pad 1 q dim ∣1⟩⟨1∣ × ψ.
+Proof.
+  intros.
+  unfold pad.
+  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  rewrite <- Mmult_assoc. 
+  restore_dims_strong; repeat rewrite kron_mixed_product.
+  Msimpl.
+  replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with ∣1⟩⟨1∣ by solve_matrix.
+  reflexivity.
+Qed.  
+
+Lemma meas_reset : forall dim q, 
+  @nd_equiv dim (measure q ; reset q) (reset q).
+Proof.
+  intros dim q ψ ψ'.
   split; intros H.
   - dependent destruction H;
     dependent destruction H;
     dependent destruction H0;
+    dependent destruction H1; 
     subst ψ' ψ'0.
-    + specialize (nd_reset0 q ψ H) as E. clear H H0.
-      unfold pad in *.
-      bdestruct (q + 1 <=? dim).
-      * rewrite <- Mmult_assoc.
-        restore_dims_strong.
-        Msimpl.  
-        replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
-        revert E. restore_dims_strong. auto. 
-      * rewrite <- Mmult_assoc. rewrite Mmult_0_r. auto. 
+    + rewrite double_pad_00 in H0.
+      rewrite double_pad_00 in H1.
+      apply nd_meas0; assumption.
+    + contradict H0. 
+      rewrite double_pad_01.
+      unfold norm, dot.
+      rewrite Csum_0. 
+      simpl; rewrite sqrt_0; reflexivity.
+      intros; lca.
     + contradict H0.
-      unfold norm. unfold pad.
-      bdestruct (q + 1 <=? dim); simpl.
-      rewrite <- Mmult_assoc.
-      restore_dims_strong.
-      Msimpl.  
-      replace (∣0⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-      rewrite kron_0_r, kron_0_l, Mmult_0_l. (* Msimpl should handle *)
-      unfold dot. (* need dot product lemmas *)
+      rewrite double_pad_10.
+      unfold norm, dot.
       rewrite Csum_0. 
-      simpl. rewrite sqrt_0. reflexivity.
-      intros; simpl; unfold adjoint, Zero. lca. 
-      rewrite Mmult_0_l.
-      unfold dot. (* need dot product lemmas *)
-      rewrite Csum_0. 
-      simpl. rewrite sqrt_0. reflexivity.
-      intros; simpl; unfold adjoint, Zero. lca. 
-    + contradict H0.
-      unfold norm. unfold pad.
-      bdestruct (q + 1 <=? dim); simpl.
-      rewrite <- Mmult_assoc.
-      restore_dims_strong.
-      Msimpl.  
-      replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
-      rewrite kron_0_r, kron_0_l, Mmult_0_l. (* Msimpl should handle *)
-      unfold dot. (* need dot product lemmas *)
-      rewrite Csum_0. 
-      simpl. rewrite sqrt_0. reflexivity.
-      intros; simpl; unfold adjoint, Zero. lca. 
-      rewrite Mmult_0_l.
-      unfold dot. (* need dot product lemmas *)
-      rewrite Csum_0. 
-      simpl. rewrite sqrt_0. reflexivity.
-      intros; simpl; unfold adjoint, Zero. lca. 
-    + specialize (nd_reset1 q ψ) as E.
-      unfold pad in *.
-      bdestruct (q + 1 <=? dim).
-      * revert E.
-        revert H0.
-        rewrite <- Mmult_assoc.
-        restore_dims_strong.
-        Msimpl.  
-        replace (∣0⟩⟨1∣ × ∣1⟩⟨1∣) with (∣0⟩⟨1∣) by solve_matrix.
-        restore_dims_strong. auto. 
-      * rewrite <- Mmult_assoc. rewrite Mmult_0_r. auto. 
+      simpl; rewrite sqrt_0; reflexivity.
+      intros; lca.
+    + rewrite double_pad_11 in H0.
+      rewrite double_pad_11 in H1.
+      apply nd_meas1; assumption.
   - dependent destruction H; subst ψ'.
     + econstructor.
-      apply nd_meas0; assumption.
-      (* this could be its own lemma *)
-      assert (L: @pad 1 q dim ∣0⟩⟨0∣ × ψ = @pad 1 q dim ∣0⟩⟨0∣ × (@pad 1 q dim ∣0⟩⟨0∣ × ψ)).
-      clear. unfold pad. bdestruct (q + 1 <=? dim).
-      rewrite <- Mmult_assoc. restore_dims_strong. Msimpl.
-      replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
-      reflexivity.
-      repeat rewrite Mmult_0_l. reflexivity.
-      rewrite L at 2.
-      apply nd_reset0.
-      rewrite <- L.
-      assumption.
+      apply nd_meas0; try assumption.
+      apply nd_skip.
+      apply nd_meas0; rewrite double_pad_00; assumption.
     + econstructor.
-      apply nd_meas1.
-      (* Well, that's annoying. We could use the same restriction for
-         meas and reset, but I'd prefer a more succinct, computable
-         restriction. *)
-Abort.
+      apply nd_meas1; try assumption.
+      apply nd_skip.
+      apply nd_meas1; rewrite double_pad_11; assumption.
+Qed.
