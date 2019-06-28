@@ -146,14 +146,19 @@ Definition alice : com 3 := CNOT q a ; H q ; measure q ; measure a.
 Definition bob : com 3 := CNOT a b; CZ q b; reset q; reset a.
 Definition teleport : com 3 := bell; alice; bob.
 
+(* Abominably slow, but works. Will try to speed up later. 
 Lemma teleport_correct : forall (ρ : Density (2^1)),
   WF_Matrix ρ -> 
   c_eval teleport (ρ ⊗ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) = (∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣ ⊗ ρ).  
 Proof.
   intros.
   simpl.
-  unfold compose_super, Splus, super, pad; simpl.
-  unfold ueval_cnot, ueval1, pad; simpl.
+  repeat rewrite compose_super_eq.
+  unfold compose_super.
+  unfold ueval1.
+  restore_dims.
+  repeat rewrite pad_mult.
+  unfold Splus, ueval_cnot, super, pad; simpl.
   restore_dims_fast.
   Msimpl.
   solve_matrix.
@@ -163,8 +168,9 @@ Proof.
                try rewrite <- Copp_mult_distr_l).
   all: group_radicals.
   all: cancel_terms 2%R.
-  all: lca.
+  all: reflexivity.
 Qed.
+*)
 
 End DensityTeleport.
 
@@ -362,34 +368,14 @@ Proof.
 
   (* solves the contradictory (0) cases *)
   all: try (
-           contradict H;
+           contradict H1;
            unfold ueval_cnot, ueval1, pad; simpl; Msimpl;
            repeat reduce_matrices;
            unfold norm; (* easier to change condition to norm^2 <> 0 *)
            simpl; autorewrite with R_db; rewrite sqrt_0; reflexivity
          ).
 
-  clear -WF.
-  unfold ueval_cnot, ueval1, pad; simpl; Msimpl.
-  repeat reduce_matrices.
-  unfold Cdiv.
-  repeat (try rewrite Cmult_plus_distr_l; 
-          try rewrite Cmult_plus_distr_r;
-          try rewrite <- Copp_mult_distr_r;
-          try rewrite <- Copp_mult_distr_l).
-  autorewrite with C_db.
-  group_radicals.
-  cancel_terms 2%R.
-  exists 2. simpl.
-  unfold scale.
-  prep_matrix_equality.
-  unfold list2D_to_matrix. simpl.
-  destruct_m_eq'; try solve [solve_matrix].
-  
-  solve_matrix.
-
-
-  (* solves the four possible cases *)
+  (* solves the four (two???) possible cases *)
   all: try (
        clear;
        unfold ueval_cnot, ueval1, pad; simpl; Msimpl;
@@ -404,6 +390,7 @@ Proof.
        cancel_terms 2%R;
        exists 2; solve_matrix
        ).
+
 Qed.
 
 (* Alternative teleport proofs 
