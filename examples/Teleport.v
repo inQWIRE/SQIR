@@ -91,10 +91,11 @@ Import UnitarySem.
 
 Open Scope ucom.
 
-Definition bell (c b : nat) : ucom := H c ; CNOT c b.
-Definition alice (a c : nat) : ucom := CNOT a c ; H a.
-Definition bob (a c b: nat) : ucom := CNOT c b; CZ a b.
-Definition teleport (a c b : nat) : ucom := alice a c; bob a c b.
+(* a = alice; b = bob; q = qubit to be teleported *)
+Definition bell {n} (a b : nat) : ucom n := H a ; CNOT a b.
+Definition alice {n} (q a : nat) : ucom n := CNOT q a ; H q.
+Definition bob {n} (q a b: nat) : ucom n := CNOT a b; CZ q b.
+Definition teleport {n} (q a b : nat) : ucom n := alice q a; bob q a b.
 
 Definition epr00 : Vector 4 :=
   fun x y => match x, y with
@@ -104,7 +105,7 @@ Definition epr00 : Vector 4 :=
              end.
 
 Lemma epr_correct : 
-  forall (ψ : Vector 2), WF_Matrix ψ -> (uc_eval 3 (bell 1 2)) × (ψ ⊗ ∣0⟩ ⊗ ∣0⟩) = ψ ⊗ epr00. 
+  forall (ψ : Vector 2), WF_Matrix ψ -> (@uc_eval 3 (bell 1 2)) × (ψ ⊗ ∣0⟩ ⊗ ∣0⟩) = ψ ⊗ epr00. 
 Proof.
   intros.
   unfold bell. simpl. unfold ueval_cnot, ueval1. simpl. unfold pad. simpl.
@@ -112,7 +113,7 @@ Proof.
 Qed.
 
 Lemma teleport_correct : forall (ψ : Vector 2), 
-    WF_Matrix ψ -> uc_eval 3 (teleport 0 1 2) × (ψ ⊗ epr00) = (∣ + ⟩ ⊗ ∣ + ⟩ ⊗ ψ).
+    WF_Matrix ψ -> @uc_eval 3 (teleport 0 1 2) × (ψ ⊗ epr00) = (∣ + ⟩ ⊗ ∣ + ⟩ ⊗ ψ).
 Proof.
   intros.
   unfold teleport. simpl.
@@ -124,13 +125,11 @@ Proof.
                try rewrite <- Copp_mult_distr_r;
                try rewrite <- Copp_mult_distr_l).
   all: group_radicals.
-  all: cancel_terms 2%C.
   all: lca.
 Qed.  
 
 End UTeleport.
 
-(*
 (* Non-unitary teleport, proof with density matrices *)
 Module DensityTeleport.
 
@@ -142,14 +141,14 @@ Definition q : nat := 0. (* qubit for transmission *)
 Definition a : nat := 1. (* alice's qubit *)
 Definition b : nat := 2. (* bob's qubit *)
 
-Definition bell : com := H a ; CNOT a b.
-Definition alice : com := CNOT q a ; H q ; meas q ; meas a.
-Definition bob : com := CNOT a b; CZ q b; reset q; reset a.
-Definition teleport : com := bell; alice; bob.
+Definition bell : com 3 := H a ; CNOT a b.
+Definition alice : com 3 := CNOT q a ; H q ; measure q ; measure a.
+Definition bob : com 3 := CNOT a b; CZ q b; reset q; reset a.
+Definition teleport : com 3 := bell; alice; bob.
 
 Lemma teleport_correct : forall (ρ : Density (2^1)),
   WF_Matrix ρ -> 
-  c_eval 3 teleport (ρ ⊗ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) = (∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣ ⊗ ρ).  
+  c_eval teleport (ρ ⊗ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) = (∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣ ⊗ ρ).  
 Proof.
   intros.
   simpl.
@@ -168,7 +167,6 @@ Proof.
 Qed.
 
 End DensityTeleport.
-*)
 
 
 Module NDTeleport.
@@ -190,10 +188,10 @@ Definition q : nat := 0. (* qubit for transmission *)
 Definition a : nat := 1. (* alice's qubit *)
 Definition b : nat := 2. (* bob's qubit *)
 
-Definition bell : com := H a ; CNOT a b.
-Definition alice : com := CNOT q a ; H q ; meas q ; meas a.
-Definition bob : com := CNOT a b; CZ q b; reset q; reset a.
-Definition teleport : com := bell; alice; bob.
+Definition bell : com 3 := H a ; CNOT a b.
+Definition alice : com 3 := CNOT q a ; H q ; measure q ; measure a.
+Definition bob : com 3 := CNOT a b; CZ q b; reset q; reset a.
+Definition teleport : com 3 := bell; alice; bob.
 
 Local Open Scope R_scope.
 Local Open Scope C_scope.
@@ -218,12 +216,14 @@ Proof. solve_matrix. Qed.
 Ltac destruct_seqs := 
   repeat match goal with
   | [H : ?a / _ ⇩ _ |- _] => unfold a in H
+  | [H : skip / _ ⇩ _ |- _] => dependent destruction H
   | [H : (_ ; _) / _ ⇩ _ |- _] => dependent destruction H
   end.
 
 Ltac destruct_apps := 
   repeat match goal with
-  | [H : app _ _ / _ ⇩ _ |- _] => dependent destruction H
+  | [H : app1 _ _ / _ ⇩ _ |- _] => dependent destruction H
+  | [H : app2 _ _ _ / _ ⇩ _ |- _] => dependent destruction H
   end.
 
 (* Thought I had this. *)
@@ -247,6 +247,7 @@ Qed.
 
 
 (* Via bra-ket reasoning *)
+(*
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix ψ ->
   teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' ∝ ∣ 0 , 0 ⟩ ⊗ ψ.   
@@ -283,22 +284,22 @@ Proof.
     Msimpl.
     setoid_rewrite cnot_decomposition.
     restore_dims.
-    autorewrite with M_db ket_db; auto.
+    autorewrite with M_db ket_db. 
     restore_dims.
     repeat rewrite <- kron_assoc.
     rewrite kron_mixed_product.
-    autorewrite with M_db ket_db; auto.
-    rewrite (ket_decomposition ψ); auto.
-    autorewrite with M_db ket_db; auto.
+    autorewrite with M_db ket_db. 
+    rewrite (ket_decomposition ψ) by auto. 
+    autorewrite with M_db ket_db. 
     repeat rewrite kron_assoc.
     restore_dims.
     repeat rewrite kron_mixed_product.
-    autorewrite with M_db ket_db; auto.
+    autorewrite with M_db ket_db.
     try rewrite <- Copp_mult_distr_r.
     group_radicals.
     restore_dims.
     repeat rewrite <- kron_assoc.
-    unfold ψA. reflexivity.
+    reflexivity.
   }    
   subst ψA. rewrite EA in *. clear EA Alice1_1.
   dependent destruction Alice1_2; subst ψ'0;
@@ -320,10 +321,6 @@ Proof.
     replace (⟨1∣) with (bra 1) by reflexivity.
     replace (∣1⟩) with (ket 1) by reflexivity. (* Have ket_db do these *)
 
-    
-  
-    
-
     simpl.
     unfold ueval_cnot, ueval1, pad. simpl.
     Msimpl.
@@ -335,7 +332,7 @@ Proof.
     unfold epr00. autorewrite with ket_db.
     reflexivity.
   }
-  
+*)  
 
 (* Via Matrix Multiplying *)
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
@@ -346,9 +343,9 @@ Proof.
   destruct_seqs; destruct_apps.
   evar (e : Vector (2^3)).  
   match goal with 
-  | H : measure q / ?x ⇩ ?y |- _ => replace x with e in H
+  | H : measure 0 / ?x ⇩ ?y |- _ => replace x with e in H
   end.
-  2:{ unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl.
+  2:{ unfold ueval_cnot, ueval1, pad; simpl; Msimpl.
       repeat reduce_matrices.
       unfold Cdiv.
       repeat rewrite <- Copp_mult_distr_l.
@@ -360,21 +357,42 @@ Proof.
   dependent destruction H0_0;
   dependent destruction H0_3;
   dependent destruction H0_4;
-  subst ψ' ψ'0 ψ'1 ψ'2.
+  destruct_seqs; destruct_apps;
+  subst ψ'.
 
   (* solves the contradictory (0) cases *)
   all: try (
-           contradict H1;
-           unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl;
+           contradict H;
+           unfold ueval_cnot, ueval1, pad; simpl; Msimpl;
            repeat reduce_matrices;
            unfold norm; (* easier to change condition to norm^2 <> 0 *)
            simpl; autorewrite with R_db; rewrite sqrt_0; reflexivity
          ).
 
+  clear -WF.
+  unfold ueval_cnot, ueval1, pad; simpl; Msimpl.
+  repeat reduce_matrices.
+  unfold Cdiv.
+  repeat (try rewrite Cmult_plus_distr_l; 
+          try rewrite Cmult_plus_distr_r;
+          try rewrite <- Copp_mult_distr_r;
+          try rewrite <- Copp_mult_distr_l).
+  autorewrite with C_db.
+  group_radicals.
+  cancel_terms 2%R.
+  exists 2. simpl.
+  unfold scale.
+  prep_matrix_equality.
+  unfold list2D_to_matrix. simpl.
+  destruct_m_eq'; try solve [solve_matrix].
+  
+  solve_matrix.
+
+
   (* solves the four possible cases *)
   all: try (
        clear;
-       unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl;
+       unfold ueval_cnot, ueval1, pad; simpl; Msimpl;
        repeat reduce_matrices;
        unfold Cdiv;
        repeat (try rewrite Cmult_plus_distr_l; 

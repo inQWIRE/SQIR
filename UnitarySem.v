@@ -7,6 +7,19 @@ Local Open Scope ucom_scope.
 
 (** Denotation of Unitaries **)
 
+(* TODO: Put in QWIRE's quantum file *)
+Lemma compose_super_eq : forall {m n p} (A : Matrix m n) (B : Matrix n p), 
+      compose_super (super A) (super B) = super (A × B).
+Proof.
+  intros.
+  unfold compose_super, super.
+  apply functional_extensionality. intros ρ.
+  rewrite Mmult_adjoint.
+  repeat rewrite Mmult_assoc.
+  reflexivity.
+Qed.
+
+(* Padding and lemmas *)
 Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
   if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else Zero.
 
@@ -17,6 +30,18 @@ Proof.
   intros n start dim A WFA. unfold pad.
   bdestruct (start + n <=? dim); auto with wf_db.
 Qed.  
+
+Lemma pad_mult : forall n dim start (A B : Square (2^n)),
+  pad start dim A × pad start dim B = pad start dim (A × B).
+Proof.
+  intros.
+  unfold pad.
+  bdestruct (start + n <=? dim). 2: rewrite Mmult_0_l; reflexivity.
+  restore_dims_strong.
+  repeat rewrite kron_mixed_product.
+  Msimpl.
+  reflexivity.
+Qed.
 
 (* k must be 1, but dependent types... *)
 Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=

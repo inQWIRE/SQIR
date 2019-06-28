@@ -18,18 +18,18 @@ Inductive nd_eval {dim : nat} : com dim -> Vector (2^dim) -> Vector (2^dim) -> P
       app1 u n / ψ ⇩ ((ueval1 dim n u) × ψ)
   | nd_app2 : forall (u : Unitary 2) (m n : nat) (ψ : Vector (2^dim)),
       app2 u m n / ψ ⇩ ((ueval_cnot dim m n) × ψ)
+  | nd_meas1 : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
+      let ψ' := @pad 1 n dim (∣0⟩⟨0∣) × ψ in
+      norm ψ' <> 0%R ->
+      c2 / ψ' ⇩ ψ'' ->
+      meas n c1 c2 / ψ ⇩ ψ'' 
   | nd_meas0 : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
-      let ψ' := @pad 1 n dim (∣0⟩⟨0∣) × ψ in 
+      let ψ' := @pad 1 n dim (∣1⟩⟨1∣) × ψ in 
       norm ψ' <> 0%R -> (* better way to say this in terms of partial trace? *)
       c1 / ψ' ⇩ ψ'' ->
       meas n c1 c2 / ψ ⇩ ψ'' 
       (* Alternatively, we could scale the output state:
            meas n c1 c2 / ψ ⇩ (scale (/(norm ψ'')) ψ'') *)
-  | nd_meas1 : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
-      let ψ' := @pad 1 n dim (∣1⟩⟨1∣) × ψ in
-      norm ψ' <> 0%R ->
-      c2 / ψ' ⇩ ψ'' ->
-      meas n c1 c2 / ψ ⇩ ψ'' 
   | nd_seq : forall (c1 c2 : com dim) (ψ ψ' ψ'' : Vector (2^dim)),
       c1 / ψ ⇩ ψ' ->
       c2 / ψ' ⇩ ψ'' ->
@@ -125,22 +125,21 @@ Add Parametric Morphism (dim : nat) : (@seq dim)
   with signature nd_equiv ==> nd_equiv ==> nd_equiv as useq_mor.
 Proof. intros x y H x0 y0 H0. apply nd_seq_congruence; easy. Qed.
 
+
+
 Lemma double_pad_00 : forall dim q (ψ : Vector (2^dim)),
   @pad 1 q dim ∣0⟩⟨0∣ × (@pad 1 q dim ∣0⟩⟨0∣ × ψ) = @pad 1 q dim ∣0⟩⟨0∣ × ψ.
-Proof.
+Proof.  
   intros.
-  unfold pad.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite <- Mmult_assoc. 
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with ∣0⟩⟨0∣ by solve_matrix.
+  rewrite <- Mmult_assoc.
+  rewrite pad_mult.
+  repeat reduce_matrices.
   reflexivity.
 Qed.  
 
 Lemma double_pad_01 : forall dim q (ψ : Vector (2^dim)),
   @pad 1 q dim ∣1⟩⟨1∣ × (@pad 1 q dim ∣0⟩⟨0∣ × ψ) = Zero.
-Proof.
+Proof.  
   intros.
   unfold pad.
   bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
@@ -168,14 +167,11 @@ Qed.
 
 Lemma double_pad_11 : forall dim q (ψ : Vector (2^dim)),
   @pad 1 q dim ∣1⟩⟨1∣ × (@pad 1 q dim ∣1⟩⟨1∣ × ψ) = @pad 1 q dim ∣1⟩⟨1∣ × ψ.
-Proof.
+Proof.  
   intros.
-  unfold pad.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite <- Mmult_assoc. 
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with ∣1⟩⟨1∣ by solve_matrix.
+  rewrite <- Mmult_assoc.
+  rewrite pad_mult.
+  repeat reduce_matrices.
   reflexivity.
 Qed.  
 
@@ -191,7 +187,7 @@ Proof.
     subst ψ' ψ'0.
     + rewrite double_pad_00 in H0.
       rewrite double_pad_00 in H1.
-      apply nd_meas0; assumption.
+      apply nd_meas1; assumption.
     + contradict H0. 
       rewrite double_pad_01.
       unfold norm, dot.
@@ -206,14 +202,14 @@ Proof.
       intros; lca.
     + rewrite double_pad_11 in H0.
       rewrite double_pad_11 in H1.
-      apply nd_meas1; assumption.
+      apply nd_meas0; assumption.
   - dependent destruction H; subst ψ'.
-    + econstructor.
-      apply nd_meas0; try assumption.
-      apply nd_skip.
-      apply nd_meas0; rewrite double_pad_00; assumption.
     + econstructor.
       apply nd_meas1; try assumption.
       apply nd_skip.
-      apply nd_meas1; rewrite double_pad_11; assumption.
+      apply nd_meas1; rewrite double_pad_00; assumption.
+    + econstructor.
+      apply nd_meas0; try assumption.
+      apply nd_skip.
+      apply nd_meas0; rewrite double_pad_11; assumption.
 Qed.
