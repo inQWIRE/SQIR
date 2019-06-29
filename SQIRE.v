@@ -48,6 +48,16 @@ See the Open QASM tech report for more example gates in terms of U_R.
 
 *)
 
+Fixpoint invert_gate {n : nat} (u : Unitary n) : Unitary n := 
+  match u with
+  | U_H => U_H
+  | U_X => U_X
+  | U_Y => U_Y
+  | U_Z => U_Z
+  | U_R ϕ => U_R (-ϕ)
+  | U_CNOT => U_CNOT
+  end.
+
 (**********************)
 (** Unitary Programs **)
 (**********************)
@@ -97,6 +107,15 @@ Definition CZ {dim} m n : ucom dim :=
 
 Definition SWAP {dim} m n : ucom dim :=
   CNOT m n; CNOT n m; CNOT m n.
+
+(* Inverse for unitary circuits. *)
+Fixpoint invert_u {dim} (c : ucom dim) : ucom dim :=
+  match c with
+  | uskip => uskip
+  | c1 ; c2 => invert_u c2 ; invert_u c1
+  | uapp1 u n => uapp1 (invert_gate u) n
+  | uapp2 u m n => uapp2 (invert_gate u) m n
+  end.
 
 (*************************)
 (** Well Typed Circuits **)
@@ -183,11 +202,12 @@ Notation "'mif' n 'then' p1 'else' p2" := (meas n p1 p2) (at level 40) : com_sco
 Notation "'measure' n" := (meas n skip skip) (at level 40) : com_scope.
 Notation "'reset' n" := (meas n (X n) skip) (at level 40) : com_scope.
 Notation "n <- 0" := (reset n) (at level 20) : com_scope.
-Notation "n <- 1" := (reset n ; X n) (at level 20) : com_scope.
+(* Notation "n <- 1" := (reset n ; X n) (at level 20) : com_scope. *)
+Notation "n <- 1" := (meas n skip (X n)) (at level 20) : com_scope.
 
-(***************************)
-(** High-level Constructs **)
-(***************************)
+(*****************************)
+(** Higher-level Constructs **)
+(*****************************)
 
 Fixpoint crepeat {dim} (k : nat) (p : com dim) : com dim :=
   match k with
@@ -200,26 +220,3 @@ Fixpoint while {dim} (max_iters : nat) (n : nat) (p : com dim) : com dim :=
   | 0        => skip
   | S iters' => mif n then p ; while iters' n p else skip
   end.
-
-Local Close Scope com_scope.
-Local Open Scope ucom_scope.
-
-Fixpoint invert_gate {n : nat} (u : Unitary n) : Unitary n := 
-  match u with
-  | U_H => U_H
-  | U_X => U_X
-  | U_Y => U_Y
-  | U_Z => U_Z
-  | U_R ϕ => U_R (-ϕ)
-  | U_CNOT => U_CNOT
-  end.
-
-(* Inverse for unitary circuits. *)
-Fixpoint invert_u {dim} (c : ucom dim) : ucom dim :=
-  match c with
-  | uskip => uskip
-  | c1 ; c2 => invert_u c2 ; invert_u c1
-  | uapp1 u n => uapp1 (invert_gate u) n
-  | uapp2 u m n => uapp2 (invert_gate u) m n
-  end.
-
