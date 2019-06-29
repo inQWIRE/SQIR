@@ -178,7 +178,7 @@ Open Scope ucom.
 Fixpoint ucom_to_qasm' {dim : nat} (c : ucom dim) : program :=
   match c with
   | uskip => []
-  | c1; c2 => com_to_qasm' c1 ++ com_to_qasm' c2
+  | c1; c2 => ucom_to_qasm' c1 ++ ucom_to_qasm' c2
   | uapp1 u x  => let angle := unitary_to_angle u in 
                 [s_op (o_app (u_U angle (qubit x)))]
   | uapp2 u x y => match u with 
@@ -189,6 +189,13 @@ Fixpoint ucom_to_qasm' {dim : nat} (c : ucom dim) : program :=
 
 Definition ucom_to_qasm {dim : nat} (c : ucom dim) : program :=
   decl_qregs dim ++ ucom_to_qasm' c.
+
+Require Import GHZ.
+
+Definition ghz_qasm (n : nat) := Eval compute in ucom_to_qasm (GHZ n).
+Compute (ghz_qasm 10).
+Definition ghz_string (n : nat) := Eval compute in printer (ghz_qasm n).
+Compute (ghz_string 10).
 
 Close Scope ucom.
 
