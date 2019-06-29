@@ -22,6 +22,8 @@ UnitarySem.v
 
 compiler/Equivalences.v
 compiler/Mapping.v
+compiler/Optimizations.v
+compiler/Representations.v
 
 examples/Deutsch.v
 examples/GHZ.v
