@@ -45,7 +45,7 @@ Inductive decl : Set :=
 Definition print_decl (d : decl) : string :=
   match d with
   | qreg n m => "qreg q" ++ nat_to_string n ++ "[" ++ nat_to_string m ++ "]"
-  | creg n m => "creg q" ++ nat_to_string n ++ "[" ++ nat_to_string m ++ "]"
+  | creg n m => "creg c" ++ nat_to_string n ++ "[" ++ nat_to_string m ++ "]"
   end.
 
 Inductive qmem : Set :=
@@ -89,26 +89,26 @@ Definition print_unitary (u : unitary) : string :=
 Inductive op : Set :=
 | o_app : unitary -> op
 | o_meas : qmem -> cmem -> op
-| o_if : cmem -> exp -> op -> op
 | o_reset : qmem -> op.
 
 Fixpoint print_op (o : op) : string :=
   match o with
   | o_app u => print_unitary u
   | o_meas q c => "measure " ++ print_qmem q ++ " -> " ++ print_cmem c
-  | o_if c e o => "if(" ++ print_cmem c ++ "==" ++ print_exp e ++ ") " ++ print_op o
   | o_reset q => "reset " ++ print_qmem q
   end.
 
 Inductive statement : Set :=
 | s_decl : decl -> statement
 | s_op : op -> statement
+| s_if : cmem -> exp -> statement -> statement
 | s_err : string -> statement.
 
-Definition print_statement (st : statement) : string :=
+Fixpoint print_statement (st : statement) : string :=
   match st with
   | s_decl d => print_decl d
   | s_op o => print_op o
+  | s_if m e s => "if(" ++ print_cmem m ++ "==" ++ print_exp e ++ ") " ++ print_statement s
   | s_err s => s
   end.
 
@@ -146,6 +146,12 @@ Fixpoint decl_qregs (dim : nat) : program :=
 
 Open Scope com.
 
+Fixpoint cif_qasm (m : cmem) (e : exp) (p : program) : program :=
+  match p with
+  | [] => []
+  | s :: p' => [s_if m e s] ++ cif_qasm m e p'
+  end.
+
 Fixpoint com_to_qasm' {dim : nat} (c : com dim) : program :=
   match c with
   | skip => []
@@ -156,16 +162,19 @@ Fixpoint com_to_qasm' {dim : nat} (c : com dim) : program :=
                  | U_CNOT => [s_op (o_app (u_CX (qubit x) (qubit y)))]
                  | _ => [s_err "app2 error"]
                  end
-  | meas x skip skip => [s_decl (creg x 1)] ++ [s_op (o_meas (qubit x) (cbit x))]
-  | meas x _ _ => [s_err "classical control circuit not supported."]
+  | meas x c1 c0 => [s_decl (creg x 1)] 
+                     ++ [s_op (o_meas (qubit x) (cbit x))]
+                     ++ cif_qasm (cbit x) (e_nat 1) (com_to_qasm' c1)
+                     ++ cif_qasm (cbit x) (e_nat 0) (com_to_qasm' c0)
   end.
 
 Definition com_to_qasm {dim : nat} (c : com dim) : program :=
   decl_qregs dim ++ com_to_qasm' c.
 
 Definition bell (a b : nat) : com 3 := H a ; CNOT a b.
-Definition alice (q a : nat) : com 3 := CNOT q a ; H q ; measure q ; measure a.
-Definition bob (q a b : nat) : com 3 := CNOT a b; CZ q b.
+Definition alice (q a : nat) : com 3 := CNOT q a; H q.
+(* apply redundant gates to test measure-if *)
+Definition bob (q a b : nat) : com 3 := meas q (Z b) (Z b; Z b); meas a (X a; X a; X a) skip.
 Definition teleport (q a b : nat) : com 3 := bell a b; alice q a; bob q a b.
 
 Definition teleport_qasm := Eval compute in com_to_qasm (teleport 0 1 2).
