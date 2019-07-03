@@ -32,9 +32,10 @@ The primary use case for SQIRE is as an IR in a verified compiler. The compiler 
 
 - compiler/Equivalences.v : Verified circuit equivalences useful for Optimizations.v.
 - compiler/Mapping.v : Verified (basic) circuit mapping example.
-- ~~compiler/Optimizations.v : Verified optimizations of SQIRE programs including skip removal and not propagation.~~ (not up-to-date)
+- compiler/Optimizations.v : Verified optimizations of SQIRE programs including skip removal and not propagation.
 - ~~compiler/CompileFromQwire.v : (IN PROGRESS) Current progress on verified compilation from QWIRE programs to SQIRE programs.~~ (not up-to-date)
 - ~~compiler/BooleanCompilation.v : Verified compilation from boolean expressions to unitary SQIRE programs.~~ (not up-to-date)
+- compiler/Representations.v : Alternative representations of unitary SQIRE programs useful for implementing transformations.
 
 ### SQIRE for General Verification
 
