@@ -20,10 +20,10 @@ Qed.
 Lemma Cexp_mul_neg_r : forall θ, Cexp θ * Cexp (-θ) = 1.
 Proof. intros. rewrite Cmult_comm. apply Cexp_mul_neg_l. Qed.
 
-Lemma R_measure : forall dim θ n, @R_ dim θ n ; measure n ≡ measure n.
+Lemma R_mif : forall dim θ n c1 c2, 
+  @R_ dim θ n ; mif n then c1 else c2 ≡ mif n then c1 else c2.
 Proof.
   intros.
-  simpl.
   unfold c_equiv.
   simpl.
   unfold compose_super, Splus, super.
@@ -61,7 +61,15 @@ Proof.
   rewrite Cexp_mul_neg_l.
   rewrite Mscale_1_l.
   reflexivity.
-Qed.
+Qed.  
+
+Lemma R_measure : forall dim θ n, @R_ dim θ n ; measure n ≡ measure n.
+Proof. intros. apply R_mif. Qed.
+
+Lemma R_reset : forall dim θ n, @R_ dim θ n ; reset n ≡ reset n.
+Proof. intros. apply R_mif. Qed.
+
+(* Z is R_ PI, so the same lemmas apply. *)
 
 Lemma phase_pi : phase_shift PI = σz.
 Proof.
@@ -79,10 +87,18 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma Z_measure : forall dim n, @SQIRE.Z dim n ; measure n ≡ measure n.  
+Lemma Z_mif : forall dim n c1 c2,
+  @SQIRE.Z dim n ; mif n then c1 else c2 ≡ mif n then c1 else c2.
 Proof.
   intros. unfold c_equiv. simpl.
   rewrite <- ueval_R_pi.
-  apply R_measure.
-Qed.  
+  apply R_mif.
+Qed.
   
+Lemma Z_measure : forall dim n, @SQIRE.Z dim n ; measure n ≡ measure n.
+Proof. intros. apply Z_mif. Qed.
+
+Lemma Z_reset : forall dim n, @SQIRE.Z dim n ; reset n ≡ reset n.
+Proof. intros. apply Z_mif. Qed.
+
+(* T and P are R_ PI/4 and R_ PI/2, but those are explicit in SQIRE.v *)
