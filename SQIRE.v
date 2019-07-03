@@ -67,7 +67,7 @@ Fixpoint invert_gate {n : nat} (u : Unitary n) : Unitary n :=
    to the incorrect number of arguments. *)
 Inductive ucom (dim : nat): Set :=
 | uskip : ucom dim
-| useq : ucom dim -> ucom dim -> ucom dim
+| useq :  ucom dim -> ucom dim -> ucom dim
 | uapp1 : Unitary 1 -> nat -> ucom dim
 | uapp2 : Unitary 2 -> nat -> nat -> ucom dim.
 
