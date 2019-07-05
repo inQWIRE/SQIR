@@ -69,7 +69,7 @@ Local Open Scope R_scope.
 Local Open Scope C_scope.
 
 Definition balanced {n : nat} {u : ucom n} (P : boolean n u) : Prop :=
-  (n >= 1)%nat /\ count P = (2%R ^ (n - 1))%C.
+  count P = (2%R ^ (n - 1))%C.
 
 Definition constant {n : nat} {u : ucom n} (P : boolean n u) : Prop :=
   count P = 0%R \/ count P = (2%R ^ n)%C.

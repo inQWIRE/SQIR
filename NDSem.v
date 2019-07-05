@@ -18,18 +18,18 @@ Inductive nd_eval {dim : nat} : com dim -> Vector (2^dim) -> Vector (2^dim) -> P
       app1 u n / ψ ⇩ ((ueval1 dim n u) × ψ)
   | nd_app2 : forall (u : Unitary 2) (m n : nat) (ψ : Vector (2^dim)),
       app2 u m n / ψ ⇩ ((ueval_cnot dim m n) × ψ)
-  | nd_meas1 : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
-      let ψ' := @pad 1 n dim (∣0⟩⟨0∣) × ψ in
-      norm ψ' <> 0%R ->
-      c2 / ψ' ⇩ ψ'' ->
-      meas n c1 c2 / ψ ⇩ ψ'' 
-  | nd_meas0 : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
+  | nd_meas_t : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
       let ψ' := @pad 1 n dim (∣1⟩⟨1∣) × ψ in 
       norm ψ' <> 0%R -> (* better way to say this in terms of partial trace? *)
       c1 / ψ' ⇩ ψ'' ->
       meas n c1 c2 / ψ ⇩ ψ'' 
       (* Alternatively, we could scale the output state:
            meas n c1 c2 / ψ ⇩ (scale (/(norm ψ'')) ψ'') *)
+  | nd_meas_f : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
+      let ψ' := @pad 1 n dim (∣0⟩⟨0∣) × ψ in
+      norm ψ' <> 0%R ->
+      c2 / ψ' ⇩ ψ'' ->
+      meas n c1 c2 / ψ ⇩ ψ'' 
   | nd_seq : forall (c1 c2 : com dim) (ψ ψ' ψ'' : Vector (2^dim)),
       c1 / ψ ⇩ ψ' ->
       c2 / ψ' ⇩ ψ'' ->
@@ -185,31 +185,31 @@ Proof.
     dependent destruction H0;
     dependent destruction H1; 
     subst ψ' ψ'0.
-    + rewrite double_pad_00 in H0.
-      rewrite double_pad_00 in H1.
-      apply nd_meas1; assumption.
-    + contradict H0. 
-      rewrite double_pad_01.
-      unfold norm, dot.
-      rewrite Csum_0. 
-      simpl; rewrite sqrt_0; reflexivity.
-      intros; lca.
+    + rewrite double_pad_11 in H0.
+      rewrite double_pad_11 in H1.
+      apply nd_meas_t; assumption.
     + contradict H0.
       rewrite double_pad_10.
       unfold norm, dot.
       rewrite Csum_0. 
       simpl; rewrite sqrt_0; reflexivity.
       intros; lca.
-    + rewrite double_pad_11 in H0.
-      rewrite double_pad_11 in H1.
-      apply nd_meas0; assumption.
+    + contradict H0. 
+      rewrite double_pad_01.
+      unfold norm, dot.
+      rewrite Csum_0. 
+      simpl; rewrite sqrt_0; reflexivity.
+      intros; lca.
+    + rewrite double_pad_00 in H0.
+      rewrite double_pad_00 in H1.
+      apply nd_meas_f; assumption.
   - dependent destruction H; subst ψ'.
     + econstructor.
-      apply nd_meas1; try assumption.
+      apply nd_meas_t; try assumption.
       apply nd_skip.
-      apply nd_meas1; rewrite double_pad_00; assumption.
+      apply nd_meas_t; rewrite double_pad_11; assumption.
     + econstructor.
-      apply nd_meas0; try assumption.
+      apply nd_meas_f; try assumption.
       apply nd_skip.
-      apply nd_meas0; rewrite double_pad_11; assumption.
+      apply nd_meas_f; rewrite double_pad_00; assumption.
 Qed.
