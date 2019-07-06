@@ -1,3 +1,6 @@
 [submodule "lib/QWIRE"]
 	path = lib/QWIRE
 	url = https://github.com/inQWIRE/QWIRE
+[submodule "compiler/quipper-to-sqire/optimizer"]
+	path = compiler/quipper-to-sqire/optimizer
+	url = https://github.com/njross/optimizer
