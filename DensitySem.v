@@ -82,30 +82,6 @@ Proof.
   reflexivity. 
 Qed.
 
-(* TODO: These are useful lemmas. Put them somewhere useful! *)
-Lemma compose_super_eq : forall {m n p} (A : Matrix m n) (B : Matrix n p), 
-      compose_super (super A) (super B) = super (A × B).
-Proof.
-  intros.
-  unfold compose_super, super.
-  apply functional_extensionality. intros ρ.
-  rewrite Mmult_adjoint.
-  repeat rewrite Mmult_assoc.
-  reflexivity.
-Qed.
-
-Lemma pad_mult : forall n dim start (A B : Square (2^n)),
-  pad start dim A × pad start dim B = pad start dim (A × B).
-Proof.
-  intros.
-  unfold pad.
-  bdestruct (start + n <=? dim). 2: rewrite Mmult_0_l; reflexivity.
-  restore_dims_strong.
-  repeat rewrite kron_mixed_product.
-  Msimpl.
-  reflexivity.
-Qed.
-
 Lemma c_eval_reset : forall n dim ρ,
     c_eval (reset n) ρ = Splus (super (@pad 1 n dim (∣0⟩⟨0∣))) 
                                (super (@pad 1 n dim (∣0⟩⟨1∣))) ρ.

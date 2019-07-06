@@ -1,19 +1,20 @@
 Require Import List.
 Require Import Compose.
+Require Import Dirac.
 
 Open Scope ucom.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-Inductive boolean : nat -> ucom -> Set :=
-  | boolean_I : forall u, u ≡ uskip -> boolean 0 u
-  | boolean_X : forall u, u ≡ X 0 -> boolean 0 u
-  | boolean_U : forall u u1 u2 dim,
+Inductive boolean : forall n, ucom n -> Set :=
+  | boolean_I : forall u, u ≡ uskip -> boolean 1 u
+  | boolean_X : forall u, u ≡ X 0 -> boolean 1 u
+  | boolean_U : forall dim (u : ucom (S dim)) (u1 u2 : ucom dim),
                 boolean dim u1 -> boolean dim u2 ->
-                uc_eval (S (S dim)) u = (uc_eval (S dim) u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval (S dim) u2 ⊗ ∣1⟩⟨1∣) ->
+                uc_eval u = (uc_eval u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval u2 ⊗ ∣1⟩⟨1∣) ->
                 boolean (S dim) u.
 
-Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed (S dim) u.
+Lemma boolean_WT : forall dim u, boolean dim u -> uc_well_typed u.
 Proof.
   intros dim u H.
   apply WT_if_nonzero.
@@ -28,9 +29,9 @@ Proof.
     contradict F; nonzero.
   - rewrite e. clear -IHboolean1.
     intros F.
-    assert (Z1 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval (S dim) u2 ⊗ ∣1⟩⟨1∣) i j = C0).
+    assert (Z1 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval u2 ⊗ ∣1⟩⟨1∣) i j = C0).
     { clear. intros. unfold kron. rewrite H, H0.  replace (∣1⟩⟨1∣ 0 0) with C0 by solve_matrix. lca. }
-    assert (Z0 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval (S dim) u1 ⊗ ∣0⟩⟨0∣) i j = C0).
+    assert (Z0 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval u1 ⊗ ∣0⟩⟨0∣) i j = C0).
     { intros.
       apply (f_equal2_inv i j) in F.      
       unfold Mplus in F. rewrite Z1 in F; trivial.
@@ -50,7 +51,8 @@ Proof.
     auto.
 Qed.
   
-Fixpoint count {dim : nat} {U : ucom} (P : boolean dim U) : C :=
+(* Why not make this a function to nats? (Convert to R in DJ_count) *)
+Fixpoint count {n : nat} {u : ucom n} (P : boolean n u) : C :=
   match P with
   | boolean_I _ _ => 0%R
   | boolean_X _ _ => 1%R
@@ -63,88 +65,84 @@ Fixpoint nket (n : nat) (ψ : Matrix 2 1) : Matrix (2^n) 1 :=
   | S n' => (nket n' ψ) ⊗ ψ
   end.
 
-Notation "∣+⟩" := (/√2 .* ∣0⟩ .+ /√2 .* ∣1⟩)%C.
-Notation "∣-⟩" := (/√2 .* ∣0⟩ .+ (-/√2) .* ∣1⟩)%C.
+Local Open Scope R_scope.
+Local Open Scope C_scope.
 
-Definition balanced {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-  dim >= 1 /\ count P = (2%R ^ (dim - 1))%C.
+Definition balanced {n : nat} {u : ucom n} (P : boolean n u) : Prop :=
+  count P = (2%R ^ (n - 1))%C.
 
-Definition constant {dim : nat} {U : ucom} (P : boolean dim U) : Prop :=
-  count P = 0%R \/ count P = (2%R ^ dim)%C.
+Definition constant {n : nat} {u : ucom n} (P : boolean n u) : Prop :=
+  count P = 0%R \/ count P = (2%R ^ n)%C.
 
 Lemma deutsch_jozsa_count :
-  forall {dim : nat} {U : ucom} (P : boolean dim U) (ψ : Matrix 2 1),
-    (ψ ⊗ nket dim ∣+⟩)† × (uc_eval (S dim) U × (∣-⟩ ⊗ nket dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣-⟩).
+  forall {dim : nat} {U : ucom (S dim)} (P : boolean (S dim) U) (ψ : Matrix 2 1),
+    (ψ ⊗ nket dim ∣+⟩)† × (uc_eval U × (∣-⟩ ⊗ nket dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣-⟩).
 Proof.
   intros.
   remember ∣+⟩ as ψp. remember ∣-⟩ as ψm.
-  induction P.
+  induction dim; dependent destruction P.                                   
   - simpl. rewrite u0. simpl.
-    repeat rewrite kron_1_r. rewrite Mmult_1_l by (rewrite Heqψm; auto with wf_db).
+    repeat rewrite kron_1_r. rewrite Mmult_1_l by (subst; auto with wf_db). 
     autorewrite with C_db.
     symmetry. apply Mscale_1_l.
   - simpl. rewrite u0. unfold uc_eval. simpl. unfold ueval1, pad. simpl.
     simpl.
     repeat rewrite kron_1_r. rewrite kron_1_l by auto with wf_db.
-    replace (σx × ψm) with ((-1)%R .* ψm) by (rewrite Heqψm; solve_matrix).
+    replace (σx × ψm) with ((-1)%R .* ψm) by (subst; solve_matrix).
     rewrite Mscale_mult_dist_r.
     apply f_equal2. lca. reflexivity.
-  - replace (count (boolean_U u u1 u2 dim P1 P2 e))%C with (count P1 + count P2)%C by reflexivity.
-    repeat replace (nket (S dim) ψp) with (nket dim ψp ⊗ ψp) by reflexivity.
+  - inversion P1.
+  - simpl.
     rewrite e.
-    replace (2 ^ S dim) with (2 ^ dim * 2) by unify_pows_two.
-    repeat rewrite <- (@kron_assoc 2 1 (2 ^ dim) 1 2 1 _ _ _).
-    replace (2 ^ (S (S dim))) with (2 * 2 ^ dim * 2) by unify_pows_two. 
-    rewrite mult_assoc. replace (2 ^ dim * 2) with (2 * 2 ^ dim) by lia.
+    restore_dims_strong.
+    repeat rewrite <- kron_assoc.
+    restore_dims_strong.
+    setoid_rewrite kron_adjoint.
     rewrite Mmult_plus_distr_r.
-    rewrite kron_adjoint.
+    restore_dims_strong.
     rewrite Mmult_plus_distr_l.
     repeat rewrite kron_mixed_product.
+    setoid_rewrite (IHdim u1 P1).
+    setoid_rewrite (IHdim u2 P2).
     replace ((ψp) † × (∣0⟩⟨0∣ × ψp)) with ((1/2)%R .* I 1) by (rewrite Heqψp; solve_matrix).
     replace ((ψp) † × (∣1⟩⟨1∣ × ψp)) with ((1/2)%R .* I 1) by (rewrite Heqψp; solve_matrix).
     repeat rewrite Mscale_kron_dist_r.
-    repeat rewrite kron_1_r.
-    simpl in *. rewrite IHP1. rewrite IHP2.
-    rewrite <- Mscale_plus_distr_r.
+    restore_dims_strong.
+    Msimpl.
+    repeat rewrite Mscale_assoc.
     rewrite <- Mscale_plus_distr_l.
-    rewrite Mscale_assoc.
-    apply f_equal2.
-    rewrite Cinv_mult_distr. lca. 
-    apply C0_fst. simpl. lra.
+    apply f_equal2; trivial.
+    field_simplify_eq. lca.
+    split; try nonzero.
     apply Cpow_nonzero. lra.
-    reflexivity.
-Qed.
+Qed.    
 
-Fixpoint cpar (n : nat) (u : nat -> ucom) : ucom :=
+Fixpoint cpar {dim : nat} (n : nat) (u : nat -> ucom dim) : ucom dim :=
   match n with
   | 0 => uskip
   | S n' => cpar n' u ; u n'
   end.
 
-Lemma well_typed_cpar_H : forall (n : nat), uc_well_typed n (cpar n H).
+Lemma well_typed_cpar_H : forall (dim n : nat), (n <= dim)%nat -> @uc_well_typed dim (cpar n H).
 Proof.
   intros. induction n.
   - simpl. apply WT_uskip.
   - simpl. apply WT_seq.
-    apply (typed_pad _ 1 _). assumption.
-    apply WT_app. auto. 
-    unfold in_bounds. intros. inversion H. rewrite <- H0. 
-    lia. inversion H0. 
-    constructor. intro. inversion H. constructor.
+    apply IHn; lia.
+    apply WT_app1; lia. 
 Qed.
 
 Lemma WF_cpar_H : 
-  forall (n : nat), WF_Matrix (uc_eval n (cpar n H)).
+  forall (dim n : nat), WF_Matrix (@uc_eval dim (cpar n H)).
 Proof.
   intros. induction n.
   - simpl. auto with wf_db.
   - simpl. unfold ueval1, pad. simpl.
-    bdestructΩ (n + 1 <=? S n).
+    bdestructΩ (n + 1 <=? dim).
     apply WF_mult. auto with wf_db.
-    replace (S n) with (n + 1) by lia.
-    rewrite <- pad_dims_r.
-    simpl. apply WF_kron; auto with wf_db.
-    apply well_typed_cpar_H.
+    apply IHn.
+    rewrite Mmult_0_l.
+    apply WF_Zero.
 Qed.
 
 Lemma WF_nket : forall (n : nat)(ψ : Matrix 2 1), WF_Matrix ψ -> WF_Matrix (nket n ψ).
@@ -152,8 +150,16 @@ Proof.
   intros n ψ H. induction n; simpl; auto with wf_db.
 Qed.
 
+(*
+Lemma cpar_correct_H_aux : 
+  forall (dim n : nat) (ψ : Matrix 2 1) (WF : WF_Matrix ψ), 
+  (n < dim)%nat ->
+  (@uc_eval dim (cpar n H)) × (ψ ⊗ nket (dim - 1) ∣0⟩) 
+  = (hadamard × ψ) ⊗ nket n ∣+⟩ ⊗ nket (dim - n - 1) ∣0⟩.
+*)
+
 Lemma cpar_correct_H : 
-  forall (n : nat) (ψ : Matrix 2 1) (WF : WF_Matrix ψ), (uc_eval (S n) (cpar (S n) H)) × (ψ ⊗ nket n ∣0⟩) = (hadamard × ψ) ⊗ nket n ∣+⟩.
+  forall (n : nat) (ψ : Matrix 2 1) (WF : WF_Matrix ψ), (@uc_eval (S n) (cpar (S n) H)) × (ψ ⊗ nket n ∣0⟩) = (hadamard × ψ) ⊗ nket n ∣+⟩.
 Proof.
   intros.
   remember ∣+⟩ as ψp.
@@ -162,13 +168,30 @@ Proof.
     rewrite kron_1_l; auto with wf_db. 
     repeat rewrite kron_1_r; auto with wf_db.
     rewrite Mmult_1_r; auto with wf_db.
-  - replace (cpar (S (S n)) H) with (cpar (S n) H ; H (S n)) by reflexivity.
+  - replace (@cpar (S (S n)) (S (S n)) H) with (@cpar (S (S n)) (S n) H ; H (S n)) by reflexivity.
     replace (nket (S n) ψp) with (nket n ψp ⊗ ψp) by reflexivity.
     replace (nket (S n) ∣0⟩) with (nket n ∣0⟩ ⊗ ∣0⟩) by reflexivity.
     repeat replace (2 ^ S n) with (2 ^ n * 2) by unify_pows_two.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ n) 1 2 1 _ _ _).
-    remember (cpar (S n) H) as c.
     simpl.
+    unify_pows_two.
+    unfold ueval1, pad.
+    replace (S (S n) - 1 - S n)%nat with 0%nat by lia.
+    replace (S (S n) - 1 - n)%nat with 1%nat by lia.
+    simpl.
+    bdestructΩ (n + 1 <=? S n).
+    bdestructΩ (n + 1 <=? S (S n)).
+    Msimpl.
+    rewrite <- Mmult_assoc.
+    replace (2 ^ n + (2 ^ n + 0))%nat with (2 * 2 ^ n)%nat by unify_pows_two.
+    restore_dims_strong.
+    rewrite (kron_mixed_product (I (2 * 2 ^ n)) hadamard (I (2 ^ n) ⊗ hadamard) (I 2)).
+    Msimpl.
+    Set Printing Implicit.
+    simpl in IHn.
+    rewrite 
+
+
     replace (2 ^ n + (2 ^ n + 0) + (2 ^ n + (2 ^ n + 0) + 0)) with (2 * 2 ^ n * 2) by unify_pows_two.
     replace (2 ^ n + (2 ^ n + 0)) with (2 * 2 ^ n) by unify_pows_two.
     unfold ueval1, pad. simpl.
@@ -191,6 +214,10 @@ Proof.
     apply WF_cpar_H.
     rewrite Heqc. apply well_typed_cpar_H.
 Qed.
+
+Lemma cpar_correct_H : 
+  forall (n : nat) (ψ : Matrix 2 1) (WF : WF_Matrix ψ), (@uc_eval (S n) (cpar (S n) H)) × (ψ ⊗ nket n ∣0⟩) = (hadamard × ψ) ⊗ nket n ∣+⟩.
+
 
 Lemma cpar_H_self_adjoint :
   forall (n : nat), (uc_eval n (cpar n H))† = uc_eval n (cpar n H).
