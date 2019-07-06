@@ -36,13 +36,14 @@ The primary use case for SQIRE is as an IR in a verified compiler. The compiler 
 - ~~compiler/CompileFromQwire.v : (IN PROGRESS) Current progress on verified compilation from QWIRE programs to SQIRE programs.~~ (not up-to-date)
 - ~~compiler/BooleanCompilation.v : Verified compilation from boolean expressions to unitary SQIRE programs.~~ (not up-to-date)
 - compiler/Representations.v : Alternative representations of unitary SQIRE programs useful for implementing transformations.
+- compiler/Extraction.v : Code for extracting optimiation code to Ocaml.
 
 ### SQIRE for General Verification
 
 We also include several examples of using SQIRE for general verification. The files in the examples directory verify correctness properties of simple quantum algorithms.
 
 - examples/Deutsch.v    
-- ~~examples/DeutschJozsa.v~~ (not up-to-date)
+- examples/DeutschJozsa.v
 - examples/GHZ.v
 - examples/Superdense.v
-- ~~Examples/Teleport.v~~ (not up-to-date)    
+- Examples/Teleport.v    

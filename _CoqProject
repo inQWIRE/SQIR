@@ -1,18 +1,10 @@
 -R . Top
 
 lib/QWIRE/Complex.v
-lib/QWIRE/Contexts.v
-lib/QWIRE/DBCircuits.v
-lib/QWIRE/Denotation.v
 lib/QWIRE/Dirac.v
-lib/QWIRE/HOASCircuits.v
-lib/QWIRE/HOASLib.v
 lib/QWIRE/Matrix.v
-lib/QWIRE/Monad.v
-lib/QWIRE/Monoid.v
 lib/QWIRE/Prelim.v
 lib/QWIRE/Quantum.v
-lib/QWIRE/TypeChecking.v
 
 Compose.v
 DensitySem.v
@@ -22,8 +14,8 @@ UnitarySem.v
 
 compiler/Equivalences.v
 compiler/Mapping.v
-compiler/Optimizations.v
 compiler/Representations.v
+compiler/Optimizations.v
 
 examples/Deutsch.v
 examples/GHZ.v
