@@ -621,14 +621,14 @@ Fixpoint count_H_gates {dim} (l : gate_list dim) :=
   match l with
   | [] => 0
   | (App1 fU_H _) :: t => 1 + (count_H_gates t)
-  | _ :: t => 1 + (count_H_gates t)
+  | _ :: t => count_H_gates t
   end.
 
 Fixpoint count_X_gates {dim} (l : gate_list dim) :=
   match l with
   | [] => 0
   | (App1 fU_X _) :: t => 1 + (count_X_gates t)
-  | _ :: t => 1 + (count_X_gates t)
+  | _ :: t => count_X_gates t
   end.
 
 Fixpoint count_rotation_gates {dim} (l : gate_list dim) :=
@@ -639,14 +639,14 @@ Fixpoint count_rotation_gates {dim} (l : gate_list dim) :=
   | (App1 fU_PDAG _) :: t 
   | (App1 fU_T _) :: t
   | (App1 fU_TDAG _) :: t => 1 + (count_rotation_gates t)
-  | _ :: t => 1 + (count_rotation_gates t)
+  | _ :: t => count_rotation_gates t
   end.
 
 Fixpoint count_CNOT_gates {dim} (l : gate_list dim) :=
   match l with
   | [] => 0
   | (App2 fU_CNOT _ _) :: t => 1 + (count_CNOT_gates t)
-  | _ :: t => 1 + (count_CNOT_gates t)
+  | _ :: t => count_CNOT_gates t
   end.
 
 

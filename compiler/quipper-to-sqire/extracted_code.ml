@@ -177,25 +177,51 @@ let rec does_not_reference l q =
 
 let rec count_H_gates = function
 | [] -> 0
-| _ :: t -> add (Pervasives.succ 0) (count_H_gates t)
+| g :: t ->
+  (match g with
+   | App1 (f, _) ->
+     (match f with
+      | FU_H -> add (Pervasives.succ 0) (count_H_gates t)
+      | _ -> count_H_gates t)
+   | App2 (_, _, _) -> count_H_gates t)
 
 (** val count_X_gates : gate_list -> int **)
 
 let rec count_X_gates = function
 | [] -> 0
-| _ :: t -> add (Pervasives.succ 0) (count_X_gates t)
+| g :: t ->
+  (match g with
+   | App1 (f, _) ->
+     (match f with
+      | FU_X -> add (Pervasives.succ 0) (count_X_gates t)
+      | _ -> count_X_gates t)
+   | App2 (_, _, _) -> count_X_gates t)
 
 (** val count_rotation_gates : gate_list -> int **)
 
 let rec count_rotation_gates = function
 | [] -> 0
-| _ :: t -> add (Pervasives.succ 0) (count_rotation_gates t)
+| g :: t ->
+  (match g with
+   | App1 (f, _) ->
+     (match f with
+      | FU_H -> count_rotation_gates t
+      | FU_X -> count_rotation_gates t
+      | FU_CNOT -> count_rotation_gates t
+      | _ -> add (Pervasives.succ 0) (count_rotation_gates t))
+   | App2 (_, _, _) -> count_rotation_gates t)
 
 (** val count_CNOT_gates : gate_list -> int **)
 
 let rec count_CNOT_gates = function
 | [] -> 0
-| _ :: t -> add (Pervasives.succ 0) (count_CNOT_gates t)
+| g :: t ->
+  (match g with
+   | App1 (_, _) -> count_CNOT_gates t
+   | App2 (f, _, _) ->
+     (match f with
+      | FU_CNOT -> add (Pervasives.succ 0) (count_CNOT_gates t)
+      | _ -> count_CNOT_gates t))
 
 type benchmark_gate_app =
 | Bench_H of int
