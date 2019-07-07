@@ -578,6 +578,118 @@ Fixpoint apply_H_equivalences {dim} (l : gate_list dim) (n: nat) : gate_list dim
 Definition hadamard_reduction {dim} (l : gate_list dim) : gate_list dim := 
   apply_H_equivalences l (2 * (length l)).
 
+Definition uc_cong {dim : nat} (c1 c2 : ucom dim) :=
+  exists ϕ, uc_eval c1 = Cexp ϕ .* uc_eval c2.
+Infix "≅" := uc_cong (at level 70).
+
+Lemma uc_cong_refl : forall {dim : nat} (c1 : ucom dim), c1 ≅ c1.
+Proof. intros. exists 0%R. rewrite eulers0. rewrite Mscale_1_l. reflexivity. Qed.
+
+Lemma euler_plus : forall x y : R, Cmult (Cexp x) (Cexp y) = Cexp (x + y).
+Proof.
+Admitted.
+
+Lemma uc_cong_sym : forall {dim : nat} (c1 c2 : ucom dim), c1 ≅ c2 -> c2 ≅ c1.
+Proof.
+  intros. inversion H.
+  exists (Ropp x). rewrite H0. rewrite Mscale_assoc. rewrite euler_plus.
+  rewrite Rplus_comm.
+  rewrite Rplus_opp_r. rewrite eulers0. rewrite Mscale_1_l. reflexivity.
+Qed.
+
+Lemma uc_cong_trans : forall {dim : nat} (c1 c2 c3 : ucom dim), c1 ≅ c2 -> c2 ≅ c3 -> c1 ≅ c3.
+Proof.
+  intros. inversion H. inversion H0.
+  exists (x + x0)%R. rewrite H1. rewrite H2.
+  rewrite Mscale_assoc.
+  rewrite euler_plus. reflexivity.
+Qed.
+
+Definition uc_cong_l {dim} (l1 l2 : gate_list dim) := 
+  (list_to_ucom l1) ≅ (list_to_ucom l2).
+Infix "≅l≅" := uc_cong_l (at level 20).
+
+Require Import Setoid.
+
+Lemma uc_seq_cong : forall {dim : nat} (c1 c1' c2 c2' : ucom dim),
+    c1 ≅ c1' -> c2 ≅ c2' -> c1; c2 ≅ c1'; c2'.
+Proof.
+  intros dim c1 c1' c2 c2' Ec1 Ec2.
+  inversion Ec1. inversion Ec2.
+  exists (x + x0)%R. simpl.
+  rewrite H. rewrite H0.
+  rewrite Mscale_mult_dist_r.
+  rewrite Mscale_mult_dist_l.
+  rewrite Mscale_assoc.
+  rewrite euler_plus.
+  reflexivity.
+Qed.
+
+Add Parametric Relation (dim : nat) : (ucom dim) (@uc_cong dim)
+  reflexivity proved by uc_cong_refl
+  symmetry proved by uc_cong_sym
+  transitivity proved by uc_cong_trans
+  as uc_cong_rel.
+
+Add Parametric Morphism (dim : nat) : (@useq dim) 
+  with signature (@uc_cong dim) ==> (@uc_cong dim) ==> (@uc_cong dim) as useq_mor.
+Proof. intros. apply uc_seq_cong; assumption. Qed.
+
+Lemma uc_cong_l_refl : forall {dim : nat} (l1 : gate_list dim), l1 ≅l≅ l1.
+Proof. intros. exists 0%R. rewrite eulers0. rewrite Mscale_1_l. reflexivity. Qed.
+
+Lemma uc_cong_l_sym : forall {dim : nat} (l1 l2 : gate_list dim), l1 ≅l≅ l2 -> l2 ≅l≅ l1.
+Proof. intros. unfold uc_cong_l in *. rewrite H. reflexivity. Qed.
+
+Lemma uc_cong_l_trans : forall {dim : nat} (l1 l2 l3 : gate_list dim), l1 ≅l≅ l2 -> l2 ≅l≅ l3 -> l1 ≅l≅ l3.
+Proof.
+  intros.
+  unfold uc_cong_l in *.
+  eapply uc_cong_trans. apply H. apply H0.
+Qed.  
+
+Lemma uc_cong_l_cons_congruence : forall {dim : nat} (g : gate_app dim) (l l' : gate_list dim),
+  l ≅l≅ l' -> (g :: l) ≅l≅ (g :: l').
+Proof.
+  intros. unfold uc_cong_l in *.
+  simpl.
+  inversion H.
+  destruct g; exists x; simpl; rewrite <- Mscale_mult_dist_l; rewrite H0; reflexivity.
+Qed.
+
+Lemma uc_cong_l_app_congruence : forall {dim : nat} (l l' m m': gate_list dim),
+  l ≅l≅ l' -> m ≅l≅ m' -> (m ++ l) ≅l≅ (m' ++ l').
+Proof.
+  intros.
+  unfold uc_cong_l in *.
+  inversion H. inversion H0.
+  exists (x + x0)%R.
+  repeat rewrite uc_eval_l_app.
+  rewrite <- Mscale_mult_dist_l. rewrite H1. rewrite H2. 
+  Search scale Mmult.
+  rewrite Mscale_mult_dist_r.
+  rewrite Mscale_mult_dist_l.
+  rewrite Mscale_assoc.
+  rewrite euler_plus.
+  rewrite Rplus_comm.
+  rewrite Mscale_mult_dist_l.
+  reflexivity.
+Qed.
+    
+Add Parametric Relation (dim : nat) : (gate_list dim) (@uc_cong_l dim)
+  reflexivity proved by uc_cong_l_refl
+  symmetry proved by uc_cong_l_sym
+  transitivity proved by uc_cong_l_trans
+  as uc_cong_l_rel.
+
+Add Parametric Morphism (dim : nat) : (@cons (gate_app dim))
+  with signature eq ==> (@uc_cong_l dim) ==> (@uc_cong_l dim) as cons_mor.
+Proof. intros. apply uc_cong_l_cons_congruence. easy. Qed.
+
+Add Parametric Morphism (dim : nat) : (@app (gate_app dim))
+  with signature (@uc_cong_l dim) ==> (@uc_cong_l dim) ==> (@uc_cong_l dim) as app_mor.
+Proof. intros x y H x0 y0 H0. apply uc_cong_l_app_congruence; easy. Qed.
+
 (* The issue is proving that (H P H) = (P† H P†). This is only true up
    to a phase of θ=PI/4. Equivalences 2, 4, and 5 also require equality
    up to a phase. *)
@@ -585,8 +697,7 @@ Lemma apply_H_equivalence1_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l =l= l'.
 Proof.
-  intros.
-  eapply replace_single_qubit_pattern_sound. 
+  intros. eapply replace_single_qubit_pattern_sound. 
   2: { apply H. }
   unfold uc_equiv_l, uc_equiv, uc_eval, ueval1, pad; simpl.
   bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
@@ -596,6 +707,70 @@ Proof.
   assert (hadamard × phase_shift (PI / 2) × hadamard = phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
   { admit. }
   rewrite H1.
+  reflexivity.
+Admitted.
+
+Lemma remove_single_qubit_pattern_correct' : forall {dim} (l l' : gate_list dim) (q : nat) (pat : single_qubit_pattern),
+  remove_single_qubit_pattern l q pat = Some l' ->
+  l ≅l≅ ((single_qubit_pattern_to_program pat q) ++ l').
+Proof.
+  exists 0%R. rewrite eulers0. rewrite Mscale_1_l.
+  intros.
+  generalize dependent l'.
+  generalize dependent l.
+  induction pat; intros.
+  - inversion H; subst. reflexivity.
+  - simpl in H. 
+    remember (next_single_qubit_gate l q) as next_gate.
+    symmetry in Heqnext_gate.
+    destruct next_gate; try easy.
+    destruct p. 
+    remember (match_gate a f) as gate_match.
+    destruct gate_match; try easy.
+    symmetry in Heqgate_match.
+    rewrite match_gate_refl in Heqgate_match; subst.
+    simpl.
+    rewrite <- (IHpat _ _ H). 
+    apply (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+Qed.
+
+Lemma replace_single_qubit_pattern_sound' : forall {dim} (l l' : gate_list dim) (q : nat) (pat rep : single_qubit_pattern),
+  @uc_cong_l dim (single_qubit_pattern_to_program pat q) (single_qubit_pattern_to_program rep q) ->
+  replace_single_qubit_pattern l q pat rep = Some l' ->
+  l ≅l≅ l'.
+Proof.
+  intros.
+  unfold replace_single_qubit_pattern in H0.
+  remember (remove_single_qubit_pattern l q pat) as remove_pat.
+  destruct remove_pat; try easy.
+  symmetry in Heqremove_pat.
+  apply remove_single_qubit_pattern_correct' in Heqremove_pat.
+  inversion H0; subst.
+  rewrite Heqremove_pat. rewrite H. reflexivity.
+Qed.
+
+Lemma apply_H_equivalence1_sound' : forall {dim} (l l' : gate_list dim) q,
+  apply_H_equivalence1 q l = Some l' ->
+  l ≅l≅ l'.
+Proof.
+  intros.
+  eapply replace_single_qubit_pattern_sound'.
+  2 : { apply H. }
+  exists (PI / 4)%R.
+  unfold uc_eval, ueval1, pad; simpl.
+  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  Msimpl. 
+  restore_dims_strong; repeat rewrite kron_mixed_product.
+  Msimpl.
+  assert (hadamard × phase_shift (PI / 2) × hadamard = (Cexp (PI / 4)%R) .* phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
+  { solve_matrix. unfold Cexp. 
+    rewrite cos_PI4, sin_PI4, sin_PI2, cos_PI2.  
+    admit. admit. admit. admit.
+  }
+  rewrite H1.
+  solve_matrix.
+  Search Zero.
+  rewrite Mscale_0_r.
   reflexivity.
 Admitted.
 
