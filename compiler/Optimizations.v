@@ -876,7 +876,6 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  Search phase_shift.
   rewrite phase_mul.
   replace (- PI / 2 + PI / 2)%R with 0%R by lra.
   rewrite phase_0.
@@ -896,10 +895,10 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 4) × phase_shift (PI / 2)) with (phase_shift (PI / 4)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul.
+  replace (- PI / 4 + PI / 2)%R with (PI/4)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma PDAG_Z_commute : forall {dim} (l : gate_list dim) q, 
   _PDAG q :: _Z q :: l =l= _Z q :: _PDAG q :: l.
@@ -911,7 +910,8 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (σz × phase_shift (- PI / 2)) with (phase_shift (- PI / 2) × σz) by solve_matrix.
+  rewrite <- phase_pi. rewrite 2 phase_mul. 
+  rewrite Rplus_comm.
   reflexivity.
 Qed.
 
@@ -925,7 +925,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 2) × phase_shift (- PI / 2)) with (phase_shift (- PI / 2) × phase_shift (PI / 2)) by solve_matrix.
+  rewrite 2 phase_mul. rewrite Rplus_comm.
   reflexivity.
 Qed.
 
@@ -939,10 +939,11 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 2) × phase_shift (- PI / 2)) with σz.
-  2: { solve_matrix. admit. }
+  rewrite phase_mul. 
+  replace (- PI / 2 + - PI / 2)%R with (-PI)%R by lra.
+  rewrite phase_neg_pi.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma PDAG_T_combine : forall {dim} (l : gate_list dim) q, 
   _PDAG q :: _T q :: l =l= _TDAG q :: l.
@@ -954,10 +955,10 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 4) × phase_shift (- PI / 2)) with (phase_shift (- PI / 4)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul.
+  replace (PI / 4 + - PI / 2)%R with (-PI/4)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma T_PDAG_commute : forall {dim} (l : gate_list dim) q, 
   _T q :: _PDAG q :: l =l= _PDAG q :: _T q :: l.
@@ -969,7 +970,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 2) × phase_shift (PI / 4)) with (phase_shift (PI / 4)× phase_shift (- PI / 2)) by solve_matrix. 
+  rewrite 2 phase_mul. rewrite Rplus_comm.
   reflexivity.
 Qed.
 
@@ -983,13 +984,13 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 4) × phase_shift (PI / 4)) with (I (2 ^ 1)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul. replace (- PI / 4 + PI / 4)%R with 0%R by lra.
+  rewrite phase_0.
   Msimpl.
   unify_pows_two.
   replace (q + 1 + (dim - 1 - q)) with dim by lia.
   apply Mmult_1_r; auto with wf_db.
-Admitted.
+Qed.
 
 Lemma T_T_combine : forall {dim} (l : gate_list dim) q, 
   _T q :: _T q :: l =l= _P q :: l.
@@ -1001,10 +1002,9 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 4) × phase_shift (PI / 4)) with (phase_shift (PI / 2)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul. replace (PI / 4 + PI / 4)%R with (PI/2)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma TDAG_P_commute : forall {dim} (l : gate_list dim) q, 
   _TDAG q :: _P q :: l =l= _P q :: _TDAG q :: l.
@@ -1016,7 +1016,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 2) × phase_shift (- PI / 4)) with (phase_shift (- PI / 4) × phase_shift (PI / 2)) by solve_matrix. 
+  rewrite 2 phase_mul. rewrite Rplus_comm.
   reflexivity.
 Qed.
 
@@ -1030,8 +1030,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 4) × phase_shift (- PI / 4)) with (phase_shift (- PI / 4) × phase_shift (PI / 4)) by solve_matrix.
-  Msimpl.
+  rewrite 2 phase_mul, Rplus_comm.
   reflexivity.
 Qed.
 
@@ -1045,10 +1044,10 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 4) × phase_shift (- PI / 4)) with (phase_shift (- PI / 2)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul. 
+  replace (- PI / 4 + - PI / 4)%R with (-PI/2)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma CNOT_CNOT_cancel : forall {dim} (l1 l2 : gate_list dim) q1 q2, 
   q1 < dim -> q2 < dim -> q1 <> q2 -> l1 ++ [_CNOT q1 q2] ++ [_CNOT q1 q2] ++ l2 =l= l1 ++ l2.
