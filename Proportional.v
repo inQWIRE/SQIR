@@ -1,15 +1,5 @@
-Require Import Matrix.
+Require Import Phase.
 Require Import Setoid.
-
-(* Important Cexp lemmas *)
-Lemma Cexp_add: forall (x y : R), Cexp (x + y) = Cexp x * Cexp y.
-Proof.
-  intros.
-  unfold Cexp.
-  apply c_proj_eq; simpl.
-  - apply cos_plus.
-  - rewrite sin_plus. field.
-Qed.
 
 Definition proportional {m n : nat} (A B : Matrix m n) := 
   exists θ, A = Cexp θ .* B. 
@@ -76,3 +66,14 @@ Add Parametric Morphism (m n o : nat) : (@Mmult m n o)
   with signature (@proportional m n) ==> (@proportional n o) ==> 
                                      (@proportional m o) as useq_mor.
 Proof. intros x y H x0 y0 H0. apply Mmult_proportional_compat; easy. Qed.
+
+(* Example: *)
+
+Lemma phase_X : forall θ, phase_shift θ × σx ∝ σx × phase_shift (- θ).
+Proof.
+  intros. 
+  exists θ.
+  solve_matrix.
+  rewrite Cexp_mul_neg_r.
+  reflexivity.
+Qed.
