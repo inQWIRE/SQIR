@@ -190,7 +190,7 @@ Add Parametric Relation (dim : nat) : (gate_list dim) (@uc_cong_l dim)
   transitivity proved by uc_cong_l_trans
   as uc_cong_l_rel.
 
-Add Parametric Morphism (dim : nat) : (@cons (gate_app dim))
+Add Parametric Morphism (dim : nat) : (@List.cons (gate_app dim))
   with signature eq ==> (@uc_cong_l dim) ==> (@uc_cong_l dim) as cons_mor.
 Proof. intros. apply uc_cong_l_cons_congruence. easy. Qed.
 
