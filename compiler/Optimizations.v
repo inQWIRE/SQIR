@@ -675,16 +675,17 @@ Proof.
   Msimpl.
   assert (hadamard × phase_shift (PI / 2) × hadamard = (Cexp (PI / 4)%R) .* phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
   { solve_matrix. 
-    Search (-_/_)%R.
     all: try rewrite Ropp_div, Cexp_neg; rewrite Cexp_PI4, Cexp_PI2.
-    (* the new `Cfield_simplify` can handle. *)
     all: C_field_simplify; try nonzero.
   }
   rewrite H1.
-  solve_matrix.
+  repeat rewrite Mscale_mult_dist_l.
+  repeat rewrite Mscale_kron_dist_r.  
+  rewrite Mscale_kron_dist_l.
+  reflexivity.
   rewrite Mscale_0_r.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma apply_H_equivalence2_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence2 q l = Some l' ->
