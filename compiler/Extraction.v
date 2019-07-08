@@ -28,7 +28,6 @@ Extraction Implicit match_gate [n].
 Extraction Implicit TOFF [dim].
 Extraction Implicit next_single_qubit_gate [dim].
 Extraction Implicit next_two_qubit_gate [dim].
-(*
 Extraction Implicit does_not_reference [dim].
 Extraction Implicit count_H_gates [dim].
 Extraction Implicit count_X_gates [dim].
@@ -64,8 +63,8 @@ Extraction Implicit propagate_T [dim].
 Extraction Implicit propagate_TDAG [dim].
 Extraction Implicit cancel_gates [dim].
 Extraction Implicit single_qubit_gate_cancellation [dim].
-*)
 
-(* Perform extraction. *)
-Recursive Extraction benchmark_to_list count_H_gates count_X_gates count_rotation_gates count_CNOT_gates rm_nots hadamard_reduction cancel_gates_simple single_qubit_gate_cancellation.
+
+(* Perform extraction to the file 'quipper-to-sqire/extracted_code.ml'. *)
+Extraction "quipper-to-sqire/extracted_code.ml" benchmark_to_list count_H_gates count_X_gates count_rotation_gates count_CNOT_gates rm_nots hadamard_reduction cancel_gates_simple single_qubit_gate_cancellation.
 
