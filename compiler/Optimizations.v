@@ -642,6 +642,24 @@ Proof.
   rewrite Heqremove_pat. rewrite H. reflexivity.
 Qed.
 
+(* New C_field_simplify/nonzero that deal with Ci *)
+Ltac nonzero :=
+  repeat split;
+   try match goal with
+       | |- not (@eq _ ?x (RtoC (IZR Z0))) => apply RtoC_neq
+       | |- not (@eq _ Ci (RtoC (IZR Z0))) => apply C0_snd_neq; simpl
+       end;
+   repeat
+    match goal with
+    | |- not (@eq _ (sqrt ?x) (IZR Z0)) => apply sqrt_neq_0_compat
+    | |- not (@eq _ (Rinv ?x) (IZR Z0)) => apply Rinv_neq_0_compat
+    end; match goal with
+         | |- not (@eq _ _ _) => lra
+         | |- Rlt _ _ => lra
+         end.
+
+Ltac C_field_simplify := repeat field_simplify_eq [ Csqrt2_sqrt Csqrt2_inv Ci2].
+
 Lemma apply_H_equivalence1_sound' : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l ≅l≅ l'.
@@ -660,7 +678,7 @@ Proof.
     Search (-_/_)%R.
     all: try rewrite Ropp_div, Cexp_neg; rewrite Cexp_PI4, Cexp_PI2.
     (* the new `Cfield_simplify` can handle. *)
-    admit. admit. admit. admit.
+    all: C_field_simplify; try nonzero.
   }
   rewrite H1.
   solve_matrix.
