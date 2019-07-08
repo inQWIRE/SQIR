@@ -6,6 +6,8 @@ lib/QWIRE/Matrix.v
 lib/QWIRE/Prelim.v
 lib/QWIRE/Quantum.v
 
+Phase.v
+Proportional.v
 Compose.v
 DensitySem.v
 NDSem.v

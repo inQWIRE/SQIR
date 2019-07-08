@@ -1,6 +1,8 @@
+Require Import Phase.
 Require Import UnitarySem.
 Require Import Representations.
 Require Import Equivalences.
+Require Import Proportional.
 Open Scope ucom.
 
 (********************************)
@@ -594,8 +596,74 @@ Proof.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
   assert (hadamard × phase_shift (PI / 2) × hadamard = phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
-  { admit. }
+  admit.
+
   rewrite H1.
+  reflexivity.
+Admitted.
+
+Lemma remove_single_qubit_pattern_correct' : forall {dim} (l l' : gate_list dim) (q : nat) (pat : single_qubit_pattern),
+  remove_single_qubit_pattern l q pat = Some l' ->
+  l ≅l≅ ((single_qubit_pattern_to_program pat q) ++ l').
+Proof.
+  exists 0%R. rewrite eulers0. rewrite Mscale_1_l.
+  intros.
+  generalize dependent l'.
+  generalize dependent l.
+  induction pat; intros.
+  - inversion H; subst. reflexivity.
+  - simpl in H. 
+    remember (next_single_qubit_gate l q) as next_gate.
+    symmetry in Heqnext_gate.
+    destruct next_gate; try easy.
+    destruct p. 
+    remember (match_gate a f) as gate_match.
+    destruct gate_match; try easy.
+    symmetry in Heqgate_match.
+    rewrite match_gate_refl in Heqgate_match; subst.
+    simpl.
+    rewrite <- (IHpat _ _ H). 
+    apply (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+Qed.
+
+Lemma replace_single_qubit_pattern_sound' : forall {dim} (l l' : gate_list dim) (q : nat) (pat rep : single_qubit_pattern),
+  @uc_cong_l dim (single_qubit_pattern_to_program pat q) (single_qubit_pattern_to_program rep q) ->
+  replace_single_qubit_pattern l q pat rep = Some l' ->
+  l ≅l≅ l'.
+Proof.
+  intros.
+  unfold replace_single_qubit_pattern in H0.
+  remember (remove_single_qubit_pattern l q pat) as remove_pat.
+  destruct remove_pat; try easy.
+  symmetry in Heqremove_pat.
+  apply remove_single_qubit_pattern_correct' in Heqremove_pat.
+  inversion H0; subst.
+  rewrite Heqremove_pat. rewrite H. reflexivity.
+Qed.
+
+Lemma apply_H_equivalence1_sound' : forall {dim} (l l' : gate_list dim) q,
+  apply_H_equivalence1 q l = Some l' ->
+  l ≅l≅ l'.
+Proof.
+  intros.
+  eapply replace_single_qubit_pattern_sound'.
+  2 : { apply H. }
+  exists (PI / 4)%R.
+  unfold uc_eval, ueval1, pad; simpl.
+  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  Msimpl. 
+  restore_dims_strong; repeat rewrite kron_mixed_product.
+  Msimpl.
+  assert (hadamard × phase_shift (PI / 2) × hadamard = (Cexp (PI / 4)%R) .* phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
+  { solve_matrix. 
+    Search (-_/_)%R.
+    all: try rewrite Ropp_div, Cexp_neg; rewrite Cexp_PI4, Cexp_PI2.
+    (* the new `Cfield_simplify` can handle. *)
+    admit. admit. admit. admit.
+  }
+  rewrite H1.
+  solve_matrix.
+  rewrite Mscale_0_r.
   reflexivity.
 Admitted.
 
@@ -815,10 +883,10 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 2) × σz) with (phase_shift (- PI / 2)). 
-  2: { solve_matrix. admit. }
+  rewrite <- phase_neg_pi. rewrite phase_mul. 
+  replace (PI / 2 + - PI)%R with (- PI / 2)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma Z_PDAG_combine : forall {dim} (l : gate_list dim) q, 
   _Z q :: _PDAG q :: l =l= _P q :: l.
@@ -830,10 +898,10 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 2) × σz) with (phase_shift (PI / 2)).
-  2: { solve_matrix. admit. }
+  rewrite <- phase_pi. rewrite phase_mul. 
+  replace (- PI / 2 + PI)%R with (PI / 2)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma P_Z_commute : forall {dim} (l : gate_list dim) q, 
   _P q :: _Z q :: l =l= _Z q :: _P q :: l.
@@ -845,7 +913,8 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (σz × phase_shift (PI / 2)) with (phase_shift (PI / 2) × σz) by solve_matrix.
+  rewrite <- phase_neg_pi. rewrite 2 phase_mul. 
+  replace (- PI + PI / 2)%R with (PI / 2 + - PI)%R by lra.
   reflexivity.
 Qed.
 
@@ -859,8 +928,8 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 2) × phase_shift (PI / 2)) with σz.
-  2: { solve_matrix. rewrite eulers_identity2. lca. }
+  rewrite <- phase_pi. rewrite phase_mul. 
+  replace (PI / 2 + PI / 2)%R with PI by lra.
   reflexivity.
 Qed.
 
@@ -874,13 +943,14 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 2) × phase_shift (PI / 2)) with (I (2 ^ 1)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul.
+  replace (- PI / 2 + PI / 2)%R with 0%R by lra.
+  rewrite phase_0.
   Msimpl.
   unify_pows_two.
   replace (q + 1 + (dim - 1 - q)) with dim by lia.
   apply Mmult_1_r; auto with wf_db.
-Admitted.
+Qed.
 
 Lemma P_TDAG_combine : forall {dim} (l : gate_list dim) q, 
   _P q :: _TDAG q :: l =l= _T q :: l.
@@ -892,10 +962,10 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 4) × phase_shift (PI / 2)) with (phase_shift (PI / 4)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul.
+  replace (- PI / 4 + PI / 2)%R with (PI/4)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma PDAG_Z_commute : forall {dim} (l : gate_list dim) q, 
   _PDAG q :: _Z q :: l =l= _Z q :: _PDAG q :: l.
@@ -907,7 +977,8 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (σz × phase_shift (- PI / 2)) with (phase_shift (- PI / 2) × σz) by solve_matrix.
+  rewrite <- phase_pi. rewrite 2 phase_mul. 
+  rewrite Rplus_comm.
   reflexivity.
 Qed.
 
@@ -921,7 +992,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 2) × phase_shift (- PI / 2)) with (phase_shift (- PI / 2) × phase_shift (PI / 2)) by solve_matrix.
+  rewrite 2 phase_mul. rewrite Rplus_comm.
   reflexivity.
 Qed.
 
@@ -935,10 +1006,11 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 2) × phase_shift (- PI / 2)) with σz.
-  2: { solve_matrix. admit. }
+  rewrite phase_mul. 
+  replace (- PI / 2 + - PI / 2)%R with (-PI)%R by lra.
+  rewrite phase_neg_pi.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma PDAG_T_combine : forall {dim} (l : gate_list dim) q, 
   _PDAG q :: _T q :: l =l= _TDAG q :: l.
@@ -950,10 +1022,10 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 4) × phase_shift (- PI / 2)) with (phase_shift (- PI / 4)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul.
+  replace (PI / 4 + - PI / 2)%R with (-PI/4)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma T_PDAG_commute : forall {dim} (l : gate_list dim) q, 
   _T q :: _PDAG q :: l =l= _PDAG q :: _T q :: l.
@@ -965,7 +1037,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 2) × phase_shift (PI / 4)) with (phase_shift (PI / 4)× phase_shift (- PI / 2)) by solve_matrix. 
+  rewrite 2 phase_mul. rewrite Rplus_comm.
   reflexivity.
 Qed.
 
@@ -979,13 +1051,13 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 4) × phase_shift (PI / 4)) with (I (2 ^ 1)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul. replace (- PI / 4 + PI / 4)%R with 0%R by lra.
+  rewrite phase_0.
   Msimpl.
   unify_pows_two.
   replace (q + 1 + (dim - 1 - q)) with dim by lia.
   apply Mmult_1_r; auto with wf_db.
-Admitted.
+Qed.
 
 Lemma T_T_combine : forall {dim} (l : gate_list dim) q, 
   _T q :: _T q :: l =l= _P q :: l.
@@ -997,10 +1069,9 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 4) × phase_shift (PI / 4)) with (phase_shift (PI / 2)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul. replace (PI / 4 + PI / 4)%R with (PI/2)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma TDAG_P_commute : forall {dim} (l : gate_list dim) q, 
   _TDAG q :: _P q :: l =l= _P q :: _TDAG q :: l.
@@ -1012,7 +1083,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 2) × phase_shift (- PI / 4)) with (phase_shift (- PI / 4) × phase_shift (PI / 2)) by solve_matrix. 
+  rewrite 2 phase_mul. rewrite Rplus_comm.
   reflexivity.
 Qed.
 
@@ -1026,8 +1097,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (PI / 4) × phase_shift (- PI / 4)) with (phase_shift (- PI / 4) × phase_shift (PI / 4)) by solve_matrix.
-  Msimpl.
+  rewrite 2 phase_mul, Rplus_comm.
   reflexivity.
 Qed.
 
@@ -1041,10 +1111,10 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (phase_shift (- PI / 4) × phase_shift (- PI / 4)) with (phase_shift (- PI / 2)).
-  2: { solve_matrix. admit. }
+  rewrite phase_mul. 
+  replace (- PI / 4 + - PI / 4)%R with (-PI/2)%R by lra.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma CNOT_CNOT_cancel : forall {dim} (l1 l2 : gate_list dim) q1 q2, 
   q1 < dim -> q2 < dim -> q1 <> q2 -> l1 ++ [_CNOT q1 q2] ++ [_CNOT q1 q2] ++ l2 =l= l1 ++ l2.
