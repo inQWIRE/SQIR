@@ -663,7 +663,6 @@ Proof.
   }
   rewrite H1.
   solve_matrix.
-  Search Zero.
   rewrite Mscale_0_r.
   reflexivity.
 Admitted.
