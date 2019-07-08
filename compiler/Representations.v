@@ -1,6 +1,7 @@
 Require Import Setoid.
 Require Import Equivalences.
 Require Import Coq.Reals.ROrderedType.
+Require Export List.
 
 Local Open Scope ucom_scope.
 
@@ -618,36 +619,42 @@ Admitted.
 (* Count the gates in a program. *)
 Local Close Scope C_scope.
 Fixpoint count_H_gates {dim} (l : gate_list dim) :=
-  match l with
-  | [] => 0
-  | (App1 fU_H _) :: t => 1 + (count_H_gates t)
-  | _ :: t => count_H_gates t
-  end.
+  let fix aux l acc :=
+    match l with
+    | [] => acc
+    | (App1 fU_H _) :: t => aux t (acc + 1)
+    | _ :: t => aux t acc
+    end in
+  aux l 0.
 
 Fixpoint count_X_gates {dim} (l : gate_list dim) :=
-  match l with
-  | [] => 0
-  | (App1 fU_X _) :: t => 1 + (count_X_gates t)
-  | _ :: t => count_X_gates t
-  end.
+  let fix aux l acc :=
+    match l with
+    | [] => acc
+    | (App1 fU_X _) :: t => aux t (acc + 1)
+    | _ :: t => aux t acc
+    end in
+  aux l 0.
 
 Fixpoint count_rotation_gates {dim} (l : gate_list dim) :=
-  match l with
-  | [] => 0
-  | (App1 fU_Z _) :: t 
-  | (App1 fU_P _) :: t
-  | (App1 fU_PDAG _) :: t 
-  | (App1 fU_T _) :: t
-  | (App1 fU_TDAG _) :: t => 1 + (count_rotation_gates t)
-  | _ :: t => count_rotation_gates t
-  end.
+  let fix aux l acc :=
+    match l with
+    | [] => acc
+    | (App1 fU_Z _) :: t | (App1 fU_P _) :: t 
+    | (App1 fU_PDAG _) :: t | (App1 fU_T _) :: t 
+    | (App1 fU_TDAG _) :: t => aux t (acc + 1)
+    | _ :: t => aux t acc
+    end in
+  aux l 0.
 
 Fixpoint count_CNOT_gates {dim} (l : gate_list dim) :=
-  match l with
-  | [] => 0
-  | (App2 fU_CNOT _ _) :: t => 1 + (count_CNOT_gates t)
-  | _ :: t => count_CNOT_gates t
-  end.
+  let fix aux l acc :=
+    match l with
+    | [] => acc
+    | (App2 fU_CNOT _ _) :: t => aux t (acc + 1)
+    | _ :: t => aux t acc
+    end in
+  aux l 0.
 
 
 (*******************************)

@@ -86,14 +86,14 @@ Definition uc_cong {dim : nat} (c1 c2 : ucom dim) :=
 Infix "≅" := uc_cong (at level 70).
 
 Lemma uc_cong_refl : forall {dim : nat} (c1 : ucom dim), c1 ≅ c1.
-Proof. intros. exists 0%R. rewrite eulers0. rewrite Mscale_1_l. reflexivity. Qed.
+Proof. intros. exists 0%R. rewrite Cexp_0. rewrite Mscale_1_l. reflexivity. Qed.
 
 Lemma uc_cong_sym : forall {dim : nat} (c1 c2 : ucom dim), c1 ≅ c2 -> c2 ≅ c1.
 Proof.
   intros. inversion H.
   exists (Ropp x). rewrite H0. rewrite Mscale_assoc. rewrite <- Cexp_add.
   rewrite Rplus_comm.
-  rewrite Rplus_opp_r. rewrite eulers0. rewrite Mscale_1_l. reflexivity.
+  rewrite Rplus_opp_r. rewrite Cexp_0. rewrite Mscale_1_l. reflexivity.
 Qed.
 
 Lemma uc_cong_trans : forall {dim : nat} (c1 c2 c3 : ucom dim), c1 ≅ c2 -> c2 ≅ c3 -> c1 ≅ c3.
@@ -102,6 +102,13 @@ Proof.
   exists (x + x0)%R. rewrite H1. rewrite H2.
   rewrite Mscale_assoc.
   rewrite Cexp_add. reflexivity.
+Qed.
+
+Lemma uc_equiv_cong : forall {dim : nat} (c c' : ucom dim), (c ≡ c')%ucom -> c ≅ c'.
+Proof.
+  intros.
+  exists 0. rewrite Cexp_0, Mscale_1_l. 
+  apply H.
 Qed.
 
 Require Import Representations.
@@ -137,7 +144,7 @@ Add Parametric Morphism (dim : nat) : (@useq dim)
 Proof. intros. apply uc_seq_cong; assumption. Qed.
 
 Lemma uc_cong_l_refl : forall {dim : nat} (l1 : gate_list dim), l1 ≅l≅ l1.
-Proof. intros. exists 0%R. rewrite eulers0. rewrite Mscale_1_l. reflexivity. Qed.
+Proof. intros. exists 0%R. rewrite Cexp_0. rewrite Mscale_1_l. reflexivity. Qed.
 
 Lemma uc_cong_l_sym : forall {dim : nat} (l1 l2 : gate_list dim), l1 ≅l≅ l2 -> l2 ≅l≅ l1.
 Proof. intros. unfold uc_cong_l in *. rewrite H. reflexivity. Qed.
@@ -183,10 +190,17 @@ Add Parametric Relation (dim : nat) : (gate_list dim) (@uc_cong_l dim)
   transitivity proved by uc_cong_l_trans
   as uc_cong_l_rel.
 
-Add Parametric Morphism (dim : nat) : (@cons (gate_app dim))
+Add Parametric Morphism (dim : nat) : (@List.cons (gate_app dim))
   with signature eq ==> (@uc_cong_l dim) ==> (@uc_cong_l dim) as cons_mor.
 Proof. intros. apply uc_cong_l_cons_congruence. easy. Qed.
 
 Add Parametric Morphism (dim : nat) : (@app (gate_app dim))
   with signature (@uc_cong_l dim) ==> (@uc_cong_l dim) ==> (@uc_cong_l dim) as app_mor.
 Proof. intros x y H x0 y0 H0. apply uc_cong_l_app_congruence; easy. Qed.
+
+Lemma uc_equiv_cong_l : forall {dim : nat} (c c' : gate_list dim), c =l= c' -> c ≅l≅ c'.
+Proof.
+  intros.
+  exists 0. rewrite Cexp_0, Mscale_1_l. 
+  apply H.
+Qed.

@@ -1,5 +1,6 @@
 -R . Top
 
+lib/QWIRE/RealAux.v
 lib/QWIRE/Complex.v
 lib/QWIRE/Dirac.v
 lib/QWIRE/Matrix.v
@@ -15,7 +16,6 @@ SQIRE.v
 UnitarySem.v
 
 compiler/Equivalences.v
-compiler/Mapping.v
 compiler/Representations.v
 compiler/Optimizations.v
 

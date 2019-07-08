@@ -3,6 +3,7 @@ Require Import UnitarySem.
 Require Import Representations.
 Require Import Equivalences.
 Require Import Proportional.
+Require Import List.
 Open Scope ucom.
 
 (********************************)
@@ -587,7 +588,8 @@ Lemma apply_H_equivalence1_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l =l= l'.
 Proof.
-  intros. eapply replace_single_qubit_pattern_sound. 
+  intros.
+  eapply replace_single_qubit_pattern_sound. 
   2: { apply H. }
   unfold uc_equiv_l, uc_equiv, uc_eval, ueval1, pad; simpl.
   bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
@@ -595,7 +597,8 @@ Proof.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
   assert (hadamard × phase_shift (PI / 2) × hadamard = phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
-  { admit. }
+  admit.
+
   rewrite H1.
   reflexivity.
 Admitted.
@@ -653,13 +656,14 @@ Proof.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
   assert (hadamard × phase_shift (PI / 2) × hadamard = (Cexp (PI / 4)%R) .* phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
-  { solve_matrix. unfold Cexp. 
-    rewrite cos_PI4, sin_PI4, sin_PI2, cos_PI2.  
+  { solve_matrix. 
+    Search (-_/_)%R.
+    all: try rewrite Ropp_div, Cexp_neg; rewrite Cexp_PI4, Cexp_PI2.
+    (* the new `Cfield_simplify` can handle. *)
     admit. admit. admit. admit.
   }
   rewrite H1.
   solve_matrix.
-  Search Zero.
   rewrite Mscale_0_r.
   reflexivity.
 Admitted.
@@ -745,72 +749,72 @@ Proof. intros. apply apply_H_equivalences_sound. Qed.
 
    The extra n argument is to help Coq recognize termination.
    We start with n = (length l). *)
-Fixpoint cancel_gates_simple' {dim} (l : gate_list dim) (n: nat) : gate_list dim :=
+Fixpoint cancel_gates_simple' {dim} (l acc : gate_list dim) (n: nat) : gate_list dim :=
   match n with
-  | 0 => l
+  | 0 => (rev acc) ++ l
   | S n' => match l with
-           | [] => []
+           | [] => rev acc
            | App1 fU_H q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_H, t') => cancel_gates_simple' t' n'
-               | _ => _H q :: (cancel_gates_simple' t n')
+               | Some (fU_H, t') => cancel_gates_simple' t' acc n'
+               | _ => cancel_gates_simple' t (_H q :: acc) n'
                end
            | App1 fU_X q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_X, t') => cancel_gates_simple' t' n'
-               | _ => _X q :: (cancel_gates_simple' t n')
+               | Some (fU_X, t') => cancel_gates_simple' t' acc n'
+               | _ => cancel_gates_simple' t (_X q :: acc) n'
                end
            | App1 fU_Z q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_Z, t') => cancel_gates_simple' t' n'
-               | Some (fU_P, t') => cancel_gates_simple' (_PDAG q :: t') n'
-               | Some (fU_PDAG, t') => cancel_gates_simple' (_P q :: t') n'
-               | _ => _Z q :: (cancel_gates_simple' t n')
+               | Some (fU_Z, t') => cancel_gates_simple' t' acc n'
+               | Some (fU_P, t') => cancel_gates_simple' (_PDAG q :: t') acc n'
+               | Some (fU_PDAG, t') => cancel_gates_simple' (_P q :: t') acc n'
+               | _ => cancel_gates_simple' t (_Z q :: acc) n'
                end
            | App1 fU_P q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_Z, t') => cancel_gates_simple' (_PDAG q :: t') n'
-               | Some (fU_P, t') => cancel_gates_simple' (_Z q :: t') n'
-               | Some (fU_PDAG, t') => cancel_gates_simple' t' n'
-               | Some (fU_TDAG, t') => cancel_gates_simple' (_T q :: t') n'
-               | _ => _P q :: (cancel_gates_simple' t n')
+               | Some (fU_Z, t') => cancel_gates_simple' (_PDAG q :: t') acc n'
+               | Some (fU_P, t') => cancel_gates_simple' (_Z q :: t') acc n'
+               | Some (fU_PDAG, t') => cancel_gates_simple' t' acc n'
+               | Some (fU_TDAG, t') => cancel_gates_simple' (_T q :: t') acc n'
+               | _ => cancel_gates_simple' t (_P q :: acc) n'
                end
            | App1 fU_PDAG q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_Z, t') => cancel_gates_simple' (_P q :: t') n'
-               | Some (fU_P, t') => cancel_gates_simple' t' n'
-               | Some (fU_PDAG, t') => cancel_gates_simple' (_Z q :: t') n'
-               | Some (fU_T, t') => cancel_gates_simple' (_TDAG q :: t') n'
-               | _ => _PDAG q :: (cancel_gates_simple' t n')
+               | Some (fU_Z, t') => cancel_gates_simple' (_P q :: t') acc n'
+               | Some (fU_P, t') => cancel_gates_simple' t' acc n'
+               | Some (fU_PDAG, t') => cancel_gates_simple' (_Z q :: t') acc n'
+               | Some (fU_T, t') => cancel_gates_simple' (_TDAG q :: t') acc n'
+               | _ => cancel_gates_simple' t (_PDAG q :: acc) n'
                end
            | App1 fU_T q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_PDAG, t') => cancel_gates_simple' (_TDAG q :: t') n'
-               | Some (fU_T, t') => cancel_gates_simple' (_P q :: t') n'
-               | Some (fU_TDAG, t') => cancel_gates_simple' t' n'
-               | _ => _T q :: (cancel_gates_simple' t n')
+               | Some (fU_PDAG, t') => cancel_gates_simple' (_TDAG q :: t') acc n'
+               | Some (fU_T, t') => cancel_gates_simple' (_P q :: t') acc n'
+               | Some (fU_TDAG, t') => cancel_gates_simple' t' acc n'
+               | _ => cancel_gates_simple' t (_T q :: acc) n'
                end
            | App1 fU_TDAG q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_P, t') => cancel_gates_simple' (_T q :: t') n'
-               | Some (fU_T, t') => cancel_gates_simple' t' n'
-               | Some (fU_TDAG, t') => cancel_gates_simple' (_PDAG q :: t') n'
-               | _ => _TDAG q :: (cancel_gates_simple' t n')
+               | Some (fU_P, t') => cancel_gates_simple' (_T q :: t') acc n'
+               | Some (fU_T, t') => cancel_gates_simple' t' acc n'
+               | Some (fU_TDAG, t') => cancel_gates_simple' (_PDAG q :: t') acc n'
+               | _ => cancel_gates_simple' t (_TDAG q :: acc) n'
                end
            | App2 fU_CNOT q1 q2 :: t => 
                match next_two_qubit_gate t q1 with
                | Some (l1, q1', q2', l2) => 
                    if (q1 =? q1') && (q2 =? q2') && (does_not_reference l1 q2)
-                   then cancel_gates_simple' (l1 ++ l2) n'
-                   else _CNOT q1 q2 :: (cancel_gates_simple' t n')
-               | _ => _CNOT q1 q2 :: (cancel_gates_simple' t n')
+                   then cancel_gates_simple' (l1 ++ l2) acc n'
+                   else cancel_gates_simple' t (_CNOT q1 q2 :: acc) n'
+               | _ => cancel_gates_simple' t (_CNOT q1 q2 :: acc) n'
                end
            | _ => [] (* impossible case for well-formed gate_list *)
            end
   end.
 
 Definition cancel_gates_simple {dim} (l : gate_list dim) : gate_list dim := 
-  cancel_gates_simple' l (List.length l).
+  cancel_gates_simple' l [] (List.length l).
 
 
 (* Useful identities. *)
@@ -1185,83 +1189,117 @@ Proof.
     rewrite list_to_ucom_append; reflexivity.
 Qed.
 
-Lemma cancel_gates_simple'_sound : forall {dim} (l : gate_list dim) n,
-  uc_well_typed_l l -> l =l= cancel_gates_simple' l n.
+Lemma cancel_gates_simple'_sound : forall {dim} (l acc : gate_list dim) n,
+  uc_well_typed_l l -> (rev acc) ++ l =l= cancel_gates_simple' l acc n.
 Proof.
   intros.
+  generalize dependent acc.
   generalize dependent l.
   induction n; try easy.
   intros l WT; simpl.
-  destruct l; try reflexivity.
+  destruct l; intros; try (rewrite app_nil_r; reflexivity).
   destruct g.
   - dependent destruction f;
     remember (next_single_qubit_gate l n0) as next_gate;
     symmetry in Heqnext_gate; inversion WT.
     + (* H *)
-      destruct next_gate; try (rewrite <- IHn; try reflexivity; assumption).
-      destruct p; dependent destruction f; rewrite <- IHn; 
-      try reflexivity; try assumption.
-      apply nsqg_preserves_semantics in Heqnext_gate.
-      rewrite Heqnext_gate.
+      destruct next_gate.
+      2: { rewrite <- IHn; try assumption.
+           simpl; rewrite <- app_assoc. 
+           reflexivity. }
+      destruct p; dependent destruction f; rewrite <- IHn;
+      try (simpl; rewrite <- app_assoc; reflexivity);
+      try assumption.
+      rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+      apply app_congruence; try reflexivity.
       apply H_H_cancel; assumption.
-      apply nsqg_WT in Heqnext_gate; assumption.
+      apply (nsqg_WT _ _ _ _ Heqnext_gate H3).
     + (* X *)
-      destruct next_gate; try (rewrite <- IHn; try reflexivity; assumption).
-      destruct p; dependent destruction f; rewrite <- IHn; 
-      try reflexivity; try assumption.
-      apply nsqg_preserves_semantics in Heqnext_gate.
-      rewrite Heqnext_gate.
+      destruct next_gate.
+      2: { rewrite <- IHn; try assumption.
+           simpl; rewrite <- app_assoc. 
+           reflexivity. }
+      destruct p; dependent destruction f; rewrite <- IHn;
+      try (simpl; rewrite <- app_assoc; reflexivity);
+      try assumption.
+      rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+      apply app_congruence; try reflexivity.
       apply X_X_cancel; assumption.
-      apply nsqg_WT in Heqnext_gate; assumption.
+      apply (nsqg_WT _ _ _ _ Heqnext_gate H3).
     + (* Z *)
-      destruct next_gate; try (rewrite <- IHn; try reflexivity; assumption).
-      destruct p; dependent destruction f; rewrite <- IHn; 
-      try (apply nsqg_preserves_semantics in Heqnext_gate; rewrite Heqnext_gate);
-      try constructor; 
-      try apply nsqg_WT in Heqnext_gate; 
-      try reflexivity; try assumption.
+      destruct next_gate.
+      2: { rewrite <- IHn; try assumption.
+           simpl; rewrite <- app_assoc. 
+           reflexivity. }
+      destruct p; dependent destruction f; rewrite <- IHn;
+      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
+      try (simpl; rewrite <- app_assoc; reflexivity);
+      try constructor;
+      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
+      try assumption;
+      try apply app_congruence; try reflexivity.
       apply Z_Z_cancel; assumption.
       apply Z_P_combine.
       apply Z_PDAG_combine.
     + (* P *)
-      destruct next_gate; try (rewrite <- IHn; try reflexivity; assumption).
-      destruct p; dependent destruction f; rewrite <- IHn; 
-      try (apply nsqg_preserves_semantics in Heqnext_gate; rewrite Heqnext_gate);
-      try constructor; 
-      try apply nsqg_WT in Heqnext_gate; 
-      try reflexivity; try assumption.
+      destruct next_gate.
+      2: { rewrite <- IHn; try assumption.
+           simpl; rewrite <- app_assoc. 
+           reflexivity. }
+      destruct p; dependent destruction f; rewrite <- IHn;
+      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
+      try (simpl; rewrite <- app_assoc; reflexivity);
+      try constructor;
+      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
+      try assumption;
+      try apply app_congruence; try reflexivity.
       rewrite <- Z_P_combine. apply P_Z_commute.
       apply P_P_combine. 
       apply P_PDAG_cancel; assumption.
       apply P_TDAG_combine.
     + (* PDAG *)
-      destruct next_gate; try (rewrite <- IHn; try reflexivity; assumption).
-      destruct p; dependent destruction f; rewrite <- IHn; 
-      try (apply nsqg_preserves_semantics in Heqnext_gate; rewrite Heqnext_gate);
-      try constructor; 
-      try apply nsqg_WT in Heqnext_gate; 
-      try reflexivity; try assumption.
+      destruct next_gate.
+      2: { rewrite <- IHn; try assumption.
+           simpl; rewrite <- app_assoc. 
+           reflexivity. }
+      destruct p; dependent destruction f; rewrite <- IHn;
+      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
+      try (simpl; rewrite <- app_assoc; reflexivity);
+      try constructor;
+      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
+      try assumption;
+      try apply app_congruence; try reflexivity.
       rewrite <- Z_PDAG_combine. apply PDAG_Z_commute.
       rewrite <- (P_PDAG_cancel g n0 H1) at 2. apply PDAG_P_commute.
       apply PDAG_PDAG_combine.
       apply PDAG_T_combine.
     + (* T *)
-      destruct next_gate; try (rewrite <- IHn; try reflexivity; assumption).
-      destruct p; dependent destruction f; rewrite <- IHn; 
-      try (apply nsqg_preserves_semantics in Heqnext_gate; rewrite Heqnext_gate);
-      try constructor; 
-      try apply nsqg_WT in Heqnext_gate; 
-      try reflexivity; try assumption.
+      destruct next_gate.
+      2: { rewrite <- IHn; try assumption.
+           simpl; rewrite <- app_assoc. 
+           reflexivity. }
+      destruct p; dependent destruction f; rewrite <- IHn;
+      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
+      try (simpl; rewrite <- app_assoc; reflexivity);
+      try constructor;
+      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
+      try assumption;
+      try apply app_congruence; try reflexivity.
       rewrite <- PDAG_T_combine. apply T_PDAG_commute.
       apply T_T_combine. 
       apply T_TDAG_cancel; assumption.
     + (* TDAG *)
-      destruct next_gate; try (rewrite <- IHn; try reflexivity; assumption).
-      destruct p; dependent destruction f; rewrite <- IHn; 
-      try (apply nsqg_preserves_semantics in Heqnext_gate; rewrite Heqnext_gate);
-      try constructor; 
-      try apply nsqg_WT in Heqnext_gate; 
-      try reflexivity; try assumption.
+      destruct next_gate.
+      2: { rewrite <- IHn; try assumption.
+           simpl; rewrite <- app_assoc. 
+           reflexivity. }
+      destruct p; dependent destruction f; rewrite <- IHn;
+      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
+      try (simpl; rewrite <- app_assoc; reflexivity);
+      try constructor;
+      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
+      try assumption;
+      try apply app_congruence; try reflexivity.
       rewrite <- P_TDAG_combine. apply TDAG_P_commute.
       rewrite <- (T_TDAG_cancel g n0 H1) at 2. apply TDAG_T_commute.
       apply TDAG_TDAG_combine.
@@ -1270,13 +1308,17 @@ Proof.
     remember (next_two_qubit_gate l n0) as next_gate;
     symmetry in Heqnext_gate; 
     inversion WT.
-    destruct next_gate; try (rewrite <- IHn; try reflexivity; assumption).
+    destruct next_gate.
+    2: { rewrite <- IHn; try assumption.
+         simpl; rewrite <- app_assoc. 
+         reflexivity. }
     destruct p; destruct p; destruct p.
     bdestruct (n0 =? n4); bdestruct (n1 =? n3); simpl;
-    try (rewrite <- IHn; try reflexivity; assumption).
+    try (rewrite <- IHn; try assumption; simpl; rewrite <- app_assoc; reflexivity).
     subst.
     remember (does_not_reference g0 n3) as dnr; symmetry in Heqdnr.
-    destruct dnr; simpl; try (rewrite <- IHn; try reflexivity; assumption).
+    destruct dnr; simpl; 
+    try (rewrite <- IHn; try assumption; simpl; rewrite <- app_assoc; reflexivity).
     specialize (ntqg_preserves_semantics _ _ _ _ _ _ Heqnext_gate) as H7.
     rewrite H7.
     rewrite <- IHn.
@@ -1285,6 +1327,7 @@ Proof.
     rewrite app_assoc.
     rewrite (does_not_reference_commutes_app2 g0 fU_CNOT n4 n3 H8 Heqdnr).
     repeat rewrite <- app_assoc.
+    apply app_congruence; try reflexivity.
     apply CNOT_CNOT_cancel; assumption.
     specialize (ntqg_WT _ _ _ _ _ _ Heqnext_gate H6) as [H8 H9].
     apply uc_well_typed_l_app; assumption.
@@ -1292,7 +1335,13 @@ Qed.
 
 Lemma cancel_gates_simple_sound : forall {dim} (l : gate_list dim),
   uc_well_typed_l l -> l =l= cancel_gates_simple l.
-Proof. intros. apply cancel_gates_simple'_sound. assumption. Qed.
+Proof. 
+  intros. 
+  unfold cancel_gates_simple.
+  rewrite <- cancel_gates_simple'_sound.
+  reflexivity. 
+  assumption. 
+Qed.
 
 (* Small test *)
 Definition test1 : gate_list 4 := (_H 1) :: (_P 0) :: (_CNOT 2 3) :: (_P 0) :: (_H 1) :: (_Z 1) :: (_PDAG 0) :: (_CNOT 2 3) :: (_T 0) :: [].
