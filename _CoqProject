@@ -1,5 +1,6 @@
 -R . Top
 
+lib/QWIRE/RealAux.v
 lib/QWIRE/Complex.v
 lib/QWIRE/Dirac.v
 lib/QWIRE/Matrix.v

@@ -3,6 +3,7 @@ Require Import UnitarySem.
 Require Import Representations.
 Require Import Equivalences.
 Require Import Proportional.
+Require Import List.
 Open Scope ucom.
 
 (********************************)
