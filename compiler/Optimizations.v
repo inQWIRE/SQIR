@@ -587,7 +587,8 @@ Lemma apply_H_equivalence1_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l =l= l'.
 Proof.
-  intros. eapply replace_single_qubit_pattern_sound. 
+  intros.
+  eapply replace_single_qubit_pattern_sound. 
   2: { apply H. }
   unfold uc_equiv_l, uc_equiv, uc_eval, ueval1, pad; simpl.
   bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
@@ -595,7 +596,8 @@ Proof.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
   assert (hadamard × phase_shift (PI / 2) × hadamard = phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
-  { admit. }
+  admit.
+
   rewrite H1.
   reflexivity.
 Admitted.
@@ -653,8 +655,10 @@ Proof.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
   assert (hadamard × phase_shift (PI / 2) × hadamard = (Cexp (PI / 4)%R) .* phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
-  { solve_matrix. unfold Cexp. 
-    rewrite cos_PI4, sin_PI4, sin_PI2, cos_PI2.  
+  { solve_matrix. 
+    Search (-_/_)%R.
+    all: try rewrite Ropp_div, Cexp_neg; rewrite Cexp_PI4, Cexp_PI2.
+    (* the new `Cfield_simplify` can handle. *)
     admit. admit. admit. admit.
   }
   rewrite H1.
