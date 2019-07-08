@@ -16,7 +16,6 @@ SQIRE.v
 UnitarySem.v
 
 compiler/Equivalences.v
-compiler/Mapping.v
 compiler/Representations.v
 compiler/Optimizations.v
 

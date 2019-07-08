@@ -21,13 +21,74 @@ let rec add = (+)
 
 let rec mul = ( * )
 
+type positive =
+| XI of positive
+| XO of positive
+| XH
+
+type n =
+| N0
+| Npos of positive
+
 module Nat =
  struct
  end
 
+type r (* AXIOM TO BE REALIZED *)
+
 (** val rev : 'a1 list -> 'a1 list **)
 
 let rec rev = List.rev
+
+type ascii =
+| Ascii of bool * bool * bool * bool * bool * bool * bool * bool
+
+(** val zero : ascii **)
+
+let zero =
+  Ascii (false, false, false, false, false, false, false, false)
+
+(** val one : ascii **)
+
+let one =
+  Ascii (true, false, false, false, false, false, false, false)
+
+(** val shift : bool -> ascii -> ascii **)
+
+let shift c = function
+| Ascii (a1, a2, a3, a4, a5, a6, a7, _) -> Ascii (c, a1, a2, a3, a4, a5, a6, a7)
+
+(** val ascii_of_pos : positive -> ascii **)
+
+let ascii_of_pos =
+  let rec loop n0 p =
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ -> zero)
+      (fun n' ->
+      match p with
+      | XI p' -> shift true (loop n' p')
+      | XO p' -> shift false (loop n' p')
+      | XH -> one)
+      n0
+  in loop (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
+       (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))))))))
+
+(** val ascii_of_N : n -> ascii **)
+
+let ascii_of_N = function
+| N0 -> zero
+| Npos p -> ascii_of_pos p
+
+type string =
+| EmptyString
+| String of ascii * string
+
+(** val append : string -> string -> string **)
+
+let rec append s1 s2 =
+  match s1 with
+  | EmptyString -> s2
+  | String (c, s1') -> String (c, (append s1' s2))
 
 type fUnitary =
 | FU_H
@@ -74,43 +135,43 @@ type gate_app =
 
 (** val _H : int -> gate_app **)
 
-let _H n =
-  App1 (FU_H, n)
+let _H n0 =
+  App1 (FU_H, n0)
 
 (** val _X : int -> gate_app **)
 
-let _X n =
-  App1 (FU_X, n)
+let _X n0 =
+  App1 (FU_X, n0)
 
 (** val _Z : int -> gate_app **)
 
-let _Z n =
-  App1 (FU_Z, n)
+let _Z n0 =
+  App1 (FU_Z, n0)
 
 (** val _P : int -> gate_app **)
 
-let _P n =
-  App1 (FU_P, n)
+let _P n0 =
+  App1 (FU_P, n0)
 
 (** val _PDAG : int -> gate_app **)
 
-let _PDAG n =
-  App1 (FU_PDAG, n)
+let _PDAG n0 =
+  App1 (FU_PDAG, n0)
 
 (** val _T : int -> gate_app **)
 
-let _T n =
-  App1 (FU_T, n)
+let _T n0 =
+  App1 (FU_T, n0)
 
 (** val _TDAG : int -> gate_app **)
 
-let _TDAG n =
-  App1 (FU_TDAG, n)
+let _TDAG n0 =
+  App1 (FU_TDAG, n0)
 
 (** val _CNOT : int -> int -> gate_app **)
 
-let _CNOT m n =
-  App2 (FU_CNOT, m, n)
+let _CNOT m n0 =
+  App2 (FU_CNOT, m, n0)
 
 type gate_list = gate_app list
 
@@ -122,17 +183,17 @@ let rec next_single_qubit_gate l q =
   | [] -> None
   | g :: t ->
     (match g with
-     | App1 (u, n) ->
-       if (=) n q
+     | App1 (u, n0) ->
+       if (=) n0 q
        then Some (u, t)
        else (match next_single_qubit_gate t q with
-             | Some p -> let (u', l') = p in Some (u', ((App1 (u, n)) :: l'))
+             | Some p -> let (u', l') = p in Some (u', ((App1 (u, n0)) :: l'))
              | None -> None)
-     | App2 (u, m, n) ->
-       if (||) ((=) m q) ((=) n q)
+     | App2 (u, m, n0) ->
+       if (||) ((=) m q) ((=) n0 q)
        then None
        else (match next_single_qubit_gate t q with
-             | Some p -> let (u', l') = p in Some (u', ((App2 (u, m, n)) :: l'))
+             | Some p -> let (u', l') = p in Some (u', ((App2 (u, m, n0)) :: l'))
              | None -> None))
 
 (** val next_two_qubit_gate :
@@ -143,23 +204,23 @@ let rec next_two_qubit_gate l q =
   | [] -> None
   | g :: t ->
     (match g with
-     | App1 (u, n) ->
-       if (=) n q
+     | App1 (u, n0) ->
+       if (=) n0 q
        then None
        else (match next_two_qubit_gate t q with
              | Some p ->
                let (p0, l2) = p in
                let (p1, n') = p0 in
-               let (l1, m') = p1 in Some (((((App1 (u, n)) :: l1), m'), n'), l2)
+               let (l1, m') = p1 in Some (((((App1 (u, n0)) :: l1), m'), n'), l2)
              | None -> None)
-     | App2 (u, m, n) ->
-       if (||) ((=) m q) ((=) n q)
-       then Some ((([], m), n), t)
+     | App2 (u, m, n0) ->
+       if (||) ((=) m q) ((=) n0 q)
+       then Some ((([], m), n0), t)
        else (match next_two_qubit_gate t q with
              | Some p ->
                let (p0, l2) = p in
                let (p1, n') = p0 in
-               let (l1, m') = p1 in Some (((((App2 (u, m, n)) :: l1), m'), n'), l2)
+               let (l1, m') = p1 in Some (((((App2 (u, m, n0)) :: l1), m'), n'), l2)
              | None -> None))
 
 (** val does_not_reference : gate_list -> int -> bool **)
@@ -169,59 +230,71 @@ let rec does_not_reference l q =
   | [] -> true
   | g :: t ->
     (match g with
-     | App1 (_, n) -> (&&) (negb ((=) n q)) (does_not_reference t q)
-     | App2 (_, m, n) ->
-       (&&) (negb ((||) ((=) m q) ((=) n q))) (does_not_reference t q))
+     | App1 (_, n0) -> (&&) (negb ((=) n0 q)) (does_not_reference t q)
+     | App2 (_, m, n0) ->
+       (&&) (negb ((||) ((=) m q) ((=) n0 q))) (does_not_reference t q))
 
 (** val count_H_gates : gate_list -> int **)
 
-let rec count_H_gates = function
-| [] -> 0
-| g :: t ->
-  (match g with
-   | App1 (f, _) ->
-     (match f with
-      | FU_H -> add (Pervasives.succ 0) (count_H_gates t)
-      | _ -> count_H_gates t)
-   | App2 (_, _, _) -> count_H_gates t)
+let rec count_H_gates l =
+  let rec aux l0 acc =
+    match l0 with
+    | [] -> acc
+    | y :: t ->
+      (match y with
+       | App1 (f, _) ->
+         (match f with
+          | FU_H -> aux t (add acc (Pervasives.succ 0))
+          | _ -> aux t acc)
+       | App2 (_, _, _) -> aux t acc)
+  in aux l 0
 
 (** val count_X_gates : gate_list -> int **)
 
-let rec count_X_gates = function
-| [] -> 0
-| g :: t ->
-  (match g with
-   | App1 (f, _) ->
-     (match f with
-      | FU_X -> add (Pervasives.succ 0) (count_X_gates t)
-      | _ -> count_X_gates t)
-   | App2 (_, _, _) -> count_X_gates t)
+let rec count_X_gates l =
+  let rec aux l0 acc =
+    match l0 with
+    | [] -> acc
+    | y :: t ->
+      (match y with
+       | App1 (f, _) ->
+         (match f with
+          | FU_X -> aux t (add acc (Pervasives.succ 0))
+          | _ -> aux t acc)
+       | App2 (_, _, _) -> aux t acc)
+  in aux l 0
 
 (** val count_rotation_gates : gate_list -> int **)
 
-let rec count_rotation_gates = function
-| [] -> 0
-| g :: t ->
-  (match g with
-   | App1 (f, _) ->
-     (match f with
-      | FU_H -> count_rotation_gates t
-      | FU_X -> count_rotation_gates t
-      | FU_CNOT -> count_rotation_gates t
-      | _ -> add (Pervasives.succ 0) (count_rotation_gates t))
-   | App2 (_, _, _) -> count_rotation_gates t)
+let rec count_rotation_gates l =
+  let rec aux l0 acc =
+    match l0 with
+    | [] -> acc
+    | y :: t ->
+      (match y with
+       | App1 (f, _) ->
+         (match f with
+          | FU_H -> aux t acc
+          | FU_X -> aux t acc
+          | FU_CNOT -> aux t acc
+          | _ -> aux t (add acc (Pervasives.succ 0)))
+       | App2 (_, _, _) -> aux t acc)
+  in aux l 0
 
 (** val count_CNOT_gates : gate_list -> int **)
 
-let rec count_CNOT_gates = function
-| [] -> 0
-| g :: t ->
-  (match g with
-   | App1 (_, _) -> count_CNOT_gates t
-   | App2 (f, _, _) ->
-     (match f with
-      | FU_CNOT -> add (Pervasives.succ 0) (count_CNOT_gates t)
-      | _ -> count_CNOT_gates t))
+let rec count_CNOT_gates l =
+  let rec aux l0 acc =
+    match l0 with
+    | [] -> acc
+    | y :: t ->
+      (match y with
+       | App1 (_, _) -> aux t acc
+       | App2 (f, _, _) ->
+         (match f with
+          | FU_CNOT -> aux t (add acc (Pervasives.succ 0))
+          | _ -> aux t acc))
+  in aux l 0
 
 type benchmark_gate_app =
 | Bench_H of int
@@ -243,11 +316,11 @@ let rec benchmark_to_list = function
 | [] -> []
 | b :: t ->
   (match b with
-   | Bench_H n -> (App1 (FU_H, n)) :: (benchmark_to_list t)
-   | Bench_X n -> (App1 (FU_X, n)) :: (benchmark_to_list t)
-   | Bench_Z n -> (App1 (FU_Z, n)) :: (benchmark_to_list t)
-   | Bench_CNOT (m, n) -> (App2 (FU_CNOT, m, n)) :: (benchmark_to_list t)
-   | Bench_TOFF (m, n, p) -> app (tOFF m n p) (benchmark_to_list t))
+   | Bench_H n0 -> (App1 (FU_H, n0)) :: (benchmark_to_list t)
+   | Bench_X n0 -> (App1 (FU_X, n0)) :: (benchmark_to_list t)
+   | Bench_Z n0 -> (App1 (FU_Z, n0)) :: (benchmark_to_list t)
+   | Bench_CNOT (m, n0) -> (App2 (FU_CNOT, m, n0)) :: (benchmark_to_list t)
+   | Bench_TOFF (m, n0, p) -> app (tOFF m n0 p) (benchmark_to_list t))
 
 (** val propagate_not : gate_list -> int -> gate_list option **)
 
@@ -282,7 +355,7 @@ let rec propagate_not l q =
 
 (** val propagate_nots : gate_list -> int -> gate_list **)
 
-let rec propagate_nots l n =
+let rec propagate_nots l n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> l)
     (fun n' ->
@@ -298,7 +371,7 @@ let rec propagate_nots l n =
              | None -> (App1 (FU_X, q)) :: (propagate_nots t n'))
           | _ -> h :: (propagate_nots t n'))
        | App2 (_, _, _) -> h :: (propagate_nots t n')))
-    n
+    n0
 
 (** val rm_nots : gate_list -> gate_list **)
 
@@ -368,7 +441,7 @@ let apply_H_equivalence3 q l =
        (match next_two_qubit_gate l1 q with
         | Some p0 ->
           let (p1, l3) = p0 in
-          let (p2, n) = p1 in
+          let (p2, n0) = p1 in
           let (l2, m) = p2 in
           (match next_single_qubit_gate l3 q with
            | Some p3 ->
@@ -376,17 +449,17 @@ let apply_H_equivalence3 q l =
              (match f0 with
               | FU_H ->
                 if (=) q m
-                then (match next_single_qubit_gate (rev l2) n with
+                then (match next_single_qubit_gate (rev l2) n0 with
                       | Some p4 ->
                         let (f1, l5) = p4 in
                         (match f1 with
                          | FU_H ->
-                           (match next_single_qubit_gate l4 n with
+                           (match next_single_qubit_gate l4 n0 with
                             | Some p5 ->
                               let (f2, l6) = p5 in
                               (match f2 with
                                | FU_H ->
-                                 Some (app (rev l5) (app ((_CNOT n m) :: []) l6))
+                                 Some (app (rev l5) (app ((_CNOT n0 m) :: []) l6))
                                | _ -> None)
                             | None -> None)
                          | _ -> None)
@@ -401,7 +474,7 @@ let apply_H_equivalence3 q l =
                               let (f2, l6) = p5 in
                               (match f2 with
                                | FU_H ->
-                                 Some (app (rev l5) (app ((_CNOT n m) :: []) l6))
+                                 Some (app (rev l5) (app ((_CNOT n0 m) :: []) l6))
                                | _ -> None)
                             | None -> None)
                          | _ -> None)
@@ -463,7 +536,7 @@ let apply_H_equivalence l q =
 
 (** val apply_H_equivalences : gate_list -> int -> gate_list **)
 
-let rec apply_H_equivalences l n =
+let rec apply_H_equivalences l n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> l)
     (fun n' ->
@@ -479,21 +552,21 @@ let rec apply_H_equivalences l n =
              | None -> (_H q) :: (apply_H_equivalences t n'))
           | _ -> g :: (apply_H_equivalences t n'))
        | App2 (_, _, _) -> g :: (apply_H_equivalences t n')))
-    n
+    n0
 
 (** val hadamard_reduction : gate_list -> gate_list **)
 
 let hadamard_reduction l =
   apply_H_equivalences l (mul (Pervasives.succ (Pervasives.succ 0)) (length l))
 
-(** val cancel_gates_simple' : gate_list -> int -> gate_list **)
+(** val cancel_gates_simple' : gate_list -> gate_list -> int -> gate_list **)
 
-let rec cancel_gates_simple' l n =
+let rec cancel_gates_simple' l acc n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> l)
+    (fun _ -> app (rev acc) l)
     (fun n' ->
     match l with
-    | [] -> []
+    | [] -> rev acc
     | g :: t ->
       (match g with
        | App1 (f, q) ->
@@ -503,69 +576,69 @@ let rec cancel_gates_simple' l n =
              | Some p ->
                let (f0, t') = p in
                (match f0 with
-                | FU_H -> cancel_gates_simple' t' n'
-                | _ -> (_H q) :: (cancel_gates_simple' t n'))
-             | None -> (_H q) :: (cancel_gates_simple' t n'))
+                | FU_H -> cancel_gates_simple' t' acc n'
+                | _ -> cancel_gates_simple' t ((_H q) :: acc) n')
+             | None -> cancel_gates_simple' t ((_H q) :: acc) n')
           | FU_X ->
             (match next_single_qubit_gate t q with
              | Some p ->
                let (f0, t') = p in
                (match f0 with
-                | FU_X -> cancel_gates_simple' t' n'
-                | _ -> (_X q) :: (cancel_gates_simple' t n'))
-             | None -> (_X q) :: (cancel_gates_simple' t n'))
+                | FU_X -> cancel_gates_simple' t' acc n'
+                | _ -> cancel_gates_simple' t ((_X q) :: acc) n')
+             | None -> cancel_gates_simple' t ((_X q) :: acc) n')
           | FU_Z ->
             (match next_single_qubit_gate t q with
              | Some p ->
                let (f0, t') = p in
                (match f0 with
-                | FU_Z -> cancel_gates_simple' t' n'
-                | FU_P -> cancel_gates_simple' ((_PDAG q) :: t') n'
-                | FU_PDAG -> cancel_gates_simple' ((_P q) :: t') n'
-                | _ -> (_Z q) :: (cancel_gates_simple' t n'))
-             | None -> (_Z q) :: (cancel_gates_simple' t n'))
+                | FU_Z -> cancel_gates_simple' t' acc n'
+                | FU_P -> cancel_gates_simple' ((_PDAG q) :: t') acc n'
+                | FU_PDAG -> cancel_gates_simple' ((_P q) :: t') acc n'
+                | _ -> cancel_gates_simple' t ((_Z q) :: acc) n')
+             | None -> cancel_gates_simple' t ((_Z q) :: acc) n')
           | FU_P ->
             (match next_single_qubit_gate t q with
              | Some p ->
                let (f0, t') = p in
                (match f0 with
-                | FU_Z -> cancel_gates_simple' ((_PDAG q) :: t') n'
-                | FU_P -> cancel_gates_simple' ((_Z q) :: t') n'
-                | FU_PDAG -> cancel_gates_simple' t' n'
-                | FU_TDAG -> cancel_gates_simple' ((_T q) :: t') n'
-                | _ -> (_P q) :: (cancel_gates_simple' t n'))
-             | None -> (_P q) :: (cancel_gates_simple' t n'))
+                | FU_Z -> cancel_gates_simple' ((_PDAG q) :: t') acc n'
+                | FU_P -> cancel_gates_simple' ((_Z q) :: t') acc n'
+                | FU_PDAG -> cancel_gates_simple' t' acc n'
+                | FU_TDAG -> cancel_gates_simple' ((_T q) :: t') acc n'
+                | _ -> cancel_gates_simple' t ((_P q) :: acc) n')
+             | None -> cancel_gates_simple' t ((_P q) :: acc) n')
           | FU_PDAG ->
             (match next_single_qubit_gate t q with
              | Some p ->
                let (f0, t') = p in
                (match f0 with
-                | FU_Z -> cancel_gates_simple' ((_P q) :: t') n'
-                | FU_P -> cancel_gates_simple' t' n'
-                | FU_PDAG -> cancel_gates_simple' ((_Z q) :: t') n'
-                | FU_T -> cancel_gates_simple' ((_TDAG q) :: t') n'
-                | _ -> (_PDAG q) :: (cancel_gates_simple' t n'))
-             | None -> (_PDAG q) :: (cancel_gates_simple' t n'))
+                | FU_Z -> cancel_gates_simple' ((_P q) :: t') acc n'
+                | FU_P -> cancel_gates_simple' t' acc n'
+                | FU_PDAG -> cancel_gates_simple' ((_Z q) :: t') acc n'
+                | FU_T -> cancel_gates_simple' ((_TDAG q) :: t') acc n'
+                | _ -> cancel_gates_simple' t ((_PDAG q) :: acc) n')
+             | None -> cancel_gates_simple' t ((_PDAG q) :: acc) n')
           | FU_T ->
             (match next_single_qubit_gate t q with
              | Some p ->
                let (f0, t') = p in
                (match f0 with
-                | FU_PDAG -> cancel_gates_simple' ((_TDAG q) :: t') n'
-                | FU_T -> cancel_gates_simple' ((_P q) :: t') n'
-                | FU_TDAG -> cancel_gates_simple' t' n'
-                | _ -> (_T q) :: (cancel_gates_simple' t n'))
-             | None -> (_T q) :: (cancel_gates_simple' t n'))
+                | FU_PDAG -> cancel_gates_simple' ((_TDAG q) :: t') acc n'
+                | FU_T -> cancel_gates_simple' ((_P q) :: t') acc n'
+                | FU_TDAG -> cancel_gates_simple' t' acc n'
+                | _ -> cancel_gates_simple' t ((_T q) :: acc) n')
+             | None -> cancel_gates_simple' t ((_T q) :: acc) n')
           | FU_TDAG ->
             (match next_single_qubit_gate t q with
              | Some p ->
                let (f0, t') = p in
                (match f0 with
-                | FU_P -> cancel_gates_simple' ((_T q) :: t') n'
-                | FU_T -> cancel_gates_simple' t' n'
-                | FU_TDAG -> cancel_gates_simple' ((_PDAG q) :: t') n'
-                | _ -> (_TDAG q) :: (cancel_gates_simple' t n'))
-             | None -> (_TDAG q) :: (cancel_gates_simple' t n'))
+                | FU_P -> cancel_gates_simple' ((_T q) :: t') acc n'
+                | FU_T -> cancel_gates_simple' t' acc n'
+                | FU_TDAG -> cancel_gates_simple' ((_PDAG q) :: t') acc n'
+                | _ -> cancel_gates_simple' t ((_TDAG q) :: acc) n')
+             | None -> cancel_gates_simple' t ((_TDAG q) :: acc) n')
           | FU_CNOT -> [])
        | App2 (f, q1, q2) ->
          (match f with
@@ -576,16 +649,16 @@ let rec cancel_gates_simple' l n =
                let (p1, q2') = p0 in
                let (l1, q1') = p1 in
                if (&&) ((&&) ((=) q1 q1') ((=) q2 q2')) (does_not_reference l1 q2)
-               then cancel_gates_simple' (app l1 l2) n'
-               else (_CNOT q1 q2) :: (cancel_gates_simple' t n')
-             | None -> (_CNOT q1 q2) :: (cancel_gates_simple' t n'))
+               then cancel_gates_simple' (app l1 l2) acc n'
+               else cancel_gates_simple' t ((_CNOT q1 q2) :: acc) n'
+             | None -> cancel_gates_simple' t ((_CNOT q1 q2) :: acc) n')
           | _ -> [])))
-    n
+    n0
 
 (** val cancel_gates_simple : gate_list -> gate_list **)
 
 let cancel_gates_simple l =
-  cancel_gates_simple' l (length l)
+  cancel_gates_simple' l [] (length l)
 
 (** val search_for_pat1 : gate_list -> int -> (gate_app list * gate_list) option **)
 
@@ -674,7 +747,7 @@ let search_for_commuting_pat l q =
 
 (** val propagate_Z : gate_list -> int -> int -> gate_list option **)
 
-let rec propagate_Z l q n =
+let rec propagate_Z l q n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Some l)
     (fun n' ->
@@ -701,11 +774,11 @@ let rec propagate_Z l q n =
           | Some l' -> Some (app l1 l')
           | None -> None)
        | None -> None))
-    n
+    n0
 
 (** val propagate_P : gate_list -> int -> int -> gate_list option **)
 
-let rec propagate_P l q n =
+let rec propagate_P l q n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Some l)
     (fun n' ->
@@ -733,11 +806,11 @@ let rec propagate_P l q n =
           | Some l' -> Some (app l1 l')
           | None -> None)
        | None -> None))
-    n
+    n0
 
 (** val propagate_PDAG : gate_list -> int -> int -> gate_list option **)
 
-let rec propagate_PDAG l q n =
+let rec propagate_PDAG l q n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Some l)
     (fun n' ->
@@ -765,11 +838,11 @@ let rec propagate_PDAG l q n =
           | Some l' -> Some (app l1 l')
           | None -> None)
        | None -> None))
-    n
+    n0
 
 (** val propagate_T : gate_list -> int -> int -> gate_list option **)
 
-let rec propagate_T l q n =
+let rec propagate_T l q n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Some l)
     (fun n' ->
@@ -796,11 +869,11 @@ let rec propagate_T l q n =
           | Some l' -> Some (app l1 l')
           | None -> None)
        | None -> None))
-    n
+    n0
 
 (** val propagate_TDAG : gate_list -> int -> int -> gate_list option **)
 
-let rec propagate_TDAG l q n =
+let rec propagate_TDAG l q n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Some l)
     (fun n' ->
@@ -827,11 +900,11 @@ let rec propagate_TDAG l q n =
           | Some l' -> Some (app l1 l')
           | None -> None)
        | None -> None))
-    n
+    n0
 
 (** val cancel_gates : gate_list -> int -> gate_list **)
 
-let rec cancel_gates l n =
+let rec cancel_gates l n0 =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> l)
     (fun n' ->
@@ -863,43 +936,344 @@ let rec cancel_gates l n =
              | None -> (_TDAG q) :: (cancel_gates t n'))
           | _ -> h :: (cancel_gates t n'))
        | App2 (_, _, _) -> h :: (cancel_gates t n')))
-    n
+    n0
 
 (** val single_qubit_gate_cancellation : gate_list -> gate_list **)
 
 let single_qubit_gate_cancellation l =
   cancel_gates l (length l)
 
+type mop =
+| Plus
+| Minus
+| Times
+| Div
 
+(** val print_mop : mop -> string **)
 
-(** Small Example Programs **)
+let print_mop = function
+| Plus ->
+  String ((Ascii (true, true, false, true, false, true, false, false)), EmptyString)
+| Minus ->
+  String ((Ascii (true, false, true, true, false, true, false, false)), EmptyString)
+| Times ->
+  String ((Ascii (false, true, false, true, false, true, false, false)), EmptyString)
+| Div ->
+  String ((Ascii (true, true, true, true, false, true, false, false)), EmptyString)
 
-(* rm_nots example1 --> [_H 1; _CNOT 2 1] *)
-let example1 = [_X 0; _H 1; _X 0;  _X 1; _CNOT 2 1; _X 1]
+type exp =
+| E_nat of int
+| E_real of r
+| E_pi
+| E_str of string
+| E_mop of mop * exp * exp
 
-(* rm_nots example2 --> [_X 0; _X 1; _X 2] *)
-let example2 = [_X 0; _X 1; _X 2]
+(** val nat_to_string : int -> string **)
 
-(* next_single_qubit_gate example3 0 --> Some (_X 0, ...) *)
-(* next_single_qubit_gate example3 1 --> Some (_H 1, ...) *)
-(* next_two_qubit_gate example3 3 --> Some ([_H 1; _X 0], 2, 3, ...) *)
-(* replace_single_qubit_pattern example3 0 [_X 0; _X 0] [_H 0; _H 0]
-    --> [_H 0; _H 0; _H 1; _CNOT 2 3; _H 0; _P 1; _P 2; _CNOT 0 2] *)
-(* replace_single_qubit_pattern example3 0 [_X 0; _H 0] [_H 0; _H 0]
-    --> None *)
-let example3 = [_H 1; _X 0; _CNOT 2 3; _X 0; _H 0; _P 1; _P 2; _CNOT 0 2]
+let nat_to_string n0 =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> String ((Ascii (false, false, false, false, true, true, false,
+    false)), EmptyString))
+    (fun n1 ->
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ -> String ((Ascii (true, false, false, false, true, true, false,
+      false)), EmptyString))
+      (fun n2 ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ -> String ((Ascii (false, true, false, false, true, true, false,
+        false)), EmptyString))
+        (fun n3 ->
+        (fun fO fS n -> if n=0 then fO () else fS (n-1))
+          (fun _ -> String ((Ascii (true, true, false, false, true, true, false,
+          false)), EmptyString))
+          (fun n4 ->
+          (fun fO fS n -> if n=0 then fO () else fS (n-1))
+            (fun _ -> String ((Ascii (false, false, true, false, true, true, false,
+            false)), EmptyString))
+            (fun n5 ->
+            (fun fO fS n -> if n=0 then fO () else fS (n-1))
+              (fun _ -> String ((Ascii (true, false, true, false, true, true, false,
+              false)), EmptyString))
+              (fun n6 ->
+              (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                (fun _ -> String ((Ascii (false, true, true, false, true, true,
+                false, false)), EmptyString))
+                (fun n7 ->
+                (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                  (fun _ -> String ((Ascii (true, true, true, false, true, true,
+                  false, false)), EmptyString))
+                  (fun n8 ->
+                  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+                    (fun _ -> String ((Ascii (false, false, false, true, true, true,
+                    false, false)), EmptyString))
+                    (fun _ -> String ((Ascii (true, false, false, true, true, true,
+                    false, false)), EmptyString))
+                    n8)
+                  n7)
+                n6)
+              n5)
+            n4)
+          n3)
+        n2)
+      n1)
+    n0
 
-(* hadamard_reduction example4 --> [_PDAG 1; _H 1; _PDAG 1; _CNOT 3 0; _X 2] *)
-let example4 = [_H 1; _H 3; _H 0; _P 1; _CNOT 0 3; _H 0; _H 1; _H 3; _X 2]
+(** val print_exp : exp -> string **)
 
-(* benchmark_to_list example5 --> 
-        [App2 (FU_CNOT, 0, 1); App1 (FU_H, 2); App2 (FU_CNOT, 1, 2);
-        App1 (FU_TDAG, 2); App2 (FU_CNOT, 0, 2); App1 (FU_T, 2);
-        App2 (FU_CNOT, 1, 2); App1 (FU_TDAG, 2); App2 (FU_CNOT, 0, 2);
-        App2 (FU_CNOT, 0, 1); App1 (FU_TDAG, 1); App2 (FU_CNOT, 0, 1);
-        App1 (FU_T, 0); App1 (FU_T, 1); App1 (FU_T, 2); App1 (FU_H, 2);
-        App1 (FU_H, 3); App1 (FU_X, 4)] 
-*)
-let example5 = [Bench_CNOT(0,1); Bench_TOFF(0,1,2); Bench_H(3); Bench_X(4)]
+let rec print_exp = function
+| E_nat n0 -> nat_to_string n0
+| E_real _ ->
+  String ((Ascii (false, true, false, false, true, true, true, false)), (String
+    ((Ascii (true, false, true, false, false, true, true, false)), (String ((Ascii
+    (true, false, false, false, false, true, true, false)), (String ((Ascii (false,
+    false, true, true, false, true, true, false)), (String ((Ascii (false, false,
+    false, false, false, true, false, false)), (String ((Ascii (false, true, true,
+    true, false, true, true, false)), (String ((Ascii (true, false, true, false,
+    true, true, true, false)), (String ((Ascii (true, false, true, true, false,
+    true, true, false)), (String ((Ascii (false, true, false, false, false, true,
+    true, false)), (String ((Ascii (true, false, true, false, false, true, true,
+    false)), (String ((Ascii (false, true, false, false, true, true, true, false)),
+    (String ((Ascii (false, true, false, true, true, true, false, false)), (String
+    ((Ascii (false, false, false, false, false, true, false, false)), (String
+    ((Ascii (false, false, true, false, true, true, true, false)), (String ((Ascii
+    (true, true, true, true, false, true, true, false)), (String ((Ascii (false,
+    false, false, false, false, true, false, false)), (String ((Ascii (true, false,
+    false, true, false, true, true, false)), (String ((Ascii (true, false, true,
+    true, false, true, true, false)), (String ((Ascii (false, false, false, false,
+    true, true, true, false)), (String ((Ascii (false, false, true, true, false,
+    true, true, false)), (String ((Ascii (true, false, true, false, false, true,
+    true, false)), (String ((Ascii (true, false, true, true, false, true, true,
+    false)), (String ((Ascii (true, false, true, false, false, true, true, false)),
+    (String ((Ascii (false, true, true, true, false, true, true, false)), (String
+    ((Ascii (false, false, true, false, true, true, true, false)),
+    EmptyString)))))))))))))))))))))))))))))))))))))))))))))))))
+| E_pi ->
+  String ((Ascii (false, false, false, false, true, true, true, false)), (String
+    ((Ascii (true, false, false, true, false, true, true, false)), EmptyString)))
+| E_str s -> s
+| E_mop (m, e1, e2) -> append (print_exp e1) (append (print_mop m) (print_exp e2))
 
+type decl =
+| Qreg of int * int
+| Creg of int * int
 
+(** val print_decl : decl -> string **)
+
+let print_decl = function
+| Qreg (n0, m) ->
+  append (String ((Ascii (true, false, false, false, true, true, true, false)),
+    (String ((Ascii (false, true, false, false, true, true, true, false)), (String
+    ((Ascii (true, false, true, false, false, true, true, false)), (String ((Ascii
+    (true, true, true, false, false, true, true, false)), (String ((Ascii (false,
+    false, false, false, false, true, false, false)), (String ((Ascii (true, false,
+    false, false, true, true, true, false)), EmptyString))))))))))))
+    (append (nat_to_string n0)
+      (append (String ((Ascii (true, true, false, true, true, false, true, false)),
+        EmptyString))
+        (append (nat_to_string m) (String ((Ascii (true, false, true, true, true,
+          false, true, false)), EmptyString)))))
+| Creg (n0, m) ->
+  append (String ((Ascii (true, true, false, false, false, true, true, false)),
+    (String ((Ascii (false, true, false, false, true, true, true, false)), (String
+    ((Ascii (true, false, true, false, false, true, true, false)), (String ((Ascii
+    (true, true, true, false, false, true, true, false)), (String ((Ascii (false,
+    false, false, false, false, true, false, false)), (String ((Ascii (true, true,
+    false, false, false, true, true, false)), EmptyString))))))))))))
+    (append (nat_to_string n0)
+      (append (String ((Ascii (true, true, false, true, true, false, true, false)),
+        EmptyString))
+        (append (nat_to_string m) (String ((Ascii (true, false, true, true, true,
+          false, true, false)), EmptyString)))))
+
+type qmem =
+| Qubit of int
+| Qlist of int * int
+
+(** val print_qmem : qmem -> string **)
+
+let print_qmem = function
+| Qubit n0 ->
+  append (String ((Ascii (true, false, false, false, true, true, true, false)),
+    EmptyString)) (nat_to_string n0)
+| Qlist (n0, m) ->
+  append (String ((Ascii (true, false, false, false, true, true, true, false)),
+    EmptyString))
+    (append (nat_to_string n0)
+      (append (String ((Ascii (true, true, false, true, true, false, true, false)),
+        EmptyString))
+        (append (nat_to_string m) (String ((Ascii (true, false, true, true, true,
+          false, true, false)), EmptyString)))))
+
+type cmem =
+| Cbit of int
+| Clist of int * int
+
+(** val print_cmem : cmem -> string **)
+
+let print_cmem = function
+| Cbit n0 ->
+  append (String ((Ascii (true, true, false, false, false, true, true, false)),
+    EmptyString)) (nat_to_string n0)
+| Clist (n0, m) ->
+  append (String ((Ascii (true, true, false, false, false, true, true, false)),
+    EmptyString))
+    (append (nat_to_string n0)
+      (append (String ((Ascii (true, true, false, true, true, false, true, false)),
+        EmptyString))
+        (append (nat_to_string m) (String ((Ascii (true, false, true, true, true,
+          false, true, false)), EmptyString)))))
+
+type unitary =
+| U_U of exp list * qmem
+| U_CX of qmem * qmem
+
+(** val print_explist : exp list -> string **)
+
+let rec print_explist = function
+| [] -> EmptyString
+| e :: l ->
+  (match l with
+   | [] -> print_exp e
+   | _ :: _ ->
+     append (print_exp e)
+       (append (String ((Ascii (false, false, true, true, false, true, false,
+         false)), EmptyString)) (print_explist l)))
+
+(** val print_unitary : unitary -> string **)
+
+let print_unitary = function
+| U_U (l, q) ->
+  append (String ((Ascii (true, false, true, false, true, false, true, false)),
+    (String ((Ascii (false, false, false, true, false, true, false, false)),
+    EmptyString))))
+    (append (print_explist l)
+      (append (String ((Ascii (true, false, false, true, false, true, false,
+        false)), (String ((Ascii (false, false, false, false, false, true, false,
+        false)), EmptyString)))) (print_qmem q)))
+| U_CX (q1, q2) ->
+  append (String ((Ascii (true, true, false, false, false, false, true, false)),
+    (String ((Ascii (false, false, false, true, true, false, true, false)), (String
+    ((Ascii (false, false, false, false, false, true, false, false)),
+    EmptyString))))))
+    (append (print_qmem q1)
+      (append (String ((Ascii (false, false, true, true, false, true, false,
+        false)), (String ((Ascii (false, false, false, false, false, true, false,
+        false)), EmptyString)))) (print_qmem q2)))
+
+type op =
+| O_app of unitary
+| O_meas of qmem * cmem
+| O_reset of qmem
+
+(** val print_op : op -> string **)
+
+let rec print_op = function
+| O_app u -> print_unitary u
+| O_meas (q, c) ->
+  append (String ((Ascii (true, false, true, true, false, true, true, false)),
+    (String ((Ascii (true, false, true, false, false, true, true, false)), (String
+    ((Ascii (true, false, false, false, false, true, true, false)), (String ((Ascii
+    (true, true, false, false, true, true, true, false)), (String ((Ascii (true,
+    false, true, false, true, true, true, false)), (String ((Ascii (false, true,
+    false, false, true, true, true, false)), (String ((Ascii (true, false, true,
+    false, false, true, true, false)), (String ((Ascii (false, false, false, false,
+    false, true, false, false)), EmptyString))))))))))))))))
+    (append (print_qmem q)
+      (append (String ((Ascii (false, false, false, false, false, true, false,
+        false)), (String ((Ascii (true, false, true, true, false, true, false,
+        false)), (String ((Ascii (false, true, true, true, true, true, false,
+        false)), (String ((Ascii (false, false, false, false, false, true, false,
+        false)), EmptyString)))))))) (print_cmem c)))
+| O_reset q ->
+  append (String ((Ascii (false, true, false, false, true, true, true, false)),
+    (String ((Ascii (true, false, true, false, false, true, true, false)), (String
+    ((Ascii (true, true, false, false, true, true, true, false)), (String ((Ascii
+    (true, false, true, false, false, true, true, false)), (String ((Ascii (false,
+    false, true, false, true, true, true, false)), (String ((Ascii (false, false,
+    false, false, false, true, false, false)), EmptyString)))))))))))) (print_qmem q)
+
+type statement =
+| S_decl of decl
+| S_op of op
+| S_if of cmem * exp * statement
+| S_err of string
+
+(** val print_statement : statement -> string **)
+
+let rec print_statement = function
+| S_decl d -> print_decl d
+| S_op o -> print_op o
+| S_if (m, e, s) ->
+  append (String ((Ascii (true, false, false, true, false, true, true, false)),
+    (String ((Ascii (false, true, true, false, false, true, true, false)), (String
+    ((Ascii (false, false, false, true, false, true, false, false)),
+    EmptyString))))))
+    (append (print_cmem m)
+      (append (String ((Ascii (true, false, true, true, true, true, false, false)),
+        (String ((Ascii (true, false, true, true, true, true, false, false)),
+        EmptyString))))
+        (append (print_exp e)
+          (append (String ((Ascii (true, false, false, true, false, true, false,
+            false)), (String ((Ascii (false, false, false, false, false, true,
+            false, false)), EmptyString)))) (print_statement s)))))
+| S_err s -> s
+
+type program = statement list
+
+(** val newline : string **)
+
+let newline =
+  String ((ascii_of_N (Npos (XO (XI (XO XH))))), EmptyString)
+
+(** val print_program : program -> string **)
+
+let rec print_program = function
+| [] -> EmptyString
+| s :: p' ->
+  (match p' with
+   | [] -> print_statement s
+   | _ :: _ ->
+     append (print_statement s)
+       (append (String ((Ascii (true, true, false, true, true, true, false, false)),
+         EmptyString)) (append newline (print_program p'))))
+
+(** val printer : program -> string **)
+
+let printer p =
+  append (String ((Ascii (true, true, true, true, false, false, true, false)),
+    (String ((Ascii (false, false, false, false, true, false, true, false)), (String
+    ((Ascii (true, false, true, false, false, false, true, false)), (String ((Ascii
+    (false, true, true, true, false, false, true, false)), (String ((Ascii (true,
+    false, false, false, true, false, true, false)), (String ((Ascii (true, false,
+    false, false, false, false, true, false)), (String ((Ascii (true, true, false,
+    false, true, false, true, false)), (String ((Ascii (true, false, true, true,
+    false, false, true, false)), (String ((Ascii (false, false, false, false, false,
+    true, false, false)), (String ((Ascii (false, true, false, false, true, true,
+    false, false)), (String ((Ascii (false, true, true, true, false, true, false,
+    false)), (String ((Ascii (false, false, false, false, true, true, false,
+    false)), (String ((Ascii (true, true, false, true, true, true, false, false)),
+    EmptyString))))))))))))))))))))))))))
+    (append newline
+      (append (String ((Ascii (true, false, false, true, false, true, true, false)),
+        (String ((Ascii (false, true, true, true, false, true, true, false)),
+        (String ((Ascii (true, true, false, false, false, true, true, false)),
+        (String ((Ascii (false, false, true, true, false, true, true, false)),
+        (String ((Ascii (true, false, true, false, true, true, true, false)),
+        (String ((Ascii (false, false, true, false, false, true, true, false)),
+        (String ((Ascii (true, false, true, false, false, true, true, false)),
+        (String ((Ascii (false, false, false, false, false, true, false, false)),
+        (String ((Ascii (false, true, false, false, false, true, false, false)),
+        (String ((Ascii (true, false, false, false, true, true, true, false)),
+        (String ((Ascii (true, false, true, false, false, true, true, false)),
+        (String ((Ascii (false, false, true, true, false, true, true, false)),
+        (String ((Ascii (true, false, false, true, false, true, true, false)),
+        (String ((Ascii (false, true, false, false, false, true, true, false)),
+        (String ((Ascii (true, false, false, false, true, true, false, false)),
+        (String ((Ascii (false, true, true, true, false, true, false, false)),
+        (String ((Ascii (true, false, false, true, false, true, true, false)),
+        (String ((Ascii (false, true, true, true, false, true, true, false)),
+        (String ((Ascii (true, true, false, false, false, true, true, false)),
+        (String ((Ascii (false, true, false, false, false, true, false, false)),
+        (String ((Ascii (true, true, false, true, true, true, false, false)),
+        EmptyString))))))))))))))))))))))))))))))))))))))))))
+        (append newline (print_program p))))
