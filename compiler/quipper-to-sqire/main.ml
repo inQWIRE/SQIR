@@ -74,8 +74,7 @@ let benchmark_filenames = [
   "optimizer/Arithmetic_and_Toffoli/mod_adder_1024_before";
   "optimizer/Arithmetic_and_Toffoli/mod_mult_55_before";
   "optimizer/Arithmetic_and_Toffoli/tof_3_before";
-  (* Appears to be translated incorrectly: *)
-  (* "optimizer/Arithmetic_and_Toffoli/csum_mux_9_before_corrected"; *)
+  "optimizer/Arithmetic_and_Toffoli/csum_mux_9_before_corrected";
   (* Results in overflow: *)
   (* "optimizer/Arithmetic_and_Toffoli/gf2^E131_mult_before"; *)
   "optimizer/Arithmetic_and_Toffoli/gf2^E32_mult_before";
@@ -97,11 +96,11 @@ let get_counts progs : counts list =
 
 let benchmarks = List.map (fun x -> parse x) benchmark_filenames
 
-let sqire_to_qasm_gate oc g =
+(*let sqire_to_qasm_gate oc g =
   match g with
   | App1 (FU_H, q) -> fprintf oc "h q%d;\n" q
   | App1 (FU_X, q) -> fprintf oc "x q%d;\n" q
-  | App1 (FU_Z, q) -> fprintf oc "z q%d;\n" q
+  | App1 (FU_PI4(k), q) -> fprintf oc "z q%d;\n" q
   | App1 (FU_P, q) -> fprintf oc "s q%d;\n" q
   | App1 (FU_PDAG, q) -> fprintf oc "sdg q%d;\n" q
   | App1 (FU_T, q) -> fprintf oc "t q%d;\n" q
@@ -150,7 +149,7 @@ let write_all_files () =
   benchmark_to_qasm_file (List.nth benchmarks 26) 8 "qasm_benchmarks/benchmark26.qasm";
   benchmark_to_qasm_file (List.nth benchmarks 27) 17 "qasm_benchmarks/benchmark27.qasm";
   benchmark_to_qasm_file (List.nth benchmarks 28) 47 "qasm_benchmarks/benchmark28.qasm"
-
+*)
 (** Small Example Programs **)
 
 (* rm_nots example1 --> [_H 1; _CNOT 2 1] *)

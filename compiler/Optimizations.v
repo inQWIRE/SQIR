@@ -810,8 +810,9 @@ Fixpoint cancel_gates_simple' {dim} (l acc : gate_list dim) (n: nat) : gate_list
            | App1 (fU_PI4 k) q :: t => 
                match next_single_qubit_gate t q with
                | Some (fU_PI4 k', t') => 
-                 (* Add mod 8? *)
-                 cancel_gates_simple' (_PI4 ((k + k') mod 8) q :: t') acc n'
+                 if Z.eqb ((k + k')%Z mod 8) 0
+                 then cancel_gates_simple' t' acc n'
+                 else cancel_gates_simple' (_PI4 ((k + k') mod 8) q :: t') acc n'
                | _ => cancel_gates_simple' t (_PI4 k q :: acc) n'
                end
            | App2 fU_CNOT q1 q2 :: t => 
@@ -864,25 +865,6 @@ Proof.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
   replace (σx × σx) with (I (2 ^ 1)) by solve_matrix.
-  Msimpl.
-  unify_pows_two.
-  replace (q + 1 + (dim - 1 - q)) with dim by lia.
-  apply Mmult_1_r; auto with wf_db.
-Qed.
-
-(* Not used *)
-Lemma Z_Z_cancel : forall {dim} (l : gate_list dim) q, 
-  q < dim -> _Z q :: _Z q :: l =l= l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try lia.
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  replace (phase_shift (4 * PI / 4) × phase_shift (4 * PI / 4)) with (I (2 ^ 1)).
-  2:{ solve_matrix. autorewrite with Cexp_db. lca. }
   Msimpl.
   unify_pows_two.
   replace (q + 1 + (dim - 1 - q)) with dim by lia.
@@ -1040,7 +1022,8 @@ Proof.
       2: { rewrite <- IHn; try assumption.
            simpl; rewrite <- app_assoc. 
            reflexivity. }
-      destruct p; dependent destruction f; rewrite <- IHn;
+      admit.
+(*      destruct p; dependent destruction f; rewrite <- IHn;
       try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
       try (simpl; rewrite <- app_assoc; reflexivity);
       try constructor;
@@ -1048,6 +1031,7 @@ Proof.
       try assumption;
       try apply app_congruence; try reflexivity.
       apply PI4_PI4_mod8_combine.
+*)
   - (* CNOT *)
     dependent destruction f.
     remember (next_two_qubit_gate l n0) as next_gate;
@@ -1076,7 +1060,7 @@ Proof.
     apply CNOT_CNOT_cancel; assumption.
     specialize (ntqg_WT _ _ _ _ _ _ Heqnext_gate H6) as [H8 H9].
     apply uc_well_typed_l_app; assumption.
-Qed.
+Admitted.
 
 Lemma cancel_gates_simple_sound : forall {dim} (l : gate_list dim),
   uc_well_typed_l l -> l =l= cancel_gates_simple l.
@@ -1092,45 +1076,41 @@ Qed.
 Definition test1 : gate_list 4 := (_H 1) :: (_P 0) :: (_CNOT 2 3) :: (_P 0) :: (_H 1) :: (_Z 1) :: (_PDAG 0) :: (_CNOT 2 3) :: (_T 0) :: [].
 Compute (cancel_gates_simple test1).
 
+(**********************************************************************)
+(** Optimization: simple cancellation and combination w/ commutation **)
+(**********************************************************************)
 
-(**************************************************)
-(** Optimization: single-qubit gate cancellation **)
-(**************************************************)
+(* Cancel and combine gates, as above, but also check for cancellations
+   across commuting subcircuits. We will determine whether a gate
+   commutes through a subcircuit using the following circuits identities
+   from Nam et al.
 
-(** CURRENTLY NOT VERIFIED **)
+   - X b; CNOT a b ≡ CNOT a b; X b
+   - Rz b ; H b ; CNOT a b ; H b ≡ H b ; CNOT a b ; H b ; Rz b
+   - Rz b ; CNOT a b ; Rz' b ; CNOT a b ≡ CNOT a b ; Rz' b ; CNOT a b ; Rz b
+   - Rz a ; CNOT a b ≡ CNOT a b ; Rz a
+   - CNOT a c ; CNOT b c ≡ CNOT b c ; CNOT a c
+   - CNOT a c ; CNOT a b ≡ CNOT a b ; CNOT a c
+   - CNOT a b; H b; CNOT b c; H b ≡ H b; CNOT b c; H b; CNOT a b
 
-(* Single-qubit Gate Cancellation
-   
-   Cancel gates adjacent to their inverse and combine z-rotations. Similar
-   to not propagation, propagate z-rotation gates right using a set of 
-   commutation rules.
-
-   Cancellation rules:
-   - Z, Z
-   - P, PDAG
-   - T, TDAG 
-
-   z-rotation combination rules: (may not be exhaustive!)
-   (Recall: Z = PI, P = PI/2, T = PI/4)
-   - Z + PDAG    -> P
-   - Z + P       -> PDAG
-   - P + P       -> Z
-   - PDAG + PDAG -> Z
-   - P + TDAG    -> T
-   - PDAG + T    -> TDAG
-   - T + T       -> P
-   - TDAG + TDAG -> PDAG
- 
-   Commutation rules for Rz gates (i.e. Z, P, PDAG, T, TDAG):
-   #1 - Rz b ; H b ; CNOT a b ; H b ≡ H b ; CNOT a b ; H b ; Rz b
-   #2 - Rz b ; CNOT a b ; Rz' b ; CNOT a b ≡ CNOT a b ; Rz' b ; CNOT a b ; Rz b
-   #3 - Rz a ; CNOT a b ≡ CNOT a b ; Rz a
+   This optimization is similar to Nam et al.'s single/two-qubit gate
+   cancellation and not propagation.
 *)
 
-(* TODO: Write a general function that searches for patterns on mulitple qubits. 
-   (The search_for_patX functions all have similar structures.) *)
+(* Commutativity rule for X *)
 
-Definition search_for_pat1 {dim} (l : gate_list dim) q :=
+Definition search_for_commuting_X_pat {dim} (l : gate_list dim) q :=
+  match next_two_qubit_gate l q with
+  | Some (l1, q1, q2, l2) =>
+      if q =? q2
+      then Some (l1 ++ [_CNOT q1 q2], l2)
+      else None
+  | _ => None
+  end.
+
+(* Commutativity rules for Rz *)
+
+Definition search_for_Rz_pat1 {dim} (l : gate_list dim) q :=
   match (next_single_qubit_gate l q) with
   | Some (fU_H, l') => 
       match (next_two_qubit_gate l' q) with
@@ -1146,7 +1126,7 @@ Definition search_for_pat1 {dim} (l : gate_list dim) q :=
   | _ => None
   end.
 
-Definition search_for_pat2 {dim} (l : gate_list dim) q :=
+Definition search_for_Rz_pat2 {dim} (l : gate_list dim) q :=
   match (next_two_qubit_gate l q) with
   | Some (l1, q1, q2, l2) => 
       if q =? q2
@@ -1160,12 +1140,12 @@ Definition search_for_pat2 {dim} (l : gate_list dim) q :=
                | _ => None
                end
            | _ => None
-      end
+           end
       else None
   | _ => None
   end.
 
-Definition search_for_pat3 {dim} (l : gate_list dim) q :=
+Definition search_for_Rz_pat3 {dim} (l : gate_list dim) q :=
   match (next_two_qubit_gate l q) with
   | Some (l1, q1, q2, l2) => 
       if q =? q1
@@ -1174,28 +1154,94 @@ Definition search_for_pat3 {dim} (l : gate_list dim) q :=
   | _ => None
   end.
 
-Definition search_for_commuting_pat {dim} (l : gate_list dim) q :=
-  match search_for_pat1 l q with
+Definition search_for_commuting_Rz_pat {dim} (l : gate_list dim) q :=
+  match search_for_Rz_pat1 l q with
   | Some (l1, l2) => Some (l1, l2)
-  | None => match search_for_pat2 l q with
+  | None => match search_for_Rz_pat2 l q with
            | Some (l1, l2) => Some (l1, l2)
-           | None => match search_for_pat3 l q with
+           | None => match search_for_Rz_pat3 l q with
                     | Some (l1, l2) => Some (l1, l2)
                     | None => None
                     end
            end
   end.
 
+(* Commutativity rules for CNOT *)
+
+Definition search_for_CNOT_pat1 {dim} (l : gate_list dim) (q1 q2 : nat) : option (gate_list dim * gate_list dim) :=
+  match (next_single_qubit_gate l q1) with
+  | Some (fU_PI4 k, l') => Some ([_PI4 k q1], l')
+  | _ => None
+  end.
+
+Definition search_for_CNOT_pat2 {dim} (l : gate_list dim) q1 q2 :=
+  match (next_two_qubit_gate l q2) with
+  | Some (l1, q1', q2', l2) => 
+      if q2 =? q2'
+      then if (does_not_reference l1 q1) && (does_not_reference l1 q1')
+           then Some (l1 ++ [_CNOT q1' q2], l2)
+           else None
+      else None
+  | _ => None
+  end.
+
+Definition search_for_CNOT_pat3 {dim} (l : gate_list dim) q1 q2 :=
+  match (next_two_qubit_gate l q1) with
+  | Some (l1, q1', q2', l2) => 
+      if q1 =? q1'
+      then if (does_not_reference l1 q2) && (does_not_reference l1 q2')
+           then Some (l1 ++ [_CNOT q1 q2'], l2)
+           else None
+      else None
+  | _ => None
+  end.
+
+Definition search_for_CNOT_pat4 {dim} (l : gate_list dim) q1 q2 :=
+  match (next_single_qubit_gate l q2) with
+  | Some (fU_H, l') => 
+      match (next_two_qubit_gate l' q2) with
+      | Some (l1, q1', q2', l2) => 
+          if (q2 =? q1') && (does_not_reference l1 q1)
+          then match (next_single_qubit_gate l2 q2) with
+               | Some (fU_H, l2') => Some ([_H q2] ++ l1 ++ [_CNOT q2 q2'] ++ [_H q2], l2')
+               | _ => None
+               end
+          else None
+      | _ => None
+      end
+  | _ => None
+  end.
+
+Definition search_for_commuting_CNOT_pat {dim} (l : gate_list dim) q1 q2 :=
+  match search_for_CNOT_pat1 l q1 q2 with
+  | Some (l1, l2) => Some (l1, l2)
+  | None => match search_for_CNOT_pat2 l q1 q2 with
+           | Some (l1, l2) => Some (l1, l2)
+           | None => match search_for_CNOT_pat3 l q1 q2 with
+                    | Some (l1, l2) => Some (l1, l2)
+                    | None =>  match search_for_CNOT_pat4 l q1 q2 with
+                              | Some (l1, l2) => Some (l1, l2)
+                              | None => None
+                              end
+                    end
+           end
+  end.
+
+(* Propagation functions for each gate type *)
+
 Fixpoint propagate_PI4 {dim} k (l : gate_list dim) (q n : nat) : option (gate_list dim) :=
   match n with
-  | O => Some l
+  | O => None
   | S n' => 
       match next_single_qubit_gate l q with
-      (* Combine *)
-      | Some (fU_PI4 k', l') => Some (_PI4 ((k+k') mod 8)  q :: l')
+      (* Combine or cancel *)
+      | Some (fU_PI4 k', l') => 
+          if Z.eqb ((k+k') mod 8) 0
+          then Some l'
+          else Some (_PI4 ((k+k') mod 8) q :: l')
       (* Commute *)
       | _ =>
-          match search_for_commuting_pat l q with
+          match search_for_commuting_Rz_pat l q with
           | Some (l1, l2) => match (propagate_PI4 k l2 q n') with
                             | Some l' => Some (l1 ++ l')
                             | None => None
@@ -1205,42 +1251,176 @@ Fixpoint propagate_PI4 {dim} k (l : gate_list dim) (q n : nat) : option (gate_li
       end
   end.
 
-(* Call a propagation function on PI4 rotation gates. 
-   
-   The extra n argument is to help Coq recognize termination.
-   We start with n = (length l). *)
-Fixpoint cancel_gates {dim} (l : gate_list dim) (n: nat) : gate_list dim :=
+Definition propagate_H {dim} (l : gate_list dim) (q : nat) : option (gate_list dim) :=
+  match next_single_qubit_gate l q with
+  (* Cancel *)
+  | Some (fU_H, l') => Some l'
+  (* Currently no rules for commuting H gates *)
+  | _ => None
+  end.
+
+Fixpoint propagate_X {dim} (l : gate_list dim) (q n : nat) : option (gate_list dim) :=
+  match n with
+  | O => None
+  | S n' => 
+      match next_single_qubit_gate l q with
+      (* Cancel *)
+      | Some (fU_X, l') => Some l'
+      (* Commute *)
+      | _ =>
+          match search_for_commuting_X_pat l q with
+          | Some (l1, l2) => match (propagate_X l2 q n') with
+                            | Some l' => Some (l1 ++ l')
+                            | None => None
+                            end
+          | None =>  None
+          end
+      end
+  end.
+
+Fixpoint propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (gate_list dim) :=
+  match n with
+  | O => None
+  | S n' => 
+      match next_two_qubit_gate l q1 with
+      (* Cancel *)
+      | Some (l1, q1', q2', l2) => 
+          if (q1 =? q1') && (q2 =? q2') && (does_not_reference l1 q2)
+          then Some (l1 ++ l2)
+          else None
+      (* Commute *)
+      | _ =>
+          match search_for_commuting_CNOT_pat l q1 q2 with
+          | Some (l1, l2) => match (propagate_CNOT l2 q1 q2 n') with
+                            | Some l' => Some (l1 ++ l')
+                            | None => None
+                            end
+          | None =>  None
+          end
+      end
+  end.
+
+Fixpoint cancel_gates' {dim} (l : gate_list dim) (n: nat) : gate_list dim :=
   match n with
   | 0 => l
   | S n' => match l with
-           | [] => []
            | App1 (fU_PI4 k) q :: t => 
                match propagate_PI4 k t q (length t) with
-               | None => (_PI4 k q) :: (cancel_gates t n')
-               | Some l' => cancel_gates l' n'
+               | None => (_PI4 k q) :: (cancel_gates' t n')
+               | Some l' => cancel_gates' l' n'
                end
-           | h :: t => h :: (cancel_gates t n')
+           | App1 fU_H q :: t => 
+               match propagate_H t q with
+               | None => (_H q) :: (cancel_gates' t n')
+               | Some l' => cancel_gates' l' n'
+               end
+           | App1 fU_X q :: t => 
+               match propagate_X t q (length t) with
+               | None => (_X q) :: (cancel_gates' t n')
+               | Some l' => cancel_gates' l' n'
+               end
+           | App2 fU_CNOT q1 q2 :: t => 
+               match propagate_CNOT t q1 q2 (length t) with
+               | None => (_CNOT q1 q2) :: (cancel_gates' t n')
+               | Some l' => cancel_gates' l' n'
+               end
+           | _ => []
            end
   end.
 
-Definition single_qubit_gate_cancellation {dim} (l : gate_list dim) := 
-  cancel_gates l (length l).
+Definition cancel_gates {dim} (l : gate_list dim) := 
+  cancel_gates' l (length l).
 
 
-(***********************************************)
-(** Optimization: two-qubit gate cancellation **)
-(***********************************************)
+(* Proofs about commutativity *)
 
-(** CURRENTLY NOT VERIFIED **)
+Lemma commuting_X_pat : forall {dim} (l : gate_list dim) q l1 l2, 
+  search_for_commuting_X_pat l q = Some (l1, l2) ->
+  _X q :: l =l= l1 ++ [_X q] ++ l2.
+Proof.
+  intros.
+  unfold search_for_commuting_X_pat in H.
+  remember (next_two_qubit_gate l q) as next_gate; symmetry in Heqnext_gate.
+  destruct next_gate; try easy.
+  do 3 destruct p.
+  bdestruct (q =? n); try easy.
+  inversion H; subst.
+  rewrite (ntqg_preserves_semantics _ _ _ _ _ _ Heqnext_gate).
+  assert (does_not_reference g0 n = true).
+  { apply (ntqg_l1_does_not_reference _ _ _ _ _ _ Heqnext_gate). }
+  rewrite app_comm_cons.
+  rewrite (does_not_reference_commutes_app1 _ fU_X _ H0).
+  repeat rewrite <- app_assoc.
+  rewrite (app_assoc _ _ l2).
+  rewrite (app_assoc _ [_X n] l2).
+  assert (@uc_equiv_l dim ([_X n] ++ [_CNOT n0 n]) ([_CNOT n0 n] ++ [_X n])).
+  { unfold uc_equiv_l; simpl.
+    do 2 rewrite uskip_id_r.
+    apply X_CNOT_comm. }
+  rewrite H1.
+  reflexivity.  
+Qed.
 
-(* Two-qubit Gate Cancellation
-   
-   Cancel adjacent CNOT gates while propagating CNOT gates right using 
-   a set of commutation rules.
- 
-   Commutation rules:
-   #1 - CNOT a c ; CNOT b c ≡ CNOT b c ; CNOT a c
-   #2 - CNOT a c ; CNOT a b ≡ CNOT a b ; CNOT a c
-   #3 - Rz a ; CNOT a b ≡ CNOT a b ; Rz a
-*)
+Lemma commuting_Rz_pat : forall {dim} k (l : gate_list dim) q l1 l2,
+  search_for_commuting_Rz_pat l q = Some (l1, l2) ->
+  _PI4 k q :: l =l= l1 ++ [_PI4 k q] ++ l2.
+Proof.
+(* Will require lemmas about search_for_Rz_pat1, 2, and 3. *)
+Admitted.
 
+Lemma commuting_CNOT_pat : forall {dim} (l : gate_list dim) q1 q2 l1 l2,
+  search_for_commuting_CNOT_pat l q1 q2 = Some (l1, l2) ->
+  _CNOT q1 q2 :: l =l= l1 ++ [_CNOT q1 q2] ++ l2.
+Proof.
+(* Will require lemmas about search_for_CNOT_pat1, 2, 3, and 4. *)
+Admitted.
+  
+(* Proofs about propagation functions *)
+
+Lemma propagate_H_sound : forall {dim} (l : gate_list dim) q l',
+  q < dim ->
+  propagate_H l q = Some l' ->
+  _H q :: l =l= l'.
+Proof. 
+  intros.
+  unfold propagate_H in H0; simpl in H0.
+  remember (next_single_qubit_gate l q) as next_gate; symmetry in Heqnext_gate.
+  destruct next_gate; try easy.
+  destruct p; dependent destruction f; try easy.
+  inversion H0; subst.
+  rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+  apply H_H_cancel; assumption.
+Qed.
+
+Lemma propagate_X_sound : forall {dim} (l : gate_list dim) q n l',
+  q < dim ->
+  propagate_X l q n = Some l' ->
+  _X q :: l =l= l'.
+Proof.
+  intros.
+  generalize dependent l'.
+  generalize dependent l.
+  induction n; try easy.
+  simpl.
+  intros.
+  remember (next_single_qubit_gate l q) as next_gate; symmetry in Heqnext_gate.
+  destruct next_gate.
+  - destruct p. 
+    dependent destruction f. 
+    2: { (* Cancel case *)
+         inversion H0; subst.
+         rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+         apply X_X_cancel; assumption. }
+    remember (search_for_commuting_X_pat l q) as pat; symmetry in Heqpat.
+    destruct pat; try easy.
+    destruct p.    
+    remember (propagate_X g0 q n) as prop; symmetry in Heqprop.
+    destruct prop; try easy.    
+    inversion H0; subst.
+    rewrite (commuting_X_pat _ _ _ _ Heqpat).
+    rewrite (IHn _ _ Heqprop).
+    reflexivity.
+  - admit.
+Admitted.
+
+(* The rest of the lemmas should have the same structure... *)

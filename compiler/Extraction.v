@@ -1,13 +1,14 @@
 Require Coq.extraction.Extraction.
 Require Import Representations.
 Require Import Optimizations.
-Require Import Mapping.
+(*Require Import Mapping.*)
 
 (* General utilies for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
 
-(* Automatic extraction from nat -> OCaml int. We may not want to use this. *)
+(* Automatic extraction from nat/int -> OCaml int. We may not want to use these. *)
 Require Coq.extraction.ExtrOcamlNatInt. 
+Require Coq.extraction.ExtrOcamlZInt. 
 
 (* A few list functions not included in ExtrOcamlBasic. *)
 Extract Constant length => "List.length".
@@ -18,6 +19,7 @@ Extract Constant rev => "List.rev".
    unused argument everywhere in the OCaml code. *)
 Extraction Implicit _H [dim].
 Extraction Implicit _X [dim].
+Extraction Implicit _PI4 [dim].
 Extraction Implicit _Z [dim].
 Extraction Implicit _P [dim].
 Extraction Implicit _PDAG [dim].
@@ -52,19 +54,23 @@ Extraction Implicit apply_H_equivalences [dim].
 Extraction Implicit hadamard_reduction [dim].
 Extraction Implicit cancel_gates_simple' [dim].
 Extraction Implicit cancel_gates_simple [dim].
-Extraction Implicit search_for_pat1 [dim].
-Extraction Implicit search_for_pat2 [dim].
-Extraction Implicit search_for_pat3 [dim].
-Extraction Implicit search_for_commuting_pat [dim].
-Extraction Implicit propagate_Z [dim].
-Extraction Implicit propagate_P [dim].
-Extraction Implicit propagate_PDAG [dim].
-Extraction Implicit propagate_T [dim].
-Extraction Implicit propagate_TDAG [dim].
+Extraction Implicit search_for_Rz_pat1 [dim].
+Extraction Implicit search_for_Rz_pat2 [dim].
+Extraction Implicit search_for_Rz_pat3 [dim].
+Extraction Implicit search_for_CNOT_pat1 [dim].
+Extraction Implicit search_for_CNOT_pat2 [dim].
+Extraction Implicit search_for_CNOT_pat3 [dim].
+Extraction Implicit search_for_CNOT_pat4 [dim].
+Extraction Implicit search_for_commuting_X_pat [dim].
+Extraction Implicit search_for_commuting_Rz_pat [dim].
+Extraction Implicit search_for_commuting_CNOT_pat [dim].
+Extraction Implicit propagate_PI4 [dim].
+Extraction Implicit propagate_H [dim].
+Extraction Implicit propagate_X [dim].
+Extraction Implicit propagate_CNOT [dim].
+Extraction Implicit cancel_gates' [dim].
 Extraction Implicit cancel_gates [dim].
-Extraction Implicit single_qubit_gate_cancellation [dim].
-
 
 (* Perform extraction to the file 'quipper-to-sqire/extracted_code.ml'. *)
-Extraction "quipper-to-sqire/extracted_code.ml" benchmark_to_list count_H_gates count_X_gates count_rotation_gates count_CNOT_gates rm_nots hadamard_reduction cancel_gates_simple single_qubit_gate_cancellation.
+Extraction "quipper-to-sqire/extracted_code.ml" benchmark_to_list count_H_gates count_X_gates count_rotation_gates count_CNOT_gates rm_nots hadamard_reduction cancel_gates_simple cancel_gates.
 
