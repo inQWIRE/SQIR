@@ -811,7 +811,7 @@ Fixpoint cancel_gates_simple' {dim} (l acc : gate_list dim) (n: nat) : gate_list
                match next_single_qubit_gate t q with
                | Some (fU_PI4 k', t') => 
                  (* Add mod 8? *)
-                 cancel_gates_simple' (_PI4 ((k + k')) q :: t') acc n'
+                 cancel_gates_simple' (_PI4 ((k + k') mod 8) q :: t') acc n'
                | _ => cancel_gates_simple' t (_PI4 k q :: acc) n'
                end
            | App2 fU_CNOT q1 q2 :: t => 
@@ -906,6 +906,10 @@ Proof.
   rewrite Rplus_comm.
   reflexivity.
 Qed.
+
+Lemma PI4_PI4_mod8_combine : forall {dim} (l : gate_list dim) q k k', 
+  _PI4 k q :: _PI4 k' q :: l =l= _PI4 ((k+k') mod 8) q :: l.
+Admitted.
   
 (* Not currently used in an optimization, can be generalized to mod 8 *)
 Lemma PI4_0_rem : forall {dim} (l : gate_list dim) q, 
@@ -1043,7 +1047,7 @@ Proof.
       try apply (nsqg_WT _ _ _ _ Heqnext_gate);
       try assumption;
       try apply app_congruence; try reflexivity.
-      apply PI4_PI4_combine.
+      apply PI4_PI4_mod8_combine.
   - (* CNOT *)
     dependent destruction f.
     remember (next_two_qubit_gate l n0) as next_gate;
@@ -1188,7 +1192,7 @@ Fixpoint propagate_PI4 {dim} k (l : gate_list dim) (q n : nat) : option (gate_li
   | S n' => 
       match next_single_qubit_gate l q with
       (* Combine *)
-      | Some (fU_PI4 k', l') => Some (_PI4 (k+k')  q :: l')
+      | Some (fU_PI4 k', l') => Some (_PI4 ((k+k') mod 8)  q :: l')
       (* Commute *)
       | _ =>
           match search_for_commuting_pat l q with
