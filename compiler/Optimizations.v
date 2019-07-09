@@ -392,6 +392,30 @@ Proof.
     apply (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
 Qed.
 
+Lemma remove_single_qubit_pattern_correct' : forall {dim} (l l' : gate_list dim) (q : nat) (pat : single_qubit_pattern),
+  remove_single_qubit_pattern l q pat = Some l' ->
+  l ≅l≅ ((single_qubit_pattern_to_program pat q) ++ l').
+Proof.
+  exists 0%R. rewrite eulers0. rewrite Mscale_1_l.
+  intros.
+  generalize dependent l'.
+  generalize dependent l.
+  induction pat; intros.
+  - inversion H; subst. reflexivity.
+  - simpl in H. 
+    remember (next_single_qubit_gate l q) as next_gate.
+    symmetry in Heqnext_gate.
+    destruct next_gate; try easy.
+    destruct p. 
+    remember (match_gate a f) as gate_match.
+    destruct gate_match; try easy.
+    symmetry in Heqgate_match.
+    rewrite match_gate_refl in Heqgate_match; subst.
+    simpl.
+    rewrite <- (IHpat _ _ H). 
+    apply (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+Qed.
+
 Lemma replace_single_qubit_pattern_sound : forall {dim} (l l' : gate_list dim) (q : nat) (pat rep : single_qubit_pattern),
   @uc_equiv_l dim (single_qubit_pattern_to_program pat q) (single_qubit_pattern_to_program rep q) ->
   replace_single_qubit_pattern l q pat rep = Some l' ->
@@ -407,6 +431,21 @@ Proof.
   rewrite Heqremove_pat.
   rewrite H.
   reflexivity.
+Qed.
+
+Lemma replace_single_qubit_pattern_sound' : forall {dim} (l l' : gate_list dim) (q : nat) (pat rep : single_qubit_pattern),
+  @uc_cong_l dim (single_qubit_pattern_to_program pat q) (single_qubit_pattern_to_program rep q) ->
+  replace_single_qubit_pattern l q pat rep = Some l' ->
+  l ≅l≅ l'.
+Proof.
+  intros.
+  unfold replace_single_qubit_pattern in H0.
+  remember (remove_single_qubit_pattern l q pat) as remove_pat.
+  destruct remove_pat; try easy.
+  symmetry in Heqremove_pat.
+  apply remove_single_qubit_pattern_correct' in Heqremove_pat.
+  inversion H0; subst.
+  rewrite Heqremove_pat. rewrite H. reflexivity.
 Qed.
 
 (* TODO: We might also want to prove something along the lines of: the resulting
@@ -581,6 +620,25 @@ Fixpoint apply_H_equivalences {dim} (l : gate_list dim) (n: nat) : gate_list dim
 Definition hadamard_reduction {dim} (l : gate_list dim) : gate_list dim := 
   apply_H_equivalences l (2 * (length l)).
 
+
+(* New C_field_simplify/nonzero that deal with Ci *)
+Ltac nonzero :=
+  repeat split;
+   try match goal with
+       | |- not (@eq _ ?x (RtoC (IZR Z0))) => apply RtoC_neq
+       | |- not (@eq _ Ci (RtoC (IZR Z0))) => apply C0_snd_neq; simpl
+       end;
+   repeat
+    match goal with
+    | |- not (@eq _ (sqrt ?x) (IZR Z0)) => apply sqrt_neq_0_compat
+    | |- not (@eq _ (Rinv ?x) (IZR Z0)) => apply Rinv_neq_0_compat
+    end; match goal with
+         | |- not (@eq _ _ _) => lra
+         | |- Rlt _ _ => lra
+         end.
+
+Ltac C_field_simplify := repeat field_simplify_eq [ Csqrt2_sqrt Csqrt2_inv Ci2].
+
 (* The issue is proving that (H P H) = (P† H P†). This is only true up
    to a phase of θ=PI/4. Equivalences 2, 4, and 5 also require equality
    up to a phase. *)
@@ -603,66 +661,9 @@ Proof.
   reflexivity.
 Admitted.
 
-Lemma remove_single_qubit_pattern_correct' : forall {dim} (l l' : gate_list dim) (q : nat) (pat : single_qubit_pattern),
-  remove_single_qubit_pattern l q pat = Some l' ->
-  l ≅l≅ ((single_qubit_pattern_to_program pat q) ++ l').
-Proof.
-  exists 0%R. rewrite eulers0. rewrite Mscale_1_l.
-  intros.
-  generalize dependent l'.
-  generalize dependent l.
-  induction pat; intros.
-  - inversion H; subst. reflexivity.
-  - simpl in H. 
-    remember (next_single_qubit_gate l q) as next_gate.
-    symmetry in Heqnext_gate.
-    destruct next_gate; try easy.
-    destruct p. 
-    remember (match_gate a f) as gate_match.
-    destruct gate_match; try easy.
-    symmetry in Heqgate_match.
-    rewrite match_gate_refl in Heqgate_match; subst.
-    simpl.
-    rewrite <- (IHpat _ _ H). 
-    apply (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
-Qed.
-
-Lemma replace_single_qubit_pattern_sound' : forall {dim} (l l' : gate_list dim) (q : nat) (pat rep : single_qubit_pattern),
-  @uc_cong_l dim (single_qubit_pattern_to_program pat q) (single_qubit_pattern_to_program rep q) ->
-  replace_single_qubit_pattern l q pat rep = Some l' ->
-  l ≅l≅ l'.
-Proof.
-  intros.
-  unfold replace_single_qubit_pattern in H0.
-  remember (remove_single_qubit_pattern l q pat) as remove_pat.
-  destruct remove_pat; try easy.
-  symmetry in Heqremove_pat.
-  apply remove_single_qubit_pattern_correct' in Heqremove_pat.
-  inversion H0; subst.
-  rewrite Heqremove_pat. rewrite H. reflexivity.
-Qed.
-
-(* New C_field_simplify/nonzero that deal with Ci *)
-Ltac nonzero :=
-  repeat split;
-   try match goal with
-       | |- not (@eq _ ?x (RtoC (IZR Z0))) => apply RtoC_neq
-       | |- not (@eq _ Ci (RtoC (IZR Z0))) => apply C0_snd_neq; simpl
-       end;
-   repeat
-    match goal with
-    | |- not (@eq _ (sqrt ?x) (IZR Z0)) => apply sqrt_neq_0_compat
-    | |- not (@eq _ (Rinv ?x) (IZR Z0)) => apply Rinv_neq_0_compat
-    end; match goal with
-         | |- not (@eq _ _ _) => lra
-         | |- Rlt _ _ => lra
-         end.
-
-Ltac C_field_simplify := repeat field_simplify_eq [ Csqrt2_sqrt Csqrt2_inv Ci2].
-
 Lemma apply_H_equivalence1_sound' : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
-  l ≅l≅ l'.
+  l ≅l≅ l'. 
 Proof.
   intros.
   eapply replace_single_qubit_pattern_sound'.
@@ -691,7 +692,32 @@ Lemma apply_H_equivalence2_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence2 q l = Some l' ->
   l =l= l'.
 Proof. 
-Admitted.
+Admitted. 
+
+Lemma apply_H_equivalence2_sound' : forall {dim} (l l' : gate_list dim) q,
+  apply_H_equivalence2 q l = Some l' ->
+  l ≅l≅ l'.
+Proof. 
+  intros.
+  eapply replace_single_qubit_pattern_sound'; try apply H.
+  exists (- PI / 4)%R.
+  unfold uc_eval, ueval1, pad; simpl.
+  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  - Msimpl.
+    restore_dims_strong; repeat rewrite kron_mixed_product.
+    Msimpl.
+    assert (hadamard × phase_shift (- PI / 2) × hadamard = (Cexp (- PI / 4)%R) .* phase_shift (PI / 2) × hadamard × phase_shift (PI / 2)).
+    { solve_matrix. 
+      all: try rewrite Ropp_div, Cexp_neg; rewrite Cexp_PIm4, Cexp_PI2.
+      all: C_field_simplify; try nonzero.
+    }
+    rewrite H1.
+    repeat rewrite Mscale_mult_dist_l.
+    repeat rewrite Mscale_kron_dist_r.
+    rewrite Mscale_kron_dist_l.
+    reflexivity.
+  - rewrite Mscale_0_r. reflexivity.
+Qed.
 
 Lemma apply_H_equivalence3_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence3 q l = Some l' ->
