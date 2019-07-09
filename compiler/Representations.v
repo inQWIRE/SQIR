@@ -1,6 +1,7 @@
 Require Import Setoid.
 Require Import Equivalences.
 Require Import Coq.Reals.ROrderedType.
+Require Import Phase.
 Require Export List.
 
 Local Open Scope ucom_scope.
@@ -32,30 +33,24 @@ Local Open Scope ucom_scope.
 (**       Gate set        **)
 (***************************)
 (* In this file, we'll be using a slightly different "fixed" set of unitaries.
-   The difference between this set and the set built into SQIRE is the lack
-   of an arbitrary z-rotation gate. We have included P and T gates to allow
-   for fixed z rotations. *)
+   Instead of an arbitrary rotation R_ parameterized by a real, we will use a
+   k * PI / 4 rotation for natural number k. We will also exclude Z, which 
+   corresponds to PI4 k with k = 4.
+ *)
 
 Inductive fUnitary : nat -> Set := 
-  | fU_H         : fUnitary 1 
-  | fU_X         : fUnitary 1
-  | fU_Z         : fUnitary 1
-  | fU_P         : fUnitary 1 
-  | fU_PDAG      : fUnitary 1
-  | fU_T         : fUnitary 1
-  | fU_TDAG      : fUnitary 1
-  | fU_CNOT      : fUnitary 2.
+  | fU_H           : fUnitary 1 
+  | fU_X           : fUnitary 1
+  | fU_PI4 (k : Z) : fUnitary 1
+  | fU_CNOT        : fUnitary 2.
 
 Definition fUnitary_to_Unitary  {n} (u : fUnitary n) : Unitary n :=
   match u with
-  | fU_H    => U_H
-  | fU_X    => U_X
-  | fU_Z    => U_Z
-  | fU_P    => U_R (PI / 2)
-  | fU_PDAG => U_R (- PI / 2)
-  | fU_T    => U_R (PI / 4)
-  | fU_TDAG => U_R (- PI / 4)
-  | fU_CNOT => U_CNOT
+  | fU_H     => U_H
+  | fU_X     => U_X
+(*  | fU_PI4 k => if (beq_nat k 4) then U_Z else U_R (INR k * PI / 4)%R *)
+  | fU_PI4 k =>  U_R (IZR k * PI / 4)%R (* simpler version *)
+  | fU_CNOT  => U_CNOT
   end.
 
 Definition Unitary_to_fUnitary  {n} (u : Unitary n) : option (fUnitary n) :=
@@ -63,45 +58,70 @@ Definition Unitary_to_fUnitary  {n} (u : Unitary n) : option (fUnitary n) :=
   | U_H    => Some fU_H
   | U_X    => Some fU_X
   | U_Y    => None
-  | U_Z    => Some fU_Z
-  | U_R θ  => if Reqb θ (PI / 2)
-             then Some fU_P
-             else if Reqb θ (- PI / 2)
-                  then Some fU_PDAG
-                  else if Reqb θ (PI / 4)
-                       then Some fU_T
-                       else if Reqb θ (- PI / 4)
-                            then Some fU_TDAG
-                            else None
+  | U_Z    => Some (fU_PI4 4)
+  | U_R θ  => if Reqb θ (0 * PI / 4) then Some (fU_PI4 0) else
+             if Reqb θ (1 * PI / 4) then Some (fU_PI4 1) else
+             if Reqb θ (2 * PI / 4) then Some (fU_PI4 2) else
+             if Reqb θ (3 * PI / 4) then Some (fU_PI4 3) else
+             if Reqb θ (4 * PI / 4) then Some (fU_PI4 4) else (* can leave out *)
+             if Reqb θ (5 * PI / 4) then Some (fU_PI4 5) else
+             if Reqb θ (6 * PI / 4) then Some (fU_PI4 6) else
+             if Reqb θ (7 * PI / 4) then Some (fU_PI4 7) else
+               None
   | U_CNOT => Some fU_CNOT
   end.
 
+(* Rotation shorthands (not used in this file) *)
+Definition fU_T : fUnitary 1 := fU_PI4 1.
+Definition fU_P : fUnitary 1 := fU_PI4 2.
+Definition fU_Z : fUnitary 1 := fU_PI4 4.
+Definition fU_PDAG : fUnitary 1 := fU_PI4 6.
+Definition fU_TDAG : fUnitary 1 := fU_PI4 7.
+
+(* Only true if we special case on Z:
 Lemma unitary_conversion_sound : forall {n} (u : Unitary n) u',
   Unitary_to_fUnitary u = Some u' ->
   fUnitary_to_Unitary u'= u.
 Proof.
   intros.
-  destruct u; simpl in *; try (inversion H; subst; reflexivity).
-  remember (Reqb r (PI / 2)) as req.
-  destruct req; inversion H; subst.
-  symmetry in Heqreq. apply Reqb_eq in Heqreq; subst. reflexivity.
-  remember (Reqb r (- PI / 2)) as req.
-  destruct req; inversion H; subst.
-  symmetry in Heqreq0. apply Reqb_eq in Heqreq0; subst. reflexivity.
-  remember (Reqb r (PI / 4)) as req.
-  destruct req; inversion H; subst.
-  symmetry in Heqreq1. apply Reqb_eq in Heqreq1; subst. reflexivity.
-  remember (Reqb r (- PI / 4)) as req.
-  destruct req; inversion H; subst.
-  symmetry in Heqreq2. apply Reqb_eq in Heqreq2; subst. reflexivity.
+  dependent destruction u; inversion H; simpl; trivial.
+  clear H.
+  repeat match goal with 
+  | [ H : (if ?b then _ else _) = _ |- _] => let E := fresh "E" in destruct b eqn:E
+  | [ E : Reqb _ _ = true |- _]           => apply Reqb_eq in E; subst
+  | [ H : Some _ = Some _ |- _]           => inversion H; subst
+  | [ H : None = Some _ |- _]             => inversion H
+  end; simpl; apply f_equal; lra.
+Qed.
+*)
+
+(* Semantic version: *)
+Lemma unitary_conversion_sound' : forall (u : Unitary 1) u' dim n,
+  Unitary_to_fUnitary u = Some u' ->
+  ueval1 dim n (fUnitary_to_Unitary u') = ueval1 dim n u.
+Proof.
+  intros.
+  dependent destruction u; inversion H; simpl; trivial.
+  - unfold ueval1, pad.
+    destruct (n + 1 <=? dim); trivial.
+    rewrite <- phase_pi.
+    apply f_equal2; trivial.
+    apply f_equal2; trivial.
+    apply f_equal. lra.
+  - clear H.
+    repeat match goal with 
+    | [ H : (if ?b then _ else _) = _ |- _] => let E := fresh "E" in destruct b eqn:E
+    | [ E : Reqb _ _ = true |- _]           => apply Reqb_eq in E; subst
+    | [ H : Some _ = Some _ |- _]           => inversion H; subst
+    | [ H : None = Some _ |- _]             => inversion H
+    end; simpl; do 2 apply f_equal; lra.
 Qed.
   
+
 Definition match_gate {n} (U U' : fUnitary n) : bool :=
   match U, U' with
-  | fU_H, fU_H | fU_X, fU_X | fU_Z, fU_Z
-  | fU_P, fU_P | fU_PDAG, fU_PDAG 
-  | fU_T, fU_T | fU_TDAG, fU_TDAG
-  | fU_CNOT, fU_CNOT => true
+  | fU_H, fU_H | fU_X, fU_X | fU_CNOT, fU_CNOT => true
+  | fU_PI4 k, fU_PI4 k' => Z.eqb k k'
   | _, _ => false
   end.
 
@@ -110,8 +130,10 @@ Proof.
   intros.
   split; intros.
   - dependent destruction U; dependent destruction U';
-    inversion H; reflexivity.
-  - subst. dependent destruction U'; reflexivity.
+    inversion H; try reflexivity.
+    apply Z.eqb_eq in H1. subst. reflexivity.    
+  - subst. dependent destruction U'; trivial. 
+    simpl. apply Z.eqb_refl.
 Qed.
 
 
@@ -130,12 +152,16 @@ Arguments App2 {dim}.
 (* Some shorthands *)
 Definition _H {dim} n : gate_app dim := App1 fU_H n.
 Definition _X {dim} n : gate_app dim := App1 fU_X n.
-Definition _Z {dim} n : gate_app dim := App1 fU_Z n.
-Definition _P {dim} n : gate_app dim := App1 fU_P n.
-Definition _PDAG {dim} n : gate_app dim := App1 fU_PDAG n.
-Definition _T {dim} n : gate_app dim := App1 fU_T n.
-Definition _TDAG {dim} n : gate_app dim := App1 fU_TDAG n.
+Definition _PI4 {dim} k n : gate_app dim := App1 (fU_PI4 k) n.
 Definition _CNOT {dim} m n : gate_app dim := App2 fU_CNOT m n.
+
+(* Shorthands for common rotation gates *)
+Definition _I {dim} n : gate_app dim := App1 (fU_PI4 0) n.
+Definition _T {dim} n : gate_app dim := App1 (fU_PI4 1) n.
+Definition _P {dim} n : gate_app dim := App1 (fU_PI4 2) n.
+Definition _Z {dim} n : gate_app dim := App1 (fU_PI4 4) n.
+Definition _PDAG {dim} n : gate_app dim := App1 (fU_PI4 6) n.
+Definition _TDAG {dim} n : gate_app dim := App1 (fU_PI4 7) n.
 
 Definition gate_list dim := list (gate_app dim).
 
@@ -193,17 +219,17 @@ Proof.
   - simpl in H. 
     remember (Unitary_to_fUnitary u) as eqU.
     destruct eqU.
-    symmetry in HeqeqU; apply unitary_conversion_sound in HeqeqU.
     inversion H; subst. simpl.
-    Msimpl. reflexivity.
-    inversion H.
+    Msimpl. symmetry.
+    apply unitary_conversion_sound'.
+    auto.
+    discriminate.
   - simpl in H. 
     remember (Unitary_to_fUnitary u) as eqU.
     destruct eqU.
-    symmetry in HeqeqU; apply unitary_conversion_sound in HeqeqU.
     inversion H; subst. simpl.
     Msimpl. reflexivity.
-    inversion H.
+    discriminate.
 Qed.
 
 (* Well-typedness for lists *)
@@ -640,9 +666,7 @@ Fixpoint count_rotation_gates {dim} (l : gate_list dim) :=
   let fix aux l acc :=
     match l with
     | [] => acc
-    | (App1 fU_Z _) :: t | (App1 fU_P _) :: t 
-    | (App1 fU_PDAG _) :: t | (App1 fU_T _) :: t 
-    | (App1 fU_TDAG _) :: t => aux t (acc + 1)
+    | (App1 (fU_PI4 _) _) :: t  => aux t (acc + 1)
     | _ :: t => aux t acc
     end in
   aux l 0.
@@ -676,11 +700,11 @@ Definition TOFF {dim} (a b c : nat) : gate_list dim :=
 
 Fixpoint benchmark_to_list dim (l : list benchmark_gate_app) : gate_list dim :=
   match l with
-  | []                     => []
-  | (bench_H n) :: t        => (App1 fU_H n) :: (benchmark_to_list dim t)
-  | (bench_X n) :: t        => (App1 fU_X n) :: (benchmark_to_list dim t)
-  | (bench_Z n) :: t        => (App1 fU_Z n) :: (benchmark_to_list dim t)
-  | (bench_CNOT m n) :: t   => (App2 fU_CNOT m n) :: (benchmark_to_list dim t)
+  | []                      => []
+  | (bench_H n) :: t        => (_H n) :: (benchmark_to_list dim t)
+  | (bench_X n) :: t        => (_X n) :: (benchmark_to_list dim t)
+  | (bench_Z n) :: t        => (_Z n) :: (benchmark_to_list dim t)
+  | (bench_CNOT m n) :: t   => (_CNOT m n) :: (benchmark_to_list dim t)
   | (bench_TOFF m n p) :: t => (TOFF m n p) ++ (benchmark_to_list dim t)
   end.
 

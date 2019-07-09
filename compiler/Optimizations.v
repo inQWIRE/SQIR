@@ -366,8 +366,8 @@ Compute (next_single_qubit_gate test 2).
 Compute (next_two_qubit_gate test 2).
 Compute (next_two_qubit_gate test 3).
 Compute (next_single_qubit_gate test 4).
-Compute (replace_single_qubit_pattern test 0 (fU_X :: fU_Z :: []) (fU_H :: fU_H :: [])).
-Compute (replace_single_qubit_pattern test 0 (fU_X :: fU_H :: []) (fU_Z :: fU_Z :: [])).
+Compute (replace_single_qubit_pattern test 0 (fU_X :: fU_PI4 4 :: []) (fU_H :: fU_H :: [])).
+Compute (replace_single_qubit_pattern test 0 (fU_X :: fU_H :: []) (fU_PI4 4:: fU_PI4 4 :: [])).
 
 Lemma remove_single_qubit_pattern_correct : forall {dim} (l l' : gate_list dim) (q : nat) (pat : single_qubit_pattern),
   remove_single_qubit_pattern l q pat = Some l' ->
@@ -427,6 +427,27 @@ Lemma try_apply_rewrites_sound : forall {dim} (l l' : gate_list dim) rules,
   (forall r, In r rules -> (forall l l', r l = Some l' -> l =l= l')) ->
   try_rewrites l rules = Some l' ->
   l =l= l'.
+Proof.
+  intros.
+  induction rules.
+  - inversion H0.
+  - simpl in H0.
+    remember (a l) as al. 
+    destruct al; inversion H0; subst.
+    + symmetry in Heqal.
+      assert (In a (a :: rules)) by (apply in_eq).
+      apply (H a H1 l l' Heqal).
+    + apply IHrules; try assumption.
+      intros.
+      apply (H r).
+      apply in_cons; assumption.
+      assumption.
+Qed.
+
+Lemma try_apply_rewrites_sound_cong : forall {dim} (l l' : gate_list dim) rules,
+  (forall r, In r rules -> (forall l l', r l = Some l' -> l ≅l≅ l')) ->
+  try_rewrites l rules = Some l' ->
+  l ≅l≅ l'.
 Proof.
   intros.
   induction rules.
@@ -584,6 +605,7 @@ Definition hadamard_reduction {dim} (l : gate_list dim) : gate_list dim :=
 (* The issue is proving that (H P H) = (P† H P†). This is only true up
    to a phase of θ=PI/4. Equivalences 2, 4, and 5 also require equality
    up to a phase. *)
+(*
 Lemma apply_H_equivalence1_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l =l= l'.
@@ -598,10 +620,11 @@ Proof.
   Msimpl.
   assert (hadamard × phase_shift (PI / 2) × hadamard = phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
   admit.
-
+  repeat (apply f_equal2; trivial).
   rewrite H1.
   reflexivity.
 Admitted.
+*)
 
 Lemma remove_single_qubit_pattern_correct' : forall {dim} (l l' : gate_list dim) (q : nat) (pat : single_qubit_pattern),
   remove_single_qubit_pattern l q pat = Some l' ->
@@ -660,7 +683,8 @@ Ltac nonzero :=
 
 Ltac C_field_simplify := repeat field_simplify_eq [ Csqrt2_sqrt Csqrt2_inv Ci2].
 
-Lemma apply_H_equivalence1_sound' : forall {dim} (l l' : gate_list dim) q,
+
+Lemma apply_H_equivalence1_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l ≅l≅ l'.
 Proof.
@@ -673,9 +697,9 @@ Proof.
   Msimpl. 
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  assert (hadamard × phase_shift (PI / 2) × hadamard = (Cexp (PI / 4)%R) .* phase_shift (- PI / 2) × hadamard × phase_shift (- PI / 2)).
+  assert (hadamard × phase_shift (2 * PI / 4) × hadamard = (Cexp (PI / 4)%R) .* (phase_shift (6 * PI / 4) × hadamard  × phase_shift (6 * PI / 4))).
   { solve_matrix. 
-    all: try rewrite Ropp_div, Cexp_neg; rewrite Cexp_PI4, Cexp_PI2.
+    all: autorewrite with Cexp_db.
     all: C_field_simplify; try nonzero.
   }
   rewrite H1.
@@ -689,34 +713,35 @@ Qed.
 
 Lemma apply_H_equivalence2_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence2 q l = Some l' ->
-  l =l= l'.
+  l ≅l≅ l'.
 Proof. 
 Admitted.
 
 Lemma apply_H_equivalence3_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence3 q l = Some l' ->
-  l =l= l'.
+  l ≅l≅ l'.
 Proof.
 Admitted.
 
 Lemma apply_H_equivalence4_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence4 q l = Some l' ->
-  l =l= l'.
+  l ≅l≅ l'.
 Proof.
 Admitted.
 
 Lemma apply_H_equivalence5_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence5 q l = Some l' ->
-  l =l= l'.
+  l ≅l≅ l'.
 Proof.
 Admitted.
 
 Lemma apply_H_equivalence_sound : forall {dim} (l l' : gate_list dim) q,
-  apply_H_equivalence l q = Some l' -> l =l= l'.
+  apply_H_equivalence l q = Some l' -> 
+  l ≅l≅ l'.
 Proof. 
   unfold apply_H_equivalence.
   intros dim l l' q.
-  apply try_apply_rewrites_sound.
+  apply try_apply_rewrites_sound_cong.
   intros. 
   inversion H.
   subst; apply (apply_H_equivalence1_sound _ _ _ H0).
@@ -732,7 +757,7 @@ Proof.
 Qed.
 
 Lemma apply_H_equivalences_sound: forall {dim} (l : gate_list dim) n, 
-  l =l= apply_H_equivalences l n.
+  l ≅l≅ apply_H_equivalences l n.
 Proof. 
   intros.
   generalize dependent l.
@@ -750,7 +775,7 @@ Proof.
 Qed.
 
 Lemma hadamard_reduction_sound: forall {dim} (l : gate_list dim), 
-  l =l= hadamard_reduction l.
+  l ≅l≅ hadamard_reduction l.
 Proof. intros. apply apply_H_equivalences_sound. Qed.
 
 (* TODO: We should also be able to prove that the Hadamard reduction optimization 
@@ -768,6 +793,7 @@ Proof. intros. apply apply_H_equivalences_sound. Qed.
 
    The extra n argument is to help Coq recognize termination.
    We start with n = (length l). *)
+
 Fixpoint cancel_gates_simple' {dim} (l acc : gate_list dim) (n: nat) : gate_list dim :=
   match n with
   | 0 => (rev acc) ++ l
@@ -783,6 +809,14 @@ Fixpoint cancel_gates_simple' {dim} (l acc : gate_list dim) (n: nat) : gate_list
                | Some (fU_X, t') => cancel_gates_simple' t' acc n'
                | _ => cancel_gates_simple' t (_X q :: acc) n'
                end
+           | App1 (fU_PI4 k) q :: t => 
+               match next_single_qubit_gate t q with
+               | Some (fU_PI4 k', t') => 
+                 (* Add mod 8? *)
+                 cancel_gates_simple' (_PI4 ((k + k')) q :: t') acc n'
+               | _ => cancel_gates_simple' t (_PI4 k q :: acc) n'
+               end
+(*
            | App1 fU_Z q :: t => 
                match next_single_qubit_gate t q with
                | Some (fU_Z, t') => cancel_gates_simple' t' acc n'
@@ -819,7 +853,7 @@ Fixpoint cancel_gates_simple' {dim} (l acc : gate_list dim) (n: nat) : gate_list
                | Some (fU_T, t') => cancel_gates_simple' t' acc n'
                | Some (fU_TDAG, t') => cancel_gates_simple' (_PDAG q :: t') acc n'
                | _ => cancel_gates_simple' t (_TDAG q :: acc) n'
-               end
+               end *)
            | App2 fU_CNOT q1 q2 :: t => 
                match next_two_qubit_gate t q1 with
                | Some (l1, q1', q2', l2) => 
@@ -876,6 +910,7 @@ Proof.
   apply Mmult_1_r; auto with wf_db.
 Qed.
 
+(* Not used *)
 Lemma Z_Z_cancel : forall {dim} (l : gate_list dim) q, 
   q < dim -> _Z q :: _Z q :: l =l= l.
 Proof.
@@ -886,15 +921,16 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (σz × σz) with (I (2 ^ 1)) by solve_matrix.
+  replace (phase_shift (4 * PI / 4) × phase_shift (4 * PI / 4)) with (I (2 ^ 1)).
+  2:{ solve_matrix. autorewrite with Cexp_db. lca. }
   Msimpl.
   unify_pows_two.
   replace (q + 1 + (dim - 1 - q)) with dim by lia.
   apply Mmult_1_r; auto with wf_db.
 Qed.
 
-Lemma Z_P_combine : forall {dim} (l : gate_list dim) q, 
-  _Z q :: _P q :: l =l= _PDAG q :: l.
+Lemma PI4_PI4_combine : forall {dim} (l : gate_list dim) q k k', 
+  _PI4 k q :: _PI4 k' q :: l =l= _PI4 (k+k') q :: l.
 Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
@@ -903,239 +939,29 @@ Proof.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
-  rewrite <- phase_neg_pi. rewrite phase_mul. 
-  replace (PI / 2 + - PI)%R with (- PI / 2)%R by lra.
-  reflexivity.
-Qed.
-
-Lemma Z_PDAG_combine : forall {dim} (l : gate_list dim) q, 
-  _Z q :: _PDAG q :: l =l= _P q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite <- phase_pi. rewrite phase_mul. 
-  replace (- PI / 2 + PI)%R with (PI / 2)%R by lra.
-  reflexivity.
-Qed.
-
-Lemma P_Z_commute : forall {dim} (l : gate_list dim) q, 
-  _P q :: _Z q :: l =l= _Z q :: _P q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  repeat rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite <- phase_neg_pi. rewrite 2 phase_mul. 
-  replace (- PI + PI / 2)%R with (PI / 2 + - PI)%R by lra.
-  reflexivity.
-Qed.
-
-Lemma P_P_combine : forall {dim} (l : gate_list dim) q, 
-  _P q :: _P q :: l =l= _Z q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite <- phase_pi. rewrite phase_mul. 
-  replace (PI / 2 + PI / 2)%R with PI by lra.
-  reflexivity.
-Qed.
-
-Lemma P_PDAG_cancel : forall {dim} (l : gate_list dim) q, 
-  q < dim -> _P q :: _PDAG q :: l =l= l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try lia.
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite phase_mul.
-  replace (- PI / 2 + PI / 2)%R with 0%R by lra.
-  rewrite phase_0.
-  Msimpl.
-  unify_pows_two.
-  replace (q + 1 + (dim - 1 - q)) with dim by lia.
-  apply Mmult_1_r; auto with wf_db.
-Qed.
-
-Lemma P_TDAG_combine : forall {dim} (l : gate_list dim) q, 
-  _P q :: _TDAG q :: l =l= _T q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite phase_mul.
-  replace (- PI / 4 + PI / 2)%R with (PI/4)%R by lra.
-  reflexivity.
-Qed.
-
-Lemma PDAG_Z_commute : forall {dim} (l : gate_list dim) q, 
-  _PDAG q :: _Z q :: l =l= _Z q :: _PDAG q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  repeat rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite <- phase_pi. rewrite 2 phase_mul. 
+  rewrite phase_mul. 
+  repeat rewrite <- Rmult_div_assoc.
+  rewrite <- Rmult_plus_distr_r.
+  rewrite plus_IZR.
   rewrite Rplus_comm.
   reflexivity.
 Qed.
-
-Lemma PDAG_P_commute : forall {dim} (l : gate_list dim) q, 
-  _PDAG q :: _P q :: l =l= _P q :: _PDAG q :: l.
+  
+(* Not currently used in an optimization, can be generalized to mod 8 *)
+Lemma PI4_0_rem : forall {dim} (l : gate_list dim) q, 
+  q < dim -> _PI4 0 q :: l =l= l.
 Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
   unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  repeat rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite 2 phase_mul. rewrite Rplus_comm.
-  reflexivity.
-Qed.
-
-Lemma PDAG_PDAG_combine : forall {dim} (l : gate_list dim) q, 
-  _PDAG q :: _PDAG q :: l =l= _Z q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite phase_mul. 
-  replace (- PI / 2 + - PI / 2)%R with (-PI)%R by lra.
-  rewrite phase_neg_pi.
-  reflexivity.
-Qed.
-
-Lemma PDAG_T_combine : forall {dim} (l : gate_list dim) q, 
-  _PDAG q :: _T q :: l =l= _TDAG q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite phase_mul.
-  replace (PI / 4 + - PI / 2)%R with (-PI/4)%R by lra.
-  reflexivity.
-Qed.
-
-Lemma T_PDAG_commute : forall {dim} (l : gate_list dim) q, 
-  _T q :: _PDAG q :: l =l= _PDAG q :: _T q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  repeat rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite 2 phase_mul. rewrite Rplus_comm.
-  reflexivity.
-Qed.
-
-Lemma T_TDAG_cancel : forall {dim} (l : gate_list dim) q, 
-  q < dim -> _T q :: _TDAG q :: l =l= l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try lia.
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite phase_mul. replace (- PI / 4 + PI / 4)%R with 0%R by lra.
+  bdestructΩ (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  unfold Rdiv. repeat rewrite Rmult_0_l. 
   rewrite phase_0.
+  Msimpl. replace (2 ^ q * 2 * 2 ^ (dim - 1 - q))%nat with (2^dim) by unify_pows_two.
   Msimpl.
-  unify_pows_two.
-  replace (q + 1 + (dim - 1 - q)) with dim by lia.
-  apply Mmult_1_r; auto with wf_db.
-Qed.
-
-Lemma T_T_combine : forall {dim} (l : gate_list dim) q, 
-  _T q :: _T q :: l =l= _P q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite phase_mul. replace (PI / 4 + PI / 4)%R with (PI/2)%R by lra.
   reflexivity.
 Qed.
-
-Lemma TDAG_P_commute : forall {dim} (l : gate_list dim) q, 
-  _TDAG q :: _P q :: l =l= _P q :: _TDAG q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  repeat rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite 2 phase_mul. rewrite Rplus_comm.
-  reflexivity.
-Qed.
-
-Lemma TDAG_T_commute : forall {dim} (l : gate_list dim) q, 
-   _TDAG q :: _T q :: l =l= _T q :: _TDAG q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  repeat rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite 2 phase_mul, Rplus_comm.
-  reflexivity.
-Qed.
-
-Lemma TDAG_TDAG_combine : forall {dim} (l : gate_list dim) q, 
-  _TDAG q :: _TDAG q :: l =l= _PDAG q :: l.
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  rewrite phase_mul. 
-  replace (- PI / 4 + - PI / 4)%R with (-PI/2)%R by lra.
-  reflexivity.
-Qed.
-
+  
 Lemma CNOT_CNOT_cancel : forall {dim} (l1 l2 : gate_list dim) q1 q2, 
   q1 < dim -> q2 < dim -> q1 <> q2 -> l1 ++ [_CNOT q1 q2] ++ [_CNOT q1 q2] ++ l2 =l= l1 ++ l2.
 Proof.
@@ -1245,7 +1071,7 @@ Proof.
       apply app_congruence; try reflexivity.
       apply X_X_cancel; assumption.
       apply (nsqg_WT _ _ _ _ Heqnext_gate H3).
-    + (* Z *)
+    + (* PI4 *)
       destruct next_gate.
       2: { rewrite <- IHn; try assumption.
            simpl; rewrite <- app_assoc. 
@@ -1257,71 +1083,7 @@ Proof.
       try apply (nsqg_WT _ _ _ _ Heqnext_gate);
       try assumption;
       try apply app_congruence; try reflexivity.
-      apply Z_Z_cancel; assumption.
-      apply Z_P_combine.
-      apply Z_PDAG_combine.
-    + (* P *)
-      destruct next_gate.
-      2: { rewrite <- IHn; try assumption.
-           simpl; rewrite <- app_assoc. 
-           reflexivity. }
-      destruct p; dependent destruction f; rewrite <- IHn;
-      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
-      try (simpl; rewrite <- app_assoc; reflexivity);
-      try constructor;
-      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
-      try assumption;
-      try apply app_congruence; try reflexivity.
-      rewrite <- Z_P_combine. apply P_Z_commute.
-      apply P_P_combine. 
-      apply P_PDAG_cancel; assumption.
-      apply P_TDAG_combine.
-    + (* PDAG *)
-      destruct next_gate.
-      2: { rewrite <- IHn; try assumption.
-           simpl; rewrite <- app_assoc. 
-           reflexivity. }
-      destruct p; dependent destruction f; rewrite <- IHn;
-      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
-      try (simpl; rewrite <- app_assoc; reflexivity);
-      try constructor;
-      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
-      try assumption;
-      try apply app_congruence; try reflexivity.
-      rewrite <- Z_PDAG_combine. apply PDAG_Z_commute.
-      rewrite <- (P_PDAG_cancel g n0 H1) at 2. apply PDAG_P_commute.
-      apply PDAG_PDAG_combine.
-      apply PDAG_T_combine.
-    + (* T *)
-      destruct next_gate.
-      2: { rewrite <- IHn; try assumption.
-           simpl; rewrite <- app_assoc. 
-           reflexivity. }
-      destruct p; dependent destruction f; rewrite <- IHn;
-      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
-      try (simpl; rewrite <- app_assoc; reflexivity);
-      try constructor;
-      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
-      try assumption;
-      try apply app_congruence; try reflexivity.
-      rewrite <- PDAG_T_combine. apply T_PDAG_commute.
-      apply T_T_combine. 
-      apply T_TDAG_cancel; assumption.
-    + (* TDAG *)
-      destruct next_gate.
-      2: { rewrite <- IHn; try assumption.
-           simpl; rewrite <- app_assoc. 
-           reflexivity. }
-      destruct p; dependent destruction f; rewrite <- IHn;
-      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
-      try (simpl; rewrite <- app_assoc; reflexivity);
-      try constructor;
-      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
-      try assumption;
-      try apply app_congruence; try reflexivity.
-      rewrite <- P_TDAG_combine. apply TDAG_P_commute.
-      rewrite <- (T_TDAG_cancel g n0 H1) at 2. apply TDAG_T_commute.
-      apply TDAG_TDAG_combine.
+      apply PI4_PI4_combine.
   - (* CNOT *)
     dependent destruction f.
     remember (next_two_qubit_gate l n0) as next_gate;
@@ -1425,11 +1187,7 @@ Definition search_for_pat2 {dim} (l : gate_list dim) q :=
   | Some (l1, q1, q2, l2) => 
       if q =? q2
       then match (next_single_qubit_gate l2 q) with
-           | Some (fU_Z as u, l2') 
-           | Some (fU_P as u, l2') 
-           | Some (fU_PDAG as u, l2')
-           | Some (fU_T as u, l2') 
-           | Some (fU_TDAG as u, l2') =>
+           | Some (fU_PI4 k as u, l2') =>
                match (next_two_qubit_gate l2' q) with
                | Some (l3, q3, q4, l4) => 
                    if (q =? q4) && (q1 =? q3) && (does_not_reference l3 q3)
@@ -1464,20 +1222,17 @@ Definition search_for_commuting_pat {dim} (l : gate_list dim) q :=
            end
   end.
 
-Fixpoint propagate_Z {dim} (l : gate_list dim) (q n : nat) : option (gate_list dim) :=
+Fixpoint propagate_PI4 {dim} k (l : gate_list dim) (q n : nat) : option (gate_list dim) :=
   match n with
   | O => Some l
   | S n' => 
       match next_single_qubit_gate l q with
-      (* Cancel *)
-      | Some (fU_Z, l') => Some l'
       (* Combine *)
-      | Some (fU_P, l') => Some (_PDAG q :: l')
-      | Some (fU_PDAG, l') => Some (_P q :: l')
+      | Some (fU_PI4 k', l') => Some (_PI4 (k+k')  q :: l')
       (* Commute *)
       | _ =>
           match search_for_commuting_pat l q with
-          | Some (l1, l2) => match (propagate_Z l2 q n') with
+          | Some (l1, l2) => match (propagate_PI4 k l2 q n') with
                             | Some l' => Some (l1 ++ l')
                             | None => None
                             end
@@ -1486,97 +1241,7 @@ Fixpoint propagate_Z {dim} (l : gate_list dim) (q n : nat) : option (gate_list d
       end
   end.
 
-Fixpoint propagate_P {dim} (l : gate_list dim) (q n : nat) : option (gate_list dim) :=
-  match n with
-  | O => Some l
-  | S n' => 
-      match next_single_qubit_gate l q with
-      (* Cancel *)
-      | Some (fU_PDAG, l') => Some l'
-      (* Combine *)
-      | Some (fU_Z, l') => Some (_PDAG q :: l')
-      | Some (fU_P, l') => Some (_Z q :: l')
-      | Some (fU_TDAG, l') => Some (_T q :: l')
-      (* Commute *)
-      | _ =>
-          match search_for_commuting_pat l q with
-          | Some (l1, l2) => match (propagate_P l2 q n') with
-                            | Some l' => Some (l1 ++ l')
-                            | None => None
-                            end
-          | None =>  None
-          end
-      end
-  end.
-
-Fixpoint propagate_PDAG {dim} (l : gate_list dim) (q n : nat) : option (gate_list dim) :=
-  match n with
-  | O => Some l
-  | S n' => 
-      match next_single_qubit_gate l q with
-      (* Cancel *)
-      | Some (fU_P, l') => Some l'
-      (* Combine *)
-      | Some (fU_Z, l') => Some (_P q :: l')
-      | Some (fU_PDAG, l') => Some (_Z q :: l')
-      | Some (fU_T, l') => Some (_TDAG q :: l')
-      (* Commute *)
-      | _ =>
-          match search_for_commuting_pat l q with
-          | Some (l1, l2) => match (propagate_PDAG l2 q n') with
-                            | Some l' => Some (l1 ++ l')
-                            | None => None
-                            end
-          | None =>  None
-          end
-      end
-  end.
-
-Fixpoint propagate_T {dim} (l : gate_list dim) (q n : nat) : option (gate_list dim) :=
-  match n with
-  | O => Some l
-  | S n' => 
-      match next_single_qubit_gate l q with
-      (* Cancel *)
-      | Some (fU_TDAG, l') => Some l'
-      (* Combine *)
-      | Some (fU_PDAG, l') => Some (_TDAG q :: l')
-      | Some (fU_T, l') => Some (_P q :: l')
-      (* Commute *)
-      | _ =>
-          match search_for_commuting_pat l q with
-          | Some (l1, l2) => match (propagate_T l2 q n') with
-                            | Some l' => Some (l1 ++ l')
-                            | None => None
-                            end
-          | None =>  None
-          end
-      end
-  end.
-
-Fixpoint propagate_TDAG {dim} (l : gate_list dim) (q n : nat) : option (gate_list dim) :=
-  match n with
-  | O => Some l
-  | S n' => 
-      match next_single_qubit_gate l q with
-      (* Cancel *)
-      | Some (fU_T, l') => Some l'
-      (* Combine *)
-      | Some (fU_P, l') => Some (_T q :: l')
-      | Some (fU_TDAG, l') => Some (_PDAG q :: l')
-      (* Commute *)
-      | _ =>
-          match search_for_commuting_pat l q with
-          | Some (l1, l2) => match (propagate_TDAG l2 q n') with
-                            | Some l' => Some (l1 ++ l')
-                            | None => None
-                            end
-          | None =>  None
-          end
-      end
-  end.
-
-(* Call a propation function on all z-rotation gates. 
+(* Call a propagation function on PI4 rotation gates. 
    
    The extra n argument is to help Coq recognize termination.
    We start with n = (length l). *)
@@ -1585,29 +1250,9 @@ Fixpoint cancel_gates {dim} (l : gate_list dim) (n: nat) : gate_list dim :=
   | 0 => l
   | S n' => match l with
            | [] => []
-           | App1 fU_Z q :: t => 
-               match propagate_Z t q (length t) with
-               | None => (_Z q) :: (cancel_gates t n')
-               | Some l' => cancel_gates l' n'
-               end
-           | App1 fU_P q :: t => 
-               match propagate_P t q (length t) with
-               | None => (_P q) :: (cancel_gates t n')
-               | Some l' => cancel_gates l' n'
-               end
-           | App1 fU_PDAG q :: t => 
-               match propagate_PDAG t q (length t) with
-               | None => (_PDAG q) :: (cancel_gates t n')
-               | Some l' => cancel_gates l' n'
-               end
-           | App1 fU_T q :: t => 
-               match propagate_T t q (length t) with
-               | None => (_T q) :: (cancel_gates t n')
-               | Some l' => cancel_gates l' n'
-               end
-           | App1 fU_TDAG q :: t => 
-               match propagate_TDAG t q (length t) with
-               | None => (_TDAG q) :: (cancel_gates t n')
+           | App1 (fU_PI4 k) q :: t => 
+               match propagate_PI4 k t q (length t) with
+               | None => (_PI4 k q) :: (cancel_gates t n')
                | Some l' => cancel_gates l' n'
                end
            | h :: t => h :: (cancel_gates t n')
