@@ -5,6 +5,54 @@ Proof. intros. unfold Rdiv. rewrite Rmult_assoc. reflexivity. Qed.
 
 (** Cexp lemmas **)
 
+(* General Cexp rules *)
+
+Lemma Cexp_add: forall (x y : R), Cexp (x + y) = Cexp x * Cexp y.
+Proof.
+  intros.
+  unfold Cexp.
+  apply c_proj_eq; simpl.
+  - apply cos_plus.
+  - rewrite sin_plus. field.
+Qed.
+
+Lemma Cexp_neg : forall θ, Cexp (- θ) = / Cexp θ.
+Proof.
+  intros θ.
+  unfold Cexp.
+  rewrite sin_neg, cos_neg.
+  apply c_proj_eq; simpl.
+  - replace (cos θ * (cos θ * 1) + sin θ * (sin θ * 1))%R with 
+        (cos θ ^ 2 + sin θ ^ 2)%R by reflexivity.
+    repeat rewrite <- Rsqr_pow2.
+    rewrite Rplus_comm.
+    rewrite sin2_cos2.
+    field.
+  - replace ((cos θ * (cos θ * 1) + sin θ * (sin θ * 1)))%R with 
+        (cos θ ^ 2 + sin θ ^ 2)%R by reflexivity.
+    repeat rewrite <- Rsqr_pow2.
+    rewrite Rplus_comm.
+    rewrite sin2_cos2.
+    field.
+Qed.
+
+Lemma Cexp_mul_neg_l : forall θ, Cexp (- θ) * Cexp θ = 1.
+Proof.  
+  unfold Cexp. intros R.
+  eapply c_proj_eq; simpl.
+  - rewrite cos_neg, sin_neg.
+    field_simplify_eq.
+    repeat rewrite <- Rsqr_pow2.
+    rewrite Rplus_comm.
+    apply sin2_cos2.
+  - rewrite cos_neg, sin_neg. field.
+Qed.
+
+Lemma Cexp_mul_neg_r : forall θ, Cexp θ * Cexp (-θ) = 1.
+Proof. intros. rewrite Cmult_comm. apply Cexp_mul_neg_l. Qed.
+
+(* Special cases *)
+
 (* fix up names later *)
 Definition Cexp_0 := eulers0.
 Definition Cexp_PI := eulers_identity.
@@ -95,52 +143,20 @@ Qed.
 Lemma Cexp_8PI4 : Cexp (8 * PI / 4) = 1.
 Proof. rewrite <- Cexp_2PI. apply f_equal. lra. Qed.
   
-
-Lemma Cexp_add: forall (x y : R), Cexp (x + y) = Cexp x * Cexp y.
+Lemma Cexp_PI4_m8 : forall k, Cexp (IZR (k - 8) * PI / 4) = Cexp (IZR k * PI / 4).
 Proof.
   intros.
-  unfold Cexp.
-  apply c_proj_eq; simpl.
-  - apply cos_plus.
-  - rewrite sin_plus. field.
+  unfold Rdiv.
+  rewrite minus_IZR.
+  unfold Rminus.
+  repeat rewrite Rmult_plus_distr_r.
+  replace (- (8) * PI * / 4)%R with (-(2 * PI))%R by lra.
+  rewrite Cexp_add, Cexp_neg, Cexp_2PI.
+  lca.
 Qed.
 
-Lemma Cexp_neg : forall θ, Cexp (- θ) = / Cexp θ.
-Proof.
-  intros θ.
-  unfold Cexp.
-  rewrite sin_neg, cos_neg.
-  apply c_proj_eq; simpl.
-  - replace (cos θ * (cos θ * 1) + sin θ * (sin θ * 1))%R with 
-        (cos θ ^ 2 + sin θ ^ 2)%R by reflexivity.
-    repeat rewrite <- Rsqr_pow2.
-    rewrite Rplus_comm.
-    rewrite sin2_cos2.
-    field.
-  - replace ((cos θ * (cos θ * 1) + sin θ * (sin θ * 1)))%R with 
-        (cos θ ^ 2 + sin θ ^ 2)%R by reflexivity.
-    repeat rewrite <- Rsqr_pow2.
-    rewrite Rplus_comm.
-    rewrite sin2_cos2.
-    field.
-Qed.
 
-Lemma Cexp_mul_neg_l : forall θ, Cexp (- θ) * Cexp θ = 1.
-Proof.  
-  unfold Cexp. intros R.
-  eapply c_proj_eq; simpl.
-  - rewrite cos_neg, sin_neg.
-    field_simplify_eq.
-    repeat rewrite <- Rsqr_pow2.
-    rewrite Rplus_comm.
-    apply sin2_cos2.
-  - rewrite cos_neg, sin_neg. field.
-Qed.
-
-Lemma Cexp_mul_neg_r : forall θ, Cexp θ * Cexp (-θ) = 1.
-Proof. intros. rewrite Cmult_comm. apply Cexp_mul_neg_l. Qed.
-
-Hint Rewrite Cexp_0 Cexp_PI Cexp_PI2 Cexp_2PI Cexp_PI4 
+Hint Rewrite Cexp_0 Cexp_PI Cexp_PI2 Cexp_2PI Cexp_PI4 Cexp_PIm4
   Cexp_1PI4 Cexp_2PI4 Cexp_3PI4 Cexp_4PI4 Cexp_5PI4 Cexp_6PI4 Cexp_7PI4 Cexp_8PI4
   Cexp_add Cexp_neg : Cexp_db.
 
@@ -181,3 +197,9 @@ Lemma phase_mul : forall θ θ', phase_shift θ × phase_shift θ' = phase_shift
 Proof.
   intros. solve_matrix. rewrite Cexp_add. reflexivity.
 Qed.  
+
+Lemma phase_PI4_m8 : forall k,
+  phase_shift (IZR k * PI / 4) = phase_shift (IZR (k - 8) * PI / 4).
+Proof.
+  intros. unfold phase_shift. rewrite Cexp_PI4_m8. reflexivity.
+Qed.

@@ -810,9 +810,10 @@ Fixpoint cancel_gates_simple' {dim} (l acc : gate_list dim) (n: nat) : gate_list
            | App1 (fU_PI4 k) q :: t => 
                match next_single_qubit_gate t q with
                | Some (fU_PI4 k', t') => 
-                 if Z.eqb ((k + k')%Z mod 8) 0
-                 then cancel_gates_simple' t' acc n'
-                 else cancel_gates_simple' (_PI4 ((k + k') mod 8) q :: t') acc n'
+                 let k'' := (k + k')%Z in
+                 if (k'' =? 8)%Z then cancel_gates_simple' t' acc n' else 
+                 if (k'' <? 8)%Z then cancel_gates_simple' (_PI4 k'' q :: t') acc n'
+                 else cancel_gates_simple' (_PI4 (k'' - 8)%Z q :: t') acc n' 
                | _ => cancel_gates_simple' t (_PI4 k q :: acc) n'
                end
            | App2 fU_CNOT q1 q2 :: t => 
@@ -889,11 +890,52 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma PI4_PI4_mod8_combine : forall {dim} (l : gate_list dim) q k k', 
-  _PI4 k q :: _PI4 k' q :: l =l= _PI4 ((k+k') mod 8) q :: l.
-Admitted.
+Lemma PI4_PI4_m8_combine : forall {dim} (l : gate_list dim) q k k', 
+  _PI4 k q :: _PI4 k' q :: l =l= _PI4 (k+k'-8) q :: l.
+Proof.
+  intros.
+  unfold uc_equiv_l, uc_equiv; simpl.
+  unfold ueval1, pad; simpl.
+  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  rewrite Mmult_assoc.
+  restore_dims_strong; repeat rewrite kron_mixed_product.
+  Msimpl.
+  rewrite phase_mul. 
+  repeat rewrite <- Rmult_div_assoc.
+  rewrite <- Rmult_plus_distr_r.
+  rewrite <- plus_IZR.
+  repeat rewrite Rmult_div_assoc.
+  rewrite phase_PI4_m8.
+  rewrite Zplus_comm.
+  reflexivity.
+Qed.
   
-(* Not currently used in an optimization, can be generalized to mod 8 *)
+Lemma PI4_PI4_cancel : forall {dim} (l : gate_list dim) q k k', 
+  q < dim -> 
+  (k + k' = 8)%Z ->
+  _PI4 k q :: _PI4 k' q :: l =l= l.
+Proof.
+  intros.
+  unfold uc_equiv_l, uc_equiv; simpl.
+  unfold ueval1, pad; simpl.
+  bdestructΩ (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  rewrite Mmult_assoc.
+  restore_dims_strong; repeat rewrite kron_mixed_product.
+  Msimpl.
+  rewrite phase_mul. 
+  repeat rewrite <- Rmult_div_assoc.
+  rewrite <- Rmult_plus_distr_r.
+  rewrite <- plus_IZR.
+  repeat rewrite Rmult_div_assoc.
+  rewrite Zplus_comm.
+  rewrite H0.
+  replace (8 * PI / 4)%R with (2 * PI)%R by lra.
+  rewrite phase_2pi.
+  Msimpl. replace (2 ^ q * 2 * 2 ^ (dim - 1 - q))%nat with (2^dim) by unify_pows_two.
+  Msimpl.
+  reflexivity.
+Qed.
+
 Lemma PI4_0_rem : forall {dim} (l : gate_list dim) q, 
   q < dim -> _PI4 0 q :: l =l= l.
 Proof.
@@ -907,6 +949,7 @@ Proof.
   Msimpl.
   reflexivity.
 Qed.
+
   
 Lemma CNOT_CNOT_cancel : forall {dim} (l1 l2 : gate_list dim) q1 q2, 
   q1 < dim -> q2 < dim -> q1 <> q2 -> l1 ++ [_CNOT q1 q2] ++ [_CNOT q1 q2] ++ l2 =l= l1 ++ l2.
@@ -1022,16 +1065,19 @@ Proof.
       2: { rewrite <- IHn; try assumption.
            simpl; rewrite <- app_assoc. 
            reflexivity. }
-      admit.
-(*      destruct p; dependent destruction f; rewrite <- IHn;
+      destruct p; dependent destruction f;
+      [| | destruct (k + k0 =? 8)%Z eqn:E; [|destruct (k + k0 <? 8)%Z]];
+      try rewrite <- IHn;
       try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
       try (simpl; rewrite <- app_assoc; reflexivity);
       try constructor;
       try apply (nsqg_WT _ _ _ _ Heqnext_gate);
       try assumption;
       try apply app_congruence; try reflexivity.
-      apply PI4_PI4_mod8_combine.
-*)
+      apply Z.eqb_eq in E.
+      apply PI4_PI4_cancel; lia.
+      apply PI4_PI4_combine.
+      apply PI4_PI4_m8_combine.
   - (* CNOT *)
     dependent destruction f.
     remember (next_two_qubit_gate l n0) as next_gate;
@@ -1234,11 +1280,13 @@ Fixpoint propagate_PI4 {dim} k (l : gate_list dim) (q n : nat) : option (gate_li
   | O => None
   | S n' => 
       match next_single_qubit_gate l q with
-      (* Combine or cancel *)
       | Some (fU_PI4 k', l') => 
-          if Z.eqb ((k+k') mod 8) 0
-          then Some l'
-          else Some (_PI4 ((k+k') mod 8) q :: l')
+                 let k'' := (k + k')%Z in
+                 (* Cancel *)
+                 if (k'' =? 8)%Z then Some l' else 
+                 (* Combine *)
+                 if (k'' <? 8)%Z then Some (_PI4 k'' q :: l')
+                 else Some (_PI4 (k'' - 8)%Z q :: l') 
       (* Commute *)
       | _ =>
           match search_for_commuting_Rz_pat l q with
@@ -1420,7 +1468,7 @@ Proof.
     rewrite (commuting_X_pat _ _ _ _ Heqpat).
     rewrite (IHn _ _ Heqprop).
     reflexivity.
-  - admit.
+  admit.
 Admitted.
 
 (* The rest of the lemmas should have the same structure... *)
