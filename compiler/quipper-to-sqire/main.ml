@@ -50,15 +50,6 @@ let parse f =
   let q = parse_gate_list f in
     benchmark_to_list q
 
-(*
-let parse f =
-  let p = parse_file f in 
-    let q = parse_program p in
-	  benchmark_to_list q
-<<<<<<< HEAD
-*)
-=======
-
 let benchmark_filenames = [
   "optimizer/Arithmetic_and_Toffoli/csla_mux_3_before_original";
   "optimizer/Arithmetic_and_Toffoli/gf2^E7_mult_before";
@@ -189,5 +180,4 @@ let example4 = [_H 1; _H 3; _H 0; _P 1; _CNOT 0 3; _H 0; _H 1; _H 3; _X 2]
         App1 (FU_H, 3); App1 (FU_X, 4)] 
 *)
 let example5 = [Bench_CNOT(0,1); Bench_TOFF(0,1,2); Bench_H(3); Bench_X(4)]
->>>>>>> 6f18b73ce9262f2b2eed73060c9f8a62fc5327db
 

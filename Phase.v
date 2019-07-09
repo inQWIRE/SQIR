@@ -26,6 +26,18 @@ Proof.
   field_simplify_eq; trivial; apply sqrt2_neq_0.
 Qed.
 
+Lemma Cexp_PIm4 : Cexp (- PI / 4) = /√2 - /√2 * Ci.
+Proof.
+  unfold Cexp. 
+  rewrite Ropp_div.
+  rewrite sin_antisym.
+  rewrite cos_neg.
+  rewrite sin_PI4, cos_PI4.
+  eapply c_proj_eq; simpl.
+  field_simplify_eq; trivial; apply sqrt2_neq_0.
+  field_simplify_eq; trivial; apply sqrt2_neq_0.
+Qed.
+
 Lemma Cexp_0PI4 : Cexp (0 * PI / 4) = 1.
 Proof. rewrite <- Cexp_0. apply f_equal. lra. Qed.
 
@@ -83,6 +95,7 @@ Qed.
 Lemma Cexp_8PI4 : Cexp (8 * PI / 4) = 1.
 Proof. rewrite <- Cexp_2PI. apply f_equal. lra. Qed.
   
+
 Lemma Cexp_add: forall (x y : R), Cexp (x + y) = Cexp x * Cexp y.
 Proof.
   intros.
