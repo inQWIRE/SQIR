@@ -101,4 +101,62 @@ Proof. intros. apply Z_mif. Qed.
 Lemma Z_reset : forall dim n, @SQIRE.Z dim n ; reset n ≡ reset n.
 Proof. intros. apply Z_mif. Qed.
 
-(* T and P are R_ PI/4 and R_ PI/2, but those are explicit in SQIRE.v *)
+(* T and P are R_ PI/4 and R_ PI/2, but those are explicit in SQIRE.v *) 
+
+Lemma rm_resets_correct : forall (dim n : nat), 
+  @meas dim n (X n) skip; @meas dim n (X n) skip ≡ @meas dim n (X n) skip.
+Proof.
+  intros.
+  simpl.
+  unfold c_equiv.
+  simpl.
+  unfold compose_super, Splus, super.
+  unfold ueval1.
+  apply functional_extensionality.
+  intros.
+  unfold pad.
+  bdestruct (n + 1 <=? dim).
+  2 : remove_zero_gates; reflexivity.
+  remember (dim - 1 - n)%nat as m.
+  assert (dim = n + 1 + m)%nat as E by lia.
+  rewrite E in *.
+  subst.
+  clear.
+  replace (2 ^ (n + 1 + m))%nat with (2^n * 2 * 2^m)%nat by unify_pows_two.
+  restore_dims.
+  Msimpl.
+  repeat rewrite Mmult_assoc.
+  repeat rewrite kron_mixed_product.  
+  repeat (restore_dims; rewrite <- Mmult_assoc).
+  repeat rewrite kron_mixed_product.  
+  repeat (restore_dims; rewrite Mmult_assoc).
+  Msimpl.
+  repeat rewrite Mmult_plus_distr_r.
+  repeat rewrite Mmult_assoc.
+  Msimpl.
+  replace (∣1⟩⟨0∣ × ∣1⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
+  replace (∣0⟩⟨0∣ × ∣1⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
+  replace (∣1⟩⟨0∣ × ∣0⟩⟨0∣) with (∣1⟩⟨0∣) by solve_matrix.
+  replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
+  repeat remove_zero_gates.
+  rewrite Mplus_0_l.
+  repeat remove_zero_gates.
+  rewrite Mplus_0_l.
+  repeat rewrite Mmult_plus_distr_l.
+  rewrite <- Mmult_assoc.
+  restore_dims.
+  rewrite <- Mmult_assoc.
+  repeat rewrite kron_mixed_product.
+  replace (σx × ∣1⟩⟨1∣) with (∣0⟩⟨1∣) by solve_matrix.
+  Msimpl.
+  replace (∣0⟩⟨0∣ × ∣0⟩⟨1∣) with (∣0⟩⟨1∣) by solve_matrix.
+  rewrite <- Mmult_assoc.
+  restore_dims.
+  rewrite <- Mmult_assoc.
+  rewrite kron_mixed_product.
+  Msimpl.
+  replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
+  reflexivity.
+Qed.
+
+
