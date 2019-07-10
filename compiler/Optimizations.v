@@ -1799,8 +1799,143 @@ Lemma commuting_CNOT_pat : forall {dim} (l : gate_list dim) q1 q2 l1 l2,
   _CNOT q1 q2 :: l =l= l1 ++ [_CNOT q1 q2] ++ l2.
 Proof.
 (* Will require lemmas about search_for_CNOT_pat1, 2, 3, and 4. *)
+  intros.
+  unfold search_for_commuting_CNOT_pat in H.
+  destruct (search_for_CNOT_pat1 l q3 q4) eqn:HS; 
+  [|clear HS; destruct (search_for_CNOT_pat2 l q3 q4) eqn:HS;
+  [|clear HS; destruct (search_for_CNOT_pat3 l q3 q4) eqn:HS; 
+  [|clear HS; destruct (search_for_CNOT_pat4 l q3 q4) eqn:HS]]]; try discriminate.
+  - unfold search_for_CNOT_pat1 in HS.
+    destruct p.
+    inversion H; subst. clear H.
+    destruct (next_single_qubit_gate l q3) eqn:HN1; try discriminate.
+    destruct p.
+    apply nsqg_preserves_semantics in HN1.
+    dependent destruction f; try discriminate.
+    inversion HS; subst. clear HS.
+    rewrite HN1. (* Wasn't this the last case of Rz *)
+    repeat rewrite app_cons_app.
+    replace (_CNOT q3 q4 :: App1 (fU_PI4 k) q3 :: l2) with
+        ([_CNOT q3 q4] ++ [_PI4 k q3] ++ l2) by reflexivity.
+    repeat rewrite app_assoc.
+    apply app_congruence; try reflexivity.
+    unfold uc_equiv_l; simpl.
+    unfold uc_equiv; simpl. 
+    Msimpl.
+    unfold ueval1, ueval_cnot.
+    bdestruct (q3 <? q4).
+    + unfold pad. 
+      rename q3 into n2. rename q4 into n1. 
+      bdestruct (n2 + (1 + (n1 - n2 - 1) + 1) <=? dim).
+      2: remove_zero_gates; try easy.      
+      bdestructΩ (n2 + 1 <=? dim).
+      remember (n1 - n2 - 1) as x.
+      replace (n1 - n2) with (x+1) by lia.
+      remember (dim - S (x + 1) - n2) as y.
+      replace dim with (n2 + 1 + x + 1 + y) by lia.
+      replace (n2 + 1 + x + 1 + y - 1 - n2) with (x + 1 + y) by lia.
+      repeat rewrite Nat.pow_add_r.
+      simpl (2^1).
+      remember (2^n2) as a. remember (2^x) as b. remember (2^y) as c. clear.
+      restore_dims_fast.
+      repeat rewrite <- id_kron. 
+      distribute_plus.
+      repeat rewrite kron_assoc.
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      remove_id_gates.
+      restore_dims_fast.
+      repeat rewrite kron_assoc.
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      Msimpl.
+      apply f_equal2.
+      * replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
+        with (phase_shift (IZR k * PI / 4) × ∣1⟩⟨1∣) by solve_matrix.
+        reflexivity.
+      * replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
+        with (phase_shift (IZR k * PI / 4) × ∣0⟩⟨0∣) by solve_matrix.
+        reflexivity.
+    + unfold pad. (* exactly the final case of previous lemma *)
+      rename q4 into n2. rename q3 into n1. 
+      bdestruct (n2 <? n1).
+      2: remove_zero_gates; try easy.      
+      bdestruct (n2 + (1 + (n1 - n2 - 1) + 1) <=? dim).
+      2: remove_zero_gates; try easy.      
+      bdestructΩ (n1 + 1 <=? dim).
+      remember (n1 - n2 - 1) as x.
+      replace (n1 - n2) with (1+x) by lia.
+      replace n1 with (n2 + 1 +x) by lia.
+      remember (dim - S (x + 1) - n2) as y.      
+      replace (dim - 1 - (n2 + 1 + x)) with y by lia.
+      replace dim with (n2 + 1 + x + 1 + y) by lia.      
+      repeat rewrite Nat.pow_add_r.
+      simpl (2^1).
+      remember (2^n2) as a. remember (2^x) as b. remember (2^y) as c. clear.
+      restore_dims_fast.
+      repeat rewrite <- id_kron. 
+      distribute_plus.
+      repeat rewrite kron_assoc.
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      remove_id_gates.
+      restore_dims_fast.
+      repeat rewrite kron_assoc.
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      Msimpl.
+      apply f_equal2.
+      * replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
+        with (phase_shift (IZR k * PI / 4) × ∣1⟩⟨1∣) by solve_matrix.
+        reflexivity.
+      * replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
+        with (phase_shift (IZR k * PI / 4) × ∣0⟩⟨0∣) by solve_matrix.
+        reflexivity.
+  - unfold search_for_CNOT_pat2 in HS.
+    destruct p.
+    inversion H; subst. clear H.
+    destruct (next_two_qubit_gate l q4) eqn:HN2; try discriminate.
+    repeat destruct p.
+    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
+    apply ntqg_preserves_semantics in HN2.
+    bdestruct (q4 =? n); try discriminate. subst.   
+    destruct (does_not_reference g0 q3) eqn:NoRef'; try discriminate. 
+    destruct (does_not_reference g0 n0) eqn:NoRef''; try discriminate.
+    simpl in HS. inversion HS; subst. clear HS.
+    rewrite HN2. 
+    repeat rewrite app_cons_app.
+    repeat rewrite app_assoc.
+    rewrite (does_not_reference_commutes_app2 _ fU_CNOT _ _ NoRef' NoRef).
+    apply app_congruence; try reflexivity.
+    repeat rewrite <- app_assoc.
+    apply app_congruence; try reflexivity.
+    
+    unfold uc_equiv_l; simpl.
+    unfold uc_equiv; simpl. 
+    Msimpl.
+    unfold ueval_cnot.
+    bdestruct (n0 <? n); bdestruct (q3 <? n);
+    bdestructΩ (n <? n0); bdestructΩ (n <? q3); remove_zero_gates; trivial.       
+    + unfold pad. 
+      bdestruct (n0 + S (n - n0 - 1 + 1) <=? dim).
+      2: remove_zero_gates; easy.      
+      bdestruct (q3 + S (n - q3 - 1 + 1) <=? dim).
+      2: remove_zero_gates; easy.      
+      bdestruct (n0 <? q3).
+      
+      remember (n - n0 - 1) as x.
+      replace n with (n0 + x + 1) by lia. 
+      replace (n0 + x + 1 - n0) with (x + 1) by lia.
+      remember (dim - S (x + 1) - n0) as y.
+      replace dim with (n0 + 1 + x + 1 + y) by lia.
+      rewrite Nat.sub_add by lia.
+      replace (n0 + 1 + x + 1 + y - S (n0 + x + 1 - q3) - q3)
+        with y by lia.
+
+      (* hadran alach *)
 Admitted.
-  
+
+
 (* Proofs about propagation functions *)
 
 Lemma propagate_H_sound : forall {dim} (l : gate_list dim) q l',
