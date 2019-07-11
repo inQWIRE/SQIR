@@ -3,6 +3,8 @@ Require Import DensitySem.
 
 Local Open Scope com.
 
+(** Phase-meas optimization **)
+
 Definition R_ {dim} θ n : ucom dim := uapp1 (U_R θ) n.  
 
 Lemma Cexp_mul_neg_l : forall θ, Cexp (- θ) * Cexp θ = 1.
@@ -102,6 +104,34 @@ Lemma Z_reset : forall dim n, @SQIRE.Z dim n ; reset n ≡ reset n.
 Proof. intros. apply Z_mif. Qed.
 
 (* T and P are R_ PI/4 and R_ PI/2, but those are explicit in SQIRE.v *) 
+
+Definition is_rotation {dim} (c : com dim) : bool :=
+  match c with
+  | app1 U_Z _ | app1 (U_R _) _ => true
+  | _                           => false 
+  end.
+
+Fixpoint optimize_R_meas {dim} (c : com dim) : com dim :=
+  match c with
+  | app1 U_Z a ; meas b c1 c2 => 
+    if a =? b 
+    then meas b (optimize_R_meas c1) (optimize_R_meas c2)  
+    else app1 U_Z a; meas b (optimize_R_meas c1) (optimize_R_meas c2)
+  | app1 (U_R θ) a ; meas b c1 c2 => 
+    if a =? b 
+    then meas b (optimize_R_meas c1) (optimize_R_meas c2) 
+    else app1 (U_R θ) a; meas b (optimize_R_meas c1) (optimize_R_meas c2)
+  | c1 ; c2 => (optimize_R_meas c1); (optimize_R_meas c2)
+  | meas a c1 c2 => meas a (optimize_R_meas c1) (optimize_R_meas c2)
+  | _      => c
+  end.
+
+Compute (optimize_R_meas (skip; (SQIRE.Z O; reset O))).
+
+(** Apply optimization **)
+
+
+(** Resets optimization **)
 
 Lemma rm_resets_correct : forall (dim n : nat), 
   @meas dim n (X n) skip; @meas dim n (X n) skip ≡ @meas dim n (X n) skip.
