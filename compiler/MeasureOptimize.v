@@ -128,6 +128,33 @@ Fixpoint optimize_R_meas {dim} (c : com dim) : com dim :=
 
 Compute (optimize_R_meas (skip; (SQIRE.Z O; reset O))).
 
+Lemma optimize_R_meas_sound : forall dim (c : com dim),
+  c ≡ optimize_R_meas c.
+Proof.
+  intros.
+  induction c; simpl; try reflexivity.
+  - destruct c1; simpl; try (rewrite <- IHc2; reflexivity).
+    + rewrite IHc1, <- IHc2. simpl. reflexivity.
+    + dependent destruction u; try (rewrite <- IHc2; reflexivity).
+      * destruct c2; try (rewrite <- IHc2; reflexivity).
+        bdestruct (n =? n0); subst; try (rewrite <- IHc2; reflexivity).
+        rewrite <- IHc2.
+        apply Z_mif.
+      * destruct c2; try (rewrite <- IHc2; reflexivity).
+        bdestruct (n =? n0); subst; try (rewrite <- IHc2; reflexivity).
+        rewrite <- IHc2.
+        apply R_mif.
+    + simpl in IHc1.
+      rewrite <- IHc1.
+      rewrite <- IHc2.
+      reflexivity.
+  - (* should be able to rewrite inside mif *)
+    unfold c_equiv in *.
+    simpl.
+    rewrite <- IHc1, <- IHc2.
+    reflexivity.
+Qed.
+      
 (** Apply optimization **)
 
 
