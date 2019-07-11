@@ -89,22 +89,23 @@ let benchmark_filenames = [
   (* "optimizer/Arithmetic_and_Toffoli/gf2^E128_mult_before" *)
 ]
 
-type counts = {h:int; x:int; rz:int; cnot:int}
+type counts = {h:int; x:int; rz:int; cnot:int; total:int}
 
 let get_counts progs : counts list =
-  List.map (fun p -> {h=count_H_gates p; x=count_X_gates p; rz=count_rotation_gates p; cnot=count_CNOT_gates p}) progs
+  let tot p = (count_H_gates p) + (count_X_gates p) + (count_rotation_gates p) + (count_CNOT_gates p) in
+  List.map (fun p -> {h=count_H_gates p; x=count_X_gates p; rz=count_rotation_gates p; cnot=count_CNOT_gates p; total=tot p}) progs
 
 let benchmarks = List.map (fun x -> parse x) benchmark_filenames
 
-(*let sqire_to_qasm_gate oc g =
+let sqire_to_qasm_gate oc g =
   match g with
   | App1 (FU_H, q) -> fprintf oc "h q%d;\n" q
   | App1 (FU_X, q) -> fprintf oc "x q%d;\n" q
-  | App1 (FU_PI4(k), q) -> fprintf oc "z q%d;\n" q
-  | App1 (FU_P, q) -> fprintf oc "s q%d;\n" q
-  | App1 (FU_PDAG, q) -> fprintf oc "sdg q%d;\n" q
-  | App1 (FU_T, q) -> fprintf oc "t q%d;\n" q
-  | App1 (FU_TDAG, q) -> fprintf oc "tdg q%d;\n" q
+  | App1 (FU_PI4(4), q) -> fprintf oc "z q%d;\n" q
+  | App1 (FU_PI4(2), q) -> fprintf oc "s q%d;\n" q
+  | App1 (FU_PI4(6), q) -> fprintf oc "sdg q%d;\n" q
+  | App1 (FU_PI4(1), q) -> fprintf oc "t q%d;\n" q
+  | App1 (FU_PI4(7), q) -> fprintf oc "tdg q%d;\n" q
   | App2 (FU_CNOT, q1, q2) -> fprintf oc "cx q%d, q%d;\n" q1 q2
   | _ -> ()
 
@@ -141,15 +142,16 @@ let write_all_files () =
   benchmark_to_qasm_file (List.nth benchmarks 18) 27 "qasm_benchmarks/benchmark18.qasm";
   benchmark_to_qasm_file (List.nth benchmarks 19) 8 "qasm_benchmarks/benchmark19.qasm";
   benchmark_to_qasm_file (List.nth benchmarks 20) 4 "qasm_benchmarks/benchmark20.qasm";
-  benchmark_to_qasm_file (List.nth benchmarks 21) 95 "qasm_benchmarks/benchmark21.qasm";
-  benchmark_to_qasm_file (List.nth benchmarks 22) 9 "qasm_benchmarks/benchmark22.qasm";
-  benchmark_to_qasm_file (List.nth benchmarks 23) 6 "qasm_benchmarks/benchmark23.qasm";
-  benchmark_to_qasm_file (List.nth benchmarks 24) 11 "qasm_benchmarks/benchmark24.qasm";
-  benchmark_to_qasm_file (List.nth benchmarks 25) 8 "qasm_benchmarks/benchmark25.qasm";
+  benchmark_to_qasm_file (List.nth benchmarks 21) 29 "qasm_benchmarks/benchmark21.qasm";
+  benchmark_to_qasm_file (List.nth benchmarks 22) 95 "qasm_benchmarks/benchmark22.qasm";
+  benchmark_to_qasm_file (List.nth benchmarks 23) 9 "qasm_benchmarks/benchmark23.qasm";
+  benchmark_to_qasm_file (List.nth benchmarks 24) 6 "qasm_benchmarks/benchmark24.qasm";
+  benchmark_to_qasm_file (List.nth benchmarks 25) 11 "qasm_benchmarks/benchmark25.qasm";
   benchmark_to_qasm_file (List.nth benchmarks 26) 8 "qasm_benchmarks/benchmark26.qasm";
-  benchmark_to_qasm_file (List.nth benchmarks 27) 17 "qasm_benchmarks/benchmark27.qasm";
-  benchmark_to_qasm_file (List.nth benchmarks 28) 47 "qasm_benchmarks/benchmark28.qasm"
-*)
+  benchmark_to_qasm_file (List.nth benchmarks 27) 8 "qasm_benchmarks/benchmark27.qasm";
+  benchmark_to_qasm_file (List.nth benchmarks 28) 17 "qasm_benchmarks/benchmark28.qasm";
+  benchmark_to_qasm_file (List.nth benchmarks 29) 47 "qasm_benchmarks/benchmark29.qasm"
+(*
 (** Small Example Programs **)
 
 (* rm_nots example1 --> [_H 1; _CNOT 2 1] *)
@@ -179,4 +181,4 @@ let example4 = [_H 1; _H 3; _H 0; _P 1; _CNOT 0 3; _H 0; _H 1; _H 3; _X 2]
         App1 (FU_H, 3); App1 (FU_X, 4)] 
 *)
 let example5 = [Bench_CNOT(0,1); Bench_TOFF(0,1,2); Bench_H(3); Bench_X(4)]
-
+*)

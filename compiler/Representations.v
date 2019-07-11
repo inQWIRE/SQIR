@@ -242,16 +242,26 @@ Inductive uc_well_typed_l {dim} : gate_list dim -> Prop :=
             ->  uc_well_typed_l ((App2 u m n) :: t).
 
 Lemma list_to_ucom_WT : forall {dim} (l : gate_list dim), 
-  uc_well_typed_l l -> uc_well_typed (list_to_ucom l).
+  uc_well_typed_l l <-> uc_well_typed (list_to_ucom l).
 Proof.
-  intros. induction H.
-  - constructor.
-  - constructor.
-    constructor; assumption.
-    apply IHuc_well_typed_l.
-  - constructor.
-    constructor; assumption.
-    apply IHuc_well_typed_l.
+  intros. 
+  split; intros. 
+  - induction H.
+    + constructor.
+    + constructor.
+      constructor; assumption.
+      apply IHuc_well_typed_l.
+    + constructor.
+      constructor; assumption.
+      apply IHuc_well_typed_l.
+  - induction l.
+    + constructor.
+    + destruct a; dependent destruction f;
+      inversion H; subst;
+      inversion H2; subst;
+      constructor;
+      try apply IHl;
+      assumption.
 Qed.
 
 Lemma uc_well_typed_l_app : forall {dim} (l1 l2 : gate_list dim),
@@ -354,6 +364,20 @@ Proof. intros y x0 y0 H0. apply cons_congruence; easy. Qed.
 Add Parametric Morphism (dim : nat) : (@app (gate_app dim))
   with signature (@uc_equiv_l dim) ==> (@uc_equiv_l dim) ==> (@uc_equiv_l dim) as app_mor.
 Proof. intros x y H x0 y0 H0. apply app_congruence; easy. Qed.
+
+(** Useful relationship between equivalence and well-typedness **)
+
+Lemma uc_equiv_l_implies_WT : forall {dim} (l l' : gate_list dim),
+  l =l= l' ->
+  uc_well_typed_l l ->
+  uc_well_typed_l l'.
+Proof.
+  intros.
+  apply list_to_ucom_WT; apply uc_eval_nonzero_iff.
+  apply list_to_ucom_WT in H0; apply uc_eval_nonzero_iff in H0.
+  rewrite <- H; assumption.
+Qed.
+  
 
 (** Useful operations on the list representation. **)
 
@@ -639,8 +663,14 @@ Proof.
       apply beq_nat_false in H6.
       apply beq_nat_false in H7.
       apply beq_nat_false in H8.
-      admit. (* TODO - need commutativity of CNOTs *)
-Admitted.
+      specialize (@CNOT_CNOT_comm dim m n n0 n1 H5 H7 H6 H8) as Hcomm.
+      unfold uc_equiv_l; simpl list_to_ucom. 
+      rewrite <- useq_assoc.
+      dependent destruction u; dependent destruction f.
+      rewrite Hcomm.
+      rewrite useq_assoc.
+      reflexivity.
+Qed.
 
 (* Count the gates in a program. *)
 Local Close Scope C_scope.

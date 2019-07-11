@@ -235,6 +235,15 @@ Proof.
         reflexivity.
 Qed.
 
+Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
+  n1' <> n1 ->
+  n1' <> n2 ->
+  n2' <> n1 ->
+  n2' <> n2 ->
+  @uc_equiv dim (CNOT n1 n2 ; CNOT n1' n2') (CNOT n1' n2' ; CNOT n1 n2). 
+Proof.
+Admitted.
+
 Lemma XX_id : forall {dim} q, 
   @uc_well_typed dim (X q) -> 
   @uc_equiv dim uskip (X q; X q).

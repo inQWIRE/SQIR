@@ -1132,6 +1132,8 @@ Compute (cancel_gates_simple test1).
    - Rz b ; H b ; CNOT a b ; H b ≡ H b ; CNOT a b ; H b ; Rz b
    - Rz b ; CNOT a b ; Rz' b ; CNOT a b ≡ CNOT a b ; Rz' b ; CNOT a b ; Rz b
    - Rz a ; CNOT a b ≡ CNOT a b ; Rz a
+
+   Not currently verified:
    - CNOT a c ; CNOT b c ≡ CNOT b c ; CNOT a c
    - CNOT a c ; CNOT a b ≡ CNOT a b ; CNOT a c
    - CNOT a b; H b; CNOT b c; H b ≡ H b; CNOT b c; H b; CNOT a b
@@ -1323,7 +1325,7 @@ Fixpoint propagate_X {dim} (l : gate_list dim) (q n : nat) : option (gate_list d
       end
   end.
 
-Fixpoint propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (gate_list dim) :=
+Definition propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (gate_list dim) :=
   match n with
   | O => None
   | S n' => 
@@ -1333,8 +1335,8 @@ Fixpoint propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (gate
           if (q1 =? q1') && (q2 =? q2') && (does_not_reference l1 q2)
           then Some (l1 ++ l2)
           else None
-      (* Commute *)
-      | _ =>
+      (* Commute -- commented out to avoid unverified code *)
+      (*| _ =>
           match search_for_commuting_CNOT_pat l q1 q2 with
           | Some (l1, l2) => match (propagate_CNOT l2 q1 q2 n') with
                             | Some l' => Some (l1 ++ l')
@@ -1342,6 +1344,8 @@ Fixpoint propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (gate
                             end
           | None =>  None
           end
+      end*)
+      | _ => None
       end
   end.
 
@@ -1953,6 +1957,18 @@ Proof.
   apply H_H_cancel; assumption.
 Qed.
 
+Lemma propagate_H_WT : forall {dim} (l : gate_list dim) q l',
+  q < dim ->
+  uc_well_typed_l l -> 
+  propagate_H l q = Some l' ->
+  uc_well_typed_l l'.
+Proof.
+  intros.
+  specialize (propagate_H_sound l q l' H H1) as H2.
+  apply (uc_equiv_l_implies_WT _ _ H2).
+  constructor; assumption.
+Qed.
+
 Lemma propagate_X_sound : forall {dim} (l : gate_list dim) q n l',
   q < dim ->
   propagate_X l q n = Some l' ->
@@ -2005,12 +2021,88 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma propagate_X_WT : forall {dim} (l : gate_list dim) q n l',
+  q < dim ->
+  uc_well_typed_l l ->
+  propagate_X l q n = Some l' ->
+  uc_well_typed_l l'.
+Proof.
+  intros.
+  specialize (propagate_X_sound l q n l' H H1) as H2.
+  apply (uc_equiv_l_implies_WT _ _ H2).
+  constructor; assumption.
+Qed.
+
 Lemma propagate_PI4_sound : forall {dim} k (l : gate_list dim) q n l',
   q < dim ->
   propagate_PI4 k l q n = Some l' ->
   _PI4 k q :: l =l= l'.
 Proof.
-Admitted.
+  intros.
+  generalize dependent l'.
+  generalize dependent l.
+  induction n; try easy.
+  simpl.
+  intros.
+  remember (next_single_qubit_gate l q) as next_gate; symmetry in Heqnext_gate.
+  destruct next_gate.
+  - destruct p.
+    dependent destruction f. 
+    3: { (* Cancel/combine case *)
+         remember (k + k0 =? 8)%Z as k_k0_8.
+         destruct k_k0_8; symmetry in Heqk_k0_8.
+         apply Z.eqb_eq in Heqk_k0_8.
+         inversion H0; subst.
+         rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+         apply PI4_PI4_cancel; assumption. 
+         destruct (k + k0 <? 8)%Z; inversion H0; subst;
+         rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+         apply PI4_PI4_combine.
+         apply PI4_PI4_m8_combine. }
+    (* Commute cases *)
+    + (* copy & paste #1 *)
+      remember (search_for_commuting_Rz_pat l q) as pat; symmetry in Heqpat.
+      destruct pat; try easy.
+      destruct p.    
+      remember (propagate_PI4 k g0 q n) as prop; symmetry in Heqprop.
+      destruct prop; try easy.    
+      inversion H0; subst.
+      rewrite (commuting_Rz_pat _ _ _ _ _ Heqpat).
+      rewrite (IHn _ _ Heqprop).
+      reflexivity.
+    + (* copy & paste #2 *)
+      remember (search_for_commuting_Rz_pat l q) as pat; symmetry in Heqpat.
+      destruct pat; try easy.
+      destruct p.    
+      remember (propagate_PI4 k g0 q n) as prop; symmetry in Heqprop.
+      destruct prop; try easy.    
+      inversion H0; subst.
+      rewrite (commuting_Rz_pat _ _ _ _ _ Heqpat).
+      rewrite (IHn _ _ Heqprop).
+      reflexivity.
+  - (* copy & paste #3 *)
+    remember (search_for_commuting_Rz_pat l q) as pat; symmetry in Heqpat.
+    destruct pat; try easy.
+    destruct p.    
+    remember (propagate_PI4 k g q n) as prop; symmetry in Heqprop.
+    destruct prop; try easy.    
+    inversion H0; subst.
+    rewrite (commuting_Rz_pat _ _ _ _ _ Heqpat).
+    rewrite (IHn _ _ Heqprop).
+    reflexivity.
+Qed.
+
+Lemma propagate_PI4_WT : forall {dim} k (l : gate_list dim) q n l',
+  q < dim ->
+  uc_well_typed_l l ->
+  propagate_PI4 k l q n = Some l' ->
+  uc_well_typed_l l'.
+Proof.
+  intros.
+  specialize (propagate_PI4_sound k l q n l' H H1) as H2.
+  apply (uc_equiv_l_implies_WT _ _ H2).
+  constructor; assumption.
+Qed.
 
 Lemma propagate_CNOT_sound : forall {dim} (l : gate_list dim) q1 q2 n l',
   q1 < dim ->
@@ -2018,8 +2110,39 @@ Lemma propagate_CNOT_sound : forall {dim} (l : gate_list dim) q1 q2 n l',
   q1 <> q2 ->
   propagate_CNOT l q1 q2 n = Some l' ->
   _CNOT q1 q2 :: l =l= l'.
+Proof. 
+  intros.
+  unfold propagate_CNOT in H2; simpl in H2.
+  remember (next_two_qubit_gate l q3) as next_gate; symmetry in Heqnext_gate.
+  destruct next_gate; destruct n; try easy.
+  destruct p; destruct p; destruct p. 
+  remember (does_not_reference g0 q4) as DNR; symmetry in HeqDNR.
+  destruct DNR; bdestruct (q3 =? n1); bdestruct (q4 =? n0); 
+  simpl in H2; inversion H2; subst.
+  rewrite (ntqg_preserves_semantics _ _ _ _ _ _ Heqnext_gate).
+  specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ Heqnext_gate) as H3.
+  rewrite app_cons_app.
+  rewrite (app_assoc _ _ g).
+  rewrite <- (does_not_reference_commutes_app2 _ fU_CNOT _ _ H3 HeqDNR).
+  simpl.
+  specialize (CNOT_CNOT_cancel [] (g0 ++ g) _ _ H H0 H1) as H4.
+  simpl in H4.
+  assumption.
+Qed.
+
+Lemma propagate_CNOT_WT : forall {dim} (l : gate_list dim) q1 q2 n l',
+  q1 < dim ->
+  q2 < dim -> 
+  q1 <> q2 ->
+  uc_well_typed_l l ->
+  propagate_CNOT l q1 q2 n = Some l' ->
+  uc_well_typed_l l'.
 Proof.
-Admitted.
+  intros.
+  specialize (propagate_CNOT_sound l q3 q4 n l' H H0 H1 H3) as H4.
+  apply (uc_equiv_l_implies_WT _ _ H4).
+  constructor; assumption.
+Qed.
 
 Lemma cancel_gates'_sound : forall {dim} (l : gate_list dim) n,
   uc_well_typed_l l -> cancel_gates' l n =l= l.
@@ -2037,21 +2160,21 @@ Proof.
       destruct prop; rewrite IHn; try reflexivity; try assumption.
       rewrite (propagate_H_sound _ _ _ H2 Heqprop).
       reflexivity.
-      admit.
+      apply (propagate_H_WT _ _ _ H2 H4 Heqprop).
     + (* fU_X *)
       simpl.
       remember (propagate_X l n0 (length l)) as prop; symmetry in Heqprop.
       destruct prop; rewrite IHn; try reflexivity; try assumption.
       rewrite (propagate_X_sound _ _ _ _ H2 Heqprop).
       reflexivity.
-      admit.
+      apply (propagate_X_WT _ _ _ _ H2 H4 Heqprop).
     + (* fU_PI4 *)
       simpl.
       remember (propagate_PI4 k l n0 (length l)) as prop; symmetry in Heqprop.
       destruct prop; rewrite IHn; try reflexivity; try assumption.
       rewrite (propagate_PI4_sound _ _ _ _ _ H2 Heqprop).
       reflexivity.
-      admit.
+      apply (propagate_PI4_WT _ _ _ _ _ H2 H4 Heqprop).
   - (* fU_CNOT *)
     dependent destruction f; simpl.
     inversion H; subst. 
@@ -2059,8 +2182,8 @@ Proof.
     destruct prop; rewrite IHn; try reflexivity; try assumption.
     rewrite (propagate_CNOT_sound _ _ _ _ _ H4 H5 H6 Heqprop).
     reflexivity.
-    admit.
-Admitted.
+    apply (propagate_CNOT_WT _ _ _ _ _ H4 H5 H6 H7 Heqprop).
+Qed.
 
 Lemma cancel_gates_sound : forall {dim} (l : gate_list dim), 
   uc_well_typed_l l -> cancel_gates l =l= l.
