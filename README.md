@@ -1,6 +1,8 @@
 # SQIRE
 A Small Quantum Intermediate Representation
 
+**Note: This is the version of the code from our presentation at QPL 2019 **)
+
 ## Compilation Instructions
 
 To compile the code, use:
