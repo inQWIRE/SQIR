@@ -1,5 +1,3 @@
-(* Unitary superdense coding example (in-progress *)
-
 Require Import QWIRE.Dirac.
 Require Import UnitarySem.
 Local Open Scope ucom.    
@@ -7,63 +5,91 @@ Local Open Scope ucom.
 Definition a : nat := O.
 Definition b : nat := S O.
 
-Definition bell00_u : ucom :=
+Definition bell00_u : ucom 2 :=
   H a;
   CNOT a b.
 
-Definition encode_u (b1 b2 : bool): ucom :=
+Definition encode_u (b1 b2 : bool): ucom 2 :=
   (if b2 then X a else uskip);
   (if b1 then Z a else uskip).
 
-Definition decode_u : ucom := (* note: this is the reverse of bell00 *)
+Definition decode_u : ucom 2 := (* note: this is the reverse of bell00 *)
   CNOT a b;
   H a.
 
 Definition superdense_u (b1 b2 : bool) := bell00_u ; encode_u b1 b2; decode_u.
 
-Local Close Scope ucom.
-
-(* Rewriting seems to be more cooperative with this definition of 
-   kron_mixed_product *)
-Lemma kron_mixed_prod2: forall (A : Matrix 2 2) (B : Matrix 2 2) x y,
-    (A ⊗ B) × ∣ x,y ⟩ = (A × ∣ x ⟩) ⊗ (B × ∣ y ⟩).
-Proof. intros. rewrite kron_mixed_product. reflexivity. Qed.
-Hint Rewrite kron_mixed_prod2 : ket_db.
-
-(*Set Printing All.*)
-
 Definition bool_to_nat (b : bool) : nat := if b then 1 else 0.
 Coercion bool_to_nat : bool >-> nat.
 
-Lemma superdense_correct : forall b1 b2, (uc_eval 2 (superdense_u b1 b2)) × ∣ 0,0 ⟩ = ∣ b1,b2 ⟩.
+Lemma superdense_correct : forall b1 b2, (uc_eval (superdense_u b1 b2)) × ∣ 0,0 ⟩ = ∣ b1,b2 ⟩.
 Proof.
   intros; simpl.
   replace (ueval_cnot 2 a b) with cnot.
   2:{ unfold ueval_cnot, pad; simpl. solve_matrix. } 
-  unfold ueval1.
-  unfold pad; Msimpl.
-  destruct b1; destruct b2; unfold uc_eval; simpl;
-    unfold ueval1, pad; simpl.
-  - autorewrite with ket_db; auto with wf_db.
-    setoid_rewrite CNOT00_spec.
-    setoid_rewrite CNOT10_spec.
-    autorewrite with ket_db C_db; auto with wf_db. (* wf_db shouldn't be req'd *)
-    setoid_rewrite CNOT10_spec.
-    setoid_rewrite CNOT01_spec.
-    autorewrite with ket_db C_db; auto with wf_db.
-    replace (RtoC (-1)%R) with (- C1)%C by lca. (* There shouldn't be Rs here... *)
+  unfold uc_eval, ueval1, ueval_cnot, pad.
+  bdestructΩ (a + 1 <=? 2); try lia.
+  destruct b1; destruct b2; simpl.
+  (* At this point we have four cases corresponding to the values of b1 and b2. *)
+  (* We'll do the first case (mostly) manually. *)
+  - repeat rewrite kron_1_l; auto with wf_db.
+    repeat rewrite Mmult_assoc.
+    restore_dims; rewrite kron_mixed_product. 
+    rewrite Mmult_1_l; auto with wf_db.
+    rewrite H0_spec. 
+    rewrite kron_plus_distr_r.
+    repeat rewrite Mmult_plus_distr_l.
+    repeat rewrite Mscale_kron_dist_l.
+    repeat rewrite Mscale_mult_dist_r.
+    rewrite CNOT00_spec.
+    rewrite CNOT10_spec.
+    repeat rewrite kron_mixed_product. 
+    repeat rewrite Mmult_1_l; auto with wf_db.
+    rewrite X0_spec; rewrite X1_spec.
+    rewrite Z0_spec; rewrite Z1_spec.
+    rewrite Mscale_kron_dist_l.
+    repeat rewrite Mscale_mult_dist_r.
+    rewrite CNOT10_spec.
+    rewrite CNOT01_spec.
+    repeat rewrite kron_mixed_product. 
+    repeat rewrite Mmult_1_l; auto with wf_db.
+    rewrite H0_spec. 
+    rewrite H1_spec. 
+    repeat rewrite kron_plus_distr_r.
+    repeat rewrite Mscale_kron_dist_l.
+    repeat rewrite Mscale_plus_distr_r.
+    repeat rewrite Mscale_assoc.
+    rewrite Mplus_assoc.
+    rewrite (Mplus_comm _ _ (_ .* ∣ 1, 1 ⟩)).
+    repeat rewrite <- Mplus_assoc.
+    rewrite (Mplus_assoc _ _ _ (_ .* ∣ 1, 1 ⟩)).
+    repeat rewrite <- Mscale_plus_distr_l.
+    replace (RtoC (-1)%R) with (- C1)%C by lca.
     autorewrite with C_db.
-    rewrite <- Mplus_assoc.
-    rewrite (Mplus_comm _ _ (_ .*  ∣ 0, 1 ⟩)).
-    rewrite (Mplus_assoc _ _ (_ .*  ∣ 1, 1 ⟩)).
-    rewrite <- Mscale_plus_distr_l. 
-    autorewrite with ket_db C_db.
-    rewrite <- Mscale_plus_distr_l. 
-    autorewrite with ket_db C_db.
+    rewrite Mscale_0_l.
+    rewrite Mplus_0_l.
+    rewrite Mscale_1_l.
     reflexivity.
-  - solve_matrix.
+  (* We'll do the second case with a little more automation. *)
+  - Msimpl. repeat rewrite Mmult_assoc.
+    restore_dims; rewrite kron_mixed_product. 
+    autorewrite with ket_db; auto with wf_db.
+    repeat rewrite kron_mixed_product. 
+    autorewrite with ket_db; auto with wf_db.
+    repeat rewrite kron_mixed_product.
+    autorewrite with ket_db; auto with wf_db.
+    rewrite Mplus_assoc.
+    rewrite (Mplus_comm _ _ (_ .* ∣ 1, 0 ⟩)).
+    repeat rewrite <- Mplus_assoc.
+    rewrite (Mplus_assoc _ _ _ (_ .* ∣ 1, 0 ⟩)).
+    repeat rewrite <- Mscale_plus_distr_l.
+    replace (RtoC (-1)%R) with (- C1)%C by lca.
+    autorewrite with C_db.
+    rewrite Mscale_0_l.
+    rewrite Mplus_0_l.
+    rewrite Mscale_1_l.
+    reflexivity.
+  (* We'll do the last two cases fully automatically. *)
   - solve_matrix.
   - solve_matrix.
 Qed.    
-
-(* Maybe a manual proof would be more illustrative? *)

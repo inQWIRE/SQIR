@@ -8,9 +8,7 @@ To compile the code, use:
 ./configure.sh
 make
 ```
-Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. In case of compilation trouble, try `make clean` before running `./configure.sh`. 
-
-Note that the teleport example is not currently compiled.
+Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. In case of compilation trouble, try `make clean` before running `./configure.sh`.  
 
 The development has only been tested with Coq version 8.8.2.
 
@@ -18,7 +16,7 @@ The development has only been tested with Coq version 8.8.2.
 
 ### Core files
 
-The files below are specific to SQIRE.
+The files below are the core of SQIRE.
 
 - SQIRE.v : General definition of the SQIRE language.
 - UnitarySem.v : Semantics for unitary SQIRE programs.
@@ -28,22 +26,45 @@ The files below are specific to SQIRE.
 
 We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
 
-### SQIRE as an IR
+### compiler
 
-The primary use case for SQIRE is as an IR in a verified compiler. The compiler directory contains current progress on transformations of SQIRE programs.
+Compilation from higher-level languages to SQIRE. Everything in this directory is experimental (i.e. not done).
 
-- compiler/Equivalences.v : verifies several circuit equivalences useful for the optimizations in Transformations.v.
-- compiler/Mapping.v : verifies a simple circuit mapping example.
-- compiler/Optimizations.v : verifies several simple optimizations of SQIRE programs including skip removal and not propagation.
+- compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIRE programs.
+- compiler/CompileFromQwire.v : Compilation from QWIRE to SQIRE.
 
-### SQIRE for General Verification
+### optimizer
 
-We also include several examples of using SQIRE for general verification. The files in the examples directory verify correctness properties of simple quantum algorithms.
+SQIRE programs optimizations.
+
+- optimizer/Equivalences.v : Verified circuit equivalences useful for various peephole optimizations.
+- optimizer/GateCancellation.v : Cancel gates adjacent to their inverses, propagate using the rules from Nam et al.
+- optimizer/HadamardReduction.v : 'Hadamard reduction' pass from Nam et al.
+- optimizer/ListRepresentation.v : List representation of unitary SQIRE programs used for implementing optimizations.
+- optimizer/NonUnitaryOptimizations.v : Examples of optimizations on non-unitary programs.
+- optimizer/NotPropagation.v : Based on the 'not propagation' preprocessing step by Nam et al. (TODO: add handling for Toffoli gates.)
+- optimizer/SkipElimination.v : Toy optimization that removes skip operations.
+
+### mapper
+
+Mapping algorithms for SQIRE programs.
+
+- mapper/LNNMapping.v: Verified circuit mapping example for linear nearest neighbor architecture.
+
+### examples
+
+Examples of using SQIRE to verify correctness properties of simple quantum algorithms.
 
 - examples/Deutsch.v    
-- examples/DeutschJozsa.v
+- examples/DeutschJozsa.v *(needs to be updated)*
 - examples/GHZ.v
 - examples/Superdense.v
 - examples/Teleport.v    
 
-*This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040*
+### benchmarks
+
+*TODO*
+
+## Remarks
+
+This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040.
