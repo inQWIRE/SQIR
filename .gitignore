@@ -3,3 +3,7 @@
 *.vo
 .*
 *~
+
+# Ignore auto-generated Makefiles
+Makefile
+Makefile.conf
