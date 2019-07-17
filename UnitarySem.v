@@ -56,11 +56,12 @@ Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
   end.
 
 (* Restriction: m <> n and m, n < dim *)
+
 Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
   if (m <? n) then
-    @pad (1+(n-m-1)+1) m dim (∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-m)))
+    @pad (1+(n-m-1)+1) m dim (∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ I 2)
   else if (n <? m) then
-    @pad (1+(m-n-1)+1) n dim (σx ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ .+ I (2^(m-n)) ⊗ ∣0⟩⟨0∣)
+    @pad (1+(m-n-1)+1) n dim (σx ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ I (2^(m-n-1)) ⊗ ∣0⟩⟨0∣)
   else
     Zero.
 
@@ -87,8 +88,9 @@ Lemma WF_ueval_cnot : forall dim m n, WF_Matrix (ueval_cnot dim m n).
 Proof.
   intros dim m n.
   unfold ueval_cnot.
-  bdestruct (m <? n); [|bdestruct (n <? m)];
-    try apply WF_pad; unify_pows_two; auto 10 with wf_db.    
+  bdestruct (m <? n); [|bdestruct (n <? m)]; 
+    try apply WF_pad;
+    unify_pows_two; auto with wf_db.
 Qed.  
 
 Lemma WF_uc_eval : forall {dim} (c : ucom dim), WF_Matrix (uc_eval c).
@@ -229,43 +231,23 @@ Proof.
     restore_dims.
     rewrite Mplus_adjoint.
     Msimpl.
-    restore_dims.
-    rewrite kron_adjoint.
-    Msimpl.
     restore_dims_strong.
     rewrite Mmult_plus_distr_l.
     rewrite 2 Mmult_plus_distr_r.
-    rewrite kron_assoc.
-    restore_dims_strong.
+    repeat rewrite kron_mixed_product.
     Msimpl.
-    unify_pows_two.
-    rewrite Nat.sub_add by lia.
-    remember (I (2 ^ (n - m - 1)) ⊗ σx) as A.
-    gen A. unify_pows_two. rewrite Nat.sub_add by lia. intros A EA.
-    restore_dims_strong.
-    rewrite 2 kron_mixed_product.
     replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2)%nat by solve_matrix.
     replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2)%nat by solve_matrix.
     replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
     replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
     rewrite 2 kron_0_l.
+    rewrite Mplus_0_l, Mplus_0_r.
     replace (σx × σx) with (I 2) by solve_matrix.
+    rewrite <- 2 kron_plus_distr_r.
+    replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2)%nat by solve_matrix.
     Msimpl.
     unify_pows_two.
-    rewrite Nat.sub_add by lia.
-    (* For some reason I can't rewrite with Mplus_0_l or r here, so manually... *)
-    match goal with
-      |- ?A = ?B => replace A with (∣1⟩⟨1∣ ⊗ I (2 ^ (n - m)) .+ ∣0⟩⟨0∣ ⊗ I (2 ^ (n - m)))
-    end.
-    2:{ 
-    prep_matrix_equality. unfold Mplus.
-    unfold Zero. rewrite Cplus_0_l, Cplus_0_r.
     reflexivity.
-    }
-    rewrite <- kron_plus_distr_r.
-    replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
-    Msimpl.
-    unify_matrices.
   - bdestructΩ (n <? m). clear H NE.
     apply pad_unitary. lia.
     split.
@@ -276,30 +258,24 @@ Proof.
     restore_dims.
     rewrite Mplus_adjoint.
     Msimpl.
-    restore_dims.
-    rewrite kron_adjoint.
-    Msimpl.
     restore_dims_strong.
     rewrite Mmult_plus_distr_l.
     rewrite 2 Mmult_plus_distr_r.
-    Msimpl.
-    remember (σx ⊗ I (2 ^ (m - n - 1))) as A.
-    gen A. unify_pows_two. replace (S (m - n - 1)) with (m - n)%nat by lia. intros A EA.
-    restore_dims_strong.
     repeat rewrite kron_mixed_product.
+    Msimpl.
+    restore_dims_strong.
+    rewrite kron_mixed_product.
+    Msimpl.
     replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2)%nat by solve_matrix.
     replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2)%nat by solve_matrix.
     replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
     replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
     replace (σx × σx) with (I 2) by solve_matrix.
-    rewrite 2 kron_0_r.
-    Msimpl.
-    unify_pows_two.
-    rewrite Nat.sub_add by lia.
+    rewrite kron_0_r.
     rewrite Mplus_0_r.
     rewrite Mplus_0_l.
-    replace (S (m - n - 1)) with (m - n)%nat by lia.
-    restore_dims_strong.
+    Msimpl.
+    unify_pows_two.
     setoid_rewrite <- kron_plus_distr_l.
     replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
     Msimpl.

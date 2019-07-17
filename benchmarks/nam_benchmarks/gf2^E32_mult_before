@@ -1,0 +1,3229 @@
+Inputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit, 28:Qbit, 29:Qbit, 30:Qbit, 31:Qbit, 32:Qbit, 33:Qbit, 34:Qbit, 35:Qbit, 36:Qbit, 37:Qbit, 38:Qbit, 39:Qbit, 40:Qbit, 41:Qbit, 42:Qbit, 43:Qbit, 44:Qbit, 45:Qbit, 46:Qbit, 47:Qbit, 48:Qbit, 49:Qbit, 50:Qbit, 51:Qbit, 52:Qbit, 53:Qbit, 54:Qbit, 55:Qbit, 56:Qbit, 57:Qbit, 58:Qbit, 59:Qbit, 60:Qbit, 61:Qbit, 62:Qbit, 63:Qbit, 64:Qbit, 65:Qbit, 66:Qbit, 67:Qbit, 68:Qbit, 69:Qbit, 70:Qbit, 71:Qbit, 72:Qbit, 73:Qbit, 74:Qbit, 75:Qbit, 76:Qbit, 77:Qbit, 78:Qbit, 79:Qbit, 80:Qbit, 81:Qbit, 82:Qbit, 83:Qbit, 84:Qbit, 85:Qbit, 86:Qbit, 87:Qbit, 88:Qbit, 89:Qbit, 90:Qbit, 91:Qbit, 92:Qbit, 93:Qbit, 94:Qbit, 95:Qbit
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+31,+33] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+30,+34] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+29,+35] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+28,+36] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+27,+37] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+26,+38] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+25,+39] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+24,+40] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+23,+41] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+22,+42] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+21,+43] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+20,+44] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+19,+45] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+18,+46] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+17,+47] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+16,+48] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+15,+49] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+14,+50] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+13,+51] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+12,+52] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+11,+53] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+10,+54] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+9,+55] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+8,+56] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+7,+57] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+6,+58] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+5,+59] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+4,+60] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+3,+61] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+2,+62] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+1,+63] with nocontrol
+QGate["H"](64) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+31,+34] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+30,+35] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+29,+36] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+28,+37] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+27,+38] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+26,+39] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+25,+40] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+24,+41] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+23,+42] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+22,+43] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+21,+44] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+20,+45] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+19,+46] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+18,+47] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+17,+48] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+16,+49] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+15,+50] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+14,+51] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+13,+52] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+12,+53] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+11,+54] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+10,+55] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+9,+56] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+8,+57] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+7,+58] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+6,+59] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+5,+60] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+4,+61] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+3,+62] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+2,+63] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+31,+35] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+30,+36] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+29,+37] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+28,+38] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+27,+39] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+26,+40] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+25,+41] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+24,+42] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+23,+43] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+22,+44] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+21,+45] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+20,+46] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+19,+47] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+18,+48] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+17,+49] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+16,+50] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+15,+51] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+14,+52] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+13,+53] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+12,+54] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+11,+55] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+10,+56] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+9,+57] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+8,+58] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+7,+59] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+6,+60] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+5,+61] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+4,+62] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+3,+63] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+31,+36] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+30,+37] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+29,+38] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+28,+39] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+27,+40] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+26,+41] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+25,+42] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+24,+43] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+23,+44] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+22,+45] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+21,+46] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+20,+47] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+19,+48] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+18,+49] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+17,+50] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+16,+51] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+15,+52] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+14,+53] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+13,+54] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+12,+55] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+11,+56] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+10,+57] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+9,+58] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+8,+59] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+7,+60] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+6,+61] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+5,+62] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+4,+63] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+31,+37] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+30,+38] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+29,+39] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+28,+40] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+27,+41] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+26,+42] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+25,+43] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+24,+44] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+23,+45] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+22,+46] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+21,+47] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+20,+48] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+19,+49] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+18,+50] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+17,+51] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+16,+52] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+15,+53] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+14,+54] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+13,+55] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+12,+56] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+11,+57] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+10,+58] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+9,+59] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+8,+60] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+7,+61] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+6,+62] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+5,+63] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+31,+38] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+30,+39] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+29,+40] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+28,+41] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+27,+42] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+26,+43] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+25,+44] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+24,+45] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+23,+46] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+22,+47] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+21,+48] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+20,+49] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+19,+50] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+18,+51] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+17,+52] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+16,+53] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+15,+54] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+14,+55] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+13,+56] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+12,+57] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+11,+58] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+10,+59] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+9,+60] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+8,+61] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+7,+62] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+6,+63] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+31,+39] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+30,+40] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+29,+41] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+28,+42] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+27,+43] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+26,+44] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+25,+45] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+24,+46] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+23,+47] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+22,+48] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+21,+49] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+20,+50] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+19,+51] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+18,+52] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+17,+53] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+16,+54] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+15,+55] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+14,+56] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+13,+57] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+12,+58] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+11,+59] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+10,+60] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+9,+61] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+8,+62] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+7,+63] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+31,+40] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+30,+41] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+29,+42] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+28,+43] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+27,+44] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+26,+45] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+25,+46] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+24,+47] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+23,+48] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+22,+49] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+21,+50] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+20,+51] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+19,+52] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+18,+53] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+17,+54] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+16,+55] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+15,+56] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+14,+57] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+13,+58] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+12,+59] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+11,+60] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+10,+61] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+9,+62] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+8,+63] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+31,+41] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+30,+42] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+29,+43] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+28,+44] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+27,+45] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+26,+46] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+25,+47] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+24,+48] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+23,+49] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+22,+50] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+21,+51] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+20,+52] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+19,+53] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+18,+54] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+17,+55] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+16,+56] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+15,+57] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+14,+58] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+13,+59] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+12,+60] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+11,+61] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+10,+62] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+9,+63] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+31,+42] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+30,+43] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+29,+44] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+28,+45] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+27,+46] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+26,+47] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+25,+48] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+24,+49] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+23,+50] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+22,+51] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+21,+52] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+20,+53] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+19,+54] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+18,+55] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+17,+56] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+16,+57] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+15,+58] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+14,+59] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+13,+60] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+12,+61] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+11,+62] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+10,+63] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+31,+43] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+30,+44] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+29,+45] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+28,+46] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+27,+47] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+26,+48] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+25,+49] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+24,+50] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+23,+51] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+22,+52] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+21,+53] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+20,+54] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+19,+55] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+18,+56] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+17,+57] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+16,+58] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+15,+59] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+14,+60] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+13,+61] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+12,+62] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+11,+63] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+31,+44] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+30,+45] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+29,+46] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+28,+47] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+27,+48] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+26,+49] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+25,+50] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+24,+51] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+23,+52] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+22,+53] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+21,+54] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+20,+55] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+19,+56] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+18,+57] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+17,+58] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+16,+59] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+15,+60] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+14,+61] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+13,+62] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+12,+63] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+31,+45] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+30,+46] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+29,+47] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+28,+48] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+27,+49] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+26,+50] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+25,+51] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+24,+52] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+23,+53] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+22,+54] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+21,+55] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+20,+56] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+19,+57] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+18,+58] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+17,+59] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+16,+60] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+15,+61] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+14,+62] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+13,+63] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+31,+46] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+30,+47] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+29,+48] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+28,+49] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+27,+50] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+26,+51] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+25,+52] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+24,+53] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+23,+54] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+22,+55] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+21,+56] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+20,+57] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+19,+58] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+18,+59] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+17,+60] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+16,+61] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+15,+62] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+14,+63] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+31,+47] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+30,+48] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+29,+49] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+28,+50] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+27,+51] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+26,+52] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+25,+53] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+24,+54] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+23,+55] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+22,+56] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+21,+57] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+20,+58] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+19,+59] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+18,+60] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+17,+61] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+16,+62] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+15,+63] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+31,+48] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+30,+49] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+29,+50] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+28,+51] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+27,+52] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+26,+53] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+25,+54] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+24,+55] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+23,+56] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+22,+57] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+21,+58] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+20,+59] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+19,+60] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+18,+61] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+17,+62] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+16,+63] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+31,+49] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+30,+50] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+29,+51] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+28,+52] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+27,+53] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+26,+54] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+25,+55] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+24,+56] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+23,+57] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+22,+58] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+21,+59] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+20,+60] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+19,+61] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+18,+62] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+17,+63] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+31,+50] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+30,+51] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+29,+52] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+28,+53] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+27,+54] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+26,+55] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+25,+56] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+24,+57] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+23,+58] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+22,+59] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+21,+60] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+20,+61] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+19,+62] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+18,+63] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+31,+51] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+30,+52] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+29,+53] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+28,+54] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+27,+55] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+26,+56] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+25,+57] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+24,+58] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+23,+59] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+22,+60] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+21,+61] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+20,+62] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+19,+63] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+31,+52] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+30,+53] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+29,+54] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+28,+55] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+27,+56] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+26,+57] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+25,+58] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+24,+59] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+23,+60] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+22,+61] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+21,+62] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+20,+63] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+31,+53] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+30,+54] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+29,+55] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+28,+56] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+27,+57] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+26,+58] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+25,+59] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+24,+60] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+23,+61] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+22,+62] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+21,+63] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+31,+54] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+30,+55] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+29,+56] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+28,+57] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+27,+58] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+26,+59] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+25,+60] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+24,+61] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+23,+62] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+22,+63] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+31,+55] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+30,+56] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+29,+57] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+28,+58] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+27,+59] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+26,+60] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+25,+61] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+24,+62] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+23,+63] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+31,+56] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+30,+57] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+29,+58] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+28,+59] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+27,+60] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+26,+61] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+25,+62] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+24,+63] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+31,+57] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+30,+58] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+29,+59] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+28,+60] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+27,+61] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+26,+62] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+25,+63] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+31,+58] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+30,+59] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+29,+60] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+28,+61] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+27,+62] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+26,+63] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+31,+59] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+30,+60] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+29,+61] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+28,+62] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+27,+63] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+31,+60] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+30,+61] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+29,+62] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+28,+63] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+31,+61] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+30,+62] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+29,+63] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+31,+62] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+30,+63] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+31,+63] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["not"](69) with controls=[+94] with nocontrol
+QGate["not"](67) with controls=[+94] with nocontrol
+QGate["not"](65) with controls=[+94] with nocontrol
+QGate["not"](64) with controls=[+94] with nocontrol
+QGate["not"](95) with controls=[+94] with nocontrol
+QGate["not"](68) with controls=[+93] with nocontrol
+QGate["not"](66) with controls=[+93] with nocontrol
+QGate["not"](64) with controls=[+93] with nocontrol
+QGate["not"](95) with controls=[+93] with nocontrol
+QGate["not"](94) with controls=[+93] with nocontrol
+QGate["not"](67) with controls=[+92] with nocontrol
+QGate["not"](65) with controls=[+92] with nocontrol
+QGate["not"](95) with controls=[+92] with nocontrol
+QGate["not"](94) with controls=[+92] with nocontrol
+QGate["not"](93) with controls=[+92] with nocontrol
+QGate["not"](66) with controls=[+91] with nocontrol
+QGate["not"](64) with controls=[+91] with nocontrol
+QGate["not"](94) with controls=[+91] with nocontrol
+QGate["not"](93) with controls=[+91] with nocontrol
+QGate["not"](92) with controls=[+91] with nocontrol
+QGate["not"](65) with controls=[+90] with nocontrol
+QGate["not"](95) with controls=[+90] with nocontrol
+QGate["not"](93) with controls=[+90] with nocontrol
+QGate["not"](92) with controls=[+90] with nocontrol
+QGate["not"](91) with controls=[+90] with nocontrol
+QGate["not"](64) with controls=[+89] with nocontrol
+QGate["not"](94) with controls=[+89] with nocontrol
+QGate["not"](92) with controls=[+89] with nocontrol
+QGate["not"](91) with controls=[+89] with nocontrol
+QGate["not"](90) with controls=[+89] with nocontrol
+QGate["not"](95) with controls=[+88] with nocontrol
+QGate["not"](93) with controls=[+88] with nocontrol
+QGate["not"](91) with controls=[+88] with nocontrol
+QGate["not"](90) with controls=[+88] with nocontrol
+QGate["not"](89) with controls=[+88] with nocontrol
+QGate["not"](94) with controls=[+87] with nocontrol
+QGate["not"](92) with controls=[+87] with nocontrol
+QGate["not"](90) with controls=[+87] with nocontrol
+QGate["not"](89) with controls=[+87] with nocontrol
+QGate["not"](88) with controls=[+87] with nocontrol
+QGate["not"](93) with controls=[+86] with nocontrol
+QGate["not"](91) with controls=[+86] with nocontrol
+QGate["not"](89) with controls=[+86] with nocontrol
+QGate["not"](88) with controls=[+86] with nocontrol
+QGate["not"](87) with controls=[+86] with nocontrol
+QGate["not"](92) with controls=[+85] with nocontrol
+QGate["not"](90) with controls=[+85] with nocontrol
+QGate["not"](88) with controls=[+85] with nocontrol
+QGate["not"](87) with controls=[+85] with nocontrol
+QGate["not"](86) with controls=[+85] with nocontrol
+QGate["not"](91) with controls=[+84] with nocontrol
+QGate["not"](89) with controls=[+84] with nocontrol
+QGate["not"](87) with controls=[+84] with nocontrol
+QGate["not"](86) with controls=[+84] with nocontrol
+QGate["not"](85) with controls=[+84] with nocontrol
+QGate["not"](90) with controls=[+83] with nocontrol
+QGate["not"](88) with controls=[+83] with nocontrol
+QGate["not"](86) with controls=[+83] with nocontrol
+QGate["not"](85) with controls=[+83] with nocontrol
+QGate["not"](84) with controls=[+83] with nocontrol
+QGate["not"](89) with controls=[+82] with nocontrol
+QGate["not"](87) with controls=[+82] with nocontrol
+QGate["not"](85) with controls=[+82] with nocontrol
+QGate["not"](84) with controls=[+82] with nocontrol
+QGate["not"](83) with controls=[+82] with nocontrol
+QGate["not"](88) with controls=[+81] with nocontrol
+QGate["not"](86) with controls=[+81] with nocontrol
+QGate["not"](84) with controls=[+81] with nocontrol
+QGate["not"](83) with controls=[+81] with nocontrol
+QGate["not"](82) with controls=[+81] with nocontrol
+QGate["not"](87) with controls=[+80] with nocontrol
+QGate["not"](85) with controls=[+80] with nocontrol
+QGate["not"](83) with controls=[+80] with nocontrol
+QGate["not"](82) with controls=[+80] with nocontrol
+QGate["not"](81) with controls=[+80] with nocontrol
+QGate["not"](86) with controls=[+79] with nocontrol
+QGate["not"](84) with controls=[+79] with nocontrol
+QGate["not"](82) with controls=[+79] with nocontrol
+QGate["not"](81) with controls=[+79] with nocontrol
+QGate["not"](80) with controls=[+79] with nocontrol
+QGate["not"](85) with controls=[+78] with nocontrol
+QGate["not"](83) with controls=[+78] with nocontrol
+QGate["not"](81) with controls=[+78] with nocontrol
+QGate["not"](80) with controls=[+78] with nocontrol
+QGate["not"](79) with controls=[+78] with nocontrol
+QGate["not"](84) with controls=[+77] with nocontrol
+QGate["not"](82) with controls=[+77] with nocontrol
+QGate["not"](80) with controls=[+77] with nocontrol
+QGate["not"](79) with controls=[+77] with nocontrol
+QGate["not"](78) with controls=[+77] with nocontrol
+QGate["not"](83) with controls=[+76] with nocontrol
+QGate["not"](81) with controls=[+76] with nocontrol
+QGate["not"](79) with controls=[+76] with nocontrol
+QGate["not"](78) with controls=[+76] with nocontrol
+QGate["not"](77) with controls=[+76] with nocontrol
+QGate["not"](82) with controls=[+75] with nocontrol
+QGate["not"](80) with controls=[+75] with nocontrol
+QGate["not"](78) with controls=[+75] with nocontrol
+QGate["not"](77) with controls=[+75] with nocontrol
+QGate["not"](76) with controls=[+75] with nocontrol
+QGate["not"](81) with controls=[+74] with nocontrol
+QGate["not"](79) with controls=[+74] with nocontrol
+QGate["not"](77) with controls=[+74] with nocontrol
+QGate["not"](76) with controls=[+74] with nocontrol
+QGate["not"](75) with controls=[+74] with nocontrol
+QGate["not"](80) with controls=[+73] with nocontrol
+QGate["not"](78) with controls=[+73] with nocontrol
+QGate["not"](76) with controls=[+73] with nocontrol
+QGate["not"](75) with controls=[+73] with nocontrol
+QGate["not"](74) with controls=[+73] with nocontrol
+QGate["not"](79) with controls=[+72] with nocontrol
+QGate["not"](77) with controls=[+72] with nocontrol
+QGate["not"](75) with controls=[+72] with nocontrol
+QGate["not"](74) with controls=[+72] with nocontrol
+QGate["not"](73) with controls=[+72] with nocontrol
+QGate["not"](78) with controls=[+71] with nocontrol
+QGate["not"](76) with controls=[+71] with nocontrol
+QGate["not"](74) with controls=[+71] with nocontrol
+QGate["not"](73) with controls=[+71] with nocontrol
+QGate["not"](72) with controls=[+71] with nocontrol
+QGate["not"](77) with controls=[+70] with nocontrol
+QGate["not"](75) with controls=[+70] with nocontrol
+QGate["not"](73) with controls=[+70] with nocontrol
+QGate["not"](72) with controls=[+70] with nocontrol
+QGate["not"](71) with controls=[+70] with nocontrol
+QGate["not"](76) with controls=[+69] with nocontrol
+QGate["not"](74) with controls=[+69] with nocontrol
+QGate["not"](72) with controls=[+69] with nocontrol
+QGate["not"](71) with controls=[+69] with nocontrol
+QGate["not"](70) with controls=[+69] with nocontrol
+QGate["not"](75) with controls=[+68] with nocontrol
+QGate["not"](73) with controls=[+68] with nocontrol
+QGate["not"](71) with controls=[+68] with nocontrol
+QGate["not"](70) with controls=[+68] with nocontrol
+QGate["not"](69) with controls=[+68] with nocontrol
+QGate["not"](74) with controls=[+67] with nocontrol
+QGate["not"](72) with controls=[+67] with nocontrol
+QGate["not"](70) with controls=[+67] with nocontrol
+QGate["not"](69) with controls=[+67] with nocontrol
+QGate["not"](68) with controls=[+67] with nocontrol
+QGate["not"](73) with controls=[+66] with nocontrol
+QGate["not"](71) with controls=[+66] with nocontrol
+QGate["not"](69) with controls=[+66] with nocontrol
+QGate["not"](68) with controls=[+66] with nocontrol
+QGate["not"](67) with controls=[+66] with nocontrol
+QGate["not"](72) with controls=[+65] with nocontrol
+QGate["not"](70) with controls=[+65] with nocontrol
+QGate["not"](68) with controls=[+65] with nocontrol
+QGate["not"](67) with controls=[+65] with nocontrol
+QGate["not"](66) with controls=[+65] with nocontrol
+QGate["not"](71) with controls=[+64] with nocontrol
+QGate["not"](69) with controls=[+64] with nocontrol
+QGate["not"](67) with controls=[+64] with nocontrol
+QGate["not"](66) with controls=[+64] with nocontrol
+QGate["not"](65) with controls=[+64] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+31,+32] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+30,+33] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+29,+34] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+28,+35] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+27,+36] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+26,+37] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+25,+38] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+24,+39] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+23,+40] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+22,+41] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+21,+42] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+20,+43] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+19,+44] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+18,+45] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+17,+46] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+16,+47] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+15,+48] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+14,+49] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+13,+50] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+12,+51] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+11,+52] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+10,+53] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+9,+54] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+8,+55] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+7,+56] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+6,+57] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+5,+58] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+4,+59] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+3,+60] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+2,+61] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+1,+62] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](95) with nocontrol
+QGate["Z"](95) with controls=[+0,+63] with nocontrol
+QGate["H"](95) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+30,+32] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+29,+33] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+28,+34] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+27,+35] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+26,+36] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+25,+37] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+24,+38] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+23,+39] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+22,+40] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+21,+41] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+20,+42] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+19,+43] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+18,+44] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+17,+45] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+16,+46] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+15,+47] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+14,+48] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+13,+49] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+12,+50] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+11,+51] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+10,+52] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+9,+53] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+8,+54] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+7,+55] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+6,+56] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+5,+57] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+4,+58] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+3,+59] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+2,+60] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+1,+61] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](94) with nocontrol
+QGate["Z"](94) with controls=[+0,+62] with nocontrol
+QGate["H"](94) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+29,+32] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+28,+33] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+27,+34] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+26,+35] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+25,+36] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+24,+37] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+23,+38] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+22,+39] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+21,+40] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+20,+41] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+19,+42] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+18,+43] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+17,+44] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+16,+45] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+15,+46] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+14,+47] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+13,+48] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+12,+49] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+11,+50] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+10,+51] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+9,+52] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+8,+53] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+7,+54] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+6,+55] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+5,+56] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+4,+57] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+3,+58] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+2,+59] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+1,+60] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](93) with nocontrol
+QGate["Z"](93) with controls=[+0,+61] with nocontrol
+QGate["H"](93) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+28,+32] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+27,+33] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+26,+34] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+25,+35] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+24,+36] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+23,+37] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+22,+38] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+21,+39] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+20,+40] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+19,+41] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+18,+42] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+17,+43] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+16,+44] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+15,+45] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+14,+46] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+13,+47] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+12,+48] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+11,+49] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+10,+50] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+9,+51] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+8,+52] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+7,+53] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+6,+54] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+5,+55] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+4,+56] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+3,+57] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+2,+58] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+1,+59] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](92) with nocontrol
+QGate["Z"](92) with controls=[+0,+60] with nocontrol
+QGate["H"](92) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+27,+32] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+26,+33] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+25,+34] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+24,+35] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+23,+36] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+22,+37] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+21,+38] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+20,+39] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+19,+40] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+18,+41] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+17,+42] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+16,+43] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+15,+44] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+14,+45] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+13,+46] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+12,+47] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+11,+48] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+10,+49] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+9,+50] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+8,+51] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+7,+52] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+6,+53] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+5,+54] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+4,+55] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+3,+56] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+2,+57] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+1,+58] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](91) with nocontrol
+QGate["Z"](91) with controls=[+0,+59] with nocontrol
+QGate["H"](91) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+26,+32] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+25,+33] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+24,+34] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+23,+35] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+22,+36] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+21,+37] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+20,+38] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+19,+39] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+18,+40] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+17,+41] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+16,+42] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+15,+43] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+14,+44] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+13,+45] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+12,+46] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+11,+47] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+10,+48] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+9,+49] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+8,+50] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+7,+51] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+6,+52] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+5,+53] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+4,+54] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+3,+55] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+2,+56] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+1,+57] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](90) with nocontrol
+QGate["Z"](90) with controls=[+0,+58] with nocontrol
+QGate["H"](90) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+25,+32] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+24,+33] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+23,+34] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+22,+35] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+21,+36] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+20,+37] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+19,+38] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+18,+39] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+17,+40] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+16,+41] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+15,+42] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+14,+43] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+13,+44] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+12,+45] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+11,+46] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+10,+47] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+9,+48] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+8,+49] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+7,+50] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+6,+51] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+5,+52] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+4,+53] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+3,+54] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+2,+55] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+1,+56] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](89) with nocontrol
+QGate["Z"](89) with controls=[+0,+57] with nocontrol
+QGate["H"](89) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+24,+32] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+23,+33] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+22,+34] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+21,+35] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+20,+36] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+19,+37] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+18,+38] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+17,+39] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+16,+40] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+15,+41] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+14,+42] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+13,+43] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+12,+44] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+11,+45] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+10,+46] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+9,+47] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+8,+48] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+7,+49] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+6,+50] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+5,+51] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+4,+52] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+3,+53] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+2,+54] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+1,+55] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](88) with nocontrol
+QGate["Z"](88) with controls=[+0,+56] with nocontrol
+QGate["H"](88) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+23,+32] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+22,+33] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+21,+34] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+20,+35] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+19,+36] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+18,+37] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+17,+38] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+16,+39] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+15,+40] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+14,+41] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+13,+42] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+12,+43] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+11,+44] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+10,+45] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+9,+46] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+8,+47] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+7,+48] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+6,+49] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+5,+50] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+4,+51] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+3,+52] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+2,+53] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+1,+54] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](87) with nocontrol
+QGate["Z"](87) with controls=[+0,+55] with nocontrol
+QGate["H"](87) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+22,+32] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+21,+33] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+20,+34] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+19,+35] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+18,+36] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+17,+37] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+16,+38] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+15,+39] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+14,+40] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+13,+41] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+12,+42] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+11,+43] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+10,+44] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+9,+45] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+8,+46] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+7,+47] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+6,+48] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+5,+49] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+4,+50] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+3,+51] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+2,+52] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+1,+53] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](86) with nocontrol
+QGate["Z"](86) with controls=[+0,+54] with nocontrol
+QGate["H"](86) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+21,+32] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+20,+33] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+19,+34] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+18,+35] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+17,+36] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+16,+37] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+15,+38] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+14,+39] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+13,+40] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+12,+41] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+11,+42] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+10,+43] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+9,+44] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+8,+45] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+7,+46] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+6,+47] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+5,+48] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+4,+49] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+3,+50] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+2,+51] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+1,+52] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](85) with nocontrol
+QGate["Z"](85) with controls=[+0,+53] with nocontrol
+QGate["H"](85) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+20,+32] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+19,+33] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+18,+34] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+17,+35] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+16,+36] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+15,+37] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+14,+38] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+13,+39] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+12,+40] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+11,+41] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+10,+42] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+9,+43] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+8,+44] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+7,+45] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+6,+46] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+5,+47] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+4,+48] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+3,+49] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+2,+50] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+1,+51] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](84) with nocontrol
+QGate["Z"](84) with controls=[+0,+52] with nocontrol
+QGate["H"](84) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+19,+32] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+18,+33] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+17,+34] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+16,+35] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+15,+36] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+14,+37] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+13,+38] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+12,+39] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+11,+40] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+10,+41] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+9,+42] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+8,+43] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+7,+44] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+6,+45] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+5,+46] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+4,+47] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+3,+48] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+2,+49] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+1,+50] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](83) with nocontrol
+QGate["Z"](83) with controls=[+0,+51] with nocontrol
+QGate["H"](83) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+18,+32] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+17,+33] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+16,+34] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+15,+35] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+14,+36] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+13,+37] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+12,+38] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+11,+39] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+10,+40] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+9,+41] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+8,+42] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+7,+43] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+6,+44] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+5,+45] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+4,+46] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+3,+47] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+2,+48] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+1,+49] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](82) with nocontrol
+QGate["Z"](82) with controls=[+0,+50] with nocontrol
+QGate["H"](82) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+17,+32] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+16,+33] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+15,+34] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+14,+35] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+13,+36] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+12,+37] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+11,+38] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+10,+39] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+9,+40] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+8,+41] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+7,+42] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+6,+43] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+5,+44] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+4,+45] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+3,+46] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+2,+47] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+1,+48] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](81) with nocontrol
+QGate["Z"](81) with controls=[+0,+49] with nocontrol
+QGate["H"](81) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+16,+32] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+15,+33] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+14,+34] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+13,+35] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+12,+36] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+11,+37] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+10,+38] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+9,+39] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+8,+40] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+7,+41] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+6,+42] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+5,+43] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+4,+44] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+3,+45] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+2,+46] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+1,+47] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](80) with nocontrol
+QGate["Z"](80) with controls=[+0,+48] with nocontrol
+QGate["H"](80) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+15,+32] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+14,+33] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+13,+34] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+12,+35] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+11,+36] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+10,+37] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+9,+38] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+8,+39] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+7,+40] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+6,+41] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+5,+42] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+4,+43] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+3,+44] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+2,+45] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+1,+46] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](79) with nocontrol
+QGate["Z"](79) with controls=[+0,+47] with nocontrol
+QGate["H"](79) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+14,+32] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+13,+33] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+12,+34] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+11,+35] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+10,+36] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+9,+37] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+8,+38] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+7,+39] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+6,+40] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+5,+41] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+4,+42] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+3,+43] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+2,+44] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+1,+45] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](78) with nocontrol
+QGate["Z"](78) with controls=[+0,+46] with nocontrol
+QGate["H"](78) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+13,+32] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+12,+33] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+11,+34] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+10,+35] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+9,+36] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+8,+37] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+7,+38] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+6,+39] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+5,+40] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+4,+41] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+3,+42] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+2,+43] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+1,+44] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](77) with nocontrol
+QGate["Z"](77) with controls=[+0,+45] with nocontrol
+QGate["H"](77) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+12,+32] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+11,+33] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+10,+34] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+9,+35] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+8,+36] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+7,+37] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+6,+38] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+5,+39] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+4,+40] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+3,+41] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+2,+42] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+1,+43] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](76) with nocontrol
+QGate["Z"](76) with controls=[+0,+44] with nocontrol
+QGate["H"](76) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+11,+32] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+10,+33] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+9,+34] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+8,+35] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+7,+36] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+6,+37] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+5,+38] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+4,+39] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+3,+40] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+2,+41] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+1,+42] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](75) with nocontrol
+QGate["Z"](75) with controls=[+0,+43] with nocontrol
+QGate["H"](75) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+10,+32] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+9,+33] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+8,+34] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+7,+35] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+6,+36] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+5,+37] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+4,+38] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+3,+39] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+2,+40] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+1,+41] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](74) with nocontrol
+QGate["Z"](74) with controls=[+0,+42] with nocontrol
+QGate["H"](74) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+9,+32] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+8,+33] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+7,+34] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+6,+35] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+5,+36] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+4,+37] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+3,+38] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+2,+39] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+1,+40] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](73) with nocontrol
+QGate["Z"](73) with controls=[+0,+41] with nocontrol
+QGate["H"](73) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+8,+32] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+7,+33] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+6,+34] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+5,+35] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+4,+36] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+3,+37] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+2,+38] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+1,+39] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](72) with nocontrol
+QGate["Z"](72) with controls=[+0,+40] with nocontrol
+QGate["H"](72) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+7,+32] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+6,+33] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+5,+34] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+4,+35] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+3,+36] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+2,+37] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+1,+38] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](71) with nocontrol
+QGate["Z"](71) with controls=[+0,+39] with nocontrol
+QGate["H"](71) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+6,+32] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+5,+33] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+4,+34] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+3,+35] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+2,+36] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+1,+37] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](70) with nocontrol
+QGate["Z"](70) with controls=[+0,+38] with nocontrol
+QGate["H"](70) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+5,+32] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+4,+33] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+3,+34] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+2,+35] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+1,+36] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](69) with nocontrol
+QGate["Z"](69) with controls=[+0,+37] with nocontrol
+QGate["H"](69) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+4,+32] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+3,+33] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+2,+34] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+1,+35] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](68) with nocontrol
+QGate["Z"](68) with controls=[+0,+36] with nocontrol
+QGate["H"](68) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+3,+32] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+2,+33] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+1,+34] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](67) with nocontrol
+QGate["Z"](67) with controls=[+0,+35] with nocontrol
+QGate["H"](67) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+2,+32] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+1,+33] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](66) with nocontrol
+QGate["Z"](66) with controls=[+0,+34] with nocontrol
+QGate["H"](66) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+1,+32] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](65) with nocontrol
+QGate["Z"](65) with controls=[+0,+33] with nocontrol
+QGate["H"](65) with nocontrol
+QGate["H"](64) with nocontrol
+QGate["Z"](64) with controls=[+0,+32] with nocontrol
+QGate["H"](64) with nocontrol
+Outputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit, 28:Qbit, 29:Qbit, 30:Qbit, 31:Qbit, 32:Qbit, 33:Qbit, 34:Qbit, 35:Qbit, 36:Qbit, 37:Qbit, 38:Qbit, 39:Qbit, 40:Qbit, 41:Qbit, 42:Qbit, 43:Qbit, 44:Qbit, 45:Qbit, 46:Qbit, 47:Qbit, 48:Qbit, 49:Qbit, 50:Qbit, 51:Qbit, 52:Qbit, 53:Qbit, 54:Qbit, 55:Qbit, 56:Qbit, 57:Qbit, 58:Qbit, 59:Qbit, 60:Qbit, 61:Qbit, 62:Qbit, 63:Qbit, 64:Qbit, 65:Qbit, 66:Qbit, 67:Qbit, 68:Qbit, 69:Qbit, 70:Qbit, 71:Qbit, 72:Qbit, 73:Qbit, 74:Qbit, 75:Qbit, 76:Qbit, 77:Qbit, 78:Qbit, 79:Qbit, 80:Qbit, 81:Qbit, 82:Qbit, 83:Qbit, 84:Qbit, 85:Qbit, 86:Qbit, 87:Qbit, 88:Qbit, 89:Qbit, 90:Qbit, 91:Qbit, 92:Qbit, 93:Qbit, 94:Qbit, 95:Qbit

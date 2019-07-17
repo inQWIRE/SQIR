@@ -111,7 +111,7 @@ Proof.
   apply H.
 Qed.
 
-Require Import Representations.
+Require Import ListRepresentation.
 
 Definition uc_cong_l {dim} (l1 l2 : gate_list dim) := 
   (list_to_ucom l1) ≅ (list_to_ucom l2).

@@ -56,8 +56,7 @@ Proof.
   - simpl. inversion H; subst.
     unfold ueval_cnot, pad.
     bdestruct (n <? n0).
-    + assert (n + (1 + (n0 - n - 1) + 1) <= dim) by lia.
-      bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); 
+    + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); 
       bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim + k); try lia.
       restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
       rewrite id_kron.
@@ -65,11 +64,10 @@ Proof.
       replace (dim - (1 + (n0 - n - 1) + 1) - n + k) with (dim + k - (1 + (n0 - n - 1) + 1) - n) by lia.
       reflexivity.
     + bdestruct (n0 <? n); try lia.
-      assert (n0 + (1 + (n - n0 - 1) + 1) <= dim) by lia.
       bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim); 
       bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim + k); try lia.
       restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
-      rewrite id_kron.
+      rewrite 2 id_kron.
       unify_pows_two.
       replace (dim - (1 + (n - n0 - 1) + 1) - n0 + k) with (dim + k - (1 + (n - n0 - 1) + 1) - n0) by lia.
       reflexivity.

@@ -26,24 +26,41 @@ The files below are the core of SQIRE.
 
 We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
 
-### SQIRE as an IR
+### compiler
 
-The primary use case for SQIRE is as an IR in a verified compiler. The compiler directory contains current progress on transformations of SQIRE programs.
+Compilation from higher-level languages to SQIRE. Everything in this directory is experimental (i.e. not done).
 
-- compiler/Equivalences.v : Verified circuit equivalences useful for Optimizations.v.
-- compiler/Mapping.v : Verified (basic) circuit mapping example.
-- compiler/Optimizations.v : Verified optimizations of SQIRE programs including skip removal and not propagation.
-- ~~compiler/CompileFromQwire.v : (IN PROGRESS) Current progress on verified compilation from QWIRE programs to SQIRE programs.~~ (not up-to-date)
-- ~~compiler/BooleanCompilation.v : Verified compilation from boolean expressions to unitary SQIRE programs.~~ (not up-to-date)
-- compiler/Representations.v : Alternative representations of unitary SQIRE programs useful for implementing transformations.
-- compiler/Extraction.v : Code for extracting optimiation code to Ocaml.
+- compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIRE programs.
+- compiler/CompileFromQwire.v : Compilation from QWIRE to SQIRE.
 
-### SQIRE for General Verification
+### optimizer
 
-We also include several examples of using SQIRE for general verification. The files in the examples directory verify correctness properties of simple quantum algorithms.
+SQIRE programs optimizations.
+
+- optimizer/Equivalences.v : Verified circuit equivalences useful for various peephole optimizations.
+- optimizer/GateCancellation.v : Cancel gates adjacent to their inverses, propagate using the rules from Nam et al.
+- optimizer/HadamardReduction.v : 'Hadamard reduction' pass from Nam et al.
+- optimizer/ListRepresentation.v : List representation of unitary SQIRE programs used for implementing optimizations.
+- optimizer/NonUnitaryOptimizations.v : Examples of optimizations on non-unitary programs.
+- optimizer/NotPropagation.v : Based on the 'not propagation' preprocessing step by Nam et al. (TODO: add handling for Toffoli gates.)
+- optimizer/SkipElimination.v : Toy optimization that removes skip operations.
+
+### mapper
+
+Mapping algorithms for SQIRE programs.
+
+- mapper/LNNMapping.v: Verified circuit mapping example for linear nearest neighbor architecture.
+
+### examples
+
+Examples of using SQIRE to verify correctness properties of simple quantum algorithms.
 
 - examples/Deutsch.v    
-- examples/DeutschJozsa.v
+- examples/DeutschJozsa.v *(needs to be updated)*
 - examples/GHZ.v
 - examples/Superdense.v
 - Examples/Teleport.v    
+
+### benchmarks
+
+*TODO*

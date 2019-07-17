@@ -1,0 +1,2550 @@
+Inputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit, 28:Qbit, 29:Qbit, 30:Qbit, 31:Qbit, 32:Qbit, 33:Qbit, 34:Qbit, 35:Qbit, 36:Qbit, 37:Qbit, 38:Qbit, 39:Qbit, 40:Qbit, 41:Qbit, 42:Qbit, 43:Qbit, 44:Qbit, 45:Qbit, 46:Qbit, 47:Qbit, 48:Qbit, 49:Qbit, 50:Qbit, 51:Qbit, 52:Qbit, 53:Qbit, 54:Qbit, 55:Qbit, 56:Qbit, 57:Qbit, 58:Qbit, 59:Qbit, 60:Qbit, 61:Qbit, 62:Qbit, 63:Qbit, 64:Qbit, 65:Qbit, 66:Qbit, 67:Qbit, 68:Qbit, 69:Qbit, 70:Qbit, 71:Qbit, 72:Qbit, 73:Qbit, 74:Qbit, 75:Qbit, 76:Qbit, 77:Qbit, 78:Qbit, 79:Qbit, 80:Qbit, 81:Qbit, 82:Qbit, 83:Qbit, 84:Qbit, 85:Qbit, 86:Qbit, 87:Qbit, 88:Qbit, 89:Qbit, 90:Qbit, 91:Qbit, 92:Qbit, 93:Qbit, 94:Qbit, 95:Qbit, 96:Qbit, 97:Qbit, 98:Qbit, 99:Qbit, 100:Qbit, 101:Qbit, 102:Qbit, 103:Qbit, 104:Qbit, 105:Qbit, 106:Qbit, 107:Qbit, 108:Qbit, 109:Qbit, 110:Qbit, 111:Qbit, 112:Qbit, 113:Qbit, 114:Qbit, 115:Qbit, 116:Qbit, 117:Qbit, 118:Qbit, 119:Qbit, 120:Qbit, 121:Qbit, 122:Qbit, 123:Qbit, 124:Qbit, 125:Qbit, 126:Qbit, 127:Qbit, 128:Qbit, 129:Qbit, 130:Qbit, 131:Qbit, 132:Qbit, 133:Qbit, 134:Qbit, 135:Qbit, 136:Qbit, 137:Qbit, 138:Qbit, 139:Qbit, 140:Qbit, 141:Qbit, 142:Qbit, 143:Qbit, 144:Qbit, 145:Qbit, 146:Qbit, 147:Qbit, 148:Qbit, 149:Qbit, 150:Qbit, 151:Qbit, 152:Qbit, 153:Qbit, 154:Qbit, 155:Qbit, 156:Qbit, 157:Qbit, 158:Qbit, 159:Qbit, 160:Qbit, 161:Qbit, 162:Qbit, 163:Qbit, 164:Qbit, 165:Qbit, 166:Qbit, 167:Qbit, 168:Qbit, 169:Qbit, 170:Qbit, 171:Qbit, 172:Qbit, 173:Qbit, 174:Qbit, 175:Qbit, 176:Qbit, 177:Qbit, 178:Qbit, 179:Qbit, 180:Qbit, 181:Qbit, 182:Qbit, 183:Qbit, 184:Qbit, 185:Qbit, 186:Qbit, 187:Qbit, 188:Qbit, 189:Qbit, 190:Qbit, 191:Qbit, 192:Qbit, 193:Qbit, 194:Qbit, 195:Qbit, 196:Qbit, 197:Qbit, 198:Qbit, 199:Qbit, 200:Qbit, 201:Qbit, 202:Qbit, 203:Qbit, 204:Qbit, 205:Qbit, 206:Qbit, 207:Qbit, 208:Qbit, 209:Qbit, 210:Qbit, 211:Qbit, 212:Qbit, 213:Qbit, 214:Qbit, 215:Qbit, 216:Qbit, 217:Qbit, 218:Qbit, 219:Qbit, 220:Qbit, 221:Qbit, 222:Qbit, 223:Qbit, 224:Qbit, 225:Qbit, 226:Qbit, 227:Qbit, 228:Qbit, 229:Qbit, 230:Qbit, 231:Qbit, 232:Qbit, 233:Qbit, 234:Qbit, 235:Qbit, 236:Qbit, 237:Qbit, 238:Qbit, 239:Qbit, 240:Qbit, 241:Qbit, 242:Qbit, 243:Qbit, 244:Qbit, 245:Qbit, 246:Qbit, 247:Qbit, 248:Qbit, 249:Qbit, 250:Qbit, 251:Qbit, 252:Qbit, 253:Qbit, 254:Qbit, 255:Qbit, 256:Qbit, 257:Qbit, 258:Qbit, 259:Qbit, 260:Qbit, 261:Qbit, 262:Qbit, 263:Qbit, 264:Qbit, 265:Qbit, 266:Qbit, 267:Qbit, 268:Qbit, 269:Qbit, 270:Qbit, 271:Qbit, 272:Qbit, 273:Qbit, 274:Qbit, 275:Qbit, 276:Qbit, 277:Qbit, 278:Qbit, 279:Qbit, 280:Qbit, 281:Qbit, 282:Qbit, 283:Qbit, 284:Qbit, 285:Qbit, 286:Qbit, 287:Qbit, 288:Qbit, 289:Qbit, 290:Qbit, 291:Qbit, 292:Qbit, 293:Qbit, 294:Qbit, 295:Qbit, 296:Qbit, 297:Qbit, 298:Qbit, 299:Qbit, 300:Qbit, 301:Qbit, 302:Qbit, 303:Qbit, 304:Qbit, 305:Qbit, 306:Qbit, 307:Qbit, 308:Qbit, 309:Qbit, 310:Qbit, 311:Qbit, 312:Qbit, 313:Qbit, 314:Qbit, 315:Qbit, 316:Qbit, 317:Qbit, 318:Qbit, 319:Qbit, 320:Qbit, 321:Qbit, 322:Qbit, 323:Qbit, 324:Qbit, 325:Qbit, 326:Qbit, 327:Qbit, 328:Qbit, 329:Qbit, 330:Qbit, 331:Qbit, 332:Qbit, 333:Qbit, 334:Qbit, 335:Qbit, 336:Qbit, 337:Qbit, 338:Qbit, 339:Qbit, 340:Qbit, 341:Qbit, 342:Qbit, 343:Qbit, 344:Qbit, 345:Qbit, 346:Qbit, 347:Qbit, 348:Qbit, 349:Qbit, 350:Qbit, 351:Qbit, 352:Qbit, 353:Qbit, 354:Qbit, 355:Qbit, 356:Qbit, 357:Qbit, 358:Qbit, 359:Qbit, 360:Qbit, 361:Qbit, 362:Qbit, 363:Qbit, 364:Qbit, 365:Qbit, 366:Qbit, 367:Qbit, 368:Qbit, 369:Qbit, 370:Qbit, 371:Qbit, 372:Qbit, 373:Qbit, 374:Qbit, 375:Qbit, 376:Qbit, 377:Qbit, 378:Qbit, 379:Qbit, 380:Qbit, 381:Qbit, 382:Qbit, 383:Qbit, 384:Qbit, 385:Qbit, 386:Qbit, 387:Qbit, 388:Qbit, 389:Qbit, 390:Qbit, 391:Qbit, 392:Qbit, 393:Qbit, 394:Qbit, 395:Qbit, 396:Qbit, 397:Qbit, 398:Qbit, 399:Qbit, 400:Qbit, 401:Qbit, 402:Qbit, 403:Qbit, 404:Qbit, 405:Qbit, 406:Qbit, 407:Qbit, 408:Qbit, 409:Qbit, 410:Qbit, 411:Qbit, 412:Qbit, 413:Qbit, 414:Qbit, 415:Qbit, 416:Qbit, 417:Qbit, 418:Qbit, 419:Qbit, 420:Qbit, 421:Qbit, 422:Qbit, 423:Qbit, 424:Qbit, 425:Qbit, 426:Qbit, 427:Qbit, 428:Qbit, 429:Qbit, 430:Qbit, 431:Qbit, 432:Qbit, 433:Qbit, 434:Qbit, 435:Qbit, 436:Qbit, 437:Qbit, 438:Qbit, 439:Qbit, 440:Qbit, 441:Qbit, 442:Qbit, 443:Qbit, 444:Qbit, 445:Qbit, 446:Qbit, 447:Qbit, 448:Qbit, 449:Qbit, 450:Qbit, 451:Qbit, 452:Qbit, 453:Qbit, 454:Qbit, 455:Qbit, 456:Qbit, 457:Qbit, 458:Qbit, 459:Qbit, 460:Qbit, 461:Qbit, 462:Qbit, 463:Qbit, 464:Qbit, 465:Qbit, 466:Qbit, 467:Qbit, 468:Qbit, 469:Qbit, 470:Qbit, 471:Qbit, 472:Qbit, 473:Qbit, 474:Qbit, 475:Qbit, 476:Qbit, 477:Qbit, 478:Qbit, 479:Qbit, 480:Qbit, 481:Qbit, 482:Qbit, 483:Qbit, 484:Qbit, 485:Qbit, 486:Qbit, 487:Qbit, 488:Qbit, 489:Qbit, 490:Qbit, 491:Qbit, 492:Qbit, 493:Qbit, 494:Qbit, 495:Qbit, 496:Qbit, 497:Qbit, 498:Qbit, 499:Qbit, 500:Qbit, 501:Qbit, 502:Qbit, 503:Qbit, 504:Qbit, 505:Qbit, 506:Qbit, 507:Qbit, 508:Qbit, 509:Qbit, 510:Qbit, 511:Qbit
+QGate["not"](511) with controls=[+255]
+QInit0(512) with nocontrol
+QGate["not"](512) with controls=[+255, -511] with nocontrol
+QGate["not"](510) with controls=[+254]
+QGate["not"](510) with controls=[+512]
+QInit0(513) with nocontrol
+QGate["not"](513) with controls=[+254, -510] with nocontrol
+QGate["not"](513) with controls=[+254, +512] with nocontrol
+QGate["not"](513) with controls=[-510, +512] with nocontrol
+QGate["not"](509) with controls=[+253]
+QGate["not"](509) with controls=[+513]
+QInit0(514) with nocontrol
+QGate["not"](514) with controls=[+253, -509] with nocontrol
+QGate["not"](514) with controls=[+253, +513] with nocontrol
+QGate["not"](514) with controls=[-509, +513] with nocontrol
+QGate["not"](508) with controls=[+252]
+QGate["not"](508) with controls=[+514]
+QInit0(515) with nocontrol
+QGate["not"](515) with controls=[+252, -508] with nocontrol
+QGate["not"](515) with controls=[+252, +514] with nocontrol
+QGate["not"](515) with controls=[-508, +514] with nocontrol
+QGate["not"](507) with controls=[+251]
+QGate["not"](507) with controls=[+515]
+QInit0(516) with nocontrol
+QGate["not"](516) with controls=[+251, -507] with nocontrol
+QGate["not"](516) with controls=[+251, +515] with nocontrol
+QGate["not"](516) with controls=[-507, +515] with nocontrol
+QGate["not"](506) with controls=[+250]
+QGate["not"](506) with controls=[+516]
+QInit0(517) with nocontrol
+QGate["not"](517) with controls=[+250, -506] with nocontrol
+QGate["not"](517) with controls=[+250, +516] with nocontrol
+QGate["not"](517) with controls=[-506, +516] with nocontrol
+QGate["not"](505) with controls=[+249]
+QGate["not"](505) with controls=[+517]
+QInit0(518) with nocontrol
+QGate["not"](518) with controls=[+249, -505] with nocontrol
+QGate["not"](518) with controls=[+249, +517] with nocontrol
+QGate["not"](518) with controls=[-505, +517] with nocontrol
+QGate["not"](504) with controls=[+248]
+QGate["not"](504) with controls=[+518]
+QInit0(519) with nocontrol
+QGate["not"](519) with controls=[+248, -504] with nocontrol
+QGate["not"](519) with controls=[+248, +518] with nocontrol
+QGate["not"](519) with controls=[-504, +518] with nocontrol
+QGate["not"](503) with controls=[+247]
+QGate["not"](503) with controls=[+519]
+QInit0(520) with nocontrol
+QGate["not"](520) with controls=[+247, -503] with nocontrol
+QGate["not"](520) with controls=[+247, +519] with nocontrol
+QGate["not"](520) with controls=[-503, +519] with nocontrol
+QGate["not"](502) with controls=[+246]
+QGate["not"](502) with controls=[+520]
+QInit0(521) with nocontrol
+QGate["not"](521) with controls=[+246, -502] with nocontrol
+QGate["not"](521) with controls=[+246, +520] with nocontrol
+QGate["not"](521) with controls=[-502, +520] with nocontrol
+QGate["not"](501) with controls=[+245]
+QGate["not"](501) with controls=[+521]
+QInit0(522) with nocontrol
+QGate["not"](522) with controls=[+245, -501] with nocontrol
+QGate["not"](522) with controls=[+245, +521] with nocontrol
+QGate["not"](522) with controls=[-501, +521] with nocontrol
+QGate["not"](500) with controls=[+244]
+QGate["not"](500) with controls=[+522]
+QInit0(523) with nocontrol
+QGate["not"](523) with controls=[+244, -500] with nocontrol
+QGate["not"](523) with controls=[+244, +522] with nocontrol
+QGate["not"](523) with controls=[-500, +522] with nocontrol
+QGate["not"](499) with controls=[+243]
+QGate["not"](499) with controls=[+523]
+QInit0(524) with nocontrol
+QGate["not"](524) with controls=[+243, -499] with nocontrol
+QGate["not"](524) with controls=[+243, +523] with nocontrol
+QGate["not"](524) with controls=[-499, +523] with nocontrol
+QGate["not"](498) with controls=[+242]
+QGate["not"](498) with controls=[+524]
+QInit0(525) with nocontrol
+QGate["not"](525) with controls=[+242, -498] with nocontrol
+QGate["not"](525) with controls=[+242, +524] with nocontrol
+QGate["not"](525) with controls=[-498, +524] with nocontrol
+QGate["not"](497) with controls=[+241]
+QGate["not"](497) with controls=[+525]
+QInit0(526) with nocontrol
+QGate["not"](526) with controls=[+241, -497] with nocontrol
+QGate["not"](526) with controls=[+241, +525] with nocontrol
+QGate["not"](526) with controls=[-497, +525] with nocontrol
+QGate["not"](496) with controls=[+240]
+QGate["not"](496) with controls=[+526]
+QInit0(527) with nocontrol
+QGate["not"](527) with controls=[+240, -496] with nocontrol
+QGate["not"](527) with controls=[+240, +526] with nocontrol
+QGate["not"](527) with controls=[-496, +526] with nocontrol
+QGate["not"](495) with controls=[+239]
+QGate["not"](495) with controls=[+527]
+QInit0(528) with nocontrol
+QGate["not"](528) with controls=[+239, -495] with nocontrol
+QGate["not"](528) with controls=[+239, +527] with nocontrol
+QGate["not"](528) with controls=[-495, +527] with nocontrol
+QGate["not"](494) with controls=[+238]
+QGate["not"](494) with controls=[+528]
+QInit0(529) with nocontrol
+QGate["not"](529) with controls=[+238, -494] with nocontrol
+QGate["not"](529) with controls=[+238, +528] with nocontrol
+QGate["not"](529) with controls=[-494, +528] with nocontrol
+QGate["not"](493) with controls=[+237]
+QGate["not"](493) with controls=[+529]
+QInit0(530) with nocontrol
+QGate["not"](530) with controls=[+237, -493] with nocontrol
+QGate["not"](530) with controls=[+237, +529] with nocontrol
+QGate["not"](530) with controls=[-493, +529] with nocontrol
+QGate["not"](492) with controls=[+236]
+QGate["not"](492) with controls=[+530]
+QInit0(531) with nocontrol
+QGate["not"](531) with controls=[+236, -492] with nocontrol
+QGate["not"](531) with controls=[+236, +530] with nocontrol
+QGate["not"](531) with controls=[-492, +530] with nocontrol
+QGate["not"](491) with controls=[+235]
+QGate["not"](491) with controls=[+531]
+QInit0(532) with nocontrol
+QGate["not"](532) with controls=[+235, -491] with nocontrol
+QGate["not"](532) with controls=[+235, +531] with nocontrol
+QGate["not"](532) with controls=[-491, +531] with nocontrol
+QGate["not"](490) with controls=[+234]
+QGate["not"](490) with controls=[+532]
+QInit0(533) with nocontrol
+QGate["not"](533) with controls=[+234, -490] with nocontrol
+QGate["not"](533) with controls=[+234, +532] with nocontrol
+QGate["not"](533) with controls=[-490, +532] with nocontrol
+QGate["not"](489) with controls=[+233]
+QGate["not"](489) with controls=[+533]
+QInit0(534) with nocontrol
+QGate["not"](534) with controls=[+233, -489] with nocontrol
+QGate["not"](534) with controls=[+233, +533] with nocontrol
+QGate["not"](534) with controls=[-489, +533] with nocontrol
+QGate["not"](488) with controls=[+232]
+QGate["not"](488) with controls=[+534]
+QInit0(535) with nocontrol
+QGate["not"](535) with controls=[+232, -488] with nocontrol
+QGate["not"](535) with controls=[+232, +534] with nocontrol
+QGate["not"](535) with controls=[-488, +534] with nocontrol
+QGate["not"](487) with controls=[+231]
+QGate["not"](487) with controls=[+535]
+QInit0(536) with nocontrol
+QGate["not"](536) with controls=[+231, -487] with nocontrol
+QGate["not"](536) with controls=[+231, +535] with nocontrol
+QGate["not"](536) with controls=[-487, +535] with nocontrol
+QGate["not"](486) with controls=[+230]
+QGate["not"](486) with controls=[+536]
+QInit0(537) with nocontrol
+QGate["not"](537) with controls=[+230, -486] with nocontrol
+QGate["not"](537) with controls=[+230, +536] with nocontrol
+QGate["not"](537) with controls=[-486, +536] with nocontrol
+QGate["not"](485) with controls=[+229]
+QGate["not"](485) with controls=[+537]
+QInit0(538) with nocontrol
+QGate["not"](538) with controls=[+229, -485] with nocontrol
+QGate["not"](538) with controls=[+229, +537] with nocontrol
+QGate["not"](538) with controls=[-485, +537] with nocontrol
+QGate["not"](484) with controls=[+228]
+QGate["not"](484) with controls=[+538]
+QInit0(539) with nocontrol
+QGate["not"](539) with controls=[+228, -484] with nocontrol
+QGate["not"](539) with controls=[+228, +538] with nocontrol
+QGate["not"](539) with controls=[-484, +538] with nocontrol
+QGate["not"](483) with controls=[+227]
+QGate["not"](483) with controls=[+539]
+QInit0(540) with nocontrol
+QGate["not"](540) with controls=[+227, -483] with nocontrol
+QGate["not"](540) with controls=[+227, +539] with nocontrol
+QGate["not"](540) with controls=[-483, +539] with nocontrol
+QGate["not"](482) with controls=[+226]
+QGate["not"](482) with controls=[+540]
+QInit0(541) with nocontrol
+QGate["not"](541) with controls=[+226, -482] with nocontrol
+QGate["not"](541) with controls=[+226, +540] with nocontrol
+QGate["not"](541) with controls=[-482, +540] with nocontrol
+QGate["not"](481) with controls=[+225]
+QGate["not"](481) with controls=[+541]
+QInit0(542) with nocontrol
+QGate["not"](542) with controls=[+225, -481] with nocontrol
+QGate["not"](542) with controls=[+225, +541] with nocontrol
+QGate["not"](542) with controls=[-481, +541] with nocontrol
+QGate["not"](480) with controls=[+224]
+QGate["not"](480) with controls=[+542]
+QInit0(543) with nocontrol
+QGate["not"](543) with controls=[+224, -480] with nocontrol
+QGate["not"](543) with controls=[+224, +542] with nocontrol
+QGate["not"](543) with controls=[-480, +542] with nocontrol
+QGate["not"](479) with controls=[+223]
+QGate["not"](479) with controls=[+543]
+QInit0(544) with nocontrol
+QGate["not"](544) with controls=[+223, -479] with nocontrol
+QGate["not"](544) with controls=[+223, +543] with nocontrol
+QGate["not"](544) with controls=[-479, +543] with nocontrol
+QGate["not"](478) with controls=[+222]
+QGate["not"](478) with controls=[+544]
+QInit0(545) with nocontrol
+QGate["not"](545) with controls=[+222, -478] with nocontrol
+QGate["not"](545) with controls=[+222, +544] with nocontrol
+QGate["not"](545) with controls=[-478, +544] with nocontrol
+QGate["not"](477) with controls=[+221]
+QGate["not"](477) with controls=[+545]
+QInit0(546) with nocontrol
+QGate["not"](546) with controls=[+221, -477] with nocontrol
+QGate["not"](546) with controls=[+221, +545] with nocontrol
+QGate["not"](546) with controls=[-477, +545] with nocontrol
+QGate["not"](476) with controls=[+220]
+QGate["not"](476) with controls=[+546]
+QInit0(547) with nocontrol
+QGate["not"](547) with controls=[+220, -476] with nocontrol
+QGate["not"](547) with controls=[+220, +546] with nocontrol
+QGate["not"](547) with controls=[-476, +546] with nocontrol
+QGate["not"](475) with controls=[+219]
+QGate["not"](475) with controls=[+547]
+QInit0(548) with nocontrol
+QGate["not"](548) with controls=[+219, -475] with nocontrol
+QGate["not"](548) with controls=[+219, +547] with nocontrol
+QGate["not"](548) with controls=[-475, +547] with nocontrol
+QGate["not"](474) with controls=[+218]
+QGate["not"](474) with controls=[+548]
+QInit0(549) with nocontrol
+QGate["not"](549) with controls=[+218, -474] with nocontrol
+QGate["not"](549) with controls=[+218, +548] with nocontrol
+QGate["not"](549) with controls=[-474, +548] with nocontrol
+QGate["not"](473) with controls=[+217]
+QGate["not"](473) with controls=[+549]
+QInit0(550) with nocontrol
+QGate["not"](550) with controls=[+217, -473] with nocontrol
+QGate["not"](550) with controls=[+217, +549] with nocontrol
+QGate["not"](550) with controls=[-473, +549] with nocontrol
+QGate["not"](472) with controls=[+216]
+QGate["not"](472) with controls=[+550]
+QInit0(551) with nocontrol
+QGate["not"](551) with controls=[+216, -472] with nocontrol
+QGate["not"](551) with controls=[+216, +550] with nocontrol
+QGate["not"](551) with controls=[-472, +550] with nocontrol
+QGate["not"](471) with controls=[+215]
+QGate["not"](471) with controls=[+551]
+QInit0(552) with nocontrol
+QGate["not"](552) with controls=[+215, -471] with nocontrol
+QGate["not"](552) with controls=[+215, +551] with nocontrol
+QGate["not"](552) with controls=[-471, +551] with nocontrol
+QGate["not"](470) with controls=[+214]
+QGate["not"](470) with controls=[+552]
+QInit0(553) with nocontrol
+QGate["not"](553) with controls=[+214, -470] with nocontrol
+QGate["not"](553) with controls=[+214, +552] with nocontrol
+QGate["not"](553) with controls=[-470, +552] with nocontrol
+QGate["not"](469) with controls=[+213]
+QGate["not"](469) with controls=[+553]
+QInit0(554) with nocontrol
+QGate["not"](554) with controls=[+213, -469] with nocontrol
+QGate["not"](554) with controls=[+213, +553] with nocontrol
+QGate["not"](554) with controls=[-469, +553] with nocontrol
+QGate["not"](468) with controls=[+212]
+QGate["not"](468) with controls=[+554]
+QInit0(555) with nocontrol
+QGate["not"](555) with controls=[+212, -468] with nocontrol
+QGate["not"](555) with controls=[+212, +554] with nocontrol
+QGate["not"](555) with controls=[-468, +554] with nocontrol
+QGate["not"](467) with controls=[+211]
+QGate["not"](467) with controls=[+555]
+QInit0(556) with nocontrol
+QGate["not"](556) with controls=[+211, -467] with nocontrol
+QGate["not"](556) with controls=[+211, +555] with nocontrol
+QGate["not"](556) with controls=[-467, +555] with nocontrol
+QGate["not"](466) with controls=[+210]
+QGate["not"](466) with controls=[+556]
+QInit0(557) with nocontrol
+QGate["not"](557) with controls=[+210, -466] with nocontrol
+QGate["not"](557) with controls=[+210, +556] with nocontrol
+QGate["not"](557) with controls=[-466, +556] with nocontrol
+QGate["not"](465) with controls=[+209]
+QGate["not"](465) with controls=[+557]
+QInit0(558) with nocontrol
+QGate["not"](558) with controls=[+209, -465] with nocontrol
+QGate["not"](558) with controls=[+209, +557] with nocontrol
+QGate["not"](558) with controls=[-465, +557] with nocontrol
+QGate["not"](464) with controls=[+208]
+QGate["not"](464) with controls=[+558]
+QInit0(559) with nocontrol
+QGate["not"](559) with controls=[+208, -464] with nocontrol
+QGate["not"](559) with controls=[+208, +558] with nocontrol
+QGate["not"](559) with controls=[-464, +558] with nocontrol
+QGate["not"](463) with controls=[+207]
+QGate["not"](463) with controls=[+559]
+QInit0(560) with nocontrol
+QGate["not"](560) with controls=[+207, -463] with nocontrol
+QGate["not"](560) with controls=[+207, +559] with nocontrol
+QGate["not"](560) with controls=[-463, +559] with nocontrol
+QGate["not"](462) with controls=[+206]
+QGate["not"](462) with controls=[+560]
+QInit0(561) with nocontrol
+QGate["not"](561) with controls=[+206, -462] with nocontrol
+QGate["not"](561) with controls=[+206, +560] with nocontrol
+QGate["not"](561) with controls=[-462, +560] with nocontrol
+QGate["not"](461) with controls=[+205]
+QGate["not"](461) with controls=[+561]
+QInit0(562) with nocontrol
+QGate["not"](562) with controls=[+205, -461] with nocontrol
+QGate["not"](562) with controls=[+205, +561] with nocontrol
+QGate["not"](562) with controls=[-461, +561] with nocontrol
+QGate["not"](460) with controls=[+204]
+QGate["not"](460) with controls=[+562]
+QInit0(563) with nocontrol
+QGate["not"](563) with controls=[+204, -460] with nocontrol
+QGate["not"](563) with controls=[+204, +562] with nocontrol
+QGate["not"](563) with controls=[-460, +562] with nocontrol
+QGate["not"](459) with controls=[+203]
+QGate["not"](459) with controls=[+563]
+QInit0(564) with nocontrol
+QGate["not"](564) with controls=[+203, -459] with nocontrol
+QGate["not"](564) with controls=[+203, +563] with nocontrol
+QGate["not"](564) with controls=[-459, +563] with nocontrol
+QGate["not"](458) with controls=[+202]
+QGate["not"](458) with controls=[+564]
+QInit0(565) with nocontrol
+QGate["not"](565) with controls=[+202, -458] with nocontrol
+QGate["not"](565) with controls=[+202, +564] with nocontrol
+QGate["not"](565) with controls=[-458, +564] with nocontrol
+QGate["not"](457) with controls=[+201]
+QGate["not"](457) with controls=[+565]
+QInit0(566) with nocontrol
+QGate["not"](566) with controls=[+201, -457] with nocontrol
+QGate["not"](566) with controls=[+201, +565] with nocontrol
+QGate["not"](566) with controls=[-457, +565] with nocontrol
+QGate["not"](456) with controls=[+200]
+QGate["not"](456) with controls=[+566]
+QInit0(567) with nocontrol
+QGate["not"](567) with controls=[+200, -456] with nocontrol
+QGate["not"](567) with controls=[+200, +566] with nocontrol
+QGate["not"](567) with controls=[-456, +566] with nocontrol
+QGate["not"](455) with controls=[+199]
+QGate["not"](455) with controls=[+567]
+QInit0(568) with nocontrol
+QGate["not"](568) with controls=[+199, -455] with nocontrol
+QGate["not"](568) with controls=[+199, +567] with nocontrol
+QGate["not"](568) with controls=[-455, +567] with nocontrol
+QGate["not"](454) with controls=[+198]
+QGate["not"](454) with controls=[+568]
+QInit0(569) with nocontrol
+QGate["not"](569) with controls=[+198, -454] with nocontrol
+QGate["not"](569) with controls=[+198, +568] with nocontrol
+QGate["not"](569) with controls=[-454, +568] with nocontrol
+QGate["not"](453) with controls=[+197]
+QGate["not"](453) with controls=[+569]
+QInit0(570) with nocontrol
+QGate["not"](570) with controls=[+197, -453] with nocontrol
+QGate["not"](570) with controls=[+197, +569] with nocontrol
+QGate["not"](570) with controls=[-453, +569] with nocontrol
+QGate["not"](452) with controls=[+196]
+QGate["not"](452) with controls=[+570]
+QInit0(571) with nocontrol
+QGate["not"](571) with controls=[+196, -452] with nocontrol
+QGate["not"](571) with controls=[+196, +570] with nocontrol
+QGate["not"](571) with controls=[-452, +570] with nocontrol
+QGate["not"](451) with controls=[+195]
+QGate["not"](451) with controls=[+571]
+QInit0(572) with nocontrol
+QGate["not"](572) with controls=[+195, -451] with nocontrol
+QGate["not"](572) with controls=[+195, +571] with nocontrol
+QGate["not"](572) with controls=[-451, +571] with nocontrol
+QGate["not"](450) with controls=[+194]
+QGate["not"](450) with controls=[+572]
+QInit0(573) with nocontrol
+QGate["not"](573) with controls=[+194, -450] with nocontrol
+QGate["not"](573) with controls=[+194, +572] with nocontrol
+QGate["not"](573) with controls=[-450, +572] with nocontrol
+QGate["not"](449) with controls=[+193]
+QGate["not"](449) with controls=[+573]
+QInit0(574) with nocontrol
+QGate["not"](574) with controls=[+193, -449] with nocontrol
+QGate["not"](574) with controls=[+193, +573] with nocontrol
+QGate["not"](574) with controls=[-449, +573] with nocontrol
+QGate["not"](448) with controls=[+192]
+QGate["not"](448) with controls=[+574]
+QInit0(575) with nocontrol
+QGate["not"](575) with controls=[+192, -448] with nocontrol
+QGate["not"](575) with controls=[+192, +574] with nocontrol
+QGate["not"](575) with controls=[-448, +574] with nocontrol
+QGate["not"](447) with controls=[+191]
+QGate["not"](447) with controls=[+575]
+QInit0(576) with nocontrol
+QGate["not"](576) with controls=[+191, -447] with nocontrol
+QGate["not"](576) with controls=[+191, +575] with nocontrol
+QGate["not"](576) with controls=[-447, +575] with nocontrol
+QGate["not"](446) with controls=[+190]
+QGate["not"](446) with controls=[+576]
+QInit0(577) with nocontrol
+QGate["not"](577) with controls=[+190, -446] with nocontrol
+QGate["not"](577) with controls=[+190, +576] with nocontrol
+QGate["not"](577) with controls=[-446, +576] with nocontrol
+QGate["not"](445) with controls=[+189]
+QGate["not"](445) with controls=[+577]
+QInit0(578) with nocontrol
+QGate["not"](578) with controls=[+189, -445] with nocontrol
+QGate["not"](578) with controls=[+189, +577] with nocontrol
+QGate["not"](578) with controls=[-445, +577] with nocontrol
+QGate["not"](444) with controls=[+188]
+QGate["not"](444) with controls=[+578]
+QInit0(579) with nocontrol
+QGate["not"](579) with controls=[+188, -444] with nocontrol
+QGate["not"](579) with controls=[+188, +578] with nocontrol
+QGate["not"](579) with controls=[-444, +578] with nocontrol
+QGate["not"](443) with controls=[+187]
+QGate["not"](443) with controls=[+579]
+QInit0(580) with nocontrol
+QGate["not"](580) with controls=[+187, -443] with nocontrol
+QGate["not"](580) with controls=[+187, +579] with nocontrol
+QGate["not"](580) with controls=[-443, +579] with nocontrol
+QGate["not"](442) with controls=[+186]
+QGate["not"](442) with controls=[+580]
+QInit0(581) with nocontrol
+QGate["not"](581) with controls=[+186, -442] with nocontrol
+QGate["not"](581) with controls=[+186, +580] with nocontrol
+QGate["not"](581) with controls=[-442, +580] with nocontrol
+QGate["not"](441) with controls=[+185]
+QGate["not"](441) with controls=[+581]
+QInit0(582) with nocontrol
+QGate["not"](582) with controls=[+185, -441] with nocontrol
+QGate["not"](582) with controls=[+185, +581] with nocontrol
+QGate["not"](582) with controls=[-441, +581] with nocontrol
+QGate["not"](440) with controls=[+184]
+QGate["not"](440) with controls=[+582]
+QInit0(583) with nocontrol
+QGate["not"](583) with controls=[+184, -440] with nocontrol
+QGate["not"](583) with controls=[+184, +582] with nocontrol
+QGate["not"](583) with controls=[-440, +582] with nocontrol
+QGate["not"](439) with controls=[+183]
+QGate["not"](439) with controls=[+583]
+QInit0(584) with nocontrol
+QGate["not"](584) with controls=[+183, -439] with nocontrol
+QGate["not"](584) with controls=[+183, +583] with nocontrol
+QGate["not"](584) with controls=[-439, +583] with nocontrol
+QGate["not"](438) with controls=[+182]
+QGate["not"](438) with controls=[+584]
+QInit0(585) with nocontrol
+QGate["not"](585) with controls=[+182, -438] with nocontrol
+QGate["not"](585) with controls=[+182, +584] with nocontrol
+QGate["not"](585) with controls=[-438, +584] with nocontrol
+QGate["not"](437) with controls=[+181]
+QGate["not"](437) with controls=[+585]
+QInit0(586) with nocontrol
+QGate["not"](586) with controls=[+181, -437] with nocontrol
+QGate["not"](586) with controls=[+181, +585] with nocontrol
+QGate["not"](586) with controls=[-437, +585] with nocontrol
+QGate["not"](436) with controls=[+180]
+QGate["not"](436) with controls=[+586]
+QInit0(587) with nocontrol
+QGate["not"](587) with controls=[+180, -436] with nocontrol
+QGate["not"](587) with controls=[+180, +586] with nocontrol
+QGate["not"](587) with controls=[-436, +586] with nocontrol
+QGate["not"](435) with controls=[+179]
+QGate["not"](435) with controls=[+587]
+QInit0(588) with nocontrol
+QGate["not"](588) with controls=[+179, -435] with nocontrol
+QGate["not"](588) with controls=[+179, +587] with nocontrol
+QGate["not"](588) with controls=[-435, +587] with nocontrol
+QGate["not"](434) with controls=[+178]
+QGate["not"](434) with controls=[+588]
+QInit0(589) with nocontrol
+QGate["not"](589) with controls=[+178, -434] with nocontrol
+QGate["not"](589) with controls=[+178, +588] with nocontrol
+QGate["not"](589) with controls=[-434, +588] with nocontrol
+QGate["not"](433) with controls=[+177]
+QGate["not"](433) with controls=[+589]
+QInit0(590) with nocontrol
+QGate["not"](590) with controls=[+177, -433] with nocontrol
+QGate["not"](590) with controls=[+177, +589] with nocontrol
+QGate["not"](590) with controls=[-433, +589] with nocontrol
+QGate["not"](432) with controls=[+176]
+QGate["not"](432) with controls=[+590]
+QInit0(591) with nocontrol
+QGate["not"](591) with controls=[+176, -432] with nocontrol
+QGate["not"](591) with controls=[+176, +590] with nocontrol
+QGate["not"](591) with controls=[-432, +590] with nocontrol
+QGate["not"](431) with controls=[+175]
+QGate["not"](431) with controls=[+591]
+QInit0(592) with nocontrol
+QGate["not"](592) with controls=[+175, -431] with nocontrol
+QGate["not"](592) with controls=[+175, +591] with nocontrol
+QGate["not"](592) with controls=[-431, +591] with nocontrol
+QGate["not"](430) with controls=[+174]
+QGate["not"](430) with controls=[+592]
+QInit0(593) with nocontrol
+QGate["not"](593) with controls=[+174, -430] with nocontrol
+QGate["not"](593) with controls=[+174, +592] with nocontrol
+QGate["not"](593) with controls=[-430, +592] with nocontrol
+QGate["not"](429) with controls=[+173]
+QGate["not"](429) with controls=[+593]
+QInit0(594) with nocontrol
+QGate["not"](594) with controls=[+173, -429] with nocontrol
+QGate["not"](594) with controls=[+173, +593] with nocontrol
+QGate["not"](594) with controls=[-429, +593] with nocontrol
+QGate["not"](428) with controls=[+172]
+QGate["not"](428) with controls=[+594]
+QInit0(595) with nocontrol
+QGate["not"](595) with controls=[+172, -428] with nocontrol
+QGate["not"](595) with controls=[+172, +594] with nocontrol
+QGate["not"](595) with controls=[-428, +594] with nocontrol
+QGate["not"](427) with controls=[+171]
+QGate["not"](427) with controls=[+595]
+QInit0(596) with nocontrol
+QGate["not"](596) with controls=[+171, -427] with nocontrol
+QGate["not"](596) with controls=[+171, +595] with nocontrol
+QGate["not"](596) with controls=[-427, +595] with nocontrol
+QGate["not"](426) with controls=[+170]
+QGate["not"](426) with controls=[+596]
+QInit0(597) with nocontrol
+QGate["not"](597) with controls=[+170, -426] with nocontrol
+QGate["not"](597) with controls=[+170, +596] with nocontrol
+QGate["not"](597) with controls=[-426, +596] with nocontrol
+QGate["not"](425) with controls=[+169]
+QGate["not"](425) with controls=[+597]
+QInit0(598) with nocontrol
+QGate["not"](598) with controls=[+169, -425] with nocontrol
+QGate["not"](598) with controls=[+169, +597] with nocontrol
+QGate["not"](598) with controls=[-425, +597] with nocontrol
+QGate["not"](424) with controls=[+168]
+QGate["not"](424) with controls=[+598]
+QInit0(599) with nocontrol
+QGate["not"](599) with controls=[+168, -424] with nocontrol
+QGate["not"](599) with controls=[+168, +598] with nocontrol
+QGate["not"](599) with controls=[-424, +598] with nocontrol
+QGate["not"](423) with controls=[+167]
+QGate["not"](423) with controls=[+599]
+QInit0(600) with nocontrol
+QGate["not"](600) with controls=[+167, -423] with nocontrol
+QGate["not"](600) with controls=[+167, +599] with nocontrol
+QGate["not"](600) with controls=[-423, +599] with nocontrol
+QGate["not"](422) with controls=[+166]
+QGate["not"](422) with controls=[+600]
+QInit0(601) with nocontrol
+QGate["not"](601) with controls=[+166, -422] with nocontrol
+QGate["not"](601) with controls=[+166, +600] with nocontrol
+QGate["not"](601) with controls=[-422, +600] with nocontrol
+QGate["not"](421) with controls=[+165]
+QGate["not"](421) with controls=[+601]
+QInit0(602) with nocontrol
+QGate["not"](602) with controls=[+165, -421] with nocontrol
+QGate["not"](602) with controls=[+165, +601] with nocontrol
+QGate["not"](602) with controls=[-421, +601] with nocontrol
+QGate["not"](420) with controls=[+164]
+QGate["not"](420) with controls=[+602]
+QInit0(603) with nocontrol
+QGate["not"](603) with controls=[+164, -420] with nocontrol
+QGate["not"](603) with controls=[+164, +602] with nocontrol
+QGate["not"](603) with controls=[-420, +602] with nocontrol
+QGate["not"](419) with controls=[+163]
+QGate["not"](419) with controls=[+603]
+QInit0(604) with nocontrol
+QGate["not"](604) with controls=[+163, -419] with nocontrol
+QGate["not"](604) with controls=[+163, +603] with nocontrol
+QGate["not"](604) with controls=[-419, +603] with nocontrol
+QGate["not"](418) with controls=[+162]
+QGate["not"](418) with controls=[+604]
+QInit0(605) with nocontrol
+QGate["not"](605) with controls=[+162, -418] with nocontrol
+QGate["not"](605) with controls=[+162, +604] with nocontrol
+QGate["not"](605) with controls=[-418, +604] with nocontrol
+QGate["not"](417) with controls=[+161]
+QGate["not"](417) with controls=[+605]
+QInit0(606) with nocontrol
+QGate["not"](606) with controls=[+161, -417] with nocontrol
+QGate["not"](606) with controls=[+161, +605] with nocontrol
+QGate["not"](606) with controls=[-417, +605] with nocontrol
+QGate["not"](416) with controls=[+160]
+QGate["not"](416) with controls=[+606]
+QInit0(607) with nocontrol
+QGate["not"](607) with controls=[+160, -416] with nocontrol
+QGate["not"](607) with controls=[+160, +606] with nocontrol
+QGate["not"](607) with controls=[-416, +606] with nocontrol
+QGate["not"](415) with controls=[+159]
+QGate["not"](415) with controls=[+607]
+QInit0(608) with nocontrol
+QGate["not"](608) with controls=[+159, -415] with nocontrol
+QGate["not"](608) with controls=[+159, +607] with nocontrol
+QGate["not"](608) with controls=[-415, +607] with nocontrol
+QGate["not"](414) with controls=[+158]
+QGate["not"](414) with controls=[+608]
+QInit0(609) with nocontrol
+QGate["not"](609) with controls=[+158, -414] with nocontrol
+QGate["not"](609) with controls=[+158, +608] with nocontrol
+QGate["not"](609) with controls=[-414, +608] with nocontrol
+QGate["not"](413) with controls=[+157]
+QGate["not"](413) with controls=[+609]
+QInit0(610) with nocontrol
+QGate["not"](610) with controls=[+157, -413] with nocontrol
+QGate["not"](610) with controls=[+157, +609] with nocontrol
+QGate["not"](610) with controls=[-413, +609] with nocontrol
+QGate["not"](412) with controls=[+156]
+QGate["not"](412) with controls=[+610]
+QInit0(611) with nocontrol
+QGate["not"](611) with controls=[+156, -412] with nocontrol
+QGate["not"](611) with controls=[+156, +610] with nocontrol
+QGate["not"](611) with controls=[-412, +610] with nocontrol
+QGate["not"](411) with controls=[+155]
+QGate["not"](411) with controls=[+611]
+QInit0(612) with nocontrol
+QGate["not"](612) with controls=[+155, -411] with nocontrol
+QGate["not"](612) with controls=[+155, +611] with nocontrol
+QGate["not"](612) with controls=[-411, +611] with nocontrol
+QGate["not"](410) with controls=[+154]
+QGate["not"](410) with controls=[+612]
+QInit0(613) with nocontrol
+QGate["not"](613) with controls=[+154, -410] with nocontrol
+QGate["not"](613) with controls=[+154, +612] with nocontrol
+QGate["not"](613) with controls=[-410, +612] with nocontrol
+QGate["not"](409) with controls=[+153]
+QGate["not"](409) with controls=[+613]
+QInit0(614) with nocontrol
+QGate["not"](614) with controls=[+153, -409] with nocontrol
+QGate["not"](614) with controls=[+153, +613] with nocontrol
+QGate["not"](614) with controls=[-409, +613] with nocontrol
+QGate["not"](408) with controls=[+152]
+QGate["not"](408) with controls=[+614]
+QInit0(615) with nocontrol
+QGate["not"](615) with controls=[+152, -408] with nocontrol
+QGate["not"](615) with controls=[+152, +614] with nocontrol
+QGate["not"](615) with controls=[-408, +614] with nocontrol
+QGate["not"](407) with controls=[+151]
+QGate["not"](407) with controls=[+615]
+QInit0(616) with nocontrol
+QGate["not"](616) with controls=[+151, -407] with nocontrol
+QGate["not"](616) with controls=[+151, +615] with nocontrol
+QGate["not"](616) with controls=[-407, +615] with nocontrol
+QGate["not"](406) with controls=[+150]
+QGate["not"](406) with controls=[+616]
+QInit0(617) with nocontrol
+QGate["not"](617) with controls=[+150, -406] with nocontrol
+QGate["not"](617) with controls=[+150, +616] with nocontrol
+QGate["not"](617) with controls=[-406, +616] with nocontrol
+QGate["not"](405) with controls=[+149]
+QGate["not"](405) with controls=[+617]
+QInit0(618) with nocontrol
+QGate["not"](618) with controls=[+149, -405] with nocontrol
+QGate["not"](618) with controls=[+149, +617] with nocontrol
+QGate["not"](618) with controls=[-405, +617] with nocontrol
+QGate["not"](404) with controls=[+148]
+QGate["not"](404) with controls=[+618]
+QInit0(619) with nocontrol
+QGate["not"](619) with controls=[+148, -404] with nocontrol
+QGate["not"](619) with controls=[+148, +618] with nocontrol
+QGate["not"](619) with controls=[-404, +618] with nocontrol
+QGate["not"](403) with controls=[+147]
+QGate["not"](403) with controls=[+619]
+QInit0(620) with nocontrol
+QGate["not"](620) with controls=[+147, -403] with nocontrol
+QGate["not"](620) with controls=[+147, +619] with nocontrol
+QGate["not"](620) with controls=[-403, +619] with nocontrol
+QGate["not"](402) with controls=[+146]
+QGate["not"](402) with controls=[+620]
+QInit0(621) with nocontrol
+QGate["not"](621) with controls=[+146, -402] with nocontrol
+QGate["not"](621) with controls=[+146, +620] with nocontrol
+QGate["not"](621) with controls=[-402, +620] with nocontrol
+QGate["not"](401) with controls=[+145]
+QGate["not"](401) with controls=[+621]
+QInit0(622) with nocontrol
+QGate["not"](622) with controls=[+145, -401] with nocontrol
+QGate["not"](622) with controls=[+145, +621] with nocontrol
+QGate["not"](622) with controls=[-401, +621] with nocontrol
+QGate["not"](400) with controls=[+144]
+QGate["not"](400) with controls=[+622]
+QInit0(623) with nocontrol
+QGate["not"](623) with controls=[+144, -400] with nocontrol
+QGate["not"](623) with controls=[+144, +622] with nocontrol
+QGate["not"](623) with controls=[-400, +622] with nocontrol
+QGate["not"](399) with controls=[+143]
+QGate["not"](399) with controls=[+623]
+QInit0(624) with nocontrol
+QGate["not"](624) with controls=[+143, -399] with nocontrol
+QGate["not"](624) with controls=[+143, +623] with nocontrol
+QGate["not"](624) with controls=[-399, +623] with nocontrol
+QGate["not"](398) with controls=[+142]
+QGate["not"](398) with controls=[+624]
+QInit0(625) with nocontrol
+QGate["not"](625) with controls=[+142, -398] with nocontrol
+QGate["not"](625) with controls=[+142, +624] with nocontrol
+QGate["not"](625) with controls=[-398, +624] with nocontrol
+QGate["not"](397) with controls=[+141]
+QGate["not"](397) with controls=[+625]
+QInit0(626) with nocontrol
+QGate["not"](626) with controls=[+141, -397] with nocontrol
+QGate["not"](626) with controls=[+141, +625] with nocontrol
+QGate["not"](626) with controls=[-397, +625] with nocontrol
+QGate["not"](396) with controls=[+140]
+QGate["not"](396) with controls=[+626]
+QInit0(627) with nocontrol
+QGate["not"](627) with controls=[+140, -396] with nocontrol
+QGate["not"](627) with controls=[+140, +626] with nocontrol
+QGate["not"](627) with controls=[-396, +626] with nocontrol
+QGate["not"](395) with controls=[+139]
+QGate["not"](395) with controls=[+627]
+QInit0(628) with nocontrol
+QGate["not"](628) with controls=[+139, -395] with nocontrol
+QGate["not"](628) with controls=[+139, +627] with nocontrol
+QGate["not"](628) with controls=[-395, +627] with nocontrol
+QGate["not"](394) with controls=[+138]
+QGate["not"](394) with controls=[+628]
+QInit0(629) with nocontrol
+QGate["not"](629) with controls=[+138, -394] with nocontrol
+QGate["not"](629) with controls=[+138, +628] with nocontrol
+QGate["not"](629) with controls=[-394, +628] with nocontrol
+QGate["not"](393) with controls=[+137]
+QGate["not"](393) with controls=[+629]
+QInit0(630) with nocontrol
+QGate["not"](630) with controls=[+137, -393] with nocontrol
+QGate["not"](630) with controls=[+137, +629] with nocontrol
+QGate["not"](630) with controls=[-393, +629] with nocontrol
+QGate["not"](392) with controls=[+136]
+QGate["not"](392) with controls=[+630]
+QInit0(631) with nocontrol
+QGate["not"](631) with controls=[+136, -392] with nocontrol
+QGate["not"](631) with controls=[+136, +630] with nocontrol
+QGate["not"](631) with controls=[-392, +630] with nocontrol
+QGate["not"](391) with controls=[+135]
+QGate["not"](391) with controls=[+631]
+QInit0(632) with nocontrol
+QGate["not"](632) with controls=[+135, -391] with nocontrol
+QGate["not"](632) with controls=[+135, +631] with nocontrol
+QGate["not"](632) with controls=[-391, +631] with nocontrol
+QGate["not"](390) with controls=[+134]
+QGate["not"](390) with controls=[+632]
+QInit0(633) with nocontrol
+QGate["not"](633) with controls=[+134, -390] with nocontrol
+QGate["not"](633) with controls=[+134, +632] with nocontrol
+QGate["not"](633) with controls=[-390, +632] with nocontrol
+QGate["not"](389) with controls=[+133]
+QGate["not"](389) with controls=[+633]
+QInit0(634) with nocontrol
+QGate["not"](634) with controls=[+133, -389] with nocontrol
+QGate["not"](634) with controls=[+133, +633] with nocontrol
+QGate["not"](634) with controls=[-389, +633] with nocontrol
+QGate["not"](388) with controls=[+132]
+QGate["not"](388) with controls=[+634]
+QInit0(635) with nocontrol
+QGate["not"](635) with controls=[+132, -388] with nocontrol
+QGate["not"](635) with controls=[+132, +634] with nocontrol
+QGate["not"](635) with controls=[-388, +634] with nocontrol
+QGate["not"](387) with controls=[+131]
+QGate["not"](387) with controls=[+635]
+QInit0(636) with nocontrol
+QGate["not"](636) with controls=[+131, -387] with nocontrol
+QGate["not"](636) with controls=[+131, +635] with nocontrol
+QGate["not"](636) with controls=[-387, +635] with nocontrol
+QGate["not"](386) with controls=[+130]
+QGate["not"](386) with controls=[+636]
+QInit0(637) with nocontrol
+QGate["not"](637) with controls=[+130, -386] with nocontrol
+QGate["not"](637) with controls=[+130, +636] with nocontrol
+QGate["not"](637) with controls=[-386, +636] with nocontrol
+QGate["not"](385) with controls=[+129]
+QGate["not"](385) with controls=[+637]
+QInit0(638) with nocontrol
+QGate["not"](638) with controls=[+129, -385] with nocontrol
+QGate["not"](638) with controls=[+129, +637] with nocontrol
+QGate["not"](638) with controls=[-385, +637] with nocontrol
+QGate["not"](384) with controls=[+128]
+QGate["not"](384) with controls=[+638]
+QInit0(639) with nocontrol
+QGate["not"](639) with controls=[+128, -384] with nocontrol
+QGate["not"](639) with controls=[+128, +638] with nocontrol
+QGate["not"](639) with controls=[-384, +638] with nocontrol
+QGate["not"](383) with controls=[+127]
+QGate["not"](383) with controls=[+639]
+QInit0(640) with nocontrol
+QGate["not"](640) with controls=[+127, -383] with nocontrol
+QGate["not"](640) with controls=[+127, +639] with nocontrol
+QGate["not"](640) with controls=[-383, +639] with nocontrol
+QGate["not"](382) with controls=[+126]
+QGate["not"](382) with controls=[+640]
+QInit0(641) with nocontrol
+QGate["not"](641) with controls=[+126, -382] with nocontrol
+QGate["not"](641) with controls=[+126, +640] with nocontrol
+QGate["not"](641) with controls=[-382, +640] with nocontrol
+QGate["not"](381) with controls=[+125]
+QGate["not"](381) with controls=[+641]
+QInit0(642) with nocontrol
+QGate["not"](642) with controls=[+125, -381] with nocontrol
+QGate["not"](642) with controls=[+125, +641] with nocontrol
+QGate["not"](642) with controls=[-381, +641] with nocontrol
+QGate["not"](380) with controls=[+124]
+QGate["not"](380) with controls=[+642]
+QInit0(643) with nocontrol
+QGate["not"](643) with controls=[+124, -380] with nocontrol
+QGate["not"](643) with controls=[+124, +642] with nocontrol
+QGate["not"](643) with controls=[-380, +642] with nocontrol
+QGate["not"](379) with controls=[+123]
+QGate["not"](379) with controls=[+643]
+QInit0(644) with nocontrol
+QGate["not"](644) with controls=[+123, -379] with nocontrol
+QGate["not"](644) with controls=[+123, +643] with nocontrol
+QGate["not"](644) with controls=[-379, +643] with nocontrol
+QGate["not"](378) with controls=[+122]
+QGate["not"](378) with controls=[+644]
+QInit0(645) with nocontrol
+QGate["not"](645) with controls=[+122, -378] with nocontrol
+QGate["not"](645) with controls=[+122, +644] with nocontrol
+QGate["not"](645) with controls=[-378, +644] with nocontrol
+QGate["not"](377) with controls=[+121]
+QGate["not"](377) with controls=[+645]
+QInit0(646) with nocontrol
+QGate["not"](646) with controls=[+121, -377] with nocontrol
+QGate["not"](646) with controls=[+121, +645] with nocontrol
+QGate["not"](646) with controls=[-377, +645] with nocontrol
+QGate["not"](376) with controls=[+120]
+QGate["not"](376) with controls=[+646]
+QInit0(647) with nocontrol
+QGate["not"](647) with controls=[+120, -376] with nocontrol
+QGate["not"](647) with controls=[+120, +646] with nocontrol
+QGate["not"](647) with controls=[-376, +646] with nocontrol
+QGate["not"](375) with controls=[+119]
+QGate["not"](375) with controls=[+647]
+QInit0(648) with nocontrol
+QGate["not"](648) with controls=[+119, -375] with nocontrol
+QGate["not"](648) with controls=[+119, +647] with nocontrol
+QGate["not"](648) with controls=[-375, +647] with nocontrol
+QGate["not"](374) with controls=[+118]
+QGate["not"](374) with controls=[+648]
+QInit0(649) with nocontrol
+QGate["not"](649) with controls=[+118, -374] with nocontrol
+QGate["not"](649) with controls=[+118, +648] with nocontrol
+QGate["not"](649) with controls=[-374, +648] with nocontrol
+QGate["not"](373) with controls=[+117]
+QGate["not"](373) with controls=[+649]
+QInit0(650) with nocontrol
+QGate["not"](650) with controls=[+117, -373] with nocontrol
+QGate["not"](650) with controls=[+117, +649] with nocontrol
+QGate["not"](650) with controls=[-373, +649] with nocontrol
+QGate["not"](372) with controls=[+116]
+QGate["not"](372) with controls=[+650]
+QInit0(651) with nocontrol
+QGate["not"](651) with controls=[+116, -372] with nocontrol
+QGate["not"](651) with controls=[+116, +650] with nocontrol
+QGate["not"](651) with controls=[-372, +650] with nocontrol
+QGate["not"](371) with controls=[+115]
+QGate["not"](371) with controls=[+651]
+QInit0(652) with nocontrol
+QGate["not"](652) with controls=[+115, -371] with nocontrol
+QGate["not"](652) with controls=[+115, +651] with nocontrol
+QGate["not"](652) with controls=[-371, +651] with nocontrol
+QGate["not"](370) with controls=[+114]
+QGate["not"](370) with controls=[+652]
+QInit0(653) with nocontrol
+QGate["not"](653) with controls=[+114, -370] with nocontrol
+QGate["not"](653) with controls=[+114, +652] with nocontrol
+QGate["not"](653) with controls=[-370, +652] with nocontrol
+QGate["not"](369) with controls=[+113]
+QGate["not"](369) with controls=[+653]
+QInit0(654) with nocontrol
+QGate["not"](654) with controls=[+113, -369] with nocontrol
+QGate["not"](654) with controls=[+113, +653] with nocontrol
+QGate["not"](654) with controls=[-369, +653] with nocontrol
+QGate["not"](368) with controls=[+112]
+QGate["not"](368) with controls=[+654]
+QInit0(655) with nocontrol
+QGate["not"](655) with controls=[+112, -368] with nocontrol
+QGate["not"](655) with controls=[+112, +654] with nocontrol
+QGate["not"](655) with controls=[-368, +654] with nocontrol
+QGate["not"](367) with controls=[+111]
+QGate["not"](367) with controls=[+655]
+QInit0(656) with nocontrol
+QGate["not"](656) with controls=[+111, -367] with nocontrol
+QGate["not"](656) with controls=[+111, +655] with nocontrol
+QGate["not"](656) with controls=[-367, +655] with nocontrol
+QGate["not"](366) with controls=[+110]
+QGate["not"](366) with controls=[+656]
+QInit0(657) with nocontrol
+QGate["not"](657) with controls=[+110, -366] with nocontrol
+QGate["not"](657) with controls=[+110, +656] with nocontrol
+QGate["not"](657) with controls=[-366, +656] with nocontrol
+QGate["not"](365) with controls=[+109]
+QGate["not"](365) with controls=[+657]
+QInit0(658) with nocontrol
+QGate["not"](658) with controls=[+109, -365] with nocontrol
+QGate["not"](658) with controls=[+109, +657] with nocontrol
+QGate["not"](658) with controls=[-365, +657] with nocontrol
+QGate["not"](364) with controls=[+108]
+QGate["not"](364) with controls=[+658]
+QInit0(659) with nocontrol
+QGate["not"](659) with controls=[+108, -364] with nocontrol
+QGate["not"](659) with controls=[+108, +658] with nocontrol
+QGate["not"](659) with controls=[-364, +658] with nocontrol
+QGate["not"](363) with controls=[+107]
+QGate["not"](363) with controls=[+659]
+QInit0(660) with nocontrol
+QGate["not"](660) with controls=[+107, -363] with nocontrol
+QGate["not"](660) with controls=[+107, +659] with nocontrol
+QGate["not"](660) with controls=[-363, +659] with nocontrol
+QGate["not"](362) with controls=[+106]
+QGate["not"](362) with controls=[+660]
+QInit0(661) with nocontrol
+QGate["not"](661) with controls=[+106, -362] with nocontrol
+QGate["not"](661) with controls=[+106, +660] with nocontrol
+QGate["not"](661) with controls=[-362, +660] with nocontrol
+QGate["not"](361) with controls=[+105]
+QGate["not"](361) with controls=[+661]
+QInit0(662) with nocontrol
+QGate["not"](662) with controls=[+105, -361] with nocontrol
+QGate["not"](662) with controls=[+105, +661] with nocontrol
+QGate["not"](662) with controls=[-361, +661] with nocontrol
+QGate["not"](360) with controls=[+104]
+QGate["not"](360) with controls=[+662]
+QInit0(663) with nocontrol
+QGate["not"](663) with controls=[+104, -360] with nocontrol
+QGate["not"](663) with controls=[+104, +662] with nocontrol
+QGate["not"](663) with controls=[-360, +662] with nocontrol
+QGate["not"](359) with controls=[+103]
+QGate["not"](359) with controls=[+663]
+QInit0(664) with nocontrol
+QGate["not"](664) with controls=[+103, -359] with nocontrol
+QGate["not"](664) with controls=[+103, +663] with nocontrol
+QGate["not"](664) with controls=[-359, +663] with nocontrol
+QGate["not"](358) with controls=[+102]
+QGate["not"](358) with controls=[+664]
+QInit0(665) with nocontrol
+QGate["not"](665) with controls=[+102, -358] with nocontrol
+QGate["not"](665) with controls=[+102, +664] with nocontrol
+QGate["not"](665) with controls=[-358, +664] with nocontrol
+QGate["not"](357) with controls=[+101]
+QGate["not"](357) with controls=[+665]
+QInit0(666) with nocontrol
+QGate["not"](666) with controls=[+101, -357] with nocontrol
+QGate["not"](666) with controls=[+101, +665] with nocontrol
+QGate["not"](666) with controls=[-357, +665] with nocontrol
+QGate["not"](356) with controls=[+100]
+QGate["not"](356) with controls=[+666]
+QInit0(667) with nocontrol
+QGate["not"](667) with controls=[+100, -356] with nocontrol
+QGate["not"](667) with controls=[+100, +666] with nocontrol
+QGate["not"](667) with controls=[-356, +666] with nocontrol
+QGate["not"](355) with controls=[+99]
+QGate["not"](355) with controls=[+667]
+QInit0(668) with nocontrol
+QGate["not"](668) with controls=[+99, -355] with nocontrol
+QGate["not"](668) with controls=[+99, +667] with nocontrol
+QGate["not"](668) with controls=[-355, +667] with nocontrol
+QGate["not"](354) with controls=[+98]
+QGate["not"](354) with controls=[+668]
+QInit0(669) with nocontrol
+QGate["not"](669) with controls=[+98, -354] with nocontrol
+QGate["not"](669) with controls=[+98, +668] with nocontrol
+QGate["not"](669) with controls=[-354, +668] with nocontrol
+QGate["not"](353) with controls=[+97]
+QGate["not"](353) with controls=[+669]
+QInit0(670) with nocontrol
+QGate["not"](670) with controls=[+97, -353] with nocontrol
+QGate["not"](670) with controls=[+97, +669] with nocontrol
+QGate["not"](670) with controls=[-353, +669] with nocontrol
+QGate["not"](352) with controls=[+96]
+QGate["not"](352) with controls=[+670]
+QInit0(671) with nocontrol
+QGate["not"](671) with controls=[+96, -352] with nocontrol
+QGate["not"](671) with controls=[+96, +670] with nocontrol
+QGate["not"](671) with controls=[-352, +670] with nocontrol
+QGate["not"](351) with controls=[+95]
+QGate["not"](351) with controls=[+671]
+QInit0(672) with nocontrol
+QGate["not"](672) with controls=[+95, -351] with nocontrol
+QGate["not"](672) with controls=[+95, +671] with nocontrol
+QGate["not"](672) with controls=[-351, +671] with nocontrol
+QGate["not"](350) with controls=[+94]
+QGate["not"](350) with controls=[+672]
+QInit0(673) with nocontrol
+QGate["not"](673) with controls=[+94, -350] with nocontrol
+QGate["not"](673) with controls=[+94, +672] with nocontrol
+QGate["not"](673) with controls=[-350, +672] with nocontrol
+QGate["not"](349) with controls=[+93]
+QGate["not"](349) with controls=[+673]
+QInit0(674) with nocontrol
+QGate["not"](674) with controls=[+93, -349] with nocontrol
+QGate["not"](674) with controls=[+93, +673] with nocontrol
+QGate["not"](674) with controls=[-349, +673] with nocontrol
+QGate["not"](348) with controls=[+92]
+QGate["not"](348) with controls=[+674]
+QInit0(675) with nocontrol
+QGate["not"](675) with controls=[+92, -348] with nocontrol
+QGate["not"](675) with controls=[+92, +674] with nocontrol
+QGate["not"](675) with controls=[-348, +674] with nocontrol
+QGate["not"](347) with controls=[+91]
+QGate["not"](347) with controls=[+675]
+QInit0(676) with nocontrol
+QGate["not"](676) with controls=[+91, -347] with nocontrol
+QGate["not"](676) with controls=[+91, +675] with nocontrol
+QGate["not"](676) with controls=[-347, +675] with nocontrol
+QGate["not"](346) with controls=[+90]
+QGate["not"](346) with controls=[+676]
+QInit0(677) with nocontrol
+QGate["not"](677) with controls=[+90, -346] with nocontrol
+QGate["not"](677) with controls=[+90, +676] with nocontrol
+QGate["not"](677) with controls=[-346, +676] with nocontrol
+QGate["not"](345) with controls=[+89]
+QGate["not"](345) with controls=[+677]
+QInit0(678) with nocontrol
+QGate["not"](678) with controls=[+89, -345] with nocontrol
+QGate["not"](678) with controls=[+89, +677] with nocontrol
+QGate["not"](678) with controls=[-345, +677] with nocontrol
+QGate["not"](344) with controls=[+88]
+QGate["not"](344) with controls=[+678]
+QInit0(679) with nocontrol
+QGate["not"](679) with controls=[+88, -344] with nocontrol
+QGate["not"](679) with controls=[+88, +678] with nocontrol
+QGate["not"](679) with controls=[-344, +678] with nocontrol
+QGate["not"](343) with controls=[+87]
+QGate["not"](343) with controls=[+679]
+QInit0(680) with nocontrol
+QGate["not"](680) with controls=[+87, -343] with nocontrol
+QGate["not"](680) with controls=[+87, +679] with nocontrol
+QGate["not"](680) with controls=[-343, +679] with nocontrol
+QGate["not"](342) with controls=[+86]
+QGate["not"](342) with controls=[+680]
+QInit0(681) with nocontrol
+QGate["not"](681) with controls=[+86, -342] with nocontrol
+QGate["not"](681) with controls=[+86, +680] with nocontrol
+QGate["not"](681) with controls=[-342, +680] with nocontrol
+QGate["not"](341) with controls=[+85]
+QGate["not"](341) with controls=[+681]
+QInit0(682) with nocontrol
+QGate["not"](682) with controls=[+85, -341] with nocontrol
+QGate["not"](682) with controls=[+85, +681] with nocontrol
+QGate["not"](682) with controls=[-341, +681] with nocontrol
+QGate["not"](340) with controls=[+84]
+QGate["not"](340) with controls=[+682]
+QInit0(683) with nocontrol
+QGate["not"](683) with controls=[+84, -340] with nocontrol
+QGate["not"](683) with controls=[+84, +682] with nocontrol
+QGate["not"](683) with controls=[-340, +682] with nocontrol
+QGate["not"](339) with controls=[+83]
+QGate["not"](339) with controls=[+683]
+QInit0(684) with nocontrol
+QGate["not"](684) with controls=[+83, -339] with nocontrol
+QGate["not"](684) with controls=[+83, +683] with nocontrol
+QGate["not"](684) with controls=[-339, +683] with nocontrol
+QGate["not"](338) with controls=[+82]
+QGate["not"](338) with controls=[+684]
+QInit0(685) with nocontrol
+QGate["not"](685) with controls=[+82, -338] with nocontrol
+QGate["not"](685) with controls=[+82, +684] with nocontrol
+QGate["not"](685) with controls=[-338, +684] with nocontrol
+QGate["not"](337) with controls=[+81]
+QGate["not"](337) with controls=[+685]
+QInit0(686) with nocontrol
+QGate["not"](686) with controls=[+81, -337] with nocontrol
+QGate["not"](686) with controls=[+81, +685] with nocontrol
+QGate["not"](686) with controls=[-337, +685] with nocontrol
+QGate["not"](336) with controls=[+80]
+QGate["not"](336) with controls=[+686]
+QInit0(687) with nocontrol
+QGate["not"](687) with controls=[+80, -336] with nocontrol
+QGate["not"](687) with controls=[+80, +686] with nocontrol
+QGate["not"](687) with controls=[-336, +686] with nocontrol
+QGate["not"](335) with controls=[+79]
+QGate["not"](335) with controls=[+687]
+QInit0(688) with nocontrol
+QGate["not"](688) with controls=[+79, -335] with nocontrol
+QGate["not"](688) with controls=[+79, +687] with nocontrol
+QGate["not"](688) with controls=[-335, +687] with nocontrol
+QGate["not"](334) with controls=[+78]
+QGate["not"](334) with controls=[+688]
+QInit0(689) with nocontrol
+QGate["not"](689) with controls=[+78, -334] with nocontrol
+QGate["not"](689) with controls=[+78, +688] with nocontrol
+QGate["not"](689) with controls=[-334, +688] with nocontrol
+QGate["not"](333) with controls=[+77]
+QGate["not"](333) with controls=[+689]
+QInit0(690) with nocontrol
+QGate["not"](690) with controls=[+77, -333] with nocontrol
+QGate["not"](690) with controls=[+77, +689] with nocontrol
+QGate["not"](690) with controls=[-333, +689] with nocontrol
+QGate["not"](332) with controls=[+76]
+QGate["not"](332) with controls=[+690]
+QInit0(691) with nocontrol
+QGate["not"](691) with controls=[+76, -332] with nocontrol
+QGate["not"](691) with controls=[+76, +690] with nocontrol
+QGate["not"](691) with controls=[-332, +690] with nocontrol
+QGate["not"](331) with controls=[+75]
+QGate["not"](331) with controls=[+691]
+QInit0(692) with nocontrol
+QGate["not"](692) with controls=[+75, -331] with nocontrol
+QGate["not"](692) with controls=[+75, +691] with nocontrol
+QGate["not"](692) with controls=[-331, +691] with nocontrol
+QGate["not"](330) with controls=[+74]
+QGate["not"](330) with controls=[+692]
+QInit0(693) with nocontrol
+QGate["not"](693) with controls=[+74, -330] with nocontrol
+QGate["not"](693) with controls=[+74, +692] with nocontrol
+QGate["not"](693) with controls=[-330, +692] with nocontrol
+QGate["not"](329) with controls=[+73]
+QGate["not"](329) with controls=[+693]
+QInit0(694) with nocontrol
+QGate["not"](694) with controls=[+73, -329] with nocontrol
+QGate["not"](694) with controls=[+73, +693] with nocontrol
+QGate["not"](694) with controls=[-329, +693] with nocontrol
+QGate["not"](328) with controls=[+72]
+QGate["not"](328) with controls=[+694]
+QInit0(695) with nocontrol
+QGate["not"](695) with controls=[+72, -328] with nocontrol
+QGate["not"](695) with controls=[+72, +694] with nocontrol
+QGate["not"](695) with controls=[-328, +694] with nocontrol
+QGate["not"](327) with controls=[+71]
+QGate["not"](327) with controls=[+695]
+QInit0(696) with nocontrol
+QGate["not"](696) with controls=[+71, -327] with nocontrol
+QGate["not"](696) with controls=[+71, +695] with nocontrol
+QGate["not"](696) with controls=[-327, +695] with nocontrol
+QGate["not"](326) with controls=[+70]
+QGate["not"](326) with controls=[+696]
+QInit0(697) with nocontrol
+QGate["not"](697) with controls=[+70, -326] with nocontrol
+QGate["not"](697) with controls=[+70, +696] with nocontrol
+QGate["not"](697) with controls=[-326, +696] with nocontrol
+QGate["not"](325) with controls=[+69]
+QGate["not"](325) with controls=[+697]
+QInit0(698) with nocontrol
+QGate["not"](698) with controls=[+69, -325] with nocontrol
+QGate["not"](698) with controls=[+69, +697] with nocontrol
+QGate["not"](698) with controls=[-325, +697] with nocontrol
+QGate["not"](324) with controls=[+68]
+QGate["not"](324) with controls=[+698]
+QInit0(699) with nocontrol
+QGate["not"](699) with controls=[+68, -324] with nocontrol
+QGate["not"](699) with controls=[+68, +698] with nocontrol
+QGate["not"](699) with controls=[-324, +698] with nocontrol
+QGate["not"](323) with controls=[+67]
+QGate["not"](323) with controls=[+699]
+QInit0(700) with nocontrol
+QGate["not"](700) with controls=[+67, -323] with nocontrol
+QGate["not"](700) with controls=[+67, +699] with nocontrol
+QGate["not"](700) with controls=[-323, +699] with nocontrol
+QGate["not"](322) with controls=[+66]
+QGate["not"](322) with controls=[+700]
+QInit0(701) with nocontrol
+QGate["not"](701) with controls=[+66, -322] with nocontrol
+QGate["not"](701) with controls=[+66, +700] with nocontrol
+QGate["not"](701) with controls=[-322, +700] with nocontrol
+QGate["not"](321) with controls=[+65]
+QGate["not"](321) with controls=[+701]
+QInit0(702) with nocontrol
+QGate["not"](702) with controls=[+65, -321] with nocontrol
+QGate["not"](702) with controls=[+65, +701] with nocontrol
+QGate["not"](702) with controls=[-321, +701] with nocontrol
+QGate["not"](320) with controls=[+64]
+QGate["not"](320) with controls=[+702]
+QInit0(703) with nocontrol
+QGate["not"](703) with controls=[+64, -320] with nocontrol
+QGate["not"](703) with controls=[+64, +702] with nocontrol
+QGate["not"](703) with controls=[-320, +702] with nocontrol
+QGate["not"](319) with controls=[+63]
+QGate["not"](319) with controls=[+703]
+QInit0(704) with nocontrol
+QGate["not"](704) with controls=[+63, -319] with nocontrol
+QGate["not"](704) with controls=[+63, +703] with nocontrol
+QGate["not"](704) with controls=[-319, +703] with nocontrol
+QGate["not"](318) with controls=[+62]
+QGate["not"](318) with controls=[+704]
+QInit0(705) with nocontrol
+QGate["not"](705) with controls=[+62, -318] with nocontrol
+QGate["not"](705) with controls=[+62, +704] with nocontrol
+QGate["not"](705) with controls=[-318, +704] with nocontrol
+QGate["not"](317) with controls=[+61]
+QGate["not"](317) with controls=[+705]
+QInit0(706) with nocontrol
+QGate["not"](706) with controls=[+61, -317] with nocontrol
+QGate["not"](706) with controls=[+61, +705] with nocontrol
+QGate["not"](706) with controls=[-317, +705] with nocontrol
+QGate["not"](316) with controls=[+60]
+QGate["not"](316) with controls=[+706]
+QInit0(707) with nocontrol
+QGate["not"](707) with controls=[+60, -316] with nocontrol
+QGate["not"](707) with controls=[+60, +706] with nocontrol
+QGate["not"](707) with controls=[-316, +706] with nocontrol
+QGate["not"](315) with controls=[+59]
+QGate["not"](315) with controls=[+707]
+QInit0(708) with nocontrol
+QGate["not"](708) with controls=[+59, -315] with nocontrol
+QGate["not"](708) with controls=[+59, +707] with nocontrol
+QGate["not"](708) with controls=[-315, +707] with nocontrol
+QGate["not"](314) with controls=[+58]
+QGate["not"](314) with controls=[+708]
+QInit0(709) with nocontrol
+QGate["not"](709) with controls=[+58, -314] with nocontrol
+QGate["not"](709) with controls=[+58, +708] with nocontrol
+QGate["not"](709) with controls=[-314, +708] with nocontrol
+QGate["not"](313) with controls=[+57]
+QGate["not"](313) with controls=[+709]
+QInit0(710) with nocontrol
+QGate["not"](710) with controls=[+57, -313] with nocontrol
+QGate["not"](710) with controls=[+57, +709] with nocontrol
+QGate["not"](710) with controls=[-313, +709] with nocontrol
+QGate["not"](312) with controls=[+56]
+QGate["not"](312) with controls=[+710]
+QInit0(711) with nocontrol
+QGate["not"](711) with controls=[+56, -312] with nocontrol
+QGate["not"](711) with controls=[+56, +710] with nocontrol
+QGate["not"](711) with controls=[-312, +710] with nocontrol
+QGate["not"](311) with controls=[+55]
+QGate["not"](311) with controls=[+711]
+QInit0(712) with nocontrol
+QGate["not"](712) with controls=[+55, -311] with nocontrol
+QGate["not"](712) with controls=[+55, +711] with nocontrol
+QGate["not"](712) with controls=[-311, +711] with nocontrol
+QGate["not"](310) with controls=[+54]
+QGate["not"](310) with controls=[+712]
+QInit0(713) with nocontrol
+QGate["not"](713) with controls=[+54, -310] with nocontrol
+QGate["not"](713) with controls=[+54, +712] with nocontrol
+QGate["not"](713) with controls=[-310, +712] with nocontrol
+QGate["not"](309) with controls=[+53]
+QGate["not"](309) with controls=[+713]
+QInit0(714) with nocontrol
+QGate["not"](714) with controls=[+53, -309] with nocontrol
+QGate["not"](714) with controls=[+53, +713] with nocontrol
+QGate["not"](714) with controls=[-309, +713] with nocontrol
+QGate["not"](308) with controls=[+52]
+QGate["not"](308) with controls=[+714]
+QInit0(715) with nocontrol
+QGate["not"](715) with controls=[+52, -308] with nocontrol
+QGate["not"](715) with controls=[+52, +714] with nocontrol
+QGate["not"](715) with controls=[-308, +714] with nocontrol
+QGate["not"](307) with controls=[+51]
+QGate["not"](307) with controls=[+715]
+QInit0(716) with nocontrol
+QGate["not"](716) with controls=[+51, -307] with nocontrol
+QGate["not"](716) with controls=[+51, +715] with nocontrol
+QGate["not"](716) with controls=[-307, +715] with nocontrol
+QGate["not"](306) with controls=[+50]
+QGate["not"](306) with controls=[+716]
+QInit0(717) with nocontrol
+QGate["not"](717) with controls=[+50, -306] with nocontrol
+QGate["not"](717) with controls=[+50, +716] with nocontrol
+QGate["not"](717) with controls=[-306, +716] with nocontrol
+QGate["not"](305) with controls=[+49]
+QGate["not"](305) with controls=[+717]
+QInit0(718) with nocontrol
+QGate["not"](718) with controls=[+49, -305] with nocontrol
+QGate["not"](718) with controls=[+49, +717] with nocontrol
+QGate["not"](718) with controls=[-305, +717] with nocontrol
+QGate["not"](304) with controls=[+48]
+QGate["not"](304) with controls=[+718]
+QInit0(719) with nocontrol
+QGate["not"](719) with controls=[+48, -304] with nocontrol
+QGate["not"](719) with controls=[+48, +718] with nocontrol
+QGate["not"](719) with controls=[-304, +718] with nocontrol
+QGate["not"](303) with controls=[+47]
+QGate["not"](303) with controls=[+719]
+QInit0(720) with nocontrol
+QGate["not"](720) with controls=[+47, -303] with nocontrol
+QGate["not"](720) with controls=[+47, +719] with nocontrol
+QGate["not"](720) with controls=[-303, +719] with nocontrol
+QGate["not"](302) with controls=[+46]
+QGate["not"](302) with controls=[+720]
+QInit0(721) with nocontrol
+QGate["not"](721) with controls=[+46, -302] with nocontrol
+QGate["not"](721) with controls=[+46, +720] with nocontrol
+QGate["not"](721) with controls=[-302, +720] with nocontrol
+QGate["not"](301) with controls=[+45]
+QGate["not"](301) with controls=[+721]
+QInit0(722) with nocontrol
+QGate["not"](722) with controls=[+45, -301] with nocontrol
+QGate["not"](722) with controls=[+45, +721] with nocontrol
+QGate["not"](722) with controls=[-301, +721] with nocontrol
+QGate["not"](300) with controls=[+44]
+QGate["not"](300) with controls=[+722]
+QInit0(723) with nocontrol
+QGate["not"](723) with controls=[+44, -300] with nocontrol
+QGate["not"](723) with controls=[+44, +722] with nocontrol
+QGate["not"](723) with controls=[-300, +722] with nocontrol
+QGate["not"](299) with controls=[+43]
+QGate["not"](299) with controls=[+723]
+QInit0(724) with nocontrol
+QGate["not"](724) with controls=[+43, -299] with nocontrol
+QGate["not"](724) with controls=[+43, +723] with nocontrol
+QGate["not"](724) with controls=[-299, +723] with nocontrol
+QGate["not"](298) with controls=[+42]
+QGate["not"](298) with controls=[+724]
+QInit0(725) with nocontrol
+QGate["not"](725) with controls=[+42, -298] with nocontrol
+QGate["not"](725) with controls=[+42, +724] with nocontrol
+QGate["not"](725) with controls=[-298, +724] with nocontrol
+QGate["not"](297) with controls=[+41]
+QGate["not"](297) with controls=[+725]
+QInit0(726) with nocontrol
+QGate["not"](726) with controls=[+41, -297] with nocontrol
+QGate["not"](726) with controls=[+41, +725] with nocontrol
+QGate["not"](726) with controls=[-297, +725] with nocontrol
+QGate["not"](296) with controls=[+40]
+QGate["not"](296) with controls=[+726]
+QInit0(727) with nocontrol
+QGate["not"](727) with controls=[+40, -296] with nocontrol
+QGate["not"](727) with controls=[+40, +726] with nocontrol
+QGate["not"](727) with controls=[-296, +726] with nocontrol
+QGate["not"](295) with controls=[+39]
+QGate["not"](295) with controls=[+727]
+QInit0(728) with nocontrol
+QGate["not"](728) with controls=[+39, -295] with nocontrol
+QGate["not"](728) with controls=[+39, +727] with nocontrol
+QGate["not"](728) with controls=[-295, +727] with nocontrol
+QGate["not"](294) with controls=[+38]
+QGate["not"](294) with controls=[+728]
+QInit0(729) with nocontrol
+QGate["not"](729) with controls=[+38, -294] with nocontrol
+QGate["not"](729) with controls=[+38, +728] with nocontrol
+QGate["not"](729) with controls=[-294, +728] with nocontrol
+QGate["not"](293) with controls=[+37]
+QGate["not"](293) with controls=[+729]
+QInit0(730) with nocontrol
+QGate["not"](730) with controls=[+37, -293] with nocontrol
+QGate["not"](730) with controls=[+37, +729] with nocontrol
+QGate["not"](730) with controls=[-293, +729] with nocontrol
+QGate["not"](292) with controls=[+36]
+QGate["not"](292) with controls=[+730]
+QInit0(731) with nocontrol
+QGate["not"](731) with controls=[+36, -292] with nocontrol
+QGate["not"](731) with controls=[+36, +730] with nocontrol
+QGate["not"](731) with controls=[-292, +730] with nocontrol
+QGate["not"](291) with controls=[+35]
+QGate["not"](291) with controls=[+731]
+QInit0(732) with nocontrol
+QGate["not"](732) with controls=[+35, -291] with nocontrol
+QGate["not"](732) with controls=[+35, +731] with nocontrol
+QGate["not"](732) with controls=[-291, +731] with nocontrol
+QGate["not"](290) with controls=[+34]
+QGate["not"](290) with controls=[+732]
+QInit0(733) with nocontrol
+QGate["not"](733) with controls=[+34, -290] with nocontrol
+QGate["not"](733) with controls=[+34, +732] with nocontrol
+QGate["not"](733) with controls=[-290, +732] with nocontrol
+QGate["not"](289) with controls=[+33]
+QGate["not"](289) with controls=[+733]
+QInit0(734) with nocontrol
+QGate["not"](734) with controls=[+33, -289] with nocontrol
+QGate["not"](734) with controls=[+33, +733] with nocontrol
+QGate["not"](734) with controls=[-289, +733] with nocontrol
+QGate["not"](288) with controls=[+32]
+QGate["not"](288) with controls=[+734]
+QInit0(735) with nocontrol
+QGate["not"](735) with controls=[+32, -288] with nocontrol
+QGate["not"](735) with controls=[+32, +734] with nocontrol
+QGate["not"](735) with controls=[-288, +734] with nocontrol
+QGate["not"](287) with controls=[+31]
+QGate["not"](287) with controls=[+735]
+QInit0(736) with nocontrol
+QGate["not"](736) with controls=[+31, -287] with nocontrol
+QGate["not"](736) with controls=[+31, +735] with nocontrol
+QGate["not"](736) with controls=[-287, +735] with nocontrol
+QGate["not"](286) with controls=[+30]
+QGate["not"](286) with controls=[+736]
+QInit0(737) with nocontrol
+QGate["not"](737) with controls=[+30, -286] with nocontrol
+QGate["not"](737) with controls=[+30, +736] with nocontrol
+QGate["not"](737) with controls=[-286, +736] with nocontrol
+QGate["not"](285) with controls=[+29]
+QGate["not"](285) with controls=[+737]
+QInit0(738) with nocontrol
+QGate["not"](738) with controls=[+29, -285] with nocontrol
+QGate["not"](738) with controls=[+29, +737] with nocontrol
+QGate["not"](738) with controls=[-285, +737] with nocontrol
+QGate["not"](284) with controls=[+28]
+QGate["not"](284) with controls=[+738]
+QInit0(739) with nocontrol
+QGate["not"](739) with controls=[+28, -284] with nocontrol
+QGate["not"](739) with controls=[+28, +738] with nocontrol
+QGate["not"](739) with controls=[-284, +738] with nocontrol
+QGate["not"](283) with controls=[+27]
+QGate["not"](283) with controls=[+739]
+QInit0(740) with nocontrol
+QGate["not"](740) with controls=[+27, -283] with nocontrol
+QGate["not"](740) with controls=[+27, +739] with nocontrol
+QGate["not"](740) with controls=[-283, +739] with nocontrol
+QGate["not"](282) with controls=[+26]
+QGate["not"](282) with controls=[+740]
+QInit0(741) with nocontrol
+QGate["not"](741) with controls=[+26, -282] with nocontrol
+QGate["not"](741) with controls=[+26, +740] with nocontrol
+QGate["not"](741) with controls=[-282, +740] with nocontrol
+QGate["not"](281) with controls=[+25]
+QGate["not"](281) with controls=[+741]
+QInit0(742) with nocontrol
+QGate["not"](742) with controls=[+25, -281] with nocontrol
+QGate["not"](742) with controls=[+25, +741] with nocontrol
+QGate["not"](742) with controls=[-281, +741] with nocontrol
+QGate["not"](280) with controls=[+24]
+QGate["not"](280) with controls=[+742]
+QInit0(743) with nocontrol
+QGate["not"](743) with controls=[+24, -280] with nocontrol
+QGate["not"](743) with controls=[+24, +742] with nocontrol
+QGate["not"](743) with controls=[-280, +742] with nocontrol
+QGate["not"](279) with controls=[+23]
+QGate["not"](279) with controls=[+743]
+QInit0(744) with nocontrol
+QGate["not"](744) with controls=[+23, -279] with nocontrol
+QGate["not"](744) with controls=[+23, +743] with nocontrol
+QGate["not"](744) with controls=[-279, +743] with nocontrol
+QGate["not"](278) with controls=[+22]
+QGate["not"](278) with controls=[+744]
+QInit0(745) with nocontrol
+QGate["not"](745) with controls=[+22, -278] with nocontrol
+QGate["not"](745) with controls=[+22, +744] with nocontrol
+QGate["not"](745) with controls=[-278, +744] with nocontrol
+QGate["not"](277) with controls=[+21]
+QGate["not"](277) with controls=[+745]
+QInit0(746) with nocontrol
+QGate["not"](746) with controls=[+21, -277] with nocontrol
+QGate["not"](746) with controls=[+21, +745] with nocontrol
+QGate["not"](746) with controls=[-277, +745] with nocontrol
+QGate["not"](276) with controls=[+20]
+QGate["not"](276) with controls=[+746]
+QInit0(747) with nocontrol
+QGate["not"](747) with controls=[+20, -276] with nocontrol
+QGate["not"](747) with controls=[+20, +746] with nocontrol
+QGate["not"](747) with controls=[-276, +746] with nocontrol
+QGate["not"](275) with controls=[+19]
+QGate["not"](275) with controls=[+747]
+QInit0(748) with nocontrol
+QGate["not"](748) with controls=[+19, -275] with nocontrol
+QGate["not"](748) with controls=[+19, +747] with nocontrol
+QGate["not"](748) with controls=[-275, +747] with nocontrol
+QGate["not"](274) with controls=[+18]
+QGate["not"](274) with controls=[+748]
+QInit0(749) with nocontrol
+QGate["not"](749) with controls=[+18, -274] with nocontrol
+QGate["not"](749) with controls=[+18, +748] with nocontrol
+QGate["not"](749) with controls=[-274, +748] with nocontrol
+QGate["not"](273) with controls=[+17]
+QGate["not"](273) with controls=[+749]
+QInit0(750) with nocontrol
+QGate["not"](750) with controls=[+17, -273] with nocontrol
+QGate["not"](750) with controls=[+17, +749] with nocontrol
+QGate["not"](750) with controls=[-273, +749] with nocontrol
+QGate["not"](272) with controls=[+16]
+QGate["not"](272) with controls=[+750]
+QInit0(751) with nocontrol
+QGate["not"](751) with controls=[+16, -272] with nocontrol
+QGate["not"](751) with controls=[+16, +750] with nocontrol
+QGate["not"](751) with controls=[-272, +750] with nocontrol
+QGate["not"](271) with controls=[+15]
+QGate["not"](271) with controls=[+751]
+QInit0(752) with nocontrol
+QGate["not"](752) with controls=[+15, -271] with nocontrol
+QGate["not"](752) with controls=[+15, +751] with nocontrol
+QGate["not"](752) with controls=[-271, +751] with nocontrol
+QGate["not"](270) with controls=[+14]
+QGate["not"](270) with controls=[+752]
+QInit0(753) with nocontrol
+QGate["not"](753) with controls=[+14, -270] with nocontrol
+QGate["not"](753) with controls=[+14, +752] with nocontrol
+QGate["not"](753) with controls=[-270, +752] with nocontrol
+QGate["not"](269) with controls=[+13]
+QGate["not"](269) with controls=[+753]
+QInit0(754) with nocontrol
+QGate["not"](754) with controls=[+13, -269] with nocontrol
+QGate["not"](754) with controls=[+13, +753] with nocontrol
+QGate["not"](754) with controls=[-269, +753] with nocontrol
+QGate["not"](268) with controls=[+12]
+QGate["not"](268) with controls=[+754]
+QInit0(755) with nocontrol
+QGate["not"](755) with controls=[+12, -268] with nocontrol
+QGate["not"](755) with controls=[+12, +754] with nocontrol
+QGate["not"](755) with controls=[-268, +754] with nocontrol
+QGate["not"](267) with controls=[+11]
+QGate["not"](267) with controls=[+755]
+QInit0(756) with nocontrol
+QGate["not"](756) with controls=[+11, -267] with nocontrol
+QGate["not"](756) with controls=[+11, +755] with nocontrol
+QGate["not"](756) with controls=[-267, +755] with nocontrol
+QGate["not"](266) with controls=[+10]
+QGate["not"](266) with controls=[+756]
+QInit0(757) with nocontrol
+QGate["not"](757) with controls=[+10, -266] with nocontrol
+QGate["not"](757) with controls=[+10, +756] with nocontrol
+QGate["not"](757) with controls=[-266, +756] with nocontrol
+QGate["not"](265) with controls=[+9]
+QGate["not"](265) with controls=[+757]
+QInit0(758) with nocontrol
+QGate["not"](758) with controls=[+9, -265] with nocontrol
+QGate["not"](758) with controls=[+9, +757] with nocontrol
+QGate["not"](758) with controls=[-265, +757] with nocontrol
+QGate["not"](264) with controls=[+8]
+QGate["not"](264) with controls=[+758]
+QInit0(759) with nocontrol
+QGate["not"](759) with controls=[+8, -264] with nocontrol
+QGate["not"](759) with controls=[+8, +758] with nocontrol
+QGate["not"](759) with controls=[-264, +758] with nocontrol
+QGate["not"](263) with controls=[+7]
+QGate["not"](263) with controls=[+759]
+QInit0(760) with nocontrol
+QGate["not"](760) with controls=[+7, -263] with nocontrol
+QGate["not"](760) with controls=[+7, +759] with nocontrol
+QGate["not"](760) with controls=[-263, +759] with nocontrol
+QGate["not"](262) with controls=[+6]
+QGate["not"](262) with controls=[+760]
+QInit0(761) with nocontrol
+QGate["not"](761) with controls=[+6, -262] with nocontrol
+QGate["not"](761) with controls=[+6, +760] with nocontrol
+QGate["not"](761) with controls=[-262, +760] with nocontrol
+QGate["not"](261) with controls=[+5]
+QGate["not"](261) with controls=[+761]
+QInit0(762) with nocontrol
+QGate["not"](762) with controls=[+5, -261] with nocontrol
+QGate["not"](762) with controls=[+5, +761] with nocontrol
+QGate["not"](762) with controls=[-261, +761] with nocontrol
+QGate["not"](260) with controls=[+4]
+QGate["not"](260) with controls=[+762]
+QInit0(763) with nocontrol
+QGate["not"](763) with controls=[+4, -260] with nocontrol
+QGate["not"](763) with controls=[+4, +762] with nocontrol
+QGate["not"](763) with controls=[-260, +762] with nocontrol
+QGate["not"](259) with controls=[+3]
+QGate["not"](259) with controls=[+763]
+QInit0(764) with nocontrol
+QGate["not"](764) with controls=[+3, -259] with nocontrol
+QGate["not"](764) with controls=[+3, +763] with nocontrol
+QGate["not"](764) with controls=[-259, +763] with nocontrol
+QGate["not"](258) with controls=[+2]
+QGate["not"](258) with controls=[+764]
+QInit0(765) with nocontrol
+QGate["not"](765) with controls=[+2, -258] with nocontrol
+QGate["not"](765) with controls=[+2, +764] with nocontrol
+QGate["not"](765) with controls=[-258, +764] with nocontrol
+QGate["not"](257) with controls=[+1]
+QGate["not"](257) with controls=[+765]
+QInit0(766) with nocontrol
+QGate["not"](766) with controls=[+1, -257] with nocontrol
+QGate["not"](766) with controls=[+1, +765] with nocontrol
+QGate["not"](766) with controls=[-257, +765] with nocontrol
+QGate["not"](256) with controls=[+0]
+QGate["not"](256) with controls=[+766]
+QGate["not"](766) with controls=[-257, +765] with nocontrol
+QGate["not"](766) with controls=[+1, +765] with nocontrol
+QGate["not"](766) with controls=[+1, -257] with nocontrol
+QTerm0(766) with nocontrol
+QGate["not"](765) with controls=[-258, +764] with nocontrol
+QGate["not"](765) with controls=[+2, +764] with nocontrol
+QGate["not"](765) with controls=[+2, -258] with nocontrol
+QTerm0(765) with nocontrol
+QGate["not"](764) with controls=[-259, +763] with nocontrol
+QGate["not"](764) with controls=[+3, +763] with nocontrol
+QGate["not"](764) with controls=[+3, -259] with nocontrol
+QTerm0(764) with nocontrol
+QGate["not"](763) with controls=[-260, +762] with nocontrol
+QGate["not"](763) with controls=[+4, +762] with nocontrol
+QGate["not"](763) with controls=[+4, -260] with nocontrol
+QTerm0(763) with nocontrol
+QGate["not"](762) with controls=[-261, +761] with nocontrol
+QGate["not"](762) with controls=[+5, +761] with nocontrol
+QGate["not"](762) with controls=[+5, -261] with nocontrol
+QTerm0(762) with nocontrol
+QGate["not"](761) with controls=[-262, +760] with nocontrol
+QGate["not"](761) with controls=[+6, +760] with nocontrol
+QGate["not"](761) with controls=[+6, -262] with nocontrol
+QTerm0(761) with nocontrol
+QGate["not"](760) with controls=[-263, +759] with nocontrol
+QGate["not"](760) with controls=[+7, +759] with nocontrol
+QGate["not"](760) with controls=[+7, -263] with nocontrol
+QTerm0(760) with nocontrol
+QGate["not"](759) with controls=[-264, +758] with nocontrol
+QGate["not"](759) with controls=[+8, +758] with nocontrol
+QGate["not"](759) with controls=[+8, -264] with nocontrol
+QTerm0(759) with nocontrol
+QGate["not"](758) with controls=[-265, +757] with nocontrol
+QGate["not"](758) with controls=[+9, +757] with nocontrol
+QGate["not"](758) with controls=[+9, -265] with nocontrol
+QTerm0(758) with nocontrol
+QGate["not"](757) with controls=[-266, +756] with nocontrol
+QGate["not"](757) with controls=[+10, +756] with nocontrol
+QGate["not"](757) with controls=[+10, -266] with nocontrol
+QTerm0(757) with nocontrol
+QGate["not"](756) with controls=[-267, +755] with nocontrol
+QGate["not"](756) with controls=[+11, +755] with nocontrol
+QGate["not"](756) with controls=[+11, -267] with nocontrol
+QTerm0(756) with nocontrol
+QGate["not"](755) with controls=[-268, +754] with nocontrol
+QGate["not"](755) with controls=[+12, +754] with nocontrol
+QGate["not"](755) with controls=[+12, -268] with nocontrol
+QTerm0(755) with nocontrol
+QGate["not"](754) with controls=[-269, +753] with nocontrol
+QGate["not"](754) with controls=[+13, +753] with nocontrol
+QGate["not"](754) with controls=[+13, -269] with nocontrol
+QTerm0(754) with nocontrol
+QGate["not"](753) with controls=[-270, +752] with nocontrol
+QGate["not"](753) with controls=[+14, +752] with nocontrol
+QGate["not"](753) with controls=[+14, -270] with nocontrol
+QTerm0(753) with nocontrol
+QGate["not"](752) with controls=[-271, +751] with nocontrol
+QGate["not"](752) with controls=[+15, +751] with nocontrol
+QGate["not"](752) with controls=[+15, -271] with nocontrol
+QTerm0(752) with nocontrol
+QGate["not"](751) with controls=[-272, +750] with nocontrol
+QGate["not"](751) with controls=[+16, +750] with nocontrol
+QGate["not"](751) with controls=[+16, -272] with nocontrol
+QTerm0(751) with nocontrol
+QGate["not"](750) with controls=[-273, +749] with nocontrol
+QGate["not"](750) with controls=[+17, +749] with nocontrol
+QGate["not"](750) with controls=[+17, -273] with nocontrol
+QTerm0(750) with nocontrol
+QGate["not"](749) with controls=[-274, +748] with nocontrol
+QGate["not"](749) with controls=[+18, +748] with nocontrol
+QGate["not"](749) with controls=[+18, -274] with nocontrol
+QTerm0(749) with nocontrol
+QGate["not"](748) with controls=[-275, +747] with nocontrol
+QGate["not"](748) with controls=[+19, +747] with nocontrol
+QGate["not"](748) with controls=[+19, -275] with nocontrol
+QTerm0(748) with nocontrol
+QGate["not"](747) with controls=[-276, +746] with nocontrol
+QGate["not"](747) with controls=[+20, +746] with nocontrol
+QGate["not"](747) with controls=[+20, -276] with nocontrol
+QTerm0(747) with nocontrol
+QGate["not"](746) with controls=[-277, +745] with nocontrol
+QGate["not"](746) with controls=[+21, +745] with nocontrol
+QGate["not"](746) with controls=[+21, -277] with nocontrol
+QTerm0(746) with nocontrol
+QGate["not"](745) with controls=[-278, +744] with nocontrol
+QGate["not"](745) with controls=[+22, +744] with nocontrol
+QGate["not"](745) with controls=[+22, -278] with nocontrol
+QTerm0(745) with nocontrol
+QGate["not"](744) with controls=[-279, +743] with nocontrol
+QGate["not"](744) with controls=[+23, +743] with nocontrol
+QGate["not"](744) with controls=[+23, -279] with nocontrol
+QTerm0(744) with nocontrol
+QGate["not"](743) with controls=[-280, +742] with nocontrol
+QGate["not"](743) with controls=[+24, +742] with nocontrol
+QGate["not"](743) with controls=[+24, -280] with nocontrol
+QTerm0(743) with nocontrol
+QGate["not"](742) with controls=[-281, +741] with nocontrol
+QGate["not"](742) with controls=[+25, +741] with nocontrol
+QGate["not"](742) with controls=[+25, -281] with nocontrol
+QTerm0(742) with nocontrol
+QGate["not"](741) with controls=[-282, +740] with nocontrol
+QGate["not"](741) with controls=[+26, +740] with nocontrol
+QGate["not"](741) with controls=[+26, -282] with nocontrol
+QTerm0(741) with nocontrol
+QGate["not"](740) with controls=[-283, +739] with nocontrol
+QGate["not"](740) with controls=[+27, +739] with nocontrol
+QGate["not"](740) with controls=[+27, -283] with nocontrol
+QTerm0(740) with nocontrol
+QGate["not"](739) with controls=[-284, +738] with nocontrol
+QGate["not"](739) with controls=[+28, +738] with nocontrol
+QGate["not"](739) with controls=[+28, -284] with nocontrol
+QTerm0(739) with nocontrol
+QGate["not"](738) with controls=[-285, +737] with nocontrol
+QGate["not"](738) with controls=[+29, +737] with nocontrol
+QGate["not"](738) with controls=[+29, -285] with nocontrol
+QTerm0(738) with nocontrol
+QGate["not"](737) with controls=[-286, +736] with nocontrol
+QGate["not"](737) with controls=[+30, +736] with nocontrol
+QGate["not"](737) with controls=[+30, -286] with nocontrol
+QTerm0(737) with nocontrol
+QGate["not"](736) with controls=[-287, +735] with nocontrol
+QGate["not"](736) with controls=[+31, +735] with nocontrol
+QGate["not"](736) with controls=[+31, -287] with nocontrol
+QTerm0(736) with nocontrol
+QGate["not"](735) with controls=[-288, +734] with nocontrol
+QGate["not"](735) with controls=[+32, +734] with nocontrol
+QGate["not"](735) with controls=[+32, -288] with nocontrol
+QTerm0(735) with nocontrol
+QGate["not"](734) with controls=[-289, +733] with nocontrol
+QGate["not"](734) with controls=[+33, +733] with nocontrol
+QGate["not"](734) with controls=[+33, -289] with nocontrol
+QTerm0(734) with nocontrol
+QGate["not"](733) with controls=[-290, +732] with nocontrol
+QGate["not"](733) with controls=[+34, +732] with nocontrol
+QGate["not"](733) with controls=[+34, -290] with nocontrol
+QTerm0(733) with nocontrol
+QGate["not"](732) with controls=[-291, +731] with nocontrol
+QGate["not"](732) with controls=[+35, +731] with nocontrol
+QGate["not"](732) with controls=[+35, -291] with nocontrol
+QTerm0(732) with nocontrol
+QGate["not"](731) with controls=[-292, +730] with nocontrol
+QGate["not"](731) with controls=[+36, +730] with nocontrol
+QGate["not"](731) with controls=[+36, -292] with nocontrol
+QTerm0(731) with nocontrol
+QGate["not"](730) with controls=[-293, +729] with nocontrol
+QGate["not"](730) with controls=[+37, +729] with nocontrol
+QGate["not"](730) with controls=[+37, -293] with nocontrol
+QTerm0(730) with nocontrol
+QGate["not"](729) with controls=[-294, +728] with nocontrol
+QGate["not"](729) with controls=[+38, +728] with nocontrol
+QGate["not"](729) with controls=[+38, -294] with nocontrol
+QTerm0(729) with nocontrol
+QGate["not"](728) with controls=[-295, +727] with nocontrol
+QGate["not"](728) with controls=[+39, +727] with nocontrol
+QGate["not"](728) with controls=[+39, -295] with nocontrol
+QTerm0(728) with nocontrol
+QGate["not"](727) with controls=[-296, +726] with nocontrol
+QGate["not"](727) with controls=[+40, +726] with nocontrol
+QGate["not"](727) with controls=[+40, -296] with nocontrol
+QTerm0(727) with nocontrol
+QGate["not"](726) with controls=[-297, +725] with nocontrol
+QGate["not"](726) with controls=[+41, +725] with nocontrol
+QGate["not"](726) with controls=[+41, -297] with nocontrol
+QTerm0(726) with nocontrol
+QGate["not"](725) with controls=[-298, +724] with nocontrol
+QGate["not"](725) with controls=[+42, +724] with nocontrol
+QGate["not"](725) with controls=[+42, -298] with nocontrol
+QTerm0(725) with nocontrol
+QGate["not"](724) with controls=[-299, +723] with nocontrol
+QGate["not"](724) with controls=[+43, +723] with nocontrol
+QGate["not"](724) with controls=[+43, -299] with nocontrol
+QTerm0(724) with nocontrol
+QGate["not"](723) with controls=[-300, +722] with nocontrol
+QGate["not"](723) with controls=[+44, +722] with nocontrol
+QGate["not"](723) with controls=[+44, -300] with nocontrol
+QTerm0(723) with nocontrol
+QGate["not"](722) with controls=[-301, +721] with nocontrol
+QGate["not"](722) with controls=[+45, +721] with nocontrol
+QGate["not"](722) with controls=[+45, -301] with nocontrol
+QTerm0(722) with nocontrol
+QGate["not"](721) with controls=[-302, +720] with nocontrol
+QGate["not"](721) with controls=[+46, +720] with nocontrol
+QGate["not"](721) with controls=[+46, -302] with nocontrol
+QTerm0(721) with nocontrol
+QGate["not"](720) with controls=[-303, +719] with nocontrol
+QGate["not"](720) with controls=[+47, +719] with nocontrol
+QGate["not"](720) with controls=[+47, -303] with nocontrol
+QTerm0(720) with nocontrol
+QGate["not"](719) with controls=[-304, +718] with nocontrol
+QGate["not"](719) with controls=[+48, +718] with nocontrol
+QGate["not"](719) with controls=[+48, -304] with nocontrol
+QTerm0(719) with nocontrol
+QGate["not"](718) with controls=[-305, +717] with nocontrol
+QGate["not"](718) with controls=[+49, +717] with nocontrol
+QGate["not"](718) with controls=[+49, -305] with nocontrol
+QTerm0(718) with nocontrol
+QGate["not"](717) with controls=[-306, +716] with nocontrol
+QGate["not"](717) with controls=[+50, +716] with nocontrol
+QGate["not"](717) with controls=[+50, -306] with nocontrol
+QTerm0(717) with nocontrol
+QGate["not"](716) with controls=[-307, +715] with nocontrol
+QGate["not"](716) with controls=[+51, +715] with nocontrol
+QGate["not"](716) with controls=[+51, -307] with nocontrol
+QTerm0(716) with nocontrol
+QGate["not"](715) with controls=[-308, +714] with nocontrol
+QGate["not"](715) with controls=[+52, +714] with nocontrol
+QGate["not"](715) with controls=[+52, -308] with nocontrol
+QTerm0(715) with nocontrol
+QGate["not"](714) with controls=[-309, +713] with nocontrol
+QGate["not"](714) with controls=[+53, +713] with nocontrol
+QGate["not"](714) with controls=[+53, -309] with nocontrol
+QTerm0(714) with nocontrol
+QGate["not"](713) with controls=[-310, +712] with nocontrol
+QGate["not"](713) with controls=[+54, +712] with nocontrol
+QGate["not"](713) with controls=[+54, -310] with nocontrol
+QTerm0(713) with nocontrol
+QGate["not"](712) with controls=[-311, +711] with nocontrol
+QGate["not"](712) with controls=[+55, +711] with nocontrol
+QGate["not"](712) with controls=[+55, -311] with nocontrol
+QTerm0(712) with nocontrol
+QGate["not"](711) with controls=[-312, +710] with nocontrol
+QGate["not"](711) with controls=[+56, +710] with nocontrol
+QGate["not"](711) with controls=[+56, -312] with nocontrol
+QTerm0(711) with nocontrol
+QGate["not"](710) with controls=[-313, +709] with nocontrol
+QGate["not"](710) with controls=[+57, +709] with nocontrol
+QGate["not"](710) with controls=[+57, -313] with nocontrol
+QTerm0(710) with nocontrol
+QGate["not"](709) with controls=[-314, +708] with nocontrol
+QGate["not"](709) with controls=[+58, +708] with nocontrol
+QGate["not"](709) with controls=[+58, -314] with nocontrol
+QTerm0(709) with nocontrol
+QGate["not"](708) with controls=[-315, +707] with nocontrol
+QGate["not"](708) with controls=[+59, +707] with nocontrol
+QGate["not"](708) with controls=[+59, -315] with nocontrol
+QTerm0(708) with nocontrol
+QGate["not"](707) with controls=[-316, +706] with nocontrol
+QGate["not"](707) with controls=[+60, +706] with nocontrol
+QGate["not"](707) with controls=[+60, -316] with nocontrol
+QTerm0(707) with nocontrol
+QGate["not"](706) with controls=[-317, +705] with nocontrol
+QGate["not"](706) with controls=[+61, +705] with nocontrol
+QGate["not"](706) with controls=[+61, -317] with nocontrol
+QTerm0(706) with nocontrol
+QGate["not"](705) with controls=[-318, +704] with nocontrol
+QGate["not"](705) with controls=[+62, +704] with nocontrol
+QGate["not"](705) with controls=[+62, -318] with nocontrol
+QTerm0(705) with nocontrol
+QGate["not"](704) with controls=[-319, +703] with nocontrol
+QGate["not"](704) with controls=[+63, +703] with nocontrol
+QGate["not"](704) with controls=[+63, -319] with nocontrol
+QTerm0(704) with nocontrol
+QGate["not"](703) with controls=[-320, +702] with nocontrol
+QGate["not"](703) with controls=[+64, +702] with nocontrol
+QGate["not"](703) with controls=[+64, -320] with nocontrol
+QTerm0(703) with nocontrol
+QGate["not"](702) with controls=[-321, +701] with nocontrol
+QGate["not"](702) with controls=[+65, +701] with nocontrol
+QGate["not"](702) with controls=[+65, -321] with nocontrol
+QTerm0(702) with nocontrol
+QGate["not"](701) with controls=[-322, +700] with nocontrol
+QGate["not"](701) with controls=[+66, +700] with nocontrol
+QGate["not"](701) with controls=[+66, -322] with nocontrol
+QTerm0(701) with nocontrol
+QGate["not"](700) with controls=[-323, +699] with nocontrol
+QGate["not"](700) with controls=[+67, +699] with nocontrol
+QGate["not"](700) with controls=[+67, -323] with nocontrol
+QTerm0(700) with nocontrol
+QGate["not"](699) with controls=[-324, +698] with nocontrol
+QGate["not"](699) with controls=[+68, +698] with nocontrol
+QGate["not"](699) with controls=[+68, -324] with nocontrol
+QTerm0(699) with nocontrol
+QGate["not"](698) with controls=[-325, +697] with nocontrol
+QGate["not"](698) with controls=[+69, +697] with nocontrol
+QGate["not"](698) with controls=[+69, -325] with nocontrol
+QTerm0(698) with nocontrol
+QGate["not"](697) with controls=[-326, +696] with nocontrol
+QGate["not"](697) with controls=[+70, +696] with nocontrol
+QGate["not"](697) with controls=[+70, -326] with nocontrol
+QTerm0(697) with nocontrol
+QGate["not"](696) with controls=[-327, +695] with nocontrol
+QGate["not"](696) with controls=[+71, +695] with nocontrol
+QGate["not"](696) with controls=[+71, -327] with nocontrol
+QTerm0(696) with nocontrol
+QGate["not"](695) with controls=[-328, +694] with nocontrol
+QGate["not"](695) with controls=[+72, +694] with nocontrol
+QGate["not"](695) with controls=[+72, -328] with nocontrol
+QTerm0(695) with nocontrol
+QGate["not"](694) with controls=[-329, +693] with nocontrol
+QGate["not"](694) with controls=[+73, +693] with nocontrol
+QGate["not"](694) with controls=[+73, -329] with nocontrol
+QTerm0(694) with nocontrol
+QGate["not"](693) with controls=[-330, +692] with nocontrol
+QGate["not"](693) with controls=[+74, +692] with nocontrol
+QGate["not"](693) with controls=[+74, -330] with nocontrol
+QTerm0(693) with nocontrol
+QGate["not"](692) with controls=[-331, +691] with nocontrol
+QGate["not"](692) with controls=[+75, +691] with nocontrol
+QGate["not"](692) with controls=[+75, -331] with nocontrol
+QTerm0(692) with nocontrol
+QGate["not"](691) with controls=[-332, +690] with nocontrol
+QGate["not"](691) with controls=[+76, +690] with nocontrol
+QGate["not"](691) with controls=[+76, -332] with nocontrol
+QTerm0(691) with nocontrol
+QGate["not"](690) with controls=[-333, +689] with nocontrol
+QGate["not"](690) with controls=[+77, +689] with nocontrol
+QGate["not"](690) with controls=[+77, -333] with nocontrol
+QTerm0(690) with nocontrol
+QGate["not"](689) with controls=[-334, +688] with nocontrol
+QGate["not"](689) with controls=[+78, +688] with nocontrol
+QGate["not"](689) with controls=[+78, -334] with nocontrol
+QTerm0(689) with nocontrol
+QGate["not"](688) with controls=[-335, +687] with nocontrol
+QGate["not"](688) with controls=[+79, +687] with nocontrol
+QGate["not"](688) with controls=[+79, -335] with nocontrol
+QTerm0(688) with nocontrol
+QGate["not"](687) with controls=[-336, +686] with nocontrol
+QGate["not"](687) with controls=[+80, +686] with nocontrol
+QGate["not"](687) with controls=[+80, -336] with nocontrol
+QTerm0(687) with nocontrol
+QGate["not"](686) with controls=[-337, +685] with nocontrol
+QGate["not"](686) with controls=[+81, +685] with nocontrol
+QGate["not"](686) with controls=[+81, -337] with nocontrol
+QTerm0(686) with nocontrol
+QGate["not"](685) with controls=[-338, +684] with nocontrol
+QGate["not"](685) with controls=[+82, +684] with nocontrol
+QGate["not"](685) with controls=[+82, -338] with nocontrol
+QTerm0(685) with nocontrol
+QGate["not"](684) with controls=[-339, +683] with nocontrol
+QGate["not"](684) with controls=[+83, +683] with nocontrol
+QGate["not"](684) with controls=[+83, -339] with nocontrol
+QTerm0(684) with nocontrol
+QGate["not"](683) with controls=[-340, +682] with nocontrol
+QGate["not"](683) with controls=[+84, +682] with nocontrol
+QGate["not"](683) with controls=[+84, -340] with nocontrol
+QTerm0(683) with nocontrol
+QGate["not"](682) with controls=[-341, +681] with nocontrol
+QGate["not"](682) with controls=[+85, +681] with nocontrol
+QGate["not"](682) with controls=[+85, -341] with nocontrol
+QTerm0(682) with nocontrol
+QGate["not"](681) with controls=[-342, +680] with nocontrol
+QGate["not"](681) with controls=[+86, +680] with nocontrol
+QGate["not"](681) with controls=[+86, -342] with nocontrol
+QTerm0(681) with nocontrol
+QGate["not"](680) with controls=[-343, +679] with nocontrol
+QGate["not"](680) with controls=[+87, +679] with nocontrol
+QGate["not"](680) with controls=[+87, -343] with nocontrol
+QTerm0(680) with nocontrol
+QGate["not"](679) with controls=[-344, +678] with nocontrol
+QGate["not"](679) with controls=[+88, +678] with nocontrol
+QGate["not"](679) with controls=[+88, -344] with nocontrol
+QTerm0(679) with nocontrol
+QGate["not"](678) with controls=[-345, +677] with nocontrol
+QGate["not"](678) with controls=[+89, +677] with nocontrol
+QGate["not"](678) with controls=[+89, -345] with nocontrol
+QTerm0(678) with nocontrol
+QGate["not"](677) with controls=[-346, +676] with nocontrol
+QGate["not"](677) with controls=[+90, +676] with nocontrol
+QGate["not"](677) with controls=[+90, -346] with nocontrol
+QTerm0(677) with nocontrol
+QGate["not"](676) with controls=[-347, +675] with nocontrol
+QGate["not"](676) with controls=[+91, +675] with nocontrol
+QGate["not"](676) with controls=[+91, -347] with nocontrol
+QTerm0(676) with nocontrol
+QGate["not"](675) with controls=[-348, +674] with nocontrol
+QGate["not"](675) with controls=[+92, +674] with nocontrol
+QGate["not"](675) with controls=[+92, -348] with nocontrol
+QTerm0(675) with nocontrol
+QGate["not"](674) with controls=[-349, +673] with nocontrol
+QGate["not"](674) with controls=[+93, +673] with nocontrol
+QGate["not"](674) with controls=[+93, -349] with nocontrol
+QTerm0(674) with nocontrol
+QGate["not"](673) with controls=[-350, +672] with nocontrol
+QGate["not"](673) with controls=[+94, +672] with nocontrol
+QGate["not"](673) with controls=[+94, -350] with nocontrol
+QTerm0(673) with nocontrol
+QGate["not"](672) with controls=[-351, +671] with nocontrol
+QGate["not"](672) with controls=[+95, +671] with nocontrol
+QGate["not"](672) with controls=[+95, -351] with nocontrol
+QTerm0(672) with nocontrol
+QGate["not"](671) with controls=[-352, +670] with nocontrol
+QGate["not"](671) with controls=[+96, +670] with nocontrol
+QGate["not"](671) with controls=[+96, -352] with nocontrol
+QTerm0(671) with nocontrol
+QGate["not"](670) with controls=[-353, +669] with nocontrol
+QGate["not"](670) with controls=[+97, +669] with nocontrol
+QGate["not"](670) with controls=[+97, -353] with nocontrol
+QTerm0(670) with nocontrol
+QGate["not"](669) with controls=[-354, +668] with nocontrol
+QGate["not"](669) with controls=[+98, +668] with nocontrol
+QGate["not"](669) with controls=[+98, -354] with nocontrol
+QTerm0(669) with nocontrol
+QGate["not"](668) with controls=[-355, +667] with nocontrol
+QGate["not"](668) with controls=[+99, +667] with nocontrol
+QGate["not"](668) with controls=[+99, -355] with nocontrol
+QTerm0(668) with nocontrol
+QGate["not"](667) with controls=[-356, +666] with nocontrol
+QGate["not"](667) with controls=[+100, +666] with nocontrol
+QGate["not"](667) with controls=[+100, -356] with nocontrol
+QTerm0(667) with nocontrol
+QGate["not"](666) with controls=[-357, +665] with nocontrol
+QGate["not"](666) with controls=[+101, +665] with nocontrol
+QGate["not"](666) with controls=[+101, -357] with nocontrol
+QTerm0(666) with nocontrol
+QGate["not"](665) with controls=[-358, +664] with nocontrol
+QGate["not"](665) with controls=[+102, +664] with nocontrol
+QGate["not"](665) with controls=[+102, -358] with nocontrol
+QTerm0(665) with nocontrol
+QGate["not"](664) with controls=[-359, +663] with nocontrol
+QGate["not"](664) with controls=[+103, +663] with nocontrol
+QGate["not"](664) with controls=[+103, -359] with nocontrol
+QTerm0(664) with nocontrol
+QGate["not"](663) with controls=[-360, +662] with nocontrol
+QGate["not"](663) with controls=[+104, +662] with nocontrol
+QGate["not"](663) with controls=[+104, -360] with nocontrol
+QTerm0(663) with nocontrol
+QGate["not"](662) with controls=[-361, +661] with nocontrol
+QGate["not"](662) with controls=[+105, +661] with nocontrol
+QGate["not"](662) with controls=[+105, -361] with nocontrol
+QTerm0(662) with nocontrol
+QGate["not"](661) with controls=[-362, +660] with nocontrol
+QGate["not"](661) with controls=[+106, +660] with nocontrol
+QGate["not"](661) with controls=[+106, -362] with nocontrol
+QTerm0(661) with nocontrol
+QGate["not"](660) with controls=[-363, +659] with nocontrol
+QGate["not"](660) with controls=[+107, +659] with nocontrol
+QGate["not"](660) with controls=[+107, -363] with nocontrol
+QTerm0(660) with nocontrol
+QGate["not"](659) with controls=[-364, +658] with nocontrol
+QGate["not"](659) with controls=[+108, +658] with nocontrol
+QGate["not"](659) with controls=[+108, -364] with nocontrol
+QTerm0(659) with nocontrol
+QGate["not"](658) with controls=[-365, +657] with nocontrol
+QGate["not"](658) with controls=[+109, +657] with nocontrol
+QGate["not"](658) with controls=[+109, -365] with nocontrol
+QTerm0(658) with nocontrol
+QGate["not"](657) with controls=[-366, +656] with nocontrol
+QGate["not"](657) with controls=[+110, +656] with nocontrol
+QGate["not"](657) with controls=[+110, -366] with nocontrol
+QTerm0(657) with nocontrol
+QGate["not"](656) with controls=[-367, +655] with nocontrol
+QGate["not"](656) with controls=[+111, +655] with nocontrol
+QGate["not"](656) with controls=[+111, -367] with nocontrol
+QTerm0(656) with nocontrol
+QGate["not"](655) with controls=[-368, +654] with nocontrol
+QGate["not"](655) with controls=[+112, +654] with nocontrol
+QGate["not"](655) with controls=[+112, -368] with nocontrol
+QTerm0(655) with nocontrol
+QGate["not"](654) with controls=[-369, +653] with nocontrol
+QGate["not"](654) with controls=[+113, +653] with nocontrol
+QGate["not"](654) with controls=[+113, -369] with nocontrol
+QTerm0(654) with nocontrol
+QGate["not"](653) with controls=[-370, +652] with nocontrol
+QGate["not"](653) with controls=[+114, +652] with nocontrol
+QGate["not"](653) with controls=[+114, -370] with nocontrol
+QTerm0(653) with nocontrol
+QGate["not"](652) with controls=[-371, +651] with nocontrol
+QGate["not"](652) with controls=[+115, +651] with nocontrol
+QGate["not"](652) with controls=[+115, -371] with nocontrol
+QTerm0(652) with nocontrol
+QGate["not"](651) with controls=[-372, +650] with nocontrol
+QGate["not"](651) with controls=[+116, +650] with nocontrol
+QGate["not"](651) with controls=[+116, -372] with nocontrol
+QTerm0(651) with nocontrol
+QGate["not"](650) with controls=[-373, +649] with nocontrol
+QGate["not"](650) with controls=[+117, +649] with nocontrol
+QGate["not"](650) with controls=[+117, -373] with nocontrol
+QTerm0(650) with nocontrol
+QGate["not"](649) with controls=[-374, +648] with nocontrol
+QGate["not"](649) with controls=[+118, +648] with nocontrol
+QGate["not"](649) with controls=[+118, -374] with nocontrol
+QTerm0(649) with nocontrol
+QGate["not"](648) with controls=[-375, +647] with nocontrol
+QGate["not"](648) with controls=[+119, +647] with nocontrol
+QGate["not"](648) with controls=[+119, -375] with nocontrol
+QTerm0(648) with nocontrol
+QGate["not"](647) with controls=[-376, +646] with nocontrol
+QGate["not"](647) with controls=[+120, +646] with nocontrol
+QGate["not"](647) with controls=[+120, -376] with nocontrol
+QTerm0(647) with nocontrol
+QGate["not"](646) with controls=[-377, +645] with nocontrol
+QGate["not"](646) with controls=[+121, +645] with nocontrol
+QGate["not"](646) with controls=[+121, -377] with nocontrol
+QTerm0(646) with nocontrol
+QGate["not"](645) with controls=[-378, +644] with nocontrol
+QGate["not"](645) with controls=[+122, +644] with nocontrol
+QGate["not"](645) with controls=[+122, -378] with nocontrol
+QTerm0(645) with nocontrol
+QGate["not"](644) with controls=[-379, +643] with nocontrol
+QGate["not"](644) with controls=[+123, +643] with nocontrol
+QGate["not"](644) with controls=[+123, -379] with nocontrol
+QTerm0(644) with nocontrol
+QGate["not"](643) with controls=[-380, +642] with nocontrol
+QGate["not"](643) with controls=[+124, +642] with nocontrol
+QGate["not"](643) with controls=[+124, -380] with nocontrol
+QTerm0(643) with nocontrol
+QGate["not"](642) with controls=[-381, +641] with nocontrol
+QGate["not"](642) with controls=[+125, +641] with nocontrol
+QGate["not"](642) with controls=[+125, -381] with nocontrol
+QTerm0(642) with nocontrol
+QGate["not"](641) with controls=[-382, +640] with nocontrol
+QGate["not"](641) with controls=[+126, +640] with nocontrol
+QGate["not"](641) with controls=[+126, -382] with nocontrol
+QTerm0(641) with nocontrol
+QGate["not"](640) with controls=[-383, +639] with nocontrol
+QGate["not"](640) with controls=[+127, +639] with nocontrol
+QGate["not"](640) with controls=[+127, -383] with nocontrol
+QTerm0(640) with nocontrol
+QGate["not"](639) with controls=[-384, +638] with nocontrol
+QGate["not"](639) with controls=[+128, +638] with nocontrol
+QGate["not"](639) with controls=[+128, -384] with nocontrol
+QTerm0(639) with nocontrol
+QGate["not"](638) with controls=[-385, +637] with nocontrol
+QGate["not"](638) with controls=[+129, +637] with nocontrol
+QGate["not"](638) with controls=[+129, -385] with nocontrol
+QTerm0(638) with nocontrol
+QGate["not"](637) with controls=[-386, +636] with nocontrol
+QGate["not"](637) with controls=[+130, +636] with nocontrol
+QGate["not"](637) with controls=[+130, -386] with nocontrol
+QTerm0(637) with nocontrol
+QGate["not"](636) with controls=[-387, +635] with nocontrol
+QGate["not"](636) with controls=[+131, +635] with nocontrol
+QGate["not"](636) with controls=[+131, -387] with nocontrol
+QTerm0(636) with nocontrol
+QGate["not"](635) with controls=[-388, +634] with nocontrol
+QGate["not"](635) with controls=[+132, +634] with nocontrol
+QGate["not"](635) with controls=[+132, -388] with nocontrol
+QTerm0(635) with nocontrol
+QGate["not"](634) with controls=[-389, +633] with nocontrol
+QGate["not"](634) with controls=[+133, +633] with nocontrol
+QGate["not"](634) with controls=[+133, -389] with nocontrol
+QTerm0(634) with nocontrol
+QGate["not"](633) with controls=[-390, +632] with nocontrol
+QGate["not"](633) with controls=[+134, +632] with nocontrol
+QGate["not"](633) with controls=[+134, -390] with nocontrol
+QTerm0(633) with nocontrol
+QGate["not"](632) with controls=[-391, +631] with nocontrol
+QGate["not"](632) with controls=[+135, +631] with nocontrol
+QGate["not"](632) with controls=[+135, -391] with nocontrol
+QTerm0(632) with nocontrol
+QGate["not"](631) with controls=[-392, +630] with nocontrol
+QGate["not"](631) with controls=[+136, +630] with nocontrol
+QGate["not"](631) with controls=[+136, -392] with nocontrol
+QTerm0(631) with nocontrol
+QGate["not"](630) with controls=[-393, +629] with nocontrol
+QGate["not"](630) with controls=[+137, +629] with nocontrol
+QGate["not"](630) with controls=[+137, -393] with nocontrol
+QTerm0(630) with nocontrol
+QGate["not"](629) with controls=[-394, +628] with nocontrol
+QGate["not"](629) with controls=[+138, +628] with nocontrol
+QGate["not"](629) with controls=[+138, -394] with nocontrol
+QTerm0(629) with nocontrol
+QGate["not"](628) with controls=[-395, +627] with nocontrol
+QGate["not"](628) with controls=[+139, +627] with nocontrol
+QGate["not"](628) with controls=[+139, -395] with nocontrol
+QTerm0(628) with nocontrol
+QGate["not"](627) with controls=[-396, +626] with nocontrol
+QGate["not"](627) with controls=[+140, +626] with nocontrol
+QGate["not"](627) with controls=[+140, -396] with nocontrol
+QTerm0(627) with nocontrol
+QGate["not"](626) with controls=[-397, +625] with nocontrol
+QGate["not"](626) with controls=[+141, +625] with nocontrol
+QGate["not"](626) with controls=[+141, -397] with nocontrol
+QTerm0(626) with nocontrol
+QGate["not"](625) with controls=[-398, +624] with nocontrol
+QGate["not"](625) with controls=[+142, +624] with nocontrol
+QGate["not"](625) with controls=[+142, -398] with nocontrol
+QTerm0(625) with nocontrol
+QGate["not"](624) with controls=[-399, +623] with nocontrol
+QGate["not"](624) with controls=[+143, +623] with nocontrol
+QGate["not"](624) with controls=[+143, -399] with nocontrol
+QTerm0(624) with nocontrol
+QGate["not"](623) with controls=[-400, +622] with nocontrol
+QGate["not"](623) with controls=[+144, +622] with nocontrol
+QGate["not"](623) with controls=[+144, -400] with nocontrol
+QTerm0(623) with nocontrol
+QGate["not"](622) with controls=[-401, +621] with nocontrol
+QGate["not"](622) with controls=[+145, +621] with nocontrol
+QGate["not"](622) with controls=[+145, -401] with nocontrol
+QTerm0(622) with nocontrol
+QGate["not"](621) with controls=[-402, +620] with nocontrol
+QGate["not"](621) with controls=[+146, +620] with nocontrol
+QGate["not"](621) with controls=[+146, -402] with nocontrol
+QTerm0(621) with nocontrol
+QGate["not"](620) with controls=[-403, +619] with nocontrol
+QGate["not"](620) with controls=[+147, +619] with nocontrol
+QGate["not"](620) with controls=[+147, -403] with nocontrol
+QTerm0(620) with nocontrol
+QGate["not"](619) with controls=[-404, +618] with nocontrol
+QGate["not"](619) with controls=[+148, +618] with nocontrol
+QGate["not"](619) with controls=[+148, -404] with nocontrol
+QTerm0(619) with nocontrol
+QGate["not"](618) with controls=[-405, +617] with nocontrol
+QGate["not"](618) with controls=[+149, +617] with nocontrol
+QGate["not"](618) with controls=[+149, -405] with nocontrol
+QTerm0(618) with nocontrol
+QGate["not"](617) with controls=[-406, +616] with nocontrol
+QGate["not"](617) with controls=[+150, +616] with nocontrol
+QGate["not"](617) with controls=[+150, -406] with nocontrol
+QTerm0(617) with nocontrol
+QGate["not"](616) with controls=[-407, +615] with nocontrol
+QGate["not"](616) with controls=[+151, +615] with nocontrol
+QGate["not"](616) with controls=[+151, -407] with nocontrol
+QTerm0(616) with nocontrol
+QGate["not"](615) with controls=[-408, +614] with nocontrol
+QGate["not"](615) with controls=[+152, +614] with nocontrol
+QGate["not"](615) with controls=[+152, -408] with nocontrol
+QTerm0(615) with nocontrol
+QGate["not"](614) with controls=[-409, +613] with nocontrol
+QGate["not"](614) with controls=[+153, +613] with nocontrol
+QGate["not"](614) with controls=[+153, -409] with nocontrol
+QTerm0(614) with nocontrol
+QGate["not"](613) with controls=[-410, +612] with nocontrol
+QGate["not"](613) with controls=[+154, +612] with nocontrol
+QGate["not"](613) with controls=[+154, -410] with nocontrol
+QTerm0(613) with nocontrol
+QGate["not"](612) with controls=[-411, +611] with nocontrol
+QGate["not"](612) with controls=[+155, +611] with nocontrol
+QGate["not"](612) with controls=[+155, -411] with nocontrol
+QTerm0(612) with nocontrol
+QGate["not"](611) with controls=[-412, +610] with nocontrol
+QGate["not"](611) with controls=[+156, +610] with nocontrol
+QGate["not"](611) with controls=[+156, -412] with nocontrol
+QTerm0(611) with nocontrol
+QGate["not"](610) with controls=[-413, +609] with nocontrol
+QGate["not"](610) with controls=[+157, +609] with nocontrol
+QGate["not"](610) with controls=[+157, -413] with nocontrol
+QTerm0(610) with nocontrol
+QGate["not"](609) with controls=[-414, +608] with nocontrol
+QGate["not"](609) with controls=[+158, +608] with nocontrol
+QGate["not"](609) with controls=[+158, -414] with nocontrol
+QTerm0(609) with nocontrol
+QGate["not"](608) with controls=[-415, +607] with nocontrol
+QGate["not"](608) with controls=[+159, +607] with nocontrol
+QGate["not"](608) with controls=[+159, -415] with nocontrol
+QTerm0(608) with nocontrol
+QGate["not"](607) with controls=[-416, +606] with nocontrol
+QGate["not"](607) with controls=[+160, +606] with nocontrol
+QGate["not"](607) with controls=[+160, -416] with nocontrol
+QTerm0(607) with nocontrol
+QGate["not"](606) with controls=[-417, +605] with nocontrol
+QGate["not"](606) with controls=[+161, +605] with nocontrol
+QGate["not"](606) with controls=[+161, -417] with nocontrol
+QTerm0(606) with nocontrol
+QGate["not"](605) with controls=[-418, +604] with nocontrol
+QGate["not"](605) with controls=[+162, +604] with nocontrol
+QGate["not"](605) with controls=[+162, -418] with nocontrol
+QTerm0(605) with nocontrol
+QGate["not"](604) with controls=[-419, +603] with nocontrol
+QGate["not"](604) with controls=[+163, +603] with nocontrol
+QGate["not"](604) with controls=[+163, -419] with nocontrol
+QTerm0(604) with nocontrol
+QGate["not"](603) with controls=[-420, +602] with nocontrol
+QGate["not"](603) with controls=[+164, +602] with nocontrol
+QGate["not"](603) with controls=[+164, -420] with nocontrol
+QTerm0(603) with nocontrol
+QGate["not"](602) with controls=[-421, +601] with nocontrol
+QGate["not"](602) with controls=[+165, +601] with nocontrol
+QGate["not"](602) with controls=[+165, -421] with nocontrol
+QTerm0(602) with nocontrol
+QGate["not"](601) with controls=[-422, +600] with nocontrol
+QGate["not"](601) with controls=[+166, +600] with nocontrol
+QGate["not"](601) with controls=[+166, -422] with nocontrol
+QTerm0(601) with nocontrol
+QGate["not"](600) with controls=[-423, +599] with nocontrol
+QGate["not"](600) with controls=[+167, +599] with nocontrol
+QGate["not"](600) with controls=[+167, -423] with nocontrol
+QTerm0(600) with nocontrol
+QGate["not"](599) with controls=[-424, +598] with nocontrol
+QGate["not"](599) with controls=[+168, +598] with nocontrol
+QGate["not"](599) with controls=[+168, -424] with nocontrol
+QTerm0(599) with nocontrol
+QGate["not"](598) with controls=[-425, +597] with nocontrol
+QGate["not"](598) with controls=[+169, +597] with nocontrol
+QGate["not"](598) with controls=[+169, -425] with nocontrol
+QTerm0(598) with nocontrol
+QGate["not"](597) with controls=[-426, +596] with nocontrol
+QGate["not"](597) with controls=[+170, +596] with nocontrol
+QGate["not"](597) with controls=[+170, -426] with nocontrol
+QTerm0(597) with nocontrol
+QGate["not"](596) with controls=[-427, +595] with nocontrol
+QGate["not"](596) with controls=[+171, +595] with nocontrol
+QGate["not"](596) with controls=[+171, -427] with nocontrol
+QTerm0(596) with nocontrol
+QGate["not"](595) with controls=[-428, +594] with nocontrol
+QGate["not"](595) with controls=[+172, +594] with nocontrol
+QGate["not"](595) with controls=[+172, -428] with nocontrol
+QTerm0(595) with nocontrol
+QGate["not"](594) with controls=[-429, +593] with nocontrol
+QGate["not"](594) with controls=[+173, +593] with nocontrol
+QGate["not"](594) with controls=[+173, -429] with nocontrol
+QTerm0(594) with nocontrol
+QGate["not"](593) with controls=[-430, +592] with nocontrol
+QGate["not"](593) with controls=[+174, +592] with nocontrol
+QGate["not"](593) with controls=[+174, -430] with nocontrol
+QTerm0(593) with nocontrol
+QGate["not"](592) with controls=[-431, +591] with nocontrol
+QGate["not"](592) with controls=[+175, +591] with nocontrol
+QGate["not"](592) with controls=[+175, -431] with nocontrol
+QTerm0(592) with nocontrol
+QGate["not"](591) with controls=[-432, +590] with nocontrol
+QGate["not"](591) with controls=[+176, +590] with nocontrol
+QGate["not"](591) with controls=[+176, -432] with nocontrol
+QTerm0(591) with nocontrol
+QGate["not"](590) with controls=[-433, +589] with nocontrol
+QGate["not"](590) with controls=[+177, +589] with nocontrol
+QGate["not"](590) with controls=[+177, -433] with nocontrol
+QTerm0(590) with nocontrol
+QGate["not"](589) with controls=[-434, +588] with nocontrol
+QGate["not"](589) with controls=[+178, +588] with nocontrol
+QGate["not"](589) with controls=[+178, -434] with nocontrol
+QTerm0(589) with nocontrol
+QGate["not"](588) with controls=[-435, +587] with nocontrol
+QGate["not"](588) with controls=[+179, +587] with nocontrol
+QGate["not"](588) with controls=[+179, -435] with nocontrol
+QTerm0(588) with nocontrol
+QGate["not"](587) with controls=[-436, +586] with nocontrol
+QGate["not"](587) with controls=[+180, +586] with nocontrol
+QGate["not"](587) with controls=[+180, -436] with nocontrol
+QTerm0(587) with nocontrol
+QGate["not"](586) with controls=[-437, +585] with nocontrol
+QGate["not"](586) with controls=[+181, +585] with nocontrol
+QGate["not"](586) with controls=[+181, -437] with nocontrol
+QTerm0(586) with nocontrol
+QGate["not"](585) with controls=[-438, +584] with nocontrol
+QGate["not"](585) with controls=[+182, +584] with nocontrol
+QGate["not"](585) with controls=[+182, -438] with nocontrol
+QTerm0(585) with nocontrol
+QGate["not"](584) with controls=[-439, +583] with nocontrol
+QGate["not"](584) with controls=[+183, +583] with nocontrol
+QGate["not"](584) with controls=[+183, -439] with nocontrol
+QTerm0(584) with nocontrol
+QGate["not"](583) with controls=[-440, +582] with nocontrol
+QGate["not"](583) with controls=[+184, +582] with nocontrol
+QGate["not"](583) with controls=[+184, -440] with nocontrol
+QTerm0(583) with nocontrol
+QGate["not"](582) with controls=[-441, +581] with nocontrol
+QGate["not"](582) with controls=[+185, +581] with nocontrol
+QGate["not"](582) with controls=[+185, -441] with nocontrol
+QTerm0(582) with nocontrol
+QGate["not"](581) with controls=[-442, +580] with nocontrol
+QGate["not"](581) with controls=[+186, +580] with nocontrol
+QGate["not"](581) with controls=[+186, -442] with nocontrol
+QTerm0(581) with nocontrol
+QGate["not"](580) with controls=[-443, +579] with nocontrol
+QGate["not"](580) with controls=[+187, +579] with nocontrol
+QGate["not"](580) with controls=[+187, -443] with nocontrol
+QTerm0(580) with nocontrol
+QGate["not"](579) with controls=[-444, +578] with nocontrol
+QGate["not"](579) with controls=[+188, +578] with nocontrol
+QGate["not"](579) with controls=[+188, -444] with nocontrol
+QTerm0(579) with nocontrol
+QGate["not"](578) with controls=[-445, +577] with nocontrol
+QGate["not"](578) with controls=[+189, +577] with nocontrol
+QGate["not"](578) with controls=[+189, -445] with nocontrol
+QTerm0(578) with nocontrol
+QGate["not"](577) with controls=[-446, +576] with nocontrol
+QGate["not"](577) with controls=[+190, +576] with nocontrol
+QGate["not"](577) with controls=[+190, -446] with nocontrol
+QTerm0(577) with nocontrol
+QGate["not"](576) with controls=[-447, +575] with nocontrol
+QGate["not"](576) with controls=[+191, +575] with nocontrol
+QGate["not"](576) with controls=[+191, -447] with nocontrol
+QTerm0(576) with nocontrol
+QGate["not"](575) with controls=[-448, +574] with nocontrol
+QGate["not"](575) with controls=[+192, +574] with nocontrol
+QGate["not"](575) with controls=[+192, -448] with nocontrol
+QTerm0(575) with nocontrol
+QGate["not"](574) with controls=[-449, +573] with nocontrol
+QGate["not"](574) with controls=[+193, +573] with nocontrol
+QGate["not"](574) with controls=[+193, -449] with nocontrol
+QTerm0(574) with nocontrol
+QGate["not"](573) with controls=[-450, +572] with nocontrol
+QGate["not"](573) with controls=[+194, +572] with nocontrol
+QGate["not"](573) with controls=[+194, -450] with nocontrol
+QTerm0(573) with nocontrol
+QGate["not"](572) with controls=[-451, +571] with nocontrol
+QGate["not"](572) with controls=[+195, +571] with nocontrol
+QGate["not"](572) with controls=[+195, -451] with nocontrol
+QTerm0(572) with nocontrol
+QGate["not"](571) with controls=[-452, +570] with nocontrol
+QGate["not"](571) with controls=[+196, +570] with nocontrol
+QGate["not"](571) with controls=[+196, -452] with nocontrol
+QTerm0(571) with nocontrol
+QGate["not"](570) with controls=[-453, +569] with nocontrol
+QGate["not"](570) with controls=[+197, +569] with nocontrol
+QGate["not"](570) with controls=[+197, -453] with nocontrol
+QTerm0(570) with nocontrol
+QGate["not"](569) with controls=[-454, +568] with nocontrol
+QGate["not"](569) with controls=[+198, +568] with nocontrol
+QGate["not"](569) with controls=[+198, -454] with nocontrol
+QTerm0(569) with nocontrol
+QGate["not"](568) with controls=[-455, +567] with nocontrol
+QGate["not"](568) with controls=[+199, +567] with nocontrol
+QGate["not"](568) with controls=[+199, -455] with nocontrol
+QTerm0(568) with nocontrol
+QGate["not"](567) with controls=[-456, +566] with nocontrol
+QGate["not"](567) with controls=[+200, +566] with nocontrol
+QGate["not"](567) with controls=[+200, -456] with nocontrol
+QTerm0(567) with nocontrol
+QGate["not"](566) with controls=[-457, +565] with nocontrol
+QGate["not"](566) with controls=[+201, +565] with nocontrol
+QGate["not"](566) with controls=[+201, -457] with nocontrol
+QTerm0(566) with nocontrol
+QGate["not"](565) with controls=[-458, +564] with nocontrol
+QGate["not"](565) with controls=[+202, +564] with nocontrol
+QGate["not"](565) with controls=[+202, -458] with nocontrol
+QTerm0(565) with nocontrol
+QGate["not"](564) with controls=[-459, +563] with nocontrol
+QGate["not"](564) with controls=[+203, +563] with nocontrol
+QGate["not"](564) with controls=[+203, -459] with nocontrol
+QTerm0(564) with nocontrol
+QGate["not"](563) with controls=[-460, +562] with nocontrol
+QGate["not"](563) with controls=[+204, +562] with nocontrol
+QGate["not"](563) with controls=[+204, -460] with nocontrol
+QTerm0(563) with nocontrol
+QGate["not"](562) with controls=[-461, +561] with nocontrol
+QGate["not"](562) with controls=[+205, +561] with nocontrol
+QGate["not"](562) with controls=[+205, -461] with nocontrol
+QTerm0(562) with nocontrol
+QGate["not"](561) with controls=[-462, +560] with nocontrol
+QGate["not"](561) with controls=[+206, +560] with nocontrol
+QGate["not"](561) with controls=[+206, -462] with nocontrol
+QTerm0(561) with nocontrol
+QGate["not"](560) with controls=[-463, +559] with nocontrol
+QGate["not"](560) with controls=[+207, +559] with nocontrol
+QGate["not"](560) with controls=[+207, -463] with nocontrol
+QTerm0(560) with nocontrol
+QGate["not"](559) with controls=[-464, +558] with nocontrol
+QGate["not"](559) with controls=[+208, +558] with nocontrol
+QGate["not"](559) with controls=[+208, -464] with nocontrol
+QTerm0(559) with nocontrol
+QGate["not"](558) with controls=[-465, +557] with nocontrol
+QGate["not"](558) with controls=[+209, +557] with nocontrol
+QGate["not"](558) with controls=[+209, -465] with nocontrol
+QTerm0(558) with nocontrol
+QGate["not"](557) with controls=[-466, +556] with nocontrol
+QGate["not"](557) with controls=[+210, +556] with nocontrol
+QGate["not"](557) with controls=[+210, -466] with nocontrol
+QTerm0(557) with nocontrol
+QGate["not"](556) with controls=[-467, +555] with nocontrol
+QGate["not"](556) with controls=[+211, +555] with nocontrol
+QGate["not"](556) with controls=[+211, -467] with nocontrol
+QTerm0(556) with nocontrol
+QGate["not"](555) with controls=[-468, +554] with nocontrol
+QGate["not"](555) with controls=[+212, +554] with nocontrol
+QGate["not"](555) with controls=[+212, -468] with nocontrol
+QTerm0(555) with nocontrol
+QGate["not"](554) with controls=[-469, +553] with nocontrol
+QGate["not"](554) with controls=[+213, +553] with nocontrol
+QGate["not"](554) with controls=[+213, -469] with nocontrol
+QTerm0(554) with nocontrol
+QGate["not"](553) with controls=[-470, +552] with nocontrol
+QGate["not"](553) with controls=[+214, +552] with nocontrol
+QGate["not"](553) with controls=[+214, -470] with nocontrol
+QTerm0(553) with nocontrol
+QGate["not"](552) with controls=[-471, +551] with nocontrol
+QGate["not"](552) with controls=[+215, +551] with nocontrol
+QGate["not"](552) with controls=[+215, -471] with nocontrol
+QTerm0(552) with nocontrol
+QGate["not"](551) with controls=[-472, +550] with nocontrol
+QGate["not"](551) with controls=[+216, +550] with nocontrol
+QGate["not"](551) with controls=[+216, -472] with nocontrol
+QTerm0(551) with nocontrol
+QGate["not"](550) with controls=[-473, +549] with nocontrol
+QGate["not"](550) with controls=[+217, +549] with nocontrol
+QGate["not"](550) with controls=[+217, -473] with nocontrol
+QTerm0(550) with nocontrol
+QGate["not"](549) with controls=[-474, +548] with nocontrol
+QGate["not"](549) with controls=[+218, +548] with nocontrol
+QGate["not"](549) with controls=[+218, -474] with nocontrol
+QTerm0(549) with nocontrol
+QGate["not"](548) with controls=[-475, +547] with nocontrol
+QGate["not"](548) with controls=[+219, +547] with nocontrol
+QGate["not"](548) with controls=[+219, -475] with nocontrol
+QTerm0(548) with nocontrol
+QGate["not"](547) with controls=[-476, +546] with nocontrol
+QGate["not"](547) with controls=[+220, +546] with nocontrol
+QGate["not"](547) with controls=[+220, -476] with nocontrol
+QTerm0(547) with nocontrol
+QGate["not"](546) with controls=[-477, +545] with nocontrol
+QGate["not"](546) with controls=[+221, +545] with nocontrol
+QGate["not"](546) with controls=[+221, -477] with nocontrol
+QTerm0(546) with nocontrol
+QGate["not"](545) with controls=[-478, +544] with nocontrol
+QGate["not"](545) with controls=[+222, +544] with nocontrol
+QGate["not"](545) with controls=[+222, -478] with nocontrol
+QTerm0(545) with nocontrol
+QGate["not"](544) with controls=[-479, +543] with nocontrol
+QGate["not"](544) with controls=[+223, +543] with nocontrol
+QGate["not"](544) with controls=[+223, -479] with nocontrol
+QTerm0(544) with nocontrol
+QGate["not"](543) with controls=[-480, +542] with nocontrol
+QGate["not"](543) with controls=[+224, +542] with nocontrol
+QGate["not"](543) with controls=[+224, -480] with nocontrol
+QTerm0(543) with nocontrol
+QGate["not"](542) with controls=[-481, +541] with nocontrol
+QGate["not"](542) with controls=[+225, +541] with nocontrol
+QGate["not"](542) with controls=[+225, -481] with nocontrol
+QTerm0(542) with nocontrol
+QGate["not"](541) with controls=[-482, +540] with nocontrol
+QGate["not"](541) with controls=[+226, +540] with nocontrol
+QGate["not"](541) with controls=[+226, -482] with nocontrol
+QTerm0(541) with nocontrol
+QGate["not"](540) with controls=[-483, +539] with nocontrol
+QGate["not"](540) with controls=[+227, +539] with nocontrol
+QGate["not"](540) with controls=[+227, -483] with nocontrol
+QTerm0(540) with nocontrol
+QGate["not"](539) with controls=[-484, +538] with nocontrol
+QGate["not"](539) with controls=[+228, +538] with nocontrol
+QGate["not"](539) with controls=[+228, -484] with nocontrol
+QTerm0(539) with nocontrol
+QGate["not"](538) with controls=[-485, +537] with nocontrol
+QGate["not"](538) with controls=[+229, +537] with nocontrol
+QGate["not"](538) with controls=[+229, -485] with nocontrol
+QTerm0(538) with nocontrol
+QGate["not"](537) with controls=[-486, +536] with nocontrol
+QGate["not"](537) with controls=[+230, +536] with nocontrol
+QGate["not"](537) with controls=[+230, -486] with nocontrol
+QTerm0(537) with nocontrol
+QGate["not"](536) with controls=[-487, +535] with nocontrol
+QGate["not"](536) with controls=[+231, +535] with nocontrol
+QGate["not"](536) with controls=[+231, -487] with nocontrol
+QTerm0(536) with nocontrol
+QGate["not"](535) with controls=[-488, +534] with nocontrol
+QGate["not"](535) with controls=[+232, +534] with nocontrol
+QGate["not"](535) with controls=[+232, -488] with nocontrol
+QTerm0(535) with nocontrol
+QGate["not"](534) with controls=[-489, +533] with nocontrol
+QGate["not"](534) with controls=[+233, +533] with nocontrol
+QGate["not"](534) with controls=[+233, -489] with nocontrol
+QTerm0(534) with nocontrol
+QGate["not"](533) with controls=[-490, +532] with nocontrol
+QGate["not"](533) with controls=[+234, +532] with nocontrol
+QGate["not"](533) with controls=[+234, -490] with nocontrol
+QTerm0(533) with nocontrol
+QGate["not"](532) with controls=[-491, +531] with nocontrol
+QGate["not"](532) with controls=[+235, +531] with nocontrol
+QGate["not"](532) with controls=[+235, -491] with nocontrol
+QTerm0(532) with nocontrol
+QGate["not"](531) with controls=[-492, +530] with nocontrol
+QGate["not"](531) with controls=[+236, +530] with nocontrol
+QGate["not"](531) with controls=[+236, -492] with nocontrol
+QTerm0(531) with nocontrol
+QGate["not"](530) with controls=[-493, +529] with nocontrol
+QGate["not"](530) with controls=[+237, +529] with nocontrol
+QGate["not"](530) with controls=[+237, -493] with nocontrol
+QTerm0(530) with nocontrol
+QGate["not"](529) with controls=[-494, +528] with nocontrol
+QGate["not"](529) with controls=[+238, +528] with nocontrol
+QGate["not"](529) with controls=[+238, -494] with nocontrol
+QTerm0(529) with nocontrol
+QGate["not"](528) with controls=[-495, +527] with nocontrol
+QGate["not"](528) with controls=[+239, +527] with nocontrol
+QGate["not"](528) with controls=[+239, -495] with nocontrol
+QTerm0(528) with nocontrol
+QGate["not"](527) with controls=[-496, +526] with nocontrol
+QGate["not"](527) with controls=[+240, +526] with nocontrol
+QGate["not"](527) with controls=[+240, -496] with nocontrol
+QTerm0(527) with nocontrol
+QGate["not"](526) with controls=[-497, +525] with nocontrol
+QGate["not"](526) with controls=[+241, +525] with nocontrol
+QGate["not"](526) with controls=[+241, -497] with nocontrol
+QTerm0(526) with nocontrol
+QGate["not"](525) with controls=[-498, +524] with nocontrol
+QGate["not"](525) with controls=[+242, +524] with nocontrol
+QGate["not"](525) with controls=[+242, -498] with nocontrol
+QTerm0(525) with nocontrol
+QGate["not"](524) with controls=[-499, +523] with nocontrol
+QGate["not"](524) with controls=[+243, +523] with nocontrol
+QGate["not"](524) with controls=[+243, -499] with nocontrol
+QTerm0(524) with nocontrol
+QGate["not"](523) with controls=[-500, +522] with nocontrol
+QGate["not"](523) with controls=[+244, +522] with nocontrol
+QGate["not"](523) with controls=[+244, -500] with nocontrol
+QTerm0(523) with nocontrol
+QGate["not"](522) with controls=[-501, +521] with nocontrol
+QGate["not"](522) with controls=[+245, +521] with nocontrol
+QGate["not"](522) with controls=[+245, -501] with nocontrol
+QTerm0(522) with nocontrol
+QGate["not"](521) with controls=[-502, +520] with nocontrol
+QGate["not"](521) with controls=[+246, +520] with nocontrol
+QGate["not"](521) with controls=[+246, -502] with nocontrol
+QTerm0(521) with nocontrol
+QGate["not"](520) with controls=[-503, +519] with nocontrol
+QGate["not"](520) with controls=[+247, +519] with nocontrol
+QGate["not"](520) with controls=[+247, -503] with nocontrol
+QTerm0(520) with nocontrol
+QGate["not"](519) with controls=[-504, +518] with nocontrol
+QGate["not"](519) with controls=[+248, +518] with nocontrol
+QGate["not"](519) with controls=[+248, -504] with nocontrol
+QTerm0(519) with nocontrol
+QGate["not"](518) with controls=[-505, +517] with nocontrol
+QGate["not"](518) with controls=[+249, +517] with nocontrol
+QGate["not"](518) with controls=[+249, -505] with nocontrol
+QTerm0(518) with nocontrol
+QGate["not"](517) with controls=[-506, +516] with nocontrol
+QGate["not"](517) with controls=[+250, +516] with nocontrol
+QGate["not"](517) with controls=[+250, -506] with nocontrol
+QTerm0(517) with nocontrol
+QGate["not"](516) with controls=[-507, +515] with nocontrol
+QGate["not"](516) with controls=[+251, +515] with nocontrol
+QGate["not"](516) with controls=[+251, -507] with nocontrol
+QTerm0(516) with nocontrol
+QGate["not"](515) with controls=[-508, +514] with nocontrol
+QGate["not"](515) with controls=[+252, +514] with nocontrol
+QGate["not"](515) with controls=[+252, -508] with nocontrol
+QTerm0(515) with nocontrol
+QGate["not"](514) with controls=[-509, +513] with nocontrol
+QGate["not"](514) with controls=[+253, +513] with nocontrol
+QGate["not"](514) with controls=[+253, -509] with nocontrol
+QTerm0(514) with nocontrol
+QGate["not"](513) with controls=[-510, +512] with nocontrol
+QGate["not"](513) with controls=[+254, +512] with nocontrol
+QGate["not"](513) with controls=[+254, -510] with nocontrol
+QTerm0(513) with nocontrol
+QGate["not"](512) with controls=[+255, -511] with nocontrol
+QTerm0(512) with nocontrol
+Outputs: 0:Qbit, 1:Qbit, 2:Qbit, 3:Qbit, 4:Qbit, 5:Qbit, 6:Qbit, 7:Qbit, 8:Qbit, 9:Qbit, 10:Qbit, 11:Qbit, 12:Qbit, 13:Qbit, 14:Qbit, 15:Qbit, 16:Qbit, 17:Qbit, 18:Qbit, 19:Qbit, 20:Qbit, 21:Qbit, 22:Qbit, 23:Qbit, 24:Qbit, 25:Qbit, 26:Qbit, 27:Qbit, 28:Qbit, 29:Qbit, 30:Qbit, 31:Qbit, 32:Qbit, 33:Qbit, 34:Qbit, 35:Qbit, 36:Qbit, 37:Qbit, 38:Qbit, 39:Qbit, 40:Qbit, 41:Qbit, 42:Qbit, 43:Qbit, 44:Qbit, 45:Qbit, 46:Qbit, 47:Qbit, 48:Qbit, 49:Qbit, 50:Qbit, 51:Qbit, 52:Qbit, 53:Qbit, 54:Qbit, 55:Qbit, 56:Qbit, 57:Qbit, 58:Qbit, 59:Qbit, 60:Qbit, 61:Qbit, 62:Qbit, 63:Qbit, 64:Qbit, 65:Qbit, 66:Qbit, 67:Qbit, 68:Qbit, 69:Qbit, 70:Qbit, 71:Qbit, 72:Qbit, 73:Qbit, 74:Qbit, 75:Qbit, 76:Qbit, 77:Qbit, 78:Qbit, 79:Qbit, 80:Qbit, 81:Qbit, 82:Qbit, 83:Qbit, 84:Qbit, 85:Qbit, 86:Qbit, 87:Qbit, 88:Qbit, 89:Qbit, 90:Qbit, 91:Qbit, 92:Qbit, 93:Qbit, 94:Qbit, 95:Qbit, 96:Qbit, 97:Qbit, 98:Qbit, 99:Qbit, 100:Qbit, 101:Qbit, 102:Qbit, 103:Qbit, 104:Qbit, 105:Qbit, 106:Qbit, 107:Qbit, 108:Qbit, 109:Qbit, 110:Qbit, 111:Qbit, 112:Qbit, 113:Qbit, 114:Qbit, 115:Qbit, 116:Qbit, 117:Qbit, 118:Qbit, 119:Qbit, 120:Qbit, 121:Qbit, 122:Qbit, 123:Qbit, 124:Qbit, 125:Qbit, 126:Qbit, 127:Qbit, 128:Qbit, 129:Qbit, 130:Qbit, 131:Qbit, 132:Qbit, 133:Qbit, 134:Qbit, 135:Qbit, 136:Qbit, 137:Qbit, 138:Qbit, 139:Qbit, 140:Qbit, 141:Qbit, 142:Qbit, 143:Qbit, 144:Qbit, 145:Qbit, 146:Qbit, 147:Qbit, 148:Qbit, 149:Qbit, 150:Qbit, 151:Qbit, 152:Qbit, 153:Qbit, 154:Qbit, 155:Qbit, 156:Qbit, 157:Qbit, 158:Qbit, 159:Qbit, 160:Qbit, 161:Qbit, 162:Qbit, 163:Qbit, 164:Qbit, 165:Qbit, 166:Qbit, 167:Qbit, 168:Qbit, 169:Qbit, 170:Qbit, 171:Qbit, 172:Qbit, 173:Qbit, 174:Qbit, 175:Qbit, 176:Qbit, 177:Qbit, 178:Qbit, 179:Qbit, 180:Qbit, 181:Qbit, 182:Qbit, 183:Qbit, 184:Qbit, 185:Qbit, 186:Qbit, 187:Qbit, 188:Qbit, 189:Qbit, 190:Qbit, 191:Qbit, 192:Qbit, 193:Qbit, 194:Qbit, 195:Qbit, 196:Qbit, 197:Qbit, 198:Qbit, 199:Qbit, 200:Qbit, 201:Qbit, 202:Qbit, 203:Qbit, 204:Qbit, 205:Qbit, 206:Qbit, 207:Qbit, 208:Qbit, 209:Qbit, 210:Qbit, 211:Qbit, 212:Qbit, 213:Qbit, 214:Qbit, 215:Qbit, 216:Qbit, 217:Qbit, 218:Qbit, 219:Qbit, 220:Qbit, 221:Qbit, 222:Qbit, 223:Qbit, 224:Qbit, 225:Qbit, 226:Qbit, 227:Qbit, 228:Qbit, 229:Qbit, 230:Qbit, 231:Qbit, 232:Qbit, 233:Qbit, 234:Qbit, 235:Qbit, 236:Qbit, 237:Qbit, 238:Qbit, 239:Qbit, 240:Qbit, 241:Qbit, 242:Qbit, 243:Qbit, 244:Qbit, 245:Qbit, 246:Qbit, 247:Qbit, 248:Qbit, 249:Qbit, 250:Qbit, 251:Qbit, 252:Qbit, 253:Qbit, 254:Qbit, 255:Qbit, 256:Qbit, 257:Qbit, 258:Qbit, 259:Qbit, 260:Qbit, 261:Qbit, 262:Qbit, 263:Qbit, 264:Qbit, 265:Qbit, 266:Qbit, 267:Qbit, 268:Qbit, 269:Qbit, 270:Qbit, 271:Qbit, 272:Qbit, 273:Qbit, 274:Qbit, 275:Qbit, 276:Qbit, 277:Qbit, 278:Qbit, 279:Qbit, 280:Qbit, 281:Qbit, 282:Qbit, 283:Qbit, 284:Qbit, 285:Qbit, 286:Qbit, 287:Qbit, 288:Qbit, 289:Qbit, 290:Qbit, 291:Qbit, 292:Qbit, 293:Qbit, 294:Qbit, 295:Qbit, 296:Qbit, 297:Qbit, 298:Qbit, 299:Qbit, 300:Qbit, 301:Qbit, 302:Qbit, 303:Qbit, 304:Qbit, 305:Qbit, 306:Qbit, 307:Qbit, 308:Qbit, 309:Qbit, 310:Qbit, 311:Qbit, 312:Qbit, 313:Qbit, 314:Qbit, 315:Qbit, 316:Qbit, 317:Qbit, 318:Qbit, 319:Qbit, 320:Qbit, 321:Qbit, 322:Qbit, 323:Qbit, 324:Qbit, 325:Qbit, 326:Qbit, 327:Qbit, 328:Qbit, 329:Qbit, 330:Qbit, 331:Qbit, 332:Qbit, 333:Qbit, 334:Qbit, 335:Qbit, 336:Qbit, 337:Qbit, 338:Qbit, 339:Qbit, 340:Qbit, 341:Qbit, 342:Qbit, 343:Qbit, 344:Qbit, 345:Qbit, 346:Qbit, 347:Qbit, 348:Qbit, 349:Qbit, 350:Qbit, 351:Qbit, 352:Qbit, 353:Qbit, 354:Qbit, 355:Qbit, 356:Qbit, 357:Qbit, 358:Qbit, 359:Qbit, 360:Qbit, 361:Qbit, 362:Qbit, 363:Qbit, 364:Qbit, 365:Qbit, 366:Qbit, 367:Qbit, 368:Qbit, 369:Qbit, 370:Qbit, 371:Qbit, 372:Qbit, 373:Qbit, 374:Qbit, 375:Qbit, 376:Qbit, 377:Qbit, 378:Qbit, 379:Qbit, 380:Qbit, 381:Qbit, 382:Qbit, 383:Qbit, 384:Qbit, 385:Qbit, 386:Qbit, 387:Qbit, 388:Qbit, 389:Qbit, 390:Qbit, 391:Qbit, 392:Qbit, 393:Qbit, 394:Qbit, 395:Qbit, 396:Qbit, 397:Qbit, 398:Qbit, 399:Qbit, 400:Qbit, 401:Qbit, 402:Qbit, 403:Qbit, 404:Qbit, 405:Qbit, 406:Qbit, 407:Qbit, 408:Qbit, 409:Qbit, 410:Qbit, 411:Qbit, 412:Qbit, 413:Qbit, 414:Qbit, 415:Qbit, 416:Qbit, 417:Qbit, 418:Qbit, 419:Qbit, 420:Qbit, 421:Qbit, 422:Qbit, 423:Qbit, 424:Qbit, 425:Qbit, 426:Qbit, 427:Qbit, 428:Qbit, 429:Qbit, 430:Qbit, 431:Qbit, 432:Qbit, 433:Qbit, 434:Qbit, 435:Qbit, 436:Qbit, 437:Qbit, 438:Qbit, 439:Qbit, 440:Qbit, 441:Qbit, 442:Qbit, 443:Qbit, 444:Qbit, 445:Qbit, 446:Qbit, 447:Qbit, 448:Qbit, 449:Qbit, 450:Qbit, 451:Qbit, 452:Qbit, 453:Qbit, 454:Qbit, 455:Qbit, 456:Qbit, 457:Qbit, 458:Qbit, 459:Qbit, 460:Qbit, 461:Qbit, 462:Qbit, 463:Qbit, 464:Qbit, 465:Qbit, 466:Qbit, 467:Qbit, 468:Qbit, 469:Qbit, 470:Qbit, 471:Qbit, 472:Qbit, 473:Qbit, 474:Qbit, 475:Qbit, 476:Qbit, 477:Qbit, 478:Qbit, 479:Qbit, 480:Qbit, 481:Qbit, 482:Qbit, 483:Qbit, 484:Qbit, 485:Qbit, 486:Qbit, 487:Qbit, 488:Qbit, 489:Qbit, 490:Qbit, 491:Qbit, 492:Qbit, 493:Qbit, 494:Qbit, 495:Qbit, 496:Qbit, 497:Qbit, 498:Qbit, 499:Qbit, 500:Qbit, 501:Qbit, 502:Qbit, 503:Qbit, 504:Qbit, 505:Qbit, 506:Qbit, 507:Qbit, 508:Qbit, 509:Qbit, 510:Qbit, 511:Qbit
+

@@ -7,18 +7,26 @@ lib/QWIRE/Matrix.v
 lib/QWIRE/Prelim.v
 lib/QWIRE/Quantum.v
 
-Phase.v
-Proportional.v
 Compose.v
 DensitySem.v
 NDSem.v
+Phase.v
+Proportional.v
 SQIRE.v
 UnitarySem.v
 
-compiler/Equivalences.v
-compiler/Representations.v
-compiler/Optimizations.v
+optimizer/Equivalences.v
+optimizer/GateCancellation.v
+optimizer/HadamardReduction.v
+optimizer/ListRepresentation.v
+optimizer/NonUnitaryOptimizations.v
+optimizer/NotPropagation.v
+optimizer/SkipElimination.v
+
+mapper/LNNMapping.v
 
 examples/Deutsch.v
 examples/GHZ.v
 examples/Superdense.v
+
+
