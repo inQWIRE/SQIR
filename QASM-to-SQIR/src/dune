@@ -1,0 +1,6 @@
+(executable
+  (name main))
+
+(ocamllex OQLexer)
+(menhir
+  (modules OQParser))
