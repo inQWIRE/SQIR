@@ -1,9 +1,10 @@
 Require Export UnitarySem.
+Require Import Tactics.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
-
+  
 (** Example equivalences of unitary circuits. **)
 
 Lemma uskip_id_l : forall {dim} (c : ucom dim),
@@ -30,53 +31,18 @@ Proof.
   unfold uc_equiv; simpl.
   simpl in *.
   unfold ueval1. 
-  repeat match goal with
-  | [|- context [pad m _ ?U ]] => remember U as U'
-  | [|- context [pad n _ ?V ]] => remember V as V'
-  end.
-  assert (WFU : WF_Matrix U') by 
-      (destruct U; subst; auto with wf_db).
-  assert (WFV : WF_Matrix V') by 
-      (destruct V; subst; auto with wf_db).
-  clear HeqU' HeqV' U V.
   unfold pad.
-  bdestruct (n + 1 <=? dim); bdestruct (m + 1 <=? dim);
-    remove_zero_gates; trivial.
-  bdestruct (m <? n).
-  - remember (n - m - 1) as k.
-    replace n with (m + 1 + k) by lia.
-    replace (2 ^ (m+1+k)) with (2^m * 2 * 2^k) by unify_pows_two.
-    remember (dim - 1 - (m + 1 + k)) as j.
-    replace (dim - 1 - m) with (k + 1 + j) by lia.
-    replace (2 ^ (k + 1 + j)) with (2^k * 2 * 2^ j) by unify_pows_two.
-    simpl in *.
-    repeat rewrite <- id_kron.
-    restore_dims.
-    repeat (rewrite kron_assoc; restore_dims).
-    replace (2^dim) with (2 ^ m * 2 * 2 ^ k * 2 * 2 ^ j) by unify_pows_two.
-    clear -WFU WFV.
-    restore_dims_strong. 
+  repad.
+  gridify; try lia.
+  - replace d1 with d2 in * by lia.
+    repeat rewrite mult_assoc.
     Msimpl.
     reflexivity.
-  - rename m into n, n into m.
-    remember (n - m - 1) as k.
-    replace n with (m + 1 + k) by lia.
-    replace (2 ^ (m+1+k)) with (2^m * 2 * 2^k) by unify_pows_two.
-    remember (dim - 1 - (m + 1 + k)) as j.
-    replace (dim - 1 - m) with (k + 1 + j) by lia.
-    replace (2 ^ (k + 1 + j)) with (2^k * 2 * 2^ j) by unify_pows_two.
-    repeat rewrite <- id_kron.
-    simpl in *.
-    repeat rewrite kron_assoc.
-    repeat rewrite Nat.mul_assoc.
-    restore_dims.
-    repeat (rewrite kron_assoc; restore_dims).
-    replace (2^dim) with (2 ^ m * 2 * 2 ^ k * 2 * 2 ^ j) by unify_pows_two.
-    clear -WFU WFV.
-    restore_dims_strong.
+  - replace d1 with d2 in * by lia.
+    repeat rewrite mult_assoc.
     Msimpl.
     reflexivity.
-Qed.
+Qed.    
 
 (* This proof can still be cleaned up. Cases 4-6 are exactly the same as 1-3,
    except with n2 and n1 switched. *)
@@ -85,6 +51,110 @@ Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) (U : Unitary 1),
   q <> n2 ->
   @uc_equiv dim (uapp1 U q ; CNOT n1 n2) (CNOT n1 n2 ; uapp1 U q). 
 Proof.
+  intros dim q n1 n2 U NE1 NE2.
+  unfold uc_equiv.
+  simpl.
+  unfold ueval_cnot.
+  unfold ueval1, pad.
+
+  repad; gridify; try lia.
+  - assert (d2 <= d) by lia. clear H1.
+    replace d with (d2 + 1 + d3) in * by lia. clear.
+    repeat rewrite Nat.pow_add_r;
+    repeat rewrite <- id_kron;
+    repeat rewrite kron_assoc;
+    repeat rewrite <- mult_assoc.
+    restore_dims.
+    Search kron Mplus.
+
+    
+    
+    rewrite kron_plus_distr_l.
+    rewrite 
+    match goal with
+    | |- (_ ⊗ _) × (_ ⊗ _) => idtac a
+    end.
+    rewrite kron_mixed_product.
+    Msimpl.
+    rewrite kron_mixed_
+    
+    
+    
+    
+    replace d with d2 by lia.
+    simpl.
+    restore_dims_strong.
+    repeat rewrite <- mult_assoc.
+    repeat rewrite kron_assoc.
+    rewrite kron_mixed_product.
+
+    Msimpl.
+    
+    try rewrite H01 in; try lia.
+  - 
+
+    gridify.
+  
+  - assert (d2 <= d + d0) by lia. clear H1 NE1.
+    assert (d1 = d + d0 - d2) by lia. clear R.
+    
+
+    restore_dims.
+    repeat rewrite kron_assoc.
+    repeat rewrite id_kron.
+    rewrite kron_mixed_product.
+    
+    gridify.
+    
+    replace d0 with () by lia.
+    replace d0 with (d + 1 + d1) by lia.
+  
+  cnot_tac; pad_tac.
+
+
+  - 
+  
+
+  match goal with
+  | H : ?a <? ?b = true |- context[?b - ?a - 1] => 
+    let d := fresh "d" in
+    let R := fresh "R" in
+    remember (b - a - 1) as d eqn:R;
+    rewrite (cnot_tac_lemma a b d H R) in * by assumption
+  end.
+    clear R H n2.
+end.
+  remember (n2 - n1 - 1) as d eqn:R.
+
+  
+  rewrite (cnot_tac_lemma  in *.
+
+  cnot_tac; pad_tac.
+
+  3: 
+  - unfold ueval1, pad.
+    pad_tac.
+    + restore_dims_strong.
+      Msimpl.
+    
+
+  match goal with
+  | H : ?a < ?b |- context[?b - ?a - 1] => idtac a
+  end.
+
+  
+  destruct (lt_eq_lt_dec n1 n2) as [[L1|E]|L2].
+
+  
+
+  remember 
+  bdestruct
+  
+
+
+
+
+(* original proof *)
   intros dim q n1 n2 U NE1 NE2.
   unfold uc_equiv.
   simpl; unfold ueval1, ueval_cnot. 

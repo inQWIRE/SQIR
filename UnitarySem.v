@@ -21,7 +21,7 @@ Qed.
 
 (* Padding and lemmas *)
 Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
-  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - n - start)) else Zero.
+  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
 
 Lemma WF_pad : forall n start dim (A : Square (2^n)),
   WF_Matrix A ->
@@ -44,9 +44,8 @@ Proof.
 Qed.
 
 (* k must be 1, but dependent types... *)
-Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
-  @pad 1 n dim
-  match u with  
+Definition ueval_unitary1 {k} (u : Unitary k) : Square 2 :=
+  match u with 
   | U_H         => hadamard 
   | U_X         => σx
   | U_Y         => σy
@@ -54,6 +53,10 @@ Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
   | U_R ϕ       => phase_shift ϕ
   | _           => Zero
   end.
+
+(* k must be 1, but dependent types... *)
+Definition ueval1 {k} (dim n : nat) (u : Unitary k) : Square (2^dim) :=
+  @pad 1 n dim (ueval_unitary1 u).
 
 (* Restriction: m <> n and m, n < dim *)
 
@@ -64,6 +67,19 @@ Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
     @pad (1+(m-n-1)+1) n dim (σx ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ I (2^(m-n-1)) ⊗ ∣0⟩⟨0∣)
   else
     Zero.
+
+(* Alt formulation for consistency with pad.
+   (Can also simplify first arg of pad, at the cost of complicating WF proofs.)
+Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
+  if (m + 1 <=? n ) then
+    @pad (1+(n-(m+1))+1) m dim
+         (∣1⟩⟨1∣ ⊗ I (2^(n-(m+1))) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-(m+1))) ⊗ I 2)
+  else if (n + 1 <=? m) then
+    @pad (1+(m-(n+1))+1) n dim
+         (σx ⊗ I (2^(m-(n+1))) ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ I (2^(m-(n+1))) ⊗ ∣0⟩⟨0∣)
+  else
+    Zero.
+*)
 
 (** Denotation of ucoms **)
 
@@ -77,11 +93,16 @@ Fixpoint uc_eval {dim} (c : ucom dim) : Matrix (2^dim) (2^dim) :=
 
 (** Well-formedness **)
 
+Lemma WF_ueval_unitary1 : forall (u : Unitary 1), WF_Matrix (ueval_unitary1 u).
+Proof.
+  dependent destruction u; simpl; auto with wf_db.
+Qed.
+
 Lemma WF_ueval1 : forall dim n (u : Unitary 1), WF_Matrix (ueval1 dim n u).
 Proof.
   intros dim n u.
   apply WF_pad.
-  destruct u; auto with wf_db. 
+  apply WF_ueval_unitary1.
 Qed.  
   
 Lemma WF_ueval_cnot : forall dim m n, WF_Matrix (ueval_cnot dim m n). 
@@ -101,7 +122,7 @@ Proof.
   apply WF_ueval_cnot.
 Qed.
 
-Hint Resolve WF_pad WF_ueval1 WF_ueval_cnot WF_uc_eval : wf_db.
+Hint Resolve WF_pad WF_ueval_unitary1 WF_ueval1 WF_ueval_cnot WF_uc_eval : wf_db.
 
 (* Some unit tests *)
 
@@ -227,7 +248,7 @@ Proof.
   unfold ueval_cnot.
   bdestruct (m <? n).
   - apply pad_unitary. lia.
-    split. unify_pows_two; auto with wf_db.
+    split. rewrite 2 Nat.pow_add_r; auto with wf_db.
     restore_dims.
     rewrite Mplus_adjoint.
     Msimpl.
@@ -246,7 +267,7 @@ Proof.
     rewrite <- 2 kron_plus_distr_r.
     replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2)%nat by solve_matrix.
     Msimpl.
-    unify_pows_two.
+    unify_pows_two.    
     reflexivity.
   - bdestructΩ (n <? m). clear H NE.
     apply pad_unitary. lia.
@@ -371,7 +392,7 @@ Proof.
   - simpl. Msimpl. reflexivity.
   - simpl. Msimpl. rewrite IHc1. rewrite IHc2. reflexivity.
   - simpl. 
-    dependent destruction u; unfold ueval1, pad; 
+    dependent destruction u; unfold ueval1, ueval_unitary1, pad; 
     bdestruct (n + 1 <=? dim); try apply zero_adjoint_eq;
     repeat setoid_rewrite kron_adjoint; Msimpl.
     + setoid_rewrite hadamard_sa. reflexivity.

@@ -1,5 +1,6 @@
 Require Import Phase.
 Require Import UnitarySem.
+Require Import Tactics.
 Require Import ListRepresentation.
 Require Import Equivalences.
 Require Import Proportional.
@@ -612,74 +613,6 @@ Proof.
   rewrite H1.
   reflexivity.  
 Qed.
-
-Lemma f_equal_gen : forall {A B} (f g : A -> B) a b, f = g -> a = b -> f a = g b.
-Proof. intros. subst. reflexivity. Qed.
-
-Ltac is_nat_equality :=
-  match goal with 
-  | |- ?A = ?B => match type of A with
-                | nat => idtac
-                end
-  end.
-
-Ltac unify_matrices_light := 
-  repeat (apply f_equal_gen; trivial; try (is_nat_equality; lia)).
-
-
-Ltac restore_dims_rec A :=
-   match A with
-  | ?A × ?B   => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                match type of A' with 
-                | Matrix ?m' ?n' =>
-                  match type of B' with 
-                  | Matrix ?n'' ?o' => constr:(@Mmult m' n' o' A' B')
-                  end
-                end 
-  | ?A ⊗ ?B   => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                match type of A' with 
-                | Matrix ?m' ?n' =>
-                  match type of B' with 
-                  | Matrix ?o' ?p' => constr:(@kron m' n' o' p' A' B')
-                  end
-                end
-  | ?A †      => let A' := restore_dims_rec A in 
-                match type of A' with
-                | Matrix ?m' ?n' => constr:(@adjoint m' n' A')
-                end
-  | ?A .+ ?B => let A' := restore_dims_rec A in 
-               let B' := restore_dims_rec B in 
-               match type of A' with 
-               | Matrix ?m' ?n' =>
-                 match type of B' with 
-                 | Matrix ?m'' ?n'' => constr:(@Mplus m' n' A' B')
-                 end
-               end
-  | ?c .* ?A => let A' := restore_dims_rec A in 
-               match type of A' with
-               | Matrix ?m' ?n' => constr:(@scale m' n' c A')
-               end
-  | ?A       => A
-   end.
-
-Ltac restore_dims_fast := 
-  match goal with
-  | |- ?A = ?B => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                replace A with A' by unify_matrices_light; 
-                replace B with B' by unify_matrices_light
-  end.
-
-Ltac distribute_plus :=
-  repeat match goal with 
-  | |- context [?a × (?b .+ ?c)] => rewrite (Mmult_plus_distr_l _ _ _ a b c)
-  | |- context [(?a .+ ?b) × ?c] => rewrite (Mmult_plus_distr_r _ _ _ a b c)
-  | |- context [?a ⊗ (?b .+ ?c)] => rewrite (kron_plus_distr_l _ _ _ _ a b c)
-  | |- context [(?a .+ ?b) ⊗ ?c] => rewrite (kron_plus_distr_r _ _ _ _ a b c)
-  end.
-
 
 Lemma app_cons_app : forall {A} (a : A) (l1 l2 : list A), a :: l1 ++ l2 = [a] ++ l1 ++ l2.
 Proof. reflexivity. Qed.

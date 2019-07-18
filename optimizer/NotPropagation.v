@@ -1,5 +1,6 @@
 Require Import Phase.
 Require Import UnitarySem.
+Require Import Tactics.
 Require Import ListRepresentation.
 Require Import Equivalences.
 Require Import Proportional.

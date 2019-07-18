@@ -1,4 +1,5 @@
 Require Export UnitarySem.
+Require Import Tactics.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
@@ -30,6 +31,14 @@ Fixpoint cast {dim} (c : ucom dim) dim' : ucom dim' :=
   | uapp2 u m n => uapp2 u m n
   end.
 
+Ltac contradict_eqb_false :=
+  match goal with
+  | H : _ =? _ = false |- _ => apply Nat.eqb_neq in H; try lia
+  | H : _ <=? _ = false |- _ => apply Nat.leb_nle in H; try lia
+  | H : _ <? _ = false |- _ => apply Nat.ltb_nlt in H; try lia
+  end.
+                                                     
+                                                     
 Lemma pad_dims_r : forall {dim} (c : ucom dim) (k : nat),
   uc_well_typed c ->
   (uc_eval c) ⊗ I (2^k) = uc_eval (cast c (dim + k)).  
@@ -39,7 +48,7 @@ Proof.
   - simpl. rewrite id_kron. unify_pows_two. reflexivity.
   - inversion H; subst.
     simpl. rewrite <- IHc1, <- IHc2; trivial.
-    restore_dims_strong; Msimpl; reflexivity.
+    restore_dims_fast; Msimpl; reflexivity.
   - simpl.
     unfold ueval1.
     match goal with
@@ -51,25 +60,20 @@ Proof.
     bdestruct (n + 1 <=? dim); bdestruct (n + 1 <=? dim + k); try lia.
     restore_dims; rewrite (kron_assoc (I (2^n) ⊗ U')).
     rewrite id_kron.
-    unify_pows_two. replace (dim - 1 - n + k) with (dim + k - 1 - n) by lia.
+    unify_pows_two. replace (dim - (n + 1) + k) with (dim + k - (n + 1)) by lia.
     reflexivity.
   - simpl. inversion H; subst.
     unfold ueval_cnot, pad.
-    bdestruct (n <? n0).
-    + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); 
-      bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim + k); try lia.
-      restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
-      rewrite id_kron.
-      unify_pows_two.
-      replace (dim - (1 + (n0 - n - 1) + 1) - n + k) with (dim + k - (1 + (n0 - n - 1) + 1) - n) by lia.
+    repad; try contradict_eqb_false.
+    + replace (n + (1 + d + 1) + d0 + k - (n + (1 + d + 1))) with (d0 + k) by lia.
+      repeat rewrite Nat.pow_add_r.
+      rewrite <- id_kron.
+      repeat rewrite kron_assoc.
       reflexivity.
-    + bdestruct (n0 <? n); try lia.
-      bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim); 
-      bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim + k); try lia.
-      restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
-      rewrite 2 id_kron.
-      unify_pows_two.
-      replace (dim - (1 + (n - n0 - 1) + 1) - n0 + k) with (dim + k - (1 + (n - n0 - 1) + 1) - n0) by lia.
+    + replace (n0 + (1 + d + 1) + d0 + k - (n0 + (1 + d + 1))) with (d0 + k) by lia.
+      repeat rewrite Nat.pow_add_r.
+      rewrite <- id_kron.
+      repeat rewrite kron_assoc.
       reflexivity.
 Qed.
 
@@ -103,18 +107,14 @@ Proof.
   - rewrite <- IHc1, <- IHc2.
     restore_dims_strong; Msimpl. reflexivity.
   - unfold ueval1.
-    match goal with
-      | [|- context [pad _ _ ?U ]] => remember U as U'
-    end.
     unfold pad.
-    bdestruct (n + 1 <=? dim); bdestruct (n + k + 1 <=? k + dim); try lia;
-    try (remove_zero_gates; trivial).
-    clear H0.
-    restore_dims_strong.
-    repeat rewrite <- (kron_assoc (I (2^k))). 
-    rewrite id_kron; unify_pows_two.
-    replace (k + dim - 1 - (n + k)) with (dim - 1 - n) by lia.
-    replace (k + n) with (n + k) by lia.
+    repad; try contradict_eqb_false.
+    replace (k + (n + 1 + d) - (n + k + 1)) with d by lia.
+    rewrite (plus_comm n k).
+    repeat rewrite Nat.pow_add_r.
+    rewrite <- id_kron.
+    repeat rewrite kron_assoc.
+    repeat rewrite mult_assoc.
     reflexivity.
   - unfold ueval_cnot, pad.
     bdestruct (n <? n0); bdestruct (n + k <? n0 + k); try lia; clear H0.
@@ -129,7 +129,7 @@ Proof.
       replace (n0 + k - (n + k)) with (n0 - n) by lia.
       replace (k + dim - (1 + (n0 - n - 1) + 1) - (n + k)) with (dim - (1 + (n0 - n - 1) + 1) - n) by lia.
       replace (k + n) with (n + k) by lia.
-      reflexivity.
+      unify_matrices_light.
     + bdestruct (n0 <? n); bdestruct (n0 + k <? n + k); try lia;
       try (remove_zero_gates; trivial).
       clear H H1.
@@ -138,13 +138,10 @@ Proof.
       try lia;
       try (remove_zero_gates; trivial).
       clear H1.
-      restore_dims_strong.
+      restore_dims_fast.
       repeat rewrite <- (kron_assoc (I (2^k))). 
       rewrite id_kron; unify_pows_two.
-      replace (n + k - (n0 + k)) with (n - n0) by lia.
-      replace (k + dim - (1 + (n - n0 - 1) + 1) - (n0 + k)) with (dim - (1 + (n - n0 - 1) + 1) - n0) by lia.
-      replace (k + n0) with (n0 + k) by lia.
-      reflexivity.
+      unify_matrices_light.
 Qed.
 
 

@@ -1,5 +1,6 @@
 Require Import Phase.
 Require Import UnitarySem.
+Require Import Tactics.
 Require Import ListRepresentation.
 Require Import Equivalences.
 Require Import Proportional.
@@ -334,25 +335,6 @@ Fixpoint apply_H_equivalences {dim} (l : gate_list dim) (n: nat) : gate_list dim
 
 Definition hadamard_reduction {dim} (l : gate_list dim) : gate_list dim := 
   apply_H_equivalences l (2 * (length l)).
-
-
-(* New C_field_simplify/nonzero that deal with Ci *)
-Ltac nonzero :=
-  repeat split;
-   try match goal with
-       | |- not (@eq _ ?x (RtoC (IZR Z0))) => apply RtoC_neq
-       | |- not (@eq _ Ci (RtoC (IZR Z0))) => apply C0_snd_neq; simpl
-       end;
-   repeat
-    match goal with
-    | |- not (@eq _ (sqrt ?x) (IZR Z0)) => apply sqrt_neq_0_compat
-    | |- not (@eq _ (Rinv ?x) (IZR Z0)) => apply Rinv_neq_0_compat
-    end; match goal with
-         | |- not (@eq _ _ _) => lra
-         | |- Rlt _ _ => lra
-         end.
-
-Ltac C_field_simplify := repeat field_simplify_eq [ Csqrt2_sqrt Csqrt2_inv Ci2].
 
 Lemma apply_H_equivalence1_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
