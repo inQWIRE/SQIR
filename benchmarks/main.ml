@@ -13,7 +13,7 @@ let get_list l =
 
 let parse_op (o : Ast.op) : benchmark_gate_app list =
   let (ty, id, ctrls) = o in
-  let ctrl = get_list ctrls in 
+  let ctrl = get_list ctrls in
 	match ty with
     | H -> (match ctrl with
            | [] -> let x = Bench_H id in [x]
@@ -35,58 +35,58 @@ let rec append l1 l2 =
   | [] -> l2
   | a :: l1' -> a :: append l1' l2
 
-let rec parse_program p = 
+let rec parse_program p =
   match p with
   | [] -> []
-  | a :: p' -> let l = parse_op a in 
+  | a :: p' -> let l = parse_op a in
 	         let m = parse_program p' in
-	           append l m 
+	           append l m
 
 let parse_gate_list f =
   let p = parse_file f in
     parse_program p
 
-let parse f = 
+let parse f =
   let q = parse_gate_list f in
     benchmark_to_list q
 
 let benchmark_filenames = [
-  "optimizer/Arithmetic_and_Toffoli/csla_mux_3_before_original";
-  "optimizer/Arithmetic_and_Toffoli/gf2^E7_mult_before";
-  "optimizer/Arithmetic_and_Toffoli/mod_red_21_before";
-  "optimizer/Arithmetic_and_Toffoli/tof_4_before";
-  "optimizer/Arithmetic_and_Toffoli/tof_10_before";
-  "optimizer/Arithmetic_and_Toffoli/qcla_mod_7_before";
-  "optimizer/Arithmetic_and_Toffoli/gf2^E10_mult_before";
-  "optimizer/Arithmetic_and_Toffoli/barenco_tof_10_before";
-  "optimizer/Arithmetic_and_Toffoli/rc_adder_6_before";
-  "optimizer/Arithmetic_and_Toffoli/mod5_4_before";
-  "optimizer/Arithmetic_and_Toffoli/gf2^E9_mult_before";
+  "nam_benchmarks/csla_mux_3_before_original";
+  "nam_benchmarks/gf2^E7_mult_before";
+  "nam_benchmarks/mod_red_21_before";
+  "nam_benchmarks/tof_4_before";
+  "nam_benchmarks/tof_10_before";
+  "nam_benchmarks/qcla_mod_7_before";
+  "nam_benchmarks/gf2^E10_mult_before";
+  "nam_benchmarks/barenco_tof_10_before";
+  "nam_benchmarks/rc_adder_6_before";
+  "nam_benchmarks/mod5_4_before";
+  "nam_benchmarks/gf2^E9_mult_before";
   (* Results in overflow: *)
-  (* "optimizer/Arithmetic_and_Toffoli/gf2^E163_mult_before"; *)
-  "optimizer/Arithmetic_and_Toffoli/gf2^E5_mult_before";
-  "optimizer/Arithmetic_and_Toffoli/gf2^E8_mult_before";
-  "optimizer/Arithmetic_and_Toffoli/gf2^E64_mult_before";
-  "optimizer/Arithmetic_and_Toffoli/qcla_adder_10_before";
-  "optimizer/Arithmetic_and_Toffoli/adder_8_before";
-  "optimizer/Arithmetic_and_Toffoli/qcla_com_7_before";
-  "optimizer/Arithmetic_and_Toffoli/barenco_tof_3_before";
-  "optimizer/Arithmetic_and_Toffoli/mod_adder_1024_before";
-  "optimizer/Arithmetic_and_Toffoli/mod_mult_55_before";
-  "optimizer/Arithmetic_and_Toffoli/tof_3_before";
-  "optimizer/Arithmetic_and_Toffoli/csum_mux_9_before_corrected";
+  (* "nam_benchmarks/gf2^E163_mult_before"; *)
+  "nam_benchmarks/gf2^E5_mult_before";
+  "nam_benchmarks/gf2^E8_mult_before";
+  "nam_benchmarks/gf2^E64_mult_before";
+  "nam_benchmarks/qcla_adder_10_before";
+  "nam_benchmarks/adder_8_before";
+  "nam_benchmarks/qcla_com_7_before";
+  "nam_benchmarks/barenco_tof_3_before";
+  "nam_benchmarks/mod_adder_1024_before";
+  "nam_benchmarks/mod_mult_55_before";
+  "nam_benchmarks/tof_3_before";
+  "nam_benchmarks/csum_mux_9_before_corrected";
   (* Results in overflow: *)
-  (* "optimizer/Arithmetic_and_Toffoli/gf2^E131_mult_before"; *)
-  "optimizer/Arithmetic_and_Toffoli/gf2^E32_mult_before";
-  "optimizer/Arithmetic_and_Toffoli/vbe_adder_3_before";
-  "optimizer/Arithmetic_and_Toffoli/barenco_tof_4_before";
-  "optimizer/Arithmetic_and_Toffoli/gf2^E4_mult_before";
-  "optimizer/Arithmetic_and_Toffoli/tof_5_before";
-  "optimizer/Arithmetic_and_Toffoli/barenco_tof_5_before";
-  "optimizer/Arithmetic_and_Toffoli/gf2^E6_mult_before";
-  "optimizer/Arithmetic_and_Toffoli/gf2^E16_mult_before";
+  (* "nam_benchmarks/gf2^E131_mult_before"; *)
+  "nam_benchmarks/gf2^E32_mult_before";
+  "nam_benchmarks/vbe_adder_3_before";
+  "nam_benchmarks/barenco_tof_4_before";
+  "nam_benchmarks/gf2^E4_mult_before";
+  "nam_benchmarks/tof_5_before";
+  "nam_benchmarks/barenco_tof_5_before";
+  "nam_benchmarks/gf2^E6_mult_before";
+  "nam_benchmarks/gf2^E16_mult_before";
   (* Results in overflow: *)
-  (* "optimizer/Arithmetic_and_Toffoli/gf2^E128_mult_before" *)
+  (* "nam_benchmarks/gf2^E128_mult_before" *)
 ]
 
 type counts = {h:int; x:int; rz:int; cnot:int; total:int}
@@ -116,10 +116,10 @@ let benchmark_to_qasm_file b n f =
      fprintf oc "qreg q%d[1];\n" i
    done;
    fprintf oc "\n";
-   List.map (sqire_to_qasm_gate oc) b;
+   ignore(List.map (sqire_to_qasm_gate oc) b);
    close_out oc;
    printf "Done.\n")
-   
+
 let write_all_files () =
   benchmark_to_qasm_file (List.nth benchmarks 0) 14 "qasm_benchmarks/benchmark0.qasm";
   benchmark_to_qasm_file (List.nth benchmarks 1) 20 "qasm_benchmarks/benchmark1.qasm";
@@ -172,13 +172,13 @@ let example3 = [_H 1; _X 0; _CNOT 2 3; _X 0; _H 0; _P 1; _P 2; _CNOT 0 2]
 (* hadamard_reduction example4 --> [_PDAG 1; _H 1; _PDAG 1; _CNOT 3 0; _X 2] *)
 let example4 = [_H 1; _H 3; _H 0; _P 1; _CNOT 0 3; _H 0; _H 1; _H 3; _X 2]
 
-(* benchmark_to_list example5 --> 
+(* benchmark_to_list example5 -->
         [App2 (FU_CNOT, 0, 1); App1 (FU_H, 2); App2 (FU_CNOT, 1, 2);
         App1 (FU_TDAG, 2); App2 (FU_CNOT, 0, 2); App1 (FU_T, 2);
         App2 (FU_CNOT, 1, 2); App1 (FU_TDAG, 2); App2 (FU_CNOT, 0, 2);
         App2 (FU_CNOT, 0, 1); App1 (FU_TDAG, 1); App2 (FU_CNOT, 0, 1);
         App1 (FU_T, 0); App1 (FU_T, 1); App1 (FU_T, 2); App1 (FU_H, 2);
-        App1 (FU_H, 3); App1 (FU_X, 4)] 
+        App1 (FU_H, 3); App1 (FU_X, 4)]
 *)
 let example5 = [Bench_CNOT(0,1); Bench_TOFF(0,1,2); Bench_H(3); Bench_X(4)]
 *)

@@ -7,3 +7,7 @@
 # Ignore auto-generated Makefiles
 Makefile
 Makefile.conf
+
+# Ignore OCaml object files
+*.cmo
+*.cmi
