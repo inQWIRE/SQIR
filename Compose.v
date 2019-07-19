@@ -50,31 +50,25 @@ Proof.
     simpl. rewrite <- IHc1, <- IHc2; trivial.
     restore_dims_fast; Msimpl; reflexivity.
   - simpl.
+    inversion H; subst.
     unfold ueval1.
-    match goal with
-      | [|- context [pad _ _ ?U ]] => remember U as U'
-    end.
     unfold pad.
-    assert (n + 1 <= dim).
-    { inversion H; subst. lia. }
-    bdestruct (n + 1 <=? dim); bdestruct (n + 1 <=? dim + k); try lia.
-    restore_dims; rewrite (kron_assoc (I (2^n) ⊗ U')).
+    repad; try contradict_eqb_false.
+    restore_dims_fast.
+    repeat rewrite kron_assoc.
     rewrite id_kron.
-    unify_pows_two. replace (dim - (n + 1) + k) with (dim + k - (n + 1)) by lia.
-    reflexivity.
+    unify_matrices_light.
   - simpl. inversion H; subst.
     unfold ueval_cnot, pad.
     repad; try contradict_eqb_false.
-    + replace (n + (1 + d + 1) + d0 + k - (n + (1 + d + 1))) with (d0 + k) by lia.
-      repeat rewrite Nat.pow_add_r.
-      rewrite <- id_kron.
+    + restore_dims_fast.
       repeat rewrite kron_assoc.
-      reflexivity.
-    + replace (n0 + (1 + d + 1) + d0 + k - (n0 + (1 + d + 1))) with (d0 + k) by lia.
-      repeat rewrite Nat.pow_add_r.
-      rewrite <- id_kron.
+      repeat rewrite id_kron.
+      unify_matrices_light.
+    + restore_dims_fast.
       repeat rewrite kron_assoc.
-      reflexivity.
+      repeat rewrite id_kron.
+      unify_matrices_light.
 Qed.
 
 (*Ltac prove_wt :=
@@ -105,7 +99,7 @@ Proof.
   induction c; simpl.
   - rewrite id_kron. unify_pows_two. reflexivity.
   - rewrite <- IHc1, <- IHc2.
-    restore_dims_strong; Msimpl. reflexivity.
+    restore_dims_fast; Msimpl. reflexivity.
   - unfold ueval1.
     unfold pad.
     repad; try contradict_eqb_false.

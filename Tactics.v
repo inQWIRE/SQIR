@@ -18,7 +18,6 @@ Ltac is_nat_equality :=
 Ltac unify_matrices_light := 
   repeat (apply f_equal_gen; trivial; try (is_nat_equality; unify_pows_two; lia)).
 
-
 Ltac restore_dims_rec A :=
    match A with
   | ?A × ?B   => let A' := restore_dims_rec A in 
@@ -74,6 +73,14 @@ Ltac distribute_plus :=
   | |- context [(?a .+ ?b) ⊗ ?c] => rewrite (kron_plus_distr_r _ _ _ _ a b c)
   end.
 
+Ltac contradict_eqb_false :=
+  match goal with
+  | H : _ =? _ = false |- _ => apply Nat.eqb_neq in H; try lia
+  | H : _ <=? _ = false |- _ => apply Nat.leb_nle in H; try lia
+  | H : _ <? _ = false |- _ => apply Nat.ltb_nlt in H; try lia
+  end.
+
+
 (** Very lightweight matrix automation **)
 
 (* For handling non well-typed cases. (Shouldn't Msimpl do this?) *)
@@ -116,38 +123,9 @@ Lemma repad_lemma2 : forall (a b d : nat),
   a <= b -> d = (b - a) -> b = a + d.
 Proof. intros. subst. lia. Qed.
 
-Ltac cnot_tac :=
-  repeat match goal with
-  | |- context[?a <? ?b] =>
-    let H := fresh "H" in 
-    destruct (a <? b) eqn:H;
-    try apply Nat.ltb_lt in H;
-    try (remove_zero_gates; reflexivity)
-  | H : ?a < ?b |- context[?b - ?a - 1] =>
-    let d := fresh "d" in
-    let R := fresh "R" in
-    remember (b - a - 1) as d eqn:R;
-    rewrite (repad_lemma1_l a b d H R) in * by assumption;
-    try clear R H b
-  end.
-
-Ltac pad_tac :=
-  repeat match goal with
-  | |- context[?a <=? ?b] =>
-    let H := fresh "H" in 
-    destruct (a <=? b) eqn:H;
-    try apply Nat.leb_le in H;
-    try (remove_zero_gates; reflexivity)
-  | H : ?a <= ?b |- context[?b - ?a] =>
-    let d := fresh "d" in
-    let R := fresh "R" in
-    remember (b - a) as d eqn:R;
-    rewrite (repad_lemma2 a b d H R) in *;
-    try clear R H b
-  end.
-
 Ltac repad := 
   repeat match goal with
+  (* cnot normalization *)
   | |- context[?a <? ?b] =>
     let H := fresh "H" in 
     destruct (a <? b) eqn:H;
@@ -159,6 +137,7 @@ Ltac repad :=
     remember (b - a - 1) as d eqn:R;
     rewrite (repad_lemma1_l a b d H R) in * by assumption;
     try clear R H b
+  (* pad normalization *)
   | |- context[?a <=? ?b] =>
     let H := fresh "H" in 
     destruct (a <=? b) eqn:H;
@@ -180,7 +159,7 @@ Ltac gridify :=
   repeat match goal with
   | |- context[(I ?a ⊗ _) × (I ?a ⊗ _)] =>
     rewrite kron_mixed_product
-  | |- context[(I (2 ^ ?a) ⊗ _) × (I (2 ^ ?b) ⊗ _)] =>
+  | |- context[(I (2 ^ ?a) ⊗ _) × (I (2 ^ ?b) ⊗ _)] => (* should check a <> b *)
     let E := fresh "H" in 
     let d := fresh "d" in
     let R := fresh "R" in
