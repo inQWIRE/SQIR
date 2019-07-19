@@ -3,7 +3,6 @@
 %}
 
 %token <string> ID
-%token <int> Idx
 %token <int> NInt
 %token <float> Real
 %token Pi
@@ -41,8 +40,8 @@ statement:
   | If LParen ID DEquals NInt RParen qop  { If($3, $5, $7) }
 
 decl:
-  | QReg ID LBracket Idx RBracket SemiColon { Qreg($2, $4) }
-  | CReg ID LBracket Idx RBracket SemiColon { Creg($2, $4) }
+  | QReg ID LBracket NInt RBracket SemiColon { Qreg($2, $4) }
+  | CReg ID LBracket NInt RBracket SemiColon { Creg($2, $4) }
 
 gatedecl:
   | Gate ID idlist LBrace                       { ($2, None,    $3) }
@@ -71,10 +70,10 @@ idlist:
   | ID Comma idlist { $1 :: $3 }
 
 mixedlist:
-  | ID LBracket Idx RBracket                  { [($1, Some $3)] }
+  | ID LBracket NInt RBracket                 { [($1, Some $3)] }
   | ID Comma mixedlist                        { ($1, None) :: $3 }
-  | ID LBracket Idx RBracket Comma mixedlist  { ($1, Some $3) :: $6 }
-  | ID LBracket Idx RBracket Comma idlist     { ($1, Some $3) :: (List.map (fun x -> (x, None)) $6) }
+  | ID LBracket NInt RBracket Comma mixedlist { ($1, Some $3) :: $6 }
+  | ID LBracket NInt RBracket Comma idlist    { ($1, Some $3) :: (List.map (fun x -> (x, None)) $6) }
 
 uop:
   | CNOT argument Comma argument SemiColon      { CX($2, $4) }
@@ -91,7 +90,7 @@ uop:
 
 argument:
   | ID                        { ($1, None) }
-  | ID LBracket Idx RBracket  { ($1, Some $3) }
+  | ID LBracket NInt RBracket { ($1, Some $3) }
 
 exp:
   | Real              { Real($1) }
