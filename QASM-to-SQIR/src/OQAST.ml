@@ -1,6 +1,6 @@
-type id = string
-type real = float
-type nninteger = int
+type id = string [@@deriving show]
+type real = float [@@deriving show]
+type nninteger = int [@@deriving show]
 
 type binaryop  =
   | Plus
@@ -8,6 +8,7 @@ type binaryop  =
   | Mult
   | Div
   | Pow
+[@@deriving show]
 
 type unaryop =
   | Sin
@@ -17,6 +18,7 @@ type unaryop =
   | Ln
   | Sqrt
   | Neg
+[@@deriving show]
 
 type exp =
   | Real of real
@@ -25,28 +27,34 @@ type exp =
   | Id of id
   | Binaryop of exp * binaryop * exp
   | Unaryop of unaryop * exp
+[@@deriving show]
 
-type argument = id * nninteger option
+type argument = id * nninteger option [@@deriving show]
 
 type uop  =
   | U of exp list * argument
   | CX of argument * argument
   | Gate of id * exp list * argument list
+[@@deriving show]
 
 type qop  =
   | Uop of uop
   | Meas of argument * argument
   | Reset of argument
+[@@deriving show]
 
 type gop  =
   | Uop of uop
   (* | Barrier of id list *)
+[@@deriving show]
 
 type gatedecl = id * id list option * id list
+[@@deriving show]
 
 type decl =
   | Qreg of id * nninteger
   | Creg of id * nninteger
+[@@deriving show]
 
 type statement  =
   | Decl of decl
@@ -55,5 +63,7 @@ type statement  =
   | Qop of qop
   | If of id * nninteger * qop
   | Barrier of argument list
+[@@deriving show]
 
 type program = statement list
+[@@deriving show]

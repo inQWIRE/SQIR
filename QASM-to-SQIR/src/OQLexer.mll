@@ -1,5 +1,6 @@
 {
   open OQParser
+  exception Eof
 }
 
 let numeric = ['0' - '9']
@@ -36,5 +37,5 @@ rule token = parse
   | [ ' ' '\t' '\n' ] { token lexbuf }
   | letter (letter | numeric | "_")* as id { ID id }
   | numeric numeric* as str { Idx(int_of_string(str)) }
-  | eof { EOF }
+  | eof { raise Eof }
   | _ as chr { failwith ("lex error: "^(Char.escaped chr))}
