@@ -6,4 +6,3 @@ H q[1];
 CX q[0],q[1];
 H q[0];
 measure q[0] -> c[0];
-

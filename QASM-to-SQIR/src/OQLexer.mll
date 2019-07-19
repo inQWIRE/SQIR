@@ -10,31 +10,29 @@ rule token = parse
   | "creg"    { CReg }
   | "gate"    { Gate }
   | "Pi"      { Pi }
-  | "U"       { U }
   | "CX"      { CNOT }
+  | "H"       { H }
+  | "T"       { T }
+  | "Tdg"     { Tdg }
+  | "U"       { U }
   | "X"       { X }
   | "Y"       { Y }
   | "Z"       { Z }
-  | "H"       { H }
   | "->"      { Arrow }
   | "measure" { Measure }
   | "reset"   { Reset }
-  (* | "barrier" { Barrier } *)
   | "["       { LBracket }
   | "]"       { RBracket }
   | "{"       { LBrace }
   | "}"       { RBrace }
   | "("       { LParen }
   | ")"       { RParen }
-  (* | "="       { Equal } *)
-  | "+"       { Plus }
-  | "-"       { Minus }
-  | "*"       { Mult }
-  | "/"       { Div }
+  | "if"      { If }
+  | "=="      { DEquals }
   | ";"       { SemiColon }
   | ","       { Comma }
   | eof       { EOF }
   | [ ' ' '\t' '\n' ]                       { token lexbuf }
   | letter (letter | numeric | "_")* as id  { ID id }
-  | numeric numeric* as str                 { Idx(int_of_string(str)) }
+  | (['1'-'9']+ numeric*) | "0" as str      { Idx(int_of_string(str)) }
   | _ as chr { failwith ("lex error: "^(Char.escaped chr))}

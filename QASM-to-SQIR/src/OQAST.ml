@@ -1,44 +1,22 @@
-type id = string [@@deriving show]
-type real = float [@@deriving show]
-type nninteger = int [@@deriving show]
-
-type binaryop  =
-  | Plus
-  | Minus
-  | Mult
-  | Div
-  | Pow
-[@@deriving show]
-
-type unaryop =
-  | Sin
-  | Cos
-  | Tan
-  | Exp
-  | Ln
-  | Sqrt
-  | Neg
-[@@deriving show]
-
 type exp =
-  | Real of real
-  | Nninteger of nninteger
+  | Real of float
+  | Nninteger of int
   | Pi
-  | Id of id
-  | Binaryop of exp * binaryop * exp
-  | Unaryop of unaryop * exp
+  | Id of string
 [@@deriving show]
 
-type argument = id * nninteger option [@@deriving show]
+type argument = string * int option [@@deriving show]
 
 type uop  =
-  | U of exp list * argument
   | CX of argument * argument
+  | H of argument
+  | T of argument
+  | Tdg of argument
+  | U of exp list * argument
   | X of argument
   | Y of argument
   | Z of argument
-  | H of argument
-  | Gate of id * exp list * argument list
+  | Gate of string * exp list * argument list
 [@@deriving show]
 
 type qop  =
@@ -49,24 +27,21 @@ type qop  =
 
 type gop  =
   | Uop of uop
-  (* | Barrier of id list *)
 [@@deriving show]
 
-type gatedecl = id * id list option * id list
+type gatedecl = string * string list option * string list
 [@@deriving show]
 
 type decl =
-  | Qreg of id * nninteger
-  | Creg of id * nninteger
+  | Qreg of string * int
+  | Creg of string * int
 [@@deriving show]
 
 type statement  =
   | Decl of decl
-  | Newgate of gatedecl * gop list
-  | Opaque of id * id list option * id list
+  | GateDecl of gatedecl * gop list
   | Qop of qop
-  | If of id * nninteger * qop
-  | Barrier of argument list
+  | If of string * int * qop
 [@@deriving show]
 
 type program = statement list
