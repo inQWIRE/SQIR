@@ -34,6 +34,10 @@ type argument = id * nninteger option [@@deriving show]
 type uop  =
   | U of exp list * argument
   | CX of argument * argument
+  | X of argument
+  | Y of argument
+  | Z of argument
+  | H of argument
   | Gate of id * exp list * argument list
 [@@deriving show]
 

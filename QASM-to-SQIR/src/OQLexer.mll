@@ -1,10 +1,9 @@
 {
   open OQParser
-  exception Eof
 }
 
 let numeric = ['0' - '9']
-let letter = ['a' - 'z' 'A' - 'Z']
+let letter =  ['a' - 'z' 'A' - 'Z']
 
 rule token = parse
   | "qreg"    { QReg }
@@ -13,10 +12,10 @@ rule token = parse
   | "Pi"      { Pi }
   | "U"       { U }
   | "CX"      { CNOT }
-  (* | "X"       { X }
+  | "X"       { X }
   | "Y"       { Y }
   | "Z"       { Z }
-  | "H"       { H } *)
+  | "H"       { H }
   | "->"      { Arrow }
   | "measure" { Measure }
   | "reset"   { Reset }
@@ -34,8 +33,8 @@ rule token = parse
   | "/"       { Div }
   | ";"       { SemiColon }
   | ","       { Comma }
-  | [ ' ' '\t' '\n' ] { token lexbuf }
-  | letter (letter | numeric | "_")* as id { ID id }
-  | numeric numeric* as str { Idx(int_of_string(str)) }
-  | eof { raise Eof }
+  | eof       { EOF }
+  | [ ' ' '\t' '\n' ]                       { token lexbuf }
+  | letter (letter | numeric | "_")* as id  { ID id }
+  | numeric numeric* as str                 { Idx(int_of_string(str)) }
   | _ as chr { failwith ("lex error: "^(Char.escaped chr))}

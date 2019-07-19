@@ -1,4 +1,4 @@
-(executable
+(library
   (name main)
   (preprocess (pps ppx_deriving.show)))
 

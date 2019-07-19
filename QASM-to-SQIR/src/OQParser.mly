@@ -9,7 +9,7 @@
 %token QReg CReg
 %token Gate
 %token U CNOT
-/* %token X Y Z H */
+%token X Y Z H
 %token Arrow
 %token Measure Reset
 /* %token Barrier */
@@ -35,13 +35,13 @@ program:
   | statement program { $1 :: $2 }
 
 statement:
-  | decl { Decl($1) }
+  | decl                    { Decl($1) }
   | gatedecl goplist RBrace { Newgate($1, $2) }
-  | gatedecl RBrace { Newgate($1, []) }
+  | gatedecl RBrace         { Newgate($1, []) }
   /* | Opaque id idlist SemiColon { $1 $2 $3 }
   | Opaque id LParen RParen idlist SemiColon { $1 $2 $5 }
   | Opaque id LParen idlist RParen idlist SemiColon { $1 $2 $4 $6 } */
-  | qop { Qop($1) }
+  | qop                     { Qop($1) }
   /* | "if (" id "==" Idx ")" qop */
   /* | Barrier anylist { Barrier($2) } */
 
@@ -86,6 +86,10 @@ mixedlist:
 uop:
   | U LParen explist RParen argument SemiColon  { U($3, $5) }
   | CNOT argument Comma argument SemiColon      { CX($2, $4) }
+  | X argument SemiColon                        { X($2) }
+  | Y argument SemiColon                        { Y($2) }
+  | Z argument SemiColon                        { Z($2) }
+  | H argument SemiColon                        { H($2) }
   | ID anylist SemiColon                        { Gate($1, [], $2) }
   | ID LParen RParen anylist SemiColon          { Gate($1, [], $4) }
   | ID LParen explist RParen anylist SemiColon  { Gate($1, $3, $5) }
