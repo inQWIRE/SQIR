@@ -11,10 +11,11 @@ rule token = parse
   | "creg"    { CReg }
   | "gate"    { Gate }
   | "Pi"      { Pi }
-  | "CX"      { CNOT }
-  | "H"       { H }
-  | "T"       { T }
+  | "CX"|"cx" { CNOT }
+  | "H"|"h"   { H }
+  | "T"|"t"   { T }
   | "Tdg"     { Tdg }
+  | "tdg"     { Tdg }
   | "U"       { U }
   | "X"       { X }
   | "Y"       { Y }
