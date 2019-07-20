@@ -3,12 +3,7 @@ open Extracted_code
 
 let parse_file f =
   let lexbuf = Lexing.from_channel (open_in f) in
-    OQParser.mainprogram OQLexer.token lexbuf
-
-let get_list l =
-  match l with
-  | a :: [] -> a
-  | _ -> []
+  OQParser.mainprogram OQLexer.token lexbuf
 
 module QbitIdx =
 struct
@@ -32,22 +27,24 @@ let parse_statement s qmap : benchmark_gate_app list =
   | GateDecl _ -> []
   | Qop qop ->
     (match qop with
-    | Uop uop ->
-      (match uop with
-      | CX (ctrl, tgt)  -> [Bench_CNOT (convert_repr qmap ctrl, convert_repr qmap tgt)]
-      | H q             -> [Bench_H (convert_repr qmap q)]
-      | X q             -> [Bench_X (convert_repr qmap q)]
-      | Z q             -> [Bench_Z (convert_repr qmap q)]
-      | _               -> [])
-    | _ -> [])
+     | Uop uop ->
+       (match uop with
+        | CX (ctrl, tgt)  ->
+          [Bench_CNOT (convert_repr qmap ctrl, convert_repr qmap tgt)]
+        | H q             -> [Bench_H (convert_repr qmap q)]
+        | X q             -> [Bench_X (convert_repr qmap q)]
+        | Z q             -> [Bench_Z (convert_repr qmap q)]
+        | _               -> [])
+     | _ -> [])
   | If _ -> []
 
 let parse_decl (s : OQAST.statement) : (string * int) list =
   match s with
   | Decl d ->
     (match d with
-    | Qreg (name, size) -> List.map (fun i -> (name, i)) (List.init size (fun i -> i))
-    | _ -> [])
+     | Qreg (name, size) ->
+       List.map (fun i -> (name, i)) (List.init size (fun i -> i))
+     | _ -> [])
   | _ -> []
 
 let rec parse_declarations p =
@@ -62,13 +59,15 @@ let rec parse_program p qbit_map =
   match p with
   | []      ->  []
   | s :: p' ->  let l = parse_statement s qbit_map in
-                let m = parse_program p' qbit_map in
-                List.append l m
+    let m = parse_program p' qbit_map in
+    List.append l m
 
 let parse_gate_list f =
   let p = parse_file f in
   let qbit_list = parse_declarations p in
-  let (qbit_map, _) = List.fold_left (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1)) (QbitMap.empty, 0) qbit_list in
+  let (qbit_map, _) = List.fold_left
+      (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1))
+      (QbitMap.empty, 0) qbit_list in
   parse_program p qbit_map
 
 let parse f =
@@ -88,4 +87,6 @@ let qasm_filenames = [
 
 type counts = {h:int; x:int; rz:int; cnot:int; total:int}
 
-let qasm_programs = List.map (fun file -> parse file) qasm_filenames
+let ast_list = List.map (fun f -> parse_file f) qasm_filenames
+
+let benchmarks_list = List.map (fun file -> parse file) qasm_filenames
