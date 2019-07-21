@@ -16,12 +16,16 @@
 %token LBrace RBrace
 %token LParen RParen
 %token If
-%token Mult Div
 %token Plus Minus
+%token Mult Div
 %token Pow
 %token DEquals
 %token SemiColon Comma
 %token EOF
+
+%left Plus Minus        /* lowest precedence */
+%left Mult Div Pow      /* medium precedence */
+%nonassoc UMinus        /* highest precedence */
 
 %start mainprogram
 %type <OQAST.program> mainprogram
@@ -96,15 +100,15 @@ argument:
   | ID LBracket NInt RBracket { ($1, Some $3) }
 
 exp:
-  | Real              { Real($1) }
-  | NInt              { Nninteger($1) }
-  | Pi                { Pi }
-  | ID                { Id($1) }
-  | Minus exp         { UMinus($2) } /* Source of one shift/reduce conflict */
-  | exp binaryop exp  { Binaryop($1, $2, $3) }
-  | LParen exp RParen { $2 }
+  | Real                    { Real($1) }
+  | NInt                    { Nninteger($1) }
+  | Pi                      { Pi }
+  | ID                      { Id($1) }
+  | Minus exp %prec UMinus  { UMinus($2) }
+  | exp binaryop exp        { Binaryop($1, $2, $3) }
+  | LParen exp RParen       { $2 }
 
-/* Another source of a shift/reduce conflict */
+/* Source of a shift/reduce conflict */
 binaryop:
   | Plus      { Plus }
   | Minus     { Minus }
