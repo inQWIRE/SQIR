@@ -23,7 +23,7 @@ optimizer/NonUnitaryOptimizations.v
 optimizer/NotPropagation.v
 optimizer/SkipElimination.v
 
-mapper/LNNMapping.v
+mapper/SimpleMapping.v
 
 examples/Deutsch.v
 examples/GHZ.v
