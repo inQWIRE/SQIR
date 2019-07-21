@@ -34,7 +34,7 @@ let parse_statement s qmap : benchmark_gate_app list =
         | H q             -> [Bench_H (convert_repr qmap q)]
         | X q             -> [Bench_X (convert_repr qmap q)]
         | Z q             -> [Bench_Z (convert_repr qmap q)]
-        | _               -> [])
+        | _               -> print_endline ("UNSUPPORTED: "); [])
      | _ -> [])
   | If _ -> []
 
@@ -65,6 +65,7 @@ let rec parse_program p qbit_map =
 let parse_gate_list f =
   let p = parse_file f in
   let qbit_list = parse_declarations p in
+  if (List.length qbit_list) == 0 then print_endline "INFO: No qubits!";
   let (qbit_map, _) = List.fold_left
       (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1))
       (QbitMap.empty, 0) qbit_list in
@@ -76,13 +77,6 @@ let parse f =
 
 let qasm_filenames = [
   "deutsch.qasm";
-  "teleport.qasm";
-  "1.qasm";
-  "2.qasm";
-  "3.qasm";
-  "4.qasm";
-  "5.qasm";
-  "30.qasm";
 ]
 
 type counts = {h:int; x:int; rz:int; cnot:int; total:int}

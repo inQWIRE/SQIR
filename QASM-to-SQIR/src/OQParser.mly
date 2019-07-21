@@ -16,6 +16,9 @@
 %token LBrace RBrace
 %token LParen RParen
 %token If
+%token Mult Div
+%token Plus Minus
+%token Pow
 %token DEquals
 %token SemiColon Comma
 %token EOF
@@ -97,4 +100,14 @@ exp:
   | NInt              { Nninteger($1) }
   | Pi                { Pi }
   | ID                { Id($1) }
+  | Minus exp         { UMinus($2) } /* Source of one shift/reduce conflict */
+  | exp binaryop exp  { Binaryop($1, $2, $3) }
   | LParen exp RParen { $2 }
+
+/* Another source of a shift/reduce conflict */
+binaryop:
+  | Plus      { Plus }
+  | Minus     { Minus }
+  | Mult      { Mult }
+  | Div       { Div }
+  | Pow       { Pow }

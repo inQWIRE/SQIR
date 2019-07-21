@@ -3,5 +3,10 @@
 
 (ocamllex OQLexer)
 (menhir
-  (flags --explain)
-  (modules OQParser))
+  (modules OQParser)
+  (flags --explain --dump)
+  (infer true))
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))

@@ -10,12 +10,11 @@ rule token = parse
   | "qreg"    { QReg }
   | "creg"    { CReg }
   | "gate"    { Gate }
-  | "Pi"      { Pi }
-  | "CX"|"cx" { CNOT }
-  | "H"|"h"   { H }
-  | "T"|"t"   { T }
+  | "pi"      { Pi }
+  | "CX"      { CNOT }
+  | "H"       { H }
+  | "T"       { T }
   | "Tdg"     { Tdg }
-  | "tdg"     { Tdg }
   | "U"       { U }
   | "X"       { X }
   | "Y"       { Y }
@@ -29,6 +28,11 @@ rule token = parse
   | "}"       { RBrace }
   | "("       { LParen }
   | ")"       { RParen }
+  | "+"       { Plus }
+  | "-"       { Minus }
+  | "*"       { Mult }
+  | "/"       { Div }
+  | "^"       { Pow }
   | "if"      { If }
   | "=="      { DEquals }
   | ";"       { SemiColon }
