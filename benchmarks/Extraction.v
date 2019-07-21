@@ -1,14 +1,16 @@
 Require Coq.extraction.Extraction.
-Require Import Representations.
-Require Import Optimizations.
+Require Import optimizer.ListRepresentation.
+Require Import optimizer.GateCancellation.
+Require Import optimizer.HadamardReduction.
+Require Import optimizer.NotPropagation.
 (*Require Import Mapping.*)
 
 (* General utilies for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
 
 (* Automatic extraction from nat/int -> OCaml int. We may not want to use these. *)
-Require Coq.extraction.ExtrOcamlNatInt. 
-Require Coq.extraction.ExtrOcamlZInt. 
+Require Coq.extraction.ExtrOcamlNatInt.
+Require Coq.extraction.ExtrOcamlZInt.
 
 (* A few list functions not included in ExtrOcamlBasic. *)
 Extract Constant length => "List.length".
@@ -71,6 +73,5 @@ Extraction Implicit propagate_CNOT [dim].
 Extraction Implicit cancel_gates' [dim].
 Extraction Implicit cancel_gates [dim].
 
-(* Perform extraction to the file 'quipper-to-sqire/extracted_code.ml'. *)
-Extraction "quipper-to-sqire/extracted_code.ml" benchmark_to_list count_H_gates count_X_gates count_rotation_gates count_CNOT_gates cancel_gates_simple cancel_gates.
-
+(* Perform extraction to the file 'extracted_code.ml'. *)
+Extraction "extracted_code.ml" benchmark_to_list count_H_gates count_X_gates count_rotation_gates count_CNOT_gates cancel_gates_simple cancel_gates.

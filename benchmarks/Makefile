@@ -1,6 +1,8 @@
 
-all: 
-	ocamlc -c extracted_code.ml 
+all:
+	coqc -R .. Top Extraction.v
+	rm extracted_code.mli
+	ocamlc -c extracted_code.ml
 	ocamllex qlexer.mll
 	ocamlyacc qparser.mly
 	ocamlc -c ast.ml
@@ -11,5 +13,4 @@ all:
 	ocamlfind ocamlmktop -o top ast.cmo qparser.cmo qlexer.cmo extracted_code.cmo main.cmo
 
 clean:
-	rm *.cmo *.cmi *.mli top
-
+	rm -f *.cmo *.cmi *.mli top *.vo *.glob .*.aux extracted_code.* qlexer.ml qparser.ml
