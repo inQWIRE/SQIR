@@ -4,7 +4,7 @@ type binaryop  =
   | Mult
   | Div
   | Pow
-(* [@@deriving show] *)
+[@@deriving show]
 
 type exp =
   | Real of float
@@ -13,9 +13,9 @@ type exp =
   | Id of string
   | Binaryop of exp * binaryop * exp
   | UMinus of exp
-(* [@@deriving show] *)
+[@@deriving show]
 
-type argument = string * int option (* [@@deriving show] *)
+type argument = string * int option [@@deriving show]
 
 type uop  =
   | CX of argument * argument
@@ -27,7 +27,7 @@ type uop  =
   | Y of argument
   | Z of argument
   | Gate of string * exp list * argument list
-(* [@@deriving show] *)
+[@@deriving show]
 
 type qop  =
   | Uop of uop

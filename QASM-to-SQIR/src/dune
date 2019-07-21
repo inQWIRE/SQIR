@@ -1,5 +1,6 @@
 (library
-  (name main))
+  (name main)
+  (preprocess (pps ppx_deriving.show)))
 
 (ocamllex OQLexer)
 (menhir

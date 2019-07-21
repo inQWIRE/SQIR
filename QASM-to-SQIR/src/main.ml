@@ -34,7 +34,7 @@ let parse_statement s qmap : benchmark_gate_app list =
         | H q             -> [Bench_H (convert_repr qmap q)]
         | X q             -> [Bench_X (convert_repr qmap q)]
         | Z q             -> [Bench_Z (convert_repr qmap q)]
-        | _               -> print_endline ("UNSUPPORTED: "); [])
+        | u               -> print_endline ("NYI UOP: " ^ show_uop u); [])
      | _ -> [])
   | If _ -> []
 
@@ -47,12 +47,12 @@ let parse_decl (s : OQAST.statement) : (string * int) list =
      | _ -> [])
   | _ -> []
 
-let rec parse_declarations p =
+let rec parse_qreg_decls p =
   match p with
   | []      -> []
   | s :: p' ->
     let first = parse_decl s in
-    let rest = parse_declarations p' in
+    let rest = parse_qreg_decls p' in
     List.append first rest
 
 let rec parse_program p qbit_map =
@@ -64,7 +64,7 @@ let rec parse_program p qbit_map =
 
 let parse_gate_list f =
   let p = parse_file f in
-  let qbit_list = parse_declarations p in
+  let qbit_list = parse_qreg_decls p in
   if (List.length qbit_list) == 0 then print_endline "INFO: No qubits!";
   let (qbit_map, _) = List.fold_left
       (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1))

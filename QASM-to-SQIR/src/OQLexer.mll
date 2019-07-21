@@ -11,14 +11,15 @@ rule token = parse
   | "creg"    { CReg }
   | "gate"    { Gate }
   | "pi"      { Pi }
-  | "CX"      { CNOT }
-  | "H"       { H }
-  | "T"       { T }
+  | "CX"|"cx" { CNOT }
+  | "H"|"h"   { H }
+  | "T"       { T } (* including t conflicts with def. of cu3 in std. library *)
   | "Tdg"     { Tdg }
+  | "tdg"     { Tdg }
   | "U"       { U }
-  | "X"       { X }
-  | "Y"       { Y }
-  | "Z"       { Z }
+  | "X"|"x"   { X }
+  | "Y"|"y"   { Y }
+  | "Z"|"z"   { Z }
   | "->"      { Arrow }
   | "measure" { Measure }
   | "reset"   { Reset }
