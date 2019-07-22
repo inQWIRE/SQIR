@@ -11,9 +11,9 @@ rule token = parse
   | "creg"    { CReg }
   | "gate"    { Gate }
   | "pi"      { Pi }
-  | "CX"|"cx" { CNOT }
+  | "CX"|"cx" { CNOT } (* built-in *)
   | "H"|"h"   { H }
-  | "T"       { T } (* including t conflicts with def. of cu3 in std. library *)
+  | "T"|"t"   { T }
   | "Tdg"     { Tdg }
   | "tdg"     { Tdg }
   | "U"       { U }
