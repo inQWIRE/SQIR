@@ -1,0 +1,13 @@
+(library
+  (name main)
+  (preprocess (pps ppx_deriving.show)))
+
+(ocamllex OQLexer)
+(menhir
+  (modules OQParser)
+  (flags --explain --dump)
+  (infer true))
+
+(env
+  (dev
+    (flags (:standard -warn-error -A))))
