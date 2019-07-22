@@ -76,10 +76,7 @@ let parse_gate_list f =
 
 let parse f = parse_gate_list f
 
-let qasm_filenames = [
-  "deutsch.qasm";
-  "qelib1.inc";
-]
+let qasm_filenames = []
 
 type counts = {h:int; x:int; rz:int; cnot:int; total:int}
 
