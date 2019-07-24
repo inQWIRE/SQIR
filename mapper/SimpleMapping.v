@@ -601,6 +601,8 @@ Proof.
         constructor; assumption.
 Qed.
 
+Transparent SWAP.
+
 (* This has roughly the same structure as the soundness proof, but it's
    shorter and relies on fewer assumptions because we don't need to
    worry about well-typedness. *)

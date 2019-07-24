@@ -49,7 +49,7 @@ SQIRE programs optimizations.
 
 Mapping algorithms for SQIRE programs.
 
-- mapper/LNNMapping.v: Verified circuit mapping example for linear nearest neighbor architecture.
+- mapper/SimpleMapping.v: Verified circuit mapping examples for linear nearest neighbor and Tenerife architectures.
 
 ### examples
 
