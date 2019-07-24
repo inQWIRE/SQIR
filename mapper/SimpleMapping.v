@@ -1,6 +1,6 @@
-Require Import Compose.
-Require Import Equivalences.
-Require Import List.
+Require Export Compose.
+Require Export Equivalences.
+Require Export List.
 Open Scope ucom.
 
 Local Close Scope C_scope.
@@ -148,15 +148,401 @@ Inductive respects_constraints {dim} : (nat -> nat -> Prop) -> ucom dim -> Prop 
       f n1 n2 -> (* directed *)
       respects_constraints f (CNOT n1 n2).
 
-(* Correctness of do_cnot_along_path *)
+(* General proofs about CNOT/SWAP *)
 
-Lemma swap_cnot : forall {dim} a b c,
+(* TODO: the proof below should be cleaned up using Robert's tactics. *)
+Lemma f_equal_gen : forall {A B} (f g : A -> B) a b, f = g -> a = b -> f a = g b.
+Proof. intros. subst. reflexivity. Qed.
+
+Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
+  let e k := ( ∣0⟩⟨0∣ ⊗ I (2^k) ⊗ ∣0⟩⟨0∣ .+
+               ∣0⟩⟨1∣ ⊗ I (2^k) ⊗ ∣1⟩⟨0∣ .+
+               ∣1⟩⟨0∣ ⊗ I (2^k) ⊗ ∣0⟩⟨1∣ .+
+               ∣1⟩⟨1∣ ⊗ I (2^k) ⊗ ∣1⟩⟨1∣ ) in
+  if (m <? n) then
+    @pad (1+(n-m-1)+1) m dim (e (n-m-1))
+  else if (n <? m) then
+    @pad (1+(m-n-1)+1) n dim (e (m-n-1))
+  else
+    Zero.
+
+(* Useful lemmas for rewriting expressions with CNOTs
+   TODO: automate this better *)
+Lemma σx_on_right0 : forall (q : Vector 2), (q × ⟨0∣) × σx = q × ⟨1∣.
+Proof. 
+  intros. 
+  rewrite Mmult_assoc. 
+  replace (⟨0∣ × σx) with ⟨1∣ by solve_matrix. 
+  reflexivity.
+Qed.
+
+Lemma σx_on_right1 : forall (q : Vector 2), (q × ⟨1∣) × σx = q × ⟨0∣.
+Proof. 
+  intros. 
+  rewrite Mmult_assoc. 
+  replace (⟨1∣ × σx) with ⟨0∣ by solve_matrix. 
+  reflexivity.
+Qed.
+
+Lemma σx_on_left0 : forall (q : Matrix 1 2), σx × (∣0⟩ × q) = ∣1⟩ × q.
+Proof. 
+  intros. 
+  rewrite <- Mmult_assoc. 
+  replace (σx × ∣0⟩) with ∣1⟩ by solve_matrix. 
+  reflexivity.
+Qed.
+
+Lemma σx_on_left1 : forall (q : Matrix 1 2), σx × (∣1⟩ × q) = ∣0⟩ × q.
+Proof. 
+  intros. 
+  rewrite <- Mmult_assoc. 
+  replace (σx × ∣1⟩) with ∣0⟩ by solve_matrix. 
+  reflexivity.
+Qed.
+
+Lemma cancel00 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
+  WF_Matrix q2 ->
+  (q1 × ⟨0∣) × (∣0⟩ × q2) = q1 × q2.
+Proof. 
+  intros. 
+  rewrite Mmult_assoc. 
+  rewrite <- (Mmult_assoc ⟨0∣).
+  replace (⟨0∣ × ∣0⟩) with (I 1) by solve_matrix. 
+  Msimpl; reflexivity.
+Qed.
+
+Lemma cancel01 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
+  (q1 × ⟨0∣) × (∣1⟩ × q2) = @Zero 2 2.
+Proof. 
+  intros. 
+  rewrite Mmult_assoc. 
+  rewrite <- (Mmult_assoc ⟨0∣).
+  replace (⟨0∣ × ∣1⟩) with (@Zero 1 1) by solve_matrix. 
+  remove_zero_gates; reflexivity.
+Qed.
+
+Lemma cancel10 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
+  (q1 × ⟨1∣) × (∣0⟩ × q2) = @Zero 2 2.
+Proof. 
+  intros. 
+  rewrite Mmult_assoc. 
+  rewrite <- (Mmult_assoc ⟨1∣).
+  replace (⟨1∣ × ∣0⟩) with (@Zero 1 1) by solve_matrix. 
+  remove_zero_gates; reflexivity.
+Qed.
+
+Lemma cancel11 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
+  WF_Matrix q2 ->
+  (q1 × ⟨1∣) × (∣1⟩ × q2) = q1 × q2.
+Proof. 
+  intros. 
+  rewrite Mmult_assoc. 
+  rewrite <- (Mmult_assoc ⟨1∣).
+  replace (⟨1∣ × ∣1⟩) with (I 1) by solve_matrix. 
+  Msimpl; reflexivity.
+Qed.
+
+Hint Rewrite σx_on_right0 σx_on_right1 σx_on_left0 σx_on_left1 : cnot_db.
+Hint Rewrite cancel00 cancel01 cancel10 cancel11 : cnot_db.
+
+Lemma denote_swap : forall dim m n,
+  @uc_eval dim (SWAP m n) = ueval_swap dim m n.
+Proof.
+  intros.
+  simpl; unfold ueval_swap, ueval_cnot, pad.
+  bdestruct (m <? n).
+  - bdestruct (m + (1 + (n - m - 1) + 1) <=? dim); try (remove_zero_gates; trivial). 
+    bdestruct (n <? m); try lia.
+    remember (n - m - 1) as i.
+    replace (2 ^ dim) with (2 ^ m * (2 ^ (1 + i + 1)) * (2 ^ (dim - (1 + i + 1) - m))) by unify_pows_two.
+    repeat rewrite kron_mixed_product.
+    repeat rewrite Mmult_1_l; try auto with wf_db.
+    do 3 (apply f_equal_gen; try reflexivity). 
+    replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+    repeat rewrite Mmult_plus_distr_r.
+    repeat rewrite Mmult_plus_distr_l.
+    repeat rewrite kron_mixed_product.
+    Msimpl. 
+    autorewrite with cnot_db; try auto with wf_db.
+    remove_zero_gates.
+    repeat rewrite Mplus_0_l, Mplus_0_r.
+    rewrite Mplus_comm.
+    rewrite (Mplus_comm _ _ (∣0⟩⟨1∣ ⊗ I (2 ^ i) ⊗ ∣1⟩⟨0∣)).
+    rewrite <- Mplus_assoc.
+    reflexivity.
+  - bdestruct (n <? m); try (remove_zero_gates; trivial).
+    bdestruct (n + (1 + (m - n - 1) + 1) <=? dim); try (remove_zero_gates; trivial).
+    remember (m - n - 1) as i.
+    replace (2 ^ dim) with (2 ^ n * (2 ^ (1 + i + 1)) * (2 ^ (dim - (1 + i + 1) - n))) by unify_pows_two.
+    repeat rewrite kron_mixed_product.
+    repeat rewrite Mmult_1_l; try auto with wf_db.
+    do 3 (apply f_equal_gen; try reflexivity). 
+    replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
+    repeat rewrite Mmult_plus_distr_r.
+    repeat rewrite Mmult_plus_distr_l.
+    repeat rewrite kron_mixed_product.
+    Msimpl. 
+    autorewrite with cnot_db; try auto with wf_db.
+    remove_zero_gates.
+    repeat rewrite Mplus_0_l, Mplus_0_r.
+    rewrite <- Mplus_assoc.
+    rewrite Mplus_comm.
+    rewrite (Mplus_assoc _ _ (∣0⟩⟨1∣ ⊗ I (2 ^ i) ⊗ ∣1⟩⟨0∣)).
+    rewrite (Mplus_comm _ _ (∣1⟩⟨1∣ ⊗ I (2 ^ i) ⊗ ∣1⟩⟨1∣)).
+    repeat rewrite <- Mplus_assoc.
+    reflexivity.
+Qed.
+
+Opaque SWAP.
+
+(* Every case in the swap_cnot_control proof below is basically the same 
+   - just with a, b, c switched. This 'tactic' just saves me from
+   copying & pasting the lines below 6 times. 
+
+   Warning: this is slow, so don't be surprised if it takes a while. *)
+Ltac prove_swap_cnot_case dim a b c :=
+  remember (c - a - 1) as i;
+  remember (b - a - 1) as j;
+  remember (c - b - 1) as k;
+  replace (dim - (1 + k + 1) - b) with (dim - (1 + i + 1) - a) by lia;
+  remember (dim - (1 + i + 1) - a) as l;
+  replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two;
+  replace (2 ^ (1 + j + 1)) with (2 * 2 ^ j * 2) by unify_pows_two;
+  replace (2 ^ (1 + k + 1)) with (2 * 2 ^ k * 2) by unify_pows_two;
+  replace (2 ^ b) with (2 ^ a * 2 * 2 ^ j) by unify_pows_two;
+  replace (2 ^ (dim - (1 + j + 1) - a)) with (2 ^ k * 2 * 2 ^ l) by unify_pows_two;
+  replace (2 ^ i) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two;
+  replace (2 ^ dim) with (2 ^ a * 2 * 2 ^ j * 2 * 2 ^ k * 2 * 2 ^ l) by unify_pows_two;
+  clear;
+  repeat rewrite <- id_kron;
+  repeat rewrite <- kron_assoc;
+  rewrite (kron_assoc (I (2 ^ a)) (I 2));
+  rewrite (kron_assoc (I (2 ^ a)) _ (I (2 ^ k)));
+  restore_dims_strong;
+  rewrite (kron_assoc (I (2 ^ a)) (I 2 ⊗ I (2 ^ j)));
+  rewrite (kron_assoc (I (2 ^ a)) _ (I 2));
+  repeat rewrite kron_plus_distr_r;
+  restore_dims_strong;
+  replace (2 * 2 ^ j * (2 * 2 ^ k * 2)) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by rewrite_assoc;
+  replace (2 * (2 ^ j * 2 * 2 ^ k) * 2) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by rewrite_assoc;
+  repeat rewrite kron_mixed_product;
+  repeat rewrite Mmult_1_l; try auto with wf_db;
+  do 3 (apply f_equal_gen; try reflexivity);
+  repeat rewrite kron_plus_distr_l;
+  repeat rewrite <- kron_assoc;
+  repeat rewrite mult_assoc;
+  (* inefficient, brute force simplification *)
+  repeat rewrite Mmult_plus_distr_r;
+  repeat rewrite Mmult_plus_distr_l;
+  repeat rewrite kron_mixed_product;
+  Msimpl;
+  autorewrite with cnot_db; try auto with wf_db;
+  remove_zero_gates;
+  repeat rewrite Mplus_0_l, Mplus_0_r;
+  repeat rewrite Mplus_0_r.
+
+Lemma swap_cnot_control : forall {dim} a b c,
   (* well-typedness constraints *)
   a < dim -> b < dim -> c < dim ->
   a <> b -> b <> c -> a <> c ->
   (* main equivalence *)
   @uc_equiv dim (SWAP a b; CNOT b c; SWAP a b) (CNOT a c).
-Proof. Admitted. (* TODO *)
+Proof. 
+  intros.
+  unfold uc_equiv; simpl.
+  rewrite denote_swap.
+  unfold ueval_cnot, ueval_swap, pad.
+  bdestruct (a <? b); bdestruct (b <? a); try lia.
+  - bdestruct (a + (1 + (b - a - 1) + 1) <=? dim); try lia.
+    clear H2 H6 H7.
+    bdestruct (b <? c); bdestruct (c <? b); try lia.
+    + (* a < b < c *)
+      bdestruct (a <? c); try lia.
+      bdestruct (b + (1 + (c - b - 1) + 1) <=? dim); try lia.
+      bdestruct (a + (1 + (c - a - 1) + 1) <=? dim); try lia.
+      clear H3 H4 H6 H7 H8 H9.
+      prove_swap_cnot_case dim a b c.
+      rewrite (Mplus_assoc _ _ _ (∣1⟩⟨1∣ ⊗ I (2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ σx)).
+      repeat rewrite <- kron_plus_distr_r.
+      repeat rewrite <- kron_plus_distr_l.
+      replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+      rewrite Mplus_comm.
+      reflexivity.
+    + bdestruct (c + (1 + (b - c - 1) + 1) <=? dim); try lia.
+      clear H3 H2 H7.
+      bdestruct (a <? c); bdestruct (c <? a); try lia.
+      * (* a < c < b *)
+        bdestruct (a + (1 + (c - a - 1) + 1) <=? dim); try lia.
+        clear H4 H5 H3 H7.
+        prove_swap_cnot_case dim a c b.
+        rewrite (Mplus_assoc _ _ _ (∣1⟩⟨1∣ ⊗ I (2 ^ j) ⊗ σx ⊗ I (2 ^ k) ⊗ ∣0⟩⟨0∣)).
+        repeat rewrite <- kron_plus_distr_r.
+        repeat rewrite <- kron_plus_distr_l.
+        replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+        rewrite Mplus_comm.
+        repeat rewrite <- kron_plus_distr_r.
+        reflexivity.
+      * (* c < a < b *)
+        bdestruct (c + (1 + (a - c - 1) + 1) <=? dim); try lia.
+        clear H4 H6 H2 H7.
+        prove_swap_cnot_case dim c a b.
+        rewrite (Mplus_assoc _ _ _ (σx ⊗ I (2 ^ j) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ k) ⊗ ∣0⟩⟨0∣)).
+        repeat rewrite <- kron_plus_distr_r.
+        repeat rewrite <- kron_plus_distr_l.
+        replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+        rewrite Mplus_comm.
+        repeat rewrite <- kron_plus_distr_r.
+        reflexivity.
+  - bdestruct (b + (1 + (a - b - 1) + 1) <=? dim); try lia.
+    clear H2 H5 H7.
+    bdestruct (a <? c); bdestruct (c <? a); try lia.
+    + (* b < a < c *)
+      bdestruct (b <? c); try lia.
+      bdestruct (a + (1 + (c - a - 1) + 1) <=? dim); try lia.
+      bdestruct (b + (1 + (c - b - 1) + 1) <=? dim); try lia.
+      clear H3 H4 H5 H7 H8 H9.
+      prove_swap_cnot_case dim b a c.
+      rewrite (Mplus_assoc _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ I 2)).
+      rewrite (Mplus_comm _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ k) ⊗ σx)).
+      rewrite <- Mplus_assoc.
+      rewrite (Mplus_assoc _ _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ k) ⊗ σx)).
+      repeat rewrite <- kron_plus_distr_r.
+      replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+      rewrite Mplus_comm.
+      rewrite id_kron.
+      reflexivity.
+    + bdestruct (c + (1 + (a - c - 1) + 1) <=? dim); try lia.
+      clear H4 H2 H7.
+      bdestruct (b <? c); bdestruct (c <? b); try lia.
+      * (* b < c < a *)
+        bdestruct (b + (1 + (c - b - 1) + 1) <=? dim); try lia.
+        clear H4 H6 H3 H7.
+        prove_swap_cnot_case dim b c a.
+        rewrite (Mplus_assoc _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ I 2 ⊗ I (2 ^ k) ⊗ ∣0⟩⟨0∣)).
+        rewrite (Mplus_comm _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ σx ⊗ I (2 ^ k) ⊗ ∣1⟩⟨1∣)).
+        rewrite <- Mplus_assoc.
+        rewrite (Mplus_assoc _ _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ σx ⊗ I (2 ^ k) ⊗ ∣1⟩⟨1∣)).
+        repeat rewrite <- kron_plus_distr_r.
+        replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+        rewrite Mplus_comm.
+        repeat rewrite id_kron.
+        reflexivity.
+      * (* c < b < a *)
+        bdestruct (c + (1 + (b - c - 1) + 1) <=? dim); try lia.
+        clear H3 H5 H2 H7.
+        prove_swap_cnot_case dim c b a.
+        rewrite (Mplus_assoc _ _ (I (2 * 2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ ∣0⟩⟨0∣)).
+        rewrite (Mplus_comm _ _ (σx ⊗ I (2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ ∣1⟩⟨1∣)).
+        rewrite <- Mplus_assoc.
+        rewrite (Mplus_assoc _ _ _ (σx ⊗ I (2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ ∣1⟩⟨1∣)).
+        repeat rewrite <- kron_plus_distr_r.
+        repeat rewrite <- kron_plus_distr_l.
+        replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+        rewrite Mplus_comm.
+        repeat rewrite id_kron.
+        reflexivity.
+Qed.
+
+Lemma H_swaps_CNOT : forall {dim} m n,
+  @uc_equiv dim (H m; H n; CNOT n m; H m; H n) (CNOT m n).
+Proof.
+  intros.
+  unfold uc_equiv; simpl.
+  unfold ueval1, ueval_cnot, pad.
+  bdestruct (n <? m).
+  - bdestruct (m <? n); try lia.
+    remember (m - n - 1) as i.
+    bdestruct (n + (1 + i + 1) <=? dim);
+    bdestruct (m + 1 <=? dim); 
+    bdestruct (n + 1 <=? dim); 
+    try lia;
+    try (remove_zero_gates; trivial).
+    replace (2 ^ (dim - 1 - n)) with (2 ^ i * 2 * 2 ^ (dim - (1 + i + 1) - n)) by unify_pows_two.
+    replace (2 ^ m) with (2 ^ n * 2 * 2 ^ i) by unify_pows_two.
+    replace (2 ^ (dim - 1 - m)) with (2 ^ (dim - (1 + i + 1) - n)) by unify_pows_two.
+    replace (2 ^ dim) with (2 ^ n * 2 * 2 ^ i * 2 * 2 ^ (dim - (1 + i + 1) - n)) by unify_pows_two.
+    clear.
+    repeat rewrite <- id_kron.
+    rewrite (kron_assoc (I (2 ^ n)) hadamard).
+    rewrite <- 2 (kron_assoc hadamard).
+    restore_dims_strong.
+    rewrite <- (kron_assoc (I (2 ^ n))).
+    rewrite (kron_assoc (I (2 ^ n)) (I 2)).
+    restore_dims_strong.
+    rewrite (kron_assoc (I (2 ^ n)) _ hadamard).
+    restore_dims_strong.
+    repeat rewrite kron_mixed_product.
+    repeat rewrite Mmult_1_l; try auto with wf_db.
+    repeat rewrite Mmult_plus_distr_r, Mmult_plus_distr_l.
+    rewrite Mmult_plus_distr_l.
+    repeat rewrite kron_mixed_product.
+    repeat rewrite Mmult_1_l; try auto with wf_db.
+    repeat rewrite Mmult_1_r; try auto with wf_db.
+    do 3 (apply f_equal_gen; try reflexivity).
+    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
+    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
+    rewrite 2 kron_plus_distr_l.
+    rewrite Mscale_kron_dist_r.
+    rewrite <- 2 Mscale_kron_dist_l.
+    rewrite <- Mplus_assoc.
+    rewrite Mplus_comm.
+    rewrite (Mplus_comm _ _ (hadamard × (∣1⟩⟨1∣ × hadamard) ⊗ I (2 ^ i) ⊗ ∣0⟩⟨0∣)).
+    rewrite Mplus_assoc.
+    rewrite <- (Mplus_assoc _ _ (hadamard × (∣0⟩⟨0∣ × hadamard) ⊗ I (2 ^ i) ⊗ ∣1⟩⟨1∣)).
+    rewrite <- 4 kron_plus_distr_r.
+    apply f_equal_gen. 
+    do 5 (apply f_equal_gen; try reflexivity).
+    solve_matrix.
+    do 4 (apply f_equal_gen; try reflexivity).
+    solve_matrix.
+  - bdestruct (m <? n); try (remove_zero_gates; trivial).
+    remember (n - m - 1) as i.
+    bdestruct (m + (1 + i + 1) <=? dim);
+    bdestruct (n + 1 <=? dim); 
+    bdestruct (m + 1 <=? dim); 
+    try lia;
+    try (remove_zero_gates; trivial).
+    replace (2 ^ (dim - 1 - m)) with (2 ^ i * 2 * 2 ^ (dim - (1 + i + 1) - m)) by unify_pows_two.
+    replace (2 ^ n) with (2 ^ m * 2 * 2 ^ i) by unify_pows_two.
+    replace (2 ^ (dim - 1 - n)) with (2 ^ (dim - (1 + i + 1) - m)) by unify_pows_two.
+    replace (2 ^ dim) with (2 ^ m * 2 * 2 ^ i * 2 * 2 ^ (dim - (1 + i + 1) - m)) by unify_pows_two.
+    clear.
+    repeat rewrite <- id_kron.
+    rewrite (kron_assoc (I (2 ^ m)) hadamard).
+    rewrite <- 2 (kron_assoc hadamard).
+    restore_dims_strong.
+    rewrite <- (kron_assoc (I (2 ^ m))).
+    rewrite (kron_assoc (I (2 ^ m)) (I 2)).
+    restore_dims_strong.
+    rewrite (kron_assoc (I (2 ^ m)) _ hadamard).
+    restore_dims_strong.
+    repeat rewrite kron_mixed_product.
+    repeat rewrite Mmult_1_l; try auto with wf_db.
+    repeat rewrite Mmult_plus_distr_r, Mmult_plus_distr_l.
+    rewrite Mmult_plus_distr_l.
+    repeat rewrite kron_mixed_product.
+    repeat rewrite Mmult_1_l; try auto with wf_db.
+    repeat rewrite Mmult_1_r; try auto with wf_db.
+    do 3 (apply f_equal_gen; try reflexivity).
+    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
+    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
+    rewrite 4 kron_plus_distr_r.
+    rewrite 2 Mscale_kron_dist_l.
+    rewrite <- Mscale_kron_dist_r.
+    rewrite <- Mplus_assoc.
+    rewrite Mplus_comm.
+    rewrite (Mplus_comm _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ i) ⊗ (hadamard × (∣1⟩⟨1∣ × hadamard)))).
+    rewrite Mplus_assoc.
+    rewrite <- (Mplus_assoc _ _ (∣1⟩⟨1∣ ⊗ I (2 ^ i) ⊗ (hadamard × (∣0⟩⟨0∣ × hadamard)))).
+    rewrite <- 2 kron_plus_distr_l.
+    apply f_equal_gen. 
+    do 2 (apply f_equal_gen; try reflexivity).
+    solve_matrix.
+    do 1 (apply f_equal_gen; try reflexivity).
+    solve_matrix.
+Qed.
+
+(* Correctness of do_cnot_along_path *)
 
 Lemma valid_path_subpath : forall n1 n2 a b is_in_graph p,
   valid_path n1 n2 is_in_graph (n1 :: a :: b :: p) ->
@@ -210,7 +596,7 @@ Proof.
         { inversion H3; subst.
           inversion H12; subst; easy. }
         rewrite IHp with (n1:=n).
-        apply swap_cnot; assumption.    
+        apply swap_cnot_control; assumption.    
         apply (valid_path_subpath _ _ _ _ _ _ Hpath).
         constructor; assumption.
 Qed.
@@ -243,10 +629,6 @@ Proof.
 Qed.
 
 (* Correctness of fix_cnots *)
-
-Lemma H_swaps_CNOT : forall {dim} m n,
-  @uc_equiv dim (H m; H n; CNOT n m; H m; H n) (CNOT m n).
-Proof. Admitted. (* TODO *)
 
 Lemma fix_cnots_sound : forall dim (c : ucom dim) is_in_graph_b,
   fix_cnots c is_in_graph_b ≡ c.
