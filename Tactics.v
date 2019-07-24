@@ -74,14 +74,6 @@ Ltac distribute_plus :=
   | |- context [(?a .+ ?b) ⊗ ?c] => rewrite (kron_plus_distr_r _ _ _ _ a b c)
   end.
 
-Ltac contradict_eqb_false :=
-  match goal with
-  | H : _ =? _ = false |- _ => apply Nat.eqb_neq in H; try lia
-  | H : _ <=? _ = false |- _ => apply Nat.leb_nle in H; try lia
-  | H : _ <? _ = false |- _ => apply Nat.ltb_nlt in H; try lia
-  end.
-
-
 (** Very lightweight matrix automation **)
 
 (* For handling non well-typed cases. (Shouldn't Msimpl do this?) *)
@@ -124,33 +116,47 @@ Lemma repad_lemma2 : forall (a b d : nat),
   a <= b -> d = (b - a) -> b = a + d.
 Proof. intros. subst. omega. Qed.
 
+Ltac contradict_eqb_false :=
+  match goal with
+  | H : _ =? _ = false |- _ => apply Nat.eqb_neq in H; try lia
+  | H : _ <=? _ = false |- _ => apply Nat.leb_nle in H; try lia
+  | H : _ <? _ = false |- _ => apply Nat.ltb_nlt in H; try lia
+  end.
+
 Ltac repad := 
   repeat match goal with
   (* cnot normalization *)
   | |- context[?a <? ?b] =>
     let H := fresh "H" in 
     destruct (a <? b) eqn:H;
-    try apply Nat.ltb_lt in H;
-    try (remove_zero_gates; reflexivity)
-  | H : ?a < ?b |- context[?b - ?a - 1] =>
+    [apply Nat.ltb_lt in H | apply Nat.ltb_nlt in H;
+                             try (remove_zero_gates; reflexivity)]
+  | H : ?a < ?b |- context[?b - ?a - 1] => 
     let d := fresh "d" in
     let R := fresh "R" in
-    remember (b - a - 1) as d eqn:R;
-    rewrite (repad_lemma1_l a b d H R) in * by assumption;
-    try clear R H b
+    remember (b - a - 1) as d eqn:R ;
+    apply (repad_lemma1_l a b d) in H; trivial;
+    clear R;
+    try rewrite H in *;
+    try clear b H
   (* pad normalization *)
   | |- context[?a <=? ?b] =>
     let H := fresh "H" in 
     destruct (a <=? b) eqn:H;
-    try apply Nat.leb_le in H;
-    try (remove_zero_gates; reflexivity)
-  | H : ?a <= ?b |- context[?b - ?a] =>
+    [apply Nat.leb_le in H | apply Nat.leb_nle in H;
+                             try (remove_zero_gates; reflexivity)]
+  | H:?a <= ?b  |- context [ ?b - ?a ] =>
     let d := fresh "d" in
     let R := fresh "R" in
-    remember (b - a) as d eqn:R;
-    rewrite (repad_lemma2 a b d H R) in *;
-    try clear R H b
-  end.
+    remember (b - a) as d eqn:R ;
+    apply (repad_lemma2 a b d) in H; trivial;
+    clear R;
+    try rewrite H in *;
+    try clear b H
+  end;
+  try lia.
+
+
 
 (** Make into a Plus (Kron (Mult (... ) ...) ...) Grid. **)
 (* Unfinished and HIGHLY EXPERIMENTAL *)

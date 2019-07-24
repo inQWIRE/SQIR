@@ -4,7 +4,22 @@ Require Import Tactics.
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
-  
+
+
+(** More repad, gridify work *)
+
+Lemma le_ex_diff_l : forall a b, a <= b -> exists d, b = d + a. 
+Proof. intros. exists (b - a). lia. Qed.
+
+Lemma le_ex_diff_r : forall a b, a <= b -> exists d, b = a + d. 
+Proof. intros. exists (b - a). lia. Qed.  
+
+Lemma lt_ex_diff_l : forall a b, a < b -> exists d, b = d + 1 + a. 
+Proof. intros. exists (b - a - 1). lia. Qed.
+
+Lemma lt_ex_diff_r : forall a b, a < b -> exists d, b = a + 1 + d. 
+Proof. intros. exists (b - a - 1). lia. Qed.
+
 (** Example equivalences of unitary circuits. **)
 
 Lemma uskip_id_l : forall {dim} (c : ucom dim),
@@ -33,49 +48,7 @@ Proof.
   unfold ueval1. 
   unfold pad.
   repad.
-
-  repeat rewrite kron_assoc; repeat rewrite <- Nat.mul_assoc;
-   match goal with
-   | |- context [ I ?a ⊗ _ × (I ?a ⊗ _) ] => rewrite kron_mixed_product
-   | |- context [ I (2 ^ ?a) ⊗ _ × (I (2 ^ ?b) ⊗ _) ] =>
-         let R := fresh "R" in
-         let d := fresh "d" in
-         let E := fresh "E" in
-         destruct (lt_eq_lt_dec a b) as [[R| R]| R];
-          [  | rewrite R in *; try rewrite kron_mixed_product; clear R |  ]
-   end;
-   try match goal with
-   | R:?a < ?b
-     |- _ =>
-         let d := fresh "d" in
-         let E := fresh "E" in
-         remember (b - a - 1) as d eqn:E ;
-          rewrite (repad_lemma1_l a b d R E) in * by assumption; clear E R b;
-          repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron;
-          repeat rewrite kron_assoc
-   end; repeat rewrite <- kron_assoc; repeat rewrite Nat.mul_assoc;
-   try match goal with
-   | |- context [ _ ⊗ I ?a × (_ ⊗ I ?a) ] => rewrite kron_mixed_product
-   | |- context [ _ ⊗ I (2 ^ ?a) × (_ ⊗ I (2 ^ ?b)) ] =>
-         let R := fresh "R" in
-         let d := fresh "d" in
-         let E := fresh "E" in
-         destruct (lt_eq_lt_dec a b) as [[R| R]| R];
-          [  | rewrite R in *; try rewrite kron_mixed_product; clear R |  ]
-   end;
-   try match goal with
-   | R:?a < ?b
-     |- _ =>
-         let d := fresh "d" in
-         let E := fresh "E" in
-         remember (b - a - 1) as d eqn:E ;
-          rewrite (repad_lemma1_r a b d R E) in * by assumption; clear E R b;
-          repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron;
-          repeat rewrite <- kron_assoc
-   end; try lia.
-
-  
-  gridify; try lia.
+  gridify.
   - replace d1 with d2 in * by lia.
     repeat rewrite mult_assoc.
     Msimpl.
@@ -98,6 +71,70 @@ Proof.
   simpl.
   unfold ueval_cnot.
   unfold ueval1, pad.
+  
+Ltac bdestruct_all :=
+  repeat match goal with
+  | |- context[?a <? ?b] => bdestruct (a <? b)
+  | |- context[?a <=? ?b] => bdestruct (a <=? b)                                       
+  | |- context[?a =? ?b] => bdestruct (a =? b)
+  end; try (exfalso; lia).
+
+bdestruct_all; remove_zero_gates; try reflexivity.
+
+(* Remove _ < _ from hyps, remove _ - _  from goal *)
+Ltac remember_subs :=
+  repeat match goal with
+  | H : ?a < ?b |- context[?b - ?a - 1] => 
+    let d := fresh "d" in
+    let R := fresh "R" in
+    remember (b - a - 1) as d eqn:R ;
+    apply (repad_lemma1_l a b d) in H; trivial;
+    clear R;
+    try rewrite H in *;
+    try clear b H
+  | H:?a <= ?b  |- context [ ?b - ?a ] =>
+    let d := fresh "d" in
+    let R := fresh "R" in
+    remember (b - a) as d eqn:R ;
+    apply (repad_lemma2 a b d) in H; trivial;
+    clear R;
+    try rewrite H in *;
+    try clear b H
+  end.
+
+remember_subs.
+
+(* gets the exponents of the dimensions of the given matrix expression *)
+(* assumes all matrices are square *)
+Ltac get_dimensions M :=
+  match M with
+  | ?A ⊗ ?B  => let a := get_dimensions A in
+               let b := get_dimensions B in
+               constr:(a + b)
+  | ?A .+ ?B => get_dimensions A
+  | _        => match type of M with
+               | Matrix 2 2 => constr:(1)
+               | Matrix (2^?a) (2^?a) => constr:(a)
+               | Matrix ?a ?b => idtac "bad dims";
+                                idtac M;
+                                constr:(a)
+               end
+  end.
+
+match goal with
+| |- context[?A × ?B] => let a := get_dimensions A in
+                       let b := get_dimensions B in
+                       assert(a = b) by lia
+end.
+
+
+
+
+
+
+
+  
+  
   repad; gridify.
   - assert (d = d2 + 1 + d3) by lia. subst; clear.
     simpl; restore_dims_fast. 
@@ -224,7 +261,7 @@ Ltac CNOT_CNOT_comm_simpl_case1 dim n1 n1' n2 n2' :=
   repeat rewrite <- kron_assoc;
   replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two;
   replace (2 ^ (1 + i' + 1)) with (2 * 2 ^ i' * 2) by unify_pows_two;
-  restore_dims_strong;
+  restore_dims_fast;
   repeat rewrite kron_mixed_product;   
   Msimpl.
 
@@ -270,7 +307,7 @@ Ltac CNOT_CNOT_comm_simpl_case2 dim n1 n1' n2 n2' :=
   rewrite Mmult_1_r; try auto with wf_db;
   rewrite 2 kron_plus_distr_r;
   rewrite kron_plus_distr_l;
-  restore_dims_strong;
+  restore_dims_fast;
   rewrite 2 Mmult_plus_distr_r;
   repeat rewrite <- kron_assoc;
   repeat rewrite mult_assoc;  
@@ -312,15 +349,32 @@ Ltac CNOT_CNOT_comm_simpl_case3 dim n1 n1' n2 n2' :=
   repeat rewrite kron_mixed_product;
   replace (2 ^ (1 + i' + 1)) with (2 * 2 ^ i' * 2) by unify_pows_two;
   Msimpl.
-
+  
 (* Warning: This proof takes forever to go through because of the calls to 
-   unify_pows_two and restore_dims_strong. *)
+   unify_pows_two and restore_dims_fast. *)
 Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
   n1' <> n1 ->
   n1' <> n2 ->
   n2' <> n1 ->
   n2' <> n2 ->
   @uc_equiv dim (CNOT n1 n2 ; CNOT n1' n2') (CNOT n1' n2' ; CNOT n1 n2). 
+Proof.
+  intros.
+  unfold uc_equiv.
+  simpl; unfold ueval_cnot, pad.
+  repad; gridify.
+
+  
+  
+
+  - 
+    Msimpl.
+  
+
+
+
+
+
 Proof.
   intros dim n1 n2 n1' n2' NE1 NE2 NE3 NE4.
   unfold uc_equiv.
@@ -524,7 +578,7 @@ Proof.
   simpl; unfold ueval1, pad. 
   inversion WT; subst. 
   bdestruct (q + 1 <=? dim); try lia.
-  restore_dims_strong; Msimpl.
+  restore_dims_fast; Msimpl.
   replace (σx × σx) with (I 2) by solve_matrix.
   repeat rewrite id_kron.
   apply f_equal.
@@ -550,9 +604,9 @@ Proof.
     rewrite (kron_assoc (I (2 ^ c)) _ (I (2 ^ i))).
     replace dim with (c + (1 + i + 1) + j) by lia.
     clear.
-    restore_dims_strong.
+    restore_dims_fast.
     rewrite (kron_assoc (I (2 ^ c)) _ σx).
-    restore_dims_strong.
+    restore_dims_fast.
     repeat rewrite kron_mixed_product; remove_id_gates.
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
@@ -570,9 +624,9 @@ Proof.
     rewrite <- (kron_assoc σx (I (2 ^ i)) (I 2)).
     replace dim with (t + (1 + i + 1) + j) by lia.
     clear.
-    restore_dims_strong.
+    restore_dims_fast.
     rewrite <- (kron_assoc (I (2 ^ t)) _ (I (2 ^ j))).
-    restore_dims_strong.
+    restore_dims_fast.
     repeat rewrite kron_mixed_product; remove_id_gates.
     rewrite Mmult_plus_distr_l.
     rewrite Mmult_plus_distr_r.
@@ -588,7 +642,7 @@ Proof.
   simpl; unfold ueval1, pad. 
   inversion WT; subst. 
   bdestruct (q + 1 <=? dim); try lia.
-  restore_dims_strong; Msimpl.
+  restore_dims_fast; Msimpl.
   replace (hadamard × hadamard) with (I 2) by solve_matrix.
   repeat rewrite id_kron.
   apply f_equal.
@@ -606,7 +660,7 @@ Proof.
   unfold uc_equiv.
   simpl; unfold ueval1, pad. 
   bdestruct (q + 1 <=? dim); remove_zero_gates; trivial.
-  restore_dims_strong; Msimpl.
+  restore_dims_fast; Msimpl.
   rewrite phase_mul.
   rewrite Rplus_comm. 
   reflexivity.

@@ -45,14 +45,14 @@ Proof.
     inversion H; subst.
     unfold ueval1.
     unfold pad.
-    repad; try contradict_eqb_false.
+    repad.
     restore_dims_fast.
     repeat rewrite kron_assoc.
     rewrite id_kron.
     unify_matrices_light.
   - simpl. inversion H; subst.
     unfold ueval_cnot, pad.
-    repad; try contradict_eqb_false.
+    repad.
     + restore_dims_fast.
       repeat rewrite kron_assoc.
       repeat rewrite id_kron.
@@ -85,7 +85,7 @@ Proof.
 Qed.
 
 Lemma pad_dims_l : forall {dim} (c : ucom dim) (k : nat),
-  I (2^k) ⊗ (uc_eval c) = uc_eval (cast (map_qubits (fun q => q + k) c) (k + dim)).  
+  I (2^k) ⊗ (uc_eval c) = uc_eval (cast (map_qubits (fun q => k + q) c) (k + dim)).  
 Proof.
   intros.
   induction c; simpl.
@@ -94,39 +94,28 @@ Proof.
     restore_dims_fast; Msimpl. reflexivity.
   - unfold ueval1.
     unfold pad.
-    repad; try contradict_eqb_false.
-    replace (k + (n + 1 + d) - (n + k + 1)) with d by lia.
-    rewrite (plus_comm n k).
+    repad.
     repeat rewrite Nat.pow_add_r.
     rewrite <- id_kron.
     repeat rewrite kron_assoc.
     repeat rewrite mult_assoc.
+    replace d with d0 by lia.
     reflexivity.
   - unfold ueval_cnot, pad.
-    bdestruct (n <? n0); bdestruct (n + k <? n0 + k); try lia; clear H0.
-    + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); 
-      bdestruct (n + k + (1 + (n0 + k - (n + k) - 1) + 1) <=? k + dim);
-      try lia;
-      try (remove_zero_gates; trivial).
-      clear H1.
-      restore_dims_strong.
-      repeat rewrite <- (kron_assoc (I (2^k))). 
-      rewrite id_kron; unify_pows_two.
-      replace (n0 + k - (n + k)) with (n0 - n) by lia.
-      replace (k + dim - (1 + (n0 - n - 1) + 1) - (n + k)) with (dim - (1 + (n0 - n - 1) + 1) - n) by lia.
-      replace (k + n) with (n + k) by lia.
-      unify_matrices_light.
-    + bdestruct (n0 <? n); bdestruct (n0 + k <? n + k); try lia;
-      try (remove_zero_gates; trivial).
-      clear H H1.
-      bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim); 
-      bdestruct (n0 + k + (1 + (n + k - (n0 + k) - 1) + 1) <=? k + dim);
-      try lia;
-      try (remove_zero_gates; trivial).
-      clear H1.
+    repad.
+    + replace d with d0 in * by lia.
+      replace d1 with d2 in * by lia. clear.
+      repeat rewrite Nat.pow_add_r.
+      rewrite <- id_kron. 
       restore_dims_fast.
-      repeat rewrite <- (kron_assoc (I (2^k))). 
-      rewrite id_kron; unify_pows_two.
+      repeat rewrite kron_assoc.
+      unify_matrices_light.
+    + replace d with d0 in * by lia.
+      replace d1 with d2 in * by lia. clear.
+      repeat rewrite Nat.pow_add_r.
+      rewrite <- id_kron. 
+      restore_dims_fast.
+      repeat rewrite kron_assoc.
       unify_matrices_light.
 Qed.
 
@@ -136,7 +125,7 @@ Qed.
 (* Note that we have no way to enforce that dim1 and dim2 are actually the 
    dimensions of the global registers of c1 and c2. *)
 Definition inPar {dim1 dim2} (c1 : ucom dim1) (c2 : ucom dim2) :=
-  (cast c1 (dim1 + dim2)); (cast (map_qubits (fun q => q + dim1) c2) (dim1 + dim2)).
+  (cast c1 (dim1 + dim2)); (cast (map_qubits (fun q => dim1 + q) c2) (dim1 + dim2)).
 
 Lemma inPar_WT : forall {dim1 dim2} (c1 : ucom dim1) (c2 : ucom dim2),
   uc_well_typed c1 -> uc_well_typed c2 -> uc_well_typed (inPar c1 c2).
