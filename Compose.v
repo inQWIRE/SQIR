@@ -29,15 +29,7 @@ Fixpoint cast {dim} (c : ucom dim) dim' : ucom dim' :=
   | c1; c2 => cast c1 dim' ; cast c2 dim'
   | uapp1 u n => uapp1 u n
   | uapp2 u m n => uapp2 u m n
-  end.
-
-Ltac contradict_eqb_false :=
-  match goal with
-  | H : _ =? _ = false |- _ => apply Nat.eqb_neq in H; try lia
-  | H : _ <=? _ = false |- _ => apply Nat.leb_nle in H; try lia
-  | H : _ <? _ = false |- _ => apply Nat.ltb_nlt in H; try lia
-  end.
-                                                     
+  end.                                                     
                                                      
 Lemma pad_dims_r : forall {dim} (c : ucom dim) (k : nat),
   uc_well_typed c ->

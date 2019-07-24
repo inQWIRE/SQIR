@@ -58,15 +58,23 @@ Proof.
   unfold ueval1, pad.
 
   repad; gridify; try lia.
-  - assert (d2 <= d) by lia. clear H1.
+  - assert (d2 <= d) by lia. clear H0.
     replace d with (d2 + 1 + d3) in * by lia. clear.
+    simpl; restore_dims_fast. 
     repeat rewrite Nat.pow_add_r;
     repeat rewrite <- id_kron;
     repeat rewrite kron_assoc;
     repeat rewrite <- mult_assoc.
-    restore_dims.
-    Search kron Mplus.
-
+    repeat (restore_dims_fast; distribute_plus). simpl.
+    restore_dims_fast.
+    repeat rewrite kron_assoc.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.
+    Msimpl.
+    reflexivity.
+  - 
+    assert (d2 <= d) by lia. clear H0.
+    replace d with (d2 + 1 + d3) in * by lia. clear.
     
     
     rewrite kron_plus_distr_l.
