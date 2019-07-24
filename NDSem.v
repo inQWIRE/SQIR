@@ -1,4 +1,5 @@
 Require Import QWIRE.Quantum.
+Require Import Tactics.
 Require Import UnitarySem.
 Require Import Setoid.
 

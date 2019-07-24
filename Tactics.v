@@ -1,4 +1,5 @@
 Require Import UnitarySem.
+Require Import Omega.
 
 (* A general tactics file. Many of these tactics will eventually be
    moved to more appropriate places in the QWIRE or SQIRE developments. *)
@@ -113,15 +114,15 @@ Local Close Scope C_scope.
 
 Lemma repad_lemma1_l : forall (a b d : nat),
   a < b -> d = (b - a - 1) -> b = a + 1 + d.
-Proof. intros. subst. lia. Qed.
+Proof. intros. subst. omega. Qed. (* surprising lia choke point *)
 
 Lemma repad_lemma1_r : forall (a b d : nat),
   a < b -> d = (b - a - 1) -> b = d + 1 + a.
-Proof. intros. subst. lia. Qed.
+Proof. intros. subst. omega. Qed.
 
 Lemma repad_lemma2 : forall (a b d : nat),
   a <= b -> d = (b - a) -> b = a + d.
-Proof. intros. subst. lia. Qed.
+Proof. intros. subst. omega. Qed.
 
 Ltac repad := 
   repeat match goal with
@@ -156,44 +157,52 @@ Ltac repad :=
 Ltac gridify :=
   repeat rewrite kron_assoc;
   repeat rewrite <- mult_assoc;
-  repeat match goal with
+  try match goal with
   | |- context[(I ?a ⊗ _) × (I ?a ⊗ _)] =>
     rewrite kron_mixed_product
-  | |- context[(I (2 ^ ?a) ⊗ _) × (I (2 ^ ?b) ⊗ _)] => (* should check a <> b *)
-    let E := fresh "H" in 
+  | |- context[(I (2 ^ ?a) ⊗ _) × (I (2 ^ ?b) ⊗ _)] =>
+    (* fail assert (a = b) by reflexivity; *)
+    let R := fresh "R" in 
     let d := fresh "d" in
-    let R := fresh "R" in
-    destruct (lt_eq_lt_dec a b) as [[H|H]|H]; [|rewrite H in *; clear H|]
-  | H : ?a < ?b |- _ =>
+    let E := fresh "E" in
+    destruct (lt_eq_lt_dec a b) as [[R|R]|R];
+    [|rewrite R in *; try rewrite kron_mixed_product; clear R|]
+  end;
+  try match goal with
+  | R : ?a < ?b |- _ =>
     let d := fresh "d" in
-    let R := fresh "R" in
-    remember (b - a - 1) as d eqn:R;
-    rewrite (repad_lemma1_l a b d H R) in * by assumption;
-    clear R H b;
+    let E := fresh "E" in
+    remember (b - a - 1) as d eqn:E;
+    rewrite (repad_lemma1_l a b d R E) in * by assumption;
+    clear E R b;
     repeat rewrite Nat.pow_add_r;
     repeat rewrite <- id_kron;
     repeat rewrite kron_assoc
   end;
   repeat rewrite <- kron_assoc;
   repeat rewrite mult_assoc;
-  repeat match goal with
-  | |- context[(_ ⊗ I ?a) × (_ ⊗ I ?b)] =>
+  try match goal with
+  | |- context[(_ ⊗ I ?a) × (_ ⊗ I ?a)] =>
     rewrite kron_mixed_product
   | |- context[(_ ⊗ I (2 ^ ?a)) × (_ ⊗ I (2 ^ ?b))] =>
-    let E := fresh "H" in 
+    let R := fresh "R" in 
     let d := fresh "d" in
-    let R := fresh "R" in
-    destruct (lt_eq_lt_dec a b) as [[H|H]|H]; [|rewrite H in *; clear H|]
-  | H : ?a < ?b |- _ =>
+    let E := fresh "E" in
+    destruct (lt_eq_lt_dec a b) as [[R|R]|R];
+    [|rewrite R in *; try rewrite kron_mixed_product; clear R|]
+  end;
+  try match goal with    
+  | R : ?a < ?b |- _ =>
     let d := fresh "d" in
-    let R := fresh "R" in
-    remember (b - a - 1) as d eqn:R;
-    rewrite (repad_lemma1_r a b d H R) in * by assumption;
-    clear R H b;
+    let E := fresh "E" in
+    remember (b - a - 1) as d eqn:E;
+    rewrite (repad_lemma1_r a b d R E) in * by assumption;
+    clear E R b;
     repeat rewrite Nat.pow_add_r;
     repeat rewrite <- id_kron;
     repeat rewrite <- kron_assoc
-  end.
+  end;
+  try lia.
 
 
 (** Simplify Complex number expressions **)

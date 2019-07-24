@@ -421,29 +421,3 @@ Proof.
       reflexivity.
 Qed.
 
-(** Automation **)
-
-(* TODO: If this isn't used anywhere, remove. *)
-
-(* For handling non well-typed cases. (Shouldn't Msimpl do this?) *)
-Ltac remove_zero_gates :=
-  repeat rewrite Mmult_0_l;
-  repeat rewrite Mmult_0_r;
-  repeat rewrite Mmult_0_l; (* hacky *)
-  repeat rewrite Mmult_0_r;
-  repeat rewrite kron_0_l;
-  repeat rewrite kron_0_r;
-  repeat rewrite kron_0_l;
-  repeat rewrite kron_0_r.
-
-(* Remove extra identity gates. (Shouldn't Msimpl do this too?) *)
-Ltac remove_id_gates :=
-  repeat rewrite Mmult_1_l;
-  repeat rewrite Mmult_1_r;
-  try auto with wf_db.
-  
-(* Several of the type rewrites are just associativity issues, and lia
-   is a little slow solving these. *)
-Ltac rewrite_assoc :=
-  repeat rewrite mult_assoc;
-  easy.
