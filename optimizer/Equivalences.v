@@ -57,7 +57,9 @@ Proof.
     repeat rewrite mult_assoc.
     Msimpl.
     reflexivity.
-Qed.    
+Qed.
+
+
 
 (* This proof can still be cleaned up and further automated. 
    All six cases are analogous and use the same proof after initial assert. *)
@@ -71,7 +73,59 @@ Proof.
   simpl.
   unfold ueval_cnot.
   unfold ueval1, pad.
-  
+  repad; gridify.
+  - assert (d = d2 + 1 + d3) by lia. subst; clear.
+    repeat (restore_dims_fast; distribute_plus). simpl.
+    repeat rewrite Nat.pow_add_r;
+    repeat rewrite <- id_kron;
+    repeat rewrite <- mult_assoc.
+    restore_dims_fast; repeat rewrite kron_assoc.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
+    Msimpl. reflexivity.
+  - assert (d2 = d + 1 + d3) by lia. subst; clear.
+    repeat (restore_dims_fast; distribute_plus). simpl.
+    repeat rewrite Nat.pow_add_r;
+    repeat rewrite <- id_kron;
+    repeat rewrite <- mult_assoc.
+    restore_dims_fast; repeat rewrite kron_assoc.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
+    Msimpl. reflexivity.
+  - assert (d3 = d2 + 1 + d) by lia. subst; clear.
+    repeat (restore_dims_fast; distribute_plus). simpl.
+    repeat rewrite Nat.pow_add_r;
+    repeat rewrite <- id_kron;
+    repeat rewrite <- mult_assoc.
+    restore_dims_fast; repeat rewrite kron_assoc.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
+    Msimpl. reflexivity.
+  - assert (d = d2 + 1 + d3) by lia. subst; clear.
+    repeat (restore_dims_fast; distribute_plus). simpl.
+    repeat rewrite Nat.pow_add_r;
+    repeat rewrite <- id_kron;
+    repeat rewrite <- mult_assoc.
+    restore_dims_fast; repeat rewrite kron_assoc.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
+    Msimpl. reflexivity.
+  - assert (d2 = d + 1 + d3) by lia. subst; clear.
+    repeat (restore_dims_fast; distribute_plus). simpl.
+    repeat rewrite Nat.pow_add_r;
+    repeat rewrite <- id_kron;
+    repeat rewrite <- mult_assoc.
+    restore_dims_fast; repeat rewrite kron_assoc.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
+    Msimpl. reflexivity.
+  - assert (d3 = d2 + 1 + d) by lia. subst; clear.
+    repeat (restore_dims_fast; distribute_plus). simpl.
+    repeat rewrite Nat.pow_add_r;
+    repeat rewrite <- id_kron;
+    repeat rewrite <- mult_assoc.
+    restore_dims_fast; repeat rewrite kron_assoc.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
+    Msimpl. reflexivity.
+Qed.
+
+(* New approach *)
+
 Ltac bdestruct_all :=
   repeat match goal with
   | |- context[?a <? ?b] => bdestruct (a <? b)
@@ -133,93 +187,8 @@ end.
 
 
 
-  
-  
-  repad; gridify.
-  - assert (d = d2 + 1 + d3) by lia. subst; clear.
-    simpl; restore_dims_fast. 
-    repeat rewrite Nat.pow_add_r;
-    repeat rewrite <- id_kron;
-    repeat rewrite kron_assoc;
-    repeat rewrite <- mult_assoc.
-    repeat (restore_dims_fast; distribute_plus). simpl.
-    restore_dims_fast.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    repeat rewrite kron_mixed_product.
-    Msimpl.
-    reflexivity.
-  - assert (d2 = d + 1 + d3) by lia. subst; clear.
-    repeat rewrite <- id_kron.
-    simpl; restore_dims_fast. 
-    repeat rewrite Nat.pow_add_r.
-    repeat rewrite Nat.pow_add_r;
-    repeat rewrite <- id_kron;
-    repeat rewrite kron_assoc;
-    repeat rewrite <- mult_assoc.
-    repeat (restore_dims_fast; distribute_plus). simpl.
-    restore_dims_fast.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    repeat rewrite kron_mixed_product.
-    Msimpl.
-    reflexivity.
-  - assert (d3 = d2 + 1 + d) by lia. subst; clear.
-    repeat rewrite <- id_kron.
-    simpl; restore_dims_fast. 
-    repeat rewrite Nat.pow_add_r.
-    repeat rewrite Nat.pow_add_r;
-    repeat rewrite <- id_kron;
-    repeat rewrite kron_assoc;
-    repeat rewrite <- mult_assoc.
-    repeat (restore_dims_fast; distribute_plus). simpl.
-    restore_dims_fast.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    repeat rewrite kron_mixed_product.
-    Msimpl.
-    reflexivity.
-  - assert (d = d2 + 1 + d3) by lia. subst; clear.
-    simpl; restore_dims_fast. 
-    repeat rewrite Nat.pow_add_r;
-    repeat rewrite <- id_kron;
-    repeat rewrite kron_assoc;
-    repeat rewrite <- mult_assoc.
-    repeat (restore_dims_fast; distribute_plus). simpl.
-    restore_dims_fast.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    repeat rewrite kron_mixed_product.
-    Msimpl.
-    reflexivity.
-  - assert (d2 = d + 1 + d3) by lia. subst; clear.
-    simpl; restore_dims_fast. 
-    repeat rewrite Nat.pow_add_r;
-    repeat rewrite <- id_kron;
-    repeat rewrite kron_assoc;
-    repeat rewrite <- mult_assoc.
-    repeat (restore_dims_fast; distribute_plus). simpl.
-    restore_dims_fast.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    repeat rewrite kron_mixed_product.
-    Msimpl.
-    reflexivity.
-  - assert (d3 = d2 + 1 + d) by lia. subst; clear.
-    simpl; restore_dims_fast. 
-    repeat rewrite Nat.pow_add_r;
-    repeat rewrite <- id_kron;
-    repeat rewrite kron_assoc;
-    repeat rewrite <- mult_assoc.
-    repeat (restore_dims_fast; distribute_plus). simpl.
-    restore_dims_fast.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    repeat rewrite kron_mixed_product.
-    Msimpl.
-    reflexivity.
-Qed.
-    
+
+
 
 (* There are really only three different cases in the CNOT/CNOT commutativity 
    proof. Let n1 and n2 be the operands of the first CNOT  and let n1' and
