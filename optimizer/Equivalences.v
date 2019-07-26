@@ -61,11 +61,8 @@ Proof.
   intros.
   unfold uc_equiv.
   simpl; unfold ueval_cnot, pad.
-(* works but really slow 
   gridify; reflexivity.
 Qed.  
-*)
-Admitted.
   
 Lemma X_X_id : forall {dim} q, 
   @uc_well_typed dim (X q) -> 
@@ -103,8 +100,6 @@ Proof.
   repeat rewrite id_kron.
   reflexivity.
 Qed.
-
-Definition Rz {dim} θ n : ucom dim := uapp1 (U_R θ) n.  
 
 Lemma Rz_Rz_add : forall {dim} q θ θ', 
    @uc_equiv dim ((Rz θ) q; (Rz θ') q) ((Rz (θ + θ')) q).
