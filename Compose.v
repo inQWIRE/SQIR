@@ -43,24 +43,11 @@ Proof.
     restore_dims_fast; Msimpl; reflexivity.
   - simpl.
     inversion H; subst.
-    unfold ueval1.
-    unfold pad.
-    repad.
-    restore_dims_fast.
-    repeat rewrite kron_assoc.
-    rewrite id_kron.
-    unify_matrices_light.
+    unfold ueval1, pad.
+    gridify; reflexivity.
   - simpl. inversion H; subst.
     unfold ueval_cnot, pad.
-    repad.
-    + restore_dims_fast.
-      repeat rewrite kron_assoc.
-      repeat rewrite id_kron.
-      unify_matrices_light.
-    + restore_dims_fast.
-      repeat rewrite kron_assoc.
-      repeat rewrite id_kron.
-      unify_matrices_light.
+    gridify; reflexivity.
 Qed.
 
 (*Ltac prove_wt :=
@@ -92,31 +79,10 @@ Proof.
   - rewrite id_kron. unify_pows_two. reflexivity.
   - rewrite <- IHc1, <- IHc2.
     restore_dims_fast; Msimpl. reflexivity.
-  - unfold ueval1.
-    unfold pad.
-    repad.
-    repeat rewrite Nat.pow_add_r.
-    rewrite <- id_kron.
-    repeat rewrite kron_assoc.
-    repeat rewrite mult_assoc.
-    replace d with d0 by lia.
-    reflexivity.
+  - unfold ueval1, pad.
+    gridify; reflexivity.
   - unfold ueval_cnot, pad.
-    repad.
-    + replace d with d0 in * by lia.
-      replace d1 with d2 in * by lia. clear.
-      repeat rewrite Nat.pow_add_r.
-      rewrite <- id_kron. 
-      restore_dims_fast.
-      repeat rewrite kron_assoc.
-      unify_matrices_light.
-    + replace d with d0 in * by lia.
-      replace d1 with d2 in * by lia. clear.
-      repeat rewrite Nat.pow_add_r.
-      rewrite <- id_kron. 
-      restore_dims_fast.
-      repeat rewrite kron_assoc.
-      unify_matrices_light.
+    gridify; reflexivity.
 Qed.
 
 

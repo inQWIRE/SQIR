@@ -248,7 +248,7 @@ Ltac gridify :=
   (* remove minus signs *) 
   remember_differences;
   (* put dimensions in hypothesis [will sometimes exist] *)
-  hypothesize_dims; clear_dups;
+  try hypothesize_dims; clear_dups;
   (* where a < b, replace b with a + 1 + fresh *)
   fill_differences;
   (* distribute *)  

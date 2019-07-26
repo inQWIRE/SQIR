@@ -1,5 +1,7 @@
 Require Import Setoid.
-Require Import Equivalences.
+(* Require Import Equivalences. *)
+Require Import UnitarySem.
+Require Import Tactics.
 Require Import Coq.Reals.ROrderedType.
 Require Import Phase.
 Require Export List.
@@ -98,12 +100,11 @@ Lemma unitary_conversion_sound' : forall (u : Unitary 1) u' dim n,
 Proof.
   intros.
   dependent destruction u; inversion H; simpl; trivial.
-  - unfold ueval1, pad.
-    destruct (n + 1 <=? dim); trivial.
+  - unfold ueval1, ueval_unitary1, pad.
+    repad.
     rewrite <- phase_pi.
-    apply f_equal2; trivial.
-    apply f_equal2; trivial.
-    apply f_equal. lra.
+    replace (4 * PI / 4)%R with PI by lra.
+    reflexivity.
   - clear H.
     repeat match goal with 
     | [ H : (if ?b then _ else _) = _ |- _] => let E := fresh "E" in destruct b eqn:E
@@ -113,7 +114,6 @@ Proof.
     end; simpl; do 2 apply f_equal; lra.
 Qed.
   
-
 Definition match_gate {n} (U U' : fUnitary n) : bool :=
   match U, U' with
   | fU_H, fU_H | fU_X, fU_X | fU_CNOT, fU_CNOT => true
