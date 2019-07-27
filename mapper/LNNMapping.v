@@ -153,53 +153,29 @@ Proof.
   intros dim a b H.
   unfold uc_equiv.
   simpl; unfold ueval_cnot, pad.
-  bdestruct (a <? b); try lia.
-  bdestruct (a <? b + 1); try lia.
-  remember (b - a - 1) as i.
-  replace (b + 1 - a - 1) with (i + 1) by lia.
-  bdestruct (a + (1 + (i + 1) + 1) <=? dim).
-  2: { rewrite swap_adjacent_not_WT; try lia; remove_zero_gates; trivial. }
-  bdestruct (a + (1 + i + 1) <=? dim); try lia.
-  assert (b + 1 < dim) by lia.
-  rewrite denote_SWAP_adjacent.
-  2: { apply swap_adjacent_WT; assumption. }
-  (* 1: rewrite identity matrices *)
-  replace (2 ^ (dim - (1 + i + 1) - a)) with (2 * 2 ^ (dim - (1 + (i + 1) + 1) - a)) by unify_pows_two.
-  replace (dim - (1 + (i + 1) + 1) - a) with (dim - 2 - b) by lia.
-  replace (2 ^ (b - a)) with (2 ^ i * 2) by unify_pows_two.
-  replace (2 ^ (i + 1)) with (2 ^ i * 2) by unify_pows_two.
-  replace (2 ^ (b + 1 - a)) with (2 ^ i * 2 ^ 2) by unify_pows_two.
-  replace (2 ^ b) with (2 ^ a * 2 * 2 ^ i) by unify_pows_two.  
-  repeat rewrite <- id_kron.
-  replace (2 ^ dim) with (2 ^ a * (2 ^ 1 * 2 ^ i * (2 ^ 2)) * 2 ^ (dim - 2 - b)) by unify_pows_two.
-  replace (2 ^ 1) with 2 by easy.
-  replace (2 ^ 2) with (2 * 2) by easy.
-  clear.
-  (* 2: manually mess with associativity *)
-  rewrite (kron_assoc _ (I 2) _).
-  restore_dims_strong.
-  rewrite (kron_assoc _ _ swap).
-  rewrite <- (kron_assoc ∣0⟩⟨0∣ _ (I 2)).
-  rewrite <- (kron_assoc ∣1⟩⟨1∣ _ (I 2)).
-  restore_dims_strong.
-  rewrite (kron_assoc _ (I 2) σx).
-  rewrite <- (kron_assoc _ (I 2) (I (2 ^ (dim - 2 - b)))).
-  rewrite (kron_assoc (I (2 ^ a)) _ (I 2)).
-  rewrite kron_plus_distr_r.
-  rewrite (kron_assoc _ σx (I 2)).
-  rewrite (kron_assoc _ (I 2) (I 2)).
-  (* 3: simplify *)
-  replace (2 ^ a * (2 * 2 ^ i * 2) * 2) with (2 ^ a * (2 * 2 ^ i * (2 * 2))) by rewrite_assoc.
-  replace (2 * 2 ^ i * 2 * 2) with (2 * 2 ^ i * (2 * 2)) by rewrite_assoc.
-  Msimpl. 
-  rewrite Mmult_plus_distr_r.
-  rewrite Mmult_plus_distr_l.
-  Msimpl. 
-  repeat rewrite <- (Mmult_assoc swap _ swap).
-  repeat rewrite swap_spec_general; try auto with wf_db.
-  replace (2 ^ 2) with (2 * 2) by easy.
-  replace (2 * (2 ^ i * 2) * 2) with (2 * 2 ^ i * (2 * 2)) by rewrite_assoc.
-  reflexivity.
+  gridify.
+  - repeat rewrite plus_assoc.
+    rewrite denote_SWAP_adjacent.
+    2:{ apply swap_adjacent_WT. lia. }
+    repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron; simpl;
+      repeat rewrite Nat.mul_assoc. 
+    replace (a + S (x + 1 + 1) + d2 - 2 - (a + 1 + x)) with d2 by lia.
+    restore_dims_strong. (* _fast doesn't work? *)
+    repeat rewrite <- kron_assoc; restore_dims_fast.
+    rewrite (kron_assoc _ σx). remember (σx ⊗ I 2) as Xl. 
+    rewrite (kron_assoc _ _ σx). remember (I 2 ⊗ σx) as Xr. 
+    rewrite (kron_assoc _ _ (I 2)). rewrite (id_kron 2 2).
+    simpl in *.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.  
+    Msimpl.
+    subst.
+    rewrite <- Mmult_assoc.
+    rewrite swap_spec_general by (auto with wf_db).
+    reflexivity.
+  - rewrite swap_adjacent_not_WT by lia.
+    remove_zero_gates. rewrite Mplus_0_l.
+    reflexivity.
 Qed.
 
 Lemma swap_cnot_adjacent_right : forall {dim} a b,
@@ -209,52 +185,27 @@ Proof.
   intros dim a b H.
   unfold uc_equiv.
   simpl; unfold ueval_cnot, pad.
-  bdestruct (b + 1 <? a); try lia.
-  bdestruct (b <? a); try lia.
-  bdestruct (a <? b + 1); try lia.
-  bdestruct (a <? b); try lia.
-  remember (a - b - 1) as i.
-  remember (dim - (1 + i + 1) - b) as j.
-  replace (a - (b + 1)) with i by lia.
-  replace (dim - (1 + (i - 1) + 1) - (b + 1)) with j by lia.
-  replace (b + 1 + (1 + (i - 1) + 1)) with (b + (1 + i + 1)) by lia.
-  bdestruct (b + (1 + i + 1) <=? dim).
-  2: { remove_zero_gates; trivial. }
-  rewrite denote_SWAP_adjacent.
-  2: { apply swap_adjacent_WT. lia. }
-  (* 1: rewrite identity matrices *)
-  replace (2 ^ (b + 1)) with (2 ^ b * 2) by unify_pows_two.
-  replace (2 ^ i) with (2 * 2 ^ (i - 1)) by unify_pows_two.
-  replace (2 ^ (a - b)) with ((2 ^ 2) * 2 ^ (i - 1)) by unify_pows_two.
-  replace (2 ^ (dim - 2 - b)) with (2 ^ (i - 1) * 2 * 2 ^ j) by unify_pows_two.
-  repeat rewrite <- id_kron.
-  replace (2 ^ dim) with (2 ^ b * (2 ^ 2 * 2 ^ (i - 1) * 2) * 2 ^ j) by unify_pows_two.
-  replace (2 ^ 2) with (2 * 2) by easy.
-  replace (2 ^ (1 + i + 1)) with (2 ^ 1 * 2 ^ 1 * 2 ^ (i - 1) * 2 ^ 1) by unify_pows_two.
-  replace (2 ^ 1) with 2 by easy.
-  clear.
-  (* 2: manually mess with associativity *)
-  rewrite (kron_assoc _ swap _).
-  rewrite <- (kron_assoc swap _ _).
-  replace (2 * 2 * (2 ^ (i - 1) * 2 * 2 ^ j)) with (2 * 2 * 2 ^ (i - 1) * 2 * 2 ^ j) by rewrite_assoc.
-  replace (2 * 2 * (2 ^ (i - 1) * 2)) with (2 * 2 * 2 ^ (i - 1) * 2) by rewrite_assoc.
-  rewrite <- (kron_assoc (I (2 ^ b)) _ _).
-  rewrite <- (kron_assoc swap _ _).
-  rewrite <- (kron_assoc σx _ _).
-  rewrite (kron_assoc (I (2 ^ b)) (I 2) _).
-  restore_dims_strong.
-  rewrite kron_plus_distr_l.
-  repeat rewrite <- (kron_assoc (I 2) _ _).
-  (* 3: simplify *)
-  replace (2 ^ b * (2 * (2 * 2 ^ (i - 1) * 2))) with (2 ^ b * (2 * 2 * 2 ^ (i - 1) * 2)) by rewrite_assoc. 
-  replace (2 * (2 * 2 ^ (i - 1) * 2)) with (2 * 2 * 2 ^ (i - 1) * 2) by rewrite_assoc.
-  Msimpl.
-  rewrite Mmult_plus_distr_r.
-  rewrite Mmult_plus_distr_l.
-  restore_dims_strong.
-  Msimpl. 
-  repeat rewrite <- (Mmult_assoc swap _ swap).
-  repeat rewrite swap_spec_general; try auto with wf_db.
+  gridify.
+  - repeat rewrite plus_assoc.
+    rewrite denote_SWAP_adjacent.
+    2:{ apply swap_adjacent_WT. lia. }
+    replace (b + S (S (x + 1)) + d2 - 2 - b) with (x + 1 + d2) by lia.
+    repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron; simpl;
+      repeat rewrite Nat.mul_assoc. 
+    restore_dims_strong. (* _fast doesn't work? *)
+    repeat rewrite <- kron_assoc. 
+    clear.
+    rewrite (kron_assoc _ _ σx). remember (I 2 ⊗ σx) as Xr. 
+    rewrite (kron_assoc _ σx). remember (σx ⊗ I 2) as Xl. 
+    rewrite (kron_assoc _ (I 2) (I 2)). rewrite (id_kron 2 2).
+    simpl in *. 
+    restore_dims_strong.
+    repeat rewrite kron_mixed_product.  
+    Msimpl.
+    subst.
+    rewrite <- Mmult_assoc.
+    rewrite swap_spec_general by (auto with wf_db).
+    reflexivity.
 Qed.
 
 Lemma move_target_left_equiv_cnot : forall {dim} base dist,
