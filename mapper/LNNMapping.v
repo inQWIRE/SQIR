@@ -1,6 +1,7 @@
 Require Import Compose.
 Require Import Equivalences.
 Require Import List.
+Require Import Top.Tactics.
 Open Scope ucom.
 
 Local Close Scope C_scope.
@@ -97,32 +98,16 @@ Proof.
   { inversion WT; inversion H2. assumption. }
   clear WT.
   simpl; unfold ueval_cnot, pad.
-  bdestruct (n <? n + 1); try lia.
-  bdestruct (n + 1 <? n); try lia.
-  replace (n + 1 - n) with 1 by lia; simpl.
-  bdestruct (n + 2 <=? dim); try lia.
-  clear - H.
-  restore_dims_strong; Msimpl.
-  repeat rewrite Mmult_plus_distr_l.
-  repeat rewrite Mmult_plus_distr_r. 
-  restore_dims_strong; Msimpl.
-  repeat rewrite Mmult_plus_distr_l.
-  restore_dims_strong; Msimpl.
-  replace (σx × ∣1⟩⟨1∣) with (∣0⟩⟨1∣) by (rewrite <- Mmult_assoc; Msimpl; reflexivity).
-  replace (σx × ∣0⟩⟨0∣) with (∣1⟩⟨0∣) by (rewrite <- Mmult_assoc; Msimpl; reflexivity).
-  replace (∣0⟩⟨0∣ × σx) with (∣0⟩⟨1∣) by (rewrite Mmult_assoc; Msimpl; reflexivity).
-  replace (∣1⟩⟨1∣ × σx) with (∣1⟩⟨0∣) by (rewrite Mmult_assoc; Msimpl; reflexivity).
-  repeat rewrite rewrite_ket_prod00; try auto with wf_db.
-  repeat rewrite rewrite_ket_prod11; try auto with wf_db.
-  repeat rewrite rewrite_ket_prod01.
-  repeat rewrite rewrite_ket_prod10.
-  repeat rewrite kron_0_l. 
-  repeat rewrite Mplus_0_l, Mplus_0_r.
-  replace (σx × ∣0⟩⟨1∣) with (∣1⟩⟨1∣) by (rewrite <- Mmult_assoc; Msimpl; reflexivity).
-  repeat rewrite <- Mplus_assoc.
-  assert (swap = ∣1⟩⟨1∣ ⊗ ∣1⟩⟨1∣ .+ ∣0⟩⟨1∣ ⊗ ∣1⟩⟨0∣ .+ ∣1⟩⟨0∣ ⊗ ∣0⟩⟨1∣ .+ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) by solve_matrix.
-  rewrite H0.
-  reflexivity.
+  repad.
+  replace d with 0 in * by lia.
+  subst. clear. simpl. Msimpl. simpl.
+  restore_dims_strong.
+  repeat rewrite kron_mixed_product. Msimpl.
+  restore_dims_fast.
+  replace (n + 2 + d0 - 2 - n) with d0 by lia.
+  apply f_equal2; trivial.
+  apply f_equal2; trivial.
+  solve_matrix.
 Qed.
 
 Lemma swap_adjacent_WT: forall b dim,
