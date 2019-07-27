@@ -1,4 +1,5 @@
 -R . Top
+-arg -profile-ltac
 
 lib/QWIRE/RealAux.v
 lib/QWIRE/Complex.v
@@ -14,6 +15,7 @@ Phase.v
 Proportional.v
 SQIRE.v
 UnitarySem.v
+Tactics.v
 
 optimizer/Equivalences.v
 optimizer/GateCancellation.v

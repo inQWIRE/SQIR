@@ -1,4 +1,5 @@
 Require Export UnitarySem.
+Require Import Tactics.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
@@ -28,8 +29,8 @@ Fixpoint cast {dim} (c : ucom dim) dim' : ucom dim' :=
   | c1; c2 => cast c1 dim' ; cast c2 dim'
   | uapp1 u n => uapp1 u n
   | uapp2 u m n => uapp2 u m n
-  end.
-
+  end.                                                     
+                                                     
 Lemma pad_dims_r : forall {dim} (c : ucom dim) (k : nat),
   uc_well_typed c ->
   (uc_eval c) ⊗ I (2^k) = uc_eval (cast c (dim + k)).  
@@ -39,38 +40,14 @@ Proof.
   - simpl. rewrite id_kron. unify_pows_two. reflexivity.
   - inversion H; subst.
     simpl. rewrite <- IHc1, <- IHc2; trivial.
-    restore_dims_strong; Msimpl; reflexivity.
+    restore_dims_fast; Msimpl; reflexivity.
   - simpl.
-    unfold ueval1.
-    match goal with
-      | [|- context [pad _ _ ?U ]] => remember U as U'
-    end.
-    unfold pad.
-    assert (n + 1 <= dim).
-    { inversion H; subst. lia. }
-    bdestruct (n + 1 <=? dim); bdestruct (n + 1 <=? dim + k); try lia.
-    restore_dims; rewrite (kron_assoc (I (2^n) ⊗ U')).
-    rewrite id_kron.
-    unify_pows_two. replace (dim - 1 - n + k) with (dim + k - 1 - n) by lia.
-    reflexivity.
+    inversion H; subst.
+    unfold ueval1, pad.
+    gridify; reflexivity.
   - simpl. inversion H; subst.
     unfold ueval_cnot, pad.
-    bdestruct (n <? n0).
-    + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); 
-      bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim + k); try lia.
-      restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
-      rewrite id_kron.
-      unify_pows_two.
-      replace (dim - (1 + (n0 - n - 1) + 1) - n + k) with (dim + k - (1 + (n0 - n - 1) + 1) - n) by lia.
-      reflexivity.
-    + bdestruct (n0 <? n); try lia.
-      bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim); 
-      bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim + k); try lia.
-      restore_dims; rewrite (kron_assoc _ _  (I (2^k))).
-      rewrite 2 id_kron.
-      unify_pows_two.
-      replace (dim - (1 + (n - n0 - 1) + 1) - n0 + k) with (dim + k - (1 + (n - n0 - 1) + 1) - n0) by lia.
-      reflexivity.
+    gridify; reflexivity.
 Qed.
 
 (*Ltac prove_wt :=
@@ -95,56 +72,17 @@ Proof.
 Qed.
 
 Lemma pad_dims_l : forall {dim} (c : ucom dim) (k : nat),
-  I (2^k) ⊗ (uc_eval c) = uc_eval (cast (map_qubits (fun q => q + k) c) (k + dim)).  
+  I (2^k) ⊗ (uc_eval c) = uc_eval (cast (map_qubits (fun q => k + q) c) (k + dim)).  
 Proof.
   intros.
   induction c; simpl.
   - rewrite id_kron. unify_pows_two. reflexivity.
   - rewrite <- IHc1, <- IHc2.
-    restore_dims_strong; Msimpl. reflexivity.
-  - unfold ueval1.
-    match goal with
-      | [|- context [pad _ _ ?U ]] => remember U as U'
-    end.
-    unfold pad.
-    bdestruct (n + 1 <=? dim); bdestruct (n + k + 1 <=? k + dim); try lia;
-    try (remove_zero_gates; trivial).
-    clear H0.
-    restore_dims_strong.
-    repeat rewrite <- (kron_assoc (I (2^k))). 
-    rewrite id_kron; unify_pows_two.
-    replace (k + dim - 1 - (n + k)) with (dim - 1 - n) by lia.
-    replace (k + n) with (n + k) by lia.
-    reflexivity.
+    restore_dims_fast; Msimpl. reflexivity.
+  - unfold ueval1, pad.
+    gridify; reflexivity.
   - unfold ueval_cnot, pad.
-    bdestruct (n <? n0); bdestruct (n + k <? n0 + k); try lia; clear H0.
-    + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); 
-      bdestruct (n + k + (1 + (n0 + k - (n + k) - 1) + 1) <=? k + dim);
-      try lia;
-      try (remove_zero_gates; trivial).
-      clear H1.
-      restore_dims_strong.
-      repeat rewrite <- (kron_assoc (I (2^k))). 
-      rewrite id_kron; unify_pows_two.
-      replace (n0 + k - (n + k)) with (n0 - n) by lia.
-      replace (k + dim - (1 + (n0 - n - 1) + 1) - (n + k)) with (dim - (1 + (n0 - n - 1) + 1) - n) by lia.
-      replace (k + n) with (n + k) by lia.
-      reflexivity.
-    + bdestruct (n0 <? n); bdestruct (n0 + k <? n + k); try lia;
-      try (remove_zero_gates; trivial).
-      clear H H1.
-      bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim); 
-      bdestruct (n0 + k + (1 + (n + k - (n0 + k) - 1) + 1) <=? k + dim);
-      try lia;
-      try (remove_zero_gates; trivial).
-      clear H1.
-      restore_dims_strong.
-      repeat rewrite <- (kron_assoc (I (2^k))). 
-      rewrite id_kron; unify_pows_two.
-      replace (n + k - (n0 + k)) with (n - n0) by lia.
-      replace (k + dim - (1 + (n - n0 - 1) + 1) - (n0 + k)) with (dim - (1 + (n - n0 - 1) + 1) - n0) by lia.
-      replace (k + n0) with (n0 + k) by lia.
-      reflexivity.
+    gridify; reflexivity.
 Qed.
 
 
@@ -153,7 +91,7 @@ Qed.
 (* Note that we have no way to enforce that dim1 and dim2 are actually the 
    dimensions of the global registers of c1 and c2. *)
 Definition inPar {dim1 dim2} (c1 : ucom dim1) (c2 : ucom dim2) :=
-  (cast c1 (dim1 + dim2)); (cast (map_qubits (fun q => q + dim1) c2) (dim1 + dim2)).
+  (cast c1 (dim1 + dim2)); (cast (map_qubits (fun q => dim1 + q) c2) (dim1 + dim2)).
 
 Lemma inPar_WT : forall {dim1 dim2} (c1 : ucom dim1) (c2 : ucom dim2),
   uc_well_typed c1 -> uc_well_typed c2 -> uc_well_typed (inPar c1 c2).

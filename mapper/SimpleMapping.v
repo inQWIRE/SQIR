@@ -1,5 +1,6 @@
 Require Export Compose.
 Require Export Equivalences.
+Require Import Top.Tactics.
 Require Export List.
 Open Scope ucom.
 
@@ -168,37 +169,18 @@ Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
 
 (* Useful lemmas for rewriting expressions with CNOTs
    TODO: automate this better *)
+(* TODO: Move to tactics.v *)
 Lemma σx_on_right0 : forall (q : Vector 2), (q × ⟨0∣) × σx = q × ⟨1∣.
-Proof. 
-  intros. 
-  rewrite Mmult_assoc. 
-  replace (⟨0∣ × σx) with ⟨1∣ by solve_matrix. 
-  reflexivity.
-Qed.
+Proof. intros. rewrite Mmult_assoc, Mmult0X. reflexivity. Qed.
 
 Lemma σx_on_right1 : forall (q : Vector 2), (q × ⟨1∣) × σx = q × ⟨0∣.
-Proof. 
-  intros. 
-  rewrite Mmult_assoc. 
-  replace (⟨1∣ × σx) with ⟨0∣ by solve_matrix. 
-  reflexivity.
-Qed.
+Proof. intros. rewrite Mmult_assoc, Mmult1X. reflexivity. Qed.
 
 Lemma σx_on_left0 : forall (q : Matrix 1 2), σx × (∣0⟩ × q) = ∣1⟩ × q.
-Proof. 
-  intros. 
-  rewrite <- Mmult_assoc. 
-  replace (σx × ∣0⟩) with ∣1⟩ by solve_matrix. 
-  reflexivity.
-Qed.
+Proof. intros. rewrite <- Mmult_assoc, MmultX0. reflexivity. Qed.
 
 Lemma σx_on_left1 : forall (q : Matrix 1 2), σx × (∣1⟩ × q) = ∣0⟩ × q.
-Proof. 
-  intros. 
-  rewrite <- Mmult_assoc. 
-  replace (σx × ∣1⟩) with ∣0⟩ by solve_matrix. 
-  reflexivity.
-Qed.
+Proof. intros. rewrite <- Mmult_assoc, MmultX1. reflexivity. Qed.
 
 Lemma cancel00 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
   WF_Matrix q2 ->
@@ -243,55 +225,35 @@ Proof.
 Qed.
 
 Hint Rewrite σx_on_right0 σx_on_right1 σx_on_left0 σx_on_left1 : cnot_db.
-Hint Rewrite cancel00 cancel01 cancel10 cancel11 : cnot_db.
+Hint Rewrite cancel00 cancel01 cancel10 cancel11 using (auto with wf_db) : cnot_db.
 
 Lemma denote_swap : forall dim m n,
   @uc_eval dim (SWAP m n) = ueval_swap dim m n.
 Proof.
   intros.
   simpl; unfold ueval_swap, ueval_cnot, pad.
-  bdestruct (m <? n).
-  - bdestruct (m + (1 + (n - m - 1) + 1) <=? dim); try (remove_zero_gates; trivial). 
-    bdestruct (n <? m); try lia.
-    remember (n - m - 1) as i.
-    replace (2 ^ dim) with (2 ^ m * (2 ^ (1 + i + 1)) * (2 ^ (dim - (1 + i + 1) - m))) by unify_pows_two.
-    repeat rewrite kron_mixed_product.
-    repeat rewrite Mmult_1_l; try auto with wf_db.
-    do 3 (apply f_equal_gen; try reflexivity). 
-    replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-    repeat rewrite Mmult_plus_distr_r.
-    repeat rewrite Mmult_plus_distr_l.
-    repeat rewrite kron_mixed_product.
-    Msimpl. 
-    autorewrite with cnot_db; try auto with wf_db.
+  
+  gridify.
+  - autorewrite with cnot_db.
     remove_zero_gates.
     repeat rewrite Mplus_0_l, Mplus_0_r.
-    rewrite Mplus_comm.
-    rewrite (Mplus_comm _ _ (∣0⟩⟨1∣ ⊗ I (2 ^ i) ⊗ ∣1⟩⟨0∣)).
     rewrite <- Mplus_assoc.
+    rewrite Mplus_comm.
+    rewrite (Mplus_comm _ _ ((I (2 ^ m) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d0)))).
+    repeat rewrite Mplus_assoc.
+    rewrite (Mplus_comm _ _ ((I (2 ^ m) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d0)))).
     reflexivity.
-  - bdestruct (n <? m); try (remove_zero_gates; trivial).
-    bdestruct (n + (1 + (m - n - 1) + 1) <=? dim); try (remove_zero_gates; trivial).
-    remember (m - n - 1) as i.
-    replace (2 ^ dim) with (2 ^ n * (2 ^ (1 + i + 1)) * (2 ^ (dim - (1 + i + 1) - n))) by unify_pows_two.
-    repeat rewrite kron_mixed_product.
-    repeat rewrite Mmult_1_l; try auto with wf_db.
-    do 3 (apply f_equal_gen; try reflexivity). 
-    replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two.
-    repeat rewrite Mmult_plus_distr_r.
-    repeat rewrite Mmult_plus_distr_l.
-    repeat rewrite kron_mixed_product.
-    Msimpl. 
-    autorewrite with cnot_db; try auto with wf_db.
+  - autorewrite with cnot_db.
     remove_zero_gates.
     repeat rewrite Mplus_0_l, Mplus_0_r.
     rewrite <- Mplus_assoc.
     rewrite Mplus_comm.
-    rewrite (Mplus_assoc _ _ (∣0⟩⟨1∣ ⊗ I (2 ^ i) ⊗ ∣1⟩⟨0∣)).
-    rewrite (Mplus_comm _ _ (∣1⟩⟨1∣ ⊗ I (2 ^ i) ⊗ ∣1⟩⟨1∣)).
-    repeat rewrite <- Mplus_assoc.
+    rewrite (Mplus_comm _ _ _ (I (2 ^ n) ⊗ ∣0⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨0∣ ⊗ I (2 ^ d0))).
+    repeat rewrite Mplus_assoc.
+    rewrite (Mplus_comm _ _ ((I (2 ^ n) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d0)))).
     reflexivity.
 Qed.
+
 
 Opaque SWAP.
 
@@ -352,6 +314,11 @@ Proof.
   unfold uc_equiv; simpl.
   rewrite denote_swap.
   unfold ueval_cnot, ueval_swap, pad.
+  gridify.
+  - 
+
+
+
   bdestruct (a <? b); bdestruct (b <? a); try lia.
   - bdestruct (a + (1 + (b - a - 1) + 1) <=? dim); try lia.
     clear H2 H6 H7.

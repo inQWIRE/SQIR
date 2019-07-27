@@ -1,5 +1,6 @@
 Require Import Phase.
 Require Import UnitarySem.
+Require Import Tactics.
 Require Import ListRepresentation.
 Require Import Equivalences.
 Require Import Proportional.
@@ -139,7 +140,7 @@ Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
   unfold ueval1, pad; simpl.
-  bdestructΩ (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  repad.
   rewrite Mmult_assoc.
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
@@ -148,11 +149,11 @@ Proof.
   rewrite <- Rmult_plus_distr_r.
   rewrite <- plus_IZR.
   repeat rewrite Rmult_div_assoc.
-  rewrite Zplus_comm.
-  rewrite H0.
+  rewrite Zplus_comm, H0.
   replace (8 * PI / 4)%R with (2 * PI)%R by lra.
   rewrite phase_2pi.
-  Msimpl. replace (2 ^ q * 2 * 2 ^ (dim - 1 - q))%nat with (2^dim) by unify_pows_two.
+  Msimpl. 
+  replace (2 ^ q * 2 * 2 ^ d)%nat with (2^dim) by unify_pows_two.
   Msimpl.
   reflexivity.
 Qed.
@@ -164,14 +165,15 @@ Proof.
   unfold uc_equiv_l, uc_equiv; simpl.
   rewrite list_to_ucom_append; simpl.
   unfold ueval_cnot, pad; simpl.
-  bdestruct (q1 <? q2).
-  - bdestruct (q1 + S (q2 - q1 - 1 + 1) <=? dim); try lia.
+
+  repad.
+  - rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
     rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
-    restore_dims_strong; repeat rewrite kron_mixed_product.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
     Msimpl.
     rewrite Mmult_plus_distr_r. 
     repeat rewrite Mmult_plus_distr_l.
-    restore_dims_strong; repeat rewrite kron_mixed_product.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
     Msimpl.
     replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
     replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
@@ -184,23 +186,21 @@ Proof.
     repeat rewrite kron_assoc.
     repeat rewrite id_kron.
     unify_pows_two.
-    replace (2 ^ (q2 - q1 - 1 + 1 + 1)) with (2 * 2 ^ (q2 - q1 - 1 + 1)) by unify_pows_two.
+    restore_dims_fast.
     rewrite <- kron_plus_distr_r.
     replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
     Msimpl.
-    restore_dims_strong.
+    restore_dims_fast.
+    replace (2 ^ q1 * (2 * 2 ^ (d + 1) * 2 ^ d0)) with (2^dim) by unify_pows_two.
     Msimpl.
-    replace (2 ^ q1 * (2 * 2 ^ (q2 - q1 - 1 + 1) * 2 ^ (dim - S (q2 - q1 - 1 + 1) - q1))) with (2 ^ dim) by unify_pows_two.
-    rewrite Mmult_1_r; auto with wf_db.
     rewrite list_to_ucom_append; reflexivity.
-  - bdestruct (q2 <? q1); try lia.
-    bdestruct (q2 + S (q1 - q2 - 1 + 1) <=? dim); try lia.
+  - rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
     rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
-    restore_dims_strong; repeat rewrite kron_mixed_product.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
     Msimpl.
     rewrite Mmult_plus_distr_r. 
     repeat rewrite Mmult_plus_distr_l.
-    restore_dims_strong; repeat rewrite kron_mixed_product.
+    restore_dims_fast; repeat rewrite kron_mixed_product.
     Msimpl.
     replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
     replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
@@ -211,17 +211,14 @@ Proof.
     rewrite Mplus_0_r.
     replace (σx × σx) with (I 2) by solve_matrix.
     repeat rewrite id_kron.
-    unify_pows_two.
-    replace (2 ^ (q1 - q2 - 1 + 1 + 1)) with (2 ^ (S (q1 - q2 - 1)) * 2) by unify_pows_two.
+    restore_dims_fast.
     rewrite <- kron_plus_distr_l.
     replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
+    repeat rewrite id_kron.
+    replace (2 ^ q2 * (2 * 2 ^ d * 2) * 2 ^ d0) with (2^dim) by unify_pows_two.
     Msimpl.
-    restore_dims_strong.
-    Msimpl.
-    replace (2 ^ q2 * (2 ^ S (q1 - q2 - 1) * 2) * 2 ^ (dim - S (q1 - q2 - 1 + 1) - q2)) with (2 ^ dim) by unify_pows_two.
-    rewrite Mmult_1_r; auto with wf_db.
     rewrite list_to_ucom_append; reflexivity.
-Qed.
+Qed.  
 
 Lemma cancel_gates_simple'_sound : forall {dim} (l acc : gate_list dim) n,
   uc_well_typed_l l -> (rev acc) ++ l =l= cancel_gates_simple' l acc n.
@@ -449,7 +446,7 @@ Definition search_for_CNOT_pat4 {dim} (l : gate_list dim) q1 q2 :=
   | Some (fU_H, l') => 
       match (next_two_qubit_gate l' q2) with
       | Some (l1, q1', q2', l2) => 
-          if (q2 =? q1') && (does_not_reference l1 q1)
+          if (q2 =? q1') && ¬ (q1 =? q2') && (does_not_reference l1 q1)
           then match (next_single_qubit_gate l2 q2) with
                | Some (fU_H, l2') => Some ([_H q2] ++ l1 ++ [_CNOT q2 q2'] ++ [_H q2], l2')
                | _ => None
@@ -613,74 +610,6 @@ Proof.
   reflexivity.  
 Qed.
 
-Lemma f_equal_gen : forall {A B} (f g : A -> B) a b, f = g -> a = b -> f a = g b.
-Proof. intros. subst. reflexivity. Qed.
-
-Ltac is_nat_equality :=
-  match goal with 
-  | |- ?A = ?B => match type of A with
-                | nat => idtac
-                end
-  end.
-
-Ltac unify_matrices_light := 
-  repeat (apply f_equal_gen; trivial; try (is_nat_equality; lia)).
-
-
-Ltac restore_dims_rec A :=
-   match A with
-  | ?A × ?B   => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                match type of A' with 
-                | Matrix ?m' ?n' =>
-                  match type of B' with 
-                  | Matrix ?n'' ?o' => constr:(@Mmult m' n' o' A' B')
-                  end
-                end 
-  | ?A ⊗ ?B   => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                match type of A' with 
-                | Matrix ?m' ?n' =>
-                  match type of B' with 
-                  | Matrix ?o' ?p' => constr:(@kron m' n' o' p' A' B')
-                  end
-                end
-  | ?A †      => let A' := restore_dims_rec A in 
-                match type of A' with
-                | Matrix ?m' ?n' => constr:(@adjoint m' n' A')
-                end
-  | ?A .+ ?B => let A' := restore_dims_rec A in 
-               let B' := restore_dims_rec B in 
-               match type of A' with 
-               | Matrix ?m' ?n' =>
-                 match type of B' with 
-                 | Matrix ?m'' ?n'' => constr:(@Mplus m' n' A' B')
-                 end
-               end
-  | ?c .* ?A => let A' := restore_dims_rec A in 
-               match type of A' with
-               | Matrix ?m' ?n' => constr:(@scale m' n' c A')
-               end
-  | ?A       => A
-   end.
-
-Ltac restore_dims_fast := 
-  match goal with
-  | |- ?A = ?B => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                replace A with A' by unify_matrices_light; 
-                replace B with B' by unify_matrices_light
-  end.
-
-Ltac distribute_plus :=
-  repeat match goal with 
-  | |- context [?a × (?b .+ ?c)] => rewrite (Mmult_plus_distr_l _ _ _ a b c)
-  | |- context [(?a .+ ?b) × ?c] => rewrite (Mmult_plus_distr_r _ _ _ a b c)
-  | |- context [?a ⊗ (?b .+ ?c)] => rewrite (kron_plus_distr_l _ _ _ _ a b c)
-  | |- context [(?a .+ ?b) ⊗ ?c] => rewrite (kron_plus_distr_r _ _ _ _ a b c)
-  end.
-
-
 Lemma app_cons_app : forall {A} (a : A) (l1 l2 : list A), a :: l1 ++ l2 = [a] ++ l1 ++ l2.
 Proof. reflexivity. Qed.
 
@@ -726,78 +655,26 @@ Proof.
     repeat rewrite app_assoc.
     apply app_congruence; try reflexivity.
     unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl. unfold ueval1, ueval_cnot.
-    bdestruct (n0 <? n).
-    + unfold pad.
-      bdestructΩ (n + 1 <=? dim).
-      bdestructΩ (n0 + S (n - n0 - 1 + 1) <=? dim).
-      remember (n - n0 - 1) as m.
-      remember (dim - 1 - n) as p.
-      replace (n - n0) with (m + 1) by lia.
-      replace (dim - S (m + 1) - n0) with p by lia.
-      replace dim with (n + 1 + p) by lia.
-      replace n with (n0 + 1 + m) by lia.
-      clear. rename n0 into n.
-      repeat rewrite Nat.pow_add_r.
-      Msimpl.
-      repeat rewrite <- id_kron. simpl (2^1).
-      remember (2^n) as a. remember (2^m) as b. remember (2^p) as c. clear.
-      restore_dims_fast.
-      repeat rewrite mult_assoc.
-      repeat rewrite kron_mixed_product.
-      repeat rewrite <- kron_assoc.
-      repeat rewrite Mmult_1_l; auto with wf_db.
-      distribute_plus.
-      repeat rewrite <- kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      Msimpl.
-      apply f_equal2.
-      replace (hadamard × σx × hadamard) with σz by solve_matrix.
-      repeat rewrite Mmult_assoc.
+    unfold uc_equiv; simpl.
+    unfold ueval1, ueval_cnot, pad.
+    gridify.
+    + rewrite (Mmult_assoc _ hadamard hadamard).
+      replace (hadamard × hadamard) with (I 2) by solve_matrix.
+      repeat rewrite (Mmult_assoc _ _ hadamard).
+      rewrite (Mmult_assoc _ hadamard).
       replace (hadamard × (σx × hadamard)) with σz by solve_matrix.
       rewrite <- phase_pi, 2 phase_mul.
-      replace (PI + IZR k * PI / 4)%R with (IZR k * PI / 4 + PI)%R by lra.
+      Msimpl.
+      rewrite Rplus_comm.
       reflexivity.
-      Search hadamard.
-      rewrite (Mmult_assoc _ _ hadamard).
+    + rewrite (Mmult_assoc _ hadamard hadamard).
       replace (hadamard × hadamard) with (I 2) by solve_matrix.
-      Msimpl.
-      reflexivity.
-      restore_dims_fast.
-      remove_zero_gates; easy.
-    + unfold pad.
-      bdestructΩ (n + 1 <=? dim).
-      bdestructΩ (n <? n0).
-      bdestructΩ (n + S (n0 - n - 1 + 1) <=? dim).
-      all: remove_zero_gates; try easy.      
-      remember (n0 - n - 1) as x.
-      replace (n0 - n) with (1 + x) by lia.
-      remember (dim - S (x + 1) - n) as y.      
-      replace dim with (n + 1 + x + 1 + y) by lia.
-      replace ((n + 1 + x + 1 + y - 1 - n)) with (x + 1 + y) by lia.
-      clear. 
-      repeat rewrite Nat.pow_add_r.
-      simpl (2^1).
-      remember (2^n) as a. remember (2^x) as b. remember (2^y) as c. clear.
-      restore_dims_fast.
-      repeat rewrite <- id_kron.
-      restore_dims_fast.
-      distribute_plus.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      Msimpl.
-      apply f_equal2.
-      replace (hadamard × σx × hadamard) with σz by solve_matrix.
-      repeat rewrite Mmult_assoc.
+      repeat rewrite (Mmult_assoc _ _ hadamard).
+      rewrite (Mmult_assoc _ hadamard).
       replace (hadamard × (σx × hadamard)) with σz by solve_matrix.
       rewrite <- phase_pi, 2 phase_mul.
-      replace (PI + IZR k * PI / 4)%R with (IZR k * PI / 4 + PI)%R by lra.
-      reflexivity.
-      rewrite (Mmult_assoc _ _ hadamard).
-      replace (hadamard × hadamard) with (I 2) by solve_matrix.
       Msimpl.
+      rewrite Rplus_comm.
       reflexivity.
   - unfold search_for_Rz_pat2 in HS2.
     destruct p.
@@ -838,75 +715,25 @@ Proof.
     repeat rewrite app_assoc.    
     apply app_congruence; try reflexivity.
     unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl. unfold ueval1, ueval_cnot.
-    bdestruct (n2 <? n1).
-    + unfold pad.
-      bdestruct (n2 + (1 + (n1 - n2 - 1) + 1) <=? dim).
-      2: remove_zero_gates; try easy.      
-      bdestructΩ (n1 + 1 <=? dim).
-      remember (n1 - n2 - 1) as x.
-      replace (n1 - n2) with (x+1) by lia.
-      remember (dim - S (x + 1) - n2) as y.
-      replace dim with (n2 + 1 + x + 1 + y) by lia.
-      replace n1 with (n2 + 1 + x) by lia. 
-      replace (n2 + 1 + x + 1 + y - 1 - (n2 + 1 + x)) with y by lia.
-      repeat rewrite Nat.pow_add_r.
-      simpl (2^1).
-      remember (2^n2) as a. remember (2^x) as b. remember (2^y) as c. clear.
-      restore_dims_fast.
-      repeat rewrite <- id_kron. 
-      distribute_plus.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      remove_id_gates.
-      restore_dims_fast.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      Msimpl.
-      do 2 apply f_equal2.
-      * replace (σx × phase_shift (IZR k0 * PI / 4) × σx × phase_shift (IZR k * PI / 4))
+    unfold uc_equiv; simpl.
+    unfold ueval1, ueval_cnot, pad.
+    gridify.
+    + replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
+      replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
+      remove_zero_gates.
+      rewrite 2 phase_mul. rewrite Rplus_comm.
+      replace (σx × phase_shift (IZR k0 * PI / 4) × σx × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × σx × phase_shift (IZR k0 * PI / 4) × σx) by
         solve_matrix.
-        reflexivity.
-      * replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
-        remove_zero_gates; try easy.      
-      * replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-        remove_zero_gates; try easy.      
-      * rewrite 2 phase_mul. rewrite Rplus_comm. reflexivity.
-    + unfold pad.
-      bdestruct(n1 <? n2).
-      2: remove_zero_gates; try easy.   
-      rename n1 into n, n2 into n1. rename n into n2.
-      bdestruct (n2 + (1 + (n1 - n2 - 1) + 1) <=? dim).
-      2: remove_zero_gates; try easy.      
-      bdestructΩ (n2 + 1 <=? dim).
-      remember (n1 - n2 - 1) as x.
-      replace (n1 - n2) with (1+x) by lia.
-      remember (dim - S (x + 1) - n2) as y.
-      replace dim with (n2 + 1 + x + 1 + y) by lia.
-      replace (n2 + 1 + x + 1 + y - 1 - n2) with (x + 1 + y) by lia.
-      repeat rewrite Nat.pow_add_r.
-      simpl (2^1).
-      remember (2^n2) as a. remember (2^x) as b. remember (2^y) as c. clear.
-      restore_dims_fast.
-      repeat rewrite <- id_kron. 
-      distribute_plus.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      remove_id_gates.
-      do 2 apply f_equal2.
-      * replace (σx × phase_shift (IZR k0 * PI / 4) × σx × phase_shift (IZR k * PI / 4))
+      reflexivity.
+    + replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
+      replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
+      remove_zero_gates.      
+      rewrite 2 phase_mul. rewrite Rplus_comm.
+      replace (σx × phase_shift (IZR k0 * PI / 4) × σx × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × σx × phase_shift (IZR k0 * PI / 4) × σx) by
-        solve_matrix.
-        reflexivity.
-      * replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
-        remove_zero_gates; try easy.      
-      * replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-        remove_zero_gates; try easy.      
-      * rewrite 2 phase_mul. rewrite Rplus_comm. reflexivity.
+        solve_matrix.      
+      reflexivity.
   - clear HS HS2.
     unfold search_for_Rz_pat3 in HS3. 
     destruct p.
@@ -929,78 +756,22 @@ Proof.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl. 
     rewrite 2 Mmult_1_l; auto with wf_db.
-    unfold ueval1, ueval_cnot.
-    bdestruct (n0 <? n).
-    + unfold pad. (* pad lemma should work *)
-      rename n0 into n2. rename n into n1. 
-      bdestruct (n2 + (1 + (n1 - n2 - 1) + 1) <=? dim).
-      2: remove_zero_gates; try easy.      
-      bdestructΩ (n1 + 1 <=? dim).
-      remember (n1 - n2 - 1) as x.
-      replace (n1 - n2) with (x+1) by lia.
-      remember (dim - S (x + 1) - n2) as y.
-      replace dim with (n2 + 1 + x + 1 + y) by lia.
-      replace (n2 + 1 + x + 1 + y - 1 - n2) with (x + 1 + y) by lia.
-      bdestructΩ (n2 + 1 <=? n2 + 1 + x + 1 + y).
-      repeat rewrite Nat.pow_add_r.
-      simpl (2^1).
-      remember (2^n2) as a. remember (2^x) as b. remember (2^y) as c. clear.
-      restore_dims_fast.
-      repeat rewrite <- id_kron. 
-      distribute_plus.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      remove_id_gates.
-      restore_dims_fast.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      Msimpl.
-      apply f_equal2.
-      * replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
+    unfold ueval1, ueval_cnot, pad.
+    gridify.
+    + replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣1⟩⟨1∣) by solve_matrix.
-        reflexivity.
-      * replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
+      replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣0⟩⟨0∣) by solve_matrix.
-        reflexivity.
-    + unfold pad. (* pad lemma should work *)
-      bdestruct (n <? n0).
-      2: remove_zero_gates; try easy.      
-      rename n into n2. rename n0 into n1. 
-      bdestruct (n2 + (1 + (n1 - n2 - 1) + 1) <=? dim).
-      2: remove_zero_gates; try easy.      
-      bdestructΩ (n1 + 1 <=? dim).
-      remember (n1 - n2 - 1) as x.
-      replace (n1 - n2) with (1+x) by lia.
-      replace n1 with (n2 + 1 +x) by lia.
-      remember (dim - S (x + 1) - n2) as y.      
-      replace (dim - 1 - (n2 + 1 + x)) with y by lia.
-      replace dim with (n2 + 1 + x + 1 + y) by lia.      
-      repeat rewrite Nat.pow_add_r.
-      simpl (2^1).
-      remember (2^n2) as a. remember (2^x) as b. remember (2^y) as c. clear.
-      restore_dims_fast.
-      repeat rewrite <- id_kron. 
-      distribute_plus.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      remove_id_gates.
-      restore_dims_fast.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      Msimpl.
-      apply f_equal2.
-      * replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
+      reflexivity.
+    + replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣1⟩⟨1∣) by solve_matrix.
-        reflexivity.
-      * replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
+      replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣0⟩⟨0∣) by solve_matrix.
-        reflexivity.
+      reflexivity.
 Qed.
 
+(* Slow *)
+(* Should add/use lemmas for ∣0⟩⟨0∣ × ∣1⟩⟨1∣ and the like. *)
 Lemma commuting_CNOT_pat : forall {dim} (l : gate_list dim) q1 q2 l1 l2,
   search_for_commuting_CNOT_pat l q1 q2 = Some (l1, l2) ->
   _CNOT q1 q2 :: l =l= l1 ++ [_CNOT q1 q2] ++ l2.
@@ -1029,75 +800,18 @@ Proof.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl. 
     Msimpl.
-    unfold ueval1, ueval_cnot.
-    bdestruct (q1 <? q2).
-    + unfold pad. 
-      rename q1 into n2. rename q2 into n1. 
-      bdestruct (n2 + (1 + (n1 - n2 - 1) + 1) <=? dim).
-      2: remove_zero_gates; try easy.      
-      bdestructΩ (n2 + 1 <=? dim).
-      remember (n1 - n2 - 1) as x.
-      replace (n1 - n2) with (x+1) by lia.
-      remember (dim - S (x + 1) - n2) as y.
-      replace dim with (n2 + 1 + x + 1 + y) by lia.
-      replace (n2 + 1 + x + 1 + y - 1 - n2) with (x + 1 + y) by lia.
-      repeat rewrite Nat.pow_add_r.
-      simpl (2^1).
-      remember (2^n2) as a. remember (2^x) as b. remember (2^y) as c. clear.
-      restore_dims_fast.
-      repeat rewrite <- id_kron. 
-      distribute_plus.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      remove_id_gates.
-      restore_dims_fast.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      Msimpl.
-      apply f_equal2.
-      * replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
+    unfold ueval1, ueval_cnot, pad.
+    gridify.
+    + replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣1⟩⟨1∣) by solve_matrix.
-        reflexivity.
-      * replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
+      replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣0⟩⟨0∣) by solve_matrix.
-        reflexivity.
-    + unfold pad. (* exactly the final case of previous lemma *)
-      rename q2 into n2. rename q1 into n1. 
-      bdestruct (n2 <? n1).
-      2: remove_zero_gates; try easy.      
-      bdestruct (n2 + (1 + (n1 - n2 - 1) + 1) <=? dim).
-      2: remove_zero_gates; try easy.      
-      bdestructΩ (n1 + 1 <=? dim).
-      remember (n1 - n2 - 1) as x.
-      replace (n1 - n2) with (1+x) by lia.
-      replace n1 with (n2 + 1 +x) by lia.
-      remember (dim - S (x + 1) - n2) as y.      
-      replace (dim - 1 - (n2 + 1 + x)) with y by lia.
-      replace dim with (n2 + 1 + x + 1 + y) by lia.      
-      repeat rewrite Nat.pow_add_r.
-      simpl (2^1).
-      remember (2^n2) as a. remember (2^x) as b. remember (2^y) as c. clear.
-      restore_dims_fast.
-      repeat rewrite <- id_kron. 
-      distribute_plus.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      remove_id_gates.
-      restore_dims_fast.
-      repeat rewrite kron_assoc.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
-      Msimpl.
-      apply f_equal2.
-      * replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
+      reflexivity.
+    + replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣1⟩⟨1∣) by solve_matrix.
-        reflexivity.
-      * replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
+      replace  (∣0⟩⟨0∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣0⟩⟨0∣) by solve_matrix.
-        reflexivity.
+      reflexivity.
   - unfold search_for_CNOT_pat2 in HS.
     destruct p.
     inversion H; subst. clear H.
@@ -1116,33 +830,83 @@ Proof.
     apply app_congruence; try reflexivity.
     repeat rewrite <- app_assoc.
     apply app_congruence; try reflexivity.
-    
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl. 
     Msimpl.
-    unfold ueval_cnot.
-    bdestruct (n0 <? n); bdestruct (q1 <? n);
-    bdestructΩ (n <? n0); bdestructΩ (n <? q1); remove_zero_gates; trivial.       
-    + unfold pad. 
-      bdestruct (n0 + S (n - n0 - 1 + 1) <=? dim).
-      2: remove_zero_gates; easy.      
-      bdestruct (q1 + S (n - q1 - 1 + 1) <=? dim).
-      2: remove_zero_gates; easy.      
-      bdestruct (n0 <? q1).
+    unfold ueval_cnot, pad.
+    gridify; reflexivity.
+  - unfold search_for_CNOT_pat3 in HS.
+    destruct p.
+    inversion H; subst. clear H.
+    destruct (next_two_qubit_gate l q1) eqn:HN2; try discriminate.
+    repeat destruct p.
+    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
+    apply ntqg_preserves_semantics in HN2.
+    bdestruct (q1 =? n0); try discriminate. subst.   
+    destruct (does_not_reference g0 q2) eqn:NoRef'; try discriminate. 
+    destruct (does_not_reference g0 n) eqn:NoRef''; try discriminate.
+    simpl in HS. inversion HS; subst. clear HS.
+    rewrite HN2. 
+    repeat rewrite app_cons_app.
+    repeat rewrite app_assoc.
+    rewrite (does_not_reference_commutes_app2 _ fU_CNOT _ _ NoRef NoRef').
+    apply app_congruence; try reflexivity.
+    repeat rewrite <- app_assoc.
+    apply app_congruence; try reflexivity.
+    unfold uc_equiv_l; simpl.
+    unfold uc_equiv; simpl. 
+    Msimpl.
+    unfold ueval_cnot, pad.
+    gridify; try reflexivity.
+    all: replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix;
+         replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix;
+         reflexivity.
+  - unfold search_for_CNOT_pat4 in HS.
+    destruct p.
+    inversion H; subst. clear H.
+    destruct (next_single_qubit_gate l q2) eqn:HN1; try discriminate.
+    destruct p.
+    apply nsqg_preserves_semantics in HN1.
+    dependent destruction f; try discriminate.
+    destruct (next_two_qubit_gate g q2) eqn:HN2; try discriminate.
+    repeat destruct p.
+    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
+    apply ntqg_preserves_semantics in HN2.
+    bdestruct (q2 =? n0); try discriminate; subst.
+    bdestruct (q1 =? n); try discriminate; subst.
+    destruct (does_not_reference g1 q1) eqn:NoRef'; try discriminate.
+    simpl in HS.
+    destruct (next_single_qubit_gate g0 n0) eqn:HN1'; try discriminate.
+    destruct p.
+    apply nsqg_preserves_semantics in HN1'.
+    dependent destruction f; try discriminate.
+    inversion HS; subst; clear HS.
+    rewrite HN1, HN2, HN1'.
+    repeat rewrite app_cons_app.
+    replace (App1 fU_H n0 :: l2) with ([App1 fU_H n0] ++ l2) by reflexivity.
+    repeat rewrite app_assoc.
+    rewrite (does_not_reference_commutes_app1 _ fU_H _ NoRef).
+    rewrite <- (app_assoc _ _ g1).
+    rewrite (does_not_reference_commutes_app1 _ fU_H _ NoRef).
+    rewrite app_assoc.
+    rewrite (does_not_reference_commutes_app2 _ fU_CNOT _ _ NoRef' NoRef).
+    apply app_congruence; try reflexivity.
+    repeat rewrite <- app_assoc.
+    apply app_congruence; try reflexivity.
+    unfold uc_equiv_l; simpl.
+    unfold uc_equiv; simpl. 
+    Msimpl.
+    unfold ueval_cnot, ueval1, ueval_unitary1, pad.
+    gridify; try reflexivity.
+    all: replace (hadamard × ∣1⟩⟨1∣ × hadamard × σx) with
+          (σx × hadamard × ∣1⟩⟨1∣ × hadamard) by
+          solve_matrix;
+         replace (hadamard × ∣0⟩⟨0∣ × hadamard × σx) with
+          (σx × hadamard × ∣0⟩⟨0∣ × hadamard) by
+          solve_matrix;
+         reflexivity.
+Qed.
       
-      remember (n - n0 - 1) as x.
-      replace n with (n0 + x + 1) by lia. 
-      replace (n0 + x + 1 - n0) with (x + 1) by lia.
-      remember (dim - S (x + 1) - n0) as y.
-      replace dim with (n0 + 1 + x + 1 + y) by lia.
-      rewrite Nat.sub_add by lia.
-      replace (n0 + 1 + x + 1 + y - S (n0 + x + 1 - q1) - q1)
-        with y by lia.
-
-      (* hadran alach *)
-Admitted.
-
-
 (* Proofs about propagation functions *)
 
 Lemma propagate_H_sound : forall {dim} (l : gate_list dim) q l',
