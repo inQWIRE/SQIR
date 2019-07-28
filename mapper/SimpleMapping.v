@@ -257,52 +257,9 @@ Qed.
 
 Opaque SWAP.
 
-(* Every case in the swap_cnot_control proof below is basically the same 
-   - just with a, b, c switched. This 'tactic' just saves me from
-   copying & pasting the lines below 6 times. 
-
-   Warning: this is slow, so don't be surprised if it takes a while. *)
-Ltac prove_swap_cnot_case dim a b c :=
-  remember (c - a - 1) as i;
-  remember (b - a - 1) as j;
-  remember (c - b - 1) as k;
-  replace (dim - (1 + k + 1) - b) with (dim - (1 + i + 1) - a) by lia;
-  remember (dim - (1 + i + 1) - a) as l;
-  replace (2 ^ (1 + i + 1)) with (2 * 2 ^ i * 2) by unify_pows_two;
-  replace (2 ^ (1 + j + 1)) with (2 * 2 ^ j * 2) by unify_pows_two;
-  replace (2 ^ (1 + k + 1)) with (2 * 2 ^ k * 2) by unify_pows_two;
-  replace (2 ^ b) with (2 ^ a * 2 * 2 ^ j) by unify_pows_two;
-  replace (2 ^ (dim - (1 + j + 1) - a)) with (2 ^ k * 2 * 2 ^ l) by unify_pows_two;
-  replace (2 ^ i) with (2 ^ j * 2 * 2 ^ k) by unify_pows_two;
-  replace (2 ^ dim) with (2 ^ a * 2 * 2 ^ j * 2 * 2 ^ k * 2 * 2 ^ l) by unify_pows_two;
-  clear;
-  repeat rewrite <- id_kron;
-  repeat rewrite <- kron_assoc;
-  rewrite (kron_assoc (I (2 ^ a)) (I 2));
-  rewrite (kron_assoc (I (2 ^ a)) _ (I (2 ^ k)));
-  restore_dims_strong;
-  rewrite (kron_assoc (I (2 ^ a)) (I 2 ⊗ I (2 ^ j)));
-  rewrite (kron_assoc (I (2 ^ a)) _ (I 2));
-  repeat rewrite kron_plus_distr_r;
-  restore_dims_strong;
-  replace (2 * 2 ^ j * (2 * 2 ^ k * 2)) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by rewrite_assoc;
-  replace (2 * (2 ^ j * 2 * 2 ^ k) * 2) with (2 * 2 ^ j * 2 * 2 ^ k * 2) by rewrite_assoc;
-  repeat rewrite kron_mixed_product;
-  repeat rewrite Mmult_1_l; try auto with wf_db;
-  do 3 (apply f_equal_gen; try reflexivity);
-  repeat rewrite kron_plus_distr_l;
-  repeat rewrite <- kron_assoc;
-  repeat rewrite mult_assoc;
-  (* inefficient, brute force simplification *)
-  repeat rewrite Mmult_plus_distr_r;
-  repeat rewrite Mmult_plus_distr_l;
-  repeat rewrite kron_mixed_product;
-  Msimpl;
-  autorewrite with cnot_db; try auto with wf_db;
-  remove_zero_gates;
-  repeat rewrite Mplus_0_l, Mplus_0_r;
-  repeat rewrite Mplus_0_r.
-
+(* Slow, with lots of duplicate cases (1-3, 4-6). 
+   Would probably be faster is we only used the first parts of gridify,
+   since we wind up distributing the pluses back *)
 Lemma swap_cnot_control : forall {dim} a b c,
   (* well-typedness constraints *)
   a < dim -> b < dim -> c < dim ->
@@ -314,100 +271,101 @@ Proof.
   unfold uc_equiv; simpl.
   rewrite denote_swap.
   unfold ueval_cnot, ueval_swap, pad.
+
+(*
+  bdestruct_all; remove_zero_gates; try reflexivity; remember_differences; 
+  try hypothesize_dims; clear_dups; fill_differences.
+  - restore_dims_fast.
+    repeat rewrite kron_assoc.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.
+*)
+
   gridify.
-  - 
-
-
-
-  bdestruct (a <? b); bdestruct (b <? a); try lia.
-  - bdestruct (a + (1 + (b - a - 1) + 1) <=? dim); try lia.
-    clear H2 H6 H7.
-    bdestruct (b <? c); bdestruct (c <? b); try lia.
-    + (* a < b < c *)
-      bdestruct (a <? c); try lia.
-      bdestruct (b + (1 + (c - b - 1) + 1) <=? dim); try lia.
-      bdestruct (a + (1 + (c - a - 1) + 1) <=? dim); try lia.
-      clear H3 H4 H6 H7 H8 H9.
-      prove_swap_cnot_case dim a b c.
-      rewrite (Mplus_assoc _ _ _ (∣1⟩⟨1∣ ⊗ I (2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ σx)).
-      repeat rewrite <- kron_plus_distr_r.
-      repeat rewrite <- kron_plus_distr_l.
-      replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-      rewrite Mplus_comm.
-      reflexivity.
-    + bdestruct (c + (1 + (b - c - 1) + 1) <=? dim); try lia.
-      clear H3 H2 H7.
-      bdestruct (a <? c); bdestruct (c <? a); try lia.
-      * (* a < c < b *)
-        bdestruct (a + (1 + (c - a - 1) + 1) <=? dim); try lia.
-        clear H4 H5 H3 H7.
-        prove_swap_cnot_case dim a c b.
-        rewrite (Mplus_assoc _ _ _ (∣1⟩⟨1∣ ⊗ I (2 ^ j) ⊗ σx ⊗ I (2 ^ k) ⊗ ∣0⟩⟨0∣)).
-        repeat rewrite <- kron_plus_distr_r.
-        repeat rewrite <- kron_plus_distr_l.
-        replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-        rewrite Mplus_comm.
-        repeat rewrite <- kron_plus_distr_r.
-        reflexivity.
-      * (* c < a < b *)
-        bdestruct (c + (1 + (a - c - 1) + 1) <=? dim); try lia.
-        clear H4 H6 H2 H7.
-        prove_swap_cnot_case dim c a b.
-        rewrite (Mplus_assoc _ _ _ (σx ⊗ I (2 ^ j) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ k) ⊗ ∣0⟩⟨0∣)).
-        repeat rewrite <- kron_plus_distr_r.
-        repeat rewrite <- kron_plus_distr_l.
-        replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-        rewrite Mplus_comm.
-        repeat rewrite <- kron_plus_distr_r.
-        reflexivity.
-  - bdestruct (b + (1 + (a - b - 1) + 1) <=? dim); try lia.
-    clear H2 H5 H7.
-    bdestruct (a <? c); bdestruct (c <? a); try lia.
-    + (* b < a < c *)
-      bdestruct (b <? c); try lia.
-      bdestruct (a + (1 + (c - a - 1) + 1) <=? dim); try lia.
-      bdestruct (b + (1 + (c - b - 1) + 1) <=? dim); try lia.
-      clear H3 H4 H5 H7 H8 H9.
-      prove_swap_cnot_case dim b a c.
-      rewrite (Mplus_assoc _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ I 2)).
-      rewrite (Mplus_comm _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ k) ⊗ σx)).
-      rewrite <- Mplus_assoc.
-      rewrite (Mplus_assoc _ _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ k) ⊗ σx)).
-      repeat rewrite <- kron_plus_distr_r.
-      replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-      rewrite Mplus_comm.
-      rewrite id_kron.
-      reflexivity.
-    + bdestruct (c + (1 + (a - c - 1) + 1) <=? dim); try lia.
-      clear H4 H2 H7.
-      bdestruct (b <? c); bdestruct (c <? b); try lia.
-      * (* b < c < a *)
-        bdestruct (b + (1 + (c - b - 1) + 1) <=? dim); try lia.
-        clear H4 H6 H3 H7.
-        prove_swap_cnot_case dim b c a.
-        rewrite (Mplus_assoc _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ I 2 ⊗ I (2 ^ k) ⊗ ∣0⟩⟨0∣)).
-        rewrite (Mplus_comm _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ σx ⊗ I (2 ^ k) ⊗ ∣1⟩⟨1∣)).
-        rewrite <- Mplus_assoc.
-        rewrite (Mplus_assoc _ _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ j) ⊗ σx ⊗ I (2 ^ k) ⊗ ∣1⟩⟨1∣)).
-        repeat rewrite <- kron_plus_distr_r.
-        replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-        rewrite Mplus_comm.
-        repeat rewrite id_kron.
-        reflexivity.
-      * (* c < b < a *)
-        bdestruct (c + (1 + (b - c - 1) + 1) <=? dim); try lia.
-        clear H3 H5 H2 H7.
-        prove_swap_cnot_case dim c b a.
-        rewrite (Mplus_assoc _ _ (I (2 * 2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ ∣0⟩⟨0∣)).
-        rewrite (Mplus_comm _ _ (σx ⊗ I (2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ ∣1⟩⟨1∣)).
-        rewrite <- Mplus_assoc.
-        rewrite (Mplus_assoc _ _ _ (σx ⊗ I (2 ^ j) ⊗ ∣0⟩⟨0∣ ⊗ I (2 ^ k) ⊗ ∣1⟩⟨1∣)).
-        repeat rewrite <- kron_plus_distr_r.
-        repeat rewrite <- kron_plus_distr_l.
-        replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-        rewrite Mplus_comm.
-        repeat rewrite id_kron.
-        reflexivity.
+  - autorewrite with cnot_db.
+    remove_zero_gates.
+    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    match goal with 
+    | [|- ?A .+ ?C .+ ?B .+ ?D = _] => rewrite 2 Mplus_assoc;
+                                     rewrite <- (Mplus_assoc _ _ C);
+                                     rewrite (Mplus_comm _ _ C);
+                                     rewrite <- 2 (Mplus_assoc);
+                                     rewrite (Mplus_assoc _ _ _ C)                           
+    end.
+    repeat (try rewrite <- (kron_plus_distr_l);
+            try rewrite <- (kron_plus_distr_r)).
+    rewrite Mplus_comm.
+    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+    reflexivity.
+  - autorewrite with cnot_db.
+    remove_zero_gates.
+    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    match goal with 
+    | [|- ?A .+ ?C .+ ?B .+ ?D = _] => rewrite 2 Mplus_assoc;
+                                     rewrite <- (Mplus_assoc _ _ C);
+                                     rewrite (Mplus_comm _ _ C);
+                                     rewrite <- 2 (Mplus_assoc);
+                                     rewrite (Mplus_assoc _ _ _ C)                           
+    end.
+    repeat (try rewrite <- (kron_plus_distr_l);
+            try rewrite <- (kron_plus_distr_r)).
+    rewrite Mplus_comm.
+    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+    reflexivity.
+  - autorewrite with cnot_db.
+    remove_zero_gates.
+    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    match goal with 
+    | [|- ?A .+ ?C .+ ?B .+ ?D = _] => rewrite 2 Mplus_assoc;
+                                     rewrite <- (Mplus_assoc _ _ C);
+                                     rewrite (Mplus_comm _ _ C);
+                                     rewrite <- 2 (Mplus_assoc);
+                                     rewrite (Mplus_assoc _ _ _ C)                           
+    end.
+    repeat (try rewrite <- (kron_plus_distr_l);
+            try rewrite <- (kron_plus_distr_r)).
+    rewrite Mplus_comm.
+    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+    reflexivity.
+  - autorewrite with cnot_db.
+    remove_zero_gates.
+    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    match goal with 
+    | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
+                                     rewrite <- (Mplus_assoc _ _ A)
+    end.
+    repeat (try rewrite <- (kron_plus_distr_l);
+            try rewrite <- (kron_plus_distr_r)).
+    rewrite Mplus_comm.
+    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+    Msimpl.
+    reflexivity.
+  - autorewrite with cnot_db.
+    remove_zero_gates.
+    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    match goal with 
+    | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
+                                     rewrite <- (Mplus_assoc _ _ A)
+    end.
+    repeat (try rewrite <- (kron_plus_distr_l);
+            try rewrite <- (kron_plus_distr_r)).
+    rewrite Mplus_comm.
+    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+    Msimpl.
+    reflexivity.
+  - autorewrite with cnot_db.
+    remove_zero_gates.
+    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    match goal with 
+    | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
+                                     rewrite <- (Mplus_assoc _ _ A)
+    end.
+    repeat (try rewrite <- (kron_plus_distr_l);
+            try rewrite <- (kron_plus_distr_r)).
+    rewrite Mplus_comm.
+    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+    Msimpl.
+    reflexivity.
 Qed.
 
 Lemma H_swaps_CNOT : forall {dim} m n,
@@ -416,97 +374,64 @@ Proof.
   intros.
   unfold uc_equiv; simpl.
   unfold ueval1, ueval_cnot, pad.
-  bdestruct (n <? m).
-  - bdestruct (m <? n); try lia.
-    remember (m - n - 1) as i.
-    bdestruct (n + (1 + i + 1) <=? dim);
-    bdestruct (m + 1 <=? dim); 
-    bdestruct (n + 1 <=? dim); 
-    try lia;
-    try (remove_zero_gates; trivial).
-    replace (2 ^ (dim - 1 - n)) with (2 ^ i * 2 * 2 ^ (dim - (1 + i + 1) - n)) by unify_pows_two.
-    replace (2 ^ m) with (2 ^ n * 2 * 2 ^ i) by unify_pows_two.
-    replace (2 ^ (dim - 1 - m)) with (2 ^ (dim - (1 + i + 1) - n)) by unify_pows_two.
-    replace (2 ^ dim) with (2 ^ n * 2 * 2 ^ i * 2 * 2 ^ (dim - (1 + i + 1) - n)) by unify_pows_two.
-    clear.
-    repeat rewrite <- id_kron.
-    rewrite (kron_assoc (I (2 ^ n)) hadamard).
-    rewrite <- 2 (kron_assoc hadamard).
-    restore_dims_strong.
-    rewrite <- (kron_assoc (I (2 ^ n))).
-    rewrite (kron_assoc (I (2 ^ n)) (I 2)).
-    restore_dims_strong.
-    rewrite (kron_assoc (I (2 ^ n)) _ hadamard).
-    restore_dims_strong.
-    repeat rewrite kron_mixed_product.
-    repeat rewrite Mmult_1_l; try auto with wf_db.
-    repeat rewrite Mmult_plus_distr_r, Mmult_plus_distr_l.
-    rewrite Mmult_plus_distr_l.
-    repeat rewrite kron_mixed_product.
-    repeat rewrite Mmult_1_l; try auto with wf_db.
-    repeat rewrite Mmult_1_r; try auto with wf_db.
-    do 3 (apply f_equal_gen; try reflexivity).
-    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
-    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
-    rewrite 2 kron_plus_distr_l.
-    rewrite Mscale_kron_dist_r.
-    rewrite <- 2 Mscale_kron_dist_l.
-    rewrite <- Mplus_assoc.
-    rewrite Mplus_comm.
-    rewrite (Mplus_comm _ _ (hadamard × (∣1⟩⟨1∣ × hadamard) ⊗ I (2 ^ i) ⊗ ∣0⟩⟨0∣)).
-    rewrite Mplus_assoc.
-    rewrite <- (Mplus_assoc _ _ (hadamard × (∣0⟩⟨0∣ × hadamard) ⊗ I (2 ^ i) ⊗ ∣1⟩⟨1∣)).
-    rewrite <- 4 kron_plus_distr_r.
-    apply f_equal_gen. 
-    do 5 (apply f_equal_gen; try reflexivity).
-    solve_matrix.
-    do 4 (apply f_equal_gen; try reflexivity).
-    solve_matrix.
-  - bdestruct (m <? n); try (remove_zero_gates; trivial).
-    remember (n - m - 1) as i.
-    bdestruct (m + (1 + i + 1) <=? dim);
-    bdestruct (n + 1 <=? dim); 
-    bdestruct (m + 1 <=? dim); 
-    try lia;
-    try (remove_zero_gates; trivial).
-    replace (2 ^ (dim - 1 - m)) with (2 ^ i * 2 * 2 ^ (dim - (1 + i + 1) - m)) by unify_pows_two.
-    replace (2 ^ n) with (2 ^ m * 2 * 2 ^ i) by unify_pows_two.
-    replace (2 ^ (dim - 1 - n)) with (2 ^ (dim - (1 + i + 1) - m)) by unify_pows_two.
-    replace (2 ^ dim) with (2 ^ m * 2 * 2 ^ i * 2 * 2 ^ (dim - (1 + i + 1) - m)) by unify_pows_two.
-    clear.
-    repeat rewrite <- id_kron.
-    rewrite (kron_assoc (I (2 ^ m)) hadamard).
-    rewrite <- 2 (kron_assoc hadamard).
-    restore_dims_strong.
-    rewrite <- (kron_assoc (I (2 ^ m))).
-    rewrite (kron_assoc (I (2 ^ m)) (I 2)).
-    restore_dims_strong.
-    rewrite (kron_assoc (I (2 ^ m)) _ hadamard).
-    restore_dims_strong.
-    repeat rewrite kron_mixed_product.
-    repeat rewrite Mmult_1_l; try auto with wf_db.
-    repeat rewrite Mmult_plus_distr_r, Mmult_plus_distr_l.
-    rewrite Mmult_plus_distr_l.
-    repeat rewrite kron_mixed_product.
-    repeat rewrite Mmult_1_l; try auto with wf_db.
-    repeat rewrite Mmult_1_r; try auto with wf_db.
-    do 3 (apply f_equal_gen; try reflexivity).
-    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
-    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
-    rewrite 4 kron_plus_distr_r.
-    rewrite 2 Mscale_kron_dist_l.
-    rewrite <- Mscale_kron_dist_r.
-    rewrite <- Mplus_assoc.
-    rewrite Mplus_comm.
-    rewrite (Mplus_comm _ _ (∣0⟩⟨0∣ ⊗ I (2 ^ i) ⊗ (hadamard × (∣1⟩⟨1∣ × hadamard)))).
-    rewrite Mplus_assoc.
-    rewrite <- (Mplus_assoc _ _ (∣1⟩⟨1∣ ⊗ I (2 ^ i) ⊗ (hadamard × (∣0⟩⟨0∣ × hadamard)))).
+  gridify.
+  - rewrite <- 2 kron_plus_distr_r.
+    apply f_equal2; trivial.
+    repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron.
+    repeat rewrite kron_assoc.
+    restore_dims_fast.
     rewrite <- 2 kron_plus_distr_l.
-    apply f_equal_gen. 
-    do 2 (apply f_equal_gen; try reflexivity).
-    solve_matrix.
-    do 1 (apply f_equal_gen; try reflexivity).
-    solve_matrix.
+    apply f_equal2; trivial.
+    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
+    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
+    distribute_plus.
+    match goal with
+    | [|- ?A .+ ?C .+ (?B .+ ?D) = _] => rewrite Mplus_assoc;
+                                       rewrite <- (Mplus_assoc _ _ C);
+                                       rewrite (Mplus_comm _ _ C);
+                                       rewrite <- 2 (Mplus_assoc);
+                                       rewrite (Mplus_assoc _ _ _ C)                           
+    end.
+    repeat rewrite Mscale_kron_dist_r.
+    rewrite Mplus_comm.
+    apply f_equal2.
+    + rewrite <- Mscale_kron_dist_l.
+      rewrite <- kron_plus_distr_r.
+      apply f_equal2; trivial.
+      solve_matrix.
+    + rewrite <- kron_plus_distr_r.
+      apply f_equal2; trivial.
+      solve_matrix.
+  - rewrite <- 2 kron_plus_distr_r.
+    apply f_equal2; trivial.
+    repeat rewrite kron_assoc.
+    restore_dims_fast.
+    rewrite <- 2 kron_plus_distr_l.
+    apply f_equal2; trivial.
+    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
+    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
+    distribute_plus.
+    match goal with
+    | [|- ?A .+ ?C .+ (?B .+ ?D) = _] => rewrite Mplus_assoc;
+                                       rewrite <- (Mplus_assoc _ _ C);
+                                       rewrite (Mplus_comm _ _ C);
+                                       rewrite <- 2 (Mplus_assoc);
+                                       rewrite (Mplus_assoc _ _ _ C)                           
+    end.
+    rewrite Mplus_comm.
+    apply f_equal2.
+    + rewrite Mscale_kron_dist_l.
+      rewrite <- Mscale_kron_dist_r.
+      rewrite <- Mscale_kron_dist_r.
+      repeat rewrite <- kron_assoc.
+      restore_dims_fast. 
+      rewrite <- kron_plus_distr_l.
+      apply f_equal2; trivial.
+      solve_matrix.
+    + rewrite <- 2 kron_plus_distr_l.
+      apply f_equal2; trivial.
+      apply f_equal2; trivial.
+      solve_matrix.
 Qed.
 
 (* Correctness of do_cnot_along_path *)
