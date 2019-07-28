@@ -101,6 +101,7 @@ Definition CNOT {dim} m n : ucom dim := uapp2 U_CNOT m n.
 Definition T {dim} n : ucom dim := uapp1 (U_R (PI / 4)) n.
 Definition P {dim} n : ucom dim := uapp1 (U_R (PI / 2)) n. 
 Definition PDAG {dim} n : ucom dim := uapp1 (U_R (- (PI / 2))) n.
+Definition Rz {dim} θ n : ucom dim := uapp1 (U_R θ) n.  
 
 Definition CZ {dim} m n : ucom dim :=
   H n ; CNOT m n ; H n.

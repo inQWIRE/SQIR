@@ -1,5 +1,6 @@
 Require Import Compose.
 Require Import QWIRE.Dirac.
+Require Import Top.Tactics.
 
 Local Open Scope nat_scope.
 Local Open Scope ucom_scope.
@@ -55,6 +56,12 @@ Proof.
       apply WT_app2; lia.
 Qed.      
 
+(* Move to Dirac.v or somewhere convenient *)
+Lemma braket00 : ⟨0∣ × ∣0⟩ = I 1. Proof. solve_matrix. Qed.
+Lemma braket01 : ⟨0∣ × ∣1⟩ = Zero. Proof. solve_matrix. Qed.
+Lemma braket10 : ⟨1∣ × ∣0⟩ = Zero. Proof. solve_matrix. Qed.
+Lemma braket11 : ⟨1∣ × ∣1⟩ = I 1. Proof. solve_matrix. Qed.
+
 Theorem GHZ_correct : forall n : nat, uc_eval (GHZ n) × nket n ∣0⟩ = ghz n.
 Proof.
   intros. induction n.
@@ -72,28 +79,39 @@ Proof.
       simpl in *.
       rewrite IHn.
       unfold ueval_cnot, pad. 
-      bdestruct (n <? S n); try lia.
-      bdestruct (n + (1 + (S n - n - 1) + 1) <=? S (n + 1)); try lia.
-      clear.
-      replace (S n - n)%nat with 1%nat by lia.
-      simpl.
-      replace (n + 1 - 1 - n)%nat with O by lia.
-      simpl.
-      Msimpl.
+      repad.
+      replace d with 0%nat in * by lia.
+      replace d0 with 0%nat in * by lia. 
+      simpl. Msimpl. clear.
       setoid_rewrite cnot_decomposition.
       autorewrite with ket_db.
       restore_dims_strong.
-      replace ((2 ^ n) + 0)%nat with (2 ^ n)%nat by lia.
-      replace (((2 ^ n) + (2 ^ n)) * 2)%nat with ((2 ^ n) * (2 * 2))%nat by lia. 
-      rewrite Mmult_plus_distr_l. 
-      autorewrite with ket_db.
       rewrite 3 kron_assoc. 
+      rewrite <- Mscale_plus_distr_r.
+      restore_dims_fast.
+      repeat rewrite Mscale_mult_dist_r.
+      distribute_plus.
       rewrite 2 kron_mixed_product.
       autorewrite with ket_db; auto with wf_db.
-      restore_dims.  
-      rewrite CNOT00_spec.
-      rewrite CNOT10_spec.
+(* alternative:
+      gridify.
+      replace d with 0%nat in * by lia.
+      replace d0 with 0%nat in * by lia. 
+      simpl. Msimpl. clear.
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      repeat rewrite Mscale_mult_dist_r.
+      repeat rewrite kron_mixed_product.
+      Msimpl.
+      repeat rewrite Mmult_assoc.
+      rewrite braket00, braket01, braket10, braket11.
+      Msimpl.
+      remove_zero_gates. rewrite Mscale_0_r. remove_zero_gates.
+      rewrite Mplus_0_l, Mplus_0_r.
+      rewrite Mplus_comm.
+      repeat rewrite Mscale_kron_dist_l.
       reflexivity.
+*)
 Qed.
 
 

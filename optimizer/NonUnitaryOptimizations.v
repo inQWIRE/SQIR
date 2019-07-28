@@ -1,5 +1,6 @@
 Require Import SQIRE.
 Require Import DensitySem.
+Require Import Top.Tactics.
 
 Local Open Scope com.
 
@@ -32,6 +33,56 @@ Proof.
   unfold ueval1.
   apply functional_extensionality. intros ρ.
   unfold pad.
+
+  gridify.
+  apply f_equal2.
+  - apply f_equal.
+    repeat rewrite <- Mmult_assoc.
+    Msimpl.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.
+    Msimpl.
+    rewrite (Mmult_assoc (∣1⟩)).
+    replace (⟨1∣ × phase_shift θ) with (Cexp θ .* ⟨1∣) by solve_matrix.
+    restore_dims_fast.
+    repeat rewrite Mmult_assoc.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.
+    rewrite <- (Mmult_assoc _ (∣1⟩)).
+    replace (phase_shift (- θ) × ∣1⟩) with (Cexp (- θ) .* ∣1⟩) by solve_matrix.                                            
+    restore_dims_fast.
+    Msimpl.
+    repeat (try rewrite Mscale_mult_dist_r;
+            try rewrite Mscale_mult_dist_l;
+            try rewrite Mscale_kron_dist_l;
+            try rewrite Mscale_kron_dist_r).
+    repeat match goal with 
+    | |- context[?A × (?c .* ?B)] => idtac c; rewrite (Mscale_mult_dist_r _ _ _ c A B)
+    end. 
+    rewrite Mscale_assoc.
+    rewrite Cexp_mul_neg_r.
+    rewrite Mscale_1_l.
+    reflexivity.
+  - apply f_equal.
+    repeat rewrite <- Mmult_assoc.
+    Msimpl.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.
+    Msimpl.
+    rewrite (Mmult_assoc (∣0⟩)).
+    replace ((⟨0∣ × phase_shift θ)) with ⟨0∣ by solve_matrix.
+    restore_dims_fast.
+    repeat rewrite Mmult_assoc.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.
+    rewrite <- (Mmult_assoc _ (∣0⟩)).
+    replace (phase_shift (- θ) × ∣0⟩) with ∣0⟩ by solve_matrix.
+    restore_dims_fast.
+    Msimpl.
+    reflexivity.
+Qed.
+
+(* Cleaner old version: 
   bdestruct (n + 1 <=? dim).
   2: remove_zero_gates; reflexivity.
   remember (dim - 1 - n)%nat as m.
@@ -64,6 +115,7 @@ Proof.
   rewrite Mscale_1_l.
   reflexivity.
 Qed.  
+*)
 
 Lemma R_measure : forall dim θ n, @R_ dim θ n ; measure n ≡ measure n.
 Proof. intros. apply R_mif. Qed.
@@ -168,51 +220,26 @@ Proof.
   unfold c_equiv.
   simpl.
   unfold compose_super, Splus, super.
-  unfold ueval1.
+  unfold ueval1, ueval_unitary1.
   apply functional_extensionality.
-  intros.
+  intros ρ.
   unfold pad.
-  bdestruct (n + 1 <=? dim).
-  2 : remove_zero_gates; reflexivity.
-  remember (dim - 1 - n)%nat as m.
-  assert (dim = n + 1 + m)%nat as E by lia.
-  rewrite E in *.
-  subst.
-  clear.
-  replace (2 ^ (n + 1 + m))%nat with (2^n * 2 * 2^m)%nat by unify_pows_two.
-  restore_dims.
-  Msimpl.
+  gridify.
   repeat rewrite Mmult_assoc.
   repeat rewrite kron_mixed_product.  
-  repeat (restore_dims; rewrite <- Mmult_assoc).
+  repeat (restore_dims_fast; rewrite <- Mmult_assoc).
   repeat rewrite kron_mixed_product.  
-  repeat (restore_dims; rewrite Mmult_assoc).
+  repeat (restore_dims_fast; rewrite Mmult_assoc).
   Msimpl.
-  repeat rewrite Mmult_plus_distr_r.
-  repeat rewrite Mmult_assoc.
+  repeat rewrite <- Mmult_assoc.
   Msimpl.
-  replace (∣1⟩⟨0∣ × ∣1⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-  replace (∣0⟩⟨0∣ × ∣1⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-  replace (∣1⟩⟨0∣ × ∣0⟩⟨0∣) with (∣1⟩⟨0∣) by solve_matrix.
-  replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
+  replace (∣0⟩⟨1∣ × σx × ∣1⟩ × ⟨1∣) with (@Zero 2 2) by solve_matrix.
+  replace ((∣0⟩⟨1∣ × ∣0⟩ × ⟨0∣)) with (@Zero 2 2) by solve_matrix.
   repeat remove_zero_gates.
-  rewrite Mplus_0_l.
-  repeat remove_zero_gates.
-  rewrite Mplus_0_l.
-  repeat rewrite Mmult_plus_distr_l.
-  rewrite <- Mmult_assoc.
-  restore_dims.
-  rewrite <- Mmult_assoc.
-  repeat rewrite kron_mixed_product.
-  replace (σx × ∣1⟩⟨1∣) with (∣0⟩⟨1∣) by solve_matrix.
-  Msimpl.
-  replace (∣0⟩⟨0∣ × ∣0⟩⟨1∣) with (∣0⟩⟨1∣) by solve_matrix.
-  rewrite <- Mmult_assoc.
-  restore_dims.
-  rewrite <- Mmult_assoc.
-  rewrite kron_mixed_product.
-  Msimpl.
-  replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
+  replace ((∣0⟩⟨0∣ × σx × ∣1⟩ × ⟨1∣)) with (∣0⟩⟨1∣) by solve_matrix.
+  replace ((∣1⟩⟨1∣ × σx × ∣0⟩ × ⟨0∣)) with (∣1⟩⟨0∣) by solve_matrix.
+  replace (∣0⟩⟨0∣ × ∣0⟩ × ⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
+  repeat rewrite Mplus_0_l.
   reflexivity.
 Qed.
 

@@ -1,5 +1,6 @@
 Require Import Phase.
 Require Import UnitarySem.
+Require Import Tactics.
 Require Import ListRepresentation.
 Require Import Equivalences.
 Require Import Proportional.
@@ -335,25 +336,6 @@ Fixpoint apply_H_equivalences {dim} (l : gate_list dim) (n: nat) : gate_list dim
 Definition hadamard_reduction {dim} (l : gate_list dim) : gate_list dim := 
   apply_H_equivalences l (2 * (length l)).
 
-
-(* New C_field_simplify/nonzero that deal with Ci *)
-Ltac nonzero :=
-  repeat split;
-   try match goal with
-       | |- not (@eq _ ?x (RtoC (IZR Z0))) => apply RtoC_neq
-       | |- not (@eq _ Ci (RtoC (IZR Z0))) => apply C0_snd_neq; simpl
-       end;
-   repeat
-    match goal with
-    | |- not (@eq _ (sqrt ?x) (IZR Z0)) => apply sqrt_neq_0_compat
-    | |- not (@eq _ (Rinv ?x) (IZR Z0)) => apply Rinv_neq_0_compat
-    end; match goal with
-         | |- not (@eq _ _ _) => lra
-         | |- Rlt _ _ => lra
-         end.
-
-Ltac C_field_simplify := repeat field_simplify_eq [ Csqrt2_sqrt Csqrt2_inv Ci2].
-
 Lemma apply_H_equivalence1_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l ≅l≅ l'. 
@@ -437,9 +419,7 @@ Proof.
   repeat rewrite Mmult_1_l by auto with wf_db.
   replace (hadamard × hadamard) with (I 2) by solve_matrix.
   repeat rewrite id_kron.
-  unify_pows_two. 
-  replace (n + 1 + (dim - 1 - n))%nat with dim by lia.
-  reflexivity.
+  unify_matrices_light.
 Qed.
 
 Lemma apply_H_equivalence3_sound : forall {dim} (l l' : gate_list dim) q,
@@ -644,70 +624,25 @@ Proof.
   apply uc_cong_l_app_congruence; try reflexivity.
   exists 0. rewrite Cexp_0. rewrite Mscale_1_l.
   simpl.
-  unfold ueval1, pad.
-  bdestruct (n + 1 <=? dim).
-  2 : { repeat rewrite Mmult_0_r.  reflexivity. }
-  repeat rewrite Mmult_1_l by auto with wf_db.
-  restore_dims_strong.
-  repeat rewrite Mmult_assoc.
-  restore_dims.
-  repeat rewrite kron_mixed_product.
-  repeat rewrite <- Mmult_assoc.
-  repeat rewrite kron_mixed_product.
-  repeat rewrite Mmult_1_l by auto with wf_db.
-  unfold ueval_cnot.
-  bdestruct (n0 <? n).
-  - unfold pad.
-    replace (n0 + (1 + (n - n0 - 1) + 1))%nat with (n + 1)%nat by lia.
-    bdestruct (n + 1 <=? dim)%nat.
-    2 : { apply gt_not_le in H5. contradiction. }
-    repeat rewrite id_kron.
-    replace (dim - (1 + (n - n0 - 1) + 1) - n0)%nat with (dim - 1 - n)%nat by lia.
-    restore_dims.
-    repeat rewrite kron_assoc.
-    repeat rewrite <- kron_assoc.
-    restore_dims_strong.
-    replace (2 ^ n0 * (2 * 2 ^ (n - n0 - 1) * 2))%nat with (2 ^ n * 2)%nat in * by unify_pows_two.
-    repeat rewrite kron_mixed_product.
-    repeat rewrite Mmult_1_l by auto with wf_db.
-    apply f_equal2; (try reflexivity).
-    replace (2 ^ n)%nat with (2 ^ n0 * 2 * 2 ^ (n - n0 - 1))%nat by unify_pows_two.
-    repeat rewrite <- id_kron.
-    repeat rewrite kron_assoc.
-    repeat rewrite <- kron_assoc.
-    restore_dims_strong.
-    repeat rewrite kron_assoc.
-    replace (2 * 2 ^ (n - n0 - 1) * 2)%nat with (2 * (2 ^ (n - n0 - 1) * 2))%nat by unify_pows_two.
-    replace (2 ^ n0 * 2 * 2 ^ (n - n0 - 1) * 2)%nat with (2 ^ n0 * (2 * (2 ^ (n - n0 - 1) * 2)))%nat by unify_pows_two.
-    repeat rewrite kron_mixed_product.
-    apply f_equal2; try reflexivity.
-    repeat rewrite Mmult_plus_distr_r.
-    repeat rewrite Mmult_plus_distr_l.
-    repeat rewrite kron_mixed_product.
-    apply f_equal2.
-    + apply f_equal2. reflexivity. apply f_equal2. reflexivity.
-      solve_matrix; rewrite Cexp_6PI4; rewrite Cexp_2PI4; try group_radicals; try lca.
-    + apply f_equal2. reflexivity. apply f_equal2. reflexivity.
-      solve_matrix; rewrite Cexp_6PI4; rewrite Cexp_2PI4; try group_radicals; try lca.
-  - bdestruct (n <? n0).
-    2 : { repeat rewrite Mmult_0_l.
-          replace (2 ^ dim)%nat with (2 ^ n * 2 * 2 ^ (dim - 1 - n))%nat by unify_pows_two.
-          repeat rewrite Mmult_0_r. reflexivity. }
-    unfold pad.
-    replace (n + (1 + (n0 - n - 1) + 1))%nat with (n0 + 1)%nat by lia.
-    bdestruct (n0 + 1 <=? dim)%nat.
-    2 : { repeat rewrite Mmult_0_l. 
-          replace (2 ^ dim)%nat with (2 ^ n * 2 * 2 ^ (dim - 1 - n))%nat by unify_pows_two.
-          repeat rewrite Mmult_0_r. reflexivity. }
-    repeat rewrite id_kron.
-    replace (dim - (1 + (n0 - n - 1) + 1) - n)%nat with (dim - 1 - n0)%nat by lia.
-    restore_dims.
-    repeat rewrite kron_assoc.
-    repeat rewrite <- kron_assoc.
-    restore_dims_strong.
-    replace (2 ^ n * (2 * 2 ^ (n0 - n - 1) * 2))%nat with (2 ^ n0 * 2)%nat in * by unify_pows_two.
-    repeat rewrite kron_assoc.
-Admitted.
+  
+  unfold ueval_cnot, ueval1, ueval_unitary1, pad.
+  gridify.
+  - apply f_equal2.
+    + apply f_equal2; trivial. apply f_equal2; trivial.
+      solve_matrix; rewrite Cexp_6PI4; rewrite Cexp_2PI4;
+      C_field_simplify; try nonzero; lca.
+    + apply f_equal2; trivial. apply f_equal2; trivial.
+      solve_matrix; rewrite Cexp_6PI4; rewrite Cexp_2PI4;
+      C_field_simplify; try nonzero; lca.
+  - apply f_equal2.
+    + do 4 (apply f_equal2; trivial); 
+      solve_matrix; rewrite Cexp_6PI4; rewrite Cexp_2PI4;
+      C_field_simplify; try nonzero; try lca.
+    + do 4 (apply f_equal2; trivial); 
+      solve_matrix; rewrite Cexp_6PI4; rewrite Cexp_2PI4;
+      C_field_simplify; try nonzero; try lca.
+Qed.    
+
 
 Lemma apply_H_equivalence_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence l q = Some l' -> 
