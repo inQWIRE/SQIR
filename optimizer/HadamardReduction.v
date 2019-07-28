@@ -388,6 +388,7 @@ Proof.
   - rewrite Mscale_0_r. reflexivity.
 Qed.
 
+(*
 Lemma nsqg_preserves_semantics' : forall {dim} (l l' : gate_list dim) (q : nat) (u : fUnitary 1),
   next_single_qubit_gate l q = Some (u, l') -> 
   l = App1 u q :: l'.
@@ -397,13 +398,30 @@ Proof.
   induction l.
   - inversion H.
   - destruct a.
+    bdestructΩ (n =? q)
 Admitted.
+*)
 
 Lemma ntqg_preserves_semantics' : forall {dim} (l l1 l2 : gate_list dim) (q m n : nat),
   next_two_qubit_gate l q = Some (l1, m, n, l2) ->
   l = l1 ++ [App2 fU_CNOT m n] ++ l2.
 Proof.
-Admitted.
+  intros.
+  generalize dependent l1.
+  induction l; try easy.
+  intros l1 H.
+  simpl in H.
+  destruct a.
+  - destruct (n0 =? q); try easy.
+    destruct (next_two_qubit_gate l q); try easy.
+    destruct p; destruct p; destruct p; inversion H; subst.
+    rewrite IHl with (l1:=g0); reflexivity.
+  - destruct ((n0 =? q) || (n1 =? q)).
+    + inversion H; subst. dependent destruction f. reflexivity.
+    + destruct (next_two_qubit_gate l q); try easy.
+      destruct p; destruct p; destruct p; inversion H; subst.
+      rewrite IHl with (l1:=g0); reflexivity.
+Qed.
   
 Lemma H_reduction_basic : forall {dim} (n : nat), 
   (n + 1 <= dim)%nat -> @App1 dim fU_H n :: App1 fU_H n :: [] =l= [].
@@ -432,7 +450,8 @@ Proof.
   destruct pat. symmetry in Heqpat.
   destruct p.
   2 : inversion H.
-  apply nsqg_preserves_semantics' in Heqpat.
+  apply nsqg_preserves_semantics in Heqpat.
+  apply uc_equiv_cong_l in Heqpat.
   rewrite Heqpat. clear Heqpat.
   dependent destruction f; inversion H. clear H1.
   remember (next_two_qubit_gate g q) as pat.
@@ -456,65 +475,9 @@ Proof.
     destruct pat.
     destruct p.
     2 : inversion H.
-    apply nsqg_preserves_semantics' in Heqpat.
+    apply nsqg_preserves_semantics in Heqpat.
     rewrite <- (rev_involutive g3) in Heqpat.
     rewrite <- rev_unit in Heqpat.
-    apply (f_equal (@rev (gate_app dim))) in Heqpat.
-    repeat rewrite rev_involutive in Heqpat.
-    apply (does_not_reference_commutes_app1 _ fU_H _) in H0.
-    apply uc_equiv_cong_l in H0.
-    simpl in H0. 
-    rewrite app_comm_cons.
-    rewrite H0.
-    subst g1.
-    dependent destruction f; try easy.
-    remember (next_single_qubit_gate g2 n) as pat.
-    symmetry in Heqpat.
-    destruct pat; try easy.
-    destruct p.
-    apply nsqg_preserves_semantics' in Heqpat.
-    rewrite Heqpat. clear Heqpat.
-    dependent destruction f; try easy.
-    inversion H.
-    simpl.
-    repeat rewrite <- app_assoc. simpl.
-    apply uc_cong_l_app_congruence; try reflexivity.
-    rewrite <- (app_nil_l g1).
-    repeat rewrite app_comm_cons.
-    apply uc_cong_l_app_congruence; try reflexivity.
-    admit.
-  - remember (next_single_qubit_gate (rev g1) n0) as pat.
-    symmetry in Heqpat.
-    destruct pat.
-    2 : inversion H.
-    destruct p.
-    apply nsqg_preserves_semantics' in Heqpat.
-    rewrite <- (rev_involutive g3) in Heqpat.
-    rewrite <- rev_unit in Heqpat.
-    apply (f_equal (@rev (gate_app dim))) in Heqpat.
-    repeat rewrite rev_involutive in Heqpat.
-    apply (does_not_reference_commutes_app1 _ fU_H _) in H0.
-    apply uc_equiv_cong_l in H0.
-    simpl in H0. 
-    rewrite app_comm_cons.
-    rewrite H0.
-    subst g1.
-    dependent destruction f; try easy.
-    remember (next_single_qubit_gate g2 n0) as pat.
-    symmetry in Heqpat.
-    destruct pat. 2 : inversion H.
-    destruct p.
-    apply nsqg_preserves_semantics' in Heqpat.
-    rewrite Heqpat. clear Heqpat.
-    dependent destruction f; try easy.
-    inversion H.
-    simpl.
-    repeat rewrite <- app_assoc. simpl.
-    apply uc_cong_l_app_congruence; try reflexivity.
-    rewrite <- (app_nil_l g1).
-    repeat rewrite app_comm_cons.
-    apply uc_cong_l_app_congruence; try reflexivity.
-    admit. 
 Admitted.
 
 Lemma apply_H_equivalence4_sound : forall {dim} (l l' : gate_list dim) q,
@@ -572,7 +535,13 @@ Proof.
   simpl.
   exists 0. rewrite Cexp_0. rewrite Mscale_1_l.
   simpl.
-Admitted.
+  unfold ueval1, ueval_cnot, pad.
+  gridify.
+  - do 3 (apply f_equal2; trivial); solve_matrix; 
+      rewrite Cexp_6PI4; rewrite Cexp_2PI4; repeat group_radicals; lca.
+  - do 5 (apply f_equal2; trivial); solve_matrix; 
+      rewrite Cexp_6PI4; rewrite Cexp_2PI4; repeat group_radicals; lca.
+Qed.    
 
 Lemma apply_H_equivalence5_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence5 q l = Some l' ->
@@ -623,8 +592,7 @@ Proof.
   repeat rewrite app_comm_cons.
   apply uc_cong_l_app_congruence; try reflexivity.
   exists 0. rewrite Cexp_0. rewrite Mscale_1_l.
-  simpl.
-  
+  simpl.  
   unfold ueval_cnot, ueval1, ueval_unitary1, pad.
   gridify.
   - apply f_equal2.
@@ -642,7 +610,6 @@ Proof.
       solve_matrix; rewrite Cexp_6PI4; rewrite Cexp_2PI4;
       C_field_simplify; try nonzero; try lca.
 Qed.    
-
 
 Lemma apply_H_equivalence_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence l q = Some l' -> 
