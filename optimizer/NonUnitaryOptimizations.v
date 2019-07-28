@@ -1,6 +1,6 @@
 Require Import SQIRE.
 Require Import DensitySem.
-Require Import Top.Tactics.
+Require Import Tactics.
 
 Local Open Scope com.
 

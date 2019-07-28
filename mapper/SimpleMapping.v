@@ -1,6 +1,6 @@
 Require Export Compose.
 Require Export Equivalences.
-Require Import Top.Tactics.
+Require Import Tactics.
 Require Export List.
 Open Scope ucom.
 

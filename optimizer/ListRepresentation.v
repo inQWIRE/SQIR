@@ -1,6 +1,6 @@
 Require Import Setoid.
 Require Import Equivalences.
-Require Import Top.Tactics.
+Require Import Tactics.
 Require Import Coq.Reals.ROrderedType.
 Require Import Phase.
 Require Export List.

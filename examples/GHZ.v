@@ -1,6 +1,6 @@
 Require Import Compose.
 Require Import QWIRE.Dirac.
-Require Import Top.Tactics.
+Require Import Tactics.
 
 Local Open Scope nat_scope.
 Local Open Scope ucom_scope.

@@ -25,6 +25,7 @@ The files below are the core of SQIRE.
 - core/Compose.v : Composition of unitary SQIRE programs.
 - core/Proportional.v : Defines proportional equality between matrices and unitary SQIRE programs. **(should be split into UnitarySem.v and QWIRE)**
 - core/Phase.v : General facts about the phase_shift matrix. **(should be moved to QWIRE)**
+- core/Tactics.v : Useful tactics.
 
 We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
 
