@@ -7,13 +7,13 @@ lib/QWIRE/Matrix.v
 lib/QWIRE/Prelim.v
 lib/QWIRE/Quantum.v
 
-Compose.v
-DensitySem.v
-NDSem.v
-Phase.v
-Proportional.v
-SQIRE.v
-UnitarySem.v
+core/Compose.v
+core/DensitySem.v
+core/NDSem.v
+core/Phase.v
+core/Proportional.v
+core/SQIRE.v
+core/UnitarySem.v
 
 optimizer/Equivalences.v
 optimizer/GateCancellation.v

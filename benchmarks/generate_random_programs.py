@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import random
 import sys
 
@@ -84,30 +85,38 @@ def write_sqire_prog(f, prog, n): # f should be an open file
         f.write("%s; " % gate_to_sqire(g))
     f.write("\n]\n\n")
 
+if (len(sys.argv) < 5):
+    print "Usage: ./generate_random_programs.py <output directory> <NUM_PROGS> <NUM_QUBITS> <NUM_GATES>"
+    exit(-1)
+    
+dir = sys.argv[1]
+NUM_PROGS = int(sys.argv[2])
+NUM_QUBITS = int(sys.argv[3])
+NUM_GATES = int(sys.argv[4])
 
-NUM_QUBITS = 15
-NUM_GATES = 5000
-NUM_PROGS = 20
+print "Generating %d programs with %d qubits and %d gates in the %s directory." % (NUM_PROGS, NUM_QUBITS, NUM_GATES, dir)
+
 progs = gen_programs(NUM_QUBITS, NUM_GATES, NUM_PROGS)
 
-# write SQIRE programs to one large file
-sqire_fname = "random_sqire_progs.ml"
-sqire_f = open(sqire_fname, "w")
-sqire_f.write("open Extracted_code\n\n")
-i = 0
-for p in progs:
-    write_sqire_prog(sqire_f, p, i)
-    i += 1
-sqire_f.write("let progs = [")
-for x in range(i):
-    sqire_f.write("prog%d; " % x)
-sqire_f.write("]")
-sqire_f.close()
+# # write SQIRE programs to one large file
+# sqire_fname = "random_sqire_progs.ml"
+# sqire_f = open(sqire_fname, "w")
+# sqire_f.write("open Extracted_code\n\n")
+# i = 0
+# for p in progs:
+#     write_sqire_prog(sqire_f, p, i)
+#     i += 1
+# sqire_f.write("let progs = [")
+# for x in range(i):
+#     sqire_f.write("prog%d; " % x)
+# sqire_f.write("]")
+# sqire_f.close()
 
 # write QASM programs to multiple files
 i = 0
+os.mkdir(dir)
 for p in progs:
-    qasm_fname = "benchmark%d.qasm" % i
+    qasm_fname = os.path.join(dir, "benchmark%d.qasm" % i)
     qasm_f = open(qasm_fname, "w")
     write_qasm_prog(qasm_f, p, NUM_QUBITS)
     qasm_f.close()

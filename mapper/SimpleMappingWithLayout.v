@@ -52,7 +52,7 @@ Definition bInjective n (f : nat -> nat) :=
 Definition bInverse n (f g : nat -> nat) := 
   (forall x, x < n -> g (f x) = x) /\ (forall y, y < n -> f (g y) = y).
 
-(* Is there a better way to write this? *)
+(* Is there a more succinct way to write this? *)
 Definition layout_well_formed {dim} (m : qmap dim) := 
   bFun dim (log2phys m) /\
   bFun dim (phys2log m) /\
@@ -146,3 +146,39 @@ Lemma simple_map_w_layout_respect_constraints : forall dim (c : ucom dim) (m : q
   respects_constraints is_in_graph c'.
 Proof. Admitted.
 
+
+
+
+Definition map_to_tenerife_w_layout (c : ucom 5) (m : qmap 5) :=
+  simple_map_w_layout c m tenerife_get_path tenerife_is_in_graph_b.
+
+Compute (map_to_tenerife_w_layout test_tenerife1 trivial_layout).
+Compute (map_to_tenerife_w_layout test_tenerife1 test_layout1).
+Compute (map_to_tenerife_w_layout test_tenerife2 trivial_layout).
+Compute (map_to_tenerife_w_layout test_tenerife2 test_layout1).
+Compute (map_to_tenerife_w_layout test_tenerife3 trivial_layout).
+Compute (map_to_tenerife_w_layout test_tenerife3 test_layout1).
+
+(* Represent a layout as a list where element x at index i indicates
+   that logical qubit x is located at physical qubit i.  *)
+Fixpoint layout_to_list' {dim} n (m : qmap dim) :=
+  match n with 
+  | O => []
+  | S n' => (layout_to_list' n' m) ++ [phys2log m n'] 
+  end.
+Definition layout_to_list {dim} (m : qmap dim) := layout_to_list' dim m.
+
+Compute (layout_to_list trivial_layout).
+Compute (layout_to_list test_layout1).
+
+Fixpoint layout_from_list' n l :=
+  match l with 
+  | [] => (fun x => x, fun x => x)
+  | h :: t => let (l2p, p2l) := layout_from_list' (n+1) t in
+            let l2p' x := if x =? h then n else l2p x in
+            let p2l' x := if x =? n then h else p2l x in
+            (l2p', p2l')   
+  end.
+Definition layout_from_list dim l : (qmap dim) := layout_from_list' 0 l.
+
+Compute (layout_to_list (layout_from_list 5 (3 :: 4 :: 1 :: 2 :: 0 :: []))).

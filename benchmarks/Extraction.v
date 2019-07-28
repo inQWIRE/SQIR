@@ -74,4 +74,4 @@ Extraction Implicit cancel_gates' [dim].
 Extraction Implicit cancel_gates [dim].
 
 (* Perform extraction to the file 'extracted_code.ml'. *)
-Extraction "extracted_code.ml" benchmark_to_list count_H_gates count_X_gates count_rotation_gates count_CNOT_gates cancel_gates_simple cancel_gates.
+Extraction "extracted_code.ml" count_H_gates count_X_gates count_rotation_gates count_CNOT_gates _H _X _Z _P _PDAG _T _TDAG cancel_gates.
