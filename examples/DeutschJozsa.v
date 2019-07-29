@@ -1,6 +1,7 @@
 Require Import List.
 Require Import Compose.
 Require Import Dirac.
+Require Import Tactics.
 
 Open Scope ucom.
 Local Close Scope C_scope.
@@ -22,11 +23,16 @@ Proof.
   - rewrite u0.
     simpl. intros F.
     apply (f_equal2_inv 0 0) in F.
-    contradict F; nonzero.
+    inversion F. contradict H0. nonzero.
   - rewrite u0.
     simpl. intros F.
     apply (f_equal2_inv 0 1) in F.
-    contradict F; nonzero.
+    contradict F. unfold ueval1, pad.
+    bdestruct_all. simpl.
+    replace (@Zero 2 2 0 1) with C0 by solve_matrix.
+    rewrite kron_1_l by auto with wf_db.
+    rewrite kron_1_r by auto with wf_db.
+    nonzero.
   - rewrite e. clear -IHboolean1.
     intros F.
     assert (Z1 : forall i j, i mod 2 = 0 -> j mod 2 = 0 -> (uc_eval u2 ⊗ ∣1⟩⟨1∣) i j = C0).
