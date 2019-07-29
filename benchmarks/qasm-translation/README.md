@@ -3,9 +3,9 @@
 Work in progress
 
 ## Requirements
-Current version of OCaml and dune and the following dependencies:
+Current version of OCaml and the following dependencies:
 ```
-$ opam install utop ppx_deriving
+$ opam install menhir utop ppx_deriving
 ```
 
 ## Steps

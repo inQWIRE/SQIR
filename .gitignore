@@ -11,3 +11,6 @@ Makefile.conf
 # Ignore OCaml object files
 *.cmo
 *.cmi
+
+# ocamlbuild working directory
+_build/
