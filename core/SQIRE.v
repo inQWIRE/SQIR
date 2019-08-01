@@ -3,58 +3,16 @@ Require Export List.
 Export ListNotations.
 Require Import Psatz.
 
-Inductive Unitary : nat -> Set := 
-  | U_H         : Unitary 1 
-  | U_X         : Unitary 1
-  | U_Y         : Unitary 1
-  | U_Z         : Unitary 1
-  | U_R         : R -> Unitary 1 
-  | U_CNOT      : Unitary 2.
-
-(* One possible alternative, inspired by Open QASM:
-
+(* This gate set allows arbitrary single-qubit unitaries (parameterized by 
+   rotation angles around the x, y, and z axes) and the two-qubit CNOT unitary.
+   It is the base gate set used by Open QASM. *)
 Inductive Unitary : nat -> Set := 
   | U_R         : R -> R -> R -> Unitary 1 
   | U_CNOT      : Unitary 2.
 
-This gate set allows arbitrary single-qubit unitaries (parameterized by 
-rotation angles around the x, y, and z axes) and the two-qubit CNOT unitary.
-This is the base gate set used by Open QASM. It's attractive because of its
-simplicity and generality, but it might introduce some challenges with writing
-functions over programs (how can you easily pattern match on a X gate with 
-this definition?). Working with the semantics (which involves Cexp and sin/cos)
-might also be tricky.
-
-The denotation of U_R is described as follows.
-
-Definition rotation (θ ϕ λ : R) : Matrix 2 2 :=
-  fun x y => match x, y with
-             | 0, 0 => (Cexp (-(ϕ + λ)/2)) * (cos (θ/2))
-             | 0, 1 => - (Cexp (-(ϕ - λ)/2)) * (sin (θ/2))
-             | 1, 0 => (Cexp ((ϕ - λ)/2)) * (sin (θ/2))
-             | 1, 1 => (Cexp ((ϕ + λ)/2)) * (cos (θ/2))
-             | _, _ => C0
-             end.
-
-The standard gates can be defined in terms of U_R as follows.
-
-Definition R λ a := uapp (U_R 0 0 λ) [a].
-Definition H a := uapp (U_R (PI/2) 0 PI) [a].  
-Definition X a := uapp (U_R PI 0 PI) [a].  
-Definition Y a := uapp (U_R PI (PI/2) (PI/2)) [a].
-Definition Z a := uapp (U_R 0 0 PI) [a]. 
-
-See the Open QASM tech report for more example gates in terms of U_R.
-
-*)
-
-Fixpoint invert_gate {n : nat} (u : Unitary n) : Unitary n := 
+Definition invert_u {n : nat} (u : Unitary n) : Unitary n := 
   match u with
-  | U_H => U_H
-  | U_X => U_X
-  | U_Y => U_Y
-  | U_Z => U_Z
-  | U_R ϕ => U_R (-ϕ)
+  | U_R θ ϕ λ => U_R (- θ) (- λ) (- ϕ)
   | U_CNOT => U_CNOT
   end.
 
@@ -71,8 +29,6 @@ Inductive ucom (dim : nat): Set :=
 | uapp1 : Unitary 1 -> nat -> ucom dim
 | uapp2 : Unitary 2 -> nat -> nat -> ucom dim.
 
-(* Gate application definitions and notations *)
-
 (* Set the dimension argument to be implicit. *)
 Arguments uskip {dim}.
 Arguments useq {dim}.
@@ -84,38 +40,13 @@ Notation "p1 ; p2" := (useq p1 p2) (at level 50) : ucom_scope.
 
 Local Open Scope ucom_scope.
 
-(*
-Notation "'H' n" := (uapp1 _ U_H n) (at level 0). 
-Notation "'X' n" := (uapp1 _ U_X n) (at level 0). 
-Notation "'Y' n" := (uapp1 _ U_Y n) (at level 0). 
-Notation "'Z' n" := (uapp1 _ U_Z n) (at level 0). 
-Notation "'R_' θ . n" := (uapp1 (U_R θ) n) (at level 0). (* not working *)
-Notation "'CNOT' m ',' n" := (uapp2 U_CNOT m n) (at level 0). 
-*)
-
-Definition H {dim} n : ucom dim := uapp1 U_H n.  
-Definition X {dim} n : ucom dim := uapp1 U_X n.  
-Definition Y {dim} n : ucom dim := uapp1 U_Y n.  
-Definition Z {dim} n : ucom dim := uapp1 U_Z n.  
-Definition CNOT {dim} m n : ucom dim := uapp2 U_CNOT m n.  
-Definition T {dim} n : ucom dim := uapp1 (U_R (PI / 4)) n.
-Definition P {dim} n : ucom dim := uapp1 (U_R (PI / 2)) n. 
-Definition PDAG {dim} n : ucom dim := uapp1 (U_R (- (PI / 2))) n.
-Definition Rz {dim} θ n : ucom dim := uapp1 (U_R θ) n.  
-
-Definition CZ {dim} m n : ucom dim :=
-  H n ; CNOT m n ; H n.
-
-Definition SWAP {dim} m n : ucom dim :=
-  CNOT m n; CNOT n m; CNOT m n.
-
 (* Inverse for unitary circuits. *)
-Fixpoint invert_u {dim} (c : ucom dim) : ucom dim :=
+Fixpoint invert_ucom {dim} (c : ucom dim) : ucom dim :=
   match c with
   | uskip => uskip
-  | c1 ; c2 => invert_u c2 ; invert_u c1
-  | uapp1 u n => uapp1 (invert_gate u) n
-  | uapp2 u m n => uapp2 (invert_gate u) m n
+  | c1 ; c2 => invert_ucom c2 ; invert_ucom c1
+  | uapp1 u n => uapp1 (invert_u u) n
+  | uapp2 u m n => uapp2 (invert_u u) m n
   end.
 
 (*************************)
@@ -144,19 +75,19 @@ Proof.
   - intros.
     induction c.
     + constructor.
-    + simpl in H0; apply Bool.andb_true_iff in H0 as [H1 H2]. 
+    + simpl in H; apply Bool.andb_true_iff in H as [H1 H2]. 
       constructor. 
       apply IHc1; assumption.
       apply IHc2; assumption.
-    + simpl in H0. apply Nat.ltb_lt in H0.
+    + simpl in H. apply Nat.ltb_lt in H.
       constructor; assumption.
-    + simpl in H0. apply Bool.andb_true_iff in H0 as [H H3]. 
+    + simpl in H. apply Bool.andb_true_iff in H as [H H3]. 
       apply Bool.andb_true_iff in H as [H1 H2].
       apply Nat.ltb_lt in H1. apply Nat.ltb_lt in H2.
       apply Bool.negb_true_iff in H3. apply Nat.eqb_neq in H3.
       constructor; assumption.
   - intros.
-    induction H0; subst; simpl.
+    induction H; subst; simpl.
     + reflexivity.
     + apply Bool.andb_true_iff. split; assumption.
     + apply Nat.ltb_lt; assumption.
@@ -201,10 +132,6 @@ Coercion from_ucom : ucom >-> com.
 Notation "p1 ; p2" := (seq p1 p2) (at level 50) : com_scope.
 Notation "'mif' n 'then' p1 'else' p2" := (meas n p1 p2) (at level 40) : com_scope.
 Notation "'measure' n" := (meas n skip skip) (at level 40) : com_scope.
-Notation "'reset' n" := (meas n (X n) skip) (at level 40) : com_scope.
-Notation "n <- 0" := (reset n) (at level 20) : com_scope.
-(* Notation "n <- 1" := (reset n ; X n) (at level 20) : com_scope. *)
-Notation "n <- 1" := (meas n skip (X n)) (at level 20) : com_scope.
 
 (*****************************)
 (** Higher-level Constructs **)
