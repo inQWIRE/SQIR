@@ -106,7 +106,7 @@ Proof.
       repeat rewrite Mmult_assoc.
       rewrite braket00, braket01, braket10, braket11.
       Msimpl.
-      remove_zero_gates. rewrite Mscale_0_r. remove_zero_gates.
+      Msimpl_light. rewrite Mscale_0_r. Msimpl_light.
       rewrite Mplus_0_l, Mplus_0_r.
       rewrite Mplus_comm.
       repeat rewrite Mscale_kron_dist_l.
