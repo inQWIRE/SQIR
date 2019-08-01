@@ -1,6 +1,7 @@
 Require Import Setoid.
 Require Export SQIRE.
 Require Export QWIRE.Quantum.
+Require Export core.Tactics.
 
 Local Open Scope matrix_scope.
 Local Open Scope ucom_scope.
@@ -24,10 +25,7 @@ Lemma pad_mult : forall n dim start (A B : Square (2^n)),
 Proof.
   intros.
   unfold pad.
-  bdestruct (start + n <=? dim). 2: rewrite Mmult_0_l; reflexivity.
-  restore_dims_strong.
-  repeat rewrite kron_mixed_product.
-  Msimpl.
+  gridify.
   reflexivity.
 Qed.
 
