@@ -124,7 +124,7 @@ Proof.
   simpl; unfold ueval_cnot, pad.
   bdestruct (b <? b + 1); try lia.
   bdestruct (b + (1 + (b + 1 - b - 1) + 1) <=? dim); try lia.
-  remove_zero_gates; trivial.
+  Msimpl_light; trivial.
 Qed.
 
 Lemma swap_swap_id_adjacent: forall a dim,
@@ -160,7 +160,7 @@ Proof.
     repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron; simpl;
       repeat rewrite Nat.mul_assoc. 
     replace (a + S (x + 1 + 1) + d2 - 2 - (a + 1 + x)) with d2 by lia.
-    restore_dims_strong. (* Q: _fast doesn't work? A: unify_matrices_light doesn't simplify 2*2 *)
+    restore_dims_strong. (* Q: _fast doesn't work? A: unify_matrices doesn't simplify 2*2 *)
     repeat rewrite <- kron_assoc; restore_dims_fast.
     rewrite (kron_assoc _ σx). remember (σx ⊗ I 2) as Xl. 
     rewrite (kron_assoc _ _ σx). remember (I 2 ⊗ σx) as Xr. 
@@ -174,7 +174,7 @@ Proof.
     rewrite swap_spec_general by (auto with wf_db).
     reflexivity.
   - rewrite swap_adjacent_not_WT by lia.
-    remove_zero_gates. rewrite Mplus_0_l.
+    Msimpl_light. rewrite Mplus_0_l.
     reflexivity.
 Qed.
 
