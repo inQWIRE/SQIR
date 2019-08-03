@@ -73,8 +73,8 @@ Qed.
    that contains no skip instructions. *)
 Inductive skip_free {dim} : ucom dim -> Prop :=
   | SF_seq : forall c1 c2, skip_free c1 -> skip_free c2 -> skip_free (c1; c2)
-  | SF_app1 : forall n (u : Unitary 1), skip_free (uapp1 u n)
-  | SF_app2 : forall m n (u : Unitary 2), skip_free (uapp2 u m n).
+  | SF_app_R : forall n θ ϕ λ, skip_free (uapp_R θ ϕ λ n)
+  | SF_app_CNOT : forall m n, skip_free (uapp_CNOT m n).
 
 Lemma rm_uskips_correct : forall {dim} (c : ucom dim),
   (rm_uskips c) = uskip \/ skip_free (rm_uskips c).
@@ -89,8 +89,8 @@ Proof.
     + right. simpl. 
       destruct (rm_uskips c1); try assumption;
       destruct (rm_uskips c2); try (apply SF_seq); easy. 
-  - right; simpl. apply SF_app1.
-  - right; simpl. apply SF_app2.
+  - right; simpl. apply SF_app_R.
+  - right; simpl. apply SF_app_CNOT.
 Qed.
 
 (* The output of rm_uskips has no more operations than the input program. *)
@@ -107,7 +107,7 @@ Lemma rm_uskips_reduces_count : forall {dim} (c : ucom dim),
   count_ops (rm_uskips c) <= count_ops c.
 Proof.
   induction c; try (simpl; lia).
-  simpl. destruct (rm_uskips c1); try lia; 
+  simpl. destruct (rm_uskips c1); try lia;
   destruct (rm_uskips c2); 
   simpl in *;
   lia.

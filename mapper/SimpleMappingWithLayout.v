@@ -76,12 +76,12 @@ Fixpoint simple_map_w_layout {dim} (c : ucom dim) (m : qmap dim) (get_path : nat
   | c1; c2 => let (c1', m') := simple_map_w_layout c1 m get_path is_in_graph_b in
              let (c2', m'') := simple_map_w_layout c2 m' get_path is_in_graph_b in
              (c1'; c2', m'')
-  | uapp2 U_CNOT n1 n2 => 
+  | uapp_CNOT n1 n2 => 
       let p := get_path (log2phys m n1) (log2phys m n2) in
       let (c', m') := path_to_swaps dim p m in
       let c'' := fix_cnots (c'; CNOT (log2phys m' n1) (log2phys m' n2)) is_in_graph_b in
       (c'', m')
-  | uapp1 u n => (uapp1 u (log2phys m n), m)
+  | uapp_R θ ϕ λ n => (uapp_R θ ϕ λ (log2phys m n), m)
   | _ => (c, m)
   end.  
 

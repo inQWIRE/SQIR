@@ -1,7 +1,7 @@
+Require Import Equivalences.
 Require Export ListRepresentation.
 
 Local Open Scope ucom_scope.
-
 
 (* This file contains current progress on a 'list of list of gates' (grid) 
    representation for unitary programs. This representation should be
@@ -28,6 +28,7 @@ Definition grid dim := list (gate_list dim).
    It would be interesting to prove that the length of the resulting grid 
    is actually equal to the depth of the circuit. (Although defining the 
    depth of a circuit may require a DAG representation.) *)
+
 Fixpoint build_slice' {dim} (l acc : gate_list dim) (n : nat) :
     (gate_list dim * gate_list dim) :=
   match n with

@@ -5,14 +5,26 @@ Require Import Setoid.
 
 Local Open Scope com_scope.
 
+(* TODO: Put in QWIRE's quantum file *)
+Lemma compose_super_eq : forall {m n p} (A : Matrix m n) (B : Matrix n p), 
+      compose_super (super A) (super B) = super (A × B).
+Proof.
+  intros.
+  unfold compose_super, super.
+  apply functional_extensionality. intros ρ.
+  rewrite Mmult_adjoint.
+  repeat rewrite Mmult_assoc.
+  reflexivity.
+Qed.
+
 Fixpoint c_eval {dim} (c : com dim) : Superoperator (2^dim) (2^dim) :=
   match c with
-  | skip         => fun ρ => ρ
-  | c1 ; c2      => compose_super (c_eval c2) (c_eval c1)  
-  | app1 u n     => super (ueval1 dim n u)
-  | app2 _ m n   => super (ueval_cnot dim m n)
-  | meas n c1 c2 => Splus (compose_super (c_eval c1) (super (@pad 1 n dim (∣1⟩⟨1∣)))) 
-                         (compose_super (c_eval c2) (super (@pad 1 n dim (∣0⟩⟨0∣)))) 
+  | skip           => fun ρ => ρ
+  | c1 ; c2        => compose_super (c_eval c2) (c_eval c1)  
+  | app_R θ ϕ λ n  => super (ueval_r dim n θ ϕ λ)
+  | app_CNOT m n   => super (ueval_cnot dim m n)
+  | meas n c1 c2   => Splus (compose_super (c_eval c1) (super (@pad 1 n dim (∣1⟩⟨1∣)))) 
+                           (compose_super (c_eval c2) (super (@pad 1 n dim (∣0⟩⟨0∣)))) 
   end.
 
 Lemma c_eval_ucom : forall {dim} (c : ucom dim) (ρ : Density (2^dim)),
@@ -82,16 +94,19 @@ Proof.
   reflexivity. 
 Qed.
 
+Local Transparent X.
+
 Lemma c_eval_reset : forall n dim ρ,
     c_eval (reset n) ρ = Splus (super (@pad 1 n dim (∣0⟩⟨0∣))) 
                                (super (@pad 1 n dim (∣0⟩⟨1∣))) ρ.
 Proof.
   intros. simpl.
   repeat rewrite compose_super_eq.
-  unfold ueval1, Splus.
+  unfold ueval_r, Splus.
   unfold compose_super; simpl.
   repeat rewrite pad_mult.
   rewrite <- Mmult_assoc. 
+  rewrite <- pauli_x_rotation.
   setoid_rewrite MmultX1.
   rewrite Mplus_comm.
   reflexivity.  
@@ -105,10 +120,11 @@ Lemma c_eval_reset1 : forall n dim ρ,
 Proof.
   intros. simpl.
   repeat rewrite compose_super_eq.
-  unfold ueval1, Splus.
+  unfold ueval_r, Splus.
   unfold compose_super; simpl.
   repeat rewrite pad_mult.
   rewrite <- Mmult_assoc. 
+  rewrite <- pauli_x_rotation.
   setoid_rewrite MmultX0.
   rewrite Mplus_comm.
   reflexivity.  

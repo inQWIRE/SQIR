@@ -1,6 +1,6 @@
 Require Import Setoid.
-Require Export SQIRE.
 Require Export QWIRE.Quantum.
+Require Export SQIRE.
 
 Local Open Scope matrix_scope.
 Local Open Scope ucom_scope.
@@ -58,6 +58,8 @@ Lemma WF_rotation : forall θ ϕ λ, WF_Matrix (rotation θ ϕ λ).
 Proof. intros. show_wf. Qed.
 Hint Resolve WF_rotation : wf_db.
 
+Hint Rewrite sin_0 sin_PI4 sin_PI2 sin_PI cos_0 cos_PI4 cos_PI2 cos_PI sin_neg cos_neg : trig_db.
+
 Lemma rotation_adjoint : forall θ ϕ λ, (rotation θ ϕ λ)† = rotation (-θ) (-λ) (-ϕ).
 Proof.
   intros.
@@ -68,8 +70,7 @@ Proof.
   apply injective_projections; simpl;
   try rewrite <- Ropp_plus_distr;
   autorewrite with R_db;
-  repeat rewrite sin_neg;
-  repeat rewrite cos_neg;
+  autorewrite with trig_db;
   try rewrite (Rplus_comm λ ϕ);
   autorewrite with R_db;
   reflexivity.
@@ -117,10 +118,9 @@ Proof.
             rewrite Rplus_assoc;
             rewrite Rplus_opp_r).
   all: (autorewrite with R_db;
-        try rewrite cos_neg;
-        try rewrite sin_neg).
+        autorewrite with trig_db;
+        autorewrite with R_db).
   all: try lra.
-  all: try rewrite cos_0; autorewrite with R_db.
   all: try (replace (cos (θ * / 2) * cos (θ * / 2))%R with ((cos (θ * / 2))²) by easy;
             replace (sin (θ * / 2) * sin (θ * / 2))%R with ((sin (θ * / 2))²) by easy).
   1: rewrite Rplus_comm.
@@ -149,19 +149,14 @@ Proof.
   destruct_m_eq; try reflexivity; 
   unfold Cexp; apply injective_projections; simpl;
   autorewrite with R_db;
-  try rewrite sin_0;
-  try rewrite sin_PI;
-  try rewrite cos_0;
-  try rewrite cos_PI;
+  autorewrite with trig_db;
   autorewrite with R_db;
   try reflexivity.
   all: rewrite Rmult_assoc;
        replace (/2 * /2)%R with (/4)%R by lra;
        repeat rewrite <- Rdiv_unfold;
-       try rewrite cos_PI4;
-       try rewrite sin_PI4;
-       try rewrite <- Ropp_mult_distr_r;
-       rewrite sqrt2_div2; 
+       autorewrite with trig_db;
+       rewrite sqrt2_div2;
        lra.
 Qed.
 
@@ -171,12 +166,7 @@ Proof.
   prep_matrix_equality.
   destruct_m_eq; try reflexivity;
   unfold Cexp; apply injective_projections; simpl;
-  try rewrite sin_0;
-  try rewrite sin_PI2;
-  try rewrite sin_PI;
-  try rewrite cos_0;
-  try rewrite cos_PI2;
-  try rewrite cos_PI;
+  autorewrite with trig_db;
   lra.
 Qed.
 
@@ -186,8 +176,7 @@ Proof.
   prep_matrix_equality.
   destruct_m_eq; try reflexivity;
   unfold Cexp; apply injective_projections; simpl;
-  try rewrite sin_PI2;
-  try rewrite cos_PI2;
+  autorewrite with trig_db;
   lra.
 Qed.
 
@@ -198,10 +187,7 @@ Proof.
   destruct_m_eq; try reflexivity;
   unfold Cexp; apply injective_projections; simpl;
   autorewrite with R_db;
-  try rewrite sin_0;
-  try rewrite sin_PI;
-  try rewrite cos_0;
-  try rewrite cos_PI;
+  autorewrite with trig_db;
   lra.
 Qed.
 
@@ -213,16 +199,12 @@ Proof.
   destruct_m_eq; try reflexivity;
   unfold Cexp; apply injective_projections; simpl;
   autorewrite with R_db;
-  try rewrite sin_0;
-  try rewrite cos_0;
+  autorewrite with trig_db;
   lra.
 Qed.
 
-(* k must be 1, but dependent types... *)
-Definition ueval1 (dim n : nat) (u : Unitary 1) : Square (2^dim) :=
-  match u with
-  | U_R θ ϕ λ => @pad 1 n dim (rotation θ ϕ λ)
-  end.
+Definition ueval_r (dim n : nat) θ ϕ λ : Square (2^dim) :=
+  @pad 1 n dim (rotation θ ϕ λ).
 
 (* Restriction: m <> n and m, n < dim *)
 
@@ -251,20 +233,17 @@ Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
 
 Fixpoint uc_eval {dim} (c : ucom dim) : Matrix (2^dim) (2^dim) :=
   match c with
-  | uskip       => I (2^dim)
-  | c1 ; c2     => uc_eval c2 × uc_eval c1 
-  | uapp1 u n   => ueval1 dim n u
-  | uapp2 _ m n => ueval_cnot dim m n
+  | uskip           => I (2^dim)
+  | c1 ; c2         => uc_eval c2 × uc_eval c1 
+  | uapp_R θ ϕ λ n  => ueval_r dim n θ ϕ λ
+  | uapp_CNOT m n   => ueval_cnot dim m n
   end.
 
 (** Well-formedness **)
 
-Lemma WF_ueval1 : forall dim n (u : Unitary 1), WF_Matrix (ueval1 dim n u).
+Lemma WF_ueval_r : forall dim n θ ϕ λ, WF_Matrix (ueval_r dim n θ ϕ λ).
 Proof.
-  intros dim n u.
-  dependent destruction u.
-  apply WF_pad.
-  apply WF_rotation.
+  intros. apply WF_pad. apply WF_rotation.
 Qed.  
   
 Lemma WF_ueval_cnot : forall dim m n, WF_Matrix (ueval_cnot dim m n). 
@@ -280,77 +259,56 @@ Lemma WF_uc_eval : forall {dim} (c : ucom dim), WF_Matrix (uc_eval c).
 Proof.
   intros dim c.
   induction c; simpl; auto with wf_db.
-  apply WF_ueval1.
+  apply WF_ueval_r.
   apply WF_ueval_cnot.
 Qed.
 
-Hint Resolve WF_pad WF_ueval1 WF_ueval_cnot WF_uc_eval : wf_db.
+Hint Resolve WF_pad WF_ueval_r WF_ueval_cnot WF_uc_eval : wf_db.
 
-(** Standard gate set **)
-(* In general, we won't want to interact directly with the 'rotation' matrix. *)
-
-(* One-qubit gates *)
-Definition H {dim} n : ucom dim := uapp1 (U_R (PI/2) 0 PI) n.  
-Definition X {dim} n : ucom dim := uapp1 (U_R PI 0 PI) n.  
-Definition Y {dim} n : ucom dim := uapp1 (U_R PI (PI/2) (PI/2)) n.  
-Definition Z {dim} n : ucom dim := uapp1 (U_R 0 0 PI) n.  
-Definition Rz {dim} λ n : ucom dim := uapp1 (U_R 0 0 λ) n.
-Definition T {dim} n : ucom dim := Rz (PI / 4) n.
-Definition TDAG {dim} n : ucom dim := Rz (- (PI / 4)) n.
-Definition P {dim} n : ucom dim := Rz (PI / 2) n. 
-Definition PDAG {dim} n : ucom dim := Rz (- (PI / 2)) n.
-
-(* Two-qubit gates *)
-Definition CNOT {dim} m n : ucom dim := uapp2 U_CNOT m n.  
-Definition CZ {dim} m n : ucom dim :=
-  H n ; CNOT m n ; H n.
-Definition SWAP {dim} m n : ucom dim :=
-  CNOT m n; CNOT n m; CNOT m n.
-
-(* Some lemmas about the denotation of gates *)
+(* Some lemmas about the denotation of gates. In general, we won't want to 
+   interact directly with the 'rotation' matrix. *)
 
 Lemma denote_H : forall dim n, uc_eval (H n) = @pad 1 n dim hadamard.
 Proof.
-  intros.
-  unfold uc_eval; simpl.
+  intros. unfold uc_eval; simpl.
   rewrite hadamard_rotation.
   reflexivity.
 Qed.
 
 Lemma denote_X : forall dim n, uc_eval (X n) = @pad 1 n dim σx.
 Proof.
-  intros.
-  unfold uc_eval; simpl.
+  intros. unfold uc_eval; simpl.
   rewrite pauli_x_rotation.
   reflexivity.
 Qed.
 
 Lemma denote_Y : forall dim n, uc_eval (Y n) = @pad 1 n dim σy.
 Proof.
-  intros.
-  unfold uc_eval; simpl.
+  intros. unfold uc_eval; simpl.
   rewrite pauli_y_rotation.
   reflexivity.
 Qed.
 
 Lemma denote_Z : forall dim n, uc_eval (Z n) = @pad 1 n dim σz.
 Proof.
-  intros.
-  unfold uc_eval; simpl.
+  intros. unfold uc_eval; simpl.
   rewrite pauli_z_rotation.
   reflexivity.
 Qed.
 
 Lemma denote_Rz : forall dim λ n, uc_eval (Rz λ n) = @pad 1 n dim (phase_shift λ).
 Proof.
-  intros.
-  unfold uc_eval; simpl.
+  intros. unfold uc_eval; simpl.
   rewrite phase_shift_rotation.
   reflexivity.
 Qed.
 
 Lemma denote_cnot : forall dim m n, 
-  uc_eval (CNOT m n) = 
+  uc_eval (CNOT m n) = ueval_cnot dim m n.
+Proof. easy. Qed.
+
+Lemma unfold_ueval_cnot : forall dim m n, 
+  ueval_cnot dim m n = 
     if (m <? n) then
       @pad (1+(n-m-1)+1) m dim (∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ I 2)
     else if (n <? m) then
@@ -359,27 +317,29 @@ Lemma denote_cnot : forall dim m n,
       Zero.
 Proof. easy. Qed.
 
+Lemma unfold_ueval_r : forall dim n θ ϕ λ, 
+  ueval_r dim n θ ϕ λ = @pad 1 n dim (rotation θ ϕ λ).
+Proof. easy. Qed.
+
 Lemma unfold_pad : forall n start dim A, 
   @pad n start dim A = if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
 Proof. easy. Qed.
 
 (* TODO: move lemmas about SWAP here *)
 
-Hint Rewrite denote_H denote_X denote_Y denote_Z denote_Rz  denote_cnot unfold_pad : denote_db.
-
-Opaque H X Y Z Rz CNOT.
+Hint Rewrite denote_H denote_X denote_Y denote_Z denote_Rz denote_cnot unfold_ueval_r unfold_ueval_cnot unfold_pad : eval_db.
 
 (* Some unit tests *)
 
 Lemma eval_H : uc_eval ((H 0) : ucom 1) = hadamard.
 Proof.
-  simpl. autorewrite with denote_db.
+  simpl. autorewrite with eval_db.
   simpl. Msimpl. reflexivity.
 Qed.
 
 Lemma eval_HHpar : uc_eval ((H 0; H 1) : ucom 2) = hadamard ⊗ hadamard.
 Proof.
-  simpl. autorewrite with denote_db.
+  simpl. autorewrite with eval_db.
   simpl. restore_dims. Msimpl. 
   restore_dims. Msimpl. 
   reflexivity.
@@ -387,13 +347,13 @@ Qed.
 
 Lemma eval_HHseq : uc_eval ((H 0; H 0) : ucom 2) = I 4.
 Proof.
-  simpl. autorewrite with denote_db.
+  simpl. autorewrite with eval_db.
   simpl. Msimpl. solve_matrix.
 Qed.
 
 Lemma eval_CNOT : uc_eval ((CNOT 0 1) : ucom 2) = cnot.
 Proof.
-  simpl. autorewrite with denote_db.
+  simpl. autorewrite with eval_db.
   simpl. Msimpl. solve_matrix.
 Qed.
 
@@ -443,10 +403,10 @@ Add Parametric Morphism (dim : nat) : (@useq dim)
 Proof. intros x y H x0 y0 H0. apply useq_congruence; easy. Qed.
 
 Lemma test_rel : forall (dim : nat) (c1 c2 : ucom dim), c1 ≡ c2 -> c2 ≡ c1.
-Proof. intros. rewrite H0. reflexivity. Qed.
+Proof. intros. rewrite H. reflexivity. Qed.
 
 Lemma test_mor : forall (dim : nat) (c1 c2 : ucom dim), c1 ≡ c2 -> c2 ; c1 ≡ c1 ; c1.
-Proof. intros. rewrite H0. reflexivity. Qed.
+Proof. intros. rewrite H. reflexivity. Qed.
 
 (** uc_eval is unitary iff well-typed **)
 
@@ -467,13 +427,11 @@ Proof.
   unify_matrices.
 Qed.
   
-Lemma ueval1_unitary : forall dim n (u : Unitary 1),
+Lemma ueval_r_unitary : forall dim n θ ϕ λ,
     (n < dim)%nat ->
-    WF_Unitary (ueval1 dim n u).
+    WF_Unitary (ueval_r dim n θ ϕ λ).
 Proof.
-  intros dim n u H.
-  dependent destruction u. 
-  simpl. apply pad_unitary. lia.
+  intros. apply pad_unitary. lia.
   apply rotation_unitary. 
 Qed.  
 
@@ -508,7 +466,7 @@ Proof.
     Msimpl.
     unify_pows_two.    
     reflexivity.
-  - bdestructΩ (n <? m). clear H0 NE.
+  - bdestructΩ (n <? m). clear H NE.
     apply pad_unitary. lia.
     split.
     { unify_pows_two.
@@ -555,10 +513,10 @@ Proof.
     rewrite IHc2; trivial. Msimpl.
     rewrite IHc1; easy.
   - inversion H; subst.
-    simpl. destruct (ueval1_unitary dim n u H1) as [_ UU].
+    simpl. destruct (ueval_r_unitary dim n r r0 r1 H1) as [_ UU].
     assumption.
   - inversion H; subst.
-    simpl. destruct (ueval_cnot_unitary dim n n0 H5 H3 H4) as [_ UU].
+    simpl. destruct (ueval_cnot_unitary dim n n0 H4 H2 H3) as [_ UU].
     assumption.
 Qed.
 
@@ -579,11 +537,11 @@ Proof.
       rewrite Mmult_0_l in H.
       contradiction.
   - simpl in *. 
-    dependent destruction u. 
-    unfold ueval1, pad in H0.
+    autorewrite with eval_db in H.
     bdestruct (n + 1 <=? dim); try contradiction. 
     constructor; lia.
-  - simpl in *. unfold ueval_cnot, pad in H.
+  - simpl in *. 
+    autorewrite with eval_db in H.
     bdestruct (n <? n0). 
     + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); try contradiction.
       constructor; lia.
@@ -632,14 +590,11 @@ Proof.
   induction c.
   - simpl. Msimpl. reflexivity.
   - simpl. Msimpl. rewrite IHc1. rewrite IHc2. reflexivity.
-  - simpl. 
-    dependent destruction u; unfold ueval1, pad; simpl;
+  - simpl. autorewrite with eval_db.
     bdestruct (n + 1 <=? dim); try apply zero_adjoint_eq.
     repeat setoid_rewrite kron_adjoint; Msimpl.
     reflexivity.
-  - simpl.
-    dependent destruction u. 
-    unfold ueval_cnot, pad.
+  - simpl. autorewrite with eval_db.
     bdestruct (n <? n0).
     + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); try apply zero_adjoint_eq. 
       repeat setoid_rewrite kron_adjoint; Msimpl.

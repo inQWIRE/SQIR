@@ -344,7 +344,7 @@ Proof.
   eapply replace_single_qubit_pattern_sound'.
   2 : { apply H. }
   exists (PI / 4)%R.
-  unfold uc_eval, ueval1, pad; simpl.
+  simpl; autorewrite with eval_db.
   bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
   Msimpl. 
   restore_dims_strong; repeat rewrite kron_mixed_product.
@@ -370,7 +370,7 @@ Proof.
   intros.
   eapply replace_single_qubit_pattern_sound'; try apply H.
   exists (- PI / 4)%R.
-  unfold uc_eval, ueval1, pad; simpl.
+  simpl; autorewrite with eval_db.
   bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
   - Msimpl.
     restore_dims_strong; repeat rewrite kron_mixed_product.
@@ -430,7 +430,7 @@ Proof.
   unfold uc_equiv_l. simpl.
   unfold uc_equiv. simpl.
   rewrite Mmult_1_l by auto with wf_db.
-  unfold ueval1, pad.
+  autorewrite with eval_db.
   bdestructΩ (n + 1 <=? dim).
   restore_dims_strong.
   repeat rewrite kron_mixed_product.
@@ -535,7 +535,7 @@ Proof.
   simpl.
   exists 0. rewrite Cexp_0. rewrite Mscale_1_l.
   simpl.
-  unfold ueval1, ueval_cnot, pad.
+  autorewrite with eval_db.
   gridify.
   - do 3 (apply f_equal2; trivial); solve_matrix; 
       rewrite Cexp_6PI4; rewrite Cexp_2PI4; repeat group_radicals; lca.
@@ -593,7 +593,7 @@ Proof.
   apply uc_cong_l_app_congruence; try reflexivity.
   exists 0. rewrite Cexp_0. rewrite Mscale_1_l.
   simpl.  
-  unfold ueval_cnot, ueval1, ueval_unitary1, pad.
+  autorewrite with eval_db.
   gridify.
   - apply f_equal2.
     + apply f_equal2; trivial. apply f_equal2; trivial.

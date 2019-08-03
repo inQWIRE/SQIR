@@ -106,6 +106,7 @@ Proof.
 Qed.
 
 (* propagate_not is semantics-preserving. *)
+Local Transparent X.
 Lemma propagate_not_sound : forall {dim} (l l' : gate_list dim) q,
   q < dim ->
   propagate_not l q = Some l' ->
@@ -132,7 +133,7 @@ Proof.
       try rewrite uskip_id_l; 
       try reflexivity.
       symmetry; apply X_X_id. 
-      constructor; assumption.
+      apply uc_well_typed_X; assumption.
     + destruct (propagate_not l q); inversion H0; subst.
       rewrite IHl with (l':=g); trivial.
       apply U_V_comm_l; lia.
@@ -145,12 +146,12 @@ Proof.
     + subst. 
       unfold uc_equiv_l; simpl.
       repeat rewrite <- useq_assoc.
-      rewrite (useq_congruence (uapp2 U_CNOT n n0; uapp1 U_X n0) (uapp1 U_X n0; uapp2 U_CNOT n n0) _ (list_to_ucom l)); try reflexivity.
-      symmetry; apply X_CNOT_comm.
+      rewrite X_CNOT_comm.
+      reflexivity.
     + unfold uc_equiv_l; simpl.
       repeat rewrite <- useq_assoc.
-      rewrite (useq_congruence (uapp2 U_CNOT n n0; uapp1 U_X q) (uapp1 U_X q; uapp2 U_CNOT n n0) _ (list_to_ucom l)); try reflexivity.
-      symmetry; apply U_CNOT_comm; assumption.
+      unfold X; rewrite U_CNOT_comm; try assumption.
+      reflexivity.
 Qed.   
 
 (* propagate_nots is semantics-preserving. *)
