@@ -100,9 +100,9 @@ Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
   autorewrite with eval_db; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
   rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
+  restore_dims_fast; repeat rewrite kron_mixed_product.
   Msimpl.
   rewrite phase_mul. 
   repeat rewrite <- Rmult_div_assoc.
@@ -118,10 +118,10 @@ Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
   autorewrite with eval_db; simpl.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  repad.
   rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
+  restore_dims_fast; repeat rewrite kron_mixed_product.
+  Msimpl_light.
   rewrite phase_mul. 
   repeat rewrite <- Rmult_div_assoc.
   rewrite <- Rmult_plus_distr_r.
@@ -142,7 +142,7 @@ Proof.
   autorewrite with eval_db; simpl.
   repad.
   rewrite Mmult_assoc.
-  restore_dims_strong; repeat rewrite kron_mixed_product.
+  restore_dims_fast; repeat rewrite kron_mixed_product.
   Msimpl.
   rewrite phase_mul. 
   repeat rewrite <- Rmult_div_assoc.
@@ -152,9 +152,9 @@ Proof.
   rewrite Zplus_comm, H0.
   replace (8 * PI / 4)%R with (2 * PI)%R by lra.
   rewrite phase_2pi.
+  repeat rewrite id_kron.
+  restore_dims_fast.
   Msimpl. 
-  replace (2 ^ q * 2 * 2 ^ d)%nat with (2^dim) by unify_pows_two.
-  Msimpl.
   reflexivity.
 Qed.
   
@@ -165,8 +165,8 @@ Proof.
   unfold uc_equiv_l, uc_equiv; simpl.
   rewrite list_to_ucom_append; simpl.
   autorewrite with eval_db; simpl.
-
-  repad.
+  bdestruct_all; Msimpl_light; try reflexivity;
+  remember_differences; subst. (* maybe restore old repad *)
   - rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
     rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
     restore_dims_fast; repeat rewrite kron_mixed_product.
@@ -175,13 +175,8 @@ Proof.
     repeat rewrite Mmult_plus_distr_l.
     restore_dims_fast; repeat rewrite kron_mixed_product.
     Msimpl.
-    replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
-    replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-    replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
-    replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
-    remove_zero_gates.
-    rewrite Mplus_0_l. 
-    rewrite Mplus_0_r.
+    autorewrite with cnot_db.
+    Msimpl_light.
     replace (σx × σx) with (I 2) by solve_matrix.
     repeat rewrite kron_assoc.
     repeat rewrite id_kron.
@@ -189,10 +184,9 @@ Proof.
     restore_dims_fast.
     rewrite <- kron_plus_distr_r.
     replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
-    Msimpl.
+    repeat rewrite id_kron.
     restore_dims_fast.
-    replace (2 ^ q1 * (2 * 2 ^ (d + 1) * 2 ^ d0)) with (2^dim) by unify_pows_two.
-    Msimpl.
+    Msimpl_light.
     rewrite list_to_ucom_append; reflexivity.
   - rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
     rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
@@ -202,21 +196,18 @@ Proof.
     repeat rewrite Mmult_plus_distr_l.
     restore_dims_fast; repeat rewrite kron_mixed_product.
     Msimpl.
-    replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
-    replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-    replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
-    replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
-    remove_zero_gates.
-    rewrite Mplus_0_l. 
-    rewrite Mplus_0_r.
+    autorewrite with cnot_db.
+    Msimpl_light.
     replace (σx × σx) with (I 2) by solve_matrix.
+    repeat rewrite kron_assoc.
     repeat rewrite id_kron.
+    unify_pows_two.
     restore_dims_fast.
-    rewrite <- kron_plus_distr_l.
+    rewrite <- 2 kron_plus_distr_l.
     replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
     repeat rewrite id_kron.
-    replace (2 ^ q2 * (2 * 2 ^ d * 2) * 2 ^ d0) with (2^dim) by unify_pows_two.
-    Msimpl.
+    restore_dims_fast.
+    Msimpl_light.
     rewrite list_to_ucom_append; reflexivity.
 Qed.  
 
@@ -720,7 +711,7 @@ Proof.
     gridify.
     + replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
       replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-      remove_zero_gates.
+      Msimpl_light.
       rewrite 2 phase_mul. rewrite Rplus_comm.
       replace (σx × phase_shift (IZR k0 * PI / 4) × σx × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × σx × phase_shift (IZR k0 * PI / 4) × σx) by
@@ -728,7 +719,7 @@ Proof.
       reflexivity.
     + replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
       replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-      remove_zero_gates.      
+      Msimpl_light.      
       rewrite 2 phase_mul. rewrite Rplus_comm.
       replace (σx × phase_shift (IZR k0 * PI / 4) × σx × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × σx × phase_shift (IZR k0 * PI / 4) × σx) by

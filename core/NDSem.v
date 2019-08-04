@@ -56,7 +56,7 @@ Proof.
     + easy.
   - gen ψ' ψ.
     induction c; intros ψ' ψ WF E; subst.
-    + simpl; Msimpl. constructor.
+    + simpl. simpl; Msimpl. constructor.
     + apply nd_seq with (uc_eval c1 × ψ).
       apply IHc1; trivial.
       apply IHc2; auto with wf_db.
@@ -141,12 +141,12 @@ Lemma double_pad_01 : forall dim q (ψ : Vector (2^dim)),
 Proof.  
   intros.
   unfold pad.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
   rewrite <- Mmult_assoc. 
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
   replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-  repeat remove_zero_gates.
+  repeat Msimpl_light.
   reflexivity.
 Qed.  
 
@@ -155,12 +155,12 @@ Lemma double_pad_10 : forall dim q (ψ : Vector (2^dim)),
 Proof.
   intros.
   unfold pad.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
+  bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
   rewrite <- Mmult_assoc. 
   restore_dims_strong; repeat rewrite kron_mixed_product.
   Msimpl.
   replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
-  repeat remove_zero_gates.
+  repeat Msimpl_light.
   reflexivity.
 Qed.  
 

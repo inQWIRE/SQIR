@@ -344,23 +344,12 @@ Proof.
   eapply replace_single_qubit_pattern_sound'.
   2 : { apply H. }
   exists (PI / 4)%R.
-  simpl; autorewrite with eval_db.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  Msimpl. 
-  restore_dims_strong; repeat rewrite kron_mixed_product.
-  Msimpl.
-  assert (hadamard × phase_shift (2 * PI / 4) × hadamard = (Cexp (PI / 4)%R) .* (phase_shift (6 * PI / 4) × hadamard  × phase_shift (6 * PI / 4))).
-  { solve_matrix. 
-    all: autorewrite with Cexp_db.
-    all: C_field_simplify; try nonzero.
-  }
-  rewrite H1.
-  repeat rewrite Mscale_mult_dist_l.
-  repeat rewrite Mscale_kron_dist_r.  
-  rewrite Mscale_kron_dist_l.
-  reflexivity.
-  rewrite Mscale_0_r.
-  reflexivity.
+  simpl; autorewrite with eval_db. 
+  gridify.  
+  rewrite <- Mscale_kron_dist_l.
+  rewrite <- Mscale_kron_dist_r.
+  do 2 (apply f_equal2; trivial).
+  solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
 
 Lemma apply_H_equivalence2_sound : forall {dim} (l l' : gate_list dim) q,
@@ -371,21 +360,11 @@ Proof.
   eapply replace_single_qubit_pattern_sound'; try apply H.
   exists (- PI / 4)%R.
   simpl; autorewrite with eval_db.
-  bdestruct (q + 1 <=? dim); try (remove_zero_gates; trivial).
-  - Msimpl.
-    restore_dims_strong; repeat rewrite kron_mixed_product.
-    Msimpl.
-    assert (hadamard × phase_shift (6 * PI / 4) × hadamard = (Cexp (- PI / 4)%R) .* phase_shift (2 * PI / 4) × hadamard × phase_shift (2 * PI / 4)).
-    { solve_matrix. 
-      all: autorewrite with Cexp_db.
-      all: C_field_simplify; try nonzero.
-    }
-    rewrite H1.
-    repeat rewrite Mscale_mult_dist_l.
-    repeat rewrite Mscale_kron_dist_r.
-    rewrite Mscale_kron_dist_l.
-    reflexivity.
-  - rewrite Mscale_0_r. reflexivity.
+  gridify.  
+  rewrite <- Mscale_kron_dist_l.
+  rewrite <- Mscale_kron_dist_r.
+  do 2 (apply f_equal2; trivial).
+  solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
 
 (*
@@ -437,7 +416,7 @@ Proof.
   repeat rewrite Mmult_1_l by auto with wf_db.
   replace (hadamard × hadamard) with (I 2) by solve_matrix.
   repeat rewrite id_kron.
-  unify_matrices_light.
+  unify_matrices.
 Qed.
 
 Lemma apply_H_equivalence3_sound : forall {dim} (l l' : gate_list dim) q,

@@ -1,6 +1,7 @@
 Require Import Setoid.
 Require Export QWIRE.Quantum.
 Require Export SQIRE.
+Require Export core.Tactics.
 
 Local Open Scope matrix_scope.
 Local Open Scope ucom_scope.
@@ -24,10 +25,7 @@ Lemma pad_mult : forall n dim start (A B : Square (2^n)),
 Proof.
   intros.
   unfold pad.
-  bdestruct (start + n <=? dim). 2: rewrite Mmult_0_l; reflexivity.
-  restore_dims_strong.
-  repeat rewrite kron_mixed_product.
-  Msimpl.
+  gridify.
   reflexivity.
 Qed.
 
@@ -322,7 +320,8 @@ Lemma unfold_ueval_r : forall dim n θ ϕ λ,
 Proof. easy. Qed.
 
 Lemma unfold_pad : forall n start dim A, 
-  @pad n start dim A = if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
+  @pad n start dim A = 
+  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
 Proof. easy. Qed.
 
 (* TODO: move lemmas about SWAP here *)
@@ -418,13 +417,10 @@ Proof.
   intros n u start dim B [WF U].
   split. apply WF_pad; auto.
   unfold pad.
-  bdestructΩ (start + n <=? dim).
-  restore_dims_strong.
-  setoid_rewrite kron_adjoint.
-  restore_dims_strong. Msimpl.
-  rewrite U.
+  gridify.
   Msimpl.
-  unify_matrices.
+  rewrite U.
+  reflexivity.
 Qed.
   
 Lemma ueval_r_unitary : forall dim n θ ϕ λ,
@@ -435,6 +431,16 @@ Proof.
   apply rotation_unitary. 
 Qed.  
 
+(* TODO: Move elsewhere *)
+Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
+  m = m' ->
+  n = n' ->
+  @WF_Matrix m n A ->
+  @WF_Matrix m' n' A.
+Proof. intros. subst. easy. Qed.
+
+Hint Resolve WF_Matrix_dim_change.
+
 Lemma ueval_cnot_unitary : forall dim m n,
     m <> n ->
     (m < dim)%nat ->
@@ -442,63 +448,37 @@ Lemma ueval_cnot_unitary : forall dim m n,
     WF_Unitary (ueval_cnot dim m n).
 Proof.
   intros dim m n NE Lm Ln.
-  unfold ueval_cnot.
-  bdestruct (m <? n).
-  - apply pad_unitary. lia.
-    split. rewrite 2 Nat.pow_add_r; auto with wf_db.
-    restore_dims.
-    rewrite Mplus_adjoint.
-    Msimpl.
-    restore_dims_strong.
-    rewrite Mmult_plus_distr_l.
-    rewrite 2 Mmult_plus_distr_r.
-    repeat rewrite kron_mixed_product.
-    Msimpl.
-    replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2)%nat by solve_matrix.
-    replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2)%nat by solve_matrix.
-    replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
-    replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
-    rewrite 2 kron_0_l.
-    rewrite Mplus_0_l, Mplus_0_r.
-    replace (σx × σx) with (I 2) by solve_matrix.
-    rewrite <- 2 kron_plus_distr_r.
-    replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2)%nat by solve_matrix.
-    Msimpl.
-    unify_pows_two.    
-    reflexivity.
-  - bdestructΩ (n <? m). clear H NE.
-    apply pad_unitary. lia.
-    split.
-    { unify_pows_two.
-      replace ((m - n - 1 + 1 + 1))%nat with (S (m - n - 1 + 1))%nat by lia.
-      auto with wf_db.
-    }
-    restore_dims.
-    rewrite Mplus_adjoint.
-    Msimpl.
-    restore_dims_strong.
-    rewrite Mmult_plus_distr_l.
-    rewrite 2 Mmult_plus_distr_r.
-    repeat rewrite kron_mixed_product.
-    Msimpl.
-    restore_dims_strong.
-    rewrite kron_mixed_product.
-    Msimpl.
-    replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2)%nat by solve_matrix.
-    replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2)%nat by solve_matrix.
-    replace (∣1⟩⟨1∣ × ∣1⟩⟨1∣) with (∣1⟩⟨1∣) by solve_matrix.
-    replace (∣0⟩⟨0∣ × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix.
-    replace (σx × σx) with (I 2) by solve_matrix.
-    rewrite kron_0_r.
-    rewrite Mplus_0_r.
-    rewrite Mplus_0_l.
-    Msimpl.
-    unify_pows_two.
-    setoid_rewrite <- kron_plus_distr_l.
-    replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
-    Msimpl.
-    unify_matrices.
-Qed.  
+  unfold ueval_cnot, pad.
+  gridify.
+  - split.
+    + apply WF_Matrix_dim_change; try (unify_pows_two; lia).
+      apply WF_plus; auto with wf_db.
+    + Msimpl.
+      unify_pows_two.
+      replace (m + d + 1)%nat with (m + 1 + d)%nat by lia.
+      gridify.
+      autorewrite with cnot_db.
+      Msimpl.
+      replace (σx† × σx) with (I 2) by solve_matrix.
+      repeat rewrite <- kron_plus_distr_r.
+      repeat rewrite <- kron_plus_distr_l.
+      unify_matrices.
+      solve_matrix.
+  - split.
+    + apply WF_Matrix_dim_change; try (unify_pows_two; lia).
+      apply WF_plus; auto with wf_db. (* shouldn't be necessary *)
+    + Msimpl.
+      unify_pows_two.
+      replace (n + d + 1)%nat with (n + 1 + d)%nat by lia.
+      gridify.
+      autorewrite with cnot_db.
+      Msimpl.
+      replace (σx† × σx) with (I 2) by solve_matrix.
+      repeat rewrite <- kron_plus_distr_r.
+      repeat rewrite <- kron_plus_distr_l.
+      unify_matrices.
+      solve_matrix.
+Qed.      
 
 Lemma uc_eval_unitary : forall (dim : nat) (c : ucom dim),
     uc_well_typed c -> WF_Unitary (uc_eval c).
@@ -593,23 +573,12 @@ Proof.
   - simpl. autorewrite with eval_db.
     bdestruct (n + 1 <=? dim); try apply zero_adjoint_eq.
     repeat setoid_rewrite kron_adjoint; Msimpl.
+    rewrite rotation_adjoint.
     reflexivity.
-  - simpl. autorewrite with eval_db.
-    bdestruct (n <? n0).
-    + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); try apply zero_adjoint_eq. 
-      repeat setoid_rewrite kron_adjoint; Msimpl.
-      replace (2 ^ (1 + (n0 - n - 1) + 1)) with (2 * 2 ^ (n0 - n - 1) * 2) by unify_pows_two.
-      Msimpl.
-      replace (2 * 2 ^ (n0 - n - 1) * 2) with (2 * 2 ^ (n0 - n)) by unify_pows_two.
-      Msimpl.
-      reflexivity.
-    + bdestruct (n0 <? n); try apply zero_adjoint_eq. 
-      bdestruct (n0 + (1 + (n - n0 - 1) + 1) <=? dim); try apply zero_adjoint_eq.
-      repeat setoid_rewrite kron_adjoint; Msimpl.
-      replace (2 ^ (1 + (n - n0 - 1) + 1)) with (2 * 2 ^ (n - n0 - 1) * 2) by unify_pows_two.
-      Msimpl.
-      replace (2 * 2 ^ (n - n0 - 1) * 2) with (2 ^ (n - n0) * 2) by unify_pows_two.
-      Msimpl.
-      reflexivity.
+  - simpl.
+    unfold ueval_cnot, pad.
+    gridify; try (rewrite zero_adjoint_eq; reflexivity).
+    Msimpl. rewrite σx_sa. reflexivity.
+    Msimpl. rewrite σx_sa. reflexivity.
 Qed.
 

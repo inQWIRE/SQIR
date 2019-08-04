@@ -150,10 +150,6 @@ Inductive respects_constraints {dim} : (nat -> nat -> Prop) -> ucom dim -> Prop 
 
 (* General proofs about CNOT/SWAP *)
 
-(* TODO: the proof below should be cleaned up using Robert's tactics. *)
-Lemma f_equal_gen : forall {A B} (f g : A -> B) a b, f = g -> a = b -> f a = g b.
-Proof. intros. subst. reflexivity. Qed.
-
 Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
   let e k := ( ∣0⟩⟨0∣ ⊗ I (2^k) ⊗ ∣0⟩⟨0∣ .+
                ∣0⟩⟨1∣ ⊗ I (2^k) ⊗ ∣1⟩⟨0∣ .+
@@ -166,66 +162,6 @@ Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
   else
     Zero.
 
-(* Useful lemmas for rewriting expressions with CNOTs
-   TODO: automate this better *)
-(* TODO: Move to tactics.v *)
-Lemma σx_on_right0 : forall (q : Vector 2), (q × ⟨0∣) × σx = q × ⟨1∣.
-Proof. intros. rewrite Mmult_assoc, Mmult0X. reflexivity. Qed.
-
-Lemma σx_on_right1 : forall (q : Vector 2), (q × ⟨1∣) × σx = q × ⟨0∣.
-Proof. intros. rewrite Mmult_assoc, Mmult1X. reflexivity. Qed.
-
-Lemma σx_on_left0 : forall (q : Matrix 1 2), σx × (∣0⟩ × q) = ∣1⟩ × q.
-Proof. intros. rewrite <- Mmult_assoc, MmultX0. reflexivity. Qed.
-
-Lemma σx_on_left1 : forall (q : Matrix 1 2), σx × (∣1⟩ × q) = ∣0⟩ × q.
-Proof. intros. rewrite <- Mmult_assoc, MmultX1. reflexivity. Qed.
-
-Lemma cancel00 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
-  WF_Matrix q2 ->
-  (q1 × ⟨0∣) × (∣0⟩ × q2) = q1 × q2.
-Proof. 
-  intros. 
-  rewrite Mmult_assoc. 
-  rewrite <- (Mmult_assoc ⟨0∣).
-  replace (⟨0∣ × ∣0⟩) with (I 1) by solve_matrix. 
-  Msimpl; reflexivity.
-Qed.
-
-Lemma cancel01 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
-  (q1 × ⟨0∣) × (∣1⟩ × q2) = @Zero 2 2.
-Proof. 
-  intros. 
-  rewrite Mmult_assoc. 
-  rewrite <- (Mmult_assoc ⟨0∣).
-  replace (⟨0∣ × ∣1⟩) with (@Zero 1 1) by solve_matrix. 
-  remove_zero_gates; reflexivity.
-Qed.
-
-Lemma cancel10 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
-  (q1 × ⟨1∣) × (∣0⟩ × q2) = @Zero 2 2.
-Proof. 
-  intros. 
-  rewrite Mmult_assoc. 
-  rewrite <- (Mmult_assoc ⟨1∣).
-  replace (⟨1∣ × ∣0⟩) with (@Zero 1 1) by solve_matrix. 
-  remove_zero_gates; reflexivity.
-Qed.
-
-Lemma cancel11 : forall (q1 : Matrix 2 1) (q2 : Matrix 1 2), 
-  WF_Matrix q2 ->
-  (q1 × ⟨1∣) × (∣1⟩ × q2) = q1 × q2.
-Proof. 
-  intros. 
-  rewrite Mmult_assoc. 
-  rewrite <- (Mmult_assoc ⟨1∣).
-  replace (⟨1∣ × ∣1⟩) with (I 1) by solve_matrix. 
-  Msimpl; reflexivity.
-Qed.
-
-Hint Rewrite σx_on_right0 σx_on_right1 σx_on_left0 σx_on_left1 : cnot_db.
-Hint Rewrite cancel00 cancel01 cancel10 cancel11 using (auto with wf_db) : cnot_db.
-
 Local Transparent SWAP.
 Lemma denote_swap : forall dim m n,
   @uc_eval dim (SWAP m n) = ueval_swap dim m n.
@@ -235,7 +171,7 @@ Proof.
   autorewrite with eval_db.
   gridify.
   - autorewrite with cnot_db.
-    remove_zero_gates.
+    Msimpl_light.
     repeat rewrite Mplus_0_l, Mplus_0_r.
     rewrite <- Mplus_assoc.
     rewrite Mplus_comm.
@@ -244,7 +180,7 @@ Proof.
     rewrite (Mplus_comm _ _ ((I (2 ^ m) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d0)))).
     reflexivity.
   - autorewrite with cnot_db.
-    remove_zero_gates.
+    Msimpl_light.
     repeat rewrite Mplus_0_l, Mplus_0_r.
     rewrite <- Mplus_assoc.
     rewrite Mplus_comm.
@@ -254,6 +190,18 @@ Proof.
     reflexivity.
 Qed.
 Opaque SWAP.
+
+(* Auxiliary lemma for swap_cnot_control *)
+Lemma Mplus_swap_mid : forall {m n} (A B C D : Matrix m n), 
+  A .+ B .+ C .+ D = (A .+ C) .+ (B .+ D).
+Proof.
+  intros. 
+  rewrite 2 Mplus_assoc.
+  rewrite <- (Mplus_assoc _ _ B).
+  rewrite (Mplus_comm _ _ B).                       
+  rewrite 2 Mplus_assoc.
+  reflexivity.
+Qed.
 
 (* Slow, with lots of duplicate cases (1-3, 4-6). 
    Would probably be faster is we only used the first parts of gridify,
@@ -269,65 +217,33 @@ Proof.
   unfold uc_equiv; simpl.
   rewrite denote_swap.
   unfold ueval_swap; autorewrite with eval_db.
-
-(*
-  bdestruct_all; remove_zero_gates; try reflexivity; remember_differences; 
-  try hypothesize_dims; clear_dups; fill_differences.
-  - restore_dims_fast.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    repeat rewrite kron_mixed_product.
-*)
-
   gridify.
   - autorewrite with cnot_db.
-    remove_zero_gates.
-    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
-    match goal with 
-    | [|- ?A .+ ?C .+ ?B .+ ?D = _] => rewrite 2 Mplus_assoc;
-                                     rewrite <- (Mplus_assoc _ _ C);
-                                     rewrite (Mplus_comm _ _ C);
-                                     rewrite <- 2 (Mplus_assoc);
-                                     rewrite (Mplus_assoc _ _ _ C)                           
-    end.
+    Msimpl_light.
+    rewrite Mplus_swap_mid.
     repeat (try rewrite <- (kron_plus_distr_l);
             try rewrite <- (kron_plus_distr_r)).
     rewrite Mplus_comm.
     replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
     reflexivity.
   - autorewrite with cnot_db.
-    remove_zero_gates.
-    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
-    match goal with 
-    | [|- ?A .+ ?C .+ ?B .+ ?D = _] => rewrite 2 Mplus_assoc;
-                                     rewrite <- (Mplus_assoc _ _ C);
-                                     rewrite (Mplus_comm _ _ C);
-                                     rewrite <- 2 (Mplus_assoc);
-                                     rewrite (Mplus_assoc _ _ _ C)                           
-    end.
+    Msimpl_light.
+    rewrite Mplus_swap_mid.
     repeat (try rewrite <- (kron_plus_distr_l);
             try rewrite <- (kron_plus_distr_r)).
     rewrite Mplus_comm.
     replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
     reflexivity.
   - autorewrite with cnot_db.
-    remove_zero_gates.
-    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
-    match goal with 
-    | [|- ?A .+ ?C .+ ?B .+ ?D = _] => rewrite 2 Mplus_assoc;
-                                     rewrite <- (Mplus_assoc _ _ C);
-                                     rewrite (Mplus_comm _ _ C);
-                                     rewrite <- 2 (Mplus_assoc);
-                                     rewrite (Mplus_assoc _ _ _ C)                           
-    end.
+    Msimpl_light.
+    rewrite Mplus_swap_mid.
     repeat (try rewrite <- (kron_plus_distr_l);
             try rewrite <- (kron_plus_distr_r)).
     rewrite Mplus_comm.
     replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
     reflexivity.
   - autorewrite with cnot_db.
-    remove_zero_gates.
-    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    Msimpl_light.
     match goal with 
     | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
                                      rewrite <- (Mplus_assoc _ _ A)
@@ -336,11 +252,9 @@ Proof.
             try rewrite <- (kron_plus_distr_r)).
     rewrite Mplus_comm.
     replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-    Msimpl.
     reflexivity.
   - autorewrite with cnot_db.
-    remove_zero_gates.
-    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    Msimpl_light.
     match goal with 
     | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
                                      rewrite <- (Mplus_assoc _ _ A)
@@ -349,11 +263,9 @@ Proof.
             try rewrite <- (kron_plus_distr_r)).
     rewrite Mplus_comm.
     replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-    Msimpl.
     reflexivity.
   - autorewrite with cnot_db.
-    remove_zero_gates.
-    repeat (try rewrite Mplus_0_l; try rewrite Mplus_0_r).
+    Msimpl_light.
     match goal with 
     | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
                                      rewrite <- (Mplus_assoc _ _ A)
@@ -362,7 +274,6 @@ Proof.
             try rewrite <- (kron_plus_distr_r)).
     rewrite Mplus_comm.
     replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-    Msimpl.
     reflexivity.
 Qed.
 
@@ -372,7 +283,7 @@ Proof.
   intros.
   unfold uc_equiv; simpl.
   autorewrite with eval_db.
-  gridify.
+  gridify. trivial. (* trivial shouldn't be necessary *)
   - rewrite <- 2 kron_plus_distr_r.
     apply f_equal2; trivial.
     repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron.
@@ -383,13 +294,8 @@ Proof.
     replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
     replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
     distribute_plus.
-    match goal with
-    | [|- ?A .+ ?C .+ (?B .+ ?D) = _] => rewrite Mplus_assoc;
-                                       rewrite <- (Mplus_assoc _ _ C);
-                                       rewrite (Mplus_comm _ _ C);
-                                       rewrite <- 2 (Mplus_assoc);
-                                       rewrite (Mplus_assoc _ _ _ C)                           
-    end.
+    repeat rewrite <- Mplus_assoc.
+    rewrite Mplus_swap_mid.    
     repeat rewrite Mscale_kron_dist_r.
     rewrite Mplus_comm.
     apply f_equal2.
@@ -409,13 +315,8 @@ Proof.
     replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
     replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
     distribute_plus.
-    match goal with
-    | [|- ?A .+ ?C .+ (?B .+ ?D) = _] => rewrite Mplus_assoc;
-                                       rewrite <- (Mplus_assoc _ _ C);
-                                       rewrite (Mplus_comm _ _ C);
-                                       rewrite <- 2 (Mplus_assoc);
-                                       rewrite (Mplus_assoc _ _ _ C)                           
-    end.
+    repeat rewrite <- Mplus_assoc.
+    rewrite Mplus_swap_mid.    
     rewrite Mplus_comm.
     apply f_equal2.
     + rewrite Mscale_kron_dist_l.

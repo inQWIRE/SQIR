@@ -24,45 +24,6 @@ Proof.
   simpl; Msimpl; reflexivity.
 Qed.
 
-Lemma U_V_comm : forall {dim} (m n : nat) θ ϕ λ θ' ϕ' λ',
-  m <> n ->
-  @uc_equiv dim (uapp_R θ ϕ λ m ; uapp_R θ' ϕ' λ' n) (uapp_R θ' ϕ' λ' n ; uapp_R θ ϕ λ m). 
-Proof.
-  intros.
-  unfold uc_equiv; simpl.
-  simpl in *.
-  autorewrite with eval_db.
-  gridify; reflexivity.
-Qed.
-
-(* A bit slow, due to six valid subcases *)
-Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) θ ϕ λ,
-  q <> n1 ->
-  q <> n2 ->
-  @uc_equiv dim (uapp_R θ ϕ λ q ; CNOT n1 n2) (CNOT n1 n2 ; uapp_R θ ϕ λ q). 
-Proof.
-  intros.
-  unfold uc_equiv.
-  simpl.
-  autorewrite with eval_db.
-  gridify; reflexivity.
-Qed.
-
-(* 24 valid subcases, excruciatingly slow *)
-Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
-  n1' <> n1 ->
-  n1' <> n2 ->
-  n2' <> n1 ->
-  n2' <> n2 ->
-  @uc_equiv dim (CNOT n1 n2 ; CNOT n1' n2') (CNOT n1' n2' ; CNOT n1 n2). 
-Proof.
-  intros.
-  unfold uc_equiv.
-  simpl.
-  autorewrite with eval_db.
-  gridify; reflexivity.
-Qed.  
-  
 Lemma X_X_id : forall {dim} q, 
   @uc_well_typed dim (X q) -> 
   @uc_equiv dim uskip (X q; X q).
@@ -123,7 +84,45 @@ Proof.
   inversion WT; subst.
   bdestruct (q + 1 <=? dim); try lia.
   rewrite phase_0. 
-  Msimpl.
-  apply f_equal.
-  unify_pows_two.
+  repeat rewrite id_kron.
+  unify_matrices.
 Qed.
+
+Lemma U_V_comm : forall {dim} (m n : nat) (U V : Unitary 1),
+  m <> n ->
+  @uc_equiv dim (uapp1 U m ; uapp1 V n) (uapp1 V n ; uapp1 U m). 
+Proof.
+  intros dim m n U V NE.
+  unfold uc_equiv; simpl.
+  simpl in *.
+  autorewrite with eval_db.
+  gridify; reflexivity.
+Qed.
+
+(* A bit slow, due to six valid subcases *)
+Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) (U : Unitary 1),
+  q <> n1 ->
+  q <> n2 ->
+  @uc_equiv dim (uapp1 U q ; CNOT n1 n2) (CNOT n1 n2 ; uapp1 U q). 
+Proof.
+  intros dim q n1 n2 U NE1 NE2.
+  unfold uc_equiv.
+  simpl.
+  autorewrite with eval_db.
+  gridify; reflexivity.
+Qed.
+
+(* 24 valid subcases, excruciatingly slow *)
+Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
+  n1' <> n1 ->
+  n1' <> n2 ->
+  n2' <> n1 ->
+  n2' <> n2 ->
+  @uc_equiv dim (CNOT n1 n2 ; CNOT n1' n2') (CNOT n1' n2' ; CNOT n1 n2). 
+Proof.
+  intros.
+  unfold uc_equiv.
+  simpl; autorewrite with eval_db.
+  gridify; reflexivity.
+Qed.  
+  
