@@ -1,7 +1,7 @@
 type binaryop  =
   | Plus
   | Minus
-  | Mult
+  | Times
   | Div
   | Pow
 [@@deriving show]

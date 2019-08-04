@@ -3,37 +3,39 @@
 %}
 
 %token <string> ID
-%token <int> NInt
-%token <float> Real
-%token Pi
-%token QReg CReg
-%token Gate
-%token CNOT H T Tdg S Sdg
-%token U X Y Z
-%token Arrow
-%token Measure Reset
-%token LBracket RBracket
-%token LBrace RBrace
-%token LParen RParen
-%token If
-%token Plus Minus
-%token Mult Div
-%token Pow
-%token DEquals
-%token SemiColon Comma
+%token <int> NINT
+%token <float> REAL
+
+%token OPENQASM
+%token SEMICOLON COMMA
+%token EQUALS ARROW
+%token LBRACE RBRACE
+%token LPAREN RPAREN
+%token LBRACKET RBRACKET
+/* %token OPAQUE BARRIER */
+%token IF
+%token QREG CREG
+%token GATE
+%token MEASURE RESET
+%token U CX
+%token PI
+%token PLUS MINUS
+%token TIMES DIV
+%token POW
+/* %token SIN COS TAN EXP LN SQRT */
 %token EOF
 
-%left Plus Minus        /* lowest precedence */
-%left Mult Div Pow      /* medium precedence */
-%nonassoc UMinus        /* highest precedence */
+%left PLUS MINUS
+%left TIMES DIV
+%right POW
+%left UMINUS
 
-%start mainprogram
-%type <OQAST.program> mainprogram
+%start <OQAST.program> mainprogram
 
 %%
 
 mainprogram:
-  | program EOF { $1 }
+  | OPENQASM REAL SEMICOLON program EOF { $4 }
 
 program:
   | statement         { [$1] }
@@ -41,19 +43,19 @@ program:
 
 statement:
   | decl                                  { Decl($1) }
-  | gatedecl goplist RBrace               { GateDecl($1, $2) }
-  | gatedecl RBrace                       { GateDecl($1, []) }
+  | gatedecl goplist RBRACE               { GateDecl($1, $2) }
+  | gatedecl RBRACE                       { GateDecl($1, []) }
   | qop                                   { Qop($1) }
-  | If LParen ID DEquals NInt RParen qop  { If($3, $5, $7) }
+  | IF LPAREN ID EQUALS NINT RPAREN qop   { If($3, $5, $7) }
 
 decl:
-  | QReg ID LBracket NInt RBracket SemiColon { Qreg($2, $4) }
-  | CReg ID LBracket NInt RBracket SemiColon { Creg($2, $4) }
+  | QREG ID LBRACKET NINT RBRACKET SEMICOLON { Qreg($2, $4) }
+  | CREG ID LBRACKET NINT RBRACKET SEMICOLON { Creg($2, $4) }
 
 gatedecl:
-  | Gate ID idlist LBrace                       { ($2, None,    $3) }
-  | Gate ID LParen RParen idlist LBrace         { ($2, None,    $5) }
-  | Gate ID LParen idlist RParen idlist LBrace  { ($2, Some $4, $6) }
+  | GATE ID idlist LBRACE                       { ($2, None,    $3) }
+  | GATE ID LPAREN RPAREN idlist LBRACE         { ($2, None,    $5) }
+  | GATE ID LPAREN idlist RPAREN idlist LBRACE  { ($2, Some $4, $6) }
 
 goplist:
  | uop                              { [Uop($1)] }
@@ -61,8 +63,8 @@ goplist:
 
 qop:
   | uop                                       { Uop($1) }
-  | Measure argument Arrow argument SemiColon { Meas($2, $4) }
-  | Reset argument SemiColon                  { Reset($2) }
+  | MEASURE argument ARROW argument SEMICOLON { Meas($2, $4) }
+  | RESET argument SEMICOLON                  { Reset($2) }
 
 anylist:
   | idlist    { List.map (fun x -> (x, None)) $1 }
@@ -70,50 +72,38 @@ anylist:
 
 explist:
   | exp               { [$1] }
-  | exp Comma explist { $1 :: $3 }
+  | exp COMMA explist { $1 :: $3 }
 
 idlist:
   | ID              { [$1] }
-  | ID Comma idlist { $1 :: $3 }
+  | ID COMMA idlist { $1 :: $3 }
 
 mixedlist:
-  | ID LBracket NInt RBracket                 { [($1, Some $3)] }
-  | ID Comma mixedlist                        { ($1, None) :: $3 }
-  | ID LBracket NInt RBracket Comma mixedlist { ($1, Some $3) :: $6 }
-  | ID LBracket NInt RBracket Comma idlist    { ($1, Some $3) :: (List.map (fun x -> (x, None)) $6) }
+  | ID LBRACKET NINT RBRACKET                 { [($1, Some $3)] }
+  | ID COMMA mixedlist                        { ($1, None) :: $3 }
+  | ID LBRACKET NINT RBRACKET COMMA mixedlist { ($1, Some $3) :: $6 }
+  | ID LBRACKET NINT RBRACKET COMMA idlist    { ($1, Some $3) :: (List.map (fun x -> (x, None)) $6) }
 
 uop:
-  | CNOT argument Comma argument SemiColon      { CX($2, $4) }
-  | H argument SemiColon                        { H($2) }
-  | T argument SemiColon                        { T($2) }
-  | Tdg argument SemiColon                      { Tdg($2) }
-  | S argument SemiColon                        { S($2) }
-  | Sdg argument SemiColon                      { Sdg($2) }
-  | U LParen explist RParen argument SemiColon  { U($3, $5) }
-  | X argument SemiColon                        { X($2) }
-  | Y argument SemiColon                        { Y($2) }
-  | Z argument SemiColon                        { Z($2) }
-  | ID anylist SemiColon                        { Gate($1, [], $2) }
-  | ID LParen RParen anylist SemiColon          { Gate($1, [], $4) }
-  | ID LParen explist RParen anylist SemiColon  { Gate($1, $3, $5) }
+  | CX argument COMMA argument SEMICOLON        { CX($2, $4) }
+  | U LPAREN explist RPAREN argument SEMICOLON  { U($3, $5) }
+  | ID anylist SEMICOLON                        { Gate($1, [], $2) }
+  | ID LPAREN RPAREN anylist SEMICOLON          { Gate($1, [], $4) }
+  | ID LPAREN explist RPAREN anylist SEMICOLON  { Gate($1, $3, $5) }
 
 argument:
   | ID                        { ($1, None) }
-  | ID LBracket NInt RBracket { ($1, Some $3) }
+  | ID LBRACKET NINT RBRACKET { ($1, Some $3) }
 
 exp:
-  | Real                    { Real($1) }
-  | NInt                    { Nninteger($1) }
-  | Pi                      { Pi }
+  | REAL                    { Real($1) }
+  | NINT                    { Nninteger($1) }
+  | PI                      { Pi }
   | ID                      { Id($1) }
-  | Minus exp %prec UMinus  { UMinus($2) }
-  | exp binaryop exp        { Binaryop($1, $2, $3) }
-  | LParen exp RParen       { $2 }
-
-/* Source of a shift/reduce conflict */
-binaryop:
-  | Plus      { Plus }
-  | Minus     { Minus }
-  | Mult      { Mult }
-  | Div       { Div }
-  | Pow       { Pow }
+  | exp PLUS exp            { Binaryop($1, Plus, $3) }
+  | exp MINUS exp           { Binaryop($1, Minus, $3) }
+  | exp TIMES exp           { Binaryop($1, Times, $3) }
+  | exp DIV exp             { Binaryop($1, Div, $3) }
+  | exp POW exp             { Binaryop($1, Pow, $3) }
+  | MINUS exp %prec UMINUS  { UMinus($2) }
+  | LPAREN exp RPAREN       { $2 }
