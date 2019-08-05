@@ -5,7 +5,7 @@
 (ocamllex OQLexer)
 (menhir
   (modules OQParser)
-  (flags --explain --dump)
+  (flags --no-dollars --explain --dump)
   (infer true))
 
 (env

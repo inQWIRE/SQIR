@@ -7,11 +7,11 @@
 %token <float> REAL
 
 %token OPENQASM
-%token SEMICOLON COMMA
-%token EQUALS ARROW
-%token LBRACE RBRACE
-%token LPAREN RPAREN
-%token LBRACKET RBRACKET
+%token SEMICOLON ";" COMMA ","
+%token EQUALS "==" ARROW "->"
+%token LBRACE "{" RBRACE "}"
+%token LPAREN "(" RPAREN ")"
+%token LBRACKET "[" RBRACKET "]"
 %token OPAQUE BARRIER
 %token IF
 %token QREG CREG
@@ -19,97 +19,87 @@
 %token MEASURE RESET
 %token U CX
 %token PI
-%token PLUS MINUS
-%token TIMES DIV
-%token POW
-/* %token SIN COS TAN EXP LN SQRT */
+%token PLUS "+" MINUS "-"
+%token TIMES "*" DIV "/"
+%token POW "^"
+%token SIN COS TAN EXP LN SQRT
 %token EOF
 
 %left PLUS MINUS
 %left TIMES DIV
-%right POW
 %left UMINUS
+%right POW
 
 %start <OQAST.program> mainprogram
 
 %%
 
-mainprogram:
-  | OPENQASM REAL SEMICOLON program EOF { $4 }
+mainprogram: OPENQASM REAL ";" p = program EOF { p }
 
-program:
-  | statement         { [$1] }
-  | statement program { $1 :: $2 }
+program: sl = statement* { sl }
 
 statement:
-  | decl                                            { Decl($1) }
-  | gatedecl goplist RBRACE                         { GateDecl($1, $2) }
-  | gatedecl RBRACE                                 { GateDecl($1, []) }
-  | OPAQUE ID idlist SEMICOLON                      { OpaqueDecl($2, None, $3) }
-  | OPAQUE ID LPAREN RPAREN idlist SEMICOLON        { OpaqueDecl($2, None, $5) }
-  | OPAQUE ID LPAREN idlist RPAREN idlist SEMICOLON { OpaqueDecl($2, Some $4, $6) }
-  | qop                                             { Qop($1) }
-  | IF LPAREN ID EQUALS NINT RPAREN qop             { If($3, $5, $7) }
-  | BARRIER anylist SEMICOLON                       { Barrier($2) }
+  | d = decl                                                    { Decl(d) }
+  | gd = gatedecl "{" gl = goplist "}"                          { GateDecl(gd, gl) }
+  | OPAQUE name = ID qargs = idlist ";"                         { OpaqueDecl(name, [], qargs) }
+  | OPAQUE name = ID "(" params = idlist ")" qargs = idlist ";" { OpaqueDecl(name, params, qargs) }
+  | q = qop                                                     { Qop(q) }
+  | IF "(" creg = ID "==" n = NINT ")" q = qop                  { If(creg, n, q) }
+  | BARRIER qargs = anylist ";"                                 { Barrier(qargs) }
 
 decl:
-  | QREG ID LBRACKET NINT RBRACKET SEMICOLON { Qreg($2, $4) }
-  | CREG ID LBRACKET NINT RBRACKET SEMICOLON { Creg($2, $4) }
+  | QREG name = ID "[" size = NINT "]" ";" { Qreg(name, size) }
+  | CREG name = ID "[" size = NINT "]" ";" { Creg(name, size) }
 
 gatedecl:
-  | GATE ID idlist LBRACE                       { ($2, None,    $3) }
-  | GATE ID LPAREN RPAREN idlist LBRACE         { ($2, None,    $5) }
-  | GATE ID LPAREN idlist RPAREN idlist LBRACE  { ($2, Some $4, $6) }
+  | GATE name = ID qargs = idlist                         { (name, [], qargs) }
+  | GATE name = ID "(" params = idlist ")" qargs = idlist { (name, params, qargs) }
 
-goplist:
- | uop                              { [Uop($1)] }
- | BARRIER idlist SEMICOLON         { [Barrier($2)] }
- | uop goplist                      { Uop($1) :: $2 }
- | BARRIER idlist goplist SEMICOLON { Barrier($2) :: $3 }
+goplist: body = uop_or_barrier* { body }
+
+uop_or_barrier:
+ | u = uop                    { Uop(u) }
+ | BARRIER qargs = idlist ";" { GBarrier(qargs) }
 
 qop:
-  | uop                                       { Uop($1) }
-  | MEASURE argument ARROW argument SEMICOLON { Meas($2, $4) }
-  | RESET argument SEMICOLON                  { Reset($2) }
-
-anylist:
-  | idlist    { List.map (fun x -> (x, None)) $1 }
-  | mixedlist { $1 }
-
-explist:
-  | exp               { [$1] }
-  | exp COMMA explist { $1 :: $3 }
-
-idlist:
-  | ID              { [$1] }
-  | ID COMMA idlist { $1 :: $3 }
-
-mixedlist:
-  | ID LBRACKET NINT RBRACKET                 { [($1, Some $3)] }
-  | ID COMMA mixedlist                        { ($1, None) :: $3 }
-  | ID LBRACKET NINT RBRACKET COMMA mixedlist { ($1, Some $3) :: $6 }
-  | ID LBRACKET NINT RBRACKET COMMA idlist    { ($1, Some $3) :: (List.map (fun x -> (x, None)) $6) }
+  | u = uop                                           { Uop(u) }
+  | MEASURE qarg = argument "->" carg = argument ";"  { Meas(qarg, carg) }
+  | RESET qarg = argument ";"                         { Reset(qarg) }
 
 uop:
-  | CX argument COMMA argument SEMICOLON        { CX($2, $4) }
-  | U LPAREN explist RPAREN argument SEMICOLON  { U($3, $5) }
-  | ID anylist SEMICOLON                        { Gate($1, [], $2) }
-  | ID LPAREN RPAREN anylist SEMICOLON          { Gate($1, [], $4) }
-  | ID LPAREN explist RPAREN anylist SEMICOLON  { Gate($1, $3, $5) }
+  | CX q1 = argument "," q2 = argument ";"                  { CX(q1, q2) }
+  | U "(" params = explist ")" q = argument ";"             { U(params, q) }
+  | gname = ID qargs = anylist ";"                          { Gate(gname, [], qargs) }
+  | gname = ID "(" params = explist ")" qargs = anylist ";" { Gate(gname, params, qargs) }
+
+anylist: al = separated_list(",", argument) { al }
+
+idlist: il = separated_list(",", ID) { il }
 
 argument:
-  | ID                        { ($1, None) }
-  | ID LBRACKET NINT RBRACKET { ($1, Some $3) }
+  | name = ID                     { (name, None) }
+  | name = ID "[" idx = NINT "]"  { (name, Some idx) }
+
+explist: el = separated_list(",", exp) { el }
 
 exp:
-  | REAL                    { Real($1) }
-  | NINT                    { Nninteger($1) }
-  | PI                      { Pi }
-  | ID                      { Id($1) }
-  | exp PLUS exp            { Binaryop($1, Plus, $3) }
-  | exp MINUS exp           { Binaryop($1, Minus, $3) }
-  | exp TIMES exp           { Binaryop($1, Times, $3) }
-  | exp DIV exp             { Binaryop($1, Div, $3) }
-  | exp POW exp             { Binaryop($1, Pow, $3) }
-  | MINUS exp %prec UMINUS  { UMinus($2) }
-  | LPAREN exp RPAREN       { $2 }
+  | r = REAL                      { Real(r) }
+  | n = NINT                      { Nninteger(n) }
+  | PI                            { Pi }
+  | id = ID                       { Id(id) }
+  | e1 = exp "+" e2 = exp         { Plus(e1, e2) }
+  | e1 = exp "-" e2 = exp         { Minus(e1, e2) }
+  | e1 = exp "*" e2 = exp         { Times(e1, e2) }
+  | e1 = exp "/" e2 = exp         { Div(e1, e2) }
+  | "-" e = exp %prec UMINUS      { UMinus(e) }
+  | e1 = exp "^" e2 = exp         { Pow(e1, e2) }
+  | "(" e = exp ")"               { e }
+  | uo = unaryop "(" e = exp ")"  { UnaryOp(uo, e) }
+
+unaryop:
+  | SIN   { Sin }
+  | COS   { Cos }
+  | TAN   { Tan }
+  | EXP   { Exp }
+  | LN    { Ln }
+  | SQRT  { Sqrt }

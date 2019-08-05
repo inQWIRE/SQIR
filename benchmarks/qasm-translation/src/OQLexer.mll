@@ -59,12 +59,12 @@ rule token =
   | '/'         { DIV }
   | '^'         { POW }
 
-  (* | "sin"       { SIN }
+  | "sin"       { SIN }
   | "cos"       { COS }
   | "tan"       { TAN }
   | "exp"       { EXP }
   | "ln"        { LN }
-  | "sqrt"      { SQRT } *)
+  | "sqrt"      { SQRT }
 
   | id          { ID (Lexing.lexeme lexbuf) }
   | real        { REAL (float_of_string (Lexing.lexeme lexbuf)) }
