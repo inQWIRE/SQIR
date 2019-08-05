@@ -1,12 +1,11 @@
 Require Import SQIRE.
 Require Import DensitySem.
 Require Import Tactics.
+Require Import Coq.Reals.ROrderedType.
 
 Local Open Scope com.
 
 (** Phase-meas optimization **)
-
-Definition R_ {dim} θ n : ucom dim := uapp1 (U_R θ) n.  
 
 Lemma Cexp_mul_neg_l : forall θ, Cexp (- θ) * Cexp θ = 1.
 Proof.  
@@ -23,16 +22,17 @@ Qed.
 Lemma Cexp_mul_neg_r : forall θ, Cexp θ * Cexp (-θ) = 1.
 Proof. intros. rewrite Cmult_comm. apply Cexp_mul_neg_l. Qed.
 
+Local Transparent Rz.
 Lemma R_mif : forall dim θ n c1 c2, 
-  @R_ dim θ n ; mif n then c1 else c2 ≡ mif n then c1 else c2.
+  @Rz dim θ n ; mif n then c1 else c2 ≡ mif n then c1 else c2.
 Proof.
   intros.
   unfold c_equiv.
   simpl.
   unfold compose_super, Splus, super.
-  unfold ueval1, ueval_unitary1.
+  autorewrite with eval_db.
+  rewrite <- phase_shift_rotation.
   apply functional_extensionality. intros ρ.
-  unfold pad.
   repad. subst. clear.
   Msimpl.
   repeat rewrite Mmult_assoc.
@@ -46,42 +46,36 @@ Proof.
   repeat (restore_dims; rewrite Mmult_assoc).
   replace ((⟨0∣ × phase_shift θ)) with ⟨0∣ by solve_matrix.
   replace (⟨1∣ × phase_shift θ) with (Cexp θ .* ⟨1∣) by solve_matrix.
-  apply f_equal2; trivial.                                                              
+  apply f_equal2; trivial.
   distribute_scale.  
   rewrite Cexp_mul_neg_r.
   rewrite Mscale_1_l.
   reflexivity.
 Qed.  
 
-Lemma R_measure : forall dim θ n, @R_ dim θ n ; measure n ≡ measure n.
+Lemma R_measure : forall dim θ n, @Rz dim θ n ; measure n ≡ measure n.
 Proof. intros. apply R_mif. Qed.
 
-Lemma R_reset : forall dim θ n, @R_ dim θ n ; reset n ≡ reset n.
+Lemma R_reset : forall dim θ n, @Rz dim θ n ; reset n ≡ reset n.
 Proof. intros. apply R_mif. Qed.
 
-(* Z is R_ PI, so the same lemmas apply. *)
+(* Z is Rz PI, so the same lemmas apply. *)
 
-Lemma phase_pi : phase_shift PI = σz.
-Proof.
-  unfold phase_shift, σz.
-  rewrite eulers_identity.
-  replace (RtoC (-1)) with (Copp (RtoC 1)) by lca.
-  reflexivity.
-Qed.
-
-Lemma ueval_R_pi : forall dim n, ueval1 dim n (U_R PI) = ueval1 dim n U_Z. 
+Local Transparent SQIRE.Z.
+Lemma Z_eq_Rz_PI : forall dim n, SQIRE.Z n ≡ @Rz dim PI n.
 Proof.
   intros.
-  unfold ueval1; simpl.
-  rewrite phase_pi.
+  unfold c_equiv, c_eval; simpl. 
+  autorewrite with eval_db.
+  rewrite <- pauli_z_rotation.  
   reflexivity.
 Qed.
 
 Lemma Z_mif : forall dim n c1 c2,
   @SQIRE.Z dim n ; mif n then c1 else c2 ≡ mif n then c1 else c2.
 Proof.
-  intros. unfold c_equiv. simpl.
-  rewrite <- ueval_R_pi.
+  intros. 
+  rewrite Z_eq_Rz_PI. 
   apply R_mif.
 Qed.
   
@@ -91,30 +85,21 @@ Proof. intros. apply Z_mif. Qed.
 Lemma Z_reset : forall dim n, @SQIRE.Z dim n ; reset n ≡ reset n.
 Proof. intros. apply Z_mif. Qed.
 
-(* T and P are R_ PI/4 and R_ PI/2, but those are explicit in SQIRE.v *) 
-
-Definition is_rotation {dim} (c : com dim) : bool :=
-  match c with
-  | app1 U_Z _ | app1 (U_R _) _ => true
-  | _                           => false 
-  end.
+(* T and P are Rz PI/4 and Rz PI/2, but those are explicit in SQIRE.v *) 
 
 Fixpoint optimize_R_meas {dim} (c : com dim) : com dim :=
   match c with
-  | app1 U_Z a ; meas b c1 c2 => 
-    if a =? b 
-    then meas b (optimize_R_meas c1) (optimize_R_meas c2)  
-    else app1 U_Z a; meas b (optimize_R_meas c1) (optimize_R_meas c2)
-  | app1 (U_R θ) a ; meas b c1 c2 => 
-    if a =? b 
-    then meas b (optimize_R_meas c1) (optimize_R_meas c2) 
-    else app1 (U_R θ) a; meas b (optimize_R_meas c1) (optimize_R_meas c2)
+  | app_R θ ϕ λ a ; meas b c1 c2 => 
+      if Reqb θ 0 && Reqb ϕ 0 && (a =? b)
+      then meas b (optimize_R_meas c1) (optimize_R_meas c2)  
+      else app_R θ ϕ λ a ; meas b (optimize_R_meas c1) (optimize_R_meas c2) 
   | c1 ; c2 => (optimize_R_meas c1); (optimize_R_meas c2)
-  | meas a c1 c2 => meas a (optimize_R_meas c1) (optimize_R_meas c2)
-  | _      => c
+  | meas a c1 c2 => meas a (optimize_R_meas c1) (optimize_R_meas c2) 
+  | _ => c
   end.
 
-Compute (optimize_R_meas (skip; (SQIRE.Z O; reset O))).
+(* Not nice because of the Reqb:
+   Compute (optimize_R_meas (skip; (SQIRE.Z O; reset O))). *)
 
 Lemma optimize_R_meas_sound : forall dim (c : com dim),
   c ≡ optimize_R_meas c.
@@ -123,19 +108,17 @@ Proof.
   induction c; simpl; try reflexivity.
   - destruct c1; simpl; try (rewrite <- IHc2; reflexivity).
     + rewrite IHc1, <- IHc2. simpl. reflexivity.
-    + dependent destruction u; try (rewrite <- IHc2; reflexivity).
-      * destruct c2; try (rewrite <- IHc2; reflexivity).
-        bdestruct (n =? n0); subst; try (rewrite <- IHc2; reflexivity).
-        rewrite <- IHc2.
-        apply Z_mif.
-      * destruct c2; try (rewrite <- IHc2; reflexivity).
-        bdestruct (n =? n0); subst; try (rewrite <- IHc2; reflexivity).
-        rewrite <- IHc2.
-        apply R_mif.
-    + simpl in IHc1.
-      rewrite <- IHc1.
-      rewrite <- IHc2.
-      reflexivity.
+    + destruct c2; try (rewrite <- IHc2; reflexivity). 
+      destruct (Reqb r 0 && Reqb r0 0 && (n =? n0)) eqn:H.
+      repeat match goal with 
+        | [ E : _ && _ = true |- _]   => apply andb_true_iff in E; destruct E
+        | [ E : Reqb _ _ = true |- _] => apply Reqb_eq in E; subst
+        | [ E : _ =? _ = true |- _] => apply Nat.eqb_eq in E; subst 
+        end. 
+      rewrite <- IHc2. 
+      apply R_mif.
+      rewrite <- IHc2; reflexivity.
+    + rewrite <- IHc1, <- IHc2. reflexivity.
   - (* should be able to rewrite inside mif *)
     unfold c_equiv in *.
     simpl.
@@ -148,6 +131,7 @@ Qed.
 
 (** Resets optimization **)
 
+Local Transparent X.
 Lemma rm_resets_correct : forall (dim n : nat), 
   @meas dim n (X n) skip; @meas dim n (X n) skip ≡ @meas dim n (X n) skip.
 Proof.
@@ -156,11 +140,11 @@ Proof.
   unfold c_equiv.
   simpl.
   unfold compose_super, Splus, super.
-  unfold ueval1, ueval_unitary1.
+  autorewrite with eval_db.
   apply functional_extensionality.
   intros ρ.
-  unfold pad.
   gridify.
+  rewrite <- pauli_x_rotation.
   repeat (restore_dims_fast; rewrite <- Mmult_assoc).
   repeat rewrite kron_mixed_product.  
   repeat (restore_dims_fast; rewrite Mmult_assoc).

@@ -25,11 +25,12 @@ Coercion bool_to_nat : bool >-> nat.
 Lemma superdense_correct : forall b1 b2, (uc_eval (superdense_u b1 b2)) × ∣ 0,0 ⟩ = ∣ b1,b2 ⟩.
 Proof.
   intros; simpl.
-  replace (ueval_cnot 2 a b) with cnot.
-  2:{ unfold ueval_cnot, pad; simpl. solve_matrix. } 
-  unfold uc_eval, ueval1, ueval_cnot, pad.
+  autorewrite with eval_db.
   bdestructΩ (a + 1 <=? 2); try lia.
-  destruct b1; destruct b2; simpl.
+  Msimpl.
+  simpl. replace 4%nat with (2*2)%nat by lia.
+  replace (∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2) with cnot by solve_matrix.
+  destruct b1; destruct b2; autorewrite with eval_db; simpl.
   (* At this point we have four cases corresponding to the values of b1 and b2. *)
   (* We'll do the first case (mostly) manually. *)
   - repeat rewrite kron_1_l; auto with wf_db.

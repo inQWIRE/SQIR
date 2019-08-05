@@ -25,7 +25,6 @@ Local Open Scope ucom_scope.
    verified compilers (e.g. CompCert) to see how they use graphs.
 *)
 
-
 (***************************)
 (**       Gate set        **)
 (***************************)
@@ -36,37 +35,10 @@ Local Open Scope ucom_scope.
  *)
 
 Inductive fUnitary : nat -> Set := 
-  | fU_H           : fUnitary 1 
-  | fU_X           : fUnitary 1
-  | fU_PI4 (k : Z) : fUnitary 1
-  | fU_CNOT        : fUnitary 2.
-
-Definition fUnitary_to_Unitary  {n} (u : fUnitary n) : Unitary n :=
-  match u with
-  | fU_H     => U_H
-  | fU_X     => U_X
-(*  | fU_PI4 k => if (beq_nat k 4) then U_Z else U_R (INR k * PI / 4)%R *)
-  | fU_PI4 k =>  U_R (IZR k * PI / 4)%R (* simpler version *)
-  | fU_CNOT  => U_CNOT
-  end.
-
-Definition Unitary_to_fUnitary  {n} (u : Unitary n) : option (fUnitary n) :=
-  match u with
-  | U_H    => Some fU_H
-  | U_X    => Some fU_X
-  | U_Y    => None
-  | U_Z    => Some (fU_PI4 4)
-  | U_R θ  => if Reqb θ (0 * PI / 4) then Some (fU_PI4 0) else
-             if Reqb θ (1 * PI / 4) then Some (fU_PI4 1) else
-             if Reqb θ (2 * PI / 4) then Some (fU_PI4 2) else
-             if Reqb θ (3 * PI / 4) then Some (fU_PI4 3) else
-             if Reqb θ (4 * PI / 4) then Some (fU_PI4 4) else (* can leave out *)
-             if Reqb θ (5 * PI / 4) then Some (fU_PI4 5) else
-             if Reqb θ (6 * PI / 4) then Some (fU_PI4 6) else
-             if Reqb θ (7 * PI / 4) then Some (fU_PI4 7) else
-               None
-  | U_CNOT => Some fU_CNOT
-  end.
+  | fU_H                  : fUnitary 1 
+  | fU_X                  : fUnitary 1
+  | fU_PI4 (k : BinInt.Z) : fUnitary 1
+  | fU_CNOT               : fUnitary 2.
 
 (* Rotation shorthands (not used in this file) *)
 Definition fU_T : fUnitary 1 := fU_PI4 1.
@@ -74,44 +46,6 @@ Definition fU_P : fUnitary 1 := fU_PI4 2.
 Definition fU_Z : fUnitary 1 := fU_PI4 4.
 Definition fU_PDAG : fUnitary 1 := fU_PI4 6.
 Definition fU_TDAG : fUnitary 1 := fU_PI4 7.
-
-(* Only true if we special case on Z:
-Lemma unitary_conversion_sound : forall {n} (u : Unitary n) u',
-  Unitary_to_fUnitary u = Some u' ->
-  fUnitary_to_Unitary u'= u.
-Proof.
-  intros.
-  dependent destruction u; inversion H; simpl; trivial.
-  clear H.
-  repeat match goal with 
-  | [ H : (if ?b then _ else _) = _ |- _] => let E := fresh "E" in destruct b eqn:E
-  | [ E : Reqb _ _ = true |- _]           => apply Reqb_eq in E; subst
-  | [ H : Some _ = Some _ |- _]           => inversion H; subst
-  | [ H : None = Some _ |- _]             => inversion H
-  end; simpl; apply f_equal; lra.
-Qed.
-*)
-
-(* Semantic version: *)
-Lemma unitary_conversion_sound' : forall (u : Unitary 1) u' dim n,
-  Unitary_to_fUnitary u = Some u' ->
-  ueval1 dim n (fUnitary_to_Unitary u') = ueval1 dim n u.
-Proof.
-  intros.
-  dependent destruction u; inversion H; simpl; trivial.
-  - unfold ueval1, ueval_unitary1, pad.
-    repad.
-    rewrite <- phase_pi.
-    replace (4 * PI / 4)%R with PI by lra.
-    reflexivity.
-  - clear H.
-    repeat match goal with 
-    | [ H : (if ?b then _ else _) = _ |- _] => let E := fresh "E" in destruct b eqn:E
-    | [ E : Reqb _ _ = true |- _]           => apply Reqb_eq in E; subst
-    | [ H : Some _ = Some _ |- _]           => inversion H; subst
-    | [ H : None = Some _ |- _]             => inversion H
-    end; simpl; do 2 apply f_equal; lra.
-Qed.
   
 Definition match_gate {n} (U U' : fUnitary n) : bool :=
   match U, U' with
@@ -130,7 +64,6 @@ Proof.
   - subst. dependent destruction U'; trivial. 
     simpl. apply Z.eqb_refl.
 Qed.
-
 
 (**************************)
 (** List representation  **)
@@ -160,28 +93,63 @@ Definition _TDAG {dim} n : gate_app dim := App1 (fU_PI4 7) n.
 
 Definition gate_list dim := list (gate_app dim).
 
+Definition fUnitary_to_ucom {dim} (u : fUnitary 1) n : ucom dim :=
+  match u with
+  | fU_H     => H n
+  | fU_X     => X n
+  | fU_PI4 k => Rz (IZR k * PI / 4)%R n
+  end.
+
+Definition rotation_to_fUnitary θ ϕ λ : option (fUnitary 1) :=
+  if Reqb θ (PI/2) && Reqb ϕ 0 && Reqb λ PI then Some fU_H else
+  if Reqb θ PI && Reqb ϕ 0 && Reqb λ PI then Some fU_X else
+  if Reqb θ 0 && Reqb ϕ 0 then
+    if Reqb λ (0 * PI / 4) then Some (fU_PI4 0) else
+    if Reqb λ (1 * PI / 4) then Some (fU_PI4 1) else
+    if Reqb λ (2 * PI / 4) then Some (fU_PI4 2) else
+    if Reqb λ (3 * PI / 4) then Some (fU_PI4 3) else
+    if Reqb λ (4 * PI / 4) then Some (fU_PI4 4) else 
+    if Reqb λ (5 * PI / 4) then Some (fU_PI4 5) else
+    if Reqb λ (6 * PI / 4) then Some (fU_PI4 6) else
+    if Reqb λ (7 * PI / 4) then Some (fU_PI4 7) else
+    None
+  else None.
+
+Lemma unitary_conversion_sound : forall {dim} (u : fUnitary 1) n θ ϕ λ,
+  rotation_to_fUnitary θ ϕ λ = Some u ->
+  uc_eval (fUnitary_to_ucom u n) = ueval_r dim n θ ϕ λ.
+Proof.
+  intros.
+  unfold rotation_to_fUnitary in H.
+  repeat match goal with 
+    | [ H : (if ?b then _ else _) = _ |- _] => let E := fresh "E" in destruct b eqn:E
+    | [ E : _ && _ = true |- _]             => apply andb_true_iff in E; destruct E
+    | [ E : Reqb _ _ = true |- _]           => apply Reqb_eq in E; subst
+    | [ H : Some _ = Some _ |- _]           => inversion H; subst
+    | [ H : None = Some _ |- _]             => inversion H
+    end;
+  reflexivity.
+Qed.
+
 Fixpoint ucom_to_list {dim} (c: ucom dim) : option (gate_list dim) :=
   match c with
   | c1; c2 => match ucom_to_list c1, ucom_to_list c2 with
              | Some l1, Some l2 => Some (l1 ++ l2)
              | _, _ => None
              end
-  | uapp1 u n => match (Unitary_to_fUnitary u) with
+  | uapp_R θ ϕ λ n => match (rotation_to_fUnitary θ ϕ λ) with
                 | Some u => Some [App1 u n]
                 | _ => None
                 end
-  | uapp2 u m n => match (Unitary_to_fUnitary u) with
-                  | Some u => Some [App2 u m n]
-                  | _ => None
-                  end
+  | uapp_CNOT m n => Some [App2 fU_CNOT m n]
   | uskip => Some []
   end.
 
 Fixpoint list_to_ucom {dim} (l : gate_list dim) : ucom dim :=
   match l with
   | [] => uskip
-  | (App1 u n)::t => (uapp1 (fUnitary_to_Unitary u) n) ; (list_to_ucom t)
-  | (App2 u m n)::t => (uapp2 (fUnitary_to_Unitary u) m n) ; (list_to_ucom t)
+  | (App1 u n)::t => (fUnitary_to_ucom u n) ; (list_to_ucom t)
+  | (App2 _ m n)::t => (uapp_CNOT m n) ; (list_to_ucom t)
   end.
 
 Lemma list_to_ucom_append : forall {dim} (l1 l2 : gate_list dim),
@@ -212,19 +180,16 @@ Proof.
     rewrite list_to_ucom_append; simpl.
     rewrite (IHc1 g), (IHc2 g0); reflexivity.
   - simpl in H. 
-    remember (Unitary_to_fUnitary u) as eqU.
-    destruct eqU.
+    remember (rotation_to_fUnitary r r0 r1) as eqR.
+    destruct eqR.
     inversion H; subst. simpl.
     Msimpl. symmetry.
-    apply unitary_conversion_sound'.
+    apply unitary_conversion_sound.
     auto.
     discriminate.
-  - simpl in H. 
-    remember (Unitary_to_fUnitary u) as eqU.
-    destruct eqU.
-    inversion H; subst. simpl.
-    Msimpl. reflexivity.
-    discriminate.
+  - inversion H; subst.
+    simpl. Msimpl.
+    reflexivity.
 Qed.
 
 (* Well-typedness for lists *)
@@ -236,6 +201,7 @@ Inductive uc_well_typed_l {dim} : gate_list dim -> Prop :=
 | WT_app2 : forall u m n t, m < dim -> n < dim -> m <> n -> uc_well_typed_l t 
             ->  uc_well_typed_l ((App2 u m n) :: t).
 
+Local Transparent H X Rz.
 Lemma list_to_ucom_WT : forall {dim} (l : gate_list dim), 
   uc_well_typed_l l <-> uc_well_typed (list_to_ucom l).
 Proof.
@@ -244,7 +210,7 @@ Proof.
   - induction H.
     + constructor.
     + constructor.
-      constructor; assumption.
+      dependent destruction u; simpl; constructor; assumption.
       apply IHuc_well_typed_l.
     + constructor.
       constructor; assumption.
@@ -279,9 +245,9 @@ Proof.
     apply uc_well_typed_l_app.
     apply IHuc_well_typed1; reflexivity.
     apply IHuc_well_typed2; reflexivity.
-  - simpl in H0. destruct (Unitary_to_fUnitary u); inversion H0; subst. 
+  - simpl in H0. destruct (rotation_to_fUnitary θ ϕ λ); inversion H0; subst. 
     constructor; try constructor; assumption.
-  - simpl in H2. destruct (Unitary_to_fUnitary u); inversion H2; subst. 
+  - inversion H2; subst.
     constructor; try constructor; assumption.
 Qed. 
 
@@ -302,7 +268,7 @@ Lemma uc_equiv_l_trans : forall {dim} (l1 l2 l3 : gate_list dim),
 Proof. intros dim l1 l2 l3 H12 H23. unfold uc_equiv_l in *. rewrite H12. easy. Qed.
 
 Lemma uc_eval_l_cons_app1 : forall {dim} (u : fUnitary 1) (n : nat) (t : gate_list dim),
-  uc_eval (list_to_ucom ((App1 u n)::t)) = uc_eval (list_to_ucom t) × ueval1 dim n (fUnitary_to_Unitary u).
+  uc_eval (list_to_ucom ((App1 u n)::t)) = uc_eval (list_to_ucom t) × uc_eval (fUnitary_to_ucom u n).
 Proof. easy. Qed.
 
 Lemma uc_eval_l_cons_app2 : forall {dim} (u : fUnitary 2) (m n : nat) (t : gate_list dim),
@@ -373,7 +339,6 @@ Proof.
   rewrite <- H; assumption.
 Qed.
   
-
 (** Useful operations on the list representation. **)
 
 (* Get the next single-qubit gate applied to qubit q.
@@ -410,8 +375,10 @@ Proof.
   unfold uc_equiv_l.
   simpl list_to_ucom.
   rewrite <- useq_assoc. 
-  rewrite (U_V_comm _ _ _ _ H).
-  rewrite <- useq_assoc. 
+  dependent destruction u1; dependent destruction u2; simpl;
+  unfold SQIRE.H, X, Rz;
+   rewrite U_V_comm; try assumption;
+  rewrite <- useq_assoc; 
   reflexivity.
 Qed.
 
@@ -424,9 +391,10 @@ Proof.
   simpl list_to_ucom.
   dependent destruction u2.
   rewrite <- useq_assoc.
-  specialize (@U_CNOT_comm dim q1 q2 q3 (fUnitary_to_Unitary u1) H H0) as Hcomm.
-  rewrite Hcomm.
-  rewrite <- useq_assoc. 
+  dependent destruction u1; simpl;
+  unfold SQIRE.H, X, Rz; simpl;
+  rewrite U_CNOT_comm; try assumption;
+  rewrite <- useq_assoc;
   reflexivity.
 Qed.        
 

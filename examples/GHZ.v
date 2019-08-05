@@ -49,11 +49,11 @@ Proof.
   intros. induction n.
   - simpl. apply WT_uskip.
   - simpl. destruct n. 
-    + apply WT_app1; lia.
+    + apply uc_well_typed_H; lia.
     + apply WT_seq.
       replace (S (S n)) with ((S n) + 1)%nat by lia. 
       apply typed_pad; assumption.
-      apply WT_app2; lia.
+      apply uc_well_typed_CNOT; lia.
 Qed.      
 
 (* Move to Dirac.v or somewhere convenient *)
@@ -67,18 +67,20 @@ Proof.
   intros. induction n.
   - simpl. solve_matrix.
   - simpl. destruct n.
-    + simpl. unfold ueval1, pad. 
+    + simpl; autorewrite with eval_db.
       bdestructΩ (0 + 1 <=? 1). 
       solve_matrix.
-    + simpl uc_eval. 
+    + Opaque GHZ. Transparent CNOT. 
+      simpl. 
       replace (S (S n)) with ((S n) + 1)%nat by lia.
-      rewrite <- pad_dims_r by (apply typed_GHZ).
+      rewrite <- pad_dims_r by apply typed_GHZ.
       rewrite Mmult_assoc.
       restore_dims_strong.
+      replace (2 ^ n * 2)%nat with (2 ^ S n)%nat by unify_pows_two.
       rewrite kron_mixed_product.
       simpl in *.
       rewrite IHn.
-      unfold ueval_cnot, pad. 
+      autorewrite with eval_db. 
       repad.
       replace d with 0%nat in * by lia.
       replace d0 with 0%nat in * by lia. 

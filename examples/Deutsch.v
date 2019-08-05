@@ -27,10 +27,11 @@ Proof.
   unfold constant in H.
   destruct H; unfold deutsch; simpl; rewrite H.
   - exists 0. rewrite eulers0. 
-    unfold uc_eval, ueval1, pad; simpl.
+    autorewrite with eval_db; simpl.
     solve_matrix. 
   - exists PI. rewrite eulers_identity. 
-    unfold uc_eval, ueval1, pad; simpl.
+    unfold f1. 
+    autorewrite with eval_db; simpl.
     solve_matrix. 
 Qed.
 
@@ -41,9 +42,11 @@ Proof.
   unfold balanced in H.
   destruct H; unfold deutsch; simpl; rewrite H.
   - exists 0. rewrite eulers0. 
-    unfold uc_eval, ueval1, ueval_cnot, pad; simpl.
+    unfold f2.
+    autorewrite with eval_db; simpl.
     solve_matrix.
   - exists PI. rewrite eulers_identity. 
-    unfold uc_eval, ueval1, ueval_cnot, pad; simpl. 
+    unfold f3; simpl.
+    autorewrite with eval_db; simpl. 
     solve_matrix.
 Qed.

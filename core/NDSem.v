@@ -3,22 +3,22 @@ Require Import Tactics.
 Require Import UnitarySem.
 Require Import Setoid.
 
+Local Open Scope com.
+
 (* TODO: move *)
 
 Definition norm {n} (ψ : Vector n) :=
   sqrt (fst (ψ ∘ ψ†)).  
-
-Local Open Scope com.
 
 Reserved Notation "c '/' ψ '⇩' ψ'"
                   (at level 40, ψ at level 39).
 
 Inductive nd_eval {dim : nat} : com dim -> Vector (2^dim) -> Vector (2^dim) -> Prop :=
   | nd_skip : forall ψ, nd_eval skip ψ ψ
-  | nd_app1 : forall (u : Unitary 1) (n : nat) (ψ : Vector (2^dim)),
-      app1 u n / ψ ⇩ ((ueval1 dim n u) × ψ)
-  | nd_app2 : forall (u : Unitary 2) (m n : nat) (ψ : Vector (2^dim)),
-      app2 u m n / ψ ⇩ ((ueval_cnot dim m n) × ψ)
+  | nd_app_R : forall (θ ϕ λ : R) (n : nat) (ψ : Vector (2^dim)),
+      app_R θ ϕ λ n / ψ ⇩ ((ueval_r dim n θ ϕ λ) × ψ)
+  | nd_app_CNOT : forall (m n : nat) (ψ : Vector (2^dim)),
+      app_CNOT m n / ψ ⇩ ((ueval_cnot dim m n) × ψ)
   | nd_meas_t : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
       let ψ' := @pad 1 n dim (∣1⟩⟨1∣) × ψ in 
       norm ψ' <> 0%R -> (* better way to say this in terms of partial trace? *)
@@ -125,8 +125,6 @@ Qed.
 Add Parametric Morphism (dim : nat) : (@seq dim)
   with signature nd_equiv ==> nd_equiv ==> nd_equiv as useq_mor.
 Proof. intros x y H x0 y0 H0. apply nd_seq_congruence; easy. Qed.
-
-
 
 Lemma double_pad_00 : forall dim q (ψ : Vector (2^dim)),
   @pad 1 q dim ∣0⟩⟨0∣ × (@pad 1 q dim ∣0⟩⟨0∣ × ψ) = @pad 1 q dim ∣0⟩⟨0∣ × ψ.

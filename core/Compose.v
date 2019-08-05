@@ -15,11 +15,10 @@ Fixpoint map_qubits {dim} (f : nat -> nat) (c : ucom dim) : ucom dim :=
   match c with
   | uskip => uskip
   | c1; c2 => map_qubits f c1; map_qubits f c2
-  | uapp1 u n => uapp1 u (f n)
-  | uapp2 u m n => uapp2 u (f m) (f n)
+  | uapp_R θ ϕ λ n => uapp_R θ ϕ λ (f n)
+  | uapp_CNOT m n => uapp_CNOT (f m) (f n)
   end.
   
-
 (** Lemmas about padding **)
 
 (* TODO: Is there a nicer way to write this? *)
@@ -27,8 +26,8 @@ Fixpoint cast {dim} (c : ucom dim) dim' : ucom dim' :=
   match c with 
   | uskip => uskip
   | c1; c2 => cast c1 dim' ; cast c2 dim'
-  | uapp1 u n => uapp1 u n
-  | uapp2 u m n => uapp2 u m n
+  | uapp_R θ ϕ λ n => uapp_R θ ϕ λ n
+  | uapp_CNOT m n => uapp_CNOT m n
   end.                                                     
                                                      
 Lemma pad_dims_r : forall {dim} (c : ucom dim) (k : nat),
@@ -43,19 +42,12 @@ Proof.
     restore_dims_fast; Msimpl; reflexivity.
   - simpl.
     inversion H; subst.
-    unfold ueval1, pad.
+    autorewrite with eval_db.
     gridify; reflexivity.
   - simpl. inversion H; subst.
-    unfold ueval_cnot, pad.
+    autorewrite with eval_db.
     gridify; reflexivity.
 Qed.
-
-(*Ltac prove_wt :=
-  repeat match goal with
-         | |- context [ uc_well_typed ?d uskip ] => apply WT_uskip
-         | |- context [ uc_well_typed ?d (useq ?c1 ?c2) ] => apply WT_seq
-         | |- context [ uc_well_typed ?d (uapp ?u ?l) ] => try unfold CNOT; apply WT_app
-         end.*)
 
 Lemma typed_pad : forall {dim} (c : ucom dim) (k : nat), 
   uc_well_typed c -> uc_well_typed (cast c (dim + k)).
@@ -79,12 +71,11 @@ Proof.
   - rewrite id_kron. unify_pows_two. reflexivity.
   - rewrite <- IHc1, <- IHc2.
     restore_dims_fast; Msimpl. reflexivity.
-  - unfold ueval1, pad.
+  - autorewrite with eval_db.
     gridify; reflexivity.
-  - unfold ueval_cnot, pad.
+  - autorewrite with eval_db.
     gridify; reflexivity.
 Qed.
-
 
 (** Combine two programs in parallel. **)
 

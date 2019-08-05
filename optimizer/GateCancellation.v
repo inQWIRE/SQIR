@@ -78,7 +78,7 @@ Proof.
   rewrite uskip_id_r.
   rewrite <- (@H_H_id dim q).
   apply uskip_id_l.
-  constructor; assumption.
+  apply uc_well_typed_H; assumption.
 Qed.
 
 Lemma X_X_cancel : forall {dim} (l : gate_list dim) q, 
@@ -91,7 +91,7 @@ Proof.
   rewrite uskip_id_r.
   rewrite <- (@X_X_id dim q).
   apply uskip_id_l.
-  constructor; assumption.
+  apply uc_well_typed_X; assumption.
 Qed.
 
 Lemma PI4_PI4_combine : forall {dim} (l : gate_list dim) q k k', 
@@ -99,7 +99,7 @@ Lemma PI4_PI4_combine : forall {dim} (l : gate_list dim) q k k',
 Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
+  autorewrite with eval_db; simpl.
   bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
   rewrite Mmult_assoc.
   restore_dims_fast; repeat rewrite kron_mixed_product.
@@ -117,7 +117,7 @@ Lemma PI4_PI4_m8_combine : forall {dim} (l : gate_list dim) q k k',
 Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
+  autorewrite with eval_db; simpl.
   repad.
   rewrite Mmult_assoc.
   restore_dims_fast; repeat rewrite kron_mixed_product.
@@ -139,7 +139,7 @@ Lemma PI4_PI4_cancel : forall {dim} (l : gate_list dim) q k k',
 Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
-  unfold ueval1, pad; simpl.
+  autorewrite with eval_db; simpl.
   repad.
   rewrite Mmult_assoc.
   restore_dims_fast; repeat rewrite kron_mixed_product.
@@ -164,7 +164,7 @@ Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
   rewrite list_to_ucom_append; simpl.
-  unfold ueval_cnot, pad; simpl.
+  autorewrite with eval_db; simpl.
   bdestruct_all; Msimpl_light; try reflexivity;
   remember_differences; subst. (* maybe restore old repad *)
   - rewrite (Mmult_assoc (uc_eval (list_to_ucom l2))). 
@@ -647,7 +647,7 @@ Proof.
     apply app_congruence; try reflexivity.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl.
-    unfold ueval1, ueval_cnot, pad.
+    autorewrite with eval_db.
     gridify.
     + rewrite (Mmult_assoc _ hadamard hadamard).
       replace (hadamard × hadamard) with (I 2) by solve_matrix.
@@ -707,7 +707,7 @@ Proof.
     apply app_congruence; try reflexivity.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl.
-    unfold ueval1, ueval_cnot, pad.
+    autorewrite with eval_db.
     gridify.
     + replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
       replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
@@ -747,7 +747,7 @@ Proof.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl. 
     rewrite 2 Mmult_1_l; auto with wf_db.
-    unfold ueval1, ueval_cnot, pad.
+    autorewrite with eval_db.
     gridify.
     + replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣1⟩⟨1∣) by solve_matrix.
@@ -791,7 +791,7 @@ Proof.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl. 
     Msimpl.
-    unfold ueval1, ueval_cnot, pad.
+    autorewrite with eval_db.
     gridify.
     + replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
         with (phase_shift (IZR k * PI / 4) × ∣1⟩⟨1∣) by solve_matrix.
@@ -824,7 +824,7 @@ Proof.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl. 
     Msimpl.
-    unfold ueval_cnot, pad.
+    autorewrite with eval_db.
     gridify; reflexivity.
   - unfold search_for_CNOT_pat3 in HS.
     destruct p.
@@ -847,7 +847,7 @@ Proof.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl. 
     Msimpl.
-    unfold ueval_cnot, pad.
+    autorewrite with eval_db.
     gridify; try reflexivity.
     all: replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix;
          replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix;
@@ -887,7 +887,7 @@ Proof.
     unfold uc_equiv_l; simpl.
     unfold uc_equiv; simpl. 
     Msimpl.
-    unfold ueval_cnot, ueval1, ueval_unitary1, pad.
+    autorewrite with eval_db.
     gridify; try reflexivity.
     all: replace (hadamard × ∣1⟩⟨1∣ × hadamard × σx) with
           (σx × hadamard × ∣1⟩⟨1∣ × hadamard) by

@@ -1,4 +1,4 @@
-Require Import UnitarySem.
+Require Export QWIRE.Quantum.
 Require Import Omega.
 
 (* A general tactics file. Many of these tactics will eventually be

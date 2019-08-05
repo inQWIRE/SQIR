@@ -50,7 +50,7 @@ Fixpoint do_cnot_along_path dim p : ucom dim :=
 Fixpoint fix_cnots {dim} (c : ucom dim) (is_in_graph_b : nat -> nat -> bool) :=
   match c with
   | c1; c2 => fix_cnots c1 is_in_graph_b ; fix_cnots c2 is_in_graph_b
-  | uapp2 U_CNOT n1 n2 => 
+  | uapp_CNOT n1 n2 => 
       if is_in_graph_b n1 n2
       then CNOT n1 n2
       else H n1; H n2; CNOT n2 n1; H n1; H n2
@@ -61,9 +61,8 @@ Fixpoint simple_map {dim} (c : ucom dim) (get_path : nat -> nat -> list nat) (is
   match c with
   | c1; c2 => simple_map c1 get_path is_in_graph_b ; 
              simple_map c2 get_path is_in_graph_b
-  | uapp2 U_CNOT n1 n2 => let p := do_cnot_along_path dim (get_path n1 n2) in
+  | uapp_CNOT n1 n2 => let p := do_cnot_along_path dim (get_path n1 n2) in
                          fix_cnots p is_in_graph_b
-  | uapp1 u n => uapp1 u n
   | _ => c
   end.
 
@@ -131,8 +130,8 @@ Inductive respects_constraints_undirected {dim} : (nat -> nat -> Prop) -> ucom d
       respects_constraints_undirected f c1 -> 
       respects_constraints_undirected f c2 -> 
       respects_constraints_undirected f (c1; c2)
-  | res_und_app_u : forall f (u : Unitary 1) n, 
-      respects_constraints_undirected f (uapp1 u n)
+  | res_und_app_u : forall f θ ϕ λ n, 
+      respects_constraints_undirected f (uapp_R θ ϕ λ n)
   | res_und_app_cnot : forall (f : nat -> nat -> Prop) n1 n2, 
       f n1 n2 \/ f n2 n1 -> (* undirected *)
       respects_constraints_undirected f (CNOT n1 n2).
@@ -143,8 +142,8 @@ Inductive respects_constraints {dim} : (nat -> nat -> Prop) -> ucom dim -> Prop 
       respects_constraints f c1 -> 
       respects_constraints f c2 -> 
       respects_constraints f (c1; c2)
-  | res_app_u : forall f (u : Unitary 1) n, 
-      respects_constraints f (uapp1 u n)
+  | res_app_u : forall f θ ϕ λ n, 
+      respects_constraints f (uapp_R θ ϕ λ n)
   | res_app_cnot : forall (f : nat -> nat -> Prop) n1 n2, 
       f n1 n2 -> (* directed *)
       respects_constraints f (CNOT n1 n2).
@@ -163,12 +162,13 @@ Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
   else
     Zero.
 
+Local Transparent SWAP.
 Lemma denote_swap : forall dim m n,
   @uc_eval dim (SWAP m n) = ueval_swap dim m n.
 Proof.
   intros.
-  simpl; unfold ueval_swap, ueval_cnot, pad.
-  
+  simpl; unfold ueval_swap.
+  autorewrite with eval_db.
   gridify.
   - autorewrite with cnot_db.
     Msimpl_light.
@@ -189,8 +189,6 @@ Proof.
     rewrite (Mplus_comm _ _ ((I (2 ^ n) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d0)))).
     reflexivity.
 Qed.
-
-
 Opaque SWAP.
 
 (* Auxiliary lemma for swap_cnot_control *)
@@ -218,8 +216,7 @@ Proof.
   intros.
   unfold uc_equiv; simpl.
   rewrite denote_swap.
-  unfold ueval_cnot, ueval_swap, pad.
-
+  unfold ueval_swap; autorewrite with eval_db.
   gridify.
   - autorewrite with cnot_db.
     Msimpl_light.
@@ -285,11 +282,10 @@ Lemma H_swaps_CNOT : forall {dim} m n,
 Proof.
   intros.
   unfold uc_equiv; simpl.
-  unfold ueval1, ueval_cnot, pad.
+  autorewrite with eval_db.
   gridify; trivial. (* trivial shouldn't be necessary *)
   - rewrite <- 2 kron_plus_distr_r.
     apply f_equal2; trivial.
-    repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron.
     repeat rewrite kron_assoc.
     restore_dims_fast.
     rewrite <- 2 kron_plus_distr_l.
@@ -350,6 +346,7 @@ Proof.
   - inversion H3; assumption.
 Qed.  
 
+Local Transparent SWAP CNOT H.
 Lemma do_cnot_along_path_sound : forall dim n1 n2 is_in_graph p,
   valid_graph dim is_in_graph ->
   valid_path n1 n2 is_in_graph p ->
@@ -395,8 +392,6 @@ Proof.
         constructor; assumption.
 Qed.
 
-Transparent SWAP.
-
 (* This has roughly the same structure as the soundness proof, but it's
    shorter and relies on fewer assumptions because we don't need to
    worry about well-typedness. *)
@@ -432,8 +427,7 @@ Proof.
   intros.
   induction c; try reflexivity; simpl.
   - rewrite IHc1, IHc2. reflexivity.
-  - dependent destruction u.
-    destruct (is_in_graph_b n n0).
+  - destruct (is_in_graph_b n n0).
     reflexivity.
     apply H_swaps_CNOT.
 Qed.
@@ -471,8 +465,7 @@ Proof.
   - inversion H2.
     rewrite IHc1, IHc2; try assumption.
     reflexivity.
-  - dependent destruction u.
-    rewrite fix_cnots_sound.
+  - rewrite fix_cnots_sound.
     inversion H2; subst.
     eapply do_cnot_along_path_sound.
     apply H.
@@ -492,12 +485,10 @@ Proof.
   apply IHc1; assumption. 
   apply IHc2; assumption.
   simpl.
-  dependent destruction u.
   apply fix_cnots_respects_constraints; try assumption.
   eapply do_cnot_along_path_respects_undirected.
   apply H0; assumption.
 Qed.
-
 
 (*************************)
 (** LNN Mapping Example **)
@@ -645,7 +636,6 @@ Proof.
   apply LNN_is_in_graph_reflects.
   assumption.
 Qed.
-
 
 (******************************)
 (** Tenerife Mapping Example **)

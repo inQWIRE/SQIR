@@ -30,7 +30,7 @@ Lemma X_X_id : forall {dim} q,
 Proof. 
   intros dim q WT. 
   unfold uc_equiv.
-  simpl; unfold ueval1, pad. 
+  simpl; autorewrite with eval_db. 
   inversion WT; subst.
   gridify.
   replace (σx × σx) with (I 2) by solve_matrix.
@@ -43,7 +43,7 @@ Lemma X_CNOT_comm : forall {dim} c t,
 Proof.
   intros dim c t.
   unfold uc_equiv.
-  simpl; unfold ueval1, ueval_cnot, pad.
+  simpl; autorewrite with eval_db.
   gridify; reflexivity.
 Qed.
 
@@ -53,7 +53,7 @@ Lemma H_H_id : forall {dim} q,
 Proof. 
   intros dim q WT. 
   unfold uc_equiv.
-  simpl; unfold ueval1, pad. 
+  simpl; autorewrite with eval_db. 
   inversion WT; subst. 
   gridify.
   replace (hadamard × hadamard) with (I 2) by solve_matrix.
@@ -66,49 +66,49 @@ Lemma Rz_Rz_add : forall {dim} q θ θ',
 Proof.
   intros.
   unfold uc_equiv.
-  simpl; unfold ueval1, pad. 
+  simpl; autorewrite with eval_db. 
   gridify. 
   rewrite phase_mul.
   rewrite Rplus_comm. 
   reflexivity.
 Qed.
 
+Local Transparent Rz.
 Lemma Rz_0_add : forall {dim} q, 
   @uc_well_typed dim ((Rz 0) q) -> 
   @uc_equiv dim ((Rz 0) q) uskip.
 Proof.
   intros dim q WT. 
   unfold uc_equiv.
-  simpl; unfold ueval1, pad, ueval_unitary1. 
-  inversion WT; subst. 
+  autorewrite with eval_db; simpl. 
+  inversion WT; subst.
   bdestruct (q + 1 <=? dim); try lia.
   rewrite phase_0. 
   repeat rewrite id_kron.
   unify_matrices.
 Qed.
 
-Lemma U_V_comm : forall {dim} (m n : nat) (U V : Unitary 1),
+Lemma U_V_comm : forall {dim} (m n : nat) θ ϕ λ θ' ϕ' λ',
   m <> n ->
-  @uc_equiv dim (uapp1 U m ; uapp1 V n) (uapp1 V n ; uapp1 U m). 
+  @uc_equiv dim (uapp_R θ ϕ λ m ; uapp_R θ' ϕ' λ' n) (uapp_R θ' ϕ' λ' n ; uapp_R θ ϕ λ m). 
 Proof.
-  intros dim m n U V NE.
+  intros.
   unfold uc_equiv; simpl.
   simpl in *.
-  unfold ueval1, pad.
+  autorewrite with eval_db.
   gridify; reflexivity.
 Qed.
 
 (* A bit slow, due to six valid subcases *)
-Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) (U : Unitary 1),
+Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) θ ϕ λ,
   q <> n1 ->
   q <> n2 ->
-  @uc_equiv dim (uapp1 U q ; CNOT n1 n2) (CNOT n1 n2 ; uapp1 U q). 
+  @uc_equiv dim (uapp_R θ ϕ λ q ; CNOT n1 n2) (CNOT n1 n2 ; uapp_R θ ϕ λ q). 
 Proof.
-  intros dim q n1 n2 U NE1 NE2.
+  intros.
   unfold uc_equiv.
   simpl.
-  unfold ueval_cnot.
-  unfold ueval1, pad.
+  autorewrite with eval_db.
   gridify; reflexivity.
 Qed.
 
@@ -122,7 +122,7 @@ Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
 Proof.
   intros.
   unfold uc_equiv.
-  simpl; unfold ueval_cnot, pad.
+  simpl; autorewrite with eval_db.
   gridify; reflexivity.
 Qed.  
   
