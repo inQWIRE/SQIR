@@ -37,9 +37,9 @@ rule token =
   | '['         { LBRACKET }
   | ']'         { RBRACKET }
 
-  (* | "opaque"    { OPAQUE } *)
+  | "opaque"    { OPAQUE }
   | "if"        { IF }
-  (* | "barrier"   { BARRIER } *)
+  | "barrier"   { BARRIER }
 
   | "qreg"      { QREG }
   | "creg"      { CREG }

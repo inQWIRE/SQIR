@@ -26,23 +26,17 @@ let parse_statement s qmap : gate_app list =
   match s with
   | Decl _ -> []
   | GateDecl _ -> []
+  | OpaqueDecl _ -> []
   | Qop qop ->
     (match qop with
      | Uop uop ->
        (match uop with
-        | H q             -> [_H (convert_repr qmap q)]
-        | X q             -> [_X (convert_repr qmap q)]
-        (* | Y q             -> [_Y (convert_repr qmap q)] *)
-        | Z q             -> [_Z (convert_repr qmap q)]
-        | T q             -> [_T (convert_repr qmap q)]
-        | Tdg q           -> [_TDAG (convert_repr qmap q)]
-        | S q             -> [_P (convert_repr qmap q)]
-        | Sdg q           -> [_PDAG (convert_repr qmap q)]
         | CX (ctrl, tgt)  ->
           [_CNOT (convert_repr qmap ctrl) (convert_repr qmap tgt)]
         | u               -> print_endline ("NYI UOP: " ^ show_uop u); [])
      | _ -> [])
   | If _ -> []
+  | Barrier _ -> []
 
 let parse_decl (s : OQAST.statement) : (string * int) list =
   match s with
@@ -155,5 +149,3 @@ let run_on_random_benchmarks d =
    printf "Gate x: average reduction = %f\n" (average x_red);
    printf "Gate rz: average reduction = %f\n" (average u1_red);
    printf "Gate cnot: average reduction = %f\n" (average cnot_red))
-  
-

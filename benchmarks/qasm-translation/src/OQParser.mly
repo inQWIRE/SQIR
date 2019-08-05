@@ -12,7 +12,7 @@
 %token LBRACE RBRACE
 %token LPAREN RPAREN
 %token LBRACKET RBRACKET
-/* %token OPAQUE BARRIER */
+%token OPAQUE BARRIER
 %token IF
 %token QREG CREG
 %token GATE
@@ -42,11 +42,15 @@ program:
   | statement program { $1 :: $2 }
 
 statement:
-  | decl                                  { Decl($1) }
-  | gatedecl goplist RBRACE               { GateDecl($1, $2) }
-  | gatedecl RBRACE                       { GateDecl($1, []) }
-  | qop                                   { Qop($1) }
-  | IF LPAREN ID EQUALS NINT RPAREN qop   { If($3, $5, $7) }
+  | decl                                            { Decl($1) }
+  | gatedecl goplist RBRACE                         { GateDecl($1, $2) }
+  | gatedecl RBRACE                                 { GateDecl($1, []) }
+  | OPAQUE ID idlist SEMICOLON                      { OpaqueDecl($2, None, $3) }
+  | OPAQUE ID LPAREN RPAREN idlist SEMICOLON        { OpaqueDecl($2, None, $5) }
+  | OPAQUE ID LPAREN idlist RPAREN idlist SEMICOLON { OpaqueDecl($2, Some $4, $6) }
+  | qop                                             { Qop($1) }
+  | IF LPAREN ID EQUALS NINT RPAREN qop             { If($3, $5, $7) }
+  | BARRIER anylist SEMICOLON                       { Barrier($2) }
 
 decl:
   | QREG ID LBRACKET NINT RBRACKET SEMICOLON { Qreg($2, $4) }
@@ -59,7 +63,9 @@ gatedecl:
 
 goplist:
  | uop                              { [Uop($1)] }
+ | BARRIER idlist SEMICOLON         { [Barrier($2)] }
  | uop goplist                      { Uop($1) :: $2 }
+ | BARRIER idlist goplist SEMICOLON { Barrier($2) :: $3 }
 
 qop:
   | uop                                       { Uop($1) }
