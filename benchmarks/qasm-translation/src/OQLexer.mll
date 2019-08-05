@@ -74,7 +74,6 @@ rule token =
   | white                  { token lexbuf }
   | newline                { next_line lexbuf; token lexbuf }
   | "//" [^ '\010' '\013']* newline       { next_line lexbuf; token lexbuf }
-  (* TODO maybe not ignore *)
   | "include " [^ '\010' '\013']* newline { next_line lexbuf; token lexbuf }
 
   | _   { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }

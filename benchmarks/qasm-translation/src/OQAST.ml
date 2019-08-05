@@ -19,15 +19,7 @@ type argument = string * int option [@@deriving show]
 
 type uop  =
   | CX of argument * argument
-  | H of argument
-  | T of argument
-  | Tdg of argument
-  | S of argument
-  | Sdg of argument
   | U of exp list * argument
-  | X of argument
-  | Y of argument
-  | Z of argument
   | Gate of string * exp list * argument list
 [@@deriving show]
 
