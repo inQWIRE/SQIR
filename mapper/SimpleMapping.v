@@ -283,10 +283,9 @@ Proof.
   intros.
   unfold uc_equiv; simpl.
   autorewrite with eval_db.
-  gridify. trivial. (* trivial shouldn't be necessary *)
+  gridify; trivial. (* trivial shouldn't be necessary *)
   - rewrite <- 2 kron_plus_distr_r.
     apply f_equal2; trivial.
-    repeat rewrite Nat.pow_add_r; repeat rewrite <- id_kron.
     repeat rewrite kron_assoc.
     restore_dims_fast.
     rewrite <- 2 kron_plus_distr_l.

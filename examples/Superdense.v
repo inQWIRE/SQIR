@@ -28,7 +28,7 @@ Proof.
   autorewrite with eval_db.
   bdestructΩ (a + 1 <=? 2); try lia.
   Msimpl.
-  replace 4%nat with (2 * 2)%nat by lia.
+  simpl. replace 4%nat with (2*2)%nat by lia.
   replace (∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2) with cnot by solve_matrix.
   destruct b1; destruct b2; autorewrite with eval_db; simpl.
   (* At this point we have four cases corresponding to the values of b1 and b2. *)

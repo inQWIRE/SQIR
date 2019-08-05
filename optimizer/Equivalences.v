@@ -88,11 +88,11 @@ Proof.
   unify_matrices.
 Qed.
 
-Lemma U_V_comm : forall {dim} (m n : nat) (U V : Unitary 1),
+Lemma U_V_comm : forall {dim} (m n : nat) θ ϕ λ θ' ϕ' λ',
   m <> n ->
-  @uc_equiv dim (uapp1 U m ; uapp1 V n) (uapp1 V n ; uapp1 U m). 
+  @uc_equiv dim (uapp_R θ ϕ λ m ; uapp_R θ' ϕ' λ' n) (uapp_R θ' ϕ' λ' n ; uapp_R θ ϕ λ m). 
 Proof.
-  intros dim m n U V NE.
+  intros.
   unfold uc_equiv; simpl.
   simpl in *.
   autorewrite with eval_db.
@@ -100,12 +100,12 @@ Proof.
 Qed.
 
 (* A bit slow, due to six valid subcases *)
-Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) (U : Unitary 1),
+Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) θ ϕ λ,
   q <> n1 ->
   q <> n2 ->
-  @uc_equiv dim (uapp1 U q ; CNOT n1 n2) (CNOT n1 n2 ; uapp1 U q). 
+  @uc_equiv dim (uapp_R θ ϕ λ q ; CNOT n1 n2) (CNOT n1 n2 ; uapp_R θ ϕ λ q). 
 Proof.
-  intros dim q n1 n2 U NE1 NE2.
+  intros.
   unfold uc_equiv.
   simpl.
   autorewrite with eval_db.
