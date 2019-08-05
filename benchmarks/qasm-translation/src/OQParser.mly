@@ -48,8 +48,8 @@ statement:
   | BARRIER qargs = anylist ";"                                 { Barrier(qargs) }
 
 decl:
-  | QREG name = ID "[" size = NINT "]" ";" { Qreg(name, size) }
-  | CREG name = ID "[" size = NINT "]" ";" { Creg(name, size) }
+  | QREG name = ID "[" size = NINT "]" ";" { QReg(name, size) }
+  | CREG name = ID "[" size = NINT "]" ";" { CReg(name, size) }
 
 gatedecl:
   | GATE name = ID qargs = idlist                         { (name, [], qargs) }
@@ -58,7 +58,7 @@ gatedecl:
 goplist: body = uop_or_barrier* { body }
 
 uop_or_barrier:
- | u = uop                    { Uop(u) }
+ | u = uop                    { GUop(u) }
  | BARRIER qargs = idlist ";" { GBarrier(qargs) }
 
 qop:
@@ -87,12 +87,12 @@ exp:
   | n = NINT                      { Nninteger(n) }
   | PI                            { Pi }
   | id = ID                       { Id(id) }
-  | e1 = exp "+" e2 = exp         { Plus(e1, e2) }
-  | e1 = exp "-" e2 = exp         { Minus(e1, e2) }
-  | e1 = exp "*" e2 = exp         { Times(e1, e2) }
-  | e1 = exp "/" e2 = exp         { Div(e1, e2) }
+  | e1 = exp "+" e2 = exp         { BinaryOp(Plus, e1, e2) }
+  | e1 = exp "-" e2 = exp         { BinaryOp(Minus, e1, e2) }
+  | e1 = exp "*" e2 = exp         { BinaryOp(Times, e1, e2) }
+  | e1 = exp "/" e2 = exp         { BinaryOp(Div, e1, e2) }
   | "-" e = exp %prec UMINUS      { UMinus(e) }
-  | e1 = exp "^" e2 = exp         { Pow(e1, e2) }
+  | e1 = exp "^" e2 = exp         { BinaryOp(Pow, e1, e2) }
   | "(" e = exp ")"               { e }
   | uo = unaryop "(" e = exp ")"  { UnaryOp(uo, e) }
 

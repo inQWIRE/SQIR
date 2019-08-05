@@ -1,3 +1,11 @@
+type binaryop  =
+  | Plus
+  | Minus
+  | Times
+  | Div
+  | Pow
+[@@deriving show]
+
 type unaryop  =
   | Sin
   | Cos
@@ -12,12 +20,8 @@ type exp =
   | Nninteger of int
   | Pi
   | Id of string
-  | Plus of exp * exp
-  | Minus of exp * exp
-  | Times of exp * exp
-  | Div of exp * exp
+  | BinaryOp of binaryop * exp * exp
   | UMinus of exp
-  | Pow of exp * exp
   | UnaryOp of unaryop * exp
 [@@deriving show]
 
@@ -36,15 +40,15 @@ type qop  =
 (* [@@deriving show] *)
 
 type gop  =
-  | Uop of uop
+  | GUop of uop
   | GBarrier of string list
 (* [@@deriving show] *)
 
 type gatedecl = string * string list * string list (* [@@deriving show] *)
 
 type decl =
-  | Qreg of string * int
-  | Creg of string * int
+  | QReg of string * int
+  | CReg of string * int
 (* [@@deriving show] *)
 
 type statement  =

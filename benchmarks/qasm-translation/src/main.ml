@@ -42,7 +42,7 @@ let parse_decl (s : OQAST.statement) : (string * int) list =
   match s with
   | Decl d ->
     (match d with
-     | Qreg (name, size) ->
+     | QReg (name, size) ->
        List.map (fun i -> (name, i)) (List.init size (fun i -> i))
      | _ -> [])
   | _ -> []
@@ -111,11 +111,11 @@ type counts = {h:int; x:int; rz:int; cnot:int; total:int}
 
 let get_counts progs : counts list =
   let tot p = (count_H_gates p) + (count_X_gates p) + (count_rotation_gates p) + (count_CNOT_gates p) in
-  List.map (fun p -> {h=count_H_gates p; 
-                      x=count_X_gates p; 
-                      rz=count_rotation_gates p; 
-                      cnot=count_CNOT_gates p; 
-                      total=tot p}) 
+  List.map (fun p -> {h=count_H_gates p;
+                      x=count_X_gates p;
+                      rz=count_rotation_gates p;
+                      cnot=count_CNOT_gates p;
+                      total=tot p})
            progs
 
 (* write the results of running cancel_gates on the Nam benchmarks to file f *)
