@@ -5,8 +5,9 @@
 %token <string> ID
 %token <int> NINT
 %token <float> REAL
+%token <string> STRING
 
-%token OPENQASM
+%token OPENQASM INCLUDE
 %token SEMICOLON ";" COMMA ","
 %token EQUALS "==" ARROW "->"
 %token LBRACE "{" RBRACE "}"
@@ -39,6 +40,7 @@ mainprogram: OPENQASM REAL ";" p = program EOF { p }
 program: sl = statement* { sl }
 
 statement:
+  | INCLUDE inc = STRING ";"                                    { Include(inc) }
   | d = decl                                                    { Decl(d) }
   | gd = gatedecl "{" gl = goplist "}"                          { GateDecl(gd, gl) }
   | OPAQUE name = ID qargs = idlist ";"                         { OpaqueDecl(name, [], qargs) }
@@ -91,7 +93,7 @@ exp:
   | e1 = exp "-" e2 = exp         { BinaryOp(Minus, e1, e2) }
   | e1 = exp "*" e2 = exp         { BinaryOp(Times, e1, e2) }
   | e1 = exp "/" e2 = exp         { BinaryOp(Div, e1, e2) }
-  | "-" e = exp %prec UMINUS      { UMinus(e) }
+  | "-" e = exp %prec UMINUS      { UnaryOp(UMinus, e) }
   | e1 = exp "^" e2 = exp         { BinaryOp(Pow, e1, e2) }
   | "(" e = exp ")"               { e }
   | uo = unaryop "(" e = exp ")"  { UnaryOp(uo, e) }

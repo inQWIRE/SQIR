@@ -1,4 +1,4 @@
-type binaryop  =
+type binaryop =
   | Plus
   | Minus
   | Times
@@ -6,13 +6,14 @@ type binaryop  =
   | Pow
 [@@deriving show]
 
-type unaryop  =
+type unaryop =
   | Sin
   | Cos
   | Tan
   | Exp
   | Ln
   | Sqrt
+  | UMinus
 [@@deriving show]
 
 type exp =
@@ -21,7 +22,6 @@ type exp =
   | Pi
   | Id of string
   | BinaryOp of binaryop * exp * exp
-  | UMinus of exp
   | UnaryOp of unaryop * exp
 [@@deriving show]
 
@@ -52,6 +52,7 @@ type decl =
 (* [@@deriving show] *)
 
 type statement  =
+  | Include of string
   | Decl of decl
   | GateDecl of gatedecl * gop list
   | OpaqueDecl of gatedecl

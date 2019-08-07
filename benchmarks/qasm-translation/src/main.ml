@@ -1,10 +1,28 @@
 open Extracted_code
 open OQAST
+open OQLexer
+
 open Printf
+open Lexing
+
+(* Error handling adapted from Real World OCaml *)
+let print_position outx lexbuf =
+  let pos = lexbuf.lex_curr_p in
+  fprintf outx "%s:%d:%d" pos.pos_fname
+    pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
+
+let parse_with_error lexbuf =
+  try OQParser.mainprogram OQLexer.token lexbuf with
+  | SyntaxError msg ->
+    fprintf stderr "%a: %s\n" print_position lexbuf msg;
+    []
+  | OQParser.Error ->
+    fprintf stderr "%a: syntax error\n" print_position lexbuf;
+    exit (-1)
 
 let parse_file f =
   let lexbuf = Lexing.from_channel (open_in f) in
-  OQParser.mainprogram OQLexer.token lexbuf
+  parse_with_error lexbuf
 
 module QbitIdx =
 struct
@@ -24,6 +42,7 @@ let convert_repr qmap (id, idx) =
 
 let parse_statement s qmap : gate_app list =
   match s with
+  | Include s -> print_endline ("INFO: including \"" ^ s ^ "\""); []
   | Decl _ -> []
   | GateDecl _ -> []
   | OpaqueDecl _ -> []
