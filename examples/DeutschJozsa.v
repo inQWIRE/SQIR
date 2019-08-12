@@ -27,7 +27,8 @@ Proof.
   - rewrite u0.
     simpl. intros F.
     apply (f_equal2_inv 0 1) in F.
-    contradict F. unfold ueval1, pad.
+    contradict F.
+    autorewrite with eval_db.
     bdestruct_all. simpl.
     replace (@Zero 2 2 0 1) with C0 by solve_matrix.
     rewrite kron_1_l by auto with wf_db.
@@ -91,7 +92,8 @@ Proof.
     repeat rewrite kron_1_r. rewrite Mmult_1_l by (subst; auto with wf_db). 
     autorewrite with C_db.
     symmetry. apply Mscale_1_l.
-  - simpl. rewrite u0. unfold uc_eval. simpl. unfold ueval1, pad. simpl.
+  - simpl. rewrite u0. unfold uc_eval. simpl.
+    autorewrite with eval_db.
     simpl.
     repeat rewrite kron_1_r. rewrite kron_1_l by auto with wf_db.
     replace (σx × ψm) with ((-1)%R .* ψm) by (subst; solve_matrix).
@@ -135,7 +137,8 @@ Proof.
   - simpl. apply WT_uskip.
   - simpl. apply WT_seq.
     apply IHn; lia.
-    apply WT_app1; lia. 
+    Transparent H.
+    apply WT_app_R; lia. 
 Qed.
 
 Lemma WF_cpar_H : 
@@ -143,7 +146,8 @@ Lemma WF_cpar_H :
 Proof.
   intros. induction n.
   - simpl. auto with wf_db.
-  - simpl. unfold ueval1, pad. simpl.
+  - simpl.
+    autorewrite with eval_db.
     bdestructΩ (n + 1 <=? dim).
     apply WF_mult. auto with wf_db.
     apply IHn.
@@ -170,10 +174,13 @@ Proof.
   intros.
   remember ∣+⟩ as ψp.
   induction n.
-  - simpl. unfold ueval1, pad. simpl. 
+  - simpl.
+    autorewrite with eval_db. simpl.
     rewrite kron_1_l; auto with wf_db. 
     repeat rewrite kron_1_r; auto with wf_db.
     rewrite Mmult_1_r; auto with wf_db.
+    apply f_equal2; try reflexivity.
+    symmetry. apply hadamard_rotation.
   - replace (@cpar (S (S n)) (S (S n)) H) with (@cpar (S (S n)) (S n) H ; H (S n)) by reflexivity.
     replace (nket (S n) ψp) with (nket n ψp ⊗ ψp) by reflexivity.
     replace (nket (S n) ∣0⟩) with (nket n ∣0⟩ ⊗ ∣0⟩) by reflexivity.
@@ -181,7 +188,9 @@ Proof.
     repeat rewrite <- (@kron_assoc 2 1 (2 ^ n) 1 2 1 _ _ _).
     simpl.
     unify_pows_two.
-    unfold ueval1, pad.
+Admitted.
+(*
+    autorewrite with eval_db. simpl. bdestruct_all.
     replace (S (S n) - 1 - S n)%nat with 0%nat by lia.
     replace (S (S n) - 1 - n)%nat with 1%nat by lia.
     simpl.
@@ -193,10 +202,6 @@ Proof.
     restore_dims_strong.
     rewrite (kron_mixed_product (I (2 * 2 ^ n)) hadamard (I (2 ^ n) ⊗ hadamard) (I 2)).
     Msimpl.
-    Set Printing Implicit.
-    simpl in IHn.
-    rewrite 
-
 
     replace (2 ^ n + (2 ^ n + 0) + (2 ^ n + (2 ^ n + 0) + 0)) with (2 * 2 ^ n * 2) by unify_pows_two.
     replace (2 ^ n + (2 ^ n + 0)) with (2 * 2 ^ n) by unify_pows_two.
@@ -221,9 +226,7 @@ Proof.
     rewrite Heqc. apply well_typed_cpar_H.
 Qed.
 
-Lemma cpar_correct_H : 
-  forall (n : nat) (ψ : Matrix 2 1) (WF : WF_Matrix ψ), (@uc_eval (S n) (cpar (S n) H)) × (ψ ⊗ nket n ∣0⟩) = (hadamard × ψ) ⊗ nket n ∣+⟩.
-
+*)
 
 Lemma cpar_H_self_adjoint :
   forall (n : nat), (uc_eval n (cpar n H))† = uc_eval n (cpar n H).
