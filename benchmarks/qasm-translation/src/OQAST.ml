@@ -1,10 +1,13 @@
+type id = string
+
+type ty = TVal | TCReg of int | TQReg of int | TGate of int * int
+
 type binaryop =
   | Plus
   | Minus
   | Times
   | Div
   | Pow
-[@@deriving show]
 
 type unaryop =
   | Sin
@@ -14,42 +17,36 @@ type unaryop =
   | Ln
   | Sqrt
   | UMinus
-[@@deriving show]
 
 type exp =
   | Real of float
   | Nninteger of int
   | Pi
-  | Id of string
+  | Id of id
   | BinaryOp of binaryop * exp * exp
   | UnaryOp of unaryop * exp
-[@@deriving show]
 
-type argument = string * int option [@@deriving show]
+type argument = id * int option
 
 type uop  =
   | CX of argument * argument
   | U of exp list * argument
-  | Gate of string * exp list * argument list
-[@@deriving show]
+  | Gate of id * exp list * argument list
 
 type qop  =
   | Uop of uop
   | Meas of argument * argument
   | Reset of argument
-(* [@@deriving show] *)
 
 type gop  =
   | GUop of uop
-  | GBarrier of string list
-(* [@@deriving show] *)
+  | GBarrier of id list
 
-type gatedecl = string * string list * string list (* [@@deriving show] *)
+type gatedecl = id * id list * id list
 
 type decl =
-  | QReg of string * int
-  | CReg of string * int
-(* [@@deriving show] *)
+  | QReg of id * int
+  | CReg of id * int
 
 type statement  =
   | Include of string
@@ -57,8 +54,7 @@ type statement  =
   | GateDecl of gatedecl * gop list
   | OpaqueDecl of gatedecl
   | Qop of qop
-  | If of string * int * qop
+  | If of id * int * qop
   | Barrier of argument list
-(* [@@deriving show] *)
 
-type program = statement list (* [@@deriving show] *)
+type program = statement list
