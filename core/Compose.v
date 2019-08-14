@@ -29,6 +29,14 @@ Fixpoint cast {dim} (c : ucom dim) dim' : ucom dim' :=
   | uapp_R θ ϕ λ n => uapp_R θ ϕ λ n
   | uapp_CNOT m n => uapp_CNOT m n
   end.                                                     
+
+Lemma typed_cast : forall {n} (c : ucom n) (n' : nat),
+  uc_well_typed c -> n <= n' -> uc_well_typed (cast c n').
+Proof.
+  intros.
+  induction H; simpl; constructor; try lia.
+  apply IHuc_well_typed1. apply IHuc_well_typed2.
+Qed.
                                                      
 Lemma pad_dims_r : forall {dim} (c : ucom dim) (k : nat),
   uc_well_typed c ->
@@ -47,20 +55,6 @@ Proof.
   - simpl. inversion H; subst.
     autorewrite with eval_db.
     gridify; reflexivity.
-Qed.
-
-Lemma typed_pad : forall {dim} (c : ucom dim) (k : nat), 
-  uc_well_typed c -> uc_well_typed (cast c (dim + k)).
-Proof.
-  intros.
-  induction c; simpl.
-  - constructor.
-  - inversion H; subst.
-    constructor; try apply IHc1; try apply IHc2; assumption.
-  - inversion H; subst.
-    constructor; lia.
-  - inversion H; subst.
-    constructor; lia.
 Qed.
 
 Lemma pad_dims_l : forall {dim} (c : ucom dim) (k : nat),

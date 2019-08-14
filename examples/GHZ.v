@@ -51,8 +51,7 @@ Proof.
   - simpl. destruct n. 
     + apply uc_well_typed_H; lia.
     + apply WT_seq.
-      replace (S (S n)) with ((S n) + 1)%nat by lia. 
-      apply typed_pad; assumption.
+      apply typed_cast; try lia; assumption.
       apply uc_well_typed_CNOT; lia.
 Qed.      
 
