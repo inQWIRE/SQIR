@@ -57,7 +57,7 @@ Local Open Scope R_scope.
 Local Open Scope C_scope.
 
 Definition balanced {dim : nat} {u : ucom (S dim)} (P : boolean u) : Prop :=
-  (dim > 0)%nat -> count P = (2%R ^ (dim - 1))%C.
+  (dim > 0)%nat /\ count P = (2%R ^ (dim - 1))%C.
 
 Definition constant {dim : nat} {u : ucom (S dim)} (P : boolean u) : Prop :=
   count P = 0%R \/ count P = (2%R ^ dim)%C.
@@ -249,12 +249,11 @@ Qed.
 
 Theorem deutsch_jozsa_balanced_correct :
   forall (dim : nat) (U : ucom (S dim)) (P : boolean U), 
-    (dim > 0)%nat -> balanced P -> reject P.
+    balanced P -> reject P.
 Proof.
-  unfold reject. intros. 
+  unfold reject. intros dim U P [H1 H2] ψ WF. 
   rewrite (deutsch_jozsa_success_probability P) by auto with wf_db.
-  specialize (H0 H).
-  rewrite H0.
+  rewrite H2.
   replace (2 * 2 ^ (dim - 1)) with (2 ^ dim).
   2: { replace dim with (1 + (dim - 1))%nat at 1 by lia. reflexivity. }
   autorewrite with C_db. 
