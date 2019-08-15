@@ -70,7 +70,7 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size ( fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
-let parse_statement s qmap sym_tab : gate_app list =
+let translate_statement s qmap sym_tab : gate_app list =
   match s with
   | Qop qop ->
     (match qop with
@@ -118,23 +118,23 @@ let rec parse_qreg_decls p =
     let rest = parse_qreg_decls p' in
     List.append first rest
 
-let rec parse_program p qbit_map sym_tab =
+let rec translate_program p qbit_map sym_tab =
   match p with
   | []      ->  []
-  | s :: p' ->  let l = parse_statement s qbit_map sym_tab in
-    let m = parse_program p' qbit_map sym_tab in
+  | s :: p' ->  let l = translate_statement s qbit_map sym_tab in
+    let m = translate_program p' qbit_map sym_tab in
     List.append l m
 
-let parse_gate_list f =
+let get_gate_list f =
   let ast = parse_file f in (* dumb parsing *)
   let sym_tab = check ast in (* semantic analysis *)
   let qbit_list = parse_qreg_decls ast in
   let (qbit_map, _) = List.fold_left
       (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1))
       (QbitMap.empty, 0) qbit_list in
-  parse_program ast qbit_map sym_tab
+  translate_program ast qbit_map sym_tab
 
-let parse f = parse_gate_list f
+let parse f = get_gate_list f
 
 let nam_benchmark_filenames = [
   "../nam-benchmarks/adder_8.qasm";
