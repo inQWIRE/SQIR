@@ -3,7 +3,6 @@ Require Import UnitarySem.
 Require Import Tactics.
 Require Import ListRepresentation.
 Require Import Equivalences.
-Require Import Proportional.
 Require Import List.
 Open Scope ucom.
 
@@ -29,21 +28,21 @@ Fixpoint cancel_gates_simple' {dim} (l acc : gate_list dim) (n: nat) : gate_list
            | [] => rev acc
            | App1 fU_H q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_H, t') => cancel_gates_simple' t' acc n'
+               | Some (l1, fU_H, l2) => cancel_gates_simple' (l1 ++ l2) acc n'
                | _ => cancel_gates_simple' t (_H q :: acc) n'
                end
            | App1 fU_X q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_X, t') => cancel_gates_simple' t' acc n'
+               | Some (l1, fU_X, l2) => cancel_gates_simple' (l1 ++ l2) acc n'
                | _ => cancel_gates_simple' t (_X q :: acc) n'
                end
            | App1 (fU_PI4 k) q :: t => 
                match next_single_qubit_gate t q with
-               | Some (fU_PI4 k', t') => 
+               | Some (l1, fU_PI4 k', l2) => 
                  let k'' := (k + k')%Z in
-                 if (k'' =? 8)%Z then cancel_gates_simple' t' acc n' else 
-                 if (k'' <? 8)%Z then cancel_gates_simple' (_PI4 k'' q :: t') acc n'
-                 else cancel_gates_simple' (_PI4 (k'' - 8)%Z q :: t') acc n' 
+                 if (k'' =? 8)%Z then cancel_gates_simple' (l1 ++ l2) acc n' else 
+                 if (k'' <? 8)%Z then cancel_gates_simple' (_PI4 k'' q :: (l1 ++ l2)) acc n'
+                 else cancel_gates_simple' (_PI4 (k'' - 8)%Z q :: (l1 ++ l2)) acc n' 
                | _ => cancel_gates_simple' t (_PI4 k q :: acc) n'
                end
            | App2 fU_CNOT q1 q2 :: t => 
@@ -222,78 +221,70 @@ Proof.
   destruct l; intros; try (rewrite app_nil_r; reflexivity).
   destruct g.
   - dependent destruction f;
-    remember (next_single_qubit_gate l n0) as next_gate;
-    symmetry in Heqnext_gate; inversion WT.
+    inversion WT;
+    destruct (next_single_qubit_gate l n0) eqn:nsqg;
+    try (rewrite <- IHn; try assumption;
+         simpl; rewrite <- app_assoc; 
+         reflexivity);
+    do 2 destruct p.
     + (* H *)
-      destruct next_gate.
-      2: { rewrite <- IHn; try assumption.
-           simpl; rewrite <- app_assoc. 
-           reflexivity. }
-      destruct p; dependent destruction f; rewrite <- IHn;
+      dependent destruction f; rewrite <- IHn;
       try (simpl; rewrite <- app_assoc; reflexivity);
       try assumption.
-      rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+      rewrite (nsqg_commutes _ _ _ _ _ nsqg).
       apply app_congruence; try reflexivity.
       apply H_H_cancel; assumption.
-      apply (nsqg_WT _ _ _ _ Heqnext_gate H3).
+      apply uc_well_typed_l_app. 
+      apply (nsqg_WT _ _ _ _ _ nsqg); assumption.
     + (* X *)
-      destruct next_gate.
-      2: { rewrite <- IHn; try assumption.
-           simpl; rewrite <- app_assoc. 
-           reflexivity. }
-      destruct p; dependent destruction f; rewrite <- IHn;
+      dependent destruction f; rewrite <- IHn;
       try (simpl; rewrite <- app_assoc; reflexivity);
       try assumption.
-      rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+      rewrite (nsqg_commutes _ _ _ _ _ nsqg).
       apply app_congruence; try reflexivity.
       apply X_X_cancel; assumption.
-      apply (nsqg_WT _ _ _ _ Heqnext_gate H3).
+      apply uc_well_typed_l_app. 
+      apply (nsqg_WT _ _ _ _ _ nsqg); assumption.
     + (* PI4 *)
-      destruct next_gate.
-      2: { rewrite <- IHn; try assumption.
-           simpl; rewrite <- app_assoc. 
-           reflexivity. }
-      destruct p; dependent destruction f;
+      dependent destruction f;
       [| | destruct (k + k0 =? 8)%Z eqn:E; [|destruct (k + k0 <? 8)%Z]];
       try rewrite <- IHn;
-      try rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate);
+      try rewrite (nsqg_commutes _ _ _ _ _ nsqg);
       try (simpl; rewrite <- app_assoc; reflexivity);
       try constructor;
-      try apply (nsqg_WT _ _ _ _ Heqnext_gate);
+      try apply uc_well_typed_l_app;
+      try apply (nsqg_WT _ _ _ _ _ nsqg);
       try assumption;
-      try apply app_congruence; try reflexivity.
+      apply app_congruence;
+      try reflexivity.
       apply Z.eqb_eq in E.
       apply PI4_PI4_cancel; lia.
       apply PI4_PI4_combine.
       apply PI4_PI4_m8_combine.
   - (* CNOT *)
     dependent destruction f.
-    remember (next_two_qubit_gate l n0) as next_gate;
-    symmetry in Heqnext_gate; 
+    destruct (next_two_qubit_gate l n0) eqn:ntqg;
     inversion WT.
-    destruct next_gate.
     2: { rewrite <- IHn; try assumption.
          simpl; rewrite <- app_assoc. 
          reflexivity. }
-    destruct p; destruct p; destruct p.
+    do 3 destruct p.
     bdestruct (n0 =? n4); bdestruct (n1 =? n3); simpl;
     try (rewrite <- IHn; try assumption; simpl; rewrite <- app_assoc; reflexivity).
     subst.
-    remember (does_not_reference g0 n3) as dnr; symmetry in Heqdnr.
-    destruct dnr; simpl; 
+    destruct (does_not_reference g0 n3) eqn:dnr; simpl;
     try (rewrite <- IHn; try assumption; simpl; rewrite <- app_assoc; reflexivity).
-    specialize (ntqg_preserves_semantics _ _ _ _ _ _ Heqnext_gate) as H7.
-    rewrite H7.
+    rewrite (ntqg_preserves_structure _ _ _ _ _ _ ntqg).
     rewrite <- IHn.
-    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ Heqnext_gate) as H8.
+    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ ntqg) as H8.
     rewrite app_comm_cons.
     rewrite app_assoc.
-    rewrite (does_not_reference_commutes_app2 g0 fU_CNOT n4 n3 H8 Heqdnr).
+    rewrite (does_not_reference_commutes_app2 g0 fU_CNOT n4 n3 H8 dnr).
     repeat rewrite <- app_assoc.
     apply app_congruence; try reflexivity.
     apply CNOT_CNOT_cancel; assumption.
-    specialize (ntqg_WT _ _ _ _ _ _ Heqnext_gate H6) as [H8 H9].
-    apply uc_well_typed_l_app; assumption.
+    apply uc_well_typed_l_app.
+    apply (ntqg_WT _ _ _ _ _ _ ntqg H6).
 Qed.
 
 Lemma cancel_gates_simple_sound : forall {dim} (l : gate_list dim),
@@ -348,12 +339,12 @@ Definition search_for_commuting_X_pat {dim} (l : gate_list dim) q :=
 
 Definition search_for_Rz_pat1 {dim} (l : gate_list dim) q :=
   match (next_single_qubit_gate l q) with
-  | Some (fU_H, l') => 
-      match (next_two_qubit_gate l' q) with
+  | Some (l1, fU_H, l2) => 
+      match (next_two_qubit_gate (l1 ++ l2) q) with
       | Some (l1, q1, q2, l2) =>
           if q =? q2
           then match (next_single_qubit_gate l2 q) with
-               | Some (fU_H, l2') => Some ([_H q] ++ l1 ++ [_CNOT q1 q] ++ [ _H q], l2') 
+               | Some (l2_1, fU_H, l2_2) => Some ([_H q] ++ l1 ++ [_CNOT q1 q] ++ [ _H q], l2_1 ++ l2_2) 
                | _ => None
                end
           else None
@@ -367,8 +358,8 @@ Definition search_for_Rz_pat2 {dim} (l : gate_list dim) q :=
   | Some (l1, q1, q2, l2) => 
       if q =? q2
       then match (next_single_qubit_gate l2 q) with
-           | Some (fU_PI4 k as u, l2') =>
-               match (next_two_qubit_gate l2' q) with
+           | Some (l2_1, fU_PI4 k as u, l2_2) =>
+               match (next_two_qubit_gate (l2_1 ++ l2_2) q) with
                | Some (l3, q3, q4, l4) => 
                    if (q =? q4) && (q1 =? q3) && (does_not_reference l3 q3)
                    then Some (l1 ++ [_CNOT q1 q] ++ [App1 u q] ++ l3 ++ [_CNOT q1 q], l4)
@@ -406,7 +397,7 @@ Definition search_for_commuting_Rz_pat {dim} (l : gate_list dim) q :=
 
 Definition search_for_CNOT_pat1 {dim} (l : gate_list dim) (q1 q2 : nat) : option (gate_list dim * gate_list dim) :=
   match (next_single_qubit_gate l q1) with
-  | Some (fU_PI4 k, l') => Some ([_PI4 k q1], l')
+  | Some (l1, fU_PI4 k, l2) => Some ([_PI4 k q1], l1 ++ l2)
   | _ => None
   end.
 
@@ -434,12 +425,12 @@ Definition search_for_CNOT_pat3 {dim} (l : gate_list dim) q1 q2 :=
 
 Definition search_for_CNOT_pat4 {dim} (l : gate_list dim) q1 q2 :=
   match (next_single_qubit_gate l q2) with
-  | Some (fU_H, l') => 
-      match (next_two_qubit_gate l' q2) with
+  | Some (l1, fU_H, l2) => 
+      match (next_two_qubit_gate (l1 ++ l2) q2) with
       | Some (l1, q1', q2', l2) => 
           if (q2 =? q1') && ¬ (q1 =? q2') && (does_not_reference l1 q1)
           then match (next_single_qubit_gate l2 q2) with
-               | Some (fU_H, l2') => Some ([_H q2] ++ l1 ++ [_CNOT q2 q2'] ++ [_H q2], l2')
+               | Some (l2_1, fU_H, l2_2) => Some ([_H q2] ++ l1 ++ [_CNOT q2 q2'] ++ [_H q2], l2_1 ++ l2_2)
                | _ => None
                end
           else None
@@ -470,13 +461,13 @@ Fixpoint propagate_PI4 {dim} k (l : gate_list dim) (q n : nat) : option (gate_li
   | O => None
   | S n' => 
       match next_single_qubit_gate l q with
-      | Some (fU_PI4 k', l') => 
+      | Some (l1, fU_PI4 k', l2) => 
                  let k'' := (k + k')%Z in
                  (* Cancel *)
-                 if (k'' =? 8)%Z then Some l' else 
+                 if (k'' =? 8)%Z then Some (l1 ++ l2) else 
                  (* Combine *)
-                 if (k'' <? 8)%Z then Some (_PI4 k'' q :: l')
-                 else Some (_PI4 (k'' - 8)%Z q :: l') 
+                 if (k'' <? 8)%Z then Some (_PI4 k'' q :: (l1 ++ l2))
+                 else Some (_PI4 (k'' - 8)%Z q :: (l1 ++ l2)) 
       (* Commute *)
       | _ =>
           match search_for_commuting_Rz_pat l q with
@@ -492,7 +483,7 @@ Fixpoint propagate_PI4 {dim} k (l : gate_list dim) (q n : nat) : option (gate_li
 Definition propagate_H {dim} (l : gate_list dim) (q : nat) : option (gate_list dim) :=
   match next_single_qubit_gate l q with
   (* Cancel *)
-  | Some (fU_H, l') => Some l'
+  | Some (l1, fU_H, l2) => Some (l1 ++ l2)
   (* Currently no rules for commuting H gates *)
   | _ => None
   end.
@@ -503,7 +494,7 @@ Fixpoint propagate_X {dim} (l : gate_list dim) (q n : nat) : option (gate_list d
   | S n' => 
       match next_single_qubit_gate l q with
       (* Cancel *)
-      | Some (fU_X, l') => Some l'
+      | Some (l1, fU_X, l2) => Some (l1 ++ l2)
       (* Commute *)
       | _ =>
           match search_for_commuting_X_pat l q with
@@ -516,7 +507,7 @@ Fixpoint propagate_X {dim} (l : gate_list dim) (q n : nat) : option (gate_list d
       end
   end.
 
-Definition propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (gate_list dim) :=
+Fixpoint propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (gate_list dim) :=
   match n with
   | O => None
   | S n' => 
@@ -526,8 +517,8 @@ Definition propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (ga
           if (q1 =? q1') && (q2 =? q2') && (does_not_reference l1 q2)
           then Some (l1 ++ l2)
           else None
-      (* Commute -- commented out to avoid unverified code *)
-      (*| _ =>
+      (* Commute *)
+      | _ =>
           match search_for_commuting_CNOT_pat l q1 q2 with
           | Some (l1, l2) => match (propagate_CNOT l2 q1 q2 n') with
                             | Some l' => Some (l1 ++ l')
@@ -535,8 +526,6 @@ Definition propagate_CNOT {dim} (l : gate_list dim) (q1 q2 n : nat) : option (ga
                             end
           | None =>  None
           end
-      end*)
-      | _ => None
       end
   end.
 
@@ -571,7 +560,6 @@ Fixpoint cancel_gates' {dim} (l : gate_list dim) (n: nat) : gate_list dim :=
 Definition cancel_gates {dim} (l : gate_list dim) := 
   cancel_gates' l (length l).
 
-
 (* Proofs about commutativity *)
 
 Lemma commuting_X_pat : forall {dim} (l : gate_list dim) q l1 l2, 
@@ -580,16 +568,14 @@ Lemma commuting_X_pat : forall {dim} (l : gate_list dim) q l1 l2,
 Proof.
   intros.
   unfold search_for_commuting_X_pat in H.
-  remember (next_two_qubit_gate l q) as next_gate; symmetry in Heqnext_gate.
-  destruct next_gate; try easy.
+  destruct (next_two_qubit_gate l q) eqn:ntqg; try easy.
   do 3 destruct p.
   bdestruct (q =? n); try easy.
   inversion H; subst.
-  rewrite (ntqg_preserves_semantics _ _ _ _ _ _ Heqnext_gate).
-  assert (does_not_reference g0 n = true).
-  { apply (ntqg_l1_does_not_reference _ _ _ _ _ _ Heqnext_gate). }
+  rewrite (ntqg_preserves_structure _ _ _ _ _ _ ntqg).
+  apply ntqg_l1_does_not_reference in ntqg.
   rewrite app_comm_cons.
-  rewrite (does_not_reference_commutes_app1 _ fU_X _ H0).
+  rewrite (does_not_reference_commutes_app1 _ fU_X _ ntqg).
   repeat rewrite <- app_assoc.
   rewrite (app_assoc _ _ l2).
   rewrite (app_assoc _ [_X n] l2).
@@ -597,19 +583,17 @@ Proof.
   { unfold uc_equiv_l; simpl.
     do 2 rewrite uskip_id_r.
     apply X_CNOT_comm. }
-  rewrite H1.
+  rewrite H0.
   reflexivity.  
 Qed.
 
 Lemma app_cons_app : forall {A} (a : A) (l1 l2 : list A), a :: l1 ++ l2 = [a] ++ l1 ++ l2.
 Proof. reflexivity. Qed.
 
-
 Lemma commuting_Rz_pat : forall {dim} k (l : gate_list dim) q l1 l2,
   search_for_commuting_Rz_pat l q = Some (l1, l2) ->
   _PI4 k q :: l =l= l1 ++ [_PI4 k q] ++ l2.
 Proof.
-(* Will require lemmas about search_for_Rz_pat1, 2, and 3. *)
   intros.
   unfold search_for_commuting_Rz_pat in H.
   destruct (search_for_Rz_pat1 l q) eqn:HS; 
@@ -619,34 +603,32 @@ Proof.
     destruct p.
     inversion H; subst. clear H.
     destruct (next_single_qubit_gate l q) eqn:HN1; try discriminate.
-    destruct p.
-    apply nsqg_preserves_semantics in HN1.
-    destruct (next_two_qubit_gate g q) eqn:HN2; try discriminate.
+    repeat destruct p.
+    apply nsqg_commutes in HN1.
+    destruct (next_two_qubit_gate (g0 ++ g) q) eqn:HN2; try discriminate.
     2:{ dependent destruction f; discriminate. }
     repeat destruct p.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
-    apply ntqg_preserves_semantics in HN2.
+    apply ntqg_preserves_structure in HN2.
     dependent destruction f; try discriminate.
     bdestruct (q =? n); try easy.
-    destruct (next_single_qubit_gate g0 q) eqn:HN1'; try discriminate.
-    destruct p.
-    apply nsqg_preserves_semantics in HN1'.
+    destruct (next_single_qubit_gate g1 q) eqn:HN1'; try discriminate.
+    repeat destruct p.
+    apply nsqg_commutes in HN1'.
     dependent destruction f; try discriminate.
     inversion HS; subst.
     rewrite HN1, HN2, HN1'.
-    rewrite app_comm_cons.
-    rewrite (does_not_reference_commutes_app1 _ fU_H _ NoRef).
-    repeat rewrite <- app_assoc.
-    rewrite 2 app_comm_cons.
-    rewrite (does_not_reference_commutes_app1 _ (fU_PI4 k) _ NoRef).
-    rewrite (does_not_reference_commutes_app1 _ fU_H _ NoRef).    
-    repeat rewrite <- app_assoc.
-    apply app_congruence; try reflexivity.
-    replace ( App1 fU_H n :: l2) with ([App1 fU_H n] ++ l2) by easy.
+    repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
+    rewrite <- (app_assoc _ _ g2).
+    rewrite 2 (does_not_reference_commutes_app1 _ fU_H _ NoRef).
+    rewrite (app_assoc _ g2).
+    rewrite (does_not_reference_commutes_app1 _ (fU_PI4 k) _ NoRef).
+    repeat rewrite <- app_assoc.  
     apply app_congruence; try reflexivity.
-    unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl.
+    repeat rewrite app_assoc.
+    do 2 (apply app_congruence; try reflexivity).
+    unfold uc_equiv_l, uc_equiv; simpl.
     autorewrite with eval_db.
     gridify.
     + rewrite (Mmult_assoc _ hadamard hadamard).
@@ -673,23 +655,23 @@ Proof.
     destruct (next_two_qubit_gate l q) eqn:HN2; try discriminate.
     repeat destruct p.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
-    apply ntqg_preserves_semantics in HN2.
+    apply ntqg_preserves_structure in HN2.
     bdestruct (q =? n); try discriminate.
     subst.
     destruct (next_single_qubit_gate g n) eqn:HN1; try discriminate.
     repeat destruct p.
     dependent destruction f; try discriminate.
-    apply nsqg_preserves_semantics in HN1.
-    destruct (next_two_qubit_gate g1 n) eqn:HN2'; try discriminate.
+    apply nsqg_commutes in HN1.
+    destruct (next_two_qubit_gate (g2 ++ g1) n) eqn:HN2'; try discriminate.
     repeat destruct p.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2') as NoRef'.
-    apply ntqg_preserves_semantics in HN2'.
+    apply ntqg_preserves_structure in HN2'.
     bdestruct (n =? n1); try discriminate.
     bdestruct (n0 =? n2); try discriminate.
-    destruct (does_not_reference g3 n2) eqn:NoRef''; try discriminate.
+    destruct (does_not_reference g4 n2) eqn:NoRef''; try discriminate.
     simpl in HS2.
     inversion HS2; subst. clear HS2.
-    rewrite HN2, HN1, HN2'.
+    rewrite HN1, HN2'.
     rewrite app_comm_cons.
     rewrite (does_not_reference_commutes_app1 _ (fU_PI4 k) _ NoRef).
     repeat rewrite <- app_assoc.
@@ -699,14 +681,13 @@ Proof.
     apply app_congruence; try reflexivity. 
     repeat rewrite <- app_assoc.    
     rewrite <- (does_not_reference_commutes_app2 _ fU_CNOT _ _ NoRef'' NoRef').
-    rewrite (app_assoc g3).
+    rewrite (app_assoc g4).
     rewrite <- (does_not_reference_commutes_app2 _ fU_CNOT _ _ NoRef'' NoRef').
     rewrite <- app_assoc.
     rewrite <- (does_not_reference_commutes_app1 _ (fU_PI4 k) _ NoRef').
     repeat rewrite app_assoc.    
     apply app_congruence; try reflexivity.
-    unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl.
+    unfold uc_equiv_l, uc_equiv; simpl.
     autorewrite with eval_db.
     gridify.
     + replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
@@ -732,11 +713,10 @@ Proof.
     destruct (next_two_qubit_gate l q) eqn:HN2; try discriminate.
     repeat destruct p.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
-    apply ntqg_preserves_semantics in HN2.
+    apply ntqg_preserves_structure in HN2.
     bdestruct (q =? n0); try discriminate.
     subst.
     inversion HS3. subst.
-    rewrite HN2.
     repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
     apply app_congruence; try reflexivity. 
@@ -744,8 +724,7 @@ Proof.
     repeat rewrite <- app_assoc.
     apply app_congruence; try reflexivity. 
     (* simple slide lemma: should exist already? *)
-    unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl. 
+    unfold uc_equiv_l, uc_equiv; simpl.
     rewrite 2 Mmult_1_l; auto with wf_db.
     autorewrite with eval_db.
     gridify.
@@ -778,19 +757,16 @@ Proof.
     destruct p.
     inversion H; subst. clear H.
     destruct (next_single_qubit_gate l q1) eqn:HN1; try discriminate.
-    destruct p.
-    apply nsqg_preserves_semantics in HN1.
+    repeat destruct p.
+    apply nsqg_commutes in HN1.
     dependent destruction f; try discriminate.
     inversion HS; subst. clear HS.
     rewrite HN1. (* Wasn't this the last case of Rz *)
     repeat rewrite app_cons_app.
-    replace (_CNOT q1 q2 :: App1 (fU_PI4 k) q1 :: l2) with
-        ([_CNOT q1 q2] ++ [_PI4 k q1] ++ l2) by reflexivity.
     repeat rewrite app_assoc.
-    apply app_congruence; try reflexivity.
-    unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl. 
-    Msimpl.
+    do 2 (apply app_congruence; try reflexivity).
+    unfold uc_equiv_l, uc_equiv; simpl.
+    Msimpl_light.
     autorewrite with eval_db.
     gridify.
     + replace  (∣1⟩⟨1∣ × phase_shift (IZR k * PI / 4))
@@ -809,20 +785,18 @@ Proof.
     destruct (next_two_qubit_gate l q2) eqn:HN2; try discriminate.
     repeat destruct p.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
-    apply ntqg_preserves_semantics in HN2.
+    apply ntqg_preserves_structure in HN2.
     bdestruct (q2 =? n); try discriminate. subst.   
     destruct (does_not_reference g0 q1) eqn:NoRef'; try discriminate. 
     destruct (does_not_reference g0 n0) eqn:NoRef''; try discriminate.
     simpl in HS. inversion HS; subst. clear HS.
-    rewrite HN2. 
     repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
     rewrite (does_not_reference_commutes_app2 _ fU_CNOT _ _ NoRef' NoRef).
     apply app_congruence; try reflexivity.
     repeat rewrite <- app_assoc.
     apply app_congruence; try reflexivity.
-    unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl. 
+    unfold uc_equiv_l, uc_equiv; simpl.
     Msimpl.
     autorewrite with eval_db.
     gridify; reflexivity.
@@ -832,20 +806,18 @@ Proof.
     destruct (next_two_qubit_gate l q1) eqn:HN2; try discriminate.
     repeat destruct p.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
-    apply ntqg_preserves_semantics in HN2.
+    apply ntqg_preserves_structure in HN2.
     bdestruct (q1 =? n0); try discriminate. subst.   
     destruct (does_not_reference g0 q2) eqn:NoRef'; try discriminate. 
     destruct (does_not_reference g0 n) eqn:NoRef''; try discriminate.
     simpl in HS. inversion HS; subst. clear HS.
-    rewrite HN2. 
     repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
     rewrite (does_not_reference_commutes_app2 _ fU_CNOT _ _ NoRef NoRef').
     apply app_congruence; try reflexivity.
     repeat rewrite <- app_assoc.
     apply app_congruence; try reflexivity.
-    unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl. 
+    unfold uc_equiv_l, uc_equiv; simpl.
     Msimpl.
     autorewrite with eval_db.
     gridify; try reflexivity.
@@ -856,38 +828,37 @@ Proof.
     destruct p.
     inversion H; subst. clear H.
     destruct (next_single_qubit_gate l q2) eqn:HN1; try discriminate.
-    destruct p.
-    apply nsqg_preserves_semantics in HN1.
+    repeat destruct p.
+    apply nsqg_commutes in HN1.
     dependent destruction f; try discriminate.
-    destruct (next_two_qubit_gate g q2) eqn:HN2; try discriminate.
+    destruct (next_two_qubit_gate (g0 ++ g) q2) eqn:HN2; try discriminate.
     repeat destruct p.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ HN2) as NoRef.
-    apply ntqg_preserves_semantics in HN2.
+    apply ntqg_preserves_structure in HN2.
     bdestruct (q2 =? n0); try discriminate; subst.
     bdestruct (q1 =? n); try discriminate; subst.
-    destruct (does_not_reference g1 q1) eqn:NoRef'; try discriminate.
+    destruct (does_not_reference g2 q1) eqn:NoRef'; try discriminate.
     simpl in HS.
-    destruct (next_single_qubit_gate g0 n0) eqn:HN1'; try discriminate.
-    destruct p.
-    apply nsqg_preserves_semantics in HN1'.
+    destruct (next_single_qubit_gate g1 n0) eqn:HN1'; try discriminate.
+    repeat destruct p.
+    apply nsqg_commutes in HN1'.
     dependent destruction f; try discriminate.
     inversion HS; subst; clear HS.
     rewrite HN1, HN2, HN1'.
     repeat rewrite app_cons_app.
-    replace (App1 fU_H n0 :: l2) with ([App1 fU_H n0] ++ l2) by reflexivity.
     repeat rewrite app_assoc.
     rewrite (does_not_reference_commutes_app1 _ fU_H _ NoRef).
-    rewrite <- (app_assoc _ _ g1).
+    rewrite <- (app_assoc _ _ g2).
     rewrite (does_not_reference_commutes_app1 _ fU_H _ NoRef).
     rewrite app_assoc.
     rewrite (does_not_reference_commutes_app2 _ fU_CNOT _ _ NoRef' NoRef).
-    apply app_congruence; try reflexivity.
+    do 2 (apply app_congruence; try reflexivity).
     repeat rewrite <- app_assoc.
     apply app_congruence; try reflexivity.
-    unfold uc_equiv_l; simpl.
-    unfold uc_equiv; simpl. 
-    Msimpl.
+    unfold uc_equiv_l, uc_equiv; simpl.
+    Msimpl_light.
     autorewrite with eval_db.
+    clear - H.
     gridify; try reflexivity.
     all: replace (hadamard × ∣1⟩⟨1∣ × hadamard × σx) with
           (σx × hadamard × ∣1⟩⟨1∣ × hadamard) by
@@ -907,11 +878,10 @@ Lemma propagate_H_sound : forall {dim} (l : gate_list dim) q l',
 Proof. 
   intros.
   unfold propagate_H in H0; simpl in H0.
-  remember (next_single_qubit_gate l q) as next_gate; symmetry in Heqnext_gate.
-  destruct next_gate; try easy.
-  destruct p; dependent destruction f; try easy.
+  destruct (next_single_qubit_gate l q) eqn:nsqg; try discriminate.
+  repeat destruct p; dependent destruction f; try discriminate.
   inversion H0; subst.
-  rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+  rewrite (nsqg_commutes _ _ _ _ _ nsqg).
   apply H_H_cancel; assumption.
 Qed.
 
@@ -938,45 +908,22 @@ Proof.
   induction n; try easy.
   simpl.
   intros.
-  remember (next_single_qubit_gate l q) as next_gate; symmetry in Heqnext_gate.
-  destruct next_gate.
-  - destruct p.
-    dependent destruction f. 
-    2: { (* Cancel case *)
-         inversion H0; subst.
-         rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
-         apply X_X_cancel; assumption. }
-    (* Commute cases *)
-    + (* copy & paste #1 *)
-      remember (search_for_commuting_X_pat l q) as pat; symmetry in Heqpat.
-      destruct pat; try easy.
-      destruct p.    
-      remember (propagate_X g0 q n) as prop; symmetry in Heqprop.
-      destruct prop; try easy.    
-      inversion H0; subst.
-      rewrite (commuting_X_pat _ _ _ _ Heqpat).
-      rewrite (IHn _ _ Heqprop).
-      reflexivity.
-    + (* copy & paste #2 *)
-      remember (search_for_commuting_X_pat l q) as pat; symmetry in Heqpat.
-      destruct pat; try easy.
-      destruct p.    
-      remember (propagate_X g0 q n) as prop; symmetry in Heqprop.
-      destruct prop; try easy.    
-      inversion H0; subst.
-      rewrite (commuting_X_pat _ _ _ _ Heqpat).
-      rewrite (IHn _ _ Heqprop).
-      reflexivity.
-  - (* copy & paste #3 *)
-    remember (search_for_commuting_X_pat l q) as pat; symmetry in Heqpat.
-    destruct pat; try easy.
-    destruct p.    
-    remember (propagate_X g q n) as prop; symmetry in Heqprop.
-    destruct prop; try easy.    
-    inversion H0; subst.
-    rewrite (commuting_X_pat _ _ _ _ Heqpat).
-    rewrite (IHn _ _ Heqprop).
-    reflexivity.
+  destruct (next_single_qubit_gate l q) eqn:nsqg;
+  repeat destruct p;
+  try dependent destruction f. 
+  2: (* Cancel case *)
+     inversion H0; subst;
+     rewrite (nsqg_commutes _ _ _ _ _ nsqg);
+     apply X_X_cancel; assumption.
+  all: (* Commute cases *)
+     destruct (search_for_commuting_X_pat l q) eqn:pat; try discriminate;
+     destruct p.
+  1, 2: destruct (propagate_X g1 q n) eqn:prop; try discriminate.
+  3: destruct (propagate_X g q n) eqn:prop; try discriminate.
+  all: inversion H0; subst;
+     rewrite (commuting_X_pat _ _ _ _ pat);
+     rewrite (IHn _ _ prop);
+     reflexivity.
 Qed.
 
 Lemma propagate_X_WT : forall {dim} (l : gate_list dim) q n l',
@@ -1002,52 +949,27 @@ Proof.
   induction n; try easy.
   simpl.
   intros.
-  remember (next_single_qubit_gate l q) as next_gate; symmetry in Heqnext_gate.
-  destruct next_gate.
-  - destruct p.
-    dependent destruction f. 
-    3: { (* Cancel/combine case *)
-         remember (k + k0 =? 8)%Z as k_k0_8.
-         destruct k_k0_8; symmetry in Heqk_k0_8.
-         apply Z.eqb_eq in Heqk_k0_8.
-         inversion H0; subst.
-         rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
-         apply PI4_PI4_cancel; assumption. 
-         destruct (k + k0 <? 8)%Z; inversion H0; subst;
-         rewrite (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
-         apply PI4_PI4_combine.
-         apply PI4_PI4_m8_combine. }
-    (* Commute cases *)
-    + (* copy & paste #1 *)
-      remember (search_for_commuting_Rz_pat l q) as pat; symmetry in Heqpat.
-      destruct pat; try easy.
-      destruct p.    
-      remember (propagate_PI4 k g0 q n) as prop; symmetry in Heqprop.
-      destruct prop; try easy.    
-      inversion H0; subst.
-      rewrite (commuting_Rz_pat _ _ _ _ _ Heqpat).
-      rewrite (IHn _ _ Heqprop).
-      reflexivity.
-    + (* copy & paste #2 *)
-      remember (search_for_commuting_Rz_pat l q) as pat; symmetry in Heqpat.
-      destruct pat; try easy.
-      destruct p.    
-      remember (propagate_PI4 k g0 q n) as prop; symmetry in Heqprop.
-      destruct prop; try easy.    
-      inversion H0; subst.
-      rewrite (commuting_Rz_pat _ _ _ _ _ Heqpat).
-      rewrite (IHn _ _ Heqprop).
-      reflexivity.
-  - (* copy & paste #3 *)
-    remember (search_for_commuting_Rz_pat l q) as pat; symmetry in Heqpat.
-    destruct pat; try easy.
-    destruct p.    
-    remember (propagate_PI4 k g q n) as prop; symmetry in Heqprop.
-    destruct prop; try easy.    
-    inversion H0; subst.
-    rewrite (commuting_Rz_pat _ _ _ _ _ Heqpat).
-    rewrite (IHn _ _ Heqprop).
-    reflexivity.
+  destruct (next_single_qubit_gate l q) eqn:nsqg;
+  repeat destruct p;
+  try dependent destruction f. 
+  3: { (* Cancel/combine case *)
+        destruct (k + k0 =? 8)%Z eqn:k_k0_8.
+        apply Z.eqb_eq in k_k0_8.
+        inversion H0; subst.
+        rewrite (nsqg_commutes _ _ _ _ _ nsqg).
+        apply PI4_PI4_cancel; assumption. 
+        destruct (k + k0 <? 8)%Z; inversion H0; subst;
+        rewrite (nsqg_commutes _ _ _ _ _ nsqg).
+        apply PI4_PI4_combine.
+        apply PI4_PI4_m8_combine. }
+  all: (* Commute cases *)
+     destruct (search_for_commuting_Rz_pat l q) eqn:pat; try discriminate;
+     destruct p;
+     destruct (propagate_PI4 k l1 q n) eqn:prop; try discriminate;
+     inversion H0; subst;
+     rewrite (commuting_Rz_pat _ _ _ _ _ pat);
+     rewrite (IHn _ _ prop);
+     reflexivity.
 Qed.
 
 Lemma propagate_PI4_WT : forall {dim} k (l : gate_list dim) q n l',
@@ -1070,22 +992,34 @@ Lemma propagate_CNOT_sound : forall {dim} (l : gate_list dim) q1 q2 n l',
   _CNOT q1 q2 :: l =l= l'.
 Proof. 
   intros.
-  unfold propagate_CNOT in H2; simpl in H2.
-  remember (next_two_qubit_gate l q1) as next_gate; symmetry in Heqnext_gate.
-  destruct next_gate; destruct n; try easy.
-  destruct p; destruct p; destruct p. 
-  remember (does_not_reference g0 q2) as DNR; symmetry in HeqDNR.
-  destruct DNR; bdestruct (q1 =? n1); bdestruct (q2 =? n0); 
+  generalize dependent l'.
+  generalize dependent l.
+  induction n; try easy.
+  simpl.
+  intros.
+  destruct (next_two_qubit_gate l q1) eqn:ntqg;
+  repeat destruct p.
+  (* Cancel case *)
+  destruct (does_not_reference g0 q2) eqn:dnr;
+  bdestruct (q1 =? n1); bdestruct (q2 =? n0);
   simpl in H2; inversion H2; subst.
-  rewrite (ntqg_preserves_semantics _ _ _ _ _ _ Heqnext_gate).
-  specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ Heqnext_gate) as H3.
+  rewrite (ntqg_preserves_structure _ _ _ _ _ _ ntqg).
+  apply ntqg_l1_does_not_reference in ntqg.
   rewrite app_cons_app.
   rewrite (app_assoc _ _ g).
-  rewrite <- (does_not_reference_commutes_app2 _ fU_CNOT _ _ H3 HeqDNR).
+  rewrite <- (does_not_reference_commutes_app2 _ fU_CNOT _ _ ntqg dnr).
   simpl.
-  specialize (CNOT_CNOT_cancel [] (g0 ++ g) _ _ H H0 H1) as H4.
-  simpl in H4.
+  specialize (CNOT_CNOT_cancel [] (g0 ++ g) _ _ H H0 H1) as H3.
+  simpl in H3.
   assumption.
+  (* Commute case *)
+  destruct (search_for_commuting_CNOT_pat l q1 q2) eqn:pat; try discriminate;
+  destruct p.
+  destruct (propagate_CNOT g0 q1 q2 n) eqn:prop; try discriminate.
+  inversion H2; subst.
+  rewrite (commuting_CNOT_pat _ _ _ _ _ pat).
+  rewrite (IHn _ _ prop).
+  reflexivity.
 Qed.
 
 Lemma propagate_CNOT_WT : forall {dim} (l : gate_list dim) q1 q2 n l',

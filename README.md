@@ -23,7 +23,7 @@ The files below are the core of SQIRE.
 - core/DensitySem.v : Density matrix semantics for general SQIRE programs.
 - core/NDSem.v : Non-deterministic semantics for general SQIRE programs.
 - core/Compose.v : Composition of unitary SQIRE programs.
-- core/Proportional.v : Defines proportional equality between matrices and unitary SQIRE programs. **(should be split into UnitarySem.v and QWIRE)**
+- core/Proportional.v : Defines proportional equality between matrices and unitary SQIRE programs. **(should be moved to QWIRE)**
 - core/Phase.v : General facts about the phase_shift matrix. **(should be moved to QWIRE)**
 - core/Tactics.v : Useful tactics.
 
@@ -45,7 +45,7 @@ SQIRE programs optimizations.
 - optimizer/HadamardReduction.v : 'Hadamard reduction' pass from Nam et al.
 - optimizer/ListRepresentation.v : List representation of unitary SQIRE programs used for implementing optimizations.
 - optimizer/NonUnitaryOptimizations.v : Examples of optimizations on non-unitary programs.
-- optimizer/NotPropagation.v : Based on the 'not propagation' preprocessing step from Nam et al. (TODO: add handling for Toffoli gates.)
+- optimizer/NotPropagation.v : Based on the 'not propagation' preprocessing step from Nam et al.
 - optimizer/SkipElimination.v : Toy optimization that removes skip operations.
 
 ### mapper
@@ -60,7 +60,7 @@ Mapping algorithms for SQIRE programs.
 Examples of using SQIRE to verify correctness properties of simple quantum algorithms.
 
 - examples/Deutsch.v    
-- examples/DeutschJozsa.v **(needs to be updated)**
+- examples/DeutschJozsa.v
 - examples/GHZ.v
 - examples/Superdense.v
 - examples/Teleport.v **(needs to be updated)**  
