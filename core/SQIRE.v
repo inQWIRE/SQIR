@@ -106,24 +106,48 @@ Qed.
 
 Local Close Scope ucom.
 
-Lemma uc_well_typed_H : forall dim n, n < dim -> @uc_well_typed dim (H n).
-Proof. intros. constructor; assumption. Qed.
+Lemma uc_well_typed_H : forall dim n, n < dim <-> @uc_well_typed dim (H n).
+Proof. 
+  intros. split; intros.
+  constructor; assumption. 
+  inversion H0; subst; assumption. 
+Qed.
 
-Lemma uc_well_typed_X : forall dim n, n < dim -> @uc_well_typed dim (X n).
-Proof. intros. constructor; assumption. Qed.
+Lemma uc_well_typed_X : forall dim n, n < dim <-> @uc_well_typed dim (X n).
+Proof. 
+  intros. split; intros.
+  constructor; assumption. 
+  inversion H0; subst; assumption. 
+Qed.
 
-Lemma uc_well_typed_Y : forall dim n, n < dim -> @uc_well_typed dim (Y n).
-Proof. intros. constructor; assumption. Qed.
+Lemma uc_well_typed_Y : forall dim n, n < dim <-> @uc_well_typed dim (Y n).
+Proof. 
+  intros. split; intros.
+  constructor; assumption. 
+  inversion H0; subst; assumption. 
+Qed.
 
-Lemma uc_well_typed_Z : forall dim n, n < dim -> @uc_well_typed dim (Z n).
-Proof. intros. constructor; assumption. Qed.
+Lemma uc_well_typed_Z : forall dim n, n < dim <-> @uc_well_typed dim (Z n).
+Proof. 
+  intros. split; intros.
+  constructor; assumption. 
+  inversion H0; subst; assumption. 
+Qed.
 
-Lemma uc_well_typed_Rz : forall dim λ n, n < dim -> @uc_well_typed dim (Rz λ n).
-Proof. intros. constructor; assumption. Qed.
+Lemma uc_well_typed_Rz : forall dim λ n, n < dim <-> @uc_well_typed dim (Rz λ n).
+Proof. 
+  intros. split; intros.
+  constructor; assumption. 
+  inversion H0; subst; assumption. 
+Qed.
 
 Lemma uc_well_typed_CNOT : forall dim m n, 
-  m < dim -> n < dim -> m <> n -> @uc_well_typed dim (CNOT m n).
-Proof. intros. constructor; assumption. Qed.
+  (m < dim /\ n < dim /\ m <> n) <-> @uc_well_typed dim (CNOT m n).
+Proof. 
+  intros. split; intros.
+  destruct H0 as [H1 [H2 H3]]. constructor; assumption. 
+  split; try split; inversion H0; subst; assumption. 
+Qed.
 
 Global Opaque H X Y Z Rz CNOT.
 

@@ -1,6 +1,6 @@
 Require Import Setoid.
 Require Export QWIRE.Quantum.
-Require Export SQIRE.
+Require Export core.SQIRE.
 Require Export core.Tactics.
 
 Local Open Scope matrix_scope.
@@ -305,6 +305,66 @@ Lemma denote_cnot : forall dim m n,
   uc_eval (CNOT m n) = ueval_cnot dim m n.
 Proof. easy. Qed.
 
+Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
+  if (m <? n) then
+      @pad (1+(n-m-1)+1) m dim 
+             ( ∣0⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ ∣0⟩⟨0∣ .+
+               ∣0⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ ∣1⟩⟨0∣ .+
+               ∣1⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ ∣0⟩⟨1∣ .+
+               ∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ ∣1⟩⟨1∣ )
+  else if (n <? m) then
+      @pad (1+(m-n-1)+1) n dim 
+             ( ∣0⟩⟨0∣ ⊗ I (2^(m-n-1)) ⊗ ∣0⟩⟨0∣ .+
+               ∣0⟩⟨1∣ ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨0∣ .+
+               ∣1⟩⟨0∣ ⊗ I (2^(m-n-1)) ⊗ ∣0⟩⟨1∣ .+
+               ∣1⟩⟨1∣ ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ )
+  else
+      Zero.
+
+(* auxiliary lemmas for denote_swap *)
+Lemma Mplus_swap_first_and_last : forall {m n} (A B C D : Matrix m n), 
+  A .+ B .+ (C .+ D) = D .+ B .+ C .+ A.
+Proof.
+  intros. 
+  rewrite <- Mplus_assoc.
+  rewrite Mplus_comm.
+  rewrite (Mplus_comm _ _ A).
+  repeat rewrite Mplus_assoc.
+  rewrite (Mplus_comm _ _ A).
+  reflexivity.
+Qed.
+
+Lemma Mplus_swap_mid : forall {m n} (A B C D : Matrix m n), 
+  A .+ B .+ C .+ D = A .+ C .+ B .+ D.
+Proof.
+  intros. 
+  rewrite 2 Mplus_assoc.
+  rewrite <- (Mplus_assoc _ _ B).
+  rewrite (Mplus_comm _ _ B).                       
+  rewrite <- 2 Mplus_assoc.
+  reflexivity.
+Qed.
+
+Lemma denote_swap : forall dim m n,
+  @uc_eval dim (SWAP m n) = ueval_swap dim m n.
+Proof.
+  intros.
+  simpl; unfold ueval_swap. 
+  repeat rewrite denote_cnot.
+  unfold ueval_cnot, pad.
+  gridify.
+  - autorewrite with cnot_db.
+    Msimpl_light.
+    rewrite Mplus_swap_first_and_last.
+    reflexivity. 
+  - autorewrite with cnot_db.
+    Msimpl_light.
+    rewrite Mplus_swap_first_and_last.
+    rewrite Mplus_swap_mid.
+    reflexivity.
+Qed.
+Global Opaque SWAP.
+
 Lemma unfold_ueval_cnot : forall dim m n, 
   ueval_cnot dim m n = 
     if (m <? n) then
@@ -324,9 +384,26 @@ Lemma unfold_pad : forall n start dim A,
   if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
 Proof. easy. Qed.
 
-(* TODO: move lemmas about SWAP here *)
+Lemma unfold_ueval_swap : forall dim m n, 
+  ueval_swap dim m n = 
+    if (m <? n) then
+      @pad (1+(n-m-1)+1) m dim 
+             ( ∣0⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ ∣0⟩⟨0∣ .+
+               ∣0⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ ∣1⟩⟨0∣ .+
+               ∣1⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ ∣0⟩⟨1∣ .+
+               ∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ ∣1⟩⟨1∣ )
+    else if (n <? m) then
+      @pad (1+(m-n-1)+1) n dim 
+             ( ∣0⟩⟨0∣ ⊗ I (2^(m-n-1)) ⊗ ∣0⟩⟨0∣ .+
+               ∣0⟩⟨1∣ ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨0∣ .+
+               ∣1⟩⟨0∣ ⊗ I (2^(m-n-1)) ⊗ ∣0⟩⟨1∣ .+
+               ∣1⟩⟨1∣ ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ )
+    else
+      Zero.
+Proof. easy. Qed.
 
-Hint Rewrite denote_H denote_X denote_Y denote_Z denote_Rz denote_cnot unfold_ueval_r unfold_ueval_cnot unfold_pad : eval_db.
+Hint Rewrite denote_H denote_X denote_Y denote_Z denote_Rz denote_cnot denote_swap unfold_ueval_r : eval_db.
+Hint Rewrite unfold_ueval_cnot unfold_pad unfold_ueval_swap : eval_db.
 
 (* Some unit tests *)
 
@@ -406,6 +483,40 @@ Proof. intros. rewrite H. reflexivity. Qed.
 
 Lemma test_mor : forall (dim : nat) (c1 c2 : ucom dim), c1 ≡ c2 -> c2 ; c1 ≡ c1 ; c1.
 Proof. intros. rewrite H. reflexivity. Qed.
+
+(** Equivalence up to a phase. **)
+
+Require Import Proportional.
+
+Definition uc_cong {dim : nat} (c1 c2 : ucom dim) :=
+  uc_eval c1 ∝ uc_eval c2.
+Infix "≅" := uc_cong (at level 70).
+
+Lemma uc_cong_refl : forall {dim : nat} (c1 : ucom dim), c1 ≅ c1.
+Proof. intros. exists 0%R. rewrite Cexp_0. rewrite Mscale_1_l. reflexivity. Qed.
+
+Lemma uc_cong_sym : forall {dim : nat} (c1 c2 : ucom dim), c1 ≅ c2 -> c2 ≅ c1.
+Proof.
+  intros. inversion H.
+  exists (Ropp x). rewrite H0. rewrite Mscale_assoc. rewrite <- Cexp_add.
+  rewrite Rplus_comm.
+  rewrite Rplus_opp_r. rewrite Cexp_0. rewrite Mscale_1_l. reflexivity.
+Qed.
+
+Lemma uc_cong_trans : forall {dim : nat} (c1 c2 c3 : ucom dim), c1 ≅ c2 -> c2 ≅ c3 -> c1 ≅ c3.
+Proof.
+  intros. inversion H. inversion H0.
+  exists (x + x0)%R. rewrite H1. rewrite H2.
+  rewrite Mscale_assoc.
+  rewrite Cexp_add. reflexivity.
+Qed.
+
+Lemma uc_equiv_cong : forall {dim : nat} (c c' : ucom dim), (c ≡ c')%ucom -> c ≅ c'.
+Proof.
+  intros.
+  exists 0. rewrite Cexp_0, Mscale_1_l. 
+  apply H.
+Qed.
 
 (** uc_eval is unitary iff well-typed **)
 

@@ -17,15 +17,16 @@ core/UnitarySem.v
 core/Tactics.v
 
 optimizer/Equivalences.v
-optimizer/GateCancellation.v
+#optimizer/GateCancellation.v
 optimizer/HadamardReduction.v
 optimizer/ListRepresentation.v
 optimizer/NonUnitaryOptimizations.v
 optimizer/NotPropagation.v
 optimizer/SkipElimination.v
 
-mapper/SimpleMapping.v
+#mapper/SimpleMapping.v
 
 examples/Deutsch.v
+examples/DeutschJozsa.v
 examples/GHZ.v
 examples/Superdense.v

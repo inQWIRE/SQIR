@@ -1,10 +1,9 @@
-Require Import Phase.
 Require Import UnitarySem.
 Require Import Tactics.
 Require Import ListRepresentation.
 Require Import Equivalences.
-Require Import Proportional.
 Require Import List.
+Require Import Phase.
 Open Scope ucom.
 
 (*****************************************************************)
@@ -24,10 +23,10 @@ Open Scope ucom.
 
 Definition single_qubit_pattern := list (fUnitary 1).
 
-Fixpoint single_qubit_pattern_to_program {dim} (pat : single_qubit_pattern) q : gate_list dim :=
+Fixpoint single_qubit_pattern_to_program dim (pat : single_qubit_pattern) q : gate_list dim :=
   match pat with
   | [] => []
-  | u :: t => App1 u q :: (single_qubit_pattern_to_program t q)
+  | u :: t => App1 u q :: (single_qubit_pattern_to_program dim t q)
   end. 
 
 (* If the next sequence of gates applied to qubit q matches 'pat', then remove
@@ -37,9 +36,9 @@ Fixpoint remove_single_qubit_pattern {dim} (l : gate_list dim) (q : nat) (pat : 
   | [] => Some l
   | u :: t =>
       match next_single_qubit_gate l q with
-      | Some (u', l') =>
+      | Some (l1, u', l2) =>
           if match_gate u u'
-          then remove_single_qubit_pattern l' q t
+          then remove_single_qubit_pattern (l1 ++ l2) q t
           else None
       | _ => None
       end
@@ -49,7 +48,7 @@ Fixpoint remove_single_qubit_pattern {dim} (l : gate_list dim) (q : nat) (pat : 
    'pat' with 'rep'. *)
 Definition replace_single_qubit_pattern {dim} (l : gate_list dim) (q : nat) (pat rep : single_qubit_pattern) : option (gate_list dim) :=
   match (remove_single_qubit_pattern l q pat) with
-  | Some l' => Some ((single_qubit_pattern_to_program rep q) ++ l')
+  | Some l' => Some ((single_qubit_pattern_to_program dim rep q) ++ l')
   | None => None
   end.
      
@@ -66,7 +65,7 @@ Compute (replace_single_qubit_pattern test 0 (fU_X :: fU_H :: []) (fU_PI4 4:: fU
 
 Lemma remove_single_qubit_pattern_correct : forall {dim} (l l' : gate_list dim) (q : nat) (pat : single_qubit_pattern),
   remove_single_qubit_pattern l q pat = Some l' ->
-  l =l= (single_qubit_pattern_to_program pat q) ++ l'.
+  l =l= (single_qubit_pattern_to_program dim pat q) ++ l'.
 Proof.
   intros.
   generalize dependent l'.
@@ -74,73 +73,45 @@ Proof.
   induction pat; intros.
   - inversion H; subst. reflexivity.
   - simpl in H. 
-    remember (next_single_qubit_gate l q) as next_gate.
-    symmetry in Heqnext_gate.
-    destruct next_gate; try easy.
-    destruct p. 
-    remember (match_gate a f) as gate_match.
-    destruct gate_match; try easy.
-    symmetry in Heqgate_match.
-    rewrite match_gate_refl in Heqgate_match; subst.
+    destruct (next_single_qubit_gate l q) eqn:nsqg; try easy.
+    destruct p; destruct p.
+    destruct (match_gate a f) eqn:Hmatch; try easy.
+    rewrite match_gate_refl in Hmatch; subst.
     simpl.
     rewrite <- (IHpat _ _ H). 
-    apply (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
-Qed.
-
-Lemma remove_single_qubit_pattern_correct' : forall {dim} (l l' : gate_list dim) (q : nat) (pat : single_qubit_pattern),
-  remove_single_qubit_pattern l q pat = Some l' ->
-  l ≅l≅ ((single_qubit_pattern_to_program pat q) ++ l').
-Proof.
-  exists 0%R. rewrite eulers0. rewrite Mscale_1_l.
-  intros.
-  generalize dependent l'.
-  generalize dependent l.
-  induction pat; intros.
-  - inversion H; subst. reflexivity.
-  - simpl in H. 
-    remember (next_single_qubit_gate l q) as next_gate.
-    symmetry in Heqnext_gate.
-    destruct next_gate; try easy.
-    destruct p. 
-    remember (match_gate a f) as gate_match.
-    destruct gate_match; try easy.
-    symmetry in Heqgate_match.
-    rewrite match_gate_refl in Heqgate_match; subst.
-    simpl.
-    rewrite <- (IHpat _ _ H). 
-    apply (nsqg_preserves_semantics _ _ _ _ Heqnext_gate).
+    apply (nsqg_commutes _ _ _ _ _ nsqg).
 Qed.
 
 Lemma replace_single_qubit_pattern_sound : forall {dim} (l l' : gate_list dim) (q : nat) (pat rep : single_qubit_pattern),
-  @uc_equiv_l dim (single_qubit_pattern_to_program pat q) (single_qubit_pattern_to_program rep q) ->
+  single_qubit_pattern_to_program dim pat q =l= single_qubit_pattern_to_program dim rep q ->
   replace_single_qubit_pattern l q pat rep = Some l' ->
   l =l= l'.
 Proof.
   intros.
   unfold replace_single_qubit_pattern in H0.
-  remember (remove_single_qubit_pattern l q pat) as remove_pat.
-  destruct remove_pat; try easy.
-  symmetry in Heqremove_pat.
-  apply remove_single_qubit_pattern_correct in Heqremove_pat.
+  destruct (remove_single_qubit_pattern l q pat) eqn:rem; try easy.
+  apply remove_single_qubit_pattern_correct in rem.
   inversion H0; subst.
-  rewrite Heqremove_pat.
+  rewrite rem.
   rewrite H.
   reflexivity.
 Qed.
 
+(* Equivalence up to a phase. *)
 Lemma replace_single_qubit_pattern_sound' : forall {dim} (l l' : gate_list dim) (q : nat) (pat rep : single_qubit_pattern),
-  @uc_cong_l dim (single_qubit_pattern_to_program pat q) (single_qubit_pattern_to_program rep q) ->
+  single_qubit_pattern_to_program dim pat q ≅l≅ single_qubit_pattern_to_program dim rep q ->
   replace_single_qubit_pattern l q pat rep = Some l' ->
   l ≅l≅ l'.
 Proof.
   intros.
   unfold replace_single_qubit_pattern in H0.
-  remember (remove_single_qubit_pattern l q pat) as remove_pat.
-  destruct remove_pat; try easy.
-  symmetry in Heqremove_pat.
-  apply remove_single_qubit_pattern_correct' in Heqremove_pat.
+  destruct (remove_single_qubit_pattern l q pat) eqn:rem; try easy.
+  apply remove_single_qubit_pattern_correct in rem.
+  apply uc_equiv_cong_l in rem.
   inversion H0; subst.
-  rewrite Heqremove_pat. rewrite H. reflexivity.
+  rewrite rem. 
+  rewrite H. 
+  reflexivity.
 Qed.
 
 (* TODO: We might also want to prove something along the lines of: the resulting
@@ -204,8 +175,6 @@ Qed.
 (** Optimization: hadamard gate reduction **)
 (*******************************************)
 
-(** CURRENTLY NOT VERIFIED **)
-
 (* This optimization pass reduces the number of H gates in a program
    using a variety of rewrite rules. *)
 
@@ -235,34 +204,45 @@ Definition apply_H_equivalence2 {dim} q (l : gate_list dim) :=
 
 Definition apply_H_equivalence3 {dim} q (l : gate_list dim) := 
   match (next_single_qubit_gate l q) with
-  | Some (fU_H, l1) =>
-      match (next_two_qubit_gate l1 q) with
-      | Some (l2, m, n, l3) => 
-          match (next_single_qubit_gate l3 q) with
-          | Some (fU_H, l4) =>
-              if (q =? m)
-              (* case 3a *)
-              then match (next_single_qubit_gate (rev l2) n) with
-                   | Some (fU_H, l5) => 
-                       match (next_single_qubit_gate l4 n) with
-                       | Some (fU_H, l6) => 
-                           Some ((rev l5) ++ [_CNOT n m] ++ l6)
+  | Some (l1, fU_H, l2) =>
+      let l := l1 ++ l2 in
+      match (next_two_qubit_gate l q) with
+      | Some (l1, m, n, l2) => 
+          if (q =? m) 
+          (* case 3a *)
+          then match (last_single_qubit_gate l1 n) with
+               | Some (l1_1, fU_H, l1_2) => 
+                   let l1 := l1_1 ++ l1_2 in
+                   match (next_single_qubit_gate l2 m) with
+                   | Some (l2_1, fU_H, l2_2) =>
+                       let l2 := l2_1 ++ l2_2 in
+                       match (next_single_qubit_gate l2 n) with
+                       | Some (l2_1, fU_H, l2_2) => 
+                           let l2 := l2_1 ++ l2_2 in
+                           Some (l1 ++ [_CNOT n m] ++ l2)
                        | _ => None
                        end
                    | _ => None
                    end
-              (* case 3b *)
-              else match (next_single_qubit_gate (rev l2) m) with
-                   | Some (fU_H, l5) => 
-                       match (next_single_qubit_gate l4 m) with
-                       | Some (fU_H, l6) => 
-                           Some ((rev l5) ++ [_CNOT n m] ++ l6)
+               | _ => None
+               end
+          (* case 3b *)
+          else match (last_single_qubit_gate l1 m) with
+               | Some (l1_1, fU_H, l1_2) => 
+                   let l1 := l1_1 ++ l1_2 in
+                   match (next_single_qubit_gate l2 m) with
+                   | Some (l2_1, fU_H, l2_2) =>
+                       let l2 := l2_1 ++ l2_2 in
+                       match (next_single_qubit_gate l2 n) with
+                       | Some (l2_1, fU_H, l2_2) => 
+                           let l2 := l2_1 ++ l2_2 in
+                           Some (l1 ++ [_CNOT n m] ++ l2)
                        | _ => None
                        end
                    | _ => None
                    end
-          | _ => None
-          end
+               | _ => None
+               end
       | _ => None
       end
   | _ => None
@@ -336,13 +316,23 @@ Fixpoint apply_H_equivalences {dim} (l : gate_list dim) (n: nat) : gate_list dim
 Definition hadamard_reduction {dim} (l : gate_list dim) : gate_list dim := 
   apply_H_equivalences l (2 * (length l)).
 
+(* Small example - both tests are the same circuit, just with the
+   gate list reordered. The output should contain 2 H gates. *)
+Definition hadamard_reduction_test1 : gate_list 4 :=
+  _X 0 :: _H 0 :: _P 0 :: _H 0 :: _X 0 :: _H 1 :: _H 2 :: _CNOT 2 1 :: _H 1 :: _H 2 :: _H 3 ::_P 3 :: _CNOT 3 2 :: _H 3 :: _P 3 :: _CNOT 2 3 :: _PDAG 3 :: _H 3 :: [].
+Compute (hadamard_reduction hadamard_reduction_test1).
+
+Definition hadamard_reduction_test2 : gate_list 4 :=
+  _H 2 :: _H 3 :: _X 0 ::  _H 1 :: _CNOT 2 1 :: _P 3 :: _H 0 :: _H 2 :: _P 0  :: _CNOT 3 2 :: _H 3 :: _P 3 :: _CNOT 2 3 :: _H 0 :: _X 0 :: _PDAG 3 :: _H 1 :: _H 3 :: [].
+Compute (hadamard_reduction hadamard_reduction_test2).
+
+
 Lemma apply_H_equivalence1_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l ≅l≅ l'. 
 Proof.
   intros.
-  eapply replace_single_qubit_pattern_sound'.
-  2 : { apply H. }
+  apply replace_single_qubit_pattern_sound' in H; try assumption.
   exists (PI / 4)%R.
   simpl; autorewrite with eval_db. 
   gridify.  
@@ -367,156 +357,137 @@ Proof.
   solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
 
-(*
-Lemma nsqg_preserves_semantics' : forall {dim} (l l' : gate_list dim) (q : nat) (u : fUnitary 1),
-  next_single_qubit_gate l q = Some (u, l') -> 
-  l = App1 u q :: l'.
-Proof.
-  intros.
-  unfold next_single_qubit_gate in H.
-  induction l.
-  - inversion H.
-  - destruct a.
-    bdestructΩ (n =? q)
-Admitted.
-*)
-
-Lemma ntqg_preserves_semantics' : forall {dim} (l l1 l2 : gate_list dim) (q m n : nat),
-  next_two_qubit_gate l q = Some (l1, m, n, l2) ->
-  l = l1 ++ [App2 fU_CNOT m n] ++ l2.
-Proof.
-  intros.
-  generalize dependent l1.
-  induction l; try easy.
-  intros l1 H.
-  simpl in H.
-  destruct a.
-  - destruct (n0 =? q); try easy.
-    destruct (next_two_qubit_gate l q); try easy.
-    destruct p; destruct p; destruct p; inversion H; subst.
-    rewrite IHl with (l1:=g0); reflexivity.
-  - destruct ((n0 =? q) || (n1 =? q)).
-    + inversion H; subst. dependent destruction f. reflexivity.
-    + destruct (next_two_qubit_gate l q); try easy.
-      destruct p; destruct p; destruct p; inversion H; subst.
-      rewrite IHl with (l1:=g0); reflexivity.
-Qed.
-  
-Lemma H_reduction_basic : forall {dim} (n : nat), 
-  (n + 1 <= dim)%nat -> @App1 dim fU_H n :: App1 fU_H n :: [] =l= [].
-Proof.
-  intros.
-  unfold uc_equiv_l. simpl.
-  unfold uc_equiv. simpl.
-  rewrite Mmult_1_l by auto with wf_db.
-  autorewrite with eval_db.
-  bdestructΩ (n + 1 <=? dim).
-  restore_dims_strong.
-  repeat rewrite kron_mixed_product.
-  repeat rewrite Mmult_1_l by auto with wf_db.
-  replace (hadamard × hadamard) with (I 2) by solve_matrix.
-  repeat rewrite id_kron.
-  unify_matrices.
-Qed.
-
 Lemma apply_H_equivalence3_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence3 q l = Some l' ->
-  l ≅l≅ l'.
+  l =l= l'.
 Proof.
   intros.
   unfold apply_H_equivalence3 in H.
-  remember (next_single_qubit_gate l q) as pat.
-  destruct pat. symmetry in Heqpat.
-  destruct p.
-  2 : inversion H.
-  apply nsqg_preserves_semantics in Heqpat.
-  apply uc_equiv_cong_l in Heqpat.
-  rewrite Heqpat. clear Heqpat.
-  dependent destruction f; inversion H. clear H1.
-  remember (next_two_qubit_gate g q) as pat.
-  symmetry in Heqpat.
-  destruct pat.
-  repeat destruct p.
-  assert (does_not_reference g1 q = true) by (eapply ntqg_l1_does_not_reference; apply Heqpat).
-  apply ntqg_preserves_semantics' in Heqpat.
-  rewrite Heqpat. clear Heqpat.
-  remember (next_single_qubit_gate g0 q) as pat.
-  symmetry in Heqpat.
-  destruct pat.
-  destruct p.
-  apply nsqg_preserves_semantics in Heqpat.
-  apply uc_equiv_cong_l in Heqpat.
-  rewrite Heqpat. clear Heqpat.
-  dependent destruction f; try easy. 2 : inversion H. 2 : inversion H.
+  destruct (next_single_qubit_gate l q) eqn:nsqg1; try easy.
+  destruct p; destruct p; dependent destruction f; try easy.
+  destruct (next_two_qubit_gate (g0 ++ g) q) eqn:ntqg; try easy.
+  destruct p; destruct p; destruct p.
   bdestruct (q =? n0).
-  - subst n0. remember (next_single_qubit_gate (rev g1) n) as pat.
-    symmetry in Heqpat.
-    destruct pat.
-    destruct p.
-    2 : inversion H.
-    apply nsqg_preserves_semantics in Heqpat.
-    rewrite <- (rev_involutive g3) in Heqpat.
-    rewrite <- rev_unit in Heqpat.
-Admitted.
+  - destruct (last_single_qubit_gate g2 n) eqn:lsqg; try easy.
+    destruct p; destruct p; dependent destruction f; try easy.
+    destruct (next_single_qubit_gate g1 n0) eqn:nsqg2; try easy.
+    destruct p; destruct p; dependent destruction f; try easy.
+    destruct (next_single_qubit_gate (g6 ++ g5) n) eqn:nsqg3; try easy.
+    destruct p; destruct p; dependent destruction f; try easy.
+    inversion H; subst.
+    clear H.
+    apply nsqg_commutes in nsqg1; rewrite nsqg1.
+    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ ntqg) as H.
+    apply ntqg_preserves_structure in ntqg; rewrite ntqg.
+    eapply does_not_reference_commutes_app1 in H.
+    rewrite app_assoc.
+    rewrite H.
+    apply lsqg_commutes in lsqg; rewrite lsqg.
+    apply nsqg_commutes in nsqg2; rewrite nsqg2.
+    apply nsqg_commutes in nsqg3; rewrite nsqg3.
+    clear.
+    bdestruct (n =? n0).
+    subst. unfold uc_equiv_l, uc_equiv.
+    repeat rewrite list_to_ucom_append; simpl. 
+    autorewrite with eval_db.
+    bdestruct_all; Msimpl_light; reflexivity.
+    assert ([@App1 dim fU_H n0] ++ [App1 fU_H n] =l= [App1 fU_H n] ++ [App1 fU_H n0]).
+    { simpl. apply U_V_comm_l; lia. }
+    rewrite (app_assoc [App1 fU_H n0]).
+    rewrite H0; clear.
+    repeat rewrite <- app_assoc; simpl.
+    replace (_CNOT n n0 :: g8 ++ g7) with ([_CNOT n n0] ++ g8 ++ g7) by easy.
+    replace (App1 fU_H n :: App1 fU_H n0 :: App2 fU_CNOT n0 n :: App1 fU_H n :: App1 fU_H n0 :: g8 ++ g7) with ((App1 fU_H n :: App1 fU_H n0 :: App2 fU_CNOT n0 n :: App1 fU_H n :: App1 fU_H n0 :: []) ++ g8 ++ g7) by easy.
+    unfold uc_equiv_l.
+    repeat rewrite list_to_ucom_append.
+    specialize (@H_swaps_CNOT dim n n0) as H1.
+    repeat rewrite useq_assoc in H1.
+    unfold uc_equiv in *. simpl in *.
+    rewrite 2 Mmult_1_l by auto with wf_db.
+    rewrite 2 denote_cnot in H1.
+    rewrite H1.
+    reflexivity.
+  - destruct (last_single_qubit_gate g2 n0) eqn:lsqg; try easy.
+    destruct p; destruct p; dependent destruction f; try easy.
+    destruct (next_single_qubit_gate g1 n0) eqn:nsqg2; try easy.
+    destruct p; destruct p; dependent destruction f; try easy.
+    destruct (next_single_qubit_gate (g6 ++ g5) n) eqn:nsqg3; try easy.
+    destruct p; destruct p; dependent destruction f; try easy.
+    inversion H; subst.
+    clear H.
+    apply nsqg_commutes in nsqg1; rewrite nsqg1.
+    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ ntqg) as H.
+    specialize (ntqg_returns_two_qubit_gate _ _ _ _ _ _ ntqg) as H1.
+    assert (q = n).
+    { destruct H1. contradict H1; assumption. assumption. }
+    subst. clear H0 H1.
+    apply ntqg_preserves_structure in ntqg; rewrite ntqg.
+    eapply does_not_reference_commutes_app1 in H.
+    rewrite app_assoc.
+    rewrite H.
+    apply lsqg_commutes in lsqg; rewrite lsqg.
+    apply nsqg_commutes in nsqg2; rewrite nsqg2.
+    apply nsqg_commutes in nsqg3; rewrite nsqg3.
+    clear.
+    bdestruct (n =? n0).
+    subst. unfold uc_equiv_l, uc_equiv.
+    repeat rewrite list_to_ucom_append; simpl. 
+    autorewrite with eval_db.
+    bdestruct_all; Msimpl_light; reflexivity.
+    assert ([@App1 dim fU_H n0] ++ [App1 fU_H n] =l= [App1 fU_H n] ++ [App1 fU_H n0]).
+    { simpl. apply U_V_comm_l; lia. }
+    rewrite (app_assoc [App1 fU_H n0]).
+    rewrite <- (app_assoc g4).
+    rewrite <- (app_assoc g3).
+    rewrite H0; clear.
+    repeat rewrite <- app_assoc; simpl.
+    replace (_CNOT n n0 :: g8 ++ g7) with ([_CNOT n n0] ++ g8 ++ g7) by easy.
+    replace (App1 fU_H n :: App1 fU_H n0 :: App2 fU_CNOT n0 n :: App1 fU_H n :: App1 fU_H n0 :: g8 ++ g7) with ((App1 fU_H n :: App1 fU_H n0 :: App2 fU_CNOT n0 n :: App1 fU_H n :: App1 fU_H n0 :: []) ++ g8 ++ g7) by easy.
+    unfold uc_equiv_l.
+    repeat rewrite list_to_ucom_append.
+    specialize (@H_swaps_CNOT dim n n0) as H1.
+    repeat rewrite useq_assoc in H1.
+    unfold uc_equiv in *. simpl in *.
+    rewrite 2 Mmult_1_l by auto with wf_db.
+    rewrite 2 denote_cnot in H1.
+    rewrite H1.
+    reflexivity.  
+Qed.
 
 Lemma apply_H_equivalence4_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence4 q l = Some l' ->
-  l ≅l≅ l'.
+  l =l= l'.
 Proof.
   intros. 
   unfold apply_H_equivalence4 in H.
-  remember (remove_single_qubit_pattern l q (fU_H :: fU_P :: [])) as pat.
-  symmetry in Heqpat.
-  destruct pat.
-  2 : { inversion H. }
-  apply remove_single_qubit_pattern_correct in Heqpat.
-  apply uc_equiv_cong_l in Heqpat.
-  remember (next_two_qubit_gate g q) as pat2.
-  symmetry in Heqpat2.
-  destruct pat2.
-  2 : { inversion H. }
-  repeat destruct p.
-  assert (does_not_reference g1 q = true) by (eapply ntqg_l1_does_not_reference; apply Heqpat2).
-  apply ntqg_preserves_semantics in Heqpat2.
-  apply uc_equiv_cong_l in Heqpat2.
-  bdestruct (q =? n).
-  2 : { inversion H. }
-  remember (remove_single_qubit_pattern g0 q (fU_PDAG :: fU_H :: [])) as pat3.
-  symmetry in Heqpat3.
-  destruct pat3.
-  2 : { inversion H. }
-  apply remove_single_qubit_pattern_correct in Heqpat3.
-  apply uc_equiv_cong_l in Heqpat3.
-  inversion H.
-  rewrite Heqpat.
-  rewrite Heqpat2.
-  rewrite Heqpat3.
-  simpl.
+  destruct (remove_single_qubit_pattern l q (fU_H :: fU_P :: [])) eqn:rsqp1; try easy.
+  apply remove_single_qubit_pattern_correct in rsqp1.
+  destruct (next_two_qubit_gate g q) eqn:ntqg; try easy.
+  do 3 destruct p.
+  specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ ntqg) as H1.
+  apply ntqg_preserves_structure in ntqg; subst.
+  bdestruct (q =? n); try easy.
+  destruct (remove_single_qubit_pattern g0 q (fU_PDAG :: fU_H :: [])) eqn:rsqp2; try easy.
+  apply remove_single_qubit_pattern_correct in rsqp2.
+  inversion H; subst.
+  simpl in *.
+  rewrite rsqp1, rsqp2.
   repeat rewrite app_comm_cons.
-  rewrite <- (app_nil_l g1).
-  rewrite app_comm_cons.
-  assert (H0' := H0).
-  apply (does_not_reference_commutes_app1 _ fU_P _) in H0.
-  apply (does_not_reference_commutes_app1 _ fU_H _) in H0'.
-  apply uc_equiv_cong_l in H0.
-  apply uc_equiv_cong_l in H0'.
-  rewrite H0.
-  rewrite <- (app_nil_l g1).
-  rewrite app_comm_cons.
-  rewrite H0'.
-  simpl.
-  rewrite <- (app_nil_l g2).
+  replace (App1 fU_H n :: App1 fU_P n :: g1) with ([App1 fU_H n] ++ [App1 fU_P n] ++ g1) by easy.
+  specialize (does_not_reference_commutes_app1 _ fU_P _ H1) as H2. 
+  rewrite H2.
+  rewrite app_assoc.
+  specialize (does_not_reference_commutes_app1 _ fU_H _ H1) as H3. 
+  rewrite H3.
+  clear.
+  repeat rewrite <- app_assoc; simpl.
+  rewrite <- (app_nil_l g).
   repeat rewrite app_comm_cons.
-  repeat rewrite <- app_assoc.
-  apply uc_cong_l_app_congruence; try reflexivity.
-  repeat rewrite app_assoc.
-  apply uc_cong_l_app_congruence; try reflexivity.
-  simpl.
-  exists 0. rewrite Cexp_0. rewrite Mscale_1_l.
-  simpl.
+  do 2 (apply app_congruence; try reflexivity).
+  unfold uc_equiv_l, uc_equiv; simpl.
   autorewrite with eval_db.
   gridify.
-  - do 3 (apply f_equal2; trivial); solve_matrix; 
+  - do 3 (apply f_equal2; trivial); solve_matrix;
       rewrite Cexp_6PI4; rewrite Cexp_2PI4; repeat group_radicals; lca.
   - do 5 (apply f_equal2; trivial); solve_matrix; 
       rewrite Cexp_6PI4; rewrite Cexp_2PI4; repeat group_radicals; lca.
@@ -524,54 +495,35 @@ Qed.
 
 Lemma apply_H_equivalence5_sound : forall {dim} (l l' : gate_list dim) q,
   apply_H_equivalence5 q l = Some l' ->
-  l ≅l≅ l'.
+  l =l= l'.
 Proof.
-  intros.
+  intros. 
   unfold apply_H_equivalence5 in H.
-  remember (remove_single_qubit_pattern l q (fU_H :: fU_PDAG :: [])) as pat.
-  symmetry in Heqpat.
-  destruct pat.
-  2 : { inversion H. }
-  apply remove_single_qubit_pattern_correct in Heqpat.
-  apply uc_equiv_cong_l in Heqpat.
-  remember (next_two_qubit_gate g q) as pat2.
-  symmetry in Heqpat2.
-  destruct pat2.
-  2 : { inversion H. }
-  repeat destruct p.
-  assert (does_not_reference g1 q = true) by (eapply ntqg_l1_does_not_reference; apply Heqpat2).
-  apply ntqg_preserves_semantics in Heqpat2.
-  apply uc_equiv_cong_l in Heqpat2.
-  bdestruct (q =? n). 2 : { inversion H. }
-  subst.
-  remember (remove_single_qubit_pattern g0 n (fU_P :: fU_H ::[])) as pat3.
-  symmetry in Heqpat3.
-  destruct pat3; try inversion H.
-  apply remove_single_qubit_pattern_correct in Heqpat3.
-  apply uc_equiv_cong_l in Heqpat3.
-  inversion H.
-  rewrite Heqpat.
-  rewrite Heqpat2.
-  rewrite Heqpat3.
-  simpl.
+  destruct (remove_single_qubit_pattern l q (fU_H :: fU_PDAG :: [])) eqn:rsqp1; try easy.
+  apply remove_single_qubit_pattern_correct in rsqp1.
+  destruct (next_two_qubit_gate g q) eqn:ntqg; try easy.
+  do 3 destruct p.
+  specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ ntqg) as H1.
+  apply ntqg_preserves_structure in ntqg; subst.
+  bdestruct (q =? n); try easy.
+  destruct (remove_single_qubit_pattern g0 q (fU_P :: fU_H :: [])) eqn:rsqp2; try easy.
+  apply remove_single_qubit_pattern_correct in rsqp2.
+  inversion H; subst.
+  simpl in *.
+  rewrite rsqp1, rsqp2.
   repeat rewrite app_comm_cons.
-  rewrite <- (app_nil_l g1).
-  rewrite app_comm_cons.
-  assert (H0' := H0).
-  apply (does_not_reference_commutes_app1 _ fU_PDAG _) in H0.
-  apply (does_not_reference_commutes_app1 _ fU_H _) in H0'.
-  apply uc_equiv_cong_l in H0.
-  apply uc_equiv_cong_l in H0'.
-  rewrite H0.
-  rewrite <- (app_nil_l g1). rewrite app_comm_cons.
-  rewrite app_assoc. rewrite H0'.
-  repeat rewrite <- app_assoc. simpl.
-  apply uc_cong_l_app_congruence; try reflexivity.
-  rewrite <- (app_nil_l g2).
+  replace (App1 fU_H n :: App1 fU_PDAG n :: g1) with ([App1 fU_H n] ++ [App1 fU_PDAG n] ++ g1) by easy.
+  specialize (does_not_reference_commutes_app1 _ fU_PDAG _ H1) as H2. 
+  rewrite H2.
+  rewrite app_assoc.
+  specialize (does_not_reference_commutes_app1 _ fU_H _ H1) as H3. 
+  rewrite H3.
+  clear.
+  repeat rewrite <- app_assoc; simpl.
+  rewrite <- (app_nil_l g).
   repeat rewrite app_comm_cons.
-  apply uc_cong_l_app_congruence; try reflexivity.
-  exists 0. rewrite Cexp_0. rewrite Mscale_1_l.
-  simpl.  
+  do 2 (apply app_congruence; try reflexivity).
+  unfold uc_equiv_l, uc_equiv; simpl.
   autorewrite with eval_db.
   gridify.
   - apply f_equal2.
@@ -603,10 +555,13 @@ Proof.
   inversion H1. 
   subst; apply (apply_H_equivalence2_sound _ _ _ H0). 
   inversion H2. 
+  apply uc_equiv_cong_l.
   subst; apply (apply_H_equivalence3_sound _ _ _ H0). 
   inversion H3. 
+  apply uc_equiv_cong_l.
   subst; apply (apply_H_equivalence4_sound _ _ _ H0). 
   inversion H4. 
+  apply uc_equiv_cong_l.
   subst; apply (apply_H_equivalence5_sound _ _ _ H0). 
   inversion H5.
 Qed.

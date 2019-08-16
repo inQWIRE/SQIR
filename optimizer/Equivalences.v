@@ -126,3 +126,66 @@ Proof.
   gridify; reflexivity.
 Qed.  
   
+(* auxiliary lemmas for H_swaps_CNOT *)
+Lemma rewrite_H_H : hadamard × hadamard = ∣0⟩⟨0∣ .+ ∣1⟩⟨1∣.
+Proof. solve_matrix. Qed.
+
+Lemma rewrite_H_X_H : hadamard × (σx × hadamard) = ∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣.
+Proof. solve_matrix. Qed.
+
+Lemma H_swaps_CNOT : forall {dim} m n,
+  @uc_equiv dim (H m; H n; CNOT n m; H m; H n) (CNOT m n).
+Proof.
+  intros.
+  unfold uc_equiv; simpl.
+  autorewrite with eval_db.
+  gridify; trivial. (* trivial shouldn't be necessary *)
+  (* The trivial seems to be the result of autorewrite doing something weird.
+     If you have 'repeat Msimpl_light' in gridify then you don't need the trivial. *)
+  - rewrite <- 2 kron_plus_distr_r.
+    apply f_equal2; trivial.
+    repeat rewrite kron_assoc.
+    restore_dims_fast.
+    rewrite <- 2 kron_plus_distr_l.
+    apply f_equal2; trivial.
+    rewrite rewrite_H_H, rewrite_H_X_H.
+    distribute_plus.
+    repeat rewrite <- Mplus_assoc.
+    rewrite Mplus_swap_mid.    
+    rewrite (Mplus_assoc _ _ _ (_ ⊗ (_ ⊗ ((-1)%R .* ∣1⟩⟨1∣)))).
+    repeat rewrite Mscale_kron_dist_r.
+    rewrite Mplus_comm.
+    apply f_equal2.
+    + rewrite <- Mscale_kron_dist_l.
+      rewrite <- kron_plus_distr_r.
+      apply f_equal2; trivial.
+      solve_matrix.
+    + rewrite <- kron_plus_distr_r.
+      apply f_equal2; trivial.
+      solve_matrix.
+  - rewrite <- 2 kron_plus_distr_r.
+    apply f_equal2; trivial.
+    repeat rewrite kron_assoc.
+    restore_dims_fast.
+    rewrite <- 2 kron_plus_distr_l.
+    apply f_equal2; trivial.
+    rewrite rewrite_H_H, rewrite_H_X_H.
+    distribute_plus.
+    repeat rewrite <- Mplus_assoc.
+    rewrite Mplus_swap_mid.    
+    rewrite (Mplus_assoc _ _ _ (((-1)%R .* ∣1⟩⟨1∣) ⊗ _)).
+    rewrite Mplus_comm.
+    apply f_equal2.
+    + rewrite Mscale_kron_dist_l.
+      rewrite <- Mscale_kron_dist_r.
+      rewrite <- Mscale_kron_dist_r.
+      repeat rewrite <- kron_assoc.
+      restore_dims_fast. 
+      rewrite <- kron_plus_distr_l.
+      apply f_equal2; trivial.
+      solve_matrix.
+    + rewrite <- 2 kron_plus_distr_l.
+      apply f_equal2; trivial.
+      apply f_equal2; trivial.
+      solve_matrix.
+Qed.
