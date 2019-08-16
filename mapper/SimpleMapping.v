@@ -148,64 +148,11 @@ Inductive respects_constraints {dim} : (nat -> nat -> Prop) -> ucom dim -> Prop 
       f n1 n2 -> (* directed *)
       respects_constraints f (CNOT n1 n2).
 
-(* General proofs about CNOT/SWAP *)
+(* Proof about the relationship between CNOT & SWAP (move elsewhere?) *)
 
-Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
-  let e k := ( ∣0⟩⟨0∣ ⊗ I (2^k) ⊗ ∣0⟩⟨0∣ .+
-               ∣0⟩⟨1∣ ⊗ I (2^k) ⊗ ∣1⟩⟨0∣ .+
-               ∣1⟩⟨0∣ ⊗ I (2^k) ⊗ ∣0⟩⟨1∣ .+
-               ∣1⟩⟨1∣ ⊗ I (2^k) ⊗ ∣1⟩⟨1∣ ) in
-  if (m <? n) then
-    @pad (1+(n-m-1)+1) m dim (e (n-m-1))
-  else if (n <? m) then
-    @pad (1+(m-n-1)+1) n dim (e (m-n-1))
-  else
-    Zero.
-
-Local Transparent SWAP.
-Lemma denote_swap : forall dim m n,
-  @uc_eval dim (SWAP m n) = ueval_swap dim m n.
-Proof.
-  intros.
-  simpl; unfold ueval_swap.
-  autorewrite with eval_db.
-  gridify.
-  - autorewrite with cnot_db.
-    Msimpl_light.
-    repeat rewrite Mplus_0_l, Mplus_0_r.
-    rewrite <- Mplus_assoc.
-    rewrite Mplus_comm.
-    rewrite (Mplus_comm _ _ ((I (2 ^ m) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d0)))).
-    repeat rewrite Mplus_assoc.
-    rewrite (Mplus_comm _ _ ((I (2 ^ m) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d0)))).
-    reflexivity.
-  - autorewrite with cnot_db.
-    Msimpl_light.
-    repeat rewrite Mplus_0_l, Mplus_0_r.
-    rewrite <- Mplus_assoc.
-    rewrite Mplus_comm.
-    rewrite (Mplus_comm _ _ _ (I (2 ^ n) ⊗ ∣0⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨0∣ ⊗ I (2 ^ d0))).
-    repeat rewrite Mplus_assoc.
-    rewrite (Mplus_comm _ _ ((I (2 ^ n) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d) ⊗ ∣1⟩⟨1∣ ⊗ I (2 ^ d0)))).
-    reflexivity.
-Qed.
-Opaque SWAP.
-
-(* Auxiliary lemma for swap_cnot_control *)
-Lemma Mplus_swap_mid : forall {m n} (A B C D : Matrix m n), 
-  A .+ B .+ C .+ D = (A .+ C) .+ (B .+ D).
-Proof.
-  intros. 
-  rewrite 2 Mplus_assoc.
-  rewrite <- (Mplus_assoc _ _ B).
-  rewrite (Mplus_comm _ _ B).                       
-  rewrite 2 Mplus_assoc.
-  reflexivity.
-Qed.
-
-(* Slow, with lots of duplicate cases (1-3, 4-6). 
-   Would probably be faster is we only used the first parts of gridify,
-   since we wind up distributing the pluses back *)
+(* The proof below does the same thing as 'gridify' but only partially distributes
+   matrices. This keeps the terms a little smaller and seems to be faster than
+   directly using gridify. It's still slow though. *)
 Lemma swap_cnot_control : forall {dim} a b c,
   (* well-typedness constraints *)
   a < dim -> b < dim -> c < dim ->
@@ -215,122 +162,84 @@ Lemma swap_cnot_control : forall {dim} a b c,
 Proof. 
   intros.
   unfold uc_equiv; simpl.
-  rewrite denote_swap.
-  unfold ueval_swap; autorewrite with eval_db.
-  gridify.
-  - autorewrite with cnot_db.
-    Msimpl_light.
-    rewrite Mplus_swap_mid.
-    repeat (try rewrite <- (kron_plus_distr_l);
-            try rewrite <- (kron_plus_distr_r)).
-    rewrite Mplus_comm.
-    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-    reflexivity.
-  - autorewrite with cnot_db.
-    Msimpl_light.
-    rewrite Mplus_swap_mid.
-    repeat (try rewrite <- (kron_plus_distr_l);
-            try rewrite <- (kron_plus_distr_r)).
-    rewrite Mplus_comm.
-    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-    reflexivity.
-  - autorewrite with cnot_db.
-    Msimpl_light.
-    rewrite Mplus_swap_mid.
-    repeat (try rewrite <- (kron_plus_distr_l);
-            try rewrite <- (kron_plus_distr_r)).
-    rewrite Mplus_comm.
-    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-    reflexivity.
-  - autorewrite with cnot_db.
-    Msimpl_light.
-    match goal with 
+  autorewrite with eval_db. 
+  repad;
+  (* rewrite with id_kron *)
+  repeat rewrite Nat.pow_add_r; 
+  repeat rewrite <- id_kron;
+  (* distribute (I c) and (I d) right *)
+  repeat rewrite <- kron_assoc;
+  match goal with 
+  | |- context [(?a ⊗ ?b) ⊗ (I ?c) ⊗ (I ?d) ⊗ (I ?e) ] => 
+        rewrite (kron_assoc a b);
+        repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I c)); 
+        restore_dims_fast;
+        rewrite (kron_assoc a _ (I d));
+        repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I d))
+  end;
+  (* distribute (I b) and (I c) left *)
+  restore_dims_fast; repeat rewrite kron_assoc;
+  match goal with 
+  | |- context [(I ?a) ⊗ ((I ?b) ⊗ ((I ?c) ⊗ (?d ⊗ ?e))) ] => 
+        rewrite <- (kron_assoc (I c) _ e);
+        repeat rewrite (kron_plus_distr_l _ _ _ _ (I c));
+        restore_dims_fast;
+        rewrite <- (kron_assoc (I b) _ e);
+        repeat rewrite (kron_plus_distr_l _ _ _ _ (I b))
+  end;
+  (* simplification to remove extra id's *)
+  restore_dims_fast;
+  repeat rewrite <- kron_assoc;
+  restore_dims_fast; 
+  repeat rewrite kron_mixed_product;
+  Msimpl_light;
+  do 2 (apply f_equal2; trivial);
+  (* the rest of gridify... *)
+  simpl; restore_dims_fast;
+  distribute_plus;
+  restore_dims_fast; repeat rewrite <- kron_assoc;
+  restore_dims_fast; repeat rewrite kron_mixed_product;
+  Msimpl_light;
+  (* rewrite w/ cnot_db *)
+  autorewrite with cnot_db; Msimpl_light.
+  1, 2, 3: rewrite Mplus_swap_mid.
+  all: match goal with 
     | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
                                      rewrite <- (Mplus_assoc _ _ A)
-    end.
+    end;
     repeat (try rewrite <- (kron_plus_distr_l);
-            try rewrite <- (kron_plus_distr_r)).
-    rewrite Mplus_comm.
-    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
+            try rewrite <- (kron_plus_distr_r));
+    rewrite Mplus_comm;
+    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix;
     reflexivity.
-  - autorewrite with cnot_db.
-    Msimpl_light.
-    match goal with 
-    | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
-                                     rewrite <- (Mplus_assoc _ _ A)
-    end.
-    repeat (try rewrite <- (kron_plus_distr_l);
-            try rewrite <- (kron_plus_distr_r)).
-    rewrite Mplus_comm.
-    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-    reflexivity.
-  - autorewrite with cnot_db.
-    Msimpl_light.
-    match goal with 
-    | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
-                                     rewrite <- (Mplus_assoc _ _ A)
-    end.
-    repeat (try rewrite <- (kron_plus_distr_l);
-            try rewrite <- (kron_plus_distr_r)).
-    rewrite Mplus_comm.
-    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix.
-    reflexivity.
-Qed.
+Qed. 
 
-Lemma H_swaps_CNOT : forall {dim} m n,
-  @uc_equiv dim (H m; H n; CNOT n m; H m; H n) (CNOT m n).
-Proof.
+(* Alternative proof that uses gridify. From (not rigorous) testing on
+   Kesha's local machine, it seems to take about 2.5x longer than the 
+   proof above.
+   
+Lemma swap_cnot_control : forall {dim} a b c,
+  a < dim -> b < dim -> c < dim ->
+  a <> b -> b <> c -> a <> c ->
+  @uc_equiv dim (SWAP a b; CNOT b c; SWAP a b) (CNOT a c).
+Proof. 
   intros.
   unfold uc_equiv; simpl.
   autorewrite with eval_db.
-  gridify; trivial. (* trivial shouldn't be necessary *)
-  - rewrite <- 2 kron_plus_distr_r.
-    apply f_equal2; trivial.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    rewrite <- 2 kron_plus_distr_l.
-    apply f_equal2; trivial.
-    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
-    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
-    distribute_plus.
-    repeat rewrite <- Mplus_assoc.
-    rewrite Mplus_swap_mid.    
-    repeat rewrite Mscale_kron_dist_r.
-    rewrite Mplus_comm.
-    apply f_equal2.
-    + rewrite <- Mscale_kron_dist_l.
-      rewrite <- kron_plus_distr_r.
-      apply f_equal2; trivial.
-      solve_matrix.
-    + rewrite <- kron_plus_distr_r.
-      apply f_equal2; trivial.
-      solve_matrix.
-  - rewrite <- 2 kron_plus_distr_r.
-    apply f_equal2; trivial.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    rewrite <- 2 kron_plus_distr_l.
-    apply f_equal2; trivial.
-    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
-    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
-    distribute_plus.
-    repeat rewrite <- Mplus_assoc.
-    rewrite Mplus_swap_mid.    
-    rewrite Mplus_comm.
-    apply f_equal2.
-    + rewrite Mscale_kron_dist_l.
-      rewrite <- Mscale_kron_dist_r.
-      rewrite <- Mscale_kron_dist_r.
-      repeat rewrite <- kron_assoc.
-      restore_dims_fast. 
-      rewrite <- kron_plus_distr_l.
-      apply f_equal2; trivial.
-      solve_matrix.
-    + rewrite <- 2 kron_plus_distr_l.
-      apply f_equal2; trivial.
-      apply f_equal2; trivial.
-      solve_matrix.
+  gridify.
+  all: autorewrite with cnot_db; Msimpl_light.
+  1, 2, 3: rewrite Mplus_swap_mid.
+  all: match goal with 
+       | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
+                                        rewrite <- (Mplus_assoc _ _ A)
+       end;
+       repeat (try rewrite <- (kron_plus_distr_l);
+               try rewrite <- (kron_plus_distr_r));
+       rewrite Mplus_comm;
+       replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix;
+       reflexivity.
 Qed.
+*)
 
 (* Correctness of do_cnot_along_path *)
 
