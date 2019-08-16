@@ -33,6 +33,7 @@ Extraction Implicit TOFF [dim].
 Extraction Implicit next_single_qubit_gate [dim].
 Extraction Implicit next_two_qubit_gate [dim].
 Extraction Implicit does_not_reference [dim].
+Extraction Implicit does_not_reference_appl [dim].
 Extraction Implicit count_H_gates [dim].
 Extraction Implicit count_X_gates [dim].
 Extraction Implicit count_rotation_gates [dim].
