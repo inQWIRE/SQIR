@@ -36,10 +36,31 @@ end
 
 module QbitMap = Map.Make(QbitIdx)
 
-let convert_repr qmap (id, idx) =
-  match idx with
-  | Some i  -> QbitMap.find (id, i) qmap
-  | None    -> QbitMap.find (id, 0) qmap (* TODO assumes q[0] for q instead of the whole register *)
+let apply_c_gate gate ctrl tgt qmap sym_tab =
+  let (cid, cidx) = ctrl in
+  let (tid, tidx) = tgt in
+  match cidx, tidx with
+  | Some ci, Some ti -> [gate (QbitMap.find (cid, ci) qmap) (QbitMap.find (tid, ti) qmap)]
+  | None, Some ti ->
+    (match StringMap.find cid sym_tab with
+     | TQReg csize ->
+       let tgt_idx = (QbitMap.find (tid, ti) qmap) in
+       List.init csize (fun i -> gate (QbitMap.find (cid, i) qmap) tgt_idx)
+     | _ -> raise (Failure "ERROR: Not a qubit register!"))
+  | Some ci, None ->
+    (match StringMap.find tid sym_tab with
+     | TQReg tsize ->
+       let ctrl_idx = (QbitMap.find (cid, ci) qmap) in
+       List.init tsize (fun i -> gate ctrl_idx (QbitMap.find (tid, i) qmap))
+     | _ -> raise (Failure "ERROR: Not a qubit register!"))
+  | None, None -> (* parallel application *)
+    (match StringMap.find cid sym_tab, StringMap.find tid sym_tab with
+     | TQReg csize, TQReg tsize ->
+       if csize != tsize
+       then raise (Failure "ERROR: register sizes do not match")
+       else List.init csize (fun i ->
+           gate (QbitMap.find (cid, i) qmap) (QbitMap.find (tid, i) qmap))
+     | _ -> raise (Failure "ERROR: Not a qubit register!"))
 
 let apply_gate gate (id, idx) qmap sym_tab =
   match idx with
@@ -49,27 +70,26 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size ( fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
-let parse_statement s qmap sym_tab : gate_app list =
+let translate_statement s qmap sym_tab : gate_app list =
   match s with
   | Qop qop ->
     (match qop with
      | Uop uop ->
        (match uop with
-        | CX (ctrl, tgt) ->
-          [_CNOT (convert_repr qmap ctrl) (convert_repr qmap tgt)]
+        | CX (ctrl, tgt) -> apply_c_gate _CNOT ctrl tgt qmap sym_tab
         | U _ -> raise (Failure "NYI: generic Unitary!")
         | Gate (id, _, qargs) ->
           (match StringMap.find_opt id sym_tab with
            | Some TGate _ -> (match id with
-               | "cx" -> [_CNOT (convert_repr qmap (List.hd qargs))
-                            (convert_repr qmap (List.nth qargs 1))]
-               | "x" -> apply_gate _X (List.hd qargs) qmap sym_tab
-               | "z" -> apply_gate _Z (List.hd qargs) qmap sym_tab
-               | "h" -> apply_gate _H (List.hd qargs) qmap sym_tab
-               | "s" -> apply_gate _P (List.hd qargs) qmap sym_tab (* phase gate *)
-               | "sdg" -> apply_gate _PDAG (List.hd qargs) qmap sym_tab
-               | "t" -> apply_gate _T (List.hd qargs) qmap sym_tab
-               | "tdg" -> apply_gate _TDAG (List.hd qargs) qmap sym_tab
+               | "cx"  ->
+                 apply_c_gate _CNOT (List.hd qargs) (List.nth qargs 1) qmap sym_tab
+               | "x"   -> apply_gate _X     (List.hd qargs) qmap sym_tab
+               | "z"   -> apply_gate _Z     (List.hd qargs) qmap sym_tab
+               | "h"   -> apply_gate _H     (List.hd qargs) qmap sym_tab
+               | "s"   -> apply_gate _P     (List.hd qargs) qmap sym_tab (* phase gate *)
+               | "sdg" -> apply_gate _PDAG  (List.hd qargs) qmap sym_tab
+               | "t"   -> apply_gate _T     (List.hd qargs) qmap sym_tab
+               | "tdg" -> apply_gate _TDAG  (List.hd qargs) qmap sym_tab
                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
              )
            | Some _ -> raise (Failure "ERROR: Not a gate!")
@@ -98,23 +118,23 @@ let rec parse_qreg_decls p =
     let rest = parse_qreg_decls p' in
     List.append first rest
 
-let rec parse_program p qbit_map sym_tab =
+let rec translate_program p qbit_map sym_tab =
   match p with
   | []      ->  []
-  | s :: p' ->  let l = parse_statement s qbit_map sym_tab in
-    let m = parse_program p' qbit_map sym_tab in
+  | s :: p' ->  let l = translate_statement s qbit_map sym_tab in
+    let m = translate_program p' qbit_map sym_tab in
     List.append l m
 
-let parse_gate_list f =
+let get_gate_list f =
   let ast = parse_file f in (* dumb parsing *)
   let sym_tab = check ast in (* semantic analysis *)
   let qbit_list = parse_qreg_decls ast in
   let (qbit_map, _) = List.fold_left
       (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1))
       (QbitMap.empty, 0) qbit_list in
-  parse_program ast qbit_map sym_tab
+  translate_program ast qbit_map sym_tab
 
-let parse f = parse_gate_list f
+let parse f = get_gate_list f
 
 let nam_benchmark_filenames = [
   "../nam-benchmarks/adder_8.qasm";

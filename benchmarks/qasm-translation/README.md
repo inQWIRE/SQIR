@@ -5,7 +5,7 @@ Work in progress
 ## Requirements
 Current version of OCaml and the following dependencies:
 ```
-$ opam install menhir utop ppx_deriving
+$ opam install menhir utop
 ```
 
 ## Steps
