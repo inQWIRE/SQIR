@@ -17,43 +17,30 @@ Proof.
   reflexivity.
 Qed.
 
-Fixpoint c_eval {dim} (c : com dim) : Superoperator (2^dim) (2^dim) :=
+Fixpoint c_eval {dim} (c : base_com dim) : Superoperator (2^dim) (2^dim) :=
   match c with
   | skip           => fun ρ => ρ
   | c1 ; c2        => compose_super (c_eval c2) (c_eval c1)  
-  | app_R θ ϕ λ n  => super (ueval_r dim n θ ϕ λ)
-  | app_CNOT m n   => super (ueval_cnot dim m n)
+  | uc u           => super (uc_eval u)
   | meas n c1 c2   => Splus (compose_super (c_eval c1) (super (@pad 1 n dim (∣1⟩⟨1∣)))) 
                            (compose_super (c_eval c2) (super (@pad 1 n dim (∣0⟩⟨0∣)))) 
   end.
 
-Lemma c_eval_ucom : forall {dim} (c : ucom dim) (ρ : Density (2^dim)),
-    WF_Matrix ρ ->
-    c_eval c ρ = super (uc_eval c) ρ.
-Proof.
-  intros dim c.
-  induction c; trivial; intros ρ H.
-  - simpl. unfold super. Msimpl. reflexivity.
-  - simpl. unfold super, compose_super in *.
-    rewrite IHc1, IHc2; auto with wf_db.
-    Msimpl.
-    repeat rewrite Mmult_assoc.
-    reflexivity.
-Qed.
-
-Definition c_equiv {dim} (c1 c2 : com dim) := c_eval c1 = c_eval c2.
+Definition c_equiv {dim} (c1 c2 : base_com dim) := c_eval c1 = c_eval c2.
 Infix "≡" := c_equiv : com_scope.
 
-Lemma c_equiv_refl : forall {dim} (c1 : com dim), c1 ≡ c1. 
+Lemma c_equiv_refl : forall {dim} (c1 : base_com dim), c1 ≡ c1. 
 Proof. easy. Qed.
 
-Lemma c_equiv_sym : forall {dim} (c1 c2 : com dim), c1 ≡ c2 -> c2 ≡ c1. 
+Lemma c_equiv_sym : forall {dim} (c1 c2 : base_com dim), c1 ≡ c2 -> c2 ≡ c1. 
 Proof. easy. Qed.
 
-Lemma c_equiv_trans : forall {dim} (c1 c2 c3 : com dim), c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
+Lemma c_equiv_trans : forall {dim} (c1 c2 c3 : base_com dim), 
+  c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
 Proof. intros dim c1 c2 c3 H12 H23. unfold c_equiv. rewrite H12. easy. Qed.
 
-Lemma seq_assoc : forall {dim} (c1 c2 c3 : com dim), ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
+Lemma seq_assoc : forall {dim} (c1 c2 c3 : base_com dim), 
+  ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
 Proof.
   intros dim c1 c2 c3. 
   unfold c_equiv; simpl.
@@ -61,7 +48,7 @@ Proof.
   easy.
 Qed.
 
-Lemma seq_congruence : forall {dim} (c1 c1' c2 c2' : com dim),
+Lemma seq_congruence : forall {dim} (c1 c1' c2 c2' : base_com dim),
     c1 ≡ c1' ->
     c2 ≡ c2' ->
     c1 ; c2 ≡ c1' ; c2'.
@@ -72,13 +59,13 @@ Proof.
   reflexivity.
 Qed.
 
-Add Parametric Relation (dim : nat) : (com dim) (@c_equiv dim)
+Add Parametric Relation (dim : nat) : (base_com dim) (@c_equiv dim)
   reflexivity proved by c_equiv_refl
   symmetry proved by c_equiv_sym
   transitivity proved by c_equiv_trans
   as c_equiv_rel.
 
-Add Parametric Morphism (dim : nat) : (@seq dim) 
+Add Parametric Morphism (dim : nat) : (@SQIRE.seq base_Unitary dim) 
   with signature (@c_equiv dim) ==> (@c_equiv dim) ==> (@c_equiv dim) as seq_mor.
 Proof. intros x y H x0 y0 H0. apply seq_congruence; easy. Qed.
 
@@ -94,20 +81,18 @@ Proof.
   reflexivity. 
 Qed.
 
-Local Transparent X.
-
 Lemma c_eval_reset : forall n dim ρ,
     c_eval (reset n) ρ = Splus (super (@pad 1 n dim (∣0⟩⟨0∣))) 
                                (super (@pad 1 n dim (∣0⟩⟨1∣))) ρ.
 Proof.
   intros. simpl.
   repeat rewrite compose_super_eq.
-  unfold ueval_r, Splus.
-  unfold compose_super; simpl.
+  rewrite denote_X.
+  unfold Splus, compose_super.
   repeat rewrite pad_mult.
   rewrite <- Mmult_assoc. 
-  rewrite <- pauli_x_rotation.
-  setoid_rewrite MmultX1.
+  restore_dims_fast. 
+  rewrite MmultX1.
   rewrite Mplus_comm.
   reflexivity.  
 Qed.
@@ -120,12 +105,12 @@ Lemma c_eval_reset1 : forall n dim ρ,
 Proof.
   intros. simpl.
   repeat rewrite compose_super_eq.
-  unfold ueval_r, Splus.
-  unfold compose_super; simpl.
+  rewrite denote_X.
+  unfold Splus, compose_super.
   repeat rewrite pad_mult.
   rewrite <- Mmult_assoc. 
-  rewrite <- pauli_x_rotation.
-  setoid_rewrite MmultX0.
+  restore_dims_fast.
+  rewrite MmultX0.
   rewrite Mplus_comm.
   reflexivity.  
 Qed.

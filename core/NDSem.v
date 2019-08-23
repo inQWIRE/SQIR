@@ -13,65 +13,36 @@ Definition norm {n} (ψ : Vector n) :=
 Reserved Notation "c '/' ψ '⇩' ψ'"
                   (at level 40, ψ at level 39).
 
-Inductive nd_eval {dim : nat} : com dim -> Vector (2^dim) -> Vector (2^dim) -> Prop :=
+Inductive nd_eval {dim : nat} : base_com dim -> Vector (2^dim) -> Vector (2^dim) -> Prop :=
   | nd_skip : forall ψ, nd_eval skip ψ ψ
-  | nd_app_R : forall (θ ϕ λ : R) (n : nat) (ψ : Vector (2^dim)),
-      app_R θ ϕ λ n / ψ ⇩ ((ueval_r dim n θ ϕ λ) × ψ)
-  | nd_app_CNOT : forall (m n : nat) (ψ : Vector (2^dim)),
-      app_CNOT m n / ψ ⇩ ((ueval_cnot dim m n) × ψ)
-  | nd_meas_t : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
+  | nd_uc : forall (u : base_ucom dim) (ψ : Vector (2^dim)),
+      uc u / ψ ⇩ ((uc_eval u) × ψ)
+  | nd_meas_t : forall (n : nat) (c1 c2 : base_com dim) (ψ ψ'' : Vector (2^dim)),
       let ψ' := @pad 1 n dim (∣1⟩⟨1∣) × ψ in 
       norm ψ' <> 0%R -> (* better way to say this in terms of partial trace? *)
       c1 / ψ' ⇩ ψ'' ->
       meas n c1 c2 / ψ ⇩ ψ'' 
       (* Alternatively, we could scale the output state:
            meas n c1 c2 / ψ ⇩ (scale (/(norm ψ'')) ψ'') *)
-  | nd_meas_f : forall (n : nat) (c1 c2 : com dim) (ψ ψ'' : Vector (2^dim)),
+  | nd_meas_f : forall (n : nat) (c1 c2 : base_com dim) (ψ ψ'' : Vector (2^dim)),
       let ψ' := @pad 1 n dim (∣0⟩⟨0∣) × ψ in
       norm ψ' <> 0%R ->
       c2 / ψ' ⇩ ψ'' ->
       meas n c1 c2 / ψ ⇩ ψ'' 
-  | nd_seq : forall (c1 c2 : com dim) (ψ ψ' ψ'' : Vector (2^dim)),
+  | nd_seq : forall (c1 c2 : base_com dim) (ψ ψ' ψ'' : Vector (2^dim)),
       c1 / ψ ⇩ ψ' ->
       c2 / ψ' ⇩ ψ'' ->
       (c1 ; c2) / ψ ⇩ ψ''
 
-where "c '/' ψ '⇩' ψ'" := (nd_eval c ψ ψ').              
+where "c '/' ψ '⇩' ψ'" := (nd_eval c ψ ψ').
 
-Lemma nd_eval_ucom : forall {dim} (c : ucom dim) (ψ ψ' : Vector (2^dim)),
-    WF_Matrix ψ ->
-    c / ψ ⇩ ψ' <-> (uc_eval c) × ψ = ψ'.
-Proof.
-  intros dim c ψ ψ' WF.
-  split; intros H.
-  - gen ψ' ψ.
-    induction c; intros ψ' ψ WF E; dependent destruction E; subst.
-    + simpl; Msimpl; easy.
-    + simpl.
-      rewrite Mmult_assoc.
-      rewrite (IHc1 ψ'); trivial. 
-      assert (WF_Matrix ψ') by (rewrite <- (IHc1 _ ψ) ; auto with wf_db).      
-      rewrite (IHc2 ψ''); easy.
-    + easy.
-    + easy.
-  - gen ψ' ψ.
-    induction c; intros ψ' ψ WF E; subst.
-    + simpl. simpl; Msimpl. constructor.
-    + apply nd_seq with (uc_eval c1 × ψ).
-      apply IHc1; trivial.
-      apply IHc2; auto with wf_db.
-      simpl; rewrite Mmult_assoc; easy.
-    + simpl; constructor.
-    + simpl; constructor.
-Qed.
-
-Definition nd_equiv {dim} (c1 c2 : com dim) := forall (ψ ψ' : Vector (2^dim)), 
+Definition nd_equiv {dim} (c1 c2 : base_com dim) := forall (ψ ψ' : Vector (2^dim)), 
   c1 / ψ ⇩ ψ' <-> c2 / ψ ⇩ ψ'.
 
 (* Maybe a new scope is warranted? *)
 Infix "≡" := nd_equiv : com_scope.
 
-Lemma nd_seq_assoc : forall {dim} (c1 c2 c3 : com dim),
+Lemma nd_seq_assoc : forall {dim} (c1 c2 c3 : base_com dim),
     ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
 Proof.
   intros dim c1 c2 c3 ψ ψ'.
@@ -86,13 +57,14 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Lemma nd_equiv_refl : forall {dim} (c1 : com dim), c1 ≡ c1. 
+Lemma nd_equiv_refl : forall {dim} (c1 : base_com dim), c1 ≡ c1. 
 Proof. easy. Qed.
 
-Lemma nd_equiv_sym : forall {dim} (c1 c2 : com dim), c1 ≡ c2 -> c2 ≡ c1. 
+Lemma nd_equiv_sym : forall {dim} (c1 c2 : base_com dim), c1 ≡ c2 -> c2 ≡ c1. 
 Proof. easy. Qed.
 
-Lemma nd_equiv_trans : forall {dim} (c1 c2 c3 : com dim), c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
+Lemma nd_equiv_trans : forall {dim} (c1 c2 c3 : base_com dim), 
+  c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
 Proof. 
   intros dim c1 c2 c3 H12 H23 ψ ψ'. 
   specialize (H12 ψ ψ') as [L12 R12].
@@ -100,13 +72,13 @@ Proof.
   split; auto.
 Qed.
 
-Add Parametric Relation (dim : nat) : (com dim) nd_equiv 
+Add Parametric Relation (dim : nat) : (base_com dim) nd_equiv 
   reflexivity proved by nd_equiv_refl
   symmetry proved by nd_equiv_sym
   transitivity proved by nd_equiv_trans
   as nd_equiv_rel.
 
-Lemma nd_seq_congruence : forall {dim} (c1 c1' c2 c2' : com dim),
+Lemma nd_seq_congruence : forall {dim} (c1 c1' c2 c2' : base_com dim),
     c1 ≡ c1' ->
     c2 ≡ c2' ->
     c1 ; c2 ≡ c1' ; c2'.
@@ -122,7 +94,7 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Add Parametric Morphism (dim : nat) : (@seq dim)
+Add Parametric Morphism (dim : nat) : (@seq base_Unitary dim)
   with signature nd_equiv ==> nd_equiv ==> nd_equiv as useq_mor.
 Proof. intros x y H x0 y0 H0. apply nd_seq_congruence; easy. Qed.
 

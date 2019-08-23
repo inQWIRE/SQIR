@@ -37,16 +37,16 @@ Proof.
     reflexivity.
 Qed.
 
-Inductive boolean : forall {n}, ucom (S n) -> Set :=
-  | boolean_I : forall u, u ≡ uskip -> @boolean 0 u
+Inductive boolean : forall {n}, base_ucom (S n) -> Set :=
+  | boolean_I : forall u, u ≡ SKIP -> @boolean 0 u
   | boolean_X : forall u, u ≡ X 0 -> @boolean 0 u
-  | boolean_U : forall dim (u : ucom (S (S dim))) (u1 u2 : ucom (S dim)),
+  | boolean_U : forall dim (u : base_ucom (S (S dim))) (u1 u2 : base_ucom (S dim)),
                 boolean u1 -> boolean u2 ->
                 uc_eval u = (uc_eval u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval u2 ⊗ ∣1⟩⟨1∣) ->
                 boolean u.
   
 (* Why not make this a function to nats? (Convert to R in DJ_count) *)
-Fixpoint count {dim : nat} {u : ucom (S dim)} (P : boolean u) : C :=
+Fixpoint count {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : C :=
   match P with
   | boolean_I _ _ => 0%R
   | boolean_X _ _ => 1%R
@@ -56,20 +56,21 @@ Fixpoint count {dim : nat} {u : ucom (S dim)} (P : boolean u) : C :=
 Local Open Scope R_scope.
 Local Open Scope C_scope.
 
-Definition balanced {dim : nat} {u : ucom (S dim)} (P : boolean u) : Prop :=
+Definition balanced {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop :=
   (dim > 0)%nat /\ count P = (2%R ^ (dim - 1))%C.
 
-Definition constant {dim : nat} {u : ucom (S dim)} (P : boolean u) : Prop :=
+Definition constant {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop :=
   count P = 0%R \/ count P = (2%R ^ dim)%C.
 
 Lemma deutsch_jozsa_count :
-  forall {dim : nat} {U : ucom (S dim)} (P : boolean U) (ψ : Matrix 2 1),
+  forall {dim : nat} {U : base_ucom (S dim)} (P : boolean U) (ψ : Matrix 2 1),
     (ψ ⊗ kron_n dim ∣+⟩)† × (uc_eval U × (∣-⟩ ⊗ kron_n dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣-⟩).
 Proof.
   intros.
   remember ∣+⟩ as ψp. remember ∣-⟩ as ψm.
   induction dim; dependent destruction P.                                   
-  - simpl. rewrite u0. simpl.
+  - simpl. rewrite u0. 
+    rewrite denote_SKIP; try lia.
     repeat rewrite kron_1_r. rewrite Mmult_1_l by (subst; auto with wf_db). 
     autorewrite with C_db.
     symmetry. apply Mscale_1_l.
@@ -105,16 +106,16 @@ Proof.
     apply Cpow_nonzero. lra.
 Qed.    
 
-Fixpoint cpar {dim : nat} (n : nat) (u : nat -> ucom dim) : ucom dim :=
+Fixpoint cpar {dim : nat} (n : nat) (u : nat -> base_ucom dim) : base_ucom dim :=
   match n with
-  | 0 => uskip
+  | 0 => SKIP
   | S n' => cpar n' u ; u n'
   end.
 
-Lemma well_typed_cpar_H : forall (dim n : nat), (n <= dim)%nat -> uc_well_typed (@cpar dim n H).
+Lemma well_typed_cpar_H : forall (dim n : nat), (0 < dim)%nat -> (n <= dim)%nat -> uc_well_typed (@cpar dim n H).
 Proof.
   intros. induction n.
-  - simpl. apply WT_uskip.
+  - simpl. apply uc_well_typed_ID; assumption.
   - simpl. apply WT_seq.
     apply IHn. lia. 
     apply uc_well_typed_H. lia.
@@ -135,12 +136,13 @@ Proof.
 Qed.
 
 Lemma cpar_correct_H : forall dim n,
-  (n <= dim)%nat -> uc_eval (@cpar dim n H) = (kron_n n hadamard) ⊗ I (2 ^ (dim - n)).
+  (0 < dim)%nat -> (n <= dim)%nat -> uc_eval (@cpar dim n H) = (kron_n n hadamard) ⊗ I (2 ^ (dim - n)).
 Proof.
   intros.
   induction n.
   - replace (dim - 0)%nat with dim by lia. 
-    Msimpl_light. reflexivity.
+    Msimpl_light. simpl. rewrite denote_SKIP; try assumption.
+    reflexivity.
   - simpl.
     autorewrite with eval_db.
     bdestruct_all. 
@@ -171,25 +173,31 @@ Qed.
 Lemma cpar_H_self_adjoint :
   forall (n : nat), (uc_eval (@cpar n n H))† = uc_eval (@cpar n n H).
 Proof.
-  intros. 
+  intros.
+  destruct n. 
+  (* weird n = 0 case *)
+  simpl; unfold SKIP; rewrite denote_ID.
+  unfold pad; bdestruct_all.
+  apply zero_adjoint_eq.
+  (* now n > 0 *)
   rewrite cpar_correct_H; try lia. 
   induction n.
-  - simpl. Msimpl_light. apply id_sa.
-  - simpl; replace (n - n)%nat with O in * by lia. 
+  - simpl. Msimpl_light. apply hadamard_sa.
+  - simpl in *; replace (n - n)%nat with O in * by lia. 
     simpl in *.
     repeat rewrite kron_1_r in *. 
     restore_dims_fast. 
-    rewrite kron_adjoint.
-    rewrite hadamard_sa.
-    rewrite IHn.
+    rewrite kron_adjoint. 
+    rewrite hadamard_sa. 
+    setoid_rewrite IHn.
     reflexivity.
 Qed.
 
-Definition deutsch_jozsa {n} (U : ucom n) : ucom n :=
+Definition deutsch_jozsa {n} (U : base_ucom n) : base_ucom n :=
   X 0 ; cpar n H ; U; cpar n H.
 
 Lemma deutsch_jozsa_success_probability :
-  forall {dim : nat} {U : ucom (S dim)} (P : boolean U) (ψ : Matrix 2 1) (WF : WF_Matrix ψ),
+  forall {dim : nat} {U : base_ucom (S dim)} (P : boolean U) (ψ : Matrix 2 1) (WF : WF_Matrix ψ),
     (ψ ⊗ kron_n dim ∣0⟩)† × ((uc_eval (deutsch_jozsa U)) × (kron_n (S dim) ∣0⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣1⟩).
 Proof.
   intros.
@@ -228,14 +236,14 @@ Proof.
   reflexivity.
 Qed.
 
-Definition accept {dim : nat} {U : ucom (S dim)} (P : boolean U) : Prop :=
+Definition accept {dim : nat} {U : base_ucom (S dim)} (P : boolean U) : Prop :=
     exists (ψ : Matrix 2 1), ((ψ ⊗ kron_n dim ∣0⟩)† × (uc_eval (deutsch_jozsa U) × (kron_n (S dim) ∣0⟩))) 0%nat 0%nat = 1. 
 
-Definition reject {dim : nat} {U : ucom (S dim)} (P : boolean U) : Prop :=
+Definition reject {dim : nat} {U : base_ucom (S dim)} (P : boolean U) : Prop :=
     forall (ψ : Matrix 2 1), WF_Matrix ψ -> ((ψ ⊗ kron_n dim ∣0⟩)† × (uc_eval (deutsch_jozsa U) × (kron_n (S dim) ∣0⟩))) 0%nat 0%nat = 0. 
 
 Theorem deutsch_jozsa_constant_correct :
-  forall (dim : nat) (U : ucom (S dim)) (P : boolean U), constant P -> accept P.
+  forall (dim : nat) (U : base_ucom (S dim)) (P : boolean U), constant P -> accept P.
 Proof.
   intros. 
   unfold accept.
@@ -248,7 +256,7 @@ Proof.
 Qed.
 
 Theorem deutsch_jozsa_balanced_correct :
-  forall (dim : nat) (U : ucom (S dim)) (P : boolean U), 
+  forall (dim : nat) (U : base_ucom (S dim)) (P : boolean U), 
     balanced P -> reject P.
 Proof.
   unfold reject. intros dim U P [H1 H2] ψ WF. 

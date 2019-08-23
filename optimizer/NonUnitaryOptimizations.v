@@ -31,7 +31,7 @@ Proof.
   simpl.
   unfold compose_super, Splus, super.
   autorewrite with eval_db.
-  rewrite <- phase_shift_rotation.
+  rewrite phase_shift_rotation.
   apply functional_extensionality. intros ρ.
   repad. subst. clear.
   Msimpl.
@@ -67,7 +67,7 @@ Proof.
   intros.
   unfold c_equiv, c_eval; simpl. 
   autorewrite with eval_db.
-  rewrite <- pauli_z_rotation.  
+  rewrite pauli_z_rotation.  
   reflexivity.
 Qed.
 
@@ -87,12 +87,12 @@ Proof. intros. apply Z_mif. Qed.
 
 (* T and P are Rz PI/4 and Rz PI/2, but those are explicit in SQIRE.v *) 
 
-Fixpoint optimize_R_meas {dim} (c : com dim) : com dim :=
+Fixpoint optimize_R_meas {dim} (c : base_com dim) : base_com dim :=
   match c with
-  | app_R θ ϕ λ a ; meas b c1 c2 => 
+  | uc (uapp1 (U_R θ ϕ λ) a) ; meas b c1 c2 => 
       if Reqb θ 0 && Reqb ϕ 0 && (a =? b)
       then meas b (optimize_R_meas c1) (optimize_R_meas c2)  
-      else app_R θ ϕ λ a ; meas b (optimize_R_meas c1) (optimize_R_meas c2) 
+      else uapp1 (U_R θ ϕ λ) a ; meas b (optimize_R_meas c1) (optimize_R_meas c2) 
   | c1 ; c2 => (optimize_R_meas c1); (optimize_R_meas c2)
   | meas a c1 c2 => meas a (optimize_R_meas c1) (optimize_R_meas c2) 
   | _ => c
@@ -101,14 +101,16 @@ Fixpoint optimize_R_meas {dim} (c : com dim) : com dim :=
 (* Not nice because of the Reqb:
    Compute (optimize_R_meas (skip; (SQIRE.Z O; reset O))). *)
 
-Lemma optimize_R_meas_sound : forall dim (c : com dim),
+Lemma optimize_R_meas_sound : forall dim (c : base_com dim),
   c ≡ optimize_R_meas c.
 Proof.
   intros.
   induction c; simpl; try reflexivity.
   - destruct c1; simpl; try (rewrite <- IHc2; reflexivity).
     + rewrite IHc1, <- IHc2. simpl. reflexivity.
-    + destruct c2; try (rewrite <- IHc2; reflexivity). 
+    + destruct u; simpl; try (rewrite <- IHc2; reflexivity). 
+      dependent destruction b.
+      destruct c2; try (rewrite <- IHc2; reflexivity). 
       destruct (Reqb r 0 && Reqb r0 0 && (n =? n0)) eqn:H.
       repeat match goal with 
         | [ E : _ && _ = true |- _]   => apply andb_true_iff in E; destruct E
@@ -133,7 +135,7 @@ Qed.
 
 Local Transparent X.
 Lemma rm_resets_correct : forall (dim n : nat), 
-  @meas dim n (X n) skip; @meas dim n (X n) skip ≡ @meas dim n (X n) skip.
+  @meas _ dim n (X n) skip; meas n (X n) skip ≡ meas n (X n) skip.
 Proof.
   intros.
   simpl.
@@ -144,7 +146,7 @@ Proof.
   apply functional_extensionality.
   intros ρ.
   gridify.
-  rewrite <- pauli_x_rotation.
+  rewrite pauli_x_rotation.
   repeat (restore_dims_fast; rewrite <- Mmult_assoc).
   repeat rewrite kron_mixed_product.  
   repeat (restore_dims_fast; rewrite Mmult_assoc).

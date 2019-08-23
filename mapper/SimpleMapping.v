@@ -36,32 +36,32 @@ Local Close Scope R_scope.
 
 (* NOTE: This assumes that paths are oriented from control --> target. *)
 
-Fixpoint do_cnot_along_path dim p : ucom dim :=
+Fixpoint do_cnot_along_path dim p : base_ucom dim :=
   match p with
   | n1 :: n2 :: [] => CNOT n1 n2
   | n1 :: ((n2 :: _) as t) => SWAP n1 n2 ; do_cnot_along_path dim t ; SWAP n1 n2
-  | _ => uskip (* bad input case *)
+  | _ => SKIP (* bad input case *)
   end.
 
 (* At this point all CNOTs should be between adjacent qubits, but
    they may not respect the direction of the edges in the connectivity
    graph. We can fix this by insert Hadamard gates before and after
    each offending CNOT. *)
-Fixpoint fix_cnots {dim} (c : ucom dim) (is_in_graph_b : nat -> nat -> bool) :=
+Fixpoint fix_cnots {dim} (c : base_ucom dim) (is_in_graph_b : nat -> nat -> bool) :=
   match c with
   | c1; c2 => fix_cnots c1 is_in_graph_b ; fix_cnots c2 is_in_graph_b
-  | uapp_CNOT n1 n2 => 
+  | uapp2 U_CNOT n1 n2 => 
       if is_in_graph_b n1 n2
       then CNOT n1 n2
       else H n1; H n2; CNOT n2 n1; H n1; H n2
   | _ => c
   end.
 
-Fixpoint simple_map {dim} (c : ucom dim) (get_path : nat -> nat -> list nat) (is_in_graph_b : nat -> nat -> bool) :=
+Fixpoint simple_map {dim} (c : base_ucom dim) (get_path : nat -> nat -> list nat) (is_in_graph_b : nat -> nat -> bool) :=
   match c with
   | c1; c2 => simple_map c1 get_path is_in_graph_b ; 
              simple_map c2 get_path is_in_graph_b
-  | uapp_CNOT n1 n2 => let p := do_cnot_along_path dim (get_path n1 n2) in
+  | uapp2 U_CNOT n1 n2 => let p := do_cnot_along_path dim (get_path n1 n2) in
                          fix_cnots p is_in_graph_b
   | _ => c
   end.
@@ -124,26 +124,24 @@ Definition valid_graph dim (is_in_graph : nat -> nat -> Prop) :=
 
 (* Formalisms for describing correct mappings. *)
 
-Inductive respects_constraints_undirected {dim} : (nat -> nat -> Prop) -> ucom dim -> Prop :=
-  | res_und_skip : forall f, respects_constraints_undirected f uskip
+Inductive respects_constraints_undirected {dim} : (nat -> nat -> Prop) -> base_ucom dim -> Prop :=
   | res_und_seq : forall f c1 c2, 
       respects_constraints_undirected f c1 -> 
       respects_constraints_undirected f c2 -> 
       respects_constraints_undirected f (c1; c2)
-  | res_und_app_u : forall f θ ϕ λ n, 
-      respects_constraints_undirected f (uapp_R θ ϕ λ n)
+  | res_und_app_u : forall f u n, 
+      respects_constraints_undirected f (uapp1 u n)
   | res_und_app_cnot : forall (f : nat -> nat -> Prop) n1 n2, 
       f n1 n2 \/ f n2 n1 -> (* undirected *)
       respects_constraints_undirected f (CNOT n1 n2).
 
-Inductive respects_constraints {dim} : (nat -> nat -> Prop) -> ucom dim -> Prop :=
-  | res_skip : forall f, respects_constraints f uskip
+Inductive respects_constraints {dim} : (nat -> nat -> Prop) -> base_ucom dim -> Prop :=
   | res_seq : forall f c1 c2, 
       respects_constraints f c1 -> 
       respects_constraints f c2 -> 
       respects_constraints f (c1; c2)
-  | res_app_u : forall f θ ϕ λ n, 
-      respects_constraints f (uapp_R θ ϕ λ n)
+  | res_app_u : forall f u n, 
+      respects_constraints f (uapp1 u n)
   | res_app_cnot : forall (f : nat -> nat -> Prop) n1 n2, 
       f n1 n2 -> (* directed *)
       respects_constraints f (CNOT n1 n2).
@@ -163,45 +161,45 @@ Proof.
   intros.
   unfold uc_equiv; simpl.
   autorewrite with eval_db. 
-  repad;
+  repad.
   (* rewrite with id_kron *)
-  repeat rewrite Nat.pow_add_r; 
-  repeat rewrite <- id_kron;
+  all: repeat rewrite Nat.pow_add_r; 
+       repeat rewrite <- id_kron.
   (* distribute (I c) and (I d) right *)
-  repeat rewrite <- kron_assoc;
-  match goal with 
-  | |- context [(?a ⊗ ?b) ⊗ (I ?c) ⊗ (I ?d) ⊗ (I ?e) ] => 
-        rewrite (kron_assoc a b);
-        repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I c)); 
-        restore_dims_fast;
-        rewrite (kron_assoc a _ (I d));
-        repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I d))
-  end;
+  all: repeat rewrite <- kron_assoc;
+       match goal with 
+      | |- context [(?a ⊗ ?b) ⊗ (I ?c) ⊗ (I ?d) ⊗ (I ?e) ] => 
+            rewrite (kron_assoc a b);
+            repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I c)); 
+            restore_dims_fast;
+            rewrite (kron_assoc a _ (I d));
+            repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I d))
+      end;
   (* distribute (I b) and (I c) left *)
-  restore_dims_fast; repeat rewrite kron_assoc;
-  match goal with 
-  | |- context [(I ?a) ⊗ ((I ?b) ⊗ ((I ?c) ⊗ (?d ⊗ ?e))) ] => 
-        rewrite <- (kron_assoc (I c) _ e);
-        repeat rewrite (kron_plus_distr_l _ _ _ _ (I c));
-        restore_dims_fast;
-        rewrite <- (kron_assoc (I b) _ e);
-        repeat rewrite (kron_plus_distr_l _ _ _ _ (I b))
-  end;
-  (* simplification to remove extra id's *)
-  restore_dims_fast;
-  repeat rewrite <- kron_assoc;
-  restore_dims_fast; 
-  repeat rewrite kron_mixed_product;
-  Msimpl_light;
-  do 2 (apply f_equal2; trivial);
+     restore_dims_fast; repeat rewrite kron_assoc;
+      match goal with 
+      | |- context [(I ?a) ⊗ ((I ?b) ⊗ ((I ?c) ⊗ (?d ⊗ ?e))) ] => 
+            rewrite <- (kron_assoc (I c) _ e);
+            repeat rewrite (kron_plus_distr_l _ _ _ _ (I c));
+            restore_dims_fast;
+            rewrite <- (kron_assoc (I b) _ e);
+            repeat rewrite (kron_plus_distr_l _ _ _ _ (I b))
+      end.
+  (* simplify to remove extra id's *)
+  all: restore_dims_fast;
+       repeat rewrite <- kron_assoc;
+       restore_dims_fast; 
+       repeat rewrite kron_mixed_product;
+       Msimpl_light;
+       do 2 (apply f_equal2; trivial).
   (* the rest of gridify... *)
-  simpl; restore_dims_fast;
-  distribute_plus;
-  restore_dims_fast; repeat rewrite <- kron_assoc;
-  restore_dims_fast; repeat rewrite kron_mixed_product;
-  Msimpl_light;
+  all: simpl; restore_dims_fast;
+       distribute_plus;
+       restore_dims_fast; repeat rewrite <- kron_assoc;
+       restore_dims_fast; repeat rewrite kron_mixed_product;
+       Msimpl_light.
   (* rewrite w/ cnot_db *)
-  autorewrite with cnot_db; Msimpl_light.
+  all: autorewrite with cnot_db; Msimpl_light.
   1, 2, 3: rewrite Mplus_swap_mid.
   all: match goal with 
     | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
@@ -255,11 +253,11 @@ Proof.
   - inversion H3; assumption.
 Qed.  
 
-Local Transparent SWAP CNOT H.
+Local Transparent SWAP CNOT H ID.
 Lemma do_cnot_along_path_sound : forall dim n1 n2 is_in_graph p,
   valid_graph dim is_in_graph ->
   valid_path n1 n2 is_in_graph p ->
-  @uc_well_typed dim (CNOT n1 n2) ->
+  @uc_well_typed _ dim (CNOT n1 n2) ->
   do_cnot_along_path dim p ≡ CNOT n1 n2.
 Proof.
   intros dim n1 n2 is_in_graph p Hgraph Hpath WT.
@@ -310,9 +308,9 @@ Lemma do_cnot_along_path_respects_undirected : forall dim n1 n2 is_in_graph p,
 Proof.
   intros dim n1 n2 is_in_graph p Hpath.
   generalize dependent n1.
-  induction p; intros; try constructor.
+  induction p; intro; try constructor.
   destruct p; try constructor. 
-  destruct p.
+  destruct p; intros Hpath.
   - destruct Hpath as [_ [_ [H1 _]]]. 
     inversion H1; subst.
     constructor; assumption.
@@ -330,18 +328,19 @@ Qed.
 
 (* Correctness of fix_cnots *)
 
-Lemma fix_cnots_sound : forall dim (c : ucom dim) is_in_graph_b,
+Lemma fix_cnots_sound : forall dim (c : base_ucom dim) is_in_graph_b,
   fix_cnots c is_in_graph_b ≡ c.
 Proof.
   intros.
   induction c; try reflexivity; simpl.
   - rewrite IHc1, IHc2. reflexivity.
-  - destruct (is_in_graph_b n n0).
+  - dependent destruction u.
+    destruct (is_in_graph_b n n0).
     reflexivity.
     apply H_swaps_CNOT.
 Qed.
 
-Lemma fix_cnots_respects_constraints : forall dim (c : ucom dim) is_in_graph is_in_graph_b,
+Lemma fix_cnots_respects_constraints : forall dim (c : base_ucom dim) is_in_graph is_in_graph_b,
   (forall n1 n2, reflect (is_in_graph n1 n2) (is_in_graph_b n1 n2)) ->
   respects_constraints_undirected is_in_graph c ->
   respects_constraints is_in_graph (fix_cnots c is_in_graph_b).
@@ -362,7 +361,7 @@ Qed.
 
 (* Correctness of simple_map *)
 
-Lemma simple_map_sound : forall dim (c : ucom dim) get_path is_in_graph is_in_graph_b,
+Lemma simple_map_sound : forall dim (c : base_ucom dim) get_path is_in_graph is_in_graph_b,
   valid_graph dim is_in_graph ->
   get_path_valid dim get_path is_in_graph ->
   (forall n1 n2, reflect (is_in_graph n1 n2) (is_in_graph_b n1 n2)) ->
@@ -374,7 +373,8 @@ Proof.
   - inversion H2.
     rewrite IHc1, IHc2; try assumption.
     reflexivity.
-  - rewrite fix_cnots_sound.
+  - dependent destruction u.
+    rewrite fix_cnots_sound.
     inversion H2; subst.
     eapply do_cnot_along_path_sound.
     apply H.
@@ -382,7 +382,7 @@ Proof.
     constructor; assumption.
 Qed.
 
-Lemma simple_map_respect_constraints : forall dim (c : ucom dim) get_path is_in_graph is_in_graph_b,
+Lemma simple_map_respect_constraints : forall dim (c : base_ucom dim) get_path is_in_graph is_in_graph_b,
   valid_graph dim is_in_graph ->
   get_path_valid dim get_path is_in_graph ->
   (forall n1 n2, reflect (is_in_graph n1 n2) (is_in_graph_b n1 n2)) ->
@@ -390,10 +390,10 @@ Lemma simple_map_respect_constraints : forall dim (c : ucom dim) get_path is_in_
   respects_constraints is_in_graph (simple_map c get_path is_in_graph_b).
 Proof.
   intros.
-  induction c; try constructor; inversion H2; subst.  
+  induction c; try dependent destruction u; simpl;
+  try constructor; inversion H2; subst.  
   apply IHc1; assumption. 
   apply IHc2; assumption.
-  simpl.
   apply fix_cnots_respects_constraints; try assumption.
   eapply do_cnot_along_path_respects_undirected.
   apply H0; assumption.
@@ -435,13 +435,13 @@ Definition LNN_get_path n1 n2 :=
 Compute (LNN_get_path 2 5).
 Compute (LNN_get_path 6 1).
 
-Definition map_to_lnn {dim} (c : ucom dim) : ucom dim :=
+Definition map_to_lnn {dim} (c : base_ucom dim) : base_ucom dim :=
   simple_map c LNN_get_path (LNN_is_in_graph_b dim).
 
 (* Examples *)
-Definition test_lnn1 : ucom 3 := CNOT 2 1.
+Definition test_lnn1 : base_ucom 3 := CNOT 2 1.
 Compute (map_to_lnn test_lnn1).
-Definition test_lnn2 : ucom 5 := CNOT 0 3; CNOT 4 1.
+Definition test_lnn2 : base_ucom 5 := CNOT 0 3; CNOT 4 1.
 Compute (map_to_lnn test_lnn2).
 
 (* Correctness *)
@@ -522,7 +522,7 @@ Proof.
   contradict H2; lia. 
 Qed.
 
-Lemma map_to_lnn_sound : forall dim (c : ucom dim),
+Lemma map_to_lnn_sound : forall dim (c : base_ucom dim),
   uc_well_typed c -> map_to_lnn c ≡ c.
 Proof.
   intros.
@@ -534,7 +534,7 @@ Proof.
   assumption.
 Qed.
 
-Lemma map_to_lnn_respects_constraints : forall dim (c : ucom dim),
+Lemma map_to_lnn_respects_constraints : forall dim (c : base_ucom dim),
   uc_well_typed c -> respects_constraints (LNN_is_in_graph dim) (map_to_lnn c).
 Proof.
   intros.
@@ -595,15 +595,15 @@ Definition tenerife_get_path n1 n2 :=
   | _, _ => [] (* bad input case *)
   end.
 
-Definition map_to_tenerife (c : ucom 5) : ucom 5 :=
+Definition map_to_tenerife (c : base_ucom 5) : base_ucom 5 :=
   simple_map c tenerife_get_path tenerife_is_in_graph_b.
 
 (* Examples *)
-Definition test_tenerife1 : ucom 5 := CNOT 1 2.
+Definition test_tenerife1 : base_ucom 5 := CNOT 1 2.
 Compute (map_to_tenerife test_tenerife1).
-Definition test_tenerife2 : ucom 5 := CNOT 3 0.
+Definition test_tenerife2 : base_ucom 5 := CNOT 3 0.
 Compute (map_to_tenerife test_tenerife2).
-Definition test_tenerife3 : ucom 5 := CNOT 0 2; X 3; CNOT 4 1; X 2; CNOT 3 2.
+Definition test_tenerife3 : base_ucom 5 := CNOT 0 2; X 3; CNOT 4 1; X 2; CNOT 3 2.
 Compute (map_to_tenerife test_tenerife3).
 
 (* Correctness *)
@@ -675,7 +675,7 @@ Proof.
     reflexivity.
 Qed.  
 
-Lemma map_to_tenerife_sound : forall (c : ucom 5),
+Lemma map_to_tenerife_sound : forall (c : base_ucom 5),
   uc_well_typed c -> map_to_tenerife c ≡ c.
 Proof.
   intros.
@@ -687,7 +687,7 @@ Proof.
   assumption.
 Qed.
 
-Lemma map_to_tenerife_respects_constraints : forall (c : ucom 5),
+Lemma map_to_tenerife_respects_constraints : forall (c : base_ucom 5),
   uc_well_typed c -> respects_constraints tenerife_is_in_graph (map_to_tenerife c).
 Proof.
   intros.

@@ -11,26 +11,26 @@ Local Close Scope R_scope.
 
 (** General qubit re-labeling function. **)
 
-Fixpoint map_qubits {dim} (f : nat -> nat) (c : ucom dim) : ucom dim :=
+Fixpoint map_qubits {U dim} (f : nat -> nat) (c : ucom U dim) : ucom U dim :=
   match c with
-  | uskip => uskip
   | c1; c2 => map_qubits f c1; map_qubits f c2
-  | uapp_R θ ϕ λ n => uapp_R θ ϕ λ (f n)
-  | uapp_CNOT m n => uapp_CNOT (f m) (f n)
+  | uapp1 u n => uapp1 u (f n)
+  | uapp2 u m n => uapp2 u (f m) (f n)
+  | uapp3 u m n p => uapp3 u (f m) (f n) (f p)
   end.
   
 (** Lemmas about padding **)
 
 (* TODO: Is there a nicer way to write this? *)
-Fixpoint cast {dim} (c : ucom dim) dim' : ucom dim' := 
+Fixpoint cast {U dim} (c : ucom U dim) dim' : ucom U dim' := 
   match c with 
-  | uskip => uskip
   | c1; c2 => cast c1 dim' ; cast c2 dim'
-  | uapp_R θ ϕ λ n => uapp_R θ ϕ λ n
-  | uapp_CNOT m n => uapp_CNOT m n
+  | uapp1 u n => uapp1 u n
+  | uapp2 u m n => uapp2 u m n
+  | uapp3 u m n p => uapp3 u m n p
   end.                                                     
 
-Lemma typed_cast : forall {n} (c : ucom n) (n' : nat),
+Lemma typed_cast : forall {U n} (c : ucom U n) (n' : nat),
   uc_well_typed c -> n <= n' -> uc_well_typed (cast c n').
 Proof.
   intros.
@@ -38,18 +38,16 @@ Proof.
   apply IHuc_well_typed1. apply IHuc_well_typed2.
 Qed.
                                                      
-Lemma pad_dims_r : forall {dim} (c : ucom dim) (k : nat),
+Lemma pad_dims_r : forall {dim} (c : base_ucom dim) (k : nat),
   uc_well_typed c ->
   (uc_eval c) ⊗ I (2^k) = uc_eval (cast c (dim + k)).  
 Proof.
   intros dim c k H.
-  induction c.
-  - simpl. rewrite id_kron. unify_pows_two. reflexivity.
+  induction c; try dependent destruction u.
   - inversion H; subst.
     simpl. rewrite <- IHc1, <- IHc2; trivial.
     restore_dims_fast; Msimpl; reflexivity.
-  - simpl.
-    inversion H; subst.
+  - simpl. inversion H; subst.
     autorewrite with eval_db.
     gridify; reflexivity.
   - simpl. inversion H; subst.
@@ -57,12 +55,11 @@ Proof.
     gridify; reflexivity.
 Qed.
 
-Lemma pad_dims_l : forall {dim} (c : ucom dim) (k : nat),
+Lemma pad_dims_l : forall {dim} (c : base_ucom dim) (k : nat),
   I (2^k) ⊗ (uc_eval c) = uc_eval (cast (map_qubits (fun q => k + q) c) (k + dim)).  
 Proof.
   intros.
-  induction c; simpl.
-  - rewrite id_kron. unify_pows_two. reflexivity.
+  induction c; try dependent destruction u; simpl.
   - rewrite <- IHc1, <- IHc2.
     restore_dims_fast; Msimpl. reflexivity.
   - autorewrite with eval_db.
@@ -73,15 +70,13 @@ Qed.
 
 (** Combine two programs in parallel. **)
 
-(* Note that we have no way to enforce that dim1 and dim2 are actually the 
-   dimensions of the global registers of c1 and c2. *)
-Definition inPar {dim1 dim2} (c1 : ucom dim1) (c2 : ucom dim2) :=
+Definition inPar {U dim1 dim2} (c1 : ucom U dim1) (c2 : ucom U dim2) :=
   (cast c1 (dim1 + dim2)); (cast (map_qubits (fun q => dim1 + q) c2) (dim1 + dim2)).
 
-Lemma inPar_WT : forall {dim1 dim2} (c1 : ucom dim1) (c2 : ucom dim2),
+Lemma inPar_WT : forall {U dim1 dim2} (c1 : ucom U dim1) (c2 : ucom U dim2),
   uc_well_typed c1 -> uc_well_typed c2 -> uc_well_typed (inPar c1 c2).
 Proof.
-  intros dim1 dim2 c1 c2 WTc1 WTc2.
+  intros U dim1 dim2 c1 c2 WTc1 WTc2.
   unfold inPar.
   apply WT_seq.
   - clear - WTc1.
@@ -90,7 +85,7 @@ Proof.
     induction WTc2; simpl; constructor; try lia; assumption.
 Qed.
 
-Lemma inPar_correct : forall {dim1 dim2} (c1 : ucom dim1) (c2 : ucom dim2),
+Lemma inPar_correct : forall {dim1 dim2} (c1 : base_ucom dim1) (c2 : base_ucom dim2),
   uc_well_typed c1 -> uc_eval (inPar c1 c2) = (uc_eval c1) ⊗ (uc_eval c2).
 Proof.
   intros dim1 dim2 c1 c2 WTc1.

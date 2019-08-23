@@ -8,38 +8,43 @@ Local Close Scope R_scope.
 
 (** Example equivalences of unitary circuits. **)
 
-Lemma uskip_id_l : forall {dim} (c : ucom dim),
-   (uskip ; c) ≡ c.
+Lemma ucom_id_l : forall {dim} n (c : base_ucom dim),
+   uc_well_typed (@ID dim n) -> (ID n; c) ≡ c.
 Proof.
-  intros dim c. 
+  intros dim n c WT. 
   unfold uc_equiv.
-  simpl; Msimpl; reflexivity.
+  simpl; autorewrite with eval_db.
+  apply uc_well_typed_ID in WT.
+  bdestruct_all.
+  repeat rewrite id_kron. 
+  Msimpl_light; reflexivity.
 Qed.
 
-Lemma uskip_id_r : forall {dim} (c : ucom dim),
-   (c ; uskip) ≡ c.
+Lemma ucom_id_r : forall {dim} n (c : base_ucom dim),
+   uc_well_typed (@ID dim n) -> (c ; ID n) ≡ c.
 Proof.
-  intros dim c.
+  intros dim n c WT. 
   unfold uc_equiv.
-  simpl; Msimpl; reflexivity.
+  simpl; autorewrite with eval_db.
+  apply uc_well_typed_ID in WT.
+  bdestruct_all.
+  repeat rewrite id_kron. 
+  Msimpl_light; reflexivity.
 Qed.
 
 Lemma X_X_id : forall {dim} q, 
-  @uc_well_typed dim (X q) -> 
-  @uc_equiv dim uskip (X q; X q).
+  X q; X q ≡ @ID dim q.
 Proof. 
-  intros dim q WT. 
+  intros dim q. 
   unfold uc_equiv.
   simpl; autorewrite with eval_db. 
-  inversion WT; subst.
   gridify.
   replace (σx × σx) with (I 2) by solve_matrix.
-  repeat rewrite id_kron.
   reflexivity.
 Qed.
 
 Lemma X_CNOT_comm : forall {dim} c t, 
-  @uc_equiv dim (X t; CNOT c t) (CNOT c t ; X t).
+  @X dim t; CNOT c t ≡ CNOT c t ; X t.
 Proof.
   intros dim c t.
   unfold uc_equiv.
@@ -48,21 +53,18 @@ Proof.
 Qed.
 
 Lemma H_H_id : forall {dim} q, 
-  @uc_well_typed dim (H q) -> 
-  @uc_equiv dim uskip (H q; H q).
+  H q; H q ≡ @ID dim q.
 Proof. 
-  intros dim q WT. 
+  intros dim q. 
   unfold uc_equiv.
   simpl; autorewrite with eval_db. 
-  inversion WT; subst. 
   gridify.
   replace (hadamard × hadamard) with (I 2) by solve_matrix.
-  repeat rewrite id_kron.
   reflexivity.
 Qed.
 
 Lemma Rz_Rz_add : forall {dim} q θ θ', 
-   @uc_equiv dim ((Rz θ) q; (Rz θ') q) ((Rz (θ + θ')) q).
+   @Rz dim θ q; Rz θ' q ≡ Rz (θ + θ') q.
 Proof.
   intros.
   unfold uc_equiv.
@@ -73,41 +75,37 @@ Proof.
   reflexivity.
 Qed.
 
-Local Transparent Rz.
-Lemma Rz_0_add : forall {dim} q, 
-  @uc_well_typed dim ((Rz 0) q) -> 
-  @uc_equiv dim ((Rz 0) q) uskip.
+Lemma Rz_0_id : forall {dim} q, 
+  Rz 0 q ≡ @ID dim q.
 Proof.
-  intros dim q WT. 
+  intros. 
   unfold uc_equiv.
   autorewrite with eval_db; simpl. 
-  inversion WT; subst.
-  bdestruct (q + 1 <=? dim); try lia.
+  gridify.
   rewrite phase_0. 
-  repeat rewrite id_kron.
   unify_matrices.
 Qed.
 
-Lemma U_V_comm : forall {dim} (m n : nat) θ ϕ λ θ' ϕ' λ',
+Lemma U_V_comm : forall {dim} (m n : nat) (U V : base_Unitary 1),
   m <> n ->
-  @uc_equiv dim (uapp_R θ ϕ λ m ; uapp_R θ' ϕ' λ' n) (uapp_R θ' ϕ' λ' n ; uapp_R θ ϕ λ m). 
+  @uapp1 _ dim U m; uapp1 V n ≡ uapp1 V n ; uapp1 U m. 
 Proof.
   intros.
   unfold uc_equiv; simpl.
-  simpl in *.
+  dependent destruction U; dependent destruction V.
   autorewrite with eval_db.
   gridify; reflexivity.
 Qed.
 
 (* A bit slow, due to six valid subcases *)
-Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) θ ϕ λ,
+Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) (U : base_Unitary 1),
   q <> n1 ->
   q <> n2 ->
-  @uc_equiv dim (uapp_R θ ϕ λ q ; CNOT n1 n2) (CNOT n1 n2 ; uapp_R θ ϕ λ q). 
+  @uapp1 _ dim U q ; CNOT n1 n2 ≡ CNOT n1 n2 ; uapp1 U q. 
 Proof.
   intros.
-  unfold uc_equiv.
-  simpl.
+  unfold uc_equiv; simpl.
+  dependent destruction U.
   autorewrite with eval_db.
   gridify; reflexivity.
 Qed.
@@ -118,23 +116,16 @@ Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
   n1' <> n2 ->
   n2' <> n1 ->
   n2' <> n2 ->
-  @uc_equiv dim (CNOT n1 n2 ; CNOT n1' n2') (CNOT n1' n2' ; CNOT n1 n2). 
+  @CNOT dim n1 n2 ; CNOT n1' n2' ≡ CNOT n1' n2' ; CNOT n1 n2. 
 Proof.
   intros.
-  unfold uc_equiv.
-  simpl; autorewrite with eval_db.
+  unfold uc_equiv; simpl.
+  autorewrite with eval_db.
   gridify; reflexivity.
 Qed.  
-  
-(* auxiliary lemmas for H_swaps_CNOT *)
-Lemma rewrite_H_H : hadamard × hadamard = ∣0⟩⟨0∣ .+ ∣1⟩⟨1∣.
-Proof. solve_matrix. Qed.
-
-Lemma rewrite_H_X_H : hadamard × (σx × hadamard) = ∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣.
-Proof. solve_matrix. Qed.
 
 Lemma H_swaps_CNOT : forall {dim} m n,
-  @uc_equiv dim (H m; H n; CNOT n m; H m; H n) (CNOT m n).
+  @H dim m; H n; CNOT n m; H m; H n ≡ CNOT m n.
 Proof.
   intros.
   unfold uc_equiv; simpl.
@@ -148,7 +139,8 @@ Proof.
     restore_dims_fast.
     rewrite <- 2 kron_plus_distr_l.
     apply f_equal2; trivial.
-    rewrite rewrite_H_H, rewrite_H_X_H.
+    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
+    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
     distribute_plus.
     repeat rewrite <- Mplus_assoc.
     rewrite Mplus_swap_mid.    
@@ -169,7 +161,8 @@ Proof.
     restore_dims_fast.
     rewrite <- 2 kron_plus_distr_l.
     apply f_equal2; trivial.
-    rewrite rewrite_H_H, rewrite_H_X_H.
+    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
+    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
     distribute_plus.
     repeat rewrite <- Mplus_assoc.
     rewrite Mplus_swap_mid.    

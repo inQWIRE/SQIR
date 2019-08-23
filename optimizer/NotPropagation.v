@@ -2,6 +2,7 @@ Require Import Phase.
 Require Import UnitarySem.
 Require Import Tactics.
 Require Import ListRepresentation.
+Require Import PI4GateSet.
 Require Import Equivalences.
 Require Import Proportional.
 Require Import List.
@@ -19,19 +20,19 @@ Local Close Scope R_scope.
    
    This will return None if no cancellation is possible or (Some l') 
    where l' is the result of removing the appropriate X gate from l. *)
-Fixpoint propagate_not {dim} (l : gate_list dim) (q : nat) : option (gate_list dim) :=
+Fixpoint propagate_not {dim} (l : PI4_list dim) (q : nat) : option (PI4_list dim) :=
   match l with
-  | (App1 fU_X q') :: t => 
+  | (App1 UPI4_X q') :: t => 
       if q =? q' then Some t 
       else match propagate_not t q with
            | None => None
-           | Some l' => Some ((_X q') :: l')
+           | Some l' => Some ((App1 UPI4_X q') :: l')
            end
-  | (App2 fU_CNOT q1 q2) :: t => 
+  | (App2 UPI4_CNOT q1 q2) :: t => 
       if q =? q1 then None 
       else match propagate_not t q with
            | None => None
-           | Some l' => Some ((_CNOT q1 q2) :: l')
+           | Some l' => Some ((App2 UPI4_CNOT q1 q2) :: l')
            end
   | (App1 u q') :: t => 
       if (q =? q')
@@ -48,13 +49,13 @@ Fixpoint propagate_not {dim} (l : gate_list dim) (q : nat) : option (gate_list d
    The extra n argument is to help Coq recognize termination.
    We start with n = (length l), which is the maximum
    number of times that propagate_nots will be called. *)
-Fixpoint propagate_nots {dim} (l : gate_list dim) (n: nat) : gate_list dim :=
+Fixpoint propagate_nots {dim} (l : PI4_list dim) (n: nat) : PI4_list dim :=
   match n with
   | 0 => l
   | S n' => match l with
-           | (App1 fU_X q) :: t => 
+           | (App1 UPI4_X q) :: t => 
                match propagate_not t q with
-               | None => (App1 fU_X q) :: (propagate_nots t n')
+               | None => (App1 UPI4_X q) :: (propagate_nots t n')
                | Some l' => propagate_nots l' n'
                end
            | h :: t => h :: (propagate_nots t n')
@@ -62,20 +63,20 @@ Fixpoint propagate_nots {dim} (l : gate_list dim) (n: nat) : gate_list dim :=
            end
   end.
 
-Definition rm_nots {dim} (l : gate_list dim) : gate_list dim := 
+Definition rm_nots {dim} (l : PI4_list dim) : PI4_list dim := 
   propagate_nots l (List.length l).
 
 (* Small test cases. *)
 Definition q0 : nat := 0.
 Definition q1 : nat := 1.
 Definition q2 : nat := 2.
-Definition example1 : gate_list 3 := (_X q0) :: (_H q1) :: (_X q0) :: (_X q1) :: (_CNOT q2 q1) :: (_X q1) :: [].
+Definition example1 : PI4_list 3 := (App1 UPI4_X q0) :: (App1 UPI4_H q1) :: (App1 UPI4_X q0) :: (App1 UPI4_X q1) :: (App2 UPI4_CNOT q2 q1) :: (App1 UPI4_X q1) :: [].
 Compute (rm_nots example1).
-Definition example2 : gate_list 3 := (_X q0) :: (_X q1) :: (_X q2) :: [].
+Definition example2 : PI4_list 3 := (App1 UPI4_X q0) :: (App1 UPI4_X q1) :: (App1 UPI4_X q2) :: [].
 Compute (rm_nots example2).
 
 (* propagate_not preserves well-typedness. *)
-Lemma propagate_not_WT : forall {dim} (l l' : gate_list dim) q,
+Lemma propagate_not_WT : forall {dim} (l l' : PI4_list dim) q,
   uc_well_typed_l l ->
   propagate_not l q = Some l' ->
   uc_well_typed_l l'.
@@ -85,7 +86,7 @@ Proof.
   induction l; try easy.
   simpl; intros.
   destruct a. 
-  dependent destruction f; 
+  dependent destruction p; 
   (* u = H, Z, T, TDAG, P, PDAG *)
   try (destruct (q =? n); try easy;
        destruct (propagate_not l q); try easy;
@@ -98,64 +99,79 @@ Proof.
       inversion H; inversion H0; subst.
       constructor; try apply IHl; easy.
   - (* u = CNOT *)
-    dependent destruction f.
+    dependent destruction p.
     destruct (q =? n); try easy.
     destruct (propagate_not l q); try easy.
     inversion H; inversion H0; subst.
     constructor; try apply IHl; easy.
+  - inversion p.
 Qed.
 
 (* propagate_not is semantics-preserving. *)
-Local Transparent X.
-Lemma propagate_not_sound : forall {dim} (l l' : gate_list dim) q,
+Lemma propagate_not_sound : forall {dim} (l l' : PI4_list dim) q,
   q < dim ->
   propagate_not l q = Some l' ->
-  l' =l= (App1 fU_X q) :: l.
+  l' =l= (App1 UPI4_X q) :: l.
 Proof.
   intros.
   generalize dependent l'.
   induction l; try easy.
   simpl; intros.   
   destruct a.
-  dependent destruction f;
+  dependent destruction p;
   (* u = H, Z, T, TDAG, P, PDAG *)
-  try (bdestruct (q =? n); try easy;
-       destruct (propagate_not l q); try easy;
+  try (bdestruct (q =? n); try discriminate;
+       destruct (propagate_not l q); try discriminate;
        inversion H0; subst;
-       rewrite IHl with (l':=g); trivial;
-       apply U_V_comm_l; lia).
+       rewrite IHl with (l':=p); trivial;
+       unfold uc_equiv_l; simpl;
+       repeat rewrite <- useq_assoc;
+       rewrite U_V_comm; try reflexivity;
+       apply not_eq_sym; assumption).
   - (* u = X *)
     bdestruct (q =? n).
     + inversion H0; subst.
       unfold uc_equiv_l; simpl.
       rewrite <- useq_assoc.
-      rewrite (useq_congruence _ uskip _ (list_to_ucom l')); 
-      try rewrite uskip_id_l; 
-      try reflexivity.
-      symmetry; apply X_X_id. 
-      apply uc_well_typed_X; assumption.
+      specialize (@X_X_id dim n) as XX.
+      unfold uc_equiv in *; simpl in *.
+      rewrite denote_X, denote_ID in XX.
+      rewrite pauli_x_rotation.
+      rewrite XX.
+      unfold pad.
+      bdestructΩ (n + 1 <=? dim).
+      repeat rewrite id_kron.
+      Msimpl_light; reflexivity.
     + destruct (propagate_not l q); inversion H0; subst.
-      rewrite IHl with (l':=g); trivial.
-      apply U_V_comm_l; lia.
+      rewrite IHl with (l':=p); trivial.
+      unfold uc_equiv_l; simpl.
+      repeat rewrite <- useq_assoc.
+      rewrite U_V_comm; try reflexivity.
+      apply not_eq_sym; assumption.
   - (* u = CNOT *)
-    dependent destruction f.
-    bdestruct (q =? n); try easy.
+    dependent destruction p.
+    bdestruct (q =? n); try discriminate.
     destruct (propagate_not l q); inversion H0; subst.
-    rewrite IHl with (l':=g); trivial.
+    rewrite IHl with (l':=p); trivial.
     bdestruct (q =? n0).
     + subst. 
       unfold uc_equiv_l; simpl.
       repeat rewrite <- useq_assoc.
-      rewrite X_CNOT_comm.
+      specialize (@X_CNOT_comm dim n n0) as X_CNOT.
+      unfold uc_equiv in *; simpl in *.
+      rewrite denote_X, denote_cnot in X_CNOT.
+      rewrite pauli_x_rotation.
+      rewrite X_CNOT.
       reflexivity.
     + unfold uc_equiv_l; simpl.
       repeat rewrite <- useq_assoc.
-      unfold X; rewrite U_CNOT_comm; try assumption.
+      rewrite (U_CNOT_comm q n n0); try assumption.
       reflexivity.
+  - inversion p.
 Qed.   
 
 (* propagate_nots is semantics-preserving. *)
-Lemma propagate_nots_sound : forall {dim} (l : gate_list dim) n, 
+Lemma propagate_nots_sound : forall {dim} (l : PI4_list dim) n, 
   uc_well_typed_l l -> l =l= propagate_nots l n.
 Proof.
   intros.
@@ -166,25 +182,24 @@ Proof.
   destruct g.
   inversion WT; subst.
   simpl.
-  dependent destruction f;
+  dependent destruction p;
   (* u = H, Z, T, TDAG, P, PDAG *)
   try (apply (cons_congruence _ l (propagate_nots l n));
        apply IHn; assumption).
   (* u = X *)
   - specialize (@propagate_not_sound dim) as H4.
-    remember (propagate_not l n0) as x.
-    destruct x.
-    + symmetry in Heqx.
-      specialize (H4 l g n0 H1 Heqx).
+    destruct (propagate_not l n0) eqn:prop.
+    + specialize (H4 l p n0 H1 prop).
       rewrite <- H4.
       apply IHn.
-      apply (propagate_not_WT l g n0); assumption.
+      apply (propagate_not_WT l p n0); assumption.
     + apply (cons_congruence _ l (propagate_nots l n));
       apply IHn; assumption.
   (* u = CNOT *)
   - inversion WT; subst. 
     apply (cons_congruence _ l (propagate_nots l n)).
     apply IHn; assumption.
+  - inversion p.
 Qed.
 
 (* rm_nots is semantics-preserving. 
@@ -194,7 +209,7 @@ Qed.
      ==> Consider the program X 4; X 4 where dim = 3
    The output of the denotation function may change in this case. 
 *)
-Lemma rm_nots_sound : forall {dim} (l : gate_list dim), 
+Lemma rm_nots_sound : forall {dim} (l : PI4_list dim), 
   uc_well_typed_l l -> l =l= rm_nots l.
 Proof.
   intros dim l WT.

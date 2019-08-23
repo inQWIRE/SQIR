@@ -5,15 +5,15 @@ Local Open Scope ucom.
 Definition a : nat := O.
 Definition b : nat := S O.
 
-Definition bell00_u : ucom 2 :=
+Definition bell00_u : base_ucom 2 :=
   H a;
   CNOT a b.
 
-Definition encode_u (b1 b2 : bool): ucom 2 :=
-  (if b2 then X a else uskip);
-  (if b1 then Z a else uskip).
+Definition encode_u (b1 b2 : bool): base_ucom 2 :=
+  (if b2 then X a else SKIP);
+  (if b1 then Z a else SKIP).
 
-Definition decode_u : ucom 2 := (* note: this is the reverse of bell00 *)
+Definition decode_u : base_ucom 2 := (* note: this is the reverse of bell00 *)
   CNOT a b;
   H a.
 
@@ -30,7 +30,7 @@ Proof.
   Msimpl.
   simpl. replace 4%nat with (2*2)%nat by lia.
   replace (∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2) with cnot by solve_matrix.
-  destruct b1; destruct b2; autorewrite with eval_db; simpl.
+  destruct b1; destruct b2; autorewrite with eval_db; simpl; try lia.
   (* At this point we have four cases corresponding to the values of b1 and b2. *)
   (* We'll do the first case (mostly) manually. *)
   - repeat rewrite kron_1_l; auto with wf_db.
