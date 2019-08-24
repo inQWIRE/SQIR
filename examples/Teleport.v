@@ -1,9 +1,10 @@
 Require UnitarySem.
 Require DensitySem.
 Require NDSem.
+Require Proportional.
 Require Import QWIRE.Dirac.
 
-Ltac restore_dims_rec A :=
+(*Ltac restore_dims_rec A :=
    match A with
   | ?A × ?B   => let A' := restore_dims_rec A in 
                 let B' := restore_dims_rec B in 
@@ -82,7 +83,7 @@ Ltac cancel_terms t :=
                                     rewrite (Cmult_comm y z)
   | |- context[(?x * ?y * ?z)%C] => tryif has_term t x then fail else has_term t y; has_term (/ t)%C z; 
                                   rewrite <- (Cmult_assoc x y z)
-  end.  
+  end.  *)
 
 (* Unitary Teleportation Circuit and Proof *)
 Module UTeleport.
@@ -92,10 +93,10 @@ Import UnitarySem.
 Open Scope ucom.
 
 (* a = alice; b = bob; q = qubit to be teleported *)
-Definition bell {n} (a b : nat) : ucom n := H a ; CNOT a b.
-Definition alice {n} (q a : nat) : ucom n := CNOT q a ; H q.
-Definition bob {n} (q a b: nat) : ucom n := CNOT a b; CZ q b.
-Definition teleport {n} (q a b : nat) : ucom n := alice q a; bob q a b.
+Definition bell {n} (a b : nat) : base_ucom n := H a ; CNOT a b.
+Definition alice {n} (q a : nat) : base_ucom n := CNOT q a ; H q.
+Definition bob {n} (q a b: nat) : base_ucom n := CNOT a b; CZ q b.
+Definition teleport {n} (q a b : nat) : base_ucom n := alice q a; bob q a b.
 
 Definition epr00 : Vector 4 :=
   fun x y => match x, y with
@@ -108,7 +109,8 @@ Lemma epr_correct :
   forall (ψ : Vector 2), WF_Matrix ψ -> (@uc_eval 3 (bell 1 2)) × (ψ ⊗ ∣0⟩ ⊗ ∣0⟩) = ψ ⊗ epr00. 
 Proof.
   intros.
-  unfold bell. simpl. unfold ueval_cnot, ueval1. simpl. unfold pad. simpl.
+  unfold bell. 
+  simpl; autorewrite with eval_db; simpl.
   solve_matrix.
 Qed.
 
@@ -117,8 +119,7 @@ Lemma teleport_correct : forall (ψ : Vector 2),
 Proof.
   intros.
   unfold teleport. simpl.
-  unfold ueval1.
-  unfold ueval_cnot, pad. simpl.
+  autorewrite with eval_db. simpl.
   solve_matrix.
   all: repeat (try rewrite Cmult_plus_distr_l; 
                try rewrite Cmult_plus_distr_r;
@@ -141,96 +142,52 @@ Definition q : nat := 0. (* qubit for transmission *)
 Definition a : nat := 1. (* alice's qubit *)
 Definition b : nat := 2. (* bob's qubit *)
 
-Definition bell : com 3 := H a ; CNOT a b.
-Definition alice : com 3 := CNOT q a ; H q ; measure q ; measure a.
-Definition bob : com 3 := CNOT a b; CZ q b; reset q; reset a.
-Definition teleport : com 3 := bell; alice; bob.
+Definition bell : base_com 3 := H a ; CNOT a b.
+Definition alice : base_com 3 := CNOT q a ; H q.
+Definition bob : base_com 3 := mif a then (X b; X a) else skip; 
+                               mif q then (Z b; X q) else skip.
+Definition teleport : base_com 3 := bell; alice; bob.
 
-(* Abominably slow, but works. Will try to speed up later. 
-Lemma teleport_correct : forall (ρ : Density (2^1)),
+Lemma teleport_correct : forall (ρ : Density 2),
   WF_Matrix ρ -> 
-  c_eval teleport (ρ ⊗ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) = (∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣ ⊗ ρ).  
+  c_eval teleport (ρ ⊗ ∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣) = (∣0⟩⟨0∣ ⊗ ∣0⟩⟨0∣ ⊗ ρ).
 Proof.
   intros.
   simpl.
   repeat rewrite compose_super_eq.
   unfold compose_super.
-  unfold ueval1.
-  restore_dims.
-  repeat rewrite pad_mult.
-  unfold Splus, ueval_cnot, super, pad; simpl.
-  restore_dims_fast.
+  autorewrite with eval_db; simpl.
+  Msimpl_light.
+  unfold Splus, super.
   Msimpl.
-  solve_matrix.
-  all: repeat (try rewrite Cmult_plus_distr_l; 
-               try rewrite Cmult_plus_distr_r;
-               try rewrite <- Copp_mult_distr_r;
-               try rewrite <- Copp_mult_distr_l).
-  all: group_radicals.
-  all: cancel_terms 2%R.
-  all: reflexivity.
+  solve_matrix. (* slow! *)
 Qed.
-*)
 
 End DensityTeleport.
 
-
+(* Non-unitary teleport, proof with non-deterinistic semantics *)
 Module NDTeleport.
 
 Import UnitarySem.
 Import NDSem.
+Import Proportional.
 
 Local Open Scope com.
-
-(* More general than the notion in Deutsch.v
-   Figure out which is desired and move to Quantum. *)
-Definition proportional {n : nat} (ψ ϕ : Vector n) := 
-  exists s, s .* ψ = ϕ. 
-
-Notation "ψ ∝ ϕ" := (proportional ψ ϕ) (at level 100).
-
 
 Definition q : nat := 0. (* qubit for transmission *)
 Definition a : nat := 1. (* alice's qubit *)
 Definition b : nat := 2. (* bob's qubit *)
 
-Definition bell : com 3 := H a ; CNOT a b.
-Definition alice : com 3 := CNOT q a ; H q ; measure q ; measure a.
-Definition bob : com 3 := CNOT a b; CZ q b; reset q; reset a.
-Definition teleport : com 3 := bell; alice; bob.
+Definition bell : base_com 3 := H a ; CNOT a b.
+Definition alice : base_com 3 := CNOT q a ; H q.
+Definition bob : base_com 3 := mif a then (X b; X a) else skip; 
+                               mif q then (Z b; X q) else skip.
+Definition teleport : base_com 3 := bell; alice; bob.
 
 Local Open Scope R_scope.
 Local Open Scope C_scope.
 
 Definition epr00 : Vector 4 := / √ 2 .* ∣ 0, 0 ⟩ .+ / √ 2 .* ∣ 1, 1 ⟩.
-
-Definition notc : Matrix 4 4 :=
-  fun x y => match x, y with 
-          | 1, 3 => 1
-          | 3, 1 => 1
-          | 0, 0 => 1
-          | 2, 2 => 1
-          | _, _ => 0
-          end.          
-
-Lemma cnot_decomposition : ∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2 = cnot.
-Proof. solve_matrix. Qed.                                               
-
-Lemma notc_decomposition : σx ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ ∣0⟩⟨0∣ = notc.
-Proof. solve_matrix. Qed.                                               
-
-Ltac destruct_seqs := 
-  repeat match goal with
-  | [H : ?a / _ ⇩ _ |- _] => unfold a in H
-  | [H : skip / _ ⇩ _ |- _] => dependent destruction H
-  | [H : (_ ; _) / _ ⇩ _ |- _] => dependent destruction H
-  end.
-
-Ltac destruct_apps := 
-  repeat match goal with
-  | [H : app1 _ _ / _ ⇩ _ |- _] => dependent destruction H
-  | [H : app2 _ _ _ / _ ⇩ _ |- _] => dependent destruction H
-  end.
 
 (* Thought I had this. *)
 (* Generalizable? *)
@@ -251,9 +208,11 @@ Proof.
   lca.
 Qed. 
 
+(* Alternative form of proportional for unscaled vectors. *)
+Definition proportional {m n : nat} (A B : Matrix m n) := 
+  exists s, A = s .* B. 
+Infix "∝" := proportional (at level 70).
 
-(* Via bra-ket reasoning *)
-(*
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix ψ ->
   teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' ∝ ∣ 0 , 0 ⟩ ⊗ ψ.   
@@ -266,396 +225,289 @@ Proof.
   rename S2 into Bob.
   assert (E00 : ψ' = ψ ⊗ epr00).
   { clear Alice Bob.
-    destruct_seqs; destruct_apps.
+    dependent destruction Bell;
+    dependent destruction Bell1;
+    dependent destruction Bell2.
     simpl.
-    unfold ueval_cnot, ueval1, pad. simpl.
+    autorewrite with eval_db; simpl.
     Msimpl.
     setoid_rewrite cnot_decomposition.
-    restore_dims.
-    rewrite kron_assoc. restore_dims.
+    restore_dims_fast.
+    rewrite kron_assoc. 
+    restore_dims_fast.
     rewrite kron_mixed_product.
     autorewrite with M_db ket_db; auto.
-    unfold epr00. autorewrite with ket_db.
+    unfold epr00. 
+    autorewrite with ket_db.
     reflexivity.
   }
   subst. clear Bell.
   dependent destruction Alice.
   dependent destruction Alice1.  
+  dependent destruction Alice2.  
   evar (ψA : Vector (2^3)).
-  assert (EA : ψ' = ψA).
-  { clear Alice1_2 Alice2 Bob.
-    destruct_seqs; destruct_apps.
-    simpl.
-    unfold ueval_cnot, ueval1, pad, epr00. simpl.
+  assert (EA : uc_eval (H q) × (uc_eval (CNOT q a) × (ψ ⊗ epr00)) = ψA).
+  { clear Bob. 
+    autorewrite with eval_db; simpl. 
     Msimpl.
-    setoid_rewrite cnot_decomposition.
-    restore_dims.
-    autorewrite with M_db ket_db. 
-    restore_dims.
+    unfold epr00.
+    replace 4%nat with (2 * 2)%nat by reflexivity.
+    rewrite <- id_kron.
     repeat rewrite <- kron_assoc.
-    rewrite kron_mixed_product.
+    replace (2 * 1)%nat with 2%nat by reflexivity.
+    rewrite cnot_decomposition.
+    restore_dims_fast.
+    autorewrite with M_db ket_db. 
+    repeat rewrite <- kron_assoc.
+    restore_dims_fast.
+    repeat rewrite kron_mixed_product.
     autorewrite with M_db ket_db. 
     rewrite (ket_decomposition ψ) by auto. 
     autorewrite with M_db ket_db. 
-    repeat rewrite kron_assoc.
-    restore_dims.
-    repeat rewrite kron_mixed_product.
-    autorewrite with M_db ket_db.
     try rewrite <- Copp_mult_distr_r.
     group_radicals.
-    restore_dims.
-    repeat rewrite <- kron_assoc.
+    subst ψA. 
     reflexivity.
   }    
-  subst ψA. rewrite EA in *. clear EA Alice1_1.
-  dependent destruction Alice1_2; subst ψ'0;
-  dependent destruction Alice2.
-  - (* Measured 0, 0 *)
+  subst ψA. rewrite EA in Bob. clear EA.
+  dependent destruction Bob.
+  dependent destruction Bob1.
+  - (* Measured a = 1 *)
+    evar (ψ'pad : Vector (2^3)).
+    assert(Epad : ψ' = ψ'pad).
+    { subst ψ'.
+      unfold pad; simpl.
+      repeat rewrite Mmult_plus_distr_l.
+      repeat rewrite Mscale_mult_dist_r. 
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      replace (∣1⟩⟨1∣ × ∣ 0 ⟩) with (@Zero 2 1) by solve_matrix.
+      replace (∣1⟩⟨1∣ × ∣ 1 ⟩) with (∣ 1 ⟩) by solve_matrix.
+      Msimpl_light.
+      subst ψ'pad; reflexivity.
+    }
+    subst ψ'pad. rewrite Epad in Bob1. clear H Epad ψ'.
+    dependent destruction Bob1;
+    dependent destruction Bob1_1;
+    dependent destruction Bob1_2.
     evar (ψb : Vector (2^3)).
-    assert(Eb : ψ'0 = ψb).
-    subst ψ'0.
-    unfold ueval_cnot, ueval1, pad. simpl.
-    autorewrite with ket_db M_db; auto with wf_db.
-    restore_dims_fast.
-    repeat rewrite kron_assoc.
-    restore_dims_fast.
-    repeat rewrite kron_mixed_product.
-    autorewrite with ket_db M_db; auto with wf_db.
-    (* need bra  adjoint lemmas in ket_db *)
-    replace (⟨0∣) with (bra 0) by reflexivity.
-    replace (∣0⟩) with (ket 0) by reflexivity.
-    replace (⟨1∣) with (bra 1) by reflexivity.
-    replace (∣1⟩) with (ket 1) by reflexivity. (* Have ket_db do these *)
+    assert(Eb : (uc_eval (X a)
+          × (uc_eval (X b)
+             × (/ 2 * ψ 1%nat 0%nat .* ∣ 0, 1, 0 ⟩
+                .+ (- (/ 2 * ψ 1%nat 0%nat) .* ∣ 1, 1, 0 ⟩)
+                .+ (/ 2 * ψ 0%nat 0%nat .* ∣ 0, 1, 1 ⟩
+                    .+ / 2 * ψ 0%nat 0%nat .* ∣ 1, 1, 1 ⟩)))) = ψb).
+    { clear Bob2.
+      autorewrite with eval_db; simpl.
+      replace 4%nat with (2 * 2)%nat by reflexivity.
+      rewrite <- id_kron.
+      rewrite kron_1_r. 
+      repeat rewrite Mmult_plus_distr_l.
+      repeat rewrite Mscale_mult_dist_r. 
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      autorewrite with ket_db; auto with wf_db.
+      subst ψb; reflexivity.
+    }
+    subst ψb. rewrite Eb in Bob2. clear Eb.
+    dependent destruction Bob2.
+    + (* Measured q = 1 *)
+      evar (ψ'pad : Vector (2^3)).
+      assert(Epad : ψ' = ψ'pad).
+      { subst ψ'.
+        unfold pad; simpl.
+        replace 4%nat with (2 * 2)%nat by reflexivity.
+        rewrite <- id_kron.
+        rewrite <- kron_assoc.
+        rewrite kron_1_l; auto with wf_db.
+        repeat rewrite Mmult_plus_distr_l.
+        repeat rewrite Mscale_mult_dist_r. 
+        restore_dims_fast.
+        repeat rewrite kron_mixed_product.
+        replace (∣1⟩⟨1∣ × ∣ 0 ⟩) with (@Zero 2 1) by solve_matrix.
+        replace (∣1⟩⟨1∣ × ∣ 1 ⟩) with (∣ 1 ⟩) by solve_matrix.
+        Msimpl_light.
+        subst ψ'pad; reflexivity.
+      }
+      subst ψ'pad. rewrite Epad in Bob2. clear H Epad ψ'.
+      dependent destruction Bob2;
+      dependent destruction Bob2_1;
+      dependent destruction Bob2_2.
+      autorewrite with eval_db; simpl.
+      replace 4%nat with (2 * 2)%nat by reflexivity.
+      rewrite <- id_kron.
+      rewrite <- kron_assoc.
+      rewrite kron_1_r, kron_1_l; auto with wf_db.
+      repeat rewrite Mmult_plus_distr_l.
+      repeat rewrite Mscale_mult_dist_r. 
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      autorewrite with ket_db; auto with wf_db.
+      replace (- (/ 2 * ψ 1%nat 0%nat) * -1) with (/ 2 * ψ 1%nat 0%nat) by lca.
+      repeat rewrite <- Mscale_assoc.
+      rewrite <- Mscale_plus_distr_r.
+      repeat rewrite <- Mscale_kron_dist_r.
+      rewrite <- kron_plus_distr_l.
+      exists (/ 2).
+      do 2 (apply f_equal2; try reflexivity).
+      rewrite ket_decomposition by assumption.
+      rewrite Mplus_comm.
+      reflexivity.
+    + (* Measured q = 0 *)
+      dependent destruction Bob2.
+      clear ψ' H.
+      unfold pad; simpl.
+      replace 4%nat with (2 * 2)%nat by reflexivity.
+      rewrite <- id_kron.
+      rewrite <- kron_assoc.
+      rewrite kron_1_l; auto with wf_db.
+      repeat rewrite Mmult_plus_distr_l.
+      repeat rewrite Mscale_mult_dist_r. 
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      replace (∣0⟩⟨0∣ × ∣ 0 ⟩) with (∣ 0 ⟩) by solve_matrix.
+      replace (∣0⟩⟨0∣ × ∣ 1 ⟩) with (@Zero 2 1) by solve_matrix.
+      Msimpl_light.
+      repeat rewrite <- Mscale_assoc.
+      rewrite <- Mscale_plus_distr_r.
+      repeat rewrite <- Mscale_kron_dist_r.
+      rewrite <- kron_plus_distr_l.
+      exists (/ 2).
+      do 2 (apply f_equal2; try reflexivity).
+      rewrite ket_decomposition by assumption.
+      rewrite Mplus_comm.
+      reflexivity.
+  - (* Measured a = 0 *)
+    evar (ψ'pad : Vector (2^3)).
+    assert(Epad : ψ' = ψ'pad).
+    { subst ψ'.
+      unfold pad; simpl.
+      repeat rewrite Mmult_plus_distr_l.
+      repeat rewrite Mscale_mult_dist_r. 
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      replace (∣0⟩⟨0∣ × ∣ 0 ⟩) with (∣ 0 ⟩) by solve_matrix.
+      replace (∣0⟩⟨0∣ × ∣ 1 ⟩) with (@Zero 2 1) by solve_matrix.
+      Msimpl_light.
+      subst ψ'pad; reflexivity.
+    }
+    subst ψ'pad. rewrite Epad in Bob1. clear H Epad ψ'.
+    dependent destruction Bob1.
+    dependent destruction Bob2.
+    + (* Measured q = 1 *)
+      evar (ψ'pad : Vector (2^3)).
+      assert(Epad : ψ' = ψ'pad).
+      { subst ψ'.
+        unfold pad; simpl.
+        replace 4%nat with (2 * 2)%nat by reflexivity.
+        rewrite <- id_kron.
+        rewrite <- kron_assoc.
+        rewrite kron_1_l; auto with wf_db.
+        repeat rewrite Mmult_plus_distr_l.
+        repeat rewrite Mscale_mult_dist_r. 
+        restore_dims_fast.
+        repeat rewrite kron_mixed_product.
+        replace (∣1⟩⟨1∣ × ∣ 0 ⟩) with (@Zero 2 1) by solve_matrix.
+        replace (∣1⟩⟨1∣ × ∣ 1 ⟩) with (∣ 1 ⟩) by solve_matrix.
+        Msimpl_light.
+        subst ψ'pad; reflexivity.
+      }
+      subst ψ'pad. rewrite Epad in Bob2. clear H Epad ψ'.
+      dependent destruction Bob2;
+      dependent destruction Bob2_1;
+      dependent destruction Bob2_2.
+      autorewrite with eval_db; simpl.
+      replace 4%nat with (2 * 2)%nat by reflexivity.
+      rewrite <- id_kron.
+      rewrite <- kron_assoc.
+      rewrite kron_1_r, kron_1_l; auto with wf_db.
+      repeat rewrite Mmult_plus_distr_l.
+      repeat rewrite Mscale_mult_dist_r. 
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      autorewrite with ket_db; auto with wf_db.
+      replace (- (/ 2 * ψ 1%nat 0%nat) * -1) with (/ 2 * ψ 1%nat 0%nat) by lca.
+      repeat rewrite <- Mscale_assoc.
+      rewrite <- Mscale_plus_distr_r.
+      repeat rewrite <- Mscale_kron_dist_r.
+      rewrite <- kron_plus_distr_l.
+      exists (/ 2).
+      do 2 (apply f_equal2; try reflexivity).
+      rewrite ket_decomposition by assumption.
+      reflexivity.
+    + (* Measured q = 0 *)
+      dependent destruction Bob2.
+      clear ψ' H.
+      unfold pad; simpl.
+      replace 4%nat with (2 * 2)%nat by reflexivity.
+      rewrite <- id_kron.
+      rewrite <- kron_assoc.
+      rewrite kron_1_l; auto with wf_db.
+      repeat rewrite Mmult_plus_distr_l.
+      repeat rewrite Mscale_mult_dist_r. 
+      restore_dims_fast.
+      repeat rewrite kron_mixed_product.
+      replace (∣0⟩⟨0∣ × ∣ 0 ⟩) with (∣ 0 ⟩) by solve_matrix.
+      replace (∣0⟩⟨0∣ × ∣ 1 ⟩) with (@Zero 2 1) by solve_matrix.
+      Msimpl_light.
+      repeat rewrite <- Mscale_assoc.
+      rewrite <- Mscale_plus_distr_r.
+      repeat rewrite <- Mscale_kron_dist_r.
+      rewrite <- kron_plus_distr_l.
+      exists (/ 2).
+      do 2 (apply f_equal2; try reflexivity).
+      rewrite ket_decomposition by assumption.
+      reflexivity.
+Qed.
 
-    simpl.
-    unfold ueval_cnot, ueval1, pad. simpl.
-    Msimpl.
-    setoid_rewrite cnot_decomposition.
-    restore_dims.
-    rewrite kron_assoc. restore_dims.
-    rewrite kron_mixed_product.
-    autorewrite with M_db ket_db; auto.
-    unfold epr00. autorewrite with ket_db.
-    reflexivity.
-  }
-*)  
+(* More automated version *)
 
-(* Via Matrix Multiplying *)
-Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
+Lemma teleport_correct' : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix ψ ->
   teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' ∝ ∣ 0 , 0 ⟩ ⊗ ψ.   
 Proof.
   intros ψ ψ' WF H.
-  destruct_seqs; destruct_apps.
-  evar (e : Vector (2^3)).  
-  match goal with 
-  | H : measure 0 / ?x ⇩ ?y |- _ => replace x with e in H
+  repeat match goal with
+  | H : _ / _ ⇩ _ |- _ => dependent destruction H
   end.
-  2:{ unfold ueval_cnot, ueval1, pad; simpl; Msimpl.
-      repeat reduce_matrices.
-      unfold Cdiv.
-      repeat rewrite <- Copp_mult_distr_l.
-      group_radicals.
-      autorewrite with C_db. 
-      unfold e; reflexivity. }
-  subst e.
-  dependent destruction H0_2;
-  dependent destruction H0_0;
-  dependent destruction H0_3;
-  dependent destruction H0_4;
-  destruct_seqs; destruct_apps;
-  subst ψ'.
-
-  (* solves the contradictory (0) cases *)
-  all: try (
-           contradict H1;
-           unfold ueval_cnot, ueval1, pad; simpl; Msimpl;
-           repeat reduce_matrices;
-           unfold norm; (* easier to change condition to norm^2 <> 0 *)
-           simpl; autorewrite with R_db; rewrite sqrt_0; reflexivity
-         ).
-
-  (* solves the four (two???) possible cases *)
-  all: try (
-       clear;
-       unfold ueval_cnot, ueval1, pad; simpl; Msimpl;
-       repeat reduce_matrices;
-       unfold Cdiv;
-       repeat (try rewrite Cmult_plus_distr_l; 
-               try rewrite Cmult_plus_distr_r;
-               try rewrite <- Copp_mult_distr_r;
-               try rewrite <- Copp_mult_distr_l);
-       autorewrite with C_db;
-       group_radicals;
-       cancel_terms 2%R;
-       exists 2; solve_matrix
-       ).
-
+  all: rewrite (ket_decomposition ψ);
+       autorewrite with eval_db; simpl;
+       auto with wf_db;
+       replace 4%nat with (2 * 2)%nat by reflexivity;
+       try rewrite <- id_kron;
+       Msimpl_light;
+       replace (2 * 1)%nat with 2%nat by reflexivity;
+       rewrite cnot_decomposition.
+  all: repeat rewrite kron_assoc;
+       restore_dims_fast;
+       autorewrite with ket_db;
+       repeat rewrite kron_mixed_product;
+       autorewrite with ket_db.
+  all: auto with wf_db.
+  all: repeat rewrite <- kron_assoc.
+  all: restore_dims_fast;
+       repeat rewrite kron_mixed_product;
+       autorewrite with ket_db;
+       auto 10 with wf_db.
+  all: restore_dims_fast;
+       repeat rewrite kron_mixed_product;
+       autorewrite with ket_db;
+       auto 10 with wf_db.
+  all: replace ((∣ 0 ⟩) † × ∣ 1 ⟩) with (@Zero 1 1) by solve_matrix;
+       replace ((∣ 1 ⟩) † × ∣ 0 ⟩) with (@Zero 1 1) by solve_matrix;
+       replace ((∣ 0 ⟩) † × ∣ 0 ⟩) with (I 1) by solve_matrix;
+       replace ((∣ 1 ⟩) † × ∣ 1 ⟩) with (I 1) by solve_matrix;
+       Msimpl_light.
+  all: autorewrite with ket_db.
+  all: try rewrite <- Copp_mult_distr_r;
+       group_radicals.
+  all: replace (- (/ 2 * -1 * ψ 1%nat 0%nat)) with (/ 2 * ψ 1%nat 0%nat) by lca;
+       repeat rewrite <- Mscale_assoc;
+       rewrite <- Mscale_plus_distr_r;
+       repeat rewrite <- Mscale_kron_dist_r;
+       rewrite <- kron_plus_distr_l;
+       exists (/ 2);
+       reflexivity.
 Qed.
 
-(* Alternative teleport proofs 
 
-(* Thought I had this. *)
-(* Generalizable? *)
-Lemma ket_decomposition : forall (ψ : Vector 2), 
-  WF_Matrix _ _ ψ ->
-  ψ = (ψ 0%nat 0%nat) .* ∣ 0 ⟩ .+ (ψ 1%nat 0%nat) .* ∣ 1 ⟩.
-Proof.
-  intros.
-  prep_matrix_equality.
-  unfold scale, Mplus.
-  destruct y as [|y']. 
-  2:{ rewrite H; try lia. 
-      unfold ket, qubit0, qubit1. simpl. 
-      repeat (destruct x; try lca). 
-  }
-  destruct x as [| [| n]]; unfold ket, qubit0, qubit1; simpl; try lca.  
-  rewrite H; try lia.
-  lca.
-Qed. 
-
-Notation "∣+⟩" := (1/√2 .* ∣0⟩ .+ 1/√2 .* ∣1⟩)%C.
-Notation "∣-⟩" := (1/√2 .* ∣0⟩ .+ (- 1/√2) .* ∣1⟩)%C.
-
-
-Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
-  WF_Matrix _ _ ψ ->
-  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' = ∣ 0 , 0 ⟩ ⊗ ψ.   
-Proof.
-  intros ψ ψ' WF H.
-  destruct_seqs; destruct_apps.
-  evar (e : Vector (2^3)).  
-  assert ((ueval 3 U_H [a] × (ueval 3 U_CNOT (q::[a]) × (ueval 3 U_CNOT (a::[b]) × (ueval 3 U_H [a] × (ψ ⊗ ∣ 0, 0 ⟩))))) = e).
-  rewrite (ket_decomposition ψ); auto.
-  unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl.
-  setoid_rewrite cnot_decomposition.
-
-  restore_dims.
-  autorewrite with ket_db.
-  restore_dims.
-  rewrite <- kron_assoc.
-  rewrite <- kron_assoc.
-  repeat rewrite kron_mixed_product.
-  autorewrite with M_db.  
-  repeat rewrite kron_assoc.
-  autorewrite with M_db.  
-  Msimpl
-  
-  Set Printing All.
-  restore_dims.
-
-  autorewrite with ket_db.
-  rewrite <- kron_assoc.
-  rewrite <- kron_assoc.
-  Msimpl'.
-setoid_rewrite kron_mixed_product'.
-  Set Printing All.
-
-  rewrite kron_mixed_product'.
-  Msimpl.
-  Msimpl'.
-  autorewrite with ket_db.
-  setoid_rewrite (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 1 ⟩ ∣ 0 ⟩).
-  setoid_rewrite (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 1 ⟩ ∣ 0 ⟩).
-  Msimpl'; try reflexivity.
-  autorewrite with ket_db.
-  setoid_rewrite CNOT00_spec.
-  setoid_rewrite CNOT10_spec.
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 1 ⟩ ∣ 1 ⟩).
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 1 ⟩ ∣ 1 ⟩).
-  Msimpl'. simpl. 
-  kmp_rewrite cnot (I 2) ∣ 0 , 0 ⟩ ∣ 0 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 0 , 1 ⟩ ∣ 1 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 1 , 0 ⟩ ∣ 0 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 1 , 1 ⟩ ∣ 1 ⟩.
-  autorewrite with ket_db; auto with wf_db.
-  setoid_rewrite CNOT00_spec.
-  setoid_rewrite CNOT01_spec.
-  setoid_rewrite CNOT10_spec.
-  setoid_rewrite CNOT11_spec.
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) ∣ 0 , 0 ⟩ ∣ 0 ⟩.
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) ∣ 0 , 1 ⟩ ∣ 1 ⟩.
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) ∣ 1 , 1 ⟩ ∣ 0 ⟩.
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) ∣ 1 , 0 ⟩ ∣ 1 ⟩.
-  Msimpl'; trivial.
-  autorewrite with ket_db C_db.  
-  kmp_rewrite cnot (I 2) ∣ 0 , 1 ⟩ ∣ 1 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 1 , 0 ⟩ ∣ 0 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 1 , 1 ⟩ ∣ 1 ⟩.
-
-
-Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
-  WF_Matrix _ _ ψ ->
-  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' = ∣ 0 , 0 ⟩ ⊗ ψ.   
-Proof.
-  intros ψ ψ' WF H.
-  destruct_seqs; destruct_apps.
-  evar (e : Vector (2^3)).  
-  assert ((ueval 3 U_H [a] × (ueval 3 U_CNOT (q::[a]) × (ueval 3 U_CNOT (a::[b]) × (ueval 3 U_H [a] × (ψ ⊗ ∣ 0, 0 ⟩))))) = e).
-  rewrite (ket_decomposition ψ); auto.
-  unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl.
-  setoid_rewrite cnot_decomposition.
-  autorewrite with ket_db.
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  Msimpl'; try reflexivity.
-  autorewrite with ket_db.
-  setoid_rewrite (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 1 ⟩ ∣ 0 ⟩).
-  setoid_rewrite (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 1 ⟩ ∣ 0 ⟩).
-  Msimpl'; try reflexivity.
-  autorewrite with ket_db.
-  setoid_rewrite CNOT00_spec.
-  setoid_rewrite CNOT10_spec.
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 0 ⟩ ∣ 1 ⟩ ∣ 1 ⟩).
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ∣ 1 ⟩ ∣ 1 ⟩ ∣ 1 ⟩).
-  Msimpl'. simpl. 
-  kmp_rewrite cnot (I 2) ∣ 0 , 0 ⟩ ∣ 0 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 0 , 1 ⟩ ∣ 1 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 1 , 0 ⟩ ∣ 0 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 1 , 1 ⟩ ∣ 1 ⟩.
-  autorewrite with ket_db; auto with wf_db.
-  setoid_rewrite CNOT00_spec.
-  setoid_rewrite CNOT01_spec.
-  setoid_rewrite CNOT10_spec.
-  setoid_rewrite CNOT11_spec.
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) ∣ 0 , 0 ⟩ ∣ 0 ⟩.
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) ∣ 0 , 1 ⟩ ∣ 1 ⟩.
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) ∣ 1 , 1 ⟩ ∣ 0 ⟩.
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) ∣ 1 , 0 ⟩ ∣ 1 ⟩.
-  Msimpl'; trivial.
-  autorewrite with ket_db C_db.  
-  kmp_rewrite cnot (I 2) ∣ 0 , 1 ⟩ ∣ 1 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 1 , 0 ⟩ ∣ 0 ⟩.
-  kmp_rewrite cnot (I 2) ∣ 1 , 1 ⟩ ∣ 1 ⟩.
-  
-  Msimpl'; try reflexivity.
-  autorewrite with ket_db.
-  
-
-  intros ψ ψ' WF H.
-  destruct_seqs; destruct_apps.
-  evar (e : Vector (2^3)).
-  assert ((ueval 3 U_H [a] × (ueval 3 U_CNOT (q::[a]) × (ueval 3 U_CNOT (a::[b]) × (ueval 3 U_H [a] × (ψ ⊗ ∣ 0, 0 ⟩))))) = e).
-  unfold ueval, ueval_cnot, ueval1, pad; simpl; Msimpl.
-  setoid_rewrite cnot_decomposition.
-  setoid_rewrite kron_assoc.
-  kmp_rewrite (I 2) (hadamard ⊗ I 2) ψ (∣ 0, 0 ⟩).
-  simpl in *; autorewrite with ket_db; trivial. (* autorewrite should discharge WF conditions! *)
-  idtac.                                                                                         
-  kmp_rewrite hadamard (I 2) ∣ 0 ⟩ ∣ 0 ⟩.
-  simpl in *; autorewrite with ket_db; auto with wf_db. (* autorewrite should discharge WF conditions! *)
-  Msimpl'.
-  simpl in *; autorewrite with ket_db; trivial. 
-  setoid_rewrite CNOT00_spec.
-  setoid_rewrite CNOT10_spec.
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ψ ∣ 0 ⟩ ∣ 0 ⟩).
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ ψ ∣ 1 ⟩ ∣ 1 ⟩).
-  simpl in *; autorewrite with ket_db; trivial. 
-  kmp_rewrite cnot (I 2) (ψ ⊗ ∣ 0 ⟩) ∣ 0 ⟩.
-  kmp_rewrite cnot (I 2) (ψ ⊗ ∣ 1 ⟩) ∣ 1 ⟩.
-  Msimpl. 
-  setoid_rewrite <- (kron_assoc _ _ _ _ _ _ (I 2) hadamard (I 2)).
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) (cnot × (ψ ⊗ ∣ 0 ⟩)) ∣ 0 ⟩.  
-  kmp_rewrite (I 2 ⊗ hadamard) (I 2) (cnot × (ψ ⊗ ∣ 1 ⟩)) ∣ 1 ⟩.  
-  Msimpl.
-  unfold e. reflexivity.
-  dependent destruction H0_2.
-  inversion H0_2; subst.
-  
-  
-  
-  inversion H0_2.
-  unfold teleport in *.
-  match goal with
-  | [H : (_ ; _) / _ ⇩ _ |- _] => dependent destruction H
-  end.
-  
-  dependent destruction H.
-  dependent destruction H.
-  (* Bell State *)
-  assert ( ψ' = ψ ⊗ epr00).
-  dependent destruction H.
-  dependent destruction H.
-  dependent destruction H0.
-  
-  
-  replace (SQIMP.H a; CNOT a b) with (from_ucom (SQIMP.H a; CNOT a b))%ucom in H by reflexivity.
-  apply nd_eval_ucom in H; auto with wf_db.
-  simpl in H.
-  
-
-Lemma teleport_correct_manual : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
-  WF_Matrix _ _ ψ ->
-  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' = ∣ 0 , 0 ⟩ ⊗ ψ.   
-Proof.
-  intros ψ ψ' WF H.
-  dependent destruction H.
-  dependent destruction H.
-  (* Bell State *)
-  assert ( ψ' = ψ ⊗ epr00).
-  dependent destruction H.
-  dependent destruction H.
-  dependent destruction H0.
-  simpl.
-  unfold ueval_cnot, ueval1, pad; simpl; Msimpl.
-  setoid_rewrite kron_assoc.
-  simpl.
-  kmp_rewrite (I 2) (hadamard ⊗ I 2) ψ (∣ 0, 0 ⟩).
-  kmp_rewrite hadamard (I 2) ∣0⟩ ∣0⟩. 
-  Msimpl.
-  setoid_rewrite H0_spec.  
-  kmp_rewrite (I 2) (∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2) ψ ((/ √ 2 .* ∣ 0 ⟩ .+ / √ 2 .* ∣ 1 ⟩) ⊗ ∣0⟩). 
-  Msimpl.                                                                                              
-  setoid_rewrite cnot_decomposition.
-  rewrite kron_plus_distr_r.
-  replace qubit0 with (ket 0) by reflexivity.
-  repeat rewrite Mscale_kron_dist_l.
-  rewrite Mmult_plus_distr_l.
-  repeat rewrite Mscale_mult_dist_r.
-  setoid_rewrite CNOT00_spec.
-  setoid_rewrite CNOT10_spec.
-  reflexivity.
-  (* Teleport *)
-  subst.
-  dependent destruction H0.
-  dependent destruction H0_.
-  
-  
-  Search scale Mmult.
-  Search cnot.
-  Search Mmult Mplus.
-  Search kron Mplus.
-  
-  rewrite Mmult_plus_dist_r.
-  replace (∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2) with cnot by solve_matrix. (* should be a lemma *)
-  kmp_rewrite hadamard (I 2) ∣0⟩ ∣0⟩. 
-  rewrite (Mmult_1_l _ _ ∣0⟩); auto with wf_db.
-                                    Msimpl.
-kmp_rewrite hadamard (I 2) ∣0⟩ ∣0⟩. 
-  Msimpl'.                                                                                                                                                                                     
-  Msimpl.
-  
-  
-  apply nd_seq_assoc in H.
-  cbv [teleport] in H.
-  repeat rewrite 
-  unfold teleport in H, bell00 in H, alice, bob, teleport in *.
-  
-  
-  dependent destruction H.
-  dependent destruction H.
-  dependent destruction H.
-  inversion H; subst.
-  dependent destruction H.
-  dependent destruction H0.
-  
-  
-  *)

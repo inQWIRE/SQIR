@@ -2,7 +2,7 @@ Require Import Compose.
 Require Import QWIRE.Dirac.
 Require Import Tactics.
 
-(* Importing DJ to use kron_n. We should move kron_n to QWIRE instead. *)
+(* TODO: Importing DJ to use kron_n. We should move kron_n to QWIRE instead. *)
 Require Import examples.DeutschJozsa. 
 
 Local Open Scope nat_scope.
@@ -23,27 +23,6 @@ Definition ghz (n : nat) : Matrix (2^n) (1^n) := (* 1^n for consistency with kro
   | 0 => I 1 
   | S n' => 1/ √2 .* (kron_n n ∣0⟩) .+ 1/ √2 .* (kron_n n ∣1⟩)
   end.
-
-(*
-Fixpoint nket (n : nat) (ψ : Matrix 2 1) : Matrix (2^n) 1 :=
-  match n with
-  | 0 => I 1
-  | S n' => (nket n' ψ) ⊗ ψ
-  end.
-
-Fixpoint kron_n n {m1 m2} (A : Matrix m1 m2) : Matrix (m1^n) (m2^n) :=
-  match n with
-  | 0    => I 1
-  | S n' => kron (kron_n n' A) A
-  end.
-
-Lemma WF_kron_n : forall n {m1 m2} (A : Matrix m1 m2),
-   WF_Matrix A ->  WF_Matrix (kron_n n A).
-Hint Resolve WF_kron_n : wf_db.
-
-Lemma kron_n_assoc :
-  forall n {m1 m2} (A : Matrix m1 m2), WF_Matrix A -> kron_n (S n) A = A ⊗ kron_n n A.
-*)
 
 Lemma WF_ghz : forall n : nat, WF_Matrix (ghz n).
 Proof.
@@ -74,8 +53,7 @@ Proof.
   - simpl. rewrite denote_SKIP; try assumption. 
     Msimpl. replace (dim - 0)%nat with dim by lia.
     reflexivity.
-  - simpl. 
-    destruct dim; try lia. 
+  - destruct dim; try lia.
     rewrite kron_n_assoc at 1; auto with wf_db.
     destruct n.
     + simpl; autorewrite with eval_db.
@@ -86,75 +64,68 @@ Proof.
       Msimpl_light.
       apply f_equal2; try reflexivity.
       solve_matrix.
-    + Opaque GHZ. 
-      simpl.
-      autorewrite with eval_db.
-      rewrite <- kron_n_assoc; auto with wf_db.
-      repeat rewrite Mmult_assoc.
-      setoid_rewrite IHn; try lia.
-      replace (S n - n - 1)%nat with O by lia.
-      bdestruct_all.
-      replace (S dim - (n + (1 + 0 + 1)))%nat with (dim - S n)%nat by lia.
-      simpl.
-      repeat rewrite kron_1_r. 
-      setoid_rewrite cnot_decomposition.
-      repeat rewrite kron_plus_distr_r.
-      replace (dim - n)%nat with (S (dim - (S n)))%nat by lia.
-      rewrite kron_n_assoc; auto with wf_db.
-      repeat rewrite Mscale_kron_dist_l.
-      
-      restore_dims_fast.
-      Set Printing All. rewrite <- kron_assoc.
-      setoid_rewrite <- kron_assoc. 
-      
-      rewrite Mscae_plus_dist.
-      restore_dims_fast.
-      do 2 setoid_rewrite <- kron_assoc.
-      Search ((_ .+ _) ⊗ _).
-
-      gridify.
-      replace (S (S n)) with ((S n) + 1)%nat by lia.
-      rewrite <- pad_dims_r by apply typed_GHZ.
+    + replace (uc_eval (GHZ (S dim) (S (S n)))) with (uc_eval (CNOT n (S n)) × uc_eval (GHZ (S dim) (S n))) by easy.
+      rewrite <- kron_n_assoc.
+      2: auto with wf_db.
       rewrite Mmult_assoc.
-      restore_dims_strong.
-      replace (2 ^ n * 2)%nat with (2 ^ S n)%nat by unify_pows_two.
+      setoid_rewrite IHn. 
+      2: lia.
+      (* annoyingly manual *)
+      replace (S dim - S (S n))%nat with (dim - (S n))%nat by lia.
+      replace (S dim - S n)%nat with (S (dim - (S n)))%nat by lia.
+      rewrite kron_n_assoc.
+      2: auto with wf_db.
+      unfold ghz. 
+      autorewrite with eval_db.
+      clear IHn.
+      bdestruct_all.
+      clear H H1 H2. 
+      apply Peano.le_S_n in H0. 
+      replace (S n - n - 1)%nat with O by lia.      
+      replace (S dim - (n + (1 + 0 + 1)))%nat with (dim - S n)%nat by lia.
+      simpl I.
+      repeat rewrite kron_1_r.
+      simpl kron_n. 
+      replace (2 ^ S (dim - S n))%nat with (2 * 2 ^ (dim - S n))%nat by unify_pows_two.
+      replace (1 ^ S (dim - S n))%nat with (1 * 1 ^ (dim - S n))%nat by (repeat rewrite Nat.pow_1_l; lia).
+      rewrite <- (kron_assoc _ (∣0⟩)).
+      rewrite kron_plus_distr_l.
+      rewrite (kron_plus_distr_r _ _ _ _ _ _ (∣0⟩)). 
+      repeat rewrite Mscale_kron_dist_l. 
+      replace (2 ^ S n)%nat with (2 ^ n * 2)%nat by unify_pows_two.
+      replace (1 ^ S n)%nat with (1 ^ n * 1)%nat by (repeat rewrite Nat.pow_1_l; lia).
+      rewrite 2 (kron_assoc _ _ (∣0⟩)).
+      replace (2 ^ (1 + 0 + 1))%nat with (2 * 2)%nat by reflexivity. 
+      replace (2 ^ n * 2 * 2)%nat with (2 ^ n * (2 * 2))%nat by lia.
+      replace (1 ^ n * 1 * 1)%nat with (1 ^ n * (1 * 1))%nat by lia.
+      replace (2 ^ S dim)%nat with (2 ^ n * (2 * 2) * 2 ^ (dim - S n))%nat.
+      2: simpl; unify_pows_two.
+      replace (2 * 2 ^ 0)%nat with 2%nat by reflexivity.
+      replace (1 ^ S dim)%nat with (1 ^ n * (1 * 1) * 1 ^ (dim - S n))%nat.
+      2: repeat rewrite Nat.pow_1_l; reflexivity.
       rewrite kron_mixed_product.
-      simpl in *.
-      rewrite IHn.
-      autorewrite with eval_db. 
-      repad.
-      replace d with 0%nat in * by lia.
-      replace d0 with 0%nat in * by lia. 
-      simpl. Msimpl. clear.
-      setoid_rewrite cnot_decomposition.
-      autorewrite with ket_db.
-      restore_dims_strong.
-      rewrite 3 kron_assoc. 
-      rewrite <- Mscale_plus_distr_r.
-      restore_dims_fast.
-      repeat rewrite Mscale_mult_dist_r.
-      distribute_plus.
-      rewrite 2 kron_mixed_product.
-      autorewrite with ket_db; auto with wf_db.
-(* alternative:
-      gridify.
-      replace d with 0%nat in * by lia.
-      replace d0 with 0%nat in * by lia. 
-      simpl. Msimpl. clear.
-      restore_dims_fast.
-      repeat rewrite kron_mixed_product.
+      rewrite Mmult_plus_distr_r.
+      repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r.
       repeat rewrite kron_mixed_product.
-      Msimpl.
-      repeat rewrite Mmult_assoc.
-      rewrite braket00, braket01, braket10, braket11.
-      Msimpl.
-      Msimpl_light. rewrite Mscale_0_r. Msimpl_light.
-      rewrite Mplus_0_l, Mplus_0_r.
+      replace (∣1⟩⟨1∣ × ∣0⟩) with (@Zero 2 1) by solve_matrix.
+      replace (∣1⟩⟨1∣ × ∣1⟩) with (∣1⟩) by solve_matrix.
+      replace (∣0⟩⟨0∣ × ∣0⟩) with (∣0⟩) by solve_matrix.
+      replace (∣0⟩⟨0∣ × ∣1⟩) with (@Zero 2 1) by solve_matrix.
+      Msimpl_light.
+      replace (σx × ∣0⟩) with (∣1⟩) by solve_matrix.
+      repeat rewrite <- kron_assoc.
       rewrite Mplus_comm.
-      repeat rewrite Mscale_kron_dist_l.
       reflexivity.
-*)
 Qed.
 
-
+Theorem GHZ_correct : forall n : nat, 
+  (0 < n)%nat -> uc_eval (GHZ n n) × kron_n n ∣0⟩ = ghz n.
+Proof.
+  intros.
+  rewrite GHZ_correct'; try lia.
+  replace (n - n)%nat with O by lia.
+  simpl.
+  rewrite kron_1_r.
+  reflexivity.
+Qed.

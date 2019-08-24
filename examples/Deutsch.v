@@ -1,4 +1,5 @@
 Require Import UnitarySem.
+Require Import Proportional.
 Require Import QWIRE.Dirac.
 
 Open Scope ucom.
@@ -14,11 +15,6 @@ Definition deutsch (c : base_ucom 2) := H 0; H 1; c; H 0.
 Definition constant (c : base_ucom 2) := c ≡ f0 \/ c ≡ f1. 
 
 Definition balanced (c : base_ucom 2) := c ≡ f2 \/ c ≡ f3. 
-
-(* Relation to ignore global phases. *)
-Definition proportional {n : nat} (ψ ϕ : Vector n) := 
-  exists θ, ψ = Cexp θ .* ϕ. 
-Infix "∝" := proportional (at level 20).
 
 Lemma deutsch_constant_correct :
   forall (c : base_ucom 2), constant c -> ((uc_eval (deutsch c)) × ∣0,1⟩) ∝ (∣0⟩ ⊗ ∣-⟩).
