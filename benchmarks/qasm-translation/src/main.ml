@@ -70,7 +70,16 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size ( fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
-let translate_statement s qmap sym_tab : gate_app list =
+let _CNOT m n = App2 (UPI4_CNOT, m, n)
+let _X n = App1 (UPI4_X, n)
+let _Z n = App1 (uPI4_Z, n)
+let _H n = App1 (UPI4_H, n)
+let _P n = App1 (uPI4_P, n)
+let _PDAG n = App1 (uPI4_PDAG, n)
+let _T n = App1 (uPI4_T, n)
+let _TDAG n = App1 (uPI4_TDAG, n)
+
+let translate_statement s qmap sym_tab : pI4_Unitary gate_app list =
   match s with
   | Qop qop ->
     (match qop with
@@ -181,34 +190,60 @@ let get_counts progs : counts list =
                       total=tot p})
     progs
 
-(* write the results of running cancel_gates on the Nam benchmarks to file f *)
+(* write the results of running cancel_gates, hadamard_reduction on the Nam benchmarks to file f *)
 let run_on_nam_benchmarks f =
   let bs = parse_nam_benchmarks () in
-  let bs' = List.mapi (fun i p ->
+  let _ = printf "Running cancel_gates pass\n%!" in
+  let bs1 = List.mapi (fun i p ->
       (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
        cancel_gates p)) bs in
-  let counts = get_counts bs' in
+  let _ = printf "Running alternating passes\n%!" in
+  let bs2 = List.mapi (fun i p ->
+      (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
+       cancel_gates (hadamard_reduction (cancel_gates (hadamard_reduction (cancel_gates p)))))) bs in
+  let counts1 = get_counts bs1 in
+  let counts2 = get_counts bs2 in
   let oc = open_out f in
-  (ignore(List.mapi (fun i x -> fprintf oc "%s,%d\n" (List.nth nam_benchmark_filenames i) x.total) counts);
+  (ignore(List.mapi (fun i x -> fprintf oc "%s,%d,%d\n" 
+                       (List.nth nam_benchmark_filenames i) 
+                       x.total 
+                       ((fun x -> x.total) (List.nth counts2 i))) 
+                    counts1);
    close_out oc)
 
 let percent_diff l1 l2 = List.mapi (fun i x -> (float (x - (List.nth l2 i))) /. (float x)) l1
 let average l = (List.fold_left ( +. ) 0.0 l) /. (float (List.length l))
 
-(* print the results of running cancel_gates on the random benchmarks in directory d *)
+(* print the results of running cancel_gates, hadamard_reduction on the random benchmarks in directory d *)
 let run_on_random_benchmarks d =
   let fs = Array.to_list (Array.map (fun f -> d ^ "/" ^ f) (Sys.readdir d)) in
   let bs = List.map parse fs in
-  let bs' = List.mapi (fun i p ->
+  let _ = printf "Running cancel_gates pass\n%!" in
+  let bs1 = List.mapi (fun i p ->
       (printf "Processing %s...\n%!" (List.nth fs i);
        cancel_gates p)) bs in
+  let _ = printf "Running alternating passes\n%!" in
+  let bs2 = List.mapi (fun i p ->
+      (printf "Processing %s...\n%!" (List.nth fs i);
+       cancel_gates (hadamard_reduction (cancel_gates (hadamard_reduction (cancel_gates p)))))) bs in
   let initial = get_counts bs in
-  let final = get_counts bs' in
-  let h_red = percent_diff (List.map (fun x -> x.h) initial) (List.map (fun x -> x.h) final) in
-  let x_red = percent_diff (List.map (fun x -> x.x) initial) (List.map (fun x -> x.x) final) in
-  let u1_red = percent_diff (List.map (fun x -> x.rz) initial) (List.map (fun x -> x.rz) final) in
-  let cnot_red = percent_diff (List.map (fun x -> x.cnot) initial) (List.map (fun x -> x.cnot) final) in
-  (printf "Gate h: average reduction = %f\n" (average h_red);
-   printf "Gate x: average reduction = %f\n" (average x_red);
-   printf "Gate rz: average reduction = %f\n" (average u1_red);
-   printf "Gate cnot: average reduction = %f\n" (average cnot_red))
+  let final1 = get_counts bs1 in
+  let h_red1 = percent_diff (List.map (fun x -> x.h) initial) (List.map (fun x -> x.h) final1) in
+  let x_red1 = percent_diff (List.map (fun x -> x.x) initial) (List.map (fun x -> x.x) final1) in
+  let u1_red1 = percent_diff (List.map (fun x -> x.rz) initial) (List.map (fun x -> x.rz) final1) in
+  let cnot_red1 = percent_diff (List.map (fun x -> x.cnot) initial) (List.map (fun x -> x.cnot) final1) in
+  let final2 = get_counts bs2 in
+  let h_red2 = percent_diff (List.map (fun x -> x.h) initial) (List.map (fun x -> x.h) final2) in
+  let x_red2 = percent_diff (List.map (fun x -> x.x) initial) (List.map (fun x -> x.x) final2) in
+  let u1_red2 = percent_diff (List.map (fun x -> x.rz) initial) (List.map (fun x -> x.rz) final2) in
+  let cnot_red2 = percent_diff (List.map (fun x -> x.cnot) initial) (List.map (fun x -> x.cnot) final2) in
+  (printf "cancel_gates results:\n";
+   printf "Gate h: average reduction = %f\n" (average h_red1);
+   printf "Gate x: average reduction = %f\n" (average x_red1);
+   printf "Gate rz: average reduction = %f\n" (average u1_red1);
+   printf "Gate cnot: average reduction = %f\n" (average cnot_red1);
+   printf "cancel_gates + hadamard_reduction results:\n";
+   printf "Gate h: average reduction = %f\n" (average h_red2);
+   printf "Gate x: average reduction = %f\n" (average x_red2);
+   printf "Gate rz: average reduction = %f\n" (average u1_red2);
+   printf "Gate cnot: average reduction = %f\n" (average cnot_red2))

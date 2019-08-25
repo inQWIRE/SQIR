@@ -50,7 +50,9 @@ outf = open(outfname, "w")
 inf1 = open(infname1, "r")
 inf2 = open(infname2, "r")
 
-outf.write("Name, original, L, H, Qiskit A, Qiskit B, SQIRE\n")
+# CG = cancel_gates
+# HR = hadamard_reduction
+outf.write("Name, original, L, H, Qiskit A, Qiskit B, SQIRE CG, SQIRE CG + HR\n")
 
 qiskit_data = {}
 for line in inf1:
@@ -60,7 +62,7 @@ for line in inf1:
 sqire_data = {}
 for line in inf2:
     line = line.strip().split(",")
-    sqire_data[line[0].split("/")[2].split(".")[0]] = line[1]
+    sqire_data[line[0].split("/")[2].split(".")[0]] = [line[1], line[2]]
 
 for benchmark in nam_data.keys():
     data = [benchmark]
@@ -68,7 +70,7 @@ for benchmark in nam_data.keys():
     data.append(str(nam_data[benchmark][2]))
     data.append(str(nam_data[benchmark][4]))
     data += qiskit_data [benchmark]
-    data.append(sqire_data[benchmark])
+    data += sqire_data[benchmark]
     outf.write(",".join(data) + "\n")
 
 outf.close()

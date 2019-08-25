@@ -1,91 +1,9 @@
 Require UnitarySem.
 Require DensitySem.
 Require NDSem.
-Require Proportional.
 Require Import QWIRE.Dirac.
 
-(*Ltac restore_dims_rec A :=
-   match A with
-  | ?A × ?B   => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                match type of A' with 
-                | Matrix ?m' ?n' =>
-                  match type of B' with 
-                  | Matrix ?n'' ?o' => constr:(@Mmult m' n' o' A' B')
-                  end
-                end 
-  | ?A ⊗ ?B   => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                match type of A' with 
-                | Matrix ?m' ?n' =>
-                  match type of B' with 
-                  | Matrix ?o' ?p' => constr:(@kron m' n' o' p' A' B')
-                  end
-                end
-  | ?A †      => let A' := restore_dims_rec A in 
-                match type of A' with
-                | Matrix ?m' ?n' => constr:(@adjoint m' n' A')
-                end
-  | ?A .+ ?B => let A' := restore_dims_rec A in 
-               let B' := restore_dims_rec B in 
-               match type of A' with 
-               | Matrix ?m' ?n' =>
-                 match type of B' with 
-                 | Matrix ?m'' ?n'' => constr:(@Mplus m' n' A' B')
-                 end
-               end
-  | ?c .* ?A => let A' := restore_dims_rec A in 
-               match type of A' with
-               | Matrix ?m' ?n' => constr:(@scale m' n' c A')
-               end
-  | ?A       => A
-   end.
-
-Ltac restore_dims_fast := 
-  match goal with
-  | |- ?A = ?B => let A' := restore_dims_rec A in 
-                let B' := restore_dims_rec B in 
-                idtac A; idtac A';
-                idtac B; idtac B';
-                replace A with A' by reflexivity; 
-                replace B with B' by reflexivity
-  end.
-
-Ltac has_term t exp  := 
-  match exp with
-    | context[t] => idtac 
-  end.
-
-Ltac group_radicals := 
-  repeat match goal with
-  | _ => rewrite square_rad2
-  | |- context[(?x * ?y)%C] => tryif has_term (√2) x then fail else (has_term (√2) y; 
-                             rewrite (Cmult_comm x y))
-  | |- context[(?x * ?y * ?z)%C] => tryif has_term (√2) y then fail else (has_term (√2) x; has_term (√2) z; 
-                                  rewrite <- (Cmult_assoc x y z))
-  | |- context[(?x * (?y * ?z))%C] => has_term (√2) x; has_term (√2) y; 
-                                    rewrite (Cmult_assoc x y z)
-  end.  
-
-Ltac cancel_terms t := 
-  repeat rewrite Cmult_plus_distr_l;
-  repeat rewrite Cmult_plus_distr_r; 
-  repeat match goal with
-  | _ => rewrite Cmult_1_l
-  | _ => rewrite Cmult_1_r
-  | _ => rewrite Cinv_r; try nonzero  
-  | _ => rewrite Cinv_l; try nonzero
-  | |- context[(?x * ?y)%C]        => tryif has_term (/ t)%C y then fail else has_term (/ t)%C x; has_term t y; 
-                                    rewrite (Cmult_comm x y)
-  | |- context[(?x * (?y * ?z))%C] => has_term t x; has_term (/ t)%C y; 
-                                    rewrite (Cmult_assoc x y z)
-  | |- context[(?x * (?y * ?z))%C] => tryif has_term t y then fail else has_term t x; has_term (/ t)%C z; 
-                                    rewrite (Cmult_comm y z)
-  | |- context[(?x * ?y * ?z)%C] => tryif has_term t x then fail else has_term t y; has_term (/ t)%C z; 
-                                  rewrite <- (Cmult_assoc x y z)
-  end.  *)
-
-(* Unitary Teleportation Circuit and Proof *)
+(** Unitary Teleportation Circuit and Proof **)
 Module UTeleport.
 
 Import UnitarySem.
@@ -131,7 +49,7 @@ Qed.
 
 End UTeleport.
 
-(* Non-unitary teleport, proof with density matrices *)
+(** Non-unitary teleport, proof with density matrices **)
 Module DensityTeleport.
 
 Import DensitySem.
@@ -165,7 +83,7 @@ Qed.
 
 End DensityTeleport.
 
-(* Non-unitary teleport, proof with non-deterinistic semantics *)
+(** Non-unitary teleport, proof with non-deterinistic semantics **)
 Module NDTeleport.
 
 Import UnitarySem.
@@ -213,6 +131,7 @@ Definition proportional {m n : nat} (A B : Matrix m n) :=
   exists s, A = s .* B. 
 Infix "∝" := proportional (at level 70).
 
+(* Long, mostly manual proof. Automated version below. *)
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix ψ ->
   teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' ∝ ∣ 0 , 0 ⟩ ⊗ ψ.   
@@ -461,7 +380,6 @@ Proof.
 Qed.
 
 (* More automated version *)
-
 Lemma teleport_correct' : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix ψ ->
   teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' ∝ ∣ 0 , 0 ⟩ ⊗ ψ.   
@@ -510,4 +428,4 @@ Proof.
        reflexivity.
 Qed.
 
-
+End NDTeleport.
