@@ -40,7 +40,8 @@ let apply_c_gate gate ctrl tgt qmap sym_tab =
   let (cid, cidx) = ctrl in
   let (tid, tidx) = tgt in
   match cidx, tidx with
-  | Some ci, Some ti -> [gate (QbitMap.find (cid, ci) qmap) (QbitMap.find (tid, ti) qmap)]
+  | Some ci, Some ti ->
+    [gate (QbitMap.find (cid, ci) qmap) (QbitMap.find (tid, ti) qmap)]
   | None, Some ti ->
     (match StringMap.find cid sym_tab with
      | TQReg csize ->
@@ -71,12 +72,12 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
 let _CNOT m n = App2 (UPI4_CNOT, m, n)
-let _X n = App1 (UPI4_X, n)
-let _Z n = App1 (uPI4_Z, n)
-let _H n = App1 (UPI4_H, n)
-let _P n = App1 (uPI4_P, n)
+let _X    n = App1 (UPI4_X,    n)
+let _Z    n = App1 (uPI4_Z,    n)
+let _H    n = App1 (UPI4_H,    n)
+let _P    n = App1 (uPI4_P,    n)
 let _PDAG n = App1 (uPI4_PDAG, n)
-let _T n = App1 (uPI4_T, n)
+let _T    n = App1 (uPI4_T,    n)
 let _TDAG n = App1 (uPI4_TDAG, n)
 
 let translate_statement s qmap sym_tab : pI4_Unitary gate_app list =
@@ -90,8 +91,8 @@ let translate_statement s qmap sym_tab : pI4_Unitary gate_app list =
         | Gate (id, _, qargs) ->
           (match StringMap.find_opt id sym_tab with
            | Some TGate _ -> (match id with
-               | "cx"  ->
-                 apply_c_gate _CNOT (List.hd qargs) (List.nth qargs 1) qmap sym_tab
+               | "cx"  -> apply_c_gate _CNOT
+                            (List.hd qargs) (List.nth qargs 1) qmap sym_tab
                | "x"   -> apply_gate _X     (List.hd qargs) qmap sym_tab
                | "z"   -> apply_gate _Z     (List.hd qargs) qmap sym_tab
                | "h"   -> apply_gate _H     (List.hd qargs) qmap sym_tab
@@ -204,11 +205,11 @@ let run_on_nam_benchmarks f =
   let counts1 = get_counts bs1 in
   let counts2 = get_counts bs2 in
   let oc = open_out f in
-  (ignore(List.mapi (fun i x -> fprintf oc "%s,%d,%d\n" 
-                       (List.nth nam_benchmark_filenames i) 
-                       x.total 
-                       ((fun x -> x.total) (List.nth counts2 i))) 
-                    counts1);
+  (ignore(List.mapi (fun i x -> fprintf oc "%s,%d,%d\n"
+                        (List.nth nam_benchmark_filenames i)
+                        x.total
+                        ((fun x -> x.total) (List.nth counts2 i)))
+            counts1);
    close_out oc)
 
 let percent_diff l1 l2 = List.mapi (fun i x -> (float (x - (List.nth l2 i))) /. (float x)) l1
