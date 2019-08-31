@@ -53,7 +53,7 @@ SQIRE programs optimizations.
 
 Mapping algorithms for SQIRE programs.
 
-- mapper/SimpleMapping.v: Verified circuit mapping examples for linear nearest neighbor and IBM Tenerife architectures.
+- mapper/SimpleMapping.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 - mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(work-in-progress)**
 
 ### examples
@@ -64,7 +64,7 @@ Examples of using SQIRE to verify correctness properties of simple quantum algor
 - examples/DeutschJozsa.v
 - examples/GHZ.v
 - examples/Superdense.v
-- examples/Teleport.v **(needs to be updated)**  
+- examples/Teleport.v  
 
 ### benchmarks
 
