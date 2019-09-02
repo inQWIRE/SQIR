@@ -1176,6 +1176,13 @@ Proof.
   assert (0 < numRows * numCols) by lia.
   apply Nat.lt_0_mul' in H as [_ H].
   unfold grid_get_path.
+  (* some aux. lemmas *)
+  assert (Haux1 : (row numCols n1 - row numCols n2) * numCols <= n1).
+  { unfold row.
+    rewrite Nat.mul_sub_distr_r.
+    rewrite Nat.mul_comm. 
+    assert (numCols * (n1 / numCols) <= n1) by (apply Nat.mul_div_le; lia). 
+    lia. }
   bdestruct_all; simpl.
   - (* move down, right *)
     remember (row numCols n2 - row numCols n1) as distR.
@@ -1205,66 +1212,106 @@ Proof.
     replace n2 with (n1 + distR * numCols).
     apply move_down_valid_path; try assumption; try lia.
     admit. (* n1 + distR * numCols < numRows * numCols *)
-         { (* n1 + distR * numCols = n2 *)
-            subst distR; unfold row, col in *.
-            do 2 rewrite Nat.mod_eq in H4; try lia.
-            rewrite Nat.mul_sub_distr_r.
-            rewrite Nat.add_sub_assoc.
-            rewrite Nat.add_comm.
-            rewrite <- Nat.add_sub_assoc.
-            rewrite (Nat.mul_comm _ (n1 / numCols)) in H4.
-            rewrite (Nat.mul_comm _ (n2 / numCols)) in H4.
-            rewrite H4.
-            rewrite Nat.add_sub_assoc.
-            rewrite minus_plus.
-            reflexivity.
-            rewrite Nat.mul_comm; apply Nat.mul_div_le; lia.
-            rewrite Nat.mul_comm; apply Nat.mul_div_le; lia.
-            rewrite (Nat.mul_comm (n1 / numCols)).
-            rewrite (Nat.mul_comm (n2 / numCols)).
-            apply Nat.mul_le_mono_l; lia. }
+    { (* n1 + distR * numCols = n2 *)
+      subst distR; unfold row, col in *.
+      do 2 rewrite Nat.mod_eq in H4; try lia.
+      rewrite Nat.mul_sub_distr_r.
+      rewrite Nat.add_sub_assoc.
+      rewrite Nat.add_comm.
+      rewrite <- Nat.add_sub_assoc.
+      rewrite (Nat.mul_comm _ (n1 / numCols)) in H4.
+      rewrite (Nat.mul_comm _ (n2 / numCols)) in H4.
+      rewrite H4.
+      rewrite Nat.add_sub_assoc.
+      rewrite minus_plus.
+      reflexivity.
+      rewrite Nat.mul_comm; apply Nat.mul_div_le; lia.
+      rewrite Nat.mul_comm; apply Nat.mul_div_le; lia.
+      rewrite (Nat.mul_comm (n1 / numCols)).
+      rewrite (Nat.mul_comm (n2 / numCols)).
+      apply Nat.mul_le_mono_l; assumption. }
   - (* move up, right *)
     remember (row numCols n1 - row numCols n2) as distR.
     remember (col numCols n2 - col numCols n1) as distC.
     eapply valid_path_merge_path.
     apply move_up_valid_path; try assumption; try lia.
-    admit. (* distR * numCols <= n1 *)
     replace n2 with (n1 - distR * numCols + distC).
     apply move_right_valid_path; try assumption; try lia.   
     admit. (* n1 - distR * numCols + distC < numRows * numCols *)
     admit. (* n1 - distR * numCols + distC = n2 *)
-    apply not_in_interior_move_up; try lia.
-    admit. (* distR * numCols <= n1 *)
+    apply not_in_interior_move_up; try assumption; try lia.
   - (* move right *)
     remember (col numCols n2 - col numCols n1) as distC.
     replace n2 with (n1 + distC).
     apply move_right_valid_path; try assumption; try lia.
     admit. (* n1 + distC < numRows * numCols *)
-    admit. (* n1 + distC = n2 *)
+    { (* n1 + distC = n2 *)
+      subst distC; unfold row, col in *. 
+      rewrite Nat.add_sub_assoc; try assumption.
+      rewrite Nat.add_comm.
+      rewrite <- Nat.add_sub_assoc.
+      2: { rewrite Nat.mod_eq; lia. }
+      rewrite Nat.mod_eq; try lia.
+      rewrite Nat.mod_eq; try lia.
+      rewrite H5.
+      remember (numCols * (n2 / numCols)) as x.
+      assert (x <= n1).
+      { subst x. rewrite <- H5. apply Nat.mul_div_le. lia. }
+      assert (x <= n2).
+      { subst x. apply Nat.mul_div_le. lia. }
+      lia. }
   - (* move up, left *)
     remember (row numCols n1 - row numCols n2) as distR.
     remember (col numCols n1 - col numCols n2) as distC.
     eapply valid_path_merge_path.
     apply move_up_valid_path; try assumption; try lia.
-    admit. (* distR * numCols <= n1 *)
     replace n2 with (n1 - distR * numCols - distC).
     apply move_left_valid_path; try assumption; try lia.   
     admit. (* distC <= n1 - distR * numCols *)
     admit. (* n1 - distR * numCols - distC = n2 *)
-    apply not_in_interior_move_up; try lia. 
-    admit. (* distR * numCols <= n1 *)
+    apply not_in_interior_move_up; try assumption; try lia. 
   - (* move left *)
     remember (col numCols n1 - col numCols n2) as distC.
     replace n2 with (n1 - distC).
     apply move_left_valid_path; try assumption; try lia.
-    admit. (* distC <= n1 *)
-    admit. (* n1 - distC = n2 *)
+    subst. unfold col. rewrite Nat.mod_eq; lia.
+    { (* n1 - distC = n2 *)
+      subst distC; unfold row, col in *. 
+      rewrite Nat.mod_eq; try lia.
+      rewrite Nat.mod_eq; try lia.
+      rewrite H5.
+      remember (numCols * (n2 / numCols)) as x.
+      assert (x <= n2).
+      { subst x. apply Nat.mul_div_le. lia. }
+      assert (n2 <= n1).
+      { do 2 rewrite Nat.mod_eq in H1; try lia.
+        rewrite H5 in H1.
+        rewrite <- Heqx in H1.
+        assert (x <= n1).
+        subst. rewrite <- H5. apply Nat.mul_div_le. lia.
+        lia. }
+      lia. }
   - (* move up *)
     remember (row numCols n1 - row numCols n2) as distR.
     replace n2 with (n1 - distR * numCols).
     apply move_up_valid_path; try assumption; try lia.
-    admit. (* distR * numCols <= n1 *)
-    admit. (* n1 - distR * numCols = n2 *)
+    { (* n1 - distR * numCols = n2 *)
+      subst distR; unfold row, col in *.
+      do 2 rewrite Nat.mod_eq in H4; try lia.
+      rewrite Nat.mul_sub_distr_r.
+      rewrite (Nat.mul_comm (n1 / numCols)).
+      rewrite (Nat.mul_comm (n2 / numCols)).
+      assert (numCols * (n1 / numCols) <=  n1).
+      apply Nat.mul_div_le. lia.
+      replace (numCols * (n1 / numCols)) with (n1 - (n1 - numCols * (n1 / numCols))) by lia.
+      rewrite H4.
+      assert (numCols * (n2 / numCols) <=  n2).
+      apply Nat.mul_div_le. lia.
+      assert (n2 <= n1).
+      assert (numCols * (n2 / numCols) <= numCols * (n1 / numCols)). 
+      apply Nat.mul_le_mono_l; assumption.
+      lia.
+      lia. }
   - (* badly-typed case *)
     contradict Hn1n2.
     unfold col, row in *.
