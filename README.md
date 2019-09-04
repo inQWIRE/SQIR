@@ -8,7 +8,7 @@ To compile the code, use:
 ./configure.sh
 make
 ```
-Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. In case of compilation trouble, try `make clean` (and possibly manually removing any lingering `.vo` files) before running `./configure.sh`.  
+Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. By default, files in the core directory and select files from the optimizer and mapper directories are compiled. In case of compilation trouble, try `make clean` (and possibly manually removing any lingering `.vo` files) before running `./configure.sh`.  
 
 The development has been tested with Coq version 8.8.2.
 

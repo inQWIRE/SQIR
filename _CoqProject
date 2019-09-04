@@ -21,16 +21,8 @@ optimizer/Equivalences.v
 optimizer/GateCancellation.v
 optimizer/HadamardReduction.v
 optimizer/ListRepresentation.v
-optimizer/NonUnitaryOptimizations.v
-optimizer/NotPropagation.v
 optimizer/PI4GateSet.v
-optimizer/SkipElimination.v
 
 mapper/SimpleMapping.v
 mapper/MappingExamples.v
 
-examples/Deutsch.v
-examples/DeutschJozsa.v
-examples/GHZ.v
-examples/Superdense.v
-examples/Teleport.v
