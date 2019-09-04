@@ -27,6 +27,7 @@ optimizer/PI4GateSet.v
 optimizer/SkipElimination.v
 
 mapper/SimpleMapping.v
+mapper/MappingExamples.v
 
 examples/Deutsch.v
 examples/DeutschJozsa.v

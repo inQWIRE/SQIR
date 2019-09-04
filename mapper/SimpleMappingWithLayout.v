@@ -1,4 +1,5 @@
 Require Import SimpleMapping.
+Require Import MappingExamples.
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
@@ -62,26 +63,26 @@ Definition layout_well_formed {dim} (m : qmap dim) :=
 
 (* Mapping function definition. *)
 
-Fixpoint path_to_swaps dim p m : (ucom dim * qmap dim) :=
+Fixpoint path_to_swaps dim p m : (base_ucom dim * qmap dim) :=
   match p with
-  | n1 :: n2 :: [] => (uskip, m) (* normal termination *)
+  | n1 :: n2 :: [] => (SKIP, m) (* normal termination *)
   | n1 :: ((n2 :: _) as t) => 
       let (c, m') := path_to_swaps dim t (swap_in_map m n1 n2) in
       (SWAP n1 n2 ; c, m')
-  | _ => (uskip, m) (* bad input case *)
+  | _ => (SKIP, m) (* bad input case *)
   end.
 
-Fixpoint simple_map_w_layout {dim} (c : ucom dim) (m : qmap dim) (get_path : nat -> nat -> list nat) (is_in_graph_b : nat -> nat -> bool) :=
+Fixpoint simple_map_w_layout {dim} (c : base_ucom dim) (m : qmap dim) (get_path : nat -> nat -> list nat) (is_in_graph_b : nat -> nat -> bool) : (base_ucom dim * qmap dim) :=
   match c with
   | c1; c2 => let (c1', m') := simple_map_w_layout c1 m get_path is_in_graph_b in
              let (c2', m'') := simple_map_w_layout c2 m' get_path is_in_graph_b in
              (c1'; c2', m'')
-  | uapp_CNOT n1 n2 => 
+  | uapp2 U_CNOT n1 n2 => 
       let p := get_path (log2phys m n1) (log2phys m n2) in
       let (c', m') := path_to_swaps dim p m in
       let c'' := fix_cnots (c'; CNOT (log2phys m' n1) (log2phys m' n2)) is_in_graph_b in
       (c'', m')
-  | uapp_R θ ϕ λ n => (uapp_R θ ϕ λ (log2phys m n), m)
+  | uapp1 u n => (uapp1 u (log2phys m n), m)
   | _ => (c, m)
   end.  
 
@@ -94,9 +95,9 @@ Fixpoint simple_map_w_layout {dim} (c : ucom dim) (m : qmap dim) (get_path : nat
    values at locations 0 and 3. Note that we don't worry about satisfying
    connectivity constraints because the generated program is used in our
    proof - it is not meant to be run on a machine. *)
-Fixpoint convert_between_layouts' {dim} n (m1 m2 : qmap dim) : ucom dim :=
+Fixpoint convert_between_layouts' {dim} n (m1 m2 : qmap dim) : base_ucom dim :=
   match n with 
-  | O => uskip
+  | O => SKIP
   | S n' => 
       let x := log2phys m1 (phys2log m2 n') in
       if n' =? x 
@@ -104,7 +105,7 @@ Fixpoint convert_between_layouts' {dim} n (m1 m2 : qmap dim) : ucom dim :=
       else SWAP n' x ; convert_between_layouts' n' (swap_in_map m1 n' x) m2
   end.
 
-Definition convert_between_layouts {dim} (m1 m2 : qmap dim) : ucom dim :=
+Definition convert_between_layouts {dim} (m1 m2 : qmap dim) : base_ucom dim :=
   convert_between_layouts' dim m1 m2.
 
 (* Example *)
@@ -126,7 +127,7 @@ Compute (convert_between_layouts test_layout1 trivial_layout).
 Compute (convert_between_layouts test_layout1 test_layout1).
 
 (* The statements of correctness will probably look like the following: *)
-Lemma simple_map_w_layout_sound : forall dim (c : ucom dim) (m : qmap dim) get_path is_in_graph is_in_graph_b c' m',
+Lemma simple_map_w_layout_sound : forall dim (c : base_ucom dim) (m : qmap dim) get_path is_in_graph is_in_graph_b c' m',
   valid_graph dim is_in_graph ->
   get_path_valid dim get_path is_in_graph ->
   (forall n1 n2, reflect (is_in_graph n1 n2) (is_in_graph_b n1 n2)) ->
@@ -136,7 +137,7 @@ Lemma simple_map_w_layout_sound : forall dim (c : ucom dim) (m : qmap dim) get_p
   (c' ; convert_between_layouts m' m) ≡ (map_qubits (log2phys m) c).
 Proof. Admitted.
 
-Lemma simple_map_w_layout_respect_constraints : forall dim (c : ucom dim) (m : qmap dim) get_path is_in_graph is_in_graph_b c' m',
+Lemma simple_map_w_layout_respect_constraints : forall dim (c : base_ucom dim) (m : qmap dim) get_path is_in_graph is_in_graph_b c' m',
   valid_graph dim is_in_graph ->
   get_path_valid dim get_path is_in_graph ->
   (forall n1 n2, reflect (is_in_graph n1 n2) (is_in_graph_b n1 n2)) ->
@@ -146,18 +147,15 @@ Lemma simple_map_w_layout_respect_constraints : forall dim (c : ucom dim) (m : q
   respects_constraints is_in_graph c'.
 Proof. Admitted.
 
+Definition map_to_tenerife_w_layout (c : base_ucom 5) (m : qmap 5) :=
+  simple_map_w_layout c m Tenerife.tenerife_get_path Tenerife.tenerife_is_in_graph_b.
 
-
-
-Definition map_to_tenerife_w_layout (c : ucom 5) (m : qmap 5) :=
-  simple_map_w_layout c m tenerife_get_path tenerife_is_in_graph_b.
-
-Compute (map_to_tenerife_w_layout test_tenerife1 trivial_layout).
-Compute (map_to_tenerife_w_layout test_tenerife1 test_layout1).
-Compute (map_to_tenerife_w_layout test_tenerife2 trivial_layout).
-Compute (map_to_tenerife_w_layout test_tenerife2 test_layout1).
-Compute (map_to_tenerife_w_layout test_tenerife3 trivial_layout).
-Compute (map_to_tenerife_w_layout test_tenerife3 test_layout1).
+Compute (map_to_tenerife_w_layout Tenerife.test_tenerife1 trivial_layout).
+Compute (map_to_tenerife_w_layout Tenerife.test_tenerife1 test_layout1).
+Compute (map_to_tenerife_w_layout Tenerife.test_tenerife2 trivial_layout).
+Compute (map_to_tenerife_w_layout Tenerife.test_tenerife2 test_layout1).
+Compute (map_to_tenerife_w_layout Tenerife.test_tenerife3 trivial_layout).
+Compute (map_to_tenerife_w_layout Tenerife.test_tenerife3 test_layout1).
 
 (* Represent a layout as a list where element x at index i indicates
    that logical qubit x is located at physical qubit i.  *)

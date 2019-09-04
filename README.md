@@ -53,8 +53,9 @@ SQIRE programs optimizations.
 
 Mapping algorithms for SQIRE programs.
 
-- mapper/SimpleMapping.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
+- mapper/SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
 - mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(work-in-progress)**
+- mapper/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 
 ### examples
 
