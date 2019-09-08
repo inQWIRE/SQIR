@@ -148,8 +148,7 @@ Qed.
    gate set, so we define it in terms of built-in gates here. *)
 
 (* From https://en.wikipedia.org/wiki/Toffoli_gate *)
-Definition TDAG a := uapp (U_R (- PI / 4)) [a].
-Definition TOFFOLI (a b c : nat) : ucom :=
+Definition TOFFOLI {dim} (a b c : nat) : base_ucom dim :=
   H c; 
   CNOT b c; TDAG c; 
   CNOT a c; T c; 
@@ -183,9 +182,11 @@ Proof.
   destruct (f (base + n)%nat); auto with wf_db.
 Qed.
 
+Hint Resolve f_to_vec_WF : wf_db.
+
 Lemma f_to_vec_update : forall (base n : nat) (f : nat -> bool) (i : nat) (b : bool),
   (i < base \/ base + n <= i)%nat ->
-  f_to_vec base n f = f_to_vec base n (update f i b).
+  f_to_vec base n (update f i b) = f_to_vec base n f.
 Proof.
   intros.
   destruct H.
@@ -193,13 +194,13 @@ Proof.
     unfold update.
     bdestruct (base + n =? i).
     contradict H0. lia.
-    rewrite IHn.
+    rewrite <- IHn.
     reflexivity.
   - induction n; simpl; try reflexivity.
     unfold update.
     bdestruct (base + n =? i).
     contradict H0. lia.
-    rewrite IHn.
+    rewrite <- IHn.
     reflexivity. lia.
 Qed.
 
@@ -227,26 +228,26 @@ Qed.
 
 Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool),
   (i < n)%nat ->
-  (uc_eval n (X i)) × (f_to_vec 0 n f) 
+  (uc_eval (X i)) × (f_to_vec 0 n f) 
       = f_to_vec 0 n (update f i (¬ (f i))).
 Proof.
   intros.
-  simpl; unfold uc_eval, ueval1, pad. 
-  replace (i + 1 <=? n) with true by (symmetry; apply Nat.leb_le; lia).
-  rewrite (f_to_vec_split 0 n i f H).
-  restore_dims_strong; Msimpl. 
-  repeat rewrite Mmult_1_l; try apply f_to_vec_WF.
-  rewrite (f_to_vec_split 0 n i _ H).
-  simpl.
-  repeat rewrite <- (f_to_vec_update _ _ _ i (¬ (f i))).
-  2: { left. lia. }
-  2: { right. lia. }
-  destruct (f i); try rewrite update_index_eq; simpl;
-  autorewrite with ket_db;
+  autorewrite with eval_db.
+  rewrite (f_to_vec_split 0 n i f H). 
+  simpl; replace (n - 1 - i)%nat with (n - (i + 1))%nat by lia.
+  repad. 
+  Msimpl.
+  rewrite (f_to_vec_split 0 (i + 1 + x) i); try lia.
+  repeat rewrite (f_to_vec_update _ _ _ i (¬ (f i))).
+  2: left; lia.
+  2: right; lia.
+  destruct (f i); simpl; rewrite update_index_eq;
+  simpl; autorewrite with ket_db;
+  replace (i + 1 + x - 1 - i)%nat with x by lia;
   reflexivity.
 Qed.
 
-(* TODO: Move these to the Dirac file in QWIRE *)
+(* TODO: Move these to the Tactics file? *)
 Lemma ket00_0 : ∣0⟩⟨0∣ × ∣ 0 ⟩ = ∣ 0 ⟩. 
 Proof. solve_matrix. Qed.
 Lemma ket00_1 : ∣0⟩⟨0∣ × ∣ 1 ⟩ = @Zero 2 1. 
@@ -255,90 +256,162 @@ Lemma ket11_0 : ∣1⟩⟨1∣ × ∣ 0 ⟩ = @Zero 2 1.
 Proof. solve_matrix. Qed.
 Lemma ket11_1 : ∣1⟩⟨1∣ × ∣ 1 ⟩ = ∣ 1 ⟩. 
 Proof. solve_matrix. Qed.
+Lemma phase_shift0_spec : forall θ, (phase_shift θ) × ∣ 0 ⟩ = ∣ 0 ⟩.
+Proof. intros. solve_matrix. Qed.
+Lemma phase_shift1_spec : forall θ, (phase_shift θ) × ∣ 1 ⟩ = (Cexp θ) .* ∣ 1 ⟩.
+Proof. intros. solve_matrix. Qed.
+Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec Z0_spec Z1_spec : small_ket_db.
+Hint Rewrite ket00_0 ket00_1 ket11_0 ket11_1 : small_ket_db.
+Hint Rewrite phase_shift0_spec phase_shift1_spec : small_ket_db.
+Hint Rewrite Mscale_mult_dist_r Mscale_mult_dist_l Mscale_kron_dist_r Mscale_kron_dist_l Mscale_plus_distr_r Mscale_plus_distr_l Mscale_assoc : small_ket_db.
 
 (* We can prove more general lemmas about CNOT and TOFFOLI (placing no 
    restrictions on i, j), but the following are sufficient for our 
    purposes here. We can revisit the design if we choose a different 
-   representation of tensor products. *)
+   representation of classical states. *)
 Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
   (i < j)%nat ->
   (j < n)%nat ->
-  (uc_eval n (CNOT i j)) × (f_to_vec 0 n f) 
+  (uc_eval (CNOT i j)) × (f_to_vec 0 n f) 
       = f_to_vec 0 n (update f j (f j ⊕ f i)).
 Proof.
   intros.
-  simpl; unfold uc_eval, ueval_cnot, pad.
-  replace (i <? j) with true by (symmetry; apply Nat.ltb_lt; lia).
-  replace (i + (1 + (j - i - 1) + 1) <=? n) with true by (symmetry; apply Nat.leb_le; lia).
-  replace (2 ^ (j - i))%nat with (2 ^ (j - i - 1) * 2)%nat by unify_pows_two.
-  rewrite <- id_kron.
-  repeat rewrite (f_to_vec_split 0 n j _ H0).
-  repeat rewrite (f_to_vec_split 0 j i _ H).
-  repeat rewrite <- (f_to_vec_update _ _ _ j (f j ⊕ f i));
-  try (left; lia); try (right; lia).
-  rewrite update_index_eq, update_index_neq; try lia.
-  replace (j - 1 - i)%nat with (j - i - 1)%nat by lia.
-  replace (n - 1 - j)%nat with (n - (1 + (j - i - 1) + 1) - i)%nat by lia.
-  rewrite <- kron_assoc.
-  rewrite (kron_assoc (f_to_vec 0 i f) _ _ ).
-  restore_dims_strong.
-  rewrite (kron_assoc _ _ ( ∣ f (0 + j)%nat ⟩)).
-  restore_dims_strong; Msimpl.
-  rewrite Mmult_plus_distr_r.
-  Msimpl. 
-  simpl; destruct (f i); destruct (f j); simpl;
-  repeat rewrite Mmult_1_l; try apply f_to_vec_WF; try auto with wf_db;
-  try rewrite ket00_0; try rewrite ket00_1;
-  try rewrite ket11_0; try rewrite ket11_1;
-  autorewrite with ket_db; try auto with wf_db; try apply f_to_vec_WF;
-  repeat rewrite kron_0_l;
-  rewrite kron_0_r;
-  rewrite kron_0_l;
-  try rewrite Mplus_0_r;
-  try rewrite Mplus_0_l;
-  restore_dims_strong;
-  repeat rewrite kron_assoc;
-  restore_dims_strong;
-  reflexivity.
+  autorewrite with eval_db.
+  repad.
+  repeat rewrite (f_to_vec_split 0 (i + (1 + x0 + 1) + x) i); try lia.
+  rewrite f_to_vec_update.
+  2: right; lia.
+  rewrite update_index_neq; try lia.
+  repeat rewrite (f_to_vec_split (0 + i + 1) (i + (1 + x0 + 1) + x - 1 - i) x0); try lia.
+  repeat rewrite f_to_vec_update.
+  2: left; lia.
+  2: right; lia.
+  simpl; rewrite update_index_eq.
+  replace (i + S (x0 + 1) + x - 1 - i - 1 - x0)%nat with x by lia.
+  distribute_plus.  
+  restore_dims_fast.
+  repeat rewrite <- kron_assoc.
+  destruct (f i); destruct (f (i + 1 + x0)%nat); 
+  simpl; Msimpl; autorewrite with small_ket_db;
+  Msimpl_light; reflexivity.
 Qed.    
 
 Lemma f_to_vec_TOFF : forall (n i j : nat) (f : nat -> bool),
   (i < j)%nat ->
   (j + 1 < n)%nat ->
-  (uc_eval n (TOFFOLI j (j+1) i)) × (f_to_vec 0 n f) 
+ (uc_eval (TOFFOLI j (j+1) i)) × (f_to_vec 0 n f) 
       = f_to_vec 0 n (update f i (f i ⊕ (f j && f (j+1)%nat))).
 Proof. 
   intros.
-  simpl; unfold uc_eval, ueval1, ueval_cnot, pad.
-  (* Simplify LHS (we can eliminate all the conditionals because of 
-     restrictions on i and j) *)
-  replace (j <? j + 1) with true;
-  try replace (j + (1 + (j + 1 - j - 1) + 1) <=? n) with true;
-  try replace (j + 1 + 1 <=? n) with true;
-  try replace (j + 1 <=? n) with true;
-  try replace (i + 1 <=? n) with true;
-  try replace (i <? j) with true;
-  try replace (i + (1 + (j - i - 1) + 1) <=? n) with true;
-  try replace (i <? j + 1) with true;
-  try replace (i + (1 + (j + 1 - i - 1) + 1) <=? n) with true;
-  try (symmetry; apply Nat.ltb_lt; lia);
-  try (symmetry; apply Nat.leb_le; lia).
-  bdestruct (j <? i). contradict H1; lia.
-  bdestruct (j + 1 <? i). contradict H2; lia.
-  (* Rewrite f_to_vec terms *)
-  repeat rewrite (f_to_vec_split 0 n (j+1) _ H0).
-  repeat rewrite (f_to_vec_split 0 (j+1) j); try lia.
-  repeat rewrite (f_to_vec_split 0 j i _ H).
-  replace (0 + i)%nat with i by easy. 
+  unfold TOFFOLI, T, TDAG.
+  simpl uc_eval.
+  autorewrite with eval_db. 
+  repad. (* slow *)
+  inversion H1; subst.
+  clear.
+  repeat rewrite Nat.pow_add_r.
+  repeat rewrite <- id_kron.
+  simpl I; Msimpl_light.
+
+  (* 1. Get rid of unnecessary (I (2 ^ i)) and (I (2 ^ x)) terms. My theory is that
+     this makes the rest of the proof faster by keeping the proof term smaller. *)
+  
+  (* Group (I (2 ^ i)) terms. *)
+  repeat rewrite kron_assoc;
+  restore_dims_fast;
+  repeat rewrite <- Nat.mul_assoc;
+  repeat rewrite Nat.mul_1_l;
+  repeat rewrite kron_mixed_product;
+  Msimpl_light.
+
+  (* Group (I (2 ^ x)) terms. *)
+  do 2 (repeat rewrite <- kron_assoc;
+        restore_dims_fast;
+        repeat rewrite Nat.mul_assoc;
+        repeat rewrite kron_mixed_product;
+        Msimpl_light). 
+
+  (* Split up f_to_vec terms. *)
+  rewrite 2 (f_to_vec_split 0 (i + S (x0 + 1 + 1) + x) (i + x0 + 1 + 1)); try lia.
+  replace (i + S (x0 + 1 + 1) + x - 1 - (i + x0 + 1 + 1))%nat with x by lia.
+  rewrite update_index_neq; try lia.
+  rewrite 2 (f_to_vec_split 0 (i + x0 + 1 + 1) (i + x0 + 1)); try lia.
+  replace (i + x0 + 1 + 1 - 1 - (i + x0 + 1))%nat with 0%nat by lia. 
+  replace (f_to_vec (0 + (i + x0 + 1) + 1) 0 f) with (I 1) by reflexivity.
+  rewrite 2 kron_1_r.
+  rewrite update_index_neq; try lia.
+  rewrite 2 (f_to_vec_split 0 (i + x0 + 1) i); try lia.
+  replace (i + x0 + 1 - 1 - i)%nat with x0 by lia.
   rewrite update_index_eq.
-  repeat rewrite update_index_neq; try lia.
-  repeat rewrite <- f_to_vec_update;
-    try (left; lia); try (right; lia).
-  
-  (* From this point on, all that's left is algebra... *)
+  repeat rewrite f_to_vec_update.
+  2, 3: left; lia.
+  2: right; lia.
+  repeat rewrite Nat.add_0_l.
+  replace (i + x0 + 1)%nat with (i + 1 + x0)%nat by lia.
+  repeat rewrite Nat.pow_add_r.
+  replace (2 ^ 1)%nat with 2%nat by reflexivity.
+
+  (* Apply f_equal2 *)
+  repeat rewrite kron_assoc. 
+  do 2 setoid_rewrite kron_assoc.
+  repeat rewrite <- Nat.mul_assoc. 
+  setoid_rewrite kron_mixed_product.
+  repeat rewrite <- kron_assoc. 
+  repeat rewrite Nat.mul_assoc. 
+  rewrite kron_mixed_product.
+  Msimpl_light.
+  apply f_equal2; try reflexivity.
+  apply f_equal2; try reflexivity.
+
+  (* 2. Destruct (f i), (f (i + 1 + x0)), and (f (i + 1 + x0 + 1)) and simplify.
+     Instead of expanding everything (e.g. via distribute_plus) and then reducing
+     (e.g. via autorewrite with ket_db), we alternate between expanding and 
+     reducing. Otherwise the proof is just too slow. *)
+
   repeat rewrite Mmult_assoc.
-  
-Admitted.
+  replace (i + 1 + (x0 + (1 + 0)))%nat with (i + 1 + x0 + 1)%nat by lia.
+  destruct (f i); destruct (f (i + 1 + x0)%nat); destruct (f (i + 1 + x0 + 1)%nat).
+  all: simpl bool_to_nat.
+  all: repeat (try rewrite Mmult_plus_distr_r; 
+               try rewrite kron_mixed_product);
+       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
+  all: repeat (try rewrite Mmult_plus_distr_l; 
+               try rewrite kron_mixed_product);
+       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
+  all: repeat (try rewrite Mmult_plus_distr_r; 
+               try rewrite kron_mixed_product);
+       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
+  all: repeat (try rewrite Mmult_plus_distr_l; 
+               try rewrite kron_mixed_product);
+       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
+  all: repeat (try rewrite kron_plus_distr_l; 
+               try rewrite kron_plus_distr_r; 
+               try rewrite kron_mixed_product);
+       repeat rewrite <- kron_assoc. 
+  all: repeat (try rewrite Mmult_plus_distr_l; 
+               try rewrite Mmult_plus_distr_r;
+               try rewrite kron_mixed_product);
+       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
+  all: repeat (try rewrite Mmult_plus_distr_r;
+               try rewrite kron_mixed_product);
+       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
+  all: repeat (try rewrite Mmult_plus_distr_l;
+               try rewrite kron_mixed_product);
+       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
+  all: repeat rewrite <- Mscale_kron_dist_l;
+       repeat rewrite <- kron_plus_distr_r.
+  all: do 3 (apply f_equal2; try reflexivity).
+  all: solve_matrix.
+  all: group_radicals.
+  4, 10: rewrite (Cmult_comm _ 2).
+  all: repeat rewrite <- Cmult_assoc; repeat rewrite <- Phase.Cexp_add.
+  all: replace (PI / 4 + (PI / 4 + (PI / 4 + PI / 4)))%R with PI%R by lra.
+  all: replace (- (PI / 4) + (- (PI / 4) + (PI / 4 + PI / 4)))%R with 0%R by lra.
+  all: replace (- (PI / 4) + (PI / 4 + (- (PI / 4) + PI / 4)))%R with 0%R by lra.
+  all: replace (PI / 4 + (- (PI / 4) + (- (PI / 4) + PI / 4)))%R with 0%R by lra.
+  all: replace (PI / 4 + (- (PI / 4) + (PI / 4 + - (PI / 4))))%R with 0%R by lra.
+  all: try rewrite Phase.Cexp_PI; try rewrite Phase.Cexp_0; lca.
+Qed.
 
 Opaque TOFFOLI.
 
@@ -402,10 +475,10 @@ Definition b_dim (b : bexp) : nat := (num_inputs b) + 1 + (num_ancillae b).
    program should only modify the qubit at index i.
    - i is the index of the result
    - j is the index of the next available ancilla. *)
-Fixpoint compile' (b : bexp) (i j : nat) : ucom :=
+Fixpoint compile' {dim} (b : bexp) (i j : nat) : base_ucom dim :=
   match b with
   | b_t         => X i
-  | b_f         => uskip
+  | b_f         => SKIP
   | b_var v     => CNOT v i
   | b_and b1 b2 => compile' b1 j (j+2); 
                   compile' b2 (j+1) (j+2);
@@ -416,7 +489,8 @@ Fixpoint compile' (b : bexp) (i j : nat) : ucom :=
                   compile' b2 i j
   end.
 
-Definition compile b := compile' b (num_inputs b) ((num_inputs b) + 1).
+Definition compile b : base_ucom (b_dim b) := 
+  compile' b (num_inputs b) ((num_inputs b) + 1).
 
 (* Correctness of compile':
    1. The value at index i is xor-ed with the desired boolean expression.
@@ -428,13 +502,13 @@ Definition compile b := compile' b (num_inputs b) ((num_inputs b) + 1).
    * 'j + (num_ancillae b) < n + 1' and 'forall k ...' are used in the b_and 
      case -- note that this is the only case where the ancilla matter.
 *)
-Lemma compile'_correct : forall (b : bexp) (f : nat -> bool) (i j n : nat),
+Lemma compile'_correct : forall dim (b : bexp) (f : nat -> bool) (i j : nat),
   bexp_well_typed i b -> 
   (i < j)%nat ->
-  (j + (num_ancillae b) < n + 1)%nat ->
+  (j + (num_ancillae b) < dim + 1)%nat ->
   (forall k, (k > i)%nat -> f k = false) ->
-  (uc_eval n (compile' b i j)) × (f_to_vec 0 n f) 
-    = f_to_vec 0 n (update f i ((f i) ⊕ (interpret_bexp b f))).
+  (uc_eval (@compile' dim b i j)) × (f_to_vec 0 dim f) 
+    = f_to_vec 0 dim (update f i ((f i) ⊕ (interpret_bexp b f))).
 Proof.
   intros.
   generalize dependent f.
@@ -446,7 +520,7 @@ Proof.
     rewrite f_to_vec_X; try lia.
     destruct (f i); simpl; reflexivity.
   - (* b_f *)
-    simpl. 
+    simpl.  autorewrite with eval_db; try lia.
     rewrite Mmult_1_l; try apply f_to_vec_WF.
     rewrite xorb_false_r.
     rewrite update_same; reflexivity.
@@ -464,8 +538,8 @@ Proof.
     assert (j < j + 2)%nat by lia.
     assert (j + 1 < j + 2)%nat by lia.
     simpl in H1.
-    assert ((j + 2) + num_ancillae b1 < n + 1)%nat by lia.
-    assert ((j + 2) + num_ancillae b2 < n + 1)%nat by lia.
+    assert ((j + 2) + num_ancillae b1 < dim + 1)%nat by lia.
+    assert ((j + 2) + num_ancillae b2 < dim + 1)%nat by lia.
     specialize (IHb1 j H (j+2)%nat H4 H8).
     specialize (IHb2 (j+1)%nat H3 (j+2)%nat H5 H9).
     clear H H3 H4 H5 H8 H9.
@@ -535,7 +609,7 @@ Qed.
 Lemma compile_correct : forall (b : bexp) (f : nat -> bool) (r : bool), 
   let in_s := fun i => if i <? (num_inputs b) then f i else false in
   let out_s := update in_s (num_inputs b) (interpret_bexp b f) in
-  (uc_eval (b_dim b) (compile b)) × f_to_vec 0 (b_dim b) in_s
+  (@uc_eval (b_dim b) (compile b)) × f_to_vec 0 (b_dim b) in_s
     = f_to_vec 0 (b_dim b) out_s.
 Proof.
   intros.
