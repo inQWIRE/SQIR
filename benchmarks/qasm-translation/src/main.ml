@@ -75,6 +75,16 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size (fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
+(* TODO very hacky right now *)
+let apply_p_gate gate params (id, idx) qmap sym_tab =
+  match idx, params with
+  | Some i, [Real lambda] -> [gate lambda (QbitMap.find (id, i) qmap)]
+  | None, [Real lambda] ->
+    (match StringMap.find id sym_tab with
+     | TQReg size -> List.init size (fun i -> gate lambda (QbitMap.find (id, i) qmap))
+     | _ -> raise (Failure "ERROR: Not a qubit register!"))
+  | _ -> raise (Failure "NYI: parametrized gate")
+
 let apply_meas (id, idx) qmap sym_tab =
   match idx with
   | Some i  -> [S.Meas (QbitMap.find (id, i) qmap, S.Skip, S.Skip)]
@@ -141,7 +151,7 @@ let translate_statement s qmap sym_tab : S.base_Unitary S.com list =
      | Uop uop -> List.map (fun ucom -> S.Uc ucom) (match uop with
          | CX (ctrl, tgt) -> apply_c_gate S.cNOT ctrl tgt qmap sym_tab
          | U _ -> raise (Failure "NYI: generic Unitary!")
-         | Gate (id, _, qargs) ->
+         | Gate (id, params, qargs) ->
            (match StringMap.find_opt id sym_tab with
             | Some TGate _ -> (match id with
                 | "cx"  -> apply_c_gate S.cNOT
@@ -155,8 +165,8 @@ let translate_statement s qmap sym_tab : S.base_Unitary S.com list =
                 | "sdg" -> apply_gate S.pDAG  (List.hd qargs) qmap sym_tab
                 | "t"   -> apply_gate S.t     (List.hd qargs) qmap sym_tab
                 | "tdg" -> apply_gate S.tDAG  (List.hd qargs) qmap sym_tab
-                (*TODO parametrized gates*)
-                (* | "rz"  -> apply_gate S.rz    (List.hd qargs) qmap sym_tab *)
+                | "rz"  -> apply_p_gate S.rz params (List.hd qargs) qmap sym_tab
+                (*TODO other parametrized gates*)
                 | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
               )
             | Some _ -> raise (Failure "ERROR: Not a gate!")
