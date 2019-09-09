@@ -75,6 +75,14 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size ( fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
+let apply_meas (id, idx) qmap sym_tab =
+  match idx with
+  | Some i  -> [S.Meas (QbitMap.find (id, i) qmap, S.Skip, S.Skip)]
+  | None    ->
+    match StringMap.find id sym_tab with
+    | TQReg size -> List.init size ( fun i -> S.Meas (QbitMap.find (id, i) qmap, S.Skip, S.Skip))
+    | _ -> raise (Failure "ERROR: Not a qubit register!")
+
 let _CNOT m n = B.App2 (B.UPI4_CNOT, m, n)
 let _X    n = B.App1 (B.UPI4_X,    n)
 let _Z    n = B.App1 (B.uPI4_Z,    n)
@@ -116,12 +124,11 @@ let translate_statement_bm s qmap sym_tab =
   | Barrier _ -> print_endline ("NYI: Unsupported op: Barrier"); []
   | _ -> []
 
-let translate_statement s qmap sym_tab =
+let translate_statement s qmap sym_tab : S.base_Unitary S.com list =
   match s with
   | Qop qop ->
     (match qop with
-     | Uop uop ->
-       (match uop with
+     | Uop uop -> List.map (fun ucom -> S.Uc ucom) (match uop with
         | CX (ctrl, tgt) -> apply_c_gate S.cNOT ctrl tgt qmap sym_tab
         | U _ -> raise (Failure "NYI: generic Unitary!")
         | Gate (id, _, qargs) ->
@@ -145,7 +152,7 @@ let translate_statement s qmap sym_tab =
            | Some _ -> raise (Failure "ERROR: Not a gate!")
            | None -> raise (Failure "ERROR: Gate not found!")
           ))
-     | Meas _ -> print_endline ("NYI: Measure"); []
+     | Meas (qarg, _) -> apply_meas qarg qmap sym_tab
      | Reset _ -> print_endline ("NYI: Reset"); [])
   | If _ -> print_endline ("NYI: If"); []
   | Barrier _ -> print_endline ("NYI: Unsupported op: Barrier"); []
