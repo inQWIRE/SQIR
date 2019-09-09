@@ -130,12 +130,16 @@ let translate_statement s qmap sym_tab =
                | "cx"  -> apply_c_gate S.cNOT
                             (List.hd qargs) (List.nth qargs 1) qmap sym_tab
                | "x"   -> apply_gate S.x     (List.hd qargs) qmap sym_tab
+               | "y"   -> apply_gate S.y     (List.hd qargs) qmap sym_tab
                | "z"   -> apply_gate S.z     (List.hd qargs) qmap sym_tab
                | "h"   -> apply_gate S.h     (List.hd qargs) qmap sym_tab
+               | "id"  -> apply_gate S.iD    (List.hd qargs) qmap sym_tab
                | "s"   -> apply_gate S.p     (List.hd qargs) qmap sym_tab (* phase gate *)
                | "sdg" -> apply_gate S.pDAG  (List.hd qargs) qmap sym_tab
                | "t"   -> apply_gate S.t     (List.hd qargs) qmap sym_tab
                | "tdg" -> apply_gate S.tDAG  (List.hd qargs) qmap sym_tab
+               (*TODO parametrized gates*)
+               (* | "rz"  -> apply_gate S.rz    (List.hd qargs) qmap sym_tab *)
                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
              )
            | Some _ -> raise (Failure "ERROR: Not a gate!")
