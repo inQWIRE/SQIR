@@ -72,7 +72,7 @@ let apply_gate gate (id, idx) qmap sym_tab =
   | Some i  -> [gate (QbitMap.find (id, i) qmap)]
   | None    ->
     match StringMap.find id sym_tab with
-    | TQReg size -> List.init size ( fun i -> gate (QbitMap.find (id, i) qmap))
+    | TQReg size -> List.init size (fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
 let apply_meas (id, idx) qmap sym_tab =
@@ -80,7 +80,8 @@ let apply_meas (id, idx) qmap sym_tab =
   | Some i  -> [S.Meas (QbitMap.find (id, i) qmap, S.Skip, S.Skip)]
   | None    ->
     match StringMap.find id sym_tab with
-    | TQReg size -> List.init size ( fun i -> S.Meas (QbitMap.find (id, i) qmap, S.Skip, S.Skip))
+    | TQReg size -> List.init size (fun i -> S.Meas (QbitMap.find (id, i) qmap,
+                                                     S.Skip, S.Skip))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
 let _CNOT m n = B.App2 (B.UPI4_CNOT, m, n)
@@ -129,29 +130,29 @@ let translate_statement s qmap sym_tab : S.base_Unitary S.com list =
   | Qop qop ->
     (match qop with
      | Uop uop -> List.map (fun ucom -> S.Uc ucom) (match uop with
-        | CX (ctrl, tgt) -> apply_c_gate S.cNOT ctrl tgt qmap sym_tab
-        | U _ -> raise (Failure "NYI: generic Unitary!")
-        | Gate (id, _, qargs) ->
-          (match StringMap.find_opt id sym_tab with
-           | Some TGate _ -> (match id with
-               | "cx"  -> apply_c_gate S.cNOT
-                            (List.hd qargs) (List.nth qargs 1) qmap sym_tab
-               | "x"   -> apply_gate S.x     (List.hd qargs) qmap sym_tab
-               | "y"   -> apply_gate S.y     (List.hd qargs) qmap sym_tab
-               | "z"   -> apply_gate S.z     (List.hd qargs) qmap sym_tab
-               | "h"   -> apply_gate S.h     (List.hd qargs) qmap sym_tab
-               | "id"  -> apply_gate S.iD    (List.hd qargs) qmap sym_tab
-               | "s"   -> apply_gate S.p     (List.hd qargs) qmap sym_tab (* phase gate *)
-               | "sdg" -> apply_gate S.pDAG  (List.hd qargs) qmap sym_tab
-               | "t"   -> apply_gate S.t     (List.hd qargs) qmap sym_tab
-               | "tdg" -> apply_gate S.tDAG  (List.hd qargs) qmap sym_tab
-               (*TODO parametrized gates*)
-               (* | "rz"  -> apply_gate S.rz    (List.hd qargs) qmap sym_tab *)
-               | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
-             )
-           | Some _ -> raise (Failure "ERROR: Not a gate!")
-           | None -> raise (Failure "ERROR: Gate not found!")
-          ))
+         | CX (ctrl, tgt) -> apply_c_gate S.cNOT ctrl tgt qmap sym_tab
+         | U _ -> raise (Failure "NYI: generic Unitary!")
+         | Gate (id, _, qargs) ->
+           (match StringMap.find_opt id sym_tab with
+            | Some TGate _ -> (match id with
+                | "cx"  -> apply_c_gate S.cNOT
+                             (List.hd qargs) (List.nth qargs 1) qmap sym_tab
+                | "x"   -> apply_gate S.x     (List.hd qargs) qmap sym_tab
+                | "y"   -> apply_gate S.y     (List.hd qargs) qmap sym_tab
+                | "z"   -> apply_gate S.z     (List.hd qargs) qmap sym_tab
+                | "h"   -> apply_gate S.h     (List.hd qargs) qmap sym_tab
+                | "id"  -> apply_gate S.iD    (List.hd qargs) qmap sym_tab
+                | "s"   -> apply_gate S.p     (List.hd qargs) qmap sym_tab (* phase gate *)
+                | "sdg" -> apply_gate S.pDAG  (List.hd qargs) qmap sym_tab
+                | "t"   -> apply_gate S.t     (List.hd qargs) qmap sym_tab
+                | "tdg" -> apply_gate S.tDAG  (List.hd qargs) qmap sym_tab
+                (*TODO parametrized gates*)
+                (* | "rz"  -> apply_gate S.rz    (List.hd qargs) qmap sym_tab *)
+                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
+              )
+            | Some _ -> raise (Failure "ERROR: Not a gate!")
+            | None -> raise (Failure "ERROR: Gate not found!")
+           ))
      | Meas (qarg, _) -> apply_meas qarg qmap sym_tab
      | Reset _ -> print_endline ("NYI: Reset"); [])
   | If _ -> print_endline ("NYI: If"); []
@@ -246,7 +247,8 @@ let parse_nam_benchmarks () = List.map (fun x -> get_gate_list x) nam_benchmark_
 type counts = {h:int; x:int; rz:int; cnot:int; total:int}
 
 let get_counts progs : counts list =
-  let tot p = (B.count_H_gates p) + (B.count_X_gates p) + (B.count_rotation_gates p) + (B.count_CNOT_gates p) in
+  let tot p = (B.count_H_gates p) + (B.count_X_gates p)
+              + (B.count_rotation_gates p) + (B.count_CNOT_gates p) in
   List.map (fun p -> {h=B.count_H_gates p;
                       x=B.count_X_gates p;
                       rz=B.count_rotation_gates p;
@@ -264,7 +266,9 @@ let run_on_nam_benchmarks f =
   let _ = printf "Running alternating passes\n%!" in
   let bs2 = List.mapi (fun i p ->
       (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
-       B.cancel_gates (B.hadamard_reduction (B.cancel_gates (B.hadamard_reduction (B.cancel_gates p)))))) bs in
+       B.cancel_gates (B.hadamard_reduction (B.cancel_gates
+                                               (B.hadamard_reduction
+                                                  (B.cancel_gates p)))))) bs in
   let counts1 = get_counts bs1 in
   let counts2 = get_counts bs2 in
   let oc = open_out f in
@@ -289,7 +293,9 @@ let run_on_random_benchmarks d =
   let _ = printf "Running alternating passes\n%!" in
   let bs2 = List.mapi (fun i p ->
       (printf "Processing %s...\n%!" (List.nth fs i);
-       B.cancel_gates (B.hadamard_reduction (B.cancel_gates (B.hadamard_reduction (B.cancel_gates p)))))) bs in
+       B.cancel_gates (B.hadamard_reduction (B.cancel_gates
+                                               (B.hadamard_reduction
+                                                  (B.cancel_gates p)))))) bs in
   let initial = get_counts bs in
   let final1 = get_counts bs1 in
   let h_red1 = percent_diff (List.map (fun x -> x.h) initial) (List.map (fun x -> x.h) final1) in
