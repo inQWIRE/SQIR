@@ -3,14 +3,9 @@ A Small Quantum Intermediate Representation
 
 ## Compilation Instructions
 
-To compile the code, use:
-```
-./configure.sh
-make
-```
-Note that `make` will take a while. To add additional targets to the Makefile, edit the \_CoqProject file. By default, files in the core directory and select files from the optimizer and mapper directories are compiled. In case of compilation trouble, try `make clean` (and possibly manually removing any lingering `.vo` files) before running `./configure.sh`.  
+Run `make` to compile the files in the core directory, `make optimizer` to compile code in the optimizer directory, `make mapper` to compile code in the mapper directory, and `make examples` to compile the code in the examples directory. Use `make all` to compile everything.
 
-The development has been tested with Coq version 8.8.2.
+The development has been tested with Coq version 8.9.1.
 
 ## Directory Contents
 
@@ -22,9 +17,7 @@ The files below are the core of SQIRE.
 - core/UnitarySem.v : Semantics for unitary SQIRE programs.
 - core/DensitySem.v : Density matrix semantics for general SQIRE programs.
 - core/NDSem.v : Non-deterministic semantics for general SQIRE programs.
-- core/Compose.v : Composition of unitary SQIRE programs.
-- core/Proportional.v : Defines proportional equality between matrices. **(should be moved to QWIRE)**
-- core/Phase.v : General facts about the phase_shift matrix. **(should be moved to QWIRE)**
+- core/Compose.v : Composition of unitary SQIRE programs (currently not used).
 - core/Tactics.v : Useful tactics.
 
 We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.

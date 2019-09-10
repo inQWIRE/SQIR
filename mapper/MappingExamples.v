@@ -831,7 +831,16 @@ Proof.
       rewrite Nat.mul_sub_distr_r.
       rewrite (Nat.mul_comm (n1 / numCols)).
       rewrite (Nat.mul_comm (n2 / numCols)).
-      rewrite Nat.add_sub_assoc; try lia. } (* solved. Did something change in 8.10? *)
+      rewrite Nat.add_sub_assoc; try lia. 
+      (* In Coq v8.10, the goal is solved by the previous line. *)
+      try (rewrite Nat.add_sub_assoc; try assumption; 
+           assert (numCols * (n2 / numCols) < numCols * (n1 / numCols));
+           [ apply mult_lt_compat_l; assumption 
+           |  remember (numCols * (n1 / numCols)) as x;
+              remember (numCols * (n2 / numCols)) as y;
+              clear - Haux1 Haux2 H0 H1;
+              lia]).
+    }
     eapply valid_path_merge_path.
     apply move_up_valid_path; try assumption; try lia.
     replace n2 with (n1 - distR * numCols + distC); try assumption.
@@ -918,17 +927,13 @@ Proof.
   - (* badly-typed case *)
     contradict Hn1n2.
     unfold col, row in *.
-    do 2 rewrite Nat.mod_eq in H4; try lia. (* solved early again... *)
-
-(* old:    
-    rewrite H5 in H4. 
-    rewrite <- (Nat.sub_add (numCols * (n2 / numCols)) n1).
-    rewrite H4.
-    rewrite Nat.sub_add.
-    reflexivity.
-    rewrite Nat.mul_div_le; lia.
-    rewrite <- H5.
-    rewrite Nat.mul_div_le; lia. *)
+    do 2 rewrite Nat.mod_eq in H4; try lia.
+    (* Coq v8.10 solves early again... *)
+    try (rewrite H5 in H4;
+         rewrite <- (Nat.sub_add (numCols * (n2 / numCols)) n1);
+         [ rewrite H4; rewrite Nat.sub_add; 
+           [ reflexivity | rewrite Nat.mul_div_le; lia]
+         | rewrite <- H5; rewrite Nat.mul_div_le; lia ]). 
 Qed.
 
 Lemma grid_is_in_graph_reflects : forall numRows numCols n1 n2,

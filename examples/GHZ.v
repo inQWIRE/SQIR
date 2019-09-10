@@ -1,4 +1,4 @@
-Require Import Compose.
+Require Import UnitarySem.
 Require Import QWIRE.Dirac.
 
 Local Open Scope nat_scope.

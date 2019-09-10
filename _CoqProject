@@ -9,17 +9,8 @@ lib/QWIRE/Quantum.v
 lib/QWIRE/Dirac.v
 lib/QWIRE/Proportional.v
 
+core/SQIRE.v
+core/UnitarySem.v
 core/Compose.v
 core/DensitySem.v
 core/NDSem.v
-core/SQIRE.v
-core/UnitarySem.v
-
-optimizer/Equivalences.v
-optimizer/GateCancellation.v
-optimizer/HadamardReduction.v
-optimizer/ListRepresentation.v
-optimizer/PI4GateSet.v
-
-mapper/SimpleMapping.v
-mapper/MappingExamples.v

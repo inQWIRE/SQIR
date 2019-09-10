@@ -5,8 +5,8 @@
 *~
 
 # Ignore auto-generated Makefiles
-Makefile
-Makefile.conf
+CoqMakefile
+CoqMakefile.conf
 
 # Ignore OCaml object files
 *.cmo

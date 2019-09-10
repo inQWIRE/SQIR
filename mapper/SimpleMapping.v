@@ -1,4 +1,4 @@
-Require Export Compose.
+Require Export UnitarySem.
 Require Export Equivalences.
 Require Export List.
 Open Scope ucom.
@@ -13,7 +13,7 @@ Local Close Scope R_scope.
    qubits but in the wrong orientation, insert H gates on the target and
    control. 
 
-   We've chosen to leave the implemnetation of the CNOT connectivity DAG 
+   We've chosen to leave the implementation of the CNOT connectivity DAG 
    unspecified. Instead, the mapping algorithm requires two functions:
 
    - get_path, which returns an undirected path between two nodes in the

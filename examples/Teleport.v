@@ -147,7 +147,6 @@ Proof.
     dependent destruction Bell;
     dependent destruction Bell1;
     dependent destruction Bell2.
-    simpl.
     autorewrite with eval_db; simpl.
     Msimpl.
     setoid_rewrite cnot_decomposition.
@@ -155,7 +154,8 @@ Proof.
     rewrite kron_assoc. 
     restore_dims.
     rewrite kron_mixed_product.
-    autorewrite with M_db ket_db; auto.
+    Msimpl.
+    autorewrite with ket_db.
     unfold epr00. 
     autorewrite with ket_db.
     reflexivity.
@@ -176,14 +176,16 @@ Proof.
     replace (2 * 1)%nat with 2%nat by reflexivity.
     rewrite cnot_decomposition.
     restore_dims.
-    autorewrite with M_db ket_db. 
+    autorewrite with Q_db ket_db. 
     repeat rewrite <- kron_assoc.
     restore_dims.
     repeat rewrite kron_mixed_product.
-    autorewrite with M_db ket_db. 
+    Msimpl.
     rewrite (ket_decomposition ψ) by auto. 
-    autorewrite with M_db ket_db. 
-    try rewrite <- Copp_mult_distr_r.
+    autorewrite with Q_db ket_db. 
+    Qsimpl.
+    autorewrite with Q_db ket_db. 
+    rewrite <- Copp_mult_distr_r.
     group_radicals.
     subst ψA. 
     reflexivity.

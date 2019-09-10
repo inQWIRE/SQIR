@@ -22,10 +22,10 @@ Proof.
   intros.
   unfold constant in H.
   destruct H; unfold deutsch; simpl; rewrite H.
-  - exists 0. rewrite eulers0. 
+  - exists 0. autorewrite with Cexp_db.
     autorewrite with eval_db; simpl; try lia.
     solve_matrix. 
-  - exists PI. rewrite eulers_identity. 
+  - exists PI. autorewrite with Cexp_db.
     unfold f1. 
     autorewrite with eval_db; simpl.
     solve_matrix. 
@@ -37,11 +37,11 @@ Proof.
   intros. 
   unfold balanced in H.
   destruct H; unfold deutsch; simpl; rewrite H.
-  - exists 0. rewrite eulers0. 
+  - exists 0. autorewrite with Cexp_db.
     unfold f2.
     autorewrite with eval_db; simpl.
     solve_matrix.
-  - exists PI. rewrite eulers_identity. 
+  - exists PI. autorewrite with Cexp_db.
     unfold f3; simpl.
     autorewrite with eval_db; simpl. 
     solve_matrix.

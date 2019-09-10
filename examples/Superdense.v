@@ -26,7 +26,7 @@ Lemma superdense_correct : forall b1 b2, (uc_eval (superdense_u b1 b2)) × ∣ 0
 Proof.
   intros; simpl.
   autorewrite with eval_db.
-  bdestructΩ (a + 1 <=? 2); try lia.
+  bdestructΩ (a + 1 <=? 2).
   Msimpl.
   simpl. replace 4%nat with (2*2)%nat by lia.
   replace (∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2) with cnot by solve_matrix.

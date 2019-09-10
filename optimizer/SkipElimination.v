@@ -1,4 +1,3 @@
-Require Import UnitarySem.
 Require Import Equivalences.
 Require Import Coq.Reals.ROrderedType.
 Open Scope ucom.

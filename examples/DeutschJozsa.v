@@ -1,5 +1,5 @@
 Require Import List.
-Require Import Compose.
+Require Import UnitarySem.
 Require Import Dirac.
 
 Open Scope ucom.
@@ -72,7 +72,6 @@ Proof.
     apply f_equal2; trivial.
     field_simplify_eq. lca.
     split; try nonzero.
-    apply Cpow_nonzero. lra.
 Qed.    
 
 Fixpoint cpar {dim : nat} (n : nat) (u : nat -> base_ucom dim) : base_ucom dim :=
@@ -234,7 +233,6 @@ Proof.
   replace (2 * 2 ^ (dim - 1)) with (2 ^ dim).
   2: { replace dim with (1 + (dim - 1))%nat at 1 by lia. reflexivity. }
   autorewrite with C_db. 
-  rewrite Cinv_r by (apply Cpow_nonzero; lra).
   solve_matrix.
 Qed.  
 
