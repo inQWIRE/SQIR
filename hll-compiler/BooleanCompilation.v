@@ -221,7 +221,7 @@ Proof.
       simpl.
       rewrite IHn.
       replace (base + i + 1 + (n - 1 - i))%nat with (base + n)%nat by lia.
-      restore_dims_strong; repeat rewrite kron_assoc. 
+      restore_dims; repeat rewrite kron_assoc. 
       reflexivity.
 Qed.
 
@@ -234,7 +234,7 @@ Proof.
   simpl; unfold uc_eval, ueval1, pad. 
   replace (i + 1 <=? n) with true by (symmetry; apply Nat.leb_le; lia).
   rewrite (f_to_vec_split 0 n i f H).
-  restore_dims_strong; Msimpl. 
+  restore_dims; Msimpl. 
   repeat rewrite Mmult_1_l; try apply f_to_vec_WF.
   rewrite (f_to_vec_split 0 n i _ H).
   simpl.
@@ -281,9 +281,9 @@ Proof.
   replace (n - 1 - j)%nat with (n - (1 + (j - i - 1) + 1) - i)%nat by lia.
   rewrite <- kron_assoc.
   rewrite (kron_assoc (f_to_vec 0 i f) _ _ ).
-  restore_dims_strong.
+  restore_dims.
   rewrite (kron_assoc _ _ ( ∣ f (0 + j)%nat ⟩)).
-  restore_dims_strong; Msimpl.
+  restore_dims; Msimpl.
   rewrite Mmult_plus_distr_r.
   Msimpl. 
   simpl; destruct (f i); destruct (f j); simpl;
@@ -296,9 +296,9 @@ Proof.
   rewrite kron_0_l;
   try rewrite Mplus_0_r;
   try rewrite Mplus_0_l;
-  restore_dims_strong;
+  restore_dims;
   repeat rewrite kron_assoc;
-  restore_dims_strong;
+  restore_dims;
   reflexivity.
 Qed.    
 

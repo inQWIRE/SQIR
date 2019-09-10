@@ -1,21 +1,19 @@
 -R . Top
 -arg -profile-ltac
 
+lib/QWIRE/Prelim.v
 lib/QWIRE/RealAux.v
 lib/QWIRE/Complex.v
-lib/QWIRE/Dirac.v
 lib/QWIRE/Matrix.v
-lib/QWIRE/Prelim.v
 lib/QWIRE/Quantum.v
+lib/QWIRE/Dirac.v
+lib/QWIRE/Proportional.v
 
 core/Compose.v
 core/DensitySem.v
 core/NDSem.v
-core/Phase.v
-core/Proportional.v
 core/SQIRE.v
 core/UnitarySem.v
-core/Tactics.v
 
 optimizer/Equivalences.v
 optimizer/GateCancellation.v
@@ -25,4 +23,3 @@ optimizer/PI4GateSet.v
 
 mapper/SimpleMapping.v
 mapper/MappingExamples.v
-

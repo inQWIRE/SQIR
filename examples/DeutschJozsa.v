@@ -1,41 +1,10 @@
 Require Import List.
 Require Import Compose.
 Require Import Dirac.
-Require Import Tactics.
 
 Open Scope ucom.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
-
-(* TODO: move kron_n lemmas to QWIRE *)
-(* Same as kron_n in Matrix.v, but with left-associativity *)
-Fixpoint kron_n n {m1 m2} (A : Matrix m1 m2) : Matrix (m1^n) (m2^n) :=
-  match n with
-  | 0    => I 1
-  | S n' => kron (kron_n n' A) A
-  end.
-
-Lemma WF_kron_n : forall n {m1 m2} (A : Matrix m1 m2),
-   WF_Matrix A ->  WF_Matrix (kron_n n A).
-Proof.
-  intros.
-  induction n; simpl.
-  - apply WF_I.
-  - apply WF_kron; try lia; assumption. 
-Qed.
-Hint Resolve WF_kron_n : wf_db.
-
-Lemma kron_n_assoc :
-  forall n {m1 m2} (A : Matrix m1 m2), WF_Matrix A -> kron_n (S n) A = A ⊗ kron_n n A.
-Proof.
-  intros. induction n.
-  - simpl. Msimpl_light. reflexivity.
-  - simpl. 
-    restore_dims_fast. 
-    rewrite <- kron_assoc.
-    rewrite <- IHn.
-    reflexivity.
-Qed.
 
 Inductive boolean : forall {n}, base_ucom (S n) -> Set :=
   | boolean_I : forall u, u ≡ SKIP -> @boolean 0 u
@@ -83,12 +52,12 @@ Proof.
     apply f_equal2. lca. reflexivity.
   - simpl.
     rewrite e.
-    restore_dims_fast.
+    restore_dims.
     repeat rewrite <- kron_assoc.
-    restore_dims_fast.
+    restore_dims.
     setoid_rewrite kron_adjoint.
     rewrite Mmult_plus_distr_r.
-    restore_dims_fast.
+    restore_dims.
     rewrite Mmult_plus_distr_l.
     repeat rewrite kron_mixed_product.
     setoid_rewrite (IHdim u1 P1).
@@ -96,7 +65,7 @@ Proof.
     replace ((ψp) † × (∣0⟩⟨0∣ × ψp)) with ((1/2)%R .* I 1) by (rewrite Heqψp; solve_matrix).
     replace ((ψp) † × (∣1⟩⟨1∣ × ψp)) with ((1/2)%R .* I 1) by (rewrite Heqψp; solve_matrix).
     repeat rewrite Mscale_kron_dist_r.
-    restore_dims_fast.
+    restore_dims.
     Msimpl.
     repeat rewrite Mscale_assoc.
     rewrite <- Mscale_plus_distr_l.
@@ -151,7 +120,7 @@ Proof.
     replace (2 ^ (dim - n))%nat with (2 * 2 ^ (dim - (S n)))%nat by unify_pows_two.
     rewrite <- id_kron.
     rewrite <- kron_assoc.
-    restore_dims_fast.
+    restore_dims.
     repeat rewrite kron_mixed_product.
     Msimpl_light. 
     reflexivity.
@@ -163,7 +132,7 @@ Proof.
   intros.
   induction n; simpl.
   - Msimpl_light. reflexivity.
-  - restore_dims_fast. 
+  - restore_dims. 
     rewrite kron_mixed_product.
     rewrite <- IHn.
     apply f_equal_gen; try reflexivity.
@@ -186,7 +155,7 @@ Proof.
   - simpl in *; replace (n - n)%nat with O in * by lia. 
     simpl in *.
     repeat rewrite kron_1_r in *. 
-    restore_dims_fast. 
+    restore_dims. 
     rewrite kron_adjoint. 
     rewrite hadamard_sa. 
     setoid_rewrite IHn.
@@ -214,9 +183,9 @@ Proof.
   Msimpl_light.
   replace (dim - 0)%nat with dim by lia.
   rewrite kron_n_assoc by auto with wf_db.
-  restore_dims_fast. 
+  restore_dims. 
   repeat rewrite Mmult_assoc.
-  restore_dims_fast. 
+  restore_dims. 
   rewrite 2 kron_mixed_product.
   replace (σx × ∣0⟩) with (∣1⟩) by solve_matrix.
   replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.

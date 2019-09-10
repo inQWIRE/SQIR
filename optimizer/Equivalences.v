@@ -1,6 +1,4 @@
 Require Export UnitarySem.
-Require Import Tactics.
-Require Import Phase.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
@@ -82,8 +80,8 @@ Proof.
   unfold uc_equiv.
   autorewrite with eval_db; simpl. 
   gridify.
-  rewrite phase_0. 
-  unify_matrices.
+  Qsimpl.
+  reflexivity.
 Qed.
 
 Lemma U_V_comm : forall {dim} (m n : nat) (U V : base_Unitary 1),
@@ -136,7 +134,7 @@ Proof.
   - rewrite <- 2 kron_plus_distr_r.
     apply f_equal2; trivial.
     repeat rewrite kron_assoc.
-    restore_dims_fast.
+    restore_dims.
     rewrite <- 2 kron_plus_distr_l.
     apply f_equal2; trivial.
     replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
@@ -158,10 +156,10 @@ Proof.
   - rewrite <- 2 kron_plus_distr_r.
     apply f_equal2; trivial.
     repeat rewrite kron_assoc.
-    restore_dims_fast.
+    restore_dims.
     rewrite <- 2 kron_plus_distr_l.
     apply f_equal2; trivial.
-    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
+    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by (Qsimpl; easy).
     replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
     distribute_plus.
     repeat rewrite <- Mplus_assoc.
@@ -173,7 +171,7 @@ Proof.
       rewrite <- Mscale_kron_dist_r.
       rewrite <- Mscale_kron_dist_r.
       repeat rewrite <- kron_assoc.
-      restore_dims_fast. 
+      restore_dims. 
       rewrite <- kron_plus_distr_l.
       apply f_equal2; trivial.
       solve_matrix.

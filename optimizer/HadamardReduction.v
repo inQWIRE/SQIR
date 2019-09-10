@@ -1,10 +1,8 @@
 Require Import UnitarySem.
-Require Import Tactics.
 Require Import ListRepresentation.
 Require Import Equivalences.
 Require Import PI4GateSet.
 Require Import List.
-Require Import Phase.
 Open Scope ucom.
 
 (*****************************************************************)

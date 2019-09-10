@@ -1,9 +1,5 @@
 Require Import Compose.
 Require Import QWIRE.Dirac.
-Require Import Tactics.
-
-(* TODO: Importing DJ to use kron_n. We should move kron_n to QWIRE instead. *)
-Require Import examples.DeutschJozsa. 
 
 Local Open Scope nat_scope.
 Local Open Scope ucom_scope.

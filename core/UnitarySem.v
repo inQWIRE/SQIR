@@ -1,8 +1,7 @@
 Require Import Setoid.
 Require Export QWIRE.Quantum.
-Require Import core.Proportional.
+Require Export QWIRE.Proportional.
 Require Export core.SQIRE.
-Require Export core.Tactics.
 
 Local Open Scope matrix_scope.
 Local Open Scope ucom_scope.
@@ -36,6 +35,8 @@ Qed.
 
 (* TODO: move the following to QWIRE's Quantum.v *)
 
+(* Rotation lemmas *)
+                              
 (* Standard(?) definition, but it makes equivalence-checking a little annoying 
    because of a global phase.
 
@@ -78,7 +79,7 @@ Proof.
   autorewrite with R_db;
   reflexivity.
 Qed.
-Hint Rewrite rotation_adjoint : M_db.
+Hint Rewrite rotation_adjoint : Q_db.
 
 Lemma rotation_unitary : forall θ ϕ λ, @WF_Unitary 2 (rotation θ ϕ λ).
 Proof.
@@ -433,7 +434,7 @@ Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
   @WF_Matrix m' n' A.
 Proof. intros. subst. easy. Qed.
 
-Hint Resolve WF_Matrix_dim_change.
+Hint Resolve WF_Matrix_dim_change : wf_db.
 
 Lemma ueval_cnot_unitary : forall dim m n,
     m <> n ->
@@ -447,31 +448,23 @@ Proof.
   - split.
     + apply WF_Matrix_dim_change; try (unify_pows_two; lia).
       apply WF_plus; auto with wf_db.
-    + Msimpl.
-      unify_pows_two.
-      replace (m + d + 1)%nat with (m + 1 + d)%nat by lia.
+    + Qsimpl.
       gridify.
-      autorewrite with cnot_db.
-      Msimpl.
-      replace (σx† × σx) with (I 2) by solve_matrix.
+      Qsimpl.
       repeat rewrite <- kron_plus_distr_r.
       repeat rewrite <- kron_plus_distr_l.
-      unify_matrices.
-      solve_matrix.
+      Qsimpl.
+      reflexivity.
   - split.
     + apply WF_Matrix_dim_change; try (unify_pows_two; lia).
       apply WF_plus; auto with wf_db. (* shouldn't be necessary *)
     + Msimpl.
-      unify_pows_two.
-      replace (n + d + 1)%nat with (n + 1 + d)%nat by lia.
       gridify.
-      autorewrite with cnot_db.
-      Msimpl.
-      replace (σx† × σx) with (I 2) by solve_matrix.
+      Qsimpl.
       repeat rewrite <- kron_plus_distr_r.
       repeat rewrite <- kron_plus_distr_l.
-      unify_matrices.
-      solve_matrix.
+      Qsimpl.
+      reflexivity.
 Qed.      
 
 Lemma uc_eval_unitary : forall (dim : nat) (c : base_ucom dim),
@@ -708,12 +701,10 @@ Proof.
   simpl; unfold ueval_swap. 
   unfold ueval_cnot, pad.
   gridify.
-  - autorewrite with cnot_db.
-    Msimpl_light.
+  - Qsimpl.
     rewrite Mplus_swap_first_and_last.
     reflexivity. 
-  - autorewrite with cnot_db.
-    Msimpl_light.
+  - Qsimpl.
     rewrite Mplus_swap_first_and_last.
     rewrite Mplus_swap_mid.
     reflexivity.
@@ -814,8 +805,8 @@ Proof.
     rewrite rotation_adjoint.
     reflexivity.
   - autorewrite with eval_db.
-    gridify; try (rewrite zero_adjoint_eq; reflexivity).
-    Msimpl. rewrite σx_sa. reflexivity.
-    Msimpl. rewrite σx_sa. reflexivity.
+    gridify. 
+    Qsimpl. reflexivity.
+    Qsimpl. reflexivity.
 Qed.
 

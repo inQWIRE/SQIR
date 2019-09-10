@@ -91,8 +91,8 @@ Proof.
   unfold Splus, compose_super.
   repeat rewrite pad_mult.
   rewrite <- Mmult_assoc. 
-  restore_dims_fast. 
-  rewrite MmultX1.
+  restore_dims.
+  Qsimpl.
   rewrite Mplus_comm.
   reflexivity.  
 Qed.
@@ -109,8 +109,8 @@ Proof.
   unfold Splus, compose_super.
   repeat rewrite pad_mult.
   rewrite <- Mmult_assoc. 
-  restore_dims_fast.
-  rewrite MmultX0.
+  restore_dims.
+  Qsimpl.
   rewrite Mplus_comm.
   reflexivity.  
 Qed.

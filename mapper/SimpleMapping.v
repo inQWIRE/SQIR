@@ -1,6 +1,5 @@
 Require Export Compose.
 Require Export Equivalences.
-Require Import Tactics.
 Require Export List.
 Open Scope ucom.
 
@@ -246,35 +245,35 @@ Proof.
       | |- context [(?a ⊗ ?b) ⊗ (I ?c) ⊗ (I ?d) ⊗ (I ?e) ] => 
             rewrite (kron_assoc a b);
             repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I c)); 
-            restore_dims_fast;
+            restore_dims;
             rewrite (kron_assoc a _ (I d));
             repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I d))
       end;
   (* distribute (I b) and (I c) left *)
-     restore_dims_fast; repeat rewrite kron_assoc;
+     restore_dims; repeat rewrite kron_assoc;
       match goal with 
       | |- context [(I ?a) ⊗ ((I ?b) ⊗ ((I ?c) ⊗ (?d ⊗ ?e))) ] => 
             rewrite <- (kron_assoc (I c) _ e);
             repeat rewrite (kron_plus_distr_l _ _ _ _ (I c));
-            restore_dims_fast;
+            restore_dims;
             rewrite <- (kron_assoc (I b) _ e);
             repeat rewrite (kron_plus_distr_l _ _ _ _ (I b))
       end.
   (* simplify to remove extra id's *)
-  all: restore_dims_fast;
+  all: restore_dims;
        repeat rewrite <- kron_assoc;
-       restore_dims_fast; 
+       restore_dims; 
        repeat rewrite kron_mixed_product;
        Msimpl_light;
        do 2 (apply f_equal2; trivial).
   (* the rest of gridify... *)
-  all: simpl; restore_dims_fast;
+  all: simpl; restore_dims;
        distribute_plus;
-       restore_dims_fast; repeat rewrite <- kron_assoc;
-       restore_dims_fast; repeat rewrite kron_mixed_product;
+       restore_dims; repeat rewrite <- kron_assoc;
+       restore_dims; repeat rewrite kron_mixed_product;
        Msimpl_light.
   (* rewrite w/ cnot_db *)
-  all: autorewrite with cnot_db; Msimpl_light.
+  all: Qsimpl.
   1, 2, 3: rewrite Mplus_swap_mid.
   all: match goal with 
     | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;

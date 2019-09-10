@@ -1,6 +1,5 @@
 Require Import SQIRE.
 Require Import DensitySem.
-Require Import Tactics.
 Require Import Coq.Reals.ROrderedType.
 
 Local Open Scope com.
@@ -147,9 +146,9 @@ Proof.
   intros ρ.
   gridify.
   rewrite pauli_x_rotation.
-  repeat (restore_dims_fast; rewrite <- Mmult_assoc).
+  repeat (restore_dims; rewrite <- Mmult_assoc).
   repeat rewrite kron_mixed_product.  
-  repeat (restore_dims_fast; rewrite Mmult_assoc).
+  repeat (restore_dims; rewrite Mmult_assoc).
   Msimpl.
   rewrite σx_sa.
   repeat rewrite <- Mmult_assoc.

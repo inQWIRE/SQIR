@@ -1,8 +1,6 @@
-Require Import Phase.
 Require Import UnitarySem.
-Require Import Tactics.
-Require Import ListRepresentation.
 Require Import Equivalences.
+Require Import ListRepresentation.
 Require Import PI4GateSet.
 Require Import List.
 Open Scope ucom.
@@ -69,6 +67,7 @@ Proof.
   rewrite PI4_to_base_l_app.
   simpl.
   rewrite <- useq_assoc.
+  autorewrite with eval_db.
   specialize (@H_H_id dim q) as HH.
   Local Transparent SQIRE.H.
   unfold SQIRE.H in HH.
@@ -103,7 +102,7 @@ Proof.
   repeat rewrite phase_shift_rotation.
   bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
   rewrite Mmult_assoc.
-  restore_dims_fast; repeat rewrite kron_mixed_product.
+  restore_dims; repeat rewrite kron_mixed_product.
   Msimpl.
   rewrite phase_mul. 
   repeat rewrite <- Rmult_div_assoc.
@@ -122,7 +121,7 @@ Proof.
   repeat rewrite phase_shift_rotation.
   repad.
   rewrite Mmult_assoc.
-  restore_dims_fast; repeat rewrite kron_mixed_product.
+  restore_dims; repeat rewrite kron_mixed_product.
   Msimpl_light.
   rewrite phase_mul. 
   repeat rewrite <- Rmult_div_assoc.
@@ -145,7 +144,7 @@ Proof.
   repeat rewrite phase_shift_rotation.
   repad.
   rewrite Mmult_assoc.
-  restore_dims_fast; repeat rewrite kron_mixed_product.
+  restore_dims; repeat rewrite kron_mixed_product.
   Msimpl.
   rewrite phase_mul. 
   repeat rewrite <- Rmult_div_assoc.
@@ -156,7 +155,7 @@ Proof.
   replace (8 * PI / 4)%R with (2 * PI)%R by lra.
   rewrite phase_2pi.
   repeat rewrite id_kron.
-  restore_dims_fast.
+  restore_dims.
   Msimpl. 
   reflexivity.
 Qed.
@@ -172,44 +171,35 @@ Proof.
   remember_differences; subst. (* maybe restore old repad *)
   - rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_l l2)))). 
     rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_l l2)))). 
-    restore_dims_fast; repeat rewrite kron_mixed_product.
+    restore_dims; repeat rewrite kron_mixed_product.
     Msimpl.
     rewrite Mmult_plus_distr_r. 
     repeat rewrite Mmult_plus_distr_l.
-    restore_dims_fast; repeat rewrite kron_mixed_product.
-    Msimpl.
-    autorewrite with cnot_db.
-    Msimpl_light.
-    replace (σx × σx) with (I 2) by solve_matrix.
+    restore_dims; repeat rewrite kron_mixed_product.
+    Qsimpl.
     repeat rewrite kron_assoc.
     repeat rewrite id_kron.
     unify_pows_two.
-    restore_dims_fast.
+    restore_dims.
     rewrite <- kron_plus_distr_r.
-    replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
+    Qsimpl.
     repeat rewrite id_kron.
-    restore_dims_fast.
     Msimpl_light.
     rewrite PI4_to_base_l_app, list_to_ucom_append; reflexivity.
   - rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_l l2)))). 
     rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_l l2)))). 
-    restore_dims_fast; repeat rewrite kron_mixed_product.
+    restore_dims; repeat rewrite kron_mixed_product.
     Msimpl.
     rewrite Mmult_plus_distr_r. 
     repeat rewrite Mmult_plus_distr_l.
-    restore_dims_fast; repeat rewrite kron_mixed_product.
-    Msimpl.
-    autorewrite with cnot_db.
-    Msimpl_light.
-    replace (σx × σx) with (I 2) by solve_matrix.
+    restore_dims; repeat rewrite kron_mixed_product.
+    Qsimpl.
     repeat rewrite kron_assoc.
     repeat rewrite id_kron.
-    unify_pows_two.
-    restore_dims_fast.
+    restore_dims.
     rewrite <- 2 kron_plus_distr_l.
-    replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
+    Qsimpl.
     repeat rewrite id_kron.
-    restore_dims_fast.
     Msimpl_light.
     rewrite PI4_to_base_l_app, list_to_ucom_append; reflexivity.
 Qed.  

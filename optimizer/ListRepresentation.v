@@ -1,9 +1,7 @@
 Require Import Setoid.
 Require Import Coq.Reals.ROrderedType.
 
-Require Import core.Tactics.
-Require Import core.Phase.
-Require Import core.Proportional.
+Require Import QWIRE.Proportional.
 Require Import optimizer.Equivalences.
 
 Require Export List.

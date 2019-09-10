@@ -151,9 +151,9 @@ Proof.
     autorewrite with eval_db; simpl.
     Msimpl.
     setoid_rewrite cnot_decomposition.
-    restore_dims_fast.
+    restore_dims.
     rewrite kron_assoc. 
-    restore_dims_fast.
+    restore_dims.
     rewrite kron_mixed_product.
     autorewrite with M_db ket_db; auto.
     unfold epr00. 
@@ -175,10 +175,10 @@ Proof.
     repeat rewrite <- kron_assoc.
     replace (2 * 1)%nat with 2%nat by reflexivity.
     rewrite cnot_decomposition.
-    restore_dims_fast.
+    restore_dims.
     autorewrite with M_db ket_db. 
     repeat rewrite <- kron_assoc.
-    restore_dims_fast.
+    restore_dims.
     repeat rewrite kron_mixed_product.
     autorewrite with M_db ket_db. 
     rewrite (ket_decomposition ψ) by auto. 
@@ -198,7 +198,7 @@ Proof.
       unfold pad; simpl.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
-      restore_dims_fast.
+      restore_dims.
       repeat rewrite kron_mixed_product.
       replace (∣1⟩⟨1∣ × ∣ 0 ⟩) with (@Zero 2 1) by solve_matrix.
       replace (∣1⟩⟨1∣ × ∣ 1 ⟩) with (∣ 1 ⟩) by solve_matrix.
@@ -223,7 +223,7 @@ Proof.
       rewrite kron_1_r. 
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
-      restore_dims_fast.
+      restore_dims.
       repeat rewrite kron_mixed_product.
       autorewrite with ket_db; auto with wf_db.
       subst ψb; reflexivity.
@@ -241,7 +241,7 @@ Proof.
         rewrite kron_1_l; auto with wf_db.
         repeat rewrite Mmult_plus_distr_l.
         repeat rewrite Mscale_mult_dist_r. 
-        restore_dims_fast.
+        restore_dims.
         repeat rewrite kron_mixed_product.
         replace (∣1⟩⟨1∣ × ∣ 0 ⟩) with (@Zero 2 1) by solve_matrix.
         replace (∣1⟩⟨1∣ × ∣ 1 ⟩) with (∣ 1 ⟩) by solve_matrix.
@@ -259,7 +259,7 @@ Proof.
       rewrite kron_1_r, kron_1_l; auto with wf_db.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
-      restore_dims_fast.
+      restore_dims.
       repeat rewrite kron_mixed_product.
       autorewrite with ket_db; auto with wf_db.
       replace (- (/ 2 * ψ 1%nat 0%nat) * -1) with (/ 2 * ψ 1%nat 0%nat) by lca.
@@ -282,7 +282,7 @@ Proof.
       rewrite kron_1_l; auto with wf_db.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
-      restore_dims_fast.
+      restore_dims.
       repeat rewrite kron_mixed_product.
       replace (∣0⟩⟨0∣ × ∣ 0 ⟩) with (∣ 0 ⟩) by solve_matrix.
       replace (∣0⟩⟨0∣ × ∣ 1 ⟩) with (@Zero 2 1) by solve_matrix.
@@ -303,7 +303,7 @@ Proof.
       unfold pad; simpl.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
-      restore_dims_fast.
+      restore_dims.
       repeat rewrite kron_mixed_product.
       replace (∣0⟩⟨0∣ × ∣ 0 ⟩) with (∣ 0 ⟩) by solve_matrix.
       replace (∣0⟩⟨0∣ × ∣ 1 ⟩) with (@Zero 2 1) by solve_matrix.
@@ -324,7 +324,7 @@ Proof.
         rewrite kron_1_l; auto with wf_db.
         repeat rewrite Mmult_plus_distr_l.
         repeat rewrite Mscale_mult_dist_r. 
-        restore_dims_fast.
+        restore_dims.
         repeat rewrite kron_mixed_product.
         replace (∣1⟩⟨1∣ × ∣ 0 ⟩) with (@Zero 2 1) by solve_matrix.
         replace (∣1⟩⟨1∣ × ∣ 1 ⟩) with (∣ 1 ⟩) by solve_matrix.
@@ -342,7 +342,7 @@ Proof.
       rewrite kron_1_r, kron_1_l; auto with wf_db.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
-      restore_dims_fast.
+      restore_dims.
       repeat rewrite kron_mixed_product.
       autorewrite with ket_db; auto with wf_db.
       replace (- (/ 2 * ψ 1%nat 0%nat) * -1) with (/ 2 * ψ 1%nat 0%nat) by lca.
@@ -364,7 +364,7 @@ Proof.
       rewrite kron_1_l; auto with wf_db.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
-      restore_dims_fast.
+      restore_dims.
       repeat rewrite kron_mixed_product.
       replace (∣0⟩⟨0∣ × ∣ 0 ⟩) with (∣ 0 ⟩) by solve_matrix.
       replace (∣0⟩⟨0∣ × ∣ 1 ⟩) with (@Zero 2 1) by solve_matrix.
@@ -397,17 +397,17 @@ Proof.
        replace (2 * 1)%nat with 2%nat by reflexivity;
        rewrite cnot_decomposition.
   all: repeat rewrite kron_assoc;
-       restore_dims_fast;
+       restore_dims;
        autorewrite with ket_db;
        repeat rewrite kron_mixed_product;
        autorewrite with ket_db.
   all: auto with wf_db.
   all: repeat rewrite <- kron_assoc.
-  all: restore_dims_fast;
+  all: restore_dims;
        repeat rewrite kron_mixed_product;
        autorewrite with ket_db;
        auto 10 with wf_db.
-  all: restore_dims_fast;
+  all: restore_dims;
        repeat rewrite kron_mixed_product;
        autorewrite with ket_db;
        auto 10 with wf_db.

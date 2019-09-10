@@ -1,5 +1,4 @@
 Require Import core.UnitarySem.
-Require Import core.Phase.
 Require Import Equivalences.
 Require Import ListRepresentation.
 Require Import Setoid.

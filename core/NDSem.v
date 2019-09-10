@@ -1,5 +1,4 @@
 Require Import QWIRE.Quantum.
-Require Import Tactics.
 Require Import UnitarySem.
 Require Import Setoid.
 
@@ -115,7 +114,7 @@ Proof.
   unfold pad.
   bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
   rewrite <- Mmult_assoc. 
-  restore_dims_strong; repeat rewrite kron_mixed_product.
+  restore_dims; repeat rewrite kron_mixed_product.
   Msimpl.
   replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
   repeat Msimpl_light.
@@ -129,7 +128,7 @@ Proof.
   unfold pad.
   bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
   rewrite <- Mmult_assoc. 
-  restore_dims_strong; repeat rewrite kron_mixed_product.
+  restore_dims; repeat rewrite kron_mixed_product.
   Msimpl.
   replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
   repeat Msimpl_light.

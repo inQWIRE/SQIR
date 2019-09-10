@@ -1,5 +1,4 @@
 Require Export UnitarySem.
-Require Import Tactics.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
@@ -46,7 +45,7 @@ Proof.
   induction c; try dependent destruction u.
   - inversion H; subst.
     simpl. rewrite <- IHc1, <- IHc2; trivial.
-    restore_dims_fast; Msimpl; reflexivity.
+    restore_dims; Msimpl; reflexivity.
   - simpl. inversion H; subst.
     autorewrite with eval_db.
     gridify; reflexivity.
@@ -61,7 +60,7 @@ Proof.
   intros.
   induction c; try dependent destruction u; simpl.
   - rewrite <- IHc1, <- IHc2.
-    restore_dims_fast; Msimpl. reflexivity.
+    restore_dims; Msimpl. reflexivity.
   - autorewrite with eval_db.
     gridify; reflexivity.
   - autorewrite with eval_db.
@@ -92,7 +91,7 @@ Proof.
   simpl.
   rewrite <- (pad_dims_r c1); try assumption.
   rewrite <- pad_dims_l.
-  restore_dims_strong.
+  restore_dims.
   rewrite kron_mixed_product.
   Msimpl.
   reflexivity.
