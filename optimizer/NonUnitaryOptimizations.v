@@ -6,21 +6,6 @@ Local Open Scope com.
 
 (** Phase-meas optimization **)
 
-Lemma Cexp_mul_neg_l : forall θ, Cexp (- θ) * Cexp θ = 1.
-Proof.  
-  unfold Cexp. intros R.
-  eapply c_proj_eq; simpl.
-  - rewrite cos_neg, sin_neg.
-    field_simplify_eq.
-    repeat rewrite <- Rsqr_pow2.
-    rewrite Rplus_comm.
-    apply sin2_cos2.
-  - rewrite cos_neg, sin_neg. field.
-Qed.
-
-Lemma Cexp_mul_neg_r : forall θ, Cexp θ * Cexp (-θ) = 1.
-Proof. intros. rewrite Cmult_comm. apply Cexp_mul_neg_l. Qed.
-
 Local Transparent Rz.
 Lemma R_mif : forall dim θ n c1 c2, 
   @Rz dim θ n ; mif n then c1 else c2 ≡ mif n then c1 else c2.
@@ -37,13 +22,11 @@ Proof.
   repeat rewrite Mmult_assoc.
   Msimpl.
   repeat (restore_dims; rewrite <- Mmult_assoc).
-  Msimpl.
-  Search phase_shift.
-  rewrite phase_adjoint.
+  Qsimpl.
   replace (phase_shift (- θ) × ∣0⟩) with ∣0⟩ by solve_matrix.
   replace (phase_shift (- θ) × ∣1⟩) with (Cexp (- θ) .* ∣1⟩) by solve_matrix.
   repeat (restore_dims; rewrite Mmult_assoc).
-  replace ((⟨0∣ × phase_shift θ)) with ⟨0∣ by solve_matrix.
+  replace (⟨0∣ × phase_shift θ) with ⟨0∣ by solve_matrix.
   replace (⟨1∣ × phase_shift θ) with (Cexp θ .* ⟨1∣) by solve_matrix.
   apply f_equal2; trivial.
   distribute_scale.  
@@ -149,14 +132,10 @@ Proof.
   repeat (restore_dims; rewrite <- Mmult_assoc).
   repeat rewrite kron_mixed_product.  
   repeat (restore_dims; rewrite Mmult_assoc).
-  Msimpl.
-  rewrite σx_sa.
-  repeat rewrite <- Mmult_assoc.
-  autorewrite with cnot_db.
-  repeat rewrite (Mmult_assoc _ ⟨0∣).
-  repeat rewrite (Mmult_assoc _ ⟨1∣).
-  autorewrite with cnot_db.
-  Msimpl.
+  Qsimpl.
+  repeat Msimpl_light.
+  replace (∣0⟩ × (∣0⟩† × (∣0⟩ × ∣1⟩†))) with (∣0⟩ × ∣1⟩†) by solve_matrix.
+  replace (∣0⟩ × (∣0⟩† × (∣0⟩ × ∣0⟩†))) with (∣0⟩ × ∣0⟩†) by solve_matrix.
   reflexivity.
 Qed.
 
