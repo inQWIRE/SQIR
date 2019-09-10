@@ -31,10 +31,10 @@ We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) deve
 
 ### hll-compiler
 
-Compilation from higher-level languages to SQIRE. Everything in this directory is experimental (i.e. not done).
+Compilation from higher-level languages to SQIRE. Compilation from QWIRE is experimental (i.e. not done).
 
-- compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIRE programs. **(work-in-progress)**
-- compiler/CompileFromQwire.v : Compilation from QWIRE to SQIRE. **(work-in-progress)**
+- compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIRE programs.
+- compiler/CompileFromQwire.v : Compilation from QWIRE to SQIRE. **(WIP)**
 
 ### optimizer
 
@@ -54,7 +54,7 @@ SQIRE programs optimizations.
 Mapping algorithms for SQIRE programs.
 
 - mapper/SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
-- mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(work-in-progress)**
+- mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
 - mapper/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 
 ### examples
