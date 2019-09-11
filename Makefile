@@ -1,7 +1,7 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples mapper optimizer
+KNOWNTARGETS := CoqMakefile all examples mapper optimizer clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
@@ -87,6 +87,10 @@ optimizer/SkipElimination.vo: optimizer/SkipElimination.v optimizer/Equivalences
 
 hll-compiler/BooleanCompilation.vo: hll-compiler/BooleanCompilation.v core/UnitarySem.vo lib/QWIRE/Dirac.vo
 	coqc $(COQ_OPTS) hll-compiler/BooleanCompilation.v
+
+# Using a custom clean target to remove files from subdirectories
+clean:
+	rm -f CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob 
 
 # This should be the last rule, to handle any targets not declared above
 %: invoke-coqmakefile
