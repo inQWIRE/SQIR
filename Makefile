@@ -27,7 +27,7 @@ invoke-coqmakefile: CoqMakefile
 
 COQ_OPTS := -R . Top
 
-all: examples mapper optimizer BooleanCompilation.vo
+all: examples mapper optimizer hll-compiler/BooleanCompilation.vo
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
 mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
 optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NonUnitaryOptimizations.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/SkipElimination.vo

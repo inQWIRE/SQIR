@@ -247,7 +247,8 @@ Proof.
   reflexivity.
 Qed.
 
-(* TODO: Move these to the Tactics file? *)
+(* TODO: This is really just ket_db with lemmas about kron/mult distribution 
+   removed. The lemmas below should probably be moved to QWIRE. *)
 Lemma ket00_0 : ∣0⟩⟨0∣ × ∣ 0 ⟩ = ∣ 0 ⟩. 
 Proof. solve_matrix. Qed.
 Lemma ket00_1 : ∣0⟩⟨0∣ × ∣ 1 ⟩ = @Zero 2 1. 
@@ -260,10 +261,12 @@ Lemma phase_shift0_spec : forall θ, (phase_shift θ) × ∣ 0 ⟩ = ∣ 0 ⟩.
 Proof. intros. solve_matrix. Qed.
 Lemma phase_shift1_spec : forall θ, (phase_shift θ) × ∣ 1 ⟩ = (Cexp θ) .* ∣ 1 ⟩.
 Proof. intros. solve_matrix. Qed.
-Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec Z0_spec Z1_spec : small_ket_db.
+Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec : small_ket_db.
 Hint Rewrite ket00_0 ket00_1 ket11_0 ket11_1 : small_ket_db.
 Hint Rewrite phase_shift0_spec phase_shift1_spec : small_ket_db.
 Hint Rewrite Mscale_mult_dist_r Mscale_mult_dist_l Mscale_kron_dist_r Mscale_kron_dist_l Mscale_plus_distr_r Mscale_plus_distr_l Mscale_assoc : small_ket_db.
+Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r  using (auto 10 with wf_db) : small_ket_db.
+Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r Mscale_0_r Mplus_0_l Mplus_0_r using (auto 10 with wf_db) : small_ket_db.
 
 (* We can prove more general lemmas about CNOT and TOFFOLI (placing no 
    restrictions on i, j), but the following are sufficient for our 
@@ -291,9 +294,8 @@ Proof.
   distribute_plus.  
   restore_dims.
   repeat rewrite <- kron_assoc.
-  destruct (f i); destruct (f (i + 1 + x0)%nat); 
-  simpl; Msimpl; autorewrite with small_ket_db;
-  Msimpl_light; reflexivity.
+  destruct (f i); destruct (f (i + 1 + x0)%nat);
+  simpl; Msimpl; autorewrite with small_ket_db; reflexivity.
 Qed.    
 
 Lemma f_to_vec_TOFF : forall (n i j : nat) (f : nat -> bool),
@@ -317,11 +319,11 @@ Proof.
      this makes the rest of the proof faster by keeping the proof term smaller. *)
   
   (* Group (I (2 ^ i)) terms. *)
-  repeat rewrite kron_assoc;
-  restore_dims;
-  repeat rewrite <- Nat.mul_assoc;
-  repeat rewrite Nat.mul_1_l;
-  repeat rewrite kron_mixed_product;
+  repeat rewrite kron_assoc.
+  restore_dims.
+  repeat rewrite <- Nat.mul_assoc.
+  repeat rewrite Nat.mul_1_l.
+  repeat rewrite kron_mixed_product.
   Msimpl_light.
 
   (* Group (I (2 ^ x)) terms. *)
@@ -352,7 +354,6 @@ Proof.
   replace (2 ^ 1)%nat with 2%nat by reflexivity.
 
   (* Apply f_equal2 *)
-  
   restore_dims.
   repeat rewrite kron_assoc. 
   repeat rewrite <- Nat.mul_assoc. 
@@ -360,8 +361,11 @@ Proof.
   repeat rewrite <- kron_assoc. 
   repeat rewrite Nat.mul_assoc. 
   rewrite kron_mixed_product.
-  Msimpl_light.
+  Msimpl_light. 
+  do 3 (rewrite (kron_assoc (f_to_vec 0 i f)); restore_dims).
+  rewrite <- (kron_assoc (f_to_vec 0 i f)).
   apply f_equal2; try reflexivity.
+  repeat rewrite Nat.mul_assoc. 
   apply f_equal2; try reflexivity.
 
   (* 2. Destruct (f i), (f (i + 1 + x0)), and (f (i + 1 + x0 + 1)) and simplify.
@@ -373,45 +377,32 @@ Proof.
   replace (i + 1 + (x0 + (1 + 0)))%nat with (i + 1 + x0 + 1)%nat by lia.
   destruct (f i); destruct (f (i + 1 + x0)%nat); destruct (f (i + 1 + x0 + 1)%nat).
   all: simpl bool_to_nat.
-  all: repeat (try rewrite Mmult_plus_distr_r; 
-               try rewrite kron_mixed_product);
-       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
-  all: repeat (try rewrite Mmult_plus_distr_l; 
-               try rewrite kron_mixed_product);
-       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
-  all: repeat (try rewrite Mmult_plus_distr_r; 
-               try rewrite kron_mixed_product);
-       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
-  all: repeat (try rewrite Mmult_plus_distr_l; 
-               try rewrite kron_mixed_product);
-       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
   all: repeat (try rewrite kron_plus_distr_l; 
-               try rewrite kron_plus_distr_r; 
-               try rewrite kron_mixed_product);
-       repeat rewrite <- kron_assoc. 
-  all: repeat (try rewrite Mmult_plus_distr_l; 
-               try rewrite Mmult_plus_distr_r;
-               try rewrite kron_mixed_product);
-       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
-  all: repeat (try rewrite Mmult_plus_distr_r;
-               try rewrite kron_mixed_product);
-       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
-  all: repeat (try rewrite Mmult_plus_distr_l;
-               try rewrite kron_mixed_product);
-       Msimpl_light; autorewrite with small_ket_db; Msimpl_light.
-  all: repeat rewrite <- Mscale_kron_dist_l;
-       repeat rewrite <- kron_plus_distr_r.
+               try rewrite kron_plus_distr_r).
+  all: repeat rewrite <- kron_assoc; restore_dims.
+  all: repeat (do 5 try rewrite Mmult_plus_distr_l;
+               do 5 try rewrite Mmult_plus_distr_r; 
+               repeat rewrite kron_mixed_product;
+               autorewrite with small_ket_db).
+  all: auto 100 with wf_db.
+  all: repeat rewrite <- Mscale_kron_dist_l.
   all: do 3 (apply f_equal2; try reflexivity).
-  all: solve_matrix.
   all: group_radicals.
-  4, 10: rewrite (Cmult_comm _ 2).
-  all: repeat rewrite <- Cmult_assoc; repeat rewrite <- Phase.Cexp_add.
-  all: replace (PI / 4 + (PI / 4 + (PI / 4 + PI / 4)))%R with PI%R by lra.
-  all: replace (- (PI / 4) + (- (PI / 4) + (PI / 4 + PI / 4)))%R with 0%R by lra.
-  all: replace (- (PI / 4) + (PI / 4 + (- (PI / 4) + PI / 4)))%R with 0%R by lra.
-  all: replace (PI / 4 + (- (PI / 4) + (- (PI / 4) + PI / 4)))%R with 0%R by lra.
-  all: replace (PI / 4 + (- (PI / 4) + (PI / 4 + - (PI / 4))))%R with 0%R by lra.
-  all: try rewrite Phase.Cexp_PI; try rewrite Phase.Cexp_0; lca.
+  all: repeat rewrite <- Cmult_assoc;
+       repeat (try rewrite Cexp_mul_neg_r; 
+               try rewrite Cexp_mul_neg_l;
+               autorewrite with C_db);
+       repeat rewrite <- Cexp_add.
+  2, 3, 4, 6, 7, 8: solve_matrix.
+  all: replace (PI / 4 + PI / 4)%R with (PI / 2)%R by lra;
+       replace (- (PI / 4) + - (PI / 4))%R with (- (PI / 2))%R by lra.
+  all: repeat rewrite Mscale_plus_distr_r;
+       repeat rewrite Mscale_assoc.
+  all: repeat rewrite (Cmult_comm (Cexp (PI / 2)));
+       repeat rewrite <- Cmult_assoc;
+       try rewrite Cexp_mul_neg_r; 
+       try rewrite Cexp_mul_neg_l.
+  all: solve_matrix; autorewrite with Cexp_db; lca.
 Qed.
 
 Opaque TOFFOLI.
