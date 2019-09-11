@@ -831,7 +831,7 @@ Proof.
       rewrite Nat.mul_sub_distr_r.
       rewrite (Nat.mul_comm (n1 / numCols)).
       rewrite (Nat.mul_comm (n2 / numCols)).
-      rewrite Nat.add_sub_assoc; try lia. 
+      rewrite Nat.add_sub_assoc; try lia; 
       (* In Coq v8.10, the goal is solved by the previous line. *)
       try (rewrite Nat.add_sub_assoc; try assumption; 
            assert (numCols * (n2 / numCols) < numCols * (n1 / numCols));
@@ -927,7 +927,7 @@ Proof.
   - (* badly-typed case *)
     contradict Hn1n2.
     unfold col, row in *.
-    do 2 rewrite Nat.mod_eq in H4; try lia.
+    do 2 rewrite Nat.mod_eq in H4; try lia;
     (* Coq v8.10 solves early again... *)
     try (rewrite H5 in H4;
          rewrite <- (Nat.sub_add (numCols * (n2 / numCols)) n1);
