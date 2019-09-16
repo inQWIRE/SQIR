@@ -483,8 +483,23 @@ Proof.
   intros.
   apply functional_extensionality.
   intros x.
-  unfold get_boolean_expr.
-Admitted.
+  replace (xor (b n2) (b n1)) with (xor (b n1) (b n2)).
+  2: { unfold xor; apply functional_extensionality; intros.
+       apply xorb_comm. }
+  unfold get_boolean_expr, update, xor.
+  bdestruct (x =? n1).
+  - destruct (b n1 dim) eqn:bn1; destruct (b n2 dim) eqn:bn2; simpl.
+    + rewrite xorb_negb_negb.
+      apply get_boolean_expr'_xor.
+    + rewrite <- negb_xorb_l. 
+      rewrite <- get_boolean_expr'_xor.
+      reflexivity.
+    + rewrite <- negb_xorb_r. 
+      rewrite <- get_boolean_expr'_xor.
+      reflexivity.
+    + apply get_boolean_expr'_xor.
+  - reflexivity.
+Qed.
 
 Lemma f_eqb_eq : forall {A} (f1 f2 : nat -> A) (eq: A -> A -> bool) n,
   (forall x y, reflect (x = y) (eq x y)) ->
@@ -503,52 +518,91 @@ Proof.
     lia.
 Qed.
 
-Lemma bv_to_boolean_func_f_eqb : forall dim b f n q,
-  f_eqb (b n) (fun x : nat => if x =? q then true else false) eqb (dim + 1) = true ->
+Lemma f_eqb_same : forall {A} (f : nat -> A) (eq: A -> A -> bool) n,
+  (forall x y, reflect (x = y) (eq x y)) ->
+  f_eqb f f eq n = true.
+Proof.
+  intros.
+  induction n.
+  - reflexivity.
+  - simpl. apply andb_true_intro.
+    split. eapply reflect_iff in X.
+    apply X; reflexivity.
+    assumption.
+Qed.
+
+Lemma get_boolean_expr'_finit_q_large : forall b f n q,
+  let finit := fun x : nat => if x =? q then true else false in
+  (q >= n)%nat ->
+  (forall x, (x < n)%nat -> b x = finit x) ->
+  get_boolean_expr' b f n = false.
+Proof.
+  intros.
+  induction n; try reflexivity.
+  subst finit; simpl in *.
+  destruct q; try lia.
+  destruct (b n) eqn:bn.
+  rewrite H0 in bn; try lia.
+  bdestruct (n =? S q); [lia | discriminate].
+  apply IHn; try lia.  
+  intros. apply H0. lia.
+Qed.
+
+Lemma get_boolean_expr_finit : forall dim b f n q,
+  let finit := fun x : nat => if x =? q then true else false in
+  (q < dim)%nat ->
+  f_eqb (b n) finit eqb (dim + 1) = true ->
   get_boolean_expr b f dim n = f q.
 Proof.
-(*  intros.
-  unfold bv_to_boolean_func.
-  destruct (bv n dim) eqn:bvn.
-  - (* contradictory case *)
-    eapply f_eqb_eq in H1.
-    2: apply eqb_spec.
-    rewrite H1 in bvn.
-    bdestructΩ (dim =? q); discriminate.
-    lia.
-  - induction dim; try lia.
+  intros.
+  unfold get_boolean_expr.
+  assert (forall x y : bool, reflect (x = y) (eqb x y)) by apply eqb_spec.
+  specialize (f_eqb_eq _ _ _ _ H1 H0) as feqb.
+  clear - H feqb.
+  subst finit; simpl in *.
+  destruct (b n dim) eqn:bn.
+  - rewrite feqb in bn; try lia.
+    bdestruct (dim =? q); [lia | discriminate].
+  - clear bn.
+    induction dim; try lia.
     simpl.
-    eapply f_eqb_eq in H1.
-    2: apply eqb_spec.
-  rewrite H0 in bvn.
-  subst.
-  simpl.*)
-Admitted.
+    destruct (b n dim) eqn:bndim.
+    + rewrite feqb in bndim; try lia.
+      bdestruct (dim =? q); try discriminate; subst.
+      erewrite get_boolean_expr'_finit_q_large.
+      apply xorb_false_r.
+      2: { intros. apply feqb. lia. }
+      lia.
+    + rewrite feqb in bndim; try lia. 
+      bdestruct (dim =? q); try discriminate.
+      apply IHdim.
+      lia.
+      intros. apply feqb. lia.
+Qed.
 
-(*
-Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : PI4_list dim) k q bv l' f,
+Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : PI4_list dim) k q b l' f,
+  (q < dim)%nat ->
   uc_well_typed_l s ->
-  merge' s k q bv = Some l' ->
+  merge' s k q b = Some l' ->
   let A := uc_eval (list_to_ucom (PI4_to_base_l l')) in
   let B := uc_eval (list_to_ucom (PI4_to_base_l s)) in
-  let v := f_to_vec 0 dim (bv_to_boolean_func bv f dim) in
+  let v := f_to_vec 0 dim (get_boolean_expr b f dim) in
   A × v = (Cexp (f q * (IZR k * PI / 4))) .* B × v.
 Proof.
-  intros dim s k q bv l' f WT H A B v.
+  intros dim s k q b l' f Hq WT H A B v.
   subst A B v.
   generalize dependent l'.
-  generalize dependent bv.
+  generalize dependent b.
   induction s; try discriminate.
-  intros bv l' H.
+  intros b l' H.
   simpl in H.
   destruct a.
   - dependent destruction p; try discriminate.
-    + destruct (merge' s k q (update bv n (neg (bv n) dim))) eqn:mer; try discriminate.
+    + destruct (merge' s k q (update b n (neg (b n) dim))) eqn:mer; try discriminate.
       inversion H; inversion WT; subst.
       apply (IHs H5) in mer.
-      rewrite bv_to_boolean_func_update_neg in mer.
-      simpl PI4_to_base_l. 
-      simpl list_to_ucom.
+      rewrite get_boolean_expr_update_neg in mer.
+      simpl PI4_to_base_l; simpl list_to_ucom.
       replace (uapp1 (U_R PI 0 PI) n) with (@SQIRE.X dim n) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
@@ -557,8 +611,7 @@ Proof.
       rewrite mer.
       repeat rewrite Mscale_mult_dist_l.
       reflexivity.
-    + simpl PI4_to_base_l. 
-      simpl list_to_ucom. 
+    + simpl PI4_to_base_l; simpl list_to_ucom. 
       replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIRE.Rz dim (IZR k * PI / 4) n) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
@@ -567,63 +620,47 @@ Proof.
       rewrite f_to_vec_Rz; try assumption.
       rewrite Mscale_mult_dist_r.
       rewrite Mscale_assoc.
-      destruct (f_eqb (bv n) (fun x : nat => if x =? q then true else false) eqb (dim + 1)) eqn:feqb.
-      (* rotation merge case *)
-      destruct (k0 + k =? 8)%Z eqn:k0k8.
-      (* cancel - multiple of 8 *)
-      * inversion H; subst.
-        rewrite <- (Mscale_1_l _ _ (uc_eval (list_to_ucom (PI4_to_base_l l')) × f_to_vec 0 dim (bv_to_boolean_func bv f dim))) at 1.
-        apply f_equal2; try reflexivity.
-        eapply bv_to_boolean_func_f_eqb in feqb.
-        rewrite feqb.
-        rewrite <- Cexp_add.
-        repeat rewrite <- Rmult_div_assoc.
-        rewrite <- Rmult_plus_distr_l.
-        rewrite <- Rmult_plus_distr_r.
-        rewrite <- plus_IZR.
-        rewrite Rmult_div_assoc.
-        rewrite Z.eqb_eq in k0k8.
-        rewrite k0k8.
-        replace (8 * PI / 4)%R with (2 * PI)%R by lra.
-        destruct (f q); simpl; autorewrite with R_db; autorewrite with Cexp_db; 
-        reflexivity.
-      (* combine *)
-      * destruct (k0 + k <? 8)%Z eqn:k0k;
+      destruct (f_eqb (b n) (fun x : nat => if x =? q then true else false) eqb (dim + 1)) eqn:feqb.
+      * destruct (k0 + k =? 8)%Z eqn:k0k8;
+        [ | destruct (k0 + k <? 8)%Z eqn:k0k];
         inversion H; subst;
-        simpl PI4_to_base_l;
-        simpl list_to_ucom;
-        [ replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / 4)) n) with (@SQIRE.Rz dim (IZR (k0 + k) * PI / 4) n) by reflexivity
-        |  replace (uapp1 (U_R 0 0 (IZR (k0 + k - 8) * PI / 4)) n) with (@SQIRE.Rz dim (IZR (k0 + k - 8) * PI / 4) n) by reflexivity ];
-        simpl;
-        repeat rewrite Mmult_assoc;
-        rewrite f_to_vec_Rz; try assumption;
-        rewrite Mscale_mult_dist_r;
-        apply f_equal2; try reflexivity.
-        all: eapply bv_to_boolean_func_f_eqb in feqb;
+        simpl PI4_to_base_l; simpl list_to_ucom.
+        2: replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / 4)) n) with (@SQIRE.Rz dim (IZR (k0 + k) * PI / 4) n) by reflexivity.
+        3: replace (uapp1 (U_R 0 0 (IZR (k0 + k - 8) * PI / 4)) n) with (@SQIRE.Rz dim (IZR (k0 + k - 8) * PI / 4) n) by reflexivity.
+        2, 3: simpl; repeat rewrite Mmult_assoc; rewrite f_to_vec_Rz; try assumption.
+        2, 3: rewrite Mscale_mult_dist_r.
+        all: eapply get_boolean_expr_finit in feqb; 
+             try assumption;
              rewrite feqb;
              rewrite <- Cexp_add.
         all: repeat rewrite <- Rmult_div_assoc;
              rewrite <- Rmult_plus_distr_l;
-             rewrite <- Rmult_plus_distr_r;
+             rewrite <- Rmult_plus_distr_r.
+        all: repeat rewrite <- Rmult_div_assoc; 
              rewrite <- plus_IZR.
-        reflexivity. 
+        rewrite Z.eqb_eq in k0k8.
+        rewrite k0k8.
+        replace (8 * (PI / 4))%R with (2 * PI)%R by lra.
+        destruct (f q); simpl; autorewrite with R_db; autorewrite with Cexp_db;
+        Msimpl_light; reflexivity.
+        reflexivity.
+        apply f_equal2; try reflexivity. 
         rewrite minus_IZR.
         unfold Rminus.
         rewrite Rmult_plus_distr_r.
         rewrite Rmult_plus_distr_l.
         replace (- (8) * (PI / 4))%R with (-(2 * PI))%R by lra.
         rewrite Cexp_add.
-        destruct (f q); simpl; 
+        destruct (f q); simpl;
         repeat rewrite Rmult_0_l;
         repeat rewrite Rmult_1_l.
         rewrite Cexp_neg, Cexp_2PI.
         lca. 
         rewrite Cexp_0. lca.
-      * destruct (merge' s k0 q bv) eqn:mer; try discriminate.
+      * destruct (merge' s k0 q b) eqn:mer; try discriminate.
         inversion H; subst.
         apply (IHs H4) in mer.
-        simpl PI4_to_base_l. 
-        simpl list_to_ucom.
+        simpl PI4_to_base_l; simpl list_to_ucom.
         replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIRE.Rz dim (IZR k * PI / 4) n) by reflexivity.
         simpl.
         repeat rewrite Mmult_assoc.
@@ -635,23 +672,36 @@ Proof.
         apply f_equal2; try reflexivity.
         lca.
   - dependent destruction p.
-    destruct (merge' s k q (update bv n0 (xor (bv n) (bv n0)))) eqn:mer; try discriminate.
+    destruct (merge' s k q (update b n0 (xor (b n) (b n0)))) eqn:mer; try discriminate.
       inversion H; inversion WT; subst.
       apply (IHs H8) in mer.
-      rewrite bv_to_boolean_func_update_xor in mer.
-      simpl PI4_to_base_l. 
-      simpl list_to_ucom.
+      rewrite get_boolean_expr_update_xor in mer.
+      simpl PI4_to_base_l; simpl list_to_ucom.
       replace (uapp2 U_CNOT n n0) with (@SQIRE.CNOT dim n n0) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
       repeat rewrite Mmult_assoc.
       rewrite f_to_vec_CNOT; try assumption.
-      2: admit.
       rewrite mer.
       repeat rewrite Mscale_mult_dist_l.
       reflexivity.
   - dependent destruction p.
-Admitted.
+Qed.
+
+(* TODO: move to Utilities *)
+Lemma f_to_vec_eq : forall f1 f2 base dim,
+  (forall x, (x < base + dim)%nat -> f1 x = f2 x) ->
+  f_to_vec base dim f1 = f_to_vec base dim f2.
+Proof.
+  intros.
+  induction dim; try reflexivity.
+  simpl.  
+  rewrite H; try lia.
+  rewrite IHdim. 
+  reflexivity.
+  intros.
+  apply H; lia.
+Qed.
 
 Lemma merge_preserves_semantics : forall {dim} (s : PI4_list dim) k q l',
   uc_well_typed_l (App1 (UPI4_PI4 k) q :: s) ->
@@ -664,13 +714,18 @@ Proof.
   unfold uc_equiv_l, uc_equiv.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intros f.
-  remember (fun i j : nat => if j =? i then true else false) as f0.
-  assert (forall x, (x < dim)%nat -> f x = bv_to_boolean_func f0 f dim x).
-  { clear - Heqf0.
-    admit. }
-  assert (f_to_vec 0 dim f = f_to_vec 0 dim (bv_to_boolean_func f0 f dim)).
-  { clear - Heqf0.
-    admit. } 
+  remember (fun i j : nat => if j =? i then true else false) as finit.
+  assert (forall x, (x < dim)%nat -> get_boolean_expr finit f dim x = f x).
+  { clear - Heqfinit.
+    intros.
+    apply get_boolean_expr_finit; try assumption.
+    subst finit; simpl. apply f_eqb_same.
+    apply eqb_spec. }
+  assert (f_to_vec 0 dim f = f_to_vec 0 dim (get_boolean_expr finit f dim)).
+  { clear - Heqfinit H0.
+    apply f_to_vec_eq.
+    intros.
+    symmetry; apply H0; lia. } 
   rewrite H1. 
   simpl PI4_to_base_l; simpl list_to_ucom.
   replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) q) with (@SQIRE.Rz dim (IZR k * PI / 4) q) by reflexivity.
@@ -679,9 +734,9 @@ Proof.
   rewrite f_to_vec_Rz; try assumption.
   rewrite Mscale_mult_dist_r.
   rewrite <- Mscale_mult_dist_l.
-  rewrite <- H0; try assumption.
+  rewrite H0; try assumption.
   apply merge'_preserves_semantics_on_basis_vecs; assumption.
-Admitted.
+Qed.
 
 (* Examples *)
 
@@ -720,10 +775,12 @@ Definition merge_rotations {dim} (l : PI4_list dim) :=
 (* Proofs *)
 
 Lemma merge_rotation_preserves_semantics : forall {dim} (l : PI4_list dim) k q l',
+  (q < dim)%nat ->
+  uc_well_typed_l l ->
   merge_rotation l k q = Some l' ->
   l' =l= App1 (UPI4_PI4 k) q :: l.
 Proof.
-  intros dim l k q l' H.
+  intros dim l k q l' Hq WT H.
   unfold merge_rotation in H. 
   destruct (get_subcircuit l q) eqn:subc.
   destruct p.
@@ -731,18 +788,24 @@ Proof.
   specialize (get_subcircuit_l1_does_not_reference _ _ _ _ _ subc) as dnr.
   apply get_subcircuit_preserves_semantics in subc.
   apply merge_preserves_semantics in mer.
+  2: { constructor; try assumption.
+       apply (uc_equiv_l_implies_WT _ _ subc) in WT. 
+       apply uc_well_typed_l_app in WT as [_ WT].
+       apply uc_well_typed_l_app in WT as [WT _].
+       assumption. }
   inversion H; subst.
   rewrite subc.
   rewrite mer.
   rewrite app_comm_cons.
-  replace (App1 (UPI4_PI4 k) q :: p) with ([App1 (UPI4_PI4 k) q] ++ p) by reflexivity.
+  rewrite (cons_to_app _ p1).
+  rewrite (cons_to_app _ p).
   rewrite (does_not_reference_commutes_app1 _ _ _ dnr).
-  replace (App1 (UPI4_PI4 k) q :: p1) with ([App1 (UPI4_PI4 k) q] ++ p1) by reflexivity.
   repeat rewrite app_assoc.
   reflexivity.
 Qed.   
 
 Lemma merge_rotations_preserves_semantics : forall {dim} (l : PI4_list dim),
+  uc_well_typed_l l ->
   merge_rotations l =l= l.
 Proof.
   intros.
@@ -753,12 +816,17 @@ Proof.
   induction n; try reflexivity.
   intros. simpl.
   destruct l; try reflexivity.
-  destruct g; try (rewrite IHn; reflexivity).
-  dependent destruction p; try (rewrite IHn; reflexivity).
-  destruct (merge_rotation l k n0) eqn:mr; try (rewrite IHn; reflexivity).
-  apply merge_rotation_preserves_semantics in mr.
+  inversion H; subst.
+  dependent destruction u. 
+  all: try (rewrite IHn; try assumption; reflexivity).
+  destruct (merge_rotation l k n0) eqn:mr.
+  2: rewrite IHn; try assumption; reflexivity.
+  apply merge_rotation_preserves_semantics in mr; try assumption.
   rewrite IHn.
   apply mr.
+  eapply uc_equiv_l_implies_WT. 
+  symmetry in mr; apply mr.
+  constructor; assumption.
 Qed.
 
 (* Examples *)
@@ -767,9 +835,9 @@ Definition test6 : PI4_list 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 
 Definition test7 : PI4_list 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
 Definition test8 : PI4_list 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
 
-(* Result: [CNOT 0 3; CNOT 1 2; CNOT 0 1; CNOT 1 2; CNOT 2 1; PDAG 1; CNOT 3 0; CNOT 0 3; P 0; Z 3] *)
+(* Result: [CNOT 1 2; CNOT 0 3; CNOT 0 1; CNOT 1 2; CNOT 2 1; PDAG 1; CNOT 3 0; CNOT 0 3; P 0; Z 3] *)
 Compute (merge_rotations test6).
 (* Result: [CNOT 0 1; Z 1; CNOT 0 1; Z 0; P 1; CNOT 1 0] *)
 Compute (merge_rotations test7).
 (* Result: [CNOT 2 3 ; CNOT 0 1 ; CNOT 2 3 ; CNOT 1 2 ; CNOT 1 0 ; CNOT 3 2 ; CNOT 1 2 ; CNOT 0 1 ; P 2] *)
-Compute (merge_rotations test8).*)
+Compute (merge_rotations test8).
