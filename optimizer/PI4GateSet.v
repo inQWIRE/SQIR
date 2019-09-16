@@ -1,6 +1,6 @@
 Require Import core.UnitarySem.
 Require Import Equivalences.
-Require Import ListRepresentation.
+Require Export ListRepresentation.
 Require Import Setoid.
 
 (** PI4 Gate Set **)
@@ -25,7 +25,7 @@ Definition TOFF (a b c : nat) :=
   T a :: T b :: T c :: H c :: []. 
 *)
 
-(* Rotation shorthands. *)
+(* Useful shorthands. *)
 Local Open Scope Z_scope.
 Definition UPI4_ID := UPI4_PI4 0.
 Definition UPI4_T := UPI4_PI4 1.
@@ -33,16 +33,24 @@ Definition UPI4_P := UPI4_PI4 2.
 Definition UPI4_Z := UPI4_PI4 4.
 Definition UPI4_PDAG := UPI4_PI4 6.
 Definition UPI4_TDAG := UPI4_PI4 7.
+Definition T {dim} q : gate_app PI4_Unitary dim := App1 UPI4_T q.
+Definition TDAG {dim} q : gate_app PI4_Unitary dim := App1 UPI4_TDAG q.
+Definition P {dim} q : gate_app PI4_Unitary dim := App1 UPI4_P q.
+Definition PDAG {dim} q : gate_app PI4_Unitary dim := App1 UPI4_PDAG q.
+Definition Z {dim} q : gate_app PI4_Unitary dim := App1 UPI4_Z q.
+Definition H {dim} q : gate_app PI4_Unitary dim := App1 UPI4_H q.
+Definition X {dim} q : gate_app PI4_Unitary dim := App1 UPI4_X q.
+Definition CNOT {dim} q1 q2 : gate_app PI4_Unitary dim := App2 UPI4_CNOT q1 q2.
 
 (* Conversion to the base gate set. *)
 Local Open Scope ucom.
 Fixpoint PI4_to_base {dim} (c : ucom PI4_Unitary dim) : base_ucom dim :=
   match c with
   | c1 ; c2 => PI4_to_base c1 ; PI4_to_base c2
-  | uapp1 UPI4_H n => H n
-  | uapp1 UPI4_X n => X n
-  | uapp1 (UPI4_PI4 k) n => Rz (IZR k * PI / 4)%R n
-  | uapp2 UPI4_CNOT m n => CNOT m n
+  | uapp1 UPI4_H n => SQIRE.H n
+  | uapp1 UPI4_X n => SQIRE.X n
+  | uapp1 (UPI4_PI4 k) n => SQIRE.Rz (IZR k * PI / 4)%R n
+  | uapp2 UPI4_CNOT m n => SQIRE.CNOT m n
   | _ => SKIP (* unreachable case *)
   end.
 
@@ -171,34 +179,34 @@ Lemma uc_cong_l_refl : forall {dim : nat} (l1 : PI4_list dim), l1 ≅l≅ l1.
 Proof. intros. exists 0%R. rewrite Cexp_0. rewrite Mscale_1_l. reflexivity. Qed.
 
 Lemma uc_cong_l_sym : forall {dim : nat} (l1 l2 : PI4_list dim), l1 ≅l≅ l2 -> l2 ≅l≅ l1.
-Proof. intros. unfold uc_cong_l in *. rewrite H. reflexivity. Qed.
+Proof. intros dim l1 l2 H. unfold uc_cong_l in *. rewrite H. reflexivity. Qed.
 
 Lemma uc_cong_l_trans : forall {dim : nat} (l1 l2 l3 : PI4_list dim), l1 ≅l≅ l2 -> l2 ≅l≅ l3 -> l1 ≅l≅ l3.
 Proof.
-  intros.
+  intros dim l1 l2 l3 H1 H2.
   unfold uc_cong_l in *.
-  eapply uc_cong_trans. apply H. apply H0.
+  eapply uc_cong_trans. apply H1. apply H2.
 Qed.  
 
 Lemma uc_cong_l_cons_congruence : forall {dim : nat} (g : gate_app PI4_Unitary dim) (l l' : PI4_list dim),
   l ≅l≅ l' -> (g :: l) ≅l≅ (g :: l').
 Proof.
-  intros. unfold uc_cong_l in *.
+  intros dim g l l' H. unfold uc_cong_l in *.
   simpl.
   inversion H.
   destruct g; dependent destruction p;
-  exists x; simpl; rewrite <- Mscale_mult_dist_l; rewrite H0; reflexivity.
+  exists x; simpl; rewrite <- Mscale_mult_dist_l; rewrite H1; reflexivity.
 Qed.
 
 Lemma uc_cong_l_app_congruence : forall {dim : nat} (l l' m m': PI4_list dim),
   l ≅l≅ l' -> m ≅l≅ m' -> (m ++ l) ≅l≅ (m' ++ l').
 Proof.
-  intros.
+  intros dim l l' m m' H1 H2.
   unfold uc_cong_l in *.
-  inversion H. inversion H0.
+  inversion H1. inversion H2.
   exists (x + x0)%R.
   repeat rewrite uc_eval_l_app.
-  rewrite <- Mscale_mult_dist_l. rewrite H1. rewrite H2. 
+  rewrite <- Mscale_mult_dist_l. rewrite H0. rewrite H3. 
   rewrite Mscale_mult_dist_r.
   rewrite Mscale_mult_dist_l.
   rewrite Mscale_assoc.
@@ -224,9 +232,30 @@ Proof. intros x y H x0 y0 H0. apply uc_cong_l_app_congruence; easy. Qed.
 
 Lemma uc_equiv_cong_l : forall {dim : nat} (c c' : PI4_list dim), c =l= c' -> c ≅l≅ c'.
 Proof.
-  intros.
+  intros dim c c' H.
   exists 0%R. rewrite Cexp_0, Mscale_1_l. 
   apply H.
+Qed.
+
+Lemma uc_cong_l_implies_WT : forall {dim} (l l' : PI4_list dim),
+  l ≅l≅ l' ->
+  uc_well_typed_l l ->
+  uc_well_typed_l l'.
+Proof.
+  intros dim l l' H WT.
+  apply PI4_to_base_l_WT.
+  apply list_to_ucom_WT. 
+  apply uc_eval_nonzero_iff.
+  apply PI4_to_base_l_WT in WT.
+  apply list_to_ucom_WT in WT.
+  apply uc_eval_nonzero_iff in WT.
+  destruct H.
+  rewrite H0 in WT. 
+  intros contra.
+  rewrite contra in WT.
+  contradict WT.
+  Msimpl.
+  reflexivity.
 Qed.
 
 (* Commutativity lemmas for list representation. *)
@@ -240,7 +269,7 @@ Proof.
   - reflexivity.
   - simpl in *.
     destruct a; dependent destruction p;
-    apply andb_prop in H as [H1 H2];
+    apply andb_prop in H0 as [H1 H2];
     repeat match goal with 
     | H : does_not_reference_appl _ _ = true |- _ => apply negb_true_iff in H
     end;
@@ -271,8 +300,8 @@ Proof.
   - reflexivity.
   - simpl in *.
     destruct a; dependent destruction p;
-    apply andb_prop in H as [H1 H2];
-    apply andb_prop in H0 as [H3 H4];
+    apply andb_prop in H0 as [? ?];
+    apply andb_prop in H1 as [? ?];
     repeat match goal with 
     | H : does_not_reference_appl _ _ = true |- _ => apply negb_true_iff in H
     end;
@@ -334,8 +363,8 @@ Proof.
   intros n u u'.
   split; intros H.
   - dependent destruction u; dependent destruction u';
-    inversion H; try reflexivity.
-    apply Z.eqb_eq in H1. subst. reflexivity.    
+    inversion H0; try reflexivity.
+    apply Z.eqb_eq in H2. subst. reflexivity.    
   - subst. dependent destruction u'; trivial. 
     simpl. apply Z.eqb_refl.
 Qed.

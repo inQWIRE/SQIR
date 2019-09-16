@@ -30,7 +30,7 @@ COQ_OPTS := -R . Top
 all: examples mapper optimizer hll-compiler/BooleanCompilation.vo
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
 mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
-optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NonUnitaryOptimizations.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/SkipElimination.vo
+optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NonUnitaryOptimizations.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/SkipElimination.vo optimizer/RotationMerging.vo
 
 # Built by 'make examples'
 
@@ -62,10 +62,10 @@ mapper/MappingExamples.vo: mapper/SimpleMapping.vo
 optimizer/Equivalences.vo: optimizer/Equivalences.v core/UnitarySem.vo
 	coqc $(COQ_OPTS) optimizer/Equivalences.v
 
-optimizer/GateCancellation.vo: optimizer/GateCancellation.v optimizer/Equivalences.vo optimizer/ListRepresentation.vo optimizer/PI4GateSet.vo
+optimizer/GateCancellation.vo: optimizer/GateCancellation.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
 	coqc $(COQ_OPTS) optimizer/GateCancellation.v
 
-optimizer/HadamardReduction.vo: optimizer/HadamardReduction.v optimizer/Equivalences.vo optimizer/ListRepresentation.vo optimizer/PI4GateSet.vo
+optimizer/HadamardReduction.vo: optimizer/HadamardReduction.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
 	coqc $(COQ_OPTS) optimizer/HadamardReduction.v
 
 optimizer/ListRepresentation.vo: optimizer/ListRepresentation.v lib/QWIRE/Proportional.vo optimizer/Equivalences.vo
@@ -74,7 +74,7 @@ optimizer/ListRepresentation.vo: optimizer/ListRepresentation.v lib/QWIRE/Propor
 optimizer/NonUnitaryOptimizations.vo: optimizer/NonUnitaryOptimizations.v core/SQIRE.vo core/DensitySem.vo
 	coqc $(COQ_OPTS) optimizer/NonUnitaryOptimizations.v
 
-optimizer/NotPropagation.vo: optimizer/NotPropagation.v optimizer/Equivalences.vo optimizer/ListRepresentation.vo optimizer/PI4GateSet.vo
+optimizer/NotPropagation.vo: optimizer/NotPropagation.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
 	coqc $(COQ_OPTS) optimizer/NotPropagation.v
 
 optimizer/PI4GateSet.vo: optimizer/PI4GateSet.v optimizer/Equivalences.vo optimizer/ListRepresentation.vo
@@ -83,9 +83,12 @@ optimizer/PI4GateSet.vo: optimizer/PI4GateSet.v optimizer/Equivalences.vo optimi
 optimizer/SkipElimination.vo: optimizer/SkipElimination.v optimizer/Equivalences.vo
 	coqc $(COQ_OPTS) optimizer/SkipElimination.v
 
+optimizer/RotationMerging.vo: optimizer/RotationMerging.v optimizer/PI4GateSet.vo core/Utilities.vo
+	coqc $(COQ_OPTS) optimizer/RotationMerging.v
+
 # Misc. files built by 'make all'
 
-hll-compiler/BooleanCompilation.vo: hll-compiler/BooleanCompilation.v core/UnitarySem.vo lib/QWIRE/Dirac.vo
+hll-compiler/BooleanCompilation.vo: hll-compiler/BooleanCompilation.v core/Utilities.vo lib/QWIRE/Dirac.vo
 	coqc $(COQ_OPTS) hll-compiler/BooleanCompilation.v
 
 # Using a custom clean target to remove files from subdirectories

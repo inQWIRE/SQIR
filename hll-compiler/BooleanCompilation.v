@@ -1,5 +1,5 @@
 Require Import QWIRE.Dirac.
-Require Import UnitarySem.
+Require Import core.Utilities.
 Open Scope ucom.
 
 (*********************************)
@@ -19,64 +19,6 @@ Open Scope ucom.
    We prove that compilation is correct by showing that the output circuit
    has the expected behavior on any basis state. The proof requires some
    new formalisms for describing classical states (see 'f_to_vec'). *)
-
-(** (nat -> bool) functions **)
-(* (nat -> bool) functions are used to express the evaluation context for
-   boolean expressions, and to describe classical states. 
-
-   TODO: These lemmas are fairly generic - are they defined somewhere in
-   Coq already? *)
-
-(* Update the value at one index of a boolean function. *)
-Definition update (f : nat -> bool) (i : nat) (b : bool) :=
-  fun i' => if i' =? i then b else f i'.
-
-Lemma update_index_eq : forall f i b, (update f i b) i = b.
-Proof.
-  intros. 
-  unfold update.
-  replace (i =? i) with true by (symmetry; apply Nat.eqb_eq; reflexivity).
-  reflexivity.
-Qed.
-
-Lemma update_index_neq : forall f i j b, i <> j -> (update f i b) j = f j.
-Proof.
-  intros. 
-  unfold update.
-  bdestruct (j =? i); try easy. 
-  contradict H0; lia.
-Qed.
-
-Lemma update_same : forall f i b,
-  b = f i -> update f i b = f.
-Proof.
-  intros.
-  apply functional_extensionality.
-  intros.
-  unfold update.
-  bdestruct (x =? i); subst; reflexivity.
-Qed.
-
-Lemma update_twice_eq : forall f i b b',
-  update (update f i b) i b' = update f i b'.
-Proof.
-  intros.
-  apply functional_extensionality.
-  intros.
-  unfold update.
-  bdestruct (x =? i); subst; reflexivity.
-Qed.  
-
-Lemma update_twice_neq : forall f i j b b',
-  i <> j -> update (update f i b) j b' = update (update f j b') i b.
-Proof.
-  intros.
-  apply functional_extensionality.
-  intros.
-  unfold update.
-  bdestruct (x =? i); bdestruct (x =? j); subst; 
-  try (contradict H; reflexivity); reflexivity.
-Qed.
 
 (** Boolean expressions **)
 
@@ -157,98 +99,8 @@ Definition TOFFOLI {dim} (a b c : nat) : base_ucom dim :=
   CNOT a b; T a; TDAG b; 
   CNOT a b.
 
-(** Utilities for constructing and manipulating classical states **)
-
-(* Move coercion to Dirac file in QWIRE library? *)
-Definition bool_to_nat (b : bool) : nat := if b then 1 else 0.
-Coercion bool_to_nat : bool >-> nat.
-
-(* Convert a boolean function to a vector; examples: 
-     f_to_vec 0 3 f --> ((I 1 ⊗ ∣ f 0 ⟩) ⊗ ∣ f 1 ⟩) ⊗ | f 2 ⟩ 
-     f_to_vec 2 2 f -->  (I 1 ⊗ ∣ f 2 ⟩) ⊗ ∣ f 3 ⟩ 
-*)
-Fixpoint f_to_vec (base n : nat) (f : nat -> bool) : Vector (2^n) :=
-  match n with 
-  | 0 => I 1
-  | S n' =>  (f_to_vec base n' f) ⊗ ∣ f (base + n')%nat ⟩
-  end.
-
-Lemma f_to_vec_WF : forall (base n : nat) (f : nat -> bool),
-  WF_Matrix (f_to_vec base n f).
-Proof.
-  intros.
-  induction n; simpl; try auto with wf_db.
-  apply WF_kron; try lia; try assumption.
-  destruct (f (base + n)%nat); auto with wf_db.
-Qed.
-
-Hint Resolve f_to_vec_WF : wf_db.
-
-Lemma f_to_vec_update : forall (base n : nat) (f : nat -> bool) (i : nat) (b : bool),
-  (i < base \/ base + n <= i)%nat ->
-  f_to_vec base n (update f i b) = f_to_vec base n f.
-Proof.
-  intros.
-  destruct H.
-  - induction n; simpl; try reflexivity.
-    unfold update.
-    bdestruct (base + n =? i).
-    contradict H0. lia.
-    rewrite <- IHn.
-    reflexivity.
-  - induction n; simpl; try reflexivity.
-    unfold update.
-    bdestruct (base + n =? i).
-    contradict H0. lia.
-    rewrite <- IHn.
-    reflexivity. lia.
-Qed.
-
-Lemma f_to_vec_split : forall (base n i : nat) (f : nat -> bool),
-  (i < n)%nat ->
-  f_to_vec base n f = (f_to_vec base i f) ⊗ ∣ f (base + i)%nat ⟩ ⊗ (f_to_vec (base + i + 1) (n - 1 - i) f).
-Proof.
-  intros.
-  induction n.
-  - contradict H. lia.
-  - bdestruct (i =? n).
-    + subst.
-      replace (S n - 1 - n)%nat with O by lia.
-      simpl. Msimpl.
-      reflexivity.
-    + assert (i < n)%nat by lia.
-      specialize (IHn H1).
-      replace (S n - 1 - i)%nat with (S (n - 1 - i))%nat by lia.
-      simpl.
-      rewrite IHn.
-      replace (base + i + 1 + (n - 1 - i))%nat with (base + n)%nat by lia.
-      restore_dims; repeat rewrite kron_assoc. 
-      reflexivity.
-Qed.
-
-Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool),
-  (i < n)%nat ->
-  (uc_eval (X i)) × (f_to_vec 0 n f) 
-      = f_to_vec 0 n (update f i (¬ (f i))).
-Proof.
-  intros.
-  autorewrite with eval_db.
-  rewrite (f_to_vec_split 0 n i f H). 
-  simpl; replace (n - 1 - i)%nat with (n - (i + 1))%nat by lia.
-  repad. 
-  Msimpl.
-  rewrite (f_to_vec_split 0 (i + 1 + x) i); try lia.
-  repeat rewrite (f_to_vec_update _ _ _ i (¬ (f i))).
-  2: left; lia.
-  2: right; lia.
-  destruct (f i); simpl; rewrite update_index_eq;
-  simpl; autorewrite with ket_db;
-  replace (i + 1 + x - 1 - i)%nat with x by lia;
-  reflexivity.
-Qed.
-
 (* TODO: This is really just ket_db with lemmas about kron/mult distribution 
-   removed. The lemmas below should probably be moved to QWIRE. *)
+   removed. Some of the lemmas below should probably be moved to QWIRE. *)
 Lemma ket00_0 : ∣0⟩⟨0∣ × ∣ 0 ⟩ = ∣ 0 ⟩. 
 Proof. solve_matrix. Qed.
 Lemma ket00_1 : ∣0⟩⟨0∣ × ∣ 1 ⟩ = @Zero 2 1. 
@@ -268,36 +120,7 @@ Hint Rewrite Mscale_mult_dist_r Mscale_mult_dist_l Mscale_kron_dist_r Mscale_kro
 Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r  using (auto 10 with wf_db) : small_ket_db.
 Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r Mscale_0_r Mplus_0_l Mplus_0_r using (auto 10 with wf_db) : small_ket_db.
 
-(* We can prove more general lemmas about CNOT and TOFFOLI (placing no 
-   restrictions on i, j), but the following are sufficient for our 
-   purposes here. We can revisit the design if we choose a different 
-   representation of classical states. *)
-Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
-  (i < j)%nat ->
-  (j < n)%nat ->
-  (uc_eval (CNOT i j)) × (f_to_vec 0 n f) 
-      = f_to_vec 0 n (update f j (f j ⊕ f i)).
-Proof.
-  intros.
-  autorewrite with eval_db.
-  repad.
-  repeat rewrite (f_to_vec_split 0 (i + (1 + x0 + 1) + x) i); try lia.
-  rewrite f_to_vec_update.
-  2: right; lia.
-  rewrite update_index_neq; try lia.
-  repeat rewrite (f_to_vec_split (0 + i + 1) (i + (1 + x0 + 1) + x - 1 - i) x0); try lia.
-  repeat rewrite f_to_vec_update.
-  2: left; lia.
-  2: right; lia.
-  simpl; rewrite update_index_eq.
-  replace (i + S (x0 + 1) + x - 1 - i - 1 - x0)%nat with x by lia.
-  distribute_plus.  
-  restore_dims.
-  repeat rewrite <- kron_assoc.
-  destruct (f i); destruct (f (i + 1 + x0)%nat);
-  simpl; Msimpl; autorewrite with small_ket_db; reflexivity.
-Qed.    
-
+(* Correctness lemma for TOFF with restrictions on i, j. *)
 Lemma f_to_vec_TOFF : forall (n i j : nat) (f : nat -> bool),
   (i < j)%nat ->
   (j + 1 < n)%nat ->
@@ -550,8 +373,8 @@ Proof.
     rewrite update_index_eq.
     rewrite IHb2.
     2: { intros. repeat rewrite update_index_neq; try apply H2; lia. }
-    rewrite update_twice_neq with (i:=(j+1)%nat); try lia.
-    rewrite update_twice_eq with (i:=(j+1)%nat).
+    rewrite (update_twice_neq _ (j+1)); try lia.
+    rewrite update_twice_eq. 
     rewrite update_index_eq.
     repeat rewrite <- interpret_bexp_update with (i:=i);
       try assumption; try lia.
@@ -566,18 +389,17 @@ Proof.
          rewrite update_index_neq; try lia.
          rewrite update_same; try reflexivity.
          apply H2; lia. }
-    rewrite update_twice_neq with (i:=j); try lia.
-    rewrite update_twice_neq with (i:=j); try lia.
-    rewrite update_twice_eq with (i:=j).
+    do 2 (rewrite (update_twice_neq _ j); try lia).
+    rewrite update_twice_eq.
     rewrite update_index_eq.
     repeat rewrite <- interpret_bexp_update with (i:=i);
       try assumption; try lia.
     rewrite xorb_assoc.
     rewrite xorb_nilpotent.
     rewrite xorb_false_r.
-    repeat rewrite update_twice_neq with (i:=i); try lia.
-    rewrite update_same with (i:=(j+1)%nat); try reflexivity.
-    rewrite update_same with (i:=j); try reflexivity.
+    repeat rewrite (update_twice_neq _ i); try lia.
+    rewrite (update_same _ (j+1)); try reflexivity.
+    rewrite (update_same _ j); try reflexivity.
     rewrite H2 with (k:=j); try lia.
     rewrite H2 with (k:=(j+1)%nat); try lia.
     repeat rewrite xorb_false_l.

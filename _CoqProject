@@ -11,6 +11,6 @@ lib/QWIRE/Proportional.v
 
 core/SQIRE.v
 core/UnitarySem.v
-core/Compose.v
+core/Utilities.v
 core/DensitySem.v
 core/NDSem.v

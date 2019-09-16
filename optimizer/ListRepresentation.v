@@ -392,6 +392,104 @@ Proof.
   split; assumption.
 Qed.
 
+(* Get the next gate acting on any qubit in qs. *)
+
+Fixpoint next_gate {U dim} (l : gate_list U dim) (qs : list nat)
+             : option (gate_list U dim * gate_app U dim * gate_list U dim) :=
+  match l with 
+  | [] => None
+  | App1 u q :: t => 
+      if inb q qs 
+      then Some ([], App1 u q, t)
+      else match next_gate t qs with
+           | Some (l1, g, l2) => Some (App1 u q :: l1, g, l2)
+           | _ => None
+           end
+  | App2 u q1 q2 :: t => 
+      if (inb q1 qs) || (inb q2 qs) 
+      then Some ([], App2 u q1 q2, t)
+      else match next_gate t qs with
+           | Some (l1, g, l2) => Some (App2 u q1 q2 :: l1, g, l2)
+           | _ => None
+           end
+  | App3 u q1 q2 q3 :: t => 
+      if (inb q1 qs) || (inb q2 qs) || (inb q3 qs)
+      then Some ([], App3 u q1 q2 q3, t)
+      else match next_gate t qs with
+           | Some (l1, g, l2) => Some (App3 u q1 q2 q3 :: l1, g, l2)
+           | _ => None
+           end
+  end.
+
+Lemma next_gate_preserves_structure : forall {U dim} (l : gate_list U dim) qs l1 g l2,
+  next_gate l qs = Some (l1, g, l2) ->
+  l = l1 ++ [g] ++ l2.
+Proof.
+  intros.
+  generalize dependent l1.
+  induction l; try discriminate.
+  intros l1 H.
+  simpl in H.
+  destruct a;
+  [ destruct (inb n qs)
+  | destruct (inb n qs || inb n0 qs) 
+  | destruct (inb n qs || inb n0 qs || inb n1 qs) ].
+  all: try (inversion H; subst; reflexivity).
+  all: destruct (next_gate l qs); try discriminate; repeat destruct p;
+       inversion H; subst;
+       rewrite IHl with (l1:=g1); reflexivity.
+Qed.
+
+Lemma inb_true : forall l x,
+  inb x l = true -> List.In x l.
+Proof.
+  intros.
+  induction l. 
+  - inversion H.
+  - simpl in *.
+    apply orb_true_elim in H as [H | H].
+    + apply Nat.eqb_eq in H. left. assumption.
+    + right. apply IHl. assumption.
+Qed.
+
+Lemma next_gate_app1_returns_q : forall {U dim} (l : gate_list U dim) qs l1 u q l2,
+  next_gate l qs = Some (l1, App1 u q, l2) -> List.In q qs.
+Proof.
+  intros.
+  generalize dependent l1.
+  induction l; intros l1 H; simpl in H; try discriminate.
+  destruct a;
+  [ destruct (inb n qs) eqn:Hinb
+  | destruct (inb n qs || inb n0 qs)
+  | destruct (inb n qs || inb n0 qs || inb n1 qs) ];
+  try destruct (next_gate l qs) eqn:ng; 
+  try discriminate;
+  repeat destruct p.
+  all: inversion H; subst. 
+  all: try (apply inb_true; assumption).
+  all: eapply IHl; reflexivity.
+Qed.
+
+Lemma next_gate_app2_returns_q : forall {U dim} (l : gate_list U dim) qs l1 u q1 q2 l2,
+  next_gate l qs = Some (l1, App2 u q1 q2, l2) -> (List.In q1 qs \/ List.In q2 qs).
+Proof.
+  intros.
+  generalize dependent l1.
+  induction l; intros l1 H; simpl in H; try discriminate.
+  destruct a;
+  [ destruct (inb n qs)
+  | destruct (inb n qs || inb n0 qs) eqn:Hinb
+  | destruct (inb n qs || inb n0 qs || inb n1 qs) ];
+  try destruct (next_gate l qs) eqn:ng; 
+  try discriminate;
+  repeat destruct p.
+  all: inversion H; subst. 
+  all: try (eapply IHl; reflexivity).
+  all: apply orb_true_elim in Hinb; destruct Hinb.
+  all: try (left; apply inb_true; assumption).
+  all: try (right; apply inb_true; assumption).
+Qed.
+
 (* does_not_reference *)
 
 Definition does_not_reference_appl {U dim} q (g : gate_app U dim) :=
@@ -490,5 +588,41 @@ Proof.
   apply IHl; try reflexivity.
 Qed.
 
+Lemma inb_false : forall l x,
+  inb x l = false -> forall y, List.In y l -> x <> y.
+Proof.
+  intros.
+  induction l. 
+  - inversion H0.
+  - simpl in *.
+    apply orb_false_elim in H as [H1 H2].
+    destruct H0.
+    + subst. apply Nat.eqb_neq in H1. lia.
+    + apply IHl; assumption.
+Qed.
 
+Lemma next_gate_l1_does_not_reference : forall {U dim} (l : gate_list U dim) qs l1 g l2,
+  next_gate l qs = Some (l1, g, l2) ->
+  forall q, List.In q qs -> does_not_reference l1 q = true.
+Proof.
+  intros.
+  generalize dependent l1.
+  induction l; try discriminate.
+  intros l1 H.
+  simpl in H.
+  destruct a;
+  [ destruct (inb n qs) eqn:E
+  | destruct (inb n qs || inb n0 qs) eqn:E
+  | destruct (inb n qs || inb n0 qs || inb n1 qs) eqn:E ].
+  all: try (inversion H; subst; constructor).
+  all: destruct (next_gate l qs); try discriminate; repeat destruct p;
+       inversion H; subst.
+  all: simpl; repeat apply andb_true_intro; split.
+  all: try (apply IHl; reflexivity).
+  2: apply orb_false_elim in E as [E1 E2].
+  3: apply orb_false_elim in E as [E12 E3];
+     apply orb_false_elim in E12 as [E1 E2].
+  all: apply negb_true_iff; repeat apply orb_false_intro; apply eqb_neq.
+  all: apply (inb_false qs); assumption.
+Qed.
 
