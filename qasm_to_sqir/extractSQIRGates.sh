@@ -1,3 +1,3 @@
 #!/bin/bash
 
-coqc -R .. Top SqireExtraction.v && rm -f .SqireExtraction.aux SqireExtraction.{glob,vo} SqireGates.mli && mv SqireGates.ml lib
+coqc -R .. Top SqirExtraction.v && rm -f .SqirExtraction.aux SqirExtraction.{glob,vo} SqirGates.mli && mv SqirGates.ml lib
