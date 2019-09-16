@@ -3,6 +3,7 @@ Require Import optimizer.ListRepresentation.
 Require Import optimizer.PI4GateSet.
 Require Import optimizer.GateCancellation.
 Require Import optimizer.HadamardReduction.
+Require Import optimizer.RotationMerging.
 
 (* General utilies for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -48,6 +49,8 @@ Extraction Implicit apply_H_equivalences [dim].
 Extraction Implicit hadamard_reduction [dim].
 
 (* From CancelGates.v *)
+Extraction Implicit search_for_X_pat1 [dim].
+Extraction Implicit search_for_X_pat2 [dim].
 Extraction Implicit search_for_commuting_X_pat [dim].
 Extraction Implicit search_for_Rz_pat1 [dim].
 Extraction Implicit search_for_Rz_pat2 [dim].
@@ -65,5 +68,10 @@ Extraction Implicit propagate_CNOT [dim].
 Extraction Implicit cancel_gates' [dim].
 Extraction Implicit cancel_gates [dim].
 
+(* From RotationMerging.v *)
+Extraction Implicit next_gate [dim].
+Extraction Implicit get_subcircuit' [dim].
+Extraction Implicit get_subcircuit [dim].
+
 (* Perform extraction to the file 'extracted_code.ml'. *)
-Extraction "extracted_code.ml" count_H_gates count_X_gates count_rotation_gates count_CNOT_gates UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG cancel_gates hadamard_reduction.
+Extraction "extracted_code.ml" count_H_gates count_X_gates count_rotation_gates count_CNOT_gates UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG cancel_gates hadamard_reduction merge_rotations.

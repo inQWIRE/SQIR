@@ -239,10 +239,10 @@ let nam_benchmark_filenames = [
   "../nam-benchmarks/csum_mux_9.qasm";
   "../nam-benchmarks/gf2^E10_mult.qasm";
   "../nam-benchmarks/gf2^E16_mult.qasm";
-  "../nam-benchmarks/gf2^E32_mult.qasm";
+  (*"../nam-benchmarks/gf2^E32_mult.qasm";*)
   "../nam-benchmarks/gf2^E4_mult.qasm";
   "../nam-benchmarks/gf2^E5_mult.qasm";
-  "../nam-benchmarks/gf2^E64_mult.qasm";
+  (*"../nam-benchmarks/gf2^E64_mult.qasm";*)
   "../nam-benchmarks/gf2^E6_mult.qasm";
   "../nam-benchmarks/gf2^E7_mult.qasm";
   "../nam-benchmarks/gf2^E8_mult.qasm";
@@ -260,6 +260,8 @@ let nam_benchmark_filenames = [
   "../nam-benchmarks/tof_5.qasm";
   "../nam-benchmarks/vbe_adder_3.qasm";
 ]
+
+let nam_benchmark_dims = [ 24; 19; 3; 7; 9; 15; 30; 30; 48; (*96;*) 12; 15; (*192;*) 18; 21; 24; 27; 5; 9; 11; 36; 24; 26; 14; 19; 5; 7; 9; 10; ]
 
 let parse_nam_benchmarks () = List.map (fun x -> get_gate_list x) nam_benchmark_filenames
 
@@ -283,11 +285,14 @@ let run_on_nam_benchmarks f =
       (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
        B.cancel_gates p)) bs in
   let _ = printf "Running alternating passes\n%!" in
-  let bs2 = List.mapi (fun i p ->
+(*  let bs2 = List.mapi (fun i p ->
       (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
        B.cancel_gates (B.hadamard_reduction (B.cancel_gates
-                                               (B.hadamard_reduction
-                                                  (B.cancel_gates p)))))) bs in
+                                               (B.merge_rotations
+                                                  (B.cancel_gates p)))))) bs in *)
+  let bs2 = List.mapi (fun i p ->
+      (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
+       B.cancel_gates (B.merge_rotations (List.nth nam_benchmark_dims i) (B.hadamard_reduction (B.cancel_gates (B.hadamard_reduction (B.cancel_gates p))))))) bs in
   let counts1 = get_counts bs1 in
   let counts2 = get_counts bs2 in
   let oc = open_out f in
