@@ -1,5 +1,5 @@
 module B = BenchmarkGates
-module S = SqireGates
+
 open OQAST
 open OQLexer
 open Semant
@@ -75,34 +75,6 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size (fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
-(* TODO very hacky right now *)
-let apply_p_gate gate params (id, idx) qmap sym_tab =
-  match idx, params with
-  | Some i, [Real lambda] -> [gate lambda (QbitMap.find (id, i) qmap)]
-  | None, [Real lambda] ->
-    (match StringMap.find id sym_tab with
-     | TQReg size -> List.init size (fun i -> gate lambda (QbitMap.find (id, i) qmap))
-     | _ -> raise (Failure "ERROR: Not a qubit register!"))
-  | _ -> raise (Failure "NYI: parametrized gate")
-
-let apply_meas (id, idx) qmap sym_tab =
-  match idx with
-  | Some i  -> [S.Meas (QbitMap.find (id, i) qmap, S.Skip, S.Skip)]
-  | None    ->
-    match StringMap.find id sym_tab with
-    | TQReg size -> List.init size (fun i -> S.Meas (QbitMap.find (id, i) qmap,
-                                                     S.Skip, S.Skip))
-    | _ -> raise (Failure "ERROR: Not a qubit register!")
-
-let apply_reset (id, idx) qmap sym_tab =
-  match idx with
-  | Some i  -> let n = (QbitMap.find (id, i) qmap) in [S.Meas (n, S.Uc (S.x n), S.Skip)]
-  | None    ->
-    match StringMap.find id sym_tab with
-    | TQReg size -> List.init size (fun i -> let n = (QbitMap.find (id, i) qmap) in
-                                     S.Meas (n, S.Uc (S.x n), S.Skip))
-    | _ -> raise (Failure "ERROR: Not a qubit register!")
-
 let _CNOT m n = B.App2 (B.UPI4_CNOT, m, n)
 let _X    n = B.App1 (B.UPI4_X,    n)
 let _Z    n = B.App1 (B.uPI4_Z,    n)
@@ -112,8 +84,7 @@ let _PDAG n = B.App1 (B.uPI4_PDAG, n)
 let _T    n = B.App1 (B.uPI4_T,    n)
 let _TDAG n = B.App1 (B.uPI4_TDAG, n)
 
-(* _bm for benchmarks; TODO: abstract out these two functions *)
-let translate_statement_bm s qmap sym_tab =
+let translate_statement s qmap sym_tab =
   match s with
   | Qop qop ->
     (match qop with
@@ -144,40 +115,6 @@ let translate_statement_bm s qmap sym_tab =
   | Barrier _ -> print_endline ("NYI: Unsupported op: Barrier"); []
   | _ -> []
 
-let translate_statement s qmap sym_tab : S.base_Unitary S.com list =
-  match s with
-  | Qop qop ->
-    (match qop with
-     | Uop uop -> List.map (fun ucom -> S.Uc ucom) (match uop with
-         | CX (ctrl, tgt) -> apply_c_gate S.cNOT ctrl tgt qmap sym_tab
-         | U _ -> raise (Failure "NYI: generic Unitary!")
-         | Gate (id, params, qargs) ->
-           (match StringMap.find_opt id sym_tab with
-            | Some TGate _ -> (match id with
-                | "cx"  -> apply_c_gate S.cNOT
-                             (List.hd qargs) (List.nth qargs 1) qmap sym_tab
-                | "x"   -> apply_gate S.x     (List.hd qargs) qmap sym_tab
-                | "y"   -> apply_gate S.y     (List.hd qargs) qmap sym_tab
-                | "z"   -> apply_gate S.z     (List.hd qargs) qmap sym_tab
-                | "h"   -> apply_gate S.h     (List.hd qargs) qmap sym_tab
-                | "id"  -> apply_gate S.iD    (List.hd qargs) qmap sym_tab
-                | "s"   -> apply_gate S.p     (List.hd qargs) qmap sym_tab (* phase gate *)
-                | "sdg" -> apply_gate S.pDAG  (List.hd qargs) qmap sym_tab
-                | "t"   -> apply_gate S.t     (List.hd qargs) qmap sym_tab
-                | "tdg" -> apply_gate S.tDAG  (List.hd qargs) qmap sym_tab
-                | "rz"  -> apply_p_gate S.rz params (List.hd qargs) qmap sym_tab
-                (*TODO other parametrized gates*)
-                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
-              )
-            | Some _ -> raise (Failure "ERROR: Not a gate!")
-            | None -> raise (Failure "ERROR: Gate not found!")
-           ))
-     | Meas (qarg, _) -> apply_meas qarg qmap sym_tab
-     | Reset qarg -> apply_reset qarg qmap sym_tab)
-  | If _ -> print_endline ("NYI: If"); []
-  | Barrier _ -> print_endline ("NYI: Unsupported op: Barrier"); []
-  | _ -> []
-
 let parse_decl (s : OQAST.statement) : (string * int) list =
   match s with
   | Decl d ->
@@ -195,13 +132,6 @@ let rec parse_qreg_decls p =
     let rest = parse_qreg_decls p' in
     List.append first rest
 
-let rec translate_program_bm p qbit_map sym_tab =
-  match p with
-  | []      ->  []
-  | s :: p' ->  let l = translate_statement_bm s qbit_map sym_tab in
-    let m = translate_program_bm p' qbit_map sym_tab in
-    List.append l m
-
 let rec translate_program p qbit_map sym_tab =
   match p with
   | []      ->  []
@@ -209,7 +139,6 @@ let rec translate_program p qbit_map sym_tab =
     let m = translate_program p' qbit_map sym_tab in
     List.append l m
 
-(* used only for benchmarks *)
 let get_gate_list f =
   let ast = parse_file f in (* dumb parsing *)
   let sym_tab = check ast in (* semantic analysis *)
@@ -217,17 +146,11 @@ let get_gate_list f =
   let (qbit_map, _) = List.fold_left
       (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1))
       (QbitMap.empty, 0) qbit_list in
-  translate_program_bm ast qbit_map sym_tab
-
-(* general parsing *)
-let parse f =
-  let ast = parse_file f in (* dumb parsing *)
-  let sym_tab = check ast in (* semantic analysis *)
-  let qbit_list = parse_qreg_decls ast in
-  let (qbit_map, _) = List.fold_left
-      (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1))
-      (QbitMap.empty, 0) qbit_list in
   translate_program ast qbit_map sym_tab
+
+(******************************************************************************)
+(* Benchmark specific code                                                    *)
+(******************************************************************************)
 
 let nam_benchmark_filenames = [
   "../nam-benchmarks/adder_8.qasm";
