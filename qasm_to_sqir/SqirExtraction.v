@@ -32,4 +32,4 @@ Extraction Implicit CNOT [dim].
 Extraction Implicit CZ [dim].
 Extraction Implicit SWAP [dim].
 
-Extraction "SqireGates.ml" com H X Y SQIRE.Z ID SKIP Rz T TDAG P PDAG CNOT CZ SWAP.
+Extraction "SqirGates.ml" com H X Y SQIRE.Z ID SKIP Rz T TDAG P PDAG CNOT CZ SWAP.

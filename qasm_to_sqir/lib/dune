@@ -1,0 +1,13 @@
+(library
+ (inline_tests)
+ (name qasm_to_sqir)
+ (libraries base cmdliner)
+ (preprocess
+  (pps ppx_inline_test)))
+
+(ocamllex OQLexer)
+
+(menhir
+  (modules OQParser)
+  (flags --no-dollars --explain --dump)
+  (infer true))

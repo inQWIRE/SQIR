@@ -1,0 +1,5 @@
+(test
+ (name qasm_to_sqir)
+ (libraries base cmdliner)
+ (preprocess
+  (pps ppx_inline_test)))

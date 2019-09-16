@@ -1,0 +1,6 @@
+(executable
+ (public_name qasm_to_sqir)
+ (name main)
+ (libraries qasm_to_sqir base cmdliner)
+ (preprocess
+  (pps ppx_inline_test)))

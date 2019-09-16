@@ -1,16 +1,9 @@
-# OpenQASM to SQIR Translation
+# OpenQASM to SQIR for Benchmarks
 
-Work in progress
+Only covers the unitary portion of SQIR.
 
 ## Requirements
 Current version of OCaml and the following dependencies:
 ```
 $ opam install menhir utop
 ```
-
-## Steps
-- Follow [compilation instructions](../../README.md#compilation-instructions) in the top (`../..`) directory.
-- Run `./extractSqireGates.sh`
-- Run `./extract.sh` in the parent (`..`) directory (TODO: remove this dependency).
-- `dune utop .`
-- In the `utop` REPL, play with `Main.parse "<file>.qasm";;` etc.
