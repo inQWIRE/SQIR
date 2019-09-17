@@ -388,18 +388,6 @@ Definition merge {dim} (s : PI4_list dim) k q :=
 
 (* Proofs *)
 
-Lemma equal_on_basis_states_implies_equal : forall {dim} (A B : Square (2 ^ dim)),
-  WF_Matrix A -> (* WF may or may not be necessary *)
-  WF_Matrix B ->
-  (forall f, A × (f_to_vec 0 dim f) = B × (f_to_vec 0 dim f)) ->
-  A = B.
-Proof.
-  intros dim A B WFA WFB H.
-  prep_matrix_equality.
-  unfold WF_Matrix in *.
-  unfold Mmult in H.
- Admitted.
-
 (* Convert from our representation of a boolean expression (b) to
    an actual boolean expression, using the mapping from variables
    to boolean values given in f. *)
