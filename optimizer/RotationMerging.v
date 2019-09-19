@@ -588,6 +588,8 @@ Proof.
       intros. apply feqb. lia.
 Qed.
 
+Definition b2R (b : bool) : R := if b then 1%R else 0%R.
+Local Coercion b2R : bool >-> R.
 Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : PI4_list dim) k q b l' f,
   (q < dim)%nat ->
   uc_well_typed_l s ->
