@@ -74,4 +74,4 @@ Extraction Implicit get_subcircuit' [dim].
 Extraction Implicit get_subcircuit [dim].
 
 (* Perform extraction to the file 'extracted_code.ml'. *)
-Extraction "extracted_code.ml" count_H_gates count_X_gates count_rotation_gates count_CNOT_gates UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG cancel_gates hadamard_reduction merge_rotations.
+Extraction "extracted_code.ml" count_H_gates count_X_gates count_rotation_gates count_CNOT_gates PI4_list_well_typed_b UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG cancel_gates hadamard_reduction merge_rotations.

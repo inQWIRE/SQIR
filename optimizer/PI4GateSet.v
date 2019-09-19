@@ -369,6 +369,9 @@ Proof.
     simpl. apply Z.eqb_refl.
 Qed.
 
+(* Check whether a program is well typed. *)
+Definition PI4_list_well_typed_b dim (l : PI4_list dim) := uc_well_typed_l_b dim l.
+
 (* Count the gates in (the list representation of) a program. *)
 Fixpoint count_H_gates {dim} (l : PI4_list dim) :=
   let fix aux l acc :=

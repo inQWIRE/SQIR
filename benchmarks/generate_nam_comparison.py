@@ -14,16 +14,16 @@ nam_data = {
     "barenco_tof_5" : [170, 72, 114, 60, 104, 50],
     "csla_mux_3" : [170, 80, 161, 76, 155, 70],
     "csum_mux_9" : [420, 168, 294, 168, 266, 140],
-    "gf2^E10_mult" : [1347, 609, 1070, 609, 1070, 609],
-    "gf2^E16_mult" : [3435, 1581, 2707, 1581, 2707, 1581],
-    "gf2^E32_mult" : [13562, 6268, 10601, 6299, 10601, 6299],
-    "gf2^E4_mult" : [225, 99, 187, 99, 187, 99],
-    "gf2^E5_mult" : [347, 154, 296, 154, 296, 154],
-    "gf2^E64_mult" : [61629, 24765, 41563, 24765, 41563, 24765],
-    "gf2^E6_mult" : [495, 221, 403, 221, 403, 221],
-    "gf2^E7_mult" : [669,300, 555, 300, 555, 300],
-    "gf2^E8_mult" : [883, 405, 712, 405, 712, 405],
-    "gf2^E9_mult" : [1095, 494, 891, 494, 891, 494],
+    "gf2^10_mult" : [1347, 609, 1070, 609, 1070, 609],
+    "gf2^16_mult" : [3435, 1581, 2707, 1581, 2707, 1581],
+    "gf2^32_mult" : [13562, 6268, 10601, 6299, 10601, 6299],
+    "gf2^4_mult" : [225, 99, 187, 99, 187, 99],
+    "gf2^5_mult" : [347, 154, 296, 154, 296, 154],
+#    "gf2^64_mult" : [61629, 24765, 41563, 24765, 41563, 24765],
+    "gf2^6_mult" : [495, 221, 403, 221, 403, 221],
+    "gf2^7_mult" : [669,300, 555, 300, 555, 300],
+    "gf2^8_mult" : [883, 405, 712, 405, 712, 405],
+    "gf2^9_mult" : [1095, 494, 891, 494, 891, 494],
     "mod5_4" : [63, 28, 51, 28, 51, 28],
     "mod_mult_55" : [119, 48, 91, 40, 91, 40],
     "mod_red_21" : [278, 105, 184, 81, 180, 77],
@@ -50,9 +50,7 @@ outf = open(outfname, "w")
 inf1 = open(infname1, "r")
 inf2 = open(infname2, "r")
 
-# CG = cancel_gates
-# HR = hadamard_reduction
-outf.write("Name, original, L, H, Qiskit A, Qiskit B, SQIRE CG, SQIRE CG + HR\n")
+outf.write("Name, original, L, H, Qiskit A, Qiskit B, VOQC\n")
 
 qiskit_data = {}
 for line in inf1:
@@ -62,15 +60,18 @@ for line in inf1:
 sqire_data = {}
 for line in inf2:
     line = line.strip().split(",")
-    sqire_data[line[0].split("/")[2].split(".")[0]] = [line[1], line[2]]
+    sqire_data[line[0].split("/")[2].split(".")[0]] = [line[1]]
 
-for benchmark in nam_data.keys():
+for benchmark in sorted(nam_data.keys()):
     data = [benchmark]
     data.append(str(nam_data[benchmark][0]))
     data.append(str(nam_data[benchmark][2]))
     data.append(str(nam_data[benchmark][4]))
     data += qiskit_data [benchmark]
-    data += sqire_data[benchmark]
+    if benchmark in sqire_data:
+        data += sqire_data[benchmark]
+    else:
+        data += ""
     outf.write(",".join(data) + "\n")
 
 outf.close()

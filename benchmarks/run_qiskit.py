@@ -34,7 +34,8 @@ def run_on_random_benchmarks(dir):
         initial['u1'] = counts.get('z', 0) + counts.get('t', 0) + counts.get('tdg', 0) + counts.get('s', 0) + counts.get('sdg', 0)
         initial['cx'] = counts.get('cx', 0)
         
-        _unroll = Unroller(['u1', 'h', 'x', 'cx'])
+        basis_gates = ['u1', 'h', 'x', 'cx']
+        _unroll = Unroller(basis_gates)
         _depth_check = [Depth(), FixedPoint('depth')]
         def _opt_control(property_set):
            return not property_set['depth_fixed_point']
@@ -72,15 +73,19 @@ def run_on_random_benchmarks(dir):
         initial['u3'] = counts.get('x', 0)
         initial['cx'] = counts.get('cx', 0)
         
-        _unroll = Unroller(['u1', 'u2', 'u3', 'cx'])
+        basis_gates = ['u1', 'u2', 'u3', 'cx']
+        _unroll = Unroller(basis_gates)
         _depth_check = [Depth(), FixedPoint('depth')]
         def _opt_control(property_set):
-           return not property_set['depth_fixed_point']
-        _opt = [Optimize1qGates(), CommutativeCancellation()]
+            return not property_set['depth_fixed_point']
+        _opt = [Collect2qBlocks(), ConsolidateBlocks(),
+                Unroller(basis_gates),  # unroll unitaries
+                Optimize1qGates(), CommutativeCancellation()]
         pmB = PassManager()
         pmB.append(_unroll)
         pmB.append(_depth_check + _opt, do_while=_opt_control)
         circB = pmB.run(circ)
+        countB = count(circB.count_ops())
         
         counts = circB.count_ops()
         final = {}
@@ -94,7 +99,6 @@ def run_on_random_benchmarks(dir):
                 reductions[k].append(float(initial[k] - final[k]) / initial[k])
     for k in reductions.keys():
         print("Gate %s: average reduction = %f, std. = %f" % (k, numpy.average(reductions[k]), numpy.std(reductions[k])))
-
 
 def count(d):
     sum = 0
@@ -112,7 +116,8 @@ def run_on_nam_benchmarks(fname):
         circ = QuantumCircuit.from_qasm_file("nam-benchmarks/%s" % fname)
         
         # A
-        _unroll = Unroller(['u1', 'h', 'x', 'cx'])
+        basis_gates = ['u1', 'h', 'x', 'cx']
+        _unroll = Unroller(basis_gates)
         _depth_check = [Depth(), FixedPoint('depth')]
         def _opt_control(property_set):
            return not property_set['depth_fixed_point']
@@ -124,36 +129,62 @@ def run_on_nam_benchmarks(fname):
         countA = count(circA.count_ops())
         
         # B
-        _unroll = Unroller(['u1', 'u2', 'u3', 'cx'])
+        basis_gates = ['u1', 'u2', 'u3', 'cx']
+        _unroll = Unroller(basis_gates)
         _depth_check = [Depth(), FixedPoint('depth')]
         def _opt_control(property_set):
-           return not property_set['depth_fixed_point']
-        _opt = [Optimize1qGates(), CommutativeCancellation()]
+            return not property_set['depth_fixed_point']
+        _opt = [Collect2qBlocks(), ConsolidateBlocks(),
+                Unroller(basis_gates),  # unroll unitaries
+                Optimize1qGates(), CommutativeCancellation()]
         pmB = PassManager()
         pmB.append(_unroll)
         pmB.append(_depth_check + _opt, do_while=_opt_control)
         circB = pmB.run(circ)
         countB = count(circB.count_ops())
-        
-        # C
-        # basis_gates = ['u1', 'u2', 'u3', 'cx']
-        # _unroll = Unroller(basis_gates)
-        # _depth_check = [Depth(), FixedPoint('depth')]
-        # def _opt_control(property_set):
-        #     return not property_set['depth_fixed_point']
-        # _opt = [Collect2qBlocks(), ConsolidateBlocks(),
-        #         Unroller(basis_gates),  # unroll unitaries
-        #         Optimize1qGates(), CommutativeCancellation()]
-        # pmC = PassManager()
-        # pmC.append(_unroll)
-        # pmC.append(_depth_check + _opt, do_while=_opt_control)
-        # circC = pmC.run(circ)
-        # countC = count(circC.count_ops())
-        
-        f.write("%s,%d,%d\n" % (fname, countA, countB))
+
+        f.write("%s,%d,%d,%d\n" % (fname, countA, countB))
         
     f.close()
 
+def run_on_single_file (fname):
+    print("Processing %s..." % fname)
+    circ = QuantumCircuit.from_qasm_file(fname)
+    
+    # A
+    basis_gates = ['u1', 'h', 'x', 'cx']
+    _unroll = Unroller(basis_gates)
+    _depth_check = [Depth(), FixedPoint('depth')]
+    def _opt_control(property_set):
+       return not property_set['depth_fixed_point']
+    _opt = [Optimize1qGates(), CommutativeCancellation()]
+    pmA = PassManager()
+    pmA.append(_unroll)
+    pmA.append(_depth_check + _opt, do_while=_opt_control)
+    circA = pmA.run(circ)
+    countA = count(circA.count_ops())
+    print("Results from Qiskit A")
+    print(countA)
+    
+    # B
+    basis_gates = ['u1', 'u2', 'u3', 'cx']
+    _unroll = Unroller(basis_gates)
+    _depth_check = [Depth(), FixedPoint('depth')]
+    def _opt_control(property_set):
+        return not property_set['depth_fixed_point']
+    _opt = [Collect2qBlocks(), ConsolidateBlocks(),
+            Unroller(basis_gates),  # unroll unitaries
+            Optimize1qGates(), CommutativeCancellation()]
+    pmB = PassManager()
+    pmB.append(_unroll)
+    pmB.append(_depth_check + _opt, do_while=_opt_control)
+    circB = pmB.run(circ)
+    countB = count(circB.count_ops())
+    print("Results from Qiskit B")
+    print(countB)
+
+run_on_single_file("gf2^64_mult.qasm")
+exit(0)
 
 if (len(sys.argv) != 3):
     print("Usage: python3 run_qiskit.py [-rand input_dir] [-nam output_file]")

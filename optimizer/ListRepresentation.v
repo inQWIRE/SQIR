@@ -87,6 +87,43 @@ Proof.
     inversion H2; subst; try constructor; try apply IHl; assumption. 
 Qed.
 
+(* Equivalent boolean version *)
+Fixpoint uc_well_typed_l_b {U} dim (l : gate_list U dim) : bool :=
+  match l with
+  | [] => 0 <? dim
+  | App1 _ n :: t => (n <? dim) && (uc_well_typed_l_b dim t)
+  | App2 _ m n :: t => (m <? dim) && (n <? dim) && (negb (m =? n)) && 
+      (uc_well_typed_l_b dim t)
+  | App3 _ m n p :: t => (m <? dim) && (n <? dim) && (p <? dim) && 
+      (negb (m =? n)) && (negb (n =? p)) && (negb (m =? p)) &&
+      (uc_well_typed_l_b dim t)
+  end.
+
+Lemma uc_well_typed_l_b_equiv : forall {U dim} (l : gate_list U dim), 
+  uc_well_typed_l_b dim l = true <-> uc_well_typed_l l.
+Proof.
+  intros U dim l. split; intros H.
+  - induction l; 
+    try destruct a;
+    constructor;
+    simpl in H;
+    repeat match goal with
+    | H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H as [? ?]
+    | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+    | H : negb (_ =? _) = true |- _ => apply Bool.negb_true_iff in H; 
+                                     apply Nat.eqb_neq in H
+    end;
+    try apply IHl;
+    assumption.
+  - induction H; subst; simpl;
+    repeat match goal with
+    | |- (_ && _)%bool = true => apply Bool.andb_true_iff; split
+    | |- (_ <? _) = true => apply Nat.ltb_lt
+    | |- negb (_ =? _) = true => apply Bool.negb_true_iff; apply Nat.eqb_neq
+    end;
+    assumption.
+Qed.
+
 (** Conversion between gate_list and ucom in the base gate set. **)
 
 Definition base_list dim := gate_list base_Unitary dim.

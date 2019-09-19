@@ -23,6 +23,9 @@ Matroid Partitioning"
        get_subcircuit l q = (l1, s, l2)-> l ≡ l1 ++ s ++ l2
    To see the difference, compare our example 'test4' to [1, Eq. 8]. *)
 
+Definition add x l :=
+  if inb x l then l else (x :: l).
+
 (* l = gate list
    qs1 = list of qubits to include in the subcircuit
    qs2 = list of qubits to exclude from the subcircuit 
@@ -38,7 +41,7 @@ Fixpoint get_subcircuit' {dim} (l : PI4_list dim) (qs1 qs2 : list nat) n
   | O => ([], [], l)
   | S n' => match next_gate l qs1 with
            | Some (l1, App1 UPI4_H q, l2) =>
-               let (tmp, l2') := get_subcircuit' l2 qs1 (q :: qs2) n' in
+               let (tmp, l2') := get_subcircuit' l2 qs1 (add q qs2) n' in
                let (l1', s) := tmp in
                (l1 ++ l1', s, [App1 UPI4_H q] ++ l2')
            | Some (l1, App1 u q, l2) =>
@@ -49,10 +52,10 @@ Fixpoint get_subcircuit' {dim} (l : PI4_list dim) (qs1 qs2 : list nat) n
                else (l1 ++ l1', [App1 u q] ++ s, l2')
            | Some (l1, App2 u q1 q2, l2) =>
                if (inb q1 qs2) || (inb q2 qs2)
-               then let (tmp, l2') := get_subcircuit' l2 (q1 :: q2 :: qs1) (q1 :: q2 :: qs2) n' in
+               then let (tmp, l2') := get_subcircuit' l2 (add q1 (add q2 qs1)) (add q1 (add q2 qs2)) n' in
                     let (l1', s) := tmp in
                     (l1 ++ l1', s, [App2 u q1 q2] ++ l2')
-               else let (tmp, l2') := get_subcircuit' l2 (q1 :: q2 :: qs1) qs2 n' in
+               else let (tmp, l2') := get_subcircuit' l2 (add q1 (add q2 qs1)) qs2 n' in
                     let (l1', s) := tmp in
                     (l1 ++ l1', [App2 u q1 q2] ++ s, l2')
            | _ => ([], [], l)
@@ -63,6 +66,23 @@ Definition get_subcircuit {dim} (l : PI4_list dim) q :=
   get_subcircuit' l [q] [] (List.length l).
 
 (* Proofs *)
+
+Lemma add_In_x : forall x l, List.In x (add x l).
+Proof.
+  intros.
+  unfold add.
+  destruct (inb x l) eqn:Hinb.
+  apply inb_true; assumption.
+  left; reflexivity.
+Qed.
+
+Lemma add_In_l : forall x y l, List.In x l -> List.In x (add y l).
+Proof.
+  intros.
+  unfold add.
+  destruct (inb y l);
+  try right; assumption.
+Qed.
 
 Lemma get_subcircuit'_l1_does_not_reference : forall {dim} (l : PI4_list dim) qs1 qs2 n l1 s l2,
   get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
@@ -82,21 +102,21 @@ Proof.
     repeat destruct p.
     destruct g1.
     + dependent destruction p;
-      [ destruct (get_subcircuit' g qs1 (n0 :: qs2) n) eqn:subc
+      [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc ];
       destruct p;
       try destruct (inb n0 qs2);
       inversion H; subst.
-      all: intros q Hq; 
+      all: intros q Hq;
            apply does_not_reference_app;
            apply andb_true_intro;
            split.
       all: try (apply (next_gate_l1_does_not_reference _ _ _ _ _ ng); assumption).
       all: eapply IHn; try apply subc; assumption.
     + destruct (inb n0 qs2 || inb n1 qs2);
-      [ destruct (get_subcircuit' g (n0 :: n1 :: qs1) (n0 :: n1 :: qs2) n) eqn:subc
-      | destruct (get_subcircuit' g (n0 :: n1 :: qs1) qs2 n) eqn:subc ];
+      [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
+      | destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc ];
       destruct p0;
       inversion H; subst.
       all: intros q Hq;
@@ -104,7 +124,7 @@ Proof.
            apply andb_true_intro;
            split.
       all: try (apply (next_gate_l1_does_not_reference _ _ _ _ _ ng); assumption).
-      all: eapply IHn; try apply subc; right; right; assumption.
+      all: eapply IHn; try apply subc; repeat apply add_In_l; assumption.
     + dependent destruction p.
 Qed.
 
@@ -126,7 +146,7 @@ Proof.
     repeat destruct p.
     destruct g1.
     + dependent destruction p;
-      [ destruct (get_subcircuit' g qs1 (n0 :: qs2) n) eqn:subc
+      [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc ];
       destruct p;
@@ -135,18 +155,18 @@ Proof.
       all: intros q Hq.
       all: try (simpl; apply andb_true_intro; split).
       all: try (eapply IHn; [apply subc |] ).
-      all: try right; try assumption.
+      all: try apply add_In_l; try assumption.
       all: apply negb_true_iff; apply eqb_neq; 
            apply (inb_false _ _ Hinb); assumption.
     + destruct (inb n0 qs2 || inb n1 qs2) eqn:Hinb;
-      [ destruct (get_subcircuit' g (n0 :: n1 :: qs1) (n0 :: n1 :: qs2) n) eqn:subc
-      | destruct (get_subcircuit' g (n0 :: n1 :: qs1) qs2 n) eqn:subc ];
+      [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
+      | destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc ];
       destruct p0;
       inversion H; subst.
       all: intros q Hq.
       all: try (simpl; apply andb_true_intro; split).
       all: try (eapply IHn; [apply subc |] ).
-      all: try do 2 right; try assumption.
+      all: repeat apply add_In_l; try assumption.
       apply orb_false_elim in Hinb as [Hinb1 Hinb2].
       apply negb_true_iff; apply orb_false_intro; apply eqb_neq.
       apply (inb_false _ _ Hinb1); assumption.
@@ -176,7 +196,7 @@ Proof.
     repeat destruct p.
     destruct g1.
     + dependent destruction p;
-      [ destruct (get_subcircuit' g qs1 (n0 :: qs2) n) eqn:subc
+      [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
       | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc];
       destruct p;
@@ -188,7 +208,7 @@ Proof.
       all: try assert (dnr2 : does_not_reference s n0 = true) by
            (eapply get_subcircuit'_s_does_not_reference;
             [ apply subc 
-            | try (left; reflexivity);
+            | try (apply add_In_x);
               try (apply inb_true; assumption) ]).
       all: apply next_gate_preserves_structure in ng;
            rewrite ng;
@@ -206,27 +226,27 @@ Proof.
            rewrite does_not_reference_commutes_app1; try assumption;
            reflexivity.
     + destruct (inb n0 qs2 || inb n1 qs2) eqn:Hinb;
-      [ destruct (get_subcircuit' g (n0 :: n1 :: qs1) (n0 :: n1 :: qs2) n) eqn:subc
+      [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
       | apply orb_false_elim in Hinb as [Hinb1 Hinb2];
-        destruct (get_subcircuit' g (n0 :: n1 :: qs1) qs2 n) eqn:subc];
+        destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc];
       destruct p0;
       inversion H; subst.
       * assert (dnr1 : does_not_reference p0 n0 = true).
         { eapply get_subcircuit'_l1_does_not_reference.
           apply subc.
-          left; reflexivity. }
+          apply add_In_x. }
         assert (dnr2 : does_not_reference s n0 = true).
         { eapply get_subcircuit'_s_does_not_reference.
           apply subc.
-          left; reflexivity. }
+           apply add_In_x. }
         assert (dnr3 : does_not_reference p0 n1 = true).
         { eapply get_subcircuit'_l1_does_not_reference.
           apply subc.
-          right; left; reflexivity. }
+          apply add_In_l. apply add_In_x. }
         assert (dnr4 : does_not_reference s n1 = true).
         { eapply get_subcircuit'_s_does_not_reference.
           apply subc.
-          right; left; reflexivity. }
+          apply add_In_l. apply add_In_x. }
         apply next_gate_preserves_structure in ng.
         rewrite ng.
         apply IHn in subc.
@@ -243,11 +263,11 @@ Proof.
       * assert (dnr1 : does_not_reference p0 n0 = true).
         { eapply get_subcircuit'_l1_does_not_reference.
           apply subc.
-          left; reflexivity. }
+          apply add_In_x. }
         assert (dnr2 : does_not_reference p0 n1 = true).
         { eapply get_subcircuit'_l1_does_not_reference.
           apply subc.
-          right; left; reflexivity. }
+          apply add_In_l. apply add_In_x. }
         apply next_gate_preserves_structure in ng.
         rewrite ng.
         apply IHn in subc.

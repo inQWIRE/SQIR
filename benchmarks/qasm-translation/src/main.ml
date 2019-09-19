@@ -160,16 +160,16 @@ let nam_benchmark_filenames = [
   "../nam-benchmarks/barenco_tof_5.qasm";
   "../nam-benchmarks/csla_mux_3.qasm";
   "../nam-benchmarks/csum_mux_9.qasm";
-  "../nam-benchmarks/gf2^E10_mult.qasm";
-  "../nam-benchmarks/gf2^E16_mult.qasm";
-  (*"../nam-benchmarks/gf2^E32_mult.qasm";*)
-  "../nam-benchmarks/gf2^E4_mult.qasm";
-  "../nam-benchmarks/gf2^E5_mult.qasm";
-  (*"../nam-benchmarks/gf2^E64_mult.qasm";*)
-  "../nam-benchmarks/gf2^E6_mult.qasm";
-  "../nam-benchmarks/gf2^E7_mult.qasm";
-  "../nam-benchmarks/gf2^E8_mult.qasm";
-  "../nam-benchmarks/gf2^E9_mult.qasm";
+  "../nam-benchmarks/gf2^10_mult.qasm";
+  "../nam-benchmarks/gf2^16_mult.qasm";
+  "../nam-benchmarks/gf2^32_mult.qasm";
+  "../nam-benchmarks/gf2^4_mult.qasm";
+  "../nam-benchmarks/gf2^5_mult.qasm";
+  (*"../nam-benchmarks/gf2^64_mult.qasm";*)
+  "../nam-benchmarks/gf2^6_mult.qasm";
+  "../nam-benchmarks/gf2^7_mult.qasm";
+  "../nam-benchmarks/gf2^8_mult.qasm";
+  "../nam-benchmarks/gf2^9_mult.qasm";
   "../nam-benchmarks/mod5_4.qasm";
   "../nam-benchmarks/mod_mult_55.qasm";
   "../nam-benchmarks/mod_red_21.qasm";
@@ -184,83 +184,109 @@ let nam_benchmark_filenames = [
   "../nam-benchmarks/vbe_adder_3.qasm";
 ]
 
-let nam_benchmark_dims = [ 24; 19; 3; 7; 9; 15; 30; 30; 48; (*96;*) 12; 15; (*192;*) 18; 21; 24; 27; 5; 9; 11; 36; 24; 26; 14; 19; 5; 7; 9; 10; ]
+let nam_benchmark_dims = [ 24; 19; 5; 7; 9; 15; 30; 30; 48; 96; 12; 15; (*192;*) 18; 21; 24; 27; 5; 9; 11; 36; 24; 26; 14; 19; 5; 7; 9; 10; ]
 
 let parse_nam_benchmarks () = List.map (fun x -> get_gate_list x) nam_benchmark_filenames
 
+(* super simple translation to QASM *)
+let sqire_to_qasm_gate oc g =
+  match g with
+  | B.App1 (B.UPI4_H,     n) -> fprintf oc "h q[%d];\n" n
+  | B.App1 (B.UPI4_X,     n) -> fprintf oc "x q[%d];\n" n
+  | B.App1 (B.UPI4_PI4(1), n) -> fprintf oc "t q[%d];\n" n
+  | B.App1 (B.UPI4_PI4(2), n) -> fprintf oc "s q[%d];\n" n
+  | B.App1 (B.UPI4_PI4(3), n) -> fprintf oc "t q[%d];\ns q[%d];\n" n n
+  | B.App1 (B.UPI4_PI4(4), n) -> fprintf oc "z q[%d];\n" n
+  | B.App1 (B.UPI4_PI4(5), n) -> fprintf oc "t q[%d];\nz q[%d];\n" n n
+  | B.App1 (B.UPI4_PI4(6), n) -> fprintf oc "sdg q[%d];\n" n
+  | B.App1 (B.UPI4_PI4(7), n) -> fprintf oc "tdg q[%d];\n" n
+  | B.App2 (B.UPI4_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
+  | B.App1 (B.UPI4_PI4(x), _) -> (printf "skipping current gate w/ rotation=%d\n%!" x) (* should never happen *)
+  | _ -> () (* badly typed case (e.g. App2 of UPI4_H) *)
+
+let write_qasm_file fname p dim =
+  let oc = open_out fname in
+  (fprintf oc "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n";
+   fprintf oc "qreg q[%d];\n" dim;
+   fprintf oc "\n";
+   ignore(List.map (sqire_to_qasm_gate oc) p);
+   close_out oc;
+   printf "Done.\n")
+   
 type counts = {h:int; x:int; rz:int; cnot:int; total:int}
 
+let total_count p = (B.count_H_gates p) + (B.count_X_gates p) + (B.count_rotation_gates p) + (B.count_CNOT_gates p)
+
 let get_counts progs : counts list =
-  let tot p = (B.count_H_gates p) + (B.count_X_gates p)
-              + (B.count_rotation_gates p) + (B.count_CNOT_gates p) in
   List.map (fun p -> {h=B.count_H_gates p;
                       x=B.count_X_gates p;
                       rz=B.count_rotation_gates p;
                       cnot=B.count_CNOT_gates p;
-                      total=tot p})
+                      total=total_count p})
     progs
 
-(* write the results of running cancel_gates, hadamard_reduction on the Nam benchmarks to file f *)
+let rec run_alternating_passes num_qbits p prev_c =
+  if (B.pI4_list_well_typed_b num_qbits p)  
+  then ()
+  else printf "Dimension check failed - optimization results are invalid!\n%!";
+  let p' = B.merge_rotations num_qbits 
+           (B.hadamard_reduction (B.cancel_gates p)) in
+  let c = total_count p' in
+  if c < prev_c
+  then (printf "\tRepeating alternating iteration...\n%!";
+      run_alternating_passes num_qbits p' c)
+  else p'
+
+(* write the results of running optimizations on the Nam benchmarks to file f *)
 let run_on_nam_benchmarks f =
   let bs = parse_nam_benchmarks () in
-  let _ = printf "Running cancel_gates pass\n%!" in
-  let bs1 = List.mapi (fun i p ->
-      (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
-       B.cancel_gates p)) bs in
-  let _ = printf "Running alternating passes\n%!" in
-(*  let bs2 = List.mapi (fun i p ->
-      (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
-       B.cancel_gates (B.hadamard_reduction (B.cancel_gates
-                                               (B.merge_rotations
-                                                  (B.cancel_gates p)))))) bs in *)
-  let bs2 = List.mapi (fun i p ->
-      (printf "Processing %s...\n%!" (List.nth nam_benchmark_filenames i);
-       B.cancel_gates (B.merge_rotations (List.nth nam_benchmark_dims i) (B.hadamard_reduction (B.cancel_gates (B.hadamard_reduction (B.cancel_gates p))))))) bs in
-  let counts1 = get_counts bs1 in
-  let counts2 = get_counts bs2 in
+  let bs' = List.mapi (fun i p ->
+      (printf "Processing %s\n%!" (List.nth nam_benchmark_filenames i);
+       run_alternating_passes (List.nth nam_benchmark_dims i) p (total_count p))) bs in
+  let counts = get_counts bs' in
   let oc = open_out f in
-  (ignore(List.mapi (fun i x -> fprintf oc "%s,%d,%d\n"
+  (ignore(List.mapi (fun i x -> fprintf oc "%s,%d\n"
                         (List.nth nam_benchmark_filenames i)
-                        x.total
-                        ((fun x -> x.total) (List.nth counts2 i)))
-            counts1);
+                        x.total)
+            counts);
    close_out oc)
+   
+(* special function to run limited opts. on gf2^64 *)
+let rec run_limited_alternating_passes num_qbits p prev_c =
+  if (B.pI4_list_well_typed_b num_qbits p)  
+  then ()
+  else printf "Dimension check failed - optimization results are invalid!\n%!";
+  let p' = B.hadamard_reduction (B.cancel_gates p) in
+  let c = total_count p' in
+  if c < prev_c
+  then (printf "\tRepeating alternating iteration...\n%!";
+      run_limited_alternating_passes num_qbits p' c)
+  else p'
+let run_on_gf2_64 () =
+  let p = get_gate_list "../gf2^64_mult.qasm" in
+  let p' = run_limited_alternating_passes 192 p (total_count p) in
+  printf "Final gate count: %d\n" (total_count p')
 
 let percent_diff l1 l2 = List.mapi (fun i x -> (float (x - (List.nth l2 i))) /. (float x)) l1
 let average l = (List.fold_left ( +. ) 0.0 l) /. (float (List.length l))
 
-(* print the results of running cancel_gates, hadamard_reduction on the random benchmarks in directory d *)
-let run_on_random_benchmarks d =
+(* print the results of running optimizations on the random benchmarks in directory d,
+   assumes all benchmarks use nq qubits *)
+let run_on_random_benchmarks d nq =
   let fs = Array.to_list (Array.map (fun f -> d ^ "/" ^ f) (Sys.readdir d)) in
   let bs = List.map get_gate_list fs in
-  let _ = printf "Running cancel_gates pass\n%!" in
-  let bs1 = List.mapi (fun i p ->
-      (printf "Processing %s...\n%!" (List.nth fs i);
-       B.cancel_gates p)) bs in
-  let _ = printf "Running alternating passes\n%!" in
-  let bs2 = List.mapi (fun i p ->
-      (printf "Processing %s...\n%!" (List.nth fs i);
-       B.cancel_gates (B.hadamard_reduction (B.cancel_gates
-                                               (B.hadamard_reduction
-                                                  (B.cancel_gates p)))))) bs in
+  let bs' = List.mapi (fun i p ->
+      (printf "Processing %s\n%!" (List.nth fs i);
+       run_alternating_passes nq p (total_count p))) bs in
   let initial = get_counts bs in
-  let final1 = get_counts bs1 in
-  let h_red1 = percent_diff (List.map (fun x -> x.h) initial) (List.map (fun x -> x.h) final1) in
-  let x_red1 = percent_diff (List.map (fun x -> x.x) initial) (List.map (fun x -> x.x) final1) in
-  let u1_red1 = percent_diff (List.map (fun x -> x.rz) initial) (List.map (fun x -> x.rz) final1) in
-  let cnot_red1 = percent_diff (List.map (fun x -> x.cnot) initial) (List.map (fun x -> x.cnot) final1) in
-  let final2 = get_counts bs2 in
-  let h_red2 = percent_diff (List.map (fun x -> x.h) initial) (List.map (fun x -> x.h) final2) in
-  let x_red2 = percent_diff (List.map (fun x -> x.x) initial) (List.map (fun x -> x.x) final2) in
-  let u1_red2 = percent_diff (List.map (fun x -> x.rz) initial) (List.map (fun x -> x.rz) final2) in
-  let cnot_red2 = percent_diff (List.map (fun x -> x.cnot) initial) (List.map (fun x -> x.cnot) final2) in
-  (printf "cancel_gates results:\n";
-   printf "Gate h: average reduction = %f\n" (average h_red1);
-   printf "Gate x: average reduction = %f\n" (average x_red1);
-   printf "Gate rz: average reduction = %f\n" (average u1_red1);
-   printf "Gate cnot: average reduction = %f\n" (average cnot_red1);
-   printf "cancel_gates + hadamard_reduction results:\n";
-   printf "Gate h: average reduction = %f\n" (average h_red2);
-   printf "Gate x: average reduction = %f\n" (average x_red2);
-   printf "Gate rz: average reduction = %f\n" (average u1_red2);
-   printf "Gate cnot: average reduction = %f\n" (average cnot_red2))
+  let final = get_counts bs' in
+  let h_red = percent_diff (List.map (fun x -> x.h) initial) (List.map (fun x -> x.h) final) in
+  let x_red = percent_diff (List.map (fun x -> x.x) initial) (List.map (fun x -> x.x) final) in
+  let u1_red = percent_diff (List.map (fun x -> x.rz) initial) (List.map (fun x -> x.rz) final) in
+  let cnot_red = percent_diff (List.map (fun x -> x.cnot) initial) (List.map (fun x -> x.cnot) final) in
+  (printf "Results:\n";
+   printf "Gate h: average reduction = %f\n" (average h_red);
+   printf "Gate x: average reduction = %f\n" (average x_red);
+   printf "Gate rz: average reduction = %f\n" (average u1_red);
+   printf "Gate cnot: average reduction = %f\n" (average cnot_red))
+   

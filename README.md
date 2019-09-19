@@ -17,8 +17,7 @@ The files below are the core of SQIRE.
 - core/UnitarySem.v : Semantics for unitary SQIRE programs.
 - core/DensitySem.v : Density matrix semantics for general SQIRE programs.
 - core/NDSem.v : Non-deterministic semantics for general SQIRE programs.
-- core/Compose.v : Composition of unitary SQIRE programs (currently not used).
-- core/Tactics.v : Useful tactics.
+- core/Utilities.v : Utilities for describing composition of SQIRE programs and classical state vectors.
 
 We rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
 
@@ -40,6 +39,7 @@ SQIRE programs optimizations.
 - optimizer/NonUnitaryOptimizations.v : Examples of optimizations on non-unitary programs.
 - optimizer/NotPropagation.v : Based on the 'not propagation' preprocessing step from Nam et al.
 - optimizer/PI4GateSet.v : Gate set used in our implementation of the Nam et al. optimizations.
+- optimizer/RotationMerging.v : 'Rotation merging using phase polynomials' optimization from Nam et al.
 - optimizer/SkipElimination.v : Toy optimization that removes identity operations.
 
 ### mapper
