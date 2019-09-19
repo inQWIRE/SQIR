@@ -199,7 +199,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   replace (i + 1 + (x0 + (1 + 0)))%nat with (i + 1 + x0 + 1)%nat by lia.
   destruct (f i); destruct (f (i + 1 + x0)%nat); destruct (f (i + 1 + x0 + 1)%nat).
-  all: simpl bool_to_nat.
+  all: simpl Nat.b2n.
   all: repeat (try rewrite kron_plus_distr_l; 
                try rewrite kron_plus_distr_r).
   all: repeat rewrite <- kron_assoc; restore_dims.
