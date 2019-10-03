@@ -76,7 +76,7 @@ Fixpoint grid_to_list {U dim} (g : grid U dim) :=
   | s :: g' => s ++ (grid_to_list g')
   end.
 
-Lemma list_grid_equiv : forall {dim} (l : base_list dim),
+Lemma list_grid_equiv : forall {dim} (l : base_ucom_l dim),
   list_to_ucom (grid_to_list (list_to_grid l)) ≡ list_to_ucom l.
 Proof.
   intros.
@@ -89,14 +89,14 @@ Proof.
 Admitted.
 
 (* Simple tests. -- Why aren't list notations working? *)
-Definition test1 : PI4_list 3 := (App1 UPI4_H 0) :: (App2 UPI4_CNOT 1 2) :: (App2 UPI4_CNOT 0 1) :: (App1 UPI4_X 1) :: [].
+Definition test1 : PI4_ucom_l 3 := (App1 UPI4_H 0) :: (App2 UPI4_CNOT 1 2) :: (App2 UPI4_CNOT 0 1) :: (App1 UPI4_X 1) :: [].
 Compute (list_to_grid test1).
 Compute (grid_to_list (list_to_grid test1)).
 
-Definition test2 : PI4_list 3 := (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: [].
+Definition test2 : PI4_ucom_l 3 := (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: [].
 Compute (list_to_grid test2).
 Compute (grid_to_list (list_to_grid test2)).
 
-Definition test3 : PI4_list 3 := (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App2 UPI4_CNOT 1 2) :: (App2 UPI4_CNOT 0 1) :: (App1 UPI4_X 1) :: (App1 UPI4_X 2) :: (App1 UPI4_X 2) :: [].
+Definition test3 : PI4_ucom_l 3 := (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App1 UPI4_H 0) :: (App2 UPI4_CNOT 1 2) :: (App2 UPI4_CNOT 0 1) :: (App1 UPI4_X 1) :: (App1 UPI4_X 2) :: (App1 UPI4_X 2) :: [].
 Compute (list_to_grid test3).
 Compute (grid_to_list (list_to_grid test3)).

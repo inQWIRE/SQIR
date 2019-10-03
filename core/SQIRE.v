@@ -142,6 +142,13 @@ Notation "n <- 0" := (reset n) (at level 20) : com_scope.
 
 Definition base_com := com base_Unitary.
 
+(* Well-typedness for non-unitary programs. *)
+Inductive c_well_typed {U dim} : com U dim -> Prop :=
+| WT_skip : c_well_typed skip
+| WT_cseq : forall c1 c2, c_well_typed c1 -> c_well_typed c2 -> c_well_typed (c1; c2)
+| WT_uc : forall u, uc_well_typed u -> c_well_typed (uc u)
+| WT_meas : forall n c1 c2, n < dim -> c_well_typed c1 -> c_well_typed c2 -> c_well_typed (meas n c1 c2).
+
 (*****************************)
 (** Higher-level Constructs **)
 (*****************************)

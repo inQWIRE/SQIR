@@ -18,7 +18,7 @@ Local Close Scope R_scope.
    The extra n argument is to help Coq recognize termination.
    We start with n = (length l). *)
 
-Fixpoint cancel_gates_simple' {dim} (l acc : PI4_list dim) (n: nat) : PI4_list dim :=
+Fixpoint cancel_gates_simple' {dim} (l acc : PI4_ucom_l dim) (n: nat) : PI4_ucom_l dim :=
   match n with
   | 0 => (rev acc) ++ l
   | S n' => match l with
@@ -54,16 +54,16 @@ Fixpoint cancel_gates_simple' {dim} (l acc : PI4_list dim) (n: nat) : PI4_list d
            end
   end.
 
-Definition cancel_gates_simple {dim} (l : PI4_list dim) : PI4_list dim := 
+Definition cancel_gates_simple {dim} (l : PI4_ucom_l dim) : PI4_ucom_l dim := 
   cancel_gates_simple' l [] (List.length l).
 
-Lemma H_H_cancel : forall {dim} (l : PI4_list dim) q, 
+Lemma H_H_cancel : forall {dim} (l : PI4_ucom_l dim) q, 
   q < dim -> App1 UPI4_H q :: App1 UPI4_H q :: l =l= l.
 Proof.
   intros.
   unfold uc_equiv_l. 
   replace (App1 UPI4_H q :: App1 UPI4_H q :: l) with ((App1 UPI4_H q :: App1 UPI4_H q :: []) ++ l) by reflexivity.
-  rewrite PI4_to_base_l_app.
+  rewrite PI4_to_base_ucom_l_app.
   simpl.
   rewrite <- useq_assoc.
   autorewrite with eval_db.
@@ -75,13 +75,13 @@ Proof.
   apply uc_well_typed_ID; assumption.
 Qed.
 
-Lemma X_X_cancel : forall {dim} (l : PI4_list dim) q, 
+Lemma X_X_cancel : forall {dim} (l : PI4_ucom_l dim) q, 
   q < dim -> App1 UPI4_X q :: App1 UPI4_X q :: l =l= l.
 Proof.
   intros.
   unfold uc_equiv_l. 
   replace (App1 UPI4_X q :: App1 UPI4_X q :: l) with ((App1 UPI4_X q :: App1 UPI4_X q :: []) ++ l) by reflexivity.
-  rewrite PI4_to_base_l_app.
+  rewrite PI4_to_base_ucom_l_app.
   simpl.
   rewrite <- useq_assoc. 
   specialize (@X_X_id dim q) as XX.
@@ -92,7 +92,7 @@ Proof.
   apply uc_well_typed_ID; assumption.
 Qed.
 
-Lemma PI4_PI4_combine : forall {dim} (l : PI4_list dim) q k k', 
+Lemma PI4_PI4_combine : forall {dim} (l : PI4_ucom_l dim) q k k', 
   App1 (UPI4_PI4 k) q :: App1 (UPI4_PI4 k') q :: l =l= App1 (UPI4_PI4 (k+k')) q :: l.
 Proof.
   intros.
@@ -111,7 +111,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma PI4_PI4_m8_combine : forall {dim} (l : PI4_list dim) q k k', 
+Lemma PI4_PI4_m8_combine : forall {dim} (l : PI4_ucom_l dim) q k k', 
   App1 (UPI4_PI4 k) q :: App1 (UPI4_PI4 k') q :: l =l= App1 (UPI4_PI4 (k+k'-8)) q :: l.
 Proof.
   intros.
@@ -132,7 +132,7 @@ Proof.
   reflexivity.
 Qed.
   
-Lemma PI4_PI4_cancel : forall {dim} (l : PI4_list dim) q k k', 
+Lemma PI4_PI4_cancel : forall {dim} (l : PI4_ucom_l dim) q k k', 
   q < dim -> 
   (k + k' = 8)%Z ->
   App1 (UPI4_PI4 k) q :: App1 (UPI4_PI4 k') q :: l =l= l.
@@ -159,17 +159,17 @@ Proof.
   reflexivity.
 Qed.
   
-Lemma CNOT_CNOT_cancel : forall {dim} (l1 l2 : PI4_list dim) q1 q2, 
+Lemma CNOT_CNOT_cancel : forall {dim} (l1 l2 : PI4_ucom_l dim) q1 q2, 
   q1 < dim -> q2 < dim -> q1 <> q2 -> l1 ++ [App2 UPI4_CNOT q1 q2] ++ [App2 UPI4_CNOT q1 q2] ++ l2 =l= l1 ++ l2.
 Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
-  rewrite PI4_to_base_l_app, list_to_ucom_append; simpl.
+  rewrite PI4_to_base_ucom_l_app, list_to_ucom_append; simpl.
   autorewrite with eval_db; simpl.
   bdestruct_all; Msimpl_light; try reflexivity;
   remember_differences; subst. (* maybe restore old repad *)
-  - rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_l l2)))). 
-    rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_l l2)))). 
+  - rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_ucom_l l2)))). 
+    rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_ucom_l l2)))). 
     restore_dims; repeat rewrite kron_mixed_product.
     Msimpl.
     rewrite Mmult_plus_distr_r. 
@@ -184,9 +184,9 @@ Proof.
     Qsimpl.
     repeat rewrite id_kron.
     Msimpl_light.
-    rewrite PI4_to_base_l_app, list_to_ucom_append; reflexivity.
-  - rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_l l2)))). 
-    rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_l l2)))). 
+    rewrite PI4_to_base_ucom_l_app, list_to_ucom_append; reflexivity.
+  - rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_ucom_l l2)))). 
+    rewrite (Mmult_assoc (uc_eval (list_to_ucom (PI4_to_base_ucom_l l2)))). 
     restore_dims; repeat rewrite kron_mixed_product.
     Msimpl.
     rewrite Mmult_plus_distr_r. 
@@ -200,10 +200,10 @@ Proof.
     Qsimpl.
     repeat rewrite id_kron.
     Msimpl_light.
-    rewrite PI4_to_base_l_app, list_to_ucom_append; reflexivity.
+    rewrite PI4_to_base_ucom_l_app, list_to_ucom_append; reflexivity.
 Qed.  
 
-Lemma cancel_gates_simple'_sound : forall {dim} (l acc : PI4_list dim) n,
+Lemma cancel_gates_simple'_sound : forall {dim} (l acc : PI4_ucom_l dim) n,
   uc_well_typed_l l -> (rev acc) ++ l =l= cancel_gates_simple' l acc n.
 Proof.
   intros.
@@ -225,7 +225,7 @@ Proof.
       try (simpl; rewrite <- app_assoc; reflexivity);
       try assumption.
       rewrite (nsqg_commutes _ _ _ _ _ nsqg).
-      apply app_congruence; try reflexivity.
+      apply uc_app_congruence; try reflexivity.
       apply H_H_cancel; assumption.
       apply uc_well_typed_l_app. 
       apply (nsqg_WT _ _ _ _ _ nsqg); assumption.
@@ -234,7 +234,7 @@ Proof.
       try (simpl; rewrite <- app_assoc; reflexivity);
       try assumption.
       rewrite (nsqg_commutes _ _ _ _ _ nsqg).
-      apply app_congruence; try reflexivity.
+      apply uc_app_congruence; try reflexivity.
       apply X_X_cancel; assumption.
       apply uc_well_typed_l_app. 
       apply (nsqg_WT _ _ _ _ _ nsqg); assumption.
@@ -248,7 +248,7 @@ Proof.
       try apply uc_well_typed_l_app;
       try apply (nsqg_WT _ _ _ _ _ nsqg);
       try assumption;
-      apply app_congruence;
+      apply uc_app_congruence;
       try reflexivity.
       apply Z.eqb_eq in E.
       apply PI4_PI4_cancel; lia.
@@ -274,7 +274,7 @@ Proof.
     rewrite app_assoc.
     rewrite (does_not_reference_commutes_app2 g0 UPI4_CNOT n4 n3 H8 dnr).
     repeat rewrite <- app_assoc.
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     dependent destruction p.
     apply CNOT_CNOT_cancel; assumption.
     apply uc_well_typed_l_app.
@@ -282,7 +282,7 @@ Proof.
   - inversion p.
 Qed.
 
-Lemma cancel_gates_simple_sound : forall {dim} (l : PI4_list dim),
+Lemma cancel_gates_simple_sound : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l -> l =l= cancel_gates_simple l.
 Proof. 
   intros. 
@@ -293,7 +293,7 @@ Proof.
 Qed.
 
 (* Small test *)
-Definition test1 : PI4_list 4 := (App1 UPI4_H 1) :: (App1 UPI4_P 0) :: (App2 UPI4_CNOT 2 3) :: (App1 UPI4_P 0) :: (App1 UPI4_H 1) :: (App1 UPI4_Z 1) :: (App1 UPI4_PDAG 0) :: (App2 UPI4_CNOT 2 3) :: (App1 UPI4_T 0) :: [].
+Definition test1 : PI4_ucom_l 4 := (App1 UPI4_H 1) :: (App1 UPI4_P 0) :: (App2 UPI4_CNOT 2 3) :: (App1 UPI4_P 0) :: (App1 UPI4_H 1) :: (App1 UPI4_Z 1) :: (App1 UPI4_PDAG 0) :: (App2 UPI4_CNOT 2 3) :: (App1 UPI4_T 0) :: [].
 Compute (cancel_gates_simple test1).
 
 (**********************************************************************)
@@ -320,7 +320,7 @@ Compute (cancel_gates_simple test1).
 
 (* Commutativity rule for X *)
 
-Definition search_for_X_pat1 {dim} (l : PI4_list dim) q :=
+Definition search_for_X_pat1 {dim} (l : PI4_ucom_l dim) q :=
   match next_two_qubit_gate l q with
   | Some (l1, UPI4_CNOT, q1, q2, l2) =>
       if q =? q2
@@ -329,13 +329,13 @@ Definition search_for_X_pat1 {dim} (l : PI4_list dim) q :=
   | _ => None
   end.
 
-Definition search_for_X_pat2 {dim} (l : PI4_list dim) q :=
+Definition search_for_X_pat2 {dim} (l : PI4_ucom_l dim) q :=
   match next_single_qubit_gate l q with
   | Some (l1, UPI4_PI4 k, l2) => Some (l1 ++ [App1 (UPI4_PI4 (8 - k)%Z) q], l2)
   | _ => None
   end.
 
-Definition search_for_commuting_X_pat {dim} (l : PI4_list dim) q :=
+Definition search_for_commuting_X_pat {dim} (l : PI4_ucom_l dim) q :=
   match search_for_X_pat1 l q with
   | Some (l1, l2) => Some (l1, l2)
   | None => match search_for_X_pat2 l q with
@@ -346,7 +346,7 @@ Definition search_for_commuting_X_pat {dim} (l : PI4_list dim) q :=
 
 (* Commutativity rules for Rz *)
 
-Definition search_for_Rz_pat1 {dim} (l : PI4_list dim) q :=
+Definition search_for_Rz_pat1 {dim} (l : PI4_ucom_l dim) q :=
   match (next_single_qubit_gate l q) with
   | Some (l1, UPI4_H, l2) => 
       match (next_two_qubit_gate (l1 ++ l2) q) with
@@ -362,7 +362,7 @@ Definition search_for_Rz_pat1 {dim} (l : PI4_list dim) q :=
   | _ => None
   end.
 
-Definition search_for_Rz_pat2 {dim} (l : PI4_list dim) q :=
+Definition search_for_Rz_pat2 {dim} (l : PI4_ucom_l dim) q :=
   match (next_two_qubit_gate l q) with
   | Some (l1, UPI4_CNOT, q1, q2, l2) => 
       if q =? q2
@@ -381,7 +381,7 @@ Definition search_for_Rz_pat2 {dim} (l : PI4_list dim) q :=
   | _ => None
   end.
 
-Definition search_for_Rz_pat3 {dim} (l : PI4_list dim) q :=
+Definition search_for_Rz_pat3 {dim} (l : PI4_ucom_l dim) q :=
   match (next_two_qubit_gate l q) with
   | Some (l1, UPI4_CNOT, q1, q2, l2) => 
       if q =? q1
@@ -390,7 +390,7 @@ Definition search_for_Rz_pat3 {dim} (l : PI4_list dim) q :=
   | _ => None
   end.
 
-Definition search_for_commuting_Rz_pat {dim} (l : PI4_list dim) q :=
+Definition search_for_commuting_Rz_pat {dim} (l : PI4_ucom_l dim) q :=
   match search_for_Rz_pat1 l q with
   | Some (l1, l2) => Some (l1, l2)
   | None => match search_for_Rz_pat2 l q with
@@ -404,13 +404,13 @@ Definition search_for_commuting_Rz_pat {dim} (l : PI4_list dim) q :=
 
 (* Commutativity rules for CNOT *)
 
-Definition search_for_CNOT_pat1 {dim} (l : PI4_list dim) (q1 q2 : nat) : option (PI4_list dim * PI4_list dim) :=
+Definition search_for_CNOT_pat1 {dim} (l : PI4_ucom_l dim) (q1 q2 : nat) : option (PI4_ucom_l dim * PI4_ucom_l dim) :=
   match (next_single_qubit_gate l q1) with
   | Some (l1, UPI4_PI4 k as u, l2) => Some ([App1 u q1], l1 ++ l2)
   | _ => None
   end.
 
-Definition search_for_CNOT_pat2 {dim} (l : PI4_list dim) q1 q2 :=
+Definition search_for_CNOT_pat2 {dim} (l : PI4_ucom_l dim) q1 q2 :=
   match (next_two_qubit_gate l q2) with
   | Some (l1, UPI4_CNOT, q1', q2', l2) => 
       if q2 =? q2'
@@ -421,7 +421,7 @@ Definition search_for_CNOT_pat2 {dim} (l : PI4_list dim) q1 q2 :=
   | _ => None
   end.
 
-Definition search_for_CNOT_pat3 {dim} (l : PI4_list dim) q1 q2 :=
+Definition search_for_CNOT_pat3 {dim} (l : PI4_ucom_l dim) q1 q2 :=
   match (next_two_qubit_gate l q1) with
   | Some (l1, UPI4_CNOT, q1', q2', l2) => 
       if q1 =? q1'
@@ -432,7 +432,7 @@ Definition search_for_CNOT_pat3 {dim} (l : PI4_list dim) q1 q2 :=
   | _ => None
   end.
 
-Definition search_for_CNOT_pat4 {dim} (l : PI4_list dim) q1 q2 :=
+Definition search_for_CNOT_pat4 {dim} (l : PI4_ucom_l dim) q1 q2 :=
   match (next_single_qubit_gate l q2) with
   | Some (l1, UPI4_H, l2) => 
       match (next_two_qubit_gate (l1 ++ l2) q2) with
@@ -448,7 +448,7 @@ Definition search_for_CNOT_pat4 {dim} (l : PI4_list dim) q1 q2 :=
   | _ => None
   end.
 
-Definition search_for_commuting_CNOT_pat {dim} (l : PI4_list dim) q1 q2 :=
+Definition search_for_commuting_CNOT_pat {dim} (l : PI4_ucom_l dim) q1 q2 :=
   match search_for_CNOT_pat1 l q1 q2 with
   | Some (l1, l2) => Some (l1, l2)
   | None => match search_for_CNOT_pat2 l q1 q2 with
@@ -465,7 +465,7 @@ Definition search_for_commuting_CNOT_pat {dim} (l : PI4_list dim) q1 q2 :=
 
 (* Propagation functions for each gate type *)
 
-Fixpoint propagate_PI4 {dim} k (l : PI4_list dim) (q n : nat) : option (PI4_list dim) :=
+Fixpoint propagate_PI4 {dim} k (l : PI4_ucom_l dim) (q n : nat) : option (PI4_ucom_l dim) :=
   match n with
   | O => None
   | S n' => 
@@ -489,7 +489,7 @@ Fixpoint propagate_PI4 {dim} k (l : PI4_list dim) (q n : nat) : option (PI4_list
       end
   end.
 
-Definition propagate_H {dim} (l : PI4_list dim) (q : nat) : option (PI4_list dim) :=
+Definition propagate_H {dim} (l : PI4_ucom_l dim) (q : nat) : option (PI4_ucom_l dim) :=
   match next_single_qubit_gate l q with
   (* Cancel *)
   | Some (l1, UPI4_H, l2) => Some (l1 ++ l2)
@@ -497,7 +497,7 @@ Definition propagate_H {dim} (l : PI4_list dim) (q : nat) : option (PI4_list dim
   | _ => None
   end.
 
-Fixpoint propagate_X {dim} (l : PI4_list dim) (q n : nat) : option (PI4_list dim) :=
+Fixpoint propagate_X {dim} (l : PI4_ucom_l dim) (q n : nat) : option (PI4_ucom_l dim) :=
   match n with
   | O => None
   | S n' => 
@@ -516,7 +516,7 @@ Fixpoint propagate_X {dim} (l : PI4_list dim) (q n : nat) : option (PI4_list dim
       end
   end.
 
-Fixpoint propagate_CNOT {dim} (l : PI4_list dim) (q1 q2 n : nat) : option (PI4_list dim) :=
+Fixpoint propagate_CNOT {dim} (l : PI4_ucom_l dim) (q1 q2 n : nat) : option (PI4_ucom_l dim) :=
   match n with
   | O => None
   | S n' => 
@@ -538,7 +538,7 @@ Fixpoint propagate_CNOT {dim} (l : PI4_list dim) (q1 q2 n : nat) : option (PI4_l
       end
   end.
 
-Fixpoint cancel_gates' {dim} (l : PI4_list dim) (n: nat) : PI4_list dim :=
+Fixpoint cancel_gates' {dim} (l : PI4_ucom_l dim) (n: nat) : PI4_ucom_l dim :=
   match n with
   | 0 => l
   | S n' => match l with
@@ -566,12 +566,12 @@ Fixpoint cancel_gates' {dim} (l : PI4_list dim) (n: nat) : PI4_list dim :=
            end
   end.
 
-Definition cancel_gates {dim} (l : PI4_list dim) := 
+Definition cancel_gates {dim} (l : PI4_ucom_l dim) := 
   cancel_gates' l (length l).
 
 (* Proofs about commutativity *)
 
-Lemma commuting_X_pat : forall {dim} (l : PI4_list dim) q l1 l2, 
+Lemma commuting_X_pat : forall {dim} (l : PI4_ucom_l dim) q l1 l2, 
   search_for_commuting_X_pat l q = Some (l1, l2) ->
   (App1 UPI4_X q :: l) ≅l≅ (l1 ++ [App1 UPI4_X q] ++ l2).
 Proof.
@@ -594,9 +594,9 @@ Proof.
     rewrite (does_not_reference_commutes_app1 _ UPI4_X _ ntqg).
     inversion HS; subst.
     repeat rewrite <- app_assoc.
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     repeat rewrite app_assoc.
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     unfold uc_equiv_l; simpl.
     destruct dim.
     + unfold uc_equiv; simpl.
@@ -658,7 +658,7 @@ Qed.
 Lemma app_cons_app : forall {A} (a : A) (l1 l2 : list A), a :: l1 ++ l2 = [a] ++ l1 ++ l2.
 Proof. reflexivity. Qed.
 
-Lemma commuting_Rz_pat : forall {dim} k (l : PI4_list dim) q l1 l2,
+Lemma commuting_Rz_pat : forall {dim} k (l : PI4_ucom_l dim) q l1 l2,
   search_for_commuting_Rz_pat l q = Some (l1, l2) ->
   App1 (UPI4_PI4 k) q :: l =l= l1 ++ [App1 (UPI4_PI4 k) q] ++ l2.
 Proof.
@@ -693,9 +693,9 @@ Proof.
     rewrite (app_assoc _ g2).
     rewrite (does_not_reference_commutes_app1 _ (UPI4_PI4 k) _ NoRef).
     repeat rewrite <- app_assoc.  
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     repeat rewrite app_assoc.
-    do 2 (apply app_congruence; try reflexivity).
+    do 2 (apply uc_app_congruence; try reflexivity).
     unfold uc_equiv_l, uc_equiv; simpl.
     destruct dim. (* get rid of dim = 0 case *)
     unfold pad; bdestruct_all; Msimpl_light; reflexivity.
@@ -748,10 +748,10 @@ Proof.
     rewrite app_comm_cons.
     rewrite (does_not_reference_commutes_app1 _ (UPI4_PI4 k) _ NoRef).
     repeat rewrite <- app_assoc.
-    apply app_congruence; try reflexivity. 
+    apply uc_app_congruence; try reflexivity. 
     repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
-    apply app_congruence; try reflexivity. 
+    apply uc_app_congruence; try reflexivity. 
     repeat rewrite <- app_assoc.    
     rewrite <- (does_not_reference_commutes_app2 _ UPI4_CNOT _ _ NoRef'' NoRef').
     rewrite (app_assoc g4).
@@ -759,7 +759,7 @@ Proof.
     rewrite <- app_assoc.
     rewrite <- (does_not_reference_commutes_app1 _ (UPI4_PI4 k) _ NoRef').
     repeat rewrite app_assoc.    
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     unfold uc_equiv_l, uc_equiv; simpl.
     destruct dim. (* get rid of dim = 0 case *)
     unfold pad; bdestruct_all; Msimpl_light; reflexivity.
@@ -796,10 +796,10 @@ Proof.
     inversion HS3. subst.
     repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
-    apply app_congruence; try reflexivity. 
+    apply uc_app_congruence; try reflexivity. 
     rewrite (does_not_reference_commutes_app1 _ (UPI4_PI4 k) _ NoRef).
     repeat rewrite <- app_assoc.
-    apply app_congruence; try reflexivity. 
+    apply uc_app_congruence; try reflexivity. 
     (* simple slide lemma: should exist already? *)
     unfold uc_equiv_l, uc_equiv; simpl.
     destruct dim. (* get rid of dim = 0 case *)
@@ -821,7 +821,7 @@ Qed.
 
 (* Slow *)
 (* Should add/use lemmas for ∣0⟩⟨0∣ × ∣1⟩⟨1∣ and the like. *)
-Lemma commuting_CNOT_pat : forall {dim} (l : PI4_list dim) q1 q2 l1 l2,
+Lemma commuting_CNOT_pat : forall {dim} (l : PI4_ucom_l dim) q1 q2 l1 l2,
   search_for_commuting_CNOT_pat l q1 q2 = Some (l1, l2) ->
   App2 UPI4_CNOT q1 q2 :: l =l= l1 ++ [App2 UPI4_CNOT q1 q2] ++ l2.
 Proof.
@@ -843,7 +843,7 @@ Proof.
     rewrite HN1. (* Wasn't this the last case of Rz *)
     repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
-    do 2 (apply app_congruence; try reflexivity).
+    do 2 (apply uc_app_congruence; try reflexivity).
     unfold uc_equiv_l, uc_equiv; simpl.
     destruct dim. (* get rid of dim = 0 case *)
     unfold pad; bdestruct_all; Msimpl_light; reflexivity.
@@ -875,9 +875,9 @@ Proof.
     repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
     rewrite (does_not_reference_commutes_app2 _ UPI4_CNOT _ _ NoRef' NoRef).
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     repeat rewrite <- app_assoc.
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     unfold uc_equiv_l, uc_equiv; simpl.
     destruct dim. (* get rid of dim = 0 case *)
     unfold pad; bdestruct_all; Msimpl_light; reflexivity.
@@ -898,9 +898,9 @@ Proof.
     repeat rewrite app_cons_app.
     repeat rewrite app_assoc.
     rewrite (does_not_reference_commutes_app2 _ UPI4_CNOT _ _ NoRef NoRef').
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     repeat rewrite <- app_assoc.
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     unfold uc_equiv_l, uc_equiv; simpl.
     destruct dim. (* get rid of dim = 0 case *)
     unfold pad; bdestruct_all; Msimpl_light; reflexivity.
@@ -938,9 +938,9 @@ Proof.
     rewrite (does_not_reference_commutes_app1 _ UPI4_H _ NoRef).
     rewrite app_assoc.
     rewrite (does_not_reference_commutes_app2 _ UPI4_CNOT _ _ NoRef' NoRef).
-    do 2 (apply app_congruence; try reflexivity).
+    do 2 (apply uc_app_congruence; try reflexivity).
     repeat rewrite <- app_assoc.
-    apply app_congruence; try reflexivity.
+    apply uc_app_congruence; try reflexivity.
     unfold uc_equiv_l, uc_equiv; simpl.
     destruct dim. (* get rid of dim = 0 case *)
     unfold pad; bdestruct_all; Msimpl_light; reflexivity.
@@ -959,7 +959,7 @@ Qed.
       
 (* Proofs about propagation functions *)
 
-Lemma propagate_H_sound : forall {dim} (l : PI4_list dim) q l',
+Lemma propagate_H_sound : forall {dim} (l : PI4_ucom_l dim) q l',
   q < dim ->
   propagate_H l q = Some l' ->
   App1 UPI4_H q :: l =l= l'.
@@ -973,7 +973,7 @@ Proof.
   apply H_H_cancel; assumption.
 Qed.
 
-Lemma propagate_H_WT : forall {dim} (l : PI4_list dim) q l',
+Lemma propagate_H_WT : forall {dim} (l : PI4_ucom_l dim) q l',
   q < dim ->
   uc_well_typed_l l -> 
   propagate_H l q = Some l' ->
@@ -985,7 +985,7 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma propagate_X_sound : forall {dim} (l : PI4_list dim) q n l',
+Lemma propagate_X_sound : forall {dim} (l : PI4_ucom_l dim) q n l',
   q < dim ->
   propagate_X l q n = Some l' ->
   (App1 UPI4_X q :: l) ≅l≅ l'.
@@ -1015,7 +1015,7 @@ Proof.
      reflexivity.
 Qed.
 
-Lemma propagate_X_WT : forall {dim} (l : PI4_list dim) q n l',
+Lemma propagate_X_WT : forall {dim} (l : PI4_ucom_l dim) q n l',
   q < dim ->
   uc_well_typed_l l ->
   propagate_X l q n = Some l' ->
@@ -1027,7 +1027,7 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma propagate_PI4_sound : forall {dim} k (l : PI4_list dim) q n l',
+Lemma propagate_PI4_sound : forall {dim} k (l : PI4_ucom_l dim) q n l',
   q < dim ->
   propagate_PI4 k l q n = Some l' ->
   App1 (UPI4_PI4 k) q :: l =l= l'.
@@ -1061,7 +1061,7 @@ Proof.
      reflexivity.
 Qed.
 
-Lemma propagate_PI4_WT : forall {dim} k (l : PI4_list dim) q n l',
+Lemma propagate_PI4_WT : forall {dim} k (l : PI4_ucom_l dim) q n l',
   q < dim ->
   uc_well_typed_l l ->
   propagate_PI4 k l q n = Some l' ->
@@ -1073,7 +1073,7 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma propagate_CNOT_sound : forall {dim} (l : PI4_list dim) q1 q2 n l',
+Lemma propagate_CNOT_sound : forall {dim} (l : PI4_ucom_l dim) q1 q2 n l',
   q1 < dim ->
   q2 < dim -> 
   q1 <> q2 ->
@@ -1112,7 +1112,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma propagate_CNOT_WT : forall {dim} (l : PI4_list dim) q1 q2 n l',
+Lemma propagate_CNOT_WT : forall {dim} (l : PI4_ucom_l dim) q1 q2 n l',
   q1 < dim ->
   q2 < dim -> 
   q1 <> q2 ->
@@ -1126,7 +1126,7 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma cancel_gates'_sound : forall {dim} (l : PI4_list dim) n,
+Lemma cancel_gates'_sound : forall {dim} (l : PI4_ucom_l dim) n,
   uc_well_typed_l l -> cancel_gates' l n ≅l≅ l.
 Proof.
   intros.
@@ -1171,6 +1171,6 @@ Proof.
   - inversion p.
 Qed.
 
-Lemma cancel_gates_sound : forall {dim} (l : PI4_list dim), 
+Lemma cancel_gates_sound : forall {dim} (l : PI4_ucom_l dim), 
   uc_well_typed_l l -> cancel_gates l ≅l≅ l.
 Proof. intros. apply cancel_gates'_sound; assumption. Qed.

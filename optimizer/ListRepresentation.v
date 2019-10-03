@@ -3,17 +3,19 @@ Require Import Coq.Reals.ROrderedType.
 
 Require Import QWIRE.Proportional.
 Require Import optimizer.Equivalences.
+Require Import core.DensitySem.
 
 Require Export List.
 
 Local Open Scope ucom_scope.
 Local Close Scope R_scope.
 
-(* This file contains utilities for manipulating (unitary) SQIRE programs 
-   to make implementing transformations easier. The primary contribution is 
-   a 'list of gates' representation.
+(* This file contains utilities for manipulating SQIRE programs to make implementing 
+   transformations easier. The primary contribution is a 'list of gates' 
+   representation for unitary programs and a 'list of lists' representation for
+   non-unitary programs.
 
-   TODO: We've been thinking for a while about adding a DAG representation of 
+   TODO: We've been thinking for a while about adding a DAG representation of
    circuits. This would be useful for implementing optimizations because the
    dependence between gates would be obvious (and existing optimizers like Qiskit
    and the Nam et al. optimizer use a DAG representation). However, we have put
@@ -26,7 +28,7 @@ Local Close Scope R_scope.
    verified compilers (e.g. CompCert) to see how they use graphs.
 *)
 
-(* Represent a unitary circuit as a list of gate applications. *)
+(** Represent a unitary circuit as a list of gate applications. **)
 
 Inductive gate_app (U: nat -> Set) (dim : nat): Set :=
 | App1 : U 1 -> nat -> gate_app U dim
@@ -126,9 +128,9 @@ Qed.
 
 (** Conversion between gate_list and ucom in the base gate set. **)
 
-Definition base_list dim := gate_list base_Unitary dim.
+Definition base_ucom_l dim := gate_list base_Unitary dim.
 
-Fixpoint ucom_to_list {dim} (c: base_ucom dim) : base_list dim :=
+Fixpoint ucom_to_list {dim} (c: base_ucom dim) : base_ucom_l dim :=
   match c with
   | c1; c2 => (ucom_to_list c1) ++ (ucom_to_list c2)
   | uapp1 u n => [App1 u n]
@@ -136,7 +138,7 @@ Fixpoint ucom_to_list {dim} (c: base_ucom dim) : base_list dim :=
   | uapp3 u m n p => [App3 u m n p]
   end.
 
-Fixpoint list_to_ucom {dim} (l : base_list dim) : base_ucom dim :=
+Fixpoint list_to_ucom {dim} (l : base_ucom_l dim) : base_ucom dim :=
   match l with
   | []               => SKIP
   | (App1 u n)::t     => uapp1 u n ; list_to_ucom t
@@ -144,7 +146,7 @@ Fixpoint list_to_ucom {dim} (l : base_list dim) : base_ucom dim :=
   | (App3 u m n p)::t => uapp3 u m n p ; list_to_ucom t
   end.
 
-Lemma list_to_ucom_append : forall {dim} (l1 l2 : base_list dim),
+Lemma list_to_ucom_append : forall {dim} (l1 l2 : base_ucom_l dim),
   list_to_ucom (l1 ++ l2) ≡ list_to_ucom l1 ; list_to_ucom l2.
 Proof.
   intros dim l1 l2.
@@ -190,7 +192,7 @@ Proof.
     Msimpl_light; reflexivity.
 Qed.
 
-Lemma list_to_ucom_WT : forall {dim} (l : base_list dim), 
+Lemma list_to_ucom_WT : forall {dim} (l : base_ucom_l dim), 
   uc_well_typed_l l <-> uc_well_typed (list_to_ucom l).
 Proof.
   intros. 
@@ -214,7 +216,7 @@ Proof.
       assumption.
 Qed.
 
-(** Useful operations on the list representation. **)
+(** Useful operations on the ucom list representation. **)
 
 (* Get the next single-qubit gate applied to qubit q.
    
@@ -663,3 +665,297 @@ Proof.
   all: apply (inb_false qs); assumption.
 Qed.
 
+(** List-of-lists representation for non-unitary programs. **)
+
+Local Open Scope com_scope.
+
+Inductive instr (U: nat -> Set) (dim : nat): Set :=
+| UC : gate_list U dim -> instr U dim
+| Meas : nat -> list (instr U dim) -> list (instr U dim) -> instr U dim.
+
+Definition com_list U dim := list (instr U dim).
+
+Arguments UC {U} {dim}.
+Arguments Meas {U} {dim}.
+
+(* Induction principle for com_list *)
+Section com_list_ind.
+  Variable U : nat -> Set.
+  Variable dim : nat.
+  Variable P : com_list U dim -> Prop.
+
+  Hypothesis Nil_case : P ([] : com_list U dim).
+  Hypothesis UC_case : forall (u : gate_list U dim) t,
+    P t -> P ((UC u) :: t).
+  Hypothesis Meas_case : forall n (l1 l2 : com_list U dim) t,
+    P l1 -> P l2 -> P t -> P ((Meas n l1 l2) :: t).
+
+  Fixpoint instr_ind_aux (i : instr U dim) :=
+    match i with
+    | UC u => (fun t Pft => UC_case u t Pft)
+    | Meas n l1 l2 => 
+        let fix f (l : com_list U dim) :=
+           match l with
+           | [] => Nil_case
+           | h :: t => instr_ind_aux h t (f t)
+           end in
+        (fun t Pft => Meas_case n l1 l2 t (f l1) (f l2) Pft)
+    end.
+
+  Fixpoint com_list_ind (l : com_list U dim) : P l :=
+    match l with
+    | [] => Nil_case
+    | h :: t => instr_ind_aux h t (com_list_ind t)
+    end.
+
+End com_list_ind.
+
+(* Well-typedness *)
+Inductive c_well_typed_l {U dim} : com_list U dim -> Prop :=
+| WT_nilc : c_well_typed_l []
+| WT_UC : forall u t, uc_well_typed_l u -> c_well_typed_l t -> c_well_typed_l ((UC u) :: t)
+| WT_Meas : forall n l1 l2 t, (n < dim)%nat -> c_well_typed_l l1 -> c_well_typed_l l2 
+            -> c_well_typed_l t -> c_well_typed_l ((Meas n l1 l2) :: t).
+
+(** Conversion between gate_list and ucom in the base gate set. **)
+
+Definition base_com_l dim := com_list base_Unitary dim.
+
+Fixpoint com_to_list {dim} (c: base_com dim) : base_com_l dim :=
+  match c with
+  | skip         => []
+  | c1; c2       => (com_to_list c1) ++ (com_to_list c2)
+  | uc u         => [UC (ucom_to_list u)]
+  | meas n c1 c2 => [Meas n (com_to_list c1) (com_to_list c2)]
+  end.
+
+(* Written awkwardly to convince Coq of termination. *)
+Fixpoint instr_to_com {dim} (i : instr base_Unitary dim) : base_com dim :=
+  match i with 
+  | UC u => uc (list_to_ucom u)
+  | Meas n l1 l2 => 
+      let fix f l := match l with
+                     | [] => skip
+                     | h :: t => instr_to_com h ; f t
+                     end in
+      meas n (f l1) (f l2)
+  end.
+Fixpoint list_to_com {dim} (l : base_com_l dim) : base_com dim :=
+  match l with
+  | [] => skip
+  | h :: t => instr_to_com h ; list_to_com t
+  end.
+
+Lemma instr_to_com_UC : forall dim (u : base_ucom_l dim),
+  instr_to_com (UC u) = uc (list_to_ucom u).
+Proof. intros. reflexivity. Qed.
+
+Lemma instr_to_com_Meas : forall dim n (l1 : base_com_l dim) l2,
+  instr_to_com (Meas n l1 l2) = meas n (list_to_com l1) (list_to_com l2).
+Proof.
+  intros.
+  simpl.
+  apply f_equal2.
+  - induction l1; try rewrite IHl1; reflexivity.
+  - induction l2; try rewrite IHl2; reflexivity.
+Qed.
+Global Opaque instr_to_com.
+Hint Rewrite instr_to_com_UC instr_to_com_Meas.
+
+Lemma list_to_com_append : forall {dim} (l1 l2 : base_com_l dim),
+  list_to_com (l1 ++ l2) ≡ list_to_com l1 ; list_to_com l2.
+Proof.
+  intros dim l1 l2.
+  unfold c_equiv.
+  induction l1; simpl; try reflexivity.
+  destruct a; simpl; intros;
+  unfold compose_super; rewrite IHl1; 
+  auto with wf_db.
+Qed.
+
+Lemma com_list_equiv : forall {dim} (c : base_com dim),
+  list_to_com (com_to_list c) ≡ c.
+Proof.
+  intros.
+  unfold c_equiv.
+  induction c; simpl; try reflexivity; intros.
+  - rewrite list_to_com_append; simpl; try assumption.
+    unfold compose_super.
+    rewrite IHc1, IHc2; auto with wf_db.
+  - rewrite instr_to_com_UC; simpl.
+    rewrite ucom_list_equiv; reflexivity.
+  - rewrite instr_to_com_Meas; simpl.
+    unfold compose_super, Splus.
+    rewrite IHc1, IHc2; auto with wf_db.
+Qed.
+
+Lemma list_to_com_WT : forall {dim} (l : base_com_l dim), 
+  c_well_typed_l l <-> c_well_typed (list_to_com l).
+Proof.
+  intros; split; intros H.
+  - induction H; constructor; 
+    try rewrite instr_to_com_UC; try rewrite instr_to_com_Meas; try constructor; 
+    auto.
+    apply list_to_ucom_WT. assumption.
+  - induction l using com_list_ind; inversion H; subst; 
+    try rewrite instr_to_com_UC in H2; try rewrite instr_to_com_Meas in H2; try inversion H2; subst;
+    constructor; auto.
+    apply list_to_ucom_WT. assumption.
+Qed.
+
+(** Useful operations on the com list representation. **)
+
+Fixpoint does_not_reference_instr {U dim} q (i : instr U dim) :=
+  match i with 
+  | UC u => does_not_reference u q
+  | Meas n l1 l2 => 
+      negb (q =? n) && 
+      forallb (does_not_reference_instr q) l1 && 
+      forallb (does_not_reference_instr q) l2
+  end.
+Definition does_not_reference_c {U dim} (l : com_list U dim) (q : nat) :=
+  forallb (does_not_reference_instr q) l.
+
+Lemma does_not_reference_instr_UC : forall U dim q (u : gate_list U dim),
+  does_not_reference_instr q (UC u) = does_not_reference u q.
+Proof. intros. reflexivity. Qed.
+
+Lemma does_not_reference_instr_Meas : forall U dim q n (l1 : com_list U dim) l2,
+  does_not_reference_instr q (Meas n l1 l2) = negb (q =? n) && does_not_reference_c l1 q && does_not_reference_c l2 q.
+Proof.
+  intros.
+  simpl.
+  apply f_equal2; [apply f_equal2 |].
+  - reflexivity.
+  - induction l1; simpl; try rewrite IHl1; reflexivity.
+  - induction l2; simpl; try rewrite IHl2; reflexivity.
+Qed.
+Global Opaque does_not_reference_instr.
+
+(* Get the next measurement operation on qubit q. *)
+Fixpoint next_measurement {U dim} (l : com_list U dim) q :=
+  match l with
+  | [] => None
+  | UC u :: t => 
+      if does_not_reference u q 
+      then match next_measurement t q with
+           | None => None
+           | Some (l1, l1', l2', l2) => 
+               Some (UC u :: l1, l1', l2', l2)
+           end
+      else None
+  | Meas n l1 l2 :: t => 
+      if q =? n
+      then Some ([], l1, l2, t)
+      else if does_not_reference_c l1 q && does_not_reference_c l2 q
+           then match next_measurement t q with
+                | None => None
+                | Some (l1', l1'', l2'', l2') => 
+                    Some (Meas n l1 l2 :: l1', l1'', l2'', l2')
+                end
+           else None
+  end.
+
+Lemma next_measurement_preserves_structure : forall U dim (l : com_list U dim) q l1 l1' l2' l2,
+  next_measurement l q = Some (l1, l1', l2', l2) ->
+  l = l1 ++ [Meas q l1' l2'] ++ l2.
+Proof.
+  intros.
+  generalize dependent l1.
+  induction l; intros.
+  - inversion H.
+  - simpl in H.
+    destruct a.
+    + destruct (does_not_reference g q); try discriminate.
+      destruct (next_measurement l q); try discriminate.
+      do 3 destruct p.
+      inversion H; subst.
+      rewrite IHl with (l1:=l4); reflexivity.
+    + bdestruct (q =? n).
+      inversion H; subst. reflexivity.
+      destruct (does_not_reference_c l0 q && does_not_reference_c l3 q); try discriminate.
+      destruct (next_measurement l q); try discriminate.
+      do 3 destruct p.
+      inversion H; subst.
+      rewrite IHl with (l1:=l6); reflexivity.
+Qed.  
+
+Lemma next_measurement_l1_does_not_reference : forall {U dim} (l : com_list U dim) q l1 l1' l2' l2,
+  next_measurement l q = Some (l1, l1', l2', l2) ->
+  does_not_reference_c l1 q = true.
+Proof.
+  intros.
+  generalize dependent l1.
+  induction l; intros.
+  - inversion H.
+  - simpl in H.
+    destruct a.
+    + destruct (does_not_reference g q) eqn:dnr; try discriminate.
+      destruct (next_measurement l q) eqn:nm; try discriminate.
+      do 3 destruct p.
+      inversion H; subst.
+      simpl.
+      apply andb_true_intro; split.
+      assumption.
+      rewrite IHl with (l1:=l4); reflexivity.
+    + bdestruct (q =? n).
+      inversion H; subst. reflexivity.
+      destruct (does_not_reference_c l0 q) eqn:dnrl0. 
+      destruct (does_not_reference_c l3 q) eqn:dnrl3.
+      all: simpl in H; try discriminate.
+      destruct (next_measurement l q) eqn:Hnm; try discriminate.
+      do 3 destruct p.
+      inversion H; subst.
+      simpl.
+      rewrite does_not_reference_instr_Meas.
+      repeat (try apply andb_true_intro; split).
+      apply negb_true_iff; apply eqb_neq; assumption.
+      all: try assumption.
+      rewrite IHl with (l1:=l6); reflexivity.
+Qed.
+
+(* Count the number of UC/Meas operations in a non-unitary program. This is useful
+   when we're too lazy to write functions in a nested recursive style & use the
+   special induction principle 'com_list_ind'. Instead, we can use the result of
+   this function as initial fuel to a function and recurse on the size of the fuel.
+   (This only works if the function in question performs N operations where N
+   can be over-approximated by an expression involving count_ops.) *)
+Fixpoint count_ops_instr {U dim} (i : instr U dim) :=
+  match i with
+  | UC u => 1%nat
+  | Meas n l1 l2 =>
+      let fix f l := match l with
+                     | [] => O
+                     | h :: t => (count_ops_instr h + f t)%nat
+                     end in
+      (1 + f l1 + f l2)%nat
+  end.
+Fixpoint count_ops {U dim} (l : com_list U dim) :=
+  match l with
+  | [] => O
+  | h :: t => (count_ops_instr h + count_ops t)%nat
+  end.
+
+(* 'canonicalize' a non-unitary program by combining adjacent UC terms and
+   removing empty UC terms. This will allow for more effective application 
+   of unitary optimizations (and nicer printing). *)
+Fixpoint canonicalize_com_l' {U dim} (l : com_list U dim) n : com_list U dim :=
+  match n with
+  | O => l
+  | S n' => match l with
+           | [] => []
+           | Meas n l1 l2 :: t => 
+               let l1' := canonicalize_com_l' l1 n' in
+               let l2' := canonicalize_com_l' l2 n' in
+               Meas n l1' l2' :: (canonicalize_com_l' t n')
+           | UC [] :: t => canonicalize_com_l' t n'
+           | UC u1 :: UC u2 :: t => canonicalize_com_l' ((UC (u1 ++ u2)) :: t) n'
+           
+           | h :: t => h :: (canonicalize_com_l' t n')
+           end
+  end.
+Definition canonicalize_com_l {U dim} (l : com_list U dim) :=
+  canonicalize_com_l' l (count_ops l).
+
+(* It's easy enough to prove (canonicalize_com_l l ≡ l); you just need a way to translate from U 
+   into base_Unitary. *)

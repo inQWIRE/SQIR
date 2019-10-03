@@ -2,6 +2,8 @@ Require Import UnitarySem.
 Require Import Utilities.
 Require Import PI4GateSet.
 
+Local Open Scope ucom_scope.
+
 (* Combine rotations that act on the same terms in the phase polynomial 
    representation of a program. For a thorough description of this optimization, 
    see the "Rotation merging using phase polynomials" section of [1], Sec. 6.4 
@@ -35,8 +37,8 @@ Definition add x l :=
    Find a subcircuit in l that involves qubits in qs1, but not qubits
    in qs2, and only uses CNOT, X, and Rz gates. Return (l1, s, l2) s.t.
    s is the desired subcircuit and l ≡ l1 ++ s ++ l2. *)
-Fixpoint get_subcircuit' {dim} (l : PI4_list dim) (qs1 qs2 : list nat) n
-             : (PI4_list dim * PI4_list dim * PI4_list dim) :=
+Fixpoint get_subcircuit' {dim} (l : PI4_ucom_l dim) (qs1 qs2 : list nat) n
+             : (PI4_ucom_l dim * PI4_ucom_l dim * PI4_ucom_l dim) :=
   match n with
   | O => ([], [], l)
   | S n' => match next_gate l qs1 with
@@ -62,7 +64,7 @@ Fixpoint get_subcircuit' {dim} (l : PI4_list dim) (qs1 qs2 : list nat) n
            end
   end.
 
-Definition get_subcircuit {dim} (l : PI4_list dim) q := 
+Definition get_subcircuit {dim} (l : PI4_ucom_l dim) q := 
   get_subcircuit' l [q] [] (List.length l).
 
 (* Proofs *)
@@ -84,7 +86,7 @@ Proof.
   try right; assumption.
 Qed.
 
-Lemma get_subcircuit'_l1_does_not_reference : forall {dim} (l : PI4_list dim) qs1 qs2 n l1 s l2,
+Lemma get_subcircuit'_l1_does_not_reference : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
   get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
   forall q, List.In q qs1 -> does_not_reference l1 q = true.
 Proof. 
@@ -128,7 +130,7 @@ Proof.
     + dependent destruction p.
 Qed.
 
-Lemma get_subcircuit'_s_does_not_reference : forall {dim} (l : PI4_list dim) qs1 qs2 n l1 s l2,
+Lemma get_subcircuit'_s_does_not_reference : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
   get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
   forall q, List.In q qs2 -> does_not_reference s q = true.
 Proof.
@@ -174,10 +176,7 @@ Proof.
     + dependent destruction p.
 Qed.
 
-Lemma cons_to_app : forall {A} (h : A) (t : list A), h :: t = [h] ++ t.
-Proof. reflexivity. Qed.
-
-Lemma get_subcircuit'_preserves_semantics : forall {dim} (l : PI4_list dim) qs1 qs2 n l1 s l2,
+Lemma get_subcircuit'_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
   get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
   l =l= l1 ++ s ++ l2.
 Proof.
@@ -217,9 +216,9 @@ Proof.
       all: try rewrite (cons_to_app _ p0).
       all: try rewrite (cons_to_app _ p1).
       all: repeat rewrite <- app_assoc;
-           apply app_congruence; try reflexivity;
+           apply uc_app_congruence; try reflexivity;
            repeat rewrite app_assoc;
-           apply app_congruence; try reflexivity;
+           apply uc_app_congruence; try reflexivity;
            rewrite does_not_reference_commutes_app1; try assumption;
            try reflexivity.
       all: repeat rewrite <- app_assoc;
@@ -253,9 +252,9 @@ Proof.
         rewrite subc.
         rewrite (cons_to_app _ p1).
         repeat rewrite <- app_assoc.
-        apply app_congruence; try reflexivity.
+        apply uc_app_congruence; try reflexivity.
         repeat rewrite app_assoc.
-        apply app_congruence; try reflexivity.
+        apply uc_app_congruence; try reflexivity.
         rewrite does_not_reference_commutes_app2; try assumption.
         repeat rewrite <- app_assoc.
         rewrite does_not_reference_commutes_app2; try assumption.
@@ -274,15 +273,15 @@ Proof.
         rewrite subc.
         rewrite (cons_to_app _ p2).
         repeat rewrite <- app_assoc.
-        apply app_congruence; try reflexivity.
+        apply uc_app_congruence; try reflexivity.
         repeat rewrite app_assoc.
-        apply app_congruence; try reflexivity.
+        apply uc_app_congruence; try reflexivity.
         rewrite does_not_reference_commutes_app2; try assumption.
         reflexivity.
     + dependent destruction p.
 Qed.
 
-Lemma get_subcircuit_l1_does_not_reference : forall {dim} (l : PI4_list dim) q l1 s l2,
+Lemma get_subcircuit_l1_does_not_reference : forall {dim} (l : PI4_ucom_l dim) q l1 s l2,
   get_subcircuit l q = (l1, s, l2) ->
   does_not_reference l1 q = true.
 Proof.
@@ -293,7 +292,7 @@ Proof.
   left; reflexivity.
 Qed.
 
-Lemma get_subcircuit_preserves_semantics : forall {dim} (l : PI4_list dim) q l1 s l2,
+Lemma get_subcircuit_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) q l1 s l2,
   get_subcircuit l q = (l1, s, l2) ->
   l =l= l1 ++ s ++ l2.
 Proof. 
@@ -305,10 +304,10 @@ Qed.
 
 (* Examples *)
 
-Definition test1 : PI4_list 1 := T 0 :: H 0 :: [].
-Definition test2 : PI4_list 2 := T 0 :: CNOT 0 1 :: H 0 :: T 1 :: H 1 :: [].
-Definition test3 : PI4_list 3 := T 0 :: H 1 :: H 2 :: X 1 :: CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: H 1 :: T 2 :: [].
-Definition test4 : PI4_list 3 := T 1 :: T 2 :: CNOT 1 0 :: T 0 :: CNOT 1 2 :: CNOT 0 1 :: H 2 :: CNOT 1 2 :: CNOT 0 1 :: T 1 :: H 0 :: H 1 :: [].
+Definition test1 : PI4_ucom_l 1 := T 0 :: H 0 :: [].
+Definition test2 : PI4_ucom_l 2 := T 0 :: CNOT 0 1 :: H 0 :: T 1 :: H 1 :: [].
+Definition test3 : PI4_ucom_l 3 := T 0 :: H 1 :: H 2 :: X 1 :: CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: H 1 :: T 2 :: [].
+Definition test4 : PI4_ucom_l 3 := T 1 :: T 2 :: CNOT 1 0 :: T 0 :: CNOT 1 2 :: CNOT 0 1 :: H 2 :: CNOT 1 2 :: CNOT 0 1 :: T 1 :: H 0 :: H 1 :: [].
 
 (* Result: l1 = [], s = [T 0], l2 = [H 0] *)
 Compute (get_subcircuit test1 O). 
@@ -375,7 +374,7 @@ Definition xor f1 f2 :=
    k = phase of original rotation gate
    q = target of original rotation gate
    f = list of boolean function applied to every qubit *)
-Fixpoint merge' {dim} (s : PI4_list dim) k q f :=
+Fixpoint merge' {dim} (s : PI4_ucom_l dim) k q f :=
   match s with
   | (App1 UPI4_X q') :: t => 
       let f' := update f q' (neg (f q') dim) in
@@ -402,7 +401,7 @@ Fixpoint merge' {dim} (s : PI4_list dim) k q f :=
   | _ => None
   end.
 
-Definition merge {dim} (s : PI4_list dim) k q :=
+Definition merge {dim} (s : PI4_ucom_l dim) k q :=
   let finit := fun i => fun j => if j =? i then true else false in
   merge' s k q finit.
 
@@ -590,12 +589,12 @@ Qed.
 
 Definition b2R (b : bool) : R := if b then 1%R else 0%R.
 Local Coercion b2R : bool >-> R.
-Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : PI4_list dim) k q b l' f,
+Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : PI4_ucom_l dim) k q b l' f,
   (q < dim)%nat ->
   uc_well_typed_l s ->
   merge' s k q b = Some l' ->
-  let A := uc_eval (list_to_ucom (PI4_to_base_l l')) in
-  let B := uc_eval (list_to_ucom (PI4_to_base_l s)) in
+  let A := uc_eval (list_to_ucom (PI4_to_base_ucom_l l')) in
+  let B := uc_eval (list_to_ucom (PI4_to_base_ucom_l s)) in
   let v := f_to_vec 0 dim (get_boolean_expr b f dim) in
   A × v = (Cexp (f q * (IZR k * PI / 4))) .* B × v.
 Proof.
@@ -612,7 +611,7 @@ Proof.
       inversion H; inversion WT; subst.
       apply (IHs H5) in mer.
       rewrite get_boolean_expr_update_neg in mer.
-      simpl PI4_to_base_l; simpl list_to_ucom.
+      simpl PI4_to_base_ucom_l; simpl list_to_ucom.
       replace (uapp1 (U_R PI 0 PI) n) with (@SQIRE.X dim n) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
@@ -621,7 +620,7 @@ Proof.
       rewrite mer.
       repeat rewrite Mscale_mult_dist_l.
       reflexivity.
-    + simpl PI4_to_base_l; simpl list_to_ucom. 
+    + simpl PI4_to_base_ucom_l; simpl list_to_ucom. 
       replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIRE.Rz dim (IZR k * PI / 4) n) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
@@ -634,7 +633,7 @@ Proof.
       * destruct (k0 + k =? 8)%Z eqn:k0k8;
         [ | destruct (k0 + k <? 8)%Z eqn:k0k];
         inversion H; subst;
-        simpl PI4_to_base_l; simpl list_to_ucom.
+        simpl PI4_to_base_ucom_l; simpl list_to_ucom.
         2: replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / 4)) n) with (@SQIRE.Rz dim (IZR (k0 + k) * PI / 4) n) by reflexivity.
         3: replace (uapp1 (U_R 0 0 (IZR (k0 + k - 8) * PI / 4)) n) with (@SQIRE.Rz dim (IZR (k0 + k - 8) * PI / 4) n) by reflexivity.
         2, 3: simpl; repeat rewrite Mmult_assoc; rewrite f_to_vec_Rz; try assumption.
@@ -670,7 +669,7 @@ Proof.
       * destruct (merge' s k0 q b) eqn:mer; try discriminate.
         inversion H; subst.
         apply (IHs H4) in mer.
-        simpl PI4_to_base_l; simpl list_to_ucom.
+        simpl PI4_to_base_ucom_l; simpl list_to_ucom.
         replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIRE.Rz dim (IZR k * PI / 4) n) by reflexivity.
         simpl.
         repeat rewrite Mmult_assoc.
@@ -686,7 +685,7 @@ Proof.
       inversion H; inversion WT; subst.
       apply (IHs H8) in mer.
       rewrite get_boolean_expr_update_xor in mer.
-      simpl PI4_to_base_l; simpl list_to_ucom.
+      simpl PI4_to_base_ucom_l; simpl list_to_ucom.
       replace (uapp2 U_CNOT n n0) with (@SQIRE.CNOT dim n n0) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
@@ -713,7 +712,7 @@ Proof.
   apply H; lia.
 Qed.
 
-Lemma merge_preserves_semantics : forall {dim} (s : PI4_list dim) k q l',
+Lemma merge_preserves_semantics : forall {dim} (s : PI4_ucom_l dim) k q l',
   uc_well_typed_l (App1 (UPI4_PI4 k) q :: s) ->
   merge s k q = Some l' ->
   l' =l= App1 (UPI4_PI4 k) q :: s.
@@ -737,7 +736,7 @@ Proof.
     intros.
     symmetry; apply H0; lia. } 
   rewrite H1. 
-  simpl PI4_to_base_l; simpl list_to_ucom.
+  simpl PI4_to_base_ucom_l; simpl list_to_ucom.
   replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) q) with (@SQIRE.Rz dim (IZR k * PI / 4) q) by reflexivity.
   simpl.
   repeat rewrite Mmult_assoc.
@@ -750,14 +749,14 @@ Qed.
 
 (* Examples *)
 
-Definition test5 : PI4_list 3 := CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: T 2 :: [].
+Definition test5 : PI4_ucom_l 3 := CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: T 2 :: [].
 
 (* Result: Some [CNOT 0 2; P 0; X 2; CNOT 2 1; T 2] *)
 Compute (merge test5 1 0).
 
 (** Final optimization definition. **)
 
-Definition merge_rotation {dim} (l : PI4_list dim) k q :=
+Definition merge_rotation {dim} (l : PI4_ucom_l dim) k q :=
   let (tmp, l2) := get_subcircuit l q in
   let (l1, s) := tmp in
   match merge s k q with
@@ -765,7 +764,7 @@ Definition merge_rotation {dim} (l : PI4_list dim) k q :=
   | _ => None
   end.
 
-Fixpoint merge_rotations' {dim} (l : PI4_list dim) n :=
+Fixpoint merge_rotations' {dim} (l : PI4_ucom_l dim) n :=
   match n with
   | O => l
   | S n' => match l with
@@ -779,12 +778,12 @@ Fixpoint merge_rotations' {dim} (l : PI4_list dim) n :=
            end
   end.
 
-Definition merge_rotations {dim} (l : PI4_list dim) := 
+Definition merge_rotations {dim} (l : PI4_ucom_l dim) := 
   merge_rotations' l (List.length l).
 
 (* Proofs *)
 
-Lemma merge_rotation_preserves_semantics : forall {dim} (l : PI4_list dim) k q l',
+Lemma merge_rotation_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) k q l',
   (q < dim)%nat ->
   uc_well_typed_l l ->
   merge_rotation l k q = Some l' ->
@@ -814,7 +813,7 @@ Proof.
   reflexivity.
 Qed.   
 
-Lemma merge_rotations_preserves_semantics : forall {dim} (l : PI4_list dim),
+Lemma merge_rotations_preserves_semantics : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l ->
   merge_rotations l =l= l.
 Proof.
@@ -841,9 +840,9 @@ Qed.
 
 (* Examples *)
 
-Definition test6 : PI4_list 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
-Definition test7 : PI4_list 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
-Definition test8 : PI4_list 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
+Definition test6 : PI4_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
+Definition test7 : PI4_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
+Definition test8 : PI4_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
 
 (* Result: [CNOT 1 2; CNOT 0 3; CNOT 0 1; CNOT 1 2; CNOT 2 1; PDAG 1; CNOT 3 0; CNOT 0 3; P 0; Z 3] *)
 Compute (merge_rotations test6).

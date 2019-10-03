@@ -26,26 +26,48 @@ Fixpoint c_eval {dim} (c : base_com dim) : Superoperator (2^dim) (2^dim) :=
                            (compose_super (c_eval c2) (super (@pad 1 n dim (∣0⟩⟨0∣)))) 
   end.
 
-Definition c_equiv {dim} (c1 c2 : base_com dim) := c_eval c1 = c_eval c2.
+Lemma WF_c_eval : forall {dim} (c : base_com dim) ρ, 
+  WF_Matrix ρ -> WF_Matrix (c_eval c ρ).
+Proof.
+  intros dim c.
+  induction c; simpl; unfold Splus; auto with wf_db.
+Qed.
+
+Hint Resolve WF_c_eval : wf_db.
+
+Lemma c_eval_ucom : forall dim (u : base_ucom dim) ρ,
+  c_eval (uc u) ρ = (uc_eval u) × ρ × (uc_eval u)†.
+Proof. intros. induction u; reflexivity. Qed.
+
+(* Equivalence *)
+
+Definition c_equiv {dim} (c1 c2 : base_com dim) := 
+  (dim > 0)%nat -> forall ρ, WF_Matrix ρ -> c_eval c1 ρ = c_eval c2 ρ.
 Infix "≡" := c_equiv : com_scope.
 
 Lemma c_equiv_refl : forall {dim} (c1 : base_com dim), c1 ≡ c1. 
 Proof. easy. Qed.
 
 Lemma c_equiv_sym : forall {dim} (c1 c2 : base_com dim), c1 ≡ c2 -> c2 ≡ c1. 
-Proof. easy. Qed.
+Proof. unfold c_equiv. intros. rewrite H; try assumption. reflexivity. Qed.
 
 Lemma c_equiv_trans : forall {dim} (c1 c2 c3 : base_com dim), 
   c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
-Proof. intros dim c1 c2 c3 H12 H23. unfold c_equiv. rewrite H12. easy. Qed.
+Proof. 
+  unfold c_equiv.
+  intros dim c1 c2 c3 H12 H23 Hdim ρ WFρ.
+  rewrite H12; try assumption. 
+  apply H23; assumption.
+Qed.
 
 Lemma seq_assoc : forall {dim} (c1 c2 c3 : base_com dim), 
   ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
 Proof.
-  intros dim c1 c2 c3. 
-  unfold c_equiv; simpl.
+  unfold c_equiv.
+  intros dim c1 c2 c3 Hdim ρ WFρ. 
+  simpl.
   unfold compose_super.
-  easy.
+  reflexivity.
 Qed.
 
 Lemma seq_congruence : forall {dim} (c1 c1' c2 c2' : base_com dim),
@@ -53,10 +75,11 @@ Lemma seq_congruence : forall {dim} (c1 c1' c2 c2' : base_com dim),
     c2 ≡ c2' ->
     c1 ; c2 ≡ c1' ; c2'.
 Proof.
-  intros dim c1 c1' c2 c2' Ec1 Ec2.
-  unfold c_equiv; simpl.
-  rewrite Ec1, Ec2.
-  reflexivity.
+  unfold c_equiv.
+  intros dim c1 c1' c2 c2' Ec1 Ec2 Hdim ρ WFρ.
+  simpl.
+  unfold compose_super.
+  rewrite Ec1, Ec2; auto with wf_db.
 Qed.
 
 Add Parametric Relation (dim : nat) : (base_com dim) (@c_equiv dim)
@@ -68,6 +91,29 @@ Add Parametric Relation (dim : nat) : (base_com dim) (@c_equiv dim)
 Add Parametric Morphism (dim : nat) : (@SQIRE.seq base_Unitary dim) 
   with signature (@c_equiv dim) ==> (@c_equiv dim) ==> (@c_equiv dim) as seq_mor.
 Proof. intros x y H x0 y0 H0. apply seq_congruence; easy. Qed.
+
+(* SKIP is the reason we need the (dim > 0) and (WF_Matrix ρ) restrictions. *)
+Lemma c_eval_SKIP : forall dim,
+  uc SKIP ≡ (skip : base_com dim).
+Proof.
+  unfold c_equiv.
+  intros dim Hdim ρ WFρ.
+  simpl. unfold super.
+  rewrite denote_SKIP; try assumption.
+  Msimpl; reflexivity.
+Qed.
+
+Lemma c_eval_0 : forall dim (c : base_com dim),
+  c_eval c Zero = Zero.
+Proof.
+  intros.
+  induction c; simpl.
+  - reflexivity.
+  - unfold compose_super. rewrite IHc1, IHc2. reflexivity.
+  - unfold super. Msimpl. reflexivity.
+  - unfold Splus, compose_super, super. Msimpl. 
+    rewrite IHc1, IHc2. Msimpl. reflexivity.
+Qed.
 
 (** Lemmas for derived commands **)
 

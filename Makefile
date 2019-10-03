@@ -30,7 +30,7 @@ COQ_OPTS := -R . Top
 all: examples mapper optimizer hll-compiler/BooleanCompilation.vo
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
 mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
-optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NonUnitaryOptimizations.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/SkipElimination.vo optimizer/RotationMerging.vo
+optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo optimizer/RotationMerging.vo optimizer/SkipElimination.vo
 
 # Built by 'make examples'
 
@@ -68,23 +68,26 @@ optimizer/GateCancellation.vo: optimizer/GateCancellation.v optimizer/Equivalenc
 optimizer/HadamardReduction.vo: optimizer/HadamardReduction.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
 	coqc $(COQ_OPTS) optimizer/HadamardReduction.v
 
-optimizer/ListRepresentation.vo: optimizer/ListRepresentation.v lib/QWIRE/Proportional.vo optimizer/Equivalences.vo
+optimizer/ListRepresentation.vo: optimizer/ListRepresentation.v lib/QWIRE/Proportional.vo optimizer/Equivalences.vo core/DensitySem.vo
 	coqc $(COQ_OPTS) optimizer/ListRepresentation.v
-
-optimizer/NonUnitaryOptimizations.vo: optimizer/NonUnitaryOptimizations.v core/SQIRE.vo core/DensitySem.vo
-	coqc $(COQ_OPTS) optimizer/NonUnitaryOptimizations.v
 
 optimizer/NotPropagation.vo: optimizer/NotPropagation.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
 	coqc $(COQ_OPTS) optimizer/NotPropagation.v
 
-optimizer/PI4GateSet.vo: optimizer/PI4GateSet.v optimizer/Equivalences.vo optimizer/ListRepresentation.vo
+optimizer/PI4GateSet.vo: optimizer/PI4GateSet.v optimizer/Equivalences.vo optimizer/ListRepresentation.vo core/DensitySem.vo
 	coqc $(COQ_OPTS) optimizer/PI4GateSet.v
 
-optimizer/SkipElimination.vo: optimizer/SkipElimination.v optimizer/Equivalences.vo
-	coqc $(COQ_OPTS) optimizer/SkipElimination.v
+optimizer/PropagateClassical.vo: optimizer/PropagateClassical.v optimizer/PI4GateSet.vo core/DensitySem.vo
+	coqc $(COQ_OPTS) optimizer/PropagateClassical.v
+	
+optimizer/RemoveZRotationBeforeMeasure.vo: optimizer/RemoveZRotationBeforeMeasure.v optimizer/PI4GateSet.vo core/DensitySem.vo
+	coqc $(COQ_OPTS) optimizer/RemoveZRotationBeforeMeasure.v
 
 optimizer/RotationMerging.vo: optimizer/RotationMerging.v optimizer/PI4GateSet.vo core/Utilities.vo
 	coqc $(COQ_OPTS) optimizer/RotationMerging.v
+
+optimizer/SkipElimination.vo: optimizer/SkipElimination.v optimizer/Equivalences.vo
+	coqc $(COQ_OPTS) optimizer/SkipElimination.v
 
 # Misc. files built by 'make all'
 

@@ -17,7 +17,7 @@ Local Close Scope R_scope.
    
    This will return None if no cancellation is possible or (Some l') 
    where l' is the result of removing the appropriate X gate from l. *)
-Fixpoint propagate_not {dim} (l : PI4_list dim) (q : nat) : option (PI4_list dim) :=
+Fixpoint propagate_not {dim} (l : PI4_ucom_l dim) (q : nat) : option (PI4_ucom_l dim) :=
   match l with
   | (App1 UPI4_X q') :: t => 
       if q =? q' then Some t 
@@ -46,7 +46,7 @@ Fixpoint propagate_not {dim} (l : PI4_list dim) (q : nat) : option (PI4_list dim
    The extra n argument is to help Coq recognize termination.
    We start with n = (length l), which is the maximum
    number of times that propagate_nots will be called. *)
-Fixpoint propagate_nots {dim} (l : PI4_list dim) (n: nat) : PI4_list dim :=
+Fixpoint propagate_nots {dim} (l : PI4_ucom_l dim) (n: nat) : PI4_ucom_l dim :=
   match n with
   | 0 => l
   | S n' => match l with
@@ -60,20 +60,20 @@ Fixpoint propagate_nots {dim} (l : PI4_list dim) (n: nat) : PI4_list dim :=
            end
   end.
 
-Definition rm_nots {dim} (l : PI4_list dim) : PI4_list dim := 
+Definition rm_nots {dim} (l : PI4_ucom_l dim) : PI4_ucom_l dim := 
   propagate_nots l (List.length l).
 
 (* Small test cases. *)
 Definition q0 : nat := 0.
 Definition q1 : nat := 1.
 Definition q2 : nat := 2.
-Definition example1 : PI4_list 3 := (App1 UPI4_X q0) :: (App1 UPI4_H q1) :: (App1 UPI4_X q0) :: (App1 UPI4_X q1) :: (App2 UPI4_CNOT q2 q1) :: (App1 UPI4_X q1) :: [].
+Definition example1 : PI4_ucom_l 3 := (App1 UPI4_X q0) :: (App1 UPI4_H q1) :: (App1 UPI4_X q0) :: (App1 UPI4_X q1) :: (App2 UPI4_CNOT q2 q1) :: (App1 UPI4_X q1) :: [].
 Compute (rm_nots example1).
-Definition example2 : PI4_list 3 := (App1 UPI4_X q0) :: (App1 UPI4_X q1) :: (App1 UPI4_X q2) :: [].
+Definition example2 : PI4_ucom_l 3 := (App1 UPI4_X q0) :: (App1 UPI4_X q1) :: (App1 UPI4_X q2) :: [].
 Compute (rm_nots example2).
 
 (* propagate_not preserves well-typedness. *)
-Lemma propagate_not_WT : forall {dim} (l l' : PI4_list dim) q,
+Lemma propagate_not_WT : forall {dim} (l l' : PI4_ucom_l dim) q,
   uc_well_typed_l l ->
   propagate_not l q = Some l' ->
   uc_well_typed_l l'.
@@ -105,7 +105,7 @@ Proof.
 Qed.
 
 (* propagate_not is semantics-preserving. *)
-Lemma propagate_not_sound : forall {dim} (l l' : PI4_list dim) q,
+Lemma propagate_not_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   q < dim ->
   propagate_not l q = Some l' ->
   l' =l= (App1 UPI4_X q) :: l.
@@ -168,7 +168,7 @@ Proof.
 Qed.   
 
 (* propagate_nots is semantics-preserving. *)
-Lemma propagate_nots_sound : forall {dim} (l : PI4_list dim) n, 
+Lemma propagate_nots_sound : forall {dim} (l : PI4_ucom_l dim) n, 
   uc_well_typed_l l -> l =l= propagate_nots l n.
 Proof.
   intros.
@@ -181,7 +181,7 @@ Proof.
   simpl.
   dependent destruction p;
   (* u = H, Z, T, TDAG, P, PDAG *)
-  try (apply (cons_congruence _ l (propagate_nots l n));
+  try (apply (uc_cons_congruence _ l (propagate_nots l n));
        apply IHn; assumption).
   (* u = X *)
   - specialize (@propagate_not_sound dim) as H4.
@@ -190,11 +190,11 @@ Proof.
       rewrite <- H4.
       apply IHn.
       apply (propagate_not_WT l p n0); assumption.
-    + apply (cons_congruence _ l (propagate_nots l n));
+    + apply (uc_cons_congruence _ l (propagate_nots l n));
       apply IHn; assumption.
   (* u = CNOT *)
   - inversion WT; subst. 
-    apply (cons_congruence _ l (propagate_nots l n)).
+    apply (uc_cons_congruence _ l (propagate_nots l n)).
     apply IHn; assumption.
   - inversion p.
 Qed.
@@ -206,7 +206,7 @@ Qed.
      ==> Consider the program X 4; X 4 where dim = 3
    The output of the denotation function may change in this case. 
 *)
-Lemma rm_nots_sound : forall {dim} (l : PI4_list dim), 
+Lemma rm_nots_sound : forall {dim} (l : PI4_ucom_l dim), 
   uc_well_typed_l l -> l =l= rm_nots l.
 Proof.
   intros dim l WT.

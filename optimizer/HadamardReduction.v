@@ -21,7 +21,7 @@ Open Scope ucom.
 
 Definition single_qubit_pattern := list (PI4_Unitary 1).
 
-Fixpoint single_qubit_pattern_to_program dim (pat : single_qubit_pattern) q : PI4_list dim :=
+Fixpoint single_qubit_pattern_to_program dim (pat : single_qubit_pattern) q : PI4_ucom_l dim :=
   match pat with
   | [] => []
   | u :: t => App1 u q :: (single_qubit_pattern_to_program dim t q)
@@ -29,7 +29,7 @@ Fixpoint single_qubit_pattern_to_program dim (pat : single_qubit_pattern) q : PI
 
 (* If the next sequence of gates applied to qubit q matches 'pat', then remove
    'pat' from the program. *)
-Fixpoint remove_single_qubit_pattern {dim} (l : PI4_list dim) (q : nat) (pat : single_qubit_pattern) : option (PI4_list dim) :=
+Fixpoint remove_single_qubit_pattern {dim} (l : PI4_ucom_l dim) (q : nat) (pat : single_qubit_pattern) : option (PI4_ucom_l dim) :=
   match pat with
   | [] => Some l
   | u :: t =>
@@ -44,14 +44,14 @@ Fixpoint remove_single_qubit_pattern {dim} (l : PI4_list dim) (q : nat) (pat : s
 
 (* If the next sequence of gates applied to qubit q matches 'pat', then replace
    'pat' with 'rep'. *)
-Definition replace_single_qubit_pattern {dim} (l : PI4_list dim) (q : nat) (pat rep : single_qubit_pattern) : option (PI4_list dim) :=
+Definition replace_single_qubit_pattern {dim} (l : PI4_ucom_l dim) (q : nat) (pat rep : single_qubit_pattern) : option (PI4_ucom_l dim) :=
   match (remove_single_qubit_pattern l q pat) with
   | Some l' => Some ((single_qubit_pattern_to_program dim rep q) ++ l')
   | None => None
   end.
      
 (* Simple tests *)
-Definition test : PI4_list 4 := (App1 UPI4_H 1) :: (App1 UPI4_X 0) :: (App2 UPI4_CNOT 2 3) :: (App1 UPI4_Z 0) :: (App1 UPI4_H 0) :: (App1 UPI4_Z 1) :: (App1 UPI4_Z 2) :: (App2 UPI4_CNOT 0 2) :: [].
+Definition test : PI4_ucom_l 4 := (App1 UPI4_H 1) :: (App1 UPI4_X 0) :: (App2 UPI4_CNOT 2 3) :: (App1 UPI4_Z 0) :: (App1 UPI4_H 0) :: (App1 UPI4_Z 1) :: (App1 UPI4_Z 2) :: (App2 UPI4_CNOT 0 2) :: [].
 Compute (next_single_qubit_gate test 0).
 Compute (next_single_qubit_gate test 1).
 Compute (next_single_qubit_gate test 2).
@@ -61,7 +61,7 @@ Compute (next_single_qubit_gate test 4).
 Compute (replace_single_qubit_pattern test 0 (UPI4_X :: UPI4_PI4 4 :: []) (UPI4_H :: UPI4_H :: [])).
 Compute (replace_single_qubit_pattern test 0 (UPI4_X :: UPI4_H :: []) (UPI4_PI4 4:: UPI4_PI4 4 :: [])).
 
-Lemma remove_single_qubit_pattern_correct : forall {dim} (l l' : PI4_list dim) (q : nat) (pat : single_qubit_pattern),
+Lemma remove_single_qubit_pattern_correct : forall {dim} (l l' : PI4_ucom_l dim) (q : nat) (pat : single_qubit_pattern),
   remove_single_qubit_pattern l q pat = Some l' ->
   l =l= (single_qubit_pattern_to_program dim pat q) ++ l'.
 Proof.
@@ -80,7 +80,7 @@ Proof.
     apply (nsqg_commutes _ _ _ _ _ nsqg).
 Qed.
 
-Lemma replace_single_qubit_pattern_sound : forall {dim} (l l' : PI4_list dim) (q : nat) (pat rep : single_qubit_pattern),
+Lemma replace_single_qubit_pattern_sound : forall {dim} (l l' : PI4_ucom_l dim) (q : nat) (pat rep : single_qubit_pattern),
   single_qubit_pattern_to_program dim pat q =l= single_qubit_pattern_to_program dim rep q ->
   replace_single_qubit_pattern l q pat rep = Some l' ->
   l =l= l'.
@@ -96,7 +96,7 @@ Proof.
 Qed.
 
 (* Equivalence up to a phase. *)
-Lemma replace_single_qubit_pattern_sound' : forall {dim} (l l' : PI4_list dim) (q : nat) (pat rep : single_qubit_pattern),
+Lemma replace_single_qubit_pattern_sound' : forall {dim} (l l' : PI4_ucom_l dim) (q : nat) (pat rep : single_qubit_pattern),
   single_qubit_pattern_to_program dim pat q ≅l≅ single_qubit_pattern_to_program dim rep q ->
   replace_single_qubit_pattern l q pat rep = Some l' ->
   l ≅l≅ l'.
@@ -117,7 +117,7 @@ Qed.
 
 (* Given a list of rewrite rules, try to apply each rule until one succeeds. 
    Return None if no rewrite succeeds. *)
-Fixpoint try_rewrites {dim} l (rules : list (PI4_list dim -> option (PI4_list dim))) :=
+Fixpoint try_rewrites {dim} l (rules : list (PI4_ucom_l dim -> option (PI4_ucom_l dim))) :=
   match rules with
   | [] => None
   | h :: t => match (h l) with
@@ -126,7 +126,7 @@ Fixpoint try_rewrites {dim} l (rules : list (PI4_list dim -> option (PI4_list di
             end
   end.
 
-Lemma try_apply_rewrites_sound : forall {dim} (l l' : PI4_list dim) rules,
+Lemma try_apply_rewrites_sound : forall {dim} (l l' : PI4_ucom_l dim) rules,
   (forall r, In r rules -> (forall l l', r l = Some l' -> l =l= l')) ->
   try_rewrites l rules = Some l' ->
   l =l= l'.
@@ -147,7 +147,7 @@ Proof.
       assumption.
 Qed.
 
-Lemma try_apply_rewrites_sound_cong : forall {dim} (l l' : PI4_list dim) rules,
+Lemma try_apply_rewrites_sound_cong : forall {dim} (l l' : PI4_ucom_l dim) rules,
   (forall r, In r rules -> (forall l l', r l = Some l' -> l ≅l≅ l')) ->
   try_rewrites l rules = Some l' ->
   l ≅l≅ l'.
@@ -167,7 +167,6 @@ Proof.
       apply in_cons; assumption.
       assumption.
 Qed.
-
 
 (*******************************************)
 (** Optimization: hadamard gate reduction **)
@@ -190,17 +189,17 @@ Qed.
    #5  - H q2; P† q2; CNOT q1 q2; P q2; H q2 ≡ P q2; CNOT q1 q2; P† q2 
 *)
 
-Definition apply_H_equivalence1 {dim} q (l : PI4_list dim) := 
+Definition apply_H_equivalence1 {dim} q (l : PI4_ucom_l dim) := 
   replace_single_qubit_pattern l q 
     (UPI4_H  :: UPI4_P :: UPI4_H :: []) 
     (UPI4_PDAG :: UPI4_H :: UPI4_PDAG :: []).
 
-Definition apply_H_equivalence2 {dim} q (l : PI4_list dim) := 
+Definition apply_H_equivalence2 {dim} q (l : PI4_ucom_l dim) := 
   replace_single_qubit_pattern l q 
     (UPI4_H :: UPI4_PDAG :: UPI4_H :: []) 
     (UPI4_P :: UPI4_H :: UPI4_P :: []).
 
-Definition apply_H_equivalence3 {dim} q (l : PI4_list dim) := 
+Definition apply_H_equivalence3 {dim} q (l : PI4_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
   | Some (l1, UPI4_H, l2) =>
       let l := l1 ++ l2 in
@@ -246,7 +245,7 @@ Definition apply_H_equivalence3 {dim} q (l : PI4_list dim) :=
   | _ => None
   end.
 
-Definition apply_H_equivalence4 {dim} q (l : PI4_list dim) :=
+Definition apply_H_equivalence4 {dim} q (l : PI4_ucom_l dim) :=
   match (remove_single_qubit_pattern l q (UPI4_H :: UPI4_P :: [])) with
   | None => None
   | Some l1 =>
@@ -263,7 +262,7 @@ Definition apply_H_equivalence4 {dim} q (l : PI4_list dim) :=
       end
   end.
 
-Definition apply_H_equivalence5 {dim} q (l : PI4_list dim) :=
+Definition apply_H_equivalence5 {dim} q (l : PI4_ucom_l dim) :=
   match (remove_single_qubit_pattern l q (UPI4_H :: UPI4_PDAG :: [])) with
   | Some l1 =>
       match (next_two_qubit_gate l1 q) with
@@ -280,7 +279,7 @@ Definition apply_H_equivalence5 {dim} q (l : PI4_list dim) :=
   | _ => None
   end.
 
-Definition apply_H_equivalence {dim} (l : PI4_list dim) (q : nat) : option (PI4_list dim) :=
+Definition apply_H_equivalence {dim} (l : PI4_ucom_l dim) (q : nat) : option (PI4_ucom_l dim) :=
   try_rewrites l ((apply_H_equivalence1 q) :: (apply_H_equivalence2 q) :: (apply_H_equivalence3 q) :: (apply_H_equivalence4 q) :: (apply_H_equivalence5 q) :: []).
 
 (* For each H gate, try to apply a rewrite rule. If some rewrite rule
@@ -296,7 +295,7 @@ Definition apply_H_equivalence {dim} (l : PI4_list dim) (q : nat) : option (PI4_
    If we wanted to do a proper proof of termination, we would need to show
    that each call to apply_H_equivalence (strictly) reduces the number of H 
    gates in the program. *)
-Fixpoint apply_H_equivalences {dim} (l : PI4_list dim) (n: nat) : PI4_list dim :=
+Fixpoint apply_H_equivalences {dim} (l : PI4_ucom_l dim) (n: nat) : PI4_ucom_l dim :=
   match n with
   | 0 => l
   | S n' => 
@@ -311,20 +310,20 @@ Fixpoint apply_H_equivalences {dim} (l : PI4_list dim) (n: nat) : PI4_list dim :
       end
   end.
 
-Definition hadamard_reduction {dim} (l : PI4_list dim) : PI4_list dim := 
+Definition hadamard_reduction {dim} (l : PI4_ucom_l dim) : PI4_ucom_l dim := 
   apply_H_equivalences l (2 * (length l)).
 
 (* Small example - both tests are the same circuit, just with the
    gate list reordered. The output should contain 2 H gates. *)
-Definition hadamard_reduction_test1 : PI4_list 4 :=
+Definition hadamard_reduction_test1 : PI4_ucom_l 4 :=
   App1 UPI4_X 0 :: App1 UPI4_H 0 :: App1 UPI4_P 0 :: App1 UPI4_H 0 :: App1 UPI4_X 0 :: App1 UPI4_H 1 :: App1 UPI4_H 2 :: App2 UPI4_CNOT 2 1 :: App1 UPI4_H 1 :: App1 UPI4_H 2 :: App1 UPI4_H 3 ::App1 UPI4_P 3 :: App2 UPI4_CNOT 3 2 :: App1 UPI4_H 3 :: App1 UPI4_P 3 :: App2 UPI4_CNOT 2 3 :: App1 UPI4_PDAG 3 :: App1 UPI4_H 3 :: [].
 Compute (hadamard_reduction hadamard_reduction_test1).
 
-Definition hadamard_reduction_test2 : PI4_list 4 :=
+Definition hadamard_reduction_test2 : PI4_ucom_l 4 :=
   App1 UPI4_H 2 :: App1 UPI4_H 3 :: App1 UPI4_X 0 ::  App1 UPI4_H 1 :: App2 UPI4_CNOT 2 1 :: App1 UPI4_P 3 :: App1 UPI4_H 0 :: App1 UPI4_H 2 :: App1 UPI4_P 0  :: App2 UPI4_CNOT 3 2 :: App1 UPI4_H 3 :: App1 UPI4_P 3 :: App2 UPI4_CNOT 2 3 :: App1 UPI4_H 0 :: App1 UPI4_X 0 :: App1 UPI4_PDAG 3 :: App1 UPI4_H 1 :: App1 UPI4_H 3 :: [].
 Compute (hadamard_reduction hadamard_reduction_test2).
 
-Lemma apply_H_equivalence1_sound : forall {dim} (l l' : PI4_list dim) q,
+Lemma apply_H_equivalence1_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l ≅l≅ l'. 
 Proof.
@@ -343,7 +342,7 @@ Proof.
   solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
 
-Lemma apply_H_equivalence2_sound : forall {dim} (l l' : PI4_list dim) q,
+Lemma apply_H_equivalence2_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   apply_H_equivalence2 q l = Some l' ->
   l ≅l≅ l'.
 Proof. 
@@ -362,7 +361,7 @@ Proof.
   solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
 
-Lemma apply_H_equivalence3_sound : forall {dim} (l l' : PI4_list dim) q,
+Lemma apply_H_equivalence3_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   apply_H_equivalence3 q l = Some l' ->
   l =l= l'.
 Proof.
@@ -393,7 +392,7 @@ Proof.
     clear.
     bdestruct (n =? n0).
     subst. unfold uc_equiv_l, uc_equiv.
-    repeat (try rewrite PI4_to_base_l_app;
+    repeat (try rewrite PI4_to_base_ucom_l_app;
             try rewrite list_to_ucom_append;
             simpl). 
     (* get rid of dim = 0 case *)
@@ -414,7 +413,7 @@ Proof.
     replace (App2 UPI4_CNOT n n0 :: g8 ++ g7) with ([App2 UPI4_CNOT n n0] ++ g8 ++ g7) by easy.
     replace (App1 UPI4_H n :: App1 UPI4_H n0 :: App2 UPI4_CNOT n0 n :: App1 UPI4_H n :: App1 UPI4_H n0 :: g8 ++ g7) with ((App1 UPI4_H n :: App1 UPI4_H n0 :: App2 UPI4_CNOT n0 n :: App1 UPI4_H n :: App1 UPI4_H n0 :: []) ++ g8 ++ g7) by easy.
     unfold uc_equiv_l.
-    repeat (try rewrite PI4_to_base_l_app;
+    repeat (try rewrite PI4_to_base_ucom_l_app;
             try rewrite list_to_ucom_append).
     do 3 (apply useq_congruence; try reflexivity).
     specialize (@H_swaps_CNOT dim n n0) as H.
@@ -452,7 +451,7 @@ Proof.
     clear.
     bdestruct (n =? n0).
     + subst. unfold uc_equiv_l, uc_equiv.
-      repeat (try rewrite PI4_to_base_l_app;
+      repeat (try rewrite PI4_to_base_ucom_l_app;
               try rewrite list_to_ucom_append;
               simpl). 
       (* get rid of dim = 0 case *)
@@ -475,7 +474,7 @@ Proof.
       replace (App2 UPI4_CNOT n n0 :: g8 ++ g7) with ([App2 UPI4_CNOT n n0] ++ g8 ++ g7) by easy.
       replace (App1 UPI4_H n :: App1 UPI4_H n0 :: App2 UPI4_CNOT n0 n :: App1 UPI4_H n :: App1 UPI4_H n0 :: g8 ++ g7) with ((App1 UPI4_H n :: App1 UPI4_H n0 :: App2 UPI4_CNOT n0 n :: App1 UPI4_H n :: App1 UPI4_H n0 :: []) ++ g8 ++ g7) by easy.
       unfold uc_equiv_l.
-      repeat (try rewrite PI4_to_base_l_app;
+      repeat (try rewrite PI4_to_base_ucom_l_app;
               try rewrite list_to_ucom_append).
       do 3 (apply useq_congruence; try reflexivity).
       specialize (@H_swaps_CNOT dim n n0) as H.
@@ -491,7 +490,7 @@ Proof.
       apply H. 
 Qed.
 
-Lemma apply_H_equivalence4_sound : forall {dim} (l l' : PI4_list dim) q,
+Lemma apply_H_equivalence4_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   apply_H_equivalence4 q l = Some l' ->
   l =l= l'.
 Proof.
@@ -520,7 +519,7 @@ Proof.
   repeat rewrite <- app_assoc; simpl.
   rewrite <- (app_nil_l p).
   repeat rewrite app_comm_cons.
-  do 2 (apply app_congruence; try reflexivity).
+  do 2 (apply uc_app_congruence; try reflexivity).
   unfold uc_equiv_l, uc_equiv; simpl.
   rewrite hadamard_rotation.
   repeat rewrite phase_shift_rotation.
@@ -534,7 +533,7 @@ Proof.
       rewrite Cexp_6PI4; rewrite Cexp_2PI4; repeat group_radicals; lca.
 Qed.    
 
-Lemma apply_H_equivalence5_sound : forall {dim} (l l' : PI4_list dim) q,
+Lemma apply_H_equivalence5_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   apply_H_equivalence5 q l = Some l' ->
   l =l= l'.
 Proof.
@@ -563,7 +562,7 @@ Proof.
   repeat rewrite <- app_assoc; simpl.
   rewrite <- (app_nil_l p).
   repeat rewrite app_comm_cons.
-  do 2 (apply app_congruence; try reflexivity).
+  do 2 (apply uc_app_congruence; try reflexivity).
   unfold uc_equiv_l, uc_equiv; simpl.
   rewrite hadamard_rotation.
   repeat rewrite phase_shift_rotation.
@@ -587,7 +586,7 @@ Proof.
       C_field_simplify; try nonzero; try lca.
 Qed.    
 
-Lemma apply_H_equivalence_sound : forall {dim} (l l' : PI4_list dim) q,
+Lemma apply_H_equivalence_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   apply_H_equivalence l q = Some l' -> 
   l ≅l≅ l'.
 Proof. 
@@ -611,7 +610,7 @@ Proof.
   inversion H5.
 Qed.
 
-Lemma apply_H_equivalences_sound: forall {dim} (l : PI4_list dim) n, 
+Lemma apply_H_equivalences_sound: forall {dim} (l : PI4_ucom_l dim) n, 
   l ≅l≅ apply_H_equivalences l n.
 Proof. 
   intros.
@@ -630,7 +629,7 @@ Proof.
   - inversion p.
 Qed.
 
-Lemma hadamard_reduction_sound: forall {dim} (l : PI4_list dim), 
+Lemma hadamard_reduction_sound: forall {dim} (l : PI4_ucom_l dim), 
   l ≅l≅ hadamard_reduction l.
 Proof. intros. apply apply_H_equivalences_sound. Qed.
 
