@@ -5,12 +5,12 @@ Local Open Scope ucom_scope.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-(* Misc. SQIRE utilies including:
-   - support for composing SQIRE programs
+(* Misc. SQIR utilies including:
+   - support for composing SQIR programs
    - suport for reasoning about classical states
 *)
 
-(** Composing SQIRE programs. **)
+(** Composing SQIR programs. **)
 
 (* TODO: extend the defs below to non-unitary circuits *)
 
@@ -415,7 +415,7 @@ Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
   i < n ->
   j < n ->
   i <> j ->
-  (uc_eval (SQIRE.CNOT i j)) × (f_to_vec 0 n f) 
+  (uc_eval (SQIR.CNOT i j)) × (f_to_vec 0 n f) 
       = f_to_vec 0 n (update f j (f j ⊕ f i)).
 Proof.
   intros.
@@ -481,7 +481,7 @@ Qed.
 
 Lemma f_to_vec_Rz : forall (n i : nat) (θ : R) (f : nat -> bool),
   (i < n)%nat ->
-  (uc_eval (SQIRE.Rz θ i)) × (f_to_vec 0 n f) 
+  (uc_eval (SQIR.Rz θ i)) × (f_to_vec 0 n f) 
       = (Cexp ((f i) * θ)) .* f_to_vec 0 n f.
 Proof.
   intros.

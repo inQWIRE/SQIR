@@ -1,7 +1,7 @@
 Require Import Setoid.
 Require Export QWIRE.Quantum.
 Require Export QWIRE.Proportional.
-Require Export core.SQIRE.
+Require Export core.SQIR.
 
 Local Open Scope matrix_scope.
 Local Open Scope ucom_scope.

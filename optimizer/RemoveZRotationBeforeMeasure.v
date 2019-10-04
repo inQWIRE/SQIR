@@ -63,8 +63,8 @@ Qed.
 
 (* Not currently used, but could be useful for non-unitary X propagation. *)
 Lemma X_mif : forall dim n (c1 c2 : base_com dim), 
-  SQIRE.X n ; mif n then c1 else c2 ≡ 
-    mif n then (SQIRE.X n ; c2) else (SQIRE.X n ; c1).
+  SQIR.X n ; mif n then c1 else c2 ≡ 
+    mif n then (SQIR.X n ; c2) else (SQIR.X n ; c1).
 Proof.
   intros.
   unfold c_equiv; simpl.

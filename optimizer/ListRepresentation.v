@@ -10,7 +10,7 @@ Require Export List.
 Local Open Scope ucom_scope.
 Local Close Scope R_scope.
 
-(* This file contains utilities for manipulating SQIRE programs to make implementing 
+(* This file contains utilities for manipulating SQIR programs to make implementing 
    transformations easier. The primary contribution is a 'list of gates' 
    representation for unitary programs and a 'list of lists' representation for
    non-unitary programs.

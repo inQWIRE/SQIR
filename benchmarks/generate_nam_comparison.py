@@ -39,7 +39,7 @@ nam_data = {
 }
 
 if (len(sys.argv) != 4):
-    print "Usage: ./generate_nam_comparison.py <output file> <qiskit input file> <SQIRE input file>"
+    print "Usage: ./generate_nam_comparison.py <output file> <qiskit input file> <SQIR input file>"
     exit(-1)
 
 outfname = sys.argv[1]
@@ -57,10 +57,10 @@ for line in inf1:
     line = line.strip().split(",")
     qiskit_data[line[0].split(".")[0]] = [line[1], line[2]]
 
-sqire_data = {}
+sqir_data = {}
 for line in inf2:
     line = line.strip().split(",")
-    sqire_data[line[0].split("/")[2].split(".")[0]] = [line[1]]
+    sqir_data[line[0].split("/")[2].split(".")[0]] = [line[1]]
 
 for benchmark in sorted(nam_data.keys()):
     data = [benchmark]
@@ -68,8 +68,8 @@ for benchmark in sorted(nam_data.keys()):
     data.append(str(nam_data[benchmark][2]))
     data.append(str(nam_data[benchmark][4]))
     data += qiskit_data [benchmark]
-    if benchmark in sqire_data:
-        data += sqire_data[benchmark]
+    if benchmark in sqir_data:
+        data += sqir_data[benchmark]
     else:
         data += ""
     outf.write(",".join(data) + "\n")

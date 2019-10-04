@@ -4,7 +4,7 @@ Require Import HOASCircuits.
 
 Local Open Scope com_scope.
 
-(* SQIRE is a limited language, so not every QWIRE circuit has a SQIRE equivalent.
+(* SQIR is a limited language, so not every QWIRE circuit has a SQIR equivalent.
    In particular, we will ignore circuits with classical control (lift) and 
    unsupported gates (which, for now, is most gates). 
    
@@ -23,8 +23,8 @@ Local Open Scope com_scope.
   
    TODO extensions:
    * Support arbitrary controlled unitaries - requires writing a function to
-     describe arbitrary controlled unitaries using SQIRE constructs.
-   * Support discard, init, etc. - the denotation of the output SQIRE program 
+     describe arbitrary controlled unitaries using SQIR constructs.
+   * Support discard, init, etc. - the denotation of the output SQIR program 
      should be the same as the denotation of the QWIRE program, but padded with
      extra \ket{0}'s where qubits are initialized or discarded. I expect that 
      this will be non-trivial.

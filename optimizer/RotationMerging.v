@@ -612,7 +612,7 @@ Proof.
       apply (IHs H5) in mer.
       rewrite get_boolean_expr_update_neg in mer.
       simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-      replace (uapp1 (U_R PI 0 PI) n) with (@SQIRE.X dim n) by reflexivity.
+      replace (uapp1 (U_R PI 0 PI) n) with (@SQIR.X dim n) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
       repeat rewrite Mmult_assoc.
@@ -621,7 +621,7 @@ Proof.
       repeat rewrite Mscale_mult_dist_l.
       reflexivity.
     + simpl PI4_to_base_ucom_l; simpl list_to_ucom. 
-      replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIRE.Rz dim (IZR k * PI / 4) n) by reflexivity.
+      replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIR.Rz dim (IZR k * PI / 4) n) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
       repeat rewrite Mmult_assoc.
@@ -634,8 +634,8 @@ Proof.
         [ | destruct (k0 + k <? 8)%Z eqn:k0k];
         inversion H; subst;
         simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-        2: replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / 4)) n) with (@SQIRE.Rz dim (IZR (k0 + k) * PI / 4) n) by reflexivity.
-        3: replace (uapp1 (U_R 0 0 (IZR (k0 + k - 8) * PI / 4)) n) with (@SQIRE.Rz dim (IZR (k0 + k - 8) * PI / 4) n) by reflexivity.
+        2: replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / 4)) n) with (@SQIR.Rz dim (IZR (k0 + k) * PI / 4) n) by reflexivity.
+        3: replace (uapp1 (U_R 0 0 (IZR (k0 + k - 8) * PI / 4)) n) with (@SQIR.Rz dim (IZR (k0 + k - 8) * PI / 4) n) by reflexivity.
         2, 3: simpl; repeat rewrite Mmult_assoc; rewrite f_to_vec_Rz; try assumption.
         2, 3: rewrite Mscale_mult_dist_r.
         all: eapply get_boolean_expr_finit in feqb; 
@@ -670,7 +670,7 @@ Proof.
         inversion H; subst.
         apply (IHs H4) in mer.
         simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-        replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIRE.Rz dim (IZR k * PI / 4) n) by reflexivity.
+        replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIR.Rz dim (IZR k * PI / 4) n) by reflexivity.
         simpl.
         repeat rewrite Mmult_assoc.
         rewrite f_to_vec_Rz; try assumption.
@@ -686,7 +686,7 @@ Proof.
       apply (IHs H8) in mer.
       rewrite get_boolean_expr_update_xor in mer.
       simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-      replace (uapp2 U_CNOT n n0) with (@SQIRE.CNOT dim n n0) by reflexivity.
+      replace (uapp2 U_CNOT n n0) with (@SQIR.CNOT dim n n0) by reflexivity.
       simpl.
       rewrite Mscale_mult_dist_l.
       repeat rewrite Mmult_assoc.
@@ -737,7 +737,7 @@ Proof.
     symmetry; apply H0; lia. } 
   rewrite H1. 
   simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-  replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) q) with (@SQIRE.Rz dim (IZR k * PI / 4) q) by reflexivity.
+  replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) q) with (@SQIR.Rz dim (IZR k * PI / 4) q) by reflexivity.
   simpl.
   repeat rewrite Mmult_assoc.
   rewrite f_to_vec_Rz; try assumption.

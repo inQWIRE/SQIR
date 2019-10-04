@@ -68,8 +68,8 @@ Proof.
   rewrite <- useq_assoc.
   autorewrite with eval_db.
   specialize (@H_H_id dim q) as HH.
-  Local Transparent SQIRE.H.
-  unfold SQIRE.H in HH.
+  Local Transparent SQIR.H.
+  unfold SQIR.H in HH.
   rewrite HH.
   apply ucom_id_l. 
   apply uc_well_typed_ID; assumption.

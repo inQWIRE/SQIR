@@ -189,7 +189,7 @@ let nam_benchmark_dims = [ 24; 19; 5; 7; 9; 15; 30; 30; 48; 96; 12; 15; (*192;*)
 let parse_nam_benchmarks () = List.map (fun x -> get_gate_list x) nam_benchmark_filenames
 
 (* super simple translation to QASM *)
-let sqire_to_qasm_gate oc g =
+let sqir_to_qasm_gate oc g =
   match g with
   | B.App1 (B.UPI4_H,     n) -> fprintf oc "h q[%d];\n" n
   | B.App1 (B.UPI4_X,     n) -> fprintf oc "x q[%d];\n" n
@@ -209,7 +209,7 @@ let write_qasm_file fname p dim =
   (fprintf oc "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n";
    fprintf oc "qreg q[%d];\n" dim;
    fprintf oc "\n";
-   ignore(List.map (sqire_to_qasm_gate oc) p);
+   ignore(List.map (sqir_to_qasm_gate oc) p);
    close_out oc;
    printf "Done.\n")
    

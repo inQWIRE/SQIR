@@ -8,7 +8,7 @@ Open Scope ucom.
 (* This file defines a 'compile' function that converts an arbitrary
    boolean expression into a reversible circuit that (provably) uncomputes 
    its ancillae. We use eager ancilla cleanup, which requires fewer qubits,
-   but more gates, than the lazy approach. Because SQIRE does not allow
+   but more gates, than the lazy approach. Because SQIR does not allow
    initializing / discarding qubits, we precompute the number of ancillae
    needed and include them in the global register.
  

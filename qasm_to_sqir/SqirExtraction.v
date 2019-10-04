@@ -1,6 +1,6 @@
 Require Coq.extraction.Extraction.
 
-Require Import core.SQIRE.
+Require Import core.SQIR.
 Require Import Reals.
 
 Require Coq.extraction.ExtrOcamlNatInt.
@@ -20,7 +20,7 @@ Extract Constant PI => "Float.pi".
 Extraction Implicit H [dim].
 Extraction Implicit X [dim].
 Extraction Implicit Y [dim].
-Extraction Implicit SQIRE.Z [dim].
+Extraction Implicit SQIR.Z [dim].
 Extraction Implicit ID [dim].
 Extraction Implicit SKIP [dim].
 Extraction Implicit Rz [dim].
@@ -32,4 +32,4 @@ Extraction Implicit CNOT [dim].
 Extraction Implicit CZ [dim].
 Extraction Implicit SWAP [dim].
 
-Extraction "SqirGates.ml" com H X Y SQIRE.Z ID SKIP Rz T TDAG P PDAG CNOT CZ SWAP.
+Extraction "SqirGates.ml" com H X Y SQIR.Z ID SKIP Rz T TDAG P PDAG CNOT CZ SWAP.

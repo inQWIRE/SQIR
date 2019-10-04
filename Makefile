@@ -96,7 +96,7 @@ hll-compiler/BooleanCompilation.vo: hll-compiler/BooleanCompilation.v core/Utili
 
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -f CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob 
+	rm -f CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob hll-compiler/*.vo hll-compiler/*.glob
 
 # This should be the last rule, to handle any targets not declared above
 %: invoke-coqmakefile

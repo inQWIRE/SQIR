@@ -1,4 +1,4 @@
-Require Export SQIRE.
+Require Export SQIR.
 Require Export QWIRE.Quantum.
 Require Export UnitarySem.
 Require Import Setoid.
@@ -88,7 +88,7 @@ Add Parametric Relation (dim : nat) : (base_com dim) (@c_equiv dim)
   transitivity proved by c_equiv_trans
   as c_equiv_rel.
 
-Add Parametric Morphism (dim : nat) : (@SQIRE.seq base_Unitary dim) 
+Add Parametric Morphism (dim : nat) : (@SQIR.seq base_Unitary dim) 
   with signature (@c_equiv dim) ==> (@c_equiv dim) ==> (@c_equiv dim) as seq_mor.
 Proof. intros x y H x0 y0 H0. apply seq_congruence; easy. Qed.
 

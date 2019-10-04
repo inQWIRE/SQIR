@@ -9,7 +9,7 @@ lib/QWIRE/Quantum.v
 lib/QWIRE/Dirac.v
 lib/QWIRE/Proportional.v
 
-core/SQIRE.v
+core/SQIR.v
 core/UnitarySem.v
 core/Utilities.v
 core/DensitySem.v

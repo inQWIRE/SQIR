@@ -143,7 +143,7 @@ def run_on_nam_benchmarks(fname):
         circB = pmB.run(circ)
         countB = count(circB.count_ops())
 
-        f.write("%s,%d,%d,%d\n" % (fname, countA, countB))
+        f.write("%s,%d,%d\n" % (fname, countA, countB))
         
     f.close()
 
@@ -182,9 +182,6 @@ def run_on_single_file (fname):
     countB = count(circB.count_ops())
     print("Results from Qiskit B")
     print(countB)
-
-run_on_single_file("gf2^64_mult.qasm")
-exit(0)
 
 if (len(sys.argv) != 3):
     print("Usage: python3 run_qiskit.py [-rand input_dir] [-nam output_file]")
