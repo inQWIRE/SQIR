@@ -1,0 +1,44 @@
+% minimal + latex + comment
+
+indexvar index, i, n ::= {{coq nat }} {{ lex numeral }}
+
+metavar identifier, x ::= {{ coq nat }} {{ coq-equality }}
+
+metavar location, l ::= {{coq nat }} {{ lex numeral }}
+
+grammar
+I :: 'i_' ::=   {{ com Index }}
+| i     :: :: Natural
+
+E :: 'e_' ::=   {{ com Expression }}
+| x         :: :: Bit
+| x [ I ]   :: :: Register
+
+U :: 'u_' ::=   {{ com Unitary Stmt }}
+| cx ( E1 , E2 )        :: :: CX
+| h ( E )               :: :: Hadamard
+| t ( E )               :: :: T
+| tdg ( E )             :: :: TDag
+| E ( E1 , ... , En )   :: :: CApp
+| U1 ; U2               :: :: Seq
+
+C :: 'c_' ::=   {{ com Command }}
+| creg x [ I ]                  :: :: CReg
+| qreg x [ I ]                  :: :: QReg
+| gate x ( x1 , ... , xn ) { U } :: :: Gate
+| measure E1 -> E2              :: :: Measure
+| reset E                       :: :: Reset
+| U                             :: :: Unitary
+| if ( E == I ) { U }           :: :: If
+| C1 ; C2                       :: :: Seq
+
+L :: 'l_' ::=   {{ com Location }}
+| l     :: :: Loc
+
+V :: v_ ::=   {{ com Value }}
+| ( l0 , ... , ln-1 )    :: :: Register
+| \ x1 , ... , xn . U   :: :: UCLam
+
+terminals :: 'terminals_' ::=
+  | \                     ::  :: lambda     {{ tex \lambda }}
+  | ->                    ::  :: arrow      {{ tex \rightarrow }}
