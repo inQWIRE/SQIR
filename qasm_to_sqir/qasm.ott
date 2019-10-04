@@ -1,14 +1,17 @@
-% minimal + latex + comment
-
 indexvar index, i, n ::= {{coq nat }} {{ lex numeral }}
 
-metavar identifier, x ::= {{ coq nat }} {{ coq-equality }}
+metavar ident, x ::= {{ coq nat }} {{ ocaml string }} {{ coq-equality }}
 
 metavar location, l ::= {{coq nat }} {{ lex numeral }}
 
 grammar
 I :: 'i_' ::=   {{ com Index }}
 | i     :: :: Natural
+
+term, S :: 't_' ::= {{ com Term }}
+| C :: :: Command
+| U :: :: Unitary
+| E :: :: Expression
 
 E :: 'e_' ::=   {{ com Expression }}
 | x         :: :: Bit
@@ -36,9 +39,61 @@ L :: 'l_' ::=   {{ com Location }}
 | l     :: :: Loc
 
 V :: v_ ::=   {{ com Value }}
-| ( l0 , ... , ln-1 )    :: :: Register
-| \ x1 , ... , xn . U   :: :: UCLam
+| ( l0 , ... , ln-1 )     ::  :: Register
+| \ x1 , ... , xn . U     ::  :: UCLam
+| s ( x )                 ::  :: Lookup
+
+sigma, s :: s_ ::= {{ coq list (ident*V) }} {{ tex \sigma }}
+        | empty         :: :: empty
+             {{ coq nil }}
+        | s , x : v      :: :: ident
+             {{ coq (cons ([[x]],[[v]]) [[s]]) }}
+
+formula :: formula_ ::=
+        | judgement             ::   :: judgement
+        | x in dom ( s )        :: M :: indom
+            {{ ocaml List.exists (fun (x',y') -> [[x]]=x') [[s]] }}
+	          {{ coq (indom [[x]] [[s]]) }}
+        | s ( x )               :: M :: lookup
+            {{ coq (lookup [[x]] [[s]]) }}
 
 terminals :: 'terminals_' ::=
   | \                     ::  :: lambda     {{ tex \lambda }}
   | ->                    ::  :: arrow      {{ tex \rightarrow }}
+  | \\                    ::  :: reduces    {{ tex \Downarrow }}
+  | eta                   ::  :: eta        {{ tex \eta }}
+  | psi                   ::  :: psi        {{ tex \psi }}
+  | <                     ::  :: langle     {{ tex \langle }}
+  | >                     ::  :: rangle     {{ tex \rangle }}
+  | in                    ::   :: in        {{ tex \in }}
+
+embed
+  {{ coq
+Fixpoint indom (x:ident) (e:E) { struct e } : Prop :=
+  match e with
+  | nil => False
+  | cons (x',y') tl => if eq_ident x x' then True else indom x tl
+end.
+
+Fixpoint lookup (x:ident) (e:E) { struct e } : Prop :=
+  match e with
+  | nil => Prop
+  | cons (x',y') tl => if eq_ident x x' then y' else lookup x tl
+end.
+
+ }}
+
+defns
+Jop :: '' ::=
+
+ defn
+ < S , s , eta , | psi > > \\ s(x) :: :: evaluates ::''  by
+
+    x in dom(s)
+    -------------------------- :: Exp1
+    <x, s, eta, |psi>> \\ s(x)
+
+    <x, s, eta, |psi>> \\ (l0,...,li')
+    i <= i'
+    ---------------------------------- :: Exp2
+    <x[i], s, eta, |psi>> \\ li
