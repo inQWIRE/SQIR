@@ -12,6 +12,11 @@ Infix "==id" := Id_eq (no associativity, at level 50).
 
 Notation Idx := nat. (* Index i *)
 
+(* Classical bits *)
+Inductive Cbit : Set :=
+| c0 : Cbit
+| c1 : Cbit.
+
 Inductive E : Set := (* Expression *)
 | e_bit (x:Id)
 | e_reg (x:Id) (I:Idx).
@@ -33,7 +38,7 @@ Inductive C : Set := (* Command *)
 | c_measure (E1 E2:E)
 | c_reset (E:E)
 | c_U (U:U)
-| c_if (E:E) (I:Idx) (U:U) (* only tests a classical bit *)
+| c_if (E:E) (I:Cbit) (U:U) (* only tests a classical bit *)
 | c_seq (C1 C2:C).
 
 Notation L := nat. (* Location l *)
@@ -49,11 +54,6 @@ Inductive S : Set :=
 | s_C (C:C).
 
 Definition Env := fmap Id V. (* sigma *)
-
-(* Classical bits *)
-Inductive Cbit : Set :=
-| c0 : Cbit
-| c1 : Cbit.
 
 Definition Heap := fmap L Cbit. (* eta *)
 
@@ -118,8 +118,27 @@ Inductive Ceval : C * Env * Heap * QState -> Env * Heap * QState -> Prop :=
     Ceval (c_qreg x I, env, heap, st) (env $+ (x, v_arr ls), heap, st)
 | EvalGate : forall x xs U env heap st,
   Ceval (c_gate x xs U, env, heap, st) (env $+ (x, v_circ xs U), heap, st)
+| EvalMeas0 : forall E1 E2 env heap st l1 l2,
+    Eeval (E1, env, heap, st) (Some (v_loc l1))
+    -> Eeval (E2, env, heap, st) (Some (v_loc l2))
+    -> Ceval (c_measure E1 E2, env, heap, st)
+             (env, (heap $+ (l2, c0)), Proj c0 l1 st)
+| EvalMeas1 : forall E1 E2 env heap st l1 l2,
+    Eeval (E1, env, heap, st) (Some (v_loc l1))
+    -> Eeval (E2, env, heap, st) (Some (v_loc l2))
+    -> Ceval (c_measure E1 E2, env, heap, st)
+             (env, (heap $+ (l2, c1)), Proj c1 l1 st)
 | EvalReset : forall E env heap st l,
   Ceval (c_reset E, env, heap, st) (env, heap, Proj c0 l st)
+| EvalIfFalse : forall E I U env heap st l,
+    Eeval (E, env, heap, st) (Some (v_loc l))
+    -> heap $? l <> Some I
+    -> Ceval (c_if E I U, env, heap, st) (env, heap, st)
+| EvalIfTrue : forall E I U env heap st st' l,
+    Eeval (E, env, heap, st) (Some (v_loc l))
+    -> heap $? l = Some I
+    -> Ueval (U, env, heap, st) st'
+    -> Ceval (c_if E I U, env, heap, st) (env, heap, st')
 | EvalCSeq : forall C1 C2 e e' e'' h h' h'' st st' st'',
     Ceval (C1, e, h, st) (e', h', st')
     -> Ceval (C2, e', h', st') (e'', h'', st'')
