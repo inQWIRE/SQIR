@@ -51,10 +51,11 @@ Inductive S : Set :=
 Definition Env := fmap Id V. (* sigma *)
 
 (* Classical bits *)
-Parameter c0 : Type.
-Parameter c1 : Type.
+Inductive Cbit : Set :=
+| c0 : Cbit
+| c1 : Cbit.
 
-Definition Heap := fmap L (c0+c1). (* eta *)
+Definition Heap := fmap L Cbit. (* eta *)
 
 (* Qubit abstract type *)
 Parameter Qbit : Type.
@@ -66,6 +67,9 @@ Definition H (l:L) (qs:QState) : QState := qs.
 Definition T (l:L) (qs:QState) : QState := qs.
 Definition Tdg (l:L) (qs:QState) : QState := qs.
 Definition CNOT (l1 l2:L) (qs:QState) : QState := qs.
+
+(* Projector TODO: fix dummy definition *)
+Definition Proj (c:Cbit) (l:L) (qs:QState) : QState := qs.
 
 (* Big-step operational semantics *)
 
@@ -114,6 +118,8 @@ Inductive Ceval : C * Env * Heap * QState -> Env * Heap * QState -> Prop :=
     Ceval (c_qreg x I, env, heap, st) (env $+ (x, v_arr ls), heap, st)
 | EvalGate : forall x xs U env heap st,
   Ceval (c_gate x xs U, env, heap, st) (env $+ (x, v_circ xs U), heap, st)
+| EvalReset : forall E env heap st l,
+  Ceval (c_reset E, env, heap, st) (env, heap, Proj c0 l st)
 | EvalCSeq : forall C1 C2 e e' e'' h h' h'' st st' st'',
     Ceval (C1, e, h, st) (e', h', st')
     -> Ceval (C2, e', h', st') (e'', h'', st'')
