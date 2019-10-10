@@ -35,3 +35,19 @@ Inductive V : Set := (* Value *)
 | v_reg (_:list L)
 | v_lam (_:list Id) (U:U). (* unitary circuits *)
 
+Inductive S : Set :=
+| s_E (E:E)
+| s_U (U:U)
+| s_C (C:C).
+
+Variable Env : list (Id*V). (* sigma *)
+Check Env.
+
+(* Classical bits *)
+Variable c0 : Type.
+Variable c1 : Type.
+
+Variable heap : list (L*(c0+c1)). (* eta *)
+Check heap.
+
+Definition qstate := 
