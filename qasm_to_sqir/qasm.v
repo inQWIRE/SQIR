@@ -1,22 +1,22 @@
 Require Import List.
 Require Import String.
 
+(* From Adam Chlipala's FRAP book *)
 Require Import Map.
 Require Import Sets.
-
-Set Implicit Arguments.
-
-Notation Id := string. (* Identifier x *)
-Definition Id_eq : forall x y : Id, {x=y} + {x<>y} := string_dec.
-Infix "==id" := Id_eq (no associativity, at level 50).
-
-Notation Idx := nat. (* Index i *)
 
 (* Classical bits *)
 Inductive Cbit : Set :=
 | c0 : Cbit
 | c1 : Cbit.
 
+(* Qubit abstract type *)
+Parameter Qbit : Type.
+
+Notation Id := string. (* Identifier x *)
+Notation Idx := nat. (* Index i *)
+
+(* Expressions *)
 Inductive E : Set := (* Expression *)
 | e_bit (x:Id)
 | e_reg (x:Id) (I:Idx).
@@ -30,7 +30,7 @@ Inductive U : Set := (* Unitary Stmt *)
 | u_app (Eg:E) (_:list E) (* Eg is unitary gate or named circuit *)
 | u_seq (U1 U2:U).
 
-(* also includes non-unitary *)
+(* also includes non-unitary effects *)
 Inductive C : Set := (* Command *)
 | c_creg (x:Id) (I:Idx)
 | c_qreg (x:Id) (I:Idx)
@@ -48,19 +48,9 @@ Inductive V : Set := (* Value *)
 | v_arr (ls:list L)
 | v_circ (xs:list Id) (U:U). (* unitary circuits *)
 
-Inductive S : Set :=
-| s_E (E:E)
-| s_U (U:U)
-| s_C (C:C).
-
 Definition Env := fmap Id V. (* sigma *)
-
 Definition Heap := fmap L Cbit. (* eta *)
-
-(* Qubit abstract type *)
-Parameter Qbit : Type.
-
-Definition QState := fmap L Qbit.
+Definition QState := fmap L Qbit. (* \ket phi *)
 
 (* Built-in gates, TODO: fix dummy definitions *)
 Definition H (l:L) (qs:QState) : QState := qs.
@@ -71,7 +61,8 @@ Definition CNOT (l1 l2:L) (qs:QState) : QState := qs.
 (* Projector TODO: fix dummy definition *)
 Definition Proj (c:Cbit) (l:L) (qs:QState) : QState := qs.
 
-(* Big-step operational semantics *)
+
+(**** Big-step operational semantics ****)
 
 (* Expressions *)
 Inductive Eeval : E * Env * Heap * QState -> option V -> Prop :=
