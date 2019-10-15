@@ -1,9 +1,7 @@
 (library
  (inline_tests)
  (name qasm_to_sqir)
- (libraries base cmdliner)
- (preprocess
-  (pps ppx_inline_test)))
+ (libraries base cmdliner))
 
 (ocamllex OQLexer)
 
