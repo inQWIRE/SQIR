@@ -50,7 +50,7 @@ Inductive V : Set := (* Value *)
 
 Definition Env := fmap Id V. (* sigma *)
 Definition Heap := fmap L Cbit. (* eta *)
-Definition QState := fmap L Qbit. (* \ket phi *)
+Definition QState := fmap L Qbit. (* \ket psi *)
 
 (* Built-in gates, TODO: fix dummy definitions *)
 Definition H (l:L) (qs:QState) : QState := qs.
