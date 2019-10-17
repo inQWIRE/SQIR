@@ -1,5 +1,11 @@
 -R . Top.qasm_to_sqir
 
+QWIRE/Prelim.v
+QWIRE/RealAux.v
+QWIRE/Complex.v
+QWIRE/Matrix.v
+QWIRE/Quantum.v
+
 Map.v
 Sets.v
 qasm.v
