@@ -131,7 +131,7 @@ Section properties.
   Qed.
 End properties.
 
-Hint Resolve subseteq_refl subseteq_In.
+Hint Resolve subseteq_refl subseteq_In : core.
 
 (*Hint Rewrite union_constant.*)
 
