@@ -31,7 +31,7 @@ Inductive U : Set := (* Unitary Stmt *)
 | u_seq (U1 U2:U).
 
 (* also includes non-unitary effects *)
-Inductive C : Set := (* Command *)
+Inductive Cmd : Set := (* Command *)
 | c_creg (x:Id) (I:Idx)
 | c_qreg (x:Id) (I:Idx)
 | c_gate (x:Id) (_:list Id) (U:U) (* declare unitary circuits *)
@@ -39,7 +39,7 @@ Inductive C : Set := (* Command *)
 | c_reset (E:E)
 | c_U (U:U)
 | c_if (E:E) (I:Cbit) (U:U) (* only tests a classical bit *)
-| c_seq (C1 C2:C).
+| c_seq (C1 C2:Cmd).
 
 Notation L := nat. (* Location l *)
 
@@ -100,7 +100,7 @@ Inductive Ueval : U * Env * Heap * QState -> QState -> Prop :=
     -> Ueval (u_seq U1 U2, env, heap, st) st''.
 
 (* Commands *)
-Inductive Ceval : C * Env * Heap * QState -> Env * Heap * QState -> Prop :=
+Inductive Ceval : Cmd * Env * Heap * QState -> Env * Heap * QState -> Prop :=
 | EvalCreg : forall x I ls env heap st,
     (* TODO check freshness for ls *)
   Ceval (c_creg x I, env, heap, st) (env $+ (x, v_arr ls), heap, st)
