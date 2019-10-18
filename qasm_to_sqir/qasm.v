@@ -6,8 +6,8 @@ Require Import Map.
 Require Import Sets.
 
 (* From QWIRE *)
-Require Import Quantum.
-Close Scope R_scope. (* Inteferes with nat here *)
+Require Import QWIRE.Quantum.
+Close Scope R_scope. (* Interferes with nat here *)
 
 (* Classical bits *)
 Inductive Cbit : Set :=

@@ -98,7 +98,7 @@ qasm_to_sqir/Sets.vo: qasm_to_sqir/Sets.v
 qasm_to_sqir/Map.vo: qasm_to_sqir/Map.v qasm_to_sqir/Sets.vo
 	coqc $(COQ_OPTS) qasm_to_sqir/Map.v
 
-qasm_to_sqir/qasm.vo: qasm_to_sqir/qasm.v qasm_to_sqir/Map.vo
+qasm_to_sqir/qasm.vo: qasm_to_sqir/qasm.v qasm_to_sqir/Map.vo lib/QWIRE/Quantum.vo
 	coqc $(COQ_OPTS) qasm_to_sqir/qasm.v
 
 
