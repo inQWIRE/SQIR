@@ -100,7 +100,7 @@ Definition qbitDenote (c:Cbit) :=
 Fixpoint expDenote (e:Exp) (σ:Env) {struct e} :=
   match e with
   | (e_bit x) => σ $? x
-  | (e_reg x I) => match expDenote (e_bit x) σ with
+  | (e_reg x I) => match σ $? x with
                 | Some (v_arr ls) => Some (v_loc (nth I ls 0))
                 | _ => None
                 end
