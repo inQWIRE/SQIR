@@ -29,8 +29,6 @@ Inductive Exp : Set := (* Expression *)
 Inductive Uni : Set := (* Unitary Stmt *)
 | u_cx (E1 E2:Exp)
 | u_h (E:Exp)
-| u_t (E:Exp)
-| u_tdg (E:Exp)
 | u_app (Eg:Exp) (_:list Exp) (* Eg is unitary gate or named circuit *)
 | u_seq (U1 U2:Uni).
 
@@ -99,8 +97,8 @@ Definition qbitDenote (c:Cbit) :=
 
 Fixpoint expDenote (e:Exp) (σ:Env) {struct e} :=
   match e with
-  | (e_bit x) => σ $? x
-  | (e_reg x I) => match σ $? x with
+  | e_bit x => σ $? x
+  | e_reg x I => match σ $? x with
                 | Some (v_arr ls) => Some (v_loc (nth I ls 0))
                 | _ => None
                 end
