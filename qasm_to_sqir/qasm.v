@@ -5,67 +5,135 @@ Require Import String.
 Require Import Map.
 Require Import Sets.
 
+(* From QWIRE *)
+Require Import QWIRE.Quantum.
+Close Scope R_scope. (* Interferes with nat here *)
+
 (* Classical bits *)
 Inductive Cbit : Set :=
 | c0 : Cbit
 | c1 : Cbit.
 
 (* Qubit abstract type *)
-Parameter Qbit : Type.
+Definition Qbit := Vector 2.
 
 Notation Id := string. (* Identifier x *)
 Notation Idx := nat. (* Index i *)
 
 (* Expressions *)
-Inductive E : Set := (* Expression *)
+Inductive Exp : Set := (* Expression *)
 | e_bit (x:Id)
 | e_reg (x:Id) (I:Idx).
 
 (* purely unitary effects *)
-Inductive U : Set := (* Unitary Stmt *)
-| u_cx (E1 E2:E)
-| u_h (E:E)
-| u_t (E:E)
-| u_tdg (E:E)
-| u_app (Eg:E) (_:list E) (* Eg is unitary gate or named circuit *)
-| u_seq (U1 U2:U).
+Inductive Uni : Set := (* Unitary Stmt *)
+| u_cx (E1 E2:Exp)
+| u_h (E:Exp)
+| u_app (Eg:Exp) (_:list Exp) (* Eg is unitary gate or named circuit *)
+| u_seq (U1 U2:Uni).
 
 (* also includes non-unitary effects *)
-Inductive C : Set := (* Command *)
+Inductive Cmd : Set := (* Command *)
 | c_creg (x:Id) (I:Idx)
 | c_qreg (x:Id) (I:Idx)
-| c_gate (x:Id) (_:list Id) (U:U) (* declare unitary circuits *)
-| c_measure (E1 E2:E)
-| c_reset (E:E)
-| c_U (U:U)
-| c_if (E:E) (I:Cbit) (U:U) (* only tests a classical bit *)
-| c_seq (C1 C2:C).
+| c_gate (x:Id) (_:list Id) (U:Uni) (* declare unitary circuits *)
+| c_measure (E1 E2:Exp)
+| c_reset (E:Exp)
+| c_U (U:Uni)
+| c_if (E:Exp) (I:Cbit) (U:Uni) (* only tests a classical bit *)
+| c_seq (C1 C2:Cmd).
 
 Notation L := nat. (* Location l *)
 
 Inductive V : Set := (* Value *)
 | v_loc (l:L)
 | v_arr (ls:list L)
-| v_circ (xs:list Id) (U:U). (* unitary circuits *)
+| v_circ (xs:list Id) (U:Uni). (* unitary circuits TODO switch to HOAS *)
 
-Definition Env := fmap Id V. (* sigma *)
-Definition Heap := fmap L Cbit. (* eta *)
-Definition QState := fmap L Qbit. (* \ket phi *)
+Definition Env := fmap Id V. (* sigma σ *)
+Definition Heap := fmap L Cbit. (* eta η *)
+Definition QState := list Qbit. (* \ket psi ∣ψ⟩*)
 
-(* Built-in gates, TODO: fix dummy definitions *)
-Definition H (l:L) (qs:QState) : QState := qs.
-Definition T (l:L) (qs:QState) : QState := qs.
-Definition Tdg (l:L) (qs:QState) : QState := qs.
-Definition CNOT (l1 l2:L) (qs:QState) : QState := qs.
+(* Built-in gates, TODO add more *)
+Notation H := hadamard.
+Notation CNOT := cnot.
 
-(* Projector TODO: fix dummy definition *)
-Definition Proj (c:Cbit) (l:L) (qs:QState) : QState := qs.
+Definition Proj (c:Cbit) :=
+  match c with
+  | c0 => super ∣0⟩⟨0∣
+  | c1 => super ∣1⟩⟨1∣
+  end.
 
+(**** Denotational semantics ****)
+
+(* 1. Syntactic Domains, S:
+   - Expression, Exp
+   - Unitary Statement, Uni
+   - Command, Cmd
+
+   2. Semantic Domains
+      (Value, Environment, (Classical) Heap, (Quantum) State and Configuration)
+      Domain Equations:
+      2.1 Value = Location + Array + Circuit
+      2.2 Environment = Id → Value
+      2.3 Heap = Location → Cbit
+      2.4 State = Location → Qbit
+      2.5 Configuration = S × σ × η × ∣ψ⟩
+
+   3. Semantic Functions:
+      3.1 Expressions,  [[E]] : Exp × σ → option V
+      3.2 Unitary Stmt, [[U]] : Uni × σ × η × ∣ψ⟩ → option ∣ψ'⟩
+      3.2 Commands,   [[Cmd]] : Cmd × σ × η × ∣ψ⟩ → σ' × η' × ∣ψ'⟩
+
+   4. Semantic Clauses:
+*)
+
+(* Probably don't need this  *)
+Definition qbitDenote (c:Cbit) :=
+  match c with
+  | c0 => qubit0
+  | c1 => qubit1
+  end.
+
+Fixpoint expDenote (e:Exp) (σ:Env) {struct e} :=
+  match e with
+  | e_bit x => σ $? x
+  | e_reg x I => match σ $? x with
+                 | Some (v_arr ls) => if I <=? Datatypes.length ls
+                                      then Some (v_loc (nth I ls 0))
+                                      else None
+                 | _ => None
+                 end
+  end.
+
+Fixpoint applyU gate loc (ψ:QState) : QState :=
+  match ψ with
+  | [] => []
+  | q::qs => match loc with
+           | 0 => (Mmult (n:=2) gate q)::qs
+           | S n => q::applyU gate loc qs
+           end
+  end.
+
+Fixpoint uniDenote (u:Uni) (σ:Env) (η:Heap) (ψ:QState) {struct u} :=
+  match u with
+  | u_h e => match (expDenote e σ) with
+                 | Some (v_loc l) => Some (applyU H l ψ)
+                 | _ => None
+                 end
+  | u_cx e1 e2 => match (expDenote e1 σ), (expDenote e2 σ) with
+                 (* | Some (v_loc l1), Some (v_loc l2) => applyCU CNOT l1 l2 ψ *)
+                 | _, _ => None
+                 end (* TODO Hard case! *)
+  | _ => None
+  end.
+
+Fixpoint cmdDenote (c:Cmd) (σ:Env) (η:Heap) (ψ:QState) {struct c} := (σ, η, ψ).
 
 (**** Big-step operational semantics ****)
 
 (* Expressions *)
-Inductive Eeval : E * Env * Heap * QState -> option V -> Prop :=
+Inductive Eeval : Exp * Env * Heap * QState -> option V -> Prop :=
 | EvalVar : forall x env heap st,
     x \in dom env
     -> Eeval (e_bit x, env, heap, st) (env $? x)
@@ -75,16 +143,10 @@ Inductive Eeval : E * Env * Heap * QState -> option V -> Prop :=
     -> Eeval (e_reg x I, env, heap, st) (Some (v_loc (nth I ls 0))).
 
 (* Unitary statements *)
-Inductive Ueval : U * Env * Heap * QState -> QState -> Prop :=
+Inductive Ueval : Uni * Env * Heap * QState -> QState -> Prop :=
 | EvalH : forall E env heap st l,
     Eeval (E, env, heap, st) (Some (v_loc l))
     -> Ueval (u_h E, env, heap, st) (H l st)
-| EvalT : forall E env heap st l,
-    Eeval (E, env, heap, st) (Some (v_loc l))
-    -> Ueval (u_t E, env, heap, st) (T l st)
-| EvalTdg : forall E env heap st l,
-    Eeval (E, env, heap, st) (Some (v_loc l))
-    -> Ueval (u_tdg E, env, heap, st) (Tdg l st)
 | EvalCnot : forall E1 E2 env heap st l1 l2,
     Eeval (E1, env, heap, st) (Some (v_loc l1))
     -> Eeval (E2, env, heap, st) (Some (v_loc l2))
@@ -100,7 +162,7 @@ Inductive Ueval : U * Env * Heap * QState -> QState -> Prop :=
     -> Ueval (u_seq U1 U2, env, heap, st) st''.
 
 (* Commands *)
-Inductive Ceval : C * Env * Heap * QState -> Env * Heap * QState -> Prop :=
+Inductive Ceval : Cmd * Env * Heap * QState -> Env * Heap * QState -> Prop :=
 | EvalCreg : forall x I ls env heap st,
     (* TODO check freshness for ls *)
   Ceval (c_creg x I, env, heap, st) (env $+ (x, v_arr ls), heap, st)
