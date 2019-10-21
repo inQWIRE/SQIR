@@ -305,8 +305,6 @@ Compute (cancel_gates_simple test1).
    commutes through a subcircuit using the following circuits identities
    from Nam et al.
 
-   - X b ; CNOT a b ≡ CNOT a b ; X b
-   - X a ; Rz a ≡ Rz† ; X a         (up to a global phase)
    - Rz b ; H b ; CNOT a b ; H b ≡ H b ; CNOT a b ; H b ; Rz b
    - Rz b ; CNOT a b ; Rz' b ; CNOT a b ≡ CNOT a b ; Rz' b ; CNOT a b ; Rz b
    - Rz a ; CNOT a b ≡ CNOT a b ; Rz a
@@ -314,35 +312,9 @@ Compute (cancel_gates_simple test1).
    - CNOT a c ; CNOT a b ≡ CNOT a b ; CNOT a c
    - CNOT a b; H b; CNOT b c; H b ≡ H b; CNOT b c; H b; CNOT a b
 
-   This optimization is similar to Nam et al.'s single/two-qubit gate
-   cancellation and not propagation.
+   This optimization should be identical to Nam et al.'s single/two-qubit gate
+   cancellation routines.
 *)
-
-(* Commutativity rule for X *)
-
-Definition search_for_X_pat1 {dim} (l : PI4_ucom_l dim) q :=
-  match next_two_qubit_gate l q with
-  | Some (l1, UPI4_CNOT, q1, q2, l2) =>
-      if q =? q2
-      then Some (l1 ++ [App2 UPI4_CNOT q1 q2], l2)
-      else None
-  | _ => None
-  end.
-
-Definition search_for_X_pat2 {dim} (l : PI4_ucom_l dim) q :=
-  match next_single_qubit_gate l q with
-  | Some (l1, UPI4_PI4 k, l2) => Some (l1 ++ [App1 (UPI4_PI4 (8 - k)%Z) q], l2)
-  | _ => None
-  end.
-
-Definition search_for_commuting_X_pat {dim} (l : PI4_ucom_l dim) q :=
-  match search_for_X_pat1 l q with
-  | Some (l1, l2) => Some (l1, l2)
-  | None => match search_for_X_pat2 l q with
-           | Some (l1, l2) => Some (l1, l2)
-           | None => None
-           end
-  end.
 
 (* Commutativity rules for Rz *)
 
@@ -497,25 +469,6 @@ Definition propagate_H {dim} (l : PI4_ucom_l dim) (q : nat) : option (PI4_ucom_l
   | _ => None
   end.
 
-Fixpoint propagate_X {dim} (l : PI4_ucom_l dim) (q n : nat) : option (PI4_ucom_l dim) :=
-  match n with
-  | O => None
-  | S n' => 
-      match next_single_qubit_gate l q with
-      (* Cancel *)
-      | Some (l1, UPI4_X, l2) => Some (l1 ++ l2)
-      (* Commute *)
-      | _ =>
-          match search_for_commuting_X_pat l q with
-          | Some (l1, l2) => match (propagate_X l2 q n') with
-                            | Some l' => Some (l1 ++ l')
-                            | None => None
-                            end
-          | None =>  None
-          end
-      end
-  end.
-
 Fixpoint propagate_CNOT {dim} (l : PI4_ucom_l dim) (q1 q2 n : nat) : option (PI4_ucom_l dim) :=
   match n with
   | O => None
@@ -538,122 +491,46 @@ Fixpoint propagate_CNOT {dim} (l : PI4_ucom_l dim) (q1 q2 n : nat) : option (PI4
       end
   end.
 
-Fixpoint cancel_gates' {dim} (l : PI4_ucom_l dim) (n: nat) : PI4_ucom_l dim :=
+Fixpoint cancel_single_qubit_gates' {dim} (l : PI4_ucom_l dim) (n: nat) : PI4_ucom_l dim :=
   match n with
   | 0 => l
   | S n' => match l with
            | App1 (UPI4_PI4 k) q :: t => 
                match propagate_PI4 k t q (length t) with
-               | None => (App1 (UPI4_PI4 k) q) :: (cancel_gates' t n')
-               | Some l' => cancel_gates' l' n'
+               | None => (App1 (UPI4_PI4 k) q) :: (cancel_single_qubit_gates' t n')
+               | Some l' => cancel_single_qubit_gates' l' n'
                end
            | App1 UPI4_H q :: t => 
                match propagate_H t q with
-               | None => (App1 UPI4_H q) :: (cancel_gates' t n')
-               | Some l' => cancel_gates' l' n'
+               | None => (App1 UPI4_H q) :: (cancel_single_qubit_gates' t n')
+               | Some l' => cancel_single_qubit_gates' l' n'
                end
-           | App1 UPI4_X q :: t => 
-               match propagate_X t q (length t) with
-               | None => (App1 UPI4_X q) :: (cancel_gates' t n')
-               | Some l' => cancel_gates' l' n'
-               end
-           | App2 UPI4_CNOT q1 q2 :: t => 
-               match propagate_CNOT t q1 q2 (length t) with
-               | None => (App2 UPI4_CNOT q1 q2) :: (cancel_gates' t n')
-               | Some l' => cancel_gates' l' n'
-               end
-           | _ => []
+           | u :: t => u :: cancel_single_qubit_gates' t n'
+           | [] => []
            end
   end.
 
-Definition cancel_gates {dim} (l : PI4_ucom_l dim) := 
-  cancel_gates' l (length l).
+Definition cancel_single_qubit_gates {dim} (l : PI4_ucom_l dim) := 
+  cancel_single_qubit_gates' l (length l).
+
+Fixpoint cancel_two_qubit_gates' {dim} (l : PI4_ucom_l dim) (n: nat) : PI4_ucom_l dim :=
+  match n with
+  | 0 => l
+  | S n' => match l with
+           | App2 UPI4_CNOT q1 q2 :: t => 
+               match propagate_CNOT t q1 q2 (length t) with
+               | None => (App2 UPI4_CNOT q1 q2) :: (cancel_two_qubit_gates' t n')
+               | Some l' => cancel_two_qubit_gates' l' n'
+               end
+           | u :: t => u :: cancel_two_qubit_gates' t n'
+           | [] => []
+           end
+  end.
+
+Definition cancel_two_qubit_gates {dim} (l : PI4_ucom_l dim) := 
+  cancel_two_qubit_gates' l (length l).
 
 (* Proofs about commutativity *)
-
-Lemma commuting_X_pat : forall {dim} (l : PI4_ucom_l dim) q l1 l2, 
-  search_for_commuting_X_pat l q = Some (l1, l2) ->
-  (App1 UPI4_X q :: l) ≅l≅ (l1 ++ [App1 UPI4_X q] ++ l2).
-Proof.
-  intros.
-  unfold search_for_commuting_X_pat in H.
-  destruct (search_for_X_pat1 l q) eqn:HS; 
-  [|destruct (search_for_X_pat2 l q) eqn:HS2]; try discriminate.
-  - unfold search_for_X_pat1 in HS.
-    destruct p.
-    inversion H; subst. clear H.
-    destruct (next_two_qubit_gate l q) eqn:ntqg; try easy.
-    do 4 destruct p.
-    dependent destruction p.
-    bdestruct (q =? n); try easy.
-    inversion H; subst.
-    rewrite (ntqg_preserves_structure _ _ _ _ _ _ _ ntqg).
-    apply ntqg_l1_does_not_reference in ntqg.
-    rewrite app_comm_cons.
-    apply uc_equiv_cong_l.
-    rewrite (does_not_reference_commutes_app1 _ UPI4_X _ ntqg).
-    inversion HS; subst.
-    repeat rewrite <- app_assoc.
-    apply uc_app_congruence; try reflexivity.
-    repeat rewrite app_assoc.
-    apply uc_app_congruence; try reflexivity.
-    unfold uc_equiv_l; simpl.
-    destruct dim.
-    + unfold uc_equiv; simpl.
-      unfold pad.
-      bdestruct_all. 
-      Msimpl_light; reflexivity.
-    + repeat rewrite <- useq_assoc.
-      unfold SKIP.
-      do 2 (rewrite ucom_id_r; try apply uc_well_typed_ID; try lia).
-      apply X_CNOT_comm.
-  - unfold search_for_X_pat2 in HS2.
-    destruct p.
-    inversion H; subst. clear H.
-    destruct (next_single_qubit_gate l q) eqn:nsqg; try easy.
-    repeat destruct p.
-    dependent destruction p; try discriminate.
-    remember (8 - k)%Z as k'.
-    inversion HS2. subst l1 l2.
-    specialize (nsqg_commutes _ _ _ _ _ nsqg) as H.
-    apply uc_equiv_cong_l in H.
-    rewrite H; clear H.
-    apply nsqg_l1_does_not_reference in nsqg.
-    specialize (does_not_reference_commutes_app1 g0 (UPI4_PI4 k') q nsqg) as H.
-    apply uc_equiv_cong_l in H.
-    rewrite <- H; clear H.
-    rewrite <- (app_assoc _ g0).
-    rewrite (app_assoc g0).
-    specialize (does_not_reference_commutes_app1 g0 UPI4_X q nsqg) as H.
-    apply uc_equiv_cong_l in H.
-    rewrite <- H; clear H.
-    rewrite app_comm_cons.
-    repeat rewrite app_assoc.
-    do 2 (apply uc_cong_l_app_congruence; try reflexivity).
-    exists (IZR k * PI / 4)%R.
-    simpl.
-    destruct dim. (* get rid of dim = 0 case *)
-    unfold pad; bdestruct_all; Msimpl_light; reflexivity.
-    autorewrite with eval_db; try lia.
-    bdestruct_all; try Msimpl_light; trivial.
-    repeat rewrite kron_mixed_product.
-    Msimpl_light.
-    rewrite <- Mscale_kron_dist_l.
-    rewrite <- Mscale_kron_dist_r.
-    do 2 (apply f_equal2; try reflexivity).
-    do 2 rewrite phase_shift_rotation.    
-    rewrite pauli_x_rotation.
-    solve_matrix.
-    rewrite <- Cexp_add.
-    subst.
-    rewrite <- 2 Rmult_div_assoc.
-    rewrite <- Rmult_plus_distr_r.
-    rewrite <- plus_IZR.
-    replace (k + (8 - k))%Z with 8%Z by lia.
-    replace (8 * (PI / 4))%R with (2 * PI)%R by lra.
-    rewrite Cexp_2PI.
-    reflexivity.
-Qed.
 
 Lemma app_cons_app : forall {A} (a : A) (l1 l2 : list A), a :: l1 ++ l2 = [a] ++ l1 ++ l2.
 Proof. reflexivity. Qed.
@@ -985,48 +862,6 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma propagate_X_sound : forall {dim} (l : PI4_ucom_l dim) q n l',
-  q < dim ->
-  propagate_X l q n = Some l' ->
-  (App1 UPI4_X q :: l) ≅l≅ l'.
-Proof.
-  intros.
-  generalize dependent l'.
-  generalize dependent l.
-  induction n; try easy.
-  simpl.
-  intros.
-  destruct (next_single_qubit_gate l q) eqn:nsqg;
-  repeat destruct p;
-  try dependent destruction p.
-  2: (* Cancel case *)
-     inversion H0; subst;
-     apply uc_equiv_cong_l;
-     rewrite (nsqg_commutes _ _ _ _ _ nsqg);
-     apply X_X_cancel; assumption.
-  all: (* Commute cases *)
-     destruct (search_for_commuting_X_pat l q) eqn:pat; try discriminate;
-     destruct p.
-  1, 2: destruct (propagate_X g1 q n) eqn:prop; try discriminate.
-  3: destruct (propagate_X g q n) eqn:prop; try discriminate.
-  all: inversion H0; subst;
-     rewrite (commuting_X_pat _ _ _ _ pat);
-     rewrite (IHn _ _ prop);
-     reflexivity.
-Qed.
-
-Lemma propagate_X_WT : forall {dim} (l : PI4_ucom_l dim) q n l',
-  q < dim ->
-  uc_well_typed_l l ->
-  propagate_X l q n = Some l' ->
-  uc_well_typed_l l'.
-Proof.
-  intros.
-  specialize (propagate_X_sound l q n l' H H1) as H2.
-  apply (uc_cong_l_implies_WT _ _ H2).
-  constructor; assumption.
-Qed.
-
 Lemma propagate_PI4_sound : forall {dim} k (l : PI4_ucom_l dim) q n l',
   q < dim ->
   propagate_PI4 k l q n = Some l' ->
@@ -1126,51 +961,52 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma cancel_gates'_sound : forall {dim} (l : PI4_ucom_l dim) n,
-  uc_well_typed_l l -> cancel_gates' l n ≅l≅ l.
+Lemma cancel_single_qubit_gates_sound : forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> cancel_single_qubit_gates l =l= l.
 Proof.
-  intros.
-  generalize dependent l.
-  induction n; intros; try reflexivity.
-  destruct l; try reflexivity.
-  destruct g.
-  - inversion H; subst. 
-    dependent destruction p.
-    + (* UPI4_H *) 
-      simpl.
-      remember (propagate_H l n0) as prop; symmetry in Heqprop.
-      destruct prop; rewrite IHn; try reflexivity; try assumption.
-      apply uc_equiv_cong_l.
-      rewrite (propagate_H_sound _ _ _ H2 Heqprop).
-      reflexivity.
-      apply (propagate_H_WT _ _ _ H2 H4 Heqprop).
-    + (* UPI4_X *)
-      simpl.
-      remember (propagate_X l n0 (length l)) as prop; symmetry in Heqprop.
-      destruct prop; rewrite IHn; try reflexivity; try assumption.
-      rewrite (propagate_X_sound _ _ _ _ H2 Heqprop).
-      reflexivity.
-      apply (propagate_X_WT _ _ _ _ H2 H4 Heqprop).
-    + (* UPI4_PI4 *)
-      simpl.
-      remember (propagate_PI4 k l n0 (length l)) as prop; symmetry in Heqprop.
-      destruct prop; rewrite IHn; try reflexivity; try assumption.
-      apply uc_equiv_cong_l.
-      rewrite (propagate_PI4_sound _ _ _ _ _ H2 Heqprop).
-      reflexivity.
-      apply (propagate_PI4_WT _ _ _ _ _ H2 H4 Heqprop).
-  - (* UPI4_CNOT *)
-    dependent destruction p; simpl.
-    inversion H; subst. 
-    remember (propagate_CNOT l n0 n1 (length l)) as prop; symmetry in Heqprop.
-    destruct prop; rewrite IHn; try reflexivity; try assumption.
-    apply uc_equiv_cong_l.
-    rewrite (propagate_CNOT_sound _ _ _ _ _ H4 H5 H6 Heqprop).
-    reflexivity.
-    apply (propagate_CNOT_WT _ _ _ _ _ H4 H5 H6 H7 Heqprop).
-  - inversion p.
+  intros dim l WT.
+  assert (forall n, cancel_single_qubit_gates' l n =l= l).
+  { intros n.
+    generalize dependent l.
+    induction n; intros l WT; try reflexivity.
+    simpl.
+    destruct l; try reflexivity.
+    destruct g; inversion WT; subst.
+    - dependent destruction p.
+      + destruct (propagate_H l n0) eqn:prop.
+        rewrite (propagate_H_sound _ _ _ H1 prop).
+        apply IHn.
+        apply (propagate_H_WT _ _ _ H1 H3 prop).
+        rewrite IHn; try reflexivity; try assumption.
+      + rewrite IHn; try reflexivity; try assumption.
+      + destruct (propagate_PI4 k l n0 (length l)) eqn:prop.
+        rewrite (propagate_PI4_sound _ _ _ _ _ H1 prop).
+        apply IHn.
+        apply (propagate_PI4_WT _ _ _ _ _ H1 H3 prop).
+        rewrite IHn; try reflexivity; try assumption.
+    - rewrite IHn; try reflexivity; try assumption.
+    - inversion p. }
+  apply H.
 Qed.
 
-Lemma cancel_gates_sound : forall {dim} (l : PI4_ucom_l dim), 
-  uc_well_typed_l l -> cancel_gates l ≅l≅ l.
-Proof. intros. apply cancel_gates'_sound; assumption. Qed.
+Lemma cancel_two_qubit_gates_sound : forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> cancel_two_qubit_gates l =l= l.
+Proof.
+  intros dim l WT.
+  assert (forall n, cancel_two_qubit_gates' l n =l= l).
+  { intros n.
+    generalize dependent l.
+    induction n; intros l WT; try reflexivity.
+    simpl.
+    destruct l; try reflexivity.
+    destruct g; inversion WT; subst.
+    - rewrite IHn; try reflexivity; try assumption.
+    - dependent destruction p.
+      destruct (propagate_CNOT l n0 n1 (length l)) eqn:prop.
+      rewrite (propagate_CNOT_sound _ _ _ _ _ H3 H4 H5 prop).
+      apply IHn.
+      apply (propagate_CNOT_WT _ _ _ _ _ H3 H4 H5 H6 prop).
+      rewrite IHn; try reflexivity; try assumption. 
+    - inversion p. }
+  apply H.
+Qed.

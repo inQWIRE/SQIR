@@ -754,6 +754,226 @@ Definition test5 : PI4_ucom_l 3 := CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: T 2 :: 
 (* Result: Some [CNOT 0 2; P 0; X 2; CNOT 2 1; T 2] *)
 Compute (merge test5 1 0).
 
+(** Postprocessing: propagate X gates. **)
+
+Fixpoint propagate_X_gate {dim} (l : PI4_ucom_l dim) q n :=
+  match n with
+  | O => App1 UPI4_X q :: l
+  | S n' =>
+      match l with
+      | [] => [App1 UPI4_X q]
+      | u :: t =>
+          if does_not_reference_appl q u
+          then u :: propagate_X_gate t q n'
+          else match u with
+               | App1 UPI4_X n => t
+               | App1 (UPI4_PI4 k) n =>
+                   App1 (UPI4_PI4 (8 - k)%Z) n :: propagate_X_gate t q n'
+               | App2 UPI4_CNOT m n =>
+                   if q =? m 
+                   then u :: propagate_X_gate (propagate_X_gate t m n') n n'
+                   else u :: propagate_X_gate t q n'
+               | _ => App1 UPI4_X q :: l
+               end
+      end
+  end.
+
+Fixpoint propagate_X_gates' {dim} (l : PI4_ucom_l dim) n :=
+  match n with
+  | O => l
+  | S n' =>
+      match l with
+      | [] => []
+      | App1 UPI4_X q :: t => 
+          let l' := propagate_X_gate t q n in
+          propagate_X_gates' l' n'
+      | u :: t => u :: propagate_X_gates' t n'
+      end
+  end.
+
+(* Worst case every CNOT introduces two more X gates, so we start with
+   n = 2 × (length n). The n = 0 case should be unreachable. *)
+Definition propagate_X_gates {dim} (l : PI4_ucom_l dim) :=
+  propagate_X_gates' l (2 * List.length l).
+
+(* Proofs *)
+
+Lemma propagate_X_through_CNOT_control : forall {dim} m n,
+  @X dim m :: CNOT m n :: [] =l= CNOT m n :: X n :: X m :: [].
+Proof.
+  intros dim m n.
+  unfold uc_equiv_l, uc_equiv; simpl.
+  repeat rewrite Mmult_assoc.
+  apply f_equal2; trivial.
+  rewrite pauli_x_rotation.
+  autorewrite with eval_db.
+  gridify; trivial.
+  Qsimpl.
+  rewrite Mplus_comm. reflexivity.
+  Qsimpl.
+  rewrite Mplus_comm. reflexivity.
+Qed.
+
+Lemma propagate_X_through_CNOT_target : forall {dim} m n,
+  @X dim n :: CNOT m n :: [] =l= CNOT m n :: X n :: [].
+Proof.
+  intros dim m n.
+  unfold uc_equiv_l, uc_equiv; simpl.
+  repeat rewrite Mmult_assoc.
+  apply f_equal2; trivial.
+  rewrite pauli_x_rotation.
+  autorewrite with eval_db.
+  gridify; Qsimpl; reflexivity.
+Qed.
+
+Lemma propagate_X_gate_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) q n,
+  (q < dim)%nat -> propagate_X_gate l q n ≅l≅ (App1 UPI4_X q :: l).
+Proof.
+  intros dim l q n Hq.
+  generalize dependent q.
+  generalize dependent l.
+  induction n; intros l q Hq; try reflexivity.
+  destruct l; try reflexivity. 
+  Local Opaque Z.sub.
+  simpl.
+  destruct (does_not_reference_appl q g) eqn:dnr.
+  rewrite IHn; try assumption.
+  rewrite (cons_to_app g).
+  rewrite (cons_to_app (App1 UPI4_X q)).
+  rewrite (cons_to_app (App1 UPI4_X q) (g :: l)).
+  rewrite (cons_to_app g l).
+  repeat rewrite app_assoc.
+  apply uc_equiv_cong_l.
+  apply uc_app_congruence; try reflexivity.
+  symmetry.
+  apply does_not_reference_commutes_app1. simpl. 
+  apply andb_true_iff; auto.
+  destruct g. 
+  - simpl in dnr. apply negb_false_iff in dnr. 
+    apply beq_nat_true in dnr. subst.
+    dependent destruction p; try reflexivity.
+    apply uc_equiv_cong_l.
+    unfold uc_equiv_l, uc_equiv; simpl.
+    unfold pad; rewrite pauli_x_rotation.
+    bdestructΩ (q + 1 <=? dim).
+    rewrite Mmult_assoc.
+    restore_dims. 
+    repeat rewrite kron_mixed_product.
+    Qsimpl.
+    repeat rewrite id_kron.
+    Msimpl_light. reflexivity.
+    rewrite IHn; try assumption.
+    unfold uc_cong_l, uc_cong; simpl.
+    unfold pad; repeat rewrite pauli_x_rotation, phase_shift_rotation.
+    bdestructΩ (q + 1 <=? dim).
+    repeat rewrite Mmult_assoc.
+    restore_dims. 
+    repeat rewrite kron_mixed_product.
+    Qsimpl.
+    exists (IZR (8 - k) * PI / 4)%R. 
+    restore_dims.
+    rewrite <- Mscale_mult_dist_r.
+    restore_dims. 
+    rewrite <- Mscale_kron_dist_l.
+    rewrite <- Mscale_kron_dist_r.
+    do 3 (apply f_equal2; trivial).
+    solve_matrix.
+    all: autorewrite with R_db; autorewrite with trig_db; 
+         autorewrite with C_db; try reflexivity.
+    rewrite minus_IZR.
+    autorewrite with R_db.
+    repeat rewrite Rmult_plus_distr_r.
+    rewrite Cexp_add.
+    rewrite <- Cmult_assoc.
+    rewrite <- Cexp_add.
+    replace (8 * PI * / 4)%R with (2 * PI)%R by lra.
+    replace (- IZR k * PI * / 4 + IZR k * PI * / 4)%R with 0%R by lra.
+    rewrite Cexp_2PI. 
+    rewrite Cexp_0.
+    lca.
+  - dependent destruction p.
+    bdestruct (q =? n0); subst.
+    bdestruct (n1 <? dim)%nat.
+    rewrite (IHn (propagate_X_gate l n0 n)); try assumption.
+    rewrite IHn; try assumption.
+    apply uc_equiv_cong_l.
+    replace (App2 UPI4_CNOT n0 n1 :: App1 UPI4_X n1 :: App1 UPI4_X n0 :: l) with ((App2 UPI4_CNOT n0 n1 :: App1 UPI4_X n1 :: App1 UPI4_X n0 :: []) ++ l) by reflexivity.
+    replace (App1 UPI4_X n0 :: App2 UPI4_CNOT n0 n1 :: l) with ((App1 UPI4_X n0 :: App2 UPI4_CNOT n0 n1 :: []) ++ l) by reflexivity.
+    apply uc_app_congruence; try reflexivity.
+    symmetry. 
+    apply propagate_X_through_CNOT_control.
+    apply uc_equiv_cong_l.
+    unfold uc_equiv_l, uc_equiv; simpl.
+    unfold ueval_cnot, pad.
+    bdestruct (n0 <? n1).
+    bdestructΩ (n0 + (1 + (n1 - n0 - 1) + 1) <=? dim).
+    Msimpl_light; reflexivity.
+    bdestructΩ (n1 <? n0).
+    simpl in dnr.
+    apply negb_false_iff in dnr.
+    apply orb_true_iff in dnr as [dnr | dnr].
+    apply Nat.eqb_eq in dnr; subst.
+    contradict H; reflexivity.
+    apply Nat.eqb_eq in dnr; subst.
+    rewrite IHn; try assumption.
+    replace (App2 UPI4_CNOT n0 q :: App1 UPI4_X q :: l) with ((App2 UPI4_CNOT n0 q :: App1 UPI4_X q :: []) ++ l) by reflexivity.
+    replace (App1 UPI4_X q :: App2 UPI4_CNOT n0 q :: l) with ((App1 UPI4_X q :: App2 UPI4_CNOT n0 q :: []) ++ l) by reflexivity.
+    apply uc_equiv_cong_l.
+    apply uc_app_congruence; try reflexivity.
+    symmetry. 
+    apply propagate_X_through_CNOT_target.
+  - inversion p.
+Qed.
+
+Lemma propagate_X_gate_well_typed : forall {dim} (l : PI4_ucom_l dim) q n,
+  (q < dim)%nat -> uc_well_typed_l l -> uc_well_typed_l (propagate_X_gate l q n).
+Proof.
+  intros dim l q n Hq WT.
+  generalize dependent q.
+  generalize dependent l.
+  induction n; intros l WT q Hq; try constructor; try assumption.
+  destruct l; try constructor; try assumption. 
+  Local Opaque Z.sub.
+  simpl.
+  destruct (does_not_reference_appl q g) eqn:dnr.
+  destruct g; inversion WT; subst; constructor; try assumption.
+  all: try (apply IHn; assumption).
+  destruct g; inversion WT; subst; dependent destruction p; try assumption.
+  repeat constructor; try assumption.
+  constructor; try assumption.
+  apply IHn; try assumption.
+  bdestruct (q =? n0); subst.
+  constructor; try assumption.
+  apply IHn; try assumption.
+  apply IHn; try assumption.
+  constructor; try assumption.
+  apply IHn; try assumption.
+Qed.
+
+Lemma propagate_X_gates_preserves_semantics : forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> propagate_X_gates l ≅l≅ l.
+Proof.
+  intros dim l WT.
+  assert (forall n, propagate_X_gates' l n ≅l≅ l).
+  { intros n.
+    generalize dependent l.
+    induction n; intros l WT; try reflexivity.
+    Local Opaque propagate_X_gate. 
+    destruct l; try reflexivity.
+    inversion WT; subst; simpl.
+    dependent destruction u.
+    all: try (rewrite IHn; try assumption; reflexivity).
+    rewrite IHn.
+    apply propagate_X_gate_preserves_semantics; try assumption.
+    apply propagate_X_gate_well_typed; assumption. }
+  apply H.
+Qed.
+
+(* Examples *)
+
+Definition test6 : PI4_ucom_l 3 := H 0 :: X 1 :: CNOT 1 2 :: H 2 :: CNOT 0 1 :: [].
+Compute (propagate_X_gates test6).
+
 (** Final optimization definition. **)
 
 Definition merge_rotation {dim} (l : PI4_ucom_l dim) k q :=
@@ -779,7 +999,7 @@ Fixpoint merge_rotations' {dim} (l : PI4_ucom_l dim) n :=
   end.
 
 Definition merge_rotations {dim} (l : PI4_ucom_l dim) := 
-  merge_rotations' l (List.length l).
+  propagate_X_gates (merge_rotations' l (List.length l)).
 
 (* Proofs *)
 
@@ -813,14 +1033,38 @@ Proof.
   reflexivity.
 Qed.   
 
+Lemma merge_rotations'_well_typed : forall {dim} (l : PI4_ucom_l dim) n,
+  uc_well_typed_l l ->
+  uc_well_typed_l (merge_rotations' l n).
+Proof.
+  intros.
+  specialize (uc_well_typed_l_implies_dim_nonzero l H) as Hdim.
+  generalize dependent l.
+  induction n; intros l WT; try assumption.
+  destruct l; try constructor; try assumption.
+  destruct g; dependent destruction p; simpl.
+  all: inversion WT; subst; try constructor; try assumption.
+  all: try apply IHn; try assumption.
+  destruct (merge_rotation l k n0) eqn:mr.
+  apply IHn.
+  eapply uc_equiv_l_implies_WT.
+  symmetry.
+  apply merge_rotation_preserves_semantics; try apply mr; try assumption.
+  constructor; assumption.
+  constructor; try assumption.
+  apply IHn; assumption.
+Qed.
+
 Lemma merge_rotations_preserves_semantics : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l ->
-  merge_rotations l =l= l.
+  merge_rotations l ≅l≅ l.
 Proof.
   intros.
   unfold merge_rotations.
   (* the value of n is unimportant for correctness *)
-  remember (length l) as n; clear Heqn. 
+  remember (length l) as n; clear Heqn.
+  rewrite propagate_X_gates_preserves_semantics.
+  2: apply merge_rotations'_well_typed; assumption.
   generalize dependent l.
   induction n; try reflexivity.
   intros. simpl.
@@ -832,6 +1076,7 @@ Proof.
   2: rewrite IHn; try assumption; reflexivity.
   apply merge_rotation_preserves_semantics in mr; try assumption.
   rewrite IHn.
+  apply uc_equiv_cong_l in mr.
   apply mr.
   eapply uc_equiv_l_implies_WT. 
   symmetry in mr; apply mr.
@@ -840,13 +1085,13 @@ Qed.
 
 (* Examples *)
 
-Definition test6 : PI4_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
-Definition test7 : PI4_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
-Definition test8 : PI4_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
+Definition test7 : PI4_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
+Definition test8 : PI4_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
+Definition test9 : PI4_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
 
 (* Result: [CNOT 1 2; CNOT 0 3; CNOT 0 1; CNOT 1 2; CNOT 2 1; PDAG 1; CNOT 3 0; CNOT 0 3; P 0; Z 3] *)
-Compute (merge_rotations test6).
-(* Result: [CNOT 0 1; Z 1; CNOT 0 1; Z 0; P 1; CNOT 1 0] *)
 Compute (merge_rotations test7).
-(* Result: [CNOT 2 3 ; CNOT 0 1 ; CNOT 2 3 ; CNOT 1 2 ; CNOT 1 0 ; CNOT 3 2 ; CNOT 1 2 ; CNOT 0 1 ; P 2] *)
+(* Result: [CNOT 0 1; Z 1; CNOT 0 1; Z 0; P 1; CNOT 1 0] *)
 Compute (merge_rotations test8).
+(* Result: [CNOT 2 3 ; CNOT 0 1 ; CNOT 2 3 ; CNOT 1 2 ; CNOT 1 0 ; CNOT 3 2 ; CNOT 1 2 ; CNOT 0 1 ; P 2] *)
+Compute (merge_rotations test9).
