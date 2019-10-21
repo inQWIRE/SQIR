@@ -23,6 +23,7 @@ let qelib1 = [
   ("cy",  TGate(0,2));
   ("ch",  TGate(0,2));
   ("ccx", TGate(0,3));
+  ("ccz", TGate(0,3));
   ("crz", TGate(1,2));
   ("cu1", TGate(1,2));
   ("cu3", TGate(3,2))
