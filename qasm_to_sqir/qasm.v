@@ -82,7 +82,7 @@ Definition Proj (c:Cbit) :=
 
    3. Semantic Functions:
       3.1 Expressions,  [[E]] : Exp × σ → option V
-      3.2 Unitary Stmt, [[U]] : Uni × σ × η × ∣ψ⟩ → ∣ψ'⟩
+      3.2 Unitary Stmt, [[U]] : Uni × σ × η × ∣ψ⟩ → option ∣ψ'⟩
       3.2 Commands,   [[Cmd]] : Cmd × σ × η × ∣ψ⟩ → σ' × η' × ∣ψ'⟩
 
    4. Semantic Clauses:
@@ -99,12 +99,36 @@ Fixpoint expDenote (e:Exp) (σ:Env) {struct e} :=
   match e with
   | e_bit x => σ $? x
   | e_reg x I => match σ $? x with
-                 | Some (v_arr ls) => if I <=? (Datatypes.length ls)
+                 | Some (v_arr ls) => if I <=? Datatypes.length ls
                                       then Some (v_loc (nth I ls 0))
                                       else None
                  | _ => None
                  end
   end.
+
+Fixpoint applyU gate loc (ψ:QState) : QState :=
+  match ψ with
+  | [] => []
+  | q::qs => match loc with
+           | 0 => (Mmult (n:=2) gate q)::qs
+           | S n => q::applyU gate loc qs
+           end
+  end.
+
+Fixpoint uniDenote (u:Uni) (σ:Env) (η:Heap) (ψ:QState) {struct u} :=
+  match u with
+  | u_h e => match (expDenote e σ) with
+                 | Some (v_loc l) => Some (applyU H l ψ)
+                 | _ => None
+                 end
+  | u_cx e1 e2 => match (expDenote e1 σ), (expDenote e2 σ) with
+                 (* | Some (v_loc l1), Some (v_loc l2) => applyCU CNOT l1 l2 ψ *)
+                 | _, _ => None
+                 end (* TODO Hard case! *)
+  | _ => None
+  end.
+
+Fixpoint cmdDenote (c:Cmd) (σ:Env) (η:Heap) (ψ:QState) {struct c} := (σ, η, ψ).
 
 (**** Big-step operational semantics ****)
 
