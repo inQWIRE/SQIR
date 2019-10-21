@@ -15,7 +15,7 @@ Inductive Cbit : Set :=
 | c1 : Cbit.
 
 (* Qubit abstract type *)
-Parameter Qbit : Type.
+Definition Qbit := Vector 2.
 
 Notation Id := string. (* Identifier x *)
 Notation Idx := nat. (* Index i *)
@@ -52,7 +52,7 @@ Inductive V : Set := (* Value *)
 
 Definition Env := fmap Id V. (* sigma σ *)
 Definition Heap := fmap L Cbit. (* eta η *)
-Definition QState := fmap L Qbit. (* \ket psi ∣ψ⟩*)
+Definition QState := list Qbit. (* \ket psi ∣ψ⟩*)
 
 (* Built-in gates, TODO add more *)
 Notation H := hadamard.
@@ -81,7 +81,7 @@ Definition Proj (c:Cbit) :=
       2.5 Configuration = S × σ × η × ∣ψ⟩
 
    3. Semantic Functions:
-      3.1 Expressions,  [[E]] : Exp × σ → V
+      3.1 Expressions,  [[E]] : Exp × σ → option V
       3.2 Unitary Stmt, [[U]] : Uni × σ × η × ∣ψ⟩ → ∣ψ'⟩
       3.2 Commands,   [[Cmd]] : Cmd × σ × η × ∣ψ⟩ → σ' × η' × ∣ψ'⟩
 
@@ -99,9 +99,11 @@ Fixpoint expDenote (e:Exp) (σ:Env) {struct e} :=
   match e with
   | e_bit x => σ $? x
   | e_reg x I => match σ $? x with
-                | Some (v_arr ls) => Some (v_loc (nth I ls 0))
-                | _ => None
-                end
+                 | Some (v_arr ls) => if I <=? (Datatypes.length ls)
+                                      then Some (v_loc (nth I ls 0))
+                                      else None
+                 | _ => None
+                 end
   end.
 
 (**** Big-step operational semantics ****)
