@@ -30,6 +30,42 @@ Proof.
   Msimpl_light; reflexivity.
 Qed.
 
+Lemma SKIP_id_l : forall {dim} (c : base_ucom dim),
+   SKIP; c ≡ c.
+Proof.
+  intros dim c. 
+  unfold uc_equiv.
+  simpl. 
+  destruct (uc_well_typed_b c) eqn:WT.
+  - apply uc_well_typed_b_equiv in WT.
+    apply uc_well_typed_implies_dim_nonzero in WT.
+    autorewrite with eval_db; try assumption.
+    Msimpl_light; reflexivity.
+  - apply not_true_iff_false in WT. 
+    rewrite uc_well_typed_b_equiv in WT.
+    apply uc_eval_zero_iff in WT.
+    rewrite WT.
+    Msimpl_light; reflexivity.
+Qed.
+
+Lemma SKIP_id_r : forall {dim} (c : base_ucom dim),
+   c; SKIP ≡ c.
+Proof.
+  intros dim c. 
+  unfold uc_equiv.
+  simpl. 
+  destruct (uc_well_typed_b c) eqn:WT.
+  - apply uc_well_typed_b_equiv in WT.
+    apply uc_well_typed_implies_dim_nonzero in WT.
+    autorewrite with eval_db; try assumption.
+    Msimpl_light; reflexivity.
+  - apply not_true_iff_false in WT. 
+    rewrite uc_well_typed_b_equiv in WT.
+    apply uc_eval_zero_iff in WT.
+    rewrite WT.
+    Msimpl_light; reflexivity.
+Qed.
+
 Lemma X_X_id : forall {dim} q, 
   X q; X q ≡ @ID dim q.
 Proof. 

@@ -543,6 +543,53 @@ Proof.
     easy.
 Qed.
 
+(* This alternate form is also useful. *)
+Lemma uc_eval_zero_iff : forall (dim : nat) (c : base_ucom dim),
+  uc_eval c = Zero <-> not (uc_well_typed c).
+Proof.
+  split; intros H.
+  - (* easy direction, implied by previous lemma *)
+    rewrite <- uc_eval_nonzero_iff. 
+    intros contra. 
+    contradict contra. 
+    assumption.
+  - (* slightly more annoying direction, not implied by the previous lemma *)
+    induction c. 
+    assert (HWT: not ((uc_well_typed c1) /\ (uc_well_typed c2))).
+    { intro contra.
+      destruct contra.
+      assert (uc_well_typed (c1; c2)) by (constructor; assumption).
+      contradict H. assumption. }
+    apply Classical_Prop.not_and_or in HWT.
+    simpl; destruct HWT as [HWT | HWT]. 
+    apply IHc1 in HWT. rewrite HWT. Msimpl_light; reflexivity.
+    apply IHc2 in HWT. rewrite HWT. Msimpl_light; reflexivity.
+    assert (HWT: (not (n < dim)%nat)). 
+    { intro contra.
+      assert (@uc_well_typed _ dim (uapp1 u n)) by (constructor; assumption).
+      contradict H. assumption. }
+    dependent destruction u.
+    simpl; unfold pad.
+    bdestructΩ (n + 1 <=? dim); reflexivity.
+    assert (HWT: (not ((n < dim) /\ (n0 < dim) /\ (n <> n0)))%nat). 
+    { intro contra.
+      destruct contra. destruct H1.
+      assert (@uc_well_typed _ dim (uapp2 u n n0)) by (constructor; assumption).
+      contradict H. assumption. }
+    dependent destruction u.
+    simpl; unfold ueval_cnot, pad;
+    bdestruct (n <? n0); bdestruct (n0 <? n); try lia; try reflexivity.
+    apply Classical_Prop.not_and_or in HWT.
+    destruct HWT as [HWT | HWT].
+    bdestructΩ (n + (1 + (n0 - n - 1) + 1) <=? dim); reflexivity.
+    apply Classical_Prop.not_and_or in HWT.
+    destruct HWT as [HWT | HWT].
+    bdestructΩ (n + (1 + (n0 - n - 1) + 1) <=? dim); reflexivity.
+    bdestructΩ (n + (1 + (n0 - n - 1) + 1) <=? dim); reflexivity.
+    bdestructΩ (n0 + (1 + (n - n0 - 1) + 1) <=? dim); reflexivity.
+    inversion u.
+Qed.
+
 (** Proofs About Standard Gates **)
 
 Local Close Scope R_scope.

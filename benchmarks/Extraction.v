@@ -92,9 +92,9 @@ Extraction Implicit CCZ [dim].
 Extraction Implicit CCZ_to_CCX' [dim].
 Extraction Implicit CCZ_to_CCX [dim].
 Extraction Implicit to_PI4_list [dim].
-Extraction Implicit propagate_not [dim].
-Extraction Implicit propagate_nots [dim].
-Extraction Implicit rm_nots [dim].
+Extraction Implicit propagate_X [dim].
+Extraction Implicit not_propagation' [dim].
+Extraction Implicit not_propagation [dim].
 
 (* Perform extraction to the file 'extracted_code.ml'. *)
-Extraction "extracted_code.ml" count_H_gates count_X_gates count_rotation_gates count_CNOT_gates PI4_list_well_typed_b UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG hadamard_reduction merge_rotations rm_nots to_PI4_list cancel_single_qubit_gates cancel_two_qubit_gates.
+Extraction "extracted_code.ml" count_H_gates count_X_gates count_rotation_gates count_CNOT_gates PI4_list_well_typed_b UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG hadamard_reduction merge_rotations not_propagation to_PI4_list cancel_single_qubit_gates cancel_two_qubit_gates.
