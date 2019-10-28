@@ -34,13 +34,13 @@ Current progress on a verified optimizer for SQIR programs.
   - optimizer/Equivalences.v : Verified circuit equivalences useful for peephole optimizations.
   - optimizer/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs.
   - optimizer/PI4GateSet.v : Fixed gate set used in our optimizer. 
+  - optimizer/Utilities.v : Some general transformations useful for implementing optimizations (e.g. replacing a single-qubit subcircuit with an equivalent subcircuit).
 
 - Optimizations on unitary programs
-  - optimizer/GateCancellation.v : Cancel gates adjacent to their inverses, propagate using the rules from Nam et al.
-  - optimizer/HadamardReduction.v : 'Hadamard reduction' pass from Nam et al.
-  - optimizer/NotPropagation.v : Based on the 'not propagation' preprocessing step from Nam et al.
+  - optimizer/GateCancellation.v : 'Single-qubit gate cancellation' and 'two-qubit gate cancellation' optimizations from Nam et al.
+  - optimizer/HadamardReduction.v : 'Hadamard reduction' optimization from Nam et al.
+  - optimizer/NotPropagation.v : 'Not propagation' preprocessing step from Nam et al.
   - optimizer/RotationMerging.v : 'Rotation merging using phase polynomials' optimization from Nam et al.
-  - optimizer/SkipElimination.v : Toy optimization that removes identity gates.
 
 - Optimizations on non-unitary programs
   - optimizer/RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.

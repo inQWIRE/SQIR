@@ -30,7 +30,7 @@ COQ_OPTS := -R . Top
 all: examples mapper optimizer qasm hll-compiler/BooleanCompilation.vo
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
 mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
-optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo optimizer/RotationMerging.vo optimizer/SkipElimination.vo
+optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo optimizer/RotationMerging.vo 
 qasm: invoke-coqmakefile qasm_to_sqir/Sets.vo qasm_to_sqir/Map.vo qasm_to_sqir/qasm.vo
 
 # Built by 'make examples'
@@ -63,10 +63,10 @@ mapper/MappingExamples.vo: mapper/SimpleMapping.vo
 optimizer/Equivalences.vo: optimizer/Equivalences.v core/UnitarySem.vo
 	coqc $(COQ_OPTS) optimizer/Equivalences.v
 
-optimizer/GateCancellation.vo: optimizer/GateCancellation.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
+optimizer/GateCancellation.vo: optimizer/GateCancellation.v optimizer/Equivalences.vo optimizer/Utilities.vo
 	coqc $(COQ_OPTS) optimizer/GateCancellation.v
 
-optimizer/HadamardReduction.vo: optimizer/HadamardReduction.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
+optimizer/HadamardReduction.vo: optimizer/HadamardReduction.v optimizer/Equivalences.vo optimizer/Utilities.vo
 	coqc $(COQ_OPTS) optimizer/HadamardReduction.v
 
 optimizer/ListRepresentation.vo: optimizer/ListRepresentation.v lib/QWIRE/Proportional.vo optimizer/Equivalences.vo core/DensitySem.vo
@@ -87,8 +87,8 @@ optimizer/RemoveZRotationBeforeMeasure.vo: optimizer/RemoveZRotationBeforeMeasur
 optimizer/RotationMerging.vo: optimizer/RotationMerging.v optimizer/PI4GateSet.vo core/Utilities.vo
 	coqc $(COQ_OPTS) optimizer/RotationMerging.v
 
-optimizer/SkipElimination.vo: optimizer/SkipElimination.v optimizer/Equivalences.vo
-	coqc $(COQ_OPTS) optimizer/SkipElimination.v
+optimizer/Utilities.vo: optimizer/Utilities.v optimizer/PI4GateSet.vo
+	coqc $(COQ_OPTS) optimizer/Utilities.v
 
 # Built by 'make qasm'
 

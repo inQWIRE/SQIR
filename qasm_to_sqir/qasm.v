@@ -143,6 +143,7 @@ Inductive Eeval : Exp * Env * Heap * QState -> option V -> Prop :=
     -> Eeval (e_reg x I, env, heap, st) (Some (v_loc (nth I ls 0))).
 
 (* Unitary statements *)
+(*
 Inductive Ueval : Uni * Env * Heap * QState -> QState -> Prop :=
 | EvalH : forall E env heap st l,
     Eeval (E, env, heap, st) (Some (v_loc l))
@@ -160,8 +161,10 @@ Inductive Ueval : Uni * Env * Heap * QState -> QState -> Prop :=
     Ueval (U1, env, heap, st) st'
     -> Ueval (U2, env, heap, st') st''
     -> Ueval (u_seq U1 U2, env, heap, st) st''.
+*)
 
 (* Commands *)
+(*
 Inductive Ceval : Cmd * Env * Heap * QState -> Env * Heap * QState -> Prop :=
 | EvalCreg : forall x I ls env heap st,
     (* TODO check freshness for ls *)
@@ -196,3 +199,4 @@ Inductive Ceval : Cmd * Env * Heap * QState -> Env * Heap * QState -> Prop :=
     Ceval (C1, e, h, st) (e', h', st')
     -> Ceval (C2, e', h', st') (e'', h'', st'')
     -> Ceval (c_seq C1 C2, e, h, st) (e'', h'', st'').
+*)

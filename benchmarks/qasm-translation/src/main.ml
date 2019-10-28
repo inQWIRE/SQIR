@@ -269,8 +269,8 @@ let run_on_nam_benchmarks f =
   let bs = parse_nam_benchmarks () in
   let bs' = List.mapi (fun i p ->
       (printf "Processing %s (1)\n%!" (List.nth nam_benchmark_filenames i);
-       printf "%d -> %d\n%!" (List.length p) (List.length (B.rm_nots p));
-       B.to_PI4_list (B.rm_nots p))) bs in
+       printf "%d -> %d\n%!" (List.length p) (List.length (B.not_propagation p));
+       B.to_PI4_list (B.not_propagation p))) bs in
   let bs'' = List.mapi (fun i p ->
       (printf "Processing %s (2)\n%!" (List.nth nam_benchmark_filenames i);
        run_alternating_passes (List.nth nam_benchmark_dims i) p (total_count p))) bs' in
