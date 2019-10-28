@@ -395,6 +395,16 @@ Qed.
 Lemma X_TOFF_commute : forall {dim} q q1 q2 q3 b1 b2,
   [@App1 _ dim UB_X q] ++ [App3 (UB_CCX b1 b2) q1 q2 q3] =l= [App3 (UB_CCX (if q =? q1 then ¬ b1 else b1) (if q =? q2 then ¬ b2 else b2)) q1 q2 q3] ++ [App1 UB_X q].
 Proof.
+  intros.
+  unfold uc_equiv_l'; simpl.
+  Local Opaque CCX00 CCX01 CCX10 CCX11.
+  destruct b1; destruct b2; bdestruct_all; simpl; unfold uc_equiv_l; simpl; 
+    rewrite <- app_nil_end;
+    rewrite PI4_to_base_ucom_l_app;
+    simpl;
+    rewrite list_to_ucom_append; simpl; 
+    replace (uapp1 (U_R PI 0 PI) q) with (@SQIR.X dim q) by reflexivity; 
+    rewrite SKIP_id_r; subst.
 Admitted.
 
 Lemma propagate_X_preserves_semantics : forall {dim} (l l' : bench_ucom_l dim) q n,
