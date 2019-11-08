@@ -1,5 +1,5 @@
 Require Import UnitarySem.
-Require Import Utilities.
+Require Import core.Utilities.
 Require Import PI4GateSet.
 
 Local Open Scope ucom_scope.
