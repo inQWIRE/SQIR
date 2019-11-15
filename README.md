@@ -31,10 +31,9 @@ Compilation from higher-level languages to SQIR. Compilation from QWIRE is exper
 Current progress on a verified optimizer for SQIR programs.
 
 - Utilities
-  - optimizer/Equivalences.v : Verified circuit equivalences useful for peephole optimizations.
-  - optimizer/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs.
-  - optimizer/PI4GateSet.v : Fixed gate set used in our optimizer. 
-  - optimizer/Utilities.v : Some general transformations useful for implementing optimizations (e.g. replacing a single-qubit subcircuit with an equivalent subcircuit).
+  - optimizer/Equivalences.v : Verified circuit equivalences for peephole optimizations.
+  - optimizer/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs when possible.
+  - optimizer/PI4GateSet.v : Fixed gate set used in our optimizer; includes gate-set-specific proofs for utilities in ListRepresentation.v.
 
 - Optimizations on unitary programs
   - optimizer/GateCancellation.v : 'Single-qubit gate cancellation' and 'two-qubit gate cancellation' optimizations from Nam et al.

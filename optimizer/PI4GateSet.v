@@ -16,16 +16,6 @@ Inductive PI4_Unitary : nat -> Set :=
   | UPI4_PI4 (k : BinInt.Z) : PI4_Unitary 1
   | UPI4_CNOT               : PI4_Unitary 2.
 
-(* We may want to consider adding Toffoli gates to the set. The semantics
-   of the Toffoli gate is shown below. 
-
-Definition TOFF (a b c : nat) :=
-  H c :: CNOT b c :: TDAG c :: CNOT a c :: 
-  T c :: CNOT b c :: TDAG c :: CNOT a c :: 
-  CNOT a b :: TDAG b :: CNOT a b :: 
-  T a :: T b :: T c :: H c :: []. 
-*)
-
 (* Useful shorthands. *)
 Local Open Scope Z_scope.
 Definition UPI4_ID := UPI4_PI4 0.
@@ -47,6 +37,18 @@ Definition PI4_ucom dim := ucom PI4_Unitary dim.
 Definition PI4_ucom_l dim := gate_list PI4_Unitary dim.
 Definition PI4_com dim := com PI4_Unitary dim.
 Definition PI4_com_l dim := com_list PI4_Unitary dim.
+
+(* Used to convert benchmarks to PI4 set. *)
+Definition CCX {dim} a b c : PI4_ucom_l dim :=
+  H c :: CNOT b c :: TDAG c :: CNOT a c :: 
+  T c :: CNOT b c :: TDAG c :: CNOT a c :: 
+  CNOT a b :: TDAG b :: CNOT a b :: 
+  T a :: T b :: T c :: H c :: []. 
+Definition CCZ {dim} a b c : PI4_ucom_l dim :=
+  CNOT b c :: TDAG c :: CNOT a c :: 
+  T c :: CNOT b c :: TDAG c :: CNOT a c :: 
+  CNOT a b :: TDAG b :: CNOT a b :: 
+  T a :: T b :: T c :: []. 
 
 (* Conversion to the base gate set. *)
 Definition PI4_to_base {n} (u : PI4_Unitary n) : base_Unitary n :=
@@ -198,7 +200,7 @@ Proof.
   rewrite <- H; assumption.
 Qed.
 
-(** Commutativity lemmas for ucom list representation. **)
+(** Commutativity lemmas **)
 
 Lemma does_not_reference_commutes_app1 : forall {dim} (l : PI4_ucom_l dim) u q,
   does_not_reference l q = true ->
@@ -372,6 +374,63 @@ Proof.
   rewrite contra in WT.
   contradict WT.
   Msimpl.
+  reflexivity.
+Qed.
+
+(* Soundness of replace_single_qubit_pattern. *)
+
+Definition match_gate {n} (u u' : PI4_Unitary n) : bool :=
+  match u, u' with
+  | UPI4_H, UPI4_H | UPI4_X, UPI4_X | UPI4_CNOT, UPI4_CNOT => true
+  | UPI4_PI4 k, UPI4_PI4 k' => Z.eqb k k'
+  | _, _ => false
+  end.
+
+Lemma match_gate_refl : forall {n} (u u' : PI4_Unitary n), 
+  match_gate u u' = true <-> u = u'. 
+Proof.
+  intros n u u'.
+  split; intros H.
+  - dependent destruction u; dependent destruction u';
+    inversion H0; try reflexivity.
+    apply Z.eqb_eq in H2. subst. reflexivity.    
+  - subst. dependent destruction u'; trivial. 
+    simpl. apply Z.eqb_refl.
+Qed.
+
+Lemma remove_single_qubit_pattern_correct : forall {dim} (l l' : PI4_ucom_l dim) (q : nat) (pat : single_qubit_pattern PI4_Unitary),
+  remove_single_qubit_pattern l q pat match_gate = Some l' ->
+  l =l= (single_qubit_pattern_to_program dim pat q) ++ l'.
+Proof.
+  intros.
+  generalize dependent l'.
+  generalize dependent l.
+  induction pat; intros l l' H.
+  - inversion H; subst. reflexivity.
+  - simpl in H. 
+    destruct (next_single_qubit_gate l q) eqn:nsqg; try discriminate.
+    repeat destruct p.
+    destruct (match_gate a p) eqn:Hmatch; try discriminate.
+    rewrite match_gate_refl in Hmatch; subst.
+    simpl.
+    rewrite <- (IHpat _ _ H). 
+    apply (nsqg_commutes _ _ _ _ _ nsqg).
+Qed.
+
+(* Equivalence up to a phase .
+   (Exact equivalence is also easy to prove, but not used in our development.) *)
+Lemma replace_single_qubit_pattern_sound : forall {dim} (l l' : PI4_ucom_l dim) (q : nat) (pat rep : single_qubit_pattern PI4_Unitary),
+  single_qubit_pattern_to_program dim pat q ≅l≅ single_qubit_pattern_to_program dim rep q ->
+  replace_single_qubit_pattern l q pat rep match_gate = Some l' ->
+  l ≅l≅ l'.
+Proof.
+  intros dim l l' q pat rep H1 H2.
+  unfold replace_single_qubit_pattern in H2.
+  destruct (remove_single_qubit_pattern l q pat) eqn:rem; try discriminate.
+  apply remove_single_qubit_pattern_correct in rem.
+  apply uc_equiv_cong_l in rem.
+  inversion H2; subst.
+  rewrite rem, H1. 
   reflexivity.
 Qed.
 
@@ -574,26 +633,6 @@ Proof.
 Qed.
 
 (** Misc. Utilities **)
-
-(* Boolean equality over gates. *)
-Definition match_gate {n} (u u' : PI4_Unitary n) : bool :=
-  match u, u' with
-  | UPI4_H, UPI4_H | UPI4_X, UPI4_X | UPI4_CNOT, UPI4_CNOT => true
-  | UPI4_PI4 k, UPI4_PI4 k' => Z.eqb k k'
-  | _, _ => false
-  end.
-
-Lemma match_gate_refl : forall {n} (u u' : PI4_Unitary n), 
-  match_gate u u' = true <-> u = u'. 
-Proof.
-  intros n u u'.
-  split; intros H.
-  - dependent destruction u; dependent destruction u';
-    inversion H0; try reflexivity.
-    apply Z.eqb_eq in H2. subst. reflexivity.    
-  - subst. dependent destruction u'; trivial. 
-    simpl. apply Z.eqb_refl.
-Qed.
 
 (* Check whether a (unitary) program is well typed. *)
 Definition PI4_list_well_typed_b dim (l : PI4_ucom_l dim) := uc_well_typed_l_b dim l.

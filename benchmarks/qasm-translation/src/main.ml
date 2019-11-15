@@ -75,7 +75,7 @@ let apply_double_c_gate gate ctrl1 ctrl2 tgt qmap sym_tab =
   let (tid, tidx) = tgt in
   match cidx1, cidx2, tidx with
   | Some ci1, Some ci2, Some ti ->
-     [gate (QbitMap.find (cid1, ci1) qmap) (QbitMap.find (cid2, ci2) qmap) (QbitMap.find (tid, ti) qmap)]
+    gate (QbitMap.find (cid1, ci1) qmap) (QbitMap.find (cid2, ci2) qmap) (QbitMap.find (tid, ti) qmap)
   (* ignore other cases... *)
   | _ -> raise (Failure "ERROR: Not a qubit register!")
 
@@ -87,16 +87,14 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size (fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
-let _CCX m n p = B.App3 (B.UB_CCX (true, true), m, n, p)
-let _CCZ m n p = B.App3 (B.UB_CCZ, m, n, p)
-let _CNOT m n = B.App2 (B.UB_CNOT, m, n)
-let _X    n = B.App1 (B.UB_X,    n)
-let _Z    n = B.App1 (B.UB_Z,    n)
-let _H    n = B.App1 (B.UB_H,    n)
-let _P    n = B.App1 (B.UB_P,    n)
-let _PDAG n = B.App1 (B.UB_PDAG, n)
-let _T    n = B.App1 (B.UB_T,    n)
-let _TDAG n = B.App1 (B.UB_TDAG, n)
+let _CNOT m n = B.App2 (B.UPI4_CNOT, m, n)
+let _X    n = B.App1 (B.UPI4_X,    n)
+let _Z    n = B.App1 (B.uPI4_Z,    n)
+let _H    n = B.App1 (B.UPI4_H,    n)
+let _P    n = B.App1 (B.uPI4_P,    n)
+let _PDAG n = B.App1 (B.uPI4_PDAG, n)
+let _T    n = B.App1 (B.uPI4_T,    n)
+let _TDAG n = B.App1 (B.uPI4_TDAG, n)
 
 let translate_statement s qmap sym_tab =
   match s with
@@ -109,8 +107,8 @@ let translate_statement s qmap sym_tab =
         | Gate (id, _, qargs) ->
           (match StringMap.find_opt id sym_tab with
            | Some TGate _ -> (match id with
-               | "ccz" -> apply_double_c_gate _CCZ (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
-               | "ccx" -> apply_double_c_gate _CCX (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
+               | "ccz" -> apply_double_c_gate B.cCZ (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
+               | "ccx" -> apply_double_c_gate B.cCX (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
                | "cx"  -> apply_c_gate _CNOT (List.hd qargs) (List.nth qargs 1) qmap sym_tab
                | "x"   -> apply_gate _X     (List.hd qargs) qmap sym_tab
                | "z"   -> apply_gate _Z     (List.hd qargs) qmap sym_tab
@@ -228,18 +226,6 @@ let write_qasm_file fname p dim =
    close_out oc;
    printf "Done.\n")
    
-type counts = {h:int; x:int; rz:int; cnot:int; total:int}
-
-let total_count p = (B.count_H_gates p) + (B.count_X_gates p) + (B.count_rotation_gates p) + (B.count_CNOT_gates p)
-
-let get_counts progs : counts list =
-  List.map (fun p -> {h=B.count_H_gates p;
-                      x=B.count_X_gates p;
-                      rz=B.count_rotation_gates p;
-                      cnot=B.count_CNOT_gates p;
-                      total=total_count p})
-    progs
-
 let rec run_alternating_passes num_qbits p prev_c =
   if (B.pI4_list_well_typed_b num_qbits p)  
   then ()
@@ -249,7 +235,7 @@ let rec run_alternating_passes num_qbits p prev_c =
      2 - single qubit gate cancellation
      3 - two qubit gate cancellation
      4 - rotation merging *) 
-  let p' = B.cancel_single_qubit_gates 
+  (*let p' = B.cancel_single_qubit_gates 
            (B.cancel_two_qubit_gates 
             (B.merge_rotations num_qbits 
              (B.cancel_single_qubit_gates 
@@ -258,10 +244,53 @@ let rec run_alternating_passes num_qbits p prev_c =
                 (B.cancel_single_qubit_gates 
                  (B.cancel_two_qubit_gates 
                   (B.hadamard_reduction p)))))))) in
-  let c = total_count p' in
+  let c = List.length p' in
   if c < prev_c
   then (printf "\tRepeating alternating iteration...\n%!";
       run_alternating_passes num_qbits p' c)
+  else p'*)
+  let p1 = B.hadamard_reduction p in
+  let _ = printf "\tHad. red. 1: %d -> %d (%d)\n%!" (List.length p) (List.length p1) ((List.length p) - (List.length p1)) in
+  let p2 = B.cancel_two_qubit_gates p1 in
+  let _ = printf "\tCancel two 1: %d -> %d (%d)\n%!" (List.length p1) (List.length p2) ((List.length p1) - (List.length p2)) in
+  let p3 = B.cancel_single_qubit_gates p2 in
+  let _ = printf "\tCancel sing 1: %d -> %d (%d)\n%!" (List.length p2) (List.length p3) ((List.length p2) - (List.length p3))in
+  let p4 = B.cancel_two_qubit_gates p3 in
+  let _ = printf "\tCancel two 2: %d -> %d (%d)\n%!" (List.length p3) (List.length p4) ((List.length p3) - (List.length p4))in
+  let p5 = B.hadamard_reduction p4 in
+  let _ = printf "\tHad. red. 2: %d -> %d (%d)\n%!" (List.length p4) (List.length p5) ((List.length p4) - (List.length p5)) in
+  let p6 = B.cancel_single_qubit_gates p5 in
+  let _ = printf "\tCancel sing 2: %d -> %d (%d)\n%!" (List.length p5) (List.length p6) ((List.length p5) - (List.length p6)) in
+  let p7 = B.merge_rotations num_qbits p6 in
+  let _ = printf "\tMerge rotations 1: %d -> %d (%d)\n%!" (List.length p6) (List.length p7) ((List.length p6) - (List.length p7)) in
+  let p8 = B.cancel_two_qubit_gates p7 in
+  let _ = printf "\tCancel two 3: %d -> %d (%d)\n%!" (List.length p7) (List.length p8) ((List.length p7) - (List.length p8)) in
+  let p9 = B.cancel_single_qubit_gates p8 in
+  let _ = printf "\tCancel single 3: %d -> %d (%d)\n\n\n%!" (List.length p8) (List.length p9) ((List.length p8) - (List.length p9)) in
+  let _ = ignore(prev_c) in
+  p9
+
+(* exclude rotation merging for the slower benchmarks *)
+let rec run_alternating_passes_cheap num_qbits p prev_c =
+  if (B.pI4_list_well_typed_b num_qbits p)  
+  then ()
+  else printf "Dimension check failed - optimization results are invalid!\n%!";
+  (* 1, 3, 2, 3, 1, 2, 3, 2 
+     1 - hadamard reduction
+     2 - single qubit gate cancellation
+     3 - two qubit gate cancellation *) 
+  let p' = B.cancel_single_qubit_gates 
+           (B.cancel_two_qubit_gates 
+            (B.cancel_single_qubit_gates 
+             (B.hadamard_reduction 
+              (B.cancel_two_qubit_gates 
+               (B.cancel_single_qubit_gates 
+                (B.cancel_two_qubit_gates 
+                 (B.hadamard_reduction p))))))) in
+  let c = List.length p' in
+  if c < prev_c
+  then (printf "\tRepeating alternating iteration...\n%!";
+      run_alternating_passes_cheap num_qbits p' c)
   else p'
 
 (* write the results of running optimizations on the Nam benchmarks to file f *)
@@ -269,57 +298,26 @@ let run_on_nam_benchmarks f =
   let bs = parse_nam_benchmarks () in
   let bs' = List.mapi (fun i p ->
       (printf "Processing %s (1)\n%!" (List.nth nam_benchmark_filenames i);
-       printf "%d -> %d\n%!" (List.length p) (List.length (B.not_propagation p));
-       B.to_PI4_list (B.not_propagation p))) bs in
+       let p' = B.not_propagation p in
+       printf "%d -> %d\n%!" (List.length p) (List.length p');
+       p')) bs in
   let bs'' = List.mapi (fun i p ->
       (printf "Processing %s (2)\n%!" (List.nth nam_benchmark_filenames i);
-       run_alternating_passes (List.nth nam_benchmark_dims i) p (total_count p))) bs' in
-  let counts = get_counts bs'' in
+       run_alternating_passes (List.nth nam_benchmark_dims i) p (List.length p))) bs' in
   let oc = open_out f in
-   (ignore(List.mapi (fun i x -> fprintf oc "%s,%d\n"
+   (ignore(List.mapi (fun i p -> fprintf oc "%s,%d\n"
                         (List.nth nam_benchmark_filenames i)
-                        x.total ;
-                        write_qasm_file ((List.nth nam_benchmark_filenames i) ^ "_opt") (List.nth bs'' i) (List.nth nam_benchmark_dims i))
-            counts);
+                        (List.length p);
+                        write_qasm_file ((List.nth nam_benchmark_filenames i) ^ "_opt") p (List.nth nam_benchmark_dims i))
+            bs'');
    close_out oc)
  
-(* special function to run limited opts. on gf2^64 *)
-(*let rec run_limited_alternating_passes num_qbits p prev_c =
-  if (B.pI4_list_well_typed_b num_qbits p)  
-  then ()
-  else printf "Dimension check failed - optimization results are invalid!\n%!";
-  let p' = B.hadamard_reduction (B.cancel_gates p) in
-  let c = total_count p' in
-  if c < prev_c
-  then (printf "\tRepeating alternating iteration...\n%!";
-      run_limited_alternating_passes num_qbits p' c)
-  else p'
-let run_on_gf2_64 () =
-  let p = get_gate_list "../gf2^64_mult.qasm" in
-  let p' = run_limited_alternating_passes 192 p (total_count p) in
-  printf "Final gate count: %d\n" (total_count p')
+(* run a cheaper (but less effective) version of optimizations on file f *)
+let run_on_nam_benchmarks_slow f num_qbits =
+  let p = get_gate_list f in
+  let _ = printf "Initial gate count: %d\n%!" (List.length p) in
+  let p' = B.not_propagation p in
+  let p'' = run_alternating_passes_cheap num_qbits p' (List.length p') in
+  printf "Final gate count: %d\n%!" (List.length p'')
 
-let percent_diff l1 l2 = List.mapi (fun i x -> (float (x - (List.nth l2 i))) /. (float x)) l1
-let average l = (List.fold_left ( +. ) 0.0 l) /. (float (List.length l))
-
-(* print the results of running optimizations on the random benchmarks in directory d,
-   assumes all benchmarks use nq qubits *)
-let run_on_random_benchmarks d nq =
-  let fs = Array.to_list (Array.map (fun f -> d ^ "/" ^ f) (Sys.readdir d)) in
-  let bs = List.map get_gate_list fs in
-  let bs' = List.mapi (fun i p ->
-      (printf "Processing %s\n%!" (List.nth fs i);
-       run_alternating_passes nq p (total_count p))) bs in
-  let initial = get_counts bs in
-  let final = get_counts bs' in
-  let h_red = percent_diff (List.map (fun x -> x.h) initial) (List.map (fun x -> x.h) final) in
-  let x_red = percent_diff (List.map (fun x -> x.x) initial) (List.map (fun x -> x.x) final) in
-  let u1_red = percent_diff (List.map (fun x -> x.rz) initial) (List.map (fun x -> x.rz) final) in
-  let cnot_red = percent_diff (List.map (fun x -> x.cnot) initial) (List.map (fun x -> x.cnot) final) in
-  (printf "Results:\n";
-   printf "Gate h: average reduction = %f\n" (average h_red);
-   printf "Gate x: average reduction = %f\n" (average x_red);
-   printf "Gate rz: average reduction = %f\n" (average u1_red);
-   printf "Gate cnot: average reduction = %f\n" (average cnot_red))
-*)
    

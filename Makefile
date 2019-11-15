@@ -63,10 +63,10 @@ mapper/MappingExamples.vo: mapper/SimpleMapping.vo
 optimizer/Equivalences.vo: optimizer/Equivalences.v core/UnitarySem.vo
 	coqc $(COQ_OPTS) optimizer/Equivalences.v
 
-optimizer/GateCancellation.vo: optimizer/GateCancellation.v optimizer/Equivalences.vo optimizer/Utilities.vo
+optimizer/GateCancellation.vo: optimizer/GateCancellation.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
 	coqc $(COQ_OPTS) optimizer/GateCancellation.v
 
-optimizer/HadamardReduction.vo: optimizer/HadamardReduction.v optimizer/Equivalences.vo optimizer/Utilities.vo
+optimizer/HadamardReduction.vo: optimizer/HadamardReduction.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
 	coqc $(COQ_OPTS) optimizer/HadamardReduction.v
 
 optimizer/ListRepresentation.vo: optimizer/ListRepresentation.v lib/QWIRE/Proportional.vo optimizer/Equivalences.vo core/DensitySem.vo
@@ -86,9 +86,6 @@ optimizer/RemoveZRotationBeforeMeasure.vo: optimizer/RemoveZRotationBeforeMeasur
 
 optimizer/RotationMerging.vo: optimizer/RotationMerging.v optimizer/PI4GateSet.vo core/Utilities.vo
 	coqc $(COQ_OPTS) optimizer/RotationMerging.v
-
-optimizer/Utilities.vo: optimizer/Utilities.v optimizer/PI4GateSet.vo
-	coqc $(COQ_OPTS) optimizer/Utilities.v
 
 # Built by 'make qasm'
 

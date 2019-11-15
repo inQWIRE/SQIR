@@ -5,7 +5,6 @@ Require Import optimizer.GateCancellation.
 Require Import optimizer.HadamardReduction.
 Require Import optimizer.RotationMerging.
 Require Import optimizer.NotPropagation.
-Require Import optimizer.Utilities.
 
 (* General utilies for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -28,6 +27,12 @@ Extraction Implicit last_single_qubit_gate [dim].
 Extraction Implicit next_two_qubit_gate [dim].
 Extraction Implicit does_not_reference_appl [dim].
 Extraction Implicit does_not_reference [dim].
+Extraction Implicit single_qubit_pattern_to_program [U dim].
+Extraction Implicit remove_single_qubit_pattern [U dim].
+Extraction Implicit replace_single_qubit_pattern [U dim].
+Extraction Implicit try_rewrites [U dim].
+Extraction Implicit try_rewrites2 [U dim].
+Extraction Implicit propagate [U dim].
 
 (* From PI4GateSet.v *)
 Extraction Implicit T [dim].
@@ -38,19 +43,13 @@ Extraction Implicit Z [dim].
 Extraction Implicit H [dim].
 Extraction Implicit X [dim].
 Extraction Implicit CNOT [dim].
+Extraction Implicit CCX [dim].
+Extraction Implicit CCZ [dim].
 Extraction Implicit match_gate [n].
 Extraction Implicit count_H_gates [dim].
 Extraction Implicit count_X_gates [dim].
 Extraction Implicit count_rotation_gates [dim].
 Extraction Implicit count_CNOT_gates [dim].
-
-(* From Utilities.v *)
-Extraction Implicit single_qubit_pattern_to_program [dim].
-Extraction Implicit remove_single_qubit_pattern [dim].
-Extraction Implicit replace_single_qubit_pattern [dim].
-Extraction Implicit try_rewrites [dim].
-Extraction Implicit try_rewrites2 [dim].
-Extraction Implicit propagate [dim].
 
 (* From HadamardReduction.v *)
 Extraction Implicit apply_H_equivalence1 [dim].
@@ -69,8 +68,8 @@ Extraction Implicit Rz_commute_rule3 [dim].
 Extraction Implicit Rz_commute_rules [dim].
 Extraction Implicit Rz_cancel_rule [dim].
 Extraction Implicit H_cancel_rule [dim].
-Extraction Implicit X_commute_rule [dim].
-Extraction Implicit X_cancel_rule [dim].
+Extraction Implicit GateCancellation.X_commute_rule [dim].
+Extraction Implicit GateCancellation.X_cancel_rule [dim].
 Extraction Implicit CNOT_commute_rule1 [dim].
 Extraction Implicit CNOT_commute_rule2 [dim].
 Extraction Implicit CNOT_commute_rule3 [dim].
@@ -90,27 +89,19 @@ Extraction Implicit cancel_two_qubit_gates [dim].
 Extraction Implicit next_gate [dim].
 Extraction Implicit get_subcircuit' [dim].
 Extraction Implicit get_subcircuit [dim].
-Extraction Implicit propagate_X_gate [dim].
+Extraction Implicit RotationMerging.propagate_X_gate [dim].
 Extraction Implicit propagate_X_gates' [dim].
 Extraction Implicit propagate_X_gates [dim].
 
 (* From NotPropagation.v *)
-Extraction Implicit CCX00 [dim].
-Extraction Implicit CCX01 [dim].
-Extraction Implicit CCX10 [dim].
-Extraction Implicit CCX11 [dim].
-Extraction Implicit CCZ [dim].
-Extraction Implicit CCZ_to_CCX' [dim].
-Extraction Implicit CCZ_to_CCX [dim].
-Extraction Implicit to_PI4_list [dim].
 Extraction Implicit NotPropagation.propagate_X [dim].
+Extraction Implicit NotPropagation.propagate_Z [dim].
 Extraction Implicit not_propagation' [dim].
 Extraction Implicit not_propagation [dim].
 
 (* Perform extraction to the file 'extracted_code.ml'. *)
 Extraction "extracted_code.ml" 
-  count_H_gates count_X_gates count_rotation_gates count_CNOT_gates 
-  PI4_list_well_typed_b to_PI4_list
+  PI4_list_well_typed_b CCX CCZ
   UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG 
   hadamard_reduction 
   merge_rotations 

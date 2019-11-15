@@ -1,7 +1,6 @@
 Require Import UnitarySem.
 Require Import Equivalences.
 Require Import PI4GateSet.
-Require Import optimizer.Utilities.
 Require Import List.
 Open Scope ucom.
 
@@ -454,11 +453,13 @@ Qed.
 Lemma propagate_PI4_sound : forall {dim} k (l : PI4_ucom_l dim) q n l',
   q < dim ->
   propagate_PI4 k l q n = Some l' ->
-  l' =l= App1 (UPI4_PI4 k) q :: l.
+  App1 (UPI4_PI4 k) q :: l =l= l'.
 Proof.
   unfold propagate_PI4.
   intros dim k l q n l' Hq res.
   eapply propagate_preserves_semantics; try apply res.
+  apply uc_equiv_l_rel.
+  apply uc_app_mor_Proper.
   - clear l l' res.
     intros rules Hin l l' res.
     destruct_In; subst.
@@ -493,7 +494,7 @@ Proof.
       inversion res; subst.
       rewrite nsqg1, ntqg, nsqg2.
       rewrite cons_to_app.
-      rewrite (cons_to_app (App1 (UPI4_PI4 k) n) (_ ++ g2 ++ _)).
+      rewrite (cons_to_app (H n)).
       repeat rewrite app_assoc.
       rewrite <- (app_assoc _ _ g2).
       rewrite 2 (does_not_reference_commutes_app1 _ UPI4_H _ dnr).
@@ -504,7 +505,6 @@ Proof.
       repeat rewrite app_assoc.
       do 2 (apply uc_app_congruence; try reflexivity).
       simpl.
-      symmetry.
       apply Rz_commutes_with_H_CNOT_H.
     + unfold Rz_commute_rule2 in res.
       destruct (next_two_qubit_gate l q) eqn:ntqg1; try discriminate.
@@ -534,9 +534,9 @@ Proof.
       apply uc_app_congruence; try reflexivity. 
       repeat rewrite <- app_assoc.    
       rewrite <- (does_not_reference_commutes_app2 _ UPI4_CNOT _ _ dnr3 dnr2).
-      rewrite cons_to_app.
-      rewrite (cons_to_app (App1 (UPI4_PI4 k0) n1)).
-      rewrite (app_assoc _ _ g4).
+      rewrite (cons_to_app (CNOT _ _)).
+      rewrite (cons_to_app (App1 (UPI4_PI4 _) _) g4).
+      rewrite (app_assoc [CNOT _ _] _ g4).
       rewrite <- (app_assoc _ g4).
       rewrite (app_assoc g4).
       rewrite <- (does_not_reference_commutes_app2 _ UPI4_CNOT _ _ dnr3 dnr2).
@@ -545,7 +545,6 @@ Proof.
       repeat rewrite app_assoc.    
       apply uc_app_congruence; try reflexivity.
       simpl.
-      symmetry.
       apply Rz_commutes_with_CNOT_Rz_CNOT.
     + unfold Rz_commute_rule3 in res.
       destruct (next_two_qubit_gate l q) eqn:ntqg; try discriminate.
@@ -562,7 +561,6 @@ Proof.
       repeat rewrite <- app_assoc.
       apply uc_app_congruence; try reflexivity. 
       simpl.
-      symmetry.
       apply Rz_commutes_with_CNOT.
 Qed.
 
@@ -574,7 +572,6 @@ Lemma propagate_PI4_WT : forall {dim} k (l : PI4_ucom_l dim) q n l',
 Proof.
   intros.
   specialize (propagate_PI4_sound k l q n l' H H1) as H2.
-  symmetry in H2.
   apply (uc_equiv_l_implies_WT _ _ H2).
   constructor; assumption.
 Qed.
@@ -582,11 +579,13 @@ Qed.
 Lemma propagate_H_sound : forall {dim} (l : PI4_ucom_l dim) q l',
   q < dim ->
   propagate_H l q = Some l' ->
-  l' =l= App1 UPI4_H q :: l.
+  App1 UPI4_H q :: l =l= l'.
 Proof. 
   unfold propagate_H.
   intros dim l q l' Hq res.
   eapply propagate_preserves_semantics; try apply res.
+  apply uc_equiv_l_rel.
+  apply uc_app_mor_Proper.
   - clear l l' res.
     intros rules Hin l l' res.
     destruct_In; subst.
@@ -610,7 +609,6 @@ Lemma propagate_H_WT : forall {dim} (l : PI4_ucom_l dim) q l',
 Proof.
   intros.
   specialize (propagate_H_sound l q l' H H1) as H2.
-  symmetry in H2.
   apply (uc_equiv_l_implies_WT _ _ H2).
   constructor; assumption.
 Qed.
@@ -618,11 +616,13 @@ Qed.
 Lemma propagate_X_sound : forall {dim} (l : PI4_ucom_l dim) q n l',
   q < dim ->
   propagate_X l q n = Some l' ->
-  l' =l= (App1 UPI4_X q :: l).
+  (App1 UPI4_X q :: l) =l= l'.
 Proof.
   unfold propagate_X.
   intros dim l q n l' Hq res.
   eapply propagate_preserves_semantics; try apply res.
+  apply uc_equiv_l_rel.
+  apply uc_app_mor_Proper.
   - clear l l' res.
     intros rules Hin l l' res.
     destruct_In; subst.
@@ -650,7 +650,6 @@ Proof.
     repeat rewrite <- app_assoc.
     apply uc_app_congruence; try reflexivity.
     simpl.
-    symmetry.
     apply X_commutes_with_CNOT.
 Qed.
 
@@ -662,7 +661,6 @@ Lemma propagate_X_WT : forall {dim} (l : PI4_ucom_l dim) q n l',
 Proof.
   intros.
   specialize (propagate_X_sound l q n l' H H1) as H2.
-  symmetry in H2.
   apply (uc_equiv_l_implies_WT _ _ H2).
   constructor; assumption.
 Qed.
@@ -672,11 +670,13 @@ Lemma propagate_CNOT_sound : forall {dim} (l : PI4_ucom_l dim) q1 q2 n l',
   q2 < dim -> 
   q1 <> q2 ->
   propagate_CNOT l q1 q2 n = Some l' ->
-  l' =l= App2 UPI4_CNOT q1 q2 :: l.
+  App2 UPI4_CNOT q1 q2 :: l =l= l'.
 Proof.
   unfold propagate_CNOT.
   intros dim l q1 q2 n l' Hq1 Hq2 Hq1q2 res.
   eapply propagate_preserves_semantics; try apply res.
+  apply uc_equiv_l_rel.
+  apply uc_app_mor_Proper.
   - clear l l' res.
     intros rules Hin l l' res.
     destruct_In; subst.
@@ -710,6 +710,7 @@ Proof.
       repeat rewrite app_assoc.
       do 2 (apply uc_app_congruence; try reflexivity).
       simpl.
+      symmetry.
       apply Rz_commutes_with_CNOT.
     + unfold CNOT_commute_rule2 in res.
       destruct (next_two_qubit_gate l q2) eqn:ntqg; try discriminate.
@@ -759,9 +760,9 @@ Proof.
       rewrite nsqg1.
       rewrite ntqg.
       rewrite nsqg2.
-      rewrite (cons_to_app (H n0)).
-      rewrite (cons_to_app (CNOT n0 n)).
-      rewrite (cons_to_app (App2 UPI4_CNOT q1 n0) (_ ++ g2 ++ _)).
+      rewrite (cons_to_app (H _)).
+      rewrite (cons_to_app (CNOT _ _)).
+      rewrite (cons_to_app (App2 UPI4_CNOT _ _) (_ ++ g2 ++ _)).
       repeat rewrite app_assoc.
       do 2 (apply uc_app_congruence; try reflexivity). 
       rewrite (does_not_reference_commutes_app1 _ UPI4_H _ dnr1).
@@ -772,7 +773,6 @@ Proof.
       repeat rewrite <- app_assoc.
       apply uc_app_congruence; try reflexivity. 
       simpl.
-      symmetry.
       apply CNOT_commutes_with_H_CNOT_H.
       assumption.
 Qed.
@@ -787,7 +787,6 @@ Lemma propagate_CNOT_WT : forall {dim} (l : PI4_ucom_l dim) q1 q2 n l',
 Proof.
   intros.
   specialize (propagate_CNOT_sound l q1 q2 n l' H H0 H1 H3) as H4.
-  symmetry in H4.
   apply (uc_equiv_l_implies_WT _ _ H4).
   constructor; assumption.
 Qed.
@@ -805,17 +804,17 @@ Proof.
     destruct g; inversion WT; subst.
     - dependent destruction p.
       + destruct (propagate_H l n0) eqn:prop.
-        rewrite <- (propagate_H_sound _ _ _ H1 prop).
+        rewrite (propagate_H_sound _ _ _ H1 prop).
         apply IHn.
         apply (propagate_H_WT _ _ _ H1 H3 prop).
         rewrite IHn; try reflexivity; try assumption.
       + destruct (propagate_X l n0 (length l)) eqn:prop.
-        rewrite <- (propagate_X_sound _ _ _ _ H1 prop).
+        rewrite (propagate_X_sound _ _ _ _ H1 prop).
         apply IHn.
         apply (propagate_X_WT _ _ _ _ H1 H3 prop).
         rewrite IHn; try reflexivity; try assumption.
       + destruct (propagate_PI4 k l n0 (length l)) eqn:prop.
-        rewrite <- (propagate_PI4_sound _ _ _ _ _ H1 prop).
+        rewrite (propagate_PI4_sound _ _ _ _ _ H1 prop).
         apply IHn.
         apply (propagate_PI4_WT _ _ _ _ _ H1 H3 prop).
         rewrite IHn; try reflexivity; try assumption.
@@ -838,7 +837,7 @@ Proof.
     - rewrite IHn; try reflexivity; try assumption.
     - dependent destruction p.
       destruct (propagate_CNOT l n0 n1 (length l)) eqn:prop.
-      rewrite <- (propagate_CNOT_sound _ _ _ _ _ H3 H4 H5 prop).
+      rewrite (propagate_CNOT_sound _ _ _ _ _ H3 H4 H5 prop).
       apply IHn.
       apply (propagate_CNOT_WT _ _ _ _ _ H3 H4 H5 H6 prop).
       rewrite IHn; try reflexivity; try assumption. 

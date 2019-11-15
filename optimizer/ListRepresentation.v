@@ -1,19 +1,21 @@
-Require Import Setoid.
-Require Import Coq.Reals.ROrderedType.
-
-Require Import QWIRE.Proportional.
-Require Import optimizer.Equivalences.
-Require Import core.DensitySem.
-
-Require Export List.
+Require Export Coq.Classes.Equivalence.
+Require Export Coq.Classes.Morphisms.
+Require Export core.UnitarySem. 
+Require Export core.DensitySem. 
 
 Local Open Scope ucom_scope.
 Local Close Scope R_scope.
+Local Open Scope signature_scope.
 
 (* This file contains utilities for manipulating SQIR programs to make implementing 
    transformations easier. The primary contribution is a 'list of gates' 
    representation for unitary programs and a 'list of lists' representation for
    non-unitary programs.
+
+   This file also cintains utilities for writing optimizations, including:
+   - given a set of rewrite rules, try to apply each until one succeeds
+   - propagate a gate right and cancel when possible 
+   - replace a (one-qubit) subcircuit with an equivalent subcircuit
 
    TODO: We've been thinking for a while about adding a DAG representation of
    circuits. This would be useful for implementing optimizations because the
@@ -665,6 +667,203 @@ Proof.
   all: apply (inb_false qs); assumption.
 Qed.
 
+(* Given a list of rewrite rules, try to apply each rule until one succeeds. 
+   Return None if no rewrite succeeds. In the proof we keep 'P' abstract for 
+   maximum generality. *)
+Fixpoint try_rewrites {U dim} l (rules : list (gate_list U dim -> option (gate_list U dim))) :=
+  match rules with
+  | [] => None
+  | h :: t => match (h l) with
+            | Some l' => Some l'
+            | None => try_rewrites l t
+            end
+  end.
+
+Lemma try_rewrites_preserves_property : 
+  forall {U dim} (l l' : gate_list U dim) 
+            (P : gate_list U dim -> gate_list U dim -> Prop) 
+            rules,
+    (forall r, List.In r rules -> forall l l', r l = Some l' -> P l l') ->
+    try_rewrites l rules = Some l' ->
+    P l l'.
+Proof.
+  intros U dim l l' P rules Hrules res.
+  induction rules. 
+  inversion res.
+  simpl in res.
+  destruct (a l) eqn:al. 
+  inversion res; subst.
+  eapply Hrules. left. reflexivity. assumption.
+  apply IHrules. 
+  intros.
+  eapply Hrules. right. apply H.
+  assumption. assumption.
+Qed.
+
+(* 'try_rewrites' with rules that return a pair of lists. *)
+Fixpoint try_rewrites2 {U dim} l (rules : list (gate_list U dim -> option (gate_list U dim * gate_list U dim))) :=
+  match rules with
+  | [] => None
+  | h :: t => match (h l) with
+            | Some l' => Some l'
+            | None => try_rewrites2 l t
+            end
+  end.
+
+Lemma try_rewrites2_preserves_property :
+  forall {U dim} (l l1 l2 : gate_list U dim) 
+            (P : gate_list U dim -> (gate_list U dim * gate_list U dim) -> Prop) 
+            rules,
+    (forall r, List.In r rules -> forall l l1 l2, r l = Some (l1,l2) -> P l (l1,l2)) ->
+    try_rewrites2 l rules = Some (l1,l2) ->
+    P l (l1,l2).
+Proof.
+  intros U dim l l1 l2 P rules Hrules res.
+  induction rules. 
+  inversion res.
+  simpl in res.
+  destruct (a l) eqn:al. 
+  inversion res; subst.
+  eapply Hrules. left. reflexivity. assumption.
+  apply IHrules. 
+  intros.
+  eapply Hrules. right. apply H.
+  assumption. assumption.
+Qed.
+
+(* Try to cancel a gate using a set of cancellation rules, allowing for
+   commuting subcircuits described by a set of commutation rules. If
+   no cancellation is found, return None. Otherwise return Some l'
+   where l' is the modified list.
+   
+
+   l             : input list
+   commute_rules : rules for commuting the gate right
+   cancel_rules  : rules for canceling the gate
+   n             : max number of iterations (we usually want n = length l)
+
+   In the soundness proof below we take 'eq' as a parameter to allow for 
+   equivalence over different gate sets.
+*)
+Fixpoint propagate {U dim} (l : gate_list U dim) commute_rules cancel_rules n :=
+  match n with
+  | O => None
+  | S n' => 
+      match try_rewrites l cancel_rules with
+      | Some l' => Some l'
+      | None => match try_rewrites2 l commute_rules with
+               | Some (l1, l2) => 
+                    match propagate l2 commute_rules cancel_rules n' with
+                    | Some l2' => Some (l1 ++ l2')
+                    | None => None
+                    end
+                | None => None
+                end
+      end
+  end.
+
+Definition cancel_rules_correct {U dim} (g : gate_app U dim) rules
+    (eq : gate_list U dim -> gate_list U dim -> Prop) :=
+  forall r, 
+  List.In r rules ->
+  forall l l', (r l = Some l' -> eq (g :: l) l').
+
+Definition commute_rules_correct {U dim} (g : gate_app U dim) rules
+    (eq : gate_list U dim -> gate_list U dim -> Prop)  :=
+  forall r, 
+  List.In r rules ->
+  forall l l1 l2, (r l = Some (l1, l2) -> eq (g :: l) (l1 ++ [g] ++ l2)).
+
+(* Useful for handling *_rules_correct preconditions. *)
+Ltac destruct_In :=
+  repeat match goal with
+  | H : List.In _ _ |- _ => inversion H; clear H
+  end.
+
+Lemma propagate_preserves_semantics : 
+  forall {U dim} (l : gate_list U dim) 
+    commute_rules cancel_rules n l' g eq 
+   `{Equivalence (gate_list U dim) eq} 
+   `{Proper _ (eq ==> eq ==> eq) (@app (gate_app U dim))},
+  cancel_rules_correct g cancel_rules eq ->
+  commute_rules_correct g commute_rules eq ->
+  propagate l commute_rules cancel_rules n = Some l' ->
+  eq (g :: l) l'.
+Proof.
+  intros U dim l com can n l' g eq equiv_pf mor_pf Hcan Hcom res.
+  generalize dependent l'.
+  generalize dependent l.
+  induction n; intros l l' res; try discriminate.
+  simpl in res.
+  destruct (try_rewrites l can) eqn:rewr1.
+  inversion res; subst.
+  remember (fun l l' => eq (g :: l) l') as P.
+  replace (eq (g :: l) l') with (P l l') by (subst; reflexivity).
+  apply try_rewrites_preserves_property with (rules:=can).
+  2: assumption.
+  intros.
+  specialize (Hcan r H _ _ H0). subst. assumption.
+  destruct (try_rewrites2 l com) eqn:rewr2; try discriminate.
+  destruct p.
+  destruct (propagate g1 com can n) eqn:prop; try discriminate.
+  inversion res; subst.
+  apply IHn in prop.
+  rewrite <- prop.
+  remember (fun l (p : gate_list U dim * gate_list U dim) => 
+              let (l1,l2) := p in
+              eq (g :: l) (l1 ++ [g] ++ l2)) as P.
+  replace (eq (g :: l) (g0 ++ g :: g1)) with (P l (g0,g1)) by (subst; reflexivity).
+  apply try_rewrites2_preserves_property with (rules:=com).
+  2: assumption.
+  intros.    
+  specialize (Hcom r H _ _ _ H0). subst. assumption.
+Qed.  
+
+(* Rewrite with a single-qubit circuit equivalence.
+
+   We restrict to single-qubit circuit equivalences for now because dealing
+   with multi-qubit patterns is tedious with the list representation. For
+   example, say that we are looking for the sub-circuit:
+       C = [ H 0; H 2; CNOT 1 2; X 0 ]
+   When searching for this sub-circuit, we need to keep in mind that these
+   gates may be interspersed among other gates in the circuit in any order
+   that respects dependence relationships. For example, the following program
+   contains C, although it may not be obvious from casual inspection.
+       [X 3; H 2; H 0; X 0; CNOT 0 3; CNOT 1 2]
+*)
+
+Definition single_qubit_pattern (U : nat -> Set) := list (U 1).
+
+Fixpoint single_qubit_pattern_to_program {U} dim (pat : single_qubit_pattern U) q 
+    : gate_list U dim :=
+  match pat with
+  | [] => []
+  | u :: t => App1 u q :: (single_qubit_pattern_to_program dim t q)
+  end. 
+
+(* If the next sequence of gates applied to qubit q matches 'pat', then remove
+   'pat' from the program. *)
+Fixpoint remove_single_qubit_pattern {U dim} (l : gate_list U dim) (q : nat) (pat : single_qubit_pattern U) (match_gate : U 1 -> U 1 -> bool) : option (gate_list U dim) :=
+  match pat with
+  | [] => Some l
+  | u :: t =>
+      match next_single_qubit_gate l q with
+      | Some (l1, u', l2) =>
+          if match_gate u u'
+          then remove_single_qubit_pattern (l1 ++ l2) q t match_gate
+          else None
+      | _ => None
+      end
+  end.
+
+(* If the next sequence of gates applied to qubit q matches 'pat', then replace
+   'pat' with 'rep'. *)
+Definition replace_single_qubit_pattern {U dim} (l : gate_list U dim) (q : nat) (pat rep : single_qubit_pattern U) match_gate : option (gate_list U dim) :=
+  match (remove_single_qubit_pattern l q pat match_gate) with
+  | Some l' => Some ((single_qubit_pattern_to_program dim rep q) ++ l')
+  | None => None
+  end.
+
 (** List-of-lists representation for non-unitary programs. **)
 
 Local Open Scope com_scope.
@@ -957,5 +1156,3 @@ Fixpoint canonicalize_com_l' {U dim} (l : com_list U dim) n : com_list U dim :=
 Definition canonicalize_com_l {U dim} (l : com_list U dim) :=
   canonicalize_com_l' l (count_ops l).
 
-(* It's easy enough to prove (canonicalize_com_l l ≡ l); you just need a way to translate from U 
-   into base_Unitary. *)

@@ -1,7 +1,6 @@
 Require Import UnitarySem.
 Require Import Equivalences.
 Require Import PI4GateSet.
-Require Import optimizer.Utilities.
 Require Import List.
 Open Scope ucom.
 
@@ -28,12 +27,14 @@ Open Scope ucom.
 Definition apply_H_equivalence1 {dim} q (l : PI4_ucom_l dim) := 
   replace_single_qubit_pattern l q 
     (UPI4_H  :: UPI4_P :: UPI4_H :: []) 
-    (UPI4_PDAG :: UPI4_H :: UPI4_PDAG :: []).
+    (UPI4_PDAG :: UPI4_H :: UPI4_PDAG :: [])
+    match_gate.
 
 Definition apply_H_equivalence2 {dim} q (l : PI4_ucom_l dim) := 
   replace_single_qubit_pattern l q 
     (UPI4_H :: UPI4_PDAG :: UPI4_H :: []) 
-    (UPI4_P :: UPI4_H :: UPI4_P :: []).
+    (UPI4_P :: UPI4_H :: UPI4_P :: [])
+    match_gate.
 
 Definition apply_H_equivalence3 {dim} q (l : PI4_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
@@ -80,13 +81,13 @@ Definition apply_H_equivalence3 {dim} q (l : PI4_ucom_l dim) :=
   end.
 
 Definition apply_H_equivalence4 {dim} q (l : PI4_ucom_l dim) :=
-  match (remove_single_qubit_pattern l q (UPI4_H :: UPI4_P :: [])) with
+  match (remove_single_qubit_pattern l q (UPI4_H :: UPI4_P :: []) match_gate) with
   | None => None
   | Some l1 =>
       match (next_two_qubit_gate l1 q) with
       | Some (l2, UPI4_CNOT, q1, q2, l3) =>
           if q =? q2 
-          then match (remove_single_qubit_pattern l3 q (UPI4_PDAG :: UPI4_H :: [])) with
+          then match (remove_single_qubit_pattern l3 q (UPI4_PDAG :: UPI4_H :: []) match_gate) with
                | None => None
                | Some l4 =>
                    Some (l2 ++ (PDAG q2 :: CNOT q1 q2 :: P q2 :: []) ++ l4)
@@ -97,12 +98,12 @@ Definition apply_H_equivalence4 {dim} q (l : PI4_ucom_l dim) :=
   end.
 
 Definition apply_H_equivalence5 {dim} q (l : PI4_ucom_l dim) :=
-  match (remove_single_qubit_pattern l q (UPI4_H :: UPI4_PDAG :: [])) with
+  match (remove_single_qubit_pattern l q (UPI4_H :: UPI4_PDAG :: []) match_gate) with
   | Some l1 =>
       match (next_two_qubit_gate l1 q) with
       | Some (l2, UPI4_CNOT, q1, q2, l3) =>
           if q =? q2 
-          then match (remove_single_qubit_pattern l3 q (UPI4_P :: UPI4_H :: [])) with
+          then match (remove_single_qubit_pattern l3 q (UPI4_P :: UPI4_H :: []) match_gate) with
                | Some l4 =>
                    Some (l2 ++ (P q2 :: CNOT q1 q2 :: PDAG q2 :: []) ++ l4)
                | _ => None
@@ -162,7 +163,7 @@ Lemma apply_H_equivalence1_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   l ≅l≅ l'. 
 Proof.
   intros.
-  apply replace_single_qubit_pattern_sound' in H; try assumption.
+  apply replace_single_qubit_pattern_sound in H; try assumption.
   exists (PI / 4)%R.
   destruct dim.
   simpl; unfold pad. gridify.
@@ -181,7 +182,7 @@ Lemma apply_H_equivalence2_sound : forall {dim} (l l' : PI4_ucom_l dim) q,
   l ≅l≅ l'.
 Proof. 
   intros.
-  eapply replace_single_qubit_pattern_sound'; try apply H.
+  eapply replace_single_qubit_pattern_sound; try apply H.
   exists (- PI / 4)%R.
   destruct dim.
   simpl; unfold pad. gridify.
@@ -308,12 +309,12 @@ Proof.
   unfold apply_H_equivalence4 in H.
   destruct (remove_single_qubit_pattern l q (UPI4_H :: UPI4_P :: [])) eqn:rsqp1; try discriminate.
   apply remove_single_qubit_pattern_correct in rsqp1.
-  destruct (next_two_qubit_gate p q) eqn:ntqg; try discriminate.
-  repeat destruct p0; dependent destruction p0.
+  destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
+  repeat destruct p; dependent destruction p.
   specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
   apply ntqg_preserves_structure in ntqg; subst.
   bdestruct (q =? n); try discriminate.
-  destruct (remove_single_qubit_pattern g q (UPI4_PDAG :: UPI4_H :: [])) eqn:rsqp2; try discriminate.
+  destruct (remove_single_qubit_pattern g0 q (UPI4_PDAG :: UPI4_H :: [])) eqn:rsqp2; try discriminate.
   apply remove_single_qubit_pattern_correct in rsqp2.
   inversion H; subst.
   simpl in *.
@@ -326,7 +327,7 @@ Proof.
   rewrite (does_not_reference_commutes_app1 _ UPI4_H _ dnr).
   clear.
   repeat rewrite <- app_assoc; simpl.
-  rewrite <- (app_nil_l p).
+  rewrite <- (app_nil_l g).
   repeat rewrite app_comm_cons.
   do 2 (apply uc_app_congruence; try reflexivity).
   unfold uc_equiv_l; simpl.
@@ -350,12 +351,12 @@ Proof.
   unfold apply_H_equivalence5 in H.
   destruct (remove_single_qubit_pattern l q (UPI4_H :: UPI4_PDAG :: [])) eqn:rsqp1; try easy.
   apply remove_single_qubit_pattern_correct in rsqp1.
-  destruct (next_two_qubit_gate p q) eqn:ntqg; try discriminate.
-  repeat destruct p0; dependent destruction p0.
+  destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
+  repeat destruct p; dependent destruction p.
   specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
   apply ntqg_preserves_structure in ntqg; subst.
   bdestruct (q =? n); try discriminate.
-  destruct (remove_single_qubit_pattern g q (UPI4_P :: UPI4_H :: [])) eqn:rsqp2; try discriminate.
+  destruct (remove_single_qubit_pattern g0 q (UPI4_P :: UPI4_H :: [])) eqn:rsqp2; try discriminate.
   apply remove_single_qubit_pattern_correct in rsqp2.
   inversion H; subst.
   simpl in *.
@@ -368,7 +369,7 @@ Proof.
   rewrite (does_not_reference_commutes_app1 _ UPI4_H _ dnr).
   clear.
   repeat rewrite <- app_assoc; simpl.
-  rewrite <- (app_nil_l p).
+  rewrite <- (app_nil_l g).
   repeat rewrite app_comm_cons.
   do 2 (apply uc_app_congruence; try reflexivity).
   unfold uc_equiv_l; simpl.
