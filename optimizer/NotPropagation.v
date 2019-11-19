@@ -1,6 +1,6 @@
 Require Import Proportional.
 Require Import Equivalences.
-Require Import PI4GateSet.
+Require Export PI4GateSet.
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
@@ -373,5 +373,14 @@ Proof.
     apply propagate_X_preserves_semantics; try assumption.
     apply propagate_X_well_typed; assumption. }
   apply H.
+Qed.
+
+Lemma not_propagation_WT : forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> uc_well_typed_l (not_propagation l).
+Proof.
+  intros dim l WT.
+  specialize (not_propagation_sound l WT) as H.
+  symmetry in H.
+  apply uc_cong_l_implies_WT in H; assumption.
 Qed.
 

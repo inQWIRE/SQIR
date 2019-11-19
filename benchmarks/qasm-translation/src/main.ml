@@ -225,99 +225,23 @@ let write_qasm_file fname p dim =
    ignore(List.map (sqir_to_qasm_gate oc) p);
    close_out oc;
    printf "Done.\n")
-   
-let rec run_alternating_passes num_qbits p prev_c =
-  if (B.pI4_list_well_typed_b num_qbits p)  
-  then ()
-  else printf "Dimension check failed - optimization results are invalid!\n%!";
-  (* 1, 3, 2, 3, 1, 2, 4, 3, 2 
-     1 - hadamard reduction
-     2 - single qubit gate cancellation
-     3 - two qubit gate cancellation
-     4 - rotation merging *) 
-  (*let p' = B.cancel_single_qubit_gates 
-           (B.cancel_two_qubit_gates 
-            (B.merge_rotations num_qbits 
-             (B.cancel_single_qubit_gates 
-              (B.hadamard_reduction 
-               (B.cancel_two_qubit_gates 
-                (B.cancel_single_qubit_gates 
-                 (B.cancel_two_qubit_gates 
-                  (B.hadamard_reduction p)))))))) in
-  let c = List.length p' in
-  if c < prev_c
-  then (printf "\tRepeating alternating iteration...\n%!";
-      run_alternating_passes num_qbits p' c)
-  else p'*)
-  let p1 = B.hadamard_reduction p in
-  let _ = printf "\tHad. red. 1: %d -> %d (%d)\n%!" (List.length p) (List.length p1) ((List.length p) - (List.length p1)) in
-  let p2 = B.cancel_two_qubit_gates p1 in
-  let _ = printf "\tCancel two 1: %d -> %d (%d)\n%!" (List.length p1) (List.length p2) ((List.length p1) - (List.length p2)) in
-  let p3 = B.cancel_single_qubit_gates p2 in
-  let _ = printf "\tCancel sing 1: %d -> %d (%d)\n%!" (List.length p2) (List.length p3) ((List.length p2) - (List.length p3))in
-  let p4 = B.cancel_two_qubit_gates p3 in
-  let _ = printf "\tCancel two 2: %d -> %d (%d)\n%!" (List.length p3) (List.length p4) ((List.length p3) - (List.length p4))in
-  let p5 = B.hadamard_reduction p4 in
-  let _ = printf "\tHad. red. 2: %d -> %d (%d)\n%!" (List.length p4) (List.length p5) ((List.length p4) - (List.length p5)) in
-  let p6 = B.cancel_single_qubit_gates p5 in
-  let _ = printf "\tCancel sing 2: %d -> %d (%d)\n%!" (List.length p5) (List.length p6) ((List.length p5) - (List.length p6)) in
-  let p7 = B.merge_rotations num_qbits p6 in
-  let _ = printf "\tMerge rotations 1: %d -> %d (%d)\n%!" (List.length p6) (List.length p7) ((List.length p6) - (List.length p7)) in
-  let p8 = B.cancel_two_qubit_gates p7 in
-  let _ = printf "\tCancel two 3: %d -> %d (%d)\n%!" (List.length p7) (List.length p8) ((List.length p7) - (List.length p8)) in
-  let p9 = B.cancel_single_qubit_gates p8 in
-  let _ = printf "\tCancel single 3: %d -> %d (%d)\n\n\n%!" (List.length p8) (List.length p9) ((List.length p8) - (List.length p9)) in
-  let _ = ignore(prev_c) in
-  p9
 
-(* exclude rotation merging for the slower benchmarks *)
-let rec run_alternating_passes_cheap num_qbits p prev_c =
-  if (B.pI4_list_well_typed_b num_qbits p)  
-  then ()
-  else printf "Dimension check failed - optimization results are invalid!\n%!";
-  (* 1, 3, 2, 3, 1, 2, 3, 2 
-     1 - hadamard reduction
-     2 - single qubit gate cancellation
-     3 - two qubit gate cancellation *) 
-  let p' = B.cancel_single_qubit_gates 
-           (B.cancel_two_qubit_gates 
-            (B.cancel_single_qubit_gates 
-             (B.hadamard_reduction 
-              (B.cancel_two_qubit_gates 
-               (B.cancel_single_qubit_gates 
-                (B.cancel_two_qubit_gates 
-                 (B.hadamard_reduction p))))))) in
-  let c = List.length p' in
-  if c < prev_c
-  then (printf "\tRepeating alternating iteration...\n%!";
-      run_alternating_passes_cheap num_qbits p' c)
-  else p'
+exception BadType of string
 
 (* write the results of running optimizations on the Nam benchmarks to file f *)
 let run_on_nam_benchmarks f =
   let bs = parse_nam_benchmarks () in
   let bs' = List.mapi (fun i p ->
-      (printf "Processing %s (1)\n%!" (List.nth nam_benchmark_filenames i);
-       let p' = B.not_propagation p in
-       printf "%d -> %d\n%!" (List.length p) (List.length p');
-       p')) bs in
-  let bs'' = List.mapi (fun i p ->
-      (printf "Processing %s (2)\n%!" (List.nth nam_benchmark_filenames i);
-       run_alternating_passes (List.nth nam_benchmark_dims i) p (List.length p))) bs' in
+       printf "Processing %s\n%!" (List.nth nam_benchmark_filenames i);
+       match (B.optimize_check_for_type_errors (List.nth nam_benchmark_dims i) p) with
+       | None -> raise (BadType "Program is not well-typed with the given dimension. Results of optimization may be incorrect!\n")
+       | Some p' -> (printf "\t%d -> %d\n%!" (List.length p) (List.length p'); p')) bs in
   let oc = open_out f in
    (ignore(List.mapi (fun i p -> fprintf oc "%s,%d\n"
                         (List.nth nam_benchmark_filenames i)
                         (List.length p);
                         write_qasm_file ((List.nth nam_benchmark_filenames i) ^ "_opt") p (List.nth nam_benchmark_dims i))
-            bs'');
+            bs');
    close_out oc)
- 
-(* run a cheaper (but less effective) version of optimizations on file f *)
-let run_on_nam_benchmarks_slow f num_qbits =
-  let p = get_gate_list f in
-  let _ = printf "Initial gate count: %d\n%!" (List.length p) in
-  let p' = B.not_propagation p in
-  let p'' = run_alternating_passes_cheap num_qbits p' (List.length p') in
-  printf "Final gate count: %d\n%!" (List.length p'')
 
    

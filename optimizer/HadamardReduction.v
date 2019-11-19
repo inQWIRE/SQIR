@@ -1,6 +1,6 @@
 Require Import UnitarySem.
 Require Import Equivalences.
-Require Import PI4GateSet.
+Require Export PI4GateSet.
 Require Import List.
 Open Scope ucom.
 
@@ -422,8 +422,17 @@ Proof.
 Qed.
 
 Lemma hadamard_reduction_sound: forall {dim} (l : PI4_ucom_l dim), 
-  l ≅l≅ hadamard_reduction l.
-Proof. intros. apply apply_H_equivalences_sound. Qed.
+  hadamard_reduction l ≅l≅ l.
+Proof. intros. symmetry. apply apply_H_equivalences_sound. Qed.
+
+Lemma hadamard_reduction_WT: forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> uc_well_typed_l (hadamard_reduction l).
+Proof.
+  intros dim l WT.
+  specialize (hadamard_reduction_sound l) as H.
+  symmetry in H.
+  apply uc_cong_l_implies_WT in H; assumption.
+Qed.
 
 (* TODO: We should also be able to prove that the Hadamard reduction optimization 
    reduces the number of Hadamard gates in the program. *)

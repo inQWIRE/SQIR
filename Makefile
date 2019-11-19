@@ -30,7 +30,7 @@ COQ_OPTS := -R . Top
 all: examples mapper optimizer qasm hll-compiler/BooleanCompilation.vo
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
 mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
-optimizer: invoke-coqmakefile optimizer/Equivalences.vo optimizer/GateCancellation.vo optimizer/HadamardReduction.vo optimizer/ListRepresentation.vo optimizer/NotPropagation.vo optimizer/PI4GateSet.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo optimizer/RotationMerging.vo 
+optimizer: invoke-coqmakefile optimizer/Optimize.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo
 qasm: invoke-coqmakefile qasm_to_sqir/Sets.vo qasm_to_sqir/Map.vo qasm_to_sqir/qasm.vo
 
 # Built by 'make examples'
@@ -74,6 +74,9 @@ optimizer/ListRepresentation.vo: optimizer/ListRepresentation.v lib/QWIRE/Propor
 
 optimizer/NotPropagation.vo: optimizer/NotPropagation.v optimizer/Equivalences.vo optimizer/PI4GateSet.vo
 	coqc $(COQ_OPTS) optimizer/NotPropagation.v
+
+optimizer/Optimize.vo: optimizer/Optimize.v optimizer/NotPropagation.vo optimizer/HadamardReduction.vo optimizer/GateCancellation.vo optimizer/RotationMerging.vo
+	coqc $(COQ_OPTS) optimizer/Optimize.v
 
 optimizer/PI4GateSet.vo: optimizer/PI4GateSet.v optimizer/Equivalences.vo optimizer/ListRepresentation.vo core/DensitySem.vo
 	coqc $(COQ_OPTS) optimizer/PI4GateSet.v

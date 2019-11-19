@@ -1,6 +1,6 @@
 Require Import UnitarySem.
 Require Import core.Utilities.
-Require Import PI4GateSet.
+Require Export PI4GateSet.
 
 Local Open Scope ucom_scope.
 
@@ -813,7 +813,7 @@ Proof.
   reflexivity.
 Qed.   
 
-Lemma merge_rotations_preserves_semantics : forall {dim} (l : PI4_ucom_l dim),
+Lemma merge_rotations_sound : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l ->
   merge_rotations l ≅l≅ l.
 Proof.
@@ -839,15 +839,27 @@ Proof.
   constructor; assumption.
 Qed.
 
+Lemma merge_rotations_WT: forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> uc_well_typed_l (merge_rotations l).
+Proof.
+  intros dim l WT.
+  specialize (merge_rotations_sound l WT) as H.
+  symmetry in H.
+  apply uc_cong_l_implies_WT in H; assumption.
+Qed.
+
 (* Examples *)
 
 Definition test6 : PI4_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
 Definition test7 : PI4_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
 Definition test8 : PI4_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
+Definition test9 : PI4_ucom_l 3 := T 1 :: T 2 :: CNOT 0 1 :: CNOT 1 2 :: CNOT 1 0 :: T 0 :: CNOT 2 1 :: TDAG 1 :: [].
 
 (* Result: [CNOT 1 2; CNOT 0 3; CNOT 0 1; CNOT 1 2; CNOT 2 1; PDAG 1; CNOT 3 0; CNOT 0 3; P 0; Z 3] *)
 Compute (merge_rotations test6).
 (* Result: [CNOT 0 1; Z 1; CNOT 0 1; Z 0; P 1; CNOT 1 0] *)
 Compute (merge_rotations test7).
-(* Result: [CNOT 2 3 ; CNOT 0 1 ; CNOT 2 3 ; CNOT 1 2 ; CNOT 1 0 ; CNOT 3 2 ; CNOT 1 2 ; CNOT 0 1 ; P 2] *)
+(* Result: [CNOT 2 3; CNOT 0 1; CNOT 2 3; CNOT 1 2; CNOT 1 0; CNOT 3 2; CNOT 1 2; CNOT 0 1; P 2] *)
 Compute (merge_rotations test8).
+(* Result: [CNOT 0 1; CNOT 1 2; CNOT 0 1; P 0; CNOT 2 1] *)
+Compute (merge_rotations test9).

@@ -1,6 +1,6 @@
 Require Import UnitarySem.
 Require Import Equivalences.
-Require Import PI4GateSet.
+Require Export PI4GateSet.
 Require Import List.
 Open Scope ucom.
 
@@ -823,6 +823,15 @@ Proof.
   apply H.
 Qed.
 
+Lemma cancel_single_qubit_gates_WT: forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> uc_well_typed_l (cancel_single_qubit_gates l).
+Proof.
+  intros dim l WT.
+  specialize (cancel_single_qubit_gates_sound l WT) as H.
+  symmetry in H.
+  apply uc_equiv_l_implies_WT in H; assumption.
+Qed.
+
 Lemma cancel_two_qubit_gates_sound : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l -> cancel_two_qubit_gates l =l= l.
 Proof.
@@ -843,4 +852,13 @@ Proof.
       rewrite IHn; try reflexivity; try assumption. 
     - inversion p. }
   apply H.
+Qed.
+
+Lemma cancel_two_qubit_gates_WT: forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> uc_well_typed_l (cancel_two_qubit_gates l).
+Proof.
+  intros dim l WT.
+  specialize (cancel_two_qubit_gates_sound l WT) as H.
+  symmetry in H.
+  apply uc_equiv_l_implies_WT in H; assumption.
 Qed.

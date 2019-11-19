@@ -5,6 +5,7 @@ Require Import optimizer.GateCancellation.
 Require Import optimizer.HadamardReduction.
 Require Import optimizer.RotationMerging.
 Require Import optimizer.NotPropagation.
+Require Import optimizer.Optimize.
 
 (* General utilies for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -89,9 +90,6 @@ Extraction Implicit cancel_two_qubit_gates [dim].
 Extraction Implicit next_gate [dim].
 Extraction Implicit get_subcircuit' [dim].
 Extraction Implicit get_subcircuit [dim].
-Extraction Implicit RotationMerging.propagate_X_gate [dim].
-Extraction Implicit propagate_X_gates' [dim].
-Extraction Implicit propagate_X_gates [dim].
 
 (* From NotPropagation.v *)
 Extraction Implicit NotPropagation.propagate_X [dim].
@@ -101,10 +99,6 @@ Extraction Implicit not_propagation [dim].
 
 (* Perform extraction to the file 'extracted_code.ml'. *)
 Extraction "extracted_code.ml" 
-  PI4_list_well_typed_b CCX CCZ
+  CCX CCZ
   UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG 
-  hadamard_reduction 
-  merge_rotations 
-  not_propagation  
-  cancel_single_qubit_gates
-  cancel_two_qubit_gates.
+  optimize optimize_check_for_type_errors.
