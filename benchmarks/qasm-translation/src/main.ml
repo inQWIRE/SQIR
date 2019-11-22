@@ -175,10 +175,8 @@ let nam_benchmark_filenames = [
   "../nam-benchmarks/csum_mux_9.qasm";
   "../nam-benchmarks/gf2^10_mult.qasm";
   "../nam-benchmarks/gf2^16_mult.qasm";
-  (*"../nam-benchmarks/gf2^32_mult.qasm";*)
   "../nam-benchmarks/gf2^4_mult.qasm";
   "../nam-benchmarks/gf2^5_mult.qasm";
-  (*"../nam-benchmarks/gf2^64_mult.qasm";*)
   "../nam-benchmarks/gf2^6_mult.qasm";
   "../nam-benchmarks/gf2^7_mult.qasm";
   "../nam-benchmarks/gf2^8_mult.qasm";
@@ -197,7 +195,11 @@ let nam_benchmark_filenames = [
   "../nam-benchmarks/vbe_adder_3.qasm";
 ]
 
-let nam_benchmark_dims = [ 24; 19; 5; 7; 9; 15; 30; 30; 48; (*96;*) 12; 15; (*192;*) 18; 21; 24; 27; 5; 9; 11; 36; 24; 26; 14; 19; 5; 7; 9; 10; ]
+let nam_benchmark_dims = [ 24; 19; 5; 7; 9; 15; 30; 30; 48; 12; 15; 18; 21; 24; 27; 5; 9; 11; 36; 24; 26; 14; 19; 5; 7; 9; 10; ]
+
+(* Larger benchmarks:
+   "../nam-benchmarks/gf2^32_mult.qasm" with 96 qubits
+   "../nam-benchmarks/gf2^64_mult.qasm" wtih 192 qubits *)
 
 let parse_nam_benchmarks () = List.map (fun x -> get_gate_list x) nam_benchmark_filenames
 
@@ -223,8 +225,7 @@ let write_qasm_file fname p dim =
    fprintf oc "qreg q[%d];\n" dim;
    fprintf oc "\n";
    ignore(List.map (sqir_to_qasm_gate oc) p);
-   close_out oc;
-   printf "Done.\n")
+   close_out oc)
 
 exception BadType of string
 

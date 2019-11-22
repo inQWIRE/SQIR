@@ -5,7 +5,7 @@ A **S**mall **Q**uantum **I**ntermediate **R**epresentation for a verified compi
 
 Run `make` to compile the files in the core directory, `make optimizer` to compile code in the optimizer directory, `make mapper` to compile code in the mapper directory, and `make examples` to compile the code in the examples directory. Use `make all` to compile everything.
 
-The development has been tested with Coq versions 8.9.1. On a standard laptop, `make all` takes about an hour.
+The development has been tested with Coq versions 8.9.1 and 8.10.1 on a MacBook Pro. `make all` should take about an hour.
 
 ## Directory Contents
 

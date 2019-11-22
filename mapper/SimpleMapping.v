@@ -287,7 +287,7 @@ Proof.
 Qed. 
 
 (* Alternative proof that uses gridify. From (not rigorous) testing on
-   Kesha's local machine, it seems to take about 2.5x longer than the 
+   a MacBook Pro, it seems to take about 2.5x longer than the 
    proof above.
    
 Lemma swap_cnot_control : forall {dim} a b c,
