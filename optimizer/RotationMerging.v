@@ -16,56 +16,86 @@ quantum circuits"
 Matroid Partitioning"
 *)
   
-(** Find a {CNOT, X, Rz} subcircuit. **)
+(** Find subcircuit for rotation merging. **)
 
-(* Find a subcircuit consisting of {CNOT, X, Rz} gates, starting from a 
-   particular qubit q. Our algorithm is different from the one used in 
-   Nam et al. (see [1, Eq. 8]) and results in smaller subcircuits because 
-   we want to maintain the following property:
-       get_subcircuit l q = (l1, s, l2)-> l ≡ l1 ++ s ++ l2
-   To see the difference, compare our example 'test4' to [1, Eq. 8]. *)
+(* Find a subcircuit consisting of {CNOT, X, Rz} gates starting from a particular 
+   qubit q. (Actually, our subcircuits include some H gates as well because we want 
+   to allow H gates on qubits that are not later used as the control of a CNOT.)
+   The subcircuits are structured so that they maintain the following property:
+   - Assuming that every qubit begins in a classical state, for every gate in the
+     circuit, any qubit that is not in the set 'blst' remains in a classical state.
+
+   We terminate when (length qs) =? (length blst) to keep the size of the subcircuit
+   as small as possible. Because every element of 'blst' is first added to 'qs',
+   once the two sets are equal in size, rotation merging will no longer be 
+   applicable. The only purpose of 'blst' in this function is track this 
+   termination condition ('blst' is used in a more interesting way in the merge
+   operation).  *)
 
 Definition add x l :=
   if inb x l then l else (x :: l).
 
-(* l = gate list
-   qs1 = list of qubits to include in the subcircuit
-   qs2 = list of qubits to exclude from the subcircuit 
-   n = a dummy argument to convince Coq of termination; we start with n large
-       enough that the O case will never be reached.
-
-   Find a subcircuit in l that involves qubits in qs1, but not qubits
-   in qs2, and only uses CNOT, X, and Rz gates. Return (l1, s, l2) s.t.
-   s is the desired subcircuit and l ≡ l1 ++ s ++ l2. *)
-Fixpoint get_subcircuit' {dim} (l : PI4_ucom_l dim) (qs1 qs2 : list nat) n
-             : (PI4_ucom_l dim * PI4_ucom_l dim * PI4_ucom_l dim) :=
+Fixpoint get_subcircuit' {dim} (l : PI4_ucom_l dim) (qs blst : list nat) n :=
   match n with
-  | O => ([], [], l)
-  | S n' => match next_gate l qs1 with
-           | Some (l1, App1 UPI4_H q, l2) =>
-               let (tmp, l2') := get_subcircuit' l2 qs1 (add q qs2) n' in
-               let (l1', s) := tmp in
-               (l1 ++ l1', s, [App1 UPI4_H q] ++ l2')
-           | Some (l1, App1 u q, l2) =>
-               let (tmp, l2') := get_subcircuit' l2 qs1 qs2 n' in
-               let (l1', s) := tmp in
-               if inb q qs2
-               then (l1 ++ l1', s, [App1 u q] ++ l2')
-               else (l1 ++ l1', [App1 u q] ++ s, l2')
-           | Some (l1, App2 u q1 q2, l2) =>
-               if (inb q1 qs2) || (inb q2 qs2)
-               then let (tmp, l2') := get_subcircuit' l2 (add q1 (add q2 qs1)) (add q1 (add q2 qs2)) n' in
-                    let (l1', s) := tmp in
-                    (l1 ++ l1', s, [App2 u q1 q2] ++ l2')
-               else let (tmp, l2') := get_subcircuit' l2 (add q1 (add q2 qs1)) qs2 n' in
-                    let (l1', s) := tmp in
-                    (l1 ++ l1', [App2 u q1 q2] ++ s, l2')
-           | _ => ([], [], l)
+  | O => ([], [], l) (* unreachable with n = length l *)
+  | S n' =>
+      if (length qs) =? (length blst)
+      then ([], [], l)
+      else match next_gate l qs with
+           | Some (l1, App1 UPI4_H q, l2) => 
+               match get_subcircuit' l2 qs (add q blst) n' with
+               | (l1', s, l2') => (l1 ++ l1', [H q] ++ s, l2')
+               end
+           | Some (l1, App1 u q, l2) => 
+               match get_subcircuit' l2 qs blst n' with
+               | (l1', s, l2') => (l1 ++ l1', [@App1 _ dim u q] ++ s, l2')
+               end
+           | Some (l1, App2 UPI4_CNOT q1 q2, l2) =>
+               let qs' := add q1 (add q2 qs) in
+               let blst' := if inb q1 blst then (add q2 blst) else blst in
+               match get_subcircuit' l2 qs' blst' n' with
+               | (l1', s, l2') => (l1 ++ l1', [CNOT q1 q2] ++ s, l2')
+               end
+           | _ => ([], [], l) (* unreachable for the PI4 gate set*)
            end
   end.
 
 Definition get_subcircuit {dim} (l : PI4_ucom_l dim) q := 
   get_subcircuit' l [q] [] (List.length l).
+
+(* Examples *)
+
+Definition test1 : PI4_ucom_l 1 := T 0 :: H 0 :: X 0 :: [].
+Definition test2 : PI4_ucom_l 2 := T 0 :: CNOT 0 1 :: H 0 :: CNOT 0 1 :: T 1 :: H 1 :: [].
+Definition test3 : PI4_ucom_l 3 := T 0 :: H 1 :: H 2 :: X 1 :: CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: H 1 :: T 2 :: [].
+Definition test4 : PI4_ucom_l 3 := T 1 :: T 2 :: CNOT 1 0 :: T 0 :: CNOT 1 2 :: CNOT 0 1 :: H 2 :: CNOT 1 2 :: CNOT 0 1 :: T 1 :: H 0 :: H 1 :: [].
+
+(* Result: l1 = [], s = [T 0; H 0], l2 = [X 0] *)
+Compute (get_subcircuit test1 0). 
+(* Result: l1 = [], s = [T 0; CNOT 0 1; H 0; CNOT 0 1], l2 = [T 1; H 1] *)
+Compute (get_subcircuit test2 0).
+(* Result: l1 = [T 0], s = [CNOT 0 1; H 0; CNOT 0 1], l2 = [T 1; H 1] *)
+Compute (get_subcircuit test2 1).
+(* Result: l1 = [H 1; H 2; X 1]
+           s = [T 0; CNOT 0 2; T 0; X 2; CNOT 2 1; H 1; T 2]
+           l2 = [] *)
+Compute (get_subcircuit test3 0).
+(* Result: l1 = [T 0]
+           s = [H 1]
+           l2 = [H 2; X 1; CNOT 0 2; T 0; X 2; CNOT 2 1; H 1; T 2] *)
+Compute (get_subcircuit test3 1).
+(* Result: l1 = [T 1; T 2]
+           s = [CNOT 1 0; T 0; CNOT 1 2; CNOT 0 1; H 2; CNOT 1 2; CNOT 0 1; T 1; H 0; H 1]
+           l2 = [] *)
+Compute (get_subcircuit test4 0).
+(* Result: l1 = [T 2]
+           s = [T 1; CNOT 1 0; T 0; CNOT 1 2; CNOT 0 1; H 2; CNOT 1 2; CNOT 0 1; T 1; H 0; H 1]
+           l2 = [] *)
+Compute (get_subcircuit test4 1).
+(* Result: l1 = [T 1; CNOT 1 0; T 0]
+           s = [T 2; CNOT 1 2; CNOT 0 1; H 2; CNOT 1 2; CNOT 0 1; T 1; H 0; H 1]
+           l2 = [] *)
+Compute (get_subcircuit test4 2).  
 
 (* Proofs *)
 
@@ -73,8 +103,8 @@ Lemma add_In_x : forall x l, List.In x (add x l).
 Proof.
   intros.
   unfold add.
-  destruct (inb x l) eqn:Hinb.
-  apply inb_true; assumption.
+  bdestruct (inb x l). 
+  assumption.
   left; reflexivity.
 Qed.
 
@@ -82,203 +112,93 @@ Lemma add_In_l : forall x y l, List.In x l -> List.In x (add y l).
 Proof.
   intros.
   unfold add.
-  destruct (inb y l);
-  try right; assumption.
+  bdestruct (inb y l).
+  assumption.
+  right; assumption.
 Qed.
 
-Lemma get_subcircuit'_l1_does_not_reference : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
-  get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
-  forall q, List.In q qs1 -> does_not_reference l1 q = true.
+Lemma get_subcircuit'_l1_does_not_reference : forall {dim} (l : PI4_ucom_l dim) qs blst n l1 s l2,
+  get_subcircuit' l qs blst n = (l1, s, l2) ->
+  forall q, List.In q qs -> does_not_reference l1 q = true.
 Proof. 
-  intros dim l qs1 qs2 n l1 s l2 H.
-  generalize dependent s.
-  generalize dependent qs2.
-  generalize dependent qs1.
-  generalize dependent l2.
-  generalize dependent l1.
+  intros dim l qs blst n.
+  generalize dependent blst.
+  generalize dependent qs.
   generalize dependent l.
-  induction n; intros l l1 l2 qs1 qs2 s H; simpl in H.
-  - inversion H; subst. constructor.
-  - destruct (next_gate l qs1) eqn:ng.
-    2: { inversion H; subst. constructor. }
-    repeat destruct p.
-    destruct g1.
-    + dependent destruction p;
-      [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
-      | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
-      | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc ];
-      destruct p;
-      try destruct (inb n0 qs2);
-      inversion H; subst.
-      all: intros q Hq;
-           apply does_not_reference_app;
-           apply andb_true_intro;
-           split.
-      all: try (apply (next_gate_l1_does_not_reference _ _ _ _ _ ng); assumption).
-      all: eapply IHn; try apply subc; assumption.
-    + destruct (inb n0 qs2 || inb n1 qs2);
-      [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
-      | destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc ];
-      destruct p0;
-      inversion H; subst.
-      all: intros q Hq;
-           apply does_not_reference_app;
-           apply andb_true_intro;
-           split.
-      all: try (apply (next_gate_l1_does_not_reference _ _ _ _ _ ng); assumption).
-      all: eapply IHn; try apply subc; repeat apply add_In_l; assumption.
-    + dependent destruction p.
+  induction  n; intros l qs blst l1 s l2 res q Hq; simpl in res.
+  inversion res; subst. reflexivity.
+  destruct (length qs =? length blst).
+  inversion res; subst. reflexivity.
+  destruct (next_gate l qs) eqn:ng.
+  2: { inversion res; subst. reflexivity. }
+  repeat destruct p.
+  destruct g1.
+  - dependent destruction p;
+    [ destruct (get_subcircuit' g qs (add n0 blst) n) eqn:subc
+    | destruct (get_subcircuit' g qs blst n) eqn:subc
+    | destruct (get_subcircuit' g qs blst n) eqn:subc ];
+    destruct p;
+    inversion res; subst.
+    all: eapply IHn in subc; eapply next_gate_l1_does_not_reference in ng.
+    all: try apply Hq.
+    all: apply does_not_reference_app; apply andb_true_intro; split; assumption.
+  - dependent destruction p.
+    destruct (get_subcircuit' g (add n0 (add n1 qs))
+             (if inb n0 blst then add n1 blst else blst) n) eqn:subc.
+    destruct p.
+    inversion res; subst.
+    eapply IHn in subc.
+    eapply next_gate_l1_does_not_reference in ng.
+    apply does_not_reference_app; apply andb_true_intro; split.
+    apply ng. apply subc. apply Hq. 
+    do 2 apply add_In_l. apply Hq.
+  - dependent destruction p.
 Qed.
 
-Lemma get_subcircuit'_s_does_not_reference : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
-  get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
-  forall q, List.In q qs2 -> does_not_reference s q = true.
-Proof.
-  intros dim l qs1 qs2 n l1 s l2 H.
-  generalize dependent s.
-  generalize dependent qs2.
-  generalize dependent qs1.
-  generalize dependent l2.
-  generalize dependent l1.
-  generalize dependent l.
-  induction n; intros l l1 l2 qs1 qs2 s H; simpl in H.
-  - inversion H; subst. constructor.
-  - destruct (next_gate l qs1) eqn:ng.
-    2: { inversion H; subst. constructor. }
-    repeat destruct p.
-    destruct g1.
-    + dependent destruction p;
-      [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
-      | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
-      | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc ];
-      destruct p;
-      try destruct (inb n0 qs2) eqn:Hinb;
-      inversion H; subst.
-      all: intros q Hq.
-      all: try (simpl; apply andb_true_intro; split).
-      all: try (eapply IHn; [apply subc |] ).
-      all: try apply add_In_l; try assumption.
-      all: apply negb_true_iff; apply eqb_neq; 
-           apply (inb_false _ _ Hinb); assumption.
-    + destruct (inb n0 qs2 || inb n1 qs2) eqn:Hinb;
-      [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
-      | destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc ];
-      destruct p0;
-      inversion H; subst.
-      all: intros q Hq.
-      all: try (simpl; apply andb_true_intro; split).
-      all: try (eapply IHn; [apply subc |] ).
-      all: repeat apply add_In_l; try assumption.
-      apply orb_false_elim in Hinb as [Hinb1 Hinb2].
-      apply negb_true_iff; apply orb_false_intro; apply eqb_neq.
-      apply (inb_false _ _ Hinb1); assumption.
-      apply (inb_false _ _ Hinb2); assumption.
-    + dependent destruction p.
-Qed.
-
-Lemma get_subcircuit'_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) qs1 qs2 n l1 s l2,
-  get_subcircuit' l qs1 qs2 n = (l1, s, l2) ->
+Lemma get_subcircuit'_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) qs blst n l1 s l2,
+  get_subcircuit' l qs blst n = (l1, s, l2) ->
   l =l= l1 ++ s ++ l2.
-Proof.
-  intros.
-  generalize dependent s.
-  generalize dependent qs2.
-  generalize dependent qs1.
-  generalize dependent l2.
-  generalize dependent l1.
+Proof. 
+  intros dim l qs blst n.
+  generalize dependent blst.
+  generalize dependent qs.
   generalize dependent l.
-  induction n; intros l l1 l2 qs1 qs2 s H.
-  - inversion H; subst. reflexivity.
-  - simpl in H.
-    destruct (next_gate l qs1) eqn:ng.
-    2: { inversion H; subst. reflexivity. }
-    repeat destruct p.
-    destruct g1.
-    + dependent destruction p;
-      [ destruct (get_subcircuit' g qs1 (add n0 qs2) n) eqn:subc
-      | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc
-      | destruct (get_subcircuit' g qs1 qs2 n) eqn:subc];
-      destruct p;
-      try destruct (inb n0 qs2) eqn:Hinb;
-      inversion H; subst.
-      all: assert (dnr1 : does_not_reference p n0 = true) by
-           (eapply get_subcircuit'_l1_does_not_reference;
-            [ apply subc | eapply next_gate_app1_returns_q; apply ng]).
-      all: try assert (dnr2 : does_not_reference s n0 = true) by
-           (eapply get_subcircuit'_s_does_not_reference;
-            [ apply subc 
-            | try (apply add_In_x);
-              try (apply inb_true; assumption) ]).
-      all: apply next_gate_preserves_structure in ng;
-           rewrite ng;
-           apply IHn in subc;
-           rewrite subc.
-      all: try rewrite (cons_to_app _ p0).
-      all: try rewrite (cons_to_app _ p1).
-      all: repeat rewrite <- app_assoc;
-           apply uc_app_congruence; try reflexivity;
-           repeat rewrite app_assoc;
-           apply uc_app_congruence; try reflexivity;
-           rewrite does_not_reference_commutes_app1; try assumption;
-           try reflexivity.
-      all: repeat rewrite <- app_assoc;
-           rewrite does_not_reference_commutes_app1; try assumption;
-           reflexivity.
-    + destruct (inb n0 qs2 || inb n1 qs2) eqn:Hinb;
-      [ destruct (get_subcircuit' g (add n0 (add n1 qs1)) (add n0 (add n1 qs2)) n) eqn:subc
-      | apply orb_false_elim in Hinb as [Hinb1 Hinb2];
-        destruct (get_subcircuit' g (add n0 (add n1 qs1)) qs2 n) eqn:subc];
-      destruct p0;
-      inversion H; subst.
-      * assert (dnr1 : does_not_reference p0 n0 = true).
-        { eapply get_subcircuit'_l1_does_not_reference.
-          apply subc.
-          apply add_In_x. }
-        assert (dnr2 : does_not_reference s n0 = true).
-        { eapply get_subcircuit'_s_does_not_reference.
-          apply subc.
-           apply add_In_x. }
-        assert (dnr3 : does_not_reference p0 n1 = true).
-        { eapply get_subcircuit'_l1_does_not_reference.
-          apply subc.
-          apply add_In_l. apply add_In_x. }
-        assert (dnr4 : does_not_reference s n1 = true).
-        { eapply get_subcircuit'_s_does_not_reference.
-          apply subc.
-          apply add_In_l. apply add_In_x. }
-        apply next_gate_preserves_structure in ng.
-        rewrite ng.
-        apply IHn in subc.
-        rewrite subc.
-        rewrite (cons_to_app _ p1).
-        repeat rewrite <- app_assoc.
-        apply uc_app_congruence; try reflexivity.
-        repeat rewrite app_assoc.
-        apply uc_app_congruence; try reflexivity.
-        rewrite does_not_reference_commutes_app2; try assumption.
-        repeat rewrite <- app_assoc.
-        rewrite does_not_reference_commutes_app2; try assumption.
-        reflexivity.
-      * assert (dnr1 : does_not_reference p0 n0 = true).
-        { eapply get_subcircuit'_l1_does_not_reference.
-          apply subc.
-          apply add_In_x. }
-        assert (dnr2 : does_not_reference p0 n1 = true).
-        { eapply get_subcircuit'_l1_does_not_reference.
-          apply subc.
-          apply add_In_l. apply add_In_x. }
-        apply next_gate_preserves_structure in ng.
-        rewrite ng.
-        apply IHn in subc.
-        rewrite subc.
-        rewrite (cons_to_app _ p2).
-        repeat rewrite <- app_assoc.
-        apply uc_app_congruence; try reflexivity.
-        repeat rewrite app_assoc.
-        apply uc_app_congruence; try reflexivity.
-        rewrite does_not_reference_commutes_app2; try assumption.
-        reflexivity.
-    + dependent destruction p.
+  induction  n; intros l qs blst l1 s l2 res; simpl in res.
+  inversion res; subst. reflexivity.
+  destruct (length qs =? length blst).
+  inversion res; subst. reflexivity.
+  destruct (next_gate l qs) eqn:ng.
+  2: { inversion res; subst. reflexivity. }
+  repeat destruct p.
+  destruct g1.
+  - specialize (next_gate_app1_returns_q _ _ _ _ _ _ ng) as Hn0. 
+    apply next_gate_preserves_structure in ng; subst l.
+    dependent destruction p;
+    [ destruct (get_subcircuit' g qs (add n0 blst) n) eqn:subc
+    | destruct (get_subcircuit' g qs blst n) eqn:subc
+    | destruct (get_subcircuit' g qs blst n) eqn:subc ];
+    destruct p;
+    inversion res; subst.
+    all: apply (get_subcircuit'_l1_does_not_reference _ _ _ _ _ _ _ subc) in Hn0;   
+         apply IHn in subc; rewrite subc.
+    all: rewrite (app_assoc _ l); 
+         rewrite does_not_reference_commutes_app1;
+         try apply Hn0.
+    all: repeat rewrite <- app_assoc; reflexivity.
+  - dependent destruction p.
+    destruct (get_subcircuit' g (add n0 (add n1 qs))
+             (if inb n0 blst then add n1 blst else blst) n) eqn:subc.
+    destruct p.
+    inversion res; subst.
+    apply next_gate_preserves_structure in ng; subst l.
+    specialize (get_subcircuit'_l1_does_not_reference _ _ _ _ _ _ _ subc) as dnr.
+    apply IHn in subc; rewrite subc.   
+    rewrite (app_assoc _ l0).
+    rewrite does_not_reference_commutes_app2.
+    repeat rewrite <- app_assoc; reflexivity.
+    apply dnr. apply add_In_x.
+    apply dnr. apply add_In_l. apply add_In_x.
+  - dependent destruction p.
 Qed.
 
 Lemma get_subcircuit_l1_does_not_reference : forall {dim} (l : PI4_ucom_l dim) q l1 s l2,
@@ -302,64 +222,26 @@ Proof.
   assumption.
 Qed.
 
-(* Examples *)
-
-Definition test1 : PI4_ucom_l 1 := T 0 :: H 0 :: [].
-Definition test2 : PI4_ucom_l 2 := T 0 :: CNOT 0 1 :: H 0 :: T 1 :: H 1 :: [].
-Definition test3 : PI4_ucom_l 3 := T 0 :: H 1 :: H 2 :: X 1 :: CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: H 1 :: T 2 :: [].
-Definition test4 : PI4_ucom_l 3 := T 1 :: T 2 :: CNOT 1 0 :: T 0 :: CNOT 1 2 :: CNOT 0 1 :: H 2 :: CNOT 1 2 :: CNOT 0 1 :: T 1 :: H 0 :: H 1 :: [].
-
-(* Result: l1 = [], s = [T 0], l2 = [H 0] *)
-Compute (get_subcircuit test1 O). 
-(* Result: l1 = [], s = [T 0; CNOT 0 1; T 1], l2 = [H 0; H 1] *)
-Compute (get_subcircuit test2 0).
-(* Result: l1 = [T 0], s = [CNOT 0 1; T 1], l2 = [H 0; H 1] *)
-Compute (get_subcircuit test2 1).
-(* Result: l1 = [H 1; H 2; X 1]
-           s = [T 0; CNOT 0 2; T 0; X 2; CNOT 2 1; T 2]
-           l2 = [H 1] *)
-Compute (get_subcircuit test3 0).
-(* Result: l1 = [T 0]
-           s = []
-           l2 = [H 1; H 2; X 1; CNOT 0 2; T 0; X 2; CNOT 2 1; H 1; T 2] *)
-Compute (get_subcircuit test3 1).
-(* Result: l1 = [T 1; T 2]
-           s = [CNOT 1 0; T 0; CNOT 1 2; CNOT 0 1]
-           l2 = [H 2; CNOT 1 2; CNOT 0 1; T 1; H 0; H 1] *)
-Compute (get_subcircuit test4 0).
-(* Result: l1 = [T 2]
-           s = [T 1; CNOT 1 0; T 0; CNOT 1 2; CNOT 0 1]
-           l2 = [H 2; CNOT 1 2; CNOT 0 1; T 1; H 0; H 1] *)
-Compute (get_subcircuit test4 1).
-(* Result: l1 = [T 1; CNOT 1 0; T 0]
-           s = [T 2; CNOT 1 2; CNOT 0 1]
-           l2 = [H 2; CNOT 1 2; CNOT 0 1; T 1; H 0; H 1] *)
-Compute (get_subcircuit test4 2).
-
 (** Merge a single rotation gate. **)
 
-(* To perform rotation merging, we will need to keep track of the current 
-   (boolean) state of each qubit. We will do this using the (nat -> A) type
-   defined in core/Utilities.v. Because we are considering {CNOT, X, Rz}
-   subcircuits, we only need to consider boolean expressions of the form
-   x ⊕ y ⊕ ... ⊕ 1, where each term in the XOR is optional.  
+(* To perform rotation merging, we will need to keep track of the current (boolean) 
+   state of each qubit. We will describe the classical state of a single qubit using
+   a (nat -> bool) function. Because we are considering {CNOT, X, Rz} subcircuits, 
+   we only need to consider boolean expressions of the form x ⊕ y ⊕ ... ⊕ 1, where 
+   each term in the XOR is optional.  
 
-   To represent a boolean expression, we use (nat -> bool) w/ upper bound N.
-   - For i <= N - 1, the element at index i indicates whether variable
-     i is involved in the XOR. The element at index N indicates whether
-     the XOR includes a 1 term (i.e. is negated).
+   Assume some upper bound N (in practice: the dimension of the global register).
+   - For i <= N - 1, (f i) indicates whether variable i is involved in the XOR.
+     (f N) indicates whether the XOR includes a 1 term (i.e. is negated).
 
-   To represent a list of boolean functions, we use (nat -> (nat -> bool))
-   w/ upper bound (N - 1).
-   - The element at index i describes the current boolean function on
-     qubit i. 
-*)
+   We maintain a list of these functions to describe the state of the entire system.
+   The element at index i describes the current boolean function on qubit i. *)
 
-(* Check for equality of two functions, up to (n - 1). *)
-Fixpoint f_eqb {A} (f1 f2 : nat -> A) (eq : A -> A -> bool) n := 
+(* Check for equality of two boolean expressions. *)
+Fixpoint f_eqb f1 f2 n := 
   match n with
   | O => true
-  | S n' => eq (f1 n') (f2 n') && (f_eqb f1 f2 eq n')
+  | S n' => eqb (f1 n') (f2 n') && (f_eqb f1 f2 n')
   end.
 
 (* Negate a boolean expression. *)
@@ -370,40 +252,62 @@ Definition neg f dim :=
 Definition xor f1 f2 :=
   fun (i : nat) => xorb (f1 i) (f2 i).
 
-(* s = {CNOT, X, Rx} subcircuit
-   k = phase of original rotation gate
-   q = target of original rotation gate
-   f = list of boolean function applied to every qubit *)
-Fixpoint merge' {dim} (s : PI4_ucom_l dim) k q f :=
-  match s with
-  | (App1 UPI4_X q') :: t => 
-      let f' := update f q' (neg (f q') dim) in
-      match merge' t k q f' with
-      | Some l => Some (App1 UPI4_X q' :: l)
+(* If we assume that all qubits begin in a classical state, then blst tracks the
+   'blacklisted' qubits that are (potentially) no longer in a classical state.
+  
+   Merging algorithm:
+   1. If the next gate is (H q'), add q' to the blacklist and continue
+   2. If the next gate is (X q'), negate q' in the representation of the 
+      global state and continue
+   3. If the next gate is (Rz k' q'), check if this gate can be merged with 
+      the original rotation (Rz k q). If so, return the result of merging.
+      Otherwise, continue.  
+   4. If the next gate is (CNOT q1 q2), if neither q1 nor q2 is in the blacklist
+      then update the state of q2 to be (q1 ⊕ q2) and continue. If q2 is in the 
+      blacklist (but q1 is not) then continue. If q1 is in the blacklist then add
+      both q1 and q2 to the blacklist and continue. *)
+Fixpoint merge' {dim} (l : PI4_ucom_l dim) (blst : list nat) k q f :=
+  match l with
+  | App1 UPI4_H q' :: t =>
+      match merge' t (add q' blst) k q f with
+      | Some l => Some (H q' :: l)
       | _ => None
       end
-  | (App1 (UPI4_PI4 k') q') :: t =>
-      if f_eqb (f q') (fun x => if x =? q then true else false) eqb (dim + 1)
+  | App1 UPI4_X q' :: t => 
+      let f' := if (inb q' blst) then f else update f q' (neg (f q') dim) in
+      match merge' t blst k q f' with
+      | Some l => Some (X q' :: l)
+      | _ => None
+      end
+  | App1 (UPI4_PI4 k') q' :: t => 
+      if ((negb (inb q' blst)) && (f_eqb (f q') (fun x => if x =? q then true else false) (dim + 1)))
       then let k'' := (k + k')%Z in
-           if (k'' =? 8)%Z then Some t 
-           else if (k'' <? 8)%Z then Some (App1 (UPI4_PI4 k'') q' :: t)
+           if (k'' =? 8)%Z then Some t
+           else if (k'' <? 8)%Z 
+                then Some (App1 (UPI4_PI4 k'') q' :: t)
                 else Some (App1 (UPI4_PI4 (k'' - 8)%Z) q' :: t) 
-      else match merge' t k q f with
+      else match merge' t blst k q f with
            | Some l => Some (App1 (UPI4_PI4 k') q' :: l)
            | _ => None
            end
-  | (App2 UPI4_CNOT q1 q2) :: t =>
-      let f' := update f q2 (xor (f q1) (f q2)) in
-      match merge' t k q f' with
-      | Some l => Some (App2 UPI4_CNOT q1 q2 :: l)
-      | _ => None
-      end
-  | _ => None
+  | App2 UPI4_CNOT q1 q2 :: t =>
+      if ((inb q1 blst) || (inb q2 blst)) 
+      then let blst' := if inb q1 blst then (add q2 blst) else blst in
+           match merge' t blst' k q f with
+           | Some l => Some (CNOT q1 q2 :: l)
+           | _ => None
+           end
+      else let f' := update f q2 (xor (f q1) (f q2)) in   
+           match merge' t blst k q f' with
+           | Some l => Some (CNOT q1 q2 :: l)
+           | _ => None
+           end
+  | _ => None (* failed to merge *)
   end.
 
-Definition merge {dim} (s : PI4_ucom_l dim) k q :=
+Definition merge {dim} (l : PI4_ucom_l dim) k q :=
   let finit := fun i => fun j => if j =? i then true else false in
-  merge' s k q finit.
+  merge' l [] k q finit.
 
 (* Proofs *)
 
@@ -508,34 +412,30 @@ Proof.
   - reflexivity.
 Qed.
 
-Lemma f_eqb_eq : forall {A} (f1 f2 : nat -> A) (eq: A -> A -> bool) n,
-  (forall x y, reflect (x = y) (eq x y)) ->
-  f_eqb f1 f2 eq n = true -> 
+Hint Resolve eqb_spec : bdestruct.
+Lemma f_eqb_implies_eq : forall f1 f2 n,
+  f_eqb f1 f2 n = true -> 
   forall x, (x < n)%nat -> f1 x = f2 x.
 Proof.
-  intros A f1 f2 eq n Href H x Hx.
+  intros f1 f2 n H x Hx.
   induction n; try lia.
   simpl in H. 
   apply andb_prop in H as [H1 H2].
   bdestruct (x =? n).
   - subst.
-    eapply reflect_iff in Href.
-    apply Href; assumption.
+    bdestruct (eqb (f1 n) (f2 n)); try discriminate. 
+    assumption.
   - apply IHn; try assumption.
     lia.
 Qed.
 
-Lemma f_eqb_same : forall {A} (f : nat -> A) (eq: A -> A -> bool) n,
-  (forall x y, reflect (x = y) (eq x y)) ->
-  f_eqb f f eq n = true.
+Lemma eq_implies_f_eqb : forall f n,
+  f_eqb f f n = true.
 Proof.
-  intros.
-  induction n.
-  - reflexivity.
-  - simpl. apply andb_true_intro.
-    split. eapply reflect_iff in X.
-    apply X; reflexivity.
-    assumption.
+  intros. induction n. reflexivity.
+  simpl. apply andb_true_intro.
+  split. bdestruct (eqb (f n) (f n)); auto. 
+  assumption.
 Qed.
 
 Lemma get_boolean_expr'_finit_q_large : forall b f n q,
@@ -558,13 +458,12 @@ Qed.
 Lemma get_boolean_expr_finit : forall dim b f n q,
   let finit := fun x : nat => if x =? q then true else false in
   (q < dim)%nat ->
-  f_eqb (b n) finit eqb (dim + 1) = true ->
+  f_eqb (b n) finit (dim + 1) = true ->
   get_boolean_expr b f dim n = f q.
 Proof.
   intros.
   unfold get_boolean_expr.
-  assert (forall x y : bool, reflect (x = y) (eqb x y)) by apply eqb_spec.
-  specialize (f_eqb_eq _ _ _ _ H1 H0) as feqb.
+  specialize (f_eqb_implies_eq _ _ _ H0) as feqb.
   clear - H feqb.
   subst finit; simpl in *.
   destruct (b n dim) eqn:bn.
@@ -587,129 +486,326 @@ Proof.
       intros. apply feqb. lia.
 Qed.
 
+(* To begin, we define some utilities for describing classical states. *)
+
 Definition b2R (b : bool) : R := if b then 1%R else 0%R.
 Local Coercion b2R : bool >-> R.
-Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (s : PI4_ucom_l dim) k q b l' f,
-  (q < dim)%nat ->
-  uc_well_typed_l s ->
-  merge' s k q b = Some l' ->
-  let A := uc_eval (list_to_ucom (PI4_to_base_ucom_l l')) in
-  let B := uc_eval (list_to_ucom (PI4_to_base_ucom_l s)) in
-  let v := f_to_vec 0 dim (get_boolean_expr b f dim) in
-  A × v = (Cexp (f q * (IZR k * PI / 4))) .* B × v.
+Local Coercion Nat.b2n : bool >-> nat.
+
+(* Projector onto the space where qubit q is in classical state b. *)
+Definition proj q dim (b : bool) := @pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†).
+
+Lemma proj_commutes_1q_gate : forall dim u q n b,
+  q <> n ->
+  proj q dim b × ueval_r dim n u = ueval_r dim n u × proj q dim b. 
 Proof.
-  intros dim s k q b l' f Hq WT H A B v.
-  subst A B v.
-  generalize dependent l'.
-  generalize dependent b.
-  induction s; try discriminate.
-  intros b l' H.
-  simpl in H.
-  destruct a.
-  - dependent destruction p; try discriminate.
-    + destruct (merge' s k q (update b n (neg (b n) dim))) eqn:mer; try discriminate.
-      inversion H; inversion WT; subst.
-      apply (IHs H5) in mer.
-      rewrite get_boolean_expr_update_neg in mer.
-      simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-      replace (uapp1 (U_R PI 0 PI) n) with (@SQIR.X dim n) by reflexivity.
-      simpl.
-      rewrite Mscale_mult_dist_l.
-      repeat rewrite Mmult_assoc.
-      rewrite f_to_vec_X; try assumption.
-      rewrite mer.
-      repeat rewrite Mscale_mult_dist_l.
-      reflexivity.
-    + simpl PI4_to_base_ucom_l; simpl list_to_ucom. 
-      replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIR.Rz dim (IZR k * PI / 4) n) by reflexivity.
-      simpl.
-      rewrite Mscale_mult_dist_l.
-      repeat rewrite Mmult_assoc.
-      inversion WT; subst.
-      rewrite f_to_vec_Rz; try assumption.
-      rewrite Mscale_mult_dist_r.
-      rewrite Mscale_assoc.
-      destruct (f_eqb (b n) (fun x : nat => if x =? q then true else false) eqb (dim + 1)) eqn:feqb.
-      * destruct (k0 + k =? 8)%Z eqn:k0k8;
-        [ | destruct (k0 + k <? 8)%Z eqn:k0k];
-        inversion H; subst;
-        simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-        2: replace (uapp1 (U_R 0 0 (IZR (k0 + k) * PI / 4)) n) with (@SQIR.Rz dim (IZR (k0 + k) * PI / 4) n) by reflexivity.
-        3: replace (uapp1 (U_R 0 0 (IZR (k0 + k - 8) * PI / 4)) n) with (@SQIR.Rz dim (IZR (k0 + k - 8) * PI / 4) n) by reflexivity.
-        2, 3: simpl; repeat rewrite Mmult_assoc; rewrite f_to_vec_Rz; try assumption.
-        2, 3: rewrite Mscale_mult_dist_r.
-        all: eapply get_boolean_expr_finit in feqb; 
-             try assumption;
-             rewrite feqb;
-             rewrite <- Cexp_add.
-        all: repeat rewrite <- Rmult_div_assoc;
-             rewrite <- Rmult_plus_distr_l;
-             rewrite <- Rmult_plus_distr_r.
-        all: repeat rewrite <- Rmult_div_assoc; 
-             rewrite <- plus_IZR.
-        rewrite Z.eqb_eq in k0k8.
-        rewrite k0k8.
-        replace (8 * (PI / 4))%R with (2 * PI)%R by lra.
-        destruct (f q); simpl; autorewrite with R_db; autorewrite with Cexp_db;
-        Msimpl_light; reflexivity.
-        reflexivity.
-        apply f_equal2; try reflexivity. 
-        rewrite minus_IZR.
-        unfold Rminus.
-        rewrite Rmult_plus_distr_r.
-        rewrite Rmult_plus_distr_l.
-        replace (- (8) * (PI / 4))%R with (-(2 * PI))%R by lra.
-        rewrite Cexp_add.
-        destruct (f q); simpl;
-        repeat rewrite Rmult_0_l;
-        repeat rewrite Rmult_1_l.
-        rewrite Cexp_neg, Cexp_2PI.
-        lca. 
-        rewrite Cexp_0. lca.
-      * destruct (merge' s k0 q b) eqn:mer; try discriminate.
-        inversion H; subst.
-        apply (IHs H4) in mer.
-        simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-        replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) n) with (@SQIR.Rz dim (IZR k * PI / 4) n) by reflexivity.
-        simpl.
-        repeat rewrite Mmult_assoc.
-        rewrite f_to_vec_Rz; try assumption.
-        rewrite Mscale_mult_dist_r.
-        rewrite mer.
-        rewrite Mscale_mult_dist_l.
-        rewrite Mscale_assoc.
-        apply f_equal2; try reflexivity.
-        lca.
-  - dependent destruction p.
-    destruct (merge' s k q (update b n0 (xor (b n) (b n0)))) eqn:mer; try discriminate.
-      inversion H; inversion WT; subst.
-      apply (IHs H8) in mer.
-      rewrite get_boolean_expr_update_xor in mer.
-      simpl PI4_to_base_ucom_l; simpl list_to_ucom.
-      replace (uapp2 U_CNOT n n0) with (@SQIR.CNOT dim n n0) by reflexivity.
-      simpl.
-      rewrite Mscale_mult_dist_l.
-      repeat rewrite Mmult_assoc.
-      rewrite f_to_vec_CNOT; try assumption.
-      rewrite mer.
-      repeat rewrite Mscale_mult_dist_l.
-      reflexivity.
-  - dependent destruction p.
+  intros dim u q n b neq.
+  dependent destruction u; simpl.
+  unfold proj, pad.
+  gridify; trivial.
+  all: destruct b; auto with wf_db.
 Qed.
 
-(* TODO: move to Utilities *)
-Lemma f_to_vec_eq : forall f1 f2 base dim,
-  (forall x, (x < base + dim)%nat -> f1 x = f2 x) ->
-  f_to_vec base dim f1 = f_to_vec base dim f2.
+Lemma proj_commutes_2q_gate : forall dim q n1 n2 b,
+  q <> n1 ->
+  q <> n2 ->
+  proj q dim b × ueval_cnot dim n1 n2 = ueval_cnot dim n1 n2 × proj q dim b. 
+Proof.
+  intros dim q n1 n2 b neq1 neq2.
+  unfold proj, ueval_cnot, pad.
+  gridify; trivial.
+  all: destruct b; auto with wf_db.
+Qed.
+
+(*Lemma proj_commutes : forall dim q1 q2 b1 b2,
+  proj q1 dim b1 × proj q2 dim b2 = proj q2 dim b2 × proj q1 dim b1.
+Proof.
+  intros dim q1 q2 b1 b2.
+  unfold proj, pad.
+  gridify; trivial.
+  all: destruct b1; destruct b2; auto with wf_db.
+  all: Qsimpl; reflexivity.
+Qed.
+
+Lemma proj_twice_eq : forall dim q b,
+  proj q dim b × proj q dim b = proj q dim b.
+Proof.
+  intros dim q b.
+  unfold proj, pad.
+  gridify.
+  destruct b; Qsimpl; reflexivity.
+Qed.
+
+Lemma proj_twice_neq : forall dim q b1 b2,
+  b1 <> b2 -> proj q dim b1 × proj q dim b2 = Zero.
+Proof.
+  intros dim q b1 b2 neq.
+  unfold proj, pad.
+  gridify.
+  destruct b1; destruct b2; try contradiction; Qsimpl; reflexivity.
+Qed.*)
+
+Lemma proj_X : forall dim f q n,
+  proj q dim (update f n (¬ (f n)) q) × uc_eval (SQIR.X n) = uc_eval (SQIR.X n) × proj q dim (f q).
+Proof.
+  intros dim f q n.
+  bdestruct (q =? n).
+  subst. rewrite update_index_eq.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify.
+  destruct (f n); Qsimpl; reflexivity.    
+  rewrite update_index_neq; [| lia].
+  replace (@uc_eval dim (SQIR.X n)) with (ueval_r dim n (U_R PI 0 PI)) by reflexivity.
+  rewrite proj_commutes_1q_gate; [| lia].
+  reflexivity.
+Qed.
+
+(* should already be defined somewhere? *)
+Lemma phase_shift_on_basis_state_adj : forall (θ : R) (b : bool),
+  (∣ b ⟩)† × phase_shift θ = (Cexp (b * θ)) .* (∣ b ⟩)†.
 Proof.
   intros.
-  induction dim; try reflexivity.
-  simpl.  
-  rewrite H; try lia.
-  rewrite IHdim. 
+  destruct b; solve_matrix; autorewrite with R_db.
   reflexivity.
-  intros.
-  apply H; lia.
+  rewrite Cexp_0; reflexivity.
+Qed.
+
+Lemma proj_Rz_comm : forall dim q n b k,
+  proj q dim b × uc_eval (SQIR.Rz k n) = uc_eval (SQIR.Rz k n) × proj q dim b. 
+Proof.
+  intros dim q n b k.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify.
+  all: destruct b; auto with wf_db.
+  all: repeat rewrite <- Mmult_assoc; rewrite phase_shift_on_basis_state.
+  all: repeat rewrite Mmult_assoc; rewrite phase_shift_on_basis_state_adj. 
+  all: rewrite Mscale_mult_dist_r, Mscale_mult_dist_l; reflexivity.
+Qed.
+
+Lemma proj_Rz : forall dim q b θ,
+  uc_eval (SQIR.Rz θ q) × proj q dim b = Cexp (b * θ) .* proj q dim b. 
+Proof.
+  intros dim q b θ.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify.
+  destruct b.
+  all: repeat rewrite <- Mmult_assoc; rewrite phase_shift_on_basis_state.
+  all: rewrite Mscale_mult_dist_l, Mscale_kron_dist_r, Mscale_kron_dist_l; 
+       reflexivity.
+Qed.
+
+Lemma proj_CNOT_control : forall dim q m n b,
+  (q <> n \/ m = n) ->
+  proj q dim b × uc_eval (SQIR.CNOT m n) = uc_eval (SQIR.CNOT m n) × proj q dim b.
+Proof.
+  intros dim q m n b H.
+  destruct H.
+  bdestruct (m =? n).
+  (* badly typed case *)
+  1,3: subst; replace (uc_eval (SQIR.CNOT n n)) with (@Zero (2 ^ dim) (2 ^ dim));
+       Msimpl_light; try reflexivity.
+  1,2: autorewrite with eval_db; bdestructΩ (n <? n); reflexivity.
+  bdestruct (q =? m).
+  (* q = control *)
+  subst. unfold proj.
+  autorewrite with eval_db.
+  gridify.
+  destruct b; Qsimpl; reflexivity.
+  destruct b; Qsimpl; reflexivity.
+  (* disjoint qubits *)
+  bdestructΩ (q =? n).
+  apply proj_commutes_2q_gate; assumption.
+Qed.
+
+Lemma proj_CNOT_target : forall dim f q n,
+  proj q dim ((f q) ⊕ (f n)) × proj n dim (f n) × uc_eval (SQIR.CNOT n q) = proj n dim (f n) × uc_eval (SQIR.CNOT n q) × proj q dim (f q).
+Proof.
+  intros dim f q n.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify. (* slow! *)
+  all: try (destruct (f n); destruct (f (n + 1 + d)%nat));        
+       try (destruct (f q); destruct (f (q + 1 + d)%nat));   
+       auto with wf_db.
+  all: simpl; Qsimpl; reflexivity.
+Qed.
+
+(* We can use 'proj' to state that qubit q is in classical state b. *)
+Definition classical {dim} q b (ψ : Vector (2 ^ dim)) := proj q dim b × ψ = ψ.
+
+Lemma merge'_preserves_semantics_on_basis_vecs : forall {dim} (l : PI4_ucom_l dim) blst k q b l' f (ψ : Vector (2 ^ dim)),
+  (q < dim)%nat ->
+  uc_well_typed_l l ->
+  merge' l blst k q b = Some l' ->
+  let A := uc_eval (list_to_ucom (PI4_to_base_ucom_l l')) in
+  let B := uc_eval (list_to_ucom (PI4_to_base_ucom_l l)) in
+  (forall q, (q < dim)%nat -> not (List.In q blst) -> 
+        classical q (get_boolean_expr b f dim q) ψ) ->
+  A × ψ = (Cexp (f q * (IZR k * PI / 4))) .* (B × ψ).
+Proof.
+  intros dim l blst k q b l' f ψ Hq WT H A B Hψ.
+  subst A B.
+  generalize dependent ψ.
+  generalize dependent l'.
+  generalize dependent b.
+  generalize dependent blst.
+  induction l; try discriminate.
+  intros blst b l' H ψ Hψ.
+  simpl in H.
+  destruct a; dependent destruction p.
+  Local Opaque ueval_r.
+  - (* H gate *)
+    destruct (merge' l (add n blst) k q b) eqn:mer; try discriminate.
+    inversion H; subst. simpl.
+    repeat rewrite Mmult_assoc.
+    eapply IHl; try apply mer.
+    inversion WT; auto.
+    intros q0 Hq01 Hq02. unfold classical.
+    rewrite <- Mmult_assoc.
+    rewrite proj_commutes_1q_gate.
+    rewrite Mmult_assoc.
+    rewrite (Hψ q0); auto.
+    contradict Hq02. apply add_In_l. assumption. 
+    contradict Hq02. subst. apply add_In_x.
+  - (* X gate *)
+    remember (if inb n blst then b else update b n (neg (b n) dim)) as b'.
+    destruct (merge' l blst k q b') eqn:mer; try discriminate.
+    inversion H; subst. simpl.
+    repeat rewrite Mmult_assoc.
+    eapply IHl; try apply mer.
+    inversion WT; auto.
+    intros q0 Hq01 Hq02. unfold classical.
+    rewrite <- Mmult_assoc.
+    bdestruct (inb n blst).
+    + rewrite proj_commutes_1q_gate.
+      rewrite Mmult_assoc.
+      rewrite (Hψ q0); auto.
+      intro contra. subst. contradiction.
+    + replace (ueval_r dim n (U_R PI 0 PI)) with (@uc_eval dim (SQIR.X n)) by reflexivity.
+      rewrite get_boolean_expr_update_neg.
+      rewrite proj_X.
+      rewrite Mmult_assoc.
+      rewrite (Hψ q0); auto.
+  - (* PI4 gate *)
+    destruct (negb (inb n blst) && f_eqb (b n) (fun x : nat => if x =? q then true else false) (dim + 1)) eqn:cond.
+    + apply andb_true_iff in cond as [Hinb feqb].
+      bdestruct (inb n blst); try discriminate; clear Hinb.
+      inversion WT; subst.
+      specialize (Hψ _ H3 H0). unfold classical in Hψ.
+      eapply get_boolean_expr_finit in feqb; try assumption.
+      destruct (k0 + k =? 8)%Z eqn:k0k8;
+      [| destruct (k0 + k <? 8)%Z eqn:k0k];
+      inversion H; subst; simpl.
+      2: replace (ueval_r dim n (U_R 0 0 (IZR (k0 + k) * PI / 4))) with (@uc_eval dim (SQIR.Rz (IZR (k0 + k) * PI / 4) n)) by reflexivity.
+      3: replace (ueval_r dim n (U_R 0 0 (IZR (k0 + k - 8) * PI / 4))) with (@uc_eval dim (SQIR.Rz (IZR (k0 + k - 8) * PI / 4) n)) by reflexivity.
+      all: replace (ueval_r dim n (U_R 0 0 (IZR k * PI / 4))) with (@uc_eval dim (SQIR.Rz (IZR k * PI / 4) n)) by reflexivity.
+      all: repeat rewrite Mmult_assoc; rewrite <- Mscale_mult_dist_r;
+           apply f_equal2; try reflexivity.
+      all: rewrite <- Hψ.
+      all: repeat rewrite <- Mmult_assoc; repeat rewrite proj_Rz.
+      all: repeat rewrite Mscale_mult_dist_l; rewrite Mscale_assoc. 
+      rewrite <- (Mscale_1_l _ _ (proj _ _ _ × _)) at 1.
+      all: apply f_equal2; try reflexivity.
+      all: rewrite feqb; rewrite <- Cexp_add.
+      all: repeat rewrite <- Rmult_div_assoc;
+           rewrite <- Rmult_plus_distr_l; rewrite <- Rmult_plus_distr_r;
+           rewrite <- plus_IZR.
+      rewrite Z.eqb_eq in k0k8.
+      rewrite k0k8.
+      replace (8 * (PI / 4))%R with (2 * PI)%R by lra.
+      destruct (f q); simpl; autorewrite with R_db; autorewrite with Cexp_db; auto.
+      reflexivity.
+      rewrite minus_IZR.
+      unfold Rminus. rewrite Rmult_plus_distr_r, Rmult_plus_distr_l.
+      replace (- (8) * (PI / 4))%R with (-(2 * PI))%R by lra.
+      rewrite Cexp_add.
+      destruct (f q); simpl; autorewrite with R_db; autorewrite with Cexp_db; lca.
+    + destruct (merge' l blst k0 q b) eqn:mer; try discriminate.
+      inversion H; subst. simpl.
+      repeat rewrite Mmult_assoc.
+      eapply IHl; try apply mer.
+      inversion WT; auto.
+      intros q0 Hq01 Hq02. unfold classical.
+      rewrite <- Mmult_assoc.
+      replace (ueval_r dim n (U_R 0 0 (IZR k * PI / 4))) with (@uc_eval dim (SQIR.Rz (IZR k * PI / 4) n)) by reflexivity.
+      rewrite proj_Rz_comm.
+      rewrite Mmult_assoc.
+      rewrite (Hψ q0); auto.
+  - (* CNOT gate *)
+    bdestruct (inb n blst); bdestruct (inb n0 blst); simpl in H;
+    [ destruct (merge' l (add n0 blst) k q b) eqn:mer
+    | destruct (merge' l (add n0 blst) k q b) eqn:mer
+    | destruct (merge' l blst k q b) eqn:mer
+    | destruct (merge' l blst k q (update b n0 (xor (b n) (b n0)))) eqn:mer];
+    try discriminate; inversion H; subst; simpl;
+    repeat rewrite Mmult_assoc;
+    eapply IHl; try apply mer; inversion WT; subst; auto;
+    intros q0 Hq01 Hq02; unfold classical;
+    rewrite <- Mmult_assoc;
+    replace (ueval_cnot dim n n0) with (@uc_eval dim (SQIR.CNOT n n0)) by reflexivity.
+    (* first, the cases where we do not update the boolean state *)
+    1,2,3: rewrite proj_CNOT_control. 
+    1,3,5: rewrite Mmult_assoc; rewrite (Hψ q0); auto.
+    1,2: contradict Hq02; apply add_In_l; assumption.
+    1,2,3: left; contradict Hq02; subst; try apply add_In_x; assumption.
+    (* next, the case where we need to use proj_CNOT_target *)
+    rewrite get_boolean_expr_update_xor.
+    bdestruct (q0 =? n0).
+    2: { rewrite update_index_neq; try lia.
+         rewrite proj_CNOT_control; try (left; assumption).
+         rewrite Mmult_assoc; rewrite (Hψ q0); auto. }
+    subst. rewrite update_index_eq.
+    unfold classical in Hψ.
+    rewrite <- (Hψ n H6 H0) at 1.
+    rewrite <- (Mmult_assoc _ _ ψ).
+    rewrite (Mmult_assoc (proj _ _ _)).
+    rewrite <- proj_CNOT_control.
+    rewrite <- (Mmult_assoc (proj _ _ _)).
+    rewrite proj_CNOT_target.
+    rewrite proj_CNOT_control.
+    repeat rewrite Mmult_assoc. 
+    rewrite 2 Hψ; auto.
+    all: specialize (Nat.eq_dec n n0) as Hdec; destruct Hdec; auto.
+Qed.
+
+Lemma f_to_vec_classical : forall n q f,
+  (q < n)%nat -> classical q (f q) (f_to_vec 0 n f).
+Proof.
+  intros n q f Hq.
+  unfold classical, proj.
+  induction n; try lia.
+  unfold pad.
+  replace (q + 1)%nat with (S q) by lia. 
+  bdestructΩ (S q <=? S n); clear H.
+  bdestruct (q =? n).
+  - subst. replace (n - n)%nat with O by lia.
+    simpl. Msimpl_light.
+    restore_dims.
+    rewrite kron_mixed_product.
+    Msimpl_light; apply f_equal2; auto.
+    destruct (f n); solve_matrix.
+  - remember (n - q - 1)%nat as x.
+    replace (n - q)%nat with (x + 1)%nat by lia.
+    replace n with (q + 1 + x)%nat by lia.
+    replace (2 ^ (x + 1))%nat with (2 ^ x * 2)%nat by unify_pows_two.
+    rewrite <- id_kron.
+    rewrite <- kron_assoc.
+    replace (2 ^ (q + 1 + x) + (2 ^ (q + 1 + x) + 0))%nat with (2 ^ (q + 1 + x) * 2)%nat by lia.
+    repeat rewrite Nat.pow_add_r.
+    replace 1%nat with (1 * 1)%nat by lia. 
+    rewrite kron_mixed_product; simpl.
+    replace (q + 1 + x)%nat with n by lia.
+    subst.
+    Msimpl_light.
+    2: destruct (f n); auto with wf_db.
+    rewrite <- IHn at 2; try lia.
+    unfold pad. 
+    bdestructΩ (q + 1 <=? n); clear H0.
+    replace (n - (q + 1))%nat with (n - q - 1)%nat by lia.
+    restore_dims. reflexivity.
 Qed.
 
 Lemma merge_preserves_semantics : forall {dim} (s : PI4_ucom_l dim) k q l',
@@ -728,14 +824,7 @@ Proof.
   { clear - Heqfinit.
     intros.
     apply get_boolean_expr_finit; try assumption.
-    subst finit; simpl. apply f_eqb_same.
-    apply eqb_spec. }
-  assert (f_to_vec 0 dim f = f_to_vec 0 dim (get_boolean_expr finit f dim)).
-  { clear - Heqfinit H0.
-    apply f_to_vec_eq.
-    intros.
-    symmetry; apply H0; lia. } 
-  rewrite H1. 
+    subst finit; simpl. apply eq_implies_f_eqb. }
   simpl PI4_to_base_ucom_l; simpl list_to_ucom.
   replace (uapp1 (U_R 0 0 (IZR k * PI / 4)) q) with (@SQIR.Rz dim (IZR k * PI / 4) q) by reflexivity.
   simpl.
@@ -743,16 +832,23 @@ Proof.
   rewrite f_to_vec_Rz; try assumption.
   rewrite Mscale_mult_dist_r.
   rewrite <- Mscale_mult_dist_l.
-  rewrite H0; try assumption.
-  apply merge'_preserves_semantics_on_basis_vecs; assumption.
+  rewrite Mscale_mult_dist_l.
+  eapply merge'_preserves_semantics_on_basis_vecs; auto.
+  apply H. intros q0 Hq0 _.
+  unfold classical.
+  rewrite H0; auto.
+  apply f_to_vec_classical; auto.
 Qed.
 
 (* Examples *)
 
 Definition test5 : PI4_ucom_l 3 := CNOT 0 2 :: T 0 :: X 2 :: CNOT 2 1 :: T 2 :: [].
-
 (* Result: Some [CNOT 0 2; P 0; X 2; CNOT 2 1; T 2] *)
 Compute (merge test5 1 0).
+
+Definition test6 : PI4_ucom_l 3 := CNOT 1 0 :: T 0 :: CNOT 1 2 :: CNOT 0 1 :: H 2 :: CNOT 1 2 :: CNOT 0 1 :: T 1 :: [].
+(* Result: Some [CNOT 1 0; T 0; CNOT 1 2; CNOT 0 1; H 2; CNOT 1 2; CNOT 0 1; P 1] *)
+Compute (merge test6 1 1).
 
 (** Final optimization definition. **)
 
@@ -793,7 +889,7 @@ Proof.
   unfold merge_rotation in H. 
   destruct (get_subcircuit l q) eqn:subc.
   destruct p.
-  destruct (merge p1 k q) eqn:mer; try discriminate.
+  destruct (merge l1 k q) eqn:mer; try discriminate.
   specialize (get_subcircuit_l1_does_not_reference _ _ _ _ _ subc) as dnr.
   apply get_subcircuit_preserves_semantics in subc.
   apply merge_preserves_semantics in mer.
@@ -806,8 +902,8 @@ Proof.
   rewrite subc.
   rewrite mer.
   rewrite app_comm_cons.
-  rewrite (cons_to_app _ p1).
-  rewrite (cons_to_app _ p).
+  rewrite (cons_to_app _ l1).
+  rewrite (cons_to_app _ l0).
   rewrite (does_not_reference_commutes_app1 _ _ _ dnr).
   repeat rewrite app_assoc.
   reflexivity.
@@ -816,7 +912,7 @@ Qed.
 Lemma merge_rotations_sound : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l ->
   merge_rotations l ≅l≅ l.
-Proof.
+Proof. 
   intros.
   unfold merge_rotations.
   (* the value of n is unimportant for correctness *)
@@ -850,16 +946,16 @@ Qed.
 
 (* Examples *)
 
-Definition test6 : PI4_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
-Definition test7 : PI4_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
-Definition test8 : PI4_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
-Definition test9 : PI4_ucom_l 3 := T 1 :: T 2 :: CNOT 0 1 :: CNOT 1 2 :: CNOT 1 0 :: T 0 :: CNOT 2 1 :: TDAG 1 :: [].
+Definition test7 : PI4_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
+Definition test8 : PI4_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
+Definition test9 : PI4_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
+Definition test10 : PI4_ucom_l 3 := T 1 :: T 2 :: CNOT 0 1 :: CNOT 1 2 :: CNOT 1 0 :: T 0 :: CNOT 2 1 :: TDAG 1 :: [].
 
 (* Result: [CNOT 1 2; CNOT 0 3; CNOT 0 1; CNOT 1 2; CNOT 2 1; PDAG 1; CNOT 3 0; CNOT 0 3; P 0; Z 3] *)
-Compute (merge_rotations test6).
-(* Result: [CNOT 0 1; Z 1; CNOT 0 1; Z 0; P 1; CNOT 1 0] *)
 Compute (merge_rotations test7).
-(* Result: [CNOT 2 3; CNOT 0 1; CNOT 2 3; CNOT 1 2; CNOT 1 0; CNOT 3 2; CNOT 1 2; CNOT 0 1; P 2] *)
+(* Result: [CNOT 0 1; Z 1; CNOT 0 1; Z 0; P 1; CNOT 1 0] *)
 Compute (merge_rotations test8).
-(* Result: [CNOT 0 1; CNOT 1 2; CNOT 0 1; P 0; CNOT 2 1] *)
+(* Result: [CNOT 2 3; CNOT 0 1; CNOT 2 3; CNOT 1 2; CNOT 1 0; CNOT 3 2; CNOT 1 2; CNOT 0 1; P 2] *)
 Compute (merge_rotations test9).
+(* Result: [CNOT 0 1; CNOT 1 2; CNOT 1 0; P 0; CNOT 2 1] *)
+Compute (merge_rotations test10).
