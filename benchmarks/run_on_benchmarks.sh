@@ -10,6 +10,6 @@ cd ../VOQC
 
 for i in `seq 0 ${len}`
 do
-    outfile="../nam_benchmarks/${PROG[$i]}_opt"
-    echo "dune exec ./voqc.exe ../nam-benchmarks/${PROG[$i]} ${N[$i]} $outfile"
+    outfile="../benchmarks/nam-benchmarks/${PROG[$i]}_opt"
+    dune exec ./voqc.exe ../benchmarks/nam-benchmarks/${PROG[$i]} ${N[$i]} $outfile
 done

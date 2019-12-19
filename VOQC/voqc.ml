@@ -189,7 +189,7 @@ let write_qasm_file fname p dim =
    ignore(List.map (sqir_to_qasm_gate oc) p);
    close_out oc)
 
-exception BadType of string
+exception BadType of string;;
 
 if (Array.length Sys.argv <> 4)
 then print_endline "Expected usage: voqc <prog> <N> <out>"
@@ -200,7 +200,7 @@ else let fname = Sys.argv.(1) in
      let p = get_gate_list fname in
      match (B.optimize_check_for_type_errors nqbits p) with
      | None -> raise (BadType "Program is not well-typed with the given dimension. Results of optimization may be incorrect!\n")
-     | Some p' -> (printf "Original gates: %d\nOPtimized gates: %d\n%!" (List.length p) (List.length p');
+     | Some p' -> (printf "Original gates: %d\nOptimized gates: %d\n\n%!" (List.length p) (List.length p');
                    write_qasm_file outf p' nqbits)
 
    

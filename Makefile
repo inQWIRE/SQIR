@@ -27,7 +27,7 @@ invoke-coqmakefile: CoqMakefile
 
 COQ_OPTS := -R . Top
 
-all: examples mapper optimizer qasm hll-compiler/BooleanCompilation.vo
+all: examples mapper optimizer optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo qasm hll-compiler/BooleanCompilation.vo
 
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
 
@@ -35,10 +35,8 @@ mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
 
 qasm: invoke-coqmakefile qasm_to_sqir/Sets.vo qasm_to_sqir/Map.vo qasm_to_sqir/qasm.vo
 
-voqc: invoke-coqmakefile optimizer/Optimize.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo
-	cd VOQC
-	./extract.sh
-	dune build voqc.exe
+voqc: invoke-coqmakefile optimizer/Optimize.vo
+	cd VOQC && ./extract.sh && dune build voqc.exe
 
 # Built by 'make examples'
 
@@ -65,7 +63,7 @@ mapper/SimpleMapping.vo: core/UnitarySem.vo optimizer/Equivalences.vo
 mapper/MappingExamples.vo: mapper/SimpleMapping.vo
 	coqc $(COQ_OPTS) mapper/MappingExamples.v
 
-# Built by 'make optimizer'
+# Built by 'make voqc'
 
 optimizer/Equivalences.vo: optimizer/Equivalences.v core/UnitarySem.vo
 	coqc $(COQ_OPTS) optimizer/Equivalences.v
@@ -88,12 +86,6 @@ optimizer/Optimize.vo: optimizer/Optimize.v optimizer/NotPropagation.vo optimize
 optimizer/PI4GateSet.vo: optimizer/PI4GateSet.v optimizer/Equivalences.vo optimizer/ListRepresentation.vo core/DensitySem.vo
 	coqc $(COQ_OPTS) optimizer/PI4GateSet.v
 
-optimizer/PropagateClassical.vo: optimizer/PropagateClassical.v optimizer/PI4GateSet.vo core/DensitySem.vo
-	coqc $(COQ_OPTS) optimizer/PropagateClassical.v
-
-optimizer/RemoveZRotationBeforeMeasure.vo: optimizer/RemoveZRotationBeforeMeasure.v optimizer/PI4GateSet.vo core/DensitySem.vo
-	coqc $(COQ_OPTS) optimizer/RemoveZRotationBeforeMeasure.v
-
 optimizer/RotationMerging.vo: optimizer/RotationMerging.v optimizer/PI4GateSet.vo core/Utilities.vo
 	coqc $(COQ_OPTS) optimizer/RotationMerging.v
 
@@ -110,12 +102,18 @@ qasm_to_sqir/qasm.vo: qasm_to_sqir/qasm.v qasm_to_sqir/Map.vo lib/QWIRE/Quantum.
 
 # Misc. files built by 'make all'
 
+optimizer/PropagateClassical.vo: optimizer/PropagateClassical.v optimizer/PI4GateSet.vo core/DensitySem.vo
+	coqc $(COQ_OPTS) optimizer/PropagateClassical.v
+
+optimizer/RemoveZRotationBeforeMeasure.vo: optimizer/RemoveZRotationBeforeMeasure.v optimizer/PI4GateSet.vo core/DensitySem.vo
+	coqc $(COQ_OPTS) optimizer/RemoveZRotationBeforeMeasure.v
+
 hll-compiler/BooleanCompilation.vo: hll-compiler/BooleanCompilation.v core/Utilities.vo lib/QWIRE/Dirac.vo
 	coqc $(COQ_OPTS) hll-compiler/BooleanCompilation.v
 
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -f CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob hll-compiler/*.vo hll-compiler/*.glob qasm_to_sqir/*.vo qasm_to_sqir/*.glob
+	rm -rf CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob VOQC/_build hll-compiler/*.vo hll-compiler/*.glob qasm_to_sqir/*.vo qasm_to_sqir/*.glob
 
 # This should be the last rule, to handle any targets not declared above
 %: invoke-coqmakefile
