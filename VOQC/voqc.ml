@@ -7,6 +7,8 @@ open Semant
 open Printf
 open Lexing
 
+(*** Code to convert AST to SQIR program ***)
+
 (* Error handling adapted from Real World OCaml *)
 let print_position outx lexbuf =
   let pos = lexbuf.lex_curr_p in
@@ -161,49 +163,9 @@ let get_gate_list f =
       (QbitMap.empty, 0) qbit_list in
   translate_program ast qbit_map sym_tab
 
-(******************************************************************************)
-(* Benchmark specific code                                                    *)
-(******************************************************************************)
+(*** Code to run VOQC ***)
 
-let nam_benchmark_filenames = [
-  "../nam-benchmarks/adder_8.qasm";
-  "../nam-benchmarks/barenco_tof_10.qasm";
-  "../nam-benchmarks/barenco_tof_3.qasm";
-  "../nam-benchmarks/barenco_tof_4.qasm";
-  "../nam-benchmarks/barenco_tof_5.qasm";
-  "../nam-benchmarks/csla_mux_3.qasm";
-  "../nam-benchmarks/csum_mux_9.qasm";
-  "../nam-benchmarks/gf2^10_mult.qasm";
-  "../nam-benchmarks/gf2^16_mult.qasm";
-  "../nam-benchmarks/gf2^4_mult.qasm";
-  "../nam-benchmarks/gf2^5_mult.qasm";
-  "../nam-benchmarks/gf2^6_mult.qasm";
-  "../nam-benchmarks/gf2^7_mult.qasm";
-  "../nam-benchmarks/gf2^8_mult.qasm";
-  "../nam-benchmarks/gf2^9_mult.qasm";
-  "../nam-benchmarks/mod5_4.qasm";
-  "../nam-benchmarks/mod_mult_55.qasm";
-  "../nam-benchmarks/mod_red_21.qasm";
-  "../nam-benchmarks/qcla_adder_10.qasm";
-  "../nam-benchmarks/qcla_com_7.qasm";
-  "../nam-benchmarks/qcla_mod_7.qasm";
-  "../nam-benchmarks/rc_adder_6.qasm";
-  "../nam-benchmarks/tof_10.qasm";
-  "../nam-benchmarks/tof_3.qasm";
-  "../nam-benchmarks/tof_4.qasm";
-  "../nam-benchmarks/tof_5.qasm";
-  "../nam-benchmarks/vbe_adder_3.qasm";
-]
-
-let nam_benchmark_dims = [ 24; 19; 5; 7; 9; 15; 30; 30; 48; 12; 15; 18; 21; 24; 27; 5; 9; 11; 36; 24; 26; 14; 19; 5; 7; 9; 10; ]
-
-(* Larger benchmarks:
-   "../nam-benchmarks/gf2^32_mult.qasm" with 96 qubits
-   "../nam-benchmarks/gf2^64_mult.qasm" wtih 192 qubits *)
-
-let parse_nam_benchmarks () = List.map (fun x -> get_gate_list x) nam_benchmark_filenames
-
-(* super simple translation to QASM *)
+(* super basic translation to QASM *)
 let sqir_to_qasm_gate oc g =
   match g with
   | B.App1 (B.UPI4_H,     n) -> fprintf oc "h q[%d];\n" n
@@ -229,20 +191,16 @@ let write_qasm_file fname p dim =
 
 exception BadType of string
 
-(* write the results of running optimizations on the Nam benchmarks to file f *)
-let run_on_nam_benchmarks f =
-  let bs = parse_nam_benchmarks () in
-  let bs' = List.mapi (fun i p ->
-       printf "Processing %s\n%!" (List.nth nam_benchmark_filenames i);
-       match (B.optimize_check_for_type_errors (List.nth nam_benchmark_dims i) p) with
-       | None -> raise (BadType "Program is not well-typed with the given dimension. Results of optimization may be incorrect!\n")
-       | Some p' -> (printf "\t%d -> %d\n%!" (List.length p) (List.length p'); p')) bs in
-  let oc = open_out f in
-   (ignore(List.mapi (fun i p -> fprintf oc "%s,%d\n"
-                        (List.nth nam_benchmark_filenames i)
-                        (List.length p);
-                        write_qasm_file ((List.nth nam_benchmark_filenames i) ^ "_opt") p (List.nth nam_benchmark_dims i))
-            bs');
-   close_out oc)
+if (Array.length Sys.argv <> 4)
+then print_endline "Expected usage: voqc <prog> <N> <out>"
+else let fname = Sys.argv.(1) in
+     let nqbits = int_of_string Sys.argv.(2) in
+     let outf = Sys.argv.(3) in
+     let _ = printf "./voqc %s %d %s\n" fname nqbits outf in
+     let p = get_gate_list fname in
+     match (B.optimize_check_for_type_errors nqbits p) with
+     | None -> raise (BadType "Program is not well-typed with the given dimension. Results of optimization may be incorrect!\n")
+     | Some p' -> (printf "Original gates: %d\nOPtimized gates: %d\n%!" (List.length p) (List.length p');
+                   write_qasm_file outf p' nqbits)
 
    

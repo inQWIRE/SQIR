@@ -1,13 +1,13 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples mapper optimizer qasm clean
+KNOWNTARGETS := CoqMakefile all examples mapper voqc qasm clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
 # Warning: These files get declared as PHONY, so any targets depending
 # on them always get rebuilt
-KNOWNFILES   := Makefile _CoqProject
+KNOWNFILES := Makefile _CoqProject
 
 .DEFAULT_GOAL := invoke-coqmakefile
 
@@ -28,10 +28,17 @@ invoke-coqmakefile: CoqMakefile
 COQ_OPTS := -R . Top
 
 all: examples mapper optimizer qasm hll-compiler/BooleanCompilation.vo
+
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
+
 mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
-optimizer: invoke-coqmakefile optimizer/Optimize.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo
+
 qasm: invoke-coqmakefile qasm_to_sqir/Sets.vo qasm_to_sqir/Map.vo qasm_to_sqir/qasm.vo
+
+voqc: invoke-coqmakefile optimizer/Optimize.vo optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo
+	cd VOQC
+	./extract.sh
+	dune build voqc.exe
 
 # Built by 'make examples'
 
@@ -100,7 +107,6 @@ qasm_to_sqir/Map.vo: qasm_to_sqir/Map.v qasm_to_sqir/Sets.vo
 
 qasm_to_sqir/qasm.vo: qasm_to_sqir/qasm.v qasm_to_sqir/Map.vo lib/QWIRE/Quantum.vo
 	coqc $(COQ_OPTS) qasm_to_sqir/qasm.v
-
 
 # Misc. files built by 'make all'
 

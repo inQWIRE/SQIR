@@ -1,11 +1,17 @@
 # SQIR
-A **S**mall **Q**uantum **I**ntermediate **R**epresentation for a verified compiler.
 
-## Compilation Instructions
+## Overview
 
-Run `make` to compile the files in the core directory, `make optimizer` to compile code in the optimizer directory, `make mapper` to compile code in the mapper directory, and `make examples` to compile the code in the examples directory. Use `make all` to compile everything.
+SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs.
+Its main application is as an IR in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-The development has been tested with Coq versions 8.9.1 and 8.10.1 on a MacBook Pro. `make all` should take about an hour.
+We describe SQIR and VOQC in [this arXiv paper](https://arxiv.org/pdf/1912.02250.pdf). A preliminary version of this work was presented at QPL 2019.
+
+## Compilation
+
+Run `make` to compile the core files of SQIR, `make voqc` to compile the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. Use `make all` to compile everything. `make voqc` will produce an executable named `voqc` in the benchmarks directory; see the benchmarks directory for instructions on running the optimizer. 
+
+The development has been tested with Coq versions 8.9.1 and 8.10.1 on a MacBook Pro. Our proofs are resource intensive, expect `make all` to take over an hour. Producing the `voqc` executable requires a current version of OCaml (we have tested with 4.07.0), dune, and menhir.
 
 ## Directory Contents
 
@@ -34,6 +40,7 @@ Current progress on a verified optimizer for SQIR programs.
   - optimizer/Equivalences.v : Verified circuit equivalences for peephole optimizations.
   - optimizer/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs when possible.
   - optimizer/PI4GateSet.v : Fixed gate set used in our optimizer; includes gate-set-specific proofs for utilities in ListRepresentation.v.
+  - optimizer/Extraction.v : Rules for extracting VOQC to OCaml.
 
 - Optimizations on unitary programs
   - optimizer/GateCancellation.v : 'Single-qubit gate cancellation' and 'two-qubit gate cancellation' optimizations from Nam et al.
@@ -65,11 +72,8 @@ Examples of verifying correctness properties of simple SQIR programs.
 
 ### benchmarks
 
-Instructions for running SQIR optimizations on benchmark programs can be found in [the README in the benchmarks directory](benchmarks/README.md).
+Instructions for running VOQC on the benchmarks presented in our paper can be found in [the README in the benchmarks directory](benchmarks/README.md).
 
-## Remarks
-
-A preliminary version of this work was presented at QPL 2019. For details, see the arXiv paper available [here](https://arxiv.org/pdf/1904.06319.pdf) and code in the 'QPL2019' branch.
-A revised submission is in progress; contact the authors if you are interested in a draft.
+## Acknowledgements
 
 This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040.
