@@ -17,23 +17,23 @@ We also do not consider the results of optimizing mod_adder_1024 because the gat
 
 First, run `make voqc` in the top (`..`) directory. This will create an executable `voqc` in the current directory. `voqc <prog> <N> <out>` will optimize program prog, which has N qubits, and write the optimized result to out. It will print the initial and final gate counts.
 
-To run VOQC on all the benchmarks (excluding the slowest, gf2^64) run `./run_on_benchmarks.sh`.
+To run VOQC on all the benchmarks (excluding the slowest, gf2^64) run `./run_voqc.sh`.
 
 ## Other Optimizers
 
-We are also interested in comparing VOQC's performance to existing unverified compilers.
+In our paper, we compare VOQC's performance to existing unverified compilers. We used the scripts in this directory to generate our data. If you are familiar with these compilers and see a problem with how we are running them, please let us know! (Contact <kesha@cs.umd.edu>.)
 
-(In progress...)
-
-### Qiskit
-
-Qiskit requires python 3. Once you have installed python 3, you can install Qiskit using pip (`pip install qiskit`).
-To run Qiskit on the benchmarks, use the command `python3 run_qiskit.py f` where `f` is the output filename.
-
-### quilc
+All of these scripts print gate count data to the console and write to a CSV file. A prerequisite for running these compilers is having Python 3 installed.
 
 ### PyZX
 
+To install PyZX from source, clone PyZX's [github repository](https://github.com/Quantomatic/pyzx) and run `pip install -e .`. To run PyZX on the benchmarks, use the run_pyzx.py script. Note that you will need to run this from where PyZX was installed.
+
+### Qiskit
+
+To install Qiskit using pip, run `pip install qiskit`. To run Qiskit on the benchmarks, use the command `python3 run_qiskit.py f` where `f` is the output filename.
+
 ### tket
 
+To install t|ket> using pip, run `pip install pytket`. To run tket on the benchmarks, use the command `python3 run_tket.py f` where `f` is the output filename.
 

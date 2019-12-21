@@ -1,5 +1,3 @@
-# MUST BE RUN USING PYTHON 3
-
 '''
     We consider running Qiskit with two different settings:
     - A: the optimizations used up to level 2 with basis {u1, H, X, CNOT}
@@ -10,6 +8,7 @@
     - https://github.com/Qiskit/qiskit-terra/blob/master/qiskit/transpiler/preset_passmanagers/level3.py
 '''
 
+import math
 import numpy
 import os
 from qiskit import QuantumCircuit
@@ -25,9 +24,16 @@ def count(d):
         sum += d[k]
     return sum
     
+def get_closest_multiple_of_pi(theta):
+    l = [x * (math.pi/4) for x in range(-7,8)]
+    l1 = [abs(x - theta) for x in l]
+    return(range(-7,8)[l1.index(min(l1))])
+
 def run_on_nam_benchmarks(fname):
     
     f = open(fname, "w")
+    
+    f.write("name, num gates before, t-count before, num gates after (A), t-count after (A), num gates after (B)\n")
     
     for fname in os.listdir("nam-benchmarks"):
 
@@ -39,7 +45,7 @@ def run_on_nam_benchmarks(fname):
         # already-decomposed versions of ccx and ccz.
         
         inqasm = open("nam-benchmarks/%s" % fname, "r")
-        tmp = open("copy.tmp", "w") # hardcoded filename
+        tmp = open("copy.qasm", "w") # hardcoded filename
         p_ccz = re.compile("ccz (.*), (.*), (.*);")
         p_ccx = re.compile("ccx (.*), (.*), (.*);")
         
@@ -85,7 +91,16 @@ def run_on_nam_benchmarks(fname):
             else:
                 tmp.write(line)
         tmp.close()
-        circ = QuantumCircuit.from_qasm_file("copy.tmp")
+        circ = QuantumCircuit.from_qasm_file("copy.qasm")
+
+        num_gates_before = count(circ.count_ops())
+        # getting a t-count only makes sense for the current benchmarks, which only 
+        # contain rotations by PI/4
+        t_count_before = 0
+        for inst, _, _ in circ.data:
+            if (inst.name == "t" or inst.name == "tdg"):
+                t_count_before += 1
+        print("\nORIGINAL: %d gates, %d T-gates" % (num_gates_before, t_count_before))
 
         # A
         basis_gates = ['u1', 'h', 'x', 'cx']
@@ -99,7 +114,13 @@ def run_on_nam_benchmarks(fname):
         pmA.append([CommutationAnalysis()])
         pmA.append(_depth_check + _opt, do_while=_opt_control)
         circA = pmA.run(circ)
-        countA = count(circA.count_ops())
+        num_gates_afterA = count(circA.count_ops())
+        t_count_afterA = 0
+        for inst, _, _ in circA.data:
+            if (inst.name == "u1"):
+                if (get_closest_multiple_of_pi(inst.params[0]) % 2 == 1):
+                    t_count_afterA += 1
+        print("OPTIMIZED (A): %d gates, %d T-gates" % (num_gates_afterA, t_count_afterA))
         
         # B
         basis_gates = ['u1', 'u2', 'u3', 'cx']
@@ -114,10 +135,11 @@ def run_on_nam_benchmarks(fname):
         pmB.append(_unroll)
         pmB.append(_depth_check + _opt, do_while=_opt_control)
         circB = pmB.run(circ)
-        countB = count(circB.count_ops())
+        num_gates_afterB = count(circB.count_ops())
+        # not sure how to get the t-gate count for the {u1, u2, u3, CX} gate set
+        print("OPTIMIZED (B): %d gates\n" % (num_gates_afterB))
 
-        print("Counts: A - %d, B - %d\n" % (countA, countB))
-        f.write("%s,%d,%d\n" % (fname, countA, countB))
+        f.write("%s,%d,%d,%d,%d,%d\n" % (fname, num_gates_before, t_count_before, num_gates_afterA, t_count_afterA, num_gates_afterB))
         
     f.close()
 

@@ -189,6 +189,12 @@ let write_qasm_file fname p dim =
    ignore(List.map (sqir_to_qasm_gate oc) p);
    close_out oc)
 
+let rec get_t_count l = 
+  match l with
+  | [] -> 0
+  | B.App1 (B.UPI4_PI4(k), _) :: t -> (k mod 2) + (get_t_count t)
+  | _ :: t -> get_t_count t
+
 exception BadType of string;;
 
 if (Array.length Sys.argv <> 4)
@@ -200,7 +206,7 @@ else let fname = Sys.argv.(1) in
      let p = get_gate_list fname in
      match (B.optimize_check_for_type_errors nqbits p) with
      | None -> raise (BadType "Program is not well-typed with the given dimension. Results of optimization may be incorrect!\n")
-     | Some p' -> (printf "Original gates: %d\nOptimized gates: %d\n\n%!" (List.length p) (List.length p');
+     | Some p' -> (printf "Original gates: %d (T count: %d)\nOptimized gates: %d (T count: %d)\n\n%!" (List.length p) (get_t_count p) (List.length p') (get_t_count p');
                    write_qasm_file outf p' nqbits)
 
    
