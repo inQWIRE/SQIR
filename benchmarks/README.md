@@ -15,7 +15,7 @@ We also do not consider the results of optimizing mod_adder_1024 because the gat
 
 ## Running VOQC
 
-First, run `make voqc` in the top (`..`) directory. This will create an executable `voqc` in the current directory. `voqc <prog> <N> <out>` will optimize program prog, which has N qubits, and write the optimized result to out. It will print the initial and final gate counts.
+In the top (`..`) directory, run `make optimizer`. This will compile the OCaml code we have extracted from the verified Coq code. If you have modified the Coq code, then be sure to run `make voqc` first. To run the optimizer, cd into the VOQC directory and run `dune exec ./voqc.exe <prog> <N> <out>`, which will optimize program prog, which has N qubits, and write the optimized result to out. It will print the initial and final gate counts.
 
 To run VOQC on all the benchmarks (excluding the slowest, gf2^64) run `./run_voqc.sh`.
 

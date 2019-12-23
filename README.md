@@ -5,13 +5,13 @@
 SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs.
 Its main application is as an IR in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-We describe SQIR and VOQC in [this arXiv paper](https://arxiv.org/pdf/1912.02250.pdf). A preliminary version of this work was presented at QPL 2019.
+We describe SQIR and VOQC in [this draft](https://www.cs.umd.edu/~mwh/papers/hietala19voqc.html). A preliminary version of this work was presented at QPL 2019.
 
 ## Compilation
 
-Run `make` to compile the core files of SQIR, `make voqc` to compile the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. Use `make all` to compile everything. `make voqc` will produce an executable named `voqc` in the benchmarks directory; see the benchmarks directory for instructions on running the optimizer. 
+Run `make` to compile the core files of SQIR, `make optimizer` to compile the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. To compile an executable version of the optimizer (from OCaml code extracted from the Coq code), run `make voqc`. Use `make all` to compile everything. `make voqc` will produce an executable; see the benchmarks directory for instructions on running the optimizer. 
 
-The development has been tested with Coq versions 8.9.1 and 8.10.1 on a MacBook Pro. Our proofs are resource intensive, expect `make all` to take over an hour. Producing the `voqc` executable requires a current version of OCaml (we have tested with 4.07.0), dune, and menhir.
+The development has been tested with Coq versions 8.9.1 and 8.10.1 on a MacBook Pro. Our proofs are resource intensive, expect `make all` to take over an hour (although compilation of the extracted code with `make voqc` should be quick). Producing the `voqc` executable requires a current version of OCaml (we have tested with 4.07.0), dune, and menhir.
 
 ## Directory Contents
 

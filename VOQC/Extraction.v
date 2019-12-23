@@ -98,7 +98,7 @@ Extraction Implicit not_propagation' [dim].
 Extraction Implicit not_propagation [dim].
 
 (* Perform extraction to the file 'extracted_code.ml'. *)
-Extraction "extracted_code.ml" 
+Extraction "ExtractedCode.ml" 
   CCX CCZ
   UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG 
   optimize optimize_check_for_type_errors.

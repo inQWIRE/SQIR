@@ -1,16 +1,15 @@
 # Run t|ket> on all the benchmarks
 
-# tket includes several optimization passes (partial list below), but I'm not sure which
-# is/are the right one(s) to call. When I tried including more (e.g. CommuteThroughMultis)
+# tket includes several optimization passes, but I'm not sure which is/are the
+# right one(s) to call. When I tried including more (e.g. CommuteThroughMultis)
 # the benchmarks were very slow to compile.
-# List: CommuteThroughMultis, RemoveRedundancies, FullPeepholeOptimise, 
-#       OptimisePhaseGadgets, KAKDecomposition, PauliSimp, gen_clifford_simp_pass
 
 import pytket
 from pytket import OpType, Transform
 from pytket.qasm import circuit_from_qasm
 import os
 import re
+import sys
 
 def run_on_nam_benchmarks(fname):
     

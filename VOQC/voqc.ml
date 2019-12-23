@@ -1,4 +1,4 @@
-module B = BenchmarkGates
+module E = ExtractedCode
 
 open OQAST
 open OQLexer
@@ -89,14 +89,14 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size (fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
-let _CNOT m n = B.App2 (B.UPI4_CNOT, m, n)
-let _X    n = B.App1 (B.UPI4_X,    n)
-let _Z    n = B.App1 (B.uPI4_Z,    n)
-let _H    n = B.App1 (B.UPI4_H,    n)
-let _P    n = B.App1 (B.uPI4_P,    n)
-let _PDAG n = B.App1 (B.uPI4_PDAG, n)
-let _T    n = B.App1 (B.uPI4_T,    n)
-let _TDAG n = B.App1 (B.uPI4_TDAG, n)
+let _CNOT m n = E.App2 (E.UPI4_CNOT, m, n)
+let _X    n = E.App1 (E.UPI4_X,    n)
+let _Z    n = E.App1 (E.uPI4_Z,    n)
+let _H    n = E.App1 (E.UPI4_H,    n)
+let _P    n = E.App1 (E.uPI4_P,    n)
+let _PDAG n = E.App1 (E.uPI4_PDAG, n)
+let _T    n = E.App1 (E.uPI4_T,    n)
+let _TDAG n = E.App1 (E.uPI4_TDAG, n)
 
 let translate_statement s qmap sym_tab =
   match s with
@@ -109,8 +109,8 @@ let translate_statement s qmap sym_tab =
         | Gate (id, _, qargs) ->
           (match StringMap.find_opt id sym_tab with
            | Some TGate _ -> (match id with
-               | "ccz" -> apply_double_c_gate B.cCZ (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
-               | "ccx" -> apply_double_c_gate B.cCX (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
+               | "ccz" -> apply_double_c_gate E.cCZ (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
+               | "ccx" -> apply_double_c_gate E.cCX (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
                | "cx"  -> apply_c_gate _CNOT (List.hd qargs) (List.nth qargs 1) qmap sym_tab
                | "x"   -> apply_gate _X     (List.hd qargs) qmap sym_tab
                | "z"   -> apply_gate _Z     (List.hd qargs) qmap sym_tab
@@ -168,17 +168,17 @@ let get_gate_list f =
 (* super basic translation to QASM *)
 let sqir_to_qasm_gate oc g =
   match g with
-  | B.App1 (B.UPI4_H,     n) -> fprintf oc "h q[%d];\n" n
-  | B.App1 (B.UPI4_X,     n) -> fprintf oc "x q[%d];\n" n
-  | B.App1 (B.UPI4_PI4(1), n) -> fprintf oc "t q[%d];\n" n
-  | B.App1 (B.UPI4_PI4(2), n) -> fprintf oc "s q[%d];\n" n
-  | B.App1 (B.UPI4_PI4(3), n) -> fprintf oc "t q[%d];\ns q[%d];\n" n n
-  | B.App1 (B.UPI4_PI4(4), n) -> fprintf oc "z q[%d];\n" n
-  | B.App1 (B.UPI4_PI4(5), n) -> fprintf oc "t q[%d];\nz q[%d];\n" n n
-  | B.App1 (B.UPI4_PI4(6), n) -> fprintf oc "sdg q[%d];\n" n
-  | B.App1 (B.UPI4_PI4(7), n) -> fprintf oc "tdg q[%d];\n" n
-  | B.App2 (B.UPI4_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
-  | B.App1 (B.UPI4_PI4(x), _) -> (printf "skipping current gate w/ rotation=%d\n%!" x) (* should never happen *)
+  | E.App1 (E.UPI4_H,     n) -> fprintf oc "h q[%d];\n" n
+  | E.App1 (E.UPI4_X,     n) -> fprintf oc "x q[%d];\n" n
+  | E.App1 (E.UPI4_PI4(1), n) -> fprintf oc "t q[%d];\n" n
+  | E.App1 (E.UPI4_PI4(2), n) -> fprintf oc "s q[%d];\n" n
+  | E.App1 (E.UPI4_PI4(3), n) -> fprintf oc "t q[%d];\ns q[%d];\n" n n
+  | E.App1 (E.UPI4_PI4(4), n) -> fprintf oc "z q[%d];\n" n
+  | E.App1 (E.UPI4_PI4(5), n) -> fprintf oc "t q[%d];\nz q[%d];\n" n n
+  | E.App1 (E.UPI4_PI4(6), n) -> fprintf oc "sdg q[%d];\n" n
+  | E.App1 (E.UPI4_PI4(7), n) -> fprintf oc "tdg q[%d];\n" n
+  | E.App2 (E.UPI4_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
+  | E.App1 (E.UPI4_PI4(x), _) -> (printf "skipping current gate w/ rotation=%d\n%!" x) (* should never happen *)
   | _ -> () (* badly typed case (e.g. App2 of UPI4_H) *)
 
 let write_qasm_file fname p dim =
@@ -192,7 +192,7 @@ let write_qasm_file fname p dim =
 let rec get_t_count l = 
   match l with
   | [] -> 0
-  | B.App1 (B.UPI4_PI4(k), _) :: t -> (k mod 2) + (get_t_count t)
+  | E.App1 (E.UPI4_PI4(k), _) :: t -> (k mod 2) + (get_t_count t)
   | _ :: t -> get_t_count t
 
 exception BadType of string;;
@@ -204,7 +204,7 @@ else let fname = Sys.argv.(1) in
      let outf = Sys.argv.(3) in
      let _ = printf "./voqc %s %d %s\n" fname nqbits outf in
      let p = get_gate_list fname in
-     match (B.optimize_check_for_type_errors nqbits p) with
+     match (E.optimize_check_for_type_errors nqbits p) with
      | None -> raise (BadType "Program is not well-typed with the given dimension. Results of optimization may be incorrect!\n")
      | Some p' -> (printf "Original gates: %d (T count: %d)\nOptimized gates: %d (T count: %d)\n\n%!" (List.length p) (get_t_count p) (List.length p') (get_t_count p');
                    write_qasm_file outf p' nqbits)

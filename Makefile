@@ -1,7 +1,7 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples mapper voqc qasm clean
+KNOWNTARGETS := CoqMakefile all examples mapper optimizer voqc qasm clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
@@ -35,7 +35,10 @@ mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
 
 qasm: invoke-coqmakefile qasm_to_sqir/Sets.vo qasm_to_sqir/Map.vo qasm_to_sqir/qasm.vo
 
-voqc: invoke-coqmakefile optimizer/Optimize.vo
+optimizer: invoke-coqmakefile optimizer/Optimize.vo VOQC/voqc.ml
+	cd VOQC && ./extract.sh && dune build voqc.exe
+
+voqc: invoke-coqmakefile VOQC/voqc.ml
 	cd VOQC && ./extract.sh && dune build voqc.exe
 
 # Built by 'make examples'
@@ -63,7 +66,7 @@ mapper/SimpleMapping.vo: core/UnitarySem.vo optimizer/Equivalences.vo
 mapper/MappingExamples.vo: mapper/SimpleMapping.vo
 	coqc $(COQ_OPTS) mapper/MappingExamples.v
 
-# Built by 'make voqc'
+# Built by 'make optimizer'
 
 optimizer/Equivalences.vo: optimizer/Equivalences.v core/UnitarySem.vo
 	coqc $(COQ_OPTS) optimizer/Equivalences.v
