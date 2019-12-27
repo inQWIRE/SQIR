@@ -9,9 +9,17 @@ We describe SQIR and VOQC in [this draft](https://www.cs.umd.edu/~mwh/papers/hie
 
 ## Compilation
 
-Run `make` to compile the core files of SQIR, `make optimizer` to compile the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. To compile an executable version of the optimizer (from OCaml code extracted from the Coq code), run `make voqc`. Use `make all` to compile everything. `make voqc` will produce an executable; see the benchmarks directory for instructions on running the optimizer. 
+Dependencies:
+* For compiling SQIR/VOQC proofs.
+  * Coq version 8.10.1
+* For compiling executable VOQC optimizer.
+  * OCaml version 4.08.1 
+  * dune (`opam install dune`)
+  * menhir (`opam install menhir`)
 
-The development has been tested with Coq versions 8.9.1 and 8.10.1 on a MacBook Pro. Our proofs are resource intensive, expect `make all` to take over an hour (although compilation of the extracted code with `make voqc` should be quick). Producing the `voqc` executable requires a current version of OCaml (we have tested with 4.07.0), dune, and menhir.
+Run `make` to compile the core files of SQIR, `make optimizer` to compile proofs about the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. To compile an executable version of the optimizer (from OCaml code extracted from the Coq code), run `make voqc`. Use `make all` to compile everything. `make voqc` will produce an executable in `_build/default/VOQC`; see the benchmarks directory for instructions on running the optimizer. 
+
+The development has been tested with Coq versions 8.9.1 and 8.10.1 and OCaml versions 4.07.0 and 4.08.1 on a MacBook Pro. Our proofs are resource intensive, so expect `make all` to take around an hour and a half (although compilation of the extracted code with `make voqc` should be quick). We have experienced memory errors on some Linux machines, we are working to resolve this.
 
 ## Directory Contents
 

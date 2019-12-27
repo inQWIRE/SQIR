@@ -38,8 +38,10 @@ qasm: invoke-coqmakefile qasm_to_sqir/Sets.vo qasm_to_sqir/Map.vo qasm_to_sqir/q
 optimizer: invoke-coqmakefile optimizer/Optimize.vo VOQC/voqc.ml
 	cd VOQC && ./extract.sh && dune build voqc.exe
 
-voqc: invoke-coqmakefile VOQC/voqc.ml
-	cd VOQC && ./extract.sh && dune build voqc.exe
+voqc: VOQC/voqc.ml _build/default/VOQC/voqc.exe
+
+_build/default/VOQC/voqc.exe:
+	cd VOQC && dune build voqc.exe
 
 # Built by 'make examples'
 
@@ -116,8 +118,8 @@ hll-compiler/BooleanCompilation.vo: hll-compiler/BooleanCompilation.v core/Utili
 
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -rf CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob VOQC/_build hll-compiler/*.vo hll-compiler/*.glob qasm_to_sqir/*.vo qasm_to_sqir/*.glob
+	rm -rf CoqMakefile CoqMakefile.conf lib/QWIRE/*.vo lib/QWIRE/*.glob core/*.vo core/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob _build hll-compiler/*.vo hll-compiler/*.glob qasm_to_sqir/*.vo qasm_to_sqir/*.glob
 
 # This should be the last rule, to handle any targets not declared above
-%: invoke-coqmakefile
-	@true
+#%: invoke-coqmakefile
+#	@true
