@@ -6,10 +6,8 @@ declare -a N=("24" "19" "5" "7" "9" "15" "30" "30" "48" "96" "12" "15" "18" "21"
 
 len=$((${#PROG[@]}-1))
 
-cd ../VOQC
-
 for i in `seq 0 ${len}`
 do
     outfile="../benchmarks/nam-benchmarks/${PROG[$i]}_opt"
-    dune exec ./voqc.exe ../benchmarks/nam-benchmarks/${PROG[$i]} ${N[$i]} $outfile
+    dune exec ./voqc.exe nam-benchmarks/${PROG[$i]} ${N[$i]} $outfile --root ../VOQC
 done
