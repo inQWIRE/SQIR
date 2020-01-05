@@ -21,6 +21,7 @@ Arguments uapp1 {U dim}.
 Arguments uapp2 {U dim}.
 Arguments uapp3 {U dim}.
 
+Declare Scope ucom_scope.
 Delimit Scope ucom_scope with ucom.
 Local Open Scope ucom.
 Notation "p1 ; p2" := (useq p1 p2) (at level 50) : ucom_scope.
@@ -116,6 +117,7 @@ Local Close Scope ucom.
 (** General Programs **)
 (**********************)
 
+Declare Scope com_scope.
 Delimit Scope com_scope with com.
 Local Open Scope com_scope.
 
