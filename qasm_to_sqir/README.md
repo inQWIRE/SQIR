@@ -5,7 +5,7 @@ Work in progress
 ## Requirements
 Current version of OCaml and the following dependencies:
 ```
-$ opam install menhir utop
+$ opam install menhir utop openQASM
 ```
 
 ## Steps
