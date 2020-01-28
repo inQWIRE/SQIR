@@ -1,11 +1,3 @@
 (library
- (inline_tests)
  (name qasm_to_sqir)
- (libraries base cmdliner))
-
-(ocamllex OQLexer)
-
-(menhir
-  (modules OQParser)
-  (flags --no-dollars --explain --dump)
-  (infer true))
+ (libraries openQASM))
