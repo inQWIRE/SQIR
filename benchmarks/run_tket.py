@@ -5,8 +5,8 @@
 # the benchmarks were very slow to compile.
 
 import pytket
-from pytket import OpType, Transform
 from pytket.qasm import circuit_from_qasm
+from pytket.passes import FullPeepholeOptimise
 import os
 import re
 import sys
@@ -75,11 +75,11 @@ def run_on_nam_benchmarks(fname):
         num_gates_before = circ.n_gates
         print("\nORIGINAL: %d gates" % (num_gates_before))
         
-        Transform.OptimisePhaseGadgets().apply(circ)
+        FullPeepholeOptimise().apply(circ)
         num_gates_after = circ.n_gates
         print("OPTIMIZED: %d gates\n" % (num_gates_after))
 
-        f.write("%s,%d,%d\n" % (fname, num_gates_before, num_gates_after))
+        #f.write("%s,%d,%d\n" % (fname, num_gates_before, num_gates_after))
 
 if (len(sys.argv) != 2):
     print("Usage: python3 run_tket.py output_file")

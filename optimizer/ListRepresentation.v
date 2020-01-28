@@ -2,6 +2,12 @@ Require Export Coq.Classes.Equivalence.
 Require Export Coq.Classes.Morphisms.
 Require Export core.UnitarySem. 
 Require Export core.DensitySem. 
+Require Import FSets.FSetAVL.
+Require Import FSets.FSetFacts.
+
+(* Used in the defn of next_gate. *)
+Module FSet := FSetAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
+Module FSetFacts := FSetFacts.Facts FSet.
 
 Local Open Scope ucom_scope.
 Local Close Scope R_scope.
@@ -435,26 +441,26 @@ Qed.
 
 (* Get the next gate acting on any qubit in qs. *)
 
-Fixpoint next_gate {U dim} (l : gate_list U dim) (qs : list nat)
+Fixpoint next_gate {U dim} (l : gate_list U dim) (qs : FSet.t)
              : option (gate_list U dim * gate_app U dim * gate_list U dim) :=
   match l with 
   | [] => None
   | App1 u q :: t => 
-      if inb q qs 
+      if FSet.mem q qs 
       then Some ([], App1 u q, t)
       else match next_gate t qs with
            | Some (l1, g, l2) => Some (App1 u q :: l1, g, l2)
            | _ => None
            end
   | App2 u q1 q2 :: t => 
-      if (inb q1 qs) || (inb q2 qs) 
+      if (FSet.mem q1 qs) || (FSet.mem q2 qs) 
       then Some ([], App2 u q1 q2, t)
       else match next_gate t qs with
            | Some (l1, g, l2) => Some (App2 u q1 q2 :: l1, g, l2)
            | _ => None
            end
   | App3 u q1 q2 q3 :: t => 
-      if (inb q1 qs) || (inb q2 qs) || (inb q3 qs)
+      if (FSet.mem q1 qs) || (FSet.mem q2 qs) || (FSet.mem q3 qs)
       then Some ([], App3 u q1 q2 q3, t)
       else match next_gate t qs with
            | Some (l1, g, l2) => Some (App3 u q1 q2 q3 :: l1, g, l2)
@@ -462,20 +468,9 @@ Fixpoint next_gate {U dim} (l : gate_list U dim) (qs : list nat)
            end
   end.
 
-Lemma inb_reflect : forall x l, reflect (List.In x l) (inb x l).
-Proof.
-  intros x l.
-  apply iff_reflect.  
-  split; intro H.
-  - induction l; inversion H; simpl.
-    subst. apply orb_true_iff. left. apply beq_nat_true_iff. reflexivity.
-    apply orb_true_iff. right. apply IHl. assumption.
-  - induction l; simpl in H. discriminate.
-    apply orb_true_iff in H. destruct H. 
-    apply beq_nat_true_iff in H. subst. left. reflexivity.
-    right. apply IHl. assumption.
-Qed.
-Hint Resolve inb_reflect : bdestruct.
+Lemma mem_reflect : forall x s, reflect (FSet.In x s) (FSet.mem x s).
+Proof. intros x l. apply iff_reflect. apply FSetFacts.mem_iff. Qed.
+Hint Resolve mem_reflect : bdestruct.
 
 Lemma next_gate_preserves_structure : forall {U dim} (l : gate_list U dim) qs l1 g l2,
   next_gate l qs = Some (l1, g, l2) ->
@@ -487,9 +482,9 @@ Proof.
   intros l1 H.
   simpl in H.
   destruct a;
-  [ destruct (inb n qs)
-  | destruct (inb n qs || inb n0 qs) 
-  | destruct (inb n qs || inb n0 qs || inb n1 qs) ].
+  [ destruct (FSet.mem n qs)
+  | destruct (FSet.mem n qs || FSet.mem n0 qs) 
+  | destruct (FSet.mem n qs || FSet.mem n0 qs || FSet.mem n1 qs) ].
   all: try (inversion H; subst; reflexivity).
   all: destruct (next_gate l qs); try discriminate; repeat destruct p;
        inversion H; subst;
@@ -497,15 +492,15 @@ Proof.
 Qed.
 
 Lemma next_gate_app1_returns_q : forall {U dim} (l : gate_list U dim) qs l1 u q l2,
-  next_gate l qs = Some (l1, App1 u q, l2) -> List.In q qs.
+  next_gate l qs = Some (l1, App1 u q, l2) -> FSet.In q qs.
 Proof.
   intros.
   generalize dependent l1.
   induction l; intros l1 H; simpl in H; try discriminate.
   destruct a; 
-  [ bdestruct (inb n qs)
-  | destruct (inb n qs || inb n0 qs)
-  | destruct (inb n qs || inb n0 qs || inb n1 qs) ];
+  [ bdestruct (FSet.mem n qs)
+  | destruct (FSet.mem n qs || FSet.mem n0 qs)
+  | destruct (FSet.mem n qs || FSet.mem n0 qs || FSet.mem n1 qs) ];
   try destruct (next_gate l qs) eqn:ng; 
   try discriminate;
   repeat destruct p.
@@ -515,15 +510,15 @@ Proof.
 Qed.
 
 Lemma next_gate_app2_returns_q : forall {U dim} (l : gate_list U dim) qs l1 u q1 q2 l2,
-  next_gate l qs = Some (l1, App2 u q1 q2, l2) -> (List.In q1 qs \/ List.In q2 qs).
+  next_gate l qs = Some (l1, App2 u q1 q2, l2) -> (FSet.In q1 qs \/ FSet.In q2 qs).
 Proof.
   intros.
   generalize dependent l1.
   induction l; intros l1 H; simpl in H; try discriminate.
   destruct a;
-  [ destruct (inb n qs)
-  | bdestruct (inb n qs); bdestruct (inb n0 qs)
-  | destruct (inb n qs || inb n0 qs || inb n1 qs) ];
+  [ destruct (FSet.mem n qs)
+  | bdestruct (FSet.mem n qs); bdestruct (FSet.mem n0 qs)
+  | destruct (FSet.mem n qs || FSet.mem n0 qs || FSet.mem n1 qs) ];
   try destruct (next_gate l qs) eqn:ng; 
   try discriminate;
   repeat destruct p.
@@ -633,7 +628,7 @@ Qed.
 
 Lemma next_gate_l1_does_not_reference : forall {U dim} (l : gate_list U dim) qs l1 g l2,
   next_gate l qs = Some (l1, g, l2) ->
-  forall q, List.In q qs -> does_not_reference l1 q = true.
+  forall q, FSet.In q qs -> does_not_reference l1 q = true.
 Proof.
   intros.
   generalize dependent l1.
@@ -641,9 +636,9 @@ Proof.
   intros l1 H.
   simpl in H.
   destruct a;
-  [ bdestruct (inb n qs)
-  | bdestruct (inb n qs); bdestruct (inb n0 qs)
-  | bdestruct (inb n qs); bdestruct (inb n0 qs); bdestruct (inb n1 qs) ].
+  [ bdestruct (FSet.mem n qs)
+  | bdestruct (FSet.mem n qs); bdestruct (FSet.mem n0 qs)
+  | bdestruct (FSet.mem n qs); bdestruct (FSet.mem n0 qs); bdestruct (FSet.mem n1 qs) ].
   all: try (inversion H; subst; constructor).
   all: destruct (next_gate l qs); try discriminate; repeat destruct p;
        inversion H; subst.
@@ -1141,4 +1136,3 @@ Fixpoint canonicalize_com_l' {U dim} (l : com_list U dim) n : com_list U dim :=
   end.
 Definition canonicalize_com_l {U dim} (l : com_list U dim) :=
   canonicalize_com_l' l (count_ops l).
-

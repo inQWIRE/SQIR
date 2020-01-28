@@ -39,6 +39,11 @@ Lemma cancel_two_qubit_gates_sound' : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l -> cancel_two_qubit_gates l ≅l≅ l.
 Proof. intros. apply uc_equiv_cong_l. apply cancel_two_qubit_gates_sound. auto. Qed.
 
+Lemma merge_rotations_sound' : forall {dim} (l : PI4_ucom_l dim),
+  uc_well_typed_l l -> merge_rotations l ≅l≅ l.
+Proof. intros. apply uc_equiv_cong_l. apply merge_rotations_sound. auto. Qed.
+
+
 Lemma optimize_sound : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l -> optimize l ≅l≅ l.
 Proof.
@@ -49,7 +54,7 @@ Proof.
           try rewrite hadamard_reduction_sound;
           try rewrite cancel_single_qubit_gates_sound';
           try rewrite cancel_two_qubit_gates_sound';
-          try rewrite merge_rotations_sound;
+          try rewrite merge_rotations_sound';
           (* well-typedness *)
           try apply not_propagation_WT;
           try apply hadamard_reduction_WT;

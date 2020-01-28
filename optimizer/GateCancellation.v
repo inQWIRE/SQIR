@@ -158,8 +158,25 @@ Definition CNOT_commute_rule4 {dim} q1 q2 (l : PI4_ucom_l dim) :=
   | _ => None
   end.
 
+Definition CNOT_commute_rule5 {dim} q1 q2 (l : PI4_ucom_l dim) :=
+  match next_single_qubit_gate l q2 with
+  | Some (l1, UPI4_PI4 k, l2) =>
+      match next_two_qubit_gate l2 q2 with
+      | Some (l3, UPI4_CNOT, q1', q2', l4) =>
+          if (q1 =? q1') && (q2 =? q2') && (does_not_reference (l1 ++ l3) q1)
+          then match next_single_qubit_gate l4 q2 with
+               | Some (l5, UPI4_PI4 k', l6) =>
+                   Some (l1 ++ [App1 (UPI4_PI4 k') q2] ++ l3 ++ [CNOT q1' q2'] ++ [App1 (UPI4_PI4 k) q2], l5 ++ l6) 
+               | _ => None
+               end
+          else None
+      | _ => None
+      end
+  | _ => None
+  end.
+
 Definition CNOT_commute_rules {dim} q1 q2 :=
-  @CNOT_commute_rule1 dim q1 :: CNOT_commute_rule2 q1 q2 :: CNOT_commute_rule3 q1 q2 :: CNOT_commute_rule4 q1 q2 :: [].
+  @CNOT_commute_rule1 dim q1 :: CNOT_commute_rule2 q1 q2 :: CNOT_commute_rule3 q1 q2 :: CNOT_commute_rule4 q1 q2 :: CNOT_commute_rule5 q1 q2 :: [].
 
 Definition CNOT_cancel_rule {dim} q1 q2 (l : PI4_ucom_l dim) :=
   match next_two_qubit_gate l q1 with
@@ -790,6 +807,44 @@ Proof.
       simpl.
       apply CNOT_commutes_with_H_CNOT_H.
       assumption.
+    + unfold CNOT_commute_rule5 in res.
+      destruct (next_single_qubit_gate l q2) eqn:nsqg1; try discriminate.
+      repeat destruct p; dependent destruction p; try discriminate.
+      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg1) as dnrg0.
+      apply nsqg_preserves_structure in nsqg1.     
+      destruct (next_two_qubit_gate g q2) eqn:ntqg; try discriminate.
+      repeat destruct p; dependent destruction p.
+      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnrg2.
+      apply ntqg_preserves_structure in ntqg.
+      bdestruct (q1 =? n0); try discriminate.
+      bdestruct (q2 =? n); try discriminate.
+      destruct (does_not_reference (g0 ++ g2) q1) eqn:dnr; try discriminate.
+      simpl in res.
+      destruct (next_single_qubit_gate g1 q2) eqn:nsqg2; try discriminate.
+      repeat destruct p; dependent destruction p; try discriminate.
+      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg2) as dnrg4.
+      apply nsqg_preserves_structure in nsqg2.     
+      inversion res; subst. clear res.
+      apply does_not_reference_app in dnr.
+      apply andb_true_iff in dnr as [dnrg0' dnrg2'].
+      rewrite cons_to_app.
+      rewrite (cons_to_app (CNOT n0 n)).
+      rewrite (cons_to_app (App1 (UPI4_PI4 k0) n) (g2 ++ _)).
+      repeat rewrite app_assoc.
+      rewrite (does_not_reference_commutes_app2 _ UPI4_CNOT _ _ dnrg0' dnrg0).
+      repeat rewrite <- (app_assoc _ _ g2).
+      rewrite 2 (does_not_reference_commutes_app1 _ (UPI4_PI4 _) _ dnrg2).
+      rewrite <- (app_assoc g0).
+      rewrite (app_assoc _ g2).
+      rewrite (does_not_reference_commutes_app2 _ UPI4_CNOT _ _ dnrg2' dnrg2).
+      repeat rewrite <- (app_assoc _ g4).
+      rewrite <- (does_not_reference_commutes_app1 _ (UPI4_PI4 _) _ dnrg4).
+      repeat rewrite <- app_assoc.  
+      do 2 (apply uc_app_congruence; try reflexivity).
+      repeat rewrite app_assoc.
+      do 2 (apply uc_app_congruence; try reflexivity).
+      simpl. symmetry.
+      apply Rz_commutes_with_CNOT_Rz_CNOT. 
 Qed.
 
 Lemma propagate_CNOT_WT : forall {dim} (l : PI4_ucom_l dim) q1 q2 n l',

@@ -75,6 +75,7 @@ Extraction Implicit CNOT_commute_rule1 [dim].
 Extraction Implicit CNOT_commute_rule2 [dim].
 Extraction Implicit CNOT_commute_rule3 [dim].
 Extraction Implicit CNOT_commute_rule4 [dim].
+Extraction Implicit CNOT_commute_rule5 [dim].
 Extraction Implicit CNOT_commute_rules [dim].
 Extraction Implicit CNOT_cancel_rule [dim].
 Extraction Implicit propagate_PI4 [dim].
@@ -90,6 +91,16 @@ Extraction Implicit cancel_two_qubit_gates [dim].
 Extraction Implicit next_gate [dim].
 Extraction Implicit get_subcircuit' [dim].
 Extraction Implicit get_subcircuit [dim].
+Extraction Implicit PI4 [dim].
+Extraction Implicit combine_gates [dim].
+Extraction Implicit find_merge [dim].
+Extraction Implicit merge_at_beginning [dim].
+Extraction Implicit merge_at_end [dim].
+Extraction Implicit merge_rotations_at_beginning [dim].
+Extraction Implicit merge_rotations_at_end [dim].
+Extraction Implicit invert_gate [dim].
+Extraction Implicit invert [dim].
+Extraction Implicit merge_rotations [dim].
 
 (* From NotPropagation.v *)
 Extraction Implicit NotPropagation.propagate_X [dim].
@@ -97,8 +108,11 @@ Extraction Implicit NotPropagation.propagate_Z [dim].
 Extraction Implicit not_propagation' [dim].
 Extraction Implicit not_propagation [dim].
 
+(* Optimize *)
+Extraction Implicit optimize [dim].
+
 (* Perform extraction to the file 'extracted_code.ml'. *)
 Extraction "ExtractedCode.ml" 
   CCX CCZ
   UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG 
-  optimize optimize_check_for_type_errors.
+  optimize.

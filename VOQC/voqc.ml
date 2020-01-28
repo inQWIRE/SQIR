@@ -158,18 +158,18 @@ let get_gate_list f =
   let ast = parse_file f in (* dumb parsing *)
   let sym_tab = check ast in (* semantic analysis *)
   let qbit_list = parse_qreg_decls ast in
-  let (qbit_map, _) = List.fold_left
+  let (qbit_map, n) = List.fold_left
       (fun (map, idx) entry -> (QbitMap.add entry idx map, idx+1))
       (QbitMap.empty, 0) qbit_list in
-  translate_program ast qbit_map sym_tab
+  (translate_program ast qbit_map sym_tab, n)
 
 (*** Code to run VOQC ***)
 
 (* super basic translation to QASM *)
 let sqir_to_qasm_gate oc g =
   match g with
-  | E.App1 (E.UPI4_H,     n) -> fprintf oc "h q[%d];\n" n
-  | E.App1 (E.UPI4_X,     n) -> fprintf oc "x q[%d];\n" n
+  | E.App1 (E.UPI4_H,      n) -> fprintf oc "h q[%d];\n" n
+  | E.App1 (E.UPI4_X,      n) -> fprintf oc "x q[%d];\n" n
   | E.App1 (E.UPI4_PI4(1), n) -> fprintf oc "t q[%d];\n" n
   | E.App1 (E.UPI4_PI4(2), n) -> fprintf oc "s q[%d];\n" n
   | E.App1 (E.UPI4_PI4(3), n) -> fprintf oc "t q[%d];\ns q[%d];\n" n n
@@ -178,7 +178,7 @@ let sqir_to_qasm_gate oc g =
   | E.App1 (E.UPI4_PI4(6), n) -> fprintf oc "sdg q[%d];\n" n
   | E.App1 (E.UPI4_PI4(7), n) -> fprintf oc "tdg q[%d];\n" n
   | E.App2 (E.UPI4_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
-  | E.App1 (E.UPI4_PI4(x), _) -> (printf "skipping current gate w/ rotation=%d\n%!" x) (* should never happen *)
+  | E.App1 (E.UPI4_PI4(x),  _) -> (printf "skipping current gate w/ rotation=%d\n%!" x) (* should never happen *)
   | _ -> () (* badly typed case (e.g. App2 of UPI4_H) *)
 
 let write_qasm_file fname p dim =
@@ -197,16 +197,14 @@ let rec get_t_count l =
 
 exception BadType of string;;
 
-if (Array.length Sys.argv <> 4)
-then print_endline "Expected usage: voqc <prog> <N> <out>"
+if (Array.length Sys.argv <> 3)
+then print_endline "Expected usage: voqc <prog> <out>"
 else let fname = Sys.argv.(1) in
-     let nqbits = int_of_string Sys.argv.(2) in
-     let outf = Sys.argv.(3) in
-     let _ = printf "./voqc %s %d %s\n" fname nqbits outf in
-     let p = get_gate_list fname in
-     match (E.optimize_check_for_type_errors nqbits p) with
-     | None -> raise (BadType "Program is not well-typed with the given dimension. Results of optimization may be incorrect!\n")
-     | Some p' -> (printf "Original gates: %d (T count: %d)\nOptimized gates: %d (T count: %d)\n\n%!" (List.length p) (get_t_count p) (List.length p') (get_t_count p');
-                   write_qasm_file outf p' nqbits)
+     let outf = Sys.argv.(2) in
+     let _ = printf "./voqc %s %s\n" fname outf in
+     let (p, n) = get_gate_list fname in
+     let p' = E.optimize p in
+     printf "Original gates: %d (T count: %d)\nOptimized gates: %d (T count: %d)\n\n%!" (List.length p) (get_t_count p) (List.length p') (get_t_count p'); 
+     write_qasm_file outf p' n
 
    
