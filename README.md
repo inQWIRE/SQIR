@@ -23,26 +23,22 @@ The development has been tested with Coq version 8.10.1 and OCaml version 4.08.1
 
 ## Directory Contents
 
-### core
+### SQIR
 
-- core/SQIR.v : General definition of the SQIR language.
-- core/UnitarySem.v : Semantics for unitary SQIR programs.
-- core/DensitySem.v : Density matrix semantics for general SQIR programs.
-- core/NDSem.v : Non-deterministic semantics for general SQIR programs.
-- core/Utilities.v : Utilities for describing composition of SQIR programs and classical state vectors.
+Definition of the SQIR language.
 
-We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development.
+- SQIR/SQIR.v : General definition of the SQIR language.
+- SQIR/UnitarySem.v : Semantics for unitary SQIR programs.
+- SQIR/DensitySem.v : Density matrix semantics for general SQIR programs.
+- SQIR/NDSem.v : Non-deterministic semantics for general SQIR programs.
+- SQIR/Composition.v : Utilities for describing composition of SQIR programs.
+- SQIR/Classical.v : Utilities for describing classical states.
 
-### hll-compiler
-
-Compilation from higher-level languages to SQIR. Compilation from QWIRE is experimental (i.e. not done).
-
-- compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
-- compiler/CompileFromQwire.v : Compilation from QWIRE to SQIR. **(WIP)**
+We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which is a submodule within the externals directory.
 
 ### optimizer
 
-Current progress on a verified optimizer for SQIR programs.
+A verified optimizer for SQIR programs.
 
 - Utilities
   - optimizer/Equivalences.v : Verified circuit equivalences for peephole optimizations.
@@ -68,6 +64,8 @@ Mapping algorithms for SQIR programs.
 - mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
 - mapper/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 
+### VOQC
+
 ### examples
 
 Examples of verifying correctness properties of simple SQIR programs.
@@ -77,6 +75,10 @@ Examples of verifying correctness properties of simple SQIR programs.
 - examples/GHZ.v
 - examples/Superdense.v
 - examples/Teleport.v  
+
+### experimental
+
+- compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
 
 ### benchmarks
 

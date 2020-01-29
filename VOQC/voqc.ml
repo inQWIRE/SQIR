@@ -1,11 +1,10 @@
 module E = ExtractedCode
 
-open OQAST
-open OQLexer
+open OpenQASM
+open OpenQASM.AST
 open Semant
 
 open Printf
-open Lexing
 
 (*** Code to convert AST to SQIR program ***)
 

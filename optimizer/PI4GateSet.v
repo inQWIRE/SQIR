@@ -1,7 +1,7 @@
-Require Import core.UnitarySem.
+Require Import UnitarySem.
 Require Import Equivalences.
 Require Export ListRepresentation.
-Require Import core.DensitySem.
+Require Import DensitySem.
 Require Import Setoid.
 
 (** PI4 Gate Set **)

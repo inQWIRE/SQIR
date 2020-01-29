@@ -1,7 +1,7 @@
 Require Export Coq.Classes.Equivalence.
 Require Export Coq.Classes.Morphisms.
-Require Export core.UnitarySem. 
-Require Export core.DensitySem. 
+Require Export UnitarySem. 
+Require Export DensitySem. 
 Require Import FSets.FSetAVL.
 Require Import FSets.FSetFacts.
 
