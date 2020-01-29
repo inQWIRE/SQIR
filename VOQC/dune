@@ -1,11 +1,6 @@
 (executable
-  (name voqc))
-
-(ocamllex OQLexer)
-(menhir
-  (modules OQParser)
-  (flags --no-dollars --explain --dump)
-  (infer true))
+  (name voqc)
+  (libraries openQASM))
 
 (env
   (dev

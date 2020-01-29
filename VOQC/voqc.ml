@@ -8,26 +8,6 @@ open Printf
 
 (*** Code to convert AST to SQIR program ***)
 
-(* Error handling adapted from Real World OCaml *)
-let print_position outx lexbuf =
-  let pos = lexbuf.lex_curr_p in
-  fprintf outx "%s:%d:%d" pos.pos_fname
-    pos.pos_lnum (pos.pos_cnum - pos.pos_bol + 1)
-
-let parse_with_error lexbuf =
-  try OQParser.mainprogram OQLexer.token lexbuf with
-  | SyntaxError msg ->
-    fprintf stderr "%a: %s\n" print_position lexbuf msg;
-    []
-  | OQParser.Error ->
-    fprintf stderr "%a: syntax error\n" print_position lexbuf;
-    exit (-1)
-
-(* core parsing routine *)
-let parse_file f =
-  let lexbuf = Lexing.from_channel (open_in f) in
-  parse_with_error lexbuf
-
 (* For qubit mapping *)
 module QbitIdx =
 struct
@@ -129,7 +109,7 @@ let translate_statement s qmap sym_tab =
   | Barrier _ -> print_endline ("NYI: Unsupported op: Barrier"); []
   | _ -> []
 
-let parse_decl (s : OQAST.statement) : (string * int) list =
+let parse_decl (s : AST.statement) : (string * int) list =
   match s with
   | Decl d ->
     (match d with
@@ -154,7 +134,7 @@ let rec translate_program p qbit_map sym_tab =
     List.append l m
 
 let get_gate_list f =
-  let ast = parse_file f in (* dumb parsing *)
+  let ast = OpenQASM.get_ast f in (* dumb parsing *)
   let sym_tab = check ast in (* semantic analysis *)
   let qbit_list = parse_qreg_decls ast in
   let (qbit_map, n) = List.fold_left
@@ -192,9 +172,7 @@ let rec get_t_count l =
   match l with
   | [] -> 0
   | E.App1 (E.UPI4_PI4(k), _) :: t -> (k mod 2) + (get_t_count t)
-  | _ :: t -> get_t_count t
-
-exception BadType of string;;
+  | _ :: t -> get_t_count t;;
 
 if (Array.length Sys.argv <> 3)
 then print_endline "Expected usage: voqc <prog> <out>"

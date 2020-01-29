@@ -16,6 +16,7 @@ Dependencies:
   * OCaml version 4.08.1 
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
+  * OCaml OpenQASM parser (`opam install openQASM`)
 
 Run `make` to compile the core files of SQIR, `make optimizer` to compile proofs about the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. To compile an executable version of the optimizer (from OCaml code extracted from the Coq code), run `make voqc`. Use `make all` to compile everything. `make voqc` will produce an executable in `VOQC/_build/default`; see the benchmarks directory for instructions on running the optimizer. 
 
@@ -34,7 +35,7 @@ Definition of the SQIR language.
 - SQIR/Composition.v : Utilities for describing composition of SQIR programs.
 - SQIR/Classical.v : Utilities for describing classical states.
 
-We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which is a submodule within the externals directory.
+We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which we have linked as a git submodule in the externals directory.
 
 ### optimizer
 
@@ -43,7 +44,7 @@ A verified optimizer for SQIR programs.
 - Utilities
   - optimizer/Equivalences.v : Verified circuit equivalences for peephole optimizations.
   - optimizer/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs when possible.
-  - optimizer/PI4GateSet.v : Fixed gate set used in our optimizer; includes gate-set-specific proofs for utilities in ListRepresentation.v.
+  - optimizer/PI4GateSet.v : Fixed gate set used in our optimizer; includes gate set-specific proofs for utilities in ListRepresentation.v.
   - optimizer/Extraction.v : Rules for extracting VOQC to OCaml.
 
 - Optimizations on unitary programs
@@ -64,8 +65,6 @@ Mapping algorithms for SQIR programs.
 - mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
 - mapper/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 
-### VOQC
-
 ### examples
 
 Examples of verifying correctness properties of simple SQIR programs.
@@ -79,6 +78,10 @@ Examples of verifying correctness properties of simple SQIR programs.
 ### experimental
 
 - compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
+
+### VOQC
+
+Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and parse OpenQASM files into SQIR. Also contains pre-extracted versions of VOQC's optimizations (ExtractedCode.ml and ExtractedCode.mli). 
 
 ### benchmarks
 

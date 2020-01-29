@@ -1,4 +1,4 @@
-open OQAST
+open OpenQASM.AST
 
 module StringMap = Map.Make(String)
 
