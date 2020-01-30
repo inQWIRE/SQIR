@@ -1,5 +1,5 @@
 Require Import UnitarySem.
-Require Import Utilities.
+Require Import ClassicalStates.
 Require Export PI4GateSet.
 Require Import FSets.FMapAVL.
 Require Import FSets.FMapFacts.

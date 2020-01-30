@@ -28,12 +28,12 @@ The development has been tested with Coq version 8.10.1 and OCaml version 4.08.1
 
 Definition of the SQIR language.
 
-- SQIR/SQIR.v : General definition of the SQIR language.
-- SQIR/UnitarySem.v : Semantics for unitary SQIR programs.
-- SQIR/DensitySem.v : Density matrix semantics for general SQIR programs.
-- SQIR/NDSem.v : Non-deterministic semantics for general SQIR programs.
-- SQIR/Composition.v : Utilities for describing composition of SQIR programs.
-- SQIR/ClassicalStates.v : Utilities for describing classical states.
+- src/SQIR.v : General definition of the SQIR language.
+- src/UnitarySem.v : Semantics for unitary SQIR programs.
+- src/DensitySem.v : Density matrix semantics for general SQIR programs.
+- src/NDSem.v : Non-deterministic semantics for general SQIR programs.
+- src/Composition.v : Utilities for describing composition of SQIR programs.
+- src/ClassicalStates.v : Utilities for describing classical states.
 
 We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which we have linked as a git submodule in the externals directory.
 
@@ -49,9 +49,7 @@ Examples of verifying correctness properties of simple SQIR programs.
 
 ## VOQC
 
-### src
-
-#### optimizer
+### src/optimizer
 
 A verified optimizer for SQIR programs.
 
@@ -71,7 +69,7 @@ A verified optimizer for SQIR programs.
   - optimizer/RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.
   - optimizer/PropagateClassical.v : Track classical states to remove redundant measurements and CNOT operations.
 
-#### mapper
+### src/mapper
 
 Mapping algorithms for SQIR programs.
 
@@ -79,13 +77,13 @@ Mapping algorithms for SQIR programs.
 - mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
 - mapper/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 
-#### experimental
+### src/experimental
 
 Experimental extensions to VOQC.
 
-- compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
+- experimental/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
 
-### extaction
+### extraction
 
 Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and parse OpenQASM files into SQIR. Also contains pre-extracted versions of VOQC's optimizations (ExtractedCode.ml and ExtractedCode.mli). 
 

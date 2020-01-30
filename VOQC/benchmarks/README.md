@@ -8,7 +8,7 @@ We use a set of benchmark programs used in the evaluation of two previous optimi
 
 We use the versions of the benchmarks in the nam_benchmarks sub-directory.
 These benchmarks were taken from the QFT_and_Adders directory of https://github.com/njross/optimizer and converted to OpenQASM using [PyZX](https://github.com/Quantomatic/pyzx)'s from_quipper_file function.
-We only consider the benchmarks in the QFT_and_Adders directory because the other benchmarks have z-rotations by arbitrary (float) angles, which we do not support.
+We only consider the benchmarks in the QFT_and_Adders directory because the other benchmarks have z-rotations by arbitrary (float) angles, which we do not currently support.
 We do not consider the results of optimizing gf2^E163_mult_before, gf2^E131_mult_before, or gf2^E128_mult_before because these programs are too large for our current implementation.
 We could solve this problem by rewriting our optimization code to be tail recursive.
 We also do not consider the results of optimizing mod_adder_1024 because the gate counts for this circuit are not reported in the Nam et al. paper.
@@ -19,7 +19,7 @@ In the top (`..`) directory, run `make voqc`. This will compile the OCaml code w
 
 *Example*: The following runs VOQC on the tof_3 benchmark and writes the result to out.qasm.
 ```
-$ dune exec ./voqc.exe nam-benchmarks/tof_3.qasm out.qasm --root ../VOQC
+$ dune exec ./voqc.exe nam-benchmarks/tof_3.qasm out.qasm --root ../extraction
 Original gates: 45 (T count: 21)
 Optimized gates: 40 (T count: 15)
 ```

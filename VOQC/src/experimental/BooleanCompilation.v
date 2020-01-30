@@ -1,5 +1,5 @@
 Require Import QWIRE.Dirac.
-Require Import SQIR.Utilities.
+Require Import ClassicalStates.
 Open Scope ucom.
 
 (*********************************)

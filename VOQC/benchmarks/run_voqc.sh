@@ -7,5 +7,5 @@ len=$((${#PROG[@]}-1))
 for i in `seq 0 ${len}`
 do
     outfile="../benchmarks/nam-benchmarks/${PROG[$i]}_opt"
-    dune exec ./voqc.exe nam-benchmarks/${PROG[$i]} $outfile --root ../VOQC
+    dune exec ./voqc.exe nam-benchmarks/${PROG[$i]} $outfile --root ../extraction
 done
