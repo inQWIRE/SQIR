@@ -89,7 +89,7 @@ Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and
 
 ### benchmarks
 
-Instructions for running VOQC on the benchmarks presented in our paper can be found in [the README in the benchmarks directory](benchmarks/README.md).
+Instructions for running VOQC on the benchmarks presented in our paper can be found in [the README in the benchmarks directory](VOQC/benchmarks/README.md).
 
 ## Acknowledgements
 

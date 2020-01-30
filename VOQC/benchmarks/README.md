@@ -15,7 +15,7 @@ We also do not consider the results of optimizing mod_adder_1024 because the gat
 
 ## Running VOQC
 
-In the top (`..`) directory, run `make voqc`. This will compile the OCaml code we have extracted from the verified Coq code. If you have modified the Coq code, then be sure to run `make optimizer` first. To run the optimizer, run `dune exec ./voqc.exe <prog> <out> --root ../VOQC`, which will optimize program prog and write the optimized result to out. It will print the initial and final gate counts. `--root ../VOQC` is needed because the voqc executable is built in the ../VOQC directory.
+In the top (`../..`) directory, run `make voqc`. This will compile the OCaml code we have extracted from the verified Coq code. If you have modified the Coq code, then be sure to run `make optimizer` first. To run the optimizer, run `dune exec ./voqc.exe <prog> <out> --root ../extraction`, which will optimize program prog and write the optimized result to out. It will print the initial and final gate counts. `--root ../extraction` is needed because the voqc executable is built in the ../extraction directory.
 
 *Example*: The following runs VOQC on the tof_3 benchmark and writes the result to out.qasm.
 ```
