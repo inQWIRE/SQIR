@@ -1,7 +1,7 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples mapper optimizer voqc qasm clean
+KNOWNTARGETS := CoqMakefile all examples mapper optimizer voqc clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
@@ -27,13 +27,11 @@ invoke-coqmakefile: CoqMakefile
 
 COQ_OPTS := -R . Top
 
-all: examples mapper optimizer optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo qasm experimental/BooleanCompilation.vo
+all: examples mapper optimizer optimizer/PropagateClassical.vo optimizer/RemoveZRotationBeforeMeasure.vo experimental/BooleanCompilation.vo
 
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Superdense.vo examples/Teleport.vo
 
 mapper: invoke-coqmakefile mapper/SimpleMapping.vo mapper/MappingExamples.vo
-
-qasm: invoke-coqmakefile qasm_to_sqir/Sets.vo qasm_to_sqir/Map.vo qasm_to_sqir/qasm.vo
 
 optimizer: invoke-coqmakefile optimizer/Optimize.vo VOQC/voqc.ml
 	cd VOQC && ./extract.sh
@@ -95,17 +93,6 @@ optimizer/PI4GateSet.vo: optimizer/PI4GateSet.v optimizer/Equivalences.vo optimi
 optimizer/RotationMerging.vo: optimizer/RotationMerging.v optimizer/PI4GateSet.vo SQIR/Utilities.vo
 	coqc $(COQ_OPTS) optimizer/RotationMerging.v
 
-# Built by 'make qasm'
-
-qasm_to_sqir/Sets.vo: qasm_to_sqir/Sets.v
-	coqc $(COQ_OPTS) qasm_to_sqir/Sets.v
-
-qasm_to_sqir/Map.vo: qasm_to_sqir/Map.v qasm_to_sqir/Sets.vo
-	coqc $(COQ_OPTS) qasm_to_sqir/Map.v
-
-qasm_to_sqir/qasm.vo: qasm_to_sqir/qasm.v qasm_to_sqir/Map.vo externals/QWIRE/Quantum.vo
-	coqc $(COQ_OPTS) qasm_to_sqir/qasm.v
-
 # Misc. files built by 'make all'
 
 optimizer/PropagateClassical.vo: optimizer/PropagateClassical.v optimizer/PI4GateSet.vo SQIR/DensitySem.vo
@@ -119,7 +106,7 @@ experimental/BooleanCompilation.vo: experimental/BooleanCompilation.v SQIR/Utili
 
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -rf CoqMakefile CoqMakefile.conf externals/QWIRE/*.vo externals/QWIRE/*.glob SQIR/*.vo SQIR/*.glob examples/*.vo examples/*.glob mapper/*.vo mapper/*.glob optimizer/*.vo optimizer/*.glob VOQC/_build experimental/*.vo experimental/*.glob qasm_to_sqir/*.vo qasm_to_sqir/*.glob
+	rm -rf CoqMakefile CoqMakefile.conf {externals/QWIRE,*}/{*.vo,*.glob,.*.aux} .lia.cache VOQC/_build
 
 # This should be the last rule, to handle any targets not declared above
 #%: invoke-coqmakefile
