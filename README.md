@@ -22,9 +22,9 @@ Run `make` to compile the core files of SQIR, `make optimizer` to compile proofs
 
 The development has been tested with Coq version 8.10.1 and OCaml version 4.08.1 on a MacBook Pro. Our proofs are resource intensive, so expect `make all` to take around an hour and a half (although compilation of the extracted code with `make voqc` should be quick). We have experienced memory errors on some Linux machines, we are working to resolve this.
 
-## Directory Contents
+## SQIR
 
-### SQIR
+### src
 
 Definition of the SQIR language.
 
@@ -33,11 +33,25 @@ Definition of the SQIR language.
 - SQIR/DensitySem.v : Density matrix semantics for general SQIR programs.
 - SQIR/NDSem.v : Non-deterministic semantics for general SQIR programs.
 - SQIR/Composition.v : Utilities for describing composition of SQIR programs.
-- SQIR/Classical.v : Utilities for describing classical states.
+- SQIR/ClassicalStates.v : Utilities for describing classical states.
 
 We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which we have linked as a git submodule in the externals directory.
 
-### optimizer
+### examples
+
+Examples of verifying correctness properties of simple SQIR programs.
+
+- examples/Deutsch.v    
+- examples/DeutschJozsa.v
+- examples/GHZ.v
+- examples/Superdense.v
+- examples/Teleport.v  
+
+## VOQC
+
+### src
+
+#### optimizer
 
 A verified optimizer for SQIR programs.
 
@@ -57,7 +71,7 @@ A verified optimizer for SQIR programs.
   - optimizer/RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.
   - optimizer/PropagateClassical.v : Track classical states to remove redundant measurements and CNOT operations.
 
-### mapper
+#### mapper
 
 Mapping algorithms for SQIR programs.
 
@@ -65,21 +79,13 @@ Mapping algorithms for SQIR programs.
 - mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
 - mapper/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 
-### examples
+#### experimental
 
-Examples of verifying correctness properties of simple SQIR programs.
-
-- examples/Deutsch.v    
-- examples/DeutschJozsa.v
-- examples/GHZ.v
-- examples/Superdense.v
-- examples/Teleport.v  
-
-### experimental
+Experimental extensions to VOQC.
 
 - compiler/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
 
-### VOQC
+### extaction
 
 Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and parse OpenQASM files into SQIR. Also contains pre-extracted versions of VOQC's optimizations (ExtractedCode.ml and ExtractedCode.mli). 
 

@@ -1,5 +1,5 @@
 Require Import QWIRE.Dirac.
-Require Import core.Utilities.
+Require Import SQIR.Utilities.
 Open Scope ucom.
 
 (*********************************)
