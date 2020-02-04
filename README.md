@@ -7,6 +7,8 @@ Its main application is as an IR in a **V**erified **O**ptimizer for **Q**uantum
 
 We describe SQIR and VOQC in [this draft](https://www.cs.umd.edu/~mwh/papers/hietala19voqc.html). A preliminary version of this work was presented at QPL 2019.
 
+For a gentle introduction to verification of quantum programs in Coq, see Robert Rand's [Verified Quantum Computing](http://www.cs.umd.edu/~rrand/vqc/index.html).
+
 ## Compilation
 
 Dependencies:
