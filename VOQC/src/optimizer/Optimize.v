@@ -43,7 +43,6 @@ Lemma merge_rotations_sound' : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l -> merge_rotations l ≅l≅ l.
 Proof. intros. apply uc_equiv_cong_l. apply merge_rotations_sound. auto. Qed.
 
-
 Lemma optimize_sound : forall {dim} (l : PI4_ucom_l dim),
   uc_well_typed_l l -> optimize l ≅l≅ l.
 Proof.

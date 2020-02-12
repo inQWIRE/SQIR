@@ -104,7 +104,6 @@ Extraction Implicit merge_rotations [dim].
 
 (* From NotPropagation.v *)
 Extraction Implicit NotPropagation.propagate_X [dim].
-Extraction Implicit NotPropagation.propagate_Z [dim].
 Extraction Implicit not_propagation' [dim].
 Extraction Implicit not_propagation [dim].
 
@@ -115,4 +114,9 @@ Extraction Implicit optimize [dim].
 Extraction "ExtractedCode.ml" 
   CCX CCZ
   UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG 
-  optimize.
+  optimize 
+  hadamard_reduction 
+  cancel_single_qubit_gates 
+  cancel_two_qubit_gates 
+  merge_rotations 
+  not_propagation.

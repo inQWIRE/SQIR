@@ -14,31 +14,10 @@ Local Open Scope ucom_scope.
    us to change polarity of T/T† gates).
 
    Note that this optimization may increase the number of gates due to how
-   X and Z propagate through CNOT. These additional gates will be removed by
+   X propagates through CNOT. These additional gates will often be removed by
    later passes. *)
 
-Fixpoint propagate_Z {dim} (l : PI4_ucom_l dim) q n :=
-  match n with
-  | O => Z q :: l
-  | S n' =>
-      match l with
-      | [] => [Z q]
-      | u :: t =>
-          if does_not_reference_appl q u
-          then u :: propagate_Z t q n'
-          else match u with
-               | App1 UPI4_X n => u :: propagate_Z t q n' (* introduces global phase *)
-               | App1 UPI4_H n => u :: propagate_X t q n' 
-               | App1 (UPI4_PI4 k) n => u :: propagate_Z t q n'
-               | App2 UPI4_CNOT m n =>
-                   if q =? n 
-                   then u :: propagate_Z (propagate_Z t n n') m n'
-                   else u :: propagate_Z t q n'
-               | _ => Z q :: l (* impossible case *)
-               end
-      end
-  end
-with propagate_X {dim} (l : PI4_ucom_l dim) q n :=
+Fixpoint propagate_X {dim} (l : PI4_ucom_l dim) q n :=
   match n with
   | O => X q :: l
   | S n' =>
@@ -49,8 +28,8 @@ with propagate_X {dim} (l : PI4_ucom_l dim) q n :=
           then u :: propagate_X t q n'
           else match u with
                | App1 UPI4_X n => t
-               | App1 UPI4_H n => u :: propagate_Z t q n'
-               | App1 (UPI4_PI4 k) n =>
+               | App1 UPI4_H n => u :: Z q :: t
+               | App1 (UPI4_PI4 k) n => (* introduces global phase *)
                    App1 (UPI4_PI4 (8 - k)%Z) n :: propagate_X t q n'
                | App2 UPI4_CNOT m n =>
                    if q =? m 
@@ -74,29 +53,12 @@ Fixpoint not_propagation' {dim} (l : PI4_ucom_l dim) n :=
       end
   end.
 
-(* Worst case, every CNOT propagates two X/Z gates, so we start with
+(* Worst case, every CNOT propagates two X gates, so we start with
    n = 2 × (length n). The n = 0 case should be unreachable. *)
 Definition not_propagation {dim} (l : PI4_ucom_l dim) := 
   not_propagation' l (2 * List.length l).
 
 (* Proofs *)
-
-Lemma H_X_commutes : forall {dim} q,
-  [@H dim q] ++ [X q] =l= [Z q] ++ [H q].
-Proof.
-  intros. 
-  unfold uc_equiv_l, uc_equiv; simpl.
-  repeat rewrite Mmult_assoc.
-  apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
-  rewrite pauli_x_rotation.
-  rewrite pauli_z_rotation.
-  rewrite hadamard_rotation.
-  autorewrite with eval_db.
-  gridify.
-  do 2 (apply f_equal2; trivial).
-  solve_matrix.
-Qed.
 
 Lemma H_Z_commutes : forall {dim} q,
   [@H dim q] ++ [Z q] =l= [X q] ++ [H q].
@@ -125,27 +87,6 @@ Proof.
   2: lia.
   gridify.
   Qsimpl; reflexivity.
-Qed.
-
-Lemma Z_X_commutes : forall {dim} q,
-  ([@Z dim q] ++ [X q]) ≅l≅ ([X q] ++ [Z q]).
-Proof.
-  intros.
-  unfold uc_cong_l, uc_cong; simpl.
-  replace (4 * PI / 4)%R with PI by lra.
-  rewrite pauli_x_rotation.
-  rewrite pauli_z_rotation.
-  exists PI.
-  repeat rewrite Mmult_assoc.
-  rewrite <- Mscale_mult_dist_r.
-  apply f_equal2; trivial.
-  autorewrite with eval_db.
-  gridify.
-  rewrite <- Mscale_kron_dist_l.
-  rewrite <- Mscale_kron_dist_r.
-  do 2 (apply f_equal2; trivial).
-  solve_matrix.
-  all: rewrite Cexp_PI; lca.
 Qed.
 
 Lemma Rz_X_commutes : forall {dim} q k,
@@ -179,22 +120,6 @@ Proof.
   lca.
 Qed.
 
-Lemma Z_Rz_commutes : forall {dim} q k,
-  [@Z dim q] ++ [App1 (UPI4_PI4 k) q] =l= [App1 (UPI4_PI4 k) q] ++ [Z q].
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  repeat rewrite Mmult_assoc.
-  apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
-  rewrite pauli_z_rotation.
-  rewrite phase_shift_rotation.
-  autorewrite with eval_db.
-  gridify.
-  do 2 (apply f_equal2; trivial).
-  solve_matrix.
-Qed.
-
 Lemma propagate_X_through_CNOT_control : forall {dim} m n,
   [@X dim m] ++ [CNOT m n] =l= [CNOT m n] ++ [X n] ++ [X m].
 Proof.
@@ -223,125 +148,61 @@ Proof.
   gridify; Qsimpl; reflexivity.
 Qed.
 
-Lemma propagate_Z_through_CNOT_control : forall {dim} m n,
-  [@Z dim m] ++ [CNOT m n] =l= [CNOT m n] ++ [Z m].
-Proof.
-  intros dim m n.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  repeat rewrite Mmult_assoc.
-  apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
-  rewrite pauli_z_rotation.
-  autorewrite with eval_db.
-  gridify; trivial.
-  all: replace (∣1⟩⟨1∣ × σz) with (σz × ∣1⟩⟨1∣) by solve_matrix;
-       replace (∣0⟩⟨0∣ × σz) with (σz × ∣0⟩⟨0∣) by solve_matrix.
-  all: reflexivity.
-Qed.
-
-Lemma propagate_Z_through_CNOT_target : forall {dim} m n,
-  [@Z dim n] ++ [CNOT m n] =l= [CNOT m n] ++ [Z m] ++ [Z n].
-Proof.
-  intros dim m n.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  repeat rewrite Mmult_assoc.
-  apply f_equal2; trivial.
-  replace (4 * PI / 4)%R with PI by lra.
-  rewrite pauli_z_rotation.
-  autorewrite with eval_db.
-  gridify; trivial.
-  all: replace (σz × ∣1⟩⟨1∣) with ((- 1)%R .* ∣1⟩⟨1∣) by solve_matrix;
-       replace (σz × ∣0⟩⟨0∣) with (∣0⟩⟨0∣) by solve_matrix;
-       replace (σx × σz) with ((- 1)%R .* (σz × σx)) by solve_matrix.
-  all: repeat rewrite Mscale_kron_dist_r;
-       repeat rewrite Mscale_kron_dist_l.
-  all: reflexivity.
-Qed.
-
 Lemma propagate_X_preserves_semantics : forall {dim} (l : PI4_ucom_l dim) q n,
-  (q < dim)%nat -> propagate_X l q n ≅l≅ (X q :: l) /\ propagate_Z l q n ≅l≅ (Z q :: l).
+  (q < dim)%nat -> propagate_X l q n ≅l≅ (X q :: l).
 Proof.
   intros dim l q n Hq.
   generalize dependent q.
   generalize dependent l.
-  induction n; intros l q Hq.
-  split; reflexivity. 
-  destruct l. 
-  split; reflexivity.
-  (* split the inductive hypothesis into 2 separate hypotheses *)
-  assert (IHX : forall (l : PI4_ucom_l dim) (q : nat), q < dim -> propagate_X l q n ≅l≅ (X q :: l)).
-  { intros. specialize (IHn l0 _ H) as [IHX _]. assumption. }
-  assert (IHZ : forall (l : PI4_ucom_l dim) (q : nat), q < dim -> propagate_Z l q n ≅l≅ (Z q :: l)).
-  { intros. specialize (IHn l0 _ H) as [_ IHZ]. assumption. }
-  clear IHn.
+  induction n; intros l q Hq; try reflexivity.
+  destruct l; try reflexivity.
   simpl. 
   destruct (does_not_reference_appl q g) eqn:dnr.
-  split; [rewrite IHX | rewrite IHZ]; try assumption.
-  1,2: rewrite 2 (cons_to_app _ (_ :: l));
-       rewrite 2 (cons_to_app _ l);
-       repeat rewrite app_assoc.
-  1,2: apply uc_equiv_cong_l;
-       apply uc_app_congruence; try reflexivity;
-       symmetry; 
-       apply does_not_reference_commutes_app1; simpl;
-       apply andb_true_iff; auto.
+  rewrite IHn; try assumption.
+  rewrite 2 (cons_to_app _ (_ :: l)).
+  rewrite 2 (cons_to_app _ l); repeat rewrite app_assoc.
+  apply uc_equiv_cong_l.
+  apply uc_app_congruence; try reflexivity.
+  symmetry; apply does_not_reference_commutes_app1. 
+  simpl. apply andb_true_iff; auto.
   destruct g. 
   - simpl in dnr. apply negb_false_iff in dnr. 
-    apply beq_nat_true in dnr. subst.
+    apply beq_nat_true in dnr; subst.
     dependent destruction p.
-    split; [rewrite IHZ | rewrite IHX]; try assumption.
-    1,2: rewrite 2 (cons_to_app _ (_ :: l));
-         rewrite 2 (cons_to_app _ l);
-         repeat rewrite app_assoc.
-    1,2: apply uc_equiv_cong_l;
-         apply uc_app_congruence; try reflexivity.
+    rewrite 2 (cons_to_app _ (_ :: l)).
+    rewrite 2 (cons_to_app _ l); repeat rewrite app_assoc.
+    apply uc_equiv_cong_l.
+    apply uc_app_congruence; try reflexivity.
     apply H_Z_commutes.
-    apply H_X_commutes.
-    split; [| rewrite IHZ]; try assumption.
-    1,2: repeat rewrite (cons_to_app _ (_ :: l));
-         repeat rewrite (cons_to_app _ l);
-         repeat rewrite app_assoc.
+    repeat rewrite (cons_to_app _ (_ :: l)).
+    repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
     apply uc_equiv_cong_l.
     rewrite X_X_cancels; try assumption; reflexivity.
-    rewrite Z_X_commutes; reflexivity.
-    split; [rewrite IHX | rewrite IHZ]; try assumption.
-    1,2: repeat rewrite (cons_to_app _ (_ :: l));
-         repeat rewrite (cons_to_app _ l);
-         repeat rewrite app_assoc.
+    rewrite IHn; try assumption.
+    repeat rewrite (cons_to_app _ (_ :: l)).
+    repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
     rewrite Rz_X_commutes; reflexivity.
-    apply uc_equiv_cong_l.
-    rewrite Z_Rz_commutes; reflexivity.
   - dependent destruction p. 
-    bdestruct (q =? n0); bdestruct (q =? n1); subst; split.
-    1,2: apply uc_equiv_cong_l; unfold uc_equiv_l, uc_equiv; simpl;
-         autorewrite with eval_db; bdestruct_all; Msimpl_light; reflexivity.
-    all: try rewrite (IHX _ _ Hq); try rewrite (IHZ _ _ Hq).
-    all: repeat rewrite (cons_to_app _ (_ :: l));
-         repeat rewrite (cons_to_app _ l);
-         repeat rewrite app_assoc.
-    all: try (apply uc_equiv_cong_l; apply uc_app_congruence; [|reflexivity]).
-    2: symmetry; apply propagate_Z_through_CNOT_control.
-    2: symmetry; apply propagate_X_through_CNOT_target.
-    3, 4: apply does_not_reference_commutes_app2. 
-    all: try (apply andb_true_iff; simpl; split; bdestruct_all; reflexivity).
+    bdestruct (q =? n0); subst.
     bdestruct (n1 <? dim).
     2: apply uc_equiv_cong_l; unfold uc_equiv_l, uc_equiv; simpl;
        autorewrite with eval_db; bdestruct_all; Msimpl_light; reflexivity.
-    repeat rewrite IHX; try assumption.
-    rewrite cons_to_app; rewrite (cons_to_app  _ (_ :: l)); rewrite (cons_to_app _ l).
-    repeat rewrite app_assoc.
-    apply uc_equiv_cong_l; apply uc_app_congruence; [|reflexivity].
-    rewrite <- app_assoc.
-    symmetry; apply propagate_X_through_CNOT_control.
-    bdestruct (n0 <? dim).
-    2: apply uc_equiv_cong_l; unfold uc_equiv_l, uc_equiv; simpl;
-       autorewrite with eval_db; bdestruct_all; Msimpl_light; reflexivity.
-    repeat rewrite IHZ; try assumption.
-    rewrite cons_to_app; rewrite (cons_to_app  _ (_ :: l)); rewrite (cons_to_app _ l).
-    repeat rewrite app_assoc.
-    apply uc_equiv_cong_l; apply uc_app_congruence; [|reflexivity].
-    rewrite <- app_assoc.
-    symmetry. apply propagate_Z_through_CNOT_target.
+    repeat rewrite IHn by assumption.
+    rewrite cons_to_app.
+    repeat rewrite (cons_to_app _ (_ :: l)).
+    repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
+    apply uc_equiv_cong_l; apply uc_app_congruence; try reflexivity.
+    symmetry; rewrite <- app_assoc.
+    apply propagate_X_through_CNOT_control.
+    rewrite IHn by assumption.
+    repeat rewrite (cons_to_app _ (_ :: l)).
+    repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
+    apply uc_equiv_cong_l; apply uc_app_congruence; try reflexivity.   
+    bdestruct (q =? n1); subst.
+    symmetry; apply propagate_X_through_CNOT_target.
+    apply negb_false_iff in dnr. 
+    apply orb_true_iff in dnr. 
+    destruct dnr; bdestruct (n0 =? q); bdestruct (n1 =? q); try lia; discriminate. 
   - inversion p.
 Qed.
 
@@ -349,7 +210,7 @@ Lemma propagate_X_well_typed : forall {dim} (l : PI4_ucom_l dim) q n,
   (q < dim)%nat -> uc_well_typed_l l -> uc_well_typed_l (propagate_X l q n).
 Proof.
   intros dim l q n Hq WT.
-  specialize (propagate_X_preserves_semantics l q n Hq) as [H _].
+  specialize (propagate_X_preserves_semantics l q n Hq) as H.
   assert (uc_well_typed_l (X q :: l)).
   constructor; assumption.
   symmetry in H.

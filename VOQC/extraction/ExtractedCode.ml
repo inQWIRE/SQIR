@@ -4303,38 +4303,10 @@ let merge_rotations l =
   let l' = merge_rotations_at_beginning l (length l) in
   let l'' = merge_rotations_at_end (invert l') (length l') in invert l''
 
-(** val propagate_Z :
-    pI4_ucom_l -> int -> int -> pI4_Unitary gate_app list **)
-
-let rec propagate_Z l q n =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> (z q) :: l)
-    (fun n' ->
-    match l with
-    | [] -> (z q) :: []
-    | u :: t1 ->
-      if does_not_reference_appl q u
-      then u :: (propagate_Z t1 q n')
-      else (match u with
-            | App1 (p0, _) ->
-              (match p0 with
-               | UPI4_H -> u :: (propagate_X0 t1 q n')
-               | UPI4_CNOT -> (z q) :: l
-               | _ -> u :: (propagate_Z t1 q n'))
-            | App2 (p0, m, n0) ->
-              (match p0 with
-               | UPI4_CNOT ->
-                 if (=) q n0
-                 then u :: (propagate_Z (propagate_Z t1 n0 n') m n')
-                 else u :: (propagate_Z t1 q n')
-               | _ -> (z q) :: l)
-            | App3 (_, _, _, _) -> (z q) :: l))
-    n
-
 (** val propagate_X0 :
     pI4_ucom_l -> int -> int -> pI4_Unitary gate_app list **)
 
-and propagate_X0 l q n =
+let rec propagate_X0 l q n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> (x q) :: l)
     (fun n' ->
@@ -4346,7 +4318,7 @@ and propagate_X0 l q n =
       else (match u with
             | App1 (p0, n0) ->
               (match p0 with
-               | UPI4_H -> u :: (propagate_Z t1 q n')
+               | UPI4_H -> u :: ((z q) :: t1)
                | UPI4_X -> t1
                | UPI4_PI4 k ->
                  (App1 ((UPI4_PI4
