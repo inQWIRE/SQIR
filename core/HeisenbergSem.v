@@ -57,6 +57,7 @@ Definition h_basis_to_config (b : h_basis) : h_config :=
   | BZ => ZZ
   end.
 
+(* From Gottesman, table 1 *)
 Definition h_apply1 (c : Clifford 1) (b : h_basis) : h_config :=
   match c, b with 
   | U_H, BX => ZZ
@@ -231,7 +232,7 @@ Fixpoint h_eval {dim} (c : clifford_ucom dim) (st : h_state) : h_state :=
 
 (* Example 1 *)
 
-Lemma SWAP_XI : h_eval (@SWAP 2 0 1) [XX,II] = [II,XX].
+Lemma SWAP_X1 : h_eval (@SWAP 2 0 1) [XX,II] = [II,XX].
 Proof. reflexivity. Qed.
 
 Lemma SWAP_basis : forall (b1 b2 : h_basis) (h1 h2 : h_config),
@@ -326,5 +327,34 @@ Definition ec_code : clifford_ucom 4 :=
 (* Now with measurement! *)
 
 (* Example 10: Teleportation *)
+
+(* Measurement-free teleportation with bell initialization *)
+
+Definition bell' : clifford_ucom 3 := H 1; CNOT 1 2.
+
+Definition alice : clifford_ucom 3 := CNOT 0 1; H 0.
+
+Definition bob : clifford_ucom 3 := CNOT 1 2; CZ 0 2.
+
+Definition teleport : clifford_ucom 3 := bell'; alice; bob.
+
+Lemma alice_X1 : h_eval alice [XX,II,II] = [ZZ,XX,II].
+Proof. reflexivity. Qed.
+
+Lemma alice_Z1 : h_eval alice [ZZ,II,II] = [XX,II,II].
+Proof. reflexivity. Qed.
+
+Lemma bob_X1 : h_eval bob [ZZ,XX,II] = [II,XX,XX].
+Proof. reflexivity. Qed.
+
+Lemma bob_Z1 : h_eval bob [XX,II,II] = [XX,II,ZZ].
+Proof. reflexivity. Qed.
+
+Lemma teleport_X1 : h_eval teleport [XX,II,II] = [II,XX,XX].
+Proof. simpl. reflexivity. Qed.
+
+Lemma teleport_Z1 : h_eval teleport [ZZ,II,II] = [XX,II,ZZ].
+Proof. simpl. reflexivity. Qed.
+
 
 (* Example 11: Remove XOR *)
