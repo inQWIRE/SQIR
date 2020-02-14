@@ -1,6 +1,6 @@
 Require Coq.extraction.Extraction.
 Require Import optimizer.ListRepresentation.
-Require Import optimizer.PI4GateSet.
+Require Import optimizer.RzkGateSet.
 Require Import optimizer.GateCancellation.
 Require Import optimizer.HadamardReduction.
 Require Import optimizer.RotationMerging.
@@ -35,22 +35,21 @@ Extraction Implicit try_rewrites [U dim].
 Extraction Implicit try_rewrites2 [U dim].
 Extraction Implicit propagate [U dim].
 
-(* From PI4GateSet.v *)
+(* From RzkGateSet.v *)
 Extraction Implicit T [dim].
 Extraction Implicit TDAG [dim].
 Extraction Implicit P [dim].
 Extraction Implicit PDAG [dim].
 Extraction Implicit Z [dim].
+Extraction Implicit Rz [dim].
 Extraction Implicit H [dim].
 Extraction Implicit X [dim].
 Extraction Implicit CNOT [dim].
 Extraction Implicit CCX [dim].
 Extraction Implicit CCZ [dim].
 Extraction Implicit match_gate [n].
-Extraction Implicit count_H_gates [dim].
-Extraction Implicit count_X_gates [dim].
-Extraction Implicit count_rotation_gates [dim].
-Extraction Implicit count_CNOT_gates [dim].
+Extraction Implicit combine_rotations [dim].
+Extraction Implicit invert_rotation [dim].
 
 (* From HadamardReduction.v *)
 Extraction Implicit apply_H_equivalence1 [dim].
@@ -78,7 +77,7 @@ Extraction Implicit CNOT_commute_rule4 [dim].
 Extraction Implicit CNOT_commute_rule5 [dim].
 Extraction Implicit CNOT_commute_rules [dim].
 Extraction Implicit CNOT_cancel_rule [dim].
-Extraction Implicit propagate_PI4 [dim].
+Extraction Implicit propagate_Rz [dim].
 Extraction Implicit propagate_H [dim].
 Extraction Implicit GateCancellation.propagate_X [dim].
 Extraction Implicit propagate_CNOT [dim].
@@ -91,8 +90,6 @@ Extraction Implicit cancel_two_qubit_gates [dim].
 Extraction Implicit next_gate [dim].
 Extraction Implicit get_subcircuit' [dim].
 Extraction Implicit get_subcircuit [dim].
-Extraction Implicit PI4 [dim].
-Extraction Implicit combine_gates [dim].
 Extraction Implicit find_merge [dim].
 Extraction Implicit merge_at_beginning [dim].
 Extraction Implicit merge_at_end [dim].
@@ -113,10 +110,5 @@ Extraction Implicit optimize [dim].
 (* Perform extraction to the file 'extracted_code.ml'. *)
 Extraction "ExtractedCode.ml" 
   CCX CCZ
-  UPI4_Z UPI4_P UPI4_PDAG UPI4_T UPI4_TDAG 
-  optimize 
-  hadamard_reduction 
-  cancel_single_qubit_gates 
-  cancel_two_qubit_gates 
-  merge_rotations 
-  not_propagation.
+  URzk_Z URzk_P URzk_PDAG URzk_T URzk_TDAG URzk_Rz
+  optimize.

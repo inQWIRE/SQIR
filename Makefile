@@ -78,33 +78,33 @@ VOQC/src/mapper/MappingExamples.vo: $(mapper)/SimpleMapping.vo
 VOQC/src/optimizer/Equivalences.vo: $(optimizer)/Equivalences.v $(SQIR)/UnitarySem.vo
 	coqc $(COQ_OPTS) $(optimizer)/Equivalences.v
 
-VOQC/src/optimizer/GateCancellation.vo: $(optimizer)/GateCancellation.v $(optimizer)/Equivalences.vo $(optimizer)/PI4GateSet.vo
+VOQC/src/optimizer/GateCancellation.vo: $(optimizer)/GateCancellation.v $(optimizer)/Equivalences.vo $(optimizer)/RzkGateSet.vo
 	coqc $(COQ_OPTS) $(optimizer)/GateCancellation.v
 
-VOQC/src/optimizer/HadamardReduction.vo: $(optimizer)/HadamardReduction.v $(optimizer)/Equivalences.vo $(optimizer)/PI4GateSet.vo
+VOQC/src/optimizer/HadamardReduction.vo: $(optimizer)/HadamardReduction.v $(optimizer)/Equivalences.vo $(optimizer)/RzkGateSet.vo
 	coqc $(COQ_OPTS) $(optimizer)/HadamardReduction.v
 
 VOQC/src/optimizer/ListRepresentation.vo: $(optimizer)/ListRepresentation.v $(QWIRE)/Proportional.vo $(optimizer)/Equivalences.vo $(SQIR)/DensitySem.vo
 	coqc $(COQ_OPTS) $(optimizer)/ListRepresentation.v
 
-VOQC/src/optimizer/NotPropagation.vo: $(optimizer)/NotPropagation.v $(optimizer)/Equivalences.vo $(optimizer)/PI4GateSet.vo
+VOQC/src/optimizer/NotPropagation.vo: $(optimizer)/NotPropagation.v $(optimizer)/Equivalences.vo $(optimizer)/RzkGateSet.vo
 	coqc $(COQ_OPTS) $(optimizer)/NotPropagation.v
 
 VOQC/src/optimizer/Optimize.vo: $(optimizer)/Optimize.v $(optimizer)/NotPropagation.vo $(optimizer)/HadamardReduction.vo $(optimizer)/GateCancellation.vo $(optimizer)/RotationMerging.vo
 	coqc $(COQ_OPTS) $(optimizer)/Optimize.v
 
-VOQC/src/optimizer/PI4GateSet.vo: $(optimizer)/PI4GateSet.v $(optimizer)/Equivalences.vo $(optimizer)/ListRepresentation.vo $(SQIR)/DensitySem.vo
-	coqc $(COQ_OPTS) $(optimizer)/PI4GateSet.v
+VOQC/src/optimizer/RzkGateSet.vo: $(optimizer)/RzkGateSet.v $(optimizer)/Equivalences.vo $(optimizer)/ListRepresentation.vo $(SQIR)/DensitySem.vo
+	coqc $(COQ_OPTS) $(optimizer)/RzkGateSet.v
 
-VOQC/src/optimizer/RotationMerging.vo: $(optimizer)/RotationMerging.v $(optimizer)/PI4GateSet.vo $(SQIR)/ClassicalStates.vo
+VOQC/src/optimizer/RotationMerging.vo: $(optimizer)/RotationMerging.v $(optimizer)/RzkGateSet.vo $(SQIR)/ClassicalStates.vo
 	coqc $(COQ_OPTS) $(optimizer)/RotationMerging.v
 
 # Misc. files built by 'make all'
 
-VOQC/src/optimizer/PropagateClassical.vo: $(optimizer)/PropagateClassical.v $(optimizer)/PI4GateSet.vo $(SQIR)/DensitySem.vo
+VOQC/src/optimizer/PropagateClassical.vo: $(optimizer)/PropagateClassical.v $(optimizer)/RzkGateSet.vo $(SQIR)/DensitySem.vo
 	coqc $(COQ_OPTS) $(optimizer)/PropagateClassical.v
 
-VOQC/src/optimizer/RemoveZRotationBeforeMeasure.vo: $(optimizer)/RemoveZRotationBeforeMeasure.v $(optimizer)/PI4GateSet.vo $(SQIR)/DensitySem.vo
+VOQC/src/optimizer/RemoveZRotationBeforeMeasure.vo: $(optimizer)/RemoveZRotationBeforeMeasure.v $(optimizer)/RzkGateSet.vo $(SQIR)/DensitySem.vo
 	coqc $(COQ_OPTS) $(optimizer)/RemoveZRotationBeforeMeasure.v
 
 VOQC/src/experimental/BooleanCompilation.vo: VOQC/src/experimental/BooleanCompilation.v $(SQIR)/ClassicalStates.vo $(QWIRE)/Dirac.vo

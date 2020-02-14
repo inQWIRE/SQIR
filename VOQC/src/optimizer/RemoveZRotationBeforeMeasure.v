@@ -1,5 +1,5 @@
 Require Import DensitySem.
-Require Import optimizer.PI4GateSet.
+Require Import optimizer.RzkGateSet.
 
 Local Open Scope com_scope.
 
@@ -16,7 +16,7 @@ Proof.
 Qed.
  
 Lemma Rz_mif : forall dim θ n (c1 c2 : base_com dim), 
-  Rz θ n ; mif n then c1 else c2 ≡ mif n then c1 else c2.
+  SQIR.Rz θ n ; mif n then c1 else c2 ≡ mif n then c1 else c2.
 Proof.
   intros.
   unfold c_equiv; simpl.
@@ -42,16 +42,16 @@ Proof.
 Qed. 
 
 (* list version of the equivalence above *)
-Lemma PI4_Meas : forall {dim} k n (l1 l2 : PI4_com_l dim), 
-  (UC [App1 (UPI4_PI4 k) n]) :: [Meas n l1 l2] =l= [Meas n l1 l2].
+Lemma Rzk_Meas : forall {dim} i n (l1 l2 : Rzk_com_l dim), 
+  (UC [Rz i n]) :: [Meas n l1 l2] =l= [Meas n l1 l2].
 Proof.
   intros.
   unfold c_equiv_l; simpl.
-  rewrite PI4_to_base_instr_UC, PI4_to_base_instr_Meas.
+  rewrite Rzk_to_base_instr_UC, Rzk_to_base_instr_Meas.
   rewrite instr_to_com_UC, instr_to_com_Meas. 
   simpl.
   rewrite skip_id_r.
-  rewrite <- Rz_mif with (θ:=(IZR k * PI / 4)%R) at 2.
+  rewrite <- Rz_mif with (θ:=(IZR i * PI / IZR Rzk_k)%R) at 2.
   apply seq_congruence; try reflexivity.
   unfold c_equiv; simpl.
   intros.
@@ -87,19 +87,19 @@ Qed.
    Rz gates per UC block, the function below could be modified - or just run multiple times. *)
 
 (* Get the next rotation gate on any qubit. *)
-Fixpoint next_Rz_gate {dim} (l : PI4_ucom_l dim)
-             : option (PI4_ucom_l dim * BinInt.Z * nat * PI4_ucom_l dim) :=
+Fixpoint next_Rz_gate {dim} (l : Rzk_ucom_l dim)
+             : option (Rzk_ucom_l dim * BinInt.Z * nat * Rzk_ucom_l dim) :=
   match l with
   | [] => None
-  | (App1 (UPI4_PI4 k) n) :: t => Some ([], k, n, t) 
+  | (App1 (URzk_Rz i) n) :: t => Some ([], i, n, t) 
   | g :: t => match (next_Rz_gate t) with
             | None => None
-            | Some (l1, k, n, l2) => Some (g :: l1, k, n, l2)
+            | Some (l1, i, n, l2) => Some (g :: l1, i, n, l2)
             end
   end.
 
 (* Perform the optimization. *)
-Fixpoint remove_Rz_before_meas' {dim} (l : PI4_com_l dim) n :=
+Fixpoint remove_Rz_before_meas' {dim} (l : Rzk_com_l dim) n :=
   match n with
   | O => l
   | S n' =>
@@ -108,7 +108,7 @@ Fixpoint remove_Rz_before_meas' {dim} (l : PI4_com_l dim) n :=
       | UC u :: t => 
           match next_Rz_gate u with
           | None => UC u :: remove_Rz_before_meas' t n'
-          | Some (l1, k, n, l2) => 
+          | Some (l1, _, n, l2) => 
               match next_measurement (UC l2 :: t) n with
               | Some _ => UC (l1 ++ l2) :: remove_Rz_before_meas' t n'
               | None => UC u :: remove_Rz_before_meas' t n'
@@ -120,43 +120,43 @@ Fixpoint remove_Rz_before_meas' {dim} (l : PI4_com_l dim) n :=
           Meas n l1' l2' :: remove_Rz_before_meas' t n'
       end
   end.
-Definition remove_Rz_before_meas {dim} (l : PI4_com_l dim) :=
+Definition remove_Rz_before_meas {dim} (l : Rzk_com_l dim) :=
   remove_Rz_before_meas' l (count_ops l).
 
-(* Examples *)
+(** Examples **)
 
-Definition test1 : PI4_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 [] [] :: [].
+Definition test1 : Rzk_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 [] [] :: [].
 Compute (count_ops test1).
 Compute (remove_Rz_before_meas test1).
-Definition test2 : PI4_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 (UC [P 1] :: Meas 1 [] [] :: []) [] :: [].
+Definition test2 : Rzk_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 (UC [P 1] :: Meas 1 [] [] :: []) [] :: [].
 Compute (count_ops test2).
 Compute (remove_Rz_before_meas test2).
-Definition test3 : PI4_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: UC (H 2 :: []) :: Meas 2 [] [UC [H 1]] :: Meas 0 (UC [P 1] :: Meas 0 [] [] :: Meas 1 [] [] :: []) [UC (X 2 :: CNOT 1 2 :: [])] :: [].
+Definition test3 : Rzk_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: UC (H 2 :: []) :: Meas 2 [] [UC [H 1]] :: Meas 0 (UC [P 1] :: Meas 0 [] [] :: Meas 1 [] [] :: []) [UC (X 2 :: CNOT 1 2 :: [])] :: [].
 Compute (count_ops test3).
 Compute (remove_Rz_before_meas test3).
 
-(* Soundness proof *)
+(** Proofs **)
 
-Lemma next_Rz_gate_preserves_structure : forall dim (l : PI4_ucom_l dim) l1 k n l2,
-  next_Rz_gate l = Some (l1, k, n, l2) ->
-  l = l1 ++ [App1 (UPI4_PI4 k) n] ++ l2.
+Lemma next_Rz_gate_preserves_structure : forall dim (l : Rzk_ucom_l dim) l1 i n l2,
+  next_Rz_gate l = Some (l1, i, n, l2) ->
+  l = l1 ++ [Rz i n] ++ l2.
 Proof.
   intros.
   generalize dependent l1.
   induction l; intros l1 H.
   - inversion H.
   - simpl in H.
-    destruct a; dependent destruction p.
+    destruct a as [u | u | u]; dependent destruction u.
     all: try (destruct (next_Rz_gate l) eqn:Hnext; 
               try discriminate;
               do 3 destruct p; 
               inversion H; subst;
-              rewrite IHl with (l1:=p); 
+              rewrite IHl with (l1:=r0); 
               reflexivity).
     inversion H; subst. reflexivity.
 Qed.
 
-Lemma remove_Rz_before_meas_sound : forall dim (l : PI4_com_l dim),
+Lemma remove_Rz_before_meas_sound : forall dim (l : Rzk_com_l dim),
   remove_Rz_before_meas l =l= l.
 Proof.
   intros.
@@ -169,9 +169,9 @@ Proof.
   destruct i; simpl.
   - destruct (next_Rz_gate g) eqn:ng.
     do 3 destruct p.
-    destruct (does_not_reference p0 n0) eqn:dnr.
+    destruct (does_not_reference r n0) eqn:dnr.
     destruct (next_measurement l n0) eqn:nm.
-    repeat destruct p1.
+    repeat destruct p.
     all: try (rewrite IHn; reflexivity).
     apply next_Rz_gate_preserves_structure in ng.
     specialize (next_measurement_l1_does_not_reference _ _ _ _ _ _ nm) as dnr_c.
@@ -200,14 +200,13 @@ Proof.
     do 2 (apply c_app_congruence; try reflexivity).
     repeat rewrite app_assoc.
     apply c_app_congruence; try reflexivity.
-    rewrite (c_app_congruence ([UC [App1 (UPI4_PI4 z) n0]] ++ l2)).
+    rewrite (c_app_congruence ([UC [Rz z n0]] ++ l2)).
     2: apply does_not_reference_c_commutes_app1; assumption.
     2: reflexivity.
     rewrite <- app_assoc.
     apply c_app_congruence; try reflexivity.
     simpl.
-    rewrite PI4_Meas.
-    reflexivity.
+    symmetry. apply Rzk_Meas.
   - rewrite IHn with (l:=l).
     unfold c_equiv_l, c_equiv; intros.
     apply Meas_cons_congruence; unfold c_eval_l, project_onto; simpl.

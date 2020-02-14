@@ -232,6 +232,16 @@ module Pos =
 
   let rec mul = ( * )
 
+  (** val iter : ('a1 -> 'a1) -> 'a1 -> int -> 'a1 **)
+
+  let rec iter f x0 n =
+    (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+      (fun n' -> f (iter f (iter f x0 n') n'))
+      (fun n' -> iter f (iter f x0 n') n')
+      (fun _ -> f x0)
+      n
+
   (** val compare_cont : comparison -> int -> int -> comparison **)
 
   let rec compare_cont = fun c x y -> if x=y then c else if x<y then Lt else Gt
@@ -370,6 +380,20 @@ module Z =
 
   let mul = ( * )
 
+  (** val pow_pos : int -> int -> int **)
+
+  let pow_pos z0 =
+    Pos.iter (mul z0) 1
+
+  (** val pow : int -> int -> int **)
+
+  let pow x0 y =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 1)
+      (fun p0 -> pow_pos x0 p0)
+      (fun _ -> 0)
+      y
+
   (** val compare : int -> int -> comparison **)
 
   let compare = fun x y -> if x=y then Eq else if x<y then Lt else Gt
@@ -415,6 +439,67 @@ module Z =
   (** val max : int -> int -> int **)
 
   let max = Pervasives.max
+
+  (** val pos_div_eucl : int -> int -> int * int **)
+
+  let rec pos_div_eucl a b =
+    (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+      (fun a' ->
+      let (q, r) = pos_div_eucl a' b in
+      let r' = add (mul ((fun p->2*p) 1) r) 1 in
+      if ltb r' b
+      then ((mul ((fun p->2*p) 1) q), r')
+      else ((add (mul ((fun p->2*p) 1) q) 1), (sub r' b)))
+      (fun a' ->
+      let (q, r) = pos_div_eucl a' b in
+      let r' = mul ((fun p->2*p) 1) r in
+      if ltb r' b
+      then ((mul ((fun p->2*p) 1) q), r')
+      else ((add (mul ((fun p->2*p) 1) q) 1), (sub r' b)))
+      (fun _ -> if leb ((fun p->2*p) 1) b then (0, 1) else (1, 0))
+      a
+
+  (** val div_eucl : int -> int -> int * int **)
+
+  let div_eucl a b =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> (0, 0))
+      (fun a' ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> (0, 0))
+        (fun _ -> pos_div_eucl a' b)
+        (fun b' ->
+        let (q, r) = pos_div_eucl a' b' in
+        ((fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+           (fun _ -> ((opp q), 0))
+           (fun _ -> ((opp (add q 1)), (add b r)))
+           (fun _ -> ((opp (add q 1)), (add b r)))
+           r))
+        b)
+      (fun a' ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> (0, 0))
+        (fun _ ->
+        let (q, r) = pos_div_eucl a' b in
+        ((fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+           (fun _ -> ((opp q), 0))
+           (fun _ -> ((opp (add q 1)), (sub b r)))
+           (fun _ -> ((opp (add q 1)), (sub b r)))
+           r))
+        (fun b' -> let (q, r) = pos_div_eucl a' b' in (q, (opp r)))
+        b)
+      a
+
+  (** val div : int -> int -> int **)
+
+  let div a b =
+    let (q, _) = div_eucl a b in q
+
+  (** val modulo : int -> int -> int **)
+
+  let modulo a b =
+    let (_, r) = div_eucl a b in r
 
   (** val eq_dec : int -> int -> bool **)
 
@@ -1693,136 +1778,161 @@ let replace_single_qubit_pattern l q pat rep match_gate0 =
   | Some l' -> Some (app (single_qubit_pattern_to_program rep q) l')
   | None -> None
 
-type pI4_Unitary =
-| UPI4_H
-| UPI4_X
-| UPI4_PI4 of int
-| UPI4_CNOT
+type rzk_Unitary =
+| URzk_H
+| URzk_X
+| URzk_Rz of int
+| URzk_CNOT
 
-(** val uPI4_T : pI4_Unitary **)
+(** val rzk_k : int **)
 
-let uPI4_T =
-  UPI4_PI4 1
+let rzk_k =
+  Z.pow ((fun p->2*p) 1) ((fun p->1+2*p) ((fun p->1+2*p) ((fun p->1+2*p) 1)))
 
-(** val uPI4_P : pI4_Unitary **)
+(** val uRzk_T : rzk_Unitary **)
 
-let uPI4_P =
-  UPI4_PI4 ((fun p->2*p) 1)
+let uRzk_T =
+  URzk_Rz (Z.div rzk_k ((fun p->2*p) ((fun p->2*p) 1)))
 
-(** val uPI4_Z : pI4_Unitary **)
+(** val uRzk_P : rzk_Unitary **)
 
-let uPI4_Z =
-  UPI4_PI4 ((fun p->2*p) ((fun p->2*p) 1))
+let uRzk_P =
+  URzk_Rz (Z.div rzk_k ((fun p->2*p) 1))
 
-(** val uPI4_PDAG : pI4_Unitary **)
+(** val uRzk_Z : rzk_Unitary **)
 
-let uPI4_PDAG =
-  UPI4_PI4 ((fun p->2*p) ((fun p->1+2*p) 1))
+let uRzk_Z =
+  URzk_Rz rzk_k
 
-(** val uPI4_TDAG : pI4_Unitary **)
+(** val uRzk_PDAG : rzk_Unitary **)
 
-let uPI4_TDAG =
-  UPI4_PI4 ((fun p->1+2*p) ((fun p->1+2*p) 1))
+let uRzk_PDAG =
+  URzk_Rz (Z.div (Z.mul ((fun p->1+2*p) 1) rzk_k) ((fun p->2*p) 1))
 
-(** val t0 : int -> pI4_Unitary gate_app **)
+(** val uRzk_TDAG : rzk_Unitary **)
+
+let uRzk_TDAG =
+  URzk_Rz
+    (Z.div (Z.mul ((fun p->1+2*p) ((fun p->1+2*p) 1)) rzk_k) ((fun p->2*p)
+      ((fun p->2*p) 1)))
+
+(** val t0 : int -> rzk_Unitary gate_app **)
 
 let t0 q =
-  App1 (uPI4_T, q)
+  App1 (uRzk_T, q)
 
-(** val tDAG : int -> pI4_Unitary gate_app **)
+(** val tDAG : int -> rzk_Unitary gate_app **)
 
 let tDAG q =
-  App1 (uPI4_TDAG, q)
+  App1 (uRzk_TDAG, q)
 
-(** val p : int -> pI4_Unitary gate_app **)
+(** val p : int -> rzk_Unitary gate_app **)
 
 let p q =
-  App1 (uPI4_P, q)
+  App1 (uRzk_P, q)
 
-(** val pDAG : int -> pI4_Unitary gate_app **)
+(** val pDAG : int -> rzk_Unitary gate_app **)
 
 let pDAG q =
-  App1 (uPI4_PDAG, q)
+  App1 (uRzk_PDAG, q)
 
-(** val z : int -> pI4_Unitary gate_app **)
+(** val z : int -> rzk_Unitary gate_app **)
 
 let z q =
-  App1 (uPI4_Z, q)
+  App1 (uRzk_Z, q)
 
-(** val h : int -> pI4_Unitary gate_app **)
+(** val rz : int -> int -> rzk_Unitary gate_app **)
+
+let rz i q =
+  App1 ((URzk_Rz i), q)
+
+(** val h : int -> rzk_Unitary gate_app **)
 
 let h q =
-  App1 (UPI4_H, q)
+  App1 (URzk_H, q)
 
-(** val x : int -> pI4_Unitary gate_app **)
+(** val x : int -> rzk_Unitary gate_app **)
 
 let x q =
-  App1 (UPI4_X, q)
+  App1 (URzk_X, q)
 
-(** val cNOT : int -> int -> pI4_Unitary gate_app **)
+(** val cNOT : int -> int -> rzk_Unitary gate_app **)
 
 let cNOT q1 q2 =
-  App2 (UPI4_CNOT, q1, q2)
+  App2 (URzk_CNOT, q1, q2)
 
-type pI4_ucom_l = pI4_Unitary gate_list
+type rzk_ucom_l = rzk_Unitary gate_list
 
-(** val cCX : int -> int -> int -> pI4_ucom_l **)
+(** val cCX : int -> int -> int -> rzk_ucom_l **)
 
 let cCX a b c =
   (h c) :: ((cNOT b c) :: ((tDAG c) :: ((cNOT a c) :: ((t0 c) :: ((cNOT b c) :: (
     (tDAG c) :: ((cNOT a c) :: ((cNOT a b) :: ((tDAG b) :: ((cNOT a b) :: (
     (t0 a) :: ((t0 b) :: ((t0 c) :: ((h c) :: []))))))))))))))
 
-(** val cCZ : int -> int -> int -> pI4_ucom_l **)
+(** val cCZ : int -> int -> int -> rzk_ucom_l **)
 
 let cCZ a b c =
   (cNOT b c) :: ((tDAG c) :: ((cNOT a c) :: ((t0 c) :: ((cNOT b c) :: (
     (tDAG c) :: ((cNOT a c) :: ((cNOT a b) :: ((tDAG b) :: ((cNOT a b) :: (
     (t0 a) :: ((t0 b) :: ((t0 c) :: []))))))))))))
 
-(** val match_gate : pI4_Unitary -> pI4_Unitary -> bool **)
+(** val match_gate : rzk_Unitary -> rzk_Unitary -> bool **)
 
 let match_gate u u' =
   match u with
-  | UPI4_H -> (match u' with
-               | UPI4_H -> true
+  | URzk_H -> (match u' with
+               | URzk_H -> true
                | _ -> false)
-  | UPI4_X -> (match u' with
-               | UPI4_X -> true
+  | URzk_X -> (match u' with
+               | URzk_X -> true
                | _ -> false)
-  | UPI4_PI4 k -> (match u' with
-                   | UPI4_PI4 k' -> Z.eqb k k'
-                   | _ -> false)
-  | UPI4_CNOT -> (match u' with
-                  | UPI4_CNOT -> true
+  | URzk_Rz i -> (match u' with
+                  | URzk_Rz i' -> Z.eqb i i'
+                  | _ -> false)
+  | URzk_CNOT -> (match u' with
+                  | URzk_CNOT -> true
                   | _ -> false)
 
+(** val combine_rotations : int -> int -> int -> rzk_ucom_l **)
+
+let combine_rotations i i' q =
+  let i'' = Z.modulo (Z.add i i') (Z.mul ((fun p->2*p) 1) rzk_k) in
+  if Z.eqb i'' 0 then [] else (rz i'' q) :: []
+
+(** val invert_rotation : int -> int -> rzk_Unitary gate_app **)
+
+let invert_rotation i q =
+  rz
+    (Z.modulo (Z.sub (Z.mul ((fun p->2*p) 1) rzk_k) i)
+      (Z.mul ((fun p->2*p) 1) rzk_k)) q
+
 (** val rz_commute_rule1 :
-    int -> pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary gate_list)
+    int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
     option **)
 
 let rz_commute_rule1 q l =
   match next_single_qubit_gate l q with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, p2) = p1 in
-    (match p2 with
-     | UPI4_H ->
+    let (l1, r) = p1 in
+    (match r with
+     | URzk_H ->
        (match next_two_qubit_gate l2 q with
-        | Some p3 ->
-          let (p4, l4) = p3 in
-          let (p5, q2) = p4 in
-          let (p6, q1) = p5 in
-          let (l3, p7) = p6 in
-          (match p7 with
-           | UPI4_CNOT ->
+        | Some p2 ->
+          let (p3, l4) = p2 in
+          let (p4, q2) = p3 in
+          let (p5, q1) = p4 in
+          let (l3, r0) = p5 in
+          (match r0 with
+           | URzk_CNOT ->
              if (=) q q2
              then (match next_single_qubit_gate l4 q with
-                   | Some p8 ->
-                     let (p9, l6) = p8 in
-                     let (l5, p10) = p9 in
-                     (match p10 with
-                      | UPI4_H ->
+                   | Some p6 ->
+                     let (p7, l6) = p6 in
+                     let (l5, r1) = p7 in
+                     (match r1 with
+                      | URzk_H ->
                         Some
                           ((app l1
                              (app ((h q) :: [])
@@ -1838,7 +1948,7 @@ let rz_commute_rule1 q l =
   | None -> None
 
 (** val rz_commute_rule2 :
-    int -> pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary gate_list)
+    int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
     option **)
 
 let rz_commute_rule2 q l =
@@ -1847,24 +1957,24 @@ let rz_commute_rule2 q l =
     let (p1, l2) = p0 in
     let (p2, q2) = p1 in
     let (p3, q1) = p2 in
-    let (l1, p4) = p3 in
-    (match p4 with
-     | UPI4_CNOT ->
+    let (l1, r) = p3 in
+    (match r with
+     | URzk_CNOT ->
        if (=) q q2
        then (match next_single_qubit_gate l2 q with
-             | Some p5 ->
-               let (p6, l4) = p5 in
-               let (l3, u) = p6 in
+             | Some p4 ->
+               let (p5, l4) = p4 in
+               let (l3, u) = p5 in
                (match u with
-                | UPI4_PI4 _ ->
+                | URzk_Rz _ ->
                   (match next_two_qubit_gate l4 q with
-                   | Some p7 ->
-                     let (p8, l6) = p7 in
-                     let (p9, q4) = p8 in
-                     let (p10, q3) = p9 in
-                     let (l5, p11) = p10 in
-                     (match p11 with
-                      | UPI4_CNOT ->
+                   | Some p6 ->
+                     let (p7, l6) = p6 in
+                     let (p8, q4) = p7 in
+                     let (p9, q3) = p8 in
+                     let (l5, r0) = p9 in
+                     (match r0 with
+                      | URzk_CNOT ->
                         if (&&) ((&&) ((=) q q4) ((=) q1 q3))
                              (does_not_reference (app l3 l5) q3)
                         then Some
@@ -1883,7 +1993,7 @@ let rz_commute_rule2 q l =
   | None -> None
 
 (** val rz_commute_rule3 :
-    int -> pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary gate_list)
+    int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
     option **)
 
 let rz_commute_rule3 q l =
@@ -1892,56 +2002,47 @@ let rz_commute_rule3 q l =
     let (p1, l2) = p0 in
     let (p2, q2) = p1 in
     let (p3, q1) = p2 in
-    let (l1, p4) = p3 in
-    (match p4 with
-     | UPI4_CNOT ->
+    let (l1, r) = p3 in
+    (match r with
+     | URzk_CNOT ->
        if (=) q q1 then Some ((app l1 ((cNOT q1 q2) :: [])), l2) else None
      | _ -> None)
   | None -> None
 
 (** val rz_commute_rules :
-    int -> (pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary gate_list)
+    int -> (rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
     option) list **)
 
 let rz_commute_rules q =
   (rz_commute_rule1 q) :: ((rz_commute_rule2 q) :: ((rz_commute_rule3 q) :: []))
 
 (** val rz_cancel_rule :
-    int -> int -> pI4_ucom_l -> pI4_Unitary gate_app list option **)
+    int -> int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
 
-let rz_cancel_rule q k l =
+let rz_cancel_rule q i l =
   match next_single_qubit_gate l q with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, p2) = p1 in
-    (match p2 with
-     | UPI4_PI4 k' ->
-       let k'' = Z.add k k' in
-       if Z.eqb k'' ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1)))
-       then Some (app l1 l2)
-       else if Z.ltb k'' ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1)))
-            then Some ((App1 ((UPI4_PI4 k''), q)) :: (app l1 l2))
-            else Some ((App1 ((UPI4_PI4
-                   (Z.sub k'' ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1))))),
-                   q)) :: (app l1 l2))
+    let (l1, r) = p1 in
+    (match r with
+     | URzk_Rz i' -> Some (app (combine_rotations i i' q) (app l1 l2))
      | _ -> None)
   | None -> None
 
 (** val h_cancel_rule :
-    int -> pI4_ucom_l -> pI4_Unitary gate_app list option **)
+    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
 
 let h_cancel_rule q l =
   match next_single_qubit_gate l q with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, p2) = p1 in
-    (match p2 with
-     | UPI4_H -> Some (app l1 l2)
-     | _ -> None)
+    let (l1, r) = p1 in (match r with
+                         | URzk_H -> Some (app l1 l2)
+                         | _ -> None)
   | None -> None
 
 (** val x_commute_rule :
-    int -> pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary gate_list)
+    int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
     option **)
 
 let x_commute_rule q l =
@@ -1950,28 +2051,27 @@ let x_commute_rule q l =
     let (p1, l2) = p0 in
     let (p2, q2) = p1 in
     let (p3, q1) = p2 in
-    let (l1, p4) = p3 in
-    (match p4 with
-     | UPI4_CNOT ->
+    let (l1, r) = p3 in
+    (match r with
+     | URzk_CNOT ->
        if (=) q q2 then Some ((app l1 ((cNOT q1 q2) :: [])), l2) else None
      | _ -> None)
   | None -> None
 
 (** val x_cancel_rule :
-    int -> pI4_ucom_l -> pI4_Unitary gate_app list option **)
+    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
 
 let x_cancel_rule q l =
   match next_single_qubit_gate l q with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, p2) = p1 in
-    (match p2 with
-     | UPI4_X -> Some (app l1 l2)
-     | _ -> None)
+    let (l1, r) = p1 in (match r with
+                         | URzk_X -> Some (app l1 l2)
+                         | _ -> None)
   | None -> None
 
 (** val cNOT_commute_rule1 :
-    int -> pI4_ucom_l -> (pI4_ucom_l * pI4_ucom_l) option **)
+    int -> rzk_ucom_l -> (rzk_ucom_l * rzk_ucom_l) option **)
 
 let cNOT_commute_rule1 q1 l =
   match next_single_qubit_gate l q1 with
@@ -1979,12 +2079,12 @@ let cNOT_commute_rule1 q1 l =
     let (p1, l2) = p0 in
     let (l1, u) = p1 in
     (match u with
-     | UPI4_PI4 _ -> Some (((App1 (u, q1)) :: []), (app l1 l2))
+     | URzk_Rz _ -> Some (((App1 (u, q1)) :: []), (app l1 l2))
      | _ -> None)
   | None -> None
 
 (** val cNOT_commute_rule2 :
-    int -> int -> pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary
+    int -> int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary
     gate_list) option **)
 
 let cNOT_commute_rule2 q1 q2 l =
@@ -1993,9 +2093,9 @@ let cNOT_commute_rule2 q1 q2 l =
     let (p1, l2) = p0 in
     let (p2, q2') = p1 in
     let (p3, q1') = p2 in
-    let (l1, p4) = p3 in
-    (match p4 with
-     | UPI4_CNOT ->
+    let (l1, r) = p3 in
+    (match r with
+     | URzk_CNOT ->
        if (=) q2 q2'
        then if does_not_reference l1 q1
             then Some ((app l1 ((cNOT q1' q2) :: [])), l2)
@@ -2005,7 +2105,7 @@ let cNOT_commute_rule2 q1 q2 l =
   | None -> None
 
 (** val cNOT_commute_rule3 :
-    int -> int -> pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary
+    int -> int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary
     gate_list) option **)
 
 let cNOT_commute_rule3 q1 q2 l =
@@ -2014,9 +2114,9 @@ let cNOT_commute_rule3 q1 q2 l =
     let (p1, l2) = p0 in
     let (p2, q2') = p1 in
     let (p3, q1') = p2 in
-    let (l1, p4) = p3 in
-    (match p4 with
-     | UPI4_CNOT ->
+    let (l1, r) = p3 in
+    (match r with
+     | URzk_CNOT ->
        if (=) q1 q1'
        then if does_not_reference l1 q2
             then Some ((app l1 ((cNOT q1 q2') :: [])), l2)
@@ -2026,32 +2126,32 @@ let cNOT_commute_rule3 q1 q2 l =
   | None -> None
 
 (** val cNOT_commute_rule4 :
-    int -> int -> pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary
+    int -> int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary
     gate_app list) option **)
 
 let cNOT_commute_rule4 q1 q2 l =
   match next_single_qubit_gate l q2 with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, p2) = p1 in
-    (match p2 with
-     | UPI4_H ->
+    let (l1, r) = p1 in
+    (match r with
+     | URzk_H ->
        (match next_two_qubit_gate l2 q2 with
-        | Some p3 ->
-          let (p4, l4) = p3 in
-          let (p5, q2') = p4 in
-          let (p6, q1') = p5 in
-          let (l3, p7) = p6 in
-          (match p7 with
-           | UPI4_CNOT ->
+        | Some p2 ->
+          let (p3, l4) = p2 in
+          let (p4, q2') = p3 in
+          let (p5, q1') = p4 in
+          let (l3, r0) = p5 in
+          (match r0 with
+           | URzk_CNOT ->
              if (&&) ((&&) ((=) q2 q1') (negb ((=) q1 q2')))
                   (does_not_reference (app l1 l3) q1)
              then (match next_single_qubit_gate l4 q2 with
-                   | Some p8 ->
-                     let (p9, l6) = p8 in
-                     let (l5, p10) = p9 in
-                     (match p10 with
-                      | UPI4_H ->
+                   | Some p6 ->
+                     let (p7, l6) = p6 in
+                     let (l5, r1) = p7 in
+                     (match r1 with
+                      | URzk_H ->
                         Some
                           ((app l1
                              (app ((h q2) :: [])
@@ -2067,39 +2167,38 @@ let cNOT_commute_rule4 q1 q2 l =
   | None -> None
 
 (** val cNOT_commute_rule5 :
-    int -> int -> pI4_ucom_l -> (pI4_Unitary gate_app list * pI4_Unitary
+    int -> int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary
     gate_app list) option **)
 
 let cNOT_commute_rule5 q1 q2 l =
   match next_single_qubit_gate l q2 with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, p2) = p1 in
-    (match p2 with
-     | UPI4_PI4 k ->
+    let (l1, r) = p1 in
+    (match r with
+     | URzk_Rz i ->
        (match next_two_qubit_gate l2 q2 with
-        | Some p3 ->
-          let (p4, l4) = p3 in
-          let (p5, q2') = p4 in
-          let (p6, q1') = p5 in
-          let (l3, p7) = p6 in
-          (match p7 with
-           | UPI4_CNOT ->
+        | Some p2 ->
+          let (p3, l4) = p2 in
+          let (p4, q2') = p3 in
+          let (p5, q1') = p4 in
+          let (l3, r0) = p5 in
+          (match r0 with
+           | URzk_CNOT ->
              if (&&) ((&&) ((=) q1 q1') ((=) q2 q2'))
                   (does_not_reference (app l1 l3) q1)
              then (match next_single_qubit_gate l4 q2 with
-                   | Some p8 ->
-                     let (p9, l6) = p8 in
-                     let (l5, p10) = p9 in
-                     (match p10 with
-                      | UPI4_PI4 k' ->
+                   | Some p6 ->
+                     let (p7, l6) = p6 in
+                     let (l5, r1) = p7 in
+                     (match r1 with
+                      | URzk_Rz i' ->
                         Some
                           ((app l1
-                             (app ((App1 ((UPI4_PI4 k'), q2)) :: [])
+                             (app ((App1 ((URzk_Rz i'), q2)) :: [])
                                (app l3
-                                 (app ((cNOT q1' q2') :: []) ((App1
-                                   ((UPI4_PI4 k), q2)) :: []))))),
-                          (app l5 l6))
+                                 (app ((cNOT q1' q2') :: []) ((App1 ((URzk_Rz
+                                   i), q2)) :: []))))), (app l5 l6))
                       | _ -> None)
                    | None -> None)
              else None
@@ -2109,7 +2208,7 @@ let cNOT_commute_rule5 q1 q2 l =
   | None -> None
 
 (** val cNOT_commute_rules :
-    int -> int -> (pI4_ucom_l -> (pI4_ucom_l * pI4_ucom_l) option) list **)
+    int -> int -> (rzk_ucom_l -> (rzk_ucom_l * rzk_ucom_l) option) list **)
 
 let cNOT_commute_rules q1 q2 =
   (cNOT_commute_rule1 q1) :: ((cNOT_commute_rule2 q1 q2) :: ((cNOT_commute_rule3
@@ -2117,7 +2216,7 @@ let cNOT_commute_rules q1 q2 =
     (cNOT_commute_rule4 q1 q2) :: ((cNOT_commute_rule5 q1 q2) :: []))))
 
 (** val cNOT_cancel_rule :
-    int -> int -> pI4_ucom_l -> pI4_Unitary gate_app list option **)
+    int -> int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
 
 let cNOT_cancel_rule q1 q2 l =
   match next_two_qubit_gate l q1 with
@@ -2125,39 +2224,39 @@ let cNOT_cancel_rule q1 q2 l =
     let (p1, l2) = p0 in
     let (p2, q2') = p1 in
     let (p3, q1') = p2 in
-    let (l1, p4) = p3 in
-    (match p4 with
-     | UPI4_CNOT ->
+    let (l1, r) = p3 in
+    (match r with
+     | URzk_CNOT ->
        if (&&) ((&&) ((=) q1 q1') ((=) q2 q2')) (does_not_reference l1 q2)
        then Some (app l1 l2)
        else None
      | _ -> None)
   | None -> None
 
-(** val propagate_PI4 :
-    int -> pI4_ucom_l -> int -> int -> pI4_Unitary gate_list option **)
+(** val propagate_Rz :
+    int -> rzk_ucom_l -> int -> int -> rzk_Unitary gate_list option **)
 
-let propagate_PI4 k l q n =
+let propagate_Rz k l q n =
   propagate l (rz_commute_rules q) ((rz_cancel_rule q k) :: []) n
 
-(** val propagate_H : pI4_ucom_l -> int -> pI4_Unitary gate_list option **)
+(** val propagate_H : rzk_ucom_l -> int -> rzk_Unitary gate_list option **)
 
 let propagate_H l q =
   propagate l [] ((h_cancel_rule q) :: []) (Pervasives.succ 0)
 
 (** val propagate_X :
-    pI4_ucom_l -> int -> int -> pI4_Unitary gate_list option **)
+    rzk_ucom_l -> int -> int -> rzk_Unitary gate_list option **)
 
 let propagate_X l q n =
   propagate l ((x_commute_rule q) :: []) ((x_cancel_rule q) :: []) n
 
 (** val propagate_CNOT :
-    pI4_ucom_l -> int -> int -> int -> pI4_Unitary gate_list option **)
+    rzk_ucom_l -> int -> int -> int -> rzk_Unitary gate_list option **)
 
 let propagate_CNOT l q1 q2 n =
   propagate l (cNOT_commute_rules q1 q2) ((cNOT_cancel_rule q1 q2) :: []) n
 
-(** val cancel_single_qubit_gates' : pI4_ucom_l -> int -> pI4_ucom_l **)
+(** val cancel_single_qubit_gates' : rzk_ucom_l -> int -> rzk_ucom_l **)
 
 let rec cancel_single_qubit_gates' l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -2167,31 +2266,31 @@ let rec cancel_single_qubit_gates' l n =
     | [] -> []
     | u :: t1 ->
       (match u with
-       | App1 (p0, q) ->
-         (match p0 with
-          | UPI4_H ->
+       | App1 (r, q) ->
+         (match r with
+          | URzk_H ->
             (match propagate_H t1 q with
              | Some l' -> cancel_single_qubit_gates' l' n'
              | None -> (h q) :: (cancel_single_qubit_gates' t1 n'))
-          | UPI4_X ->
+          | URzk_X ->
             (match propagate_X t1 q (length t1) with
              | Some l' -> cancel_single_qubit_gates' l' n'
              | None -> (x q) :: (cancel_single_qubit_gates' t1 n'))
-          | UPI4_PI4 k ->
-            (match propagate_PI4 k t1 q (length t1) with
+          | URzk_Rz i ->
+            (match propagate_Rz i t1 q (length t1) with
              | Some l' -> cancel_single_qubit_gates' l' n'
              | None ->
-               (App1 ((UPI4_PI4 k), q)) :: (cancel_single_qubit_gates' t1 n'))
-          | UPI4_CNOT -> u :: (cancel_single_qubit_gates' t1 n'))
+               (App1 ((URzk_Rz i), q)) :: (cancel_single_qubit_gates' t1 n'))
+          | URzk_CNOT -> u :: (cancel_single_qubit_gates' t1 n'))
        | _ -> u :: (cancel_single_qubit_gates' t1 n')))
     n
 
-(** val cancel_single_qubit_gates : pI4_ucom_l -> pI4_ucom_l **)
+(** val cancel_single_qubit_gates : rzk_ucom_l -> rzk_ucom_l **)
 
 let cancel_single_qubit_gates l =
   cancel_single_qubit_gates' l (length l)
 
-(** val cancel_two_qubit_gates' : pI4_ucom_l -> int -> pI4_ucom_l **)
+(** val cancel_two_qubit_gates' : rzk_ucom_l -> int -> rzk_ucom_l **)
 
 let rec cancel_two_qubit_gates' l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -2201,9 +2300,9 @@ let rec cancel_two_qubit_gates' l n =
     | [] -> []
     | u :: t1 ->
       (match u with
-       | App2 (p0, q1, q2) ->
-         (match p0 with
-          | UPI4_CNOT ->
+       | App2 (r, q1, q2) ->
+         (match r with
+          | URzk_CNOT ->
             (match propagate_CNOT t1 q1 q2 (length t1) with
              | Some l' -> cancel_two_qubit_gates' l' n'
              | None -> (cNOT q1 q2) :: (cancel_two_qubit_gates' t1 n'))
@@ -2211,65 +2310,65 @@ let rec cancel_two_qubit_gates' l n =
        | _ -> u :: (cancel_two_qubit_gates' t1 n')))
     n
 
-(** val cancel_two_qubit_gates : pI4_ucom_l -> pI4_ucom_l **)
+(** val cancel_two_qubit_gates : rzk_ucom_l -> rzk_ucom_l **)
 
 let cancel_two_qubit_gates l =
   cancel_two_qubit_gates' l (length l)
 
 (** val apply_H_equivalence1 :
-    int -> pI4_ucom_l -> pI4_Unitary gate_list option **)
+    int -> rzk_ucom_l -> rzk_Unitary gate_list option **)
 
 let apply_H_equivalence1 q l =
-  replace_single_qubit_pattern l q (UPI4_H :: (uPI4_P :: (UPI4_H :: [])))
-    (uPI4_PDAG :: (UPI4_H :: (uPI4_PDAG :: []))) match_gate
+  replace_single_qubit_pattern l q (URzk_H :: (uRzk_P :: (URzk_H :: [])))
+    (uRzk_PDAG :: (URzk_H :: (uRzk_PDAG :: []))) match_gate
 
 (** val apply_H_equivalence2 :
-    int -> pI4_ucom_l -> pI4_Unitary gate_list option **)
+    int -> rzk_ucom_l -> rzk_Unitary gate_list option **)
 
 let apply_H_equivalence2 q l =
-  replace_single_qubit_pattern l q (UPI4_H :: (uPI4_PDAG :: (UPI4_H :: [])))
-    (uPI4_P :: (UPI4_H :: (uPI4_P :: []))) match_gate
+  replace_single_qubit_pattern l q (URzk_H :: (uRzk_PDAG :: (URzk_H :: [])))
+    (uRzk_P :: (URzk_H :: (uRzk_P :: []))) match_gate
 
 (** val apply_H_equivalence3 :
-    int -> pI4_ucom_l -> pI4_Unitary gate_app list option **)
+    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
 
 let apply_H_equivalence3 q l =
   match next_single_qubit_gate l q with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, p2) = p1 in
-    (match p2 with
-     | UPI4_H ->
+    let (l1, r) = p1 in
+    (match r with
+     | URzk_H ->
        let l0 = app l1 l2 in
        (match next_two_qubit_gate l0 q with
-        | Some p3 ->
-          let (p4, l3) = p3 in
-          let (p5, n) = p4 in
-          let (p6, m) = p5 in
-          let (l4, p7) = p6 in
-          (match p7 with
-           | UPI4_CNOT ->
+        | Some p2 ->
+          let (p3, l3) = p2 in
+          let (p4, n) = p3 in
+          let (p5, m) = p4 in
+          let (l4, r0) = p5 in
+          (match r0 with
+           | URzk_CNOT ->
              if (=) q m
              then (match last_single_qubit_gate l4 n with
-                   | Some p8 ->
-                     let (p9, l1_2) = p8 in
-                     let (l1_1, p10) = p9 in
-                     (match p10 with
-                      | UPI4_H ->
+                   | Some p6 ->
+                     let (p7, l1_2) = p6 in
+                     let (l1_1, r1) = p7 in
+                     (match r1 with
+                      | URzk_H ->
                         let l5 = app l1_1 l1_2 in
                         (match next_single_qubit_gate l3 q with
-                         | Some p11 ->
-                           let (p12, l2_2) = p11 in
-                           let (l2_1, p13) = p12 in
-                           (match p13 with
-                            | UPI4_H ->
+                         | Some p8 ->
+                           let (p9, l2_2) = p8 in
+                           let (l2_1, r2) = p9 in
+                           (match r2 with
+                            | URzk_H ->
                               let l6 = app l2_1 l2_2 in
                               (match next_single_qubit_gate l6 n with
-                               | Some p14 ->
-                                 let (p15, l2_3) = p14 in
-                                 let (l2_4, p16) = p15 in
-                                 (match p16 with
-                                  | UPI4_H ->
+                               | Some p10 ->
+                                 let (p11, l2_3) = p10 in
+                                 let (l2_4, r3) = p11 in
+                                 (match r3 with
+                                  | URzk_H ->
                                     let l7 = app l2_4 l2_3 in
                                     Some (app l5 (app ((cNOT n q) :: []) l7))
                                   | _ -> None)
@@ -2279,25 +2378,25 @@ let apply_H_equivalence3 q l =
                       | _ -> None)
                    | None -> None)
              else (match last_single_qubit_gate l4 m with
-                   | Some p8 ->
-                     let (p9, l1_2) = p8 in
-                     let (l1_1, p10) = p9 in
-                     (match p10 with
-                      | UPI4_H ->
+                   | Some p6 ->
+                     let (p7, l1_2) = p6 in
+                     let (l1_1, r1) = p7 in
+                     (match r1 with
+                      | URzk_H ->
                         let l5 = app l1_1 l1_2 in
                         (match next_single_qubit_gate l3 q with
-                         | Some p11 ->
-                           let (p12, l2_2) = p11 in
-                           let (l2_1, p13) = p12 in
-                           (match p13 with
-                            | UPI4_H ->
+                         | Some p8 ->
+                           let (p9, l2_2) = p8 in
+                           let (l2_1, r2) = p9 in
+                           (match r2 with
+                            | URzk_H ->
                               let l6 = app l2_1 l2_2 in
                               (match next_single_qubit_gate l6 m with
-                               | Some p14 ->
-                                 let (p15, l2_3) = p14 in
-                                 let (l2_4, p16) = p15 in
-                                 (match p16 with
-                                  | UPI4_H ->
+                               | Some p10 ->
+                                 let (p11, l2_3) = p10 in
+                                 let (l2_4, r3) = p11 in
+                                 (match r3 with
+                                  | URzk_H ->
                                     let l7 = app l2_4 l2_3 in
                                     Some (app l5 (app ((cNOT q m) :: []) l7))
                                   | _ -> None)
@@ -2312,22 +2411,22 @@ let apply_H_equivalence3 q l =
   | None -> None
 
 (** val apply_H_equivalence4 :
-    int -> pI4_ucom_l -> pI4_Unitary gate_app list option **)
+    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
 
 let apply_H_equivalence4 q l =
-  match remove_single_qubit_pattern l q (UPI4_H :: (uPI4_P :: [])) match_gate with
+  match remove_single_qubit_pattern l q (URzk_H :: (uRzk_P :: [])) match_gate with
   | Some l1 ->
     (match next_two_qubit_gate l1 q with
      | Some p0 ->
        let (p1, l3) = p0 in
        let (p2, q2) = p1 in
        let (p3, q1) = p2 in
-       let (l2, p4) = p3 in
-       (match p4 with
-        | UPI4_CNOT ->
+       let (l2, r) = p3 in
+       (match r with
+        | URzk_CNOT ->
           if (=) q q2
           then (match remove_single_qubit_pattern l3 q
-                        (uPI4_PDAG :: (UPI4_H :: [])) match_gate with
+                        (uRzk_PDAG :: (URzk_H :: [])) match_gate with
                 | Some l4 ->
                   Some
                     (app l2
@@ -2339,10 +2438,10 @@ let apply_H_equivalence4 q l =
   | None -> None
 
 (** val apply_H_equivalence5 :
-    int -> pI4_ucom_l -> pI4_Unitary gate_app list option **)
+    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
 
 let apply_H_equivalence5 q l =
-  match remove_single_qubit_pattern l q (UPI4_H :: (uPI4_PDAG :: []))
+  match remove_single_qubit_pattern l q (URzk_H :: (uRzk_PDAG :: []))
           match_gate with
   | Some l1 ->
     (match next_two_qubit_gate l1 q with
@@ -2350,12 +2449,12 @@ let apply_H_equivalence5 q l =
        let (p1, l3) = p0 in
        let (p2, q2) = p1 in
        let (p3, q1) = p2 in
-       let (l2, p4) = p3 in
-       (match p4 with
-        | UPI4_CNOT ->
+       let (l2, r) = p3 in
+       (match r with
+        | URzk_CNOT ->
           if (=) q q2
           then (match remove_single_qubit_pattern l3 q
-                        (uPI4_P :: (UPI4_H :: [])) match_gate with
+                        (uRzk_P :: (URzk_H :: [])) match_gate with
                 | Some l4 ->
                   Some
                     (app l2
@@ -2366,7 +2465,7 @@ let apply_H_equivalence5 q l =
      | None -> None)
   | None -> None
 
-(** val apply_H_equivalence : pI4_ucom_l -> int -> pI4_ucom_l option **)
+(** val apply_H_equivalence : rzk_ucom_l -> int -> rzk_ucom_l option **)
 
 let apply_H_equivalence l q =
   try_rewrites l
@@ -2374,7 +2473,7 @@ let apply_H_equivalence l q =
                                                                  q) :: (
     (apply_H_equivalence4 q) :: ((apply_H_equivalence5 q) :: [])))))
 
-(** val apply_H_equivalences : pI4_ucom_l -> int -> pI4_ucom_l **)
+(** val apply_H_equivalences : rzk_ucom_l -> int -> rzk_ucom_l **)
 
 let rec apply_H_equivalences l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -2384,9 +2483,9 @@ let rec apply_H_equivalences l n =
     | [] -> []
     | g :: t1 ->
       (match g with
-       | App1 (p0, q) ->
-         (match p0 with
-          | UPI4_H ->
+       | App1 (r, q) ->
+         (match r with
+          | URzk_H ->
             (match apply_H_equivalence l q with
              | Some l' -> apply_H_equivalences l' n'
              | None -> (h q) :: (apply_H_equivalences t1 n'))
@@ -2394,7 +2493,7 @@ let rec apply_H_equivalences l n =
        | _ -> g :: (apply_H_equivalences t1 n')))
     n
 
-(** val hadamard_reduction : pI4_ucom_l -> pI4_ucom_l **)
+(** val hadamard_reduction : rzk_ucom_l -> rzk_ucom_l **)
 
 let hadamard_reduction l =
   apply_H_equivalences l
@@ -4081,8 +4180,8 @@ module Coq_Make =
 module FMap = Coq_Make(Nat_as_OT)
 
 (** val get_subcircuit' :
-    pI4_ucom_l -> FSet.t -> FSet.t -> int -> (pI4_Unitary gate_app
-    list * pI4_Unitary gate_app list) * pI4_ucom_l **)
+    rzk_ucom_l -> FSet.t -> FSet.t -> int -> (rzk_Unitary gate_app
+    list * rzk_Unitary gate_app list) * rzk_ucom_l **)
 
 let rec get_subcircuit' l qs blst n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4097,7 +4196,7 @@ let rec get_subcircuit' l qs blst n =
             (match g with
              | App1 (u, q) ->
                (match u with
-                | UPI4_H ->
+                | URzk_H ->
                   let (p2, l2') = get_subcircuit' l2 qs (FSet.add q blst) n'
                   in
                   let (l1', s) = p2 in
@@ -4106,15 +4205,15 @@ let rec get_subcircuit' l qs blst n =
                   let (p2, l2') = get_subcircuit' l2 qs blst n' in
                   let (l1', s) = p2 in
                   (((app l1 l1'), (app ((App1 (u, q)) :: []) s)), l2'))
-             | App2 (p2, q1, q2) ->
-               (match p2 with
-                | UPI4_CNOT ->
+             | App2 (r, q1, q2) ->
+               (match r with
+                | URzk_CNOT ->
                   let qs' = FSet.add q1 (FSet.add q2 qs) in
                   let blst' =
                     if FSet.mem q1 blst then FSet.add q2 blst else blst
                   in
-                  let (p3, l2') = get_subcircuit' l2 qs' blst' n' in
-                  let (l1', s) = p3 in
+                  let (p2, l2') = get_subcircuit' l2 qs' blst' n' in
+                  let (l1', s) = p2 in
                   (((app l1 l1'), (app ((cNOT q1 q2) :: []) s)), l2')
                 | _ -> (([], []), l))
              | App3 (_, _, _, _) -> (([], []), l))
@@ -4122,31 +4221,16 @@ let rec get_subcircuit' l qs blst n =
     n
 
 (** val get_subcircuit :
-    pI4_ucom_l -> FSet.elt -> (pI4_Unitary gate_app list * pI4_Unitary
-    gate_app list) * pI4_ucom_l **)
+    rzk_ucom_l -> FSet.elt -> (rzk_Unitary gate_app list * rzk_Unitary
+    gate_app list) * rzk_ucom_l **)
 
 let get_subcircuit l q =
   get_subcircuit' l (FSet.add q FSet.empty) FSet.empty (length l)
-
-(** val pI4 : int -> int -> pI4_Unitary gate_app **)
-
-let pI4 k q =
-  App1 ((UPI4_PI4 k), q)
 
 (** val xor : FSet.t -> FSet.t -> FSet.t **)
 
 let xor s1 s2 =
   FSet.diff (FSet.union s1 s2) (FSet.inter s1 s2)
-
-(** val combine_gates : int -> int -> int -> pI4_Unitary gate_app list **)
-
-let combine_gates k k' q =
-  let k'' = Z.add k k' in
-  if Z.eqb k'' ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1)))
-  then []
-  else if Z.ltb k'' ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1)))
-       then (pI4 k'' q) :: []
-       else (pI4 (Z.sub k'' ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1)))) q) :: []
 
 (** val get_set : FSet.t FMap.t -> FMap.key -> FSet.t **)
 
@@ -4156,85 +4240,85 @@ let get_set smap q =
   | None -> FSet.add q FSet.empty
 
 (** val find_merge :
-    pI4_ucom_l -> FSet.t -> FSet.elt -> FSet.t FMap.t ->
-    (((pI4_ucom_l * int) * int) * pI4_ucom_l) option **)
+    rzk_ucom_l -> FSet.t -> FSet.elt -> FSet.t FMap.t ->
+    (((rzk_ucom_l * int) * int) * rzk_ucom_l) option **)
 
 let rec find_merge l blst q smap =
   match l with
   | [] -> None
   | g :: t1 ->
     (match g with
-     | App1 (p0, q') ->
-       (match p0 with
-        | UPI4_H ->
+     | App1 (r, q') ->
+       (match r with
+        | URzk_H ->
           (match find_merge t1 (FSet.add q' blst) q smap with
-           | Some p1 ->
-             let (p2, l2) = p1 in
-             let (p3, q'') = p2 in
-             let (l1, k) = p3 in Some (((((h q') :: l1), k), q''), l2)
+           | Some p0 ->
+             let (p1, l2) = p0 in
+             let (p2, q'') = p1 in
+             let (l1, i) = p2 in Some (((((h q') :: l1), i), q''), l2)
            | None -> None)
-        | UPI4_PI4 k ->
+        | URzk_Rz i ->
           let s = get_set smap q' in
           let sorig = FSet.add q FSet.empty in
           if (&&) (negb (FSet.mem q' blst)) (FSet.equal s sorig)
-          then Some ((([], k), q'), t1)
+          then Some ((([], i), q'), t1)
           else (match find_merge t1 blst q smap with
-                | Some p1 ->
-                  let (p2, l2) = p1 in
-                  let (p3, q'') = p2 in
-                  let (l1, k') = p3 in
-                  Some (((((pI4 k q') :: l1), k'), q''), l2)
+                | Some p0 ->
+                  let (p1, l2) = p0 in
+                  let (p2, q'') = p1 in
+                  let (l1, i') = p2 in
+                  Some (((((rz i q') :: l1), i'), q''), l2)
                 | None -> None)
         | _ -> None)
-     | App2 (p0, q1, q2) ->
-       (match p0 with
-        | UPI4_CNOT ->
+     | App2 (r, q1, q2) ->
+       (match r with
+        | URzk_CNOT ->
           if (||) (FSet.mem q1 blst) (FSet.mem q2 blst)
           then let blst' = if FSet.mem q1 blst then FSet.add q2 blst else blst
                in
                (match find_merge t1 blst' q smap with
-                | Some p1 ->
-                  let (p2, l2) = p1 in
-                  let (p3, q') = p2 in
-                  let (l1, k) = p3 in
-                  Some (((((cNOT q1 q2) :: l1), k), q'), l2)
+                | Some p0 ->
+                  let (p1, l2) = p0 in
+                  let (p2, q') = p1 in
+                  let (l1, i) = p2 in
+                  Some (((((cNOT q1 q2) :: l1), i), q'), l2)
                 | None -> None)
           else let s1 = get_set smap q1 in
                let s2 = get_set smap q2 in
                let smap' = FMap.add q2 (xor s1 s2) smap in
                (match find_merge t1 blst q smap' with
-                | Some p1 ->
-                  let (p2, l2) = p1 in
-                  let (p3, q') = p2 in
-                  let (l1, k) = p3 in
-                  Some (((((cNOT q1 q2) :: l1), k), q'), l2)
+                | Some p0 ->
+                  let (p1, l2) = p0 in
+                  let (p2, q') = p1 in
+                  let (l1, i) = p2 in
+                  Some (((((cNOT q1 q2) :: l1), i), q'), l2)
                 | None -> None)
         | _ -> None)
      | App3 (_, _, _, _) -> None)
 
 (** val merge_at_beginning :
-    pI4_ucom_l -> int -> FSet.elt -> pI4_Unitary gate_app list option **)
+    rzk_ucom_l -> int -> FSet.elt -> rzk_Unitary gate_app list option **)
 
-let merge_at_beginning l k q =
+let merge_at_beginning l i q =
   match find_merge l FSet.empty q FMap.empty with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (p2, _) = p1 in
-    let (l1, k') = p2 in Some (app (combine_gates k k' q) (app l1 l2))
+    let (l1, i') = p2 in Some (app (combine_rotations i i' q) (app l1 l2))
   | None -> None
 
 (** val merge_at_end :
-    pI4_ucom_l -> int -> FSet.elt -> pI4_Unitary gate_app list option **)
+    rzk_ucom_l -> int -> FSet.elt -> rzk_Unitary gate_app list option **)
 
-let merge_at_end l k q =
+let merge_at_end l i q =
   match find_merge l FSet.empty q FMap.empty with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (p2, q') = p1 in
-    let (l1, k') = p2 in Some (app l1 (app (combine_gates k k' q') l2))
+    let (l1, i') = p2 in Some (app l1 (app (combine_rotations i i' q') l2))
   | None -> None
 
-(** val merge_rotations_at_beginning : pI4_ucom_l -> int -> pI4_ucom_l **)
+(** val merge_rotations_at_beginning : rzk_ucom_l -> int -> rzk_ucom_l **)
 
 let rec merge_rotations_at_beginning l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4244,21 +4328,19 @@ let rec merge_rotations_at_beginning l n =
     | [] -> []
     | g :: t1 ->
       (match g with
-       | App1 (p0, q) ->
-         (match p0 with
-          | UPI4_PI4 k ->
-            let (p1, l2) = get_subcircuit t1 q in
-            let (l1, s) = p1 in
-            (match merge_at_beginning s k q with
+       | App1 (r, q) ->
+         (match r with
+          | URzk_Rz i ->
+            let (p0, l2) = get_subcircuit t1 q in
+            let (l1, s) = p0 in
+            (match merge_at_beginning s i q with
              | Some s' -> merge_rotations_at_beginning (app l1 (app s' l2)) n'
-             | None ->
-               (App1 ((UPI4_PI4 k),
-                 q)) :: (merge_rotations_at_beginning t1 n'))
+             | None -> (rz i q) :: (merge_rotations_at_beginning t1 n'))
           | _ -> g :: (merge_rotations_at_beginning t1 n'))
        | _ -> g :: (merge_rotations_at_beginning t1 n')))
     n
 
-(** val merge_rotations_at_end : pI4_ucom_l -> int -> pI4_ucom_l **)
+(** val merge_rotations_at_end : rzk_ucom_l -> int -> rzk_ucom_l **)
 
 let rec merge_rotations_at_end l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4268,43 +4350,39 @@ let rec merge_rotations_at_end l n =
     | [] -> []
     | g :: t1 ->
       (match g with
-       | App1 (p0, q) ->
-         (match p0 with
-          | UPI4_PI4 k ->
-            let (p1, l2) = get_subcircuit t1 q in
-            let (l1, s) = p1 in
-            (match merge_at_end s k q with
+       | App1 (r, q) ->
+         (match r with
+          | URzk_Rz i ->
+            let (p0, l2) = get_subcircuit t1 q in
+            let (l1, s) = p0 in
+            (match merge_at_end s i q with
              | Some s' -> merge_rotations_at_end (app l1 (app s' l2)) n'
-             | None ->
-               (App1 ((UPI4_PI4 k), q)) :: (merge_rotations_at_end t1 n'))
+             | None -> (rz i q) :: (merge_rotations_at_end t1 n'))
           | _ -> g :: (merge_rotations_at_end t1 n'))
        | _ -> g :: (merge_rotations_at_end t1 n')))
     n
 
-(** val invert_gate : pI4_Unitary gate_app -> pI4_Unitary gate_app **)
+(** val invert_gate : rzk_Unitary gate_app -> rzk_Unitary gate_app **)
 
 let invert_gate g = match g with
-| App1 (y, q) ->
-  (match y with
-   | UPI4_PI4 k ->
-     App1 ((UPI4_PI4
-       (Z.sub ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1))) k)), q)
-   | _ -> g)
+| App1 (y, q) -> (match y with
+                  | URzk_Rz i -> invert_rotation i q
+                  | _ -> g)
 | _ -> g
 
-(** val invert : pI4_ucom_l -> pI4_Unitary gate_app list **)
+(** val invert : rzk_ucom_l -> rzk_Unitary gate_app list **)
 
 let invert l =
   map invert_gate (rev l)
 
-(** val merge_rotations : pI4_ucom_l -> pI4_Unitary gate_app list **)
+(** val merge_rotations : rzk_ucom_l -> rzk_Unitary gate_app list **)
 
 let merge_rotations l =
   let l' = merge_rotations_at_beginning l (length l) in
   let l'' = merge_rotations_at_end (invert l') (length l') in invert l''
 
 (** val propagate_X0 :
-    pI4_ucom_l -> int -> int -> pI4_Unitary gate_app list **)
+    rzk_ucom_l -> int -> int -> rzk_Unitary gate_app list **)
 
 let rec propagate_X0 l q n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4316,18 +4394,15 @@ let rec propagate_X0 l q n =
       if does_not_reference_appl q u
       then u :: (propagate_X0 t1 q n')
       else (match u with
-            | App1 (p0, n0) ->
-              (match p0 with
-               | UPI4_H -> u :: ((z q) :: t1)
-               | UPI4_X -> t1
-               | UPI4_PI4 k ->
-                 (App1 ((UPI4_PI4
-                   (Z.sub ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1))) k)),
-                   n0)) :: (propagate_X0 t1 q n')
-               | UPI4_CNOT -> (x q) :: l)
-            | App2 (p0, m, n0) ->
-              (match p0 with
-               | UPI4_CNOT ->
+            | App1 (r, n0) ->
+              (match r with
+               | URzk_H -> u :: ((z q) :: t1)
+               | URzk_X -> t1
+               | URzk_Rz i -> (invert_rotation i n0) :: (propagate_X0 t1 q n')
+               | URzk_CNOT -> (x q) :: l)
+            | App2 (r, m, n0) ->
+              (match r with
+               | URzk_CNOT ->
                  if (=) q m
                  then u :: (propagate_X0 (propagate_X0 t1 m n') n0 n')
                  else u :: (propagate_X0 t1 q n')
@@ -4335,7 +4410,7 @@ let rec propagate_X0 l q n =
             | App3 (_, _, _, _) -> (x q) :: l))
     n
 
-(** val not_propagation' : pI4_ucom_l -> int -> pI4_ucom_l **)
+(** val not_propagation' : rzk_ucom_l -> int -> rzk_ucom_l **)
 
 let rec not_propagation' l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4345,19 +4420,19 @@ let rec not_propagation' l n =
     | [] -> []
     | u :: t1 ->
       (match u with
-       | App1 (p0, q) ->
-         (match p0 with
-          | UPI4_X -> let l' = propagate_X0 t1 q n in not_propagation' l' n'
+       | App1 (r, q) ->
+         (match r with
+          | URzk_X -> not_propagation' (propagate_X0 t1 q n) n'
           | _ -> u :: (not_propagation' t1 n'))
        | _ -> u :: (not_propagation' t1 n')))
     n
 
-(** val not_propagation : pI4_ucom_l -> pI4_ucom_l **)
+(** val not_propagation : rzk_ucom_l -> rzk_ucom_l **)
 
 let not_propagation l =
   not_propagation' l (mul (Pervasives.succ (Pervasives.succ 0)) (length l))
 
-(** val optimize : pI4_ucom_l -> pI4_ucom_l **)
+(** val optimize : rzk_ucom_l -> rzk_ucom_l **)
 
 let optimize l =
   cancel_single_qubit_gates
