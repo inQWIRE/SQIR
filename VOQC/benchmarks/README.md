@@ -2,16 +2,27 @@
 
 ## Benchmarks
 
-We use a set of benchmark programs used in the evaluation of two previous optimizers:
-- M. Amy, D. Maslov, and M. Mosca. Polynomial-time T-depth optimization of Clifford+T circuits via matroid partitioning. December 2013. Available from https://arxiv.org/abs/1303.2042.
+We use a set of benchmark programs used in the evaluation of a previous optimizer:
 - Y. Nam, N.J. Ross, Y. Su, A.M. Childs, and D. Maslov. Automated optimization of large quantum circuits with continuous parameters. October 2017. Available from https://arxiv.org/abs/1710.07345.
 
-We use the versions of the benchmarks in the nam_benchmarks sub-directory.
-These benchmarks were taken from the QFT_and_Adders directory of https://github.com/njross/optimizer and converted to OpenQASM using [PyZX](https://github.com/Quantomatic/pyzx)'s from_quipper_file function.
-We only consider the benchmarks in the QFT_and_Adders directory because the other benchmarks have z-rotations by arbitrary (float) angles, which we do not currently support.
-We do not consider the results of optimizing gf2^E163_mult_before, gf2^E131_mult_before, or gf2^E128_mult_before because these programs are too large for our current implementation.
-We could solve this problem by rewriting our optimization code to be tail recursive.
-We also do not consider the results of optimizing mod_adder_1024 because the gate counts for this circuit are not reported in the Nam et al. paper.
+We use the versions of the benchmarks in the Arithmetic_and_Toffoli, PF, and QFT_and_Adders directories.
+These benchmarks were taken from the https://github.com/njross/optimizer and converted to OpenQASM using [PyZX](https://github.com/Quantomatic/pyzx)'s `from_quipper_file` function.
+Currently, VOQC cannot handle the programs in the Large directory; these programs cause a stack overflow.
+We can (and will) solve this problem by rewriting our optimization code to be tail recursive.
+
+We have made some modifications to the programs in Nam's directory.
+Programs in the QFT_and_Adders directory originally contained ancilla initialization and termination.
+Angles were changed to X * PI
+The gf2^X family or circuits and csum_mux_9 have been lightly edited to remove additional H gates that cause inconsistencies in the original gate count.
+
+*The problem with floating point numbers*
+
+For now, we translate from Nam's benchmarks by rouding to the nearest multiple of PI/2^15 using the Python script formatqasm.py (usage: `python formatqasm <input file> <output filename>`).
+
+TODO (in progress):
+* Parse full OpenQASM programs (including initialization/measurement) and optimize only the unitary portions.
+* Improve accuracy of translation from original Nam benchmarks. In particular, we should reproduce their benchmarks using the exact angle rather than rounding from pre-generated programs.
+* Performance improvements to VOQC (use tail recursion, extract to more efficient OCaml, etc.) so that we can run on benchmarks in the Large directory.
 
 ## Running VOQC
 
@@ -19,12 +30,12 @@ In the top (`../..`) directory, run `make voqc`. This will compile the OCaml cod
 
 *Example*: The following runs VOQC on the tof_3 benchmark and writes the result to out.qasm.
 ```
-$ dune exec ./voqc.exe nam-benchmarks/tof_3.qasm out.qasm --root ../extraction
+$ dune exec ./voqc.exe Arithmetic_and_Toffoli/tof_3.qasm out.qasm --root ../extraction
 Original gates: 45 (T count: 21)
 Optimized gates: 40 (T count: 15)
 ```
 
-To run VOQC on all the benchmarks (excluding the slowest, gf2^64) run `./run_voqc.sh`.
+To run VOQC on all the benchmarks in the Arithmetic_and_Toffoli directory (excluding the slowest, gf2^64) run `./run_voqc.sh`.
 
 ## Other Optimizers
 

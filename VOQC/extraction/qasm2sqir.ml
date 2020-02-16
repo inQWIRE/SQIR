@@ -152,7 +152,7 @@ let translate_statement s qmap sym_tab =
                | "tdg" -> apply_gate _TDAG  (List.hd qargs) qmap sym_tab
                | "rzk" -> (match List.hd params with
                            | Nninteger i -> apply_gate (_Rz i) (List.hd qargs) qmap sym_tab
-                           | _ -> raise (Failure ("Invalid argument to rzk gate")))
+                           | _ -> raise (Failure ("ERROR: Invalid argument to rzk gate")))
                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
              )
            | Some _ -> raise (Failure "ERROR: Not a gate!")
@@ -216,7 +216,7 @@ let sqir_to_qasm_gate oc g =
       | 57344 -> fprintf oc "tdg q[%d];\n" n (* 7PI/4 *)
       | _ -> fprintf oc "rzk(%d) q[%d];\n" i n)
   | E.App2 (E.URzk_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
-  | _ -> raise (Failure ("Failed to write qasm file.\n")) (* badly typed case (e.g. App2 of UPI4_H) *)
+  | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of UPI4_H) *)
 
 let write_qasm_file fname p dim =
   let oc = open_out fname in
