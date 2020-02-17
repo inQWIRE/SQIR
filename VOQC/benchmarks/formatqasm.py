@@ -15,6 +15,6 @@ for line in inf:
         if rounded_angle < 0:
             rounded_angle += (2 ** 15)
         arg = int(m.group(5))
-        outf.write("rzk(%d) q[%d];\n" % (rounded_angle, arg))
+        outf.write("rz15(%d) q[%d];\n" % (rounded_angle, arg))
     else:
         outf.write(line)

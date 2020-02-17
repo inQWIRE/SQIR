@@ -37,7 +37,7 @@ let qelib1 = [
   ("cu3", TGate(3,2));
   
   (* not standard *)
-  ("rzk", TGate(1,1))
+  ("rz15", TGate(1,1))
 ]
 
 let check_stmt symTab stmt =
@@ -150,9 +150,9 @@ let translate_statement s qmap sym_tab =
                | "sdg" -> apply_gate _PDAG  (List.hd qargs) qmap sym_tab
                | "t"   -> apply_gate _T     (List.hd qargs) qmap sym_tab
                | "tdg" -> apply_gate _TDAG  (List.hd qargs) qmap sym_tab
-               | "rzk" -> (match List.hd params with
+               | "rz15" -> (match List.hd params with
                            | Nninteger i -> apply_gate (_Rz i) (List.hd qargs) qmap sym_tab
-                           | _ -> raise (Failure ("ERROR: Invalid argument to rzk gate")))
+                           | _ -> raise (Failure ("ERROR: Invalid argument to rz15 gate")))
                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
              )
            | Some _ -> raise (Failure "ERROR: Not a gate!")
@@ -214,7 +214,7 @@ let sqir_to_qasm_gate oc g =
       | 40960 -> fprintf oc "t q[%d];\nz q[%d];\n" n n (* 5PI/4 *)
       | 49152 -> fprintf oc "sdg q[%d];\n" n (* 3PI/2 *)
       | 57344 -> fprintf oc "tdg q[%d];\n" n (* 7PI/4 *)
-      | _ -> fprintf oc "rzk(%d) q[%d];\n" i n)
+      | _ -> fprintf oc "rz15(%d) q[%d];\n" i n)
   | E.App2 (E.URzk_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
   | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of UPI4_H) *)
 

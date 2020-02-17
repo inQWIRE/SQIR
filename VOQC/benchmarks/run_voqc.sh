@@ -1,11 +1,53 @@
 #!/bin/bash
 
-declare -a PROG=("adder_8.qasm" "barenco_tof_3.qasm" "barenco_tof_4.qasm" "barenco_tof_5.qasm" "barenco_tof_10.qasm" "csla_mux_3.qasm" "csum_mux_9.qasm" "gf2^4_mult.qasm" "gf2^5_mult.qasm" "gf2^6_mult.qasm" "gf2^7_mult.qasm" "gf2^8_mult.qasm" "gf2^9_mult.qasm" "gf2^10_mult.qasm" "gf2^16_mult.qasm" "gf2^32_mult.qasm" "mod5_4.qasm" "mod_adder_1024.qasm" "mod_mult_55.qasm" "mod_red_21.qasm" "qcla_adder_10.qasm" "qcla_com_7.qasm" "qcla_mod_7.qasm" "rc_adder_6.qasm" "tof_3.qasm" "tof_4.qasm" "tof_5.qasm" "tof_10.qasm" "vbe_adder_3.qasm")
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+NOCOLOR='\033[0m'
 
-len=$((${#PROG[@]}-1))
+# Get files
+pf_filenames=( $(ls -d PF/*.qasm) )
+Arithmetic_and_Toffoli_filenames=( $(ls -d Arithmetic_and_Toffoli/*.qasm) )
+QFT_and_Adders_filenames=( $(ls -d QFT_and_Adders/*.qasm) )
 
-for i in `seq 0 ${len}`
+> benchmark_results.csv
+echo "name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC T,VOQC H,VOQC X,VOQC CNOT,time" >> benchmark_results.csv
+
+
+
+printf "${GREEN}##### Running on files in Arithmetic_and_Toffoli #####${NOCOLOR}\n"
+for filename in "${Arithmetic_and_Toffoli_filenames[@]}"
 do
-    outfile="../benchmarks/Arithmetic_and_Toffoli/${PROG[$i]}_opt"
-    dune exec ./voqc.exe Arithmetic_and_Toffoli/${PROG[$i]} $outfile --root ../extraction
+    program_name=`basename "$filename" .qasm`
+    currentTime=`date`
+    printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
+    (time dune exec ./voqc.exe ${filename} out.qasm --root ../extraction) &> ${program_name}.txt
+    python parseOutput.py ${program_name}.txt >> benchmark_results.csv
+    rm -rf ${program_name}.txt
+done
+
+echo""
+printf "${GREEN}##### Running on files in PF #####${NOCOLOR}\n"
+for filename in "${pf_filenames[@]}"
+do
+    program_name=`basename "$filename" .qasm`
+    currentTime=`date`
+    printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
+    (time dune exec ./voqc.exe ${filename} out.qasm --root ../extraction) &> ${program_name}.txt
+    python parseOutput.py ${program_name}.txt >> benchmark_results.csv
+    rm -rf ${program_name}.txt
+done
+
+echo""
+printf "${GREEN}##### Running on files in QFT_and_Adders #####${NOCOLOR}\n"
+for filename in "${QFT_and_Adders_filenames[@]}"
+do
+    program_name=`basename "$filename" .qasm`
+    currentTime=`date`
+    printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
+    (time dune exec ./voqc.exe ${filename} out.qasm --root ../extraction) &> ${program_name}.txt
+    python parseOutput.py ${program_name}.txt >> benchmark_results.csv
+    rm -rf ${program_name}.txt
 done
