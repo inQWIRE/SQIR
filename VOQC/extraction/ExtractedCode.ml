@@ -18,14 +18,6 @@ let fst = function
 let snd = function
 | (_, y) -> y
 
-(** val length : 'a1 list -> int **)
-
-let rec length = List.length
-
-(** val app : 'a1 list -> 'a1 list -> 'a1 list **)
-
-let rec app = List.append
-
 type comparison =
 | Eq
 | Lt
@@ -50,9 +42,10 @@ type 'a compSpecT = compareSpecT
 let compSpec2Type _ _ =
   compareSpec2Type
 
-(** val add : int -> int -> int **)
-
-let rec add = (+)
+module Coq__1 = struct
+ (** val add : int -> int -> int **)let rec add = (+)
+end
+include Coq__1
 
 (** val mul : int -> int -> int **)
 
@@ -158,10 +151,6 @@ module Nat =
   let rec compare = fun n m -> if n=m then Eq else if n<m then Lt else Gt
  end
 
-(** val rev : 'a1 list -> 'a1 list **)
-
-let rec rev = List.rev
-
 (** val map : ('a1 -> 'a2) -> 'a1 list -> 'a2 list **)
 
 let rec map f = function
@@ -182,6 +171,14 @@ let rec forallb f = function
 
 module Pos =
  struct
+  type mask =
+  | IsNul
+  | IsPos of int
+  | IsNeg
+ end
+
+module Coq_Pos =
+ struct
   (** val succ : int -> int **)
 
   let rec succ = Pervasives.succ
@@ -198,22 +195,22 @@ module Pos =
       (fun p0 ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-        (fun q -> (fun p->1+2*p) (add_carry p0 q))
-        (fun q -> (fun p->2*p) (add_carry p0 q))
+        (fun q0 -> (fun p->1+2*p) (add_carry p0 q0))
+        (fun q0 -> (fun p->2*p) (add_carry p0 q0))
         (fun _ -> (fun p->1+2*p) (succ p0))
         y)
       (fun p0 ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-        (fun q -> (fun p->2*p) (add_carry p0 q))
-        (fun q -> (fun p->1+2*p) (add p0 q))
+        (fun q0 -> (fun p->2*p) (add_carry p0 q0))
+        (fun q0 -> (fun p->1+2*p) (add p0 q0))
         (fun _ -> (fun p->2*p) (succ p0))
         y)
       (fun _ ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-        (fun q -> (fun p->1+2*p) (succ q))
-        (fun q -> (fun p->2*p) (succ q))
+        (fun q0 -> (fun p->1+2*p) (succ q0))
+        (fun q0 -> (fun p->2*p) (succ q0))
         (fun _ -> (fun p->1+2*p) 1)
         y)
       x0
@@ -228,19 +225,101 @@ module Pos =
       (fun _ -> 1)
       x0
 
+  type mask = Pos.mask =
+  | IsNul
+  | IsPos of int
+  | IsNeg
+
+  (** val succ_double_mask : mask -> mask **)
+
+  let succ_double_mask = function
+  | IsNul -> IsPos 1
+  | IsPos p0 -> IsPos ((fun p->1+2*p) p0)
+  | IsNeg -> IsNeg
+
+  (** val double_mask : mask -> mask **)
+
+  let double_mask = function
+  | IsPos p0 -> IsPos ((fun p->2*p) p0)
+  | x1 -> x1
+
+  (** val double_pred_mask : int -> mask **)
+
+  let double_pred_mask x0 =
+    (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+      (fun p0 -> IsPos ((fun p->2*p) ((fun p->2*p) p0)))
+      (fun p0 -> IsPos ((fun p->2*p) (pred_double p0)))
+      (fun _ -> IsNul)
+      x0
+
+  (** val sub_mask : int -> int -> mask **)
+
+  let rec sub_mask x0 y =
+    (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+      (fun p0 ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun q0 -> double_mask (sub_mask p0 q0))
+        (fun q0 -> succ_double_mask (sub_mask p0 q0))
+        (fun _ -> IsPos ((fun p->2*p) p0))
+        y)
+      (fun p0 ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun q0 -> succ_double_mask (sub_mask_carry p0 q0))
+        (fun q0 -> double_mask (sub_mask p0 q0))
+        (fun _ -> IsPos (pred_double p0))
+        y)
+      (fun _ ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun _ -> IsNeg)
+        (fun _ -> IsNeg)
+        (fun _ -> IsNul)
+        y)
+      x0
+
+  (** val sub_mask_carry : int -> int -> mask **)
+
+  and sub_mask_carry x0 y =
+    (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+      (fun p0 ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun q0 -> succ_double_mask (sub_mask_carry p0 q0))
+        (fun q0 -> double_mask (sub_mask p0 q0))
+        (fun _ -> IsPos (pred_double p0))
+        y)
+      (fun p0 ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun q0 -> double_mask (sub_mask_carry p0 q0))
+        (fun q0 -> succ_double_mask (sub_mask_carry p0 q0))
+        (fun _ -> double_pred_mask p0)
+        y)
+      (fun _ -> IsNeg)
+      x0
+
+  (** val sub : int -> int -> int **)
+
+  let sub = fun n m -> Pervasives.max 1 (n-m)
+
   (** val mul : int -> int -> int **)
 
   let rec mul = ( * )
 
-  (** val iter : ('a1 -> 'a1) -> 'a1 -> int -> 'a1 **)
+  (** val size_nat : int -> int **)
 
-  let rec iter f x0 n =
+  let rec size_nat p0 =
     (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-      (fun n' -> f (iter f (iter f x0 n') n'))
-      (fun n' -> iter f (iter f x0 n') n')
-      (fun _ -> f x0)
-      n
+      (fun p1 -> Pervasives.succ (size_nat p1))
+      (fun p1 -> Pervasives.succ (size_nat p1))
+      (fun _ -> Pervasives.succ 0)
+      p0
 
   (** val compare_cont : comparison -> int -> int -> comparison **)
 
@@ -252,31 +331,75 @@ module Pos =
 
   (** val eqb : int -> int -> bool **)
 
-  let rec eqb p0 q =
+  let rec eqb p0 q0 =
     (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
       (fun p1 ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-        (fun q0 -> eqb p1 q0)
+        (fun q1 -> eqb p1 q1)
         (fun _ -> false)
         (fun _ -> false)
-        q)
+        q0)
       (fun p1 ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
         (fun _ -> false)
-        (fun q0 -> eqb p1 q0)
+        (fun q1 -> eqb p1 q1)
         (fun _ -> false)
-        q)
+        q0)
       (fun _ ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
         (fun _ -> false)
         (fun _ -> false)
         (fun _ -> true)
-        q)
+        q0)
       p0
+
+  (** val ggcdn : int -> int -> int -> int * (int * int) **)
+
+  let rec ggcdn n a b =
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ -> (1, (a, b)))
+      (fun n0 ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun a' ->
+        (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+          (fun b' ->
+          match compare a' b' with
+          | Eq -> (a, (1, 1))
+          | Lt ->
+            let (g, p0) = ggcdn n0 (sub b' a') a in
+            let (ba, aa) = p0 in (g, (aa, (add aa ((fun p->2*p) ba))))
+          | Gt ->
+            let (g, p0) = ggcdn n0 (sub a' b') b in
+            let (ab, bb) = p0 in (g, ((add bb ((fun p->2*p) ab)), bb)))
+          (fun b0 ->
+          let (g, p0) = ggcdn n0 a b0 in
+          let (aa, bb) = p0 in (g, (aa, ((fun p->2*p) bb))))
+          (fun _ -> (1, (a, 1)))
+          b)
+        (fun a0 ->
+        (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+          (fun _ ->
+          let (g, p0) = ggcdn n0 a0 b in
+          let (aa, bb) = p0 in (g, (((fun p->2*p) aa), bb)))
+          (fun b0 ->
+          let (g, p0) = ggcdn n0 a0 b0 in (((fun p->2*p) g), p0))
+          (fun _ -> (1, (a, 1)))
+          b)
+        (fun _ -> (1, (1, b)))
+        a)
+      n
+
+  (** val ggcd : int -> int -> int * (int * int) **)
+
+  let ggcd a b =
+    ggcdn (Coq__1.add (size_nat a) (size_nat b)) a b
 
   (** val eq_dec : int -> int -> bool **)
 
@@ -324,7 +447,7 @@ module Z =
     (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
       (fun _ -> 1)
       (fun p0 -> ((fun p->1+2*p) p0))
-      (fun p0 -> (~-) (Pos.pred_double p0))
+      (fun p0 -> (~-) (Coq_Pos.pred_double p0))
       x0
 
   (** val pred_double : int -> int **)
@@ -332,7 +455,7 @@ module Z =
   let pred_double x0 =
     (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
       (fun _ -> (~-) 1)
-      (fun p0 -> (Pos.pred_double p0))
+      (fun p0 -> (Coq_Pos.pred_double p0))
       (fun p0 -> (~-) ((fun p->1+2*p) p0))
       x0
 
@@ -344,22 +467,22 @@ module Z =
       (fun p0 ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-        (fun q -> double (pos_sub p0 q))
-        (fun q -> succ_double (pos_sub p0 q))
+        (fun q0 -> double (pos_sub p0 q0))
+        (fun q0 -> succ_double (pos_sub p0 q0))
         (fun _ -> ((fun p->2*p) p0))
         y)
       (fun p0 ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-        (fun q -> pred_double (pos_sub p0 q))
-        (fun q -> double (pos_sub p0 q))
-        (fun _ -> (Pos.pred_double p0))
+        (fun q0 -> pred_double (pos_sub p0 q0))
+        (fun q0 -> double (pos_sub p0 q0))
+        (fun _ -> (Coq_Pos.pred_double p0))
         y)
       (fun _ ->
       (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
-        (fun q -> (~-) ((fun p->2*p) q))
-        (fun q -> (~-) (Pos.pred_double q))
+        (fun q0 -> (~-) ((fun p->2*p) q0))
+        (fun q0 -> (~-) (Coq_Pos.pred_double q0))
         (fun _ -> 0)
         y)
       x0
@@ -380,23 +503,18 @@ module Z =
 
   let mul = ( * )
 
-  (** val pow_pos : int -> int -> int **)
-
-  let pow_pos z0 =
-    Pos.iter (mul z0) 1
-
-  (** val pow : int -> int -> int **)
-
-  let pow x0 y =
-    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
-      (fun _ -> 1)
-      (fun p0 -> pow_pos x0 p0)
-      (fun _ -> 0)
-      y
-
   (** val compare : int -> int -> comparison **)
 
   let compare = fun x y -> if x=y then Eq else if x<y then Lt else Gt
+
+  (** val sgn : int -> int **)
+
+  let sgn z0 =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 0)
+      (fun _ -> 1)
+      (fun _ -> (~-) 1)
+      z0
 
   (** val leb : int -> int -> bool **)
 
@@ -425,14 +543,14 @@ module Z =
       (fun p0 ->
       (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
         (fun _ -> false)
-        (fun q -> Pos.eqb p0 q)
+        (fun q0 -> Coq_Pos.eqb p0 q0)
         (fun _ -> false)
         y)
       (fun p0 ->
       (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
         (fun _ -> false)
         (fun _ -> false)
-        (fun q -> Pos.eqb p0 q)
+        (fun q0 -> Coq_Pos.eqb p0 q0)
         y)
       x0
 
@@ -440,23 +558,36 @@ module Z =
 
   let max = Pervasives.max
 
+  (** val abs : int -> int **)
+
+  let abs = Pervasives.abs
+
+  (** val to_pos : int -> int **)
+
+  let to_pos z0 =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 1)
+      (fun p0 -> p0)
+      (fun _ -> 1)
+      z0
+
   (** val pos_div_eucl : int -> int -> int * int **)
 
   let rec pos_div_eucl a b =
     (fun f2p1 f2p f1 p ->
   if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
       (fun a' ->
-      let (q, r) = pos_div_eucl a' b in
+      let (q0, r) = pos_div_eucl a' b in
       let r' = add (mul ((fun p->2*p) 1) r) 1 in
       if ltb r' b
-      then ((mul ((fun p->2*p) 1) q), r')
-      else ((add (mul ((fun p->2*p) 1) q) 1), (sub r' b)))
+      then ((mul ((fun p->2*p) 1) q0), r')
+      else ((add (mul ((fun p->2*p) 1) q0) 1), (sub r' b)))
       (fun a' ->
-      let (q, r) = pos_div_eucl a' b in
+      let (q0, r) = pos_div_eucl a' b in
       let r' = mul ((fun p->2*p) 1) r in
       if ltb r' b
-      then ((mul ((fun p->2*p) 1) q), r')
-      else ((add (mul ((fun p->2*p) 1) q) 1), (sub r' b)))
+      then ((mul ((fun p->2*p) 1) q0), r')
+      else ((add (mul ((fun p->2*p) 1) q0) 1), (sub r' b)))
       (fun _ -> if leb ((fun p->2*p) 1) b then (0, 1) else (1, 0))
       a
 
@@ -470,36 +601,78 @@ module Z =
         (fun _ -> (0, 0))
         (fun _ -> pos_div_eucl a' b)
         (fun b' ->
-        let (q, r) = pos_div_eucl a' b' in
+        let (q0, r) = pos_div_eucl a' b' in
         ((fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
-           (fun _ -> ((opp q), 0))
-           (fun _ -> ((opp (add q 1)), (add b r)))
-           (fun _ -> ((opp (add q 1)), (add b r)))
+           (fun _ -> ((opp q0), 0))
+           (fun _ -> ((opp (add q0 1)), (add b r)))
+           (fun _ -> ((opp (add q0 1)), (add b r)))
            r))
         b)
       (fun a' ->
       (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
         (fun _ -> (0, 0))
         (fun _ ->
-        let (q, r) = pos_div_eucl a' b in
+        let (q0, r) = pos_div_eucl a' b in
         ((fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
-           (fun _ -> ((opp q), 0))
-           (fun _ -> ((opp (add q 1)), (sub b r)))
-           (fun _ -> ((opp (add q 1)), (sub b r)))
+           (fun _ -> ((opp q0), 0))
+           (fun _ -> ((opp (add q0 1)), (sub b r)))
+           (fun _ -> ((opp (add q0 1)), (sub b r)))
            r))
-        (fun b' -> let (q, r) = pos_div_eucl a' b' in (q, (opp r)))
+        (fun b' -> let (q0, r) = pos_div_eucl a' b' in (q0, (opp r)))
         b)
       a
 
   (** val div : int -> int -> int **)
 
   let div a b =
-    let (q, _) = div_eucl a b in q
+    let (q0, _) = div_eucl a b in q0
 
-  (** val modulo : int -> int -> int **)
+  (** val odd : int -> bool **)
 
-  let modulo a b =
-    let (_, r) = div_eucl a b in r
+  let odd z0 =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> false)
+      (fun p0 ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun _ -> true)
+        (fun _ -> false)
+        (fun _ -> true)
+        p0)
+      (fun p0 ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun _ -> true)
+        (fun _ -> false)
+        (fun _ -> true)
+        p0)
+      z0
+
+  (** val ggcd : int -> int -> int * (int * int) **)
+
+  let ggcd a b =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> ((abs b), (0, (sgn b))))
+      (fun a0 ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> ((abs a), ((sgn a), 0)))
+        (fun b0 ->
+        let (g, p0) = Coq_Pos.ggcd a0 b0 in let (aa, bb) = p0 in (g, (aa, bb)))
+        (fun b0 ->
+        let (g, p0) = Coq_Pos.ggcd a0 b0 in
+        let (aa, bb) = p0 in (g, (aa, ((~-) bb))))
+        b)
+      (fun a0 ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> ((abs a), ((sgn a), 0)))
+        (fun b0 ->
+        let (g, p0) = Coq_Pos.ggcd a0 b0 in
+        let (aa, bb) = p0 in (g, (((~-) aa), bb)))
+        (fun b0 ->
+        let (g, p0) = Coq_Pos.ggcd a0 b0 in
+        let (aa, bb) = p0 in (g, (((~-) aa), ((~-) bb))))
+        b)
+      a
 
   (** val eq_dec : int -> int -> bool **)
 
@@ -514,17 +687,24 @@ module Z =
       (fun x1 ->
       (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
         (fun _ -> false)
-        (fun p0 -> Pos.eq_dec x1 p0)
+        (fun p0 -> Coq_Pos.eq_dec x1 p0)
         (fun _ -> false)
         y)
       (fun x1 ->
       (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
         (fun _ -> false)
         (fun _ -> false)
-        (fun p0 -> Pos.eq_dec x1 p0)
+        (fun p0 -> Coq_Pos.eq_dec x1 p0)
         y)
       x0
  end
+
+(** val zeq_bool : int -> int -> bool **)
+
+let zeq_bool x0 y =
+  match Z.compare x0 y with
+  | Eq -> true
+  | _ -> false
 
 type 'x compare0 =
 | LT
@@ -595,6 +775,64 @@ module Nat_as_OT =
   let eq_dec =
     (=)
  end
+
+type q = { qnum : int; qden : int }
+
+(** val inject_Z : int -> q **)
+
+let inject_Z x0 =
+  { qnum = x0; qden = 1 }
+
+(** val qeq_bool : q -> q -> bool **)
+
+let qeq_bool x0 y =
+  zeq_bool (Z.mul x0.qnum y.qden) (Z.mul y.qnum x0.qden)
+
+(** val qle_bool : q -> q -> bool **)
+
+let qle_bool x0 y =
+  Z.leb (Z.mul x0.qnum y.qden) (Z.mul y.qnum x0.qden)
+
+(** val qplus : q -> q -> q **)
+
+let qplus x0 y =
+  { qnum = (Z.add (Z.mul x0.qnum y.qden) (Z.mul y.qnum x0.qden)); qden =
+    (Coq_Pos.mul x0.qden y.qden) }
+
+(** val qmult : q -> q -> q **)
+
+let qmult x0 y =
+  { qnum = (Z.mul x0.qnum y.qnum); qden = (Coq_Pos.mul x0.qden y.qden) }
+
+(** val qopp : q -> q **)
+
+let qopp x0 =
+  { qnum = (Z.opp x0.qnum); qden = x0.qden }
+
+(** val qminus : q -> q -> q **)
+
+let qminus x0 y =
+  qplus x0 (qopp y)
+
+(** val qinv : q -> q **)
+
+let qinv x0 =
+  (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+    (fun _ -> { qnum = 0; qden = 1 })
+    (fun p0 -> { qnum = x0.qden; qden = p0 })
+    (fun p0 -> { qnum = ((~-) x0.qden); qden = p0 })
+    x0.qnum
+
+(** val qdiv : q -> q -> q **)
+
+let qdiv x0 y =
+  qmult x0 (qinv y)
+
+(** val qred : q -> q **)
+
+let qred q0 =
+  let { qnum = q1; qden = q2 } = q0 in
+  let (r1, r2) = snd (Z.ggcd q1 q2) in { qnum = r1; qden = (Z.to_pos r2) }
 
 module type Int =
  sig
@@ -1174,7 +1412,7 @@ module MakeRaw =
 
   let rec flatten_e = function
   | End -> []
-  | More (x0, t1, r) -> x0 :: (app (elements t1) (flatten_e r))
+  | More (x0, t1, r) -> x0 :: (List.append (elements t1) (flatten_e r))
 
   type coq_R_bal =
   | R_bal_0 of t * X.t * t
@@ -1569,31 +1807,31 @@ type 'u gate_list = 'u gate_app list
 (** val next_single_qubit_gate :
     'a1 gate_list -> int -> (('a1 gate_list * 'a1) * 'a1 gate_list) option **)
 
-let rec next_single_qubit_gate l q =
+let rec next_single_qubit_gate l q0 =
   match l with
   | [] -> None
   | g :: t1 ->
     (match g with
      | App1 (u, n) ->
-       if (=) n q
+       if (=) n q0
        then Some (([], u), t1)
-       else (match next_single_qubit_gate t1 q with
+       else (match next_single_qubit_gate t1 q0 with
              | Some p0 ->
                let (p1, l2) = p0 in
                let (l1, u') = p1 in Some ((((App1 (u, n)) :: l1), u'), l2)
              | None -> None)
      | App2 (u, m, n) ->
-       if (||) ((=) m q) ((=) n q)
+       if (||) ((=) m q0) ((=) n q0)
        then None
-       else (match next_single_qubit_gate t1 q with
+       else (match next_single_qubit_gate t1 q0 with
              | Some p0 ->
                let (p1, l2) = p0 in
                let (l1, u') = p1 in Some ((((App2 (u, m, n)) :: l1), u'), l2)
              | None -> None)
      | App3 (u, m, n, p0) ->
-       if (||) ((||) ((=) m q) ((=) n q)) ((=) p0 q)
+       if (||) ((||) ((=) m q0) ((=) n q0)) ((=) p0 q0)
        then None
-       else (match next_single_qubit_gate t1 q with
+       else (match next_single_qubit_gate t1 q0 with
              | Some p1 ->
                let (p2, l2) = p1 in
                let (l1, u') = p2 in
@@ -1603,25 +1841,26 @@ let rec next_single_qubit_gate l q =
 (** val last_single_qubit_gate :
     'a1 gate_list -> int -> (('a1 gate_list * 'a1) * 'a1 gate_list) option **)
 
-let last_single_qubit_gate l q =
-  match next_single_qubit_gate (rev l) q with
+let last_single_qubit_gate l q0 =
+  match next_single_qubit_gate (List.rev l) q0 with
   | Some p0 ->
-    let (p1, l2) = p0 in let (l1, u) = p1 in Some (((rev l2), u), (rev l1))
+    let (p1, l2) = p0 in
+    let (l1, u) = p1 in Some (((List.rev l2), u), (List.rev l1))
   | None -> None
 
 (** val next_two_qubit_gate :
     'a1 gate_list -> int -> (((('a1 gate_list * 'a1) * int) * int) * 'a1
     gate_list) option **)
 
-let rec next_two_qubit_gate l q =
+let rec next_two_qubit_gate l q0 =
   match l with
   | [] -> None
   | g :: t1 ->
     (match g with
      | App1 (u, n) ->
-       if (=) n q
+       if (=) n q0
        then None
-       else (match next_two_qubit_gate t1 q with
+       else (match next_two_qubit_gate t1 q0 with
              | Some p0 ->
                let (p1, l2) = p0 in
                let (p2, n') = p1 in
@@ -1630,9 +1869,9 @@ let rec next_two_qubit_gate l q =
                Some ((((((App1 (u, n)) :: l1), u'), m'), n'), l2)
              | None -> None)
      | App2 (u, m, n) ->
-       if (||) ((=) m q) ((=) n q)
+       if (||) ((=) m q0) ((=) n q0)
        then Some (((([], u), m), n), t1)
-       else (match next_two_qubit_gate t1 q with
+       else (match next_two_qubit_gate t1 q0 with
              | Some p0 ->
                let (p1, l2) = p0 in
                let (p2, n') = p1 in
@@ -1641,9 +1880,9 @@ let rec next_two_qubit_gate l q =
                Some ((((((App2 (u, m, n)) :: l1), u'), m'), n'), l2)
              | None -> None)
      | App3 (u, m, n, p0) ->
-       if (||) ((||) ((=) m q) ((=) n q)) ((=) p0 q)
+       if (||) ((||) ((=) m q0) ((=) n q0)) ((=) p0 q0)
        then None
-       else (match next_two_qubit_gate t1 q with
+       else (match next_two_qubit_gate t1 q0 with
              | Some p1 ->
                let (p2, l2) = p1 in
                let (p3, n') = p2 in
@@ -1661,13 +1900,13 @@ let rec next_gate l qs =
   | [] -> None
   | g :: t1 ->
     (match g with
-     | App1 (u, q) ->
-       if FSet.mem q qs
-       then Some (([], (App1 (u, q))), t1)
+     | App1 (u, q0) ->
+       if FSet.mem q0 qs
+       then Some (([], (App1 (u, q0))), t1)
        else (match next_gate t1 qs with
              | Some p0 ->
                let (p1, l2) = p0 in
-               let (l1, g0) = p1 in Some ((((App1 (u, q)) :: l1), g0), l2)
+               let (l1, g0) = p1 in Some ((((App1 (u, q0)) :: l1), g0), l2)
              | None -> None)
      | App2 (u, q1, q2) ->
        if (||) (FSet.mem q1 qs) (FSet.mem q2 qs)
@@ -1690,15 +1929,15 @@ let rec next_gate l qs =
 
 (** val does_not_reference_appl : int -> 'a1 gate_app -> bool **)
 
-let does_not_reference_appl q = function
-| App1 (_, n) -> negb ((=) n q)
-| App2 (_, m, n) -> negb ((||) ((=) m q) ((=) n q))
-| App3 (_, m, n, p0) -> negb ((||) ((||) ((=) m q) ((=) n q)) ((=) p0 q))
+let does_not_reference_appl q0 = function
+| App1 (_, n) -> negb ((=) n q0)
+| App2 (_, m, n) -> negb ((||) ((=) m q0) ((=) n q0))
+| App3 (_, m, n, p0) -> negb ((||) ((||) ((=) m q0) ((=) n q0)) ((=) p0 q0))
 
 (** val does_not_reference : 'a1 gate_list -> int -> bool **)
 
-let does_not_reference l q =
-  forallb (does_not_reference_appl q) l
+let does_not_reference l q0 =
+  forallb (does_not_reference_appl q0) l
 
 (** val try_rewrites :
     'a1 gate_list -> ('a1 gate_list -> 'a1 gate_list option) list -> 'a1
@@ -1737,7 +1976,7 @@ let rec propagate l commute_rules cancel_rules n =
        | Some p0 ->
          let (l1, l2) = p0 in
          (match propagate l2 commute_rules cancel_rules n' with
-          | Some l2' -> Some (app l1 l2')
+          | Some l2' -> Some (List.append l1 l2')
           | None -> None)
        | None -> None))
     n
@@ -1747,25 +1986,25 @@ type 'u single_qubit_pattern = 'u list
 (** val single_qubit_pattern_to_program :
     'a1 single_qubit_pattern -> int -> 'a1 gate_list **)
 
-let rec single_qubit_pattern_to_program pat q =
+let rec single_qubit_pattern_to_program pat q0 =
   match pat with
   | [] -> []
-  | u :: t1 -> (App1 (u, q)) :: (single_qubit_pattern_to_program t1 q)
+  | u :: t1 -> (App1 (u, q0)) :: (single_qubit_pattern_to_program t1 q0)
 
 (** val remove_single_qubit_pattern :
     'a1 gate_list -> int -> 'a1 single_qubit_pattern -> ('a1 -> 'a1 -> bool)
     -> 'a1 gate_list option **)
 
-let rec remove_single_qubit_pattern l q pat match_gate0 =
+let rec remove_single_qubit_pattern l q0 pat match_gate0 =
   match pat with
   | [] -> Some l
   | u :: t1 ->
-    (match next_single_qubit_gate l q with
+    (match next_single_qubit_gate l q0 with
      | Some p0 ->
        let (p1, l2) = p0 in
        let (l1, u') = p1 in
        if match_gate0 u u'
-       then remove_single_qubit_pattern (app l1 l2) q t1 match_gate0
+       then remove_single_qubit_pattern (List.append l1 l2) q0 t1 match_gate0
        else None
      | None -> None)
 
@@ -1773,172 +2012,191 @@ let rec remove_single_qubit_pattern l q pat match_gate0 =
     'a1 gate_list -> int -> 'a1 single_qubit_pattern -> 'a1
     single_qubit_pattern -> ('a1 -> 'a1 -> bool) -> 'a1 gate_list option **)
 
-let replace_single_qubit_pattern l q pat rep match_gate0 =
-  match remove_single_qubit_pattern l q pat match_gate0 with
-  | Some l' -> Some (app (single_qubit_pattern_to_program rep q) l')
+let replace_single_qubit_pattern l q0 pat rep match_gate0 =
+  match remove_single_qubit_pattern l q0 pat match_gate0 with
+  | Some l' -> Some (List.append (single_qubit_pattern_to_program rep q0) l')
   | None -> None
 
-type rzk_Unitary =
-| URzk_H
-| URzk_X
-| URzk_Rz of int
-| URzk_CNOT
+type rzQ_Unitary =
+| URzQ_H
+| URzQ_X
+| URzQ_Rz of q
+| URzQ_CNOT
 
-(** val rzk_k : int **)
+(** val uRzQ_T : rzQ_Unitary **)
 
-let rzk_k =
-  Z.pow ((fun p->2*p) 1) ((fun p->1+2*p) ((fun p->1+2*p) ((fun p->1+2*p) 1)))
+let uRzQ_T =
+  URzQ_Rz
+    (qdiv { qnum = 1; qden = 1 } { qnum = ((fun p->2*p) ((fun p->2*p) 1));
+      qden = 1 })
 
-(** val uRzk_T : rzk_Unitary **)
+(** val uRzQ_P : rzQ_Unitary **)
 
-let uRzk_T =
-  URzk_Rz (Z.div rzk_k ((fun p->2*p) ((fun p->2*p) 1)))
+let uRzQ_P =
+  URzQ_Rz (qdiv { qnum = 1; qden = 1 } { qnum = ((fun p->2*p) 1); qden = 1 })
 
-(** val uRzk_P : rzk_Unitary **)
+(** val uRzQ_Z : rzQ_Unitary **)
 
-let uRzk_P =
-  URzk_Rz (Z.div rzk_k ((fun p->2*p) 1))
+let uRzQ_Z =
+  URzQ_Rz { qnum = 1; qden = 1 }
 
-(** val uRzk_Z : rzk_Unitary **)
+(** val uRzQ_PDAG : rzQ_Unitary **)
 
-let uRzk_Z =
-  URzk_Rz rzk_k
+let uRzQ_PDAG =
+  URzQ_Rz
+    (qdiv { qnum = ((fun p->1+2*p) 1); qden = 1 } { qnum = ((fun p->2*p) 1);
+      qden = 1 })
 
-(** val uRzk_PDAG : rzk_Unitary **)
+(** val uRzQ_TDAG : rzQ_Unitary **)
 
-let uRzk_PDAG =
-  URzk_Rz (Z.div (Z.mul ((fun p->1+2*p) 1) rzk_k) ((fun p->2*p) 1))
+let uRzQ_TDAG =
+  URzQ_Rz
+    (qdiv { qnum = ((fun p->1+2*p) ((fun p->1+2*p) 1)); qden = 1 } { qnum =
+      ((fun p->2*p) ((fun p->2*p) 1)); qden = 1 })
 
-(** val uRzk_TDAG : rzk_Unitary **)
+(** val t0 : int -> rzQ_Unitary gate_app **)
 
-let uRzk_TDAG =
-  URzk_Rz
-    (Z.div (Z.mul ((fun p->1+2*p) ((fun p->1+2*p) 1)) rzk_k) ((fun p->2*p)
-      ((fun p->2*p) 1)))
+let t0 q0 =
+  App1 (uRzQ_T, q0)
 
-(** val t0 : int -> rzk_Unitary gate_app **)
+(** val tDAG : int -> rzQ_Unitary gate_app **)
 
-let t0 q =
-  App1 (uRzk_T, q)
+let tDAG q0 =
+  App1 (uRzQ_TDAG, q0)
 
-(** val tDAG : int -> rzk_Unitary gate_app **)
+(** val p : int -> rzQ_Unitary gate_app **)
 
-let tDAG q =
-  App1 (uRzk_TDAG, q)
+let p q0 =
+  App1 (uRzQ_P, q0)
 
-(** val p : int -> rzk_Unitary gate_app **)
+(** val pDAG : int -> rzQ_Unitary gate_app **)
 
-let p q =
-  App1 (uRzk_P, q)
+let pDAG q0 =
+  App1 (uRzQ_PDAG, q0)
 
-(** val pDAG : int -> rzk_Unitary gate_app **)
+(** val z : int -> rzQ_Unitary gate_app **)
 
-let pDAG q =
-  App1 (uRzk_PDAG, q)
+let z q0 =
+  App1 (uRzQ_Z, q0)
 
-(** val z : int -> rzk_Unitary gate_app **)
+(** val rz : q -> int -> rzQ_Unitary gate_app **)
 
-let z q =
-  App1 (uRzk_Z, q)
+let rz i q0 =
+  App1 ((URzQ_Rz i), q0)
 
-(** val rz : int -> int -> rzk_Unitary gate_app **)
+(** val h : int -> rzQ_Unitary gate_app **)
 
-let rz i q =
-  App1 ((URzk_Rz i), q)
+let h q0 =
+  App1 (URzQ_H, q0)
 
-(** val h : int -> rzk_Unitary gate_app **)
+(** val x : int -> rzQ_Unitary gate_app **)
 
-let h q =
-  App1 (URzk_H, q)
+let x q0 =
+  App1 (URzQ_X, q0)
 
-(** val x : int -> rzk_Unitary gate_app **)
-
-let x q =
-  App1 (URzk_X, q)
-
-(** val cNOT : int -> int -> rzk_Unitary gate_app **)
+(** val cNOT : int -> int -> rzQ_Unitary gate_app **)
 
 let cNOT q1 q2 =
-  App2 (URzk_CNOT, q1, q2)
+  App2 (URzQ_CNOT, q1, q2)
 
-type rzk_ucom_l = rzk_Unitary gate_list
+type rzQ_ucom_l = rzQ_Unitary gate_list
 
-(** val cCX : int -> int -> int -> rzk_ucom_l **)
+(** val cCX : int -> int -> int -> rzQ_ucom_l **)
 
 let cCX a b c =
   (h c) :: ((cNOT b c) :: ((tDAG c) :: ((cNOT a c) :: ((t0 c) :: ((cNOT b c) :: (
     (tDAG c) :: ((cNOT a c) :: ((cNOT a b) :: ((tDAG b) :: ((cNOT a b) :: (
     (t0 a) :: ((t0 b) :: ((t0 c) :: ((h c) :: []))))))))))))))
 
-(** val cCZ : int -> int -> int -> rzk_ucom_l **)
+(** val cCZ : int -> int -> int -> rzQ_ucom_l **)
 
 let cCZ a b c =
   (cNOT b c) :: ((tDAG c) :: ((cNOT a c) :: ((t0 c) :: ((cNOT b c) :: (
     (tDAG c) :: ((cNOT a c) :: ((cNOT a b) :: ((tDAG b) :: ((cNOT a b) :: (
     (t0 a) :: ((t0 b) :: ((t0 c) :: []))))))))))))
 
-(** val match_gate : rzk_Unitary -> rzk_Unitary -> bool **)
+(** val match_gate : rzQ_Unitary -> rzQ_Unitary -> bool **)
 
 let match_gate u u' =
   match u with
-  | URzk_H -> (match u' with
-               | URzk_H -> true
+  | URzQ_H -> (match u' with
+               | URzQ_H -> true
                | _ -> false)
-  | URzk_X -> (match u' with
-               | URzk_X -> true
+  | URzQ_X -> (match u' with
+               | URzQ_X -> true
                | _ -> false)
-  | URzk_Rz i -> (match u' with
-                  | URzk_Rz i' -> Z.eqb i i'
-                  | _ -> false)
-  | URzk_CNOT -> (match u' with
-                  | URzk_CNOT -> true
-                  | _ -> false)
+  | URzQ_Rz q0 -> (match u' with
+                   | URzQ_Rz q' -> qeq_bool q0 q'
+                   | _ -> false)
+  | URzQ_CNOT -> false
 
-(** val combine_rotations : int -> int -> int -> rzk_ucom_l **)
+(** val round_to_multiple_of_2 : q -> int **)
 
-let combine_rotations i i' q =
-  let i'' = Z.modulo (Z.add i i') (Z.mul ((fun p->2*p) 1) rzk_k) in
-  if Z.eqb i'' 0 then [] else (rz i'' q) :: []
+let round_to_multiple_of_2 a =
+  let { qnum = num; qden = den } = a in
+  Z.mul ((fun p->2*p) 1) (Z.div num (Z.mul den ((fun p->2*p) 1)))
 
-(** val invert_rotation : int -> int -> rzk_Unitary gate_app **)
+(** val bound : q -> q **)
 
-let invert_rotation i q =
-  rz
-    (Z.modulo (Z.sub (Z.mul ((fun p->2*p) 1) rzk_k) i)
-      (Z.mul ((fun p->2*p) 1) rzk_k)) q
+let bound a =
+  if (&&) (qle_bool { qnum = 0; qden = 1 } a)
+       (negb (qle_bool { qnum = ((fun p->2*p) 1); qden = 1 } a))
+  then a
+  else if qle_bool { qnum = ((fun p->2*p) 1); qden = 1 } a
+       then qminus a (inject_Z (round_to_multiple_of_2 a))
+       else qplus a (inject_Z (round_to_multiple_of_2 a))
+
+(** val combine_rotations : q -> q -> int -> rzQ_ucom_l **)
+
+let combine_rotations a a' q0 =
+  let anew = bound (qplus a a') in
+  if qeq_bool anew { qnum = 0; qden = 1 } then [] else (rz anew q0) :: []
+
+(** val invert_rotation : q -> int -> rzQ_Unitary gate_app **)
+
+let invert_rotation a q0 =
+  rz (qminus { qnum = ((fun p->2*p) 1); qden = 1 } a) q0
+
+(** val is_odd_multiple_of_1_4 : q -> bool option **)
+
+let is_odd_multiple_of_1_4 a =
+  let { qnum = num; qden = den } =
+    qred (qmult a { qnum = ((fun p->2*p) ((fun p->2*p) 1)); qden = 1 })
+  in
+  if Coq_Pos.eqb den 1 then Some (Z.odd num) else None
 
 (** val rz_commute_rule1 :
-    int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
+    int -> rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary gate_list)
     option **)
 
-let rz_commute_rule1 q l =
-  match next_single_qubit_gate l q with
+let rz_commute_rule1 q0 l =
+  match next_single_qubit_gate l q0 with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (l1, r) = p1 in
     (match r with
-     | URzk_H ->
-       (match next_two_qubit_gate l2 q with
+     | URzQ_H ->
+       (match next_two_qubit_gate l2 q0 with
         | Some p2 ->
           let (p3, l4) = p2 in
           let (p4, q2) = p3 in
           let (p5, q1) = p4 in
           let (l3, r0) = p5 in
           (match r0 with
-           | URzk_CNOT ->
-             if (=) q q2
-             then (match next_single_qubit_gate l4 q with
+           | URzQ_CNOT ->
+             if (=) q0 q2
+             then (match next_single_qubit_gate l4 q0 with
                    | Some p6 ->
                      let (p7, l6) = p6 in
                      let (l5, r1) = p7 in
                      (match r1 with
-                      | URzk_H ->
+                      | URzQ_H ->
                         Some
-                          ((app l1
-                             (app ((h q) :: [])
-                               (app l3
-                                 (app ((cNOT q1 q) :: [])
-                                   (app l5 ((h q) :: [])))))), l6)
+                          ((List.append l1
+                             (List.append ((h q0) :: [])
+                               (List.append l3
+                                 (List.append ((cNOT q1 q0) :: [])
+                                   (List.append l5 ((h q0) :: [])))))), l6)
                       | _ -> None)
                    | None -> None)
              else None
@@ -1948,41 +2206,42 @@ let rz_commute_rule1 q l =
   | None -> None
 
 (** val rz_commute_rule2 :
-    int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
+    int -> rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary gate_list)
     option **)
 
-let rz_commute_rule2 q l =
-  match next_two_qubit_gate l q with
+let rz_commute_rule2 q0 l =
+  match next_two_qubit_gate l q0 with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (p2, q2) = p1 in
     let (p3, q1) = p2 in
     let (l1, r) = p3 in
     (match r with
-     | URzk_CNOT ->
-       if (=) q q2
-       then (match next_single_qubit_gate l2 q with
+     | URzQ_CNOT ->
+       if (=) q0 q2
+       then (match next_single_qubit_gate l2 q0 with
              | Some p4 ->
                let (p5, l4) = p4 in
                let (l3, u) = p5 in
                (match u with
-                | URzk_Rz _ ->
-                  (match next_two_qubit_gate l4 q with
+                | URzQ_Rz _ ->
+                  (match next_two_qubit_gate l4 q0 with
                    | Some p6 ->
                      let (p7, l6) = p6 in
                      let (p8, q4) = p7 in
                      let (p9, q3) = p8 in
                      let (l5, r0) = p9 in
                      (match r0 with
-                      | URzk_CNOT ->
-                        if (&&) ((&&) ((=) q q4) ((=) q1 q3))
-                             (does_not_reference (app l3 l5) q3)
+                      | URzQ_CNOT ->
+                        if (&&) ((&&) ((=) q0 q4) ((=) q1 q3))
+                             (does_not_reference (List.append l3 l5) q3)
                         then Some
-                               ((app l1
-                                  (app ((cNOT q1 q) :: [])
-                                    (app l3
-                                      (app ((App1 (u, q)) :: [])
-                                        (app l5 ((cNOT q1 q) :: [])))))), l6)
+                               ((List.append l1
+                                  (List.append ((cNOT q1 q0) :: [])
+                                    (List.append l3
+                                      (List.append ((App1 (u, q0)) :: [])
+                                        (List.append l5 ((cNOT q1 q0) :: [])))))),
+                               l6)
                         else None
                       | _ -> None)
                    | None -> None)
@@ -1993,85 +2252,92 @@ let rz_commute_rule2 q l =
   | None -> None
 
 (** val rz_commute_rule3 :
-    int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
+    int -> rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary gate_list)
     option **)
 
-let rz_commute_rule3 q l =
-  match next_two_qubit_gate l q with
+let rz_commute_rule3 q0 l =
+  match next_two_qubit_gate l q0 with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (p2, q2) = p1 in
     let (p3, q1) = p2 in
     let (l1, r) = p3 in
     (match r with
-     | URzk_CNOT ->
-       if (=) q q1 then Some ((app l1 ((cNOT q1 q2) :: [])), l2) else None
+     | URzQ_CNOT ->
+       if (=) q0 q1
+       then Some ((List.append l1 ((cNOT q1 q2) :: [])), l2)
+       else None
      | _ -> None)
   | None -> None
 
 (** val rz_commute_rules :
-    int -> (rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
+    int -> (rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary gate_list)
     option) list **)
 
-let rz_commute_rules q =
-  (rz_commute_rule1 q) :: ((rz_commute_rule2 q) :: ((rz_commute_rule3 q) :: []))
+let rz_commute_rules q0 =
+  (rz_commute_rule1 q0) :: ((rz_commute_rule2 q0) :: ((rz_commute_rule3 q0) :: []))
 
 (** val rz_cancel_rule :
-    int -> int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
+    int -> q -> rzQ_ucom_l -> rzQ_Unitary gate_app list option **)
 
-let rz_cancel_rule q i l =
-  match next_single_qubit_gate l q with
+let rz_cancel_rule q0 a l =
+  match next_single_qubit_gate l q0 with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (l1, r) = p1 in
     (match r with
-     | URzk_Rz i' -> Some (app (combine_rotations i i' q) (app l1 l2))
+     | URzQ_Rz a' ->
+       Some (List.append (combine_rotations a a' q0) (List.append l1 l2))
      | _ -> None)
   | None -> None
 
 (** val h_cancel_rule :
-    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
+    int -> rzQ_ucom_l -> rzQ_Unitary gate_app list option **)
 
-let h_cancel_rule q l =
-  match next_single_qubit_gate l q with
+let h_cancel_rule q0 l =
+  match next_single_qubit_gate l q0 with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, r) = p1 in (match r with
-                         | URzk_H -> Some (app l1 l2)
-                         | _ -> None)
+    let (l1, r) = p1 in
+    (match r with
+     | URzQ_H -> Some (List.append l1 l2)
+     | _ -> None)
   | None -> None
 
 (** val x_commute_rule :
-    int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary gate_list)
+    int -> rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary gate_list)
     option **)
 
-let x_commute_rule q l =
-  match next_two_qubit_gate l q with
+let x_commute_rule q0 l =
+  match next_two_qubit_gate l q0 with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (p2, q2) = p1 in
     let (p3, q1) = p2 in
     let (l1, r) = p3 in
     (match r with
-     | URzk_CNOT ->
-       if (=) q q2 then Some ((app l1 ((cNOT q1 q2) :: [])), l2) else None
+     | URzQ_CNOT ->
+       if (=) q0 q2
+       then Some ((List.append l1 ((cNOT q1 q2) :: [])), l2)
+       else None
      | _ -> None)
   | None -> None
 
 (** val x_cancel_rule :
-    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
+    int -> rzQ_ucom_l -> rzQ_Unitary gate_app list option **)
 
-let x_cancel_rule q l =
-  match next_single_qubit_gate l q with
+let x_cancel_rule q0 l =
+  match next_single_qubit_gate l q0 with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, r) = p1 in (match r with
-                         | URzk_X -> Some (app l1 l2)
-                         | _ -> None)
+    let (l1, r) = p1 in
+    (match r with
+     | URzQ_X -> Some (List.append l1 l2)
+     | _ -> None)
   | None -> None
 
 (** val cNOT_commute_rule1 :
-    int -> rzk_ucom_l -> (rzk_ucom_l * rzk_ucom_l) option **)
+    int -> rzQ_ucom_l -> (rzQ_ucom_l * rzQ_ucom_l) option **)
 
 let cNOT_commute_rule1 q1 l =
   match next_single_qubit_gate l q1 with
@@ -2079,12 +2345,12 @@ let cNOT_commute_rule1 q1 l =
     let (p1, l2) = p0 in
     let (l1, u) = p1 in
     (match u with
-     | URzk_Rz _ -> Some (((App1 (u, q1)) :: []), (app l1 l2))
+     | URzQ_Rz _ -> Some (((App1 (u, q1)) :: []), (List.append l1 l2))
      | _ -> None)
   | None -> None
 
 (** val cNOT_commute_rule2 :
-    int -> int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary
+    int -> int -> rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary
     gate_list) option **)
 
 let cNOT_commute_rule2 q1 q2 l =
@@ -2095,17 +2361,17 @@ let cNOT_commute_rule2 q1 q2 l =
     let (p3, q1') = p2 in
     let (l1, r) = p3 in
     (match r with
-     | URzk_CNOT ->
+     | URzQ_CNOT ->
        if (=) q2 q2'
        then if does_not_reference l1 q1
-            then Some ((app l1 ((cNOT q1' q2) :: [])), l2)
+            then Some ((List.append l1 ((cNOT q1' q2) :: [])), l2)
             else None
        else None
      | _ -> None)
   | None -> None
 
 (** val cNOT_commute_rule3 :
-    int -> int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary
+    int -> int -> rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary
     gate_list) option **)
 
 let cNOT_commute_rule3 q1 q2 l =
@@ -2116,17 +2382,17 @@ let cNOT_commute_rule3 q1 q2 l =
     let (p3, q1') = p2 in
     let (l1, r) = p3 in
     (match r with
-     | URzk_CNOT ->
+     | URzQ_CNOT ->
        if (=) q1 q1'
        then if does_not_reference l1 q2
-            then Some ((app l1 ((cNOT q1 q2') :: [])), l2)
+            then Some ((List.append l1 ((cNOT q1 q2') :: [])), l2)
             else None
        else None
      | _ -> None)
   | None -> None
 
 (** val cNOT_commute_rule4 :
-    int -> int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary
+    int -> int -> rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary
     gate_app list) option **)
 
 let cNOT_commute_rule4 q1 q2 l =
@@ -2135,7 +2401,7 @@ let cNOT_commute_rule4 q1 q2 l =
     let (p1, l2) = p0 in
     let (l1, r) = p1 in
     (match r with
-     | URzk_H ->
+     | URzQ_H ->
        (match next_two_qubit_gate l2 q2 with
         | Some p2 ->
           let (p3, l4) = p2 in
@@ -2143,21 +2409,21 @@ let cNOT_commute_rule4 q1 q2 l =
           let (p5, q1') = p4 in
           let (l3, r0) = p5 in
           (match r0 with
-           | URzk_CNOT ->
+           | URzQ_CNOT ->
              if (&&) ((&&) ((=) q2 q1') (negb ((=) q1 q2')))
-                  (does_not_reference (app l1 l3) q1)
+                  (does_not_reference (List.append l1 l3) q1)
              then (match next_single_qubit_gate l4 q2 with
                    | Some p6 ->
                      let (p7, l6) = p6 in
                      let (l5, r1) = p7 in
                      (match r1 with
-                      | URzk_H ->
+                      | URzQ_H ->
                         Some
-                          ((app l1
-                             (app ((h q2) :: [])
-                               (app l3
-                                 (app ((cNOT q2 q2') :: []) ((h q2) :: []))))),
-                          (app l5 l6))
+                          ((List.append l1
+                             (List.append ((h q2) :: [])
+                               (List.append l3
+                                 (List.append ((cNOT q2 q2') :: [])
+                                   ((h q2) :: []))))), (List.append l5 l6))
                       | _ -> None)
                    | None -> None)
              else None
@@ -2167,38 +2433,38 @@ let cNOT_commute_rule4 q1 q2 l =
   | None -> None
 
 (** val cNOT_commute_rule5 :
-    int -> int -> rzk_ucom_l -> (rzk_Unitary gate_app list * rzk_Unitary
+    int -> int -> rzQ_ucom_l -> (rzQ_Unitary gate_app list * rzQ_Unitary
     gate_app list) option **)
 
 let cNOT_commute_rule5 q1 q2 l =
   match next_single_qubit_gate l q2 with
   | Some p0 ->
     let (p1, l2) = p0 in
-    let (l1, r) = p1 in
-    (match r with
-     | URzk_Rz i ->
+    let (l1, u) = p1 in
+    (match u with
+     | URzQ_Rz _ ->
        (match next_two_qubit_gate l2 q2 with
         | Some p2 ->
           let (p3, l4) = p2 in
           let (p4, q2') = p3 in
           let (p5, q1') = p4 in
-          let (l3, r0) = p5 in
-          (match r0 with
-           | URzk_CNOT ->
+          let (l3, r) = p5 in
+          (match r with
+           | URzQ_CNOT ->
              if (&&) ((&&) ((=) q1 q1') ((=) q2 q2'))
-                  (does_not_reference (app l1 l3) q1)
+                  (does_not_reference (List.append l1 l3) q1)
              then (match next_single_qubit_gate l4 q2 with
                    | Some p6 ->
                      let (p7, l6) = p6 in
-                     let (l5, r1) = p7 in
-                     (match r1 with
-                      | URzk_Rz i' ->
+                     let (l5, u') = p7 in
+                     (match u' with
+                      | URzQ_Rz _ ->
                         Some
-                          ((app l1
-                             (app ((App1 ((URzk_Rz i'), q2)) :: [])
-                               (app l3
-                                 (app ((cNOT q1' q2') :: []) ((App1 ((URzk_Rz
-                                   i), q2)) :: []))))), (app l5 l6))
+                          ((List.append l1
+                             (List.append ((App1 (u', q2)) :: [])
+                               (List.append l3
+                                 (List.append ((cNOT q1' q2') :: []) ((App1
+                                   (u, q2)) :: []))))), (List.append l5 l6))
                       | _ -> None)
                    | None -> None)
              else None
@@ -2208,7 +2474,7 @@ let cNOT_commute_rule5 q1 q2 l =
   | None -> None
 
 (** val cNOT_commute_rules :
-    int -> int -> (rzk_ucom_l -> (rzk_ucom_l * rzk_ucom_l) option) list **)
+    int -> int -> (rzQ_ucom_l -> (rzQ_ucom_l * rzQ_ucom_l) option) list **)
 
 let cNOT_commute_rules q1 q2 =
   (cNOT_commute_rule1 q1) :: ((cNOT_commute_rule2 q1 q2) :: ((cNOT_commute_rule3
@@ -2216,7 +2482,7 @@ let cNOT_commute_rules q1 q2 =
     (cNOT_commute_rule4 q1 q2) :: ((cNOT_commute_rule5 q1 q2) :: []))))
 
 (** val cNOT_cancel_rule :
-    int -> int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
+    int -> int -> rzQ_ucom_l -> rzQ_Unitary gate_app list option **)
 
 let cNOT_cancel_rule q1 q2 l =
   match next_two_qubit_gate l q1 with
@@ -2226,37 +2492,37 @@ let cNOT_cancel_rule q1 q2 l =
     let (p3, q1') = p2 in
     let (l1, r) = p3 in
     (match r with
-     | URzk_CNOT ->
+     | URzQ_CNOT ->
        if (&&) ((&&) ((=) q1 q1') ((=) q2 q2')) (does_not_reference l1 q2)
-       then Some (app l1 l2)
+       then Some (List.append l1 l2)
        else None
      | _ -> None)
   | None -> None
 
 (** val propagate_Rz :
-    int -> rzk_ucom_l -> int -> int -> rzk_Unitary gate_list option **)
+    q -> rzQ_ucom_l -> int -> int -> rzQ_Unitary gate_list option **)
 
-let propagate_Rz k l q n =
-  propagate l (rz_commute_rules q) ((rz_cancel_rule q k) :: []) n
+let propagate_Rz a l q0 n =
+  propagate l (rz_commute_rules q0) ((rz_cancel_rule q0 a) :: []) n
 
-(** val propagate_H : rzk_ucom_l -> int -> rzk_Unitary gate_list option **)
+(** val propagate_H : rzQ_ucom_l -> int -> rzQ_Unitary gate_list option **)
 
-let propagate_H l q =
-  propagate l [] ((h_cancel_rule q) :: []) (Pervasives.succ 0)
+let propagate_H l q0 =
+  propagate l [] ((h_cancel_rule q0) :: []) (Pervasives.succ 0)
 
 (** val propagate_X :
-    rzk_ucom_l -> int -> int -> rzk_Unitary gate_list option **)
+    rzQ_ucom_l -> int -> int -> rzQ_Unitary gate_list option **)
 
-let propagate_X l q n =
-  propagate l ((x_commute_rule q) :: []) ((x_cancel_rule q) :: []) n
+let propagate_X l q0 n =
+  propagate l ((x_commute_rule q0) :: []) ((x_cancel_rule q0) :: []) n
 
 (** val propagate_CNOT :
-    rzk_ucom_l -> int -> int -> int -> rzk_Unitary gate_list option **)
+    rzQ_ucom_l -> int -> int -> int -> rzQ_Unitary gate_list option **)
 
 let propagate_CNOT l q1 q2 n =
   propagate l (cNOT_commute_rules q1 q2) ((cNOT_cancel_rule q1 q2) :: []) n
 
-(** val cancel_single_qubit_gates' : rzk_ucom_l -> int -> rzk_ucom_l **)
+(** val cancel_single_qubit_gates' : rzQ_ucom_l -> int -> rzQ_ucom_l **)
 
 let rec cancel_single_qubit_gates' l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -2266,31 +2532,31 @@ let rec cancel_single_qubit_gates' l n =
     | [] -> []
     | u :: t1 ->
       (match u with
-       | App1 (r, q) ->
+       | App1 (r, q0) ->
          (match r with
-          | URzk_H ->
-            (match propagate_H t1 q with
+          | URzQ_H ->
+            (match propagate_H t1 q0 with
              | Some l' -> cancel_single_qubit_gates' l' n'
-             | None -> (h q) :: (cancel_single_qubit_gates' t1 n'))
-          | URzk_X ->
-            (match propagate_X t1 q (length t1) with
+             | None -> (h q0) :: (cancel_single_qubit_gates' t1 n'))
+          | URzQ_X ->
+            (match propagate_X t1 q0 (List.length t1) with
              | Some l' -> cancel_single_qubit_gates' l' n'
-             | None -> (x q) :: (cancel_single_qubit_gates' t1 n'))
-          | URzk_Rz i ->
-            (match propagate_Rz i t1 q (length t1) with
+             | None -> (x q0) :: (cancel_single_qubit_gates' t1 n'))
+          | URzQ_Rz a ->
+            (match propagate_Rz a t1 q0 (List.length t1) with
              | Some l' -> cancel_single_qubit_gates' l' n'
              | None ->
-               (App1 ((URzk_Rz i), q)) :: (cancel_single_qubit_gates' t1 n'))
-          | URzk_CNOT -> u :: (cancel_single_qubit_gates' t1 n'))
+               (App1 ((URzQ_Rz a), q0)) :: (cancel_single_qubit_gates' t1 n'))
+          | URzQ_CNOT -> u :: (cancel_single_qubit_gates' t1 n'))
        | _ -> u :: (cancel_single_qubit_gates' t1 n')))
     n
 
-(** val cancel_single_qubit_gates : rzk_ucom_l -> rzk_ucom_l **)
+(** val cancel_single_qubit_gates : rzQ_ucom_l -> rzQ_ucom_l **)
 
 let cancel_single_qubit_gates l =
-  cancel_single_qubit_gates' l (length l)
+  cancel_single_qubit_gates' l (List.length l)
 
-(** val cancel_two_qubit_gates' : rzk_ucom_l -> int -> rzk_ucom_l **)
+(** val cancel_two_qubit_gates' : rzQ_ucom_l -> int -> rzQ_ucom_l **)
 
 let rec cancel_two_qubit_gates' l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -2302,75 +2568,77 @@ let rec cancel_two_qubit_gates' l n =
       (match u with
        | App2 (r, q1, q2) ->
          (match r with
-          | URzk_CNOT ->
-            (match propagate_CNOT t1 q1 q2 (length t1) with
+          | URzQ_CNOT ->
+            (match propagate_CNOT t1 q1 q2 (List.length t1) with
              | Some l' -> cancel_two_qubit_gates' l' n'
              | None -> (cNOT q1 q2) :: (cancel_two_qubit_gates' t1 n'))
           | _ -> u :: (cancel_two_qubit_gates' t1 n'))
        | _ -> u :: (cancel_two_qubit_gates' t1 n')))
     n
 
-(** val cancel_two_qubit_gates : rzk_ucom_l -> rzk_ucom_l **)
+(** val cancel_two_qubit_gates : rzQ_ucom_l -> rzQ_ucom_l **)
 
 let cancel_two_qubit_gates l =
-  cancel_two_qubit_gates' l (length l)
+  cancel_two_qubit_gates' l (List.length l)
 
 (** val apply_H_equivalence1 :
-    int -> rzk_ucom_l -> rzk_Unitary gate_list option **)
+    int -> rzQ_ucom_l -> rzQ_Unitary gate_list option **)
 
-let apply_H_equivalence1 q l =
-  replace_single_qubit_pattern l q (URzk_H :: (uRzk_P :: (URzk_H :: [])))
-    (uRzk_PDAG :: (URzk_H :: (uRzk_PDAG :: []))) match_gate
+let apply_H_equivalence1 q0 l =
+  replace_single_qubit_pattern l q0 (URzQ_H :: (uRzQ_P :: (URzQ_H :: [])))
+    (uRzQ_PDAG :: (URzQ_H :: (uRzQ_PDAG :: []))) match_gate
 
 (** val apply_H_equivalence2 :
-    int -> rzk_ucom_l -> rzk_Unitary gate_list option **)
+    int -> rzQ_ucom_l -> rzQ_Unitary gate_list option **)
 
-let apply_H_equivalence2 q l =
-  replace_single_qubit_pattern l q (URzk_H :: (uRzk_PDAG :: (URzk_H :: [])))
-    (uRzk_P :: (URzk_H :: (uRzk_P :: []))) match_gate
+let apply_H_equivalence2 q0 l =
+  replace_single_qubit_pattern l q0 (URzQ_H :: (uRzQ_PDAG :: (URzQ_H :: [])))
+    (uRzQ_P :: (URzQ_H :: (uRzQ_P :: []))) match_gate
 
 (** val apply_H_equivalence3 :
-    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
+    int -> rzQ_ucom_l -> rzQ_Unitary gate_app list option **)
 
-let apply_H_equivalence3 q l =
-  match next_single_qubit_gate l q with
+let apply_H_equivalence3 q0 l =
+  match next_single_qubit_gate l q0 with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (l1, r) = p1 in
     (match r with
-     | URzk_H ->
-       let l0 = app l1 l2 in
-       (match next_two_qubit_gate l0 q with
+     | URzQ_H ->
+       let l0 = List.append l1 l2 in
+       (match next_two_qubit_gate l0 q0 with
         | Some p2 ->
           let (p3, l3) = p2 in
           let (p4, n) = p3 in
           let (p5, m) = p4 in
           let (l4, r0) = p5 in
           (match r0 with
-           | URzk_CNOT ->
-             if (=) q m
+           | URzQ_CNOT ->
+             if (=) q0 m
              then (match last_single_qubit_gate l4 n with
                    | Some p6 ->
                      let (p7, l1_2) = p6 in
                      let (l1_1, r1) = p7 in
                      (match r1 with
-                      | URzk_H ->
-                        let l5 = app l1_1 l1_2 in
-                        (match next_single_qubit_gate l3 q with
+                      | URzQ_H ->
+                        let l5 = List.append l1_1 l1_2 in
+                        (match next_single_qubit_gate l3 q0 with
                          | Some p8 ->
                            let (p9, l2_2) = p8 in
                            let (l2_1, r2) = p9 in
                            (match r2 with
-                            | URzk_H ->
-                              let l6 = app l2_1 l2_2 in
+                            | URzQ_H ->
+                              let l6 = List.append l2_1 l2_2 in
                               (match next_single_qubit_gate l6 n with
                                | Some p10 ->
                                  let (p11, l2_3) = p10 in
                                  let (l2_4, r3) = p11 in
                                  (match r3 with
-                                  | URzk_H ->
-                                    let l7 = app l2_4 l2_3 in
-                                    Some (app l5 (app ((cNOT n q) :: []) l7))
+                                  | URzQ_H ->
+                                    let l7 = List.append l2_4 l2_3 in
+                                    Some
+                                    (List.append l5
+                                      (List.append ((cNOT n q0) :: []) l7))
                                   | _ -> None)
                                | None -> None)
                             | _ -> None)
@@ -2382,23 +2650,25 @@ let apply_H_equivalence3 q l =
                      let (p7, l1_2) = p6 in
                      let (l1_1, r1) = p7 in
                      (match r1 with
-                      | URzk_H ->
-                        let l5 = app l1_1 l1_2 in
-                        (match next_single_qubit_gate l3 q with
+                      | URzQ_H ->
+                        let l5 = List.append l1_1 l1_2 in
+                        (match next_single_qubit_gate l3 q0 with
                          | Some p8 ->
                            let (p9, l2_2) = p8 in
                            let (l2_1, r2) = p9 in
                            (match r2 with
-                            | URzk_H ->
-                              let l6 = app l2_1 l2_2 in
+                            | URzQ_H ->
+                              let l6 = List.append l2_1 l2_2 in
                               (match next_single_qubit_gate l6 m with
                                | Some p10 ->
                                  let (p11, l2_3) = p10 in
                                  let (l2_4, r3) = p11 in
                                  (match r3 with
-                                  | URzk_H ->
-                                    let l7 = app l2_4 l2_3 in
-                                    Some (app l5 (app ((cNOT q m) :: []) l7))
+                                  | URzQ_H ->
+                                    let l7 = List.append l2_4 l2_3 in
+                                    Some
+                                    (List.append l5
+                                      (List.append ((cNOT q0 m) :: []) l7))
                                   | _ -> None)
                                | None -> None)
                             | _ -> None)
@@ -2411,26 +2681,27 @@ let apply_H_equivalence3 q l =
   | None -> None
 
 (** val apply_H_equivalence4 :
-    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
+    int -> rzQ_ucom_l -> rzQ_Unitary gate_app list option **)
 
-let apply_H_equivalence4 q l =
-  match remove_single_qubit_pattern l q (URzk_H :: (uRzk_P :: [])) match_gate with
+let apply_H_equivalence4 q0 l =
+  match remove_single_qubit_pattern l q0 (URzQ_H :: (uRzQ_P :: [])) match_gate with
   | Some l1 ->
-    (match next_two_qubit_gate l1 q with
+    (match next_two_qubit_gate l1 q0 with
      | Some p0 ->
        let (p1, l3) = p0 in
        let (p2, q2) = p1 in
        let (p3, q1) = p2 in
        let (l2, r) = p3 in
        (match r with
-        | URzk_CNOT ->
-          if (=) q q2
-          then (match remove_single_qubit_pattern l3 q
-                        (uRzk_PDAG :: (URzk_H :: [])) match_gate with
+        | URzQ_CNOT ->
+          if (=) q0 q2
+          then (match remove_single_qubit_pattern l3 q0
+                        (uRzQ_PDAG :: (URzQ_H :: [])) match_gate with
                 | Some l4 ->
                   Some
-                    (app l2
-                      (app ((pDAG q2) :: ((cNOT q1 q2) :: ((p q2) :: []))) l4))
+                    (List.append l2
+                      (List.append
+                        ((pDAG q2) :: ((cNOT q1 q2) :: ((p q2) :: []))) l4))
                 | None -> None)
           else None
         | _ -> None)
@@ -2438,42 +2709,43 @@ let apply_H_equivalence4 q l =
   | None -> None
 
 (** val apply_H_equivalence5 :
-    int -> rzk_ucom_l -> rzk_Unitary gate_app list option **)
+    int -> rzQ_ucom_l -> rzQ_Unitary gate_app list option **)
 
-let apply_H_equivalence5 q l =
-  match remove_single_qubit_pattern l q (URzk_H :: (uRzk_PDAG :: []))
+let apply_H_equivalence5 q0 l =
+  match remove_single_qubit_pattern l q0 (URzQ_H :: (uRzQ_PDAG :: []))
           match_gate with
   | Some l1 ->
-    (match next_two_qubit_gate l1 q with
+    (match next_two_qubit_gate l1 q0 with
      | Some p0 ->
        let (p1, l3) = p0 in
        let (p2, q2) = p1 in
        let (p3, q1) = p2 in
        let (l2, r) = p3 in
        (match r with
-        | URzk_CNOT ->
-          if (=) q q2
-          then (match remove_single_qubit_pattern l3 q
-                        (uRzk_P :: (URzk_H :: [])) match_gate with
+        | URzQ_CNOT ->
+          if (=) q0 q2
+          then (match remove_single_qubit_pattern l3 q0
+                        (uRzQ_P :: (URzQ_H :: [])) match_gate with
                 | Some l4 ->
                   Some
-                    (app l2
-                      (app ((p q2) :: ((cNOT q1 q2) :: ((pDAG q2) :: []))) l4))
+                    (List.append l2
+                      (List.append
+                        ((p q2) :: ((cNOT q1 q2) :: ((pDAG q2) :: []))) l4))
                 | None -> None)
           else None
         | _ -> None)
      | None -> None)
   | None -> None
 
-(** val apply_H_equivalence : rzk_ucom_l -> int -> rzk_ucom_l option **)
+(** val apply_H_equivalence : rzQ_ucom_l -> int -> rzQ_ucom_l option **)
 
-let apply_H_equivalence l q =
+let apply_H_equivalence l q0 =
   try_rewrites l
-    ((apply_H_equivalence1 q) :: ((apply_H_equivalence2 q) :: ((apply_H_equivalence3
-                                                                 q) :: (
-    (apply_H_equivalence4 q) :: ((apply_H_equivalence5 q) :: [])))))
+    ((apply_H_equivalence1 q0) :: ((apply_H_equivalence2 q0) :: ((apply_H_equivalence3
+                                                                   q0) :: (
+    (apply_H_equivalence4 q0) :: ((apply_H_equivalence5 q0) :: [])))))
 
-(** val apply_H_equivalences : rzk_ucom_l -> int -> rzk_ucom_l **)
+(** val apply_H_equivalences : rzQ_ucom_l -> int -> rzQ_ucom_l **)
 
 let rec apply_H_equivalences l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -2483,21 +2755,21 @@ let rec apply_H_equivalences l n =
     | [] -> []
     | g :: t1 ->
       (match g with
-       | App1 (r, q) ->
+       | App1 (r, q0) ->
          (match r with
-          | URzk_H ->
-            (match apply_H_equivalence l q with
+          | URzQ_H ->
+            (match apply_H_equivalence l q0 with
              | Some l' -> apply_H_equivalences l' n'
-             | None -> (h q) :: (apply_H_equivalences t1 n'))
+             | None -> (h q0) :: (apply_H_equivalences t1 n'))
           | _ -> g :: (apply_H_equivalences t1 n'))
        | _ -> g :: (apply_H_equivalences t1 n')))
     n
 
-(** val hadamard_reduction : rzk_ucom_l -> rzk_ucom_l **)
+(** val hadamard_reduction : rzQ_ucom_l -> rzQ_ucom_l **)
 
 let hadamard_reduction l =
   apply_H_equivalences l
-    (mul (Pervasives.succ (Pervasives.succ 0)) (length l))
+    (mul (Pervasives.succ (Pervasives.succ 0)) (List.length l))
 
 module Raw =
  functor (X:Coq_OrderedType) ->
@@ -4081,7 +4353,8 @@ module Coq_Raw =
 
     let rec flatten_e = function
     | End -> []
-    | More (x0, e0, t1, r) -> (x0, e0) :: (app (elements t1) (flatten_e r))
+    | More (x0, e0, t1, r) ->
+      (x0, e0) :: (List.append (elements t1) (flatten_e r))
    end
  end
 
@@ -4180,8 +4453,8 @@ module Coq_Make =
 module FMap = Coq_Make(Nat_as_OT)
 
 (** val get_subcircuit' :
-    rzk_ucom_l -> FSet.t -> FSet.t -> int -> (rzk_Unitary gate_app
-    list * rzk_Unitary gate_app list) * rzk_ucom_l **)
+    rzQ_ucom_l -> FSet.t -> FSet.t -> int -> (rzQ_Unitary gate_app
+    list * rzQ_Unitary gate_app list) * rzQ_ucom_l **)
 
 let rec get_subcircuit' l qs blst n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4194,38 +4467,41 @@ let rec get_subcircuit' l qs blst n =
             let (p1, l2) = p0 in
             let (l1, g) = p1 in
             (match g with
-             | App1 (u, q) ->
+             | App1 (u, q0) ->
                (match u with
-                | URzk_H ->
-                  let (p2, l2') = get_subcircuit' l2 qs (FSet.add q blst) n'
+                | URzQ_H ->
+                  let (p2, l2') = get_subcircuit' l2 qs (FSet.add q0 blst) n'
                   in
                   let (l1', s) = p2 in
-                  (((app l1 l1'), (app ((h q) :: []) s)), l2')
+                  (((List.append l1 l1'), (List.append ((h q0) :: []) s)),
+                  l2')
                 | _ ->
                   let (p2, l2') = get_subcircuit' l2 qs blst n' in
                   let (l1', s) = p2 in
-                  (((app l1 l1'), (app ((App1 (u, q)) :: []) s)), l2'))
+                  (((List.append l1 l1'),
+                  (List.append ((App1 (u, q0)) :: []) s)), l2'))
              | App2 (r, q1, q2) ->
                (match r with
-                | URzk_CNOT ->
+                | URzQ_CNOT ->
                   let qs' = FSet.add q1 (FSet.add q2 qs) in
                   let blst' =
                     if FSet.mem q1 blst then FSet.add q2 blst else blst
                   in
                   let (p2, l2') = get_subcircuit' l2 qs' blst' n' in
                   let (l1', s) = p2 in
-                  (((app l1 l1'), (app ((cNOT q1 q2) :: []) s)), l2')
+                  (((List.append l1 l1'),
+                  (List.append ((cNOT q1 q2) :: []) s)), l2')
                 | _ -> (([], []), l))
              | App3 (_, _, _, _) -> (([], []), l))
           | None -> (([], []), l)))
     n
 
 (** val get_subcircuit :
-    rzk_ucom_l -> FSet.elt -> (rzk_Unitary gate_app list * rzk_Unitary
-    gate_app list) * rzk_ucom_l **)
+    rzQ_ucom_l -> FSet.elt -> (rzQ_Unitary gate_app list * rzQ_Unitary
+    gate_app list) * rzQ_ucom_l **)
 
-let get_subcircuit l q =
-  get_subcircuit' l (FSet.add q FSet.empty) FSet.empty (length l)
+let get_subcircuit l q0 =
+  get_subcircuit' l (FSet.add q0 FSet.empty) FSet.empty (List.length l)
 
 (** val xor : FSet.t -> FSet.t -> FSet.t **)
 
@@ -4234,91 +4510,93 @@ let xor s1 s2 =
 
 (** val get_set : FSet.t FMap.t -> FMap.key -> FSet.t **)
 
-let get_set smap q =
-  match FMap.find q smap with
+let get_set smap q0 =
+  match FMap.find q0 smap with
   | Some s -> s
-  | None -> FSet.add q FSet.empty
+  | None -> FSet.add q0 FSet.empty
 
 (** val find_merge :
-    rzk_ucom_l -> FSet.t -> FSet.elt -> FSet.t FMap.t ->
-    (((rzk_ucom_l * int) * int) * rzk_ucom_l) option **)
+    rzQ_ucom_l -> FSet.t -> FSet.elt -> FSet.t FMap.t ->
+    (((rzQ_ucom_l * q) * int) * rzQ_ucom_l) option **)
 
-let rec find_merge l blst q smap =
+let rec find_merge l blst q0 smap =
   match l with
   | [] -> None
   | g :: t1 ->
     (match g with
      | App1 (r, q') ->
        (match r with
-        | URzk_H ->
-          (match find_merge t1 (FSet.add q' blst) q smap with
+        | URzQ_H ->
+          (match find_merge t1 (FSet.add q' blst) q0 smap with
            | Some p0 ->
              let (p1, l2) = p0 in
              let (p2, q'') = p1 in
-             let (l1, i) = p2 in Some (((((h q') :: l1), i), q''), l2)
+             let (l1, a) = p2 in Some (((((h q') :: l1), a), q''), l2)
            | None -> None)
-        | URzk_Rz i ->
+        | URzQ_Rz a ->
           let s = get_set smap q' in
-          let sorig = FSet.add q FSet.empty in
+          let sorig = FSet.add q0 FSet.empty in
           if (&&) (negb (FSet.mem q' blst)) (FSet.equal s sorig)
-          then Some ((([], i), q'), t1)
-          else (match find_merge t1 blst q smap with
+          then Some ((([], a), q'), t1)
+          else (match find_merge t1 blst q0 smap with
                 | Some p0 ->
                   let (p1, l2) = p0 in
                   let (p2, q'') = p1 in
-                  let (l1, i') = p2 in
-                  Some (((((rz i q') :: l1), i'), q''), l2)
+                  let (l1, a') = p2 in
+                  Some (((((rz a q') :: l1), a'), q''), l2)
                 | None -> None)
         | _ -> None)
      | App2 (r, q1, q2) ->
        (match r with
-        | URzk_CNOT ->
+        | URzQ_CNOT ->
           if (||) (FSet.mem q1 blst) (FSet.mem q2 blst)
           then let blst' = if FSet.mem q1 blst then FSet.add q2 blst else blst
                in
-               (match find_merge t1 blst' q smap with
+               (match find_merge t1 blst' q0 smap with
                 | Some p0 ->
                   let (p1, l2) = p0 in
                   let (p2, q') = p1 in
-                  let (l1, i) = p2 in
-                  Some (((((cNOT q1 q2) :: l1), i), q'), l2)
+                  let (l1, a) = p2 in
+                  Some (((((cNOT q1 q2) :: l1), a), q'), l2)
                 | None -> None)
           else let s1 = get_set smap q1 in
                let s2 = get_set smap q2 in
                let smap' = FMap.add q2 (xor s1 s2) smap in
-               (match find_merge t1 blst q smap' with
+               (match find_merge t1 blst q0 smap' with
                 | Some p0 ->
                   let (p1, l2) = p0 in
                   let (p2, q') = p1 in
-                  let (l1, i) = p2 in
-                  Some (((((cNOT q1 q2) :: l1), i), q'), l2)
+                  let (l1, a) = p2 in
+                  Some (((((cNOT q1 q2) :: l1), a), q'), l2)
                 | None -> None)
         | _ -> None)
      | App3 (_, _, _, _) -> None)
 
 (** val merge_at_beginning :
-    rzk_ucom_l -> int -> FSet.elt -> rzk_Unitary gate_app list option **)
+    rzQ_ucom_l -> q -> FSet.elt -> rzQ_Unitary gate_app list option **)
 
-let merge_at_beginning l i q =
-  match find_merge l FSet.empty q FMap.empty with
+let merge_at_beginning l a q0 =
+  match find_merge l FSet.empty q0 FMap.empty with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (p2, _) = p1 in
-    let (l1, i') = p2 in Some (app (combine_rotations i i' q) (app l1 l2))
+    let (l1, a') = p2 in
+    Some (List.append (combine_rotations a a' q0) (List.append l1 l2))
   | None -> None
 
 (** val merge_at_end :
-    rzk_ucom_l -> int -> FSet.elt -> rzk_Unitary gate_app list option **)
+    rzQ_ucom_l -> q -> FSet.elt -> rzQ_Unitary gate_app list option **)
 
-let merge_at_end l i q =
-  match find_merge l FSet.empty q FMap.empty with
+let merge_at_end l a q0 =
+  match find_merge l FSet.empty q0 FMap.empty with
   | Some p0 ->
     let (p1, l2) = p0 in
     let (p2, q') = p1 in
-    let (l1, i') = p2 in Some (app l1 (app (combine_rotations i i' q') l2))
+    let (l1, a') = p2 in
+    Some (List.append l1 (List.append (combine_rotations a a' q') l2))
   | None -> None
 
-(** val merge_rotations_at_beginning : rzk_ucom_l -> int -> rzk_ucom_l **)
+(** val merge_rotations_at_beginning : rzQ_ucom_l -> int -> rzQ_ucom_l **)
 
 let rec merge_rotations_at_beginning l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4328,19 +4606,21 @@ let rec merge_rotations_at_beginning l n =
     | [] -> []
     | g :: t1 ->
       (match g with
-       | App1 (r, q) ->
+       | App1 (r, q0) ->
          (match r with
-          | URzk_Rz i ->
-            let (p0, l2) = get_subcircuit t1 q in
+          | URzQ_Rz a ->
+            let (p0, l2) = get_subcircuit t1 q0 in
             let (l1, s) = p0 in
-            (match merge_at_beginning s i q with
-             | Some s' -> merge_rotations_at_beginning (app l1 (app s' l2)) n'
-             | None -> (rz i q) :: (merge_rotations_at_beginning t1 n'))
+            (match merge_at_beginning s a q0 with
+             | Some s' ->
+               merge_rotations_at_beginning
+                 (List.append l1 (List.append s' l2)) n'
+             | None -> (rz a q0) :: (merge_rotations_at_beginning t1 n'))
           | _ -> g :: (merge_rotations_at_beginning t1 n'))
        | _ -> g :: (merge_rotations_at_beginning t1 n')))
     n
 
-(** val merge_rotations_at_end : rzk_ucom_l -> int -> rzk_ucom_l **)
+(** val merge_rotations_at_end : rzQ_ucom_l -> int -> rzQ_ucom_l **)
 
 let rec merge_rotations_at_end l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4350,67 +4630,69 @@ let rec merge_rotations_at_end l n =
     | [] -> []
     | g :: t1 ->
       (match g with
-       | App1 (r, q) ->
+       | App1 (r, q0) ->
          (match r with
-          | URzk_Rz i ->
-            let (p0, l2) = get_subcircuit t1 q in
+          | URzQ_Rz a ->
+            let (p0, l2) = get_subcircuit t1 q0 in
             let (l1, s) = p0 in
-            (match merge_at_end s i q with
-             | Some s' -> merge_rotations_at_end (app l1 (app s' l2)) n'
-             | None -> (rz i q) :: (merge_rotations_at_end t1 n'))
+            (match merge_at_end s a q0 with
+             | Some s' ->
+               merge_rotations_at_end (List.append l1 (List.append s' l2)) n'
+             | None -> (rz a q0) :: (merge_rotations_at_end t1 n'))
           | _ -> g :: (merge_rotations_at_end t1 n'))
        | _ -> g :: (merge_rotations_at_end t1 n')))
     n
 
-(** val invert_gate : rzk_Unitary gate_app -> rzk_Unitary gate_app **)
+(** val invert_gate : rzQ_Unitary gate_app -> rzQ_Unitary gate_app **)
 
 let invert_gate g = match g with
-| App1 (y, q) -> (match y with
-                  | URzk_Rz i -> invert_rotation i q
-                  | _ -> g)
+| App1 (y, q0) -> (match y with
+                   | URzQ_Rz a -> invert_rotation a q0
+                   | _ -> g)
 | _ -> g
 
-(** val invert : rzk_ucom_l -> rzk_Unitary gate_app list **)
+(** val invert : rzQ_ucom_l -> rzQ_Unitary gate_app list **)
 
 let invert l =
-  map invert_gate (rev l)
+  map invert_gate (List.rev l)
 
-(** val merge_rotations : rzk_ucom_l -> rzk_Unitary gate_app list **)
+(** val merge_rotations : rzQ_ucom_l -> rzQ_Unitary gate_app list **)
 
 let merge_rotations l =
-  let l' = merge_rotations_at_beginning l (length l) in
-  let l'' = merge_rotations_at_end (invert l') (length l') in invert l''
+  let l' = merge_rotations_at_beginning l (List.length l) in
+  let l'' = merge_rotations_at_end (invert l') (List.length l') in invert l''
 
 (** val propagate_X0 :
-    rzk_ucom_l -> int -> int -> rzk_Unitary gate_app list **)
+    rzQ_ucom_l -> int -> int -> rzQ_Unitary gate_app list **)
 
-let rec propagate_X0 l q n =
+let rec propagate_X0 l q0 n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> (x q) :: l)
+    (fun _ -> (x q0) :: l)
     (fun n' ->
     match l with
-    | [] -> (x q) :: []
+    | [] -> (x q0) :: []
     | u :: t1 ->
-      if does_not_reference_appl q u
-      then u :: (propagate_X0 t1 q n')
+      if does_not_reference_appl q0 u
+      then u :: (propagate_X0 t1 q0 n')
       else (match u with
             | App1 (r, n0) ->
               (match r with
-               | URzk_H -> u :: ((z q) :: t1)
-               | URzk_X -> t1
-               | URzk_Rz i -> (invert_rotation i n0) :: (propagate_X0 t1 q n')
-               | URzk_CNOT -> (x q) :: l)
+               | URzQ_H -> u :: ((z q0) :: t1)
+               | URzQ_X -> t1
+               | URzQ_Rz a ->
+                 (invert_rotation a n0) :: (propagate_X0 t1 q0 n')
+               | URzQ_CNOT -> (x q0) :: l)
             | App2 (r, m, n0) ->
               (match r with
-               | URzk_CNOT ->
-                 if (=) q m
+               | URzQ_CNOT ->
+                 if (=) q0 m
                  then u :: (propagate_X0 (propagate_X0 t1 m n') n0 n')
-                 else u :: (propagate_X0 t1 q n')
-               | _ -> (x q) :: l)
-            | App3 (_, _, _, _) -> (x q) :: l))
+                 else u :: (propagate_X0 t1 q0 n')
+               | _ -> (x q0) :: l)
+            | App3 (_, _, _, _) -> (x q0) :: l))
     n
 
-(** val not_propagation' : rzk_ucom_l -> int -> rzk_ucom_l **)
+(** val not_propagation' : rzQ_ucom_l -> int -> rzQ_ucom_l **)
 
 let rec not_propagation' l n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
@@ -4420,19 +4702,20 @@ let rec not_propagation' l n =
     | [] -> []
     | u :: t1 ->
       (match u with
-       | App1 (r, q) ->
+       | App1 (r, q0) ->
          (match r with
-          | URzk_X -> not_propagation' (propagate_X0 t1 q n) n'
+          | URzQ_X -> not_propagation' (propagate_X0 t1 q0 n) n'
           | _ -> u :: (not_propagation' t1 n'))
        | _ -> u :: (not_propagation' t1 n')))
     n
 
-(** val not_propagation : rzk_ucom_l -> rzk_ucom_l **)
+(** val not_propagation : rzQ_ucom_l -> rzQ_ucom_l **)
 
 let not_propagation l =
-  not_propagation' l (mul (Pervasives.succ (Pervasives.succ 0)) (length l))
+  not_propagation' l
+    (mul (Pervasives.succ (Pervasives.succ 0)) (List.length l))
 
-(** val optimize : rzk_ucom_l -> rzk_ucom_l **)
+(** val optimize : rzQ_ucom_l -> rzQ_ucom_l **)
 
 let optimize l =
   cancel_single_qubit_gates

@@ -11,6 +11,8 @@ module StringMap = Map.Make(String)
 (** Gate set definition **)
 
 let qelib1 = [
+
+  (* standard gates *)
   ("u3",  TGate(3,1));
   ("u2",  TGate(2,1));
   ("u1",  TGate(1,1));
@@ -36,8 +38,8 @@ let qelib1 = [
   ("cu1", TGate(1,2));
   ("cu3", TGate(3,2));
   
-  (* not standard *)
-  ("rz15", TGate(1,1))
+  (* custom - rotation by a rational multiple of PI *)
+  ("rzq", TGate(2,1))
 ]
 
 let check_stmt symTab stmt =
@@ -119,15 +121,15 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size (fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
-let _CNOT m n = E.App2 (E.URzk_CNOT, m, n)
-let _X    n = E.App1 (E.URzk_X,    n)
-let _Z    n = E.App1 (E.uRzk_Z,    n)
-let _H    n = E.App1 (E.URzk_H,    n)
-let _P    n = E.App1 (E.uRzk_P,    n)
-let _PDAG n = E.App1 (E.uRzk_PDAG, n)
-let _T    n = E.App1 (E.uRzk_T,    n)
-let _TDAG n = E.App1 (E.uRzk_TDAG, n)
-let _Rz i n = E.App1 (E.URzk_Rz(i), n)
+let _CNOT m n = E.App2 (E.URzQ_CNOT, m, n)
+let _X    n = E.App1 (E.URzQ_X,    n)
+let _Z    n = E.App1 (E.uRzQ_Z,    n)
+let _H    n = E.App1 (E.URzQ_H,    n)
+let _P    n = E.App1 (E.uRzQ_P,    n)
+let _PDAG n = E.App1 (E.uRzQ_PDAG, n)
+let _T    n = E.App1 (E.uRzQ_T,    n)
+let _TDAG n = E.App1 (E.uRzQ_TDAG, n)
+let _Rz a b n = E.App1 (E.URzQ_Rz({ qnum = a; qden = b }), n)
 
 let translate_statement s qmap sym_tab =
   match s with
@@ -150,9 +152,9 @@ let translate_statement s qmap sym_tab =
                | "sdg" -> apply_gate _PDAG  (List.hd qargs) qmap sym_tab
                | "t"   -> apply_gate _T     (List.hd qargs) qmap sym_tab
                | "tdg" -> apply_gate _TDAG  (List.hd qargs) qmap sym_tab
-               | "rz15" -> (match List.hd params with
-                           | Nninteger i -> apply_gate (_Rz i) (List.hd qargs) qmap sym_tab
-                           | _ -> raise (Failure ("ERROR: Invalid argument to rz15 gate")))
+               | "rzq" -> (match (List.nth params 0, List.nth params 1)  with
+                           | Nninteger i1, Nninteger i2 -> apply_gate (_Rz i1 i2) (List.hd qargs) qmap sym_tab
+                           | _ -> raise (Failure ("ERROR: Invalid argument to rzq gate")))
                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
              )
            | Some _ -> raise (Failure "ERROR: Not a gate!")
@@ -203,19 +205,10 @@ let get_gate_list f =
 
 let sqir_to_qasm_gate oc g =
   match g with
-  | E.App1 (E.URzk_H,      n) -> fprintf oc "h q[%d];\n" n
-  | E.App1 (E.URzk_X,      n) -> fprintf oc "x q[%d];\n" n
-  | E.App1 (E.URzk_Rz(i),  n) ->
-     (match i with
-      | 8192 ->  fprintf oc "t q[%d];\n" n (* PI/4 *)
-      | 16384 -> fprintf oc "s q[%d];\n" n (* PI/2 *)
-      | 24576 -> fprintf oc "t q[%d];\ns q[%d];\n" n n (* 3PI/4 *)
-      | 32768 -> fprintf oc "z q[%d];\n" n (* PI *)
-      | 40960 -> fprintf oc "t q[%d];\nz q[%d];\n" n n (* 5PI/4 *)
-      | 49152 -> fprintf oc "sdg q[%d];\n" n (* 3PI/2 *)
-      | 57344 -> fprintf oc "tdg q[%d];\n" n (* 7PI/4 *)
-      | _ -> fprintf oc "rz15(%d) q[%d];\n" i n)
-  | E.App2 (E.URzk_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
+  | E.App1 (E.URzQ_H,      n) -> fprintf oc "h q[%d];\n" n
+  | E.App1 (E.URzQ_X,      n) -> fprintf oc "x q[%d];\n" n
+  | E.App1 (E.URzQ_Rz(q),  n) -> fprintf oc "rzq(%d,%d) q[%d];\n" q.qnum q.qden n
+  | E.App2 (E.URzQ_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
   | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of UPI4_H) *)
 
 let write_qasm_file fname p dim =

@@ -1,8 +1,10 @@
 Require Import UnitarySem.
 Require Import Equivalences.
-Require Export RzkGateSet.
+Require Export RzQGateSet.
 Require Import List.
 Open Scope ucom.
+
+Local Close Scope Q_scope.
 
 (*******************************************)
 (** Optimization: hadamard gate reduction **)
@@ -24,33 +26,33 @@ Open Scope ucom.
    #5  - H q2; P† q2; CNOT q1 q2; P q2; H q2 ≡ P q2; CNOT q1 q2; P† q2 
 *)
 
-Definition apply_H_equivalence1 {dim} q (l : Rzk_ucom_l dim) := 
+Definition apply_H_equivalence1 {dim} q (l : RzQ_ucom_l dim) := 
   replace_single_qubit_pattern l q 
-    (URzk_H  :: URzk_P :: URzk_H :: []) 
-    (URzk_PDAG :: URzk_H :: URzk_PDAG :: [])
+    (URzQ_H  :: URzQ_P :: URzQ_H :: []) 
+    (URzQ_PDAG :: URzQ_H :: URzQ_PDAG :: [])
     match_gate.
 
-Definition apply_H_equivalence2 {dim} q (l : Rzk_ucom_l dim) := 
+Definition apply_H_equivalence2 {dim} q (l : RzQ_ucom_l dim) := 
   replace_single_qubit_pattern l q 
-    (URzk_H :: URzk_PDAG :: URzk_H :: []) 
-    (URzk_P :: URzk_H :: URzk_P :: [])
+    (URzQ_H :: URzQ_PDAG :: URzQ_H :: []) 
+    (URzQ_P :: URzQ_H :: URzQ_P :: [])
     match_gate.
 
-Definition apply_H_equivalence3 {dim} q (l : Rzk_ucom_l dim) := 
+Definition apply_H_equivalence3 {dim} q (l : RzQ_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
-  | Some (l1, URzk_H, l2) =>
+  | Some (l1, URzQ_H, l2) =>
       let l := l1 ++ l2 in
       match (next_two_qubit_gate l q) with
-      | Some (l1, URzk_CNOT, m, n, l2) => 
+      | Some (l1, URzQ_CNOT, m, n, l2) => 
           if (q =? m) 
           then match (last_single_qubit_gate l1 n) with
-               | Some (l1_1, URzk_H, l1_2) => 
+               | Some (l1_1, URzQ_H, l1_2) => 
                    let l1 := l1_1 ++ l1_2 in
                    match (next_single_qubit_gate l2 q) with
-                   | Some (l2_1, URzk_H, l2_2) =>
+                   | Some (l2_1, URzQ_H, l2_2) =>
                        let l2 := l2_1 ++ l2_2 in
                        match (next_single_qubit_gate l2 n) with
-                       | Some (l2_1, URzk_H, l2_2) => 
+                       | Some (l2_1, URzQ_H, l2_2) => 
                            let l2 := l2_1 ++ l2_2 in
                            Some (l1 ++ [CNOT n q] ++ l2)
                        | _ => None
@@ -60,13 +62,13 @@ Definition apply_H_equivalence3 {dim} q (l : Rzk_ucom_l dim) :=
                | _ => None
                end
           else match (last_single_qubit_gate l1 m) with
-               | Some (l1_1, URzk_H, l1_2) => 
+               | Some (l1_1, URzQ_H, l1_2) => 
                    let l1 := l1_1 ++ l1_2 in
                    match (next_single_qubit_gate l2 q) with
-                   | Some (l2_1, URzk_H, l2_2) =>
+                   | Some (l2_1, URzQ_H, l2_2) =>
                        let l2 := l2_1 ++ l2_2 in
                        match (next_single_qubit_gate l2 m) with
-                       | Some (l2_1, URzk_H, l2_2) => 
+                       | Some (l2_1, URzQ_H, l2_2) => 
                            let l2 := l2_1 ++ l2_2 in
                            Some (l1 ++ [CNOT q m] ++ l2)
                        | _ => None
@@ -80,14 +82,14 @@ Definition apply_H_equivalence3 {dim} q (l : Rzk_ucom_l dim) :=
   | _ => None
   end.
 
-Definition apply_H_equivalence4 {dim} q (l : Rzk_ucom_l dim) :=
-  match (remove_single_qubit_pattern l q (URzk_H :: URzk_P :: []) match_gate) with
+Definition apply_H_equivalence4 {dim} q (l : RzQ_ucom_l dim) :=
+  match (remove_single_qubit_pattern l q (URzQ_H :: URzQ_P :: []) match_gate) with
   | None => None
   | Some l1 =>
       match (next_two_qubit_gate l1 q) with
-      | Some (l2, URzk_CNOT, q1, q2, l3) =>
+      | Some (l2, URzQ_CNOT, q1, q2, l3) =>
           if q =? q2 
-          then match (remove_single_qubit_pattern l3 q (URzk_PDAG :: URzk_H :: []) match_gate) with
+          then match (remove_single_qubit_pattern l3 q (URzQ_PDAG :: URzQ_H :: []) match_gate) with
                | None => None
                | Some l4 =>
                    Some (l2 ++ (PDAG q2 :: CNOT q1 q2 :: P q2 :: []) ++ l4)
@@ -97,13 +99,13 @@ Definition apply_H_equivalence4 {dim} q (l : Rzk_ucom_l dim) :=
       end
   end.
 
-Definition apply_H_equivalence5 {dim} q (l : Rzk_ucom_l dim) :=
-  match (remove_single_qubit_pattern l q (URzk_H :: URzk_PDAG :: []) match_gate) with
+Definition apply_H_equivalence5 {dim} q (l : RzQ_ucom_l dim) :=
+  match (remove_single_qubit_pattern l q (URzQ_H :: URzQ_PDAG :: []) match_gate) with
   | Some l1 =>
       match (next_two_qubit_gate l1 q) with
-      | Some (l2, URzk_CNOT, q1, q2, l3) =>
+      | Some (l2, URzQ_CNOT, q1, q2, l3) =>
           if q =? q2 
-          then match (remove_single_qubit_pattern l3 q (URzk_P :: URzk_H :: []) match_gate) with
+          then match (remove_single_qubit_pattern l3 q (URzQ_P :: URzQ_H :: []) match_gate) with
                | Some l4 =>
                    Some (l2 ++ (P q2 :: CNOT q1 q2 :: PDAG q2 :: []) ++ l4)
                | _ => None
@@ -114,7 +116,7 @@ Definition apply_H_equivalence5 {dim} q (l : Rzk_ucom_l dim) :=
   | _ => None
   end.
 
-Definition apply_H_equivalence {dim} (l : Rzk_ucom_l dim) (q : nat) : option (Rzk_ucom_l dim) :=
+Definition apply_H_equivalence {dim} (l : RzQ_ucom_l dim) (q : nat) : option (RzQ_ucom_l dim) :=
   try_rewrites l (apply_H_equivalence1 q :: apply_H_equivalence2 q :: apply_H_equivalence3 q :: apply_H_equivalence4 q :: apply_H_equivalence5 q :: []).
 
 (* For each H gate, try to apply a rewrite rule. If some rewrite rule
@@ -130,13 +132,13 @@ Definition apply_H_equivalence {dim} (l : Rzk_ucom_l dim) (q : nat) : option (Rz
    If we wanted to do a proper proof of termination, we would need to show
    that each call to apply_H_equivalence (strictly) reduces the number of H 
    gates in the program. *)
-Fixpoint apply_H_equivalences {dim} (l : Rzk_ucom_l dim) (n: nat) : Rzk_ucom_l dim :=
+Fixpoint apply_H_equivalences {dim} (l : RzQ_ucom_l dim) (n: nat) : RzQ_ucom_l dim :=
   match n with
   | 0 => l
   | S n' => 
       match l with
       | [] => []
-      | (App1 URzk_H q) :: t => 
+      | (App1 URzQ_H q) :: t => 
           match apply_H_equivalence l q with
           | None => H q :: apply_H_equivalences t n'
           | Some l' => apply_H_equivalences l' n'
@@ -145,20 +147,32 @@ Fixpoint apply_H_equivalences {dim} (l : Rzk_ucom_l dim) (n: nat) : Rzk_ucom_l d
       end
   end.
 
-Definition hadamard_reduction {dim} (l : Rzk_ucom_l dim) := 
+Definition hadamard_reduction {dim} (l : RzQ_ucom_l dim) := 
   apply_H_equivalences l (2 * (length l)).
 
 (* Small example - both tests are the same circuit, just with the
    gate list reordered. The output should contain 2 H gates. *)
-Definition hadamard_reduction_test1 : Rzk_ucom_l 4 :=
+Definition hadamard_reduction_test1 : RzQ_ucom_l 4 :=
   X 0 :: H 0 :: P 0 :: H 0 :: X 0 :: H 1 :: H 2 :: CNOT 2 1 :: H 1 :: H 2 :: H 3 :: P 3 :: CNOT 3 2 :: H 3 :: P 3 :: CNOT 2 3 :: PDAG 3 :: H 3 :: [].
 Compute (hadamard_reduction hadamard_reduction_test1).
 
-Definition hadamard_reduction_test2 : Rzk_ucom_l 4 :=
+Definition hadamard_reduction_test2 : RzQ_ucom_l 4 :=
   H 2 :: H 3 :: X 0 :: H 1 :: CNOT 2 1 :: P 3 :: H 0 :: H 2 :: P 0 :: CNOT 3 2 :: H 3 :: P 3 :: CNOT 2 3 :: H 0 :: X 0 :: PDAG 3 :: H 1 :: H 3 :: [].
 Compute (hadamard_reduction hadamard_reduction_test2).
 
-Lemma apply_H_equivalence1_sound : forall {dim} (l l' : Rzk_ucom_l dim) q,
+Lemma P_simplifies : phase_shift (1 * / 2 * PI) = phase_shift (PI/2).
+Proof. apply f_equal. lra. Qed.
+
+Lemma PDAG_simplifies : phase_shift (3 * / 2 * PI) = phase_shift (-(PI/2)).
+Proof.
+  unfold phase_shift; solve_matrix.
+  replace (3 * / 2 * PI)%R with (2 * PI + - / 2 * PI)%R by lra.
+  rewrite Cexp_add, Cexp_2PI. 
+  autorewrite with R_db C_db Cexp_db. 
+  rewrite Rmult_comm; reflexivity.
+Qed.
+
+Lemma apply_H_equivalence1_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   apply_H_equivalence1 q l = Some l' ->
   l ≅l≅ l'. 
 Proof.
@@ -174,13 +188,12 @@ Proof.
   do 2 (apply f_equal2; trivial).
   rewrite hadamard_rotation.
   repeat rewrite phase_shift_rotation.
-  replace 98304%Z with (3 * Rzk_k)%Z.
-  2: unfold Rzk_k; lia.
+  unfold Qreals.Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
 
-Lemma apply_H_equivalence2_sound : forall {dim} (l l' : Rzk_ucom_l dim) q,
+Lemma apply_H_equivalence2_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   apply_H_equivalence2 q l = Some l' ->
   l ≅l≅ l'.
 Proof. 
@@ -196,13 +209,12 @@ Proof.
   do 2 (apply f_equal2; trivial).
   rewrite hadamard_rotation.
   repeat rewrite phase_shift_rotation.
-  replace 98304%Z with (3 * Rzk_k)%Z.
-  2: unfold Rzk_k; lia.
+  unfold Qreals.Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
 
-Lemma apply_H_equivalence3_sound : forall {dim} (l l' : Rzk_ucom_l dim) q,
+Lemma apply_H_equivalence3_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   apply_H_equivalence3 q l = Some l' ->
   l =l= l'.
 Proof.
@@ -234,7 +246,7 @@ Proof.
     bdestruct (n =? n0).
     subst.
     unfold uc_equiv_l, uc_equiv. 
-    repeat (try rewrite Rzk_to_base_ucom_l_app;
+    repeat (try rewrite RzQ_to_base_ucom_l_app;
             try rewrite list_to_ucom_append;
             simpl).
     unfold ueval_cnot. bdestruct_all. Msimpl_light. reflexivity.
@@ -283,7 +295,7 @@ Proof.
     bdestruct (n =? n0).
     subst.
     unfold uc_equiv_l, uc_equiv. 
-    repeat (try rewrite Rzk_to_base_ucom_l_app;
+    repeat (try rewrite RzQ_to_base_ucom_l_app;
             try rewrite list_to_ucom_append;
             simpl).
     unfold ueval_cnot. bdestruct_all. Msimpl_light. reflexivity.
@@ -309,30 +321,30 @@ Proof.
     apply H_swaps_CNOT.
 Qed.
 
-Lemma apply_H_equivalence4_sound : forall {dim} (l l' : Rzk_ucom_l dim) q,
+Lemma apply_H_equivalence4_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   apply_H_equivalence4 q l = Some l' ->
   l =l= l'.
 Proof.
   intros. 
   unfold apply_H_equivalence4 in H.
-  destruct (remove_single_qubit_pattern l q (URzk_H :: URzk_P :: [])) eqn:rsqp1; try discriminate.
+  destruct (remove_single_qubit_pattern l q (URzQ_H :: URzQ_P :: [])) eqn:rsqp1; try discriminate.
   apply remove_single_qubit_pattern_correct in rsqp1.
   destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
   repeat destruct p; dependent destruction r.
   specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
   apply ntqg_preserves_structure in ntqg; subst.
   bdestruct (q =? n); try discriminate.
-  destruct (remove_single_qubit_pattern g0 q (URzk_PDAG :: URzk_H :: [])) eqn:rsqp2; try discriminate.
+  destruct (remove_single_qubit_pattern g0 q (URzQ_PDAG :: URzQ_H :: [])) eqn:rsqp2; try discriminate.
   apply remove_single_qubit_pattern_correct in rsqp2.
   inversion H; subst.
   simpl in *.
   rewrite rsqp1, rsqp2.
   repeat rewrite app_comm_cons.
-  rewrite (cons_to_app (App1 URzk_H n)).
-  rewrite (cons_to_app (App1 URzk_P n)).
-  rewrite (does_not_reference_commutes_app1 _ URzk_P _ dnr). 
+  rewrite (cons_to_app (App1 URzQ_H n)).
+  rewrite (cons_to_app (App1 URzQ_P n)).
+  rewrite (does_not_reference_commutes_app1 _ URzQ_P _ dnr). 
   rewrite app_assoc.
-  rewrite (does_not_reference_commutes_app1 _ URzk_H _ dnr).
+  rewrite (does_not_reference_commutes_app1 _ URzQ_H _ dnr).
   clear.
   repeat rewrite <- app_assoc; simpl.
   rewrite <- (app_nil_l g).
@@ -343,8 +355,7 @@ Proof.
   unfold uc_equiv; simpl.
   rewrite hadamard_rotation.
   repeat rewrite phase_shift_rotation.
-  replace 98304%Z with (3 * Rzk_k)%Z.
-  2: unfold Rzk_k; lia.
+  unfold Qreals.Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   autorewrite with eval_db.
   gridify.
@@ -354,30 +365,30 @@ Proof.
       rewrite Cexp_neg; rewrite Cexp_PI2; repeat group_radicals; lca.
 Qed.    
 
-Lemma apply_H_equivalence5_sound : forall {dim} (l l' : Rzk_ucom_l dim) q,
+Lemma apply_H_equivalence5_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   apply_H_equivalence5 q l = Some l' ->
   l =l= l'.
 Proof.
   intros. 
   unfold apply_H_equivalence5 in H.
-  destruct (remove_single_qubit_pattern l q (URzk_H :: URzk_PDAG :: [])) eqn:rsqp1; try easy.
+  destruct (remove_single_qubit_pattern l q (URzQ_H :: URzQ_PDAG :: [])) eqn:rsqp1; try easy.
   apply remove_single_qubit_pattern_correct in rsqp1.
   destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
   repeat destruct p; dependent destruction r.
   specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
   apply ntqg_preserves_structure in ntqg; subst.
   bdestruct (q =? n); try discriminate.
-  destruct (remove_single_qubit_pattern g0 q (URzk_P :: URzk_H :: [])) eqn:rsqp2; try discriminate.
+  destruct (remove_single_qubit_pattern g0 q (URzQ_P :: URzQ_H :: [])) eqn:rsqp2; try discriminate.
   apply remove_single_qubit_pattern_correct in rsqp2.
   inversion H; subst.
   simpl in *.
   rewrite rsqp1, rsqp2.
   repeat rewrite app_comm_cons.
-  rewrite (cons_to_app (App1 URzk_H n)).
-  rewrite (cons_to_app (App1 URzk_PDAG n)).
-  rewrite (does_not_reference_commutes_app1 _ URzk_PDAG _ dnr). 
+  rewrite (cons_to_app (App1 URzQ_H n)).
+  rewrite (cons_to_app (App1 URzQ_PDAG n)).
+  rewrite (does_not_reference_commutes_app1 _ URzQ_PDAG _ dnr). 
   rewrite app_assoc.
-  rewrite (does_not_reference_commutes_app1 _ URzk_H _ dnr).
+  rewrite (does_not_reference_commutes_app1 _ URzQ_H _ dnr).
   clear.
   repeat rewrite <- app_assoc; simpl.
   rewrite <- (app_nil_l g).
@@ -388,8 +399,7 @@ Proof.
   unfold uc_equiv; simpl.
   rewrite hadamard_rotation.
   repeat rewrite phase_shift_rotation.
-  replace 98304%Z with (3 * Rzk_k)%Z.
-  2: unfold Rzk_k; lia.
+  unfold Qreals.Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   autorewrite with eval_db.
   gridify.
@@ -399,7 +409,7 @@ Proof.
       rewrite Cexp_neg; rewrite Cexp_PI2; repeat group_radicals; lca.
 Qed.    
 
-Lemma apply_H_equivalence_sound : forall {dim} (l l' : Rzk_ucom_l dim) q,
+Lemma apply_H_equivalence_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   apply_H_equivalence l q = Some l' -> 
   l ≅l≅ l'.
 Proof. 
@@ -418,7 +428,7 @@ Proof.
   subst; apply (apply_H_equivalence5_sound _ _ _ H0). 
 Qed.
 
-Lemma apply_H_equivalences_sound: forall {dim} (l : Rzk_ucom_l dim) n, 
+Lemma apply_H_equivalences_sound: forall {dim} (l : RzQ_ucom_l dim) n, 
   l ≅l≅ apply_H_equivalences l n.
 Proof. 
   intros.
@@ -428,18 +438,18 @@ Proof.
   destruct l; try easy.
   destruct g as [u | | u]; simpl.
   - dependent destruction u.
-    destruct (apply_H_equivalence (App1 URzk_H n0 :: l) n0) eqn:res.
+    destruct (apply_H_equivalence (App1 URzQ_H n0 :: l) n0) eqn:res.
     all: rewrite <- IHn; try reflexivity.
     apply (apply_H_equivalence_sound _ _ _ res).
   - rewrite <- IHn; reflexivity.
   - inversion u.
 Qed.
 
-Lemma hadamard_reduction_sound: forall {dim} (l : Rzk_ucom_l dim), 
+Lemma hadamard_reduction_sound: forall {dim} (l : RzQ_ucom_l dim), 
   hadamard_reduction l ≅l≅ l.
 Proof. intros. symmetry. apply apply_H_equivalences_sound. Qed.
 
-Lemma hadamard_reduction_WT: forall {dim} (l : Rzk_ucom_l dim),
+Lemma hadamard_reduction_WT: forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (hadamard_reduction l).
 Proof.
   intros dim l WT.

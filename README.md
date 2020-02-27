@@ -14,6 +14,7 @@ Our repository is split into two parts: SQIR and VOQC. If you are interested in 
 
 Dependencies:
   * OCaml version 4.08.1 
+  * zarith (`opam install zarith`)
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
   * OCaml OpenQASM parser (`opam install openQASM`)

@@ -1,23 +1,24 @@
 Require Coq.extraction.Extraction.
 Require Import optimizer.ListRepresentation.
-Require Import optimizer.RzkGateSet.
+Require Import optimizer.RzQGateSet.
 Require Import optimizer.GateCancellation.
 Require Import optimizer.HadamardReduction.
 Require Import optimizer.RotationMerging.
 Require Import optimizer.NotPropagation.
 Require Import optimizer.Optimize.
 
-(* General utilies for bools, options, etc. *)
+(* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
-
-(* Automatic extraction from nat/int -> OCaml int. We may not want to use these. *)
-Require Coq.extraction.ExtrOcamlNatInt.
-Require Coq.extraction.ExtrOcamlZInt.
 
 (* A few list functions not included in ExtrOcamlBasic. *)
 Extract Constant length => "List.length".
 Extract Constant app => "List.append".
 Extract Constant rev => "List.rev".
+Extraction Inline length app rev.
+
+(* Standard extraction from nat -> OCaml int. *)
+Require Coq.extraction.ExtrOcamlNatInt.
+Require Coq.extraction.ExtrOcamlZInt.
 
 (* Set the dimension argument to be implicit everywhere -- it should be an
    unused argument everywhere in the OCaml code. *)
@@ -35,7 +36,7 @@ Extraction Implicit try_rewrites [U dim].
 Extraction Implicit try_rewrites2 [U dim].
 Extraction Implicit propagate [U dim].
 
-(* From RzkGateSet.v *)
+(* From RzQGateSet.v *)
 Extraction Implicit T [dim].
 Extraction Implicit TDAG [dim].
 Extraction Implicit P [dim].
@@ -47,7 +48,6 @@ Extraction Implicit X [dim].
 Extraction Implicit CNOT [dim].
 Extraction Implicit CCX [dim].
 Extraction Implicit CCZ [dim].
-Extraction Implicit match_gate [n].
 Extraction Implicit combine_rotations [dim].
 Extraction Implicit invert_rotation [dim].
 
@@ -110,5 +110,6 @@ Extraction Implicit optimize [dim].
 (* Perform extraction to the file 'extracted_code.ml'. *)
 Extraction "ExtractedCode.ml" 
   CCX CCZ
-  URzk_Z URzk_P URzk_PDAG URzk_T URzk_TDAG URzk_Rz
+  URzQ_Z URzQ_P URzQ_PDAG URzQ_T URzQ_TDAG URzQ_Rz
+  is_odd_multiple_of_1_4 
   optimize.

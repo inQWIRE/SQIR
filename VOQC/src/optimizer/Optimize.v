@@ -12,7 +12,7 @@ Require Import RotationMerging.
    3 - two qubit gate cancellation
    4 - rotation merging *) 
 
-Definition optimize {dim} (l : Rzk_ucom_l dim) : Rzk_ucom_l dim :=
+Definition optimize {dim} (l : RzQ_ucom_l dim) : RzQ_ucom_l dim :=
   cancel_single_qubit_gates 
     (cancel_two_qubit_gates 
       (merge_rotations 
@@ -25,25 +25,25 @@ Definition optimize {dim} (l : Rzk_ucom_l dim) : Rzk_ucom_l dim :=
                     (not_propagation l))))))))). 
 
 (* Built-in well-typedness check. *)
-Definition optimize_check_for_type_errors {dim} (l : Rzk_ucom_l dim) 
-    : option (Rzk_ucom_l dim) :=
-  if Rzk_list_well_typed_b dim l
+Definition optimize_check_for_type_errors {dim} (l : RzQ_ucom_l dim) 
+    : option (RzQ_ucom_l dim) :=
+  if RzQ_ucom_l_well_typed_b dim l
   then Some (optimize l)
   else None.
 
-Lemma cancel_single_qubit_gates_sound' : forall {dim} (l : Rzk_ucom_l dim),
+Lemma cancel_single_qubit_gates_sound' : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> cancel_single_qubit_gates l ≅l≅ l.
 Proof. intros. apply uc_equiv_cong_l. apply cancel_single_qubit_gates_sound. auto. Qed.
 
-Lemma cancel_two_qubit_gates_sound' : forall {dim} (l : Rzk_ucom_l dim),
+Lemma cancel_two_qubit_gates_sound' : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> cancel_two_qubit_gates l ≅l≅ l.
 Proof. intros. apply uc_equiv_cong_l. apply cancel_two_qubit_gates_sound. auto. Qed.
 
-Lemma merge_rotations_sound' : forall {dim} (l : Rzk_ucom_l dim),
+Lemma merge_rotations_sound' : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> merge_rotations l ≅l≅ l.
 Proof. intros. apply uc_equiv_cong_l. apply merge_rotations_sound. auto. Qed.
 
-Lemma optimize_sound : forall {dim} (l : Rzk_ucom_l dim),
+Lemma optimize_sound : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> optimize l ≅l≅ l.
 Proof.
   intros.
@@ -64,13 +64,13 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma optimize_check_for_type_errors_sound : forall {dim} (l l' : Rzk_ucom_l dim),
+Lemma optimize_check_for_type_errors_sound : forall {dim} (l l' : RzQ_ucom_l dim),
   optimize_check_for_type_errors l = Some l' ->
   l' ≅l≅ l.
 Proof.
   intros dim l l' H.
   unfold optimize_check_for_type_errors in H.
-  destruct (Rzk_list_well_typed_b dim l) eqn:WTb; try discriminate.
+  destruct (RzQ_ucom_l_well_typed_b dim l) eqn:WTb; try discriminate.
   inversion H; subst.
   apply optimize_sound.
   apply uc_well_typed_l_b_equiv.

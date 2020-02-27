@@ -28,26 +28,26 @@ do
     rm -rf ${program_name}.txt
 done
 
-echo""
-printf "${GREEN}##### Running on files in PF #####${NOCOLOR}\n"
-for filename in "${pf_filenames[@]}"
-do
-    program_name=`basename "$filename" .qasm`
-    currentTime=`date`
-    printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
-    (time dune exec ./voqc.exe ${filename} out.qasm --root ../extraction) &> ${program_name}.txt
-    python parseOutput.py ${program_name}.txt >> benchmark_results.csv
-    rm -rf ${program_name}.txt
-done
-
-echo""
-printf "${GREEN}##### Running on files in QFT_and_Adders #####${NOCOLOR}\n"
-for filename in "${QFT_and_Adders_filenames[@]}"
-do
-    program_name=`basename "$filename" .qasm`
-    currentTime=`date`
-    printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
-    (time dune exec ./voqc.exe ${filename} out.qasm --root ../extraction) &> ${program_name}.txt
-    python parseOutput.py ${program_name}.txt >> benchmark_results.csv
-    rm -rf ${program_name}.txt
-done
+# echo""
+# printf "${GREEN}##### Running on files in PF #####${NOCOLOR}\n"
+# for filename in "${pf_filenames[@]}"
+# do
+#     program_name=`basename "$filename" .qasm`
+#     currentTime=`date`
+#     printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
+#     (time dune exec ./voqc.exe ${filename} out.qasm --root ../extraction) &> ${program_name}.txt
+#     python parseOutput.py ${program_name}.txt >> benchmark_results.csv
+#     rm -rf ${program_name}.txt
+# done
+# 
+# echo""
+# printf "${GREEN}##### Running on files in QFT_and_Adders #####${NOCOLOR}\n"
+# for filename in "${QFT_and_Adders_filenames[@]}"
+# do
+#     program_name=`basename "$filename" .qasm`
+#     currentTime=`date`
+#     printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
+#     (time dune exec ./voqc.exe ${filename} out.qasm --root ../extraction) &> ${program_name}.txt
+#     python parseOutput.py ${program_name}.txt >> benchmark_results.csv
+#     rm -rf ${program_name}.txt
+# done

@@ -1,5 +1,5 @@
 Require Import DensitySem.
-Require Import optimizer.RzkGateSet.
+Require Import optimizer.RzQGateSet.
 
 Local Open Scope com_scope.
 
@@ -42,16 +42,16 @@ Proof.
 Qed. 
 
 (* list version of the equivalence above *)
-Lemma Rzk_Meas : forall {dim} i n (l1 l2 : Rzk_com_l dim), 
+Lemma RzQ_Meas : forall {dim} i n (l1 l2 : RzQ_com_l dim), 
   (UC [Rz i n]) :: [Meas n l1 l2] =l= [Meas n l1 l2].
 Proof.
   intros.
   unfold c_equiv_l; simpl.
-  rewrite Rzk_to_base_instr_UC, Rzk_to_base_instr_Meas.
+  rewrite RzQ_to_base_instr_UC, RzQ_to_base_instr_Meas.
   rewrite instr_to_com_UC, instr_to_com_Meas. 
   simpl.
   rewrite skip_id_r.
-  rewrite <- Rz_mif with (θ:=(IZR i * PI / IZR Rzk_k)%R) at 2.
+  rewrite <- Rz_mif with (θ:=(IZR i * PI / IZR RzQ_k)%R) at 2.
   apply seq_congruence; try reflexivity.
   unfold c_equiv; simpl.
   intros.
@@ -87,11 +87,11 @@ Qed.
    Rz gates per UC block, the function below could be modified - or just run multiple times. *)
 
 (* Get the next rotation gate on any qubit. *)
-Fixpoint next_Rz_gate {dim} (l : Rzk_ucom_l dim)
-             : option (Rzk_ucom_l dim * BinInt.Z * nat * Rzk_ucom_l dim) :=
+Fixpoint next_Rz_gate {dim} (l : RzQ_ucom_l dim)
+             : option (RzQ_ucom_l dim * BinInt.Z * nat * RzQ_ucom_l dim) :=
   match l with
   | [] => None
-  | (App1 (URzk_Rz i) n) :: t => Some ([], i, n, t) 
+  | (App1 (URzQ_Rz i) n) :: t => Some ([], i, n, t) 
   | g :: t => match (next_Rz_gate t) with
             | None => None
             | Some (l1, i, n, l2) => Some (g :: l1, i, n, l2)
@@ -99,7 +99,7 @@ Fixpoint next_Rz_gate {dim} (l : Rzk_ucom_l dim)
   end.
 
 (* Perform the optimization. *)
-Fixpoint remove_Rz_before_meas' {dim} (l : Rzk_com_l dim) n :=
+Fixpoint remove_Rz_before_meas' {dim} (l : RzQ_com_l dim) n :=
   match n with
   | O => l
   | S n' =>
@@ -120,24 +120,24 @@ Fixpoint remove_Rz_before_meas' {dim} (l : Rzk_com_l dim) n :=
           Meas n l1' l2' :: remove_Rz_before_meas' t n'
       end
   end.
-Definition remove_Rz_before_meas {dim} (l : Rzk_com_l dim) :=
+Definition remove_Rz_before_meas {dim} (l : RzQ_com_l dim) :=
   remove_Rz_before_meas' l (count_ops l).
 
 (** Examples **)
 
-Definition test1 : Rzk_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 [] [] :: [].
+Definition test1 : RzQ_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 [] [] :: [].
 Compute (count_ops test1).
 Compute (remove_Rz_before_meas test1).
-Definition test2 : Rzk_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 (UC [P 1] :: Meas 1 [] [] :: []) [] :: [].
+Definition test2 : RzQ_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 (UC [P 1] :: Meas 1 [] [] :: []) [] :: [].
 Compute (count_ops test2).
 Compute (remove_Rz_before_meas test2).
-Definition test3 : Rzk_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: UC (H 2 :: []) :: Meas 2 [] [UC [H 1]] :: Meas 0 (UC [P 1] :: Meas 0 [] [] :: Meas 1 [] [] :: []) [UC (X 2 :: CNOT 1 2 :: [])] :: [].
+Definition test3 : RzQ_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: UC (H 2 :: []) :: Meas 2 [] [UC [H 1]] :: Meas 0 (UC [P 1] :: Meas 0 [] [] :: Meas 1 [] [] :: []) [UC (X 2 :: CNOT 1 2 :: [])] :: [].
 Compute (count_ops test3).
 Compute (remove_Rz_before_meas test3).
 
 (** Proofs **)
 
-Lemma next_Rz_gate_preserves_structure : forall dim (l : Rzk_ucom_l dim) l1 i n l2,
+Lemma next_Rz_gate_preserves_structure : forall dim (l : RzQ_ucom_l dim) l1 i n l2,
   next_Rz_gate l = Some (l1, i, n, l2) ->
   l = l1 ++ [Rz i n] ++ l2.
 Proof.
@@ -156,7 +156,7 @@ Proof.
     inversion H; subst. reflexivity.
 Qed.
 
-Lemma remove_Rz_before_meas_sound : forall dim (l : Rzk_com_l dim),
+Lemma remove_Rz_before_meas_sound : forall dim (l : RzQ_com_l dim),
   remove_Rz_before_meas l =l= l.
 Proof.
   intros.
@@ -206,7 +206,7 @@ Proof.
     rewrite <- app_assoc.
     apply c_app_congruence; try reflexivity.
     simpl.
-    symmetry. apply Rzk_Meas.
+    symmetry. apply RzQ_Meas.
   - rewrite IHn with (l:=l).
     unfold c_equiv_l, c_equiv; intros.
     apply Meas_cons_congruence; unfold c_eval_l, project_onto; simpl.

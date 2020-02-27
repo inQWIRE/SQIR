@@ -1,9 +1,10 @@
 Require Import Proportional.
 Require Import Equivalences.
-Require Export RzkGateSet.
+Require Export RzQGateSet.
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
+Local Close Scope Q_scope.
 
 Local Open Scope ucom_scope.
 
@@ -17,7 +18,7 @@ Local Open Scope ucom_scope.
    X propagates through CNOT. These additional gates will often be removed by
    later passes. *)
 
-Fixpoint propagate_X {dim} (l : Rzk_ucom_l dim) q n :=
+Fixpoint propagate_X {dim} (l : RzQ_ucom_l dim) q n :=
   match n with
   | O => X q :: l
   | S n' =>
@@ -27,11 +28,11 @@ Fixpoint propagate_X {dim} (l : Rzk_ucom_l dim) q n :=
           if does_not_reference_appl q u
           then u :: propagate_X t q n'
           else match u with
-               | App1 URzk_X n => t
-               | App1 URzk_H n => u :: Z q :: t
-               | App1 (URzk_Rz i) n => (* introduces global phase *)
-                  invert_rotation i n :: propagate_X t q n'
-               | App2 URzk_CNOT m n =>
+               | App1 URzQ_X n => t
+               | App1 URzQ_H n => u :: Z q :: t
+               | App1 (URzQ_Rz a) n => (* introduces global phase *)
+                  invert_rotation a n :: propagate_X t q n'
+               | App2 URzQ_CNOT m n =>
                    if q =? m 
                    then u :: propagate_X (propagate_X t m n') n n'
                    else u :: propagate_X t q n'
@@ -40,20 +41,20 @@ Fixpoint propagate_X {dim} (l : Rzk_ucom_l dim) q n :=
       end
   end.
 
-Fixpoint not_propagation' {dim} (l : Rzk_ucom_l dim) n :=
+Fixpoint not_propagation' {dim} (l : RzQ_ucom_l dim) n :=
   match n with
   | O => l
   | S n' => 
       match l with
       | [] => [] 
-      | App1 URzk_X q :: t => not_propagation' (propagate_X t q n) n'
+      | App1 URzQ_X q :: t => not_propagation' (propagate_X t q n) n'
       | u  :: t => u :: not_propagation' t n'
       end
   end.
 
 (* Worst case, every CNOT propagates two X gates, so we start with
    n = 2 × (length n). The n = 0 case should be unreachable. *)
-Definition not_propagation {dim} (l : Rzk_ucom_l dim) := 
+Definition not_propagation {dim} (l : RzQ_ucom_l dim) := 
   not_propagation' l (2 * List.length l).
 
 (* Proofs *)
@@ -65,8 +66,8 @@ Proof.
   unfold uc_equiv_l, uc_equiv; simpl.
   repeat rewrite Mmult_assoc.
   apply f_equal2; trivial.
-  replace (IZR Rzk_k * PI / IZR Rzk_k)%R with PI.
-  2: unfold Rzk_k; lra.
+  unfold Qreals.Q2R; simpl. 
+  replace (1 * / 1 * PI)%R with PI by lra. 
   rewrite pauli_x_rotation.
   rewrite pauli_z_rotation.
   rewrite hadamard_rotation.
@@ -88,13 +89,13 @@ Proof.
   Qsimpl; reflexivity.
 Qed.
 
-Lemma Rz_X_commutes : forall {dim} q i,
-  ([@X dim q] ++ [Rz i q]) ≅l≅ ([invert_rotation i q] ++ [X q]).
+Lemma Rz_X_commutes : forall {dim} q a,
+  ([@X dim q] ++ [Rz a q]) ≅l≅ ([invert_rotation a q] ++ [X q]).
 Proof.
   intros.
   Local Opaque Z.sub.
   unfold uc_cong_l, uc_cong; simpl.
-  exists (IZR i * PI / IZR Rzk_k)%R.
+  exists (Qreals.Q2R a * PI)%R.
   rewrite pauli_x_rotation.
   repeat rewrite phase_shift_rotation.
   repeat rewrite Mmult_assoc.
@@ -105,20 +106,14 @@ Proof.
   rewrite <- Mscale_kron_dist_l.
   rewrite <- Mscale_kron_dist_r.
   do 2 (apply f_equal2; trivial).
-  replace 65536%Z with (2 * Rzk_k)%Z by reflexivity.
-  rewrite <- phase_mod_2PI_scaled. 
-  2: unfold Rzk_k; lia.
+  rewrite Qreals.Q2R_minus.
+  remember (Qreals.Q2R a) as qa.
+  unfold Qreals.Q2R; simpl.
   unfold phase_shift; solve_matrix.
-  rewrite minus_IZR.
-  autorewrite with R_db.
-  repeat rewrite Rmult_plus_distr_r.
-  rewrite Cexp_add.
-  replace (65536 * PI * / IZR Rzk_k)%R with (2 * PI)%R. 
-  2: unfold Rzk_k; lra.
+  rewrite <- Cexp_add.
+  replace (qa * PI + (2 * / 1 - qa) * PI)%R with (2 * PI)%R by lra.
   rewrite Cexp_2PI. 
-  autorewrite with C_db. Search (- _ * _)%R.
-  do 2 rewrite <- Ropp_mult_distr_l.
-  symmetry. apply Cexp_mul_neg_r.
+  reflexivity.
 Qed.
 
 Lemma propagate_X_through_CNOT_control : forall {dim} m n,
@@ -149,7 +144,7 @@ Proof.
   gridify; Qsimpl; reflexivity.
 Qed.
 
-Lemma propagate_X_preserves_semantics : forall {dim} (l : Rzk_ucom_l dim) q n,
+Lemma propagate_X_preserves_semantics : forall {dim} (l : RzQ_ucom_l dim) q n,
   (q < dim)%nat -> propagate_X l q n ≅l≅ (X q :: l).
 Proof.
   intros dim l q n Hq.
@@ -207,7 +202,7 @@ Proof.
   - inversion u.
 Qed.
 
-Lemma propagate_X_well_typed : forall {dim} (l : Rzk_ucom_l dim) q n,
+Lemma propagate_X_well_typed : forall {dim} (l : RzQ_ucom_l dim) q n,
   (q < dim)%nat -> uc_well_typed_l l -> uc_well_typed_l (propagate_X l q n).
 Proof.
   intros dim l q n Hq WT.
@@ -218,7 +213,7 @@ Proof.
   apply uc_cong_l_implies_WT in H; assumption.
 Qed.
 
-Lemma not_propagation_sound : forall {dim} (l : Rzk_ucom_l dim), 
+Lemma not_propagation_sound : forall {dim} (l : RzQ_ucom_l dim), 
   uc_well_typed_l l -> not_propagation l ≅l≅ l.
 Proof.
   intros dim l WT.
@@ -237,7 +232,7 @@ Proof.
   apply H.
 Qed.
 
-Lemma not_propagation_WT : forall {dim} (l : Rzk_ucom_l dim),
+Lemma not_propagation_WT : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (not_propagation l).
 Proof.
   intros dim l WT.

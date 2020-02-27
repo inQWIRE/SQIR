@@ -1,11 +1,12 @@
 Require Import UnitarySem.
 Require Import Equivalences.
-Require Export RzkGateSet.
+Require Export RzQGateSet.
 Require Import List.
 Open Scope ucom.
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
+Local Close Scope Q_scope.
 
 (**********************************************************************)
 (** Optimization: simple cancellation and combination w/ commutation **)
@@ -29,14 +30,14 @@ Local Close Scope R_scope.
 
 (** Propagation rules for Rz **)
 
-Definition Rz_commute_rule1 {dim} q (l : Rzk_ucom_l dim) :=
+Definition Rz_commute_rule1 {dim} q (l : RzQ_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
-  | Some (l1, URzk_H, l2) => 
+  | Some (l1, URzQ_H, l2) => 
       match (next_two_qubit_gate l2 q) with
-      | Some (l3, URzk_CNOT, q1, q2, l4) =>
+      | Some (l3, URzQ_CNOT, q1, q2, l4) =>
           if q =? q2
           then match (next_single_qubit_gate l4 q) with
-               | Some (l5, URzk_H, l6) => Some (l1 ++ [H q] ++ l3 ++ [CNOT q1 q] ++ l5 ++ [H q], l6) 
+               | Some (l5, URzQ_H, l6) => Some (l1 ++ [H q] ++ l3 ++ [CNOT q1 q] ++ l5 ++ [H q], l6) 
                | _ => None
                end
           else None
@@ -45,14 +46,14 @@ Definition Rz_commute_rule1 {dim} q (l : Rzk_ucom_l dim) :=
   | _ => None
   end.
 
-Definition Rz_commute_rule2 {dim} q (l : Rzk_ucom_l dim) :=
+Definition Rz_commute_rule2 {dim} q (l : RzQ_ucom_l dim) :=
   match (next_two_qubit_gate l q) with
-  | Some (l1, URzk_CNOT, q1, q2, l2) => 
+  | Some (l1, URzQ_CNOT, q1, q2, l2) => 
       if q =? q2
       then match (next_single_qubit_gate l2 q) with
-           | Some (l3, URzk_Rz _ as u, l4) =>
+           | Some (l3, URzQ_Rz _ as u, l4) =>
                match (next_two_qubit_gate l4 q) with
-               | Some (l5, URzk_CNOT, q3, q4, l6) => 
+               | Some (l5, URzQ_CNOT, q3, q4, l6) => 
                    if (q =? q4) && (q1 =? q3) && (does_not_reference (l3 ++ l5) q3)
                    then Some (l1 ++ [CNOT q1 q] ++ l3 ++ [App1 u q] ++ l5 ++ [CNOT q1 q], l6)
                    else None 
@@ -64,9 +65,9 @@ Definition Rz_commute_rule2 {dim} q (l : Rzk_ucom_l dim) :=
   | _ => None
   end.
 
-Definition Rz_commute_rule3 {dim} q (l : Rzk_ucom_l dim) :=
+Definition Rz_commute_rule3 {dim} q (l : RzQ_ucom_l dim) :=
   match (next_two_qubit_gate l q) with
-  | Some (l1, URzk_CNOT, q1, q2, l2) => 
+  | Some (l1, URzQ_CNOT, q1, q2, l2) => 
       if q =? q1
       then Some (l1 ++ [CNOT q1 q2], l2)
       else None
@@ -76,50 +77,50 @@ Definition Rz_commute_rule3 {dim} q (l : Rzk_ucom_l dim) :=
 Definition Rz_commute_rules {dim} q :=
   @Rz_commute_rule1 dim q :: Rz_commute_rule2 q :: Rz_commute_rule3 q :: [].
 
-Definition Rz_cancel_rule {dim} q i (l : Rzk_ucom_l dim) :=
+Definition Rz_cancel_rule {dim} q a (l : RzQ_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
-  | Some (l1, URzk_Rz i', l2) =>
-      Some ((combine_rotations i i' q) ++ l1 ++ l2)
+  | Some (l1, URzQ_Rz a', l2) =>
+      Some ((combine_rotations a a' q) ++ l1 ++ l2)
   | _ => None
   end.
 
 (** Propagation rules for H **)
 (* (Currently no  rules for commuting.) *)
 
-Definition H_cancel_rule {dim} q (l : Rzk_ucom_l dim)  :=
+Definition H_cancel_rule {dim} q (l : RzQ_ucom_l dim)  :=
   match next_single_qubit_gate l q with
-  | Some (l1, URzk_H, l2) => Some (l1 ++ l2)
+  | Some (l1, URzQ_H, l2) => Some (l1 ++ l2)
   | _ => None
   end.
 
 (** Propagation rules for X **)
 
-Definition X_commute_rule {dim} q (l : Rzk_ucom_l dim) :=
+Definition X_commute_rule {dim} q (l : RzQ_ucom_l dim) :=
   match (next_two_qubit_gate l q) with
-  | Some (l1, URzk_CNOT, q1, q2, l2) => 
+  | Some (l1, URzQ_CNOT, q1, q2, l2) => 
       if q =? q2
       then Some (l1 ++ [CNOT q1 q2], l2)
       else None
   | _ => None
   end.
 
-Definition X_cancel_rule {dim} q (l : Rzk_ucom_l dim) :=
+Definition X_cancel_rule {dim} q (l : RzQ_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
-  | Some (l1, URzk_X, l2) => Some (l1 ++ l2)
+  | Some (l1, URzQ_X, l2) => Some (l1 ++ l2)
   | _ => None
   end.
 
 (** Propagation rules for CNOT **)
 
-Definition CNOT_commute_rule1 {dim} q1 (l : Rzk_ucom_l dim) : option (Rzk_ucom_l dim * Rzk_ucom_l dim) :=
+Definition CNOT_commute_rule1 {dim} q1 (l : RzQ_ucom_l dim) : option (RzQ_ucom_l dim * RzQ_ucom_l dim) :=
   match (next_single_qubit_gate l q1) with
-  | Some (l1, URzk_Rz _ as u, l2) => Some ([App1 u q1], l1 ++ l2)
+  | Some (l1, URzQ_Rz _ as u, l2) => Some ([App1 u q1], l1 ++ l2)
   | _ => None
   end.
 
-Definition CNOT_commute_rule2 {dim} q1 q2 (l : Rzk_ucom_l dim) :=
+Definition CNOT_commute_rule2 {dim} q1 q2 (l : RzQ_ucom_l dim) :=
   match (next_two_qubit_gate l q2) with
-  | Some (l1, URzk_CNOT, q1', q2', l2) => 
+  | Some (l1, URzQ_CNOT, q1', q2', l2) => 
       if q2 =? q2'
       then if (does_not_reference l1 q1)
            then Some (l1 ++ [CNOT q1' q2], l2)
@@ -128,9 +129,9 @@ Definition CNOT_commute_rule2 {dim} q1 q2 (l : Rzk_ucom_l dim) :=
   | _ => None
   end.
 
-Definition CNOT_commute_rule3 {dim} q1 q2 (l : Rzk_ucom_l dim) :=
+Definition CNOT_commute_rule3 {dim} q1 q2 (l : RzQ_ucom_l dim) :=
   match (next_two_qubit_gate l q1) with
-  | Some (l1, URzk_CNOT, q1', q2', l2) => 
+  | Some (l1, URzQ_CNOT, q1', q2', l2) => 
       if q1 =? q1'
       then if (does_not_reference l1 q2)
            then Some (l1 ++ [CNOT q1 q2'], l2)
@@ -139,14 +140,14 @@ Definition CNOT_commute_rule3 {dim} q1 q2 (l : Rzk_ucom_l dim) :=
   | _ => None
   end.
 
-Definition CNOT_commute_rule4 {dim} q1 q2 (l : Rzk_ucom_l dim) :=
+Definition CNOT_commute_rule4 {dim} q1 q2 (l : RzQ_ucom_l dim) :=
   match (next_single_qubit_gate l q2) with
-  | Some (l1, URzk_H, l2) => 
+  | Some (l1, URzQ_H, l2) => 
       match (next_two_qubit_gate l2 q2) with
-      | Some (l3, URzk_CNOT, q1', q2', l4) => 
+      | Some (l3, URzQ_CNOT, q1', q2', l4) => 
           if (q2 =? q1') && ¬ (q1 =? q2') && (does_not_reference (l1 ++ l3) q1)
           then match (next_single_qubit_gate l4 q2) with
-               | Some (l5, URzk_H, l6) => Some (l1 ++ [H q2] ++ l3 ++ [CNOT q2 q2'] ++ [H q2], l5 ++ l6)
+               | Some (l5, URzQ_H, l6) => Some (l1 ++ [H q2] ++ l3 ++ [CNOT q2 q2'] ++ [H q2], l5 ++ l6)
                | _ => None
                end
           else None
@@ -155,15 +156,15 @@ Definition CNOT_commute_rule4 {dim} q1 q2 (l : Rzk_ucom_l dim) :=
   | _ => None
   end.
 
-Definition CNOT_commute_rule5 {dim} q1 q2 (l : Rzk_ucom_l dim) :=
+Definition CNOT_commute_rule5 {dim} q1 q2 (l : RzQ_ucom_l dim) :=
   match next_single_qubit_gate l q2 with
-  | Some (l1, URzk_Rz i, l2) =>
+  | Some (l1, URzQ_Rz _ as u, l2) =>
       match next_two_qubit_gate l2 q2 with
-      | Some (l3, URzk_CNOT, q1', q2', l4) =>
+      | Some (l3, URzQ_CNOT, q1', q2', l4) =>
           if (q1 =? q1') && (q2 =? q2') && (does_not_reference (l1 ++ l3) q1)
           then match next_single_qubit_gate l4 q2 with
-               | Some (l5, URzk_Rz i', l6) =>
-                   Some (l1 ++ [App1 (URzk_Rz i') q2] ++ l3 ++ [CNOT q1' q2'] ++ [App1 (URzk_Rz i) q2], l5 ++ l6) 
+               | Some (l5, URzQ_Rz _ as u', l6) =>
+                   Some (l1 ++ [App1 u' q2] ++ l3 ++ [CNOT q1' q2'] ++ [App1 u q2], l5 ++ l6) 
                | _ => None
                end
           else None
@@ -175,9 +176,9 @@ Definition CNOT_commute_rule5 {dim} q1 q2 (l : Rzk_ucom_l dim) :=
 Definition CNOT_commute_rules {dim} q1 q2 :=
   @CNOT_commute_rule1 dim q1 :: CNOT_commute_rule2 q1 q2 :: CNOT_commute_rule3 q1 q2 :: CNOT_commute_rule4 q1 q2 :: CNOT_commute_rule5 q1 q2 :: [].
 
-Definition CNOT_cancel_rule {dim} q1 q2 (l : Rzk_ucom_l dim) :=
+Definition CNOT_cancel_rule {dim} q1 q2 (l : RzQ_ucom_l dim) :=
   match next_two_qubit_gate l q1 with
-  | Some (l1, URzk_CNOT, q1', q2', l2) => 
+  | Some (l1, URzQ_CNOT, q1', q2', l2) => 
       if (q1 =? q1') && (q2 =? q2') && (does_not_reference l1 q2)
       then Some (l1 ++ l2)
       else None
@@ -186,33 +187,33 @@ Definition CNOT_cancel_rule {dim} q1 q2 (l : Rzk_ucom_l dim) :=
 
 (** Gate Cancellation Routines **)
 
-Definition propagate_Rz {dim} k (l : Rzk_ucom_l dim) q n :=
-  propagate l (Rz_commute_rules q) [Rz_cancel_rule q k] n.
+Definition propagate_Rz {dim} a (l : RzQ_ucom_l dim) q n :=
+  propagate l (Rz_commute_rules q) [Rz_cancel_rule q a] n.
 
-Definition propagate_H {dim} (l : Rzk_ucom_l dim) q :=
+Definition propagate_H {dim} (l : RzQ_ucom_l dim) q :=
   propagate l [] [H_cancel_rule q] 1%nat.
 
-Definition propagate_X {dim} (l : Rzk_ucom_l dim) q n :=
+Definition propagate_X {dim} (l : RzQ_ucom_l dim) q n :=
   propagate l [X_commute_rule q] [X_cancel_rule q] n.
 
-Definition propagate_CNOT {dim} (l : Rzk_ucom_l dim) (q1 q2 n : nat) :=
+Definition propagate_CNOT {dim} (l : RzQ_ucom_l dim) (q1 q2 n : nat) :=
   propagate l (CNOT_commute_rules q1 q2) [CNOT_cancel_rule q1 q2] n.
 
-Fixpoint cancel_single_qubit_gates' {dim} (l : Rzk_ucom_l dim) (n: nat) : Rzk_ucom_l dim :=
+Fixpoint cancel_single_qubit_gates' {dim} (l : RzQ_ucom_l dim) (n: nat) : RzQ_ucom_l dim :=
   match n with
   | 0 => l
   | S n' => match l with
-           | App1 (URzk_Rz i) q :: t => 
-               match propagate_Rz i t q (length t) with
-               | None => (App1 (URzk_Rz i) q) :: cancel_single_qubit_gates' t n'
+           | App1 (URzQ_Rz a) q :: t => 
+               match propagate_Rz a t q (length t) with
+               | None => (App1 (URzQ_Rz a) q) :: cancel_single_qubit_gates' t n'
                | Some l' => cancel_single_qubit_gates' l' n'
                end
-           | App1 URzk_H q :: t => 
+           | App1 URzQ_H q :: t => 
                match propagate_H t q with
                | None => H q :: cancel_single_qubit_gates' t n'
                | Some l' => cancel_single_qubit_gates' l' n'
                end
-           | App1 URzk_X q :: t => 
+           | App1 URzQ_X q :: t => 
                match propagate_X t q (length t) with
                | None => X q :: cancel_single_qubit_gates' t n'
                | Some l' => cancel_single_qubit_gates' l' n'
@@ -222,14 +223,14 @@ Fixpoint cancel_single_qubit_gates' {dim} (l : Rzk_ucom_l dim) (n: nat) : Rzk_uc
            end
   end.
 
-Definition cancel_single_qubit_gates {dim} (l : Rzk_ucom_l dim) := 
+Definition cancel_single_qubit_gates {dim} (l : RzQ_ucom_l dim) := 
   cancel_single_qubit_gates' l (length l).
 
-Fixpoint cancel_two_qubit_gates' {dim} (l : Rzk_ucom_l dim) (n: nat) : Rzk_ucom_l dim :=
+Fixpoint cancel_two_qubit_gates' {dim} (l : RzQ_ucom_l dim) (n: nat) : RzQ_ucom_l dim :=
   match n with
   | 0 => l
   | S n' => match l with
-           | App2 URzk_CNOT q1 q2 :: t => 
+           | App2 URzQ_CNOT q1 q2 :: t => 
                match propagate_CNOT t q1 q2 (length t) with
                | None => CNOT q1 q2 :: cancel_two_qubit_gates' t n'
                | Some l' => cancel_two_qubit_gates' l' n'
@@ -239,15 +240,15 @@ Fixpoint cancel_two_qubit_gates' {dim} (l : Rzk_ucom_l dim) (n: nat) : Rzk_ucom_
            end
   end.
 
-Definition cancel_two_qubit_gates {dim} (l : Rzk_ucom_l dim) := 
+Definition cancel_two_qubit_gates {dim} (l : RzQ_ucom_l dim) := 
   cancel_two_qubit_gates' l (length l).
 
 (** Proofs **)
 
 (* Basic gate equivalences *)
 
-Lemma Rz_commutes_with_H_CNOT_H : forall {dim} i q1 q2,
-  @Rz dim i q2 :: H q2 :: CNOT q1 q2 :: H q2 :: [] =l= H q2 :: CNOT q1 q2 :: H q2 :: Rz i q2 :: [].
+Lemma Rz_commutes_with_H_CNOT_H : forall {dim} a q1 q2,
+  @Rz dim a q2 :: H q2 :: CNOT q1 q2 :: H q2 :: [] =l= H q2 :: CNOT q1 q2 :: H q2 :: Rz a q2 :: [].
 Proof.
   intros.
   unfold uc_equiv_l; simpl.
@@ -274,8 +275,8 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma Rz_commutes_with_CNOT_Rz_CNOT : forall {dim} i i' q1 q2,
-  @Rz dim i q2 :: CNOT q1 q2 :: Rz i' q2 :: CNOT q1 q2 :: [] =l= CNOT q1 q2 :: Rz i' q2 :: CNOT q1 q2 :: Rz i q2 :: [].
+Lemma Rz_commutes_with_CNOT_Rz_CNOT : forall {dim} a a' q1 q2,
+  @Rz dim a q2 :: CNOT q1 q2 :: Rz a' q2 :: CNOT q1 q2 :: [] =l= CNOT q1 q2 :: Rz a' q2 :: CNOT q1 q2 :: Rz a q2 :: [].
 Proof.
   intros.
   unfold uc_equiv_l; simpl.
@@ -286,20 +287,20 @@ Proof.
   gridify.
   - Qsimpl. 
     rewrite 2 phase_mul. rewrite Rplus_comm.
-    replace (σx × phase_shift (IZR i' * PI / IZR Rzk_k) × σx × phase_shift (IZR i * PI / IZR Rzk_k))
-      with (phase_shift (IZR i * PI / IZR Rzk_k) × σx × phase_shift (IZR i' * PI / IZR Rzk_k) × σx) by
+    replace (σx × phase_shift (Qreals.Q2R a' * PI) × σx × phase_shift (Qreals.Q2R a * PI))
+      with (phase_shift (Qreals.Q2R a * PI) × σx × phase_shift (Qreals.Q2R a' * PI) × σx) by
       solve_matrix.
     reflexivity.
   - Qsimpl.
     rewrite 2 phase_mul. rewrite Rplus_comm.
-    replace (σx × phase_shift (IZR i' * PI / IZR Rzk_k) × σx × phase_shift (IZR i * PI / IZR Rzk_k))
-      with (phase_shift (IZR i * PI / IZR Rzk_k) × σx × phase_shift (IZR i' * PI / IZR Rzk_k) × σx) by
+    replace (σx × phase_shift (Qreals.Q2R a' * PI) × σx × phase_shift (Qreals.Q2R a * PI))
+      with (phase_shift (Qreals.Q2R a * PI) × σx × phase_shift (Qreals.Q2R a' * PI) × σx) by
       solve_matrix.      
     reflexivity.
 Qed.
 
-Lemma Rz_commutes_with_CNOT : forall {dim} i q1 q2,
-  @Rz dim i q1 :: CNOT q1 q2 :: [] =l= CNOT q1 q2 :: Rz i q1 :: [].
+Lemma Rz_commutes_with_CNOT : forall {dim} a q1 q2,
+  @Rz dim a q1 :: CNOT q1 q2 :: [] =l= CNOT q1 q2 :: Rz a q1 :: [].
 Proof.
   intros.
   unfold uc_equiv_l; simpl.
@@ -308,15 +309,15 @@ Proof.
   rewrite phase_shift_rotation.
   autorewrite with eval_db.
   gridify.
-  - replace  (∣1⟩⟨1∣ × phase_shift (IZR i * PI / IZR Rzk_k))
-      with (phase_shift (IZR i * PI / IZR Rzk_k) × ∣1⟩⟨1∣) by solve_matrix.
-    replace  (∣0⟩⟨0∣ × phase_shift (IZR i * PI / IZR Rzk_k))
-      with (phase_shift (IZR i * PI / IZR Rzk_k) × ∣0⟩⟨0∣) by solve_matrix.
+  - replace  (∣1⟩⟨1∣ × phase_shift (Qreals.Q2R a * PI))
+      with (phase_shift (Qreals.Q2R a * PI) × ∣1⟩⟨1∣) by solve_matrix.
+    replace  (∣0⟩⟨0∣ × phase_shift (Qreals.Q2R a * PI))
+      with (phase_shift (Qreals.Q2R a * PI) × ∣0⟩⟨0∣) by solve_matrix.
     reflexivity.
-  - replace  (∣1⟩⟨1∣ × phase_shift (IZR i * PI / IZR Rzk_k))
-      with (phase_shift (IZR i * PI / IZR Rzk_k) × ∣1⟩⟨1∣) by solve_matrix.
-    replace  (∣0⟩⟨0∣ × phase_shift (IZR i * PI / IZR Rzk_k))
-      with (phase_shift (IZR i * PI / IZR Rzk_k) × ∣0⟩⟨0∣) by solve_matrix.
+  - replace  (∣1⟩⟨1∣ × phase_shift (Qreals.Q2R a * PI))
+      with (phase_shift (Qreals.Q2R a * PI) × ∣1⟩⟨1∣) by solve_matrix.
+    replace  (∣0⟩⟨0∣ × phase_shift (Qreals.Q2R a * PI))
+      with (phase_shift (Qreals.Q2R a * PI) × ∣0⟩⟨0∣) by solve_matrix.
     reflexivity.
 Qed.
 
@@ -351,7 +352,7 @@ Qed.
 
 Lemma CNOT_CNOT_cancel : forall {dim} q1 q2, 
   q1 < dim -> q2 < dim -> q1 <> q2 -> 
-  @App2 _ dim URzk_CNOT q1 q2 :: App2 URzk_CNOT q1 q2 :: [] =l= [].
+  @App2 _ dim URzQ_CNOT q1 q2 :: App2 URzQ_CNOT q1 q2 :: [] =l= [].
 Proof.
   intros.
   unfold uc_equiv_l, uc_equiv; simpl.
@@ -405,13 +406,13 @@ Qed.
 
 (* Proofs about optimization *)
 
-Lemma propagate_Rz_sound : forall {dim} i (l : Rzk_ucom_l dim) q n l',
+Lemma propagate_Rz_sound : forall {dim} a (l : RzQ_ucom_l dim) q n l',
   q < dim ->
-  propagate_Rz i l q n = Some l' ->
-  Rz i q :: l =l= l'.
+  propagate_Rz a l q n = Some l' ->
+  Rz a q :: l =l= l'.
 Proof.
   unfold propagate_Rz.
-  intros dim i l q n l' Hq res.
+  intros dim a l q n l' Hq res.
   eapply propagate_preserves_semantics; try apply res.
   apply uc_equiv_l_rel.
   apply uc_app_mor_Proper.
@@ -447,16 +448,16 @@ Proof.
       rewrite (cons_to_app (H n)).
       rewrite (cons_to_app (CNOT n0 n)).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app1 _ (URzk_Rz i) _ dnrg0).
+      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg0).
       repeat rewrite <- (app_assoc _ _ g2).
-      rewrite 2 (does_not_reference_commutes_app1 _ URzk_H _ dnrg2).
+      rewrite 2 (does_not_reference_commutes_app1 _ URzQ_H _ dnrg2).
       rewrite <- (app_assoc g0).
       rewrite (app_assoc _ g2).
-      rewrite (does_not_reference_commutes_app1 _ (URzk_Rz i) _ dnrg2).
+      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg2).
       repeat rewrite <- (app_assoc _ g4).
-      rewrite <- 2 (does_not_reference_commutes_app1 _ URzk_H _ dnrg4).
-      repeat rewrite <- (app_assoc _ _ [Rz i n]).
-      rewrite <- (does_not_reference_commutes_app1 _ (URzk_Rz i) _ dnrg4).
+      rewrite <- 2 (does_not_reference_commutes_app1 _ URzQ_H _ dnrg4).
+      repeat rewrite <- (app_assoc _ _ [Rz a n]).
+      rewrite <- (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg4).
       repeat rewrite <- app_assoc.  
       do 2 (apply uc_app_congruence; try reflexivity).
       repeat rewrite app_assoc.
@@ -487,18 +488,18 @@ Proof.
       apply andb_true_iff in dnr as [dnrg2' dnrg4'].
       rewrite cons_to_app.
       rewrite (cons_to_app (CNOT n2 n1)).
-      rewrite (cons_to_app (Rz i0 n1) (g4 ++ _)).
+      rewrite (cons_to_app (Rz a0 n1) (g4 ++ _)).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app1 _ (URzk_Rz i) _ dnrg0).
+      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg0).
       repeat rewrite <- (app_assoc _ _ g2).
-      rewrite 2 (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnrg2' dnrg2).
+      rewrite 2 (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg2' dnrg2).
       rewrite <- (app_assoc g0).
       rewrite (app_assoc _ g2).
-      rewrite (does_not_reference_commutes_app1 _ (URzk_Rz i) _ dnrg2).
+      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg2).
       repeat rewrite <- (app_assoc _ g4).
-      rewrite <- 2 (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnrg4' dnrg4).
-      repeat rewrite <- (app_assoc _ _ [Rz i n1]).
-      rewrite <- (does_not_reference_commutes_app1 _ (URzk_Rz i) _ dnrg4).
+      rewrite <- 2 (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg4' dnrg4).
+      repeat rewrite <- (app_assoc _ _ [Rz a n1]).
+      rewrite <- (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg4).
       repeat rewrite <- app_assoc.  
       do 2 (apply uc_app_congruence; try reflexivity).
       repeat rewrite app_assoc.
@@ -513,29 +514,29 @@ Proof.
       bdestruct (q =? n0); try discriminate.
       subst.
       inversion res; subst.
-      rewrite (cons_to_app (Rz i n0) (g0 ++ _)).
+      rewrite (cons_to_app (Rz a n0) (g0 ++ _)).
       repeat rewrite app_assoc.
       apply uc_app_congruence; try reflexivity. 
-      rewrite (does_not_reference_commutes_app1 _ (URzk_Rz i) _ dnr).
+      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnr).
       repeat rewrite <- app_assoc.
       apply uc_app_congruence; try reflexivity. 
       simpl.
       apply Rz_commutes_with_CNOT.
 Qed.
 
-Lemma propagate_Rz_WT : forall {dim} k (l : Rzk_ucom_l dim) q n l',
+Lemma propagate_Rz_WT : forall {dim} a (l : RzQ_ucom_l dim) q n l',
   q < dim ->
   uc_well_typed_l l ->
-  propagate_Rz k l q n = Some l' ->
+  propagate_Rz a l q n = Some l' ->
   uc_well_typed_l l'.
 Proof.
   intros.
-  specialize (propagate_Rz_sound k l q n l' H H1) as H2.
+  specialize (propagate_Rz_sound a l q n l' H H1) as H2.
   apply (uc_equiv_l_implies_WT _ _ H2).
   constructor; assumption.
 Qed.
 
-Lemma propagate_H_sound : forall {dim} (l : Rzk_ucom_l dim) q l',
+Lemma propagate_H_sound : forall {dim} (l : RzQ_ucom_l dim) q l',
   q < dim ->
   propagate_H l q = Some l' ->
   H q :: l =l= l'.
@@ -560,7 +561,7 @@ Proof.
     destruct_In.
 Qed.
 
-Lemma propagate_H_WT : forall {dim} (l : Rzk_ucom_l dim) q l',
+Lemma propagate_H_WT : forall {dim} (l : RzQ_ucom_l dim) q l',
   q < dim ->
   uc_well_typed_l l -> 
   propagate_H l q = Some l' ->
@@ -572,7 +573,7 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma propagate_X_sound : forall {dim} (l : Rzk_ucom_l dim) q n l',
+Lemma propagate_X_sound : forall {dim} (l : RzQ_ucom_l dim) q n l',
   q < dim ->
   propagate_X l q n = Some l' ->
   X q :: l =l= l'.
@@ -604,7 +605,7 @@ Proof.
     inversion res; subst.
     rewrite (cons_to_app (X n) (g0 ++_)).
     repeat rewrite app_assoc.
-    rewrite (does_not_reference_commutes_app1 _ URzk_X _ dnr). 
+    rewrite (does_not_reference_commutes_app1 _ URzQ_X _ dnr). 
     apply uc_app_congruence; try reflexivity.
     repeat rewrite <- app_assoc.
     apply uc_app_congruence; try reflexivity.
@@ -612,7 +613,7 @@ Proof.
     apply X_commutes_with_CNOT.
 Qed.
 
-Lemma propagate_X_WT : forall {dim} (l : Rzk_ucom_l dim) q n l',
+Lemma propagate_X_WT : forall {dim} (l : RzQ_ucom_l dim) q n l',
   q < dim ->
   uc_well_typed_l l ->
   propagate_X l q n = Some l' ->
@@ -624,7 +625,7 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma propagate_CNOT_sound : forall {dim} (l : Rzk_ucom_l dim) q1 q2 n l',
+Lemma propagate_CNOT_sound : forall {dim} (l : RzQ_ucom_l dim) q1 q2 n l',
   q1 < dim ->
   q2 < dim -> 
   q1 <> q2 ->
@@ -650,7 +651,7 @@ Proof.
     inversion res; subst.
     rewrite app_comm_cons.
     rewrite cons_to_app.
-    rewrite (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnr1 dnr2).
+    rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnr1 dnr2).
     rewrite app_assoc.
     rewrite <- (app_assoc g0).
     simpl.
@@ -680,7 +681,7 @@ Proof.
       inversion res; subst.
       rewrite (cons_to_app (CNOT q1 n) (g0 ++ _)).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnr2 dnr1).
+      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnr2 dnr1).
       apply uc_app_congruence; try reflexivity.
       repeat rewrite <- app_assoc.
       apply uc_app_congruence; try reflexivity.
@@ -695,7 +696,7 @@ Proof.
       inversion res; subst.
       rewrite (cons_to_app (CNOT n0 q2) (g0 ++ _)).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnr1 dnr2).
+      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnr1 dnr2).
       apply uc_app_congruence; try reflexivity.
       repeat rewrite <- app_assoc.
       apply uc_app_congruence; try reflexivity.
@@ -723,14 +724,14 @@ Proof.
       rewrite (cons_to_app (CNOT n0 n)).
       rewrite (cons_to_app (H n0) (g2 ++ _)).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnrg0' dnrg0).
+      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg0' dnrg0).
       repeat rewrite <- (app_assoc _ _ g2).
-      rewrite 2 (does_not_reference_commutes_app1 _ URzk_H _ dnrg2).
+      rewrite 2 (does_not_reference_commutes_app1 _ URzQ_H _ dnrg2).
       rewrite <- (app_assoc g0).
       rewrite (app_assoc _ g2).
-      rewrite (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnrg2' dnrg2).
+      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg2' dnrg2).
       rewrite <- (app_assoc _ g4).
-      rewrite <- (does_not_reference_commutes_app1 _ URzk_H _ dnrg4).
+      rewrite <- (does_not_reference_commutes_app1 _ URzQ_H _ dnrg4).
       repeat rewrite <- app_assoc.  
       do 2 (apply uc_app_congruence; try reflexivity).
       repeat rewrite app_assoc.
@@ -760,16 +761,16 @@ Proof.
       apply andb_true_iff in dnr as [dnrg0' dnrg2'].
       rewrite cons_to_app.
       rewrite (cons_to_app (CNOT n0 n)).
-      rewrite (cons_to_app (App1 (URzk_Rz i0) n) (g2 ++ _)).
+      rewrite (cons_to_app (App1 (URzQ_Rz a0) n) (g2 ++ _)).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnrg0' dnrg0).
+      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg0' dnrg0).
       repeat rewrite <- (app_assoc _ _ g2).
-      rewrite 2 (does_not_reference_commutes_app1 _ (URzk_Rz _) _ dnrg2).
+      rewrite 2 (does_not_reference_commutes_app1 _ (URzQ_Rz _) _ dnrg2).
       rewrite <- (app_assoc g0).
       rewrite (app_assoc _ g2).
-      rewrite (does_not_reference_commutes_app2 _ URzk_CNOT _ _ dnrg2' dnrg2).
+      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg2' dnrg2).
       repeat rewrite <- (app_assoc _ g4).
-      rewrite <- (does_not_reference_commutes_app1 _ (URzk_Rz _) _ dnrg4).
+      rewrite <- (does_not_reference_commutes_app1 _ (URzQ_Rz _) _ dnrg4).
       repeat rewrite <- app_assoc.  
       do 2 (apply uc_app_congruence; try reflexivity).
       repeat rewrite app_assoc.
@@ -778,7 +779,7 @@ Proof.
       apply Rz_commutes_with_CNOT_Rz_CNOT. 
 Qed.
 
-Lemma propagate_CNOT_WT : forall {dim} (l : Rzk_ucom_l dim) q1 q2 n l',
+Lemma propagate_CNOT_WT : forall {dim} (l : RzQ_ucom_l dim) q1 q2 n l',
   q1 < dim ->
   q2 < dim -> 
   q1 <> q2 ->
@@ -792,7 +793,7 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma cancel_single_qubit_gates_sound : forall {dim} (l : Rzk_ucom_l dim),
+Lemma cancel_single_qubit_gates_sound : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> cancel_single_qubit_gates l =l= l.
 Proof.
   intros dim l WT.
@@ -814,7 +815,7 @@ Proof.
         apply IHn.
         apply (propagate_X_WT _ _ _ _ H1 H3 prop).
         rewrite IHn; try reflexivity; try assumption.
-      + destruct (propagate_Rz i l n0 (length l)) eqn:prop.
+      + destruct (propagate_Rz a l n0 (length l)) eqn:prop.
         rewrite (propagate_Rz_sound _ _ _ _ _ H1 prop).
         apply IHn.
         apply (propagate_Rz_WT _ _ _ _ _ H1 H3 prop).
@@ -824,7 +825,7 @@ Proof.
   apply H.
 Qed.
 
-Lemma cancel_single_qubit_gates_WT: forall {dim} (l : Rzk_ucom_l dim),
+Lemma cancel_single_qubit_gates_WT: forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (cancel_single_qubit_gates l).
 Proof.
   intros dim l WT.
@@ -833,7 +834,7 @@ Proof.
   apply uc_equiv_l_implies_WT in H; assumption.
 Qed.
 
-Lemma cancel_two_qubit_gates_sound : forall {dim} (l : Rzk_ucom_l dim),
+Lemma cancel_two_qubit_gates_sound : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> cancel_two_qubit_gates l =l= l.
 Proof.
   intros dim l WT.
@@ -855,7 +856,7 @@ Proof.
   apply H.
 Qed.
 
-Lemma cancel_two_qubit_gates_WT: forall {dim} (l : Rzk_ucom_l dim),
+Lemma cancel_two_qubit_gates_WT: forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (cancel_two_qubit_gates l).
 Proof.
   intros dim l WT.

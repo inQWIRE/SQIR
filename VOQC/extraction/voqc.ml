@@ -5,32 +5,34 @@ module E = ExtractedCode
 
 let get_rz_count l = 
   List.fold_left (+) 0 
-    (List.map (fun x -> match x with | E.App1 (E.URzk_Rz(_), _) -> 1 | _ -> 0) l);;
+    (List.map (fun x -> match x with | E.App1 (E.URzQ_Rz(_), _) -> 1 | _ -> 0) l);;
 
 let rec get_x_count l = 
   List.fold_left (+) 0 
-    (List.map (fun x -> match x with | E.App1 (E.URzk_X, _) -> 1 | _ -> 0) l);;
+    (List.map (fun x -> match x with | E.App1 (E.URzQ_X, _) -> 1 | _ -> 0) l);;
   
 let rec get_h_count l = 
   List.fold_left (+) 0 
-    (List.map (fun x -> match x with | E.App1 (E.URzk_H, _) -> 1 | _ -> 0) l);;
+    (List.map (fun x -> match x with | E.App1 (E.URzQ_H, _) -> 1 | _ -> 0) l);;
   
 let rec get_cnot_count l = 
   List.fold_left (+) 0 
-    (List.map (fun x -> match x with | E.App2 (E.URzk_CNOT, _, _) -> 1 | _ -> 0) l);;
+    (List.map (fun x -> match x with | E.App2 (E.URzQ_CNOT, _, _) -> 1 | _ -> 0) l);;
 
 (* Only relevant for the benchmarks using the Clifford+T set. *)
-let rec get_t_count' l a = 
+let rec get_t_count' l acc = 
   match l with
-  | [] -> Some a
-  | E.App1 (E.URzk_Rz(i), _) :: t -> 
-      (match i with
-       | 8192 | 24576 | 40960 | 57344 -> get_t_count' t (1 + a)
-       | 16384 | 32768 | 49152 -> get_t_count' t a
-       | _ -> None)
-  | _ :: t -> get_t_count' t a;;
+  | [] -> Some acc
+  | E.App1 (E.URzQ_Rz(a), _) :: t ->
+      (match E.is_odd_multiple_of_1_4 a with
+       | Some true -> get_t_count' t (1 + acc)
+       | Some false -> get_t_count' t acc
+       | None -> None)
+  | _ :: t -> get_t_count' t acc;;
   
-let get_t_count l = get_t_count' l 0;;  
+let get_t_count l = get_t_count' l 0;;
+
+let foo = Z.zero;;  
 
 if (Array.length Sys.argv <> 3)
 then print_endline "Expected usage: voqc <prog> <out>"
