@@ -8,12 +8,12 @@ VOQC currently supports the following gates:
 * t, tdg
 * s, sdg
 * z
-* rz15(N)
+* rzq(num,den)
 * h
 * x
 * cnot
 
-rz15 is a non-standard gate that we have defined specifically for VOQC. rz15(N) performs a rotation about the z-axis by (N * pi / 2^15) for integer N. We defined the gate this way to avoid floating point numbers, which significantly complicate verification. We plan to add support for a standard rz gate, which is automatically converted into our rz15 gate.
+rzq is a non-standard gate that we have defined specifically for VOQC. rzq(num,den) performs a rotation about the z-axis by ((num /den) * pi) for integers num and den. We defined the gate this way to avoid floating point numbers, which significantly complicate verification. We plan to add support for a standard rz gate, which is automatically converted into our rz15 gate.
 
 For examples of programs that VOQC can optimize, see benchmarks/Arithmetic_and_Toffoli, benchmarks/PF, and benchmarks/QFT_and_Adders.
 

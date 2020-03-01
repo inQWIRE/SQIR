@@ -132,23 +132,23 @@ Definition apply_H_equivalence {dim} (l : RzQ_ucom_l dim) (q : nat) : option (Rz
    If we wanted to do a proper proof of termination, we would need to show
    that each call to apply_H_equivalence (strictly) reduces the number of H 
    gates in the program. *)
-Fixpoint apply_H_equivalences {dim} (l : RzQ_ucom_l dim) (n: nat) : RzQ_ucom_l dim :=
+Fixpoint apply_H_equivalences' {dim} (l : RzQ_ucom_l dim) (n: nat) acc : RzQ_ucom_l dim :=
   match n with
-  | 0 => l
+  | 0 => rev_append acc l
   | S n' => 
       match l with
-      | [] => []
+      | [] => rev_append acc []
       | (App1 URzQ_H q) :: t => 
           match apply_H_equivalence l q with
-          | None => H q :: apply_H_equivalences t n'
-          | Some l' => apply_H_equivalences l' n'
+          | None => apply_H_equivalences' t n' (H q :: acc)
+          | Some l' => apply_H_equivalences' l' n' acc
           end
-      | g :: t => g :: apply_H_equivalences t n'
+      | g :: t => apply_H_equivalences' t n' (g :: acc)
       end
   end.
 
 Definition hadamard_reduction {dim} (l : RzQ_ucom_l dim) := 
-  apply_H_equivalences l (2 * (length l)).
+  apply_H_equivalences' l (2 * (length l)) [].
 
 (* Small example - both tests are the same circuit, just with the
    gate list reordered. The output should contain 2 H gates. *)
@@ -428,26 +428,33 @@ Proof.
   subst; apply (apply_H_equivalence5_sound _ _ _ H0). 
 Qed.
 
-Lemma apply_H_equivalences_sound: forall {dim} (l : RzQ_ucom_l dim) n, 
-  l ≅l≅ apply_H_equivalences l n.
+Lemma apply_H_equivalences_sound: forall {dim} (l : RzQ_ucom_l dim) n acc, 
+  rev_append acc l ≅l≅ apply_H_equivalences' l n acc.
 Proof. 
-  intros.
+  intros dim l n acc.
+  generalize dependent acc.
   generalize dependent l.
   induction n; try easy.
-  intros.
-  destruct l; try easy.
+  intros l acc.
+  destruct l; try reflexivity.
   destruct g as [u | | u]; simpl.
   - dependent destruction u.
     destruct (apply_H_equivalence (App1 URzQ_H n0 :: l) n0) eqn:res.
-    all: rewrite <- IHn; try reflexivity.
-    apply (apply_H_equivalence_sound _ _ _ res).
-  - rewrite <- IHn; reflexivity.
+    all: rewrite <- IHn; simpl; try reflexivity.
+    apply apply_H_equivalence_sound in res.
+    rewrite 2 rev_append_rev. rewrite res. reflexivity.
+  - rewrite <- IHn; simpl. reflexivity.
   - inversion u.
 Qed.
 
 Lemma hadamard_reduction_sound: forall {dim} (l : RzQ_ucom_l dim), 
   hadamard_reduction l ≅l≅ l.
-Proof. intros. symmetry. apply apply_H_equivalences_sound. Qed.
+Proof. 
+  intros. symmetry. 
+  unfold hadamard_reduction. 
+  rewrite <- apply_H_equivalences_sound. 
+  reflexivity.
+Qed.
 
 Lemma hadamard_reduction_WT: forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (hadamard_reduction l).

@@ -727,6 +727,6 @@ Definition invert_rotation {dim} a q : gate_app RzQ_Unitary dim :=
    VOQC OCaml code. *)
 Definition is_odd_multiple_of_1_4 a :=
   let (num,den) := Qred (a * 4) in
-  if Pos.eqb den 1 (* even multiple of 1/4? *)
-  then if Z.odd num then Some true else Some false
+  if Pos.eqb den 1 (* multiple of 1/4? *)
+  then Some (Z.odd num)
   else None.

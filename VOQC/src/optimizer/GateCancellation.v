@@ -187,61 +187,61 @@ Definition CNOT_cancel_rule {dim} q1 q2 (l : RzQ_ucom_l dim) :=
 
 (** Gate Cancellation Routines **)
 
-Definition propagate_Rz {dim} a (l : RzQ_ucom_l dim) q n :=
-  propagate l (Rz_commute_rules q) [Rz_cancel_rule q a] n.
+Definition propagate_Rz {dim} a (l : RzQ_ucom_l dim) q :=
+  propagate l (Rz_commute_rules q) [Rz_cancel_rule q a] (length l).
 
 Definition propagate_H {dim} (l : RzQ_ucom_l dim) q :=
   propagate l [] [H_cancel_rule q] 1%nat.
 
-Definition propagate_X {dim} (l : RzQ_ucom_l dim) q n :=
-  propagate l [X_commute_rule q] [X_cancel_rule q] n.
+Definition propagate_X {dim} (l : RzQ_ucom_l dim) q :=
+  propagate l [X_commute_rule q] [X_cancel_rule q] (length l).
 
-Definition propagate_CNOT {dim} (l : RzQ_ucom_l dim) (q1 q2 n : nat) :=
-  propagate l (CNOT_commute_rules q1 q2) [CNOT_cancel_rule q1 q2] n.
+Definition propagate_CNOT {dim} (l : RzQ_ucom_l dim) (q1 q2 : nat) :=
+  propagate l (CNOT_commute_rules q1 q2) [CNOT_cancel_rule q1 q2] (length l).
 
-Fixpoint cancel_single_qubit_gates' {dim} (l : RzQ_ucom_l dim) (n: nat) : RzQ_ucom_l dim :=
+Fixpoint cancel_single_qubit_gates' {dim} (l : RzQ_ucom_l dim) (n: nat) acc : RzQ_ucom_l dim :=
   match n with
-  | 0 => l
+  | 0 => rev_append acc l
   | S n' => match l with
            | App1 (URzQ_Rz a) q :: t => 
-               match propagate_Rz a t q (length t) with
-               | None => (App1 (URzQ_Rz a) q) :: cancel_single_qubit_gates' t n'
-               | Some l' => cancel_single_qubit_gates' l' n'
+               match propagate_Rz a t q with
+               | None => cancel_single_qubit_gates' t n' (Rz a q :: acc)
+               | Some l' => cancel_single_qubit_gates' l' n' acc
                end
            | App1 URzQ_H q :: t => 
                match propagate_H t q with
-               | None => H q :: cancel_single_qubit_gates' t n'
-               | Some l' => cancel_single_qubit_gates' l' n'
+               | None => cancel_single_qubit_gates' t n' (H q :: acc)
+               | Some l' => cancel_single_qubit_gates' l' n' acc
                end
            | App1 URzQ_X q :: t => 
-               match propagate_X t q (length t) with
-               | None => X q :: cancel_single_qubit_gates' t n'
-               | Some l' => cancel_single_qubit_gates' l' n'
+               match propagate_X t q  with
+               | None => cancel_single_qubit_gates' t n' (X q :: acc)
+               | Some l' => cancel_single_qubit_gates' l' n' acc
                end
-           | u :: t => u :: cancel_single_qubit_gates' t n'
-           | [] => []
+           | u :: t => cancel_single_qubit_gates' t n' (u :: acc)
+           | [] => rev_append acc []
            end
   end.
 
 Definition cancel_single_qubit_gates {dim} (l : RzQ_ucom_l dim) := 
-  cancel_single_qubit_gates' l (length l).
+  cancel_single_qubit_gates' l (length l) [].
 
-Fixpoint cancel_two_qubit_gates' {dim} (l : RzQ_ucom_l dim) (n: nat) : RzQ_ucom_l dim :=
+Fixpoint cancel_two_qubit_gates' {dim} (l : RzQ_ucom_l dim) (n: nat) acc : RzQ_ucom_l dim :=
   match n with
-  | 0 => l
+  | 0 => rev_append acc l
   | S n' => match l with
            | App2 URzQ_CNOT q1 q2 :: t => 
-               match propagate_CNOT t q1 q2 (length t) with
-               | None => CNOT q1 q2 :: cancel_two_qubit_gates' t n'
-               | Some l' => cancel_two_qubit_gates' l' n'
+               match propagate_CNOT t q1 q2 with
+               | None => cancel_two_qubit_gates' t n' (CNOT q1 q2 :: acc)
+               | Some l' => cancel_two_qubit_gates' l' n' acc
                end
-           | u :: t => u :: cancel_two_qubit_gates' t n'
-           | [] => []
+           | u :: t => cancel_two_qubit_gates' t n' (u :: acc)
+           | [] => rev_append acc []
            end
   end.
 
 Definition cancel_two_qubit_gates {dim} (l : RzQ_ucom_l dim) := 
-  cancel_two_qubit_gates' l (length l).
+  cancel_two_qubit_gates' l (length l) [].
 
 (** Proofs **)
 
@@ -406,13 +406,13 @@ Qed.
 
 (* Proofs about optimization *)
 
-Lemma propagate_Rz_sound : forall {dim} a (l : RzQ_ucom_l dim) q n l',
+Lemma propagate_Rz_sound : forall {dim} a (l : RzQ_ucom_l dim) q l',
   q < dim ->
-  propagate_Rz a l q n = Some l' ->
+  propagate_Rz a l q = Some l' ->
   Rz a q :: l =l= l'.
 Proof.
   unfold propagate_Rz.
-  intros dim a l q n l' Hq res.
+  intros dim a l q l' Hq res.
   eapply propagate_preserves_semantics; try apply res.
   apply uc_equiv_l_rel.
   apply uc_app_mor_Proper.
@@ -426,7 +426,7 @@ Proof.
     rewrite combine_rotations_semantics by assumption.
     rewrite (nsqg_commutes _ _ _ _ _ nsqg); rewrite app_comm_cons. 
     reflexivity.
-  - clear l l' n res Hq.
+  - clear l l' res Hq.
     intros rules Hin l l1 l2 res.
     destruct_In; subst.
     + unfold Rz_commute_rule1 in res.
@@ -524,14 +524,14 @@ Proof.
       apply Rz_commutes_with_CNOT.
 Qed.
 
-Lemma propagate_Rz_WT : forall {dim} a (l : RzQ_ucom_l dim) q n l',
+Lemma propagate_Rz_WT : forall {dim} a (l : RzQ_ucom_l dim) q l',
   q < dim ->
   uc_well_typed_l l ->
-  propagate_Rz a l q n = Some l' ->
+  propagate_Rz a l q = Some l' ->
   uc_well_typed_l l'.
 Proof.
   intros.
-  specialize (propagate_Rz_sound a l q n l' H H1) as H2.
+  specialize (propagate_Rz_sound a l q l' H H1) as H2.
   apply (uc_equiv_l_implies_WT _ _ H2).
   constructor; assumption.
 Qed.
@@ -573,13 +573,13 @@ Proof.
   constructor; assumption.
 Qed.
 
-Lemma propagate_X_sound : forall {dim} (l : RzQ_ucom_l dim) q n l',
+Lemma propagate_X_sound : forall {dim} (l : RzQ_ucom_l dim) q l',
   q < dim ->
-  propagate_X l q n = Some l' ->
+  propagate_X l q = Some l' ->
   X q :: l =l= l'.
 Proof.
   unfold propagate_X.
-  intros dim l q n l' Hq res.
+  intros dim l q l' Hq res.
   eapply propagate_preserves_semantics; try apply res.
   apply uc_equiv_l_rel.
   apply uc_app_mor_Proper.
@@ -593,7 +593,7 @@ Proof.
     rewrite (nsqg_commutes _ _ _ _ _ nsqg).
     rewrite app_comm_cons.
     rewrite X_X_cancel; try assumption; try reflexivity.
-  - clear l l' n res Hq.
+  - clear l l' res Hq.
     intros rules Hin l l1 l2 res.
     destruct_In; subst.
     unfold X_commute_rule in res.
@@ -613,27 +613,27 @@ Proof.
     apply X_commutes_with_CNOT.
 Qed.
 
-Lemma propagate_X_WT : forall {dim} (l : RzQ_ucom_l dim) q n l',
+Lemma propagate_X_WT : forall {dim} (l : RzQ_ucom_l dim) q l',
   q < dim ->
   uc_well_typed_l l ->
-  propagate_X l q n = Some l' ->
+  propagate_X l q = Some l' ->
   uc_well_typed_l l'.
 Proof.
   intros.
-  specialize (propagate_X_sound l q n l' H H1) as H2.
+  specialize (propagate_X_sound l q l' H H1) as H2.
   apply (uc_equiv_l_implies_WT _ _ H2).
   constructor; assumption.
 Qed.
 
-Lemma propagate_CNOT_sound : forall {dim} (l : RzQ_ucom_l dim) q1 q2 n l',
+Lemma propagate_CNOT_sound : forall {dim} (l : RzQ_ucom_l dim) q1 q2 l',
   q1 < dim ->
   q2 < dim -> 
   q1 <> q2 ->
-  propagate_CNOT l q1 q2 n = Some l' ->
+  propagate_CNOT l q1 q2 = Some l' ->
   CNOT q1 q2 :: l =l= l'.
 Proof.
   unfold propagate_CNOT.
-  intros dim l q1 q2 n l' Hq1 Hq2 Hq1q2 res.
+  intros dim l q1 q2 l' Hq1 Hq2 Hq1q2 res.
   eapply propagate_preserves_semantics; try apply res.
   apply uc_equiv_l_rel.
   apply uc_app_mor_Proper.
@@ -645,7 +645,7 @@ Proof.
     repeat destruct p; dependent destruction r.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr1.
     apply ntqg_preserves_structure in ntqg.
-    bdestruct (q1 =? n1); bdestruct (q2 =? n0); 
+    bdestruct (q1 =? n0); bdestruct (q2 =? n); 
       destruct (does_not_reference g0 q2) eqn:dnr2;
       simpl in res; try discriminate.    
     inversion res; subst.
@@ -657,7 +657,7 @@ Proof.
     simpl.
     rewrite CNOT_CNOT_cancel; try assumption.
     rewrite app_nil_r. reflexivity.
-  - clear l l' n res.
+  - clear l l' res.
     intros rules Hin l l1 l2 res.
     destruct_In; subst.
     + unfold CNOT_commute_rule1 in res.
@@ -779,16 +779,16 @@ Proof.
       apply Rz_commutes_with_CNOT_Rz_CNOT. 
 Qed.
 
-Lemma propagate_CNOT_WT : forall {dim} (l : RzQ_ucom_l dim) q1 q2 n l',
+Lemma propagate_CNOT_WT : forall {dim} (l : RzQ_ucom_l dim) q1 q2 l',
   q1 < dim ->
   q2 < dim -> 
   q1 <> q2 ->
   uc_well_typed_l l ->
-  propagate_CNOT l q1 q2 n = Some l' ->
+  propagate_CNOT l q1 q2 = Some l' ->
   uc_well_typed_l l'.
 Proof.
   intros.
-  specialize (propagate_CNOT_sound l q1 q2 n l' H H0 H1 H3) as H4.
+  specialize (propagate_CNOT_sound l q1 q2 l' H H0 H1 H3) as H4.
   apply (uc_equiv_l_implies_WT _ _ H4).
   constructor; assumption.
 Qed.
@@ -797,30 +797,35 @@ Lemma cancel_single_qubit_gates_sound : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> cancel_single_qubit_gates l =l= l.
 Proof.
   intros dim l WT.
-  assert (forall n, cancel_single_qubit_gates' l n =l= l).
+  assert (H: forall n acc, cancel_single_qubit_gates' l n acc =l= rev acc ++ l).
   { intros n.
     generalize dependent l.
-    induction n; intros l WT; try reflexivity.
-    simpl.
-    destruct l; try reflexivity.
+    induction n; intros l WT acc; simpl. 
+    rewrite rev_append_rev. reflexivity.
+    destruct l; simpl.
+    rewrite rev_append_rev. reflexivity.
     destruct g as [u | | u]; inversion WT; subst.
     - dependent destruction u.
       + destruct (propagate_H l n0) eqn:prop.
         rewrite (propagate_H_sound _ _ _ H1 prop).
         apply IHn.
         apply (propagate_H_WT _ _ _ H1 H3 prop).
-        rewrite IHn; try reflexivity; try assumption.
-      + destruct (propagate_X l n0 (length l)) eqn:prop.
-        rewrite (propagate_X_sound _ _ _ _ H1 prop).
+        rewrite IHn; auto.
+        simpl. rewrite <- app_assoc. reflexivity.
+      + destruct (propagate_X l n0) eqn:prop.
+        rewrite (propagate_X_sound _ _ _ H1 prop).
         apply IHn.
-        apply (propagate_X_WT _ _ _ _ H1 H3 prop).
-        rewrite IHn; try reflexivity; try assumption.
-      + destruct (propagate_Rz a l n0 (length l)) eqn:prop.
-        rewrite (propagate_Rz_sound _ _ _ _ _ H1 prop).
+        apply (propagate_X_WT _ _ _ H1 H3 prop).
+        rewrite IHn; auto.
+        simpl. rewrite <- app_assoc. reflexivity.
+      + destruct (propagate_Rz a l n0) eqn:prop.
+        rewrite (propagate_Rz_sound _ _ _ _ H1 prop).
         apply IHn.
-        apply (propagate_Rz_WT _ _ _ _ _ H1 H3 prop).
-        rewrite IHn; try reflexivity; try assumption.
-    - rewrite IHn; try reflexivity; try assumption.
+        apply (propagate_Rz_WT _ _ _ _ H1 H3 prop).
+        rewrite IHn; auto.
+        simpl. rewrite <- app_assoc. reflexivity.
+    - rewrite IHn; auto. 
+      simpl. rewrite <- app_assoc. reflexivity.
     - inversion u. }
   apply H.
 Qed.
@@ -838,20 +843,23 @@ Lemma cancel_two_qubit_gates_sound : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> cancel_two_qubit_gates l =l= l.
 Proof.
   intros dim l WT.
-  assert (forall n, cancel_two_qubit_gates' l n =l= l).
+  assert (H : forall n acc, cancel_two_qubit_gates' l n acc =l= rev acc ++ l).
   { intros n.
     generalize dependent l.
-    induction n; intros l WT; try reflexivity.
-    simpl.
-    destruct l; try reflexivity.
-    destruct g as [| u | u]; inversion WT; subst.
-    - rewrite IHn; try reflexivity; try assumption.
+    induction n; intros l WT acc; simpl. 
+    rewrite rev_append_rev. reflexivity.
+    destruct l; simpl.
+    rewrite rev_append_rev. reflexivity.
+    destruct g as [ | u | u]; inversion WT; subst.
+    - rewrite IHn; auto. 
+      simpl. rewrite <- app_assoc. reflexivity.
     - dependent destruction u.
-      destruct (propagate_CNOT l n0 n1 (length l)) eqn:prop.
-      rewrite (propagate_CNOT_sound _ _ _ _ _ H3 H4 H5 prop).
+      destruct (propagate_CNOT l n0 n1) eqn:prop.
+      rewrite (propagate_CNOT_sound _ _ _ _ H3 H4 H5 prop).
       apply IHn.
-      apply (propagate_CNOT_WT _ _ _ _ _ H3 H4 H5 H6 prop).
-      rewrite IHn; try reflexivity; try assumption. 
+      apply (propagate_CNOT_WT _ _ _ _ H3 H4 H5 H6 prop).
+      rewrite IHn; auto. 
+      simpl. rewrite <- app_assoc. reflexivity.
     - inversion u. }
   apply H.
 Qed.
