@@ -22,6 +22,7 @@ Inductive RzQ_Unitary : nat -> Set :=
 
 (* Useful shorthands. *)
 
+(* Defining these constants makes extraction easier. *)
 Definition URzQ_I := URzQ_Rz 0.
 Definition URzQ_T := URzQ_Rz (1 / 4).
 Definition URzQ_P := URzQ_Rz (1 / 2).
@@ -645,20 +646,25 @@ Qed.
 Definition RzQ_ucom_l_well_typed_b dim (l : RzQ_ucom_l dim) := 
   uc_well_typed_l_b dim l.
 
+(* Define some constants to make extraction easier. *)
+Definition zero_Q := 0.
+Definition two_Q := 2.
+
 (* Put a rational into the range [0,2) by adding/subtracting multiples of 2 *)
 Definition round_to_multiple_of_2 (a : Q) : BinInt.Z :=
-  let (num,den) := a in
+  let num := Qnum a in
+  let den := Qden a in
   (2 * (num / ((Zpos den) * 2)))%Z.
 Definition bound (a : Q) :=
-  if (Qle_bool 0 a) && negb (Qle_bool 2 a) then a
-  else if Qle_bool 2 a 
+  if (Qle_bool zero_Q a) && negb (Qle_bool two_Q a) then a
+  else if Qle_bool two_Q a 
        then a - inject_Z (round_to_multiple_of_2 a) (* a >= 2 *)
        else a + inject_Z (round_to_multiple_of_2 a) (* a < 0 *).
 
 (* Combine Rz rotations; returns [] or [Rz (a + a') q] *)
 Definition combine_rotations {dim} a a' q : RzQ_ucom_l dim :=
   let anew := bound (a + a') in
-  if Qeq_bool anew 0 then [] else [Rz anew q].
+  if Qeq_bool anew zero_Q then [] else [Rz anew q].
 
 Lemma bound_subs_multiples_of_2 : forall a,
   exists (b : BinInt.Z), a == (bound a) + (inject_Z b) * 2.
@@ -669,7 +675,7 @@ Proof.
     destruct a.
     rewrite Zmult_comm, Z_div_mult, inject_Z_mult. 
     reflexivity. lia. }
-  unfold bound.
+  unfold bound, two_Q, zero_Q.
   destruct (Qle_bool 0 a) eqn:le0; destruct (Qle_bool 2 a) eqn:lt2; simpl.
   - exists ((round_to_multiple_of_2 a) / 2)%Z. rewrite H. lra.
   - exists 0%Z. unfold inject_Z. lra. 
@@ -684,7 +690,7 @@ Lemma combine_rotations_semantics : forall {dim} a a' q,
   @uc_equiv_l dim (combine_rotations a a' q) ([Rz a q] ++ [Rz a' q]).
 Proof.
   intros dim a a' q Hq.
-  unfold combine_rotations.
+  unfold combine_rotations, zero_Q.
   specialize (bound_subs_multiples_of_2 (a + a')) as Hbound. 
   destruct Hbound as [k Hbound]. 
   destruct (Qeq_bool (bound (a + a')) 0) eqn:eq;
@@ -719,14 +725,5 @@ Qed.
 
 (* Invert a z-rotation. *)
 Definition invert_rotation {dim} a q : gate_app RzQ_Unitary dim :=
-  Rz (2 - a) q.
+  Rz (two_Q - a) q.
 
-(* Returns (Some true) if a is an odd multiple of 1/4 and (Some false) if a 
-   is an even mulitple of 1/4. Returns None if a does not correspond to a 
-   rotation by 1/4. This function will be used to compute T-count within our
-   VOQC OCaml code. *)
-Definition is_odd_multiple_of_1_4 a :=
-  let (num,den) := Qred (a * 4) in
-  if Pos.eqb den 1 (* multiple of 1/4? *)
-  then Some (Z.odd num)
-  else None.

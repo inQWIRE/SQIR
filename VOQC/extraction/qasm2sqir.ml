@@ -1,9 +1,10 @@
 open OpenQASM
 open OpenQASM.AST
+open ListRepresentation
+open RzQGateSet
 
 open Printf
 
-module E = ExtractedCode
 module StringMap = Map.Make(String)
 
 (* This file contains details for converting between OpenQASM and SQIR programs. *)
@@ -121,39 +122,30 @@ let apply_gate gate (id, idx) qmap sym_tab =
     | TQReg size -> List.init size (fun i -> gate (QbitMap.find (id, i) qmap))
     | _ -> raise (Failure "ERROR: Not a qubit register!")
 
-let _CNOT m n = E.App2 (E.URzQ_CNOT, m, n)
-let _X    n = E.App1 (E.URzQ_X,    n)
-let _Z    n = E.App1 (E.uRzQ_Z,    n)
-let _H    n = E.App1 (E.URzQ_H,    n)
-let _P    n = E.App1 (E.uRzQ_P,    n)
-let _PDAG n = E.App1 (E.uRzQ_PDAG, n)
-let _T    n = E.App1 (E.uRzQ_T,    n)
-let _TDAG n = E.App1 (E.uRzQ_TDAG, n)
-let _Rz a b n = E.App1 (E.URzQ_Rz({ qnum = a; qden = b }), n)
-
 let translate_statement s qmap sym_tab =
   match s with
   | Qop qop ->
     (match qop with
      | Uop uop ->
        (match uop with
-        | CX (ctrl, tgt) -> apply_c_gate _CNOT ctrl tgt qmap sym_tab
+        | CX (ctrl, tgt) -> apply_c_gate coq_CNOT ctrl tgt qmap sym_tab
         | U _ -> raise (Failure "NYI: generic Unitary!")
         | Gate (id, params, qargs) ->
           (match StringMap.find_opt id sym_tab with
            | Some TGate _ -> (match id with
-               | "ccz" -> apply_double_c_gate E.cCZ (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
-               | "ccx" -> apply_double_c_gate E.cCX (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
-               | "cx"  -> apply_c_gate _CNOT (List.hd qargs) (List.nth qargs 1) qmap sym_tab
-               | "x"   -> apply_gate _X     (List.hd qargs) qmap sym_tab
-               | "z"   -> apply_gate _Z     (List.hd qargs) qmap sym_tab
-               | "h"   -> apply_gate _H     (List.hd qargs) qmap sym_tab
-               | "s"   -> apply_gate _P     (List.hd qargs) qmap sym_tab
-               | "sdg" -> apply_gate _PDAG  (List.hd qargs) qmap sym_tab
-               | "t"   -> apply_gate _T     (List.hd qargs) qmap sym_tab
-               | "tdg" -> apply_gate _TDAG  (List.hd qargs) qmap sym_tab
+               | "ccz" -> apply_double_c_gate coq_CCZ (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
+               | "ccx" -> apply_double_c_gate coq_CCX (List.hd qargs) (List.nth qargs 1) (List.nth qargs 2) qmap sym_tab
+               | "cx"  -> apply_c_gate coq_CNOT (List.hd qargs) (List.nth qargs 1) qmap sym_tab
+               | "x"   -> apply_gate coq_X     (List.hd qargs) qmap sym_tab
+               | "z"   -> apply_gate coq_Z     (List.hd qargs) qmap sym_tab
+               | "h"   -> apply_gate coq_H     (List.hd qargs) qmap sym_tab
+               | "s"   -> apply_gate coq_P     (List.hd qargs) qmap sym_tab
+               | "sdg" -> apply_gate coq_PDAG  (List.hd qargs) qmap sym_tab
+               | "t"   -> apply_gate coq_T     (List.hd qargs) qmap sym_tab
+               | "tdg" -> apply_gate coq_TDAG  (List.hd qargs) qmap sym_tab
                | "rzq" -> (match (List.nth params 0, List.nth params 1)  with
-                           | Nninteger i1, Nninteger i2 -> apply_gate (_Rz i1 i2) (List.hd qargs) qmap sym_tab
+                           | UnaryOp (UMinus, Nninteger i1), Nninteger i2 -> apply_gate (coq_Rz (Q.of_ints (-i1) i2)) (List.hd qargs) qmap sym_tab
+                           | Nninteger i1, Nninteger i2 -> apply_gate (coq_Rz (Q.of_ints i1 i2)) (List.hd qargs) qmap sym_tab
                            | _ -> raise (Failure ("ERROR: Invalid argument to rzq gate")))
                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
              )
@@ -205,10 +197,21 @@ let get_gate_list f =
 
 let sqir_to_qasm_gate oc g =
   match g with
-  | E.App1 (E.URzQ_H,      n) -> fprintf oc "h q[%d];\n" n
-  | E.App1 (E.URzQ_X,      n) -> fprintf oc "x q[%d];\n" n
-  | E.App1 (E.URzQ_Rz(q),  n) -> fprintf oc "rzq(%d,%d) q[%d];\n" q.qnum q.qden n
-  | E.App2 (E.URzQ_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
+  | App1 (URzQ_H,      n) -> fprintf oc "h q[%d];\n" n
+  | App1 (URzQ_X,      n) -> fprintf oc "x q[%d];\n" n
+  | App1 (URzQ_Rz(q),  n) -> 
+      if Q.equal q (Q.of_ints 1 4)
+      then fprintf oc "t q[%d];\n" n
+      else if Q.equal q (Q.of_ints 1 2)
+      then fprintf oc "s q[%d];\n" n
+      else if Q.equal q (Q.of_int 1)
+      then fprintf oc "z q[%d];\n" n
+      else if Q.equal q (Q.of_ints 3 2)
+      then fprintf oc "sdg q[%d];\n" n
+      else if Q.equal q (Q.of_ints 7 4)
+      then fprintf oc "tdg q[%d];\n" n
+      else fprintf oc "rzq(%d,%d) q[%d];\n" (Z.to_int (Q.num q)) (Z.to_int (Q.den q)) n
+  | App2 (URzQ_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
   | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of UPI4_H) *)
 
 let write_qasm_file fname p dim =

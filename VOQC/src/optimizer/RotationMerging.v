@@ -1159,9 +1159,9 @@ Proof.
   autorewrite with R_db.
   repeat rewrite Rmult_plus_distr_r.
   rewrite Cexp_add, <- Cexp_neg.
-  replace (Qreals.Q2R 2 * PI)%R with (2 * PI)%R. 
-  2: unfold Qreals.Q2R; simpl; lra. 
-  rewrite Cexp_2PI.
+  replace (Qreals.Q2R two_Q * PI)%R with (2 * PI)%R. 
+  2: unfold Qreals.Q2R, two_Q; simpl; lra. 
+  simpl. rewrite Cexp_2PI.
   autorewrite with C_db R_db; reflexivity.
 Qed.
 

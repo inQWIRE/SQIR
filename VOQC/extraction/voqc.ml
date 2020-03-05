@@ -1,38 +1,48 @@
 open Qasm2sqir
 open Printf
 
-module E = ExtractedCode
+open ListRepresentation
+open RzQGateSet
+open Optimize
 
 let get_rz_count l = 
-  List.fold_left (+) 0 
-    (List.map (fun x -> match x with | E.App1 (E.URzQ_Rz(_), _) -> 1 | _ -> 0) l);;
+  List.fold_left (+) 0
+    (List.map (fun x -> match x with | App1 (URzQ_Rz(_), _) -> 1 | _ -> 0) l);;
 
 let rec get_x_count l = 
-  List.fold_left (+) 0 
-    (List.map (fun x -> match x with | E.App1 (E.URzQ_X, _) -> 1 | _ -> 0) l);;
+  List.fold_left (+) 0
+    (List.map (fun x -> match x with | App1 (URzQ_X, _) -> 1 | _ -> 0) l);;
   
 let rec get_h_count l = 
-  List.fold_left (+) 0 
-    (List.map (fun x -> match x with | E.App1 (E.URzQ_H, _) -> 1 | _ -> 0) l);;
+  List.fold_left (+) 0
+    (List.map (fun x -> match x with | App1 (URzQ_H, _) -> 1 | _ -> 0) l);;
   
 let rec get_cnot_count l = 
-  List.fold_left (+) 0 
-    (List.map (fun x -> match x with | E.App2 (E.URzQ_CNOT, _, _) -> 1 | _ -> 0) l);;
+  List.fold_left (+) 0
+    (List.map (fun x -> match x with | App2 (URzQ_CNOT, _, _) -> 1 | _ -> 0) l);;
+
+(* Returns (Some true) if a is an odd multiple of 1/4 and (Some false) if a 
+   is an even mulitple of 1/4. Returns None if a does not correspond to a 
+   rotation by 1/4. *)
+let is_odd_multiple_of_1_4 a =
+  let prod = Q.mul a (Q.of_int 4) in
+  let (num, den) = (Q.num prod, Q.den prod) in
+  if Z.equal den (Z.of_int 1)
+  then Some (Z.equal (Z.rem num (Z.of_int 2)) Z.one) 
+  else None;;
 
 (* Only relevant for the benchmarks using the Clifford+T set. *)
 let rec get_t_count' l acc = 
   match l with
   | [] -> Some acc
-  | E.App1 (E.URzQ_Rz(a), _) :: t ->
-      (match E.is_odd_multiple_of_1_4 a with
+  | App1 (URzQ_Rz(a), _) :: t ->
+      (match is_odd_multiple_of_1_4 a with
        | Some true -> get_t_count' t (1 + acc)
        | Some false -> get_t_count' t acc
        | None -> None)
   | _ :: t -> get_t_count' t acc;;
   
 let get_t_count l = get_t_count' l 0;;
-
-let foo = Z.zero;;  
 
 if (Array.length Sys.argv <> 3)
 then print_endline "Expected usage: voqc <prog> <out>"
@@ -45,7 +55,7 @@ else let fname = Sys.argv.(1) in
                  | Some x -> string_of_int x in
      let _ = printf "Original:\t Total %d, Rz %d, T %s, H %d, X %d, CNOT %d\n%!" 
                (List.length p) (get_rz_count p) origT (get_h_count p) (get_x_count p) (get_cnot_count p) in
-     let p' = E.optimize p in
+     let p' = optimize p in
      let finalT = match get_t_count p' with
                  | None -> "N/A"
                  | Some x -> string_of_int x in
