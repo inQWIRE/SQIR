@@ -2,9 +2,8 @@ open GateCancellation
 open HadamardReduction
 open NotPropagation
 open RotationMerging
-open RzQGateSet
 
-(** val optimize : coq_RzQ_ucom_l -> coq_RzQ_ucom_l **)
+(** val optimize : RzQGateSet.coq_RzQ_ucom_l -> RzQGateSet.coq_RzQ_ucom_l **)
 
 let optimize l =
   cancel_single_qubit_gates

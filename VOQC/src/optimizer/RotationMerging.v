@@ -1,12 +1,20 @@
 Require Import UnitarySem.
 Require Import ClassicalStates.
 Require Export RzQGateSet.
+Require Import FSets.FSetAVL.
+Require Import FSets.FSetFacts.
 Require Import FSets.FMapAVL.
 Require Import FSets.FMapFacts.
 
+Module FSet := FSetAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
+Module FSetFacts := FSetFacts.Facts FSet.
 Module FSetProps := FSetProperties.Properties FSet.
 Module FMap := FMapAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
 Module FMapFacts := FMapFacts.Facts FMap.
+
+Lemma mem_reflect : forall x s, reflect (FSet.In x s) (FSet.mem x s).
+Proof. intros x l. apply iff_reflect. apply FSetFacts.mem_iff. Qed.
+Hint Resolve mem_reflect : bdestruct.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
@@ -211,7 +219,7 @@ Fixpoint find_merge' {dim} (l : RzQ_ucom_l dim) (qs blst : FSet.t) q smap n acc 
   | S n' =>
       if (FSet.equal qs blst)
       then None
-      else match next_gate l qs with
+      else match next_gate l (fun q => FSet.mem q qs) with
            | Some (l1, App1 URzQ_H q', l2) => 
                find_merge' l2 qs (FSet.add q' blst) q smap n' 
                            ([H q'] ++ rev_append l1  acc)
@@ -281,7 +289,7 @@ Fixpoint get_subcircuit' {dim} (l : RzQ_ucom_l dim) (qs blst : FSet.t) n :=
   | S n' =>
       if (FSet.equal qs blst)
       then ([], [], l)
-      else match next_gate l qs with
+      else match next_gate l (fun q => FSet.mem q qs) with
            | Some (l1, App1 URzQ_H q, l2) => 
                match get_subcircuit' l2 qs (FSet.add q blst) n' with
                | (l1', s, l2') => (l1 ++ l1', [H q] ++ s, l2')
@@ -359,7 +367,7 @@ Proof.
   inversion res; subst. reflexivity.
   destruct (FSet.equal qs blst).
   inversion res; subst. reflexivity.
-  destruct (next_gate l qs) eqn:ng.
+  destruct (next_gate l (fun q : nat => FSet.mem q qs)) eqn:ng.
   2: { inversion res; subst. reflexivity. }
   repeat destruct p.
   destruct g1 as [u | u | u].
@@ -370,7 +378,8 @@ Proof.
     destruct p;
     inversion res; subst.
     all: eapply IHn in subc; eapply next_gate_l1_does_not_reference in ng.
-    all: try apply Hq.
+    all: try apply Hq. 
+    all: try (eapply FSetFacts.mem_iff; apply Hq).
     all: apply does_not_reference_app; apply andb_true_intro; split; assumption.
   - dependent destruction u.
     destruct (get_subcircuit' g (FSet.add n0 (FSet.add n1 qs))
@@ -380,7 +389,7 @@ Proof.
     eapply IHn in subc.
     eapply next_gate_l1_does_not_reference in ng.
     apply does_not_reference_app; apply andb_true_intro; split.
-    apply ng. apply subc. apply Hq. 
+    apply ng. apply subc. eapply FSetFacts.mem_iff; apply Hq. 
     do 2 (apply FSetFacts.add_iff; right). 
     apply Hq.
   - dependent destruction u.
@@ -398,18 +407,19 @@ Proof.
   inversion res; subst. reflexivity.
   destruct (FSet.equal qs blst).
   inversion res; subst. reflexivity.
-  destruct (next_gate l qs) eqn:ng.
+  destruct (next_gate l (fun q : nat => FSet.mem q qs)) eqn:ng.
   2: { inversion res; subst. reflexivity. }
   repeat destruct p.
   destruct g1 as [u | u | u].
   - specialize (next_gate_app1_returns_q _ _ _ _ _ _ ng) as Hn0. 
     apply next_gate_preserves_structure in ng; subst l.
+    simpl in Hn0. apply FSetFacts.mem_iff in Hn0.
     dependent destruction u;
     [ destruct (get_subcircuit' g qs (FSet.add n0 blst) n) eqn:subc
     | destruct (get_subcircuit' g qs blst n) eqn:subc
     | destruct (get_subcircuit' g qs blst n) eqn:subc ];
     destruct p;
-    inversion res; subst.
+    inversion res; subst. 
     all: apply (get_subcircuit'_l1_does_not_reference _ _ _ _ _ _ _ subc) in Hn0;   
          apply IHn in subc; rewrite subc.
     all: rewrite (app_assoc _ l); 
@@ -456,7 +466,7 @@ Proof.
   intros Hfind_merge' Hget_subcircuit' Hfind_merge_alt'; simpl in *.
   discriminate.
   destruct (FSet.equal qs blst); try discriminate.
-  destruct (next_gate l qs) eqn:ng; try discriminate. 
+  destruct (next_gate l (fun q : nat => FSet.mem q qs)) eqn:ng; try discriminate. 
   repeat destruct p.
   specialize (next_gate_preserves_structure _ _ _ _ _ ng) as ngeq.
   destruct g1 as [u | u | u]; dependent destruction u; try discriminate.
@@ -468,7 +478,8 @@ Proof.
     inversion Hfind_merge_alt'; subst.
     assert (dnr: does_not_reference l0 n0 = true).
     { eapply get_subcircuit'_l1_does_not_reference. apply gs. 
-      eapply next_gate_app1_returns_q. apply ng. }
+      apply FSetFacts.mem_iff. 
+      specialize (next_gate_app1_returns_q _ _ _ _ _ _ ng); auto. }
     specialize (IHn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hfind_merge' gs fma) as [? [? IH]].
     repeat split; auto.
     intro; rewrite IH.
@@ -482,7 +493,8 @@ Proof.
     simpl in Hfind_merge_alt'.
     assert (dnr: does_not_reference l0 n0 = true).
     { eapply get_subcircuit'_l1_does_not_reference. apply gs. 
-      eapply next_gate_app1_returns_q. apply ng. }
+      apply FSetFacts.mem_iff. 
+      specialize (next_gate_app1_returns_q _ _ _ _ _ _ ng); auto. }
     destruct (negb (FSet.mem n0 blst) && FSet.equal (get_set smap n0) (FSet.add q FSet.empty)).
     + inversion Hfind_merge_alt'; inversion Hfind_merge'; subst. 
       assert (Hequiv: l2 =l= l0 ++ l2'' ++ l2').
@@ -583,7 +595,7 @@ Proof.
   intros Hfind_merge' Hget_subcircuit'; simpl in *.
   discriminate.
   destruct (FSet.equal qs blst); try discriminate.
-  destruct (next_gate l qs) eqn:ng; try discriminate. 
+  destruct (next_gate l (fun q : nat => FSet.mem q qs)) eqn:ng; try discriminate. 
   repeat destruct p.
   specialize (next_gate_preserves_structure _ _ _ _ _ ng) as ngeq.
   destruct g1 as [u | u | u]; dependent destruction u; try discriminate.
@@ -657,7 +669,7 @@ Proof.
   induction n; intros l qs blst smap acc l1 a0 q' l2 H; simpl in H.
   discriminate.
   destruct (FSet.equal qs blst); try discriminate.
-  destruct (next_gate l qs) eqn:ng; try discriminate. 
+  destruct (next_gate l (fun q : nat => FSet.mem q qs)) eqn:ng; try discriminate. 
   repeat destruct p.
   apply next_gate_preserves_structure in ng.
   destruct g1 as [u | u | u]; dependent destruction u; try discriminate.
@@ -718,7 +730,7 @@ Lemma find_merge_alt'_move_rotation : forall {dim} (l : RzQ_ucom_l dim) blst q s
   find_merge_alt' l blst q smap = Some (l1, a, q', l2) ->
   (forall q, (q < dim)%nat -> not (FSet.In q blst) -> 
         classical q (get_boolean_expr smap f q) ψ) ->
-  RzQ_eval l1 × ((Cexp (f q * (Qreals.Q2R a' * PI))) .* ψ) = RzQ_eval (l1 ++ [Rz a' q']) × ψ.
+  eval l1 × ((Cexp (f q * (Qreals.Q2R a' * PI))) .* ψ) = eval (l1 ++ [Rz a' q']) × ψ.
 Proof.
   intros dim l blst q smap l1 a q' l2 f a' ψ WT H Hψ.
   generalize dependent ψ.
@@ -734,7 +746,7 @@ Proof.
     destruct (find_merge_alt' l (FSet.add n blst) q smap) eqn:fm; try discriminate.
     do 3 destruct p.
     inversion H; subst.
-    unfold RzQ_eval in *; simpl.
+    unfold eval in *; simpl.
     rewrite 2 Mmult_assoc, Mscale_mult_dist_r.
     eapply IHl; try apply fm; auto.
     intros q0 Hq01 Hq02. unfold classical.
@@ -748,7 +760,7 @@ Proof.
       apply get_boolean_expr_f_q with (f:=f) in seq.
       rewrite seq in Hψ.
       inversion H; subst.
-      unfold RzQ_eval in *; simpl.
+      unfold eval in *; simpl.
       rewrite <- Hψ at 2.
       rewrite Mmult_assoc, <- (Mmult_assoc _ _ ψ).
       replace (ueval_r dim q' (U_R 0 0 (Qreals.Q2R a' * PI))) with (@uc_eval dim (SQIR.Rz (Qreals.Q2R a' * PI) q')) by reflexivity.
@@ -756,7 +768,7 @@ Proof.
     + destruct (find_merge_alt' l blst q smap) eqn:fm; try discriminate.
       do 3 destruct p.
       inversion H; subst.
-      unfold RzQ_eval in *; simpl.
+      unfold eval in *; simpl.
       rewrite 2 Mmult_assoc, Mscale_mult_dist_r.
       eapply IHl; try apply fm; auto.
       intros q0 Hq01 Hq02. unfold classical.
@@ -770,7 +782,7 @@ Proof.
     | destruct (find_merge_alt' l blst q smap) eqn:fm 
     | destruct (find_merge_alt' l blst q (FMap.add n0 (xor (get_set smap n) (get_set smap n0)) smap)) eqn:fm ];
     try discriminate; do 3 (destruct p); inversion H; subst;
-    unfold RzQ_eval in *; simpl; repeat rewrite Mmult_assoc;
+    unfold eval in *; simpl; repeat rewrite Mmult_assoc;
     rewrite Mscale_mult_dist_r; eapply IHl; try apply fm; auto;
     intros q0 Hq01 Hq02; unfold classical; rewrite <- Mmult_assoc;
     replace (ueval_cnot dim n n0) with (@uc_eval dim (SQIR.CNOT n n0)) by auto.
@@ -1023,7 +1035,7 @@ Fixpoint merge_rotations_at_end {dim} (l : RzQ_ucom_l dim) n acc :=
            end
   end.
 
-Definition invert_gate {dim} (g : gate_app _ dim) :=
+Definition invert_gate {dim} (g : gate_app RzQ_Unitary dim) :=
   match g with
   | App1 (URzQ_Rz a) q => invert_rotation a q
   | _ => g
@@ -1137,7 +1149,7 @@ Qed.
 
 Lemma invert_eq_invert_ucom : forall {dim} (l : RzQ_ucom_l dim),
   dim > 0 ->
-  uc_eval (list_to_ucom (RzQ_to_base_ucom_l (invert l))) = uc_eval (invert_ucom (list_to_ucom (RzQ_to_base_ucom_l l))).
+  uc_eval (list_to_ucom (invert l)) = uc_eval (invert_ucom (list_to_ucom l)).
 Proof.
   intros dim l Hdim.
   rewrite invert_alt.
@@ -1146,7 +1158,7 @@ Proof.
   rewrite Ropp_0. reflexivity.
   Local Opaque ID Z.sub. 
   destruct a as [u | u | u]; dependent destruction u; unfold invert; simpl.
-  all: rewrite map_app, RzQ_to_base_ucom_l_app, list_to_ucom_append; simpl.
+  all: rewrite map_app, list_to_ucom_append; simpl.
   all: rewrite <- IHl; apply f_equal2; try reflexivity.
   all: autorewrite with eval_db; gridify; auto.
   all: do 2 (apply f_equal2; try reflexivity).

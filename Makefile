@@ -81,10 +81,13 @@ VOQC/src/optimizer/Equivalences.vo: $(optimizer)/Equivalences.v $(SQIR)/UnitaryS
 VOQC/src/optimizer/GateCancellation.vo: $(optimizer)/GateCancellation.v $(optimizer)/Equivalences.vo $(optimizer)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(optimizer)/GateCancellation.v
 
+VOQC/src/optimizer/GateSet.vo: $(optimizer)/GateSet.v $(SQIR)/UnitarySem.vo
+	coqc $(COQ_OPTS) $(optimizer)/GateSet.v
+
 VOQC/src/optimizer/HadamardReduction.vo: $(optimizer)/HadamardReduction.v $(optimizer)/Equivalences.vo $(optimizer)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(optimizer)/HadamardReduction.v
 
-VOQC/src/optimizer/ListRepresentation.vo: $(optimizer)/ListRepresentation.v $(QWIRE)/Proportional.vo $(optimizer)/Equivalences.vo $(SQIR)/DensitySem.vo
+VOQC/src/optimizer/ListRepresentation.vo: $(optimizer)/ListRepresentation.v $(optimizer)/GateSet.vo $(QWIRE)/Proportional.vo $(optimizer)/Equivalences.vo $(SQIR)/DensitySem.vo
 	coqc $(COQ_OPTS) $(optimizer)/ListRepresentation.v
 
 VOQC/src/optimizer/NotPropagation.vo: $(optimizer)/NotPropagation.v $(optimizer)/Equivalences.vo $(optimizer)/RzQGateSet.vo

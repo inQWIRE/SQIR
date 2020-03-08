@@ -6,20 +6,28 @@ open RzQGateSet
 open Optimize
 
 let get_rz_count l = 
-  List.fold_left (+) 0
-    (List.map (fun x -> match x with | App1 (URzQ_Rz(_), _) -> 1 | _ -> 0) l);;
+  let f a x = match x with
+              | App1 (RzQGateSet.URzQ_Rz(_), _) -> a + 1
+              | _ -> a in
+  List.fold_left f 0 l;;
 
 let rec get_x_count l = 
-  List.fold_left (+) 0
-    (List.map (fun x -> match x with | App1 (URzQ_X, _) -> 1 | _ -> 0) l);;
+  let f a x = match x with
+              | App1 (RzQGateSet.URzQ_X, _) -> a + 1
+              | _ -> a in
+  List.fold_left f 0 l;;
   
 let rec get_h_count l = 
-  List.fold_left (+) 0
-    (List.map (fun x -> match x with | App1 (URzQ_H, _) -> 1 | _ -> 0) l);;
+  let f a x = match x with
+              | App1 (RzQGateSet.URzQ_H, _) -> a + 1
+              | _ -> a in
+  List.fold_left f 0 l;;
   
 let rec get_cnot_count l = 
-  List.fold_left (+) 0
-    (List.map (fun x -> match x with | App2 (URzQ_CNOT, _, _) -> 1 | _ -> 0) l);;
+  let f a x = match x with
+              | App2 (RzQGateSet.URzQ_CNOT, _, _) -> a + 1
+              | _ -> a in
+  List.fold_left f 0 l;;
 
 (* Returns (Some true) if a is an odd multiple of 1/4 and (Some false) if a 
    is an even mulitple of 1/4. Returns None if a does not correspond to a 
@@ -35,7 +43,7 @@ let is_odd_multiple_of_1_4 a =
 let rec get_t_count' l acc = 
   match l with
   | [] -> Some acc
-  | App1 (URzQ_Rz(a), _) :: t ->
+  | App1 (RzQGateSet.URzQ_Rz(a), _) :: t ->
       (match is_odd_multiple_of_1_4 a with
        | Some true -> get_t_count' t (1 + acc)
        | Some false -> get_t_count' t acc

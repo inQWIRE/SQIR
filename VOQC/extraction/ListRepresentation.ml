@@ -1,8 +1,3 @@
-open Datatypes
-open FSetAVL
-open OrderedTypeEx
-
-module FSet = Make(Nat_as_OT)
 
 type 'u gate_app =
 | App1 of 'u * int
@@ -18,20 +13,20 @@ type 'u gate_list = 'u gate_app list
 let rec next_single_qubit_gate' l q acc =
   match l with
   | [] -> None
-  | g :: t0 ->
+  | g :: t ->
     (match g with
      | App1 (u, n) ->
        if (=) n q
-       then Some (((List.rev_append acc []), u), t0)
-       else next_single_qubit_gate' t0 q ((App1 (u, n)) :: acc)
+       then Some (((List.rev_append acc []), u), t)
+       else next_single_qubit_gate' t q ((App1 (u, n)) :: acc)
      | App2 (u, m, n) ->
        if (||) ((=) m q) ((=) n q)
        then None
-       else next_single_qubit_gate' t0 q ((App2 (u, m, n)) :: acc)
+       else next_single_qubit_gate' t q ((App2 (u, m, n)) :: acc)
      | App3 (u, m, n, p) ->
        if (||) ((||) ((=) m q) ((=) n q)) ((=) p q)
        then None
-       else next_single_qubit_gate' t0 q ((App3 (u, m, n, p)) :: acc))
+       else next_single_qubit_gate' t q ((App3 (u, m, n, p)) :: acc))
 
 (** val next_single_qubit_gate :
     'a1 gate_list -> int -> (('a1 gate_list * 'a1) * 'a1 gate_list) option **)
@@ -57,20 +52,20 @@ let last_single_qubit_gate l q =
 let rec next_two_qubit_gate' l q acc =
   match l with
   | [] -> None
-  | g :: t0 ->
+  | g :: t ->
     (match g with
      | App1 (u, n) ->
        if (=) n q
        then None
-       else next_two_qubit_gate' t0 q ((App1 (u, n)) :: acc)
+       else next_two_qubit_gate' t q ((App1 (u, n)) :: acc)
      | App2 (u, m, n) ->
        if (||) ((=) m q) ((=) n q)
-       then Some (((((List.rev_append acc []), u), m), n), t0)
-       else next_two_qubit_gate' t0 q ((App2 (u, m, n)) :: acc)
+       then Some (((((List.rev_append acc []), u), m), n), t)
+       else next_two_qubit_gate' t q ((App2 (u, m, n)) :: acc)
      | App3 (u, m, n, p) ->
        if (||) ((||) ((=) m q) ((=) n q)) ((=) p q)
        then None
-       else next_two_qubit_gate' t0 q ((App3 (u, m, n, p)) :: acc))
+       else next_two_qubit_gate' t q ((App3 (u, m, n, p)) :: acc))
 
 (** val next_two_qubit_gate :
     'a1 gate_list -> int -> (((('a1 gate_list * 'a1) * int) * int) * 'a1
@@ -80,33 +75,33 @@ let next_two_qubit_gate l q =
   next_two_qubit_gate' l q []
 
 (** val next_gate' :
-    'a1 gate_list -> FSet.t -> 'a1 gate_app list -> (('a1 gate_list * 'a1
-    gate_app) * 'a1 gate_list) option **)
+    'a1 gate_list -> (int -> bool) -> 'a1 gate_app list -> (('a1
+    gate_list * 'a1 gate_app) * 'a1 gate_list) option **)
 
-let rec next_gate' l qs acc =
+let rec next_gate' l f acc =
   match l with
   | [] -> None
-  | g :: t0 ->
+  | g :: t ->
     (match g with
      | App1 (u, q) ->
-       if FSet.mem q qs
-       then Some (((List.rev_append acc []), (App1 (u, q))), t0)
-       else next_gate' t0 qs ((App1 (u, q)) :: acc)
+       if f q
+       then Some (((List.rev_append acc []), (App1 (u, q))), t)
+       else next_gate' t f ((App1 (u, q)) :: acc)
      | App2 (u, q1, q2) ->
-       if (||) (FSet.mem q1 qs) (FSet.mem q2 qs)
-       then Some (((List.rev_append acc []), (App2 (u, q1, q2))), t0)
-       else next_gate' t0 qs ((App2 (u, q1, q2)) :: acc)
+       if (||) (f q1) (f q2)
+       then Some (((List.rev_append acc []), (App2 (u, q1, q2))), t)
+       else next_gate' t f ((App2 (u, q1, q2)) :: acc)
      | App3 (u, q1, q2, q3) ->
-       if (||) ((||) (FSet.mem q1 qs) (FSet.mem q2 qs)) (FSet.mem q3 qs)
-       then Some (((List.rev_append acc []), (App3 (u, q1, q2, q3))), t0)
-       else next_gate' t0 qs ((App3 (u, q1, q2, q3)) :: acc))
+       if (||) ((||) (f q1) (f q2)) (f q3)
+       then Some (((List.rev_append acc []), (App3 (u, q1, q2, q3))), t)
+       else next_gate' t f ((App3 (u, q1, q2, q3)) :: acc))
 
 (** val next_gate :
-    'a1 gate_list -> FSet.t -> (('a1 gate_list * 'a1 gate_app) * 'a1
+    'a1 gate_list -> (int -> bool) -> (('a1 gate_list * 'a1 gate_app) * 'a1
     gate_list) option **)
 
-let next_gate l qs =
-  next_gate' l qs []
+let next_gate l f =
+  next_gate' l f []
 
 (** val does_not_reference_appl : int -> 'a1 gate_app -> bool **)
 
@@ -126,9 +121,9 @@ let does_not_reference l q =
 
 let rec try_rewrites l = function
 | [] -> None
-| h :: t0 -> (match h l with
-              | Some l' -> Some l'
-              | None -> try_rewrites l t0)
+| h :: t -> (match h l with
+             | Some l' -> Some l'
+             | None -> try_rewrites l t)
 
 (** val try_rewrites2 :
     'a1 gate_list -> ('a1 gate_list -> ('a1 gate_list * 'a1 gate_list)
@@ -136,9 +131,9 @@ let rec try_rewrites l = function
 
 let rec try_rewrites2 l = function
 | [] -> None
-| h :: t0 -> (match h l with
-              | Some l' -> Some l'
-              | None -> try_rewrites2 l t0)
+| h :: t -> (match h l with
+             | Some l' -> Some l'
+             | None -> try_rewrites2 l t)
 
 (** val propagate' :
     'a1 gate_list -> ('a1 gate_list -> ('a1 gate_list * 'a1 gate_list)
@@ -167,38 +162,45 @@ let rec propagate' l commute_rules cancel_rules n acc =
 let propagate l commute_rules cancel_rules n =
   propagate' l commute_rules cancel_rules n []
 
-type 'u single_qubit_pattern = 'u list
+(** val remove_prefix :
+    'a1 gate_list -> 'a1 gate_list -> (int -> 'a1 -> 'a1 -> bool) -> 'a1
+    gate_list option **)
 
-(** val single_qubit_pattern_to_program :
-    'a1 single_qubit_pattern -> int -> 'a1 gate_list **)
-
-let rec single_qubit_pattern_to_program pat q =
-  match pat with
-  | [] -> []
-  | u :: t0 -> (App1 (u, q)) :: (single_qubit_pattern_to_program t0 q)
-
-(** val remove_single_qubit_pattern :
-    'a1 gate_list -> int -> 'a1 single_qubit_pattern -> ('a1 -> 'a1 -> bool)
-    -> 'a1 gate_list option **)
-
-let rec remove_single_qubit_pattern l q pat match_gate =
-  match pat with
+let rec remove_prefix l pfx match_gate =
+  match pfx with
   | [] -> Some l
-  | u :: t0 ->
-    (match next_single_qubit_gate l q with
-     | Some p ->
-       let (p0, l2) = p in
-       let (l1, u') = p0 in
-       if match_gate u u'
-       then remove_single_qubit_pattern (List.append l1 l2) q t0 match_gate
-       else None
-     | None -> None)
+  | y :: t ->
+    (match y with
+     | App1 (u, q) ->
+       (match next_single_qubit_gate l q with
+        | Some p ->
+          let (p0, l2) = p in
+          let (l1, u') = p0 in
+          if match_gate (Pervasives.succ 0) u u'
+          then remove_prefix (List.append l1 l2) t match_gate
+          else None
+        | None -> None)
+     | App2 (u, q1, q2) ->
+       (match next_two_qubit_gate l q1 with
+        | Some p ->
+          let (p0, l2) = p in
+          let (p1, q2') = p0 in
+          let (p2, q1') = p1 in
+          let (l1, u') = p2 in
+          if (&&)
+               ((&&) ((&&) ((=) q1 q1') ((=) q2 q2'))
+                 (match_gate (Pervasives.succ (Pervasives.succ 0)) u u'))
+               (does_not_reference l1 q2)
+          then remove_prefix (List.append l1 l2) t match_gate
+          else None
+        | None -> None)
+     | App3 (_, _, _, _) -> None)
 
-(** val replace_single_qubit_pattern :
-    'a1 gate_list -> int -> 'a1 single_qubit_pattern -> 'a1
-    single_qubit_pattern -> ('a1 -> 'a1 -> bool) -> 'a1 gate_list option **)
+(** val replace_pattern :
+    'a1 gate_list -> 'a1 gate_list -> 'a1 gate_list -> (int -> 'a1 -> 'a1 ->
+    bool) -> 'a1 gate_list option **)
 
-let replace_single_qubit_pattern l q pat rep match_gate =
-  match remove_single_qubit_pattern l q pat match_gate with
-  | Some l' -> Some (List.append (single_qubit_pattern_to_program rep q) l')
+let replace_pattern l pat rep match_gate =
+  match remove_prefix l pat match_gate with
+  | Some l' -> Some (List.append rep l')
   | None -> None

@@ -1,13 +1,9 @@
 Require Export Coq.Classes.Equivalence.
 Require Export Coq.Classes.Morphisms.
-Require Export UnitarySem. 
+Require Export Setoid.
+Require Export GateSet.
+Require Import Equivalences.
 Require Export DensitySem. 
-Require Import FSets.FSetAVL.
-Require Import FSets.FSetFacts.
-
-(* Used in the defn of next_gate. *)
-Module FSet := FSetAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
-Module FSetFacts := FSetFacts.Facts FSet.
 
 Local Open Scope ucom_scope.
 Local Close Scope R_scope.
@@ -21,7 +17,10 @@ Local Open Scope signature_scope.
    This file also cintains utilities for writing optimizations, including:
    - given a set of rewrite rules, try to apply each until one succeeds
    - propagate a gate right and cancel when possible 
-   - replace a (one-qubit) subcircuit with an equivalent subcircuit
+   - replace a subcircuit with an equivalent subcircuit
+
+   First we present gate set independent definitions. Proofs of lemmas, 
+   parameterized by gate set, are given in the ListRepresentationProps module.
 
    TODO: We've been thinking for a while about adding a DAG representation of
    circuits. This would be useful for implementing optimizations because the
@@ -49,7 +48,297 @@ Arguments App3 {U} {dim}.
 
 Definition gate_list U dim := list (gate_app U dim).
 
-(* Well-typedness for lists *)
+Fixpoint uc_well_typed_l_b {U} dim (l : gate_list U dim) : bool :=
+  match l with
+  | [] => 0 <? dim
+  | App1 _ n :: t => (n <? dim) && (uc_well_typed_l_b dim t)
+  | App2 _ m n :: t => (m <? dim) && (n <? dim) && (negb (m =? n)) && 
+      (uc_well_typed_l_b dim t)
+  | App3 _ m n p :: t => (m <? dim) && (n <? dim) && (p <? dim) && 
+      (negb (m =? n)) && (negb (n =? p)) && (negb (m =? p)) &&
+      (uc_well_typed_l_b dim t)
+  end.
+
+(* Get the next single-qubit gate applied to qubit q.
+   
+   Returns None if there is no next gate on qubit q or the next gate is
+   not a single-qubit gate. Otherwise, it returns Some (l1, g, l2) where g is 
+   the next gate, l1 is the portion of the program before the gate, and l2 is
+   the portion of the program after the gate.
+*)
+Fixpoint next_single_qubit_gate' {U dim} (l : gate_list U dim) (q : nat) acc
+             : option (gate_list U dim * U 1 * gate_list U dim) :=
+  match l with
+  | [] => None
+  | (App1 u n) :: t => if n =? q
+                     then Some (rev_append acc [], u, t) 
+                     else next_single_qubit_gate' t q (App1 u n :: acc)
+  | (App2 u m n) :: t => if (m =? q) || (n =? q)
+                       then None 
+                       else next_single_qubit_gate' t q (App2 u m n :: acc)
+  | (App3 u m n p) :: t => if (m =? q) || (n =? q) || (p =? q)
+                         then None 
+                         else next_single_qubit_gate' t q (App3 u m n p :: acc)
+  end.
+Definition next_single_qubit_gate {U dim} (l : gate_list U dim) q :=
+  next_single_qubit_gate' l q [].
+
+(* Get the last single-qubit gate applied to qubit q. *)
+Definition last_single_qubit_gate {U dim} (l : gate_list U dim) (q : nat) 
+             : option (gate_list U dim * U 1 * gate_list U dim) :=
+  match next_single_qubit_gate (rev_append l []) q  with
+  | Some (l1, u, l2) => Some (rev_append l2 [], u, rev_append l1 [])
+  | None => None
+  end.
+
+(* Get the next two-qubit gate (CNOT) applied to qubit q.
+   
+   Returns None if there is no next gate on qubit q or the next gate is
+   not a two-qubit gate. Otherwise, it returns Some (l1, q1, q2, l2) where 
+   q1 and q2 are the arguments to the CNOT, l1 is the portion of the program 
+   before the CNOT, and l2 is the portion of the program after the CNOT.
+*)
+Fixpoint next_two_qubit_gate' {U dim} (l : gate_list U dim) (q : nat) acc
+             : option (gate_list U dim * U 2 * nat * nat * gate_list U dim) :=
+  match l with
+  | [] => None
+  | (App1 u n) :: t => if n =? q
+                     then None
+                     else next_two_qubit_gate' t q (App1 u n :: acc)
+  | (App2 u m n) :: t => if (m =? q) || (n =? q)
+                       then Some (rev_append acc [], u, m, n, t) 
+                       else next_two_qubit_gate' t q (App2 u m n :: acc)
+  | (App3 u m n p) :: t => if (m =? q) || (n =? q) || (p =? q)
+                         then None 
+                         else next_two_qubit_gate' t q (App3 u m n p :: acc)
+  end.
+Definition next_two_qubit_gate {U dim} (l : gate_list U dim) q :=
+  next_two_qubit_gate' l q [].
+
+(* Get the next gate acting on a qubit that satisfies f. *)
+
+Fixpoint next_gate' {U dim} (l : gate_list U dim) (f : nat -> bool) acc
+             : option (gate_list U dim * gate_app U dim * gate_list U dim) :=
+  match l with 
+  | [] => None
+  | App1 u q :: t => 
+      if f q 
+      then Some (rev_append acc [], App1 u q, t)
+      else next_gate' t f (App1 u q :: acc)
+  | App2 u q1 q2 :: t => 
+      if (f q1) || (f q2) 
+      then Some (rev_append acc [], App2 u q1 q2, t)
+      else next_gate' t f (App2 u q1 q2 :: acc)
+  | App3 u q1 q2 q3 :: t => 
+      if (f q1) || (f q2) || (f q3)
+      then Some (rev_append acc [], App3 u q1 q2 q3, t)
+      else next_gate' t f (App3 u q1 q2 q3 :: acc)
+  end.
+Definition next_gate {U dim} (l : gate_list U dim) f := next_gate' l f [].
+
+(* Definition of "referencing" a qubit - important for commutativity *)
+
+Definition does_not_reference_appl {U dim} q (g : gate_app U dim) :=
+  match g with
+  | App1 u n => negb (n =? q)
+  | App2 u m n => negb ((m =? q) || (n =? q))
+  | App3 u m n p => negb ((m =? q) || (n =? q) || (p =? q))
+  end.
+
+Definition does_not_reference {U dim} (l : gate_list U dim) (q : nat) :=
+  forallb (does_not_reference_appl q) l.
+
+(* Given a list of rewrite rules, try to apply each rule until one succeeds. 
+   Return None if no rewrite succeeds. In the proof we keep 'P' abstract for 
+   maximum generality. *)
+Fixpoint try_rewrites {U dim} l (rules : list (gate_list U dim -> option (gate_list U dim))) :=
+  match rules with
+  | [] => None
+  | h :: t => match (h l) with
+            | Some l' => Some l'
+            | None => try_rewrites l t
+            end
+  end.
+
+(* 'try_rewrites' with rules that return a pair of lists. *)
+Fixpoint try_rewrites2 {U dim} l (rules : list (gate_list U dim -> option (gate_list U dim * gate_list U dim))) :=
+  match rules with
+  | [] => None
+  | h :: t => match (h l) with
+            | Some l' => Some l'
+            | None => try_rewrites2 l t
+            end
+  end.
+
+(* Try to cancel a gate using a set of cancellation rules, allowing for
+   commuting subcircuits described by a set of commutation rules. If
+   no cancellation is found, return None. Otherwise return Some l'
+   where l' is the modified list.
+   
+
+   l             : input list
+   commute_rules : rules for commuting the gate right
+   cancel_rules  : rules for canceling the gate
+   n             : max number of iterations (we usually want n = length l)
+   
+   In the soundness proof below we take 'eq' as a parameter to allow for 
+   different definitions of equivalence.
+*)
+Fixpoint propagate' {U dim} (l : gate_list U dim) commute_rules cancel_rules n acc :=
+  match n with
+  | O => None
+  | S n' => 
+      match try_rewrites l cancel_rules with
+      | Some l' => Some (rev_append acc l')
+      | None => match try_rewrites2 l commute_rules with
+               | Some (l1, l2) => 
+                   propagate' l2 commute_rules cancel_rules n' (rev_append l1 acc)
+               | None => None
+               end
+      end
+  end.
+Definition propagate {U dim} (l : gate_list U dim) commute_rules cancel_rules n :=
+  propagate' l commute_rules cancel_rules n [].
+
+(* Remove a sub-circuit from the beginning (or end) of a program. This is
+   useful when we want to replace a sub-circuit with an optimized version. *)
+Definition remove_prefix {U dim} (l pfx : gate_list U dim) (match_gate : forall {n}, U n -> U n -> bool) : option (gate_list U dim) :=
+  let fix f l pfx :=
+      match pfx with
+      | [] => Some l
+      | App1 u q :: t =>
+          match next_single_qubit_gate l q with
+          | Some (l1, u', l2) =>
+              if match_gate u u'
+              then f (l1 ++ l2) t
+              else None
+          | _ => None
+          end
+      | App2 u q1 q2 :: t =>
+          match next_two_qubit_gate l q1 with
+          | Some (l1, u', q1', q2', l2) =>
+              if (q1 =? q1') && (q2 =? q2') && match_gate u u' && 
+                   does_not_reference l1 q2
+              then f (l1 ++ l2) t
+              else None
+          | _ => None
+            end
+      | _ => None (* ignoring 3-qubit gate application for now - can add later *)
+      end in
+  f l pfx.
+
+Definition remove_suffix {U dim} (l sfx : gate_list U dim) match_gate :=
+  match remove_prefix (rev_append l []) (rev_append sfx []) match_gate with
+  | Some l => Some (rev_append l [])
+  | _ => None
+  end.
+
+(* If the next sequence of gates applied matches 'pat', then replace 'pat' 
+   with 'rep'. *)
+Definition replace_pattern {U dim} (l pat rep : gate_list U dim) match_gate : option (gate_list U dim) :=
+  match remove_prefix l pat match_gate with
+  | Some l' => Some (rep ++ l')
+  | None => None
+  end.
+
+(** List-of-lists representation for non-unitary programs. **)
+
+Local Open Scope com_scope.
+Inductive instr (U : nat -> Set) (dim : nat): Set :=
+| UC : gate_list U dim -> instr U dim
+| Meas : nat -> list (instr U dim) -> list (instr U dim) -> instr U dim.
+
+Definition com_list U dim := list (instr U dim).
+
+Arguments UC {U} {dim}.
+Arguments Meas {U} {dim}.
+
+(** Useful operations on the com list representation. **)
+
+Fixpoint does_not_reference_instr {U dim} q (i : instr U dim) :=
+  match i with 
+  | UC u => does_not_reference u q
+  | Meas n l1 l2 => 
+      negb (q =? n) && 
+      forallb (does_not_reference_instr q) l1 && 
+      forallb (does_not_reference_instr q) l2
+  end.
+Definition does_not_reference_c {U dim} (l : com_list U dim) (q : nat) :=
+  forallb (does_not_reference_instr q) l.
+
+(* Get the next measurement operation on qubit q. *)
+Fixpoint next_measurement {U dim} (l : com_list U dim) q :=
+  match l with
+  | [] => None
+  | UC u :: t => 
+      if does_not_reference u q 
+      then match next_measurement t q with
+           | None => None
+           | Some (l1, l1', l2', l2) => 
+               Some (UC u :: l1, l1', l2', l2)
+           end
+      else None
+  | Meas n l1 l2 :: t => 
+      if q =? n
+      then Some ([], l1, l2, t)
+      else if does_not_reference_c l1 q && does_not_reference_c l2 q
+           then match next_measurement t q with
+                | None => None
+                | Some (l1', l1'', l2'', l2') => 
+                    Some (Meas n l1 l2 :: l1', l1'', l2'', l2')
+                end
+           else None
+  end.
+
+(* Count the number of UC/Meas operations in a non-unitary program. This is useful
+   when we're too lazy to write functions in a nested recursive style & use the
+   special induction principle 'com_list_ind'. Instead, we can use the result of
+   this function as initial fuel to a function and recurse on the size of the fuel.
+   (This only works if the function in question performs N operations where N
+   can be over-approximated by an expression involving count_ops.) *)
+Fixpoint count_ops_instr {U dim} (i : instr U dim) :=
+  match i with
+  | UC u => 1%nat
+  | Meas n l1 l2 =>
+      let fix f l := match l with
+                     | [] => O
+                     | h :: t => (count_ops_instr h + f t)%nat
+                     end in
+      (1 + f l1 + f l2)%nat
+  end.
+Fixpoint count_ops {U dim} (l : com_list U dim) :=
+  match l with
+  | [] => O
+  | h :: t => (count_ops_instr h + count_ops t)%nat
+  end.
+
+(* 'canonicalize' a non-unitary program by combining adjacent UC terms and
+   removing empty UC terms. This will allow for more effective application 
+   of unitary optimizations (and nicer printing). *)
+Fixpoint canonicalize_com_l' {U dim} (l : com_list U dim) n : com_list U dim :=
+  match n with
+  | O => l
+  | S n' => match l with
+           | [] => []
+           | Meas n l1 l2 :: t => 
+               let l1' := canonicalize_com_l' l1 n' in
+               let l2' := canonicalize_com_l' l2 n' in
+               Meas n l1' l2' :: (canonicalize_com_l' t n')
+           | UC [] :: t => canonicalize_com_l' t n'
+           | UC u1 :: UC u2 :: t => canonicalize_com_l' ((UC (u1 ++ u2)) :: t) n'
+           
+           | h :: t => h :: (canonicalize_com_l' t n')
+           end
+  end.
+Definition canonicalize_com_l {U dim} (l : com_list U dim) :=
+  canonicalize_com_l' l (count_ops l).
+
+Lemma cons_to_app : forall {A} (h : A) (t : list A), h :: t = [h] ++ t.
+Proof. reflexivity. Qed.
+
+Module ListRepresentationProps (G : GateSet).
+
+(** Well-typedness for unitary lists. **)
 
 Inductive uc_well_typed_l {U dim} : gate_list U dim -> Prop :=
 | WT_nil : dim > 0 -> uc_well_typed_l []
@@ -97,18 +386,6 @@ Proof.
     inversion H2; subst; try constructor; try apply IHl; assumption. 
 Qed.
 
-(* Equivalent boolean version *)
-Fixpoint uc_well_typed_l_b {U} dim (l : gate_list U dim) : bool :=
-  match l with
-  | [] => 0 <? dim
-  | App1 _ n :: t => (n <? dim) && (uc_well_typed_l_b dim t)
-  | App2 _ m n :: t => (m <? dim) && (n <? dim) && (negb (m =? n)) && 
-      (uc_well_typed_l_b dim t)
-  | App3 _ m n p :: t => (m <? dim) && (n <? dim) && (p <? dim) && 
-      (negb (m =? n)) && (negb (n =? p)) && (negb (m =? p)) &&
-      (uc_well_typed_l_b dim t)
-  end.
-
 Lemma uc_well_typed_l_b_equiv : forall {U dim} (l : gate_list U dim), 
   uc_well_typed_l_b dim l = true <-> uc_well_typed_l l.
 Proof.
@@ -136,25 +413,16 @@ Qed.
 
 (** Conversion between gate_list and ucom in the base gate set. **)
 
-Definition base_ucom_l dim := gate_list base_Unitary dim.
-
-Fixpoint ucom_to_list {dim} (c: base_ucom dim) : base_ucom_l dim :=
-  match c with
-  | c1; c2 => (ucom_to_list c1) ++ (ucom_to_list c2)
-  | uapp1 u n => [App1 u n]
-  | uapp2 u m n => [App2 u m n]
-  | uapp3 u m n p => [App3 u m n p]
-  end.
-
-Fixpoint list_to_ucom {dim} (l : base_ucom_l dim) : base_ucom dim :=
+Local Open Scope ucom_scope.
+Fixpoint list_to_ucom {dim} (l : gate_list G.U dim) : base_ucom dim :=
   match l with
   | []               => SKIP
-  | (App1 u n)::t     => uapp1 u n ; list_to_ucom t
-  | (App2 u m n)::t   => uapp2 u m n ; list_to_ucom t
-  | (App3 u m n p)::t => uapp3 u m n p ; list_to_ucom t
+  | (App1 u n)::t     => uapp1 (G.to_base u) n ; list_to_ucom t
+  | (App2 u m n)::t   => uapp2 (G.to_base u) m n ; list_to_ucom t
+  | (App3 u m n p)::t => uapp3 (G.to_base u) m n p ; list_to_ucom t
   end.
 
-Lemma list_to_ucom_append : forall {dim} (l1 l2 : base_ucom_l dim),
+Lemma list_to_ucom_append : forall {dim} (l1 l2 : gate_list G.U dim),
   list_to_ucom (l1 ++ l2) ≡ list_to_ucom l1 ; list_to_ucom l2.
 Proof.
   intros dim l1 l2.
@@ -182,73 +450,272 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma ucom_list_equiv : forall {dim} (c : base_ucom dim),
-  list_to_ucom (ucom_to_list c) ≡ c.
-Proof.
-  intros.
-  unfold uc_equiv.
-  induction c; simpl; try dependent destruction u.
-  - rewrite list_to_ucom_append; simpl.
-    rewrite IHc1, IHc2; reflexivity.
-  - simpl; unfold pad. 
-    destruct dim; gridify.
-    rewrite denote_SKIP; try lia.
-    Msimpl_light; reflexivity.
-  - simpl; unfold ueval_cnot, pad. 
-    destruct dim; gridify;
-    rewrite denote_SKIP; try lia;
-    Msimpl_light; reflexivity.
-Qed.
-
-Lemma list_to_ucom_WT : forall {dim} (l : base_ucom_l dim), 
+Lemma list_to_ucom_WT : forall {dim} (l : gate_list G.U dim), 
   uc_well_typed_l l <-> uc_well_typed (list_to_ucom l).
 Proof.
   intros. 
   split; intros. 
   - induction H; try dependent destruction u.
-    + simpl. unfold SKIP. apply uc_well_typed_ID; lia.
-    + constructor. 
-      constructor; assumption.
-      apply IHuc_well_typed_l.
-    + constructor.
-      constructor; assumption.
-      apply IHuc_well_typed_l.
+    simpl. unfold SKIP. apply uc_well_typed_ID; lia.
+    all: constructor. 
+    all: try (constructor; assumption).
+    all: apply IHuc_well_typed_l.
   - induction l.
     + simpl in H. constructor.
       apply (uc_well_typed_implies_dim_nonzero _ H).
-    + destruct a; dependent destruction b;
+    + destruct a;
       inversion H; subst;
       inversion H2; subst;
-      constructor;
-      try apply IHl;
-      assumption.
+      constructor; auto.
 Qed.
 
-(** Useful operations on the ucom list representation. **)
+Definition eval {dim} (l : gate_list G.U dim) := uc_eval (list_to_ucom l).
 
-(* Get the next single-qubit gate applied to qubit q.
-   
-   Returns None if there is no next gate on qubit q or the next gate is
-   not a single-qubit gate. Otherwise, it returns Some (l1, g, l2) where g is 
-   the next gate, l1 is the portion of the program before the gate, and l2 is
-   the portion of the program after the gate.
-*)
-Fixpoint next_single_qubit_gate' {U dim} (l : gate_list U dim) (q : nat) acc
-             : option (gate_list U dim * U 1 * gate_list U dim) :=
-  match l with
-  | [] => None
-  | (App1 u n) :: t => if n =? q
-                     then Some (rev_append acc [], u, t) 
-                     else next_single_qubit_gate' t q (App1 u n :: acc)
-  | (App2 u m n) :: t => if (m =? q) || (n =? q)
-                       then None 
-                       else next_single_qubit_gate' t q (App2 u m n :: acc)
-  | (App3 u m n p) :: t => if (m =? q) || (n =? q) || (p =? q)
-                         then None 
-                         else next_single_qubit_gate' t q (App3 u m n p :: acc)
-  end.
-Definition next_single_qubit_gate {U dim} (l : gate_list U dim) q :=
-  next_single_qubit_gate' l q [].
+(** Equivalences over unitary lists. **)
+
+Definition uc_equiv_l {dim} (l1 l2 : gate_list G.U dim) := 
+  list_to_ucom l1 ≡ list_to_ucom l2.
+Infix "=l=" := uc_equiv_l (at level 70) : ucom_scope.
+
+Lemma uc_equiv_l_refl : forall {dim} (l1 : gate_list G.U dim), l1 =l= l1.
+Proof. easy. Qed.
+ 
+Lemma uc_equiv_l_sym : forall {dim} (l1 l2 : gate_list G.U dim), l1 =l= l2 -> l2 =l= l1.
+Proof. easy. Qed.
+ 
+Lemma uc_equiv_l_trans : forall {dim} (l1 l2 l3 : gate_list G.U dim), 
+  l1 =l= l2 -> l2 =l= l3 -> l1 =l= l3.
+Proof. intros dim l1 l2 l3 H12 H23. unfold uc_equiv_l in *. rewrite H12. easy. Qed.
+
+Lemma uc_cons_congruence : forall {dim} (g : gate_app G.U dim)  (l l' : gate_list G.U dim),
+  l =l= l' ->
+  g :: l =l= g :: l'.
+Proof.
+  intros dim g l l' Hl.
+  unfold uc_equiv_l, uc_equiv.
+  simpl.
+  destruct g; simpl; try rewrite Hl; reflexivity.
+Qed.
+
+Lemma uc_app_congruence : forall {dim} (l1 l1' l2 l2' : gate_list G.U dim),
+  l1 =l= l1' ->
+  l2 =l= l2' ->
+  l1 ++ l2 =l= l1' ++ l2'.
+Proof.
+  intros dim l1 l1' l2 l2' Hl1 Hl2.
+  unfold uc_equiv_l, uc_equiv.
+  simpl.
+  repeat rewrite list_to_ucom_append; simpl.
+  rewrite Hl1, Hl2.
+  reflexivity.
+Qed.
+
+Add Parametric Relation (dim : nat) : (gate_list G.U dim) (@uc_equiv_l dim)
+  reflexivity proved by uc_equiv_l_refl
+  symmetry proved by uc_equiv_l_sym
+  transitivity proved by uc_equiv_l_trans
+  as uc_equiv_l_rel.
+
+
+Add Parametric Morphism (dim : nat) : (@List.cons (gate_app G.U dim))
+  with signature eq ==> (@uc_equiv_l dim) ==> (@uc_equiv_l dim) as uc_cons_mor.
+Proof. intros y x0 y0 H0. apply uc_cons_congruence; easy. Qed.
+
+Add Parametric Morphism (dim : nat) : (@app (gate_app G.U dim))
+  with signature (@uc_equiv_l dim) ==> (@uc_equiv_l dim) ==> (@uc_equiv_l dim) as uc_app_mor.
+Proof. intros x y H x0 y0 H0. apply uc_app_congruence; easy. Qed.
+
+Lemma uc_equiv_l_implies_WT : forall {dim} (l l' : gate_list G.U dim),
+  l =l= l' ->
+  uc_well_typed_l l ->
+  uc_well_typed_l l'.
+Proof.
+  intros dim l l' H WT.
+  apply list_to_ucom_WT. 
+  apply uc_eval_nonzero_iff.
+  apply list_to_ucom_WT in WT.
+  apply uc_eval_nonzero_iff in WT.
+  rewrite <- H; assumption.
+Qed.
+
+(* Equivalence up to a phase. *)
+
+Definition uc_cong_l {dim} (l1 l2 : gate_list G.U dim) := 
+  list_to_ucom l1 ≅ list_to_ucom l2.
+Infix "≅l≅" := uc_cong_l (at level 20).
+
+Lemma uc_cong_l_refl : forall {dim : nat} (l1 : gate_list G.U dim), l1 ≅l≅ l1.
+Proof. intros. exists 0%R. rewrite Cexp_0. rewrite Mscale_1_l. reflexivity. Qed.
+
+Lemma uc_cong_l_sym : forall {dim : nat} (l1 l2 : gate_list G.U dim), l1 ≅l≅ l2 -> l2 ≅l≅ l1.
+Proof. intros dim l1 l2 H. unfold uc_cong_l in *. rewrite H. reflexivity. Qed.
+
+Lemma uc_cong_l_trans : forall {dim : nat} (l1 l2 l3 : gate_list G.U dim), l1 ≅l≅ l2 -> l2 ≅l≅ l3 -> l1 ≅l≅ l3.
+Proof.
+  intros dim l1 l2 l3 H1 H2.
+  unfold uc_cong_l in *.
+  eapply uc_cong_trans. apply H1. apply H2.
+Qed.  
+
+Lemma uc_cong_l_cons_congruence : forall {dim : nat} (g : gate_app G.U dim) (l l' : gate_list G.U dim),
+  l ≅l≅ l' -> (g :: l) ≅l≅ (g :: l').
+Proof.
+  intros dim g l l' H. unfold uc_cong_l in *.
+  simpl.
+  inversion H.
+  destruct g as [u | u | u];
+  exists x; simpl; rewrite <- Mscale_mult_dist_l; rewrite H0; reflexivity.
+Qed.
+
+Lemma uc_cong_l_app_congruence : forall {dim : nat} (l l' m m': gate_list G.U dim),
+  l ≅l≅ l' -> m ≅l≅ m' -> (m ++ l) ≅l≅ (m' ++ l').
+Proof.
+  intros dim l l' m m' H1 H2.
+  unfold uc_cong_l in *.
+  inversion H1. inversion H2.
+  exists (x + x0)%R.
+  repeat rewrite list_to_ucom_append; simpl.
+  rewrite H, H0. 
+  rewrite Mscale_mult_dist_r.
+  rewrite Mscale_mult_dist_l.
+  rewrite Mscale_assoc.
+  rewrite <- Cexp_add.
+  rewrite Rplus_comm.
+  reflexivity.
+Qed.
+    
+Add Parametric Relation (dim : nat) : (gate_list G.U dim) (@uc_cong_l dim)
+  reflexivity proved by uc_cong_l_refl
+  symmetry proved by uc_cong_l_sym
+  transitivity proved by uc_cong_l_trans
+  as uc_cong_l_rel.
+
+Add Parametric Morphism (dim : nat) : (@List.cons (gate_app G.U dim))
+  with signature eq ==> (@uc_cong_l dim) ==> (@uc_cong_l dim) as uc_cons_mor_cong.
+Proof. intros. apply uc_cong_l_cons_congruence. easy. Qed.
+
+Add Parametric Morphism (dim : nat) : (@app (gate_app G.U dim))
+  with signature (@uc_cong_l dim) ==> (@uc_cong_l dim) ==> (@uc_cong_l dim) as uc_app_mor_cong.
+Proof. intros x y H x0 y0 H0. apply uc_cong_l_app_congruence; easy. Qed.
+
+Lemma uc_equiv_cong_l : forall {dim : nat} (c c' : gate_list G.U dim), c =l= c' -> c ≅l≅ c'.
+Proof.
+  intros dim c c' H.
+  exists 0%R. rewrite Cexp_0, Mscale_1_l. 
+  apply H.
+Qed.
+
+Lemma uc_cong_l_implies_WT : forall {dim} (l l' : gate_list G.U dim),
+  l ≅l≅ l' ->
+  uc_well_typed_l l ->
+  uc_well_typed_l l'.
+Proof.
+  intros dim l l' H WT.
+  apply list_to_ucom_WT. 
+  apply uc_eval_nonzero_iff.
+  apply list_to_ucom_WT in WT.
+  apply uc_eval_nonzero_iff in WT.
+  destruct H.
+  rewrite H in WT. 
+  intros contra.
+  rewrite contra in WT.
+  contradict WT.
+  Msimpl.
+  reflexivity.
+Qed.
+
+(** Basic commutativity lemmas. **)
+
+Lemma does_not_reference_commutes_app1 : forall {dim} (l : gate_list G.U dim) u q,
+  does_not_reference l q = true ->
+  [App1 u q] ++ l =l= l ++ [App1 u q]. 
+Proof.
+  intros dim l u q H.
+  induction l.
+  - reflexivity.
+  - simpl in *.
+    destruct a as [u' | u' | u'];
+    apply andb_prop in H as [H1 H2];
+    repeat match goal with 
+    | H : does_not_reference_appl _ _ = true |- _ => apply negb_true_iff in H
+    end;
+    repeat match goal with 
+    | H : (_ || _) = false |- _ => apply orb_false_elim in H as [? ?]
+    end;
+    repeat match goal with
+    | H : (_ =? _)%nat = false |- _ => 
+         apply beq_nat_false in H;
+         apply not_eq_sym in H
+    end;
+    rewrite <- IHl; auto;
+    unfold uc_equiv_l; simpl; 
+    rewrite <- 2 useq_assoc.
+    rewrite U_V_comm; auto; reflexivity.
+    remember (G.to_base u') as base; dependent destruction base.
+    rewrite (U_CNOT_comm _ n n0); auto; reflexivity.
+    remember (G.to_base u') as base; dependent destruction base.
+Qed.
+
+Lemma does_not_reference_commutes_app2 : forall {dim} (l : gate_list G.U dim) u m n,
+  does_not_reference l m = true ->
+  does_not_reference l n = true ->
+  [App2 u m n] ++ l =l= l ++ [App2 u m n]. 
+Proof.
+  intros.
+  induction l.
+  - reflexivity.
+  - simpl in *.
+    destruct a as [u' | u' | u'];
+    apply andb_prop in H as [? ?];
+    apply andb_prop in H0 as [? ?];
+    repeat match goal with 
+    | H : does_not_reference_appl _ _ = true |- _ => apply negb_true_iff in H
+    end;
+    repeat match goal with 
+    | H : (_ || _) = false |- _ => apply orb_false_elim in H as [? ?]
+    end;
+    repeat match goal with
+    | H : (_ =? _)%nat = false |- _ => apply beq_nat_false in H    
+    end;
+    rewrite <- IHl; auto;
+    unfold uc_equiv_l; simpl;
+    rewrite <- 2 useq_assoc.
+    remember (G.to_base u) as base; dependent destruction base.
+    rewrite (U_CNOT_comm n0 m n); auto; reflexivity.
+    remember (G.to_base u) as base; dependent destruction base.
+    remember (G.to_base u') as base'; dependent destruction base'.
+    rewrite (CNOT_CNOT_comm m n n0 n1); auto; reflexivity.
+    remember (G.to_base u') as base; dependent destruction base.
+Qed.
+
+(** Correctness lemmas for ops on unitary programs. **)
+
+Lemma does_not_reference_app : forall {U dim} (l1 l2 : gate_list U dim) q,
+  does_not_reference l1 q && does_not_reference l2 q = true <-> 
+  does_not_reference (l1 ++ l2) q = true.
+Proof.
+  intros.
+  unfold does_not_reference.
+  rewrite forallb_app.
+  reflexivity.
+Qed.
+
+Lemma does_not_reference_rev : forall {U dim} (l : gate_list U dim) q,
+  does_not_reference l q = true <-> does_not_reference (rev l) q = true.
+Proof.
+  intros.
+  induction l; split; intros; simpl in *; trivial. 
+  - apply does_not_reference_app.
+    apply andb_true_iff.
+    apply andb_true_iff in H as [H1 H2].
+    split. apply IHl; assumption.
+    simpl; apply andb_true_iff. split; trivial.
+  - apply does_not_reference_app in H. 
+    apply andb_true_iff in H as [H1 H2].
+    simpl in H2; apply andb_true_iff in H2 as [H2 _].
+    apply andb_true_iff.
+    split; try apply IHl; assumption.
+Qed.
 
 Lemma nsqg_preserves_structure : forall {U dim} (l : gate_list U dim) q u l1 l2,
   next_single_qubit_gate l q = Some (l1, u, l2) -> 
@@ -304,13 +771,51 @@ Proof.
   split; assumption.
 Qed.
 
-(* Get the last single-qubit gate applied to qubit q. *)
-Definition last_single_qubit_gate {U dim} (l : gate_list U dim) (q : nat) 
-             : option (gate_list U dim * U 1 * gate_list U dim) :=
-  match next_single_qubit_gate (rev_append l []) q  with
-  | Some (l1, u, l2) => Some (rev_append l2 [], u, rev_append l1 [])
-  | None => None
-  end.
+Lemma nsqg_l1_does_not_reference : forall {U dim} (l : gate_list U dim) q l1 u l2,
+  next_single_qubit_gate l q = Some (l1, u, l2) ->
+  does_not_reference l1 q = true.
+Proof.
+  assert (H: forall {U dim} (l : gate_list U dim) q l1 u l2 acc,
+          does_not_reference acc q = true ->
+          next_single_qubit_gate' l q acc = Some (l1, u, l2) ->
+          does_not_reference l1 q = true).
+  { intros U dim l q l1 u l2 acc Hdnr H.
+    generalize dependent acc.
+    generalize dependent l1.
+    induction l; try easy.
+    intros l1 acc Hdnr H.
+    simpl in H.
+    destruct a;
+    [  destruct (n =? q) eqn:E 
+     | destruct ((n =? q) || (n0 =? q)) eqn:E 
+     | destruct ((n =? q) || (n0 =? q) || (n1 =? q)) eqn:E ];
+    try (inversion H; subst; constructor).
+    rewrite <- rev_alt in H.
+    inversion H; subst.
+    rewrite <- does_not_reference_rev; auto.
+    1: destruct (next_single_qubit_gate' l q (App1 u0 n :: acc)) eqn:res; try easy.
+    2: destruct (next_single_qubit_gate' l q (App2 u0 n n0 :: acc)) eqn:res; try easy.
+    3: destruct (next_single_qubit_gate' l q (App3 u0 n n0 n1 :: acc)) eqn:res; try easy.
+    all: do 2 destruct p; inversion H; subst; eapply IHl; try apply res.
+    all: simpl; apply andb_true_intro; split; try apply negb_true_iff; auto. }
+  intros ? ? ? ? ? ? ? H0.
+  eapply H; try apply H0.
+  reflexivity.
+Qed.
+
+Lemma nsqg_commutes : forall {dim} (l : gate_list G.U dim) q u l1 l2,
+  next_single_qubit_gate l q = Some (l1, u, l2) -> 
+  l =l= [App1 u q] ++ l1 ++ l2.
+Proof.
+  intros dim l q u l1 l2 H.
+  specialize (nsqg_preserves_structure _ _ _ _ _ H) as H1.
+  subst.
+  apply nsqg_l1_does_not_reference in H.
+  apply (does_not_reference_commutes_app1 _ u _) in H.
+  repeat rewrite app_assoc.  
+  rewrite H.
+  reflexivity.
+Qed.
 
 Lemma lsqg_preserves_structure : forall {U dim} (l : gate_list U dim) q u l1 l2,
   last_single_qubit_gate l q = Some (l1, u, l2) -> 
@@ -350,29 +855,33 @@ Proof.
   split; rewrite <- uc_well_typed_l_rev; assumption.
 Qed.
 
-(* Get the next two-qubit gate (CNOT) applied to qubit q.
-   
-   Returns None if there is no next gate on qubit q or the next gate is
-   not a two-qubit gate. Otherwise, it returns Some (l1, q1, q2, l2) where 
-   q1 and q2 are the arguments to the CNOT, l1 is the portion of the program 
-   before the CNOT, and l2 is the portion of the program after the CNOT.
-*)
-Fixpoint next_two_qubit_gate' {U dim} (l : gate_list U dim) (q : nat) acc
-             : option (gate_list U dim * U 2 * nat * nat * gate_list U dim) :=
-  match l with
-  | [] => None
-  | (App1 u n) :: t => if n =? q
-                     then None
-                     else next_two_qubit_gate' t q (App1 u n :: acc)
-  | (App2 u m n) :: t => if (m =? q) || (n =? q)
-                       then Some (rev_append acc [], u, m, n, t) 
-                       else next_two_qubit_gate' t q (App2 u m n :: acc)
-  | (App3 u m n p) :: t => if (m =? q) || (n =? q) || (p =? q)
-                         then None 
-                         else next_two_qubit_gate' t q (App3 u m n p :: acc)
-  end.
-Definition next_two_qubit_gate {U dim} (l : gate_list U dim) q :=
-  next_two_qubit_gate' l q [].
+Lemma lsqg_l2_does_not_reference : forall {U dim} (l : gate_list U dim) q l1 u l2,
+  last_single_qubit_gate l q = Some (l1, u, l2) ->
+  does_not_reference l2 q = true.
+Proof.
+  intros.
+  unfold last_single_qubit_gate in H.
+  rewrite <- rev_alt in H.
+  destruct (next_single_qubit_gate (rev l) q) eqn:nsqg; try easy.
+  destruct p; destruct p; inversion H; subst.
+  rewrite <- rev_alt.
+  apply nsqg_l1_does_not_reference in nsqg.
+  rewrite <- does_not_reference_rev.
+  assumption.
+Qed.
+
+Lemma lsqg_commutes : forall {dim} (l : gate_list G.U dim) q u l1 l2,
+  last_single_qubit_gate l q = Some (l1, u, l2) -> 
+  l =l= l1 ++ l2 ++ [App1 u q].
+Proof.
+  intros dim l q u l1 l2 H.
+  specialize (lsqg_preserves_structure _ _ _ _ _ H) as H1.
+  subst.
+  apply lsqg_l2_does_not_reference in H.
+  apply (does_not_reference_commutes_app1 _ u _) in H.
+  rewrite H.
+  reflexivity.
+Qed.
 
 Lemma ntqg_returns_two_qubit_gate : forall {U dim} (l : gate_list U dim) q l1 u m n l2,
   next_two_qubit_gate l q = Some (l1, u, m, n, l2) -> 
@@ -466,208 +975,6 @@ Proof.
   split; assumption.
 Qed.
 
-(* Get the next gate acting on any qubit in qs. *)
-
-Fixpoint next_gate' {U dim} (l : gate_list U dim) (qs : FSet.t) acc
-             : option (gate_list U dim * gate_app U dim * gate_list U dim) :=
-  match l with 
-  | [] => None
-  | App1 u q :: t => 
-      if FSet.mem q qs 
-      then Some (rev_append acc [], App1 u q, t)
-      else next_gate' t qs (App1 u q :: acc)
-  | App2 u q1 q2 :: t => 
-      if (FSet.mem q1 qs) || (FSet.mem q2 qs) 
-      then Some (rev_append acc [], App2 u q1 q2, t)
-      else next_gate' t qs (App2 u q1 q2 :: acc)
-  | App3 u q1 q2 q3 :: t => 
-      if (FSet.mem q1 qs) || (FSet.mem q2 qs) || (FSet.mem q3 qs)
-      then Some (rev_append acc [], App3 u q1 q2 q3, t)
-      else next_gate' t qs (App3 u q1 q2 q3 :: acc)
-  end.
-Definition next_gate {U dim} (l : gate_list U dim) qs := next_gate' l qs [].
-
-Lemma mem_reflect : forall x s, reflect (FSet.In x s) (FSet.mem x s).
-Proof. intros x l. apply iff_reflect. apply FSetFacts.mem_iff. Qed.
-Hint Resolve mem_reflect : bdestruct.
-
-Lemma next_gate_preserves_structure : forall {U dim} (l : gate_list U dim) qs l1 g l2,
-  next_gate l qs = Some (l1, g, l2) ->
-  l = l1 ++ [g] ++ l2.
-Proof.
-  assert (H : forall U dim (l : gate_list U dim) qs l1 g l2 acc,
-          next_gate' l qs acc = Some (l1, g, l2) -> 
-          (rev acc) ++ l = l1 ++ [g] ++ l2).
-  { intros U dim l qs l1 g l2 acc H.
-    generalize dependent acc.
-    generalize dependent l1.
-    induction l; try discriminate.
-    intros l1 acc H.
-    simpl in H.
-    destruct a;
-    [ destruct (FSet.mem n qs)
-    | destruct (FSet.mem n qs || FSet.mem n0 qs) 
-    | destruct (FSet.mem n qs || FSet.mem n0 qs || FSet.mem n1 qs) ].
-    all: try rewrite <- rev_alt in H. 
-    all: try (inversion H; subst; reflexivity).
-    1: destruct (next_gate' l qs (App1 u n :: acc)) eqn:res; try discriminate.
-    2: destruct (next_gate' l qs (App2 u n n0 :: acc)) eqn:res; try discriminate.
-    3: destruct (next_gate' l qs (App3 u n n0 n1 :: acc)) eqn:res; try discriminate.
-    all: repeat destruct p; inversion H; subst;
-         erewrite <- IHl; try apply res. 
-    all: simpl; rewrite <- app_assoc; reflexivity. }
-  intros ? ? ? ? ? ? ? H0.  
-  apply H in H0. rewrite <- H0. reflexivity.
-Qed.
-
-Lemma next_gate_app1_returns_q : forall {U dim} (l : gate_list U dim) qs l1 u q l2,
-  next_gate l qs = Some (l1, App1 u q, l2) -> FSet.In q qs.
-Proof.
-  assert (H : forall U dim (l : gate_list U dim) qs l1 u q l2 acc,
-          next_gate' l qs acc = Some (l1, App1 u q, l2) -> FSet.In q qs).
-  { intros U dim l qs l1 u q l2 acc H.
-    generalize dependent acc.
-    generalize dependent l1.
-    induction l; intros l1 acc H; simpl in H; try discriminate.
-    destruct a; 
-    [ bdestruct (FSet.mem n qs)
-    | destruct (FSet.mem n qs || FSet.mem n0 qs)
-    | destruct (FSet.mem n qs || FSet.mem n0 qs || FSet.mem n1 qs) ].
-    all: try rewrite <- rev_alt in H. 
-    2: destruct (next_gate' l qs (App1 u0 n :: acc)) eqn:res; try discriminate.
-    4: destruct (next_gate' l qs (App2 u0 n n0 :: acc)) eqn:res; try discriminate.
-    6: destruct (next_gate' l qs (App3 u0 n n0 n1 :: acc)) eqn:res; try discriminate.
-    all: repeat destruct p.
-    all: inversion H; subst; auto.
-    all: eapply IHl; apply res. }
-  intros ? ? ? ? ? ? ? ? H0.  
-  eapply H. apply H0.
-Qed.
-
-Lemma next_gate_app2_returns_q : forall {U dim} (l : gate_list U dim) qs l1 u q1 q2 l2,
-  next_gate l qs = Some (l1, App2 u q1 q2, l2) -> (FSet.In q1 qs \/ FSet.In q2 qs).
-Proof.
-  assert (H : forall U dim (l : gate_list U dim) qs l1 u q1 q2 l2 acc,
-          next_gate' l qs acc = Some (l1, App2 u q1 q2, l2) ->
-          (FSet.In q1 qs \/ FSet.In q2 qs)).
-  { intros U dim l qs l1 u q1 q2 l2 acc H.
-    generalize dependent acc.
-    generalize dependent l1.
-    induction l; intros l1 acc H; simpl in H; try discriminate.
-    destruct a; 
-    [ destruct (FSet.mem n qs)
-    | bdestruct (FSet.mem n qs); bdestruct (FSet.mem n0 qs)
-    | destruct (FSet.mem n qs || FSet.mem n0 qs || FSet.mem n1 qs) ].
-    all: try rewrite <- rev_alt in H. 
-    2: destruct (next_gate' l qs (App1 u0 n :: acc)) eqn:res; try discriminate.
-    6: destruct (next_gate' l qs (App2 u0 n n0 :: acc)) eqn:res; try discriminate.
-    8: destruct (next_gate' l qs (App3 u0 n n0 n1 :: acc)) eqn:res; try discriminate.
-    all: repeat destruct p.
-    all: inversion H; subst; auto.
-    all: eapply IHl; apply res. }
-  intros ? ? ? ? ? ? ? ? ? H0.  
-  eapply H. apply H0.
-Qed.
-
-Lemma next_gate_WT : forall {U dim} (l : gate_list U dim) q l1 g l2,
-  next_gate l q = Some (l1, g, l2) -> 
-  uc_well_typed_l l -> 
-  uc_well_typed_l l1 /\ uc_well_typed_l l2.
-Proof.
-  intros U dim l q l1 g l2 H WT.
-  apply next_gate_preserves_structure in H.
-  subst l.
-  apply uc_well_typed_l_app in WT as [WT1 WT2].
-  apply uc_well_typed_l_app in WT2 as [_ WT2].
-  split; assumption.
-Qed.
-
-(* does_not_reference *)
-
-Definition does_not_reference_appl {U dim} q (g : gate_app U dim) :=
-  match g with
-  | App1 u n => negb (n =? q)
-  | App2 u m n => negb ((m =? q) || (n =? q))
-  | App3 u m n p => negb ((m =? q) || (n =? q) || (p =? q))
-  end.
-
-Definition does_not_reference {U dim} (l : gate_list U dim) (q : nat) :=
-  forallb (does_not_reference_appl q) l.
-
-Lemma does_not_reference_app : forall {U dim} (l1 l2 : gate_list U dim) q,
-  does_not_reference l1 q && does_not_reference l2 q = true <-> 
-  does_not_reference (l1 ++ l2) q = true.
-Proof.
-  intros.
-  unfold does_not_reference.
-  rewrite forallb_app.
-  reflexivity.
-Qed.
-
-Lemma does_not_reference_rev : forall {U dim} (l : gate_list U dim) q,
-  does_not_reference l q = true <-> does_not_reference (rev l) q = true.
-Proof.
-  intros.
-  induction l; split; intros; simpl in *; trivial. 
-  - apply does_not_reference_app.
-    apply andb_true_iff.
-    apply andb_true_iff in H as [H1 H2].
-    split. apply IHl; assumption.
-    simpl; apply andb_true_iff. split; trivial.
-  - apply does_not_reference_app in H. 
-    apply andb_true_iff in H as [H1 H2].
-    simpl in H2; apply andb_true_iff in H2 as [H2 _].
-    apply andb_true_iff.
-    split; try apply IHl; assumption.
-Qed.
-
-Lemma nsqg_l1_does_not_reference : forall {U dim} (l : gate_list U dim) q l1 u l2,
-  next_single_qubit_gate l q = Some (l1, u, l2) ->
-  does_not_reference l1 q = true.
-Proof.
-  assert (H: forall {U dim} (l : gate_list U dim) q l1 u l2 acc,
-          does_not_reference acc q = true ->
-          next_single_qubit_gate' l q acc = Some (l1, u, l2) ->
-          does_not_reference l1 q = true).
-  { intros U dim l q l1 u l2 acc Hdnr H.
-    generalize dependent acc.
-    generalize dependent l1.
-    induction l; try easy.
-    intros l1 acc Hdnr H.
-    simpl in H.
-    destruct a;
-    [  destruct (n =? q) eqn:E 
-     | destruct ((n =? q) || (n0 =? q)) eqn:E 
-     | destruct ((n =? q) || (n0 =? q) || (n1 =? q)) eqn:E ];
-    try (inversion H; subst; constructor).
-    rewrite <- rev_alt in H.
-    inversion H; subst.
-    rewrite <- does_not_reference_rev; auto.
-    1: destruct (next_single_qubit_gate' l q (App1 u0 n :: acc)) eqn:res; try easy.
-    2: destruct (next_single_qubit_gate' l q (App2 u0 n n0 :: acc)) eqn:res; try easy.
-    3: destruct (next_single_qubit_gate' l q (App3 u0 n n0 n1 :: acc)) eqn:res; try easy.
-    all: do 2 destruct p; inversion H; subst; eapply IHl; try apply res.
-    all: simpl; apply andb_true_intro; split; try apply negb_true_iff; auto. }
-  intros ? ? ? ? ? ? ? H0.
-  eapply H; try apply H0.
-  reflexivity.
-Qed.
-
-Lemma lsqg_l2_does_not_reference : forall {U dim} (l : gate_list U dim) q l1 u l2,
-  last_single_qubit_gate l q = Some (l1, u, l2) ->
-  does_not_reference l2 q = true.
-Proof.
-  intros.
-  unfold last_single_qubit_gate in H.
-  rewrite <- rev_alt in H.
-  destruct (next_single_qubit_gate (rev l) q) eqn:nsqg; try easy.
-  destruct p; destruct p; inversion H; subst.
-  rewrite <- rev_alt.
-  apply nsqg_l1_does_not_reference in nsqg.
-  rewrite <- does_not_reference_rev.
-  assumption.
-Qed.
-
 Lemma ntqg_l1_does_not_reference : forall {U dim} (l : gate_list U dim) q l1 u m n l2,
   next_two_qubit_gate l q = Some (l1, u, m, n, l2) ->
   does_not_reference l1 q = true.
@@ -699,28 +1006,119 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma next_gate_l1_does_not_reference : forall {U dim} (l : gate_list U dim) qs l1 g l2,
-  next_gate l qs = Some (l1, g, l2) ->
-  forall q, FSet.In q qs -> does_not_reference l1 q = true.
+Lemma next_gate_preserves_structure : forall {U dim} (l : gate_list U dim) f l1 g l2,
+  next_gate l f = Some (l1, g, l2) ->
+  l = l1 ++ [g] ++ l2.
 Proof.
-  assert (H: forall {U dim} (l : gate_list U dim) qs l1 g l2 acc,
-          (forall q, FSet.In q qs -> does_not_reference acc q = true) ->
-          next_gate' l qs acc = Some (l1, g, l2) ->
-          forall q, FSet.In q qs -> does_not_reference l1 q = true).
-  { intros U dim l qs l1 g l2 acc Hdnr H.
+  assert (H : forall U dim (l : gate_list U dim) f l1 g l2 acc,
+          next_gate' l f acc = Some (l1, g, l2) -> 
+          (rev acc) ++ l = l1 ++ [g] ++ l2).
+  { intros U dim l f l1 g l2 acc H.
+    generalize dependent acc.
+    generalize dependent l1.
+    induction l; try discriminate.
+    intros l1 acc H.
+    simpl in H.
+    destruct a;
+    [ destruct (f n)
+    | destruct (f n || f n0) 
+    | destruct (f n || f n0 || f n1) ].
+    all: try rewrite <- rev_alt in H. 
+    all: try (inversion H; subst; reflexivity).
+    1: destruct (next_gate' l f (App1 u n :: acc)) eqn:res; try discriminate.
+    2: destruct (next_gate' l f (App2 u n n0 :: acc)) eqn:res; try discriminate.
+    3: destruct (next_gate' l f (App3 u n n0 n1 :: acc)) eqn:res; try discriminate.
+    all: repeat destruct p; inversion H; subst;
+         erewrite <- IHl; try apply res. 
+    all: simpl; rewrite <- app_assoc; reflexivity. }
+  intros ? ? ? ? ? ? ? H0.  
+  apply H in H0. rewrite <- H0. reflexivity.
+Qed.
+
+Lemma next_gate_app1_returns_q : forall {U dim} (l : gate_list U dim) f l1 u q l2,
+  next_gate l f = Some (l1, App1 u q, l2) -> f q = true.
+Proof.
+  assert (H : forall U dim (l : gate_list U dim) f l1 u q l2 acc,
+          next_gate' l f acc = Some (l1, App1 u q, l2) -> f q = true).
+  { intros U dim l f l1 u q l2 acc H.
+    generalize dependent acc.
+    generalize dependent l1.
+    induction l; intros l1 acc H; simpl in H; try discriminate.
+    destruct a; 
+    [ destruct (f n) eqn:?
+    | destruct (f n || f n0)
+    | destruct (f n || f n0 || f n1) ].
+    all: try rewrite <- rev_alt in H.
+    2: destruct (next_gate' l f (App1 u0 n :: acc)) eqn:res; try discriminate.
+    4: destruct (next_gate' l f (App2 u0 n n0 :: acc)) eqn:res; try discriminate.
+    6: destruct (next_gate' l f (App3 u0 n n0 n1 :: acc)) eqn:res; try discriminate.
+    all: repeat destruct p.
+    all: inversion H; subst; auto.
+    all: eapply IHl; apply res. }
+  intros ? ? ? ? ? ? ? ? H0.  
+  eapply H. apply H0.
+Qed.
+
+Lemma next_gate_app2_returns_q : forall {U dim} (l : gate_list U dim) f l1 u q1 q2 l2,
+  next_gate l f = Some (l1, App2 u q1 q2, l2) -> (f q1 = true \/ f q2 = true).
+Proof.
+  assert (H : forall U dim (l : gate_list U dim) f l1 u q1 q2 l2 acc,
+          next_gate' l f acc = Some (l1, App2 u q1 q2, l2) ->
+          (f q1 = true \/ f q2 = true)).
+  { intros U dim l f l1 u q1 q2 l2 acc H.
+    generalize dependent acc.
+    generalize dependent l1.
+    induction l; intros l1 acc H; simpl in H; try discriminate.
+    destruct a; 
+    [ destruct (f n)
+    | destruct (f n) eqn:?; destruct (f n0) eqn:?
+    | destruct (f n || f n0 || f n1) ].
+    all: try rewrite <- rev_alt in H. 
+    2: destruct (next_gate' l f (App1 u0 n :: acc)) eqn:res; try discriminate.
+    6: destruct (next_gate' l f (App2 u0 n n0 :: acc)) eqn:res; try discriminate.
+    8: destruct (next_gate' l f (App3 u0 n n0 n1 :: acc)) eqn:res; try discriminate.
+    all: repeat destruct p.
+    all: inversion H; subst; auto.
+    all: eapply IHl; apply res. }
+  intros ? ? ? ? ? ? ? ? ? H0.  
+  eapply H. apply H0.
+Qed.
+
+Lemma next_gate_WT : forall {U dim} (l : gate_list U dim) q l1 g l2,
+  next_gate l q = Some (l1, g, l2) -> 
+  uc_well_typed_l l -> 
+  uc_well_typed_l l1 /\ uc_well_typed_l l2.
+Proof.
+  intros U dim l q l1 g l2 H WT.
+  apply next_gate_preserves_structure in H.
+  subst l.
+  apply uc_well_typed_l_app in WT as [WT1 WT2].
+  apply uc_well_typed_l_app in WT2 as [_ WT2].
+  split; assumption.
+Qed.
+
+Lemma next_gate_l1_does_not_reference : forall {U dim} (l : gate_list U dim) f l1 g l2,
+  next_gate l f = Some (l1, g, l2) ->
+  forall q, f q = true -> does_not_reference l1 q = true.
+Proof.
+  assert (H: forall {U dim} (l : gate_list U dim) f l1 g l2 acc,
+          (forall q, f q = true -> does_not_reference acc q = true) ->
+          next_gate' l f acc = Some (l1, g, l2) ->
+          forall q, f q = true -> does_not_reference l1 q = true).
+  { intros U dim l f l1 g l2 acc Hdnr H.
     generalize dependent acc.
     generalize dependent l1.
     induction l; try easy.
     intros l1 acc Hdnr H q Hq.
     simpl in H.
     destruct a;
-    [ bdestruct (FSet.mem n qs)
-    | bdestruct (FSet.mem n qs); bdestruct (FSet.mem n0 qs)
-    | bdestruct (FSet.mem n qs); bdestruct (FSet.mem n0 qs); bdestruct (FSet.mem n1 qs) ].
+    [ destruct (f n) eqn:?
+    | destruct (f n) eqn:?; destruct (f n0) eqn:?
+    | destruct (f n) eqn:?; destruct (f n0) eqn:?; destruct (f n1) eqn:? ].
     all: try rewrite <- rev_alt in H; simpl in H.
-    2: destruct (next_gate' l qs (App1 u n :: acc)) eqn:res; try easy.
-    6: destruct (next_gate' l qs (App2 u n n0 :: acc)) eqn:res; try easy.
-    14: destruct (next_gate' l qs (App3 u n n0 n1 :: acc)) eqn:res; try easy.
+    2: destruct (next_gate' l f (App1 u n :: acc)) eqn:res; try easy.
+    6: destruct (next_gate' l f (App2 u n n0 :: acc)) eqn:res; try easy.
+    14: destruct (next_gate' l f (App3 u n n0 n1 :: acc)) eqn:res; try easy.
     all: repeat destruct p.
     all: inversion H; subst; try rewrite <- does_not_reference_rev; auto.
     all: eapply IHl; try apply res; auto.
@@ -728,22 +1126,13 @@ Proof.
     all: simpl; apply andb_true_intro; split.
     all: try apply Hdnr; auto.
     all: apply negb_true_iff; repeat apply orb_false_intro; apply eqb_neq.
-    all: intro; subst; contradiction. }
+    all: intro; subst. 
+    all: try (rewrite Heqb in Hq0; inversion Hq0). 
+    all: try (rewrite Heqb0 in Hq0; inversion Hq0). 
+    rewrite Heqb1 in Hq0; inversion Hq0. }
   intros ? ? ? ? ? ? ? H0 q Hq.
   eapply H; try apply H0; auto.
 Qed.
-
-(* Given a list of rewrite rules, try to apply each rule until one succeeds. 
-   Return None if no rewrite succeeds. In the proof we keep 'P' abstract for 
-   maximum generality. *)
-Fixpoint try_rewrites {U dim} l (rules : list (gate_list U dim -> option (gate_list U dim))) :=
-  match rules with
-  | [] => None
-  | h :: t => match (h l) with
-            | Some l' => Some l'
-            | None => try_rewrites l t
-            end
-  end.
 
 Lemma try_rewrites_preserves_property : 
   forall {U dim} (l l' : gate_list U dim) 
@@ -766,16 +1155,6 @@ Proof.
   assumption. assumption.
 Qed.
 
-(* 'try_rewrites' with rules that return a pair of lists. *)
-Fixpoint try_rewrites2 {U dim} l (rules : list (gate_list U dim -> option (gate_list U dim * gate_list U dim))) :=
-  match rules with
-  | [] => None
-  | h :: t => match (h l) with
-            | Some l' => Some l'
-            | None => try_rewrites2 l t
-            end
-  end.
-
 Lemma try_rewrites2_preserves_property :
   forall {U dim} (l l1 l2 : gate_list U dim) 
             (P : gate_list U dim -> (gate_list U dim * gate_list U dim) -> Prop) 
@@ -796,36 +1175,6 @@ Proof.
   eapply Hrules. right. apply H.
   assumption. assumption.
 Qed.
-
-(* Try to cancel a gate using a set of cancellation rules, allowing for
-   commuting subcircuits described by a set of commutation rules. If
-   no cancellation is found, return None. Otherwise return Some l'
-   where l' is the modified list.
-   
-
-   l             : input list
-   commute_rules : rules for commuting the gate right
-   cancel_rules  : rules for canceling the gate
-   n             : max number of iterations (we usually want n = length l)
-
-   In the soundness proof below we take 'eq' as a parameter to allow for 
-   equivalence over different gate sets.
-*)
-Fixpoint propagate' {U dim} (l : gate_list U dim) commute_rules cancel_rules n acc :=
-  match n with
-  | O => None
-  | S n' => 
-      match try_rewrites l cancel_rules with
-      | Some l' => Some (rev_append acc l')
-      | None => match try_rewrites2 l commute_rules with
-               | Some (l1, l2) => 
-                   propagate' l2 commute_rules cancel_rules n' (rev_append l1 acc)
-               | None => None
-               end
-      end
-  end.
-Definition propagate {U dim} (l : gate_list U dim) commute_rules cancel_rules n :=
-  propagate' l commute_rules cancel_rules n [].
 
 Definition cancel_rules_correct {U dim} (g : gate_app U dim) rules
     (eq : gate_list U dim -> gate_list U dim -> Prop) :=
@@ -906,63 +1255,125 @@ Proof.
   all: auto.
 Qed.  
 
-(* Rewrite with a single-qubit circuit equivalence.
+Lemma remove_prefix_correct : forall {dim} (l pfx l' : gate_list G.U dim),
+  remove_prefix l pfx (fun n => @G.match_gate n) = Some l' ->
+  l =l= pfx ++ l'.
+Proof.
+  intros dim l pfx.
+  generalize dependent l.
+  induction pfx; intros l l' H.
+  - inversion H; subst. reflexivity.
+  - simpl in H. 
+    destruct a; try discriminate.
+    destruct (next_single_qubit_gate l n) eqn:nsqg; try discriminate.
+    repeat destruct p.
+    destruct (G.match_gate u u0) eqn:mg; try discriminate.
+    apply G.match_gate_implies_eq in mg; simpl.
+    rewrite <- (IHpfx _ _ H). 
+    rewrite (nsqg_commutes _ _ _ _ _ nsqg).
+    rewrite app_comm_cons, (cons_to_app _ g0).
+    rewrite <- app_assoc.
+    apply uc_app_congruence; try reflexivity.
+    unfold uc_equiv_l; simpl; rewrite mg; reflexivity.
+    destruct (next_two_qubit_gate l n) eqn:ntqg; try discriminate.
+    repeat destruct p.
+    bdestruct (n =? n2); bdestruct (n0 =? n1); 
+    destruct (G.match_gate u u0) eqn:mg; try discriminate.
+    destruct (does_not_reference g0 n0) eqn:dnrn0; try discriminate.
+    apply G.match_gate_implies_eq in mg.
+    simpl in *.
+    rewrite <- (IHpfx _ _ H). 
+    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnrn.
+    apply ntqg_preserves_structure in ntqg; subst.
+    rewrite app_comm_cons, (cons_to_app _ g0).
+    rewrite (does_not_reference_commutes_app2 g0); auto.
+    rewrite <- app_assoc.
+    apply uc_app_congruence; reflexivity.
+Qed.
 
-   We restrict to single-qubit circuit equivalences for now because dealing
-   with multi-qubit patterns is tedious with the list representation. For
-   example, say that we are looking for the sub-circuit:
-       C = [ H 0; H 2; CNOT 1 2; X 0 ]
-   When searching for this sub-circuit, we need to keep in mind that these
-   gates may be interspersed among other gates in the circuit in any order
-   that respects dependence relationships. For example, the following program
-   contains C, although it may not be obvious from casual inspection.
-       [X 3; H 2; H 0; X 0; CNOT 0 3; CNOT 1 2]
-*)
+(* Note that in general (l =l= l') does not imply (rev l =l= rev l'). *)
+Lemma remove_prefix_respects_rev : forall {dim} (l pfx l' : gate_list G.U dim),
+  remove_prefix l pfx (fun n => @G.match_gate n) = Some l' ->
+  rev l =l= rev (pfx ++ l').
+Proof.
+  intros dim l pfx.
+  generalize dependent l.
+  induction pfx; intros l l' H.
+  - inversion H; subst. reflexivity.
+  - simpl in H. 
+    destruct a; try discriminate.
+    destruct (next_single_qubit_gate l n) eqn:nsqg; try discriminate.
+    repeat destruct p.
+    destruct (G.match_gate u u0) eqn:mg; try discriminate.
+    apply G.match_gate_implies_eq in mg.
+    simpl.
+    rewrite <- (IHpfx _ _ H). 
+    specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg) as dnr.
+    apply nsqg_preserves_structure in nsqg.
+    subst. repeat rewrite rev_app_distr; simpl.
+    repeat rewrite <- app_assoc.
+    rewrite (does_not_reference_commutes_app1 _ u0).
+    do 2 (apply uc_app_congruence; try reflexivity).
+    unfold uc_equiv_l; simpl; rewrite mg; reflexivity.
+    rewrite <- does_not_reference_rev; auto.
+    destruct (next_two_qubit_gate l n) eqn:ntqg; try discriminate.
+    repeat destruct p.
+    bdestruct (n =? n2); bdestruct (n0 =? n1); 
+    destruct (G.match_gate u u0) eqn:mg; try discriminate.
+    destruct (does_not_reference g0 n0) eqn:dnrn0; try discriminate.
+    apply G.match_gate_implies_eq in mg.
+    simpl in *.
+    rewrite <- (IHpfx _ _ H). 
+    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnrn.
+    apply ntqg_preserves_structure in ntqg.
+    subst. repeat rewrite rev_app_distr; simpl.
+    repeat rewrite <- app_assoc.
+    rewrite (does_not_reference_commutes_app2 (rev g0)).
+    do 2 (apply uc_app_congruence; try reflexivity).
+    rewrite <- does_not_reference_rev; auto.
+    rewrite <- does_not_reference_rev; auto.
+Qed.
 
-Definition single_qubit_pattern (U : nat -> Set) := list (U 1).
+Lemma remove_suffix_correct : forall {dim} (l sfx l' : gate_list G.U dim),
+  remove_suffix l sfx (fun n => @G.match_gate n) = Some l' ->
+  l =l= l' ++ sfx.
+Proof.
+  intros dim l sfx l' H.
+  unfold remove_suffix in H.
+  destruct (remove_prefix (rev_append l []) (rev_append sfx [])) eqn:rp.
+  2: discriminate.
+  repeat rewrite <- rev_alt in *.
+  inversion H; subst; clear H.
+  apply remove_prefix_respects_rev in rp.
+  rewrite rev_app_distr, 2 rev_involutive in rp. 
+  apply rp.
+Qed.
 
-Fixpoint single_qubit_pattern_to_program {U} dim (pat : single_qubit_pattern U) q 
-    : gate_list U dim :=
-  match pat with
-  | [] => []
-  | u :: t => App1 u q :: (single_qubit_pattern_to_program dim t q)
-  end. 
+(* Equivalence up to a phase. Exact equivalence is also easy to prove, but not used 
+   in our development. *)
+Lemma replace_pattern_sound : forall {dim} (l l' pat rep : gate_list G.U dim),
+  pat ≅l≅ rep -> 
+  replace_pattern l pat rep (fun n => @G.match_gate n) = Some l' -> 
+  l ≅l≅ l'.
+Proof.
+  intros dim l l' pat rep H1 H2.
+  unfold replace_pattern in H2.
+  destruct (remove_prefix l pat) eqn:rem; try discriminate.
+  apply remove_prefix_correct in rem.
+  apply uc_equiv_cong_l in rem.
+  inversion H2; subst.
+  rewrite rem, H1. 
+  reflexivity.
+Qed.
 
-(* If the next sequence of gates applied to qubit q matches 'pat', then remove
-   'pat' from the program. *)
-Fixpoint remove_single_qubit_pattern {U dim} (l : gate_list U dim) (q : nat) (pat : single_qubit_pattern U) (match_gate : U 1 -> U 1 -> bool) : option (gate_list U dim) :=
-  match pat with
-  | [] => Some l
-  | u :: t =>
-      match next_single_qubit_gate l q with
-      | Some (l1, u', l2) =>
-          if match_gate u u'
-          then remove_single_qubit_pattern (l1 ++ l2) q t match_gate
-          else None
-      | _ => None
-      end
-  end.
+(** Correctness properties for non-unitary programs. **)
 
-(* If the next sequence of gates applied to qubit q matches 'pat', then replace
-   'pat' with 'rep'. *)
-Definition replace_single_qubit_pattern {U dim} (l : gate_list U dim) (q : nat) (pat rep : single_qubit_pattern U) match_gate : option (gate_list U dim) :=
-  match (remove_single_qubit_pattern l q pat match_gate) with
-  | Some l' => Some ((single_qubit_pattern_to_program dim rep q) ++ l')
-  | None => None
-  end.
-
-(** List-of-lists representation for non-unitary programs. **)
-
-Local Open Scope com_scope.
-
-Inductive instr (U: nat -> Set) (dim : nat): Set :=
-| UC : gate_list U dim -> instr U dim
-| Meas : nat -> list (instr U dim) -> list (instr U dim) -> instr U dim.
-
-Definition com_list U dim := list (instr U dim).
-
-Arguments UC {U} {dim}.
-Arguments Meas {U} {dim}.
+(* Well-typedness *)
+Inductive c_well_typed_l {dim} : com_list G.U dim -> Prop :=
+| WT_nilc : c_well_typed_l []
+| WT_UC : forall u t, uc_well_typed_l u -> c_well_typed_l t -> c_well_typed_l ((UC u) :: t)
+| WT_Meas : forall n l1 l2 t, (n < dim)%nat -> c_well_typed_l l1 -> c_well_typed_l l2 
+            -> c_well_typed_l t -> c_well_typed_l ((Meas n l1 l2) :: t).
 
 (* Induction principle for com_list *)
 Section com_list_ind.
@@ -996,27 +1407,10 @@ Section com_list_ind.
 
 End com_list_ind.
 
-(* Well-typedness *)
-Inductive c_well_typed_l {U dim} : com_list U dim -> Prop :=
-| WT_nilc : c_well_typed_l []
-| WT_UC : forall u t, uc_well_typed_l u -> c_well_typed_l t -> c_well_typed_l ((UC u) :: t)
-| WT_Meas : forall n l1 l2 t, (n < dim)%nat -> c_well_typed_l l1 -> c_well_typed_l l2 
-            -> c_well_typed_l t -> c_well_typed_l ((Meas n l1 l2) :: t).
-
-(** Conversion between gate_list and ucom in the base gate set. **)
-
-Definition base_com_l dim := com_list base_Unitary dim.
-
-Fixpoint com_to_list {dim} (c: base_com dim) : base_com_l dim :=
-  match c with
-  | skip         => []
-  | c1; c2       => (com_to_list c1) ++ (com_to_list c2)
-  | uc u         => [UC (ucom_to_list u)]
-  | meas n c1 c2 => [Meas n (com_to_list c1) (com_to_list c2)]
-  end.
-
-(* Written awkwardly to convince Coq of termination. *)
-Fixpoint instr_to_com {dim} (i : instr base_Unitary dim) : base_com dim :=
+(* Conversion to the base gate set - written awkwardly to convince Coq of 
+   termination. *)
+Local Open Scope com_scope.
+Fixpoint instr_to_com {dim} (i : instr G.U dim) : base_com dim :=
   match i with 
   | UC u => uc (list_to_ucom u)
   | Meas n l1 l2 => 
@@ -1026,17 +1420,17 @@ Fixpoint instr_to_com {dim} (i : instr base_Unitary dim) : base_com dim :=
                      end in
       meas n (f l1) (f l2)
   end.
-Fixpoint list_to_com {dim} (l : base_com_l dim) : base_com dim :=
+Fixpoint list_to_com {dim} (l : com_list G.U dim) : base_com dim :=
   match l with
   | [] => skip
   | h :: t => instr_to_com h ; list_to_com t
   end.
 
-Lemma instr_to_com_UC : forall dim (u : base_ucom_l dim),
+Lemma instr_to_com_UC : forall dim (u : gate_list G.U dim),
   instr_to_com (UC u) = uc (list_to_ucom u).
 Proof. intros. reflexivity. Qed.
 
-Lemma instr_to_com_Meas : forall dim n (l1 : base_com_l dim) l2,
+Lemma instr_to_com_Meas : forall dim n (l1 : com_list G.U dim) l2,
   instr_to_com (Meas n l1 l2) = meas n (list_to_com l1) (list_to_com l2).
 Proof.
   intros.
@@ -1048,7 +1442,7 @@ Qed.
 Global Opaque instr_to_com.
 Hint Rewrite instr_to_com_UC instr_to_com_Meas.
 
-Lemma list_to_com_append : forall {dim} (l1 l2 : base_com_l dim),
+Lemma list_to_com_append : forall {dim} (l1 l2 : com_list G.U dim),
   list_to_com (l1 ++ l2) ≡ list_to_com l1 ; list_to_com l2.
 Proof.
   intros dim l1 l2.
@@ -1059,23 +1453,7 @@ Proof.
   auto with wf_db.
 Qed.
 
-Lemma com_list_equiv : forall {dim} (c : base_com dim),
-  list_to_com (com_to_list c) ≡ c.
-Proof.
-  intros.
-  unfold c_equiv.
-  induction c; simpl; try reflexivity; intros.
-  - rewrite list_to_com_append; simpl; try assumption.
-    unfold compose_super.
-    rewrite IHc1, IHc2; auto with wf_db.
-  - rewrite instr_to_com_UC; simpl.
-    rewrite ucom_list_equiv; reflexivity.
-  - rewrite instr_to_com_Meas; simpl.
-    unfold compose_super, Splus.
-    rewrite IHc1, IHc2; auto with wf_db.
-Qed.
-
-Lemma list_to_com_WT : forall {dim} (l : base_com_l dim), 
+Lemma list_to_com_WT : forall {dim} (l : com_list G.U dim), 
   c_well_typed_l l <-> c_well_typed (list_to_com l).
 Proof.
   intros; split; intros H.
@@ -1083,30 +1461,130 @@ Proof.
     try rewrite instr_to_com_UC; try rewrite instr_to_com_Meas; try constructor; 
     auto.
     apply list_to_ucom_WT. assumption.
-  - induction l using com_list_ind; inversion H; subst; 
+  - induction l using com_list_ind;inversion H; subst;
     try rewrite instr_to_com_UC in H2; try rewrite instr_to_com_Meas in H2; try inversion H2; subst;
     constructor; auto.
     apply list_to_ucom_WT. assumption.
 Qed.
 
-(** Useful operations on the com list representation. **)
+(** Equivalences over non-unitary programs. **)
 
-Fixpoint does_not_reference_instr {U dim} q (i : instr U dim) :=
-  match i with 
-  | UC u => does_not_reference u q
-  | Meas n l1 l2 => 
-      negb (q =? n) && 
-      forallb (does_not_reference_instr q) l1 && 
-      forallb (does_not_reference_instr q) l2
-  end.
-Definition does_not_reference_c {U dim} (l : com_list U dim) (q : nat) :=
-  forallb (does_not_reference_instr q) l.
+Local Close Scope ucom_scope.
+Local Open Scope com_scope.
+Definition c_equiv_l {dim} (l1 l2 : com_list G.U dim) := 
+  list_to_com l1 ≡ list_to_com l2.
+Infix "=l=" := c_equiv_l (at level 70) : com_scope.
 
-Lemma does_not_reference_instr_UC : forall U dim q (u : gate_list U dim),
+Lemma c_equiv_l_refl : forall {dim} (l1 : com_list G.U dim), l1 =l= l1.
+Proof. easy. Qed.
+ 
+Lemma c_equiv_l_sym : forall {dim} (l1 l2 : com_list G.U dim), l1 =l= l2 -> l2 =l= l1.
+Proof. unfold c_equiv_l. easy. Qed.
+ 
+Lemma c_equiv_l_trans : forall {dim} (l1 l2 l3 : com_list G.U dim), 
+  l1 =l= l2 -> l2 =l= l3 -> l1 =l= l3.
+Proof. unfold c_equiv_l. intros dim l1 l2 l3 H12 H23. rewrite H12. easy. Qed.
+
+Lemma c_cons_congruence : forall {dim} (i : instr G.U dim)  (l l' : com_list G.U dim),
+  l =l= l' ->
+  i :: l =l= i :: l'.
+Proof.
+  unfold c_equiv_l.
+  intros dim i l l' Hl.  
+  simpl. rewrite Hl. reflexivity.
+Qed.
+
+Lemma c_app_congruence : forall {dim} (l1 l1' l2 l2' : com_list G.U dim),
+  l1 =l= l1' ->
+  l2 =l= l2' ->
+  l1 ++ l2 =l= l1' ++ l2'.
+Proof.
+  unfold c_equiv_l.
+  intros dim l1 l1' l2 l2' Hl1 Hl2.
+  repeat rewrite list_to_com_append; simpl.
+  rewrite Hl1, Hl2.
+  reflexivity.
+Qed.
+
+Add Parametric Relation (dim : nat) : (com_list G.U dim) (@c_equiv_l dim)
+  reflexivity proved by c_equiv_l_refl
+  symmetry proved by c_equiv_l_sym
+  transitivity proved by c_equiv_l_trans
+  as c_equiv_l_rel.
+
+Add Parametric Morphism (dim : nat) : (@List.cons (instr G.U dim))
+  with signature eq ==> (@c_equiv_l dim) ==> (@c_equiv_l dim) as c_cons_mor.
+Proof. intros y x0 y0 H0. apply c_cons_congruence; easy. Qed.
+
+Add Parametric Morphism (dim : nat) : (@app (instr G.U dim))
+  with signature (@c_equiv_l dim) ==> (@c_equiv_l dim) ==> (@c_equiv_l dim) as c_app_mor.
+Proof. intros x y H x0 y0 H0. apply c_app_congruence; easy. Qed.
+
+Lemma uc_equiv_l_implies_c_equiv_l : forall dim (u u' : gate_list G.U dim),
+  (u =l= u')%ucom ->
+  [UC u] =l= [UC u'].
+Proof.
+  unfold uc_equiv_l, uc_equiv, c_equiv_l, c_equiv.
+  intros dim u u' H Hdim ρ WFρ.
+  simpl.
+  repeat rewrite instr_to_com_UC.
+  simpl; rewrite H; reflexivity.
+Qed.
+
+Lemma UC_append : forall {dim} (l1 l2: gate_list G.U dim), 
+  [UC (l1 ++ l2)] =l= [UC l1] ++ [UC l2].
+Proof. 
+  intros.
+  unfold c_equiv_l, c_equiv; simpl.
+  intros.
+  repeat rewrite instr_to_com_UC; simpl.
+  rewrite list_to_ucom_append; simpl.
+  rewrite compose_super_assoc. 
+  unfold compose_super, super. Msimpl.
+  repeat rewrite Mmult_assoc.
+  reflexivity.
+Qed.
+
+Lemma UC_nil : forall dim, 
+  [UC []] =l= ([] : com_list G.U dim).
+Proof.
+  unfold c_equiv_l, c_equiv.
+  intros; simpl.
+  rewrite instr_to_com_UC; simpl.
+  unfold compose_super, super. 
+  rewrite denote_SKIP; try assumption.
+  Msimpl; reflexivity.
+Qed.
+
+(* Also useful to have a congruence lemma for rewriting inside Meas. *)
+Definition c_eval_l {dim} (l : com_list G.U dim) := c_eval (list_to_com l).
+Local Coercion Nat.b2n : bool >-> nat.
+Definition project_onto {dim} ρ n (b : bool) := super (@pad 1 n dim (∣b⟩ × ∣b⟩†)) ρ.
+Lemma Meas_cons_congruence : forall dim n (l1 l2 l1' l2' l l' : com_list G.U dim),
+  (forall ρ, WF_Matrix ρ ->
+   c_eval_l l1 (project_onto ρ n true) = c_eval_l l1' (project_onto ρ n true)) ->
+  (forall ρ, WF_Matrix ρ ->
+   c_eval_l l2 (project_onto ρ n false) = c_eval_l l2' (project_onto ρ n false)) ->
+  l =l= l' ->
+  Meas n l1 l2 :: l =l= Meas n l1' l2' :: l'.
+Proof.
+  intros.
+  unfold c_equiv_l; simpl.
+  repeat rewrite instr_to_com_Meas.
+  apply seq_congruence; auto.
+  unfold c_equiv; simpl.
+  intros Hdim ρ WFρ.
+  unfold Splus, compose_super; simpl.
+  unfold c_eval_l, project_onto in *.
+  simpl in *.
+  rewrite H, H0; auto.
+Qed.
+
+Lemma does_not_reference_instr_UC : forall dim q (u : gate_list G.U dim),
   does_not_reference_instr q (UC u) = does_not_reference u q.
 Proof. intros. reflexivity. Qed.
 
-Lemma does_not_reference_instr_Meas : forall U dim q n (l1 : com_list U dim) l2,
+Lemma does_not_reference_instr_Meas : forall dim q n (l1 : com_list G.U dim) l2,
   does_not_reference_instr q (Meas n l1 l2) = negb (q =? n) && does_not_reference_c l1 q && does_not_reference_c l2 q.
 Proof.
   intros.
@@ -1118,31 +1596,7 @@ Proof.
 Qed.
 Global Opaque does_not_reference_instr.
 
-(* Get the next measurement operation on qubit q. *)
-Fixpoint next_measurement {U dim} (l : com_list U dim) q :=
-  match l with
-  | [] => None
-  | UC u :: t => 
-      if does_not_reference u q 
-      then match next_measurement t q with
-           | None => None
-           | Some (l1, l1', l2', l2) => 
-               Some (UC u :: l1, l1', l2', l2)
-           end
-      else None
-  | Meas n l1 l2 :: t => 
-      if q =? n
-      then Some ([], l1, l2, t)
-      else if does_not_reference_c l1 q && does_not_reference_c l2 q
-           then match next_measurement t q with
-                | None => None
-                | Some (l1', l1'', l2'', l2') => 
-                    Some (Meas n l1 l2 :: l1', l1'', l2'', l2')
-                end
-           else None
-  end.
-
-Lemma next_measurement_preserves_structure : forall U dim (l : com_list U dim) q l1 l1' l2' l2,
+Lemma next_measurement_preserves_structure : forall dim (l : com_list G.U dim) q l1 l1' l2' l2,
   next_measurement l q = Some (l1, l1', l2', l2) ->
   l = l1 ++ [Meas q l1' l2'] ++ l2.
 Proof.
@@ -1166,7 +1620,7 @@ Proof.
       rewrite IHl with (l1:=l6); reflexivity.
 Qed.  
 
-Lemma next_measurement_l1_does_not_reference : forall {U dim} (l : com_list U dim) q l1 l1' l2' l2,
+Lemma next_measurement_l1_does_not_reference : forall {dim} (l : com_list G.U dim) q l1 l1' l2' l2,
   next_measurement l q = Some (l1, l1', l2', l2) ->
   does_not_reference_c l1 q = true.
 Proof.
@@ -1200,45 +1654,86 @@ Proof.
       rewrite IHl with (l1:=l6); reflexivity.
 Qed.
 
-(* Count the number of UC/Meas operations in a non-unitary program. This is useful
-   when we're too lazy to write functions in a nested recursive style & use the
-   special induction principle 'com_list_ind'. Instead, we can use the result of
-   this function as initial fuel to a function and recurse on the size of the fuel.
-   (This only works if the function in question performs N operations where N
-   can be over-approximated by an expression involving count_ops.) *)
-Fixpoint count_ops_instr {U dim} (i : instr U dim) :=
-  match i with
-  | UC u => 1%nat
-  | Meas n l1 l2 =>
-      let fix f l := match l with
-                     | [] => O
-                     | h :: t => (count_ops_instr h + f t)%nat
-                     end in
-      (1 + f l1 + f l2)%nat
-  end.
-Fixpoint count_ops {U dim} (l : com_list U dim) :=
-  match l with
-  | [] => O
-  | h :: t => (count_ops_instr h + count_ops t)%nat
-  end.
+Lemma does_not_reference_c_commutes_app1 : forall {dim} (l : com_list G.U dim) u q,
+  does_not_reference_c l q = true ->
+  [UC [App1 u q]] ++ l =l= l ++ [UC [App1 u q]]. 
+Proof.
+  intros dim l u q H.
+  induction l using com_list_ind; try reflexivity.
+  - simpl in H.
+    apply andb_true_iff in H as [Hu0 Hl].
+    rewrite <- (app_comm_cons _ _ (UC u0)).
+    rewrite <- IHl; try assumption.
+    rewrite (cons_to_app (UC u0)).
+    rewrite (cons_to_app (UC u0) (_ ++ l)).
+    repeat rewrite app_assoc.
+    apply c_app_congruence; try reflexivity.
+    rewrite does_not_reference_instr_UC in Hu0.   
+    repeat rewrite <- UC_append.
+    apply uc_equiv_l_implies_c_equiv_l.
+    apply does_not_reference_commutes_app1.
+    assumption.
+  - simpl in H.
+    apply andb_true_iff in H as [Hmeas Hl3].
+    rewrite <- (app_comm_cons _ _ (Meas n l1 l2)).
+    rewrite <- IHl3; try assumption.
+    rewrite (cons_to_app (Meas n l1 l2)).
+    rewrite (cons_to_app (Meas n l1 l2) (_ ++ l3)).
+    repeat rewrite app_assoc.
+    apply c_app_congruence; try reflexivity.
+    rewrite does_not_reference_instr_Meas in Hmeas.
+    apply andb_true_iff in Hmeas as [Hmeas Hl2].
+    apply andb_true_iff in Hmeas as [Hq Hl1].
+    apply IHl1 in Hl1.
+    apply IHl2 in Hl2.
+    apply negb_true_iff in Hq. 
+    apply Nat.eqb_neq in Hq. 
+    clear - Hq Hl1 Hl2.
+    unfold c_equiv_l in *.
+    repeat rewrite list_to_com_append in Hl1, Hl2.
+    simpl in *.
+    rewrite instr_to_com_UC in *.
+    rewrite instr_to_com_Meas in *.
+    unfold c_equiv in *; simpl in *.
+    intros Hdim ρ WFρ.
+    unfold compose_super, Splus in *.
+    rewrite denote_SKIP in *; try assumption.
+    rewrite Mmult_1_l in *; try auto with wf_db.
+    remember (ueval_r dim q (G.to_base u)) as U.
+    remember (pad n dim (∣1⟩ × (∣1⟩) †)) as pad1.
+    remember (pad n dim (∣0⟩ × (∣0⟩) †)) as pad0.
+    replace (super pad1 (super U ρ)) with (super U (super pad1 ρ)).
+    2: { subst; clear - Hq.
+         unfold super.
+         autorewrite with eval_db.
+         bdestruct (n + 1 <=? dim)%nat; try (Msimpl; reflexivity).
+         remember (G.to_base u) as u'.
+         dependent destruction u'.
+         autorewrite with eval_db.
+         bdestruct (q + 1 <=? dim)%nat; try (repeat Msimpl; reflexivity).
+         repeat rewrite Mmult_assoc.
+         rewrite <- 2 Mmult_adjoint.
+         repeat rewrite <- Mmult_assoc.
+         gridify; reflexivity. }
+    replace (super pad0 (super U ρ)) with (super U (super pad0 ρ)).
+    2: { subst; clear - Hq.
+         unfold super.
+         autorewrite with eval_db.
+         bdestruct (n + 1 <=? dim)%nat; try (Msimpl; reflexivity).
+         remember (G.to_base u) as u'.
+         dependent destruction u'.
+         autorewrite with eval_db.
+         bdestruct (q + 1 <=? dim)%nat; try (repeat Msimpl; reflexivity).
+         repeat rewrite Mmult_assoc.
+         rewrite <- 2 Mmult_adjoint.
+         repeat rewrite <- Mmult_assoc.
+         gridify; reflexivity. }
+    rewrite Hl1, Hl2; auto.
+    2, 3: subst; auto with wf_db.
+    unfold super. 
+    rewrite <- Mmult_plus_distr_r.
+    rewrite <- Mmult_plus_distr_l.
+    reflexivity.
+Qed.
 
-(* 'canonicalize' a non-unitary program by combining adjacent UC terms and
-   removing empty UC terms. This will allow for more effective application 
-   of unitary optimizations (and nicer printing). *)
-Fixpoint canonicalize_com_l' {U dim} (l : com_list U dim) n : com_list U dim :=
-  match n with
-  | O => l
-  | S n' => match l with
-           | [] => []
-           | Meas n l1 l2 :: t => 
-               let l1' := canonicalize_com_l' l1 n' in
-               let l2' := canonicalize_com_l' l2 n' in
-               Meas n l1' l2' :: (canonicalize_com_l' t n')
-           | UC [] :: t => canonicalize_com_l' t n'
-           | UC u1 :: UC u2 :: t => canonicalize_com_l' ((UC (u1 ++ u2)) :: t) n'
-           
-           | h :: t => h :: (canonicalize_com_l' t n')
-           end
-  end.
-Definition canonicalize_com_l {U dim} (l : com_list U dim) :=
-  canonicalize_com_l' l (count_ops l).
+End ListRepresentationProps.

@@ -197,9 +197,9 @@ let get_gate_list f =
 
 let sqir_to_qasm_gate oc g =
   match g with
-  | App1 (URzQ_H,      n) -> fprintf oc "h q[%d];\n" n
-  | App1 (URzQ_X,      n) -> fprintf oc "x q[%d];\n" n
-  | App1 (URzQ_Rz(q),  n) -> 
+  | App1 (RzQGateSet.URzQ_H,      n) -> fprintf oc "h q[%d];\n" n
+  | App1 (RzQGateSet.URzQ_X,      n) -> fprintf oc "x q[%d];\n" n
+  | App1 (RzQGateSet.URzQ_Rz(q),  n) -> 
       if Q.equal q (Q.of_ints 1 4)
       then fprintf oc "t q[%d];\n" n
       else if Q.equal q (Q.of_ints 1 2)
@@ -211,7 +211,7 @@ let sqir_to_qasm_gate oc g =
       else if Q.equal q (Q.of_ints 7 4)
       then fprintf oc "tdg q[%d];\n" n
       else fprintf oc "rzq(%d,%d) q[%d];\n" (Z.to_int (Q.num q)) (Z.to_int (Q.den q)) n
-  | App2 (URzQ_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
+  | App2 (RzQGateSet.URzQ_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
   | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of UPI4_H) *)
 
 let write_qasm_file fname p dim =

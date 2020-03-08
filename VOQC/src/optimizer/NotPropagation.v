@@ -203,7 +203,7 @@ Proof.
     symmetry.
     apply propagate_X_through_CNOT_control.
     apply uc_equiv_cong_l; unfold uc_equiv_l, uc_equiv; simpl.
-    repeat (try rewrite RzQ_to_base_ucom_l_app; try rewrite list_to_ucom_append; simpl).
+    repeat (try rewrite list_to_ucom_append; simpl).
     autorewrite with eval_db; bdestruct_all; do 2 Msimpl_light; try reflexivity.
     lia.
     rewrite IHn; auto. simpl.
@@ -265,4 +265,3 @@ Proof.
   symmetry in H.
   apply uc_cong_l_implies_WT in H; assumption.
 Qed.
-

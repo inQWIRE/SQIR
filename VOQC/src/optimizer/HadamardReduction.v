@@ -27,16 +27,10 @@ Local Close Scope Q_scope.
 *)
 
 Definition apply_H_equivalence1 {dim} q (l : RzQ_ucom_l dim) := 
-  replace_single_qubit_pattern l q 
-    (URzQ_H  :: URzQ_P :: URzQ_H :: []) 
-    (URzQ_PDAG :: URzQ_H :: URzQ_PDAG :: [])
-    match_gate.
+  replace_pattern l (H q  :: P q :: H q :: []) (PDAG q :: H q :: PDAG q :: []).
 
 Definition apply_H_equivalence2 {dim} q (l : RzQ_ucom_l dim) := 
-  replace_single_qubit_pattern l q 
-    (URzQ_H :: URzQ_PDAG :: URzQ_H :: []) 
-    (URzQ_P :: URzQ_H :: URzQ_P :: [])
-    match_gate.
+  replace_pattern l (H q :: PDAG q :: H q :: []) (P q :: H q :: P q :: []).
 
 Definition apply_H_equivalence3 {dim} q (l : RzQ_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
@@ -83,13 +77,13 @@ Definition apply_H_equivalence3 {dim} q (l : RzQ_ucom_l dim) :=
   end.
 
 Definition apply_H_equivalence4 {dim} q (l : RzQ_ucom_l dim) :=
-  match (remove_single_qubit_pattern l q (URzQ_H :: URzQ_P :: []) match_gate) with
+  match (remove_prefix l (H q :: P q :: [])) with
   | None => None
   | Some l1 =>
       match (next_two_qubit_gate l1 q) with
       | Some (l2, URzQ_CNOT, q1, q2, l3) =>
           if q =? q2 
-          then match (remove_single_qubit_pattern l3 q (URzQ_PDAG :: URzQ_H :: []) match_gate) with
+          then match (remove_prefix l3 (PDAG q :: H q :: [])) with
                | None => None
                | Some l4 =>
                    Some (l2 ++ (PDAG q2 :: CNOT q1 q2 :: P q2 :: []) ++ l4)
@@ -100,12 +94,12 @@ Definition apply_H_equivalence4 {dim} q (l : RzQ_ucom_l dim) :=
   end.
 
 Definition apply_H_equivalence5 {dim} q (l : RzQ_ucom_l dim) :=
-  match (remove_single_qubit_pattern l q (URzQ_H :: URzQ_PDAG :: []) match_gate) with
+  match (remove_prefix l (H q :: PDAG q :: [])) with
   | Some l1 =>
       match (next_two_qubit_gate l1 q) with
       | Some (l2, URzQ_CNOT, q1, q2, l3) =>
           if q =? q2 
-          then match (remove_single_qubit_pattern l3 q (URzQ_P :: URzQ_H :: []) match_gate) with
+          then match (remove_prefix l3 (P q :: H q :: [])) with
                | Some l4 =>
                    Some (l2 ++ (P q2 :: CNOT q1 q2 :: PDAG q2 :: []) ++ l4)
                | _ => None
@@ -177,7 +171,7 @@ Lemma apply_H_equivalence1_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   l ≅l≅ l'. 
 Proof.
   intros.
-  apply replace_single_qubit_pattern_sound in H; try assumption.
+  apply replace_pattern_sound in H; try assumption.
   exists (PI / 4)%R.
   destruct dim.
   simpl; unfold pad. gridify.
@@ -198,7 +192,7 @@ Lemma apply_H_equivalence2_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   l ≅l≅ l'.
 Proof. 
   intros.
-  eapply replace_single_qubit_pattern_sound; try apply H.
+  eapply replace_pattern_sound; try apply H.
   exists (- PI / 4)%R.
   destruct dim.
   simpl; unfold pad. gridify.
@@ -235,7 +229,7 @@ Proof.
     clear res.
     apply nsqg_commutes in nsqg1; rewrite nsqg1.
     specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
-    apply ntqg_preserves_structure in ntqg; rewrite ntqg.
+    apply ntqg_preserves_structure in ntqg; setoid_rewrite ntqg.
     eapply does_not_reference_commutes_app1 in dnr.
     rewrite app_assoc.
     rewrite dnr.
@@ -284,7 +278,7 @@ Proof.
     assert (q = n).
     { destruct ng as [ng | ng]; auto. contradict ng; assumption. }
     subst. clear ng H.
-    apply ntqg_preserves_structure in ntqg; rewrite ntqg.
+    apply ntqg_preserves_structure in ntqg; setoid_rewrite ntqg.
     eapply does_not_reference_commutes_app1 in dnr.
     rewrite app_assoc.
     rewrite dnr.
@@ -327,21 +321,21 @@ Lemma apply_H_equivalence4_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
 Proof.
   intros. 
   unfold apply_H_equivalence4 in H.
-  destruct (remove_single_qubit_pattern l q (URzQ_H :: URzQ_P :: [])) eqn:rsqp1; try discriminate.
-  apply remove_single_qubit_pattern_correct in rsqp1.
+  destruct (remove_prefix l (RzQGateSet.H q :: P q :: [])) eqn:rp1; try discriminate.
+  apply remove_prefix_correct in rp1.
   destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
   repeat destruct p; dependent destruction r.
   specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
   apply ntqg_preserves_structure in ntqg; subst.
   bdestruct (q =? n); try discriminate.
-  destruct (remove_single_qubit_pattern g0 q (URzQ_PDAG :: URzQ_H :: [])) eqn:rsqp2; try discriminate.
-  apply remove_single_qubit_pattern_correct in rsqp2.
+  destruct (remove_prefix g0 (PDAG q :: RzQGateSet.H q :: [])) eqn:rp2; try discriminate.
+  apply remove_prefix_correct in rp2.
   inversion H; subst.
   simpl in *.
-  rewrite rsqp1, rsqp2.
+  rewrite rp1, rp2.
   repeat rewrite app_comm_cons.
-  rewrite (cons_to_app (App1 URzQ_H n)).
-  rewrite (cons_to_app (App1 URzQ_P n)).
+  rewrite (cons_to_app (RzQGateSet.H n)).
+  rewrite (cons_to_app (P n)).
   rewrite (does_not_reference_commutes_app1 _ URzQ_P _ dnr). 
   rewrite app_assoc.
   rewrite (does_not_reference_commutes_app1 _ URzQ_H _ dnr).
@@ -371,21 +365,21 @@ Lemma apply_H_equivalence5_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
 Proof.
   intros. 
   unfold apply_H_equivalence5 in H.
-  destruct (remove_single_qubit_pattern l q (URzQ_H :: URzQ_PDAG :: [])) eqn:rsqp1; try easy.
-  apply remove_single_qubit_pattern_correct in rsqp1.
+  destruct (remove_prefix l (RzQGateSet.H q :: PDAG q :: [])) eqn:rp1; try easy.
+  apply remove_prefix_correct in rp1.
   destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
   repeat destruct p; dependent destruction r.
   specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
   apply ntqg_preserves_structure in ntqg; subst.
   bdestruct (q =? n); try discriminate.
-  destruct (remove_single_qubit_pattern g0 q (URzQ_P :: URzQ_H :: [])) eqn:rsqp2; try discriminate.
-  apply remove_single_qubit_pattern_correct in rsqp2.
+  destruct (remove_prefix g0 (P q :: RzQGateSet.H q :: [])) eqn:rp2; try discriminate.
+  apply remove_prefix_correct in rp2.
   inversion H; subst.
   simpl in *.
-  rewrite rsqp1, rsqp2.
+  rewrite rp1, rp2.
   repeat rewrite app_comm_cons.
-  rewrite (cons_to_app (App1 URzQ_H n)).
-  rewrite (cons_to_app (App1 URzQ_PDAG n)).
+  rewrite (cons_to_app (RzQGateSet.H n)).
+  rewrite (cons_to_app (PDAG n)).
   rewrite (does_not_reference_commutes_app1 _ URzQ_PDAG _ dnr). 
   rewrite app_assoc.
   rewrite (does_not_reference_commutes_app1 _ URzQ_H _ dnr).

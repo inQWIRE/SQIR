@@ -40,11 +40,11 @@ Extract Inlined Constant Qle_bool => "Q.leq".
 Extract Inlined Constant inject_Z => "Q.of_int".
 Extract Inlined Constant Qnum => "(fun q -> Z.to_int (Q.num q))".
 Extract Inlined Constant Qden => "(fun q -> Z.to_int (Q.den q))".    
-Extract Constant URzQ_T => "URzQ_Rz (Q.of_ints 1 4)".
-Extract Constant URzQ_P => "URzQ_Rz (Q.of_ints 1 2)".
-Extract Constant URzQ_Z => "URzQ_Rz (Q.of_int 1)".
-Extract Constant URzQ_PDAG => "URzQ_Rz (Q.of_ints 3 2)".
-Extract Constant URzQ_TDAG => "URzQ_Rz (Q.of_ints 7 4)".
+Extract Constant URzQ_T => "RzQGateSet.URzQ_Rz (Q.of_ints 1 4)".
+Extract Constant URzQ_P => "RzQGateSet.URzQ_Rz (Q.of_ints 1 2)".
+Extract Constant URzQ_Z => "RzQGateSet.URzQ_Rz (Q.of_int 1)".
+Extract Constant URzQ_PDAG => "RzQGateSet.URzQ_Rz (Q.of_ints 3 2)".
+Extract Constant URzQ_TDAG => "RzQGateSet.URzQ_Rz (Q.of_ints 7 4)".
 (* It's easier to extract this function by hand.
    bound is used in RzQGateSet; it puts a rational q in the range [0,2) *)
 Extract Constant bound => 
@@ -71,13 +71,13 @@ Extraction Implicit next_gate' [dim].
 Extraction Implicit next_gate [dim].
 Extraction Implicit does_not_reference_appl [dim].
 Extraction Implicit does_not_reference [dim].
-Extraction Implicit single_qubit_pattern_to_program [U dim].
-Extraction Implicit remove_single_qubit_pattern [U dim].
-Extraction Implicit replace_single_qubit_pattern [U dim].
-Extraction Implicit try_rewrites [U dim].
-Extraction Implicit try_rewrites2 [U dim].
-Extraction Implicit propagate' [U dim].
-Extraction Implicit propagate [U dim].
+Extraction Implicit ListRepresentation.remove_prefix [dim].
+Extraction Implicit ListRepresentation.remove_suffix [dim].
+Extraction Implicit ListRepresentation.replace_pattern [dim].
+Extraction Implicit try_rewrites [dim].
+Extraction Implicit try_rewrites2 [dim].
+Extraction Implicit propagate' [dim].
+Extraction Implicit propagate [dim].
 
 (* From RzQGateSet.v *)
 Extraction Implicit T [dim].
@@ -93,6 +93,9 @@ Extraction Implicit CCX [dim].
 Extraction Implicit CCZ [dim].
 Extraction Implicit combine_rotations [dim].
 Extraction Implicit invert_rotation [dim].
+Extraction Implicit RzQGateSet.remove_prefix [dim].
+Extraction Implicit RzQGateSet.remove_suffix [dim].
+Extraction Implicit RzQGateSet.replace_pattern [dim].
 
 (* From HadamardReduction.v *)
 Extraction Implicit apply_H_equivalence1 [dim].
