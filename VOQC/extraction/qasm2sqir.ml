@@ -147,6 +147,10 @@ let translate_statement s qmap sym_tab =
                            | UnaryOp (UMinus, Nninteger i1), Nninteger i2 -> apply_gate (coq_Rz (Q.of_ints (-i1) i2)) (List.hd qargs) qmap sym_tab
                            | Nninteger i1, Nninteger i2 -> apply_gate (coq_Rz (Q.of_ints i1 i2)) (List.hd qargs) qmap sym_tab
                            | _ -> raise (Failure ("ERROR: Invalid argument to rzq gate")))
+               | "rz" -> (match List.nth params 0  with
+                           | BinaryOp (Times, Real r, Pi) -> apply_gate (coq_Rz (Q.of_float r)) (List.hd qargs) qmap sym_tab
+                           | BinaryOp (Times, UnaryOp (UMinus, Real r), Pi) -> apply_gate (coq_Rz (Q.of_float (-. r))) (List.hd qargs) qmap sym_tab
+                           | _ -> raise (Failure ("ERROR: Invalid argument to rz gate")))
                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
              )
            | Some _ -> raise (Failure "ERROR: Not a gate!")
@@ -167,20 +171,22 @@ let parse_decl (s : AST.statement) : (string * int) list =
      | _ -> [])
   | _ -> []
 
-let rec parse_qreg_decls p =
+let rec parse_qreg_decls' p acc =
   match p with
-  | []      -> []
+  | []      -> acc
   | s :: p' ->
     let first = parse_decl s in
-    let rest = parse_qreg_decls p' in
-    List.append first rest
+    parse_qreg_decls' p' (acc @ first)
+let parse_qreg_decls p = parse_qreg_decls' p []
 
-let rec translate_program p qbit_map sym_tab =
+let rec translate_program' p qbit_map sym_tab acc =
   match p with
-  | []      ->  []
-  | s :: p' ->  let l = translate_statement s qbit_map sym_tab in
-    let m = translate_program p' qbit_map sym_tab in
-    List.append l m
+  | []      ->  acc
+  | s :: p' ->  
+      let l = translate_statement s qbit_map sym_tab in
+      translate_program' p' qbit_map sym_tab (acc @ l)
+let translate_program p qbit_map sym_tab = 
+  translate_program' p qbit_map sym_tab []
 
 let get_gate_list f =
   let ast = OpenQASM.get_ast f in (* dumb parsing *)
@@ -210,7 +216,7 @@ let sqir_to_qasm_gate oc g =
       then fprintf oc "sdg q[%d];\n" n
       else if Q.equal q (Q.of_ints 7 4)
       then fprintf oc "tdg q[%d];\n" n
-      else fprintf oc "rzq(%d,%d) q[%d];\n" (Z.to_int (Q.num q)) (Z.to_int (Q.den q)) n
+      else fprintf oc "rzq(%a,%a) q[%d];\n" Z.output (Q.num q) Z.output (Q.den q) n
   | App2 (RzQGateSet.URzQ_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
   | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of UPI4_H) *)
 

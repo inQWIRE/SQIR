@@ -8,7 +8,13 @@ Module Type GateSet.
   (* Gates are parameterized by a number of arguments. *)
   Parameter U : nat -> Set.
   
-  (* Convert U to the base_Unitary set defined in SQIR's UnitarySem.v. *)
+  (* Convert U to the base_Unitary set defined in SQIR's UnitarySem.v. 
+
+     More generally this should allow conversion from a U gate to a 
+     base_ucom program. As it is now, to_base cannot translate from
+     a Toffoli gate to a circuit of one- and two-qubit gates. Once we
+     make this change we will need to put some restrictions on the 
+     behavior of to_base. *)
   Parameter to_base : forall (n : nat), U n -> base_Unitary n.
   Arguments to_base {n}.
 

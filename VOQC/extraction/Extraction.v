@@ -78,6 +78,9 @@ Extraction Implicit try_rewrites [dim].
 Extraction Implicit try_rewrites2 [dim].
 Extraction Implicit propagate' [dim].
 Extraction Implicit propagate [dim].
+Extraction Implicit get_matching_prefix' [dim].
+Extraction Implicit get_matching_prefix [dim].
+Extraction Implicit LCR [dim].
 
 (* From RzQGateSet.v *)
 Extraction Implicit T [dim].
@@ -150,9 +153,10 @@ Extraction Implicit not_propagation [dim].
 
 (* Optimize *)
 Extraction Implicit optimize [dim].
+Extraction Implicit optimize_lcr [dim].
 
 (* Perform extraction. *)
 Separate Extraction
   CCX CCZ
   URzQ_Z URzQ_P URzQ_PDAG URzQ_T URzQ_TDAG URzQ_Rz 
-  optimize.
+  optimize optimize_lcr.

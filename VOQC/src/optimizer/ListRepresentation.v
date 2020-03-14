@@ -5,6 +5,12 @@ Require Export GateSet.
 Require Import Equivalences.
 Require Export DensitySem. 
 
+(* Used in get_matching_prefix. *)
+Require Import FSets.FSetAVL.
+Require Import FSets.FSetFacts.
+Module FSet := FSetAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
+Module FSetFacts := FSetFacts.Facts FSet.
+
 Local Open Scope ucom_scope.
 Local Close Scope R_scope.
 Local Open Scope signature_scope.
@@ -215,15 +221,15 @@ Definition remove_prefix {U dim} (l pfx : gate_list U dim) (match_gate : forall 
           | _ => None
           end
       | App2 u q1 q2 :: t =>
-          match next_two_qubit_gate l q1 with
-          | Some (l1, u', q1', q2', l2) =>
-              if (q1 =? q1') && (q2 =? q2') && match_gate u u' && 
-                   does_not_reference l1 q2
+          match next_gate l (fun q => (q =? q1) || (q =? q2)) with
+          | Some (l1, App2 u' q1' q2', l2) =>
+              if (q1 =? q1') && (q2 =? q2') && match_gate u u'
               then f (l1 ++ l2) t
               else None
           | _ => None
             end
-      | _ => None (* ignoring 3-qubit gate application for now - can add later *)
+      (* ignoring 3-qubit gates *)
+      | _ => None
       end in
   f l pfx.
 
@@ -231,6 +237,14 @@ Definition remove_suffix {U dim} (l sfx : gate_list U dim) match_gate :=
   match remove_prefix (rev_append l []) (rev_append sfx []) match_gate with
   | Some l => Some (rev_append l [])
   | _ => None
+  end.
+
+(* remove_prefix can also be used to check syntactic equality of programs
+   (equality up to unimportant reordering of gates). *)
+Definition equalb {U dim} (l1 l2 : gate_list U dim) match_gate :=
+  match remove_prefix l1 l2 match_gate with
+  | Some [] => true
+  | _ => false
   end.
 
 (* If the next sequence of gates applied matches 'pat', then replace 'pat' 
@@ -241,6 +255,77 @@ Definition replace_pattern {U dim} (l pat rep : gate_list U dim) match_gate : op
   | None => None
   end.
 
+(* Find the matching prefix of two programs.
+
+   In the program below, pacc and lacc are accumulators for pfx and l1.
+   blst tracks "blacklisted" qubits that cannot be in the matching prefix.
+   Qubits are added to the blacklist when they occur in a gate application
+   in l1 that has no matching gate in l2. n is a fuel argument to convince
+   Coq of termination. *)
+Definition get_matching_prefix' {U dim} (l1 l2 pacc lacc : gate_list U dim) blst n (match_gate : forall {n}, U n -> U n -> bool) :=
+  let fix f l1 l2 pacc lacc blst n :=
+      match n with
+      | O => (rev_append pacc [], rev_append lacc l1, l2)
+      | S n' =>
+          match next_gate l1 (fun q => negb (FSet.mem q blst)) with
+          | Some (l1a, App1 u1 q, l1b) =>
+              let lacc := rev_append l1a lacc in
+              let pacc' := App1 u1 q :: pacc in   (* u1 is in the prefix *)
+              let lacc' := App1 u1 q :: lacc in   (* u1 is not in the prefix *)
+              let blst' := FSet.add q blst in
+              match next_single_qubit_gate l2 q with
+              | Some (l2a, u2, l2b) => 
+                  if match_gate u1 u2 
+                  then f l1b (l2a ++ l2b) pacc' lacc blst n'
+                  else f l1b l2 pacc lacc' blst' n'
+              | _ => f l1b l2 pacc lacc' blst' n'
+              end
+          | Some (l1a, App2 u1 q1 q2, l1b) => 
+              let lacc := rev_append l1a lacc in
+              let pacc' := App2 u1 q1 q2 :: pacc in 
+              let lacc' := App2 u1 q1 q2 :: lacc in
+              let blst' := FSet.add q1 (FSet.add q2 blst) in
+              match next_gate l2 (fun q => (q =? q1) || (q =? q2)) with
+              | Some (l2a, App2 u2 q1' q2', l2b) => 
+                  if match_gate u1 u2 && (q1 =? q1') && (q2 =? q2') && 
+                     negb (FSet.mem q1 blst) && negb (FSet.mem q2 blst)
+                  then f l1b (l2a ++ l2b) pacc' lacc blst n'
+                  else f l1b l2 pacc lacc' blst' n'
+              | _ => f l1b l2 pacc lacc' blst' n'
+              end
+          (* ignoring 3-qubit gates *)
+          | _ => (rev_append pacc [], rev_append lacc l1, l2)
+          end
+      end in
+  f l1 l2 pacc lacc blst n.
+
+Definition get_matching_prefix {U dim} (l1 l2 : gate_list U dim) match_gate :=
+  get_matching_prefix' l1 l2 [] [] FSet.empty (length l1) match_gate.
+
+(* Apply optimization function opt to loop body b.
+
+   Algorithm:
+   1. Optimize the loop body b to produce O.
+   2. Optimize O^2 to get LR where L is the maximal prefix of O in the 
+      optimization of O^2.
+   3. Optimize O^3 to get LCR where R is the maximal suffix of O in the 
+      optimization of O^3.
+   
+   Now b^n is equivalent to LC^{n-2}R. *)
+Definition LCR {U dim} (b : gate_list U dim) (opt : gate_list U dim -> gate_list U dim) (match_gate : forall {n}, U n -> U n -> bool) :=
+  let o := opt b in
+  let o2 := opt (o ++ o) in
+  let (tmp, r) := get_matching_prefix o o2 (fun n => @match_gate n) in
+  let (l, _) := tmp in
+  let o3 := opt (o ++ o ++ o) in
+  match remove_prefix o3 l (fun n => @match_gate n) with
+  | Some cr => match remove_suffix cr r (fun n => @match_gate n) with
+              | Some c => Some (l, c, r)
+              | _ => None
+              end
+  | _ => None
+  end.
+ 
 (** List-of-lists representation for non-unitary programs. **)
 
 Local Open Scope com_scope.
@@ -1275,20 +1360,22 @@ Proof.
     rewrite <- app_assoc.
     apply uc_app_congruence; try reflexivity.
     unfold uc_equiv_l; simpl; rewrite mg; reflexivity.
-    destruct (next_two_qubit_gate l n) eqn:ntqg; try discriminate.
+    destruct (next_gate l (fun q : nat => (q =? n) || (q =? n0))) eqn:ng; try discriminate.
     repeat destruct p.
-    bdestruct (n =? n2); bdestruct (n0 =? n1); 
+    destruct g1; try discriminate.
+    bdestruct (n =? n1); bdestruct (n0 =? n2); 
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
-    destruct (does_not_reference g0 n0) eqn:dnrn0; try discriminate.
+    subst. simpl in *.
     apply G.match_gate_implies_eq in mg.
-    simpl in *.
     rewrite <- (IHpfx _ _ H). 
-    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnrn.
-    apply ntqg_preserves_structure in ntqg; subst.
+    specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng) as dnr.
+    apply next_gate_preserves_structure in ng; subst.
     rewrite app_comm_cons, (cons_to_app _ g0).
     rewrite (does_not_reference_commutes_app2 g0); auto.
     rewrite <- app_assoc.
     apply uc_app_congruence; reflexivity.
+    apply dnr. bdestructΩ (n1 =? n1); auto.
+    apply dnr. bdestructΩ (n2 =? n2). apply orb_true_intro; auto.
 Qed.
 
 (* Note that in general (l =l= l') does not imply (rev l =l= rev l'). *)
@@ -1316,22 +1403,24 @@ Proof.
     do 2 (apply uc_app_congruence; try reflexivity).
     unfold uc_equiv_l; simpl; rewrite mg; reflexivity.
     rewrite <- does_not_reference_rev; auto.
-    destruct (next_two_qubit_gate l n) eqn:ntqg; try discriminate.
+    destruct (next_gate l (fun q : nat => (q =? n) || (q =? n0))) eqn:ng; try discriminate.
     repeat destruct p.
-    bdestruct (n =? n2); bdestruct (n0 =? n1); 
+    destruct g1; try discriminate.
+    bdestruct (n =? n1); bdestruct (n0 =? n2); 
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
-    destruct (does_not_reference g0 n0) eqn:dnrn0; try discriminate.
+    subst. simpl in *.
     apply G.match_gate_implies_eq in mg.
-    simpl in *.
     rewrite <- (IHpfx _ _ H). 
-    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnrn.
-    apply ntqg_preserves_structure in ntqg.
-    subst. repeat rewrite rev_app_distr; simpl.
+    specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng) as dnr.
+    apply next_gate_preserves_structure in ng; subst.
+    repeat rewrite rev_app_distr; simpl.
     repeat rewrite <- app_assoc.
     rewrite (does_not_reference_commutes_app2 (rev g0)).
     do 2 (apply uc_app_congruence; try reflexivity).
-    rewrite <- does_not_reference_rev; auto.
-    rewrite <- does_not_reference_rev; auto.
+    rewrite <- does_not_reference_rev.
+    apply dnr. bdestructΩ (n1 =? n1); auto.
+    rewrite <- does_not_reference_rev.
+    apply dnr. bdestructΩ (n2 =? n2). apply orb_true_intro; auto.
 Qed.
 
 Lemma remove_suffix_correct : forall {dim} (l sfx l' : gate_list G.U dim),
@@ -1364,6 +1453,315 @@ Proof.
   inversion H2; subst.
   rewrite rem, H1. 
   reflexivity.
+Qed.
+
+Lemma equalb_correct : forall {dim} (l1 l2 : gate_list G.U dim),
+  equalb l1 l2 (fun n => @G.match_gate n) = true ->
+  l1 =l= l2.
+Proof.
+  intros dim l1 l2 H.
+  unfold equalb in H.
+  destruct (remove_prefix l1 l2 (fun n : nat => G.match_gate)) eqn:rp; try discriminate.
+  destruct g; try discriminate.
+  apply remove_prefix_correct in rp.
+  rewrite app_nil_r in rp.
+  apply rp.
+Qed.
+
+Lemma get_matching_prefix_correct : forall {dim} (l1 l2 pfx l1' l2': gate_list G.U dim),
+  get_matching_prefix l1 l2 (fun n => @G.match_gate n) = (pfx, l1', l2') ->
+  l1 =l= pfx ++ l1' /\ l2 =l= pfx ++ l2'.
+Proof.
+  assert (H : forall {dim} (l1 l2 pfx l1acc : gate_list G.U dim) blst n pfx' l1' l2',
+              get_matching_prefix' l1 l2 pfx l1acc blst n (fun n => @G.match_gate n) 
+                = (pfx', l1', l2') ->
+              (forall q, negb (FSet.mem q blst) = true -> does_not_reference l1acc q = true) ->
+              rev pfx ++ rev l1acc ++ l1 =l= pfx' ++ l1' /\ 
+                rev pfx ++ l2 =l= pfx' ++ l2').
+  { intros dim l1 l2 pfx l1acc blst n.
+    generalize dependent blst.
+    generalize dependent l1acc.
+    generalize dependent pfx.
+    generalize dependent l2.
+    generalize dependent l1.
+    induction n; intros l1 l2 pfx l1acc blst pfx' l1' l2' H Hl1acc; simpl in H.
+    inversion H; subst.
+    repeat rewrite <- rev_alt.
+    rewrite rev_append_rev.
+    split; reflexivity.
+    destruct (next_gate l1 (fun q : nat => negb (FSet.mem q blst))) eqn:ng.
+    repeat destruct p.
+    specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng) as Hg0.
+    specialize (next_gate_preserves_structure _ _ _ _ _ ng) as ?; subst.
+    destruct g1.
+    all: try (inversion H; subst;
+              repeat rewrite <- rev_alt;
+              rewrite rev_append_rev;
+              split; reflexivity).
+    - apply next_gate_app1_returns_q in ng. 
+      destruct (next_single_qubit_gate l2 n0) eqn:nsqg.
+      repeat destruct p.
+      apply nsqg_commutes in nsqg; rewrite nsqg.
+      destruct (G.match_gate u u0) eqn:mg.
+      + apply IHn in H as [H1 H2]; simpl in *.
+        rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
+        rewrite <- H1, <- H2.
+        rewrite (cons_to_app _ g), (cons_to_app _ (g2 ++ g1)).
+        split.
+        rewrite (app_assoc g0).
+        rewrite <- does_not_reference_commutes_app1.
+        rewrite 2 (app_assoc (rev l1acc)).
+        rewrite <- does_not_reference_commutes_app1.
+        repeat rewrite app_assoc; reflexivity.
+        rewrite <- does_not_reference_rev.
+        apply Hl1acc; auto.
+        apply Hg0; auto.
+        repeat rewrite app_assoc.
+        do 3 (apply uc_app_congruence; try reflexivity).
+        unfold uc_equiv_l; simpl.
+        apply G.match_gate_implies_eq in mg.
+        rewrite mg; reflexivity.
+        intros q Hq.
+        rewrite rev_append_rev.
+        apply does_not_reference_app.
+        apply andb_true_intro; split.
+        rewrite <- does_not_reference_rev.
+        apply Hg0; auto.
+        apply Hl1acc; auto.
+      + apply IHn in H as [H1 H2]; simpl in *.
+        rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
+        rewrite <- H1, <- H2, nsqg.
+        repeat rewrite <- app_assoc.
+        split; reflexivity.
+        intros q Hq.
+        apply negb_true_iff in Hq.
+        apply FSetFacts.not_mem_iff in Hq.
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hq1 Hq2].
+        rewrite rev_append_rev; simpl.
+        apply andb_true_intro; split.
+        bdestructΩ (n0 =? q); auto.
+        apply does_not_reference_app.
+        apply andb_true_intro; split.
+        rewrite <- does_not_reference_rev.
+        apply Hg0. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+        apply Hl1acc. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+      + apply IHn in H as [H1 H2]; simpl in *.
+        rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
+        rewrite <- H1, <- H2.
+        repeat rewrite <- app_assoc.
+        split; reflexivity.
+        intros q Hq.
+        apply negb_true_iff in Hq.
+        apply FSetFacts.not_mem_iff in Hq.
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hq1 Hq2].
+        rewrite rev_append_rev; simpl.
+        apply andb_true_intro; split.
+        bdestructΩ (n0 =? q); auto.
+        apply does_not_reference_app.
+        apply andb_true_intro; split.
+        rewrite <- does_not_reference_rev.
+        apply Hg0. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+        apply Hl1acc. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+    - apply next_gate_app2_returns_q in ng. 
+      destruct (next_gate l2 (fun q : nat => (q =? n0) || (q =? n1))) eqn:ng2.
+      repeat destruct p.
+      destruct g3.
+      + apply IHn in H as [H1 H2]; simpl in *.
+        rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
+        rewrite <- H1, <- H2.
+        repeat rewrite <- app_assoc.
+        split; reflexivity.
+        intros q Hq.
+        apply negb_true_iff in Hq.
+        apply FSetFacts.not_mem_iff in Hq.
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hn0 Hq].
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hn1 Hq].
+        rewrite rev_append_rev; simpl.
+        apply andb_true_intro; split.
+        bdestructΩ (n0 =? q); bdestructΩ (n1 =? q); auto.
+        apply does_not_reference_app.
+        apply andb_true_intro; split.
+        rewrite <- does_not_reference_rev.
+        apply Hg0. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+        apply Hl1acc. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+      + specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng2) as dnr.
+        apply next_gate_preserves_structure in ng2; subst.
+        destruct (G.match_gate u u0 && (n0 =? n2) && (n1 =? n3) && ¬ (FSet.mem n0 blst) && ¬ (FSet.mem n1 blst)) eqn:cond.
+        apply IHn in H as [H1 H2]; simpl in *.
+        rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
+        rewrite <- H1, <- H2.
+        apply andb_prop in cond as [cond ?].
+        apply andb_prop in cond as [cond ?].
+        apply andb_prop in cond as [cond eq1].
+        apply andb_prop in cond as [? eq2].
+        apply Nat.eqb_eq in eq1; apply Nat.eqb_eq in eq2; subst.
+        rewrite (cons_to_app _ g), (cons_to_app _ g1).
+        split.
+        rewrite (app_assoc g0).
+        rewrite <- does_not_reference_commutes_app2.
+        rewrite 2 (app_assoc (rev l1acc)).
+        rewrite <- does_not_reference_commutes_app2.
+        repeat rewrite app_assoc; reflexivity.
+        rewrite <- does_not_reference_rev.
+        apply Hl1acc; auto. 
+        rewrite <- does_not_reference_rev.
+        apply Hl1acc; auto.
+        apply Hg0; auto.
+        apply Hg0; auto.
+        rewrite (app_assoc _ _ g1).
+        rewrite <- does_not_reference_commutes_app2; auto.
+        repeat rewrite app_assoc.
+        do 3 (apply uc_app_congruence; try reflexivity).
+        apply dnr. bdestructΩ (n2 =? n2); auto.
+        apply dnr. bdestructΩ (n3 =? n3). apply orb_true_intro; auto.
+        intros q Hq.
+        rewrite rev_append_rev.
+        apply does_not_reference_app.
+        apply andb_true_intro; split.
+        rewrite <- does_not_reference_rev.
+        apply Hg0; auto.
+        apply Hl1acc; auto.
+        apply IHn in H as [H1 H2]; simpl in *.
+        rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
+        rewrite <- H1, <- H2.
+        repeat rewrite <- app_assoc.
+        split; reflexivity.
+        intros q Hq.
+        apply negb_true_iff in Hq.
+        apply FSetFacts.not_mem_iff in Hq.
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hn0 Hq].
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hn1 Hq].
+        rewrite rev_append_rev; simpl.
+        apply andb_true_intro; split.
+        bdestructΩ (n0 =? q); bdestructΩ (n1 =? q); auto.
+        apply does_not_reference_app.
+        apply andb_true_intro; split.
+        rewrite <- does_not_reference_rev.
+        apply Hg0. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+        apply Hl1acc. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+      + apply IHn in H as [H1 H2]; simpl in *.
+        rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
+        rewrite <- H1, <- H2.
+        repeat rewrite <- app_assoc.
+        split; reflexivity.
+        intros q Hq.
+        apply negb_true_iff in Hq.
+        apply FSetFacts.not_mem_iff in Hq.
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hn0 Hq].
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hn1 Hq].
+        rewrite rev_append_rev; simpl.
+        apply andb_true_intro; split.
+        bdestructΩ (n0 =? q); bdestructΩ (n1 =? q); auto.
+        apply does_not_reference_app.
+        apply andb_true_intro; split.
+        rewrite <- does_not_reference_rev.
+        apply Hg0. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+        apply Hl1acc. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+      + apply IHn in H as [H1 H2]; simpl in *.
+        rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
+        rewrite <- H1, <- H2.
+        repeat rewrite <- app_assoc.
+        split; reflexivity.
+        intros q Hq.
+        apply negb_true_iff in Hq.
+        apply FSetFacts.not_mem_iff in Hq.
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hn0 Hq].
+        rewrite FSetFacts.add_iff in Hq. 
+        apply Decidable.not_or in Hq as [Hn1 Hq].
+        rewrite rev_append_rev; simpl.
+        apply andb_true_intro; split.
+        bdestructΩ (n0 =? q); bdestructΩ (n1 =? q); auto.
+        apply does_not_reference_app.
+        apply andb_true_intro; split.
+        rewrite <- does_not_reference_rev.
+        apply Hg0. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
+        apply Hl1acc. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto. }
+  intros dim l1 l2 pfx l1' l2' H0.
+  apply H in H0.
+  simpl in H0. apply H0.
+  intros; reflexivity.
+Qed.
+
+(* TODO: can we prove that get_matching_prefix returns the maximal prefix, per our 
+   definition of remove_prefix?
+
+Definition is_prefix {dim} (l1 l2 : RzQ_ucom_l dim) :=
+  exists l', remove_prefix l2 l1 = Some l'. 
+Lemma get_matching_prefix_returns_maximum_prefix 
+    : forall {dim} (l1 l2 : RzQ_ucom_l dim) pfx l1' l2',
+  get_matching_prefix l1 l2 = (pfx, l1', l2') ->
+  forall pfx', is_prefix pfx' l1 -> is_prefix pfx' l2 -> is_prefix pfx' pfx. 
+*)
+
+Fixpoint niter {dim} (l : gate_list G.U dim) n :=
+  match n with
+  | O => []
+  | S n' => l ++ niter l n'
+  end.
+
+Lemma LCR_correct : forall {dim} n (p l c r : gate_list G.U dim) (opt : gate_list G.U dim -> gate_list G.U dim),
+  (n > 2)%nat -> uc_well_typed_l p ->
+  (forall p, uc_well_typed_l p -> opt p ≅l≅ p) ->
+  (forall p, uc_well_typed_l p -> uc_well_typed_l (opt p)) -> 
+  LCR p opt (fun n => @G.match_gate n) = Some (l, c, r) ->
+  niter p n ≅l≅ (l ++ (niter c (n - 2)) ++ r).
+Proof.
+  intros dim n p l c r opt Hn WT opt_sound opt_WT H.
+  destruct n; try lia.
+  destruct n; try lia.
+  clear Hn.
+  unfold LCR in H.
+  destruct (get_matching_prefix (opt p) (opt (opt p ++ opt p)) (fun n : nat => G.match_gate)) eqn:gmp.
+  destruct p0.
+  apply get_matching_prefix_correct in gmp as [? H1].
+  destruct (remove_prefix (opt (opt p ++ opt p ++ opt p)) l0 (fun n : nat => G.match_gate)) eqn:H2; try discriminate.
+  apply remove_prefix_correct in H2.
+  destruct (remove_suffix g0 g (fun n : nat => G.match_gate)) eqn:rs; try discriminate.
+  apply remove_suffix_correct in rs.
+  rewrite rs in H2; clear rs.
+  inversion H; subst; clear H.
+  apply uc_equiv_cong_l in H1.
+  apply uc_equiv_cong_l in H2.
+  do 2 rewrite opt_sound in *; auto. 
+  all: repeat (apply uc_well_typed_l_app; split); auto.
+  assert (WTr: uc_well_typed_l r).
+  apply uc_cong_l_implies_WT in H1.
+  apply uc_well_typed_l_app in H1 as [_ ?]; auto.
+  apply uc_well_typed_l_app; auto.
+  clear - H1 H2 WTr.
+  induction n.
+  - simpl; rewrite app_nil_r.
+    apply H1.
+  - simpl in *; rewrite Nat.sub_0_r in IHn.
+    rewrite IHn; clear IHn.
+    assert (Hpl : (p ++ l) ≅l≅ (l ++ c)).
+    { rewrite H1 in H2.
+      rewrite 2 app_assoc in H2.
+      unfold uc_cong_l, uc_cong in *.
+      repeat rewrite list_to_ucom_append in H2.
+      destruct H2 as [x H2]; simpl in H2.
+      rewrite <- Mscale_mult_dist_r in H2.
+      apply list_to_ucom_WT in WTr.
+      apply uc_eval_unitary_iff in WTr as [_ WTr].
+      assert (H: (uc_eval (list_to_ucom r))† = (uc_eval (list_to_ucom r))†) by reflexivity.
+      eapply (f_equal2 Mmult) in H2.
+      2: apply H.
+      rewrite <- 2 Mmult_assoc in H2.
+      rewrite WTr in H2.
+      rewrite 2 Mmult_1_l in H2; auto with wf_db.
+      exists x; auto. }
+    repeat rewrite app_assoc. 
+    rewrite Hpl.   
+    reflexivity.
 Qed.
 
 (** Correctness properties for non-unitary programs. **)
