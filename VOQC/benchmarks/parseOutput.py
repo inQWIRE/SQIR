@@ -9,7 +9,9 @@ if __name__ == "__main__":
     # Keys are "Original" and "Final".
     # Value are dicts mapping gate names to counts
     resDict = {}
-    elapsedTime = None
+    pTime = None
+    oTime = None
+    wTime = None
     for line in lines:
         if line.startswith("Original") or line.startswith("Final"):
             category = line.split(":")[0].strip()
@@ -19,17 +21,23 @@ if __name__ == "__main__":
                 gateName = token.split()[0].strip()
                 count = token.split()[-1].strip()
                 resDict[category][gateName] = count
-        elif line.startswith("real"):
-            elapsedTime = line.split()[-1].strip()
+        elif line.startswith("Time"):
+            t = line.split()[-1].strip()
+            if line.find("parse") != -1:
+                pTime = t
+            elif line.find("optimize") != -1:
+                oTime = t
+            elif line.find("write") != -1:
+                wTime = t
 
     # Print out results. The run_benchmarks script will redirect
     # this to the CSV file. Below is the header
     # name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC T,VOQC H,VOQC X,VOQC CNOT,time
     name = inFile.split("/")[-1].split(".txt")[0].strip()
-    print("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" %(name, resDict["Original"]["Total"], resDict["Original"]["Rz"],\
+    print("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" %(name, resDict["Original"]["Total"], resDict["Original"]["Rz"],\
                                                           resDict["Original"]["T"], resDict["Original"]["H"], \
                                                           resDict["Original"]["X"], resDict["Original"]["CNOT"],\
                                                           resDict["Final"]["Total"], resDict["Final"]["Rz"],\
                                                           resDict["Final"]["T"], resDict["Final"]["H"],\
-                                                          resDict["Final"]["X"], resDict["Final"]["CNOT"], elapsedTime))
+                                                          resDict["Final"]["X"], resDict["Final"]["CNOT"], pTime, oTime, wTime))
 

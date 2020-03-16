@@ -1,6 +1,6 @@
 (executable
   (name voqc)
-  (libraries openQASM zarith))
+  (libraries openQASM zarith unix))
 
 (env
   (dev
