@@ -19,6 +19,7 @@ Definition Z {dim} n : clifford_ucom dim := S n ; S n.
 Definition X {dim} n : clifford_ucom dim := H n; Z n; H n. 
 (* Y = iXZ *)
 (* Definition Y {dim} n : clifford_ucom dim := X n; Z n. *)
+Definition Y {dim} n : clifford_ucom dim := S n; X n; Z n; S n.
 Definition I {dim} n : clifford_ucom dim := H n; H n. 
 Definition CZ {dim} m n : clifford_ucom dim :=
   H n ; CNOT m n ; H n.
@@ -177,6 +178,12 @@ Example CNOT_ZI : lift_to_config_pair h_apply_cnot ZZ II = (ZZ, II).
 Proof. reflexivity. Qed.
 Example CNOT_XX : lift_to_config_pair h_apply_cnot XX XX = (XX, II).
 Proof. reflexivity. Qed.
+Example CNOT_ZZ : lift_to_config_pair h_apply_cnot ZZ ZZ = (II, ZZ).
+Proof. reflexivity. Qed.
+Example CNOT_ZX : lift_to_config_pair h_apply_cnot ZZ XX = (ZZ, XX).
+Proof. reflexivity. Qed.
+Example CNOT_XZ : lift_to_config_pair h_apply_cnot XX ZZ = (XX*ZZ, XX*ZZ).
+Proof. reflexivity. Qed.
 
 Definition h_state := list h_config. 
 
@@ -309,6 +316,18 @@ Proof. reflexivity. Qed.
 Lemma bell_Z2 : h_eval bell [II,ZZ] = [ZZ,ZZ].
 Proof. reflexivity. Qed.
 
+(* Our own test *)
+Lemma bell_ZZ : h_eval bell [ZZ,ZZ] = [XX*ZZ,XX*ZZ].
+Proof. compute. reflexivity. Qed.
+
+Lemma bell_ZZ' : h_eval bell [ZZ,ZZ] = [-1 * ii * YY,-1 * ii * YY].
+Proof. compute. reflexivity. Qed.
+
+Notation "A ≈ B" := (normalize_h_state A = normalize_h_state B) (at level 10).
+
+Lemma bell_ZZ'' : h_eval bell [ZZ,ZZ] ≈ [-1 * YY,YY].
+Proof. compute. reflexivity. Qed.
+  
 (* Example 6 *)
 
 (* Can we represent this as a program? *)
@@ -351,10 +370,139 @@ Lemma bob_Z1 : h_eval bob [XX,II,II] = [XX,II,ZZ].
 Proof. reflexivity. Qed.
 
 Lemma teleport_X1 : h_eval teleport [XX,II,II] = [II,XX,XX].
-Proof. simpl. reflexivity. Qed.
+Proof. compute. reflexivity. Qed.
 
 Lemma teleport_Z1 : h_eval teleport [ZZ,II,II] = [XX,II,ZZ].
-Proof. simpl. reflexivity. Qed.
+Proof. compute. reflexivity. Qed.
+
+Lemma teleport_XZZ : h_eval teleport [XX,ZZ,ZZ] = [-1 * XX,II,-1 * XX].
+Proof. compute. reflexivity. Qed.
+
+Lemma teleport_ZZZ : h_eval teleport [ZZ,ZZ,ZZ] = [II,XX,ZZ].
+Proof. compute. reflexivity. Qed.
 
 
 (* Example 11: Remove XOR *)
+
+(** * Own examples *)
+
+(** * Proofs about derived unitaries *)
+
+Lemma X_X1 : @h_eval 1 (X 0) [XX] = [XX].
+Proof. reflexivity. Qed.
+Lemma X_Z1 : @h_eval 1 (X 0) [ZZ] = [-1 * ZZ].
+Proof. reflexivity. Qed.
+Lemma Y_X1 : @h_eval 1 (Y 0) [XX] = [-1 * XX].
+Proof. reflexivity. Qed.
+Lemma Y_Z1 : @h_eval 1 (Y 0) [ZZ] = [-1 * ZZ].
+Proof. reflexivity. Qed.
+Lemma Z_X1 : @h_eval 1 (Z 0) [XX] = [-1 * XX].
+Proof. reflexivity. Qed.
+Lemma Z_Z1 : @h_eval 1 (Z 0) [ZZ] = [ZZ].
+Proof. reflexivity. Qed.
+
+Lemma CZ_X1 : @h_eval 2 (CZ 0 1) [XX,II] = [XX,ZZ].
+Proof. reflexivity. Qed.
+Lemma CZ_Z1 : @h_eval 2 (CZ 0 1) [ZZ,II] = [ZZ,II].
+Proof. reflexivity. Qed.
+Lemma CZ_X2 : @h_eval 2 (CZ 0 1) [II,XX] = [ZZ,XX].
+Proof. reflexivity. Qed.
+Lemma CZ_Z2 : @h_eval 2 (CZ 0 1) [II,ZZ] = [II,ZZ].
+Proof. reflexivity. Qed.
+
+(* Superdense coding *)
+
+Definition bell00 : clifford_ucom 4 :=
+  H 2;
+  CNOT 2 3.
+
+Definition encode : clifford_ucom 4 :=
+    CZ 0 2; CNOT 1 3.
+
+Definition decode : clifford_ucom 4 := 
+  CNOT 2 3;
+  H 2.
+
+Definition superdense := bell00 ; encode; decode.
+
+Compute (h_eval superdense [ZZ,ZZ,ZZ,ZZ]).
+Compute (h_eval superdense [II,ZZ,ZZ,ZZ]). (* Z, I, Z, Z *)
+Compute (h_eval superdense [ZZ,II,ZZ,ZZ]). (* I, Z, Z, Z *)
+Compute (h_eval superdense [II,II,ZZ,ZZ]).
+Compute (h_eval superdense [ZZ,ZZ,ZZ,II]).
+Compute (h_eval superdense [ZZ,ZZ,II,ZZ]).
+
+Compute (h_eval superdense [ZZ,II,II,II]). (* Z, I, I, I *)
+Compute (h_eval superdense [II,ZZ,II,II]). (* I, Z, I, I *)
+Compute (h_eval superdense [II,II,ZZ,II]). (* Z, I, Z, I *)
+Compute (h_eval superdense [II,II,II,ZZ]). (* I, Z, I, Z *)
+
+
+Lemma superdense_ZZ : h_eval superdense [ZZ,ZZ,ZZ,ZZ] = [II,II,ZZ,ZZ].
+Proof. reflexivity. Qed.
+  
+(* Toffoli Decomposition *)
+
+Module TOFF.
+
+Parameter FF : h_config.
+  
+Inductive CliffordT : nat -> Set := 
+  | U_H                  : CliffordT 1 
+  | U_T                  : CliffordT 1 
+  | U_CNOT               : CliffordT 2.
+
+Definition cliffordT_ucom := ucom CliffordT.
+
+Local Open Scope ucom.
+
+Definition CNOT {dim} m n : cliffordT_ucom dim := uapp2 U_CNOT m n.  
+Definition H {dim} n : cliffordT_ucom dim := uapp1 U_H n.  
+Definition T {dim} n : cliffordT_ucom dim := uapp1 U_T n.  
+Definition S {dim} n : cliffordT_ucom dim := T n ; T n.
+Definition Z {dim} n : cliffordT_ucom dim := S n ; S n.
+Definition TDAG {dim} n : cliffordT_ucom dim := Z n; S n; T n. 
+Definition X {dim} n : cliffordT_ucom dim := H n; Z n; H n. 
+Definition I {dim} n : cliffordT_ucom dim := H n; H n. 
+Definition CZ {dim} m n : cliffordT_ucom dim := H n ; CNOT m n ; H n.
+Definition SWAP {dim} m n : cliffordT_ucom dim := CNOT m n; CNOT n m; CNOT m n.
+
+Definition h_apply1 (c : CliffordT 1) (b : h_basis) : h_config :=
+  match c, b with 
+  | U_H, BX => ZZ
+  | U_H, BZ => XX
+  | U_T, BX => FF
+  | U_T, BZ => ZZ
+  end.
+
+Fixpoint h_eval {dim} (c : cliffordT_ucom dim) (st : h_state) : h_state :=
+  match c with
+  | c1 ; c2      => h_eval c2 (h_eval c1 st)
+  | uapp1 U n    => let h := lift_to_config (h_apply1 U) (nth n st II) in
+                   update_at st n h 
+  | uapp2 _ m n  => let (h1,h2) := lift_to_config_pair h_apply_cnot 
+                                                (nth m st II) (nth n st II) in
+                   update_at (update_at st m h1) n h2
+  | _            => all_I_state dim (* no 3-qubit gates in our denotation function *) 
+  end.
+
+Definition TOFFOLI {dim} (a b c : nat) : cliffordT_ucom dim :=
+  H c; 
+  CNOT b c; TDAG c; 
+  CNOT a c; T c; 
+  CNOT b c; TDAG c; 
+  CNOT a c; T b; T c; H c;
+  CNOT a b; T a; TDAG b; 
+  CNOT a b.
+
+Lemma TOFFOLI_Z1 : @h_eval 3 (TOFFOLI 0 1 2) [ZZ,II,II] = [ZZ,II,II].
+Proof. compute. reflexivity. Qed.
+
+Lemma TOFFOLI_Z2 : @h_eval 3 (TOFFOLI 0 1 2) [II,ZZ,II] = [II,ZZ,II].
+Proof. compute. reflexivity. Qed.
+
+Lemma TOFFOLI_X3 : @h_eval 3 (TOFFOLI 0 1 2) [II,II,XX] = [II,II,XX].
+Proof. compute. reflexivity. Qed.
+
+Lemma TOFFOLI_ZZX : @h_eval 3 (TOFFOLI 0 1 2) [ZZ,ZZ,XX] = [ZZ,ZZ,XX].
+Proof. compute. reflexivity. Qed.

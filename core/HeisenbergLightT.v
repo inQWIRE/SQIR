@@ -2,12 +2,13 @@ Require Import QWIRE.Prelim.
 Require Import SQIR.
 
 (* The Clifford Set of Unitary Matrices *)
-Inductive Clifford : nat -> Set := 
-  | U_H                  : Clifford 1 
-  | U_S                  : Clifford 1 
-  | U_CNOT               : Clifford 2.
+Inductive CliffordT : nat -> Set := 
+  | U_H                  : CliffordT 1 
+  | U_S                  : CliffordT 1
+  | U_T                  : CliffordT 1     
+  | U_CNOT               : CliffordT 2.
 
-Definition clifford_ucom := ucom Clifford.
+Definition cliffordT_ucom := ucom CliffordT.
 
 Local Open Scope ucom.
 
@@ -25,33 +26,45 @@ Qed.
 *)
 
 (* Some useful shorthands. *)
-Definition CNOT {dim} m n : clifford_ucom dim := uapp2 U_CNOT m n.  
-Definition H {dim} n : clifford_ucom dim := uapp1 U_H n.  
-Definition S {dim} n : clifford_ucom dim := uapp1 U_S n.  
-Definition Z {dim} n : clifford_ucom dim := S n ; S n.
-Definition X {dim} n : clifford_ucom dim := H n; Z n; H n. 
+Definition CNOT {dim} m n : cliffordT_ucom dim := uapp2 U_CNOT m n.  
+Definition H {dim} n : cliffordT_ucom dim := uapp1 U_H n.  
+Definition S {dim} n : cliffordT_ucom dim := uapp1 U_S n.  
+Definition T {dim} n : cliffordT_ucom dim := uapp1 U_T n. 
+Definition Z {dim} n : cliffordT_ucom dim := S n ; S n.
+Definition TDAG {dim} n : cliffordT_ucom dim := Z n; S n; T n. 
+Definition X {dim} n : cliffordT_ucom dim := H n; Z n; H n. 
 (* Y = iXZ = -iZX *)
-(* Definition Y {dim} n : clifford_ucom dim := X n; Z n. *)
-Definition Y {dim} n : clifford_ucom dim := S n; X n; Z n; S n.
-Definition I {dim} n : clifford_ucom dim := H n; H n. 
-Definition CZ {dim} m n : clifford_ucom dim :=
+(* Definition Y {dim} n : cliffordT_ucom dim := X n; Z n. *)
+Definition Y {dim} n : cliffordT_ucom dim := S n; X n; Z n; S n.
+Definition I {dim} n : cliffordT_ucom dim := H n; H n. 
+Definition CZ {dim} m n : cliffordT_ucom dim :=
   H n ; CNOT m n ; H n.
-Definition SWAP {dim} m n : clifford_ucom dim :=
+Definition SWAP {dim} m n : cliffordT_ucom dim :=
   CNOT m n; CNOT n m; CNOT m n.
 
-Inductive htype : Set := II | XX | YY | ZZ.
+Inductive htype : Set := II | XX | YY | ZZ | QQ.
+
+Notation "⊤" := QQ.
 
 (* From Gottesman, table 1 *)
-Definition apply1 (c : Clifford 1) (b : htype) : htype :=
+
+Definition apply1 (c : CliffordT 1) (b : htype) : htype :=
   match c, b with 
   | U_H, II => II (* noop *)
   | U_H, XX => ZZ
   | U_H, YY => YY (* inferred *)
   | U_H, ZZ => XX
+  | U_H, ⊤ => ⊤   (* annihilator *)
   | U_S, II => II (* noop *)
   | U_S, XX => YY
   | U_S, YY => XX (* inferred *)
   | U_S, ZZ => ZZ
+  | U_S, ⊤ => ⊤   (* annihilator *)
+  | U_T, II => II (* noop *)
+  | U_T, XX => ⊤  (* outside Clifford *)
+  | U_T, YY => ⊤  (* outside Clifford *)
+  | U_T, ZZ => ZZ
+  | U_T, ⊤ => ⊤   (* annihilator *)
   end.
 
 (* CNOT (h ⊗ II) *)
@@ -61,6 +74,7 @@ Definition apply_cnot1 (h : htype) : htype * htype :=
   | XX => (XX, XX)
   | ZZ => (ZZ, II)
   | YY => (YY, XX) (* inferred *)
+  | ⊤ =>  (⊤, ⊤)   (* maybe overkill? *)
   end.
            
 (* CNOT (II ⊗ h) *)
@@ -70,6 +84,7 @@ Definition apply_cnot2 (h : htype) : htype * htype :=
   | XX => (II, XX)
   | ZZ => (ZZ, ZZ)
   | YY => (ZZ, YY) (* inferred *)
+  | ⊤ =>  (⊤, ⊤)   (* maybe overkill? *)
   end.
 
 Definition h_times (h1 h2 : htype) :=
@@ -85,6 +100,8 @@ Definition h_times (h1 h2 : htype) :=
   | ZZ, XX => YY
   | ZZ, YY => XX
   | ZZ, ZZ => II
+  | ⊤, _   => ⊤
+  | _, ⊤   => ⊤
   end.
 
 Infix "*" := h_times.
@@ -104,8 +121,8 @@ Proof. reflexivity. Qed.
 Lemma II_1_r : forall h, h * II = h.
 Proof. intros []; reflexivity. Qed.
 
-Lemma h_times_inv : forall h, h * h = II.
-Proof. intros []; reflexivity. Qed.
+Lemma h_times_inv : forall h, h <> ⊤ -> h * h = II.
+Proof. intros [] N; easy. Qed.
 
 (* Sanity Checks *)
 Example CNOT_IX : apply_cnot II XX = (II, XX).
@@ -125,12 +142,13 @@ Definition all_X_state (dim : nat) := repeat XX dim.
 Definition all_Y_state (dim : nat) := repeat YY dim.
 Definition all_Z_state (dim : nat) := repeat ZZ dim.
 Definition all_I_state (dim : nat) := repeat II dim. (* should never appear *)
+Definition all_top (dim : nat) := repeat ⊤ dim.
 
 Notation "[ ]" := nil (format "[ ]") : list_scope.
 Notation "[ x ]" := (cons x nil) : list_scope.
 Notation "[ x , y , .. , z ]" := (cons x (cons y .. (cons z nil) ..)) : list_scope.
 
-Fixpoint h_eval {dim} (c : clifford_ucom dim) (st : h_state) : h_state :=
+Fixpoint h_eval {dim} (c : cliffordT_ucom dim) (st : h_state) : h_state :=
   match c with
   | c1 ; c2      => h_eval c2 (h_eval c1 st)
   | uapp1 U n    => update_at st n (apply1 U (nth n st II)) 
@@ -142,22 +160,22 @@ Fixpoint h_eval {dim} (c : clifford_ucom dim) (st : h_state) : h_state :=
 (** * Equivalence and Structural Rules **)
 
 (* Precondition about typing? *)
-Definition h_equiv {dim} (c1 c2 : clifford_ucom dim) := 
+Definition h_equiv {dim} (c1 c2 : cliffordT_ucom dim) := 
   h_eval c1 = h_eval c2.
 
 Infix "≡" := h_equiv (at level 80).
 
-Lemma h_equiv_refl : forall {dim} (c1 : clifford_ucom dim), c1 ≡ c1.
+Lemma h_equiv_refl : forall {dim} (c1 : cliffordT_ucom dim), c1 ≡ c1.
 Proof. easy. Qed.
 
-Lemma h_equiv_sym : forall {dim} (c1 c2 : clifford_ucom dim), c1 ≡ c2 -> c2 ≡ c1. 
+Lemma h_equiv_sym : forall {dim} (c1 c2 : cliffordT_ucom dim), c1 ≡ c2 -> c2 ≡ c1. 
 Proof. easy. Qed.
 
-Lemma h_equiv_trans : forall {dim} (c1 c2 c3 : clifford_ucom dim), 
+Lemma h_equiv_trans : forall {dim} (c1 c2 c3 : cliffordT_ucom dim), 
   c1 ≡ c2 -> c2 ≡ c3 -> c1 ≡ c3. 
 Proof. intros dim c1 c2 c3 H12 H23. unfold h_equiv. rewrite H12. easy. Qed.
 
-Lemma hseq_assoc : forall {dim} (c1 c2 c3 : clifford_ucom dim), 
+Lemma hseq_assoc : forall {dim} (c1 c2 c3 : cliffordT_ucom dim), 
   ((c1 ; c2) ; c3) ≡ (c1 ; (c2 ; c3)).
 Proof.
   intros dim c1 c2 c3. 
@@ -165,7 +183,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma hseq_congruence : forall {dim} (c1 c1' c2 c2' : clifford_ucom dim),
+Lemma hseq_congruence : forall {dim} (c1 c1' c2 c2' : cliffordT_ucom dim),
     c1 ≡ c1' ->
     c2 ≡ c2' ->
     c1 ; c2 ≡ c1' ; c2'.
@@ -176,7 +194,7 @@ Proof.
   reflexivity.
 Qed.
 
-Add Parametric Relation (dim : nat) : (clifford_ucom dim) (@h_equiv dim)
+Add Parametric Relation (dim : nat) : (cliffordT_ucom dim) (@h_equiv dim)
   reflexivity proved by h_equiv_refl
   symmetry proved by h_equiv_sym
   transitivity proved by h_equiv_trans
@@ -184,14 +202,14 @@ Add Parametric Relation (dim : nat) : (clifford_ucom dim) (@h_equiv dim)
 
 Require Import Setoid.
 
-Add Parametric Morphism (dim : nat) : (@useq Clifford dim)
+Add Parametric Morphism (dim : nat) : (@useq CliffordT dim)
   with signature (@h_equiv dim) ==> (@h_equiv dim) ==> (@h_equiv dim) as hseq_mor.
 Proof. intros x y H x0 y0 H0. apply hseq_congruence; easy. Qed.
 
-Lemma test_rel : forall (dim : nat) (c1 c2 : clifford_ucom dim), c1 ≡ c2 -> c2 ≡ c1.
+Lemma test_rel : forall (dim : nat) (c1 c2 : cliffordT_ucom dim), c1 ≡ c2 -> c2 ≡ c1.
 Proof. intros. rewrite H0. reflexivity. Qed.
 
-Lemma test_mor : forall (dim : nat) (c1 c2 : clifford_ucom dim), c1 ≡ c2 -> c2 ; c1 ≡ c1 ; c1.
+Lemma test_mor : forall (dim : nat) (c1 c2 : cliffordT_ucom dim), c1 ≡ c2 -> c2 ; c1 ≡ c1 ; c1.
 Proof. intros. rewrite H0. reflexivity. Qed.
 
 (** * Examples from Gottesman Paper *)
@@ -202,15 +220,16 @@ Lemma SWAP_X1 : h_eval (@SWAP 2 0 1) [XX,II] = [II,XX].
 Proof. reflexivity. Qed.
 
 Lemma SWAP_basis : forall (h1 h2 : htype),
+ h1 <> ⊤ -> h2 <> ⊤ ->
  h_eval (@SWAP 2 0 1) [h1,h2] = [h2,h1].
-Proof. intros [] []; subst; reflexivity. Qed.
+Proof. intros [] []; subst; easy. Qed.
 
 (* Could reduce to a two case proof and add a proof that this is
    sufficient to reason about all cases.  *)
 
 (* Example 2 *)
 
-Definition had_cnot : clifford_ucom 2 := 
+Definition had_cnot : cliffordT_ucom 2 := 
   H 0; H 1; CNOT 0 1; H 0; H 1.
 
 Lemma had_cnot_notc : forall (h1 h2 : htype),
@@ -221,7 +240,7 @@ Proof. intros [] []; reflexivity. Qed.
 
 (* Example 3 *)
 
-Definition hitite_code : clifford_ucom 2 := 
+Definition hitite_code : cliffordT_ucom 2 := 
   H 0; S 1; CNOT 0 1; H 1; CNOT 0 1.
 
 Lemma hitite_X1 : h_eval hitite_code [XX,II] = [ZZ,II].
@@ -240,7 +259,7 @@ Proof. reflexivity. Qed.
 
 (* Example 4 *)
 
-Definition cnot_notc : clifford_ucom 2 := CNOT 0 1; CNOT 1 0.
+Definition cnot_notc : cliffordT_ucom 2 := CNOT 0 1; CNOT 1 0.
 
 (* unlabelled case *)
 Lemma cnot_notc_Z2 : h_eval cnot_notc [II,ZZ] = [ZZ,II].
@@ -254,7 +273,7 @@ Proof. reflexivity. Qed.
 
 (* Example 5 : Bell *)
 
-Definition bell : clifford_ucom 2 := H 0; CNOT 0 1.
+Definition bell : cliffordT_ucom 2 := H 0; CNOT 0 1.
 
 Lemma bell_Z1 : h_eval bell [ZZ,II] = [XX,XX].
 Proof. reflexivity. Qed.
@@ -268,7 +287,7 @@ Proof. reflexivity. Qed.
 
 (* Example 7 *)
 
-Definition ec_code : clifford_ucom 4 := 
+Definition ec_code : cliffordT_ucom 4 := 
   H 3; CNOT 0 2; CNOT 1 2; CNOT 3 0; CNOT 3 1; CNOT 3 2.
 
 (* What to prove? *)
@@ -283,13 +302,13 @@ Definition ec_code : clifford_ucom 4 :=
 
 (* Measurement-free teleportation with bell initialization *)
 
-Definition bell' : clifford_ucom 3 := H 1; CNOT 1 2.
+Definition bell' : cliffordT_ucom 3 := H 1; CNOT 1 2.
 
-Definition alice : clifford_ucom 3 := CNOT 0 1; H 0.
+Definition alice : cliffordT_ucom 3 := CNOT 0 1; H 0.
 
-Definition bob : clifford_ucom 3 := CNOT 1 2; CZ 0 2.
+Definition bob : cliffordT_ucom 3 := CNOT 1 2; CZ 0 2.
 
-Definition teleport : clifford_ucom 3 := bell'; alice; bob.
+Definition teleport : cliffordT_ucom 3 := bell'; alice; bob.
 
 Lemma alice_X1 : h_eval alice [XX,II,II] = [ZZ,XX,II].
 Proof. reflexivity. Qed.
@@ -339,53 +358,6 @@ Proof. reflexivity. Qed.
   
 (* Toffoli Decomposition *)
 
-Module TOFF.
-
-Parameter FF : htype.
-  
-Inductive CliffordT : nat -> Set := 
-  | U_H                  : CliffordT 1 
-  | U_T                  : CliffordT 1 
-  | U_CNOT               : CliffordT 2.
-
-Definition cliffordT_ucom := ucom CliffordT.
-
-Local Open Scope ucom.
-
-(* Some useful shorthands. *)
-Definition CNOT {dim} m n : cliffordT_ucom dim := uapp2 U_CNOT m n.  
-Definition H {dim} n : cliffordT_ucom dim := uapp1 U_H n.  
-Definition T {dim} n : cliffordT_ucom dim := uapp1 U_T n.  
-Definition S {dim} n : cliffordT_ucom dim := T n ; T n.
-Definition Z {dim} n : cliffordT_ucom dim := S n ; S n.
-Definition TDAG {dim} n : cliffordT_ucom dim := Z n; S n; T n. 
-Definition X {dim} n : cliffordT_ucom dim := H n; Z n; H n. 
-Definition I {dim} n : cliffordT_ucom dim := H n; H n. 
-Definition CZ {dim} m n : cliffordT_ucom dim := H n ; CNOT m n ; H n.
-Definition SWAP {dim} m n : cliffordT_ucom dim := CNOT m n; CNOT n m; CNOT m n.
-
-(* From Gottesman, table 1 *)
-Definition apply1 (c : CliffordT 1) (b : htype) : htype :=
-  match c, b with 
-  | U_H, II => II (* noop *)
-  | U_H, XX => ZZ
-  | U_H, YY => YY (* inferred *)
-  | U_H, ZZ => XX
-  | U_T, II => II (* noop *)
-  | U_T, XX => FF (* failure *)
-  | U_T, YY => FF (* failure *)
-  | U_T, ZZ => ZZ
-  end.
-
-Fixpoint h_eval {dim} (c : cliffordT_ucom dim) (st : h_state) : h_state :=
-  match c with
-  | c1 ; c2      => h_eval c2 (h_eval c1 st)
-  | uapp1 U n    => update_at st n (apply1 U (nth n st II)) 
-  | uapp2 _ m n  => let (h1,h2) := apply_cnot (nth m st II) (nth n st II) in
-                   update_at (update_at st m h1) n h2
-  | _            => all_I_state dim (* no 3-qubit gates in our denotation function *) 
-  end.
-
 Definition TOFFOLI {dim} (a b c : nat) : cliffordT_ucom dim :=
   H c; 
   CNOT b c; TDAG c; 
@@ -406,7 +378,17 @@ Proof. compute. reflexivity. Qed.
 
 Lemma TOFFOLI_ZZX : @h_eval 3 (TOFFOLI 0 1 2) [ZZ,ZZ,XX] = [ZZ,ZZ,XX].
 Proof. compute. reflexivity. Qed.
-  (*
+
+Lemma TOFFOLI_X1 : @h_eval 3 (TOFFOLI 0 1 2) [XX,II,II] = [⊤,⊤,⊤].
+Proof. compute. reflexivity. Qed.
+
+Lemma TOFFOLI_X2 : @h_eval 3 (TOFFOLI 0 1 2) [II,XX,II] = [⊤,⊤,⊤].
+Proof. compute. reflexivity. Qed.
+
+Lemma TOFFOLI_Z3 : @h_eval 3 (TOFFOLI 0 1 2) [II,II,ZZ] = [⊤,⊤,⊤].
+Proof. compute. reflexivity. Qed.
+
+(*
 
 Inductive CliffordT : nat -> Set := 
   | Clif : forall {n}, Clifford n -> CliffordT n 
