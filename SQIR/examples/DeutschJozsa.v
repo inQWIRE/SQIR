@@ -36,22 +36,14 @@ Lemma deutsch_jozsa_count :
     (ψ ⊗ kron_n dim ∣+⟩)† × (uc_eval U × (∣-⟩ ⊗ kron_n dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣-⟩).
 Proof.
   intros.
-  remember ∣+⟩ as ψp. remember ∣-⟩ as ψm.
-  induction dim; dependent destruction P.                                   
+  induction dim; dependent destruction P.
   - simpl. rewrite u0. 
     rewrite denote_SKIP; try lia.
-    repeat rewrite kron_1_r. rewrite Mmult_1_l by (subst; auto with wf_db). 
-    autorewrite with C_db.
-    symmetry. apply Mscale_1_l.
+    Qsimpl. solve_matrix.
   - simpl. rewrite u0.
-    autorewrite with eval_db.
-    simpl.
-    repeat rewrite kron_1_r. rewrite kron_1_l by auto with wf_db.
-    replace (σx × ψm) with ((-1)%R .* ψm) by (subst; solve_matrix).
-    rewrite Mscale_mult_dist_r.
-    apply f_equal2. lca. reflexivity.
-  - simpl.
-    rewrite e.
+    autorewrite with eval_db; simpl.
+    Qsimpl. solve_matrix.
+  - simpl. rewrite e.
     restore_dims.
     repeat rewrite <- kron_assoc.
     restore_dims.
@@ -62,10 +54,10 @@ Proof.
     repeat rewrite kron_mixed_product.
     setoid_rewrite (IHdim u1 P1).
     setoid_rewrite (IHdim u2 P2).
-    replace ((ψp) † × (∣0⟩⟨0∣ × ψp)) with ((1/2)%R .* I 1) by (rewrite Heqψp; solve_matrix).
-    replace ((ψp) † × (∣1⟩⟨1∣ × ψp)) with ((1/2)%R .* I 1) by (rewrite Heqψp; solve_matrix).
+    replace ((∣+⟩) † × (∣0⟩⟨0∣ × ∣+⟩)) with ((1/2)%R .* I 1) by solve_matrix.
+    replace ((∣+⟩) † × (∣1⟩⟨1∣ × ∣+⟩)) with ((1/2)%R .* I 1) by solve_matrix.
     repeat rewrite Mscale_kron_dist_r.
-    restore_dims.
+    restore_dims. 
     Msimpl.
     repeat rewrite Mscale_assoc.
     rewrite <- Mscale_plus_distr_l.
@@ -150,7 +142,7 @@ Proof.
   (* now n > 0 *)
   rewrite cpar_correct_H; try lia. 
   induction n.
-  - simpl. Msimpl_light. apply hadamard_sa.
+  - simpl. repeat Qsimpl. reflexivity.
   - simpl in *; replace (n - n)%nat with O in * by lia. 
     simpl in *.
     repeat rewrite kron_1_r in *. 
@@ -172,8 +164,10 @@ Proof.
   unfold deutsch_jozsa. 
   rewrite kron_n_assoc by auto with wf_db.
   Opaque cpar. 
-  simpl uc_eval.
-  rewrite <- cpar_H_self_adjoint at 1.
+  simpl uc_eval. restore_dims. 
+  replace (uc_eval (cpar (S dim) H) × uc_eval (X O)) with (@uc_eval (S dim) (X 0; cpar (S dim) H)) by reflexivity.
+  rewrite <- cpar_H_self_adjoint.
+  simpl.
   rewrite cpar_correct_H by lia.
   replace (S dim - S dim)%nat with O by lia.
   autorewrite with eval_db.
@@ -184,21 +178,18 @@ Proof.
   rewrite kron_n_assoc by auto with wf_db.
   restore_dims. 
   repeat rewrite Mmult_assoc.
-  restore_dims. 
-  rewrite 2 kron_mixed_product.
-  replace (σx × ∣0⟩) with (∣1⟩) by solve_matrix.
+  restore_dims.
+  Qsimpl.
   replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.
-  rewrite Mmult_1_l by auto with wf_db.
-  rewrite kron_n_H. 
-  rewrite <- Mmult_assoc.
-  rewrite <- Mmult_adjoint.
-  rewrite kron_mixed_product.
-  remember (hadamard × ψ) as ϕ.
   rewrite kron_n_H.
+  rewrite <- Mmult_assoc. 
+  Qsimpl.
+  rewrite <- Mmult_adjoint.
+  rewrite kron_n_H. 
+  replace (hadamard) with (hadamard†) by (Qsimpl; easy).
+  rewrite <- Mmult_adjoint, <- kron_adjoint.
   rewrite (deutsch_jozsa_count P).
-  subst.
-  Msimpl.
-  rewrite hadamard_sa.
+  Qsimpl.
   rewrite Mmult_assoc.
   replace (hadamard × ∣-⟩) with ∣1⟩ by solve_matrix.
   reflexivity.

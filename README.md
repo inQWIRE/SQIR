@@ -56,39 +56,32 @@ Examples of verifying correctness properties of simple SQIR programs.
 
 ## VOQC Directory Contents
 
-### src/optimizer
+### src
 
-A verified optimizer for SQIR programs.
+Verified transformations of SQIR programs.
 
 - Utilities
-  - optimizer/Equivalences.v : Verified circuit equivalences for peephole optimizations.
-  - optimizer/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs when possible.
-  - optimizer/PI4GateSet.v : Fixed gate set used in our optimizer; includes gate set-specific proofs for utilities in ListRepresentation.v.
-  - optimizer/Extraction.v : Rules for extracting VOQC to OCaml.
+  - src/Equivalences.v : Verified circuit equivalences for peephole optimizations.
+  - src/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs.
+  - src/RzQGateSet.v : Fixed gate set used in our optimizer.
 
 - Optimizations on unitary programs
-  - optimizer/GateCancellation.v : 'Single-qubit gate cancellation' and 'two-qubit gate cancellation' optimizations from Nam et al.
-  - optimizer/HadamardReduction.v : 'Hadamard reduction' optimization from Nam et al.
-  - optimizer/NotPropagation.v : 'Not propagation' preprocessing step from Nam et al.
-  - optimizer/RotationMerging.v : 'Rotation merging using phase polynomials' optimization from Nam et al.
+  - src/GateCancellation.v : 'Single-qubit gate cancellation' and 'two-qubit gate cancellation' optimizations from Nam et al.
+  - src/HadamardReduction.v : 'Hadamard reduction' optimization from Nam et al.
+  - src/NotPropagation.v : 'Not propagation' preprocessing step from Nam et al.
+  - src/RotationMerging.v : 'Rotation merging using phase polynomials' optimization from Nam et al.
 
 - Optimizations on non-unitary programs
-  - optimizer/RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.
-  - optimizer/PropagateClassical.v : Track classical states to remove redundant measurements and CNOT operations.
+  - src/RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.
+  - src/PropagateClassical.v : Track classical states to remove redundant measurements and CNOT operations.
 
-### src/mapper
+- Mapping routines for unitary SQIR programs
+  - src/SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
+  - src/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
 
-Mapping algorithms for SQIR programs.
-
-- mapper/SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
-- mapper/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
-- mapper/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
-
-### src/experimental
-
-Experimental extensions to VOQC.
-
-- experimental/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
+- Experimental extensions
+  - src/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
+  - src/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
 
 ### extraction
 

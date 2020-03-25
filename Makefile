@@ -28,18 +28,17 @@ invoke-coqmakefile: CoqMakefile
 QWIRE := externals/QWIRE
 SQIR := SQIR/src
 examples := SQIR/examples
-optimizer := VOQC/src/optimizer
-mapper := VOQC/src/mapper
+VOQC := VOQC/src
 
 COQ_OPTS := -R . Top
 
-all: examples mapper optimizer $(optimizer)/PropagateClassical.vo $(optimizer)/RemoveZRotationBeforeMeasure.vo VOQC/src/experimental/BooleanCompilation.vo
+all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
-mapper: invoke-coqmakefile $(mapper)/SimpleMapping.vo $(mapper)/MappingExamples.vo
+mapper: invoke-coqmakefile $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo
 
-optimizer: invoke-coqmakefile $(optimizer)/Optimize.vo VOQC/extraction/voqc.ml
+optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo VOQC/extraction/voqc.ml
 	cd VOQC/extraction && ./extract.sh
 	dune build voqc.exe --root VOQC/extraction
 
@@ -67,55 +66,55 @@ SQIR/examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/
 
 # Built by 'make mapper'
 
-VOQC/src/mapper/SimpleMapping.vo: $(SQIR)/UnitarySem.vo $(optimizer)/Equivalences.vo
-	coqc $(COQ_OPTS) $(mapper)/SimpleMapping.v
+VOQC/src/SimpleMapping.vo: $(SQIR)/UnitarySem.vo $(VOQC)/Equivalences.vo
+	coqc $(COQ_OPTS) $(VOQC)/SimpleMapping.v
 
-VOQC/src/mapper/MappingExamples.vo: $(mapper)/SimpleMapping.vo
-	coqc $(COQ_OPTS) $(mapper)/MappingExamples.v
+VOQC/src/MappingExamples.vo: $(VOQC)/SimpleMapping.vo
+	coqc $(COQ_OPTS) $(VOQC)/MappingExamples.v
 
 # Built by 'make optimizer'
 
-VOQC/src/optimizer/Equivalences.vo: $(optimizer)/Equivalences.v $(SQIR)/UnitarySem.vo
-	coqc $(COQ_OPTS) $(optimizer)/Equivalences.v
+VOQC/src/Equivalences.vo: $(VOQC)/Equivalences.v $(SQIR)/UnitarySem.vo
+	coqc $(COQ_OPTS) $(VOQC)/Equivalences.v
 
-VOQC/src/optimizer/GateCancellation.vo: $(optimizer)/GateCancellation.v $(optimizer)/Equivalences.vo $(optimizer)/RzQGateSet.vo
-	coqc $(COQ_OPTS) $(optimizer)/GateCancellation.v
+VOQC/src/GateCancellation.vo: $(VOQC)/GateCancellation.v $(VOQC)/Equivalences.vo $(VOQC)/RzQGateSet.vo
+	coqc $(COQ_OPTS) $(VOQC)/GateCancellation.v
 
-VOQC/src/optimizer/GateSet.vo: $(optimizer)/GateSet.v $(SQIR)/UnitarySem.vo
-	coqc $(COQ_OPTS) $(optimizer)/GateSet.v
+VOQC/src/GateSet.vo: $(VOQC)/GateSet.v $(SQIR)/UnitarySem.vo
+	coqc $(COQ_OPTS) $(VOQC)/GateSet.v
 
-VOQC/src/optimizer/HadamardReduction.vo: $(optimizer)/HadamardReduction.v $(optimizer)/Equivalences.vo $(optimizer)/RzQGateSet.vo
-	coqc $(COQ_OPTS) $(optimizer)/HadamardReduction.v
+VOQC/src/HadamardReduction.vo: $(VOQC)/HadamardReduction.v $(VOQC)/Equivalences.vo $(VOQC)/RzQGateSet.vo
+	coqc $(COQ_OPTS) $(VOQC)/HadamardReduction.v
 
-VOQC/src/optimizer/ListRepresentation.vo: $(optimizer)/ListRepresentation.v $(optimizer)/GateSet.vo $(QWIRE)/Proportional.vo $(optimizer)/Equivalences.vo $(SQIR)/DensitySem.vo
-	coqc $(COQ_OPTS) $(optimizer)/ListRepresentation.v
+VOQC/src/ListRepresentation.vo: $(VOQC)/ListRepresentation.v $(VOQC)/GateSet.vo $(QWIRE)/Proportional.vo $(VOQC)/Equivalences.vo $(SQIR)/DensitySem.vo
+	coqc $(COQ_OPTS) $(VOQC)/ListRepresentation.v
 
-VOQC/src/optimizer/NotPropagation.vo: $(optimizer)/NotPropagation.v $(optimizer)/Equivalences.vo $(optimizer)/RzQGateSet.vo
-	coqc $(COQ_OPTS) $(optimizer)/NotPropagation.v
+VOQC/src/NotPropagation.vo: $(VOQC)/NotPropagation.v $(VOQC)/Equivalences.vo $(VOQC)/RzQGateSet.vo
+	coqc $(COQ_OPTS) $(VOQC)/NotPropagation.v
 
-VOQC/src/optimizer/Optimize.vo: $(optimizer)/Optimize.v $(optimizer)/NotPropagation.vo $(optimizer)/HadamardReduction.vo $(optimizer)/GateCancellation.vo $(optimizer)/RotationMerging.vo
-	coqc $(COQ_OPTS) $(optimizer)/Optimize.v
+VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/GateCancellation.vo $(VOQC)/RotationMerging.vo
+	coqc $(COQ_OPTS) $(VOQC)/Optimize.v
 
-VOQC/src/optimizer/RzQGateSet.vo: $(optimizer)/RzQGateSet.v $(optimizer)/Equivalences.vo $(optimizer)/ListRepresentation.vo $(SQIR)/DensitySem.vo
-	coqc $(COQ_OPTS) $(optimizer)/RzQGateSet.v
+VOQC/src/RzQGateSet.vo: $(VOQC)/RzQGateSet.v $(VOQC)/ListRepresentation.vo
+	coqc $(COQ_OPTS) $(VOQC)/RzQGateSet.v
 
-VOQC/src/optimizer/RotationMerging.vo: $(optimizer)/RotationMerging.v $(optimizer)/RzQGateSet.vo $(SQIR)/ClassicalStates.vo
-	coqc $(COQ_OPTS) $(optimizer)/RotationMerging.v
+VOQC/src/RotationMerging.vo: $(VOQC)/RotationMerging.v $(VOQC)/RzQGateSet.vo $(SQIR)/ClassicalStates.vo
+	coqc $(COQ_OPTS) $(VOQC)/RotationMerging.v
 
 # Misc. files built by 'make all'
 
-VOQC/src/optimizer/PropagateClassical.vo: $(optimizer)/PropagateClassical.v $(optimizer)/RzQGateSet.vo $(SQIR)/DensitySem.vo
-	coqc $(COQ_OPTS) $(optimizer)/PropagateClassical.v
+VOQC/src/PropagateClassical.vo: $(VOQC)/PropagateClassical.v $(VOQC)/RzQGateSet.vo $(SQIR)/DensitySem.vo
+	coqc $(COQ_OPTS) $(VOQC)/PropagateClassical.v
 
-VOQC/src/optimizer/RemoveZRotationBeforeMeasure.vo: $(optimizer)/RemoveZRotationBeforeMeasure.v $(optimizer)/RzQGateSet.vo $(SQIR)/DensitySem.vo
-	coqc $(COQ_OPTS) $(optimizer)/RemoveZRotationBeforeMeasure.v
+VOQC/src/RemoveZRotationBeforeMeasure.vo: $(VOQC)/RemoveZRotationBeforeMeasure.v $(VOQC)/RzQGateSet.vo $(SQIR)/DensitySem.vo
+	coqc $(COQ_OPTS) $(VOQC)/RemoveZRotationBeforeMeasure.v
 
-VOQC/src/experimental/BooleanCompilation.vo: VOQC/src/experimental/BooleanCompilation.v $(SQIR)/ClassicalStates.vo $(QWIRE)/Dirac.vo
-	coqc $(COQ_OPTS) VOQC/src/experimental/BooleanCompilation.v
+VOQC/src/BooleanCompilation.vo: $(VOQC)/BooleanCompilation.v $(SQIR)/ClassicalStates.vo $(QWIRE)/Dirac.vo
+	coqc $(COQ_OPTS) $(VOQC)/BooleanCompilation.v
 
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -rf CoqMakefile CoqMakefile.conf {externals/QWIRE,SQIR/*,VOQC/src/*}/{*.vo,*.glob,.*.aux} .lia.cache VOQC/extraction/_build
+	rm -rf CoqMakefile CoqMakefile.conf {externals/QWIRE,SQIR/*,VOQC/src}/{*.vo,*.glob,.*.aux} .lia.cache VOQC/extraction/_build
 
 # This should be the last rule, to handle any targets not declared above
 #%: invoke-coqmakefile

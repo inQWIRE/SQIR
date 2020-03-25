@@ -13,16 +13,16 @@ Require Import RotationMerging.
    4 - rotation merging *) 
 
 Definition optimize {dim} (l : RzQ_ucom_l dim) : RzQ_ucom_l dim :=
-  cancel_single_qubit_gates 
+  (*cancel_single_qubit_gates 
     (cancel_two_qubit_gates 
-      (merge_rotations 
+      (merge_rotations *)
         (cancel_single_qubit_gates 
           (hadamard_reduction 
             (cancel_two_qubit_gates 
               (cancel_single_qubit_gates 
                 (cancel_two_qubit_gates 
                   (hadamard_reduction 
-                    (not_propagation l))))))))). 
+                    (not_propagation l))))))). 
 
 (* LCR optimizer for multiple iterations. *)
 Definition optimize_lcr {dim} (l : RzQ_ucom_l dim) :=

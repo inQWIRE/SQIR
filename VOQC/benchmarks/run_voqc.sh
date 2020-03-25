@@ -90,7 +90,7 @@ done
 
 echo""
 printf "${GREEN}##### Running on files in QFT_and_Adders #####${NOCOLOR}\n"
-> QFT_and_Adders.csv
+> QFT_and_Adders_results.csv
 echo "name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC T,VOQC H,VOQC X,VOQC CNOT,parse time,optimization time,write time" >> QFT_and_Adders_results.csv
 for filename in "${QFT_and_Adders_filenames[@]}"
 do

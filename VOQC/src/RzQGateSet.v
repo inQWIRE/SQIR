@@ -71,7 +71,7 @@ Definition CNOT {dim} q1 q2 := @App2 _ dim URzQ_CNOT q1 q2.
 Definition RzQ_ucom dim := ucom RzQ_Unitary dim.
 Definition RzQ_ucom_l dim := gate_list RzQ_Unitary dim.
 Definition RzQ_com dim := com RzQ_Unitary dim.
-(*Definition RzQ_com_l dim := com_list RzQ_Unitary dim.*)
+Definition RzQ_com_l dim := com_list RzQ_Unitary dim.
 
 (* Used to convert benchmarks to PI4 set. *)
 Definition CCX {dim} a b c : RzQ_ucom_l dim :=

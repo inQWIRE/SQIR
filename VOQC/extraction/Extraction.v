@@ -1,11 +1,11 @@
 Require Coq.extraction.Extraction.
-Require Import optimizer.ListRepresentation.
-Require Import optimizer.RzQGateSet.
-Require Import optimizer.GateCancellation.
-Require Import optimizer.HadamardReduction.
-Require Import optimizer.RotationMerging.
-Require Import optimizer.NotPropagation.
-Require Import optimizer.Optimize.
+Require Import ListRepresentation.
+Require Import RzQGateSet.
+Require Import GateCancellation.
+Require Import HadamardReduction.
+Require Import RotationMerging.
+Require Import NotPropagation.
+Require Import Optimize.
 
 (* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.

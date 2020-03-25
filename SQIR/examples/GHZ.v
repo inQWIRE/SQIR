@@ -36,12 +36,6 @@ Proof.
       apply uc_well_typed_CNOT; lia.
 Qed.      
 
-(* Move to Dirac.v or somewhere convenient *)
-Lemma braket00 : ⟨0∣ × ∣0⟩ = I 1. Proof. solve_matrix. Qed.
-Lemma braket01 : ⟨0∣ × ∣1⟩ = Zero. Proof. solve_matrix. Qed.
-Lemma braket10 : ⟨1∣ × ∣0⟩ = Zero. Proof. solve_matrix. Qed.
-Lemma braket11 : ⟨1∣ × ∣1⟩ = I 1. Proof. solve_matrix. Qed.
-
 Theorem GHZ_correct' : forall dim n : nat, 
   (0 < dim)%nat -> (n <= dim)%nat -> uc_eval (GHZ dim n) × kron_n dim ∣0⟩ = ghz n ⊗ kron_n (dim - n) ∣0⟩.
 Proof.
@@ -76,18 +70,18 @@ Proof.
       clear IHn.
       bdestruct_all.
       clear H H1 H2. 
-      apply Peano.le_S_n in H0. 
+      apply Peano.le_S_n in H0.
       replace (S n - n - 1)%nat with O by lia.      
       replace (S dim - (n + (1 + 0 + 1)))%nat with (dim - S n)%nat by lia.
       simpl I.
       repeat rewrite kron_1_r.
-      simpl kron_n. 
+      simpl kron_n.
       replace (2 ^ S (dim - S n))%nat with (2 * 2 ^ (dim - S n))%nat by unify_pows_two.
       replace (1 ^ S (dim - S n))%nat with (1 * 1 ^ (dim - S n))%nat by (repeat rewrite Nat.pow_1_l; lia).
       rewrite <- (kron_assoc _ (∣0⟩)).
       rewrite kron_plus_distr_l.
       rewrite (kron_plus_distr_r _ _ _ _ _ _ (∣0⟩)). 
-      repeat rewrite Mscale_kron_dist_l. 
+      repeat rewrite Mscale_kron_dist_l.
       replace (2 ^ S n)%nat with (2 ^ n * 2)%nat by unify_pows_two.
       replace (1 ^ S n)%nat with (1 ^ n * 1)%nat by (repeat rewrite Nat.pow_1_l; lia).
       rewrite 2 (kron_assoc _ _ (∣0⟩)).
@@ -104,12 +98,8 @@ Proof.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r.
       repeat rewrite kron_mixed_product.
-      replace (∣1⟩⟨1∣ × ∣0⟩) with (@Zero 2 1) by solve_matrix.
-      replace (∣1⟩⟨1∣ × ∣1⟩) with (∣1⟩) by solve_matrix.
-      replace (∣0⟩⟨0∣ × ∣0⟩) with (∣0⟩) by solve_matrix.
-      replace (∣0⟩⟨0∣ × ∣1⟩) with (@Zero 2 1) by solve_matrix.
-      Msimpl_light.
-      replace (σx × ∣0⟩) with (∣1⟩) by solve_matrix.
+      repeat rewrite (Mmult_assoc _ (_)†). 
+      Qsimpl.
       repeat rewrite <- kron_assoc.
       rewrite Mplus_comm.
       reflexivity.

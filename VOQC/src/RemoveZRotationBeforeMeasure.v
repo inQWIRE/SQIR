@@ -1,5 +1,5 @@
 Require Import DensitySem.
-Require Import optimizer.RzQGateSet.
+Require Import RzQGateSet.
 
 Local Open Scope com_scope.
 
@@ -47,11 +47,10 @@ Lemma RzQ_Meas : forall {dim} i n (l1 l2 : RzQ_com_l dim),
 Proof.
   intros.
   unfold c_equiv_l; simpl.
-  rewrite RzQ_to_base_instr_UC, RzQ_to_base_instr_Meas.
   rewrite instr_to_com_UC, instr_to_com_Meas. 
   simpl.
   rewrite skip_id_r.
-  rewrite <- Rz_mif with (θ:=(IZR i * PI / IZR RzQ_k)%R) at 2.
+  rewrite <- Rz_mif with (θ:=(Qreals.Q2R i * PI)%R) at 2.
   apply seq_congruence; try reflexivity.
   unfold c_equiv; simpl.
   intros.
@@ -88,7 +87,7 @@ Qed.
 
 (* Get the next rotation gate on any qubit. *)
 Fixpoint next_Rz_gate {dim} (l : RzQ_ucom_l dim)
-             : option (RzQ_ucom_l dim * BinInt.Z * nat * RzQ_ucom_l dim) :=
+             : option (RzQ_ucom_l dim * Q * nat * RzQ_ucom_l dim) :=
   match l with
   | [] => None
   | (App1 (URzQ_Rz i) n) :: t => Some ([], i, n, t) 
@@ -200,7 +199,7 @@ Proof.
     do 2 (apply c_app_congruence; try reflexivity).
     repeat rewrite app_assoc.
     apply c_app_congruence; try reflexivity.
-    rewrite (c_app_congruence ([UC [Rz z n0]] ++ l2)).
+    rewrite (c_app_congruence ([UC [Rz q n0]] ++ l2)).
     2: apply does_not_reference_c_commutes_app1; assumption.
     2: reflexivity.
     rewrite <- app_assoc.

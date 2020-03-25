@@ -1,5 +1,5 @@
 Require Import DensitySem.
-Require Import optimizer.RzQGateSet.
+Require Import RzQGateSet.
 Require Import Coq.Reals.ROrderedType.
 
 Local Open Scope com_scope.
@@ -219,7 +219,7 @@ Lemma propagate_classical_through_ucom_preserves_classical : forall dim (u : RzQ
   WF_Matrix ρ ->
   propagate_classical_through_ucom u q b = (u', Some b') ->
   super (@pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†)) ρ = ρ -> 
-  let ρ' := super (uc_eval (list_to_ucom (RzQ_to_base_ucom_l u))) ρ in
+  let ρ' := super (uc_eval (list_to_ucom u)) ρ in
   super (@pad 1 q dim (∣ b' ⟩ × (∣ b' ⟩)†)) ρ' = ρ'.
 Proof.
   intros dim u q b u' b' ρ WT WFρ res Hρ ρ'.
@@ -315,7 +315,7 @@ Lemma propagate_classical_through_ucom_sound: forall dim (u : RzQ_ucom_l dim) q 
   uc_well_typed_l u ->
   propagate_classical_through_ucom u q b = (u', b') ->
   super (@pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†)) ρ = ρ -> 
-  super (uc_eval (list_to_ucom (RzQ_to_base_ucom_l u))) ρ = super (uc_eval (list_to_ucom (RzQ_to_base_ucom_l u'))) ρ.
+  super (uc_eval (list_to_ucom u)) ρ = super (uc_eval (list_to_ucom u')) ρ.
 Proof.
   intros dim u q b u' b' ρ WT. 
   generalize dependent ρ.
@@ -400,7 +400,7 @@ Lemma propagate_classical_through_com_preserves_classical : forall dim (l : RzQ_
   WF_Matrix ρ ->
   propagate_classical_through_com l q b n = (l', Some b') ->
   super (@pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†)) ρ = ρ -> 
-  let ρ' := c_eval (list_to_com (RzQ_to_base_com_l l)) ρ in
+  let ρ' := c_eval (list_to_com l) ρ in
   super (@pad 1 q dim (∣ b' ⟩ × (∣ b' ⟩)†)) ρ' = ρ'.
 Proof.
   intros dim l q b n l' b' ρ Hdim WT WFρ res Hρ ρ'.
@@ -418,7 +418,7 @@ Proof.
   - (* i = UC u *)
     inversion WT; subst.
     simpl.
-    rewrite RzQ_to_base_instr_UC, instr_to_com_UC.
+    rewrite instr_to_com_UC.
     destruct (propagate_classical_through_ucom g q b) eqn:prop_u.
     destruct o.
     2: inversion res.
@@ -430,7 +430,7 @@ Proof.
   - (* i = Meas n0 l1 l2 *)
     inversion WT; subst.
     simpl.
-    rewrite RzQ_to_base_instr_Meas, instr_to_com_Meas.
+    rewrite instr_to_com_Meas.
     bdestruct (q =? n0).
     + (* measurement on qubit q *)
       subst. destruct b; simpl; unfold compose_super, Splus.
@@ -494,7 +494,7 @@ Lemma propagate_classical_through_com_sound: forall dim (l : RzQ_com_l dim) q b 
   WF_Matrix ρ ->
   propagate_classical_through_com l q b n = (l', b') ->
   super (@pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†)) ρ = ρ -> 
-  c_eval (list_to_com (RzQ_to_base_com_l l)) ρ = c_eval (list_to_com (RzQ_to_base_com_l l')) ρ.
+  c_eval (list_to_com l) ρ = c_eval (list_to_com l') ρ.
 Proof.
   intros dim l q b n l' b' ρ Hdim WT WFρ res Hρ.
   generalize dependent ρ.
@@ -515,7 +515,7 @@ Proof.
     destruct o.
     destruct (propagate_classical_through_com l q b0 n) eqn:prop_c.
     all: inversion res; subst; simpl; unfold compose_super.
-    all: repeat rewrite RzQ_to_base_instr_UC, instr_to_com_UC; simpl.
+    all: repeat rewrite instr_to_com_UC; simpl.
     all: erewrite <- propagate_classical_through_ucom_sound with (u:=g) (u':=r); 
          try apply prop_u; auto.
     eapply IHn; try apply prop_c; auto with wf_db.
@@ -523,7 +523,7 @@ Proof.
   - (* i = Meas n0 l1 l2 *)
     inversion WT; subst.
     simpl.
-    rewrite RzQ_to_base_instr_Meas, instr_to_com_Meas.
+    rewrite instr_to_com_Meas.
     bdestruct (q =? n0).
     + (* measurement on qubit q *)
       subst. destruct b; simpl; unfold compose_super, Splus.
@@ -539,7 +539,7 @@ Proof.
         destruct o.
         destruct (propagate_classical_through_com l n0 b n) eqn:propl.
         all: inversion res; subst.
-        all: rewrite RzQ_to_base_com_l_app, list_to_com_append; auto with wf_db;
+        all: rewrite list_to_com_append; auto with wf_db;
              simpl; unfold compose_super.
         all: erewrite <- IHn with (l:=l0) (l':=r); try apply propl0; auto with wf_db.
         erewrite <- propagate_classical_through_com_preserves_classical with (l:=l0); try apply propl0; auto with wf_db.
@@ -551,7 +551,7 @@ Proof.
         destruct o.
         destruct (propagate_classical_through_com l n0 b n) eqn:propl.
         all: inversion res; subst.
-        all: rewrite RzQ_to_base_com_l_app, list_to_com_append; auto with wf_db;
+        all: rewrite list_to_com_append; auto with wf_db;
              simpl; unfold compose_super.
         all: erewrite <- IHn with (l:=l1) (l':=r); try apply propl1; auto with wf_db.
         erewrite <- propagate_classical_through_com_preserves_classical with (l:=l1); try apply propl1; auto with wf_db.
@@ -575,7 +575,7 @@ Proof.
       destruct (propagate_classical_through_com l q true n) eqn:propl.
       4: destruct (propagate_classical_through_com l q false n) eqn:propl.
       all: inversion res; subst; simpl.
-      all: rewrite RzQ_to_base_instr_Meas, instr_to_com_Meas.
+      all: rewrite instr_to_com_Meas.
       all: simpl; unfold compose_super, Splus.
       (* most cases only require (IHn l0) and (IHn l1) *)
       all: erewrite <- IHn with (l:=l0) (l':=r); try apply propl0; auto with wf_db.
@@ -623,7 +623,7 @@ Proof.
   - dependent destruction p. 
 Qed.
 
-Lemma c_well_typed_l_app : forall {U dim} (l1 l2 : com_list U dim),
+Lemma c_well_typed_l_app : forall {dim} (l1 l2 : RzQ_com_l dim),
   c_well_typed_l l1 /\ c_well_typed_l l2 <-> c_well_typed_l (l1 ++ l2).
 Proof.
   intros; split.  
@@ -707,7 +707,7 @@ Proof.
   1: destruct (propagate_classical_through_com l n0 true n) eqn:propl.
   4: destruct (propagate_classical_through_com l n0 false n) eqn:propl.
   1,4: simpl;
-       repeat rewrite RzQ_to_base_instr_Meas, instr_to_com_Meas;
+       repeat rewrite instr_to_com_Meas;
        simpl; unfold compose_super, Splus;
        repeat rewrite IHn; auto with wf_db.
   all: try eapply propagate_classical_through_com_WT;
