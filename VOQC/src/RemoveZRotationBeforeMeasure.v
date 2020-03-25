@@ -3,7 +3,7 @@ Require Import RzQGateSet.
 
 Local Open Scope com_scope.
 
-(* This optimization removes z-rotations (PI4 gates) that occur immediately before measurement. *)
+(* This optimization removes z-rotations (RzQ gates) that occur immediately before measurement. *)
 
 (** Basic equivalences. **)
 

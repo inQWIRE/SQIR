@@ -304,7 +304,7 @@ Fixpoint get_subcircuit' {dim} (l : RzQ_ucom_l dim) (qs blst : FSet.t) n :=
                match get_subcircuit' l2 qs' blst' n' with
                | (l1', s, l2') => (l1 ++ l1', [CNOT q1 q2] ++ s, l2')
                end
-           | _ => ([], [], l) (* unreachable for the Rzk gate set*)
+           | _ => ([], [], l) (* unreachable for the RzQ gate set*)
            end
   end.
 
@@ -752,7 +752,7 @@ Proof.
     intros q0 Hq01 Hq02. unfold classical.
     rewrite <- Mmult_assoc, proj_commutes_1q_gate, Mmult_assoc, Hψ; auto.
     all: rewrite FSetFacts.add_iff in Hq02; auto.
-  - (* Rzk gate *)
+  - (* RzQ gate *)
     destruct (negb (FSet.mem n blst) && FSet.equal (get_set smap n) (FSet.add q FSet.empty)) eqn:cond.
     + apply andb_true_iff in cond as [Hinb seq].
       bdestruct (FSet.mem n blst); try discriminate; clear Hinb.

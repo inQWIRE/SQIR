@@ -73,7 +73,7 @@ Definition RzQ_ucom_l dim := gate_list RzQ_Unitary dim.
 Definition RzQ_com dim := com RzQ_Unitary dim.
 Definition RzQ_com_l dim := com_list RzQ_Unitary dim.
 
-(* Used to convert benchmarks to PI4 set. *)
+(* Used to convert benchmarks to RzQ set. *)
 Definition CCX {dim} a b c : RzQ_ucom_l dim :=
   H c :: CNOT b c :: TDAG c :: CNOT a c :: 
   T c :: CNOT b c :: TDAG c :: CNOT a c :: 

@@ -8,7 +8,7 @@ Local Open Scope ucom_scope.
 
 (* Note: all the definitions in this file are restricted to the base_ucom
    type. To define the semantics using other gate sets, you must define a
-   conversion function. See optimizer/PI4GateSet.v for an example. *)
+   conversion function. See VOQC/src/RzQGateSet.v for an example. *)
 
 (** Denotation of Unitaries **)
 

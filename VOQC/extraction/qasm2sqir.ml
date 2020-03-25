@@ -218,7 +218,7 @@ let sqir_to_qasm_gate oc g =
       then fprintf oc "tdg q[%d];\n" n
       else fprintf oc "rzq(%a,%a) q[%d];\n" Z.output (Q.num q) Z.output (Q.den q) n
   | App2 (RzQGateSet.URzQ_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
-  | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of UPI4_H) *)
+  | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of URzQ_H) *)
 
 let write_qasm_file fname p dim =
   let oc = open_out fname in
