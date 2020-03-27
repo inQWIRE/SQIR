@@ -6,97 +6,34 @@ Open Scope ucom.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-Inductive boolean : forall {n}, base_ucom (S n) -> Set :=
-  | boolean_I : forall u, u ≡ SKIP -> @boolean 0 u
-  | boolean_X : forall u, u ≡ X 0 -> @boolean 0 u
-  | boolean_U : forall dim (u : base_ucom (S (S dim))) (u1 u2 : base_ucom (S dim)),
-                boolean u1 -> boolean u2 ->
-                uc_eval u = (uc_eval u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval u2 ⊗ ∣1⟩⟨1∣) ->
-                boolean u.
-  
-(* Why not make this a function to nats? (Convert to R in DJ_count) *)
-Fixpoint count {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : C :=
-  match P with
-  | boolean_I _ _ => 0%R
-  | boolean_X _ _ => 1%R
-  | boolean_U _ _ _ _ P1 P2 _ => (count P1 + count P2)%C
-  end.
+(* Definition of Deutsch-Jozsa program. *)
 
-Local Open Scope R_scope.
-Local Open Scope C_scope.
-
-Definition balanced {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop :=
-  (dim > 0)%nat /\ count P = (2%R ^ (dim - 1))%C.
-
-Definition constant {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop :=
-  count P = 0%R \/ count P = (2%R ^ dim)%C.
-
-Lemma deutsch_jozsa_count :
-  forall {dim : nat} {U : base_ucom (S dim)} (P : boolean U) (ψ : Matrix 2 1),
-    (ψ ⊗ kron_n dim ∣+⟩)† × (uc_eval U × (∣-⟩ ⊗ kron_n dim ∣+⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣-⟩).
-Proof.
-  intros.
-  induction dim; dependent destruction P.
-  - simpl. rewrite u0. 
-    rewrite denote_SKIP; try lia.
-    Qsimpl. solve_matrix.
-  - simpl. rewrite u0.
-    autorewrite with eval_db; simpl.
-    Qsimpl. solve_matrix.
-  - simpl. rewrite e.
-    restore_dims.
-    repeat rewrite <- kron_assoc.
-    restore_dims.
-    setoid_rewrite kron_adjoint.
-    rewrite Mmult_plus_distr_r.
-    restore_dims.
-    rewrite Mmult_plus_distr_l.
-    repeat rewrite kron_mixed_product.
-    setoid_rewrite (IHdim u1 P1).
-    setoid_rewrite (IHdim u2 P2).
-    replace ((∣+⟩) † × (∣0⟩⟨0∣ × ∣+⟩)) with ((1/2)%R .* I 1) by solve_matrix.
-    replace ((∣+⟩) † × (∣1⟩⟨1∣ × ∣+⟩)) with ((1/2)%R .* I 1) by solve_matrix.
-    repeat rewrite Mscale_kron_dist_r.
-    restore_dims. 
-    Msimpl.
-    repeat rewrite Mscale_assoc.
-    rewrite <- Mscale_plus_distr_l.
-    apply f_equal2; trivial.
-    field_simplify_eq. lca.
-    split; try nonzero.
-Qed.    
-
-Fixpoint cpar {dim : nat} (n : nat) (u : nat -> base_ucom dim) : base_ucom dim :=
+Fixpoint npar {dim : nat} (n : nat) (u : nat -> base_ucom dim) : base_ucom dim :=
   match n with
   | 0 => SKIP
-  | S n' => cpar n' u ; u n'
+  | S n' => npar n' u ; u n'
   end.
 
-Lemma well_typed_cpar_H : forall (dim n : nat), (0 < dim)%nat -> (n <= dim)%nat -> uc_well_typed (@cpar dim n H).
+Definition deutsch_jozsa {n} (U : base_ucom n) : base_ucom n :=
+  X 0 ; npar n H ; U; npar n H.
+
+(* Utility lemmas about npar. *)
+
+Lemma npar_WT : forall (dim n : nat) u, 
+  dim > 0 -> (forall n', n' < n -> @uc_well_typed _ dim (u n')) ->
+  uc_well_typed (@npar dim n u).
 Proof.
   intros. induction n.
   - simpl. apply uc_well_typed_ID; assumption.
   - simpl. apply WT_seq.
-    apply IHn. lia. 
-    apply uc_well_typed_H. lia.
+    apply IHn. 
+    intros n' Hn'. apply H0. lia.
+    apply H0. lia.
 Qed.
 
-Lemma WF_cpar_H : 
-  forall (dim n : nat), WF_Matrix (@uc_eval dim (cpar n H)).
-Proof.
-  intros. induction n.
-  - simpl. auto with wf_db.
-  - simpl.
-    autorewrite with eval_db.
-    bdestruct (n + 1 <=? dim).
-    apply WF_mult. auto with wf_db.
-    apply IHn.
-    rewrite Mmult_0_l.
-    apply WF_Zero.
-Qed.
-
-Lemma cpar_correct_H : forall dim n,
-  (0 < dim)%nat -> (n <= dim)%nat -> uc_eval (@cpar dim n H) = (kron_n n hadamard) ⊗ I (2 ^ (dim - n)).
+Lemma npar_H : forall dim n,
+  (0 < dim)%nat -> (n <= dim)%nat -> 
+  uc_eval (@npar dim n H) = (n ⨂ hadamard) ⊗ I (2 ^ (dim - n)).
 Proof.
   intros.
   induction n.
@@ -117,8 +54,8 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma kron_n_H : forall n,
-  kron_n n hadamard × kron_n n ∣0⟩ = kron_n n ∣+⟩.
+Lemma kron_n_H_0 : forall n,
+  n ⨂ hadamard × n ⨂ ∣0⟩ = n ⨂ ∣+⟩.
 Proof.
   intros.
   induction n; simpl.
@@ -130,101 +67,161 @@ Proof.
     solve_matrix.
 Qed.
 
-Lemma cpar_H_self_adjoint :
-  forall (n : nat), (uc_eval (@cpar n n H))† = uc_eval (@cpar n n H).
+(* Definition of boolean oracles *)
+
+Inductive boolean : forall {n}, base_ucom (S n) -> Set :=
+  | boolean_I : forall u, u ≡ SKIP -> @boolean 0 u
+  | boolean_X : forall u, u ≡ X 0  -> @boolean 0 u
+  | boolean_U : forall dim (u : base_ucom (S (S dim))) (u1 u2 : base_ucom (S dim)),
+                boolean u1 -> boolean u2 ->
+                uc_eval u = (uc_eval u1 ⊗ ∣0⟩⟨0∣) .+ (uc_eval u2 ⊗ ∣1⟩⟨1∣) ->
+                boolean u.
+  
+Fixpoint count {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : nat :=
+  match P with
+  | boolean_I _ _ => 0
+  | boolean_X _ _ => 1
+  | boolean_U _ _ _ _ P1 P2 _ => (count P1 + count P2)
+  end.
+
+Definition balanced {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop :=
+  dim > 0 /\ count P = 2 ^ (dim - 1).
+
+Definition constant {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop :=
+  count P = 0 \/ count P = 2 ^ dim.
+
+Local Open Scope C_scope.
+Local Open Scope R_scope.
+
+Lemma kron_n_adjoint : forall n {m1 m2} (A : Matrix m1 m2),
+  WF_Matrix A -> (n ⨂ A)† = n ⨂ A†.
 Proof.
-  intros.
-  destruct n. 
-  (* weird n = 0 case *)
-  simpl; unfold SKIP; rewrite denote_ID.
-  unfold pad; bdestruct_all.
-  apply zero_adjoint_eq.
-  (* now n > 0 *)
-  rewrite cpar_correct_H; try lia. 
-  induction n.
-  - simpl. repeat Qsimpl. reflexivity.
-  - simpl in *; replace (n - n)%nat with O in * by lia. 
-    simpl in *.
-    repeat rewrite kron_1_r in *. 
-    restore_dims. 
-    rewrite kron_adjoint. 
-    rewrite hadamard_sa. 
-    setoid_rewrite IHn.
+  intros. induction n.
+  - simpl. apply id_adjoint_eq.
+  - simpl. 
+    replace (m1 * (m1 ^ n))%nat with ((m1 ^ n) * m1)%nat by apply Nat.mul_comm.
+    replace (m2 * (m2 ^ n))%nat with ((m2 ^ n) * m2)%nat by apply Nat.mul_comm.
+    rewrite kron_adjoint, IHn.
     reflexivity.
 Qed.
 
-Definition deutsch_jozsa {n} (U : base_ucom n) : base_ucom n :=
-  X 0 ; cpar n H ; U; cpar n H.
-
+(* In the Deutsch Jozsa problem we care about the probability of measuring ∣0...0⟩
+   in the last n qubits (the 1st qubit always ends up in the ∣1⟩ state). *)
 Lemma deutsch_jozsa_success_probability :
-  forall {dim : nat} {U : base_ucom (S dim)} (P : boolean U) (ψ : Matrix 2 1) (WF : WF_Matrix ψ),
-    (ψ ⊗ kron_n dim ∣0⟩)† × ((uc_eval (deutsch_jozsa U)) × (kron_n (S dim) ∣0⟩)) = (1%R - 2%R * count P * /2%R ^ dim)%C .* (ψ† × ∣1⟩).
+  forall {n : nat} {U : base_ucom (S n)} (P : boolean U),
+  ((∣1⟩ ⊗ n ⨂ ∣0⟩)† × (uc_eval (deutsch_jozsa U)) × ((S n) ⨂ ∣0⟩)) 0%nat 0%nat = 1 - 2 * INR (count P) * /2 ^ n.
 Proof.
   intros.
   unfold deutsch_jozsa. 
   rewrite kron_n_assoc by auto with wf_db.
-  Opaque cpar. 
+  Opaque npar. 
+  (* initial rewriting to get rid of X, H gates *)
   simpl uc_eval. restore_dims. 
-  replace (uc_eval (cpar (S dim) H) × uc_eval (X O)) with (@uc_eval (S dim) (X 0; cpar (S dim) H)) by reflexivity.
-  rewrite <- cpar_H_self_adjoint.
-  simpl.
-  rewrite cpar_correct_H by lia.
-  replace (S dim - S dim)%nat with O by lia.
+  rewrite npar_H by lia.
+  replace (S n - S n)%nat with O by lia.
   autorewrite with eval_db.
   bdestruct_all.
   simpl I.
   Msimpl_light.
-  replace (dim - 0)%nat with dim by lia.
+  replace (n - 0)%nat with n by lia.
   rewrite kron_n_assoc by auto with wf_db.
   restore_dims. 
   repeat rewrite Mmult_assoc.
   restore_dims.
   Qsimpl.
   replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.
-  rewrite kron_n_H.
+  rewrite kron_n_H_0.
   rewrite <- Mmult_assoc. 
-  Qsimpl.
-  rewrite <- Mmult_adjoint.
-  rewrite kron_n_H. 
+  Qsimpl. 
   replace (hadamard) with (hadamard†) by (Qsimpl; easy).
-  rewrite <- Mmult_adjoint, <- kron_adjoint.
-  rewrite (deutsch_jozsa_count P).
-  Qsimpl.
-  rewrite Mmult_assoc.
-  replace (hadamard × ∣-⟩) with ∣1⟩ by solve_matrix.
-  reflexivity.
+  rewrite <- kron_n_adjoint by auto with wf_db.
+  repeat rewrite <- Mmult_adjoint.
+  rewrite kron_n_H_0. 
+  replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.
+  rewrite <- kron_adjoint.
+  (* interesting part of the proof that looks at the structure of P *)
+  induction n; dependent destruction P.
+  - simpl. rewrite u0. clear.
+    rewrite denote_SKIP; try lia.
+    Msimpl_light. restore_dims.
+    replace (∣-⟩† × ∣-⟩) with (I 1) by solve_matrix.
+    lca.
+  - simpl. rewrite u0. clear.
+    autorewrite with eval_db; simpl.
+    Msimpl_light. restore_dims.
+    replace (∣-⟩† × (σx × ∣-⟩)) with (-1 .* I 1) by solve_matrix.
+    lca.
+  - simpl. rewrite e.
+    restore_dims.
+    repeat rewrite <- kron_assoc.
+    restore_dims.
+    setoid_rewrite kron_adjoint.
+    rewrite Mmult_plus_distr_r.
+    restore_dims.
+    rewrite Mmult_plus_distr_l.
+    repeat rewrite kron_mixed_product.
+    replace ((∣+⟩) † × (∣0⟩⟨0∣ × ∣+⟩)) with ((1/2)%R .* I 1) by solve_matrix.
+    replace ((∣+⟩) † × (∣1⟩⟨1∣ × ∣+⟩)) with ((1/2)%R .* I 1) by solve_matrix.
+    repeat rewrite Mscale_kron_dist_r.
+    rewrite <- Mscale_plus_distr_r.
+    Msimpl_light. restore_dims.
+    unfold scale, Mplus in *. 
+    setoid_rewrite (IHn u1 P1); try lia.
+    setoid_rewrite (IHn u2 P2); try lia.
+    clear.
+    (* Why doesn't lca work here? *)
+    rewrite <- RtoC_plus, <- RtoC_mult. 
+    apply f_equal2; trivial. 
+    rewrite plus_INR. 
+    field_simplify_eq; trivial. 
+    nonzero.
 Qed.
 
-Definition accept {dim : nat} {U : base_ucom (S dim)} (P : boolean U) : Prop :=
-    exists (ψ : Matrix 2 1), ((ψ ⊗ kron_n dim ∣0⟩)† × (uc_eval (deutsch_jozsa U) × (kron_n (S dim) ∣0⟩))) 0%nat 0%nat = 1. 
+(* When measuring ψ, what is the probability that the outcome is o? *)
+Definition probability_of_outcome {n} (ψ o : Vector n) :=
+  let c := (o† × ψ) 0%nat 0%nat in
+  Re c ^ 2 + Im c ^ 2.
 
-Definition reject {dim : nat} {U : base_ucom (S dim)} (P : boolean U) : Prop :=
-    forall (ψ : Matrix 2 1), WF_Matrix ψ -> ((ψ ⊗ kron_n dim ∣0⟩)† × (uc_eval (deutsch_jozsa U) × (kron_n (S dim) ∣0⟩))) 0%nat 0%nat = 0. 
+(* accept := probability of measuring ∣0...0⟩ in the last n qubits is 1 *)
+Definition accept {n : nat} {U : base_ucom (S n)} (P : boolean U) : Prop :=
+  @probability_of_outcome (2 ^ (S n)) (uc_eval (deutsch_jozsa U) × ((S n) ⨂ ∣0⟩)) (∣1⟩ ⊗ n ⨂ ∣0⟩) = 1. 
+
+(* reject := probability of measuring ∣0...0⟩ in the last n qubits is 0 *)
+Definition reject {n : nat} {U : base_ucom (S n)} (P : boolean U) : Prop :=
+  @probability_of_outcome (2 ^ (S n)) (uc_eval (deutsch_jozsa U) × ((S n) ⨂ ∣0⟩)) (∣1⟩ ⊗ n ⨂ ∣0⟩) = 0. 
 
 Theorem deutsch_jozsa_constant_correct :
-  forall (dim : nat) (U : base_ucom (S dim)) (P : boolean U), constant P -> accept P.
+  forall (n : nat) (U : base_ucom (S n)) (P : boolean U), constant P -> accept P.
 Proof.
-  intros. 
-  unfold accept.
-  destruct H; [exists ∣1⟩ | exists (-1 .* ∣1⟩) ];
-  rewrite (deutsch_jozsa_success_probability P) by auto with wf_db; rewrite H.
-  - autorewrite with C_db. rewrite Mscale_1_l. solve_matrix.
-  - rewrite <- Cmult_assoc.
-    rewrite Cinv_r by (apply Cpow_nonzero; lra).
-    solve_matrix.
+  intros n U P H. 
+  unfold accept, probability_of_outcome.  
+  restore_dims.
+  rewrite <- Mmult_assoc.
+  rewrite (deutsch_jozsa_success_probability P). 
+  destruct H; rewrite H; simpl; try lra.
+  autorewrite with R_db.
+  rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
+  field_simplify_eq; trivial.
+  nonzero.
 Qed.
 
 Theorem deutsch_jozsa_balanced_correct :
-  forall (dim : nat) (U : base_ucom (S dim)) (P : boolean U), 
-    balanced P -> reject P.
+  forall (n : nat) (U : base_ucom (S n)) (P : boolean U), balanced P -> reject P.
 Proof.
-  unfold reject. intros dim U P [H1 H2] ψ WF. 
-  rewrite (deutsch_jozsa_success_probability P) by auto with wf_db.
-  rewrite H2.
-  replace (2 * 2 ^ (dim - 1)) with (2 ^ dim).
-  2: { replace dim with (1 + (dim - 1))%nat at 1 by lia. reflexivity. }
-  autorewrite with C_db. 
-  solve_matrix.
-Qed.  
+  intros n U P [H1 H2].
+  unfold reject, probability_of_outcome. 
+  restore_dims.
+  rewrite <- Mmult_assoc.
+  rewrite (deutsch_jozsa_success_probability P).
+  rewrite H2; simpl.
+  autorewrite with R_db.
+  rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
+  replace (2 * 2 ^ (n - 1) * / 2 ^ n) with 1.
+  2: { field_simplify_eq; try nonzero.
+       rewrite tech_pow_Rmult. 
+       replace (S (n - 1)) with n by lia. 
+       reflexivity. }
+  lra.
+Qed.
 
 

@@ -17,7 +17,7 @@ Local Open Scope C_scope.
 Definition ghz (n : nat) : Matrix (2^n) (1^n) := (* 1^n for consistency with kron_n *)
   match n with 
   | 0 => I 1 
-  | S n' => 1/ √2 .* (kron_n n ∣0⟩) .+ 1/ √2 .* (kron_n n ∣1⟩)
+  | S n' => 1/ √2 .* (n ⨂ ∣0⟩) .+ 1/ √2 .* (n ⨂ ∣1⟩)
   end.
 
 Lemma WF_ghz : forall n : nat, WF_Matrix (ghz n).
@@ -37,7 +37,7 @@ Proof.
 Qed.      
 
 Theorem GHZ_correct' : forall dim n : nat, 
-  (0 < dim)%nat -> (n <= dim)%nat -> uc_eval (GHZ dim n) × kron_n dim ∣0⟩ = ghz n ⊗ kron_n (dim - n) ∣0⟩.
+  (0 < dim)%nat -> (n <= dim)%nat -> uc_eval (GHZ dim n) × dim ⨂ ∣0⟩ = ghz n ⊗ (dim - n) ⨂ ∣0⟩.
 Proof.
   intros. induction n.
   - simpl. rewrite denote_SKIP; try assumption. 
@@ -106,7 +106,7 @@ Proof.
 Qed.
 
 Theorem GHZ_correct : forall n : nat, 
-  (0 < n)%nat -> uc_eval (GHZ n n) × kron_n n ∣0⟩ = ghz n.
+  (0 < n)%nat -> uc_eval (GHZ n n) × n ⨂ ∣0⟩ = ghz n.
 Proof.
   intros.
   rewrite GHZ_correct'; try lia.
