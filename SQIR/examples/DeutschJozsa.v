@@ -17,19 +17,7 @@ Fixpoint npar {dim : nat} (n : nat) (u : nat -> base_ucom dim) : base_ucom dim :
 Definition deutsch_jozsa {n} (U : base_ucom n) : base_ucom n :=
   X 0 ; npar n H ; U; npar n H.
 
-(* Utility lemmas about npar. *)
-
-Lemma npar_WT : forall (dim n : nat) u, 
-  dim > 0 -> (forall n', n' < n -> @uc_well_typed _ dim (u n')) ->
-  uc_well_typed (@npar dim n u).
-Proof.
-  intros. induction n.
-  - simpl. apply uc_well_typed_ID; assumption.
-  - simpl. apply WT_seq.
-    apply IHn. 
-    intros n' Hn'. apply H0. lia.
-    apply H0. lia.
-Qed.
+(* Utility lemmas about npar and H. *)
 
 Lemma npar_H : forall dim n,
   (0 < dim)%nat -> (n <= dim)%nat -> 
@@ -92,18 +80,6 @@ Definition constant {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop :
 
 Local Open Scope C_scope.
 Local Open Scope R_scope.
-
-Lemma kron_n_adjoint : forall n {m1 m2} (A : Matrix m1 m2),
-  WF_Matrix A -> (n ⨂ A)† = n ⨂ A†.
-Proof.
-  intros. induction n.
-  - simpl. apply id_adjoint_eq.
-  - simpl. 
-    replace (m1 * (m1 ^ n))%nat with ((m1 ^ n) * m1)%nat by apply Nat.mul_comm.
-    replace (m2 * (m2 ^ n))%nat with ((m2 ^ n) * m2)%nat by apply Nat.mul_comm.
-    rewrite kron_adjoint, IHn.
-    reflexivity.
-Qed.
 
 (* In the Deutsch Jozsa problem we care about the probability of measuring ∣0...0⟩
    in the last n qubits (the 1st qubit always ends up in the ∣1⟩ state). *)
@@ -169,7 +145,6 @@ Proof.
     setoid_rewrite (IHn u1 P1); try lia.
     setoid_rewrite (IHn u2 P2); try lia.
     clear.
-    (* Why doesn't lca work here? *)
     rewrite <- RtoC_plus, <- RtoC_mult. 
     apply f_equal2; trivial. 
     rewrite plus_INR. 
