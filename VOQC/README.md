@@ -32,11 +32,11 @@ If you want to compile the code without using our Makefile you can use the comma
 
 ## Running VOQC
 
-To run the optimizer, run `dune exec --root extraction ./voqc.exe -i <prog> -o <out>`, which will optimize program prog and write the optimized result to out. It will print the initial and final gate counts. `--root extraction` is needed because the voqc executable is built in the extraction directory.
+To run the optimizer, run `dune exec --root extraction -- ./voqc.exe -i <prog> -o <out>`, which will optimize program prog and write the optimized result to out. It will print the initial and final gate counts. `--root extraction` is needed because the voqc executable is built in the extraction directory.
 
 *Example*: The following runs VOQC on the tof_3 benchmark and writes the result to out.qasm.
 ```
-$ dune exec --root extraction ./voqc.exe -i benchmarks/Arithmetic_and_Toffoli/tof_3.qasm -o out.qasm 
+$ dune exec --root extraction -- ./voqc.exe -i benchmarks/Arithmetic_and_Toffoli/tof_3.qasm -o out.qasm 
 Original:	 Total 45, Rz 21, T 21, H 6, X 0, CNOT 18
 Final:	 Total 40, Rz 18, T 15, H 6, X 0, CNOT 16
 ```
