@@ -7,23 +7,24 @@
 import pytket
 from pytket.qasm import circuit_from_qasm
 from pytket.passes import FullPeepholeOptimise
+from pytket.circuit import OpType
 import os
 import re
 import sys
+import time
 
-def run_on_nam_benchmarks(fname):
+def run(d,fname):
     
     f = open(fname, "w")
-    d = "nam-benchmarks"
     
-    f.write("name, num gates before, num gates after\n")
+    f.write("name,Orig. total,Orig. CNOT,tket total,tket CNOT,time\n")
     
     for fname in os.listdir(d):
 
         print("Processing %s..." % fname)
         
         # same hack as the one used in run_qiskit.py
-        inqasm = open("nam-benchmarks/%s" % fname, "r")
+        inqasm = open(os.path.join(d, fname), "r")
         tmp = open("copy.qasm", "w") # hardcoded filename
         p_ccz = re.compile("ccz (.*), (.*), (.*);")
         p_ccx = re.compile("ccx (.*), (.*), (.*);")
@@ -73,16 +74,20 @@ def run_on_nam_benchmarks(fname):
         circ = circuit_from_qasm("copy.qasm")
         
         num_gates_before = circ.n_gates
-        print("\nORIGINAL: %d gates" % (num_gates_before))
+        num_CNOTs_before = circ.n_gates_of_type(OpType.CX)
+        print("Original:\t Total %d, CNOT %d" % (num_gates_before, num_CNOTs_before))
         
+        start = time.perf_counter() # start timer
         FullPeepholeOptimise().apply(circ)
+        stop = time.perf_counter() # stop timer
         num_gates_after = circ.n_gates
-        print("OPTIMIZED: %d gates\n" % (num_gates_after))
+        num_CNOTs_after = circ.n_gates_of_type(OpType.CX)
+        print("Final:\t Total %d, CNOT %d\n" % (num_gates_after, num_CNOTs_after))
 
-        #f.write("%s,%d,%d\n" % (fname, num_gates_before, num_gates_after))
+        f.write("%s,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, num_CNOTs_before, num_gates_after, num_CNOTs_after, stop - start))
 
-if (len(sys.argv) != 2):
-    print("Usage: python3 run_tket.py output_file")
+if (len(sys.argv) != 3):
+    print("Usage: python3 run_tket.py <input directory> <output file>")
     exit(-1)
 
-run_on_nam_benchmarks(sys.argv[1])
+run(sys.argv[1], sys.argv[2])

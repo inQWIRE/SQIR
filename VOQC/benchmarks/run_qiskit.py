@@ -1,11 +1,7 @@
 '''
-    We consider running Qiskit with two different settings:
-    - A: the optimizations used up to level 2 with basis {u1, H, X, CNOT}
-    - B: the optimizations used up to level 3 with basis {u1, u2, u3, CNOT}
+    We consider the optimizations used up to level 3 with basis {u1, u2, u3, CNOT}
     
-    References:
-    - https://github.com/Qiskit/qiskit-terra/blob/master/qiskit/transpiler/preset_passmanagers/level2.py
-    - https://github.com/Qiskit/qiskit-terra/blob/master/qiskit/transpiler/preset_passmanagers/level3.py
+    Reference: https://github.com/Qiskit/qiskit-terra/blob/master/qiskit/transpiler/preset_passmanagers/level3.py
 '''
 
 import math
@@ -17,25 +13,21 @@ from qiskit.transpiler import PassManager
 from qiskit.transpiler.passes import Unroller, Optimize1qGates, CommutationAnalysis, CommutativeCancellation, CXCancellation, Depth, FixedPoint, Collect2qBlocks, ConsolidateBlocks
 import sys
 import re
+import time
 
 def count(d):
     sum = 0
     for k in d.keys():
         sum += d[k]
     return sum
-    
-def get_closest_multiple_of_pi(theta):
-    l = [x * (math.pi/4) for x in range(-7,8)]
-    l1 = [abs(x - theta) for x in l]
-    return(range(-7,8)[l1.index(min(l1))])
 
-def run_on_nam_benchmarks(fname):
+def run(d, fname):
     
     f = open(fname, "w")
     
-    f.write("name, num gates before, t-count before, num gates after (A), t-count after (A), num gates after (B)\n")
+    f.write("name,Orig. total,Orig. CNOT,Qiskit total,Qiskit CNOT,time\n")
     
-    for fname in os.listdir("nam-benchmarks"):
+    for fname in os.listdir(d):
 
         print("Processing %s..." % fname)
         
@@ -44,7 +36,7 @@ def run_on_nam_benchmarks(fname):
         # Our (hacky) solution for now is to make a copy of the benchmark that contains
         # already-decomposed versions of ccx and ccz.
         
-        inqasm = open("nam-benchmarks/%s" % fname, "r")
+        inqasm = open(os.path.join(d, fname), "r")
         tmp = open("copy.qasm", "w") # hardcoded filename
         p_ccz = re.compile("ccz (.*), (.*), (.*);")
         p_ccx = re.compile("ccx (.*), (.*), (.*);")
@@ -94,35 +86,12 @@ def run_on_nam_benchmarks(fname):
         circ = QuantumCircuit.from_qasm_file("copy.qasm")
 
         num_gates_before = count(circ.count_ops())
-        # getting a t-count only makes sense for the current benchmarks, which only 
-        # contain rotations by PI/4
-        t_count_before = 0
+        cnot_count_before = 0
         for inst, _, _ in circ.data:
-            if (inst.name == "t" or inst.name == "tdg"):
-                t_count_before += 1
-        print("\nORIGINAL: %d gates, %d T-gates" % (num_gates_before, t_count_before))
-
-        # A
-        basis_gates = ['u1', 'h', 'x', 'cx']
-        _unroll = Unroller(basis_gates)
-        _depth_check = [Depth(), FixedPoint('depth')]
-        def _opt_control(property_set):
-           return not property_set['depth_fixed_point']
-        _opt = [Optimize1qGates(), CommutativeCancellation()]
-        pmA = PassManager()
-        pmA.append(_unroll)
-        pmA.append([CommutationAnalysis()])
-        pmA.append(_depth_check + _opt, do_while=_opt_control)
-        circA = pmA.run(circ)
-        num_gates_afterA = count(circA.count_ops())
-        t_count_afterA = 0
-        for inst, _, _ in circA.data:
-            if (inst.name == "u1"):
-                if (get_closest_multiple_of_pi(inst.params[0]) % 2 == 1):
-                    t_count_afterA += 1
-        print("OPTIMIZED (A): %d gates, %d T-gates" % (num_gates_afterA, t_count_afterA))
+            if (inst.name == "cx"):
+                cnot_count_before += 1
+        print("Original:\t Total %d, CNOT %d" % (num_gates_before, cnot_count_before))
         
-        # B
         basis_gates = ['u1', 'u2', 'u3', 'cx']
         _unroll = Unroller(basis_gates)
         _depth_check = [Depth(), FixedPoint('depth')]
@@ -131,21 +100,26 @@ def run_on_nam_benchmarks(fname):
         _opt = [Collect2qBlocks(), ConsolidateBlocks(),
                 Unroller(basis_gates),  # unroll unitaries
                 Optimize1qGates(), CommutativeCancellation()]
-        pmB = PassManager()
-        pmB.append(_unroll)
-        pmB.append(_depth_check + _opt, do_while=_opt_control)
-        circB = pmB.run(circ)
-        num_gates_afterB = count(circB.count_ops())
-        # not sure how to get the t-gate count for the {u1, u2, u3, CX} gate set
-        print("OPTIMIZED (B): %d gates\n" % (num_gates_afterB))
+        pm = PassManager()
+        pm.append(_unroll)
+        pm.append(_depth_check + _opt, do_while=_opt_control)
+        start = time.perf_counter() # start timer
+        new_circ = pm.run(circ)
+        stop = time.perf_counter() # stop timer
+        num_gates_after = count(new_circ.count_ops())
+        cnot_count_after = 0
+        for inst, _, _ in new_circ.data:
+            if (inst.name == "cx"):
+                cnot_count_after += 1
+        print("Final:\t Total %d, CNOT %d\n" % (num_gates_after, cnot_count_after))
 
-        f.write("%s,%d,%d,%d,%d,%d\n" % (fname, num_gates_before, t_count_before, num_gates_afterA, t_count_afterA, num_gates_afterB))
+        f.write("%s,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, cnot_count_before, num_gates_after, cnot_count_after, stop - start))
         
     f.close()
 
-if (len(sys.argv) != 2):
-    print("Usage: python3 run_qiskit.py output_file")
+if (len(sys.argv) != 3):
+    print("Usage: python3 run_qiskit.py <input directory> <output file>")
     exit(-1)
 
-run_on_nam_benchmarks(sys.argv[1])
+run(sys.argv[1], sys.argv[2])
 

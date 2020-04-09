@@ -4,13 +4,13 @@
 import pyzx as zx
 import os
 import sys
+import time
 
-def run_on_nam_benchmarks(fname):
+def run(d, fname):
     
     f = open(fname, "w")
-    d = "nam-benchmarks" # This may need to be changed depending on where the script is run from!
-    
-    f.write("name, num gates before, t-count before, num gates after, t-count after\n")
+        
+    f.write("name,Orig. total,Orig. CNOT,Orig. T,PyZX total,PyZX CNOT,PyZX T,time\n")
     
     for fname in os.listdir(d):
 
@@ -18,21 +18,25 @@ def run_on_nam_benchmarks(fname):
         
         circ = zx.Circuit.load(os.path.join(d, fname)).to_basic_gates()
         num_gates_before = len(circ.gates)
+        cnot_count_before = circ.twoqubitcount()
         t_count_before = zx.tcount(circ)
-        print("\nORIGINAL: %d gates, %d T-gates" % (num_gates_before, t_count_before))
+        print("Original:\t Total %d, CNOT %d, T %d" % (num_gates_before, cnot_count_before, t_count_before))
         
+        start = time.perf_counter() # start timer
         g = circ.to_graph()
         zx.simplify.full_reduce(g,quiet=False)
         g.normalise()
         new_circ = zx.extract.streaming_extract(g).to_basic_gates()
+        stop = time.perf_counter() # stop timer
         num_gates_after = len(new_circ.gates)
+        cnot_count_after = new_circ.twoqubitcount()
         t_count_after = zx.tcount(new_circ)
-        print("OPTIMIZED: %d gates, %d T-gates\n" % (num_gates_after, t_count_after))
+        print("Final:\t Total %d, CNOT %d, T %d\n" % (num_gates_after, cnot_count_after, t_count_after))
 
-        f.write("%s,%d,%d,%d,%d\n" % (fname, num_gates_before, t_count_before, num_gates_after, t_count_after))
+        f.write("%s,%d,%d,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, cnot_count_before, t_count_before, num_gates_after, cnot_count_after, t_count_after, stop - start))
 
-if (len(sys.argv) != 2):
-    print("Usage: python3 run_pyzx.py output_file")
+if (len(sys.argv) != 3):
+    print("Usage: python3 run_pyzx.py <input directory> <output file>")
     exit(-1)
 
-run_on_nam_benchmarks(sys.argv[1])
+run(sys.argv[1], sys.argv[2])
