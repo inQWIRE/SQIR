@@ -828,32 +828,3 @@ Proof.
   simpl. autorewrite with eval_db.
   simpl. Msimpl. solve_matrix.
 Qed.
-
-(** Inversion of Unitary Programs **)
-
-(* Inverse for unitary circuits. *)
-Fixpoint invert_ucom {dim} (c : base_ucom dim) : base_ucom dim :=
-  match c with
-  | c1 ; c2 => invert_ucom c2 ; invert_ucom c1
-  | uapp1 (U_R θ ϕ λ) n => uapp1 (U_R (- θ) (- λ) (- ϕ)) n
-  | uapp2 U_CNOT m n => uapp2 U_CNOT m n
-  | _ => SKIP
-  end.
-
-Lemma invert_ucom_correct : forall (dim : nat) (c : base_ucom dim),
-  (uc_eval c)† = uc_eval (invert_ucom c).
-Proof.
-  intros.
-  induction c; try dependent destruction u; simpl.
-  - Msimpl. rewrite IHc1. rewrite IHc2. reflexivity.
-  - autorewrite with eval_db.
-    bdestruct (n + 1 <=? dim); try apply zero_adjoint_eq.
-    repeat setoid_rewrite kron_adjoint; Msimpl.
-    rewrite rotation_adjoint.
-    reflexivity.
-  - autorewrite with eval_db.
-    gridify. 
-    Qsimpl. reflexivity.
-    Qsimpl. reflexivity.
-Qed.
-

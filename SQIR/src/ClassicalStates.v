@@ -396,6 +396,41 @@ Proof.
   reflexivity.
 Qed.
 
+Local Open Scope C_scope.
+Local Open Scope R_scope.
+Lemma hadamard_on_basis_state : forall (b : bool),
+  hadamard × ∣ b ⟩ = /√2 .* (∣ 0 ⟩ .+ (Cexp (b * PI)) .* ∣ 1 ⟩).
+Proof.
+  intros.
+  destruct b; solve_matrix; autorewrite with R_db Cexp_db; lca.
+Qed.
+
+Lemma f_to_vec_H : forall (n i : nat) (f : nat -> bool),
+  (i < n)%nat ->
+  (uc_eval (SQIR.H i)) × (f_to_vec 0 n f) 
+      = /√2 .* ((f_to_vec 0 n (update f i false)) .+ (Cexp ((f i) * PI)) .* f_to_vec 0 n (update f i true)).
+Proof.
+  intros.
+  autorewrite with eval_db.
+  rewrite (f_to_vec_split 0 n i f H). 
+  simpl; replace (n - 1 - i)%nat with (n - (i + 1))%nat by lia.
+  repad. 
+  Msimpl.
+  rewrite hadamard_on_basis_state.
+  rewrite Mscale_kron_dist_r, Mscale_kron_dist_l.
+  rewrite kron_plus_distr_l, kron_plus_distr_r.
+  rewrite Mscale_kron_dist_r, Mscale_kron_dist_l.
+  rewrite 2 (f_to_vec_split 0 (i + 1 + x) i _) by lia.
+  replace (i + 1 + x - 1 - i)%nat with x by lia.
+  simpl.
+  rewrite 2 update_index_eq.
+  repeat rewrite f_to_vec_update.
+  reflexivity.
+  all: try (left; lia); right; lia.
+Qed.
+Local Close Scope C_scope.
+Local Close Scope R_scope.
+
 (* Projector onto the space where qubit q is in classical state b. *)
 Definition proj q dim (b : bool) := @pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†).
 
@@ -447,6 +482,31 @@ Proof.
   unfold proj, pad.
   gridify.
   destruct b1; destruct b2; try contradiction; Qsimpl; reflexivity.
+Qed.
+
+Lemma f_to_vec_proj_1 : forall f q n b,
+  (q < n)%nat -> f q = b ->
+  proj q n b × (f_to_vec 0 n f) = f_to_vec 0 n f.
+Proof.
+  intros f q n b ? ?.
+  rewrite (f_to_vec_split 0 n q) by lia. 
+  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
+  unfold proj, pad.
+  gridify. 
+  do 2 (apply f_equal2; try reflexivity). 
+  destruct (f q); solve_matrix.
+Qed.
+
+Lemma f_to_vec_proj_2 : forall f q n b,
+  (q < n)%nat -> f q <> b ->
+  proj q n b × (f_to_vec 0 n f) = Zero.
+Proof.
+  intros f q n b ? H.
+  rewrite (f_to_vec_split 0 n q) by lia. 
+  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
+  unfold proj, pad.
+  gridify. 
+  destruct (f q); destruct b; try easy; lma.
 Qed.
 
 Lemma proj_X : forall dim f q n,

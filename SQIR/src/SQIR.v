@@ -38,10 +38,14 @@ Inductive base_Unitary : nat -> Set :=
 Definition base_ucom := ucom base_Unitary.
 
 (* Some useful shorthands. *)
-Definition H {dim} n : base_ucom dim := uapp1 (U_R (PI/2) 0 PI) n.  
-Definition X {dim} n : base_ucom dim := uapp1 (U_R PI 0 PI) n.  
-Definition Y {dim} n : base_ucom dim := uapp1 (U_R PI (PI/2) (PI/2))  n.  
-Definition Z {dim} n : base_ucom dim := uapp1 (U_R 0 0 PI) n. 
+Definition U_H := U_R (PI/2) 0 PI.
+Definition U_X := U_R PI 0 PI.
+Definition U_Y := U_R PI (PI/2) (PI/2).
+Definition U_Z := U_R 0 0 PI.
+Definition H {dim} n : base_ucom dim := uapp1 U_H n.  
+Definition X {dim} n : base_ucom dim := uapp1 U_X n.  
+Definition Y {dim} n : base_ucom dim := uapp1 U_Y  n.  
+Definition Z {dim} n : base_ucom dim := uapp1 U_Z n. 
 Definition ID {dim} n : base_ucom dim := uapp1 (U_R 0 0 0) n. 
 Definition SKIP {dim} : base_ucom dim := ID 0.
 Definition Rz {dim} λ n : base_ucom dim := uapp1 (U_R 0 0 λ) n.

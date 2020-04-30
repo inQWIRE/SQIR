@@ -14,4 +14,4 @@ SQIR/src/UnitarySem.v
 SQIR/src/DensitySem.v
 SQIR/src/NDSem.v
 SQIR/src/ClassicalStates.v
-SQIR/src/Composition.v
+SQIR/src/UnitaryOps.v

@@ -52,7 +52,7 @@ VOQC/extraction/_build/default/voqc.exe:
 SQIR/examples/Deutsch.vo: $(examples)/Deutsch.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
 	coqc $(COQ_OPTS) $(examples)/Deutsch.v
 
-SQIR/examples/DeutschJozsa.vo: $(examples)/DeutschJozsa.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
+SQIR/examples/DeutschJozsa.vo: $(examples)/DeutschJozsa.v $(SQIR)/UnitaryOps.vo $(QWIRE)/Dirac.vo
 	coqc $(COQ_OPTS) $(examples)/DeutschJozsa.v
 
 SQIR/examples/GHZ.vo: $(examples)/GHZ.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
@@ -66,7 +66,7 @@ SQIR/examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/
 
 # Built by 'make mapper'
 
-VOQC/src/SimpleMapping.vo: $(SQIR)/UnitarySem.vo $(VOQC)/Equivalences.vo
+VOQC/src/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(SQIR)/UnitarySem.vo $(VOQC)/Equivalences.vo
 	coqc $(COQ_OPTS) $(VOQC)/SimpleMapping.v
 
 VOQC/src/MappingExamples.vo: $(VOQC)/SimpleMapping.vo

@@ -39,8 +39,8 @@ Definition of the SQIR language.
 - src/UnitarySem.v : Semantics for unitary SQIR programs.
 - src/DensitySem.v : Density matrix semantics for general SQIR programs.
 - src/NDSem.v : Non-deterministic semantics for general SQIR programs.
-- src/Composition.v : Utilities for describing composition of SQIR programs.
 - src/ClassicalStates.v : Utilities for describing classical states.
+- src/UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
 
 We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which we have linked as a git submodule in the externals directory.
 

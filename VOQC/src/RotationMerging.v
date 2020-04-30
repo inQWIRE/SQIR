@@ -1,5 +1,4 @@
-Require Import UnitarySem.
-Require Import ClassicalStates.
+Require Import UnitaryOps.
 Require Export RzQGateSet.
 Require Import FSets.FSetAVL.
 Require Import FSets.FSetFacts.
@@ -1147,9 +1146,9 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma invert_eq_invert_ucom : forall {dim} (l : RzQ_ucom_l dim),
+Lemma invert_eq_SQIR_invert : forall {dim} (l : RzQ_ucom_l dim),
   dim > 0 ->
-  uc_eval (list_to_ucom (invert l)) = uc_eval (invert_ucom (list_to_ucom l)).
+  uc_eval (list_to_ucom (invert l)) = uc_eval (UnitaryOps.invert (list_to_ucom l)).
 Proof.
   intros dim l Hdim.
   rewrite invert_alt.
@@ -1198,10 +1197,10 @@ Proof.
   remember (length l) as n; clear Heqn.
   remember (length (merge_rotations_at_beginning l n [])) as m; clear Heqm.
   unfold uc_equiv_l, uc_equiv.
-  rewrite invert_eq_invert_ucom, <- invert_ucom_correct; auto.
+  rewrite invert_eq_SQIR_invert, <- invert_correct; auto.
   rewrite merge_rotations_at_end_preserves_semantics.
   simpl.
-  rewrite invert_eq_invert_ucom, <- invert_ucom_correct; auto.
+  rewrite invert_eq_SQIR_invert, <- invert_correct; auto.
   rewrite adjoint_involutive.
   apply merge_rotations_at_beginning_preserves_semantics; auto.
   apply invert_WT, merge_rotations_at_beginning_WT; auto.  

@@ -58,35 +58,35 @@ ITERS=(
 "46498162"          # pf6_90
 )
 
-echo""
-printf "${GREEN}##### Running on files in PF #####${NOCOLOR}\n"
-index=0
-> PF_results.csv
-echo "name,Orig. total,Orig. Rz,Orig. Cliff,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC Cliff,VOQC H,VOQC X,VOQC CNOT,parse time,optimization time,write time" >> PF_results.csv
-for filename in "${pf_filenames[@]}"
-do
-    program_name=`basename "$filename" .qasm`
-    iter=${ITERS[${index}]}
-    index=$((index+1))
-    currentTime=`date`
-    printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
-    (time dune exec --root ../extraction -- ./voqc.exe -i ${filename} -o out.qasm -n ${iter}) &> ${program_name}.txt
-    python parseOutput2.py ${program_name}.txt >> PF_results.csv
-    rm -rf ${program_name}.txt
-done
-
-printf "${GREEN}##### Running on files in Arithmetic_and_Toffoli #####${NOCOLOR}\n"
-> Arithmetic_and_Toffoli_results.csv
-echo "name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC T,VOQC H,VOQC X,VOQC CNOT,parse time,optimization time,write time" >> Arithmetic_and_Toffoli_results.csv
-for filename in "${Arithmetic_and_Toffoli_filenames[@]}"
-do
-    program_name=`basename "$filename" .qasm`
-    currentTime=`date`
-    printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
-    (time dune exec --root ../extraction -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
-    python parseOutput.py ${program_name}.txt >> Arithmetic_and_Toffoli_results.csv
-    rm -rf ${program_name}.txt
-done
+# echo""
+# printf "${GREEN}##### Running on files in PF #####${NOCOLOR}\n"
+# index=0
+# > PF_results.csv
+# echo "name,Orig. total,Orig. Rz,Orig. Cliff,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC Cliff,VOQC H,VOQC X,VOQC CNOT,parse time,optimization time,write time" >> PF_results.csv
+# for filename in "${pf_filenames[@]}"
+# do
+#     program_name=`basename "$filename" .qasm`
+#     iter=${ITERS[${index}]}
+#     index=$((index+1))
+#     currentTime=`date`
+#     printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
+#     (time dune exec --root ../extraction -- ./voqc.exe -i ${filename} -o out.qasm -n ${iter}) &> ${program_name}.txt
+#     python parseOutput2.py ${program_name}.txt >> PF_results.csv
+#     rm -rf ${program_name}.txt
+# done
+# 
+# printf "${GREEN}##### Running on files in Arithmetic_and_Toffoli #####${NOCOLOR}\n"
+# > Arithmetic_and_Toffoli_results.csv
+# echo "name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC T,VOQC H,VOQC X,VOQC CNOT,parse time,optimization time,write time" >> Arithmetic_and_Toffoli_results.csv
+# for filename in "${Arithmetic_and_Toffoli_filenames[@]}"
+# do
+#     program_name=`basename "$filename" .qasm`
+#     currentTime=`date`
+#     printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
+#     (time dune exec --root ../extraction -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
+#     python parseOutput.py ${program_name}.txt >> Arithmetic_and_Toffoli_results.csv
+#     rm -rf ${program_name}.txt
+# done
 
 echo""
 printf "${GREEN}##### Running on files in QFT_and_Adders #####${NOCOLOR}\n"

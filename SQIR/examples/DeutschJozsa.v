@@ -1,5 +1,5 @@
 Require Import List.
-Require Import UnitarySem.
+Require Import UnitaryOps.
 Require Import Dirac.
 
 Open Scope ucom.
@@ -8,52 +8,8 @@ Local Close Scope R_scope.
 
 (* Definition of Deutsch-Jozsa program. *)
 
-Fixpoint npar {dim : nat} (n : nat) (u : nat -> base_ucom dim) : base_ucom dim :=
-  match n with
-  | 0 => SKIP
-  | S n' => npar n' u ; u n'
-  end.
-
 Definition deutsch_jozsa {n} (U : base_ucom n) : base_ucom n :=
-  X 0 ; npar n H ; U; npar n H.
-
-(* Utility lemmas about npar and H. *)
-
-Lemma npar_H : forall dim n,
-  (0 < dim)%nat -> (n <= dim)%nat -> 
-  uc_eval (@npar dim n H) = (n ⨂ hadamard) ⊗ I (2 ^ (dim - n)).
-Proof.
-  intros.
-  induction n.
-  - replace (dim - 0)%nat with dim by lia. 
-    Msimpl_light. simpl. rewrite denote_SKIP; try assumption.
-    reflexivity.
-  - simpl.
-    autorewrite with eval_db.
-    bdestruct_all. 
-    rewrite IHn; try lia.
-    replace (dim - (n + 1))%nat with (dim - (S n))%nat by lia.
-    replace (2 ^ (dim - n))%nat with (2 * 2 ^ (dim - (S n)))%nat by unify_pows_two.
-    rewrite <- id_kron.
-    rewrite <- kron_assoc.
-    restore_dims.
-    repeat rewrite kron_mixed_product.
-    Msimpl_light. 
-    reflexivity.
-Qed.
-
-Lemma kron_n_H_0 : forall n,
-  n ⨂ hadamard × n ⨂ ∣0⟩ = n ⨂ ∣+⟩.
-Proof.
-  intros.
-  induction n; simpl.
-  - Msimpl_light. reflexivity.
-  - restore_dims. 
-    rewrite kron_mixed_product.
-    rewrite <- IHn.
-    apply f_equal_gen; try reflexivity.
-    solve_matrix.
-Qed.
+  X 0 ; npar n U_H ; U; npar n U_H.
 
 (* Definition of boolean oracles *)
 
@@ -106,13 +62,13 @@ Proof.
   restore_dims.
   Qsimpl.
   replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.
-  rewrite kron_n_H_0.
+  rewrite H0_kron_n_spec.
   rewrite <- Mmult_assoc. 
   Qsimpl. 
   replace (hadamard) with (hadamard†) by (Qsimpl; easy).
   rewrite <- kron_n_adjoint by auto with wf_db.
   repeat rewrite <- Mmult_adjoint.
-  rewrite kron_n_H_0. 
+  rewrite H0_kron_n_spec. 
   replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.
   rewrite <- kron_adjoint.
   (* interesting part of the proof that looks at the structure of P *)
