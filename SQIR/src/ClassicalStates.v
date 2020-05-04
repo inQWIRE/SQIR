@@ -13,6 +13,9 @@ Local Close Scope R_scope.
    TODO #2: For efficiency, instead of using functions indexed by natural
             numbers, we should use vectors/arrays. *)
 
+(* update_at is the same function on lists.
+   update is also defined in SF. *)
+
 (* Update the value at one index of a boolean function. *)
 Definition update {A} (f : nat -> A) (i : nat) (x : A) :=
   fun j => if j =? i then x else f j.
@@ -21,7 +24,7 @@ Lemma update_index_eq : forall {A} (f : nat -> A) i b, (update f i b) i = b.
 Proof.
   intros. 
   unfold update.
-  replace (i =? i) with true by (symmetry; apply Nat.eqb_eq; reflexivity).
+  rewrite Nat.eqb_refl.
   reflexivity.
 Qed.
 
@@ -29,8 +32,7 @@ Lemma update_index_neq : forall {A} (f : nat -> A) i j b, i <> j -> (update f i 
 Proof.
   intros. 
   unfold update.
-  bdestruct (j =? i); try easy. 
-  contradict H0; lia.
+  rewrite eqb_neq; auto.
 Qed.
 
 Lemma update_same : forall {A} (f : nat -> A) i b,
@@ -60,8 +62,7 @@ Proof.
   apply functional_extensionality.
   intros.
   unfold update.
-  bdestruct (x =? i); bdestruct (x =? j); subst; 
-  try (contradict H; reflexivity); reflexivity.
+  bdestruct (x =? i); bdestruct (x =? j); subst; easy.
 Qed.
 
 (* Convert a boolean function to a vector; examples: 
@@ -101,7 +102,7 @@ Proof.
   bdestruct (j <? n).
   2:{ rewrite Csum_0. rewrite WFA; auto. 
       intros j'. bdestruct (j' =? j); subst; simpl; try lca.
-      rewrite WFA. lca. auto.  }
+      rewrite WFA by auto. lca. }
   erewrite Csum_unique.
   reflexivity.
   exists j.
@@ -190,17 +191,14 @@ Proof.
   induction dim; trivial.
   unfold funbool_to_nat.
   simpl.
-  replace (binlist_to_nat (funbool_to_list dim (update f n b))) with
-      (funbool_to_nat dim (update f n b)) by reflexivity.
-  replace (binlist_to_nat (funbool_to_list dim f)) with 
-      (funbool_to_nat dim f) by reflexivity.
+  unfold funbool_to_nat in IHdim.
   rewrite IHdim by lia.
   unfold update.
   bdestruct (dim =? n); lia.
 Qed.
 
 (* Should this be constructive? Yes.
-   Is it. No. Maybe later. *)
+   Is it. No. (Well, technically yes.) Maybe later. *)
 Lemma exists_nat_to_funbool : forall k dim, k < 2^dim -> exists f, k = funbool_to_nat dim f.
 Proof.
   intros.
@@ -311,6 +309,13 @@ Proof.
   reflexivity.
 Qed.
 
+(* Move to Dirac.v *)
+Lemma ket2bra : forall n, (ket n) † = bra n. 
+Proof. destruct n; reflexivity. Qed.
+Hint Rewrite ket2bra : ket_db.
+Hint Rewrite Mmult_1_l Mmult_1_r kron_1_l kron_1_r Mscale_0_l Mscale_1_l Mplus_0_l Mplus_0_r using (auto with wf_db) : ket_db.
+Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r : ket_db.
+
 Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
   i < n ->
   j < n ->
@@ -335,14 +340,7 @@ Proof.
     restore_dims.
     repeat rewrite <- kron_assoc.
     destruct (f i); destruct (f (i + 1 + d)); simpl; Msimpl.
-    all: repeat rewrite Mmult_assoc. 
-    all: replace ((∣1⟩)† × ∣ 1 ⟩) with (I 1) by solve_matrix. 
-    all: replace ((∣0⟩)† × ∣ 0 ⟩) with (I 1) by solve_matrix.  
-    all: replace ((∣1⟩)† × ∣ 0 ⟩) with (@Zero 1 1) by solve_matrix.
-    all: replace ((∣0⟩)† × ∣ 1 ⟩) with (@Zero 1 1) by solve_matrix.
-    all: Msimpl_light; try reflexivity.
-    rewrite X1_spec; reflexivity.
-    rewrite X0_spec; reflexivity.
+    all: autorewrite with ket_db; reflexivity.
   - repeat rewrite (f_to_vec_split 0 (j + (1 + d + 1) + x0) j); try lia.
     rewrite f_to_vec_update.
     2: right; lia.
@@ -358,13 +356,7 @@ Proof.
     repeat rewrite <- kron_assoc.
     destruct (f j); destruct (f (j + 1 + d)); simpl; Msimpl.
     all: repeat rewrite Mmult_assoc. 
-    all: replace ((∣1⟩)† × ∣ 1 ⟩) with (I 1) by solve_matrix. 
-    all: replace ((∣0⟩)† × ∣ 0 ⟩) with (I 1) by solve_matrix.  
-    all: replace ((∣1⟩)† × ∣ 0 ⟩) with (@Zero 1 1) by solve_matrix.
-    all: replace ((∣0⟩)† × ∣ 1 ⟩) with (@Zero 1 1) by solve_matrix.
-    all: Msimpl_light; try reflexivity.
-    rewrite X1_spec; reflexivity.
-    rewrite X0_spec; reflexivity.
+    all: autorewrite with ket_db; reflexivity.
 Qed.    
                                   
 Definition b2R (b : bool) : R := if b then 1%R else 0%R.
