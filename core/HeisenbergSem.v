@@ -468,24 +468,26 @@ Compute (h_eval GHZ3 [II,II,ZZ]). (* I, Z, Z *)
 Compute (h_eval (CNOT 1 2; CNOT 0 1) [XX*ZZ,XX,XX*ZZ]). (* X, Z, Z ??? *)
 Compute (h_eval (CNOT 0 1; CNOT 1 2) [XX*ZZ,XX,XX*ZZ]). (* X, Z, Z ??? *)
 
-Definition GHZ3' : clifford_ucom 3 :=
-  CNOT 1 2;  
-  CNOT 0 1;
-  H 0.
+(** Honda motivating example *)
 
-Compute (h_eval (GHZ3;GHZ3') [ZZ,II,II]). (* Z, I, I *)
-Compute (h_eval (GHZ3;GHZ3') [II,ZZ,II]). (* I, Z, I *)
-Compute (h_eval (GHZ3;GHZ3') [II,II,ZZ]). (* I, I, Z *)
+Definition SEP0 := GHZ3 ; CNOT 0 1; CNOT 0 2.
+
+Compute (h_eval SEP0 [ZZ,II,II]). (* X, I, I *)
+Compute (h_eval SEP0 [II,ZZ,II]). (* I, Z, I *)
+Compute (h_eval SEP0 [II,II,ZZ]). (* I, Z, Z *) (* becomes I, I, Z *)
+
+(* Result : X × Z × Z *)
+
+(** Unentangling one qubit *)
 
 Compute (h_eval (GHZ3;CNOT 1 2) [ZZ,II,II]). (* X, X, I *)
 Compute (h_eval (GHZ3;CNOT 1 2) [II,ZZ,II]). (* Z, Z, I *)
 Compute (h_eval (GHZ3;CNOT 1 2) [II,II,ZZ]). (* I, I, Z *)
 
+Compute (h_eval (GHZ3;CNOT 2 1) [ZZ,II,II]). (* X, I, X *)
+Compute (h_eval (GHZ3;CNOT 2 1) [II,ZZ,II]). (* Z, Z, Z *) (* becomes Z, I, Z *)
+Compute (h_eval (GHZ3;CNOT 2 1) [II,II,ZZ]). (* I, Z, I *)
 
-
-
-
-Compute (
 
 (* Toffoli Decomposition *)
 
