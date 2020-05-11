@@ -2,15 +2,16 @@
 #-arg -profile-ltac
 
 lib/QWIRE/Prelim.v
-lib/QWIRE/RealAux.v
-lib/QWIRE/Complex.v
-lib/QWIRE/Matrix.v
-lib/QWIRE/Quantum.v
-lib/QWIRE/Dirac.v
-lib/QWIRE/Proportional.v
+#lib/QWIRE/RealAux.v
+#lib/QWIRE/Complex.v
+#lib/QWIRE/Matrix.v
+#lib/QWIRE/Quantum.v
+#lib/QWIRE/Dirac.v
+#lib/QWIRE/Proportional.v
 
 core/SQIR.v
-core/UnitarySem.v
-core/Utilities.v
-core/DensitySem.v
-core/NDSem.v
+core/HeisenbergSem.v
+#core/UnitarySem.v
+#core/Utilities.v
+#core/DensitySem.v
+#core/NDSem.v

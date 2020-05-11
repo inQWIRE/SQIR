@@ -2,9 +2,9 @@ Require Import QWIRE.Prelim.
 Require Import SQIR.
 
 (* The Clifford Set of Unitary Matrices *)
-Inductive Clifford : nat -> Set := 
-  | U_H                  : Clifford 1 
-  | U_S                  : Clifford 1 
+Inductive Clifford : nat -> Set :=
+  | U_H                  : Clifford 1
+  | U_S                  : Clifford 1
   | U_CNOT               : Clifford 2.
 
 Definition clifford_ucom := ucom Clifford.
@@ -12,15 +12,15 @@ Definition clifford_ucom := ucom Clifford.
 Local Open Scope ucom.
 
 (* Some useful shorthands. *)
-Definition CNOT {dim} m n : clifford_ucom dim := uapp2 U_CNOT m n.  
-Definition H {dim} n : clifford_ucom dim := uapp1 U_H n.  
-Definition S {dim} n : clifford_ucom dim := uapp1 U_S n.  
+Definition CNOT {dim} m n : clifford_ucom dim := uapp2 U_CNOT m n.
+Definition H {dim} n : clifford_ucom dim := uapp1 U_H n.
+Definition S {dim} n : clifford_ucom dim := uapp1 U_S n.
 Definition Z {dim} n : clifford_ucom dim := S n ; S n.
-Definition X {dim} n : clifford_ucom dim := H n; Z n; H n. 
+Definition X {dim} n : clifford_ucom dim := H n; Z n; H n.
 (* Y = iXZ *)
 (* Definition Y {dim} n : clifford_ucom dim := X n; Z n. *)
 Definition Y {dim} n : clifford_ucom dim := S n; X n; Z n; S n.
-Definition I {dim} n : clifford_ucom dim := H n; H n. 
+Definition I {dim} n : clifford_ucom dim := H n; H n.
 Definition CZ {dim} m n : clifford_ucom dim :=
   H n ; CNOT m n ; H n.
 Definition SWAP {dim} m n : clifford_ucom dim :=
@@ -29,7 +29,7 @@ Definition SWAP {dim} m n : clifford_ucom dim :=
 (* Inductive h_basis : Set := XX | ZZ | II. *)
 Inductive h_basis : Set := BX | BZ.
 
-(* 1st boolean is negation, 2nd is i, 3rd is X, 4th is Z. *) 
+(* 1st boolean is negation, 2nd is i, 3rd is X, 4th is Z. *)
 (* Note: If we ignore global phase, we can leave out the first two
    elements AND treat X and Z as commutative (currently we assume
    (f,f,t,t) is XZ, not ZX) *)
@@ -41,7 +41,7 @@ Definition h_config_from_basis (b : h_basis) : h_config :=
   | BX => (false, false, true, false)
   | BZ => (false, false, false, true)
   end.
-  
+
 Coercion h_config_from_basis : h_basis >-> h_config.
 *)
 
@@ -53,14 +53,14 @@ Definition ZZ : h_config := (false, false, false, true).
 Definition YY : h_config := (false, true, true, true). (* YY = iXZ = -iZX *)
 
 Definition h_basis_to_config (b : h_basis) : h_config :=
-  match b with 
+  match b with
   | BX => XX
   | BZ => ZZ
   end.
 
 (* From Gottesman, table 1 *)
 Definition h_apply1 (c : Clifford 1) (b : h_basis) : h_config :=
-  match c, b with 
+  match c, b with
   | U_H, BX => ZZ
   | U_H, BZ => XX
   | U_S, BX => YY
@@ -69,16 +69,16 @@ Definition h_apply1 (c : Clifford 1) (b : h_basis) : h_config :=
 
 (* (BX, false) ≡ XX ⊗ II, (BX, true) ≡ II ⊗ XX *)
 Definition h_apply_cnot (b : h_basis) (i : bool) : h_config * h_config :=
-  match b, i with 
+  match b, i with
   | BX, false => (XX, XX)
-  | BX, true  => (II, XX) 
+  | BX, true  => (II, XX)
   | BZ, false => (ZZ, II)
-  | BZ, true  => (ZZ, ZZ) 
+  | BZ, true  => (ZZ, ZZ)
   end.
 
 (* OLD :
 Definition h_apply_cnot (b1 b2 : h_basis) : h_config * h_config :=
-  match b1, b2 with 
+  match b1, b2 with
   | II, II => (II, II)
   | XX, II => (XX, XX)
   | II, XX => (II, XX)
@@ -90,7 +90,7 @@ Definition h_apply_cnot (b1 b2 : h_basis) : h_config * h_config :=
 *)
 
 Definition h_times (h1 h2 : h_config) :=
-  match h1, h2 with (n1, i1, x1, z1), (n2, i2, x2, z2) => 
+  match h1, h2 with (n1, i1, x1, z1), (n2, i2, x2, z2) =>
     let n3 := z1 && x2 in (* Z then X anticommute *)
     let n4 := i1 && i2 in (* two imaginary components *)
     (n1 ⊕ n2 ⊕ n3 ⊕ n4, i1 ⊕ i2, x1 ⊕ x2, z1 ⊕ z2)
@@ -124,22 +124,22 @@ Qed.
 Lemma II_1_r : forall h, h * II = h.
 Proof.
   intros [[[n i] x] z].
-  simpl.  
+  simpl.
   repeat rewrite andb_false_r.
   repeat rewrite xorb_false_r.
   reflexivity.
 Qed.
 
-Definition lift_to_config (f : h_basis -> h_config) : 
-  h_config -> h_config := 
-  fun x => match x with (n, i, x, z) => 
-                     (n, i, false, false) * 
-                     (if x then f BX else II) * 
+Definition lift_to_config (f : h_basis -> h_config) :
+  h_config -> h_config :=
+  fun x => match x with (n, i, x, z) =>
+                     (n, i, false, false) *
+                     (if x then f BX else II) *
                      (if z then f BZ else II)
-        end. 
+        end.
 
 Lemma to_config_commutes : forall f b,
-  lift_to_config f (h_basis_to_config b) = f b. 
+  lift_to_config f (h_basis_to_config b) = f b.
 Proof.
   intros f []; simpl.
   - destruct (f BX) as [[[n i] x] z]; simpl.
@@ -153,16 +153,16 @@ Proof.
     reflexivity.
 Qed.
 
-(* I think n1, n2, i1 and i2 can distribute -- that is, we could combine them in 
+(* I think n1, n2, i1 and i2 can distribute -- that is, we could combine them in
    the first term if we desired. *)
-Definition lift_to_config_pair (f : h_basis -> bool -> h_config * h_config) : 
+Definition lift_to_config_pair (f : h_basis -> bool -> h_config * h_config) :
   h_config -> h_config -> h_config * h_config :=
   fun h1 h2 => match h1 with (n1, i1, x1, z1) =>
             match h2 with (n2, i2, x2, z2) =>
-              let (FX1l,FX1r) := if x1 then f BX false else (II,II) in 
-              let (FX2l,FX2r) := if x2 then f BX true else (II,II) in 
-              let (FZ1l,FZ1r) := if z1 then f BZ false else (II,II) in 
-              let (FZ2l,FZ2r) := if z2 then f BZ true else (II,II) in 
+              let (FX1l,FX1r) := if x1 then f BX false else (II,II) in
+              let (FX2l,FX2r) := if x2 then f BX true else (II,II) in
+              let (FZ1l,FZ1r) := if z1 then f BZ false else (II,II) in
+              let (FZ2l,FZ2r) := if z2 then f BZ true else (II,II) in
               ((n1, i1, false, false) * FX1l * FX2l * FZ1l * FZ2l,
                (n2, i2, false, false) * FX1r * FX2r * FZ1r * FZ2r)
             end
@@ -185,7 +185,7 @@ Proof. reflexivity. Qed.
 Example CNOT_XZ : lift_to_config_pair h_apply_cnot XX ZZ = (XX*ZZ, XX*ZZ).
 Proof. reflexivity. Qed.
 
-Definition h_state := list h_config. 
+Definition h_state := list h_config.
 
 Definition all_X_state (dim : nat) := repeat XX dim.
 Definition all_Z_state (dim : nat) := repeat ZZ dim.
@@ -196,7 +196,7 @@ Fixpoint apply_at {A} (f : A -> A) (i : nat) (l : list A) : list A :=
   match l, i with
   | [], _                  => []
   | a :: l', 0              => f a :: l'
-  | a :: l', Datatypes.S i' => a :: apply_at f i' l' 
+  | a :: l', Datatypes.S i' => a :: apply_at f i' l'
   end.
 *)
 
@@ -208,7 +208,7 @@ Fixpoint count {A} (f : A -> bool) (l : list A) : nat :=
   match l with
   | [] => 0
   | a :: l' => if f a then 1 + (count f l') else count f l'
-  end. 
+  end.
 
 Definition normalize_h_state (h : h_state) :=
   let negs := count (fun h => match h with (n,_,_,_) => n end) h in
@@ -216,25 +216,25 @@ Definition normalize_h_state (h : h_state) :=
   let normed := map (fun h => match h with (_,_,x,z) => (false,false,x,z) end) h in
   let im   := ims mod 2 =? 1 in
   let neg  := (negs + ims / 2) mod 2 =? 1 in
-  match normed with 
+  match normed with
   | [] => []
-  | (_,_,x,z) :: hs => (neg, im, x, z) :: hs 
-  end. 
+  | (_,_,x,z) :: hs => (neg, im, x, z) :: hs
+  end.
 
 Fixpoint h_eval {dim} (c : clifford_ucom dim) (st : h_state) : h_state :=
   match c with
   | c1 ; c2      => h_eval c2 (h_eval c1 st)
   | uapp1 U n    => let h := lift_to_config (h_apply1 U) (nth n st II) in
-                   update_at st n h 
-  | uapp2 _ m n  => let (h1,h2) := lift_to_config_pair h_apply_cnot 
+                   update_at st n h
+  | uapp2 _ m n  => let (h1,h2) := lift_to_config_pair h_apply_cnot
                                                 (nth m st II) (nth n st II) in
                    update_at (update_at st m h1) n h2
-  | _            => all_I_state dim (* no 3-qubit gates in our denotation function *) 
+  | _            => all_I_state dim (* no 3-qubit gates in our denotation function *)
   end.
 
 
 
-  
+
 (** * Examples from Gottesman Paper *)
 
 (* Example 1 *)
@@ -246,26 +246,26 @@ Lemma SWAP_basis : forall (b1 b2 : h_basis) (h1 h2 : h_config),
  h1 = h_basis_to_config b1 ->
  h2 = h_basis_to_config b2 ->
  h_eval (@SWAP 2 0 1) [h1,h2] = [h2,h1].
-Proof. 
+Proof.
   intros [] [] h1 h2 ? ?; subst; reflexivity.
 Qed.
 
-(* Add a lemma that this being true on X and Z makes it 
-   true on all bases? 
+(* Add a lemma that this being true on X and Z makes it
+   true on all bases?
 
    Then we can prove a more general version of SWAP_basis *)
 
 (* Example 2 *)
 
-Definition had_cnot : clifford_ucom 2 := 
+Definition had_cnot : clifford_ucom 2 :=
   H 0; H 1; CNOT 0 1; H 0; H 1.
 
 Lemma had_cnot_notc : forall (b1 b2 : h_basis) (h1 h2 : h_config),
   h1 = h_basis_to_config b1 ->
   h2 = h_basis_to_config b2 ->
-  normalize_h_state (h_eval had_cnot [h1,h2]) = 
-  normalize_h_state (h_eval (@CNOT 2 1 0) [h1,h2]).   
-Proof.  
+  normalize_h_state (h_eval had_cnot [h1,h2]) =
+  normalize_h_state (h_eval (@CNOT 2 1 0) [h1,h2]).
+Proof.
   intros [] [] h1 h2 ? ?; subst; try reflexivity.
 Qed.
 
@@ -275,7 +275,7 @@ Qed.
 
 (* Example 3 *)
 
-Definition hitite_code : clifford_ucom 2 := 
+Definition hitite_code : clifford_ucom 2 :=
   H 0; S 1; CNOT 0 1; H 1; CNOT 0 1.
 
 Lemma hitite_X1 : h_eval hitite_code [XX,II] = [ZZ,II].
@@ -327,14 +327,14 @@ Notation "A ≈ B" := (normalize_h_state A = normalize_h_state B) (at level 10).
 
 Lemma bell_ZZ'' : h_eval bell [ZZ,ZZ] ≈ [-1 * YY,YY].
 Proof. compute. reflexivity. Qed.
-  
+
 (* Example 6 *)
 
 (* Can we represent this as a program? *)
 
 (* Example 7 *)
 
-Definition ec_code : clifford_ucom 4 := 
+Definition ec_code : clifford_ucom 4 :=
   H 3; CNOT 0 2; CNOT 1 2; CNOT 3 0; CNOT 3 1; CNOT 3 2.
 
 (* What to prove? *)
@@ -419,7 +419,7 @@ Definition bell00 : clifford_ucom 4 :=
 Definition encode : clifford_ucom 4 :=
     CZ 0 2; CNOT 1 2.
 
-Definition decode : clifford_ucom 4 := 
+Definition decode : clifford_ucom 4 :=
   CNOT 2 3;
   H 2.
 
@@ -448,7 +448,7 @@ Compute (h_eval (CNOT 0 1) [XX*ZZ, ZZ]). (* X, XZ *)
 Definition GHZ3 : clifford_ucom 3 :=
   H 0;
   CNOT 0 1;
-  CNOT 1 2.  
+  CNOT 1 2.
 
 Compute (h_eval GHZ3 [ZZ,ZZ,ZZ]). (* XZ, X, XZ *)
 
@@ -494,29 +494,29 @@ Compute (h_eval (GHZ3;CNOT 2 1) [II,II,ZZ]). (* I, Z, I *)
 Module TOFF.
 
 Parameter FF : h_config.
-  
-Inductive CliffordT : nat -> Set := 
-  | U_H                  : CliffordT 1 
-  | U_T                  : CliffordT 1 
+
+Inductive CliffordT : nat -> Set :=
+  | U_H                  : CliffordT 1
+  | U_T                  : CliffordT 1
   | U_CNOT               : CliffordT 2.
 
 Definition cliffordT_ucom := ucom CliffordT.
 
 Local Open Scope ucom.
 
-Definition CNOT {dim} m n : cliffordT_ucom dim := uapp2 U_CNOT m n.  
-Definition H {dim} n : cliffordT_ucom dim := uapp1 U_H n.  
-Definition T {dim} n : cliffordT_ucom dim := uapp1 U_T n.  
+Definition CNOT {dim} m n : cliffordT_ucom dim := uapp2 U_CNOT m n.
+Definition H {dim} n : cliffordT_ucom dim := uapp1 U_H n.
+Definition T {dim} n : cliffordT_ucom dim := uapp1 U_T n.
 Definition S {dim} n : cliffordT_ucom dim := T n ; T n.
 Definition Z {dim} n : cliffordT_ucom dim := S n ; S n.
-Definition TDAG {dim} n : cliffordT_ucom dim := Z n; S n; T n. 
-Definition X {dim} n : cliffordT_ucom dim := H n; Z n; H n. 
-Definition I {dim} n : cliffordT_ucom dim := H n; H n. 
+Definition TDAG {dim} n : cliffordT_ucom dim := Z n; S n; T n.
+Definition X {dim} n : cliffordT_ucom dim := H n; Z n; H n.
+Definition I {dim} n : cliffordT_ucom dim := H n; H n.
 Definition CZ {dim} m n : cliffordT_ucom dim := H n ; CNOT m n ; H n.
 Definition SWAP {dim} m n : cliffordT_ucom dim := CNOT m n; CNOT n m; CNOT m n.
 
 Definition h_apply1 (c : CliffordT 1) (b : h_basis) : h_config :=
-  match c, b with 
+  match c, b with
   | U_H, BX => ZZ
   | U_H, BZ => XX
   | U_T, BX => FF
@@ -527,20 +527,20 @@ Fixpoint h_eval {dim} (c : cliffordT_ucom dim) (st : h_state) : h_state :=
   match c with
   | c1 ; c2      => h_eval c2 (h_eval c1 st)
   | uapp1 U n    => let h := lift_to_config (h_apply1 U) (nth n st II) in
-                   update_at st n h 
-  | uapp2 _ m n  => let (h1,h2) := lift_to_config_pair h_apply_cnot 
+                   update_at st n h
+  | uapp2 _ m n  => let (h1,h2) := lift_to_config_pair h_apply_cnot
                                                 (nth m st II) (nth n st II) in
                    update_at (update_at st m h1) n h2
-  | _            => all_I_state dim (* no 3-qubit gates in our denotation function *) 
+  | _            => all_I_state dim (* no 3-qubit gates in our denotation function *)
   end.
 
 Definition TOFFOLI {dim} (a b c : nat) : cliffordT_ucom dim :=
-  H c; 
-  CNOT b c; TDAG c; 
-  CNOT a c; T c; 
-  CNOT b c; TDAG c; 
+  H c;
+  CNOT b c; TDAG c;
+  CNOT a c; T c;
+  CNOT b c; TDAG c;
   CNOT a c; T b; T c; H c;
-  CNOT a b; T a; TDAG b; 
+  CNOT a b; T a; TDAG b;
   CNOT a b.
 
 Lemma TOFFOLI_Z1 : @h_eval 3 (TOFFOLI 0 1 2) [ZZ,II,II] = [ZZ,II,II].
@@ -554,3 +554,5 @@ Proof. compute. reflexivity. Qed.
 
 Lemma TOFFOLI_ZZX : @h_eval 3 (TOFFOLI 0 1 2) [ZZ,ZZ,XX] = [ZZ,ZZ,XX].
 Proof. compute. reflexivity. Qed.
+
+End TOFF.
