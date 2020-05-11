@@ -1,10 +1,10 @@
-Require Export UnitarySem.
+Require Export ClassicalStates.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-(** Example equivalences of unitary circuits. **)
+(** Some useful equivalences over unitary circuits. **)
 
 Lemma ucom_id_l : forall {dim} n (c : base_ucom dim),
    uc_well_typed (@ID dim n) -> (ID n; c) ≡ c.
@@ -144,19 +144,43 @@ Proof.
   gridify; reflexivity.
 Qed.
 
-(* 24 valid subcases, excruciatingly slow *)
 Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
-  n1' <> n1 ->
-  n1' <> n2 ->
-  n2' <> n1 ->
-  n2' <> n2 ->
+  n1' <> n1 -> n1' <> n2 -> n2' <> n1 -> n2' <> n2 ->
   @CNOT dim n1 n2 ; CNOT n1' n2' ≡ CNOT n1' n2' ; CNOT n1 n2. 
 Proof.
   intros.
   unfold uc_equiv; simpl.
+  (* Works, but is painfully slow.
   autorewrite with eval_db.
-  gridify; reflexivity.
-Qed.  
+  gridify; reflexivity. *) 
+  specialize (bool_dec ((n1 <? dim) && (n2 <? dim) && negb (n1 =? n2) && (n1' <? dim) && (n2' <? dim) && negb (n1' =? n2')) true) as WT.
+  destruct WT.
+  repeat match goal with
+  | H : _ && _ = true |- _ => apply andb_prop in H as [? ?]
+  | H : _ <? _ = true |- _ => apply Nat.ltb_lt in H
+  | H : _ =? _ = false |- _ => apply beq_nat_false in H 
+  | H : negb _ = true |- _ => apply negb_true_iff in H
+  end. 
+  apply equal_on_basis_states_implies_equal; auto with wf_db.
+  intro f.
+  repeat rewrite Mmult_assoc.
+  repeat rewrite f_to_vec_CNOT by auto.
+  repeat rewrite update_index_neq by auto.
+  rewrite update_twice_neq by auto.
+  reflexivity.
+  (* manual handling for badly typed cases *)
+  autorewrite with eval_db.
+  bdestruct_all.
+  all: repeat rewrite Mmult_0_l; repeat rewrite Mmult_0_r; trivial. 
+  (* hmm this is slow too. Just as bad as using gridify? *)
+  all: bdestruct (n1 <? dim); try lia.
+  all: bdestruct (n2 <? dim); try lia. 
+  all: bdestruct (n1' <? dim); try lia.
+  all: bdestruct (n2' <? dim); try lia.
+  all: bdestruct (n1 =? n2); try lia.
+  all: bdestruct (n1' =? n2'); try lia.
+  all: contradict n; reflexivity.
+Qed.
 
 Lemma H_swaps_CNOT : forall {dim} m n,
   @H dim m; H n; CNOT n m; H m; H n ≡ CNOT m n.

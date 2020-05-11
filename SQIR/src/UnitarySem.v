@@ -644,6 +644,20 @@ Proof.
   split; try split; inversion H; subst; assumption. 
 Qed.
 
+Lemma uc_well_typed_SWAP : forall dim m n, 
+  (m < dim /\ n < dim /\ m <> n) <-> uc_well_typed (@SWAP dim m n).
+Proof. 
+  intros. split; intros H.
+  destruct H as [H1 [H2 H3]].
+  repeat constructor; auto.
+  inversion H; subst.
+  inversion H2; subst.
+  clear - H4 H5.
+  apply uc_well_typed_CNOT in H4 as [? [? ?]].
+  apply uc_well_typed_CNOT in H5 as [? [? ?]]. 
+  auto.
+Qed.
+
 (* In general, we won't want to interact directly with the 'rotation' matrix. *)
 
 Lemma denote_H : forall dim n, uc_eval (H n) = @pad 1 n dim hadamard.
@@ -701,6 +715,7 @@ Lemma denote_cnot : forall dim m n,
   uc_eval (CNOT m n) = ueval_cnot dim m n.
 Proof. easy. Qed.
 
+(* TODO: remove *)
 Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
   if (m <? n) then
       @pad (1+(n-m-1)+1) m dim 
