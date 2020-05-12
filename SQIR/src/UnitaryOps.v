@@ -63,7 +63,6 @@ Fixpoint control {dim} q (c : base_ucom dim) : base_ucom dim :=
   | _ => SKIP
   end.
 
-<<<<<<< HEAD
 (* Move to: Dirac.v *)
 (* Lemmas 3 and 4 may not be appropriate for ket db since they don't operate on kets. *)
 (* For Q_db? *)
@@ -123,7 +122,6 @@ Ltac group_Cexp :=
 
 Hint Rewrite <- Copp_plus_distr : C_db.
 
-=======
 Inductive is_fresh {U dim} : nat -> ucom U dim -> Prop :=
   | fresh_seq  : forall q c1 c2, is_fresh q c1 -> is_fresh q c2 -> is_fresh q (c1; c2)
   | fresh_app1 : forall q u n, q <> n -> is_fresh q (uapp1 u n)
@@ -144,7 +142,6 @@ Proof.
   all: try apply uc_well_typed_Rz; try apply uc_well_typed_CNOT; auto.
   all: apply uc_well_typed_H; auto.
 Qed.  
->>>>>>> 197432b44cdb3312f46117eef916c63e7e8edc77
 
 (* Auxiliary proofs about the semantics of CU and TOFF *)
 Lemma CU_correct : forall (dim : nat) θ ϕ λ c t,
