@@ -209,6 +209,19 @@ Proof. intros l1 l2. induction l1; simpl; lia. Qed.
 Lemma binlist_to_nat_false : forall n, binlist_to_nat (repeat false n) = O.
 Proof. induction n; simpl; lia. Qed.
 
+Lemma binlist_to_nat_true : forall n, binlist_to_nat (repeat true n) = 2^n - 1.
+Proof.
+  induction n; simpl; trivial.
+  rewrite IHn. clear.
+  repeat rewrite Nat.add_0_r.
+  rewrite <- Nat.add_succ_l.
+  replace (S (2 ^ n - 1)) with (1 + (2 ^ n - 1)) by easy.
+  rewrite <- le_plus_minus.
+  rewrite <- Nat.add_sub_assoc.
+  reflexivity.
+  all: induction n; simpl; try lia.
+Qed.
+
 Lemma nat_to_binlist_eq_nat_to_binlist' : forall len n, 
   binlist_to_nat (nat_to_binlist len n) = binlist_to_nat (nat_to_binlist' n).
 Proof.
@@ -236,6 +249,69 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma nat_to_binlist_corr : forall l n,
+   nat_to_binlist' n = l ->
+   binlist_to_nat l = n. (* Lemma this *)
+Proof.
+  intros.
+  rewrite <- H.
+  erewrite <- (nat_to_binlist_eq_nat_to_binlist' n n).
+  rewrite nat_to_binlist_inverse.
+  reflexivity.
+Qed.
+
+Lemma incr_bin_true_length : forall l,
+  Forall (fun b => b = true) l ->
+  length (incr_bin l) = S (length l).
+Proof.
+  intros.
+  induction l; trivial.
+  - inversion H; subst.
+    simpl in *.
+    rewrite IHl; easy.
+Qed.
+
+Lemma incr_bin_false_length : forall l,
+  Exists (fun b => b <> true) l ->
+  length (incr_bin l) = length l.
+Proof.
+  intros.
+  induction l; inversion H; subst.
+  - destruct a; simpl; easy.
+  - destruct a; simpl; trivial.
+    rewrite IHl; easy.
+Qed.
+
+Lemma all_true_repeat : forall l,
+  Forall (fun b : bool => b = true) l ->
+  l = repeat true (length l).
+Proof.
+  intros.
+  induction l; simpl; trivial.
+  inversion H; subst.
+  rewrite <- IHl; easy.
+Qed.  
+  
+Lemma nat_to_binlist_length' : forall k n,
+    n < 2 ^ k -> length (nat_to_binlist' n) <= k.
+Proof.
+  intros.
+  induction n; simpl; try lia.
+  destruct (Forall_Exists_dec (fun b => b = true) (fun b => bool_dec b true)
+                              (nat_to_binlist' n)) as [ALL | NALL].
+  - rewrite incr_bin_true_length; trivial.
+    apply le_lt_eq_dec in IHn; [| lia].
+    destruct IHn; try lia.
+    exfalso.
+    apply all_true_repeat in ALL.
+    apply nat_to_binlist_corr in ALL.
+    rewrite binlist_to_nat_true in ALL.
+    rewrite e in ALL.
+    lia.
+  - rewrite incr_bin_false_length; trivial.
+    apply IHn; lia.
+Qed.
+
 Lemma nat_to_binlist_length : forall len n,
   (n < 2 ^ len)%nat -> length (nat_to_binlist len n) = len.
 Proof.
@@ -243,13 +319,9 @@ Proof.
   unfold nat_to_binlist.
   rewrite app_length, repeat_length. 
   bdestruct (n =? 0); subst; simpl. lia.
-  assert (length (nat_to_binlist' n) <= len)%nat.
-  { (* Definitely true with the current assumptions (n > 0 /\ n < 2 ^ len), 
-       but I'm stuck on the proof -KH *)
-     admit. }
+  apply nat_to_binlist_length' in Hlen.
   lia.
-Admitted.
-
+Qed.
 
 Lemma funbool_to_list_update_oob : forall f dim b n, (dim <= n)%nat ->
   funbool_to_list dim (update f n b) = funbool_to_list dim f.
