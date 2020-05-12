@@ -63,6 +63,7 @@ Fixpoint control {dim} q (c : base_ucom dim) : base_ucom dim :=
   | _ => SKIP
   end.
 
+<<<<<<< HEAD
 (* Move to: Dirac.v *)
 (* Lemmas 3 and 4 may not be appropriate for ket db since they don't operate on kets. *)
 (* For Q_db? *)
@@ -122,6 +123,28 @@ Ltac group_Cexp :=
 
 Hint Rewrite <- Copp_plus_distr : C_db.
 
+=======
+Inductive is_fresh {U dim} : nat -> ucom U dim -> Prop :=
+  | fresh_seq  : forall q c1 c2, is_fresh q c1 -> is_fresh q c2 -> is_fresh q (c1; c2)
+  | fresh_app1 : forall q u n, q <> n -> is_fresh q (uapp1 u n)
+  | fresh_app2 : forall q u m n, q <> m -> q <> n -> is_fresh q (uapp2 u m n)
+  | fresh_app3 : forall q u m n p,  q <> m -> q <> n -> q <> p -> is_fresh q (uapp3 u m n p).
+
+Lemma uc_well_typed_control : forall dim q (c : base_ucom dim),
+  (q < dim)%nat -> is_fresh q c -> uc_well_typed c -> 
+  uc_well_typed (control q c).
+Proof.
+  intros dim q c ? Hfr WT.
+  induction c; try dependent destruction u; simpl;
+  inversion Hfr; inversion WT; subst.
+  constructor.
+  apply IHc1; auto.
+  apply IHc2; auto.  
+  1,2: repeat constructor; try assumption.
+  all: try apply uc_well_typed_Rz; try apply uc_well_typed_CNOT; auto.
+  all: apply uc_well_typed_H; auto.
+Qed.  
+>>>>>>> 197432b44cdb3312f46117eef916c63e7e8edc77
 
 (* Auxiliary proofs about the semantics of CU and TOFF *)
 Lemma CU_correct : forall (dim : nat) θ ϕ λ c t,
@@ -270,7 +293,6 @@ Lemma CCX_correct : forall (dim : nat) a b c,
   uc_eval (CCX a b c) = proj a dim false .+ (proj a dim true) × (ueval_cnot dim b c).
   intros dim a b c ? ? ? ? ? ?.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
-  unfold proj; auto with wf_db.
   intro f.
   rewrite f_to_vec_CCX by auto.
   rewrite Mmult_plus_distr_r.
@@ -290,12 +312,6 @@ Lemma CCX_correct : forall (dim : nat) a b c,
     rewrite update_same by auto.
     Msimpl_light; reflexivity.
 Qed.
-
-Inductive is_fresh {U dim} : nat -> ucom U dim -> Prop :=
-  | fresh_seq  : forall q c1 c2, is_fresh q c1 -> is_fresh q c2 -> is_fresh q (c1; c2)
-  | fresh_app1 : forall q u n, q <> n -> is_fresh q (uapp1 u n)
-  | fresh_app2 : forall q u m n, q <> m -> q <> n -> is_fresh q (uapp2 u m n)
-  | fresh_app3 : forall q u m n p,  q <> m -> q <> n -> q <> p -> is_fresh q (uapp3 u m n p).
 
 (* generalization of proj_commutes_1q_gate and proj_commutes_2q_gate *)
 Lemma proj_fresh_commutes : forall dim q b (c : base_ucom dim),
@@ -350,6 +366,64 @@ Proof.
 Qed.
 Local Opaque X.
 
+(** n iterations of a program **)
+
+Fixpoint niter {dim} n (c : base_ucom dim) : base_ucom dim :=
+  match n with
+  | 0    => SKIP
+  | 1    => c 
+  | S n' => niter n' c ; c
+  end.
+
+Lemma uc_well_typed_niter : forall {d} (c : base_ucom d) i,
+  uc_well_typed c -> uc_well_typed (niter i c).
+Proof.
+  intros.
+  induction i; simpl.
+  apply uc_well_typed_ID.
+  apply uc_well_typed_implies_dim_nonzero in H.
+  assumption.
+  destruct i; try assumption.
+  constructor; assumption.
+Qed.
+
+Lemma niter_correct : forall dim (c : base_ucom dim) n,
+  (dim > 0)%nat -> uc_eval (niter n c) = n ⨉ (uc_eval c).
+Proof.
+  intros dim c n Hdim.
+  induction n; simpl.
+  apply denote_SKIP; auto.
+  destruct n. simpl. Msimpl. reflexivity.
+  remember (S n) as n'.
+  simpl. rewrite IHn.
+  reflexivity.
+Qed.
+
+Lemma niter_control_commute : forall d (c : base_ucom d) i j,
+  (i > 0)%nat ->
+  niter i (control j c) ≡ control j (niter i c).
+Proof.
+  intros d c i j Hi.
+  destruct i; try lia.
+  induction i. 
+  reflexivity.
+  replace (niter (S (S i)) (control j c)) with (niter (S i) (control j c) ; control j c) by reflexivity.
+  rewrite IHi; try lia.
+  reflexivity.
+Qed.
+
+Lemma is_fresh_niter : forall {d} (c : base_ucom d) q i,
+  (i > 0)%nat -> is_fresh q c -> is_fresh q (niter i c).
+Proof.
+  intros.
+  destruct i; try lia.
+  induction i. 
+  simpl. assumption.
+  replace (niter (S (S i)) c) with (niter (S i) c ; c) by reflexivity. 
+  constructor; try assumption.
+  apply IHi. lia.
+Qed.
+
 (** Padding lemmas to ease composition **)
 
 (* General qubit re-labeling function. *)
@@ -377,6 +451,42 @@ Proof.
   intros.
   induction H; simpl; constructor; try lia.
   apply IHuc_well_typed1. apply IHuc_well_typed2.
+Qed.
+
+Lemma uc_well_typed_map_qubits : forall U dim k (c : ucom U dim),
+  uc_well_typed c -> uc_well_typed (cast (map_qubits (fun q => k + q)%nat c) (k + dim)%nat) .
+Proof.
+  intros U dim k c WT.
+  induction c; simpl; inversion WT; subst; constructor; try lia.
+  apply IHc1; auto.
+  apply IHc2; auto.
+Qed.
+
+Lemma cast_control_commute : forall d d' (c : base_ucom d) i,
+  cast (control i c) d' ≡ control i (cast c d').
+Proof.
+  intros d d' c i.
+  induction c; try dependent destruction u; try reflexivity.
+  simpl. rewrite IHc1, IHc2. reflexivity.
+Qed.
+
+Lemma cast_niter_commute : forall d d' (c : base_ucom d) i,
+  cast (niter i c) d' ≡ niter i (cast c d').
+Proof.
+  intros d d' c i.
+  induction i; simpl.
+  reflexivity.
+  destruct i; try reflexivity.
+  simpl cast. rewrite IHi. reflexivity.
+Qed.
+
+Lemma map_qubits_fresh : forall k n q (c : base_ucom n) n',
+  (q < k)%nat ->
+  is_fresh q (cast (map_qubits (fun i => k + i) c)%nat n').
+Proof.
+  intros k n q c n' Hq.
+  induction c; try dependent destruction u; simpl; constructor; 
+  try assumption; try lia.
 Qed.
                                                      
 Lemma pad_dims_r : forall {dim} (c : base_ucom dim) (k : nat),
@@ -407,24 +517,6 @@ Proof.
     gridify; reflexivity.
   - autorewrite with eval_db.
     gridify; reflexivity.
-Qed.
-
-(** n iterations of a program **)
-
-Fixpoint niter {dim} n (c : base_ucom dim) : base_ucom dim :=
-  match n with
-  | 0 => SKIP
-  | S n' => niter n' c ; c
-  end.
-
-Lemma niter_correct : forall dim (c : base_ucom dim) n,
-  (dim > 0)%nat -> uc_eval (niter n c) = n ⨉ (uc_eval c).
-Proof.
-  intros dim c n Hdim.
-  induction n; simpl.
-  apply denote_SKIP; auto.
-  rewrite IHn.
-  reflexivity.
 Qed.
 
 (** n copies of a gate in parallel **)
@@ -467,6 +559,19 @@ Proof.
   replace (n - n)%nat with O by lia.
   simpl I. rewrite kron_1_r.
   reflexivity.
+Qed.
+
+Lemma npar_WT : forall n U, (n > 0)%nat -> uc_well_typed (npar n U).
+Proof.
+  assert (H: forall dim n U, (0 < dim)%nat -> (n <= dim)%nat -> 
+    uc_well_typed (npar' dim n U)).
+  { intros dim n U Hdim Hn.
+    induction n; simpl. apply uc_well_typed_ID. auto. 
+    constructor. apply IHn. lia.
+    constructor. lia. }
+  intros.
+  unfold npar.
+  apply H; auto.
 Qed.
 
 (* Common use case: *)

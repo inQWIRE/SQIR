@@ -41,6 +41,7 @@ Definition of the SQIR language.
 - src/NDSem.v : Non-deterministic semantics for general SQIR programs.
 - src/ClassicalStates.v : Utilities for describing classical states.
 - src/UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
+- src/Equivalences.v : Verified circuit equivalences for peephole optimizations.
 
 We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which we have linked as a git submodule in the externals directory.
 
@@ -61,7 +62,6 @@ Examples of verifying correctness properties of simple SQIR programs.
 Verified transformations of SQIR programs.
 
 - Utilities
-  - src/Equivalences.v : Verified circuit equivalences for peephole optimizations.
   - src/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs.
   - src/RzQGateSet.v : Fixed gate set used in our optimizer.
 

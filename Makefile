@@ -66,7 +66,7 @@ SQIR/examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/
 
 # Built by 'make mapper'
 
-VOQC/src/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(SQIR)/UnitarySem.vo $(VOQC)/Equivalences.vo
+VOQC/src/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(SQIR)/UnitarySem.vo $(SQIR)/Equivalences.vo
 	coqc $(COQ_OPTS) $(VOQC)/SimpleMapping.v
 
 VOQC/src/MappingExamples.vo: $(VOQC)/SimpleMapping.vo
@@ -74,22 +74,19 @@ VOQC/src/MappingExamples.vo: $(VOQC)/SimpleMapping.vo
 
 # Built by 'make optimizer'
 
-VOQC/src/Equivalences.vo: $(VOQC)/Equivalences.v $(SQIR)/UnitarySem.vo
-	coqc $(COQ_OPTS) $(VOQC)/Equivalences.v
-
-VOQC/src/GateCancellation.vo: $(VOQC)/GateCancellation.v $(VOQC)/Equivalences.vo $(VOQC)/RzQGateSet.vo
+VOQC/src/GateCancellation.vo: $(VOQC)/GateCancellation.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/GateCancellation.v
 
 VOQC/src/GateSet.vo: $(VOQC)/GateSet.v $(SQIR)/UnitarySem.vo
 	coqc $(COQ_OPTS) $(VOQC)/GateSet.v
 
-VOQC/src/HadamardReduction.vo: $(VOQC)/HadamardReduction.v $(VOQC)/Equivalences.vo $(VOQC)/RzQGateSet.vo
+VOQC/src/HadamardReduction.vo: $(VOQC)/HadamardReduction.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/HadamardReduction.v
 
-VOQC/src/ListRepresentation.vo: $(VOQC)/ListRepresentation.v $(VOQC)/GateSet.vo $(QWIRE)/Proportional.vo $(VOQC)/Equivalences.vo $(SQIR)/DensitySem.vo
+VOQC/src/ListRepresentation.vo: $(VOQC)/ListRepresentation.v $(VOQC)/GateSet.vo $(QWIRE)/Proportional.vo $(SQIR)/Equivalences.vo $(SQIR)/DensitySem.vo
 	coqc $(COQ_OPTS) $(VOQC)/ListRepresentation.v
 
-VOQC/src/NotPropagation.vo: $(VOQC)/NotPropagation.v $(VOQC)/Equivalences.vo $(VOQC)/RzQGateSet.vo
+VOQC/src/NotPropagation.vo: $(VOQC)/NotPropagation.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/NotPropagation.v
 
 VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/GateCancellation.vo $(VOQC)/RotationMerging.vo
@@ -98,7 +95,7 @@ VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/Hadam
 VOQC/src/RzQGateSet.vo: $(VOQC)/RzQGateSet.v $(VOQC)/ListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/RzQGateSet.v
 
-VOQC/src/RotationMerging.vo: $(VOQC)/RotationMerging.v $(VOQC)/RzQGateSet.vo $(SQIR)/ClassicalStates.vo
+VOQC/src/RotationMerging.vo: $(VOQC)/RotationMerging.v $(VOQC)/RzQGateSet.vo $(SQIR)/UnitaryOps.vo
 	coqc $(COQ_OPTS) $(VOQC)/RotationMerging.v
 
 # Misc. files built by 'make all'

@@ -176,58 +176,128 @@ Proof.
         simpl in *; bdestruct (x =? (z + z)); try lia; try lca.
 Qed.
 
+Fixpoint incr_bin (l : list bool) :=
+  match l with
+  | []        => [true]
+  | false :: t => true :: t
+  | true :: t  => false :: (incr_bin t)
+  end.
 
-(*
-Fixpoint nat_to_funbool (n : nat) 
+Fixpoint nat_to_binlist' n :=
+  match n with
+  | O    => []
+  | S n' => incr_bin (nat_to_binlist' n')
+  end.
+Definition nat_to_binlist len n := 
+  let l := nat_to_binlist' n in
+  l ++ (repeat false (len - length l)).
 
-Lemma f_to_vec_basis :
-  basis_vector (2^n) k = f_to_vec 0 n funify (lookup (nat_to_bin k)).
- *)
+Fixpoint list_to_funbool len (l : list bool) : nat -> bool :=
+  match l with
+  | []    => fun _ => false
+  | h :: t => update (list_to_funbool (len - 1)%nat t) (len - 1) h
+  end.
 
-Lemma funbool_update_oob : forall f dim b n, dim <= n ->
-  funbool_to_nat dim (update f n b) = funbool_to_nat dim f.
+Definition nat_to_funbool len n : nat -> bool :=
+  list_to_funbool len (nat_to_binlist len n).
+
+Lemma binlist_to_nat_append : forall l1 l2,
+  binlist_to_nat (l1 ++ l2) = 
+    (binlist_to_nat l1 +  2 ^ (length l1) * binlist_to_nat l2)%nat.
+Proof. intros l1 l2. induction l1; simpl; lia. Qed.
+
+Lemma binlist_to_nat_false : forall n, binlist_to_nat (repeat false n) = O.
+Proof. induction n; simpl; lia. Qed.
+
+Lemma nat_to_binlist_eq_nat_to_binlist' : forall len n, 
+  binlist_to_nat (nat_to_binlist len n) = binlist_to_nat (nat_to_binlist' n).
+Proof.
+  intros len n.
+  unfold nat_to_binlist. 
+  rewrite binlist_to_nat_append.
+  rewrite binlist_to_nat_false. 
+  lia.
+Qed.
+
+Lemma nat_to_binlist_inverse : forall len n,
+  binlist_to_nat (nat_to_binlist len n) = n.
+Proof.
+  intros len n.
+  rewrite nat_to_binlist_eq_nat_to_binlist'.
+  induction n; simpl.
+  reflexivity.
+  assert (H : forall l, binlist_to_nat (incr_bin l) = S (binlist_to_nat l)).
+  { clear.
+    induction l; simpl.
+    reflexivity.
+    destruct a; simpl; try reflexivity.
+    rewrite IHl. lia. }
+  rewrite H, IHn.
+  reflexivity.
+Qed.
+
+Lemma nat_to_binlist_length : forall len n,
+  (n < 2 ^ len)%nat -> length (nat_to_binlist len n) = len.
+Proof.
+  intros len n Hlen.
+  unfold nat_to_binlist.
+  rewrite app_length, repeat_length. 
+  bdestruct (n =? 0); subst; simpl. lia.
+  assert (length (nat_to_binlist' n) <= len)%nat.
+  { (* Definitely true with the current assumptions (n > 0 /\ n < 2 ^ len), 
+       but I'm stuck on the proof -KH *)
+     admit. }
+  lia.
+Admitted.
+
+
+Lemma funbool_to_list_update_oob : forall f dim b n, (dim <= n)%nat ->
+  funbool_to_list dim (update f n b) = funbool_to_list dim f.
 Proof.
   intros.
   induction dim; trivial.
-  unfold funbool_to_nat.
   simpl.
-  unfold funbool_to_nat in IHdim.
   rewrite IHdim by lia.
   unfold update.
-  bdestruct (dim =? n); lia.
+  bdestruct (dim =? n); try lia.
+  reflexivity.
 Qed.
 
-(* Should this be constructive? Yes.
-   Is it. No. (Well, technically yes.) Maybe later. *)
-Lemma exists_nat_to_funbool : forall k dim, k < 2^dim -> exists f, k = funbool_to_nat dim f.
+Lemma list_to_funbool_inverse : forall len l,
+  length l = len ->
+  funbool_to_list len (list_to_funbool len l) = l.
+Proof.
+  intros len l.
+  generalize dependent len.
+  induction l; intros len Hlen.
+  simpl in Hlen; rewrite <- Hlen.
+  simpl. reflexivity.
+  simpl in Hlen; rewrite <- Hlen.
+  simpl.
+  replace (length l - 0)%nat with (length l) by lia.
+  rewrite update_index_eq.
+  rewrite funbool_to_list_update_oob by lia.
+  rewrite IHl; reflexivity.
+Qed.
+
+Lemma nat_to_funbool_inverse : forall len n, 
+  (n < 2 ^ len)%nat -> funbool_to_nat len (nat_to_funbool len n) = n.
 Proof.
   intros.
-  gen k.
-  induction dim.
-  - exists (fun _ => false). unfold funbool_to_nat. simpl in *. lia.
-  - intros.
-    unfold funbool_to_nat. simpl in *.
-    destruct (IHdim (k/2)) as [f]. 
-    apply Nat.div_lt_upper_bound; lia.
-    specialize (Nat.div_mod k 2) as DM.
-    rewrite <- Nat.bit0_mod in DM.
-    destruct (Nat.testbit k 0).
-    + exists (update f dim true).
-      replace (binlist_to_nat (funbool_to_list dim (update f dim true))) with
-        (funbool_to_nat dim (update f dim true)) by reflexivity.
-      rewrite funbool_update_oob by lia.
-      rewrite <- H0.
-      unfold update.
-      rewrite Nat.eqb_refl.
-      simpl in *. lia.
-    + exists (update f dim false).
-      replace (binlist_to_nat (funbool_to_list dim (update f dim false))) with
-        (funbool_to_nat dim (update f dim false)) by reflexivity.
-      rewrite funbool_update_oob by lia.
-      rewrite <- H0.
-      unfold update.
-      rewrite Nat.eqb_refl.
-      simpl in *. lia.
+  unfold nat_to_funbool, funbool_to_nat.
+  rewrite list_to_funbool_inverse.
+  apply nat_to_binlist_inverse.
+  apply nat_to_binlist_length.
+  assumption.
+Qed.
+
+(* Another way of converting between basis_vector and f_to_vec *)
+Lemma basis_f_to_vec_alt : forall len n, (n < 2 ^ len)%nat -> 
+  basis_vector (2 ^ len) n = f_to_vec 0 len (nat_to_funbool len n).
+Proof.
+  intros.
+  rewrite basis_f_to_vec.
+  rewrite nat_to_funbool_inverse; auto.
 Qed.
 
 Lemma equal_on_basis_states_implies_equal : forall {dim} (A B : Square (2 ^ dim)),
@@ -239,12 +309,8 @@ Proof.
   intros dim A B WFA WFB H.
   apply equal_on_basis_vectors_implies_equal; trivial.
   intros k Lk.
-  destruct (exists_nat_to_funbool k dim) as [f]; trivial.
-  rewrite H0.
-  rewrite <- basis_f_to_vec.
-  apply H.
+  rewrite basis_f_to_vec_alt; auto.
 Qed.
-
 
 Lemma f_to_vec_update : forall (base n : nat) (f : nat -> bool) (i : nat) (b : bool),
   (i < base \/ base + n <= i)%nat ->
@@ -358,6 +424,27 @@ Proof.
     all: repeat rewrite Mmult_assoc. 
     all: autorewrite with ket_db; reflexivity.
 Qed.    
+
+Local Transparent SWAP.
+Lemma f_to_vec_SWAP : forall (n i j : nat) (f : nat -> bool),
+  i < n -> j < n -> i <> j ->
+  uc_eval (SWAP i j) × (f_to_vec 0 n f) = f_to_vec 0 n (update (update f j (f i)) i (f j)).
+Proof.
+  intros n i j f ? ? ?.
+  unfold SWAP; simpl.
+  repeat rewrite Mmult_assoc.
+  rewrite 3 f_to_vec_CNOT by auto.
+  repeat rewrite update_index_eq.
+  repeat rewrite update_index_neq by lia.
+  repeat rewrite update_index_eq.
+  replace ((f j ⊕ f i) ⊕ (f i ⊕ (f j ⊕ f i))) with (f i).
+  replace (f i ⊕ (f j ⊕ f i)) with (f j).
+  rewrite update_twice_neq by auto.
+  rewrite update_twice_eq.
+  reflexivity.
+  all: destruct (f i); destruct (f j); auto.
+Qed.
+Local Opaque SWAP.
                                   
 Definition b2R (b : bool) : R := if b then 1%R else 0%R.
 Local Coercion b2R : bool >-> R.
@@ -426,6 +513,35 @@ Local Close Scope R_scope.
 (* Projector onto the space where qubit q is in classical state b. *)
 Definition proj q dim (b : bool) := @pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†).
 
+Lemma WF_proj : forall q dim b, WF_Matrix (proj q dim b).
+Proof. intros. unfold proj, pad. bdestruct_all; destruct b; auto with wf_db. Qed.
+Hint Resolve WF_proj : wf_db.
+
+Lemma f_to_vec_proj_1 : forall f q n b,
+  q < n -> f q = b ->
+  proj q n b × (f_to_vec 0 n f) = f_to_vec 0 n f.
+Proof.
+  intros f q n b ? ?.
+  rewrite (f_to_vec_split 0 n q) by lia. 
+  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
+  unfold proj, pad.
+  gridify. 
+  do 2 (apply f_equal2; try reflexivity). 
+  destruct (f q); solve_matrix.
+Qed.
+
+Lemma f_to_vec_proj_2 : forall f q n b,
+  q < n -> f q <> b ->
+  proj q n b × (f_to_vec 0 n f) = Zero.
+Proof.
+  intros f q n b ? H.
+  rewrite (f_to_vec_split 0 n q) by lia. 
+  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
+  unfold proj, pad.
+  gridify. 
+  destruct (f q); destruct b; try easy; lma.
+Qed.
+
 Lemma proj_commutes_1q_gate : forall dim u q n b,
   q <> n ->
   proj q dim b × ueval_r dim n u = ueval_r dim n u × proj q dim b. 
@@ -438,8 +554,7 @@ Proof.
 Qed.
 
 Lemma proj_commutes_2q_gate : forall dim q n1 n2 b,
-  q <> n1 ->
-  q <> n2 ->
+  q <> n1 -> q <> n2 ->
   proj q dim b × ueval_cnot dim n1 n2 = ueval_cnot dim n1 n2 × proj q dim b. 
 Proof.
   intros dim q n1 n2 b neq1 neq2.
@@ -474,31 +589,6 @@ Proof.
   unfold proj, pad.
   gridify.
   destruct b1; destruct b2; try contradiction; Qsimpl; reflexivity.
-Qed.
-
-Lemma f_to_vec_proj_1 : forall f q n b,
-  (q < n)%nat -> f q = b ->
-  proj q n b × (f_to_vec 0 n f) = f_to_vec 0 n f.
-Proof.
-  intros f q n b ? ?.
-  rewrite (f_to_vec_split 0 n q) by lia. 
-  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
-  unfold proj, pad.
-  gridify. 
-  do 2 (apply f_equal2; try reflexivity). 
-  destruct (f q); solve_matrix.
-Qed.
-
-Lemma f_to_vec_proj_2 : forall f q n b,
-  (q < n)%nat -> f q <> b ->
-  proj q n b × (f_to_vec 0 n f) = Zero.
-Proof.
-  intros f q n b ? H.
-  rewrite (f_to_vec_split 0 n q) by lia. 
-  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
-  unfold proj, pad.
-  gridify. 
-  destruct (f q); destruct b; try easy; lma.
 Qed.
 
 Lemma proj_X : forall dim f q n,
