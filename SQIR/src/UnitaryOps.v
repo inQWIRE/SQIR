@@ -71,6 +71,65 @@ Fixpoint control {dim} q (c : base_ucom dim) : base_ucom dim :=
   | _ => SKIP
   end.
 
+(* Move to: Dirac.v *)
+(* Lemmas 3 and 4 may not be appropriate for ket db since they don't operate on kets. *)
+(* For Q_db? *)
+Lemma ket0_phase : forall ϕ, phase_shift ϕ × ket 0 = ket 0.
+Proof. intros; solve_matrix. Qed.
+
+Lemma ket1_phase : forall ϕ, phase_shift ϕ × ket 1 = Cexp ϕ .* ket 1.
+Proof. intros; solve_matrix. Qed.
+
+Lemma bra0_phase : forall ϕ, bra 0 × phase_shift ϕ = bra 0.
+Proof. intros; solve_matrix. Qed.
+
+Lemma bra1_phase : forall ϕ, bra 1 × phase_shift ϕ = Cexp ϕ .* bra 1.
+Proof. intros; solve_matrix. Qed.
+
+Hint Rewrite ket0_phase ket1_phase bra0_phase bra1_phase : ket_db.
+
+Lemma WF_bra : forall x, WF_Matrix (bra x).
+Proof. intros []; show_wf. Qed.
+
+Lemma WF_ket : forall x, WF_Matrix (ket x).
+Proof. intros []; show_wf. Qed.
+
+Hint Resolve WF_bra WF_ket : wf_db.
+
+Lemma braket_same : forall x, bra x × ket x = I 1.
+Proof. destruct x; solve_matrix. Qed.
+
+Lemma braket_diff : forall x y, (x + y = 1)%nat -> bra x × ket y = Zero.
+Proof. intros [] [] H; try lia; solve_matrix. Qed.
+
+Lemma braketbra_same : forall x y, bra x × (ket x × bra y) = bra y. 
+Proof. intros. rewrite <- Mmult_assoc, braket_same; Msimpl; easy. Qed.
+
+Lemma braketbra_diff : forall x y z, (x + y = 1)%nat -> bra x × (ket y × bra z) = Zero. 
+Proof. intros. rewrite <- Mmult_assoc, braket_diff; Msimpl; easy. Qed.
+
+Hint Rewrite braket_same braket_diff braketbra_same braketbra_diff using lia : ket_db.
+
+Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : CR_db.
+
+(* Improved group_Cexp based on group_radicals *)
+Ltac group_Cexp :=
+  repeat rewrite <- Cexp_neg;
+  repeat match goal  with
+  | _ => rewrite <- Cexp_add
+  | _ => rewrite <- Copp_mult_distr_l
+  | _ => rewrite <- Copp_mult_distr_r
+  | |- context [ ?x * ?y ] => tryif has_term Cexp x then fail 
+                            else (has_term Cexp y; rewrite (Cmult_comm x y)) 
+  | |- context [ ?x * ?y * ?z ] =>
+    tryif has_term Cexp y then fail 
+    else (has_term Cexp x; has_term Cexp z; rewrite <- (Cmult_assoc x y z)) 
+  | |- context [ ?x * (?y * ?z) ] => 
+    has_term Cexp x; has_term Cexp y; rewrite (Cmult_assoc x y z)
+  end.    
+
+Hint Rewrite <- Copp_plus_distr : C_db.
+
 Inductive is_fresh {U dim} : nat -> ucom U dim -> Prop :=
   | fresh_seq  : forall q c1 c2, is_fresh q c1 -> is_fresh q c2 -> is_fresh q (c1; c2)
   | fresh_app1 : forall q u n, q <> n -> is_fresh q (uapp1 u n)
@@ -102,83 +161,97 @@ Proof.
   autorewrite with eval_db.
   gridify. (* slow *)
   all: clear.
-  all: repeat rewrite <- Mmult_assoc. 
-  all: replace (∣1⟩ × ∣1⟩† × ∣1⟩ × ∣1⟩†) with (∣1⟩ × ∣1⟩†) by solve_matrix;
-       replace (∣1⟩ × ∣1⟩† × ∣0⟩ × ∣0⟩†) with (@Zero 2 2) by solve_matrix;
-       replace (∣0⟩ × ∣0⟩† × ∣1⟩ × ∣1⟩†) with (@Zero 2 2) by solve_matrix;
-       replace (∣0⟩ × ∣0⟩† × ∣0⟩ × ∣0⟩†) with (∣0⟩ × ∣0⟩†) by solve_matrix.
-  all: Msimpl_light.
-  all: replace (∣1⟩ × ∣1⟩† × phase_shift ((λ + ϕ) / 2)) with (Cexp ((λ + ϕ) / 2) .* (∣1⟩ × ∣1⟩†)) by solve_matrix.
-  all: replace (∣0⟩ × ∣0⟩† × phase_shift ((λ + ϕ) / 2)) with (∣0⟩ × ∣0⟩†) by solve_matrix.
-  rewrite Mscale_kron_dist_r, 2 Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-  2: rewrite Mscale_kron_dist_r, <- 2 Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+  all: autorewrite with M_db_light ket_db.
   all: rewrite Mplus_comm;
        repeat (apply f_equal2; try reflexivity).
   (* A little messy because we need to apply trig identities; 
      goal #1 = goal #3 and goal #2 = goal #4 *)
-  (* 1 *)
-  solve_matrix; autorewrite with R_db C_db Cexp_db trig_db; try lca;
-  rewrite RtoC_opp; field_simplify_eq; try nonzero; group_Cexp.
-  1: rewrite Cplus_comm.
-  2: replace ((λ + - ϕ) * / 2 + ϕ)%R with ((ϕ + λ) * / 2)%R by lra;
-     repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
-  1,2: repeat rewrite <- RtoC_mult; repeat rewrite <- RtoC_plus. 
-  1,2: setoid_rewrite sin2_cos2; lca.
-  (* 2 *)
-  solve_matrix; destruct x0; try destruct x0; simpl;
+  - solve_matrix; autorewrite with R_db C_db CR_db Cexp_db trig_db; try lca;
+      field_simplify_eq; try nonzero; group_Cexp.
+    + rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy.
+    + rewrite Copp_mult_distr_l, Copp_mult_distr_r. 
+      repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
+      autorewrite with CR_db. rewrite Ropp_involutive.
+      setoid_rewrite sin2_cos2. rewrite Cmult_1_r.
+      apply f_equal; lra.
+  - rewrite <- Mscale_kron_dist_l.
+    repeat rewrite <- Mscale_kron_dist_r.
+    repeat (apply f_equal2; try reflexivity).
+    (* Note: These destructs shouldn't be necessary - weakness in destruct_m_eq'. 
+       The mat_equiv branch takes a more principled approach (see lma there, port). *)
+    solve_matrix; destruct x0; try destruct x0; simpl;
     autorewrite with R_db C_db Cexp_db trig_db; try lca;
     rewrite RtoC_opp; field_simplify_eq; try nonzero; group_Cexp;
     repeat rewrite <- Cmult_assoc. 
-  1: rewrite <- Copp_mult_distr_l, Copp_mult_distr_r, <- Cmult_plus_distr_l;
-     rewrite (Cplus_comm _ (cos _ * cos _)).
-  2: replace ((R1 + R1)%R, (R0 + R0)%R) with (RtoC 2) by lca;
-     repeat rewrite <- Cmult_assoc; 
-     rewrite (Cmult_comm (cos _)), (Cmult_assoc 2).
-  3: replace ((- (R1 + R1))%R, (- (R0 + R0))%R) with (- RtoC 2) by lca;
-     rewrite <- Copp_mult_distr_l, <- Copp_mult_distr_r, Copp_mult_distr_l;
-     repeat rewrite <- Cmult_assoc; rewrite (Cmult_assoc 2).
-  4: rewrite Cminus_unfold, Copp_mult_distr_r, <- Cmult_plus_distr_l.
-  all: repeat rewrite <- RtoC_mult; repeat rewrite <- RtoC_opp; repeat rewrite <- RtoC_plus. 
-  all: try rewrite <- sin_2a.
-  all: repeat rewrite <- Rminus_unfold; try rewrite <- cos_2a.
-  all: replace (2 * (θ * / 2 * / 2))%R with (θ * / 2)%R by lra.
-  1,2: rewrite (Rplus_comm λ ϕ); reflexivity.
-  replace ((λ - ϕ) * / 2 + (λ + ϕ) * / 2)%R with λ by lra.
-  reflexivity.
-  replace ((λ - ϕ) * / 2 + ((λ + ϕ) * / 2 + ϕ))%R with (ϕ + λ)%R by lra.
-  reflexivity.
-  (* 3 *)
-  solve_matrix; autorewrite with R_db C_db Cexp_db trig_db; try lca;
-  rewrite RtoC_opp; field_simplify_eq; try nonzero; group_Cexp.
-  1: rewrite Cplus_comm.
-  2: replace ((λ + - ϕ) * / 2 + ϕ)%R with ((ϕ + λ) * / 2)%R by lra;
-     repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
-  1,2: repeat rewrite <- RtoC_mult; repeat rewrite <- RtoC_plus. 
-  1,2: setoid_rewrite sin2_cos2; lca.
-  (* 4 *)
-  solve_matrix; destruct x; try destruct x; simpl;
+    + unfold Cminus.
+      rewrite Copp_mult_distr_r, <- Cmult_plus_distr_l. 
+      apply f_equal2; [apply f_equal; lra|].
+      autorewrite with CR_db.
+      rewrite <- Rminus_unfold, <- cos_plus.
+      apply f_equal. apply f_equal. lra.
+    + apply f_equal2; [apply f_equal; lra|].
+      apply c_proj_eq; simpl; try lra.
+      R_field_simplify.
+      rewrite <- sin_2a.
+      apply f_equal; lra.
+    + rewrite Copp_mult_distr_r.
+      apply f_equal2; [apply f_equal; lra|].
+      apply c_proj_eq; simpl; try lra.
+      R_field_simplify.
+      replace (-2)%R with (-(2))%R by lra.
+      repeat rewrite <- Ropp_mult_distr_l. 
+      apply f_equal.
+      rewrite <- sin_2a.
+      apply f_equal; lra.
+    + rewrite Copp_mult_distr_r.
+      rewrite <- Cmult_plus_distr_l.
+      apply f_equal2; [apply f_equal; lra|].
+      autorewrite with CR_db.      
+      rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus.
+      apply f_equal; apply f_equal; lra.
+  - solve_matrix; autorewrite with R_db C_db CR_db Cexp_db trig_db; try lca;
+      field_simplify_eq; try nonzero; group_Cexp.
+    + rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy.
+    + rewrite Copp_mult_distr_l, Copp_mult_distr_r. 
+      repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
+      autorewrite with CR_db. rewrite Ropp_involutive.
+      setoid_rewrite sin2_cos2. rewrite Cmult_1_r.
+      apply f_equal; lra.
+  - rewrite <- 3 Mscale_kron_dist_l.
+    repeat rewrite <- Mscale_kron_dist_r.
+    repeat (apply f_equal2; try reflexivity).
+    solve_matrix; destruct x; try destruct x; simpl;
     autorewrite with R_db C_db Cexp_db trig_db; try lca;
-    rewrite RtoC_opp; field_simplify_eq; try nonzero; group_Cexp;
+    try rewrite RtoC_opp; field_simplify_eq; try nonzero; group_Cexp;
     repeat rewrite <- Cmult_assoc. 
-  1: rewrite <- Copp_mult_distr_l, Copp_mult_distr_r, <- Cmult_plus_distr_l;
-     rewrite (Cplus_comm _ (cos _ * cos _)).
-  2: replace ((R1 + R1)%R, (R0 + R0)%R) with (RtoC 2) by lca;
-     repeat rewrite <- Cmult_assoc; 
-     rewrite (Cmult_comm (cos _)), (Cmult_assoc 2).
-  3: replace ((- (R1 + R1))%R, (- (R0 + R0))%R) with (- RtoC 2) by lca;
-     rewrite <- Copp_mult_distr_l, <- Copp_mult_distr_r, Copp_mult_distr_l;
-     repeat rewrite <- Cmult_assoc; rewrite (Cmult_assoc 2).
-  4: rewrite Cminus_unfold, Copp_mult_distr_r, <- Cmult_plus_distr_l.
-  all: repeat rewrite <- RtoC_mult; repeat rewrite <- RtoC_opp; repeat rewrite <- RtoC_plus. 
-  all: try rewrite <- sin_2a.
-  all: repeat rewrite <- Rminus_unfold; try rewrite <- cos_2a.
-  all: replace (2 * (θ * / 2 * / 2))%R with (θ * / 2)%R by lra.
-  1,2: rewrite (Rplus_comm λ ϕ); reflexivity.
-  replace ((λ - ϕ) * / 2 + (λ + ϕ) * / 2)%R with λ by lra.
-  reflexivity.
-  replace ((λ - ϕ) * / 2 + ((λ + ϕ) * / 2 + ϕ))%R with (ϕ + λ)%R by lra.
-  reflexivity.
+    + unfold Cminus.
+      rewrite Copp_mult_distr_r, <- Cmult_plus_distr_l. 
+      apply f_equal2; [apply f_equal; lra|].
+      autorewrite with CR_db.
+      rewrite <- Rminus_unfold, <- cos_plus.
+      apply f_equal. apply f_equal. lra.
+    + apply f_equal2; [apply f_equal; lra|].
+      apply c_proj_eq; simpl; try lra.
+      R_field_simplify.
+      rewrite <- sin_2a.
+      apply f_equal; lra.
+    + rewrite Copp_mult_distr_r.
+      apply f_equal2; [apply f_equal; lra|].
+      apply c_proj_eq; simpl; try lra.
+      R_field_simplify.
+      replace (-2)%R with (-(2))%R by lra.
+      repeat rewrite <- Ropp_mult_distr_l. 
+      apply f_equal.
+      rewrite <- sin_2a.
+      apply f_equal; lra.
+    + rewrite Copp_mult_distr_r.
+      rewrite <- Cmult_plus_distr_l.
+      apply f_equal2; [apply f_equal; lra|].
+      autorewrite with CR_db.      
+      rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus.
+      apply f_equal; apply f_equal; lra.
 Qed.
+
 Local Opaque CU.
 
 Lemma f_to_vec_CCX : forall (dim a b c : nat) (f : nat -> bool),

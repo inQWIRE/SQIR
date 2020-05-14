@@ -13,6 +13,9 @@ Local Close Scope R_scope.
    TODO #2: For efficiency, instead of using functions indexed by natural
             numbers, we should use vectors/arrays. *)
 
+(* update_at is the same function on lists.
+   update is also defined in SF. *)
+
 (* Update the value at one index of a boolean function. *)
 Definition update {A} (f : nat -> A) (i : nat) (x : A) :=
   fun j => if j =? i then x else f j.
@@ -21,7 +24,7 @@ Lemma update_index_eq : forall {A} (f : nat -> A) i b, (update f i b) i = b.
 Proof.
   intros. 
   unfold update.
-  replace (i =? i) with true by (symmetry; apply Nat.eqb_eq; reflexivity).
+  rewrite Nat.eqb_refl.
   reflexivity.
 Qed.
 
@@ -29,8 +32,7 @@ Lemma update_index_neq : forall {A} (f : nat -> A) i j b, i <> j -> (update f i 
 Proof.
   intros. 
   unfold update.
-  bdestruct (j =? i); try easy. 
-  contradict H0; lia.
+  rewrite eqb_neq; auto.
 Qed.
 
 Lemma update_same : forall {A} (f : nat -> A) i b,
@@ -60,8 +62,7 @@ Proof.
   apply functional_extensionality.
   intros.
   unfold update.
-  bdestruct (x =? i); bdestruct (x =? j); subst; 
-  try (contradict H; reflexivity); reflexivity.
+  bdestruct (x =? i); bdestruct (x =? j); subst; easy.
 Qed.
 
 (* Convert a boolean function to a vector; examples: 
@@ -111,7 +112,7 @@ Proof.
   bdestruct (j <? n).
   2:{ rewrite Csum_0. rewrite WFA; auto. 
       intros j'. bdestruct (j' =? j); subst; simpl; try lca.
-      rewrite WFA. lca. auto.  }
+      rewrite WFA by auto. lca. }
   erewrite Csum_unique.
   reflexivity.
   exists j.
@@ -226,6 +227,19 @@ Proof. intros l1 l2. induction l1; simpl; lia. Qed.
 Lemma binlist_to_nat_false : forall n, binlist_to_nat (repeat false n) = O.
 Proof. induction n; simpl; lia. Qed.
 
+Lemma binlist_to_nat_true : forall n, binlist_to_nat (repeat true n) = 2^n - 1.
+Proof.
+  induction n; simpl; trivial.
+  rewrite IHn. clear.
+  repeat rewrite Nat.add_0_r.
+  rewrite <- Nat.add_succ_l.
+  replace (S (2 ^ n - 1)) with (1 + (2 ^ n - 1)) by easy.
+  rewrite <- le_plus_minus.
+  rewrite <- Nat.add_sub_assoc.
+  reflexivity.
+  all: induction n; simpl; try lia.
+Qed.
+
 Lemma nat_to_binlist_eq_nat_to_binlist' : forall len n, 
   binlist_to_nat (nat_to_binlist len n) = binlist_to_nat (nat_to_binlist' n).
 Proof.
@@ -253,6 +267,69 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma nat_to_binlist_corr : forall l n,
+   nat_to_binlist' n = l ->
+   binlist_to_nat l = n. (* Lemma this *)
+Proof.
+  intros.
+  rewrite <- H.
+  erewrite <- (nat_to_binlist_eq_nat_to_binlist' n n).
+  rewrite nat_to_binlist_inverse.
+  reflexivity.
+Qed.
+
+Lemma incr_bin_true_length : forall l,
+  Forall (fun b => b = true) l ->
+  length (incr_bin l) = S (length l).
+Proof.
+  intros.
+  induction l; trivial.
+  - inversion H; subst.
+    simpl in *.
+    rewrite IHl; easy.
+Qed.
+
+Lemma incr_bin_false_length : forall l,
+  Exists (fun b => b <> true) l ->
+  length (incr_bin l) = length l.
+Proof.
+  intros.
+  induction l; inversion H; subst.
+  - destruct a; simpl; easy.
+  - destruct a; simpl; trivial.
+    rewrite IHl; easy.
+Qed.
+
+Lemma all_true_repeat : forall l,
+  Forall (fun b : bool => b = true) l ->
+  l = repeat true (length l).
+Proof.
+  intros.
+  induction l; simpl; trivial.
+  inversion H; subst.
+  rewrite <- IHl; easy.
+Qed.  
+  
+Lemma nat_to_binlist_length' : forall k n,
+    n < 2 ^ k -> length (nat_to_binlist' n) <= k.
+Proof.
+  intros.
+  induction n; simpl; try lia.
+  destruct (Forall_Exists_dec (fun b => b = true) (fun b => bool_dec b true)
+                              (nat_to_binlist' n)) as [ALL | NALL].
+  - rewrite incr_bin_true_length; trivial.
+    apply le_lt_eq_dec in IHn; [| lia].
+    destruct IHn; try lia.
+    exfalso.
+    apply all_true_repeat in ALL.
+    apply nat_to_binlist_corr in ALL.
+    rewrite binlist_to_nat_true in ALL.
+    rewrite e in ALL.
+    lia.
+  - rewrite incr_bin_false_length; trivial.
+    apply IHn; lia.
+Qed.
+
 Lemma nat_to_binlist_length : forall len n,
   (n < 2 ^ len)%nat -> length (nat_to_binlist len n) = len.
 Proof.
@@ -260,13 +337,9 @@ Proof.
   unfold nat_to_binlist.
   rewrite app_length, repeat_length. 
   bdestruct (n =? 0); subst; simpl. lia.
-  assert (length (nat_to_binlist' n) <= len)%nat.
-  { (* Definitely true with the current assumptions (n > 0 /\ n < 2 ^ len), 
-       but I'm stuck on the proof -KH *)
-     admit. }
+  apply nat_to_binlist_length' in Hlen.
   lia.
-Admitted.
-
+Qed.
 
 Lemma funbool_to_list_update_oob : forall f dim b n, (dim <= n)%nat ->
   funbool_to_list dim (update f n b) = funbool_to_list dim f.
@@ -392,6 +465,13 @@ Proof.
   reflexivity.
 Qed.
 
+(* Move to Dirac.v *)
+Lemma ket2bra : forall n, (ket n) † = bra n. 
+Proof. destruct n; reflexivity. Qed.
+Hint Rewrite ket2bra : ket_db.
+Hint Rewrite Mmult_1_l Mmult_1_r kron_1_l kron_1_r Mscale_0_l Mscale_1_l Mplus_0_l Mplus_0_r using (auto with wf_db) : ket_db.
+Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r : ket_db.
+
 Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
   i < n ->
   j < n ->
@@ -416,14 +496,7 @@ Proof.
     restore_dims.
     repeat rewrite <- kron_assoc.
     destruct (f i); destruct (f (i + 1 + d)); simpl; Msimpl.
-    all: repeat rewrite Mmult_assoc. 
-    all: replace ((∣1⟩)† × ∣ 1 ⟩) with (I 1) by solve_matrix. 
-    all: replace ((∣0⟩)† × ∣ 0 ⟩) with (I 1) by solve_matrix.  
-    all: replace ((∣1⟩)† × ∣ 0 ⟩) with (@Zero 1 1) by solve_matrix.
-    all: replace ((∣0⟩)† × ∣ 1 ⟩) with (@Zero 1 1) by solve_matrix.
-    all: Msimpl_light; try reflexivity.
-    rewrite X1_spec; reflexivity.
-    rewrite X0_spec; reflexivity.
+    all: autorewrite with ket_db; reflexivity.
   - repeat rewrite (f_to_vec_split 0 (j + (1 + d + 1) + x0) j); try lia.
     rewrite f_to_vec_update.
     2: right; lia.
@@ -439,13 +512,7 @@ Proof.
     repeat rewrite <- kron_assoc.
     destruct (f j); destruct (f (j + 1 + d)); simpl; Msimpl.
     all: repeat rewrite Mmult_assoc. 
-    all: replace ((∣1⟩)† × ∣ 1 ⟩) with (I 1) by solve_matrix. 
-    all: replace ((∣0⟩)† × ∣ 0 ⟩) with (I 1) by solve_matrix.  
-    all: replace ((∣1⟩)† × ∣ 0 ⟩) with (@Zero 1 1) by solve_matrix.
-    all: replace ((∣0⟩)† × ∣ 1 ⟩) with (@Zero 1 1) by solve_matrix.
-    all: Msimpl_light; try reflexivity.
-    rewrite X1_spec; reflexivity.
-    rewrite X0_spec; reflexivity.
+    all: autorewrite with ket_db; reflexivity.
 Qed.    
 
 Local Transparent SWAP.
