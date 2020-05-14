@@ -10,6 +10,8 @@ These benchmarks were taken from the https://github.com/njross/optimizer and con
 
 We have made some modifications to the programs in Nam's directory. In particular, some programs in the QFT_and_Adders directory originally contained ancilla initialization and termination; PyZX removes these during conversion to OpenQASM. PyZX also converts z-axis rotation angles to the form 'x * pi' by rounding. For the PF benchmarks, we translate these rz gates to our rzq gates in the parser; for the QFT programs we have translated the rz gates to rzq gates in advance. Finally, the gf2^X family or circuits and csum_mux_9 have been lightly edited to remove additional H gates that caused inconsistencies in the original gate count.
 
+For convenience, the file 'results.zip' contains the results of running VOQC, PyZX, Qiskit, and tket on the majority of benchmarks in the Arithmetic_and_Toffoli directory.
+
 TODO:
 * Parse full OpenQASM programs (including initialization/measurement) and optimize only the unitary portions.
 * Improve accuracy of translation of PF benchmarks. In particular, we should use the exact rational angle rather than rounding from floats.

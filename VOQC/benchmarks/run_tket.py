@@ -5,7 +5,7 @@
 # the benchmarks were very slow to compile.
 
 import pytket
-from pytket.qasm import circuit_from_qasm
+from pytket.qasm import circuit_from_qasm, circuit_to_qasm
 from pytket.passes import FullPeepholeOptimise
 from pytket.circuit import OpType
 import os
@@ -83,6 +83,7 @@ def run(d,fname):
         num_gates_after = circ.n_gates
         num_CNOTs_after = circ.n_gates_of_type(OpType.CX)
         print("Final:\t Total %d, CNOT %d\n" % (num_gates_after, num_CNOTs_after))
+        circuit_to_qasm(circ, fname.split(".")[0] + "_tket.qasm")
 
         f.write("%s,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, num_CNOTs_before, num_gates_after, num_CNOTs_after, stop - start))
 

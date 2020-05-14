@@ -31,6 +31,8 @@ def run(d, fname):
         num_gates_after = len(new_circ.gates)
         cnot_count_after = new_circ.twoqubitcount()
         t_count_after = zx.tcount(new_circ)
+        foo = open(fname.split(".")[0] + "_pyzx.qasm", "w")
+        foo.write(new_circ.to_qasm())
         print("Final:\t Total %d, CNOT %d, T %d\n" % (num_gates_after, cnot_count_after, t_count_after))
 
         f.write("%s,%d,%d,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, cnot_count_before, t_count_before, num_gates_after, cnot_count_after, t_count_after, stop - start))
