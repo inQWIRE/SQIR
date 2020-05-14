@@ -83,13 +83,23 @@ Proof.
   apply WF_kron; try lia; try assumption.
   destruct (f (base + n)%nat); auto with wf_db.
 Qed.
-
 Hint Resolve f_to_vec_WF : wf_db.
 
 (* Lemmas about basis vectors *)
 
 Definition basis_vector (n k : nat) : Vector n :=
   fun i j => if (i =? k) && (j =? 0) then C1 else C0.
+
+Lemma basis_vector_WF : forall n i, (i < n)%nat -> WF_Matrix (basis_vector n i).
+Proof.
+  unfold basis_vector, WF_Matrix.
+  intros.
+  bdestruct (n <=? x)%nat; bdestruct (1 <=? y)%nat; try lia.
+  bdestructΩ (x =? i)%nat. reflexivity.
+  bdestructΩ (x =? i)%nat. reflexivity.
+  bdestructΩ (y =? 0)%nat. rewrite andb_false_r. reflexivity.
+Qed.
+Hint Resolve basis_vector_WF : wf_db.
 
 Lemma matrix_times_basis_eq : forall m n (A : Matrix m n) i j,
   WF_Matrix A ->
@@ -140,6 +150,14 @@ Fixpoint funbool_to_list (len : nat) (f : nat -> bool) :=
 
 Definition funbool_to_nat (len : nat) (f : nat -> bool) :=
   binlist_to_nat (funbool_to_list len f).
+
+Lemma funbool_to_nat_bound : forall n f, (funbool_to_nat n f < 2 ^ n)%nat.
+Proof.
+  intros n f.
+  unfold funbool_to_nat.
+  induction n; simpl. lia.
+  destruct (f n); simpl; lia.
+Qed.
 
 Lemma basis_f_to_vec : forall n f,
   f_to_vec 0 n f = basis_vector (2^n) (funbool_to_nat n f).

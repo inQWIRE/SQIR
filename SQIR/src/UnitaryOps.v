@@ -19,6 +19,14 @@ Fixpoint invert {dim} (c : base_ucom dim) : base_ucom dim :=
   | _ => SKIP
   end.
 
+Lemma uc_well_typed_invert : forall (dim : nat) (c : base_ucom dim),
+  uc_well_typed c -> uc_well_typed (invert c).
+Proof.
+  intros dim c WT.
+  induction c; try dependent destruction u; 
+  inversion WT; subst; constructor; auto.
+Qed.
+
 Lemma invert_correct : forall (dim : nat) (c : base_ucom dim),
   (uc_eval c)† = uc_eval (invert c).
 Proof.
