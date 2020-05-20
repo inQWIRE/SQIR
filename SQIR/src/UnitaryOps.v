@@ -1,5 +1,5 @@
 Require Export UnitarySem.
-Require Export ClassicalStates.
+Require Export VectorStates.
 
 (* This file contains useful operations over unitary programs including:
    - inversion
@@ -256,8 +256,8 @@ Local Opaque CU.
 
 Lemma f_to_vec_CCX : forall (dim a b c : nat) (f : nat -> bool),
   (a < dim)%nat -> (b < dim)%nat -> (c < dim)%nat -> a <> b -> a <> c -> b <> c ->
- (uc_eval (CCX a b c)) × (f_to_vec 0 dim f) 
-      = f_to_vec 0 dim (update f c (f c ⊕ (f a && f b))).
+ (uc_eval (CCX a b c)) × (f_to_vec dim f) 
+      = f_to_vec dim (update f c (f c ⊕ (f a && f b))).
 Proof. 
   intros.
   unfold CCX, T, TDAG.
@@ -304,14 +304,14 @@ Lemma CCX_correct : forall (dim : nat) a b c,
   rewrite proj_commutes_2q_gate by auto.
   rewrite Mmult_assoc.
   destruct (f a) eqn:fa. 
-  - rewrite (f_to_vec_proj_1 _ _ _ true); auto. 
-    rewrite (f_to_vec_proj_2 _ _ _ false); auto. 
+  - rewrite (f_to_vec_proj_eq _ _ _ true); auto. 
+    rewrite (f_to_vec_proj_neq _ _ _ false); auto. 
     2: rewrite fa; easy.
     setoid_rewrite f_to_vec_CNOT; auto.
     rewrite andb_true_l.
     Msimpl_light; reflexivity.
-  - rewrite (f_to_vec_proj_1 _ _ _ false); auto. 
-    rewrite (f_to_vec_proj_2 _ _ _ true); auto. 
+  - rewrite (f_to_vec_proj_eq _ _ _ false); auto. 
+    rewrite (f_to_vec_proj_neq _ _ _ true); auto. 
     2: rewrite fa; easy.
     rewrite andb_false_l, xorb_false_r.
     rewrite update_same by auto.

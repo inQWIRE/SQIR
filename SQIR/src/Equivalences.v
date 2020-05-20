@@ -1,4 +1,4 @@
-Require Export ClassicalStates.
+Require Export VectorStates.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.

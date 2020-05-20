@@ -39,7 +39,7 @@ Definition of the SQIR language.
 - src/UnitarySem.v : Semantics for unitary SQIR programs.
 - src/DensitySem.v : Density matrix semantics for general SQIR programs.
 - src/NDSem.v : Non-deterministic semantics for general SQIR programs.
-- src/ClassicalStates.v : Utilities for describing classical states.
+- src/VectorStates.v : Utilities for describing states as vectors.
 - src/UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
 - src/Equivalences.v : Verified circuit equivalences for peephole optimizations.
 

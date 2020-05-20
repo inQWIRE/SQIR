@@ -177,8 +177,8 @@ Lemma compile'_correct : forall dim (b : bexp) (f : nat -> bool) (i j : nat),
   (i < j)%nat ->
   (j + (num_ancillae b) < dim + 1)%nat ->
   (forall k, (k > i)%nat -> f k = false) ->
-  (uc_eval (@compile' dim b i j)) × (f_to_vec 0 dim f) 
-    = f_to_vec 0 dim (update f i ((f i) ⊕ (interpret_bexp b f))).
+  (uc_eval (@compile' dim b i j)) × (f_to_vec dim f) 
+    = f_to_vec dim (update f i ((f i) ⊕ (interpret_bexp b f))).
 Proof.
   intros.
   generalize dependent f.
@@ -278,8 +278,8 @@ Qed.
 Lemma compile_correct : forall (b : bexp) (f : nat -> bool) (r : bool), 
   let in_s := fun i => if i <? (num_inputs b) then f i else false in
   let out_s := update in_s (num_inputs b) (interpret_bexp b f) in
-  (@uc_eval (b_dim b) (compile b)) × f_to_vec 0 (b_dim b) in_s
-    = f_to_vec 0 (b_dim b) out_s.
+  (@uc_eval (b_dim b) (compile b)) × f_to_vec (b_dim b) in_s
+    = f_to_vec (b_dim b) out_s.
 Proof.
   intros.
   unfold compile, out_s.

@@ -12,8 +12,8 @@ KNOWNFILES := Makefile _CoqProject
 .DEFAULT_GOAL := invoke-coqmakefile
 
 CoqMakefile: Makefile _CoqProject
-	git submodule init
-	git submodule update
+	#git submodule init
+	#git submodule update
 	$(COQBIN)coq_makefile -f _CoqProject -o CoqMakefile
 
 invoke-coqmakefile: CoqMakefile
@@ -34,7 +34,7 @@ COQ_OPTS := -R . Top
 
 all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
 
-examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
+examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Superdense.vo $(examples)/Teleport.vo $(examples)/QPE.vo
 
 mapper: invoke-coqmakefile $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo
 
@@ -63,6 +63,9 @@ SQIR/examples/Superdense.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(QWIR
 
 SQIR/examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/DensitySem.vo $(SQIR)/NDSem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
 	coqc $(COQ_OPTS) $(examples)/Teleport.v
+	
+SQIR/examples/QPE.vo: $(examples)/QPE.v $(SQIR)/UnitaryOps.vo
+	coqc $(COQ_OPTS) $(examples)/QPE.v
 
 # Built by 'make mapper'
 
@@ -106,7 +109,7 @@ VOQC/src/PropagateClassical.vo: $(VOQC)/PropagateClassical.v $(VOQC)/RzQGateSet.
 VOQC/src/RemoveZRotationBeforeMeasure.vo: $(VOQC)/RemoveZRotationBeforeMeasure.v $(VOQC)/RzQGateSet.vo $(SQIR)/DensitySem.vo
 	coqc $(COQ_OPTS) $(VOQC)/RemoveZRotationBeforeMeasure.v
 
-VOQC/src/BooleanCompilation.vo: $(VOQC)/BooleanCompilation.v $(SQIR)/ClassicalStates.vo $(QWIRE)/Dirac.vo
+VOQC/src/BooleanCompilation.vo: $(VOQC)/BooleanCompilation.v $(SQIR)/VectorStates.vo $(QWIRE)/Dirac.vo
 	coqc $(COQ_OPTS) $(VOQC)/BooleanCompilation.v
 
 # Using a custom clean target to remove files from subdirectories
