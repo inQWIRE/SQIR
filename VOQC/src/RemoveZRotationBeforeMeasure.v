@@ -1,6 +1,9 @@
 Require Import DensitySem.
 Require Import RzQGateSet.
 
+Module RzQProps := NonUListRepresentationProps RzQGateSet.
+Export RzQProps.
+
 Local Open Scope com_scope.
 
 (* This optimization removes z-rotations (RzQ gates) that occur immediately before measurement. *)

@@ -1,4 +1,4 @@
-open ListRepresentation
+open UnitaryListRepresentation
 
 (** val apply_H_equivalence1 :
     int -> RzQGateSet.coq_RzQ_ucom_l -> RzQGateSet.RzQGateSet.coq_RzQ_Unitary

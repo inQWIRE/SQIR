@@ -1,5 +1,4 @@
 Require Import Proportional.
-Require Import Equivalences.
 Require Export RzQGateSet.
 
 Local Close Scope C_scope.
@@ -60,91 +59,6 @@ Definition not_propagation {dim} (l : RzQ_ucom_l dim) :=
 
 (* Proofs *)
 
-Lemma H_Z_commutes : forall {dim} q,
-  [@H dim q] ++ [Z q] =l= [X q] ++ [H q].
-Proof.
-  intros. 
-  unfold uc_equiv_l, uc_equiv; simpl.
-  repeat rewrite Mmult_assoc.
-  apply f_equal2; trivial.
-  unfold Qreals.Q2R; simpl. 
-  replace (1 * / 1 * PI)%R with PI by lra. 
-  rewrite pauli_x_rotation.
-  rewrite pauli_z_rotation.
-  rewrite hadamard_rotation.
-  autorewrite with eval_db.
-  gridify.
-  do 2 (apply f_equal2; trivial).
-  solve_matrix.
-Qed.
-
-Lemma X_X_cancels : forall {dim} q,
-  q < dim -> [@X dim q] ++ [X q] =l= [].
-Proof.
-  intros. 
-  unfold uc_equiv_l, uc_equiv; simpl.
-  rewrite pauli_x_rotation.
-  autorewrite with eval_db.
-  2: lia.
-  gridify.
-  Qsimpl; reflexivity.
-Qed.
-
-Lemma Rz_X_commutes : forall {dim} q a,
-  ([@X dim q] ++ [Rz a q]) ≅l≅ ([invert_rotation a q] ++ [X q]).
-Proof.
-  intros.
-  Local Opaque Z.sub.
-  unfold uc_cong_l, uc_cong; simpl.
-  exists (Qreals.Q2R a * PI)%R.
-  rewrite pauli_x_rotation.
-  repeat rewrite phase_shift_rotation.
-  repeat rewrite Mmult_assoc.
-  rewrite <- Mscale_mult_dist_r.
-  apply f_equal2; trivial.
-  autorewrite with eval_db.
-  gridify.
-  rewrite <- Mscale_kron_dist_l.
-  rewrite <- Mscale_kron_dist_r.
-  do 2 (apply f_equal2; trivial).
-  rewrite Qreals.Q2R_minus.
-  remember (Qreals.Q2R a) as qa.
-  unfold Qreals.Q2R; simpl.
-  unfold phase_shift; solve_matrix.
-  rewrite <- Cexp_add.
-  replace (qa * PI + (2 * / 1 - qa) * PI)%R with (2 * PI)%R by lra.
-  rewrite Cexp_2PI. 
-  reflexivity.
-Qed.
-
-Lemma propagate_X_through_CNOT_control : forall {dim} m n,
-  [@X dim m] ++ [CNOT m n] =l= [CNOT m n] ++ [X m] ++ [X n].
-Proof.
-  intros dim m n.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  repeat rewrite Mmult_assoc.
-  apply f_equal2; trivial.
-  rewrite pauli_x_rotation.
-  autorewrite with eval_db.
-  gridify; trivial.
-  Qsimpl.
-  rewrite Mplus_comm. reflexivity.
-  Qsimpl.
-  rewrite Mplus_comm. reflexivity.
-Qed.
-
-Lemma propagate_X_through_CNOT_target : forall {dim} m n,
-  [@X dim n] ++ [CNOT m n] =l= [CNOT m n] ++ [X n].
-Proof.
-  intros dim m n.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  repeat rewrite Mmult_assoc.
-  apply f_equal2; trivial.
-  rewrite pauli_x_rotation.
-  autorewrite with eval_db.
-  gridify; Qsimpl; reflexivity.
-Qed.
-
 Lemma propagate_X_preserves_semantics : forall {dim} (l : RzQ_ucom_l dim) q n acc,
   (q < dim)%nat -> propagate_X l q n acc ≅l≅ (rev acc ++ (X q :: l)).
 Proof.
@@ -158,62 +72,76 @@ Proof.
   destruct (does_not_reference_appl q g) eqn:dnr.
   rewrite IHn; auto. simpl.
   rewrite (cons_to_app _ (_ :: l)).
-  rewrite 2 (cons_to_app _ l); repeat rewrite app_assoc.
+  rewrite 2 (cons_to_app _ l).
+  repeat rewrite app_assoc.
   apply uc_equiv_cong_l.
-  apply uc_app_congruence; try reflexivity.
-  repeat rewrite <- app_assoc.
-  apply uc_app_congruence; try reflexivity.
+  apply_app_congruence.
   symmetry; apply does_not_reference_commutes_app1. 
   simpl. apply andb_true_iff; auto.
   destruct g as [u | u | u]. 
-  - simpl in dnr. apply negb_false_iff in dnr. 
+  - apply negb_false_iff in dnr. 
     apply beq_nat_true in dnr; subst.
     dependent destruction u.
-    rewrite rev_append_rev.
-    rewrite 2 (cons_to_app _ (_ :: l)).
-    rewrite 2 (cons_to_app _ l); repeat rewrite app_assoc.
-    apply uc_equiv_cong_l.
-    apply uc_app_congruence; try reflexivity.
-    repeat rewrite <- app_assoc.
-    apply uc_app_congruence; try reflexivity.
-    apply H_Z_commutes.
-    rewrite rev_append_rev.
-    repeat rewrite (cons_to_app _ (_ :: l)).
-    repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
-    apply uc_equiv_cong_l.
-    rewrite <- (app_assoc _ [X q]).
-    rewrite X_X_cancels; auto.
-    rewrite app_nil_r; reflexivity.
-    rewrite IHn; auto. simpl.
-    repeat rewrite (cons_to_app _ (_ :: l)).
-    repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
-    rewrite <- (app_assoc _ _ [X q]).
-    rewrite <- (app_assoc _ [X q]).
-    rewrite <- Rz_X_commutes; reflexivity.    
+    + rewrite rev_append_rev.
+      rewrite 2 (cons_to_app _ (_ :: l)).
+      rewrite 2 (cons_to_app _ l); repeat rewrite app_assoc.
+      apply uc_equiv_cong_l.
+      apply_app_congruence.
+      unfold_uc_equiv_l.
+      replace (Qreals.Q2R 1 * PI)%R with PI.
+      2: unfold Qreals.Q2R; simpl; lra.
+      apply H_comm_Z.
+    + rewrite rev_append_rev.
+      repeat rewrite (cons_to_app _ (_ :: l)).
+      repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
+      apply uc_equiv_cong_l.
+      rewrite <- (app_nil_r (rev acc)) at 1.
+      apply_app_congruence.
+      unfold uc_equiv_l; simpl.
+      rewrite SKIP_id_r.
+      symmetry.
+      rewrite <- (ID_equiv_SKIP dim q) by assumption.
+      apply X_X_id.
+    + rewrite IHn; auto. simpl.
+      rewrite (cons_to_app _ (_ :: l)).
+      repeat rewrite (cons_to_app _ l).
+      apply_app_congruence_cong.
+      unfold uc_cong_l. simpl. 
+      erewrite uc_seq_cong.
+      2: { specialize (@invert_rotation_semantics dim a q) as H. 
+           simpl in H. 
+           rewrite SKIP_id_r in H. 
+           apply uc_equiv_cong. apply H. }
+      2: apply uc_equiv_cong; apply SKIP_id_r.
+      erewrite (uc_seq_cong _ _ (_ ; _)).
+      2: reflexivity.
+      2: apply uc_equiv_cong; apply SKIP_id_r.
+      symmetry. 
+      apply X_comm_Rz.   
   - dependent destruction u. 
     bdestruct (q =? n0); subst.
     rewrite (IHn _ n0); auto. simpl.
     bdestruct (n1 <? dim).
     rewrite IHn; auto. simpl.
     repeat rewrite (cons_to_app _ (_ :: l)).
-    repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
-    apply uc_equiv_cong_l; apply uc_app_congruence; try reflexivity.
-    repeat rewrite <- app_assoc.
-    apply uc_app_congruence; try reflexivity.
+    repeat rewrite (cons_to_app _ l).
+    apply uc_equiv_cong_l.
+    apply_app_congruence.
+    unfold_uc_equiv_l.
     symmetry.
-    apply propagate_X_through_CNOT_control.
+    apply X_comm_CNOT_control.
     apply uc_equiv_cong_l; unfold uc_equiv_l, uc_equiv; simpl.
     repeat (try rewrite list_to_ucom_append; simpl).
     autorewrite with eval_db; bdestruct_all; do 2 Msimpl_light; try reflexivity.
     lia.
     rewrite IHn; auto. simpl.
     repeat rewrite (cons_to_app _ (_ :: l)).
-    repeat rewrite (cons_to_app _ l); repeat rewrite app_assoc.
-    apply uc_equiv_cong_l; apply uc_app_congruence; try reflexivity. 
-    repeat rewrite <- app_assoc.
-    apply uc_app_congruence; try reflexivity.  
+    repeat rewrite (cons_to_app _ l).
+    apply uc_equiv_cong_l.
+    apply_app_congruence.
+    unfold_uc_equiv_l.
     bdestruct (q =? n1); subst.
-    symmetry; apply propagate_X_through_CNOT_target.
+    symmetry. apply X_comm_CNOT_target.
     apply negb_false_iff in dnr. 
     apply orb_true_iff in dnr. 
     destruct dnr; bdestruct (n0 =? q); bdestruct (n1 =? q); try lia; discriminate. 

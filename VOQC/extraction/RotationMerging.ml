@@ -1,8 +1,8 @@
 open Datatypes
 open FMapAVL
 open FSetAVL
-open ListRepresentation
 open OrderedTypeEx
+open UnitaryListRepresentation
 
 type __ = Obj.t
 

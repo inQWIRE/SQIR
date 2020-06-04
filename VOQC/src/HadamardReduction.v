@@ -1,5 +1,4 @@
 Require Import UnitarySem.
-Require Import Equivalences.
 Require Export RzQGateSet.
 Require Import List.
 Open Scope ucom.
@@ -214,104 +213,55 @@ Lemma apply_H_equivalence3_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
 Proof.
   intros dim l l' q res.
   unfold apply_H_equivalence3 in res.
-  destruct (next_single_qubit_gate l q) eqn:nsqg1; try discriminate.
-  repeat destruct p; dependent destruction r; try discriminate.
-  destruct (next_two_qubit_gate (g0 ++ g) q) eqn:ntqg; try discriminate.
-  repeat destruct p; dependent destruction r.
-  bdestruct (q =? n0).
-  - destruct (last_single_qubit_gate g2 n) eqn:lsqg; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    destruct (next_single_qubit_gate g1 q) eqn:nsqg2; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    destruct (next_single_qubit_gate (g6 ++ g5) n) eqn:nsqg3; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    inversion res; subst.
-    clear res.
-    apply nsqg_commutes in nsqg1; rewrite nsqg1.
-    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
-    apply ntqg_preserves_structure in ntqg; setoid_rewrite ntqg.
-    eapply does_not_reference_commutes_app1 in dnr.
-    rewrite app_assoc.
-    rewrite dnr.
-    apply lsqg_commutes in lsqg; rewrite lsqg.
-    apply nsqg_commutes in nsqg2; rewrite nsqg2.
-    apply nsqg_commutes in nsqg3; rewrite nsqg3.
-    clear.
-    bdestruct (n =? n0).
-    subst.
-    unfold uc_equiv_l, uc_equiv. 
-    repeat (try rewrite RzQ_to_base_ucom_l_app;
-            try rewrite list_to_ucom_append;
-            simpl).
-    unfold ueval_cnot. bdestruct_all. Msimpl_light. reflexivity.
-    rewrite (cons_to_app (@CNOT dim n n0)).
-    rewrite (app_assoc g4).
-    rewrite <- 2 (app_assoc (g4 ++ g3)).
-    apply uc_app_congruence; try reflexivity.
-    repeat rewrite app_assoc.
-    rewrite <- 2 (app_assoc _ _ g7).
-    apply uc_app_congruence; try reflexivity.
-    rewrite <- app_assoc. 
-    rename H into H0.
-    assert ([@H dim n0] ++ [H n] =l= [H n] ++ [H n0]).
-    { simpl. unfold uc_equiv_l; simpl. 
-      repeat rewrite <- useq_assoc. 
-      rewrite U_V_comm. 
-      reflexivity. lia. }
-    rewrite H.
-    simpl.
-    unfold uc_equiv_l; simpl.
-    rewrite 2 SKIP_id_r.
-    repeat rewrite <- useq_assoc. 
-    apply H_swaps_CNOT.
-  - destruct (last_single_qubit_gate g2 n0) eqn:lsqg; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    destruct (next_single_qubit_gate g1 q) eqn:nsqg2; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    destruct (next_single_qubit_gate (g6 ++ g5) n0) eqn:nsqg3; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    inversion res; subst.
-    clear res.
-    apply nsqg_commutes in nsqg1; rewrite nsqg1.
-    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
-    specialize (ntqg_returns_two_qubit_gate _ _ _ _ _ _ _ ntqg) as ng.
-    assert (q = n).
-    { destruct ng as [ng | ng]; auto. contradict ng; assumption. }
-    subst. clear ng H.
-    apply ntqg_preserves_structure in ntqg; setoid_rewrite ntqg.
-    eapply does_not_reference_commutes_app1 in dnr.
-    rewrite app_assoc.
-    rewrite dnr.
-    apply lsqg_commutes in lsqg; rewrite lsqg.
-    apply nsqg_commutes in nsqg2; rewrite nsqg2.
-    apply nsqg_commutes in nsqg3; rewrite nsqg3.
-    clear.
-    bdestruct (n =? n0).
-    subst.
-    unfold uc_equiv_l, uc_equiv. 
-    repeat (try rewrite RzQ_to_base_ucom_l_app;
-            try rewrite list_to_ucom_append;
-            simpl).
-    unfold ueval_cnot. bdestruct_all. Msimpl_light. reflexivity.
-    rewrite (cons_to_app (@CNOT dim n n0)).
-    rewrite (app_assoc g4).
-    rewrite <- 2 (app_assoc (g4 ++ g3)).
-    apply uc_app_congruence; try reflexivity.
-    repeat rewrite app_assoc.
-    rewrite <- 2 (app_assoc _ _ g7).
-    apply uc_app_congruence; try reflexivity.
+  destruct_list_ops; simpl_dnr.
+  - rewrite app_assoc.
+    rewrite <- does_not_reference_commutes_app1 by assumption.
     rewrite <- app_assoc.
-    rename H into H0.
-    assert ([@H dim n0] ++ [H n] =l= [H n] ++ [H n0]).
+    setoid_rewrite H0; clear H0.
+    rewrite (app_assoc g6).
+    rewrite <- (does_not_reference_commutes_app1 g6) by assumption.
+    rewrite <- (app_assoc _ g6).
+    rewrite H; clear H.
+    repeat rewrite app_assoc.
+    rewrite (cons_to_app _ (_ ++ _)).
+    rewrite does_not_reference_commutes_app1 by assumption.
+    rewrite <- (app_assoc _ _ g3).
+    rewrite (does_not_reference_commutes_app1 g3) by assumption.
+    rewrite (app_assoc _ g3), <- (app_assoc _ _ g3).
+    rewrite (does_not_reference_commutes_app1 g3) by assumption.
+    rewrite <- (app_assoc _ g7).
+    rewrite <- (does_not_reference_commutes_app1 g7) by assumption.
+    apply_app_congruence.
+    assert (H : [@H dim n0] ++ [H n] =l= [H n] ++ [H n0]).
     { simpl. unfold uc_equiv_l; simpl. 
       repeat rewrite <- useq_assoc. 
       rewrite U_V_comm. 
       reflexivity. lia. }
+    rewrite H. 
+    repeat rewrite app_assoc.
     rewrite H.
-    simpl.
-    unfold uc_equiv_l; simpl.
-    rewrite 2 SKIP_id_r.
-    repeat rewrite <- useq_assoc. 
+    unfold_uc_equiv_l. 
+    apply H_swaps_CNOT.
+  - destruct H2; try lia. subst.
+    rewrite app_assoc.
+    rewrite <- does_not_reference_commutes_app1 by assumption.
+    rewrite <- app_assoc.
+    setoid_rewrite H1; clear H1.
+    rewrite (app_assoc g6).
+    rewrite <- (does_not_reference_commutes_app1 g6) by assumption.
+    rewrite <- (app_assoc _ g6).
+    rewrite H0; clear H0.
+    repeat rewrite app_assoc.
+    rewrite (cons_to_app _ (_ ++ _)).
+    rewrite does_not_reference_commutes_app1 by assumption.
+    rewrite <- (app_assoc _ _ g3).
+    rewrite (does_not_reference_commutes_app1 g3) by assumption.
+    rewrite (app_assoc _ g3), <- (app_assoc _ _ g3).
+    rewrite (does_not_reference_commutes_app1 g3) by assumption.
+    rewrite <- (app_assoc _ g7).
+    rewrite <- (does_not_reference_commutes_app1 g7) by assumption.
+    apply_app_congruence.
+    unfold_uc_equiv_l. 
     apply H_swaps_CNOT.
 Qed.
 
@@ -321,29 +271,25 @@ Lemma apply_H_equivalence4_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
 Proof.
   intros. 
   unfold apply_H_equivalence4 in H.
-  destruct (remove_prefix l (RzQGateSet.H q :: P q :: [])) eqn:rp1; try discriminate.
-  apply remove_prefix_correct in rp1.
-  destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
-  repeat destruct p; dependent destruction r.
-  specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
-  apply ntqg_preserves_structure in ntqg; subst.
-  bdestruct (q =? n); try discriminate.
-  destruct (remove_prefix g0 (PDAG q :: RzQGateSet.H q :: [])) eqn:rp2; try discriminate.
-  apply remove_prefix_correct in rp2.
-  inversion H; subst.
-  simpl in *.
-  rewrite rp1, rp2.
-  repeat rewrite app_comm_cons.
+  destruct (remove_prefix l (RzQGateSet.H q :: P q :: [])) eqn:rp; try discriminate.
+  apply remove_prefix_correct in rp.
+  rewrite rp; clear rp.
+  destruct_list_ops.
+  destruct (remove_prefix g0 (PDAG n :: RzQGateSet.H n :: [])) eqn:rp; try discriminate.
+  apply remove_prefix_correct in rp.
+  rewrite rp; clear rp.
+  inversion H; subst; clear H.
   rewrite (cons_to_app (RzQGateSet.H n)).
-  rewrite (cons_to_app (P n)).
-  rewrite (does_not_reference_commutes_app1 _ URzQ_P _ dnr). 
+  rewrite (cons_to_app (PDAG n)).
+  rewrite 2 (cons_to_app _ (_ :: _)).
+  rewrite (cons_to_app _ g).
+  repeat rewrite app_assoc.
+  rewrite <- (app_assoc [H n]).
+  setoid_rewrite (does_not_reference_commutes_app1 g1); try assumption.
   rewrite app_assoc.
-  rewrite (does_not_reference_commutes_app1 _ URzQ_H _ dnr).
+  setoid_rewrite (does_not_reference_commutes_app1 g1); try assumption.
   clear.
-  repeat rewrite <- app_assoc; simpl.
-  rewrite <- (app_nil_l g).
-  repeat rewrite app_comm_cons.
-  do 2 (apply uc_app_congruence; try reflexivity).
+  apply_app_congruence.
   unfold uc_equiv_l; simpl.
   rewrite 2 SKIP_id_r.
   unfold uc_equiv; simpl.
@@ -365,29 +311,25 @@ Lemma apply_H_equivalence5_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
 Proof.
   intros. 
   unfold apply_H_equivalence5 in H.
-  destruct (remove_prefix l (RzQGateSet.H q :: PDAG q :: [])) eqn:rp1; try easy.
-  apply remove_prefix_correct in rp1.
-  destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
-  repeat destruct p; dependent destruction r.
-  specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
-  apply ntqg_preserves_structure in ntqg; subst.
-  bdestruct (q =? n); try discriminate.
-  destruct (remove_prefix g0 (P q :: RzQGateSet.H q :: [])) eqn:rp2; try discriminate.
-  apply remove_prefix_correct in rp2.
-  inversion H; subst.
-  simpl in *.
-  rewrite rp1, rp2.
-  repeat rewrite app_comm_cons.
+  destruct (remove_prefix l (RzQGateSet.H q :: PDAG q :: [])) eqn:rp; try discriminate.
+  apply remove_prefix_correct in rp.
+  rewrite rp; clear rp.
+  destruct_list_ops.
+  destruct (remove_prefix g0 (P n :: RzQGateSet.H n :: [])) eqn:rp; try discriminate.
+  apply remove_prefix_correct in rp.
+  rewrite rp; clear rp.
+  inversion H; subst; clear H.
   rewrite (cons_to_app (RzQGateSet.H n)).
-  rewrite (cons_to_app (PDAG n)).
-  rewrite (does_not_reference_commutes_app1 _ URzQ_PDAG _ dnr). 
+  rewrite (cons_to_app (P n)).
+  rewrite 2 (cons_to_app _ (_ :: _)).
+  rewrite (cons_to_app _ g).
+  repeat rewrite app_assoc.
+  rewrite <- (app_assoc [H n]).
+  setoid_rewrite (does_not_reference_commutes_app1 g1); try assumption.
   rewrite app_assoc.
-  rewrite (does_not_reference_commutes_app1 _ URzQ_H _ dnr).
+  setoid_rewrite (does_not_reference_commutes_app1 g1); try assumption.
   clear.
-  repeat rewrite <- app_assoc; simpl.
-  rewrite <- (app_nil_l g).
-  repeat rewrite app_comm_cons.
-  do 2 (apply uc_app_congruence; try reflexivity).
+  apply_app_congruence.
   unfold uc_equiv_l; simpl.
   rewrite 2 SKIP_id_r.
   unfold uc_equiv; simpl.
@@ -458,6 +400,3 @@ Proof.
   symmetry in H.
   apply uc_cong_l_implies_WT in H; assumption.
 Qed.
-
-(* TODO: We should also be able to prove that the Hadamard reduction optimization 
-   reduces the number of Hadamard gates in the program. *)

@@ -1,5 +1,4 @@
 Require Import UnitarySem.
-Require Import Equivalences.
 Require Export RzQGateSet.
 Require Import List.
 Open Scope ucom.
@@ -245,166 +244,32 @@ Definition cancel_two_qubit_gates {dim} (l : RzQ_ucom_l dim) :=
 
 (** Proofs **)
 
-(* Basic gate equivalences *)
-
-Lemma Rz_commutes_with_H_CNOT_H : forall {dim} a q1 q2,
-  @Rz dim a q2 :: H q2 :: CNOT q1 q2 :: H q2 :: [] =l= H q2 :: CNOT q1 q2 :: H q2 :: Rz a q2 :: [].
+Lemma Rz_comm_X : forall {dim} q a,
+  ([@X dim q] ++ [Rz a q]) ≅l≅ ([invert_rotation a q] ++ [X q]).
 Proof.
   intros.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r.
-  unfold uc_equiv; simpl.
-  rewrite hadamard_rotation, phase_shift_rotation.
-  autorewrite with eval_db.
-  gridify.
-  - rewrite (Mmult_assoc _ hadamard hadamard). 
-    Qsimpl.
-    repeat rewrite (Mmult_assoc _ _ hadamard).
-    rewrite (Mmult_assoc _ hadamard).
-    replace (hadamard × (σx × hadamard)) with σz by solve_matrix.
-    rewrite <- phase_pi, 2 phase_mul.
-    rewrite Rplus_comm.
-    reflexivity.
-  - rewrite (Mmult_assoc _ hadamard hadamard).
-    Qsimpl.
-    repeat rewrite (Mmult_assoc _ _ hadamard).
-    rewrite (Mmult_assoc _ hadamard).
-    replace (hadamard × (σx × hadamard)) with σz by solve_matrix.
-    rewrite <- phase_pi, 2 phase_mul.
-    rewrite Rplus_comm.
-    reflexivity.
-Qed.
-
-Lemma Rz_commutes_with_CNOT_Rz_CNOT : forall {dim} a a' q1 q2,
-  @Rz dim a q2 :: CNOT q1 q2 :: Rz a' q2 :: CNOT q1 q2 :: [] =l= CNOT q1 q2 :: Rz a' q2 :: CNOT q1 q2 :: Rz a q2 :: [].
-Proof.
-  intros.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r.
-  unfold uc_equiv; simpl.
-  repeat rewrite phase_shift_rotation.
-  autorewrite with eval_db.
-  gridify.
-  - Qsimpl. 
-    rewrite 2 phase_mul. rewrite Rplus_comm.
-    replace (σx × phase_shift (Qreals.Q2R a' * PI) × σx × phase_shift (Qreals.Q2R a * PI))
-      with (phase_shift (Qreals.Q2R a * PI) × σx × phase_shift (Qreals.Q2R a' * PI) × σx) by
-      solve_matrix.
-    reflexivity.
-  - Qsimpl.
-    rewrite 2 phase_mul. rewrite Rplus_comm.
-    replace (σx × phase_shift (Qreals.Q2R a' * PI) × σx × phase_shift (Qreals.Q2R a * PI))
-      with (phase_shift (Qreals.Q2R a * PI) × σx × phase_shift (Qreals.Q2R a' * PI) × σx) by
-      solve_matrix.      
-    reflexivity.
-Qed.
-
-Lemma Rz_commutes_with_CNOT : forall {dim} a q1 q2,
-  @Rz dim a q1 :: CNOT q1 q2 :: [] =l= CNOT q1 q2 :: Rz a q1 :: [].
-Proof.
-  intros.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r.
-  unfold uc_equiv; simpl.
-  rewrite phase_shift_rotation.
-  autorewrite with eval_db.
-  gridify.
-  - replace  (∣1⟩⟨1∣ × phase_shift (Qreals.Q2R a * PI))
-      with (phase_shift (Qreals.Q2R a * PI) × ∣1⟩⟨1∣) by solve_matrix.
-    replace  (∣0⟩⟨0∣ × phase_shift (Qreals.Q2R a * PI))
-      with (phase_shift (Qreals.Q2R a * PI) × ∣0⟩⟨0∣) by solve_matrix.
-    reflexivity.
-  - replace  (∣1⟩⟨1∣ × phase_shift (Qreals.Q2R a * PI))
-      with (phase_shift (Qreals.Q2R a * PI) × ∣1⟩⟨1∣) by solve_matrix.
-    replace  (∣0⟩⟨0∣ × phase_shift (Qreals.Q2R a * PI))
-      with (phase_shift (Qreals.Q2R a * PI) × ∣0⟩⟨0∣) by solve_matrix.
-    reflexivity.
-Qed.
-
-Lemma H_H_cancel : forall {dim} q, 
-  q < dim -> @H dim q :: H q :: [] =l= [].
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  rewrite hadamard_rotation.
-  autorewrite with eval_db; try lia.
-  gridify. Qsimpl. reflexivity.
-Qed.
-
-Lemma X_X_cancel : forall {dim} q, 
-  q < dim -> @X dim q :: X q :: [] =l= [].
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
+  Local Opaque Z.sub.
+  unfold uc_cong_l, uc_cong; simpl.
+  exists (Qreals.Q2R a * PI)%R.
   rewrite pauli_x_rotation.
-  autorewrite with eval_db; try lia.
-  gridify. Qsimpl. reflexivity.
-Qed.
-
-Lemma X_commutes_with_CNOT : forall {dim} q1 q2,
-  @X dim q2 :: CNOT q1 q2 :: [] =l= CNOT q1 q2 :: X q2 :: [].
-Proof.
-  intros.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r. 
-  apply X_CNOT_comm.
-Qed.
-
-Lemma CNOT_CNOT_cancel : forall {dim} q1 q2, 
-  q1 < dim -> q2 < dim -> q1 <> q2 -> 
-  @App2 _ dim URzQ_CNOT q1 q2 :: App2 URzQ_CNOT q1 q2 :: [] =l= [].
-Proof.
-  intros.
-  unfold uc_equiv_l, uc_equiv; simpl.
-  autorewrite with eval_db; try lia.
-  gridify; Qsimpl.
-  all: repeat rewrite <- kron_plus_distr_r;
-       repeat rewrite <- kron_plus_distr_l.
-  all: replace (∣1⟩ × ∣1⟩† .+ ∣0⟩ × ∣0⟩†) with (I 2) by solve_matrix.
-  all: reflexivity.
-Qed.  
-
-Lemma CNOT_commutes_with_CNOT_sharing_target : forall {dim} q1 q2 q3,
-  @CNOT dim q1 q3 :: CNOT q2 q3 :: [] =l= CNOT q2 q3 :: CNOT q1 q3 :: [].
-Proof.
-  intros.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r.
-  unfold uc_equiv; simpl.
+  repeat rewrite phase_shift_rotation.
+  repeat rewrite Mmult_assoc.
+  rewrite <- Mscale_mult_dist_r.
+  apply f_equal2; trivial.
   autorewrite with eval_db.
-  gridify; reflexivity.
-Qed.
-
-Lemma CNOT_commutes_with_CNOT_sharing_control : forall {dim} q1 q2 q3,
-  @CNOT dim q1 q3 :: CNOT q1 q2 :: [] =l= CNOT q1 q2 :: CNOT q1 q3 :: [].
-Proof.
-  intros.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r.
-  unfold uc_equiv; simpl.
-  autorewrite with eval_db.
-  gridify; Qsimpl; reflexivity.
-Qed.
-
-Lemma CNOT_commutes_with_H_CNOT_H : forall {dim} q1 q2 q3,
-  q1 <> q3 ->
-  @CNOT dim q1 q2 :: H q2 :: CNOT q2 q3 :: H q2 :: [] =l= H q2 :: CNOT q2 q3 :: H q2 :: CNOT q1 q2 :: [].
-Proof.
-  intros.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r.
-  unfold uc_equiv; simpl.
-  rewrite hadamard_rotation.
-  autorewrite with eval_db.
-  gridify; try reflexivity. (* slow! *)
-  all: replace (hadamard × ∣1⟩⟨1∣ × hadamard × σx) with
-         (σx × hadamard × ∣1⟩⟨1∣ × hadamard) by solve_matrix;
-       replace (hadamard × ∣0⟩⟨0∣ × hadamard × σx) with
-         (σx × hadamard × ∣0⟩⟨0∣ × hadamard) by solve_matrix;
-       reflexivity.
-Qed.
-
-(* Proofs about optimization *)
+  gridify.
+  rewrite <- Mscale_kron_dist_l.
+  rewrite <- Mscale_kron_dist_r.
+  do 2 (apply f_equal2; trivial).
+  rewrite Qreals.Q2R_minus.
+  remember (Qreals.Q2R a) as qa.
+  unfold Qreals.Q2R; simpl.
+  unfold phase_shift; solve_matrix.
+  rewrite <- Cexp_add.
+  replace (qa * PI + (2 * / 1 - qa) * PI)%R with (2 * PI)%R by lra.
+  rewrite Cexp_2PI. 
+  reflexivity.
+Qed. 
 
 Lemma propagate_Rz_sound : forall {dim} a (l : RzQ_ucom_l dim) q l',
   q < dim ->
@@ -420,108 +285,70 @@ Proof.
     intros rules Hin l l' res.
     destruct_In; subst.
     unfold Rz_cancel_rule in res.
-    destruct (next_single_qubit_gate l q) eqn:nsqg; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    inversion res; subst.
+    destruct_list_ops.
+    rewrite app_assoc.
+    rewrite <- does_not_reference_commutes_app1 by assumption.
     rewrite combine_rotations_semantics by assumption.
-    rewrite (nsqg_commutes _ _ _ _ _ nsqg); rewrite app_comm_cons. 
     reflexivity.
   - clear l l' res Hq.
     intros rules Hin l l1 l2 res.
     destruct_In; subst.
     + unfold Rz_commute_rule1 in res.
-      destruct (next_single_qubit_gate l q) eqn:nsqg1; try discriminate.
-      repeat destruct p; dependent destruction r; try discriminate.
-      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg1) as dnrg0.
-      apply nsqg_preserves_structure in nsqg1.
-      destruct (next_two_qubit_gate g q) eqn:ntqg; try discriminate.
-      repeat destruct p; dependent destruction r.
-      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnrg2.
-      apply ntqg_preserves_structure in ntqg.
-      bdestruct (q =? n); try discriminate.
-      destruct (next_single_qubit_gate g1 q) eqn:nsqg2; try discriminate.
-      repeat destruct p; dependent destruction r; try discriminate.
-      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg2) as dnrg4.
-      apply nsqg_preserves_structure in nsqg2.
-      inversion res; subst.
-      rewrite cons_to_app.
-      rewrite (cons_to_app (H n)).
-      rewrite (cons_to_app (CNOT n0 n)).
+      destruct_list_ops.
+      rewrite cons_to_app. 
+      rewrite (cons_to_app _ (g2 ++ _)).
+      rewrite (cons_to_app _ (g4 ++ _)).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg0).
-      repeat rewrite <- (app_assoc _ _ g2).
-      rewrite 2 (does_not_reference_commutes_app1 _ URzQ_H _ dnrg2).
-      rewrite <- (app_assoc g0).
-      rewrite (app_assoc _ g2).
-      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg2).
-      repeat rewrite <- (app_assoc _ g4).
-      rewrite <- 2 (does_not_reference_commutes_app1 _ URzQ_H _ dnrg4).
-      repeat rewrite <- (app_assoc _ _ [Rz a n]).
-      rewrite <- (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg4).
-      repeat rewrite <- app_assoc.  
-      do 2 (apply uc_app_congruence; try reflexivity).
-      repeat rewrite app_assoc.
-      do 2 (apply uc_app_congruence; try reflexivity).
-      simpl.
-      apply Rz_commutes_with_H_CNOT_H.
+      setoid_rewrite (does_not_reference_commutes_app1 g0 (URzQ_Rz a)); auto.
+      rewrite <- (app_assoc _ _ g2).
+      rewrite (does_not_reference_commutes_app1 g2 URzQ_H) by assumption.
+      rewrite (app_assoc _ g2), <- (app_assoc _ _ g2).
+      rewrite (does_not_reference_commutes_app1 g2 (URzQ_Rz a)) by assumption.
+      rewrite <- (app_assoc _ g4).
+      rewrite <- (does_not_reference_commutes_app1 g4 URzQ_H) by assumption.
+      rewrite <- (app_assoc _ _ g2). 
+      setoid_rewrite (does_not_reference_commutes_app1 g2 URzQ_H); auto.
+      rewrite <- (app_assoc _ g4).
+      setoid_rewrite <- (does_not_reference_commutes_app1 g4 URzQ_H); auto.
+      rewrite <- 2 (app_assoc _ _ [Rz a n]).
+      setoid_rewrite <- (does_not_reference_commutes_app1 g4 (URzQ_Rz a)); auto.
+      apply_app_congruence.
+      unfold_uc_equiv_l.
+      apply Rz_comm_H_CNOT_H.
     + unfold Rz_commute_rule2 in res.
-      destruct (next_two_qubit_gate l q) eqn:ntqg1; try discriminate.
-      repeat destruct p; dependent destruction r.
-      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg1) as dnrg0.
-      apply ntqg_preserves_structure in ntqg1.
-      bdestruct (q =? n); try discriminate.
-      subst.
-      destruct (next_single_qubit_gate g n) eqn:nsqg; try discriminate.
-      repeat destruct p; dependent destruction r; try discriminate.
-      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg) as dnrg2.
-      apply nsqg_preserves_structure in nsqg.
-      destruct (next_two_qubit_gate g1 n) eqn:ntqg2; try discriminate.
-      repeat destruct p; dependent destruction r.
-      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg2) as dnrg4.
-      apply ntqg_preserves_structure in ntqg2.
-      bdestruct (n =? n1); try discriminate.
-      bdestruct (n0 =? n2); try discriminate.
-      destruct (does_not_reference (g2 ++ g4) n2) eqn:dnr; try discriminate.
-      simpl in res.
-      inversion res; subst. clear res.
+      destruct_list_ops.
+      destruct (does_not_reference (g2 ++ g3) n2) eqn:dnr; try discriminate.
       apply does_not_reference_app in dnr.
-      apply andb_true_iff in dnr as [dnrg2' dnrg4'].
-      rewrite cons_to_app.
-      rewrite (cons_to_app (CNOT n2 n1)).
-      rewrite (cons_to_app (Rz a0 n1) (g4 ++ _)).
+      apply andb_true_iff in dnr as [? ?].
+      inversion res; clear res; subst.
+      rewrite cons_to_app. 
+      rewrite (cons_to_app _ (g2 ++ _)).
+      rewrite (cons_to_app _ (g3 ++ _)).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg0).
-      repeat rewrite <- (app_assoc _ _ g2).
-      rewrite 2 (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg2' dnrg2).
-      rewrite <- (app_assoc g0).
-      rewrite (app_assoc _ g2).
-      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg2).
-      repeat rewrite <- (app_assoc _ g4).
-      rewrite <- 2 (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg4' dnrg4).
-      repeat rewrite <- (app_assoc _ _ [Rz a n1]).
-      rewrite <- (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnrg4).
-      repeat rewrite <- app_assoc.  
-      do 2 (apply uc_app_congruence; try reflexivity).
-      repeat rewrite app_assoc.
-      do 2 (apply uc_app_congruence; try reflexivity).
-      simpl.
-      apply Rz_commutes_with_CNOT_Rz_CNOT.
+      setoid_rewrite (does_not_reference_commutes_app1 g0 (URzQ_Rz a)); auto.
+      rewrite <- (app_assoc _ _ g2).
+      rewrite does_not_reference_commutes_app2 by assumption.
+      rewrite (app_assoc _ g2), <- (app_assoc _ _ g2).
+      rewrite does_not_reference_commutes_app1 by assumption.
+      rewrite <- (app_assoc _ g3).
+      rewrite <- (does_not_reference_commutes_app2 g3) by assumption.
+      rewrite <- (app_assoc _ _ g2).
+      setoid_rewrite (does_not_reference_commutes_app2 g2); auto.
+      rewrite <- (app_assoc _ g3).
+      setoid_rewrite <- (does_not_reference_commutes_app2 g3); auto.
+      rewrite <- (app_assoc _ (_ ++ g3) [Rz a n1]), <- (app_assoc _ g3).
+      setoid_rewrite <- (does_not_reference_commutes_app1 g3); auto.
+      apply_app_congruence.
+      unfold_uc_equiv_l.
+      apply Rz_comm_CNOT_Rz_CNOT.
     + unfold Rz_commute_rule3 in res.
-      destruct (next_two_qubit_gate l q) eqn:ntqg; try discriminate.
-      repeat destruct p; dependent destruction r.
-      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
-      apply ntqg_preserves_structure in ntqg.
-      bdestruct (q =? n0); try discriminate.
-      subst.
-      inversion res; subst.
-      rewrite (cons_to_app (Rz a n0) (g0 ++ _)).
+      destruct_list_ops.
+      rewrite cons_to_app.
       repeat rewrite app_assoc.
-      apply uc_app_congruence; try reflexivity. 
-      rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnr).
-      repeat rewrite <- app_assoc.
-      apply uc_app_congruence; try reflexivity. 
-      simpl.
-      apply Rz_commutes_with_CNOT.
+      setoid_rewrite (does_not_reference_commutes_app1 g0); auto.
+      apply_app_congruence.
+      unfold_uc_equiv_l.
+      apply Rz_comm_CNOT.
 Qed.
 
 Lemma propagate_Rz_WT : forall {dim} a (l : RzQ_ucom_l dim) q l',
@@ -550,12 +377,15 @@ Proof.
     intros rules Hin l l' res.
     destruct_In; subst.
     unfold H_cancel_rule in res.
-    destruct (next_single_qubit_gate l q) eqn:nsqg; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    inversion res; subst.
-    rewrite (nsqg_commutes _ _ _ _ _ nsqg).
-    rewrite app_comm_cons.
-    rewrite H_H_cancel; try assumption; try reflexivity.
+    destruct_list_ops.
+    rewrite app_assoc.
+    rewrite <- does_not_reference_commutes_app1 by assumption.
+    rewrite cons_to_app. 
+    rewrite <- app_nil_l.
+    apply_app_congruence.
+    unfold_uc_equiv_l.
+    rewrite <- (ID_equiv_SKIP dim q) by assumption.
+    apply H_H_id.
   - clear l l' res.
     intros rules Hin l l' res.
     destruct_In.
@@ -587,30 +417,26 @@ Proof.
     intros rules Hin l l' res.
     destruct_In; subst.
     unfold X_cancel_rule in res.
-    destruct (next_single_qubit_gate l q) eqn:nsqg; try discriminate.
-    repeat destruct p; dependent destruction r; try discriminate.
-    inversion res; subst.
-    rewrite (nsqg_commutes _ _ _ _ _ nsqg).
-    rewrite app_comm_cons.
-    rewrite X_X_cancel; try assumption; try reflexivity.
+    destruct_list_ops.
+    rewrite app_assoc.
+    rewrite <- does_not_reference_commutes_app1 by assumption.
+    rewrite cons_to_app. 
+    rewrite <- app_nil_l.
+    apply_app_congruence.
+    unfold_uc_equiv_l.
+    rewrite <- (ID_equiv_SKIP dim q) by assumption.
+    apply X_X_id.
   - clear l l' res Hq.
     intros rules Hin l l1 l2 res.
     destruct_In; subst.
     unfold X_commute_rule in res.
-    destruct (next_two_qubit_gate l q) eqn:ntqg; try discriminate.
-    repeat destruct p; dependent destruction r.
-    bdestruct (q =? n); try discriminate.
-    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr.
-    apply ntqg_preserves_structure in ntqg.
-    inversion res; subst.
-    rewrite (cons_to_app (X n) (g0 ++_)).
+    destruct_list_ops.
+    rewrite cons_to_app.
     repeat rewrite app_assoc.
-    rewrite (does_not_reference_commutes_app1 _ URzQ_X _ dnr). 
-    apply uc_app_congruence; try reflexivity.
-    repeat rewrite <- app_assoc.
-    apply uc_app_congruence; try reflexivity.
-    simpl.
-    apply X_commutes_with_CNOT.
+    setoid_rewrite (does_not_reference_commutes_app1 g0); auto.
+    apply_app_congruence.
+    unfold_uc_equiv_l.
+    apply X_comm_CNOT_target.
 Qed.
 
 Lemma propagate_X_WT : forall {dim} (l : RzQ_ucom_l dim) q l',
@@ -641,142 +467,96 @@ Proof.
     intros rules Hin l l' res.
     destruct_In; subst.
     unfold CNOT_cancel_rule in res.
-    destruct (next_two_qubit_gate l q1) eqn:ntqg; try discriminate.
-    repeat destruct p; dependent destruction r.
-    specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr1.
-    apply ntqg_preserves_structure in ntqg.
-    bdestruct (q1 =? n0); bdestruct (q2 =? n); 
-      destruct (does_not_reference g0 q2) eqn:dnr2;
-      simpl in res; try discriminate.    
-    inversion res; subst.
-    rewrite app_comm_cons.
-    rewrite cons_to_app.
-    rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnr1 dnr2).
+    destruct_list_ops.
+    destruct (does_not_reference g0 n) eqn:?; try discriminate.
+    inversion res; subst; clear res.
     rewrite app_assoc.
-    rewrite <- (app_assoc g0).
-    simpl.
-    rewrite CNOT_CNOT_cancel; try assumption.
-    rewrite app_nil_r. reflexivity.
+    rewrite <- does_not_reference_commutes_app2 by assumption.
+    rewrite cons_to_app. 
+    rewrite <- app_nil_l.
+    apply_app_congruence.
+    unfold_uc_equiv_l.
+    apply CNOT_CNOT_id; assumption.
   - clear l l' res.
     intros rules Hin l l1 l2 res.
     destruct_In; subst.
     + unfold CNOT_commute_rule1 in res.
-      destruct (next_single_qubit_gate l q1) eqn:nsqg; try discriminate.
-      repeat destruct p; dependent destruction r; try discriminate.
-      apply nsqg_commutes in nsqg.
-      inversion res; subst.
-      rewrite nsqg.
-      rewrite app_comm_cons.
-      repeat rewrite app_assoc.
-      do 2 (apply uc_app_congruence; try reflexivity).
-      simpl; symmetry.
-      apply Rz_commutes_with_CNOT.
-    + unfold CNOT_commute_rule2 in res.
-      destruct (next_two_qubit_gate l q2) eqn:ntqg; try discriminate.
-      repeat destruct p; dependent destruction r.
-      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr1.
-      apply ntqg_preserves_structure in ntqg.
-      bdestruct (q2 =? n); try discriminate.
-      destruct (does_not_reference g0 q1) eqn:dnr2; try discriminate.
-      inversion res; subst.
-      rewrite (cons_to_app (CNOT q1 n) (g0 ++ _)).
-      repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnr2 dnr1).
-      apply uc_app_congruence; try reflexivity.
-      repeat rewrite <- app_assoc.
-      apply uc_app_congruence; try reflexivity.
-      apply CNOT_commutes_with_CNOT_sharing_target.
-    + unfold CNOT_commute_rule3 in res.
-      destruct (next_two_qubit_gate l q1) eqn:ntqg; try discriminate.
-      repeat destruct p; dependent destruction r.
-      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnr1.
-      apply ntqg_preserves_structure in ntqg.
-      bdestruct (q1 =? n0); try discriminate.
-      destruct (does_not_reference g0 q2) eqn:dnr2; try discriminate.
-      inversion res; subst.
-      rewrite (cons_to_app (CNOT n0 q2) (g0 ++ _)).
-      repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnr1 dnr2).
-      apply uc_app_congruence; try reflexivity.
-      repeat rewrite <- app_assoc.
-      apply uc_app_congruence; try reflexivity.
-      apply CNOT_commutes_with_CNOT_sharing_control.
-    + unfold CNOT_commute_rule4 in res.
-      destruct (next_single_qubit_gate l q2) eqn:nsqg1; try discriminate.
-      repeat destruct p; dependent destruction r; try discriminate.
-      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg1) as dnrg0.
-      apply nsqg_preserves_structure in nsqg1.     
-      destruct (next_two_qubit_gate g q2) eqn:ntqg; try discriminate.
-      repeat destruct p; dependent destruction r.
-      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnrg2.
-      apply ntqg_preserves_structure in ntqg.      
-      bdestruct (q2 =? n0); bdestruct (q1 =? n); try discriminate.
-      destruct (does_not_reference (g0 ++ g2) q1) eqn:dnr; try discriminate.
-      apply does_not_reference_app in dnr.
-      apply andb_true_iff in dnr as [dnrg0' dnrg2'].
-      simpl in res.
-      destruct (next_single_qubit_gate g1 q2) eqn:nsqg2; try discriminate.
-      repeat destruct p; dependent destruction r; try discriminate.
-      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg2) as dnrg4.
-      apply nsqg_preserves_structure in nsqg2.   
-      inversion res; subst. clear res.
+      destruct_list_ops.
+      rewrite app_assoc.
+      rewrite <- does_not_reference_commutes_app1 by assumption.
       rewrite cons_to_app.
-      rewrite (cons_to_app (CNOT n0 n)).
-      rewrite (cons_to_app (H n0) (g2 ++ _)).
+      apply_app_congruence.
+      symmetry.
+      unfold_uc_equiv_l.
+      apply Rz_comm_CNOT.
+    + unfold CNOT_commute_rule2 in res.
+      destruct_list_ops.
+      destruct (does_not_reference g0 q1) eqn:?; try discriminate.
+      inversion res; subst; clear res.
+      rewrite cons_to_app.
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg0' dnrg0).
-      repeat rewrite <- (app_assoc _ _ g2).
-      rewrite 2 (does_not_reference_commutes_app1 _ URzQ_H _ dnrg2).
-      rewrite <- (app_assoc g0).
-      rewrite (app_assoc _ g2).
-      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg2' dnrg2).
-      rewrite <- (app_assoc _ g4).
-      rewrite <- (does_not_reference_commutes_app1 _ URzQ_H _ dnrg4).
-      repeat rewrite <- app_assoc.  
-      do 2 (apply uc_app_congruence; try reflexivity).
+      setoid_rewrite (does_not_reference_commutes_app2 g0); auto.
+      apply_app_congruence.
+      unfold_uc_equiv_l.
+      apply CNOT_comm_CNOT_sharing_target.
+    + unfold CNOT_commute_rule3 in res.
+      destruct_list_ops.
+      destruct (does_not_reference g0 q2) eqn:?; try discriminate.
+      inversion res; subst; clear res.
+      rewrite cons_to_app.
       repeat rewrite app_assoc.
-      do 2 (apply uc_app_congruence; try reflexivity).
-      simpl.
-      apply CNOT_commutes_with_H_CNOT_H.
+      setoid_rewrite (does_not_reference_commutes_app2 g0); auto.
+      apply_app_congruence.
+      unfold_uc_equiv_l.
+      apply CNOT_comm_CNOT_sharing_control.
+    + unfold CNOT_commute_rule4 in res.
+      destruct_list_ops.
+      destruct (does_not_reference (g0 ++ g2) q1) eqn:dnr; try discriminate.
+      simpl in res.
+      destruct_list_ops.
+      apply does_not_reference_app in dnr.
+      apply andb_true_iff in dnr as [? ?].
+      rewrite cons_to_app.
+      rewrite (cons_to_app _ (g2 ++ _)).
+      rewrite (cons_to_app _ [_]).
+      repeat rewrite app_assoc.
+      setoid_rewrite (does_not_reference_commutes_app2 g0); auto.
+      rewrite <- (app_assoc _ _ g2).
+      rewrite does_not_reference_commutes_app1 by assumption.
+      rewrite <- (app_assoc _ _ (g2 ++ _)), (app_assoc _ g2).
+      rewrite (does_not_reference_commutes_app2 g2) by assumption.
+      rewrite <- (app_assoc _ g3).
+      rewrite <- (does_not_reference_commutes_app1 g3) by assumption.
+      rewrite <- (app_assoc _ _ g2).
+      setoid_rewrite (does_not_reference_commutes_app1 g2); auto.
+      apply_app_congruence.
+      unfold_uc_equiv_l.
+      apply CNOT_comm_H_CNOT_H. 
       assumption.
     + unfold CNOT_commute_rule5 in res.
-      destruct (next_single_qubit_gate l q2) eqn:nsqg1; try discriminate.
-      repeat destruct p; dependent destruction r; try discriminate.
-      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg1) as dnrg0.
-      apply nsqg_preserves_structure in nsqg1.     
-      destruct (next_two_qubit_gate g q2) eqn:ntqg; try discriminate.
-      repeat destruct p; dependent destruction r.
-      specialize (ntqg_l1_does_not_reference _ _ _ _ _ _ _ ntqg) as dnrg2.
-      apply ntqg_preserves_structure in ntqg.
-      bdestruct (q1 =? n0); try discriminate.
-      bdestruct (q2 =? n); try discriminate.
-      destruct (does_not_reference (g0 ++ g2) q1) eqn:dnr; try discriminate.
+      destruct_list_ops.
+      destruct (does_not_reference (g0 ++ g2) n0) eqn:dnr; try discriminate.
       simpl in res.
-      destruct (next_single_qubit_gate g1 q2) eqn:nsqg2; try discriminate.
-      repeat destruct p; dependent destruction r; try discriminate.
-      specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg2) as dnrg4.
-      apply nsqg_preserves_structure in nsqg2.     
-      inversion res; subst. clear res.
+      destruct_list_ops.
       apply does_not_reference_app in dnr.
-      apply andb_true_iff in dnr as [dnrg0' dnrg2'].
+      apply andb_true_iff in dnr as [? ?].
       rewrite cons_to_app.
-      rewrite (cons_to_app (CNOT n0 n)).
-      rewrite (cons_to_app (App1 (URzQ_Rz a0) n) (g2 ++ _)).
+      rewrite (cons_to_app _ (g2 ++ _)).
+      rewrite (cons_to_app _ [_]).
       repeat rewrite app_assoc.
-      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg0' dnrg0).
-      repeat rewrite <- (app_assoc _ _ g2).
-      rewrite 2 (does_not_reference_commutes_app1 _ (URzQ_Rz _) _ dnrg2).
-      rewrite <- (app_assoc g0).
-      rewrite (app_assoc _ g2).
-      rewrite (does_not_reference_commutes_app2 _ URzQ_CNOT _ _ dnrg2' dnrg2).
-      repeat rewrite <- (app_assoc _ g4).
-      rewrite <- (does_not_reference_commutes_app1 _ (URzQ_Rz _) _ dnrg4).
-      repeat rewrite <- app_assoc.  
-      do 2 (apply uc_app_congruence; try reflexivity).
-      repeat rewrite app_assoc.
-      do 2 (apply uc_app_congruence; try reflexivity).
-      simpl. symmetry.
-      apply Rz_commutes_with_CNOT_Rz_CNOT. 
+      setoid_rewrite (does_not_reference_commutes_app2 g0); auto.
+      rewrite <- (app_assoc _ _ g2).
+      rewrite does_not_reference_commutes_app1 by assumption.
+      rewrite <- (app_assoc _ _ (g2 ++ _)), (app_assoc _ g2).
+      rewrite (does_not_reference_commutes_app2 g2) by assumption.
+      rewrite <- (app_assoc _ g3).
+      rewrite <- (does_not_reference_commutes_app1 g3) by assumption.
+      rewrite <- (app_assoc _ _ g2).
+      setoid_rewrite (does_not_reference_commutes_app1 g2); auto.
+      apply_app_congruence.
+      symmetry.
+      unfold_uc_equiv_l.
+      apply Rz_comm_CNOT_Rz_CNOT.   
 Qed.
 
 Lemma propagate_CNOT_WT : forall {dim} (l : RzQ_ucom_l dim) q1 q2 l',

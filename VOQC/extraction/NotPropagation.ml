@@ -1,4 +1,4 @@
-open ListRepresentation
+open UnitaryListRepresentation
 
 (** val propagate_X :
     RzQGateSet.coq_RzQ_ucom_l -> int -> int ->

@@ -62,7 +62,8 @@ Examples of verifying correctness properties of simple SQIR programs.
 Verified transformations of SQIR programs.
 
 - Utilities
-  - src/ListRepresentation.v : List representation of unitary and non-unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs.
+  - src/UnitaryListRepresentation.v : List representation of unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs.
+  - src/NonUnitaryListRepresentation.v : List representation of non-unitary SQIR programs.
   - src/RzQGateSet.v : Fixed gate set used in our optimizer.
 
 - Optimizations on unitary programs

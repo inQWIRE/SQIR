@@ -2,7 +2,7 @@ open Qasm2sqir
 open Printf
 open Unix
 
-open ListRepresentation
+open UnitaryListRepresentation
 open RzQGateSet
 open Optimize
 

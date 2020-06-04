@@ -1,4 +1,4 @@
-open ListRepresentation
+open UnitaryListRepresentation
 
 module RzQGateSet =
  struct

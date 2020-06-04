@@ -1,5 +1,5 @@
 Require Coq.extraction.Extraction.
-Require Import ListRepresentation.
+Require Import UnitaryListRepresentation.
 Require Import RzQGateSet.
 Require Import GateCancellation.
 Require Import HadamardReduction.
@@ -71,9 +71,9 @@ Extraction Implicit next_gate' [dim].
 Extraction Implicit next_gate [dim].
 Extraction Implicit does_not_reference_appl [dim].
 Extraction Implicit does_not_reference [dim].
-Extraction Implicit ListRepresentation.remove_prefix [dim].
-Extraction Implicit ListRepresentation.remove_suffix [dim].
-Extraction Implicit ListRepresentation.replace_pattern [dim].
+Extraction Implicit UnitaryListRepresentation.remove_prefix [dim].
+Extraction Implicit UnitaryListRepresentation.remove_suffix [dim].
+Extraction Implicit UnitaryListRepresentation.replace_pattern [dim].
 Extraction Implicit try_rewrites [dim].
 Extraction Implicit try_rewrites2 [dim].
 Extraction Implicit propagate' [dim].

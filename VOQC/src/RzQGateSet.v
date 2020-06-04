@@ -1,4 +1,5 @@
-Require Export ListRepresentation.
+Require Export UnitaryListRepresentation.
+Require Export NonUnitaryListRepresentation.
 Require Export QArith.
 
 Local Open Scope Z_scope.
@@ -47,7 +48,7 @@ Qed.
 End RzQGateSet.
 Export RzQGateSet.
 
-Module RzQProps := ListRepresentationProps RzQGateSet.
+Module RzQProps := UListRepresentationProps RzQGateSet.
 Export RzQProps.
 
 (* Useful shorthands. *)
@@ -180,3 +181,27 @@ Qed.
 Definition invert_rotation {dim} a q : gate_app RzQ_Unitary dim :=
   Rz (two_Q - a) q.
 
+Local Open Scope ucom.
+Local Transparent SQIR.Rz.
+Lemma invert_rotation_semantics : forall {dim} a q,
+  list_to_ucom [@invert_rotation dim a q] ≡ invert (SQIR.Rz (Qreals.Q2R a * PI)%R q).
+Proof.
+  intros dim a q.
+  simpl. 
+  rewrite SKIP_id_r.
+  unfold uc_equiv; simpl.
+  autorewrite with eval_db.
+  gridify.
+  do 2 (apply f_equal2; try reflexivity).
+  unfold rotation.
+  solve_matrix.
+  all: autorewrite with R_db C_db trig_db Cexp_db; trivial.
+  rewrite Qreals.Q2R_minus.
+  autorewrite with R_db.
+  rewrite Rmult_plus_distr_r.
+  rewrite Cexp_add, <- Cexp_neg.
+  replace (Qreals.Q2R two_Q * PI)%R with (2 * PI)%R. 
+  2: unfold Qreals.Q2R, two_Q; simpl; lra. 
+  rewrite Cexp_2PI.
+  autorewrite with C_db R_db; reflexivity.
+Qed.

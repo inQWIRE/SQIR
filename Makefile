@@ -86,8 +86,11 @@ VOQC/src/GateSet.vo: $(VOQC)/GateSet.v $(SQIR)/UnitarySem.vo
 VOQC/src/HadamardReduction.vo: $(VOQC)/HadamardReduction.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/HadamardReduction.v
 
-VOQC/src/ListRepresentation.vo: $(VOQC)/ListRepresentation.v $(VOQC)/GateSet.vo $(QWIRE)/Proportional.vo $(SQIR)/Equivalences.vo $(SQIR)/DensitySem.vo
-	coqc $(COQ_OPTS) $(VOQC)/ListRepresentation.v
+VOQC/src/UnitaryListRepresentation.vo: $(VOQC)/UnitaryListRepresentation.v $(VOQC)/GateSet.vo $(QWIRE)/Proportional.vo $(SQIR)/Equivalences.vo
+	coqc $(COQ_OPTS) $(VOQC)/UnitaryListRepresentation.v
+	
+VOQC/src/NonUnitaryListRepresentation.vo: $(VOQC)/NonUnitaryListRepresentation.v $(VOQC)/UnitaryListRepresentation.vo $(SQIR)/DensitySem.vo
+	coqc $(COQ_OPTS) $(VOQC)/NonUnitaryListRepresentation.v
 
 VOQC/src/NotPropagation.vo: $(VOQC)/NotPropagation.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/NotPropagation.v
@@ -95,7 +98,7 @@ VOQC/src/NotPropagation.vo: $(VOQC)/NotPropagation.v $(SQIR)/Equivalences.vo $(V
 VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/GateCancellation.vo $(VOQC)/RotationMerging.vo
 	coqc $(COQ_OPTS) $(VOQC)/Optimize.v
 
-VOQC/src/RzQGateSet.vo: $(VOQC)/RzQGateSet.v $(VOQC)/ListRepresentation.vo
+VOQC/src/RzQGateSet.vo: $(VOQC)/RzQGateSet.v $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/RzQGateSet.v
 
 VOQC/src/RotationMerging.vo: $(VOQC)/RotationMerging.v $(VOQC)/RzQGateSet.vo $(SQIR)/UnitaryOps.vo

@@ -2,6 +2,9 @@ Require Import DensitySem.
 Require Import RzQGateSet.
 Require Import Coq.Reals.ROrderedType.
 
+Module RzQProps := NonUListRepresentationProps RzQGateSet.
+Export RzQProps.
+
 Local Open Scope com_scope.
 
 (* 'reset' and measurement put a qubit in a classical state and subsequent X / Rz 

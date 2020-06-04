@@ -846,15 +846,12 @@ Proof.
   { eapply get_subcircuit'_l1_does_not_reference. apply gs. 
     apply FSetFacts.add_iff; auto. }
   rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a0') _ dnr).
-  repeat rewrite <- app_assoc.
-  apply uc_app_congruence; try reflexivity.
-  repeat rewrite app_assoc.
-  do 2 (apply uc_app_congruence; try reflexivity).
+  apply_app_congruence. 
+  rewrite app_nil_r.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
   simpl.
   replace (pad q dim (rotation 0 0 (Qreals.Q2R a0' * PI))) with (uc_eval (@SQIR.Rz dim (Qreals.Q2R a0' * PI) q)) by reflexivity.
-  rewrite app_nil_r.
   specialize f_to_vec_classical as cla.
   unfold classical in cla.
   rewrite <- cla with (q:=q) at 2 by lia.
@@ -908,9 +905,7 @@ Proof.
   { eapply get_subcircuit'_l1_does_not_reference. apply gs. 
     apply FSetFacts.add_iff; auto. }
   rewrite (does_not_reference_commutes_app1 _ (URzQ_Rz a) _ dnr).
-  do 3 (apply uc_app_congruence; try reflexivity).
-  repeat rewrite <- app_assoc.
-  apply uc_app_congruence; try reflexivity.
+  apply_app_congruence.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
   simpl.
