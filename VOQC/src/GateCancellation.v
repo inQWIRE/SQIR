@@ -244,33 +244,6 @@ Definition cancel_two_qubit_gates {dim} (l : RzQ_ucom_l dim) :=
 
 (** Proofs **)
 
-Lemma Rz_comm_X : forall {dim} q a,
-  ([@X dim q] ++ [Rz a q]) ≅l≅ ([invert_rotation a q] ++ [X q]).
-Proof.
-  intros.
-  Local Opaque Z.sub.
-  unfold uc_cong_l, uc_cong; simpl.
-  exists (Qreals.Q2R a * PI)%R.
-  rewrite pauli_x_rotation.
-  repeat rewrite phase_shift_rotation.
-  repeat rewrite Mmult_assoc.
-  rewrite <- Mscale_mult_dist_r.
-  apply f_equal2; trivial.
-  autorewrite with eval_db.
-  gridify.
-  rewrite <- Mscale_kron_dist_l.
-  rewrite <- Mscale_kron_dist_r.
-  do 2 (apply f_equal2; trivial).
-  rewrite Qreals.Q2R_minus.
-  remember (Qreals.Q2R a) as qa.
-  unfold Qreals.Q2R; simpl.
-  unfold phase_shift; solve_matrix.
-  rewrite <- Cexp_add.
-  replace (qa * PI + (2 * / 1 - qa) * PI)%R with (2 * PI)%R by lra.
-  rewrite Cexp_2PI. 
-  reflexivity.
-Qed. 
-
 Lemma propagate_Rz_sound : forall {dim} a (l : RzQ_ucom_l dim) q l',
   q < dim ->
   propagate_Rz a l q = Some l' ->
