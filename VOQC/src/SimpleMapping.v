@@ -1,4 +1,4 @@
-Require Export UnitarySem.
+Require Export VectorStates.
 Require Export Equivalences.
 Require Export List.
 Open Scope ucom.
@@ -220,98 +220,36 @@ Inductive respects_constraints {dim} : (nat -> nat -> Prop) -> base_ucom dim -> 
       f n1 n2 -> (* directed *)
       respects_constraints f (CNOT n1 n2).
 
-(* Proof about the relationship between CNOT & SWAP (move elsewhere?) *)
+(* Proof about the relationship between CNOT & SWAP *)
 
-(* The proof below does the same thing as 'gridify' but only partially distributes
-   matrices. This keeps the terms a little smaller and seems to be faster than
-   directly using gridify. It's still slow though. *)
+Local Transparent SWAP.
 Lemma swap_cnot_control : forall {dim} a b c,
   (* well-typedness constraints *)
   a < dim -> b < dim -> c < dim ->
   a <> b -> b <> c -> a <> c ->
   (* main equivalence *)
   @uc_equiv dim (SWAP a b; CNOT b c; SWAP a b) (CNOT a c).
-Proof. 
+Proof.
   intros.
-  unfold uc_equiv; simpl.
-  autorewrite with eval_db. 
-  repad.
-  (* rewrite with id_kron *)
-  all: repeat rewrite Nat.pow_add_r; 
-       repeat rewrite <- id_kron.
-  (* distribute (I c) and (I d) right *)
-  all: repeat rewrite <- kron_assoc;
-       match goal with 
-      | |- context [(?a ⊗ ?b) ⊗ (I ?c) ⊗ (I ?d) ⊗ (I ?e) ] => 
-            rewrite (kron_assoc a b);
-            repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I c)); 
-            restore_dims;
-            rewrite (kron_assoc a _ (I d));
-            repeat rewrite (kron_plus_distr_r _ _ _ _ _ _ (I d))
-      end;
-  (* distribute (I b) and (I c) left *)
-     restore_dims; repeat rewrite kron_assoc;
-      match goal with 
-      | |- context [(I ?a) ⊗ ((I ?b) ⊗ ((I ?c) ⊗ (?d ⊗ ?e))) ] => 
-            rewrite <- (kron_assoc (I c) _ e);
-            repeat rewrite (kron_plus_distr_l _ _ _ _ (I c));
-            restore_dims;
-            rewrite <- (kron_assoc (I b) _ e);
-            repeat rewrite (kron_plus_distr_l _ _ _ _ (I b))
-      end.
-  (* simplify to remove extra id's *)
-  all: restore_dims;
-       repeat rewrite <- kron_assoc;
-       restore_dims; 
-       repeat rewrite kron_mixed_product;
-       Msimpl_light;
-       do 2 (apply f_equal2; trivial).
-  (* the rest of gridify... *)
-  all: simpl; restore_dims;
-       distribute_plus;
-       restore_dims; repeat rewrite <- kron_assoc;
-       restore_dims; repeat rewrite kron_mixed_product;
-       Msimpl_light.
-  (* rewrite w/ cnot_db *)
-  all: Qsimpl.
-  1, 2, 3: rewrite Mplus_swap_mid.
-  all: match goal with 
-    | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
-                                     rewrite <- (Mplus_assoc _ _ A)
-    end;
-    repeat (try rewrite <- (kron_plus_distr_l);
-            try rewrite <- (kron_plus_distr_r));
-    rewrite Mplus_comm;
-    replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix;
-    reflexivity.
-Qed. 
-
-(* Alternative proof that uses gridify. From (not rigorous) testing on
-   a MacBook Pro, it seems to take about 2.5x longer than the 
-   proof above.
-   
-Lemma swap_cnot_control : forall {dim} a b c,
-  a < dim -> b < dim -> c < dim ->
-  a <> b -> b <> c -> a <> c ->
-  @uc_equiv dim (SWAP a b; CNOT b c; SWAP a b) (CNOT a c).
-Proof. 
-  intros.
-  unfold uc_equiv; simpl.
-  autorewrite with eval_db.
-  gridify.
-  all: autorewrite with cnot_db; Msimpl_light.
-  1, 2, 3: rewrite Mplus_swap_mid.
-  all: match goal with 
-       | [|- ?A .+ ?B .+ ?C .+ ?D = _] => rewrite 2 Mplus_assoc;
-                                        rewrite <- (Mplus_assoc _ _ A)
-       end;
-       repeat (try rewrite <- (kron_plus_distr_l);
-               try rewrite <- (kron_plus_distr_r));
-       rewrite Mplus_comm;
-       replace (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) with (I 2) by solve_matrix;
-       reflexivity.
+  eapply equal_on_basis_states_implies_equal; auto with wf_db.
+  intro f.
+  unfold SWAP.
+  simpl uc_eval.
+  repeat rewrite Mmult_assoc.
+  repeat rewrite f_to_vec_CNOT by auto.
+  repeat (try rewrite update_index_eq; try rewrite update_index_neq by auto).
+  repeat rewrite (update_twice_neq _ a) by auto. 
+  repeat rewrite update_twice_eq. 
+  repeat rewrite (update_twice_neq _ b) by auto.
+  rewrite update_twice_eq. 
+  rewrite (update_same _ a).
+  rewrite (update_same _ b).
+  destruct (f a); destruct (f b); reflexivity.
+  rewrite update_index_neq by auto.
+  destruct (f a); destruct (f b); reflexivity.
+  rewrite update_index_neq by auto.
+  destruct (f a); destruct (f b); reflexivity.
 Qed.
-*)
 
 (* Correctness of do_cnot_along_path *)
 
