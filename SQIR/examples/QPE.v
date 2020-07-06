@@ -981,128 +981,89 @@ Proof.
   apply Rpow_le1; lra.
 Qed.
 
-  (* For now the proof relies on the following admitted lemmas, which describe
-   bounds on sine. *)
+Lemma sin_upper_bound_aux : forall x : R, 0 < x < 1 -> sin x <= x.
+Proof.
+  intros x H.
+  specialize (SIN_bound x) as B.
+    destruct (SIN x) as [_ B2]; try lra.
+    specialize PI2_1 as PI1. lra.
+    unfold sin_ub, sin_approx in *.
+    simpl in B2.
+    unfold sin_term at 1 in B2.
+    simpl in B2.
+    unfold Rdiv in B2.
+    rewrite Rinv_1, Rmult_1_l, !Rmult_1_r in B2.
+    (* Now just need to show that the other terms are negative... *)
+    assert (sin_term x 1 + sin_term x 2 + sin_term x 3 + sin_term x 4 <= 0); try lra.
+    unfold sin_term.
+    remember (INR (fact (2 * 1 + 1))) as d1.
+    remember (INR (fact (2 * 2 + 1))) as d2.
+    remember (INR (fact (2 * 3 + 1))) as d3.
+    remember (INR (fact (2 * 4 + 1))) as d4.
+    assert (0 < d1) as L0.
+    { subst. apply lt_0_INR. apply lt_O_fact. }
+    assert (d1 <= d2) as L1.
+    { subst. apply le_INR. apply fact_le. simpl; lia. }
+    assert (d2 <= d3) as L2.
+    { subst. apply le_INR. apply fact_le. simpl; lia. }
+    assert (d3 <= d4) as L3.
+    { subst. apply le_INR. apply fact_le. simpl; lia. }
+    simpl.    
+    ring_simplify.
+    assert ( - (x * (x * (x * 1)) / d1) + x * (x * (x * (x * (x * 1)))) / d2 <= 0).
+    rewrite Rplus_comm.
+    apply Rle_minus.
+    field_simplify; try lra.
+    assert (x ^ 5 <= x ^ 3).
+    { apply Rle_pow_le1; try lra; try lia. }
+    apply Rmult_le_compat; try lra.
+    apply pow_le; lra.
+    left. apply Rinv_0_lt_compat. lra.
+    apply Rinv_le_contravar; lra.
+    unfold Rminus.
+    assert (- (x * (x * (x * (x * (x * (x * (x * 1)))))) / d3) +
+            x * (x * (x * (x * (x * (x * (x * (x * (x * 1)))))))) / d4 <= 0).
+    rewrite Rplus_comm.
+    apply Rle_minus.
+    field_simplify; try lra.
+    assert (x ^ 9 <= x ^ 7).
+    { apply Rle_pow_le1; try lra; try lia. }
+    apply Rmult_le_compat; try lra.
+    apply pow_le; lra.
+    left. apply Rinv_0_lt_compat. lra.
+    apply Rinv_le_contravar; lra.
+    lra.
+Qed.
+
 Lemma sin_upper_bound : forall x : R, Rabs (sin x) <= Rabs x.
 Proof.
-  intros x.
+  intros x.  
   specialize (SIN_bound x) as B.
-  destruct (Rle_or_lt (Rabs x) 1).
+  destruct (Rlt_or_le (Rabs x) 1).
+  (* abs(x) > 1 *)
   2:{ apply Rabs_le in B. lra. }
-  destruct (Rge_or_gt x 0).
+  destruct (Rtotal_order x 0) as [G | [E| L]].
+  - (* x < 0 *)
+    rewrite (Rabs_left x) in * by lra.
+    rewrite (Rabs_left (sin x)).
+    2:{ apply sin_lt_0_var; try lra.
+        specialize PI2_1 as PI1.
+        lra. }
+    rewrite <- sin_neg.
+    apply sin_upper_bound_aux.
+    lra.
+  - (* x = 0 *)
+    subst. rewrite sin_0. lra.
   - rewrite (Rabs_right x) in * by lra.
     rewrite (Rabs_right (sin x)).
     2:{ apply Rle_ge.
         apply sin_ge_0; try lra.
         specialize PI2_1 as PI1. lra. }
-    destruct (SIN x) as [_ B2]; try lra.
-    specialize PI2_1 as PI1. lra.
-    unfold sin_ub, sin_approx in *.
-    simpl in B2.
-    unfold sin_term at 1 in B2.
-    simpl in B2.
-    unfold Rdiv in B2.
-    rewrite Rinv_1, Rmult_1_l, !Rmult_1_r in B2.
-    (* Now just need to show that the other terms are negative... *)
-    assert (sin_term x 1 + sin_term x 2 + sin_term x 3 + sin_term x 4 <= 0); try lra.
-    unfold sin_term.
-    remember (INR (fact (2 * 1 + 1))) as d1.
-    remember (INR (fact (2 * 2 + 1))) as d2.
-    remember (INR (fact (2 * 3 + 1))) as d3.
-    remember (INR (fact (2 * 4 + 1))) as d4.
-    assert (0 < d1) as L0.
-    { subst. apply lt_0_INR. apply lt_O_fact. }
-    assert (d1 <= d2) as L1.
-    { subst. apply le_INR. apply fact_le. simpl; lia. }
-    assert (d2 <= d3) as L2.
-    { subst. apply le_INR. apply fact_le. simpl; lia. }
-    assert (d3 <= d4) as L3.
-    { subst. apply le_INR. apply fact_le. simpl; lia. }
-    simpl.    
-    ring_simplify.
-    assert ( - (x * (x * (x * 1)) / d1) + x * (x * (x * (x * (x * 1)))) / d2 <= 0).
-    rewrite Rplus_comm.
-    apply Rle_minus.
-    field_simplify; try lra.
-    assert (x ^ 5 <= x ^ 3).
-    { apply Rle_pow_le1; try lra; try lia. }
-    apply Rmult_le_compat; try lra.
-    apply pow_le; lra.
-    left. apply Rinv_0_lt_compat. lra.
-    apply Rinv_le_contravar; lra.
-    unfold Rminus.
-    assert (- (x * (x * (x * (x * (x * (x * (x * 1)))))) / d3) +
-            x * (x * (x * (x * (x * (x * (x * (x * (x * 1)))))))) / d4 <= 0).
-    rewrite Rplus_comm.
-    apply Rle_minus.
-    field_simplify; try lra.
-    assert (x ^ 9 <= x ^ 7).
-    { apply Rle_pow_le1; try lra; try lia. }
-    apply Rmult_le_compat; try lra.
-    apply pow_le; lra.
-    left. apply Rinv_0_lt_compat. lra.
-    apply Rinv_le_contravar; lra.
-    lra.
-  - rewrite (Rabs_left x) in * by lra.
-    rewrite (Rabs_left (sin x)).
-    2:{ apply sin_lt_0_var; try lra.
-        specialize PI2_1 as PI1.
-        lra. }
-    assert (H' : 0 < -x) by lra. clear H0.
-    assert (B' : -1 <= sin (- x) <= 1).
-    { rewrite sin_neg; lra. } clear B.
-    rewrite <- sin_neg.
-    remember (-x)%R as x'. clear Heqx' x. rename x' into x.
-    destruct (SIN x) as [_ B2]; try lra.
-    specialize PI2_1 as PI1. lra.
-    unfold sin_ub, sin_approx in *.
-    simpl in B2.
-    unfold sin_term at 1 in B2.
-    simpl in B2.
-    unfold Rdiv in B2.
-    rewrite Rinv_1, Rmult_1_l, !Rmult_1_r in B2.
-    (* Now just need to show that the other terms are negative... *)
-    assert (sin_term x 1 + sin_term x 2 + sin_term x 3 + sin_term x 4 <= 0); try lra.
-    unfold sin_term.
-    remember (INR (fact (2 * 1 + 1))) as d1.
-    remember (INR (fact (2 * 2 + 1))) as d2.
-    remember (INR (fact (2 * 3 + 1))) as d3.
-    remember (INR (fact (2 * 4 + 1))) as d4.
-    assert (0 < d1) as L0.
-    { subst. apply lt_0_INR. apply lt_O_fact. }
-    assert (d1 <= d2) as L1.
-    { subst. apply le_INR. apply fact_le. simpl; lia. }
-    assert (d2 <= d3) as L2.
-    { subst. apply le_INR. apply fact_le. simpl; lia. }
-    assert (d3 <= d4) as L3.
-    { subst. apply le_INR. apply fact_le. simpl; lia. }
-    simpl.    
-    ring_simplify.
-    assert ( - (x * (x * (x * 1)) / d1) + x * (x * (x * (x * (x * 1)))) / d2 <= 0).
-    rewrite Rplus_comm.
-    apply Rle_minus.
-    field_simplify; try lra.
-    assert (x ^ 5 <= x ^ 3).
-    { apply Rle_pow_le1; try lra; try lia. }
-    apply Rmult_le_compat; try lra.
-    apply pow_le; lra.
-    left. apply Rinv_0_lt_compat. lra.
-    apply Rinv_le_contravar; lra.
-    unfold Rminus.
-    assert (- (x * (x * (x * (x * (x * (x * (x * 1)))))) / d3) +
-            x * (x * (x * (x * (x * (x * (x * (x * (x * 1)))))))) / d4 <= 0).
-    rewrite Rplus_comm.
-    apply Rle_minus.
-    field_simplify; try lra.
-    assert (x ^ 9 <= x ^ 7).
-    { apply Rle_pow_le1; try lra; try lia. }
-    apply Rmult_le_compat; try lra.
-    apply pow_le; lra.
-    left. apply Rinv_0_lt_compat. lra.
-    apply Rinv_le_contravar; lra.
-    lra.
+    apply sin_upper_bound_aux; lra.
 Qed.    
 
+  (* For now the proof relies on the following admitted lemma, which describes
+   a bound on sine. *)
 Lemma sin_lower_bound : forall x : R, Rabs x <= 1/2 -> Rabs (2 * x) <= Rabs (sin (PI * x)).
 Proof. Admitted.
 
