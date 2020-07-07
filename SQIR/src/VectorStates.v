@@ -1014,7 +1014,8 @@ Proof.
   intros. apply H; lia.
 Qed.
 
-Lemma vsum_sum : forall d m n (f : nat -> Vector d),
+(* Two natural ways to split a vsum *)
+Lemma vsum_sum1 : forall d m n (f : nat -> Vector d),
   vsum (m + n) f = vsum m f .+ vsum n (shift f m).
 Proof.
   intros d m n f.
@@ -1033,6 +1034,21 @@ Proof.
   subst. rewrite shift_simplify. rewrite Nat.add_0_l. reflexivity.
   subst. rewrite shift_simplify. rewrite Nat.add_comm. reflexivity.
 Qed.
+
+Local Opaque Nat.mul.
+Lemma vsum_sum2 : forall d n (f : nat -> Vector d),
+  vsum (2 * n) f = vsum n (fun i => f (2 * i)%nat) .+ vsum n (fun i => f (2 * i + 1)%nat).
+Proof.
+  intros d n f.
+  induction n.
+  rewrite Nat.mul_0_r. simpl. Msimpl. reflexivity.
+  replace (2 * S n)%nat with (S (S (2 * n)))%nat  by lia.
+  simpl vsum. 
+  rewrite IHn; clear.
+  replace (2 * n + 1)%nat with (S (2 * n)) by lia.
+  lma.
+Qed.
+Local Transparent Nat.mul.
 
 (*******************************)
 (** Indexed Kronecker Product **)
@@ -1076,6 +1092,31 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma kron_n_f_to_vec : forall n (A : Square 2) f,
+  n ⨂ A × f_to_vec n f = vkron n (fun k => A × ∣ f k ⟩ ).
+Proof.
+  intros n A f.
+  induction n; simpl. 
+  Msimpl. reflexivity.
+  restore_dims.
+  rewrite kron_mixed_product.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+Lemma Mscale_vkron_distr_r : forall n x (f : nat -> Vector 2),
+  vkron n (fun i => x .* f i) = x ^ n .* vkron n f.
+Proof.
+  intros n x f.
+  induction n.
+  simpl. Msimpl. reflexivity.
+  simpl.
+  rewrite IHn. 
+  distribute_scale.
+  rewrite Cmult_comm.
+  reflexivity.
+Qed.
+
 Lemma vkron_split : forall n i (f : nat -> Vector 2),
   i < n ->
   vkron n f = (vkron i f) ⊗ f i ⊗ (vkron (n - 1 - i) (shift f (i + 1))).
@@ -1108,6 +1149,11 @@ Proof.
   rewrite IHn. reflexivity.
   intros. apply Heq. lia.
 Qed.
+
+(* Of the lemmas below, the important two are vkron_to_vsum1 and vsum_to_vkron2 
+   (TODO: better names). Both lemmas provide a way to convert from an indexed
+   Kronecker product to an index sum. vkron_to_vsum1 is used in the QPE proof
+   and vsum_to_vkron2 is used in the QPE and Deutsch-Josza proofs. *)
 
 Lemma basis_vector_prepend_0 : forall n k,
   n <> 0 -> k < n ->
@@ -1156,7 +1202,66 @@ Proof.
   destruct n0; lca.
 Qed.
 
-Lemma vkron_to_vsum : forall n (c : R),
+Local Opaque Nat.mul Nat.div Nat.modulo.
+Lemma basis_vector_append_0 : forall n k,
+  n <> 0 -> k < n ->
+  basis_vector n k ⊗ ∣0⟩ = basis_vector (2 * n) (2 * k).
+Proof.
+  intros.
+  unfold basis_vector; solve_matrix.
+  rewrite Nat.div_1_r.
+  bdestruct (y =? 0); subst.
+  2: repeat rewrite andb_false_r; lca.
+  bdestruct (x =? 2 * k); subst.
+  rewrite Nat.mul_comm.
+  rewrite Nat.div_mul by auto.
+  rewrite Nat.eqb_refl.
+  rewrite Nat.mod_mul, Nat.mod_0_l by auto. 
+  lca.
+  bdestruct (x / 2 =? k); simpl; try lca.
+  destruct (x mod 2) eqn:m.
+  contradict H1.
+  rewrite <- H2.
+  apply Nat.div_exact; auto.
+  destruct n0; try lca.
+  rewrite Nat.mod_0_l by auto.
+  lca.
+Qed.
+
+Lemma basis_vector_append_1 : forall n k,
+  n <> 0 -> k < n ->
+  basis_vector n k ⊗ ∣1⟩ = basis_vector (2 * n) (2 * k + 1).
+Proof.
+  intros.
+  unfold basis_vector; solve_matrix.
+  rewrite Nat.div_1_r.
+  bdestruct (y =? 0); subst.
+  2: repeat rewrite andb_false_r; lca.
+  bdestruct (x =? 2 * k + 1); subst. 
+  Search ((_ + _)/ _).
+  rewrite Nat.mul_comm. 
+  rewrite Nat.div_add_l by auto.
+  replace (1 / 2) with 0 by auto.
+  rewrite Nat.add_0_r.
+  rewrite Nat.eqb_refl.
+  rewrite Nat.add_comm, Nat.mod_add by auto. 
+  replace (1 mod 2) with 1 by auto. 
+  replace (0 mod 1) with 0 by auto.  
+  lca. 
+  bdestruct (x / 2 =? k); simpl; try lca.
+  destruct (x mod 2) eqn:m.   
+  replace (0 mod 1) with 0 by auto; lca.
+  destruct n0; try lca.
+  contradict H1.
+  rewrite <- H2.
+  remember 2 as two.
+  rewrite <- m.
+  subst.
+  apply Nat.div_mod; auto.
+Qed.
+Local Transparent Nat.mul Nat.div Nat.modulo.
+
+Lemma vkron_to_vsum1 : forall n (c : R),
   n > 0 -> 
   vkron n (fun k => ∣0⟩ .+ Cexp (c * 2 ^ (n - k - 1)) .* ∣1⟩) = 
     vsum (2 ^ n) (fun k => Cexp (c * INR k) .* basis_vector (2 ^ n) k).
@@ -1190,7 +1295,7 @@ Proof.
   rewrite kron_plus_distr_r.
   rewrite 2 kron_vsum_distr_l.
   replace (2 * N) with (N + N) by lia.
-  rewrite vsum_sum.
+  rewrite vsum_sum1.
   replace (N + N) with (2 * N) by lia.
   rewrite (vsum_eq _ (fun i : nat => ∣0⟩ ⊗ (Cexp (c * INR i) .* basis_vector N i)) (fun k : nat => Cexp (c * INR k) .* basis_vector (2 * N) k)).
   rewrite (vsum_eq _ (fun i : nat => Cexp (c * INR N) .* ∣1⟩ ⊗ (Cexp (c * INR i) .* basis_vector N i)) (shift (fun k : nat => Cexp (c * INR k) .* basis_vector (2 * N) k) N)).
@@ -1207,3 +1312,183 @@ Proof.
   rewrite basis_vector_prepend_0 by lia.
   reflexivity.
 Qed.
+
+Fixpoint product (x y : nat -> bool) n :=
+  match n with
+  | O => false
+  | S n' => xorb ((x n') && (y n')) (product x y n')
+  end.
+
+Lemma product_comm : forall f1 f2 n, product f1 f2 n = product f2 f1 n.
+Proof.
+  intros f1 f2 n.
+  induction n; simpl; auto.
+  rewrite IHn, andb_comm.
+  reflexivity.
+Qed.
+
+Lemma product_update_oob : forall f1 f2 n b dim, (dim <= n)%nat ->
+  product f1 (update f2 n b) dim = product f1 f2 dim.
+Proof.
+  intros.
+  induction dim; trivial.
+  simpl.
+  rewrite IHdim by lia.
+  unfold update.
+  bdestruct (dim =? n); try lia.
+  reflexivity.
+Qed.
+
+Lemma product_0 : forall f n, product (fun _ : nat => false) f n = false.
+Proof.
+  intros f n.
+  induction n; simpl; auto.
+  rewrite IHn; reflexivity.
+Qed.
+
+Lemma nat_to_funbool_0 : forall n, nat_to_funbool n 0 = (fun _ => false).
+Proof.
+  intro n.
+  unfold nat_to_funbool, nat_to_binlist.
+  simpl.
+  replace (n - 0)%nat with n by lia.
+  induction n; simpl.
+  reflexivity.
+  replace (n - 0)%nat with n by lia.
+  rewrite update_same; rewrite IHn; reflexivity.
+Qed.
+
+Local Open Scope R_scope.
+Local Open Scope C_scope.
+Local Opaque Nat.mul.
+Lemma vkron_to_vsum2 : forall n (f : nat -> bool),
+  (n > 0)%nat -> 
+  vkron n (fun k => ∣0⟩ .+ (-1) ^ f k .* ∣1⟩) = 
+    vsum (2 ^ n) (fun k => (-1) ^ (product f (nat_to_funbool n k) n) .* basis_vector (2 ^ n) k).
+Proof.
+  intros n f ?.
+  destruct n; try lia.
+  clear.
+  induction n.
+  - simpl.
+    repeat rewrite Nat.mul_1_r.
+    simpl. Msimpl.
+    unfold nat_to_funbool; simpl.
+    rewrite 2 update_index_eq.
+    replace (basis_vector 2 0) with ∣0⟩ by solve_matrix.
+    replace (basis_vector 2 1) with ∣1⟩ by solve_matrix.
+    destruct (f O); simpl; restore_dims; lma. 
+  - remember (S n) as n'.
+    simpl vkron.
+    rewrite IHn; clear.
+    replace (2 ^ S n')%nat with (2 * 2 ^ n')%nat by reflexivity. 
+    rewrite vsum_sum2.
+    rewrite <- vsum_plus.
+    rewrite kron_vsum_distr_r.
+    replace (2 * 2 ^ n')%nat with (2 ^ n' * 2)%nat by lia.
+    apply vsum_eq.
+    intros i Hi.
+    distribute_plus.
+    distribute_scale.
+    rewrite (basis_vector_append_0 (2 ^ n')); auto; try lia.
+    rewrite (basis_vector_append_1 (2 ^ n')); auto; try lia.
+    apply f_equal2; apply f_equal2; try reflexivity.
+    apply f_equal2; try reflexivity.
+    simpl.
+    assert (forall n, (n > 0)%nat -> nat_to_binlist' (2 * n) = false :: nat_to_binlist' n).
+    { clear. intros n Hn. 
+      destruct n; try lia. clear.
+      induction n.
+      rewrite Nat.mul_1_r. simpl. reflexivity. 
+      replace (2 * S (S n))%nat with (S (S (2 * S n))) by lia.
+      simpl. rewrite IHn. reflexivity. }
+    destruct i.
+    rewrite Nat.mul_0_r. 
+    unfold nat_to_funbool, nat_to_binlist; simpl.
+    replace (n' - 0)%nat with n' by lia.
+    rewrite update_index_eq.
+    rewrite andb_false_r, xorb_false_l.
+    rewrite product_update_oob by lia.
+    reflexivity.
+    unfold nat_to_funbool, nat_to_binlist.
+    rewrite H by lia.
+    simpl.
+    replace (n' - 0)%nat with n' by lia.
+    rewrite update_index_eq.
+    rewrite andb_false_r, xorb_false_l.
+    rewrite product_update_oob by lia.
+    reflexivity. 
+    repeat rewrite RtoC_pow.
+    rewrite <- RtoC_mult.
+    rewrite <- pow_add.
+    simpl.
+    assert (forall n, nat_to_binlist' (2 * n + 1) = true :: nat_to_binlist' n).
+    { clear.
+      induction n.
+      rewrite Nat.mul_0_r, Nat.add_0_l. simpl. reflexivity. 
+      replace (2 * S n + 1)%nat with (S (S (2 * n + 1))) by lia.
+      simpl. rewrite IHn. reflexivity. }
+    unfold nat_to_funbool, nat_to_binlist.
+    rewrite H by lia.
+    simpl.
+    replace (n' - 0)%nat with n' by lia.
+    rewrite update_index_eq.
+    rewrite andb_true_r.
+    rewrite product_update_oob by lia.
+    remember (product f (list_to_funbool n' (nat_to_binlist' i ++ repeat false (n' - length (nat_to_binlist' i)))) n') as p.
+    destruct (f n'); destruct p; simpl; lca.
+Qed.
+Local Transparent Nat.mul.
+
+Lemma H_spec : (* slightly different from hadamard_on_basis_state *)
+  forall b : bool, hadamard × ∣ b ⟩ = / √ 2 .* (∣ 0 ⟩ .+ (-1)^b .* ∣ 1 ⟩).
+Proof.
+  intro b.
+  destruct b; simpl; autorewrite with ket_db.
+  replace (/ √ 2 * (-1 * 1))%C with (- / √ 2)%C by lca.
+  reflexivity. reflexivity.
+Qed.
+
+Lemma H_kron_n_spec : forall n x, (n > 0)%nat ->
+  n ⨂ hadamard × f_to_vec n x = 
+    /√(2 ^ n) .* vsum (2 ^ n) (fun k => (-1) ^ (product x (nat_to_funbool n k) n) .* basis_vector (2 ^ n) k).
+Proof. 
+  intros n x Hn. 
+  rewrite kron_n_f_to_vec.
+  erewrite (vkron_eq _ (fun k : nat => hadamard × ∣ x k ⟩)).
+  2: { intros i Hi.
+       rewrite H_spec.
+       reflexivity. }
+  rewrite Mscale_vkron_distr_r.
+  apply f_equal2.  
+  repeat rewrite <- RtoC_inv by nonzero.
+  rewrite RtoC_pow. 
+  rewrite <- Rinv_pow by nonzero. 
+  rewrite <- sqrt_pow by lra. 
+  reflexivity.
+  apply vkron_to_vsum2.
+  assumption.
+Qed.
+
+Lemma H0_kron_n_spec_alt : forall n, (n > 0)%nat ->
+  n ⨂ hadamard × n ⨂ ∣0⟩ = 
+    /√(2 ^ n) .* vsum (2 ^ n) (fun k => basis_vector (2 ^ n) k).
+Proof. 
+  intros.
+  replace (n ⨂ ∣0⟩) with (f_to_vec n (fun _ => false)).
+  replace (1^n)%nat with (S O).
+  rewrite H_kron_n_spec by assumption.
+  apply f_equal2; try reflexivity.
+  apply vsum_eq.
+  intros.
+  rewrite product_0; simpl. lma.
+  symmetry. apply Nat.pow_1_l. 
+  clear.
+  induction n; try reflexivity.
+  simpl. rewrite IHn. reflexivity.
+Qed.
+
+
+
+
+

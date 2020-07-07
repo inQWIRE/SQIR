@@ -169,22 +169,6 @@ Local Open Scope C_scope.
 
 Definition epr00 : Vector 4 := / √ 2 .* ∣ 0, 0 ⟩ .+ / √ 2 .* ∣ 1, 1 ⟩.
 
-Lemma ket_decomposition : forall (ψ : Vector 2), 
-  WF_Matrix ψ ->
-  ψ = (ψ 0%nat 0%nat) .* ∣ 0 ⟩ .+ (ψ 1%nat 0%nat) .* ∣ 1 ⟩.
-Proof.
-  intros.
-  prep_matrix_equality.
-  unfold scale, Mplus.
-  destruct y as [|y']. 
-  2:{ rewrite H; try lia. 
-      unfold ket, qubit0, qubit1. simpl. 
-      repeat (destruct x; try lca). }
-  destruct x as [| [| n]]; unfold ket, qubit0, qubit1; simpl; try lca.  
-  rewrite H; try lia.
-  lca.
-Qed. 
-
 (* Alternative form of proportional for unscaled vectors. *)
 Definition proportional {m n : nat} (A B : Matrix m n) := 
   exists s, A = s .* B. 

@@ -492,7 +492,7 @@ Proof.
   remember (2 * PI * INR (funbool_to_nat n f) / 2 ^ n)%R as c.
   rewrite (vkron_eq _ _ (fun k : nat => ∣0⟩ .+ Cexp (c * 2 ^ (n - k - 1)) .* ∣1⟩)).
   rewrite (vsum_eq _ _ (fun k : nat => Cexp (c * INR k) .* basis_vector (2 ^ n) k)).
-  apply vkron_to_vsum. lia.
+  apply vkron_to_vsum1. lia.
   intros i Hi.
   subst. apply f_equal2; try reflexivity. apply f_equal. 
   rewrite mult_INR. lra.
@@ -783,39 +783,8 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma kron_n_equals_vkron : forall n (A : Vector 2), n ⨂ A = vkron n (fun _ => A).
-Proof.
-  intros.
-  induction n; simpl. reflexivity.
-  rewrite IHn. reflexivity.
-Qed.
-
-(* n ⨂ hadamard produces a uniform superposition *)
-Lemma H0_kron_n_spec_alt : forall n, (n > 0)%nat ->
-  @Mmult _ _ 1 (n ⨂ hadamard) (n ⨂ ∣0⟩) = /√(2 ^ n) .* vsum (2 ^ n) (fun k => basis_vector (2 ^ n) k).
-Proof. 
-  intros n Hn. restore_dims.
-  rewrite Dirac.H0_kron_n_spec.
-  rewrite <- Mscale_plus_distr_r.
-  rewrite Mscale_kron_n_distr_r.
-  replace (n ⨂ (∣ 0 ⟩ .+ ∣ 1 ⟩)) with (vkron n (fun _ => ∣ 0 ⟩ .+ ∣ 1 ⟩)).
-  2: symmetry; apply kron_n_equals_vkron.
-  rewrite (vkron_eq _ _ (fun i => ∣ 0 ⟩ .+ Cexp (0 * 2 ^ (n - i - 1)) .* ∣ 1 ⟩)).
-  rewrite vkron_to_vsum by auto.  
-  apply f_equal2. 
-  repeat rewrite <- RtoC_inv; try nonzero.
-  rewrite RtoC_pow. 
-  rewrite <- Rinv_pow; try nonzero.
-  rewrite sqrt_pow by lra. reflexivity.
-  apply vsum_eq.
-  intros i Hi.
-  autorewrite with R_db C_db Cexp_db. lma.
-  intros i Hi.
-  autorewrite with R_db C_db Cexp_db. lma.
-Qed.
-
 (* Simplify the expression uc_eval (QPE k n c) × (k ⨂ ∣0⟩ ⊗ ψ) *)
-Local Opaque QFT_w_reverse Nat.mul.
+Local Opaque QFT_w_reverse Nat.mul Nat.pow.
 Lemma QPE_simplify : forall k n (c : base_ucom n) (ψ : Vector (2 ^ n)) θ,
   (n > 0)%nat -> (k > 1)%nat -> uc_well_typed c -> WF_Matrix ψ ->
   (uc_eval c) × ψ = Cexp (2 * PI * θ) .* ψ ->
@@ -828,9 +797,10 @@ Proof.
   repeat rewrite <- pad_dims_r.
   rewrite npar_H by lia.
   replace (2 ^ (k + n))%nat with (2 ^ k * 2 ^ n)%nat by unify_pows_two. 
-  rewrite Nat.pow_1_l. 
+  replace (1 * 1)%nat with (1 ^ k * 1)%nat.
+  2: rewrite Nat.pow_1_l; reflexivity.
   rewrite kron_mixed_product.
-  Msimpl.
+  Msimpl. 
   rewrite H0_kron_n_spec_alt by lia.
   restore_dims. distribute_scale.
   rewrite kron_vsum_distr_r.

@@ -66,6 +66,10 @@ Inductive stmt : Type :=
   | Control  (q : string) (s : stmt)
   | Adjoint  (s : stmt).
 
+
+Include Forall loop?
+
+
 (** Examples **)
 
 (* Assume a few gates for now. *)

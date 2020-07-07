@@ -79,10 +79,10 @@ Verified transformations of SQIR programs.
 - Mapping routines for unitary SQIR programs
   - src/SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
   - src/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
+  - src/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout.
 
 - Experimental extensions
   - src/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
-  - src/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout. **(WIP)**
 
 ### extraction
 

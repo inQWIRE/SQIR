@@ -174,32 +174,6 @@ Proof.
     apply H3; auto.    
 Qed.
 
-Lemma swap_in_map_twice : forall {dim} (m : qmap dim) n1 n2,
-  layout_well_formed m ->
-  swap_in_map (swap_in_map m n1 n2) n1 n2 = m.
-Proof.
-  intros dim m n1 n2 [_ [_ WF]].
-  unfold swap_in_map.
-  destruct m.
-  simpl in WF.
-  bdestructΩ (n1 =? n1).
-  bdestructΩ (n2 =? n2).
-  apply f_equal2.
-  - apply functional_extensionality.
-    intros x.
-    bdestruct (x =? n0 n2).
-    symmetry. apply WF. auto.
-    bdestruct (n2 =? n1); subst.
-    bdestructΩ (x =? n0 n1).
-    bdestruct (x =? n0 n1); auto.
-    symmetry. apply WF. auto.
-  - apply functional_extensionality.
-    intros x.
-    bdestruct (x =? n1); subst.
-    bdestruct (n2 =? n1); subst; auto.
-    bdestruct (x =? n2); subst; auto.
-Qed.
-
 Lemma path_to_swaps_well_formed : forall {dim} n1 n2 is_in_graph p m c m',
   valid_graph dim is_in_graph ->
   valid_path n1 n2 is_in_graph p ->
