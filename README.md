@@ -49,11 +49,12 @@ We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE)
 
 Examples of verifying correctness properties of simple SQIR programs.
 
-- examples/Deutsch.v    
-- examples/DeutschJozsa.v
-- examples/GHZ.v
-- examples/Superdense.v
-- examples/Teleport.v  
+- examples/DeutschJozsa.v : Deutsch-Jozsa algorithm
+- examples/GHZ.v : GHZ state prepatation
+- examples/QPE.v : Quantum phase estimation (simplified)
+- examples/QPEGeneral.v : Quantum phase estimation (general) -- this file is not built by default to minimize SQIR's depedencies; see notes at the top of the file.
+- examples/Superdense.v : Superdense coding
+- examples/Teleport.v : Quantum teleportation
 
 ## VOQC Directory Contents
 

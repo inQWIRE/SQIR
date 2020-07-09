@@ -25,9 +25,7 @@ Inductive exp : Type :=
   | Not     (e : exp)
   | And     (e1 e2 : exp)
   | Var     (x : string)
-  | ArrVar  (arr : string) (idx : exp) (* indexing into an array *)
-  | Lam     (x : string) (e : exp)
-  | App     (e1 e2 : exp).
+  | ArrVar  (arr : string) (idx : exp) (* indexing into an array *).
 
 (* Type for unitary gates -- do we want the dependent type? *)
 Parameter gate : nat -> Set. 
@@ -62,7 +60,7 @@ Inductive stmt : Type :=
   | Init     (qs : string) (sz : exp)
   | Gate     {n : nat} (g : gate n) (qs : list exp)
   | Meas     (x : string) (q : exp)
-  | Oracle   (f : exp) (arg : string)
+  | Oracle   (x : string) (op : exp) (arg : string)
   | Control  (q : string) (s : stmt)
   | Adjoint  (s : stmt).
 

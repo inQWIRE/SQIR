@@ -235,43 +235,36 @@ Definition reject {n : nat} (U : base_ucom (S n)) : Prop :=
     (uc_eval (deutsch_jozsa U) × (S n ⨂ ∣0⟩)) 
     (n ⨂ ∣0⟩ ⊗ ∣1⟩) = 0. 
 
-Theorem deutsch_jozsa_constant_correct :
+Theorem deutsch_jozsa_correct :
   forall {n} (f : nat -> bool) (U : base_ucom (S n)), 
-  (n > 0)%nat -> constant f n -> boolean_oracle U f -> accept U.
+  (n > 0)%nat -> boolean_oracle U f -> 
+  (constant f n -> accept U) /\ (balanced f n -> reject U).
 Proof.
-  intros n f U ? H ?. 
-  unfold accept, probability_of_outcome.
+  intros n f U Hn Hb. 
+  unfold accept, reject, probability_of_outcome.
   repeat rewrite Nat.pow_1_l. 
   rewrite <- Mmult_assoc.
-  restore_dims.
-  rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
-  unfold constant in H.
-  destruct H; rewrite H; simpl; try lra.
-  autorewrite with R_db.
-  rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
-  field_simplify_eq; trivial.
-  nonzero.
-Qed.
-
-Theorem deutsch_jozsa_balanced_correct :
-  forall {n} (f : nat -> bool) (U : base_ucom (S n)), 
-  (n > 0)%nat -> balanced f n -> boolean_oracle U f -> reject U.
-Proof.
-  intros n f U ? [_ H] ?. 
-  unfold reject, probability_of_outcome.
-  repeat rewrite Nat.pow_1_l. 
-  rewrite <- Mmult_assoc.
-  restore_dims.
-  rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
-  rewrite H; simpl; try lra.
-  autorewrite with R_db.
-  rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
-  replace (2 * 2 ^ (n - 1) * / 2 ^ n) with 1.
-  lra.
-  field_simplify_eq; try nonzero.
-  rewrite tech_pow_Rmult. 
-  replace (S (n - 1)) with n by lia. 
-  reflexivity.
+  split; intro H.
+  - restore_dims.
+    rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
+    unfold constant in H.
+    destruct H; rewrite H; simpl; try lra.
+    autorewrite with R_db.
+    rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
+    field_simplify_eq; trivial.
+    nonzero.
+  - restore_dims.
+    rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
+    destruct H as [_ H].
+    rewrite H; simpl; try lra.
+    autorewrite with R_db.
+    rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
+    replace (2 * 2 ^ (n - 1) * / 2 ^ n) with 1.
+    lra.
+    field_simplify_eq; try nonzero.
+    rewrite tech_pow_Rmult. 
+    replace (S (n - 1)) with n by lia. 
+    reflexivity.
 Qed.
 
 (** Proof of correctness #2 **)
