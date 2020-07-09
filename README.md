@@ -4,7 +4,7 @@
 
 SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its main application is as an IR in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-We describe SQIR and VOQC in [this draft](https://www.cs.umd.edu/~mwh/papers/hietala19voqc.html). A preliminary version of this work was presented at QPL 2019 and an updated version was presented at PLanQC 2020.
+We describe SQIR and VOQC in [this draft](https://arxiv.org/abs/1912.02250). A preliminary version of this work was presented at QPL 2019 and an updated version was presented at PLanQC 2020.
 
 Our repository is split into two parts: SQIR and VOQC. If you are interested in verification of quantum programs, you should focus on the SQIR directory (we also recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html)). If you are interested in our verified compiler then take a look at the VOQC directory.
 
