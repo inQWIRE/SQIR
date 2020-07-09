@@ -27,7 +27,7 @@ Dependencies:
   * OCaml version 4.08.1
   * Coq version 8.10.1
 
-Run `make` to compile the core files of SQIR, `make optimizer` to compile proofs about the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. Use `make all` to compile everything. The development has been tested with Coq version 8.10.1 and OCaml version 4.08.1 on a MacBook Pro. Our proofs are resource intensive, so expect `make all` to take around an hour and a half. We have experienced memory errors on some Linux machines, we are working to resolve this.
+Run `make` to compile the core files of SQIR, `make optimizer` to compile proofs about the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. Use `make all` to compile everything. The development has been tested with Coq version 8.10.1 and OCaml version 4.08.1 on a MacBook Pro. Our proofs are resource intensive, so expect `make all` to take around an hour. We have experienced memory errors on some Linux machines, we are working to resolve this.
 
 ## SQIR Directory Contents
 

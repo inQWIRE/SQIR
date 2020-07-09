@@ -36,7 +36,7 @@ all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRota
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Superdense.vo $(examples)/Teleport.vo $(examples)/QPE.vo
 
-mapper: invoke-coqmakefile $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo
+mapper: invoke-coqmakefile $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo $(VOQC)/SimpleMappingWithLayout.vo
 
 optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo VOQC/extraction/voqc.ml
 	cd VOQC/extraction && ./extract.sh
@@ -72,8 +72,11 @@ SQIR/examples/QPE.vo: $(examples)/QPE.v $(SQIR)/UnitaryOps.vo
 VOQC/src/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(SQIR)/UnitarySem.vo $(SQIR)/Equivalences.vo
 	coqc $(COQ_OPTS) $(VOQC)/SimpleMapping.v
 
-VOQC/src/MappingExamples.vo: $(VOQC)/SimpleMapping.vo
+VOQC/src/MappingExamples.vo: $(VOQC)/MappingExamples.v $(VOQC)/SimpleMapping.vo
 	coqc $(COQ_OPTS) $(VOQC)/MappingExamples.v
+
+VOQC/src/SimpleMappingWithLayout.vo: $(VOQC)/SimpleMappingWithLayout.v $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo 
+	coqc $(COQ_OPTS) $(VOQC)/SimpleMappingWithLayout.v
 
 # Built by 'make optimizer'
 
