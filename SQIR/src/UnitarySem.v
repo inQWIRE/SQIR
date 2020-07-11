@@ -195,7 +195,96 @@ Proof.
   lra.
 Qed.
 
-Lemma phase_shift_rotation : forall λ, rotation 0 0 λ = phase_shift λ.
+(* Move to Quantum.v *)
+(* Standard definitions, may use alternate as well *)
+
+Definition x_rotation  (θ : R) : Matrix 2 2 :=
+  fun x y => match x, y with
+          | 0, 0 => cos (θ / 2)
+          | 0, 1 => -Ci * sin (θ / 2)
+          | 1, 0 => -Ci * sin (θ / 2)
+          | 1, 1 => cos (θ / 2)
+          | _, _ => 0
+          end.
+
+Definition y_rotation  (θ : R) : Matrix 2 2 :=
+  fun x y => match x, y with
+          | 0, 0 => cos (θ / 2)
+          | 0, 1 => - sin (θ / 2)
+          | 1, 0 => sin (θ / 2)
+          | 1, 1 => cos (θ / 2)
+          | _, _ => 0
+          end.
+
+(* Shifted by i so x/y_rotation PI = σx/y :
+Definition x_rotation  (θ : R) : Matrix 2 2 :=
+  fun x y => match x, y with
+          | 0, 0 => Ci * cos (θ / 2)
+          | 0, 1 => sin (θ / 2)
+          | 1, 0 => sin (θ / 2)
+          | 1, 1 => Ci * cos (θ / 2)
+          | _, _ => 0
+          end.
+
+Definition y_rotation  (θ : R) : Matrix 2 2 :=
+  fun x y => match x, y with
+          | 0, 0 => Ci * cos (θ / 2)
+          | 0, 1 => -Ci * sin (θ / 2)
+          | 1, 0 => Ci * sin (θ / 2)
+          | 1, 1 => Ci * cos (θ / 2)
+          | _, _ => 0
+          end.
+ *)
+
+Lemma x_rotation_pi : x_rotation PI = -Ci .* σx.
+Proof.
+  unfold σx, x_rotation, scale.
+  prep_matrix_equality.
+  destruct_m_eq; 
+  autorewrite with trig_db C_db;
+  reflexivity. 
+Qed.
+
+Lemma y_rotation_pi : y_rotation PI = -Ci .* σy.
+Proof.
+  unfold σy, y_rotation, scale. 
+  prep_matrix_equality.
+  destruct_m_eq; 
+  autorewrite with trig_db C_db;
+  try reflexivity. 
+Qed.
+
+(* For Complex.v *)
+Lemma Cexp_3PI2: Cexp (3 * PI / 2) = - Ci.
+Proof.
+  unfold Cexp.
+  replace (3 * PI / 2)%R with (3 * (PI/2))%R by lra.  
+  rewrite cos_3PI2, sin_3PI2.
+  lca.
+Qed.
+
+Hint Rewrite Cexp_3PI2 : Cexp_db.
+
+Lemma Rx_rotation : forall θ, rotation θ (3*PI/2) (PI/2) = x_rotation θ.
+Proof.
+  intros.
+  unfold rotation, x_rotation. 
+  prep_matrix_equality.
+  destruct_m_eq;
+  autorewrite with C_db Cexp_db; reflexivity.
+Qed.
+
+Lemma Ry_rotation : forall θ, rotation θ 0 0 = y_rotation θ.
+Proof. 
+  intros.
+  unfold rotation, y_rotation. 
+  prep_matrix_equality.
+  destruct_m_eq;
+  autorewrite with C_db Cexp_db; try reflexivity.
+Qed.
+
+
+Lemma phase_shift_rotation : forall θ, rotation 0 0 θ = phase_shift θ.
 Proof. 
   intros.
   unfold phase_shift, rotation. 
@@ -629,12 +718,27 @@ Proof.
   inversion H; subst; assumption. 
 Qed.
 
-Lemma uc_well_typed_Rz : forall dim λ n, n < dim <-> uc_well_typed (@Rz dim λ n).
+Lemma uc_well_typed_Rx : forall dim θ n, n < dim <-> uc_well_typed (@Rx dim θ n).
 Proof. 
   intros. split; intros H.
   constructor; assumption. 
   inversion H; subst; assumption. 
 Qed.
+
+Lemma uc_well_typed_Ry : forall dim θ n, n < dim <-> uc_well_typed (@Ry dim θ n).
+Proof. 
+  intros. split; intros H.
+  constructor; assumption. 
+  inversion H; subst; assumption. 
+Qed.
+
+Lemma uc_well_typed_Rz : forall dim θ n, n < dim <-> uc_well_typed (@Rz dim θ n).
+Proof. 
+  intros. split; intros H.
+  constructor; assumption. 
+  inversion H; subst; assumption. 
+Qed.
+
 
 Lemma uc_well_typed_CNOT : forall dim m n, 
   (m < dim /\ n < dim /\ m <> n) <-> uc_well_typed (@CNOT dim m n).
@@ -704,7 +808,21 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma denote_Rz : forall dim λ n, uc_eval (Rz λ n) = @pad 1 n dim (phase_shift λ).
+Lemma denote_Rx : forall dim θ n, uc_eval (Rx θ n) = @pad 1 n dim (x_rotation θ).
+Proof.
+  intros. unfold uc_eval; simpl.
+  rewrite Rx_rotation.
+  reflexivity.
+Qed.
+
+Lemma denote_Ry : forall dim θ n, uc_eval (Ry θ n) = @pad 1 n dim (y_rotation θ).
+Proof.
+  intros. unfold uc_eval; simpl.
+  rewrite Ry_rotation.
+  reflexivity.
+Qed.
+
+Lemma denote_Rz : forall dim θ n, uc_eval (Rz θ n) = @pad 1 n dim (phase_shift θ).
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite phase_shift_rotation.
@@ -811,10 +929,10 @@ Lemma unfold_ueval_swap : forall dim m n,
       Zero.
 Proof. easy. Qed.
 
-Hint Rewrite denote_H denote_X denote_Y denote_Z denote_ID denote_SKIP denote_Rz denote_cnot denote_swap unfold_ueval_r : eval_db.
+Hint Rewrite denote_H denote_X denote_Y denote_Z denote_ID denote_SKIP denote_Rx denote_Ry denote_Rz denote_cnot denote_swap unfold_ueval_r : eval_db.
 Hint Rewrite unfold_ueval_cnot unfold_pad unfold_ueval_swap : eval_db.
 
-Global Opaque H X Y Z ID Rz CNOT SWAP.
+Global Opaque H X Y Z ID Rx Ry Rz CNOT SWAP.
 
 (* Some unit tests *)
 
