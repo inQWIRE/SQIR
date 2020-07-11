@@ -7,7 +7,7 @@ Local Open Scope com.
 (* TODO: move *)
 
 Definition norm {n} (ψ : Vector n) :=
-  sqrt (fst (ψ ∘ ψ†)).  
+  sqrt (fst ((ψ† × ψ) O O)).  
 
 Reserved Notation "c '/' ψ '⇩' ψ'"
                   (at level 40, ψ at level 39).
@@ -160,16 +160,14 @@ Proof.
       apply nd_meas_t; assumption.
     + contradict H0.
       rewrite double_pad_10.
-      unfold norm, dot.
-      rewrite Csum_0. 
-      simpl; rewrite sqrt_0; reflexivity.
-      intros; lca.
+      unfold norm. 
+      Msimpl; simpl.
+      apply sqrt_0.
     + contradict H0. 
       rewrite double_pad_01.
-      unfold norm, dot.
-      rewrite Csum_0. 
-      simpl; rewrite sqrt_0; reflexivity.
-      intros; lca.
+      unfold norm. 
+      Msimpl; simpl.
+      apply sqrt_0.
     + rewrite double_pad_00 in H0.
       rewrite double_pad_00 in H1.
       apply nd_meas_f; assumption.
