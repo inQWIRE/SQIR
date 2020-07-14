@@ -2,9 +2,7 @@ open OpenQASM
 open OpenQASM.AST
 open UnitaryListRepresentation
 open RzQGateSet
-
 open Printf
-
 module StringMap = Map.Make(String)
 
 (* This file contains details for converting between OpenQASM and SQIR programs. *)

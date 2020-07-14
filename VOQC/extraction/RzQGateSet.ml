@@ -6,7 +6,8 @@ module RzQGateSet =
   | URzQ_H
   | URzQ_X
   | URzQ_Rz of Q.t
-  | URzQ_CNOT
+  | URzQ_CNOT 
+
 
   type coq_U = coq_RzQ_Unitary
 
@@ -104,6 +105,7 @@ let coq_CCX a b c =
     (coq_T b) :: ((coq_T c) :: ((coq_H c) :: []))))))))))))))
 
 (** val coq_CCZ : int -> int -> int -> coq_RzQ_ucom_l **)
+
 
 let coq_CCZ a b c =
   (coq_CNOT b c) :: ((coq_TDAG c) :: ((coq_CNOT a c) :: ((coq_T c) :: (
