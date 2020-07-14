@@ -2,6 +2,7 @@ from ctypes import *
 import argparse
 import ast
 from gmpy2 import mpq
+import os.path
 
 class rational(Structure):
     _fields_ = [('num', c_int), ('den', c_int)]
@@ -109,12 +110,13 @@ def voqc(fname, out):
     testlib.voqc(in_file, out_file)
     
 
-
+def path():
+    return os.path.dirname(os.path.abspath(__file__)) + "/extraction/_build/generated/" + "libvoqc.so"
 class SQIR:
     def __init__(self, circ):
         self.circ = circ
     def optimize(self):
-        testlib =  CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
+        testlib =  CDLL(path())
         testlib.optimizer.argtypes =[POINTER(with_qubits)]
         testlib.optimizer.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
@@ -123,7 +125,7 @@ class SQIR:
         return self
 
     def not_propagation(self):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
+        testlib = CDLL(path())
         testlib.not_propagation.argtypes =[POINTER(with_qubits)]
         testlib.not_propagation.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
@@ -132,7 +134,7 @@ class SQIR:
         return self
 
     def hadamard_reduction(self):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
+        testlib = CDLL(path())
         testlib.hadamard.argtypes =[POINTER(with_qubits)]
         testlib.hadamard.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
@@ -141,7 +143,7 @@ class SQIR:
         return self
 
     def cancel_two_qubit_gates(self):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
+        testlib = CDLL(path())
         testlib.cancel_two_qubit_gates.argtypes =[POINTER(with_qubits)]
         testlib.cancel_two_qubit_gates.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
@@ -150,7 +152,7 @@ class SQIR:
         return self
 
     def merge_rotations(self):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
+        testlib = CDLL(path())
         testlib.merge_rotations.argtypes =[POINTER(with_qubits)]
         testlib.merge_rotations.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
@@ -159,7 +161,7 @@ class SQIR:
         return self
     
     def cancel_single_qubit_gates(fname):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
+        testlib = CDLL(path())
         testlib.cancel_single_qubit_gates.argtypes =[POINTER(with_qubits)]
         testlib.cancel_single_qubit_gates.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
@@ -168,7 +170,7 @@ class SQIR:
         return self
     
     def write(self, fname):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
+        testlib = CDLL(path())
         testlib.write_qasm_file.argtypes =[c_char_p, POINTER(with_qubits)]
         testlib.write_qasm_file.restype =None
         out_file = str(fname).encode('utf-8')
@@ -178,7 +180,7 @@ class SQIR:
         testlib.write_qasm_file(out_file,byref(y))
 
 def load(fname): 
-    testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
+    testlib = CDLL(path())
     testlib.get_gate_list.argtypes = [c_char_p]
     testlib.get_gate_list.restype = POINTER(with_qubits)
     final_file =str(fname).encode('utf-8')
