@@ -1,9 +1,11 @@
 open UnitaryListRepresentation
+open RzQGateSet.RzQGateSet
 
 (** val propagate_X :
     RzQGateSet.coq_RzQ_ucom_l -> int -> int ->
     RzQGateSet.RzQGateSet.coq_RzQ_Unitary gate_app list ->
     RzQGateSet.RzQGateSet.coq_RzQ_Unitary gate_app list **)
+
 
 let rec propagate_X l q n acc =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
