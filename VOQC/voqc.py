@@ -173,7 +173,8 @@ class SQIR:
         testlib = CDLL(path())
         testlib.write_qasm_file.argtypes =[c_char_p, POINTER(with_qubits)]
         testlib.write_qasm_file.restype =None
-        out_file = str(fname).encode('utf-8')
+        rel = os.path.dirname(os.path.abspath(__file__))
+        out_file = str(os.path.join(rel,fname)).encode('utf-8')
         t = format_from_c(self.circ)
         q = self.circ.contents.qubits
         y = format_to_c(t, q)
@@ -183,7 +184,8 @@ def load(fname):
     testlib = CDLL(path())
     testlib.get_gate_list.argtypes = [c_char_p]
     testlib.get_gate_list.restype = POINTER(with_qubits)
-    final_file =str(fname).encode('utf-8')
+    rel = os.path.dirname(os.path.abspath(__file__))
+    final_file =str(os.path.join(rel, fname)).encode('utf-8')
     circ = testlib.get_gate_list(final_file)
     return SQIR(circ)
 
