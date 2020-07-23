@@ -1114,14 +1114,77 @@ destruct x. inversion eq1. inversion H0.
 unfold V21. reflexivity.
 Qed.
 
+Lemma injective_fun_truth: (forall (n x s:nat) (f:nat -> nat),
+          f x = if x <? bitwise_xor n x s then (to_injective n  s f) x
+                                          else (((to_injective n  s f) x) - 2 ^ n)%nat).
+Proof.
+intros.
+unfold to_injective.
+destruct (x <? bitwise_xor n x s). reflexivity. lia.
+Qed.
+
+Lemma injective_fun_property: (forall (n s:nat) (f:nat -> nat),
+    (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
+     (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat)
+       -> (forall (x y:nat), (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat
+             -> (2 ^ n <= (to_injective n  s f) y)%nat 
+          -> (to_injective n  s f) x = ((to_injective n  s f) y - 2 ^ n)%nat -> f x = f y)).
+Proof.
+intros.
+unfold to_injective in H5.
+unfold to_injective in H6.
+destruct (x <? bitwise_xor n x s).
+destruct (y <? bitwise_xor n y s).
+apply H2 in H4.
+specialize (Nat.lt_le_trans (f y) (2 ^ n) (f y) H4 H5) as H7. lia.
+rewrite -> H6. lia.
+destruct (y <? bitwise_xor n y s).
+apply H2 in H4.
+specialize (Nat.lt_le_trans (f y) (2 ^ n) (f y) H4 H5) as H7. lia.
+apply H2 in H4. 
+assert (2 ^ n <= 2 ^ n + f x)%nat. lia. rewrite H6 in H7. 
+specialize (Nat.lt_le_trans (f y) (2 ^ n) (2 ^ n + f y - 2 ^ n)%nat H4 H7) as H8. lia.
+Qed.
+
+Lemma injective_fun_property_1: (forall (n s:nat) (f:nat -> nat),
+    (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
+     (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat)
+    -> (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
+        f x = f y <-> bitwise_xor n x y = s) 
+       -> (forall (x y:nat), (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat
+             -> f x = f y -> (x < y)%nat -> (2 ^ n <= (to_injective n  s f) y)%nat 
+              /\ (to_injective n  s f) x = ((to_injective n  s f) y - 2 ^ n)%nat)).
+Proof.
+intros.
+unfold to_injective.
+specialize (H3 x y H4 H5) as H8.
+apply H8 in H6 as H9. apply bitwise_xor_assoc in H9.
+specialize (H3 y x H5 H4) as eq1.
+symmetry in H6.
+apply eq1 in H6 as eq2. apply bitwise_xor_assoc in eq2.
+split.
+rewrite <- eq2.
+destruct (y <? x) eqn:eq3. apply Nat.ltb_lt in eq3.
+specialize (Nat.lt_trans x y x H7 eq3) as R. lia. lia.
+rewrite <- H9. rewrite <- eq2.
+destruct (x <? y) eqn:eq3.
+destruct (y <? x) eqn:eq4. apply Nat.ltb_lt in eq4.
+specialize (Nat.lt_trans x y x H7 eq4) as R. lia. 
+rewrite -> H6. lia.
+apply less_false in eq3.
+specialize (Nat.lt_le_trans x y x H7 eq3) as R. lia. 
+1 - 8 : assumption.
+Qed.
 
 Lemma basis_vector_injective: forall (n s i:nat) (f:nat -> nat),
     (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
      (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
    (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
         f x = f y <-> bitwise_xor n x y = s) 
-     -> basis_vector (2 ^ n) (f i) = basis_vector (2 * 2 ^ n) ((to_injective n  s f) i).
+     -> basis_vector (2 ^ n) (f i)
+              = first_half (basis_vector (2 * 2 ^ n) ((to_injective n  s f) i)).
 Proof.
+intros.
 Qed.
 
 (* Then, we will prove the following. However, 
