@@ -1,14 +1,11 @@
 from ctypes import *
 import argparse
 import ast
-from gmpy2 import mpq
 import os.path
-
-class rational(Structure):
-    _fields_ = [('num', c_int), ('den', c_int)]
+from gmpy2 import *
 
 class final_gates(Structure):
-    _fields_ = [('gates', c_int), ('type1', rational)]
+    _fields_ = [('gates', c_int), ('type1', c_void_p)]
 
 
 
@@ -27,78 +24,83 @@ class quad(Structure):
 class gate_app1(Structure):
     _fields_ = [('App1', tuples), ('App2', triples), ('App3', quad),('ans', c_int)]
     
-GATE_APP = gate_app1 *1000
 
+GATE_APP = gate_app1*250000
 class with_qubits(Structure):
     _fields_ = [('length', c_int), ('contents2', GATE_APP), ('qubits', c_int)]
-def convert_gates(x):
-    y = 0
-    num = 0
-    den = 0
-    if x == 'X':
-        y = 1
-    elif x == 'H':
-        y =2
-    elif x == 'CNOT':
-        y =3
-    else:
-        y=4
-        num = int(x[3])
-        den = int(x[5])
-    return y, num, den
-def format_to_c(py_list, q):
-    struct_return = GATE_APP()
-    struct_app = gate_app1()
-    tot_length = len(py_list)
-    for i in range(tot_length):
-        sub_len = len(py_list[i])
-        conv = (convert_gates(py_list[i][0]))
-        int_val = conv[0]
-        numer = conv[1]
-        denom = conv[2]
-        rat = rational(numer, denom)
-        temp = final_gates(int_val, rat)
-        if sub_len == 2:
-            tup = tuples(temp, int(py_list[i][1]))
-            struct_app=gate_app1(App1=tup, ans =1)
-        elif sub_len == 3:
-            tup = triples(temp, int(py_list[i][1]),int(py_list[i][2]))
-            struct_app=gate_app1(App2=tup, ans=2)
-        else:
-             tup = quad(temp, int(py_list[i][1]),int(py_list[i][2]),int(py_list[i][3]))
-             struct_app=gate_app1(App3=tup, ans =3)
-        struct_return[i] = struct_app
-    with_q = with_qubits(tot_length, struct_return,int(q))
-    return with_q
-def get_text(x,y,z):
-    gate_get = {1:'X', 2: 'H', 3:'CNOT', 4: 'Rz'+ ' ' +str(y) + '/' + str(z)}
-    return gate_get.get(x)
+
+    
 def format_from_c(y):
-    return_list = []
-    val = gate_app1()
     deref = y.contents
-    for i in range(deref.length):
+    tot_length = deref.length
+    num_q = deref.qubits
+    struct_app = gate_app1()
+    struct_return = GATE_APP()
+    struct_ret = GATE_APP()
+    temp_app = tuples()
+    temp_app1 = triples()
+    temp_app2 = quad()
+    for i in range(tot_length):
         val = deref.contents2[i]
         if val.App2.gate1.gates == 0 and val.App3.gate2.gates ==0:
-            sub_list = []
-            sub_list.append(get_text(val.App1.gate.gates,val.App1.gate.type1.num, val.App1.gate.type1.den))
-            sub_list.append(val.App1.x)
-            return_list.append(sub_list)
+            struct_app = gate_app1(App1 = val.App1, ans = 1)
         elif val.App3.gate2.gates ==0 and val.App1.gate.gates==0:
-            sub_list =[]
-            sub_list.append(get_text(val.App2.gate1.gates,val.App2.gate1.type1.num, val.App2.gate1.type1.den))
-            sub_list.append(val.App2.a)
-            sub_list.append(val.App2.b)
-            return_list.append(sub_list)
+            struct_app = gate_app1(App2 = val.App2, ans = 2)            
         else:
-            sub_list = []
-            sub_list.append(get_text(val.App3.gate2.gates,val.App3.gate2.type1.num, val.App3.gate2.type1.den))
-            sub_list.append(val.App3.c)
-            sub_list.append(val.App3.f)
-            sub_list.append(val.App3.e)
-            return_list.append(sub_list)
+            struct_app = gate_app1(App3 = val.App3, ans = 3)  
+        struct_return[i] = struct_app
+    return with_qubits(tot_length, struct_return, num_q)
+
+def get_counts(circ):
+    tot_length = circ.length
+    rz_count = 0
+    cnot_count = 0
+    x_count = 0
+    h_count = 0
+    for i in range(tot_length):
+        val = circ.contents2[i]
+        if val.ans == 1:
+            if val.App1.gate.gates == 1:
+                x_count+=1
+            elif val.App1.gate.gates ==2:
+                h_count+=1
+            elif val.App1.gate.gates ==3:
+                cnot_count+=1
+            else:
+                rz_count+=1
+        elif val.ans == 2:
+            if val.App2.gate1.gates == 1:
+                x_count+=1
+            elif val.App2.gate1.gates ==2:
+                h_count+=1
+            elif val.App2.gate1.gates ==3:
+                cnot_count+=1
+            else:
+                rz_count+=1
+        else:
+            if val.App3.gate2.gates == 1:
+                x_count+=1
+            elif val.App3.gate2.gates ==2:
+                h_count+=1
+            elif val.App3.gate2.gates ==3:
+                cnot_count+=1
+            else:
+                rz_count+=1
+    return (x_count, h_count, cnot_count, rz_count, tot_length)         
         
-    return return_list
+    
+def cliff(q):
+    testlib =  CDLL(path())
+    testlib.cliff.argtypes =[POINTER(with_qubits)]
+    testlib.cliff.restype =c_int
+    l = testlib.cliff(byref(q))
+    return l
+def t_count(q):
+        testlib =  CDLL(path())
+        testlib.t_count.argtypes =[POINTER(with_qubits)]
+        testlib.t_count.restype =c_char_p
+        l = testlib.t_count(byref(q))
+        return (l.decode('utf-8'))   
 
 
 def voqc(fname, out):
@@ -120,17 +122,20 @@ class SQIR:
         testlib.optimizer.argtypes =[POINTER(with_qubits)]
         testlib.optimizer.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        y = format_to_c(t, self.circ.contents.qubits)
-        self.circ = testlib.optimizer(byref(y))
+        fin_counts = get_counts(t)
+        t_c = t_count(t)
+        c_c = cliff(t)
+        print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n" % (fin_counts[4], fin_counts[3], c_c, t_c, fin_counts[1], fin_counts[0],fin_counts[2]))
+    
+        self.circ = testlib.optimizer(byref(t))
         return self
-
     def not_propagation(self):
         testlib = CDLL(path())
         testlib.not_propagation.argtypes =[POINTER(with_qubits)]
         testlib.not_propagation.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.not_propagation(byref(y))
+        fin_counts = get_counts(t)
+        self.circ =testlib.not_propagation(byref(t))
         return self
 
     def hadamard_reduction(self):
@@ -138,8 +143,8 @@ class SQIR:
         testlib.hadamard.argtypes =[POINTER(with_qubits)]
         testlib.hadamard.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.hadamard(byref(y))
+        fin_counts = get_counts(t)
+        self.circ =testlib.hadamard(byref(t))
         return self
 
     def cancel_two_qubit_gates(self):
@@ -147,8 +152,8 @@ class SQIR:
         testlib.cancel_two_qubit_gates.argtypes =[POINTER(with_qubits)]
         testlib.cancel_two_qubit_gates.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.cancel_two_qubit_gates(byref(y))
+        fin_counts = get_counts(t)
+        self.circ =testlib.cancel_two_qubit_gates(byref(t))
         return self
 
     def merge_rotations(self):
@@ -156,8 +161,8 @@ class SQIR:
         testlib.merge_rotations.argtypes =[POINTER(with_qubits)]
         testlib.merge_rotations.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.merge_rotation(byref(y))
+        fin_counts = get_counts(t)
+        self.circ =testlib.merge_rotation(byref(t))
         return self
     
     def cancel_single_qubit_gates(fname):
@@ -165,9 +170,10 @@ class SQIR:
         testlib.cancel_single_qubit_gates.argtypes =[POINTER(with_qubits)]
         testlib.cancel_single_qubit_gates.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.cancel_single_qubit_gates(byref(y))
+        fin_counts = get_counts(t)
+        self.circ =testlib.cancel_single_qubit_gates(byref(t))
         return self
+        
     
     def write(self, fname):
         testlib = CDLL(path())
@@ -176,9 +182,12 @@ class SQIR:
         rel = os.path.dirname(os.path.abspath(__file__))
         out_file = str(os.path.join(rel,fname)).encode('utf-8')
         t = format_from_c(self.circ)
-        q = self.circ.contents.qubits
-        y = format_to_c(t, q)
-        testlib.write_qasm_file(out_file,byref(y))
+        fin_counts = get_counts(t)
+        t_c = t_count(t)
+        c_c = cliff(t)
+        print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n" % (fin_counts[4], fin_counts[3], c_c, t_c, fin_counts[1], fin_counts[0],
+                                                                                          fin_counts[2]))
+        testlib.write_qasm_file(out_file,byref(t))
 
 def load(fname): 
     testlib = CDLL(path())
@@ -188,7 +197,3 @@ def load(fname):
     final_file =str(os.path.join(rel, fname)).encode('utf-8')
     circ = testlib.get_gate_list(final_file)
     return SQIR(circ)
-
-
-    
-
