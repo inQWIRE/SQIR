@@ -1,0 +1,5 @@
+(library
+  (name extracted)
+  (wrapped false)
+  (flags (:standard -w -3-39-33))
+  (libraries zarith))

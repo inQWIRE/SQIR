@@ -9,23 +9,18 @@ class rational(Structure):
 class final_gates(Structure):
     _fields_ = [('gates', c_int), ('type1', rational)]
 
-
-
 class tuples(Structure):
     _fields_ = [('gate', final_gates), ('x', c_int)]
-
 
 class triples(Structure):
     _fields_ = [('gate1', final_gates), ('a', c_int), ('b', c_int)]
 
-
 class quad(Structure):
     _fields_ = [('gate2', final_gates), ('c', c_int), ('f', c_int), ('e', c_int)]
 
-
 class gate_app1(Structure):
     _fields_ = [('App1', tuples), ('App2', triples), ('App3', quad),('ans', c_int)]
-    
+
 GATE_APP = gate_app1 *1000
 
 class with_qubits(Structure):
@@ -99,92 +94,69 @@ def format_from_c(y):
         
     return return_list
 
+class VOQC:    
+    def __init__(self, fname):
+        self.lib = CDLL('extraction/_build/default/libvoqc.so')
+        self.lib.get_gate_list.argtypes = [c_char_p]
+        self.lib.get_gate_list.restype = POINTER(with_qubits)
+        final_file =str(fname).encode('utf-8')
+        self.circ = self.lib.get_gate_list(final_file)
 
-def voqc(fname, out):
-    testlib = CDLL('./libvoqc.so')
-    testlib.get_gate_list.argtypes = [c_char_p, c_char_p]
-    testlib.get_gate_list.restype = None
-    in_file =str(fname).encode('utf-8')
-    out_file = str(out).encode('utf-8')
-    testlib.voqc(in_file, out_file)
-    
-
-
-class SQIR:
-    def __init__(self, circ):
-        self.circ = circ
     def optimize(self):
-        testlib =  CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
-        testlib.optimizer.argtypes =[POINTER(with_qubits)]
-        testlib.optimizer.restype =POINTER(with_qubits)
+        self.lib.optimizer.argtypes =[POINTER(with_qubits)]
+        self.lib.optimizer.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
         y = format_to_c(t, self.circ.contents.qubits)
-        self.circ = testlib.optimizer(byref(y))
+        self.circ = self.lib.optimizer(byref(y))
         return self
 
     def not_propagation(self):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
-        testlib.not_propagation.argtypes =[POINTER(with_qubits)]
-        testlib.not_propagation.restype =POINTER(with_qubits)
+        self.lib.not_propagation.argtypes =[POINTER(with_qubits)]
+        self.lib.not_propagation.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
         y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.not_propagation(byref(y))
+        self.circ =self.lib.not_propagation(byref(y))
         return self
 
     def hadamard_reduction(self):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
-        testlib.hadamard.argtypes =[POINTER(with_qubits)]
-        testlib.hadamard.restype =POINTER(with_qubits)
+        self.lib.hadamard.argtypes =[POINTER(with_qubits)]
+        self.lib.hadamard.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
         y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.hadamard(byref(y))
+        self.circ =self.lib.hadamard(byref(y))
         return self
 
     def cancel_two_qubit_gates(self):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
-        testlib.cancel_two_qubit_gates.argtypes =[POINTER(with_qubits)]
-        testlib.cancel_two_qubit_gates.restype =POINTER(with_qubits)
+        self.lib.cancel_two_qubit_gates.argtypes =[POINTER(with_qubits)]
+        self.lib.cancel_two_qubit_gates.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
         y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.cancel_two_qubit_gates(byref(y))
+        self.circ =self.lib.cancel_two_qubit_gates(byref(y))
         return self
 
     def merge_rotations(self):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
-        testlib.merge_rotations.argtypes =[POINTER(with_qubits)]
-        testlib.merge_rotations.restype =POINTER(with_qubits)
+        self.lib.merge_rotations.argtypes =[POINTER(with_qubits)]
+        self.lib.merge_rotations.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
         y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.merge_rotation(byref(y))
+        self.circ =self.lib.merge_rotation(byref(y))
         return self
     
-    def cancel_single_qubit_gates(fname):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
-        testlib.cancel_single_qubit_gates.argtypes =[POINTER(with_qubits)]
-        testlib.cancel_single_qubit_gates.restype =POINTER(with_qubits)
+    def cancel_single_qubit_gates(self):
+        self.lib.cancel_single_qubit_gates.argtypes =[POINTER(with_qubits)]
+        self.lib.cancel_single_qubit_gates.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
         y = format_to_c(t, self.circ.contents.qubits)
-        self.circ =testlib.cancel_single_qubit_gates(byref(y))
+        self.circ =self.lib.cancel_single_qubit_gates(byref(y))
         return self
     
     def write(self, fname):
-        testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
-        testlib.write_qasm_file.argtypes =[c_char_p, POINTER(with_qubits)]
-        testlib.write_qasm_file.restype =None
+        self.lib.write_qasm_file.argtypes =[c_char_p, POINTER(with_qubits)]
+        self.lib.write_qasm_file.restype =None
         out_file = str(fname).encode('utf-8')
         t = format_from_c(self.circ)
         q = self.circ.contents.qubits
         y = format_to_c(t, q)
-        testlib.write_qasm_file(out_file,byref(y))
+        self.lib.write_qasm_file(out_file,byref(y))
 
-def load(fname): 
-    testlib = CDLL('/home/ag/Documents/VOQC_PythonBindings/SQIR/VOQC/extraction/_build/generated/libvoqc.so')
-    testlib.get_gate_list.argtypes = [c_char_p]
-    testlib.get_gate_list.restype = POINTER(with_qubits)
-    final_file =str(fname).encode('utf-8')
-    circ = testlib.get_gate_list(final_file)
-    return SQIR(circ)
-
-
-    
 

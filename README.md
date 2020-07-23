@@ -87,7 +87,7 @@ Verified transformations of SQIR programs.
 
 ### extraction
 
-Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and parse OpenQASM files into SQIR. Also contains pre-extracted versions of VOQC's optimizations (ExtractedCode.ml and ExtractedCode.mli). 
+Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and parse OpenQASM files into SQIR. Also contains pre-extracted versions of VOQC's optimizations. 
 
 ### benchmarks
 

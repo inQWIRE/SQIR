@@ -1,11 +1,6 @@
 open Ctypes
-open Ctypes_zarith
 open UnitaryListRepresentation
 open RzQGateSet.RzQGateSet
-open Datatypes
-open FMapAVL
-open FSetAVL
-open OrderedTypeEx
 open GateCancellation
 open HadamardReduction
 open NotPropagation
@@ -43,15 +38,18 @@ let rational : [`rational] structure typ = structure "rational"
 let num = field rational "num" (int)
 let den = field rational "den" (int)
 let () = seal rational
+
 (**val get_rational : ([ `rational ], [ `Struct ]) Ctypes.structured -> Q.t**)
 let get_rational d =
   let n = getf d num in
   let q = getf d den in
   Q.make (Z.of_int n) (Z.of_int q)
+  
 (**val set_rational : Q.t -> ([ `rational ], [ `Struct ]) Ctypes.structured**)
 let set_rational x =
   let d = make rational in
   (setf d num (Z.to_int(Q.num x));setf d den (Z.to_int(Q.den x));d)
+  
 (**val rat : Q.t Ctypes.typ**)
 let rat = view~read:get_rational~write:set_rational (rational)
 

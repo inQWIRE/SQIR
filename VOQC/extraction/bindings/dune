@@ -1,0 +1,5 @@
+(library
+  (name bindings)
+  (preprocess (pps ppx_deriving.enum))
+  (flags (:standard -w -6-8))
+  (libraries extracted_code ctypes.stubs ctypes-zarith))

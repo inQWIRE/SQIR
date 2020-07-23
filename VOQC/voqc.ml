@@ -1,6 +1,5 @@
 open Qasm2sqir
 open Printf
-open Unix
 
 open UnitaryListRepresentation
 open RzQGateSet
@@ -12,19 +11,19 @@ let get_rz_count l =
               | _ -> a in
   List.fold_left f 0 l;;
 
-let rec get_x_count l = 
+let get_x_count l = 
   let f a x = match x with
               | App1 (RzQGateSet.URzQ_X, _) -> a + 1
               | _ -> a in
   List.fold_left f 0 l;;
   
-let rec get_h_count l = 
+let get_h_count l = 
   let f a x = match x with
               | App1 (RzQGateSet.URzQ_H, _) -> a + 1
               | _ -> a in
   List.fold_left f 0 l;;
   
-let rec get_cnot_count l = 
+let get_cnot_count l = 
   let f a x = match x with
               | App2 (RzQGateSet.URzQ_CNOT, _, _) -> a + 1
               | _ -> a in

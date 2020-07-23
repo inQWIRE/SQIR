@@ -2,7 +2,6 @@ open Datatypes
 open FSetAVL
 open OrderedTypeEx
 
-
 module FSet = Make(Nat_as_OT)
 
 type 'u gate_app =
@@ -117,9 +116,9 @@ let does_not_reference_appl q = function
 | App3 (_, m, n, p) -> not ((||) ((||) ((=) m q) ((=) n q)) ((=) p q))
 
 (** val does_not_reference : 'a1 gate_list -> int -> bool **)
-let does_not_reference l q =
-  List.for_all (does_not_reference_appl q) l 
 
+let does_not_reference l q =
+  List.for_all (does_not_reference_appl q) l
 
 (** val try_rewrites :
     'a1 gate_list -> ('a1 gate_list -> 'a1 gate_list option) list -> 'a1
