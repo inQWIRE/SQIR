@@ -40,7 +40,7 @@ mapper: invoke-coqmakefile $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo $
 
 optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo VOQC/extraction/voqc.ml
 	cd VOQC/extraction && ./extract.sh
-	dune build voqc.exe --root VOQC/extraction
+	dune build voqc.exe --root VOQC
 
 voqc: VOQC/extraction/voqc.ml VOQC/extraction/_build/default/voqc.exe
 

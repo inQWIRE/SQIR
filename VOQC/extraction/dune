@@ -1,7 +1,11 @@
-(executable
-  (name voqc)
-  (libraries openQASM zarith unix))
+(rule
+  (targets voqc.c voqc_bindings.ml)
+  (deps stub_generator/generate.exe)
+  (action (run stub_generator/generate.exe .)))
 
-(env
-  (dev
-    (flags (:standard -w -3-39-33))))
+(executable
+  (name libvoqc)
+  (modes (native shared_object))
+  (flags (:standard -w -27))
+  (foreign_stubs (language c) (names voqc init) (include_dirs (lib ctypes)))
+  (libraries extracted_code bindings))

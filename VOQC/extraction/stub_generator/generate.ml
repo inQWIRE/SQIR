@@ -1,5 +1,3 @@
-
-
 let generate dirname =
   let prefix = "voqc" in
   let path basename = Filename.concat dirname basename in

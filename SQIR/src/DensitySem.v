@@ -5,18 +5,6 @@ Require Import Setoid.
 
 Local Open Scope com_scope.
 
-(* TODO: Put in QWIRE's quantum file *)
-Lemma compose_super_eq : forall {m n p} (A : Matrix m n) (B : Matrix n p), 
-      compose_super (super A) (super B) = super (A × B).
-Proof.
-  intros.
-  unfold compose_super, super.
-  apply functional_extensionality. intros ρ.
-  rewrite Mmult_adjoint.
-  repeat rewrite Mmult_assoc.
-  reflexivity.
-Qed.
-
 Fixpoint c_eval {dim} (c : base_com dim) : Superoperator (2^dim) (2^dim) :=
   match c with
   | skip           => fun ρ => ρ

@@ -90,18 +90,19 @@ def get_counts(circ):
         
     
 def cliff(q):
-    testlib =  CDLL(path())
+    rel = os.path.dirname(os.path.abspath(__file__))
+    testlib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
     testlib.cliff.argtypes =[POINTER(with_qubits)]
     testlib.cliff.restype =c_int
     l = testlib.cliff(byref(q))
     return l
 def t_count(q):
-        testlib =  CDLL(path())
-        testlib.t_count.argtypes =[POINTER(with_qubits)]
-        testlib.t_count.restype =c_char_p
-        l = testlib.t_count(byref(q))
-        return (l.decode('utf-8'))   
-
+    rel = os.path.dirname(os.path.abspath(__file__))
+    testlib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
+    testlib.t_count.argtypes =[POINTER(with_qubits)]
+    testlib.t_count.restype =c_char_p
+    l = testlib.t_count(byref(q))
+    return (l.decode('utf-8')) 
 
 def voqc(fname, out):
     testlib = CDLL('./libvoqc.so')
@@ -112,88 +113,80 @@ def voqc(fname, out):
     testlib.voqc(in_file, out_file)
     
 
-def path():
-    return os.path.dirname(os.path.abspath(__file__)) + "/extraction/_build/generated/" + "libvoqc.so"
+def print_gates(fin_counts, t_c, c_c, orig):
+    if orig == False:
+        print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n" % (fin_counts[4], fin_counts[3], c_c, t_c,
+                                                                                         fin_counts[1], fin_counts[0],fin_counts[2]))
+    else:
+        print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n" % (fin_counts[4], fin_counts[3], c_c, t_c,
+                                                                                      fin_counts[1], fin_counts[0],fin_counts[2]))
+        
+    
 class SQIR:
-    def __init__(self, circ):
-        self.circ = circ
-    def optimize(self):
-        testlib =  CDLL(path())
-        testlib.optimizer.argtypes =[POINTER(with_qubits)]
-        testlib.optimizer.restype =POINTER(with_qubits)
+    def __init__(self, fname):
+        rel = os.path.dirname(os.path.abspath(__file__))
+        self.lib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
+        self.lib.get_gate_list.argtypes = [c_char_p]
+        self.lib.get_gate_list.restype = POINTER(with_qubits)
+        final_file =str(fname).encode('utf-8')
+        rel = os.path.dirname(os.path.abspath(__file__))
+        final_file =str(os.path.join(rel, fname)).encode('utf-8')
+        self.circ = self.lib.get_gate_list(final_file)
         t = format_from_c(self.circ)
         fin_counts = get_counts(t)
         t_c = t_count(t)
         c_c = cliff(t)
-        print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n" % (fin_counts[4], fin_counts[3], c_c, t_c, fin_counts[1], fin_counts[0],fin_counts[2]))
-    
-        self.circ = testlib.optimizer(byref(t))
+        print_gates(fin_counts, t_c, c_c, False)  
+
+    def optimize(self):
+        self.lib.optimizer.argtypes =[POINTER(with_qubits)]
+        self.lib.optimizer.restype =POINTER(with_qubits)
+        t = format_from_c(self.circ)
+        self.circ = self.lib.optimizer(byref(t))
         return self
     def not_propagation(self):
-        testlib = CDLL(path())
-        testlib.not_propagation.argtypes =[POINTER(with_qubits)]
-        testlib.not_propagation.restype =POINTER(with_qubits)
+        self.lib.not_propagation.argtypes =[POINTER(with_qubits)]
+        self.lib.not_propagation.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        fin_counts = get_counts(t)
-        self.circ =testlib.not_propagation(byref(t))
+        self.circ = self.lib.not_propagation(byref(t))
         return self
 
     def hadamard_reduction(self):
-        testlib = CDLL(path())
-        testlib.hadamard.argtypes =[POINTER(with_qubits)]
-        testlib.hadamard.restype =POINTER(with_qubits)
+        self.lib.hadamard.argtypes =[POINTER(with_qubits)]
+        self.lib.hadamard.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        fin_counts = get_counts(t)
-        self.circ =testlib.hadamard(byref(t))
+        self.circ = self.lib.hadamard(byref(t))
         return self
 
     def cancel_two_qubit_gates(self):
-        testlib = CDLL(path())
-        testlib.cancel_two_qubit_gates.argtypes =[POINTER(with_qubits)]
-        testlib.cancel_two_qubit_gates.restype =POINTER(with_qubits)
+        self.lib.cancel_two_qubit_gates.argtypes =[POINTER(with_qubits)]
+        self.lib.cancel_two_qubit_gates.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        fin_counts = get_counts(t)
-        self.circ =testlib.cancel_two_qubit_gates(byref(t))
+        self.circ = self.lib.cancel_two_qubit_gates(byref(t))
         return self
 
     def merge_rotations(self):
-        testlib = CDLL(path())
-        testlib.merge_rotations.argtypes =[POINTER(with_qubits)]
-        testlib.merge_rotations.restype =POINTER(with_qubits)
+        self.lib.merge_rotations.argtypes =[POINTER(with_qubits)]
+        self.lib.merge_rotations.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        fin_counts = get_counts(t)
-        self.circ =testlib.merge_rotation(byref(t))
-        return self
+        self.circ = self.lib.merge_rotations(byref(t))
+        return self      
     
-    def cancel_single_qubit_gates(fname):
-        testlib = CDLL(path())
-        testlib.cancel_single_qubit_gates.argtypes =[POINTER(with_qubits)]
-        testlib.cancel_single_qubit_gates.restype =POINTER(with_qubits)
+    def cancel_single_qubit_gates(self):
+        self.lib.cancel_single_qubit_gates.argtypes =[POINTER(with_qubits)]
+        self.lib.cancel_single_qubit_gates.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        fin_counts = get_counts(t)
-        self.circ =testlib.cancel_single_qubit_gates(byref(t))
+        self.circ = self.lib.cancel_single_qubit_gates(byref(t))
         return self
-        
-    
+
     def write(self, fname):
-        testlib = CDLL(path())
-        testlib.write_qasm_file.argtypes =[c_char_p, POINTER(with_qubits)]
-        testlib.write_qasm_file.restype =None
+        self.lib.write_qasm_file.argtypes =[c_char_p, POINTER(with_qubits)]
+        self.lib.write_qasm_file.restype =None
         rel = os.path.dirname(os.path.abspath(__file__))
         out_file = str(os.path.join(rel,fname)).encode('utf-8')
         t = format_from_c(self.circ)
         fin_counts = get_counts(t)
         t_c = t_count(t)
         c_c = cliff(t)
-        print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n" % (fin_counts[4], fin_counts[3], c_c, t_c, fin_counts[1], fin_counts[0],
-                                                                                          fin_counts[2]))
-        testlib.write_qasm_file(out_file,byref(t))
-
-def load(fname): 
-    testlib = CDLL(path())
-    testlib.get_gate_list.argtypes = [c_char_p]
-    testlib.get_gate_list.restype = POINTER(with_qubits)
-    rel = os.path.dirname(os.path.abspath(__file__))
-    final_file =str(os.path.join(rel, fname)).encode('utf-8')
-    circ = testlib.get_gate_list(final_file)
-    return SQIR(circ)
+        print_gates(fin_counts, t_c, c_c, True)
+        self.lib.write_qasm_file(out_file,byref(t))

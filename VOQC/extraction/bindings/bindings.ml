@@ -1,10 +1,6 @@
 open Ctypes
 open UnitaryListRepresentation
 open RzQGateSet.RzQGateSet
-open Datatypes
-open FMapAVL
-open FSetAVL
-open OrderedTypeEx
 open GateCancellation
 open HadamardReduction
 open NotPropagation

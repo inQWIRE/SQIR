@@ -1,8 +1,9 @@
 from voqc import *
+import sys
+def run(a):
+    a = SQIR(str(a))
+    a.optimize()
+    a.write("py_out.qasm")
 
-a = load("benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
-a.optimize()
-a.write("extraction/tof.qasm")
-
-
+run(sys.argv[1])
 
