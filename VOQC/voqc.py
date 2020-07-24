@@ -1,8 +1,8 @@
 from ctypes import *
-import argparse
 import ast
 import os.path
 from gmpy2 import *
+import time
 
 class final_gates(Structure):
     _fields_ = [('gates', c_int), ('type1', c_void_p)]
@@ -115,10 +115,10 @@ def voqc(fname, out):
 
 def print_gates(fin_counts, t_c, c_c, orig):
     if orig == False:
-        print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n" % (fin_counts[4], fin_counts[3], c_c, t_c,
+        print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[4], fin_counts[3], c_c, t_c,
                                                                                          fin_counts[1], fin_counts[0],fin_counts[2]))
     else:
-        print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n" % (fin_counts[4], fin_counts[3], c_c, t_c,
+        print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[4], fin_counts[3], c_c, t_c,
                                                                                       fin_counts[1], fin_counts[0],fin_counts[2]))
         
     
@@ -131,7 +131,10 @@ class SQIR:
         final_file =str(fname).encode('utf-8')
         rel = os.path.dirname(os.path.abspath(__file__))
         final_file =str(os.path.join(rel, fname)).encode('utf-8')
-        self.circ = self.lib.get_gate_list(final_file)  
+        start = time.time()
+        self.circ = self.lib.get_gate_list(final_file)
+        end = time.time()
+        print("Time to parse: %fs" % (end-start))
 
     def optimize(self):
         self.lib.optimizer.argtypes =[POINTER(with_qubits)]
@@ -142,7 +145,10 @@ class SQIR:
         t_c = t_count(t)
         c_c = cliff(t)
         print_gates(fin_counts, t_c, c_c, False)
+        start1 = time.time()
         self.circ = self.lib.optimizer(byref(t))
+        end1 = time.time()
+        print("Time to optimize: %fs" % (end1-start1))
         return self
     def not_propagation(self):
         self.lib.not_propagation.argtypes =[POINTER(with_qubits)]
@@ -189,4 +195,7 @@ class SQIR:
         t_c = t_count(t)
         c_c = cliff(t)
         print_gates(fin_counts, t_c, c_c, True)
+        start2 = time.time()
         self.lib.write_qasm_file(out_file,byref(t))
+        end2 = time.time()
+        print("Time to write: %fs" % (end2-start2))
