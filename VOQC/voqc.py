@@ -131,17 +131,17 @@ class SQIR:
         final_file =str(fname).encode('utf-8')
         rel = os.path.dirname(os.path.abspath(__file__))
         final_file =str(os.path.join(rel, fname)).encode('utf-8')
-        self.circ = self.lib.get_gate_list(final_file)
-        t = format_from_c(self.circ)
-        fin_counts = get_counts(t)
-        t_c = t_count(t)
-        c_c = cliff(t)
-        print_gates(fin_counts, t_c, c_c, False)  
+        self.circ = self.lib.get_gate_list(final_file)  
 
     def optimize(self):
         self.lib.optimizer.argtypes =[POINTER(with_qubits)]
         self.lib.optimizer.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
+        t = format_from_c(self.circ)
+        fin_counts = get_counts(t)
+        t_c = t_count(t)
+        c_c = cliff(t)
+        print_gates(fin_counts, t_c, c_c, False)
         self.circ = self.lib.optimizer(byref(t))
         return self
     def not_propagation(self):
