@@ -19,7 +19,7 @@ class VOQC(TransformationPass):
         os.remove("temp.qasm")
         u = self.rzq("temp2.qasm")
         to_circ = QuantumCircuit.from_qasm_file(str("temp2.qasm"))
-        #os.remove("temp2.qasm")
+        os.remove("temp2.qasm")
         to_dag = circuit_to_dag(to_circ)
         return to_dag
     def function_call(self,func_list, fname_in):
@@ -35,7 +35,6 @@ class VOQC(TransformationPass):
             call()
         a.write(str("temp2.qasm"))
     def rzq(self, fname_in):
-        print("HIIIIIIIIIIIIIIIIIIIIIII)")
         line1 = []
         count = 0
         with open(str(fname_in), 'r') as f:
