@@ -4,7 +4,7 @@ import time
 def run(a,b):
     print("Input file: %s" % (a))
     print("Output file: %s" % (b))
-    a = SQIR(str(a))
+    a = VOQC(str(a))
     a.optimize()
     a.write(str(b))
 

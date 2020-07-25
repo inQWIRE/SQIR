@@ -1,12 +1,11 @@
 from qiskit.converters import circuit_to_dag
 from qiskit.converters import dag_to_circuit
 from qiskit.transpiler.basepasses import TransformationPass
-from voqc import SQIR, load
+from voqc import VOQC, load
 from qiskit import QuantumCircuit
 import re
 import os
 from gmpy2 import *
-
 
 class VOQC(TransformationPass):
     def __init__(self, func = None, out = None):

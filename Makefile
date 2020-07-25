@@ -38,14 +38,14 @@ examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo 
 
 mapper: invoke-coqmakefile $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo $(VOQC)/SimpleMappingWithLayout.vo
 
-optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo VOQC/extraction/voqc.ml
+optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo VOQC/voqc.ml
 	cd VOQC/extraction && ./extract.sh
 	dune build voqc.exe --root VOQC
 
-voqc: VOQC/extraction/voqc.ml VOQC/extraction/_build/default/voqc.exe
+voqc: VOQC/voqc.ml VOQC/_build/default/voqc.exe
 
-VOQC/extraction/_build/default/voqc.exe:
-	dune build voqc.exe --root VOQC/extraction
+VOQC/_build/default/voqc.exe:
+	dune build voqc.exe --root VOQC
 
 # Built by 'make examples'
 
