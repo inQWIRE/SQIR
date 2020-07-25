@@ -15,3 +15,5 @@ CoqMakefile.conf
 # ocamlbuild working directory
 _build/
 
+# python temp directory
+__pycache__/

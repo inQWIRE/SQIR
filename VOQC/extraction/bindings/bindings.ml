@@ -8,9 +8,44 @@ open RotationMerging
 open Optimize
 open Qasm2sqir
 
-
 (**Enums for RzQGateSet for Gates**)
-type t =  |X | H| CNOT| Rz [@@deriving enum]
+type t =  |X | H| CNOT| Rz
+let is_odd_multiple_of_1_4 a =
+  let prod = Q.mul a (Q.of_int 4) in
+  let (num, den) = (Q.num prod, Q.den prod) in
+  if Z.equal den (Z.of_int 1)
+  then Some (Z.equal (Z.rem num (Z.of_int 2)) Z.one) 
+  else None;;
+
+(* Only relevant for the benchmarks using the Clifford+T set. *)
+let rec get_t_count' l acc = 
+  match l with
+  | [] -> Some acc
+  | App1 (URzQ_Rz(a), _) :: t ->
+      (match is_odd_multiple_of_1_4 a with
+       | Some true -> get_t_count' t (1 + acc)
+       | Some false -> get_t_count' t acc
+       | None -> None)
+  | _ :: t -> get_t_count' t acc;;
+  
+let get_t_count l = get_t_count' l 0;;
+
+(* Counts Clifford rotation gates (multiples of pi/2). *)
+let is_multiple_of_2 a =
+  let prod = Q.mul a (Q.of_int 2) in
+  let den = Q.den prod in
+  Z.equal den (Z.of_int 1)
+ 
+let rec get_clifford_rot_count' l acc = 
+  match l with
+  | [] -> acc
+  | App1 (URzQ_Rz(a), _) :: t ->
+      if is_multiple_of_2 a 
+      then get_clifford_rot_count' t (1 + acc) 
+      else get_clifford_rot_count' t acc
+  | _ :: t -> get_clifford_rot_count' t acc;;
+  
+let get_clifford_rot_count l = get_clifford_rot_count' l 0;;
            
 (**val get : int -> t**)
 let get w = 
@@ -19,7 +54,7 @@ match w with
 |2 -> H
 |3 -> CNOT
 |4 -> Rz
-|_ -> X
+|_ -> raise (Failure "ERROR! Not a valid gate")
 
 (**val set : t -> int**)
 let set w = 
@@ -28,30 +63,7 @@ X -> 1
 |H -> 2
 |CNOT -> 3
 |Rz -> 4
-let to_int64 d = Int64.of_int (to_enum d)
 let coq_RzQ_Unitary1 = view ~read: get~write:set int
-
-(**val rational : [ `rational ] Ctypes.structure Ctypes.typ
-val num : (int, [ `rational ] Ctypes.structure) Ctypes.field
-   val den : (int, [ `rational ] Ctypes.structure) Ctypes.field**)
-let rational : [`rational] structure typ = structure "rational"
-let num = field rational "num" (int)
-let den = field rational "den" (int)
-let () = seal rational
-
-(**val get_rational : ([ `rational ], [ `Struct ]) Ctypes.structured -> Q.t**)
-let get_rational d =
-  let n = getf d num in
-  let q = getf d den in
-  Q.make (Z.of_int n) (Z.of_int q)
-  
-(**val set_rational : Q.t -> ([ `rational ], [ `Struct ]) Ctypes.structured**)
-let set_rational x =
-  let d = make rational in
-  (setf d num (Z.to_int(Q.num x));setf d den (Z.to_int(Q.den x));d)
-  
-(**val rat : Q.t Ctypes.typ**)
-let rat = view~read:get_rational~write:set_rational (rational)
 
 
     
@@ -60,9 +72,11 @@ val gates : (int, [ `final_gates ] Ctypes.structure) Ctypes.field
    val type1 : (Q.t, [ `final_gates ] Ctypes.structure) Ctypes.field**)
 let final_gates : [`final_gates] structure typ = structure "final_gates"
 let gates = field final_gates "gates" (int)
-let type1 = field final_gates "type1" (rat)
+let type1 = field final_gates "type1" (ptr void)
 let () = seal final_gates
-
+let temp a =
+  let t = Root.get a in
+  t
 (**val get_gates :
   ([ `final_gates ], [ `Struct ]) Ctypes.structured ->
    RzQGateSet.RzQGateSet.coq_RzQ_Unitary**)
@@ -72,8 +86,8 @@ match w with
 1 -> URzQ_X
 |2 -> URzQ_H
 |3 -> URzQ_CNOT
-|4 -> (URzQ_Rz (getf d type1))
-|_-> URzQ_X
+|4 -> (URzQ_Rz (temp (getf d type1)))
+|_-> raise (Failure "ERROR! Not a valid gate")
 
 let set_gates x =
   let d = make final_gates in 
@@ -81,7 +95,7 @@ match x with
 URzQ_X ->(setf d gates 1;d)
 |URzQ_H ->(setf d gates 2;d)
 |URzQ_CNOT -> (setf d gates 3;d)
-|URzQ_Rz y -> (setf d gates 4;setf d type1 y;d)
+|URzQ_Rz y -> (setf d gates 4; (setf d type1 (Root.create y));d)
 let coq_RzQ_Unitary2 = view ~read:get_gates~write:set_gates final_gates
 
 
@@ -96,9 +110,12 @@ let () = seal tuples
 let get_tuples d = 
 let z =getf d gate in
 let y = getf d x in
-App1 (z,y)
-let set_tuples (App1(z,y)) =
-let d = make tuples in (setf d gate z; setf d x y;d)
+try App1 (z,y) with _ -> raise (Failure "ERROR! Not a valid single qubit gate")
+let set_tuples t =
+  let d = make tuples in
+  match t with
+  |App1 (z,y) -> (setf d gate z; setf d x y;d)
+  |_ -> raise (Failure "ERROR! Not a valid single qubit gate")
 let final_App1 = view ~read:get_tuples~write:set_tuples tuples
 
 
@@ -123,12 +140,14 @@ let get_triples d =
 let first =getf d gate1 in
 let second = getf d a in
 let third = getf d b in
- App2(first,second,third)
+try App2(first,second,third)  with _ -> raise (Failure "ERROR! Not a valid two qubit gate")
 
 
-let set_triples (App2(first,second,third)) =
-let d = make triples in (setf d gate1 first; setf d a second;setf d b third;d)
-
+let set_triples u =
+  let d = make triples in
+  match u with
+  |App2(first,second,third) -> (setf d gate1 first; setf d a second;setf d b third;d)
+  |_ -> raise (Failure "ERROR! Not a valid two qubit gate")
 let final_App2 = view ~read:get_triples~write:set_triples triples
 
 
@@ -138,11 +157,13 @@ let second_quad = getf d c in
 let third_quad = getf d f in
 let fourth_quad = getf d e in
 
-App3(first_quad,second_quad,third_quad,fourth_quad)
+try App3(first_quad,second_quad,third_quad,fourth_quad)  with _ -> raise (Failure "ERROR! Not a valid three qubit gate")
 
-let set_quad (App3(first_quad,second_quad,third_quad,fourth_quad)) =
-
-let d = make quad in (setf d gate2 first_quad; setf d c second_quad;setf d f third_quad;setf d e fourth_quad;d)
+let set_quad x =
+  let d = make quad in
+  match x with
+  |App3(first_quad,second_quad,third_quad,fourth_quad) -> (setf d gate2 first_quad; setf d c second_quad;setf d f third_quad;setf d e fourth_quad;d)
+  |_ -> raise (Failure "ERROR! Not a valid three qubit gate")                                                       
 let final_App3 = view ~read:get_quad~write:set_quad quad
 
 (**Gate Applications**)
@@ -161,6 +182,7 @@ match p with
 |1 -> (getf d app1)
 |2 -> (getf d app2)
 |3 -> (getf d app3)
+|_ -> raise (Failure "ERROR! Not a valid gate application")
 let set1_app xy =
 let d  = make gate_app1 in
 match xy with 
@@ -169,19 +191,18 @@ match xy with
 |App3(_,_,_,_) ->  (setf d app3 xy;d)
 let gate_app3 = view ~read:get1_app~write:set1_app gate_app1
 
-
-type with_quibits
-  let with_qubits : [`with_qubits] structure typ = structure "with_qubits"
-  let length = field with_qubits "length" int
-  let contents = field with_qubits "contents2" (array 1000 gate_app3)
-  let qubits = field with_qubits "qubits" int 
-  let () = seal with_qubits
-  
   type gate_list = {
     length   : int;
     contents1 : RzQGateSet.RzQGateSet.coq_RzQ_Unitary UnitaryListRepresentation.gate_app list; 
     qubits : int
   }
+type with_quibits
+  let with_qubits : [`with_qubits] structure typ = structure "with_qubits"
+  let length = field with_qubits "length" int
+  let contents = field with_qubits "contents2" (array 250000 gate_app3)
+  let qubits = field with_qubits "qubits" int 
+  let () = seal with_qubits
+  
 
   let of_gate_list_ptr p : gate_list =
    let y = !@p in
@@ -223,6 +244,16 @@ let two mem =
 let get  = cancel_two_qubit_gates mem.contents1 in 
 {length= List.length get;contents1 = get;qubits=mem.qubits}
 
+let cliff mem =
+  let get  = get_clifford_rot_count mem.contents1 in
+  get
+let t_count mem =
+  let get = get_t_count mem.contents1 in
+  match get with
+  |None -> "N/A"
+  |Some x -> string_of_int x
+
+
  
 
 let hadamard mem =
@@ -247,7 +278,6 @@ let load fname =
 
 
 module Stubs(I: Cstubs_inverted.INTERNAL) = struct
- let () = I.structure rational
  let () = I.structure final_gates
  let () = I.structure tuples
  let () = I.structure triples
@@ -264,4 +294,6 @@ module Stubs(I: Cstubs_inverted.INTERNAL) = struct
  let () = I.internal "write_qasm_file"(string @-> final_with_q @-> returning void) write_qasm
  let () = I.internal "voqc" (string @-> string @-> returning void) voqc
  let () = I.internal "load" (string @-> returning final_with_q) load
+ let () = I.internal "cliff" (final_with_q @-> returning int) cliff
+ let () = I.internal "t_count" (final_with_q @-> returning string) t_count
 end
