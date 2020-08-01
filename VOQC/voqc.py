@@ -25,7 +25,7 @@ class gate_app1(Structure):
     _fields_ = [('App1', tuples), ('App2', triples), ('App3', quad),('ans', c_int)]
     
 
-GATE_APP = gate_app1*250000
+GATE_APP = gate_app1*750000
 class with_qubits(Structure):
     _fields_ = [('length', c_int), ('contents2', GATE_APP), ('qubits', c_int)]
 
@@ -136,19 +136,20 @@ class SQIR:
         end = time.time()
         print("Time to parse: %fs" % (end-start))
 
-    def optimize(self):
+    def optimize(self,c=True):
         self.lib.optimizer.argtypes =[POINTER(with_qubits)]
         self.lib.optimizer.restype =POINTER(with_qubits)
         t = format_from_c(self.circ)
-        t = format_from_c(self.circ)
-        fin_counts = get_counts(t)
-        t_c = t_count(t)
-        c_c = cliff(t)
-        print_gates(fin_counts, t_c, c_c, False)
+        if c:
+            fin_counts = get_counts(t)
+            t_c = t_count(t)
+            c_c = cliff(t)
+            print_gates(fin_counts, t_c, c_c, False)
         start1 = time.time()
         self.circ = self.lib.optimizer(byref(t))
         end1 = time.time()
-        print("Time to optimize: %fs" % (end1-start1))
+        if c:
+            print("Time to optimize: %fs" % (end1-start1))
         return self
     def not_propagation(self):
         self.lib.not_propagation.argtypes =[POINTER(with_qubits)]
@@ -185,17 +186,19 @@ class SQIR:
         self.circ = self.lib.cancel_single_qubit_gates(byref(t))
         return self
 
-    def write(self, fname):
+    def write(self, fname, c= True):
         self.lib.write_qasm_file.argtypes =[c_char_p, POINTER(with_qubits)]
         self.lib.write_qasm_file.restype =None
         rel = os.path.dirname(os.path.abspath(__file__))
         out_file = str(os.path.join(rel,fname)).encode('utf-8')
         t = format_from_c(self.circ)
-        fin_counts = get_counts(t)
-        t_c = t_count(t)
-        c_c = cliff(t)
-        print_gates(fin_counts, t_c, c_c, True)
+        if c:
+            fin_counts = get_counts(t)
+            t_c = t_count(t)
+            c_c = cliff(t)
+            print_gates(fin_counts, t_c, c_c, True)
         start2 = time.time()
         self.lib.write_qasm_file(out_file,byref(t))
         end2 = time.time()
-        print("Time to write: %fs" % (end2-start2))
+        if c:
+            print("Time to write: %fs" % (end2-start2))
