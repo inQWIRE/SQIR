@@ -8,14 +8,21 @@ Require Import Logic.Classical.
 Local Open Scope ucom_scope.
 
 (** Definition of Simon's program. **)
+(* In Simon's problem, we are given a program U that encodes the function 
+     f : {0,1}^n → {0,1}^n 
+   with the property that 
+     f(x) = f(y) iff x = y or x = y ⊕ s, for some unknown s.
+   The goal of Simon's algorithm is to recover s. This can be done by running 
+   the program below n times and performing some classical post-processing 
+   (not shown here). *)
 
 Definition simon {n} (U : base_ucom (2 * n)) : base_ucom (2 * n) :=
   cast (npar n U_H) (2 * n) ; U; cast (npar n U_H) (2 * n).
 
+(** Preliminaries for simplifying the result of Simon's. **)
+
 Local Open Scope C_scope.
 Local Open Scope R_scope.
-
-(** Preliminaries for simplifying the result of Simon's. **)
 
 Definition boolean_oracle {n} (U : base_ucom (2 * n)) (f : nat -> nat) :=
   forall (x :nat), (x < 2 ^ n)%nat -> 
@@ -145,9 +152,11 @@ Proof.
 Qed.
 
 (** Easy case: s = 0 **)
-(* The proof of Simon algorithm can be divided into two parts. The first part
-    deal with the probability of meaning any n gate | _ .... _ > to be a even distribution of 1 / 2 ^ n *)
+(* The proof of Simon algorithm can be divided into two cases: one where the 
+   hidden value s is 0 and one where s is nonzero. In the first case, the output
+   of Simon's will be an even distribution over all possible output states. *)
 
+(* TODO: move to QWIRE *)
 Lemma norm_scale : forall {n} c (v : Vector n), norm (c .* v) = (Cmod c) * norm v.
 Proof.
   intros n c v.
@@ -254,6 +263,9 @@ Proof.
 Qed.
 
 (** Hard case: s <> 0 **)
+(* In the second case (s != 0), the program will output a string y
+   such that y ⋅ s = 0. Each possible y is output with probability
+   1 / 2 ^ (n - 1). *)
 
 Definition bitwise_xor n x y := 
   let n1f := nat_to_funbool n x in
@@ -1181,11 +1193,11 @@ Lemma basis_vector_injective: forall (n s i:nat) (f:nat -> nat),
      (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
    (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
         f x = f y <-> bitwise_xor n x y = s) 
-     -> basis_vector (2 ^ n) (f i)
+    -> basis_vector (2 ^ n) (f i)
               = first_half (basis_vector (2 * 2 ^ n) ((to_injective n  s f) i)).
 Proof.
 intros.
-Qed.
+Admitted.
 
 (* Then, we will prove the following. However, 
     This is hard for me. Since I don't know how to manage to show the induction on n over 2 ^ n => 2 ^ (S n). *)
@@ -1204,10 +1216,189 @@ inversion H.
 induction n ; simpl vsum.
 unfold to_injective, bitwise_xor. simpl.
 unfold funbool_to_nat. simpl.
-2: {
-}
 Admitted.
 
+
+
+
+(* Find all x < n s.t. f(x) = y. *)
+Fixpoint get_inverses n (f : nat -> nat) y :=
+  match n with
+  | O => []
+  | S n' => if f n' =? y then n' :: get_inverses n' f y 
+                        else get_inverses n' f y
+  end.
+
+(* Find all y < n s.t. f(x) = y for some x < n. *)
+Fixpoint get_range' nmax n (f : nat -> nat) :=
+  match n with
+  | O => []
+  | S n' => match get_inverses nmax f n' with
+           | [] => get_range' nmax n' f
+           | _ => n' :: get_range' nmax n' f
+           end
+  end.
+Definition get_range n f := get_range' n n f.
+
+Lemma inverse_exists : forall m n f,
+  (forall x, f x < m)%nat -> (m <= n)%nat ->
+  exists y, ((y < n)%nat /\ get_inverses n f y <> []).
+Proof.
+  intros.
+  induction n.
+  specialize (H O); lia.
+  simpl.
+  bdestruct (m =? S n).
+  subst.
+  exists (f n).
+  split.
+  apply H.
+  rewrite Nat.eqb_refl. 
+  easy.
+  assert (m <= n)%nat by lia.
+  specialize (IHn H2).
+  destruct IHn as [y [IH1 IH2]].
+  exists y.
+  split. lia.
+  bdestruct (f n =? y).
+  easy.
+  apply IH2.
+Qed.
+
+Lemma range_is_empty_implies_n_eq_0 : forall m n f,
+  (m > 0)%nat -> (forall x, f x < m)%nat -> (m <= n)%nat ->
+  length (get_range' m n f) = O -> n = O.
+Proof.
+  intros.
+  assert (forall i, (i < n)%nat -> get_inverses m f i = []).
+  { intros. clear H1.
+    induction n.
+    lia.
+    simpl in *.
+    destruct (get_inverses m f n) eqn:invs.
+    bdestruct (i =? n).
+    subst. assumption. 
+    apply IHn; try lia.
+    simpl in H2. lia. }
+  assert (m <= m)%nat by lia.
+  specialize (inverse_exists m m f H0 H4). 
+  intros [y [foo bar]].
+  contradict bar.
+  apply H3. lia.
+Qed.
+
+(* Construct a new function f' whose range has one less element than 
+   the range of f. The value returned is the function & the size of its
+   domain. 
+
+   This function is used in the proof below. *)
+(*Fixpoint construct_f' nmax n (f : nat -> nat) idx : (nat -> nat) * nat :=
+  match n with
+  | O => (fun _ => O) , O
+  | S n' => match construct_f' nmax f n' with
+           | [] => get_range' nmax n' f
+           | _ => n' :: get_range' nmax n' f
+           end
+  end.
+Definition get_range n f := get_range' n n f.
+
+Lemma :
+
+length (get_range n f) = S m ->
+construct_f .... = (n', f') ->
+length (get_range n' f') = m
+
+vsum m
+    (fun i : nat =>
+     (Σ^ length (get_inverses n f (nth i (get_range n f) O))
+      (fun j : nat =>
+       α (nth j (get_inverses n f (nth i (get_range n f) O)) O)))
+     .* basis_vector d (nth i (get_range n f) O))
+=
+vsum m
+    (fun i : nat =>
+     (Σ^ length (get_inverses n' f' (nth i (get_range n' f') O))
+      (fun j : nat =>
+       α (nth j (get_inverses n' f' (nth i (get_range n' f') O)) O)))
+     .* basis_vector d (nth i (get_range n' f') O))
+
+
+length (get_range n f) = S O ->
+construct_f ... = (0, fun _ => O)
+
+
+
+(* Reorder a terms (α i) .* ∣ f i ⟩ of a vsum expression based on the
+   value of the basis vector. *) 
+Lemma vsum_inverse_general : forall n d fmax f α,
+  (n > 0)%nat -> (forall x : nat, (f x < fmax)%nat) -> (fmax <= n)%nat ->
+  let range := get_range n f in
+  vsum n (fun i => (α i) .* basis_vector d (f i)) =
+    vsum (List.length range) 
+         (fun i => let z := List.nth i range O in
+                let invs := get_inverses n f z in
+                (Csum (fun i => α (List.nth i invs O)) (List.length invs)) 
+                  .* basis_vector d z).
+Proof.
+  intros. subst range.
+  remember (length (get_range n f)) as m.
+  generalize dependent f.
+  generalize dependent n.
+  induction m; intros.
+  - simpl.
+    symmetry in Heqm.
+    apply range_is_empty_implies_n_eq_0 in Heqm; try lia.
+    intro x. specialize (H0 x). lia.
+  - simpl in *.
+
+
+-> given S n' = length (get_range n f), find nH fH s.t. n' = length (get_range nH fH)
+
+    remember (get_range n f) as range.
+    rewrite <- IHn'.
+
+
+Lemma vsum_inverse' : forall {n} (f : nat -> nat) s a,
+  (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
+  (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> f x = f y <-> bitwise_xor n x y = s) ->
+  vsum (2 ^ n) (fun i => (a i) .* basis_vector (2 ^ n) (f i)) =
+    vsum (2 ^ n) (fun i => let i' := bitwise_xor n i s in
+                  (if i <? i' then (a i + a i') else C0)
+                  .* basis_vector (2 ^ n) (f i)). 
+Proof.
+
+  
+Admitted.
+
+Theorem simon_nonzero : forall {n : nat} (U : base_ucom (2 * n)) f x s,
+   (n > 0)%nat -> (x < 2 ^ n)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
+   boolean_oracle U f ->
+   (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
+   (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
+        f x = f y <-> bitwise_xor n x y = s) ->
+   bitwise_product n x s = false ->
+   @norm (2 ^ n) (@Mmult _ _ 1%nat ((basis_vector (2 ^ n) x)† ⊗ I (2 ^ n)) ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩)))
+                      = sqrt (1 /2 ^ (n - 1)).
+Proof.
+  intros. 
+  rewrite simon_simplify with (f0:=f); auto.
+  rewrite norm_scale.
+  rewrite norm_vsum; auto.
+  erewrite Csum_eq_bounded.
+
+
+
+Lemma foo : forall n s,
+Csum (fun i : nat => if i <? bitwise_xor n i s then 2 ^ 2 else 0) (2 ^ n) = 2 ^ 2 * 2 ^ (n - 1).
+Proof.
+  intros.
+  induction n. lia.
+  simpl.
+
+
+
+
+*)
 
 
 
@@ -1261,7 +1452,8 @@ Theorem simon_nonzero : forall {n : nat} (U : base_ucom (2 * n)) f x s,
 Proof.
   intros. 
   rewrite simon_simplify with (f0:=f); auto.
-  rewrite vsum_inverse with (s0:=s); auto.  
+  Admitted.
+  (*rewrite vsum_inverse with (s0:=s); auto.  
   rewrite norm_scale.
   rewrite norm_vsum; auto.
   erewrite Csum_eq_bounded.
@@ -1310,92 +1502,4 @@ Proof.
 Qed.
 
 
-
-
-
-
-(** Leftover from the previous file **)
-(*
-Lemma nat_to_funbool_eq: forall (n x y:nat), (n > 0)%nat -> (x < n)%nat -> (y < n)%nat
-      ->  nat_to_funbool n x = nat_to_funbool n y -> (x = y)%nat.
-intro n.
-  unfold nat_to_funbool, nat_to_binlist.
-induction n.
-intros. inversion H.
-intros.
-Admitted.
-
-Lemma nat_to_funbool_zero : forall (n s:nat), (n > 0)%nat -> (s < n)%nat -> nat_to_funbool n s = (fun _ => false)
-        -> (s = 0)%nat.
-Proof.
-intros n s H H1 H2.
-specialize (nat_to_funbool_0 n) as H3.
-rewrite <- H3 in H2.
-apply nat_to_funbool_eq in H2.
-apply H2. apply H. apply H1. lia.
-Qed.
-
-Lemma xor_funbool_eq: forall (n s x y: nat), (n > 0)%nat -> (s < n)%nat -> (x < n)%nat -> (y < n)%nat ->
-      (forall i, (i < n)%nat -> xorb (nat_to_funbool n x i) (nat_to_funbool n y i) = (nat_to_funbool n s i))
-                -> x = y -> nat_to_funbool n s = (fun _ => false).
-Proof.
-intros.
-rewrite H4 in H3.
-Admitted.
-
-Lemma xor_funbool_neq : forall (n s x y: nat), (n > 0)%nat -> (s <> 0)%nat -> (s < n)%nat -> (x < n)%nat -> (y < n)%nat ->
-      (forall i, (i < n)%nat -> xorb (nat_to_funbool n x i) (nat_to_funbool n y i) = (nat_to_funbool n s i))
-                -> x <> y.
-Proof.
-intros.
-intros conra.
-apply xor_funbool_eq in H4.
-apply nat_to_funbool_zero in H4.
-rewrite H4 in H0. contradiction.
-1 - 7: assumption.
-Qed.
-
-Lemma greater_than_2 : forall (x y:nat) (l: list nat), (x <> y) -> List.In x l -> List.In y l -> (length l >= 2)%nat.
-Proof.
-intros.
-destruct l.
-inversion H0.
-destruct l.
-unfold List.In in H0. destruct H0.
-unfold List.In in H1. destruct H1.
-rewrite H0 in H1. rewrite H1 in H. contradiction.
-inversion H1. inversion H0.
-simpl. lia.
-Qed.
-
-Lemma inverse_two': forall (n s x y: nat) (f:nat -> nat), (n > 0)%nat -> (s <> 0)%nat -> (s < n)%nat -> (x < n)%nat
-       -> (y < n)%nat -> f x = f y
-       -> (forall (i:nat), (f i < n)%nat)
-       -> (forall (x y:nat), (x < n)%nat -> (y < n)%nat ->
-           f x = f y <-> (forall i, (i < n)%nat
-              -> xorb (nat_to_funbool n x i) (nat_to_funbool n y i) = (nat_to_funbool n s i)))
-       -> (List.In x (inverse_set n f (f x)))
-          /\ List.In y (inverse_set n f (f x)).
-Proof.
-intros.
-split.
-apply inverse_mem. apply H. apply H2. apply H5.
-rewrite -> H4.
-apply inverse_mem. assumption. assumption. assumption.
-Qed.
-
-Lemma inverse_two: forall (n s x y: nat) (f:nat -> nat), (n > 0)%nat -> (s <> 0)%nat -> (s < n)%nat -> (x < n)%nat
-       -> (y < n)%nat -> f x = f y
-       -> (forall (i:nat), (f i < n)%nat)
-       -> (forall (x y:nat), (x < n)%nat -> (y < n)%nat ->
-           f x = f y <-> (forall i, (i < n)%nat
-              -> xorb (nat_to_funbool n x i) (nat_to_funbool n y i) = (nat_to_funbool n s i)))
-       -> (length (inverse_set n f (f x)) = 2%nat).
-Proof.
-intros.
-destruct (inverse_two' n s x y f H H0 H1 H2 H3 H4 H5 H6).
-specialize (xor_funbool_neq n s x y H H0 H1 H2 H3) as H9.
-specialize (H6 x y H2 H3) as H91. destruct H91.
-specialize (H10 H4). specialize (H9 H10).
-specialize (greater_than_2 x y (inverse_set n f (f x)) H9 H7 H8) as H12.
-Admitted.*)
+*)

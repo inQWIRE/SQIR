@@ -6,12 +6,10 @@ from qiskit import QuantumCircuit
 import re
 import os
 from gmpy2 import *
-from qiskit.transpiler.passes import Unroller, Optimize1qGates, CommutationAnalysis, CommutativeCancellation, CXCancellation, Depth, FixedPoint, Collect2qBlocks, ConsolidateBlocks
 from qiskit.transpiler import PassManager
 import ast
 from format_voqc import *
 import os.path
-
 
 class VOQC(TransformationPass):
     def __init__(self, func = None, out = None):
