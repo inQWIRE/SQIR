@@ -7,21 +7,28 @@ import time
 class final_gates(Structure):
     _fields_ = [('gates', c_int), ('type1', c_void_p)]
 
+
+
 class tuples(Structure):
     _fields_ = [('gate', final_gates), ('x', c_int)]
+
 
 class triples(Structure):
     _fields_ = [('gate1', final_gates), ('a', c_int), ('b', c_int)]
 
+
 class quad(Structure):
     _fields_ = [('gate2', final_gates), ('c', c_int), ('f', c_int), ('e', c_int)]
 
+
 class gate_app1(Structure):
     _fields_ = [('App1', tuples), ('App2', triples), ('App3', quad),('ans', c_int)]
+    
 
 GATE_APP = gate_app1*750000
 class with_qubits(Structure):
     _fields_ = [('length', c_int), ('contents2', GATE_APP), ('qubits', c_int)]
+
     
 def format_from_c(y):
     deref = y.contents
@@ -80,7 +87,8 @@ def get_counts(circ):
             else:
                 rz_count+=1
     return (x_count, h_count, cnot_count, rz_count, tot_length)         
-
+        
+    
 def cliff(q):
     rel = os.path.dirname(os.path.abspath(__file__))
     testlib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
@@ -88,7 +96,6 @@ def cliff(q):
     testlib.cliff.restype =c_int
     l = testlib.cliff(byref(q))
     return l
-
 def t_count(q):
     rel = os.path.dirname(os.path.abspath(__file__))
     testlib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
@@ -105,6 +112,7 @@ def voqc(fname, out):
     out_file = str(out).encode('utf-8')
     testlib.voqc(in_file, out_file)
     
+
 def print_gates(fin_counts, t_c, c_c, orig):
     if orig == False:
         print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[4], fin_counts[3], c_c, t_c,
@@ -112,8 +120,9 @@ def print_gates(fin_counts, t_c, c_c, orig):
     else:
         print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[4], fin_counts[3], c_c, t_c,
                                                                                       fin_counts[1], fin_counts[0],fin_counts[2]))
+        
     
-class VOQC:
+class SQIR:
     def __init__(self, fname):
         rel = os.path.dirname(os.path.abspath(__file__))
         self.lib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
@@ -142,7 +151,6 @@ class VOQC:
         if c:
             print("Time to optimize: %fs" % (end1-start1))
         return self
-
     def not_propagation(self):
         self.lib.not_propagation.argtypes =[POINTER(with_qubits)]
         self.lib.not_propagation.restype =POINTER(with_qubits)
