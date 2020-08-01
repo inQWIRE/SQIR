@@ -199,7 +199,7 @@ let gate_app3 = view ~read:get1_app~write:set1_app gate_app1
 type with_quibits
   let with_qubits : [`with_qubits] structure typ = structure "with_qubits"
   let length = field with_qubits "length" int
-  let contents = field with_qubits "contents2" (array 250000 gate_app3)
+  let contents = field with_qubits "contents2" (array 750000 gate_app3)
   let qubits = field with_qubits "qubits" int 
   let () = seal with_qubits
   
