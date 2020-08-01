@@ -24,6 +24,7 @@ class VOQC(TransformationPass):
         to_dag = circuit_to_dag(to_circ)
         os.remove("temp.qasm")
         os.remove("temp2.qasm")
+        os.remove("copy.qasm")
         return to_dag
     
     def function_call(self,func_list, fname_in):
