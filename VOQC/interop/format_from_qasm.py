@@ -21,7 +21,7 @@ def format_from_qasm(fname):
         m3 = p_rzq.match(line)
         m4 = p_u1.match(line)
         m5 = p_u2.match(line)
-        m6 = p_u2.match(line)
+        m6 = p_u3.match(line)
         if m1:
             a = m1.group(1)
             b = m1.group(2)
