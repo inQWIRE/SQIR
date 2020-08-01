@@ -1,16 +1,12 @@
-from qiskit.converters import circuit_to_dag
-from qiskit.converters import dag_to_circuit
+from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.transpiler.basepasses import TransformationPass
-from voqc import SQIR
 from qiskit import QuantumCircuit
 import re
 import os
-from gmpy2 import *
-from qiskit.transpiler.passes import Unroller, Optimize1qGates, CommutationAnalysis, CommutativeCancellation, CXCancellation, Depth, FixedPoint, Collect2qBlocks, ConsolidateBlocks
-from qiskit.transpiler import PassManager
-import ast
-from format_voqc import *
-import os.path
+from interop.format_from_qasm import format_from_qasm
+from interop.div_pi import div_pi
+from interop.rzq_to_rz import rzq_to_rz
+from voqc import SQIR
 
 
 class VOQC(TransformationPass):
