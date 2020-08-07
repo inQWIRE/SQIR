@@ -389,7 +389,6 @@ Proof.
 Qed.
 
 Lemma xor_eq: forall (n x y s: nat),
-  (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> (s < 2 ^ n)%nat ->
    (forall i : nat,
   (i < n)%nat ->
   nat_to_funbool n x i ⊕ nat_to_funbool n y i =
@@ -402,15 +401,15 @@ intros.
 split.
 unfold nat_to_funbool. simpl.
 intros.
-apply H2 in H3.
-rewrite <- H3. unfold xorb.
+apply H in H0.
+rewrite <- H0. unfold xorb.
 destruct (list_to_funbool n (nat_to_binlist n x) i).
 destruct (list_to_funbool n  (nat_to_binlist n  y) i). reflexivity. reflexivity.
 destruct (list_to_funbool n  (nat_to_binlist n  y) i). reflexivity. reflexivity.
 unfold nat_to_funbool. simpl.
 intros.
-apply H2 in H3.
-rewrite -> H3. unfold xorb.
+apply H in H0.
+rewrite -> H0. unfold xorb.
 destruct (list_to_funbool n  (nat_to_binlist n  x) i).
 destruct (list_to_funbool n  (nat_to_binlist n  s) i). reflexivity. reflexivity.
 destruct (list_to_funbool n  (nat_to_binlist n  s) i). reflexivity. reflexivity.
@@ -514,35 +513,36 @@ rewrite -> eq3. rewrite -> eq4. reflexivity.
 inversion eq2. inversion eq1.
 Qed.
 
+
 Lemma bitwise_xor_assoc: forall (n x y s: nat), (n > 0)%nat -> 
-       (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> (s < 2 ^ n)%nat ->
+       (y < 2 ^ n)%nat -> (s < 2 ^ n)%nat ->
         bitwise_xor n x y = s <-> y = bitwise_xor n x s.
 Proof.
 intros.
 unfold bitwise_xor.
-specialize (nat_to_funbool_inverse n s) as H3.
-apply H3 in H2 as H4.
-rewrite <- H4.
-specialize (nat_to_funbool_inverse n y) as H5.
-apply H5 in H1 as H6.
-rewrite <- H6.
+specialize (nat_to_funbool_inverse n s) as H2.
+apply H2 in H1 as H3.
+rewrite <- H3.
+specialize (nat_to_funbool_inverse n y) as H4.
+apply H4 in H0 as H5.
+rewrite <- H5.
 split.
 intros.
 apply nat_to_funbool_funs_1.
 specialize (nat_to_funbool_funs_2 n (fun i : nat =>
         nat_to_funbool n x i
-        ⊕ nat_to_funbool n (funbool_to_nat n (nat_to_funbool n y)) i) (nat_to_funbool n s) H7).
+        ⊕ nat_to_funbool n (funbool_to_nat n (nat_to_funbool n y)) i) (nat_to_funbool n s) H6).
 simpl.
-intros H8. apply xor_eq. assumption. assumption. apply funbool_to_nat_bound. 
-rewrite -> H5 in H8. rewrite H4. apply H8. assumption.
+intros H7. apply xor_eq.
+rewrite -> H4 in H7. rewrite H3. apply H7. assumption.
 intros.
 apply nat_to_funbool_funs_1.
 specialize (nat_to_funbool_funs_2 n (nat_to_funbool n y) (fun i : nat =>
         nat_to_funbool n x i
-        ⊕ nat_to_funbool n (funbool_to_nat n (nat_to_funbool n s)) i) H7).
+        ⊕ nat_to_funbool n (funbool_to_nat n (nat_to_funbool n s)) i) H6).
 simpl.
-intros H8. apply xor_eq. assumption. apply funbool_to_nat_bound. assumption.
-rewrite -> H4 in H8. rewrite H5. apply H8. assumption.
+intros H7. apply xor_eq.
+rewrite -> H3 in H7. rewrite H4. apply H7. assumption.
 Qed.
 
 (* Another possibility is to define a function f which is one-to-one from f. 
@@ -581,6 +581,14 @@ Proof.
   unfold wf_basis_vector, adjoint, Mmult, Zero.
   apply Csum_0. 
   intro i; bdestruct_all; lca.
+Qed.
+
+Lemma same_norm_qubit: forall (m n:nat) (A: Matrix m n),
+             (∣0⟩ ⊗ A)† × (∣0⟩ ⊗ A) = (∣1⟩ ⊗ A)† × (∣1⟩ ⊗ A).
+Proof.
+intros.
+Msimpl.
+rewrite Mmult00. rewrite -> Mmult11. reflexivity.
 Qed.
 
 Lemma self_lt_not_aux: forall (n:nat), S n <> n.
@@ -644,7 +652,7 @@ Lemma to_injective_aux (n s:nat) (f:nat -> nat) :
    (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
    (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
-        f x = f y <-> bitwise_xor n x y = s) ->
+        f x = f y <-> bitwise_xor n x y = s \/ x = y) ->
       (exists (x y:nat), (x < 2 ^ n)%nat /\ (y < 2 ^ n)%nat /\ x <> y 
           /\ (to_injective n s f) x = (to_injective n s f) y ) -> False.
 Proof.
@@ -656,19 +664,20 @@ specialize (H3 x x0 H4 H5) as eq.
 destruct (x <? bitwise_xor n x s) eqn:eq1.
 destruct (x0 <? bitwise_xor n x0 s) eqn:eq2.
 apply eq in H7 as H8.
+destruct H8.
 apply bitwise_xor_assoc in H8.
 rewrite <- H8 in eq1.
 specialize (H3 x0 x H5 H4) as eq3.
 symmetry in H7.
 apply eq3 in H7 as H9.
+destruct H9.
 apply bitwise_xor_assoc in H9.
 rewrite <- H9 in eq2. 
-apply Nat.ltb_lt in eq1. apply Nat.ltb_lt in eq2. 
-specialize (Nat.lt_trans x x0 x eq1 eq2) as H10.
-apply self_lt_not in H10. inversion H10.
+apply Nat.ltb_lt in eq1. apply Nat.ltb_lt in eq2. lia. 
 assumption. assumption. assumption.
+rewrite H9 in H6. contradiction.
 assumption. assumption. assumption.
-assumption. assumption.
+rewrite H8 in H6. contradiction.
 specialize (H2 x H4) as H8.
 specialize (plus_greater (2 ^ n) (f x0))  as H9.
 assert (f x <> 2 ^ n + f x0)%nat. lia.
@@ -680,22 +689,23 @@ assert (f x0 <> 2 ^ n + f x)%nat. lia.
 rewrite -> H7 in H10. contradiction.
 apply plus_reg_l in H7.
 apply eq in H7 as H8.
+destruct H8.
 apply bitwise_xor_assoc in H8.
 specialize (H3 x0 x H5 H4) as eq3.
 symmetry in H7.
 apply eq3 in H7 as H9.
+destruct H9.
 apply bitwise_xor_assoc in H9.
 rewrite <- H9 in eq2. 
 rewrite <- H8 in eq1. 
-inversion eq1.
-inversion eq1.
 apply less_false in eq1.
 apply less_false in eq2.
 assert (x0 < x)%nat. lia.
-assert (x < x0)%nat. lia.
-specialize (Nat.lt_trans x x0 x H13 H10) as H14.
-apply self_lt_not in H14. inversion H14.
-1 - 8 : assumption.
+assert (x < x0)%nat. lia. lia.
+assumption. assumption. assumption.
+rewrite H9 in H6. lia.
+assumption. assumption. assumption.
+rewrite H8 in H6. lia.
 Qed.
 
 Theorem deMorgan1 : forall (n s:nat) (f:nat -> nat),
@@ -722,7 +732,7 @@ Lemma to_injective_really (n s:nat) (f:nat -> nat) :
    (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
    (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
-        f x = f y <-> bitwise_xor n x y = s) ->
+        f x = f y <-> bitwise_xor n x y = s \/ x = y) ->
      (forall x y, (x < (2 ^ n))%nat -> (y < (2 ^ n))%nat
         -> (to_injective n s f) x = (to_injective n s f) y <-> x = y).
 Proof.
@@ -1152,20 +1162,44 @@ Lemma basis_vector_first_half: forall (n s:nat) (f:nat -> nat),
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
     (forall (i:nat), (i < 2 ^ n)%nat
       -> first_half (basis_vector (2 * 2 ^ n) ((to_injective n s f) i))
-          = (wf_basis_vector (2 ^ n) ((to_injective n s f) i))).
+          = ∣0⟩ ⊗ (wf_basis_vector (2 ^ n) ((to_injective n s f) i))).
 Proof.
 intros.
-unfold first_half, to_injective, wf_basis_vector, basis_vector.
+unfold first_half, to_injective, wf_basis_vector, basis_vector, qubit0, kron.
 prep_matrix_equality.
-destruct (x <? 2 ^ n) eqn:eq1. apply Nat.ltb_lt in eq1.
-destruct ((x =? (if i <? bitwise_xor n i s then f i
-            else (2 ^ n + f i)%nat)) && (y =? 0)) eqn:eq2.
-reflexivity. reflexivity.
-destruct ((x =? (if i <? bitwise_xor n i s 
-            then f i else (2 ^ n + f i)%nat)) && (y =? 0) && false) eqn:eq2.
-apply andb_true_iff in eq2. destruct eq2. inversion H5. reflexivity.
+  repeat rewrite andb_true_r.
+  bdestruct ((x / 2 ^ n) =? 0).
+  rewrite H4. apply Nat.div_small_iff in H4; auto.
+  rewrite Nat.mod_small by auto.
+  bdestruct ((y / 1)%nat =? 0).
+  rewrite H5.  apply Nat.div_small_iff in H5; auto.
+  destruct (x <? 2 ^ n)%nat eqn:eq1. 
+  destruct ((x =? (if i <? bitwise_xor n i s then f i else (2 ^ n + f i)%nat)) &&
+  (y =? 0)) eqn:eq2. apply andb_true_iff in eq2. destruct eq2.
+  rewrite -> H6. lca. apply andb_false_iff in eq2. destruct eq2.
+  rewrite -> H6. lca. apply Nat.eqb_neq in H6.
+  assert (y = 0)%nat. lia. rewrite H7 in H6. lia.
+  apply less_false in eq1. lia.
+  bdestruct ((y / 1)%nat =? 0).
+  rewrite H6.  apply Nat.div_small_iff in H6; auto.
+  assert (y = 0)%nat by lia. rewrite H7 in H5.
+  assert (0 / 1 = 0)%nat. rewrite Nat.div_0_l. reflexivity. lia.
+  rewrite H8 in H5. contradiction.
+  destruct ((y / 1)%nat) eqn:eq1.
+  apply Nat.div_small_iff in eq1; auto. contradiction.
+  destruct (x <? 2 ^ n)%nat eqn:eq2. apply Nat.ltb_lt in eq2.
+  destruct ((x =? (if i <? bitwise_xor n i s then f i else (2 ^ n + f i)%nat)) &&
+  (y =? 0)) eqn:eq3. apply andb_true_iff in eq3. destruct eq3.
+  apply Nat.eqb_eq in H8. rewrite Nat.div_1_r in eq1.
+  rewrite -> eq1 in H8. rewrite -> H8 in H5. contradiction. lca. lca. lia. 
+  assert (0 < (x / 2 ^ n))%nat by lia.
+  specialize (Nat.div_str_pos_iff x (2 ^ n)) as H6.
+  assert ((2 ^ n)%nat <> 0%nat) by lia. apply H6 in H7. apply H7 in H5.
+  destruct (x <? 2 ^ n) eqn:eq2. apply Nat.ltb_lt in eq2. lia. 
+  destruct ((x / 2 ^ n)%nat) eqn:eq3. apply Nat.div_small_iff in eq3; auto.
+  apply less_false in eq2. lia. destruct n0.
+  destruct ((y / 1)%nat). lca. lca. lca.
 Qed.
-
 
 Lemma basis_vector_second_half: forall (n s:nat) (f:nat -> nat), 
    (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
@@ -1174,10 +1208,10 @@ Lemma basis_vector_second_half: forall (n s:nat) (f:nat -> nat),
         f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
     (forall (i:nat), (i < 2 ^ n)%nat
       -> second_half (basis_vector (2 * 2 ^ n) ((to_injective n s f) i))
-          = (wf_basis_vector (2 ^ n) ((to_injective n s f) (bitwise_xor n i s)))).
+          = ∣0⟩ ⊗ (wf_basis_vector (2 ^ n) ((to_injective n s f) (bitwise_xor n i s)))).
 Proof.
 intros.
-unfold second_half, to_injective, wf_basis_vector, basis_vector.
+unfold second_half, to_injective, wf_basis_vector, basis_vector, qubit0, kron.
 prep_matrix_equality.
 assert (bitwise_xor n (bitwise_xor n i s) s
       = bitwise_xor n s (bitwise_xor n s i)). 
@@ -1185,124 +1219,794 @@ rewrite bitwise_xor_comm.
 assert (bitwise_xor n i s = bitwise_xor n s i) by apply bitwise_xor_comm.
 rewrite -> H5. reflexivity.
 rewrite -> H5. rewrite -> bitwise_xor_cancel.
+  bdestruct ((x / 2 ^ n) =? 0).
+  rewrite H6. apply Nat.div_small_iff in H6; auto.
+  rewrite Nat.mod_small by auto.
+  bdestruct ((y / 1)%nat =? 0).
+  rewrite H7. apply Nat.div_small_iff in H7; auto.
 destruct (x <? 2 ^ n) eqn:eq1. apply Nat.ltb_lt in eq1.
 destruct ((x + 2 ^ n =? (if i <? bitwise_xor n i s
           then f i else (2 ^ n + f i)%nat)) && (y =? 0)) eqn:eq2.
-apply andb_true_iff in eq2. destruct eq2. apply Nat.eqb_eq in H6.
+apply andb_true_iff in eq2. destruct eq2. apply Nat.eqb_eq in H8.
 destruct ((x =?
    (if bitwise_xor n i s <? i
     then f (bitwise_xor n i s)
-    else (2 ^ n + f (bitwise_xor n i s))%nat)) && (y =? 0) && true) eqn:eq3.
-reflexivity.
+    else (2 ^ n + f (bitwise_xor n i s))%nat)) && (y mod 1 =? 0) && true) eqn:eq3.
+lca.
 apply andb_false_iff in eq3. destruct eq3.
-apply andb_false_iff in H8. destruct H8.
-apply Nat.eqb_neq in H8.
+apply andb_false_iff in H10. destruct H10.
+apply Nat.eqb_neq in H10.
 destruct (i <? bitwise_xor n i s) eqn:eq4. apply Nat.ltb_lt in eq4.
 destruct (bitwise_xor n i s <? i) eqn:eq5. apply Nat.ltb_lt in eq5. lia.
 apply less_false in eq5.
-apply H2 in H4. rewrite <- H6 in H4. lia.
+apply H2 in H4. rewrite <- H8 in H4. lia.
 assert (x = f i)%nat by lia. apply less_false in eq4.
 destruct (bitwise_xor n i s <? i) eqn:eq5. apply Nat.ltb_lt in eq5.
 remember (bitwise_xor n i s) as j.
-specialize (bitwise_xor_bound n i s) as H10. 
-rewrite <- Heqj in H10.
+specialize (bitwise_xor_bound n i s) as H12. 
+rewrite <- Heqj in H12.
 rewrite <- bitwise_xor_assoc in Heqj.
-specialize (H3 i j H4 H10).
-destruct H3. destruct H11. left. apply Heqj. lia.
-assumption. assumption. assumption. assumption.
+specialize (H3 i j H4 H12).
+destruct H3. destruct H13. left. apply Heqj. lia.
+assumption. assumption. assumption. 
 apply less_false in eq5.
 assert (bitwise_xor n i s = i) by lia.
-apply bitwise_xor_assoc in H10.
-symmetry in H10.
-apply bitwise_xor_neq in H10. contradiction.
+apply bitwise_xor_assoc in H12.
+symmetry in H12.
+apply bitwise_xor_neq in H12. contradiction.
 assumption. lia. assumption. assumption. assumption. assumption.
-assumption. assumption. assumption. 
-apply Nat.eqb_eq in H7. apply Nat.eqb_neq in H8. lia. inversion H8.
+assumption. assumption. 
+apply Nat.eqb_eq in H9. apply Nat.eqb_neq in H10. rewrite H9 in H10.
+rewrite -> Nat.mod_0_l in H10. contradiction. lia. inversion H10.
 destruct ((x =?
-   (if bitwise_xor n i s <? i
-    then f (bitwise_xor n i s)
-    else (2 ^ n + f (bitwise_xor n i s))%nat)) && (y =? 0) && true) eqn:eq3.
+    (if bitwise_xor n i s <? i
+     then f (bitwise_xor n i s)
+     else (2 ^ n + f (bitwise_xor n i s))%nat)) && 
+   (y mod 1 =? 0) && true) eqn:eq3.
 apply andb_false_iff in eq2. apply andb_true_iff in eq3. destruct eq3. destruct eq2.
 destruct (i <? bitwise_xor n i s) eqn:eq4. apply Nat.ltb_lt in eq4.
-apply Nat.eqb_neq in H8.
+apply Nat.eqb_neq in H10.
 destruct (bitwise_xor n i s <? i) eqn:eq5. apply Nat.ltb_lt in eq5. lia.
-apply andb_true_iff in H6. destruct H6. apply Nat.eqb_eq in H6. 
-rewrite H6 in eq1. lia.
-destruct (bitwise_xor n i s <? i) eqn:eq5. apply andb_true_iff in H6. 
-destruct H6. apply Nat.ltb_lt in eq5. apply Nat.eqb_eq in H6.   
-apply Nat.eqb_neq in H8. rewrite H6 in H8.
+apply andb_true_iff in H8. destruct H8. apply Nat.eqb_eq in H8. 
+rewrite H8 in eq1. lia.
+destruct (bitwise_xor n i s <? i) eqn:eq5. apply andb_true_iff in H8. 
+destruct H8. apply Nat.ltb_lt in eq5. apply Nat.eqb_eq in H8.   
+apply Nat.eqb_neq in H10. rewrite H8 in H10.
 remember (bitwise_xor n i s) as j.
 assert (j < 2 ^ n)%nat by lia.
-specialize (H3 i j H4 H10).
-destruct H3. destruct H11. left. 
+specialize (H3 i j H4 H12).
+destruct H3. destruct H13. left. 
 apply bitwise_xor_assoc in Heqj. apply Heqj.
-assumption. assumption. assumption. assumption. lia.
-apply andb_true_iff in H6. destruct H6. apply less_false in eq5.
+assumption. assumption. assumption. lia.
+apply andb_true_iff in H8. destruct H8. apply less_false in eq5.
 apply less_false in eq4.
 assert (i = bitwise_xor n i s) by lia.
-apply bitwise_xor_assoc in H10.
-apply bitwise_xor_neq in H10. contradiction.
+apply bitwise_xor_assoc in H12.
+apply bitwise_xor_neq in H12. contradiction.
 assumption. lia. assumption. assumption. assumption.
-assumption. assumption. assumption. assumption.
-apply andb_true_iff in H6. 
-destruct H6. apply Nat.eqb_neq in H8. apply Nat.eqb_eq in H9. lia.
-reflexivity.
+assumption. assumption. assumption.
+apply andb_true_iff in H8. 
+destruct H8. apply Nat.eqb_neq in H10. apply Nat.eqb_eq in H11. lia.
+lca.
 destruct ((x =?
-   (if bitwise_xor n i s <? i
-    then f (bitwise_xor n i s)
-    else (2 ^ n + f (bitwise_xor n i s))%nat)) && (y =? 0) && false) eqn:eq2.
-apply andb_true_iff in eq2. destruct eq2. inversion H7.
-reflexivity. assumption.
+    (if bitwise_xor n i s <? i
+     then f (bitwise_xor n i s)
+     else (2 ^ n + f (bitwise_xor n i s))%nat)) && 
+   (y mod 1 =? 0) && false) eqn:eq2.
+apply andb_true_iff in eq2. destruct eq2. inversion H9.
+lca. 
+destruct (x <? 2 ^ n) eqn:eq1.
+rewrite Nat.div_1_r in H7. destruct ((y / 1)%nat) eqn:eq2.
+rewrite Nat.div_1_r in eq2. rewrite eq2 in H7. contradiction.
+destruct ((x + 2 ^ n =? (if i <? bitwise_xor n i s then f i else (2 ^ n + f i)%nat)) &&
+  (y =? 0)) eqn:eq3.
+apply andb_true_iff in eq3. destruct eq3.
+apply Nat.eqb_eq in H9. rewrite Nat.div_1_r in eq2. rewrite H9 in eq2. lia. lca.
+rewrite Nat.div_1_r in H7. destruct ((y / 1)%nat) eqn:eq2.
+rewrite Nat.div_1_r in eq2. rewrite eq2 in H7. contradiction. lca.
+lia.
+assert (0 < x / 2 ^ n)%nat by lia.
+specialize (Nat.div_str_pos_iff x  (2 ^ n)) as H8.
+assert (2 ^ n <> 0)%nat by lia. apply H8 in H9.
+apply H9 in H7.
+destruct (x <? 2 ^ n) eqn:eq1. apply Nat.ltb_lt in eq1. lia.
+destruct ((x / 2 ^ n)%nat) eqn:eq2. apply Nat.div_small_iff in eq2; auto. lia.
+destruct n0. destruct ((y / 1)%nat). lca. lca. lca. assumption.
 Qed.
 
-Lemma basis_vector_to_injective_all: forall (n s:nat) (f:nat -> nat), 
+Lemma div_range: forall (x n:nat), (n <> 0)%nat -> 
+        (x / n)%nat = 1%nat -> (n <= x)%nat /\ (x < 2 * n)%nat.
+Proof.
+intros.
+split.
+destruct (x <? n)%nat eqn:eq1.
+apply Nat.ltb_lt in eq1.
+apply Nat.div_small in eq1.
+rewrite -> eq1 in H0. inversion H0.
+apply less_false in eq1. assumption.
+destruct ((x <? 2 * n)%nat) eqn:eq1.
+apply Nat.ltb_lt in eq1. assumption.
+apply less_false in eq1.
+rewrite Nat.mul_comm in eq1.
+apply Nat.div_le_lower_bound in eq1.
+rewrite H0 in eq1. lia. assumption.
+Qed.
+
+Lemma div_range_2: forall (x n:nat), (n <> 0)%nat -> 
+        (2 <= x / n)%nat -> (2 * n <= x)%nat.
+Proof.
+intros.
+destruct ((x <? 2 * n)%nat) eqn:eq1.
+apply Nat.ltb_lt in eq1.
+rewrite Nat.mul_comm in eq1.
+apply Nat.div_lt_upper_bound in eq1. lia.
+assumption. apply less_false in eq1. assumption.    
+Qed.
+
+Lemma sym_matrix_eq: forall (n s:nat) (f:nat -> nat), 
    (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
    (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
         f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
-    (forall (i:nat), (i < 2 ^ n)%nat ->
-        basis_vector (2 ^ n) (f i)
-          = (wf_basis_vector (2 ^ n) ((to_injective n s f) i)) .+ 
-             (wf_basis_vector (2 ^ n) ((to_injective n s f) (bitwise_xor n i s)))).
+    (forall (i:nat), (i < 2 ^ n)%nat
+      -> (∣0⟩ .+ ∣1⟩) ⊗ (basis_vector (2 ^ n) (f i))
+            =  (basis_vector (2 * 2 ^ n) ((to_injective n s f) i)) .+ 
+                            (basis_vector (2 * 2 ^ n) ((to_injective n s f) (bitwise_xor n i s)))).
 Proof.
 intros.
-specialize (basis_vector_to_injective_next n s f H H0 H1 H2 i H4) as H5.
-rewrite -> basis_vector_first_half in H5.
-rewrite -> basis_vector_second_half in H5.
-apply H5.
-1 - 11 : assumption.
+unfold to_injective, basis_vector; solve_matrix.
+  destruct ((x / 2 ^ n)%nat) eqn:eq1.
+  apply Nat.div_small_iff in eq1; auto.
+  rewrite Nat.mod_small by auto.
+  repeat rewrite andb_true_r.
+  destruct (x =?
+   (if match bitwise_xor n i s with
+       | 0%nat => false
+       | S m' => i <=? m'
+       end
+    then f i
+    else (2 ^ n + f i)%nat)) eqn:eq2. apply Nat.eqb_eq in eq2.
+  destruct (x =?
+   (if
+     match bitwise_xor n (bitwise_xor n i s) s with
+     | 0%nat => false
+     | S m' => bitwise_xor n i s <=? m'
+     end
+    then f (bitwise_xor n i s)
+    else (2 ^ n + f (bitwise_xor n i s))%nat)) eqn:eq3. apply Nat.eqb_eq in eq3.
+  rewrite bitwise_xor_comm in eq3.
+  assert (bitwise_xor n s (bitwise_xor n i s) = bitwise_xor n s (bitwise_xor n s i)).
+  assert (bitwise_xor n i s = bitwise_xor n s i).
+    rewrite bitwise_xor_comm. reflexivity.
+  rewrite H5. reflexivity. rewrite H5 in eq3.
+  rewrite bitwise_xor_cancel in eq3.
+  remember (bitwise_xor n i s) as j.
+  destruct j.
+  destruct i.
+  rewrite bitwise_xor_0_l in Heqj. lia. assumption.
+  destruct (0 <=? i) eqn:eq4.
+  rewrite bitwise_xor_comm in Heqj.
+  apply bitwise_xor_assoc in Heqj.
+  assert (bitwise_xor n s 0 < 2 ^ n)%nat by apply bitwise_xor_bound.
+  apply bitwise_xor_assoc in Heqj.
+  rewrite bitwise_xor_comm in Heqj.
+  apply bitwise_xor_assoc in Heqj.
+  assert (0 < 2 ^ n)%nat by lia.
+  specialize (H3 (S i) 0%nat H4 H7) as eq5.
+  destruct eq5. 
+  assert (bitwise_xor n (S i) 0 = s \/ S i = 0%nat). left. apply Heqj.
+  apply H9 in H10. rewrite eq3 in eq2.  rewrite H10 in eq2. lia.
+  repeat assumption. repeat assumption. lia.
+  repeat assumption. repeat assumption. repeat assumption. lia.
+  repeat assumption. repeat assumption. lia.
+  repeat assumption.
+  apply lesseq_false in eq4. lia.
+  destruct i. destruct (0 <=? j) eqn:eq4.
+    assert (bitwise_xor n 0 s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H6.
+  apply bitwise_xor_assoc in Heqj.
+  assert (0 < 2 ^ n)%nat by lia.
+  specialize (H3 0%nat (S j) H7 H6) as eq5.
+  destruct eq5. 
+  assert (bitwise_xor n 0 (S j) = s \/ 0%nat = S j). left. apply Heqj.
+  apply H9 in H10. rewrite eq3 in eq2.  rewrite H10 in eq2. lia.
+  repeat assumption. repeat assumption.
+  repeat assumption. repeat assumption.
+  apply lesseq_false in eq4. lia.
+  destruct (S i <=? j) eqn:eq5. destruct (S j <=? i) eqn:eq6.
+  apply Nat.leb_le in eq5.   apply Nat.leb_le in eq6. lia.
+    assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H6.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 (S i) (S j) H4 H6) as eq7.
+  destruct eq7. 
+  assert (bitwise_xor n (S i) (S j) = s \/ S i = S j). left. apply Heqj.
+  apply H8 in H9. rewrite eq3 in eq2.  rewrite H9 in eq2. lia.
+  repeat assumption. repeat assumption.
+  repeat assumption.
+  destruct (S j <=? i) eqn:eq6.
+    assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H6.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 (S i) (S j) H4 H6) as eq7.
+  destruct eq7. 
+  assert (bitwise_xor n (S i) (S j) = s \/ S i = S j). left. apply Heqj.
+  apply H8 in H9. rewrite eq3 in eq2.  rewrite H9 in eq2. lia.
+  repeat assumption. repeat assumption.
+  repeat assumption.
+  apply lesseq_false in eq5. apply lesseq_false in eq6. lia. assumption.
+  rewrite bitwise_xor_comm in eq3.
+  assert (bitwise_xor n s (bitwise_xor n i s) = bitwise_xor n s (bitwise_xor n s i)).
+  assert (bitwise_xor n i s = bitwise_xor n s i).
+    rewrite bitwise_xor_comm. reflexivity.
+  rewrite H5. reflexivity. rewrite H5 in eq3.
+  rewrite bitwise_xor_cancel in eq3.
+  remember (bitwise_xor n i s) as j. apply Nat.eqb_neq in eq3.
+  destruct j.
+  destruct i.
+  rewrite bitwise_xor_0_l in Heqj. lia. assumption.
+  destruct (0 <=? i) eqn:eq4.
+  rewrite bitwise_xor_comm in Heqj.
+  apply bitwise_xor_assoc in Heqj.
+  assert (bitwise_xor n s 0 < 2 ^ n)%nat by apply bitwise_xor_bound.
+  apply bitwise_xor_assoc in Heqj.
+  rewrite bitwise_xor_comm in Heqj.
+  apply bitwise_xor_assoc in Heqj.
+  assert (0 < 2 ^ n)%nat by lia.
+  specialize (H3 (S i) 0%nat H4 H7) as eq5.
+  destruct eq5. 
+  assert (bitwise_xor n (S i) 0 = s \/ S i = 0%nat). left. apply Heqj.
+  apply H9 in H10. rewrite eq2 in eq1. lia. assumption.
+  repeat assumption. repeat assumption. lia.
+  repeat assumption. repeat assumption. repeat assumption. lia.
+  repeat assumption. repeat assumption. lia.
+  repeat assumption.
+  apply lesseq_false in eq4. lia.
+  destruct i. destruct (0 <=? j) eqn:eq4.
+  rewrite eq2. destruct (f 0%nat =? f 0%nat) eqn:eq5. lca. apply Nat.eqb_neq in eq5. contradiction.
+  rewrite eq2 in eq1. lia.
+  destruct (S i <=? j) eqn:eq4. destruct (S j <=? i) eqn:eq5.
+  apply Nat.leb_le in eq4.   apply Nat.leb_le in eq5. lia. 
+  destruct (x =? f (S i)) eqn:eq6. lca. apply Nat.eqb_neq in eq6. rewrite eq2 in eq6. contradiction.
+  rewrite eq2 in eq1. lia. assumption.
+  apply Nat.eqb_neq in eq2.
+  destruct (x =?
+   (if
+     match bitwise_xor n (bitwise_xor n i s) s with
+     | 0%nat => false
+     | S m' => bitwise_xor n i s <=? m'
+     end
+    then f (bitwise_xor n i s)
+    else (2 ^ n + f (bitwise_xor n i s))%nat)) eqn:eq3. apply Nat.eqb_eq in eq3.
+  rewrite bitwise_xor_comm in eq3.
+  assert (bitwise_xor n s (bitwise_xor n i s) = bitwise_xor n s (bitwise_xor n s i)).
+  assert (bitwise_xor n i s = bitwise_xor n s i).
+    rewrite bitwise_xor_comm. reflexivity.
+  rewrite H5. reflexivity. rewrite H5 in eq3.
+  rewrite bitwise_xor_cancel in eq3.
+  remember (bitwise_xor n i s) as j.
+  destruct j.
+  destruct i. rewrite eq3 in eq2. contradiction.
+  destruct (0 <=? i) eqn:eq4.
+  apply bitwise_xor_assoc in Heqj.
+  assert (0 < 2 ^ n)%nat by lia.
+  specialize (H3 (S i) 0%nat H4 H6) as eq5.
+  destruct eq5. 
+  assert (bitwise_xor n (S i) 0 = s \/ S i = 0%nat). left. apply Heqj.
+  apply H8 in H9. destruct (x =? f (S i)) eqn:eq5. lca.
+  apply Nat.eqb_neq in eq5.  rewrite eq3 in eq5. rewrite H9 in eq5. contradiction.
+  repeat assumption. repeat assumption. lia. assumption.
+  apply lesseq_false in eq4. lia.
+  destruct i. rewrite eq3 in eq1. lia.
+  destruct (S i <=? j) eqn:eq4. apply Nat.leb_le in eq4.
+  destruct (S j <=? i) eqn:eq5. apply Nat.leb_le in eq5. lia.
+  rewrite eq3 in eq1. lia.
+  destruct (S j <=? i) eqn:eq5. 
+  assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H6.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 (S i) (S j) H4 H6) as eq6.
+  destruct eq6. 
+  assert (bitwise_xor n (S i) (S j) = s \/ S i = S j). left. apply Heqj.
+  apply H8 in H9. destruct (x =? f (S i)) eqn:eq6. lca.
+  apply Nat.eqb_neq in eq6.  rewrite eq3 in eq6. rewrite H9 in eq6. contradiction.
+  assumption. assumption. assumption.
+  rewrite eq3 in eq1. lia. assumption.
+  rewrite bitwise_xor_comm in eq3.
+  assert (bitwise_xor n s (bitwise_xor n i s) = bitwise_xor n s (bitwise_xor n s i)).
+  assert (bitwise_xor n i s = bitwise_xor n s i).
+    rewrite bitwise_xor_comm. reflexivity.
+  rewrite H5. reflexivity. rewrite H5 in eq3.
+  rewrite bitwise_xor_cancel in eq3.
+  remember (bitwise_xor n i s) as j. apply Nat.eqb_neq in eq3.
+  destruct (x =? f i) eqn:eq4. apply Nat.eqb_eq in eq4.
+  destruct j.
+  destruct i.
+  rewrite bitwise_xor_0_l in Heqj. lia. assumption.
+  destruct (0 <=? i) eqn:eq5.
+  apply bitwise_xor_assoc in Heqj.
+  assert (0 < 2 ^ n)%nat by lia.
+  specialize (H3 (S i) 0%nat H4 H6) as eq6.
+  destruct eq6. 
+  assert (bitwise_xor n (S i) 0 = s \/ S i = 0%nat). left. apply Heqj.
+  apply H8 in H9. rewrite eq4 in eq3. rewrite H9 in eq3. contradiction.
+  assumption. lia. assumption.
+  apply lesseq_false in eq5. lia.
+  destruct i.
+  destruct (0 <=? j) eqn:eq5. rewrite eq4 in eq2. contradiction.
+  apply lesseq_false in eq5. lia.
+  destruct (S i <=? j) eqn:eq5. apply Nat.leb_le in eq5.
+  destruct (S j <=? i) eqn:eq6.  apply Nat.leb_le in eq6. lia.
+  rewrite eq4 in eq2. contradiction.
+  destruct (S j <=? i) eqn:eq6.
+  assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H6.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 (S i) (S j) H4 H6) as eq7.
+  destruct eq7. 
+  assert (bitwise_xor n (S i) (S j) = s \/ S i = S j). left. apply Heqj.
+  apply H8 in H9. rewrite eq4 in eq3.  rewrite H9 in eq3. lia.
+  assumption. assumption. assumption.
+  apply lesseq_false in eq5. apply lesseq_false in eq6.
+  assert (j <= i)%nat by lia. assert (i <= j)%nat by lia. assert (i = j)%nat by lia.
+  apply bitwise_xor_assoc in Heqj.
+  apply bitwise_xor_eq in Heqj. lia.
+  assumption. rewrite H8. reflexivity. assumption.
+  rewrite H8 in H4. assumption. assumption. lca. assumption. lia.
+  destruct n0.
+  assert (eq1' := eq1).
+  apply div_range in eq1. destruct eq1.
+  apply H2 in H4 as H7.
+  specialize (Nat.mod_eq x (2 ^ n)) as H8.
+  assert (2 ^ n <> 0)%nat. lia. apply H8 in H9.
+  rewrite eq1' in H9.
+  assert (x - 2 ^ n * 1 = x - 2 ^ n)%nat by lia. rewrite H10 in H9.
+  rewrite H9.
+  assert (bitwise_xor n (bitwise_xor n i s) s = bitwise_xor n s (bitwise_xor n i s)) by apply bitwise_xor_comm.
+  rewrite H11.
+  assert (bitwise_xor n s (bitwise_xor n i s) = bitwise_xor n s (bitwise_xor n s i)).
+  assert (bitwise_xor n i s = bitwise_xor n s i).
+    rewrite bitwise_xor_comm. reflexivity.
+  rewrite H12. reflexivity. rewrite H12.
+    rewrite bitwise_xor_cancel.
+  remember (bitwise_xor n i s) as j.
+  repeat rewrite andb_true_r.
+  destruct (x =?
+   (if match j with
+       | 0%nat => false
+       | S m' => i <=? m'
+       end
+    then f i
+    else (2 ^ n + f i)%nat)) eqn:eq2. apply Nat.eqb_eq in eq2.
+  destruct (x =?
+   (if match i with
+       | 0%nat => false
+       | S m' => j <=? m'
+       end
+    then f j
+    else (2 ^ n + f j)%nat)) eqn:eq3. apply Nat.eqb_eq in eq3.
+  destruct i. destruct j.
+  rewrite bitwise_xor_0_l in Heqj. lia. assumption.
+  destruct (0 <=? j) eqn:eq4.
+  assert (bitwise_xor n 0 s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H13.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 0%nat (S j)%nat H4 H13) as eq5.
+  destruct eq5. 
+  assert (bitwise_xor n 0 (S j) = s \/ 0%nat = S j). left. apply Heqj.
+  apply H15 in H16. rewrite eq3 in eq2.  rewrite H16 in eq2. lia.
+  assumption. assumption. assumption. 
+  apply lesseq_false in eq4. lia.
+  destruct j.
+  destruct (0 <=? i) eqn:eq4.
+  apply bitwise_xor_assoc in Heqj.
+  assert (0 < 2 ^ n)%nat by lia.
+  specialize (H3 (S i)%nat 0%nat H4 H13) as eq5.
+  destruct eq5. 
+  assert (bitwise_xor n (S i) 0 = s \/ S i = 0%nat). left. apply Heqj.
+  apply H15 in H16. rewrite eq3 in eq2.  rewrite H16 in eq2. lia.
+  assumption. lia. assumption. 
+  apply lesseq_false in eq4. lia.
+  destruct (S i <=? j) eqn:eq4. apply Nat.leb_le in eq4.
+  destruct (S j <=? i) eqn:eq5. apply Nat.leb_le in eq5. lia.
+  assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H13.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 (S i)%nat (S j) H4 H13) as eq6.
+  destruct eq6. 
+  assert (bitwise_xor n (S i) (S j) = s \/ S i = S j). left. apply Heqj.
+  apply H15 in H16. rewrite eq3 in eq2.  rewrite H16 in eq2. lia.
+  assumption. assumption.   assumption. 
+  destruct (S j <=? i) eqn:eq5.
+  assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H13.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 (S i)%nat (S j) H4 H13) as eq6.
+  destruct eq6. 
+  assert (bitwise_xor n (S i) (S j) = s \/ S i = S j). left. apply Heqj.
+  apply H15 in H16. rewrite eq3 in eq2.  rewrite H16 in eq2. lia.
+  assumption. assumption.   assumption. 
+  apply lesseq_false in eq4. apply lesseq_false in eq5.
+  assert (j <= i)%nat by lia. assert (i <= j)%nat by lia.
+  assert (i = j) by lia.
+  rewrite H15 in Heqj. apply bitwise_xor_assoc in Heqj.
+  apply bitwise_xor_eq in Heqj. lia. assumption. reflexivity.
+  assumption. 
+  assert (bitwise_xor n (S j) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H17. assumption. 
+  assert (bitwise_xor n (S j) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H17. assumption.
+  destruct j.
+  destruct (x - 2 ^ n =? f i) eqn:eq4. lca.
+  apply Nat.eqb_neq in eq4.
+  rewrite eq2 in eq4. lia.
+  destruct i.
+  destruct (0 <=? j) eqn:eq4. 
+  assert (0 < 2 ^ n)%nat by lia.
+  apply H2 in H13. rewrite <- eq2 in H13. lia.
+  destruct (x - 2 ^ n =? f 0%nat) eqn:eq5. lca.
+  apply Nat.eqb_neq in eq5. rewrite eq2 in eq5. lia.
+  destruct (S i <=? j) eqn:eq4.
+  apply H2 in H4. rewrite eq2 in H5. lia.
+  destruct (x - 2 ^ n =? f (S i)) eqn:eq5. lca.
+  apply Nat.eqb_neq in eq5. rewrite eq2 in eq5. lia.
+  destruct i.
+  assert (bitwise_xor n 0 s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H13.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 0%nat j H4 H13) as eq6.
+  destruct eq6. 
+  assert (bitwise_xor n 0 j = s \/ 0%nat = j). left. apply Heqj.
+  apply H15 in H16. 
+  destruct (x - 2 ^ n =? f 0%nat) eqn:eq3. apply Nat.eqb_eq in eq3.
+  destruct (x =? 2 ^ n + f j) eqn:eq4. apply Nat.eqb_eq in eq4. lca.
+  apply Nat.eqb_neq in eq4. rewrite H16 in eq3. rewrite <- eq3 in eq4. lia.
+  destruct (x =? 2 ^ n + f j) eqn:eq4. apply Nat.eqb_eq in eq4.
+  apply Nat.eqb_neq in eq3. rewrite <- H16 in eq4. rewrite eq4 in eq3. lia. lca.
+  assumption. lia. assumption.
+  destruct (x - 2 ^ n =? f (S i)) eqn:eq3. apply Nat.eqb_eq in eq3.
+  destruct (x =? (if j <=? i then f j else (2 ^ n + f j)%nat)) eqn:eq4. lca.
+  destruct (j <=? i) eqn:eq5.
+  destruct j. apply Nat.eqb_neq in eq2. rewrite <- eq3 in eq2. lia.
+  destruct (S i <=? j) eqn:eq6. apply Nat.leb_le in eq6. apply Nat.leb_le in eq5. lia.
+  apply Nat.eqb_neq in eq2. rewrite <- eq3 in eq2. lia.
+  destruct j. apply Nat.eqb_neq in eq2. rewrite <- eq3 in eq2. lia.
+  destruct (S i <=? j) eqn:eq6.
+  apply Nat.eqb_neq in eq4.
+  assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H13.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 (S i) (S j) H4 H13) as eq7.
+  destruct eq7. 
+  assert (bitwise_xor n (S i) (S j) = s \/ S i = S j). left. apply Heqj.
+  apply H15 in H16. rewrite H16 in eq3. rewrite <- eq3 in eq4. lia.
+  assumption. assumption. assumption.
+  apply lesseq_false in eq6. apply lesseq_false in eq5.
+  apply Nat.eqb_neq in eq2. rewrite <- eq3 in eq2. lia.
+  apply Nat.eqb_neq in eq3. destruct j.
+  destruct (0 <=? i) eqn:eq4.
+  destruct (x =? f 0%nat) eqn:eq5. apply Nat.eqb_eq in eq5. 
+  assert (0 < 2 ^ n)%nat by lia. apply H2 in H13. rewrite <- eq5 in H13. lia. lca.
+  apply lesseq_false in eq4. lia. 
+  destruct (S j <=? i) eqn:eq4. apply Nat.leb_le in eq4.
+  destruct (x =? f (S j)) eqn:eq5. apply Nat.eqb_eq in eq5. 
+  assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H13.
+  apply H2 in H13. rewrite <- eq5 in H13. lia.
+  lca. 
+  destruct (x =? 2 ^ n + f (S j)) eqn:eq5. apply Nat.eqb_eq in eq5. 
+  assert (bitwise_xor n (S i) s < 2 ^ n)%nat by apply bitwise_xor_bound.
+  rewrite <- Heqj in H13.
+  apply bitwise_xor_assoc in Heqj.
+  specialize (H3 (S i) (S j) H4 H13) as eq7.
+  destruct eq7. 
+  assert (bitwise_xor n (S i) (S j) = s \/ S i = S j). left. apply Heqj.
+  apply H15 in H16. rewrite H16 in eq3. rewrite eq5 in eq3. lia.
+  assumption. assumption.   assumption. lca.
+  assumption. lia.
+  assert (2 <= x / 2 ^ n)%nat by lia. apply div_range_2 in H5.  
+  destruct (bitwise_xor n i s) eqn:eq2. 
+  destruct ( bitwise_xor n 0 s) eqn:eq3. 
+  rewrite bitwise_xor_0_l in eq3. lia. assumption.  
+    repeat rewrite andb_true_r.
+  destruct (x =? 2 ^ n + f i) eqn:eq4. apply Nat.eqb_eq in eq4.
+  apply H2 in H4. rewrite eq4 in H5. lia.  
+  destruct (0 <=? n1) eqn:eq5. 
+  destruct (x =? f 0%nat) eqn:eq6. apply Nat.eqb_eq in eq6. 
+  assert (0 < 2 ^ n)%nat by lia. apply H2 in H6. rewrite eq6 in H5. lia. lca.
+  destruct (x =? 2 ^ n + f 0%nat) eqn:eq6. apply Nat.eqb_eq in eq6. 
+  assert (0 < 2 ^n)%nat by lia. apply H2 in H6. rewrite eq6 in H5. lia. lca. 
+  destruct (bitwise_xor n (S n1) s) eqn:eq3. 
+    repeat rewrite andb_true_r.
+  destruct (i <=? n1) eqn:eq4. 
+  destruct (x =? f i) eqn:eq5. apply Nat.eqb_eq in eq5. 
+  apply H2 in H4. rewrite eq5 in H5. lia. 
+  destruct (x =? 2 ^ n + f (S n1)) eqn:eq6. 
+  assert (bitwise_xor n i s < 2 ^ n)%nat by apply bitwise_xor_bound. 
+  rewrite eq2 in H6. apply H2 in H6. apply Nat.eqb_eq in eq6. rewrite eq6 in H5. lia. lca. 
+  destruct (x =? 2 ^ n + f i) eqn:eq5. apply Nat.eqb_eq in eq5. 
+  apply H2 in H4. rewrite eq5 in H5. lia. 
+  destruct (x =? 2 ^ n + f (S n1)) eqn:eq6. apply Nat.eqb_eq in eq6. 
+  assert (bitwise_xor n i s < 2 ^ n)%nat by apply bitwise_xor_bound. 
+  rewrite eq2 in H6. apply H2 in H6. rewrite eq6 in H5. lia. lca. 
+  destruct (i <=? n1) eqn:eq4. repeat rewrite andb_true_r.
+  destruct (S n1 <=? n2) eqn:eq5. 
+  destruct (x =? f i) eqn:eq6. apply Nat.eqb_eq in eq6. apply H2 in H4.
+  rewrite eq6 in H5. lia. 
+  destruct (x =? f (S n1)) eqn:eq7. apply Nat.eqb_eq in eq7. 
+  assert (bitwise_xor n i s < 2 ^ n)%nat by apply bitwise_xor_bound. 
+  rewrite eq2 in H6. apply H2 in H6. rewrite eq7 in H5. lia. lca. 
+  destruct (x =? f i) eqn:eq6. apply Nat.eqb_eq in eq6. apply H2 in H4.
+  rewrite eq6 in H5. lia. 
+  destruct ( x =? 2 ^ n + f (S n1)) eqn:eq7. apply Nat.eqb_eq in eq7. 
+  assert (bitwise_xor n i s < 2 ^ n)%nat by apply bitwise_xor_bound. 
+  rewrite eq2 in H6. apply H2 in H6. rewrite eq7 in H5. lia. lca. 
+  repeat rewrite andb_true_r.
+  destruct (x =? 2 ^ n + f i) eqn:eq5. apply Nat.eqb_eq in eq5.
+  apply H2 in H4. rewrite eq5 in H5. lia. 
+  destruct (S n1 <=? n2). 
+  destruct (x =? f (S n1)) eqn:eq6. apply Nat.eqb_eq in eq6. 
+  assert (bitwise_xor n i s < 2 ^ n)%nat by apply bitwise_xor_bound. 
+  rewrite eq2 in H6. apply H2 in H6. rewrite eq6 in H5. lia. lca. 
+  destruct (x =? 2 ^ n + f (S n1)) eqn:eq6. apply Nat.eqb_eq in eq6. 
+  assert (bitwise_xor n i s < 2 ^ n)%nat by apply bitwise_xor_bound. 
+  rewrite eq2 in H6. apply H2 in H6. rewrite eq6 in H5. lia. lca. lia. 
+  destruct ((x / 2 ^ n)%nat). 
+  destruct ((x =?
+   (if
+     match bitwise_xor n (bitwise_xor n i s) s with
+     | 0%nat => false
+     | S m' => bitwise_xor n i s <=? m'
+     end
+    then f (bitwise_xor n i s)
+    else (2 ^ n + f (bitwise_xor n i s))%nat)) && false) eqn:eq1. 
+  apply andb_true_iff in eq1. destruct eq1. inversion H6. lca. 
+  destruct n0. rewrite andb_false_r. lca.
+  rewrite andb_false_r. lca.  
+Qed.
+
+Lemma bitwise_xor_bijective: forall (n s: nat), 
+   (n > 0)%nat -> (s < 2 ^ n)%nat ->
+   finite_bijection (2 ^ n) (fun (i:nat) => bitwise_xor n i s).
+Proof.
+Admitted.
+
+Lemma bitwise_xor_vsum_reorder: forall (n m s :nat) (f:nat -> nat) a, 
+          (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
+        vsum (2 ^ n) (fun i : nat => (a i) .* basis_vector m (f (bitwise_xor n i s))) 
+         = vsum (2 ^ n) (fun i : nat => (a (bitwise_xor n i s)) .* basis_vector m (f i)).
+Proof.
+intros.
+rewrite vsum_reorder with (f0:= (fun i => bitwise_xor n i s)).
+erewrite vsum_eq.
+2: { intros.
+     assert (bitwise_xor n (bitwise_xor n i s) s
+                = bitwise_xor n s (bitwise_xor n i s)).
+     rewrite bitwise_xor_comm. reflexivity.
+     rewrite -> H3.
+     rewrite bitwise_xor_comm at 2.
+     rewrite bitwise_xor_cancel.
+     reflexivity.
+     assumption.
+   }
+reflexivity.
+apply bitwise_xor_bijective.
+assumption. assumption.
 Qed.
 
 
-Lemma basic_vector_double: forall (n s:nat) (f:nat -> nat), 
-   (n > 0)%nat ->
-   (forall x, (x < n)%nat -> (f x < 2 * n)%nat) ->
-   (forall x, (x < n)%nat -> (f x < n)%nat -> (exists y, (y < n)%nat /\ (n <= f y)%nat))
-  -> (forall x, (x < n)%nat -> (n <= f x)%nat -> (exists y, (y < n)%nat /\ (f y < n)%nat))
-  -> (forall x y, (x < n)%nat -> (y < n)%nat -> f x = f y <-> x = y)
-   -> (vsum n (fun i => basis_vector (2 * n) (f i)))†
-      × (vsum n (fun i => basis_vector (2 * n) (f i))) = 
-      (1 / 2) .* ((vsum n (fun i => wf_basis_vector n (f i)))†
-                    × (vsum n (fun i => wf_basis_vector n (f i)))).
+Lemma two_to_one_fun_vsum_norm: forall (n s:nat) (f:nat -> nat) a,
+   (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
+   (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
+   (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
+        f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
+ 1/2 .* ((vsum (2 ^ n) (fun i : nat => 
+                ((a i) + (a (bitwise_xor n i s))) .* (basis_vector (2 * 2 ^ n) ((to_injective n s f) i))))†
+    ×  (vsum (2 ^ n) (fun i : nat => 
+                    ((a i) + (a (bitwise_xor n i s))) .* (basis_vector (2 * 2 ^ n) ((to_injective n s f) i)))))
+   =  (vsum (2 ^ n) (fun i : nat => (a i) .* (basis_vector (2 ^ n) (f i))))†
+      × (vsum (2 ^ n) (fun i : nat => (a i) .* (basis_vector (2 ^ n) (f i)))).
 Proof.
 intros.
-Qed.
-
-(*
-    (forall (i:nat), (i < 2 ^ n)%nat ->
-        basis_vector (2 ^ n) (f i)
-          = (wf_basis_vector (2 ^ n) ((to_injective n s f) i)) .+ 
-             (wf_basis_vector (2 ^ n) ((to_injective n s f) (bitwise_xor n i s)))).
-Proof.
+erewrite vsum_eq at 2.
+2 : { intros.
+      rewrite -> Mscale_plus_distr_l.
+      reflexivity.
+}
+erewrite vsum_eq at 1.
+2 : { intros.
+      rewrite -> Mscale_plus_distr_l.
+      reflexivity.
+}
+rewrite -> vsum_plus.
+rewrite <- bitwise_xor_vsum_reorder.
+rewrite <- vsum_plus.
+erewrite vsum_eq at 2.
+2: {
 intros.
-specialize (basis_vector_to_injective_next n s f H H0 H1 H2 i H4) as H5.
-rewrite -> basis_vector_first_half in H5.
-rewrite -> basis_vector_second_half in H5.
-apply H5.
-1 - 11 : assumption.
+rewrite <- Mscale_plus_distr_r.
+rewrite <- sym_matrix_eq.
+restore_dims.
+rewrite <- Mscale_kron_dist_r.
+reflexivity.
+assumption. assumption. assumption. assumption. assumption. assumption.
+}
+erewrite vsum_eq at 1.
+2: {
+intros.
+rewrite <- Mscale_plus_distr_r.
+rewrite <- sym_matrix_eq.
+restore_dims.
+rewrite <- Mscale_kron_dist_r.
+reflexivity.
+assumption. assumption. assumption. assumption. assumption. assumption.
+}
+rewrite <- kron_vsum_distr_l.
+restore_dims.
+rewrite -> kron_adjoint.
+rewrite -> kron_mixed_product.
+rewrite -> Mplus_adjoint.
+rewrite -> Mmult_plus_distr_l.
+rewrite -> Mmult_plus_distr_r.
+rewrite -> Mmult_plus_distr_r.
+rewrite -> Mmult00. rewrite -> Mmult01.
+rewrite -> Mmult10. rewrite -> Mmult11.
+Msimpl. 
+rewrite <- Mscale_kron_dist_l.
+assert (1 / 2 .* (I 1 .+ I 1) = I 1). 
+solve_matrix. rewrite -> H4.
+rewrite -> kron_1_l. reflexivity.
+apply WF_mult.
+apply WF_adjoint.
+apply vsum_WF.
+intros. apply WF_scale.
+apply basis_vector_WF.
+apply H2. assumption.
+apply vsum_WF.
+intros. apply WF_scale.
+apply basis_vector_WF.
+apply H2. assumption.
+1 - 3: assumption.
 Qed.
-*)
 
+Lemma norm_vsum_two_fun : forall (n s:nat) (f:nat -> nat) a,
+   (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
+   (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
+   (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
+        f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
+  norm (vsum (2 ^ n) (fun i : nat => (a i) .* (basis_vector (2 ^ n) (f i)))) = 
+    ((sqrt (1 / 2))) * norm ((vsum (2 ^ n) (fun i : nat => 
+                ((a i) + (a (bitwise_xor n i s))) .* (basis_vector (2 * 2 ^ n) ((to_injective n s f) i))))).
+Proof.
+intros. unfold norm.
+specialize (two_to_one_fun_vsum_norm n s f a H H0 H1 H2 H3) as H4.
+rewrite <- H4.
+assert ((1 / 2
+      .* ((vsum (2 ^ n)
+             (fun i : nat =>
+              (a i + a (bitwise_xor n i s))
+              .* basis_vector (2 * 2 ^ n) (to_injective n s f i))) †
+          × vsum (2 ^ n)
+              (fun i : nat =>
+               (a i + a (bitwise_xor n i s))
+               .* basis_vector (2 * 2 ^ n) (to_injective n s f i))))
+     = (√ (1 / 2)
+        .* (vsum (2 ^ n)
+             (fun i : nat =>
+              (a i + a (bitwise_xor n i s))
+              .* basis_vector (2 * 2 ^ n) (to_injective n s f i)))) †
+          × (√ (1 / 2) .* vsum (2 ^ n)
+              (fun i : nat =>
+               (a i + a (bitwise_xor n i s))
+               .* basis_vector (2 * 2 ^ n) (to_injective n s f i)))).
+distribute_scale.
+restore_dims.
+rewrite -> Mscale_adj.
+rewrite -> Mscale_mult_dist_l.
+rewrite Mscale_assoc.
+assert (√ (1 / 2) * (√ (1 / 2)) ^* = 1 / 2)%C by solve_matrix.
+rewrite -> H5. reflexivity. rewrite -> H5.
+specialize (norm_scale (√ (1 / 2)) ((vsum (2 ^ n)
+             (fun i : nat =>
+              (a i + a (bitwise_xor n i s))
+              .* basis_vector (2 * 2 ^ n) (to_injective n s f i))))) as H6.
+unfold norm in H6.
+rewrite -> H6.
+assert (Cmod (√ (1 / 2)) = √ (1 / 2)). 
+unfold Cmod. 
+solve_matrix. 
+assert ((√ (1 / 2) * 1) = √ (1 / 2)) by lra.
+rewrite H7.
+assert (√ (1 / 2) * √ (1 / 2) = √ (1 / 2) ^ 2) by lra.
+rewrite -> H8.
+rewrite pow2_sqrt.
+assert (1 / 2 + 0 * (0 * 1) = 1 / 2) by lra.
+rewrite -> H9. reflexivity. lra.
+rewrite -> H7. reflexivity.
+Qed.
+
+Theorem simon_nonzero : forall {n : nat} (U : base_ucom (2 * n)) f x s,
+   (n > 0)%nat -> (x < 2 ^ n)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
+   boolean_oracle U f ->
+   (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
+   (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
+        f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
+   bitwise_product n x s = false ->
+   @norm (2 ^ n) (@Mmult _ _ 1%nat ((basis_vector (2 ^ n) x)† ⊗ I (2 ^ n)) ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩)))
+                      = sqrt (1 /2 ^ (n - 1)).
+Proof.
+  intros. 
+  rewrite simon_simplify with (f0:=f); auto.
+  rewrite norm_scale.
+  specialize (norm_vsum_two_fun n s f
+               (fun i => ((-1) ^ Nat.b2n (product (nat_to_funbool n i) (nat_to_funbool n x) n))%C)
+                 H H1 H2 H4 H5) as H7; simpl.
+  rewrite H7.
+  specialize (norm_vsum (2 ^ n) (2 * 2 ^ n)
+              (fun i : nat =>
+       ((-1) ^ Nat.b2n (product (nat_to_funbool n i) (nat_to_funbool n x) n) +
+        (-1)
+        ^ Nat.b2n
+            (product (nat_to_funbool n (bitwise_xor n i s)) (nat_to_funbool n x) n))%C)
+                (to_injective n s f)) as H8.
+assert (2 ^ n <= 2 * 2 ^ n)%nat by lia.
+assert ((forall x : nat, (x < 2 ^ n)%nat -> (to_injective n s f x < 2 * 2 ^ n)%nat)).
+intros. unfold to_injective.
+apply H4 in H10.
+destruct (x0 <? bitwise_xor n x0 s). lia. lia.
+specialize (to_injective_really n s f H H1 H2 H4 H5) as eq1.
+assert (forall x y : nat,
+      (x < 2 ^ n)%nat ->
+      (y < 2 ^ n)%nat -> to_injective n s f x = to_injective n s f y -> x = y) as H11.
+intros.
+specialize (eq1 x0 y H11 H12) as H14. apply H14 in H13. assumption.
+specialize (H8 H9 H10 H11) as H12.
+rewrite -> H12. 
+  erewrite Csum_eq_bounded.
+  2: { intros i Hi.
+       replace (product (nat_to_funbool n i) (nat_to_funbool n x) n) 
+         with (bitwise_product n i x) by reflexivity.
+       replace (product (nat_to_funbool n (bitwise_xor n i s)) (nat_to_funbool n x) n) 
+         with (bitwise_product n (bitwise_xor n i s) x) by reflexivity.
+       rewrite bitwise_product_xor_distr.
+       assert (bitwise_product n s x = false).
+       { unfold bitwise_product. rewrite product_comm; auto. }
+       rewrite H13; clear H7 H8 H12 H13.
+       rewrite xorb_false_r.
+       remember (bitwise_product n i x) as b.
+       repeat rewrite RtoC_pow.
+       rewrite <- RtoC_plus.
+       unfold Cconj; simpl.
+       rewrite Ropp_0.
+       replace (((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b)%R, 0)%C with (RtoC ((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b)%R) by reflexivity.
+       rewrite <- RtoC_mult.
+       replace (((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b) * ((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b)) with (2 ^ 2).
+       reflexivity.
+       destruct b; simpl; lra. }
+  clear H7 H8 H12.
+  rewrite Csum_constant.
+  simpl.
+  rewrite RtoC_pow.
+  rewrite <- RtoC_inv by nonzero.
+  rewrite pow_INR.
+  unfold Cmod; simpl.
+  replace (1 + 1)%R with 2 by lra.
+  autorewrite with R_db.
+  rewrite <- sqrt_mult_alt.
+  rewrite <- sqrt_mult_alt.
+  apply f_equal.
+  replace (2 ^ n) with (2 * 2 ^ (n - 1)).
+  field_simplify_eq; nonzero.
+  replace (2 * 2 ^ (n - 1)) with (2 ^ 1 * 2 ^ (n - 1)) by lra. 
+  rewrite <- pow_add.
+  replace (1 + (n - 1))%nat with n by lia.
+  reflexivity.
+  apply Rmult_le_pos.
+  1,2: left; apply Rinv_0_lt_compat, pow_lt; lra. lra.
+Qed.
+
+
+(* Next is the old code. *)
 
 
 Lemma wf_product_of_vsums : forall n m a b f,
@@ -1425,7 +2129,7 @@ Proof.
   lia.
 Qed.
 
-Theorem simon_nonzero : forall {n : nat} (U : base_ucom (2 * n)) f x s,
+Theorem simon_nonzeroa : forall {n : nat} (U : base_ucom (2 * n)) f x s,
    (n > 0)%nat -> (x < 2 ^ n)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
    boolean_oracle U f ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
