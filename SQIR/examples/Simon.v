@@ -2026,7 +2026,7 @@ rewrite -> H9. reflexivity. lra.
 rewrite -> H7. reflexivity.
 Qed.
 
-Theorem simon_nonzero : forall {n : nat} (U : base_ucom (2 * n)) f x s,
+Theorem simon_nonzero_to_zero : forall {n : nat} (U : base_ucom (2 * n)) f x s,
    (n > 0)%nat -> (x < 2 ^ n)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
    boolean_oracle U f ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
@@ -2106,6 +2106,82 @@ rewrite -> H12.
   1,2: left; apply Rinv_0_lt_compat, pow_lt; lra. lra.
 Qed.
 
+Theorem simon_nonzero_to_one : forall {n : nat} (U : base_ucom (2 * n)) f x s,
+   (n > 0)%nat -> (x < 2 ^ n)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
+   boolean_oracle U f ->
+   (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
+   (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
+        f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
+   bitwise_product n x s = true ->
+   @norm (2 ^ n) (@Mmult _ _ 1%nat ((basis_vector (2 ^ n) x)† ⊗ I (2 ^ n)) ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩)))
+                      = 0.
+Proof.
+  intros. 
+  rewrite simon_simplify with (f0:=f); auto.
+  rewrite norm_scale.
+  specialize (norm_vsum_two_fun n s f
+               (fun i => ((-1) ^ Nat.b2n (product (nat_to_funbool n i) (nat_to_funbool n x) n))%C)
+                 H H1 H2 H4 H5) as H7; simpl.
+  rewrite H7.
+  specialize (norm_vsum (2 ^ n) (2 * 2 ^ n)
+              (fun i : nat =>
+       ((-1) ^ Nat.b2n (product (nat_to_funbool n i) (nat_to_funbool n x) n) +
+        (-1)
+        ^ Nat.b2n
+            (product (nat_to_funbool n (bitwise_xor n i s)) (nat_to_funbool n x) n))%C)
+                (to_injective n s f)) as H8.
+assert (2 ^ n <= 2 * 2 ^ n)%nat by lia.
+assert ((forall x : nat, (x < 2 ^ n)%nat -> (to_injective n s f x < 2 * 2 ^ n)%nat)).
+intros. unfold to_injective.
+apply H4 in H10.
+destruct (x0 <? bitwise_xor n x0 s). lia. lia.
+specialize (to_injective_really n s f H H1 H2 H4 H5) as eq1.
+assert (forall x y : nat,
+      (x < 2 ^ n)%nat ->
+      (y < 2 ^ n)%nat -> to_injective n s f x = to_injective n s f y -> x = y) as H11.
+intros.
+specialize (eq1 x0 y H11 H12) as H14. apply H14 in H13. assumption.
+specialize (H8 H9 H10 H11) as H12.
+rewrite -> H12. 
+  erewrite Csum_eq_bounded.
+  2: { intros i Hi.
+       replace (product (nat_to_funbool n i) (nat_to_funbool n x) n) 
+         with (bitwise_product n i x) by reflexivity.
+       replace (product (nat_to_funbool n (bitwise_xor n i s)) (nat_to_funbool n x) n) 
+         with (bitwise_product n (bitwise_xor n i s) x) by reflexivity.
+       rewrite bitwise_product_xor_distr.
+       assert (bitwise_product n s x = true).
+       { unfold bitwise_product. rewrite product_comm; auto. }
+       rewrite H13; clear H7 H8 H12 H13.
+       rewrite xorb_true_r.
+       remember (bitwise_product n i x) as b.
+       assert ((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n (¬ b) = 0).
+       destruct b. simpl. lra. simpl. lra.
+       repeat rewrite RtoC_pow.
+       rewrite <- RtoC_plus.
+       rewrite -> H7.
+       unfold Cconj; simpl.
+       assert (((0, (- 0)%R) * 0)%C = 0%C) by lca.
+       rewrite H8.
+       replace (0%C) with (0 ^ 1) by lra.
+       reflexivity. }
+  clear H7 H8 H12.
+  rewrite Csum_constant.
+  simpl.
+  rewrite RtoC_pow.
+  rewrite <- RtoC_inv by nonzero.
+  rewrite pow_INR.
+  unfold Cmod; simpl.
+  replace (1 + 1)%R with 2 by lra.
+  autorewrite with R_db.
+  rewrite <- sqrt_mult_alt.
+  rewrite <- sqrt_mult_alt.
+  replace (/ 2 * 0) with (0) by lra.
+  replace (/ 2 ^ n * / 2 ^ n * 0) with 0 by lra.
+  rewrite sqrt_0. reflexivity.
+  apply Rmult_le_pos.
+  1,2: left; apply Rinv_0_lt_compat, pow_lt; lra. lra.
+Qed.
 
 (* Next is the old code. *)
 
