@@ -13,6 +13,123 @@ Local Open Scope ucom_scope.
    the program below n times and performing some classical post-processing 
    (not shown here). *)
 
+
+(* Here is the definition of finite bijection. *)
+
+Definition wfinite_bijection (n : nat) (f : nat -> nat) :=
+  (forall x, x < n -> f x < n)%nat /\ 
+  (forall x, (x < n)%nat -> f (f x) = x).
+
+Lemma less_false: forall (x y:nat), (x <? y)%nat = false -> (y <= x)%nat.
+Proof.
+intros.
+specialize (Nat.ltb_lt x y) as H1.
+assert ((x <? y) = false <-> ~ (x < y)%nat).
+split.
+intros.
+destruct H1. intros R. apply H2 in R. rewrite R in H0. inversion H0.
+intros. apply H. apply H0 in H.
+lia.
+Qed.
+
+Lemma lesseq_false: forall (x y:nat), (x <=? y)%nat = false -> (y < x)%nat.
+Proof.
+intros.
+specialize (Nat.leb_le x y) as H1.
+assert ((x <=? y) = false <-> ~ (x <= y)%nat).
+split.
+intros.
+destruct H1. intros R. apply H2 in R. rewrite R in H0. inversion H0.
+intros. apply H. apply H0 in H.
+lia.
+Qed.
+
+
+Lemma wfinite_bijection_is_injective : forall n f,
+  wfinite_bijection n f -> 
+  forall x y, (x < n)%nat -> (y < n)%nat -> f x = f y -> x = y.
+Proof.
+  intros n f [Hf Hg] x y H1 H2 H3.
+  rewrite <- (Hg x).
+  rewrite <- (Hg y).
+  rewrite H3.
+  reflexivity. assumption. assumption.
+Qed.
+
+
+
+Lemma fswap_at_boundary_wfinite_bijection : forall n f x,
+  wfinite_bijection (S n) f ->
+  (x < S n)%nat ->
+  f x = n ->
+  wfinite_bijection n (fswap f x n).
+Proof.
+  intros n f x Hf H Hx.
+  split.
+  - (* f is bounded *)
+    assert (forall y, (y < S n)%nat -> y <> x <-> f y <> n)%nat.
+    { intros y; split; intros H2 contra.
+      rewrite <- Hx in contra.
+      specialize (wfinite_bijection_is_injective (S n) f Hf x y H H0) as H3.
+      symmetry in contra.
+      eapply H3 in contra.
+      rewrite contra in H2.
+      contradiction.
+      rewrite contra in H2. rewrite Hx in H2.
+      contradiction. }
+    destruct Hf as [Hf Hg].
+    intros.
+    unfold fswap.
+    bdestruct_all; subst.
+    specialize (Hg x H). rewrite -> Hg.
+    assumption.
+    assert (x0 < S (f x))%nat by lia.
+    specialize (Hf x0 H4).
+    destruct (f x0 <? f x) eqn:eq1. apply Nat.ltb_lt in eq1. assumption.
+    apply less_false in eq1.
+    assert (f x = f x0) by lia. 
+    apply H0 in H2. rewrite -> H5 in H2. contradiction. assumption.
+  - intros.
+    specialize (wfinite_bijection_is_injective (S n) f Hf) as IHn.
+    destruct Hf as [Hf Hg].
+    unfold fswap.
+    bdestruct (x0 =? x); subst.
+    bdestruct_all; subst; auto.
+    rewrite -> Hg in H1. contradiction. assumption.
+    bdestruct (x0 =? f x); subst.
+    bdestruct_all; subst; auto.
+    bdestruct (f x0 =? x); subst.
+    bdestruct_all; subst; auto.
+    rewrite -> Hg in H2. contradiction. lia.
+    bdestruct (f x0 =? f x); subst.
+    apply IHn in H4. rewrite H4 in H1. contradiction.
+    lia. assumption. rewrite Hg. reflexivity. lia. 
+Qed.
+
+Lemma wvsum_reorder : forall {d} n (v : nat -> Vector d) f,
+  wfinite_bijection n f ->
+  vsum n v = vsum n (fun i => v (f i)).
+Proof.
+  intros.
+  generalize dependent f.
+  induction n.
+  reflexivity.
+  intros f [Hf Hg].
+  assert (f n < S n)%nat. apply Hf. auto.
+  rewrite (vsum_eq_up_to_fswap _ f _ (f n) n) by auto.
+  simpl.
+  rewrite fswap_simpl2.
+  rewrite Hg by auto.
+  specialize (IHn (fswap f (f n) n)).
+  rewrite <- IHn.
+  reflexivity.
+  apply fswap_at_boundary_wfinite_bijection.
+  split.
+  all: auto.
+Qed.
+
+(* Simon Algorithm starts here.*)
+
 Definition simon {n} (U : base_ucom (2 * n)) : base_ucom (2 * n) :=
   cast (npar n U_H) (2 * n) ; U; cast (npar n U_H) (2 * n).
 
@@ -622,30 +739,6 @@ Proof.
 induction n.
 intros. lia.
 simpl. intros. lia.
-Qed.
-
-Lemma less_false: forall (x y:nat), (x <? y)%nat = false -> (y <= x)%nat.
-Proof.
-intros.
-specialize (Nat.ltb_lt x y) as H1.
-assert ((x <? y) = false <-> ~ (x < y)%nat).
-split.
-intros.
-destruct H1. intros R. apply H2 in R. rewrite R in H0. inversion H0.
-intros. apply H. apply H0 in H.
-lia.
-Qed.
-
-Lemma lesseq_false: forall (x y:nat), (x <=? y)%nat = false -> (y < x)%nat.
-Proof.
-intros.
-specialize (Nat.leb_le x y) as H1.
-assert ((x <=? y) = false <-> ~ (x <= y)%nat).
-split.
-intros.
-destruct H1. intros R. apply H2 in R. rewrite R in H0. inversion H0.
-intros. apply H. apply H0 in H.
-lia.
 Qed.
 
 Lemma to_injective_aux (n s:nat) (f:nat -> nat) : 
@@ -1767,9 +1860,17 @@ Qed.
 
 Lemma bitwise_xor_bijective: forall (n s: nat), 
    (n > 0)%nat -> (s < 2 ^ n)%nat ->
-   finite_bijection (2 ^ n) (fun (i:nat) => bitwise_xor n i s).
+   wfinite_bijection (2 ^ n) (fun (i:nat) => bitwise_xor n i s).
 Proof.
-Admitted.
+intros. unfold wfinite_bijection.
+split. intros.
+apply bitwise_xor_bound.
+intros.
+rewrite bitwise_xor_comm.
+assert (bitwise_xor n x s = bitwise_xor n s x) by apply bitwise_xor_comm.
+rewrite -> H2. rewrite bitwise_xor_cancel.
+reflexivity. assumption.
+Qed.
 
 Lemma bitwise_xor_vsum_reorder: forall (n m s :nat) (f:nat -> nat) a, 
           (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
@@ -1777,7 +1878,7 @@ Lemma bitwise_xor_vsum_reorder: forall (n m s :nat) (f:nat -> nat) a,
          = vsum (2 ^ n) (fun i : nat => (a (bitwise_xor n i s)) .* basis_vector m (f i)).
 Proof.
 intros.
-rewrite vsum_reorder with (f0:= (fun i => bitwise_xor n i s)).
+rewrite wvsum_reorder with (f0:= (fun i => bitwise_xor n i s)).
 erewrite vsum_eq.
 2: { intros.
      assert (bitwise_xor n (bitwise_xor n i s) s
@@ -2008,7 +2109,7 @@ Qed.
 
 (* Next is the old code. *)
 
-
+(*
 Lemma wf_product_of_vsums : forall n m a b f,
   (n <= m)%nat ->
   (forall x, (x < n)%nat -> (f x < 2 * m)%nat) ->         (* f is bounded *)
@@ -2212,4 +2313,4 @@ Proof.
   rewrite <- Hre.
   replace (2 ^ n)%nat with (2 * 2 ^ (n - 1))%nat by unify_pows_two.
   lia.   
-Qed.
+Qed.*)
