@@ -1342,67 +1342,87 @@ Definition finite_bijection (n : nat) (f : nat -> nat) :=
   (forall x, x < n <-> f x < n)%nat /\ 
   (exists g, (forall x, g (f x) = x) /\ (forall y, f (g y) = y)).
 
-Lemma finite_bijection_is_injective : forall n f,
-  finite_bijection n f -> 
-  forall x y, f x = f y -> x = y.
+(* A weaker property sometimes easier to prove. *)
+Definition weak_finite_bijection (n : nat) (f : nat -> nat) :=
+  (forall x, x < n -> f x < n)%nat /\ 
+  (exists g, (forall y, y < n -> g y < n)%nat /\
+        (forall x, (x < n)%nat -> g (f x) = x) /\ 
+        (forall y, (y < n)%nat -> f (g y) = y)).
+
+Lemma finite_bijection_implies_weak : forall n f,
+  finite_bijection n f -> weak_finite_bijection n f.
 Proof.
-  intros n f [Hf [g [Hg1 Hg2]]] x y H.
-  rewrite <- (Hg1 x).
-  rewrite <- (Hg1 y).
+  intros n f [Hf [g [Hg1 Hg2]]].
+  repeat split.
+  intros.
+  rewrite <- Hf; auto.
+  exists g. 
+  repeat split; intros; auto.
+  rewrite <- (Hg2 y) in H.
+  rewrite <- Hf in H.
+  assumption.
+Qed.
+
+Lemma weak_finite_bijection_is_injective : forall n f,
+  weak_finite_bijection n f -> 
+  forall x y, (x < n)%nat -> (y < n)%nat -> f x = f y -> x = y.
+Proof.
+  intros n f [_ [g [_ [Hg _]]]] x y ? ? H.
+  rewrite <- (Hg x) by assumption.
+  rewrite <- (Hg y) by assumption.
   rewrite H.
   reflexivity.
 Qed.
 
-Lemma fswap_at_boundary_finite_bijection : forall n f x,
-  finite_bijection (S n) f ->
-  f x = n ->
-  finite_bijection n (fswap f x n).
+Lemma fswap_at_boundary_weak_finite_bijection : forall n f x,
+  weak_finite_bijection (S n) f ->
+  (x < S n)%nat -> f x = n ->
+  weak_finite_bijection n (fswap f x n).
 Proof.
-  intros n f x Hf Hx.
+  intros n f x Hf Hx Hfx.
   split.
   - (* f is bounded *)
-    assert (forall y, y <> x <-> f y <> n)%nat.
-    { intro; split; intros H contra.
-      rewrite <- Hx in contra.
-      eapply finite_bijection_is_injective in contra.
+    assert (forall y, y < S n -> y <> x -> f y <> n)%nat.
+    { intros y Hy H contra.
+      rewrite <- Hfx in contra.
+      eapply weak_finite_bijection_is_injective in contra.
       contradiction.
       apply Hf.
-      rewrite contra in H.
-      contradiction. }
+      assumption.
+      assumption. }
+    intros.
     destruct Hf as [Hf _].
-    intro; split; intro.
     unfold fswap.
     bdestruct_all; subst.
     assert (f (f x) < S (f x))%nat.
-    rewrite <- Hf. lia.
+    apply Hf. lia.
     specialize (H (f x)). lia.
     assert (f x0 < S (f x))%nat.
-    rewrite <- Hf. lia.
-    specialize (H x0). lia.
-    unfold fswap in H0.
-    bdestruct (x0 =? x); subst.
-    assert (x < S (f x))%nat.
-    rewrite Hf. lia.
-    specialize (H (f x)). lia.
-    bdestructΩ (x0 =? f x).
-    assert (x0 < S (f x))%nat.
-    rewrite Hf. lia.
+    apply Hf. lia.
     specialize (H x0). lia.
   - (* f is a bijection *)
-    destruct Hf as [Hf [g [Hg1 Hg2]]].
+    destruct Hf as [Hf [g [Hg1 [Hg2 Hg3]]]].
     exists (compose (fswap (fun x : nat => x) x n) g).
-    clear Hx.
     unfold fswap, compose.
-    split; intro.
+    split; intros.
+    assert (g y < S n). 
+    apply Hg1. lia.
+    assert (g y <> x).
+    intro contra. 
+    rewrite <- contra in Hfx.
+    rewrite Hg3 in Hfx; lia.
+    bdestruct_all; subst; lia. 
+    clear Hfx.
+    split; intros.
     bdestruct (x0 =? x); subst.
     bdestruct_all; subst; auto.
-    contradict H0. auto.
+    symmetry. auto.     
+    contradict H1. auto.
     bdestruct (x0 =? n); subst.
     bdestruct_all; subst; auto.
-    contradict H0. auto.
     bdestruct_all; subst; auto.
-    contradict H. auto.
-    contradict H0. auto.
+    contradict H0. symmetry. auto.
+    contradict H1. symmetry. auto.
     bdestruct (g y =? x); subst.
     bdestruct_all; subst; auto.
     bdestruct (g y =? n); subst.
@@ -1412,24 +1432,24 @@ Qed.
   
 (* vsum terms can be arbitrarily reordered *)
 Lemma vsum_reorder : forall {d} n (v : nat -> Vector d) f,
-  finite_bijection n f ->
+  weak_finite_bijection n f ->
   vsum n v = vsum n (fun i => v (f i)).
 Proof.
   intros.
   generalize dependent f.
   induction n.
   reflexivity.
-  intros f [Hf [g [Hg1 Hg2]]].
+  intros f [Hf [g [Hg1 [Hg2 Hg3]]]].
   assert (g n < S n)%nat.
-  rewrite Hf, Hg2; auto.
+  apply Hg1. lia.
   rewrite (vsum_eq_up_to_fswap _ f _ (g n) n) by auto.
   simpl.
   rewrite fswap_simpl2.
-  rewrite Hg2 by auto.
+  rewrite Hg3 by auto.
   specialize (IHn (fswap f (g n) n)).
   rewrite <- IHn.
   reflexivity.
-  apply fswap_at_boundary_finite_bijection.
+  apply fswap_at_boundary_weak_finite_bijection.
   split.
   all: auto.
   exists g. auto.
