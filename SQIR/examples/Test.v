@@ -10,8 +10,7 @@ Fixpoint repeat_H n : base_ucom 1 :=
   | S n' => H O ; repeat_H n'
   end.
 
-(* Proof of the property stated in the draft.
-   (I'd estimate it took me a couple minutes to complete.) *)
+(* Proof of the property stated in the draft. *)
 
 Local Opaque Nat.mul Nat.pow.
 Local Coercion Nat.b2n : bool >-> nat.
@@ -72,4 +71,21 @@ Proof.
     rewrite SKIP_id_l.
     apply IHm.
     reflexivity.
+Qed.
+
+(* Proof of circuit size. Note that we are just counting the number
+   of gates used, which only works as a measure of circuit depth if
+   all gates in the program run in serial. *)
+
+Fixpoint gate_count {dim} (u : base_ucom dim) : nat :=
+  match u with
+  | u1 ; u2 => gate_count u1 + gate_count u2
+  | _ => 1
+  end.
+
+Lemma repeat_H_num_gates : forall (n : nat),
+  gate_count (repeat_H n) = (n + 1)%nat. (* + 1 because SKIP counts as a gate *)
+Proof.
+  intros.
+  induction n; simpl; auto.
 Qed.
