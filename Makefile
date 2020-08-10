@@ -42,7 +42,7 @@ optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo VOQC/voqc.ml
 	cd VOQC/extraction && ./extract.sh
 	dune build voqc.exe --root VOQC
 
-voqc: VOQC/voqc.ml VOQC/_build/default/voqc.exe
+voqc: $(VOQC)/Optimize.vo VOQC/voqc.ml VOQC/_build/default/voqc.exe
 
 VOQC/_build/default/voqc.exe:
 	dune build voqc.exe --root VOQC
