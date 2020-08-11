@@ -4,151 +4,71 @@ import os.path
 from gmpy2 import *
 import time
 
-class final_gates(Structure):
-    _fields_ = [('gates', c_int), ('type1', c_void_p)]
-
-
-
-class tuples(Structure):
-    _fields_ = [('gate', final_gates), ('x', c_int)]
-
-
-class triples(Structure):
-    _fields_ = [('gate1', final_gates), ('a', c_int), ('b', c_int)]
-
-
-class quad(Structure):
-    _fields_ = [('gate2', final_gates), ('c', c_int), ('f', c_int), ('e', c_int)]
-
-
-class gate_app1(Structure):
-    _fields_ = [('App1', tuples), ('App2', triples), ('App3', quad),('ans', c_int)]
-    
-
-GATE_APP = gate_app1*750000
-class with_qubits(Structure):
-    _fields_ = [('length', c_int), ('contents2', GATE_APP), ('qubits', c_int)]
 
     
-def format_from_c(y):
-    deref = y.contents
-    tot_length = deref.length
-    num_q = deref.qubits
-    struct_app = gate_app1()
-    struct_return = GATE_APP()
-    struct_ret = GATE_APP()
-    temp_app = tuples()
-    temp_app1 = triples()
-    temp_app2 = quad()
-    for i in range(tot_length):
-        val = deref.contents2[i]
-        if val.App2.gate1.gates == 0 and val.App3.gate2.gates ==0:
-            struct_app = gate_app1(App1 = val.App1, ans = 1)
-        elif val.App3.gate2.gates ==0 and val.App1.gate.gates==0:
-            struct_app = gate_app1(App2 = val.App2, ans = 2)            
-        else:
-            struct_app = gate_app1(App3 = val.App3, ans = 3)  
-        struct_return[i] = struct_app
-    return with_qubits(tot_length, struct_return, num_q)
 
-def get_counts(circ):
-    tot_length = circ.length
-    rz_count = 0
-    cnot_count = 0
-    x_count = 0
-    h_count = 0
-    for i in range(tot_length):
-        val = circ.contents2[i]
-        if val.ans == 1:
-            if val.App1.gate.gates == 1:
-                x_count+=1
-            elif val.App1.gate.gates ==2:
-                h_count+=1
-            elif val.App1.gate.gates ==3:
-                cnot_count+=1
-            else:
-                rz_count+=1
-        elif val.ans == 2:
-            if val.App2.gate1.gates == 1:
-                x_count+=1
-            elif val.App2.gate1.gates ==2:
-                h_count+=1
-            elif val.App2.gate1.gates ==3:
-                cnot_count+=1
-            else:
-                rz_count+=1
-        else:
-            if val.App3.gate2.gates == 1:
-                x_count+=1
-            elif val.App3.gate2.gates ==2:
-                h_count+=1
-            elif val.App3.gate2.gates ==3:
-                cnot_count+=1
-            else:
-                rz_count+=1
-    return (x_count, h_count, cnot_count, rz_count, tot_length)         
-        
+
     
-def cliff(q):
-    rel = os.path.dirname(os.path.abspath(__file__))
-    testlib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
-    testlib.cliff.argtypes =[POINTER(with_qubits)]
-    testlib.cliff.restype =c_int
-    l = testlib.cliff(byref(q))
-    return l
-def t_count(q):
-    rel = os.path.dirname(os.path.abspath(__file__))
-    testlib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
-    testlib.t_count.argtypes =[POINTER(with_qubits)]
-    testlib.t_count.restype =c_char_p
-    l = testlib.t_count(byref(q))
-    return (l.decode('utf-8')) 
-
-def voqc(fname, out):
-    testlib = CDLL('./libvoqc.so')
-    testlib.get_gate_list.argtypes = [c_char_p, c_char_p]
-    testlib.get_gate_list.restype = None
-    in_file =str(fname).encode('utf-8')
-    out_file = str(out).encode('utf-8')
-    testlib.voqc(in_file, out_file)
-    
-
-def print_gates(fin_counts, t_c, c_c, orig):
-    if orig == False:
-        print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[4], fin_counts[3], c_c, t_c,
-                                                                                         fin_counts[1], fin_counts[0],fin_counts[2]))
+def print_gates(fin_counts, orig):
+    if orig == True:
+        print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
+                                                                                         fin_counts[4], fin_counts[5],fin_counts[6]))
     else:
-        print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[4], fin_counts[3], c_c, t_c,
-                                                                                      fin_counts[1], fin_counts[0],fin_counts[2]))
+        print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
+                                                                                         fin_counts[4], fin_counts[5],fin_counts[6]))
         
-    
 class SQIR:
-    def __init__(self, fname):
+    def __init__(self, fname, c=True):
+        self.print_c = c
         rel = os.path.dirname(os.path.abspath(__file__))
         self.lib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
-        self.lib.get_gate_list.argtypes = [c_char_p]
-        self.lib.get_gate_list.restype = POINTER(with_qubits)
-        final_file =str(fname).encode('utf-8')
-        rel = os.path.dirname(os.path.abspath(__file__))
+        self.lib.init_lib.argtypes = None
+        self.lib.init_lib.restype= None
+        self.lib.init_lib()
+        self.lib.get_gate.argtypes = [c_char_p]
+        self.lib.get_gate.restype= c_void_p
+        
+        self.lib.tot.argtypes = [c_void_p]
+        self.lib.tot.restype= c_int
+        
+        self.lib.x_c.argtypes = [c_void_p]
+        self.lib.x_c.restype= c_int
+        
+        self.lib.h_c.argtypes = [c_void_p]
+        self.lib.h_c.restype= c_int
+        
+        self.lib.cnot_c.argtypes = [c_void_p]
+        self.lib.cnot_c.restype= c_int
+        
+        self.lib.rz_c.argtypes = [c_void_p]
+        self.lib.rz_c.restype= c_int
+        
+        self.lib.t_c.argtypes = [c_void_p]
+        self.lib.t_c.restype= c_char_p
+
+                
         final_file =str(os.path.join(rel, fname)).encode('utf-8')
         start = time.time()
-        self.circ = self.lib.get_gate_list(final_file)
+        self.circ = self.lib.get_gate(final_file)
         end = time.time()
+        self.lib.cliff_c.argtypes = [c_void_p]
+        self.lib.cliff_c.restype = c_int
+        
+        
+        self.gates = [self.lib.tot(self.circ), self.lib.rz_c(self.circ), self.lib.cliff_c(self.circ), (self.lib.t_c(self.circ)).decode('utf-8')
+                     ,self.lib.h_c(self.circ), self.lib.x_c(self.circ), self.lib.cnot_c(self.circ)]
+        
         print("Time to parse: %fs" % (end-start))
 
-    def optimize(self,c=True):
-        self.lib.optimizer.argtypes =[POINTER(with_qubits)]
-        self.lib.optimizer.restype =POINTER(with_qubits)
-        t = format_from_c(self.circ)
-        if c:
-            fin_counts = get_counts(t)
-            t_c = t_count(t)
-            c_c = cliff(t)
-            print_gates(fin_counts, t_c, c_c, False)
+        
+    def optimize(self):
+        self.lib.optimizer.argtypes =[c_void_p]
+        self.lib.optimizer.restype = c_void_p
+        print(self.format_counts(True))
         start1 = time.time()
-        self.circ = self.lib.optimizer(byref(t))
+        self.circ = self.lib.optimizer(self.circ)
         end1 = time.time()
-        if c:
+        if self.print_c:
             print("Time to optimize: %fs" % (end1-start1))
         return self
     def not_propagation(self):
@@ -186,19 +106,27 @@ class SQIR:
         self.circ = self.lib.cancel_single_qubit_gates(byref(t))
         return self
 
-    def write(self, fname, c= True):
-        self.lib.write_qasm_file.argtypes =[c_char_p, POINTER(with_qubits)]
-        self.lib.write_qasm_file.restype =None
+
+    def write(self, fname):
+        self.lib.write_qasm.argtypes =[c_char_p, c_void_p]
+        self.lib.write_qasm.restype =None
         rel = os.path.dirname(os.path.abspath(__file__))
         out_file = str(os.path.join(rel,fname)).encode('utf-8')
-        t = format_from_c(self.circ)
-        if c:
-            fin_counts = get_counts(t)
-            t_c = t_count(t)
-            c_c = cliff(t)
-            print_gates(fin_counts, t_c, c_c, True)
+        self.gates = [self.lib.tot(self.circ), self.lib.rz_c(self.circ),self.lib.cliff_c(self.circ), (self.lib.t_c(self.circ)).decode('utf-8')
+                      ,self.lib.h_c(self.circ), self.lib.x_c(self.circ), self.lib.cnot_c(self.circ)]
+        if self.print_c:
+            print(self.format_counts(False))
         start2 = time.time()
-        self.lib.write_qasm_file(out_file,byref(t))
+        self.lib.write_qasm(out_file,self.circ)
         end2 = time.time()
-        if c:
-            print("Time to write: %fs" % (end2-start2))
+        print("Time to write: %fs" % (end2-start2))
+
+    def format_counts(self, orig):
+        fin_counts = self.gates
+        if orig == True:
+            return ("Original:\t Total %d, Rz %d, Clifford %d T %s, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
+                                                                                             fin_counts[4], fin_counts[5], fin_counts[6
+                                                                                             ]))
+        else:
+            return ("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
+                                                                                          fin_counts[4], fin_counts[5], fin_counts[6]))

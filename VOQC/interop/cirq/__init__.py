@@ -1,1 +1,1 @@
-from .voqc_optimizations import VOQC
+from .voqc_optimization import VOQC

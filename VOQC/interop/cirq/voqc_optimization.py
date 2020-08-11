@@ -4,10 +4,10 @@ from cirq.contrib.qasm_import import circuit_from_qasm, qasm
 import re
 import os
 from cirq.circuits import Circuit
-from interop.format_from_qasm import format_from_qasm
-from interop.div_pi import div_pi
-from interop.rzq_to_rz import rzq_to_rz
-from voqc import SQIR
+from interop.format_qasm.format_from_qasm import format_from_qasm
+from interop.format_qasm.div_pi import div_pi
+from interop.format_qasm.rzq_to_rz import rzq_to_rz
+from interop.voqc import SQIR
 
 class VOQC:
     def __init__(self, func = None):
@@ -20,11 +20,10 @@ class VOQC:
         f.close()
         format_from_qasm("temp.qasm")
         t = self.function_call(self.func, "copy.qasm")
-        rzq_to_rz("temp2.qasm")
-        c = open("temp2.qasm").read()
+        rzq_to_rz("temp.qasm")
+        c = open("temp.qasm").read()
         circ = circuit_from_qasm(c)
         os.remove("temp.qasm")
-        os.remove("temp2.qasm")
         os.remove("copy.qasm")
         return circ
     
@@ -39,5 +38,5 @@ class VOQC:
         for i in range(len(func_list)):
             call = getattr(a,function_dict[func_list[i]])
             call(False)
-        a.write("temp2.qasm", False)     
+        a.write("temp.qasm", False)     
     

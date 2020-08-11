@@ -7,9 +7,9 @@ import sys
 def run(a,b):
     print("Input file: %s" % (a))
     print("Output file: %s" % (b))
-    a = SQIR(str(a))
+    a = SQIR(a)
     a.optimize()
-    a.write(str(b))
+    a.write(b)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description= "Run all optimizations,usage: python run_voqc.py <input rel. directory> <output qasm file>")
