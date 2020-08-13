@@ -44,6 +44,7 @@ def print_gates(lib, circ, orig):
 class SQIR:
     def __init__(self, fname, c=True):
         self.print_c = c
+        self.optim = 0
         
         #Set path and lib
         self.rel = os.path.dirname(os.path.abspath(__file__))
@@ -81,42 +82,87 @@ class SQIR:
 
         #Print time taken to optimize if not a Cirq/Qiskit pass
         if self.print_c:
-            print("Time to optimize: %fs" % (end1-start1))
+            self.optim+=(end1-start1)
             
         return self
     def not_propagation(self):
-        self.lib.not_propagation.argtypes =[POINTER(with_qubits)]
-        self.lib.not_propagation.restype =POINTER(with_qubits)
-        t = format_from_c(self.circ)
-        self.circ = self.lib.not_propagation(byref(t))
+        #Define argtype/restype for optimize
+        self.lib.not_p.argtypes =[c_void_p]
+        self.lib.not_p.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.not_p(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
         return self
 
     def hadamard_reduction(self):
-        self.lib.hadamard.argtypes =[POINTER(with_qubits)]
-        self.lib.hadamard.restype =POINTER(with_qubits)
-        t = format_from_c(self.circ)
-        self.circ = self.lib.hadamard(byref(t))
+        #Define argtype/restype for optimize
+        self.lib.hadamard.argtypes =[c_void_p]
+        self.lib.hadamrd.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.hadamard(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
         return self
 
-    def cancel_two_qubit_gates(self):
-        self.lib.cancel_two_qubit_gates.argtypes =[POINTER(with_qubits)]
-        self.lib.cancel_two_qubit_gates.restype =POINTER(with_qubits)
-        t = format_from_c(self.circ)
-        self.circ = self.lib.cancel_two_qubit_gates(byref(t))
+    def cancel_single_qubit_gates(self):
+        #Define argtype/restype for optimize
+        self.lib.single.argtypes =[c_void_p]
+        self.lib.single.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.single(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
         return self
 
     def merge_rotations(self):
-        self.lib.merge_rotations.argtypes =[POINTER(with_qubits)]
-        self.lib.merge_rotations.restype =POINTER(with_qubits)
-        t = format_from_c(self.circ)
-        self.circ = self.lib.merge_rotations(byref(t))
+        #Define argtype/restype for optimize
+        self.lib.merge.argtypes =[c_void_p]
+        self.lib.merge.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.merge(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
         return self      
     
-    def cancel_single_qubit_gates(self):
-        self.lib.cancel_single_qubit_gates.argtypes =[POINTER(with_qubits)]
-        self.lib.cancel_single_qubit_gates.restype =POINTER(with_qubits)
-        t = format_from_c(self.circ)
-        self.circ = self.lib.cancel_single_qubit_gates(byref(t))
+    def cancel_two_qubit_gates(self):
+        #Define argtype/restype for optimize
+        self.lib.two.argtypes =[c_void_p]
+        self.lib.two.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.two(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
         return self
 
     def write(self, fname):
@@ -131,16 +177,19 @@ class SQIR:
         out_file = (os.path.join(self.rel,fname)).encode('utf-8')
         self.lib.write_qasm(out_file, self.circ)
         end2 = time.time()
+
+               
+        #Print time if not through external compiler
+        if self.print_c:
+            print("Time to optimize: %fs" % (self.optim))
+            print_gates(self.lib, self.circ, False)
+            print("Time to write: %fs" % (end2-start2))
         
         #Free OCaml Root after written to qasm
         self.lib.free_root.argtypes = [c_void_p]
         self.lib.free_root.restype = None
         self.lib.free_root(self.circ)
-        
-        #Print time if not through external compiler
-        if self.print_c:
-            print_gates(self.lib, self.circ, False)
-            print("Time to write: %fs" % (end2-start2))
+ 
 
     
 
