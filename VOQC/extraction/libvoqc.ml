@@ -13,5 +13,5 @@ let () = Callback.register "h_c" h_c
 let () = Callback.register "rz_c" rz_c
 let () = Callback.register "cnot_c" cnot_c
 let () = Callback.register "t_c" t_c
-let () = Callback.register "cliff_c" cliff_c
+let () = Callback.register "c_c" c_c
 let () = Callback.register "tot" tot

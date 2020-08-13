@@ -28,6 +28,7 @@ value get_gate (char *x){
    static const value * gate_closure = NULL;
    if (gate_closure == NULL) gate_closure = caml_named_value("get_gate");
    value circ = caml_callbackN(*gate_closure, nargs, locals);
+   caml_register_global_root(&circ);
    CAMLreturn(circ);
 
 }
@@ -40,9 +41,8 @@ value optimizer (value x){
    locals[0] = x;
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("optimizer");
-   value x51 = caml_callbackN(*fib_closure, nargs, locals);
-   caml_local_roots = caml__frame;;
-   CAMLreturn(x51);
+   x = caml_callbackN(*fib_closure, nargs, locals);
+   CAMLreturn(x);
 }
 
 value not_p (value x){
@@ -176,14 +176,14 @@ int cnot_c (value x){
 }
 
 
-int cliff_c (value x){
+int c_c (value x){
    CAMLparam1(x);
    int nargs;
    nargs = 1;
    CAMLlocalN(locals, nargs);
    locals[0] = x;
    static const value * fib_closure = NULL;
-   if (fib_closure == NULL) fib_closure = caml_named_value("cliff_c");
+   if (fib_closure == NULL) fib_closure = caml_named_value("c_c");
    int y = Int_val(caml_callbackN(*fib_closure, nargs, locals));
    CAMLreturn(y);
 }
@@ -211,3 +211,10 @@ int tot (value x){
    int y = Int_val(caml_callbackN(*fib_closure, nargs, locals));
    CAMLreturn(y);
 }
+void free_root(value x){
+  CAMLparam1(x);
+  caml_remove_global_root(&x);
+  CAMLreturn0;
+}
+
+

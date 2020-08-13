@@ -6,6 +6,7 @@ open Optimize
 open Qasm2sqir
 open GateCount
 
+
 let optimizer a =
   let optim_circuit = optimize (fst a) in
   optim_circuit, (snd a)
@@ -51,8 +52,9 @@ let t_c a =
   |None -> "N/A"
   |Some x -> string_of_int x
 
-let cliff_c a =
+let c_c a =
   get_clifford_rot_count (fst a)
+  
 
 let tot a =
   List.length (fst a)

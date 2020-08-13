@@ -1,75 +1,88 @@
 from ctypes import *
-import ast
 import os.path
-from gmpy2 import *
 import time
-
-
+import re
     
+def print_gates(lib, circ, orig):
+        
+    lib.x_c.argtypes =[c_void_p]
+    lib.x_c.restype =c_int
+        
+    lib.h_c.argtypes =[c_void_p]
+    lib.h_c.restype =c_int
+        
+    lib.cnot_c.argtypes =[c_void_p]
+    lib.cnot_c.restype =c_int
+        
+    lib.rz_c.argtypes =[c_void_p]
+    lib.rz_c.restype =c_int
 
+                
+    lib.c_c.argtypes =[c_void_p]
+    lib.c_c.restype =c_int
 
-    
-def print_gates(fin_counts, orig):
-    if orig == True:
+    lib.tot.argtypes =[c_void_p]
+    lib.tot.restype =c_int
+
+    lib.c_c.argtypes =[c_void_p]
+    lib.c_c.restype =c_int
+        
+        
+    lib.t_c.argtypes =[c_void_p]
+    lib.t_c.restype =c_char_p
+
+    fin_counts = [lib.tot(circ), lib.rz_c(circ), lib.c_c(circ), (lib.t_c(circ)).decode('utf-8'), lib.h_c(circ),
+                      lib.x_c(circ), lib.cnot_c(circ)]
+    if orig==True:
         print("Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
-                                                                                         fin_counts[4], fin_counts[5],fin_counts[6]))
+                                                                                         fin_counts[4], fin_counts[5], fin_counts[6]))
     else:
         print("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
-                                                                                         fin_counts[4], fin_counts[5],fin_counts[6]))
+                                                                                         fin_counts[4], fin_counts[5], fin_counts[6]))
+        
         
 class SQIR:
     def __init__(self, fname, c=True):
         self.print_c = c
-        rel = os.path.dirname(os.path.abspath(__file__))
-        self.lib = CDLL(os.path.join(rel,'_build/default/extraction/libvoqc.so'))
+        
+        #Set path and lib
+        self.rel = os.path.dirname(os.path.abspath(__file__))
+        self.lib = CDLL(os.path.join(self.rel,'_build/default/extraction/libvoqc.so'))
+
+        #Initialize OCaml code
         self.lib.init_lib.argtypes = None
         self.lib.init_lib.restype= None
         self.lib.init_lib()
-        self.lib.get_gate.argtypes = [c_char_p]
-        self.lib.get_gate.restype= c_void_p
-        
-        self.lib.tot.argtypes = [c_void_p]
-        self.lib.tot.restype= c_int
-        
-        self.lib.x_c.argtypes = [c_void_p]
-        self.lib.x_c.restype= c_int
-        
-        self.lib.h_c.argtypes = [c_void_p]
-        self.lib.h_c.restype= c_int
-        
-        self.lib.cnot_c.argtypes = [c_void_p]
-        self.lib.cnot_c.restype= c_int
-        
-        self.lib.rz_c.argtypes = [c_void_p]
-        self.lib.rz_c.restype= c_int
-        
-        self.lib.t_c.argtypes = [c_void_p]
-        self.lib.t_c.restype= c_char_p
 
-                
-        final_file =str(os.path.join(rel, fname)).encode('utf-8')
+        #Call get_gate_list function and return pointer to SQIR circuit 
+        self.lib.get_gate.argtypes = [c_char_p]
+        self.lib.get_gate.restype= c_void_p        
         start = time.time()
+        final_file = str(os.path.join(self.rel, fname)).encode('utf-8')
         self.circ = self.lib.get_gate(final_file)
         end = time.time()
-        self.lib.cliff_c.argtypes = [c_void_p]
-        self.lib.cliff_c.restype = c_int
-        
-        
-        self.gates = [self.lib.tot(self.circ), self.lib.rz_c(self.circ), self.lib.cliff_c(self.circ), (self.lib.t_c(self.circ)).decode('utf-8')
-                     ,self.lib.h_c(self.circ), self.lib.x_c(self.circ), self.lib.cnot_c(self.circ)]
-        
-        print("Time to parse: %fs" % (end-start))
+
+        #Print time to parse and gate counts if not Cirq/Qiskit pass
+        if c:
+            print("Time to parse: %fs" % (end-start))
+            print_gates(self.lib, self.circ,True)
 
         
     def optimize(self):
+        
+        #Define argtype/restype for optimize
         self.lib.optimizer.argtypes =[c_void_p]
         self.lib.optimizer.restype = c_void_p
-        print(self.format_counts(True))
+
+        #Call optimizer function
         start1 = time.time()
         self.circ = self.lib.optimizer(self.circ)
         end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
         if self.print_c:
             print("Time to optimize: %fs" % (end1-start1))
+            
         return self
     def not_propagation(self):
         self.lib.not_propagation.argtypes =[POINTER(with_qubits)]
@@ -106,27 +119,29 @@ class SQIR:
         self.circ = self.lib.cancel_single_qubit_gates(byref(t))
         return self
 
-
     def write(self, fname):
+
+        #Define function argtype/restype to match C
         self.lib.write_qasm.argtypes =[c_char_p, c_void_p]
         self.lib.write_qasm.restype =None
-        rel = os.path.dirname(os.path.abspath(__file__))
-        out_file = str(os.path.join(rel,fname)).encode('utf-8')
-        self.gates = [self.lib.tot(self.circ), self.lib.rz_c(self.circ),self.lib.cliff_c(self.circ), (self.lib.t_c(self.circ)).decode('utf-8')
-                      ,self.lib.h_c(self.circ), self.lib.x_c(self.circ), self.lib.cnot_c(self.circ)]
-        if self.print_c:
-            print(self.format_counts(False))
+        
+        
+        #Write qasm file
         start2 = time.time()
-        self.lib.write_qasm(out_file,self.circ)
+        out_file = (os.path.join(self.rel,fname)).encode('utf-8')
+        self.lib.write_qasm(out_file, self.circ)
         end2 = time.time()
-        print("Time to write: %fs" % (end2-start2))
+        
+        #Free OCaml Root after written to qasm
+        self.lib.free_root.argtypes = [c_void_p]
+        self.lib.free_root.restype = None
+        self.lib.free_root(self.circ)
+        
+        #Print time if not through external compiler
+        if self.print_c:
+            print_gates(self.lib, self.circ, False)
+            print("Time to write: %fs" % (end2-start2))
 
-    def format_counts(self, orig):
-        fin_counts = self.gates
-        if orig == True:
-            return ("Original:\t Total %d, Rz %d, Clifford %d T %s, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
-                                                                                             fin_counts[4], fin_counts[5], fin_counts[6
-                                                                                             ]))
-        else:
-            return ("Final:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
-                                                                                          fin_counts[4], fin_counts[5], fin_counts[6]))
+    
+
+        
