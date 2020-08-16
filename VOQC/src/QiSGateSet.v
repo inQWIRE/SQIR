@@ -1,6 +1,7 @@
 Require Export UnitaryListRepresentation.
 Require Export NonUnitaryListRepresentation.
 Require Export QArith.
+Require Export ZArith.BinInt.
 
 Local Open Scope Z_scope.
 Local Open Scope Q_scope.
@@ -29,39 +30,83 @@ Definition match_gate {n} (u u' : U n) : bool :=
   | _, _ => false
   end.
 
+Definition degree_to_pi (a:Q) := ((Qreals.Q2R (a / 180)) * PI)%R.
+
 Definition to_base {n} (u : U n) :=
   match u with
-  | UQiS_U1 a     => U_R 0 0 (Qreals.Q2R a)
-  | UQiS_U2 a b     => U_R (PI / 2) (Qreals.Q2R a) (Qreals.Q2R b)
-  | UQiS_U3 a b c     => U_R (Qreals.Q2R a) (Qreals.Q2R b) (Qreals.Q2R c)
+  | UQiS_U1 a     => U_R 0 0 (degree_to_pi a)
+  | UQiS_U2 a b     => U_R (PI / 2) (degree_to_pi a) (degree_to_pi b)
+  | UQiS_U3 a b c     => U_R (degree_to_pi a) (degree_to_pi b) (degree_to_pi c)
   | UQiS_CNOT  => U_CNOT
   end.
+
+Lemma Qeq_div: forall (a b c:Q), (a == b) -> (a / c) == (b / c).
+Proof.
+unfold Qeq.
+intros. simpl.
+rewrite Pos2Z.inj_mul.
+rewrite Pos2Z.inj_mul.
+assert (Qnum a * Qnum (/ c) * (Z.pos (Qden b) * Z.pos (Qden (/ c)))
+          =  Qnum a * Z.pos (Qden b) * (Qnum (/ c) * Z.pos (Qden (/ c))))%Z.
+rewrite Z.mul_assoc.
+assert (Qnum a * Qnum (/ c) * Z.pos (Qden b) = Qnum a * Z.pos (Qden b) * Qnum (/ c))%Z.
+rewrite <- Z.mul_assoc.
+assert ((Qnum (/ c) * Z.pos (Qden b)) = (Z.pos (Qden b) * (Qnum (/ c))))%Z by apply Z.mul_comm.
+rewrite -> H0.
+rewrite Z.mul_assoc. reflexivity.
+rewrite H0.
+rewrite <- Z.mul_assoc. reflexivity.
+rewrite H0.
+assert (Qnum b * Qnum (/ c) * (Z.pos (Qden a) * Z.pos (Qden (/ c)))
+          =  Qnum b * Z.pos (Qden a) * ( Qnum (/ c) * Z.pos (Qden (/ c))))%Z.
+rewrite Z.mul_assoc.
+assert (Qnum b * Qnum (/ c) * Z.pos (Qden a) = Qnum b * Z.pos (Qden a) * Qnum (/ c))%Z.
+rewrite <- Z.mul_assoc.
+assert ((Qnum (/ c) * Z.pos (Qden a)) = (Z.pos (Qden a) * (Qnum (/ c))))%Z by apply Z.mul_comm.
+rewrite -> H1.
+rewrite Z.mul_assoc. reflexivity.
+rewrite H1.
+rewrite <- Z.mul_assoc. reflexivity.
+rewrite H1.
+rewrite H. reflexivity.
+Qed.
+
 
 Lemma match_gate_implies_eq : forall n (u u' : U n), 
   match_gate u u' = true -> to_base u = to_base u'. 
 Proof.
   intros n u u' H.
-  dependent destruction u; dependent destruction u'; 
+  dependent destruction u; dependent destruction u';
   auto; inversion H. 
   simpl.
+  unfold degree_to_pi.
   apply Qeq_bool_iff in H1.
-  apply f_equal. apply RMicromega.Q2R_m in H1. rewrite H1. reflexivity.
+  apply f_equal.
+  specialize (Qeq_div a a0 180%Q H1) as eq1.
+ apply RMicromega.Q2R_m in eq1. rewrite eq1. reflexivity.
   simpl.
+  unfold degree_to_pi.
   apply andb_true_iff in H1. destruct H1.
   apply Qeq_bool_iff in H1.   apply Qeq_bool_iff in H0.
-  apply RMicromega.Q2R_m in H1.
-  apply RMicromega.Q2R_m in H0.
-  rewrite H1. rewrite H0. reflexivity.
+  specialize (Qeq_div a a0 180%Q H0) as eq1.
+  specialize (Qeq_div b b0 180%Q H1) as eq2.
+  apply RMicromega.Q2R_m in eq1.
+  apply RMicromega.Q2R_m in eq2.
+  rewrite eq1. rewrite eq2. reflexivity.
   simpl.
+  unfold degree_to_pi.
   apply andb_true_iff in H1. destruct H1.
   apply andb_true_iff in H0. destruct H0.
   apply Qeq_bool_iff in H0. 
   apply Qeq_bool_iff in H1.
   apply Qeq_bool_iff in H2.
-  apply RMicromega.Q2R_m in H2.
-  apply RMicromega.Q2R_m in H1.
-  apply RMicromega.Q2R_m in H0.
-  rewrite H2. rewrite H1. rewrite H0. reflexivity.
+  specialize (Qeq_div a a0 180%Q H0) as eq1.
+  specialize (Qeq_div c c0 180%Q H1) as eq2.
+  specialize (Qeq_div b b0 180%Q H2) as eq3.
+  apply RMicromega.Q2R_m in eq1.
+  apply RMicromega.Q2R_m in eq2.
+  apply RMicromega.Q2R_m in eq3.
+  rewrite eq1. rewrite eq2. rewrite eq3. reflexivity.
 Qed.
 
 End QiSGateSet.
@@ -70,8 +115,17 @@ Export QiSGateSet.
 Module QiSProps := UListRepresentationProps QiSGateSet.
 Export QiSProps.
 
-(* Useful shorthands. 
+(* Useful shorthands. *)
+Definition U1 {dim} a q := @App1 _ dim (UQiS_U1 a) q.
+Definition U2 {dim} a b q := @App1 _ dim (UQiS_U2 a b) q.
+Definition U3 {dim} a b c q := @App1 _ dim (UQiS_U3 a b c) q.
+Definition CNOT {dim} q1 q2 := @App2 _ dim UQiS_CNOT q1 q2.
+Definition QiS_ucom dim := ucom QiS_Unitary dim.
+Definition QiS_ucom_l dim := gate_list QiS_Unitary dim.
 
+
+
+(*
 Definition URzQ_I := URzQ_Rz 0.
 Definition URzQ_T := URzQ_Rz (1 / 4).
 Definition URzQ_P := URzQ_Rz (1 / 2).
