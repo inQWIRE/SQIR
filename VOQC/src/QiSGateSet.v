@@ -5,6 +5,8 @@ Require Export ZArith.BinInt.
 
 Local Open Scope Z_scope.
 Local Open Scope Q_scope.
+Local Open Scope matrix_scope.
+Local Open Scope ucom_scope.
 
 (** RzQ Gate Set **)
 
@@ -34,9 +36,9 @@ Definition degree_to_pi (a:Q) := ((Qreals.Q2R (a / 180)) * PI)%R.
 
 Definition to_base {n} (u : U n) :=
   match u with
-  | UQiS_U1 a     => U_R 0 0 (degree_to_pi a)
-  | UQiS_U2 a b     => U_R (PI / 2) (degree_to_pi a) (degree_to_pi b)
-  | UQiS_U3 a b c     => U_R (degree_to_pi a) (degree_to_pi b) (degree_to_pi c)
+  | UQiS_U1 a     => U_R 0 0 (Qreals.Q2R a * PI)
+  | UQiS_U2 a b     => U_R (PI / 2) (Qreals.Q2R a * PI) (Qreals.Q2R b * PI)
+  | UQiS_U3 a b c     => U_R (Qreals.Q2R a * PI) (Qreals.Q2R b * PI) (Qreals.Q2R c * PI)
   | UQiS_CNOT  => U_CNOT
   end.
 
@@ -79,34 +81,25 @@ Proof.
   dependent destruction u; dependent destruction u';
   auto; inversion H. 
   simpl.
-  unfold degree_to_pi.
   apply Qeq_bool_iff in H1.
   apply f_equal.
-  specialize (Qeq_div a a0 180%Q H1) as eq1.
- apply RMicromega.Q2R_m in eq1. rewrite eq1. reflexivity.
+ apply RMicromega.Q2R_m in H1. rewrite H1. reflexivity.
   simpl.
-  unfold degree_to_pi.
   apply andb_true_iff in H1. destruct H1.
   apply Qeq_bool_iff in H1.   apply Qeq_bool_iff in H0.
-  specialize (Qeq_div a a0 180%Q H0) as eq1.
-  specialize (Qeq_div b b0 180%Q H1) as eq2.
-  apply RMicromega.Q2R_m in eq1.
-  apply RMicromega.Q2R_m in eq2.
-  rewrite eq1. rewrite eq2. reflexivity.
+  apply RMicromega.Q2R_m in H0.
+  apply RMicromega.Q2R_m in H1.
+  rewrite H0. rewrite H1. reflexivity.
   simpl.
-  unfold degree_to_pi.
   apply andb_true_iff in H1. destruct H1.
   apply andb_true_iff in H0. destruct H0.
   apply Qeq_bool_iff in H0. 
   apply Qeq_bool_iff in H1.
   apply Qeq_bool_iff in H2.
-  specialize (Qeq_div a a0 180%Q H0) as eq1.
-  specialize (Qeq_div c c0 180%Q H1) as eq2.
-  specialize (Qeq_div b b0 180%Q H2) as eq3.
-  apply RMicromega.Q2R_m in eq1.
-  apply RMicromega.Q2R_m in eq2.
-  apply RMicromega.Q2R_m in eq3.
-  rewrite eq1. rewrite eq2. rewrite eq3. reflexivity.
+  apply RMicromega.Q2R_m in H0.
+  apply RMicromega.Q2R_m in H1.
+  apply RMicromega.Q2R_m in H2.
+  rewrite H0. rewrite H1. rewrite H2. reflexivity.
 Qed.
 
 End QiSGateSet.
@@ -123,159 +116,484 @@ Definition CNOT {dim} q1 q2 := @App2 _ dim UQiS_CNOT q1 q2.
 Definition QiS_ucom dim := ucom QiS_Unitary dim.
 Definition QiS_ucom_l dim := gate_list QiS_Unitary dim.
 
-
-
-(*
-Definition URzQ_I := URzQ_Rz 0.
-Definition URzQ_T := URzQ_Rz (1 / 4).
-Definition URzQ_P := URzQ_Rz (1 / 2).
-Definition URzQ_Z := URzQ_Rz 1.
-Definition URzQ_PDAG := URzQ_Rz (3 / 2).
-Definition URzQ_TDAG := URzQ_Rz (7 / 4).
-Definition T {dim} q := @App1 _ dim URzQ_T q.
-Definition TDAG {dim} q := @App1 _ dim URzQ_TDAG q.
-Definition P {dim} q := @App1 _ dim URzQ_P q.
-Definition PDAG {dim} q := @App1 _ dim URzQ_PDAG q.
-Definition Z {dim} q := @App1 _ dim URzQ_Z q.
-Definition Rz {dim} i q := @App1 _ dim (URzQ_Rz i) q.
-Definition H {dim} q := @App1 _ dim URzQ_H q.
-Definition X {dim} q := @App1 _ dim URzQ_X q.
-Definition CNOT {dim} q1 q2 := @App2 _ dim URzQ_CNOT q1 q2.
-
-Definition RzQ_ucom dim := ucom RzQ_Unitary dim.
-Definition RzQ_ucom_l dim := gate_list RzQ_Unitary dim.
-Definition RzQ_com dim := com RzQ_Unitary dim.
-Definition RzQ_com_l dim := com_list RzQ_Unitary dim.
-
-(* Used to convert benchmarks to RzQ set. *)
-Definition CCX {dim} a b c : RzQ_ucom_l dim :=
-  H c :: CNOT b c :: TDAG c :: CNOT a c :: 
-  T c :: CNOT b c :: TDAG c :: CNOT a c :: 
-  CNOT a b :: TDAG b :: CNOT a b :: 
-  T a :: T b :: T c :: H c :: []. 
-Definition CCZ {dim} a b c : RzQ_ucom_l dim :=
-  CNOT b c :: TDAG c :: CNOT a c :: 
-  T c :: CNOT b c :: TDAG c :: CNOT a c :: 
-  CNOT a b :: TDAG b :: CNOT a b :: 
-  T a :: T b :: T c :: []. 
-
-(* re-define for with the match_gate arg. fixed *)
-Definition remove_prefix {dim} (l pfx : RzQ_ucom_l dim) :=
-  remove_prefix l pfx (fun n => @match_gate n).
-Definition remove_suffix {dim} (l sfx : RzQ_ucom_l dim) :=
-  remove_suffix l sfx (fun n => @match_gate n).
-Definition replace_pattern {dim} (l pat rep : RzQ_ucom_l dim) :=
-  replace_pattern l pat rep (fun n => @match_gate n).
-
-(** Misc. Utilities **)
-
-(* Check whether a (unitary) program is well typed. *)
-Definition RzQ_ucom_l_well_typed_b dim (l : RzQ_ucom_l dim) := 
-  uc_well_typed_l_b dim l.
-
-(* Define some constants to make extraction easier. *)
-Definition zero_Q := 0.
-Definition two_Q := 2.
-
-(* Put a rational into the range [0,2) by adding/subtracting multiples of 2 *)
-Definition round_to_multiple_of_2 (a : Q) : BinInt.Z :=
-  let num := Qnum a in
-  let den := Qden a in
-  (2 * (num / ((Zpos den) * 2)))%Z.
-Definition bound (a : Q) :=
-  if (Qle_bool zero_Q a) && negb (Qle_bool two_Q a) then a
-  else if Qle_bool two_Q a 
-       then a - inject_Z (round_to_multiple_of_2 a) (* a >= 2 *)
-       else a + inject_Z (round_to_multiple_of_2 a) (* a < 0 *).
-
-(* Combine Rz rotations; returns [] or [Rz (a + a') q] *)
-Definition combine_rotations {dim} a a' q : RzQ_ucom_l dim :=
-  let anew := bound (a + a') in
-  if Qeq_bool anew zero_Q then [] else [Rz anew q].
-
-Lemma bound_subs_multiples_of_2 : forall a,
-  exists (b : BinInt.Z), a == (bound a) + (inject_Z b) * 2.
-Proof. 
-  intros a.
-  assert (H: inject_Z (round_to_multiple_of_2 a / 2) * 2 == inject_Z (round_to_multiple_of_2 a)).
-  { unfold round_to_multiple_of_2.
-    destruct a.
-    rewrite Zmult_comm, Z_div_mult, inject_Z_mult. 
-    reflexivity. lia. }
-  unfold bound, two_Q, zero_Q.
-  destruct (Qle_bool 0 a) eqn:le0; destruct (Qle_bool 2 a) eqn:lt2; simpl.
-  - exists ((round_to_multiple_of_2 a) / 2)%Z. rewrite H. lra.
-  - exists 0%Z. unfold inject_Z. lra. 
-  - apply not_true_iff_false in le0. rewrite Qle_bool_iff in le0.
-    rewrite Qle_bool_iff in lt2. lra.
-  - exists (- (round_to_multiple_of_2 a / 2))%Z. 
-    rewrite inject_Z_opp, <- H. lra.
-Qed.
-
-Lemma combine_rotations_semantics : forall {dim} a a' q, 
-  (q < dim)%nat ->
-  @uc_equiv_l dim (combine_rotations a a' q) ([Rz a q] ++ [Rz a' q]).
+(* equivalence of u1 ; u1 to a u1 gate. *)
+Lemma two_u1_to_one: forall {dim:nat} (a a':Q) (q:nat), 
+     @uc_equiv dim (useq (uapp1 (@U_R 0 0 (Qreals.Q2R a * PI)) q) (uapp1 (@U_R 0 0 (Qreals.Q2R a' * PI)) q))
+           (uapp1 (@U_R 0 0 (Qreals.Q2R (a + a') * PI)) q).
 Proof.
-  intros dim a a' q Hq.
-  unfold combine_rotations, zero_Q.
-  specialize (bound_subs_multiples_of_2 (a + a')) as Hbound. 
-  destruct Hbound as [k Hbound]. 
-  destruct (Qeq_bool (bound (a + a')) 0) eqn:eq;
-  unfold uc_equiv_l, uc_equiv; simpl; rewrite Mmult_assoc, pad_mult;
-  repeat rewrite phase_shift_rotation; rewrite phase_mul;
-  rewrite <- Rmult_plus_distr_r, Rplus_comm, <- Qreals.Q2R_plus.
-  - apply Qeq_bool_eq in eq.
-    rewrite eq in Hbound. rewrite Qplus_0_l in Hbound.
-    apply Qreals.Qeq_eqR in Hbound. 
-    rewrite Hbound. 
-    Local Opaque Z.mul.
-    autorewrite with eval_db; gridify.
-    do 2 (apply f_equal2; try reflexivity). 
-    unfold phase_shift; solve_matrix. 
-    unfold Qreals.Q2R; simpl.
-    replace (IZR (k * 2) * / 1 * PI)%R with (IZR (2 * k) * PI)%R.
-    symmetry. apply Cexp_2nPI.
-    rewrite Zmult_comm. lra.
-  - apply Qreals.Qeq_eqR in Hbound. 
-    rewrite Hbound. 
-    rewrite Qreals.Q2R_plus, Rmult_plus_distr_r, <- phase_mul.
-    autorewrite with eval_db; gridify.
-    do 2 (apply f_equal2; try reflexivity). 
-    rewrite <- (Mmult_1_r _ _ (phase_shift _)) at 1; auto with wf_db.
-    apply f_equal2; try reflexivity.
-    unfold phase_shift; solve_matrix. 
-    unfold Qreals.Q2R; simpl.
-    replace (IZR (k * 2) * / 1 * PI)%R with (IZR (2 * k) * PI)%R. 
-    symmetry. apply Cexp_2nPI.
-    rewrite Zmult_comm. lra.
-Qed.
-
-(* Invert a z-rotation. *)
-Definition invert_rotation {dim} a q : gate_app RzQ_Unitary dim :=
-  Rz (two_Q - a) q.
-
-Local Open Scope ucom.
-Local Transparent SQIR.Rz.
-Lemma invert_rotation_semantics : forall {dim} a q,
-  list_to_ucom [@invert_rotation dim a q] ≡ invert (SQIR.Rz (Qreals.Q2R a * PI)%R q).
-Proof.
-  intros dim a q.
-  simpl. 
-  rewrite SKIP_id_r.
-  unfold uc_equiv; simpl.
+intros.
+unfold uc_equiv; simpl.
+unfold Qreals.Q2R; simpl.
   autorewrite with eval_db.
   gridify.
-  do 2 (apply f_equal2; try reflexivity).
-  unfold rotation.
-  solve_matrix.
-  all: autorewrite with R_db C_db trig_db Cexp_db; trivial.
-  rewrite Qreals.Q2R_minus.
-  autorewrite with R_db.
-  rewrite Rmult_plus_distr_r.
-  rewrite Cexp_add, <- Cexp_neg.
-  replace (Qreals.Q2R two_Q * PI)%R with (2 * PI)%R. 
-  2: unfold Qreals.Q2R, two_Q; simpl; lra. 
-  rewrite Cexp_2PI.
-  autorewrite with C_db R_db; reflexivity.
+apply f_equal2.
+apply f_equal2. reflexivity. solve_matrix.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+simpl.
+repeat rewrite Rplus_0_l.
+  autorewrite with C_db.
+unfold Cexp, Cmult;simpl.
+rewrite <- cos_plus.
+assert ((cos (IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI) *
+ sin (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI) +
+ sin (IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI) *
+ cos (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI))%R
+  =  (sin (IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI) *
+        cos (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI)
+  + cos (IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI) *
+          sin (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI))%R) by lra.
+rewrite H1. rewrite <- sin_plus.
+assert ((IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI + IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI)
+     = (IZR (Qnum a * Z.pos (Qden a') + Qnum a' * Z.pos (Qden a)) *
+    / IZR (Z.pos (Qden a * Qden a')) * PI))%R.
+assert ((IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI + IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI)%R
+       = ((IZR (Qnum a') * / IZR (Z.pos (Qden a')) + IZR (Qnum a) * / IZR (Z.pos (Qden a))) * PI)%R) by lra.
+rewrite H2. rewrite Pos2Z.inj_mul.
+rewrite plus_IZR. repeat rewrite mult_IZR.
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden a') <> 0)%Z. lia.
+apply not_0_IZR in H3. rewrite contra in H3. contradiction.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H3. rewrite contra in H3. contradiction.
+rewrite H2. reflexivity. reflexivity.
 Qed.
-*)
+
+(* a u1 following with a u2 gates yeilds a result of u2 x u1. *)
+Lemma u1_u2_to_one: forall {dim:nat} (a a' b:Q) (q:nat), 
+     @uc_equiv dim (useq (uapp1 (@U_R 0 0 (Qreals.Q2R a * PI)) q) 
+                 (uapp1 (@U_R (PI / 2) (Qreals.Q2R a' * PI) (Qreals.Q2R b * PI)) q))
+           (uapp1 (@U_R (PI / 2) (Qreals.Q2R a' * PI) (Qreals.Q2R (a + b) * PI)) q).
+Proof.
+intros.
+unfold uc_equiv; simpl.
+unfold Qreals.Q2R; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply f_equal2.
+apply f_equal2. reflexivity.
+rewrite Pos2Z.inj_mul.
+rewrite plus_IZR. repeat rewrite mult_IZR. 
+solve_matrix.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+  autorewrite with R_db C_db.
+rewrite Cmult_comm.
+rewrite Cmult_assoc.
+assert (Cexp (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI) *
+  Cexp (IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI)
+   = Cexp
+    ((IZR (Qnum a) * IZR (Z.pos (Qden b)) + IZR (Qnum b) * IZR (Z.pos (Qden a))) *
+     / (IZR (Z.pos (Qden a)) * IZR (Z.pos (Qden b))) * PI))%C.
+unfold Cexp, Cmult;simpl.
+rewrite <- cos_plus.
+assert ((cos (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI) *
+ sin (IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI) +
+ sin (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI) *
+ cos (IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI))%R
+  =  (sin (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI) *
+        cos (IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI)
+  + cos (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI) *
+          sin (IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI))%R) by lra.
+rewrite H1. rewrite <- sin_plus.
+assert ((IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI + IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI)
+     = ((IZR (Qnum a) * IZR (Z.pos (Qden b)) + IZR (Qnum b) * IZR (Z.pos (Qden a))) *
+    / (IZR (Z.pos (Qden a)) * IZR (Z.pos (Qden b))) * PI))%R.
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden b) <> 0)%Z. lia.
+apply not_0_IZR in H2. rewrite contra in H2. contradiction.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H2. rewrite contra in H2. contradiction.
+rewrite H2. reflexivity. rewrite H1. reflexivity.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+  autorewrite with R_db C_db.
+rewrite Cmult_comm.
+rewrite Cmult_assoc.
+rewrite <- Cexp_add.
+assert ((IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI +
+    (IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI +
+     IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI))
+   = (IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI +
+    (IZR (Qnum a) * IZR (Z.pos (Qden b)) + IZR (Qnum b) * IZR (Z.pos (Qden a))) *
+    / (IZR (Z.pos (Qden a)) * IZR (Z.pos (Qden b))) * PI))%R.
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden b) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+split.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+intro contra.
+assert (Z.pos (Qden a') <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+rewrite H1. reflexivity. reflexivity.
+Qed.
+
+(* a u2 following with a u1 gates yeilds a result of u1 x u2. *)
+Lemma u2_u1_to_one: forall {dim:nat} (a a' b:Q) (q:nat), 
+     @uc_equiv dim (useq (uapp1 (@U_R (PI / 2) (Qreals.Q2R a' * PI) (Qreals.Q2R b * PI)) q)
+                        (uapp1 (@U_R 0 0 (Qreals.Q2R a * PI)) q))
+           (uapp1 (@U_R (PI / 2) (Qreals.Q2R (a' + a) * PI) (Qreals.Q2R b * PI)) q).
+Proof.
+intros.
+unfold uc_equiv; simpl.
+unfold Qreals.Q2R; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply f_equal2.
+apply f_equal2. reflexivity.
+rewrite Pos2Z.inj_mul.
+rewrite plus_IZR. repeat rewrite mult_IZR. 
+solve_matrix.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+  autorewrite with R_db C_db.
+rewrite Cmult_assoc.
+rewrite <- Cexp_add.
+assert ((IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI + IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI) 
+    = (IZR (Qnum a') * IZR (Z.pos (Qden a)) + IZR (Qnum a) * IZR (Z.pos (Qden a'))) *
+    / (IZR (Z.pos (Qden a')) * IZR (Z.pos (Qden a))) * PI)%R. 
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+intro contra.
+assert (Z.pos (Qden a') <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+rewrite H1. reflexivity.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+  autorewrite with R_db C_db.
+rewrite Cmult_assoc.
+rewrite <- Cexp_add.
+assert (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI +
+    (IZR (Qnum a') * / IZR (Z.pos (Qden a')) * PI +
+     IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI)
+    = (IZR (Qnum a') * IZR (Z.pos (Qden a)) + IZR (Qnum a) * IZR (Z.pos (Qden a'))) *
+    / (IZR (Z.pos (Qden a')) * IZR (Z.pos (Qden a))) * PI +
+    IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI)%R. 
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden b) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+split.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+intro contra.
+assert (Z.pos (Qden a') <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+rewrite H1. reflexivity. reflexivity.
+Qed.
+
+
+(* a u1 following with a u3 gates yeilds a result of u3 x u1. *)
+Lemma u1_u3_to_one: forall {dim:nat} (a a' b c:Q) (q:nat), 
+     @uc_equiv dim (useq (uapp1 (@U_R 0 0 (Qreals.Q2R a * PI)) q) 
+                 (uapp1 (@U_R (Qreals.Q2R a' * PI) (Qreals.Q2R b * PI) (Qreals.Q2R c * PI)) q))
+           (uapp1 (@U_R (Qreals.Q2R a' * PI) (Qreals.Q2R b * PI) (Qreals.Q2R (a + c) * PI)) q).
+Proof.
+intros.
+unfold uc_equiv; simpl.
+unfold Qreals.Q2R; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply f_equal2.
+apply f_equal2. reflexivity.
+rewrite Pos2Z.inj_mul.
+rewrite plus_IZR. repeat rewrite mult_IZR. 
+solve_matrix.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+  autorewrite with R_db C_db.
+rewrite Cmult_comm.
+rewrite Cmult_assoc.
+rewrite <- Cexp_add.
+assert ((IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI + IZR (Qnum c) * / IZR (Z.pos (Qden c)) * PI)
+    = (IZR (Qnum a) * IZR (Z.pos (Qden c)) + IZR (Qnum c) * IZR (Z.pos (Qden a))) *
+     / (IZR (Z.pos (Qden a)) * IZR (Z.pos (Qden c))) * PI)%R. 
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden c) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+rewrite H1. reflexivity.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+  autorewrite with R_db C_db.
+rewrite Cmult_comm.
+rewrite Cmult_assoc.
+rewrite <- Cexp_add.
+assert ((IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI +
+    (IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI + IZR (Qnum c) * / IZR (Z.pos (Qden c)) * PI))
+   = IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI +
+    (IZR (Qnum a) * IZR (Z.pos (Qden c)) + IZR (Qnum c) * IZR (Z.pos (Qden a))) *
+    / (IZR (Z.pos (Qden a)) * IZR (Z.pos (Qden c))) * PI)%R.
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden c) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+split.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+intro contra.
+assert (Z.pos (Qden b) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+rewrite H1. reflexivity. reflexivity.
+Qed.
+
+
+(* a u3 following with a u1 gates yeilds a result of u1 x u3. *)
+Lemma u3_u1_to_one: forall {dim:nat} (a a' b c:Q) (q:nat), 
+     @uc_equiv dim (useq (uapp1 (@U_R (Qreals.Q2R a' * PI) (Qreals.Q2R b * PI) (Qreals.Q2R c * PI)) q)
+                       (uapp1 (@U_R 0 0 (Qreals.Q2R a * PI)) q))
+           (uapp1 (@U_R (Qreals.Q2R a' * PI) (Qreals.Q2R (b + a) * PI) (Qreals.Q2R c * PI)) q).
+Proof.
+intros.
+unfold uc_equiv; simpl.
+unfold Qreals.Q2R; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply f_equal2.
+apply f_equal2. reflexivity.
+rewrite Pos2Z.inj_mul.
+rewrite plus_IZR. repeat rewrite mult_IZR. 
+solve_matrix.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0. lca.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+  autorewrite with R_db C_db.
+rewrite Cmult_assoc.
+rewrite <- Cexp_add.
+assert ((IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI + IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI)
+    = ((IZR (Qnum b) * IZR (Z.pos (Qden a)) + IZR (Qnum a) * IZR (Z.pos (Qden b))) *
+    / (IZR (Z.pos (Qden b)) * IZR (Z.pos (Qden a))) * PI))%R. 
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+intro contra.
+assert (Z.pos (Qden b) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+rewrite H1. reflexivity.
+assert (0 / 2 = 0)%R.
+lra. rewrite H0.
+rewrite cos_0. rewrite sin_0.
+  autorewrite with R_db C_db.
+rewrite Cmult_assoc.
+rewrite <- Cexp_add.
+assert ((IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI +
+    (IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI + IZR (Qnum c) * / IZR (Z.pos (Qden c)) * PI))
+   = ((IZR (Qnum b) * IZR (Z.pos (Qden a)) + IZR (Qnum a) * IZR (Z.pos (Qden b))) *
+    / (IZR (Z.pos (Qden b)) * IZR (Z.pos (Qden a))) * PI +
+    IZR (Qnum c) * / IZR (Z.pos (Qden c)) * PI))%R.
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden c) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+split.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+intro contra.
+assert (Z.pos (Qden b) <> 0)%Z. lia.
+apply not_0_IZR in H1. rewrite contra in H1. contradiction.
+rewrite H1. reflexivity. reflexivity.
+Qed.
+
+(* two u2 gates yeilds a result of U3 (180 - b' - a) (a' + 90) (b + 90). *)
+Lemma two_u2_to_one: forall {dim:nat} (a b a' b':Q) (q:nat), 
+     @uc_equiv dim (useq (uapp1 (@U_R (PI / 2) (Qreals.Q2R a * PI) (Qreals.Q2R b * PI)) q)
+                       (uapp1 (@U_R (PI / 2) (Qreals.Q2R a' * PI) (Qreals.Q2R b' * PI)) q))
+           (uapp1 (@U_R (Qreals.Q2R (1 - (b' + a)) * PI) (Qreals.Q2R (a' + 1/2) * PI) (Qreals.Q2R (b + 1/2) * PI)) q).
+Proof.
+intros.
+unfold uc_equiv; simpl.
+unfold Qreals.Q2R; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply f_equal2.
+apply f_equal2. reflexivity.
+repeat rewrite Pos2Z.inj_mul.
+repeat rewrite plus_IZR. repeat rewrite mult_IZR. 
+solve_matrix.
+destruct (- (Qnum b' * Z.pos (Qden a) + Qnum a * Z.pos (Qden b')) * 1)%Z eqn:eq1.
+repeat rewrite Pos2Z.inj_mul. rewrite mult_IZR.
+Admitted.
+
+Lemma is_Z: forall (n :Z) (a: Q), (0 < n)%Z -> 
+      Qnum a mod (n * Z.pos (Qden a)) = 0%Z -> (exists (x:Z), a = inject_Z (n * x)).
+Proof.
+intros.
+apply  Z_div_exact_full_2 in H0.
+exists ((Qnum a / (4 * Z.pos (Qden a))))%Z. 
+Admitted.
+
+Lemma cos_Z: forall (a: Z), cos (IZR a * 2 * PI) = 1%R.
+Proof.
+intros.
+Admitted.
+
+Lemma sin_Z: forall (a: Z), sin (IZR a * 2 * PI) = 0%R.
+Proof.
+intros.
+Admitted.
+
+
+(* if a in u3 is zero then it is a u1 gate *)
+Lemma u3_to_u1: forall {dim:nat} (a b c:Q) (q:nat), 
+    Zmod (Qnum a) (4 * (QDen a)) = 0%Z -> 
+     @uc_equiv dim (uapp1 (@U_R (Qreals.Q2R a * PI) (Qreals.Q2R b * PI) (Qreals.Q2R c * PI)) q)
+           (uapp1 (@U_R 0 0 (Qreals.Q2R (b + c) * PI)) q).
+Proof.
+intros.
+unfold uc_equiv; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply f_equal2.
+apply f_equal2. reflexivity.
+unfold rotation.
+  prep_matrix_equality.
+destruct x. destruct y.
+apply is_Z in H. destruct H. rewrite H. 
+rewrite inject_Z_mult. rewrite Qreals.Q2R_mult.
+unfold inject_Z, Qreals.Q2R; simpl.
+assert (0 / 2 = 0)%R by lra. rewrite H0.
+rewrite cos_0.
+assert (4 * / 1 * (IZR x * / 1) * PI / 2
+      = (IZR x) * 2 * PI)%R by lra. 
+rewrite -> H1. rewrite cos_Z. reflexivity. lia.
+destruct y.
+apply is_Z in H. destruct H. rewrite H. 
+rewrite inject_Z_mult. rewrite Qreals.Q2R_mult.
+unfold inject_Z, Qreals.Q2R; simpl.
+assert (0 / 2 = 0)%R by lra. rewrite H0.
+rewrite sin_0.
+assert (4 * / 1 * (IZR x * / 1) * PI / 2
+      = (IZR x) * 2 * PI)%R by lra. 
+rewrite -> H1. rewrite sin_Z. lca. lia. reflexivity.
+destruct x. destruct y.
+apply is_Z in H. destruct H. rewrite H. 
+rewrite inject_Z_mult. rewrite Qreals.Q2R_mult.
+unfold inject_Z, Qreals.Q2R; simpl.
+assert (0 / 2 = 0)%R by lra. rewrite H0.
+rewrite sin_0.
+assert (4 * / 1 * (IZR x * / 1) * PI / 2
+      = (IZR x) * 2 * PI)%R by lra. 
+rewrite -> H1. rewrite sin_Z. lca. lia.
+destruct y.
+apply is_Z in H. destruct H. rewrite H. 
+rewrite inject_Z_mult. rewrite Qreals.Q2R_mult.
+unfold inject_Z, Qreals.Q2R; simpl.
+assert (0 / 2 = 0)%R by lra. rewrite H0.
+rewrite cos_0.
+assert (4 * / 1 * (IZR x * / 1) * PI / 2
+      = (IZR x) * 2 * PI)%R by lra. 
+rewrite -> H1. rewrite cos_Z.
+repeat rewrite Pos2Z.inj_mul.
+repeat rewrite plus_IZR. repeat rewrite mult_IZR.  
+autorewrite with C_db R_db.
+assert (IZR (Qnum b) * / IZR (Z.pos (Qden b)) * PI + IZR (Qnum c) * / IZR (Z.pos (Qden c)) * PI
+   = (IZR (Qnum b) * IZR (Z.pos (Qden c)) + IZR (Qnum c) * IZR (Z.pos (Qden b))) *
+   / (IZR (Z.pos (Qden b)) * IZR (Z.pos (Qden c))) * PI)%R.
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden c) <> 0)%Z. lia.
+apply not_0_IZR in H2. rewrite contra in H2. contradiction.
+intro contra.
+assert (Z.pos (Qden b) <> 0)%Z. lia.
+apply not_0_IZR in H2. rewrite contra in H2. contradiction.
+rewrite H2. 
+1 - 5: reflexivity.
+Qed.
+
+(* if u1's lambda is zero, then it is SKIP *)
+Lemma u1_to_skip: forall {dim:nat} (a:Q) (q:nat), 
+    (q < dim)%nat -> Zmod (Qnum a) (2 * (QDen a)) = 0%Z -> 
+     @uc_equiv dim (uapp1 (@U_R 0 0 (Qreals.Q2R a * PI)) q) SKIP.
+Proof.
+intros.
+unfold uc_equiv; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply f_equal2.
+apply f_equal2. reflexivity.
+unfold rotation. 
+  prep_matrix_equality.
+destruct x0. destruct y.
+assert (0 / 2 = 0)%R by lra. rewrite H.
+rewrite cos_0. reflexivity.
+ destruct y.
+assert (0 / 2 = 0)%R by lra. rewrite H.
+rewrite sin_0. lca. reflexivity.
+destruct x0. destruct y.
+assert (0 / 2 = 0)%R by lra. rewrite H.
+rewrite sin_0. lca.
+ destruct y.
+assert (0 / 2 = 0)%R by lra. rewrite H.
+rewrite cos_0.
+apply is_Z in H0. destruct H0. rewrite H0. 
+rewrite inject_Z_mult. rewrite Qreals.Q2R_mult.
+unfold inject_Z, Qreals.Q2R; simpl.
+unfold Cexp.
+assert ((0 + 2 * / 1 * (IZR x0 * / 1) * PI) 
+    = IZR x0 * 2 * PI)%R by lra. rewrite H1.
+rewrite cos_Z. rewrite sin_Z. lca. reflexivity.
+reflexivity.
+unfold I.
+destruct ((S (S x0) =? y)%nat && (S (S x0) <? 2))%nat eqn:eq.
+apply andb_true_iff in eq. destruct eq.
+apply Nat.ltb_lt in H1. lia. reflexivity.
+reflexivity.
+destruct dim. inversion H. lia.
+Qed.
+
