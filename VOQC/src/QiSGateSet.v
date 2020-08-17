@@ -475,18 +475,40 @@ Lemma is_Z: forall (n :Z) (a: Q), (0 < n)%Z ->
 Proof.
 intros.
 apply  Z_div_exact_full_2 in H0.
-exists ((Qnum a / (4 * Z.pos (Qden a))))%Z. 
+exists ((Qnum a / (n * Z.pos (Qden a))))%Z. 
 Admitted.
 
 Lemma cos_Z: forall (a: Z), cos (IZR a * 2 * PI) = 1%R.
 Proof.
 intros.
-Admitted.
+destruct a.
+assert (0 * 2 * PI = 0)%R by lra. rewrite H. rewrite cos_0. reflexivity.
+rewrite <- positive_nat_Z. rewrite <- INR_IZR_INZ.
+assert (INR (Pos.to_nat p) * 2 * PI = 0 + 2 * INR (Pos.to_nat p) * PI)%R by lra.
+rewrite H. rewrite cos_period. apply cos_0.
+rewrite <- Pos2Z.opp_pos. rewrite opp_IZR.
+rewrite <- positive_nat_Z. rewrite <- INR_IZR_INZ.
+assert (- INR (Pos.to_nat p) * 2 * PI = - (INR (Pos.to_nat p) * 2 * PI))%R by lra.
+rewrite H. rewrite cos_neg.
+assert (INR (Pos.to_nat p) * 2 * PI = 0 + 2 * INR (Pos.to_nat p) * PI)%R by lra.
+rewrite H0. rewrite cos_period. apply cos_0.
+Qed.
 
 Lemma sin_Z: forall (a: Z), sin (IZR a * 2 * PI) = 0%R.
 Proof.
 intros.
-Admitted.
+destruct a.
+assert (0 * 2 * PI = 0)%R by lra. rewrite H. rewrite sin_0. reflexivity.
+rewrite <- positive_nat_Z. rewrite <- INR_IZR_INZ.
+assert (INR (Pos.to_nat p) * 2 * PI = 0 + 2 * INR (Pos.to_nat p) * PI)%R by lra.
+rewrite H. rewrite sin_period. apply sin_0.
+rewrite <- Pos2Z.opp_pos. rewrite opp_IZR.
+rewrite <- positive_nat_Z. rewrite <- INR_IZR_INZ.
+assert (- INR (Pos.to_nat p) * 2 * PI = - (INR (Pos.to_nat p) * 2 * PI))%R by lra.
+rewrite H. rewrite sin_neg.
+assert (INR (Pos.to_nat p) * 2 * PI = 0 + 2 * INR (Pos.to_nat p) * PI)%R by lra.
+rewrite H0. rewrite sin_period. rewrite sin_0; lra.
+Qed.
 
 
 (* if a in u3 is zero then it is a u1 gate *)
