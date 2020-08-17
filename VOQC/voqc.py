@@ -25,10 +25,10 @@ def print_gates(lib, circ, orig):
         
     lib.t_count.argtypes =[c_void_p]
     lib.t_count.restype =c_int
-    fin_counts = [lib.total_count(circ), lib.rz_count(circ), -1, 
-                  -1, lib.h_count(circ), lib.x_count(circ), lib.cnot_count(circ)]
-    # fin_counts = [lib.total_count(circ), lib.rz_count(circ), lib.c_count(circ), 
-    #              lib.t_count(circ), lib.h_count(circ), lib.x_count(circ), lib.cnot_count(circ)]
+    # fin_counts = [lib.total_count(circ), lib.rz_count(circ), -1, 
+    #               -1, lib.h_count(circ), lib.x_count(circ), lib.cnot_count(circ)]
+    fin_counts = [lib.total_count(circ), lib.rz_count(circ), lib.c_count(circ), 
+                 lib.t_count(circ), lib.h_count(circ), lib.x_count(circ), lib.cnot_count(circ)]
     if orig==True:
         print("Original:\t Total %d, Rz %d, Clifford %d, T %d, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
                                                                                          fin_counts[4], fin_counts[5], fin_counts[6]))
