@@ -1,8 +1,11 @@
-(executable
- (name libvoqc)
- (libraries extracted_code)
- (foreign_stubs (language c) (names ocaml_wrapper))
- (flags :standard -linkall -g)
- (modes (native shared_object))
- (modules libvoqc))
+(rule
+  (targets voqc.c voqc_bindings.ml)
+  (deps stub_generator/generate.exe)
+  (action (run stub_generator/generate.exe .)))
 
+(executable
+  (name libvoqc)
+  (modes (native shared_object))
+  (flags (:standard -w -27))
+  (foreign_stubs (language c) (names voqc init) (include_dirs (lib ctypes)))
+  (libraries extracted_code bindings))
