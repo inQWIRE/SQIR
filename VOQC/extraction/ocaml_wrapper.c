@@ -15,86 +15,79 @@
     closure = caml_named_value(A);\
   }
 
+value* wrap(value v) {
+    value* res = (value*) malloc(sizeof(value));
+    *res = v;
+    caml_register_global_root(res);
+    return res;
+}
+
+void destroy(value* v) {
+    caml_remove_global_root(v);
+    free(v);
+}
+
 void init () {
     static char* dummy_argv[2] = { "", NULL };
     caml_startup(dummy_argv);
 }
 
-void cleanup(value circ) {
-    caml_remove_global_root(&circ);
-}
-
-value read_qasm_file (char* fname) {
-   CAMLparam0();
-   CAMLlocal2(local, circ);
+value* read_qasm_file (char* fname) {
+   value local, circ;
    local = caml_copy_string(fname);
    CLOSURE("read_qasm_file");
-   caml_register_global_root(&circ);
    circ = caml_callback(*closure, local);
-   caml_register_global_root(&circ);
-   CAMLreturn(circ);
+   return wrap(circ);
 }
 
-value optimize (value circ) {
-   CAMLparam1(circ);
-   CAMLlocal1(res);
+value* optimize (value* circ) {
+   value res;
    CLOSURE("optimize");
-   caml_register_global_root(&res);
-   res = caml_callback(*closure, circ);
-   caml_register_global_root(&res);
-   caml_remove_global_root(&circ);
-   CAMLreturn(res);
+   res = caml_callback(*closure, *circ);
+   destroy(circ);
+   return wrap(res);
 }
 
-void write_qasm_file (char* outf, value circ) {
-   CAMLparam1(circ);
-   CAMLlocal2(fname, res);
+void write_qasm_file (char* outf, value* circ) {
+   value fname, res;
    fname = caml_copy_string(outf);
    CLOSURE("write_qasm_file");
-   res = caml_callback2(*closure, fname, circ);
-   CAMLreturn0;
+   res = caml_callback2(*closure, fname, *circ);
 }
 
-int x_count (value circ) {
-    CAMLparam1(circ);
+int x_count (value* circ) {
     CLOSURE("x_count");
-    CAMLreturn(Int_val(caml_callback(*closure, circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
-int h_count (value circ) {
-    CAMLparam1(circ);
+int h_count (value* circ) {
     CLOSURE("h_count");
-    CAMLreturn(Int_val(caml_callback(*closure, circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
-int rz_count (value circ) {
-    CAMLparam1(circ);
+int rz_count (value* circ) {
     CLOSURE("rz_count");
-    CAMLreturn(Int_val(caml_callback(*closure, circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
-int cnot_count (value circ) {
-    CAMLparam1(circ);
+int cnot_count (value* circ) {
     CLOSURE("cnot_count");
-    CAMLreturn(Int_val(caml_callback(*closure, circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
-int c_count (value circ) {
-    CAMLparam1(circ);
+int c_count (value* circ) {
     CLOSURE("c_count");
-    CAMLreturn(Int_val(caml_callback(*closure, circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
-int t_count (value circ) {
-    CAMLparam1(circ);
+int t_count (value* circ) {
     CLOSURE("t_count");
-    CAMLreturn(Int_val(caml_callback(*closure, circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
-int total_count (value circ) {
-    CAMLparam1(circ);
+int total_count (value* circ) {
     CLOSURE("total_count");
-    CAMLreturn(Int_val(caml_callback(*closure, circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
 
