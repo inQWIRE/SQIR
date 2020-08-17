@@ -25,11 +25,11 @@ def print_gates(lib, circ, orig):
         
     lib.t_count.argtypes =[c_void_p]
     lib.t_count.restype =c_int
-    # fin_counts = [lib.total_count(circ), lib.rz_count(circ), -1, 
-    #               -1, lib.h_count(circ), lib.x_count(circ), lib.cnot_count(circ)]
+
     fin_counts = [lib.total_count(circ), lib.rz_count(circ), lib.c_count(circ), 
                  lib.t_count(circ), lib.h_count(circ), lib.x_count(circ), lib.cnot_count(circ)]
     if orig==True:
+        
         print("Original:\t Total %d, Rz %d, Clifford %d, T %d, H %d, X %d, CNOT %d" % (fin_counts[0], fin_counts[1], fin_counts[2], fin_counts[3],
                                                                                          fin_counts[4], fin_counts[5], fin_counts[6]))
     else:
@@ -54,7 +54,7 @@ class SQIR:
         self.lib.read_qasm_file.argtypes = [c_char_p]
         self.lib.read_qasm_file.restype= c_void_p        
         start = time.time()
-        final_file = str(os.path.join(self.rel, fname)).encode('utf-8')
+        final_file = (os.path.join(self.rel, fname)).encode('utf-8')
         self.circ = self.lib.read_qasm_file(final_file)
         end = time.time()
 
@@ -72,6 +72,91 @@ class SQIR:
         #Call optimizer function
         start1 = time.time()
         self.circ = self.lib.optimize(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
+        return self
+    
+    def merge_rotations(self):
+        
+        #Define argtype/restype for optimize
+        self.lib.optimize.argtypes =[c_void_p]
+        self.lib.optimize.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.merge_rotations(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
+        return self
+
+    def cancel_single_qubit_gates(self):
+        
+        #Define argtype/restype for optimize
+        self.lib.optimize.argtypes =[c_void_p]
+        self.lib.optimize.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.cancel_single_qubit_gates(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
+        return self
+    
+    def cancel_two_qubit_gates(self):
+        
+        #Define argtype/restype for optimize
+        self.lib.optimize.argtypes =[c_void_p]
+        self.lib.optimize.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.cancel_two_qubit_gates(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
+        return self
+
+    def not_propagation(self):
+        
+        #Define argtype/restype for optimize
+        self.lib.optimize.argtypes =[c_void_p]
+        self.lib.optimize.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.not_propagation(self.circ)
+        end1 = time.time()
+
+        #Print time taken to optimize if not a Cirq/Qiskit pass
+        if self.print_c:
+            self.optim+=(end1-start1)
+            
+        return self
+    
+    def hadamard_reduction(self):
+        
+        #Define argtype/restype for optimize
+        self.lib.optimize.argtypes =[c_void_p]
+        self.lib.optimize.restype = c_void_p
+
+        #Call optimizer function
+        start1 = time.time()
+        self.circ = self.lib.hadamard_reduction(self.circ)
         end1 = time.time()
 
         #Print time taken to optimize if not a Cirq/Qiskit pass
