@@ -14,6 +14,8 @@ from qiskit.transpiler.passes import Unroller, Optimize1qGates, CommutationAnaly
 import sys
 import re
 import time
+import csv
+from gmpy2 import mpq, mpfr
 
 def count(d):
     sum = 0
@@ -23,9 +25,13 @@ def count(d):
 
 def run(d, fname):
     
-    f = open(fname, "w")
+    f = open("out.txt", "w")
     
     f.write("name,Orig. total,Orig. CNOT,Qiskit total,Qiskit CNOT,time\n")
+    t = open("out.csv", "w")
+    csvwriter = csv.writer(t) 
+    csvwriter.writerow(["Name", "Before",  "Final", "Before CNOT","Final CNOT","Time"])
+    t.close()
     
     for fname in os.listdir(d):
 
@@ -40,10 +46,12 @@ def run(d, fname):
         tmp = open("copy.qasm", "w") # hardcoded filename
         p_ccz = re.compile("ccz (.*), (.*), (.*);")
         p_ccx = re.compile("ccx (.*), (.*), (.*);")
+        p_rzq = re.compile("rzq\((.*),(.*)\) q\[([0-9]+)\];")
         
         for line in inqasm:
             m1 = p_ccx.match(line)
             m2 = p_ccz.match(line)
+            m3 = p_rzq.match(line)
             if m1:
                 a = m1.group(1)
                 b = m1.group(2)
@@ -80,6 +88,13 @@ def run(d, fname):
                 tmp.write("t %s;\n" % (a))
                 tmp.write("t %s;\n" % (b))
                 tmp.write("t %s;\n" % (c))
+            elif m3:
+                num1 = int(m3.group(1))
+                num2 = int(m3.group(2))
+                q = int(m3.group(3))
+                t= mpq(int(num1), int(num2))
+                y = float(mpfr(t, 53))
+                tmp.write("rz(%s*pi) q[%d];\n" % (y, q))
             else:
                 tmp.write(line)
         tmp.close()
@@ -116,6 +131,10 @@ def run(d, fname):
         f.write(new_circ.qasm())
 
         f.write("%s,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, cnot_count_before, num_gates_after, cnot_count_after, stop - start))
+        t = open("out.csv", "a")
+        csvwriter = csv.writer(t) 
+        csvwriter.writerow([fname, num_gates_before, num_gates_after, cnot_count_before,cnot_count_after,stop-start])
+        t.close()
         
     f.close()
 

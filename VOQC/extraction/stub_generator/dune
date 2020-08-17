@@ -1,3 +1,0 @@
-(executable
-  (name generate)
-  (libraries bindings ctypes.stubs ctypes))
