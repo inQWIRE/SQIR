@@ -10,6 +10,7 @@
 
 static int init_done = 0;
 
+
 void init_lib(void){
   char *start[1];
   start[0] = NULL;
@@ -54,7 +55,6 @@ value not_p (value x){
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("not_p");
    value x51 = caml_callbackN(*fib_closure, nargs, locals);
-   /*caml_local_roots = caml__frame;;*/
    CAMLreturn(x51);
 }
 
@@ -80,7 +80,6 @@ value merge (value x){
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("merge");
    value x51 = caml_callbackN(*fib_closure, nargs, locals);
-   /*caml_local_roots = caml__frame;;*/
    CAMLreturn(x51);
 }
 
@@ -93,7 +92,6 @@ value cancel_single (value x){
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("cancel_single");
    value x51 = caml_callbackN(*fib_closure, nargs, locals);
-   /*caml_local_roots = caml__frame;;*/
    CAMLreturn(x51);
 }
 
@@ -106,7 +104,6 @@ value cancel_two (value x){
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("cancel_two");
    value x51 = caml_callbackN(*fib_closure, nargs, locals);
-   /*caml_local_roots = caml__frame;;*/
    CAMLreturn(x51);
 }
 
@@ -120,96 +117,107 @@ value write_qasm (char * x, value y){
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("write_qasm");
    value x51 = caml_callbackN(*fib_closure, nargs, locals);
-   /*caml_local_roots = caml__frame;;*/
    CAMLreturn(x51);
 }
 
 int x_c (value x){
    CAMLparam1(x);
+   CAMLlocal2(z,y);
    int nargs;
    nargs = 1;
+   y = x;
    CAMLlocalN(locals, nargs);
-   locals[0] = x;
+   locals[0] = y;
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("x_c");
-   int y = Int_val(caml_callbackN(*fib_closure, nargs, locals));
-   CAMLreturn(y);
+   z = (caml_callbackN(*fib_closure, nargs, locals));
+   CAMLreturnT(int, Int_val(z));
 }
-
 
 int h_c (value x){
    CAMLparam1(x);
+   CAMLlocal2(z,y);
    int nargs;
+   y = x;
    nargs = 1;
    CAMLlocalN(locals, nargs);
-   locals[0] = x;
+   locals[0] = y;
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("h_c");
-   int y = Int_val(caml_callbackN(*fib_closure, nargs, locals));
-   CAMLreturn(y);
+   z = (caml_callbackN(*fib_closure, nargs, locals));
+   CAMLreturnT(int, Int_val(z));
 }
-
 
 int rz_c (value x){
    CAMLparam1(x);
+   CAMLlocal2(z,y);
    int nargs;
+   y = x;
    nargs = 1;
    CAMLlocalN(locals, nargs);
-   locals[0] = x;
+   locals[0] = y;
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("rz_c");
-   int y = Int_val(caml_callbackN(*fib_closure, nargs, locals));
-   CAMLreturn(y);
+   z = (caml_callbackN(*fib_closure, nargs, locals));
+   CAMLreturnT(int, Int_val(z));
 }
 
 
 int cnot_c (value x){
    CAMLparam1(x);
+   CAMLlocal2(z,y);
    int nargs;
    nargs = 1;
+   y = x;
    CAMLlocalN(locals, nargs);
-   locals[0] = x;
+   locals[0] = y;
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("cnot_c");
-   int y = Int_val(caml_callbackN(*fib_closure, nargs, locals));
-   CAMLreturn(y);
+   z = (caml_callbackN(*fib_closure, nargs, locals));
+   CAMLreturnT(int, Int_val(z));
 }
 
 
 int c_c (value x){
    CAMLparam1(x);
+   CAMLlocal2(z,y);
    int nargs;
    nargs = 1;
+   y = x;
    CAMLlocalN(locals, nargs);
-   locals[0] = x;
+   locals[0] = y;
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("c_c");
-   int y = Int_val(caml_callbackN(*fib_closure, nargs, locals));
-   CAMLreturn(y);
+   z = (caml_callbackN(*fib_closure, nargs, locals));
+   CAMLreturnT(int,Int_val(z));
 }
 
 char* t_c (value x){
    CAMLparam1(x);
+   CAMLlocal2(z,y);
    int nargs;
    nargs = 1;
+   y = x;
    CAMLlocalN(locals, nargs);
-   locals[0] = x;
+   locals[0] = y;
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("t_c");
-   char* y = String_val(caml_callbackN(*fib_closure, nargs, locals));
-   CAMLreturnT(char *, y);
+   z = (caml_callbackN(*fib_closure, nargs, locals));
+   CAMLreturnT(char*, String_val(z));
 }
 
 int tot (value x){
    CAMLparam1(x);
+   CAMLlocal2(z, y);
    int nargs;
    nargs = 1;
    CAMLlocalN(locals, nargs);
-   locals[0] = x;
+   y = x;
+   locals[0] = y;
    static const value * fib_closure = NULL;
    if (fib_closure == NULL) fib_closure = caml_named_value("tot");
-   int y = Int_val(caml_callbackN(*fib_closure, nargs, locals));
-   CAMLreturn(y);
+   z = (caml_callbackN(*fib_closure, nargs, locals));
+   CAMLreturnT(int, Int_val(z));
 }
 void free_root(value x){
   CAMLparam1(x);
