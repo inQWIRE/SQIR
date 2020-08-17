@@ -1,4 +1,0 @@
-(library
-  (name bindings)
-  (flags (:standard -w -6-8))
-  (libraries extracted_code))

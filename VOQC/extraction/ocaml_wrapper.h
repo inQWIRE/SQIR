@@ -1,10 +1,15 @@
 #include <caml/mlvalues.h>
-value get_gate(char *x);
-value optimizer(value x);
-value not_p(value x);
-value cancel_single(value x);
-value cancel_two(value x);
-value merge(value x);
-value hadamard(value x);
-value write_qasm(char *x, value y);
-void init_lib(void);
+
+void init();
+void destroy(value*);
+
+value read_qasm_file(char* fname);
+value optimize(value circ);
+void write_qasm_file(char* outf, value circ);
+int x_count (value circ);
+int h_count (value circ);
+int rz_count (value circ);
+int cnot_count (value circ);
+int c_count(value circ);
+int t_count (value circ);
+int total_count (value circ);
