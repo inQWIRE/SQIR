@@ -10,6 +10,7 @@ value* hadamard_reduction(value* circ);
 value* merge_rotations(value* circ);
 value* cancel_single_qubit_gates(value* circ);
 value* cancel_two_qubit_gates(value* circ);
+
 void write_qasm_file(char* outf, value* circ);
 int x_count (value* circ);
 int h_count (value* circ);

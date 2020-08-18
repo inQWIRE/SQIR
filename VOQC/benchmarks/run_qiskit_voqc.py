@@ -8,7 +8,7 @@ import sys
 import re
 import time
 from interop.qiskit.voqc_optimization import VOQC
-from interop.format_from_qasm import format_from_qasm
+from interop.formatting.format_from_qasm import format_from_qasm
 import csv
 from qiskit.circuit.gate import Gate
 from qiskit.circuit.quantumregister import QuantumRegister
@@ -37,7 +37,7 @@ def run(d, l):
                 cnot_count_before += 1
 
         print("Original:\t Total %d, CNOT %d" % (num_gates_before, cnot_count_before))
-        """
+        
         pm = PassManager()
         pm.append(VOQC(["optimize"]))
         start = time.perf_counter()
@@ -51,7 +51,7 @@ def run(d, l):
             if (inst.name == "cx"):
                 cnot_voqc += 1
         print("After VOQC:\t Total %d, CNOT %d" % (voqc_gates, cnot_voqc))
-        """
+        
         basis_gates = ['u1','u2','u3','cx']
         _unroll = Unroller(basis_gates)
         _depth_check = [Depth(), FixedPoint('depth')]
@@ -60,11 +60,10 @@ def run(d, l):
         _opt = [Collect2qBlocks(), ConsolidateBlocks(), Unroller(basis_gates),
                 Optimize1qGates(), CommutativeCancellation()]
         pm1 = PassManager() 
-        #pm1.append(VOQC(["optimize"]))
         pm1.append(_unroll)
         pm1.append(_depth_check + _opt, do_while=_opt_control)
         start = time.perf_counter() # start timer
-        new_circ = pm1.run(circ)
+        new_circ = pm1.run(new_circ)
         stop = time.perf_counter() # stop timer
         second = stop-start
         
@@ -74,19 +73,16 @@ def run(d, l):
             if (inst.name == "cx"):
                 cnot_count_after += 1
         print("Final:\t Total %d, CNOT %d\n" % (num_gates_after, cnot_count_after))
-        """
-        cwd = os.getcwd()
-        f = open(os.path.join((os.path.join(cwd, "voqc_build")), fname.split(".")[0]) + "_qiskit.qasm", "w")
-        f.write(new_circ.qasm())
-        """
+        
+        
         t = open(l, "a")
         csvwriter = csv.writer(t) 
-        csvwriter.writerow([fname, num_gates_before,num_gates_after, cnot_count_before, cnot_count_after,second])
+        csvwriter.writerow([fname, num_gates_before,voqc_gates, num_gates_after, cnot_count_before,cnot_voqc,  cnot_count_after,first+second])
         t.close()
     
     
 if (len(sys.argv) != 3):
-    print("Usage: python3 run_qiskit.py <input directory> <output file>")
+    print("Usage: python3 run_qiskit_voqc.py <input benchmark> <output file>")
     exit(-1)
 
 run(sys.argv[1], sys.argv[2])

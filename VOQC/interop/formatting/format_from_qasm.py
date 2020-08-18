@@ -8,7 +8,6 @@ import ast
 #Decomposes CCZ, CCX, RZQ, U1, U2, U3
 def format_from_qasm(fname):
     inqasm = open(fname, "r")
-    gates = ['x','h','rz','ccz','ccx','rzq','u1','u2','u3','sdg','tdg','t','s','z','cnot','cx']
     tmp = open("copy.qasm", "w") # hardcoded filename
     p_ccz = re.compile("ccz (.*), (.*), (.*);")
     p_ccx = re.compile("ccx (.*), (.*), (.*);")
@@ -23,18 +22,6 @@ def format_from_qasm(fname):
         m4 = p_u1.match(line)
         m5 = p_u2.match(line)
         m6 = p_u3.match(line)
-        valid = False
-        for i in range(len(gates)):
-            if line.startswith(i):
-                valid = True
-        if valid == False:
-            par = line.find('(')
-            if par != -1:
-                t = line[0:par]
-            else:
-                space = line.find(' ')
-                t = line[0:space]
-            print("ERROR! The gate %s is currently not supported in VOQC" % (t))
         if m1:
             a = m1.group(1)
             b = m1.group(2)

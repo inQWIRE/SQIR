@@ -1,4 +1,4 @@
-from voqc import *
+from interop.voqc import SQIR, print_gates
 import argparse
 import time
 import os.path

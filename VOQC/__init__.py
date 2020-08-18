@@ -1,1 +1,1 @@
-from .voqc import *
+from .run_voqc import *
