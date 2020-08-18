@@ -52,10 +52,10 @@ A script for running VOQC on all the benchmarks presented in our paper is availa
 The voqc.py file in this directory provides a wrapper around the VOQC library functions. Here is an example of using it.
 
 ```
-from voqc import *
+from interop.voqc import *
 
 # load circuit
-c = VOQC("benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
+c = SQIR("benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
 
 # run a single optimization (in this case, X propagation)
 c.not_propagation()
