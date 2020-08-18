@@ -38,6 +38,8 @@ def print_gates(lib, circ, orig):
         
 class SQIR:
     def __init__(self, fname, c=True):
+        
+        #Whether to print gates and optimization time
         self.print_c = c
         self.optim = 0
         
@@ -82,11 +84,11 @@ class SQIR:
     
     def merge_rotations(self):
         
-        #Define argtype/restype for optimize
+        #Define argtype/restype for merge_rotations
         self.lib.optimize.argtypes =[c_void_p]
         self.lib.optimize.restype = c_void_p
 
-        #Call optimizer function
+        #Call merge_rotations function
         start1 = time.time()
         self.circ = self.lib.merge_rotations(self.circ)
         end1 = time.time()
@@ -99,11 +101,11 @@ class SQIR:
 
     def cancel_single_qubit_gates(self):
         
-        #Define argtype/restype for optimize
+        #Define argtype/restype for cancel_single_qubit_gates
         self.lib.optimize.argtypes =[c_void_p]
         self.lib.optimize.restype = c_void_p
 
-        #Call optimizer function
+        #Call cancel_single_qubit_gates function
         start1 = time.time()
         self.circ = self.lib.cancel_single_qubit_gates(self.circ)
         end1 = time.time()
@@ -116,11 +118,11 @@ class SQIR:
     
     def cancel_two_qubit_gates(self):
         
-        #Define argtype/restype for optimize
+        #Define argtype/restype for cancel_two_qubit_gates
         self.lib.optimize.argtypes =[c_void_p]
         self.lib.optimize.restype = c_void_p
 
-        #Call optimizer function
+        #Call cancel_two_qubit_gates function
         start1 = time.time()
         self.circ = self.lib.cancel_two_qubit_gates(self.circ)
         end1 = time.time()
@@ -133,11 +135,11 @@ class SQIR:
 
     def not_propagation(self):
         
-        #Define argtype/restype for optimize
+        #Define argtype/restype for not_propagation
         self.lib.optimize.argtypes =[c_void_p]
         self.lib.optimize.restype = c_void_p
 
-        #Call optimizer function
+        #Call not_propagation function
         start1 = time.time()
         self.circ = self.lib.not_propagation(self.circ)
         end1 = time.time()
@@ -150,11 +152,11 @@ class SQIR:
     
     def hadamard_reduction(self):
         
-        #Define argtype/restype for optimize
+        #Define argtype/restype for hadamard_reduction
         self.lib.optimize.argtypes =[c_void_p]
         self.lib.optimize.restype = c_void_p
 
-        #Call optimizer function
+        #Call hadamard_reduction function
         start1 = time.time()
         self.circ = self.lib.hadamard_reduction(self.circ)
         end1 = time.time()
