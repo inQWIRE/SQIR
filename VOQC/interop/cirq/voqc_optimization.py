@@ -11,12 +11,11 @@ from interop.voqc import SQIR
 
 class VOQC:
     def __init__(self, func = None):
-        super().__init__()
-        self.optimizations =  ["optimize", "not_propagation", "cancel_single_qubit_gates", "cancel_two_qubit_gates", "hadamard_reduction", "merge_rotations"]
+        self.functions = ["optimize", "not_propagation", "cancel_single_qubit_gates", "cancel_two_qubit_gates", "hadamard_reduction", "merge_rotations"]
         self.func = func if func else ["optimize"]
-        for i range(len(self.func)):
-            if (i in self.optimizations == False):
-                print("%s is not a valid VOQC optimization function. These are the 6 valid optimizers: %s" (i, self.optimizations))
+        for i in range(len(self.func)):
+            if ((self.func[i] in self.functions) == False):
+                raise InvalidVOQCFunction(str(self.func[i]), self.functions)
     def optimize_circuit(self, circuit: circuits.Circuit):
         
         #Write qasm file from circuit
@@ -39,16 +38,10 @@ class VOQC:
         os.remove("copy.qasm")
         return circ
     
-    def function_call(self,func_list, fname_in):
+    def function_call(self, fname_in):
         a = SQIR(fname_in)
-        function_dict={"not_propagation": "not_propagation",
-                       "cancel_single_qubit_gates": "cancel_single_qubit_gates",
-                       "cancel_two_qubit_gates" : "cancel_two_qubit_gates",
-                       "merge_rotations": "merge_rotations",
-                       "hadamard_reduction": "hadamard_reduction",
-                       "optimize" : "optimize"}
-        for i in range(len(func_list)):
-            call = getattr(a,function_dict[func_list[i]])
-            call(False)
+        for i in range(len(self.func)):
+            call = getattr(a,[self.func[i]])
+            call()
         a.write("temp.qasm", False)     
     

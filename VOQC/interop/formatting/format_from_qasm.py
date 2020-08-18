@@ -3,11 +3,13 @@ from gmpy2 import *
 import os.path
 from qiskit.qasm import pi
 import ast
+from interop.exceptions import InvalidVOQCGate
 
 #Format from gates that are not compatible in Qiskit+VOQC and creates new file
 #Decomposes CCZ, CCX, RZQ, U1, U2, U3
 def format_from_qasm(fname):
     inqasm = open(fname, "r")
+    gates = ['x','h','rz','ccz','ccx','rzq','u1','u2','u3','sdg','tdg','t','s','z','cnot','cx', "OPENQASM 2.0;","include", "qreg"]
     tmp = open("copy.qasm", "w") # hardcoded filename
     p_ccz = re.compile("ccz (.*), (.*), (.*);")
     p_ccx = re.compile("ccx (.*), (.*), (.*);")
@@ -16,12 +18,25 @@ def format_from_qasm(fname):
     p_u2 = re.compile("u2\((.*),(.*)\) q\[([0-9]+)\]")
     p_u3 = re.compile("u3\((.*),(.*),(.*)\) q\[([0-9]+)\]")
     for line in inqasm:
+        
         m1 = p_ccx.match(line)
         m2 = p_ccz.match(line)
         m3 = p_rzq.match(line)
         m4 = p_u1.match(line)
         m5 = p_u2.match(line)
         m6 = p_u3.match(line)
+        valid = False
+        for i in range(len(gates)):
+            if line.startswith(gates[i]):
+                valid = True
+        if valid == False:
+            par = line.find('(')
+            if par != -1:
+                t = line[0:par]
+            else:
+                space = line.find(' ')
+                t = line[0:space]
+            raise InvalidVOQCGate(t)
         if m1:
             a = m1.group(1)
             b = m1.group(2)
