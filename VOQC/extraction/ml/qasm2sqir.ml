@@ -148,6 +148,8 @@ let translate_statement s qmap sym_tab =
                | "rz" -> (match List.nth params 0  with
                            | BinaryOp (Times, Real r, Pi) -> apply_gate (coq_Rz (Q.of_float r)) (List.hd qargs) qmap sym_tab
                            | BinaryOp (Times, UnaryOp (UMinus, Real r), Pi) -> apply_gate (coq_Rz (Q.of_float (-. r))) (List.hd qargs) qmap sym_tab
+                           | BinaryOp (Div, BinaryOp (Times,Nninteger r, Pi), Nninteger r1) -> apply_gate (coq_Rz (Q.of_float ((float_of_int r)/. (float_of_int r1)))) (List.hd qargs) qmap sym_tab
+                           | BinaryOp (Div, BinaryOp (Times, UnaryOp(UMinus,Nninteger r), Pi), Nninteger r1) -> apply_gate (coq_Rz (Q.of_float ((-.(float_of_int r))/. (float_of_int r1)))) (List.hd qargs) qmap sym_tab
                            | BinaryOp (Times, Pi, Real r) -> apply_gate (coq_Rz (Q.of_float r)) (List.hd qargs) qmap sym_tab
                            | Real r -> apply_gate (coq_Rz (Q.of_float (r/. (Float.pi)))) (List.hd qargs) qmap sym_tab
                            | UnaryOp(UMinus, Real r) -> apply_gate (coq_Rz (Q.of_float (-.r /. Float.pi))) (List.hd qargs) qmap sym_tab

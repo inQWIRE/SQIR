@@ -25,7 +25,7 @@ class VOQC(TransformationPass):
         Returns:
             DAGCircuit: the optimized DAG after list of VOQC optimizations.
         Raises:
-            ValueError: if gate in circuit is not currently supported by VOQC
+            InvalidVOQCGate: if gate in circuit is not currently supported by VOQC
         """
         #Write qasm file for VOQC input
         circ = dag_to_circuit(dag)
