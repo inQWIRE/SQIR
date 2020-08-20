@@ -17,6 +17,7 @@ def format_from_qasm(fname):
     p_u1 = re.compile("u1\((.*)\) q\[([0-9]+)\]")
     p_u2 = re.compile("u2\((.*),(.*)\) q\[([0-9]+)\]")
     p_u3 = re.compile("u3\((.*),(.*),(.*)\) q\[([0-9]+)\]")
+    p_rz = re.compile("rz\(pi\*([-+]?(\d+?|\.\d+)([eE][-+]?\d+)?)\) q\[([0-9]+)\];")
     for line in inqasm:
         
         m1 = p_ccx.match(line)
@@ -25,6 +26,7 @@ def format_from_qasm(fname):
         m4 = p_u1.match(line)
         m5 = p_u2.match(line)
         m6 = p_u3.match(line)
+        m7 = p_rz.match(line)
         valid = False
         for i in range(len(gates)):
             if line.startswith(gates[i]):
@@ -107,9 +109,9 @@ def format_from_qasm(fname):
             tmp.write ("rz(%s) q[%d];\n" % (phi, d))
             #tmp.write("u3(pi/2,%s,%s) q[%d];\n" % (num1,num2,d))
         elif m6:
-            a = m.group(1)
-            b = m.group(2)
-            c = m.group(3)
+            a = m6.group(1)
+            b = m6.group(2)
+            c = m6.group(3)
             a = eval(a)
             b = eval(b)
             c = eval(c)
@@ -121,7 +123,13 @@ def format_from_qasm(fname):
             tmp.write ("h q[%d];\n" % (d))
             tmp.write ("rz(%s) q[%d];\n" % (theta, d))
             tmp.write ("h q[%d];\n" % (d))
-            tmp.write ("rz(%s) q[%d];\n" % (phi, d))  
+            tmp.write ("rz(%s) q[%d];\n" % (phi, d))
+        elif m7:
+            a = m7.group(2)
+            b = m7.group(3)
+            c = str(float(a))+b
+            d = int(m7.group(4))
+            tmp.write("rz(%s*pi) q[%d];\n" %(c, d))
         else:
             tmp.write(line)
     tmp.close()
