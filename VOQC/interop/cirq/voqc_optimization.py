@@ -3,10 +3,10 @@ import cirq
 from cirq.contrib.qasm_import import circuit_from_qasm, qasm
 import re
 import os
+
 from cirq.circuits import Circuit
-from interop.format_qasm.format_from_qasm import format_from_qasm
-from interop.format_qasm.div_pi import div_pi
-from interop.format_qasm.rzq_to_rz import rzq_to_rz
+from interop.formatting.format_from_qasm import format_from_qasm
+from interop.formatting.rzq_to_rz import rzq_to_rz
 from interop.voqc import SQIR
 
 class VOQC:
@@ -26,22 +26,23 @@ class VOQC:
         
         #Decompose gates such as ccz, ccx, u1, u2, u3
         format_from_qasm("temp.qasm")
-        
-        #Call VOQC optimizations from input list
-        t = self.function_call(self.func, "copy.qasm")
-        rzq_to_rz("temp.qasm")
-        
+        #Call VOQC optimizations from input list and go from rzq to rz
+        t = self.function_call("copy.qasm")
+        rzq_to_rz("temp2.qasm")
         #Get Cirq Circuit from qasm file
-        c = open("temp.qasm").read()
+        c = open("temp2.qasm").read()
         circ = circuit_from_qasm(c)
-        os.remove("temp.qasm")
-        os.remove("copy.qasm")
+    
+        #Remove temporary files
+        #os.remove("temp.qasm")
+        #os.remove("copy.qasm")
+        
         return circ
     
-    def function_call(self, fname_in):
-        a = SQIR(fname_in)
+    def function_call(self,fname_in):
+        a = SQIR(fname_in, False)
         for i in range(len(self.func)):
-            call = getattr(a,[self.func[i]])
+            call = getattr(a,self.func[i])
             call()
-        a.write("temp.qasm", False)     
+        a.write("temp2.qasm")     
     
