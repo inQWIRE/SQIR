@@ -1,5 +1,3 @@
-import math
-import numpy
 import os
 from qiskit import QuantumCircuit
 from qiskit.transpiler import PassManager
@@ -21,10 +19,13 @@ def count(d):
         sum += d[k]
     return sum    
 def run(d, l):
+    
+    #Open CSV file to write gate applications
     t = open(l, "w")
     csvwriter = csv.writer(t) 
     csvwriter.writerow(["Name", "Before", "VOQC"  "Qiskit+VOQC", "Before CNOT","VOQC CNOT", "Qiskit+VOQC CNOT","Time"])
     t.close()
+    
     for fname in os.listdir(d):
         print("Processing %s..." % fname)
         format_from_qasm(os.path.join(d, fname))
