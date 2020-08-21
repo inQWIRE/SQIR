@@ -5,9 +5,20 @@
 This README contains instructions for using the VOQC optimizer with widely used quantum frameworks.
 
 VOQC is currently compatible with the following frameworks:
-* Cirq
-* Qiskit
+* Cirq (Version 0.8.2)
+* Qiskit (Version 0.19.6)
 
+The VOQC transpiler pass currently supports the following gates:
+* t, tdg
+* s, sdg
+* z
+* rzq(num,den)
+* rz(f * pi)
+* h
+* x
+* cnot
+* ccz, ccx
+* u1, u2, u3
 
 
 
@@ -18,45 +29,64 @@ Dependencies:
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
   * OCaml OpenQASM parser (`opam install openQASM`)
-  * ctypes (`opam install ctypes ctypes-foreign ppx_deriving ctypes-zarith`)
 
-**OCaml Executable**: In the top (`..`) directory, run `make voqc`. This will compile the OCaml code we have extracted from our verified Coq code. If you have modified the Coq code, then be sure to run `make optimizer` first. If you want to compile the code without using our Makefile you can use the command `dune build voqc.exe`. This will produce `voqc.exe` in _build/default/.
+**Library**: Run `dune build extraction/libvoqc.so` in the VOQC directory. This will produce `libvoqc.so` in _build/default/extraction/.
 
-**Library**: Run `dune build extraction/libvoqc.so`. This will produce `libvoqc.so` in _build/default/extraction/.
+## Using VOQC Transpiler Pass in Qiskit
 
-## Running VOQC Executable
+To pass a qiskit circuit to the VOQC optimizer, append `VOQC([list of optimizations])` to a pass manager. The argument `list of optimizations` is an optional argument that allows custom optimizations to be run. Appending VOQC() to a pass manager without a list will run the main optimize function in VOQC. The client file must be run from the VOQC directory.
 
-To run the OCaml optimizer, run `dune exec -- ./voqc.exe -i <prog> -o <out>`, which will optimize program prog and write the optimized result to out. It will print the initial and final gate counts.
-
-*Example*: The following runs VOQC on the tof_3 benchmark and writes the result to out.qasm.
+*Example*: The following is a transpiler pass to VOQC using a circuit built in qiskit. 
 ```
-$ dune exec -- ./voqc.exe -i benchmarks/Arithmetic_and_Toffoli/tof_3.qasm -o out.qasm 
-Original:	 Total 45, Rz 21, T 21, H 6, X 0, CNOT 18
-Final:	 Total 40, Rz 18, T 15, H 6, X 0, CNOT 16
+from qiskit.transpiler import PassManager
+from interop.qiskit.voqc_optimization import VOQC
+from qiskit import QuantumCircuit
+
+ #Build Quantum Circuit
+ circ = QuantumCircuit(2)
+ circ.cx(0, 1)
+ circ.cx(0, 1)
+ circ.h(0)
+ 
+ #Pass to VOQC
+ pm = PassManager().
+ #Call cancel_two_qubit_gates
+ pm.append(VOQC(["cancel_two_qubit_gates"]))
+ new_circ = pm.run(circ)
+ 
 ```
-VOQC reports, in order: total gate count, number of z-axis rotation gates, number of T gates (if applicable), number of H gates, number of X gates, and number of CNOT gates.
-
-A script for running VOQC on all the benchmarks presented in our paper is available in the [benchmarks](benchmarks) directory.
-
-## Using VOQC Library
-
-The voqc.py file in this directory provides a wrapper around the VOQC library functions. Here is an example of using it.
+*Example*: The following is a transpiler pass to VOQC using a qasm file as an input
 
 ```
-from voqc import *
+from qiskit.transpiler import PassManager
+from interop.qiskit.voqc_optimization import VOQC
+from qiskit import QuantumCircuit
+import os.path
 
-# load circuit
-c = VOQC("benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
+rel = os.path.dirname(os.path.abspath(__file__))
+#Decompose gates not supported in qiskit such as rzq, ccx, ccz
+format_from_qasm(os.path.join(rel, "benchmarks/Arithmetic_and_Toffoli/tof_3.qasm"))
 
-# run a single optimization (in this case, X propagation)
-c.not_propagation()
+circ = QuantumCircuit.from_qasm_file("copy.qasm")
+pm = PassManager()
 
-# run all optimizations
-c.optimize()
-
-# write the optimized file
-c.write("out.qasm")
+#Pass no args to run optimize function
+pm.append(VOQC())
+new_circ = pm.run(circ)
 ```
 
+
+## Running Benchmarks using VOQC and Qiskit
+
+The run_qiskit_voqc.py file in this directory provides the ability to run VOQC optimizations, followed by Qiskit optimizations to optimize a qasm file, and see total gate improvements. Copy this file into the VOQC directory. The file writes out the optimized gate counts to a csv file.
+
+*Example*: The following is an example of running run_qiskit_voqc.py. Only the first output in the directory is shown for simplicity.
+```
+$ python run_qiskit_voqc.py benchmarks/Arithmetic_and_Toffoli out.csv
+Processing gf2^9_mult.qasm...
+Original:	 Total 1095, CNOT 494
+After VOQC:	 Total 885, CNOT 494
+Final:	 Total 882, CNOT 494
+```
 
 

@@ -9,7 +9,7 @@ from interop.exceptions import InvalidVOQCGate
 #Decomposes CCZ, CCX, RZQ, U1, U2, U3
 def format_from_qasm(fname):
     inqasm = open(fname, "r")
-    gates = ['x','h','rz','ccz','ccx','rzq','u1','u2','u3','sdg','tdg','t','s','z','cnot','cx', "OPENQASM 2.0;","include", "qreg"]
+    gates = ['x','h','rz','ccz','ccx','rzq','u1','u2','u3','sdg','tdg','t','s','z','cnot','cx', "OPENQASM 2.0;","include", "qreg", "//", ","]
     tmp = open("copy.qasm", "w") # hardcoded filename
     p_ccz = re.compile("ccz (.*), (.*), (.*);")
     p_ccx = re.compile("ccx (.*), (.*), (.*);")
@@ -27,18 +27,18 @@ def format_from_qasm(fname):
         m5 = p_u2.match(line)
         m6 = p_u3.match(line)
         m7 = p_rz.match(line)
-        valid = False
-        for i in range(len(gates)):
-            if line.startswith(gates[i]):
-                valid = True
-        if valid == False:
-            par = line.find('(')
-            if par != -1:
-                t = line[0:par]
-            else:
-                space = line.find(' ')
-                t = line[0:space]
-            raise InvalidVOQCGate(t)
+        #valid = False
+        #for i in range(len(gates)):
+         #   if line.startswith(gates[i]):
+          #      valid = True
+        #if valid == False:
+         #   par = line.find('(')
+          #  if par != -1:
+           #     t = line[0:par]
+            #else:
+             #   space = line.find(' ')
+              #  t = line[0:space]
+            #raise InvalidVOQCGate(t)
         if m1:
             a = m1.group(1)
             b = m1.group(2)
@@ -85,14 +85,13 @@ def format_from_qasm(fname):
         elif m4:
             num1 = float(eval(m4.group(1)))
             q = int(m4.group(2))
-            lamda = num1 - (pi/2)
+            lamda = num1 
             theta = 0
-            phi = pi/2
-            tmp.write("rz(%s) q[%d];\n" % (lamda, q))
+            phi = 0
+            tmp.write("rz(%s) q[%d];\n" % (pi/2, q))
             tmp.write ("h q[%d];\n" % (q))
-            tmp.write ("rz(%s) q[%d];\n" % (theta, q))
             tmp.write ("h q[%d];\n" % (q))
-            tmp.write ("rz(%s) q[%d];\n" % (phi, q))
+            tmp.write ("rz(%s) q[%d];\n" % (lamda-(pi/2), q))
         elif m5:
             num1 = m5.group(1)
             num1 = eval(num1)
@@ -102,11 +101,11 @@ def format_from_qasm(fname):
             lamda = float(num2) - (pi/2)
             theta = pi/2
             phi = float(num1) + (pi/2)
-            tmp.write("rz(%s) q[%d];\n" % (lamda, d))
+            tmp.write("rz(%s) q[%d];\n" % (phi, d))
             tmp.write ("h q[%d];\n" % (d))
             tmp.write ("rz(%s) q[%d];\n" % (theta, d))
             tmp.write ("h q[%d];\n" % (d))
-            tmp.write ("rz(%s) q[%d];\n" % (phi, d))
+            tmp.write ("rz(%s) q[%d];\n" % (lamda, d))
             #tmp.write("u3(pi/2,%s,%s) q[%d];\n" % (num1,num2,d))
         elif m6:
             a = m6.group(1)
@@ -119,11 +118,11 @@ def format_from_qasm(fname):
             lamda = float(c) - (pi/2)
             theta = float(a)
             phi = float(b) + (pi/2)
-            tmp.write("rz(%s) q[%d];\n" % (lamda, d))
+            tmp.write("rz(%s) q[%d];\n" % (phi, d))
             tmp.write ("h q[%d];\n" % (d))
             tmp.write ("rz(%s) q[%d];\n" % (theta, d))
             tmp.write ("h q[%d];\n" % (d))
-            tmp.write ("rz(%s) q[%d];\n" % (phi, d))
+            tmp.write ("rz(%s) q[%d];\n" % (lamda, d))
         elif m7:
             a = m7.group(2)
             b = m7.group(3)
