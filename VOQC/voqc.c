@@ -2,8 +2,9 @@
 #include <caml/callback.h>
 #include "extraction/ocaml_wrapper.h"
 
+/*** C file for running VOQC -- used for testing (will delete later) ***/
 // 1. copy libvoqc.so to extraction directory
-// 2. compile with gcc -I/usr/local/lib/ocaml/ -I./extraction -L./extraction/ client.c -lvoqc
+// 2. compile with gcc -I/usr/local/lib/ocaml/ -I./extraction -L./extraction/ voqc.c -lvoqc
 
 void init(void);
 

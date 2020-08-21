@@ -7,7 +7,7 @@
 #include <caml/callback.h>
 #include "ocaml_wrapper.h"
 
-// CLOSURE taken from https://github.com/xoolive/facile
+// CLOSURE, wrap, destroy taken from https://github.com/xoolive/facile
 #define CLOSURE(A)\
   static const value * closure = NULL;\
   if (closure == NULL) {\
@@ -96,54 +96,48 @@ value* merge_rotations (value* circ) {
 }
 
 void write_qasm_file (char* outf, value* circ) {
-  CAMLparam0();
-   CAMLlocal2(fname, res);
+   CAMLparam0();
+   CAMLlocal1(fname);
    fname = caml_copy_string(outf);
    CLOSURE("write_qasm_file");
-   res = caml_callback2(*closure, fname, *circ);
+   caml_callback2(*closure, fname, *circ);
    CAMLreturn0;
 }
 
+// AFAIK we don't need CAMLparam or CAMLreturn since nothing has type 'value' -KH
 int x_count (value* circ) {
-    CAMLparam0();
     CLOSURE("x_count");
-    CAMLreturnT(int, Int_val(caml_callback(*closure, *circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
 int h_count (value* circ) {
-    CAMLparam0();
     CLOSURE("h_count");
-    CAMLreturnT(int, Int_val(caml_callback(*closure, *circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
 int rz_count (value* circ) {
-    CAMLparam0();
     CLOSURE("rz_count");
-    CAMLreturnT(int, Int_val(caml_callback(*closure, *circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
 int cnot_count (value* circ) {
-    CAMLparam0();
     CLOSURE("cnot_count");
-    CAMLreturnT(int, Int_val(caml_callback(*closure, *circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
 int c_count (value* circ) {
-    CAMLparam0();
     CLOSURE("c_count");
-    CAMLreturnT(int, Int_val(caml_callback(*closure, *circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
 int t_count (value* circ) {
-    CAMLparam0();
     CLOSURE("t_count");
-    CAMLreturnT(int, Int_val(caml_callback(*closure, *circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
 int total_count (value* circ) {
-    CAMLparam0();
     CLOSURE("total_count");
-    CAMLreturnT(int, Int_val(caml_callback(*closure, *circ)));
+    return Int_val(caml_callback(*closure, *circ));
 }
 
 
