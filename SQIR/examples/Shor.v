@@ -11,7 +11,7 @@ Local Coercion Z.of_nat : nat >-> BinNums.Z.
 Definition Order (a r p : nat) :=
   0 < r /\
   a^r mod p = 1 /\
-  (forall r' : nat, (0 < r' /\ a^r' mod p = 1) -> r' = r).
+  (forall r' : nat, (0 < r' /\ a^r' mod p = 1) -> r' >= r).
 
 (* Parameter assumptions of the Shor'salgorithm *)
 Definition BasicSetting (a r N m n : nat) :=
@@ -44,10 +44,46 @@ Qed.
 
 (* Proved in a slightly different form in Csum_Cexp_nonzero in QPE.v. We should 
    update the two files to use consistent notation. *)
-Lemma ω_neg_sum_nonzero : forall r j, (j <> 0)%nat -> 
-  Csum (fun i =>  (ω_neg r ^ (i * j))%C) r = 0.
+Lemma ω_neg_sum_nonzero :
+  forall (r k : nat),
+    0 < r ->
+    0 < k < r -> 
+    Csum (fun i =>  (ω_neg r ^ (i * k))%C) r = 0.
 Proof.
-Admitted.
+  intros.
+  assert (((fun (x : nat) => (ω_neg r)^(x * k)) = (fun (x : nat) => ((ω_neg r) ^ k) ^ x))%C).
+  { apply functional_extensionality. intros. unfold ω_neg. do 3 rewrite Cexp_pow.
+    rewrite mult_INR. replace (-2 * PI / r * (x * k)) with (-2 * PI / r * k * x) by lra. easy.
+  }
+  rewrite H1. rewrite Csum_geometric_series. unfold ω_neg. do 2 rewrite Cexp_pow.
+  replace (-2 * PI / r * k * r) with (-(2 * PI * k)) by (field; lra). rewrite Cexp_neg.
+  rewrite <- Cexp_pow. rewrite Cexp_2PI.
+  replace (1 ^ k)%C with C1 by (rewrite RtoC_pow; rewrite pow1; auto).
+  replace (1 - / 1)%C with C0 by lca. lca.
+  unfold ω_neg. rewrite Cexp_pow. unfold Cexp. intro. inversion H2. rewrite H4 in H5. rewrite Rplus_0_l in H5.
+  assert (0 < / r * k < 1).
+  { destruct H0. split. 
+    - apply Rinv_0_lt_compat in H. apply Rmult_lt_0_compat; assumption.
+    - pose (Rinv_lt_contravar k r (Rmult_lt_0_compat k r H0 H) H3) as H6.
+      pose (Rmult_lt_compat_r k (/ r) (/ k) H0 H6) as H7.
+      rewrite <- Rinv_l_sym in H7; lra.
+  }
+  rewrite <- sin_neg in H5. replace (- (-2 * PI / r * k)) with (2 * PI / r * k) in H5 by lra.
+  assert (0 < 2 * PI).
+  { apply Rmult_lt_0_compat; try lra. apply PI_RGT_0.
+  }
+  assert (0 < 2 * PI / r * k < 2 * PI).
+  { destruct H3. replace (2 * PI / r * k) with ((2 * PI) * (/ r * k)) by lra. split.
+    - apply Rmult_lt_0_compat; lra. 
+    - pose (Rmult_lt_compat_l (2 * PI) (/ r * k) 1 H6 H7) as H8.
+      autorewrite with R_db in H8. assumption.
+  }
+  destruct H7.
+  apply sin_eq_O_2PI_0 in H5; try (apply Rlt_le; assumption).
+  destruct H5 as [? |[? | ?]]; try lra.
+  replace ((-2 * PI / r * k)) with (- (2 * PI / r * k)) in H4 by lra. rewrite H5 in H4.
+  rewrite cos_neg in H4. rewrite cos_PI in H4. lra.
+Qed.
 
 Lemma sum_of_ψ_is_one :
   forall a r N m n : nat,
@@ -68,8 +104,10 @@ Proof.
        split.
        rewrite ω_neg_sum_zero. reflexivity.
        intros.
-       rewrite ω_neg_sum_nonzero by auto.
-       lma. }
+       rewrite ω_neg_sum_nonzero.
+       lma.
+       apply lt_0_INR; assumption. split. apply not_eq_sym in H2. apply neq_0_lt in H2. apply lt_0_INR; assumption. apply lt_INR; assumption.
+  }
   unfold basisPowerA.
   rewrite Nat.pow_0_r.
   rewrite Nat.mod_1_l by lia.
@@ -170,9 +208,9 @@ Definition ϕ (n : nat) := Rsum n (fun x => if rel_prime_dec x n then 1 else 0).
 Lemma ϕ_n_over_n_lowerbound :
   exists β, 
     β>0 /\
-    (forall (n : nat),
+    forall (n : nat),
       2 < n ->
-      (ϕ n) / n >= β / (Nat.log2 (Nat.log2 n))).
+      (ϕ n) / n >= β / (Nat.log2 (Nat.log2 n)).
 Admitted.
 
 (* The final success probability of Shor's order finding algorithm. It counts the k's coprime to r and their probability of being collaped to. *)
@@ -186,9 +224,9 @@ Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
 Lemma Shor_correct :
   exists β, 
     β>0 /\
-    (forall (a r N m n : nat) (c : base_ucom n),
+    forall (a r N m n : nat) (c : base_ucom n),
       BasicSetting a r N m n ->
       MultiplyCircuitProperty a N n c ->
-      probability_of_success a r N m n c >= β / (Nat.log2 (Nat.log2 N))).
+      probability_of_success a r N m n c >= β / (Nat.log2 (Nat.log2 N)).
 Admitted.
 
