@@ -466,8 +466,46 @@ apply f_equal2. reflexivity.
 repeat rewrite Pos2Z.inj_mul.
 repeat rewrite plus_IZR. repeat rewrite mult_IZR. 
 solve_matrix.
+assert (PI / 2 / 2 = PI / 4)%R by lra. rewrite H0. clear H0.
+rewrite cos_PI4. rewrite sin_PI4.
+assert ((1 / √ 2)%R * (1 / √ 2)%R = 1 / 2)%R.
+field_simplify_eq. rewrite pow2_sqrt. reflexivity. lra.
+intros R. apply sqrt_eq_0 in R. lra. lra.
+assert (((1 / √ 2)%R * (1 / √ 2)%R +
+ -
+ (Cexp (IZR (Qnum b') * / IZR (Z.pos (Qden b')) * PI) * (1 / √ 2)%R *
+  (Cexp (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI) * (1 / √ 2)%R)))%C
+   = ((((1 / √ 2) * (1 / √ 2))%R) +
+ - ((Cexp (IZR (Qnum b') * / IZR (Z.pos (Qden b')) * PI)
+ * Cexp (IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI)) * (((1 / √ 2) * (1 / √ 2))%R)))%C) by lca.
+rewrite H1. clear H1. rewrite H0.
 destruct (- (Qnum b' * Z.pos (Qden a) + Qnum a * Z.pos (Qden b')) * 1)%Z eqn:eq1.
 repeat rewrite Pos2Z.inj_mul. rewrite mult_IZR.
+assert (Qnum b' * Z.pos (Qden a) + Qnum a * Z.pos (Qden b') = 0)%Z by lia.
+rewrite <- Cexp_add.
+rewrite (Rmult_comm (IZR (Z.pos (Qden b')) * IZR (Z.pos (Qden a)))).
+rewrite Rinv_l.
+assert ((IZR (Qnum b') * / IZR (Z.pos (Qden b')) * PI +
+     IZR (Qnum a) * / IZR (Z.pos (Qden a)) * PI)
+      = ((IZR (Qnum b') * IZR (Z.pos (Qden a))) + (IZR (Qnum a) * IZR (Z.pos (Qden b'))))
+               * / (IZR (Z.pos (Qden a)) * IZR (Z.pos (Qden b'))) * PI)%R.
+field_simplify_eq. reflexivity. split.
+intro contra.
+assert (Z.pos (Qden b') <> 0)%Z. lia.
+apply not_0_IZR in H2. rewrite contra in H2. contradiction.
+intro contra.
+assert (Z.pos (Qden a) <> 0)%Z. lia.
+apply not_0_IZR in H2. rewrite contra in H2. contradiction.
+rewrite H2. clear H2. rewrite <- mult_IZR. rewrite <- mult_IZR.
+rewrite <- plus_IZR. rewrite H1.
+assert (0 * / (IZR (Z.pos (Qden a)) * IZR (Z.pos (Qden b'))) * PI = 0)%R by lra.
+rewrite H2. clear H2. rewrite Cexp_0.
+autorewrite with R_db C_db.
+assert (PI * / 2 = PI / 2)%R by lra. rewrite H2. clear H2.
+rewrite cos_PI2. reflexivity.
+apply Rmult_integral_contrapositive.
+split. apply not_0_IZR. lia. apply not_0_IZR. lia.
+
 Admitted.
 
 Lemma is_Z: forall (n :Z) (a: Q), (0 < n)%Z -> 
@@ -475,7 +513,20 @@ Lemma is_Z: forall (n :Z) (a: Q), (0 < n)%Z ->
 Proof.
 intros.
 apply  Z_div_exact_full_2 in H0.
-exists ((Qnum a / (n * Z.pos (Qden a))))%Z. 
+assert ((n * Z.pos (Qden a) * (Qnum a / (n * Z.pos (Qden a))))
+      = (n * (Qnum a / (n * Z.pos (Qden a)))) * Z.pos (Qden a))%Z by lia.
+(*
+rewrite H1 in H0. clear H1.
+assert ((inject_Z (n * (Qnum a / (n * Z.pos (Qden a))) * Z.pos (Qden a))) / (inject_Z (Z.pos (Qden a)))
+       = inject_Z (n * (Qnum a / (n * Z.pos (Qden a)))))%Q.
+rewrite inject_Z_mult.
+2: {rewrite <- H0 in H1.
+    assert (a = inject_Z (Qnum a) / inject_Z (Z.pos (Qden a))). 
+    assert (a = Qmake (Qnum a) (Qden a))%Q.
+}
+rewrite Qdiv_mult_l.
+rewrite Q_div_mult_full. reflexivity. lia.
+assert (inject_Z ((Qnum a) / Z.pos (Qden a)) = a).*)
 Admitted.
 
 Lemma cos_Z: forall (a: Z), cos (IZR a * 2 * PI) = 1%R.

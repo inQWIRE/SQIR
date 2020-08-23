@@ -155,6 +155,8 @@ Proof. intros. rewrite H. reflexivity. Qed.
 
 (* Equivalence up to a phase. *)
 
+Locate "∝".
+
 Definition uc_cong {dim : nat} (c1 c2 : base_ucom dim) :=
   uc_eval c1 ∝ uc_eval c2.
 Infix "≅" := uc_cong (at level 70).
