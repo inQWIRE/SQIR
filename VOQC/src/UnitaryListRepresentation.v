@@ -535,8 +535,6 @@ Qed.
 
 (* Equivalence up to a phase. *)
 
-Locate "≅".
-
 Definition uc_cong_l {dim} (l1 l2 : gate_list G.U dim) := 
   list_to_ucom l1 ≅ list_to_ucom l2.
 Infix "≅l≅" := uc_cong_l (at level 20) : ucom_scope.
