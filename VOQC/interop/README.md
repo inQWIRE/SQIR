@@ -12,7 +12,6 @@ The VOQC transpiler pass currently supports the following gates:
 * t, tdg
 * s, sdg
 * z
-* rzq(num,den)
 * rz(f * pi)
 * h
 * x
@@ -34,7 +33,7 @@ Dependencies:
 
 ## Using VOQC Transpiler Pass in Qiskit
 
-To pass a qiskit circuit to the VOQC optimizer, append `VOQC([list of optimizations])` to a pass manager. The argument `list of optimizations` is an optional argument that allows custom optimizations to be run. Appending VOQC() to a pass manager without a list will run the main optimize function in VOQC. The client file must be run from the VOQC directory.
+To pass a qiskit circuit to the VOQC optimizer, append `VOQC([list of optimizations])` to a pass manager. The argument `list of optimizations` is an optional argument that allows custom optimizations to be run. Appending `VOQC()` to a pass manager without a list will run the main optimize function in VOQC. The client file must be run from the VOQC directory.
 
 *Example*: The following is a transpiler pass to VOQC using a circuit built in qiskit. 
 ```
@@ -55,21 +54,21 @@ from qiskit import QuantumCircuit
  new_circ = pm.run(circ)
  
 ```
-*Example*: The following is a transpiler pass to VOQC using a qasm file as an input
+*Example*: The following is a transpiler pass to VOQC using a qasm file as an input. 
 
 ```
 from qiskit.transpiler import PassManager
 from interop.qiskit.voqc_optimization import VOQC
-from qiskit import QuantumCircuit
+from qiskit.circuit import QuantumCircuit
 import os.path
 
 rel = os.path.dirname(os.path.abspath(__file__))
 #Decompose gates not supported in qiskit such as rzq, ccx, ccz
+#Only necessary if input file has ccx, ccz, rzq gates
 format_from_qasm(os.path.join(rel, "benchmarks/Arithmetic_and_Toffoli/tof_3.qasm"))
-
 circ = QuantumCircuit.from_qasm_file("copy.qasm")
-pm = PassManager()
 
+pm = PassManager()
 #Pass no args to run optimize function
 pm.append(VOQC())
 new_circ = pm.run(circ)
@@ -78,7 +77,7 @@ new_circ = pm.run(circ)
 
 ## Running Benchmarks using VOQC and Qiskit
 
-The run_qiskit_voqc.py file in this directory provides the ability to run VOQC optimizations, followed by Qiskit optimizations to optimize a qasm file, and see total gate improvements. Copy this file into the VOQC directory. The file writes out the optimized gate counts to a csv file.
+The run_qiskit_voqc.py file in test/run_benchmarks provides the ability to run VOQC optimizations, followed by Qiskit optimizations to optimize a qasm file, and see total gate improvements. Copy this file into the VOQC directory. The file writes out the optimized gate counts to a csv file.
 
 *Example*: The following is an example of running run_qiskit_voqc.py. Only the first output in the directory is shown for simplicity.
 ```
