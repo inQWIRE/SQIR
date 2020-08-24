@@ -8,10 +8,21 @@ Local Coercion INR : nat >-> R.
 Local Coercion Z.of_nat : nat >-> BinNums.Z.
 
 (* r is the order of a modulo p *)
-Definition Order (a r p : nat) :=
+Definition Order (a r N : nat) :=
   0 < r /\
-  a^r mod p = 1 /\
-  (forall r' : nat, (0 < r' /\ a^r' mod p = 1) -> r' >= r).
+  a^r mod N = 1 /\
+  (forall r' : nat, (0 < r' /\ a^r' mod N = 1) -> r' >= r).
+
+Lemma Order_N_nonzero :
+  forall a r N,
+    Order a r N ->
+    0 < N.
+Proof.
+  intros. 
+  destruct (0 <? N)%nat eqn:E.
+  - apply Nat.ltb_lt in E; easy.
+  - apply Nat.ltb_ge in E. assert (N=0) by omega. destruct H as [_ [? _]]. rewrite H0 in H. simpl in H. omega.
+Qed.
 
 (* Parameter assumptions of the Shor'salgorithm *)
 Definition BasicSetting (a r N m n : nat) :=
@@ -48,7 +59,7 @@ Lemma ω_neg_sum_nonzero :
   forall (r k : nat),
     0 < r ->
     0 < k < r -> 
-    Csum (fun i =>  (ω_neg r ^ (i * k))%C) r = 0.
+    Csum (fun i => (ω_neg r ^ (i * k))%C) r = 0.
 Proof.
   intros.
   assert (((fun (x : nat) => (ω_neg r)^(x * k)) = (fun (x : nat) => ((ω_neg r) ^ k) ^ x))%C).
@@ -125,15 +136,38 @@ Proof.
   assumption.
 Qed.
 
+Lemma mod_pow :
+  forall a b N,
+    (0 < N)%nat ->
+    a^b mod N = (a mod N)^b mod N.
+Proof.
+  intros. induction b.
+  - simpl; auto.
+  - simpl. rewrite Nat.mul_mod; try omega. rewrite IHb. apply Nat.mul_mod_idemp_r. omega.
+Qed.
+
+Lemma MultiGroup_modulo_N :
+  forall a r N x,
+    Order a r N ->
+    a^x mod N = a^(x mod r) mod N.
+Proof.
+  intros. assert (HN := H). apply Order_N_nonzero in HN.
+  destruct H as [? [? ?]]. replace (a ^ x mod N)%nat with ((a^(r * (x / r) + x mod r)) mod N)%nat.
+  2: { rewrite <- Nat.div_mod; omega. }
+  rewrite Nat.pow_add_r. rewrite Nat.mul_mod; try omega.
+  rewrite Nat.pow_mul_r. rewrite mod_pow; try omega.
+  rewrite H0. rewrite Nat.pow_1_l. rewrite <- Nat.mul_mod; try omega. rewrite Nat.mul_1_l. easy.
+Qed.
+
 (* The description of the circuit implementing "multiply a modulo N". *)
 Definition MultiplyCircuitProperty (a N n : nat) (c : base_ucom n) :=
   forall x : nat,
     (0 <= x < N ->
      (uc_eval c) × (basis_vector (2^n) x) = basis_vector (2^n) (a * x mod N))
-    /\
+    (*/\
     (N <= x ->
-     (uc_eval c) × (basis_vector (2^n) x) = basis_vector (2^n) x).
-                 
+     (uc_eval c) × (basis_vector (2^n) x) = basis_vector (2^n) x)*).
+
 Lemma MC_eigenvalue :
   forall (a r N j m n : nat) (c : base_ucom n),
     BasicSetting a r N m n ->
