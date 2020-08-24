@@ -7,7 +7,7 @@ eq_lib = EquivalenceLibrary()
 theta = Parameter('theta')
 phi = Parameter('phi')
 lamda = Parameter('lamda')
-        
+
 u3 = U3Gate(theta, phi, lamda)
 u2 = U2Gate(theta, phi)
 u1 = U1Gate(theta)

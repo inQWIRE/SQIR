@@ -26,19 +26,8 @@ class VOQC(TransformationPass):
             
     def run(self, dag):
         
-        """Run the VOQC optimizations in passed list on `dag`.
-        Args:
-            dag (DAGCircuit): the DAG to be optimized.
-        Returns:
-            DAGCircuit: the optimized DAG after list of VOQC optimizations.
-        Raises:
-            InvalidVOQCGate: if gate in circuit is not currently supported by VOQC
-        """
-
         #Unroll input gates to the gates supported by VOQC
-        dag = (BasisTranslator(eq_lib, ['x', 'h','cx','rz','tdg','sdg','s','t','z'])).run(dag)
-
-        circ = dag_to_circuit(dag)
+        circ = dag_to_circuit((BasisTranslator(eq_lib, ['x', 'h','cx','rz','tdg','sdg','s','t','z'])).run(dag))
 
         #Remove rz(0) gates to pass to VOQC
         i = 0
@@ -50,22 +39,19 @@ class VOQC(TransformationPass):
                     i+=1
             else:
                 i+=1
+                
         circ.qasm(formatted=False, filename="temp.qasm")
-        
-        
+        self.function_call("temp.qasm")
+        after_circ = QuantumCircuit.from_qasm_file("temp2.qasm")
         #Apply Optimization list
-        t = self.function_call(self.func, "temp.qasm")
-        
-        #Transform rzq(num, den) to rz((num/den)*pi)
-        rzq_to_rz("temp2.qasm")
-        to_dag = circuit_to_dag(QuantumCircuit.from_qasm_file("temp2.qasm"))
-        
-        os.remove("temp.qasm")
-        os.remove("temp2.qasm")
+        pm = PassManager()
+        pm.append(Unroller(['x','h','cx','rz','tdg','sdg','s','t','z']))
+        after_circ = pm.run(after_circ)
+        print(after_circ.qasm())
+        to_dag = circuit_to_dag(after_circ)
         return to_dag
     
-    def function_call(self,func_list, fname):
-        
+    def function_call(self,fname):
         a = SQIR(fname, False)
         for i in range(len(self.func)):
             call = getattr(a,self.func[i])
