@@ -24,6 +24,15 @@ Proof.
   - apply Nat.ltb_ge in E. assert (N=0) by omega. destruct H as [_ [? _]]. rewrite H0 in H. simpl in H. omega.
 Qed.
 
+Lemma Pow_diff :
+  forall a r N x1 x2,
+    Order a r N ->
+    0 <= x1 < r ->
+    0 <= x2 < r ->
+    x1 <> x2 ->
+    a^x1 mod N <> a^x2 mod N.
+Admitted.
+
 (* Parameter assumptions of the Shor'salgorithm *)
 Definition BasicSetting (a r N m n : nat) :=
   0 < a < N /\
