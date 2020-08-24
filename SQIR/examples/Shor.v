@@ -13,15 +13,73 @@ Definition Order (a r N : nat) :=
   a^r mod N = 1 /\
   (forall r' : nat, (0 < r' /\ a^r' mod N = 1) -> r' >= r).
 
-Lemma Order_N_nonzero :
+Lemma Order_N_lb :
   forall a r N,
     Order a r N ->
-    0 < N.
+    1 < N.
 Proof.
   intros. 
   destruct (0 <? N)%nat eqn:E.
-  - apply Nat.ltb_lt in E; easy.
+  - destruct (1 <? N)%nat eqn:S.
+    + apply Nat.ltb_lt in S; easy.
+    + apply Nat.ltb_ge in S. destruct H as [_ [? _]].
+      apply Nat.ltb_lt in E. replace N with 1%nat in H by omega. simpl in H. discriminate H.
   - apply Nat.ltb_ge in E. assert (N=0) by omega. destruct H as [_ [? _]]. rewrite H0 in H. simpl in H. omega.
+Qed.
+
+Lemma Order_a_nonzero :
+  forall a r N,
+    Order a r N ->
+    0 < a.
+Proof.
+  intros. assert (HN := H). apply Order_N_lb in HN.
+  destruct (0 <? a)%nat eqn:E.
+  - apply Nat.ltb_lt in E; easy.
+  - apply Nat.ltb_ge in E. assert (a=0) by omega. destruct H as [? [? _]]. rewrite H0 in H1. rewrite Nat.pow_0_l in H1. rewrite Nat.mod_0_l in H1 by omega. omega. omega.
+Qed.  
+
+Lemma Order_a_inv_ex :
+  forall a r N,
+    Order a r N ->
+    exists a_inv,
+      (a * a_inv) mod N = 1.
+Proof.
+  intros. exists (a^(pred r))%nat. destruct H as [? [? _]].
+  assert (a * a ^ Init.Nat.pred r = a^1 * a^(Init.Nat.pred r))%nat. rewrite Nat.pow_1_r; easy. rewrite H1.
+  rewrite <- Nat.pow_add_r. rewrite Nat.succ_pred; omega.
+Qed.
+
+Lemma inv_pow :
+  forall a r N a_inv x,
+    Order a r N ->
+    (a * a_inv) mod N = 1 ->
+    (a^x * a_inv^x) mod N = 1.
+Proof.
+  intros. assert (HN := H). apply Order_N_lb in HN. induction x.
+  - simpl. apply Nat.mod_1_l. easy.
+  - simpl. rewrite Nat.mul_assoc. rewrite (Nat.mul_shuffle0 a (a^x)%nat a_inv).
+    rewrite mult_assoc_reverse with (n:=(a * a_inv)%nat). rewrite <- Nat.mul_mod_idemp_l with (a:=(a * a_inv)%nat); try omega. rewrite H0. rewrite Nat.mul_1_l. apply IHx.
+Qed.
+
+Lemma Pow_minus_aux :
+  forall a r N a_inv x d,
+    Order a r N ->
+    (a * a_inv) mod N = 1 ->
+    a^d mod N = (a^(x + d) * a_inv^x) mod N.
+Proof.
+  intros. replace (x + d)%nat with (d + x)%nat by omega. rewrite Nat.pow_add_r.
+  assert (HN := H). apply Order_N_lb in HN.
+  rewrite <- Nat.mul_assoc. rewrite <- Nat.mul_mod_idemp_r; try omega. rewrite inv_pow with (r:=r); auto. rewrite Nat.mul_1_r. easy.
+Qed.
+
+Lemma Pow_minus :
+  forall a r N a_inv x1 x2,
+    Order a r N ->
+    x1 <= x2 ->
+    (a * a_inv) mod N = 1 ->
+    a^(x2-x1) mod N = (a^x2 * a_inv^x1) mod N.
+Proof.
+  intros. rewrite Pow_minus_aux with (r:=r) (a:=a) (x:=x1) (a_inv:=a_inv); try easy. replace (x1 + (x2 - x1))%nat with (x2 - x1 + x1)%nat by omega. rewrite Nat.sub_add; easy.
 Qed.
 
 Lemma Pow_diff :
@@ -29,11 +87,25 @@ Lemma Pow_diff :
     Order a r N ->
     0 <= x1 < r ->
     0 <= x2 < r ->
-    x1 <> x2 ->
+    x1 < x2 ->
     a^x1 mod N <> a^x2 mod N.
-Admitted.
+Proof.
+  intros. intro.
+  assert (Ha_inv := H). apply Order_a_inv_ex in Ha_inv. destruct Ha_inv as [a_inv Ha_inv].
+  assert (HN := H). apply Order_N_lb in HN.
+  assert (a^(x2-x1) mod N = 1).
+  rewrite Pow_minus with (r:=r) (a_inv:=a_inv); try omega; try easy.
+  rewrite <- Nat.mul_mod_idemp_l; try omega.
+  rewrite <- H3. rewrite Nat.mul_mod_idemp_l; try omega.
+  rewrite <- Pow_minus with (r:=r); try omega; try easy.
+  rewrite Nat.sub_diag. simpl. apply Nat.mod_1_l; easy.
+  destruct H as [_ [_ Hminimal]].
+  pose (Hminimal (x2 - x1)%nat) as Hcounter.
+  assert (0 < x2 - x1 /\ a ^ (x2 - x1) mod N = 1)%nat by omega.
+  apply Hcounter in H. omega.
+Qed.
 
-(* Parameter assumptions of the Shor'salgorithm *)
+(* Parameter assumptions of the Shor's algorithm *)
 Definition BasicSetting (a r N m n : nat) :=
   0 < a < N /\
   Order a r N /\
@@ -172,10 +244,7 @@ Qed.
 Definition MultiplyCircuitProperty (a N n : nat) (c : base_ucom n) :=
   forall x : nat,
     (0 <= x < N ->
-     (uc_eval c) × (basis_vector (2^n) x) = basis_vector (2^n) (a * x mod N))
-    (*/\
-    (N <= x ->
-     (uc_eval c) × (basis_vector (2^n) x) = basis_vector (2^n) x)*).
+     (uc_eval c) × (basis_vector (2^n) x) = basis_vector (2^n) (a * x mod N)).
 
 Lemma MC_eigenvalue :
   forall (a r N j m n : nat) (c : base_ucom n),
