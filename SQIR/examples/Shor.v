@@ -232,7 +232,7 @@ Lemma MultiGroup_modulo_N :
     Order a r N ->
     a^x mod N = a^(x mod r) mod N.
 Proof.
-  intros. assert (HN := H). apply Order_N_nonzero in HN.
+  intros. assert (HN := H). apply Order_N_lb in HN.
   destruct H as [? [? ?]]. replace (a ^ x mod N)%nat with ((a^(r * (x / r) + x mod r)) mod N)%nat.
   2: { rewrite <- Nat.div_mod; omega. }
   rewrite Nat.pow_add_r. rewrite Nat.mul_mod; try omega.
