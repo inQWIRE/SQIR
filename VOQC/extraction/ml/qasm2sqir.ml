@@ -230,7 +230,10 @@ let sqir_to_qasm_gate oc g =
 let write_qasm_file fname p dim =
   let oc = open_out fname in
   (fprintf oc "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n";
+   fprintf oc "gate rzq(a,b) q {rz((a/b)*pi) q;}\n";
    fprintf oc "qreg q[%d];\n" dim;
    fprintf oc "\n";
    ignore(List.map (sqir_to_qasm_gate oc) p);
    close_out oc)
+
+
