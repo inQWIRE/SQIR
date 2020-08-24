@@ -34,11 +34,7 @@ eq_lib.add_equivalence(u2, equiv_u2)
 
 q = QuantumRegister(1, 'q')
 equiv_u1 = QuantumCircuit(q)
-equiv_u1.append(RZGate(pi/2), [q[0]], [])
-equiv_u1.append(HGate(),[q[0]], [] )
-equiv_u1.append(RZGate(0),[q[0]], [])
-equiv_u1.append(HGate(), [q[0]], [])
-equiv_u1.append(RZGate(theta-(pi/2)),[q[0]], 0)
+equiv_u1.append(RZGate(theta), [q[0]], [])
 eq_lib.add_equivalence(u1, equiv_u1)
 
 q = QuantumRegister(3, 'q')
