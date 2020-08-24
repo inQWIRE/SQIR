@@ -47,7 +47,6 @@ class VOQC(TransformationPass):
         pm = PassManager()
         pm.append(Unroller(['x','h','cx','rz','tdg','sdg','s','t','z']))
         after_circ = pm.run(after_circ)
-        print(after_circ.qasm())
         to_dag = circuit_to_dag(after_circ)
         return to_dag
     
