@@ -555,41 +555,7 @@ Qed.
 *)
 
 (* if a in u3 is zero then it is a u1 gate *)
-Lemma u3_to_u1_zero: forall {dim:nat} (a b c:R) (q:nat), 
-    a = 0 -> 
-     @uc_equiv dim (uapp1 (@U_R (a * PI) (b * PI) (c * PI)) q)
-           (uapp1 (@U_R 0 0 ( (b + c) * PI)) q).
-Proof.
-intros.
-unfold uc_equiv; simpl.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2.
-apply f_equal2. reflexivity.
-rewrite H.
-unfold rotation.
-  prep_matrix_equality.
-destruct x. destruct y.
-assert (0 * PI / 2 = 0 / 2) by lra.
-rewrite H0. reflexivity.
-destruct y.
-assert (0 * PI / 2 = 0) by lra. rewrite H0. clear H0.
-assert (0 / 2 = 0) by lra. rewrite H0. clear H0.
-rewrite sin_0. lca. reflexivity.
-destruct x. destruct y.
-assert (0 * PI / 2 = 0) by lra. rewrite H0. clear H0.
-assert (0 / 2 = 0) by lra. rewrite H0. clear H0.
-rewrite sin_0. lca.
-destruct y.
-assert (0 * PI / 2 = 0) by lra. rewrite H0. clear H0.
-assert (0 / 2 = 0) by lra. rewrite H0. clear H0.
-rewrite cos_0.
-assert ((b * PI + c * PI) = 0 + (b + c) * PI) by lra.
-rewrite H0. 
-1 - 4: reflexivity.
-Qed.
-
-Lemma u3_to_u1_nonzero: forall {dim:nat} (a b c:R) (q:nat), 
+Lemma u3_to_u1: forall {dim:nat} (a b c:R) (q:nat), 
     (exists n, a = INR n * (2 * PI)) -> 
      @uc_cong dim (uapp1 (@U_R a (b * PI) (c * PI)) q)
            (uapp1 (@U_R 0 0 ( (b + c) * PI)) q).

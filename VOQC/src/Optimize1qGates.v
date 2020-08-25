@@ -75,7 +75,7 @@ Definition combine_U_equivalence6 {dim} q (l : QiS_ucom_l dim) :=
 Definition combine_U_equivalence7 {dim} q (l : QiS_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U3 a b c, l2) =>
-             if (Reqb a 0 || (negb (Reqb a 0) && (Reqb (a / (2 * PI)) 1))) then
+             if (Reqb a 0 || (Reqb a 2)) then
                   Some (l1 ++ [U1 (b+c) q] ++ l2)
                 else None
     | _ => None end.
@@ -85,9 +85,9 @@ Definition combine_U_equivalence7 {dim} q (l : QiS_ucom_l dim) :=
 Definition combine_U_equivalence8 {dim} q (l : QiS_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U3 a b c, l2) =>
-             if (Zmod (Qnum a) ((QDen a)) =? 1/4)%Z then
+             if (Reqb a (1/2)) then
                   Some (l1 ++ [U2 b c q] ++ l2)
-                else if (Zmod (Qnum a) ((QDen a)) =? 3/4)%Z then
+                else if (Reqb a (3/2)) then
                   Some (l1 ++ [U2 (b+180) (c - 180) q] ++ l2)
                 else None
     | _ => None end.
@@ -96,7 +96,7 @@ Definition combine_U_equivalence8 {dim} q (l : QiS_ucom_l dim) :=
 Definition combine_U_equivalence9 {dim} q (l : QiS_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U1 a, l2) =>
-             if (Zmod (Qnum a) (2 * (QDen a)) =? 0)%Z then
+             if (Reqb a 0) then
                   Some (l1 ++ l2)
                 else None
     | _ => None end.
@@ -106,7 +106,7 @@ Definition combine_U_equivalence {dim} (l : QiS_ucom_l dim) (q:nat) : option (Qi
             :: combine_U_equivalence4 q :: combine_U_equivalence5 q :: combine_U_equivalence6 q ::
            combine_U_equivalence7 q :: combine_U_equivalence8 q :: combine_U_equivalence9 q :: []).
 
-
+(*
 Fixpoint combine_U_equivalences' {dim} (l : QiS_ucom_l dim) (n: nat) acc : QiS_ucom_l dim :=
   match n with
   | 0 => rev_append acc l
@@ -122,9 +122,10 @@ Fixpoint combine_U_equivalences' {dim} (l : QiS_ucom_l dim) (n: nat) acc : QiS_u
       end
   end.
 
+
 Definition optimize1qgate {dim} (l : QiS_ucom_l dim) := 
   combine_U_equivalences' l (3 * (length l)) [].
-
+*)
 
 Lemma combine_U_equivalence1_sound : forall {dim} (l l' : QiS_ucom_l dim) q,
   combine_U_equivalence1 q l = Some l' ->
@@ -221,42 +222,68 @@ Qed.
 
 Lemma combine_U_equivalence6_sound : forall {dim} (l l' : QiS_ucom_l dim) q,
   combine_U_equivalence6 q l = Some l' ->
-  l =l= l'. 
+  l ≅l≅ l'. 
 Proof.
   intros.
   unfold combine_U_equivalence6 in H.
   destruct_list_ops; simpl_dnr.
+Locate cons_to_app.
 assert ((g0 ++ U3 (1 - (b0 + a)) (a0 + 1 / 2) (b + 1 / 2) q :: g2 ++ g1)
               = (g0 ++ [U3 (1 - (b0 + a)) (a0 + 1 / 2) (b + 1 / 2) q] ++ g2 ++ g1)).
 rewrite (cons_to_app). reflexivity. rewrite H. clear H.
     rewrite (app_assoc _ _ g1).
     rewrite (app_assoc g0).
+assert (((g0 ++ [App1 (UQiS_U2 a b) q]) ++
+ (g2 ++ [App1 (UQiS_U2 a0 b0) q]) ++ g1)
+   =l= ((g0 ++ [App1 (UQiS_U2 a b) q]) ++
+ ([App1 (UQiS_U2 a0 b0) q] ++ g2) ++ g1)).
 setoid_rewrite <- (does_not_reference_commutes_app1 g2); try assumption.
-  apply_app_congruence.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r.
+reflexivity.
+apply uc_equiv_cong_l in H.
+rewrite H.
+assert (@uc_cong_l dim ([App1 (UQiS_U2 a b) q] ++ [App1 (UQiS_U2 a0 b0) q]) [U3 (1 - (b0 + a)) (a0 + 1 / 2) (b + 1 / 2) q]).
+  unfold uc_cong_l; simpl.
+clear H.
+rewrite 2 SKIP_id_r_cong.
   apply two_u2_to_one.
+assert (((g0 ++ [App1 (UQiS_U2 a b) q]) ++ ([App1 (UQiS_U2 a0 b0) q] ++ g2) ++ g1)
+  = (g0 ++ ([App1 (UQiS_U2 a b) q] ++ [App1 (UQiS_U2 a0 b0) q]) ++ (g2 ++ g1))).
+apply_app_congruence. reflexivity.
+rewrite H1.
+rewrite H0.
+reflexivity.
 Qed.
+
+Check Zmod_eq_full.
 
 (* if u3's theta is zero, then it is a u1 gate.*)
 Lemma combine_U_equivalence7_sound : forall {dim} (l l' : QiS_ucom_l dim) q,
   combine_U_equivalence7 q l = Some l' ->
-  l =l= l'. 
+  l ≅l≅ l'. 
 Proof.
   intros.
   unfold combine_U_equivalence7 in H.
   destruct_list_ops; simpl_dnr.
-destruct ((Qnum a mod (4 * QDen a) =? 0)%Z) eqn:eq1.
+destruct (Reqb a 0 || Reqb a 2) eqn:eq1.
 injection H as H1. rewrite <- H1. clear H1.
 assert ((g0 ++ U1 (b + c) q :: g)
               = (g0 ++ [U1 (b + c) q] ++ g)).
 rewrite (cons_to_app). reflexivity. rewrite H. clear H.
-  apply_app_congruence.
-  unfold uc_equiv_l; simpl.
-  rewrite 2 SKIP_id_r.
+apply uc_cong_l_app_congruence.
+apply uc_cong_l_app_congruence. reflexivity.
+  unfold uc_cong_l; simpl.
+  rewrite 2 SKIP_id_r_cong.
   apply u3_to_u1.
-  apply Z.eqb_eq in eq1. assumption.
-  inversion H.
+apply orb_true_iff in eq1.
+destruct eq1.
+apply Reqb_eq in H.
+exists 0%nat.
+rewrite H. unfold INR. lra.
+apply Reqb_eq in H.
+exists 1%nat.
+rewrite H. unfold INR. lra.
+reflexivity.
+inversion H.
 Qed.
 
 (* if lambda u1 is a n*2 * pi, then it is SKIP. *)
@@ -268,7 +295,7 @@ Proof.
   intros.
   unfold combine_U_equivalence9 in H0.
   destruct_list_ops; simpl_dnr.
-destruct (Qnum a mod (2 * QDen a) =? 0)%Z eqn:eq1.
+destruct (Reqb a 0) eqn:eq1.
 injection H0 as H1. rewrite <- H1. clear H1.
 assert ((g0 ++ g) = (g0 ++ [] ++ g)).
 rewrite  app_nil_l. reflexivity.
@@ -277,7 +304,9 @@ rewrite H0. clear H0.
   unfold uc_equiv_l; simpl.
   rewrite SKIP_id_r.
   apply u1_to_skip. assumption.
-  apply Z.eqb_eq in eq1. assumption.
+  apply Reqb_eq in eq1.
+  rewrite eq1. exists 0%nat.
+unfold INR. lra.
   inversion H0.
 Qed.
 

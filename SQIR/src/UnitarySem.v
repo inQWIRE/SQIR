@@ -213,6 +213,15 @@ Proof.
   apply H.
 Qed.
 
+Lemma uc_cong_assoc : forall {dim} (c1 c2 c3 : base_ucom dim), 
+  ((c1 ; c2) ; c3) ≅ (c1 ; (c2 ; c3)).
+Proof.
+  intros. 
+  apply uc_equiv_cong.
+  apply useq_assoc.
+Qed.
+
+
 (** uc_eval is unitary iff well-typed **)
 
 Lemma pad_unitary : forall n (u : Square (2^n)) start dim,
