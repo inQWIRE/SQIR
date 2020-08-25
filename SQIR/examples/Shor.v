@@ -295,7 +295,9 @@ Compute (CF_ite 3 26 100 0 1 1 0 5).
 (* Not sure if this bound is correct. But it seems enough *)
 Definition CF_bound (N : nat) := (Nat.log2 N + 1)%nat.
 
-Definition ContinuedFraction (s N m : nat) : nat * nat := CF_ite (CF_bound N) s (2^m) 0 1 1 0 N.  
+Definition ContinuedFraction (s N m : nat) : nat * nat := CF_ite (CF_bound N) s (2^m) 0 1 1 0 N.
+
+Definition Shor_post (s N m : nat) := snd (ContinuedFraction s N m).
 
 (* "Partial correct" of ContinuedFraction function. "Partial" because it is exactly correct only when k and r are coprime. Otherwise it will output (p, q) such that p/q=k/r. *)
 Lemma ContinuedFraction_partial_correct :
@@ -313,6 +315,15 @@ Fixpoint Rsum_ite (n k : nat) (f : nat -> R) : R :=
 
 Definition Rsum (n : nat) (f : nat -> R) : R := Rsum_ite n n f.
 
+Definition prob_partial_meas {n} {m} x (ψ : Vector (2^(m + n))) :=
+  Rsum (2^n) (fun y => probability_of_outcome ψ (basis_vector (2^m) x ⊗ basis_vector (2^n) y)).
+
+(* The final success probability of Shor's order finding algorithm. It counts the k's coprime to r and their probability of being collaped to. *)
+Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
+  Rsum (2^m) (fun x => if Shor_post x N m =? r then
+                      prob_partial_meas x ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1)))
+                    else 0).
+
 (* Euler's totient function *)
 Definition ϕ (n : nat) := Rsum n (fun x => if rel_prime_dec x n then 1 else 0).
 
@@ -325,12 +336,6 @@ Lemma ϕ_n_over_n_lowerbound :
       (ϕ n) / n >= β / (Nat.log2 (Nat.log2 n)).
 Admitted.
 
-(* The final success probability of Shor's order finding algorithm. It counts the k's coprime to r and their probability of being collaped to. *)
-Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
-  Rsum r (fun k => if rel_prime_dec k r then
-                  probability_of_outcome ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1))) ((basis_vector (2^m) (s_closest m k r)) ⊗ (ψ a r N k n))
-                else 0).
-
 (* The correctness specification. It succeed with prob proportional to 1/(log log N), which is asymptotically small, but big enough in practice.
    With better technique (calculate the LCM of multiple outputs), the number of rounds may be reduced to constant. But I don't know how to specify that, and the analysis in Shor's original paper refers the correctness to "personal communication" with Knill. *)
 Lemma Shor_correct :
@@ -341,4 +346,3 @@ Lemma Shor_correct :
       MultiplyCircuitProperty a N n c ->
       probability_of_success a r N m n c >= β / (Nat.log2 (Nat.log2 N)).
 Admitted.
-
