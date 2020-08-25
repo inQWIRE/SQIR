@@ -16,6 +16,3 @@ SQIR/src/NDSem.v
 SQIR/src/VectorStates.v
 SQIR/src/UnitaryOps.v
 SQIR/src/Equivalences.v
-
-SQIR/examples/QPE.v
-SQIR/examples/QPEGeneral.v

@@ -61,6 +61,9 @@ SQIR/examples/GHZ.vo: $(examples)/GHZ.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
 SQIR/examples/QPE.vo: $(examples)/QPE.v $(SQIR)/UnitaryOps.vo
 	coqc $(COQ_OPTS) $(examples)/QPE.v
 
+SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo
+	coqc $(COQ_OPTS) $(examples)/QPEGeneral.v
+
 SQIR/examples/Simon.vo: $(examples)/Simon.v $(SQIR)/UnitaryOps.vo $(SQIR)/NDSem.vo
 	coqc $(COQ_OPTS) $(examples)/Simon.v
 
