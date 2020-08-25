@@ -3,7 +3,7 @@ Require Export QiSGateSet.
 Require Import List.
 Open Scope ucom.
 
-Local Close Scope Q_scope.
+Local Close Scope R_scope.
 Local Open Scope matrix_scope.
 Local Open Scope ucom_scope.
 
@@ -20,7 +20,7 @@ Definition combine_U_equivalence1 {dim} q (l : QiS_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U1 a, l2) =>
        match next_single_qubit_gate l2 q with 
-            | Some (l3, UQiS_U1 a', l4) => Some (l1 ++ [U1 (a + a')%Q q] ++ l3 ++ l4)
+            | Some (l3, UQiS_U1 a', l4) => Some (l1 ++ [U1 (a + a')%R q] ++ l3 ++ l4)
             | _ => None end
     | _ => None end.
 
@@ -38,7 +38,7 @@ Definition combine_U_equivalence3 {dim} q (l : QiS_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U2 a b, l2) =>
        match next_single_qubit_gate l2 q with 
-            | Some (l3, UQiS_U1 a', l4) => Some (l1 ++ [U2 (a + a')%Q b q] ++ l3 ++ l4)
+            | Some (l3, UQiS_U1 a', l4) => Some (l1 ++ [U2 (a + a') b q] ++ l3 ++ l4)
             | _ => None end
     | _ => None end.
 
@@ -57,7 +57,7 @@ Definition combine_U_equivalence5 {dim} q (l : QiS_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U3 a b c, l2) =>
        match next_single_qubit_gate l2 q with 
-            | Some (l3, UQiS_U1 a', l4) => Some (l1 ++ [U3 a (b + a')%Q c q] ++ l3 ++ l4)
+            | Some (l3, UQiS_U1 a', l4) => Some (l1 ++ [U3 a (b + a') c q] ++ l3 ++ l4)
             | _ => None end
     | _ => None end.
 
@@ -67,7 +67,7 @@ Definition combine_U_equivalence6 {dim} q (l : QiS_ucom_l dim) :=
     | Some (l1, UQiS_U2 a b, l2) =>
        match next_single_qubit_gate l2 q with 
             | Some (l3, UQiS_U2 a' b', l4)
-               => Some (l1 ++ [U3 (1 - (b' + a))%Q (a' + 1/2)%Q (b + 1/2)%Q q] ++ l3 ++ l4)
+               => Some (l1 ++ [U3 (1 - (b' + a)) (a' + 1/2) (b + 1/2) q] ++ l3 ++ l4)
             | _ => None end
     | _ => None end.
 
@@ -75,7 +75,7 @@ Definition combine_U_equivalence6 {dim} q (l : QiS_ucom_l dim) :=
 Definition combine_U_equivalence7 {dim} q (l : QiS_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U3 a b c, l2) =>
-             if (Zmod (Qnum a) (4 * (QDen a)) =? 0)%Z then
+             if (Reqb a 0 || (negb (Reqb a 0) && (Reqb (a / (2 * PI)) 1))) then
                   Some (l1 ++ [U1 (b+c) q] ++ l2)
                 else None
     | _ => None end.
