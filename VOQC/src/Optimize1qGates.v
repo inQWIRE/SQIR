@@ -75,7 +75,7 @@ Definition combine_U_equivalence6 {dim} q (l : QiS_ucom_l dim) :=
 Definition combine_U_equivalence7 {dim} q (l : QiS_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U3 a b c, l2) =>
-             if (Reqb a 0 || (Reqb a 2)) then
+             if Reqb (cos (a * PI)) 1 then
                   Some (l1 ++ [U1 (b+c) q] ++ l2)
                 else None
     | _ => None end.
@@ -85,10 +85,10 @@ Definition combine_U_equivalence7 {dim} q (l : QiS_ucom_l dim) :=
 Definition combine_U_equivalence8 {dim} q (l : QiS_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U3 a b c, l2) =>
-             if (Reqb a (1/2)) then
+             if (Reqb (sin (a * PI)) 1) then
                   Some (l1 ++ [U2 b c q] ++ l2)
-                else if (Reqb a (3/2)) then
-                  Some (l1 ++ [U2 (b+180) (c - 180) q] ++ l2)
+                else if (Reqb (sin (a * PI)) (-1)) then
+                  Some (l1 ++ [U2 (b+1) (c - 1) q] ++ l2)
                 else None
     | _ => None end.
 
@@ -96,7 +96,7 @@ Definition combine_U_equivalence8 {dim} q (l : QiS_ucom_l dim) :=
 Definition combine_U_equivalence9 {dim} q (l : QiS_ucom_l dim) := 
   match (next_single_qubit_gate l q) with
     | Some (l1, UQiS_U1 a, l2) =>
-             if (Reqb a 0) then
+             if (Reqb (cos (a * PI)) 1) then
                   Some (l1 ++ l2)
                 else None
     | _ => None end.
@@ -254,8 +254,6 @@ rewrite H0.
 reflexivity.
 Qed.
 
-Check Zmod_eq_full.
-
 (* if u3's theta is zero, then it is a u1 gate.*)
 Lemma combine_U_equivalence7_sound : forall {dim} (l l' : QiS_ucom_l dim) q,
   combine_U_equivalence7 q l = Some l' ->
@@ -264,7 +262,7 @@ Proof.
   intros.
   unfold combine_U_equivalence7 in H.
   destruct_list_ops; simpl_dnr.
-destruct (Reqb a 0 || Reqb a 2) eqn:eq1.
+destruct (Reqb (cos (a * PI)) 1) eqn:eq1.
 injection H as H1. rewrite <- H1. clear H1.
 assert ((g0 ++ U1 (b + c) q :: g)
               = (g0 ++ [U1 (b + c) q] ++ g)).
@@ -274,14 +272,42 @@ apply uc_cong_l_app_congruence. reflexivity.
   unfold uc_cong_l; simpl.
   rewrite 2 SKIP_id_r_cong.
   apply u3_to_u1.
-apply orb_true_iff in eq1.
-destruct eq1.
-apply Reqb_eq in H.
-exists 0%nat.
-rewrite H. unfold INR. lra.
-apply Reqb_eq in H.
-exists 1%nat.
-rewrite H. unfold INR. lra.
+apply Reqb_eq in eq1. assumption.
+reflexivity.
+inversion H.
+Qed.
+
+(* if u3's theta is PI/2 or 3 * PI / 2, then it is a u2 gate.*)
+Lemma combine_U_equivalence8_sound : forall {dim} (l l' : QiS_ucom_l dim) q,
+  combine_U_equivalence8 q l = Some l' ->
+  l ≅l≅ l'. 
+Proof.
+  intros.
+  unfold combine_U_equivalence8 in H.
+  destruct_list_ops; simpl_dnr.
+destruct (Reqb (sin (a * PI)) 1) eqn:eq1.
+injection H as H1. rewrite <- H1. clear H1.
+assert ((g0 ++ U2 b c q :: g)
+              = (g0 ++ [U2 b c q] ++ g)).
+rewrite (cons_to_app). reflexivity. rewrite H. clear H.
+apply uc_cong_l_app_congruence.
+apply uc_cong_l_app_congruence. reflexivity.
+  unfold uc_cong_l; simpl.
+  rewrite 2 SKIP_id_r_cong.
+  apply u3_to_u2.
+apply Reqb_eq in eq1. assumption.
+reflexivity.
+destruct (Reqb (sin (a * PI)) (-1)) eqn:eq2.
+injection H as H1. rewrite <- H1. clear H1.
+assert ((g0 ++ U2 (b + 1) (c - 1) q :: g)
+              = (g0 ++ [U2 (b + 1) (c - 1) q ] ++ g)).
+rewrite (cons_to_app). reflexivity. rewrite H. clear H.
+apply uc_cong_l_app_congruence.
+apply uc_cong_l_app_congruence. reflexivity.
+  unfold uc_cong_l; simpl.
+  rewrite 2 SKIP_id_r_cong.
+  apply u3_to_u2_neg.
+apply Reqb_eq in eq2. assumption.
 reflexivity.
 inversion H.
 Qed.
@@ -295,7 +321,7 @@ Proof.
   intros.
   unfold combine_U_equivalence9 in H0.
   destruct_list_ops; simpl_dnr.
-destruct (Reqb a 0) eqn:eq1.
+destruct (Reqb (cos (a * PI)) 1) eqn:eq1.
 injection H0 as H1. rewrite <- H1. clear H1.
 assert ((g0 ++ g) = (g0 ++ [] ++ g)).
 rewrite  app_nil_l. reflexivity.
@@ -304,9 +330,7 @@ rewrite H0. clear H0.
   unfold uc_equiv_l; simpl.
   rewrite SKIP_id_r.
   apply u1_to_skip. assumption.
-  apply Reqb_eq in eq1.
-  rewrite eq1. exists 0%nat.
-unfold INR. lra.
+  apply Reqb_eq in eq1. assumption.
   inversion H0.
 Qed.
 

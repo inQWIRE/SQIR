@@ -554,134 +554,442 @@ rewrite H0. rewrite sin_period. rewrite sin_0; lra.
 Qed.
 *)
 
+Lemma cos_1_cos_half: forall (x:R), cos x = 1 -> cos (x / 2) = 1 \/ cos (x / 2) = -1.
+Proof.
+intros.
+assert (sin x = 0).
+specialize (sin2_cos2 (x)) as H1. 
+rewrite H in H1.
+assert (1² = 1).
+unfold Rsqr. lra. rewrite H0 in H1.
+assert ((sin x)² = 0) by lra.
+apply Rsqr_0_uniq in H2. assumption.
+assert (x = 2 * (x / 2)) by lra.
+rewrite H1 in H. rewrite H1 in H0.
+rewrite sin_2a in H0.
+assert (sin (x / 2) * cos (x / 2) = 0) by lra.
+apply Rmult_integral in H2.
+destruct H2.
+specialize (sin2_cos2 (x / 2)) as H3.
+rewrite H2 in H3.
+assert (0² = 0). unfold Rsqr. lra.
+rewrite H4 in H3.
+assert ((cos (x / 2))² = 1) by lra.
+specialize ( pow_R1 (cos (x / 2)) 2) as H6.
+assert ((cos (x / 2))² = cos (x / 2) ^ 2).
+unfold Rsqr. lra.
+rewrite H7 in H5. apply H6 in H5.
+destruct H5.
+assert ((cos (x / 2)) < 0 \/ cos (x / 2) >= 0) by lra.
+destruct H8.
+apply Rabs_left in H8.
+rewrite H8 in H5.
+right. lra.
+apply Rabs_right in H8. rewrite H8 in H5.
+left. apply H5.
+inversion H5.
+rewrite cos_2a_cos in H.
+rewrite H2 in H. lra.
+Qed. 
+
+Lemma cos_1_sin_half: forall (x:R), cos x = 1 -> sin (x / 2) = 0.
+Proof.
+intros.
+assert (sin x = 0).
+specialize (sin2_cos2 (x)) as H1. 
+rewrite H in H1.
+assert (1² = 1).
+unfold Rsqr. lra. rewrite H0 in H1.
+assert ((sin x)² = 0) by lra.
+apply Rsqr_0_uniq in H2. assumption.
+assert (x = 2 * (x / 2)) by lra.
+rewrite H1 in H. rewrite H1 in H0.
+rewrite sin_2a in H0.
+assert (sin (x / 2) * cos (x / 2) = 0) by lra.
+apply Rmult_integral in H2.
+destruct H2.
+assumption.
+rewrite cos_2a_cos in H.
+rewrite H2 in H. lra.
+Qed. 
+
+Lemma sin_1_half: forall (x:R), sin x = 1 -> 
+      (cos (x / 2) = 1 / √ 2 /\ sin (x / 2) = 1 / √ 2)
+            \/ (cos (x / 2) = - 1 / √ 2 /\ sin (x / 2) = - 1 / √ 2).
+Proof.
+intros.
+assert (cos x = 0).
+specialize (sin2_cos2 (x)) as H1. 
+rewrite H in H1.
+assert (1² = 1).
+unfold Rsqr. lra. rewrite H0 in H1.
+assert ((cos x)² = 0) by lra.
+apply Rsqr_0_uniq in H2. assumption.
+assert (x = 2 * (x / 2)) by lra.
+rewrite H1 in H. rewrite H1 in H0.
+rewrite sin_2a in H.
+assert (sin (x / 2) * cos (x / 2) = 1 / 2) by lra.
+assert (H3 := H0).
+rewrite cos_2a_cos in H0.
+rewrite cos_2a_sin in H3.
+assert (cos (x / 2) * cos (x / 2) = 1 / 2) by lra.
+assert (sin (x / 2) * sin (x / 2) = 1 / 2) by lra.
+assert (cos (x / 2) < 0 \/ 0 <= cos (x / 2)) by lra.
+assert (sin (x / 2) < 0 \/ 0 <= sin (x / 2)) by lra.
+destruct H6. destruct H7.
+assert (0 < - cos (x / 2)) by lra.
+assert (0 < - sin (x / 2)) by lra.
+assert ((- cos (x / 2)) * (- cos (x / 2)) = 1 / 2) by lra.
+assert ((- sin (x / 2)) * (- sin (x / 2)) = 1 / 2) by lra.
+apply  sqrt_lem_1 in H10.
+apply  sqrt_lem_1 in H11.
+rewrite  sqrt_div_alt in H10.  rewrite sqrt_div_alt in H11.
+rewrite sqrt_1 in H10. rewrite sqrt_1 in H11.
+right. lra. lra. lra. lra. lra. lra. lra.
+assert (0 < - cos (x / 2)) by lra.
+assert ((- cos (x / 2)) * (- cos (x / 2)) = 1 / 2) by lra.
+apply  sqrt_lem_1 in H5.
+apply  sqrt_lem_1 in H9.
+rewrite <- H5 in H2.
+assert (cos (x / 2) = - √ (1 / 2)) by lra.
+rewrite H10 in H2.
+assert (√ (1 / 2) * - √ (1 / 2) = - (√ (1 / 2) * √ (1 / 2))) by lra.
+rewrite H11 in H2.
+rewrite sqrt_sqrt in H2. lra. lra. lra.  lra. lra. assumption.
+destruct H7.
+assert (0 < - sin (x / 2)) by lra.
+assert ((- sin (x / 2)) * (- sin (x / 2)) = 1 / 2) by lra.
+apply  sqrt_lem_1 in H4.
+apply  sqrt_lem_1 in H9.
+rewrite <- H4 in H2.
+assert (sin (x / 2) = - √ (1 / 2)) by lra.
+rewrite H10 in H2.
+assert (- √ (1 / 2) * √ (1 / 2) = - (√ (1 / 2) * √ (1 / 2))) by lra.
+rewrite H11 in H2.
+rewrite sqrt_sqrt in H2. lra. lra. lra.  lra. lra. assumption.
+apply  sqrt_lem_1 in H4.
+apply  sqrt_lem_1 in H5.
+left. split. rewrite <- H4.
+rewrite  sqrt_div_alt. rewrite sqrt_1. reflexivity. lra.
+rewrite <- H5.
+rewrite  sqrt_div_alt. rewrite sqrt_1. reflexivity. lra.
+lra. lra. lra. assumption.
+Qed. 
+
+Lemma sin_neg_1_half: forall (x:R), sin x = - 1 -> 
+      (cos (x / 2) = - 1 / √ 2 /\ sin (x / 2) = 1 / √ 2)
+            \/ (cos (x / 2) = 1 / √ 2 /\ sin (x / 2) = - 1 / √ 2).
+Proof.
+intros.
+assert (cos x = 0).
+specialize (sin2_cos2 (x)) as H1. 
+rewrite H in H1.
+assert ((-1)² = 1).
+unfold Rsqr. lra. rewrite H0 in H1.
+assert ((cos x)² = 0) by lra.
+apply Rsqr_0_uniq in H2. assumption.
+assert (x = 2 * (x / 2)) by lra.
+rewrite H1 in H. rewrite H1 in H0.
+rewrite sin_2a in H.
+assert (sin (x / 2) * cos (x / 2) = - 1 / 2) by lra.
+assert (H3 := H0).
+rewrite cos_2a_cos in H0.
+rewrite cos_2a_sin in H3.
+assert (cos (x / 2) * cos (x / 2) = 1 / 2) by lra.
+assert (sin (x / 2) * sin (x / 2) = 1 / 2) by lra.
+assert (cos (x / 2) < 0 \/ 0 <= cos (x / 2)) by lra.
+assert (sin (x / 2) < 0 \/ 0 <= sin (x / 2)) by lra.
+destruct H6. destruct H7.
+assert (0 < - cos (x / 2)) by lra.
+assert (0 < - sin (x / 2)) by lra.
+assert ((- cos (x / 2)) * (- cos (x / 2)) = 1 / 2) by lra.
+assert ((- sin (x / 2)) * (- sin (x / 2)) = 1 / 2) by lra.
+apply  sqrt_lem_1 in H10.
+apply  sqrt_lem_1 in H11.
+assert (cos (x / 2) = - √ (1 / 2)) by lra.
+assert (sin (x / 2) = - √ (1 / 2)) by lra.
+rewrite H12 in H2. rewrite H13 in H2.
+assert (√ (1 / 2) * √ (1 / 2) = -1 / 2) by lra.
+rewrite sqrt_sqrt in H14.
+1 - 6: lra.
+assert (0 < - cos (x / 2)) by lra.
+assert ((- cos (x / 2)) * (- cos (x / 2)) = 1 / 2) by lra.
+apply sqrt_lem_1 in H9. apply sqrt_lem_1 in H5.
+assert (cos (x / 2) = - √ (1 / 2)) by lra.
+left. split. rewrite  sqrt_div_alt in H10.
+rewrite sqrt_1 in H10. lra. lra.
+rewrite sqrt_div_alt in H5. rewrite sqrt_1 in H5.
+1 - 6: lra.
+destruct H7.
+assert (0 < - sin (x / 2)) by lra.
+assert ((- sin (x / 2)) * (- sin (x / 2)) = 1 / 2) by lra.
+apply  sqrt_lem_1 in H9.
+apply  sqrt_lem_1 in H4.
+right. split.
+rewrite <- H4.
+rewrite sqrt_div_alt. rewrite sqrt_1. reflexivity.
+lra.
+rewrite sqrt_div_alt in H9. rewrite sqrt_1 in H9.
+assert (sin (x / 2) = - 1 / √ 2) by lra.
+1 - 6: lra.
+apply  sqrt_lem_1 in H4.
+apply  sqrt_lem_1 in H5.
+rewrite <- H4 in H2. 
+rewrite <- H5 in H2.
+rewrite sqrt_sqrt in H2.
+1-6: lra.
+Qed. 
+
+
 (* if a in u3 is zero then it is a u1 gate *)
 Lemma u3_to_u1: forall {dim:nat} (a b c:R) (q:nat), 
-    (exists n, a = INR n * (2 * PI)) -> 
-     @uc_cong dim (uapp1 (@U_R a (b * PI) (c * PI)) q)
+    cos (a * PI) = 1 -> 
+     @uc_cong dim (uapp1 (@U_R (a * PI) (b * PI) (c * PI)) q)
            (uapp1 (@U_R 0 0 ( (b + c) * PI)) q).
 Proof.
 intros.
 unfold uc_cong; simpl.
   autorewrite with eval_db.
   gridify.
-destruct H.
-destruct (Nat.even x) eqn:eq1.
-apply Nat.even_spec in eq1.
-unfold Nat.Even in eq1.
-destruct eq1.
-rewrite H0 in H.
-rewrite mult_INR in H.
-assert (INR 2 = 2%R).
-unfold INR. reflexivity. rewrite H1 in H.
-clear H0. clear H1.
-exists 0. rewrite Cexp_0. rewrite Mscale_1_l.
+apply cos_1_cos_half in H as H0.
+apply cos_1_sin_half in H.
+destruct H0.
+exists 0.
+rewrite Cexp_0.
+rewrite Mscale_1_l.
 apply f_equal2.
 apply f_equal2. reflexivity.
 unfold rotation.
   prep_matrix_equality.
-destruct x1. destruct y.
-rewrite H.
-assert (2 * INR x0 * (2 * PI) / 2
-          = 0 + 2 * INR x0 * PI) by lra.
-rewrite H0. clear H0.
-rewrite cos_period.
+destruct x. destruct y.
+rewrite H0.
 assert (0 / 2 = 0) by lra.
-rewrite H0. reflexivity.
+rewrite H1. rewrite cos_0. reflexivity.
 destruct y.
 rewrite H.
-assert (2 * INR x0 * (2 * PI) / 2
-          = 0 + 2 * INR x0 * PI) by lra.
-rewrite H0. clear H0.
-rewrite sin_period.
 assert (0 / 2 = 0) by lra.
-rewrite H0.
+rewrite H1.
 rewrite sin_0. lca. 
 reflexivity.
-destruct x1. destruct y.
+destruct x. destruct y.
 rewrite H.
-assert (2 * INR x0 * (2 * PI) / 2
-          = 0 + 2 * INR x0 * PI) by lra.
-rewrite H0. clear H0.
-rewrite sin_period.
 assert (0 / 2 = 0) by lra.
-rewrite H0. rewrite sin_0. lca.
+rewrite H1. rewrite sin_0. lca.
 destruct y.
-rewrite H.
-assert (2 * INR x0 * (2 * PI) / 2
-          = 0 + 2 * INR x0 * PI) by lra.
-rewrite H0. clear H0.
-rewrite cos_period.
-assert (0 / 2 = 0) by lra.
 rewrite H0.
+assert (0 / 2 = 0) by lra.
+rewrite H1.
 rewrite cos_0.
 assert (b * PI + c * PI = 0 + (b + c) * PI) by lra.
-rewrite H1.
+rewrite H2.
 1 - 4: reflexivity.
-apply negb_true_iff in eq1.
-replace (¬ (Nat.even x)) with (Nat.odd x) in eq1 by reflexivity.
-apply Nat.odd_spec in eq1.
-unfold Nat.Odd in eq1.
-destruct eq1.
-rewrite H0 in H.
-rewrite plus_INR in H.
-rewrite mult_INR in H.
-assert (INR 2 = 2%R).
-unfold INR. reflexivity. rewrite H1 in H.
-assert (INR 1 = 1%R).
-unfold INR. reflexivity. rewrite H2 in H.
-clear H0. clear H1. clear H2.
 exists (PI). rewrite Cexp_PI.
 assert (-1 .* (I (2 ^ q) ⊗ rotation 0 0 ((b + c) * PI) ⊗ I (2 ^ d))
    = (I (2 ^ q) ⊗ ( -1 .* rotation 0 0 ((b + c) * PI)) ⊗ I (2 ^ d))).
 distribute_scale. reflexivity.
-rewrite H0. clear H0.
+rewrite H1. clear H1.
 apply f_equal2.
 apply f_equal2. reflexivity.
 solve_matrix.
 unfold rotation.
-destruct x1. destruct y.
-rewrite H.
-assert ((2 * INR x0 + 1) * (2 * PI) / 2
-          = PI + 2 * INR x0 * PI) by lra.
-rewrite H0. clear H0.
-rewrite cos_period.
+destruct x. destruct y.
+rewrite H0.
 assert (0 / 2 = 0) by lra.
-rewrite H0. rewrite cos_0. rewrite cos_PI. lca.
+rewrite H1. rewrite cos_0. lca.
 destruct y.
 rewrite H.
-assert ((2 * INR x0 + 1) * (2 * PI) / 2
-          = PI + 2 * INR x0 * PI) by lra.
-rewrite H0. clear H0.
-rewrite sin_period.
 assert (0 / 2 = 0) by lra.
-rewrite H0.
-rewrite sin_0. rewrite sin_PI. lca. lca. 
-destruct x1. destruct y.
+rewrite H1.
+rewrite sin_0. lca. lca. 
+destruct x. destruct y.
 rewrite H.
-assert ((2 * INR x0 + 1) * (2 * PI) / 2
-          = PI + 2 * INR x0 * PI) by lra.
-rewrite H0. clear H0.
-rewrite sin_period.
 assert (0 / 2 = 0) by lra.
-rewrite H0. rewrite sin_0. rewrite sin_PI. lca.
+rewrite H1. rewrite sin_0. lca.
 destruct y.
-rewrite H.
-assert ((2 * INR x0 + 1) * (2 * PI) / 2
-          = PI + 2 * INR x0 * PI) by lra.
-rewrite H0. clear H0.
-rewrite cos_period.
-assert (0 / 2 = 0) by lra.
 rewrite H0.
-rewrite cos_0. rewrite cos_PI.
+assert (0 / 2 = 0) by lra.
+rewrite H1.
+rewrite cos_0.
 assert (b * PI + c * PI = 0 + (b + c) * PI) by lra.
-rewrite H1. lca. lca.  lca. 
+rewrite H2. lca. lca.  lca. 
 reflexivity.
+Qed.
+
+(* if a in u3 a b c is PI / 2 then it is a u2 b c gate *)
+Lemma u3_to_u2: forall {dim:nat} (a b c:R) (q:nat), 
+    sin (a * PI) = 1 -> 
+     @uc_cong dim (uapp1 (@U_R (a * PI) (b * PI) (c * PI)) q)
+           (uapp1 (@U_R (PI / 2) ( b * PI) ( c * PI)) q).
+Proof.
+intros.
+unfold uc_cong; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply sin_1_half in H as H0.
+destruct H0.
+destruct H0.
+exists 0.
+rewrite Cexp_0. rewrite Mscale_1_l.
+apply f_equal2.
+apply f_equal2. reflexivity.
+unfold rotation.
+  prep_matrix_equality.
+destruct x. destruct y.
+rewrite H0.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite cos_PI4. reflexivity.
+destruct y.
+rewrite H1.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite sin_PI4. reflexivity.
+reflexivity.
+destruct x. destruct y.
+rewrite H1.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite sin_PI4. reflexivity.
+destruct y.
+rewrite H0.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite cos_PI4.
+1 - 4: reflexivity.
+destruct H0.
+exists (PI). rewrite Cexp_PI.
+rewrite <- Mscale_kron_dist_l.
+rewrite <- Mscale_kron_dist_r.
+apply f_equal2.
+apply f_equal2. reflexivity.
+solve_matrix.
+unfold rotation.
+destruct x. destruct y.
+rewrite H0.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite cos_PI4. lca.
+destruct y.
+rewrite H1.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite sin_PI4. lca. lca.
+destruct x. destruct y.
+rewrite H1.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite sin_PI4. lca.
+destruct y.
+rewrite H0.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite cos_PI4. lca. lca. lca.
+reflexivity.
+Qed.
+
+(* if a in u3 a b c is 3* PI / 2 then it is a u2 b c gate *)
+Lemma u3_to_u2_neg: forall {dim:nat} (a b c:R) (q:nat), 
+    sin (a * PI) = - 1 -> 
+     @uc_cong dim (uapp1 (@U_R (a * PI) (b * PI) (c * PI)) q)
+           (uapp1 (@U_R (PI / 2) ((b + 1) * PI) ((c - 1) * PI)) q).
+Proof.
+intros.
+unfold uc_cong; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply sin_neg_1_half in H as H0.
+destruct H0.
+destruct H0.
+exists PI.
+rewrite Cexp_PI.
+rewrite <- Mscale_kron_dist_l.
+rewrite <- Mscale_kron_dist_r.
+apply f_equal2.
+apply f_equal2. reflexivity.
+solve_matrix.
+unfold rotation.
+destruct x. destruct y.
+rewrite H0.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite cos_PI4. lca.
+destruct y.
+rewrite H1.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite sin_PI4.
+assert ((c - 1) * PI = c * PI + (- PI)) by lra.
+rewrite H3.
+rewrite Cexp_add.
+assert (Cexp (- PI) = -1).
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI. rewrite sin_PI. lca.
+rewrite H4. lca. lca.
+destruct x. destruct y.
+rewrite H1.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite sin_PI4.
+assert (((b + 1) * PI) = b * PI + PI) by lra.
+rewrite H3. rewrite Cexp_add.
+rewrite Cexp_PI. lca.
+destruct y.
+rewrite H0.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite cos_PI4.
+assert ((c - 1) * PI = c * PI + (- PI)) by lra.
+rewrite H3.
+rewrite Cexp_add. rewrite Cexp_add. rewrite Cexp_add.
+assert (Cexp (- PI) = -1).
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI. rewrite sin_PI. lca.
+assert (((b + 1) * PI) = b * PI + PI) by lra.
+rewrite H5. rewrite Cexp_add.
+rewrite Cexp_PI. rewrite H4. lca.
+lca. lca. reflexivity.
+destruct H0. exists 0.
+rewrite Cexp_0.
+rewrite Mscale_1_l.
+apply f_equal2.
+apply f_equal2. reflexivity.
+unfold rotation.
+prep_matrix_equality.
+destruct x. destruct y.
+rewrite H0.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite cos_PI4. lca.
+destruct y.
+rewrite H1.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite sin_PI4.
+assert ((c - 1) * PI = c * PI + (- PI)) by lra.
+rewrite H3.
+rewrite Cexp_add.
+assert (Cexp (- PI) = -1).
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI. rewrite sin_PI. lca.
+rewrite H4.
+lca. reflexivity.
+destruct x. destruct y.
+rewrite H1.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite sin_PI4.
+assert (((b + 1) * PI) = b * PI + PI) by lra.
+rewrite H3. rewrite Cexp_add.
+rewrite Cexp_PI. lca.
+destruct y.
+rewrite H0.
+assert (PI / 2 / 2 = PI / 4) by lra.
+rewrite H2. rewrite cos_PI4.
+assert ((c - 1) * PI = c * PI + (- PI)) by lra.
+rewrite H3.
+rewrite Cexp_add. rewrite Cexp_add. rewrite Cexp_add.
+assert (Cexp (- PI) = -1).
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI. rewrite sin_PI. lca.
+assert (((b + 1) * PI) = b * PI + PI) by lra.
+rewrite H5. rewrite Cexp_add.
+rewrite Cexp_PI. rewrite H4. lca.
+1 - 3: reflexivity.
 Qed.
 
 (* if u1's lambda is zero, then it is SKIP *)
 Lemma u1_to_skip: forall {dim:nat} (a:R) (q:nat), 
-    (q < dim)%nat -> (exists n, a = INR n * (2 * PI)) -> 
-     @uc_equiv dim (uapp1 (@U_R 0 0 (a)) q) SKIP.
+    (q < dim)%nat -> cos (a * PI) = 1 -> 
+     @uc_equiv dim (uapp1 (@U_R 0 0 (a * PI)) q) SKIP.
 Proof.
 intros.
 unfold uc_equiv; simpl.
@@ -691,26 +999,29 @@ apply f_equal2.
 apply f_equal2. reflexivity.
 unfold rotation. 
   prep_matrix_equality.
-destruct H0.
 destruct x0. destruct y.
-assert (0 / 2 = 0)%R by lra. rewrite H0.
+assert (0 / 2 = 0)%R by lra. rewrite H.
 rewrite cos_0. reflexivity.
  destruct y.
-assert (0 / 2 = 0)%R by lra. rewrite H0.
+assert (0 / 2 = 0)%R by lra. rewrite H.
 rewrite sin_0. lca. reflexivity.
 destruct x0. destruct y.
-assert (0 / 2 = 0)%R by lra. rewrite H0.
+assert (0 / 2 = 0)%R by lra. rewrite H.
 rewrite sin_0. lca.
  destruct y.
-assert (0 / 2 = 0)%R by lra. rewrite H0.
+assert (0 / 2 = 0)%R by lra. rewrite H.
 rewrite cos_0.
-rewrite H.
-assert (0 + INR x1 * (2 * PI) = 0 + 2 * INR x1 * PI) by lra.
-rewrite H1.
+assert ((0 + a * PI) = a * PI) by lra.
+rewrite H1. clear H1.
 unfold Cexp.
-rewrite sin_period. rewrite cos_period.
-rewrite sin_0. rewrite cos_0. lca.
-reflexivity.
+assert (sin (a * PI) = 0).
+specialize (sin2_cos2 (a * PI)) as H1. 
+rewrite H0 in H1.
+assert (1² = 1).
+unfold Rsqr. lra. rewrite H2 in H1.
+assert ((sin (a * PI))² = 0) by lra.
+apply Rsqr_0_uniq in H3. assumption.
+rewrite H0. rewrite H1. lca. lca.
 unfold I.
 destruct ((S (S x0) =? y)%nat && (S (S x0) <? 2))%nat eqn:eq.
 apply andb_true_iff in eq. destruct eq.
