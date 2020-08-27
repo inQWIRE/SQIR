@@ -1,4 +1,4 @@
 (library
   (name extracted_code)
   (wrapped false)
-  (libraries extracted openQASM unix))
+  (libraries extracted openQASM unix batteries))
