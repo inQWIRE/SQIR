@@ -188,3 +188,15 @@ class SQIR:
         self.lib.destroy.argtypes = [c_void_p]
         self.lib.destroy.restype = None
         self.lib.destroy(self.circ)
+
+    def write_str(self):
+
+        #Define function argtype/restype to match C
+        self.lib.write_qasm_file_str.argtypes = [c_void_p]
+        self.lib.write_qasm_file_str.restype = c_char_p
+        t = (self.lib.write_qasm_file_str(self.circ)).decode('utf-8') 
+        #Free OCaml Root after written to qasm
+        self.lib.destroy.argtypes = [c_void_p]
+        self.lib.destroy.restype = None
+        self.lib.destroy(self.circ)
+        return t
