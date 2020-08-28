@@ -243,7 +243,7 @@ Qed.
 (* The description of the circuit implementing "multiply a modulo N". *)
 Definition MultiplyCircuitProperty (a N n : nat) (c : base_ucom n) :=
   forall x : nat,
-    (0 <= x < N ->
+    ((0 <= x < N)%nat ->
      (uc_eval c) × (basis_vector (2^n) x) = basis_vector (2^n) (a * x mod N)).
 
 Lemma MC_eigenvalue :
@@ -251,7 +251,53 @@ Lemma MC_eigenvalue :
     BasicSetting a r N m n ->
     MultiplyCircuitProperty a N n c ->
     (uc_eval c) × (ψ a r N j n) = Cexp (2 * PI * j / r) .* (ψ a r N j n).
-Admitted.
+Proof.
+  intros. unfold ψ. 
+  unfold BasicSetting in H. destruct H as [Ha [HOrder [HN1 HN2]]]. 
+  rewrite Mscale_mult_dist_r. rewrite Mscale_assoc. rewrite Cmult_comm.
+  rewrite <- Mscale_assoc. rewrite Mscale_vsum_distr_r. rewrite Mmult_vsum_distr_l.
+  unfold MultiplyCircuitProperty in H0. remember (uc_eval c) as U.
+  replace (vsum r (fun i : nat => U × (ω_neg r ^ (j * i) .* basisPowerA a i N n))) 
+    with (vsum r (fun i : nat => (ω_neg r ^ (j * i) .* basisPowerA a (i+1) N n))).
+  2:{
+    apply vsum_eq. intros. rewrite Mscale_mult_dist_r.
+    unfold basisPowerA. rewrite H0. rewrite Nat.add_1_r. simpl. rewrite Nat.mul_mod_idemp_r. easy.
+    (* N <> 0 *)
+    destruct Ha. unfold not. intros. rewrite H3 in H2. easy.
+    (* 0 <= a^i mod N < N *)
+    apply Nat.mod_bound_pos. apply Nat.le_0_l. apply Nat.lt_trans with a. easy. easy. 
+  }
+  replace (vsum r (fun i : nat => ω_neg r ^ (j * i) .* basisPowerA a (i + 1) N n))
+    with (vsum r (fun i : nat => Cexp (2 * PI * j / r) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n))).
+  easy.
+  destruct r. easy. 
+  rewrite <- vsum_extend_l. rewrite <- vsum_extend_r. rewrite Mplus_comm.
+  unfold shift.
+  assert (forall t (A B C D : Vector t), A = B -> C = D -> A .+ C = B .+ D).
+  { intros. rewrite H. rewrite H1. easy. }
+  apply H.   
+  - apply vsum_eq. intros. rewrite Mscale_assoc. unfold ω_neg. rewrite Cexp_pow. rewrite Cexp_pow.
+    rewrite <- Cexp_add. 
+    replace (2 * PI * j / S r + -2 * PI / S r * (j * (i + 1))%nat) with (-2 * PI / S r * (j * i)%nat).
+    easy. repeat rewrite mult_INR. rewrite plus_INR. simpl. lra.
+  - unfold basisPowerA. remember (S r) as r'. unfold ω_neg. simpl. destruct HOrder as [Hr [HO1 HO2]].
+    rewrite Nat.add_1_r. rewrite <- Heqr'. rewrite HO1. rewrite Nat.mod_small.
+    rewrite Mscale_assoc. repeat rewrite Cexp_pow. rewrite <- Cexp_add.
+    rewrite <- (Cmult_1_l (Cexp (-2 * PI / r' * (j * r)%nat))). replace 1 with (1^j). rewrite <- RtoC_pow. 
+    rewrite <- Cexp_2PI. rewrite Cexp_pow. rewrite <- Cexp_add. repeat rewrite mult_INR.  simpl.
+    replace (2 * PI * j / r' + -2 * PI / r' * (j * 0)) with (2 * PI * j + -2 * PI / r' * (j * r)).
+    easy. simpl. rewrite Heqr'. rewrite <- Nat.add_1_r. repeat rewrite plus_INR. repeat rewrite Rdiv_unfold. simpl.
+    repeat rewrite Rmult_0_r. rewrite Rplus_0_r. replace (-2 * PI) with (2 * PI * -1) by lra. 
+    repeat rewrite Rmult_assoc.
+    repeat rewrite <- Rmult_plus_distr_l.
+    replace (j + -1 * (/ (r + 1) * (j * r))) with (j * / (r + 1)). easy.
+    rewrite <- (Rmult_1_r j) at 2. rewrite <- (Rinv_r (r+1)) at 2.
+    rewrite Rmult_comm. lra. 
+    + replace (r+1) with (r+1%nat). rewrite <- plus_INR. rewrite Nat.add_1_r. rewrite <- Heqr'.
+      apply lt_0_INR in Hr. apply Rlt_dichotomy_converse. right. easy. easy.
+    + apply pow1.
+    + destruct N. easy. destruct N. easy. lia. 
+Qed.
 
 Definition round (x : R) := up (x - /2).
 
@@ -290,7 +336,7 @@ Fixpoint CF_ite (n a b p1 q1 p2 q2 N : nat) : nat * nat :=
     end
   else (p2, q2).
 
-Compute (CF_ite 3 26 100 0 1 1 0 5).
+Compute (CF_ite 1 26 100 0 1 1 0 5).
 
 (* Not sure if this bound is correct. But it seems enough *)
 Definition CF_bound (N : nat) := (Nat.log2 N + 1)%nat.
