@@ -104,6 +104,12 @@ void write_qasm_file (char* outf, value* circ) {
    CAMLreturn0;
 }
 
+char * write_qasm_file_str (value* circ) {
+   CAMLparam0();
+   CLOSURE("write_qasm_file_str");
+   CAMLreturnT(char*, String_val(caml_callback(*closure, *circ)));
+}
+
 // AFAIK we don't need CAMLparam or CAMLreturn since nothing has type 'value' -KH
 int x_count (value* circ) {
     CLOSURE("x_count");

@@ -12,6 +12,7 @@ value* cancel_single_qubit_gates(value* circ);
 value* cancel_two_qubit_gates(value* circ);
 
 void write_qasm_file(char* outf, value* circ);
+char* write_qasm_file_str(value* circ);
 int x_count (value* circ);
 int h_count (value* circ);
 int rz_count (value* circ);
