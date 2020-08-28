@@ -1,6 +1,6 @@
 (executable
  (name libvoqc)
- (libraries extracted_code)
+ (libraries extracted_code batteries)
  (foreign_stubs (language c) (names ocaml_wrapper))
  (flags :standard -linkall -g)
  (modes (native shared_object))
