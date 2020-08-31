@@ -109,7 +109,7 @@ Qed.
 Definition BasicSetting (a r N m n : nat) :=
   0 < a < N /\
   Order a r N /\
-  N^2 <= 2^m < 2 * N^2 /\
+  N^2 < 2^m <= 2 * N^2 /\
   N <= 2^n < 2 * N.
 
 Definition basisPowerA (a r N n : nat) := basis_vector (2^n) (a^r mod N).
@@ -336,7 +336,7 @@ Fixpoint CF_ite (n a b p1 q1 p2 q2 N : nat) : nat * nat :=
     end
   else (p2, q2).
 
-Compute (CF_ite 1 26 100 0 1 1 0 5).
+Compute (CF_ite 3 72 100 0 1 1 0 5).
 
 (* Not sure if this bound is correct. But it seems enough *)
 Definition CF_bound (N : nat) := (Nat.log2 N + 1)%nat.
@@ -344,6 +344,143 @@ Definition CF_bound (N : nat) := (Nat.log2 N + 1)%nat.
 Definition ContinuedFraction (s N m : nat) : nat * nat := CF_ite (CF_bound N) s (2^m) 0 1 1 0 N.
 
 Definition Shor_post (s N m : nat) := snd (ContinuedFraction s N m).
+
+Lemma Rabs_center :
+  forall x y z d1 d2,
+    Rabs (x - y) < d1 ->
+    Rabs (x - z) < d2 ->
+    Rabs (y - z) < d1 + d2.
+Proof.
+  intros. 
+  rewrite Rabs_minus_sym in H0.
+  apply Rabs_def2 in H. apply Rabs_def2 in H0.
+  apply Rabs_def1; lra.
+Qed.
+
+Lemma Rabs_Z_lt_1 :
+  forall z,
+    Rabs (IZR z) < 1 ->
+    (z = 0)%Z.
+Proof.
+  intros. rewrite <- abs_IZR in H. apply lt_IZR in H. lia.
+Qed.
+
+Lemma ClosestFracUnique :
+  forall (α : R) (p1 q1 p2 q2 N : nat),
+    (0 < N)%nat ->
+    (0 < q1 <= N)%nat ->
+    (0 < q2 <= N)%nat ->
+    Rabs (α - p1 / q1) < / (2 * N^2) ->
+    Rabs (α - p2 / q2) < / (2 * N^2) ->
+    p1 / q1 = p2 / q2.
+Proof.
+  intros. destruct H0 as [H00 H01]. destruct H1 as [H10 H11].
+  apply lt_INR in H. simpl in H. apply lt_INR in H00. simpl in H00. apply lt_INR in H10. simpl in H10.
+  apply le_INR in H01. apply le_INR in H11.
+  assert (Rabs (p1 / q1 - p2 / q2) < / N^2).
+  { replace (/ N^2) with (/ (2 * N^2) + / (2 * N^2)) by (field; lra).
+    apply Rabs_center with (x := α); easy.
+  }
+  replace (p1 / q1 - p2 / q2) with (IZR (p1 * q2 - p2 * q1)%Z / (q1 * q2)) in H0.
+  2:{ rewrite minus_IZR. do 2 rewrite mult_IZR. repeat rewrite <- INR_IZR_INZ. field. lra.
+  }
+  assert (forall a b, b <> 0 -> Rabs (a / b) = Rabs a / Rabs b).
+  { intros. replace (a / b) with (a * /b) by lra. rewrite Rabs_mult. rewrite Rabs_Rinv; easy.
+  }
+  assert (0 < q1 * q2) by (apply Rmult_lt_0_compat; lra).
+  rewrite H1 in H0 by lra.
+  assert (Rabs (q1 * q2) = q1 * q2).
+  { apply Rabs_pos_eq. apply Rmult_le_pos; lra.
+  }
+  rewrite H5 in H0. unfold Rdiv in H0. apply Rmult_lt_compat_r with (r:=q1*q2) in H0; try assumption.
+  rewrite Rmult_assoc in H0. rewrite Rinv_l in H0 by lra. rewrite Rmult_1_r in H0.
+  assert (/ N ^ 2 * (q1 * q2) <= 1).
+  { apply Rmult_le_reg_l with (r:=N^2). simpl. rewrite Rmult_1_r. apply Rmult_lt_0_compat; easy.
+    rewrite <- Rmult_assoc. rewrite Rinv_r. rewrite Rmult_1_r. rewrite Rmult_1_l. simpl. rewrite Rmult_1_r. apply Rmult_le_compat; lra.
+    simpl. rewrite Rmult_1_r. apply Rmult_integral_contrapositive_currified; lra.
+  }
+  pose (Rlt_le_trans _ _ _ H0 H6) as H7.
+  apply Rabs_Z_lt_1 in H7.
+  assert (p1 * q2 = p2 * q1).
+  { repeat rewrite INR_IZR_INZ. repeat rewrite <- mult_IZR. replace (p1 * q2)%Z with (p2 * q1)%Z by lia. easy.
+  }
+  apply Rmult_eq_reg_r with (r:=q1 * q2); try lra.
+  replace (p1 / q1 * (q1 * q2)) with (p1 * q2 * (/ q1 * q1)) by lra. rewrite Rinv_l by lra.
+  replace (p2 / q2 * (q1 * q2)) with (p2 * q1 * (/ q2 * q2)) by lra. rewrite Rinv_l by lra.
+  rewrite H8. easy.
+Qed.
+
+Lemma round_inequality :
+  forall x,
+    x - /2 < IZR (round x) <= x + /2.
+Proof.
+  intros. unfold round.
+  pose (archimed (x - /2)) as H. destruct H as [H0 H1].
+  lra.
+Qed.
+
+Lemma round_pos :
+  forall x,
+    0 <= x ->
+    (0 <= round x)%Z.
+Proof.
+  intros. pose (round_inequality x) as G. destruct G as [G0 G1].
+  assert (-1 < IZR (round x)) by lra. apply lt_IZR in H0. lia.
+Qed.
+
+Lemma IZR_IZN_INR :
+  forall z,
+    (0 <= z)%Z ->
+    IZR z = Z.to_nat z.
+Proof.
+  intros. destruct z; try lia. easy.
+  simpl. rewrite INR_IPR. easy.
+Qed.
+
+Lemma s_closest_is_closest :
+  forall a r N m n k,
+    BasicSetting a r N m n ->
+    (0 < k < r)%nat ->
+    Rabs ((s_closest m k r) / (2^m) - k / r) < 1 / (2 * N^2).
+Proof.
+  intros. destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. unfold s_closest. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
+  assert (PowM: 0 < 2 ^ m) by (apply pow_lt; lra).
+  assert (0 <= round (k / r * 2 ^ m))%Z.
+  { apply round_pos. destruct H0 as [Hk Hr]. assert (0 < r)%nat by lia. apply lt_INR in H. simpl in H. apply lt_INR in Hk. simpl in Hk. assert (0 < k / r). apply Rdiv_lt_0_compat; easy. apply Rlt_le. apply Rmult_lt_0_compat; easy.
+  } 
+  rewrite <- IZR_IZN_INR by easy.
+  pose (round_inequality (k / r * 2 ^ m)) as G. destruct G as [G0 G1].
+  assert (/2 * /2^m < / (2 * N^2)).
+  { assert (0 < N^2).
+    { apply Rmult_lt_0_compat; lra.
+    }
+    rewrite Rinv_mult_distr by lra.
+    apply Rmult_lt_compat_l. apply Rinv_0_lt_compat. lra.
+    apply Rinv_lt_contravar. apply Rmult_lt_0_compat; easy.
+    apply lt_INR in Hm1. do 2 rewrite pow_INR in Hm1. apply Hm1.
+  }
+  apply Rabs_def1.
+  - apply Rmult_le_compat_r with (r:=/2^m) in G1.
+    2:{ apply Rinv_0_lt_compat in PowM. lra.
+    }
+    rewrite Rmult_plus_distr_r in G1.
+    replace (k / r * 2 ^ m * / 2 ^ m) with (k / r * (2 ^ m * / 2 ^ m)) in G1 by lra. rewrite Rinv_r in G1 by lra.
+    apply Rle_lt_trans with (r2:=/ 2 * / 2 ^ m); lra.
+  - apply Rmult_lt_compat_l with (r:=/2^m) in G0.
+    2:{ apply Rinv_0_lt_compat. easy.
+    }
+    rewrite Rmult_minus_distr_l in G0.
+    replace (/ 2 ^ m * (k / r * 2 ^ m)) with (/ 2^m * 2^m * (k / r)) in G0 by lra. rewrite Rinv_l in G0 by lra.
+    apply Rlt_le_trans with (r2:=- /2 * /2^m); lra.
+Qed.
+
+Lemma CF_is_closest :
+  forall a r N m n k,
+    BasicSetting a r N m n ->
+    (0 < k < r)%nat ->
+    let (p, q) := ContinuedFraction (s_closest m k r) N m in
+    Rabs ((s_closest m k r) / (2^m) - p / q) < 1 / (2 * N^2).
+Admitted.
 
 (* "Partial correct" of ContinuedFraction function. "Partial" because it is exactly correct only when k and r are coprime. Otherwise it will output (p, q) such that p/q=k/r. *)
 Lemma ContinuedFraction_partial_correct :
@@ -353,13 +490,7 @@ Lemma ContinuedFraction_partial_correct :
     ContinuedFraction (s_closest m k r) N m = (k, r).
 Admitted.
 
-Fixpoint Rsum_ite (n k : nat) (f : nat -> R) : R :=
-  match k with
-  | O => f O
-  | S k' => (f k') + (Rsum_ite n k' f)
-  end.
-
-Definition Rsum (n : nat) (f : nat -> R) : R := Rsum_ite n n f.
+Definition Rsum (n : nat) (f : nat -> R) : R := sum_f_R0 f (n - 1)%nat.
 
 Definition prob_partial_meas {n} {m} x (ψ : Vector (2^(m + n))) :=
   Rsum (2^n) (fun y => probability_of_outcome ψ (basis_vector (2^m) x ⊗ basis_vector (2^n) y)).
