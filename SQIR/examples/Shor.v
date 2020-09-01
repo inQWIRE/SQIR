@@ -1,6 +1,6 @@
 (*From Interval Require Import Tactic.*)
 Require Import Reals Psatz ZArith Znumtheory.
-Require Export VectorStates QPE.
+Require Export VectorStates QPE QPEGeneral.
 
 Local Close Scope R_scope.
 
@@ -36,7 +36,7 @@ Proof.
   destruct (0 <? a)%nat eqn:E.
   - apply Nat.ltb_lt in E; easy.
   - apply Nat.ltb_ge in E. assert (a=0) by omega. destruct H as [? [? _]]. rewrite H0 in H1. rewrite Nat.pow_0_l in H1. rewrite Nat.mod_0_l in H1 by omega. omega. omega.
-Qed.  
+Qed.
 
 Lemma Order_a_inv_ex :
   forall a r N,
@@ -104,6 +104,21 @@ Proof.
   assert (0 < x2 - x1 /\ a ^ (x2 - x1) mod N = 1)%nat by omega.
   apply Hcounter in H. omega.
 Qed.
+
+Lemma Order_r_lt_N :
+  forall a r N,
+    Order a r N ->
+    r < N.
+Proof.
+(*
+   Proof Idea:
+1) assume r >= N.
+2) notice that 0 < a^k mod N < N
+3) by PHP, there exists a^s mod N = a^t mod N, 0 <= s < t < r
+4) a^(t-s) mod N = 1
+5) t-s < r violates Order a r N.
+*)
+Admitted.
 
 (* Parameter assumptions of the Shor's algorithm *)
 Definition BasicSetting (a r N m n : nat) :=
@@ -177,6 +192,22 @@ Proof.
   rewrite cos_neg in H4. rewrite cos_PI in H4. lra.
 Qed.
 
+Lemma ψ_pure_state :
+  forall a r N m n j : nat,
+    BasicSetting a r N m n ->
+    Pure_State_Vector (ψ a r N j n).
+Proof.
+  intros. split.
+  - unfold ψ. apply WF_scale. apply vsum_WF. intros. apply WF_scale. unfold basisPowerA. apply basis_vector_WF.
+    assert (0 <= a^i mod N < N)%nat.
+    { apply Nat.mod_bound_pos. omega.
+      destruct H as [_ [HOrder _]]. apply Order_N_lb in HOrder. omega.
+    }
+    destruct H as [_ [_ [_ [Hn _]]]]. omega.
+  - unfold ψ. rewrite Mscale_adj. rewrite Mscale_mult_dist_l. rewrite Mscale_mult_dist_r.
+    admit.
+Admitted.    
+
 Lemma sum_of_ψ_is_one :
   forall a r N m n : nat,
     BasicSetting a r N m n ->
@@ -217,6 +248,7 @@ Proof.
   assumption.
 Qed.
 
+(*
 Lemma mod_pow :
   forall a b N,
     (0 < N)%nat ->
@@ -239,6 +271,7 @@ Proof.
   rewrite Nat.pow_mul_r. rewrite mod_pow; try omega.
   rewrite H0. rewrite Nat.pow_1_l. rewrite <- Nat.mul_mod; try omega. rewrite Nat.mul_1_l. easy.
 Qed.
+*)
 
 (* The description of the circuit implementing "multiply a modulo N". *)
 Definition MultiplyCircuitProperty (a N n : nat) (c : base_ucom n) :=
@@ -305,45 +338,185 @@ Definition round (x : R) := up (x - /2).
 Definition s_closest (m k r : nat) :=
   Z.to_nat (round (k / r * 2^m)%R).
 
-(* Copied from QPEGeneral.v *)
-Definition probability_of_outcome {n} (ψ o : Vector n) : R := 
-  (Cmod ((o† × ψ) 0%nat 0%nat)) ^ 2.
+Lemma round_inequality :
+  forall x,
+    x - /2 < IZR (round x) <= x + /2.
+Proof.
+  intros. unfold round.
+  pose (archimed (x - /2)) as H. destruct H as [H0 H1].
+  lra.
+Qed.
+
+Lemma round_pos :
+  forall x,
+    0 <= x ->
+    (0 <= round x)%Z.
+Proof.
+  intros. pose (round_inequality x) as G. destruct G as [G0 G1].
+  assert (-1 < IZR (round x)) by lra. apply lt_IZR in H0. lia.
+Qed.
+
+Lemma round_lt_Z :
+  forall (x : R) (z : BinNums.Z),
+    x <= IZR z ->
+    (round x <= z)%Z.
+Proof.
+  intros. pose (round_inequality x) as G. destruct G as [G0 G1].
+  assert (IZR (round x) < IZR z + 1) by lra. replace (IZR z + 1) with (IZR (z + 1)) in H0 by (rewrite plus_IZR; easy). apply lt_IZR in H0. lia.
+Qed.
+
+Lemma IZR_IZN_INR :
+  forall z,
+    (0 <= z)%Z ->
+    IZR z = Z.to_nat z.
+Proof.
+  intros. destruct z; try lia. easy.
+  simpl. rewrite INR_IPR. easy.
+Qed.
+
+Lemma pow_2_m_pos :
+  forall m, 0 < 2 ^ m.
+Proof.
+  intros. apply pow_lt; lra.
+Qed.
+
+Lemma Inv__pow_2_m_and_N_square:
+  forall a r N m n,
+    BasicSetting a r N m n ->
+    /2 * /2^m < / (2 * N^2).
+Proof.
+  intros. destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. unfold s_closest. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
+  pose (pow_2_m_pos m).
+  assert (0 < N^2) by nra.
+  rewrite Rinv_mult_distr by lra.  
+  apply Rmult_lt_compat_l. nra. 
+  apply Rinv_lt_contravar. nra. 
+  apply lt_INR in Hm1. do 2 rewrite pow_INR in Hm1. apply Hm1.
+Qed.
+
+Lemma round_k_r_2_m_nonneg :
+  forall a r N m n k,
+    BasicSetting a r N m n ->
+    (0 <= k < r)%nat ->
+    (0 <= round (k / r * 2 ^ m))%Z.
+Proof.
+  intros. apply round_pos. destruct H0 as [Hk Hr]. assert (0 < r)%nat by lia. apply le_INR in Hk. simpl in Hk. apply lt_INR in Hr. apply lt_INR in H0. simpl in H0. assert (0 <= k / r). unfold Rdiv. apply Rle_mult_inv_pos; easy. pose (pow_2_m_pos m). nra. 
+Qed.
+
+Lemma s_closest_is_closest :
+  forall a r N m n k,
+    BasicSetting a r N m n ->
+    (0 <= k < r)%nat ->
+    -1 / (2 * 2^m) < (s_closest m k r) / (2^m) - k / r <= 1 / (2 * 2^m).
+Proof.
+  intros. assert (HBS := H). destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. unfold s_closest. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
+  pose (pow_2_m_pos m) as PowM.
+  pose (round_k_r_2_m_nonneg _ _ _ _ _ _ HBS H0) as H.
+  unfold Rdiv.
+  replace (/ (2 * 2 ^ m)) with (/2 * /2^m) by (symmetry; apply Rinv_mult_distr; lra).  
+  rewrite <- IZR_IZN_INR by easy.
+  pose (round_inequality (k / r * 2 ^ m)) as G. destruct G as [G0 G1].
+  split.
+  - apply Rmult_lt_compat_l with (r:=/2^m) in G0.
+    2:{ apply Rinv_0_lt_compat. easy.
+    }
+    rewrite Rmult_minus_distr_l in G0.
+    replace (/ 2 ^ m * (k / r * 2 ^ m)) with (/ 2^m * 2^m * (k / r)) in G0 by lra. rewrite Rinv_l in G0; lra.
+  - apply Rmult_le_compat_r with (r:=/2^m) in G1.
+    2:{ apply Rinv_0_lt_compat in PowM. lra.
+    }
+    rewrite Rmult_plus_distr_r in G1.
+    replace (k / r * 2 ^ m * / 2 ^ m) with (k / r * (2 ^ m * / 2 ^ m)) in G1 by lra. rewrite Rinv_r in G1; lra. 
+Qed.
+
+Lemma basis_vector_zero :
+  forall x, basis_vector (2^x) 0 = x ⨂ ket 0.
+Proof.
+  intro. induction x.
+  - simpl. unfold basis_vector. unfold I. apply functional_extensionality. intros. apply functional_extensionality. intros. destruct x; destruct x0; try easy. simpl. unfold Nat.ltb. simpl. rewrite andb_false_r. easy.
+  - rewrite basis_f_to_vec_alt by (apply pow_positive; omega). simpl.
+    rewrite nat_to_funbool_0. rewrite <- nat_to_funbool_0 with (n:=x).
+    rewrite <- basis_f_to_vec_alt by (apply pow_positive; omega).
+    rewrite IHx. simpl. easy.
+Qed.
 
 Lemma QPE_MC_partial_correct :
   forall (a r N k m n : nat) (c : base_ucom n),
     BasicSetting a r N m n ->
+    uc_well_typed c ->
     MultiplyCircuitProperty a N n c ->
-    0 <= k < r ->
+    (0 <= k < r)%nat ->
     probability_of_outcome ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (ψ a r N k n))) ((basis_vector (2^m) (s_closest m k r)) ⊗ (ψ a r N k n)) >= 4 / (PI ^ 2).
-Admitted.
+Proof.
+  intros a r N k m n c H Hc H0 H1.
+  rewrite basis_vector_zero.
+  assert (s_closest m k r < 2 ^ m)%nat.
+  { apply INR_lt. rewrite pow_INR. pose (s_closest_is_closest _ _ _ _ _ _ H H1) as G. destruct G as [_ G1].
+      assert (k / r <= 1 - / r).
+      { assert (0 < r). assert (0 < r)%nat by omega. apply lt_0_INR; easy.
+        apply Rmult_le_reg_r with (r:=r). easy.
+        rewrite Raux.Rmult_minus_distr_r. replace (k / r * r) with ((/r) * r * k) by lra. rewrite Rinv_l by lra.
+        assert (k + 1 <= r)%nat by omega. apply le_INR in H3. rewrite plus_INR in H3. simpl in H3. lra.
+      }
+      assert (/N < /r).
+      { apply Rinv_lt_contravar. destruct H as [HN [[Hr _] _]]. assert (0 < r * N)%nat by (apply Nat.mul_pos_pos; omega). apply lt_INR in H. rewrite mult_INR in H. easy.
+        apply lt_INR. apply Order_r_lt_N with (a:=a). destruct H as [_ [H _]]. easy.
+      }
+      assert (/ (2 * 2^m) < /N).
+      { apply Rinv_lt_contravar.
+        destruct H as [HN [Horder _]]. apply Order_N_lb in Horder. assert (0 < N)%nat by omega. apply lt_INR in H. simpl in H.
+        pose (pow_2_m_pos m).
+        nra.
+        destruct H as [_ [_ [[Hm _] _]]]. apply lt_INR in Hm. simpl in Hm. do 2 rewrite mult_INR in Hm. rewrite pow_INR in Hm. replace (INR 2%nat) with 2 in Hm by reflexivity. simpl in Hm.
+        assert (N <= N * N)%nat by nia. apply le_INR in H. rewrite mult_INR in H.
+        nra.
+      }
+      assert (s_closest m k r / 2^m < 1) by lra.
+      replace (INR 2%nat) with 2 by reflexivity.
+      pose (pow_2_m_pos m).
+      apply Rmult_lt_reg_r with (r:=/2^m). apply Rinv_0_lt_compat. easy.
+      rewrite Rinv_r by lra. lra.
+  }
+  rewrite basis_f_to_vec_alt by easy.
+  apply QPE_semantics_full with (δ:=k / r - s_closest m k r / 2^m).
+  destruct H as [_ [Horder [_ [Hn _]]]]. apply Order_N_lb in Horder. destruct n. simpl in Hn. omega. omega.
+  destruct H as [_ [Horder [[Hm _] _]]]. apply Order_N_lb in Horder. simpl in Hm. assert (4 <= 2^m)%nat by nia. destruct m. simpl in H. omega. destruct m. simpl in H. omega. omega.
+  assumption.
+  apply ψ_pure_state with (m:=m). assumption.
+  pose (s_closest_is_closest _ _ _ _ _ _ H H1). replace (2 ^ (m + 1)) with (2 * 2 ^ m). lra.
+  rewrite pow_add. lra.
+  rewrite nat_to_funbool_inverse by easy.
+  replace (2 * PI * (s_closest m k r / 2 ^ m + (k / r - s_closest m k r / 2 ^ m))) with (2 * PI * k / r) by lra.
+  apply MC_eigenvalue with (m:=m); easy.
+Qed.
+
+Definition Rsum (n : nat) (f : nat -> R) : R := sum_f_R0 f (n - 1)%nat.
+
+Definition prob_partial_meas {n} {m} x (ψ : Vector (2^(m + n))) :=
+  Rsum (2^n) (fun y => probability_of_outcome ψ (basis_vector (2^m) x ⊗ basis_vector (2^n) y)).
 
 Lemma QPE_MC_correct :
   forall (a r N k m n : nat) (c : base_ucom n),
     BasicSetting a r N m n ->
     MultiplyCircuitProperty a N n c ->
     0 <= k < r ->
-    probability_of_outcome ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1))) ((basis_vector (2^m) (s_closest m k r)) ⊗ (ψ a r N k n)) >= 4 / (PI ^ 2 * r).
+    prob_partial_meas (s_closest m k r) ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1))) >= 4 / (PI ^ 2 * r).
 Admitted.
 
+(* <del>Finds p/q such that |s/2^m-p/q|<=1/2^(m+1) and q<N. Must make sure 2^m>N^2 to secure the uniqueness.<\del> *)
+(* Calc p_n and q_n now, which is the continued fraction expansion of a / b for n terms. *)
+Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
+  match n with
+  | O => (p1, q1)
+  | S n => let c := (b / a)%nat in
+          CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
+  end.
 
-(* Finds p/q such that |s/2^m-p/q|<=1/2^(m+1) and q<N. Must make sure 2^m>N^2 to secure the uniqueness. *)
-Fixpoint CF_ite (n a b p1 q1 p2 q2 N : nat) : nat * nat :=
-  if q1 <? N then
-    match n with
-    | O => (p1, q1)
-    | S n => let c := (b / a)%nat in
-            CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1 N
-    end
-  else (p2, q2).
+Compute (CF_ite 3 72 100 0 1 1 0).
 
-Compute (CF_ite 3 72 100 0 1 1 0 5).
+Definition ContinuedFraction (step s m : nat) : nat * nat := CF_ite step s (2^m) 0 1 1 0.
 
-(* Not sure if this bound is correct. But it seems enough *)
-Definition CF_bound (N : nat) := (Nat.log2 N + 1)%nat.
-
-Definition ContinuedFraction (s N m : nat) : nat * nat := CF_ite (CF_bound N) s (2^m) 0 1 1 0 N.
-
-Definition Shor_post (s N m : nat) := snd (ContinuedFraction s N m).
+Definition Shor_post (step s m : nat) := snd (ContinuedFraction step s m).
 
 Lemma Rabs_center :
   forall x y z d1 d2,
@@ -364,6 +537,7 @@ Lemma Rabs_Z_lt_1 :
 Proof.
   intros. rewrite <- abs_IZR in H. apply lt_IZR in H. lia.
 Qed.
+
 
 Lemma ClosestFracUnique :
   forall (α : R) (p1 q1 p2 q2 N : nat),
@@ -410,96 +584,27 @@ Proof.
   rewrite H8. easy.
 Qed.
 
-Lemma round_inequality :
-  forall x,
-    x - /2 < IZR (round x) <= x + /2.
-Proof.
-  intros. unfold round.
-  pose (archimed (x - /2)) as H. destruct H as [H0 H1].
-  lra.
-Qed.
-
-Lemma round_pos :
-  forall x,
-    0 <= x ->
-    (0 <= round x)%Z.
-Proof.
-  intros. pose (round_inequality x) as G. destruct G as [G0 G1].
-  assert (-1 < IZR (round x)) by lra. apply lt_IZR in H0. lia.
-Qed.
-
-Lemma IZR_IZN_INR :
-  forall z,
-    (0 <= z)%Z ->
-    IZR z = Z.to_nat z.
-Proof.
-  intros. destruct z; try lia. easy.
-  simpl. rewrite INR_IPR. easy.
-Qed.
-
-Lemma s_closest_is_closest :
-  forall a r N m n k,
-    BasicSetting a r N m n ->
-    (0 < k < r)%nat ->
-    Rabs ((s_closest m k r) / (2^m) - k / r) < 1 / (2 * N^2).
-Proof.
-  intros. destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. unfold s_closest. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
-  assert (PowM: 0 < 2 ^ m) by (apply pow_lt; lra).
-  assert (0 <= round (k / r * 2 ^ m))%Z.
-  { apply round_pos. destruct H0 as [Hk Hr]. assert (0 < r)%nat by lia. apply lt_INR in H. simpl in H. apply lt_INR in Hk. simpl in Hk. assert (0 < k / r). apply Rdiv_lt_0_compat; easy. apply Rlt_le. apply Rmult_lt_0_compat; easy.
-  } 
-  rewrite <- IZR_IZN_INR by easy.
-  pose (round_inequality (k / r * 2 ^ m)) as G. destruct G as [G0 G1].
-  assert (/2 * /2^m < / (2 * N^2)).
-  { assert (0 < N^2).
-    { apply Rmult_lt_0_compat; lra.
-    }
-    rewrite Rinv_mult_distr by lra.
-    apply Rmult_lt_compat_l. apply Rinv_0_lt_compat. lra.
-    apply Rinv_lt_contravar. apply Rmult_lt_0_compat; easy.
-    apply lt_INR in Hm1. do 2 rewrite pow_INR in Hm1. apply Hm1.
-  }
-  apply Rabs_def1.
-  - apply Rmult_le_compat_r with (r:=/2^m) in G1.
-    2:{ apply Rinv_0_lt_compat in PowM. lra.
-    }
-    rewrite Rmult_plus_distr_r in G1.
-    replace (k / r * 2 ^ m * / 2 ^ m) with (k / r * (2 ^ m * / 2 ^ m)) in G1 by lra. rewrite Rinv_r in G1 by lra.
-    apply Rle_lt_trans with (r2:=/ 2 * / 2 ^ m); lra.
-  - apply Rmult_lt_compat_l with (r:=/2^m) in G0.
-    2:{ apply Rinv_0_lt_compat. easy.
-    }
-    rewrite Rmult_minus_distr_l in G0.
-    replace (/ 2 ^ m * (k / r * 2 ^ m)) with (/ 2^m * 2^m * (k / r)) in G0 by lra. rewrite Rinv_l in G0 by lra.
-    apply Rlt_le_trans with (r2:=- /2 * /2^m); lra.
-Qed.
-
-Lemma CF_is_closest :
-  forall a r N m n k,
-    BasicSetting a r N m n ->
-    (0 < k < r)%nat ->
-    let (p, q) := ContinuedFraction (s_closest m k r) N m in
-    Rabs ((s_closest m k r) / (2^m) - p / q) < 1 / (2 * N^2).
-Admitted.
-
 (* "Partial correct" of ContinuedFraction function. "Partial" because it is exactly correct only when k and r are coprime. Otherwise it will output (p, q) such that p/q=k/r. *)
 Lemma ContinuedFraction_partial_correct :
   forall (a r N k m n : nat),
     BasicSetting a r N m n ->
     rel_prime k r ->
-    ContinuedFraction (s_closest m k r) N m = (k, r).
+    exists step,
+      (step <= m)%nat /\
+      Shor_post step (s_closest m k r) m = r.
 Admitted.
 
-Definition Rsum (n : nat) (f : nat -> R) : R := sum_f_R0 f (n - 1)%nat.
+Fixpoint Bsum n (f : nat -> bool) :=
+  match n with
+  | O => f O
+  | S n' => f n' || Bsum n' f
+  end.
 
-Definition prob_partial_meas {n} {m} x (ψ : Vector (2^(m + n))) :=
-  Rsum (2^n) (fun y => probability_of_outcome ψ (basis_vector (2^m) x ⊗ basis_vector (2^n) y)).
+Definition r_recoverable x m r := if Bsum m (fun step => Shor_post step x m =? r) then 1 else 0.
 
 (* The final success probability of Shor's order finding algorithm. It counts the k's coprime to r and their probability of being collaped to. *)
 Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
-  Rsum (2^m) (fun x => if Shor_post x N m =? r then
-                      prob_partial_meas x ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1)))
-                    else 0).
+  Rsum (2^m) (fun x => r_recoverable x m r * prob_partial_meas x ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1)))).
 
 (* Euler's totient function *)
 Definition ϕ (n : nat) := Rsum n (fun x => if rel_prime_dec x n then 1 else 0).
