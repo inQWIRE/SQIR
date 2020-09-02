@@ -34,7 +34,7 @@ COQ_OPTS := -R . Top
 
 all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
 
-examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
+examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo $(examples)/QPEGeneral.vo
 
 mapper: invoke-coqmakefile $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo $(VOQC)/SimpleMappingWithLayout.vo
 

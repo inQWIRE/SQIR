@@ -105,20 +105,130 @@ Proof.
   apply Hcounter in H. omega.
 Qed.
 
+Lemma Pow_pos :
+    forall (a r N i : nat),
+      Order a r N ->
+        a^i mod N > 0.
+Proof.
+  intros. unfold gt. destruct (Nat.lt_ge_cases 0 (a ^ i mod N)). easy.
+  inversion H0.  exfalso. cut (a^r mod N = 0).
+  intros. destruct H as (Ha & Hb & Hc). omega.
+  assert (N <> 0).
+  { assert (1 < N). { apply (Order_N_lb a r _). easy. } omega. }
+  destruct (Nat.lt_ge_cases i r).
+  - assert (r = (i + (r - i))%nat) by omega.
+    rewrite H4. rewrite -> Nat.pow_add_r. rewrite Nat.mul_mod. rewrite H2. simpl.
+    apply Nat.mod_0_l.
+    easy. easy.
+  - assert (r = (i - (i - r))%nat) by omega.
+    rewrite H4. pose (Order_a_inv_ex a r N H). destruct e.
+    rewrite (Pow_minus _ r _ x _ _); try easy; try omega.
+    rewrite Nat.mul_mod. rewrite H2. simpl.
+    apply Nat.mod_0_l. easy. easy.
+Qed.
+
+(* from https://gist.github.com/jorpic/bf37de156f48ea438076 *)
+Lemma nex_to_forall : forall k n x : nat, forall f,
+ (~exists k, k < n /\ f k = x) -> k < n -> f k <> x.
+Proof.
+  intros k n x f H_nex H_P H_Q. 
+  apply H_nex; exists k; auto.
+Qed.
+
+(* from https://gist.github.com/jorpic/bf37de156f48ea438076 *)
+Lemma exists_or_not :
+  forall n x : nat, forall f : nat -> nat,
+    (exists k, k < n /\ f k = x) \/ (~exists k, k < n /\ f k = x).
+Proof.
+  intros n x f.
+  induction n.
+  - right. intro H_ex.
+    destruct H_ex as [k [Hk Hf]]. easy.
+  - destruct IHn as [H_ex | H_nex].
+    + destruct H_ex as [k [H_kn H_fk]].
+      left; exists k; auto.
+    + destruct (eq_nat_dec (f n) x) as [H_fn_eqx | H_fn_neq_x].
+      * left; exists n; auto.
+      * right. intro H_nex'.
+        destruct H_nex' as [k [H_kn H_fk]].
+        apply H_fn_neq_x.
+        apply lt_n_Sm_le in H_kn.
+        apply le_lt_or_eq in H_kn.
+        destruct H_kn as [H_lt | H_eq]. 
+        - contradict H_fk.
+          apply (nex_to_forall k n x f H_nex H_lt).
+        - rewrite <- H_eq; assumption.
+Qed.
+
+(* from https://gist.github.com/jorpic/bf37de156f48ea438076 *)
+Theorem pigeonhole
+    :  forall n : nat, forall f : nat -> nat, (forall i, i <= n -> f i < n)
+    -> exists i j, i <= n /\ j < i /\ f i = f j.
+Proof.
+  induction n.
+  - intros f Hf.
+    specialize (Hf 0 (le_refl 0)). easy.
+  - intros f Hf.
+    destruct (exists_or_not (n+1) (f (n+1)%nat) f) as [H_ex_k | H_nex_k].
+    + destruct H_ex_k as [k [Hk_le_Sn Hfk]].
+      exists (n+1)%nat, k.
+      split; [omega | split; [assumption | rewrite Hfk; reflexivity]].
+    + set (g := fun x => if eq_nat_dec (f x) n then f (n+1)%nat else f x).
+      assert (forall i : nat, i <= n -> g i < n).
+      { intros. unfold g.
+        destruct (eq_nat_dec (f i) n).
+        - apply nex_to_forall with (k := i) in H_nex_k. 
+          + specialize (Hf (n+1)%nat); omega.
+          + omega.
+        - specialize (Hf i); omega.
+      }
+      destruct (IHn g H) as [x H0].
+      destruct H0 as [y [H1 [H2 H3]]].
+      exists x, y. split; [omega | split ; [assumption | idtac]].
+      (* lemma g x = g y -> f x = f y *)
+      unfold g in H3.
+      destruct eq_nat_dec in H3.
+      { destruct eq_nat_dec in H3.
+        - rewrite e; rewrite e0. reflexivity.
+        - contradict H3.
+          apply not_eq_sym.
+          apply nex_to_forall with (n := (n+1)%nat).
+          apply H_nex_k. omega.
+      }
+      { destruct eq_nat_dec in H3.
+        - contradict H3.
+          apply nex_to_forall with (n := (n+1)%nat).
+          apply H_nex_k. omega.
+        - assumption.
+      }
+Qed.
+
 Lemma Order_r_lt_N :
   forall a r N,
     Order a r N ->
     r < N.
 Proof.
-(*
-   Proof Idea:
-1) assume r >= N.
-2) notice that 0 < a^k mod N < N
-3) by PHP, there exists a^s mod N = a^t mod N, 0 <= s < t < r
-4) a^(t-s) mod N = 1
-5) t-s < r violates Order a r N.
-*)
-Admitted.
+  intros.
+  destruct (Nat.lt_ge_cases r N). easy.
+  remember (fun i => pred (a^i mod N))%nat as f.
+  cut (exists i j, i <= pred r /\ j < i /\ f i = f j).
+  - intros. destruct H1 as (i & j & H1 & H2 & H3).
+    cut (f i <> f j). easy.
+    rewrite Heqf.
+    assert (forall (a b : nat), a > 0 -> b > 0 -> a <> b -> pred a <> pred b).
+    { intros. omega. }
+    apply H4.
+    + apply (Pow_pos _ r _ _). easy.
+    + apply (Pow_pos _ r _ _). easy.
+    + assert (forall T (x y : T), x <> y -> y <> x) by auto.
+      apply H5. apply (Pow_diff _ r _ j i); try omega. easy.
+  - apply pigeonhole. intros. subst. 
+    assert (forall (a b : nat), a > 0 -> b > 0 -> a < b -> pred a < pred b) by (intros; omega).
+    apply H2. apply (Pow_pos _ r _ _); easy. destruct H. auto.
+    cut (a^i mod N < N). omega.
+    apply Nat.mod_upper_bound. 
+    assert (1 < N). { apply (Order_N_lb a r _). easy. } omega.
+Qed.
 
 (* Parameter assumptions of the Shor's algorithm *)
 Definition BasicSetting (a r N m n : nat) :=
