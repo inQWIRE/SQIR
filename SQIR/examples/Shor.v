@@ -105,6 +105,20 @@ Proof.
   apply Hcounter in H. omega.
 Qed.
 
+Lemma Pow_diff_neq :
+  forall a r N x1 x2,
+    Order a r N ->
+    0 <= x1 < r ->
+    0 <= x2 < r ->
+    x1 <> x2 ->
+    a^x1 mod N <> a^x2 mod N.
+Proof.
+  intros. apply not_eq in H2. destruct H2.
+  - apply Pow_diff with (r:=r); easy.
+  - apply not_eq_sym. apply Pow_diff with (r:=r); easy.
+Qed.
+
+
 Lemma Pow_pos :
     forall (a r N i : nat),
       Order a r N ->
@@ -302,6 +316,73 @@ Proof.
   rewrite cos_neg in H4. rewrite cos_PI in H4. lra.
 Qed.
 
+Lemma Vec_Mmult_vsum_distr_r :
+  forall {d} n (f : nat -> Vector d) (v : Vector d),
+    (vsum n f) † × v = vsum n (fun i => (f i) † × v).
+Proof.
+  intros.
+  induction n; simpl. 
+  Msimpl. reflexivity.
+  rewrite Mplus_adjoint. rewrite Mmult_plus_distr_r, IHn. reflexivity.
+Qed.
+
+Lemma Double_Vec_Cancel :
+  forall n (f : nat -> nat -> Vector 1),
+    (forall i j, (i < n)%nat -> (j < n)%nat -> (i <> j)%nat -> f i j = Zero) ->
+    vsum n (fun i => vsum n (fun j => f i j)) = vsum n (fun i => f i i).
+Proof.
+  intros. apply vsum_eq. intros.
+  apply vsum_unique. exists i. split. easy.
+  split. easy. intros. apply H; omega.
+Qed.
+
+Lemma vsum_multiple :
+  forall {d} n (v : Vector d),
+    vsum n (fun i => v) = n .* v.
+Proof.
+  intros. induction n.
+  - simpl. Msimpl. easy.
+  - rewrite <- vsum_extend_r. rewrite IHn. replace (S n) with (n + 1)%nat by omega. rewrite plus_INR. simpl. rewrite RtoC_plus. rewrite Mscale_plus_distr_l. Msimpl. easy.
+Qed.
+
+Lemma Cconj_mod_eq :
+  forall c : C,
+    Cmod (c^*) = Cmod c.
+Proof.
+  intro. unfold Cmod. unfold Cconj. simpl.
+  replace (- snd c * (- snd c * 1)) with (snd c * (snd c * 1)) by lra. easy.
+Qed.
+
+Lemma Cconj_real_pos :
+  forall x : C,
+    snd x = 0 ->
+    fst x >= 0 ->
+    x = Cmod x.
+Proof.
+  intros. unfold Cmod. rewrite H. replace (fst x ^ 2 + 0 ^ 2) with (fst x ^ 2) by lra. rewrite sqrt_pow2 by lra. lca.
+Qed.
+  
+Lemma Cconj_inner :
+  forall c : C,
+    (c^* * c = Cmod c ^2)%C.
+Proof.
+  intro.
+  rewrite RtoC_pow.
+  replace (Cmod c ^ 2) with ((Cmod (c^* )) * (Cmod c)).
+  2:{ rewrite Cconj_mod_eq. lra.
+  }
+  rewrite <- Cmod_mult. apply Cconj_real_pos.
+  destruct c. simpl. lra.
+  destruct c. simpl. nra.
+Qed.
+
+Lemma Cmod_Cexp :
+  forall θ,
+    Cmod (Cexp θ) = 1.
+Proof.
+  intro. unfold Cexp. unfold Cmod. simpl. replace ((cos θ * (cos θ * 1) + sin θ * (sin θ * 1))) with (cos θ * cos θ + sin θ * sin θ) by lra. pose (sin2_cos2 θ) as H. unfold Rsqr in H. rewrite Rplus_comm in H. rewrite H. apply sqrt_1.
+Qed.
+
 Lemma ψ_pure_state :
   forall a r N m n j : nat,
     BasicSetting a r N m n ->
@@ -315,8 +396,48 @@ Proof.
     }
     destruct H as [_ [_ [_ [Hn _]]]]. omega.
   - unfold ψ. rewrite Mscale_adj. rewrite Mscale_mult_dist_l. rewrite Mscale_mult_dist_r.
-    admit.
-Admitted.    
+    rewrite Mmult_vsum_distr_l.
+    replace (fun i : nat => (vsum r (fun x : nat => ω_neg r ^ (j * x) .* basisPowerA a x N n)) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)) with (fun i : nat => (vsum r (fun x : nat => (ω_neg r ^ (j * x) .* basisPowerA a x N n) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)))).
+    2:{ apply functional_extensionality. intro. symmetry. apply Vec_Mmult_vsum_distr_r. }
+    replace (fun i : nat => vsum r (fun x : nat => (ω_neg r ^ (j * x) .* basisPowerA a x N n) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n))) with (fun i : nat => vsum r (fun x : nat => ((ω_neg r ^ (j * x))^* * ω_neg r ^ (j * i)) .* ((basisPowerA a x N n) † × basisPowerA a i N n))).
+    2:{ apply functional_extensionality. intro. apply vsum_eq. intros.
+        rewrite Mscale_adj. rewrite Mscale_mult_dist_r.
+        rewrite Mscale_mult_dist_l. rewrite Mscale_assoc.
+        replace ((ω_neg r ^ (j * i)) ^* * ω_neg r ^ (j * x))%C with (ω_neg r ^ (j * x) * (ω_neg r ^ (j * i)) ^* )%C by lca.
+        easy.
+    }
+    assert (Hpmub: (forall y, a ^ y mod N < 2^n)%nat).
+    { destruct H as [HN [_ [_ [Hn _]]]]. intros.
+      assert (N <> 0)%nat by omega. pose (Nat.mod_upper_bound (a^y)%nat N H).
+      omega.
+    }
+    rewrite Double_Vec_Cancel.
+    2:{ rename j into x. intros. unfold basisPowerA.
+        rewrite basis_vector_product_neq. Msimpl. easy.
+        apply Hpmub. apply Hpmub.
+        apply Pow_diff_neq with (r:=r); try omega.
+        destruct H as [_ [HOrder _]]. easy.
+    }
+    unfold basisPowerA.
+    replace (fun i : nat => (ω_neg r ^ (j * i)) ^* * ω_neg r ^ (j * i) .* ((basis_vector (2 ^ n) (a ^ i mod N)) † × basis_vector (2 ^ n) (a ^ i mod N))) with (fun i : nat => I 1).
+    2:{ apply functional_extensionality. intro.
+        rewrite Cconj_inner. unfold ω_neg. rewrite Cexp_pow. rewrite Cmod_Cexp. 
+        rewrite basis_vector_product_eq by (apply Hpmub).
+        simpl. do 2 rewrite Cmult_1_r. Msimpl. easy.
+    }
+    rewrite vsum_multiple.
+    do 2 rewrite Mscale_assoc.
+    assert (√ r <> 0).
+    { destruct H as [_ [[Hr _] _]]. apply sqrt_neq_0_compat. apply lt_INR in Hr. simpl in Hr. easy.
+    }
+    rewrite <- RtoC_div by easy.
+    rewrite Cconj_R. do 2 rewrite <- RtoC_mult.
+    assert (forall x, x * r = x * (√r * √r)).
+    { intro. apply Rmult_eq_compat_l. destruct H as [_ [[Hr _] _]]. apply lt_INR in Hr. simpl in Hr. apply Rlt_le in Hr. pose (Rsqr_sqrt r Hr) as Hr2. unfold Rsqr in Hr2. lra.
+    } 
+    replace (1 / √ r * (1 / √ r) * r) with ((/ √ r * √ r) * ((/ √ r) * √ r)) by (rewrite H1; lra).
+    rewrite Rinv_l by easy. rewrite Rmult_1_r. Msimpl. easy.
+Qed.
 
 Lemma sum_of_ψ_is_one :
   forall a r N m n : nat,
