@@ -974,9 +974,9 @@ Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
                CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
   end.
 
-Compute (CF_ite 2 2 3 0 1 1 0).
-
 Definition ContinuedFraction (step a b : nat) : nat * nat := CF_ite step a b 0 1 1 0.
+
+Definition CF_bound b := (Nat.log2 b + 1)%nat.
 
 Definition Shor_post (step s m : nat) := snd (ContinuedFraction step s (2^m)).
 
@@ -1053,12 +1053,12 @@ Lemma Legendre_rational :
     Rabs (a / b - p / q) < 1 / (2 * q^2) ->
     rel_prime p q ->
     exists step,
-      (step <= Nat.log2 b + 1)%nat /\
+      (step <= CF_bound b)%nat /\
       snd (ContinuedFraction step a b) = q.
 Admitted.
 
 (* "Partial correct" of ContinuedFraction function. "Partial" because it is exactly correct only when k and r are coprime. Otherwise it will output (p, q) such that p/q=k/r. *)
-Lemma ContinuedFraction_partial_correct :
+Lemma Shor_partial_correct :
   forall a r N k m n : nat,
     BasicSetting a r N m n ->
     (0 <= k < r)%nat ->
