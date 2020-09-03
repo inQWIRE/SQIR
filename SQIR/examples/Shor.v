@@ -969,15 +969,16 @@ Qed.
 Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
   match n with
   | O => (p1, q1)
-  | S n => let c := (b / a)%nat in
-          CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
+  | S n => if a =? 0 then (p1, q1)
+          else let c := (b / a)%nat in
+               CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
   end.
 
-Compute (CF_ite 8 73 100 0 1 1 0).
+Compute (CF_ite 2 2 3 0 1 1 0).
 
-Definition ContinuedFraction (step s m : nat) : nat * nat := CF_ite step s (2^m) 0 1 1 0.
+Definition ContinuedFraction (step a b : nat) : nat * nat := CF_ite step a b 0 1 1 0.
 
-Definition Shor_post (step s m : nat) := snd (ContinuedFraction step s m).
+Definition Shor_post (step s m : nat) := snd (ContinuedFraction step s (2^m)).
 
 (*
 Lemma Rabs_center :
@@ -1047,15 +1048,43 @@ Proof.
 Qed.
 *)
 
+Lemma Legendre_rational :
+  forall a b p q : nat,
+    Rabs (a / b - p / q) < 1 / (2 * q^2) ->
+    rel_prime p q ->
+    exists step,
+      (step <= Nat.log2 b + 1)%nat /\
+      snd (ContinuedFraction step a b) = q.
+Admitted.
+
 (* "Partial correct" of ContinuedFraction function. "Partial" because it is exactly correct only when k and r are coprime. Otherwise it will output (p, q) such that p/q=k/r. *)
 Lemma ContinuedFraction_partial_correct :
-  forall (a r N k m n : nat),
+  forall a r N k m n : nat,
     BasicSetting a r N m n ->
+    (0 <= k < r)%nat ->
     rel_prime k r ->
     exists step,
-      (step <= m)%nat /\
+      (step <= m + 1)%nat /\
       Shor_post step (s_closest m k r) m = r.
-Admitted.
+Proof.
+  intros. unfold Shor_post.
+  replace (m + 1)%nat with (Nat.log2 (2^m) + 1)%nat by (rewrite Nat.log2_pow2; omega).
+  apply Legendre_rational with (p := k).
+  replace (INR (2 ^ m)) with (2 ^ m) by (rewrite pow_INR; easy).
+  pose (s_closest_is_closest a r N m n k H H0) as G.
+  replace (-1 / (2 * 2 ^ m)) with (- (1 / (2 * 2 ^ m))) in G by lra.
+  assert (T: forall x y z, x < y <= z -> x <= y <= z) by (intros; lra).
+  apply T in G. apply Rabs_le in G.
+  eapply Rle_lt_trans. apply G. unfold Rdiv. do 2 rewrite Rmult_1_l.
+  assert (0 < r)%nat by omega. apply lt_INR in H2. simpl in H2.
+  apply Rinv_lt_contravar.
+  simpl. pose (pow_2_m_pos m) as Hm.  apply Rmult_lt_0_compat. nra. nra.
+  apply Rmult_lt_compat_l. lra. destruct H as [_ [HOrder [[Hm _] _]]]. pose (Order_r_lt_N a r N HOrder) as Hr. apply lt_INR in Hm. apply lt_INR in Hr. do 2 rewrite pow_INR in Hm.
+  assert (r ^ 2 < N ^ 2) by nra.
+  replace (INR 2) with 2 in Hm by (simpl; lra).
+  nra.
+  easy.
+Qed.
 
 Fixpoint Bsum n (f : nat -> bool) :=
   match n with
@@ -1063,7 +1092,7 @@ Fixpoint Bsum n (f : nat -> bool) :=
   | S n' => f n' || Bsum n' f
   end.
 
-Definition r_recoverable x m r := if Bsum m (fun step => Shor_post step x m =? r) then 1 else 0.
+Definition r_recoverable x m r := if Bsum (m + 1) (fun step => Shor_post step x m =? r) then 1 else 0.
 
 (* The final success probability of Shor's order finding algorithm. It counts the k's coprime to r and their probability of being collaped to. *)
 Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
