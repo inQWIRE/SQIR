@@ -1,4 +1,3 @@
-(*From Interval Require Import Tactic.*)
 Require Import Reals Psatz ZArith Znumtheory.
 Require Export VectorStates QPE QPEGeneral.
 
@@ -988,6 +987,81 @@ Lemma ϕ_n_over_n_lowerbound :
       2 < n ->
       (ϕ n) / n >= β / (Nat.log2 (Nat.log2 n)).
 Admitted.
+
+(* sum_f_R0 facts *)
+Lemma rsum_swap_order :
+  forall (m n : nat) (f : nat -> nat -> R),
+    sum_f_R0 (fun j => sum_f_R0 (fun i => f j i) m) n = sum_f_R0 (fun i => sum_f_R0 (fun j => f j i) n) m.
+Proof.
+  intros. induction n; try easy.
+  simpl. rewrite IHn. rewrite <- sum_plus. reflexivity.
+Qed.
+
+Lemma find_decidable :
+    forall (m t : nat) (g : nat -> nat),
+    (exists i, i <= m /\ g i = t)%nat \/ (forall i, i <= m -> g i <> t)%nat.
+Proof.
+  induction m; intros.
+  - destruct (dec_eq_nat (g 0%nat) t).
+    + left. exists 0%nat. split; easy.
+    + right. intros. replace i with 0%nat by omega. easy.
+  - destruct (IHm t g).
+    + left. destruct H. exists x. destruct H. split; omega.
+    + destruct (dec_eq_nat (g (S m)) t).
+      -- left. exists (S m). omega.
+      -- right. intros. inversion H1. omega. apply H. omega.
+Qed.
+
+Lemma rsum_unique :
+    forall (n : nat) (f : nat -> R) (r : R),
+    (exists (i : nat), i <= n /\ f i = r /\ (forall (j : nat), j <= n -> j <> i -> f j = 0)) ->
+    sum_f_R0 f n = r.
+Proof.
+  intros.
+  destruct H as (? & ? & ? & ?).
+  induction n. simpl. apply INR_le in H. inversion H. subst. easy.
+  simpl. bdestruct (S n =? x).
+  - subst. replace (sum_f_R0 f n) with 0. lra.
+    symmetry. apply sum_eq_R0. intros. apply H1. apply le_INR. constructor. easy. omega.
+  - apply INR_le in H. inversion H. omega. subst. replace (f (S n)) with 0.
+    rewrite IHn. lra. apply le_INR. easy. intros. apply H1; auto. apply Rle_trans with n; auto.
+    apply le_INR. lia. symmetry. apply H1; auto. apply Rle_refl.
+Qed.
+
+Theorem rsum_subset :
+  forall (m n : nat) (f : nat -> R)  (g : nat -> nat),
+    m < n -> (forall (i : nat), 0 <= f i) -> (forall i, i <= m -> g i <= n)%nat ->
+    (forall i j, i <= m -> j <= m -> g i = g j -> i = j)%nat ->
+    sum_f_R0 (fun i => f (g i)) m <= sum_f_R0 f n.
+Proof.
+  intros.
+  set (h := (fun (i : nat) => sum_f_R0 (fun (j : nat) => if i =? g j then f (g j) else 0) m)).
+  assert (forall (i : nat), i <= n -> h i <= f i).
+  { intros. unfold h. simpl.
+    destruct (find_decidable m i g).
+    - destruct H4 as (i0 & H4 & H5).
+      replace (sum_f_R0 (fun j : nat => if i =? g j then f (g j) else 0) m) with (f i). lra.
+      symmetry. apply rsum_unique. exists i0. split.
+      + apply le_INR. easy.
+      + split. subst.  rewrite Nat.eqb_refl. easy.
+        intros. assert (i <> g j). unfold not. intros. subst. apply H2 in H8. apply H7. easy.
+        easy. apply INR_le. easy.
+      + replace (i  =? g j) with false. easy. symmetry. apply eqb_neq. easy.
+    - replace (sum_f_R0 (fun j : nat => if i =? g j then f (g j) else 0) m) with 0. easy.
+      symmetry. apply sum_eq_R0. intros. apply H4 in H5. rewrite eqb_neq. easy. omega.
+  }
+  assert (sum_f_R0 h n <= sum_f_R0 f n).
+  { apply sum_Rle. intros. apply H3. apply le_INR. easy. }
+  apply Rle_trans with (sum_f_R0 h n); auto.
+  unfold h. rewrite rsum_swap_order.
+  replace (sum_f_R0 (fun i : nat => f (g i)) m) with 
+  (sum_f_R0 (fun i : nat => sum_f_R0 (fun j : nat => if j =? g i then f (g i) else 0) n) m).
+  apply Rle_refl. apply sum_eq. intros.
+  apply rsum_unique. exists (g i). split.
+  - apply le_INR. auto. split.
+  - rewrite Nat.eqb_refl. easy.
+  - intros. rewrite eqb_neq; easy.
+Qed.
 
 (* The correctness specification. It succeed with prob proportional to 1/(log log N), which is asymptotically small, but big enough in practice.
    With better technique (calculate the LCM of multiple outputs), the number of rounds may be reduced to constant. But I don't know how to specify that, and the analysis in Shor's original paper refers the correctness to "personal communication" with Knill. *)
