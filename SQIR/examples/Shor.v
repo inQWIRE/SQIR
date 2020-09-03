@@ -611,6 +611,7 @@ Proof.
   intros. apply pow_lt; lra.
 Qed.
 
+(*
 Lemma Inv__pow_2_m_and_N_square:
   forall a r N m n,
     BasicSetting a r N m n ->
@@ -624,6 +625,7 @@ Proof.
   apply Rinv_lt_contravar. nra. 
   apply lt_INR in Hm1. do 2 rewrite pow_INR in Hm1. apply Hm1.
 Qed.
+*)
 
 Lemma round_k_r_2_m_nonneg :
   forall a r N m n k,
@@ -721,17 +723,155 @@ Proof.
   apply MC_eigenvalue with (m:=m); easy.
 Qed.
 
-Definition Rsum (n : nat) (f : nat -> R) : R := sum_f_R0 f (n - 1)%nat.
+Definition Rsum (n : nat) (f : nat -> R) : R :=
+  match n with
+  | O => 0
+  | S n => sum_f_R0 f n
+  end.
 
-Definition prob_partial_meas {n} {m} x (ψ : Vector (2^(m + n))) :=
-  Rsum (2^n) (fun y => probability_of_outcome ψ (basis_vector (2^m) x ⊗ basis_vector (2^n) y)).
+Lemma Rsum_eq :
+  forall n f1 f2,
+    (forall i, f1 i = f2 i) -> Rsum n f1 = Rsum n f2.
+Proof.
+  intros. induction n.
+  - easy.
+  - simpl. destruct n.
+    + simpl. apply H.
+    + simpl. simpl in IHn. rewrite IHn. rewrite H. easy.
+Qed.
+
+Definition prob_partial_meas {n} {m} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))) :=
+  Rsum (2^n) (fun y => probability_of_outcome ψ (ϕ ⊗ basis_vector (2^n) y)).
+
+Lemma Cplx_Cauchy :
+  forall n (a : nat -> C) (b : nat -> C),
+    (Rsum n (fun i => Cmod (a i) ^ 2)) * (Rsum n (fun i => Cmod (b i) ^ 2)) >= Cmod (Csum (fun i => ((a i)^* * (b i))%C) n) ^ 2.
+Admitted.
+
+Lemma full_meas_swap :
+  forall {d} (ψ : Vector d) (ϕ : Vector d),
+    probability_of_outcome ψ ϕ = probability_of_outcome ϕ ψ.
+Proof.
+  intros d ψ ϕ. unfold probability_of_outcome.
+  replace ((ϕ) † × ψ) with ((ϕ) † × ((ψ) †) †) by (rewrite adjoint_involutive; easy).
+  rewrite <- Mmult_adjoint.
+  replace (((ψ) † × ϕ) † 0%nat 0%nat) with ((((ψ) † × ϕ) 0%nat 0%nat)^* ) by easy.
+  rewrite Cconj_mod_eq. easy.
+Qed.
+
+Lemma vsum_by_cell :
+  forall {d n} (f : nat -> Vector d) x y,
+    vsum n f x y = Csum (fun i => f i x y) n.
+Proof.
+  intros d n f x y. induction n.
+  - easy.
+  - simpl. unfold Mplus. rewrite IHn. easy.
+Qed.
+
+Lemma basis_vector_decomp :
+  forall {d} (ψ : Vector d),
+    WF_Matrix ψ ->
+    ψ = vsum d (fun i => (ψ i 0%nat) .* basis_vector d i).
+Proof.
+  intros d ψ WF. do 2 (apply functional_extensionality; intros). rewrite vsum_by_cell.
+  destruct (x <? d) eqn:Hx.
+  - apply Nat.ltb_lt in Hx. 
+    unfold scale. destruct x0.
+    + rewrite Csum_unique with (k:=ψ x 0%nat). easy.
+      exists x. split. easy.
+      split. unfold basis_vector. rewrite Nat.eqb_refl. simpl. lca.
+      intros. unfold basis_vector. apply eqb_neq in H. rewrite H. simpl. lca.
+    + unfold WF_Matrix in WF. rewrite WF by omega.
+      rewrite Csum_0. easy. intro.
+      unfold basis_vector. assert (S x0 <> 0)%nat by omega. apply eqb_neq in H.
+      rewrite H. rewrite andb_false_r. lca.
+  - apply Nat.ltb_ge in Hx.
+    unfold WF_Matrix in WF. rewrite WF by omega.
+    rewrite Csum_0_bounded. easy. intros. unfold scale.
+    unfold basis_vector. assert (x <> x1) by omega. apply eqb_neq in H0.
+    rewrite H0. simpl. lca.
+Qed.
+
+Lemma full_meas_decomp :
+  forall {n m} (ψ : Vector (2^(m+n))) (ϕ1 : Vector (2^m)) (ϕ2 : Vector (2^n)),
+    Pure_State_Vector ϕ2 ->
+    probability_of_outcome ψ (ϕ1 ⊗ ϕ2) = Cmod (Csum (fun i => ((ϕ2 i 0%nat) .* @Mmult _ _ (1 * 1) (ψ †) (ϕ1 ⊗ (basis_vector (2^n) i))) 0%nat 0%nat) (2^n)) ^ 2.
+Proof.
+  intros n m ψ ϕ1 ϕ2 [HWF Hnorm]. rewrite full_meas_swap. unfold probability_of_outcome.
+  assert (T: forall x y, x = y -> Cmod x ^ 2 = Cmod y ^ 2).
+  { intros. rewrite H. easy. }
+  apply T. clear T.
+  replace (ϕ1 ⊗ ϕ2) with (ϕ1 ⊗ vsum (2^n) (fun i => (ϕ2 i 0%nat) .* basis_vector (2^n) i)) by (rewrite <- basis_vector_decomp; easy).
+  rewrite kron_vsum_distr_l.
+  rewrite <- Nat.pow_add_r. rewrite Mmult_vsum_distr_l.
+  rewrite vsum_by_cell. apply Csum_eq. apply functional_extensionality. intros.
+  rewrite Mscale_kron_dist_r. rewrite <- Mscale_mult_dist_r. easy.
+Qed.
+
+Lemma RtoC_Rsum_Csum :
+  forall n (f : nat -> R),
+    fst (Csum (fun i => f i) n) = Rsum n f.
+Proof.
+  intros. induction n.
+  - easy.
+  - simpl. rewrite IHn. destruct n.
+    + simpl. lra.
+    + rewrite tech5. simpl. easy.
+Qed.
+
+Lemma full_meas_equiv :
+  forall {d} (ψ : Vector d),
+    fst (((ψ) † × ψ) 0%nat 0%nat) = Rsum d (fun i => Cmod (ψ i 0%nat) ^ 2).
+Proof.
+  intros d ψ. unfold Mmult.
+  replace (fun y : nat => ((ψ) † 0%nat y * ψ y 0%nat)%C) with (fun y : nat => RtoC (Cmod (ψ y 0%nat) ^ 2)).
+  apply RtoC_Rsum_Csum.
+  apply functional_extensionality. intros.
+  unfold adjoint. rewrite Cconj_inner. symmetry. apply RtoC_pow.
+Qed.
+
+Lemma Cconj_adj :
+  forall {n m} (A : Matrix n m),
+    (A 0%nat 0%nat) ^* = (A †) 0%nat 0%nat.
+Proof.
+  intros. easy.
+Qed.
+
+Lemma partial_meas_prob_ge_full_meas :
+  forall {n m} (ψ : Vector (2^(m+n))) (ϕ1 : Vector (2^m)) (ϕ2 : Vector (2^n)),
+    Pure_State_Vector ϕ2 ->
+    prob_partial_meas ϕ1 ψ >= probability_of_outcome ψ (ϕ1 ⊗ ϕ2).
+Proof.
+  intros n m ψ ϕ1 ϕ2 H. rewrite full_meas_decomp by easy. unfold prob_partial_meas.
+  assert (T: forall q w e, q = w -> w >= e -> q >= e) by (intros; lra).
+  eapply T.
+  2:{ unfold scale.
+      erewrite Csum_eq.
+      2:{ apply functional_extensionality. intros. rewrite <- (Cconj_involutive (ϕ2 x 0%nat)). reflexivity.
+      }
+      apply Cplx_Cauchy.
+  }
+  simpl.
+  replace (fun i : nat => Cmod ((ϕ2 i 0%nat) ^* ) * (Cmod ((ϕ2 i 0%nat) ^* ) * 1)) with (fun i : nat => Cmod (ϕ2 i 0%nat) ^ 2).
+  2:{ apply functional_extensionality; intros. simpl.
+      rewrite Cconj_mod_eq. easy.
+  } 
+  rewrite <- full_meas_equiv.
+  destruct H as [WF H]. rewrite H. simpl. rewrite Rmult_1_l.
+  apply Rsum_eq. intros.
+  unfold probability_of_outcome.
+  rewrite <- Cconj_mod_eq. rewrite Cconj_adj. rewrite Mmult_adjoint. rewrite adjoint_involutive.
+  easy.
+Qed.  
 
 Lemma QPE_MC_correct :
   forall (a r N k m n : nat) (c : base_ucom n),
     BasicSetting a r N m n ->
     MultiplyCircuitProperty a N n c ->
+    uc_well_typed c ->
     0 <= k < r ->
-    prob_partial_meas (s_closest m k r) ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1))) >= 4 / (PI ^ 2 * r).
+    prob_partial_meas (basis_vector (2^m) (s_closest m k r)) ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1))) >= 4 / (PI ^ 2 * r).
+Proof.
 Admitted.
 
 (* <del>Finds p/q such that |s/2^m-p/q|<=1/2^(m+1) and q<N. Must make sure 2^m>N^2 to secure the uniqueness.<\del> *)
@@ -743,7 +883,7 @@ Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
           CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
   end.
 
-Compute (CF_ite 3 72 100 0 1 1 0).
+Compute (CF_ite 8 73 100 0 1 1 0).
 
 Definition ContinuedFraction (step s m : nat) : nat * nat := CF_ite step s (2^m) 0 1 1 0.
 
@@ -835,7 +975,7 @@ Definition r_recoverable x m r := if Bsum m (fun step => Shor_post step x m =? r
 
 (* The final success probability of Shor's order finding algorithm. It counts the k's coprime to r and their probability of being collaped to. *)
 Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
-  Rsum (2^m) (fun x => r_recoverable x m r * prob_partial_meas x ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1)))).
+  Rsum (2^m) (fun x => r_recoverable x m r * prob_partial_meas (basis_vector (2^m) x) ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1)))).
 
 (* Euler's totient function *)
 Definition ϕ (n : nat) := Rsum n (fun x => if rel_prime_dec x n then 1 else 0).
