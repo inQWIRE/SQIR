@@ -382,6 +382,15 @@ Proof.
   intro. unfold Cexp. unfold Cmod. simpl. replace ((cos θ * (cos θ * 1) + sin θ * (sin θ * 1))) with (cos θ * cos θ + sin θ * sin θ) by lra. pose (sin2_cos2 θ) as H. unfold Rsqr in H. rewrite Rplus_comm in H. rewrite H. apply sqrt_1.
 Qed.
 
+Lemma Pow_mod_ub :
+  forall a r N m n,
+    BasicSetting a r N m n ->
+    (forall x, (a ^ x mod N < 2^n)%nat).
+Proof.
+  intros. destruct H as [HN [_ [_ [Hn _]]]].
+  assert (N <> 0)%nat by omega. pose (Nat.mod_upper_bound (a^x)%nat N H). omega.
+Qed.
+
 Lemma ψ_pure_state :
   forall a r N m n j : nat,
     BasicSetting a r N m n ->
@@ -405,11 +414,7 @@ Proof.
         replace ((ω_neg r ^ (j * i)) ^* * ω_neg r ^ (j * x))%C with (ω_neg r ^ (j * x) * (ω_neg r ^ (j * i)) ^* )%C by lca.
         easy.
     }
-    assert (Hpmub: (forall y, a ^ y mod N < 2^n)%nat).
-    { destruct H as [HN [_ [_ [Hn _]]]]. intros.
-      assert (N <> 0)%nat by omega. pose (Nat.mod_upper_bound (a^y)%nat N H).
-      omega.
-    }
+    assert (G := H). pose (Pow_mod_ub a r N m n G) as Hpmub.
     rewrite Double_Vec_Cancel.
     2:{ rename j into x. intros. unfold basisPowerA.
         rewrite basis_vector_product_neq. Msimpl. easy.
@@ -863,13 +868,41 @@ Proof.
   easy.
 Qed.
 
+Lemma ω_neg_cancel :
+  forall n i j,
+    (i <= j)%nat ->
+    (((ω_neg n) ^ i) ^* * ((ω_neg n) ^ j) = (ω_neg n) ^ (j - i))%C.
+Proof.
+  intros. unfold ω_neg. replace j with ((j - i) + i)%nat by lia.
+  do 3 rewrite Cexp_pow.
+  replace (-2 * PI / n * (j - i + i)%nat) with (-2 * PI / n * i + -2 * PI / n * (j - i)%nat) by (rewrite plus_INR; lra).
+  rewrite Cexp_add. rewrite Cmult_assoc. rewrite Cconj_inner. rewrite Cmod_Cexp.
+  replace (j - i + i - i)%nat with (j - i)%nat by omega. lca.
+Qed.
+
 Lemma ψ_perp :
   forall a r N m n i j : nat,
     BasicSetting a r N m n ->
     (i < j < r)%nat ->
     (ψ a r N i n) † × (ψ a r N j n) = Zero.
 Proof.
-Admitted.
+  intros. unfold ψ. rewrite Mscale_adj. distribute_scale. rewrite Cconj_inner.
+  rewrite Vec_Mmult_vsum_distr_r. erewrite vsum_eq.
+  2:{ intros. apply Mmult_vsum_distr_l.
+  }
+  rewrite Double_Vec_Cancel.
+  2:{ intros. rewrite Mscale_adj. distribute_scale. unfold basisPowerA. rewrite basis_vector_product_neq. Msimpl. easy. apply Pow_mod_ub with (r:=r) (m:=m); easy. apply Pow_mod_ub with (r:=r) (m:=m); easy. apply Pow_diff_neq with (r:=r); try omega. destruct H as [_ [HOrder _]]. easy.
+  }
+  erewrite vsum_eq.
+  2:{ intros. rewrite Mscale_adj. distribute_scale. unfold basisPowerA. rewrite basis_vector_product_eq by (apply Pow_mod_ub with (r:=r) (m:=m); easy).
+      rewrite ω_neg_cancel by nia.
+      replace (j * i0 - i * i0)%nat with (i0 * (j - i))%nat by lia.
+      reflexivity.
+  }
+  rewrite Mscale_vsum_distr_l. rewrite ω_neg_sum_nonzero. Msimpl. easy.
+  assert (0 < r)%nat by omega. apply lt_INR in H1. apply H1.
+  assert (0 < j - i < r)%nat by omega. destruct H1 as [Hl Hr]. apply lt_INR in Hl. apply lt_INR in Hr. simpl in Hl. lra.
+Qed.
 
 Lemma ψ_perp_neq :
   forall a r N m n i j : nat,
