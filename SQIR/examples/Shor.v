@@ -1,4 +1,3 @@
-From Interval Require Import Tactic.
 Require Import Reals Psatz ZArith Znumtheory.
 Require Export VectorStates QPE QPEGeneral.
 
