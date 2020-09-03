@@ -861,17 +861,75 @@ Proof.
   unfold probability_of_outcome.
   rewrite <- Cconj_mod_eq. rewrite Cconj_adj. rewrite Mmult_adjoint. rewrite adjoint_involutive.
   easy.
-Qed.  
+Qed.
+
+Lemma ψ_perp :
+  forall a r N m n i j : nat,
+    BasicSetting a r N m n ->
+    (i < j < r)%nat ->
+    (ψ a r N i n) † × (ψ a r N j n) = Zero.
+Proof.
+Admitted.
+
+Lemma ψ_perp_neq :
+  forall a r N m n i j : nat,
+    BasicSetting a r N m n ->
+    (i < r)%nat ->
+    (j < r)%nat ->
+    (i <> j)%nat ->
+    (ψ a r N i n) † × (ψ a r N j n) = Zero.
+Proof.
+  intros. bdestruct (i <? j).
+  - apply ψ_perp with (m:=m). easy. omega.
+  - assert (j < i)%nat by omega. rewrite <- adjoint_involutive with (A:=(ψ a r N i n) † × ψ a r N j n). rewrite Mmult_adjoint. rewrite adjoint_involutive. rewrite ψ_perp with (m:=m). Msimpl. easy. easy. omega.
+Qed.
 
 Lemma QPE_MC_correct :
   forall (a r N k m n : nat) (c : base_ucom n),
     BasicSetting a r N m n ->
     MultiplyCircuitProperty a N n c ->
     uc_well_typed c ->
-    0 <= k < r ->
+    (0 <= k < r)%nat ->
     prob_partial_meas (basis_vector (2^m) (s_closest m k r)) ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1))) >= 4 / (PI ^ 2 * r).
 Proof.
-Admitted.
+  intros. rewrite basis_vector_zero.
+  rewrite <- (sum_of_ψ_is_one a r N m) by easy.
+  rewrite Mscale_kron_dist_r. rewrite kron_vsum_distr_l. rewrite <- Nat.pow_add_r. rewrite Mscale_mult_dist_r. rewrite Mmult_vsum_distr_l.
+  eapply Rge_trans. apply partial_meas_prob_ge_full_meas.
+  apply ψ_pure_state with (j:=k) (m:=m). apply H.
+  unfold probability_of_outcome.
+  restore_dims. distribute_scale.
+  rewrite kron_adjoint. rewrite Nat.pow_add_r. rewrite Mmult_vsum_distr_l.
+  erewrite vsum_unique.
+  2:{ exists k. split. omega. split. reflexivity. intros.
+      assert (T: forall {o m n} (A : Matrix o m) (B C : Matrix m n), B = C -> A × B = A × C) by (intros o m0 n0 A B C HT; rewrite HT; easy).
+      erewrite T.
+      2:{ rewrite <- Nat.pow_add_r. apply QPE_simplify.
+          destruct H as [HN [_ [_ Hn]]]. assert (2 <= 2 ^ n)%nat by omega. destruct n; simpl in H; omega.
+          destruct H as [HN [_ [Hm _]]]. simpl in Hm. assert (4 <= 2 ^ m)%nat by nia. destruct m. simpl in H. omega. destruct m. simpl in H. omega. omega.
+          easy.
+          pose (ψ_pure_state _ _ _ _ _ j H) as PS. destruct PS as [WF _]. easy.
+          rewrite MC_eigenvalue with (m:=m) by easy.
+          replace (2 * PI * j / r) with (2 * PI * (j / r)) by lra. easy.
+      }
+      restore_dims. rewrite kron_mixed_product.
+      rewrite ψ_perp_neq with (m:=m); try easy; try omega. Msimpl. easy.
+  }
+  assert (INR r > 0).
+  { destruct H as [_ [[Hr _] _]]. apply lt_INR in Hr. simpl in Hr. lra.
+  }
+  assert (0 < √ r) by (apply sqrt_lt_R0; lra).
+  unfold scale. rewrite Cmod_mult. rewrite <- RtoC_div by lra. rewrite Cmod_R. rewrite Rpow_mult_distr. rewrite pow2_abs.
+  replace (1 / √ r) with (/ √ r) by lra. rewrite <- sqrt_inv by lra. rewrite pow2_sqrt.
+  2:{ apply Rlt_le. apply Rinv_0_lt_compat. lra.
+  }
+  replace (4 / (PI ^ 2 * r)) with (/r * (4 / (PI ^ 2))).
+  2:{ replace (/ r * (4 / PI ^ 2)) with (4 * ((/ PI ^2) * (/r))) by lra. rewrite <- Rinv_mult_distr. easy.
+      apply pow_nonzero. apply PI_neq0. lra.
+  }
+  apply Rmult_ge_compat_l. apply Rinv_0_lt_compat in H3. lra.
+  rewrite <- kron_adjoint. rewrite <- basis_vector_zero. rewrite <- Nat.pow_add_r. apply QPE_MC_partial_correct; easy.
+Qed.  
 
 (* <del>Finds p/q such that |s/2^m-p/q|<=1/2^(m+1) and q<N. Must make sure 2^m>N^2 to secure the uniqueness.<\del> *)
 (* Calc p_n and q_n now, which is the continued fraction expansion of a / b for n terms. *)
@@ -888,6 +946,7 @@ Definition ContinuedFraction (step s m : nat) : nat * nat := CF_ite step s (2^m)
 
 Definition Shor_post (step s m : nat) := snd (ContinuedFraction step s m).
 
+(*
 Lemma Rabs_center :
   forall x y z d1 d2,
     Rabs (x - y) < d1 ->
@@ -953,6 +1012,7 @@ Proof.
   replace (p2 / q2 * (q1 * q2)) with (p2 * q1 * (/ q2 * q2)) by lra. rewrite Rinv_l by lra.
   rewrite H8. easy.
 Qed.
+*)
 
 (* "Partial correct" of ContinuedFraction function. "Partial" because it is exactly correct only when k and r are coprime. Otherwise it will output (p, q) such that p/q=k/r. *)
 Lemma ContinuedFraction_partial_correct :
