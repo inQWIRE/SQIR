@@ -127,7 +127,7 @@ Proof.
   assert (H: inject_Z (round_to_multiple_of_2 a / 2) * 2 == inject_Z (round_to_multiple_of_2 a)).
   { unfold round_to_multiple_of_2.
     destruct a.
-    rewrite Zmult_comm, Z_div_mult, inject_Z_mult. 
+    rewrite Zmult_comm, Zdiv.Z_div_mult, inject_Z_mult. 
     reflexivity. lia. }
   unfold bound, two_Q, zero_Q.
   destruct (Qle_bool 0 a) eqn:le0; destruct (Qle_bool 2 a) eqn:lt2; simpl.

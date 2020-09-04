@@ -19,6 +19,7 @@ Local Open Scope ucom_scope.
 
 Require Import FSets.FSetAVL.
 Require Import FSets.FSetFacts.
+Require Import FSets.FSetProperties.
 
 Module FSet := FSetAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
 Module FSetFacts := FSetFacts.Facts FSet.
@@ -69,7 +70,7 @@ Proof.
   intros.
   symmetry.
   simpl.
-  unfold finalize.
+  unfold finalize. Search FSet.fold.
   specialize (FSetProps.remove_fold_1 (uc_equiv_l_rel dim)) as Hfold.
   specialize (Hfold (fun q a => X q :: a)).
   simpl in Hfold.
