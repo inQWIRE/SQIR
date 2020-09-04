@@ -100,7 +100,7 @@ Proof.
   rewrite <- Pow_minus with (r:=r); try omega; try easy.
   rewrite Nat.sub_diag. simpl. apply Nat.mod_1_l; easy.
   destruct H as [_ [_ Hminimal]].
-  pose (Hminimal (x2 - x1)%nat) as Hcounter.
+  specialize (Hminimal (x2 - x1)%nat) as Hcounter.
   assert (0 < x2 - x1 /\ a ^ (x2 - x1) mod N = 1)%nat by omega.
   apply Hcounter in H. omega.
 Qed.
@@ -135,7 +135,7 @@ Proof.
     apply Nat.mod_0_l.
     easy. easy.
   - assert (r = (i - (i - r))%nat) by omega.
-    rewrite H4. pose (Order_a_inv_ex a r N H). destruct e.
+    rewrite H4. specialize (Order_a_inv_ex a r N H) as e. destruct e.
     rewrite (Pow_minus _ r _ x _ _); try easy; try omega.
     rewrite Nat.mul_mod. rewrite H2. simpl.
     apply Nat.mod_0_l. easy. easy.
@@ -295,8 +295,8 @@ Proof.
   assert (0 < / r * k < 1).
   { destruct H0. split. 
     - apply Rinv_0_lt_compat in H. apply Rmult_lt_0_compat; assumption.
-    - pose (Rinv_lt_contravar k r (Rmult_lt_0_compat k r H0 H) H3) as H6.
-      pose (Rmult_lt_compat_r k (/ r) (/ k) H0 H6) as H7.
+    - specialize (Rinv_lt_contravar k r (Rmult_lt_0_compat k r H0 H) H3) as H6.
+      specialize (Rmult_lt_compat_r k (/ r) (/ k) H0 H6) as H7.
       rewrite <- Rinv_l_sym in H7; lra.
   }
   rewrite <- sin_neg in H5. replace (- (-2 * PI / r * k)) with (2 * PI / r * k) in H5 by lra.
@@ -306,7 +306,7 @@ Proof.
   assert (0 < 2 * PI / r * k < 2 * PI).
   { destruct H3. replace (2 * PI / r * k) with ((2 * PI) * (/ r * k)) by lra. split.
     - apply Rmult_lt_0_compat; lra. 
-    - pose (Rmult_lt_compat_l (2 * PI) (/ r * k) 1 H6 H7) as H8.
+    - specialize (Rmult_lt_compat_l (2 * PI) (/ r * k) 1 H6 H7) as H8.
       autorewrite with R_db in H8. assumption.
   }
   destruct H7.
@@ -380,7 +380,7 @@ Lemma Cmod_Cexp :
   forall θ,
     Cmod (Cexp θ) = 1.
 Proof.
-  intro. unfold Cexp. unfold Cmod. simpl. replace ((cos θ * (cos θ * 1) + sin θ * (sin θ * 1))) with (cos θ * cos θ + sin θ * sin θ) by lra. pose (sin2_cos2 θ) as H. unfold Rsqr in H. rewrite Rplus_comm in H. rewrite H. apply sqrt_1.
+  intro. unfold Cexp. unfold Cmod. simpl. replace ((cos θ * (cos θ * 1) + sin θ * (sin θ * 1))) with (cos θ * cos θ + sin θ * sin θ) by lra. specialize (sin2_cos2 θ) as H. unfold Rsqr in H. rewrite Rplus_comm in H. rewrite H. apply sqrt_1.
 Qed.
 
 Lemma Pow_mod_ub :
@@ -389,7 +389,7 @@ Lemma Pow_mod_ub :
     (forall x, (a ^ x mod N < 2^n)%nat).
 Proof.
   intros. destruct H as [HN [_ [_ [Hn _]]]].
-  assert (N <> 0)%nat by omega. pose (Nat.mod_upper_bound (a^x)%nat N H). omega.
+  assert (N <> 0)%nat by omega. specialize (Nat.mod_upper_bound (a^x)%nat N H). omega.
 Qed.
 
 Lemma ψ_pure_state :
@@ -415,7 +415,7 @@ Proof.
         replace ((ω_neg r ^ (j * i)) ^* * ω_neg r ^ (j * x))%C with (ω_neg r ^ (j * x) * (ω_neg r ^ (j * i)) ^* )%C by lca.
         easy.
     }
-    assert (G := H). pose (Pow_mod_ub a r N m n G) as Hpmub.
+    assert (G := H). specialize (Pow_mod_ub a r N m n G) as Hpmub.
     rewrite Double_Vec_Cancel.
     2:{ rename j into x. intros. unfold basisPowerA.
         rewrite basis_vector_product_neq. Msimpl. easy.
@@ -438,7 +438,7 @@ Proof.
     rewrite <- RtoC_div by easy.
     rewrite Cconj_R. do 2 rewrite <- RtoC_mult.
     assert (forall x, x * r = x * (√r * √r)).
-    { intro. apply Rmult_eq_compat_l. destruct H as [_ [[Hr _] _]]. apply lt_INR in Hr. simpl in Hr. apply Rlt_le in Hr. pose (Rsqr_sqrt r Hr) as Hr2. unfold Rsqr in Hr2. lra.
+    { intro. apply Rmult_eq_compat_l. destruct H as [_ [[Hr _] _]]. apply lt_INR in Hr. simpl in Hr. apply Rlt_le in Hr. specialize (Rsqr_sqrt r Hr) as Hr2. unfold Rsqr in Hr2. lra.
     } 
     replace (1 / √ r * (1 / √ r) * r) with ((/ √ r * √ r) * ((/ √ r) * √ r)) by (rewrite H1; lra).
     rewrite Rinv_l by easy. rewrite Rmult_1_r. Msimpl. easy.
@@ -579,7 +579,7 @@ Lemma round_inequality :
     x - /2 < IZR (round x) <= x + /2.
 Proof.
   intros. unfold round.
-  pose (archimed (x - /2)) as H. destruct H as [H0 H1].
+  specialize (archimed (x - /2)) as H. destruct H as [H0 H1].
   lra.
 Qed.
 
@@ -588,7 +588,7 @@ Lemma round_pos :
     0 <= x ->
     (0 <= round x)%Z.
 Proof.
-  intros. pose (round_inequality x) as G. destruct G as [G0 G1].
+  intros. specialize (round_inequality x) as G. destruct G as [G0 G1].
   assert (-1 < IZR (round x)) by lra. apply lt_IZR in H0. lia.
 Qed.
 
@@ -597,7 +597,7 @@ Lemma round_lt_Z :
     x <= IZR z ->
     (round x <= z)%Z.
 Proof.
-  intros. pose (round_inequality x) as G. destruct G as [G0 G1].
+  intros. specialize (round_inequality x) as G. destruct G as [G0 G1].
   assert (IZR (round x) < IZR z + 1) by lra. replace (IZR z + 1) with (IZR (z + 1)) in H0 by (rewrite plus_IZR; easy). apply lt_IZR in H0. lia.
 Qed.
 
@@ -616,21 +616,20 @@ Proof.
   intros. apply pow_lt; lra.
 Qed.
 
-(*
 Lemma Inv__pow_2_m_and_N_square:
   forall a r N m n,
     BasicSetting a r N m n ->
-    /2 * /2^m < / (2 * N^2).
+    1 / (2 * 2^m) < 1 / (2 * N^2).
 Proof.
-  intros. destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. unfold s_closest. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
-  pose (pow_2_m_pos m).
+  intros. destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
+  specialize (pow_2_m_pos m) as G.
   assert (0 < N^2) by nra.
-  rewrite Rinv_mult_distr by lra.  
-  apply Rmult_lt_compat_l. nra. 
+  unfold Rdiv. do 2 rewrite Rinv_mult_distr by lra.
+  do 2 rewrite Rmult_1_l.
+  apply Rmult_lt_compat_l. nra.
   apply Rinv_lt_contravar. nra. 
   apply lt_INR in Hm1. do 2 rewrite pow_INR in Hm1. apply Hm1.
 Qed.
-*)
 
 Lemma round_k_r_2_m_nonneg :
   forall a r N m n k,
@@ -638,7 +637,7 @@ Lemma round_k_r_2_m_nonneg :
     (0 <= k < r)%nat ->
     (0 <= round (k / r * 2 ^ m))%Z.
 Proof.
-  intros. apply round_pos. destruct H0 as [Hk Hr]. assert (0 < r)%nat by lia. apply le_INR in Hk. simpl in Hk. apply lt_INR in Hr. apply lt_INR in H0. simpl in H0. assert (0 <= k / r). unfold Rdiv. apply Rle_mult_inv_pos; easy. pose (pow_2_m_pos m). nra. 
+  intros. apply round_pos. destruct H0 as [Hk Hr]. assert (0 < r)%nat by lia. apply le_INR in Hk. simpl in Hk. apply lt_INR in Hr. apply lt_INR in H0. simpl in H0. assert (0 <= k / r). unfold Rdiv. apply Rle_mult_inv_pos; easy. specialize (pow_2_m_pos m). nra. 
 Qed.
 
 Lemma s_closest_is_closest :
@@ -648,12 +647,12 @@ Lemma s_closest_is_closest :
     -1 / (2 * 2^m) < (s_closest m k r) / (2^m) - k / r <= 1 / (2 * 2^m).
 Proof.
   intros. assert (HBS := H). destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. unfold s_closest. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
-  pose (pow_2_m_pos m) as PowM.
-  pose (round_k_r_2_m_nonneg _ _ _ _ _ _ HBS H0) as H.
+  specialize (pow_2_m_pos m) as PowM.
+  specialize (round_k_r_2_m_nonneg _ _ _ _ _ _ HBS H0) as H.
   unfold Rdiv.
   replace (/ (2 * 2 ^ m)) with (/2 * /2^m) by (symmetry; apply Rinv_mult_distr; lra).  
   rewrite <- IZR_IZN_INR by easy.
-  pose (round_inequality (k / r * 2 ^ m)) as G. destruct G as [G0 G1].
+  specialize (round_inequality (k / r * 2 ^ m)) as G. destruct G as [G0 G1].
   split.
   - apply Rmult_lt_compat_l with (r:=/2^m) in G0.
     2:{ apply Rinv_0_lt_compat. easy.
@@ -667,6 +666,18 @@ Proof.
     replace (k / r * 2 ^ m * / 2 ^ m) with (k / r * (2 ^ m * / 2 ^ m)) in G1 by lra. rewrite Rinv_r in G1; lra. 
 Qed.
 
+Corollary s_closest_Rabs :
+  forall a r N m n k,
+    BasicSetting a r N m n ->
+    (0 <= k < r)%nat ->
+    Rabs ((s_closest m k r) / (2^m) - k / r) <= 1 / (2 * 2^m).
+Proof.
+  intros. specialize (s_closest_is_closest a r N m n k H H0) as G.
+  replace (-1 / (2 * 2 ^ m)) with (- (1 / (2 * 2 ^ m))) in G by lra.
+  assert (T: forall x y z, x < y <= z -> x <= y <= z) by (intros; lra).
+  apply T in G. apply Rabs_le in G. easy.
+Qed.
+
 Lemma basis_vector_zero :
   forall x, basis_vector (2^x) 0 = x ⨂ ket 0.
 Proof.
@@ -676,6 +687,40 @@ Proof.
     rewrite nat_to_funbool_0. rewrite <- nat_to_funbool_0 with (n:=x).
     rewrite <- basis_f_to_vec_alt by (apply pow_positive; omega).
     rewrite IHx. simpl. easy.
+Qed.
+
+Lemma s_closest_ub :
+  forall a r N m n k,
+    BasicSetting a r N m n ->
+    (0 <= k < r)%nat ->
+    (s_closest m k r < 2 ^ m)%nat.
+Proof.
+  intros a r N m n k H H1.
+  apply INR_lt. rewrite pow_INR. specialize (s_closest_is_closest _ _ _ _ _ _ H H1) as G. destruct G as [_ G1].
+  assert (k / r <= 1 - / r).
+  { assert (0 < r). assert (0 < r)%nat by omega. apply lt_0_INR; easy.
+    apply Rmult_le_reg_r with (r:=r). easy.
+    rewrite Raux.Rmult_minus_distr_r. replace (k / r * r) with ((/r) * r * k) by lra. rewrite Rinv_l by lra.
+    assert (H3 : (k + 1 <= r)%nat) by omega. apply le_INR in H3. rewrite plus_INR in H3. simpl in H3. lra.
+  }
+  assert (/N < /r).
+  { apply Rinv_lt_contravar. destruct H as [HN [[Hr _] _]]. assert (0 < r * N)%nat by (apply Nat.mul_pos_pos; omega). apply lt_INR in H. rewrite mult_INR in H. easy.
+    apply lt_INR. apply Order_r_lt_N with (a:=a). destruct H as [_ [H _]]. easy.
+  }
+  assert (/ (2 * 2^m) < /N).
+  { apply Rinv_lt_contravar.
+    destruct H as [HN [Horder _]]. apply Order_N_lb in Horder. assert (0 < N)%nat by omega. apply lt_INR in H. simpl in H.
+    specialize (pow_2_m_pos m).
+    nra.
+    destruct H as [_ [_ [[Hm _] _]]]. apply lt_INR in Hm. simpl in Hm. do 2 rewrite mult_INR in Hm. rewrite pow_INR in Hm. replace (INR 2%nat) with 2 in Hm by reflexivity. simpl in Hm.
+    assert (N <= N * N)%nat by nia. apply le_INR in H. rewrite mult_INR in H.
+    nra.
+  }
+  assert (s_closest m k r / 2^m < 1) by lra.
+  replace (INR 2%nat) with 2 by reflexivity.
+  specialize (pow_2_m_pos m) as T.
+  apply Rmult_lt_reg_r with (r:=/2^m). apply Rinv_0_lt_compat. easy.
+  rewrite Rinv_r by lra. lra.
 Qed.
 
 Lemma QPE_MC_partial_correct :
@@ -688,40 +733,14 @@ Lemma QPE_MC_partial_correct :
 Proof.
   intros a r N k m n c H Hc H0 H1.
   rewrite basis_vector_zero.
-  assert (s_closest m k r < 2 ^ m)%nat.
-  { apply INR_lt. rewrite pow_INR. pose (s_closest_is_closest _ _ _ _ _ _ H H1) as G. destruct G as [_ G1].
-      assert (k / r <= 1 - / r).
-      { assert (0 < r). assert (0 < r)%nat by omega. apply lt_0_INR; easy.
-        apply Rmult_le_reg_r with (r:=r). easy.
-        rewrite Raux.Rmult_minus_distr_r. replace (k / r * r) with ((/r) * r * k) by lra. rewrite Rinv_l by lra.
-        assert (k + 1 <= r)%nat by omega. apply le_INR in H3. rewrite plus_INR in H3. simpl in H3. lra.
-      }
-      assert (/N < /r).
-      { apply Rinv_lt_contravar. destruct H as [HN [[Hr _] _]]. assert (0 < r * N)%nat by (apply Nat.mul_pos_pos; omega). apply lt_INR in H. rewrite mult_INR in H. easy.
-        apply lt_INR. apply Order_r_lt_N with (a:=a). destruct H as [_ [H _]]. easy.
-      }
-      assert (/ (2 * 2^m) < /N).
-      { apply Rinv_lt_contravar.
-        destruct H as [HN [Horder _]]. apply Order_N_lb in Horder. assert (0 < N)%nat by omega. apply lt_INR in H. simpl in H.
-        pose (pow_2_m_pos m).
-        nra.
-        destruct H as [_ [_ [[Hm _] _]]]. apply lt_INR in Hm. simpl in Hm. do 2 rewrite mult_INR in Hm. rewrite pow_INR in Hm. replace (INR 2%nat) with 2 in Hm by reflexivity. simpl in Hm.
-        assert (N <= N * N)%nat by nia. apply le_INR in H. rewrite mult_INR in H.
-        nra.
-      }
-      assert (s_closest m k r / 2^m < 1) by lra.
-      replace (INR 2%nat) with 2 by reflexivity.
-      pose (pow_2_m_pos m).
-      apply Rmult_lt_reg_r with (r:=/2^m). apply Rinv_0_lt_compat. easy.
-      rewrite Rinv_r by lra. lra.
-  }
+  specialize (s_closest_ub a r N m n k H H1) as H2.
   rewrite basis_f_to_vec_alt by easy.
   apply QPE_semantics_full with (δ:=k / r - s_closest m k r / 2^m).
   destruct H as [_ [Horder [_ [Hn _]]]]. apply Order_N_lb in Horder. destruct n. simpl in Hn. omega. omega.
   destruct H as [_ [Horder [[Hm _] _]]]. apply Order_N_lb in Horder. simpl in Hm. assert (4 <= 2^m)%nat by nia. destruct m. simpl in H. omega. destruct m. simpl in H. omega. omega.
   assumption.
   apply ψ_pure_state with (m:=m). assumption.
-  pose (s_closest_is_closest _ _ _ _ _ _ H H1). replace (2 ^ (m + 1)) with (2 * 2 ^ m). lra.
+  specialize (s_closest_is_closest _ _ _ _ _ _ H H1). replace (2 ^ (m + 1)) with (2 * 2 ^ m). lra.
   rewrite pow_add. lra.
   rewrite nat_to_funbool_inverse by easy.
   replace (2 * PI * (s_closest m k r / 2 ^ m + (k / r - s_closest m k r / 2 ^ m))) with (2 * PI * k / r) by lra.
@@ -942,7 +961,7 @@ Proof.
           destruct H as [HN [_ [_ Hn]]]. assert (2 <= 2 ^ n)%nat by omega. destruct n; simpl in H; omega.
           destruct H as [HN [_ [Hm _]]]. simpl in Hm. assert (4 <= 2 ^ m)%nat by nia. destruct m. simpl in H. omega. destruct m. simpl in H. omega. omega.
           easy.
-          pose (ψ_pure_state _ _ _ _ _ j H) as PS. destruct PS as [WF _]. easy.
+          specialize (ψ_pure_state _ _ _ _ _ j H) as PS. destruct PS as [WF _]. easy.
           rewrite MC_eigenvalue with (m:=m) by easy.
           replace (2 * PI * j / r) with (2 * PI * (j / r)) by lra. easy.
       }
@@ -981,7 +1000,6 @@ Definition CF_bound b := (Nat.log2 b + 1)%nat.
 
 Definition Shor_post (step s m : nat) := snd (ContinuedFraction step s (2^m)).
 
-(*
 Lemma Rabs_center :
   forall x y z d1 d2,
     Rabs (x - y) < d1 ->
@@ -1037,7 +1055,7 @@ Proof.
     rewrite <- Rmult_assoc. rewrite Rinv_r. rewrite Rmult_1_r. rewrite Rmult_1_l. simpl. rewrite Rmult_1_r. apply Rmult_le_compat; lra.
     simpl. rewrite Rmult_1_r. apply Rmult_integral_contrapositive_currified; lra.
   }
-  pose (Rlt_le_trans _ _ _ H0 H6) as H7.
+  specialize (Rlt_le_trans _ _ _ H0 H6) as H7.
   apply Rabs_Z_lt_1 in H7.
   assert (p1 * q2 = p2 * q1).
   { repeat rewrite INR_IZR_INZ. repeat rewrite <- mult_IZR. replace (p1 * q2)%Z with (p2 * q1)%Z by lia. easy.
@@ -1047,7 +1065,6 @@ Proof.
   replace (p2 / q2 * (q1 * q2)) with (p2 * q1 * (/ q2 * q2)) by lra. rewrite Rinv_l by lra.
   rewrite H8. easy.
 Qed.
-*)
 
 Lemma Legendre_rational :
   forall a b p q : nat,
@@ -1072,15 +1089,12 @@ Proof.
   replace (m + 1)%nat with (Nat.log2 (2^m) + 1)%nat by (rewrite Nat.log2_pow2; omega).
   apply Legendre_rational with (p := k).
   replace (INR (2 ^ m)) with (2 ^ m) by (rewrite pow_INR; easy).
-  pose (s_closest_is_closest a r N m n k H H0) as G.
-  replace (-1 / (2 * 2 ^ m)) with (- (1 / (2 * 2 ^ m))) in G by lra.
-  assert (T: forall x y z, x < y <= z -> x <= y <= z) by (intros; lra).
-  apply T in G. apply Rabs_le in G.
+  specialize (s_closest_Rabs a r N m n k H H0) as G.
   eapply Rle_lt_trans. apply G. unfold Rdiv. do 2 rewrite Rmult_1_l.
   assert (0 < r)%nat by omega. apply lt_INR in H2. simpl in H2.
   apply Rinv_lt_contravar.
-  simpl. pose (pow_2_m_pos m) as Hm.  apply Rmult_lt_0_compat. nra. nra.
-  apply Rmult_lt_compat_l. lra. destruct H as [_ [HOrder [[Hm _] _]]]. pose (Order_r_lt_N a r N HOrder) as Hr. apply lt_INR in Hm. apply lt_INR in Hr. do 2 rewrite pow_INR in Hm.
+  simpl. specialize (pow_2_m_pos m) as Hm.  apply Rmult_lt_0_compat. nra. nra.
+  apply Rmult_lt_compat_l. lra. destruct H as [_ [HOrder [[Hm _] _]]]. specialize (Order_r_lt_N a r N HOrder) as Hr. apply lt_INR in Hm. apply lt_INR in Hr. do 2 rewrite pow_INR in Hm.
   assert (r ^ 2 < N ^ 2) by nra.
   replace (INR 2) with 2 in Hm by (simpl; lra).
   nra.
@@ -1117,7 +1131,7 @@ Lemma r_recoverable_1 :
 Proof.
   intros. unfold r_recoverable.
   rewrite bsum_exists. auto.
-  destruct (ContinuedFraction_partial_correct a r N k m n); auto.
+  destruct (Shor_partial_correct a r N k m n); auto.
   exists x. split. destruct H2. lia. destruct H2. apply Nat.eqb_eq. easy.
 Qed.
 
@@ -1212,19 +1226,33 @@ Proof.
   - intros. rewrite eqb_neq; easy.
 Qed.
 
-Lemma s_closest_le_1 :
-    forall m i r : nat,
-    (i < r)%nat -> (r < 2^m)%nat ->
-    (s_closest m i r <= pred (2^m))%nat.
-Admitted.
-
 Lemma s_closest_injective :
 (* comes from ClosestFracUnique *)
-forall a r N m n i j : nat,
-BasicSetting a r N m n ->
-(i < r)%nat ->
-(j < r)%nat -> s_closest m i r = s_closest m j r -> i = j.
-Admitted.
+  forall a r N m n i j : nat,
+    BasicSetting a r N m n ->
+    (i < r)%nat ->
+    (j < r)%nat ->
+    s_closest m i r = s_closest m j r -> i = j.
+Proof.
+  intros. assert (0 <= i < r)%nat by omega. assert (0 <= j < r)%nat by omega.
+  specialize (s_closest_Rabs a r N m n i H H3) as Hi.
+  specialize (s_closest_Rabs a r N m n j H H4) as Hj.
+  rewrite <- H2 in Hj.
+  specialize (Inv__pow_2_m_and_N_square a r N m n H) as Hm.
+  specialize (Rle_lt_trans _ _ _ Hi Hm) as Hi'.
+  specialize (Rle_lt_trans _ _ _ Hj Hm) as Hj'.
+  replace (1 / (2 * N ^ 2)) with (/ (2 * N^2)) in Hi' by lra.
+  replace (1 / (2 * N ^ 2)) with (/ (2 * N^2)) in Hj' by lra.
+  assert (0 < r <= N)%nat.
+  { destruct H as [_ [HOrder _] ]. specialize (Order_r_lt_N a r N HOrder) as G. destruct HOrder as [Hr _]. omega.
+  }
+  assert (i / r = j / r).
+  { apply ClosestFracUnique with (α := s_closest m i r / 2 ^ m) (N := N); try easy.
+    destruct H as [HN _]. omega.
+  }
+  unfold Rdiv in H6. apply INR_eq. apply Rmult_eq_reg_r with (r := /r). easy.
+  destruct H5 as [Hr _]. apply lt_INR in Hr. simpl in Hr. apply Rinv_0_lt_compat in Hr. lra.
+Qed.
 
 (* The correctness specification. It succeed with prob proportional to 1/(log log N), which is asymptotically small, but big enough in practice.
    With better technique (calculate the LCM of multiple outputs), the number of rounds may be reduced to constant. But I don't know how to specify that, and the analysis in Shor's original paper refers the correctness to "personal communication" with Knill. *)
@@ -1234,7 +1262,7 @@ Lemma Shor_correct :
     forall (a r N m n : nat) (c : base_ucom n),
       BasicSetting a r N m n ->
       MultiplyCircuitProperty a N n c ->
-      (r > 100)%nat ->
+      (r > 3)%nat ->
       uc_well_typed c ->
       probability_of_success a r N m n c >= β / (Nat.log2 (Nat.log2 N)).
 Proof.
@@ -1264,7 +1292,7 @@ Proof.
       apply Order_r_lt_N with a. auto.
       repeat rewrite Rdiv_unfold. apply Raux.Rinv_le in H6. apply Rmult_ge_compat_l. lra. lra. replace 0 with (INR 0%nat) by auto.
       apply lt_INR. cut (1 <= Nat.log2 (Nat.log2 (S r)))%nat. omega. eapply Nat.le_trans.
-      assert (1 <= Nat.log2 (Nat.log2 100))%nat. unfold Nat.log2. simpl. omega. apply H7.
+      assert (1 <= Nat.log2 (Nat.log2 4))%nat. unfold Nat.log2. simpl. omega. apply H7.
       repeat apply Nat.log2_le_mono. omega.
       reflexivity.
     }
@@ -1302,7 +1330,7 @@ Proof.
       + simpl. apply Rle_ge. apply rsum_subset.
         -- destruct H. apply lt_INR. omega. 
         -- auto.
-        -- intros. apply s_closest_le_1. omega. destruct H as (Ha & Hb & Hc & Hd). omega.
+        -- intros. assert (0 <= i < S r)%nat by omega. specialize (s_closest_ub a (S r) N m n i H H7) as G. omega. (*destruct H as (Ha & Hb & Hc & Hd). intros. omega.*)
         -- intros. apply s_closest_injective with a (S r) N m n; try omega; auto.
       rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
   }
