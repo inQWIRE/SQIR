@@ -1,5 +1,6 @@
-Require Import Reals Psatz ZArith Znumtheory.
+Require Import Reals Psatz ZArith Znumtheory Btauto.
 Require Export VectorStates QPE QPEGeneral.
+Require Import Interval.Tactic.
 
 Local Close Scope R_scope.
 
@@ -1088,11 +1089,37 @@ Qed.
 
 Fixpoint Bsum n (f : nat -> bool) :=
   match n with
-  | O => f O
+  | O => false
   | S n' => f n' || Bsum n' f
   end.
 
-Definition r_recoverable x m r := if Bsum (m + 1) (fun step => Shor_post step x m =? r) then 1 else 0.
+Lemma bsum_exists :
+  forall (n : nat) (f : nat -> bool),
+    (exists i : nat, (i < n)%nat /\ f i = true) ->
+    Bsum n f = true.
+Proof.
+  intros. destruct H as (i & H0 & H1).
+  induction n.
+  - easy.
+  - inversion H0. simpl. subst. rewrite H1. auto.
+    simpl. rewrite IHn. btauto. auto.
+Qed.
+
+
+Definition r_recoverable x m r := if Bsum (m + 2) (fun step => Shor_post step x m =? r) then 1 else 0.
+
+Lemma r_recoverable_1 :
+  forall a r N k m n : nat,
+    BasicSetting a r N m n ->
+    (0 <= k < r)%nat ->
+    rel_prime k r ->
+    r_recoverable (s_closest m k r) m r = 1.
+Proof.
+  intros. unfold r_recoverable.
+  rewrite bsum_exists. auto.
+  destruct (ContinuedFraction_partial_correct a r N k m n); auto.
+  exists x. split. destruct H2. lia. destruct H2. apply Nat.eqb_eq. easy.
+Qed.
 
 (* The final success probability of Shor's order finding algorithm. It counts the k's coprime to r and their probability of being collaped to. *)
 Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
@@ -1106,7 +1133,7 @@ Lemma ϕ_n_over_n_lowerbound :
   exists β, 
     β>0 /\
     forall (n : nat),
-      2 < n ->
+      (2 < n)%nat ->
       (ϕ n) / n >= β / (Nat.log2 (Nat.log2 n)).
 Admitted.
 
@@ -1185,6 +1212,20 @@ Proof.
   - intros. rewrite eqb_neq; easy.
 Qed.
 
+Lemma s_closest_le_1 :
+    forall m i r : nat,
+    (i < r)%nat -> (r < 2^m)%nat ->
+    (s_closest m i r <= pred (2^m))%nat.
+Admitted.
+
+Lemma s_closest_injective :
+(* comes from ClosestFracUnique *)
+forall a r N m n i j : nat,
+BasicSetting a r N m n ->
+(i < r)%nat ->
+(j < r)%nat -> s_closest m i r = s_closest m j r -> i = j.
+Admitted.
+
 (* The correctness specification. It succeed with prob proportional to 1/(log log N), which is asymptotically small, but big enough in practice.
    With better technique (calculate the LCM of multiple outputs), the number of rounds may be reduced to constant. But I don't know how to specify that, and the analysis in Shor's original paper refers the correctness to "personal communication" with Knill. *)
 Lemma Shor_correct :
@@ -1193,5 +1234,77 @@ Lemma Shor_correct :
     forall (a r N m n : nat) (c : base_ucom n),
       BasicSetting a r N m n ->
       MultiplyCircuitProperty a N n c ->
+      (r > 100)%nat ->
+      uc_well_typed c ->
       probability_of_success a r N m n c >= β / (Nat.log2 (Nat.log2 N)).
-Admitted.
+Proof.
+  destruct ϕ_n_over_n_lowerbound as (β & Hβ & Heuler).
+  unfold probability_of_success. eexists. split.
+  2:{
+    intros.
+    remember (fun x : nat =>
+    r_recoverable x m r *
+    prob_partial_meas (basis_vector (2 ^ m) x)
+      (uc_eval (QPE m n c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1))) as f.
+    cut (Rsum (2^m) f >= Rsum r (fun i => f (s_closest m i r))).
+    intros. eapply Rge_trans. apply H3. destruct r. inversion H1. simpl.
+    set (g := (fun i : nat => (if rel_prime_dec i (S r) then 1 else 0) * prob_partial_meas (basis_vector (2 ^ m) (s_closest m i (S r)))
+    (uc_eval (QPE m n c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1)))).
+    cut (forall i : nat, (i <= r)%nat -> g i <= f (s_closest m i (S r))).
+    intros. eapply Rge_trans. apply Rle_ge. apply sum_Rle. apply H4.
+    cut (forall i : nat, (i <= r)%nat -> (fun i : nat => (if rel_prime_dec i (S r) then 1 else 0) * (4 / (PI ^ 2 * (S r)))) i <= g i).
+    intros. eapply Rge_trans. apply Rle_ge. apply sum_Rle. apply H5.
+    rewrite <- scal_sum. unfold ϕ in Heuler.
+    remember (sum_f_R0 (fun i : nat => if rel_prime_dec i (S r) then 1 else 0) r) as t.
+    assert (t / (S r) >= β / Nat.log2 (Nat.log2 N)).
+    { subst. replace (sum_f_R0 (fun i : nat => if rel_prime_dec i (S r) then 1 else 0) r) with (Rsum (S r) (fun i : nat => if rel_prime_dec i (S r) then 1 else 0)).
+      eapply Rge_trans. apply Heuler. lia.
+      assert (Nat.log2 (Nat.log2 (S r)) <= Nat.log2 (Nat.log2 N)).
+      apply le_INR. apply Nat.log2_le_mono. apply Nat.log2_le_mono. destruct H. destruct H6. apply Nat.lt_le_incl. 
+      apply Order_r_lt_N with a. auto.
+      repeat rewrite Rdiv_unfold. apply Raux.Rinv_le in H6. apply Rmult_ge_compat_l. lra. lra. replace 0 with (INR 0%nat) by auto.
+      apply lt_INR. cut (1 <= Nat.log2 (Nat.log2 (S r)))%nat. omega. eapply Nat.le_trans.
+      assert (1 <= Nat.log2 (Nat.log2 100))%nat. unfold Nat.log2. simpl. omega. apply H7.
+      repeat apply Nat.log2_le_mono. omega.
+      reflexivity.
+    }
+    assert (4 / (PI^2 * S r) * t >= (4 * β / (PI ^ 2)) / Nat.log2 (Nat.log2 N)).
+    { repeat rewrite Rdiv_unfold. repeat rewrite Rinv_mult_distr. repeat rewrite Rdiv_unfold in H6.
+      replace (4 * (/ PI ^ 2 * / S r) * t) with ((4 * / PI ^ 2) * (t * / S r)) by lra.
+      replace ( 4 * β * / PI ^ 2 * / Nat.log2 (Nat.log2 N)) with ((4 * / PI ^ 2) * (β * / Nat.log2 (Nat.log2 N))) by lra.
+      apply Rmult_ge_compat_l. interval. easy. interval. replace 0 with (INR 0%nat) by auto. apply not_INR. omega. 
+    }
+    apply H7.
+    - intros. destruct (rel_prime_dec i (S r)) eqn:He; unfold g; rewrite He. repeat rewrite Rmult_1_l.
+      apply Rge_le. apply (QPE_MC_correct a _ N _ _ _); try omega; auto.
+      repeat rewrite Rmult_0_l. lra.
+    - intros. unfold g. rewrite Heqf. remember (prob_partial_meas (basis_vector (2 ^ m) (s_closest m i (S r)))
+      (uc_eval (QPE m n c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1))) as fi.
+      destruct (rel_prime_dec i (S r)). rewrite r_recoverable_1 with a _ N _ _ n; try lra; try omega; try easy.
+      rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_recoverable. destruct (Bsum (m + 2)
+        (fun step : nat => Shor_post step (s_closest m i (S r)) m =? S r)); lra.
+      subst. unfold prob_partial_meas. unfold Rsum. replace (2 ^ n)%nat with (S (pred (2 ^ n))).
+      apply cond_pos_sum. intros. unfold probability_of_outcome. interval.
+      simpl. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
+    - replace (2 ^ m)%nat with (S (pred (2 ^ m))).
+      assert (forall i, 0 <= f i).
+      { intros. subst. unfold r_recoverable, prob_partial_meas, probability_of_outcome. apply Rmult_le_pos.
+        destruct (Bsum (m + 2) (fun step : nat => Shor_post step i m =? r)); lra.
+        unfold Rsum. replace (2 ^ n)%nat with (S (pred (2 ^ n))).
+        apply cond_pos_sum. intros. interval. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
+      }
+      assert (r < N)%nat.
+        apply Order_r_lt_N with a. destruct H. now destruct H4.
+      assert (N <= N^2)%nat. rewrite <- Nat.pow_1_r at 1. apply Nat.pow_le_mono_r; try omega. 
+      destruct r. 
+      + (* r = 0 *)
+        apply Rle_ge. apply cond_pos_sum. apply H3.
+      + simpl. apply Rle_ge. apply rsum_subset.
+        -- destruct H. apply lt_INR. omega. 
+        -- auto.
+        -- intros. apply s_closest_le_1. omega. destruct H as (Ha & Hb & Hc & Hd). omega.
+        -- intros. apply s_closest_injective with a (S r) N m n; try omega; auto.
+      rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
+  }
+  rewrite Rdiv_unfold. apply Rmult_gt_0_compat; try lra; try interval.
+Qed.
