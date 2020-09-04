@@ -106,12 +106,12 @@ Definition probability_of_outcome {n} (ψ o : Vector n) : R :=
 Local Opaque pow.
 Lemma QPE_semantics_full : forall k n (c : base_ucom n) z (ψ : Vector (2 ^ n)) (δ : R),
   (n > 0)%nat -> (k > 1)%nat -> uc_well_typed c -> Pure_State_Vector ψ -> 
-  (-1 / 2 ^ (k + 1) < δ < 1 / 2 ^ (k + 1))%R -> (δ <> 0)%R ->
+  (-1 / 2 ^ (k + 1) <= δ < 1 / 2 ^ (k + 1))%R ->
   let θ := ((INR (funbool_to_nat k z) / 2 ^ k) + δ)%R in
   (uc_eval c) × ψ = Cexp (2 * PI * θ) .* ψ ->
   probability_of_outcome (@Mmult _ _ (1 * 1) (uc_eval (QPE k n c)) (k ⨂ ∣0⟩ ⊗ ψ)) ((f_to_vec k z) ⊗ ψ) >= 4 / (PI ^ 2).
 Proof.
-  intros k n c z ψ δ Hn Hk WT [WFM PS] [Hδlt Hδgt] Hδnz θ Heig.
+  intros k n c z ψ δ Hn Hk WT [WFM PS] [Hδlt Hδgt] θ Heig.
   rewrite QPE_simplify with (θ := θ) by assumption.
   unfold probability_of_outcome.
   restore_dims. rewrite kron_adjoint.
@@ -140,6 +140,22 @@ Proof.
        lma.
        apply not_eq_sym. assumption. }
   unfold scale, I; simpl.
+  
+  pose (Req_dec δ 0) as Hδ.
+  destruct Hδ as [Hδz | Hδnz].
+  rewrite Hδz.
+  rewrite Csum_1.
+  2:{ intro x. rewrite Cexp_pow. replace (2 * PI * 0 * INR x)%R with 0%R by lra.
+      rewrite Cexp_0. easy.
+  }
+  rewrite pow_INR. replace (INR 2)%R with 2%R by easy.
+  replace ((2 ^ k)%R * 1) with (RtoC (2 ^ k)%R) by lca.
+  rewrite RtoC_pow.
+  assert (0 < 2 ^ k)%R by (apply pow_lt; lra).
+  rewrite <- RtoC_inv by lra. rewrite <- RtoC_mult. rewrite Rinv_l by lra.
+  rewrite Cmod_1. replace (R1 ^ 2)%R with 1%R by lra.
+  interval.
+  
   clear - Hk Hδlt Hδgt Hδnz.
   assert (H : 1 - Cexp (2 * PI * δ) <> 0).
   apply Cminus_eq_contra.
@@ -205,7 +221,7 @@ Proof.
     rewrite <- Rinv_1. apply Rinv_1_lt_contravar.
     apply Rle_refl. apply Rlt_pow_R1; try lia; lra.
     assert (H2: IZR x > -1). 
-    eapply Rlt_trans. 2: apply Hδlt.
+    eapply Rlt_le_trans. 2: apply Hδlt.
     replace (-1) with (Ropp 1) by reflexivity.
     rewrite <- Ropp_mult_distr_l.
     apply Ropp_lt_contravar. rewrite Rmult_1_l.
@@ -228,7 +244,7 @@ Proof.
     apply Rabs_le. split.
     replace (- (1 / 2))%R with (-1 * / 2 ^ (k + 1) * INR (2 ^ k))%R.
     apply Rmult_le_compat_r. apply pos_INR.
-    apply Rlt_le. apply Hδlt.
+    apply Hδlt.
     rewrite pow_INR.
     simpl INR. replace (1 + 1)%R with 2%R by lra.
     field_simplify_eq; try nonzero.
