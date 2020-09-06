@@ -3,6 +3,7 @@ Require Export NonUnitaryListRepresentation.
 Require Export QArith.
 Require Export ZArith.BinInt.
 Require Export Reals.ROrderedType.
+Require Export Reals.Ratan.
 
 Local Open Scope Z_scope.
 Local Open Scope R_scope.
@@ -1029,3 +1030,94 @@ apply Nat.ltb_lt in H1. lia. reflexivity.
 reflexivity.
 destruct dim. inversion H. lia.
 Qed.
+
+(* defining the result of U3 + U3 *)
+Definition re_a (t1 t2 a b: R) : R := (cos (t1 /2) * cos (t2 / 2)) - (cos (a + b) * sin (t1 / 2) * sin (t2 / 2)).
+
+Definition im_a (t1 t2 a b: R) : R := - sin (a + b) * sin (t1 / 2) * sin (t2 / 2).
+
+Definition re_b (t1 t2 a b: R) : R := - (cos (t1 /2) * sin (t2 / 2)) - (cos (a + b) * sin (t1 / 2) * cos (t2 / 2)).
+
+Definition im_b (t1 t2 a b: R) : R := - sin (a + b) * sin (t1 / 2) * cos (t2 / 2).
+
+Definition alpha (t1 t2 a b:R) :R := acos (sqrt ((re_a t1 t2 a b)^2 + (im_a t1 t2 a b)^2)).
+
+Definition beta (t1 t2 a b:R) :R := acos ((re_a t1 t2 a b) / (sqrt ((re_a t1 t2 a b)^2 + (im_a t1 t2 a b)^2))).
+
+
+(* two u3 gates yeilds a result of U3 of ZYZ rotation. *)
+(* first, if re_a = 0 /\ im_a = 0, since u3 is a unitary matrix, the result is u3 PI theta1 lambda2 *)
+Lemma two_u3_to_one_zero: forall {dim:nat} (a b c a' b' c':R) (q:nat), 
+    re_a a a' c b' = 0 -> im_a a a' c b' = 0 ->
+    @uc_equiv dim (useq (uapp1 (@U_R a b c) q)
+                       (uapp1 (@U_R a' b' c') q))
+           (uapp1 (@U_R PI b c') q)
+   \/ @uc_equiv dim (useq (uapp1 (@U_R a b c) q)
+                       (uapp1 (@U_R a' b' c') q))
+           (uapp1 (@U_R (3 * PI) b c') q).
+Proof.
+intros.
+unfold re_a in H.
+unfold im_a in H0.
+assert (sin (c + b') * sin (a / 2) * sin (a' / 2) = 0) by lra.
+apply Rmult_integral in H1.
+destruct H1.
+apply Rmult_integral in H1.
+destruct H1.
+assert (cos (c + b') = 1 \/ cos (c + b') = -1).
+specialize (sin2_cos2 (c + b')) as H2.
+rewrite H1 in H2. 
+assert (0²=0).
+unfold Rsqr. lra. rewrite H3 in H2. clear H3.
+assert (1²=1). unfold Rsqr. lra. 
+rewrite <- H3 in H2. clear H3.
+assert ((cos (c + b'))² = 1²) by lra.
+apply Rsqr_eq in H3. lra.
+destruct H2.
+rewrite H2 in H.
+assert (cos (a / 2) * cos (a' / 2) - sin (a / 2) * sin (a' / 2) = 0) by lra.
+rewrite <-  cos_plus  in H3.
+assert (sin (a / 2 + a' / 2) = 1 \/ sin (a / 2 + a' / 2) = -1).
+specialize (sin2_cos2 (a / 2 + a' / 2)) as H4.
+rewrite H3 in H4. 
+assert (0²=0).
+unfold Rsqr. lra. rewrite H5 in H4. clear H5.
+assert (1²=1). unfold Rsqr. lra. 
+rewrite <- H5 in H4. clear H5.
+assert ((sin (a / 2 + a' / 2))² = 1²) by lra.
+apply Rsqr_eq in H5. lra.
+destruct H4.
+left.
+unfold uc_equiv; simpl.
+  autorewrite with eval_db.
+  gridify.
+apply f_equal2.
+apply f_equal2. reflexivity.
+solve_matrix.
+Admitted.
+
+
+(* the main theorem *)
+Lemma two_u3_to_one: forall {dim:nat} (a b c a' b' c':R) (q:nat), 
+    re_a a a' c b' <> 0 \/ im_a a a' c b' <> 0 ->
+     @uc_cong dim (useq (uapp1 (@U_R a b c) q)
+                       (uapp1 (@U_R a' b' c') q))
+           (uapp1 (@U_R (alpha a a' c b') (b + b' + c + 2 * (beta a a' c b')) c') q).
+Proof.
+intros.
+remember (alpha a a' c b') as t. unfold alpha in Heqt.
+remember (beta a a' c b') as dl. unfold beta in Heqdl.
+unfold uc_cong; simpl.
+  autorewrite with eval_db.
+  gridify.
+exists (beta a a' c b').
+rewrite <- Mscale_kron_dist_l.
+rewrite <- Mscale_kron_dist_r.
+apply f_equal2.
+apply f_equal2. reflexivity.
+solve_matrix.
+Admitted.
+
+
+
+
