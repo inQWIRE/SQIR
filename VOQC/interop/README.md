@@ -88,4 +88,33 @@ After VOQC:	 Total 885, CNOT 494
 Final:	 Total 882, CNOT 494
 ```
 
+## Using VOQC optimization pass in Cirq
 
+Similarly to Qiskit, the VOQC optimizations can be called in Cirq by calling the optimize circuit function that is implement in the VOQC optimization class. By passing`VOQC([list of optimizations])` to the optimize circuit funcion, VOQC will return an optimized Cirq circuit. The argument `list of optimizations` is an optional argument that allows custom optimizations to be run. Calling `VOQC()` without a list will run the main optimize function in VOQC. The client file must be run from the VOQC directory.
+*Example*: The following is an optimization pass to VOQC using a circuit built in Cirq. 
+```
+from interop.cirq.voqc_optimization import VOQC
+import cirq
+
+a = cirq.NamedQubit("a")
+b = cirq.NamedQubit("b")
+c = cirq.NamedQubit("c")
+
+# Circuit being passed to VOQC
+circuit = cirq.Circuit([cirq.X.on(a), cirq.H.on(b), cirq.S.on(c)])
+new_circ = VOQC(["optimize"]).optimize_circuit(circuit)
+```
+
+
+## Running Benchmarks using VOQC and Cirq
+
+The run_cirq_voqc.py file in test/run_benchmarks provides the ability to run VOQC optimizations, followed by Cirq optimizations to optimize a qasm file, and see total gate improvements. Copy this file into the VOQC directory. The file writes out the optimized gate counts to a csv file. The Product Formula benchmarks will produce an error due to the miniscule rotations around the z-axis.
+
+*Example*: The following is an example of running run_cirq_voqc.py. Only the first output in the directory is shown for simplicity.
+```
+$ python run_cirq_voqc.py benchmarks/Arithmetic_and_Toffoli out.csv
+gf2^9_mult.qasm
+Original:	 Total 1095
+After VOQC:	 Total 885
+Final:	 Total 1034
+```
