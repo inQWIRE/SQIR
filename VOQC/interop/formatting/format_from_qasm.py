@@ -27,18 +27,6 @@ def format_from_qasm(fname):
         m5 = p_u2.match(line)
         m6 = p_u3.match(line)
         m7 = p_rz.match(line)
-        #valid = False
-        #for i in range(len(gates)):
-         #   if line.startswith(gates[i]):
-          #      valid = True
-        #if valid == False:
-         #   par = line.find('(')
-          #  if par != -1:
-           #     t = line[0:par]
-            #else:
-             #   space = line.find(' ')
-              #  t = line[0:space]
-            #raise InvalidVOQCGate(t)
         if m1:
             a = m1.group(1)
             b = m1.group(2)
@@ -126,9 +114,10 @@ def format_from_qasm(fname):
         elif m7:
             a = m7.group(2)
             b = m7.group(3)
-            c = str(float(a))+b
+            c = str(a)+'.0'+b
             d = int(m7.group(4))
             tmp.write("rz(%s*pi) q[%d];\n" %(c, d))
         else:
             tmp.write(line)
+    inqasm.close()
     tmp.close()
