@@ -77,9 +77,9 @@ def decompose_library(op):
             setattr(cirq.CCX, "decomposed", True)
     if isinstance(op.gate, QasmUGate):
         a = op.qubits[0]
-        theta = op.gate.theta
-        phi = op.gate.phi
-        lam = op.gate.lmda
+        theta = op.gate.theta*np.pi
+        phi = op.gate.phi*np.pi
+        lam = op.gate.lmda*np.pi
         decomp = [cirq.rz(phi+(np.pi/2)).on(a),
                   cirq.H.on(a),
                   cirq.rz(theta).on(a),
