@@ -8,6 +8,7 @@ from cirq.circuits import Circuit
 from interop.formatting.format_from_qasm import format_from_qasm
 from interop.formatting.rzq_to_rz import rzq_to_rz
 from interop.voqc import SQIR
+from interop.exceptions import InvalidVOQCFunction,InvalidVOQCGate
 from interop.cirq.decompose_cirq_gates import *
 
 class VOQC:
@@ -17,8 +18,8 @@ class VOQC:
         for i in range(len(self.func)):
             if ((self.func[i] in self.functions) == False):
                 raise InvalidVOQCFunction(str(self.func[i]), self.functions)
+
     def optimize_circuit(self, circuit: circuits.Circuit):
-        
         #Write qasm file from circuit
         circuit = Circuit(decompose(circuit, intercepting_decomposer=decompose_library,keep=need_to_keep))
         qasm_str = cirq.qasm(circuit)
@@ -32,7 +33,8 @@ class VOQC:
         t = self.function_call("temp.qasm")
         rzq_to_rz("temp2.qasm")
         #Get Cirq Circuit from qasm file
-        c = open("temp2.qasm").read()
+        with open("temp2.qasm", "r") as f:
+            c = f.read()
         circ = circuit_from_qasm(c)
     
         #Remove temporary files
