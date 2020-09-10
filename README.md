@@ -13,7 +13,7 @@ Our repository is split into two parts: SQIR and VOQC. If you are interested in 
 **If you want to compile the VOQC optimizer, follow the directions below.** 
 
 Dependencies:
-  * OCaml version 4.08.1 
+  * OCaml version >= 4.08.1 
   * zarith (`opam install zarith`)
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
@@ -53,6 +53,7 @@ Examples of verifying correctness properties of simple SQIR programs.
 - examples/GHZ.v : GHZ state prepatation
 - examples/QPE.v : Quantum phase estimation (simplified)
 - examples/QPEGeneral.v : Quantum phase estimation (general) -- this file is not built by default to minimize SQIR's depedencies; see notes at the top of the file.
+- examples/Simon.v : Simon's algorithm
 - examples/Superdense.v : Superdense coding
 - examples/Teleport.v : Quantum teleportation
 

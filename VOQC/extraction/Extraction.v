@@ -143,11 +143,11 @@ Extraction Implicit merge_at_end [dim].
 Extraction Implicit merge_rotations_at_beginning [dim].
 Extraction Implicit merge_rotations_at_end [dim].
 Extraction Implicit invert_gate [dim].
-Extraction Implicit invert [dim].
+Extraction Implicit RotationMerging.invert [dim].
 Extraction Implicit merge_rotations [dim].
 
 (* From NotPropagation.v *)
-Extraction Implicit NotPropagation.propagate_X [dim].
+Extraction Implicit finalize [dim].
 Extraction Implicit not_propagation' [dim].
 Extraction Implicit not_propagation [dim].
 

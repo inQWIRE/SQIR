@@ -256,13 +256,6 @@ Qed.
 
 (* Some facts about permutation matrices. *)
 
-(* One thing that's not so great about this definition is that it states the 
-   existence of an inverse function, but it doesn't explicitly name this function.
-   That's why I end up using the qmap type defined at the top of the file. *)
-Definition finite_bijection (n : nat) (f : nat -> nat) :=
-  (forall x, x < n <-> f x < n) /\ 
-  (exists g, (forall x, g (f x) = x) /\ (forall y, f (g y) = y)).
-
 Definition implements_permutation {n} (P : Square (2^n)) (p : nat -> nat) :=
   WF_Unitary P /\ 
   finite_bijection n p /\ 

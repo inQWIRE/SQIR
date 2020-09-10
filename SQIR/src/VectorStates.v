@@ -221,6 +221,20 @@ Proof.
   destruct (f n); simpl; lia.
 Qed.
 
+Lemma funbool_to_nat_eq : forall n f f',
+  (forall x, x < n -> f x = f' x)%nat ->
+  funbool_to_nat n f = funbool_to_nat n f'.
+Proof.
+  intros.
+  unfold funbool_to_nat.
+  apply f_equal.
+  induction n.
+  reflexivity.
+  simpl.
+  rewrite H by lia.
+  rewrite IHn; auto.
+Qed.
+
 Local Opaque Nat.mul.
 Lemma funbool_to_nat_shift : forall n f k, (k < n)%nat ->
   funbool_to_nat n f  = (2 ^ (n - k) * funbool_to_nat k f + funbool_to_nat (n - k) (shift f k))%nat.
@@ -464,6 +478,167 @@ Proof.
   apply nat_to_binlist_length.
   assumption.
 Qed.
+
+Local Opaque Nat.mul.
+Lemma nat_to_binlist'_even : forall n, (n > 0)%nat -> 
+  nat_to_binlist' (2 * n) = false :: nat_to_binlist' n.
+Proof.
+  intros n Hn. 
+  destruct n; try lia. clear.
+  induction n.
+  rewrite Nat.mul_1_r. simpl. reflexivity. 
+  replace (2 * S (S n))%nat with (S (S (2 * S n))) by lia.
+  simpl. rewrite IHn. reflexivity.
+Qed.
+
+Lemma nat_to_binlist'_odd : forall n,
+  nat_to_binlist' (2 * n + 1) = true :: nat_to_binlist' n.
+Proof.
+  induction n.
+  rewrite Nat.mul_0_r, Nat.add_0_l. simpl. reflexivity. 
+  replace (2 * S n + 1)%nat with (S (S (2 * n + 1))) by lia.
+  simpl. rewrite IHn. reflexivity.
+Qed.
+
+Lemma binlist_to_nat_inverse : forall l n i, 
+  list_to_funbool n (nat_to_binlist' (binlist_to_nat l)) i = list_to_funbool n l i.
+Proof.
+  intros.
+  generalize dependent n.
+  induction l.
+  reflexivity.
+  intros.
+  simpl.
+  destruct a; simpl Nat.b2n. 
+  rewrite Nat.add_comm.
+  rewrite nat_to_binlist'_odd.
+  simpl. unfold update.
+  rewrite IHl. reflexivity.
+  rewrite Nat.add_0_l.
+  bdestruct (binlist_to_nat l =? 0).
+  rewrite H in *.
+  rewrite Nat.mul_0_r.
+  simpl.
+  unfold update.
+  rewrite <- IHl.
+  simpl.
+  bdestruct_all; reflexivity.
+  rewrite nat_to_binlist'_even by lia.
+  simpl. unfold update.
+  rewrite IHl. reflexivity.
+Qed.
+
+Lemma list_to_funbool_repeat_false : forall n i,
+  list_to_funbool n (repeat false n) i = false.
+Proof.
+  intros.
+  induction n.
+  reflexivity.
+  simpl. rewrite Nat.sub_0_r.
+  unfold update.
+  rewrite IHn.
+  bdestruct_all; reflexivity.
+Qed.
+
+Lemma funbool_to_nat_0 : forall n f, 
+  funbool_to_nat n f = O -> forall i, (i < n)%nat -> f i = false.
+Proof.
+  intros.
+  induction n.
+  lia.
+  intros.
+  unfold funbool_to_nat in *. 
+  simpl in *.
+  destruct (f n) eqn:fn; simpl in *.
+  inversion H.
+  bdestruct (i =? n). subst. 
+  assumption.
+  apply IHn; lia.
+Qed.
+
+Lemma funbool_to_nat_inverse : forall len f i, (i < len)%nat -> 
+  nat_to_funbool len (funbool_to_nat len f) i = f i.
+Proof.
+  intros.
+  assert (list_to_funbool_append1 : forall l1 l2,
+            (i >= length l2)%nat ->
+            (len <= length l1 + length l2)%nat ->
+            list_to_funbool len (l1 ++ l2) i = list_to_funbool len l1 i).
+  { intros.
+    generalize dependent len.
+    induction l1; intros; simpl in *.
+    generalize dependent len.
+    induction l2.
+    reflexivity.
+    intros.
+    simpl in *. 
+    unfold update.  
+    bdestructΩ (i =? len - 1).
+    unfold update.
+    bdestruct (i =? len - 1).
+    reflexivity.
+    apply IHl1; lia. }
+  assert (list_to_funbool_append2 : forall l1 l2,
+            (i < length l2)%nat ->
+            (len >= length l1 + length l2)%nat ->
+            list_to_funbool len (l1 ++ l2) i = 
+              list_to_funbool (len - length l1) l2 i).
+  { clear.
+    intros.
+    generalize dependent len.
+    induction l1; intros; simpl in *.
+    rewrite Nat.sub_0_r.
+    reflexivity.
+    unfold update.
+    bdestructΩ (i =? len - 1).
+    rewrite IHl1 by lia.
+    replace (len - 1 - length l1)%nat with (len - S (length l1))%nat by lia.
+    reflexivity. }
+  unfold nat_to_funbool, funbool_to_nat, nat_to_binlist.
+  remember (binlist_to_nat (funbool_to_list len f)) as n.
+  bdestructΩ (len - length (nat_to_binlist' n) <=? i).
+  rewrite list_to_funbool_append1.
+  all: try rewrite repeat_length; try lia.
+  subst.
+  rewrite binlist_to_nat_inverse.
+  clear - H.
+  induction len.
+  lia.
+  simpl.
+  rewrite Nat.sub_0_r.
+  bdestruct (i =? len). subst.
+  rewrite update_index_eq. 
+  reflexivity.
+  rewrite update_index_neq by lia.
+  rewrite IHlen by lia.
+  reflexivity.
+  rewrite list_to_funbool_append2.
+  all: try rewrite repeat_length; try lia.
+  assert (f i = false).
+  { subst.
+    clear - H0.
+    induction len.
+    simpl in H0. lia.
+    remember (binlist_to_nat (funbool_to_list (S len) f)) as n.
+    bdestruct (n =? 0).
+    subst. rewrite H in *.
+    eapply funbool_to_nat_0. apply H. 
+    lia.
+    apply IHlen.
+    subst. 
+    simpl in *.
+    destruct (f len); simpl Nat.b2n in *.
+    rewrite Nat.add_comm in H0.
+    rewrite nat_to_binlist'_odd in H0.
+    simpl in H0. lia.
+    rewrite Nat.add_0_l in *.
+    rewrite nat_to_binlist'_even in H0 by lia.
+    simpl in H0. lia. }
+  rewrite list_to_funbool_repeat_false.
+  rewrite H1.
+  reflexivity.
+Qed.
+Local Transparent Nat.mul.
 
 (* rewrite basis_vector as f_to_vec *)
 Lemma basis_f_to_vec_alt : forall len n, (n < 2 ^ len)%nat -> 
@@ -1014,7 +1189,7 @@ Proof.
   intros. apply H; lia.
 Qed.
 
-(* Two natural ways to split a vsum *)
+(* Two natural ways to split a vsum into two parts *)
 Lemma vsum_sum1 : forall d m n (f : nat -> Vector d),
   vsum (m + n) f = vsum m f .+ vsum n (shift f m).
 Proof.
@@ -1049,6 +1224,236 @@ Proof.
   lma.
 Qed.
 Local Transparent Nat.mul.
+
+Lemma vsum_split : forall {d} (n i : nat) (v : nat -> Vector d),
+  (i < n)%nat ->
+  vsum n v = (vsum i v) .+ v i .+ (vsum (n - 1 - i) (shift v (i + 1))).
+Proof.
+  intros.
+  induction n.
+  - contradict H. lia.
+  - bdestruct (i =? n).
+    + subst.
+      replace (S n - 1 - n)%nat with O by lia.
+      simpl. Msimpl.
+      reflexivity.
+    + assert (i < n)%nat by lia.
+      specialize (IHn H1).
+      replace (S n - 1 - i)%nat with (S (n - 1 - i))%nat by lia.
+      simpl.
+      rewrite IHn.
+      repeat rewrite Mplus_assoc. 
+      unfold shift; simpl.
+      replace (n - 1 - i + (i + 1))%nat with n by lia.
+      reflexivity.
+Qed.
+
+Definition fswap (f : nat -> nat) x y :=
+  fun i => if i =? x then f y else if i =? y then f x else f i.
+
+Lemma fswap_simpl1 : forall f x y, fswap f x y x = f y.
+Proof. 
+  intros. 
+  unfold fswap. 
+  rewrite Nat.eqb_refl. 
+  reflexivity. 
+Qed.
+
+Lemma fswap_simpl2 : forall f x y, fswap f x y y = f x.
+Proof. 
+  intros.
+  unfold fswap. 
+  bdestruct (y =? x).
+  subst. reflexivity.
+  rewrite Nat.eqb_refl. 
+  reflexivity. 
+Qed.
+
+Lemma fswap_same : forall f x, fswap f x x = f.
+Proof.
+  intros.
+  unfold fswap.
+  apply functional_extensionality.
+  intro i.
+  bdestruct_all; auto.
+Qed.
+
+Lemma vsum_eq_up_to_fswap : forall {d} n f (v : nat -> Vector d) x y,
+  (x < n)%nat -> (y < n)%nat ->
+  vsum n (fun i => v (f i)) = vsum n (fun i => v (fswap f x y i)).
+Proof.
+  intros d n f v x y Hx Hy.
+  bdestruct (x =? y).
+  subst.
+  apply vsum_eq.
+  intros i Hi.
+  unfold fswap.
+  bdestruct_all; subst; reflexivity.
+  bdestruct (x <? y).
+  - rewrite 2 (vsum_split n y) by auto.
+    rewrite 2 (vsum_split y x) by auto.
+    rewrite fswap_simpl1, fswap_simpl2.
+    unfold shift.
+    erewrite (vsum_eq x (fun _ => v (fswap _ _ _ _))).
+    2: { intros i Hi.
+         unfold fswap.
+         bdestruct_all.
+         reflexivity. }
+    erewrite (vsum_eq (y - 1 - x) (fun _ => v (fswap _ _ _ _))).
+    2: { intros i Hi.
+         unfold fswap.
+         bdestruct_all.
+         reflexivity. }
+    erewrite (vsum_eq (n - 1 - y) (fun _ => v (fswap _ _ _ _))).
+    2: { intros i Hi.
+         unfold fswap.
+         bdestruct_all.
+         reflexivity. }
+    repeat rewrite (Mplus_comm _ _ _ (v _)).
+    repeat rewrite <- Mplus_assoc.
+    rewrite (Mplus_comm _ _ (v (f x))).
+    reflexivity.
+  - rewrite 2 (vsum_split n x) by auto.
+    rewrite 2 (vsum_split x y) by lia.
+    rewrite fswap_simpl1, fswap_simpl2.
+    unfold shift.
+    erewrite (vsum_eq y (fun _ => v (fswap _ _ _ _))).
+    2: { intros i Hi.
+         unfold fswap.
+         bdestruct_all.
+         reflexivity. }
+    erewrite (vsum_eq (x - 1 - y) (fun _ => v (fswap _ _ _ _))).
+    2: { intros i Hi.
+         unfold fswap.
+         bdestruct_all.
+         reflexivity. }
+    erewrite (vsum_eq (n - 1 - x) (fun _ => v (fswap _ _ _ _))).
+    2: { intros i Hi.
+         unfold fswap.
+         bdestruct_all.
+         reflexivity. }
+    repeat rewrite (Mplus_comm _ _ _ (v _)).
+    repeat rewrite <- Mplus_assoc.
+    rewrite (Mplus_comm _ _ (v (f y))).
+    reflexivity.
+Qed.
+
+Definition finite_bijection (n : nat) (f : nat -> nat) :=
+  (forall x, x < n <-> f x < n)%nat /\ 
+  (exists g, (forall x, g (f x) = x) /\ (forall y, f (g y) = y)).
+
+(* A weaker property sometimes easier to prove. *)
+Definition weak_finite_bijection (n : nat) (f : nat -> nat) :=
+  (forall x, x < n -> f x < n)%nat /\ 
+  (exists g, (forall y, y < n -> g y < n)%nat /\
+        (forall x, (x < n)%nat -> g (f x) = x) /\ 
+        (forall y, (y < n)%nat -> f (g y) = y)).
+
+Lemma finite_bijection_implies_weak : forall n f,
+  finite_bijection n f -> weak_finite_bijection n f.
+Proof.
+  intros n f [Hf [g [Hg1 Hg2]]].
+  repeat split.
+  intros.
+  rewrite <- Hf; auto.
+  exists g. 
+  repeat split; intros; auto.
+  rewrite <- (Hg2 y) in H.
+  rewrite <- Hf in H.
+  assumption.
+Qed.
+
+Lemma weak_finite_bijection_is_injective : forall n f,
+  weak_finite_bijection n f -> 
+  forall x y, (x < n)%nat -> (y < n)%nat -> f x = f y -> x = y.
+Proof.
+  intros n f [_ [g [_ [Hg _]]]] x y ? ? H.
+  rewrite <- (Hg x) by assumption.
+  rewrite <- (Hg y) by assumption.
+  rewrite H.
+  reflexivity.
+Qed.
+
+Lemma fswap_at_boundary_weak_finite_bijection : forall n f x,
+  weak_finite_bijection (S n) f ->
+  (x < S n)%nat -> f x = n ->
+  weak_finite_bijection n (fswap f x n).
+Proof.
+  intros n f x Hf Hx Hfx.
+  split.
+  - (* f is bounded *)
+    assert (forall y, y < S n -> y <> x -> f y <> n)%nat.
+    { intros y Hy H contra.
+      rewrite <- Hfx in contra.
+      eapply weak_finite_bijection_is_injective in contra.
+      contradiction.
+      apply Hf.
+      assumption.
+      assumption. }
+    intros.
+    destruct Hf as [Hf _].
+    unfold fswap.
+    bdestruct_all; subst.
+    assert (f (f x) < S (f x))%nat.
+    apply Hf. lia.
+    specialize (H (f x)). lia.
+    assert (f x0 < S (f x))%nat.
+    apply Hf. lia.
+    specialize (H x0). lia.
+  - (* f is a bijection *)
+    destruct Hf as [Hf [g [Hg1 [Hg2 Hg3]]]].
+    exists (compose (fswap (fun x : nat => x) x n) g).
+    unfold fswap, compose.
+    split; intros.
+    assert (g y < S n). 
+    apply Hg1. lia.
+    assert (g y <> x).
+    intro contra. 
+    rewrite <- contra in Hfx.
+    rewrite Hg3 in Hfx; lia.
+    bdestruct_all; subst; lia. 
+    clear Hfx.
+    split; intros.
+    bdestruct (x0 =? x); subst.
+    bdestruct_all; subst; auto.
+    symmetry. auto.     
+    contradict H1. auto.
+    bdestruct (x0 =? n); subst.
+    bdestruct_all; subst; auto.
+    bdestruct_all; subst; auto.
+    contradict H0. symmetry. auto.
+    contradict H1. symmetry. auto.
+    bdestruct (g y =? x); subst.
+    bdestruct_all; subst; auto.
+    bdestruct (g y =? n); subst.
+    bdestruct_all; subst; auto.
+    bdestruct_all; subst; auto.
+Qed.
+  
+(* vsum terms can be arbitrarily reordered *)
+Lemma vsum_reorder : forall {d} n (v : nat -> Vector d) f,
+  weak_finite_bijection n f ->
+  vsum n v = vsum n (fun i => v (f i)).
+Proof.
+  intros.
+  generalize dependent f.
+  induction n.
+  reflexivity.
+  intros f [Hf [g [Hg1 [Hg2 Hg3]]]].
+  assert (g n < S n)%nat.
+  apply Hg1. lia.
+  rewrite (vsum_eq_up_to_fswap _ f _ (g n) n) by auto.
+  simpl.
+  rewrite fswap_simpl2.
+  rewrite Hg3 by auto.
+  specialize (IHn (fswap f (g n) n)).
+  rewrite <- IHn.
+  reflexivity.
+  apply fswap_at_boundary_weak_finite_bijection.
+  split.
+  all: auto.
+  exists g. auto.
+Qed.
 
 (*******************************)
 (** Indexed Kronecker Product **)
@@ -1395,13 +1800,6 @@ Proof.
     apply f_equal2; apply f_equal2; try reflexivity.
     apply f_equal2; try reflexivity.
     simpl.
-    assert (forall n, (n > 0)%nat -> nat_to_binlist' (2 * n) = false :: nat_to_binlist' n).
-    { clear. intros n Hn. 
-      destruct n; try lia. clear.
-      induction n.
-      rewrite Nat.mul_1_r. simpl. reflexivity. 
-      replace (2 * S (S n))%nat with (S (S (2 * S n))) by lia.
-      simpl. rewrite IHn. reflexivity. }
     destruct i.
     rewrite Nat.mul_0_r. 
     unfold nat_to_funbool, nat_to_binlist; simpl.
@@ -1411,7 +1809,7 @@ Proof.
     rewrite product_update_oob by lia.
     reflexivity.
     unfold nat_to_funbool, nat_to_binlist.
-    rewrite H by lia.
+    rewrite nat_to_binlist'_even by lia.
     simpl.
     replace (n' - 0)%nat with n' by lia.
     rewrite update_index_eq.
@@ -1422,14 +1820,8 @@ Proof.
     rewrite <- RtoC_mult.
     rewrite <- pow_add.
     simpl.
-    assert (forall n, nat_to_binlist' (2 * n + 1) = true :: nat_to_binlist' n).
-    { clear.
-      induction n.
-      rewrite Nat.mul_0_r, Nat.add_0_l. simpl. reflexivity. 
-      replace (2 * S n + 1)%nat with (S (S (2 * n + 1))) by lia.
-      simpl. rewrite IHn. reflexivity. }
     unfold nat_to_funbool, nat_to_binlist.
-    rewrite H by lia.
+    rewrite nat_to_binlist'_odd by lia.
     simpl.
     replace (n' - 0)%nat with n' by lia.
     rewrite update_index_eq.

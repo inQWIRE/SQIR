@@ -4,6 +4,7 @@ Require Import FSets.FSetAVL.
 Require Import FSets.FSetFacts.
 Require Import FSets.FMapAVL.
 Require Import FSets.FMapFacts.
+Require Import FSets.FSetProperties.
 
 Module FSet := FSetAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
 Module FSetFacts := FSetFacts.Facts FSet.

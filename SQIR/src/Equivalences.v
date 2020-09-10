@@ -50,6 +50,21 @@ Proof.
     Msimpl_light; reflexivity.
 Qed.
 
+
+Lemma SKIP_id_l_cong : forall {dim} (c : base_ucom dim), SKIP; c ≅ c.
+Proof.
+  intros. 
+  apply uc_equiv_cong.
+  apply SKIP_id_l.
+Qed.
+
+Lemma SKIP_id_r_cong : forall {dim} (c : base_ucom dim), c; SKIP ≅ c.
+Proof.
+  intros. 
+  apply uc_equiv_cong.
+  apply SKIP_id_r.
+Qed.
+
 Lemma X_X_id : forall {dim} q, X q; X q ≡ @ID dim q.
 Proof. 
   intros dim q. 

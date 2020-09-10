@@ -70,7 +70,7 @@ do
     index=$((index+1))
     currentTime=`date`
     printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
-    (time dune exec --root ../extraction -- ./voqc.exe -i ${filename} -o out.qasm -n ${iter}) &> ${program_name}.txt
+    (time dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm -n ${iter}) &> ${program_name}.txt
     python parseOutput2.py ${program_name}.txt >> PF_results.csv
     rm -rf ${program_name}.txt
 done
@@ -83,7 +83,7 @@ do
     program_name=`basename "$filename" .qasm`
     currentTime=`date`
     printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
-    (time dune exec --root ../extraction -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
+    (time dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
     python parseOutput.py ${program_name}.txt >> Arithmetic_and_Toffoli_results.csv
     rm -rf ${program_name}.txt
 done
@@ -97,7 +97,7 @@ do
     program_name=`basename "$filename" .qasm`
     currentTime=`date`
     printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
-    (time dune exec --root ../extraction -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
+    (time dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
     python parseOutput.py ${program_name}.txt >> QFT_and_Adders_results.csv
     rm -rf ${program_name}.txt
 done
