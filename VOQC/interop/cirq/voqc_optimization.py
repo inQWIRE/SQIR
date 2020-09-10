@@ -27,8 +27,6 @@ class VOQC:
         f.write(qasm_str)
         f.close()
         
-        #Decompose gates such as ccz, ccx, u1, u2, u3
-        #format_from_qasm("temp.qasm")
         #Call VOQC optimizations from input list and go from rzq to rz
         t = self.function_call("temp.qasm")
         rzq_to_rz("temp2.qasm")
