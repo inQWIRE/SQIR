@@ -251,9 +251,25 @@ Proof.
       rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus.
       apply f_equal; apply f_equal; lra.
 Qed.
-
 Local Opaque CU.
 
+Hint Rewrite f_to_vec_CNOT f_to_vec_Rz f_to_vec_X using lia : f_to_vec_db.
+Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
+
+Ltac f_to_vec_simpl :=
+  repeat 
+   (autorewrite with f_to_vec_db;
+    try match goal with
+        | |- context [uc_eval (SQIR.H _) × f_to_vec _ _] =>
+              rewrite f_to_vec_H by lia
+        end;
+    distribute_scale;
+    distribute_plus;
+    try match goal with
+        | |- context [update (update (update _ ?x _) ?y _) ?z _ ] => 
+              rewrite (update_twice_neq _ x y) by lia
+        end).
+  
 Lemma f_to_vec_CCX : forall (dim a b c : nat) (f : nat -> bool),
   (a < dim)%nat -> (b < dim)%nat -> (c < dim)%nat -> a <> b -> a <> c -> b <> c ->
  (uc_eval (CCX a b c)) × (f_to_vec dim f) 
@@ -263,32 +279,19 @@ Proof.
   unfold CCX, T, TDAG.
   simpl uc_eval.
   repeat rewrite Mmult_assoc.
-  (* automated evaluation using f_to_vec lemmas -- should be made into a tactic *)
-  rewrite f_to_vec_H by auto.
-  rewrite Mscale_plus_distr_r.
-  repeat (rewrite Mmult_plus_distr_l;
-          repeat rewrite Mscale_mult_dist_r;
-          repeat rewrite f_to_vec_CNOT by auto;
-          repeat rewrite f_to_vec_Rz by auto;
-          repeat rewrite f_to_vec_H by auto;
-          repeat (try rewrite update_index_eq; try rewrite update_index_neq by auto);
-          repeat rewrite update_twice_eq; 
-          repeat rewrite Mscale_assoc).
-  (* some clean up *)
-  rewrite 2 (update_twice_neq _ c b) by auto; rewrite 2 update_twice_eq.
-  rewrite 2 (update_twice_neq _ b c) by auto; rewrite 2 update_twice_eq.
-  replace ((f b ⊕ f a) ⊕ f a) with (f b) by (destruct (f a); destruct (f b); auto).
-  repeat rewrite (update_same _ b).
-  2: reflexivity.
-  2,3: rewrite update_index_neq; auto.
-  (* now destruct (f a), (f b), (f c) and simplify *)
-  destruct (f a); destruct (f b); destruct (f c); simpl;
-  autorewrite with R_db C_db Cexp_db; group_radicals.
-  all: replace (/ 2 * Cexp (PI * / 4) * Cexp (PI * / 4) * / Cexp (PI * / 4) * / Cexp (PI * / 4)) with (/ 2) by (field_simplify_eq; nonzero).
-  all: replace (/ 2 * Cexp (PI * / 4) * Cexp (PI * / 4) * Cexp (PI * / 4) * Cexp (PI * / 4)) with (- / 2) by (field_simplify_eq; try nonzero; repeat rewrite <- Cexp_add;             replace (PI * / 4 + PI * / 4 + PI * / 4 + PI * / 4)%R with PI by lra;
-         rewrite Cexp_PI; lca).
-  all: replace (/ 2 * Cexp (PI * / 4) * / Cexp (PI * / 4) * / Cexp (PI * / 4) * Cexp (PI * / 4)) with (/ 2) by (field_simplify_eq; nonzero).
-  all: replace (/ 2 * Cexp (PI * / 4) * / Cexp (PI * / 4) * Cexp (PI * / 4) * / Cexp (PI * / 4)) with (/ 2) by (field_simplify_eq; nonzero).
+  f_to_vec_simpl.
+  rewrite (update_same _ b).
+  2: destruct (f a); destruct (f b); reflexivity.
+  destruct (f a); destruct (f b); destruct (f c); simpl.
+  all: autorewrite with R_db C_db Cexp_db.
+  all: cancel_terms (Cexp (PI * / 4)).
+  all: group_Cexp.
+  all: repeat match goal with 
+       | |- context [Cexp ?r] => field_simplify r
+       end.
+  all: autorewrite with R_db C_db Cexp_db.
+  all: rewrite Mscale_plus_distr_r.
+  all: distribute_scale; group_radicals.
   all: lma.
 Qed.
 Local Opaque CCX.
