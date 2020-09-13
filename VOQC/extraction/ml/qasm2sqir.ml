@@ -148,6 +148,15 @@ let translate_statement s qmap sym_tab =
                | "rz" -> (match List.nth params 0  with
                            | BinaryOp (Times, Real r, Pi) -> apply_gate (coq_Rz (Q.of_float r)) (List.hd qargs) qmap sym_tab
                            | BinaryOp (Times, UnaryOp (UMinus, Real r), Pi) -> apply_gate (coq_Rz (Q.of_float (-. r))) (List.hd qargs) qmap sym_tab
+                           | BinaryOp (Div, BinaryOp (Times,Nninteger r, Pi), Nninteger r1) -> apply_gate (coq_Rz (Q.of_float ((float_of_int r)/. (float_of_int r1)))) (List.hd qargs) qmap sym_tab
+                           | BinaryOp (Div, BinaryOp (Times, UnaryOp(UMinus,Nninteger r), Pi), Nninteger r1) -> apply_gate (coq_Rz (Q.of_float ((-.(float_of_int r))/. (float_of_int r1)))) (List.hd qargs) qmap sym_tab
+                           | BinaryOp (Times, Pi, Real r) -> apply_gate (coq_Rz (Q.of_float r)) (List.hd qargs) qmap sym_tab
+                           | Real r -> apply_gate (coq_Rz (Q.of_float (r/. (Float.pi)))) (List.hd qargs) qmap sym_tab
+                           | UnaryOp(UMinus, Real r) -> apply_gate (coq_Rz (Q.of_float (-.r /. Float.pi))) (List.hd qargs) qmap sym_tab
+                           | BinaryOp (Times, Pi, UnaryOp (UMinus, Real r)) -> apply_gate (coq_Rz (Q.of_float (-. r))) (List.hd qargs) qmap sym_tab
+                           | BinaryOp(Div, Pi, Nninteger r) -> apply_gate (coq_Rz (Q.of_float  (1. /. (float_of_int r)))) (List.hd qargs) qmap sym_tab
+                           | BinaryOp(Div, UnaryOp(UMinus, Pi), Nninteger r) -> apply_gate (coq_Rz (Q.of_float  ((-. 1.) /. (float_of_int r)))) (List.hd qargs) qmap sym_tab
+
                            | _ -> raise (Failure ("ERROR: Invalid argument to rz gate")))
                | g -> raise (Failure ("NYI: unsupported gate: " ^ g))
              )
@@ -218,6 +227,25 @@ let sqir_to_qasm_gate oc g =
   | App2 (RzQGateSet.URzQ_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n
   | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of URzQ_H) *)
 
+let sqir_to_qasm_gate_str g =
+  match g with
+  | App1 (RzQGateSet.URzQ_H,      n) -> sprintf "h q[%d];\n" n
+  | App1 (RzQGateSet.URzQ_X,      n) -> sprintf "x q[%d];\n" n
+  | App1 (RzQGateSet.URzQ_Rz(q),  n) -> 
+      if Q.equal q (Q.of_ints 1 4)
+      then sprintf "t q[%d];\n" n
+      else if Q.equal q (Q.of_ints 1 2)
+      then sprintf "s q[%d];\n" n
+      else if Q.equal q (Q.of_int 1)
+      then sprintf "z q[%d];\n" n
+      else if Q.equal q (Q.of_ints 3 2)
+      then sprintf "sdg q[%d];\n" n
+      else if Q.equal q (Q.of_ints 7 4)
+      then sprintf "tdg q[%d];\n" n
+      else sprintf "rzq(%a,%a) q[%d];\n" Z.sprint (Q.num q) Z.sprint (Q.den q) n
+  | App2 (RzQGateSet.URzQ_CNOT, m, n) -> sprintf "cx q[%d], q[%d];\n" m n
+  | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of URzQ_H) *)
+           
 let write_qasm_file fname p dim =
   let oc = open_out fname in
   (fprintf oc "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n";
@@ -225,3 +253,10 @@ let write_qasm_file fname p dim =
    fprintf oc "\n";
    ignore(List.map (sqir_to_qasm_gate oc) p);
    close_out oc)
+
+let write_qasm_file_str p dim =
+   let header = sprintf "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\ngate rzq(a,b) q {rz((a/b)*pi) q;}\nqreg q[%d];\n\n" dim in 
+   let i = (Batteries.List.map sqir_to_qasm_gate_str p) in
+   header ^ String.concat "" i
+   
+   

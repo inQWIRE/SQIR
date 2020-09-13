@@ -18,24 +18,23 @@ rzq is a non-standard gate that we have defined specifically for VOQC. rzq(num,d
 
 For examples of programs that VOQC can optimize, see benchmarks/Arithmetic_and_Toffoli, benchmarks/PF and benchmarks/QFT_and_Adders.
 
-The Coq source code for our optimization is in src/.
+The Coq source code for our optimizer is in src/. The code for extracting our Coq optimizations to OCaml (and optionally wrapping in a C library) is in extraction/. interop/ contains code for calling VOQC functions from Python (see below).
 
 ## Compilation
 
 Dependencies:
-  * OCaml version >= 4.08.1 
+  * OCaml version 4.08.1 
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
   * OCaml OpenQASM parser (`opam install openQASM`)
-  * ctypes (`opam install ctypes ctypes-foreign ppx_deriving ctypes-zarith`)
 
-**OCaml Executable**: In the top (`..`) directory, run `make voqc`. This will compile the OCaml code we have extracted from our verified Coq code. If you have modified the Coq code, then be sure to run `make optimizer` first. If you want to compile the code without using our Makefile you can use the command `dune build voqc.exe`. This will produce `voqc.exe` in _build/default/.
+**OCaml Executable**: In the top (`..`) directory, run `make voqc`. This will compile the OCaml code we have extracted from our verified Coq code. If you have modified the Coq code, then be sure to run `make optimizer` first. If you want to compile the code without using our Makefile you can use the command `dune build voqc.exe` in the current (VOQC) directory. This will produce `voqc.exe` in _build/default/.
 
 **Library**: Run `dune build extraction/libvoqc.so` in the current (VOQC) directory. This will produce `libvoqc.so` in _build/default/extraction/.
 
 *Note*: If you are building the voqc executable or library on a Mac, you will likely see the warning `ld: warning: directory not found for option '-L/opt/local/lib'`. This is due to zarith (see [ocaml/opam-repository#3000](https://github.com/ocaml/opam-repository/issues/3000)) and seems to be fine to ignore.
 
-## Running VOQC Executable
+## Running the VOQC Executable
 
 To run the OCaml optimizer, run `dune exec -- ./voqc.exe -i <prog> -o <out>`, which will optimize program prog and write the optimized result to out. It will print the initial and final gate counts.
 
@@ -54,15 +53,15 @@ VOQC reports, in order: total gate count, number of z-axis rotation gates, numbe
 
 A script for running VOQC on all the benchmarks presented in our paper is available in the [benchmarks](benchmarks) directory.
 
-## Using VOQC Library
+## Using the VOQC Library in Python
 
-The voqc.py file in this directory provides a wrapper around the VOQC library functions. Here is an example of using it.
+The voqc.py file in the interop/ directory provides a wrapper around the VOQC library functions. Here is an example of using it.
 
 ```
-from voqc import *
+from interop.voqc import SQIR
 
 # load circuit
-c = VOQC("benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
+c = SQIR("benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
 
 # run a single optimization (in this case, X propagation)
 c.not_propagation()
