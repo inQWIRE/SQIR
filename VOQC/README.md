@@ -26,6 +26,7 @@ Dependencies:
   * OCaml version 4.08.1 
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
+  * batteries (`opam install batteries`)
   * OCaml OpenQASM parser (`opam install openQASM`)
 
 **OCaml Executable**: In the top (`..`) directory, run `make voqc`. This will compile the OCaml code we have extracted from our verified Coq code. If you have modified the Coq code, then be sure to run `make optimizer` first. If you want to compile the code without using our Makefile you can use the command `dune build voqc.exe` in the current (VOQC) directory. This will produce `voqc.exe` in _build/default/.
@@ -73,5 +74,5 @@ c.optimize()
 c.write("out.qasm")
 ```
 
-
+The run_voqc.py file in the current directory provides a wrapper about the voqc.py library and should have the same behavior as the VOQC executable described above.
 

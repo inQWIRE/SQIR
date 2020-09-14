@@ -17,6 +17,7 @@ Dependencies:
   * zarith (`opam install zarith`)
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
+  * batteries (`opam install batteries`)
   * OCaml OpenQASM parser (`opam install openQASM`)
 
 `make voqc` will produce an executable in VOQC/_build/default. See [the README in the VOQC directory](VOQC/README.md) for instructions on how to run the optimizer.
