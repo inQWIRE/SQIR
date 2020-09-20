@@ -52,6 +52,7 @@ Examples of verifying correctness properties of simple SQIR programs.
 
 - examples/DeutschJozsa.v : Deutsch-Jozsa algorithm
 - examples/GHZ.v : GHZ state prepatation
+- examples/Grover.v : Grover's algorithm (requires Coq version >= 8.12)
 - examples/QPE.v : Quantum phase estimation (simplified)
 - examples/QPEGeneral.v : Quantum phase estimation (general) -- this file is not built by default to minimize SQIR's depedencies; see notes at the top of the file.
 - examples/Simon.v : Simon's algorithm
