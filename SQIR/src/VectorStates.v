@@ -870,6 +870,22 @@ Lemma WF_proj : forall q dim b, WF_Matrix (proj q dim b).
 Proof. intros. unfold proj, pad. bdestruct_all; destruct b; auto with wf_db. Qed.
 Hint Resolve WF_proj : wf_db.
 
+Lemma proj_sum : forall q n,
+  q < n ->
+  proj q n true .+ proj q n false = I (2 ^ n).
+Proof.
+  intros.
+  unfold proj, pad.
+  bdestruct_all.
+  restore_dims.
+  rewrite <- kron_plus_distr_r, <- kron_plus_distr_l.
+  simpl.
+  replace (∣ 1 ⟩ × (∣ 1 ⟩) † .+ ∣ 0 ⟩ × (∣ 0 ⟩) †) with (I 2) by solve_matrix.
+  repeat rewrite id_kron.
+  apply f_equal.
+  unify_pows_two.
+Qed.
+
 Lemma f_to_vec_proj_eq : forall f q n b,
   q < n -> f q = b -> 
   proj q n b × (f_to_vec n f) = f_to_vec n f.
@@ -1059,47 +1075,34 @@ Qed.
 (**        Indexed Sum        **)
 (*******************************)
 
-Fixpoint vsum {d} n (f : nat -> Vector d) : Vector d :=
-  match n with
-  | 0 => Zero
-  | S n' => vsum n' f .+  f n'
-end.
+Definition vsum {d} n (f : nat -> Vector d) : Vector d := Msum n f.
 
-Lemma vsum_WF : forall d n (f : nat -> Vector d), 
+Lemma vsum_WF : forall {d} n (f : nat -> Vector d), 
   (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
   WF_Matrix (vsum n f).
-Proof.
-  intros. 
-  induction n; simpl; auto with wf_db.
-  apply WF_plus; auto.
-Qed.
+Proof. intros. unfold vsum. apply WF_Msum; auto. Qed.
 Hint Resolve vsum_WF : wf_db.
 
 Lemma vsum_eq : forall {d} n (f f' : nat -> Vector d),
   (forall i, (i < n)%nat -> f i = f' i) -> vsum n f = vsum n f'.
-Proof.
-  intros d n f f' Heq.
-  induction n; simpl.
-  reflexivity.
-  rewrite Heq by lia.
-  rewrite IHn. reflexivity.
-  intros. apply Heq. lia.
-Qed.
+Proof. intros. unfold vsum. apply Msum_eq_bounded; auto. Qed.
 
-Lemma vsum_extend_r : forall d n (f : nat -> Vector d), 
-  vsum n f .+ f n = vsum (S n) f.
+Lemma vsum_empty : forall {d} (f : nat -> Vector d), vsum O f = Zero.
 Proof. reflexivity. Qed.
 
-Lemma vsum_extend_l : forall d n (f : nat -> Vector d),
-  (f O) .+ vsum n (shift f 1) = vsum (S n) f.
+Lemma vsum_extend_r : forall {d} n (f : nat -> Vector d), 
+  vsum (S n) f = vsum n f .+ f n.
+Proof. reflexivity. Qed.
+
+Lemma vsum_extend_l : forall {d} n (f : nat -> Vector d),
+  vsum (S n) f = (f O) .+ vsum n (shift f 1).
 Proof.
   intros d n f.
   induction n.
   simpl. lma.
-  remember (S n) as n'.
-  simpl.
-  rewrite <- IHn; clear IHn.  
-  subst; simpl.
+  rewrite vsum_extend_r.
+  rewrite IHn; clear IHn.  
+  rewrite vsum_extend_r.
   rewrite shift_simplify.
   replace (n + 1)%nat with (S n) by lia. 
   lma.
@@ -1107,87 +1110,67 @@ Qed.
 
 Lemma kron_vsum_distr_l : forall d1 d2 n (f : nat -> Vector d1) (ψ : Vector d2),
   ψ ⊗ vsum n f = vsum n (fun i => ψ ⊗ (f i)).
-Proof.
-  intros.
-  induction n; simpl. lma.
-  rewrite kron_plus_distr_l, IHn. reflexivity.
-Qed.
+Proof. intros. unfold vsum. rewrite kron_Msum_distr_l. reflexivity. Qed.
 
 Lemma kron_vsum_distr_r : forall d1 d2 n (f : nat -> Vector d1) (ψ : Vector d2),
   vsum n f ⊗ ψ = vsum n (fun i => (f i) ⊗ ψ).
-Proof.
-  intros.
-  induction n; simpl. lma.
-  rewrite kron_plus_distr_r, IHn. reflexivity.
-Qed.
+Proof. intros. unfold vsum. rewrite kron_Msum_distr_r. reflexivity. Qed.
 
 Lemma Mmult_vsum_distr_l : forall {d m} n (f : nat -> Vector d) (U : Matrix m d),
   U × vsum n f = vsum n (fun i => U × (f i)).
-Proof.
-  intros.
-  induction n; simpl. 
-  Msimpl. reflexivity.
-  rewrite Mmult_plus_distr_l, IHn. reflexivity.
-Qed.
+Proof. intros. unfold vsum. apply Mmult_Msum_distr_l. Qed.
 
 Lemma Mscale_vsum_distr_r : forall {d} x n (f : nat -> Vector d),
   x .* vsum n f = vsum n (fun i => x .* f i).
-Proof.
-  intros d x n f.
-  induction n; simpl. lma.
-  rewrite Mscale_plus_distr_r, IHn. reflexivity.
-Qed.
+Proof. intros. unfold vsum. apply Mscale_Msum_distr_r. Qed.
 
 Lemma Mscale_vsum_distr_l : forall {d} n (f : nat -> C) (A : Vector d),
   vsum n (fun i => (f i) .* A) = Csum f n .* A.
-Proof.
-  intros d n f A.
-  induction n; simpl. lma.
-  rewrite Mscale_plus_distr_l, IHn. reflexivity.
-Qed.
+Proof. intros. unfold vsum. apply Mscale_Msum_distr_l. Qed.
 
-Lemma vsum_0 : forall d n (f : nat -> Vector d),
+Lemma vsum_0 : forall {d} n (f : nat -> Vector d),
   (forall x, x < n -> f x = Zero) -> vsum n f = Zero.
-Proof.
-  intros d n f Hf.
-  induction n; simpl. reflexivity.
-  rewrite IHn, Hf. Msimpl. reflexivity.
-  lia. intros. apply Hf. lia.
-Qed.
+Proof. intros. unfold vsum. apply Msum_0. auto. Qed.
+
+Lemma vsum_constant : forall {d} n (v : Vector d),  vsum n (fun _ => v) = INR n .* v.
+Proof. intros. unfold vsum. apply Msum_constant. Qed.
 
 Lemma vsum_plus : forall d n (f1 f2 : nat -> Vector d),
   vsum n (fun i => (f1 i) .+ (f2 i)) = vsum n f1 .+ vsum n f2.
-Proof.
-  intros d n f1 f2.
-  induction n; simpl. lma.
-  rewrite IHn. lma.
-Qed.
+Proof. intros. unfold vsum. apply Msum_plus. Qed.
 
 Lemma vsum_swap_order : forall {d} m n (f : nat -> nat -> Vector d),
   vsum n (fun j => vsum m (fun i => f j i)) = vsum m (fun i => vsum n (fun j => f j i)).
 Proof.
   intros d m n f.
-  induction n; simpl. 
+  induction n.
+  rewrite vsum_empty. 
   rewrite vsum_0 by auto. reflexivity.
-  rewrite IHn. rewrite vsum_plus. reflexivity.
+  rewrite vsum_extend_r.
+  rewrite IHn. rewrite <- vsum_plus. reflexivity.
 Qed.
 
 Lemma vsum_unique : forall d n (f : nat -> Vector d) (v : Vector d),
   (exists i, i < n /\ f i = v /\ (forall j, j < n -> j <> i -> f j = Zero)) -> 
   vsum n f = v.
+Proof. intros. unfold vsum. apply Msum_unique. auto. Qed.
+
+Lemma Mmult_adj_vsum_distr_l :
+  forall {d} n (f : nat -> Vector d) (v : Vector d),
+    (vsum n f) † × v = vsum n (fun i => (f i) † × v).
 Proof.
-  intros d n f v H.
-  destruct H as [i [? [? H]]].
-  induction n; try lia.
-  simpl.
-  bdestruct (n =? i).
-  rewrite (vsum_eq _ _ (fun _ : nat => Zero)).
-  rewrite vsum_0. Msimpl. subst. reflexivity. auto.
-  intros x ?. apply H; lia.
-  rewrite IHn; try lia.
-  rewrite H by lia. lma.
-  intros. apply H; lia.
+  intros.
+  induction n. 
+  rewrite vsum_empty. Msimpl. reflexivity.
+  rewrite vsum_extend_r. 
+  rewrite Mplus_adjoint. rewrite Mmult_plus_distr_r, IHn. reflexivity.
 Qed.
+
+Lemma vsum_diagonal :
+  forall n (f : nat -> nat -> Vector 1),
+    (forall i j, (i < n)%nat -> (j < n)%nat -> (i <> j)%nat -> f i j = Zero) ->
+    vsum n (fun i => vsum n (fun j => f i j)) = vsum n (fun i => f i i).
+Proof. intros. unfold vsum. apply Msum_diagonal. auto. Qed.
 
 (* Two natural ways to split a vsum into two parts *)
 Lemma vsum_sum1 : forall d m n (f : nat -> Vector d),
@@ -1197,14 +1180,15 @@ Proof.
   induction m.
   simpl. Msimpl. rewrite shift_0. reflexivity.
   replace (S m + n)%nat with (S (m + n))%nat  by lia.
-  simpl. rewrite IHm.
+  rewrite vsum_extend_r. rewrite IHm.
   repeat rewrite Mplus_assoc.
   replace (S m) with (1 + m) by reflexivity. rewrite <- shift_plus.
   remember (shift f m) as f'.
   replace (f (m + n)) with (f' n).
   rewrite vsum_extend_r.
   replace (f m) with (f' 0).
-  rewrite vsum_extend_l.
+  rewrite Mplus_assoc.
+  rewrite <- vsum_extend_l.
   reflexivity.
   subst. rewrite shift_simplify. rewrite Nat.add_0_l. reflexivity.
   subst. rewrite shift_simplify. rewrite Nat.add_comm. reflexivity.
@@ -1218,7 +1202,7 @@ Proof.
   induction n.
   rewrite Nat.mul_0_r. simpl. Msimpl. reflexivity.
   replace (2 * S n)%nat with (S (S (2 * n)))%nat  by lia.
-  simpl vsum. 
+  repeat rewrite vsum_extend_r.
   rewrite IHn; clear.
   replace (2 * n + 1)%nat with (S (2 * n)) by lia.
   lma.
@@ -1235,12 +1219,12 @@ Proof.
   - bdestruct (i =? n).
     + subst.
       replace (S n - 1 - n)%nat with O by lia.
-      simpl. Msimpl.
+      rewrite vsum_extend_r. Msimpl.
       reflexivity.
     + assert (i < n)%nat by lia.
       specialize (IHn H1).
       replace (S n - 1 - i)%nat with (S (n - 1 - i))%nat by lia.
-      simpl.
+      repeat rewrite vsum_extend_r.
       rewrite IHn.
       repeat rewrite Mplus_assoc. 
       unfold shift; simpl.
@@ -1443,7 +1427,7 @@ Proof.
   assert (g n < S n)%nat.
   apply Hg1. lia.
   rewrite (vsum_eq_up_to_fswap _ f _ (g n) n) by auto.
-  simpl.
+  repeat rewrite vsum_extend_r.
   rewrite fswap_simpl2.
   rewrite Hg3 by auto.
   specialize (IHn (fswap f (g n) n)).
@@ -1666,6 +1650,24 @@ Proof.
 Qed.
 Local Transparent Nat.mul Nat.div Nat.modulo.
 
+Lemma kron_n_0_is_0_vector : forall (n:nat), n ⨂ ∣0⟩ = basis_vector (2 ^ n) 0%nat.
+Proof.
+  intros.
+  induction n.
+  simpl.
+  prep_matrix_equality.
+  unfold basis_vector, I.
+  bdestruct_all; reflexivity.
+  simpl.
+  rewrite IHn. replace (1 ^ n)%nat with 1%nat.
+  rewrite (basis_vector_append_0 (2 ^ n) 0).
+  rewrite Nat.mul_0_r.
+  reflexivity.
+  apply Nat.pow_nonzero. lia.
+  apply pow_positive. lia.
+  rewrite Nat.pow_1_l. reflexivity.
+Qed.
+
 Lemma vkron_to_vsum1 : forall n (c : R),
   n > 0 -> 
   vkron n (fun k => ∣0⟩ .+ Cexp (c * 2 ^ (n - k - 1)) .* ∣1⟩) = 
@@ -1674,7 +1676,9 @@ Proof.
   intros n c Hn.
   destruct n; try lia.
   induction n.
-  simpl. Msimpl. 
+  simpl. 
+  repeat rewrite vsum_extend_r; rewrite vsum_empty.
+  Msimpl. 
   rewrite Rmult_0_r, Cexp_0, Mscale_1_l.
   replace (basis_vector 2 0) with ∣0⟩ by solve_matrix.
   replace (basis_vector 2 1) with ∣1⟩ by solve_matrix.
@@ -1777,7 +1781,8 @@ Proof.
   induction n.
   - simpl.
     repeat rewrite Nat.mul_1_r.
-    simpl. Msimpl.
+    repeat rewrite vsum_extend_r; rewrite vsum_empty.
+    Msimpl.
     unfold nat_to_funbool; simpl.
     rewrite 2 update_index_eq.
     replace (basis_vector 2 0) with ∣0⟩ by solve_matrix.

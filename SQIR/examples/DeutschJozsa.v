@@ -1,4 +1,5 @@
 Require Import UnitaryOps.
+Require Import Utilities.
 Require Import Dirac.
 
 Open Scope ucom.
@@ -97,12 +98,13 @@ Qed.
 
 (* In the Deutsch Jozsa problem we care about the probability of measuring ∣0...0⟩
    in the first n qubits (the last qubit always ends up in the ∣1⟩ state). *)
+Local Opaque pow.
 Lemma deutsch_jozsa_success_probability :
   forall {n : nat} (U : base_ucom (S n)) f,
   (n > 0)%nat ->
   boolean_oracle U f ->
-  ((n ⨂ ∣0⟩ ⊗ ∣1⟩)† × (uc_eval (deutsch_jozsa U)) × (S n ⨂ ∣0⟩)) 0%nat 0%nat = 
-      1 - 2 * INR (count f (2 ^ n)) * /2 ^ n.
+  @prob_partial_meas n 1 (n ⨂ ∣0⟩) (uc_eval (deutsch_jozsa U) × (S n ⨂ ∣0⟩)) =
+    (1 - 2 * INR (count f (2 ^ n)) * /2 ^ n) ^ 2.
 Proof.
   intros n U f Hn H.
   unfold deutsch_jozsa.
@@ -125,7 +127,6 @@ Proof.
   restore_dims. 
   distribute_scale. 
   rewrite kron_vsum_distr_r.
-  repeat rewrite Nat.mul_1_r.
   replace (2 ^ S n)%nat with (2 ^ n * 2)%nat by unify_pows_two.
   rewrite 2 Mmult_vsum_distr_l. 
   erewrite vsum_eq.  
@@ -153,8 +154,14 @@ Proof.
        reflexivity.
        destruct (f i); simpl; lma. }
   rewrite <- kron_vsum_distr_r.
-  replace ∣ 1 ⟩ with ∣1⟩ by reflexivity. 
-  Qsimpl.
+  rewrite <- Mscale_kron_dist_l.
+  specialize (@partial_meas_tensor n 1) as H1.
+  repeat rewrite Nat.pow_1_r in H1.
+  rewrite H1; clear H1.
+  2: auto with wf_db.
+  2: solve_matrix.
+  unfold probability_of_outcome.
+  distribute_scale.
   rewrite Mmult_vsum_distr_l.
   erewrite vsum_eq.
   2: { intros i Hi.
@@ -163,8 +170,8 @@ Proof.
        distribute_scale.
        rewrite Mmult_vsum_distr_l.
        erewrite vsum_unique. 
-       2: { exists O.
-            replace (n ⨂ ∣0⟩) with (basis_vector (2 ^ n) 0).
+       2: { exists O. 
+            rewrite kron_n_0_is_0_vector.
             split; [lia | split].
             distribute_scale. 
             restore_dims.
@@ -174,15 +181,7 @@ Proof.
             distribute_scale. 
             restore_dims.
             rewrite basis_vector_product_neq by lia.
-            lma.
-            clear. induction n.
-            simpl. apply basis_vector_1_0.
-            replace (basis_vector (2 ^ S n) 0) with 
-                (basis_vector (2 * 2 ^ n) (2 * 0)) by reflexivity.
-            rewrite <- (basis_vector_append_0 (2 ^ n)). 
-            rewrite IHn. reflexivity.
-            apply Nat.pow_nonzero. lia.
-            apply pow_positive. lia. }
+            lma. }
        rewrite product_comm, nat_to_funbool_0, product_0.
        simpl.
        rewrite Mscale_1_l.
@@ -200,40 +199,28 @@ Proof.
   rewrite sqrt_def.
   rewrite Cmult_comm. 
   replace (2 ^ n)%R with (INR (2 ^ n)).
-  apply Csum_of_minus_1. 
-  apply pow_positive. lia. 
-  rewrite INR_IZR_INZ.
-  rewrite pow_IZR. 
-  apply f_equal.
-  clear. (* is there a simpler lemma to use here? *)
-  induction n.
+  rewrite Csum_of_minus_1.
+  rewrite Cmod_R.
+  rewrite <- 2 Rsqr_pow2.
+  rewrite <- Rsqr_abs.
   reflexivity.
-  replace (2 ^ S n)%nat with (2 * 2 ^ n)%nat by reflexivity.
-  rewrite Nat2Z.inj_mul, IHn. 
-  simpl Z.pow.
-  rewrite Z.pow_pos_fold.
-  rewrite Zpos_P_of_succ_nat. 
-  replace (Z.succ (Z.of_nat n)) with (1 + Z.of_nat n)%Z by lia.
-  rewrite Z.pow_add_r; lia.
+  apply pow_positive. lia.
+  rewrite pow_INR.
+  reflexivity.
   apply pow_le; lra.
 Qed.
 
-(* When measuring ψ, what is the probability that the outcome is o? *)
-Definition probability_of_outcome {n} (ψ o : Vector n) :=
-  let c := (o† × ψ) 0%nat 0%nat in
-  Re c ^ 2 + Im c ^ 2.
-
-(* accept := probability of measuring ∣0...0⟩ in the last n qubits is 1 *)
+(* accept := probability of measuring ∣0...0⟩ in the first n qubits is 1 *)
 Definition accept {n : nat} (U : base_ucom (S n)) : Prop :=
-  @probability_of_outcome (2 ^ S n) 
-    (uc_eval (deutsch_jozsa U) × (S n ⨂ ∣0⟩)) 
-    (n ⨂ ∣0⟩ ⊗ ∣1⟩) = 1. 
+   @prob_partial_meas n 1 
+      (n ⨂ ∣0⟩) 
+      (uc_eval (deutsch_jozsa U) × (S n ⨂ ∣0⟩)) = 1. 
 
-(* reject := probability of measuring ∣0...0⟩ in the last n qubits is 0 *)
+(* reject := probability of measuring ∣0...0⟩ in the first n qubits is 0 *)
 Definition reject {n : nat} (U : base_ucom (S n)) : Prop :=
-  @probability_of_outcome (2 ^ S n) 
-    (uc_eval (deutsch_jozsa U) × (S n ⨂ ∣0⟩)) 
-    (n ⨂ ∣0⟩ ⊗ ∣1⟩) = 0. 
+   @prob_partial_meas n 1 
+      (n ⨂ ∣0⟩) 
+      (uc_eval (deutsch_jozsa U) × (S n ⨂ ∣0⟩)) = 0. 
 
 Theorem deutsch_jozsa_correct :
   forall {n} (f : nat -> bool) (U : base_ucom (S n)), 
@@ -241,29 +228,24 @@ Theorem deutsch_jozsa_correct :
   (constant f n -> accept U) /\ (balanced f n -> reject U).
 Proof.
   intros n f U Hn Hb. 
-  unfold accept, reject, probability_of_outcome.
-  repeat rewrite Nat.pow_1_l. 
-  rewrite <- Mmult_assoc.
+  unfold accept, reject.
   split; intro H.
-  - restore_dims.
-    rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
+  - rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
     unfold constant in H.
     destruct H; rewrite H; simpl; try lra.
-    autorewrite with R_db.
-    rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
-    field_simplify_eq; trivial.
-    nonzero.
-  - restore_dims.
-    rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
+    replace (INR (2 ^ n)) with (2 ^ n).
+    field. nonzero.
+    rewrite pow_INR. reflexivity.
+  - rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
     destruct H as [_ H].
     rewrite H; simpl; try lra.
-    autorewrite with R_db.
-    rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
-    replace (2 * 2 ^ (n - 1) * / 2 ^ n) with 1.
-    lra.
-    field_simplify_eq; try nonzero.
-    rewrite tech_pow_Rmult. 
-    replace (S (n - 1)) with n by lia. 
+    replace (INR (2 ^ (n - 1))) with (2 ^ n / 2).
+    field. nonzero.
+    rewrite pow_INR.
+    replace (INR 2) with 2 by reflexivity.
+    field_simplify_eq. 
+    rewrite tech_pow_Rmult.
+    replace (S (n - 1)) with n by lia.
     reflexivity.
 Qed.
 
@@ -302,6 +284,7 @@ Definition balanced' {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop 
 Definition constant' {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop :=
   (count' P = 0 \/ count' P = 2 ^ dim)%nat.
 
+Local Transparent pow.
 Lemma deutsch_jozsa_success_probability' :
   forall {n : nat} {U : base_ucom (S n)} (P : boolean U),
   ((∣1⟩ ⊗ n ⨂ ∣0⟩)† × (uc_eval (deutsch_jozsa' U)) × ((S n) ⨂ ∣0⟩)) 0%nat 0%nat = 
@@ -367,7 +350,7 @@ Proof.
     clear.
     rewrite <- RtoC_plus, <- RtoC_mult. 
     apply f_equal2; trivial. 
-    rewrite plus_INR. 
+    rewrite plus_INR.
     field_simplify_eq; trivial. 
     nonzero.
 Qed.
@@ -375,28 +358,35 @@ Qed.
 (* accept := probability of measuring ∣0...0⟩ in the last n qubits is 1 *)
 Definition accept' {n : nat} {U : base_ucom (S n)} (P : boolean U) : Prop :=
   @probability_of_outcome (2 ^ (S n)) 
-    (uc_eval (deutsch_jozsa' U) × ((S n) ⨂ ∣0⟩)) 
-    (∣1⟩ ⊗ n ⨂ ∣0⟩) = 1. 
+    (∣1⟩ ⊗ n ⨂ ∣0⟩)
+    (uc_eval (deutsch_jozsa' U) × (S n ⨂ ∣0⟩)) = 1. 
 
 (* reject := probability of measuring ∣0...0⟩ in the last n qubits is 0 *)
 Definition reject' {n : nat} {U : base_ucom (S n)} (P : boolean U) : Prop :=
   @probability_of_outcome (2 ^ (S n)) 
-    (uc_eval (deutsch_jozsa' U) × ((S n) ⨂ ∣0⟩)) 
-    (∣1⟩ ⊗ n ⨂ ∣0⟩) = 0. 
+    (∣1⟩ ⊗ n ⨂ ∣0⟩) 
+    (uc_eval (deutsch_jozsa' U) × (S n ⨂ ∣0⟩)) = 0. 
 
+Local Opaque pow.
 Theorem deutsch_jozsa_constant_correct' :
   forall (n : nat) (U : base_ucom (S n)) (P : boolean U), constant' P -> accept' P.
 Proof.
   intros n U P H. 
-  unfold accept', probability_of_outcome.  
+  unfold accept', probability_of_outcome. 
+  apply RtoC_inj.
+  rewrite <- RtoC_pow, Cmod_sqr.  
   restore_dims.
   rewrite <- Mmult_assoc.
   rewrite (deutsch_jozsa_success_probability' P). 
-  destruct H; rewrite H; simpl; try lra.
-  autorewrite with R_db.
-  rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
-  field_simplify_eq; trivial.
-  nonzero.
+  destruct H; rewrite H; simpl; try lca.
+  autorewrite with RtoC_db R_db.
+  rewrite Cconj_R.
+  autorewrite with RtoC_db.
+  apply f_equal2; try reflexivity.
+  replace (INR (2 ^ n)) with (2 ^ n).
+  field. nonzero.
+  rewrite pow_INR.
+  reflexivity.
 Qed.
 
 Theorem deutsch_jozsa_balanced_correct' :
@@ -404,16 +394,21 @@ Theorem deutsch_jozsa_balanced_correct' :
 Proof.
   intros n U P [H1 H2].
   unfold reject', probability_of_outcome. 
+  apply RtoC_inj.
+  rewrite <- RtoC_pow, Cmod_sqr.  
   restore_dims.
   rewrite <- Mmult_assoc.
   rewrite (deutsch_jozsa_success_probability' P).
   rewrite H2; simpl.
-  autorewrite with R_db.
-  rewrite pow_INR. simpl. replace (1 + 1) with 2 by lra.
-  replace (2 * 2 ^ (n - 1) * / 2 ^ n) with 1.
-  2: { field_simplify_eq; try nonzero.
-       rewrite tech_pow_Rmult. 
-       replace (S (n - 1)) with n by lia. 
-       reflexivity. }
-  lra.
+  autorewrite with RtoC_db R_db.
+  rewrite Cconj_R.
+  autorewrite with RtoC_db.
+  apply f_equal2; try reflexivity.
+  replace (INR (2 ^ (n - 1))) with (2 ^ n / 2).
+  field. nonzero.
+  rewrite pow_INR.
+  field_simplify_eq.
+  rewrite tech_pow_Rmult.
+  replace (S (n - 1)) with n by lia.
+  reflexivity.
 Qed.

@@ -324,7 +324,7 @@ Proof.
   rewrite Cexp_2nPI.
   lca.
   rewrite mult_IZR, <- INR_IZR_INZ.
-  field_simplify_eq; try nonzero.
+  field_simplify_eq; nonzero.
 Qed.
 
 Lemma SWAP_action_on_product_state : 
@@ -536,46 +536,46 @@ Proof.
   lra.  
 Qed.
 
-Lemma Csum_Cexp_nonzero : forall (z : BinInt.Z) (n : nat), 
-  (IZR z <> 0) -> (- 2 ^ n < IZR z < 2 ^ n)%R ->
-  Csum (fun i => Cexp (2 * PI * IZR z / 2 ^ n) ^ i) (2 ^ n) = 0.
+Lemma Csum_Cexp_nonzero : forall (z : BinInt.Z) (N : nat), 
+  (IZR z <> 0) -> (- INR N < IZR z < INR N)%R ->
+  Csum (fun i => Cexp (2 * PI * IZR z / INR N) ^ i) N = 0.
 Proof.
-  intros z n Hnz [Hineq1 Hineq2].
+  intros z N Hnz [Hineq1 Hineq2].
   rewrite Csum_geometric_series.
   rewrite Cexp_pow.
-  replace (2 * PI * IZR z / 2 ^ n * INR (2 ^ n))%R with (IZR (2 * z) * PI)%R.
+  replace (2 * PI * IZR z / INR N * INR N)%R with (IZR (2 * z) * PI)%R.
   rewrite Cexp_2nPI. lca.
-  rewrite mult_IZR, pow_INR. field_simplify_eq; try nonzero.
-  assert (H : Cexp (2 * PI * IZR z / 2 ^ n) <> 1).
+  rewrite mult_IZR. field_simplify_eq; try nonzero.
+  assert (H : Cexp (2 * PI * IZR z / INR N) <> 1).
   apply Cexp_neq_1.
   (* is there a tactic that can prove inequalities over R? *)
   do 3 (apply Rmult_integral_contrapositive_currified; try nonzero).
   apply PI_neq0.
   split.
-  assert (2 * PI * (- 2 ^ n) / 2 ^ n < 2 * PI * IZR z / 2 ^ n).
-  replace (2 * PI * - 2 ^ n / 2 ^ n)%R with (- 2 ^ n * (2 * PI / 2 ^ n))%R.
-  replace (2 * PI * IZR z / 2 ^ n)%R with (IZR z * (2 * PI / 2 ^ n))%R.
+  assert (2 * PI * (- INR N) / INR N < 2 * PI * IZR z / INR N).
+  replace (2 * PI * - INR N / INR N)%R with (- INR N * (2 * PI / INR N))%R.
+  replace (2 * PI * IZR z / INR N)%R with (IZR z * (2 * PI / INR N))%R.
   apply Rmult_lt_compat_r. 
   apply Rmult_lt_0_compat.
   apply Rgt_2PI_0.
-  apply Rinv_0_lt_compat. lra.
+  nonzero.
   assumption.
   1,2: field_simplify_eq; nonzero.
-  replace (2 * PI * - 2 ^ n / 2 ^ n)%R with (-2 * PI)%R in H.
+  replace (2 * PI * - INR N / INR N)%R with (-2 * PI)%R in H.
   2: field_simplify_eq; nonzero.
   assumption.
-  replace (2 * PI * IZR z / 2 ^ n)%R with (IZR z * (2 * PI / 2 ^ n))%R.
-  replace (2 * PI)%R with (2 ^ n * (2 * PI / 2 ^ n))%R at 2.    
+  replace (2 * PI * IZR z / INR N)%R with (IZR z * (2 * PI / INR N))%R.
+  replace (2 * PI)%R with (INR N * (2 * PI / INR N))%R at 2.    
   apply Rmult_lt_compat_r. 
   apply Rmult_lt_0_compat.
   apply Rgt_2PI_0.
-  apply Rinv_0_lt_compat. lra.
+  nonzero.
   assumption.
   1,2: field_simplify_eq; nonzero. 
   apply Cminus_eq_contra.
   apply not_eq_sym.
   assumption.
-Qed.  
+Qed.
 
 Lemma QFT_w_reverse_semantics_inverse : forall n (f : nat -> bool),
   (n > 1)%nat ->
@@ -622,7 +622,7 @@ Proof.
        rewrite <- RtoC_pow. reflexivity.
        intro x.
        rewrite <- Cexp_0. apply f_equal. lra.
-       replace (fun x : nat => Cexp (2 * PI * (INR i - INR (funbool_to_nat n f)) / 2 ^ n * INR x)) with (fun x => Cexp (2 * PI * (IZR (Z.of_nat i - Z.of_nat (funbool_to_nat n f))) / 2 ^ n) ^ x).
+       replace (fun x : nat => Cexp (2 * PI * (INR i - INR (funbool_to_nat n f)) / 2 ^ n * INR x)) with (fun x => Cexp (2 * PI * (IZR (Z.of_nat i - Z.of_nat (funbool_to_nat n f))) / INR (2 ^ n)) ^ x).
        rewrite Csum_Cexp_nonzero. Msimpl. reflexivity.
        rewrite minus_IZR. rewrite <- 2 INR_IZR_INZ. 
        apply Rminus_eq_contra. 
@@ -630,7 +630,7 @@ Proof.
        specialize (funbool_to_nat_bound n f) as Hf.
        clear - Hi Hf.
        apply inj_lt in Hi. apply inj_lt in Hf.
-       replace (2 ^ n)%R with (IZR (Z.of_nat (2 ^ n))). 
+       replace (INR (2 ^ n)) with (IZR (Z.of_nat (2 ^ n))). 
        split. 
        rewrite <- opp_IZR. apply IZR_lt. lia.
        apply IZR_lt. lia. 
@@ -639,6 +639,7 @@ Proof.
        apply functional_extensionality; intro x. 
        rewrite Cexp_pow.
        rewrite minus_IZR. rewrite <- 2 INR_IZR_INZ.
+       rewrite pow_INR.
        reflexivity. }
   rewrite <- Mscale_vsum_distr_r.
   rewrite Mscale_assoc.
@@ -890,7 +891,7 @@ Proof.
   subst i θ.
   rewrite <- Cexp_0.
   apply f_equal. lra.
-  replace (fun j => Cexp (2 * PI * (θ - INR i / 2 ^ k) * INR j)) with (fun j => Cexp (2 * PI * IZR (Z.of_nat (funbool_to_nat k z) - Z.of_nat i) / 2 ^ k) ^ j).
+  replace (fun j => Cexp (2 * PI * (θ - INR i / 2 ^ k) * INR j)) with (fun j => Cexp (2 * PI * IZR (Z.of_nat (funbool_to_nat k z) - Z.of_nat i) / INR (2 ^ k)) ^ j).
   rewrite Csum_Cexp_nonzero.
   Msimpl. reflexivity.
   rewrite minus_IZR, <- 2 INR_IZR_INZ. 
@@ -899,7 +900,7 @@ Proof.
   specialize (funbool_to_nat_bound k z) as Hz.
   clear - Hi Hz.
   apply inj_lt in Hi. apply inj_lt in Hz.
-  replace (2 ^ k)%R with (IZR (Z.of_nat (2 ^ k))). 
+  replace (INR (2 ^ k))%R with (IZR (Z.of_nat (2 ^ k))). 
   split. 
   rewrite <- opp_IZR. apply IZR_lt. lia.
   apply IZR_lt. lia. 
@@ -908,5 +909,8 @@ Proof.
   apply functional_extensionality; intro x. 
   rewrite Cexp_pow.
   rewrite minus_IZR, <- 2 INR_IZR_INZ.
-  subst θ. apply f_equal. lra.
+  subst θ. apply f_equal. 
+  rewrite pow_INR.
+  replace (INR 2) with 2 by reflexivity.
+  lra.
 Qed.

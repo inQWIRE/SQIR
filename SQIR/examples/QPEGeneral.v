@@ -1,6 +1,7 @@
 From Interval Require Import Tactic.
 Require Import Reals Psatz.
-Require Import QPE.
+Require Export Utilities.
+Require Export QPE.
 
 (* The proof of quantum phase estimation in QPE.v assumes the phase is a k-bit 
    dyadic fraction. In the general case, phase estimation does not recover 
@@ -99,17 +100,16 @@ Open Scope C_scope.
   Postcondition: the first k bits of the output state are z with probability
   at least 4/π^2. *)
 
-(* Probability of outcome o given input state ψ *)
-Definition probability_of_outcome {n} (ψ o : Vector n) : R := 
-  (Cmod ((o† × ψ) 0%nat 0%nat)) ^ 2.
-
 Local Opaque pow.
 Lemma QPE_semantics_full : forall k n (c : base_ucom n) z (ψ : Vector (2 ^ n)) (δ : R),
   (n > 0)%nat -> (k > 1)%nat -> uc_well_typed c -> Pure_State_Vector ψ -> 
   (-1 / 2 ^ (k + 1) <= δ < 1 / 2 ^ (k + 1))%R ->
   let θ := ((INR (funbool_to_nat k z) / 2 ^ k) + δ)%R in
   (uc_eval c) × ψ = Cexp (2 * PI * θ) .* ψ ->
-  probability_of_outcome (@Mmult _ _ (1 * 1) (uc_eval (QPE k n c)) (k ⨂ ∣0⟩ ⊗ ψ)) ((f_to_vec k z) ⊗ ψ) >= 4 / (PI ^ 2).
+  probability_of_outcome 
+      ((f_to_vec k z) ⊗ ψ)
+      (@Mmult _ _ (1 * 1) (uc_eval (QPE k n c)) (k ⨂ ∣0⟩ ⊗ ψ))  
+  >= 4 / (PI ^ 2).
 Proof.
   intros k n c z ψ δ Hn Hk WT [WFM PS] [Hδlt Hδgt] θ Heig.
   rewrite QPE_simplify with (θ := θ) by assumption.
@@ -139,23 +139,20 @@ Proof.
        rewrite basis_vector_product_neq; try assumption. 
        lma.
        apply not_eq_sym. assumption. }
-  unfold scale, I; simpl.
-  
+  unfold scale, I; simpl.  
   pose (Req_dec δ 0) as Hδ.
   destruct Hδ as [Hδz | Hδnz].
   rewrite Hδz.
   rewrite Csum_1.
   2:{ intro x. rewrite Cexp_pow. replace (2 * PI * 0 * INR x)%R with 0%R by lra.
-      rewrite Cexp_0. easy.
-  }
+      rewrite Cexp_0. easy. }
   rewrite pow_INR. replace (INR 2)%R with 2%R by easy.
   replace ((2 ^ k)%R * 1) with (RtoC (2 ^ k)%R) by lca.
   rewrite RtoC_pow.
-  assert (0 < 2 ^ k)%R by (apply pow_lt; lra).
+  assert (0 < 2 ^ k)%R by nonzero.
   rewrite <- RtoC_inv by lra. rewrite <- RtoC_mult. rewrite Rinv_l by lra.
   rewrite Cmod_1. replace (R1 ^ 2)%R with 1%R by lra.
   interval.
-  
   clear - Hk Hδlt Hδgt Hδnz.
   assert (H : 1 - Cexp (2 * PI * δ) <> 0).
   apply Cminus_eq_contra.
@@ -190,7 +187,7 @@ Proof.
   clear H.
   rewrite Cexp_pow.
   repeat rewrite Rmult_assoc.
-  rewrite 2 Cmod_Cexp.
+  rewrite 2 Cmod_Cexp_alt.
   rewrite 2 Cmod_mult.
   repeat rewrite <- RtoC_mult. 
   repeat rewrite Cmod_R.

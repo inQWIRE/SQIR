@@ -1,5 +1,5 @@
 Require Import UnitaryOps.
-Require Import NDSem. (* just for the defn of norm *)
+Require Import Utilities.
 Local Open Scope ucom_scope.
 
 (** Definition of Simon's program. **)
@@ -18,11 +18,6 @@ Definition simon {n} (U : base_ucom (2 * n)) : base_ucom (2 * n) :=
 
 Local Open Scope C_scope.
 Local Open Scope R_scope.
-
-Definition boolean_oracle {n} (U : base_ucom (2 * n)) (f : nat -> nat) :=
-  forall (x :nat), (x < 2 ^ n)%nat -> 
-    @Mmult _ _ 1 (uc_eval U) (basis_vector (2 ^ n) x ⊗ basis_vector (2 ^ n) 0) = 
-      basis_vector (2 ^ n) x ⊗ ((basis_vector (2 ^ n) (f x))).
 
 Local Opaque Nat.mul.
 Lemma two_n_kron_n: forall {m p} n (A : Matrix m p),
@@ -47,29 +42,11 @@ Proof.
   1,2: rewrite Nat.pow_add_r; reflexivity.
 Qed.
 
-Lemma kron_n_0_is_0_vector : forall (n:nat), n ⨂ ∣0⟩ = basis_vector (2 ^ n) 0%nat.
-Proof.
-  intros.
-  induction n.
-  simpl.
-  prep_matrix_equality.
-  unfold basis_vector, I.
-  bdestruct_all; reflexivity.
-  simpl.
-  rewrite IHn. replace (1 ^ n)%nat with 1%nat.
-  rewrite (basis_vector_append_0 (2 ^ n) 0).
-  rewrite Nat.mul_0_r.
-  reflexivity.
-  apply Nat.pow_nonzero. lia.
-  apply pow_positive. lia.
-  rewrite Nat.pow_1_l. reflexivity.
-Qed.
-
 Lemma simon_simplify : forall {n : nat} (U : base_ucom (2 * n)) f x,
    (n > 0)%nat -> (x < 2 ^ n)%nat ->
-   boolean_oracle U f ->
+   integer_oracle U f ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
-   @Mmult _ _ 1%nat ((basis_vector (2 ^ n) x)† ⊗ I (2 ^ n)) ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩)) = 
+   @Mmult _ _ (1 ^ (2 * n))%nat ((basis_vector (2 ^ n) x)† ⊗ I (2 ^ n)) ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩)) = 
    / 2 ^ n .* vsum (2 ^ n) 
                 (fun i => (-1) 
                    ^ Nat.b2n (product (nat_to_funbool n i) (nat_to_funbool n x) n)
@@ -102,10 +79,10 @@ Proof.
   rewrite kron_n_0_is_0_vector.
   erewrite vsum_eq.
   2: { intros i Hi. 
-       unfold boolean_oracle in H1.
+       unfold integer_oracle in H1.
        replace ((2 ^ n) * (2 ^ n))%nat with (2 ^ (2 * n))%nat. 
        rewrite (H1 i) by assumption.
-       Qsimpl. Search hadamard.
+       Qsimpl.
        replace (basis_vector (2 ^ n) i) with (f_to_vec n (nat_to_funbool n i)). 
        rewrite H_kron_n_spec by assumption. 
        distribute_scale.
@@ -151,112 +128,65 @@ Qed.
    hidden value s is 0 and one where s is nonzero. In the first case, the output
    of Simon's will be an even distribution over all possible output states. *)
 
-Lemma norm_scale : forall {n} c (v : Vector n), norm (c .* v) = (Cmod c) * norm v.
-Proof.
-  intros n c v.
-  unfold norm.
-  rewrite Mscale_adj.
-  distribute_scale.
-  unfold scale.
-  simpl.
-  replace (fst c * snd c + - snd c * fst c) with 0.
-  autorewrite with R_db C_db.
-  replace (fst c * fst c) with (fst c ^ 2) by lra.
-  replace (snd c * snd c) with (snd c ^ 2) by lra.
-  rewrite sqrt_mult_alt.
-  reflexivity.
-  apply Rplus_le_le_0_compat; apply pow2_ge_0.
-  lra.  
-Qed.
-
-Lemma product_of_vsums : forall n m a b f,
-  (n <= m)%nat ->
-  (forall x, (x < n)%nat -> (f x < m)%nat) ->         (* f is bounded *)
-  (forall x y, (x < n)%nat -> (y < n)%nat ->
-          f x = f y -> x = y) ->             (* f is injective *)
-  (vsum n (fun i : nat => (a i) .* basis_vector m (f i)))†
-    × (vsum n (fun i : nat => (b i) .* basis_vector m (f i))) 
-  = Csum (fun i => ((a i) ^* * b i)%C) n .* I 1.
-Proof.
-  intros n m a b f Hn Hf1 Hf2.
-  induction n; simpl vsum. 
-  simpl Csum. Msimpl. reflexivity.
-  rewrite Mplus_adjoint.
-  distribute_plus.
-  rewrite IHn; try lia.
-  2: intros; apply Hf1; lia.
-  2: intros; apply Hf2; lia.
-  rewrite Mscale_adj.
-  distribute_scale.
-  rewrite basis_vector_product_eq. 
-  2: apply Hf1; lia.
-  rewrite Mmult_vsum_distr_l.
-  erewrite vsum_0.
-  2: { intros x Hx. distribute_scale. 
-       rewrite basis_vector_product_neq.
-       lma. 
-       1,2: apply Hf1; lia.
-       intro contra. 
-       apply Hf2 in contra; lia. }
-  rewrite <- (adjoint_involutive _ _ (basis_vector m (f n))).
-  rewrite <- Mmult_adjoint.
-  rewrite Mmult_vsum_distr_l.
-  erewrite vsum_0.
-  2: { intros x Hx. distribute_scale. 
-       rewrite basis_vector_product_neq.
-       lma.
-       1,2: apply Hf1; lia.
-       intro contra. 
-       apply Hf2 in contra; lia. }
-  Msimpl.
-  simpl Csum.
-  rewrite Mscale_plus_distr_l.
-  reflexivity.
-Qed.
-
 Lemma norm_vsum : forall n d c f,
   (n <= d)%nat ->
-  (forall x, (x < n)%nat -> (f x < d)%nat) ->
-  (forall x y, (x < n)%nat -> (y < n)%nat -> f x = f y -> x = y) -> 
+  (forall x, (x < n)%nat -> (f x < d)%nat) ->  (* f is bounded *)
+  (forall x y, (x < n)%nat -> (y < n)%nat ->   (* f is injective *)
+          f x = f y -> x = y) -> 
   norm (vsum n (fun i : nat => (c i) .* basis_vector d (f i))) = 
     √ (fst (Csum (fun i => ((c i) ^* * c i)%C) n)).
 Proof.
   intros n d c f ? ? ?.
   unfold norm.
-  rewrite product_of_vsums; auto; try lia. 
-  simpl. autorewrite with R_db.
+  rewrite Mmult_adj_vsum_distr_l.
+  erewrite vsum_eq.
+  2: { intros. rewrite Mmult_vsum_distr_l. reflexivity. }
+  rewrite vsum_diagonal.
+  erewrite vsum_eq.
+  2: { intros. 
+       distribute_adjoint. distribute_scale. 
+       rewrite basis_vector_product_eq; auto. 
+       reflexivity. }
+  rewrite Mscale_vsum_distr_l.
+  unfold scale, I; simpl.
+  autorewrite with R_db.
   reflexivity.
+  intros.
+  distribute_adjoint. distribute_scale. 
+  rewrite basis_vector_product_neq; auto. 
+  lma.
 Qed.
 
 Theorem simon_zero : forall {n : nat} (U : base_ucom (2 * n)) f x,
    (n > 0)%nat -> (x < 2 ^ n)%nat ->
-   boolean_oracle U f ->
+   integer_oracle U f ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->     (* f is bounded *)
    (forall x y, (x < 2 ^ n)%nat -> f x = f y <-> x = y) -> (* f x = f y <-> x = y *)
-   @norm (2 ^ n) 
-         (@Mmult _ _ 1%nat ((basis_vector (2^n) x)† ⊗ I (2 ^n)) 
-                         ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩))) 
-   = sqrt (1 /2 ^ n).
+   @prob_partial_meas n n (basis_vector (2^n) x)
+                          (uc_eval (simon U) × (2 * n) ⨂ ∣0⟩)
+   = 1 /2 ^ n.
 Proof.
   intros. 
+  rewrite prob_partial_meas_alt.
+  distribute_adjoint.
+  Msimpl.
   erewrite simon_simplify with (f0:=f); auto.
+  rewrite Nat.mul_1_l.
   rewrite norm_scale.
   rewrite norm_vsum; auto.
   rewrite Csum_1.
   simpl.
-  rewrite RtoC_pow.
-  rewrite <- RtoC_inv by nonzero.
+  autorewrite with RtoC_db.
   rewrite pow_INR.
   unfold Cmod; simpl.
-  replace (1 + 1)%R with 2 by lra.
+  replace (1 + 1)%R with 2 by reflexivity.
   autorewrite with R_db.
   rewrite <- sqrt_mult_alt.
   rewrite Rmult_assoc.
   rewrite Rinv_l by nonzero.
   autorewrite with R_db.
-  reflexivity.
-  apply Rmult_le_pos.
-  1,2: left; apply Rinv_0_lt_compat, pow_lt; lra.
+  apply sqrt_def. 
+  1,2: apply Rlt_le; nonzero.
   intro x0.
   destruct (product (nat_to_funbool n x0) (nat_to_funbool n x) n); simpl; lca.
   intros. apply H3; auto.
@@ -551,17 +481,21 @@ Qed.
 (* If s ⋅ x = 0, then the probability that simon outputs x is (1 / 2 ^ (n - 1)). *)
 Theorem simon_nonzero_A : forall {n : nat} (U : base_ucom (2 * n)) f x s,
    (n > 0)%nat -> (x < 2 ^ n)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
-   boolean_oracle U f ->
+   integer_oracle U f ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
    (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
         f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
    bitwise_product n s x = false ->
-   @norm (2 ^ n) (@Mmult _ _ 1%nat ((basis_vector (2 ^ n) x)† ⊗ I (2 ^ n)) 
-                                 ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩)))
-                      = sqrt (1 /2 ^ (n - 1)).
+   @prob_partial_meas n n (basis_vector (2 ^ n) x)
+                          (uc_eval (simon U) × (2 * n) ⨂ ∣0⟩)
+   = 1 /2 ^ (n - 1).
 Proof.
   intros. 
+  rewrite prob_partial_meas_alt.
+  distribute_adjoint.
+  Msimpl.
   rewrite simon_simplify with (f0:=f); auto.
+  rewrite Nat.mul_1_l.
   rewrite norm_scale.
   rewrite norm_vsum_rewrite with (s:=s) by assumption.
   rewrite norm_vsum.
@@ -575,12 +509,9 @@ Proof.
        rewrite H6.
        rewrite xorb_false_r.
        remember (bitwise_product n i x) as b.
-       repeat rewrite RtoC_pow.
-       rewrite <- RtoC_plus.
-       unfold Cconj; simpl.
-       rewrite Ropp_0.
-       replace (((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b)%R, 0)%C with (RtoC ((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b)%R) by reflexivity.
-       rewrite <- RtoC_mult.
+       autorewrite with RtoC_db. 
+       rewrite Cconj_R.
+       autorewrite with RtoC_db. 
        replace (((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b) * ((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b)) with (2 ^ 2).
        reflexivity.
        destruct b; simpl; lra. }
@@ -592,19 +523,15 @@ Proof.
   unfold Cmod; simpl.
   replace (1 + 1)%R with 2 by lra.
   autorewrite with R_db.
-  rewrite <- sqrt_mult_alt.
-  rewrite <- sqrt_mult_alt.
-  apply f_equal.
+  rewrite <- 2 sqrt_mult_alt.
+  rewrite sqrt_def.
+  all: try (apply Rlt_le; nonzero).
   replace (2 ^ n) with (2 * 2 ^ (n - 1)).
   field_simplify_eq; nonzero.
-  replace (2 * 2 ^ (n - 1)) with (2 ^ 1 * 2 ^ (n - 1)) by lra. 
-  rewrite <- pow_add.
-  replace (1 + (n - 1))%nat with n by lia.
+  rewrite tech_pow_Rmult.
+  replace (S (n - 1))%nat with n by lia.
   reflexivity.
-  apply Rmult_le_pos.
-  1,2: left; apply Rinv_0_lt_compat, pow_lt; lra. 
-  lra.
-  lia.
+  lia. 
   intros. unfold to_injective.
   apply H4 in H7.
   destruct (x0 <? bitwise_xor n x0 s); lia.
@@ -612,20 +539,26 @@ Proof.
   apply to_injective_is_injective in H9; auto.
 Qed.
 
-(* If s ⋅ x = 1, then the probability that simon outputs x is 0. *)
+(* If s ⋅ x = 1, then the probability that simon outputs x is 0.
+   (Technically, this is implied by the previous lemma; we should update
+   the proof accordingly.) *)
 Theorem simon_nonzero_B : forall {n : nat} (U : base_ucom (2 * n)) f x s,
    (n > 0)%nat -> (x < 2 ^ n)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
-   boolean_oracle U f ->
+   integer_oracle U f ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
    (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
         f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
    bitwise_product n s x = true ->
-   @norm (2 ^ n) (@Mmult _ _ 1%nat ((basis_vector (2 ^ n) x)† ⊗ I (2 ^ n)) 
-                                 ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩)))
-                      = 0.
+   @prob_partial_meas n n (basis_vector (2 ^ n) x)
+                          (uc_eval (simon U) × (2 * n) ⨂ ∣0⟩)
+   = 0.
 Proof.
   intros. 
+  rewrite prob_partial_meas_alt.
+  distribute_adjoint.
+  Msimpl.
   rewrite simon_simplify with (f0:=f); auto.
+  rewrite Nat.mul_1_l.
   rewrite norm_scale.
   rewrite norm_vsum_rewrite with (s:=s) by assumption.
   rewrite norm_vsum.

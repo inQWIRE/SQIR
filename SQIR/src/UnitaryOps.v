@@ -110,7 +110,9 @@ Proof. intros. rewrite <- Mmult_assoc, braket_diff; Msimpl; easy. Qed.
 
 Hint Rewrite braket_same braket_diff braketbra_same braketbra_diff using lia : ket_db.
 
-Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : CR_db.
+Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
+Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
+Hint Rewrite RtoC_pow : RtoC_db.
 
 (* Improved group_Cexp based on group_radicals *)
 Ltac group_Cexp :=
@@ -151,6 +153,31 @@ Proof.
   all: apply uc_well_typed_H; auto.
 Qed.  
 
+Local Transparent SQIR.H X Rz CNOT.
+Lemma fresh_X : forall {dim} q1 q2,
+  q1 <> q2 -> @is_fresh _ dim q1 (X q2).
+Proof. intros. constructor; auto. Qed.
+
+Lemma fresh_CU : forall {dim} θ ϕ λ q c t,
+  q <> c -> q <> t -> @is_fresh _ dim q (CU θ ϕ λ c t).
+Proof. intros. repeat constructor; auto. Qed.
+
+Lemma fresh_CCX : forall {dim} q c1 c2 t,
+  q <> c1 -> q <> c2 -> q <> t -> @is_fresh _ dim q (CCX c1 c2 t).
+Proof. intros. repeat constructor; auto. Qed.
+
+Lemma fresh_control : forall {dim} q1 q2 c,
+  q1 <> q2 -> @is_fresh _ dim q1 c -> 
+  @is_fresh _ dim q1 (UnitaryOps.control q2 c).
+Proof.
+  intros.
+  induction H0; simpl; try dependent destruction u.
+  apply fresh_seq; auto.
+  apply fresh_CU; auto.
+  apply fresh_CCX; auto.
+Qed.
+Local Opaque SQIR.H X Rz CNOT.
+
 (* Auxiliary proofs about the semantics of CU and TOFF *)
 Lemma CU_correct : forall (dim : nat) θ ϕ λ c t,
   (c < dim)%nat -> (t < dim)%nat -> c <> t ->
@@ -166,12 +193,12 @@ Proof.
        repeat (apply f_equal2; try reflexivity).
   (* A little messy because we need to apply trig identities; 
      goal #1 = goal #3 and goal #2 = goal #4 *)
-  - solve_matrix; autorewrite with R_db C_db CR_db Cexp_db trig_db; try lca;
+  - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db; try lca;
       field_simplify_eq; try nonzero; group_Cexp.
     + rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy.
     + rewrite Copp_mult_distr_l, Copp_mult_distr_r. 
       repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
-      autorewrite with CR_db. rewrite Ropp_involutive.
+      autorewrite with RtoC_db. rewrite Ropp_involutive.
       setoid_rewrite sin2_cos2. rewrite Cmult_1_r.
       apply f_equal; lra.
   - rewrite <- Mscale_kron_dist_l.
@@ -186,7 +213,7 @@ Proof.
     + unfold Cminus.
       rewrite Copp_mult_distr_r, <- Cmult_plus_distr_l. 
       apply f_equal2; [apply f_equal; lra|].
-      autorewrite with CR_db.
+      autorewrite with RtoC_db.
       rewrite <- Rminus_unfold, <- cos_plus.
       apply f_equal. apply f_equal. lra.
     + apply f_equal2; [apply f_equal; lra|].
@@ -206,15 +233,15 @@ Proof.
     + rewrite Copp_mult_distr_r.
       rewrite <- Cmult_plus_distr_l.
       apply f_equal2; [apply f_equal; lra|].
-      autorewrite with CR_db.      
+      autorewrite with RtoC_db.      
       rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus.
       apply f_equal; apply f_equal; lra.
-  - solve_matrix; autorewrite with R_db C_db CR_db Cexp_db trig_db; try lca;
+  - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db; try lca;
       field_simplify_eq; try nonzero; group_Cexp.
     + rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy.
     + rewrite Copp_mult_distr_l, Copp_mult_distr_r. 
       repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
-      autorewrite with CR_db. rewrite Ropp_involutive.
+      autorewrite with RtoC_db. rewrite Ropp_involutive.
       setoid_rewrite sin2_cos2. rewrite Cmult_1_r.
       apply f_equal; lra.
   - rewrite <- 3 Mscale_kron_dist_l.
@@ -227,7 +254,7 @@ Proof.
     + unfold Cminus.
       rewrite Copp_mult_distr_r, <- Cmult_plus_distr_l. 
       apply f_equal2; [apply f_equal; lra|].
-      autorewrite with CR_db.
+      autorewrite with RtoC_db.
       rewrite <- Rminus_unfold, <- cos_plus.
       apply f_equal. apply f_equal. lra.
     + apply f_equal2; [apply f_equal; lra|].
@@ -247,7 +274,7 @@ Proof.
     + rewrite Copp_mult_distr_r.
       rewrite <- Cmult_plus_distr_l.
       apply f_equal2; [apply f_equal; lra|].
-      autorewrite with CR_db.      
+      autorewrite with RtoC_db.      
       rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus.
       apply f_equal; apply f_equal; lra.
 Qed.

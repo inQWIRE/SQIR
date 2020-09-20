@@ -34,7 +34,7 @@ COQ_OPTS := -R . Top
 
 all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
 
-examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
+examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Grover.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
 mapper: invoke-coqmakefile $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo $(VOQC)/SimpleMappingWithLayout.vo
 
@@ -52,19 +52,25 @@ VOQC/_build/default/voqc.exe:
 SQIR/examples/Deutsch.vo: $(examples)/Deutsch.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
 	coqc $(COQ_OPTS) $(examples)/Deutsch.v
 
-SQIR/examples/DeutschJozsa.vo: $(examples)/DeutschJozsa.v $(SQIR)/UnitaryOps.vo $(QWIRE)/Dirac.vo
+SQIR/examples/DeutschJozsa.vo: $(examples)/DeutschJozsa.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
 	coqc $(COQ_OPTS) $(examples)/DeutschJozsa.v
 
 SQIR/examples/GHZ.vo: $(examples)/GHZ.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
 	coqc $(COQ_OPTS) $(examples)/GHZ.v
 
+SQIR/examples/Grover.vo: $(examples)/Grover.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
+	coqc $(COQ_OPTS) $(examples)/Grover.v
+
 SQIR/examples/QPE.vo: $(examples)/QPE.v $(SQIR)/UnitaryOps.vo
 	coqc $(COQ_OPTS) $(examples)/QPE.v
 
-SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo
+SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/QPEGeneral.v
 
-SQIR/examples/Simon.vo: $(examples)/Simon.v $(SQIR)/UnitaryOps.vo $(SQIR)/NDSem.vo
+SQIR/examples/Shor.vo: $(examples)/Shor.v $(SQIR)/QPEGeneral.vo
+	coqc $(COQ_OPTS) $(examples)/Shor.v
+
+SQIR/examples/Simon.vo: $(examples)/Simon.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/Simon.v
 
 SQIR/examples/Superdense.vo: $(examples)/Superdense.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
@@ -72,6 +78,9 @@ SQIR/examples/Superdense.vo: $(examples)/Superdense.v $(SQIR)/UnitarySem.vo $(QW
 
 SQIR/examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/DensitySem.vo $(SQIR)/NDSem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
 	coqc $(COQ_OPTS) $(examples)/Teleport.v
+
+SQIR/examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
+	coqc $(COQ_OPTS) $(examples)/Utilities.v
 
 # Built by 'make mapper'
 
@@ -97,7 +106,7 @@ VOQC/src/HadamardReduction.vo: $(VOQC)/HadamardReduction.v $(SQIR)/Equivalences.
 
 VOQC/src/UnitaryListRepresentation.vo: $(VOQC)/UnitaryListRepresentation.v $(VOQC)/GateSet.vo $(QWIRE)/Proportional.vo $(SQIR)/Equivalences.vo
 	coqc $(COQ_OPTS) $(VOQC)/UnitaryListRepresentation.v
-	
+
 VOQC/src/NonUnitaryListRepresentation.vo: $(VOQC)/NonUnitaryListRepresentation.v $(VOQC)/UnitaryListRepresentation.vo $(SQIR)/DensitySem.vo
 	coqc $(COQ_OPTS) $(VOQC)/NonUnitaryListRepresentation.v
 
