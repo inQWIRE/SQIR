@@ -4502,6 +4502,36 @@ rewrite H. clear H.
 lra.
 Qed.
 
+Lemma rm02_diff:  forall (θ1 ξ θ2:R), 
+   rm02 θ1 ξ θ2 = 2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+                  2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+                  2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+                  2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2).
+Proof.
+intros.
+unfold rm02,rx,ry,rw,rz.
+assert (2 * (sin (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))) *
+    (sin (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+    2 * (cos (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))) *
+    (cos (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+  = 2 * sin (θ1 / 2) * cos (θ1 / 2) * Rsqr (cos (θ2 / 2))
+   - 2 * sin (θ1 / 2) * cos (θ1 / 2) * Rsqr (sin (θ2 / 2))
+   + 2 * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * Rsqr (sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = (2 * (ξ/2))) by lra.
+rewrite <- H. reflexivity.
+rewrite H. rewrite cos_2a.
+assert (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² 
+ = (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² ) * (Rsqr (sin (ξ / 2)) + Rsqr (cos (ξ / 2)))).
+rewrite sin2_cos2. lra.
+rewrite H0.
+unfold Rsqr. lra.
+rewrite H. reflexivity.
+Qed.
+
 Lemma rm12_eq : forall (x y z:R), 
    rm12 x y z = sin y * sin z.
 Proof.
@@ -4559,6 +4589,32 @@ rewrite <- cos_2a.
 assert (2 * (y/2) = y) by lra.
 rewrite H. clear H. 
 lra.
+Qed.
+
+
+Lemma rm20_diff:  forall (θ1 ξ θ2:R), 
+   rm20_minus θ1 ξ θ2 = 2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)
+                      - 2 * (sin (θ1 / 2))² *  sin (θ2 / 2) * cos (θ2 / 2)
+                      + 2 * cos ξ *  sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²
+                      - 2 * cos ξ *  sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))².
+Proof.
+intros.
+unfold rm20_minus,rx,ry,rw,rz.
+assert (-2 * (sin (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))) *
+(sin (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+2 * (cos (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))) *
+(cos (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+   = - 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²) * (sin (θ1 / 2))² *  sin (θ2 / 2) * cos (θ2 / 2)
+     + 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²) *  (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)
+     + 2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) *  sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²
+     - 2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) *  sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H. clear H.
+rewrite sin2_cos2.
+unfold Rsqr.
+rewrite <- cos_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H. lra.
 Qed.
 
 Lemma rm21_eq : forall (x y z:R), 
@@ -5248,6 +5304,41 @@ rewrite 3 Rsqr_mult. lra.
 lra. lra. lra. lra.
 Qed.
 
+Lemma sin_cos_q_rm20: forall (θ1 ξ θ2:R), 
+ (Rsqr (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) + Rsqr(sin ξ) * Rsqr (sin θ1))
+  = 4 *
+    ((Rsqr (sin (ξ / 2)) * Rsqr (cos (θ1 / 2  - θ2 / 2))
+         +  Rsqr (cos (ξ / 2)) * Rsqr (cos (θ1 / 2 + θ2 / 2)))
+    * ((Rsqr (sin (ξ / 2)) * Rsqr (sin (θ1 / 2  - θ2 / 2))
+         +  Rsqr (cos (ξ / 2)) * Rsqr (sin (θ1 / 2 + θ2 / 2))))).
+Proof.
+intros.
+assert ((sin ξ)² * (sin θ1)² = (sin ξ * sin θ1)²).
+rewrite Rsqr_mult.
+reflexivity.
+rewrite H.
+rewrite <- rm20_eq.
+rewrite <- (rm21_eq θ1 ξ θ2).
+assert ((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²
+       = (rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²).
+unfold rm02,rm20_minus,rm12,rm21.
+assert ((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2)²
+= (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+unfold Rsqr. lra.
+rewrite H0.
+rewrite Rsqr_plus.
+rewrite Rsqr_minus.
+rewrite Rsqr_plus.
+rewrite Rsqr_minus. lra.
+rewrite H0.
+rewrite rm02_eq.
+rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+reflexivity.
+Qed.
+
 Lemma sqrt_term_neq_0: forall (θ1 ξ θ2:R),
  0 < rm02 θ1 ξ θ2 ->
  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
@@ -5298,6 +5389,63 @@ apply Rsqr_pos_lt. lra.
 assert (0 <= (sin ξ * sin θ2)²).
 apply Rle_0_sqr.
 lra. lra. lra. assumption.
+Qed.
+
+Lemma sqrt_term_neq_0_rm20: forall (θ1 ξ θ2:R),
+ 0 < rm20_minus θ1 ξ θ2 ->
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+ ->
+√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) <> 0.
+Proof.
+intros.
+assert (√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+   * √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+apply sqrt_mult_alt.
+assert (0 <= ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+assert (0 <= (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² ).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+lra.
+assert (0 <= ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+assert (0 <= (sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+lra.
+apply  Rmult_le_pos. assumption.
+assumption.
+rewrite H1.
+apply Rmult_integral_contrapositive.
+split.
+assert (0 < √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+apply sqrt_lt_R0.
+specialize (sin_cos_q θ1 ξ θ2) as eq4.
+assert (((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²) * / 4
+ = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+rewrite eq4.
+lra. rewrite <- H2.
+apply Rmult_lt_0_compat.
+rewrite <- Rsqr_mult.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)² =  (rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H3.
+assert (0 <= (rm21 θ1 ξ θ2)²).
+apply Rle_0_sqr.
+assert ((0 < (rm20_minus θ1 ξ θ2)²)).
+apply Rsqr_pos_lt. lra. lra. lra.
+lra. assumption.
 Qed.
 
 Lemma sqrt_term_neq_0_neg: forall (θ1 ξ θ2:R),
@@ -5354,6 +5502,66 @@ apply Rle_0_sqr.
 lra. lra. lra. assumption.
 Qed.
 
+Lemma sqrt_term_neq_0_neg_rm20: forall (θ1 ξ θ2:R),
+  rm20_minus θ1 ξ θ2 < 0 ->
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+ ->
+√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) <> 0.
+Proof.
+intros.
+assert (√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+   * √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+apply sqrt_mult_alt.
+assert (0 <= ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+assert (0 <= (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² ).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+lra.
+assert (0 <= ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+assert (0 <= (sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+lra.
+apply  Rmult_le_pos. assumption.
+assumption.
+rewrite H1.
+apply Rmult_integral_contrapositive.
+split.
+assert (0 < √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+apply sqrt_lt_R0.
+specialize (sin_cos_q θ1 ξ θ2) as eq4.
+assert ((((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2))² + (sin ξ)² * (sin θ2)²) * / 4
+ = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+rewrite eq4.
+lra. rewrite <- H2.
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm12_eq θ1 ξ θ2).
+apply Rmult_lt_0_compat.
+assert ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)² =  (rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H3.
+specialize (Rsqr_neg (rm20_minus θ1 ξ θ2)) as eq1.
+rewrite eq1.
+assert (0 < (- rm20_minus θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+rewrite rm21_eq.
+assert (0 <= (sin ξ * sin θ1)²).
+apply Rle_0_sqr.
+lra. lra. lra. assumption.
+Qed.
+
 Lemma sqrt_term_neq_0_a: forall (θ1 ξ θ2:R), 
  0 < rm02 θ1 ξ θ2 ->
 √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
@@ -5377,6 +5585,35 @@ apply Rsqr_pos_lt. lra.
 assert (0 <= (sin ξ * sin θ2)²).
 apply Rle_0_sqr.
 lra. lra. lra.
+Qed.
+
+Lemma sqrt_term_neq_0_a_rm20: forall (θ1 ξ θ2:R), 
+ 0 < rm20_minus θ1 ξ θ2 ->
+√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) <> 0.
+Proof.
+intros.
+assert (0 < √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+apply sqrt_lt_R0.
+specialize (sin_cos_q θ1 ξ θ2) as eq4.
+assert (((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²) * / 4
+ = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+rewrite eq4.
+lra. rewrite <- H0.
+apply Rmult_lt_0_compat.
+rewrite <- Rsqr_mult.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)² =  (rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H1.
+assert (0 <= (rm21 θ1 ξ θ2)²).
+apply Rle_0_sqr.
+assert ((0 < (rm20_minus θ1 ξ θ2)²)).
+apply Rsqr_pos_lt. lra. lra. lra. lra.
 Qed.
 
 Lemma sqrt_term_neq_0_a_neg: forall (θ1 ξ θ2:R), 
@@ -5406,12 +5643,46 @@ apply Rle_0_sqr.
 lra. lra. lra.
 Qed.
 
+Lemma sqrt_term_neq_0_a_neg_rm20: forall (θ1 ξ θ2:R), 
+ rm20_minus θ1 ξ θ2 < 0 ->
+√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) <> 0.
+Proof.
+intros.
+assert (0 < √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+apply sqrt_lt_R0.
+specialize (sin_cos_q θ1 ξ θ2) as eq4.
+assert ((((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2))² + (sin ξ)² * (sin θ2)²) * / 4
+ = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+rewrite eq4.
+lra. rewrite <- H0.
+apply Rmult_lt_0_compat.
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)² =  (rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H1.
+assert (0 <= (rm21 θ1 ξ θ2)²).
+apply Rle_0_sqr.
+assert ((0 < (rm20_minus θ1 ξ θ2)²)).
+apply Rsqr_pos_lt. lra. lra. lra. lra.
+Qed.
+
 Lemma C_smult_l: forall (x y z:R), ((RtoC x) * (y,z))%C = ((x * y)%R, (x * z)%R)%C.
 Proof.
 intros. lca.
 Qed.
 
 Lemma C_smult_r: forall (x y z:R), ((y,z)*(RtoC x))%C = ((y * x)%R, (z * x)%R)%C.
+Proof.
+intros. lca.
+Qed.
+
+Lemma Cmult_c: forall (x y w z:R), ((x%R,y%R)%C*(w%R,z%R)%C)%C = ((x * w - y * z)%R, (x * z + y * w)%R)%C.
 Proof.
 intros. lca.
 Qed.
@@ -5425,6 +5696,8 @@ Lemma C_splus_r: forall (x y z:R), ((y,z) + (RtoC x))%C = ((y + x)%R, z%R)%C.
 Proof.
 intros. lca.
 Qed.
+
+
 
 Lemma cos_sin_mult_q_l: forall (θ1 ξ θ2: R),
   sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2 = 0 ->
@@ -5592,6 +5865,140 @@ rewrite H0. clear H0.
 unfold Rsqr. lra.
 Qed.
 
+Lemma cos_sin_mult_q_l_rm20: forall (θ1 ξ θ2: R),
+   cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2 = 0 ->
+   (cos (θ1 / 2) * sin (θ2 / 2) + cos ξ * sin (θ1 / 2) * cos (θ2 / 2)) *
+   (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) = 
+    (2 * sin ξ * sin ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+Proof.
+intros.
+rewrite cos_minus.
+rewrite cos_plus. 
+rewrite Rsqr_plus.
+rewrite Rsqr_minus.
+rewrite <- rm20_eq in H.
+unfold rm20_minus,rx,ry,rw,rz in H.
+assert (-2 * (sin (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))) *
+    (sin (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+    2 * (cos (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))) *
+    (cos (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+  = 2 * Rsqr (cos (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2) 
+   - 2 * Rsqr (sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * Rsqr (cos (θ2 / 2))
+   - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * Rsqr (sin (θ2 / 2))).
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = (2 * (ξ/2))) by lra.
+rewrite <- H0. reflexivity.
+rewrite H0. rewrite cos_2a.
+assert (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)
+ = (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) * (Rsqr (sin (ξ / 2)) + Rsqr (cos (ξ / 2)))).
+rewrite sin2_cos2. lra.
+rewrite H1.
+unfold Rsqr. lra.
+rewrite H0 in H. clear H0.
+assert (
+((sin (ξ / 2))² *
+  ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+   2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+  (cos (ξ / 2))² *
+  ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+   2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+= ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+- ((cos (ξ / 2))² - (sin (ξ / 2))²) *
+ (2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2)))) by lra.
+rewrite H0. clear H0.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H0. reflexivity.
+rewrite H0. clear H0.
+rewrite Rmult_1_l.
+rewrite  Rmult_minus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite  Rmult_plus_distr_r.
+rewrite  Rmult_minus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite  Rmult_minus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+assert (cos (θ1 / 2) * sin (θ2 / 2) * (2 * ((sin (θ1 / 2))² * (sin (θ2 / 2))²))
+ = cos (θ1 / 2) * sin (θ2 / 2) * 2 * (sin (θ1 / 2))²
+  - cos (θ1 / 2) * sin (θ2 / 2) * (2 * ((sin (θ1 / 2))² * (cos (θ2 / 2))²))).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq1.
+rewrite <- eq1. lra. rewrite H0. lra.
+rewrite H0. clear H0.
+assert (cos (θ1 / 2) * sin (θ2 / 2) *
+(2 * (cos ξ * (2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2)))))
+ = 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² * cos (θ2 / 2)
+  + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq1.
+rewrite <- eq1. lra. rewrite H0. unfold Rsqr. lra.
+rewrite H0. clear H0.
+assert (cos (θ1 / 2) * sin (θ2 / 2) * (2 * ((cos (θ1 / 2))² * (cos (θ2 / 2))²)) +
+(cos (θ1 / 2) * sin (θ2 / 2) * 2 * (sin (θ1 / 2))² -
+ cos (θ1 / 2) * sin (θ2 / 2) * (2 * ((sin (θ1 / 2))² * (cos (θ2 / 2))²))) -
+(2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) *
+ cos (θ2 / 2) -
+ 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² * cos (θ2 / 2) +
+ 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2))
+= cos (θ1 / 2) * cos (θ2 / 2) *
+   (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+   + cos (θ1 / 2) * sin (θ2 / 2) * 2 * (sin (θ1 / 2))²
+   - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H0. clear H0.
+rewrite H.
+assert (cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (2 * ((cos (θ1 / 2))² * (cos (θ2 / 2))²))
+  = cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * 2 * (cos (θ1 / 2))²
+   - (cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (2 * ((cos (θ1 / 2))² * (sin (θ2 / 2))²)))).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq1.
+rewrite <- eq1. lra. rewrite H0. unfold Rsqr. lra.
+rewrite H0. clear H0.
+assert (cos ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+ (2 * (cos ξ * (2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2)))))
+ = 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+  - 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq1.
+rewrite <- eq1. lra. rewrite H0. unfold Rsqr. lra.
+rewrite H0. clear H0.
+assert ((cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * 2 * (cos (θ1 / 2))² -
+ cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (2 * ((cos (θ1 / 2))² * (sin (θ2 / 2))²)) +
+ cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (2 * ((sin (θ1 / 2))² * (sin (θ2 / 2))²)) -
+ (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) *
+  cos (θ2 / 2) + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) -
+  2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) *
+  (sin (θ2 / 2))²))
+= - cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+   (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+ + cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * 2 * (cos (θ1 / 2))²
+ - 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H0. clear H0. rewrite H.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+= 2 * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+ - 2 * (sin ξ)² * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+assert ((sin ξ)² = 1 - ((cos ξ)²)).
+specialize (sin2_cos2 ξ) as eq1.
+rewrite <- eq1. lra. rewrite H0. unfold Rsqr. lra.
+rewrite H0. clear H0.
+unfold Rsqr. lra.
+Qed.
+
 Lemma cos_sin_mult_q_r: forall (θ1 ξ θ2: R),
   sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2 = 0 ->
    (sin ξ * cos (θ1 / 2) * sin (θ2 / 2)) *
@@ -5693,6 +6100,99 @@ unfold Rsqr. lra.
 rewrite H0. clear H0. rewrite H.
 unfold Rsqr. lra.
 Qed.
+
+Lemma cos_sin_mult_q_r_rm20: forall (θ1 ξ θ2: R),
+   cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2 = 0 ->
+   (sin ξ * sin (θ1 / 2) * cos (θ2 / 2)) *
+   (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) = 
+    2 * sin ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+      2 * sin ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2).
+Proof.
+intros.
+rewrite cos_minus.
+rewrite cos_plus. 
+rewrite Rsqr_plus.
+rewrite Rsqr_minus.
+rewrite <- rm20_eq in H.
+unfold rm20_minus,rx,ry,rw,rz in H.
+assert (-2 * (sin (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))) *
+    (sin (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+    2 * (cos (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))) *
+    (cos (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+  = 2 * Rsqr (cos (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2) 
+   - 2 * Rsqr (sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * Rsqr (cos (θ2 / 2))
+   - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * Rsqr (sin (θ2 / 2))).
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = (2 * (ξ/2))) by lra.
+rewrite <- H0. reflexivity.
+rewrite H0. rewrite cos_2a.
+assert (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)
+ = (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) * (Rsqr (sin (ξ / 2)) + Rsqr (cos (ξ / 2)))).
+rewrite sin2_cos2. lra.
+rewrite H1.
+unfold Rsqr. lra.
+rewrite H0 in H. clear H0.
+assert (
+((sin (ξ / 2))² *
+  ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+   2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+  (cos (ξ / 2))² *
+  ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+   2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+= ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+- ((cos (ξ / 2))² - (sin (ξ / 2))²) *
+ (2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2)))) by lra.
+rewrite H0. clear H0.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H0. reflexivity.
+rewrite H0. clear H0.
+rewrite Rmult_1_l.
+rewrite  Rmult_minus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite  Rmult_minus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+assert (sin ξ * sin (θ1 / 2) * cos (θ2 / 2) * (2 * ((cos (θ1 / 2))² * (cos (θ2 / 2))²))
+  = sin ξ * sin (θ1 / 2) * cos (θ2 / 2) * 2 * (cos (θ1 / 2))²
+  - sin ξ * sin (θ1 / 2) * cos (θ2 / 2) * (2 * ((cos (θ1 / 2))² * (sin (θ2 / 2))²))).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq1.
+rewrite <- eq1. lra. rewrite H0. lra.
+rewrite H0. clear H0.
+assert (sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+(2 * (cos ξ * (2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2)))))
+= 2 * sin ξ * cos ξ *  sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+ + 2 * sin ξ * cos ξ *  sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+  - 2 * sin ξ * cos ξ *  sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq1.
+rewrite <- eq1. lra. rewrite H0. unfold Rsqr. lra.
+rewrite H0. clear H0.
+assert (sin ξ * sin (θ1 / 2) * cos (θ2 / 2) * 2 * (cos (θ1 / 2))² -
+sin ξ * sin (θ1 / 2) * cos (θ2 / 2) * (2 * ((cos (θ1 / 2))² * (sin (θ2 / 2))²)) +
+sin ξ * sin (θ1 / 2) * cos (θ2 / 2) * (2 * ((sin (θ1 / 2))² * (sin (θ2 / 2))²)) -
+(2 * sin ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) *
+ cos (θ2 / 2) + 2 * sin ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) -
+ 2 * sin ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) *
+ (sin (θ2 / 2))²)
+= - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+    (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+  + 2 * sin ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+2 * sin ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H0. clear H0. rewrite H.
+lra.
+Qed.
+
 
 Lemma yzy_to_zyz_correct_5 : forall {dim} θ1 ξ θ2 q,
   (q < dim)%nat ->
@@ -7378,14 +7878,14 @@ rewrite rm21_cos.
 rewrite rm21_sin.
 rewrite  Rmult_plus_distr_r.
 remember (√ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)) as p.
-rewrite sin_cos_q in Heqp.
-assert ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)
-   = (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2/2) * cos (θ2/2) - sin (θ2/2) * sin (θ2/2))
-       + 2 * cos ξ * (cos (θ1/2) * cos (θ1/2) - sin (θ1/2) * sin (θ1/2)) * sin (θ2 / 2) * cos (θ2 / 2))).
+rewrite sin_cos_q_rm20 in Heqp.
+assert ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)
+   = (2 * (cos (θ1/2) * cos (θ1/2) - sin (θ1/2) * sin (θ1/2)) * sin (θ2 / 2) * cos (θ2 / 2)
+       + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2/2) * cos (θ2/2) - sin (θ2/2) * sin (θ2/2)))).
 assert (θ1 = 2 * (θ1/2)) by lra.
 assert (θ2 = 2 * (θ2/2)) by lra.
-assert (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2
-  = sin (2 * (θ1/2)) * cos (2 * (θ2/2)) + cos ξ * cos (2 * (θ1/2)) * sin (2 * (θ2/2))).
+assert ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)
+  = cos (2 * (θ1/2)) * sin (2 * (θ2/2)) + cos ξ * sin (2 * (θ1/2)) * cos (2 * (θ2/2))).
 rewrite <- H. rewrite <- H6. reflexivity.
 rewrite H7.
 rewrite sin_2a.
@@ -7394,64 +7894,69 @@ rewrite cos_2a.
 rewrite cos_2a.
 lra.
 rewrite H. clear H.
-assert (sin θ2 = 2 * sin (θ2/2) * cos (θ2/2)).
-assert (θ2 = 2 * (θ2/2)) by lra.
-assert (sin θ2 = sin (2 * (θ2/2))).
+assert (sin θ1 = 2 * sin (θ1/2) * cos (θ1/2)).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))).
 rewrite <- H. reflexivity.
 rewrite H6.
 rewrite sin_2a. reflexivity.
 rewrite H. 
 assert ((-
-  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
-  ((2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)) +
-    2 * cos ξ * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
-    cos (θ2 / 2)) / p) *
-  √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) +
-  (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
-  (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)) / p) *
-  √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))%R
+(sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+((2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) *
+  sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))) / p) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) +
+(cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+(sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) / p) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))%R
 =
 ((((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
-   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)) +
-    2 * cos ξ * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
-    cos (θ2 / 2))
+   (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) *
+  sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)))
 + (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
-   sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)))
+   (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
 * 
 √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
 * / (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
-
 * / p)%R) by lra.
 rewrite H6. clear H6.
-assert ((cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2))
-   = (2 * cos (θ1 / 2) * cos (θ1 / 2) - 1)).
+assert ((cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))
+   = (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)).
 rewrite <- cos_2a. rewrite -> cos_2a_cos. reflexivity.
 rewrite H6. clear H6.
 assert ((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
-   (2 * sin (θ1 / 2) * cos (θ1 / 2) *
-    (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)) +
-    2 * cos ξ * (2 * cos (θ1 / 2) * cos (θ1 / 2) - 1) * sin (θ2 / 2) * cos (θ2 / 2)) +
-   (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
-   (2 * sin (θ2 / 2) * cos (θ2 / 2)))
+ (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+  cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) +
+ (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
 =
-(sin ξ * sin (θ2 / 2) * cos (θ1 / 2)) *
- (2 * ((Rsqr (cos (θ2 / 2))) * (1 - (Rsqr (sin (θ1 / 2)))) + (Rsqr (sin (θ1 / 2))) * (Rsqr (sin (θ2 / 2))))
+sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+ (2 * ((Rsqr (cos (θ1 / 2))) * (1 - (Rsqr (sin (θ2 / 2)))) + (Rsqr (sin (θ1 / 2))) * (Rsqr (sin (θ2 / 2))))
   - 4 * (cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)))).
-assert ((cos (θ2 / 2))² * (1 - (sin (θ1 / 2))²)
-    = (cos (θ2 / 2))² - (cos (θ2 / 2))² * (sin (θ1 / 2))²).
+assert ((cos (θ1 / 2))² * (1 - (sin (θ2 / 2))²)
+    = (cos (θ1 / 2))² - (cos (θ1 / 2))² * (sin (θ2 / 2))²).
 unfold Rsqr. lra.
 rewrite H6.
 unfold Rsqr.
 lra.
-assert ((1 - (sin (θ1 / 2))²) = (cos (θ1 / 2))²).
-specialize (sin2_cos2 (θ1 / 2)) as H7.
+assert ((1 - (sin (θ2 / 2))²) = (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as H7.
 rewrite <- H7. lra.
 rewrite H7 in H6. rewrite H6.
 clear H7. clear H6.
-assert ((2 * ((cos (θ2 / 2))² * (cos (θ1 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
-   4 * (cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)))
+assert ((2 * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ 4 * (cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))) 
    = 2 * Rsqr (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
 rewrite Rsqr_sqrt.
 rewrite cos_plus. rewrite cos_minus.
@@ -7468,7 +7973,6 @@ assert (((sin (ξ / 2))² *
   - 2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))
        * (sin (θ1 / 2) * sin (θ2 / 2)))) by lra.
 rewrite H6. clear H6.
-
 rewrite sin2_cos2.
 assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
 unfold Rsqr. rewrite <- cos_2a.
@@ -7489,15 +7993,14 @@ assert ((√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² 
   * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
 unfold Rsqr. lra.
 rewrite H6. clear H6.
-assert ((sin ξ * sin (θ2 / 2) * cos (θ1 / 2) *
-  (2 *
-   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
-    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
-  √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
-  / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) * 
-  / p)
+assert ((sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+(2 *
+ (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) * / p)
 = 
-(sin ξ * sin (θ2 / 2) * cos (θ1 / 2) *
+(sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
   ((2 *
    (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
    √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
@@ -7508,27 +8011,27 @@ rewrite H6. clear H6.
 rewrite <- sqrt_mult.
 rewrite Heqp.
 rewrite Rinv_r. rewrite Rinv_r. 
-assert ((((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
-    ((2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)) +
-      2 * cos ξ * (2 * cos (θ1 / 2) * cos (θ1 / 2) - 1) * sin (θ2 / 2) * cos (θ2 / 2)) /
-     (2 *
-      √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
-         ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))) -
-    -
-    (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-     √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
-    (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)) /
-     (2 *
-      √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
-         ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))) *
-   √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))%R
+assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+  ((2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))) -
+  -
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+  (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))) *
+ √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
 = 
-((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
-(2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)) +
-      2 * cos ξ * (2 * cos (θ1 / 2) * cos (θ1 / 2) - 1) * sin (θ2 / 2) * cos (θ2 / 2))
-+ (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2))))
-* (√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+ (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+ * (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)))
+ + (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))))
+ * (√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
 * (/ (2 *
       √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
          ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
@@ -7537,13 +8040,14 @@ rewrite H6. clear H6.
 rewrite <- Rinv_mult_distr.
 rewrite (Rmult_assoc 2 (√ (((sin (ξ / 2))² 
        * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
-       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) )).
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))).
 rewrite <- sqrt_mult_alt.
 assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
-    (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)) +
-     2 * cos ξ * (2 * cos (θ1 / 2) * cos (θ1 / 2) - 1) * sin (θ2 / 2) * cos (θ2 / 2)) +
-    sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2))))
- = (cos (θ2 / 2) * sin (θ1 / 2) + cos ξ * sin (θ2 / 2) * cos (θ1 / 2))
+  (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+   cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) +
+  sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
+ = (sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2))
    * (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
 rewrite cos_plus.
 rewrite cos_minus.
@@ -7573,35 +8077,55 @@ unfold Rminus.
 rewrite Rmult_plus_distr_r.
 rewrite Rmult_plus_distr_l.
 rewrite Rmult_plus_distr_l.
-assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * cos (2 * (θ2 / 2)))
- = 2 * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
-+ 2 * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
-- 2 * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)).
-rewrite cos_2a.
-assert (2 * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
- = 2 * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
-   * (Rsqr (sin (θ1 / 2)) + Rsqr (cos (θ1 / 2)))).
-rewrite sin2_cos2. lra.
+rewrite Rmult_1_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_r.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos (2 * (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+rewrite cos_2a. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+  = - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²
+    + 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+assert ((cos  (θ2 / 2))² = 1 - (sin  (θ2 / 2))²).
+specialize (sin2_cos2 ( (θ2 / 2))). lra.
 rewrite H7. unfold Rsqr. lra.
 rewrite H7. clear H7.
-assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * cos (2 * (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2))
- = 2 * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
-+ 2 * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
-- 2 * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2)
-    * (Rsqr (sin (θ2 / 2)) + Rsqr (cos (θ2 / 2)))).
-rewrite cos_2a.
-unfold Rsqr. lra.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (2 * (θ2 / 2)))
+ = 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+rewrite cos_2a. unfold Rsqr. lra.
 rewrite H7. clear H7.
-assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)))
- = 2 * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
-  - (Rsqr (cos ξ)) * sin (θ1 / 2) * sin (θ2 / 2) * 
-   (2 * sin (θ2 / 2) * cos (θ2 / 2)) * ((Rsqr (sin (θ1 / 2))) + (Rsqr (cos (θ1 / 2))))).
-rewrite sin2_cos2.
+assert (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+  = -2 * cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² * (sin (θ1 / 2))²
++2 * cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin  (θ1 / 2))² = 1 - (cos  (θ1 / 2))²).
+specialize (sin2_cos2 ( (θ1 / 2))). lra.
+rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (- (cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (2 * cos (2 * (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2))
+ = - 4 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
++ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+rewrite cos_2a_cos. lra.
+rewrite H7. clear H7.
+assert (- (cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (2 * (θ2 / 2)))
+= - 4 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
++ 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+rewrite cos_2a_cos. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+   - 2 * (sin ξ) * (sin ξ) * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
 assert ((cos ξ)² = 1 - (sin ξ)²).
 specialize (sin2_cos2 (ξ)). lra.
 rewrite H7. unfold Rsqr. lra.
 rewrite H7. clear H7.
-rewrite cos_2a. rewrite cos_2a.
 unfold Rsqr. lra.
 rewrite H6. clear H6.
 assert ((2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
@@ -7613,7 +8137,7 @@ apply Rle_0_sqr.
 assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
 apply Rle_0_sqr. lra.
 rewrite H6. clear H6.
-assert (((cos (θ2 / 2) * sin (θ1 / 2) + cos ξ * sin (θ2 / 2) * cos (θ1 / 2)) *
+assert (((sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2)) *
    (2 * √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²) *
    √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
    /
@@ -7621,7 +8145,7 @@ assert (((cos (θ2 / 2) * sin (θ1 / 2) + cos ξ * sin (θ2 / 2) * cos (θ1 / 2)
     √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
        ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
        ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))
- = (cos (θ2 / 2) * sin (θ1 / 2) + cos ξ * sin (θ2 / 2) * cos (θ1 / 2)) *
+ = (sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2)) *
   ((2 * (√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
          * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
      * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
@@ -7643,7 +8167,7 @@ rewrite H6. clear H6.
 rewrite Rinv_r. lca.
 apply  Rmult_integral_contrapositive.
 split. lra.
-apply sqrt_term_neq_0. assumption. assumption.
+apply sqrt_term_neq_0_rm20. assumption. assumption.
 apply  Rmult_le_pos.
 rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
 assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
@@ -7668,11 +8192,11 @@ assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²).
 apply Rle_0_sqr. lra.
 apply  Rmult_integral_contrapositive.
 split. lra.
-apply sqrt_term_neq_0_a. assumption.
+apply sqrt_term_neq_0_a_rm20. assumption.
 assumption. assumption.
 apply  Rmult_integral_contrapositive.
 split. lra.
-apply sqrt_term_neq_0_a. assumption.
+apply sqrt_term_neq_0_a_rm20. assumption.
 rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
 assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
 apply Rle_0_sqr.
@@ -7685,7 +8209,8559 @@ assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²).
 apply Rle_0_sqr. lra.
 lra. assumption. assumption.
 }
+destruct (rm20_minus θ1 ξ θ2 <? 0) eqn:eq4.
+apply Rltb_lt in eq4.
+destruct (0 <=? rm21 θ1 ξ θ2) eqn:eq5.
+apply Rleb_le in eq5.
+{
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + PI) = PI + atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2)) by lra.
+rewrite H. clear H.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite rm21_cos_neg.
+rewrite rm21_sin_neg.
+rewrite  Rmult_plus_distr_r.
+remember (√ ((-(cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2))² + (sin ξ)² * (sin θ1)²)) as p.
+specialize (sin_cos_q_rm20 θ1 ξ θ2) as eq6.
+rewrite (Rsqr_neg (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)) in eq6.
+rewrite eq6 in Heqp.
+assert ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)
+   = (2 * (cos (θ1/2) * cos (θ1/2) - sin (θ1/2) * sin (θ1/2)) * sin (θ2 / 2) * cos (θ2 / 2)
+       + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2/2) * cos (θ2/2) - sin (θ2/2) * sin (θ2/2)))).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (θ2 = 2 * (θ2/2)) by lra.
+assert ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)
+  = cos (2 * (θ1/2)) * sin (2 * (θ2/2)) + cos ξ * sin (2 * (θ1/2)) * cos (2 * (θ2/2))).
+rewrite <- H. rewrite <- H6. reflexivity.
+rewrite H7.
+rewrite sin_2a.
+rewrite sin_2a.
+rewrite cos_2a.
+rewrite cos_2a.
+lra.
+rewrite H. clear H.
+assert (- (- (sin ξ * sin θ1) / p) = (sin ξ * sin θ1) / p) by lra.
+rewrite H. clear H.
+assert (- (-
+   (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+    cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+    (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))) / p) 
+ = (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+    cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+    (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))) / p) by lra.
+rewrite H. clear H.
+assert (sin θ1 = 2 * sin (θ1/2) * cos (θ1/2)).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))).
+rewrite <- H. reflexivity.
+rewrite H6.
+rewrite sin_2a. reflexivity.
+rewrite H. 
+assert ((-
+(sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+((2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) *
+  sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))) / p) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) +
+(cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+(sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) / p) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))%R
+=
+((((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) *
+  sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)))
++ (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
+* 
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+* / (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+* / p)%R) by lra.
+rewrite H6. clear H6.
+assert ((cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))
+   = (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)).
+rewrite <- cos_2a. rewrite -> cos_2a_cos. reflexivity.
+rewrite H6. clear H6.
+assert ((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+  cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) +
+ (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
+=
+sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+ (2 * ((Rsqr (cos (θ1 / 2))) * (1 - (Rsqr (sin (θ2 / 2)))) + (Rsqr (sin (θ1 / 2))) * (Rsqr (sin (θ2 / 2))))
+  - 4 * (cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)))).
+assert ((cos (θ1 / 2))² * (1 - (sin (θ2 / 2))²)
+    = (cos (θ1 / 2))² - (cos (θ1 / 2))² * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H6.
+unfold Rsqr.
+lra.
+assert ((1 - (sin (θ2 / 2))²) = (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as H7.
+rewrite <- H7. lra.
+rewrite H7 in H6. rewrite H6.
+clear H7. clear H6.
+assert ((2 * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ 4 * (cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))) 
+   = 2 * Rsqr (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+rewrite Rsqr_sqrt.
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus.
+rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+  = ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+    ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+  - 2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))
+       * (sin (θ1 / 2) * sin (θ2 / 2)))) by lra.
+rewrite H6. clear H6.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra. rewrite H6. reflexivity.
+rewrite H6.
+unfold Rsqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²) by apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²) by apply Rle_0_sqr.
+lra.
+rewrite H6. clear H6.
+rewrite  sqrt_mult_alt in Heqp.
+assert (√ 4 = 2). assert (4 = Rsqr 2). unfold Rsqr. lra.
+rewrite H6. rewrite sqrt_Rsqr. reflexivity. lra.
+rewrite H6 in Heqp. clear H6.
+assert ((√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²
+ = (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+unfold Rsqr. lra.
+rewrite H6. clear H6.
+assert ((sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+(2 *
+ (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) * / p)
+= 
+(sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+  ((2 *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
+   * / p) *
+  (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))) by lra.
+rewrite H6. clear H6.
+rewrite <- sqrt_mult.
+rewrite Heqp.
+rewrite Rinv_r. rewrite Rinv_r. 
+assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+  ((2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))) -
+  -
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+  (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))) *
+ √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+= 
+ (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+ * (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)))
+ + (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))))
+ * (√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+* (/ (2 *
+      √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+         ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
+* / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) by lra.
+rewrite H6. clear H6.
+rewrite <- Rinv_mult_distr.
+rewrite (Rmult_assoc 2 (√ (((sin (ξ / 2))² 
+       * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))).
+rewrite <- sqrt_mult_alt.
+assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+  (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+   cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) +
+  sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
+ = (sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2))
+   * (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+rewrite cos_plus.
+rewrite cos_minus.
+rewrite (Rsqr_plus (cos (θ1 / 2) * cos (θ2 / 2))).
+rewrite (Rsqr_minus (cos (θ1 / 2) * cos (θ2 / 2))).
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+= ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+  ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+  - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 
+   2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H6. clear H6.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H6. reflexivity.
+rewrite H6.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite <- cos_2a.
+rewrite <- cos_2a_cos.
+unfold Rminus.
+rewrite Rmult_plus_distr_r.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_1_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_r.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos (2 * (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+rewrite cos_2a. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+  = - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²
+    + 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+assert ((cos  (θ2 / 2))² = 1 - (sin  (θ2 / 2))²).
+specialize (sin2_cos2 ( (θ2 / 2))). lra.
+rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (2 * (θ2 / 2)))
+ = 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+rewrite cos_2a. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+  = -2 * cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² * (sin (θ1 / 2))²
++2 * cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin  (θ1 / 2))² = 1 - (cos  (θ1 / 2))²).
+specialize (sin2_cos2 ( (θ1 / 2))). lra.
+rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (- (cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (2 * cos (2 * (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2))
+ = - 4 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
++ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+rewrite cos_2a_cos. lra.
+rewrite H7. clear H7.
+assert (- (cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (2 * (θ2 / 2)))
+= - 4 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
++ 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+rewrite cos_2a_cos. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+   - 2 * (sin ξ) * (sin ξ) * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+unfold Rsqr. lra.
+rewrite H6. clear H6.
+assert ((2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+ = (2 * √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²))).
+rewrite sqrt_Rsqr. reflexivity.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite H6. clear H6.
+assert (((sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2)) *
+   (2 * √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²) *
+   √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+   /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))
+ = (sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2)) *
+  ((2 * (√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+         * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+     * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
+  * /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+unfold Rsqr. lra.
+rewrite H6. clear H6.
+rewrite <- sqrt_mult_alt.
+assert ((((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+  = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+        ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+        ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) by lra.
+rewrite H6. clear H6.
+rewrite Rinv_r. lca.
+apply  Rmult_integral_contrapositive.
+split. lra.
+apply sqrt_term_neq_0_neg_rm20. assumption. assumption.
+apply  Rmult_le_pos.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+apply  Rmult_le_pos.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+apply  Rmult_integral_contrapositive.
+split. lra.
+apply sqrt_term_neq_0_a_neg_rm20. assumption.
+assumption. assumption.
+apply  Rmult_integral_contrapositive.
+split. lra.
+apply sqrt_term_neq_0_a_neg_rm20. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+lra. assumption. assumption.
+}
+
+{
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) - PI) = -(PI - atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2))) by lra.
+rewrite H. clear H.
+rewrite sin_neg.
+rewrite cos_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite rm21_cos_neg.
+rewrite rm21_sin_neg.
+rewrite  Rmult_plus_distr_r.
+remember (√ ((-(cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2))² + (sin ξ)² * (sin θ1)²)) as p.
+specialize (sin_cos_q_rm20 θ1 ξ θ2) as eq6.
+rewrite (Rsqr_neg (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)) in eq6.
+rewrite eq6 in Heqp.
+assert ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)
+   = (2 * (cos (θ1/2) * cos (θ1/2) - sin (θ1/2) * sin (θ1/2)) * sin (θ2 / 2) * cos (θ2 / 2)
+       + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2/2) * cos (θ2/2) - sin (θ2/2) * sin (θ2/2)))).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (θ2 = 2 * (θ2/2)) by lra.
+assert ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)
+  = cos (2 * (θ1/2)) * sin (2 * (θ2/2)) + cos ξ * sin (2 * (θ1/2)) * cos (2 * (θ2/2))).
+rewrite <- H. rewrite <- H6. reflexivity.
+rewrite H7.
+rewrite sin_2a.
+rewrite sin_2a.
+rewrite cos_2a.
+rewrite cos_2a.
+lra.
+rewrite H. clear H.
+assert (- (- (sin ξ * sin θ1) / p) = (sin ξ * sin θ1) / p) by lra.
+rewrite H. clear H.
+assert (- (-
+   (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+    cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+    (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))) / p) 
+ = (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+    cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+    (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))) / p) by lra.
+rewrite H. clear H.
+assert (sin θ1 = 2 * sin (θ1/2) * cos (θ1/2)).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))).
+rewrite <- H. reflexivity.
+rewrite H6.
+rewrite sin_2a. reflexivity.
+rewrite H. 
+assert ((-
+(sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+((2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) *
+  sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))) / p) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) +
+(cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+(sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) / p) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))%R
+=
+((((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) *
+  sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2)))
++ (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
+* 
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+* / (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+* / p)%R) by lra.
+rewrite H6. clear H6.
+assert ((cos (θ2 / 2) * cos (θ2 / 2) - sin (θ2 / 2) * sin (θ2 / 2))
+   = (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)).
+rewrite <- cos_2a. rewrite -> cos_2a_cos. reflexivity.
+rewrite H6. clear H6.
+assert ((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+  cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) +
+ (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
+=
+sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+ (2 * ((Rsqr (cos (θ1 / 2))) * (1 - (Rsqr (sin (θ2 / 2)))) + (Rsqr (sin (θ1 / 2))) * (Rsqr (sin (θ2 / 2))))
+  - 4 * (cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)))).
+assert ((cos (θ1 / 2))² * (1 - (sin (θ2 / 2))²)
+    = (cos (θ1 / 2))² - (cos (θ1 / 2))² * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H6.
+unfold Rsqr.
+lra.
+assert ((1 - (sin (θ2 / 2))²) = (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as H7.
+rewrite <- H7. lra.
+rewrite H7 in H6. rewrite H6.
+clear H7. clear H6.
+assert ((2 * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ 4 * (cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))) 
+   = 2 * Rsqr (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+rewrite Rsqr_sqrt.
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus.
+rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+  = ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+    ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+  - 2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))
+       * (sin (θ1 / 2) * sin (θ2 / 2)))) by lra.
+rewrite H6. clear H6.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra. rewrite H6. reflexivity.
+rewrite H6.
+unfold Rsqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²) by apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²) by apply Rle_0_sqr.
+lra.
+rewrite H6. clear H6.
+rewrite  sqrt_mult_alt in Heqp.
+assert (√ 4 = 2). assert (4 = Rsqr 2). unfold Rsqr. lra.
+rewrite H6. rewrite sqrt_Rsqr. reflexivity. lra.
+rewrite H6 in Heqp. clear H6.
+assert ((√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²
+ = (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+unfold Rsqr. lra.
+rewrite H6. clear H6.
+assert ((sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+(2 *
+ (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) * / p)
+= 
+(sin ξ * sin (θ1 / 2) * cos (θ2 / 2) *
+  ((2 *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
+   * / p) *
+  (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))) by lra.
+rewrite H6. clear H6.
+rewrite <- sqrt_mult.
+rewrite Heqp.
+rewrite Rinv_r. rewrite Rinv_r. 
+assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+  ((2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))) -
+  -
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+  (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))) *
+ √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+= 
+ (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+ * (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)))
+ + (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))))
+ * (√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+* (/ (2 *
+      √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+         ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
+* / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) by lra.
+rewrite H6. clear H6.
+rewrite <- Rinv_mult_distr.
+rewrite (Rmult_assoc 2 (√ (((sin (ξ / 2))² 
+       * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))).
+rewrite <- sqrt_mult_alt.
+assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+  (2 * (cos (θ1 / 2) * cos (θ1 / 2) - sin (θ1 / 2) * sin (θ1 / 2)) * sin (θ2 / 2) *
+   cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (2 * cos (θ2 / 2) * cos (θ2 / 2) - 1)) +
+  sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))))
+ = (sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2))
+   * (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+rewrite cos_plus.
+rewrite cos_minus.
+rewrite (Rsqr_plus (cos (θ1 / 2) * cos (θ2 / 2))).
+rewrite (Rsqr_minus (cos (θ1 / 2) * cos (θ2 / 2))).
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+= ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+  ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+  - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 
+   2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H6. clear H6.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H6. reflexivity.
+rewrite H6.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite <- cos_2a.
+rewrite <- cos_2a_cos.
+unfold Rminus.
+rewrite Rmult_plus_distr_r.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_1_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_r.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_l.
+rewrite Rmult_plus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos (2 * (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+rewrite cos_2a. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+  = - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²
+    + 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+assert ((cos  (θ2 / 2))² = 1 - (sin  (θ2 / 2))²).
+specialize (sin2_cos2 ( (θ2 / 2))). lra.
+rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (2 * (θ2 / 2)))
+ = 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+rewrite cos_2a. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+  = -2 * cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² * (sin (θ1 / 2))²
++2 * cos ξ * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin  (θ1 / 2))² = 1 - (cos  (θ1 / 2))²).
+specialize (sin2_cos2 ( (θ1 / 2))). lra.
+rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (- (cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (2 * cos (2 * (θ1 / 2)) * sin (θ2 / 2) * cos (θ2 / 2))
+ = - 4 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
++ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+rewrite cos_2a_cos. lra.
+rewrite H7. clear H7.
+assert (- (cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (2 * (θ2 / 2)))
+= - 4 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
++ 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+rewrite cos_2a_cos. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+   - 2 * (sin ξ) * (sin ξ) * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+unfold Rsqr. lra.
+rewrite H6. clear H6.
+assert ((2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+ = (2 * √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²))).
+rewrite sqrt_Rsqr. reflexivity.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite H6. clear H6.
+assert (((sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2)) *
+   (2 * √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²) *
+   √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+   /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))
+ = (sin (θ2 / 2) * cos (θ1 / 2) + cos ξ * cos (θ2 / 2) * sin (θ1 / 2)) *
+  ((2 * (√ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+         * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+     * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))
+  * /
+   (2 *
+    √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+unfold Rsqr. lra.
+rewrite H6. clear H6.
+rewrite <- sqrt_mult_alt.
+assert ((((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+  = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+        ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+        ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) by lra.
+rewrite H6. clear H6.
+rewrite Rinv_r. lca.
+apply  Rmult_integral_contrapositive.
+split. lra.
+apply sqrt_term_neq_0_neg_rm20. assumption. assumption.
+apply  Rmult_le_pos.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+apply  Rmult_le_pos.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+apply  Rmult_integral_contrapositive.
+split. lra.
+apply sqrt_term_neq_0_a_neg_rm20. assumption.
+assumption. assumption.
+apply  Rmult_integral_contrapositive.
+split. lra.
+apply sqrt_term_neq_0_a_neg_rm20. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+lra. assumption. assumption.
+}
+
+{
+destruct (0 <? rm21 θ1 ξ θ2) eqn:eq5.
+rewrite sin_PI2. rewrite cos_PI2.
+assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) * 0 -
+  -
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+  1) *
+ √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+
+= (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+  (/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+   * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))).
+rewrite Rinv_r. lra.
+assumption.
+rewrite H. clear H.
+assert ((-
+ (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+ 0 +
+ (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) * 1) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+=
+(cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+ (/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+  * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+  * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) ))).
+rewrite Rinv_r. lra.
+assumption.
+rewrite H. clear H.
+assert ((/
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+    (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     /
+     √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))
+ = √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) *
+
+/ √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²)).
+assert (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²
+ = √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+     * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+unfold Rsqr. lra.
+rewrite H. clear H.
+rewrite sqrt_mult_alt.
+rewrite sqrt_mult_alt.
+rewrite Rinv_mult_distr. lra.
+assumption. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite H. clear H.
+rewrite sqrt_Rsqr.
+specialize (sin_cos_q θ1 ξ θ2) as eq6.
+assert (((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²) * / 4
+     = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))) by lra.
+rewrite <- H. clear H.
+apply Rltb_le_false in eq3.
+apply Rltb_le_false in eq4.
+assert (rm20_minus θ1 ξ θ2 = 0) by lra.
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²).
+unfold rm02,rm20_minus,rm12,rm21.
+unfold Rsqr. lra.
+rewrite H6.
+rewrite Rltb_lt in eq5.
+rewrite H.
+rewrite rm21_eq.
+rewrite Rsqr_mult.
+assert (√ ((0² + (sin ξ)² * (sin θ1)²) * / 4) = sin ξ * sin θ1 * / 2).
+rewrite <- Rsqr_mult.
+assert (Rsqr 0 = 0). unfold Rsqr. lra.
+rewrite H7.
+autorewrite with R_db.
+rewrite sqrt_mult_alt.
+rewrite  sqrt_Rsqr.
+rewrite <- inv_sqrt.
+assert (4 = Rsqr 2). unfold Rsqr. lra.
+rewrite H8. 
+rewrite  sqrt_Rsqr. reflexivity.
+lra. lra. 
+rewrite rm21_eq in eq5.
+lra.
+apply Rle_0_sqr.
+rewrite H7. clear H7.
+rewrite <- (Rmult_assoc (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite <- (Rmult_assoc (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin ξ * sin θ1 * / 2)
+   = ((2 * sin ξ * sin ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)) * /2)).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))). rewrite <- H7. reflexivity.
+rewrite H8. rewrite sin_2a. lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (sin ξ * sin θ1 * / 2)
+ = (2 * sin ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)) * / 2).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))). rewrite <- H7. reflexivity.
+rewrite H8. rewrite sin_2a. lra.
+rewrite H7. clear H7.
+rewrite <- cos_sin_mult_q_l_rm20.
+rewrite <- cos_sin_mult_q_r_rm20.
+rewrite (Rmult_assoc ((cos (θ1 / 2) * sin (θ2 / 2) + cos ξ * sin (θ1 / 2) * cos (θ2 / 2)))).
+rewrite (Rmult_assoc ((cos (θ1 / 2) * sin (θ2 / 2) + cos ξ * sin (θ1 / 2) * cos (θ2 / 2)))).
+rewrite (Rmult_assoc (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+rewrite <- Rinv_mult_distr.
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * sin (θ1 / 2) * cos (θ2 / 2))).
+rewrite (Rmult_assoc (sin ξ * sin (θ1 / 2) * cos (θ2 / 2))).
+rewrite (Rmult_assoc (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+rewrite <- Rinv_mult_distr.
+rewrite Rinv_r. lca.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra. lra.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra. lra.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra. 
+rewrite rm20_eq in H.
+assumption. 
+rewrite rm20_eq in H.
+assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+
+destruct (rm21 θ1 ξ θ2 <? 0) eqn:eq6.
+assert ((- PI / 2) = - (PI / 2)) by lra.
+rewrite H. clear H.
+rewrite sin_neg. rewrite cos_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) * 0 -
+  -
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+  - (1)) *
+ √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+
+= (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+  (/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+   * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))).
+rewrite Rinv_r. lra.
+assumption.
+rewrite H. clear H.
+assert ((-
+ (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+ 0 +
+ (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+ - (1)) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+=
+(-(cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+ (/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+  * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+  * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) )))).
+rewrite Rinv_r. lra.
+assumption.
+rewrite H. clear H.
+assert ((/
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+    (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     /
+     √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))
+ = √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) *
+
+/ √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²)).
+assert (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²
+ = √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+     * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+unfold Rsqr. lra.
+rewrite H. clear H.
+rewrite sqrt_mult_alt.
+rewrite sqrt_mult_alt.
+rewrite Rinv_mult_distr. lra.
+assumption. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite H. clear H.
+rewrite sqrt_Rsqr.
+specialize (sin_cos_q θ1 ξ θ2) as eq7.
+assert (((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²) * / 4
+     = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))) by lra.
+apply Rltb_le_false in eq3.
+apply Rltb_le_false in eq4.
+assert (rm20_minus θ1 ξ θ2 = 0) by lra.
+rewrite <- rm02_eq in H.
+rewrite <- Rsqr_mult in H.
+rewrite <- (rm12_eq θ1 ξ θ2) in H.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = ((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H7 in H.
+rewrite rm20_eq in H.
+rewrite rm21_eq in H.
+rewrite Rsqr_mult in H.
+rewrite rm20_eq in H6.
+rewrite <- H. clear H.
+apply Rltb_lt in eq6.
+assert (√ ((0² + (sin ξ)² * (sin θ1)²) * / 4) = (-(sin ξ * sin θ1)) * / 2).
+rewrite <- Rsqr_mult.
+assert (Rsqr 0 = 0). unfold Rsqr. lra.
+rewrite H.
+autorewrite with R_db.
+rewrite sqrt_mult_alt.
+rewrite Rsqr_neg.
+rewrite  sqrt_Rsqr.
+rewrite <- inv_sqrt.
+assert (4 = Rsqr 2). unfold Rsqr. lra.
+rewrite H8. 
+rewrite  sqrt_Rsqr. lra.
+lra. lra. 
+rewrite rm21_eq in eq6.
+lra.
+apply Rle_0_sqr.
+rewrite H6. rewrite H. clear H.
+rewrite <- (Rmult_assoc (-sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite <- (Rmult_assoc (-(cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+assert (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (- (sin ξ * sin θ1) * / 2)
+   = ((2 * sin ξ * sin ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)) * /2)).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))). rewrite <- H. reflexivity.
+rewrite H8. rewrite sin_2a. lra.
+rewrite H. clear H.
+assert (- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * (- (sin ξ * sin θ1) * / 2)
+ = (2 * sin ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+      2 * sin ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)) * / 2).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))). rewrite <- H. reflexivity.
+rewrite H8. rewrite sin_2a. lra.
+rewrite H. clear H.
+rewrite <- cos_sin_mult_q_l_rm20.
+rewrite <- cos_sin_mult_q_r_rm20.
+rewrite (Rmult_assoc ((cos (θ1 / 2) * sin (θ2 / 2) + cos ξ * sin (θ1 / 2) * cos (θ2 / 2)))).
+rewrite (Rmult_assoc ((cos (θ1 / 2) * sin (θ2 / 2) + cos ξ * sin (θ1 / 2) * cos (θ2 / 2)))).
+rewrite (Rmult_assoc (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+rewrite <- Rinv_mult_distr.
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * sin (θ1 / 2) * cos (θ2 / 2))).
+rewrite (Rmult_assoc (sin ξ * sin (θ1 / 2) * cos (θ2 / 2))).
+rewrite (Rmult_assoc (2 * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+rewrite <- Rinv_mult_distr.
+rewrite Rinv_r. lca.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra. lra.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra. lra.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra. assumption. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite sin_0. rewrite cos_0.
+assert ((((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    1 -
+    -
+    (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+     √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+    0) *
+   √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+= (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+  (/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+   * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))).
+rewrite Rinv_r. lra.
+assumption.
+rewrite H. clear H.
+assert (((-
+   (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+   1 +
+   (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   0) *
+  √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))
+=
+(-(sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+ (/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+  * √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+  * (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) ))))).
+rewrite Rinv_r. lra.
+assumption.
+rewrite H. clear H.
+assert ((/
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *
+    (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     /
+     √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))
+ = √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) *
+
+/ √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²)).
+assert (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)²
+ = √ (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+     * ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+unfold Rsqr. lra.
+rewrite H. clear H.
+rewrite sqrt_mult_alt.
+rewrite sqrt_mult_alt.
+rewrite Rinv_mult_distr. lra.
+assumption. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite H. clear H.
+rewrite sqrt_Rsqr.
+specialize (sin_cos_q θ1 ξ θ2) as eq7.
+assert (((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²) * / 4
+     = (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+       ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))) by lra.
+rewrite <- rm02_eq in H.
+rewrite <- Rsqr_mult in H.
+rewrite <- (rm12_eq θ1 ξ θ2) in H.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = ((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21,Rsqr.
+lra.
+rewrite H6 in H. clear H6.
+rewrite rm20_eq in H. rewrite rm21_eq in H.
+rewrite <- H. clear H.
+apply Rltb_le_false in eq3.
+apply Rltb_le_false in eq4.
+assert (rm20_minus θ1 ξ θ2 = 0) by lra.
+rewrite rm20_eq in H.
+rewrite H.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+assert (rm21 θ1 ξ θ2 = 0) by lra.
+rewrite rm21_eq in H6.
+rewrite H6.
+assert (√ ((0² + 0²) * / 4) = 0). 
+unfold Rsqr. rewrite sqrt_mult_alt.
+assert ((0 * 0 + 0 * 0) = 0) by lra.
+rewrite H7.  rewrite sqrt_0. lra. lra.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((cos ξ * sin (θ1 / 2))%R, (sin ξ * sin (θ1 / 2))%R))%C
+ = (((cos (θ1 / 2) * sin (θ2 / 2) + cos ξ * sin (θ1 / 2) * cos (θ2 / 2))%R,
+         (sin ξ * sin (θ1 / 2) * cos (θ2 / 2))%R))%C) by lca.
+rewrite H8.
+specialize (cos_sin_mult_q_l_rm20 θ1 ξ θ2 H) as eq8.
+apply (Rmult_eq_compat_r (/ (2 *
+       ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))) in eq8.
+rewrite Rmult_assoc in eq8.
+rewrite Rinv_r in eq8.
+rewrite Rmult_1_r in eq8.
+rewrite eq8. clear eq8.
+specialize (cos_sin_mult_q_r_rm20 θ1 ξ θ2 H) as eq9.
+apply (Rmult_eq_compat_r (/ (2 *
+       ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))) in eq9.
+rewrite Rmult_assoc in eq9.
+rewrite Rinv_r in eq9.
+rewrite Rmult_1_r in eq9.
+rewrite eq9.
+assert (2 * sin ξ * sin ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2)
+  = (sin ξ * sin θ1) * sin ξ * sin (θ1 / 2) * sin (θ2 / 2)).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))). rewrite <- H9. reflexivity.
+rewrite H10. rewrite sin_2a. lra.
+rewrite H9.
+rewrite H6.
+assert ((2 * sin ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+ 2 * sin ξ * cos ξ * sin (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2))
+ = (sin ξ * sin θ1) * (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2) )).
+assert (θ1 = 2 * (θ1/2)) by lra.
+assert (sin θ1 = sin (2 * (θ1/2))). rewrite <- H10. reflexivity.
+rewrite H11. rewrite sin_2a. lra.
+rewrite H10.
+rewrite H6.
+rewrite H7. lca.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra.
+assert (0 < ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite <- (Rsqr_sqrt (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+       + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))).
+apply Rlt_0_sqr. assumption.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+}
+apply delta_cos_bound.
+assumption.
+- (* fourth-sub-case: Cexp (cos acos) * Cexp atan2 rm21 * cos (acos rm22) * Cexp atant2 rm12 *)
+rewrite (Cmult_assoc (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite (Cmult_comm (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite <- Cmult_assoc. 
+rewrite (Cmult_assoc (Cexp (- acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+assert ((Cexp
+   (-
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+ cos (acos (rm22 θ1 ξ θ2) / 2))%C
+  = ((cos (θ1 / 2) *  cos (θ2 / 2) - cos  ξ * sin (θ1 / 2) * sin (θ2 / 2))%R,
+             (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))%R)%C).
+unfold Cexp.
+rewrite cos_neg.
+rewrite sin_neg.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert (((((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R,
+ (-
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R) *
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+          + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H. clear H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+rewrite H. clear H.
+rewrite <- Cexp_add.
+unfold Cexp,atan2.
+destruct (0 <? rm20_minus θ1 ξ θ2) eqn:eq3.
+destruct (0 <? rm02 θ1 ξ θ2) eqn:eq4.
+{
+apply Rltb_lt in eq3.
+apply Rltb_lt in eq4.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin.
+rewrite rm12_cos.
+rewrite rm21_sin.
+rewrite rm21_cos.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+   rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+  rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+destruct (rm02 θ1 ξ θ2 <? 0) eqn:eq5.
+destruct (0 <=? rm12 θ1 ξ θ2) eqn:eq6.
+{
+apply Rltb_lt in eq3.
+apply Rltb_lt in eq5.
+apply Rleb_le in eq6.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) + PI))
+    = (PI + ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2)))))) by lra.
+rewrite H. clear H.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite rm21_sin.
+rewrite rm21_cos.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- Rsqr_neg.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((-
+   (rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+    (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+    rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+    (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((-
+  (rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+   rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))))%R
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+
+{
+apply Rltb_lt in eq3.
+apply Rltb_lt in eq5.
+apply Rleb_lt_false in eq6.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) - PI))
+    = (-(PI - ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))))))) by lra.
+rewrite H. clear H.
+rewrite cos_neg.
+rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite rm21_sin.
+rewrite rm21_cos.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- Rsqr_neg.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((-
+   (rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+    (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+    rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+    (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((-
+  (rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+   rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))))%R
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+(* when rm02 = 0, rm20 > 0 *)
+{
+apply Rltb_lt in eq3.
+apply Rltb_le_false in eq4. 
+apply Rltb_le_false in eq5.
+assert (rm02 θ1 ξ θ2 = 0) by lra.
+destruct (0 <? rm12 θ1 ξ θ2) eqn:eq6.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + PI / 2)
+   = PI / 2 + atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2)) by lra.
+rewrite H6. clear H6.
+rewrite <- cos_sin.
+assert (cos (PI / 2 + atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2))
+  = - sin (atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2))).
+rewrite -> sin_cos. lra.
+rewrite H6. clear H6.
+rewrite rm21_sin.
+rewrite rm21_cos.
+rewrite rm02_eq in H.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H6.
+rewrite H.
+assert (√ (0² + (sin ξ * sin θ2)²) = sin ξ * sin θ2).
+assert (0² = 0).
+unfold Rsqr. lra.
+rewrite H7.
+autorewrite with R_db.
+rewrite  sqrt_Rsqr.
+reflexivity.
+apply Rltb_lt in eq6. rewrite rm12_eq in eq6.
+lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+rewrite <- rm20_eq.
+assert (rm20_minus θ1 ξ θ2 =
+       2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     - 2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+     - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)).
+unfold rm20_minus, rx,ry,rz,rw.
+rewrite <- sin_plus. rewrite <- sin_minus.
+rewrite <- cos_plus. rewrite <- cos_minus.
+assert (-2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) * (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))
+  = -2 * (sin (ξ / 2))² * ((sin (θ1 / 2 - θ2 / 2) * cos (θ1 / 2 - θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) * (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))
+   = 2 * (cos (ξ / 2))² * ((sin (θ1 / 2 + θ2 / 2) * cos (θ1 / 2 + θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite sin_plus. rewrite sin_minus.
+rewrite cos_plus. rewrite cos_minus.
+assert (-2 * (sin (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+2 * (cos (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+   = 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+          (cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+            -sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+     2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) *
+        (sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+              sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) by lra.
+rewrite H7. clear H7.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H7. reflexivity.
+rewrite H7. lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ - (sin ξ * sin θ1 / (sin ξ * sin θ2)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+  (sin ξ * sin θ2))
+  = ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * sin θ1)
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert (sin θ1 = 2 * sin (θ1 / 2) * cos (θ1 / 2)).
+rewrite <- sin_2a.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H7. reflexivity.
+rewrite H7. clear H7.
+rewrite <- rm02_eq in H.
+rewrite rm02_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) = 
+     2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+      2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) 
+     - 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ  * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+   -  2 * sin ξ  * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+   = 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2) -
+   (2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)) +
+   (2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    + 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    - 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)
+    + 2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ1 / 2) * cos (θ1 / 2)) +
+  (- sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) +
+   2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)))
+  = (- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+        (sin ξ * (2 * sin (θ2 / 2) * cos(θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+ (sin ξ * sin θ2)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+- (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) / (sin ξ * sin θ2))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+     * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) +
+   sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+    / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) 
+   + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) by lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)* sin (θ2 / 2)
+  = 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   -2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*sin (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) -
+  2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²) +
+ (2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²) -
+ (2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+  2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²) -
+ (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) +
+ (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²) -
+ (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) *
+  (cos (θ1 / 2))²) +
+ (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2))²) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = - sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  + 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+  + 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+  - 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+  + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+  + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+  + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+ = 2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin ξ)²  * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq7.
+rewrite <- eq7. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) * 0 + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) +
+ 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+ 2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+ 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) +
+ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = (cos (θ1 / 2) * cos (θ2 / 2) * sin ξ) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7. clear H7.
+apply Rltb_lt in eq6.
+autorewrite with R_db.
+rewrite (Rmult_assoc ((- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2)))).
+rewrite (Rmult_assoc (cos (θ1 * / 2) * cos (θ2 * / 2) * sin ξ)).
+rewrite Rinv_r.
+lca.
+rewrite rm12_eq in eq6. lra.
+assumption. assumption.
+(* the mirror case of the above *)
+destruct (rm12 θ1 ξ θ2 <? 0) eqn:eq7.
+apply Rltb_lt in eq7.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + - PI / 2)
+   = -(PI / 2 - atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2))) by lra.
+rewrite H6. clear H6.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_shift. rewrite sin_shift.
+rewrite rm21_sin.
+rewrite rm21_cos.
+rewrite rm02_eq in H.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H6.
+rewrite H.
+assert (√ (0² + (sin ξ * sin θ2)²) = - sin ξ * sin θ2).
+assert (0² = 0).
+unfold Rsqr. lra.
+rewrite H7.
+autorewrite with R_db.
+rewrite Rsqr_neg.
+rewrite  sqrt_Rsqr.
+reflexivity.
+rewrite rm12_eq in eq7.
+lra.
+rewrite H7. clear H7.
+assert ((sin ξ * sin θ1 / (- sin ξ * sin θ2))
+    = - (sin ξ * sin θ1 / (sin ξ * sin θ2))).
+autorewrite with R_db.
+rewrite <- Ropp_inv_permute. lra.
+rewrite rm12_eq in eq7. lra.
+rewrite H7. clear H7.
+assert ( (- ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (- sin ξ * sin θ2)))
+  = ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (sin ξ * sin θ2))).
+autorewrite with R_db.
+rewrite <- Ropp_inv_permute. lra.
+rewrite rm12_eq in eq7. lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+rewrite <- rm20_eq.
+assert (rm20_minus θ1 ξ θ2 =
+       2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     - 2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+     - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)).
+unfold rm20_minus, rx,ry,rz,rw.
+rewrite <- sin_plus. rewrite <- sin_minus.
+rewrite <- cos_plus. rewrite <- cos_minus.
+assert (-2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) * (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))
+  = -2 * (sin (ξ / 2))² * ((sin (θ1 / 2 - θ2 / 2) * cos (θ1 / 2 - θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) * (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))
+   = 2 * (cos (ξ / 2))² * ((sin (θ1 / 2 + θ2 / 2) * cos (θ1 / 2 + θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite sin_plus. rewrite sin_minus.
+rewrite cos_plus. rewrite cos_minus.
+assert (-2 * (sin (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+2 * (cos (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+   = 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+          (cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+            -sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+     2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) *
+        (sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+              sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) by lra.
+rewrite H7. clear H7.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H7. reflexivity.
+rewrite H7. lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ - (sin ξ * sin θ1 / (sin ξ * sin θ2)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+  (sin ξ * sin θ2))
+  = ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * sin θ1)
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert (sin θ1 = 2 * sin (θ1 / 2) * cos (θ1 / 2)).
+rewrite <- sin_2a.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H7. reflexivity.
+rewrite H7. clear H7.
+rewrite <- rm02_eq in H.
+rewrite rm02_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) = 
+     2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+      2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) 
+     - 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ  * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+   -  2 * sin ξ  * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+   = 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2) -
+   (2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)) +
+   (2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    + 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    - 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)
+    + 2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ1 / 2) * cos (θ1 / 2)) +
+  (- sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) +
+   2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)))
+  = (- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+        (sin ξ * (2 * sin (θ2 / 2) * cos(θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+ (sin ξ * sin θ2)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+- (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) / (sin ξ * sin θ2))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+     * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) +
+   sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+    / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) 
+   + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) by lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)* sin (θ2 / 2)
+  = 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   -2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*sin (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) -
+  2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²) +
+ (2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²) -
+ (2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+  2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²) -
+ (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) +
+ (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²) -
+ (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) *
+  (cos (θ1 / 2))²) +
+ (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2))²) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = - sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  + 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+  + 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+  - 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+  + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+  + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+  + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+ = 2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin ξ)²  * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq8.
+rewrite <- eq8. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) * 0 + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) +
+ 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+ 2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+ 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) +
+ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = (cos (θ1 / 2) * cos (θ2 / 2) * sin ξ) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite (Rmult_assoc ((- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2)))).
+rewrite (Rmult_assoc (cos (θ1 * / 2) * cos (θ2 * / 2) * sin ξ)).
+rewrite Rinv_r.
+lca.
+rewrite rm12_eq in eq7. lra.
+assumption. assumption.
+(* third case of zero of rm02 *)
+rewrite Rplus_0_r.
+apply Rltb_le_false in eq6.
+apply Rltb_le_false in eq7.
+assert (rm12 θ1 ξ θ2 = 0) by lra.
+rewrite rm02_eq in H.
+rewrite rm12_eq in H6.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7.
+rewrite H6 in H7.
+rewrite <- Rsqr_mult in H7.
+assert (0² + 0² = 0).
+unfold Rsqr. lra.
+rewrite H8 in H7.
+apply Rplus_eq_R0 in H7.
+destruct H7.
+apply Rsqr_eq_0 in H7.
+rewrite <- rm20_eq in H7. lra.
+apply Rle_0_sqr. apply Rle_0_sqr.
+}
+
+(* when rm20_minus θ1 ξ θ2 < 0 and 0 <= rm21 *)
+destruct (rm20_minus θ1 ξ θ2 <? 0) eqn:eq4.
+apply Rltb_lt in eq4.
+destruct (0 <=? rm21 θ1 ξ θ2) eqn:eq5.
+apply Rleb_le in eq5.
+destruct (0 <? rm02 θ1 ξ θ2) eqn:eq6.
+apply Rltb_lt in eq6.
+{
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + PI + atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))
+  = PI + (atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))) by lra.
+rewrite H. clear H.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin.
+rewrite rm12_cos.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_neg.
+assert ((-
+   (- (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+    ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /
+     √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²)) -
+    - (sin ξ * sin θ1) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+    (sin ξ * sin θ2 / √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²))))
+ =    (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+    ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /
+     √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²))
+    - (sin ξ * sin θ1) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+    (sin ξ * sin θ2 / √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²))) by lra.
+rewrite H. clear H.
+assert ((-
+  (- (sin ξ * sin θ1) /
+   √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+   ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /
+    √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²)) +
+   - (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) /
+   √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+   (sin ξ * sin θ2 / √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²))))
+ = ((sin ξ * sin θ1) /
+   √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+   ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /
+    √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²)) +
+    (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) /
+   √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+   (sin ξ * sin θ2 / √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²)))) by lra.
+rewrite H. clear H.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+   rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+  rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+(* when rm02 < 0 and rm20 < 0 *)
+destruct (rm02 θ1 ξ θ2 <? 0) eqn:eq7.
+destruct (0 <=? rm12 θ1 ξ θ2) eqn:eq8.
+{
+apply Rltb_lt in eq7.
+apply Rleb_le in eq8.
+assert ( (atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + PI + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) + PI))
+    = (PI + (PI + ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))))))) by lra.
+rewrite H. clear H.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Ropp_involutive.
+rewrite Ropp_involutive.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_neg.
+rewrite <- Rsqr_neg.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((- rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+   - rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((- rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+  - rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+(* when rm02 = 0 and rm20 < 0 *)
+{
+apply Rltb_lt in eq7.
+apply Rleb_lt_false in eq8.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + PI + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) - PI))
+    =  ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))))) by lra.
+rewrite H. clear H.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- Rsqr_neg.
+rewrite <- Rsqr_neg.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((- rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+   - rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((- rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+  - rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+(* when rm02 = 0 and rm20 < 0 *)
+{
+apply Rltb_le_false in eq6. 
+apply Rltb_le_false in eq7.
+assert (rm02 θ1 ξ θ2 = 0) by lra.
+destruct (0 <? rm12 θ1 ξ θ2) eqn:eq8.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + PI + PI / 2)
+   = (PI + (PI / 2 + atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2)))) by lra.
+rewrite H6. clear H6.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite <- cos_sin.
+assert (cos (PI / 2 + atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2))
+  = - sin (atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2))).
+rewrite -> sin_cos. lra.
+rewrite H6. clear H6.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_neg.
+rewrite rm02_eq in H.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H6.
+rewrite H.
+assert (√ (0² + (sin ξ * sin θ2)²) = sin ξ * sin θ2).
+assert (0² = 0).
+unfold Rsqr. lra.
+rewrite H7.
+autorewrite with R_db.
+rewrite  sqrt_Rsqr.
+reflexivity.
+apply Rltb_lt in eq8. rewrite rm12_eq in eq8.
+lra.
+rewrite H7. clear H7.
+rewrite Ropp_involutive.
+assert ((- (- (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (sin ξ * sin θ2)))%R 
+  = (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (sin ξ * sin θ2)%R) by lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+rewrite <- rm20_eq.
+assert (rm20_minus θ1 ξ θ2 =
+       2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     - 2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+     - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)).
+unfold rm20_minus, rx,ry,rz,rw.
+rewrite <- sin_plus. rewrite <- sin_minus.
+rewrite <- cos_plus. rewrite <- cos_minus.
+assert (-2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) * (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))
+  = -2 * (sin (ξ / 2))² * ((sin (θ1 / 2 - θ2 / 2) * cos (θ1 / 2 - θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) * (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))
+   = 2 * (cos (ξ / 2))² * ((sin (θ1 / 2 + θ2 / 2) * cos (θ1 / 2 + θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite sin_plus. rewrite sin_minus.
+rewrite cos_plus. rewrite cos_minus.
+assert (-2 * (sin (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+2 * (cos (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+   = 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+          (cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+            -sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+     2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) *
+        (sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+              sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) by lra.
+rewrite H7. clear H7.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H7. reflexivity.
+rewrite H7. lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (- (sin ξ * sin θ1) / (sin ξ * sin θ2)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+  (sin ξ * sin θ2))
+  = ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * sin θ1)
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert (sin θ1 = 2 * sin (θ1 / 2) * cos (θ1 / 2)).
+rewrite <- sin_2a.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H7. reflexivity.
+rewrite H7. clear H7.
+rewrite <- rm02_eq in H.
+rewrite rm02_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) = 
+     2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+      2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) 
+     - 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ  * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+   -  2 * sin ξ  * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+   = 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2) -
+   (2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)) +
+   (2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    + 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    - 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)
+    + 2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ1 / 2) * cos (θ1 / 2)) +
+  (- sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) +
+   2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)))
+  = (- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+        (sin ξ * (2 * sin (θ2 / 2) * cos(θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+ (sin ξ * sin θ2)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+(- (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))) / (sin ξ * sin θ2))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+     * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) +
+   sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+    / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) 
+   + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) by lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)* sin (θ2 / 2)
+  = 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   -2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*sin (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) -
+  2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²) +
+ (2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²) -
+ (2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+  2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²) -
+ (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) +
+ (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²) -
+ (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) *
+  (cos (θ1 / 2))²) +
+ (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2))²) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = - sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  + 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+  + 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+  - 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+  + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+  + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+  + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+ = 2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin ξ)²  * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) * 0 + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) +
+ 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+ 2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+ 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) +
+ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = (cos (θ1 / 2) * cos (θ2 / 2) * sin ξ) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7. clear H7.
+apply Rltb_lt in eq8.
+autorewrite with R_db.
+rewrite (Rmult_assoc ((- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2)))).
+rewrite (Rmult_assoc (cos (θ1 * / 2) * cos (θ2 * / 2) * sin ξ)).
+rewrite Rinv_r.
+lca.
+rewrite rm12_eq in eq8. lra.
+assumption. assumption.
+(* the mirror case of the above *)
+destruct (rm12 θ1 ξ θ2 <? 0) eqn:eq9.
+apply Rltb_lt in eq9.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + PI + - PI / 2)
+   = -(PI / 2 - (PI + atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2)))) by lra.
+rewrite H6. clear H6.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_shift. rewrite sin_shift.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Ropp_involutive.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_neg.
+assert ((-
+   (- (sin ξ * sin θ1) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)))%R
+ = ((sin ξ * sin θ1) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²))%R) by lra.
+rewrite H6. clear H6.
+rewrite rm02_eq in H.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H6.
+rewrite H.
+assert (√ (0² + (sin ξ * sin θ2)²) = - sin ξ * sin θ2).
+assert (0² = 0).
+unfold Rsqr. lra.
+rewrite H7.
+autorewrite with R_db.
+rewrite Rsqr_neg.
+rewrite  sqrt_Rsqr.
+reflexivity.
+rewrite rm12_eq in eq9.
+lra.
+rewrite H7. clear H7.
+assert ((sin ξ * sin θ1 / (- sin ξ * sin θ2))
+    = - (sin ξ * sin θ1 / (sin ξ * sin θ2))).
+autorewrite with R_db.
+rewrite <- Ropp_inv_permute. lra.
+rewrite rm12_eq in eq9. lra.
+rewrite H7. clear H7.
+assert ( (- (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (- sin ξ * sin θ2))
+  = ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (sin ξ * sin θ2))).
+autorewrite with R_db.
+rewrite <- Ropp_inv_permute. lra.
+rewrite rm12_eq in eq9. lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+rewrite <- rm20_eq.
+assert (rm20_minus θ1 ξ θ2 =
+       2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     - 2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+     - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)).
+unfold rm20_minus, rx,ry,rz,rw.
+rewrite <- sin_plus. rewrite <- sin_minus.
+rewrite <- cos_plus. rewrite <- cos_minus.
+assert (-2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) * (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))
+  = -2 * (sin (ξ / 2))² * ((sin (θ1 / 2 - θ2 / 2) * cos (θ1 / 2 - θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) * (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))
+   = 2 * (cos (ξ / 2))² * ((sin (θ1 / 2 + θ2 / 2) * cos (θ1 / 2 + θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite sin_plus. rewrite sin_minus.
+rewrite cos_plus. rewrite cos_minus.
+assert (-2 * (sin (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+2 * (cos (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+   = 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+          (cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+            -sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+     2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) *
+        (sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+              sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) by lra.
+rewrite H7. clear H7.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H7. reflexivity.
+rewrite H7. lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ - (sin ξ * sin θ1 / (sin ξ * sin θ2)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+  (sin ξ * sin θ2))
+  = ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * sin θ1)
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert (sin θ1 = 2 * sin (θ1 / 2) * cos (θ1 / 2)).
+rewrite <- sin_2a.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H7. reflexivity.
+rewrite H7. clear H7.
+rewrite <- rm02_eq in H.
+rewrite rm02_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) = 
+     2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+      2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) 
+     - 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ  * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+   -  2 * sin ξ  * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+   = 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2) -
+   (2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)) +
+   (2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    + 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    - 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)
+    + 2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ1 / 2) * cos (θ1 / 2)) +
+  (- sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) +
+   2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)))
+  = (- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+        (sin ξ * (2 * sin (θ2 / 2) * cos(θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+ (sin ξ * sin θ2)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+- (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) / (sin ξ * sin θ2))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+     * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) +
+   sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+    / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) 
+   + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) by lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)* sin (θ2 / 2)
+  = 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   -2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*sin (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) -
+  2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²) +
+ (2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²) -
+ (2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+  2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²) -
+ (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) +
+ (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²) -
+ (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) *
+  (cos (θ1 / 2))²) +
+ (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2))²) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = - sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  + 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+  + 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+  - 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+  + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+  + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+  + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+ = 2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin ξ)²  * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) * 0 + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) +
+ 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+ 2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+ 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) +
+ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = (cos (θ1 / 2) * cos (θ2 / 2) * sin ξ) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite (Rmult_assoc ((- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2)))).
+rewrite (Rmult_assoc (cos (θ1 * / 2) * cos (θ2 * / 2) * sin ξ)).
+rewrite Rinv_r.
+lca.
+rewrite rm12_eq in eq9. lra.
+assumption. assumption.
+(* third case of zero of rm02 *)
+rewrite Rplus_0_r.
+apply Rltb_le_false in eq8.
+apply Rltb_le_false in eq9.
+assert (rm12 θ1 ξ θ2 = 0) by lra.
+rewrite rm02_eq in H.
+rewrite rm12_eq in H6.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7.
+rewrite H6 in H7.
+rewrite <- Rsqr_mult in H7.
+assert (0² + 0² = 0).
+unfold Rsqr. lra.
+rewrite H8 in H7.
+apply Rplus_eq_R0 in H7.
+destruct H7.
+apply Rsqr_eq_0 in H7.
+rewrite <- rm20_eq in H7. lra.
+apply Rle_0_sqr. apply Rle_0_sqr.
+}
+(* when rm20 < 0 and rm21 < 0 *)
+destruct (0 <? rm02 θ1 ξ θ2) eqn:eq6.
+apply Rltb_lt in eq6.
+{
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) - PI + atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))
+  = -(PI - (atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2)))) by lra.
+rewrite H. clear H.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin.
+rewrite rm12_cos.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_neg.
+assert ((-
+   (- (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+    ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /
+     √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²)) -
+    - (sin ξ * sin θ1) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+    (sin ξ * sin θ2 / √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²))))
+ =    (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+    ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /
+     √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²))
+    - (sin ξ * sin θ1) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+    (sin ξ * sin θ2 / √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²))) by lra.
+rewrite H. clear H.
+assert ((-
+  (- (sin ξ * sin θ1) /
+   √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+   ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /
+    √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²)) +
+   - (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) /
+   √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+   (sin ξ * sin θ2 / √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²))))
+ = ((sin ξ * sin θ1) /
+   √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+   ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /
+    √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²)) +
+    (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) /
+   √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²) *
+   (sin ξ * sin θ2 / √ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²)))) by lra.
+rewrite H. clear H.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+   rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+  rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+(* when rm02 < 0 and rm20 < 0 *)
+destruct (rm02 θ1 ξ θ2 <? 0) eqn:eq7.
+destruct (0 <=? rm12 θ1 ξ θ2) eqn:eq8.
+{
+apply Rltb_lt in eq7.
+apply Rleb_le in eq8.
+assert ( (atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) - PI + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) + PI))
+    = ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))))) by lra.
+rewrite H. clear H.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_neg.
+rewrite <- Rsqr_neg.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((- rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+   - rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((- rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+  - rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+(* when rm02 = 0 and rm20 < 0 *)
+{
+apply Rltb_lt in eq7.
+apply Rleb_lt_false in eq8.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) - PI + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) - PI))
+    =  (- (PI + (PI - ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2)))))))) by lra.
+rewrite H. clear H.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Ropp_involutive.
+rewrite Ropp_involutive.
+rewrite cos_plus.
+rewrite sin_plus.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+rewrite <- (rm20_eq θ1 ξ θ2).
+rewrite <- (rm02_eq θ1 ξ θ2).
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- Rsqr_neg.
+rewrite <- Rsqr_neg.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H.
+assert ((- rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) -
+   - rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+   (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+ = ((rm20_minus θ1 ξ θ2) * (rm02 θ1 ξ θ2) - (rm21 θ1 ξ θ2)
+               * (rm12 θ1 ξ θ2)) / ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+assert ((- rm21 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (- rm02 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) +
+  - rm20_minus θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) *
+  (- rm12 θ1 ξ θ2 / √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)))%R
+  =
+(rm21 θ1 ξ θ2 * rm02 θ1 ξ θ2 + rm20_minus θ1 ξ θ2 * rm12 θ1 ξ θ2)
+       /((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+autorewrite with R_db.
+assert (((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite Rsqr_sqrt. reflexivity.
+assert (0 <= (rm02 θ1 ξ θ2)²). apply Rle_0_sqr.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra.
+assert (/ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²) = / (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))²).
+rewrite <- H6. reflexivity.
+rewrite H7.
+assert ((√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))² =
+     (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)) * (√ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²))).
+unfold Rsqr. reflexivity.
+rewrite H8.
+rewrite Rinv_mult_distr. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+assert (0 < √ ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+apply sqrt_lt_R0.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²). apply Rle_0_sqr.
+lra. lra.
+rewrite H6. clear H6.
+rewrite rm02_eq. rewrite rm12_eq.
+rewrite Rsqr_mult.
+rewrite sin_cos_q.
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+unfold rm02,rm12,rm21,rm20_minus.
+assert (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+     /\ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) <> 0).
+assert ((Rsqr (sin θ1 * cos θ2 + (cos ξ * cos θ1 * sin θ2)) + Rsqr(sin ξ) * Rsqr (sin θ2)) <> 0).
+assert (0 < (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ)² * (sin θ2)²).
+rewrite <- rm02_eq.
+rewrite <- Rsqr_mult.
+assert (0 < (rm02 θ1 ξ θ2)²).
+rewrite Rsqr_neg.
+apply Rsqr_pos_lt.
+lra.
+assert (0 <= (sin ξ * sin θ2)²) by apply Rle_0_sqr.
+lra. lra.
+rewrite sin_cos_q in H6.
+apply Rmult_neq_0_reg in H6.
+destruct H6.
+apply Rmult_neq_0_reg in H7.
+lra.
+destruct H6.
+assert (((-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) -
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+    (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (((rw θ1 ξ θ2))² - (rz θ1 ξ θ2 )²) * (((rx θ1 ξ θ2))² + (ry θ1 ξ θ2 )²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) =
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) *
+   ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) /
+   (4 *
+    (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+     ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = ((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) / 
+         ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite Rinv_mult_distr.
+rewrite (Rmult_assoc (4 * ((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite (Rmult_comm (((sin (ξ * / 2))² * (sin (θ1 * / 2 + - (θ2 * / 2)))² +
+  (cos (ξ * / 2))² * (sin (θ1 * / 2 + θ2 * / 2))²))).
+rewrite (Rmult_assoc (/ 4)).
+rewrite (Rmult_assoc (/ ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²))).
+rewrite <- Rinv_l_sym.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (((rw θ1 ξ θ2)² + - (rz θ1 ξ θ2)²))).
+rewrite <- (Rmult_assoc 4).
+rewrite Rinv_r.
+lra. lra.
+assumption. assumption. assumption.
+lra.
+apply Rmult_integral_contrapositive.
+split.
+assumption. assumption.
+rewrite H8. clear H8.
+assert (((2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) +
+   (-2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 + 2 * ry θ1 ξ θ2 * rw θ1 ξ θ2) *
+   (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 - 2 * rx θ1 ξ θ2 * rw θ1 ξ θ2))
+  = 4 * (2 * (rw θ1 ξ θ2) * (rz θ1 ξ θ2)) * ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((4 * (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) *
+  ((rx θ1 ξ θ2)² + (ry θ1 ξ θ2)²) /
+  (4 *
+   (((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) *
+    ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))))%R
+ = (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2) / 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite (Rmult_comm 4).
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite (Rmult_comm ((sin (ξ * / 2))² * (cos (θ1 * / 2 + - (θ2 * / 2)))² +
+   (cos (ξ * / 2))² * (cos (θ1 * / 2 + θ2 * / 2))²)).
+rewrite <- (Rmult_assoc 4).
+autorewrite with R_db.
+rewrite Rinv_mult_distr.
+rewrite <- Rmult_assoc.
+rewrite (Rmult_assoc (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2)).
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rinv_r. lra.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+apply Rmult_integral_contrapositive.
+split. lra. assumption.
+assumption.
+rewrite H8. clear H8.
+assert (((rw θ1 ξ θ2)² - (rz θ1 ξ θ2)²) =
+    cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+           - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)).
+unfold rw,rz.
+rewrite Rsqr_mult. rewrite Rsqr_mult.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (cos ξ = cos (2 * (ξ/2))).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite <- H8. reflexivity.
+rewrite H8. clear H8.
+rewrite cos_2a.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) 
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * ((sin (ξ / 2))² + (cos (ξ / 2))²)).
+rewrite sin2_cos2.
+lra.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert (2 * rw θ1 ξ θ2 * rz θ1 ξ θ2 = sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+unfold rw,rz.
+rewrite (Rmult_assoc 2).
+rewrite (Rmult_comm (cos (ξ / 2) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_comm ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc (sin (ξ / 2))).
+rewrite <- (Rmult_assoc 2). rewrite <- (Rmult_assoc 2).
+rewrite <- (Rmult_assoc 2). rewrite <- sin_2a.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H8.
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+  ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * ((cos (θ1 / 2))² * 
+                  (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²))
+   / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+unfold Rsqr. lra.
+rewrite H8. clear H8.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+          ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+   = (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ ((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+   2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) 
+  + (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * 
+       ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 (ξ)). lra.
+rewrite H8. unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+(sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+((cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)) /
+ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))
+   = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) 
+  * sin ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²)
+  - (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+   (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2)))
+  / ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8. clear H8.
+assert (sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+ ((cos (θ1 / 2))² * (cos (θ2 / 2))² - (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ (cos ξ * ((cos (θ1 / 2))² * (cos (θ2 / 2))² + (sin (θ1 / 2))² * (sin (θ2 / 2))²) -
+  2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2))) ).
+rewrite cos_plus. rewrite cos_minus.
+rewrite Rsqr_plus. rewrite Rsqr_minus.
+assert (((sin (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² +
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) +
+ (cos (ξ / 2))² *
+ ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))² -
+  2 * (cos (θ1 / 2) * cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))))
+ = ((sin (ξ / 2))² + (cos (ξ / 2))²) * ((cos (θ1 / 2) * cos (θ2 / 2))² + (sin (θ1 / 2) * sin (θ2 / 2))²)
+   - ((cos (ξ / 2))² - (sin (ξ / 2))²) * 2 * (cos (θ1 / 2) *
+        cos (θ2 / 2)) * (sin (θ1 / 2) * sin (θ2 / 2))) by lra.
+rewrite H8. clear H8.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. 
+rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H8. reflexivity.
+rewrite H8. clear H8.
+unfold Rsqr. lra.
+rewrite <- H8. clear H8.
+autorewrite with R_db.
+rewrite (Rmult_assoc (- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+assumption. assumption. assumption.
+assumption. assumption. assumption.
+}
+(* when rm02 = 0 and rm20 < 0 *)
+{
+apply Rltb_le_false in eq6. 
+apply Rltb_le_false in eq7.
+assert (rm02 θ1 ξ θ2 = 0) by lra.
+destruct (0 <? rm12 θ1 ξ θ2) eqn:eq8.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) - PI + PI / 2)
+   = -(PI / 2 - atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2))) by lra.
+rewrite H6. clear H6.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_shift. rewrite sin_shift.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_neg.
+rewrite rm02_eq in H.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H6.
+rewrite H.
+assert (√ (0² + (sin ξ * sin θ2)²) = sin ξ * sin θ2).
+assert (0² = 0).
+unfold Rsqr. lra.
+rewrite H7.
+autorewrite with R_db.
+rewrite  sqrt_Rsqr.
+reflexivity.
+apply Rltb_lt in eq8. rewrite rm12_eq in eq8.
+lra.
+rewrite H7. clear H7.
+assert ((- (- (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (sin ξ * sin θ2)))%R 
+  = (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (sin ξ * sin θ2)%R) by lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+rewrite <- rm20_eq.
+assert (rm20_minus θ1 ξ θ2 =
+       2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     - 2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+     - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)).
+unfold rm20_minus, rx,ry,rz,rw.
+rewrite <- sin_plus. rewrite <- sin_minus.
+rewrite <- cos_plus. rewrite <- cos_minus.
+assert (-2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) * (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))
+  = -2 * (sin (ξ / 2))² * ((sin (θ1 / 2 - θ2 / 2) * cos (θ1 / 2 - θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) * (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))
+   = 2 * (cos (ξ / 2))² * ((sin (θ1 / 2 + θ2 / 2) * cos (θ1 / 2 + θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite sin_plus. rewrite sin_minus.
+rewrite cos_plus. rewrite cos_minus.
+assert (-2 * (sin (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+2 * (cos (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+   = 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+          (cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+            -sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+     2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) *
+        (sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+              sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) by lra.
+rewrite H7. clear H7.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H7. reflexivity.
+rewrite H7. lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (- (sin ξ * sin θ1) / (sin ξ * sin θ2)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+  (sin ξ * sin θ2))
+  = ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * sin θ1)
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert (sin θ1 = 2 * sin (θ1 / 2) * cos (θ1 / 2)).
+rewrite <- sin_2a.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H7. reflexivity.
+rewrite H7. clear H7.
+rewrite <- rm02_eq in H.
+rewrite rm02_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) = 
+     2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+      2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) 
+     - 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ  * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+   -  2 * sin ξ  * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+   = 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2) -
+   (2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)) +
+   (2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    + 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    - 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)
+    + 2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ1 / 2) * cos (θ1 / 2)) +
+  (- sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) +
+   2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)))
+  = (- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+        (sin ξ * (2 * sin (θ2 / 2) * cos(θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+ (sin ξ * sin θ2)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+(- (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))) / (sin ξ * sin θ2))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+     * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) +
+   sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+    / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) 
+   + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) by lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)* sin (θ2 / 2)
+  = 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   -2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*sin (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) -
+  2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²) +
+ (2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²) -
+ (2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+  2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²) -
+ (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) +
+ (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²) -
+ (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) *
+  (cos (θ1 / 2))²) +
+ (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2))²) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = - sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  + 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+  + 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+  - 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+  + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+  + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+  + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+ = 2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin ξ)²  * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq9.
+rewrite <- eq9. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) * 0 + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) +
+ 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+ 2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+ 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) +
+ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = (cos (θ1 / 2) * cos (θ2 / 2) * sin ξ) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7. clear H7.
+apply Rltb_lt in eq8.
+autorewrite with R_db.
+rewrite (Rmult_assoc ((- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2)))).
+rewrite (Rmult_assoc (cos (θ1 * / 2) * cos (θ2 * / 2) * sin ξ)).
+rewrite Rinv_r.
+lca.
+rewrite rm12_eq in eq8. lra.
+assumption. assumption.
+(* the mirror case of the above *)
+destruct (rm12 θ1 ξ θ2 <? 0) eqn:eq9.
+apply Rltb_lt in eq9.
+assert ((atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2) - PI + - PI / 2)
+   = -(PI / 2 - (-(PI - atan (rm21 θ1 ξ θ2 / rm20_minus θ1 ξ θ2))))) by lra.
+rewrite H6. clear H6.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_shift. rewrite sin_shift.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Ropp_involutive.
+rewrite rm21_sin_neg.
+rewrite rm21_cos_neg.
+rewrite <- Rsqr_neg.
+assert ((-
+   (- (sin ξ * sin θ1) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)))%R
+ = ((sin ξ * sin θ1) /
+    √ ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²))%R) by lra.
+rewrite H6. clear H6.
+rewrite rm02_eq in H.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H6.
+rewrite H.
+assert (√ (0² + (sin ξ * sin θ2)²) = - sin ξ * sin θ2).
+assert (0² = 0).
+unfold Rsqr. lra.
+rewrite H7.
+autorewrite with R_db.
+rewrite Rsqr_neg.
+rewrite  sqrt_Rsqr.
+reflexivity.
+rewrite rm12_eq in eq9.
+lra.
+rewrite H7. clear H7.
+assert ((sin ξ * sin θ1 / (- sin ξ * sin θ2))
+    = - (sin ξ * sin θ1 / (sin ξ * sin θ2))).
+autorewrite with R_db.
+rewrite <- Ropp_inv_permute. lra.
+rewrite rm12_eq in eq9. lra.
+rewrite H7. clear H7.
+assert ( (- (cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (- sin ξ * sin θ2))
+  = ((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2) / (sin ξ * sin θ2))).
+autorewrite with R_db.
+rewrite <- Ropp_inv_permute. lra.
+rewrite rm12_eq in eq9. lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+rewrite <- rm20_eq.
+assert (rm20_minus θ1 ξ θ2 =
+       2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     - 2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+     + 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+     - 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)).
+unfold rm20_minus, rx,ry,rz,rw.
+rewrite <- sin_plus. rewrite <- sin_minus.
+rewrite <- cos_plus. rewrite <- cos_minus.
+assert (-2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) * (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))
+  = -2 * (sin (ξ / 2))² * ((sin (θ1 / 2 - θ2 / 2) * cos (θ1 / 2 - θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) * (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))
+   = 2 * (cos (ξ / 2))² * ((sin (θ1 / 2 + θ2 / 2) * cos (θ1 / 2 + θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite sin_plus. rewrite sin_minus.
+rewrite cos_plus. rewrite cos_minus.
+assert (-2 * (sin (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))) +
+2 * (cos (ξ / 2))² *
+((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+ (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+   = 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²) *
+          (cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+            -sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+     2 * ((cos (ξ / 2))² - (sin (ξ / 2))²) *
+        (sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+              sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) by lra.
+rewrite H7. clear H7.
+rewrite sin2_cos2.
+assert (((cos (ξ / 2))² - (sin (ξ / 2))²) = cos ξ).
+unfold Rsqr. rewrite <- cos_2a.
+assert (2 * (ξ / 2) = ξ) by lra.
+rewrite H7. reflexivity.
+rewrite H7. lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ - (sin ξ * sin θ1 / (sin ξ * sin θ2)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+  (sin ξ * sin θ2))
+  = ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * sin θ1)
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))) / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert (sin θ1 = 2 * sin (θ1 / 2) * cos (θ1 / 2)).
+rewrite <- sin_2a.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H7. reflexivity.
+rewrite H7. clear H7.
+rewrite <- rm02_eq in H.
+rewrite rm02_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) = 
+     2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+      2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) 
+     - 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ  * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+   -  2 * sin ξ  * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1 / 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+   = 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ  * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2 / 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (cos (θ2 / 2))² * cos (θ2 / 2) -
+   (2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * (sin (θ2 / 2))² * cos (θ2 / 2)) +
+   (2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+     (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    + 2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    - 2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)
+    + 2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ1 / 2) * cos (θ1 / 2)) +
+  (- sin ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+   2 * sin ξ * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * sin ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) +
+   2 * sin ξ * cos ξ * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * cos ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)))
+  = (- sin (θ1 / 2) * sin (θ2 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) * 
+        (sin ξ * (2 * sin (θ2 / 2) * cos(θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) / 
+ (sin ξ * sin θ2)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+- (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)) / (sin ξ * sin θ2))
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+     * (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) +
+   sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+    / (sin ξ * sin θ2)) by lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (2 * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) +
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2))
+ = 2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   - 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) 
+   + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+  sin (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)) by lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   - 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+  = 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+   - 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+assert ((sin (θ2 / 2))² = 1 - (cos (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)* sin (θ2 / 2)
+  = 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+   -2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²).
+assert ((sin (θ1 / 2))² = 1 - (cos (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * sin (θ1 / 2)*sin (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*cos (θ2 / 2)*cos (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)*sin (θ2 / 2)*sin (θ2 / 2)
+  = 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * (sin (θ1 / 2))² * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) -
+  2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * (sin (θ2 / 2))²) +
+ (2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²) -
+ (2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+  2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * (sin (θ1 / 2))²) -
+ (2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) +
+ (2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) * (cos (θ1 / 2))²) -
+ (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) *
+  (cos (θ1 / 2))²) +
+ (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) *
+  (cos (θ2 / 2))²) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = - sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+   (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))² +
+    2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  + 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   -2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2)
+  + 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos (θ2 / 2) *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2)
+  - 2 * cos ξ * sin (θ1 / 2)  * cos (θ1 / 2) * cos (θ1 / 2)  * cos (θ2 / 2)
+  + 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2)  * sin (θ2 / 2) * cos (θ2 / 2)
+  - 2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+  + 2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+  + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+assert (2 * cos ξ * cos ξ * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)
+ = 2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+   2 * (sin ξ)²  * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos ξ * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+ = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+   -  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)).
+assert ((sin ξ)² = 1 - (cos ξ)²).
+specialize (sin2_cos2 ξ) as eq10.
+rewrite <- eq10. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((- sin (θ1 / 2) * sin (θ2 / 2) * 0 + cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ2 / 2) * cos (θ1 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ 2 * cos (θ1 / 2) * sin (θ1 / 2) * sin (θ1 / 2) * sin (θ2 / 2) +
+ 2 * cos ξ * cos (θ1 / 2) * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) -
+ 2 * cos ξ * cos (θ2 / 2) * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) -
+ 2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * cos (θ1 / 2) * cos (θ2 / 2) +
+ 2 * cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+ (2 * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ2 / 2) * cos (θ1 / 2) * cos (θ2 / 2) * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)) +
+ sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))
+ = (cos (θ1 / 2) * cos (θ2 / 2) * sin ξ) * (sin ξ * (2 * sin (θ2 / 2) * cos (θ2 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite (Rmult_assoc ((- (sin (θ1 * / 2) * sin (θ2 * / 2)) + cos ξ * cos (θ1 * / 2) * cos (θ2 * / 2)))).
+rewrite (Rmult_assoc (cos (θ1 * / 2) * cos (θ2 * / 2) * sin ξ)).
+rewrite Rinv_r.
+lca.
+rewrite rm12_eq in eq9. lra.
+assumption. assumption.
+(* third case of zero of rm02 *)
+rewrite Rplus_0_r.
+apply Rltb_le_false in eq8.
+apply Rltb_le_false in eq9.
+assert (rm12 θ1 ξ θ2 = 0) by lra.
+rewrite rm02_eq in H.
+rewrite rm12_eq in H6.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7.
+rewrite H6 in H7.
+rewrite <- Rsqr_mult in H7.
+assert (0² + 0² = 0).
+unfold Rsqr. lra.
+rewrite H8 in H7.
+apply Rplus_eq_R0 in H7.
+destruct H7.
+apply Rsqr_eq_0 in H7.
+rewrite <- rm20_eq in H7. lra.
+apply Rle_0_sqr. apply Rle_0_sqr.
+}
+(* when rm20 = 0 *)
+{
+apply Rltb_le_false in eq3.
+apply Rltb_le_false in eq4.
+assert (rm20_minus θ1 ξ θ2 = 0) by lra.
+destruct (0 <? rm21 θ1 ξ θ2) eqn:eq5.
+apply Rltb_lt in eq5.
+destruct (0 <? rm02 θ1 ξ θ2) eqn:eq6.
+apply Rltb_lt in eq6.
+assert ((PI / 2 + atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))
+   = (PI / 2 - (-atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2)))) by lra.
+rewrite H6. clear H6.
+rewrite sin_shift. rewrite cos_shift.
+rewrite sin_neg. rewrite cos_neg.
+rewrite rm12_sin.
+rewrite rm12_cos.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite Rsqr_mult in H6.
+rewrite <- H6.
+rewrite rm20_eq in H.
+rewrite H.
+assert (√ (0² + (sin ξ)² * (sin θ1)²) = (sin ξ * sin θ1)).
+assert (Rsqr 0 = 0).
+unfold Rsqr. lra.
+rewrite H7.
+rewrite <- Rsqr_mult.
+rewrite Rplus_0_l.
+rewrite sqrt_Rsqr. reflexivity.
+rewrite rm21_eq in eq5. lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ - (sin ξ * sin θ2 / (sin ξ * sin θ1)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1))
+  = (- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * (2 * sin (θ2/2) * cos (θ2/2))
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2))
+           / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * - (sin ξ * sin θ2 / (sin ξ * sin θ1))
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+   * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)
+   + sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2/2) * cos (θ2/2)))
+ / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+rewrite <- rm02_eq.
+rewrite rm02_diff.
+rewrite <- rm20_eq in H.
+rewrite rm20_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+  = 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² 
+    - 2 * sin ξ * sin (θ2 / 2) * Rsqr (cos (θ1 / 2)) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+  = 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * sin (θ2 / 2) * (cos (θ1 / 2))² * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   (2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) +
+   (2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) * (cos (θ1 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    + 2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ2 / 2) * cos (θ2 / 2)) +
+  (2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) +
+   2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+   2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)))
+  = (- sin (θ2 / 2) * sin (θ1 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) *
+     (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_plus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r. 
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+   = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     - (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) *(sin (θ2 / 2))² *  cos (θ1 / 2)))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+   = 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+    - cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))²).
+assert ((sin (θ1/ 2))² = 1 - (cos (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ1 / 2)) -
+ cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²) -
+ (2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+  cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))² -
+  cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²))
+  = - sin (θ1 / 2) * sin (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+     + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     -2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    = 2 * (cos ξ)² *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+      - cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² +
+(cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²)) -
+ (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   cos ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))))
+  = cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+    (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) 
+    - 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² 
+    - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    + 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     = 2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+        - 2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+    - 2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+ (2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+ sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2 / 2) * cos (θ2 / 2)))
+  = (sin ξ * cos (θ1 / 2) * cos (θ2 / 2)) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite Rmult_assoc.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+rewrite <- sin_2a.
+assert ((2 * (θ1 * / 2)) = θ1) by lra.
+rewrite H7. clear H7.
+rewrite rm21_eq in eq5. lra.
+assumption. assumption.
+(* when rm02 < 0 *)
+destruct (rm02 θ1 ξ θ2 <? 0) eqn:eq7.
+destruct (0 <=? rm12 θ1 ξ θ2) eqn:eq8.
+apply Rltb_lt in eq7.
+assert ((PI / 2 + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) + PI))
+  = PI + (PI / 2 - (- (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))))) by lra.
+rewrite H6. clear H6.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite sin_shift. rewrite cos_shift.
+rewrite sin_neg. rewrite cos_neg.
+rewrite Ropp_involutive.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite <- Rsqr_neg.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite Rsqr_mult in H6.
+rewrite <- H6.
+rewrite rm20_eq in H.
+rewrite H.
+assert (√ (0² + (sin ξ)² * (sin θ1)²) = (sin ξ * sin θ1)).
+assert (Rsqr 0 = 0).
+unfold Rsqr. lra.
+rewrite H7.
+rewrite <- Rsqr_mult.
+rewrite Rplus_0_l.
+rewrite sqrt_Rsqr. reflexivity.
+rewrite rm21_eq in eq5. lra.
+rewrite H7. clear H7.
+assert ((- (- (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)))%R
+   = (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)%R) by lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (- (sin ξ * sin θ2) / (sin ξ * sin θ1)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1))
+  = (- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * (2 * sin (θ2/2) * cos (θ2/2))
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2))
+           / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (- (sin ξ * sin θ2) / (sin ξ * sin θ1))
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+   * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)
+   + sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2/2) * cos (θ2/2)))
+ / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+rewrite <- rm02_eq.
+rewrite rm02_diff.
+rewrite <- rm20_eq in H.
+rewrite rm20_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+  = 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² 
+    - 2 * sin ξ * sin (θ2 / 2) * Rsqr (cos (θ1 / 2)) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+  = 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * sin (θ2 / 2) * (cos (θ1 / 2))² * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   (2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) +
+   (2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) * (cos (θ1 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    + 2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ2 / 2) * cos (θ2 / 2)) +
+  (2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) +
+   2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+   2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)))
+  = (- sin (θ2 / 2) * sin (θ1 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) *
+     (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_plus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r. 
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+   = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     - (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) *(sin (θ2 / 2))² *  cos (θ1 / 2)))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+   = 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+    - cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))²).
+assert ((sin (θ1/ 2))² = 1 - (cos (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ1 / 2)) -
+ cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²) -
+ (2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+  cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))² -
+  cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²))
+  = - sin (θ1 / 2) * sin (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+     + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     -2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    = 2 * (cos ξ)² *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+      - cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² +
+(cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²)) -
+ (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   cos ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))))
+  = cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+    (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) 
+    - 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² 
+    - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    + 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     = 2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+        - 2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+    - 2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+ (2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+ sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2 / 2) * cos (θ2 / 2)))
+  = (sin ξ * cos (θ1 / 2) * cos (θ2 / 2)) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite Rmult_assoc.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+rewrite <- sin_2a.
+assert ((2 * (θ1 * / 2)) = θ1) by lra.
+rewrite H7. clear H7.
+rewrite rm21_eq in eq5. lra.
+assumption. assumption.
+(* when rm20 = 0 and rm02 < 0 and rm12 < 0. *)
+apply Rltb_lt in eq7.
+assert ((PI / 2 + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) - PI))
+  = - (PI - (PI / 2 - (- (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2)))))) by lra.
+rewrite H6. clear H6.
+rewrite sin_neg. rewrite cos_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite sin_shift. rewrite cos_shift.
+rewrite sin_neg. rewrite cos_neg.
+rewrite Ropp_involutive.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite <- Rsqr_neg.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite Rsqr_mult in H6.
+rewrite <- H6.
+rewrite rm20_eq in H.
+rewrite H.
+assert (√ (0² + (sin ξ)² * (sin θ1)²) = (sin ξ * sin θ1)).
+assert (Rsqr 0 = 0).
+unfold Rsqr. lra.
+rewrite H7.
+rewrite <- Rsqr_mult.
+rewrite Rplus_0_l.
+rewrite sqrt_Rsqr. reflexivity.
+rewrite rm21_eq in eq5. lra.
+rewrite H7. clear H7.
+assert ((- (- (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)))%R
+   = (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)%R) by lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (- (sin ξ * sin θ2) / (sin ξ * sin θ1)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1))
+  = (- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * (2 * sin (θ2/2) * cos (θ2/2))
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2))
+           / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (- (sin ξ * sin θ2) / (sin ξ * sin θ1))
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+   * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)
+   + sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2/2) * cos (θ2/2)))
+ / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+rewrite <- rm02_eq.
+rewrite rm02_diff.
+rewrite <- rm20_eq in H.
+rewrite rm20_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+  = 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² 
+    - 2 * sin ξ * sin (θ2 / 2) * Rsqr (cos (θ1 / 2)) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+  = 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * sin (θ2 / 2) * (cos (θ1 / 2))² * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   (2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) +
+   (2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) * (cos (θ1 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    + 2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ2 / 2) * cos (θ2 / 2)) +
+  (2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) +
+   2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+   2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)))
+  = (- sin (θ2 / 2) * sin (θ1 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) *
+     (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_plus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r. 
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+   = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     - (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) *(sin (θ2 / 2))² *  cos (θ1 / 2)))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+   = 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+    - cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))²).
+assert ((sin (θ1/ 2))² = 1 - (cos (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ1 / 2)) -
+ cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²) -
+ (2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+  cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))² -
+  cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²))
+  = - sin (θ1 / 2) * sin (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+     + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     -2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    = 2 * (cos ξ)² *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+      - cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² +
+(cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²)) -
+ (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   cos ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))))
+  = cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+    (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) 
+    - 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² 
+    - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    + 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     = 2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+        - 2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+    - 2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+ (2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+ sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2 / 2) * cos (θ2 / 2)))
+  = (sin ξ * cos (θ1 / 2) * cos (θ2 / 2)) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite Rmult_assoc.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+rewrite <- sin_2a.
+assert ((2 * (θ1 * / 2)) = θ1) by lra.
+rewrite H7. clear H7.
+rewrite rm21_eq in eq5. lra.
+assumption. assumption.
+(* when rm20 = 0 and rm02 = 0*)
+apply Rltb_le_false in eq6.
+apply Rltb_le_false in eq7.
+assert (rm02 θ1 ξ θ2 = 0) by lra.
+destruct (0 <? rm12 θ1 ξ θ2) eqn:eq8.
+apply Rltb_lt in eq8.
+assert ((PI / 2 + PI / 2) = PI) by lra.
+rewrite H7. clear H7. 
+rewrite cos_PI. rewrite sin_PI.
+rewrite Cmult_c.
+rewrite Rmult_0_r. rewrite Rmult_0_r.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7. rewrite H6 in H7.
+assert ((rm21 θ1 ξ θ2)² = (rm12 θ1 ξ θ2)²) by lra.
+apply Rsqr_inj in H8.
+assert (eq10 := eq8).
+assert (eq9 := eq5).
+rewrite rm12_eq in eq10. rewrite rm21_eq in eq9.
+assert (sin ξ * sin θ2 <> 0) by lra.
+assert (sin ξ * sin θ1 <> 0) by lra.
+apply Rmult_neq_0_reg in H9.
+apply Rmult_neq_0_reg in H10.
+destruct H9. destruct H10.
+unfold rm21,rm12 in H8.
+assert (2 * rx θ1 ξ θ2 * rw θ1 ξ θ2 = 0) by lra.
+unfold rx,rw in H13.
+assert ((2 * sin (ξ / 2) * cos (ξ / 2)) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+                  (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)) = 0) by lra.
+rewrite <- sin_2a in H14.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H15 in H14.
+apply Rmult_integral in H14.
+destruct H14.
+apply Rmult_integral in H14.
+destruct H14. lra.
+assert (rx θ1 ξ θ2 = 0).
+unfold rx. rewrite H14. lra.
+unfold rm02 in H6.
+assert ((ry θ1 ξ θ2)*(rw θ1 ξ θ2) = 0).
+rewrite H16 in H6. lra.
+unfold ry,rw in H17.
+assert (cos (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+      (cos (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+  = (cos (ξ / 2))² * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))
+        * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))).
+unfold Rsqr. lra.
+rewrite H18 in H17. clear H18.
+apply Rmult_integral in H17.
+destruct H17.
+apply Rmult_integral in H17.
+destruct H17.
+apply Rsqr_eq_0 in H17.
+assert (sin ξ = 2 * sin (ξ/2) * cos (ξ/2)).
+rewrite <- sin_2a. assert  (2 * (ξ / 2) = ξ) by lra. 
+rewrite H18. reflexivity.
+rewrite H18 in H9. rewrite H17 in H9. lra.
+unfold rm12 in eq8.
+assert (ry θ1 ξ θ2 = 0).
+unfold ry. rewrite H17. lra.
+rewrite H18 in eq8. rewrite H16 in eq8.
+lra.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H18.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H18. lca.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H16.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H16. lca.
+lra. lra.
+destruct (rm12 θ1 ξ θ2 <? 0) eqn:eq9.
+apply Rltb_lt in eq9.
+assert ((PI / 2 + - PI / 2) = 0) by lra.
+rewrite H7. clear H7.
+rewrite sin_0. rewrite cos_0.
+rewrite Cmult_c.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7. rewrite H6 in H7.
+assert ((rm21 θ1 ξ θ2)² = (rm12 θ1 ξ θ2)²) by lra.
+rewrite (Rsqr_neg (rm12 θ1 ξ θ2)) in H8. 
+apply Rsqr_inj in H8.
+assert (eq10 := eq9).
+assert (eq11 := eq5).
+rewrite rm12_eq in eq10. rewrite rm21_eq in eq11.
+assert (sin ξ * sin θ2 <> 0) by lra.
+assert (sin ξ * sin θ1 <> 0) by lra.
+apply Rmult_neq_0_reg in H9.
+apply Rmult_neq_0_reg in H10.
+destruct H9. destruct H10.
+unfold rm21,rm12 in H8.
+assert (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 = 0) by lra.
+unfold ry,rz in H13.
+assert ((2 * sin (ξ / 2) * cos (ξ / 2)) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+                  (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)) = 0) by lra.
+rewrite <- sin_2a in H14.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H15 in H14.
+apply Rmult_integral in H14.
+destruct H14.
+apply Rmult_integral in H14.
+destruct H14. lra.
+assert (ry θ1 ξ θ2 = 0).
+unfold ry. rewrite H14. lra.
+unfold rm02 in H6.
+assert (rx θ1 ξ θ2 * rz θ1 ξ θ2 = 0).
+rewrite H16 in H6. lra.
+unfold rx,rz in H17.
+assert (sin (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+      (sin (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))
+  = (sin (ξ / 2))² * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))
+        * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))).
+unfold Rsqr. lra.
+rewrite H18 in H17. clear H18.
+apply Rmult_integral in H17.
+destruct H17.
+apply Rmult_integral in H17.
+destruct H17.
+apply Rsqr_eq_0 in H17.
+assert (sin ξ = 2 * sin (ξ/2) * cos (ξ/2)).
+rewrite <- sin_2a. assert  (2 * (ξ / 2) = ξ) by lra. 
+rewrite H18. reflexivity.
+rewrite H18 in H9. rewrite H17 in H9. lra.
+unfold rm12 in eq9.
+assert (rx θ1 ξ θ2 = 0).
+unfold rx. rewrite H17. lra.
+rewrite H18 in eq9. rewrite H16 in eq9.
+lra.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = - sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H18.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H18. lca.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = - sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H16.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H16. lca.
+lra. lra.
+apply Rltb_le_false in eq8.
+apply Rltb_le_false in eq9.
+assert (rm12 θ1 ξ θ2 = 0) by lra.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H8. rewrite H6 in H8.
+rewrite H7 in H8.
+assert ((rm21 θ1 ξ θ2)² = 0).
+unfold Rsqr in H8.
+unfold Rsqr. lra.
+apply Rsqr_eq_0 in H9. lra.
+
+(* when rm20 = 0, rm 21 < 0. *)
+destruct (rm21 θ1 ξ θ2 <? 0) eqn:eq6.
+destruct (0 <? rm02 θ1 ξ θ2) eqn:eq7.
+apply Rltb_lt in eq7.
+apply Rltb_lt in eq6.
+assert ((- PI / 2 + atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2))
+   = -(PI / 2 - (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2)))) by lra.
+rewrite H6. clear H6.
+rewrite sin_neg. rewrite cos_neg.
+rewrite sin_shift. rewrite cos_shift.
+rewrite rm12_sin.
+rewrite rm12_cos.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite Rsqr_mult in H6.
+rewrite <- H6.
+rewrite rm20_eq in H.
+rewrite H.
+assert (√ (0² + (sin ξ)² * (sin θ1)²) = -(sin ξ * sin θ1)).
+assert (Rsqr 0 = 0).
+unfold Rsqr. lra.
+rewrite H7.
+rewrite <- Rsqr_mult.
+rewrite Rsqr_neg.
+rewrite Rplus_0_l.
+rewrite sqrt_Rsqr. reflexivity.
+rewrite rm21_eq in eq6. lra.
+rewrite H7. clear H7.
+assert ((sin ξ * sin θ2 / - (sin ξ * sin θ1))%R = - (sin ξ * sin θ2) / (sin ξ * sin θ1)).
+autorewrite with R_db. rewrite <- Ropp_inv_permute. lra.
+rewrite rm21_eq in eq6. lra.
+assert ((- ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / - (sin ξ * sin θ1)))%R
+  =  ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) /(sin ξ * sin θ1))%R).
+autorewrite with R_db. rewrite <- Ropp_inv_permute. lra.
+rewrite rm21_eq in eq6. lra.
+rewrite H7. rewrite H8. clear H7. clear H8.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (- (sin ξ * sin θ2) / (sin ξ * sin θ1)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1))
+  = (- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * (2 * sin (θ2/2) * cos (θ2/2))
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2))
+           / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+assert (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (- (sin ξ * sin θ2) / (sin ξ * sin θ1)))
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+   * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)
+   + sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2/2) * cos (θ2/2)))
+ / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+rewrite <- rm02_eq.
+rewrite rm02_diff.
+rewrite <- rm20_eq in H.
+rewrite rm20_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+  = 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² 
+    - 2 * sin ξ * sin (θ2 / 2) * Rsqr (cos (θ1 / 2)) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+  = 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * sin (θ2 / 2) * (cos (θ1 / 2))² * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   (2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) +
+   (2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) * (cos (θ1 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    + 2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ2 / 2) * cos (θ2 / 2)) +
+  (2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) +
+   2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+   2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)))
+  = (- sin (θ2 / 2) * sin (θ1 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) *
+     (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_plus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r. 
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+   = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     - (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) *(sin (θ2 / 2))² *  cos (θ1 / 2)))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+   = 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+    - cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))²).
+assert ((sin (θ1/ 2))² = 1 - (cos (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ1 / 2)) -
+ cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²) -
+ (2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+  cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))² -
+  cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²))
+  = - sin (θ1 / 2) * sin (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+     + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     -2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    = 2 * (cos ξ)² *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+      - cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² +
+(cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²)) -
+ (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   cos ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))))
+  = cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+    (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) 
+    - 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² 
+    - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    + 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     = 2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+        - 2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+    - 2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+ (2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+ sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2 / 2) * cos (θ2 / 2)))
+  = (sin ξ * cos (θ1 / 2) * cos (θ2 / 2)) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite Rmult_assoc.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+rewrite <- sin_2a.
+assert ((2 * (θ1 * / 2)) = θ1) by lra.
+rewrite H7. clear H7.
+rewrite rm21_eq in eq6. lra.
+assumption. assumption.
+(* when rm20 = 0 , and rm02 < 0 and rm21 < 0 *)
+apply Rltb_lt in eq6.
+destruct (rm02 θ1 ξ θ2 <? 0) eqn:eq8.
+destruct (0 <=? rm12 θ1 ξ θ2) eqn:eq9.
+apply Rltb_lt in eq8.
+assert ((-PI / 2 + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) + PI))
+  = PI - (PI / 2 - (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2)))) by lra.
+rewrite H6. clear H6.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite sin_shift. rewrite cos_shift.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite <- Rsqr_neg.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite Rsqr_mult in H6.
+rewrite <- H6.
+rewrite rm20_eq in H.
+rewrite H.
+assert (√ (0² + (sin ξ)² * (sin θ1)²) = -(sin ξ * sin θ1)).
+assert (Rsqr 0 = 0).
+unfold Rsqr. lra.
+rewrite H7.
+rewrite <- Rsqr_mult.
+rewrite Rsqr_neg.
+rewrite Rplus_0_l.
+rewrite sqrt_Rsqr. reflexivity.
+rewrite rm21_eq in eq6. lra.
+rewrite H7. clear H7.
+assert ((- (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / - (sin ξ * sin θ1))%R
+   = (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)%R).
+autorewrite with R_db. rewrite <- Ropp_inv_permute. lra.
+rewrite rm21_eq in eq6. lra.
+rewrite H7. clear H7.
+assert ((- (- (sin ξ * sin θ2) / - (sin ξ * sin θ1)))%R = (- (sin ξ * sin θ2) / (sin ξ * sin θ1))).
+autorewrite with R_db. rewrite <- Ropp_inv_permute. lra.
+rewrite rm21_eq in eq6. lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (- (sin ξ * sin θ2) / (sin ξ * sin θ1)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1))
+  = (- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * (2 * sin (θ2/2) * cos (θ2/2))
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2))
+           / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (- (sin ξ * sin θ2) / (sin ξ * sin θ1))
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+   * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)
+   + sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2/2) * cos (θ2/2)))
+ / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+rewrite <- rm02_eq.
+rewrite rm02_diff.
+rewrite <- rm20_eq in H.
+rewrite rm20_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+  = 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² 
+    - 2 * sin ξ * sin (θ2 / 2) * Rsqr (cos (θ1 / 2)) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+  = 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * sin (θ2 / 2) * (cos (θ1 / 2))² * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   (2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) +
+   (2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) * (cos (θ1 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    + 2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ2 / 2) * cos (θ2 / 2)) +
+  (2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) +
+   2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+   2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)))
+  = (- sin (θ2 / 2) * sin (θ1 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) *
+     (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_plus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r. 
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+   = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     - (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) *(sin (θ2 / 2))² *  cos (θ1 / 2)))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+   = 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+    - cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))²).
+assert ((sin (θ1/ 2))² = 1 - (cos (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ1 / 2)) -
+ cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²) -
+ (2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+  cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))² -
+  cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²))
+  = - sin (θ1 / 2) * sin (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+     + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     -2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    = 2 * (cos ξ)² *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+      - cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² +
+(cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²)) -
+ (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   cos ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))))
+  = cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+    (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) 
+    - 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² 
+    - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    + 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     = 2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+        - 2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+    - 2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+ (2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+ sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2 / 2) * cos (θ2 / 2)))
+  = (sin ξ * cos (θ1 / 2) * cos (θ2 / 2)) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite Rmult_assoc.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+rewrite <- sin_2a.
+assert ((2 * (θ1 * / 2)) = θ1) by lra.
+rewrite H7. clear H7.
+rewrite rm21_eq in eq6. lra.
+assumption. assumption.
+(* when rm20 = 0 and rm02 < 0 and rm12 < 0. *)
+apply Rltb_lt in eq8.
+assert ((- PI / 2 + (atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2) - PI))
+  = - (PI + (PI / 2 - ((atan (rm12 θ1 ξ θ2 / rm02 θ1 ξ θ2)))))) by lra.
+rewrite H6. clear H6.
+rewrite sin_neg. rewrite cos_neg.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite sin_shift. rewrite cos_shift.
+rewrite Ropp_involutive.
+rewrite rm12_sin_neg.
+rewrite rm12_cos_neg.
+rewrite <- Rsqr_neg.
+assert (((cos θ1 * sin θ2 + cos ξ * sin θ1 * cos θ2)² + (sin ξ)² * (sin θ1)²)
+  = ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)² + (sin ξ * sin θ2)²)).
+rewrite <- rm02_eq.
+rewrite <- (rm12_eq θ1 ξ θ2).
+rewrite <- rm20_eq.
+rewrite <- Rsqr_mult.
+rewrite <- (rm21_eq θ1 ξ θ2).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite Rsqr_mult in H6.
+rewrite <- H6.
+rewrite rm20_eq in H.
+rewrite H.
+assert (√ (0² + (sin ξ)² * (sin θ1)²) = -(sin ξ * sin θ1)).
+assert (Rsqr 0 = 0).
+unfold Rsqr. lra.
+rewrite H7.
+rewrite <- Rsqr_mult.
+rewrite Rsqr_neg.
+rewrite Rplus_0_l.
+rewrite sqrt_Rsqr. reflexivity.
+rewrite rm21_eq in eq6. lra.
+rewrite H7. clear H7.
+assert (((- (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / -(sin ξ * sin θ1)))%R
+   = (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)%R).
+autorewrite with R_db. rewrite <- Ropp_inv_permute. lra.
+rewrite rm21_eq in eq6. lra.
+rewrite H7. clear H7.
+assert ((- (- (sin ξ * sin θ2) / - (sin ξ * sin θ1)))%R = (- (sin ξ * sin θ2) / (sin ξ * sin θ1))).
+autorewrite with R_db. rewrite <- Ropp_inv_permute. lra.
+rewrite rm21_eq in eq6. lra.
+rewrite H7. clear H7.
+rewrite Cmult_c.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+ (- (sin ξ * sin θ2) / (sin ξ * sin θ1)) -
+ - sin ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+ ((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1))
+  = (- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ * (2 * sin (θ2/2) * cos (θ2/2))
+     + sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2))
+           / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+assert ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+((sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2) / (sin ξ * sin θ1)) +
+- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (- (sin ξ * sin θ2) / (sin ξ * sin θ1))
+ = ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))
+   * (sin θ1 * cos θ2 + cos ξ * cos θ1 * sin θ2)
+   + sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2/2) * cos (θ2/2)))
+ / (sin ξ * (2 * sin (θ1/2) * cos (θ1/2)))).
+rewrite <- sin_2a. rewrite <- sin_2a.
+assert ((2 * (θ2 / 2)) = θ2) by lra.
+rewrite H7.
+assert ((2 * (θ1 / 2)) = θ1) by lra.
+rewrite H8.
+lra.
+rewrite H7. clear H7.
+rewrite <- rm02_eq.
+rewrite rm02_diff.
+rewrite <- rm20_eq in H.
+rewrite rm20_diff in H.
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_plus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+rewrite (Rmult_minus_distr_l (sin ξ * sin (θ1 / 2) * sin (θ2 / 2))).
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+  = 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² 
+    - 2 * sin ξ * sin (θ2 / 2) * Rsqr (cos (θ1 / 2)) * cos (θ1 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+  = 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2)
+    - 2 * sin ξ * Rsqr (sin (θ1 / 2)) * cos (θ1 / 2) * sin (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * Rsqr (cos (θ1 / 2)) * sin (θ1 / 2) * cos (θ2 / 2) * Rsqr (cos (θ2 / 2))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2 / 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+  = 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * Rsqr (sin (θ2 / 2)) * cos (θ2 / 2) * (cos (θ1 / 2))²).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1 / 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * sin (θ2 / 2) * (cos (θ1 / 2))² * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   (2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) -
+    2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) * (cos (θ2 / 2))²) +
+   (2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) * (cos (θ2 / 2))²) -
+   (2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) -
+    2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2) * (cos (θ1 / 2))²))
+  = - sin ξ * cos (θ1 / 2) * cos (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²
+    - 2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2)
+    + 2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2)
+    - 2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite H.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert ((- (cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) * sin ξ *
+  (2 * sin (θ2 / 2) * cos (θ2 / 2)) +
+  (2 * sin ξ * sin (θ2 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+   2 * sin ξ * (sin (θ1 / 2))² * cos (θ1 / 2) * sin (θ2 / 2) +
+   2 * sin ξ * cos ξ * (cos (θ1 / 2))² * sin (θ1 / 2) * cos (θ2 / 2) -
+   2 * sin ξ * cos ξ * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ2 / 2)))
+  = (- sin (θ2 / 2) * sin (θ1 / 2) + cos ξ * cos (θ1 / 2) * cos (θ2 / 2)) *
+     (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra. 
+rewrite H7. clear H7.
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_plus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite (Rmult_minus_distr_l ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)))).
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r. 
+rewrite Rmult_minus_distr_r. rewrite Rmult_minus_distr_r.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²)
+   = 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     - (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) *(sin (θ2 / 2))² *  cos (θ1 / 2)))).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+   = 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²
+    - cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))²).
+assert ((sin (θ1/ 2))² = 1 - (cos (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ cos (θ1 / 2) * cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))² * cos (θ1 / 2)) -
+ cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))²) -
+ (2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+  cos (θ2 / 2) * (2 * sin (θ1 / 2) * (sin (θ2 / 2))²) * (sin (θ1 / 2))² -
+  cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²))
+  = - sin (θ1 / 2) * sin (θ2 / 2) *
+     (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+     + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2)
+     -2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))²).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+   = 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²).
+assert ((cos (θ2/ 2))² = 1 - (sin (θ2/ 2))²).
+specialize (sin2_cos2 (θ2 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))
+    = 2 * (cos ξ)² *  sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+      - cos ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))).
+assert ((cos (θ1/ 2))² = 1 - (sin (θ1/ 2))²).
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+rewrite Rmult_0_r. rewrite Rplus_0_l.
+assert (2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² +
+(cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+   2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) * (cos (θ2 / 2))²)) -
+ (cos (θ1 / 2) * cos (θ2 / 2) * (2 * cos ξ * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2)) -
+  (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+   cos ξ * sin (θ1 / 2) * sin (θ2 / 2) *
+   (2 * cos ξ * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2))))
+  = cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 
+    (2 * (cos (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) -
+    2 * (sin (θ1 / 2))² * sin (θ2 / 2) * cos (θ2 / 2) +
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (cos (θ2 / 2))² -
+    2 * cos ξ * sin (θ1 / 2) * cos (θ1 / 2) * (sin (θ2 / 2))²)
+    + 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) 
+    - 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² 
+    - 2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+    + 2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+unfold Rsqr. lra.
+rewrite H7. clear H7. rewrite H.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+     = 2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)
+        - 2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert (2 * (cos ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+   = 2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)
+    - 2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)).
+assert ((cos ξ)² = 1 - (sin ξ)²).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite <- eqa. lra. rewrite H7. unfold Rsqr. lra.
+rewrite H7. clear H7.
+assert ((cos ξ * cos (θ1 / 2) * cos (θ2 / 2) * 0 +
+ 2 * cos (θ1 / 2) * cos (θ2 / 2) * sin (θ1 / 2) * cos (θ1 / 2) -
+ 2 * sin (θ1 / 2) * cos (θ2 / 2) * (sin (θ2 / 2))² -
+ (2 * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * (cos (θ1 / 2))² * cos (θ2 / 2)) +
+ (2 * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2) -
+  2 * (sin ξ)² * sin (θ1 / 2) * sin (θ2 / 2) * sin (θ2 / 2) * cos (θ2 / 2)) +
+ sin ξ * sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * (2 * sin (θ2 / 2) * cos (θ2 / 2)))
+  = (sin ξ * cos (θ1 / 2) * cos (θ2 / 2)) * (sin ξ * (2 * sin (θ1 / 2) * cos (θ1 / 2)))).
+unfold Rsqr. lra.
+rewrite H7. clear H7.
+autorewrite with R_db.
+rewrite Rmult_assoc.
+rewrite (Rmult_assoc (sin ξ * cos (θ1 * / 2) * cos (θ2 * / 2))).
+rewrite Rinv_r.
+lca.
+rewrite <- sin_2a.
+assert ((2 * (θ1 * / 2)) = θ1) by lra.
+rewrite H7. clear H7.
+rewrite rm21_eq in eq6. lra.
+assumption. assumption.
+(* when rm20 = 0 and rm02 = 0*)
+apply Rltb_le_false in eq7.
+apply Rltb_le_false in eq8.
+assert (rm02 θ1 ξ θ2 = 0) by lra.
+destruct (0 <? rm12 θ1 ξ θ2) eqn:eq9.
+apply Rltb_lt in eq9.
+assert ((- PI / 2 + PI / 2) = 0) by lra.
+rewrite H7. clear H7. 
+rewrite cos_0. rewrite sin_0.
+rewrite Cmult_c.
+rewrite Rmult_0_r. rewrite Rmult_0_r.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7. rewrite H6 in H7.
+assert ((rm21 θ1 ξ θ2)² = (rm12 θ1 ξ θ2)²) by lra.
+rewrite Rsqr_neg in H8.
+apply Rsqr_inj in H8.
+assert (eq10 := eq9).
+assert (eq11 := eq6).
+rewrite rm12_eq in eq10. rewrite rm21_eq in eq11.
+assert (sin ξ * sin θ2 <> 0) by lra.
+assert (sin ξ * sin θ1 <> 0) by lra.
+apply Rmult_neq_0_reg in H9.
+apply Rmult_neq_0_reg in H10.
+destruct H9. destruct H10.
+unfold rm21,rm12 in H8.
+assert (2 * ry θ1 ξ θ2 * rz θ1 ξ θ2 = 0) by lra.
+unfold ry,rz in H13.
+assert ((2 * sin (ξ / 2) * cos (ξ / 2)) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+                  (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)) = 0) by lra.
+rewrite <- sin_2a in H14.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H15 in H14.
+apply Rmult_integral in H14.
+destruct H14.
+apply Rmult_integral in H14.
+destruct H14. lra.
+assert (ry θ1 ξ θ2 = 0).
+unfold ry. rewrite H14. lra.
+unfold rm02 in H6.
+assert (rx θ1 ξ θ2 * rz θ1 ξ θ2 = 0).
+rewrite H16 in H6. lra.
+unfold rx,rz in H17.
+assert (sin (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+      (sin (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))
+  = (sin (ξ / 2))² * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))
+        * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))).
+unfold Rsqr. lra.
+rewrite H18 in H17. clear H18.
+apply Rmult_integral in H17.
+destruct H17.
+apply Rmult_integral in H17.
+destruct H17.
+apply Rsqr_eq_0 in H17.
+assert (sin ξ = 2 * sin (ξ/2) * cos (ξ/2)).
+rewrite <- sin_2a. assert  (2 * (ξ / 2) = ξ) by lra. 
+rewrite H18. reflexivity.
+rewrite H18 in H9. rewrite H17 in H9. lra.
+unfold rm12 in eq9.
+assert (rx θ1 ξ θ2 = 0).
+unfold rx. rewrite H17. lra.
+rewrite H18 in eq9. rewrite H16 in eq9.
+lra.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = - sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H18.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H18. lca.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = - sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H16.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H16. lca.
+lra. lra.
+(* when rm12 < 0, rm 21 < 0 rm20 = 0*)
+destruct (rm12 θ1 ξ θ2 <? 0) eqn:eq10.
+apply Rltb_lt in eq10.
+assert ((- PI / 2 + - PI / 2) = - PI) by lra.
+rewrite H7. clear H7.
+rewrite sin_neg. rewrite cos_neg.
+rewrite sin_PI. rewrite cos_PI.
+rewrite Cmult_c.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7. rewrite H6 in H7.
+assert ((rm21 θ1 ξ θ2)² = (rm12 θ1 ξ θ2)²) by lra.
+rewrite Rsqr_neg in H8.
+rewrite (Rsqr_neg (rm12 θ1 ξ θ2)) in H8.
+apply Rsqr_inj in H8.
+assert (rm21 θ1 ξ θ2 = rm12 θ1 ξ θ2) as HA8  by lra.
+assert (eq11 := eq10).
+assert (eq12 := eq6).
+rewrite rm12_eq in eq11. rewrite rm21_eq in eq12.
+assert (sin ξ * sin θ2 <> 0) by lra.
+assert (sin ξ * sin θ1 <> 0) by lra.
+apply Rmult_neq_0_reg in H9.
+apply Rmult_neq_0_reg in H10.
+destruct H9. destruct H10.
+unfold rm21,rm12 in H8.
+assert (2 * rx θ1 ξ θ2 * rw θ1 ξ θ2 = 0) by lra.
+unfold rx,rw in H13.
+assert ((2 * sin (ξ / 2) * cos (ξ / 2)) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+                  (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)) = 0) by lra.
+rewrite <- sin_2a in H14.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H15 in H14.
+apply Rmult_integral in H14.
+destruct H14.
+apply Rmult_integral in H14.
+destruct H14. lra.
+assert (rx θ1 ξ θ2 = 0).
+unfold rx. rewrite H14. lra.
+unfold rm02 in H6.
+assert ((ry θ1 ξ θ2)*(rw θ1 ξ θ2) = 0).
+rewrite H16 in H6. lra.
+unfold ry,rw in H17.
+assert (cos (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)) *
+      (cos (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)))
+  = (cos (ξ / 2))² * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))
+        * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))).
+unfold Rsqr. lra.
+rewrite H18 in H17. clear H18.
+apply Rmult_integral in H17.
+destruct H17.
+apply Rmult_integral in H17.
+destruct H17.
+apply Rsqr_eq_0 in H17.
+assert (sin ξ = 2 * sin (ξ/2) * cos (ξ/2)).
+rewrite <- sin_2a. assert  (2 * (ξ / 2) = ξ) by lra. 
+rewrite H18. reflexivity.
+rewrite H18 in H9. rewrite H17 in H9. lra.
+unfold rm12 in eq10.
+assert (ry θ1 ξ θ2 = 0).
+unfold ry. rewrite H17. lra.
+rewrite H18 in eq10. rewrite H16 in eq10.
+lra.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H18.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H18. lca.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H16.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H16. lca.
+lra. lra.
+apply Rltb_le_false in eq9.
+apply Rltb_le_false in eq10.
+assert (rm12 θ1 ξ θ2 = 0) by lra.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H8. rewrite H6 in H8.
+rewrite H7 in H8.
+assert ((rm21 θ1 ξ θ2)² = 0).
+unfold Rsqr in H8.
+unfold Rsqr. lra.
+apply Rsqr_eq_0 in H9. lra.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+(* when rm20 = 0, rm21 = 0*)
+assert (rm21 θ1 ξ θ2 = 0) by lra.
+destruct (0 <? rm02 θ1 ξ θ2) eqn:eq7.
+apply Rltb_lt in eq7.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7. rewrite H6 in H7.
+assert (0 < (rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²).
+assert (0 < (rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²) by apply Rle_0_sqr.
+lra.
+rewrite <- H7 in H8. unfold Rsqr in H8. lra.
+destruct (rm02 θ1 ξ θ2 <? 0) eqn:eq8.
+apply Rltb_lt in eq8.
+destruct (0 <=? rm12 θ1 ξ θ2) eqn:eq9.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7. rewrite H6 in H7.
+rewrite (Rsqr_neg ((rm02 θ1 ξ θ2))) in H7.
+assert (0 < (-rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²).
+assert (0 < (-rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²) by apply Rle_0_sqr.
+lra.
+rewrite <- H7 in H8. unfold Rsqr in H8. lra.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H7. rewrite H6 in H7.
+rewrite (Rsqr_neg ((rm02 θ1 ξ θ2))) in H7.
+assert (0 < (-rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²).
+assert (0 < (-rm02 θ1 ξ θ2)²).
+apply Rsqr_pos_lt. lra.
+assert (0 <= (rm12 θ1 ξ θ2)²) by apply Rle_0_sqr.
+lra.
+rewrite <- H7 in H8. unfold Rsqr in H8. lra.
+apply Rltb_le_false in eq7.
+apply Rltb_le_false in eq8.
+assert (rm02 θ1 ξ θ2 = 0) by lra.
+destruct (0 <? rm12 θ1 ξ θ2) eqn:eq9.
+apply Rltb_lt in eq9.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H8. rewrite H6 in H8. rewrite H7 in H8.
+assert ((rm12 θ1 ξ θ2)² = 0).
+unfold Rsqr in H8. unfold Rsqr. lra.
+apply Rsqr_eq_0 in H9. lra.
+destruct (rm12 θ1 ξ θ2 <? 0) eqn:eq10.
+apply Rltb_lt in eq10.
+assert (((rm20_minus θ1 ξ θ2)² + (rm21 θ1 ξ θ2)²) = ((rm02 θ1 ξ θ2)² + (rm12 θ1 ξ θ2)²)).
+unfold rm02,rm12,rm20_minus,rm21.
+unfold Rsqr. lra.
+rewrite H in H8. rewrite H6 in H8. rewrite H7 in H8.
+assert ((rm12 θ1 ξ θ2)² = 0).
+unfold Rsqr in H8. unfold Rsqr. lra.
+apply Rsqr_eq_0 in H9. lra.
+apply Rltb_le_false in eq9.
+apply Rltb_le_false in eq10.
+assert (rm12 θ1 ξ θ2 = 0) by lra.
+rewrite Rplus_0_r.
+rewrite cos_0. rewrite sin_0.
+rewrite Cmult_c.
+unfold rm21 in H6.
+unfold rm12 in H8.
+assert(2 * rx θ1 ξ θ2 * rw θ1 ξ θ2 = 0) by lra.
+assert (2 * rx θ1 ξ θ2 * rw θ1 ξ θ2 = 
+    2 * sin (ξ / 2) * cos (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))
+    * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))).
+unfold rx,rw. lra.
+rewrite H10 in H9. clear H10.
+rewrite <- sin_2a in H9.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H10 in H9. clear H10.
+apply Rmult_integral in H9.
+destruct H9.
+apply Rmult_integral in H9.
+destruct H9.
+assert (cos ξ = 1 \/ cos ξ = -1).
+specialize (sin2_cos2 ξ) as eqa.
+rewrite H9 in eqa.
+assert ((cos ξ)² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in eqa. lra.
+apply Rsqr_eq in H10. assumption.
+destruct H10.
+rewrite H9. rewrite H10.
+lca.
+unfold rm20_minus in H. unfold rm02 in H7.
+assert (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 = 0) by lra.
+assert (2 * rx θ1 ξ θ2 * rz θ1 ξ θ2 = 2 * (sin (ξ / 2))² * 
+        (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)) *
+        (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))).
+unfold rx,rz,Rsqr. lra. rewrite H12 in H11.
+apply Rmult_integral in H11.
+destruct H11.
+apply Rmult_integral in H11.
+destruct H11.
+apply Rmult_integral in H11.
+destruct H11. lra.
+assert (cos ξ = 1).
+assert (ξ = 2 * (ξ/2)) by lra.
+rewrite H13.
+rewrite cos_2a.
+assert (((cos (ξ / 2))²) = 1).
+specialize (sin2_cos2 (ξ / 2)) as eqa.
+rewrite H11 in eqa. lra.
+unfold Rsqr in H14. rewrite H14.
+unfold Rsqr in H11. rewrite H11.
+lra. lra.
+rewrite H9. rewrite H10.
+assert (((cos (ξ / 2))²) = 0 /\ (((sin (ξ / 2))²) = 1)).
+assert (ξ = 2 * (ξ / 2)) by lra.
+rewrite H13 in H10.
+rewrite cos_2a in H10.
+specialize (sin2_cos2 (ξ / 2)) as eqa.
+unfold Rsqr in eqa.
+assert (cos (ξ / 2) * cos (ξ / 2) = 0) by lra.
+split. unfold Rsqr. assumption.
+rewrite H14 in eqa.
+unfold Rsqr. lra.
+destruct H13.
+assert (rm22 θ1 ξ θ2 = 1).
+unfold rm22,rx,ry.
+apply Rsqr_eq_0 in H13.
+rewrite H13. rewrite H11. lra.
+apply Rltb_lt in eq1. lra.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = - sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+rewrite H9. rewrite H10.
+rewrite H13.
+lca.
+assert (rx θ1 ξ θ2 = 0).
+unfold rx. rewrite H9. lra.
+unfold rm02 in H7.
+assert (ry θ1 ξ θ2 * rw θ1 ξ θ2 = 0).
+rewrite H10 in H7. lra.
+assert (ry θ1 ξ θ2 * rw θ1 ξ θ2 = Rsqr (cos (ξ/2))
+              * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))
+              * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))).
+unfold ry,rw,Rsqr. lra.
+rewrite H12 in H11.
+apply Rmult_integral in H11.
+destruct H11.
+apply Rmult_integral in H11.
+destruct H11.
+assert (rm22 θ1 ξ θ2 = 1).
+unfold rm22. rewrite H10.
+apply Rsqr_eq_0 in H11. unfold ry.
+rewrite H11. lra.
+apply Rltb_lt in eq1. lra.
+assert (rm22 θ1 ξ θ2 = 1).
+unfold rm22. rewrite H10.
+unfold ry.
+rewrite H11. lra.
+apply Rltb_lt in eq1. lra.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H13.
+assert (ry θ1 ξ θ2 * rz θ1 ξ θ2 = 0) by lra.
+unfold ry,rz in H14.
+apply Rmult_integral in H14.
+destruct H14.
+apply Rmult_integral in H14.
+destruct H14.
+assert (rm22 θ1 ξ θ2 = 1).
+unfold rm22. rewrite H10.
+unfold ry.
+rewrite H14. lra.
+apply Rltb_lt in eq1. lra.
+assert (rm22 θ1 ξ θ2 = 1).
+unfold rm22. rewrite H10.
+unfold ry.
+rewrite H14. lra.
+apply Rltb_lt in eq1. lra.
+apply Rmult_integral in H14.
+destruct H14.
+assert (ξ = 2 * (ξ / 2)) by lra.
+assert (sin ξ = 0).
+rewrite H15. rewrite sin_2a.
+rewrite H14. lra.
+assert (cos  ξ = 1).
+specialize (sin2_cos2 (ξ / 2)) as H17.
+rewrite H14 in H17.
+unfold Rsqr in H17.
+rewrite H15.
+rewrite cos_2a. rewrite H14.
+lra.
+rewrite H16. rewrite H17.
+lca.
+assert (sin (θ1 / 2) * sin (θ2 / 2) = 0) by lra.
+rewrite (Rmult_comm (sin (θ2 / 2))).
+rewrite (Rmult_assoc (cos ξ )).
+rewrite (Rmult_assoc (-sin ξ )).
+rewrite H15. lca.
+rewrite (Cmult_comm (cos ξ, sin ξ)).
+rewrite (Cmult_assoc (cos (θ2 / 2))).
+rewrite (Cmult_comm (cos (θ2 / 2))).
+rewrite <- RtoC_mult.
+rewrite <- RtoC_mult.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+rewrite H10.
+assert (rw θ1 ξ θ2 = 0).
+unfold rw. rewrite H9. lra.
+assert (ry θ1 ξ θ2 * rz θ1 ξ θ2 = 0) by lra.
+unfold rm02 in H7.
+assert (rx θ1 ξ θ2 * rz θ1 ξ θ2 = 0).
+rewrite H11 in H7. lra.
+apply Rmult_integral in H12.
+apply Rmult_integral in H13.
+destruct H12. destruct H13.
+assert (rm22  θ1 ξ θ2 = 1).
+unfold rm22. rewrite H12. rewrite H13.
+lra. apply Rltb_lt in eq1. lra.
+unfold ry in H12. unfold rz in H13.
+apply Rmult_integral in H12.
+apply Rmult_integral in H13.
+destruct H12. destruct H13.
+specialize (sin2_cos2 (ξ / 2)) as H14.
+rewrite H12 in H14. rewrite H13 in H14.
+unfold Rsqr in H14. lra.
+assert (sin (θ1 / 2) * sin (θ2 / 2) = 0) by lra.
+rewrite (Rmult_comm (sin (θ2 / 2))).
+rewrite (Rmult_assoc (cos ξ )).
+rewrite (Rmult_assoc (-sin ξ )).
+rewrite H14. lca.
+destruct H13.
+assert (ξ = 2 * (ξ / 2)) by lra.
+assert (sin ξ = 0).
+rewrite H14. rewrite sin_2a.
+rewrite H13. lra.
+assert (cos  ξ = 1).
+specialize (sin2_cos2 (ξ / 2)) as H17.
+rewrite H13 in H17.
+unfold Rsqr in H17.
+rewrite H14.
+rewrite cos_2a. rewrite H13.
+lra.
+rewrite H15. rewrite H16.
+lca.
+assert (sin (θ1 / 2) * sin (θ2 / 2) = 0) by lra.
+rewrite (Rmult_comm (sin (θ2 / 2))).
+rewrite (Rmult_assoc (cos ξ )).
+rewrite (Rmult_assoc (-sin ξ )).
+rewrite H14. lca.
+destruct H13.
+unfold rx in H13. unfold rz in H12.
+apply Rmult_integral in H12.
+apply Rmult_integral in H13.
+destruct H12. destruct H13.
+assert (ξ = 2 * (ξ / 2)) by lra.
+assert (sin ξ = 0).
+rewrite H14. rewrite sin_2a.
+rewrite H13. lra.
+assert (cos  ξ = 1).
+specialize (sin2_cos2 (ξ / 2)) as H17.
+rewrite H13 in H17.
+unfold Rsqr in H17.
+rewrite H14.
+rewrite cos_2a. rewrite H13.
+lra.
+rewrite H15. rewrite H16.
+lca.
+assert (ξ = 2 * (ξ / 2)) by lra.
+assert (sin ξ = 0).
+rewrite H14. rewrite sin_2a.
+rewrite H12. lra.
+assert (cos  ξ = 1).
+specialize (sin2_cos2 (ξ / 2)) as H17.
+rewrite H12 in H17.
+unfold Rsqr in H17.
+rewrite H14.
+rewrite cos_2a. rewrite H12.
+lra.
+rewrite H15. rewrite H16.
+lca.
+assert (sin (θ1 / 2) * sin (θ2 / 2) = 0) by lra.
+rewrite (Rmult_comm (sin (θ2 / 2))).
+rewrite (Rmult_assoc (cos ξ )).
+rewrite (Rmult_assoc (-sin ξ )).
+rewrite H14. lca.
+unfold rz in H12.
+apply Rmult_integral in H12.
+destruct H12. 
+assert (ξ = 2 * (ξ / 2)) by lra.
+assert (sin ξ = 0).
+rewrite H14. rewrite sin_2a.
+rewrite H12. lra.
+assert (cos  ξ = 1).
+specialize (sin2_cos2 (ξ / 2)) as H17.
+rewrite H12 in H17.
+unfold Rsqr in H17.
+rewrite H14.
+rewrite cos_2a. rewrite H12.
+lra.
+rewrite H15. rewrite H16.
+lca.
+assert (sin (θ1 / 2) * sin (θ2 / 2) = 0) by lra.
+rewrite (Rmult_comm (sin (θ2 / 2))).
+rewrite (Rmult_assoc (cos ξ )).
+rewrite (Rmult_assoc (-sin ξ )).
+rewrite H14. lca.
+}
+- (* when sin (acos (rm22 θ1 ξ θ2) / 2) =
+      - √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *)
+
 Admitted.
+
 
 (*
  autorewrite with R_db C_db Cexp_db trig_db.
