@@ -8,12 +8,17 @@ This repository is split into two parts: SQIR and VOQC. If you are interested in
 
 ## Table of Contents
 
+* [Notes for Artifact Evaluation](#notes-for-artifact-evaluation)
 * [Compilation](#compilation)
   * [Coq](#coq)
   * [OCaml](#ocaml)
 * [SQIR Directory Contents](#sqir-directory-contents)
 * [VOQC Directory Contents](#voqc-directory-contents)
 * [Acknowledgements](#acknowledgements)
+
+## Notes for Artifact Evaluation
+
+TODO
 
 ## Compilation
 
@@ -109,11 +114,7 @@ Instructions for running VOQC on the benchmarks presented in our paper can be fo
 
 This project is the result of the efforts of many people. The primary contacts for this project are Kesha Hietala (<kesha@cs.umd.edu>) and Robert Rand (<rand@uchicago.edu>). Other contributors include:
 * Akshaj Gaur
-* Aaron Green
 * Shih-Han Hung
-* Liyi Li
-* Yuxiang Peng
 * Kartik Singhal
-* Runzhou Tao
 
 This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040.

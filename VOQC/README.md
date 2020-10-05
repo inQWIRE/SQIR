@@ -16,7 +16,7 @@ VOQC currently supports the following gates:
 
 rzq is a non-standard gate that we have defined specifically for VOQC. rzq(num,den) performs a rotation about the z-axis by ((num /den) * pi) for integers num and den. We have defined the gate this way to avoid floating point numbers, which significantly complicate verification. Gates of the form rz(f * pi) are automatically converted into our rzq form by converting the float f to its rational representation.
 
-The Coq source code for our optimizer is in src/. The code for extracting our Coq optimizations to OCaml (and optionally wrapping in a C library) is in extraction/. interop/ contains code for calling VOQC functions from Python (see below).
+The Coq source code for our optimizer is in src/. The code for extracting our Coq optimizations to OCaml (and optionally wrapping in a C library) is in extraction/.
 
 ## Compilation
 
@@ -59,26 +59,4 @@ Time to write out: 0.000758s
 VOQC reports, in order: total gate count, number of z-axis rotation gates, number of Clifford gate (= rotations by multiples of PI/2), number of T gates, number of H gates, number of X gates, and number of CNOT gates.
 
 A script for running VOQC on all the benchmarks presented in our paper is available in the [benchmarks](benchmarks) directory.
-
-## Using the VOQC Library in Python
-
-The voqc.py file in the interop/ directory provides a wrapper around the VOQC library functions. Here is an example of using it.
-
-```
-from interop.voqc import SQIR
-
-# load circuit
-c = SQIR("benchmarks/VOQC-benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
-
-# run a single optimization (in this case, X propagation)
-c.not_propagation()
-
-# run all optimizations
-c.optimize()
-
-# write the optimized file
-c.write("out.qasm")
-```
-
-The run_voqc.py file in the current directory provides a wrapper about the voqc.py library and should have the same behavior as the VOQC executable described above.
 
