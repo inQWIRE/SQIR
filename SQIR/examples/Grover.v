@@ -2,7 +2,8 @@ Require Import UnitaryOps.
 Require Import Utilities.
 Require Import QWIRE.Dirac.
 
-Require Import Coq.Reals.Ratan.
+(* Note: this file requires the version of Ratan in Coq >= 8.12.0 *)
+Require Import Coq.Reals.Ratan. 
 
 Local Open Scope ucom_scope.
 

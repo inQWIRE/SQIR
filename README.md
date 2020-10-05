@@ -1,16 +1,33 @@
-# SQIR
+# SQIR & VOQC
 
-## Overview
+SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an IR in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its main application is as an IR in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
+We describe SQIR and VOQC in [this draft](https://arxiv.org/abs/1912.02250). Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
 
-We describe SQIR and VOQC in [this draft](https://arxiv.org/abs/1912.02250). A preliminary version of this work was presented at QPL 2019 and an updated version was presented at PLanQC 2020.
+This repository is split into two parts: SQIR and VOQC. If you are interested in formal verification of quantum programs, you should focus on the SQIR directory (we also recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html)). If you are interested in our verified compiler then take a look at the VOQC directory.
 
-Our repository is split into two parts: SQIR and VOQC. If you are interested in verification of quantum programs, you should focus on the SQIR directory (we also recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html)). If you are interested in our verified compiler then take a look at the VOQC directory.
+## Table of Contents
+
+* [Compilation](#compilation)
+  * [Coq](#coq)
+  * [OCaml](#ocaml)
+* [SQIR Directory Contents](#sqir-directory-contents)
+* [VOQC Directory Contents](#voqc-directory-contents)
+* [Acknowledgements](#acknowledgements)
 
 ## Compilation
 
-**If you want to compile the VOQC optimizer, follow the directions below.** 
+The bulk of this respository is Coq proofs about quantum programs and program transformations. Our verified program transformations can be *extracted* to OCaml to produce executable code. If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'.
+
+### Coq
+
+Dependencies:
+  * OCaml version >= 4.08.1
+  * Coq version >= 8.10.1
+
+Run `make` to compile the core files of SQIR, `make optimizer` to compile proofs about VOQC, and `make examples` to compile proofs of correctness for small quantum programs. Use `make all` to compile everything. Our proofs are resource intensive so expect `make all` to take a little while. On a Macbook Pro running Coq version 8.12.0 and OCaml version 4.10.0 compilation takes around 30 minutes.
+
+### OCaml
 
 Dependencies:
   * OCaml version >= 4.08.1 
@@ -18,17 +35,9 @@ Dependencies:
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
   * batteries (`opam install batteries`)
-  * OCaml OpenQASM parser (`opam install openQASM`)
+  * OpenQASM parser (`opam install openQASM`)
 
-`make voqc` will produce an executable in VOQC/_build/default. See [the README in the VOQC directory](VOQC/README.md) for instructions on how to run the optimizer.
-
-**If you want to compile our Coq proofs, follow the directions below.**
-
-Dependencies:
-  * OCaml version 4.08.1
-  * Coq version 8.10.1
-
-Run `make` to compile the core files of SQIR, `make optimizer` to compile proofs about the circuit optimizer, and `make examples` to compile proofs of correctness for small quantum programs. Use `make all` to compile everything. The development has been tested with Coq version 8.10.1 and OCaml version 4.08.1 on a MacBook Pro. Our proofs are resource intensive, so expect `make all` to take around an hour. We have experienced memory errors on some Linux machines, we are working to resolve this.
+For convenience, we have already performed extraction from Coq to OCaml; the extracted files are in VOQC/extraction/ml. `make voqc` will produce an executable in VOQC/_build/default. See [the README in the VOQC directory](VOQC/README.md) for instructions on how to run the optimizer.
 
 ## SQIR Directory Contents
 
@@ -54,7 +63,7 @@ Examples of verifying correctness properties of simple SQIR programs.
 - examples/GHZ.v : GHZ state prepatation
 - examples/Grover.v : Grover's algorithm (requires Coq version >= 8.12)
 - examples/QPE.v : Quantum phase estimation (simplified)
-- examples/QPEGeneral.v : Quantum phase estimation (general) -- this file is not built by default to minimize SQIR's depedencies; see notes at the top of the file.
+- examples/QPEGeneral.v : Quantum phase estimation (general) -- this file is not built by default to minimize SQIR's dependencies; see notes at the top of that file
 - examples/Simon.v : Simon's algorithm
 - examples/Superdense.v : Superdense coding
 - examples/Teleport.v : Quantum teleportation
@@ -97,5 +106,14 @@ Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and
 Instructions for running VOQC on the benchmarks presented in our paper can be found in [the README in the benchmarks directory](VOQC/benchmarks/README.md).
 
 ## Acknowledgements
+
+This project is the result of the efforts of many people. The primary contacts for this project are Kesha Hietala (<kesha@cs.umd.edu>) and Robert Rand (<rand@uchicago.edu>). Other contributors include:
+* Akshaj Gaur
+* Aaron Green
+* Shih-Han Hung
+* Liyi Li
+* Yuxiang Peng
+* Kartik Singhal
+* Runzhou Tao
 
 This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040.
