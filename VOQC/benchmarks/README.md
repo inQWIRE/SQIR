@@ -8,7 +8,9 @@ The benchmarks we use are in the [VOQC-benchmarks repository](https://github.com
 
 In the top (`../..`) directory, run `make voqc`. This will compile the OCaml code we have extracted from the verified Coq code. If you have modified the Coq code, then be sure to run `make optimizer` first. To run the optimizer, run `dune exec --root .. -- ./voqc.exe -i <prog> -o <out>`, which will optimize program prog and write the optimized result to out. It will print the initial and final gate counts. `--root ..` is needed because the voqc executable is built in the parent directory. We also support a command line option `-n <N>` that specifies a number of iterations to consider in the resource count and an option '-l' that indicates whether to use a "light" version of the optimizer that excludes rotation merging.
 
-To run VOQC on all the benchmarks run `./run_voqc.sh`. This will take several hours and will create the files Arithmetic_and_Toffoli_results.csv, PF_results.csv and QFT_and_Adders.csv.
+To generate the data in our paper (which runs a variety of optimizers on a subset of the full benchmark suite) use the `run_bench.sh` script. It requires PyZX, Qiskit, and tket to be appropriately installed (see below).
+
+To run the full version of VOQC on *all* the benchmarks run `./run_voqc.sh`. Some of the benchmarks are quite large, so this will take a while (~48 hours on a Macbook Pro running macOS Catalina with OCaml 4.10.0). This script creates files Arithmetic_and_Toffoli_results.csv, PF_results.csv, and QFT_and_Adders.csv to summarize results.
 
 ## Other Optimizers
 

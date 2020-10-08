@@ -58,5 +58,5 @@ Time to write out: 0.000758s
 ```
 VOQC reports, in order: total gate count, number of z-axis rotation gates, number of Clifford gate (= rotations by multiples of PI/2), number of T gates, number of H gates, number of X gates, and number of CNOT gates.
 
-A script for running VOQC on all the benchmarks presented in our paper is available in the [benchmarks](benchmarks) directory.
+Scripts for running VOQC on the benchmarks presented in our paper are available in the [benchmarks](benchmarks) directory.
 
