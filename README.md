@@ -2,7 +2,7 @@
 
 SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation (IR) in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-We describe SQIR and its use in VOQC in our draft [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250). We discuss verifying SQIR programs in [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240). Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
+We describe SQIR and its use in VOQC in our draft [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250). We present details on verifying SQIR programs in our draft [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240). Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
 
 This repository is split into two parts: SQIR and VOQC. If you are interested in formal verification of quantum programs, you should focus on the SQIR directory (we also recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html)). If you are interested in our verified compiler then take a look at the VOQC directory.
 
@@ -43,11 +43,14 @@ As discussed at the end of Section 6 in the VOQC paper, during extraction we tru
   * The GHZ example is in SQIR/examples/GHZ.v (see the `GHZ` program and `GHZ_correct` lemma).
   * The teleport example is in SQIR/examples/Teleport.v (see the `teleport` program and `teleport_correct` lemma in the DensityTeleport module).
 * **Section 4 - Optimizing Unitary SQIR Programs**
-  * *TODO*
+  * The list representation of unitary SQIR programs is in VOQC/src/UnitaryListRepresentation.v (`gate_list`). This file also defines several operations over the list representation (e.g. `next_single_qubit_gate`) and equivalence between list programs (`uc_equiv_l`), all parameterized by input gate set. The semantics of a list program is computed by converting it to a SQIR program (`eval`).
+  * The gate set we use in VOQC is defined in VOQC/src/RzQGateSet.v (`RzQ_Unitary`).
+  * The entry point for our unitary optimizations is the `optimize` function in VOQC/src/Optimize.v. Our main correctness property is `optimize_sound`, which relies on `*_sound` lemmas about each of the component optimizations.
 * **Section 5 - Other Verified Transformations**
-  * *TODO*
+  * The list representation of non-unitary SQIR programs is in VOQC/src/NonUnitaryListRepresentation.v (`com_list`).
+  * As with the unitary optimizations, each non-unitary optimization has an associated `*_sound` lemma that shows that the transformation is semantics-preserving. The mapping transformations also have an associated `*_respects_constraints` lemma that shows that the output program satisfies architecture constraints.
 * **Section 6 - Experimental Evaluation**
-  * *TODO*
+  * Our code for extracting from Coq to OCaml is in VOQC/extraction. See the READMEs in VOQC and VOQC/benchmarks for instructions on how to run our optimizer on the benchmarks in our paper. In summary: you can generate the data in Tables 2-3 using the *TODO* script in the VOQC/benchmarks directory. You can generate the data in Appendix C using the `run_voqc.sh` script in VOQC/benchmarks (although this will take a long time due to the size of the benchmarks).
 
 ## Compilation
 
