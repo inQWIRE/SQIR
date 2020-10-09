@@ -2,7 +2,7 @@
 
 ## Overview
 
-This README contains instructions for compiling and running the VOQC optimizer.
+This README contains general instructions for compiling and running the VOQC optimizer. For instructions on running VOQC on the benchmarks in the VOQC paper, see [benchmarks/README.md](benchmarks/README.md).
 
 VOQC currently supports the following gates:
 * t, tdg
@@ -21,7 +21,7 @@ The Coq source code for our optimizer is in src/. The code for extracting our Co
 ## Compilation
 
 Dependencies:
-  * OCaml version 4.08.1 
+  * OCaml version >= 4.08.1 
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
   * batteries (`opam install batteries`)

@@ -2,11 +2,13 @@
 
 SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation (IR) in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-We describe SQIR and its use in VOQC in our draft [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250). We discuss verifying SQIR programs in [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240). Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
+We describe SQIR and its use in VOQC in our draft [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250). We present details on verifying SQIR programs in our draft [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240). Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
 
 This repository is split into two parts: SQIR and VOQC. If you are interested in formal verification of quantum programs, you should focus on the SQIR directory (we also recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html)). If you are interested in our verified compiler then take a look at the VOQC directory.
 
 ## Table of Contents
+
+The bulk of this respository is Coq proofs about quantum programs and program transformations. Our verified program transformations can be *extracted* to OCaml to produce executable code. 
 
 * [Notes for Artifact Evaluation](#notes-for-artifact-evaluation)
   * [VirtualBox Image](#virtualbox-image)
@@ -22,7 +24,7 @@ This repository is split into two parts: SQIR and VOQC. If you are interested in
 
 ## Notes for Artifact Evaluation
 
-If you would like to build our code on your machine, compilation intructions are under [Compilation](#compilation) below. However, we recommend using our included VirtualBox image (see below) to save time. The contents of this repository are summarized in [Directory Contents](#directory-contents). For instructions on how to run the VOQC optimizer, see the [README in the VOQC sub-directory](VOQC/README.md). (TLDR; cd into the VOQC/benchmarks directory and run *TODO* to reproduce the results in Tables 2-3 of our paper.)
+If you would like to build our code on your machine, compilation intructions are under [Compilation](#compilation) below. Alternatively, use our included VirtualBox image (see below), which may save time. The contents of this repository are summarized in [Directory Contents](#directory-contents). For instructions on how to run the VOQC optimizer, see the [README in the VOQC sub-directory](VOQC/README.md). (TLDR; cd into the VOQC/benchmarks directory and run *TODO* to reproduce the results in Tables 2-3 of our paper.)
 
 ### VirtualBox Image
 
@@ -30,11 +32,11 @@ The VirtualBox image *TODO* contains precompiled versions of all of our Coq code
 
 ### Trusted Code
 
-There are no assumptions or axioms in the SQIR repository. However, we do use Coq's well-understood `functional_extensionality` axiom and we reuse [QWIRE](https://github.com/inQWIRE/QWIRE)'s libraries for matrices and complex numbers, which contain some axioms (detailed in Section 10 of Robert's [thesis](https://repository.upenn.edu/edissertations/3175/)).
+There are no assumptions or axioms in the SQIR repository. However, we do use Coq's well-understood `functional_extensionality` axiom and we reuse [QWIRE](https://github.com/inQWIRE/QWIRE)'s libraries for matrices and complex numbers, which contain some axioms (detailed in Section 10 of Rand's [thesis](https://repository.upenn.edu/edissertations/3175/)).
 
-As discussed at the end of Section 6 in the VOQC paper, during extraction we trust that the OCaml implementation of rational numbers, maps and sets is consistent with Coq’s, and our translation between OpenQASM and SQIR is unverified.
+As discussed at the end of Section 6 in the VOQC paper, we trust that the OCaml implementations of rational numbers, maps, and sets, used by the extracted code, are consistent with Coq’s. We also note that our translation between OpenQASM and SQIR is not formally verified.
 
-### Correspondence with Paper
+### Correspondence with the VOQC paper
 
 * **Section 3 - SQIR: A Small Quantum Intermediate Representation**
   * The definition of the SQIR language is in SQIR/src/SQIR.v (in particular, see the `ucom` and `com` types).
@@ -43,15 +45,18 @@ As discussed at the end of Section 6 in the VOQC paper, during extraction we tru
   * The GHZ example is in SQIR/examples/GHZ.v (see the `GHZ` program and `GHZ_correct` lemma).
   * The teleport example is in SQIR/examples/Teleport.v (see the `teleport` program and `teleport_correct` lemma in the DensityTeleport module).
 * **Section 4 - Optimizing Unitary SQIR Programs**
-  * *TODO*
+  * The list representation of unitary SQIR programs is in VOQC/src/UnitaryListRepresentation.v (`gate_list`). This file also defines several operations over the list representation (e.g. `next_single_qubit_gate`) and equivalence between list programs (`uc_equiv_l`), all parameterized by input gate set. The semantics of a list program is computed by converting it to a SQIR program (`eval`).
+  * The gate set we use in VOQC is defined in VOQC/src/RzQGateSet.v (`RzQ_Unitary`).
+  * The entry point for our unitary optimizations is the `optimize` function in VOQC/src/Optimize.v. Our main correctness property is `optimize_sound`, which relies on `*_sound` lemmas about each of the component optimizations.
 * **Section 5 - Other Verified Transformations**
-  * *TODO*
+  * The list representation of non-unitary SQIR programs is in VOQC/src/NonUnitaryListRepresentation.v (`com_list`).
+  * As with the unitary optimizations, each non-unitary optimization has an associated `*_sound` lemma that shows that the transformation is semantics-preserving. The mapping transformations also have an associated `*_respects_constraints` lemma that shows that the output program satisfies architecture constraints.
 * **Section 6 - Experimental Evaluation**
-  * *TODO*
+  * Our code for extracting from Coq to OCaml is in VOQC/extraction. See the READMEs in VOQC and VOQC/benchmarks for instructions on how to run our optimizer on the benchmarks in the VOQC paper. In summary: you can generate the data in Tables 2-3 using the *TODO* script in the VOQC/benchmarks directory. You can generate the data in Appendix C using the `run_voqc.sh` script in VOQC/benchmarks (although this will take a long time due to the size of the benchmarks).
 
 ## Compilation
 
-The bulk of this respository is Coq proofs about quantum programs and program transformations. Our verified program transformations can be *extracted* to OCaml to produce executable code. If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'.
+If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'.
 
 ### Coq
 
