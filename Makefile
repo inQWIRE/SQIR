@@ -67,9 +67,6 @@ SQIR/examples/QPE.vo: $(examples)/QPE.v $(SQIR)/UnitaryOps.vo
 SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/QPEGeneral.v
 
-SQIR/examples/Shor.vo: $(examples)/Shor.v $(SQIR)/QPEGeneral.vo
-	coqc $(COQ_OPTS) $(examples)/Shor.v
-
 SQIR/examples/Simon.vo: $(examples)/Simon.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/Simon.v
 
@@ -116,9 +113,6 @@ VOQC/src/NotPropagation.vo: $(VOQC)/NotPropagation.v $(SQIR)/Equivalences.vo $(V
 VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/GateCancellation.vo $(VOQC)/RotationMerging.vo
 	coqc $(COQ_OPTS) $(VOQC)/Optimize.v
 
-VOQC/src/IBMGateSet.vo: $(VOQC)/IBMGateSet.v $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
-	coqc $(COQ_OPTS) $(VOQC)/IBMGateSet.v
-
 VOQC/src/RzQGateSet.vo: $(VOQC)/RzQGateSet.v $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/RzQGateSet.v
 
@@ -138,7 +132,7 @@ VOQC/src/BooleanCompilation.vo: $(VOQC)/BooleanCompilation.v $(SQIR)/VectorState
 
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -rf CoqMakefile CoqMakefile.conf {externals/QWIRE,SQIR/*,VOQC/src}/{*.vo,*.vok,*.vos,*.glob,*.aux} .lia.cache VOQC/extraction/_build
+	rm -rf CoqMakefile CoqMakefile.conf */*/*.vo* */*/*.glob */*/*.aux .lia.cache VOQC/extraction/_build
 
 # This should be the last rule, to handle any targets not declared above
 #%: invoke-coqmakefile
