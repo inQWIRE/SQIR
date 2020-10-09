@@ -12,7 +12,7 @@ The bulk of this respository is Coq proofs about quantum programs and program tr
 
 * [Notes for Artifact Evaluation](#notes-for-artifact-evaluation)
   * [VirtualBox Image](#virtualbox-image)
-  * [Trusted Code](#trusted-code)
+  * [Assumptions](#assumptions)
   * [Correspondence with Paper](#correspondence-with-paper)
 * [Compilation](#compilation)
   * [Coq](#coq)
@@ -24,13 +24,13 @@ The bulk of this respository is Coq proofs about quantum programs and program tr
 
 ## Notes for Artifact Evaluation
 
-If you would like to build our code on your machine, compilation intructions are under [Compilation](#compilation) below. Alternatively, use our included VirtualBox image (see below), which may save time. The contents of this repository are summarized in [Directory Contents](#directory-contents). For instructions on how to run the VOQC optimizer, see the [README in the VOQC sub-directory](VOQC/README.md). (TLDR; cd into the VOQC/benchmarks directory and run *TODO* to reproduce the results in Tables 2-3 of our paper.)
+If you would like to build our code on your machine, compilation intructions are under [Compilation](#compilation) below. Alternatively, use our VirtualBox image (see below), which may save time. The contents of this repository are summarized in [Directory Contents](#directory-contents). For instructions on how to run the VOQC optimizer, see the [README in the VOQC sub-directory](VOQC/README.md). (TLDR; cd into the VOQC/benchmarks directory and run `./run_voqc_artifact.sh` to reproduce the results in Tables 2-3 of our paper.)
 
 ### VirtualBox Image
 
 The VirtualBox image *TODO* contains precompiled versions of all of our Coq code and comes pre-installed with the relevant versions of the PyZX, tket, and Qiskit compilers. The username is `user` and the password is `password`. The POPL2021 branch of the SQIR repository is checked out in `~/SQIR`.
 
-### Trusted Code
+### Assumptions
 
 There are no assumptions or axioms in the SQIR repository. However, we do use Coq's well-understood `functional_extensionality` axiom and we reuse [QWIRE](https://github.com/inQWIRE/QWIRE)'s libraries for matrices and complex numbers, which contain some axioms (detailed in Section 10 of Rand's [thesis](https://repository.upenn.edu/edissertations/3175/)).
 
@@ -52,7 +52,7 @@ As discussed at the end of Section 6 in the VOQC paper, we trust that the OCaml 
   * The list representation of non-unitary SQIR programs is in VOQC/src/NonUnitaryListRepresentation.v (`com_list`).
   * As with the unitary optimizations, each non-unitary optimization has an associated `*_sound` lemma that shows that the transformation is semantics-preserving. The mapping transformations also have an associated `*_respects_constraints` lemma that shows that the output program satisfies architecture constraints.
 * **Section 6 - Experimental Evaluation**
-  * Our code for extracting from Coq to OCaml is in VOQC/extraction. See the READMEs in VOQC and VOQC/benchmarks for instructions on how to run our optimizer on the benchmarks in the VOQC paper. In summary: you can generate the data in Tables 2-3 using the *TODO* script in the VOQC/benchmarks directory. You can generate the data in Appendix C using the `run_voqc.sh` script in VOQC/benchmarks (although this will take a long time due to the size of the benchmarks).
+  * Our code for extracting from Coq to OCaml is in VOQC/extraction. See the READMEs in VOQC and VOQC/benchmarks for instructions on how to run our optimizer on the benchmarks in the VOQC paper. In summary: you can generate the data in Tables 2-3 using the `run_voqc_artifact.sh` script in the VOQC/benchmarks directory. You can generate the data in Appendix C using the `run_voqc.sh` script in VOQC/benchmarks (although this will take a long time due to the size of the benchmarks).
 
 ## Compilation
 
