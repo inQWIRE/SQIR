@@ -832,2675 +832,6 @@ Definition to_zyz_lambda (θ1 ξ θ2 : R) : R :=
     then if -1 <? rm22 θ1 ξ θ2 then atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)
          else 0 else 0.
 
-Lemma yzy_to_zyz_correct_1 : forall {dim} θ1 ξ θ2 q,
-  (q < dim)%nat ->
-  sin (θ1/2) = 0 -> cos (θ2/2) = 0 ->
-  @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≅
-          Rz (to_zyz_phi θ1 ξ θ2) q ; Ry (to_zyz_theta θ1 ξ θ2) q ; Rz (to_zyz_lambda θ1 ξ θ2) q.
-Proof.
-intros.
-assert (cos (θ1 / 2) * cos (θ1 / 2) = 1).
-specialize (sin2_cos2 (θ1 / 2)) as eq1.
-rewrite H0 in eq1. unfold Rsqr in eq1. lra.
-assert (sin (θ2 / 2) * sin (θ2 / 2) = 1).
-specialize (sin2_cos2 (θ2 / 2)) as eq1.
-rewrite H1 in eq1. unfold Rsqr in eq1. lra.
-assert (rw θ1 ξ θ2 = 0).
-unfold rw. rewrite H0. rewrite H1.
-lra.
-assert (rz θ1 ξ θ2 = 0).
-unfold rz. rewrite H0. rewrite H1.
-lra.
-assert (rm22 θ1 ξ θ2 = -1).
-unfold rm22,rx,ry. rewrite H0. rewrite H1.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((2 * (sin (ξ * / 2) * (cos (θ1 * / 2) * sin (θ2 * / 2))) *
- (sin (ξ * / 2) * (cos (θ1 * / 2) * sin (θ2 * / 2))))
-   = (2 * (Rsqr (sin (ξ / 2)))
-       * (cos (θ1 / 2) * cos (θ1 / 2))
-       * (sin (θ2 / 2) * sin (θ2 / 2)))).
-unfold Rsqr. lra.
-rewrite H6.
-assert ((2 * (cos (ξ * / 2) * (cos (θ1 * / 2) * sin (θ2 * / 2))) *
- (cos (ξ * / 2) * (cos (θ1 * / 2) * sin (θ2 * / 2))))
-   = (2 * (Rsqr (cos (ξ / 2)))
-       * (cos (θ1 / 2) * cos (θ1 / 2))
-       * (sin (θ2 / 2) * sin (θ2 / 2)))).
-unfold Rsqr. lra.
-rewrite H7.
-rewrite H2. rewrite H3.
-assert (1 + - (2 * (sin (ξ / 2))² * 1 * 1) + - (2 * (cos (ξ / 2))² * 1 * 1)
-     = 1 - 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²)) by lra.
-rewrite H8.
-rewrite sin2_cos2.
-lra.
-unfold to_zyz_theta,to_zyz_phi,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2.
-rewrite H6 in eq2. lra.
--
-apply Rltb_le_false in eq2.
-assert (rm11 θ1 ξ θ2 = cos ξ).
-unfold rm11. rewrite H5.
-unfold rx. rewrite H0. rewrite H1.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((2 * (sin (ξ * / 2) * (cos (θ1 * / 2) * sin (θ2 * / 2))) *
- (sin (ξ * / 2) * (cos (θ1 * / 2) * sin (θ2 * / 2))))
- = (2 * (sin (ξ / 2) * sin (ξ / 2)) * (cos (θ1 / 2) * cos (θ1 / 2)) *
-      (sin (θ2 / 2) * sin (θ2 / 2)))) by lra.
-rewrite H7. rewrite H2. rewrite H3.
-assert (1 + - (2 * (sin (ξ / 2) * sin (ξ / 2)) * 1 * 1)
-   = 1 - 2 * sin (ξ / 2) * sin (ξ / 2)) by lra.
-rewrite H8. rewrite <- cos_2a_sin. 
-assert (2 * (ξ / 2) = ξ) by lra.
-rewrite H9. reflexivity.
-assert (rm10 θ1 ξ θ2 = - sin ξ).
-unfold rm10. rewrite H5.
-unfold rx,ry. rewrite H0. rewrite H1.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((2 * (sin (ξ * / 2) * (cos (θ1 * / 2) * sin (θ2 * / 2))) *
- (cos (ξ * / 2) * (cos (θ1 * / 2) * sin (θ2 * / 2))))
- = ((2 * (sin (ξ / 2) * cos (ξ / 2)) * (cos (θ1 / 2) * cos (θ1 / 2)) *
-      (sin (θ2 / 2) * sin (θ2 / 2))))) by lra.
-rewrite H8. rewrite H2. rewrite H3.
-assert (- (2 * (sin (ξ / 2) * cos (ξ / 2)) * 1 * 1)
-   = - (2 * sin (ξ / 2) * cos (ξ / 2))) by lra.
-rewrite H9. rewrite <- sin_2a. 
-assert (2 * (ξ / 2) = ξ) by lra.
-rewrite H10. reflexivity.
-rewrite H7. rewrite H8.
-unfold atan2.
-destruct (0 <? cos ξ) eqn:eq3.
-assert ((- sin ξ / cos ξ) = - tan ξ).
-unfold tan. lra. rewrite H9. clear H9.
-assert (Rsqr (cos (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-destruct H9. destruct H10.
-{
-rewrite atan_opp.
-assert ((- - atan (tan ξ)) = atan (tan ξ)) by lra.
-rewrite H11. clear H11.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-unfold Cexp.
-apply Rltb_lt in eq3.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite tan_atan. reflexivity.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (0 * 0 + (- (1))%R * (Cexp ξ * 1)))%C
-   = Cexp ξ) by lca.
-rewrite H. clear H.
-rewrite atan_opp.
-assert (- - atan (tan ξ) = atan (tan ξ)) by lra.
-rewrite H. clear H.
-assert ((- (-1 * (1 * Cexp (atan (tan ξ)))))%C
-   = Cexp (atan (tan ξ))) by lca.
-rewrite H. clear H.
-unfold Cexp.
-apply Rltb_lt in eq3.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite tan_atan. reflexivity.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca. 
-}
-
-destruct H10.
-{
-rewrite atan_opp.
-assert ((- - atan (tan ξ)) = atan (tan ξ)) by lra.
-rewrite H11. clear H11.
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((- (Cexp ξ * (- (1))%R))%C
-   = Cexp ξ) by lca.
-rewrite H. clear H.
-assert ((- (-1 * Cexp (atan (tan ξ))))%C
-   = Cexp (atan (tan ξ))) by lca.
-rewrite H. clear H.
-unfold Cexp.
-apply Rltb_lt in eq3.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite tan_atan. reflexivity.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-rewrite atan_opp.
-assert ((- - atan (tan ξ)) = atan (tan ξ)) by lra.
-rewrite H11. clear H11.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-unfold Cexp.
-apply Rltb_lt in eq3.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite tan_atan. lca.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-
-destruct (cos ξ <? 0) eqn:eq4.
-apply Rltb_lt in eq4.
-destruct (0 <=? - sin ξ) eqn:eq5.
-assert ((- sin ξ / cos ξ) = - tan ξ).
-unfold tan. lra. rewrite H9. clear H9.
-assert (Rsqr (cos (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-destruct H9. destruct H10.
-{
-rewrite atan_opp.
-assert ((- (- atan (tan ξ) + PI)) = atan (tan ξ) - PI) by lra.
-rewrite H11. clear H11.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- RtoC_inv.
-assert ((/ -1)%R = -1) by lra.
-rewrite H. clear H.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((- (Cexp (atan (tan ξ)) * -1))%C
-   = Cexp (atan (tan ξ))%C) by lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-assert (cos ξ = - cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus. lra.
-rewrite H12. clear H12.
-assert (sin ξ = - sin (PI + ξ)).
-rewrite Rtrigo_facts.sin_pi_plus. lra.
-rewrite H12. clear H12.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan. lca.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption. lra.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (0 * 0 + (- (1))%R * (Cexp ξ * 1)))%C = (Cexp ξ)%C) by lca.
-rewrite H. clear H.
-rewrite atan_opp.
-assert ((- (- atan (tan ξ) + PI)) = atan (tan ξ) - PI) by lra.
-rewrite H. clear H.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((-1 * (Cexp (atan (tan ξ)) * / -1))%C = (Cexp (atan (tan ξ)) * (-1 * / -1))%C) by lca.
-rewrite H. clear H.
-rewrite Cinv_r.
-unfold Cexp.
-assert (0 < cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-assert (cos ξ = - cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus. lra.
-rewrite H12. clear H12.
-assert (sin ξ = - sin (PI + ξ)).
-rewrite Rtrigo_facts.sin_pi_plus. lra.
-rewrite H12. clear H12.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan. lca.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-intros R.
-apply RtoC_inj in R. lra.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (0 * 0 + 1 * (Cexp ξ * (- (1))%R)))%C = (Cexp ξ)%C) by lca.
-rewrite H. clear H.
-rewrite atan_opp.
-assert ((- (- atan (tan ξ) + PI)) = atan (tan ξ) - PI) by lra.
-rewrite H. clear H.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((-1 * (Cexp (atan (tan ξ)) * / -1))%C = (Cexp (atan (tan ξ)) * (-1 * / -1))%C) by lca.
-rewrite H. clear H.
-rewrite Cinv_r.
-unfold Cexp.
-assert (0 < cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-assert (cos ξ = - cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus. lra.
-rewrite H12. clear H12.
-assert (sin ξ = - sin (PI + ξ)).
-rewrite Rtrigo_facts.sin_pi_plus. lra.
-rewrite H12. clear H12.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan. lca.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-intros R.
-apply RtoC_inj in R. lra.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-rewrite atan_opp.
-assert ((- (- atan (tan ξ) + PI)) = atan (tan ξ) - PI) by lra.
-rewrite H11. clear H11.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- RtoC_inv.
-assert ((/ -1)%R = -1) by lra.
-rewrite H. clear H.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((- (Cexp (atan (tan ξ)) * -1))%C
-   = Cexp (atan (tan ξ))%C) by lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-assert (cos ξ = - cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus. lra.
-rewrite H12. clear H12.
-assert (sin ξ = - sin (PI + ξ)).
-rewrite Rtrigo_facts.sin_pi_plus. lra.
-rewrite H12. clear H12.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan. lca.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption. lra.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-assert ((- sin ξ / cos ξ) = - tan ξ).
-unfold tan. lra. rewrite H9. clear H9.
-assert (Rsqr (cos (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-destruct H9. destruct H10.
-{
-rewrite atan_opp.
-assert ((- (- atan (tan ξ) - PI)) = atan (tan ξ) + PI) by lra.
-rewrite H11. clear H11.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((- (Cexp (atan (tan ξ)) * -1))%C
-   = Cexp (atan (tan ξ))%C) by lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-assert (cos ξ = - cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus. lra.
-rewrite H12. clear H12.
-assert (sin ξ = - sin (PI + ξ)).
-rewrite Rtrigo_facts.sin_pi_plus. lra.
-rewrite H12. clear H12.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan. lca.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra. assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (0 * 0 + (- (1))%R * (Cexp ξ * 1)))%C = (Cexp ξ)%C) by lca.
-rewrite H. clear H.
-rewrite atan_opp.
-assert ((- (- atan (tan ξ) - PI)) = atan (tan ξ) + PI) by lra.
-rewrite H. clear H.
- autorewrite with R_db C_db Cexp_db trig_db.
-unfold Cexp.
-assert (0 < cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-assert (cos ξ = - cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus. lra.
-rewrite H12. clear H12.
-assert (sin ξ = - sin (PI + ξ)).
-rewrite Rtrigo_facts.sin_pi_plus. lra.
-rewrite H12. clear H12.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan. lca.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (0 * 0 + 1 * (Cexp ξ * (- (1))%R)))%C = (Cexp ξ)%C) by lca.
-rewrite H. clear H.
-rewrite atan_opp.
-assert ((- (- atan (tan ξ) - PI)) = atan (tan ξ) + PI) by lra.
-rewrite H. clear H.
- autorewrite with R_db C_db Cexp_db trig_db.
-unfold Cexp.
-assert (0 < cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-assert (cos ξ = - cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus. lra.
-rewrite H12. clear H12.
-assert (sin ξ = - sin (PI + ξ)).
-rewrite Rtrigo_facts.sin_pi_plus. lra.
-rewrite H12. clear H12.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan. lca.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-rewrite atan_opp.
-assert ((- (- atan (tan ξ) - PI)) = atan (tan ξ) + PI) by lra.
-rewrite H11. clear H11.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-unfold Cexp.
-assert (0 < cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-assert (cos ξ = - cos (PI + ξ)).
-rewrite Rtrigo_facts.cos_pi_plus. lra.
-rewrite H12. clear H12.
-assert (sin ξ = - sin (PI + ξ)).
-rewrite Rtrigo_facts.sin_pi_plus. lra.
-rewrite H12. clear H12.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan. lca.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply Rinv_0_lt_compat.
-apply sqrt_lt_R0.
-specialize (Rle_0_sqr (tan ξ)) as R1.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-apply Rltb_le_false in eq3.
-apply Rltb_le_false in eq4.
-specialize (Rle_antisym (cos ξ) 0 eq3 eq4) as eq5.
-destruct (0 <? - sin ξ) eqn:eq6.
-assert (Rsqr (cos (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-assert (sin ξ = -1). 
-apply Rltb_lt in eq6.
-assert (sin ξ < 0) by lra.
-specialize (sin2_cos2 ξ) as H12.
-rewrite eq5 in H12.
-assert ((sin ξ)² = Rsqr 1). unfold Rsqr. unfold Rsqr in H12. lra.
-apply Rsqr_eq in H13.
-destruct H13. lra.
-assumption.
-destruct H9. destruct H10.
-{
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite  sin_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite  sin_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite  sin_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite  sin_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-destruct (- sin ξ <? 0) eqn:eq7.
-apply Rltb_lt in eq7.
-assert (0 < sin ξ) as eq8 by lra.
-assert (Rsqr (cos (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-assert (sin ξ = 1). 
-specialize (sin2_cos2 ξ) as H12.
-rewrite eq5 in H12.
-assert ((sin ξ)² = Rsqr 1). unfold Rsqr. unfold Rsqr in H12. lra.
-apply Rsqr_eq in H11.
-destruct H11. assumption.
-lra.
-destruct H9. destruct H10.
-{
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite sin_neg.
-rewrite Ropp_div.
-rewrite sin_neg.
-rewrite cos_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite sin_neg.
-rewrite Ropp_div.
-rewrite sin_neg.
-rewrite cos_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite sin_neg.
-rewrite Ropp_div.
-rewrite sin_neg.
-rewrite cos_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite sin_neg.
-rewrite Ropp_div.
-rewrite sin_neg.
-rewrite cos_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-apply Rltb_le_false in eq6.
-apply Rltb_le_false in eq7.
-assert (sin ξ = 0) by lra.
-specialize (sin2_cos2 ξ) as R.
-rewrite eq5 in R. rewrite H9 in R.
-unfold Rsqr in R. lra.
--
-apply Rltb_le_false in eq1.
-lra.
-Qed.
-
-Lemma yzy_to_zyz_correct_2 : forall {dim} θ1 ξ θ2 q,
-  (q < dim)%nat ->
-  cos (θ1/2) = 0 -> sin (θ2/2) = 0 ->
-  @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≅
-          Rz (to_zyz_phi θ1 ξ θ2) q ; Ry (to_zyz_theta θ1 ξ θ2) q ; Rz (to_zyz_lambda θ1 ξ θ2) q.
-Proof.
-intros.
-assert (cos (θ2 / 2) * cos (θ2 / 2) = 1).
-specialize (sin2_cos2 (θ2 / 2)) as eq1.
-rewrite H1 in eq1. unfold Rsqr in eq1. lra.
-assert (sin (θ1 / 2) * sin (θ1 / 2) = 1).
-specialize (sin2_cos2 (θ1 / 2)) as eq1.
-rewrite H0 in eq1. unfold Rsqr in eq1. lra.
-assert (rw θ1 ξ θ2 = 0).
-unfold rw. rewrite H0. rewrite H1.
-lra.
-assert (rz θ1 ξ θ2 = 0).
-unfold rz. rewrite H0. rewrite H1.
-lra.
-assert (rm22 θ1 ξ θ2 = -1).
-unfold rm22,rx,ry. rewrite H0. rewrite H1.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((2 * (sin (ξ * / 2) * (sin (θ1 * / 2) * cos (θ2 * / 2))) *
- (sin (ξ * / 2) * (sin (θ1 * / 2) * cos (θ2 * / 2))))
-   = (2 * (Rsqr (sin (ξ / 2)))
-       * (sin (θ1 / 2) * sin (θ1 / 2))
-       * (cos (θ2 / 2) * cos (θ2 / 2)))).
-unfold Rsqr. lra.
-rewrite H6.
-assert ((2 * (cos (ξ * / 2) * (sin (θ1 * / 2) * cos (θ2 * / 2))) *
- (cos (ξ * / 2) * (sin (θ1 * / 2) * cos (θ2 * / 2))))
-   = (2 * (Rsqr (cos (ξ / 2)))
-       * (sin (θ1 / 2) * sin (θ1 / 2))
-       * (cos (θ2 / 2) * cos (θ2 / 2)))).
-unfold Rsqr. lra.
-rewrite H7.
-rewrite H2. rewrite H3.
-assert (1 + - (2 * (sin (ξ / 2))² * 1 * 1) + - (2 * (cos (ξ / 2))² * 1 * 1)
-     = 1 - 2 * ((sin (ξ / 2))² + (cos (ξ / 2))²)) by lra.
-rewrite H8.
-rewrite sin2_cos2.
-lra.
-unfold to_zyz_theta,to_zyz_phi,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2.
-rewrite H6 in eq2. lra.
--
-assert (rm11 θ1 ξ θ2 = cos ξ).
-unfold rm11. rewrite H5.
-unfold rx. rewrite H0. rewrite H1.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((2 * (sin (ξ * / 2) * (sin (θ1 * / 2) * cos (θ2 * / 2))) *
- (sin (ξ * / 2) * (sin (θ1 * / 2) * cos (θ2 * / 2))))
- = (2 * (sin (ξ / 2) * sin (ξ / 2)) * (sin (θ1 / 2) * sin (θ1 / 2)) *
-      (cos (θ2 / 2) * cos (θ2 / 2)))) by lra.
-rewrite H7. rewrite H2. rewrite H3.
-assert (1 + - (2 * (sin (ξ / 2) * sin (ξ / 2)) * 1 * 1)
-   = 1 - 2 * sin (ξ / 2) * sin (ξ / 2)) by lra.
-rewrite H8. rewrite <- cos_2a_sin. 
-assert (2 * (ξ / 2) = ξ) by lra.
-rewrite H9. reflexivity.
-assert (rm10 θ1 ξ θ2 = sin ξ).
-unfold rm10. rewrite H5.
-unfold rx,ry. rewrite H0. rewrite H1.
- autorewrite with R_db C_db Cexp_db trig_db.
-assert ((2 * (sin (ξ * / 2) * (sin (θ1 * / 2) * cos (θ2 * / 2))) *
- (cos (ξ * / 2) * (sin (θ1 * / 2) * cos (θ2 * / 2))))
- = ((2 * (sin (ξ / 2) * cos (ξ / 2)) * (sin (θ1 / 2) * sin (θ1 / 2)) *
-      (cos (θ2 / 2) * cos (θ2 / 2))))) by lra.
-rewrite H8. rewrite H2. rewrite H3.
-assert ((2 * (sin (ξ / 2) * cos (ξ / 2)) * 1 * 1)
-   = (2 * sin (ξ / 2) * cos (ξ / 2))) by lra.
-rewrite H9. rewrite <- sin_2a. 
-assert (2 * (ξ / 2) = ξ) by lra.
-rewrite H10. reflexivity.
-rewrite H7. rewrite H8.
-unfold atan2.
-destruct (0 <? cos ξ) eqn:eq3.
-assert ((sin ξ / cos ξ) = tan ξ).
-unfold tan. lra. rewrite H9. clear H9.
-assert (Rsqr (cos (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-destruct H9. destruct H10.
-{
-  unfold uc_cong; simpl.
-exists ξ.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (1 * 1 + 0 * (Cexp ξ * 0)))%C = - 1) by lca.
-rewrite H. clear H.
-assert ((- (Cexp ξ * (1 * Cexp (- atan (tan ξ)))))%C = (- (Cexp ξ * Cexp (- atan (tan ξ))))%C) by lca.
-rewrite H. clear H.
-unfold Cexp.
-apply Rltb_lt in eq3.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists (ξ+PI).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (1 * (- (1))%R + 0 * (Cexp ξ * 0)))%C = 1%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp (ξ + PI) * (1 * Cexp (- atan (tan ξ)))))%C = (Cexp ξ * Cexp (- atan (tan ξ)))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-apply Rltb_lt in eq3.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists (ξ+PI).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- ((- (1))%R * 1 + 0 * (Cexp ξ * 0)))%C = 1%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp (ξ + PI) * (1 * Cexp (- atan (tan ξ)))))%C = (Cexp ξ * Cexp (- atan (tan ξ)))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-apply Rltb_lt in eq3.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists ξ.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- ((- (1))%R * (- (1))%R + 0 * (Cexp ξ * 0)))%C = - 1) by lca.
-rewrite H. clear H.
-assert ((- (Cexp ξ * (1 * Cexp (- atan (tan ξ)))))%C = (- (Cexp ξ * Cexp (- atan (tan ξ))))%C) by lca.
-rewrite H. clear H.
-unfold Cexp.
-apply Rltb_lt in eq3.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-apply eq3.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-destruct (cos ξ <? 0) eqn:eq4.
-apply Rltb_lt in eq4.
-destruct (0 <=? sin ξ) eqn:eq5.
-assert ((sin ξ / cos ξ) = tan ξ).
-unfold tan. lra. rewrite H9. clear H9.
-assert (Rsqr (cos (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-destruct H9. destruct H10.
-{
-  unfold uc_cong; simpl.
-exists ξ.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (1 * 1 + 0 * (Cexp ξ * 0)))%C = (-1)%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp ξ * (1 * Cexp (- (atan (tan ξ) + PI)))))%C
-        = (- (Cexp (PI + ξ) * Cexp (- atan (tan ξ))))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)) as eq6.
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists (PI + ξ).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (1 * (- (1))%R + 0 * (Cexp ξ * 0)))%C  = 1%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp (PI + ξ) * (1 * Cexp (- (atan (tan ξ) + PI)))))%C
-        = (Cexp (PI + ξ) * Cexp (- atan (tan ξ)))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)) as eq6.
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists (PI + ξ).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- ((- (1))%R * 1 + 0 * (Cexp ξ * 0)))%C  = 1%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp (PI + ξ) * (1 * Cexp (- (atan (tan ξ) + PI)))))%C
-        = (Cexp (PI + ξ) * Cexp (- atan (tan ξ)))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)) as eq6.
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists ξ.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- ((- (1))%R * (- (1))%R + 0 * (Cexp ξ * 0)))%C = (-1)%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp ξ * (1 * Cexp (- (atan (tan ξ) + PI)))))%C
-        = (-(Cexp (PI + ξ) * Cexp (- atan (tan ξ))))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)) as eq6.
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-assert ((sin ξ / cos ξ) = tan ξ).
-unfold tan. lra. rewrite H9. clear H9.
-assert (Rsqr (cos (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (- (atan (tan ξ) - PI) = (- atan (tan ξ)) + PI) by lra.
-rewrite H11. clear H11.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-destruct H9. destruct H10.
-{
-  unfold uc_cong; simpl.
-exists ξ.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (1 * 1 + 0 * (Cexp ξ * 0)))%C = (-1)%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp ξ * (1 * Cexp (- atan (tan ξ) + PI))))%C
-        = (-(Cexp (PI + ξ) * Cexp (- atan (tan ξ))))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)) as eq6.
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists (PI + ξ).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- (1 * (- (1))%R + 0 * (Cexp ξ * 0)))%C = 1%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp (PI + ξ) * (1 * Cexp (- atan (tan ξ) + PI))))%C
-        = (Cexp (PI + ξ) * Cexp (- atan (tan ξ)))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)) as eq6.
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists (PI + ξ).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- ((- (1))%R * 1 + 0 * (Cexp ξ * 0)))%C = 1%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp (PI + ξ) * (1 * Cexp (- atan (tan ξ) + PI))))%C
-        = (Cexp (PI + ξ) * Cexp (- atan (tan ξ)))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)) as eq6.
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists ξ.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2.
-assert ((- ((- (1))%R * (- (1))%R + 0 * (Cexp ξ * 0)))%C = (-1)%C) by lca.
-rewrite H. clear H.
-assert ((- (Cexp ξ * (1 * Cexp (- atan (tan ξ) + PI))))%C
-        = (-(Cexp (PI + ξ) * Cexp (- atan (tan ξ))))%C).
- autorewrite with R_db C_db Cexp_db trig_db. lca.
-rewrite H. clear H.
-unfold Cexp.
-assert (0 < cos (PI + ξ)) as eq6.
-rewrite Rtrigo_facts.cos_pi_plus.
-lra.
-rewrite cos_neg, sin_neg.
-rewrite 2 Rtrigo_facts.sin_tan.
-rewrite 2 Rtrigo_facts.cos_tan.
-rewrite Rtrigo_facts.tan_pi_plus.
-rewrite tan_atan.
-unfold Cmult. simpl.
- autorewrite with R_db C_db Cexp_db trig_db.
-rewrite <- sqrt_inv.
-rewrite sqrt_sqrt.
-assert (tan ξ * √ (/ (1 + (tan ξ)²)) * (tan ξ * √ (/ (1 + (tan ξ)²)))
-    = (tan ξ * tan ξ) * (√ (/ (1 + (tan ξ)²)) * √ (/ (1 + (tan ξ)²)))) by lra.
-rewrite H. clear H.
-rewrite sqrt_sqrt.
-assert ((/ (1 + (tan ξ)²) + tan ξ * tan ξ * / (1 + (tan ξ)²))%R
-         = ((1 + (tan ξ)²) * / (1 + (tan ξ)²))%R).
-unfold Rsqr. lra.
-rewrite H. clear H.
-rewrite Rinv_r. lca.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-assert (0 < (1 + (tan ξ)²)).
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-apply Rinv_0_lt_compat in H. lra.
-specialize (Rle_0_sqr (tan ξ))as R1.
-lra.
-lra.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite cos_atan.
- autorewrite with R_db.
-apply  Rinv_0_lt_compat.
-assert (√ (1 + (tan ξ)²) <> 0).
-intros R.
-apply sqrt_eq_0 in R. 
-apply  Rplus_opp_r_uniq in R.
-specialize (Rle_0_sqr (tan ξ))as R1.
-rewrite R in R1. lra.
-apply Rplus_le_le_0_compat. lra.
-apply Rle_0_sqr.
-specialize (sqrt_pos (1 + (tan ξ)²)) as R.
-lra.
-assumption.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite sin_PI2.
- autorewrite with R_db C_db Cexp_db trig_db.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite Cexp_0. rewrite cos_PI2.
-lca.
-}
-apply Rltb_le_false in eq3.
-apply Rltb_le_false in eq4.
-specialize (Rle_antisym (cos ξ) 0 eq3 eq4) as eq5.
-destruct (0 <? sin ξ) eqn:eq6.
-assert (Rsqr (cos (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-assert (sin ξ = 1). 
-apply Rltb_lt in eq6.
-specialize (sin2_cos2 ξ) as H12.
-rewrite eq5 in H12.
-assert ((sin ξ)² = Rsqr 1). unfold Rsqr. unfold Rsqr in H12. lra.
-apply Rsqr_eq in H11.
-destruct H11. lra. lra.
-destruct H9. destruct H10.
-{
-  unfold uc_cong; simpl.
-exists (PI / 2).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite  sin_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-unfold Cexp.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists (PI + PI / 2).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite  sin_neg.
-rewrite cos_neg.
-rewrite Rtrigo_facts.sin_pi_plus.
-rewrite Rtrigo_facts.cos_pi_plus.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-unfold Cexp.
-rewrite Rtrigo_facts.sin_pi_plus.
-rewrite Rtrigo_facts.cos_pi_plus.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists (PI + PI / 2).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite  sin_neg.
-rewrite cos_neg.
-rewrite Rtrigo_facts.sin_pi_plus.
-rewrite Rtrigo_facts.cos_pi_plus.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-unfold Cexp.
-rewrite Rtrigo_facts.sin_pi_plus.
-rewrite Rtrigo_facts.cos_pi_plus.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists (PI / 2).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite  sin_neg.
-rewrite cos_neg.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-unfold Cexp.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-destruct (sin ξ <? 0) eqn:eq7.
-apply Rltb_lt in eq7.
-assert (Rsqr (cos (θ2 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-assert (Rsqr (sin (θ1 / 2)) = Rsqr 1).
-unfold Rsqr; lra.
-apply Rsqr_eq in H9. apply Rsqr_eq in H10.
-assert (sin ξ = -1). 
-specialize (sin2_cos2 ξ) as H12.
-rewrite eq5 in H12.
-assert ((sin ξ)² = Rsqr 1). unfold Rsqr. unfold Rsqr in H12. lra.
-apply Rsqr_eq in H11.
-destruct H11. lra.
-assumption.
-assert ((- (- PI / 2)) = PI / 2) by lra.
-rewrite H12. clear H12.
-destruct H9. destruct H10.
-{
-  unfold uc_cong; simpl.
-exists (PI + PI / 2).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite Rtrigo_facts.sin_pi_plus.
-rewrite Rtrigo_facts.cos_pi_plus.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-unfold Cexp.
-rewrite Rtrigo_facts.sin_pi_plus.
-rewrite Rtrigo_facts.cos_pi_plus.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists (PI / 2).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-unfold Cexp.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-destruct H10.
-{
-  unfold uc_cong; simpl.
-exists (PI / 2).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-unfold Cexp.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-{
-  unfold uc_cong; simpl.
-exists (PI + PI / 2).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-rewrite H0. rewrite H1.
-rewrite cos_PI2. lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-unfold Cexp.
-rewrite Rtrigo_facts.sin_pi_plus.
-rewrite Rtrigo_facts.cos_pi_plus.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite sin_PI2. rewrite Cexp_0.
-unfold Cexp.
-rewrite Rtrigo_facts.sin_pi_plus.
-rewrite Rtrigo_facts.cos_pi_plus.
-rewrite cos_PI2.
-rewrite sin_PI2.
-rewrite eq5. rewrite H11.
-lca.
-rewrite H0. rewrite H1.
-rewrite H9. rewrite H10.
-rewrite cos_PI2. rewrite Cexp_0.
-lca.
-}
-apply Rltb_le_false in eq6.
-apply Rltb_le_false in eq7.
-assert (sin ξ = 0) by lra.
-specialize (sin2_cos2 ξ) as R.
-rewrite eq5 in R. rewrite H9 in R.
-unfold Rsqr in R. lra.
--
-apply Rltb_le_false in eq1.
-lra.
-Qed.
-
 Lemma cos_1_sin: forall (θ:R), cos θ = 1 -> sin θ = 0.
 Proof.
 intros.
@@ -3607,674 +938,6 @@ Proof.
 intros.
 rewrite cos_2a_sin.
 unfold Rsqr. lra.
-Qed.
- 
-
-Lemma yzy_to_zyz_correct_3 : forall {dim} θ1 ξ θ2 q,
-  (q < dim)%nat ->
-  cos ξ = 1 -> cos (θ1 / 2 + θ2 /2) = 0 ->
-  @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≅
-          Rz (to_zyz_phi θ1 ξ θ2) q ; Ry (to_zyz_theta θ1 ξ θ2) q ; Rz (to_zyz_lambda θ1 ξ θ2) q.
-Proof.
-intros.
-specialize (cos_1_sin ξ H0) as H2.
-specialize (cos_1_half_cos ξ H0) as H3.
-specialize (cos_1_half_sin ξ H0) as H4.
-specialize (cos_0_sin (θ1 / 2 + θ2 / 2) H1) as H5.
-assert (rm22 θ1 ξ θ2 = -1).
-unfold rm22.
-unfold rx. rewrite H4. 
-unfold ry. rewrite <- sin_plus.
-destruct H3. destruct H5.
-rewrite H5. rewrite H3. lra.
-rewrite H5. rewrite H3. lra.
-destruct H5.
-rewrite H5. rewrite H3. lra.
-rewrite H5. rewrite H3. lra.
-destruct H3. destruct H5.
--
-unfold to_zyz_phi,to_zyz_theta,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2. lra.
-assert (rm10 θ1 ξ θ2 = 0).
-unfold rm10. unfold rx,rz.
-rewrite H4. lra.
-assert (rm11 θ1 ξ θ2 = 1).
-unfold rm11. unfold rx,rz.
-rewrite H4. lra.
-rewrite H7. rewrite H8.
-unfold atan2. destruct (0 <? 1) eqn:eq3.
-assert(0 / 1 = 0) by lra.
-rewrite H9. clear H9.
-rewrite atan_0.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((1, 0) * sin (θ1 / 2))))%C
-  = ((cos (θ1 / 2) * cos (θ2 / 2) - (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_plus. rewrite H1.
-rewrite cos_PI2. reflexivity.
-assert (- 0 = 0) by lra. rewrite H. clear H.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((- (cos (θ2 / 2) * sin (θ1 / 2) + sin (θ2 / 2) * ((1, 0) * cos (θ1 / 2))))%C
-  = (-(sin (θ1 / 2) * cos (θ2 / 2) + (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_plus. rewrite H5.
-rewrite sin_PI2. lca.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((sin (θ2 / 2) * cos (θ1 / 2) + cos (θ2 / 2) * ((1, 0) * sin (θ1 / 2)))%C
-        = ((sin (θ1 / 2) * cos (θ2 / 2) + (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_plus.
-rewrite H5. rewrite sin_PI2. lca.
-assert (- 0 = 0) by lra. rewrite H. clear H.
-rewrite Cexp_0.
-unfold Cexp.
-rewrite H0. rewrite H2.
-assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) + cos (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
-   = ((cos (θ1 / 2) * cos (θ2 / 2) - (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_plus.
-rewrite H1. rewrite cos_PI2. lca.
-apply Rltb_le_false in eq3. lra.
-apply Rltb_le_false in eq1. lra.
--
-unfold to_zyz_phi,to_zyz_theta,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2. lra.
-assert (rm10 θ1 ξ θ2 = 0).
-unfold rm10. unfold rx,rz.
-rewrite H4. lra.
-assert (rm11 θ1 ξ θ2 = 1).
-unfold rm11. unfold rx,rz.
-rewrite H4. lra.
-rewrite H7. rewrite H8.
-unfold atan2. destruct (0 <? 1) eqn:eq3.
-assert(0 / 1 = 0) by lra.
-rewrite H9. clear H9.
-rewrite atan_0.
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((1, 0) * sin (θ1 / 2))))%C
-  = ((cos (θ1 / 2) * cos (θ2 / 2) - (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_plus. rewrite H1.
-rewrite cos_PI2. lca.
-assert (- 0 = 0) by lra. rewrite H. clear H.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((- (cos (θ2 / 2) * sin (θ1 / 2) + sin (θ2 / 2) * ((1, 0) * cos (θ1 / 2))))%C
-  = (-(sin (θ1 / 2) * cos (θ2 / 2) + (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_plus. rewrite H5.
-rewrite sin_PI2. lca.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((sin (θ2 / 2) * cos (θ1 / 2) + cos (θ2 / 2) * ((1, 0) * sin (θ1 / 2)))%C
-        = ((sin (θ1 / 2) * cos (θ2 / 2) + (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_plus.
-rewrite H5. rewrite sin_PI2. lca.
-assert (- 0 = 0) by lra. rewrite H. clear H.
-rewrite Cexp_0.
-unfold Cexp.
-rewrite H0. rewrite H2.
-assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) + cos (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
-   = ((cos (θ1 / 2) * cos (θ2 / 2) - (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_plus.
-rewrite H1. rewrite cos_PI2. lca.
-apply Rltb_le_false in eq3. lra.
-apply Rltb_le_false in eq1. lra.
--
-destruct H5.
-unfold to_zyz_phi,to_zyz_theta,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2. lra.
-assert (rm10 θ1 ξ θ2 = 0).
-unfold rm10. unfold rx,rz.
-rewrite H4. lra.
-assert (rm11 θ1 ξ θ2 = 1).
-unfold rm11. unfold rx,rz.
-rewrite H4. lra.
-rewrite H7. rewrite H8.
-unfold atan2. destruct (0 <? 1) eqn:eq3.
-assert(0 / 1 = 0) by lra.
-rewrite H9. clear H9.
-rewrite atan_0.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((1, 0) * sin (θ1 / 2))))%C
-  = ((cos (θ1 / 2) * cos (θ2 / 2) - (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_plus. rewrite H1.
-rewrite cos_PI2. lca.
-assert (- 0 = 0) by lra. rewrite H. clear H.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((- (cos (θ2 / 2) * sin (θ1 / 2) + sin (θ2 / 2) * ((1, 0) * cos (θ1 / 2))))%C
-  = (-(sin (θ1 / 2) * cos (θ2 / 2) + (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_plus. rewrite H5.
-rewrite sin_PI2. lca.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((sin (θ2 / 2) * cos (θ1 / 2) + cos (θ2 / 2) * ((1, 0) * sin (θ1 / 2)))%C
-        = ((sin (θ1 / 2) * cos (θ2 / 2) + (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_plus.
-rewrite H5. rewrite sin_PI2. lca.
-assert (- 0 = 0) by lra. rewrite H. clear H.
-rewrite Cexp_0.
-unfold Cexp.
-rewrite H0. rewrite H2.
-assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) + cos (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
-   = ((cos (θ1 / 2) * cos (θ2 / 2) - (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_plus.
-rewrite H1. rewrite cos_PI2. lca.
-apply Rltb_le_false in eq3. lra.
-apply Rltb_le_false in eq1. lra.
-unfold to_zyz_phi,to_zyz_theta,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2. lra.
-assert (rm10 θ1 ξ θ2 = 0).
-unfold rm10. unfold rx,rz.
-rewrite H4. lra.
-assert (rm11 θ1 ξ θ2 = 1).
-unfold rm11. unfold rx,rz.
-rewrite H4. lra.
-rewrite H7. rewrite H8.
-unfold atan2. destruct (0 <? 1) eqn:eq3.
-assert(0 / 1 = 0) by lra.
-rewrite H9. clear H9.
-rewrite atan_0.
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((1, 0) * sin (θ1 / 2))))%C
-  = ((cos (θ1 / 2) * cos (θ2 / 2) - (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_plus. rewrite H1.
-rewrite cos_PI2. lca.
-assert (- 0 = 0) by lra. rewrite H. clear H.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((- (cos (θ2 / 2) * sin (θ1 / 2) + sin (θ2 / 2) * ((1, 0) * cos (θ1 / 2))))%C
-  = (-(sin (θ1 / 2) * cos (θ2 / 2) + (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_plus. rewrite H5.
-rewrite sin_PI2. lca.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((sin (θ2 / 2) * cos (θ1 / 2) + cos (θ2 / 2) * ((1, 0) * sin (θ1 / 2)))%C
-        = ((sin (θ1 / 2) * cos (θ2 / 2) + (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_plus.
-rewrite H5. rewrite sin_PI2. lca.
-assert (- 0 = 0) by lra. rewrite H. clear H.
-rewrite Cexp_0.
-unfold Cexp.
-rewrite H0. rewrite H2.
-assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) + cos (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
-   = ((cos (θ1 / 2) * cos (θ2 / 2) - (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_plus.
-rewrite H1. rewrite cos_PI2. lca.
-apply Rltb_le_false in eq3. lra.
-apply Rltb_le_false in eq1. lra.
-Qed.
-
-
-Lemma yzy_to_zyz_correct_4 : forall {dim} θ1 ξ θ2 q,
-  (q < dim)%nat ->
-  cos ξ = -1 -> cos (θ1 / 2 - θ2 /2) = 0 ->
-  @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≅
-          Rz (to_zyz_phi θ1 ξ θ2) q ; Ry (to_zyz_theta θ1 ξ θ2) q ; Rz (to_zyz_lambda θ1 ξ θ2) q.
-Proof.
-intros.
-specialize (cos_neg_1_sin ξ H0) as H2.
-specialize (cos_neg_1_half_cos ξ H0) as H3.
-specialize (cos_neg_1_half_sin ξ H0) as H4.
-specialize (cos_0_sin (θ1 / 2 - θ2 / 2) H1) as H5.
-assert (rm22 θ1 ξ θ2 = -1).
-unfold rm22.
-unfold ry. rewrite H3. 
-unfold rx. rewrite <- sin_minus.
-destruct H4. destruct H5.
-rewrite H5. rewrite H4. lra.
-rewrite H5. rewrite H4. lra.
-destruct H5.
-rewrite H5. rewrite H4. lra.
-rewrite H5. rewrite H4. lra.
-destruct H4. destruct H5.
--
-unfold to_zyz_phi,to_zyz_theta,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2. lra.
-assert (rm10 θ1 ξ θ2 = 0).
-unfold rm10. unfold rw,ry.
-rewrite H3. lra.
-assert (rm11 θ1 ξ θ2 = -1).
-unfold rm11. unfold rx,rz.
-rewrite H4. 
-rewrite <- sin_minus.
-rewrite <- cos_minus.
-rewrite H1. rewrite H5.
-lra.
-rewrite H7. rewrite H8.
-unfold atan2. destruct (0 <? -1) eqn:eq3.
-apply Rltb_lt in eq3. lra.
-destruct (-1 <? 0) eqn:eq4.
-destruct (0 <=? 0) eqn:eq5.
-assert(0 / -1 = 0) by lra.
-rewrite H9. clear H9.
-rewrite atan_0.
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((-1, 0) * sin (θ1 / 2))))%C
-  = ((cos (θ1 / 2) * cos (θ2 / 2) + (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_minus. rewrite H1.
-rewrite cos_PI2. lca.
-assert (- (0 + PI) = - PI) by lra. rewrite H. clear H.
-rewrite Cexp_neg. rewrite Cexp_PI.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((- (cos (θ2 / 2) * sin (θ1 / 2) + sin (θ2 / 2) * ((-1, 0) * cos (θ1 / 2))))%C
-  = (-(sin (θ1 / 2) * cos (θ2 / 2) - (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_minus. rewrite H5.
-rewrite sin_PI2. lca.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((sin (θ2 / 2) * cos (θ1 / 2) + cos (θ2 / 2) * ((-1, 0) * sin (θ1 / 2)))%C
-        = (-(sin (θ1 / 2) * cos (θ2 / 2) - (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_minus.
-rewrite H5. rewrite sin_PI2. lca.
-assert (- (0 + PI) = - PI) by lra. rewrite H. clear H.
-rewrite Cexp_neg. rewrite Cexp_PI.
-unfold Cexp.
-rewrite H0. rewrite H2.
-assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) + cos (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
-   = (-(cos (θ1 / 2) * cos (θ2 / 2) + (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_minus.
-rewrite H1. rewrite cos_PI2. lca.
-apply Rleb_lt_false in eq5. lra.
-apply Rltb_le_false in eq4. lra.
-apply Rltb_le_false in eq1. lra.
--
-unfold to_zyz_phi,to_zyz_theta,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2. lra.
-assert (rm10 θ1 ξ θ2 = 0).
-unfold rm10. unfold rw,ry.
-rewrite H3. lra.
-assert (rm11 θ1 ξ θ2 = -1).
-unfold rm11. unfold rx,rz.
-rewrite H4. 
-rewrite <- sin_minus.
-rewrite <- cos_minus.
-rewrite H1. rewrite H5.
-lra.
-rewrite H7. rewrite H8.
-unfold atan2. destruct (0 <? -1) eqn:eq3.
-apply Rltb_lt in eq3. lra.
-destruct (-1 <? 0) eqn:eq4.
-destruct (0 <=? 0) eqn:eq5.
-assert(0 / -1 = 0) by lra.
-rewrite H9. clear H9.
-rewrite atan_0.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((-1, 0) * sin (θ1 / 2))))%C
-  = ((cos (θ1 / 2) * cos (θ2 / 2) + (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_minus. rewrite H1.
-rewrite cos_PI2. lca.
-assert (- (0 + PI) = - PI) by lra. rewrite H. clear H.
-rewrite Cexp_neg. rewrite Cexp_PI.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((- (cos (θ2 / 2) * sin (θ1 / 2) + sin (θ2 / 2) * ((-1, 0) * cos (θ1 / 2))))%C
-  = (-(sin (θ1 / 2) * cos (θ2 / 2) - (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_minus. rewrite H5.
-rewrite sin_PI2. lca.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((sin (θ2 / 2) * cos (θ1 / 2) + cos (θ2 / 2) * ((-1, 0) * sin (θ1 / 2)))%C
-        = (-(sin (θ1 / 2) * cos (θ2 / 2) - (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_minus.
-rewrite H5. rewrite sin_PI2. lca.
-assert (- (0 + PI) = - PI) by lra. rewrite H. clear H.
-rewrite Cexp_neg. rewrite Cexp_PI.
-unfold Cexp.
-rewrite H0. rewrite H2.
-assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) + cos (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
-   = (-(cos (θ1 / 2) * cos (θ2 / 2) + (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_minus.
-rewrite H1. rewrite cos_PI2. lca.
-apply Rleb_lt_false in eq5. lra.
-apply Rltb_le_false in eq4. lra.
-apply Rltb_le_false in eq1. lra.
--
-destruct H5.
-unfold to_zyz_phi,to_zyz_theta,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2. lra.
-assert (rm10 θ1 ξ θ2 = 0).
-unfold rm10. unfold rw,ry.
-rewrite H3. lra.
-assert (rm11 θ1 ξ θ2 = -1).
-unfold rm11. unfold rx,rz.
-rewrite H4. 
-rewrite <- sin_minus.
-rewrite <- cos_minus.
-rewrite H1. rewrite H5.
-lra.
-rewrite H7. rewrite H8.
-unfold atan2. destruct (0 <? -1) eqn:eq3.
-apply Rltb_lt in eq3. lra.
-destruct (-1 <? 0) eqn:eq4.
-destruct (0 <=? 0) eqn:eq5.
-assert(0 / -1 = 0) by lra.
-rewrite H9. clear H9.
-rewrite atan_0.
-  unfold uc_cong; simpl.
-exists PI.
-rewrite Cexp_PI.
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((-1, 0) * sin (θ1 / 2))))%C
-  = ((cos (θ1 / 2) * cos (θ2 / 2) + (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_minus. rewrite H1.
-rewrite cos_PI2. lca.
-assert (- (0 + PI) = - PI) by lra. rewrite H. clear H.
-rewrite Cexp_neg. rewrite Cexp_PI.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((- (cos (θ2 / 2) * sin (θ1 / 2) + sin (θ2 / 2) * ((-1, 0) * cos (θ1 / 2))))%C
-  = (-(sin (θ1 / 2) * cos (θ2 / 2) - (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_minus. rewrite H5.
-rewrite sin_PI2. lca.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((sin (θ2 / 2) * cos (θ1 / 2) + cos (θ2 / 2) * ((-1, 0) * sin (θ1 / 2)))%C
-        = (-(sin (θ1 / 2) * cos (θ2 / 2) - (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_minus.
-rewrite H5. rewrite sin_PI2. lca.
-assert (- (0 + PI) = - PI) by lra. rewrite H. clear H.
-rewrite Cexp_neg. rewrite Cexp_PI.
-unfold Cexp.
-rewrite H0. rewrite H2.
-assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) + cos (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
-   = (-(cos (θ1 / 2) * cos (θ2 / 2) + (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_minus.
-rewrite H1. rewrite cos_PI2. lca.
-apply Rleb_lt_false in eq5. lra.
-apply Rltb_le_false in eq4. lra.
-apply Rltb_le_false in eq1. lra.
-unfold to_zyz_phi,to_zyz_theta,to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-apply Rltb_lt in eq2. lra.
-assert (rm10 θ1 ξ θ2 = 0).
-unfold rm10. unfold rw,ry.
-rewrite H3. lra.
-assert (rm11 θ1 ξ θ2 = -1).
-unfold rm11. unfold rx,rz.
-rewrite H4. 
-rewrite <- sin_minus.
-rewrite <- cos_minus.
-rewrite H1. rewrite H5.
-lra.
-rewrite H7. rewrite H8.
-unfold atan2. destruct (0 <? -1) eqn:eq3.
-apply Rltb_lt in eq3. lra.
-destruct (-1 <? 0) eqn:eq4.
-destruct (0 <=? 0) eqn:eq5.
-assert(0 / -1 = 0) by lra.
-rewrite H9. clear H9.
-rewrite atan_0.
-  unfold uc_cong; simpl.
-exists 0.
-rewrite Cexp_0.
-  autorewrite with eval_db.
-  gridify.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-solve_matrix.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((-1, 0) * sin (θ1 / 2))))%C
-  = ((cos (θ1 / 2) * cos (θ2 / 2) + (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_minus. rewrite H1.
-rewrite cos_PI2. lca.
-assert (- (0 + PI) = - PI) by lra. rewrite H. clear H.
-rewrite Cexp_neg. rewrite Cexp_PI.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((- (cos (θ2 / 2) * sin (θ1 / 2) + sin (θ2 / 2) * ((-1, 0) * cos (θ1 / 2))))%C
-  = (-(sin (θ1 / 2) * cos (θ2 / 2) - (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_minus. rewrite H5.
-rewrite sin_PI2. lca.
-rewrite Cexp_0.
-unfold Cexp. rewrite H0. rewrite H2.
-assert ((sin (θ2 / 2) * cos (θ1 / 2) + cos (θ2 / 2) * ((-1, 0) * sin (θ1 / 2)))%C
-        = (-(sin (θ1 / 2) * cos (θ2 / 2) - (cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- sin_minus.
-rewrite H5. rewrite sin_PI2. lca.
-assert (- (0 + PI) = - PI) by lra. rewrite H. clear H.
-rewrite Cexp_neg. rewrite Cexp_PI.
-unfold Cexp.
-rewrite H0. rewrite H2.
-assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) + cos (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
-   = (-(cos (θ1 / 2) * cos (θ2 / 2) + (sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite <- cos_minus.
-rewrite H1. rewrite cos_PI2. lca.
-apply Rleb_lt_false in eq5. lra.
-apply Rltb_le_false in eq4. lra.
-apply Rltb_le_false in eq1. lra.
-Qed.
-
-Lemma sqr_bound: forall (x y:R), Rsqr x + Rsqr y = 1 -> ((-1 <= x <= 1) /\ (-1 <= y <= 1)).
-Proof.
-intros.
-split.
-assert (Rsqr x <= 1).
-assert (0 <= Rsqr x).
-apply Rle_0_sqr.
-assert (0 <= Rsqr y). 
-apply Rle_0_sqr. lra.
-split.
-assert ( 1 = Rsqr 1).
-unfold Rsqr. lra.
-rewrite H1 in H0.
-apply Rsqr_neg_pos_le_0 in H0.
-assumption. lra.
-assert ( 1 = Rsqr 1).
-unfold Rsqr. lra.
-rewrite H1 in H0.
-apply Rsqr_incr_0_var in H0.
-assumption. lra.
-assert (Rsqr y <= 1).
-assert (0 <= Rsqr y).
-apply Rle_0_sqr.
-assert (0 <= Rsqr x). 
-apply Rle_0_sqr. lra.
-split.
-assert ( 1 = Rsqr 1).
-unfold Rsqr. lra.
-rewrite H1 in H0.
-apply Rsqr_neg_pos_le_0 in H0.
-assumption. lra.
-assert ( 1 = Rsqr 1).
-unfold Rsqr. lra.
-rewrite H1 in H0.
-apply Rsqr_incr_0_var in H0.
-assumption. lra.
-Qed.
-
-Lemma sqr_4_bound_1: forall (x y u v:R), Rsqr x + Rsqr y + Rsqr u + Rsqr v = 1 
- -> -1 <= x <= 1.
-Proof.
-intros.
-assert (Rsqr x <= 1).
-assert (0 <= Rsqr x).
-apply Rle_0_sqr.
-assert (0 <= Rsqr y). 
-apply Rle_0_sqr.
-assert (0 <= Rsqr u). 
-apply Rle_0_sqr.
-assert (0 <= Rsqr v). 
-apply Rle_0_sqr.
-lra.
-assert ( 1 = Rsqr 1).
-unfold Rsqr. lra.
-rewrite H1 in H0.
-split.
-apply Rsqr_neg_pos_le_0 in H0.
-assumption. lra.
-apply Rsqr_incr_0_var in H0.
-assumption. lra.
-Qed.
-
-Lemma sqr_4_bound_2: forall (x y u v:R), Rsqr x + Rsqr y + Rsqr u + Rsqr v = 1 
- -> -1 <= y <= 1.
-Proof.
-intros.
-assert (Rsqr y <= 1).
-assert (0 <= Rsqr x).
-apply Rle_0_sqr.
-assert (0 <= Rsqr y). 
-apply Rle_0_sqr.
-assert (0 <= Rsqr u). 
-apply Rle_0_sqr.
-assert (0 <= Rsqr v). 
-apply Rle_0_sqr.
-lra.
-assert ( 1 = Rsqr 1).
-unfold Rsqr. lra.
-rewrite H1 in H0.
-split.
-apply Rsqr_neg_pos_le_0 in H0.
-assumption. lra.
-apply Rsqr_incr_0_var in H0.
-assumption. lra.
-Qed.
-
-Lemma sqr_4_bound_3: forall (x y u v:R), Rsqr x + Rsqr y + Rsqr u + Rsqr v = 1 
- -> -1 <= u <= 1.
-Proof.
-intros.
-assert (Rsqr u <= 1).
-assert (0 <= Rsqr x).
-apply Rle_0_sqr.
-assert (0 <= Rsqr y). 
-apply Rle_0_sqr.
-assert (0 <= Rsqr u). 
-apply Rle_0_sqr.
-assert (0 <= Rsqr v). 
-apply Rle_0_sqr.
-lra.
-assert ( 1 = Rsqr 1).
-unfold Rsqr. lra.
-rewrite H1 in H0.
-split.
-apply Rsqr_neg_pos_le_0 in H0.
-assumption. lra.
-apply Rsqr_incr_0_var in H0.
-assumption. lra.
-Qed.
-
-Lemma sqr_4_bound_4: forall (x y u v:R), Rsqr x + Rsqr y + Rsqr u + Rsqr v = 1 
- -> -1 <= v <= 1.
-Proof.
-intros.
-assert (Rsqr v <= 1).
-assert (0 <= Rsqr x).
-apply Rle_0_sqr.
-assert (0 <= Rsqr y). 
-apply Rle_0_sqr.
-assert (0 <= Rsqr u). 
-apply Rle_0_sqr.
-assert (0 <= Rsqr v). 
-apply Rle_0_sqr.
-lra.
-assert ( 1 = Rsqr 1).
-unfold Rsqr. lra.
-rewrite H1 in H0.
-split.
-apply Rsqr_neg_pos_le_0 in H0.
-assumption. lra.
-apply Rsqr_incr_0_var in H0.
-assumption. lra.
 Qed.
 
 Lemma sqr_angle_four_1 : forall (x y z: R),
@@ -4531,6 +1194,44 @@ rewrite H0.
 unfold Rsqr. lra.
 rewrite H. reflexivity.
 Qed.
+
+Lemma rm10_eq: forall (θ1 ξ θ2:R), rm10 θ1 ξ θ2 = sin ξ * cos θ2.
+Proof.
+intros.
+unfold rm10,rx,ry,rz,rw.
+rewrite <- sin_plus. rewrite <- sin_minus.
+rewrite <- cos_plus. rewrite <- cos_minus.
+assert (2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) *
+(cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) +
+2 * (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2)) *
+(cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))
+ = (2 * sin (ξ / 2) * cos (ξ / 2)) * 
+     (cos (θ1 / 2 + θ2 / 2) * cos (θ1 / 2 - θ2 / 2) + sin (θ1 / 2 + θ2 / 2) * sin (θ1 / 2 - θ2 / 2))) by lra.
+rewrite H. rewrite <- sin_2a. rewrite <- cos_minus.
+assert (2 * (ξ / 2) = ξ) by lra. rewrite H0.
+assert ((θ1 / 2 + θ2 / 2 - (θ1 / 2 - θ2 / 2)) = θ2) by lra.
+rewrite H1. reflexivity.
+Qed.
+
+Lemma rm11_eq: forall (θ1 ξ θ2:R), rm11 θ1 ξ θ2 = cos ξ.
+Proof.
+intros.
+unfold rm11,rx,ry,rz,rw.
+rewrite <- sin_minus. rewrite <- cos_minus.
+assert (1 -
+2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) *
+(sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) -
+2 * (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2)) *
+(sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))
+  = 1 - 2 * sin (ξ / 2) * sin (ξ / 2) * (Rsqr (sin (θ1 / 2 - θ2 / 2)) + Rsqr (cos (θ1 / 2 - θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H. rewrite sin2_cos2.
+rewrite  Rmult_1_r.
+rewrite <- cos_2a_sin.
+assert ((2 * (ξ / 2)) = ξ) by lra.
+rewrite H0. reflexivity.
+Qed.
+
 
 Lemma rm12_eq : forall (x y z:R), 
    rm12 x y z = sin y * sin z.
@@ -6193,204 +2894,53 @@ rewrite H0. clear H0. rewrite H.
 lra.
 Qed.
 
-
-Lemma yzy_to_zyz_correct_5 : forall {dim} θ1 ξ θ2 q,
-  (q < dim)%nat ->
-    (sqrt (Rsqr (sin (ξ / 2)) * Rsqr (cos (θ1 / 2  - θ2 / 2))
-         +  Rsqr (cos (ξ / 2)) * Rsqr (cos (θ1 / 2 + θ2 / 2))) <> 0)%R
-  ->
-  @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≅
-          Rz (to_zyz_phi θ1 ξ θ2) q ; Ry (to_zyz_theta θ1 ξ θ2) q ; Rz (to_zyz_lambda θ1 ξ θ2) q.
+Lemma rm22_rewrite_case_1:
+  forall (θ1 ξ θ2:R),
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+        (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0
+  -> (-
+ (cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) *
+  ((cos ξ * cos (θ1 / 2))%R, (sin ξ * cos (θ1 / 2))%R)))%C =
+(-
+ (((cos
+      (acos
+         ((cos (θ1 / 2) * cos (θ2 / 2) -
+           cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+          √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+             (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+    cos (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2)) -
+    -
+    (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+     √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+        (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+    sin (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2))) *
+   √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+      (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))%R,
+ ((-
+   (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+       (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+   cos (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2)) +
+   cos
+     (acos
+        ((cos (θ1 / 2) * cos (θ2 / 2) -
+          cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+         √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+            (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+   sin (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2))) *
+  √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))%R))%C.
 Proof.
 intros.
-remember (cos (θ1 / 2) * cos (θ2 / 2) - (cos ξ * sin (θ1 / 2) * sin (θ2 / 2))) as s.
-remember (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) as t.
-remember (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) as p.
-unfold to_zyz_theta, to_zyz_phi, to_zyz_lambda.
-destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
-destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
-assert (cos ((acos (rm22 θ1 ξ θ2)) / 2) = p \/ cos ((acos (rm22 θ1 ξ θ2)) / 2) = - p).
-unfold rm22, rx,ry.
-rewrite <- sin_minus.
-rewrite <- sin_plus.
-assert (2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))
-      = 2 * ((Rsqr (sin (ξ / 2))) * Rsqr (sin (θ1 / 2 - θ2 / 2)))).
-unfold Rsqr. lra.
-rewrite H1. clear H1.
-assert (2 * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))
-   = 2 * ((Rsqr (cos (ξ / 2))) * Rsqr (sin (θ1 / 2 + θ2 / 2)))).
-unfold Rsqr. lra.
-rewrite H1. clear H1.
-specialize (cos_2a_cos_half
-     (acos
-     (1 - 2 * ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) -
-      2 * ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) / 2)) as eq3.
-assert ((2 *
-             (acos
-                (1 - 2 * ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) -
-                 2 * ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) / 2))
-    = (acos
-                (1 - 2 * ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) -
-                 2 * ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))) by lra.
-rewrite H1 in eq3. clear H1.
-rewrite cos_acos in eq3.
-assert (((1 - 2 * ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) -
-          2 * ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) + 1) / 2)
-    = 1 - ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) - ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) by lra.
-rewrite H1 in eq3. clear H1.
-specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as eq4.
-assert ((1 - (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² - (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
-            = ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
-rewrite H1 in eq3.
-destruct eq3.
-left. rewrite Heqp. assumption.
-right. rewrite Heqp. assumption.
-apply Rltb_lt in eq1.
-apply Rltb_lt in eq2.
-unfold rm22,rx,ry in eq1.
-unfold rm22,rx,ry in eq2.
-rewrite <- sin_minus in eq1.
-rewrite <- sin_plus in eq1. 
-rewrite <- sin_minus in eq2.
-rewrite <- sin_plus in eq2. 
-rewrite <- 2 Rsqr_mult.
-unfold Rsqr. lra.
-assert (0 <= p). rewrite Heqp.
-apply  sqrt_pos. rewrite Heqp in H2.
-assert (sin (acos (s / p)) = (t / p) \/ sin (acos (s / p)) = ((-t) / p)).
-rewrite sin_acos.
-rewrite Heqs.
-rewrite Heqp.
-rewrite Heqp in H0.
-specialize (delta_cos_sin (θ1 / 2) (θ2 / 2) ξ H0) as H3.
-assert ((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-      √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²
-   = 1 - ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-      √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²) by lra.
-rewrite <- H4.
-rewrite Heqt.
-destruct (0 <=? (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))) eqn:eq3.
-apply Rleb_le in eq3.
-right.
-rewrite sqrt_Rsqr.
-lra. 
-assert (0 < √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
-assert (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
-  = (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
-/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
-rewrite H6.
-apply Rinv_0_lt_compat in H5.
-apply Rmult_le_pos. lra. lra.
-apply Rleb_lt_false in eq3.
-assert (0 < sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) by lra.
-assert (0 < √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
-apply Rinv_0_lt_compat in H6.
-left.
-assert ((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²
-  = (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²).
-unfold Rsqr. lra.
-rewrite H7.
-rewrite sqrt_Rsqr.
-lra. 
-assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
- = sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
-/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
-rewrite H8.
-apply Rmult_le_pos. lra. lra.
-rewrite Heqs. rewrite Heqp.
-apply delta_cos_bound. rewrite Heqp in H0. assumption.
-assert (sin (acos (rm22 θ1 ξ θ2) / 2) = 
-  √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
- \/ sin (acos (rm22 θ1 ξ θ2) / 2) = 
-  - √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
-assert (Rsqr (cos (acos (rm22 θ1 ξ θ2) / 2)) = Rsqr p).
-destruct H1. rewrite H1. reflexivity.
-rewrite H1. unfold Rsqr. lra.
-specialize (sin2_cos2 (acos (rm22 θ1 ξ θ2) / 2)) as H5.
-assert ((sin (acos (rm22 θ1 ξ θ2) / 2))² = 1 - p²) by lra.
-assert (p² = ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
-rewrite Heqp. rewrite Rsqr_sqrt. reflexivity.
-rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
-assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²) by apply Rle_0_sqr.
-assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²) by apply Rle_0_sqr.
-lra.
-rewrite H7 in H6.
-rewrite Heqp in H0.
-specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as H8.
-assert ((sin (acos (rm22 θ1 ξ θ2) / 2))² = (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² 
-            + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) by lra.
-specialize (Rsqr_sqrt ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² 
-          + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) as H10.
-assert (0 <= (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²).
-rewrite <- 2 Rsqr_mult.
-assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²) by apply Rle_0_sqr.
-assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²) by apply Rle_0_sqr.
-lra.
-apply H10 in H11.
-rewrite <- H11 in H9.
-apply Rsqr_eq in H9.
-assumption.
-destruct H1. destruct H3. destruct H4.
-  unfold uc_cong; simpl. (* first case: all angles are greater than zero. *)
-exists (- acos (s/p)).
-  autorewrite with eval_db.
-  gridify.
-    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-apply f_equal2; try reflexivity.
-apply f_equal2; try reflexivity.
-  solve_matrix.
-- (* first-sub-case: cos acos rm22 * Cexp = ... *)
-unfold Cexp.
-rewrite cos_neg.
-rewrite sin_neg.
-rewrite cos_acos.
-rewrite H3. rewrite H1.
-assert ((cos (θ2 / 2) * cos (θ1 / 2) + - (sin (θ2 / 2) * ((cos ξ, sin ξ) * sin (θ1 / 2))))%C
-   = ((cos (θ2 / 2) * cos (θ1 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))%R,
-     (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))%R)%C ) by lca.
-rewrite H.
-assert (((((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R,
- (-
-  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R) *
- √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%C
-  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
-   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
-       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
-   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
-   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
-    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
-rewrite H6. clear H6.
-rewrite Rinv_r. lca. assumption.
-apply delta_cos_bound. assumption.
-- (* second-sub-case: Cexp atan (rm12/rm02) sin acos rm22 * Cexp = ... *)
-assert ((Cexp
-    (-
-     acos
-       ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-        √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
-  (sin (acos (rm22 θ1 ξ θ2) / 2) * Cexp (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2))))%C
-  = ((Cexp
-    (-
-     acos
-       ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-        √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
-    Cexp (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2))) * sin (acos (rm22 θ1 ξ θ2) / 2))%C) by lca.
-rewrite H. clear H.
-rewrite <- Cexp_add.
-unfold Cexp.
-rewrite C_smult_r.
-rewrite C_smult_r.
-rewrite sin_plus.
-rewrite cos_plus.
-rewrite cos_neg.
-rewrite sin_neg.
-rewrite H3. rewrite H4.
+rename H into H0.
+assert (θ1=θ1) as H1 by lra .
+assert (0 <= √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+        (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) as H2.
+apply sqrt_pos.
+assert (θ2=θ2) as H3 by lra.
+assert (ξ=ξ) as H4 by lra.
+assert (ξ=ξ) as H5 by lra.
 rewrite cos_acos.
 unfold atan2.
 destruct (0 <? rm02 θ1 ξ θ2) eqn:eq3.
@@ -7853,22 +4403,52 @@ apply Rle_0_sqr. lra.
 }
 apply delta_cos_bound.
 assumption.
-- (* third-sub-case: Cexp atan (rm21/rm20) * sin acos rm22 = ... *)
-rewrite (Cmult_assoc (Cexp
-   (-
-    acos
-      ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+Qed.
+
+Lemma rm22_rewrite_case_2:
+  forall (θ1 ξ θ2 :R),
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+        (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0 ->
+(sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((cos ξ * sin (θ1 / 2))%R, (sin ξ * sin (θ1 / 2))%R))%C =
+((cos
+    (acos
+       ((cos (θ1 / 2) * cos (θ2 / 2) -
+         cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+        √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+           (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+  cos (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)) -
+  -
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+      (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+  sin (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2))) *
+ √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²),
+(-
+ (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) *
+ cos (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)) +
+ cos
+   (acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
        √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
-          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
-rewrite <- Cexp_add.
-unfold Cexp.
-rewrite C_smult_r.
-rewrite C_smult_r.
-rewrite sin_plus.
-rewrite cos_plus.
-rewrite cos_neg.
-rewrite sin_neg.
-rewrite H3. rewrite H4.
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+ sin (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2))) *
+√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+   (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+Proof.
+intros.
+rename H into H0.
+assert (θ1=θ1) as H1 by lra .
+assert (0 <= √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+        (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) as H2.
+apply sqrt_pos.
+assert (θ2=θ2) as H3 by lra.
+assert (ξ=ξ) as H4 by lra.
+assert (ξ=ξ) as H5 by lra.
 rewrite cos_acos.
 unfold atan2.
 destruct (0 <? rm20_minus θ1 ξ θ2) eqn:eq3.
@@ -9426,43 +6006,28 @@ apply Rle_0_sqr. lra.
 }
 apply delta_cos_bound.
 assumption.
-- (* fourth-sub-case: Cexp (cos acos) * Cexp atan2 rm21 * cos (acos rm22) * Cexp atant2 rm12 *)
-rewrite (Cmult_assoc (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
-rewrite (Cmult_comm (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
-rewrite <- Cmult_assoc. 
-rewrite (Cmult_assoc (Cexp (- acos
-      ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
-assert ((Cexp
-   (-
-    acos
-      ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
- cos (acos (rm22 θ1 ξ θ2) / 2))%C
-  = ((cos (θ1 / 2) *  cos (θ2 / 2) - cos  ξ * sin (θ1 / 2) * sin (θ2 / 2))%R,
-             (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))%R)%C).
-unfold Cexp.
-rewrite cos_neg.
-rewrite sin_neg.
-rewrite cos_acos.
-rewrite H3. rewrite H1.
-assert (((((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R,
- (-
-  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R) *
- √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%C
-  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
-   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
-       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
-   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
-   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
-    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
-          + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
-rewrite H. clear H.
-rewrite Rinv_r. lca. assumption.
-apply delta_cos_bound. assumption.
-rewrite H. clear H.
+Qed.
+
+Lemma rm22_rewrite_case_3: forall (θ1 ξ θ2 : R),
+   (rm22 θ1 ξ θ2 <? 1) = true -> (-1 <? rm22 θ1 ξ θ2) = true ->
+(- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * (Cexp ξ * cos (θ1 / 2)))%C =
+(((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2))%R,
+ (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))%R) *
+ (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)) *
+  Cexp (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2))))%C.
+Proof.
+intros.
+rename H into eq1.
+rename H0 into eq2.
+assert (θ1=θ1) as H0 by lra .
+assert (θ1=θ1) as H1 by lra .
+assert (0 <= √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+        (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) as H2.
+apply sqrt_pos.
+assert (θ2=θ2) as H3 by lra.
+assert (ξ=ξ) as H4 by lra.
+assert (ξ=ξ) as H5 by lra.
 rewrite <- Cexp_add.
 unfold Cexp,atan2.
 destruct (0 <? rm20_minus θ1 ξ θ2) eqn:eq3.
@@ -16757,128 +13322,4228 @@ rewrite (Rmult_assoc (cos ξ )).
 rewrite (Rmult_assoc (-sin ξ )).
 rewrite H14. lca.
 }
-- (* when sin (acos (rm22 θ1 ξ θ2) / 2) =
-      - √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) *)
 
-Admitted.
+Qed.
 
 
-(*
- autorewrite with R_db C_db Cexp_db trig_db.
-
-unfold Cexp.
-rewrite cos_acos.
-rewrite sin_acos.
-specialize (delta_cos_sin (θ1 / 2) (θ2 / 2) ξ H0) as H2.
-assert (1 - ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
-      √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²
-   = (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
-      √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²) by lra.
-rewrite H. clear H.
-specialize (cos_2a_cos_half (acos (rm22 θ1 ξ θ2) / 2)) as H.
-destruct H.
-rewrite H.
-assert (2 * (acos (rm22 θ1 ξ θ2) / 2) = acos (rm22 θ1 ξ θ2)) by lra.
-rewrite H3.
-clear H3.
-rewrite cos_acos.
-6: {
-unfold atan2.
-}
-Admitted.
-
-(*
 Lemma yzy_to_zyz_correct : forall {dim} θ1 ξ θ2 q,
   (q < dim)%nat ->
   @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≅
           Rz (to_zyz_phi θ1 ξ θ2) q ; Ry (to_zyz_theta θ1 ξ θ2) q ; Rz (to_zyz_lambda θ1 ξ θ2) q.
 Proof.
 intros.
-  unfold uc_cong; simpl.
+remember (cos (θ1 / 2) * cos (θ2 / 2) - (cos ξ * sin (θ1 / 2) * sin (θ2 / 2))) as s.
+remember (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) as t.
+remember (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) as p.
+unfold to_zyz_theta, to_zyz_phi, to_zyz_lambda.
+destruct (rm22 θ1 ξ θ2 <? 1) eqn:eq1.
+destruct (-1 <? rm22 θ1 ξ θ2) eqn:eq2.
+assert (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) <> 0).
+assert (0 < √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+apply sqrt_lt_R0.
+remember ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) as r.
+remember ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) as g.
+assert (r + g = 1).
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as eqc.
+rewrite Heqr. rewrite Heqg. lra.
+assert (0 <= r).
+rewrite Heqr.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²) by apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²) by apply Rle_0_sqr.
+lra.
+assert (0 <= g).
+rewrite Heqg.
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²) by apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²) by apply Rle_0_sqr.
+lra.
+apply Rltb_lt in eq1.
+apply Rltb_lt in eq2.
+assert (rm22 θ1 ξ θ2 = 1 - 2 * g).
+unfold rm22,rx,ry.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+rewrite Heqg. unfold Rsqr. lra.
+rewrite H3 in eq1. rewrite H3 in eq2.
+assert (0 < g) by lra.
+lra. lra.
+assert (cos ((acos (rm22 θ1 ξ θ2)) / 2) = p \/ cos ((acos (rm22 θ1 ξ θ2)) / 2) = - p).
+unfold rm22, rx,ry.
+rewrite <- sin_minus.
+rewrite <- sin_plus.
+assert (2 * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2)) * (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))
+      = 2 * ((Rsqr (sin (ξ / 2))) * Rsqr (sin (θ1 / 2 - θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H1. clear H1.
+assert (2 * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2)) * (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))
+   = 2 * ((Rsqr (cos (ξ / 2))) * Rsqr (sin (θ1 / 2 + θ2 / 2)))).
+unfold Rsqr. lra.
+rewrite H1. clear H1.
+specialize (cos_2a_cos_half
+     (acos
+     (1 - 2 * ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) -
+      2 * ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) / 2)) as eq3.
+assert ((2 *
+             (acos
+                (1 - 2 * ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) -
+                 2 * ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) / 2))
+    = (acos
+                (1 - 2 * ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) -
+                 2 * ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)))) by lra.
+rewrite H1 in eq3. clear H1.
+rewrite cos_acos in eq3.
+assert (((1 - 2 * ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) -
+          2 * ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) + 1) / 2)
+    = 1 - ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²) - ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H1 in eq3. clear H1.
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as eq4.
+assert ((1 - (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² - (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+            = ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H1 in eq3.
+destruct eq3.
+left. rewrite Heqp. assumption.
+right. rewrite Heqp. assumption.
+apply Rltb_lt in eq1.
+apply Rltb_lt in eq2.
+unfold rm22,rx,ry in eq1.
+unfold rm22,rx,ry in eq2.
+rewrite <- sin_minus in eq1.
+rewrite <- sin_plus in eq1. 
+rewrite <- sin_minus in eq2.
+rewrite <- sin_plus in eq2. 
+rewrite <- 2 Rsqr_mult.
+unfold Rsqr. lra.
+assert (0 <= p). rewrite Heqp.
+apply  sqrt_pos. rewrite Heqp in H1.
+assert (sin (acos (s / p)) = (t / p) \/ sin (acos (s / p)) = ((-t) / p)).
+rewrite sin_acos.
+rewrite Heqs.
+rewrite Heqp.
+specialize (delta_cos_sin (θ1 / 2) (θ2 / 2) ξ H0) as H3.
+assert ((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+      √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²
+   = 1 - ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+      √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²) by lra.
+rewrite <- H4.
+rewrite Heqt.
+destruct (0 <=? (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))) eqn:eq3.
+apply Rleb_le in eq3.
+right.
+rewrite sqrt_Rsqr.
+lra. 
+assert (0 < √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+assert (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+  = (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) * 
+/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H6.
+apply Rinv_0_lt_compat in H5.
+apply Rmult_le_pos. lra. lra.
+apply Rleb_lt_false in eq3.
+assert (0 < sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) by lra.
+assert (0 < √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+apply Rinv_0_lt_compat in H6.
+left.
+assert ((- sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²
+  = (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))²).
+unfold Rsqr. lra.
+rewrite H7.
+rewrite sqrt_Rsqr.
+lra. 
+assert (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+ = sin ξ * sin (θ1 / 2) * sin (θ2 / 2) * 
+/ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)) by lra.
+rewrite H8.
+apply Rmult_le_pos. lra. lra.
+rewrite Heqs. rewrite Heqp.
+apply delta_cos_bound. assumption.
+assert (sin (acos (rm22 θ1 ξ θ2) / 2) = 
+  √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)
+ \/ sin (acos (rm22 θ1 ξ θ2) / 2) = 
+  - √ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)).
+assert (Rsqr (cos (acos (rm22 θ1 ξ θ2) / 2)) = Rsqr p).
+destruct H1. rewrite H1. rewrite Heqp. reflexivity.
+rewrite Heqp.
+rewrite H1.  rewrite <- Rsqr_neg. 
+reflexivity.
+specialize (sin2_cos2 (acos (rm22 θ1 ξ θ2) / 2)) as H5.
+assert ((sin (acos (rm22 θ1 ξ θ2) / 2))² = 1 - p²) by lra.
+assert (p² = ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)).
+rewrite Heqp. rewrite Rsqr_sqrt. reflexivity.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²) by apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²) by apply Rle_0_sqr.
+lra.
+rewrite H7 in H6.
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as H8.
+assert ((sin (acos (rm22 θ1 ξ θ2) / 2))² = (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² 
+            + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) by lra.
+specialize (Rsqr_sqrt ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² 
+          + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) as H10.
+assert (0 <= (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²).
+rewrite <- 2 Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²) by apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²) by apply Rle_0_sqr.
+lra.
+apply H10 in H11.
+rewrite <- H11 in H9.
+apply Rsqr_eq in H9.
+assumption.
+remember (√ ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² +
+        (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²)) as r.
+assert ((cos (acos (rm22 θ1 ξ θ2) / 2) = p /\ sin (acos (rm22 θ1 ξ θ2) / 2) = r)
+         \/ (cos (acos (rm22 θ1 ξ θ2) / 2) = - p /\ sin (acos (rm22 θ1 ξ θ2) / 2) = - r)).
+destruct H1. destruct H4.
+left. lra.
+apply Rltb_lt in eq1. apply Rltb_lt in eq2.
+assert (cos (acos (rm22 θ1 ξ θ2)) = rm22 θ1 ξ θ2).
+apply cos_acos. lra.
+assert ((sin (acos (rm22 θ1 ξ θ2))) = sqrt (1 - Rsqr (rm22 θ1 ξ θ2))).
+apply sin_acos. lra.
+assert (0 <= r).
+rewrite Heqr. apply sqrt_pos.
+assert (r <> 0).
+assert (cos (acos (rm22 θ1 ξ θ2)) = 2 * cos (acos (rm22 θ1 ξ θ2) / 2)  * cos (acos (rm22 θ1 ξ θ2) / 2) - 1).
+assert ((acos (rm22 θ1 ξ θ2)) = 2 * ((acos (rm22 θ1 ξ θ2)) /2)) by lra.
+assert (cos (2 * (acos (rm22 θ1 ξ θ2) / 2)) = 2 * cos (acos (rm22 θ1 ξ θ2) / 2)  * cos (acos (rm22 θ1 ξ θ2) / 2) - 1).
+apply cos_2a_cos. rewrite <- H9.
+rewrite <- H8. reflexivity.
+intros R.
+assert (Rsqr p + Rsqr r = 1).
+rewrite Heqp. rewrite Heqr.
+rewrite Rsqr_sqrt. rewrite Rsqr_sqrt. 
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as H9.
+lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+assert (p = 1).
+rewrite R in H9. 
+assert (p² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in H9. lra.
+apply Rsqr_eq in H10.
+destruct H10. assumption.
+rewrite Heqp in H10. lra.
+rewrite Heqp in H10.
+rewrite <- H1 in H10.
+rewrite H10 in H8.
+assert (cos (acos (rm22 θ1 ξ θ2)) = 1) by lra.
+rewrite cos_acos in H11. lra. lra.
+assert (sin (acos (rm22 θ1 ξ θ2)) = 2 * sin (acos (rm22 θ1 ξ θ2) / 2) * cos (acos (rm22 θ1 ξ θ2) / 2)).
+rewrite <- sin_2a.
+assert ((2 * (acos (rm22 θ1 ξ θ2) / 2)) = (acos (rm22 θ1 ξ θ2))) by lra.
+rewrite H9. reflexivity.
+assert (0 <= sin (acos (rm22 θ1 ξ θ2))).
+rewrite H6. apply sqrt_pos.
+assert (2 * sin (acos (rm22 θ1 ξ θ2) / 2) *
+     cos (acos (rm22 θ1 ξ θ2) / 2) < 0).
+rewrite H4.
+rewrite H1.
+assert (0 < p) by lra.
+assert (0 < r) by lra.
+assert (0 < 2) by lra.
+assert (2 * - r * p = - (2 * r * p)) by lra.
+rewrite Heqp in H14.
+rewrite H14.
+apply Ropp_lt_gt_0_contravar.
+assert (0 < 2 * r * p).
+apply Rmult_lt_0_compat.
+apply Rmult_lt_0_compat. assumption. assumption. assumption.
+rewrite Heqp in H15.
+lra. lra.
+destruct H4.
+apply Rltb_lt in eq1. apply Rltb_lt in eq2.
+assert (cos (acos (rm22 θ1 ξ θ2)) = rm22 θ1 ξ θ2).
+apply cos_acos. lra.
+assert ((sin (acos (rm22 θ1 ξ θ2))) = sqrt (1 - Rsqr (rm22 θ1 ξ θ2))).
+apply sin_acos. lra.
+assert (0 <= r).
+rewrite Heqr. apply sqrt_pos.
+assert (r <> 0).
+assert (cos (acos (rm22 θ1 ξ θ2)) = 2 * cos (acos (rm22 θ1 ξ θ2) / 2)  * cos (acos (rm22 θ1 ξ θ2) / 2) - 1).
+assert ((acos (rm22 θ1 ξ θ2)) = 2 * ((acos (rm22 θ1 ξ θ2)) /2)) by lra.
+assert (cos (2 * (acos (rm22 θ1 ξ θ2) / 2)) = 2 * cos (acos (rm22 θ1 ξ θ2) / 2)  * cos (acos (rm22 θ1 ξ θ2) / 2) - 1).
+apply cos_2a_cos. rewrite <- H9.
+rewrite <- H8. reflexivity.
+intros R.
+assert (Rsqr p + Rsqr r = 1).
+rewrite Heqp. rewrite Heqr.
+rewrite Rsqr_sqrt. rewrite Rsqr_sqrt. 
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as H9.
+lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * sin (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * sin (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+rewrite <- Rsqr_mult. rewrite <- Rsqr_mult.
+assert (0 <= (sin (ξ / 2) * cos (θ1 / 2 - θ2 / 2))²).
+apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2) * cos (θ1 / 2 + θ2 / 2))²).
+apply Rle_0_sqr. lra.
+assert (p = 1).
+rewrite R in H9. 
+assert (p² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in H9. lra.
+apply Rsqr_eq in H10.
+destruct H10. assumption.
+rewrite Heqp in H10. lra.
+rewrite Heqp in H10.
+rewrite H10 in H1.
+rewrite H1 in H8.
+assert (cos (acos (rm22 θ1 ξ θ2)) = 1) by lra.
+rewrite cos_acos in H11. lra. lra.
+assert (sin (acos (rm22 θ1 ξ θ2)) = 2 * sin (acos (rm22 θ1 ξ θ2) / 2) * cos (acos (rm22 θ1 ξ θ2) / 2)).
+rewrite <- sin_2a.
+assert ((2 * (acos (rm22 θ1 ξ θ2) / 2)) = (acos (rm22 θ1 ξ θ2))) by lra.
+rewrite H9. reflexivity.
+assert (0 <= sin (acos (rm22 θ1 ξ θ2))).
+rewrite H6. apply sqrt_pos.
+assert (2 * sin (acos (rm22 θ1 ξ θ2) / 2) *
+     cos (acos (rm22 θ1 ξ θ2) / 2) < 0).
+rewrite H4.
+rewrite H1.
+assert (0 < p) by lra.
+assert (0 < r) by lra.
+assert (0 < 2) by lra.
+assert (2 * r * - p = - (2 * r * p)) by lra.
+rewrite Heqp in H14.
+rewrite H14.
+apply Ropp_lt_gt_0_contravar.
+assert (0 < 2 * r * p).
+apply Rmult_lt_0_compat.
+apply Rmult_lt_0_compat. assumption. assumption. assumption.
+rewrite Heqp in H15.
+lra. lra.
+right. lra.
+clear H1. clear H4.
+destruct H5. destruct H1. destruct H3.
+(* first case: all angles are greater than zero. *)
+unfold uc_cong; simpl. 
+exists (- acos (s/p)).
   autorewrite with eval_db.
   gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
 apply f_equal2; try reflexivity.
 apply f_equal2; try reflexivity.
   solve_matrix.
-Admitted.
-*)
-
-Lemma combine_u3_u3: forall {dim} (θ1 ϕ1 λ1 θ2 ϕ2 λ2 : R) (q : nat), 
-  (q < dim)%nat ->
-  ([@U3 dim θ1 ϕ1 λ1 q] ++ [U3 θ2 ϕ2 λ2 q]) ≅l≅
-        ([U3 (to_zyz_theta θ1 (ϕ1 + λ2) θ2)
-               ((to_zyz_lambda θ1 (ϕ1 + λ2) θ2)+ϕ2) (λ1+(to_zyz_phi θ1 (ϕ1 + λ2) θ2)) q]).
-Proof.
-  intros.
-  unfold uc_cong_l, uc_cong; simpl.
-  exists PI.
+- (* first-sub-case: cos acos rm22 * Cexp = ... *)
+unfold Cexp.
+rewrite cos_neg.
+rewrite sin_neg.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert (((((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R,
+ (-
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R) *
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+- (* second-sub-case: Cexp atan (rm12/rm02) sin acos rm22 * Cexp = ... *)
+rewrite (Cmult_comm (sin (acos (rm22 θ1 ξ θ2) / 2))).
+rewrite (Cmult_assoc (Cexp (-
+     acos
+       ((cos (θ1 / 2) * cos (θ2 / 2) -
+         cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+        √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+           (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+rewrite <- Cexp_add.
+unfold Cexp.
+rewrite C_smult_r.
+rewrite C_smult_r.
+rewrite sin_plus.
+rewrite cos_plus.
+rewrite cos_neg.
+rewrite sin_neg.
+rewrite H3. rewrite H4.
+apply rm22_rewrite_case_1.
+assumption.
+- (* third-sub-case: Cexp atan (rm21/rm20) * sin acos rm22 = ... *)
+rewrite (Cmult_assoc (Cexp
+   (-
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+rewrite <- Cexp_add.
+unfold Cexp.
+rewrite C_smult_r.
+rewrite C_smult_r.
+rewrite sin_plus.
+rewrite cos_plus.
+rewrite cos_neg.
+rewrite sin_neg.
+rewrite H3. rewrite H4.
+apply rm22_rewrite_case_2.
+assumption.
+- (* fourth-sub-case: Cexp (cos acos) * Cexp atan2 rm21 * cos (acos rm22) * Cexp atant2 rm12 *)
+rewrite (Cmult_assoc (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite (Cmult_comm (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite <- Cmult_assoc. 
+rewrite (Cmult_assoc (Cexp (- acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+assert ((Cexp
+   (-
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+ cos (acos (rm22 θ1 ξ θ2) / 2))%C
+  = ((cos (θ1 / 2) *  cos (θ2 / 2) - cos  ξ * sin (θ1 / 2) * sin (θ2 / 2))%R,
+             (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))%R)%C).
+unfold Cexp.
+rewrite cos_neg.
+rewrite sin_neg.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert (((((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R,
+ (-
+  (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R) *
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²
+          + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H. clear H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+rewrite H. clear H.
+apply rm22_rewrite_case_3.
+assumption. assumption.
+- (* second case: sin (acos (s / p)) = - t / p *)
+unfold uc_cong; simpl. 
+exists (acos (s/p)).
   autorewrite with eval_db.
-  2: lia.
   gridify.
-  rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-  do 2 (apply f_equal2; try reflexivity).
-  solve_matrix.
-Admitted.
-
-(* Convert a sequence of YZY Euler angles to a quaternion. 
-   the normalize is unnecessary because the norm is always 1. *)
-Definition to_zyz (q : quaternion) : (R * R * R) :=
-  let m := to_matrix q in
-  match m with
-  | ((_, _, m02), (m10, m11, m12), (m20, m21, m22)) =>
-    if m22 <? 1
-    then if -1 <? m22
-         then (atan2 m12 m02, acos m22, atan2 m21 (- m20))
-         else (- atan2 m10 m11, PI, 0)
-    else (atan2 m10 m11, 0, 0)
-  end.
-
-
-Definition from_yzy (θ1 ξ θ2 : R) : quaternion :=
-  let q1 : quaternion := (cos (θ1 / 2), 0, sin (θ1 / 2), 0) in
-  let q2 : quaternion := (cos (ξ / 2), 0, 0, sin (ξ / 2)) in
-  let q3 : quaternion := (cos (θ2 / 2), 0, sin (θ2 / 2), 0) in
-  normalize (mult (mult q1 q2) q3).
-
-Definition yzy_to_zyz ξ θ1 θ2 :=
-  let q := from_yzy θ1 ξ θ2 in
-  match to_zyz q with
-  | (ϕ, θ, λ) => (θ, ϕ, λ)
-  end.
-
-Definition compose_u3 (θ1 ϕ1 λ1 θ2 ϕ2 λ2 : R) :=
-  match yzy_to_zyz (ϕ1 + λ2) θ1 θ2 with
-  | (θ', ϕ', λ') => UIBM_U3 θ' (λ' + ϕ2) (λ1 + ϕ')
-  end.
-
-
-(* The following lemma will likely be difficult to prove :) 
-   Try to break it into small parts! *)
-Lemma yzy_to_zyz_correct : forall {dim} ξ θ1 θ2 ϕ θ λ q,
-  (q < dim)%nat ->
-  yzy_to_zyz ξ θ1 θ2 = (θ, ϕ, λ) ->
-  @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≡ Rz ϕ q ; Ry θ q ; Rz λ q.
-Proof.
-intros.
-  unfold uc_equiv; simpl.
-  autorewrite with eval_db.
-  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
 apply f_equal2; try reflexivity.
 apply f_equal2; try reflexivity.
   solve_matrix.
-unfold yzy_to_zyz in H0.
-unfold from_yzy in H0.
-unfold mult,normalize,to_zyz in H0.
- autorewrite with R_db C_db Cexp_db trig_db in H0.
-destruct (θ, ϕ, λ). destruct p.
-Admitted.
+{
+(* first-sub-case: cos acos rm22 * Cexp = ... *)
+unfold Cexp.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert (((((cos (θ1 / 2) * cos (θ2 / 2) -
+    cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+      (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R,
+ (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R) *
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+}
+
+{ (* second-sub-case: Cexp atan (rm12/rm02) sin acos rm22 * Cexp = ... *)
+rewrite (Cmult_comm (sin (acos (rm22 θ1 ξ θ2) / 2))).
+rewrite (Cmult_assoc (Cexp
+    (acos
+       ((cos (θ1 / 2) * cos (θ2 / 2) -
+         cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+        √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+           (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) )).
+rewrite <- Cexp_add.
+unfold Cexp.
+rewrite C_smult_r.
+rewrite C_smult_r.
+rewrite sin_plus.
+rewrite cos_plus.
+rewrite H3. rewrite H4.
+rewrite rm22_rewrite_case_1.
+lca.
+assumption.
+}
+
+{ (* third-sub-case: Cexp atan (rm21/rm20) * sin acos rm22 = ... *)
+rewrite (Cmult_assoc (Cexp
+   (acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+rewrite <- Cexp_add.
+unfold Cexp.
+rewrite C_smult_r.
+rewrite C_smult_r.
+rewrite sin_plus.
+rewrite cos_plus.
+rewrite H3. rewrite H4.
+rewrite rm22_rewrite_case_2.
+lca.
+assumption.
+}
+
+{ (* fourth-sub-case: Cexp (cos acos) * Cexp atan2 rm21 * cos (acos rm22) * Cexp atant2 rm12 *)
+rewrite (Cmult_assoc (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite (Cmult_comm (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite <- Cmult_assoc. 
+rewrite (Cmult_assoc (Cexp
+   (acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+assert ((Cexp
+   (acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+ cos (acos (rm22 θ1 ξ θ2) / 2))%C
+  = ((cos (θ1 / 2) *  cos (θ2 / 2) - cos  ξ * sin (θ1 / 2) * sin (θ2 / 2))%R,
+             (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))%R)%C).
+unfold Cexp.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert (((((cos (θ1 / 2) * cos (θ2 / 2) -
+    cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+      (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R,
+ (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R) *
+ √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+    (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+rewrite H. clear H.
+rewrite rm22_rewrite_case_3. lca.
+assumption. assumption.
+}
+- (* third case: when cos/sin rm22 = -p and -r*)
+destruct H1.
+destruct H3.
+unfold uc_cong; simpl. 
+exists (PI - acos (s/p)).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+{(* first-sub-case: cos acos rm22 * Cexp = ... *)
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert ((((-
+   ((cos (θ1 / 2) * cos (θ2 / 2) -
+     cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+       (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+ (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R) *
+ (-
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R)%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+}
+
+{ (* second-sub-case: Cexp atan (rm12/rm02) sin acos rm22 * Cexp = ... *)
+rewrite (Cmult_comm (sin (acos (rm22 θ1 ξ θ2) / 2))).
+rewrite (Cmult_assoc (Cexp
+    (PI -
+     acos
+       ((cos (θ1 / 2) * cos (θ2 / 2) -
+         cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+        √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+           (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) )).
+rewrite <- Cexp_add.
+unfold Cexp.
+rewrite C_smult_r.
+rewrite C_smult_r.
+rewrite sin_plus.
+rewrite cos_plus.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite H3. rewrite H4.
+rewrite rm22_rewrite_case_1.
+lca.
+assumption.
+}
+
+{ (* third-sub-case: Cexp atan (rm21/rm20) * sin acos rm22 = ... *)
+rewrite (Cmult_assoc (Cexp
+   (PI -
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+rewrite <- Cexp_add.
+unfold Cexp.
+rewrite C_smult_r.
+rewrite C_smult_r.
+rewrite sin_plus.
+rewrite cos_plus.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite H3. rewrite H4.
+rewrite rm22_rewrite_case_2.
+lca.
+assumption.
+}
+
+{ (* fourth-sub-case: Cexp (cos acos) * Cexp atan2 rm21 * cos (acos rm22) * Cexp atant2 rm12 *)
+rewrite (Cmult_assoc (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite (Cmult_comm (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite <- Cmult_assoc. 
+rewrite (Cmult_assoc (Cexp
+   (PI -
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+assert ((Cexp
+   (PI -
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+ cos (acos (rm22 θ1 ξ θ2) / 2))%C
+  = ((cos (θ1 / 2) *  cos (θ2 / 2) - cos  ξ * sin (θ1 / 2) * sin (θ2 / 2))%R,
+             (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))%R)%C).
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert ((((-
+   ((cos (θ1 / 2) * cos (θ2 / 2) -
+     cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+       (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+ (sin ξ * sin (θ1 / 2) * sin (θ2 / 2) /
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R) *
+ (-
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R)%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+rewrite H. clear H.
+rewrite rm22_rewrite_case_3. lca.
+assumption. assumption.
+}
+
+(* fourth case: when cos/sin rm22 = -p and -r and sin (acos (s / p)) = - t / p *)
+unfold uc_cong; simpl. 
+exists (PI + acos (s/p)).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+{(* first-sub-case: cos acos rm22 * Cexp = ... *)
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert ((((-
+   ((cos (θ1 / 2) * cos (θ2 / 2) -
+     cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+       (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+ (-
+  (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+      (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R) *
+ (-
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R)%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+}
+
+{ (* second-sub-case: Cexp atan (rm12/rm02) sin acos rm22 * Cexp = ... *)
+rewrite (Cmult_comm (sin (acos (rm22 θ1 ξ θ2) / 2))).
+rewrite (Cmult_assoc (Cexp
+    (PI +
+     acos
+       ((cos (θ1 / 2) * cos (θ2 / 2) -
+         cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+        √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+           (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) )).
+rewrite <- Cexp_add.
+unfold Cexp.
+rewrite C_smult_r.
+rewrite C_smult_r.
+rewrite sin_plus.
+rewrite cos_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite H3. rewrite H4.
+rewrite rm22_rewrite_case_1.
+lca.
+assumption.
+}
+
+{ (* third-sub-case: Cexp atan (rm21/rm20) * sin acos rm22 = ... *)
+rewrite (Cmult_assoc (Cexp
+   (PI +
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+rewrite <- Cexp_add.
+unfold Cexp.
+rewrite C_smult_r.
+rewrite C_smult_r.
+rewrite sin_plus.
+rewrite cos_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite H3. rewrite H4.
+rewrite rm22_rewrite_case_2.
+lca.
+assumption.
+}
+
+{ (* fourth-sub-case: Cexp (cos acos) * Cexp atan2 rm21 * cos (acos rm22) * Cexp atant2 rm12 *)
+rewrite (Cmult_assoc (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite (Cmult_comm (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)))).
+rewrite <- Cmult_assoc. 
+rewrite (Cmult_assoc (Cexp
+   (PI +
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))))).
+assert ((Cexp
+   (PI +
+    acos
+      ((cos (θ1 / 2) * cos (θ2 / 2) -
+        cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+       √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+          (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))) *
+ cos (acos (rm22 θ1 ξ θ2) / 2))%C
+  = ((cos (θ1 / 2) *  cos (θ2 / 2) - cos  ξ * sin (θ1 / 2) * sin (θ2 / 2))%R,
+             (- sin ξ * sin (θ1 / 2) * sin (θ2 / 2))%R)%C).
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite cos_acos.
+rewrite H3. rewrite H1.
+assert ((((-
+   ((cos (θ1 / 2) * cos (θ2 / 2) -
+     cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+    √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+       (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+ (-
+  (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) /
+   √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+      (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R) *
+ (-
+  √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² +
+     (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²))%R)%C
+  = (((cos (θ1 / 2) * cos (θ2 / 2) - cos ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) 
+       * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R,
+   (- (sin ξ * sin (θ1 / 2) * sin (θ2 / 2)) *
+   (√ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)
+    * / √ ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²)))%R)%C) by lca.
+rewrite H.
+rewrite Rinv_r. lca. assumption.
+apply delta_cos_bound. assumption.
+rewrite H. clear H.
+rewrite rm22_rewrite_case_3. lca.
+assumption. assumption.
+}
+- (* fifth case: when rm22 <= - 1, which is essentially rm22 = -1*)
+assert (θ1 = θ1) by lra.
+apply Rltb_le_false in eq2.
+assert (rm22 θ1 ξ θ2 = 1 - 2 * (((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+unfold rm22,rx,ry,Rsqr.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+lra.
+assert (rm22 θ1 ξ θ2 = -1).
+remember ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) as r.
+remember ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) as g.
+assert (r + g = 1).
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as H2.
+lra.
+assert (0 <= r).
+rewrite Heqr.
+assert (0 <= (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+lra.
+assert (0 <= g).
+assert (0 <= (sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+lra.
+assert (r <= 1) by lra.
+rewrite H1 in eq2.
+assert (1 <= r) by lra.
+lra.
+assert ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))² = 1) by lra.
+assert ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))² = 0).
+remember ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) as r.
+remember ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) as g.
+assert (r + g = 1).
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as H4.
+lra. lra.
+assert ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² = 0).
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult in H4. rewrite <- Rsqr_mult in H4.
+apply Rplus_eq_0_l in H4. assumption.
+apply Rle_0_sqr. apply Rle_0_sqr.
+assert ((cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))² = 0).
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult in H4. rewrite <- Rsqr_mult in H4.
+apply Rplus_eq_R0 in H4. destruct H4. assumption.
+apply Rle_0_sqr. apply Rle_0_sqr.
+apply Rmult_integral in H5.
+apply Rmult_integral in H6.
+destruct H5. destruct H6.
+specialize (sin2_cos2 (ξ / 2)) as eq3.
+rewrite H5 in eq3. rewrite H6 in eq3. lra.
+assert ((cos (ξ / 2))² = 1).
+specialize (sin2_cos2 (ξ / 2)) as eq3.
+rewrite H5 in eq3. lra.
+assert ((sin (θ1 / 2 + θ2 / 2))² = 1).
+specialize (sin2_cos2 (θ1 / 2 + θ2 / 2)) as eq3.
+rewrite H6 in eq3. lra.
+assert ((sin (ξ / 2)) = 0).
+apply Rsqr_eq_0 in H5.
+assumption.
+assert (sin ξ = 0).
+assert (ξ  = 2 * (ξ / 2)) by lra. rewrite H10.
+rewrite sin_2a. rewrite H9. lra.
+assert (cos ξ = 1).
+assert (ξ  = 2 * (ξ / 2)) by lra. rewrite H11.
+rewrite cos_2a_sin. rewrite H9. lra.
+apply Rsqr_eq_0 in H6. 
+assert ((sin (θ1 / 2 + θ2 / 2))² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in H8. lra.
+apply Rsqr_eq in H12.
+destruct H12.
+(* first-sub: when sin ξ = 0, cos ξ = 1, and (sin (θ1 / 2 + θ2 / 2)) = 1 *)
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite H10. rewrite H11.
+assert ((cos (θ2 / 2) * cos (θ1 / 2) +
+ - (sin (θ2 / 2) * ((1, 0) * sin (θ1 / 2))))%C = ((cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. 
+rewrite cos_plus in H6. rewrite H6.
+rewrite cos_PI2. lca.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold atan2.
+destruct (0 <? rm11 θ1 ξ θ2) eqn:eq3.
+rewrite rm10_eq. rewrite rm11_eq.
+rewrite H10.
+rewrite Rmult_0_l.
+assert (0 / cos ξ = 0) by lra.
+rewrite H.
+rewrite atan_0.
+rewrite Cexp_neg. rewrite Cexp_0.
+unfold Cexp.
+rewrite H10. rewrite H11.
+rewrite sin_plus in H12.
+assert ((cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
+  = ((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H14. rewrite H12. lca.
+apply Rltb_le_false in eq3.
+rewrite rm11_eq in eq3. rewrite H11 in eq3. lra.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp. rewrite H10. rewrite H11.
+rewrite sin_plus in H12.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((1, 0) * sin (θ1 / 2)))%C 
+ = ((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2) )%R)%C) by lca.
+rewrite H. rewrite H12. lca.
+rewrite Cexp_0. rewrite cos_PI2.
+unfold Cexp. rewrite H10. rewrite H11.
+rewrite cos_plus in H6.
+assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. rewrite H6. lca.
+(* second-sub: when sin ξ = 0, cos ξ = 1, and (sin (θ1 / 2 + θ2 / 2)) = -1 *)
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite H10. rewrite H11.
+assert ((cos (θ2 / 2) * cos (θ1 / 2) +
+ - (sin (θ2 / 2) * ((1, 0) * sin (θ1 / 2))))%C = ((cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. 
+rewrite cos_plus in H6. rewrite H6.
+rewrite cos_PI2. lca.
+rewrite Cexp_PI. rewrite sin_PI2.
+unfold atan2.
+destruct (0 <? rm11 θ1 ξ θ2) eqn:eq3.
+rewrite rm10_eq. rewrite rm11_eq.
+rewrite H10.
+rewrite Rmult_0_l.
+assert (0 / cos ξ = 0) by lra.
+rewrite H.
+rewrite atan_0.
+rewrite Cexp_neg. rewrite Cexp_0.
+unfold Cexp.
+rewrite H10. rewrite H11.
+rewrite sin_plus in H12.
+assert ((cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
+  = ((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H14. rewrite H12. lca.
+apply Rltb_le_false in eq3.
+rewrite rm11_eq in eq3. rewrite H11 in eq3. lra.
+rewrite Cexp_PI. rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp. rewrite H10. rewrite H11.
+rewrite sin_plus in H12.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((1, 0) * sin (θ1 / 2)))%C 
+ = ((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2) )%R)%C) by lca.
+rewrite H. rewrite H12. lca.
+rewrite Cexp_0. rewrite cos_PI2.
+unfold Cexp. rewrite H10. rewrite H11.
+rewrite cos_plus in H6.
+assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. rewrite H6. lca.
+(* third-sub: when sin ξ = 0, cos ξ = -1, and (sin (θ1 / 2 - θ2 / 2)) = 1 *)
+destruct H6.
+specialize (sin2_cos2 (ξ / 2)) as eq3.
+rewrite H6 in eq3.
+assert ((sin (ξ / 2))² = 1) by lra.
+assert ((sin (θ1 / 2 - θ2 / 2))² = 1).
+specialize (sin2_cos2 (θ1 / 2 - θ2 / 2)) as eq4.
+rewrite H5 in eq4. lra.
+apply Rsqr_eq_0 in H6.
+assert (sin ξ = 0).
+assert (ξ  = 2 * (ξ / 2)) by lra. rewrite H9.
+rewrite sin_2a. rewrite H6. lra.
+assert (cos ξ = -1).
+assert (ξ  = 2 * (ξ / 2)) by lra. rewrite H10.
+rewrite cos_2a_cos. rewrite H6. lra.
+apply Rsqr_eq_0 in H5. 
+assert ((sin (θ1 / 2 - θ2 / 2))² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in H8. lra.
+apply Rsqr_eq in H11.
+destruct H11.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite H9. rewrite H10.
+assert ((cos (θ2 / 2) * cos (θ1 / 2) +
+ - (sin (θ2 / 2) * ((-1, 0) * sin (θ1 / 2))))%C = ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. 
+rewrite cos_minus in H5. rewrite H5.
+rewrite cos_PI2. lca.
+rewrite Cexp_PI. rewrite sin_PI2.
+unfold atan2.
+destruct (0 <? rm11 θ1 ξ θ2) eqn:eq5.
+apply Rltb_lt in eq5.
+rewrite rm11_eq in eq5.
+rewrite H10 in eq5. lra.
+destruct (rm11 θ1 ξ θ2 <? 0) eqn:eq6.
+destruct (0 <=? rm10 θ1 ξ θ2) eqn:eq7.
+rewrite rm10_eq. rewrite rm11_eq.
+rewrite H10. rewrite H9.
+rewrite Rmult_0_l.
+assert (0 / -1 = 0) by lra.
+rewrite H.
+rewrite atan_0.
+rewrite Cexp_neg. rewrite Rplus_0_l. rewrite Cexp_PI.
+unfold Cexp.
+rewrite H10. rewrite H9.
+rewrite sin_minus in H11.
+assert ((cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
+  = ((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H13. rewrite H11. lca.
+apply Rleb_lt_false in eq7.
+rewrite rm10_eq in eq7. rewrite H9 in eq7. lra.
+apply Rltb_le_false in eq6.
+rewrite rm11_eq in eq6.
+rewrite H10 in eq6. lra.
+rewrite Cexp_PI. rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp. rewrite H10. rewrite H9.
+rewrite sin_minus in H11.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((-1, 0) * sin (θ1 / 2)))%C 
+ = ((-(sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
+rewrite H. rewrite H11. lca.
+rewrite cos_PI2.
+unfold Cexp. rewrite H10. rewrite H9.
+rewrite cos_minus in H5.
+assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
+  = ((-(cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
+rewrite H. rewrite H5. lca.
+(* fourth-sub: when sin ξ = 0, cos ξ = -1, and (sin (θ1 / 2 - θ2 / 2)) = -1 *)
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite H9. rewrite H10.
+assert ((cos (θ2 / 2) * cos (θ1 / 2) +
+ - (sin (θ2 / 2) * ((-1, 0) * sin (θ1 / 2))))%C = ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. 
+rewrite cos_minus in H5. rewrite H5.
+rewrite cos_PI2. lca.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold atan2.
+destruct (0 <? rm11 θ1 ξ θ2) eqn:eq5.
+apply Rltb_lt in eq5.
+rewrite rm11_eq in eq5.
+rewrite H10 in eq5. lra.
+destruct (rm11 θ1 ξ θ2 <? 0) eqn:eq6.
+destruct (0 <=? rm10 θ1 ξ θ2) eqn:eq7.
+rewrite rm10_eq. rewrite rm11_eq.
+rewrite H10. rewrite H9.
+rewrite Rmult_0_l.
+assert (0 / -1 = 0) by lra.
+rewrite H.
+rewrite atan_0.
+rewrite Cexp_neg. rewrite Rplus_0_l. rewrite Cexp_PI.
+unfold Cexp.
+rewrite H10. rewrite H9.
+rewrite sin_minus in H11.
+assert ((cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
+  = ((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H13. rewrite H11. lca.
+apply Rleb_lt_false in eq7.
+rewrite rm10_eq in eq7. rewrite H9 in eq7. lra.
+apply Rltb_le_false in eq6.
+rewrite rm11_eq in eq6.
+rewrite H10 in eq6. lra.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp. rewrite H10. rewrite H9.
+rewrite sin_minus in H11.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((-1, 0) * sin (θ1 / 2)))%C 
+ = ((-(sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
+rewrite H. rewrite H11. lca.
+rewrite cos_PI2.
+unfold Cexp. rewrite H10. rewrite H9.
+rewrite cos_minus in H5.
+assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
+  = ((-(cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
+rewrite H. rewrite H5. lca.
+(* fifth-sub: when cos (θ1 / 2) * cos (θ1 / 2) = 0, sin (θ1 / 2) * sin (θ1 / 2) = 0 and 0 < cos ξ *)
+apply Rsqr_eq_0 in H5.
+apply Rsqr_eq_0 in H6.
+rewrite cos_minus in H5.
+rewrite cos_plus in H6.
+assert (cos (θ1 / 2) * cos (θ2 / 2) = 0) by lra.
+assert (sin (θ1 / 2) * sin (θ2 / 2) = 0) by lra.
+apply Rmult_integral in H7.
+apply Rmult_integral in H8.
+destruct H7. destruct H8.
+specialize (sin2_cos2 (θ1 / 2)) as eq3.
+rewrite H7 in eq3. rewrite H8 in eq3. unfold Rsqr in eq3. lra.
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite H7 in eqa.
+assert ((sin (θ1 / 2))² = Rsqr 1).
+unfold Rsqr in eqa. unfold Rsqr. lra.
+apply Rsqr_eq in H9.
+specialize (sin2_cos2 (θ2 / 2)) as eqb.
+rewrite H8 in eqb.
+assert ((cos (θ2 / 2))² = Rsqr 1).
+unfold Rsqr in eqb. unfold Rsqr. lra.
+apply Rsqr_eq in H10.
+rewrite rm10_eq. rewrite rm11_eq.
+unfold atan2.
+assert (cos θ2 = 1).
+assert (θ2 = 2 * (θ2/2)) by lra.
+rewrite H11. rewrite cos_2a_sin.
+rewrite H8. lra. rewrite H11.
+rewrite Rmult_1_r.
+destruct (0 <? cos ξ) eqn:eq3.
+apply Rltb_lt in eq3.
+assert (cos (atan (sin ξ / cos ξ)) = cos ξ).
+rewrite cos_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H12. rewrite sin2_cos2. 
+rewrite Rmult_1_l. rewrite Rmult_1_l.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+apply sqrt_Rsqr. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+assert (sin (atan (sin ξ / cos ξ)) = sin ξ).
+rewrite sin_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H13. rewrite sin2_cos2. 
+rewrite Rmult_1_l.
+rewrite Rmult_assoc.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+rewrite sqrt_Rsqr. 
+rewrite <- Rinv_l_sym.
+lra. lra. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists ξ.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = Rsqr (sin ξ) + Rsqr (cos ξ)).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2. lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = - (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = - (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists (ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+(* sixth-sub: when cos (θ1 / 2) * cos (θ1 / 2) = 0, sin (θ1 / 2) * sin (θ1 / 2) = 0 and cos ξ <? 0 *)
+destruct (cos ξ <? 0) eqn:eq4.
+apply Rltb_lt in eq4.
+assert (cos (atan (sin ξ / cos ξ)) = -cos ξ).
+rewrite cos_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H12. rewrite sin2_cos2. 
+rewrite Rmult_1_l. rewrite Rmult_1_l.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+rewrite Rsqr_neg.
+apply sqrt_Rsqr. lra.
+rewrite Rsqr_neg.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+assert (sin (atan (sin ξ / cos ξ)) = -sin ξ).
+rewrite sin_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H13. rewrite sin2_cos2. 
+rewrite Rmult_1_l.
+rewrite Rmult_assoc.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rsqr_neg.
+rewrite Rinv_involutive.
+rewrite sqrt_Rsqr.
+rewrite <- Ropp_mult_distr_r. 
+rewrite <- Rinv_l_sym.
+lra. lra. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+destruct (0 <=? sin ξ) eqn:eq5.
+apply Rleb_le in eq5.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists ξ.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite (Rplus_comm (atan (sin ξ / cos ξ))).
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive.
+rewrite Ropp_involutive.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2. lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite (Rplus_comm (atan (sin ξ / cos ξ))).
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = - (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite (Rplus_comm (atan (sin ξ / cos ξ))).
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive.
+rewrite Ropp_involutive.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = - (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists (ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite (Rplus_comm (atan (sin ξ / cos ξ))).
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive.
+rewrite Ropp_involutive.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+rewrite Ropp_minus_distr.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists ξ.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2. lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = - (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = - (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists (ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H.  rewrite sin2_cos2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+apply Rltb_le_false in eq3.
+apply Rltb_le_false in eq4.
+assert (cos ξ = 0) by lra.
+destruct (0 <? sin ξ) eqn:eq5.
+apply Rltb_lt in eq5.
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H12 in eqc.
+assert (1 = Rsqr 1). unfold Rsqr. lra.
+rewrite H13 in eqc.
+assert (0 = Rsqr 0). unfold Rsqr. lra.
+rewrite <- H14 in eqc.
+rewrite Rplus_0_r in eqc.
+apply Rsqr_eq in eqc.
+destruct eqc.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists (PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite sin_PI2. unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H15. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite cos_PI2.
+lca.
+unfold uc_cong; simpl. 
+exists (PI + PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite sin_PI2. unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H15. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite cos_PI2.
+lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite sin_PI2. unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H15. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite cos_PI2.
+lca.
+unfold uc_cong; simpl. 
+exists (PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite sin_PI2. unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H15. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite cos_PI2.
+lca. lra.
+destruct (sin ξ <? 0) eqn:eq6.
+apply Rltb_lt in eq6.
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H12 in eqc.
+assert (1 = Rsqr 1). unfold Rsqr. lra.
+rewrite H13 in eqc.
+assert (0 = Rsqr 0). unfold Rsqr. lra.
+rewrite <- H14 in eqc.
+rewrite Rplus_0_r in eqc.
+apply Rsqr_eq in eqc.
+destruct eqc. lra.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite sin_PI2. unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+assert ((- PI / 2) = - (PI / 2)) by lra.
+rewrite H.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H15. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite cos_PI2.
+lca.
+unfold uc_cong; simpl. 
+exists (PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite sin_PI2. unfold Cexp.
+assert ((- PI / 2) = - (PI / 2)) by lra.
+rewrite H.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H15. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite cos_PI2.
+lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists (PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite sin_PI2. unfold Cexp.
+assert ((- PI / 2) = - (PI / 2)) by lra.
+rewrite H.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H15. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite cos_PI2.
+lca.
+unfold uc_cong; simpl. 
+exists (PI + PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite sin_PI2. unfold Cexp.
+assert ((- PI / 2) = - (PI / 2)) by lra.
+rewrite H.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H15. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite cos_PI2.
+lca.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+assert (sin ξ = 0) by lra.
+specialize (sin2_cos2 ξ) as R.
+rewrite H12 in R. rewrite H13 in R.
+unfold Rsqr in R. lra.
+(* seventh-sub-case: cos (θ1 / 2) = 0 and sin (θ2 / 2) = 0 *)
+destruct H8.
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite H8 in eqa.
+assert ((cos (θ1 / 2))² = Rsqr 1).
+unfold Rsqr in eqa. unfold Rsqr. lra.
+apply Rsqr_eq in H9.
+specialize (sin2_cos2 (θ2 / 2)) as eqb.
+rewrite H7 in eqb.
+assert ((sin (θ2 / 2))² = Rsqr 1).
+unfold Rsqr in eqb. unfold Rsqr. lra.
+apply Rsqr_eq in H10.
+rewrite rm10_eq. rewrite rm11_eq.
+unfold atan2.
+assert (cos θ2 = -1).
+assert (θ2 = 2 * (θ2/2)) by lra.
+rewrite H11. rewrite cos_2a_cos.
+rewrite H7. lra. rewrite H11.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ / cos ξ)) by lra.
+rewrite H12. clear H12.
+destruct (0 <? cos ξ) eqn:eq3.
+apply Rltb_lt in eq3.
+assert (cos (atan (sin ξ / cos ξ)) = cos ξ).
+rewrite cos_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H12. rewrite sin2_cos2. 
+rewrite Rmult_1_l. rewrite Rmult_1_l.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+apply sqrt_Rsqr. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+assert (sin (atan (sin ξ / cos ξ)) = sin ξ).
+rewrite sin_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H13. rewrite sin2_cos2. 
+rewrite Rmult_1_l.
+rewrite Rmult_assoc.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+rewrite sqrt_Rsqr. 
+rewrite <- Rinv_l_sym.
+lra. lra. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cexp_0. rewrite Cmult_1_l. rewrite Cmult_1_l.
+unfold Cexp.
+rewrite atan_opp.
+rewrite Ropp_involutive.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2. lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cexp_PI.
+unfold Cexp.
+rewrite atan_opp.
+rewrite Ropp_involutive.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cexp_PI.
+unfold Cexp.
+rewrite atan_opp.
+rewrite Ropp_involutive.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+rewrite Cexp_PI.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+rewrite atan_opp.
+rewrite Ropp_involutive.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+(* eighth-sub: when cos (θ1 / 2) * cos (θ1 / 2) = 0, sin (θ1 / 2) * sin (θ1 / 2) = 0 and cos ξ <? 0 *)
+destruct (cos ξ <? 0) eqn:eq4.
+apply Rltb_lt in eq4.
+assert (cos (atan (sin ξ / cos ξ)) = -cos ξ).
+rewrite cos_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H12. rewrite sin2_cos2. 
+rewrite Rmult_1_l. rewrite Rmult_1_l.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+rewrite Rsqr_neg.
+apply sqrt_Rsqr. lra.
+rewrite Rsqr_neg.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+assert (sin (atan (sin ξ / cos ξ)) = -sin ξ).
+rewrite sin_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H13. rewrite sin2_cos2. 
+rewrite Rmult_1_l.
+rewrite Rmult_assoc.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rsqr_neg.
+rewrite Rinv_involutive.
+rewrite sqrt_Rsqr.
+rewrite <- Ropp_mult_distr_r. 
+rewrite <- Rinv_l_sym.
+lra. lra. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+destruct (0 <=? sin ξ * -1) eqn:eq5.
+apply Rleb_le in eq5.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cexp_0.
+unfold Cexp.
+rewrite atan_opp.
+rewrite (Rplus_comm (- atan (sin ξ / cos ξ))).
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Ropp_involutive.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite atan_opp.
+rewrite (Rplus_comm (- atan (sin ξ / cos ξ))).
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Ropp_involutive.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+rewrite Cexp_PI.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite atan_opp.
+rewrite (Rplus_comm (- atan (sin ξ / cos ξ))).
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Ropp_involutive.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+rewrite Cexp_PI.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2. rewrite Cexp_0.
+unfold Cexp.
+rewrite atan_opp.
+rewrite (Rplus_comm (- atan (sin ξ / cos ξ))).
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Ropp_involutive.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+unfold Cexp.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite atan_opp.
+rewrite Ropp_minus_distr.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite atan_opp.
+rewrite Ropp_minus_distr.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+rewrite Cexp_PI.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite atan_opp.
+rewrite Ropp_minus_distr.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+rewrite Cexp_PI.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite atan_opp.
+rewrite Ropp_minus_distr.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+apply Rltb_le_false in eq3.
+apply Rltb_le_false in eq4.
+assert (cos ξ = 0) by lra.
+destruct (0 <? sin ξ * -1) eqn:eq5.
+assert (sin ξ = -1).
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H12 in eqc.
+assert ((sin ξ)² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in eqc. lra.
+apply Rsqr_eq in H13. destruct H13.
+apply Rltb_lt in eq5. rewrite H13 in eq5. lra.
+assumption.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2.
+rewrite H12. rewrite H13. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2.
+rewrite H12. rewrite H13. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2.
+rewrite H12. rewrite H13. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2.
+rewrite H12. rewrite H13. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct (sin ξ * -1 <? 0) eqn:eq6.
+assert (sin ξ = 1).
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H12 in eqc.
+assert ((sin ξ)² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in eqc. lra.
+apply Rsqr_eq in H13. destruct H13.
+assumption.
+apply Rltb_le_false in eq5. rewrite H13 in eq5. lra.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+assert ((- PI / 2) = - (PI /2)) by lra.
+rewrite H. 
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2.
+rewrite H12. rewrite H13. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+assert ((- PI / 2) = - (PI /2)) by lra.
+rewrite H. 
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2.
+rewrite H12. rewrite H13. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+assert ((- PI / 2) = - (PI /2)) by lra.
+rewrite H. 
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2.
+rewrite H12. rewrite H13. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite cos_PI2. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite sin_PI2.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite cos_neg. rewrite sin_neg.
+assert ((- PI / 2) = - (PI /2)) by lra.
+rewrite H. 
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2.
+rewrite H12. rewrite H13. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite sin_PI2.
+lca.
+rewrite cos_PI2.
+rewrite H7. rewrite H8. lca.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+assert (sin ξ = 0) by lra.
+specialize (sin2_cos2 ξ) as R.
+rewrite H12 in R. rewrite H13 in R. unfold Rsqr in R. lra.
+specialize (sin2_cos2 (θ2 / 2)) as R.
+rewrite H7 in R. rewrite H8 in R. unfold Rsqr in R. lra.
+- (* sixth case: when rm22 θ1 ξ θ2 = 1 *)
+assert (θ1 = θ1) by lra.
+apply Rltb_le_false in eq1.
+assert (rm22 θ1 ξ θ2 = 1 - 2 * (((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²))).
+unfold rm22,rx,ry,Rsqr.
+rewrite <- sin_plus.
+rewrite <- sin_minus.
+lra.
+assert (rm22 θ1 ξ θ2 = 1).
+remember ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) as r.
+remember ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) as g.
+assert (r + g = 1).
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as H2.
+lra.
+assert (0 <= r).
+rewrite Heqr.
+assert (0 <= (sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+lra.
+assert (0 <= g).
+assert (0 <= (sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+assert (0 <= (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²).
+rewrite <- Rsqr_mult. apply Rle_0_sqr.
+lra.
+assert (r <= 1) by lra.
+rewrite H1 in eq1.
+assert (r <= 0) by lra.
+lra.
+assert ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))² = 0) by lra.
+assert ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))² = 1).
+remember ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))²) as r.
+remember ((sin (ξ / 2))² * (cos (θ1 / 2 - θ2 / 2))² + (cos (ξ / 2))² * (cos (θ1 / 2 + θ2 / 2))²) as g.
+assert (r + g = 1).
+specialize (sqr_angle_four_1 (ξ / 2) (θ1 / 2 - θ2 / 2) (θ1 / 2 + θ2 / 2)) as H4.
+lra. lra.
+assert ((sin (ξ / 2))² * (sin (θ1 / 2 - θ2 / 2))² = 0).
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult in H3. rewrite <- Rsqr_mult in H3.
+apply Rplus_eq_0_l in H3. assumption.
+apply Rle_0_sqr. apply Rle_0_sqr.
+assert ((cos (ξ / 2))² * (sin (θ1 / 2 + θ2 / 2))² = 0).
+rewrite <- Rsqr_mult.
+rewrite <- Rsqr_mult in H3. rewrite <- Rsqr_mult in H3.
+apply Rplus_eq_R0 in H3. destruct H3. assumption.
+apply Rle_0_sqr. apply Rle_0_sqr.
+apply Rmult_integral in H5.
+apply Rmult_integral in H6.
+destruct H5. destruct H6.
+specialize (sin2_cos2 (ξ / 2)) as eq3.
+rewrite H5 in eq3. rewrite H6 in eq3. lra.
+assert ((cos (ξ / 2))² = 1).
+specialize (sin2_cos2 (ξ / 2)) as eq3.
+rewrite H5 in eq3. lra.
+assert ((cos (θ1 / 2 + θ2 / 2))² = 1).
+specialize (sin2_cos2 (θ1 / 2 + θ2 / 2)) as eq3.
+rewrite H6 in eq3. lra.
+assert ((sin (ξ / 2)) = 0).
+apply Rsqr_eq_0 in H5.
+assumption.
+assert (sin ξ = 0).
+assert (ξ  = 2 * (ξ / 2)) by lra. rewrite H10.
+rewrite sin_2a. rewrite H9. lra.
+assert (cos ξ = 1).
+assert (ξ  = 2 * (ξ / 2)) by lra. rewrite H11.
+rewrite cos_2a_sin. rewrite H9. lra.
+apply Rsqr_eq_0 in H6. 
+assert ((cos (θ1 / 2 + θ2 / 2))² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in H8. lra.
+apply Rsqr_eq in H12.
+destruct H12.
+(* first-sub: when sin ξ = 0, cos ξ = 1, and (cos (θ1 / 2 + θ2 / 2)) = 1 *)
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite H10. rewrite H11.
+assert ((cos (θ2 / 2) * cos (θ1 / 2) +
+ - (sin (θ2 / 2) * ((1, 0) * sin (θ1 / 2))))%C = ((cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. 
+rewrite cos_plus in H12. rewrite H12.
+assert (0 / 2 = 0) by lra. rewrite H14.
+rewrite cos_0. lca.
+rewrite Cexp_0. assert (0 / 2 = 0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+rewrite H10. rewrite H11.
+rewrite sin_plus in H6.
+assert ((cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
+  = ((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H14. rewrite H6. lca.
+rewrite Cexp_0. assert (0 / 2 = 0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp. rewrite H10. rewrite H11.
+rewrite sin_plus in H6.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((1, 0) * sin (θ1 / 2)))%C 
+ = ((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2) )%R)%C) by lca.
+rewrite H14. rewrite H6. lca.
+rewrite Cexp_0. assert (0 / 2 = 0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp. rewrite H10. rewrite H11.
+rewrite cos_plus in H12.
+assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H14. rewrite H12. 
+unfold atan2. rewrite rm11_eq. rewrite rm10_eq.
+rewrite H11. rewrite H10.
+destruct (0 <? 1) eqn:eq3.
+assert (0 * cos θ2 / 1 = 0) by lra.
+rewrite H15. rewrite atan_0.
+rewrite cos_0. rewrite sin_0.
+lca.
+apply Rltb_le_false in eq3. lra.
+(* second-sub: when sin ξ = 0, cos ξ = 1, and (cos (θ1 / 2 + θ2 / 2)) = -1 *)
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite H10. rewrite H11.
+assert ((cos (θ2 / 2) * cos (θ1 / 2) +
+ - (sin (θ2 / 2) * ((1, 0) * sin (θ1 / 2))))%C = ((cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. 
+rewrite cos_plus in H12. rewrite H12.
+assert (0 / 2 = 0) by lra. rewrite H14.
+rewrite cos_0. lca.
+rewrite Cexp_PI. assert (0 / 2 = 0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+rewrite H10. rewrite H11.
+rewrite sin_plus in H6.
+assert ((cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
+  = ((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H14. rewrite H6. lca.
+rewrite Cexp_PI. rewrite Cexp_0.
+assert (0 / 2 = 0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp. rewrite H10. rewrite H11.
+rewrite sin_plus in H6.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((1, 0) * sin (θ1 / 2)))%C 
+ = ((sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2) )%R)%C) by lca.
+rewrite H14. rewrite H6. lca.
+rewrite Cexp_0. rewrite Cexp_PI.
+assert (0 / 2 = 0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+unfold atan2. rewrite rm11_eq. rewrite rm10_eq.
+rewrite H10. rewrite H11.
+destruct (0 <? 1) eqn:eq3.
+assert ((0 * cos θ2 / 1) = 0) by lra.
+rewrite H14. rewrite atan_0.
+rewrite cos_0. rewrite sin_0.
+rewrite cos_plus in H12.
+assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * ((1, 0) * cos (θ1 / 2)))%C
+  = ((cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H15. rewrite H12. lca.
+apply Rltb_le_false in eq3. lra.
+(* third-sub: when sin ξ = 0, cos ξ = -1, and (sin (θ1 / 2 - θ2 / 2)) = 1 *)
+destruct H6.
+specialize (sin2_cos2 (ξ / 2)) as eq3.
+rewrite H6 in eq3.
+assert ((sin (ξ / 2))² = 1) by lra.
+assert ((cos (θ1 / 2 - θ2 / 2))² = 1).
+specialize (sin2_cos2 (θ1 / 2 - θ2 / 2)) as eq4.
+rewrite H5 in eq4. lra.
+apply Rsqr_eq_0 in H6.
+assert (sin ξ = 0).
+assert (ξ  = 2 * (ξ / 2)) by lra. rewrite H9.
+rewrite sin_2a. rewrite H6. lra.
+assert (cos ξ = -1).
+assert (ξ  = 2 * (ξ / 2)) by lra. rewrite H10.
+rewrite cos_2a_cos. rewrite H6. lra.
+apply Rsqr_eq_0 in H5. 
+assert ((cos (θ1 / 2 - θ2 / 2))² = Rsqr 1).
+unfold Rsqr. unfold Rsqr in H8. lra.
+apply Rsqr_eq in H11.
+destruct H11.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite H9. rewrite H10.
+assert ((cos (θ2 / 2) * cos (θ1 / 2) +
+ - (sin (θ2 / 2) * ((-1, 0) * sin (θ1 / 2))))%C = ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. 
+rewrite cos_minus in H11. rewrite H11.
+unfold Rdiv. rewrite Rmult_0_l.
+rewrite cos_0. lca.
+rewrite Cexp_0. 
+assert (0 / 2 = 0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+rewrite H10. rewrite H9.
+rewrite sin_minus in H5.
+assert ((cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
+  = ((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H13. rewrite H5. lca.
+rewrite Cexp_0.
+assert (0 / 2 = 0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp. rewrite H10. rewrite H9.
+rewrite sin_minus in H5.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((-1, 0) * sin (θ1 / 2)))%C 
+ = ((-(sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
+rewrite H13. rewrite H5. lca.
+assert (0 / 2 = 0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_0.
+unfold Cexp. rewrite H10. rewrite H9.
+rewrite cos_minus in H11.
+assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
+  = ((-(cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
+rewrite H13. rewrite H11.
+unfold atan2. rewrite rm11_eq. rewrite rm10_eq.
+rewrite H9. rewrite H10. 
+destruct (0 <? -1) eqn:eq6.
+apply Rltb_lt in eq6. lra.
+destruct (-1 <? 0) eqn:eq7.
+rewrite Rmult_0_l.
+destruct (0 <=? 0) eqn:eq8.
+assert ((0 / -1) = 0) by lra. rewrite H14.
+rewrite atan_0.
+rewrite Rplus_0_l.
+rewrite cos_PI. rewrite sin_PI.
+lca.
+apply Rleb_lt_false in eq8. lra.
+apply Rltb_le_false in eq7. lra.
+(* fourth-sub: when sin ξ = 0, cos ξ = -1, and (cos (θ1 / 2 - θ2 / 2)) = -1 *)
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite Cexp_PI.
+unfold Cexp.
+rewrite H9. rewrite H10.
+assert ((cos (θ2 / 2) * cos (θ1 / 2) +
+ - (sin (θ2 / 2) * ((-1, 0) * sin (θ1 / 2))))%C = ((cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H. 
+rewrite cos_minus in H11. rewrite H11.
+unfold Rdiv. rewrite Rmult_0_l.
+rewrite cos_0. lca.
+rewrite Cexp_PI. 
+assert (0 / 2 = 0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+rewrite H10. rewrite H9.
+rewrite sin_minus in H5.
+assert ((cos (θ2 / 2) * sin (θ1 / 2) +
+  sin (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
+  = ((sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2))%R)%C) by lca.
+rewrite H13. rewrite H5. lca.
+rewrite Cexp_0. rewrite Cexp_PI.
+ assert (0 / 2 = 0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp. rewrite H10. rewrite H9.
+rewrite sin_minus in H5.
+assert ((sin (θ2 / 2) * cos (θ1 / 2) +
+ cos (θ2 / 2) * ((-1, 0) * sin (θ1 / 2)))%C 
+ = ((-(sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
+rewrite H13. rewrite H5. lca.
+rewrite Cexp_PI. rewrite Cexp_0.
+assert (0 / 2 = 0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp. rewrite H10. rewrite H9.
+rewrite cos_minus in H11.
+assert ((- (sin (θ2 / 2) * sin (θ1 / 2)) +
+ cos (θ2 / 2) * ((-1, 0) * cos (θ1 / 2)))%C
+  = ((-(cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)))%R)%C) by lca.
+rewrite H13. rewrite H11.
+unfold atan2. rewrite rm10_eq. rewrite rm11_eq.
+rewrite H9. rewrite H10.
+rewrite Rmult_0_l.
+destruct (0 <? -1) eqn:eq6.
+apply Rltb_lt in eq6. lra.
+destruct (-1 <? 0) eqn:eq7.
+destruct (0 <=? 0) eqn:eq8.
+assert ((0 / -1)=0) by lra. rewrite H14.
+rewrite atan_0. rewrite Rplus_0_l.
+rewrite cos_PI. rewrite sin_PI.
+lca.
+apply Rleb_lt_false in eq8.
+lra.
+apply Rltb_le_false in eq7.
+lra.
+(* fifth-sub: when cos (θ1 / 2) * cos (θ1 / 2) = 0, sin (θ1 / 2) * sin (θ1 / 2) = 0 and 0 < cos ξ *)
+apply Rsqr_eq_0 in H5.
+apply Rsqr_eq_0 in H6.
+rewrite sin_minus in H5.
+rewrite sin_plus in H6.
+assert (sin (θ1 / 2) * cos (θ2 / 2) = 0) by lra.
+assert (cos (θ1 / 2) * sin (θ2 / 2) = 0) by lra.
+apply Rmult_integral in H7.
+apply Rmult_integral in H8.
+destruct H7. destruct H8.
+specialize (sin2_cos2 (θ1 / 2)) as eq3.
+rewrite H7 in eq3. rewrite H8 in eq3. unfold Rsqr in eq3. lra.
+specialize (sin2_cos2 (θ1 / 2)) as eqa.
+rewrite H7 in eqa.
+assert ((cos (θ1 / 2))² = Rsqr 1).
+unfold Rsqr in eqa. unfold Rsqr. lra.
+apply Rsqr_eq in H9.
+specialize (sin2_cos2 (θ2 / 2)) as eqb.
+rewrite H8 in eqb.
+assert ((cos (θ2 / 2))² = Rsqr 1).
+unfold Rsqr in eqb. unfold Rsqr. lra.
+apply Rsqr_eq in H10.
+rewrite rm10_eq. rewrite rm11_eq.
+unfold atan2.
+assert (cos θ2 = 1).
+assert (θ2 = 2 * (θ2/2)) by lra.
+rewrite H11. rewrite cos_2a_sin.
+rewrite H8. lra. rewrite H11.
+rewrite Rmult_1_r.
+destruct (0 <? cos ξ) eqn:eq3.
+apply Rltb_lt in eq3.
+assert (cos (atan (sin ξ / cos ξ)) = cos ξ).
+rewrite cos_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H12. rewrite sin2_cos2. 
+rewrite Rmult_1_l. rewrite Rmult_1_l.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+apply sqrt_Rsqr. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+assert (sin (atan (sin ξ / cos ξ)) = sin ξ).
+rewrite sin_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H13. rewrite sin2_cos2. 
+rewrite Rmult_1_l.
+rewrite Rmult_assoc.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+rewrite sqrt_Rsqr. 
+rewrite <- Rinv_l_sym.
+lra. lra. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite H12. rewrite H13. lca.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. rewrite Cexp_0.
+unfold Cexp. rewrite H12. rewrite H13.
+lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. rewrite Cexp_0.
+unfold Cexp. rewrite H12. rewrite H13.
+lca.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite H12. rewrite H13. lca.
+(* sixth-sub: when sin (θ1 / 2) = 0, sin (θ2 / 2) = 0 and cos ξ <? 0 *)
+destruct (cos ξ <? 0) eqn:eq4.
+apply Rltb_lt in eq4.
+assert (cos (atan (sin ξ / cos ξ)) = -cos ξ).
+rewrite cos_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H12. rewrite sin2_cos2. 
+rewrite Rmult_1_l. rewrite Rmult_1_l.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+rewrite Rsqr_neg.
+apply sqrt_Rsqr. lra.
+rewrite Rsqr_neg.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+assert (sin (atan (sin ξ / cos ξ)) = -sin ξ).
+rewrite sin_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H13. rewrite sin2_cos2. 
+rewrite Rmult_1_l.
+rewrite Rmult_assoc.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rsqr_neg.
+rewrite Rinv_involutive.
+rewrite sqrt_Rsqr.
+rewrite <- Ropp_mult_distr_r. 
+rewrite <- Rinv_l_sym.
+lra. lra. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+destruct (0 <=? sin ξ) eqn:eq5.
+apply Rleb_le in eq5.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite (Rplus_comm (atan (sin ξ / cos ξ))).
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite H12. rewrite H13. lca.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. rewrite Cexp_0.
+unfold Cexp. 
+rewrite (Rplus_comm (atan (sin ξ / cos ξ))).
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite H12. rewrite H13.
+lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. rewrite Cexp_0.
+unfold Cexp. 
+rewrite (Rplus_comm (atan (sin ξ / cos ξ))).
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite H12. rewrite H13.
+lca.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite (Rplus_comm (atan (sin ξ / cos ξ))).
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite H12. rewrite H13. lca.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite <- Ropp_minus_distr.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite H12. rewrite H13. lca.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. rewrite Cexp_0.
+unfold Cexp. 
+rewrite <- Ropp_minus_distr.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite H12. rewrite H13.
+lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+rewrite Cexp_PI. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI. rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite Cexp_PI. rewrite Cexp_0.
+unfold Cexp. 
+rewrite <- Ropp_minus_distr.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite H12. rewrite H13.
+lca.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite <- Ropp_minus_distr.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite H12. rewrite H13. lca.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+apply Rltb_le_false in eq3. apply Rltb_le_false in eq4.
+assert (cos ξ = 0) by lra.
+assert (Rsqr (sin ξ) = Rsqr 1).
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H13 in eqc. unfold Rsqr in eqc.
+unfold Rsqr. lra.
+apply Rsqr_eq in H14.
+destruct (0 <? sin ξ) eqn:eq5. apply Rltb_lt in eq5.
+destruct H14.
+unfold Cexp. rewrite H13. rewrite H14.
+rewrite cos_PI2. rewrite sin_PI2. lca.
+lra.
+destruct (sin ξ <? 0) eqn:eq6.
+apply Rltb_lt in eq6.
+destruct H14. lra.
+unfold Cexp. rewrite H13. rewrite H14.
+assert (- PI / 2 = - (PI/2)) by lra.
+rewrite H15.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2. lca.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+assert (sin ξ=0) by lra.
+destruct H14. lra. lra.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite Cexp_PI.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+apply Rltb_le_false in eq3. apply Rltb_le_false in eq4.
+assert (cos ξ = 0) by lra.
+assert (Rsqr (sin ξ) = Rsqr 1).
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H13 in eqc. unfold Rsqr in eqc.
+unfold Rsqr. lra.
+apply Rsqr_eq in H14.
+destruct (0 <? sin ξ) eqn:eq5. apply Rltb_lt in eq5.
+destruct H14.
+unfold Cexp. rewrite H13. rewrite H14.
+rewrite cos_PI2. rewrite sin_PI2. lca.
+lra.
+destruct (sin ξ <? 0) eqn:eq6.
+apply Rltb_lt in eq6.
+destruct H14. lra.
+unfold Cexp. rewrite H13. rewrite H14.
+assert (- PI / 2 = - (PI/2)) by lra.
+rewrite H15.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2. lca.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+assert (sin ξ=0) by lra.
+destruct H14. lra. lra.
+destruct H10.
+unfold uc_cong; simpl. 
+exists PI.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_PI.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0. rewrite Cexp_PI.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+apply Rltb_le_false in eq3. apply Rltb_le_false in eq4.
+assert (cos ξ = 0) by lra.
+assert (Rsqr (sin ξ) = Rsqr 1).
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H13 in eqc. unfold Rsqr in eqc.
+unfold Rsqr. lra.
+apply Rsqr_eq in H14.
+destruct (0 <? sin ξ) eqn:eq5. apply Rltb_lt in eq5.
+destruct H14.
+unfold Cexp. rewrite H13. rewrite H14.
+rewrite cos_PI2. rewrite sin_PI2. lca.
+lra.
+destruct (sin ξ <? 0) eqn:eq6.
+apply Rltb_lt in eq6.
+destruct H14. lra.
+unfold Cexp. rewrite H13. rewrite H14.
+assert (- PI / 2 = - (PI/2)) by lra.
+rewrite H15.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2. lca.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+assert (sin ξ=0) by lra.
+destruct H14. lra. lra.
+unfold uc_cong; simpl. 
+exists 0.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+apply Rltb_le_false in eq3. apply Rltb_le_false in eq4.
+assert (cos ξ = 0) by lra.
+assert (Rsqr (sin ξ) = Rsqr 1).
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H13 in eqc. unfold Rsqr in eqc.
+unfold Rsqr. lra.
+apply Rsqr_eq in H14.
+destruct (0 <? sin ξ) eqn:eq5. apply Rltb_lt in eq5.
+destruct H14.
+unfold Cexp. rewrite H13. rewrite H14.
+rewrite cos_PI2. rewrite sin_PI2. lca.
+lra.
+destruct (sin ξ <? 0) eqn:eq6.
+apply Rltb_lt in eq6.
+destruct H14. lra.
+unfold Cexp. rewrite H13. rewrite H14.
+assert (- PI / 2 = - (PI/2)) by lra.
+rewrite H15.
+rewrite cos_neg. rewrite sin_neg.
+rewrite cos_PI2. rewrite sin_PI2. lca.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+assert (sin ξ=0) by lra.
+destruct H14. lra. lra.
+(* seventh-sub: when cos (θ1 / 2) * cos (θ1 / 2) = 0, sin (θ1 / 2) * sin (θ1 / 2) = 0 and 0 < cos ξ *)
+destruct H8.
+assert ((sin (θ1 / 2))² = Rsqr 1).
+specialize (sin2_cos2 (θ1 / 2)) as eq3.
+rewrite H8 in eq3.
+unfold Rsqr in eq3. unfold Rsqr. lra.
+apply Rsqr_eq in H9.
+assert ((sin (θ2 / 2))² = Rsqr 1).
+specialize (sin2_cos2 (θ2 / 2)) as eq3.
+rewrite H7 in eq3.
+unfold Rsqr in eq3. unfold Rsqr. lra.
+apply Rsqr_eq in H10.
+rewrite rm10_eq. rewrite rm11_eq.
+unfold atan2.
+assert (cos θ2 = -1).
+assert (θ2 = 2 * (θ2/2)) by lra.
+rewrite H11. rewrite cos_2a_cos.
+rewrite H7. lra. rewrite H11.
+destruct (0 <? cos ξ) eqn:eq3.
+apply Rltb_lt in eq3.
+assert (cos (atan (sin ξ / cos ξ)) = cos ξ).
+rewrite cos_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H12. rewrite sin2_cos2. 
+rewrite Rmult_1_l. rewrite Rmult_1_l.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+apply sqrt_Rsqr. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+assert (sin (atan (sin ξ / cos ξ)) = sin ξ).
+rewrite sin_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H13. rewrite sin2_cos2. 
+rewrite Rmult_1_l.
+rewrite Rmult_assoc.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+rewrite sqrt_Rsqr. 
+rewrite <- Rinv_l_sym.
+lra. lra. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite Cmult_1_l.
+assert ((sin ξ * -1 / cos ξ) = - ((sin ξ / cos ξ))) by lra.
+rewrite H15.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = -(Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+unfold uc_cong; simpl. 
+exists (ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+lca.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite Cmult_1_l. rewrite Cmult_1_l.
+assert ((sin ξ * -1 / cos ξ) = - ((sin ξ / cos ξ))) by lra.
+rewrite H15.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists (ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+lca.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite Cmult_1_l.
+assert ((sin ξ * -1 / cos ξ) = - ((sin ξ / cos ξ))) by lra.
+rewrite H15.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Cmult_1_l. rewrite Cmult_1_l.
+assert ((sin ξ * -1 / cos ξ) = - ((sin ξ / cos ξ))) by lra.
+rewrite H15.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = -(Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+(* eighth-sub: when cos (θ1 / 2) * cos (θ1 / 2) = 0, sin (θ1 / 2) * sin (θ1 / 2) = 0 and cos ξ < 0 *)
+destruct (cos ξ <? 0) eqn:eq4.
+apply Rltb_lt in eq4.
+assert (cos (atan (sin ξ / cos ξ)) = -cos ξ).
+rewrite cos_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H12. rewrite sin2_cos2. 
+rewrite Rmult_1_l. rewrite Rmult_1_l.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rinv_involutive.
+rewrite Rsqr_neg.
+apply sqrt_Rsqr. lra.
+rewrite Rsqr_neg.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+assert (sin (atan (sin ξ / cos ξ)) = -sin ξ).
+rewrite sin_atan. unfold Rdiv.
+rewrite Rsqr_mult.
+assert ((1 + (sin ξ)² * (/ cos ξ)²)
+  = ((sin ξ)² + (cos ξ)²) * (/ cos ξ)²).
+rewrite <- (Rinv_r ((cos ξ)²)).
+rewrite Rsqr_inv. lra. lra.
+assert (0 < (cos ξ)²).
+apply Rsqr_pos_lt.  lra. lra.
+rewrite H13. rewrite sin2_cos2. 
+rewrite Rmult_1_l.
+rewrite Rmult_assoc.
+rewrite Rsqr_inv.
+rewrite <- inv_sqrt.
+rewrite Rsqr_neg.
+rewrite Rinv_involutive.
+rewrite sqrt_Rsqr.
+rewrite <- Ropp_mult_distr_r. 
+rewrite <- Rinv_l_sym.
+lra. lra. lra.
+rewrite sqrt_Rsqr.
+lra. lra. apply Rsqr_pos_lt. lra. lra.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+destruct (0 <=? sin ξ * -1) eqn:eq5.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ/cos ξ)) by lra.
+rewrite H15.
+rewrite (Rplus_comm (atan (- (sin ξ / cos ξ)))).
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Cmult_1_l. rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = -(Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ/cos ξ)) by lra.
+rewrite H15.
+rewrite <- Ropp_minus_distr.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Cmult_1_l. rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = -(Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+unfold uc_cong; simpl. 
+exists ξ.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+destruct (0 <=? sin ξ * -1) eqn:eq5.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ/cos ξ)) by lra.
+rewrite H15.
+rewrite (Rplus_comm (atan (- (sin ξ / cos ξ)))).
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ/cos ξ)) by lra.
+rewrite H15.
+rewrite <- Ropp_minus_distr.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+destruct H10.
+unfold uc_cong; simpl. 
+exists ξ.
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+destruct (0 <=? sin ξ * -1) eqn:eq5.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ/cos ξ)) by lra.
+rewrite H15.
+rewrite (Rplus_comm (atan (- (sin ξ / cos ξ)))).
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Cmult_1_l. rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ/cos ξ)) by lra.
+rewrite H15.
+rewrite <- Ropp_minus_distr.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Cmult_1_l. rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (cos ξ * cos ξ - sin ξ * - sin ξ = (Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+unfold uc_cong; simpl. 
+exists (PI + ξ).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+rewrite Cexp_0.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0.
+unfold Cexp.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+lca.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+rewrite H7. rewrite H8.
+rewrite H9. rewrite H10.
+rewrite Cexp_0.
+unfold Cexp.
+destruct (0 <=? sin ξ * -1) eqn:eq5.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ/cos ξ)) by lra.
+rewrite H15.
+rewrite (Rplus_comm (atan (- (sin ξ / cos ξ)))).
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = -(Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+assert ((sin ξ * -1 / cos ξ) = - (sin ξ/cos ξ)) by lra.
+rewrite H15.
+rewrite <- Ropp_minus_distr.
+rewrite cos_neg. rewrite sin_neg.
+rewrite Rtrigo_facts.sin_pi_minus.
+rewrite Rtrigo_facts.cos_pi_minus.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite Cmult_1_l. rewrite Cmult_1_l.
+rewrite atan_opp.
+rewrite cos_neg. rewrite sin_neg.
+rewrite H12. rewrite H13.
+rewrite Cmult_c.
+rewrite Ropp_involutive. rewrite Ropp_involutive.
+assert (- cos ξ * cos ξ - - sin ξ * - sin ξ = -(Rsqr (sin ξ) + Rsqr (cos ξ))).
+unfold Rsqr. lra.
+rewrite H16. rewrite sin2_cos2.
+lca.
+(* ninth-sub: when cos (θ1 / 2) * cos (θ1 / 2) = 0, sin (θ1 / 2) * sin (θ1 / 2) = 0 and cos ξ = 0 *)
+apply Rltb_le_false in eq3.
+apply Rltb_le_false in eq4.
+assert ((cos ξ) = 0) by lra.
+assert (Rsqr (sin ξ) = Rsqr 1).
+specialize (sin2_cos2 ξ) as eqc.
+rewrite H12 in eqc.
+unfold Rsqr in eqc. unfold Rsqr. lra.
+apply Rsqr_eq in H13.
+destruct (0 <? sin ξ * -1) eqn:eq5.
+apply Rltb_lt in eq5.
+destruct H13. lra.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists (PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H13. lca. 
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite sin_0. rewrite cos_0.
+rewrite H12. rewrite H13. lca. 
+unfold uc_cong; simpl. 
+exists (PI + PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H13. lca. 
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite sin_0. rewrite cos_0.
+rewrite H12. rewrite H13. lca. 
+destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H13. lca. 
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite sin_0. rewrite cos_0.
+rewrite H12. rewrite H13. lca. 
+unfold uc_cong; simpl. 
+exists (PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H13. lca. 
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite sin_0. rewrite cos_0.
+rewrite H12. rewrite H13. lca. 
+destruct (sin ξ * -1 <? 0) eqn:eq6.
+apply Rltb_lt in eq6.
+destruct H13.
+destruct H9. destruct H10.
+unfold uc_cong; simpl. 
+exists (PI + PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H13. lca. 
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+assert (- PI / 2 = - (PI / 2)) by lra.
+rewrite H15. rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite sin_0. rewrite cos_0.
+rewrite H12. rewrite H13. lca. 
+unfold uc_cong; simpl. 
+exists (PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H13. lca. 
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+assert (- PI / 2 = - (PI / 2)) by lra.
+rewrite H15. rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite sin_0. rewrite cos_0.
+rewrite H12. rewrite H13. lca.
+destruct H10.
+ unfold uc_cong; simpl. 
+exists (PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H13. lca. 
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+assert (- PI / 2 = - (PI / 2)) by lra.
+rewrite H15. rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite sin_0. rewrite cos_0.
+rewrite H12. rewrite H13. lca.
+ unfold uc_cong; simpl. 
+exists (PI + PI/2).
+  autorewrite with eval_db.
+  gridify.
+    rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+apply f_equal2; try reflexivity.
+apply f_equal2; try reflexivity.
+  solve_matrix.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite H12. rewrite H13. lca. 
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite sin_0. lca.
+rewrite H7. rewrite H8. rewrite H9. rewrite H10.
+assert (0/2=0) by lra. rewrite H.
+rewrite cos_0.
+unfold Cexp.
+rewrite Rtrigo_facts.sin_pi_plus.
+rewrite Rtrigo_facts.cos_pi_plus.
+assert (- PI / 2 = - (PI / 2)) by lra.
+rewrite H15. rewrite cos_neg. rewrite sin_neg.
+rewrite sin_PI2. rewrite cos_PI2.
+rewrite sin_0. rewrite cos_0.
+rewrite H12. rewrite H13. lca. 
+lra.
+apply Rltb_le_false in eq5.
+apply Rltb_le_false in eq6.
+assert (sin ξ = 0) by lra.
+destruct H13. lra. lra.
+specialize (sin2_cos2 (θ2 / 2)) as eqc.
+rewrite H7 in eqc. rewrite H8 in eqc.
+unfold Rsqr in eqc. lra.
+Qed.
 
 Lemma u3_is_ZYZ_rotation : forall dim θ ϕ λ q,
   (q < dim)%nat ->
-  list_to_ucom [@U3 dim θ ϕ λ q] ≡ Rz λ q ; Ry θ q ; Rz ϕ q.
+  list_to_ucom [@U3 dim θ ϕ λ q] ≅ Rz λ q ; Ry θ q ; Rz ϕ q.
 Proof.
   intros.
-  unfold uc_equiv; simpl.
+  unfold uc_cong; simpl.
+  exists 0. rewrite Cexp_0. 
+  rewrite Mscale_1_l.
   autorewrite with eval_db.
   2: lia.
   gridify.
@@ -16888,30 +17553,43 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma compose_u3_correct : forall dim θ1 ϕ1 λ1 θ2 ϕ2 λ2 q,
+Lemma compose_u3_correct: forall {dim} (θ1 ϕ1 λ1 θ2 ϕ2 λ2 : R) (q : nat), 
   (q < dim)%nat ->
-  [@U3 dim θ1 ϕ1 λ1 q] ++ [U3 θ2 ϕ2 λ2 q] =l= [App1 (compose_u3 θ1 ϕ1 λ1 θ2 ϕ2 λ2) q].
+  ([@U3 dim θ1 ϕ1 λ1 q] ++ [U3 θ2 ϕ2 λ2 q]) ≅l≅
+        ([U3 (to_zyz_theta θ1 (ϕ1 + λ2) θ2)
+               ((to_zyz_lambda θ1 (ϕ1 + λ2) θ2)+ϕ2) (λ1+(to_zyz_phi θ1 (ϕ1 + λ2) θ2)) q]).
 Proof.
   intros.
-  unfold uc_equiv_l.
-  rewrite list_to_ucom_append. 
-  rewrite 2 u3_is_ZYZ_rotation by lia.
-  repeat rewrite <- useq_assoc.
-  rewrite (useq_assoc _ (Rz ϕ1 _) (Rz λ2 _)).
-  rewrite Rz_Rz_add.
-  unfold compose_u3.
-  destruct (yzy_to_zyz (ϕ1 + λ2) θ1 θ2) eqn:Hyzy_to_zyz.
-  destruct p.
-  eapply yzy_to_zyz_correct in Hyzy_to_zyz.
-  2: apply H.
-  rewrite (useq_assoc _ (Ry θ1 _)).
-  rewrite (useq_assoc _ _ (Ry θ2 _)).
-  rewrite Hyzy_to_zyz.
-  repeat rewrite useq_assoc.
-  rewrite Rz_Rz_add.
-  repeat rewrite <- useq_assoc.
-  rewrite Rz_Rz_add.
-  rewrite <- u3_is_ZYZ_rotation by assumption.
+  unfold uc_cong_l.
+  specialize (list_to_ucom_append ([@U3 dim θ1 ϕ1 λ1 q]) ([U3 θ2 ϕ2 λ2 q])) as H0.
+  apply uc_equiv_cong in H0.
+  rewrite H0.  
+  rewrite u3_is_ZYZ_rotation.
+  rewrite u3_is_ZYZ_rotation.
+  rewrite u3_is_ZYZ_rotation.
+  rewrite uc_cong_assoc.
+  rewrite uc_cong_assoc.
+  rewrite (uc_cong_assoc (Rz λ2 q)).
+  rewrite <- (uc_cong_assoc (Rz ϕ1 q)).
+  specialize (@Rz_Rz_add dim q ϕ1 λ2) as H1.
+  apply uc_equiv_cong in H1.
+  rewrite H1.
+  rewrite <- (uc_cong_assoc (Rz (ϕ1 + λ2) q)).
+  rewrite <- (uc_cong_assoc (Ry θ1 q)).
+  rewrite <- (uc_cong_assoc (Ry θ1 q)).
+  rewrite yzy_to_zyz_correct.
+  rewrite (uc_cong_assoc (Rz (to_zyz_phi θ1 (ϕ1 + λ2) θ2) q)).
+  rewrite <- (uc_cong_assoc (Rz λ1 q)).
+  rewrite <- (uc_cong_assoc (Rz λ1 q)).
+  specialize (@Rz_Rz_add dim q λ1 (to_zyz_phi θ1 (ϕ1 + λ2) θ2)) as H2.
+  apply uc_equiv_cong in H2.
+  rewrite H2.
+  rewrite (uc_cong_assoc (Rz (λ1 + to_zyz_phi θ1 (ϕ1 + λ2) θ2) q)).
+  rewrite (uc_cong_assoc (Ry (to_zyz_theta θ1 (ϕ1 + λ2) θ2) q)).
+  specialize (@Rz_Rz_add dim q (to_zyz_lambda θ1 (ϕ1 + λ2) θ2) ϕ2) as H3.
+  apply uc_equiv_cong in H3.
+  rewrite H3.
+  rewrite uc_cong_assoc.
   reflexivity.
+  1 - 4: assumption.
 Qed.
-*)
