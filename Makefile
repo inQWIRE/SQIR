@@ -42,7 +42,7 @@ optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo VOQC/voqc.ml
 	cd VOQC/extraction && ./extract.sh
 	dune build voqc.exe --root VOQC
 
-voqc: $(VOQC)/Optimize.vo VOQC/voqc.ml VOQC/_build/default/voqc.exe
+voqc: VOQC/voqc.ml VOQC/_build/default/voqc.exe
 
 VOQC/_build/default/voqc.exe:
 	dune build voqc.exe --root VOQC
@@ -138,7 +138,7 @@ VOQC/src/BooleanCompilation.vo: $(VOQC)/BooleanCompilation.v $(SQIR)/VectorState
 
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -rf CoqMakefile CoqMakefile.conf {externals/QWIRE,SQIR/*,VOQC/src}/{*.vo,*.vok,*.vos,*.glob,*.aux} .lia.cache VOQC/extraction/_build
+	rm -rf CoqMakefile CoqMakefile.conf */*/*.vo* */*/*.glob */*/*.aux .lia.cache VOQC/extraction/_build
 
 # This should be the last rule, to handle any targets not declared above
 #%: invoke-coqmakefile

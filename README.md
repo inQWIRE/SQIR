@@ -1,8 +1,8 @@
 # SQIR & VOQC
 
-SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an IR in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
+SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation (IR) in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-We describe SQIR and VOQC in [this draft](https://arxiv.org/abs/1912.02250). Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
+We describe SQIR and its use in VOQC in our draft [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250). We present details on verifying SQIR programs in our draft [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240). The code corresponding to both drafts can be found in the 'POPL2021' branch. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
 
 This repository is split into two parts: SQIR and VOQC. If you are interested in formal verification of quantum programs, you should focus on the SQIR directory (we also recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html)). If you are interested in our verified compiler then take a look at the VOQC directory.
 
@@ -11,13 +11,14 @@ This repository is split into two parts: SQIR and VOQC. If you are interested in
 * [Compilation](#compilation)
   * [Coq](#coq)
   * [OCaml](#ocaml)
-* [SQIR Directory Contents](#sqir-directory-contents)
-* [VOQC Directory Contents](#voqc-directory-contents)
+* [Directory Contents](#directory-contents)
+  * [SQIR](#sqir)
+  * [VOQC](#voqc)
 * [Acknowledgements](#acknowledgements)
 
 ## Compilation
 
-The bulk of this respository is Coq proofs about quantum programs and program transformations. Our verified program transformations can be *extracted* to OCaml to produce executable code. If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'.
+If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'.
 
 ### Coq
 
@@ -39,9 +40,11 @@ Dependencies:
 
 For convenience, we have already performed extraction from Coq to OCaml; the extracted files are in VOQC/extraction/ml. `make voqc` will produce an executable in VOQC/_build/default. See [the README in the VOQC directory](VOQC/README.md) for instructions on how to run the optimizer.
 
-## SQIR Directory Contents
+## Directory Contents
 
-### src
+### SQIR
+
+#### src
 
 Definition of the SQIR language.
 
@@ -55,7 +58,7 @@ Definition of the SQIR language.
 
 We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which we have linked as a git submodule in the externals directory.
 
-### examples
+#### examples
 
 Examples of verifying correctness properties of simple SQIR programs.
 
@@ -68,9 +71,9 @@ Examples of verifying correctness properties of simple SQIR programs.
 - examples/Superdense.v : Superdense coding
 - examples/Teleport.v : Quantum teleportation
 
-## VOQC Directory Contents
+## VOQC
 
-### src
+#### src
 
 Verified transformations of SQIR programs.
 
@@ -97,11 +100,11 @@ Verified transformations of SQIR programs.
 - Experimental extensions
   - src/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
 
-### extraction
+#### extraction
 
 Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and parse OpenQASM files into SQIR. Also contains pre-extracted versions of VOQC's optimizations. 
 
-### benchmarks
+#### benchmarks
 
 Instructions for running VOQC on the benchmarks presented in our paper can be found in [the README in the benchmarks directory](VOQC/benchmarks/README.md).
 

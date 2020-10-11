@@ -2,7 +2,7 @@
 
 ## Overview
 
-This README contains instructions for compiling and running the VOQC optimizer.
+This README contains general instructions for compiling and running the VOQC optimizer. For instructions on running VOQC on the benchmarks in the VOQC paper, see [benchmarks/README.md](benchmarks/README.md).
 
 VOQC currently supports the following gates:
 * t, tdg
@@ -21,7 +21,7 @@ The Coq source code for our optimizer is in src/. The code for extracting our Co
 ## Compilation
 
 Dependencies:
-  * OCaml version 4.08.1 
+  * OCaml version >= 4.08.1 
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
   * batteries (`opam install batteries`)
@@ -58,7 +58,7 @@ Time to write out: 0.000758s
 ```
 VOQC reports, in order: total gate count, number of z-axis rotation gates, number of Clifford gate (= rotations by multiples of PI/2), number of T gates, number of H gates, number of X gates, and number of CNOT gates.
 
-A script for running VOQC on all the benchmarks presented in our paper is available in the [benchmarks](benchmarks) directory.
+Scripts for running VOQC on the benchmarks presented in our paper are available in the [benchmarks](benchmarks) directory.
 
 ## Using the VOQC Library in Python
 
