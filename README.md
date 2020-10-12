@@ -34,7 +34,6 @@ Dependencies:
   * OCaml version >= 4.08.1 
   * zarith (`opam install zarith`)
   * dune (`opam install dune`)
-  * menhir (`opam install menhir`)
   * batteries (`opam install batteries`)
   * OpenQASM parser (`opam install openQASM`)
 
