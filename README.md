@@ -60,7 +60,7 @@ As discussed at the end of Section 6 in the VOQC paper, we trust that the OCaml 
 
 ## Compilation
 
-If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'.
+If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'. The included 'opam' file can be used to install all dependencies. Run it with `opam install . --deps-only` (note that installing Coq will take a while!).
 
 ### Coq
 
@@ -76,7 +76,6 @@ Dependencies:
   * OCaml version >= 4.08.1 
   * zarith (`opam install zarith`)
   * dune (`opam install dune`)
-  * menhir (`opam install menhir`)
   * batteries (`opam install batteries`)
   * OpenQASM parser (`opam install openQASM`)
 

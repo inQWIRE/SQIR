@@ -23,7 +23,7 @@ The Coq source code for our optimizer is in src/. The code for extracting our Co
 Dependencies:
   * OCaml version >= 4.08.1 
   * dune (`opam install dune`)
-  * menhir (`opam install menhir`)
+  * zarith (`opam install zarith`)
   * batteries (`opam install batteries`)
   * OCaml OpenQASM parser (`opam install openQASM`)
 

@@ -1,0 +1,22 @@
+opam-version: "2.0"
+name: "SQIR"
+version: "dev"
+synopsis: "SQIR/VOQC"
+maintainer: "Kesha Hietala <kesha.hietala@gmail.com>"
+authors: "inQWIRE"
+depends: [
+  "ocaml" {>= "4.08.1"}
+  "coq" {>= "8.10.1"}
+  "dune"
+  "batteries"
+  "openQASM"
+  "zarith"
+]
+build: [
+  "dune"
+  "build"
+  "voqc.exe"
+  "--root"
+  "VOQC"
+]
+dev-repo: "git+https://"
