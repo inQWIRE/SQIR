@@ -390,7 +390,7 @@ Qed.
 
 Lemma RtoC_Rsum_Csum :
   forall n (f : nat -> R),
-    fst (Csum (fun i => f i) n) = Rsum n f.
+    fst (Csum f n) = Rsum n f.
 Proof.
   intros. induction n.
   - easy.
@@ -399,10 +399,205 @@ Proof.
     + rewrite tech5. simpl. easy.
 Qed.
 
+Lemma Rsum_extend :
+  forall n (f : nat -> R),
+    Rsum (S n) f = f n + Rsum n f.
+Proof.
+  intros. destruct n; simpl; lra.
+Qed.
+
+Lemma Csum_fst_distr :
+  forall n (f : nat -> C),
+    fst (Csum f n) = Rsum n (fun i => fst (f i)).
+Proof.
+  intros. induction n.
+  - easy.
+  - rewrite Rsum_extend. simpl. rewrite IHn. lra.
+Qed.
+
+Lemma Rsum_geq :
+  forall n (f : nat -> R) A,
+    (forall (i : nat), (i < n)%nat -> f i >= A) ->
+    Rsum n f >= n * A.
+Proof.
+  intros. induction n. simpl. lra.
+  assert (Rsum n f >= n * A).
+  { apply IHn. intros. apply H. lia.
+  }
+  rewrite Rsum_extend. replace (S n * A) with (A + n * A).
+  apply Rplus_ge_compat.
+  apply H; lia. assumption.
+  destruct n. simpl. lra. simpl. lra.
+Qed.
+
+Lemma Rsum_geq_0 :
+  forall n (f : nat -> R),
+    (forall (i : nat), (i < n)%nat -> f i >= 0) ->
+    Rsum n f >= 0.
+Proof.
+  intros. specialize (Rsum_geq n f 0 H) as G. lra.
+Qed.
+
+Lemma Rsum_nonneg_Rsum_zero :
+  forall n (f : nat -> R),
+    (forall (i : nat), (i < n)%nat -> f i >= 0) ->
+    Rsum n f <= 0 ->
+    Rsum n f = 0.
+Proof.
+  intros. specialize (Rsum_geq_0 n f H) as G. lra.
+Qed.
+
+Lemma Rsum_nonneg_f_zero :
+  forall n (f : nat -> R),
+    (forall (i : nat), (i < n)%nat -> f i >= 0) ->
+    Rsum n f = 0 ->
+    (forall (i : nat), (i < n)%nat -> f i = 0).
+Proof.
+  intros. induction n. lia.
+  rewrite Rsum_extend in H0.
+  assert (f n >= 0) by (apply H; lia).
+  assert (forall (i : nat), (i < n)%nat -> f i >= 0) by (intros; apply H; lia).
+  assert (Rsum n f <= 0) by lra.
+  specialize (Rsum_nonneg_Rsum_zero n f H3 H4) as G.
+  bdestruct (i =? n). rewrite G in H0. rewrite H5. lra.
+  apply IHn; try assumption. lia.
+Qed.
+
+Lemma Rsum_Cmod_sqr_geq_0 :
+  forall n (f : nat -> C),
+    Rsum n (fun i : nat => Cmod (f i) ^ 2) >= 0.
+Proof.
+  intros. apply Rsum_geq_0. intros. rewrite <- Cmod_pow. specialize (Cmod_ge_0 (f i ^ 2)) as G. lra.
+Qed.
+
+Lemma Cplx_norm_zero :
+  forall n (f : nat -> C),
+    Rsum n (fun i => Cmod (f i) ^ 2) = 0 ->
+    forall (i : nat), (i < n)%nat -> f i = 0.
+Proof.
+  intros n f H.
+  assert (forall i : nat, (i < n)%nat -> Cmod (f i) ^ 2 = 0).
+  { apply Rsum_nonneg_f_zero. 
+    intros. rewrite <- Cmod_pow. specialize (Cmod_ge_0 (f i ^ 2)) as G. lra.
+    apply H.
+  }
+  intros. apply H0 in H1. specialize (Rsqr_0_uniq (Cmod (f i))) as G. rewrite Rsqr_pow2 in G. apply G in H1. apply Cmod_eq_0. easy.
+Qed.
+
+Lemma Cmod_sqr_fst :
+  forall c : C,
+    Cmod c ^ 2 = fst (c^* * c)%C.
+Proof.
+  intros. specialize (Cmod_sqr c) as G. rewrite RtoC_pow in G. unfold RtoC in G. rewrite surjective_pairing in G. apply pair_equal_spec in G. destruct G as [G _]. easy.
+Qed.
+
+Lemma Cmod_R_geq_0 :
+  forall r,
+    r >= 0 ->
+    Cmod r = r.
+Proof.
+  intros. unfold Cmod. simpl. replace (r * (r * 1) + 0 * (0 * 1)) with (r * r) by nra. apply sqrt_square. lra.
+Qed.
+
+Lemma Cconj_minus_distr :
+  forall c1 c2 : C,
+    ((c1 - c2)^* = c1^* - c2^* )%C.
+Proof.
+  intros. lca.
+Qed.
+
+Lemma Cplx_norm_decomp :
+  forall n (u v : nat -> C),
+    Rsum n (fun i : nat => Cmod (u i - v i) ^ 2)
+    = fst (Csum (fun i : nat => (u i) * (u i)^* + (v i) * (v i)^* - (u i) * (v i)^* - (v i) * (u i)^* )%C n).
+Proof.
+  intros. symmetry. erewrite Rsum_eq. apply Csum_fst_distr.
+  intros. rewrite Cmod_sqr_fst.
+  assert (forall {A B} (f : A -> B) (x y : A), x = y -> f x = f y) by (intros; rewrite H; easy).
+  apply H. lca.
+Qed.
+
 Lemma Cplx_Cauchy :
-  forall n (a : nat -> C) (b : nat -> C),
-    (Rsum n (fun i => Cmod (a i) ^ 2)) * (Rsum n (fun i => Cmod (b i) ^ 2)) >= Cmod (Csum (fun i => ((a i)^* * (b i))%C) n) ^ 2.
-Admitted.
+  forall n (u v : nat -> C),
+    (Rsum n (fun i => Cmod (u i) ^ 2)) * (Rsum n (fun i => Cmod (v i) ^ 2)) >= Cmod (Csum (fun i => ((u i)^* * (v i))%C) n) ^ 2.
+Proof.
+  intros.
+  destruct (total_order_T (Rsum n (fun i => Cmod (v i) ^ 2)) 0) as [H | H].
+  - destruct H as [H | H].
+    + specialize (Rsum_Cmod_sqr_geq_0 n v) as G. lra.
+    + assert (forall i : nat, (i < n)%nat -> v i = 0).
+      { intros. apply Cplx_norm_zero with (n:=n); easy.
+      }
+      assert (forall a b : R, a >= 0 -> b >= 0 -> a * b >= 0) by (intros; nra).
+      eapply Rge_trans. apply H1; apply Rsum_Cmod_sqr_geq_0.
+      rewrite Csum_0_bounded. rewrite Cmod_0. simpl. nra.
+      intros. rewrite H0. lca. easy.
+  - remember (Rsum n (fun i : nat => Cmod (v i) ^ 2)) as Rv2.
+    remember (Rsum n (fun i : nat => Cmod (u i) ^ 2)) as Ru2.
+    erewrite Rsum_eq in HeqRv2 by (intros; apply Cmod_sqr_fst).
+    erewrite Rsum_eq in HeqRu2 by (intros; apply Cmod_sqr_fst).
+    rewrite <- Csum_fst_distr in HeqRv2.
+    rewrite <- Csum_fst_distr in HeqRu2.
+    rewrite <- Cmod_Cconj.
+    rewrite Csum_conj_distr.
+    erewrite Csum_eq.
+    2:{ apply functional_extensionality. intros. rewrite Cconj_mult_distr. rewrite Cconj_involutive. rewrite Cmult_comm. reflexivity.
+    }
+    remember (Csum (fun i => ((v i)^* * (u i))%C) n) as uvin.    
+    remember ((RtoC (/ Rv2)) * uvin)%C as lamb.
+    assert (0 < / Rv2) by (apply Rinv_0_lt_compat; easy).
+    apply Rle_ge. apply Rmult_le_reg_r with (r := / Rv2); try easy. rewrite Rmult_assoc. rewrite Rinv_r by lra. rewrite Rmult_1_r. apply Rge_le. apply Rminus_ge.
+    
+    assert (G: Rsum n (fun i => Cmod ((u i) - lamb * (v i))%C ^ 2) >= 0) by apply Rsum_Cmod_sqr_geq_0.
+    rewrite Cplx_norm_decomp in G.
+    assert (T: (forall m (f1 f2 f3 f4 : nat -> C), Csum (fun i => f1 i + f2 i - f3 i - f4 i)%C m = Csum f1 m + Csum f2 m - Csum f3 m - Csum f4 m)%C).
+    { intros. induction m. lca. repeat rewrite <- Csum_extend_r. rewrite IHm. lca.
+    }
+    assert (forall i, (u i * (u i) ^* + lamb * v i * (lamb * v i) ^* - u i * (lamb * v i) ^* - lamb * v i * (u i) ^* = (u i) ^* * (u i) + (lamb ^* * lamb) * ((v i) ^* * (v i)) - lamb ^* * ((v i) ^* * (u i)) - lamb * ((v i) ^* * (u i)) ^* )%C).
+    { intros. rewrite Cconj_mult_distr.
+      rewrite Cmult_comm with (x := u i).
+      rewrite <- Cmult_assoc with (x := lamb). rewrite Cmult_assoc with (x := v i). rewrite Cmult_comm with (x := v i). rewrite <- Cmult_assoc with (x := lamb ^* ). rewrite Cmult_assoc with (x := lamb). rewrite Cmult_comm with (x := lamb). rewrite Cmult_comm with (x := v i).
+      rewrite Cmult_assoc with (x := u i). rewrite Cmult_comm with (x := u i). rewrite Cmult_comm with (x := (v i) ^* ) (y := u i). rewrite Cmult_assoc with (x := lamb ^* ).
+      rewrite Cmult_comm with (x := u i) (y := (v i) ^* ). rewrite Cconj_mult_distr. rewrite Cconj_involutive. rewrite Cmult_assoc with (x := lamb).
+      easy.
+    }
+    erewrite Csum_eq in G by (apply functional_extensionality; apply H1).
+    rewrite T in G.
+    erewrite <- Csum_mult_l with (c := (lamb ^* * lamb)%C) in G.
+    erewrite <- Csum_mult_l with (c := lamb ^* ) in G.
+    erewrite <- Csum_mult_l with (c := lamb) in G.
+    rewrite <- Csum_conj_distr in G.
+    rewrite <- Hequvin in G.
+    assert (Tfst: forall c1 c2 c3 c4 : C, fst (c1 + c2 - c3 - c4)%C = fst c1 + fst c2 - fst c3 - fst c4).
+    { intros. unfold Cminus, Cplus. simpl. lra.
+    }
+    rewrite Tfst in G.
+    rewrite <- HeqRu2 in G.
+    assert (Trcoef: forall c1 c2 : C, fst (c1 ^* * c1 * c2)%C = Cmod c1 ^2 * fst c2).
+    { intros. rewrite <- Cmod_sqr. unfold Cmult. simpl. nra.
+    }
+    rewrite Trcoef in G.
+    rewrite <- HeqRv2 in G.
+
+    assert (Hsub1: Cmod lamb ^ 2 * Rv2 = Cmod uvin ^ 2 * / Rv2).
+    { rewrite Heqlamb. rewrite Cmod_mult. rewrite Rmult_comm with (r2 := Rv2). rewrite Cmod_R_geq_0 by lra. replace ((/ Rv2 * Cmod uvin) ^ 2) with (/ Rv2 * Cmod uvin ^ 2 * / Rv2). repeat rewrite <- Rmult_assoc. rewrite Rinv_r by lra. lra.
+      simpl. nra.
+    }
+    rewrite Hsub1 in G.
+    assert (Hsub2: fst (lamb ^* * uvin)%C = Cmod uvin ^ 2 * / Rv2).
+    { rewrite Heqlamb. rewrite Cconj_mult_distr.
+      replace (fst ((/ Rv2)%R ^* * uvin ^* * uvin)%C) with (fst (uvin ^* * uvin)%C * (/Rv2)) by (simpl; nra).
+      rewrite Cmod_sqr_fst. easy.
+    }
+    rewrite Hsub2 in G.
+    assert (Hsub3: fst (lamb * uvin^* )%C = Cmod uvin ^ 2 * / Rv2).
+    { rewrite <- Cconj_involutive with (c := (lamb * uvin ^* )%C). rewrite Cconj_mult_distr. rewrite Cconj_involutive.
+      assert (Tfstconj : forall c : C, fst (c ^* ) = fst c) by (intros; unfold Cconj; easy).
+      rewrite Tfstconj. apply Hsub2.
+    }
+    rewrite Hsub3 in G.
+    lra.
+Qed.
 
 
 (* ======================================== *)
@@ -425,7 +620,8 @@ Proof.
     rewrite Mmult_vsum_distr_l.
 
     replace (fun i : nat => (vsum r (fun x : nat => ω_neg r ^ (j * x) .* basisPowerA a x N n)) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)) with (fun i : nat => (vsum r (fun x : nat => (ω_neg r ^ (j * x) .* basisPowerA a x N n) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)))).
-    2:{ apply functional_extensionality. intro. symmetry. apply Mmult_adj_vsum_distr_l. }
+    2:{ apply functional_extensionality. intro. symmetry. apply Mmult_adj_vsum_distr_l.
+    }
     replace (fun i : nat => vsum r (fun x : nat => (ω_neg r ^ (j * x) .* basisPowerA a x N n) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n))) with (fun i : nat => vsum r (fun x : nat => ((ω_neg r ^ (j * x))^* * ω_neg r ^ (j * i)) .* ((basisPowerA a x N n) † × basisPowerA a i N n))).
     2:{ apply functional_extensionality. intro. apply vsum_eq. intros.
         rewrite Mscale_adj. rewrite Mscale_mult_dist_r.
@@ -527,7 +723,7 @@ Proof.
     with (vsum r (fun i : nat => Cexp (2 * PI * j / r) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n))).
   easy.
   destruct r. easy. 
-  rewrite <- vsum_extend_l. rewrite <- vsum_extend_r. rewrite Mplus_comm.
+  rewrite vsum_extend_l. rewrite vsum_extend_r. rewrite Mplus_comm.
   unfold shift.
   assert (forall t (A B C D : Vector t), A = B -> C = D -> A .+ C = B .+ D).
   { intros. rewrite H. rewrite H1. easy. }
@@ -871,7 +1067,7 @@ Lemma vsum_by_cell :
 Proof.
   intros d n f x y. induction n.
   - easy.
-  - simpl. unfold Mplus. rewrite IHn. easy.
+  - rewrite vsum_extend_r. unfold Mplus. rewrite IHn. easy.
 Qed.
 
 Lemma basis_vector_decomp :
