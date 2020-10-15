@@ -1212,6 +1212,161 @@ Qed.
 (* =   The post-processings of Shor's algorithm   = *)
 (* ================================================ *)
 
+Local Open Scope nat_scope.
+
+Fixpoint fibonacci (n : nat) : nat :=
+  match n with
+  | O => 1
+  | S O => 1
+  | S (S n as p) => fibonacci p + fibonacci n
+  end.
+
+(*
+Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
+  match n with
+  | O => (p1, q1)
+  | S n => if a =? 0 then (p1, q1)
+          else let c := (b / a)%nat in
+               CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
+  end.
+
+(* Set up the initial parameters. *)
+Definition ContinuedFraction (step a b : nat) : nat * nat := CF_ite step a b 0 1 1 0.
+
+(* Because (a, b) decreases exactly the same as the Euclidean's algorithm, the step bound is the same. "+1" for the initial step shift. *)
+Definition CF_bound b := (Nat.log2 b + 1)%nat.
+ *)
+
+Fixpoint modseq (n a b : nat) : list nat:=
+  match n with
+  | O => []
+  | S n' => match a with
+           | O => b :: modseq n' 0 0
+           | _ => b :: modseq n' (b mod a) a
+           end
+  end.    
+
+Lemma modseq_generate :
+  forall n m i a b,
+    i < n ->
+    i < m ->
+    nth i (modseq n a b) 0 = nth i (modseq m a b) 0.
+Proof.
+Admitted.
+
+Lemma modseq_finite :
+  forall m a b,
+    a < b < m ->
+    exists n,
+      nth n (modseq (S n) a b) 0 <> 0 /\
+      nth (S n) (modseq (S (S n)) a b) 0 = 0.
+Proof.
+  intro m. induction m; intros. lia.
+  bdestruct (b <? m). apply IHm; lia.
+  assert (b = m) by lia.
+  destruct a.
+  - exists 0. split; simpl; lia.
+  - assert (b mod (S a) < (S a) < m).
+    { specialize (Nat.mod_upper_bound b (S a)) as G.
+      assert (GT: S a <> 0) by lia. apply G in GT. lia.
+    }
+    apply IHm in H2. destruct H2 as [n0 H2].
+    exists (S n0). simpl. apply H2. 
+Qed.
+
+Lemma modseq_extend :
+  forall n a b,
+    0 < a ->
+    modseq (S n) a b = b :: modseq n (b mod a) a.
+Proof.
+  intros. simpl. destruct a. lia. easy.
+Qed.
+
+Fixpoint CFq (n a b : nat) : nat :=
+  match n with
+  | O => 0
+  | S O => 1
+  | S (S n2 as n1) => if (nth n1 (modseq n a b) 0 =? 0) then CFq n1 a b
+                     else ((nth n2 (modseq n a b) 0) / (nth n1 (modseq n a b) 0)) * (CFq n1 a b) + CFq n2 a b
+  end.
+
+Fixpoint CFp (n a b : nat) : nat :=
+  match n with
+  | O => 1
+  | S O => 0
+  | S (S n2 as n1) => if (nth n1 (modseq n a b) 0 =? 0) then CFp n1 a b
+                     else ((nth n2 (modseq n a b) 0) / (nth n1 (modseq n a b) 0)) * (CFp n1 a b) + CFp n2 a b
+  end.
+
+Lemma CFq_Sn_mod :
+  forall n a b,
+    0 < a ->
+    0 < n ->
+    CFq (S n) a b = CFq n (b mod a) a.
+Proof.
+  intros. remember (b mod a) as c.
+  simpl. destruct n. lia.
+  destruct a. lia. 
+
+Lemma CFq2 :
+  forall a b,
+    0 < a ->
+    CFq 2 a b = b / a.
+Proof.
+  intros. unfold CFq. simpl. destruct a. lia.
+  rename a into a'. remember (S a') as a. simpl.
+  assert (Ga': a =? 0 = false).
+  { assert (Ga : a <> 0) by lia.
+    apply eqb_neq. easy.
+  }
+  destruct (b mod a); simpl; rewrite Ga'; simpl; lia.
+Qed.
+
+Lemma CFq_bound :
+  forall m a b,
+    a < b < m ->
+    (exists l r,
+        CFq l a b = 1 /\
+        CFp r a b * b = CFq r a b * a /\  (* a.k.a., a / b = CFp n a b / CFq n a b *)
+        (forall i, l <= i < r -> CFq i a b < CFq (S i) a b)).
+(* Lack bound on r for now: n < 2 * Nat.log2 b. This can be derived based on the third inequality *)
+Proof.
+  intro m. induction m; intros. lia.
+  bdestruct (b <? m). apply IHm; easy.
+  assert (b = m) by lia.
+  destruct a.
+  - destruct b. (* b = 0 *) lia.
+    exists 1, 1. split. easy. split. easy.
+    intros. lia.
+  - rename a into a'. remember (S a') as a.
+    assert (Ga: a <> 0) by lia. assert (Ga': a =? 0 = false) by (apply eqb_neq; apply Ga).
+    remember (b mod a) as c.
+    assert (c < a < m).
+    { specialize (Nat.mod_upper_bound b a Ga) as G. lia.
+    }
+    apply IHm in H2. destruct H2 as [l0 [r0 [Hi [Hii Hiii]]]].
+    remember (b / a) as d.
+    bdestruct (d =? 1).
+    + exists 2, (S r0).
+      split. rewrite CFq2 by lia. lia.
+      split. simpl.
+Admitted.      
+
+Lemma Inc_Seq_Search :
+  forall n (f : nat -> nat) x,
+    x < f n ->
+    f 0 = 0 ->
+    (forall i, f i < f (S i)) ->
+    (exists i, i < n /\ f i <= x < f (S i)).
+Proof.
+  intros. induction n.
+  - rewrite H0 in H. lia.
+  - bdestruct (x <? f n).
+    + apply IHn in H2. destruct H2 as [i [Hle1 Hle2]].
+      exists i. split; lia.
+    + exists n. split; lia.
+Qed.
+
 Lemma Legendre_rational :
   forall a b p q : nat,
     Rabs (a / b - p / q) < 1 / (2 * q^2) ->
@@ -1220,6 +1375,8 @@ Lemma Legendre_rational :
       (step <= CF_bound b)%nat /\
       snd (ContinuedFraction step a b) = q.
 Admitted.
+
+Local Close Scope nat_scope.
 
 (* "Partial correct" of ContinuedFraction function. "Partial" because it is exactly correct only when k and r are coprime. Otherwise it will output (p, q) such that p/q=k/r. *)
 Lemma Shor_partial_correct :
