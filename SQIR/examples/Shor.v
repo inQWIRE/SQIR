@@ -225,6 +225,34 @@ Proof.
   induction n; intros. easy. unfold nthcfexp. simpl. apply IHn with (a := a).
 Qed.
 
+Lemma nthcfexp_neq_0_nthmodseq :
+  forall n a b,
+    a < b ->
+    nthcfexp n a b <> 0 ->
+    nthmodseq (S n) a b <> 0.
+Proof.
+  induction n; intros. unfold nthcfexp in H0. simpl in H0.
+  unfold nthmodseq. simpl.
+  bdestruct (a =? 0). rewrite H1 in H0. simpl in H0. lia. lia.
+  bdestruct (a =? 0). rewrite H1 in H0. rewrite nthcfexp_Sn0a in H0. lia.
+  assert (a > 0) by lia.
+  rewrite nthmodseq_mod by lia. apply IHn.
+  apply Nat.mod_upper_bound. easy. easy.
+Qed.
+
+Lemma nthcfexp_neq_0_nthmodseq' :
+  forall n a b,
+    a < b ->
+    nthcfexp n a b <> 0 ->
+    nthmodseq n a b <> 0.
+Proof.
+  induction n; intros. unfold nthmodseq. simpl. lia. 
+  bdestruct (a =? 0). rewrite H1 in H0. rewrite nthcfexp_Sn0a in H0. lia.
+  assert (a > 0) by lia.
+  rewrite nthmodseq_mod by lia. apply IHn.
+  apply Nat.mod_upper_bound. easy. easy.
+Qed.
+
 Fixpoint CF_alt (cf : list nat) (al bl : nat) :=
   match cf with
   | [] => (al, bl)
@@ -324,6 +352,38 @@ Proof.
   destruct l. easy. rewrite nthcfexp_mod by lia. simpl. rewrite nthcfexp_0_0. easy.
 Qed.
 
+Lemma CFq0a_upper_bound :
+  forall m n b,
+    n <= m ->
+    0 < b ->
+    CFq n 0 b <= b.
+Proof.
+  induction m; intros. assert (n = 0) by lia. rewrite H1. simpl. lia.
+  bdestruct (n <=? m). apply IHm; easy.
+  assert (n = S m) by lia. subst. simpl.
+  destruct m. lia.
+  destruct m. unfold nthcfexp. simpl. lia.
+  rewrite nthcfexp_mod by lia. replace (b mod 0) with 0 by easy.
+  rewrite nthcfexp_0_0. rewrite Nat.eqb_refl.
+  apply IHm; lia.
+Qed.
+
+Lemma CFp0a_upper_bound :
+  forall m n b,
+    0 < n <= m ->
+    0 < b ->
+    CFp n 0 b = 0.
+Proof.
+  induction m; intros. lia.
+  bdestruct (n <=? m). apply IHm; easy.
+  assert (n = S m) by lia. subst. simpl.
+  destruct m. easy.
+  destruct m. unfold nthcfexp. simpl. easy.
+  rewrite nthcfexp_mod by lia. replace (b mod 0) with 0 by easy.
+  rewrite nthcfexp_0_0. rewrite Nat.eqb_refl.
+  apply IHm; lia.
+Qed.  
+
 
 Lemma pair_surject :
   forall {A B} (a1 a2 : A) (b1 b2 : B),
@@ -331,6 +391,13 @@ Lemma pair_surject :
 Proof.
   intros. rewrite H, H0. easy.
 Qed.
+
+Compute (cfexp 7 10 16).
+
+Compute (let n := 5 in
+         let (a, b) := (10, 16) in
+         let (x, y) := (3, 6) in
+         (CF_alt (cfexp n a b) x y, (x * CFp n a b + y * CFp (S n) a b, x * CFq n a b + y * CFq (S n) a b))).
 
 Lemma CF_alt_correct :
   forall n a b x,
@@ -359,31 +426,74 @@ Proof.
   - rewrite CFq_mod with (m := S n) (a := a) by lia. nia.
 Qed.
 
+Lemma CF_alt_correct_full :
+  forall n a b x y,
+    a < b ->
+    (forall i, i < n -> nthcfexp i a b <> 0) ->
+    CF_alt (cfexp n a b) x y = (x * CFp n a b + y * CFp (S n) a b, x * CFq n a b + y * CFq (S n) a b).
+Proof.
+  induction n; intros. simpl. apply pair_surject; lia.
+  destruct a. specialize (H0 0). assert (0 < S n) by lia. apply H0 in H1. unfold nthcfexp in H1. simpl in H1. lia.
+  rename a into a'. remember (S a') as a.
+
+  assert (b mod a < a).
+  { specialize (Nat.mod_upper_bound b a) as G.
+    apply G. lia.
+  }
+  assert (T:= H1).
+  apply IHn with (x := x) (y := y) in H1.
+  2:{ intros. assert (nthcfexp (S i) a b <> 0). apply H0. lia.
+      rewrite nthcfexp_mod in H3 by lia. easy.
+  }
+  
+  remember (x * CFp (S n) a b + y * CFp (S (S n)) a b, x * CFq (S n) a b + y * CFq (S (S n)) a b) as CFtmp.
+  simpl. rewrite H1.
+  destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. rewrite <- Ebda. clear Ebda n0.
+  rewrite HeqCFtmp. clear CFtmp HeqCFtmp.
+
+  apply pair_surject.
+  - do 2 rewrite CFp_mod with (m := S n) (a := a) by lia. easy.
+  - do 2 rewrite CFq_mod with (m := S n) (a := a) by lia. nia.
+Qed.
+
+Lemma CF_converge_aux :
+  forall n a b,
+    (a < b) ->
+    (forall i, i < n -> nthcfexp i a b <> 0) ->
+    a * ((nthmodseq (S n) a b) * (CFq n a b) + (nthmodseq n a b) * (CFq (S n) a b)) =
+    b * ((nthmodseq (S n) a b) * (CFp n a b) + (nthmodseq n a b) * (CFp (S n) a b)).
+Proof.
+  intros. specialize (CF_alt_invariant n a b H) as G.
+  rewrite CF_alt_correct_full in G by easy. apply G.
+Qed.
+
 Lemma CF_finite :
   forall m a b,
     a < b < m ->
     (exists n,
         n >= 1 /\
         CFp n a b * b = CFq n a b * a /\  (* a.k.a., a / b = CFp n a b / CFq n a b *)
-        (forall i, S i < n -> nthcfexp i a b <> 0)
+        (forall i, S i < n -> nthcfexp i a b <> 0) /\
+        (forall i, S i >= n -> nthcfexp i a b = 0)
     ).
-(* Lack bound on n for now: n < 2 * Nat.log2 b. This can be derived based on the fourth inequality *)
 Proof.
   induction m; intros. lia.
   bdestruct (b <? m). apply IHm; easy. assert (b = m) by lia.
   destruct a.
   - destruct b. (* b = 0 *) lia.
-    exists 1. split. lia. split. easy. intros. lia. 
+    exists 1. split. lia. split. easy. split. intros. lia. intros.
+    destruct i. easy. rewrite nthcfexp_mod by lia. simpl. apply nthcfexp_0_0.
   - rename a into a'. remember (S a') as a.
     assert (Ga: a <> 0) by lia. assert (Ga': a =? 0 = false) by (apply eqb_neq; apply Ga).
     assert (Gmod: b mod a < a < m) by (specialize (Nat.mod_upper_bound b a Ga) as G; lia).
-    apply IHm in Gmod. destruct Gmod as [n [Hn [Hi Hii]]].
+    apply IHm in Gmod. destruct Gmod as [n [Hn [Hi [Hii Hiii]]]].
     exists (S n). split. lia. split. rewrite CFp_mod with (m := n) by lia. rewrite CFq_mod with (m := n) by lia.
     rewrite Nat.mul_add_distr_r. rewrite Hi.
     replace (b / a * CFq n (b mod a) a * a + CFq n (b mod a) a * (b mod a)) with ((a * (b / a) + b mod a) * CFq n (b mod a) a) by lia. rewrite <- Nat.div_mod by easy. lia.
-    intros. destruct i. unfold nthcfexp. simpl.
+    split. intros. destruct i. unfold nthcfexp. simpl.
     destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. lia.
     rewrite nthcfexp_mod by lia. apply Hii. lia.
+    intros. destruct i. lia. rewrite nthcfexp_mod by lia. apply Hiii. lia.
 Qed.
 
 Lemma CFq_pos :
@@ -451,19 +561,199 @@ Proof.
   intros. simpl. assert (nthcfexp n a b >= 1) by lia. apply Nat.eqb_neq in H0. rewrite H0. nia.
 Qed.
 
+Lemma CFq_lower_bound :
+  forall n a b,
+    a < b ->
+    (forall i, i < 2*n -> nthcfexp i a b <> 0) ->
+    CFq ((2*n) + 1) a b >= 2^n.
+Proof.
+  induction n; intros. simpl. lia.
+  assert (nthcfexp (S (2*n)) a b <> 0) by (apply H0; lia).
+  assert (nthcfexp (2*n) a b <> 0) by (apply H0; lia).
+  specialize (CFq_exp_inc (S (2*n)) a b H H1) as G1.
+  specialize (CFq_exp_inc (2*n) a b H H2) as G2.
+  assert (CFq (S (2*n)) a b >= 2^n).
+  { replace (S (2*n)) with (2*n+1) by lia. apply IHn. easy.
+    intros. apply H0. lia.
+  }
+  replace (2 ^ S n) with (2^n + 2^n) by (simpl; lia).
+  replace (2 * S n + 1) with (S (S (S (2 * n)))) by lia.
+  lia.
+Qed.
+
+Lemma CF_upper_bound :
+  forall n a b,
+    0 < a < b ->
+    CFq n a b <= b /\
+    CFp n a b <= a.
+Proof.
+  induction n; intros. simpl. split; lia.
+  rewrite CFq_mod with (m := n) by lia.
+  rewrite CFp_mod with (m := n) by lia.
+  bdestruct (b mod a =? 0).
+  - rewrite H0. split.
+    + destruct n. simpl. nia.
+      rewrite CFp0a_upper_bound with (m := S n) by lia.
+      assert (CFq (S n) 0 a <= a) by (apply CFq0a_upper_bound with (m := S n); lia).
+      assert (a <> 0) by lia.
+      specialize (Nat.mul_div_le b a H2) as G. nia.
+    + apply CFq0a_upper_bound with (m := n); lia.
+  - assert (0 < b mod a < a).
+    { assert (a <> 0) by lia. specialize (Nat.mod_upper_bound b a H1) as G. lia.
+    }
+    apply IHn in H1. destruct H1 as [H1 H2]. split.
+    + remember (b / a * CFq n (b mod a) a + CFp n (b mod a) a) as tmp.
+      rewrite Nat.div_mod with (x := b) (y := a) by lia.
+      rewrite Heqtmp. nia.
+    + easy.
+Qed.
+
+Lemma CFq_upper_bound :
+  forall n a b,
+    a < b ->
+    CFq n a b <= b.
+Proof.
+  intros. destruct a. apply CFq0a_upper_bound with (m := n); lia.
+  assert (0 < S a < b) by lia.
+  specialize (CF_upper_bound n (S a) b H0) as G. destruct G as [G _].
+  apply G.
+Qed.
+
+Lemma CF_finite_aux :
+  forall n a b,
+    a < b ->
+    (forall i, i < 2*n -> nthcfexp i a b <> 0) ->
+    n <= Nat.log2 b.
+Proof.
+  intros. specialize (CFq_lower_bound n a b H H0) as G.
+  specialize (CFq_upper_bound (2 * n + 1) a b H) as T.
+  assert (2 ^ n <= b) by lia. apply Nat.log2_le_pow2; lia.
+Qed.
+
+Lemma CF_finte_bound :
+  forall n a b,
+    a < b ->
+    (forall i, S i < n -> nthcfexp i a b <> 0) ->
+    n <= 2 * (Nat.log2 b + 1).
+Proof.
+  intros. destruct (Stdlib.even_or_odd n) as [k [Hn | Hn]].
+  - destruct k. lia.
+    assert (forall i, i < 2*k -> nthcfexp i a b <> 0).
+    { intros. apply H0. nia.
+    }
+    specialize (CF_finite_aux k a b H H1) as G. lia.
+  - assert (forall i, i < 2*k -> nthcfexp i a b <> 0).
+    { intros. apply H0. nia.
+    }
+    specialize (CF_finite_aux k a b H H1) as G. lia.
+Qed.
+
+
+Local Close Scope nat_scope.
+Local Open Scope Z_scope.
+
+Fixpoint signflip n : BinNums.Z :=
+  match n with
+  | O => 1
+  | S n => - signflip n
+  end.
+
+Lemma signflip_abs :
+  forall n, Z.abs (signflip n) = 1.
+Proof.
+  induction n; simpl; nia.
+Qed.
+
+Lemma CF_tauto :
+  forall n a b,
+    (a < b)%nat ->
+    (forall i, i < n -> nthcfexp i a b <> 0)%nat ->
+    (CFp (S n) a b) * (CFq n a b) - (CFp n a b) * (CFq (S n) a b) = signflip (S n).
+Proof.
+  induction n; intros. simpl. lia.
+  replace (Z.of_nat (CFp (S (S n)) a b)) with (nthcfexp n a b * CFp (S n) a b + CFp n a b).
+  2:{ remember (CFp (S n) a b) as tmp.
+      assert (nthcfexp n a b <> 0)%nat by (apply H0; lia).
+      apply Nat.eqb_neq in H1.
+      simpl. rewrite H1. rewrite Nat2Z.inj_add. rewrite Nat2Z.inj_mul. rewrite Heqtmp. simpl. lia.
+  } 
+  replace (Z.of_nat (CFq (S (S n)) a b)) with (nthcfexp n a b * CFq (S n) a b + CFq n a b).
+  2:{ remember (CFq (S n) a b) as tmp.
+      assert (nthcfexp n a b <> 0)%nat by (apply H0; lia).
+      apply Nat.eqb_neq in H1.
+      simpl. rewrite H1. rewrite Nat2Z.inj_add. rewrite Nat2Z.inj_mul. rewrite Heqtmp. simpl. lia.
+  }
+  replace (signflip (S (S n))) with (-signflip (S n)) by easy.
+  rewrite <- (IHn a b H) by (intros; apply H0; lia).
+  nia.
+Qed.
+
+Lemma CF_converge :
+  forall n a b,
+    (0 < n)%nat ->
+    (a < b)%nat ->
+    (forall i, i < n -> nthcfexp i a b <> 0)%nat ->
+    (a / b * CFq n a b - CFp n a b = (IZR (signflip n)) * (nthmodseq n a b) / (nthmodseq (S n) a b * CFq n a b + nthmodseq n a b * CFq (S n) a b))%R.
+Proof.
+  intros.
+  specialize (CF_converge_aux n a b H0 H1) as G.
+  specialize (CF_tauto n a b H0 H1) as G'.
+  assert (INR b <> 0)%R by (apply not_0_INR; lia).
+  assert (nthmodseq (S n) a b * CFq n a b + nthmodseq n a b * CFq (S n) a b <> 0)%R.
+  { destruct n. unfold nthmodseq. simpl. lra.
+    assert (nthcfexp n a b <> 0)%nat by (apply H1; lia).
+    apply nthcfexp_neq_0_nthmodseq in H3. 2 : lia.
+    assert ((S (S n)) > 0)%nat by lia.
+    apply CFq_pos with (a := a) (b := b) in H4.
+    assert (forall x y c d : nat, (0 < c)%nat -> (0 < d)%nat -> (x * y + c * d <> 0)%R).
+    { intros. assert (0 < x * y + c * d)%nat by nia. apply lt_INR in H7. simpl in H7. rewrite plus_INR in H7.
+      do 2 rewrite mult_INR in H7. lra.
+    }
+    apply H5; lia.
+  }
+  assert (forall a b : nat, a = b -> INR a = INR b) by (intros; subst; easy).
+  apply H4 in G.
+  repeat rewrite mult_INR in G.
+  repeat rewrite plus_INR in G.
+  repeat rewrite mult_INR in G.
+  remember (nthmodseq (S n) a b * CFp n a b + nthmodseq n a b * CFp (S n) a b)%R as d1.
+  remember (nthmodseq (S n) a b * CFq n a b + nthmodseq n a b * CFq (S n) a b)%R as d2.
+  assert (a / b = d1 / d2)%R.
+  { apply Rmult_eq_reg_r with (r := b). 2 : easy.
+    replace (a / b * b)%R with (INR a).
+    2:{ unfold Rdiv. replace (a * / b * b)%R with (a * (/ b * b))%R by lra. rewrite <- Rinv_l_sym by easy. lra.
+    }
+    apply Rmult_eq_reg_r with (r := d2). 2 : easy.
+    replace (d1 / d2 * b * d2)%R with (d1 * b * (/d2 * d2))%R by lra. rewrite <- Rinv_l_sym by easy. lra.
+  }
+  rewrite H5.
+  replace (INR (CFp n a b)) with (d2 / d2 * CFp n a b)%R.
+  2:{ unfold Rdiv. rewrite <- Rinv_r_sym by easy. lra.
+  } 
+  replace (d1 / d2 * CFq n a b - d2 / d2 * CFp n a b)%R with ((d1 * CFq n a b - d2 * CFp n a b) / d2)%R by lra.
+  apply 
+
+  
+  
+
 Lemma Inc_Seq_Search :
-  forall n (f : nat -> nat) x,
+  forall l n (f : nat -> nat) x,
+    l <= n ->
+    f l <= x ->
     x < f n ->
-    f 0 = 0 ->
     (forall i, f i < f (S i)) ->
-    (exists i, i < n /\ f i <= x < f (S i)).
+    (exists i, l <= i < n /\ f i <= x < f (S i)).
 Proof.
   intros. induction n.
-  - rewrite H0 in H. lia.
+  - assert (l = 0) by lia. rewrite H3 in H0. lia.
   - bdestruct (x <? f n).
-    + apply IHn in H2. destruct H2 as [i [Hle1 Hle2]].
-      exists i. split; lia.
-    + exists n. split; lia.
+    + bdestruct (l <=? n).
+      * destruct (IHn H4 H3) as [i [Hl Hr]].
+        exists i. split; lia.
+      * assert (l = S n) by lia. subst. lia.
+    + exists n.
+      bdestruct (l <=? n). split; lia.
+      assert (l = S n) by lia. subst. lia.
 Qed.
 
 Lemma Legendre_rational :
@@ -476,7 +766,7 @@ Lemma Legendre_rational :
       snd (ContinuedFraction step a b) = q.
 Admitted.
 
-Local Close Scope nat_scope.
+Local Close Scope Z_scope.
 
 
 
