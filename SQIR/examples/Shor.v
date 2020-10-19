@@ -80,12 +80,25 @@ Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
 
 Local Open Scope nat_scope.
 
-Fixpoint fibonacci (n : nat) : nat :=
-  match n with
-  | O => 1
-  | S O => 1
-  | S (S n as p) => fibonacci p + fibonacci n
-  end.
+Lemma Inc_Seq_Search :
+  forall l n (f : nat -> nat) x,
+    l <= n ->
+    f l <= x ->
+    x < f n ->
+    (forall i, f i < f (S i)) ->
+    (exists i, l <= i < n /\ f i <= x < f (S i)).
+Proof.
+  intros. induction n.
+  - assert (l = 0) by lia. rewrite H3 in H0. lia.
+  - bdestruct (x <? f n).
+    + bdestruct (l <=? n).
+      * destruct (IHn H4 H3) as [i [Hl Hr]].
+        exists i. split; lia.
+      * assert (l = S n) by lia. subst. lia.
+    + exists n.
+      bdestruct (l <=? n). split; lia.
+      assert (l = S n) by lia. subst. lia.
+Qed.
 
 (*
 Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
@@ -664,6 +677,12 @@ Proof.
   induction n; simpl; nia.
 Qed.
 
+Lemma signflip_cancel :
+  forall n, signflip n * signflip n = 1.
+Proof.
+  induction n; simpl; nia.
+Qed.
+
 Lemma CF_tauto :
   forall n a b,
     (a < b)%nat ->
@@ -693,7 +712,7 @@ Lemma CF_converge :
     (0 < n)%nat ->
     (a < b)%nat ->
     (forall i, i < n -> nthcfexp i a b <> 0)%nat ->
-    (a / b * CFq n a b - CFp n a b = (IZR (signflip n)) * (nthmodseq n a b) / (nthmodseq (S n) a b * CFq n a b + nthmodseq n a b * CFq (S n) a b))%R.
+    (a / b * CFq n a b - CFp n a b = (IZR (signflip (S n))) * ((nthmodseq n a b) / (nthmodseq (S n) a b * CFq n a b + nthmodseq n a b * CFq (S n) a b)))%R.
 Proof.
   intros.
   specialize (CF_converge_aux n a b H0 H1) as G.
@@ -731,30 +750,136 @@ Proof.
   2:{ unfold Rdiv. rewrite <- Rinv_r_sym by easy. lra.
   } 
   replace (d1 / d2 * CFq n a b - d2 / d2 * CFp n a b)%R with ((d1 * CFq n a b - d2 * CFp n a b) / d2)%R by lra.
-  apply 
-
-  
-  
-
-Lemma Inc_Seq_Search :
-  forall l n (f : nat -> nat) x,
-    l <= n ->
-    f l <= x ->
-    x < f n ->
-    (forall i, f i < f (S i)) ->
-    (exists i, l <= i < n /\ f i <= x < f (S i)).
-Proof.
-  intros. induction n.
-  - assert (l = 0) by lia. rewrite H3 in H0. lia.
-  - bdestruct (x <? f n).
-    + bdestruct (l <=? n).
-      * destruct (IHn H4 H3) as [i [Hl Hr]].
-        exists i. split; lia.
-      * assert (l = S n) by lia. subst. lia.
-    + exists n.
-      bdestruct (l <=? n). split; lia.
-      assert (l = S n) by lia. subst. lia.
+  apply Rmult_eq_reg_r with (r := d2). 2: easy.
+  remember (d1 * CFq n a b - d2 * CFp n a b)%R as x1.
+  replace (IZR (signflip (S n)) * (nthmodseq n a b / d2))%R with ((IZR (signflip (S n)) * nthmodseq n a b) / d2)%R by lra.
+  remember (IZR (signflip (S n)) * nthmodseq n a b)%R as x2.
+  replace (x1 / d2 * d2)%R with (x1 * (/ d2 * d2))%R by lra.
+  replace (x2 / d2 * d2)%R with (x2 * (/ d2 * d2))%R by lra.
+  rewrite <- Rinv_l_sym by easy. do 2 rewrite Rmult_1_r.
+  rewrite Heqx1, Heqx2. clear x1 Heqx1 x2 Heqx2.
+  rewrite Heqd1, Heqd2. do 2 rewrite Rmult_plus_distr_r.
+  replace (nthmodseq (S n) a b * CFp n a b * CFq n a b + nthmodseq n a b * CFp (S n) a b * CFq n a b - (nthmodseq (S n) a b * CFq n a b * CFp n a b + nthmodseq n a b * CFq (S n) a b * CFp n a b))%R with (nthmodseq n a b * (CFp (S n) a b * CFq n a b - CFq (S n) a b * CFp n a b))%R by lra.
+  rewrite <- G'.
+  rewrite minus_IZR. repeat rewrite mult_IZR. repeat rewrite <- INR_IZR_INZ.
+  lra.
 Qed.
+
+Lemma CF_opp_sign :
+  forall (n a b : nat),
+    (a < b)%nat ->
+    (forall i, i < S n -> nthcfexp i a b <> 0)%nat ->
+    ((a / b * CFq n a b - CFp n a b) * (a / b * CFq (S n) a b - CFp (S n) a b)) <= 0.
+Proof.
+  intros. bdestruct (n =? 0)%nat.
+  subst. simpl. assert (a / b = 0) by (apply Zdiv_small; lia).
+  rewrite H1. lia.
+  assert (0 < n)%nat by lia. assert (0 < S n)%nat by lia.
+  assert (forall i, i < n -> nthcfexp i a b <> 0)%nat by (intros; apply H0; lia).
+  specialize (CF_converge n a b H2 H H4) as G1.
+  specialize (CF_converge (S n) a b H3 H H0) as G2.
+  Admitted.
+
+
+Lemma Z_split :
+  forall z : BinNums.Z,
+    z = 0 \/ z < 0 \/ z > 0.
+Proof.
+  intros. lia.
+Qed.
+
+Lemma linear_opp_sign :
+  forall (a b x : nat) (c d : BinNums.Z),
+    (x < a)%nat ->
+    Z.of_nat x = a * c + b * d ->
+    c = 0 \/ c * d < 0.
+Proof.
+  intros. destruct (Z_split c) as [G | [G | G]]. left. easy.
+  right. nia. right. assert (d < 0) by nia. nia.
+Qed.
+
+Lemma Zprod_non_zero :
+  forall x y, x * y < 0 -> y <> 0.
+Proof.
+  intros. nia.
+Qed.
+
+Local Close Scope Z_scope.
+Local Open Scope R_scope.
+
+Lemma Rprod_same_sign :
+  forall a b,
+    a * b >= 0 ->
+    Rabs (a + b) = Rabs a + Rabs b.
+Proof.
+  intros.
+  destruct (total_order_T a 0) as [[G | G] | G].
+  - destruct (total_order_T b 0) as [[T | T] | T].
+    + do 3 rewrite Rabs_left by lra. lra.
+    + rewrite T. rewrite Rabs_R0. do 2 rewrite Rplus_0_r. easy.
+    + nra.
+  - rewrite G. rewrite Rabs_R0. do 2 rewrite Rplus_0_l. easy.
+  - destruct (total_order_T b 0) as [[T | T] | T].
+    + nra. 
+    + rewrite T. rewrite Rabs_R0. do 2 rewrite Rplus_0_r. easy.
+    + do 3 rewrite Rabs_right by lra. lra.
+Qed.
+
+Lemma Rprod_opp_sign :
+  forall a b c d,
+    a * c <= 0 ->
+    b * d <= 0 ->
+    Rabs (a * b + c * d) = Rabs (a * b) + Rabs (c * d).
+Proof.
+  intros.
+  assert ((a * c) * (b * d) >= 0) by nra.
+  apply Rprod_same_sign. nra.
+Qed.
+
+Lemma CF_distance_bound :
+  forall n a b p q : nat,
+    (a < b)%nat ->
+    (forall i, i < n -> nthcfexp i a b <> 0)%nat ->
+    (CFq n a b <= q < CFq (S n) a b)%nat ->
+    (q <> 0)%nat ->
+    Rabs (a / b * CFq n a b - CFp n a b) <= Rabs (a / b * q - p).
+Proof.
+  intros.
+  remember ((signflip n) * (CFp n a b * q - CFq n a b * p))%Z as x.
+  remember ((signflip n) * (- CFp (S n) a b * q + CFq (S n) a b * p))%Z as y.
+  assert (Hq: (Z.of_nat q = CFq (S n) a b * x + CFq n a b * y)%Z).
+  { rewrite Heqx, Heqy.
+    replace (CFq (S n) a b * (signflip n * (CFp n a b * q - CFq n a b * p)) + CFq n a b * (signflip n * (- CFp (S n) a b * q + CFq (S n) a b * p)))%Z with (signflip n * -(CFp (S n) a b * CFq n a b - CFp n a b * CFq (S n) a b) * q)%Z by lia.
+    rewrite CF_tauto by easy. simpl. rewrite Z.opp_involutive. rewrite signflip_cancel. lia.
+  }
+  assert (Hp: (Z.of_nat p = CFp (S n) a b * x + CFp n a b * y)%Z).
+  { rewrite Heqx, Heqy.
+    replace (CFp (S n) a b * (signflip n * (CFp n a b * q - CFq n a b * p)) + CFp n a b * (signflip n * (- CFp (S n) a b * q + CFq (S n) a b * p)))%Z with (signflip n * -(CFp (S n) a b * CFq n a b - CFp n a b * CFq (S n) a b) * p)%Z by lia.
+    rewrite CF_tauto by easy. simpl. rewrite Z.opp_involutive. rewrite signflip_cancel. lia.
+  }
+  assert (Hxy := Hq). apply linear_opp_sign in Hxy. 2:easy.
+  destruct Hxy as [Hxy | Hxy].
+  - assert (y <> 0)%Z by nia.
+    assert (Z.abs y >= 1)%Z by lia.
+    assert (Hq': (Z.of_nat q = CFq n a b * y)%Z) by nia.
+    assert (Hp': (Z.of_nat p = CFp n a b * y)%Z) by nia.
+    repeat rewrite INR_IZR_INZ. rewrite Hq', Hp'.
+    repeat rewrite mult_IZR.
+    replace (IZR a / IZR b * (IZR (CFq n a b) * IZR y) - IZR (CFp n a b) * IZR y) with ((IZR a / IZR b * IZR (CFq n a b) - IZR (CFp n a b)) * IZR y) by lra.
+    rewrite Rabs_mult. rewrite Rabs_Zabs.
+    apply IZR_ge in H4.
+    assert (0 <= Rabs (IZR a / IZR b * IZR (CFq n a b) - IZR (CFp n a b))) by apply Rabs_pos.
+    nra.
+  - assert (y <> 0)%Z by (apply Zprod_non_zero with (x := x); easy).
+    assert (Z.abs y >= 1)%Z by lia.
+    repeat rewrite INR_IZR_INZ. rewrite Hq, Hp.
+    repeat rewrite plus_IZR. repeat rewrite mult_IZR.
+    replace (IZR a / IZR b * (IZR (CFq (S n) a b) * IZR x + IZR (CFq n a b) * IZR y) - (IZR (CFp (S n) a b) * IZR x + IZR (CFp n a b) * IZR y)) with ((IZR a / IZR b * (IZR (CFq (S n) a b)) - (IZR (CFp (S n) a b))) * IZR x + (IZR a / IZR b * (IZR (CFq n a b)) - (IZR (CFp n a b))) * IZR y) by lra.
+    
+    
+  
+  
+  
 
 Lemma Legendre_rational :
   forall a b p q : nat,
@@ -765,9 +890,6 @@ Lemma Legendre_rational :
       (step <= CF_bound b)%nat /\
       snd (ContinuedFraction step a b) = q.
 Admitted.
-
-Local Close Scope Z_scope.
-
 
 
 
