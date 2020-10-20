@@ -3,7 +3,6 @@ Require Export QPEGeneral.
 Require Import Interval.Tactic.
 
 Local Close Scope R_scope.
-
 Local Coercion INR : nat >-> R.
 Local Coercion Z.of_nat : nat >-> BinNums.Z.
 
@@ -69,7 +68,7 @@ Fixpoint Bsum n (f : nat -> bool) :=
   end.
 
 (* We say a measurement result x is r_recoverable, if the execution of continued fraction algorithm provides a candidate that is exactly the order r. Because this process is deterministic, the conditioned probability is whether 1 or 0. *)
-Definition r_recoverable x m r : R := if Bsum (m + 2) (fun step => Shor_post step x m =? r) then 1 else 0.
+Definition r_recoverable x m r : R := if Bsum (2 * m + 2) (fun step => Shor_post step x m =? r) then 1 else 0.
 
 (* The final success probability of Shor's order finding algorithm. It sums over all the possible measurement results, and adds the probability of recovering r conditioned on measurement result x. *)
 Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
@@ -268,22 +267,6 @@ Proof.
       bdestruct (l <=? n). split; lia.
       assert (l = S n) by lia. subst. lia.
 Qed.
-
-(*
-Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
-  match n with
-  | O => (p1, q1)
-  | S n => if a =? 0 then (p1, q1)
-          else let c := (b / a)%nat in
-               CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
-  end.
-
-(* Set up the initial parameters. *)
-Definition ContinuedFraction (step a b : nat) : nat * nat := CF_ite step a b 0 1 1 0.
-
-(* Because (a, b) decreases exactly the same as the Euclidean's algorithm, the step bound is the same. "+1" for the initial step shift. *)
-Definition CF_bound b := (Nat.log2 b + 1)%nat.
- *)
 
 Fixpoint modseq (n a b : nat) : list nat:=
   match n with
@@ -612,8 +595,7 @@ Proof.
   rewrite nthcfexp_mod by lia. replace (b mod 0) with 0 by easy.
   rewrite nthcfexp_0_0. rewrite Nat.eqb_refl.
   apply IHm; lia.
-Qed.  
-
+Qed.
 
 Lemma pair_surject :
   forall {A B} (a1 a2 : A) (b1 b2 : B),
@@ -654,6 +636,168 @@ Proof.
   apply pair_surject.
   - rewrite CFp_mod with (m := S n) (a := a) by lia. easy.
   - rewrite CFq_mod with (m := S n) (a := a) by lia. nia.
+Qed.
+
+Lemma nth_modseq_inc :
+  forall n a b,
+    nth (S (S n)) (modseq (S (S (S n))) a b) 0 = (nth n (modseq (S (S (S n))) a b) 0) mod (nth (S n) (modseq (S (S (S n))) a b) 0).
+Proof.
+  induction n; intros. easy.
+  remember (S (S (S n))) as x. simpl. rewrite Heqx. rewrite Heqx in IHn. rewrite IHn. easy.
+Qed.
+
+Lemma modseq_length :
+  forall n a b,
+    length (modseq n a b) = n.
+Proof.
+  induction n; intros. easy. simpl. rewrite IHn. easy.
+Qed.
+  
+Lemma nth_modseq_overflow :
+  forall x n a b,
+    n <= x ->
+    nth x (modseq n a b) 0 = 0.
+Proof.
+  intros. apply nth_overflow. rewrite modseq_length. easy.
+Qed.
+
+Lemma nth_modseq_0_onestep :
+  forall x n a b,
+    a < b ->
+    nth x (modseq n a b) 0 = 0 ->
+    nth (S x) (modseq n a b) 0 = 0.
+Proof.
+  induction x; intros. destruct n. easy. simpl in H0. lia.
+  bdestruct (n <=? S (S x)). apply nth_modseq_overflow; easy.
+  rewrite modseq_generate with (m := (S (S (S x)))) by lia.
+  rewrite modseq_generate with (m := (S (S (S x)))) in H0 by lia.
+  rewrite nth_modseq_inc. rewrite H0. easy.
+Qed.
+
+Lemma nthmodseq_0_post :
+  forall x n a b,
+    nthmodseq n a b = 0 ->
+    a < b ->
+    nthmodseq (x + n) a b = 0.
+Proof.
+  induction x; intros. easy.
+  apply IHx in H. 2:lia. unfold nthmodseq in H. unfold nthmodseq.
+  rewrite modseq_generate with (m := (S (S x + n))) in H by lia.
+  apply nth_modseq_0_onestep in H. 2:lia.
+  replace (S x + n) with (S (x + n)) by lia.
+  easy.
+Qed.
+
+Lemma nthcfexp_nthmodseq_eq :
+  forall n a b,
+    a < b ->
+    nthcfexp n a b = (nthmodseq n a b) / (nthmodseq (S n) a b).
+Proof.
+  induction n; intros. easy.
+  rewrite nthcfexp_mod by lia. do 2 rewrite nthmodseq_mod by lia.
+  bdestruct (a =? 0). subst. simpl. rewrite nthcfexp_0_0. do 2 rewrite nthmodseq_0_0. simpl. easy.
+  assert (b mod a < a) by (apply Nat.mod_upper_bound; easy).
+  apply IHn in H1. easy.
+Qed.
+
+Lemma nthmodseq_0_nthcfexp :
+  forall n a b,
+    a < b ->
+    nthmodseq (S n) a b = 0 ->
+    nthcfexp n a b = 0.
+Proof.
+  intros. bdestruct (nthcfexp n a b =? 0). easy.
+  apply nthcfexp_neq_0_nthmodseq in H1. 2:lia. lia.
+Qed.
+
+Lemma nthmodseq_dec :
+  forall n a b,
+    a < b ->
+    nthmodseq n a b >= nthmodseq (S n) a b.
+Proof.
+  unfold nthmodseq.
+  destruct n; intros. simpl. lia. rewrite nth_modseq_inc.
+  rewrite modseq_generate with (n := S (S n)) (m := S (S (S n))) by lia.
+  bdestruct (nth (S n) (modseq (S (S (S n))) a b) 0 =? 0). rewrite H0. simpl. lia.
+  assert (forall p q, p < q -> q >= p) by (intros; lia).
+  apply H1. apply Nat.mod_upper_bound. easy.
+Qed.
+
+Lemma nthmodseq_neq_0_nthcfexp :
+  forall n a b,
+    a < b ->
+    nthmodseq (S n) a b <> 0 ->
+    nthcfexp n a b <> 0.
+Proof.
+  induction n; intros. specialize (nthmodseq_dec 1 a b H) as G.
+  unfold nthmodseq in H0, G. simpl in H0, G. unfold nthcfexp. simpl.
+  assert (0 < a <= b) by lia. specialize (Nat.div_str_pos b a H1) as T. lia.
+  rewrite nthmodseq_mod in H0 by lia.
+  bdestruct (a =? 0). rewrite H1 in H0. simpl in H0. rewrite nthmodseq_0_0 in H0. lia.
+  specialize (nthmodseq_dec (S n) a b H) as G. rewrite nthcfexp_mod by lia. 
+  assert (b mod a < a) by (apply Nat.mod_upper_bound; easy).
+  specialize (IHn (b mod a) a H2 H0). easy.
+Qed.
+
+Lemma nthmodseq_0_CFp :
+  forall x n a b,
+    a < b ->
+    nthmodseq n a b = 0 ->
+    CFp (x + n) a b = CFp n a b.
+Proof.
+  induction x; intros. easy. unfold nthmodseq in H0.
+  assert (H1 := H0).
+  rewrite modseq_generate with (m := (S (S n))) in H0 by lia.
+  apply nth_modseq_0_onestep in H0. 2:lia.
+  specialize (IHx (S n) a b H H0).
+  replace (S x + n) with (x + S n) by lia.
+  rewrite IHx. simpl. destruct n. simpl in H1. lia.
+  specialize (nthmodseq_0_nthcfexp n a b H H1) as G.
+  rewrite G. simpl. easy.
+Qed.
+
+Lemma nthmodseq_0_CFq :
+  forall x n a b,
+    a < b ->
+    nthmodseq n a b = 0 ->
+    CFq (x + n) a b = CFq n a b.
+Proof.
+  induction x; intros. easy. unfold nthmodseq in H0.
+  assert (H1 := H0).
+  rewrite modseq_generate with (m := (S (S n))) in H0 by lia.
+  apply nth_modseq_0_onestep in H0. 2:lia.
+  specialize (IHx (S n) a b H H0).
+  replace (S x + n) with (x + S n) by lia.
+  rewrite IHx. simpl. destruct n. simpl in H1. lia.
+  specialize (nthmodseq_0_nthcfexp n a b H H1) as G.
+  rewrite G. simpl. easy.
+Qed.
+
+Lemma CF_ite_CFpq :
+  forall x n a b,
+    a < b ->
+    CF_ite x (nthmodseq (S n) a b) (nthmodseq n a b) (CFp (S n) a b) (CFq (S n) a b) (CFp n a b) (CFq n a b) = (CFp (x + S n) a b, CFq (x + S n) a b).
+Proof.
+  induction x; intros. easy.
+  unfold CF_ite. fold CF_ite.
+  bdestruct (nthmodseq (S n) a b =? 0).
+  rewrite nthmodseq_0_CFp, nthmodseq_0_CFq by lia. easy.
+  replace (S x + S n) with (x + S (S n)) by lia.
+  rewrite <- IHx by lia.
+  replace (nthmodseq n a b mod nthmodseq (S n) a b) with (nthmodseq (S (S n)) a b).
+  2:{ unfold nthmodseq. rewrite modseq_generate with (n := S n) (m := (S (S (S n)))) by lia.
+      rewrite modseq_generate with (n := S (S n)) (m := (S (S (S n)))) by lia.
+      apply nth_modseq_inc.
+  }
+  replace (CFp (S (S n)) a b) with (nthmodseq n a b / nthmodseq (S n) a b * CFp (S n) a b + CFp n a b).
+  2:{ simpl. apply nthmodseq_neq_0_nthcfexp in H0. 2:lia. apply Nat.eqb_neq in H0. rewrite H0.
+      rewrite <- nthcfexp_nthmodseq_eq by lia. easy.
+  } 
+  replace (CFq (S (S n)) a b) with (nthmodseq n a b / nthmodseq (S n) a b * CFq (S n) a b + CFq n a b).
+  2:{ simpl. apply nthmodseq_neq_0_nthcfexp in H0. 2:lia. apply Nat.eqb_neq in H0. rewrite H0.
+      rewrite <- nthcfexp_nthmodseq_eq by lia. easy.
+  }
+  easy.
 Qed.
 
 Lemma CF_alt_correct_full :
@@ -1219,7 +1363,7 @@ Lemma Legendre_rational :
     Rabs (a / b - p / q) < 1 / (2 * q^2) ->
     rel_prime p q ->
     exists step,
-      (step <= CF_bound b)%nat /\
+      (1 <= step <= CF_bound b)%nat /\
       CFq step a b = q.
 Proof.
   intros a b p q Hq Hab Hdis Hpq. assert (T: (a < b < S b)%nat) by lia. specialize (CF_finite (S b) a b T) as G.
@@ -1296,10 +1440,31 @@ Proof.
     destruct HINZ as [_ HINZ]. apply Nat2Z.inj_iff. easy.
 Qed.
 
+Lemma Legendre_ContinuedFraction :
+  forall a b p q : nat,
+    (0 < q)%nat ->
+    (a < b)%nat ->
+    Rabs (a / b - p / q) < 1 / (2 * q^2) ->
+    rel_prime p q ->
+    exists step,
+      (step < CF_bound b)%nat /\
+      snd (ContinuedFraction step a b) = q.
+Proof.
+  intros. specialize (Legendre_rational a b p q H H0 H1 H2) as G.
+  destruct G as [n [Ha Hb]].
+  destruct n. lia.
+  exists n. split. lia.
+  unfold ContinuedFraction. specialize (CF_ite_CFpq n 0 a b H0) as G.
+  unfold nthmodseq in G. simpl in G. rewrite G.
+  simpl. replace (n + 1)%nat with (S n) by lia. easy.
+Qed.
 
 (* ============================= *)
 (* =   Number theory results   = *)
 (* ============================= *)
+
+Local Close Scope R_scope.
+Local Open Scope nat_scope.
 
 Lemma Order_N_lb :
   forall a r N,
@@ -2374,12 +2539,13 @@ Lemma Shor_partial_correct :
     (0 <= k < r)%nat ->
     rel_prime k r ->
     exists step,
-      (step <= m + 1)%nat /\
+      (step < 2 * m + 2)%nat /\
       Shor_post step (s_closest m k r) m = r.
 Proof.
   intros. unfold Shor_post.
-  replace (m + 1)%nat with (Nat.log2 (2^m) + 1)%nat by (rewrite Nat.log2_pow2; lia).
-  apply Legendre_rational with (p := k).
+  replace (2 * m + 2)%nat with (2 * (Nat.log2 (2^m) + 1))%nat by (rewrite Nat.log2_pow2; lia).
+  apply Legendre_ContinuedFraction with (p := k).
+  lia. apply s_closest_ub with (a := a) (N := N) (n := n); easy.
   replace (INR (2 ^ m)) with (2 ^ m) by (rewrite pow_INR; easy).
   specialize (s_closest_Rabs a r N m n k H H0) as G.
   eapply Rle_lt_trans. apply G. unfold Rdiv. do 2 rewrite Rmult_1_l.
@@ -2420,6 +2586,45 @@ Qed.
 
 (* Euler's totient function *)
 Definition ϕ (n : nat) := Rsum n (fun x => if rel_prime_dec x n then 1 else 0).
+
+
+Lemma exp_ineq2 : forall x:R, x < 0 -> 1 + x < exp x.
+Proof.
+  intros. apply Rplus_lt_reg_l with (- exp 0). rewrite <- (Rplus_comm (exp x)).
+  assert (H0 := MVT_cor1 exp x 0 derivable_exp H). elim H0.
+  intros. destruct H1 as [H1 H2]. replace (exp x + - exp 0) with (- (exp 0 - exp x)) by lra.
+  rewrite H1. replace (- (derive_pt exp x0 (derivable_exp x0) * (0 - x))) with (x * derive_pt exp x0 (derivable_exp x0)) by lra.
+  replace (derive_pt exp x0 (derivable_exp x0)) with (exp x0).
+  
+  rewrite exp_0. rewrite <- Rplus_assoc. rewrite Rplus_opp_l. rewrite Rplus_0_l.
+  pattern x at 1. rewrite <- Rmult_1_r.
+  apply Rgt_lt. apply Rmult_lt_gt_compat_neg_l.
+  apply H.
+  rewrite <- exp_0. apply exp_increasing. lra.
+  symmetry . apply derive_pt_eq_0. apply derivable_pt_lim_exp.
+Qed.
+
+Lemma exp_ineq0 : forall x:R, 1 + x <= exp x.
+Proof.
+  intro. destruct (total_order_T x 0) as [[Hx | Hx] | Hx].
+  specialize (exp_ineq2 x). lra.
+  subst. rewrite exp_0. lra.
+  specialize (exp_ineq1 x). lra.
+Qed.
+
+Lemma exp_le_inv : forall x y : R, exp x <= exp y -> x <= y.
+Proof.
+  intros. destruct (Req_dec (exp x) (exp y)). apply exp_inv in H0. lra.
+  assert (exp x < exp y) by lra.
+  apply exp_lt_inv in H1. lra.
+Qed.
+
+Lemma ln_1_x_ineq : forall x : R, -1 < x -> ln (1 + x) <= x.
+Proof.
+  intros. specialize (exp_ineq0 x) as G.
+  rewrite <- (exp_ln (1 + x)) in G by lra.
+  apply exp_le_inv. easy.
+Qed.
 
 (* This might need to be treated as an axiom. [1979 Hardy & Wright, Thm 328] *)
 Lemma ϕ_n_over_n_lowerbound :
@@ -2560,7 +2765,7 @@ Proof.
     - intros. unfold g. rewrite Heqf. remember (prob_partial_meas (basis_vector (2 ^ m) (s_closest m i (S r)))
       (uc_eval (QPE m n c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1))) as fi.
       destruct (rel_prime_dec i (S r)). rewrite r_recoverable_1 with a _ N _ _ n; try lra; try lia; try easy.
-      rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_recoverable. destruct (Bsum (m + 2)
+      rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_recoverable. destruct (Bsum (2*m + 2)
         (fun step : nat => Shor_post step (s_closest m i (S r)) m =? S r)); lra.
       subst. unfold prob_partial_meas. unfold Rsum. replace (2 ^ n)%nat with (S (pred (2 ^ n))).
       apply cond_pos_sum. intros. unfold probability_of_outcome. interval.
@@ -2568,7 +2773,7 @@ Proof.
     - replace (2 ^ m)%nat with (S (pred (2 ^ m))).
       assert (forall i, 0 <= f i).
       { intros. subst. unfold r_recoverable, prob_partial_meas, probability_of_outcome. apply Rmult_le_pos.
-        destruct (Bsum (m + 2) (fun step : nat => Shor_post step i m =? r)); lra.
+        destruct (Bsum (2*m + 2) (fun step : nat => Shor_post step i m =? r)); lra.
         unfold Rsum. replace (2 ^ n)%nat with (S (pred (2 ^ n))).
         apply cond_pos_sum. intros. interval. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
       }
