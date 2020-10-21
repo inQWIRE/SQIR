@@ -2,7 +2,7 @@
 
 ## Overview
 
-This README contains instructions for compiling and running the VOQC optimizer.
+This README contains general instructions for compiling and running the VOQC optimizer. For instructions on running VOQC on the benchmarks in the VOQC paper, see [benchmarks/README.md](benchmarks/README.md).
 
 VOQC currently supports the following gates:
 * t, tdg
@@ -16,16 +16,14 @@ VOQC currently supports the following gates:
 
 rzq is a non-standard gate that we have defined specifically for VOQC. rzq(num,den) performs a rotation about the z-axis by ((num /den) * pi) for integers num and den. We have defined the gate this way to avoid floating point numbers, which significantly complicate verification. Gates of the form rz(f * pi) are automatically converted into our rzq form by converting the float f to its rational representation.
 
-For examples of programs that VOQC can optimize, see benchmarks/Arithmetic_and_Toffoli, benchmarks/PF and benchmarks/QFT_and_Adders.
-
 The Coq source code for our optimizer is in src/. The code for extracting our Coq optimizations to OCaml (and optionally wrapping in a C library) is in extraction/. interop/ contains code for calling VOQC functions from Python (see below).
 
 ## Compilation
 
 Dependencies:
-  * OCaml version 4.08.1 
+  * OCaml version >= 4.08.1 
   * dune (`opam install dune`)
-  * menhir (`opam install menhir`)
+  * zarith (`opam install zarith`)
   * batteries (`opam install batteries`)
   * OCaml OpenQASM parser (`opam install openQASM`)
 
@@ -33,7 +31,15 @@ Dependencies:
 
 **Library**: Run `dune build extraction/libvoqc.so` in the current (VOQC) directory. This will produce `libvoqc.so` in _build/default/extraction/.
 
-*Note*: If you are building the voqc executable or library on a Mac, you will likely see the warning `ld: warning: directory not found for option '-L/opt/local/lib'`. This is due to zarith (see [ocaml/opam-repository#3000](https://github.com/ocaml/opam-repository/issues/3000)) and seems to be fine to ignore.
+*Notes*: 
+* If you are building the voqc executable or library on a Mac, you will likely see the warning `ld: warning: directory not found for option '-L/opt/local/lib'`. This is due to zarith (see [ocaml/opam-repository#3000](https://github.com/ocaml/opam-repository/issues/3000)) and seems to be fine to ignore.
+* If you get an error like the following, try looking for a `dune-project` file outside of the VOQC directory (e.g. in the extraction directory). Deleting this file usually solves the problem.
+  ```
+  File "dune", line 3, characters 13-27:
+  3 |   (libraries extracted_code))
+                   ^^^^^^^^^^^^^^
+  Error: Library "extracted_code" not found.
+  ```
 
 ## Running the VOQC Executable
 
@@ -41,8 +47,8 @@ To run the OCaml optimizer, run `dune exec -- ./voqc.exe -i <prog> -o <out>`, wh
 
 *Example*: The following runs VOQC on the tof_3 benchmark and writes the result to out.qasm.
 ```
-$ dune exec -- ./voqc.exe -i benchmarks/Arithmetic_and_Toffoli/tof_3.qasm -o out.qasm 
-Input file: benchmarks/Arithmetic_and_Toffoli/tof_3.qasm
+$ dune exec -- ./voqc.exe -i benchmarks/VOQC-benchmarks/Arithmetic_and_Toffoli/tof_3.qasm -o out.qasm 
+Input file: benchmarks/VOQC-benchmarks/Arithmetic_and_Toffoli/tof_3.qasm
 Output file: out.qasm
 Time to parse: 0.000149s
 Original:	 Total 45, Rz 21, Clifford 0, T 21, H 6, X 0, CNOT 18
@@ -52,7 +58,7 @@ Time to write out: 0.000758s
 ```
 VOQC reports, in order: total gate count, number of z-axis rotation gates, number of Clifford gate (= rotations by multiples of PI/2), number of T gates, number of H gates, number of X gates, and number of CNOT gates.
 
-A script for running VOQC on all the benchmarks presented in our paper is available in the [benchmarks](benchmarks) directory.
+Scripts for running VOQC on the benchmarks presented in our paper are available in the [benchmarks](benchmarks) directory.
 
 ## Using the VOQC Library in Python
 
@@ -62,7 +68,7 @@ The voqc.py file in the interop/ directory provides a wrapper around the VOQC li
 from interop.voqc import SQIR
 
 # load circuit
-c = SQIR("benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
+c = SQIR("benchmarks/VOQC-benchmarks/Arithmetic_and_Toffoli/tof_3.qasm")
 
 # run a single optimization (in this case, X propagation)
 c.not_propagation()

@@ -9,11 +9,13 @@ open GateCount
 let niter = ref 1
 let fname = ref ""
 let outf = ref ""
-let usage = "usage: " ^ Sys.argv.(0) ^ " [-i string] [-o string] [-n int]"
+let light = ref false
+let usage = "usage: " ^ Sys.argv.(0) ^ " [-i string] [-o string] [-n int] [-l]"
 let speclist = [
     ("-i", Arg.Set_string fname, ": input filename");
     ("-o", Arg.Set_string outf, ": output filename");
-    ("-n", Arg.Set_int niter, ": number of iterations");
+    ("-n", Arg.Set_int niter, ": number of iterations (n > 2 uses LCR optimizer)");
+    ("-l", Arg.Set light, ": use the 'light' version of the optimizer (excludes rotation merging)");
   ]
 let () =
   Arg.parse
@@ -24,6 +26,7 @@ if !fname = "" then printf "Input filename required.\n%!" else
 let _ = if !outf = "" then outf := !fname ^ "_opt" else () in
 let _ = printf "Input file: %s\nOutput file: %s\n%!" !fname !outf in
 let _ = if !niter > 2 then printf "Number of iterations: %d\n%!" !niter else () in
+let _ = if !light then printf "Using light version of optimizer.\n%!" else () in
 let t1 = Unix.gettimeofday () in
 let (p, n) = get_gate_list !fname in
 let _ = printf "Time to parse: %fs\n" (Unix.gettimeofday () -. t1) in
@@ -41,7 +44,7 @@ then
   let _ = printf "Original:\t Total %d, Rz %d, Clifford %d, T %s, H %d, X %d, CNOT %d\n%!" 
             origTotal origRz origCliff origT origH origX origCNOT in
   let t2 = Unix.gettimeofday () in
-  let p' = optimize p in
+  let p' = if !light then optimize_light p else optimize p in
   let _ = printf "Time to optimize: %fs\n" (Unix.gettimeofday () -. t2) in
   let finalTotal = List.length p' in
   let finalRz = get_rz_count p' in
@@ -61,7 +64,8 @@ else
   let _ = printf "Original (n iter.):\t Total %d, Rz %d, Clifford %d, H %d, X %d, CNOT %d\n%!" 
             (!niter * origTotal) (!niter * origRz) (!niter * origCliff) (!niter * origH) (!niter * origX) (!niter * origCNOT) in
   let t2 = Unix.gettimeofday () in
-  match optimize_lcr p with
+  let res = if !light then optimize_light_lcr p else optimize_lcr p in
+  match res with
      | Some ((l, c), r) ->
          let _ = printf "Time to optimize: %fs\n" (Unix.gettimeofday () -. t2) in
          let finalTotal = (List.length l) + (!niter - 2) * (List.length c) + (List.length r)  in

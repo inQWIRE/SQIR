@@ -28,6 +28,18 @@ Definition optimize {dim} (l : RzQ_ucom_l dim) : RzQ_ucom_l dim :=
 Definition optimize_lcr {dim} (l : RzQ_ucom_l dim) :=
   LCR l optimize (fun n => @match_gate n).
 
+(* Light version of the optimizer used for QFT-based adder programs (following Nam et al.). *)
+Definition optimize_light {dim} (l : RzQ_ucom_l dim) : RzQ_ucom_l dim :=
+  cancel_single_qubit_gates 
+    (hadamard_reduction 
+      (cancel_two_qubit_gates 
+        (cancel_single_qubit_gates 
+          (cancel_two_qubit_gates 
+            (hadamard_reduction 
+              (not_propagation l)))))). 
+Definition optimize_light_lcr {dim} (l : RzQ_ucom_l dim) :=
+  LCR l optimize_light (fun n => @match_gate n).
+
 (* Built-in well-typedness check. *)
 Definition optimize_check_for_type_errors {dim} (l : RzQ_ucom_l dim) 
     : option (RzQ_ucom_l dim) :=
@@ -105,4 +117,48 @@ Proof.
   all: try assumption.
   apply optimize_sound.
   apply optimize_WT.
+Qed.
+
+Lemma optimize_light_sound : forall {dim} (l : RzQ_ucom_l dim),
+  uc_well_typed_l l -> optimize_light l ≅l≅ l.
+Proof.
+  intros.
+  unfold optimize_light.
+  repeat ((* soundness *)
+          try rewrite not_propagation_sound;
+          try rewrite hadamard_reduction_sound;
+          try rewrite cancel_single_qubit_gates_sound';
+          try rewrite cancel_two_qubit_gates_sound';
+          (* well-typedness *)
+          try apply not_propagation_WT;
+          try apply hadamard_reduction_WT;
+          try apply cancel_single_qubit_gates_WT;
+          try apply cancel_two_qubit_gates_WT;
+          try assumption).
+  reflexivity.
+Qed.
+
+Lemma optimize_light_WT : forall {dim} (l : RzQ_ucom_l dim),
+  uc_well_typed_l l -> uc_well_typed_l (optimize_light l).
+Proof.
+  intros.
+  unfold optimize_light.
+  repeat (try apply not_propagation_WT;
+          try apply hadamard_reduction_WT;
+          try apply cancel_single_qubit_gates_WT;
+          try apply cancel_two_qubit_gates_WT;
+          auto).
+Qed.
+
+Lemma optimize_light_lcr_sound : forall {dim} (p l c r : RzQ_ucom_l dim) n,
+  (n > 2)%nat -> uc_well_typed_l p ->
+  optimize_light_lcr p = Some (l, c, r) ->
+  niter p n ≅l≅ (l ++ (niter c (n - 2)) ++ r).
+Proof.
+  intros dim p l c r n Hn WT H.
+  eapply LCR_correct in H.
+  apply H.
+  all: try assumption.
+  apply optimize_light_sound.
+  apply optimize_light_WT.
 Qed.

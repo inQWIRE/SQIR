@@ -8,9 +8,9 @@ YELLOW='\033[1;33m'
 NOCOLOR='\033[0m'
 
 # Get files
-pf_filenames=( $(ls -d PF/*.qasm) )
-Arithmetic_and_Toffoli_filenames=( $(ls -d Arithmetic_and_Toffoli/*.qasm) )
-QFT_and_Adders_filenames=( $(ls -d QFT_and_Adders/*.qasm) )
+pf_filenames=( $(ls -d VOQC-benchmarks/PF/*.qasm) )
+Arithmetic_and_Toffoli_filenames=( $(ls -d VOQC-benchmarks/Arithmetic_and_Toffoli/*.qasm) )
+QFT_and_Adders_filenames=( $(ls -d VOQC-benchmarks/QFT_and_Adders/*.qasm) )
 
 # Number of iterations stored as an array. The order
 # of these elements must match the order of the pf pf_filenames

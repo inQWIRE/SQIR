@@ -154,9 +154,12 @@ Extraction Implicit not_propagation [dim].
 (* Optimize *)
 Extraction Implicit optimize [dim].
 Extraction Implicit optimize_lcr [dim].
+Extraction Implicit optimize_light [dim].
+Extraction Implicit optimize_light_lcr [dim].
 
 (* Perform extraction. *)
 Separate Extraction
   CCX CCZ
   URzQ_Z URzQ_P URzQ_PDAG URzQ_T URzQ_TDAG URzQ_Rz 
-  optimize optimize_lcr.
+  optimize optimize_lcr
+  optimize_light optimize_light_lcr.

@@ -83,9 +83,10 @@ def run(d,fname):
         num_gates_after = circ.n_gates
         num_CNOTs_after = circ.n_gates_of_type(OpType.CX)
         print("Final:\t Total %d, CNOT %d\n" % (num_gates_after, num_CNOTs_after))
-        circuit_to_qasm(circ, fname.split(".")[0] + "_tket.qasm")
 
         f.write("%s,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, num_CNOTs_before, num_gates_after, num_CNOTs_after, stop - start))
+        
+    os.remove("copy.qasm")
 
 if (len(sys.argv) != 3):
     print("Usage: python3 run_tket.py <input directory> <output file>")

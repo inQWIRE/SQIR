@@ -112,12 +112,11 @@ def run(d, fname):
             if (inst.name == "cx"):
                 cnot_count_after += 1
         print("Final:\t Total %d, CNOT %d\n" % (num_gates_after, cnot_count_after))
-        f = open(fname.split(".")[0] + "_qiskit.qasm", "w")
-        f.write(new_circ.qasm())
 
         f.write("%s,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, cnot_count_before, num_gates_after, cnot_count_after, stop - start))
         
     f.close()
+    os.remove("copy.qasm")
 
 if (len(sys.argv) != 3):
     print("Usage: python3 run_qiskit.py <input directory> <output file>")

@@ -1,3 +1,6 @@
 [submodule "externals/QWIRE"]
 	path = externals/QWIRE
 	url = https://github.com/inQWIRE/QWIRE
+[submodule "VOQC/benchmarks/VOQC-benchmarks"]
+	path = VOQC/benchmarks/VOQC-benchmarks
+	url = https://github.com/inQWIRE/VOQC-benchmarks
