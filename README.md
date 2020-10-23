@@ -17,6 +17,7 @@ The bulk of this respository is Coq proofs about quantum programs and program tr
 * [Compilation](#compilation)
   * [Coq](#coq)
   * [OCaml](#ocaml)
+  * [Installing Dependencies](#installing-dependencies)
 * [Directory Contents](#directory-contents)
   * [SQIR](#sqir)
   * [VOQC](#voqc)
@@ -60,7 +61,7 @@ As discussed at the end of Section 6 in the VOQC paper, we trust that the OCaml 
 
 ## Compilation
 
-If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'. The included 'opam' file can be used to install all dependencies. Run it with `opam install . --deps-only` (note that installing Coq will take a while!).
+If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'. If you are unfamiliar with Coq/OCaml, you can find installation tips under 'Installing Dependencies'.
 
 ### Coq
 
@@ -80,6 +81,13 @@ Dependencies:
   * OpenQASM parser (`opam install openQASM`)
 
 For convenience, we have already performed extraction from Coq to OCaml; the extracted files are in VOQC/extraction/ml. `make voqc` will produce an executable in VOQC/_build/default. See [the README in the VOQC directory](VOQC/README.md) for instructions on how to run the optimizer.
+
+### Installing Dependencies
+
+To install our dependencies we recommend using [opam](https://opam.ocaml.org/doc/Install.html). A typical workflow on a new computer is:
+1. Install opam
+2. Set up a new switch with a recent version of OCaml (e.g. `opam switch create voqc 4.10.0`)
+3. Install dependencies with `opam install coq dune zarith batteries openQASM` (note: installing Coq will take a while!)
 
 ## Directory Contents
 
