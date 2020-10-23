@@ -10,19 +10,19 @@ NOCOLOR='\033[0m'
 # Get files
 Arithmetic_and_Toffoli_filenames=( $(ls -d VOQC-benchmarks/Arithmetic_and_Toffoli_p*/*.qasm) )
 
-# currentTime=`date`
-# printf "${GREEN}##### [${currentTime}] Running VOQC...${NOCOLOR}\n"
-# > voqc_out.csv
-# echo "name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC T,VOQC H,VOQC X,VOQC CNOT,parse time,optimization time,write time" >> voqc_out.csv
-# for filename in "${Arithmetic_and_Toffoli_filenames[@]}"
-# do
-#    program_name=`basename "$filename" .qasm`
-#    (time dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
-#    python parseOutput.py ${program_name}.txt >> voqc_out.csv
-#    rm -rf ${program_name}.txt
-#    rm -rf out.qasm
-# done
-# printf "${CYAN}\tDONE${NOCOLOR}\n"
+currentTime=`date`
+printf "${GREEN}##### [${currentTime}] Running VOQC...${NOCOLOR}\n"
+> voqc_out.csv
+echo "name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC T,VOQC H,VOQC X,VOQC CNOT,parse time,optimization time,write time" >> voqc_out.csv
+for filename in "${Arithmetic_and_Toffoli_filenames[@]}"
+do
+    program_name=`basename "$filename" .qasm`
+    (time dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
+    python parseOutput.py ${program_name}.txt >> voqc_out.csv
+    rm -rf ${program_name}.txt
+    rm -rf out.qasm
+done
+printf "${CYAN}\tDONE${NOCOLOR}\n"
 
 # run the other optimizers
 currentTime=`date`
