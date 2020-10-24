@@ -28,10 +28,10 @@ Definition ψ (a r N j n : nat) :=
   (1%R / (RtoC (√ r)%R)) .* vsum r (fun x => (ω_neg r)^(j * x) .* (basisPowerA a x N n)).
 
 (* The description of the circuit implementing "multiply a modulo N". *)
-Definition MultiplyCircuitProperty (a N n : nat) (c : base_ucom n) :=
+Definition MultiplyCircuitProperty (a N n anc : nat) (c : base_ucom (n + anc)) : Prop :=
   forall x : nat,
     ((0 <= x < N)%nat ->
-     (uc_eval c) × (basis_vector (2^n) x) = basis_vector (2^n) (a * x mod N)).
+     @Mmult _ _ (1 * 1) (uc_eval c) ((basis_vector (2^n) x) ⊗ (basis_vector (2^anc) 0)) = basis_vector (2^n) (a * x mod N) ⊗ (basis_vector (2^anc) 0)).
 
 (* Round operator. Round a real number to its nearest integer. round(0.5)=1. *)
 Definition round (x : R) := up (x - /2).
@@ -51,6 +51,21 @@ Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
           else let c := (b / a)%nat in
                CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
   end.
+
+Fixpoint CFq_ite (n a b q1 q2 : nat) : nat :=
+  match n with
+  | O => q1
+  | S n => if a =? 0 then q1
+          else CFq_ite n (b mod a)%nat a ((b / a) * q1 + q2)%nat q1
+  end.
+
+Fixpoint CFq_upp (n a b qupp: nat) : nat  :=
+  let x := CFq_ite n a b 1 0 in
+  if (x <=? qupp) then x
+  else match n with
+       | O => 1
+       | S n' => CFq_upp n' a b qupp
+       end.
 
 (* Set up the initial parameters. *)
 Definition ContinuedFraction (step a b : nat) : nat * nat := CF_ite step a b 0 1 1 0.
@@ -652,7 +667,7 @@ Lemma modseq_length :
 Proof.
   induction n; intros. easy. simpl. rewrite IHn. easy.
 Qed.
-  
+
 Lemma nth_modseq_overflow :
   forall x n a b,
     n <= x ->
@@ -798,6 +813,15 @@ Proof.
       rewrite <- nthcfexp_nthmodseq_eq by lia. easy.
   }
   easy.
+Qed.
+
+Lemma CFq_ite_CF_ite :
+  forall n a b q1 q2 p1 p2,
+    CFq_ite n a b q1 q2 = snd (CF_ite n a b p1 q1 p2 q2).
+Proof.
+  induction n; intros. easy.
+  simpl. bdestruct (a =? 0). easy.
+  rewrite IHn with (p1 := (b / a * p1 + p2)) (p2 := p1). easy.
 Qed.
 
 Lemma CF_alt_correct_full :
@@ -949,6 +973,71 @@ Lemma CFq_exp_inc :
     CFq n a b + CFq (S n) a b <= CFq (S (S n)) a b.
 Proof.
   intros. simpl. assert (nthcfexp n a b >= 1) by lia. apply Nat.eqb_neq in H0. rewrite H0. nia.
+Qed.
+
+
+Lemma CFq_inc :
+  forall x n a b,
+    a < b ->
+    CFq (x + n) a b >= CFq n a b.
+Proof.
+  induction x; intros. simpl. lia.
+  destruct x. simpl. destruct n. simpl. lia.
+  bdestruct (nthcfexp n a b =? 0). lia. nia.
+  replace (S (S x) + n) with (S (S (x + n))) by lia.  simpl.
+  bdestruct (nthcfexp (x + n) a b =? 0). apply IHx. easy.
+  specialize (IHx n a b H).
+  simpl in IHx. nia.
+Qed.
+
+(*
+Lemma CFq_upp_inc :
+  forall m n a b q,
+    a < b ->
+    n >= 1 ->
+    (forall i, S i < n -> nthcfexp i a b <> 0) ->
+    CFq n a b > q ->
+    CFq_upp (m + n) a b q >= CFq_upp n a b q.
+Proof.
+  induction m; intros. simpl. lia.
+  Local Opaque CFq_ite. simpl. do 2 rewrite CFq_ite_CF_ite with (p1 := 0) (p2 := 1).
+  specialize (CF_ite_CFpq (S (m + n)) 0 a b H) as G.
+  specialize (CF_ite_CFpq (m + n) 0 a b H) as G'.
+  remember (S (m + n)) as Smn. unfold nthmodseq in G. simpl in G. rewrite G. simpl. subst.
+  remember (m + n) as mn. unfold nthmodseq in G'. simpl in G'. rewrite G'. simpl snd. subst.
+  assert (CFq (Smn + 1) a b >= CFq n a b).
+  { rewrite HeqSmn. replace (S (m + n) + 1) with (S (S m) + n) by lia. apply CFq_inc. easy.
+  }
+  assert (CFq (Smn + 1) a b > q) by lia. rewrite leb_correct_conv by lia.
+  specialize (IHm n a b q H H0 H1 H2). unfold CFq_upp in IHm. destruct (m + n) eqn: Emn. lia. simpl in IHm.
+*)
+  
+
+Lemma CFq_upp_calc :
+  forall m n a b q,
+    1 <= q ->
+    a < b ->
+    CFq (S n) a b <= q ->
+    CFq (S (S n)) a b > q ->
+    CFq_upp (m + n) a b q = CFq (S n) a b.
+Proof.
+  induction m; intros.
+  destruct n. simpl. destruct q; easy. 
+  Local Opaque CFq CFq_ite.
+  simpl. rewrite CFq_ite_CF_ite with (p1 := 0) (p2 := 1).
+  specialize (CF_ite_CFpq (S n) 0 a b H0) as G. unfold nthmodseq in G. 
+  remember (S n) as n1. Local Transparent CFq. simpl in G. Local Opaque CFq.
+  rewrite G. simpl. replace (n1 + 1) with (S n1) by lia.
+  rewrite leb_correct by lia. easy.
+
+  simpl. rewrite CFq_ite_CF_ite with (p1 := 0) (p2 := 1).
+  specialize (CF_ite_CFpq (S (m + n)) 0 a b H0) as G. unfold nthmodseq in G. 
+  remember (S (m + n)) as n1. Local Transparent CFq. simpl in G. Local Opaque CFq.
+  rewrite G. simpl. subst.
+  replace (S (m + n) + 1) with (m + S (S n)) by lia.
+  assert (CFq (m + S (S n)) a b >= CFq (S (S n)) a b) by (apply CFq_inc; easy).
+  assert (CFq (m + S (S n)) a b > q) by lia. rewrite leb_correct_conv by lia.
+  apply IHm; easy.
 Qed.
 
 Lemma CFq_lower_bound :
@@ -1988,6 +2077,27 @@ Qed.
 (* =   Properties of eigenvectors |ψ_k⟩   = *)
 (* ======================================== *)
 
+Lemma pure_state_vector_kron :
+  forall {n m} (ϕ : Vector n) (ψ : Vector m),
+    Pure_State_Vector ϕ ->
+    Pure_State_Vector ψ ->
+    Pure_State_Vector (ϕ ⊗ ψ).
+Proof.
+  unfold Pure_State_Vector.
+  intros. destruct H as [Hwf1 Hi1]. destruct H0 as [Hwf2 Hi2].
+  split. apply WF_kron; try easy; try lia.
+  restore_dims. rewrite kron_adjoint. rewrite kron_mixed_product. rewrite Hi1, Hi2. Msimpl. easy.
+Qed.
+
+Lemma basis_vector_pure_state :
+  forall n i,
+    (i < n)%nat ->
+    Pure_State_Vector (basis_vector n i).
+Proof.
+  intros. split. apply basis_vector_WF. easy.
+  apply basis_vector_product_eq. easy.
+Qed.
+
 Lemma ψ_pure_state :
   forall a r N m n j : nat,
     BasicSetting a r N m n ->
@@ -2042,6 +2152,16 @@ Proof.
     rewrite Rinv_l by easy. rewrite Rmult_1_r. Msimpl. easy.
 Qed.
 
+Lemma ψ_basis_vector_pure_state :
+  forall a r N m n j i s : nat,
+    BasicSetting a r N m n ->
+    (i < s)%nat ->
+    Pure_State_Vector (ψ a r N j n ⊗ basis_vector s i).
+Proof.
+  intros. apply pure_state_vector_kron. apply ψ_pure_state with (m := m). easy.
+  apply basis_vector_pure_state. easy.
+Qed.
+
 Lemma sum_of_ψ_is_one :
   forall a r N m n : nat,
     BasicSetting a r N m n ->
@@ -2083,42 +2203,46 @@ Proof.
 Qed.
 
 Lemma MC_eigenvalue :
-  forall (a r N j m n : nat) (c : base_ucom n),
+  forall (a r N j m n anc : nat) (c : base_ucom (n + anc)),
     BasicSetting a r N m n ->
-    MultiplyCircuitProperty a N n c ->
-    (uc_eval c) × (ψ a r N j n) = Cexp (2 * PI * j / r) .* (ψ a r N j n).
+    MultiplyCircuitProperty a N n anc c ->
+    @Mmult _ _ (1 * 1) (uc_eval c) ((ψ a r N j n) ⊗ basis_vector (2^anc) 0) = Cexp (2 * PI * j / r) .* ((ψ a r N j n) ⊗ basis_vector (2^anc) 0).
 Proof.
   intros. unfold ψ. 
-  unfold BasicSetting in H. destruct H as [Ha [HOrder [HN1 HN2]]]. 
-  rewrite Mscale_mult_dist_r. rewrite Mscale_assoc. rewrite Cmult_comm.
-  rewrite <- Mscale_assoc. rewrite Mscale_vsum_distr_r. rewrite Mmult_vsum_distr_l.
+  unfold BasicSetting in H. destruct H as [Ha [HOrder [HN1 HN2]]].
+  distribute_scale. rewrite kron_vsum_distr_r.
+  replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
+  rewrite Mmult_vsum_distr_l.
   unfold MultiplyCircuitProperty in H0. remember (uc_eval c) as U.
-  replace (vsum r (fun i : nat => U × (ω_neg r ^ (j * i) .* basisPowerA a i N n))) 
-    with (vsum r (fun i : nat => (ω_neg r ^ (j * i) .* basisPowerA a (i+1) N n))).
+  replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two.
+  replace (vsum r (fun i : nat => U × (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0))) 
+    with (vsum r (fun i : nat => (ω_neg r ^ (j * i) .* basisPowerA a (i+1) N n ⊗ basis_vector (2^anc) 0))).
   2:{
-    apply vsum_eq. intros. rewrite Mscale_mult_dist_r.
-    unfold basisPowerA. rewrite H0. rewrite Nat.add_1_r. simpl. rewrite Nat.mul_mod_idemp_r. easy.
+    replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
+    apply vsum_eq. intros. distribute_scale. rewrite Mscale_mult_dist_r.
+    unfold basisPowerA. restore_dims. rewrite H0. rewrite Nat.add_1_r. simpl. rewrite Nat.mul_mod_idemp_r. easy.
     (* N <> 0 *)
     destruct Ha. unfold not. intros. rewrite H3 in H2. easy.
     (* 0 <= a^i mod N < N *)
     apply Nat.mod_bound_pos. apply Nat.le_0_l. apply Nat.lt_trans with a. easy. easy. 
   }
-  replace (vsum r (fun i : nat => ω_neg r ^ (j * i) .* basisPowerA a (i + 1) N n))
-    with (vsum r (fun i : nat => Cexp (2 * PI * j / r) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n))).
-  easy.
+  replace (vsum r (fun i : nat => ω_neg r ^ (j * i) .* basisPowerA a (i + 1) N n ⊗ basis_vector (2^anc) 0))
+    with (vsum r (fun i : nat => Cexp (2 * PI * j / r) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0))).
+  rewrite <- Mscale_vsum_distr_r. restore_dims. rewrite Mscale_assoc. apply f_equal2. lca.
+  replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two. easy.
   destruct r. easy. 
   rewrite vsum_extend_l. rewrite vsum_extend_r. rewrite Mplus_comm.
   unfold shift.
   assert (forall t (A B C D : Vector t), A = B -> C = D -> A .+ C = B .+ D).
   { intros. rewrite H. rewrite H1. easy. }
   apply H.   
-  - apply vsum_eq. intros. rewrite Mscale_assoc. unfold ω_neg. rewrite Cexp_pow. rewrite Cexp_pow.
+  - apply vsum_eq. intros. distribute_scale. unfold ω_neg. rewrite Cexp_pow. rewrite Cexp_pow.
     rewrite <- Cexp_add. 
     replace (2 * PI * j / S r + -2 * PI / S r * (j * (i + 1))%nat) with (-2 * PI / S r * (j * i)%nat).
     easy. repeat rewrite mult_INR. rewrite plus_INR. simpl. lra.
   - unfold basisPowerA. remember (S r) as r'. unfold ω_neg. simpl. destruct HOrder as [Hr [HO1 HO2]].
     rewrite Nat.add_1_r. rewrite <- Heqr'. rewrite HO1. rewrite Nat.mod_small.
-    rewrite Mscale_assoc. repeat rewrite Cexp_pow. rewrite <- Cexp_add.
+    distribute_scale. rewrite Mscale_assoc. repeat rewrite Cexp_pow. rewrite <- Cexp_add.
     rewrite <- (Cmult_1_l (Cexp (-2 * PI / r' * (j * r)%nat))). replace 1 with (1^j). rewrite <- RtoC_pow. 
     rewrite <- Cexp_2PI. rewrite Cexp_pow. rewrite <- Cexp_add. repeat rewrite mult_INR.  simpl.
     replace (2 * PI * j / r' + -2 * PI / r' * (j * 0)) with (2 * PI * j + -2 * PI / r' * (j * r)).
@@ -2345,28 +2469,35 @@ Qed.
 (* =   Properties of Shor's algorithm   = *)
 (* ====================================== *)
 
+
 Lemma QPE_MC_partial_correct :
-  forall (a r N k m n : nat) (c : base_ucom n),
+  forall (a r N k m n anc : nat) (c : base_ucom (n + anc)),
     BasicSetting a r N m n ->
     uc_well_typed c ->
-    MultiplyCircuitProperty a N n c ->
+    MultiplyCircuitProperty a N n anc c ->
     (0 <= k < r)%nat ->
-    probability_of_outcome ((basis_vector (2^m) (s_closest m k r)) ⊗ (ψ a r N k n)) (@Mmult _ _ (1 * 1) (uc_eval (QPE m n c)) ((basis_vector (2^m) 0) ⊗ (ψ a r N k n))) >= 4 / (PI ^ 2).
+    probability_of_outcome ((basis_vector (2^m) (s_closest m k r)) ⊗ (ψ a r N k n) ⊗ (basis_vector (2^anc) 0)) (@Mmult _ _ (1 * 1) (uc_eval (QPE m (n + anc) c)) ((basis_vector (2^m) 0) ⊗ (ψ a r N k n) ⊗ (basis_vector (2^anc) 0))) >= 4 / (PI ^ 2).
 Proof.
-  intros a r N k m n c H Hc H0 H1.
-  rewrite <- kron_n_0_is_0_vector.
+  intros a r N k m n anc c H Hc H0 H1.
+  repeat rewrite <- kron_n_0_is_0_vector.
   specialize (s_closest_ub a r N m n k H H1) as H2.
+  do 2 rewrite kron_assoc.
   rewrite basis_f_to_vec_alt by easy.
+  replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two.
+  replace ((2^m * 2^n) * (2^anc))%nat with (2^m * (2^(n+anc)))%nat by unify_pows_two.
+  Local Opaque QPE. simpl.
   apply QPE_semantics_full with (δ:=k / r - s_closest m k r / 2^m).
   destruct H as [_ [Horder [_ [Hn _]]]]. apply Order_N_lb in Horder. destruct n. simpl in Hn. lia. lia.
   destruct H as [_ [Horder [[Hm _] _]]]. apply Order_N_lb in Horder. simpl in Hm. assert (4 <= 2^m)%nat by nia. destruct m. simpl in H. lia. destruct m. simpl in H. lia. lia.
   assumption.
-  apply ψ_pure_state with (m:=m). assumption.
+  rewrite kron_n_0_is_0_vector.
+  replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
+  apply ψ_basis_vector_pure_state with (m := m). assumption. apply pow_positive. lia.
   specialize (s_closest_is_closest _ _ _ _ _ _ H H1). replace (2 ^ (m + 1)) with (2 * 2 ^ m). lra.
   rewrite pow_add. lra.
   rewrite nat_to_funbool_inverse by easy.
   replace (2 * PI * (s_closest m k r / 2 ^ m + (k / r - s_closest m k r / 2 ^ m))) with (2 * PI * k / r) by lra.
-  apply MC_eigenvalue with (m:=m); easy.
+  rewrite kron_n_0_is_0_vector. apply MC_eigenvalue with (m:=m); easy.
 Qed.
 
 Lemma full_meas_swap :
@@ -2477,35 +2608,49 @@ Proof.
   reflexivity.
 Qed.
 
+(*
+Unset Printing Notations.
+Set Printing Implicit.
+*)
+
 Lemma QPE_MC_correct :
-  forall (a r N k m n : nat) (c : base_ucom n),
+  forall (a r N k m n anc : nat) (c : base_ucom (n + anc)),
     BasicSetting a r N m n ->
-    MultiplyCircuitProperty a N n c ->
+    MultiplyCircuitProperty a N n anc c ->
     uc_well_typed c ->
     (0 <= k < r)%nat ->
-    prob_partial_meas (basis_vector (2^m) (s_closest m k r)) ((uc_eval (QPE m n c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1))) >= 4 / (PI ^ 2 * r).
+    prob_partial_meas (basis_vector (2^m) (s_closest m k r)) ((uc_eval (QPE m (n + anc) c)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1) ⊗ (basis_vector (2^anc) 0))) >= 4 / (PI ^ 2 * r).
 Proof.
   intros. rewrite <- kron_n_0_is_0_vector.
   rewrite <- (sum_of_ψ_is_one a r N m) by easy.
-  rewrite Mscale_kron_dist_r. rewrite kron_vsum_distr_l. rewrite <- Nat.pow_add_r. rewrite Mscale_mult_dist_r. rewrite Mmult_vsum_distr_l.
+  rewrite Mscale_kron_dist_r. rewrite kron_vsum_distr_l. rewrite <- Nat.pow_add_r.
+  simpl. distribute_scale. rewrite kron_vsum_distr_r.
+  replace (2^(m+n)*2^anc)%nat with (2^(m + (n+anc)))%nat by unify_pows_two.
+  rewrite Mmult_vsum_distr_l.
   eapply Rge_trans. apply partial_meas_prob_ge_full_meas.
-  apply ψ_pure_state with (j:=k) (m:=m). apply H.
+  replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
+  apply ψ_basis_vector_pure_state with (m := m) (j := k). apply H. apply pow_positive. lia.
   unfold probability_of_outcome.
   restore_dims. distribute_scale.
-  rewrite kron_adjoint. rewrite Nat.pow_add_r. rewrite Mmult_vsum_distr_l.
+  rewrite kron_adjoint. do 2 rewrite Nat.pow_add_r. rewrite Mmult_vsum_distr_l.
   erewrite vsum_unique.
   2:{ exists k. split. lia. split. reflexivity. intros.
       assert (T: forall {o m n} (A : Matrix o m) (B C : Matrix m n), B = C -> A × B = A × C) by (intros o m0 n0 A B C HT; rewrite HT; easy).
       erewrite T.
-      2:{ rewrite <- Nat.pow_add_r. apply QPE_simplify.
+      2:{ rewrite <- Nat.pow_add_r.
+          restore_dims. rewrite kron_assoc.
+          replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two.
+          apply QPE_simplify.
           destruct H as [HN [_ [_ Hn]]]. assert (2 <= 2 ^ n)%nat by lia. destruct n; simpl in H; lia.
           destruct H as [HN [_ [Hm _]]]. simpl in Hm. assert (4 <= 2 ^ m)%nat by nia. destruct m. simpl in H. lia. destruct m. simpl in H. lia. lia.
           easy.
-          specialize (ψ_pure_state _ _ _ _ _ j H) as PS. destruct PS as [WF _]. easy.
+          replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
+          apply ψ_basis_vector_pure_state with (m := m). assumption. apply pow_positive. lia.
           rewrite MC_eigenvalue with (m:=m) by easy.
           replace (2 * PI * j / r) with (2 * PI * (j / r)) by lra. easy.
       }
       restore_dims. rewrite kron_mixed_product.
+      rewrite kron_adjoint. rewrite kron_mixed_product.
       rewrite ψ_perp_neq with (m:=m); try easy; try lia. Msimpl. easy.
   }
   assert (INR r > 0).
@@ -2516,12 +2661,14 @@ Proof.
   replace (1 / √ r) with (/ √ r) by lra. rewrite <- sqrt_inv by lra. rewrite pow2_sqrt.
   2:{ apply Rlt_le. nonzero.
   }
-  replace (4 / (PI ^ 2 * r)) with (/r * (4 / (PI ^ 2))).
+  replace (4 / (PI * (PI * 1) * r)) with (/r * (4 / (PI ^ 2))).
   2:{ replace (/ r * (4 / PI ^ 2)) with (4 * ((/ PI ^2) * (/r))) by lra. rewrite <- Rinv_mult_distr. easy.
       apply pow_nonzero. apply PI_neq0. lra.
   }
   apply Rmult_ge_compat_l. apply Rinv_0_lt_compat in H3. lra.
   rewrite <- kron_adjoint. rewrite kron_n_0_is_0_vector. rewrite <- Nat.pow_add_r. 
+  restore_dims.
+  rewrite <- kron_assoc.
   restore_dims.
   apply QPE_MC_partial_correct; easy.
 Qed.
