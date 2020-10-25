@@ -52,21 +52,6 @@ Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
                CF_ite n (b mod a)%nat a (c*p1+p2)%nat (c*q1+q2)%nat p1 q1
   end.
 
-Fixpoint CFq_ite (n a b q1 q2 : nat) : nat :=
-  match n with
-  | O => q1
-  | S n => if a =? 0 then q1
-          else CFq_ite n (b mod a)%nat a ((b / a) * q1 + q2)%nat q1
-  end.
-
-Fixpoint CFq_upp (n a b qupp: nat) : nat  :=
-  let x := CFq_ite n a b 1 0 in
-  if (x <=? qupp) then x
-  else match n with
-       | O => 1
-       | S n' => CFq_upp n' a b qupp
-       end.
-
 (* Set up the initial parameters. *)
 Definition ContinuedFraction (step a b : nat) : nat * nat := CF_ite step a b 0 1 1 0.
 
@@ -815,15 +800,6 @@ Proof.
   easy.
 Qed.
 
-Lemma CFq_ite_CF_ite :
-  forall n a b q1 q2 p1 p2,
-    CFq_ite n a b q1 q2 = snd (CF_ite n a b p1 q1 p2 q2).
-Proof.
-  induction n; intros. easy.
-  simpl. bdestruct (a =? 0). easy.
-  rewrite IHn with (p1 := (b / a * p1 + p2)) (p2 := p1). easy.
-Qed.
-
 Lemma CF_alt_correct_full :
   forall n a b x y,
     a < b ->
@@ -988,57 +964,7 @@ Proof.
   bdestruct (nthcfexp (x + n) a b =? 0). apply IHx. easy.
   specialize (IHx n a b H).
   simpl in IHx. nia.
-Qed.
-
-(*
-Lemma CFq_upp_inc :
-  forall m n a b q,
-    a < b ->
-    n >= 1 ->
-    (forall i, S i < n -> nthcfexp i a b <> 0) ->
-    CFq n a b > q ->
-    CFq_upp (m + n) a b q >= CFq_upp n a b q.
-Proof.
-  induction m; intros. simpl. lia.
-  Local Opaque CFq_ite. simpl. do 2 rewrite CFq_ite_CF_ite with (p1 := 0) (p2 := 1).
-  specialize (CF_ite_CFpq (S (m + n)) 0 a b H) as G.
-  specialize (CF_ite_CFpq (m + n) 0 a b H) as G'.
-  remember (S (m + n)) as Smn. unfold nthmodseq in G. simpl in G. rewrite G. simpl. subst.
-  remember (m + n) as mn. unfold nthmodseq in G'. simpl in G'. rewrite G'. simpl snd. subst.
-  assert (CFq (Smn + 1) a b >= CFq n a b).
-  { rewrite HeqSmn. replace (S (m + n) + 1) with (S (S m) + n) by lia. apply CFq_inc. easy.
-  }
-  assert (CFq (Smn + 1) a b > q) by lia. rewrite leb_correct_conv by lia.
-  specialize (IHm n a b q H H0 H1 H2). unfold CFq_upp in IHm. destruct (m + n) eqn: Emn. lia. simpl in IHm.
-*)
-  
-
-Lemma CFq_upp_calc :
-  forall m n a b q,
-    1 <= q ->
-    a < b ->
-    CFq (S n) a b <= q ->
-    CFq (S (S n)) a b > q ->
-    CFq_upp (m + n) a b q = CFq (S n) a b.
-Proof.
-  induction m; intros.
-  destruct n. simpl. destruct q; easy. 
-  Local Opaque CFq CFq_ite.
-  simpl. rewrite CFq_ite_CF_ite with (p1 := 0) (p2 := 1).
-  specialize (CF_ite_CFpq (S n) 0 a b H0) as G. unfold nthmodseq in G. 
-  remember (S n) as n1. Local Transparent CFq. simpl in G. Local Opaque CFq.
-  rewrite G. simpl. replace (n1 + 1) with (S n1) by lia.
-  rewrite leb_correct by lia. easy.
-
-  simpl. rewrite CFq_ite_CF_ite with (p1 := 0) (p2 := 1).
-  specialize (CF_ite_CFpq (S (m + n)) 0 a b H0) as G. unfold nthmodseq in G. 
-  remember (S (m + n)) as n1. Local Transparent CFq. simpl in G. Local Opaque CFq.
-  rewrite G. simpl. subst.
-  replace (S (m + n) + 1) with (m + S (S n)) by lia.
-  assert (CFq (m + S (S n)) a b >= CFq (S (S n)) a b) by (apply CFq_inc; easy).
-  assert (CFq (m + S (S n)) a b > q) by lia. rewrite leb_correct_conv by lia.
-  apply IHm; easy.
-Qed.
+Qed.  
 
 Lemma CFq_lower_bound :
   forall n a b,
