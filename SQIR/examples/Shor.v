@@ -33,6 +33,11 @@ Definition MultiplyCircuitProperty (a N n anc : nat) (c : base_ucom (n + anc)) :
     ((0 <= x < N)%nat ->
      @Mmult _ _ (1 * 1) (uc_eval c) ((basis_vector (2^n) x) ⊗ (basis_vector (2^anc) 0)) = basis_vector (2^n) (a * x mod N) ⊗ (basis_vector (2^anc) 0)).
 
+Definition ModMulImpl (a N n anc : nat) (f : nat -> base_ucom (n + anc)) : Prop :=
+  forall i x : nat,
+    ((0 <= x < N)%nat ->
+     @Mmult _ _ (1 * 1) (uc_eval (f i)) ((basis_vector (2^n) x) ⊗ (basis_vector (2^anc) 0)) = basis_vector (2^n) (a^(2^i) * x mod N) ⊗ (basis_vector (2^anc) 0)).
+
 (* Round operator. Round a real number to its nearest integer. round(0.5)=1. *)
 Definition round (x : R) := up (x - /2).
 
@@ -41,7 +46,7 @@ Definition s_closest (m k r : nat) :=
   Z.to_nat (round (k / r * 2^m)%R).
 
 (* The Shor's algorithm applies QPE on the modular multiplication circuit c and state |1⟩. *)
-Definition Shor_final_state m n (c : base_ucom n) := @Mmult _ _ 1 (uc_eval (QPE m n c)) ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1)).
+Definition Shor_final_state m n anc (c : base_ucom (n + anc)) := @Mmult _ _ 1 (uc_eval (QPE m (n + anc) c)) ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1) ⊗ (basis_vector (2^anc) 0)).
 
 (* Continued fraction algorithm. Calc p_n and q_n, which is the continued fraction expansion of a / b for n terms. *)
 Fixpoint CF_ite (n a b p1 q1 p2 q2 : nat) : nat * nat :=
@@ -71,8 +76,8 @@ Fixpoint Bsum n (f : nat -> bool) :=
 Definition r_recoverable x m r : R := if Bsum (2 * m + 2) (fun step => Shor_post step x m =? r) then 1 else 0.
 
 (* The final success probability of Shor's order finding algorithm. It sums over all the possible measurement results, and adds the probability of recovering r conditioned on measurement result x. *)
-Definition probability_of_success (a r N m n : nat) (c : base_ucom n) :=
-  Rsum (2^m) (fun x => r_recoverable x m r * prob_partial_meas (basis_vector (2^m) x) (Shor_final_state m n c))%R.
+Definition probability_of_success (a r N m n anc : nat) (c : base_ucom (n + anc)) :=
+  Rsum (2^m) (fun x => r_recoverable x m r * prob_partial_meas (basis_vector (2^m) x) (Shor_final_state m n anc c))%R.
 
 (* The main theorem states, given the basic settings, the probability of success is propotional to 1 / log log N. The expected test time is polylog to the input length. *)
 
@@ -1481,6 +1486,16 @@ Qed.
 Local Close Scope R_scope.
 Local Open Scope nat_scope.
 
+Lemma pow_mod :
+  forall a b n : nat,
+    a^b mod n = (a mod n)^b mod n.
+Proof.
+  intros. induction b. easy.
+  bdestruct (n =? 0). subst. easy.
+  simpl. rewrite Nat.mul_mod by easy. rewrite IHb. rewrite Nat.mul_mod_idemp_r by easy.
+  easy.
+Qed.
+
 Lemma Order_N_lb :
   forall a r N,
     Order a r N ->
@@ -1785,6 +1800,39 @@ Proof.
   rewrite Cmod_Cexp.
   replace (j - i + i - i)%nat with (j - i)%nat by lia. 
   lca.
+Qed.
+
+Lemma Cpow_add :
+  forall (c : C) (n m : nat),
+    (c ^ (n + m) = c^n * c^m)%C.
+Proof.
+  intros. induction n. simpl. lca.
+  simpl. rewrite IHn. lca.
+Qed.
+
+Lemma Cpow_mult :
+  forall (c : C) (n m : nat),
+    (c ^ (n * m) = (c ^ n) ^ m)%C.
+Proof.
+  intros. induction m. rewrite Nat.mul_0_r. easy.
+  replace (n * (S m))%nat with (n * m + n)%nat by lia. simpl. rewrite Cpow_add. rewrite IHm. lca.
+Qed.
+
+Lemma ω_neg_mod :
+  forall n x,
+    (n <> 0)%nat ->
+    ((ω_neg n) ^ x = (ω_neg n) ^ (x mod n))%C.
+Proof.
+  intros. pattern x at 1. rewrite (Nat.div_mod x n) by easy. rewrite Cpow_add. rewrite Cpow_mult.
+  unfold ω_neg. rewrite Cexp_pow.
+  replace (-2 * PI / n * n) with (-2 * PI).
+  2:{ field. apply not_0_INR. easy.
+  }
+  replace (-2 * PI) with (- (2 * PI)) by field. rewrite Cexp_neg. rewrite Cexp_2PI.
+  replace (/ 1)%C with (C1).
+  2:{ pattern C1 at 1. rewrite <- (Cinv_r C1). lca. apply RtoC_neq. lra.
+  }
+  rewrite RtoC_pow. rewrite pow1. lca.
 Qed.
 
 Lemma RtoC_Rsum_Csum :
@@ -2185,6 +2233,63 @@ Proof.
     + destruct N. easy. destruct N. easy. lia. 
 Qed.
 
+Lemma MMI_eigen :
+  forall (a r N j m n anc k : nat) (f : nat -> base_ucom (n + anc)),
+    BasicSetting a r N m n ->
+    ModMulImpl a N n anc f ->
+    @Mmult _ _ (1 * 1) (uc_eval (f k)) ((ψ a r N j n) ⊗ basis_vector (2^anc) 0) = Cexp (2 * PI * j / r * (2^k)%nat) .* ((ψ a r N j n) ⊗ basis_vector (2^anc) 0).
+Proof.
+  intros. unfold ψ. 
+  unfold BasicSetting in H. destruct H as [Ha [HOrder [HN1 HN2]]].
+  distribute_scale. rewrite kron_vsum_distr_r.
+  replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
+  rewrite Mmult_vsum_distr_l.
+  unfold ModMulImpl in H0. specialize (H0 k). remember (uc_eval (f k)) as U.
+  replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two.
+  replace (vsum r (fun i : nat => U × (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0))) 
+    with (vsum r (fun i : nat => (ω_neg r ^ (j * i) .* basisPowerA a (i+(2^k)) N n ⊗ basis_vector (2^anc) 0))).
+  2:{
+    replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
+    apply vsum_eq. intros. distribute_scale. rewrite Mscale_mult_dist_r.
+    unfold basisPowerA. restore_dims. rewrite H0. rewrite Nat.pow_add_r. rewrite Nat.mul_mod_idemp_r. rewrite Nat.mul_comm with (n := (a ^ i)%nat). easy.
+    (* N <> 0 *)
+    destruct Ha. unfold not. intros. lia.
+    (* 0 <= a^i mod N < N *)
+    apply Nat.mod_bound_pos. apply Nat.le_0_l. apply Nat.lt_trans with a. easy. easy. 
+  }
+  replace (vsum r (fun i : nat => ω_neg r ^ (j * i) .* basisPowerA a (i + 2^k) N n ⊗ basis_vector (2^anc) 0))
+    with (vsum r (fun i : nat => Cexp (2 * PI * j / r * INR (2^k)) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0))).
+  rewrite <- Mscale_vsum_distr_r. restore_dims. rewrite Mscale_assoc. apply f_equal2. lca.
+  replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two. easy.
+  bdestruct (r =? 0). subst. easy.
+  remember (fun i : nat => ((i + 2^k) mod r)%nat) as u.
+  assert (weak_finite_bijection r u).
+  { rewrite Hequ. split. intros. apply Nat.mod_upper_bound. easy.
+    exists (fun i : nat => ((r - (2^k) mod r + i) mod r)).
+    split. intros. apply Nat.mod_upper_bound. easy.
+    split. intros. rewrite Nat.add_mod with (a := x) by easy.
+    rewrite Nat.add_mod_idemp_r by easy. rewrite Nat.add_comm.
+    replace (x mod r + 2 ^ k mod r + (r - 2 ^ k mod r))%nat with (x mod r + (2 ^ k mod r + (r - 2 ^ k mod r)))%nat by lia.
+    rewrite le_plus_minus_r. pattern r at 2. rewrite <- Nat.mul_1_l. rewrite Nat.mod_add by easy. rewrite Nat.mod_mod. apply Nat.mod_small. easy. easy.
+    specialize (Nat.mod_upper_bound (2^k)%nat r H). lia.
+    intros. rewrite <- Nat.add_mod_idemp_r by easy. rewrite Nat.add_mod_idemp_l by easy.
+    replace (r - 2 ^ k mod r + y + 2 ^ k mod r)%nat with (2 ^ k mod r + (r - 2 ^ k mod r) + y)%nat by lia.
+    rewrite le_plus_minus_r. replace (r + y)%nat with (y + 1 * r)%nat by lia. rewrite Nat.mod_add by easy. apply Nat.mod_small. easy.
+    specialize (Nat.mod_upper_bound (2^k)%nat r H). lia.
+  }
+  rewrite vsum_reorder with (f0 := u) by easy.
+  rewrite Hequ. apply vsum_eq. intros. distribute_scale. apply f_equal2.
+  replace (j * ((i + 2 ^ k) mod r))%nat with (((i + 2 ^ k) mod r) * j)%nat by lia.
+  rewrite Cpow_mult. rewrite <- ω_neg_mod by easy. rewrite <- Cpow_mult.
+  replace ((i + 2^k) * j)%nat with (j * 2^k + j * i)%nat by lia.
+  rewrite Cpow_add. rewrite Cmult_assoc. unfold ω_neg. rewrite Cexp_pow. rewrite mult_INR.
+  rewrite <- Cexp_add.
+  replace (2 * PI * j / r * (2 ^ k)%nat + -2 * PI / r * (j * (2 ^ k)%nat)) with 0 by lra.
+  rewrite Cexp_0. lca.
+  unfold basisPowerA. pattern (i + 2 ^ k)%nat at 2. rewrite (Nat.div_mod (i + 2^k) r) by easy.
+  rewrite Nat.pow_add_r. rewrite Nat.pow_mul_r. rewrite <- Nat.mul_mod_idemp_l by lia. rewrite pow_mod with (a := (a^r)%nat). destruct HOrder as [_ [Hr _]]. rewrite Hr. rewrite Nat.pow_1_l. rewrite Nat.mod_1_l by lia. do 2 rewrite Nat.mul_1_l. easy.
+Qed.
+
 Lemma ψ_perp :
   forall a r N m n i j : nat,
     BasicSetting a r N m n ->
@@ -2534,11 +2639,6 @@ Proof.
   reflexivity.
 Qed.
 
-(*
-Unset Printing Notations.
-Set Printing Implicit.
-*)
-
 Lemma QPE_MC_correct :
   forall (a r N k m n anc : nat) (c : base_ucom (n + anc)),
     BasicSetting a r N m n ->
@@ -2599,6 +2699,56 @@ Proof.
   apply QPE_MC_partial_correct; easy.
 Qed.
 
+Lemma QPE_MMI_correct :
+  forall (a r N k m n anc : nat) (f : nat -> base_ucom (n + anc)),
+    BasicSetting a r N m n ->
+    ModMulImpl a N n anc f ->
+    (forall i, (i < m)%nat -> uc_well_typed (f i)) ->
+    (0 <= k < r)%nat ->
+    prob_partial_meas (basis_vector (2^m) (s_closest m k r)) ((uc_eval (QPE_var m (n + anc) f)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1) ⊗ (basis_vector (2^anc) 0))) >= 4 / (PI ^ 2 * r).
+Proof.
+  Local Opaque QPE_var pow.
+  intros. remember (f O) as c.
+  rewrite <- (sum_of_ψ_is_one a r N m) by easy.
+  distribute_scale. rewrite kron_vsum_distr_l. rewrite <- Nat.pow_add_r.
+  simpl. distribute_scale. rewrite kron_vsum_distr_r.
+  replace (2^(m+n)*2^anc)%nat with (2^(m + (n+anc)))%nat by unify_pows_two.
+  rewrite Mmult_vsum_distr_l.
+  erewrite vsum_eq.
+  2:{ intros j Hj. restore_dims.
+      rewrite kron_assoc. rewrite <- kron_n_0_is_0_vector.
+      specialize (QPE_var_equivalent m (n + anc) c f (ψ a r N j n ⊗ basis_vector (2 ^ anc) 0) (j / r)) as G.
+      replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two.
+      simpl. simpl in G. rewrite Nat.pow_1_l in G. rewrite <- G.
+      reflexivity.
+      destruct H as [HN [_ [_ [Hn _ ]]]]. assert (2 ^ n >= 2)%nat by lia. destruct n. simpl in H. lia. lia.
+      assert (0 < 2^anc)%nat by (apply pow_positive; lia).
+      specialize (ψ_basis_vector_pure_state a r N m n j O (2^anc)%nat H H3) as [G' _]. replace (2^n * 2^anc)%nat with (2^(n+anc))%nat in G' by unify_pows_two. easy.
+      rewrite Heqc. apply H1. destruct H as [HN [_ [[Hm _] _]]]. destruct m. simpl in Hm. nia. lia.
+      specialize (H0 O). subst. simpl in H0. rewrite Nat.mul_1_r in H0.
+      replace (2 * PI * (j / r)) with (2 * PI * j / r) by lra. apply MC_eigenvalue with (m := m). easy. unfold MultiplyCircuitProperty. apply H0.
+      apply H1.
+      intros. replace (2 * PI * (j / r)) with (2 * PI * j / r) by lra. apply MMI_eigen with (m := m); easy.
+  }
+  specialize (H0 O) as Hc. rewrite <- Heqc in Hc. simpl in Hc. rewrite Nat.mul_1_r in Hc.
+  assert (uc_well_typed c).
+  { rewrite Heqc; apply H1.
+    destruct H as [HN [_ [[Hm _] _]]]. destruct m. simpl in Hm. nia. lia.
+  }
+  specialize (QPE_MC_correct a r N k m n anc c H Hc H3 H2).
+  rewrite <- (sum_of_ψ_is_one a r N m) by easy.
+  distribute_scale. rewrite kron_vsum_distr_l. rewrite <- Nat.pow_add_r.
+  simpl. distribute_scale. rewrite kron_vsum_distr_r.
+  replace (2^(m+n)*2^anc)%nat with (2^(m + (n+anc)))%nat by unify_pows_two.
+  rewrite Mmult_vsum_distr_l.
+  rewrite kron_n_0_is_0_vector.
+  erewrite vsum_eq.
+  2:{ intros. restore_dims. rewrite kron_assoc. reflexivity.
+  }
+  replace (2^(n+anc))%nat with (2^n*2^anc)%nat by unify_pows_two.
+  easy.
+Qed.
+  
 
 (* ================================================ *)
 (* =   The post-processings of Shor's algorithm   = *)
@@ -2788,12 +2938,12 @@ Qed.
 Lemma Shor_correct :
   exists β, 
     β>0 /\
-    forall (a r N m n : nat) (c : base_ucom n),
+    forall (a r N m n anc : nat) (c : base_ucom (n + anc)),
       BasicSetting a r N m n ->
-      MultiplyCircuitProperty a N n c ->
+      MultiplyCircuitProperty a N n anc c ->
       (r > 3)%nat ->
       uc_well_typed c ->
-      probability_of_success a r N m n c >= β / (Nat.log2 (Nat.log2 N)).
+      probability_of_success a r N m n anc c >= β / (Nat.log2 (Nat.log2 N)).
 Proof.
   destruct ϕ_n_over_n_lowerbound as (β & Hβ & Heuler).
   unfold probability_of_success. unfold Shor_final_state. eexists. split.
@@ -2802,11 +2952,11 @@ Proof.
     remember (fun x : nat =>
     r_recoverable x m r *
     prob_partial_meas (basis_vector (2 ^ m) x)
-      (uc_eval (QPE m n c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1))) as f.
+      (uc_eval (QPE m (n + anc) c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0))) as f.
     cut (Rsum (2^m) f >= Rsum r (fun i => f (s_closest m i r))).
     intros. eapply Rge_trans. apply H3. destruct r. inversion H1. simpl.
     set (g := (fun i : nat => (if rel_prime_dec i (S r) then 1 else 0) * prob_partial_meas (basis_vector (2 ^ m) (s_closest m i (S r)))
-    (uc_eval (QPE m n c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1)))).
+    (uc_eval (QPE m (n + anc) c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0)))).
     cut (forall i : nat, (i <= r)%nat -> g i <= f (s_closest m i (S r))).
     intros. eapply Rge_trans. apply Rle_ge. apply sum_Rle. apply H4.
     cut (forall i : nat, (i <= r)%nat -> (fun i : nat => (if rel_prime_dec i (S r) then 1 else 0) * (4 / (PI ^ 2 * (S r)))) i <= g i).
@@ -2836,18 +2986,18 @@ Proof.
       apply Rge_le. apply (QPE_MC_correct a _ N _ _ _); try lia; auto.
       repeat rewrite Rmult_0_l. lra.
     - intros. unfold g. rewrite Heqf. remember (prob_partial_meas (basis_vector (2 ^ m) (s_closest m i (S r)))
-      (uc_eval (QPE m n c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1))) as fi.
+      (uc_eval (QPE m (n + anc) c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0))) as fi.
       destruct (rel_prime_dec i (S r)). rewrite r_recoverable_1 with a _ N _ _ n; try lra; try lia; try easy.
       rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_recoverable. destruct (Bsum (2*m + 2)
         (fun step : nat => Shor_post step (s_closest m i (S r)) m =? S r)); lra.
-      subst. unfold prob_partial_meas. unfold Rsum. replace (2 ^ n)%nat with (S (pred (2 ^ n))).
+      subst. unfold prob_partial_meas. unfold Rsum. replace (2 ^ (n + anc))%nat with (S (pred (2 ^ (n + anc)))).
       apply cond_pos_sum. intros. unfold probability_of_outcome. interval.
       simpl. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
     - replace (2 ^ m)%nat with (S (pred (2 ^ m))).
       assert (forall i, 0 <= f i).
       { intros. subst. unfold r_recoverable, prob_partial_meas, probability_of_outcome. apply Rmult_le_pos.
         destruct (Bsum (2*m + 2) (fun step : nat => Shor_post step i m =? r)); lra.
-        unfold Rsum. replace (2 ^ n)%nat with (S (pred (2 ^ n))).
+        unfold Rsum. replace (2 ^ (n+anc))%nat with (S (pred (2 ^ (n+anc)))).
         apply cond_pos_sum. intros. interval. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
       }
       assert (r < N)%nat.

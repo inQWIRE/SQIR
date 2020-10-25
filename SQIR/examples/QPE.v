@@ -57,9 +57,24 @@ Definition QPE k n (c : base_ucom n) : base_ucom (k + n) :=
   controlled_powers (map_qubits (fun q => k + q)%nat c) k; 
   cast (invert (QFT_w_reverse k)) (k + n).
 
+Fixpoint controlled_powers_var' {n} (f : nat -> base_ucom n) k kmax : base_ucom (kmax + n) :=
+  match k with
+  | 0    => SKIP
+  | 1    => cast (control (kmax - 1) (f O)) (kmax + n) (* makes 0 case irrelevant *)
+  | S k' => controlled_powers_var' f k' kmax ;
+           cast (control (kmax - k' - 1) (f k')) (kmax + n)
+  end.
+Definition controlled_powers_var {n} (f : nat -> base_ucom n) k := controlled_powers_var' f k k.
+
+Definition QPE_var k n (f : nat -> base_ucom n) : base_ucom (k + n) :=
+  cast (npar k U_H) (k + n) ;
+  controlled_powers_var (fun x => map_qubits (fun q => k + q)%nat (f x)) k; 
+  cast (invert (QFT_w_reverse k)) (k + n).
+
 (****************************)
 (**         Proofs         **)
 (****************************)
+
 
 (** Well-typedness of QFT (used in proof of QPE) **)
 
@@ -913,4 +928,166 @@ Proof.
   rewrite pow_INR.
   replace (INR 2) with 2 by reflexivity.
   lra.
+Qed.
+
+
+
+
+
+(* QPE_var is the variant of QPE in Shor's implementation.
+   It is provided a circuit constructor f : nat -> base_ucom, which has the same effect as (fun i => niter (2^i) c) when acting on eigenstates.
+*)
+
+Local Transparent Nat.pow controlled_powers'.
+
+Lemma f_to_vec_controlled_U_var : forall n k (fc : nat -> base_ucom n) (ψ : Vector (2 ^ n)) (θ : R) i j (f : nat -> bool),
+  (k > 0)%nat -> (n > 0)%nat -> (j < k)%nat -> (i > 0)%nat ->
+  uc_well_typed (fc i) -> WF_Matrix ψ ->
+  (uc_eval (fc i)) × ψ = Cexp (θ * (INR (2^i))) .* ψ ->
+  @Mmult _ _ (1 * 1) (uc_eval (cast (control j (map_qubits (fun q : nat => (k + q)%nat) (fc i))) (k + n)%nat)) ((f_to_vec k f) ⊗ ψ) = 
+    Cexp (f j * θ * INR (2^i)) .* (f_to_vec k f) ⊗ ψ.
+Proof.
+  intros n k c ψ θ i j f ? ? ? ? WT WF Heig. 
+  rewrite cast_control_commute.
+  rewrite control_correct; try lia.
+  rewrite Mmult_plus_distr_r.
+  rewrite Mmult_assoc.
+  rewrite <- pad_dims_l.
+  replace (2 ^ (k + n))%nat with (2 ^ k * 2 ^ n)%nat by unify_pows_two.
+  rewrite kron_mixed_product. 
+  Msimpl.
+  distribute_scale.
+  replace (proj j (k + n) false) with (proj j k false ⊗ I (2 ^ n)).
+  2: unfold proj; autorewrite with eval_db; gridify; trivial.
+  replace (proj j (k + n) true) with (proj j k true ⊗ I (2 ^ n)).
+  2: unfold proj; autorewrite with eval_db; gridify; trivial.
+  restore_dims. 
+  repeat rewrite kron_mixed_product.
+  Msimpl.
+  destruct (f j) eqn:fj.
+  rewrite (f_to_vec_proj_eq _ _ _ true) by auto.
+  rewrite (f_to_vec_proj_neq _ _ _ false); auto.
+  2: rewrite fj; easy.
+  Msimpl.
+  rewrite Rmult_1_l.
+  rewrite Heig.
+  distribute_scale.
+  reflexivity.
+  rewrite (f_to_vec_proj_eq _ _ _ false) by auto.
+  rewrite (f_to_vec_proj_neq _ _ _ true); auto.
+  2: rewrite fj; easy.
+  simpl. autorewrite with R_db Cexp_db.
+  Msimpl.
+  reflexivity. 
+  apply map_qubits_fresh; auto.
+  apply uc_well_typed_map_qubits; auto.
+Qed.
+
+
+Lemma controlled_powers_var'_action_on_basis : 
+  forall k kmax n (fc : nat -> base_ucom n) (ψ : Vector (2^n)) f θ,
+    (n > 0)%nat -> (k > 0)%nat -> (kmax >= k)%nat ->
+    (forall i, (i < k)%nat -> uc_well_typed (fc i)) ->
+    WF_Matrix ψ ->
+    (forall i, (i < k)%nat -> (uc_eval (fc i)) × ψ = Cexp (2 * PI * θ * (INR (2^i))) .* ψ) ->
+    @Mmult _ _ (1 * 1) (uc_eval (controlled_powers_var' (fun i => map_qubits (fun q => kmax + q)%nat (fc i)) k kmax)) ((f_to_vec kmax f) ⊗ ψ) =
+    Cexp (2 * PI * θ * INR (funbool_to_nat k (shift f (kmax - k)))) .* ((f_to_vec kmax f) ⊗ ψ).
+Proof.
+  intros k kmax n fc ψ f θ Hn Hk Hkmax WT WF Heigen.
+  destruct k; try lia.
+  induction k.
+  - simpl.
+    rewrite <- (niter_1 (cast _ _)).
+    rewrite <- cast_niter_commute.
+    erewrite f_to_vec_controlled_U; try apply Heigen; auto.
+    2: lia.
+    rewrite Mscale_kron_dist_l.
+    apply f_equal2; try reflexivity.
+    unfold funbool_to_nat, shift; simpl.
+    rewrite Nat.add_0_r.
+    apply f_equal.
+    destruct (f (kmax - 1)%nat); simpl; lra.
+  - remember (S k) as k'.
+    simpl. subst. 
+    Local Opaque controlled_powers_var' Nat.pow. 
+    simpl uc_eval.
+    rewrite Mmult_assoc.
+    restore_dims.
+    assert (forall i : nat, (i < S k)%nat -> uc_well_typed (fc i)) by (intros; apply WT; lia).
+    assert (forall i : nat, (i < S k)%nat -> uc_eval (fc i) × ψ = Cexp (2 * PI * θ * INR (2 ^ i)) .* ψ) by (intros; apply Heigen; lia).
+    rewrite IHk by (try easy; lia). clear IHk.
+    distribute_scale.
+    erewrite f_to_vec_controlled_U_var; try apply Heigen; auto.
+    2,3,4: lia.
+    restore_dims. distribute_scale. 
+    apply f_equal2; try reflexivity. 
+    rewrite <- Cexp_add.
+    apply f_equal.
+    rewrite (funbool_to_nat_shift (S (S k)) _ (S O)) by lia.
+    replace (S (S k) - 1)%nat with (S k) by lia.
+    replace (shift (shift f (kmax - S (S k))) 1) with (shift f (kmax - S k)).
+    2: { unfold shift. apply functional_extensionality; intro x. 
+         replace (x + 1 + (kmax - S (S k)))%nat with (x + (kmax - S k))%nat by lia.
+         reflexivity. }
+    rewrite plus_INR, mult_INR. repeat rewrite pow_INR. 
+    unfold shift; simpl. 
+    replace (1 + 1)%R with 2%R by lra.
+    replace (kmax - S (S k))%nat with (kmax - S k - 1)%nat by lia.
+    unfold funbool_to_nat; simpl.
+    field_simplify_eq. 
+    destruct (f (kmax - S k - 1)%nat); simpl; lra.
+Qed.
+
+
+Lemma controlled_powers_var_action_on_basis : 
+  forall k n (fc : nat -> base_ucom n) (ψ : Vector (2^n)) f θ,
+    (n > 0)%nat -> (k > 0)%nat ->
+    (forall i, (i < k)%nat -> uc_well_typed (fc i)) ->
+    WF_Matrix ψ ->
+    (forall i, (i < k)%nat -> (uc_eval (fc i)) × ψ = Cexp (2 * PI * θ * (INR (2^i))) .* ψ) ->
+    @Mmult _ _ (1 * 1) (uc_eval (controlled_powers_var (fun i => map_qubits (fun q => k + q)%nat (fc i)) k)) ((f_to_vec k f) ⊗ ψ) =
+    Cexp (2 * PI * θ * INR (funbool_to_nat k f)) .* ((f_to_vec k f) ⊗ ψ).
+Proof.
+  intros k n c ψ f θ Hn Hk WT WF Heigen.
+  unfold controlled_powers_var.
+  erewrite controlled_powers_var'_action_on_basis; try apply Heigen; auto.
+  replace (k - k)%nat with O by lia.
+  rewrite shift_0.
+  reflexivity.
+Qed.
+
+Lemma QPE_var_equivalent :
+  forall k n (c : base_ucom n) (f : nat -> base_ucom n) (ψ : Vector (2^n)) θ,
+    (n > 0)%nat ->
+    WF_Matrix ψ ->
+    uc_well_typed c ->
+    (uc_eval c) × ψ = Cexp (2 * PI * θ) .* ψ ->
+    (forall i, (i < k)%nat -> uc_well_typed (f i)) ->
+    (forall i, (i < k)%nat -> (uc_eval (f i)) × ψ = Cexp (2 * PI * θ * (INR (2^i))) .* ψ) ->
+    @Mmult _ _ (1 * 1) (uc_eval (QPE k n c)) (k ⨂ qubit0 ⊗ ψ) = @Mmult _ _ (1 * 1) (uc_eval (QPE_var k n f)) (k ⨂ qubit0 ⊗ ψ).
+Proof.
+  assert (G: forall {n} (A B : base_ucom n), uc_eval (A; B) = uc_eval B × uc_eval A) by intuition.
+  intros. unfold QPE, QPE_var.
+  repeat rewrite G.
+  repeat rewrite Mmult_assoc.
+  bdestruct (k <=? 0). assert (k = O) by lia. subst. easy.
+  rewrite <- pad_dims_r with (c0 := npar k U_H) by (apply npar_WT; lia).
+  rewrite npar_H by lia.
+  replace (2 ^ (k + n))%nat with (2 ^ k * 2 ^ n)%nat by unify_pows_two. 
+  replace (1 * 1)%nat with (1 ^ k * 1)%nat.
+  2: rewrite Nat.pow_1_l; reflexivity.
+  rewrite kron_mixed_product.
+  Msimpl.
+  rewrite H0_kron_n_spec_alt by lia.
+  restore_dims. distribute_scale.
+  rewrite kron_vsum_distr_r.
+  replace (2 ^ (k + n))%nat with (2 ^ k * 2 ^ n)%nat by unify_pows_two. 
+  rewrite Mmult_vsum_distr_l.
+  rewrite Mmult_vsum_distr_l with (f0 := (fun i : nat => basis_vector (2 ^ k) i ⊗ ψ)).
+  do 2 apply f_equal.
+  apply vsum_eq. intros.
+  rewrite basis_f_to_vec_alt by easy.
+  restore_dims.
+  rewrite controlled_powers_action_on_basis with (θ := θ) by (try easy; try lia).
+  rewrite controlled_powers_var_action_on_basis with (θ := θ); try easy; try lia.
 Qed.
