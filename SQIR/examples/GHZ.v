@@ -78,13 +78,15 @@ Proof.
       simpl kron_n.
       replace (2 ^ S (dim - S n))%nat with (2 * 2 ^ (dim - S n))%nat by unify_pows_two.
       replace (1 ^ S (dim - S n))%nat with (1 * 1 ^ (dim - S n))%nat by (repeat rewrite Nat.pow_1_l; lia).
-      rewrite <- (kron_assoc _ (∣0⟩)).
+      rewrite <- (kron_assoc _ (∣0⟩)); auto with wf_db.
+      2:{ apply WF_plus; apply WF_scale; apply WF_kron; auto with wf_db;
+          rewrite !Nat.pow_1_l; reflexivity. }
       rewrite kron_plus_distr_l.
       rewrite (kron_plus_distr_r _ _ _ _ _ _ (∣0⟩)). 
       repeat rewrite Mscale_kron_dist_l.
       replace (2 ^ S n)%nat with (2 ^ n * 2)%nat by unify_pows_two.
       replace (1 ^ S n)%nat with (1 ^ n * 1)%nat by (repeat rewrite Nat.pow_1_l; lia).
-      rewrite 2 (kron_assoc _ _ (∣0⟩)).
+      rewrite 2 (kron_assoc _ _ (∣0⟩)) by auto with wf_db.
       replace (2 ^ (1 + 0 + 1))%nat with (2 * 2)%nat by reflexivity. 
       replace (2 ^ n * 2 * 2)%nat with (2 ^ n * (2 * 2))%nat by lia.
       replace (1 ^ n * 1 * 1)%nat with (1 ^ n * (1 * 1))%nat by lia.
@@ -100,7 +102,7 @@ Proof.
       repeat rewrite kron_mixed_product.
       repeat rewrite (Mmult_assoc _ (_)†). 
       Qsimpl.
-      repeat rewrite <- kron_assoc.
+      repeat rewrite <- kron_assoc by auto with wf_db.
       rewrite Mplus_comm.
       reflexivity.
 Qed.

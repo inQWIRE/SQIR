@@ -1543,6 +1543,7 @@ Qed.
 
 Lemma vkron_split : forall n i (f : nat -> Vector 2),
   (forall j, WF_Matrix (f j)) -> (* ADDED *)
+(*  (forall j, j < n -> WF_Matrix (f j)) -> Maybe necessary? *)
   i < n ->
   vkron n f = (vkron i f) ⊗ f i ⊗ (vkron (n - 1 - i) (shift f (i + 1))).
 Proof.

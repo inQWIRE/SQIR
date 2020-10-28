@@ -332,7 +332,7 @@ Proof.
     lca.
   - simpl. rewrite e.
     restore_dims.
-    repeat rewrite <- kron_assoc.
+    repeat rewrite <- kron_assoc by auto with wf_db.
     restore_dims.
     setoid_rewrite kron_adjoint.
     rewrite Mmult_plus_distr_r.

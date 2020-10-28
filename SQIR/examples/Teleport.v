@@ -119,7 +119,7 @@ Proof.
   replace (I 4) with (I 2 ⊗ I 2).
   2: { rewrite id_kron. reflexivity. }
   repeat (distribute_plus;
-          repeat rewrite <- kron_assoc;
+          repeat rewrite <- kron_assoc by auto with wf_db;
           restore_dims).
   repeat rewrite kron_mixed_product.
   repeat rewrite <- (Mmult_assoc _ _ hadamard).
@@ -134,7 +134,7 @@ Proof.
   Qsimpl.
   repeat (try rewrite super_add; try rewrite combine_super).
   repeat (distribute_plus;
-          repeat rewrite <- kron_assoc;
+          repeat rewrite <- kron_assoc by auto with wf_db;
           restore_dims).
   repeat rewrite kron_mixed_product.
   repeat rewrite <- (Mmult_assoc _ _ hadamard).
@@ -194,7 +194,7 @@ Proof.
     Msimpl.
     setoid_rewrite cnot_decomposition.
     restore_dims.
-    rewrite kron_assoc. 
+    rewrite kron_assoc by auto with wf_db. 
     restore_dims.
     rewrite kron_mixed_product.
     Msimpl.
@@ -220,11 +220,11 @@ Proof.
     unfold epr00.
     replace 4%nat with (2 * 2)%nat by reflexivity.
     rewrite <- id_kron.
-    repeat rewrite <- kron_assoc.
+    repeat rewrite <- kron_assoc by auto with wf_db.
     restore_dims.
     rewrite cnot_decomposition.
     autorewrite with Q_db ket_db. 
-    repeat rewrite <- kron_assoc.
+    repeat rewrite <- kron_assoc by auto with wf_db.
     restore_dims.
     repeat rewrite kron_mixed_product.
     Msimpl.
@@ -265,7 +265,7 @@ Proof.
         unfold pad; simpl.
         replace 4%nat with (2 * 2)%nat by reflexivity.
         rewrite <- id_kron.
-        repeat rewrite <- kron_assoc.
+        repeat rewrite <- kron_assoc by auto with wf_db.
         Msimpl_light.
         restore_dims.
         repeat rewrite Mmult_plus_distr_l.
@@ -287,7 +287,7 @@ Proof.
         Msimpl_light.
         restore_dims.
         distribute_plus.
-        repeat rewrite <- kron_assoc.
+        repeat rewrite <- kron_assoc by auto with wf_db.
         restore_dims.
         repeat rewrite kron_mixed_product; Msimpl_light.
         distribute_plus. 
@@ -304,7 +304,7 @@ Proof.
       all: simpl; autorewrite with eval_db; simpl.
       all: replace 4%nat with (2 * 2)%nat by reflexivity;
            rewrite <- id_kron;
-           repeat rewrite <- kron_assoc;
+           repeat rewrite <- kron_assoc by auto with wf_db;
            Msimpl_light;
            restore_dims.
       all: repeat rewrite <- Mmult_assoc;
@@ -329,7 +329,7 @@ Proof.
         unfold pad; simpl.
         replace 4%nat with (2 * 2)%nat by reflexivity.
         rewrite <- id_kron.
-        repeat rewrite <- kron_assoc.
+        repeat rewrite <- kron_assoc by auto with wf_db.
         Msimpl_light.
         restore_dims.
         repeat rewrite Mmult_plus_distr_l.
@@ -351,7 +351,7 @@ Proof.
         Msimpl_light.
         restore_dims.
         distribute_plus.
-        repeat rewrite <- kron_assoc.
+        repeat rewrite <- kron_assoc by auto with wf_db.
         restore_dims.
         repeat rewrite kron_mixed_product; Msimpl_light.
         distribute_plus. 
@@ -368,7 +368,7 @@ Proof.
       all: simpl; autorewrite with eval_db; simpl.
       all: replace 4%nat with (2 * 2)%nat by reflexivity;
            rewrite <- id_kron;
-           repeat rewrite <- kron_assoc;
+           repeat rewrite <- kron_assoc by auto with wf_db;
            Msimpl_light;
            restore_dims.
       all: repeat rewrite <- Mmult_assoc;
@@ -415,7 +415,7 @@ Proof.
         unfold pad; simpl.
         replace 4%nat with (2 * 2)%nat by reflexivity.
         rewrite <- id_kron.
-        repeat rewrite <- kron_assoc.
+        repeat rewrite <- kron_assoc by auto with wf_db.
         Msimpl_light.
         restore_dims.
         repeat rewrite Mmult_plus_distr_l.
@@ -437,7 +437,7 @@ Proof.
         Msimpl_light.
         restore_dims.
         distribute_plus.
-        repeat rewrite <- kron_assoc.
+        repeat rewrite <- kron_assoc by auto with wf_db.
         restore_dims.
         repeat rewrite kron_mixed_product; Msimpl_light.
         distribute_plus. 
@@ -454,7 +454,7 @@ Proof.
       all: simpl; autorewrite with eval_db; simpl.
       all: replace 4%nat with (2 * 2)%nat by reflexivity;
            rewrite <- id_kron;
-           repeat rewrite <- kron_assoc;
+           repeat rewrite <- kron_assoc by auto with wf_db;
            Msimpl_light;
            restore_dims.
       all: repeat rewrite <- Mmult_assoc;
@@ -485,7 +485,7 @@ Proof.
         unfold pad; simpl.
         replace 4%nat with (2 * 2)%nat by reflexivity.
         rewrite <- id_kron.
-        repeat rewrite <- kron_assoc.
+        repeat rewrite <- kron_assoc by auto with wf_db.
         Msimpl_light.
         restore_dims.
         repeat rewrite Mmult_plus_distr_l.
@@ -507,7 +507,7 @@ Proof.
         Msimpl_light.
         restore_dims.
         distribute_plus.
-        repeat rewrite <- kron_assoc.
+        repeat rewrite <- kron_assoc by auto with wf_db.
         restore_dims.
         repeat rewrite kron_mixed_product; Msimpl_light.
         distribute_plus. 
@@ -524,7 +524,7 @@ Proof.
       all: simpl; autorewrite with eval_db; simpl.
       all: replace 4%nat with (2 * 2)%nat by reflexivity;
            rewrite <- id_kron;
-           repeat rewrite <- kron_assoc;
+           repeat rewrite <- kron_assoc by auto with wf_db;
            Msimpl_light;
            restore_dims.
       all: repeat rewrite <- Mmult_assoc;

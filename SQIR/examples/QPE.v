@@ -360,7 +360,8 @@ Proof. autorewrite with eval_db. solve_matrix. Qed.
 
 Lemma SWAP_action_on_vkron : forall dim m n (f : nat -> Vector 2),
   (dim > 0)%nat -> (m < dim)%nat -> (n < dim)%nat -> (m <> n)%nat ->
-  (forall i, (i < dim)%nat -> WF_Matrix (f i)) ->
+(*  (forall i, (i < dim)%nat -> WF_Matrix (f i)) -> *)
+  (forall i, WF_Matrix (f i)) -> (* Changed *)
   @Mmult _ _ (1 * 1) (uc_eval (SWAP m n)) (vkron dim f) = 
     vkron dim (fun k => if (k =? m) then f n else if (k =? n) then f m else f k).
 Proof.
@@ -378,10 +379,11 @@ Proof.
   - remember (S (S (S dim))) as dim'.
     remember (fun k : nat => if k =? m then f n else if k =? n then f m else f k) as f'.
     bdestruct (m <? n).
-    + rewrite 2 (vkron_split dim' m) by lia.
-      rewrite 2 (vkron_split (dim' - 1 - m) (n - m - 1)) by lia.
+    + assert (WF' : forall i, WF_Matrix (f' i)). subst. intros. destruct (i =? m), (i =? n); auto.
+      rewrite 2 (vkron_split dim' m); auto with wf_db; try lia.
+      rewrite 2 (vkron_split (dim' - 1 - m) (n - m - 1)); auto with wf_db; try lia. 
       replace (dim' - 1 - m - 1 - (n - m - 1))%nat with (dim' - n - 1)%nat by lia. (* slow *)
-      restore_dims. repeat rewrite <- kron_assoc. restore_dims.
+      restore_dims. repeat rewrite <- kron_assoc by auto with wf_db. restore_dims.
       repeat rewrite shift_simplify.
       rewrite SWAP_action_on_product_state; auto with wf_db.
       repeat rewrite shift_plus.
@@ -395,10 +397,11 @@ Proof.
       reflexivity.
       all: intros; subst f'; unfold shift; bdestruct_all; trivial.
       all: try apply vkron_WF; intros; apply WF; lia.
-    + rewrite 2 (vkron_split dim' n) by lia.
-      rewrite 2 (vkron_split (dim' - 1 - n) (m - n - 1)) by lia.
-      replace (dim' - 1 - n - 1 - (m - n - 1))%nat with (dim' - m - 1)%nat by lia. (* slow *)
-      restore_dims. repeat rewrite <- kron_assoc. restore_dims.
+    + assert (WF' : forall i, WF_Matrix (f' i)). subst. intros. destruct (i =? m), (i =? n); auto.
+      rewrite 2 (vkron_split dim' n); auto with wf_db; try lia.
+      rewrite 2 (vkron_split (dim' - 1 - n) (m - n - 1)); auto with wf_db; try lia.
+      replace (dim' - 1 - n - 1 - (m - n - 1))%nat with (dim' - m - 1)%nat by lia. 
+      restore_dims. repeat rewrite <- kron_assoc by auto with wf_db. restore_dims.
       repeat rewrite shift_simplify.
       rewrite SWAP_symmetric.
       rewrite SWAP_action_on_product_state; auto with wf_db; try lia.
@@ -417,7 +420,7 @@ Qed.
 
 Lemma reverse_qubits'_action_on_vkron : forall dim n (f : nat -> Vector 2),
   (n > 0)%nat -> (2 * n <= dim)%nat ->
-  (forall i : nat, (i < dim)%nat -> WF_Matrix (f i)) ->
+  (forall i : nat, WF_Matrix (f i)) ->
   @Mmult _ _ 1 (uc_eval (reverse_qubits' dim n)) (vkron dim f) = 
     vkron dim (fun k => if ((k <? n)%nat || (dim - n - 1 <? k)%nat) 
                      then f (dim - k - 1)%nat else f k).
@@ -448,7 +451,7 @@ Proof.
 Qed.
 
 Lemma reverse_qubits_action_on_vkron : forall n f,
-  (n > 1)%nat -> (forall i : nat, (i < n)%nat -> WF_Matrix (f i)) ->
+  (n > 1)%nat -> (forall i : nat, WF_Matrix (f i)) ->
   uc_eval (reverse_qubits n) × (vkron n f) = vkron n (fun k => f (n - k - 1)%nat).
 Proof. 
   intros n f Hn WF.
