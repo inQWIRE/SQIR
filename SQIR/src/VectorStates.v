@@ -113,8 +113,6 @@ Lemma f_to_vec_WF : forall (n : nat) (f : nat -> bool),
 Proof.
   intros.
   induction n; simpl; try auto with wf_db.
-  apply WF_kron; try lia; try assumption.
-  destruct (f n); auto with wf_db.
 Qed.
 Hint Resolve f_to_vec_WF : wf_db.
 
@@ -691,17 +689,6 @@ Proof.
     reflexivity.
 Qed.
 
-(* TODO: Move to Quantum.v *)
-Lemma WF_ket : forall n, WF_Matrix (ket n).
-Proof. intros. unfold ket. destruct n; simpl; auto with wf_db. Qed.
-
-Lemma WF_bra : forall n, WF_Matrix (bra n).
-Proof. intros. unfold bra. destruct n; simpl; auto with wf_db. Qed.
-
-Hint Resolve WF_ket WF_bra : wf_db.
-
-(* /TODO *)
-
 Lemma f_to_vec_split : forall (base n i : nat) (f : nat -> bool),
   i < n ->
   f_to_vec n f = (f_to_vec i f) ⊗ ∣ f i ⟩ ⊗ (f_to_vec (n - 1 - i) (shift f (i + 1))).
@@ -932,27 +919,6 @@ Proof.
   gridify; trivial.
   all: destruct b; auto with wf_db.
 Qed.
-
-(* TODO: Update in Matrix.v *)
-Ltac gridify :=
-  (* remove boolean comparisons *)
-  bdestruct_all; Msimpl_light; try reflexivity;
-  (* remove minus signs *) 
-  remember_differences;
-  (* put dimensions in hypothesis [will sometimes exist] *)
-  try hypothesize_dims; clear_dups;
-  (* where a < b, replace b with a + 1 + fresh *)
-  fill_differences;
-  (* distribute *)  
-  restore_dims; distribute_plus;
-  repeat rewrite Nat.pow_add_r;
-  repeat rewrite <- id_kron; simpl;
-  repeat rewrite mult_assoc;
-  restore_dims; repeat rewrite <- kron_assoc by auto 100 with wf_db;
-  restore_dims; repeat rewrite kron_mixed_product;
-  (* simplify *)
-  Msimpl_light.
-
 
 Lemma proj_commutes_2q_gate : forall dim q n1 n2 b,
   q <> n1 -> q <> n2 ->
