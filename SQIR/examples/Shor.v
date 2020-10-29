@@ -956,7 +956,6 @@ Proof.
   intros. simpl. assert (nthcfexp n a b >= 1) by lia. apply Nat.eqb_neq in H0. rewrite H0. nia.
 Qed.
 
-
 Lemma CFq_inc :
   forall x n a b,
     a < b ->

@@ -337,7 +337,7 @@ Proof.
      you have 'repeat Msimpl_light' in gridify then you don't need the trivial. -KH *)
   - rewrite <- 2 kron_plus_distr_r.
     apply f_equal2; trivial.
-    repeat rewrite kron_assoc.
+    repeat rewrite kron_assoc by auto with wf_db.
     restore_dims.
     rewrite <- 2 kron_plus_distr_l.
     apply f_equal2; trivial.
@@ -359,7 +359,7 @@ Proof.
       solve_matrix.
   - rewrite <- 2 kron_plus_distr_r.
     apply f_equal2; trivial.
-    repeat rewrite kron_assoc.
+    repeat rewrite kron_assoc by auto with wf_db.
     restore_dims.
     rewrite <- 2 kron_plus_distr_l.
     apply f_equal2; trivial.
@@ -374,7 +374,7 @@ Proof.
     + rewrite Mscale_kron_dist_l.
       rewrite <- Mscale_kron_dist_r.
       rewrite <- Mscale_kron_dist_r.
-      repeat rewrite <- kron_assoc.
+      repeat rewrite <- kron_assoc by auto with wf_db.
       restore_dims. 
       rewrite <- kron_plus_distr_l.
       apply f_equal2; trivial.
