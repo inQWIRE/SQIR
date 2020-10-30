@@ -233,5 +233,64 @@ Definition add_two (n x:nat) := @Mmult (2 ^ (2 * n + 2)) (2 ^ (2 * n + 2)) 1
                          (uc_eval (adder n)) (∣0⟩ ⊗ (double_vector n (basis_vector (2 ^ n) x)) ⊗ ∣0⟩).
 
 
+Definition shifter dim n addr N : base_ucom dim :=
+.
 
+Lemma shifter_correct :
+  forall (dim n addr x : nat) (ϕ : Vector (2^addr)) (ψ : Vector (2^(dim - (addr + n + n + 1)))),
+    dim > addr + n + n ->
+    x < N ->
+    (uc_eval (shifter dim n addr N)) × (ϕ ⊗ (basis_vector (2^n) x) ⊗ (basis_vector (2^n) 0) ⊗ ψ ⊗ ket0)
+    = ϕ ⊗ (basis_vector (2^n) x) ⊗ (basis_vector n (2 * x mod N)) ⊗ ψ ⊗ ket0.
+Admitted.
 
+Definition xshifting i n x :=
+  match i with
+  | O => basis_vector (2^n) x
+  | S i' => xshifting i' n x ⊗ basis_vector (2^n) (2^i * x mod N)
+  end.
+
+Definition xshifter i n dim N :=
+  match i with
+  | O => SKIP
+  | S i' => xshifter i' n dim N; shifter dim n (i * n) N
+  end.
+
+Lemma xshifter_correct :
+  forall (dim n x N : nat),
+    dim > n * n ->
+    x < N ->
+    (uc_eval (xshifter n n dim N)) × (basis_vector (2^n) x ⊗ basis_vector (2^(dim - n)) 0)
+    = xshifting n n x ⊗ basis_vector (2^(dim - (n * n))) 0.
+Admitted.
+
+Definition modmul_calc a x n N :=
+.
+
+Lemma modmul_calc_correct :
+  forall (dim n x : nat),
+    dim > n * n ->
+    x < N ->
+    (uc_eval (modmul_calc a x n N)) × (basis_vector (2^n) x ⊗ basis_vector (2^(dim - n)) 0)
+    = xshifting n n x ⊗ basis_vector (2^n) (a * x mod N) ⊗ ket0.
+Admitted.
+
+Definition modmul a x n N :=
+.
+
+Lemma modmul_correct :
+  forall (dim n x a N : nat),
+    dim > n * n ->
+    x < N ->
+    (uc_eval (modmul_calc a x n N)) × (basis_vector (2^n) x ⊗ basis_vector (2^(dim - n)) 0)
+    = basis_vector (2^n) x ⊗ basis_vector (2^(dim - (n + n + 1))) 0 ⊗ basis_vector (2^n) (a * x mod N) ⊗ ket0.
+Admitted.
+
+Definition modmul_inplace a x n N :=
+.
+
+Lemma modmul_inplace_correct :
+  forall (dim n x a N : nat),
+    (uc_eval (modmul_calc a x n N)) × (basis_vector (2^n) x ⊗ basis_vector (2^(dim - n)) 0)
+    = (basis_vector (2^n) (a * x mod N) ⊗ basis_vector (2^(dim - n)) 0).
+Admitted.
