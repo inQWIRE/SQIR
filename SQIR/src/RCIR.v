@@ -266,12 +266,14 @@ Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
 Lemma MAJ_correct :
   forall a b c f,
     a <> b -> b <> c -> a <> c ->
-    bcexec (MAJ c b a) f = c :-> (f c ⊕ f a)$ b :-> (f b ⊕ f a)$ a :-> ((f a && f b) ⊕ (f a && f c) ⊕ (f b && f c))$ f.
+    bcexec (MAJ c b a) f = c :-> (f c ⊕ f a)$ b :-> (f b ⊕ f a)$ a 
+                         :-> ((f a && f b) ⊕ (f a && f c) ⊕ (f b && f c))$ f.
 Proof.
   intros ? ? ? ? Hab' Hbc' Hac'. apply functional_extensionality; intro i. simpl.
   assert (G: forall (x y : nat), x <> y -> y <> x) by (intros; lia).
   assert (Hba' := G a b Hab'). assert (Hcb' := G b c Hbc'). assert (Hca' := G a c Hac').
-  assert (Hab := Hab'). assert (Hba := Hba'). assert (Hac := Hac'). assert (Hca := Hca'). assert (Hbc := Hbc'). assert (Hcb := Hcb').
+  assert (Hab := Hab'). assert (Hba := Hba'). 
+  assert (Hac := Hac'). assert (Hca := Hca'). assert (Hbc := Hbc'). assert (Hcb := Hcb').
   apply Nat.eqb_neq in Hab. apply Nat.eqb_neq in Hbc. apply Nat.eqb_neq in Hac.
   apply Nat.eqb_neq in Hba. apply Nat.eqb_neq in Hcb. apply Nat.eqb_neq in Hca.
   unfold update.
@@ -279,3 +281,7 @@ Proof.
     repeat rewrite Ea; repeat rewrite Eb; repeat rewrite Ec; repeat rewrite Hab; repeat rewrite Hbc; repeat rewrite Hac; repeat rewrite Hba; repeat rewrite Hcb; repeat rewrite Hca; repeat rewrite Nat.eqb_refl; simpl;
       bdestruct (i =? a); bdestruct (i =? b); bdestruct (i =? c); subst; try contradiction; repeat rewrite Nat.eqb_refl; repeat rewrite Ea; repeat rewrite Eb; repeat rewrite Ec; try easy.
 Qed.
+
+
+
+
