@@ -12,7 +12,7 @@ Declare Scope bccom_scope.
 Delimit Scope bccom_scope with bccom.
 Local Open Scope bccom.
 Notation "p1 ; p2" := (bcseq p1 p2) (at level 50) : bccom_scope.
-Notation "i ':->' x '$' f" := (update f i x) (at level 45, right associativity).
+Notation "f '[' i '|->' x ']'" := (update f i x) (at level 10).
 Local Open Scope nat_scope.
 
 Definition bccnot (x y : nat) := bccont x (bcx y).
@@ -22,7 +22,7 @@ Definition bcccnot (x y z : nat) := bccont x (bccnot y z).
 Fixpoint bcexec (p : bccom) (f : nat -> bool) :=
   match p with
   | bcskip => f
-  | bcx n => n :-> (¬ (f n))$ f
+  | bcx n => f [n |-> (¬ (f n))]
   (*  | bccnot x y => update f y ((f y) ⊕ (f x)) *)
   | bccont n p => if f n then bcexec p f else f
   | bcseq p1 p2 => bcexec p2 (bcexec p1 f)
@@ -31,11 +31,14 @@ Fixpoint bcexec (p : bccom) (f : nat -> bool) :=
 Lemma bccnot_correct :
   forall x y f,
     x <> y ->
-    bcexec (bccnot x y) f = y :-> (f y ⊕ f x)$ f.
+    bcexec (bccnot x y) f = f[y |-> (f y ⊕ f x)].
 Proof.
   intros. apply functional_extensionality; intro i. simpl. unfold update.
   destruct (f x) eqn:Efx; simpl.
-  bdestruct (i =? x); bdestruct (i =? y); subst; try contradiction; repeat rewrite Nat.eqb_refl; easy.
+  bdestruct (i =? x). bdestruct (i =? y).
+  subst. contradiction. reflexivity.
+  bdestruct (i =? y).
+  subst. easy. reflexivity.
   bdestruct (i =? y); subst; try contradiction; repeat rewrite Nat.eqb_refl. symmetry. apply xorb_false_r. easy.
 Qed.
 
@@ -46,7 +49,8 @@ Lemma bcswap_correct :
 Proof.
   intros. apply functional_extensionality; intro i. simpl.
   unfold update.
-  destruct (f x) eqn:Ex; destruct (f y) eqn:Ey; simpl; repeat rewrite Nat.eqb_refl; bdestruct (x =? y); bdestruct (y =? x); subst; try contradiction.
+  destruct (f x) eqn:Ex; destruct (f y) eqn:Ey; simpl;
+    repeat rewrite Nat.eqb_refl; bdestruct (x =? y); bdestruct (y =? x); subst; try contradiction.
   rewrite Ex.
   bdestruct (i =? x); bdestruct (i =? y); subst; try contradiction; repeat rewrite Nat.eqb_refl; easy.
   rewrite Ex. easy.
@@ -62,7 +66,7 @@ Lemma bcccnot_correct :
     x <> y ->
     y <> z ->
     x <> z ->
-    bcexec (bcccnot x y z) f = z :-> (f z ⊕ (f y && f x))$ f.
+    bcexec (bcccnot x y z) f = f[z |-> (f z ⊕ (f y && f x))].
 Proof.
   intros. apply functional_extensionality; intro i. simpl. unfold update.
   destruct (f x) eqn:Efx; destruct (f y) eqn:Efy; simpl;
@@ -70,6 +74,7 @@ Proof.
       try (symmetry; apply xorb_false_r).
 Qed.
 
+(*Here we define the wellformedness of bc circuit. *)
 Inductive bcfresh : nat -> bccom -> Prop :=
 | bcfresh_skip : forall q, q <> 0 -> bcfresh q bcskip    (* q <> 0 fits the requirement in SQIR, which is unnecessary in principle *)
 | bcfresh_x : forall q n, q <> n -> bcfresh q (bcx n)
@@ -114,6 +119,7 @@ Proof.
   - apply IHp2 with (dim := dim); easy.
 Qed.
     
+(* compiling bc circuit to SQIR. *)
 Fixpoint bc2ucom {dim} (p : bccom) : base_ucom dim :=
   match p with
   | bcskip => SKIP
@@ -190,6 +196,7 @@ Proof.
     easy.
 Qed.
 
+(* Define bcinv op. For any bc_seq op, inv means to reverse the order. *)
 Fixpoint bcinv p :=
   match p with
   | bcskip => bcskip
@@ -266,8 +273,7 @@ Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
 Lemma MAJ_correct :
   forall a b c f,
     a <> b -> b <> c -> a <> c ->
-    bcexec (MAJ c b a) f = c :-> (f c ⊕ f a)$ b :-> (f b ⊕ f a)$ a 
-                         :-> ((f a && f b) ⊕ (f a && f c) ⊕ (f b && f c))$ f.
+    bcexec (MAJ c b a) f = ((f[a |-> ((f a && f b) ⊕ (f a && f c) ⊕ (f b && f c))])[b |-> (f b ⊕ f a)])[c |-> (f c ⊕ f a)].
 Proof.
   intros ? ? ? ? Hab' Hbc' Hac'. apply functional_extensionality; intro i. simpl.
   assert (G: forall (x y : nat), x <> y -> y <> x) by (intros; lia).
@@ -278,9 +284,155 @@ Proof.
   apply Nat.eqb_neq in Hba. apply Nat.eqb_neq in Hcb. apply Nat.eqb_neq in Hca.
   unfold update.
   destruct (f a) eqn:Ea; destruct (f b) eqn:Eb; destruct (f c) eqn:Ec; simpl; repeat rewrite Nat.eqb_refl;
-    repeat rewrite Ea; repeat rewrite Eb; repeat rewrite Ec; repeat rewrite Hab; repeat rewrite Hbc; repeat rewrite Hac; repeat rewrite Hba; repeat rewrite Hcb; repeat rewrite Hca; repeat rewrite Nat.eqb_refl; simpl;
-      bdestruct (i =? a); bdestruct (i =? b); bdestruct (i =? c); subst; try contradiction; repeat rewrite Nat.eqb_refl; repeat rewrite Ea; repeat rewrite Eb; repeat rewrite Ec; try easy.
+    repeat rewrite Ea; repeat rewrite Eb; repeat rewrite Ec; repeat rewrite Hab;
+           repeat rewrite Hbc; repeat rewrite Hac; repeat rewrite Hba; 
+                repeat rewrite Hcb; repeat rewrite Hca; repeat rewrite Nat.eqb_refl; simpl;
+      bdestruct (i =? a); bdestruct (i =? b); bdestruct (i =? c); subst; 
+          try contradiction; repeat rewrite Nat.eqb_refl; repeat rewrite Ea; repeat rewrite Eb; repeat rewrite Ec; try easy.
 Qed.
+
+Lemma UMA_correct_partial :
+  forall a b c f f',
+    a <> b -> b <> c -> a <> c ->
+    f' a = ((f a && f b) ⊕ (f a && f c) ⊕ (f b && f c)) ->
+    f' b = (f b ⊕ f a) -> f' c = (f c ⊕ f a) ->
+    bcexec (UMA c b a) f' = ((f'[a |-> (f a)])[b |-> (f a ⊕ f b ⊕ f c)])[c |-> (f c)].
+Proof.
+Admitted.
+
+Lemma UMA_correct :
+  forall a b c f,
+    a <> b -> b <> c -> a <> c ->
+    bcexec ((MAJ c b a); (UMA c b a)) f = ((f[a |-> (f a)])[b |-> (f a ⊕ f b ⊕ f c)])[c |-> (f c)].
+Proof.
+intros.
+assert ((bcexec ((MAJ c b a); (UMA c b a)) f) = bcexec (UMA c b a) (bcexec (MAJ c b a) f)) by easy.
+rewrite H2.
+rewrite MAJ_correct.
+remember (((f [a |-> ((f a && f b) ⊕ (f a && f c)) ⊕ (f b && f c)])
+    [b |-> f b ⊕ f a]) [c |-> f c ⊕ f a]) as f'.
+rewrite (UMA_correct_partial a b c f).
+rewrite Heqf'.
+rewrite (update_twice_neq f a b).
+rewrite (update_twice_neq ((f [b |-> f b ⊕ f a])) a c).
+rewrite (update_twice_eq ((f [b |-> f b ⊕ f a]) [c |-> f c ⊕ f a])).
+rewrite (update_twice_neq (((f [b |-> f b ⊕ f a]) [c |-> f c ⊕ f a]))).
+rewrite (update_twice_neq ((f [b |-> f b ⊕ f a]))).
+rewrite (update_twice_eq f).
+rewrite (update_twice_neq (f [b |-> (f a ⊕ f b) ⊕ f c])).
+rewrite update_twice_eq. 
+rewrite (update_twice_neq f).
+reflexivity.
+1 - 9: lia.
+rewrite Heqf'.
+rewrite update_index_neq.
+rewrite update_index_neq.
+rewrite update_index_eq.
+reflexivity.
+1 - 2: lia.
+rewrite Heqf'.
+rewrite update_index_neq.
+rewrite update_index_eq.
+reflexivity. lia.
+rewrite Heqf'.
+rewrite update_index_eq.
+reflexivity.
+1 - 3: lia.
+Qed.
+
+Fixpoint adder' dim n : bccom :=
+  match n with
+  | 0 => bccnot (2 * dim) (2 * dim + 1) 
+  | S n' => (MAJ (dim - n) ((dim - n)+1) ((dim - n)+2); adder' dim n' ; UMA (dim - n) ((dim - n)+1) ((dim - n)+2))
+  end.
+Definition adder n := adder' n n.
+
+Fixpoint good_out' (n:nat) (f : (nat -> bool)) : ((nat -> bool) * bool) := 
+  match n with 
+   | 0 => (f, f 0)
+   | S m => (match good_out' m f with (f',c) => ((f'[(m+1) |-> (f (m+2) ⊕ f (m+1) ⊕ c)]),
+                           (f (m+2) && f (m+1)) ⊕ (f (m+2) && c) ⊕ (f (m+1) && c)) end)
+  end.
+Definition good_out (n:nat) (f : (nat -> bool)) : (nat -> bool) :=
+      match good_out' n f with (f',c) => f'[(2 * n + 1) |-> f (2 * n + 1) ⊕ c] end.
+
+
+Lemma adder_correct :
+  forall n f,
+    bcexec (adder n) f = good_out n f.
+Proof.
+Admitted.
+
+(* Now, the C*x %M circuit. The input is a function where f 0 = 0, f 1, f 3 ,f 5, ... f (2 n + 1)
+          are the bits representation of x, and we assume that 2 * x < 2 ^ n, 
+           and f 2, f 4, f 6, f (2 * n + 2) are bits for M, and 2 * M < 2 ^ n, and also x < M, so 2*x - M < M
+        and finally, 2 * n + 3 is a C_out bit for comparator.
+   Now, we can see that if f (1,3,5,7...) are bits for x, then f (2n +1) must be zero, the most
+        significant bit of the x representation must be zero.
+   The same as the M representation, the most significant bit of M must also be zero. 
+   The idea is that, the shifer is simply move the most significant bit in 2n+1 to the 1 position. 
+   Then we compute 2x - M, and the result will also end up that the most significant bit is zero.
+   Then, we can do the process again and again until we compute all bits in C. 
+   For a summary, each step of the process is first to permutation the f 1 and f (2*n+1) bits, 
+   The f(1,....2n+1) represents 2*x, then we compare 2* with M by using 2x-M, 
+   The circuit will perform as in the x positions, it will be 2x-M, and in the M position, the circuit will keep M. 
+   Then, we see the C_out bit, if it is 1, it means that 2x < M, in this case,
+    we will add M to the 2x-M, so we need to implement an adder for (2x-M) + M.
+    In addition, after the addition, we need to clean the C_out bit by using CCX. 
+    The reason to use CCX is clear. The input for the C_out bit is z=1, and the output after the addition is z xor S_n = C_n = 
+     (a_{n} && b_{n}) xor (a_{n} && c_{n}) xor (b_{n} && c_{n}). We have said that the most significant bit of x and M are zero
+    so a_{n} and b_{n} are zero, so the above formula is zero, and 1 xor 0 = 1, so we just need to use bcx to clean up the bit to 0. 
+   If 2x>=M, then we need 2x -M, and the comparator just gives the result, and we don't need anything else. *)
+
+Fixpoint comparator' dim n : bccom :=
+  match n with
+  | 0 => bccnot (2 * dim) (2 * dim + 1) 
+  | S n' => (MAJ (dim - n) ((dim - n)+1) ((dim - n)+2);
+              comparator' dim n' ; MAJ_neg (dim - n) ((dim - n)+1) ((dim - n)+2))
+  end.
+Definition comparator n := comparator' n n.
+
+Definition bit_swap n (f: nat -> bool) : (nat -> bool) :=
+    fun i => if i =? 1 then f (2*n+1) else if i =? (2 * n+1) then f 1 else f i.
+
+Definition one_step n (f:nat -> bool) := 
+   if (bcexec (comparator n) (bit_swap n f)) (2 * n + 3) then (bit_swap n f)
+   else (bcexec (comparator n) (bit_swap n f)).
+
+Fixpoint repeat_steps n dim (f:nat -> bool) :=
+   match n with 
+    | 0 => f
+    | S m => repeat_steps m dim (one_step dim f)
+   end.
+
+(* is a function representing the value for C. The result of C*x %M is in the f(1,3,5...,2*n+1) *)
+
+Fixpoint all_step' dim n (c: nat -> bool) (f: nat -> bool) : (nat -> bool) :=
+   match n with 
+    | 0 => f
+    | S m => if c (dim - n) then all_step' dim m c (repeat_steps (dim - m) dim f)
+                            else all_step' dim m c f
+   end.
+Definition all_step dim (c: nat -> bool) (f: nat -> bool) : (nat -> bool) := all_step' dim dim c f.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

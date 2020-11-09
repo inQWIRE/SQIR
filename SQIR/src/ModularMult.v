@@ -218,7 +218,7 @@ Fixpoint comparator' dim n : base_ucom (2 * dim + 2) :=
   | S n' => (MAJ (dim - n) ((dim - n)+1) ((dim - n)+2);
               comparator' dim n' ; MAJ_neg (dim - n) ((dim - n)+1) ((dim - n)+2))
   end.
-Definition comparator n := adder' n n.
+Definition comparator n := comparator' n n.
 
 Definition nat_to_binlist_rev n := rev (nat_to_binlist' n).
 
