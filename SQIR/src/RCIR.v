@@ -392,28 +392,29 @@ Fixpoint comparator' dim n : bccom :=
   end.
 Definition comparator n := comparator' n n.
 
+(*
 Definition bit_swap n (f: nat -> bool) : (nat -> bool) :=
     fun i => if i =? 1 then f (2*n+1) else if i =? (2 * n+1) then f 1 else f i.
+*)
 
-Definition one_step n (f:nat -> bool) := 
-   if (bcexec (comparator n) (bit_swap n f)) (2 * n + 3) then (bit_swap n f)
-   else (bcexec (comparator n) (bit_swap n f)).
+Definition one_step n := 
+    bcswap 1 (2*n+1); (comparator (n+1)) ;  bccont (2 * n + 3) (adder (n+1); bcx (2*n+3)).
 
-Fixpoint repeat_steps n dim (f:nat -> bool) :=
+Fixpoint repeat_steps n dim :=
    match n with 
-    | 0 => f
-    | S m => repeat_steps m dim (one_step dim f)
+    | 0 => bcskip
+    | S m => (one_step dim);repeat_steps m dim
    end.
 
 (* is a function representing the value for C. The result of C*x %M is in the f(1,3,5...,2*n+1) *)
 
-Fixpoint all_step' dim n (c: nat -> bool) (f: nat -> bool) : (nat -> bool) :=
+Fixpoint all_step' dim n (c: nat -> bool) : bccom :=
    match n with 
-    | 0 => f
-    | S m => if c (dim - n) then all_step' dim m c (repeat_steps (dim - m) dim f)
-                            else all_step' dim m c f
+    | 0 => bcskip
+    | S m => if c (dim - n) then (repeat_steps (dim - m) dim) ; all_step' dim m c
+                            else all_step' dim m c
    end.
-Definition all_step dim (c: nat -> bool) (f: nat -> bool) : (nat -> bool) := all_step' dim dim c f.
+Definition all_step dim (c: nat -> bool) := all_step' dim dim c.
 
 
 
