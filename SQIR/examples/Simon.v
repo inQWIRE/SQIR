@@ -35,7 +35,8 @@ Proof.
   rewrite IHn.
   replace (m ^ (2 * n))%nat with (m ^ n * m ^ n)%nat.
   replace (p ^ (2 * n))%nat with (p ^ n * p ^ n)%nat.
-  repeat rewrite kron_assoc. 
+  repeat rewrite kron_assoc; auto with wf_db. 
+  2: apply WF_kron; try lia; auto with wf_db.
   restore_dims.
   reflexivity.
   1,2: replace (2 * n)%nat with (n + n)%nat by lia.

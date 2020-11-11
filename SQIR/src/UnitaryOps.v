@@ -582,7 +582,7 @@ Proof.
       replace (dim - (n + 1))%nat with (dim - (S n))%nat by lia.
       replace (2 ^ (dim - n))%nat with (2 * 2 ^ (dim - (S n)))%nat by unify_pows_two.
       rewrite <- id_kron.
-      rewrite <- kron_assoc.
+      rewrite <- kron_assoc by auto with wf_db.
       simpl I. Msimpl_light. 
       replace (2 ^ dim)%nat with (2 ^ n * 2 * 2 ^ (dim - S n))%nat by unify_pows_two.
       repeat rewrite kron_mixed_product.

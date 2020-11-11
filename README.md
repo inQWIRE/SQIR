@@ -37,7 +37,7 @@ Our VirtualBox image is [available on Zenodo](http://doi.org/10.5281/zenodo.4074
 
 ### Assumptions
 
-There are no assumptions or axioms in the SQIR repository. However, we rely on three well-understood axioms in the Coq standard library (`JMeq_eq`, `functional_extensionality_dep`, `Classical_Prop.classic`); two logical axioms in the Coq definition of [Dedekind reals](https://coq.inria.fr/library/Coq.Reals.ClassicalDedekindReals.html) (`ClassicalDedekindReals.sig_not_dec`, `ClassicalDedekindReals.sig_forall_dec`); and one axiom in the [QWIRE](https://github.com/inQWIRE/QWIRE) library (`kron_assoc`). The `kron_assoc` axiom is QWIRE says that the Kronecker product is associative: A ⊗ B ⊗ C = A ⊗ (B ⊗ C). This mathematical fact is known to be true, but has not yet been proven in the QWIRE development. For more information on including axioms in Coq see https://github.com/coq/coq/wiki/The-Logic-of-Coq#axioms.
+There are no assumptions or axioms in the SQIR repository. However, we rely on three well-understood axioms in the Coq standard library (`JMeq_eq`, `functional_extensionality_dep`, `Classical_Prop.classic`) and two logical axioms in the Coq definition of [Dedekind reals](https://coq.inria.fr/library/Coq.Reals.ClassicalDedekindReals.html) (`ClassicalDedekindReals.sig_not_dec`, `ClassicalDedekindReals.sig_forall_dec`). For more information on including axioms in Coq see https://github.com/coq/coq/wiki/The-Logic-of-Coq#axioms.
 
 As discussed at the end of Section 6 in the VOQC paper, we trust that the OCaml implementations of rational numbers, maps, and sets, used by the extracted code, are consistent with Coq’s. We also note that our translation between OpenQASM and SQIR is not formally verified.
 

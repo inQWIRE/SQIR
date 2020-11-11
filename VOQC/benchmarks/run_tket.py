@@ -85,6 +85,8 @@ def run(d,fname):
         print("Final:\t Total %d, CNOT %d\n" % (num_gates_after, num_CNOTs_after))
 
         f.write("%s,%d,%d,%d,%d,%f\n" % (fname, num_gates_before, num_CNOTs_before, num_gates_after, num_CNOTs_after, stop - start))
+        
+    os.remove("copy.qasm")
 
     os.remove("copy.qasm")
 

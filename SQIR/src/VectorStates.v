@@ -113,8 +113,6 @@ Lemma f_to_vec_WF : forall (n : nat) (f : nat -> bool),
 Proof.
   intros.
   induction n; simpl; try auto with wf_db.
-  apply WF_kron; try lia; try assumption.
-  destruct (f n); auto with wf_db.
 Qed.
 Hint Resolve f_to_vec_WF : wf_db.
 
@@ -708,7 +706,7 @@ Proof.
       replace (S n - 1 - i)%nat with (S (n - 1 - i))%nat by lia.
       simpl.
       rewrite IHn.
-      restore_dims; repeat rewrite kron_assoc. 
+      restore_dims; repeat rewrite kron_assoc by auto with wf_db. 
       unfold shift; simpl.
       replace (n - 1 - i + (i + 1))%nat with n by lia.
       reflexivity.
@@ -755,7 +753,7 @@ Proof.
     rewrite update_index_eq.
     distribute_plus.  
     restore_dims.
-    repeat rewrite <- kron_assoc.
+    repeat rewrite <- kron_assoc by auto with wf_db.
     destruct (f i); destruct (f (i + 1 + d)); simpl; Msimpl.
     all: autorewrite with ket_db; reflexivity.
   - repeat rewrite (f_to_vec_split 0 (j + (1 + d + 1) + x0) j); try lia.
@@ -770,7 +768,7 @@ Proof.
     replace (j + (1 + d + 1) + x0 - 1 - j - 1 - d) with x0 by lia.
     distribute_plus.  
     restore_dims.
-    repeat rewrite <- kron_assoc.
+    repeat rewrite <- kron_assoc by auto with wf_db.
     destruct (f j); destruct (f (j + 1 + d)); simpl; Msimpl.
     all: autorewrite with ket_db; reflexivity.
 Qed.    
@@ -929,7 +927,6 @@ Proof.
   intros dim q n1 n2 b neq1 neq2.
   unfold proj, ueval_cnot, pad.
   gridify; trivial.
-  all: destruct b; auto with wf_db.
 Qed.
 
 Lemma proj_commutes : forall dim q1 q2 b1 b2,
@@ -938,8 +935,7 @@ Proof.
   intros dim q1 q2 b1 b2.
   unfold proj, pad.
   gridify; trivial.
-  all: destruct b1; destruct b2; auto with wf_db.
-  all: Qsimpl; reflexivity.
+  destruct b1; destruct b2; Qsimpl; reflexivity. 
 Qed.
 
 Lemma proj_twice_eq : forall dim q b,
@@ -1055,7 +1051,7 @@ Proof.
     replace n with (q + 1 + x)%nat by lia.
     replace (2 ^ (x + 1))%nat with (2 ^ x * 2)%nat by unify_pows_two.
     rewrite <- id_kron.
-    rewrite <- kron_assoc.
+    rewrite <- kron_assoc by auto with wf_db.
     replace (2 ^ (q + 1 + x) + (2 ^ (q + 1 + x) + 0))%nat with (2 ^ (q + 1 + x) * 2)%nat by lia.
     repeat rewrite Nat.pow_add_r.
     replace 1%nat with (1 * 1)%nat by lia. 
@@ -1063,7 +1059,6 @@ Proof.
     replace (q + 1 + x)%nat with n by lia.
     subst.
     Msimpl_light.
-    2: destruct (f n); auto with wf_db.
     rewrite <- IHn at 2; try lia.
     unfold pad. 
     bdestructΩ (q + 1 <=? n); clear H0.
@@ -1450,7 +1445,7 @@ Fixpoint vkron n (f : nat -> Vector 2) : Vector (2 ^ n) :=
   | S n' => vkron n' f ⊗ f n'
   end.
 
-Lemma vkron_WF : forall n (f : nat -> Vector 2), 
+Lemma WF_vkron : forall n (f : nat -> Vector 2), 
   (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
   WF_Matrix (vkron n f).
 Proof.
@@ -1458,8 +1453,14 @@ Proof.
   induction n; simpl; auto with wf_db.
   apply WF_kron; auto. lia.
 Qed.
-Hint Resolve vkron_WF : wf_db.
+Hint Resolve WF_vkron: wf_db.
 
+Lemma WF_shift : forall m n j k (f : nat -> Matrix m n),
+  (forall i, WF_Matrix (f i)) ->
+  WF_Matrix (shift f j k).
+Proof. intros. apply H. Qed.
+Hint Resolve WF_shift: wf_db.
+  
 Lemma vkron_extend_r : forall n f, 
   vkron n f ⊗ f n = vkron (S n) f.
 Proof. reflexivity. Qed.
@@ -1475,7 +1476,7 @@ Proof.
   simpl.
   rewrite <- IHn; clear IHn.  
   subst; simpl.
-  restore_dims; rewrite <- kron_assoc.
+  restore_dims; rewrite <- kron_assoc; auto with wf_db.
   rewrite shift_simplify.
   replace (n + 1)%nat with (S n) by lia.
   reflexivity.
@@ -1507,6 +1508,8 @@ Proof.
 Qed.
 
 Lemma vkron_split : forall n i (f : nat -> Vector 2),
+  (forall j, WF_Matrix (f j)) -> (* ADDED *)
+(*  (forall j, j < n -> WF_Matrix (f j)) -> Maybe necessary? *)
   i < n ->
   vkron n f = (vkron i f) ⊗ f i ⊗ (vkron (n - 1 - i) (shift f (i + 1))).
 Proof.
@@ -1518,14 +1521,13 @@ Proof.
   simpl. Msimpl.
   reflexivity.
   assert (i < n)%nat by lia.
-  specialize (IHn H1).
+  specialize (IHn H2).
   replace (S n - 1 - i)%nat with (S (n - 1 - i))%nat by lia.
   simpl.
   rewrite IHn.
   unfold shift.
   replace (n - 1 - i + (i + 1))%nat with n by lia.
-  restore_dims; repeat rewrite kron_assoc. 
-  reflexivity.
+  restore_dims; repeat rewrite kron_assoc; auto 100 with wf_db. 
 Qed.
 
 Lemma vkron_eq : forall n (f f' : nat -> Vector 2),

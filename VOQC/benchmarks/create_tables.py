@@ -141,7 +141,6 @@ if __name__ == "__main__":
     # The values are total gate count
     outputTable2(qiskit_dict, tket_dict, voqc_dict)
 
-
     # Construct Table 3 in the paper. The header for
     # this table is:
     #
