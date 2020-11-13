@@ -300,7 +300,7 @@ Lemma UMA_correct_partial :
 Proof.
 Admitted.
 
-Lemma UMA_correct :
+Lemma MAJ_UMA_correct :
   forall a b c f,
     a <> b -> b <> c -> a <> c ->
     bcexec ((MAJ c b a); (UMA c b a)) f = ((f[a |-> (f a)])[b |-> (f a ⊕ f b ⊕ f c)])[c |-> (f c)].
@@ -361,6 +361,18 @@ Lemma adder_correct :
   forall n f,
     bcexec (adder n) f = good_out n f.
 Proof.
+intros.
+unfold good_out.
+induction n.
+unfold adder,adder',bcexec.
+simpl.
+destruct (f 0) eqn:eq1.
+assert (f 1 ⊕ true = ¬ (f 1)) by easy.
+rewrite H. reflexivity.
+assert ((f 1) ⊕ false = (f 1)).
+destruct (f 1). easy. easy.
+rewrite H.
+rewrite update_same. reflexivity. reflexivity.
 Admitted.
 
 (* Now, the C*x %M circuit. The input is a function where f 0 = 0, f 1, f 3 ,f 5, ... f (2 n + 1)
@@ -387,10 +399,37 @@ Admitted.
 Fixpoint comparator' dim n : bccom :=
   match n with
   | 0 => bccnot (2 * dim) (2 * dim + 1) 
-  | S n' => (MAJ (dim - n) ((dim - n)+1) ((dim - n)+2);
-              comparator' dim n' ; MAJ_neg (dim - n) ((dim - n)+1) ((dim - n)+2))
+  | S n' => (bcx ((dim - n)+1) ; MAJ (dim - n) ((dim - n)+1) ((dim - n)+2)
+               ; comparator' dim n' ; UMA (dim - n) ((dim - n)+1) ((dim - n)+2); bcx ((dim - n)+1))
   end.
 Definition comparator n := comparator' n n.
+
+Fixpoint good_out_com' (n:nat) (f : (nat -> bool)) : ((nat -> bool) * bool) := 
+  match n with 
+   | 0 => (f, f 0)
+   | S m => (match good_out_com' m f with (f',c) => ((f'[(m+1) |-> ¬ (f (m+2) ⊕ (¬ (f (m+1))) ⊕ c)]),
+                           (f (m+2) && ¬ (f (m+1))) ⊕ (f (m+2) && c) ⊕ (¬ (f (m+1)) && c)) end)
+  end.
+Definition good_out_com (n:nat) (f : (nat -> bool)) : (nat -> bool) :=
+      match good_out' n f with (f',c) => f'[(2 * n + 1) |-> f (2 * n + 1) ⊕ c] end.
+
+Lemma comparator_correct :
+  forall n f,
+    bcexec (comparator n) f = good_out_com n f.
+Proof.
+intros.
+unfold good_out_com.
+induction n.
+unfold comparator,comparator',bcexec.
+simpl.
+destruct (f 0) eqn:eq1.
+assert (f 1 ⊕ true = ¬ (f 1)) by easy.
+rewrite H. reflexivity.
+assert ((f 1) ⊕ false = (f 1)).
+destruct (f 1). easy. easy.
+rewrite H.
+rewrite update_same. reflexivity. reflexivity.
+Admitted.
 
 (*
 Definition bit_swap n (f: nat -> bool) : (nat -> bool) :=
@@ -398,27 +437,91 @@ Definition bit_swap n (f: nat -> bool) : (nat -> bool) :=
 *)
 
 Definition one_step n := 
-    bcswap 1 (2*n+1); (comparator (n+1)) ;  bccont (2 * n + 3) (adder (n+1); bcx (2*n+3)).
+    bcswap 1 (2*n+1); (comparator (n+1)) ;  bccont (2 * n + 3) (adder (n+1)).
 
-Fixpoint repeat_steps n dim :=
+Lemma one_step_highbit_zero :
+  forall n f f',  f 0 = false ->
+       (f (2*n+1)) = false -> (f (2*n+2)) = false ->
+    bcexec (one_step n) f = f' -> (f'(2*n+1)) = false.
+Proof.
+intros n f f'.
+induction n.
+intros.
+unfold one_step,bcexec in H1.
+Admitted.
+
+Lemma one_step_same_a :
+  forall n f f' i, i <= n ->
+    bcexec (one_step n) f = f' -> (f'(2*i+2)) = f(2*i+2).
+Proof.
+intros n f f'.
+induction n.
+intros.
+unfold one_step,bcexec in H0.
+(* simpl in H0. why there is an infinite loop? *)
+Admitted.
+
+Definition bfun (f:nat -> bool) := 
+   fun i => f(2*i+1).
+
+Definition afun (f:nat -> bool) := 
+   fun i => f(2*i+2).
+
+Lemma one_step_correct_1 :
+  forall n f f', f 0 = false -> (f (2*n+1)) = false
+       -> (f (2*n+2)) = false -> f (2*n+3) = false ->
+    bcexec (one_step n) f = f' ->
+    let x := funbool_to_nat (n+1) (bfun f) in
+     let M := funbool_to_nat (n+1) (afun f) in
+       2 * x < M -> funbool_to_nat (n+1) (bfun f')= 2 * x.
+Proof.
+intros n f f'.
+Admitted.
+
+Lemma one_step_correct_2 :
+  forall n f f', f 0 = false -> (f (2*n+1)) = false
+       -> (f (2*n+2)) = false -> f (2*n+3) = false ->
+    bcexec (one_step n) f = f' ->
+    let x := funbool_to_nat (n+1) (bfun f) in
+     let M := funbool_to_nat (n+1) (afun f) in
+       2 * x >= M -> funbool_to_nat (n+1) (bfun f')= 2 * x - M.
+Proof.
+intros n f f'.
+Admitted.
+
+Fixpoint repeat_steps t n dim :=
    match n with 
-    | 0 => bcskip
-    | S m => (one_step dim);repeat_steps m dim
+    | 0 => (bcskip,t)
+    | S m => match repeat_steps (t+1) m dim with
+                (newc,t') => (bcswap (2*n+3) t ; (one_step dim);newc,t')
+             end
    end.
 
 (* is a function representing the value for C. The result of C*x %M is in the f(1,3,5...,2*n+1) *)
 
-Fixpoint all_step' dim n (c: nat -> bool) : bccom :=
+Fixpoint all_step' t dim n (c: nat -> bool) : bccom :=
    match n with 
     | 0 => bcskip
-    | S m => if c (dim - n) then (repeat_steps (dim - m) dim) ; all_step' dim m c
-                            else all_step' dim m c
+    | S m => if c (dim - n) then
+      (match  (repeat_steps t (dim - m) dim) with
+          (newc,t') => newc ;  all_step' t' dim m c
+       end)
+       else all_step' t dim m c
    end.
-Definition all_step dim (c: nat -> bool) := all_step' dim dim c.
+Definition all_step dim (c: nat -> bool) := all_step' (2 * dim + 4) dim dim c.
 
 
-
-
+Lemma all_step_correct :
+  forall n f f' cf, f 0 = false -> 
+      (forall i, 2 * n < i -> f i = false) ->
+    bcexec (one_step n) f = f' ->
+    let x := funbool_to_nat (n+1) (bfun f) in
+     let M := funbool_to_nat (n+1) (afun f) in
+     let C := funbool_to_nat n cf in 
+       funbool_to_nat (n+1) (bfun f')= (C * x) % M.
+Proof.
+intros n f f' cf.
+Admitted.
 
 
 
