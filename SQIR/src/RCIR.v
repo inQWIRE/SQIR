@@ -129,10 +129,17 @@ Ltac Expand fl :=
 
 Ltac bnauto_expand fl :=
   try btauto;
-  repeat (BreakIf; repeat EqbEq; repeat EqbRefl; repeat EqbNeq; repeat Negb; repeat boolsub; try (Expand fl); try easy; try btauto);
+  repeat (BreakIf; repeat EqbEq; repeat EqbRefl; 
+     repeat EqbNeq; repeat Negb; repeat boolsub; try (Expand fl); try easy; try btauto);
   repeat bsimpl.  
 
 Ltac bnauto := bnauto_expand (@List.nil bool).
+
+Lemma bcseq_correct :
+  forall p1 p2 f, bcexec (p1 ; p2) f = bcexec p2 (bcexec p1 f).
+Proof.
+  intros. simpl. reflexivity.
+Qed.
 
 Lemma bccnot_correct :
   forall x y f,
@@ -141,14 +148,6 @@ Lemma bccnot_correct :
 Proof.
   intros. apply functional_extensionality; intro i. simpl. unfold update.
   bnauto.
-  (*
-  destruct (f x) eqn:Efx; simpl.
-  bdestruct (i =? x). bdestruct (i =? y).
-  subst. contradiction. reflexivity.
-  bdestruct (i =? y).
-  subst. easy. reflexivity.
-  bdestruct (i =? y); subst; try contradiction; repeat rewrite Nat.eqb_refl. symmetry. apply xorb_false_r. easy.
-   *)
 Qed.
 
 Lemma bcswap_correct :
@@ -158,18 +157,6 @@ Lemma bcswap_correct :
 Proof.
   intros. apply functional_extensionality; intro i. simpl.
   unfold update. bnauto.
-  (*
-  destruct (f x) eqn:Ex; destruct (f y) eqn:Ey; simpl;
-    repeat rewrite Nat.eqb_refl; bdestruct (x =? y); bdestruct (y =? x); subst; try contradiction.
-  rewrite Ex.
-  bdestruct (i =? x); bdestruct (i =? y); subst; try contradiction; repeat rewrite Nat.eqb_refl; easy.
-  rewrite Ex. easy.
-  rewrite Ex. simpl. 
-  bdestruct (i =? x); bdestruct (i =? y); subst; try contradiction; repeat rewrite Nat.eqb_refl; try easy.
-  rewrite Ey. easy.
-  rewrite Ex.
-  bdestruct (i =? x); bdestruct (i =? y); subst; try contradiction; repeat rewrite Nat.eqb_refl; easy.
-   *)
 Qed.
 
 Lemma bcccnot_correct :
@@ -180,16 +167,12 @@ Lemma bcccnot_correct :
     bcexec (bcccnot x y z) f = f[z |-> (f z ⊕ (f y && f x))].
 Proof.
   intros. apply functional_extensionality; intro i. simpl. unfold update. bnauto.
-  (*
-  destruct (f x) eqn:Efx; destruct (f y) eqn:Efy; simpl;
-    bdestruct (i =? z); subst; try contradiction; repeat rewrite Nat.eqb_refl; try easy;
-      try (symmetry; apply xorb_false_r).
-   *)
 Qed.
 
 (*Here we define the wellformedness of bc circuit. *)
 Inductive bcfresh : nat -> bccom -> Prop :=
-| bcfresh_skip : forall q, q <> 0 -> bcfresh q bcskip    (* q <> 0 fits the requirement in SQIR, which is unnecessary in principle *)
+| bcfresh_skip : forall q, q <> 0 -> bcfresh q bcskip 
+     (* q <> 0 fits the requirement in SQIR, which is unnecessary in principle *)
 | bcfresh_x : forall q n, q <> n -> bcfresh q (bcx n)
 | bcfresh_cont : forall q n p, q <> n -> bcfresh q p -> bcfresh q (bccont n p)
 | bcfresh_seq  : forall q p1 p2, bcfresh q p1 -> bcfresh q p2 -> bcfresh q (p1; p2)
@@ -386,25 +369,11 @@ Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
 Lemma MAJ_correct :
   forall a b c f,
     a <> b -> b <> c -> a <> c ->
-    bcexec (MAJ c b a) f = ((f[a |-> ((f a && f b) ⊕ (f a && f c) ⊕ (f b && f c))])[b |-> (f b ⊕ f a)])[c |-> (f c ⊕ f a)].
+    bcexec (MAJ c b a) f = ((f[a |-> 
+    ((f a && f b) ⊕ (f a && f c) ⊕ (f b && f c))])[b |-> (f b ⊕ f a)])[c |-> (f c ⊕ f a)].
 Proof.
   intros ? ? ? ? Hab' Hbc' Hac'. apply functional_extensionality; intro i. simpl.
   unfold update. bnauto.
-  (*
-  assert (G: forall (x y : nat), x <> y -> y <> x) by (intros; lia).
-  assert (Hba' := G a b Hab'). assert (Hcb' := G b c Hbc'). assert (Hca' := G a c Hac').
-  assert (Hab := Hab'). assert (Hba := Hba'). 
-  assert (Hac := Hac'). assert (Hca := Hca'). assert (Hbc := Hbc'). assert (Hcb := Hcb').
-  apply Nat.eqb_neq in Hab. apply Nat.eqb_neq in Hbc. apply Nat.eqb_neq in Hac.
-  apply Nat.eqb_neq in Hba. apply Nat.eqb_neq in Hcb. apply Nat.eqb_neq in Hca.
-  unfold update.
-  destruct (f a) eqn:Ea; destruct (f b) eqn:Eb; destruct (f c) eqn:Ec; simpl; repeat rewrite Nat.eqb_refl;
-    repeat rewrite Ea; repeat rewrite Eb; repeat rewrite Ec; repeat rewrite Hab;
-           repeat rewrite Hbc; repeat rewrite Hac; repeat rewrite Hba; 
-                repeat rewrite Hcb; repeat rewrite Hca; repeat rewrite Nat.eqb_refl; simpl;
-      bdestruct (i =? a); bdestruct (i =? b); bdestruct (i =? c); subst; 
-          try contradiction; repeat rewrite Nat.eqb_refl; repeat rewrite Ea; repeat rewrite Eb; repeat rewrite Ec; try easy.
-   *)
 Qed.
 
 Lemma UMA_correct_partial :
@@ -416,52 +385,6 @@ Lemma UMA_correct_partial :
 Proof.
   intros ? ? ? ? ? Hab' Hbc' Hac' Hf'1 Hf'2 Hf'3. apply functional_extensionality; intro i. simpl.
   unfold update. bnauto_expand (f' a :: f' b :: f' c :: []).
-Qed.
-
-Lemma MAJ_UMA_correct :
-  forall a b c f,
-    a <> b -> b <> c -> a <> c ->
-    bcexec ((MAJ c b a); (UMA c b a)) f = ((f[a |-> (f a)])[b |-> (f a ⊕ f b ⊕ f c)])[c |-> (f c)].
-Proof.
-  intros.
-
-  (* This is a nuke. Takes ~ 1 min to find the proof. Might need further optimization. *)
-  simpl. unfold update. bnauto; apply functional_extensionality; intros; bnauto.
-  
-(*
-assert ((bcexec ((MAJ c b a); (UMA c b a)) f) = bcexec (UMA c b a) (bcexec (MAJ c b a) f)) by easy.
-rewrite H2.
-rewrite MAJ_correct.
-remember (((f [a |-> ((f a && f b) ⊕ (f a && f c)) ⊕ (f b && f c)])
-    [b |-> f b ⊕ f a]) [c |-> f c ⊕ f a]) as f'.
-rewrite (UMA_correct_partial a b c f).
-rewrite Heqf'.
-rewrite (update_twice_neq f a b).
-rewrite (update_twice_neq ((f [b |-> f b ⊕ f a])) a c).
-rewrite (update_twice_eq ((f [b |-> f b ⊕ f a]) [c |-> f c ⊕ f a])).
-rewrite (update_twice_neq (((f [b |-> f b ⊕ f a]) [c |-> f c ⊕ f a]))).
-rewrite (update_twice_neq ((f [b |-> f b ⊕ f a]))).
-rewrite (update_twice_eq f).
-rewrite (update_twice_neq (f [b |-> (f a ⊕ f b) ⊕ f c])).
-rewrite update_twice_eq. 
-rewrite (update_twice_neq f).
-reflexivity.
-1 - 9: lia.
-rewrite Heqf'.
-rewrite update_index_neq.
-rewrite update_index_neq.
-rewrite update_index_eq.
-reflexivity.
-1 - 2: lia.
-rewrite Heqf'.
-rewrite update_index_neq.
-rewrite update_index_eq.
-reflexivity. lia.
-rewrite Heqf'.
-rewrite update_index_eq.
-reflexivity.
-1 - 3: lia.
-*)
 Qed.
 
 
@@ -482,7 +405,8 @@ Fixpoint carry n f :=
 
 Lemma carry_extend :
   forall n f,
-    carry (S n) f = (f (2 * n + 1) && f (2 * n + 2)) ⊕ (f (2 * n + 2) && carry n f) ⊕ (f (2 * n + 1) && carry n f).
+    carry (S n) f = (f (2 * n + 1) && f (2 * n + 2)) ⊕ 
+  (f (2 * n + 2) && carry n f) ⊕ (f (2 * n + 1) && carry n f).
 Proof.
   intros. easy.
 Qed.
@@ -490,7 +414,9 @@ Qed.
 Fixpoint msb n f : nat -> bool :=
   match n with
   | 0 => f[0 |-> carry 0 f ⊕ f 2][1 |-> f 1 ⊕ f 2][2 |-> carry 1 f]
-  | S n' => (msb n' f)[2 * n |-> carry n f ⊕ f (2 * n + 2)][2 * n + 1 |-> f (2 * n + 1) ⊕ f (2 * n + 2)][2 * n + 2 |-> carry (S n) f]
+  | S n' => (msb n' f)[2 * n
+          |-> carry n f ⊕ f (2 * n + 2)][2 * n + 1 |-> f (2 * n + 1) ⊕ f (2 * n + 2)]
+                    [2 * n + 2 |-> carry (S n) f]
   end.
 
 Lemma msb_end2 :
@@ -515,22 +441,845 @@ Lemma MAJseq_correct :
     bcexec (MAJseq n) f = msb n f.
 Proof.
   Local Opaque MAJ.
-  induction n; intros. simpl. rewrite MAJ_correct by lia. unfold update. bnauto; apply functional_extensionality; intros; bnauto.
-  Local Opaque msb. simpl. rewrite IHn. rewrite MAJ_correct by lia. Local Transparent msb. simpl. Local Opaque msb. apply functional_extensionality; intros.
-  bdestruct (x =? S (n + S (n + 0))). subst. repeat (repeat rewrite update_index_neq by lia; rewrite update_index_eq). 
-  specialize (msb_end2 n f) as G0. replace (S (n + S (n + 0))) with (2 * n + 2) by lia. rewrite G0. simpl. rewrite msb_end_gt by lia. easy.
-  bdestruct (x =? S (n + S (n + 0)) + 1). subst. repeat (repeat rewrite update_index_neq by lia; rewrite update_index_eq).
-  do 2 rewrite msb_end_gt by lia. easy.
-  bdestruct (x =? S (n + S (n + 0)) + 2). subst. repeat (repeat rewrite update_index_neq by lia; rewrite update_index_eq).
-  repeat (rewrite msb_end_gt by lia).
-  specialize (msb_end2 n f) as G0. replace (S (n + S (n + 0))) with (2 * n + 2) by lia. rewrite G0. simpl. bnauto.
-  repeat rewrite update_index_neq by lia. easy.
+  induction n; intros. simpl. 
+  rewrite MAJ_correct by lia. 
+  rewrite (update_twice_neq f).
+  rewrite update_twice_neq.
+  rewrite (update_twice_neq f).
+  assert ((f 2 && f 1) = (f 1 && f 2)). apply andb_comm.
+  rewrite H. reflexivity.
+  1 - 3: lia.
+  Local Opaque msb. simpl. rewrite IHn. 
+  rewrite MAJ_correct by lia. 
+  Local Transparent msb.
+  assert (msb (S n) f = (msb n f)[2 * (S n)
+          |-> carry (S n) f ⊕ f (2 * (S n) + 2)][2 * (S n) + 1 |-> f (2 * (S n) + 1) ⊕ f (2 * (S n) + 2)]
+                    [2 * (S n) + 2 |-> carry (S (S n)) f]). easy.
+  rewrite H.
+  rewrite <- msb_end2.
+  rewrite <- msb_end2.
+  assert (S (n + S (n + 0) + 2) = 2 * S n + 2) by lia. rewrite H0. clear H0.
+  assert ((S (n + S (n + 0) + 1)) = 2 * S n + 1) by lia. rewrite H0. clear H0.
+  assert (S (n + S (n + 0)) = 2 * S n) by lia. rewrite H0. clear H0.
+  assert ((2 * n + 2) = 2 * S n) by lia. rewrite H0. clear H0.
+  rewrite -> (msb_end_gt n (2 * S n + 1) f). 
+  rewrite -> (msb_end_gt n (2 * S n + 2) f). 
+  assert (((f (2 * S n + 2) && f (2 * S n + 1))
+       ⊕ (f (2 * S n + 2) && msb n f (2 * S n)))
+      ⊕ (f (2 * S n + 1) && msb n f (2 * S n)) = msb (S n) f (2 * S n + 2)).
+  rewrite msb_end2.
+  rewrite carry_extend.
+  rewrite andb_comm.
+  rewrite <- msb_end2.
+  assert ((2 * n + 2) = 2 * S n) by lia. rewrite H0. clear H0.
+  reflexivity.
+  rewrite H0.
+  rewrite (update_twice_neq (msb n f)).
+  rewrite (update_twice_neq ((msb n f) [2 * S n + 1 |-> f (2 * S n + 1) ⊕ f (2 * S n + 2)])).
+  rewrite (update_twice_neq (msb n f)).
+  reflexivity.
+  1 - 5 : lia.
+  Qed.
+
+Definition MAJ_sign n : bccom := MAJseq n; bccnot (2 * n + 2) (2 * n + 3).
+
+
+Lemma MAJ_sign_correct_1 :   
+  forall m n f, m <= 2 * n + 2 -> 
+    (bcexec (MAJ_sign n) f) m = (msb n f) m.
+Proof.
+intros.
+unfold MAJ_sign.
+rewrite bcseq_correct.
+rewrite MAJseq_correct.
+rewrite bccnot_correct.
+rewrite (update_index_neq (msb n f) (2 * n + 3)).
+reflexivity. lia. lia.
 Qed.
+
+
+Lemma MAJ_sign_correct_2 :   
+  forall n f,
+    (bcexec (MAJ_sign n) f) (2 * n + 3) = ((msb n f) (2 * n + 2)) ⊕ f (2 * n + 3).
+Proof.
+intros.
+unfold MAJ_sign.
+rewrite bcseq_correct.
+rewrite MAJseq_correct.
+rewrite bccnot_correct.
+rewrite update_index_eq.
+rewrite xorb_comm.
+rewrite (msb_end_gt n (2 * n + 3)).
+reflexivity.
+lia. lia.
+Qed.
+
+Definition msbs n f : nat -> bool := (msb n f)[2 * n + 3 |-> ((msb n f) (2 * n + 2)) ⊕ f (2 * n + 3)].
+
+Lemma msbs_end_gt : 
+  forall n m f,
+    2 * n + 3 < m ->
+    msbs n f m = f m.
+Proof.
+  intros.
+  unfold msbs.
+  rewrite <- (msb_end_gt n m f).
+  rewrite update_index_neq.
+  reflexivity. lia. lia.
+Qed. 
+
+Lemma MAJ_sign_correct :   
+  forall n f,
+    (bcexec (MAJ_sign n) f) = (msbs n f).
+Proof.
+intros.
+  apply functional_extensionality.
+  intros.
+  destruct (x <=? 2 * n + 2) eqn:eq.
+  apply Nat.leb_le in eq.
+  rewrite MAJ_sign_correct_1.
+  unfold msbs.
+  rewrite update_index_neq.
+  reflexivity. lia.
+  assumption.
+  apply Compare_dec.leb_iff_conv in eq.
+  destruct (x =? 2 * n + 3) eqn:eq1.
+  apply Nat.eqb_eq in eq1.
+  unfold msbs.
+  rewrite eq1.
+  rewrite MAJ_sign_correct_2.
+  rewrite update_index_eq.
+  reflexivity.
+  apply EqNat.beq_nat_false in eq1.
+  assert (2 * n + 3 < x) by lia.
+  rewrite msbs_end_gt.
+  unfold MAJ_sign.
+  rewrite bcseq_correct.
+  rewrite MAJseq_correct.
+  rewrite bccnot_correct.
+  rewrite (update_index_neq (msb n f) (2 * n + 3)).
+  rewrite msb_end_gt.
+  reflexivity. 
+  1 - 4: lia.
+Qed.
+
+Fixpoint UMAseq n : bccom :=
+  match n with
+  | 0 => UMA 0 1 2
+  | S n' => UMA (2 * n) (2 * n + 1) (2 * n + 2) ; UMAseq n'
+  end.
+
+Lemma uma_end_gt :
+  forall n m f,
+    2 * n + 2 < m ->
+    (bcexec (UMAseq n) f) m = f m.
+Proof.
+  induction n; intros. simpl.
+  destruct (f 0) eqn:eq1.
+  destruct (f 1) eqn:eq2.
+  destruct ((f [2 |-> ¬ (f 2)]) 2) eqn:eq3.
+  destruct (((f [2 |-> ¬ (f 2)]) [0 |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)]) 0) eqn:eq4.
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  destruct ((f [2 |-> ¬ (f 2)]) 0) eqn:eq4.
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  rewrite update_index_neq by lia.
+  reflexivity. 
+  destruct (f 2) eqn:eq3.
+  destruct ((f [0 |-> ¬ (f 0)]) 0) eqn:eq4.
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  rewrite update_index_neq by lia.
+  reflexivity. 
+  destruct (f 0) eqn:eq4.
+  rewrite update_index_neq by lia.
+  1 - 2: reflexivity.
+  destruct (f 2) eqn:eq2.
+  destruct ((f [0 |-> ¬ (f 0)]) 0) eqn:eq3.
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  rewrite update_index_neq by lia.
+  reflexivity.
+  destruct (f 0) eqn:eq3.
+  rewrite update_index_neq by lia.
+  1 - 2: reflexivity.
+  simpl.
+  destruct (f (S (n + S (n + 0)))) eqn:eq1.
+  destruct (f (S (n + S (n + 0) + 1))) eqn:eq2.
+  destruct ((f [S (n + S (n + 0) + 2)
+       |-> ¬ (f (S (n + S (n + 0) + 2)))])
+        (S (n + S (n + 0) + 2))) eqn:eq3.
+  destruct (((f [S (n + S (n + 0) + 2)
+      |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
+     S (n + S (n + 0))
+     |-> ¬ ((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+              (S (n + S (n + 0))))]) (S (n + S (n + 0)))) eqn:eq4.
+  rewrite (IHn m (((f [S (n + S (n + 0) + 2)
+     |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
+    S (n + S (n + 0))
+    |-> ¬ ((f [S (n + S (n + 0) + 2)
+            |-> ¬ (f (S (n + S (n + 0) + 2)))])
+             (S (n + S (n + 0))))]) [S (n + S (n + 0) + 1)
+   |-> ¬ (((f [S (n + S (n + 0) + 2)
+            |-> ¬ (f (S (n + S (n + 0) + 2)))])
+           [S (n + S (n + 0))
+           |-> ¬ ((f [S (n + S (n + 0) + 2)
+                   |-> ¬ (f (S (n + S (n + 0) + 2)))])
+                    (S (n + S (n + 0))))])
+            (S (n + S (n + 0) + 1)))])) by lia.
+  repeat rewrite update_index_neq by lia.
+  reflexivity.
+  rewrite IHn by lia.
+  repeat rewrite update_index_neq by lia.
+  reflexivity.
+  destruct ((f [S (n + S (n + 0) + 2)
+     |-> ¬ (f (S (n + S (n + 0) + 2)))]) 
+      (S (n + S (n + 0)))) eqn:eq4.
+  rewrite IHn by lia.
+  repeat rewrite update_index_neq by lia.
+  reflexivity.
+  rewrite IHn by lia.
+  repeat rewrite update_index_neq by lia.
+  reflexivity.
+  destruct (f (S (n + S (n + 0) + 2))) eqn:eq3.
+  destruct ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])) eqn:eq4.
+  rewrite IHn by lia.
+  repeat rewrite update_index_neq by lia.
+  reflexivity.
+  rewrite IHn by lia.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  destruct (f (S (n + S (n + 0)))) eqn:eq4.
+  rewrite IHn by lia.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  rewrite IHn by lia.
+  reflexivity.
+  destruct (f (S (n + S (n + 0) + 2))) eqn:eq2.
+  destruct ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])
+      (S (n + S (n + 0)))) eqn:eq3.
+  rewrite IHn by lia.
+  repeat rewrite update_index_neq by lia.
+  reflexivity.
+  rewrite IHn by lia.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  destruct (f (S (n + S (n + 0)))) eqn:eq3.
+  rewrite IHn by lia.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  rewrite IHn by lia.
+  reflexivity.
+Qed.
+
+Fixpoint good_out' n f : nat -> bool :=
+  match n with
+  | 0 => f[1 |-> f 2 ⊕ f 1 ⊕ f 0]
+  | S n' => (good_out' n' f)[2 * n + 1 |-> f (2 * n + 2) ⊕ f (2 * n + 1) ⊕ f (2 * n)]
+  end.
+
+Definition good_out n f : nat -> bool :=
+     (good_out' n f)[2 * n + 3 |-> ((msb n f) (2 * n + 2)) ⊕ f (2 * n + 3)].
+
+Lemma MAJ_UMA_correct :
+  forall a b c f,
+    a <> b -> b <> c -> a <> c ->
+    bcexec ((MAJ c b a); (UMA c b a)) f = ((f[a |-> (f a)])[b |-> (f a ⊕ f b ⊕ f c)])[c |-> (f c)].
+Proof.
+  intros.
+  rewrite bcseq_correct.
+  rewrite MAJ_correct.
+  remember (((f [a
+     |-> ((f a && f b) ⊕ (f a && f c))
+         ⊕ (f b && f c)]) [b |-> 
+    f b ⊕ f a]) [c |-> f c ⊕ f a]) as g.
+  rewrite (UMA_correct_partial a b c f g).
+  rewrite update_twice_neq.
+  rewrite (update_twice_neq g).
+  rewrite Heqg.
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq ((f [a
+    |-> ((f a && f b) ⊕ (f a && f c))
+        ⊕ (f b && f c)]) [b |-> 
+   f b ⊕ f a])).
+  rewrite (update_twice_neq (f [a
+    |-> ((f a && f b) ⊕ (f a && f c))
+        ⊕ (f b && f c)])).
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq ((f [a |-> f a]) [b |-> f b ⊕ f a])).
+  rewrite update_twice_eq.
+  reflexivity.
+  1 - 8 : lia.
+  rewrite Heqg.
+  rewrite (update_twice_neq f).
+  rewrite (update_twice_neq (f [b |-> f b ⊕ f a])).
+  rewrite update_index_eq.
+  reflexivity.
+  1 - 2 : lia.
+  rewrite Heqg.
+  rewrite update_twice_neq.
+  rewrite update_index_eq. 
+  reflexivity. lia.
+  rewrite Heqg.
+  rewrite update_index_eq. 
+  reflexivity.
+  1 - 3 : assumption.
+Qed.
+
+Lemma uma_less_gt_same:
+   forall n m f i b,
+  m < 2 * n + 3 <= i ->
+    bcexec (UMAseq n) (update f i b) m = bcexec (UMAseq n) f m.
+Proof.
+intro n.
+induction n.
+intros. 
+destruct H.
+simpl.
+rewrite (update_index_neq f i 0).
+rewrite (update_index_neq f i 1).
+rewrite (update_index_neq f i 2).
+destruct (f 0) eqn:eq1.
+destruct (f 1) eqn:eq2.
+rewrite (update_twice_neq f).
+rewrite (update_index_neq (f [2 |-> ¬ (f 2)]) i 2).
+destruct ((f [2 |-> ¬ (f 2)]) 2) eqn:eq3.
+rewrite (update_index_neq (f [2 |-> ¬ (f 2)]) i 0).
+rewrite (update_twice_neq (f [2 |-> ¬ (f 2)])).
+rewrite (update_index_neq ((f [2 |-> ¬ (f 2)]) [0
+          |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)])).
+rewrite (update_index_neq ((f [2 |-> ¬ (f 2)]) [0 |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)])).
+destruct (((f [2 |-> ¬ (f 2)]) [0 |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)]) 0) eqn:eq4.
+rewrite (update_twice_neq ((f [2 |-> ¬ (f 2)]) [0 |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)])).
+rewrite (update_index_neq (((f [2 |-> ¬ (f 2)]) [0 |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)]) [1
+  |-> ¬ (((f [2 |-> ¬ (f 2)]) [0
+          |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)]) 1)])).
+reflexivity.
+1 - 2 : lia.
+rewrite (update_index_neq ((f [2 |-> ¬ (f 2)]) [0 |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)])).
+reflexivity.
+1 - 5: lia.
+rewrite (update_index_neq (f [2 |-> ¬ (f 2)])).
+rewrite (update_index_neq (f [2 |-> ¬ (f 2)])).
+destruct ((f [2 |-> ¬ (f 2)]) 0) eqn:eq4.
+rewrite (update_twice_neq (f [2 |-> ¬ (f 2)])).
+rewrite (update_index_neq ((f [2 |-> ¬ (f 2)]) [1 |-> ¬ ((f [2 |-> ¬ (f 2)]) 1)])).
+reflexivity.
+1 - 2 : lia.
+rewrite (update_index_neq (f [2 |-> ¬ (f 2)])).
+reflexivity.
+1 - 5: lia.
+rewrite (update_index_neq f).
+rewrite (update_index_neq f).
+destruct (f 2) eqn:eq3.
+rewrite (update_twice_neq f).
+rewrite (update_index_neq (f [0 |-> ¬ (f 0)])).
+destruct ((f [0 |-> ¬ (f 0)]) 0) eqn:eq4.
+rewrite (update_index_neq (f [0 |-> ¬ (f 0)])).
+rewrite (update_twice_neq (f [0 |-> ¬ (f 0)])).
+rewrite (update_index_neq ((f [0 |-> ¬ (f 0)]) [1 |-> ¬ ((f [0 |-> ¬ (f 0)]) 1)])).
+reflexivity.
+1-3:lia.
+rewrite (update_index_neq (f [0 |-> ¬ (f 0)])).
+reflexivity.
+1-3:lia.
+rewrite (update_index_neq f).
+rewrite (update_twice_neq f).
+destruct (f 0) eqn:eq4.
+rewrite (update_index_neq f).
+rewrite (update_index_neq (f [1 |-> ¬ (f 1)])).
+reflexivity.
+1 - 2: lia.
+discriminate eq1.
+1 - 4: lia.
+rewrite (update_index_neq f).
+rewrite (update_index_neq f).
+destruct (f 2) eqn:eq2.
+rewrite (update_twice_neq f).
+rewrite (update_index_neq (f [0 |-> ¬ (f 0)])).
+rewrite (update_index_neq (f [0 |-> ¬ (f 0)])).
+destruct ((f [0 |-> ¬ (f 0)]) 0) eqn:eq3.
+rewrite (update_twice_neq (f [0 |-> ¬ (f 0)])).
+rewrite update_index_neq.
+reflexivity.
+1 - 2 : lia.
+rewrite update_index_neq.
+reflexivity.
+1 - 4 : lia.
+rewrite update_index_neq.
+destruct (f 0) eqn:eq3.
+discriminate eq1.
+rewrite update_index_neq.
+reflexivity.
+1 - 7: lia.
+intros.
+destruct (m <? 2 * n + 3) eqn:eq.
+apply Nat.ltb_lt in eq.
+destruct H.
+simpl.
+rewrite (update_index_neq f).
+rewrite (update_index_neq f).
+rewrite (update_index_neq f).
+destruct (f (S (n + S (n + 0)))) eqn:eq1.
+destruct (f (S (n + S (n + 0) + 1))) eqn:eq2.
+rewrite (update_twice_neq f).
+rewrite update_index_neq.
+destruct ((f [S (n + S (n + 0) + 2)
+       |-> ¬ (f (S (n + S (n + 0) + 2)))])
+        (S (n + S (n + 0) + 2))) eqn:eq3.
+rewrite (update_index_neq (f [S (n + S (n + 0) + 2)
+              |-> ¬ (f (S (n + S (n + 0) + 2)))])).
+rewrite (update_twice_neq (f [S (n + S (n + 0) + 2)
+       |-> ¬ (f (S (n + S (n + 0) + 2)))])).
+rewrite update_index_neq.
+destruct (((f [S (n + S (n + 0) + 2)
+      |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
+     S (n + S (n + 0))
+     |-> ¬ ((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+              (S (n + S (n + 0))))]) (S (n + S (n + 0)))) eqn:eq4.
+rewrite (update_index_neq ((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+            [S (n + S (n + 0))
+            |-> ¬ ((f [S (n + S (n + 0) + 2)
+                    |-> ¬ (f (S (n + S (n + 0) + 2)))])
+                     (S (n + S (n + 0))))])).
+rewrite (update_twice_neq ((f [S (n + S (n + 0) + 2)
+      |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
+     S (n + S (n + 0))
+     |-> ¬ ((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+              (S (n + S (n + 0))))])).
+rewrite (IHn m (((f [S (n + S (n + 0) + 2)
+      |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
+     S (n + S (n + 0))
+     |-> ¬ ((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+              (S (n + S (n + 0))))]) [S (n + S (n + 0) + 1)
+    |-> ¬ (((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+            [S (n + S (n + 0))
+            |-> ¬ ((f [S (n + S (n + 0) + 2)
+                    |-> ¬ (f (S (n + S (n + 0) + 2)))])
+                     (S (n + S (n + 0))))])
+             (S (n + S (n + 0) + 1)))])).
+reflexivity.
+1 - 3 : lia.
+rewrite (IHn m ((f [S (n + S (n + 0) + 2)
+     |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
+    S (n + S (n + 0))
+    |-> ¬ ((f [S (n + S (n + 0) + 2)
+            |-> ¬ (f (S (n + S (n + 0) + 2)))])
+             (S (n + S (n + 0))))])).
+reflexivity.
+1 - 4 : lia.
+rewrite (update_index_neq (f [S (n + S (n + 0) + 2)
+      |-> ¬ (f (S (n + S (n + 0) + 2)))])).
+rewrite (update_index_neq (f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])).
+destruct ( (f [S (n + S (n + 0) + 2)
+     |-> ¬ (f (S (n + S (n + 0) + 2)))]) 
+      (S (n + S (n + 0)))) eqn:eq4.
+rewrite (update_twice_neq (f [S (n + S (n + 0) + 2)
+     |-> ¬ (f (S (n + S (n + 0) + 2)))])).
+rewrite (IHn m ((f [S (n + S (n + 0) + 2)
+     |-> ¬ (f (S (n + S (n + 0) + 2)))])
+    [S (n + S (n + 0) + 1)
+    |-> ¬ ((f [S (n + S (n + 0) + 2)
+            |-> ¬ (f (S (n + S (n + 0) + 2)))])
+             (S (n + S (n + 0) + 1)))])).
+reflexivity.
+1 - 2 : lia.
+rewrite (IHn m (f [S (n + S (n + 0) + 2)
+    |-> ¬ (f (S (n + S (n + 0) + 2)))])).
+reflexivity.
+1-5: lia.
+rewrite update_index_neq.
+destruct (f (S (n + S (n + 0) + 2))) eqn:eq3.
+rewrite (update_index_neq f).
+rewrite (update_twice_neq f).
+rewrite (update_index_neq (f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])).
+rewrite (update_index_neq (f [S (n + S (n + 0))
+             |-> ¬ (f (S (n + S (n + 0))))])).
+destruct ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])
+      (S (n + S (n + 0)))) eqn:eq4.
+rewrite (update_twice_neq (f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])).
+rewrite (IHn m ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])
+    [S (n + S (n + 0) + 1)
+    |-> ¬ ((f [S (n + S (n + 0))
+            |-> ¬ (f (S (n + S (n + 0))))])
+             (S (n + S (n + 0) + 1)))])).
+reflexivity.
+1 - 2:lia.
+rewrite (IHn m (f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])).
+reflexivity.
+1 - 5: lia.
+rewrite (update_index_neq f).
+rewrite (update_index_neq f).
+destruct (f (S (n + S (n + 0)))) eqn:eq4.
+rewrite (update_twice_neq f).
+rewrite (IHn m (f [S (n + S (n + 0) + 1)
+    |-> ¬ (f (S (n + S (n + 0) + 1)))])).
+reflexivity.
+1 - 2: lia.
+discriminate eq1.
+1 - 3: lia.
+rewrite (update_index_neq f).
+rewrite (update_index_neq f).
+destruct (f (S (n + S (n + 0) + 2))) eqn:eq2.
+rewrite (update_twice_neq f).
+rewrite (update_index_neq (f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])).
+destruct ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])
+      (S (n + S (n + 0)))) eqn:eq3.
+rewrite (update_index_neq (f [S (n + S (n + 0))
+            |-> ¬ (f (S (n + S (n + 0))))])).
+rewrite (update_twice_neq (f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])).
+rewrite (IHn m ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])
+    [S (n + S (n + 0) + 1)
+    |-> ¬ ((f [S (n + S (n + 0))
+            |-> ¬ (f (S (n + S (n + 0))))])
+             (S (n + S (n + 0) + 1)))])).
+reflexivity.
+1 - 3 : lia.
+rewrite (IHn m (f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])).
+reflexivity.
+1 - 3 : lia.
+rewrite (update_index_neq f).
+rewrite (update_index_neq f).
+destruct (f (S (n + S (n + 0)))) eqn:eq3.
+discriminate eq1.
+rewrite (IHn m f).
+reflexivity.
+1 - 8 : lia.
+specialize (Nat.ltb_lt m (2 * n + 3)) as eq1.
+apply not_iff_compat in eq1.
+apply not_true_iff_false in eq.
+apply eq1 in eq.
+assert (2 * n + 3 <= m) by lia.
+simpl.
+rewrite (update_index_neq f) by lia.
+destruct (f (S (n + S (n + 0)))) eqn:eq2.
+rewrite (update_index_neq f) by lia.
+destruct (f (S (n + S (n + 0) + 1))) eqn:eq3.
+rewrite (update_index_neq f) by lia.
+rewrite (update_twice_neq f).
+rewrite update_index_neq by lia.
+destruct ((f [S (n + S (n + 0) + 2)
+       |-> ¬ (f (S (n + S (n + 0) + 2)))])
+        (S (n + S (n + 0) + 2))) eqn:eq4.
+rewrite (update_index_neq (f [S (n + S (n + 0) + 2)
+              |-> ¬ (f (S (n + S (n + 0) + 2)))])) by lia.
+rewrite (update_twice_neq (f [S (n + S (n + 0) + 2)
+       |-> ¬ (f (S (n + S (n + 0) + 2)))])).
+rewrite update_index_neq by lia.
+destruct ( ((f [S (n + S (n + 0) + 2)
+      |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
+     S (n + S (n + 0))
+     |-> ¬ ((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+              (S (n + S (n + 0))))]) (S (n + S (n + 0)))) eqn:eq5.
+rewrite (update_index_neq ((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+            [S (n + S (n + 0))
+            |-> ¬ ((f [S (n + S (n + 0) + 2)
+                    |-> ¬ (f (S (n + S (n + 0) + 2)))])
+                     (S (n + S (n + 0))))])) by lia.
+rewrite (update_twice_neq ((f [S (n + S (n + 0) + 2)
+      |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
+     S (n + S (n + 0))
+     |-> ¬ ((f [S (n + S (n + 0) + 2)
+             |-> ¬ (f (S (n + S (n + 0) + 2)))])
+              (S (n + S (n + 0))))])).
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+lia.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+lia.
+rewrite update_index_neq by lia.
+destruct ((f [S (n + S (n + 0) + 2)
+     |-> ¬ (f (S (n + S (n + 0) + 2)))]) 
+      (S (n + S (n + 0)))) eqn:eq5.
+rewrite (update_index_neq (f [S (n + S (n + 0) + 2)
+            |-> ¬ (f (S (n + S (n + 0) + 2)))])) by lia.
+rewrite (update_twice_neq (f [S (n + S (n + 0) + 2)
+     |-> ¬ (f (S (n + S (n + 0) + 2)))])).
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+lia.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+lia.
+rewrite update_index_neq by lia.
+rewrite (update_index_neq f) by lia.
+destruct (f (S (n + S (n + 0) + 2))) eqn:eq4.
+rewrite (update_twice_neq f) by lia.
+rewrite update_index_neq by lia.
+destruct ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])
+      (S (n + S (n + 0)))) eqn:eq5.
+rewrite (update_index_neq (f [S (n + S (n + 0))
+            |-> ¬ (f (S (n + S (n + 0))))])) by lia.
+rewrite (update_twice_neq (f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])) by lia.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+rewrite update_index_neq by lia.
+destruct (f (S (n + S (n + 0)))) eqn:eq5.
+rewrite (update_index_neq f) by lia.
+rewrite (update_twice_neq f) by lia.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+rewrite update_index_neq by lia.
+destruct (f (S (n + S (n + 0) + 2))) eqn:eq3.
+rewrite (update_index_neq f) by lia.
+rewrite (update_twice_neq f) by lia.
+rewrite update_index_neq by lia.
+destruct ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])
+      (S (n + S (n + 0)))) eqn:eq4.
+rewrite (update_index_neq (f [S (n + S (n + 0))
+            |-> ¬ (f (S (n + S (n + 0))))])) by lia.
+rewrite (update_twice_neq (f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])) by lia.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+rewrite update_index_neq by lia.
+destruct (f (S (n + S (n + 0)))) eqn:eq4.
+rewrite update_twice_neq by lia.
+rewrite (update_index_neq f) by lia.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+rewrite uma_end_gt by lia.
+rewrite uma_end_gt by lia.
+rewrite update_index_neq by lia.
+reflexivity.
+Qed.
+
+Lemma uma_msb_hbit_eq :
+   forall n m f, f 0 = false -> m < 2 * n + 3 ->
+     bcexec (UMAseq n) ((msb n f) [2 * n + 2 |-> f (2 * n + 2)]) m =
+              bcexec (UMAseq n) (msb n f) m.
+Proof.
+  induction n.
+  intros.
+  simpl.
+  rewrite update_index_neq by lia.
+  destruct ((((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
+       |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)]) 0) eqn:eq.
+  rewrite update_index_neq by lia.
+  destruct ((((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
+       |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)]) 1) eqn:eq1.
+  rewrite update_index_eq by lia.
+  rewrite update_index_eq by lia.
+  rewrite (update_index_eq (((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
+      |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)])) by lia.
+  rewrite (update_index_eq ((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2])) by lia.
+  rewrite (update_twice_neq f) in eq by lia.
+  rewrite (update_twice_neq (f [1 |-> f 1 ⊕ f 2])) in eq by lia.
+  rewrite update_index_eq in eq by lia.
+  rewrite (update_twice_neq (f [0 |-> f 0 ⊕ f 2])) in eq1 by lia.
+  rewrite update_index_eq in eq1 by lia.
+  destruct ((f 2)) eqn:eq2.
+  assert (¬ true = false) by easy. rewrite H1.
+  rewrite xorb_true_r in eq.
+  rewrite xorb_true_r in eq1.
+  apply negb_true_iff in eq1.
+  rewrite eq1. rewrite H.
+  rewrite xorb_false_l.
+  rewrite andb_false_l.
+  rewrite andb_true_l.
+  rewrite andb_false_l.
+  rewrite xorb_false_l.
+  unfold negb.
+  rewrite update_index_eq by lia.
+  repeat rewrite update_index_neq by lia.
+  rewrite update_index_eq by lia.
+  destruct (m =? 0) eqn:eq3.
+  apply Nat.eqb_eq in eq3.
+  rewrite eq3.
+  repeat rewrite update_index_neq by lia.
+Admitted.
+
+
+Lemma adder_partial : 
+   forall n m f, m < 2 * n + 3 ->
+    (bcexec (UMAseq n) (msb n f)) m = (good_out' n f) m.
+Proof.
+  intro n.
+  induction n.
+  intros.
+  unfold UMAseq.
+  rewrite (UMA_correct_partial 2 1 0 f ((msb 0 f))).
+  unfold msb, good_out'.
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq ((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> f 1 ⊕ f 2])).
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq ((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> (f 2 ⊕ f 1) ⊕ f 0])).
+  rewrite (update_twice_neq (f [0 |-> carry 0 f ⊕ f 2])).
+  rewrite update_twice_eq.
+  rewrite (update_same f).
+  rewrite (update_twice_neq f).
+  rewrite (update_same f).
+  1 - 2:reflexivity. 
+  lia. reflexivity.
+  1 - 6 : lia.
+  unfold msb.
+  rewrite (update_index_eq).
+  unfold carry.
+  simpl.
+  rewrite (andb_comm). reflexivity.
+  unfold msb.
+  rewrite (update_twice_neq (f [0 |-> carry 0 f ⊕ f 2])).
+  rewrite (update_index_eq).
+  reflexivity.
+  lia.
+  unfold msb.
+  rewrite (update_twice_neq f).
+  rewrite (update_twice_neq (f [1 |-> f 1 ⊕ f 2])).
+  rewrite (update_index_eq).
+  unfold carry.
+  reflexivity.
+  1 - 2:lia.
+  intros.
+  Local Opaque UMA. Local Opaque msb. Local Opaque good_out'.
+  simpl.
+  Local Transparent UMA. Local Transparent msb. Local Transparent good_out'.
+  rewrite (UMA_correct_partial (S (n + S (n + 0) + 2)) (S (n + S (n + 0) + 1))
+         (S (n + S (n + 0))) f (msb (S n) f)).
+  Local Opaque UMA.
+  simpl.
+  Local Transparent UMA.
+  assert ((n + (n + 0) + 1) = 2 * n + 1) by lia.
+  rewrite H0. clear H0.
+  assert ((n + (n + 0) + 2) = 2 * n + 2) by lia.
+  rewrite H0. clear H0.
+  assert ((S (n + S (n + 0))) = 2 * n + 2) by lia.
+  rewrite H0. clear H0.
+  assert ((S (n + S (n + 0) + 1)) = 2 * n + 3) by lia.
+  rewrite H0. clear H0.
+  assert ((S (n + S (n + 0) + 2)) = 2 * n + 4) by lia.
+  rewrite H0. clear H0.
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq (((msb n f) [2 * n + 2
+       |-> (((f (2 * n + 1) && f (2 * n + 2))
+             ⊕ (f (2 * n + 2) && carry n f))
+            ⊕ (f (2 * n + 1) && carry n f)) ⊕ 
+           f (2 * n + 4)]) [2 * n + 3
+      |-> f (2 * n + 3) ⊕ f (2 * n + 4)])).
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq (msb n f)) by lia.
+  rewrite (update_twice_neq ((msb n f) [2 * n + 3
+      |-> (f (2 * n + 4) ⊕ f (2 * n + 3)) ⊕ f (2 * n + 2)])) by lia.
+  rewrite update_twice_eq by lia.
+  destruct (m <? 2 * n + 3) eqn:eq.
+  apply Nat.ltb_lt in eq.
+  rewrite (update_twice_neq ((msb n f) [2 * n + 3
+     |-> (f (2 * n + 4) ⊕ f (2 * n + 3)) ⊕ f (2 * n + 2)])) by lia.
+  rewrite uma_less_gt_same by lia.
+  rewrite (update_twice_neq (msb n f)) by lia.
+  rewrite uma_less_gt_same by lia.
+  rewrite (update_index_neq (good_out' n f)) by lia.
+  rewrite <- IHn by lia.
+Admitted.
+
+Definition adder n : bccom := MAJ_sign n; UMAseq n.
+
+Lemma adder_correct :   
+  forall n f,
+    (bcexec (adder n) f) = (good_out n f).
+Proof.
+  induction n; intros.
+  unfold adder.
+  rewrite bcseq_correct.
+  rewrite MAJ_sign_correct.
+  unfold msbs,good_out.
+  unfold UMAseq.
+  rewrite (UMA_correct_partial 2 1 0 f 
+        ((msb 0 f) [2 * 0 + 3 |-> msb 0 f (2 * 0 + 2) ⊕ f (2 * 0 + 3)])).
+  unfold msb, good_out'.
+  rewrite (update_twice_neq ((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> f 1 ⊕ f 2])).
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq (((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2 * 0 + 3
+   |-> (((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2 |-> carry 1 f]) (2 * 0 + 2)
+       ⊕ f (2 * 0 + 3)])).
+  rewrite (update_twice_neq ((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> f 1 ⊕ f 2])).
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq ((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> (f 2 ⊕ f 1) ⊕ f 0])).
+  rewrite (update_twice_neq (f [0 |-> carry 0 f ⊕ f 2])).
+  rewrite (update_twice_neq f).
+  rewrite (update_same f).
+  rewrite (update_twice_neq ((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> (f 2 ⊕ f 1) ⊕ f 0])).
+  rewrite (update_twice_neq (f [0 |-> carry 0 f ⊕ f 2])).
+  rewrite update_twice_eq.
+  rewrite (update_same f).
+  reflexivity.
+  reflexivity.
+  1 - 2: lia.
+  reflexivity.
+  1 - 9: lia.
+  unfold msb.
+  rewrite (update_twice_neq ((f [0 |-> carry 0 f ⊕ f 2]) [1 |-> f 1 ⊕ f 2])).
+  rewrite (update_index_eq).
+  unfold carry.
+  simpl.
+  rewrite (andb_comm). reflexivity.
+  lia.
+  unfold msb.
+  rewrite (update_twice_neq (f [0 |-> carry 0 f ⊕ f 2])).
+  rewrite (update_twice_neq ((f [0 |-> carry 0 f ⊕ f 2]) [2 |-> carry 1 f])).
+  rewrite (update_index_eq).
+  reflexivity.
+  1 - 2:lia.
+  unfold msb.
+  rewrite (update_twice_neq f).
+  rewrite (update_twice_neq (f [1 |-> f 1 ⊕ f 2])).
+  rewrite (update_twice_neq ((f [1 |-> f 1 ⊕ f 2]) [2 |-> carry 1 f])).
+  rewrite (update_index_eq).
+  unfold carry.
+  reflexivity.
+  1 - 3:lia.
+  unfold adder,good_out.
+  rewrite bcseq_correct.
+  rewrite MAJ_sign_correct.
+Admitted.
+
+
+
 
 Fixpoint adder' dim n : bccom :=
   match n with
   | 0 => bccnot (2 * dim) (2 * dim + 1) 
-  | S n' => (MAJ (dim - n) ((dim - n)+1) ((dim - n)+2); adder' dim n' ; UMA (dim - n) ((dim - n)+1) ((dim - n)+2))
+  | S n' => (MAJ (dim - n) ((dim - n)+1) ((dim - n)+2);
+     adder' dim n' ; UMA (dim - n) ((dim - n)+1) ((dim - n)+2))
   end.
 Definition adder n := adder' n n.
 
