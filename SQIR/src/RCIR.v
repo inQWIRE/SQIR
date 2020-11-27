@@ -1,5 +1,7 @@
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
 
+
+(* Implementation Language *)
 Inductive bccom :=
 | bcskip
 | bcx (n : nat)
@@ -215,7 +217,7 @@ Proof.
   - apply IHp2 with (dim := dim); easy.
 Qed.
     
-(* compiling bc circuit to SQIR. *)
+(* Implementation language to compile bc circuit to SQIR. *)
 Fixpoint bc2ucom {dim} (p : bccom) : base_ucom dim :=
   match p with
   | bcskip => SKIP
@@ -362,6 +364,9 @@ Proof.
   rewrite bcinv_involutive in H. easy.
 Qed.
 
+
+(* Specification Proof. *)
+(* Maj and UMA circuits. *)
 Definition MAJ a b c := bccnot c b ; bccnot c a ; bcccnot a b c.
 Definition MAJ_neg a b c := bcinv (MAJ a b c).
 Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
@@ -1273,8 +1278,6 @@ Proof.
 Admitted.
 
 
-
-
 Fixpoint adder' dim n : bccom :=
   match n with
   | 0 => bccnot (2 * dim) (2 * dim + 1) 
@@ -1460,6 +1463,615 @@ Proof.
 intros n f f' cf.
 Admitted.
 
+
+(* Specification Proof. *)
+Definition bool_shift (f : nat -> bool) := fun i => if i =? 0 then false else f (i-1).
+
+Lemma bool_shift_0 : forall f, (bool_shift f) 0 = false.
+Proof.
+  intros. unfold bool_shift.
+  easy.
+Qed.
+
+Definition funbool_rev n f : (nat -> bool) := fun i => if i <? n then f ((n - 1) - i) else f i.
+
+Lemma funbool_rev_rev:
+   forall n f, (funbool_rev n (funbool_rev n f)) = f.
+Proof.
+intros.
+unfold funbool_rev.
+apply functional_extensionality.
+intros.
+destruct (x <? n) eqn:eq.
+apply Nat.ltb_lt in eq.
+destruct (n - 1 - x <? n) eqn:eq1.
+apply Nat.ltb_lt in eq1.
+assert ((n - 1 - (n - 1 - x)) = x) by lia.
+rewrite H.
+reflexivity.
+specialize (Nat.ltb_lt (n - 1 - x)  n) as eq2.
+apply not_iff_compat in eq2.
+apply not_true_iff_false in eq1.
+apply eq2 in eq1.
+assert (n <= n - 1 - x) by lia.
+destruct x. lia.
+lia.
+reflexivity.
+Qed.
+
+Lemma funbool_rev_same: forall n m f f',
+   m <= n ->
+  (forall x, x < n -> f x = f' x)%nat ->
+    (forall y, y < n -> funbool_rev m f y = funbool_rev m f' y).
+Proof.
+intros.
+unfold funbool_rev.
+destruct (y <? m) eqn:eq.
+rewrite H0.
+reflexivity.
+apply Nat.ltb_lt in eq. lia.
+rewrite H0.
+reflexivity.
+assumption.
+Qed.
+
+Definition fbool_to_nat (n:nat) (f: nat -> bool) := binlist_to_nat (rev (funbool_to_list n f)).
+
+Lemma fbool_to_nat_eq : forall n f f',
+  (forall x, x < n -> f x = f' x)%nat ->
+  fbool_to_nat n f = fbool_to_nat n f'.
+Proof.
+  intros.
+  unfold fbool_to_nat.
+  apply f_equal.
+  apply f_equal.
+  induction n.
+  reflexivity.
+  simpl.
+  rewrite H by lia.
+  rewrite IHn; auto.
+Qed.
+
+Lemma funbool_to_nat_times_2 :
+    forall n f, (f n) = false -> funbool_to_nat (S n) f = 2 * funbool_to_nat n f.
+Proof.
+intros.
+assert (funbool_to_nat (S n) f = (Nat.b2n (f n)) + 2 * (funbool_to_nat n f)).
+unfold funbool_to_nat.
+assert (forall n f, funbool_to_list (S n) f = (f n)::(funbool_to_list n f)).
+intros. simpl.
+reflexivity.
+rewrite (H0 n f).
+assert (forall a l, binlist_to_nat (a::l) = (Nat.b2n a) + 2 * binlist_to_nat l).
+intros. simpl.
+reflexivity.
+destruct (H1 (f n) (funbool_to_list n f)).
+reflexivity.
+rewrite H0.
+rewrite H. easy.
+Qed.
+
+Lemma funbool_to_list_length : 
+   forall n f, length (funbool_to_list n f) = n.
+Proof.
+intros.
+induction n.
+simpl.
+reflexivity.
+simpl.
+rewrite IHn.
+reflexivity.
+Qed.
+
+Lemma fbool_to_nat_split_1:
+   forall n f,
+     fbool_to_nat (S n) f = fbool_to_nat n f + (2^n * (Nat.b2n (f n))).
+Proof.
+intros.
+unfold fbool_to_nat.
+induction n.
+simpl.
+easy.
+rewrite IHn.
+simpl.
+rewrite binlist_to_nat_append.
+rewrite binlist_to_nat_append.
+rewrite rev_length.
+rewrite funbool_to_list_length.
+rewrite app_length.
+rewrite rev_length.
+rewrite funbool_to_list_length.
+simpl.
+assert (n+1= S n) by lia.
+rewrite H.
+rewrite Nat.pow_succ_r.
+lia.
+lia.
+Qed.
+
+
+Lemma fbool_to_nat_shift_aux : 
+   forall n f,
+      2 * fbool_to_nat n f = fbool_to_nat (n+1) (bool_shift f).
+Proof.
+intros.
+unfold bool_shift,fbool_to_nat.
+induction n.
+simpl.
+lia.
+simpl.
+rewrite binlist_to_nat_append.
+rewrite binlist_to_nat_append.
+rewrite <- IHn.
+rewrite rev_length.
+rewrite rev_length.
+rewrite funbool_to_list_length.
+rewrite funbool_to_list_length.
+assert (n+1= S n) by lia.
+rewrite H.
+rewrite Nat.pow_succ_r.
+destruct (S n =? 0) eqn:eq.
+apply Nat.eqb_eq in eq. lia.
+assert ((S n - 1) = n) by lia.
+rewrite H0.
+lia.
+lia.
+Qed.
+
+Lemma fbool_to_nat_shift_true : 
+   forall n f, 0 < n -> fbool_to_nat n (bool_shift f) + (2^n * (Nat.b2n (f (n-1))))
+                = 2 * fbool_to_nat n f.
+Proof.
+intros.
+rewrite fbool_to_nat_shift_aux.
+assert (n+1 = S n) by lia.
+rewrite H0.
+rewrite fbool_to_nat_split_1.
+unfold bool_shift.
+destruct (n =? 0) eqn:eq.
+apply Nat.eqb_eq in eq. lia.
+reflexivity.
+Qed.
+
+Lemma fbool_to_nat_shift_2 :
+    forall n f, 0 < n -> f (n - 1) = false ->
+        fbool_to_nat n (bool_shift f)
+                = 2 * fbool_to_nat n f.
+Proof.
+intros.
+rewrite <- fbool_to_nat_shift_true.
+rewrite H0.
+assert (Nat.b2n false = 0) by easy.
+rewrite H1. lia.
+assumption.
+Qed.
+
+Definition nat_to_fbool len n : nat -> bool :=
+  list_to_funbool len (rev (nat_to_binlist len n)).
+
+Lemma nat_to_fbool_inverse : forall len n, 
+  (n < 2 ^ len)%nat -> fbool_to_nat len (nat_to_fbool len n) = n.
+Proof.
+  intros.
+  unfold nat_to_fbool, fbool_to_nat.
+  rewrite list_to_funbool_inverse.
+  rewrite rev_involutive.
+  apply nat_to_binlist_inverse.
+  rewrite rev_length.
+  apply nat_to_binlist_length.
+  assumption.
+Qed.
+
+
+(* proofs of specs on double x in the boolean function. *)
+
+Definition times_two_spec (f:nat -> bool) := bool_shift f.
+
+(* Showing the times_two spec is correct. *)
+Lemma times_two_hbit_0_list:
+ forall n x, 0 < n -> x < 2 ^(n-1) ->  (exists l, (nat_to_binlist n x) = l++[false]).
+Proof.
+intros.
+unfold nat_to_binlist.
+specialize (nat_to_binlist_length' (n - 1) x H0) as eq.
+remember (n - length (nat_to_binlist' x)) as m.
+assert (1 <= m) by lia.
+specialize (repeat_length false m) as H2.
+destruct m. lia.
+simpl.
+rewrite repeat_cons.
+rewrite app_assoc.
+exists (nat_to_binlist' x ++ repeat false m).
+reflexivity.
+Qed.
+
+Lemma list_to_funbool_append1 : forall l1 l2 len i,
+             (i < len)%nat ->
+            (i >= length l2)%nat ->
+            (len <= length l1 + length l2)%nat ->
+            list_to_funbool len (l1 ++ l2) i = list_to_funbool len l1 i.
+Proof.
+    intros.
+    generalize dependent len.
+    induction l1; intros; simpl in *.
+    generalize dependent len.
+    induction l2.
+    reflexivity.
+    intros.
+    simpl in *. 
+    unfold update.  
+    bdestructΩ (i =? len - 1).
+    unfold update.
+    bdestruct (i =? len - 1).
+    reflexivity.
+    apply IHl1; lia. 
+Qed.
+
+Lemma list_to_funbool_append2 : forall l1 l2 len i,
+            (i < length l2)%nat ->
+            (len >= length l1 + length l2)%nat ->
+            list_to_funbool len (l1 ++ l2) i = 
+              list_to_funbool (len - length l1) l2 i.
+Proof.
+  intros.
+  generalize dependent len.
+  induction l1; intros; simpl in *.
+  rewrite Nat.sub_0_r.
+  reflexivity.
+  unfold update.
+  bdestructΩ (i =? len - 1).
+  rewrite IHl1 by lia.
+  replace (len - 1 - length l1)%nat with (len - S (length l1))%nat by lia.
+  reflexivity.
+Qed.
+
+Lemma nat_to_funbool_0:
+   forall n x, 0 < n -> x < 2^(n-1) -> (nat_to_funbool n x) 0 = false.
+Proof.
+intros.
+unfold nat_to_funbool.
+specialize (times_two_hbit_0_list n x H H0) as H1.
+destruct H1.
+rewrite H1.
+specialize (list_to_funbool_append2 x0 [false] n 0) as H3.
+assert (length (false::nil) = 1). 
+unfold length. reflexivity.
+assert (0 < length (false::nil)) by lia.
+assert (length (nat_to_binlist n x) = length (x0 ++  (false::nil))).
+rewrite H1. reflexivity.
+specialize (nat_to_binlist_length n x) as eq1.
+assert (x < 2 ^ n).
+assert (n = S (n - 1)) by lia.
+rewrite H6.
+rewrite Nat.pow_succ_r by lia. lia.
+apply eq1 in H6.
+rewrite app_length in H5.
+assert (length x0 = n - 1) by lia.
+apply H3 in H4.
+rewrite H4.
+rewrite H7.
+assert ((n - (n - 1)) = 1) by lia.
+rewrite H8.
+unfold list_to_funbool.
+rewrite update_index_eq by lia.
+reflexivity. lia.
+Qed.
+
+Lemma nat_to_fbool_high:
+     forall n x, 0 < n -> x < 2^(n-1) -> (nat_to_fbool n x) (n-1) = false.
+Proof.
+intros.
+unfold nat_to_fbool.
+specialize (times_two_hbit_0_list n x H H0) as H1.
+destruct H1.
+rewrite H1.
+rewrite rev_app_distr.
+rewrite (list_to_funbool_append1 (rev (false::nil)) (rev x0) n (n-1)).
+simpl.
+rewrite update_index_eq.
+reflexivity.
+lia.
+specialize (nat_to_binlist_length n x) as H2.
+assert (x < 2^n).
+assert (n = S (n-1)) by lia.
+rewrite H3.
+rewrite Nat.pow_succ_r.
+lia.
+lia.
+apply H2 in H3.
+rewrite H1 in H3.
+rewrite app_length in H3.
+simpl in H3.
+rewrite rev_length.
+lia.
+rewrite rev_length.
+rewrite rev_length.
+specialize (nat_to_binlist_length n x) as H2.
+assert (x < 2^n).
+assert (n = S (n-1)) by lia.
+rewrite H3.
+rewrite Nat.pow_succ_r.
+lia.
+lia.
+apply H2 in H3.
+rewrite H1 in H3.
+rewrite app_length in H3.
+lia.
+Qed.
+
+
+
+Lemma list_to_funbool_gt_0: forall l n m, 0 < m -> n <= m -> (list_to_funbool n l) m = false.
+Proof.
+intros l.
+induction l.
+intros.
+simpl.
+reflexivity.
+intros.
+simpl.
+rewrite update_index_neq by lia.
+rewrite (IHl (n - 1) m).
+reflexivity.
+lia. lia.
+Qed.
+
+
+Lemma times_two_correct:
+   forall n x, 0 < n -> x < 2^(n-1)
+         -> fbool_to_nat n (times_two_spec (nat_to_fbool n x)) = 2 * x.
+Proof.
+intros.
+unfold times_two_spec.
+specialize (fbool_to_nat_shift_2 n (nat_to_fbool n x) H) as H2.
+specialize (nat_to_fbool_high n x H H0) as H3.
+apply H2 in H3.
+rewrite H3.
+rewrite nat_to_fbool_inverse.
+reflexivity.
+assert (x < 2^n).
+assert (n = S (n-1)) by lia.
+rewrite H1.
+rewrite Nat.pow_succ_r.
+lia.
+lia.
+assumption.
+Qed.
+
+(* Showing the adder spec is correct. *)
+    
+Fixpoint carry_spec n f g :=
+  match n with
+  | 0 => false
+  | S n' => let c := carry_spec n' f g in
+           let a := f n' in
+           let b := g n' in
+           (a && b) ⊕ (b && c) ⊕ (a && c)
+  end.
+
+Definition add_bit f g := fun i => (carry_spec i f g)  ⊕ f i ⊕ g i.
+
+
+Definition adder_spec (f g : nat -> bool) := add_bit f g.
+
+Lemma carry_spec_0: forall n, 
+    carry_spec n (fun _ : nat => false) (fun _ : nat => false) = false.
+Proof.
+induction n.
+simpl.
+reflexivity.
+simpl.
+reflexivity.
+Qed.
+
+Lemma carry_add_eq:
+  forall m n x y, m <= n -> 
+   (carry_spec m (list_to_funbool n (rev (nat_to_binlist n x)))
+      (list_to_funbool n (rev (nat_to_binlist n y)))
+    ⊕ list_to_funbool n (rev (nat_to_binlist n x)) m)
+   ⊕ list_to_funbool n (rev (nat_to_binlist n y)) m
+    = list_to_funbool n (rev (nat_to_binlist n (x + y))) m.
+Proof.
+intros.
+induction m.
+simpl.
+Admitted.
+
+Lemma adder_spec_correct_aux :
+   forall n m x y, m <= n ->
+      fbool_to_nat m (adder_spec (nat_to_fbool n x) (nat_to_fbool n y))
+              = fbool_to_nat m (nat_to_fbool n (x + y)).
+Proof.
+intros.
+unfold adder_spec,add_bit,nat_to_fbool,fbool_to_nat.
+induction m.
+simpl.
+reflexivity.
+simpl.
+rewrite binlist_to_nat_append.
+rewrite binlist_to_nat_append.
+rewrite IHm.
+rewrite rev_length.
+rewrite rev_length.
+rewrite funbool_to_list_length.
+rewrite funbool_to_list_length.
+rewrite carry_add_eq.
+reflexivity.
+lia. lia.
+Qed.
+
+Lemma adder_spec_correct:
+  forall n x y, 0 < n -> x < 2 ^(n - 1) -> y < 2 ^ (n - 1)
+   -> fbool_to_nat n (adder_spec (nat_to_fbool n x) (nat_to_fbool n y))
+          = x + y.
+Proof.
+intros.
+specialize (adder_spec_correct_aux n n x y) as H2.
+rewrite H2.
+rewrite nat_to_fbool_inverse.
+reflexivity.
+assert (n = S (n - 1)) by lia.
+rewrite H3.
+rewrite Nat.pow_succ_r.
+lia. lia. lia.
+Qed.
+
+Definition com_spec (f : nat -> bool) := fun i => negb (f i).
+
+
+Definition compare_spec (f g: nat -> bool) := com_spec (add_bit (com_spec f) g).
+
+Lemma compare_spec_correct:
+   forall n x y, 0 < n -> x < 2 ^ n -> y < 2 ^ (n-1) ->
+          funbool_to_nat n (funbool_rev n (compare_spec (funbool_rev n (nat_to_funbool n x)) (funbool_rev  n(nat_to_funbool n y))))
+              = (if x <? y then x + (2^n) - y else x - y).
+Proof.
+intros.
+Admitted.
+
+
+(* Translation from spec to implementation. *)
+
+
+Definition times_two_impl (n:nat) (f:nat -> bool) : (nat -> bool) := fun i => if i =? 0 then f (n-1) else f (i - 1).
+
+
+Lemma times_two_hbit_impl_0:
+   forall n x, 0 < n -> x < 2^(n-1) -> (funbool_rev n (nat_to_funbool n x)) (n-1) = false.
+Proof.
+intros.
+unfold funbool_rev, nat_to_funbool.
+assert ((n - 1 - (n - 1)) = 0) by lia.
+rewrite H1.
+destruct (n - 1 <? n) eqn:eq.
+apply Nat.ltb_lt in eq.
+specialize (times_two_hbit_0_list n x H H0) as H2.
+destruct H2.
+rewrite H2.
+specialize (list_to_funbool_append2 x0 [false] n 0) as H3.
+assert (length (false::nil) = 1). 
+unfold length. reflexivity.
+assert (0 < length (false::nil)) by lia.
+assert (length (nat_to_binlist n x) = length (x0 ++  (false::nil))).
+rewrite H2. reflexivity.
+specialize (nat_to_binlist_length n x) as eq1.
+assert (x < 2 ^ n).
+assert (n = S (n - 1)) by lia.
+rewrite H7.
+rewrite Nat.pow_succ_r by lia. lia.
+apply eq1 in H7.
+rewrite app_length in H6.
+assert (length x0 = n - 1) by lia.
+apply H3 in H5.
+rewrite H5.
+rewrite H8.
+assert ((n - (n - 1)) = 1) by lia.
+rewrite H9.
+unfold list_to_funbool.
+rewrite update_index_eq by lia.
+reflexivity. lia.
+specialize (Nat.ltb_lt (n - 1)  n) as eq2.
+apply not_iff_compat in eq2.
+apply not_true_iff_false in eq.
+apply eq2 in eq.
+lia.
+Qed.
+
+
+Definition to_fbool len n : (nat -> bool) := funbool_rev len (nat_to_funbool len n).
+
+Definition to_nat len f : nat := funbool_to_nat len (funbool_rev len f).
+
+Lemma times_two_trans_correct: 
+   forall n x, 0 < n -> x < 2^(n-1) -> funbool_rev n (times_two_impl n (to_fbool n x)) = times_two_spec (nat_to_funbool n x).
+Proof.
+intros.
+unfold to_fbool,times_two_impl,times_two_spec,shift,funbool_rev.
+apply functional_extensionality.
+intros.
+destruct (x0 <? n) eqn:eq.
+destruct (n - 1 - x0 =? 0) eqn:eq1.
+apply Nat.eqb_eq in eq1.
+apply Nat.ltb_lt in eq.
+assert (x0 + 1 = n) by lia.
+rewrite H1.
+destruct (n - 1 <? n) eqn:eq2.
+assert ((n - 1 - (n - 1))=0) by lia.
+rewrite H2.
+specialize (times_two_hbit_impl_0 n x H H0) as H3.
+unfold funbool_rev in H3.
+rewrite eq2 in H3.
+rewrite H2 in H3.
+rewrite H3.
+unfold nat_to_funbool.
+specialize (list_to_funbool_gt_0 (nat_to_binlist n x) n n H) as H4.
+assert (n <= n) by lia.
+apply H4 in H5.
+rewrite H5.
+reflexivity.
+specialize (Nat.ltb_lt (n-1) n) as eq3.
+apply not_iff_compat in eq3.
+apply not_true_iff_false in eq2.
+apply eq3 in eq2.
+assert (n - 1 < n) by lia.
+contradiction.
+apply EqNat.beq_nat_false in eq1.
+destruct (n - 1 - x0 - 1 <? n) eqn:eq2.
+apply Nat.ltb_lt in eq2.
+assert ((n-1 - x0 - 1) = (n-1) - (x0 + 1)) by lia.
+rewrite H1.
+assert ((n - 1 - (n - 1 - (x0 + 1))) = x0 + 1) by lia.
+rewrite H2.
+reflexivity.
+specialize (Nat.ltb_lt (n - 1 - x0 - 1) n) as eq3.
+apply not_iff_compat in eq3.
+apply not_true_iff_false in eq2.
+apply eq3 in eq2.
+assert (n - 1 - x0 - 1 < n) by lia.
+contradiction.
+specialize (Nat.ltb_lt x0 n) as eq1.
+apply not_iff_compat in eq1.
+apply not_true_iff_false in eq.
+apply eq1 in eq.
+destruct (x0 =? 0) eqn:eq2.
+apply Nat.eqb_eq in eq2.
+lia.
+assert (n <= x0) by lia.
+destruct (x0 - 1 <? n) eqn:eq3.
+apply Nat.ltb_lt in eq3.
+assert (n = x0) by lia.
+rewrite <- H2.
+assert ((n - 1 - (n - 1)) = 0) by lia.
+rewrite H3.
+specialize (times_two_hbit_0  n x H H0) as H4.
+rewrite H4.
+unfold nat_to_funbool.
+specialize (list_to_funbool_gt_0 (nat_to_binlist n x) n (n+1)) as H5.
+assert (0 < n + 1) by lia.
+assert (n <= n + 1) by lia.
+apply H5 in H6.
+rewrite H6.
+reflexivity.
+assumption.
+specialize (Nat.ltb_lt (x0 - 1) n) as eq4.
+apply not_iff_compat in eq4.
+apply not_true_iff_false in eq3.
+apply eq4 in eq3.
+assert (n < x0) by lia.
+assert (n <= x0 - 1) by lia.
+assert (n <= x0 + 1) by lia.
+assert (0 < x0 - 1) by lia.
+assert (0 < x0 + 1) by lia.
+unfold nat_to_funbool.
+specialize (list_to_funbool_gt_0 (nat_to_binlist n x) n (x0 - 1)) as H7.
+specialize (list_to_funbool_gt_0 (nat_to_binlist n x) n (x0 + 1)) as H8.
+apply H7 in H5.
+apply H8 in H6.
+rewrite H5. rewrite H6.
+reflexivity.
+assumption.
+assumption.
+Qed.
 
 
 
