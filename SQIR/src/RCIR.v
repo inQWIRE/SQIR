@@ -1875,6 +1875,21 @@ Proof.
 intros.
 induction m.
 simpl.
+2:{
+simpl.
+destruct (list_to_funbool n (rev (nat_to_binlist n x)) m) eqn:eq.
+destruct (list_to_funbool n (rev (nat_to_binlist n y)) m) eqn:eq1.
+rewrite xorb_true_r in IHm.
+rewrite xorb_true_r in IHm.
+rewrite andb_true_l.
+rewrite xorb_true_l.
+rewrite andb_true_l.
+rewrite <- negb_xorb_l.
+rewrite xorb_nilpotent.
+assert (¬ false = true) by btauto.
+rewrite H0.
+rewrite xorb_true_l.
+}
 Admitted.
 
 Lemma adder_spec_correct_aux :
