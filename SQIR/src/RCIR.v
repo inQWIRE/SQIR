@@ -1,5 +1,137 @@
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
 
+Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
+
+Fixpoint carry_spec b n f g :=
+  match n with
+  | 0 => b
+  | S n' => let c := carry_spec b n' f g in
+           let a := f n' in
+           let b := g n' in
+           (a && b) ⊕ (b && c) ⊕ (a && c)
+  end.
+
+Lemma carry_spec_sym :
+  forall b n f g,
+    carry_spec b n f g = carry_spec b n g f.
+Proof.
+  intros. induction n. reflexivity.
+  simpl. rewrite IHn. btauto.
+Qed.
+
+Definition funbool_push b f : nat -> bool :=
+  fun x => match x with
+        | O => b
+        | S n => f n
+        end.
+
+Definition allfalse := fun (_ : nat) => false.
+
+Lemma carry_spec_false_0_l: forall n f, 
+    carry_spec false n allfalse f = false.
+Proof.
+unfold allfalse.
+induction n.
+simpl.
+reflexivity.
+intros. simpl.
+rewrite IHn. rewrite andb_false_r.
+reflexivity.
+Qed.
+
+Lemma carry_spec_false_0_r: forall n f, 
+    carry_spec false n f allfalse = false.
+Proof.
+unfold allfalse.
+induction n.
+simpl.
+reflexivity.
+intros. simpl.
+rewrite IHn. rewrite andb_false_r.
+reflexivity.
+Qed.
+
+Lemma carry_spec_fbpush :
+  forall n a ax ay fx fy,
+    carry_spec a (S n) (funbool_push ax fx) (funbool_push ay fy) = carry_spec (majb a ax ay) n fx fy.
+Proof.
+  induction n; intros.
+  simpl. unfold majb. btauto.
+  remember (S n) as Sn. simpl. rewrite IHn. unfold funbool_push. subst.
+  simpl. easy.
+Qed.
+
+Fixpoint pos2fb p : nat -> bool :=
+  match p with
+  | xH => funbool_push true allfalse
+  | xI p' => funbool_push true (pos2fb p')
+  | xO p' => funbool_push false (pos2fb p')
+  end.
+
+Definition N2fb n : nat -> bool :=
+  match n with
+  | 0%N => allfalse
+  | Npos p => pos2fb p
+  end.
+
+Fixpoint add_c b x y :=
+  match b with
+  | false => Pos.add x y
+  | true => Pos.add_carry x y
+  end.
+
+Lemma carry_spec_succ :
+  forall m p,
+    carry_spec true m (pos2fb p) allfalse = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
+Proof.
+  induction m; intros. simpl. destruct p; reflexivity.
+  replace allfalse with (funbool_push false allfalse).
+  2:{ unfold funbool_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
+  }
+  Local Opaque funbool_push carry_spec.
+  destruct p; simpl.
+  rewrite carry_spec_fbpush; unfold majb; simpl. rewrite IHm. reflexivity.
+  rewrite carry_spec_fbpush; unfold majb; simpl. rewrite carry_spec_false_0_r. Local Transparent funbool_push. simpl. btauto.
+  rewrite carry_spec_fbpush; unfold majb; simpl. Local Transparent carry_spec. destruct m; reflexivity.
+Qed.
+
+Lemma carry_spec_succ' :
+  forall m p,
+    carry_spec true m allfalse (pos2fb p) = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
+Proof.
+  intros. rewrite carry_spec_sym. apply carry_spec_succ.
+Qed.
+
+Lemma carry_spec_succ0 :
+  forall m, carry_spec true m allfalse allfalse = pos2fb xH m.
+Proof.
+  induction m. easy. 
+  replace allfalse with (funbool_push false allfalse).
+  2:{ unfold funbool_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
+  }
+  rewrite carry_spec_fbpush. unfold majb. simpl. rewrite carry_spec_false_0_l. easy.
+Qed.
+
+Lemma carry_add_pos_eq :
+  forall m b p q,
+    carry_spec b m (pos2fb p) (pos2fb q) ⊕ (pos2fb p) m ⊕ (pos2fb q) m = pos2fb (add_c b p q) m.
+Proof.
+  induction m; intros. simpl. destruct p, q, b; reflexivity.
+  Local Opaque carry_spec.
+  destruct p, q, b; simpl; rewrite carry_spec_fbpush; try (rewrite IHm; reflexivity); try (unfold majb; simpl; try rewrite carry_spec_succ; try rewrite carry_spec_succ'; try rewrite carry_spec_succ0; try rewrite carry_spec_false_0_l; try rewrite carry_spec_false_0_r; unfold allfalse; try btauto; try (destruct m; reflexivity)).
+Qed.
+
+Lemma carry_add_eq :
+  forall m x y,
+    carry_spec false m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y)) m.
+Proof.
+  intros.
+  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
+  rewrite carry_spec_false_0_l. easy.
+  rewrite carry_spec_false_0_l. btauto.
+  rewrite carry_spec_false_0_r. btauto.
+  apply carry_add_pos_eq.
+Qed.
 
 (* Implementation Language *)
 Inductive bccom :=
