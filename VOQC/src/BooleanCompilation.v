@@ -589,3 +589,6 @@ Output : x' = x
 *)
 Definition id_bexp : bexp := 0.
 Eval cbv in (compile id_bexp).
+
+Definition fun_with_var : bexp := (4).
+Eval cbv in (compile' fun_with_var 2 6).
