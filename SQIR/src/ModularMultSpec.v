@@ -10,6 +10,28 @@ Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
    Need to connect the proof with our own representations. *)
 Local Open Scope nat_scope.
 
+Lemma mod_sum_lt :
+  forall x y M,
+    0 < x < M ->
+    0 < y < M ->
+    (x + y) mod M < x <-> x + y >= M.
+Proof.
+  intros. split; intros.
+  - assert ((x + y) mod M < x + y) by lia.
+    rewrite Nat.div_mod with (y := M) in H2 by lia.
+    assert (0 < (x + y) / M) by nia.
+    rewrite Nat.div_str_pos_iff in H3 by lia. lia.
+  - rewrite Nat.mod_eq by lia.
+    assert (1 <= (x + y) / M < 2).
+    { split.
+      apply Nat.div_le_lower_bound; lia.
+      apply Nat.div_lt_upper_bound; lia.
+    }
+    replace (M * ((x + y) / M)) with M by nia.
+    lia.
+Qed.    
+
+
 Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
 
 Fixpoint carry_spec b n f g :=
