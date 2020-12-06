@@ -8,6 +8,52 @@ Local Open Scope bccom_scope.
 (** Unitary Programs - Modular Multiplier. **)
 (**********************)
 
+(* First, we need to define a function to grab three fbools out of a single uniformed fbools. 
+   The structure of the fbool is like
+     from 0 to 2n+2 are bits messing around for f and g and extra c bit and high bit for comparator. *)
+Definition get_f n (fb:nat -> bool) := fun i => if i <? n then fb (2 * i + 1) else false.
+
+Definition get_g n (fb:nat -> bool) := fun i => if i <? n then fb (2 * i + 2) else false.
+
+Definition get_fold base (fb:nat -> bool) := fun i => fb (base + i).
+
+Fixpoint insert_f n f (fb:nat -> bool) :=
+     match n with 
+          | 0 => fb
+          | S m => insert_f m f (fb[2 * m + 1 |-> f m])
+     end.
+
+Lemma get_insert_f_same':
+  forall n f m, n <= m -> insert_f n (get_f m f) f = f.
+Proof.
+  intros n f.
+  unfold get_f.
+  induction n.
+  simpl.
+  reflexivity.
+  intros.
+  simpl in *.
+  rewrite update_same.
+  rewrite IHn.
+  reflexivity.
+  lia.
+  destruct (n <? m) eqn:eq.
+  reflexivity.
+specialize (Nat.ltb_lt n m) as eq1.
+apply not_iff_compat in eq1.
+apply not_true_iff_false in eq.
+apply eq1 in eq.
+lia.
+Qed.
+
+
+Lemma get_insert_f_same:
+  forall n f, insert_f n (get_f n f) f = f.
+Proof.
+  intros.
+  rewrite get_insert_f_same'.
+  reflexivity. lia.
+Qed.
 
 (* The following contains the implementation of the Modular Multiplier circuit that meets the specification. *)
 (* Maj and UMA circuits. *)
@@ -44,21 +90,63 @@ Fixpoint MAJseq n : bccom :=
   | S n' => MAJseq n'; MAJ (2 * n) (2 * n + 1) (2 * n + 2)
   end.
 
-Fixpoint carry n f :=
-  match n with
-  | 0 => f 0
-  | S n' => let c := carry n' f in
-           let a := f (2 * n' + 1) in
-           let b := f (2 * n' + 2) in
-           (a && b) ⊕ (b && c) ⊕ (a && c)
-  end.
+Definition carry n f := carry_spec (f 0) n (get_f n f) (get_g n f).
+
+Lemma carry_extend_aux :
+   forall n t m f, n <= t -> t < m -> 
+    carry_spec (f 0) n (get_f m f) (get_g m f)
+   = carry_spec (f 0) n (get_f t f) (get_g t f).
+Proof.
+  intros.
+  unfold get_f,get_g.
+  induction n.
+  simpl. reflexivity.
+  simpl in *.
+  destruct (n <? m) eqn:eq.
+  destruct (n <? t) eqn:eq1.
+  rewrite IHn.
+  reflexivity.
+  lia.
+  specialize (Nat.ltb_lt n t) as eq2.
+  apply not_iff_compat in eq2.
+  apply not_true_iff_false in eq1.
+  apply eq2 in eq1.
+  lia.
+  specialize (Nat.ltb_lt n m) as eq2.
+  apply not_iff_compat in eq2.
+  apply not_true_iff_false in eq.
+  apply eq2 in eq.
+  lia.
+Qed.
 
 Lemma carry_extend :
   forall n f,
     carry (S n) f = (f (2 * n + 1) && f (2 * n + 2)) ⊕ 
   (f (2 * n + 2) && carry n f) ⊕ (f (2 * n + 1) && carry n f).
 Proof.
-  intros. easy.
+  intros. unfold carry.
+  simpl.
+  assert (get_f (S n) f n = f (n + (n + 0) + 1)).
+  unfold get_f.
+  destruct (n <? S n) eqn:eq. easy.
+  specialize (Nat.ltb_lt n (S n)) as eq1.
+  apply not_iff_compat in eq1.
+  apply not_true_iff_false in eq.
+  apply eq1 in eq.
+  lia.
+  rewrite H.
+  assert (get_g (S n) f n = f (n + (n + 0) + 2)).
+  unfold get_g.
+  destruct (n <? S n) eqn:eq. easy.
+  specialize (Nat.ltb_lt n (S n)) as eq1.
+  apply not_iff_compat in eq1.
+  apply not_true_iff_false in eq.
+  apply eq1 in eq.
+  lia.
+  rewrite H0.
+  rewrite (carry_extend_aux n n (S n)).
+  reflexivity.
+  lia. lia.
 Qed.
 
 Fixpoint msb n f : nat -> bool :=
@@ -213,158 +301,235 @@ intros.
   1 - 4: lia.
 Qed.
 
-Fixpoint UMAseq n : bccom :=
+Fixpoint UMAseq len n : bccom :=
   match n with
-  | 0 => UMA 0 1 2
-  | S n' => UMA (2 * n) (2 * n + 1) (2 * n + 2) ; UMAseq n'
+  | 0 => UMA len (len + 1) (len + 2)
+  | S n' => UMAseq len n'; UMA (2 * (len - n)) (2 * (len - n) + 1) (2 * (len - n) + 2)
   end.
+
+Lemma uma_end_gt' :
+   forall n len t f, 
+        n <= len ->  2 * len + 2 < t ->
+        (bcexec (UMAseq len n) f) t = f t.
+Proof.
+  induction n; intros.
+  simpl.
+  destruct (f len) eqn:eq1.
+  destruct (f (len+1)) eqn:eq2.
+  destruct ((f [(len + 2) |-> ¬ (f (len + 2))]) (len + 2)) eqn:eq3.
+  destruct (((f [(len + 2) |-> ¬ (f (len + 2))])
+                 [len |-> ¬ ((f [(len + 2) |-> ¬ (f (len + 2))]) len)]) len) eqn:eq4.
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  destruct ((f [(len + 2) |-> ¬ (f (len + 2))]) len) eqn:eq4.
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  rewrite update_index_neq by lia.
+  reflexivity. 
+  destruct (f (len + 2)) eqn:eq3.
+  destruct ((f [len |-> ¬ (f len)]) len) eqn:eq4.
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  rewrite update_index_neq by lia.
+  reflexivity. 
+  destruct (f len) eqn:eq4.
+  rewrite update_index_neq by lia.
+  1 - 2: reflexivity.
+  destruct (f (len + 2)) eqn:eq2.
+  destruct ((f [len |-> ¬ (f len)]) len) eqn:eq3.
+  repeat rewrite update_index_neq by lia.
+  reflexivity. 
+  rewrite update_index_neq by lia.
+  reflexivity.
+  destruct (f len) eqn:eq3.
+  rewrite update_index_neq by lia.
+  1 - 2: reflexivity.
+  simpl.
+  destruct (bcexec (UMAseq len n) f (len - S n + (len - S n + 0))) eqn:eq1.
+  destruct (bcexec (UMAseq len n) f (len - S n + (len - S n + 0) + 1)) eqn:eq2.
+  destruct (((bcexec (UMAseq len n) f) [len - S n + (len - S n + 0) + 2
+     |-> ¬ (bcexec (UMAseq len n) f
+              (len - S n + (len - S n + 0) + 2))])
+      (len - S n + (len - S n + 0) + 2)) eqn:eq3.
+  destruct ((((bcexec (UMAseq len n) f) [len - S n + (len - S n + 0) + 2
+    |-> ¬ (bcexec (UMAseq len n) f
+             (len - S n + (len - S n + 0) + 2))])
+   [len - S n + (len - S n + 0)
+   |-> ¬ (((bcexec (UMAseq len n) f)
+           [len - S n + (len - S n + 0) + 2
+           |-> ¬ (bcexec (UMAseq len n) f
+                    (len - S n + (len - S n + 0) + 2))])
+            (len - S n + (len - S n + 0)))])
+    (len - S n + (len - S n + 0))) eqn:eq4.
+  repeat rewrite update_index_neq by lia.
+  rewrite (IHn len t f) by lia.
+  reflexivity.
+  repeat rewrite update_index_neq by lia.
+  rewrite (IHn len t f) by lia.
+  reflexivity.
+  destruct (((bcexec (UMAseq len n) f) [len - S n + (len - S n + 0) + 2
+   |-> ¬ (bcexec (UMAseq len n) f
+            (len - S n + (len - S n + 0) + 2))])
+    (len - S n + (len - S n + 0))) eqn:eq4.
+  repeat rewrite update_index_neq by lia.
+  rewrite IHn by lia. reflexivity.
+  repeat rewrite update_index_neq by lia.
+  rewrite IHn by lia. reflexivity.
+  destruct (bcexec (UMAseq len n) f (len - S n + (len - S n + 0) + 2)) eqn:eq4.
+  destruct (((bcexec (UMAseq len n) f) [len - S n + (len - S n + 0)
+   |-> ¬ (bcexec (UMAseq len n) f (len - S n + (len - S n + 0)))])
+    (len - S n + (len - S n + 0))) eqn:eq5.
+  repeat rewrite update_index_neq by lia.
+  rewrite IHn by lia.
+  reflexivity.
+  repeat rewrite update_index_neq by lia.
+  rewrite IHn by lia.
+  reflexivity.
+  destruct (bcexec (UMAseq len n) f (len - S n + (len - S n + 0))) eqn:eq5.
+  repeat rewrite update_index_neq by lia.
+  rewrite IHn by lia.
+  reflexivity.
+  rewrite IHn by lia.
+  reflexivity.
+  destruct (bcexec (UMAseq len n) f (len - S n + (len - S n + 0) + 2)) eqn:eq2.
+  destruct (((bcexec (UMAseq len n) f) [len - S n + (len - S n + 0)
+   |-> ¬ (bcexec (UMAseq len n) f (len - S n + (len - S n + 0)))])
+    (len - S n + (len - S n + 0))).
+  repeat rewrite update_index_neq by lia.
+  rewrite IHn by lia.
+  reflexivity.
+  repeat rewrite update_index_neq by lia.
+  rewrite IHn by lia.
+  reflexivity.
+  destruct (bcexec (UMAseq len n) f (len - S n + (len - S n + 0))) eqn:eq3.
+  repeat rewrite update_index_neq by lia.
+  rewrite IHn by lia.
+  reflexivity.
+  rewrite IHn by lia.
+  reflexivity.
+Qed.
 
 Lemma uma_end_gt :
   forall n m f,
     2 * n + 2 < m ->
-    (bcexec (UMAseq n) f) m = f m.
+    (bcexec (UMAseq n n) f) m = f m.
 Proof.
-  induction n; intros. simpl.
-  destruct (f 0) eqn:eq1.
-  destruct (f 1) eqn:eq2.
-  destruct ((f [2 |-> ¬ (f 2)]) 2) eqn:eq3.
-  destruct (((f [2 |-> ¬ (f 2)]) [0 |-> ¬ ((f [2 |-> ¬ (f 2)]) 0)]) 0) eqn:eq4.
-  repeat rewrite update_index_neq by lia.
-  reflexivity. 
-  repeat rewrite update_index_neq by lia.
-  reflexivity. 
-  destruct ((f [2 |-> ¬ (f 2)]) 0) eqn:eq4.
-  repeat rewrite update_index_neq by lia.
-  reflexivity. 
-  rewrite update_index_neq by lia.
-  reflexivity. 
-  destruct (f 2) eqn:eq3.
-  destruct ((f [0 |-> ¬ (f 0)]) 0) eqn:eq4.
-  repeat rewrite update_index_neq by lia.
-  reflexivity. 
-  rewrite update_index_neq by lia.
-  reflexivity. 
-  destruct (f 0) eqn:eq4.
-  rewrite update_index_neq by lia.
-  1 - 2: reflexivity.
-  destruct (f 2) eqn:eq2.
-  destruct ((f [0 |-> ¬ (f 0)]) 0) eqn:eq3.
-  repeat rewrite update_index_neq by lia.
-  reflexivity. 
-  rewrite update_index_neq by lia.
+  intros.
+  rewrite uma_end_gt'.
   reflexivity.
-  destruct (f 0) eqn:eq3.
-  rewrite update_index_neq by lia.
-  1 - 2: reflexivity.
-  simpl.
-  destruct (f (S (n + S (n + 0)))) eqn:eq1.
-  destruct (f (S (n + S (n + 0) + 1))) eqn:eq2.
-  destruct ((f [S (n + S (n + 0) + 2)
-       |-> ¬ (f (S (n + S (n + 0) + 2)))])
-        (S (n + S (n + 0) + 2))) eqn:eq3.
-  destruct (((f [S (n + S (n + 0) + 2)
-      |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
-     S (n + S (n + 0))
-     |-> ¬ ((f [S (n + S (n + 0) + 2)
-             |-> ¬ (f (S (n + S (n + 0) + 2)))])
-              (S (n + S (n + 0))))]) (S (n + S (n + 0)))) eqn:eq4.
-  rewrite (IHn m (((f [S (n + S (n + 0) + 2)
-     |-> ¬ (f (S (n + S (n + 0) + 2)))]) [
-    S (n + S (n + 0))
-    |-> ¬ ((f [S (n + S (n + 0) + 2)
-            |-> ¬ (f (S (n + S (n + 0) + 2)))])
-             (S (n + S (n + 0))))]) [S (n + S (n + 0) + 1)
-   |-> ¬ (((f [S (n + S (n + 0) + 2)
-            |-> ¬ (f (S (n + S (n + 0) + 2)))])
-           [S (n + S (n + 0))
-           |-> ¬ ((f [S (n + S (n + 0) + 2)
-                   |-> ¬ (f (S (n + S (n + 0) + 2)))])
-                    (S (n + S (n + 0))))])
-            (S (n + S (n + 0) + 1)))])) by lia.
-  repeat rewrite update_index_neq by lia.
-  reflexivity.
-  rewrite IHn by lia.
-  repeat rewrite update_index_neq by lia.
-  reflexivity.
-  destruct ((f [S (n + S (n + 0) + 2)
-     |-> ¬ (f (S (n + S (n + 0) + 2)))]) 
-      (S (n + S (n + 0)))) eqn:eq4.
-  rewrite IHn by lia.
-  repeat rewrite update_index_neq by lia.
-  reflexivity.
-  rewrite IHn by lia.
-  repeat rewrite update_index_neq by lia.
-  reflexivity.
-  destruct (f (S (n + S (n + 0) + 2))) eqn:eq3.
-  destruct ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])) eqn:eq4.
-  rewrite IHn by lia.
-  repeat rewrite update_index_neq by lia.
-  reflexivity.
-  rewrite IHn by lia.
-  rewrite update_index_neq by lia.
-  reflexivity.
-  destruct (f (S (n + S (n + 0)))) eqn:eq4.
-  rewrite IHn by lia.
-  rewrite update_index_neq by lia.
-  reflexivity.
-  rewrite IHn by lia.
-  reflexivity.
-  destruct (f (S (n + S (n + 0) + 2))) eqn:eq2.
-  destruct ((f [S (n + S (n + 0)) |-> ¬ (f (S (n + S (n + 0))))])
-      (S (n + S (n + 0)))) eqn:eq3.
-  rewrite IHn by lia.
-  repeat rewrite update_index_neq by lia.
-  reflexivity.
-  rewrite IHn by lia.
-  rewrite update_index_neq by lia.
-  reflexivity.
-  destruct (f (S (n + S (n + 0)))) eqn:eq3.
-  rewrite IHn by lia.
-  rewrite update_index_neq by lia.
-  reflexivity.
-  rewrite IHn by lia.
-  reflexivity.
+  lia.
+  assumption.
 Qed.
+
+Lemma Single_MAJ_UMA_correct :
+  forall a b c f,
+    a <> b -> b <> c -> a <> c ->
+    bcexec ((MAJ c b a); (UMA c b a)) f = ((f[a |-> (f a)])[b |-> (f a ⊕ f b ⊕ f c)])[c |-> (f c)].
+Proof.
+  intros.
+  rewrite bcseq_correct.
+  rewrite MAJ_correct.
+  remember (((f [a
+     |-> ((f a && f b) ⊕ (f a && f c))
+         ⊕ (f b && f c)]) [b |-> 
+    f b ⊕ f a]) [c |-> f c ⊕ f a]) as g.
+  rewrite (UMA_correct_partial a b c f g).
+  rewrite update_twice_neq.
+  rewrite (update_twice_neq g).
+  rewrite Heqg.
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq ((f [a
+    |-> ((f a && f b) ⊕ (f a && f c))
+        ⊕ (f b && f c)]) [b |-> 
+   f b ⊕ f a])).
+  rewrite (update_twice_neq (f [a
+    |-> ((f a && f b) ⊕ (f a && f c))
+        ⊕ (f b && f c)])).
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq ((f [a |-> f a]) [b |-> f b ⊕ f a])).
+  rewrite update_twice_eq.
+  reflexivity.
+  1 - 8 : lia.
+  rewrite Heqg.
+  rewrite (update_twice_neq f).
+  rewrite (update_twice_neq (f [b |-> f b ⊕ f a])).
+  rewrite update_index_eq.
+  reflexivity.
+  1 - 2 : lia.
+  rewrite Heqg.
+  rewrite update_twice_neq.
+  rewrite update_index_eq. 
+  reflexivity. lia.
+  rewrite Heqg.
+  rewrite update_index_eq. 
+  reflexivity.
+  1 - 3 : assumption.
+Qed.
+
+Lemma uma_msb_hbit_eq :
+   forall n m f, f 0 = false -> m < 2 * n + 3 ->
+     bcexec (UMAseq n n) ((msb n f) [2 * n + 2 |-> f (2 * n + 2)]) m =
+              bcexec (UMAseq n n) (msb n f) m.
+Proof.
+  induction n.
+  intros.
+  simpl.
+  rewrite update_index_neq by lia.
+  destruct ((((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
+       |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)]) 0) eqn:eq.
+  rewrite update_index_neq by lia.
+  destruct ((((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
+       |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)]) 1) eqn:eq1.
+  rewrite update_index_eq by lia.
+  rewrite update_index_eq by lia.
+(*
+  rewrite (update_index_eq (((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
+      |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)])) by lia.
+  rewrite (update_index_eq ((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2])) by lia.
+  rewrite (update_twice_neq f) in eq by lia.
+  rewrite (update_twice_neq (f [1 |-> f 1 ⊕ f 2])) in eq by lia.
+  rewrite update_index_eq in eq by lia.
+  rewrite (update_twice_neq (f [0 |-> f 0 ⊕ f 2])) in eq1 by lia.
+  rewrite update_index_eq in eq1 by lia.
+  destruct ((f 2)) eqn:eq2.
+  assert (¬ true = false) by easy. rewrite H1.
+  rewrite xorb_true_r in eq.
+  rewrite xorb_true_r in eq1.
+  apply negb_true_iff in eq1.
+  rewrite eq1. rewrite H.
+  rewrite xorb_false_l.
+  rewrite andb_false_l.
+  rewrite andb_true_l.
+  rewrite andb_false_l.
+  rewrite xorb_false_l.
+  unfold negb.
+  rewrite update_index_eq by lia.
+  repeat rewrite update_index_neq by lia.
+  rewrite update_index_eq by lia.
+  destruct (m =? 0) eqn:eq3.
+  apply Nat.eqb_eq in eq3.
+  rewrite eq3.
+  repeat rewrite update_index_neq by lia.
+*)
+Admitted.
 
 (* Defining the adder implementation based on series of MAJ + UMA. *)
 
-(* First, we need to define a function to grab three fbools out of a single uniformed fbools. 
-   The structure of the fbool is like
-     from 0 to 2n+2 are bits messing around for f and g and extra c bit and high bit for comparator. *)
-Definition get_f (fb:nat -> bool) := fun i => fb (2 * i + 1).
-
-Definition get_g (fb:nat -> bool) := fun i => fb (2 * i + 2).
-
-Definition get_fold base (fb:nat -> bool) := fun i => fb (base + i).
-
-Fixpoint insert_f n f (fb:nat -> bool) :=
-     match n with 
-          | 0 => fb
-          | S m => insert_f m f (fb[2 * m + 1 |-> f m])
-     end.
-
-Lemma get_insert_f_same:
-  forall n f, insert_f n (get_f f) f = f.
-Proof.
-  intros.
-  unfold get_f.
-  induction n.
-  simpl.
-  reflexivity.
-  simpl in *.
-  rewrite update_same.
-  rewrite IHn.
-  reflexivity.
-  reflexivity.
-Qed.
 
 
-Definition adder n : bccom := MAJ_sign n; UMAseq n.
+Definition adder n : bccom := MAJseq n; UMAseq n n.
+
+
 
 Lemma adder_correct :
-   forall n fb m, m < n -> get_f (bcexec (adder n) fb) m = adder_spec (get_f fb) (get_g fb) m.
+   forall n fb, (bcexec (adder n) fb) = insert_f n (adder_spec (get_f n fb) (get_g n fb)) fb.
 Proof.
-intros.
+ intros.
+ unfold adder,adder_spec,add_bit.
+ rewrite bcseq_correct.
+ rewrite MAJseq_correct.
 Admitted.
 
 (* Defining the comparator implementation.
@@ -375,10 +540,11 @@ Fixpoint flip_snd n : bccom :=
        | S m => flip_snd m; bcx (2 * m + 1)
       end.
 
-Definition comparator n := flip_snd n ; adder n ; flip_snd n.
+Definition comparator n := flip_snd n ; MAJ_sign n ; UMAseq n n ; flip_snd n.
 
 Lemma comparator_correct : 
-   forall n fb m, m <= n -> get_f (bcexec (comparator n) fb) m = compare_spec (get_f fb) (get_g fb) m.
+   forall n fb m, m <= n -> 
+         get_f n (bcexec (comparator n) fb) m = compare_spec (get_f n fb) (get_g n fb) m.
 Proof.
 intros.
 Admitted.
@@ -388,10 +554,127 @@ Definition times_two n := bcswap 1 (2 * n - 1).
 
 Lemma times_two_correct :
    forall n i fb, 0 < n -> i < n -> 
-         fb (2 * n - 1) = false -> get_f (bcexec (times_two n) fb) i = times_two_spec (get_f fb) i.
+         fb (2 * n - 1) = false -> get_f n (bcexec (times_two n) fb) i = times_two_spec (get_f n fb) i.
 Proof.
 intros.
 Admitted.
+
+(* first, swap M with zeros. 
+   These are the steps before starting one_step. 
+   assume the input is x M 0000000 *)
+Fixpoint suffle_1 base len n :=
+  match n with 0 => bcswap base (len + 1)
+             | S m => suffle_1 base len m ;bcswap (base + m) (len + n)
+  end.
+
+(* second swap x => x_1 0 x_2 0 ..... x_n 0 *)
+Fixpoint suffle_2 n :=
+  match n with 0 => bcskip
+           | S m => if 1 <? n then bcswap n (2*n-1) ; suffle_2 m else suffle_2 m
+  end.
+
+(* move M back to swap *)
+Fixpoint suffle_3 base n :=
+   match n with 0  => bcskip
+            | S m => bcswap (base + m) (2*m+2);suffle_3 base m
+   end.
+
+Definition suffle n := suffle_1 (n^3 + 2*n) n n ; suffle_2 n ; suffle_3 (n^3 + 2*n) n.
+
+Fixpoint copy_x_low base len n :=
+     match n with 0 => bcskip
+               | S m => bccont (2 * m + 1) (bcx (2*len+ m + 2); bcx (base + m)); copy_x_low base len m
+     end.
+
+Definition init n := suffle n ; copy_x_low (n^3 + n) n n.
+
+
+(* This is the one_step_impl. *)
+Definition first_half n := times_two n; (comparator n);bccont (2 * n + 1) (adder n).
+
+Fixpoint swap_x len n :=
+   match n with 0 => bcskip
+            | S m => bcswap (2*len + m + 2) (2*m+1);swap_x len m
+   end.
+
+Fixpoint swap_M n :=
+   match n with 0 => bcskip
+            | S m => bcswap (2*m+1) (2*m+2);swap_M m
+   end.
+
+
+(* If you want to add x back, please add here. It does not affect 
+   the result of 2x%M *)
+Definition second_half n := swap_M n ; swap_x n n; comparator n.
+
+(* remove x - (2x %M) to other place, and then move 2x%M there for further calculation. *)
+Fixpoint swap_clean_1 base n := 
+   match n with 0 => bcskip
+             | S m => bcswap (base + m) (2*m+1);swap_clean_1 base m
+   end.
+
+Fixpoint copy_r len n := 
+     match n with 0 => bcskip
+            | S m => bccont (2 * m + 1) (bcx (2*len+m + 2)); copy_r len m
+     end.
+
+Definition one_step_clean base n := swap_clean_1 base n; swap_x n n; swap_M n; copy_r n n.
+
+Definition one_step base n := first_half n ; second_half n; one_step_clean base n.
+
+Fixpoint swap_high_x base n :=
+  match n with 0 => bcskip
+            | S m => bcswap (2*m+2) (base + m);swap_high_x base m
+  end.
+
+Fixpoint suffle_back n :=
+    match n with 0 => bcskip
+              | S m => suffle_back m ; bcswap m (2 * m + 1)
+    end.
+
+Fixpoint suffle_M base len n :=
+    match n with 0 => bcskip
+              | S m => bcswap (base + m) (len + m); suffle_M base len m
+    end.
+
+Definition basis_step_impl high_base n :=
+       swap_high_x high_base n; adder n; swap_high_x high_base n
+         ;  comparator n; bccont (2 * n + 1) (adder n)
+         ; swap_high_x high_base n; swap_M n
+         ; comparator n; adder n; swap_high_x high_base n
+         ; suffle_3 (n^3 + 2*n) n; suffle_back n ; suffle_M (n^3 + 2*n) n n.
+
+Definition basis_step_no_step high_base n :=
+       swap_M n ; swap_high_x high_base n ; swap_M n ;
+               suffle_3 (n^3 + 2*n) n; suffle_back n ; suffle_M (n^3 + 2*n) n n.
+
+
+Fixpoint repeat_step_impl base dim n :=
+   match n with 
+    | 0 => bcskip
+    | S m => one_step base dim ; repeat_step_impl (base+dim) dim m
+   end.
+
+Fixpoint all_step' n fold_base base dim (c: nat -> bool) : bccom :=
+   match n with 
+    | 0 => if c 0 then basis_step_impl fold_base dim else basis_step_no_step fold_base dim 
+    | S m => if c n then (repeat_step_impl base dim n) ; all_step' m fold_base (base+dim^2) dim c
+                    else all_step' m fold_base base dim c
+   end.
+
+
+Definition all_step n (c: nat -> bool) := init n; all_step' (n - 1) (n^3 + n) (3*n+2) n c.
+
+
+
+(* let's say fb = 0 x M 0 00000 initiallly. first_swap to make fb becomes fb = x M x 000 (n^3-n) x 0000...*)
+Fixpoint first_swap len n :=
+     match n with 0 => bccont 0 (bcx (2*len); bcx (len^3 + n))
+               | S m => first_swap len m;bccont m (bcx (2*len + m);bcx (len^3 + len + m))
+     end.
+
+
+
 
 
 Definition one_step n := times_two n; (comparator n) ; bccont (2 * n + 1) (adder n).
