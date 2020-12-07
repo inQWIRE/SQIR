@@ -579,18 +579,145 @@ Fixpoint suffle_3 base n :=
             | S m => bcswap (base + m) (2*m+2);suffle_3 base m
    end.
 
-Definition suffle n := suffle_1 (n^3 + 2*n) n n ; suffle_2 n ; suffle_3 (n^3 + 2*n) n.
+Definition suffle n := suffle_1 (n^3 + 2*n+2) n n ; suffle_2 n ; suffle_3 (n^3 + 2*n+2) n.
+
+(* get the x,M before the code. *)
+Definition get_of n f := fun i => if i <? n then f i else false.
+
+Definition get_og n f := fun i => if i <? n then f (n + i) else false.
+
+Definition get_bf b n f := fun i => if i <? n then f (b + i) else false. 
+
+Lemma suffle_correct_1_aux :
+    forall n m len fb, n <= len -> n + len < m ->
+                 get_f n (bcexec (suffle_1 m len n ; suffle_2 n; suffle_3 m n) fb) = get_of n fb. 
+Proof.
+intros.
+unfold get_f,get_of.
+induction n.
+simpl. reflexivity.
+Admitted.
+
+Lemma suffle_correct_1 :
+    forall n fb, 0 < n -> get_f n (bcexec (suffle n) fb) = get_of n fb. 
+Proof.
+intros.
+unfold suffle.
+rewrite suffle_correct_1_aux.
+reflexivity. lia.
+assert (2 * n = n + n ) by lia.
+rewrite H0.
+assert (n ^ 3 = n * n * n).
+unfold Nat.pow. lia.
+rewrite H1.
+lia.
+Qed.
+
+
+Lemma suffle_correct_2_aux :
+    forall n m len fb, n <= len -> n + len < m ->
+                 get_g n (bcexec (suffle_1 m len n ; suffle_2 n; suffle_3 m n) fb) = get_og n fb. 
+Proof.
+intros.
+unfold get_f,get_of.
+induction n.
+simpl. reflexivity.
+Admitted.
+
+Lemma suffle_correct_2 :
+    forall n fb, 0 < n -> get_g n (bcexec (suffle n) fb) = get_og n fb. 
+Proof.
+intros.
+unfold suffle.
+rewrite suffle_correct_2_aux.
+reflexivity. lia.
+assert (2 * n = n + n ) by lia.
+rewrite H0.
+assert (n ^ 3 = n * n * n).
+unfold Nat.pow. lia.
+rewrite H1.
+lia.
+Qed.
+
 
 Fixpoint copy_x_low base len n :=
      match n with 0 => bcskip
                | S m => bccont (2 * m + 1) (bcx (2*len+ m + 2); bcx (base + m)); copy_x_low base len m
      end.
 
-Definition init n := suffle n ; copy_x_low (n^3 + n) n n.
+Lemma copy_x_low_correct_1 : 
+   forall n m base fb, n <= m -> 2 * m + n + 2 < base ->
+     get_bf (2 * m + n + 2) n (bcexec (copy_x_low base m n) fb) = get_f n fb.
+Proof.
+  intros.
+  unfold get_f,get_bf.
+  induction n.
+  simpl. reflexivity.
+  simpl.
+Admitted.
+
+Lemma copy_x_low_correct_2 : 
+   forall n m base fb, n <= m -> 2 * m + n + 2 < base ->
+     get_bf base n (bcexec (copy_x_low base m n) fb) = get_f n fb.
+Proof.
+  intros.
+  unfold get_f,get_bf.
+  induction n.
+  simpl. reflexivity.
+  simpl.
+Admitted.
+
+Definition init n := suffle n ; copy_x_low (n^3 + n+2) n n.
+
+Lemma init_correct_1 :
+   forall n fb, get_f n (bcexec (init n) fb) = get_of n fb.
+Proof.
+ intros.
+ unfold init.
+ rewrite bcseq_correct.
+ rewrite <- suffle_correct_1.
+Admitted.
+
+Lemma init_correct_2 :
+   forall n fb, get_g n (bcexec (init n) fb) = get_og n fb.
+Proof.
+ intros.
+ unfold init.
+ rewrite bcseq_correct.
+ rewrite <- suffle_correct_2.
+Admitted.
+
+Lemma init_correct_3 :
+   forall n fb, get_bf ((n^3 + n+2)) n (bcexec (init n) fb) = get_of n fb.
+Proof.
+ intros.
+ unfold init.
+ rewrite bcseq_correct.
+Admitted.
+
+Lemma init_correct_4 :
+   forall n fb, get_bf (2 * n + n + 2) n (bcexec (init n) fb) = get_of n fb.
+Proof.
+ intros.
+ unfold init.
+ rewrite bcseq_correct.
+Admitted.
 
 
 (* This is the one_step_impl. *)
 Definition first_half n := times_two n; (comparator n);bccont (2 * n + 1) (adder n).
+
+Lemma first_half_correct_1:
+  forall n fb, get_f n (bcexec (first_half n) fb) = one_step_sepc n (get_f n fb) (get_g n fb).
+Proof.
+  intros.
+Admitted.
+
+Lemma first_half_correct_2:
+  forall n fb, get_g n (bcexec (first_half n) fb) = (get_g n fb).
+Proof.
+  intros.
+Admitted.
 
 Fixpoint swap_x len n :=
    match n with 0 => bcskip
@@ -607,6 +734,12 @@ Fixpoint swap_M n :=
    the result of 2x%M *)
 Definition second_half n := swap_M n ; swap_x n n; comparator n.
 
+Lemma second_half_correct:
+  forall n fb, (bcexec (first_half n; second_half n) fb) (2*n+1) = false.
+Proof.
+  intros.
+Admitted.
+
 (* remove x - (2x %M) to other place, and then move 2x%M there for further calculation. *)
 Fixpoint swap_clean_1 base n := 
    match n with 0 => bcskip
@@ -621,6 +754,35 @@ Fixpoint copy_r len n :=
 Definition one_step_clean base n := swap_clean_1 base n; swap_x n n; swap_M n; copy_r n n.
 
 Definition one_step base n := first_half n ; second_half n; one_step_clean base n.
+
+Lemma one_step_correct_1:
+ forall n base fb, 0 < n -> 3 * n + 2 < base ->
+      get_f n (bcexec (one_step base n) fb) = one_step_sepc n (get_f n fb) (get_g n fb).
+Proof.
+ intros.
+Admitted.
+
+Lemma one_step_correct_2:
+ forall n base fb, 0 < n -> 3 * n + 2 < base ->
+      get_g n (bcexec (one_step base n) fb) = get_g n fb.
+Proof.
+  intros.
+Admitted.
+
+Lemma one_step_correct_3:
+ forall n base fb, 0 < n -> 3 * n + 2 < base ->
+      get_bf (2*n+2) n (bcexec (one_step base n) fb) = one_step_sepc n (get_f n fb) (get_g n fb).
+Proof.
+  intros.
+Admitted.
+
+Lemma one_step_correct_4:
+ forall n base fb, 0 < n -> 3 * n + 2 < base ->
+      get_bf base n (bcexec (one_step base n) fb) = get_f n fb.
+Proof.
+  intros.
+Admitted.
+
 
 Fixpoint swap_high_x base n :=
   match n with 0 => bcskip
@@ -642,11 +804,54 @@ Definition basis_step_impl high_base n :=
          ;  comparator n; bccont (2 * n + 1) (adder n)
          ; swap_high_x high_base n; swap_M n
          ; comparator n; adder n; swap_high_x high_base n
-         ; suffle_3 (n^3 + 2*n) n; suffle_back n ; suffle_M (n^3 + 2*n) n n.
+         ; suffle_3 (high_base + n) n; suffle_back n ; suffle_M (high_base + n) n n.
+
+Lemma basis_step_impl_correct_1:
+  forall n base fb, 0 < n -> 2 * n + 1 < base ->
+    get_bf (base + n) n (bcexec (basis_step_impl base n) fb) = basis_step_spec n (get_bf base n fb) (get_f n fb) (get_g n fb).
+Proof.
+  intros.
+Admitted.
+
+Lemma basis_step_impl_correct_2:
+  forall n base fb, 0 < n -> 2 * n + 1 < base ->
+    get_of n (bcexec (basis_step_impl base n) fb) = (get_bf base n fb).
+Proof.
+  intros.
+Admitted.
+
+Lemma basis_step_impl_correct_3:
+  forall n base fb, 0 < n -> 2 * n + 1 < base ->
+    get_og n (bcexec (basis_step_impl base n) fb) = (get_g n fb).
+Proof.
+  intros.
+Admitted.
 
 Definition basis_step_no_step high_base n :=
        swap_M n ; swap_high_x high_base n ; swap_M n ;
-               suffle_3 (n^3 + 2*n) n; suffle_back n ; suffle_M (n^3 + 2*n) n n.
+               suffle_3 (high_base + n) n; suffle_back n ; suffle_M (high_base + n) n n.
+
+
+Lemma basis_step_no_step_correct_1:
+  forall n base fb, 0 < n -> 2 * n + 1 < base ->
+    get_bf (base + n) n (bcexec (basis_step_no_step base n) fb) = (get_f n fb).
+Proof.
+  intros.
+Admitted.
+
+Lemma basis_step_no_step_correct_2:
+  forall n base fb, 0 < n -> 2 * n + 1 < base ->
+    get_of n (bcexec (basis_step_no_step base n) fb) = (get_bf base n fb).
+Proof.
+  intros.
+Admitted.
+
+Lemma basis_step_no_step_correct_3:
+  forall n base fb, 0 < n -> 2 * n + 1 < base ->
+    get_og n (bcexec (basis_step_no_step base n) fb) = (get_g n fb).
+Proof.
+  intros.
+Admitted.
 
 
 Fixpoint repeat_step_impl base dim n :=
@@ -654,6 +859,16 @@ Fixpoint repeat_step_impl base dim n :=
     | 0 => bcskip
     | S m => one_step base dim ; repeat_step_impl (base+dim) dim m
    end.
+
+Lemma repeat_step_impl_correct_1 :
+   forall n len base fb, 0 < n -> n <= len -> 2 * n + 1 < base ->
+     get_f n (bcexec (repeat_step_impl base len n) fb) = repeat_step_spec n len (get_f n fb) (get_g n fb).
+Proof.
+ intros.
+Admitted.
+
+(* I guess we will need a repeat step correctness 2 here to state that what happen to the bits in base + n each time
+   but I don't know how to state here. *)
 
 Fixpoint all_step' n fold_base base dim (c: nat -> bool) : bccom :=
    match n with 
@@ -663,101 +878,31 @@ Fixpoint all_step' n fold_base base dim (c: nat -> bool) : bccom :=
    end.
 
 
-Definition all_step n (c: nat -> bool) := init n; all_step' (n - 1) (n^3 + n) (3*n+2) n c.
+Definition all_step n (c: nat -> bool) := init n; all_step' (n - 1) (n^3 + n+2) (3*n+2) n c.
 
+Definition fb_wf n f := (0 < n) /\ (forall i, 2 * n < i -> f i = false).
 
-
-(* let's say fb = 0 x M 0 00000 initiallly. first_swap to make fb becomes fb = x M x 000 (n^3-n) x 0000...*)
-Fixpoint first_swap len n :=
-     match n with 0 => bccont 0 (bcx (2*len); bcx (len^3 + n))
-               | S m => first_swap len m;bccont m (bcx (2*len + m);bcx (len^3 + len + m))
-     end.
-
-
-
-
-
-Definition one_step n := times_two n; (comparator n) ; bccont (2 * n + 1) (adder n).
-
-Lemma one_step_correct_f :
-   forall n m i fb, 0 < n -> 2 * n + 1 < m -> i <= n -> fb m = false ->
-        get_f (bcexec (one_step n) fb) i = one_step_sepc n (get_f fb) (get_g fb) i.
-Proof.
-intros.
-Admitted.
-
-Lemma one_step_correct_g :
-   forall n m i fb, 0 < n -> 2 * n + 1 < m -> i < n -> fb m = false ->
-        get_g (bcexec (one_step n) fb) i = (get_g fb) i.
-Proof.
-intros.
-Admitted.
-
-Definition clean_impl n m := bcswap (2 * n + 1) m.
-
-Lemma clean_correct :
-   forall n m fb, 0 < n -> 2 * n + 1 < m  -> fb m = false -> 
-         (bcexec (clean_impl n m) fb) (2 * n + 1) = false.
-Proof.
-  intros.
-  unfold clean_impl.
-  rewrite bcswap_correct.
-  destruct (2 * n + 1 =? 2 * n + 1) eqn:eq.
-  rewrite H1. reflexivity.
-  apply EqNat.beq_nat_false  in eq.
-  lia. lia.
-Qed.
-
-Fixpoint repeat_step_impl base dim len :=
-   match len with 
-    | 0 => bcskip
-    | S m => one_step dim ; clean_impl dim (base + m) ; repeat_step_impl base dim m
-   end.
-
-Lemma repeat_step_correct :
-   forall dim base len fb i, 0 < dim -> 2 * dim + 1 < base + len -> i < dim -> fb (base + len) = false ->
-        get_f (bcexec (repeat_step_impl base dim len) fb) = repeat_step_spec len dim (get_f fb) (get_g fb).
-Proof.
-intros.
-Admitted.
-
-Fixpoint switch_fold base n := 
-    match n with 
-         | 0 => bcskip
-         | S m => bcswap (2 * m + 2) (base + m); switch_fold base m
-    end.
-
-Definition basis_step_impl n fold_base := 
-           switch_fold fold_base n ; adder n; switch_fold fold_base n;
-                comparator n; bccont (2 * n + 1) (adder n).
-
-Lemma basis_step_correct :
-   forall n base fb, 0 < n -> 2 * n + 1 < base -> fb (2 * n + 1) = false ->
-           get_f (bcexec (basis_step_impl n base) fb) = basis_step_spec n (get_fold base fb) (get_f fb) (get_g fb).
-Proof.
-  intros.
-Admitted.
-
-(* Defining the all step for the fb. The whole structure of fb is:
-    the bits from 0 to 2 * n + 1 are combining f and g and the c bit and the high bit. 
-    from 2 * n + 2 to n^2 + 2 * n + 2 are zero ancilla bits for cleaning the 2*n+1 bit for futher calculation. 
-    The bits from n^2 + 2*n + 2 to n^2 + 2*n + n + 1 are to store the fold value of f bits (1 to 2 * n + 1 bits.
-    The fold value is useful to compute the addition at f 0. *)
-Fixpoint all_step' n fold_base base dim (c: nat -> bool) : bccom :=
-   match n with 
-    | 0 => if c 0 then basis_step_impl dim fold_base else bcskip 
-    | S m => if c n then (repeat_step_impl base dim n) ; all_step' m fold_base (base+dim) dim c
-                    else all_step' m fold_base base dim c
-   end.
-Definition all_step n (c: nat -> bool) := all_step' (n - 1) (n^2 + 2*n + 2) (2*n+2) n c.
-
-Definition fb_wf n f := (0 > n) /\ (forall i, 2 * n < i < n ^ 2 + 2 * n + 2 -> f i = false).
-
-Lemma all_step_correct :
+Lemma all_step_correct_1 :
       forall n c fb, fb_wf n fb ->
-            get_f (bcexec (all_step n c) fb) = all_step_spec n c (get_f fb) (get_g fb).
+            get_bf (n^3 + 2*n+2) n (bcexec (all_step n c) fb) = all_step_spec n c (get_of n fb) (get_og n fb).
 Proof.
  intros.
 Admitted.
+
+Lemma all_step_correct_2 :
+      forall n c fb, fb_wf n fb ->
+            get_of n (bcexec (all_step n c) fb) = (get_of n fb).
+Proof.
+ intros.
+Admitted.
+
+
+Lemma all_step_correct_3 :
+      forall n c fb, fb_wf n fb ->
+            get_og n (bcexec (all_step n c) fb) = (get_og n fb).
+Proof.
+ intros.
+Admitted.
+
 
 
