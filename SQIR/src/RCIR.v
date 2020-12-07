@@ -294,6 +294,141 @@ Proof.
     easy.
 Qed.
 
+Fixpoint bcelim p :=
+  match p with
+  | bcskip => bcskip
+  | bcx q => bcx q
+  | bccont q p => match bcelim p with
+                 | bcskip => bcskip
+                 | p' => bccont q p'
+                 end
+  | bcseq p1 p2 => match bcelim p1, bcelim p2 with
+                  | bcskip, p2' => p2'
+                  | p1', bcskip => p1'
+                  | p1', p2' => bcseq p1' p2'
+                  end
+  end.
+
+Inductive efresh : nat -> bccom -> Prop :=
+| efresh_skip : forall q, efresh q bcskip 
+| efresh_x : forall q n, q <> n -> efresh q (bcx n)
+| efresh_cont : forall q n p, q <> n -> efresh q p -> efresh q (bccont n p)
+| efresh_seq  : forall q p1 p2, efresh q p1 -> efresh q p2 -> efresh q (p1; p2)
+.
+
+Inductive eWF : bccom -> Prop :=
+| eWF_skip : eWF bcskip
+| eWF_x : forall n, eWF (bcx n)
+| eWF_cont : forall n p,  efresh n p -> eWF p -> eWF (bccont n p)
+| eWF_seq : forall p1 p2, eWF p1 -> eWF p2 -> eWF (p1; p2)
+.
+
+Inductive eWT (dim : nat) : bccom -> Prop :=
+| eWT_skip : dim > 0 -> eWT dim bcskip
+| eWT_x : forall n, n < dim -> eWT dim (bcx n)
+| eWT_cont : forall n p, n < dim -> efresh n p -> eWT dim p -> eWT dim (bccont n p)
+| eWT_seq : forall p1 p2, eWT dim p1 -> eWT dim p2 -> eWT dim (p1; p2)
+.
+
+Lemma efresh_bcexec_irrelevant :
+  forall p q f,
+    efresh q p ->
+    bcexec p f q = f q.
+Proof.
+  induction p; intros.
+  - easy.
+  - inversion H; subst. simpl. apply update_index_neq. lia.
+  - inversion H; subst. apply IHp with (f := f) in H4. simpl. destruct (f n); easy.
+  - inversion H; subst. apply IHp1 with (f := f) in H3. apply IHp2 with (f := bcexec p1 f) in H4. simpl.
+    rewrite H4. rewrite H3. easy.
+Qed.
+
+Lemma bcfresh_efresh :
+  forall p q,
+    bcfresh q p -> efresh q p.
+Proof.
+  induction p; intros; inversion H; subst; constructor; try easy; [apply IHp | apply IHp1 | apply IHp2]; easy.
+Qed.
+
+Lemma bc_well_formed_eWF :
+  forall p,
+    bc_well_formed p -> eWF p.
+Proof.
+  induction p; intros; inversion H; subst; constructor; try easy; [apply bcfresh_efresh | apply IHp | apply IHp1 | apply IHp2]; easy.
+Qed.
+
+Lemma efresh_bcfresh :
+  forall p q,
+    bcelim p <> bcskip -> efresh q p -> bcfresh q (bcelim p).
+Proof.
+  induction p; intros; simpl.
+  simpl in H. contradiction.
+  inversion H0; subst. constructor; easy.
+  simpl in *.
+  destruct (bcelim p) eqn:Ep; try easy;
+    try (inversion H0; subst; constructor; try easy; try (apply IHp; easy)).
+  simpl in H. inversion H0; subst.
+  destruct (bcelim p1) eqn:Ep1; destruct (bcelim p2) eqn:Ep2; try easy; 
+    try (apply IHp2; easy);
+    try (apply IHp1; easy);
+    try (constructor; [apply IHp1 | apply IHp2]; easy).
+Qed.
+
+Lemma eWT_bcWT :
+  forall p dim,
+    bcelim p <> bcskip -> eWT dim p -> bcWT dim (bcelim p).
+Proof.
+  induction p; intros;
+    try (inversion H0; subst; constructor; easy).
+  assert (bcelim p <> bcskip).
+  { intro. simpl in H. rewrite H1 in H. easy.
+  }
+  inversion H0; subst. apply efresh_bcfresh in H5; try easy. simpl in *.
+  destruct (bcelim p) eqn:Ep; try easy;
+    try (constructor; try easy; try (apply IHp; easy)).
+  simpl in *. inversion H0; subst. 
+  destruct (bcelim p1) eqn:Ep1; destruct (bcelim p2) eqn:Ep2; try easy; 
+    try (apply IHp2; easy);
+    try (apply IHp1; easy);
+    try (constructor; [apply IHp1 | apply IHp2]; easy).
+Qed.
+
+Lemma eWT_eWF :
+  forall p dim,
+    eWT dim p -> eWF p.
+Proof.
+  induction p; intros; inversion H; subst; constructor; try easy;
+    try (apply IHp with (dim := dim); easy).
+  apply IHp1 with (dim := dim); easy.
+  apply IHp2 with (dim := dim); easy.
+Qed.
+
+Lemma bcelim_invariant :
+  forall p f,
+    bcexec p f = bcexec (bcelim p) f.
+Proof.
+  induction p; intros; try (simpl; easy).
+  simpl.
+  destruct (bcelim p) eqn:Ep; try (simpl in *; rewrite IHp; bnauto).
+  simpl in *.
+  destruct (bcelim p1) eqn:Ep1; destruct (bcelim p2) eqn:Ep2; rewrite IHp1; rewrite IHp2; easy.
+Qed.
+
+Lemma bc2ucom_eWT_variant :
+  forall p dim f,
+    dim > 0 ->
+    eWT dim p ->
+    uc_eval (bc2ucom (bcelim p)) × f_to_vec dim f = f_to_vec dim (bcexec p f).
+Proof.
+  intros. rewrite bcelim_invariant.
+  destruct (bcelim p) eqn:Ep;
+   try (apply bc2ucom_correct; try easy; rewrite <- Ep; apply eWT_bcWT; try easy; rewrite Ep; easy). 
+  simpl. rewrite denote_SKIP by easy. Msimpl. easy.
+Qed.
+
+
+
+
 (* Define bcinv op. For any bc_seq op, inv means to reverse the order. *)
 Fixpoint bcinv p :=
   match p with
@@ -312,6 +447,16 @@ Proof.
   - rewrite IHp1, IHp2. easy.
 Qed.
 
+Lemma efresh_bcinv :
+  forall p q,
+    efresh q p ->
+    efresh q (bcinv p).
+Proof.
+  induction p; intros; inversion H; simpl; subst; try easy.
+  - apply IHp in H4. constructor; easy.
+  - apply IHp1 in H3. apply IHp2 in H4. constructor; easy.
+Qed.
+
 Lemma bcfresh_bcinv :
   forall p q,
     bcfresh q p ->
@@ -320,6 +465,18 @@ Proof.
   induction p; intros; inversion H; simpl; subst; try easy.
   - apply IHp in H4. constructor; easy.
   - apply IHp1 in H3. apply IHp2 in H4. constructor; easy.
+Qed.
+
+Lemma eWF_bcinv :
+  forall p,
+    eWF p ->
+    eWF (bcinv p).
+Proof.
+  induction p; intros; inversion H; subst; simpl; constructor.
+  - apply efresh_bcinv. easy.
+  - apply IHp. easy.
+  - apply IHp2. easy.
+  - apply IHp1. easy.
 Qed.
 
 Lemma bc_well_formed_bcinv :
@@ -336,7 +493,7 @@ Qed.
 
 Lemma bcinv_correct :
   forall p f,
-    bc_well_formed p ->
+    eWF p ->
     bcexec (bcinv p; p) f = f.
 Proof.
   induction p; intros; simpl.
@@ -345,8 +502,8 @@ Proof.
     bdestruct (x =? n). rewrite Nat.eqb_refl. subst. destruct (f n); easy.
     easy.
   - inversion H; subst. destruct (f n) eqn:Efn.
-    assert (bcfresh n (bcinv p)) by (apply bcfresh_bcinv; easy).
-    rewrite bcfresh_bcexec_irrelevant by easy. rewrite Efn.
+    assert (efresh n (bcinv p)) by (apply efresh_bcinv; easy).
+    rewrite efresh_bcexec_irrelevant by easy. rewrite Efn.
     specialize (IHp f H3). simpl in IHp. easy.
     rewrite Efn. easy.
   - inversion H; subst. simpl in IHp1, IHp2.
@@ -354,28 +511,28 @@ Proof.
     apply IHp2. easy.
 Qed.
 
-Lemma bcinv_correct_rev :
+Lemma bcinv_correct_bc_well_formed :
   forall p f,
     bc_well_formed p ->
+    bcexec (bcinv p; p) f = f.
+Proof.
+  intros. apply bcinv_correct. apply bc_well_formed_eWF. easy.
+Qed.
+
+Lemma bcinv_correct_rev :
+  forall p f,
+    eWF p ->
     bcexec (p; bcinv p) f = f.
 Proof.
-  intros. apply bc_well_formed_bcinv in H.
+  intros. apply eWF_bcinv in H.
   apply bcinv_correct with (f := f) in H.
   rewrite bcinv_involutive in H. easy.
 Qed.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Lemma bcinv_correct_bc_well_formed_rev :
+  forall p f,
+    bc_well_formed p ->
+    bcexec (p; bcinv p) f = f.
+Proof.
+  intros. apply bcinv_correct_rev. apply bc_well_formed_eWF. easy.
+Qed.
