@@ -124,7 +124,8 @@ Lemma subtractor01_correct :
     bcexec (comparator01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [(x + (2^n - y)) mod (2^n)]_n f).
 Admitted.
 
-Definition modadder21 n := swapper02 n; adder01 n; swapper02 n; comparator01 n; bccont 1 (subtractor01 n); swapper02 n; bcinv (comparator01 n); swapper02 n.
+Definition modadder21 n := swapper02 n; adder01 n; swapper02 n; 
+       comparator01 n; bccont 1 (subtractor01 n); swapper02 n; bcinv (comparator01 n); swapper02 n.
 
 Lemma modadder21_correct :
   forall n x y M f,
@@ -198,7 +199,8 @@ Lemma towerbuilder_correct :
   forall n x M f,
     0 < n ->
     x < M < 2^(n - 1) ->
-    bcexec (towerbuilder n) (false ` false ` [M]_n [x]_n (regl_push (repeat 0 (n - 1)) n f)) = false ` false ` [M]_n (regl_push (powertower n x M) n f).
+    bcexec (towerbuilder n) (false ` false ` [M]_n [x]_n (regl_push (repeat 0 (n - 1)) n f))
+                = false ` false ` [M]_n (regl_push (powertower n x M) n f).
 Admitted.
 
 Fixpoint swapper1C' j n :=
@@ -212,7 +214,8 @@ Lemma swapper1C_correct :
   forall n l M x y f,
     0 < n ->
     length l = n - 1 ->
-    bcexec (swapper1C n) (false ` false ` [M]_n [x]_n (regl_push l n ([y]_n f))) = false ` false ` [M]_n [y]_n (regl_push l n ([x]_n f)).
+    bcexec (swapper1C n) (false ` false ` [M]_n [x]_n (regl_push l n ([y]_n f)))
+                 = false ` false ` [M]_n [y]_n (regl_push l n ([x]_n f)).
 Admitted.
 
 Fixpoint calcmodmult' i n (f : nat -> bool) :=
@@ -228,7 +231,8 @@ Lemma calcmodmult_correct :
     x < M ->
     C < M ->
     M < 2^(n-1) ->
-    bcexec (calcmodmult C n) (false ` false ` [M]_n (regl_push (powertower x n M) n ([0]_n f))) = (false ` false ` [M]_n (regl_push (powertower x n M) n ([C * x mod M]_n f))).
+    bcexec (calcmodmult C n) (false ` false ` [M]_n (regl_push (powertower x n M) n ([0]_n f)))
+             = (false ` false ` [M]_n (regl_push (powertower x n M) n ([C * x mod M]_n f))).
 Admitted.
 
 Definition calcmodmult_half C n := towerbuilder n; calcmodmult C n; bcinv (towerbuilder n).
@@ -239,7 +243,8 @@ Lemma calcmodmult_half_correct :
     x < M ->
     C < M ->
     M < 2^(n-1) ->
-    bcexec (calcmodmult_half C n) (false ` false ` [M]_n [x]_n allfalse) = false ` false ` [M]_n [x]_n (regl_push (repeat 0 (n - 1)) n ([C * x mod M]_n allfalse)).
+    bcexec (calcmodmult_half C n) (false ` false ` [M]_n [x]_n allfalse)
+              = false ` false ` [M]_n [x]_n (regl_push (repeat 0 (n - 1)) n ([C * x mod M]_n allfalse)).
 Admitted.
 
 Definition calcmodmult_full C Cinv n := calcmodmult_half C n; swapper1C n; bcinv (calcmodmult_half Cinv n).
@@ -252,7 +257,8 @@ Lemma calcmodmult_full_correct :
     Cinv < M ->
     C * Cinv mod M = 1 ->
     M < 2^(n-1) ->
-    bcexec (calcmodmult_full C Cinv n) (false ` false ` [M]_n [x]_n allfalse) = false ` false ` [M]_n [C * x mod M]_n allfalse.
+    bcexec (calcmodmult_full C Cinv n) (false ` false ` [M]_n [x]_n allfalse)
+                   = false ` false ` [M]_n [C * x mod M]_n allfalse.
 Admitted.
 
 (* head and register 1 *)

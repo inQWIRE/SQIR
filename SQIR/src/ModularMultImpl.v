@@ -11,48 +11,36 @@ Local Open Scope bccom_scope.
 (* First, we need to define a function to grab three fbools out of a single uniformed fbools. 
    The structure of the fbool is like
      from 0 to 2n+2 are bits messing around for f and g and extra c bit and high bit for comparator. *)
-Definition get_f n (fb:nat -> bool) := fun i => if i <? n then fb (2 * i + 1) else false.
+Definition get_f (fb:nat -> bool) := fun i => fb (2 * i + 1).
 
-Definition get_g n (fb:nat -> bool) := fun i => if i <? n then fb (2 * i + 2) else false.
+Definition get_g (fb:nat -> bool) := fun i => fb (2 * i + 2).
 
 Definition get_fold base (fb:nat -> bool) := fun i => fb (base + i).
 
 Fixpoint insert_f n f (fb:nat -> bool) :=
      match n with 
-          | 0 => fb
-          | S m => insert_f m f (fb[2 * m + 1 |-> f m])
+          | 0 => fb[1 |-> f 0]
+          | S m => (insert_f m f fb)[2 * n + 1 |-> f n]
      end.
 
-Lemma get_insert_f_same':
-  forall n f m, n <= m -> insert_f n (get_f m f) f = f.
-Proof.
-  intros n f.
-  unfold get_f.
-  induction n.
-  simpl.
-  reflexivity.
-  intros.
-  simpl in *.
-  rewrite update_same.
-  rewrite IHn.
-  reflexivity.
-  lia.
-  destruct (n <? m) eqn:eq.
-  reflexivity.
-specialize (Nat.ltb_lt n m) as eq1.
-apply not_iff_compat in eq1.
-apply not_true_iff_false in eq.
-apply eq1 in eq.
-lia.
-Qed.
-
-
 Lemma get_insert_f_same:
-  forall n f, insert_f n (get_f n f) f = f.
+  forall n f, insert_f n (get_f f) f = f.
 Proof.
+  intros n.
+  induction n.
+  simpl. unfold get_f.
   intros.
-  rewrite get_insert_f_same'.
-  reflexivity. lia.
+  rewrite update_same. reflexivity.
+  simpl. reflexivity.
+  intros.
+  simpl.
+  assert ((insert_f n (get_f f) f) [S (n + S (n + 0) + 1) |-> get_f f (S n)]
+            = (insert_f n (get_f f) f)).
+  unfold get_f in *. simpl in *.
+  rewrite update_same. reflexivity.
+  rewrite IHn. reflexivity.
+  rewrite H. rewrite IHn.
+  reflexivity.
 Qed.
 
 (* The following contains the implementation of the Modular Multiplier circuit that meets the specification. *)
@@ -90,34 +78,8 @@ Fixpoint MAJseq n : bccom :=
   | S n' => MAJseq n'; MAJ (2 * n) (2 * n + 1) (2 * n + 2)
   end.
 
-Definition carry n f := carry_spec (f 0) n (get_f n f) (get_g n f).
+Definition carry n f := carry_spec (f 0) n (get_f f) (get_g f).
 
-Lemma carry_extend_aux :
-   forall n t m f, n <= t -> t < m -> 
-    carry_spec (f 0) n (get_f m f) (get_g m f)
-   = carry_spec (f 0) n (get_f t f) (get_g t f).
-Proof.
-  intros.
-  unfold get_f,get_g.
-  induction n.
-  simpl. reflexivity.
-  simpl in *.
-  destruct (n <? m) eqn:eq.
-  destruct (n <? t) eqn:eq1.
-  rewrite IHn.
-  reflexivity.
-  lia.
-  specialize (Nat.ltb_lt n t) as eq2.
-  apply not_iff_compat in eq2.
-  apply not_true_iff_false in eq1.
-  apply eq2 in eq1.
-  lia.
-  specialize (Nat.ltb_lt n m) as eq2.
-  apply not_iff_compat in eq2.
-  apply not_true_iff_false in eq.
-  apply eq2 in eq.
-  lia.
-Qed.
 
 Lemma carry_extend :
   forall n f,
@@ -126,27 +88,13 @@ Lemma carry_extend :
 Proof.
   intros. unfold carry.
   simpl.
-  assert (get_f (S n) f n = f (n + (n + 0) + 1)).
-  unfold get_f.
-  destruct (n <? S n) eqn:eq. easy.
-  specialize (Nat.ltb_lt n (S n)) as eq1.
-  apply not_iff_compat in eq1.
-  apply not_true_iff_false in eq.
-  apply eq1 in eq.
-  lia.
+  assert (get_f f n = f (n + (n + 0) + 1)).
+  unfold get_f. reflexivity.
   rewrite H.
-  assert (get_g (S n) f n = f (n + (n + 0) + 2)).
-  unfold get_g.
-  destruct (n <? S n) eqn:eq. easy.
-  specialize (Nat.ltb_lt n (S n)) as eq1.
-  apply not_iff_compat in eq1.
-  apply not_true_iff_false in eq.
-  apply eq1 in eq.
-  lia.
+  assert (get_g f n = f (n + (n + 0) + 2)).
+  unfold get_g. reflexivity.
   rewrite H0.
-  rewrite (carry_extend_aux n n (S n)).
   reflexivity.
-  lia. lia.
 Qed.
 
 Fixpoint msb n f : nat -> bool :=
@@ -303,7 +251,7 @@ Qed.
 
 Fixpoint UMAseq len n : bccom :=
   match n with
-  | 0 => UMA len (len + 1) (len + 2)
+  | 0 => UMA (2*len) (2*len + 1) (2*len + 2)
   | S n' => UMAseq len n'; UMA (2 * (len - n)) (2 * (len - n) + 1) (2 * (len - n) + 2)
   end.
 
@@ -314,36 +262,56 @@ Lemma uma_end_gt' :
 Proof.
   induction n; intros.
   simpl.
-  destruct (f len) eqn:eq1.
-  destruct (f (len+1)) eqn:eq2.
-  destruct ((f [(len + 2) |-> ¬ (f (len + 2))]) (len + 2)) eqn:eq3.
-  destruct (((f [(len + 2) |-> ¬ (f (len + 2))])
-                 [len |-> ¬ ((f [(len + 2) |-> ¬ (f (len + 2))]) len)]) len) eqn:eq4.
+  destruct (f (len + (len + 0))) eqn:eq1.
+  destruct (f (len + (len + 0) + 1)) eqn:eq2.
+  destruct ((f [len + (len + 0) + 2
+     |-> ¬ (f (len + (len + 0) + 2))])
+      (len + (len + 0) + 2)) eqn:eq3.
+  destruct (((f [len + (len + 0) + 2 |-> ¬ (f (len + (len + 0) + 2))])
+   [len + (len + 0)
+   |-> ¬ ((f [len + (len + 0) + 2
+           |-> ¬ (f (len + (len + 0) + 2))])
+            (len + (len + 0)))]) (len + (len + 0))) eqn:eq4.
   repeat rewrite update_index_neq by lia.
   reflexivity. 
   repeat rewrite update_index_neq by lia.
   reflexivity. 
-  destruct ((f [(len + 2) |-> ¬ (f (len + 2))]) len) eqn:eq4.
+  destruct ((f [len + (len + 0) + 2 |-> ¬ (f (len + (len + 0) + 2))])
+    (len + (len + 0))) eqn:eq4.
   repeat rewrite update_index_neq by lia.
   reflexivity. 
   rewrite update_index_neq by lia.
   reflexivity. 
-  destruct (f (len + 2)) eqn:eq3.
-  destruct ((f [len |-> ¬ (f len)]) len) eqn:eq4.
+  destruct ((len + (len + 0) + 2)) eqn:eq3.
+  destruct (f 0) eqn:eq4.
+  destruct ((f [len + (len + 0) |-> ¬ (f (len + (len + 0)))])
+    (len + (len + 0))) eqn:eq5.
   repeat rewrite update_index_neq by lia.
   reflexivity. 
   rewrite update_index_neq by lia.
   reflexivity. 
-  destruct (f len) eqn:eq4.
+  destruct (f (len + (len + 0))) eqn:eq5.
   rewrite update_index_neq by lia.
   1 - 2: reflexivity.
-  destruct (f (len + 2)) eqn:eq2.
-  destruct ((f [len |-> ¬ (f len)]) len) eqn:eq3.
+  destruct (f (S n)) eqn:eq4.
+  destruct ((f [len + (len + 0) |-> ¬ (f (len + (len + 0)))])
+    (len + (len + 0))) eqn:eq5.
   repeat rewrite update_index_neq by lia.
   reflexivity. 
   rewrite update_index_neq by lia.
   reflexivity.
-  destruct (f len) eqn:eq3.
+  destruct (f (len + (len + 0))) eqn:eq5.
+  rewrite update_index_neq by lia.
+  1 - 2: reflexivity.
+  destruct (f (len + (len + 0) + 2)) eqn:eq2.
+  destruct ((f [len + (len + 0) |-> ¬ (f (len + (len + 0)))])
+    (len + (len + 0))) eqn:eq3.
+  rewrite update_index_neq by lia.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  destruct (f (len + (len + 0))) eqn:eq3.
   rewrite update_index_neq by lia.
   1 - 2: reflexivity.
   simpl.
@@ -521,16 +489,75 @@ Admitted.
 
 Definition adder n : bccom := MAJseq n; UMAseq n n.
 
+Lemma uma_correct_aux :
+  forall n len fb, n <= len -> 
+          (bcexec (UMAseq len n) (msb len fb)) (2 * (len - n))
+               = carry_spec false (len-n) (get_f fb) (get_g fb).
+Proof.
+ intros.
+ induction n.
+ simpl.
+ destruct (msb len fb (len + (len + 0))) eqn:eq1.
+ destruct (msb len fb (len + (len + 0) + 1)) eqn:eq2.
+Admitted.
+
+
+Definition uma_out len n mf f := fun i => if i <? 2 * (len - n) then mf i else if i =? 2 * (len - n) then 
+                    carry_spec false (len-n) (get_f f) (get_g f)
+                    else (insert_f n (adder_spec (get_f f) (get_g f)) f) i.
+
+
+
+Lemma uma_correct_1 :
+     forall n len fb,  n <= len ->
+         (bcexec (UMAseq len n) (msb len fb)) = uma_out len n (msb len fb) fb.
+Proof.
+  intros.
+Admitted.
+
+Lemma insert_f_0:
+  forall n f g, insert_f n f g 0 = g 0.
+Proof.
+ intros. induction n. simpl.
+ rewrite update_index_neq by lia.
+ reflexivity.
+ simpl.
+ rewrite update_index_neq.
+ rewrite IHn. reflexivity.
+ lia.
+Qed.
 
 
 Lemma adder_correct :
-   forall n fb, (bcexec (adder n) fb) = insert_f n (adder_spec (get_f n fb) (get_g n fb)) fb.
+   forall n fb, fb 0 = false -> (bcexec (adder n) fb) = insert_f n (adder_spec (get_f fb) (get_g fb)) fb.
 Proof.
  intros.
  unfold adder,adder_spec,add_bit.
  rewrite bcseq_correct.
  rewrite MAJseq_correct.
-Admitted.
+ rewrite uma_correct_1.
+ unfold uma_out.
+ apply functional_extensionality.
+ intros.
+ destruct (x <? 2 * (n - n)) eqn:eq.
+ apply Nat.ltb_lt in eq.
+ lia.
+ destruct (x =? 2 * (n - n)) eqn:eq1.
+ apply Nat.eqb_eq in eq1.
+ assert (2 * (n - n) = 0) by lia.
+ rewrite H0 in eq1.
+ assert (n - n = 0) by lia.
+ rewrite H1.
+ assert (carry_spec false 0 (get_f fb) (get_g fb) = false).
+ unfold carry_spec. reflexivity.
+ rewrite H2.
+ rewrite eq1.
+ rewrite insert_f_0.
+ rewrite H. reflexivity.
+ unfold adder_spec,add_bit.
+ reflexivity.
+ lia.
+Qed.
 
 (* Defining the comparator implementation.
    The comparator is based on computing x - y, which is computing (x' + y)'. *)
