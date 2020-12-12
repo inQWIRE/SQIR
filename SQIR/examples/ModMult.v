@@ -3,7 +3,7 @@ Require Import VectorStates UnitaryOps Coq.btauto.Btauto RCIR.
 Local Open Scope bccom_scope.
 Local Open Scope nat_scope.
 
-Definition funbool_push b f : nat -> bool :=
+Definition fb_push b f : nat -> bool :=
   fun x => match x with
         | O => b
         | S n => f n
@@ -11,22 +11,14 @@ Definition funbool_push b f : nat -> bool :=
 
 Definition allfalse := fun (_ : nat) => false.
 
-Fixpoint reg_push (x : N) (n : nat) (f : nat -> bool) :=
-  match n with
-  | 0 => f
-  | S n' => match x with
-           | 0%N => funbool_push false (reg_push x n' f)
-           | Npos xH => funbool_push true (reg_push 0%N n' f)
-           | Npos (xO p) => funbool_push false (reg_push (Npos p) n' f)
-           | Npos (xI p) => funbool_push true (reg_push (Npos p) n' f)
-           end
-  end.
+Definition fb_push_n n f g : nat -> bool :=
+  fun i => if (i <? n) then f i else g (i - n).
 
 Fixpoint pos2fb p : nat -> bool :=
   match p with
-  | xH => funbool_push true allfalse
-  | xI p' => funbool_push true (pos2fb p')
-  | xO p' => funbool_push false (pos2fb p')
+  | xH => fb_push true allfalse
+  | xI p' => fb_push true (pos2fb p')
+  | xO p' => fb_push false (pos2fb p')
   end.
 
 Definition N2fb n : nat -> bool :=
@@ -35,27 +27,366 @@ Definition N2fb n : nat -> bool :=
   | Npos p => pos2fb p
   end.
 
-Notation "'[' x ']_' n f" := (reg_push (N.of_nat x) n f) (at level 15, n at level 9, right associativity).
-Notation "b ` f" := (funbool_push b f) (at level 20, right associativity).
+Definition add_c b x y :=
+  match b with
+  | false => Pos.add x y
+  | true => Pos.add_carry x y
+  end.
+
+Definition nat2fb n := N2fb (N.of_nat n).
+
+Definition reg_push (x : nat) (n : nat) (f : nat -> bool) := fb_push_n n (nat2fb x) f.
+
+Lemma fb_push_n_left :
+  forall n x f g,
+    x < n -> fb_push_n n f g x = f x.
+Proof.
+  intros. unfold fb_push_n. rewrite <- Nat.ltb_lt in H. rewrite H. easy.
+Qed.
+
+Lemma fb_push_n_right :
+  forall n x f g,
+    n <= x -> fb_push_n n f g x = g (x - n).
+Proof.
+  intros. unfold fb_push_n. rewrite <- Nat.ltb_ge in H. rewrite H. easy.
+Qed.
+
+Notation "'[' x ']_' n f" := (reg_push x n f) (at level 15, n at level 9, right associativity).
+Notation "b ` f" := (fb_push b f) (at level 20, right associativity).
+
+Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
 
 Definition MAJ a b c := bccnot c b ; bccnot c a ; bcccnot a b c.
 Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
+
+Lemma MAJ_correct :
+  forall a b c f,
+    a <> b -> b <> c -> a <> c ->
+    bcexec (MAJ c b a) f = ((f[a |-> majb (f a) (f b) (f c)])
+                              [b |-> (f b ⊕ f a)])[c |-> (f c ⊕ f a)].
+Admitted. (*
+(* The following proof works, but too slow. Admitted when debugging. *)
+Proof.
+  intros ? ? ? ? Hab' Hbc' Hac'. apply functional_extensionality; intro i. simpl.
+  unfold update, majb. bnauto.
+Qed.
+*)
+
+Lemma UMA_correct_partial :
+  forall a b c f' fa fb fc,
+    a <> b -> b <> c -> a <> c ->
+    f' a = majb fa fb fc ->
+    f' b = (fb ⊕ fa) -> f' c = (fc ⊕ fa) ->
+    bcexec (UMA c b a) f' = ((f'[a |-> fa])[b |-> fa ⊕ fb ⊕ fc])[c |-> fc].
+Admitted. (*
+(* The following proof works, but too slow. Admitted when debugging. *)
+Proof.
+  unfold majb. intros. apply functional_extensionality; intro i. simpl.
+  unfold update. bnauto_expand (f' a :: f' b :: f' c :: (List.nil)).
+Qed.
+*)
 
 Fixpoint MAJseq' i n c0 : bccom :=
   match i with
   | 0 => MAJ c0 (2 + n) 2
   | S i' => MAJseq' i' n c0; MAJ (2 + i') (2 + n + i) (2 + i)
   end.
-Definition MAJseq n c0 := MAJseq' (n - 1) n c0.
+Definition MAJseq n := MAJseq' (n - 1) n 0.
 
 Fixpoint UMAseq' i n c0 : bccom :=
   match i with
   | 0 => UMA c0 (2 + n) 2
   | S i' => UMA (2 + i') (2 + n + i) (2 + i); UMAseq' i' n c0
   end.
-Definition UMAseq n c0 := UMAseq' (n - 1) n c0.
+Definition UMAseq n := UMAseq' (n - 1) n 0.
 
-Definition adder01 n : bccom := MAJseq n 0; UMAseq n 0.
+Definition adder01 n : bccom := MAJseq n; UMAseq n.
+
+Fixpoint carry b n f g :=
+  match n with
+  | 0 => b
+  | S n' => let c := carry b n' f g in
+           let a := f n' in
+           let b := g n' in
+           (a && b) ⊕ (b && c) ⊕ (a && c)
+  end.
+
+Lemma carry_sym :
+  forall b n f g,
+    carry b n f g = carry b n g f.
+Proof.
+  intros. induction n. reflexivity.
+  simpl. rewrite IHn. btauto.
+Qed.
+
+Lemma carry_false_0_l: forall n f, 
+    carry false n allfalse f = false.
+Proof.
+  unfold allfalse.
+  induction n.
+  simpl.
+  reflexivity.
+  intros. simpl.
+  rewrite IHn. rewrite andb_false_r.
+  reflexivity.
+Qed.
+
+Lemma carry_false_0_r: forall n f, 
+    carry false n f allfalse = false.
+Proof.
+  unfold allfalse.
+  induction n.
+  simpl.
+  reflexivity.
+  intros. simpl.
+  rewrite IHn. rewrite andb_false_r.
+  reflexivity.
+Qed.
+
+Lemma carry_fbpush :
+  forall n a ax ay fx fy,
+    carry a (S n) (fb_push ax fx) (fb_push ay fy) = carry (majb a ax ay) n fx fy.
+Proof.
+  induction n; intros.
+  simpl. unfold majb. btauto.
+  remember (S n) as Sn. simpl. rewrite IHn. unfold fb_push. subst.
+  simpl. easy.
+Qed.
+
+Lemma carry_succ :
+  forall m p,
+    carry true m (pos2fb p) allfalse = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
+Proof.
+  induction m; intros. simpl. destruct p; reflexivity.
+  replace allfalse with (fb_push false allfalse).
+  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
+  }
+  Local Opaque fb_push carry.
+  destruct p; simpl.
+  rewrite carry_fbpush; unfold majb; simpl. rewrite IHm. reflexivity.
+  rewrite carry_fbpush; unfold majb; simpl. rewrite carry_false_0_r. Local Transparent fb_push. simpl. btauto.
+  rewrite carry_fbpush; unfold majb; simpl. Local Transparent carry. destruct m; reflexivity.
+Qed.
+
+Lemma carry_succ' :
+  forall m p,
+    carry true m allfalse (pos2fb p) = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
+Proof.
+  intros. rewrite carry_sym. apply carry_succ.
+Qed.
+
+Lemma carry_succ0 :
+  forall m, carry true m allfalse allfalse = pos2fb xH m.
+Proof.
+  induction m. easy. 
+  replace allfalse with (fb_push false allfalse).
+  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
+  }
+  rewrite carry_fbpush. unfold majb. simpl. rewrite carry_false_0_l. easy.
+Qed.
+
+Lemma carry_add_pos_eq :
+  forall m b p q,
+    carry b m (pos2fb p) (pos2fb q) ⊕ (pos2fb p) m ⊕ (pos2fb q) m = pos2fb (add_c b p q) m.
+Proof.
+  induction m; intros. simpl. destruct p, q, b; reflexivity.
+  Local Opaque carry.
+  destruct p, q, b; simpl; rewrite carry_fbpush; 
+    try (rewrite IHm; reflexivity);
+    try (unfold majb; simpl; 
+         try rewrite carry_succ; try rewrite carry_succ'; 
+         try rewrite carry_succ0; try rewrite carry_false_0_l;
+         try rewrite carry_false_0_r;
+         unfold allfalse; try btauto; try (destruct m; reflexivity)).
+Qed.
+
+Lemma carry_add_eq_carry0 :
+  forall m x y,
+    carry false m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y)) m.
+Proof.
+  intros.
+  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
+  rewrite carry_false_0_l. easy.
+  rewrite carry_false_0_l. btauto.
+  rewrite carry_false_0_r. btauto.
+  apply carry_add_pos_eq.
+Qed.
+
+Lemma carry_add_eq_carry1 :
+  forall m x y,
+    carry true m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y + 1)) m.
+Proof.
+  intros. 
+  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
+  rewrite carry_succ0. destruct m; easy.
+  rewrite carry_succ'. replace (q + 1)%positive with (Pos.succ q) by lia. btauto.
+  rewrite carry_succ. replace (p + 1)%positive with (Pos.succ p) by lia. btauto.
+  rewrite carry_add_pos_eq. unfold add_c. rewrite Pos.add_carry_spec. replace (p + q + 1)%positive with (Pos.succ (p + q)) by lia. easy.
+Qed.
+
+Lemma MAJseq'_efresh :
+  forall i n j,
+    0 < n ->
+    j = 1   \/   2 + i < j < 2 + n   \/  2 + n + i < j ->
+    efresh j (MAJseq' i n 0).
+Admitted. (*
+(* The following proof works, but too slow. Admitted when debugging. *)
+Proof.
+  induction i; intros. simpl. repeat (try constructor; try lia).
+  simpl. repeat (try constructor; try apply IHi; try lia).
+Qed.
+*)
+
+Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
+
+Definition msma i b f g := fun (x : nat) => if (x <? i) then (carry b (S x) f g ⊕ (f (S x))) else (if (x =? i) then carry b (S x) f g else f x).
+
+Definition msmb i (b : bool) f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else g x.
+
+Definition msmc i b f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else (carry b x f g ⊕ f x ⊕ g x).
+
+Definition sumfb b f g := fun (x : nat) => carry b x f g ⊕ f x ⊕ g x.
+
+Ltac fb_push_n_simpl := repeat (try rewrite fb_push_n_left by lia; try rewrite fb_push_n_right by lia).
+Ltac update_simpl := repeat (try rewrite update_index_neq by lia); try rewrite update_index_eq by lia.
+
+Ltac BreakIfExpression :=
+  match goal with
+  | [ |- context[if ?X <? ?Y then _ else _] ] => bdestruct (X <? Y); try lia
+  | [ |- context[if ?X <=? ?Y then _ else _] ] => bdestruct (X <=? Y); try lia
+  | [ |- context[if ?X =? ?Y then _ else _] ] => bdestruct (X =? Y); try lia
+  end.
+
+Ltac IfExpSimpl := repeat BreakIfExpression.
+
+Lemma msm_eq1 :
+  forall n i c f g,
+    S i < n ->
+    msma i c f g i ⊕ msma i c f g (S i) = msma (S i) c f g i.
+Proof.
+  intros. unfold msma. IfExpSimpl. easy.
+Qed.
+
+Lemma msm_eq2 :
+  forall n i c f g,
+    S i < n ->
+    msmb i c f g (S i) ⊕ msma i c f g (S i) = msmb (S i) c f g (S i).
+Proof.
+  intros. unfold msma. unfold msmb. IfExpSimpl. btauto.
+Qed.
+
+Lemma msm_eq3 :
+  forall n i c f g,
+    S i < n ->
+    majb (msma i c f g (S i)) (msmb i c f g (S i)) (msma i c f g i) = msma (S i) c f g (S i).
+Proof.
+  intros. unfold msma. unfold msmb. IfExpSimpl.
+  Local Transparent carry. simpl. unfold majb. easy.
+Qed.
+
+Local Opaque MAJ.
+Lemma MAJseq'_correct :
+  forall i n c f g h b1,
+    0 < n -> i < n ->
+    bcexec (MAJseq' i n 0) (c ` b1 ` fb_push_n n f (fb_push_n n g h)) = (c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmb i c f g) h).
+Proof.
+  induction i; intros.
+  - simpl. rewrite MAJ_correct by lia. simpl.
+    fb_push_n_simpl. replace (n - n) with 0 by lia.
+    apply functional_extensionality. intros.
+    bdestruct (x =? 0). subst. simpl. update_simpl. easy.
+    bdestruct (x =? 2 + n). subst. simpl. update_simpl. fb_push_n_simpl. replace (n - n) with 0 by lia. unfold msmb. bnauto.
+    bdestruct (x =? 2). subst. simpl. update_simpl. fb_push_n_simpl. unfold msma. bnauto.
+    update_simpl.
+    destruct x. easy. simpl. destruct x. easy. simpl.
+    bdestruct (x <? n). fb_push_n_simpl. unfold msma. bnauto.
+    fb_push_n_simpl. symmetry. fb_push_n_simpl.
+    bdestruct (x <? n + n). fb_push_n_simpl. unfold msmb. IfExpSimpl. easy.
+    fb_push_n_simpl. easy.
+  - simpl. rewrite IHi by lia. rewrite MAJ_correct by lia. simpl.
+    fb_push_n_simpl. replace (n + S i - n) with (S i) by lia.
+    apply functional_extensionality. intros.
+    bdestruct (x =? 2 + i). subst. simpl. update_simpl. fb_push_n_simpl. apply msm_eq1 with (n := n). easy.
+    bdestruct (x =? 2 + n + (1 + i)). subst. simpl. update_simpl. fb_push_n_simpl. replace (n + S i - n) with (S i) by lia. apply msm_eq2 with (n := n). easy.
+    bdestruct (x =? 3 + i). subst. simpl. update_simpl. fb_push_n_simpl. apply msm_eq3 with (n := n). easy.
+    update_simpl.
+    destruct x. easy. destruct x. easy. simpl.
+    bdestruct (x <? n). fb_push_n_simpl. unfold msma. IfExpSimpl. easy. easy.
+    fb_push_n_simpl. symmetry. fb_push_n_simpl.
+    bdestruct (x <? n + n). fb_push_n_simpl. unfold msmb. IfExpSimpl. easy. easy.
+    fb_push_n_simpl. easy.
+Qed.
+
+Local Opaque UMA.
+Lemma UMAseq'_correct :
+  forall i n c f g h b1,
+    0 < n -> i < n ->
+    bcexec (UMAseq' i n 0) ((c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h)) = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
+Proof.
+  induction i; intros.
+  - simpl. rewrite UMA_correct_partial with (fa := f 0) (fb := g 0) (fc := carry c 0 f g). 2-4 : lia.
+    apply functional_extensionality. intros.
+    bdestruct (x =? 0). subst. simpl. update_simpl. easy.
+    bdestruct (x =? 2 + n). subst. simpl. update_simpl. fb_push_n_simpl. replace (n - n) with 0 by lia. unfold sumfb. IfExpSimpl. simpl. btauto.
+    bdestruct (x =? 2). subst. simpl. update_simpl. fb_push_n_simpl. easy.
+    update_simpl.
+    destruct x. easy. simpl. destruct x. easy. simpl.
+    bdestruct (x <? n). fb_push_n_simpl. unfold msma. IfExpSimpl. easy.
+    fb_push_n_simpl. symmetry. fb_push_n_simpl.
+    bdestruct (x <? n + n). fb_push_n_simpl. unfold msmc, sumfb. IfExpSimpl. easy.
+    fb_push_n_simpl. easy.
+    simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. simpl. unfold majb. btauto.
+    simpl. fb_push_n_simpl. replace (n - n) with 0 by lia. unfold msmc. IfExpSimpl. btauto.
+    simpl. easy.
+  - simpl.
+    replace (bcexec (UMA (S (S i)) (S (S (n + S i))) (S (S (S i)))) ((c ⊕ f 0) ` b1 ` fb_push_n n (msma (S i) c f g) (fb_push_n n (msmc (S i) c f g) h))) with (((c ⊕ f 0) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h))).
+    2:{ rewrite UMA_correct_partial with (fa := f (S i)) (fb := g (S i)) (fc := carry c (S i) f g). 2-4 : lia.
+        apply functional_extensionality. intros.
+        bdestruct (x =? 2 + i). subst. simpl. update_simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. easy.
+        bdestruct (x =? 2 + n + (1 + i)). subst. simpl. update_simpl. fb_push_n_simpl. replace (n + S i - n) with (S i) by lia. unfold msmc. IfExpSimpl. simpl. btauto.
+        bdestruct (x =? 3 + i). subst. simpl. update_simpl. simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. easy.
+        update_simpl.
+        destruct x. easy. simpl. destruct x. easy. simpl.
+        bdestruct (x <? n). fb_push_n_simpl. unfold msma. IfExpSimpl. easy. easy.
+        fb_push_n_simpl. symmetry. fb_push_n_simpl.
+        bdestruct (x <? n + n). fb_push_n_simpl. unfold msmc, sumfb. IfExpSimpl. easy. easy.
+        fb_push_n_simpl. easy.
+        simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. simpl. unfold majb. btauto.
+        simpl. fb_push_n_simpl. replace (n + S i - n) with (S i) by lia. unfold msmc. IfExpSimpl. btauto.
+        simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. easy.
+    } 
+    rewrite IHi by lia. easy.
+Qed.
+
+Lemma adder01_correct_fb :
+  forall n c f g h b1,
+    0 < n ->
+    bcexec (adder01 n) (c ` b1 ` fb_push_n n f (fb_push_n n g h)) = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
+Proof.
+  intros. unfold adder01. simpl. unfold MAJseq, UMAseq. rewrite MAJseq'_correct by lia.
+  replace (fb_push_n n (msmb (n - 1) c f g) h ) with (fb_push_n n (msmc (n - 1) c f g) h).
+  2:{ apply functional_extensionality. intros.
+      bdestruct (x <? n). fb_push_n_simpl. unfold msmc, msmb. IfExpSimpl. easy.
+      fb_push_n_simpl. easy.
+  }
+  apply UMAseq'_correct; lia.
+Qed.
+
+Lemma sumfb_correct_carry0 :
+  forall x y,
+    sumfb false (nat2fb x) (nat2fb y) = nat2fb (x + y).
+Proof.
+  intros. unfold nat2fb. rewrite Nnat.Nat2N.inj_add.
+  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
+Qed.
+
+Lemma sumfb_correct_carry1 :
+  forall x y,
+    sumfb true (nat2fb x) (nat2fb y) = nat2fb (x + y + 1).
+Proof.
+  intros. unfold nat2fb. do 2 rewrite Nnat.Nat2N.inj_add.
+  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry1. easy.
+Qed.
 
 Lemma adder01_correct_carry0 :
   forall n x y f b1,
@@ -63,7 +394,13 @@ Lemma adder01_correct_carry0 :
     x < 2^(n-1) ->
     y < 2^(n-1) ->
     bcexec (adder01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [(x + y) mod 2^n]_n f).
-Admitted.
+Proof.
+  intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry0.
+  assert ((x + y) < 2^n).
+  { replace n with (S (n - 1)) by lia. simpl. lia.
+  }
+  rewrite Nat.mod_small; easy.
+Qed.
 
 Lemma adder01_correct_carry1 :
   forall n x y f b1,
@@ -71,7 +408,13 @@ Lemma adder01_correct_carry1 :
     x < 2^(n-1) ->
     y < 2^(n-1) ->
     bcexec (adder01 n) (true ` b1 ` [x]_n [y]_n f) = (true` b1 ` [x]_n [(x + y + 1) mod 2^n]_n f).
-Admitted.
+Proof.
+  intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry1.
+  assert ((x + y + 1) < 2^n).
+  { replace n with (S (n - 1)) by lia. simpl. lia.
+  }
+  rewrite Nat.mod_small; easy.
+Qed.
 
 Fixpoint swapper02' i n :=
   match i with
