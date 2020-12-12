@@ -281,7 +281,7 @@ Lemma msm_eq3 :
     majb (msma i c f g (S i)) (msmb i c f g (S i)) (msma i c f g i) = msma (S i) c f g (S i).
 Proof.
   intros. unfold msma. unfold msmb. IfExpSimpl.
-  Local Transparent carry. simpl. unfold majb. easy.
+  simpl. unfold majb. easy.
 Qed.
 
 Local Opaque MAJ.
@@ -289,6 +289,8 @@ Lemma MAJseq'_correct :
   forall i n c f g h b1,
     0 < n -> i < n ->
     bcexec (MAJseq' i n 0) (c ` b1 ` fb_push_n n f (fb_push_n n g h)) = (c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmb i c f g) h).
+Admitted. (*
+(* The following proof works, but too slow. Admitted when debugging. *)
 Proof.
   induction i; intros.
   - simpl. rewrite MAJ_correct by lia. simpl.
@@ -316,12 +318,15 @@ Proof.
     bdestruct (x <? n + n). fb_push_n_simpl. unfold msmb. IfExpSimpl. easy. easy.
     fb_push_n_simpl. easy.
 Qed.
+*)
 
 Local Opaque UMA.
 Lemma UMAseq'_correct :
   forall i n c f g h b1,
     0 < n -> i < n ->
     bcexec (UMAseq' i n 0) ((c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h)) = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
+Admitted. (*
+(* The following proof works, but too slow. Admitted when debugging. *)
 Proof.
   induction i; intros.
   - simpl. rewrite UMA_correct_partial with (fa := f 0) (fb := g 0) (fc := carry c 0 f g). 2-4 : lia.
@@ -357,6 +362,7 @@ Proof.
     } 
     rewrite IHi by lia. easy.
 Qed.
+*)
 
 Lemma adder01_correct_fb :
   forall n c f g h b1,
@@ -388,49 +394,142 @@ Proof.
   apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry1. easy.
 Qed.
 
+Lemma sumfb_correct_N_carry0 :
+  forall x y,
+    sumfb false (N2fb x) (N2fb y) = N2fb (x + y).
+Proof.
+  intros. apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
+Qed.
+
+Lemma pos2fb_Postestbit :
+  forall n i,
+    (pos2fb n) i = Pos.testbit n (N.of_nat i).
+Proof.
+  induction n; intros.
+  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
+  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
+  - destruct i; simpl. easy. easy.
+Qed.
+
+Lemma N2fb_Ntestbit :
+  forall n i,
+    (N2fb n) i = N.testbit n (N.of_nat i).
+Proof.
+  intros. destruct n. easy.
+  simpl. apply pos2fb_Postestbit.
+Qed.
+
+Lemma Z2N_Nat2Z_Nat2N :
+  forall x,
+    Z.to_N (Z.of_nat x) = N.of_nat x.
+Proof.
+  destruct x; easy.
+Qed.
+
+Lemma Nofnat_mod :
+  forall x y,
+    y <> 0 ->
+    N.of_nat (x mod y) = ((N.of_nat x) mod (N.of_nat y))%N.
+Proof.
+  intros. specialize (Zdiv.mod_Zmod x y H) as G.
+  repeat rewrite <- Z2N_Nat2Z_Nat2N. rewrite G. rewrite Z2N.inj_mod; lia.
+Qed.
+
+Lemma Nofnat_pow :
+  forall x y,
+    N.of_nat (x ^ y) = ((N.of_nat x) ^ (N.of_nat y))%N.
+Proof.
+  intros. induction y. easy.
+  Local Opaque N.pow. replace (N.of_nat (S y)) with ((N.of_nat y) + 1)%N by lia. simpl. rewrite N.pow_add_r. rewrite N.pow_1_r. rewrite Nnat.Nat2N.inj_mul. rewrite IHy. lia.
+Qed.
+
+Lemma reg_push_exceed :
+  forall n x f,
+    [x]_n f = [x mod 2^n]_n f.
+Proof.
+  intros. unfold reg_push. unfold nat2fb.
+  apply functional_extensionality; intro i.
+  bdestruct (i <? n). fb_push_n_simpl. rewrite Nofnat_mod. 2: apply Nat.pow_nonzero; lia.
+  rewrite Nofnat_pow. simpl.
+  do 2 rewrite N2fb_Ntestbit. rewrite N.mod_pow2_bits_low. easy. lia.
+  fb_push_n_simpl. easy.
+Qed.
+
 Lemma adder01_correct_carry0 :
   forall n x y f b1,
     0 < n ->
-    x < 2^(n-1) ->
-    y < 2^(n-1) ->
-    bcexec (adder01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [(x + y) mod 2^n]_n f).
+    bcexec (adder01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [x + y]_n f).
 Proof.
-  intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry0.
-  assert ((x + y) < 2^n).
-  { replace n with (S (n - 1)) by lia. simpl. lia.
-  }
-  rewrite Nat.mod_small; easy.
+  intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry0. easy.
 Qed.
 
 Lemma adder01_correct_carry1 :
   forall n x y f b1,
     0 < n ->
-    x < 2^(n-1) ->
-    y < 2^(n-1) ->
-    bcexec (adder01 n) (true ` b1 ` [x]_n [y]_n f) = (true` b1 ` [x]_n [(x + y + 1) mod 2^n]_n f).
+    bcexec (adder01 n) (true ` b1 ` [x]_n [y]_n f) = (true` b1 ` [x]_n [x + y + 1]_n f).
 Proof.
-  intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry1.
-  assert ((x + y + 1) < 2^n).
-  { replace n with (S (n - 1)) by lia. simpl. lia.
-  }
-  rewrite Nat.mod_small; easy.
+  intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry1. easy.
 Qed.
 
 Fixpoint swapper02' i n :=
   match i with
   | 0 => bcskip
-  | S i' => swapper02' i' n; bcswap (2 + i') (2 + n + i')
+  | S i' => swapper02' i' n; bcswap (2 + i') (2 + n + n + i')
   end.
 Definition swapper02 n := swapper02' n n.
+
+Definition swapma i (f g : nat -> bool) := fun x => if (x <? i) then g x else f x.
+Definition swapmb i (f g : nat -> bool) := fun x => if (x <? i) then f x else g x.
+
+Lemma swapma_gtn_invariant :
+  forall n f g h,
+    fb_push_n n (swapma n f g) h = fb_push_n n g h.
+Proof.
+  intros. apply functional_extensionality; intro.
+  bdestruct (x <? n). fb_push_n_simpl. unfold swapma. IfExpSimpl. easy.
+  fb_push_n_simpl. easy.
+Qed.
+
+Lemma swapmb_gtn_invariant :
+  forall n f g h,
+    fb_push_n n (swapmb n f g) h = fb_push_n n f h.
+Proof.
+  intros. apply functional_extensionality; intro.
+  bdestruct (x <? n). fb_push_n_simpl. unfold swapmb. IfExpSimpl. easy.
+  fb_push_n_simpl. easy.
+Qed.
+
+Local Opaque bcswap.
+Lemma swapper02'_correct :
+  forall i n f g h u b1 b2,
+    0 < n ->
+    i <= n ->
+    bcexec (swapper02' i n) (b1 ` b2 ` fb_push_n n f (fb_push_n n g (fb_push_n n h u))) = b1 ` b2 ` fb_push_n n (swapma i f h) (fb_push_n n g (fb_push_n n (swapmb i f h) u)).
+Proof.
+  induction i; intros.
+  - simpl.
+    replace (swapma 0 f h) with f by (apply functional_extensionality; intro; IfExpSimpl; easy).
+    replace (swapmb 0 f h) with h by (apply functional_extensionality; intro; IfExpSimpl; easy).
+    easy.
+  - simpl. rewrite IHi by lia.
+    apply functional_extensionality; intro. rewrite bcswap_correct by lia.
+    bdestruct (x =? S (S i)). subst. simpl. fb_push_n_simpl. unfold swapma, swapmb. IfExpSimpl. apply f_equal. lia.
+    bdestruct (x =? S (S (n + n + i))). subst. simpl. fb_push_n_simpl. unfold swapma, swapmb. IfExpSimpl. apply f_equal. lia.
+    destruct x. easy. simpl. destruct x. easy. simpl.
+    bdestruct (x <? n). fb_push_n_simpl. unfold swapma. IfExpSimpl; easy.
+    bdestruct (x <? n + n). fb_push_n_simpl. easy.
+    bdestruct (x <? n + n + n). fb_push_n_simpl. unfold swapmb. IfExpSimpl; easy.
+    fb_push_n_simpl. easy.
+Qed.
 
 Lemma swapper02_correct :
   forall n x y z f b0 b1,
     0 < n ->
-    x < 2^(n-1) ->
-    y < 2^(n-1) ->
-    z < 2^(n-1) ->
     bcexec (swapper02 n) (b0 ` b1 ` [x]_n [y]_n [z]_n f) = b0 ` b1 ` [z]_n [y]_n [x]_n f.
-Admitted.
+Proof.
+  intros. unfold reg_push, swapper02. rewrite swapper02'_correct by lia.
+  rewrite swapma_gtn_invariant. rewrite swapmb_gtn_invariant. easy.
+Qed.
 
 Fixpoint negator0' i : bccom :=
   match i with
