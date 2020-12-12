@@ -527,6 +527,103 @@ Proof.
  lia.
 Qed.
 
+Lemma insert_f_gt:
+   forall n f g m, (2 * n + 1) < m -> insert_f n f g m = g m.
+Proof.
+  intros.
+  induction n.
+  simpl.
+  rewrite update_index_neq.
+  reflexivity.
+  lia.
+  simpl.
+  rewrite update_index_neq.
+  rewrite IHn.
+  reflexivity.
+  lia.
+  lia.
+Qed.
+
+Lemma insert_f_twice_assoc:
+ forall n m v f g, (2*n+1) < m -> insert_f n f (g[m |-> v]) = (insert_f n f g)[m |-> v].
+Proof.
+ intros.
+ induction n.
+ simpl.
+ rewrite update_twice_neq.
+ reflexivity. lia.
+ simpl.
+ rewrite IHn.
+ rewrite update_twice_neq.
+ reflexivity.
+ lia. lia.
+Qed.
+
+Lemma insert_f_twice_eq:
+   forall n f g h, insert_f n f (insert_f n g h) = insert_f n f h.
+Proof.
+  intros.
+  induction n.
+  simpl.
+  rewrite update_twice_eq.
+  reflexivity.
+  simpl.
+  rewrite insert_f_twice_assoc.
+  rewrite update_twice_eq.
+  rewrite IHn.
+  reflexivity. lia.
+Qed.
+
+Lemma insert_f_subst: 
+  forall n f g h , (forall i, i <= n -> g i = h i) -> insert_f n g f = insert_f n h f.
+Proof.
+  intros n f g h H.
+  induction n.
+  simpl.
+  rewrite H.
+  reflexivity. lia.
+  simpl.
+  rewrite IHn.
+  rewrite H.
+  reflexivity.
+  lia.
+  intros.
+  rewrite H. reflexivity.
+  lia.
+Qed.
+
+Lemma insert_f_same :
+  forall n f g i, i <= n -> insert_f n g f (2*i+1) = g i.
+Proof.
+  intros.
+  induction n.
+  simpl.
+  assert (i = 0) by lia.
+  rewrite H0.
+  rewrite update_index_eq.
+  reflexivity.
+  simpl in *.
+  destruct (i <=? n) eqn:eq.
+  apply Nat.leb_le in eq.
+  rewrite update_index_neq.
+  rewrite IHn. reflexivity.
+  assumption.
+  lia.
+  apply leb_iff_conv in eq.
+  assert (i = S n) by lia.
+  rewrite H0.
+  rewrite update_index_eq.
+  reflexivity.
+Qed.
+
+Lemma insert_f_same_col: 
+  forall n f g h i, (i <= n) -> (forall i, i <= n -> g i = h i) -> insert_f n g f (2*i+1) = h i.
+Proof.
+  intros.
+  rewrite insert_f_same.
+  rewrite H0. reflexivity.
+  lia. lia.
+Qed.
 
 Lemma adder_correct :
    forall n fb, fb 0 = false -> (bcexec (adder n) fb) = insert_f n (adder_spec (get_f fb) (get_g fb)) fb.
@@ -563,15 +660,117 @@ Qed.
    The comparator is based on computing x - y, which is computing (x' + y)'. *)
 Fixpoint flip_snd n : bccom :=
       match n with 
-       | 0 => bcskip
-       | S m => flip_snd m; bcx (2 * m + 1)
+       | 0 => bcx 1
+       | S m => flip_snd m; bcx (2 * n + 1)
       end.
+
+Lemma flip_snd_correct:
+  forall n fb, bcexec (flip_snd n) fb = insert_f n (com_spec (get_f fb)) fb.
+Proof.
+  intros.
+  unfold com_spec,get_f.
+  induction n.
+  simpl.
+  reflexivity.
+  simpl.
+  rewrite IHn. simpl.
+  assert ((insert_f n (fun i : nat => ¬ (fb (i + (i + 0) + 1))) fb
+         (S (n + S (n + 0) + 1))) 
+           = (fb (S (n + S (n + 0) + 1)))).
+  rewrite insert_f_gt.
+  reflexivity.
+  lia.
+  rewrite H.
+  reflexivity.
+Qed.
+
+Definition subtractor n := flip_snd n ; adder n ; flip_snd n.
+
+Lemma carry_spec_f_eq :
+  forall n b g h f, (forall i, i <= n -> g i = h i) -> 
+        carry_spec b n g f = carry_spec b n h f.
+Proof.
+ intro n.
+ induction n.
+ intros. simpl.
+ reflexivity.
+ intros.
+ simpl.
+ rewrite H.
+ rewrite (IHn b g h f).
+ reflexivity.
+ intros.
+ rewrite H.
+ reflexivity.
+ lia. lia.
+Qed.
+
+Lemma subtractor_correct : 
+   forall n fb, fb 0 = false ->
+         (bcexec (subtractor n) fb) = insert_f n (compare_spec (get_f fb) (get_g fb)) fb.
+Proof.
+intros.
+unfold subtractor.
+rewrite bcseq_correct.
+rewrite bcseq_correct.
+rewrite (flip_snd_correct n fb).
+rewrite adder_correct.
+rewrite flip_snd_correct.
+unfold get_f,get_g,compare_spec,com_spec,adder_spec.
+assert(forall i, insert_f n (fun i0 : nat => ¬ (fb (2 * i0 + 1))) fb (2 * i + 2) = fb (2* i + 2)).
+intros.
+induction n.
+simpl.
+rewrite update_index_neq. reflexivity.
+lia.
+simpl in *.
+rewrite update_index_neq.
+rewrite IHn. reflexivity.
+lia.
+assert ((fun i : nat =>
+         insert_f n (fun i0 : nat => ¬ (fb (2 * i0 + 1))) fb (2 * i + 2))
+   = (fun i : nat => fb (2 * i + 2))).
+apply functional_extensionality.
+intros. rewrite H0. reflexivity.
+rewrite H1.
+rewrite insert_f_twice_eq.
+rewrite insert_f_twice_eq.
+rewrite insert_f_twice_eq.
+apply insert_f_subst.
+intros.
+rewrite (insert_f_same_col n fb (add_bit
+        (fun i0 : nat =>
+         insert_f n (fun i1 : nat => ¬ (fb (2 * i1 + 1))) fb
+           (2 * i0 + 1)) (fun i0 : nat => fb (2 * i0 + 2))) 
+             (add_bit (fun i0 : nat => ¬ (fb (2 * i0 + 1)))
+     (fun i0 : nat => fb (2 * i0 + 2)))).
+reflexivity. lia.
+intros.
+assert (forall i g h f, (forall x, x <= i -> g x = h x) -> add_bit g f i = add_bit h f i).
+ { intros.
+   unfold add_bit.
+   rewrite  H4.
+   rewrite (carry_spec_f_eq i1 false g h f).
+   reflexivity.
+   intros.
+   rewrite H4. reflexivity.
+   lia. lia.
+ }
+apply H4.
+intros.
+rewrite insert_f_same.
+reflexivity.
+lia.
+unfold com_spec.
+rewrite insert_f_0.
+apply H.
+Qed.
 
 Definition comparator n := flip_snd n ; MAJ_sign n ; UMAseq n n ; flip_snd n.
 
 Lemma comparator_correct : 
-   forall n fb m, m <= n -> 
-         get_f n (bcexec (comparator n) fb) m = compare_spec (get_f n fb) (get_g n fb) m.
+   forall n fb m, m <= n -> fb 0 = false ->
+         (bcexec (comparator n) fb) m = insert_f n (compare_spec (get_f fb) (get_g fb) m) fb.
 Proof.
 intros.
 Admitted.
