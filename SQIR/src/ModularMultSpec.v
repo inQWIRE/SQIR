@@ -51,6 +51,21 @@ Proof.
   simpl. rewrite IHn. btauto.
 Qed.
 
+Lemma carry_spec_same:
+   forall b n f g h,
+     (forall m, m < n -> f m = g m) ->
+       carry_spec b n f h = carry_spec b n g h.
+Proof.
+  intros. induction n.
+  simpl. reflexivity.
+  simpl. rewrite IHn.
+  rewrite H.
+  reflexivity.
+  lia.
+  intros. rewrite H.
+  reflexivity. lia.
+Qed.
+
 Definition funbool_push b f : nat -> bool :=
   fun x => match x with
         | O => b

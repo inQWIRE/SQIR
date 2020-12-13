@@ -43,6 +43,31 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma get_g_insert_same_aux:
+  forall i n g f, (insert_f n g f) (2 * i + 2) = f (2 * i + 2).
+Proof.
+  intros.
+  induction n.
+  simpl.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  simpl in *.
+  rewrite update_index_neq by lia.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+Lemma get_g_insert_same:
+  forall n g f, get_g (insert_f n g f) = get_g f.
+Proof.
+  intros.
+  unfold get_g.
+  apply functional_extensionality.
+  intros.
+  rewrite get_g_insert_same_aux.
+  reflexivity.
+Qed.
+
 (* The following contains the implementation of the Modular Multiplier circuit that meets the specification. *)
 (* Maj and UMA circuits. *)
 Definition MAJ a b c := bccnot c b ; bccnot c a ; bcccnot a b c.
@@ -249,6 +274,27 @@ intros.
   1 - 4: lia.
 Qed.
 
+Lemma msb_msbs_correct :
+  forall n f m, m < 2 * n + 3 -> (msbs n f) m = msb n f m.
+Proof.
+ intros.
+ unfold msbs.
+ rewrite update_index_neq.
+ reflexivity.
+ lia.
+Qed.
+
+Lemma MAJ_sign_MAJ_eq:
+  forall n f m, m < 2 * n + 3 -> (bcexec (MAJ_sign n) f) m = (bcexec (MAJseq n) f) m.
+Proof.
+  intros.
+  rewrite MAJ_sign_correct.
+  rewrite MAJseq_correct.
+  rewrite msb_msbs_correct.
+  reflexivity. lia.
+Qed.
+
+
 Fixpoint UMAseq len n : bccom :=
   match n with
   | 0 => UMA (2*len) (2*len + 1) (2*len + 2)
@@ -436,55 +482,7 @@ Proof.
   1 - 3 : assumption.
 Qed.
 
-Lemma uma_msb_hbit_eq :
-   forall n m f, f 0 = false -> m < 2 * n + 3 ->
-     bcexec (UMAseq n n) ((msb n f) [2 * n + 2 |-> f (2 * n + 2)]) m =
-              bcexec (UMAseq n n) (msb n f) m.
-Proof.
-  induction n.
-  intros.
-  simpl.
-  rewrite update_index_neq by lia.
-  destruct ((((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
-       |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)]) 0) eqn:eq.
-  rewrite update_index_neq by lia.
-  destruct ((((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
-       |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)]) 1) eqn:eq1.
-  rewrite update_index_eq by lia.
-  rewrite update_index_eq by lia.
-(*
-  rewrite (update_index_eq (((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2]) [2
-      |-> ((f 1 && f 2) ⊕ (f 2 && f 0)) ⊕ (f 1 && f 0)])) by lia.
-  rewrite (update_index_eq ((f [0 |-> f 0 ⊕ f 2]) [1 |-> f 1 ⊕ f 2])) by lia.
-  rewrite (update_twice_neq f) in eq by lia.
-  rewrite (update_twice_neq (f [1 |-> f 1 ⊕ f 2])) in eq by lia.
-  rewrite update_index_eq in eq by lia.
-  rewrite (update_twice_neq (f [0 |-> f 0 ⊕ f 2])) in eq1 by lia.
-  rewrite update_index_eq in eq1 by lia.
-  destruct ((f 2)) eqn:eq2.
-  assert (¬ true = false) by easy. rewrite H1.
-  rewrite xorb_true_r in eq.
-  rewrite xorb_true_r in eq1.
-  apply negb_true_iff in eq1.
-  rewrite eq1. rewrite H.
-  rewrite xorb_false_l.
-  rewrite andb_false_l.
-  rewrite andb_true_l.
-  rewrite andb_false_l.
-  rewrite xorb_false_l.
-  unfold negb.
-  rewrite update_index_eq by lia.
-  repeat rewrite update_index_neq by lia.
-  rewrite update_index_eq by lia.
-  destruct (m =? 0) eqn:eq3.
-  apply Nat.eqb_eq in eq3.
-  rewrite eq3.
-  repeat rewrite update_index_neq by lia.
-*)
-Admitted.
-
 (* Defining the adder implementation based on series of MAJ + UMA. *)
-
 
 
 Definition adder n : bccom := MAJseq n; UMAseq n n.
@@ -515,6 +513,16 @@ Proof.
   intros.
 Admitted.
 
+Lemma uma_correct_2 :
+     forall n len m fb,  n <= len -> m < 2 * len + 3 ->
+         (bcexec (UMAseq len n) (msbs len fb)) = (bcexec (UMAseq len n) (msb len fb)).
+Proof.
+  intros.
+  induction n.
+  simpl.
+Admitted.
+
+
 Lemma insert_f_0:
   forall n f g, insert_f n f g 0 = g 0.
 Proof.
@@ -542,6 +550,73 @@ Proof.
   reflexivity.
   lia.
   lia.
+Qed.
+
+Lemma insert_f_lt:
+   forall n f g m, m < (2 * n + 3) -> insert_f (n+1) f g m = insert_f n f g m.
+Proof.
+  intros.
+  induction n.
+  simpl.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  simpl.
+  destruct (m <? 2 * n + 3) eqn:eq.
+  apply Nat.ltb_lt in eq.
+  rewrite update_index_neq by lia.
+  rewrite update_index_neq by lia.
+  rewrite IHn.
+  reflexivity. lia.
+  specialize (Nat.ltb_lt m (2 * n + 3)) as eq1.
+  apply not_iff_compat in eq1.
+  apply not_true_iff_false in eq.
+  apply eq1 in eq.
+  apply not_lt in eq.
+  destruct (m =? S (n + S (n + 0) + 1)) eqn:eq2.
+  apply Nat.eqb_eq in eq2.
+  rewrite eq2.
+  rewrite update_index_neq by lia.
+  rewrite update_index_eq.
+  assert (n + 1 = S n) by lia.
+  rewrite H0. simpl.
+  rewrite update_index_eq.
+  reflexivity.
+  apply Nat.eqb_neq in eq2.
+  assert (m = 2 * n + 4) by lia.
+  rewrite H0.
+  rewrite update_index_neq by lia.
+  rewrite update_index_neq by lia.
+  rewrite insert_f_gt.
+  rewrite insert_f_gt.
+  reflexivity.
+  1 - 2 : lia.
+Qed.
+
+
+Lemma get_f_insert_same:
+  forall n i g f, i <= n -> get_f (insert_f n g f) i = g i.
+Proof.
+  intros.
+  unfold get_f.
+  induction n.
+  simpl.
+  assert ((i + (i + 0) + 1)  = 1) by lia.
+  rewrite H0.
+  rewrite update_index_eq.
+  assert (i = 0) by lia.
+  rewrite H1. reflexivity.
+  simpl in *.
+  destruct (i <=? n) eqn:eq.
+  apply Nat.leb_le in eq.
+  rewrite update_index_neq by lia.
+  rewrite IHn. reflexivity. lia.
+  apply leb_iff_conv in eq.
+  assert (i = S n) by lia.
+  rewrite H0.
+  assert ((S n + (S n + 0) + 1) = S (n + S (n + 0) + 1)) by lia.
+  rewrite H1.
+  rewrite update_index_eq.
+  reflexivity.
 Qed.
 
 Lemma insert_f_twice_assoc:
@@ -684,7 +759,88 @@ Proof.
   reflexivity.
 Qed.
 
-Definition subtractor n := flip_snd n ; adder n ; flip_snd n.
+Lemma flip_snd_gt:
+  forall n m fb, 2 * n + 2 <= m -> bcexec (flip_snd n) fb m = fb m.
+Proof.
+  intros.
+  induction n.
+  simpl.
+  rewrite update_index_neq by lia.
+  reflexivity.
+  simpl.
+  rewrite update_index_neq by lia.
+  rewrite IHn. reflexivity.
+  lia.
+Qed.
+
+
+Lemma bcseq_gt:
+  forall n m (z : nat -> nat) b1 b2 f, z n < m -> 
+           (forall g, z n < m -> bcexec (b1 n) g m = g m) ->
+           (forall g, z n < m -> bcexec (b2 n) g m = g m) ->
+           bcexec ((b1 n) ; (b2 n)) f m = f m.
+Proof.
+  intros.
+  rewrite bcseq_correct.
+  rewrite (H1 (bcexec (b1 n) f)).
+  rewrite H0.
+  reflexivity. assumption. assumption.
+Qed.
+
+Lemma flip_snd_prop_1:
+  forall n m f g,
+        m < 2 * n + 3 ->
+       (forall i,  i < 2 * n + 3 -> f i = g i) -> 
+      bcexec (flip_snd n) f m = bcexec (flip_snd n) g m.
+Proof.
+  intros n.
+  induction n.
+  intros.
+  simpl.
+  destruct (m =? 1) eqn:eq.
+  apply Nat.eqb_eq in eq.
+  rewrite eq.
+  rewrite update_index_eq.
+  rewrite update_index_eq.
+  rewrite H0. reflexivity.
+  lia.
+  apply Nat.eqb_neq in eq.
+  rewrite update_index_neq by lia.
+  rewrite update_index_neq by lia.
+  rewrite H0.
+  reflexivity. lia.
+  intros.
+  simpl.
+  destruct ( m <? 2 * n + 3) eqn:eq.
+  apply Nat.ltb_lt in eq.
+  rewrite update_index_neq by lia.
+  rewrite update_index_neq by lia.
+  rewrite (IHn m f g).
+  reflexivity. lia.
+  intros. rewrite H0.
+  reflexivity. lia.
+  specialize (Nat.ltb_lt m (2 * n + 3)) as eq1.
+  apply not_iff_compat in eq1.
+  apply not_true_iff_false in eq.
+  apply eq1 in eq.
+  apply not_lt in eq.
+  destruct (m =? S (n + S (n + 0) + 1)) eqn:eq2.
+  apply Nat.eqb_eq in eq2.
+  rewrite eq2.
+  rewrite update_index_eq.
+  rewrite update_index_eq.
+  rewrite flip_snd_gt. rewrite flip_snd_gt.
+  rewrite H0. reflexivity.
+  1 - 3 : lia.
+  apply Nat.eqb_neq in eq2.
+  rewrite update_index_neq by lia.
+  rewrite update_index_neq by lia.
+  rewrite flip_snd_gt. rewrite flip_snd_gt.
+  rewrite H0. reflexivity.
+  1 - 3 : lia.
+Qed.
+
+Definition subtractor n := flip_snd n ; (adder n ; flip_snd n).
 
 Lemma carry_spec_f_eq :
   forall n b g h f, (forall i, i <= n -> g i = h i) -> 
@@ -766,17 +922,196 @@ rewrite insert_f_0.
 apply H.
 Qed.
 
-Definition comparator n := flip_snd n ; MAJ_sign n ; UMAseq n n ; flip_snd n.
+Definition adder_sign n := MAJ_sign n; UMAseq n n.
+
+Definition comparator n := flip_snd n ; (adder_sign n; flip_snd n).
+
+Lemma MAJ_sign_UMA_correct_1:
+  forall n m fb, m < 2 * n + 3 -> 
+      (bcexec (adder_sign n) fb) m = (bcexec (adder n) fb) m.
+Proof.
+ intros.
+ unfold adder_sign,adder.
+ rewrite bcseq_correct.
+ rewrite bcseq_correct.
+ rewrite MAJseq_correct.
+ rewrite MAJ_sign_correct.
+ rewrite (uma_correct_2 n n m).
+ reflexivity. lia. lia.
+Qed.
+
+Lemma MAJ_sign_UMA_correct_2:
+  forall n fb,
+      (bcexec (adder_sign n) fb) (2*n+3) = (carry (S n) fb) ⊕ fb (2 * n + 3).
+Proof.
+ intros.
+ unfold adder_sign.
+ rewrite bcseq_correct.
+ rewrite uma_end_gt.
+ rewrite MAJ_sign_correct.
+ unfold msbs.
+ rewrite update_index_eq.
+ rewrite msb_end2.
+ reflexivity. lia.
+Qed.
+
+Lemma adder_sign_gt :
+  forall n m f, 2 * n + 3 < m -> bcexec (adder_sign n) f m = f m.
+Proof.
+ intros.
+ unfold adder_sign.
+ apply (bcseq_gt n m (fun n => 2 * n + 3)).
+ assumption.
+ intros.
+ rewrite MAJ_sign_correct.
+ rewrite msbs_end_gt.
+ reflexivity. assumption.
+ intros.
+ rewrite uma_end_gt.
+ reflexivity. lia.
+Qed.
+
+Lemma comparator_correct_1:
+ forall n fb m, m < 2 * n + 3 -> fb 0 = false ->
+        (bcexec (comparator n) fb) m = insert_f n (compare_spec (get_f fb) (get_g fb)) fb m.
+Proof.
+  intros.
+  assert (bcexec (comparator n) fb m = (bcexec (subtractor n) fb m)).
+  unfold comparator,subtractor. 
+  rewrite (bcseq_correct ((flip_snd n))).
+  rewrite (bcseq_correct ((flip_snd n))).
+  rewrite bcseq_correct.
+  rewrite bcseq_correct.
+  apply flip_snd_prop_1. assumption.
+  intros.
+  rewrite MAJ_sign_UMA_correct_1.
+  reflexivity.
+  assumption.
+  rewrite H1.
+  rewrite subtractor_correct.
+  reflexivity. rewrite H0.
+  reflexivity.
+Qed.
+
+Lemma comparator_correct_2:
+ forall n fb, fb 0 = false -> fb (2 * n + 4) = false ->
+        (bcexec (comparator n) fb) (2 * n + 3) = insert_f (n+1) (compare_spec (get_f fb) (get_g fb)) fb (2 * n + 3).
+Proof.
+  intros.
+  unfold comparator,compare_spec.
+  rewrite bcseq_correct.
+  rewrite bcseq_correct.
+  rewrite flip_snd_gt.
+  rewrite MAJ_sign_UMA_correct_2.
+  unfold carry.
+  rewrite flip_snd_correct.
+  rewrite insert_f_0.
+  rewrite insert_f_gt.
+  rewrite get_g_insert_same.
+  rewrite H.
+  assert (insert_f (n + 1)
+  (com_spec (add_bit (com_spec (get_f fb)) (get_g fb))) fb
+      = (insert_f n (com_spec (add_bit (com_spec (get_f fb)) (get_g fb))) fb)
+              [2 * (n+1) + 1 |-> (com_spec (add_bit (com_spec (get_f fb)) (get_g fb))) (n+1)]).
+assert (n+1 = S n) by lia.
+rewrite H1. simpl.
+reflexivity.
+rewrite H1.
+assert (2 * (n + 1) + 1 = 2 * n + 3) by lia.
+rewrite H2.
+rewrite update_index_eq.
+simpl.
+unfold com_spec,add_bit.
+rewrite get_f_insert_same.
+rewrite (carry_spec_same false n (get_f 
+     (insert_f n (fun i : nat => ¬ (get_f fb i)) fb)) (fun i : nat => ¬ (get_f fb i))).
+assert ((n + 1) = S n) by lia.
+rewrite H3.
+simpl.
+assert ((get_f fb (S n)) = fb (n + (n + 0) + 3)).
+unfold get_f.
+assert ((2 * S n + 1) = (n + (n + 0) + 3)) by lia.
+rewrite H4. reflexivity.
+rewrite H4.
+remember (((¬ (get_f fb n) && get_g fb n)
+  ⊕ (get_g fb n &&
+     carry_spec false n (fun i : nat => ¬ (get_f fb i))
+       (get_g fb)))) as b1.
+remember ((¬ (get_f fb n) &&
+    carry_spec false n (fun i : nat => ¬ (get_f fb i))
+      (get_g fb))) as b2.
+assert (get_g fb (S n) = fb (2 * n + 4)).
+unfold get_g.
+assert ((2 * S n + 2) = (2 * n + 4)) by lia.
+rewrite H5. reflexivity.
+rewrite H5.
+rewrite H0.
+btauto.
+intros.
+rewrite get_f_insert_same.
+reflexivity.
+1 - 4: lia.
+Qed.
+
+Lemma comparator_gt:
+ forall n fb m, 2 * n + 3 < m -> (bcexec (comparator n) fb) m = fb m.
+Proof.
+  intros.
+  unfold comparator.
+  Check bcseq_gt.
+  apply (bcseq_gt n m (fun n => 2 * n + 3) (fun n => flip_snd n)
+            (fun n => (adder_sign n; flip_snd n)) fb).
+  assumption.
+  intros.
+  rewrite flip_snd_gt. reflexivity. lia.
+  intros.
+  apply (bcseq_gt n m (fun n => 2 * n + 3)).
+  lia.
+  intros.
+  rewrite adder_sign_gt.
+  reflexivity. assumption.
+  intros.
+  rewrite flip_snd_gt. reflexivity. lia.
+Qed.
 
 Lemma comparator_correct : 
-   forall n fb m, m <= n -> fb 0 = false ->
-         (bcexec (comparator n) fb) m = insert_f n (compare_spec (get_f fb) (get_g fb) m) fb.
+   forall n fb, fb 0 = false -> fb (2 * n + 4) = false ->
+         (bcexec (comparator n) fb)= insert_f (n+1) (compare_spec (get_f fb) (get_g fb)) fb.
 Proof.
-intros.
-Admitted.
+  intros.
+  apply functional_extensionality.
+  intros.
+  destruct (x <? 2 * n + 3) eqn:eq.
+  apply Nat.ltb_lt in eq.
+  rewrite comparator_correct_1.
+  rewrite insert_f_lt.
+  reflexivity.
+  1 - 3: assumption.
+  specialize (Nat.ltb_lt x (2*n+3)) as eq1.
+  apply not_iff_compat in eq1.
+  apply not_true_iff_false in eq.
+  apply eq1 in eq.
+  apply not_lt in eq.
+  destruct (x =? 2*n+3) eqn:eq2.
+  apply Nat.eqb_eq in eq2.
+  rewrite eq2.
+  rewrite comparator_correct_2.
+  reflexivity.
+  1 - 2: assumption.
+  apply Nat.eqb_neq in eq2.
+  assert (2 * n + 3 < x) by lia.
+  rewrite comparator_gt.
+  rewrite insert_f_gt.
+  reflexivity.
+  1 - 2 : lia.
+Qed.
 
+Fixpoint times_two' n := 
+   match n with 0 => bcskip
+             | S m => bcswap (2 * n - 1) (2 * n + 1); times_two' m
+   end.
 
-Definition times_two n := bcswap 1 (2 * n - 1).
+Definition times_two n := times_two' n;bcswap 1 (2 * n + 1).
 
 Lemma times_two_correct :
    forall n i fb, 0 < n -> i < n -> 
