@@ -1,4 +1,6 @@
 Require Import UnitaryOps.
+
+Require Import RCIR.
 Open Scope ucom.
 
 (*********************************)
@@ -20,6 +22,7 @@ Open Scope ucom.
    new formalisms for describing classical states (see 'f_to_vec'). *)
 
 (** Boolean expressions **)
+
 
 Inductive bexp := 
 | b_t   : bexp
@@ -139,26 +142,27 @@ Fixpoint num_ancillae b : nat :=
 
 (* Total number of qubits required. *)
 Definition b_dim (b : bexp) : nat := (num_inputs b) + 1 + (num_ancillae b).
+Notation "p1 ; p2" := (bcseq p1 p2) (at level 50).
 
 (* Translate a boolean expression into a reversible circuit. The produced 
    program should only modify the qubit at index i.
    - i is the index of the result
    - j is the index of the next available ancilla. *)
-Fixpoint compile' {dim} (b : bexp) (i j : nat) : base_ucom dim :=
+Fixpoint compile'  (b : bexp) (i j : nat) : bccom :=
   match b with
-  | b_t         => X i
-  | b_f         => SKIP
-  | b_var v     => CNOT v i
+  | b_t         => bcx i
+  | b_f         => bcskip
+  | b_var v     => bccnot v i
   | b_and b1 b2 => compile' b1 j (j+2); 
                   compile' b2 (j+1) (j+2);
-                  CCX j (j+1) i;
+                  bcccnot j (j+1) i;
                   compile' b2 (j+1) (j+2); 
                   compile' b1 j (j+2)
   | b_xor b1 b2 => compile' b1 i j; 
                   compile' b2 i j
   end.
 
-Definition compile b : base_ucom (b_dim b) := 
+Definition compile b : bccom := 
   compile' b (num_inputs b) ((num_inputs b) + 1).
 
 (* Correctness of compile':
@@ -170,15 +174,21 @@ Definition compile b : base_ucom (b_dim b) :=
    * 'i < j' is used when applying f_to_vec_X, f_to_vec_CNOT, and f_to_vec_TOFF.
    * 'j + (num_ancillae b) < n + 1' and 'forall k ...' are used in the b_and 
      case -- note that this is the only case where the ancilla matter.
-*)
+*)(*
+Lemma cnot_false : forall (n i : nat) (f : nat -> bool),
+    (fun j0 : nat => if j0 =? i then f i ⊕ false else f j0
+   *)
+
 Local Opaque CCX.
+
+
 Lemma compile'_correct : forall dim (b : bexp) (f : nat -> bool) (i j : nat),
   bexp_well_typed i b -> 
   (i < j)%nat ->
   (j + (num_ancillae b) < dim + 1)%nat ->
   (forall k, (k > i)%nat -> f k = false) ->
-  (uc_eval (@compile' dim b i j)) × (f_to_vec dim f) 
-    = f_to_vec dim (update f i ((f i) ⊕ (interpret_bexp b f))).
+  (bcexec (@compile' b i j)) f
+    = (update f i ((f i) ⊕ (interpret_bexp b f))).
 Proof.
   intros.
   generalize dependent f.
@@ -187,19 +197,24 @@ Proof.
   induction b; intros.
   - (* b_t *)
     unfold compile'. 
-    rewrite f_to_vec_X; try lia.
-    destruct (f i); simpl; reflexivity.
+
+    simpl. reflexivity. 
+
   - (* b_f *)
-    simpl.  autorewrite with eval_db; try lia.
-    rewrite Mmult_1_l; try apply f_to_vec_WF.
+    simpl.
     rewrite xorb_false_r.
-    rewrite update_same; reflexivity.
+    rewrite update_same; reflexivity. 
+
   - (* b_var v *)
     inversion H; subst.
     unfold compile'.
-    rewrite f_to_vec_CNOT; try lia.
-    reflexivity.
-  - (* b_and b1 b2 *) 
+    simpl.
+    destruct (f n).
+    + reflexivity.
+    + rewrite xorb_false_r.
+      rewrite update_same;
+      reflexivity. 
+      - (* b_and b1 b2 *) 
     inversion H; subst; clear H.
     assert (bexp_well_typed j b1).
     { apply (well_typed_increase_dim b1 i j); try assumption; lia. }
@@ -212,11 +227,20 @@ Proof.
     assert ((j + 2) + num_ancillae b2 < dim + 1)%nat by lia.
     specialize (IHb1 j H (j+2)%nat H4 H8).
     specialize (IHb2 (j+1)%nat H3 (j+2)%nat H5 H9).
-    clear H H3 H4 H5 H8 H9.
+    clear H H3 H4 H5 H8 H9. (* difficult because it isn't multiplying *)
+    
     simpl.
-    repeat rewrite Mmult_assoc.
+    (*repeat rewrite Mmult_assoc.*)
     rewrite IHb1.
-    2: { intros. apply H2. lia. }
+    2: { intros.
+         BreakIf.
+         BreakIf.
+         rewrite update_same.
+                  
+          
+         
+
+         apply H2. lia. }
     rewrite IHb2.
     2: { intros. rewrite update_index_neq; try apply H2; lia. }
     rewrite update_index_neq; try lia.
