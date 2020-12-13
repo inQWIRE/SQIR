@@ -59,6 +59,14 @@ Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
 Definition MAJ a b c := bccnot c b ; bccnot c a ; bcccnot a b c.
 Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
 
+Lemma MAJ_eWF :
+  forall a b c,
+    a <> b -> b <> c -> a <> c ->
+    eWF (MAJ c b a).
+Proof.
+  intros. unfold MAJ. constructor. constructor. 1-2 : apply bccnot_eWF; easy. apply bcccnot_eWF; lia.
+Qed.
+
 Lemma MAJ_correct :
   forall a b c f,
     a <> b -> b <> c -> a <> c ->
@@ -236,6 +244,15 @@ Proof.
   simpl. repeat (try constructor; try apply IHi; try lia).
 Qed.
 *)
+
+Lemma MAJseq'_eWF :
+  forall i n,
+    0 < n ->
+    eWF (MAJseq' i n 0).
+Proof.
+  induction i; intros. simpl. apply MAJ_eWF; lia.
+  simpl. constructor. apply IHi; easy. apply MAJ_eWF; lia.
+Qed.
 
 Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
 
@@ -534,19 +551,223 @@ Qed.
 Fixpoint negator0' i : bccom :=
   match i with
   | 0 => bcskip
-  | S i' => bcx (2 + i')
+  | S i' => negator0' i'; bcx (2 + i')
   end.
 Definition negator0 n := negator0' n.
+
+Lemma negator0'_eWF :
+  forall i, eWF (negator0' i).
+Proof.
+  induction i. simpl. constructor. simpl. constructor. easy. constructor.
+Qed.
+
+Lemma negator0_eWF :
+  forall n, eWF (negator0 n).
+Proof.
+  intros. unfold negator0. apply negator0'_eWF.
+Qed.
+
+Definition negatem i (f : nat -> bool) := fun (x : nat) => if (x <? i) then ¬ (f x) else f x.
+
+Lemma negator0'_correct :
+  forall i n f g b1 b2,
+    0 < n ->
+    i <= n ->
+    bcexec (negator0' i) (b1 ` b2 ` fb_push_n n f g) = b1 ` b2 ` fb_push_n n (negatem i f) g.
+Proof.
+  induction i; intros.
+  - simpl. replace (negatem 0 f) with f by (apply functional_extensionality; intro; IfExpSimpl; easy).
+    easy.
+  - simpl. rewrite IHi by lia. apply functional_extensionality; intro.
+    bdestruct (x =? 2 + i). subst. simpl. update_simpl. fb_push_n_simpl. unfold negatem. IfExpSimpl. easy.
+    update_simpl. destruct x. easy. simpl. destruct x. easy. simpl.
+    bdestruct (x <? n). fb_push_n_simpl. unfold negatem. IfExpSimpl; easy.
+    fb_push_n_simpl. easy.
+Qed.
+
+Lemma negatem_Nlnot :
+  forall (n : nat) (x : N) i,
+    negatem n (N2fb x) i = N.testbit (N.lnot x (N.of_nat n)) (N.of_nat i).
+Proof.
+  intros. unfold negatem. rewrite N2fb_Ntestbit. symmetry.
+  bdestruct (i <? n). apply N.lnot_spec_low. lia.
+  apply N.lnot_spec_high. lia.
+Qed.
+
+Lemma negatem_arith :
+  forall n x,
+    x < 2^n ->
+    negatem n (nat2fb x) = nat2fb (2^n - 1 - x).
+Proof.
+  intros. unfold nat2fb. apply functional_extensionality; intro i.
+  rewrite negatem_Nlnot. rewrite N2fb_Ntestbit.
+  do 2 rewrite Nnat.Nat2N.inj_sub. rewrite Nofnat_pow. simpl.
+  bdestruct (x =? 0). subst. simpl. rewrite N.ones_equiv. rewrite N.pred_sub. rewrite N.sub_0_r. easy.
+  rewrite N.lnot_sub_low. rewrite N.ones_equiv. rewrite N.pred_sub. easy.
+  apply N.log2_lt_pow2. assert (0 < x) by lia. lia.
+  replace 2%N with (N.of_nat 2) by lia. rewrite <- Nofnat_pow. lia.
+Qed.
 
 Lemma negator0_correct :
   forall n x f b0 b1,
     0 < n ->
     x < 2^n ->
-    bcexec (negator0 n) (b0 ` b1 ` [x]_n f) = b0 ` b1 ` [2^n - x - 1]_n f.
-Admitted.
+    bcexec (negator0 n) (b0 ` b1 ` [x]_n f) = b0 ` b1 ` [2^n - 1 - x]_n f.
+Proof.
+  intros. unfold negator0. unfold reg_push. rewrite negator0'_correct by lia. rewrite negatem_arith; easy.
+Qed.
 
-Definition highb01 n : bccom := MAJseq n 0; bccnot (2 + n + n - 1) 1; bcinv (MAJseq n 0).
-Definition comparator01 n := bcx 0; negator0 n; highb01 n; bcinv (bcx 0; negator0 n).
+Opaque negator0.
+
+
+Definition highb01 n : bccom := MAJseq n; bccnot (1 + n) 1; bcinv (MAJseq n).
+
+Local Opaque bccnot.
+Lemma highb01_eWF :
+  forall n,
+    0 < n ->
+    eWF (highb01 n).
+Proof.
+  intros. unfold highb01. constructor. constructor. unfold MAJseq. apply MAJseq'_eWF. easy.
+  apply bccnot_eWF. lia. apply eWF_bcinv. unfold MAJseq. apply MAJseq'_eWF. easy.
+Qed.
+
+Local Opaque bccnot.
+Lemma highb01_correct :
+  forall n b f g h,
+    0 < n ->
+    bcexec (highb01 n) (b ` false ` fb_push_n n f (fb_push_n n g h)) = b ` (carry b n f g) ` fb_push_n n f (fb_push_n n g h).
+Proof.
+  intros. unfold highb01. simpl. unfold MAJseq. rewrite MAJseq'_correct by lia.
+  assert (forall u b0, bcexec (bccnot (S n) 1) (b0 ` false ` u) = b0 ` (u (n - 1)) ` u).
+  { intros. rewrite bccnot_correct by lia. apply functional_extensionality; intro.
+    bdestruct (x =? 1). subst. update_simpl. Local Opaque xorb. simpl.
+    destruct n eqn:E. lia. simpl. rewrite Nat.sub_0_r. btauto.
+    update_simpl. destruct x. easy. destruct x. lia. easy.
+  }
+  rewrite H0. fb_push_n_simpl.
+  erewrite bcinv_reverse. 3: apply MAJseq'_correct; lia.
+  unfold msma. IfExpSimpl. replace (S (n - 1)) with n by lia. easy.
+  apply MAJseq'_eWF. easy.
+Qed.
+
+Opaque highb01.
+
+Definition comparator01 n := (bcx 0; negator0 n); highb01 n; bcinv (bcx 0; negator0 n).
+
+Lemma comparator01_eWF :
+  forall n,
+    0 < n ->
+    eWF (comparator01 n).
+Proof.
+  intros. unfold comparator01. repeat constructor. apply negator0_eWF. apply highb01_eWF. easy. apply eWF_bcinv. apply negator0_eWF.
+Qed.
+
+Lemma negations_aux :
+  forall n x f b,
+    0 < n ->
+    x < 2^n ->
+    bcexec (bcx 0; negator0 n) (false ` b ` [x]_n f) = true ` b ` [2^n - 1 - x]_n f.
+Proof.
+  intros. simpl.
+  assert ((false ` b ` [x ]_ n f) [0 |-> true] = true ` b ` [x]_n f).
+  { apply functional_extensionality; intro i. destruct i; update_simpl; easy.
+  }
+  rewrite H1. apply negator0_correct; easy.
+Qed.
+
+Lemma pow2_predn :
+  forall n x,
+    x < 2^(n-1) -> x < 2^n.
+Proof.
+  intros. destruct n. simpl in *. lia.
+  simpl in *. rewrite Nat.sub_0_r in H. lia.
+Qed.
+
+Lemma Ntestbit_lt_pow2n :
+  forall x n,
+    (x < 2^n)%N ->
+    N.testbit x n = false.
+Proof.
+  intros. apply N.mod_small in H. rewrite <- H. apply N.mod_pow2_bits_high. lia.
+Qed.
+
+Lemma Ntestbit_in_pow2n_pow2Sn :
+  forall x n,
+    (2^n <= x < 2^(N.succ n))%N ->
+    N.testbit x n = true.
+Proof.
+  intros. assert (N.log2 x = n) by (apply N.log2_unique; lia).
+  rewrite <- H0. apply N.bit_log2.
+  assert (2^n <> 0)%N by (apply N.pow_nonzero; easy).
+  lia.
+Qed.
+
+Lemma carry_leb_equiv_true :
+  forall n x y,
+    0 < n ->
+    x < 2^(n-1) ->
+    y < 2^(n-1) ->
+    x <= y ->
+    carry true n (nat2fb (2^n - 1 - x)) (nat2fb y) = true.
+Proof.
+  intros. unfold nat2fb. specialize (carry_add_eq_carry1 n (N.of_nat (2 ^ n - 1 - x)) (N.of_nat y)) as G.
+  do 2 apply xorb_move_l_r_2 in G. rewrite G.
+  do 2 (pattern N2fb at 1; rewrite N2fb_Ntestbit).
+  rewrite Ntestbit_lt_pow2n.
+  2:{ replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. apply pow2_predn in H1. lia.
+  }
+  rewrite Ntestbit_lt_pow2n.
+  2:{ replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+      assert (0 < 2^n) by (apply pow_positive; easy). lia.
+  }
+  replace 1%N with (N.of_nat 1) by easy. do 2 rewrite <- Nnat.Nat2N.inj_add.
+  rewrite N2fb_Ntestbit. rewrite Ntestbit_in_pow2n_pow2Sn. btauto.
+  split.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+  replace (2^n) with (2^(n-1) + 2^(n-1)). lia.
+  destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+  rewrite <- Nnat.Nat2N.inj_succ.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+  replace (2^(S n)) with (2^n + 2^n) by (simpl; lia).
+  replace (2^n) with (2^(n-1) + 2^(n-1)). lia.
+  destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+Qed.
+
+Lemma carry_leb_equiv_false :
+  forall n x y,
+    0 < n ->
+    x < 2^(n-1) ->
+    y < 2^(n-1) ->
+    x > y ->
+    carry true n (nat2fb (2^n - 1 - x)) (nat2fb y) = false.
+Proof.
+  intros. unfold nat2fb. specialize (carry_add_eq_carry1 n (N.of_nat (2 ^ n - 1 - x)) (N.of_nat y)) as G.
+  do 2 apply xorb_move_l_r_2 in G. rewrite G.
+  do 2 (pattern N2fb at 1; rewrite N2fb_Ntestbit).
+  rewrite Ntestbit_lt_pow2n.
+  2:{ replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. apply pow2_predn in H1. lia.
+  }
+  rewrite Ntestbit_lt_pow2n.
+  2:{ replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+      assert (0 < 2^n) by (apply pow_positive; easy). lia.
+  }
+  replace 1%N with (N.of_nat 1) by easy. do 2 rewrite <- Nnat.Nat2N.inj_add.
+  rewrite N2fb_Ntestbit. rewrite Ntestbit_lt_pow2n. btauto.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+  replace (2^n) with (2^(n-1) + 2^(n-1)). lia.
+  destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+Qed.
+
+Lemma carry_leb_equiv :
+  forall n x y,
+    0 < n ->
+    x < 2^(n-1) ->
+    y < 2^(n-1) ->
+    carry true n (nat2fb (2^n - 1 - x)) (nat2fb y) = (x <=? y).
+Proof.
+  intros. bdestruct (x <=? y). apply carry_leb_equiv_true; easy. apply carry_leb_equiv_false; easy.
+Qed.
 
 Lemma comparator01_correct :
   forall n x y f,
@@ -554,28 +775,124 @@ Lemma comparator01_correct :
     x < 2^(n-1) ->
     y < 2^(n-1) ->
     bcexec (comparator01 n) (false ` false ` [x]_n [y]_n f) = (false ` (x <=? y) ` [x]_n [y]_n f).
-Admitted.
+Proof.
+  intros. specialize (pow2_predn n x H0) as G0. specialize (pow2_predn n y H1) as G1.
+  unfold comparator01. remember (bcx 0; negator0 n) as negations. simpl. subst.
+  rewrite negations_aux by easy. unfold reg_push. rewrite highb01_correct by easy.
+  erewrite bcinv_reverse. 3: apply negations_aux; easy. rewrite carry_leb_equiv by easy. easy.
+  constructor. constructor. apply negator0_eWF.
+Qed.
 
-Definition subtractor01 n := bcx 0; negator0 n; adder01 n; bcinv (bcx 0; negator0 n).
+Definition subtractor01 n := (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
 
+Local Opaque adder01.
 Lemma subtractor01_correct :
   forall n x y b1 f,
     0 < n ->
     x < 2^(n-1) ->
     y < 2^(n-1) ->
-    bcexec (comparator01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [(x + (2^n - y)) mod (2^n)]_n f).
-Admitted.
+    bcexec (subtractor01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [y + 2^n - x]_n f).
+Proof.
+  intros. specialize (pow2_predn n x H0) as G0. specialize (pow2_predn n y H1) as G1.
+  unfold subtractor01. remember (bcx 0; negator0 n) as negations. simpl. subst.
+  rewrite negations_aux by easy. rewrite adder01_correct_carry1 by easy.
+  erewrite bcinv_reverse. 3: apply negations_aux; easy.
+  replace (2^n) with (2^(n-1) + 2^(n-1)).
+  replace (2 ^ (n - 1) + 2 ^ (n - 1) - 1 - x + y + 1) with (y + (2 ^ (n - 1) + 2 ^ (n - 1)) - x) by lia.
+  easy. destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+  constructor. constructor. apply negator0_eWF.
+Qed.
 
 Definition modadder21 n := swapper02 n; adder01 n; swapper02 n; 
-       comparator01 n; bccont 1 (subtractor01 n); swapper02 n; bcinv (comparator01 n); swapper02 n.
+       comparator01 n; (bccont 1 (subtractor01 n); bcx 1); swapper02 n; bcinv (comparator01 n); swapper02 n.
 
+Lemma mod_sum_lt :
+  forall x y M,
+    x < M ->
+    y < M ->
+    (x + y) mod M < x <-> x + y >= M.
+Proof.
+  intros. split; intros.
+  - assert ((x + y) mod M < x + y) by lia.
+    rewrite Nat.div_mod with (y := M) in H2 by lia.
+    assert (0 < (x + y) / M) by nia.
+    rewrite Nat.div_str_pos_iff in H3 by lia. lia.
+  - rewrite Nat.mod_eq by lia.
+    assert (1 <= (x + y) / M < 2).
+    { split.
+      apply Nat.div_le_lower_bound; lia.
+      apply Nat.div_lt_upper_bound; lia.
+    }
+    replace (M * ((x + y) / M)) with M by nia.
+    lia.
+Qed.
+
+Lemma mod_sum_lt_bool :
+  forall x y M,
+    x < M ->
+    y < M ->
+    ¬ (M <=? x + y) = (x <=? (x + y) mod M).
+Proof.
+  intros. bdestruct (M <=? x + y); bdestruct (x <=? (x + y) mod M); try easy.
+  assert ((x + y) mod M < x) by (apply mod_sum_lt; lia). lia.
+  assert (x + y >= M) by (apply mod_sum_lt; lia). lia.
+Qed.
+
+Local Opaque swapper02 adder01 comparator01 subtractor01.
 Lemma modadder21_correct :
   forall n x y M f,
-    0 < n ->
-    x < M <= 2^(n-1) ->
-    y < M <= 2^(n-1) ->
+    1 < n ->
+    x < M ->
+    y < M ->
+    M < 2^(n-2) ->
     bcexec (modadder21 n) (false ` false ` [M]_n [y]_n [x]_n f) = false ` false ` [M]_n [(x + y) mod M]_n [x]_n  f.
-Admitted.
+Proof.
+  intros.
+  assert (M < 2^(n-1)).
+  { apply pow2_predn. replace (n - 1 - 1) with (n - 2) by lia. easy.
+  }
+  assert (x + y < 2^(n-1)).
+  { replace (2^(n-1)) with (2^(n-2) + 2^(n-2)). lia.
+    destruct n. lia. destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+  }
+  unfold modadder21. remember (bccont 1 (subtractor01 n); bcx 1) as csub01. simpl. subst.
+  rewrite swapper02_correct by lia. rewrite adder01_correct_carry0 by lia.
+  rewrite swapper02_correct by lia. rewrite comparator01_correct by lia.
+  replace (bcexec (bccont 1 (subtractor01 n); bcx 1) (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f)) with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f).
+  2:{ simpl. bdestruct (M <=? x + y).
+      - rewrite subtractor01_correct by lia.
+        replace (x + y + 2^n - M) with (x + y - M + 2^n) by lia.
+        rewrite reg_push_exceed with (x := x + y - M + 2 ^ n).
+        assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
+        rewrite <- Nat.add_mod_idemp_r with (a := x + y - M) by easy.
+        rewrite Nat.mod_same by easy.
+        rewrite Nat.add_0_r. rewrite <- reg_push_exceed.
+        rewrite Nat.mod_eq by lia.
+        assert (x + y < 2 * M) by lia.
+        assert ((x + y) / M < 2) by (apply Nat.div_lt_upper_bound; lia).
+        assert (1 <= (x + y) / M) by (apply Nat.div_le_lower_bound; lia).
+        assert ((x + y) / M = 1) by lia.
+        replace (x + y - M * ((x + y) / M)) with (x + y - M) by lia.
+        apply functional_extensionality; intro i.
+        destruct i. easy. destruct i. simpl. update_simpl. easy. update_simpl. easy.
+      - rewrite Nat.mod_small by lia. 
+        apply functional_extensionality; intro i.
+        destruct i. easy. destruct i. simpl. update_simpl. easy. update_simpl. easy.
+  }
+  rewrite swapper02_correct by lia. erewrite bcinv_reverse.
+  3:{ assert ((x + y) mod M < M) by (apply Nat.mod_upper_bound; lia).
+      rewrite mod_sum_lt_bool by easy. rewrite comparator01_correct. reflexivity.
+      1-3 : lia.
+  }
+  rewrite swapper02_correct by lia. easy.
+  apply comparator01_eWF. lia.
+Qed.
+
+
+
+
+
+
 
 
 Fixpoint copier21' i n :=
