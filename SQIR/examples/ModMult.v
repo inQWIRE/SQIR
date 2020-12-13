@@ -488,6 +488,8 @@ Proof.
   intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry1. easy.
 Qed.
 
+Opaque adder01.
+
 Fixpoint swapper02' i n :=
   match i with
   | 0 => bcskip
@@ -547,6 +549,8 @@ Proof.
   intros. unfold reg_push, swapper02. rewrite swapper02'_correct by lia.
   rewrite swapma_gtn_invariant. rewrite swapmb_gtn_invariant. easy.
 Qed.
+
+Opaque swapper02.
 
 Fixpoint negator0' i : bccom :=
   match i with
@@ -783,18 +787,19 @@ Proof.
   constructor. constructor. apply negator0_eWF.
 Qed.
 
-Definition subtractor01 n := (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
+Opaque comparator01.
 
-Local Opaque adder01.
-Lemma subtractor01_correct :
+Definition substractor01 n := (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
+
+Lemma substractor01_correct :
   forall n x y b1 f,
     0 < n ->
     x < 2^(n-1) ->
     y < 2^(n-1) ->
-    bcexec (subtractor01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [y + 2^n - x]_n f).
+    bcexec (substractor01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [y + 2^n - x]_n f).
 Proof.
   intros. specialize (pow2_predn n x H0) as G0. specialize (pow2_predn n y H1) as G1.
-  unfold subtractor01. remember (bcx 0; negator0 n) as negations. simpl. subst.
+  unfold substractor01. remember (bcx 0; negator0 n) as negations. simpl. subst.
   rewrite negations_aux by easy. rewrite adder01_correct_carry1 by easy.
   erewrite bcinv_reverse. 3: apply negations_aux; easy.
   replace (2^n) with (2^(n-1) + 2^(n-1)).
@@ -803,8 +808,10 @@ Proof.
   constructor. constructor. apply negator0_eWF.
 Qed.
 
+Opaque substractor01.
+
 Definition modadder21 n := swapper02 n; adder01 n; swapper02 n; 
-       comparator01 n; (bccont 1 (subtractor01 n); bcx 1); swapper02 n; bcinv (comparator01 n); swapper02 n.
+       comparator01 n; (bccont 1 (substractor01 n); bcx 1); swapper02 n; bcinv (comparator01 n); swapper02 n.
 
 Lemma mod_sum_lt :
   forall x y M,
@@ -838,7 +845,6 @@ Proof.
   assert (x + y >= M) by (apply mod_sum_lt; lia). lia.
 Qed.
 
-Local Opaque swapper02 adder01 comparator01 subtractor01.
 Lemma modadder21_correct :
   forall n x y M f,
     1 < n ->
@@ -855,12 +861,12 @@ Proof.
   { replace (2^(n-1)) with (2^(n-2) + 2^(n-2)). lia.
     destruct n. lia. destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
   }
-  unfold modadder21. remember (bccont 1 (subtractor01 n); bcx 1) as csub01. simpl. subst.
+  unfold modadder21. remember (bccont 1 (substractor01 n); bcx 1) as csub01. simpl. subst.
   rewrite swapper02_correct by lia. rewrite adder01_correct_carry0 by lia.
   rewrite swapper02_correct by lia. rewrite comparator01_correct by lia.
-  replace (bcexec (bccont 1 (subtractor01 n); bcx 1) (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f)) with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f).
+  replace (bcexec (bccont 1 (substractor01 n); bcx 1) (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f)) with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f).
   2:{ simpl. bdestruct (M <=? x + y).
-      - rewrite subtractor01_correct by lia.
+      - rewrite substractor01_correct by lia.
         replace (x + y + 2^n - M) with (x + y - M + 2^n) by lia.
         rewrite reg_push_exceed with (x := x + y - M + 2 ^ n).
         assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
@@ -888,137 +894,203 @@ Proof.
   apply comparator01_eWF. lia.
 Qed.
 
+Opaque modadder21.
 
-
-
-
-
-
-
-Fixpoint copier21' i n :=
+Fixpoint swapper12' i n :=
   match i with
   | 0 => bcskip
-  | S i' => bccnot (2 + 2 * n + i') (2 + n + i')
+  | S i' => swapper12' i' n; bcswap (2 + n + i') (2 + n + n + i')
   end.
-Definition copier21 n := copier21' n n.
+Definition swapper12 n := swapper12' n n.
 
-Lemma copier21_correct :
-  forall n x M f,
+Local Opaque bcswap.
+Lemma swapper12'_correct :
+  forall i n f g h u b1 b2,
     0 < n ->
-    bcexec (copier21 n) (false ` false ` [M]_n [0]_n [x]_n f) = false ` false ` [M]_n [x]_n [x]_n f.
-Admitted.
+    i <= n ->
+    bcexec (swapper12' i n) (b1 ` b2 ` fb_push_n n f (fb_push_n n g (fb_push_n n h u))) = b1 ` b2 ` fb_push_n n f (fb_push_n n (swapma i g h) (fb_push_n n (swapmb i g h) u)).
+Proof.
+  induction i; intros.
+  - simpl.
+    replace (swapma 0 f h) with f by (apply functional_extensionality; intro; IfExpSimpl; easy).
+    replace (swapmb 0 f h) with h by (apply functional_extensionality; intro; IfExpSimpl; easy).
+    easy.
+  - simpl. rewrite IHi by lia.
+    apply functional_extensionality; intro. rewrite bcswap_correct by lia.
+    bdestruct (x =? S (S (n + i))). subst. simpl. fb_push_n_simpl. unfold swapma, swapmb. IfExpSimpl. replace (n + n + i - n - n) with (n + i - n) by lia. easy.
+    bdestruct (x =? S (S (n + n + i))). subst. simpl. fb_push_n_simpl. unfold swapma, swapmb. IfExpSimpl. replace (n + n + i - n - n) with (n + i - n) by lia. easy.
+    destruct x. easy. simpl. destruct x. easy. simpl.
+    bdestruct (x <? n). fb_push_n_simpl. easy. 
+    bdestruct (x <? n + n). fb_push_n_simpl. unfold swapma. IfExpSimpl; easy.
+    bdestruct (x <? n + n + n). fb_push_n_simpl. unfold swapmb. IfExpSimpl; easy.
+    fb_push_n_simpl. easy.
+Qed.
 
-Fixpoint swapperin' j i n :=
-  match j with
-  | 0 => bcskip
-  | S j' => bcswap (2 + i * n + j') (2 + n * n + j'); swapperin' j' i n
-  end.
-Definition swapperin i n := swapperin' n i n.
-  
-Fixpoint rotator' i n :=
+Lemma swapper12_correct :
+  forall n x y z f b0 b1,
+    0 < n ->
+    bcexec (swapper12 n) (b0 ` b1 ` [x]_n [y]_n [z]_n f) = b0 ` b1 ` [x]_n [z]_n [y]_n f.
+Proof.
+  intros. unfold reg_push, swapper12. rewrite swapper12'_correct by lia.
+  rewrite swapma_gtn_invariant. rewrite swapmb_gtn_invariant. easy.
+Qed.
+
+Opaque swapper12.
+
+Fixpoint doubler1' i n :=
   match i with
   | 0 => bcskip
-  | S i' => swapperin i n; rotator' i' n
+  | S i' => bcswap (2 + n + i') (2 + n + i); doubler1' i' n
   end.
-Definition rotator n := rotator' (n - 1) n.
+Definition doubler1 n := doubler1' (n - 1) n.
 
-Fixpoint regl_push (l : list nat) n f :=
-  match l with
-  | List.nil => f
-  | x :: l' => [x]_n (regl_push l' n f)
-  end.
-
-Definition list_rotate {A} (l : list A) :=
-  match rev l with
-  | List.nil => l
-  | a :: l' => rev l' ++ (a :: List.nil)
-  end.
-
-Lemma rotator_correct :
-  forall n l M f,
+Lemma doubler1_correct :
+  forall n x y f b0 b1,
     0 < n ->
-    length l = n ->
-    bcexec (rotator n) (false ` false ` [M]_n (regl_push l n f)) = false ` false ` [M]_n (regl_push (list_rotate l) n f).
+    y < 2^(n - 1) ->
+    bcexec (doubler1 n) (b0 ` b1 ` [x]_n [y]_n f) = b0 ` b1 ` [x]_n [2 * y]_n f.
 Admitted.
 
-Fixpoint powertower (n x M : nat) :=
+Opaque doubler1.
+
+Definition moddoubler01 n := doubler1 n; comparator01 n; bccont 1 (substractor01 n).
+
+Lemma moddoubler01_correct :
+  forall n M x f,
+    1 < n ->
+    x < M ->
+    M < 2^(n - 2) ->
+    bcexec (moddoubler01 n) (false ` false ` [M]_n [x]_n f) = false ` (M <=? 2 * x) ` [M]_n [2 * x mod M]_n f.
+Admitted.
+
+Opaque moddoubler01.
+
+Definition modadder12 n := swapper12 n; modadder21 n; swapper12 n.
+
+Lemma modadder12_correct :
+  forall n x y M f,
+    1 < n ->
+    x < M ->
+    y < M ->
+    M < 2^(n-2) ->
+    bcexec (modadder12 n) (false ` false ` [M]_n [x]_n [y]_n f) = false ` false ` [M]_n [x]_n [(x + y) mod M]_n f.
+Admitted.
+
+Opaque modadder12.
+
+Fixpoint modsummer' i n (fC : nat -> bool) :=
+  match i with
+  | 0 => if (fC (n - 1)) then modadder12 n else bcskip
+  | S i' => (if (fC (n - 1 - i)) then modadder12 n else bcskip); moddoubler01 n; bcswap 2 (2 + n + n + n + i)
+  end.
+Definition modsummer n C := modsummer' n n (nat2fb C).
+
+Fixpoint hbf n M x := fun (i : nat) => if (i <? n) then (M <=? 2^i * x) else false.
+
+Fixpoint natsum n (f : nat -> nat) :=
   match n with
-  | 0 => List.nil
-  | S n' => (2^n' * x mod M) :: powertower n' x M
+  | 0 => 0
+  | S n' => f n' + natsum n' f
   end.
 
-Fixpoint towerbuilder' i n :=
-  match i with
-  | 0 => bcskip
-  | S i' => towerbuilder' i' n; rotator n; copier21 n; modadder21 n
-  end.
-Definition towerbuilder n := towerbuilder' (n - 1) n.
+Lemma natsum_mod :
+  forall n f M,
+    M <> 0 ->
+    (natsum n f) mod M = natsum n (fun i => f i mod M) mod M.
+Proof.
+  induction n; intros. easy.
+  simpl. rewrite Nat.add_mod by easy. rewrite IHn by easy. rewrite <- Nat.add_mod by easy. rewrite Nat.add_mod_idemp_l by easy. easy.
+Qed.
 
-Lemma towerbuilder_correct :
-  forall n x M f,
-    0 < n ->
-    x < M < 2^(n - 1) ->
-    bcexec (towerbuilder n) (false ` false ` [M]_n [x]_n (regl_push (repeat 0 (n - 1)) n f))
-                = false ` false ` [M]_n (regl_push (powertower n x M) n f).
-Admitted.
+Lemma parity_decompose :
+  forall n, exists k, n = 2 * k \/ n = 2 * k + 1.
+Proof.
+  induction n. exists 0. lia. 
+  destruct IHn as [k [H | H]]. exists k. lia. exists (S k). lia.
+Qed.
 
-Fixpoint swapper1C' j n :=
-  match j with
-  | 0 => bcskip
-  | S j' => bcswap (2 + n + j') (2 + (n + 1) * n + j'); swapper1C' j' n
-  end.
-Fixpoint swapper1C n := swapper1C' n n.
+Lemma Natodd_Ntestbit_even :
+  forall k, Nat.odd (2 * k) = N.testbit (N.of_nat (2 * k)) 0.
+Proof.
+  induction k. easy.
+  replace (2 * (S k)) with (S (S (2 * k))) by lia.
+  rewrite Nat.odd_succ_succ. rewrite IHk.
+  do 2 rewrite N.bit0_odd. replace (N.of_nat (S (S (2 * k)))) with (N.succ (N.succ (N.of_nat (2 * k)))) by lia. rewrite N.odd_succ_succ. easy.
+Qed.
 
-Lemma swapper1C_correct :
-  forall n l M x y f,
-    0 < n ->
-    length l = n - 1 ->
-    bcexec (swapper1C n) (false ` false ` [M]_n [x]_n (regl_push l n ([y]_n f)))
-                 = false ` false ` [M]_n [y]_n (regl_push l n ([x]_n f)).
-Admitted.
+Lemma Natodd_Ntestbit_odd :
+  forall k, Nat.odd (2 * k + 1) = N.testbit (N.of_nat (2 * k + 1)) 0.
+Proof.
+  induction k. easy.
+  replace (2 * (S k) + 1) with (S (S (2 * k + 1))) by lia.
+  rewrite Nat.odd_succ_succ. rewrite IHk.
+  do 2 rewrite N.bit0_odd. replace (N.of_nat (S (S (2 * k + 1)))) with (N.succ (N.succ (N.of_nat (2 * k + 1)))) by lia. rewrite N.odd_succ_succ. easy.
+Qed.
 
-Fixpoint calcmodmult' i n (f : nat -> bool) :=
-  match i with
-  | 0 => bcskip
-  | S i' => calcmodmult' i' n f; rotator n; if (f i') then (swapper1C n; modadder21 n; swapper1C n) else bcskip
-  end.
-Definition calcmodmult C n := rotator n; calcmodmult' n n (N2fb (N.of_nat C)); bcinv (rotator n).
+Lemma Nattestbit_Ntestbit :
+  forall m n,
+    Nat.testbit n m = N.testbit (N.of_nat n) (N.of_nat m).
+Proof.
+  induction m; intros. simpl. specialize (parity_decompose n) as [k [Hk | Hk]]; subst. apply Natodd_Ntestbit_even. apply Natodd_Ntestbit_odd.
+  remember (N.of_nat (S m)) as NSm. simpl. rewrite IHm. rewrite Nnat.Nat2N.inj_div2. rewrite <- N.testbit_succ_r_div2 by lia. subst. rewrite Nnat.Nat2N.inj_succ. easy.
+Qed.  
 
-Lemma calcmodmult_correct :
-  forall n M x C f,
-    0 < n ->
+Definition bindecomp n x := natsum n (fun i => Nat.b2n ((nat2fb x) i) * 2^i).
+
+Lemma bindecomp_spec :
+  forall n x,
+    bindecomp n x = x mod 2^n.
+Proof.
+  unfold bindecomp. induction n; intros. easy.
+  simpl. rewrite IHn. unfold nat2fb. rewrite N2fb_Ntestbit. rewrite <- Nattestbit_Ntestbit.
+  rewrite Nat.testbit_spec'. replace (2 ^ n + (2 ^ n + 0)) with ((2 ^ n) * 2) by lia. rewrite Nat.mod_mul_r. lia. apply Nat.pow_nonzero. easy. easy.
+Qed.
+
+Lemma modsummer'_correct :
+  forall i n x y M C,
+    1 < n ->
     x < M ->
     C < M ->
-    M < 2^(n-1) ->
-    bcexec (calcmodmult C n) (false ` false ` [M]_n (regl_push (powertower x n M) n ([0]_n f)))
-             = (false ` false ` [M]_n (regl_push (powertower x n M) n ([C * x mod M]_n f))).
+    M < 2^(n-2) ->
+    bcexec (modsummer' i n (nat2fb C)) (false ` false ` [M]_n [x]_n [y]_n allfalse) = false ` false ` [M]_n [2^i * x mod M]_n [((bindecomp i C) * x + y) mod M]_n (hbf n M x).
 Admitted.
 
-Definition calcmodmult_half C n := towerbuilder n; calcmodmult C n; bcinv (towerbuilder n).
-
-Lemma calcmodmult_half_correct :
-  forall n M x C,
-    0 < n ->
+Lemma modsummer_correct :
+  forall n x y M C,
+    1 < n ->
     x < M ->
     C < M ->
-    M < 2^(n-1) ->
-    bcexec (calcmodmult_half C n) (false ` false ` [M]_n [x]_n allfalse)
-              = false ` false ` [M]_n [x]_n (regl_push (repeat 0 (n - 1)) n ([C * x mod M]_n allfalse)).
+    M < 2^(n-2) ->
+    bcexec (modsummer n C) (false ` false ` [M]_n [x]_n [y]_n allfalse) = false ` false ` [M]_n [2^(n-1) * x mod M]_n [(C * x + y) mod M]_n (hbf n M x).
 Admitted.
 
-Definition calcmodmult_full C Cinv n := calcmodmult_half C n; swapper1C n; bcinv (calcmodmult_half Cinv n).
+Opaque modsummer.
 
-Lemma calcmodmult_full_correct :
-  forall n M x C Cinv,
-    0 < n ->
+Definition modmult_half n C := modsummer n C; (bcinv (modsummer n 0)).
+
+Lemma modmult_half_correct :
+  forall n x M C,
+    1 < n ->
     x < M ->
     C < M ->
-    Cinv < M ->
-    C * Cinv mod M = 1 ->
-    M < 2^(n-1) ->
-    bcexec (calcmodmult_full C Cinv n) (false ` false ` [M]_n [x]_n allfalse)
-                   = false ` false ` [M]_n [C * x mod M]_n allfalse.
+    M < 2^(n-2) ->
+    bcexec (modmult_half n C) (false ` false ` [M]_n [x]_n allfalse) = false ` false ` [M]_n [x]_n [C * x mod M]_n allfalse.
 Admitted.
+
+Opaque modmult_half.
+
+Definition modmult_full C Cinv n := modmult_half n C; swapper12 n; bcinv (modmult_half Cinv n).
+
+Lemma modmult_full_correct :
+  forall n x M C,
+    1 < n ->
+    x < M ->
+    C < M ->
+    M < 2^(n-2) ->
+    bcexec (modmult_half n C) (false ` false ` [M]_n [x]_n allfalse) = false ` false ` [M]_n [C * x mod M]_n allfalse.
+Admitted.
+
+Opaque modmult_full.
 
 (* head and register 1 *)
 Fixpoint swapperh1' j n :=
@@ -1032,9 +1104,8 @@ Lemma swapperh1_correct :
   forall n x,
     0 < n ->
     x < 2^n ->
-    bcexec (swapperh1 n) ([x]_n allfalse) = false ` false ` [0]_n [x]_n allfalse.
+    bcexec (swapperh1 n) ([x]_n allfalse) = false ` false ` (fb_push_n n allfalse ([x]_n allfalse)).
 Admitted.
-
 
 Fixpoint genM0' i (f : nat -> bool) : bccom :=
   match i with
@@ -1046,10 +1117,10 @@ Definition genM0 M n := genM0' n (N2fb (N.of_nat M)).
 Lemma genM0_correct :
   forall n M f b0 b1,
     M <= 2^(n-1) ->
-    bcexec (genM0 M n) (b0 ` b1 ` [0]_n f) = b0 ` b1 ` [M]_n f.
+    bcexec (genM0 M n) (b0 ` b1 ` (fb_push_n n allfalse f)) = b0 ` b1 ` [M]_n f.
 Admitted.
 
-Definition modmult M C Cinv n := swapperh1 n; genM0 M n; calcmodmult_full C Cinv n; bcinv (swapperh1 n; genM0 M n).
+Definition modmult M C Cinv n := swapperh1 n; genM0 M n; modmult_full C Cinv n; bcinv (swapperh1 n; genM0 M n).
 
 Lemma modmult_correct :
   forall n x M C Cinv,
@@ -1060,4 +1131,4 @@ Lemma modmult_correct :
     C * Cinv mod M = 1 ->
     M < 2^(n-1) ->
     bcexec (modmult M C Cinv n) ([x]_n allfalse) = [C * x mod M]_n allfalse.
-Admitted.    
+Admitted.
