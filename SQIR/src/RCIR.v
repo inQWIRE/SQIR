@@ -18,7 +18,7 @@ Notation "f '[' i '|->' x ']'" := (update f i x) (at level 10).
 Local Open Scope nat_scope.
 
 Definition bccnot (x y : nat) := bccont x (bcx y).
-Definition bcswap (x y : nat) := bccnot x y; bccnot y x; bccnot x y.
+Definition bcswap (x y : nat) := if (x =? y) then bcskip else (bccnot x y; bccnot y x; bccnot x y).
 Definition bcccnot (x y z : nat) := bccont x (bccnot y z).
 
 Fixpoint bcexec (p : bccom) (f : nat -> bool) :=
@@ -154,10 +154,10 @@ Qed.
 
 Lemma bcswap_correct :
   forall x y f,
-    x <> y ->
     bcexec (bcswap x y) f = fun i => if i =? x then f y else if i =? y then f x else f i.
 Proof.
-  intros. apply functional_extensionality; intro i. simpl.
+  intros. apply functional_extensionality; intro i. unfold bcswap.
+  bdestruct (x =? y); simpl. bnauto.
   unfold update. bnauto.
 Qed.
 
@@ -529,10 +529,68 @@ Proof.
   rewrite bcinv_involutive in H. easy.
 Qed.
 
+Lemma bcinv_reverse :
+  forall p f g,
+    eWF p ->
+    bcexec p f = g ->
+    bcexec (bcinv p) g = f.
+Proof.
+  intros. specialize (bcinv_correct_rev p f H) as G. simpl in G. rewrite H0 in G. easy.
+Qed.
+
 Lemma bcinv_correct_bc_well_formed_rev :
   forall p f,
     bc_well_formed p ->
     bcexec (p; bcinv p) f = f.
 Proof.
   intros. apply bcinv_correct_rev. apply bc_well_formed_eWF. easy.
+Qed.
+
+Lemma bccnot_eWT :
+  forall x y dim,
+    x <> y ->
+    x < dim -> y < dim ->
+    eWT dim (bccnot x y).
+Proof.
+  intros. unfold bccnot. constructor. easy. constructor. easy. constructor. easy.
+Qed.
+
+Lemma bccnot_eWF :
+  forall x y,
+    x <> y ->
+    eWF (bccnot x y).
+Proof.
+  intros. unfold bccnot. constructor. constructor. easy. constructor.
+Qed.
+
+Lemma bcccnot_eWT :
+  forall a b c dim,
+    a <> b -> b <> c -> a <> c ->
+    a < dim -> b < dim -> c < dim ->
+    eWT dim (bcccnot a b c).
+Proof.
+  intros. repeat (try constructor; try lia).
+Qed.
+
+Lemma bcccnot_eWF :
+  forall a b c,
+    a <> b -> b <> c -> a <> c ->
+    eWF (bcccnot a b c).
+Proof.
+  intros. repeat (try constructor; try lia).
+Qed.
+
+Lemma bcswap_eWT :
+  forall x y dim,
+    x < dim -> y < dim ->
+    eWT dim (bcswap x y).
+Proof.
+  intros. unfold bcswap. bdestruct (x =? y); repeat (try constructor; try lia).
+Qed.
+
+Lemma bcswap_eWF :
+  forall x y,
+    eWF (bcswap x y).
+Proof.
+  intros. unfold bcswap. bdestruct (x =? y); repeat (try constructor; try lia).
 Qed.
