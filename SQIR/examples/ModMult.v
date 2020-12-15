@@ -457,7 +457,8 @@ Lemma Nofnat_pow :
     N.of_nat (x ^ y) = ((N.of_nat x) ^ (N.of_nat y))%N.
 Proof.
   intros. induction y. easy.
-  Local Opaque N.pow. replace (N.of_nat (S y)) with ((N.of_nat y) + 1)%N by lia. simpl. rewrite N.pow_add_r. rewrite N.pow_1_r. rewrite Nnat.Nat2N.inj_mul. rewrite IHy. lia.
+  Local Opaque N.pow. replace (N.of_nat (S y)) with ((N.of_nat y) + 1)%N by lia.
+ simpl. rewrite N.pow_add_r. rewrite N.pow_1_r. rewrite Nnat.Nat2N.inj_mul. rewrite IHy. lia.
 Qed.
 
 Lemma reg_push_exceed :
@@ -948,6 +949,48 @@ Fixpoint doubler1' i n :=
   | S i' => bcswap (2 + n + i') (2 + n + i); doubler1' i' n
   end.
 Definition doubler1 n := doubler1' (n - 1) n.
+
+
+Lemma reg_push_high_bit_zero:
+   forall n x f, 
+    0 < n -> x < 2^(n-1) -> ([x]_n f) (n - 1) = false.
+Proof.
+  intros. unfold reg_push. unfold nat2fb.
+  fb_push_n_simpl.
+  rewrite N2fb_Ntestbit.
+Check N.testbit_unique.
+  specialize (N.testbit_unique (N.of_nat x) (N.of_nat (n - 1)) false (N.of_nat x) 0%N) as H1.
+  assert ((N.of_nat x < 2 ^ N.of_nat (n - 1))%N).
+  assert (2 ^ N.of_nat (n - 1) = N.of_nat (2^(n-1)))%N.
+Admitted.
+
+Lemma fb_push_right:
+  forall n b f, 0 < n -> fb_push b f n = f (n-1).
+Proof.
+  intros. induction n. lia.
+  simpl. assert ((n - 0) = n) by lia.
+  rewrite H0. reflexivity.
+Qed.
+
+Lemma reg_push_high_bit_zero_1:
+  forall n x y f b0 b1,
+    0 < n ->
+    y < 2^(n - 1) -> (b0 ` b1 ` [x]_n [y]_n f) (2 + n + (n-1)) = false.
+Proof.
+  intros.
+  rewrite fb_push_right by lia. rewrite fb_push_right by lia.
+  assert (([x ]_ n [y ]_ n f) (2 + n + (n - 1) - 1 - 1)
+         = ([y ]_ n f) ((2 + n + (n - 1) - 1 - 1) - n)).
+  unfold reg_push.
+  rewrite fb_push_n_right.
+  reflexivity.
+  lia.
+  rewrite H1.
+  assert ((2 + n + (n - 1) - 1 - 1 - n) = n - 1) by lia.
+  rewrite H2.
+  rewrite reg_push_high_bit_zero.
+  reflexivity. assumption. assumption.
+Qed.
 
 Lemma doubler1_correct :
   forall n x y f b0 b1,
