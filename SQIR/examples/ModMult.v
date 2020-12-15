@@ -1,7 +1,10 @@
-Require Import VectorStates UnitaryOps Coq.btauto.Btauto RCIR.
+Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
+Require Export RCIR.
 
 Local Open Scope bccom_scope.
 Local Open Scope nat_scope.
+
+Definition modmult_rev_anc n := 3 * n + 14.
 
 Definition fb_push b f : nat -> bool :=
   fun x => match x with
@@ -1226,11 +1229,199 @@ Definition modmult M C Cinv n := swapperh1 n; genM0 M n; modmult_full C Cinv n; 
 
 Lemma modmult_correct :
   forall n x M C Cinv,
-    0 < n ->
+    1 < n ->
     x < M ->
     C < M ->
     Cinv < M ->
     C * Cinv mod M = 1 ->
-    M < 2^(n-1) ->
+    M < 2^(n-2) ->
     bcexec (modmult M C Cinv n) ([x]_n allfalse) = [C * x mod M]_n allfalse.
 Admitted.
+
+Opaque modmult.
+
+
+Fixpoint reverser' i n :=
+  match i with
+  | 0 => bcswap 0 (n - 1)
+  | S i' => reverser' i' n; bcswap i (n - 1 - i)
+  end.
+Definition reverser n := reverser' ((n - 1) / 2) n.
+
+Definition fbrev' i n (f : nat -> bool) := fun (x : nat) => if (x <=? i) then f (n - 1 - x) else if (x <? n - 1 - i) then f x else if (x <? n) then f (n - 1 - x) else f x.
+Definition fbrev n (f : nat -> bool) := fun (x : nat) => if (x <? n) then f (n - 1 - x) else f x.
+
+Lemma reverser'_correct :
+  forall i n f g,
+    0 < n ->
+    i <= (n - 1) / 2 ->
+    bcexec (reverser' i n) (fb_push_n n f g) = fb_push_n n (fbrev' i n f) g.
+Admitted. (*
+(* The following proof works, but too slow. Admitted when debugging. *)
+Proof.
+  induction i; intros.
+  - simpl. rewrite bcswap_correct by lia. apply functional_extensionality; intro. unfold fbrev'.
+    bdestruct (x =? 0). subst. fb_push_n_simpl. IfExpSimpl; apply f_equal; lia.
+    bdestruct (x =? n - 1). subst. fb_push_n_simpl. IfExpSimpl. apply f_equal. lia.
+    bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl. easy.
+    fb_push_n_simpl. easy.
+  - assert ((n - 1) / 2 < n) by (apply Nat.div_lt_upper_bound; lia).
+    simpl. rewrite IHi by lia. rewrite bcswap_correct by lia. apply functional_extensionality; intro. unfold fbrev'.
+    assert (2 * ((n - 1) / 2) <= n - 1) by (apply Nat.mul_div_le; easy).
+    bdestruct (x =? S i). subst. fb_push_n_simpl. IfExpSimpl; easy.
+    bdestruct (x =? n - 1 - S i). subst. fb_push_n_simpl. IfExpSimpl. apply f_equal. lia.
+    bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl; easy.
+    fb_push_n_simpl. easy.
+Qed.
+*)
+
+Lemma fbrev'_fbrev :
+  forall n f,
+    0 < n ->
+    fbrev n f = fbrev' ((n - 1) / 2) n f.
+Proof.
+  intros. unfold fbrev, fbrev'. apply functional_extensionality; intro.
+  assert ((n - 1) / 2 < n) by (apply Nat.div_lt_upper_bound; lia).
+  assert (2 * ((n - 1) / 2) <= n - 1) by (apply Nat.mul_div_le; easy).
+  assert (n - 1 - (n - 1) / 2 <= (n - 1) / 2 + 1).
+  { assert (n - 1 <= 2 * ((n - 1) / 2) + 1).
+    { assert (2 <> 0) by easy.
+      specialize (Nat.mul_succ_div_gt (n - 1) 2 H2) as G.
+      lia.
+    }
+    lia.
+  }
+  IfExpSimpl; easy.
+Qed.
+
+Lemma reverser_correct :
+  forall n f g,
+    0 < n ->
+    bcexec (reverser n) (fb_push_n n f g) = fb_push_n n (fbrev n f) g.
+Proof.
+  intros. unfold reverser. rewrite reverser'_correct by lia. rewrite fbrev'_fbrev by easy. easy.
+Qed.
+
+Lemma reverser'_eWF :
+  forall i n, eWF (reverser' i n).
+Proof.
+  induction i; intros. simpl. apply bcswap_eWF.
+  simpl. constructor. apply IHi. apply bcswap_eWF.
+Qed.
+
+Lemma reverser_eWF :
+  forall n, eWF (reverser n).
+Proof.
+  intros. unfold reverser. apply reverser'_eWF.
+Qed.
+
+Opaque reverser.
+
+Lemma fbrev_involutive :
+  forall n f,
+    fbrev n (fbrev n f) = f.
+Proof.
+  intros. unfold fbrev. apply functional_extensionality; intro x. IfExpSimpl; apply f_equal; lia.
+Qed.
+
+Lemma f_to_vec_eq :
+  forall n f1 f2,
+    (forall i, i < n -> f1 i = f2 i) ->
+    f_to_vec n f1 = f_to_vec n f2.
+Proof.
+  induction n; intros. easy.
+  simpl. rewrite IHn with (f2 := f2). rewrite H. easy. lia. intros. apply H. lia.
+Qed.
+
+Lemma fbrev_Sn :
+  forall n x f,
+    fb_push_n (S n) (fbrev (S n) (nat2fb x)) f = fb_push_n n (fbrev n (nat2fb (x / 2))) ((x mod 2 =? 1) ` f).
+Proof.
+  intros. apply functional_extensionality; intro i.
+  bdestruct (i <? n). fb_push_n_simpl. unfold fbrev. IfExpSimpl. unfold nat2fb. do 2 rewrite N2fb_Ntestbit. do 2 rewrite <- Nattestbit_Ntestbit. replace (S n - 1 - i) with (S (n - 1 - i)) by lia. symmetry. apply Nat.div2_bits.
+  bdestruct (i =? n). subst. fb_push_n_simpl. replace (n - n) with 0 by lia. unfold fbrev. IfExpSimpl. unfold nat2fb. rewrite N2fb_Ntestbit. rewrite <- Nattestbit_Ntestbit. replace (S n - 1 - n) with 0 by lia. rewrite Nat.bit0_eqb. easy.
+  fb_push_n_simpl. destruct (i - n) eqn:E. lia. replace (i - S n) with n0 by lia. easy.
+Qed.
+
+Lemma f_to_vec_num :
+  forall n x f,
+    f_to_vec n (fb_push_n n (fbrev n (nat2fb x)) f) = basis_vector (2^n) (x mod (2^n)).
+Proof.
+  induction n; intros. simpl in *. replace 1 with (2^0) by easy. rewrite <- kron_n_0_is_0_vector. easy.
+  simpl. replace (2 ^ n + (2 ^ n + 0)) with (2 * (2^n)) by lia.
+  assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
+  rewrite Nat.mod_mul_r by lia.
+  rewrite fbrev_Sn. rewrite IHn. fb_push_n_simpl. replace (n - n) with 0 by lia.
+  remember ((x / 2) mod 2^n) as y.
+  assert (y < 2 ^ n) by (subst; apply Nat.mod_upper_bound; easy).
+  replace (((x mod 2 =? 1) ` f) 0) with (x mod 2 =? 1) by easy.
+  destruct (x mod 2) eqn:E.
+  - replace (0 + 2 * y) with (2 * y) by lia.
+    rewrite <- (basis_vector_append_0 (2^n) y); easy.
+  - assert (x mod 2 < 2) by (apply Nat.mod_upper_bound; easy).
+    replace (S n0) with 1 by lia.
+    replace (1 + 2 * y) with (2 * y + 1) by lia.
+    rewrite <- (basis_vector_append_1 (2^n) y); easy.
+Qed.
+
+Lemma f_to_vec_num_with_anc :
+  forall anc n x,
+    f_to_vec (n + anc) (fb_push_n n (fbrev n (nat2fb x)) allfalse) = basis_vector (2^n) (x mod (2^n)) ⊗ (basis_vector (2^anc) 0).
+Proof.
+  induction anc; intros. rewrite Nat.add_0_r. rewrite <- kron_n_0_is_0_vector. simpl. rewrite kron_1_r. apply f_to_vec_num.
+  replace (n + S anc) with (S (n + anc)) by lia. simpl. fb_push_n_simpl. simpl. rewrite IHanc.
+  replace (basis_vector (2 ^ anc + (2 ^ anc + 0)) 0) with (basis_vector (2 * 2^anc) (2 * 0)) by easy.
+  assert (2^anc <> 0) by (apply Nat.pow_nonzero; easy).
+  rewrite <- (basis_vector_append_0 (2^anc) 0) by lia.
+  restore_dims. rewrite kron_assoc. easy.
+  apply basis_vector_WF. apply Nat.mod_upper_bound. apply Nat.pow_nonzero; easy.
+  apply basis_vector_WF. lia.
+  apply WF_qubit0.
+Qed.
+
+Definition modmult_rev M C Cinv n := bcinv (reverser n); modmult M C Cinv (S (S (S n))); reverser n.
+
+Lemma basis_vector_inc_from_anc :
+  forall n x,
+    x < 2^n ->
+    [x]_n allfalse = [x]_(S n) allfalse.
+Proof.
+  intros. apply functional_extensionality; intro i. unfold reg_push.
+  bdestruct (i <? n). fb_push_n_simpl. easy.
+  bdestruct (i =? n). subst. fb_push_n_simpl. unfold nat2fb. rewrite N2fb_Ntestbit. rewrite <- Nattestbit_Ntestbit. rewrite Nat.testbit_eqb.
+  replace (x / 2^n) with 0 by (symmetry; apply Nat.div_small; easy). easy.
+  fb_push_n_simpl. easy.
+Qed.
+
+Lemma modmult_rev_correct :
+  forall n x M C Cinv,
+    M > 1 -> M <= 2^n ->
+    x < M -> C < M -> Cinv < M ->
+    C * Cinv mod M = 1 ->
+    bcexec (modmult_rev M C Cinv n) (fb_push_n n (fbrev n (nat2fb x)) allfalse) = (fb_push_n n (fbrev n (nat2fb (C * x mod M))) allfalse).
+Proof.
+  intros.
+  assert (0 < n) by (destruct n; simpl in *; lia).
+  assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
+  assert ((C * x) mod M < M) by (apply Nat.mod_upper_bound; lia).
+  assert (M < 2^(S n)) by (simpl; lia).
+  assert (M < 2^(S (S n))) by (simpl; lia).
+  assert (M < 2 ^ (S (S (S n)) - 2)) by (replace (S (S (S n)) - 2) with (S n) by lia; easy).
+  unfold modmult_rev. simpl. erewrite bcinv_reverse.
+  3: rewrite reverser_correct by lia; reflexivity.
+  2: apply reverser_eWF.
+  replace (fb_push_n n (nat2fb x) allfalse) with ([x]_n allfalse) by easy.
+  do 3 rewrite basis_vector_inc_from_anc by lia.
+  rewrite modmult_correct by lia.
+  do 3 rewrite <- basis_vector_inc_from_anc by lia.
+  apply reverser_correct. easy.
+Qed.
+
+Lemma modmult_rev_eWT :
+  forall n M C Cinv,
+    0 < n ->
+    eWT (n + (modmult_rev_anc n)) (modmult_rev M C Cinv n).
+Admitted.
+
+Opaque modmult_rev.
+
