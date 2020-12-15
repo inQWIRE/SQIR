@@ -523,7 +523,8 @@ Lemma swapper02'_correct :
   forall i n f g h u b1 b2,
     0 < n ->
     i <= n ->
-    bcexec (swapper02' i n) (b1 ` b2 ` fb_push_n n f (fb_push_n n g (fb_push_n n h u))) = b1 ` b2 ` fb_push_n n (swapma i f h) (fb_push_n n g (fb_push_n n (swapmb i f h) u)).
+    bcexec (swapper02' i n) (b1 ` b2 ` fb_push_n n f (fb_push_n n g (fb_push_n n h u))) 
+= b1 ` b2 ` fb_push_n n (swapma i f h) (fb_push_n n g (fb_push_n n (swapmb i f h) u)).
 Proof.
   induction i; intros.
   - simpl.
@@ -864,7 +865,8 @@ Proof.
   unfold modadder21. remember (bccont 1 (substractor01 n); bcx 1) as csub01. simpl. subst.
   rewrite swapper02_correct by lia. rewrite adder01_correct_carry0 by lia.
   rewrite swapper02_correct by lia. rewrite comparator01_correct by lia.
-  replace (bcexec (bccont 1 (substractor01 n); bcx 1) (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f)) with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f).
+  replace (bcexec (bccont 1 (substractor01 n); bcx 1)
+      (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f)) with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f). 
   2:{ simpl. bdestruct (M <=? x + y).
       - rewrite substractor01_correct by lia.
         replace (x + y + 2^n - M) with (x + y - M + 2^n) by lia.
@@ -908,7 +910,8 @@ Lemma swapper12'_correct :
   forall i n f g h u b1 b2,
     0 < n ->
     i <= n ->
-    bcexec (swapper12' i n) (b1 ` b2 ` fb_push_n n f (fb_push_n n g (fb_push_n n h u))) = b1 ` b2 ` fb_push_n n f (fb_push_n n (swapma i g h) (fb_push_n n (swapmb i g h) u)).
+    bcexec (swapper12' i n) (b1 ` b2 ` fb_push_n n f (fb_push_n n g (fb_push_n n h u)))
+                 = b1 ` b2 ` fb_push_n n f (fb_push_n n (swapma i g h) (fb_push_n n (swapmb i g h) u)).
 Proof.
   induction i; intros.
   - simpl.
@@ -917,8 +920,10 @@ Proof.
     easy.
   - simpl. rewrite IHi by lia.
     apply functional_extensionality; intro. rewrite bcswap_correct by lia.
-    bdestruct (x =? S (S (n + i))). subst. simpl. fb_push_n_simpl. unfold swapma, swapmb. IfExpSimpl. replace (n + n + i - n - n) with (n + i - n) by lia. easy.
-    bdestruct (x =? S (S (n + n + i))). subst. simpl. fb_push_n_simpl. unfold swapma, swapmb. IfExpSimpl. replace (n + n + i - n - n) with (n + i - n) by lia. easy.
+    bdestruct (x =? S (S (n + i))). subst. simpl. fb_push_n_simpl. 
+    unfold swapma, swapmb. IfExpSimpl. replace (n + n + i - n - n) with (n + i - n) by lia. easy.
+    bdestruct (x =? S (S (n + n + i))). subst. simpl. fb_push_n_simpl. 
+    unfold swapma, swapmb. IfExpSimpl. replace (n + n + i - n - n) with (n + i - n) by lia. easy.
     destruct x. easy. simpl. destruct x. easy. simpl.
     bdestruct (x <? n). fb_push_n_simpl. easy. 
     bdestruct (x <? n + n). fb_push_n_simpl. unfold swapma. IfExpSimpl; easy.
@@ -949,6 +954,8 @@ Lemma doubler1_correct :
     0 < n ->
     y < 2^(n - 1) ->
     bcexec (doubler1 n) (b0 ` b1 ` [x]_n [y]_n f) = b0 ` b1 ` [x]_n [2 * y]_n f.
+Proof.
+  intros.
 Admitted.
 
 Opaque doubler1.
@@ -961,7 +968,39 @@ Lemma moddoubler01_correct :
     x < M ->
     M < 2^(n - 2) ->
     bcexec (moddoubler01 n) (false ` false ` [M]_n [x]_n f) = false ` (M <=? 2 * x) ` [M]_n [2 * x mod M]_n f.
-Admitted.
+Proof.
+ intros.
+  assert (M < 2^(n-1)).
+  { apply pow2_predn. replace (n - 1 - 1) with (n - 2) by lia. easy.
+  }
+  assert (x + x < 2^(n-1)).
+  { replace (2^(n-1)) with (2^(n-2) + 2^(n-2)). lia.
+    destruct n. lia. destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+  }
+ unfold moddoubler01.
+ rewrite bcseq_correct.
+ rewrite bcseq_correct.
+ rewrite doubler1_correct; try lia.
+ rewrite comparator01_correct; try lia.
+ simpl. bdestruct (M <=? x + (x + 0)).
+  - rewrite substractor01_correct; try lia.
+    replace (x + (x + 0) + 2 ^ n - M) with (x + (x + 0) - M + 2^n) by lia.
+    rewrite reg_push_exceed with (x := (x + (x + 0) - M + 2^n)).
+    assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
+    rewrite <- Nat.add_mod_idemp_r with (a := x + (x + 0) - M) by easy.
+    rewrite Nat.mod_same by easy.
+    rewrite Nat.add_0_r. rewrite <- reg_push_exceed.
+    rewrite Nat.add_0_r. rewrite Nat.add_0_r in H4.
+    rewrite Nat.mod_eq by lia.
+    assert (x + x < 2 * M) by lia.
+    assert ((x + x) / M < 2) by (apply Nat.div_lt_upper_bound; lia).
+    assert (1 <= (x + x) / M) by (apply Nat.div_le_lower_bound; lia).
+    assert ((x + x) / M = 1) by lia.
+    replace (x + x - M * ((x + x) / M)) with (x + x - M) by lia.
+    reflexivity.
+  - rewrite Nat.mod_small by lia. 
+    reflexivity.
+Qed.
 
 Opaque moddoubler01.
 
@@ -974,7 +1013,16 @@ Lemma modadder12_correct :
     y < M ->
     M < 2^(n-2) ->
     bcexec (modadder12 n) (false ` false ` [M]_n [x]_n [y]_n f) = false ` false ` [M]_n [x]_n [(x + y) mod M]_n f.
-Admitted.
+Proof.
+ intros.
+ unfold modadder12.
+ rewrite bcseq_correct.
+ rewrite bcseq_correct.
+ rewrite swapper12_correct by lia.
+ rewrite modadder21_correct; try lia.
+ rewrite swapper12_correct by lia.
+ reflexivity.
+Qed.
 
 Opaque modadder12.
 
@@ -1015,7 +1063,10 @@ Proof.
   induction k. easy.
   replace (2 * (S k)) with (S (S (2 * k))) by lia.
   rewrite Nat.odd_succ_succ. rewrite IHk.
-  do 2 rewrite N.bit0_odd. replace (N.of_nat (S (S (2 * k)))) with (N.succ (N.succ (N.of_nat (2 * k)))) by lia. rewrite N.odd_succ_succ. easy.
+  do 2 rewrite N.bit0_odd.
+  replace (N.of_nat (S (S (2 * k)))) 
+   with (N.succ (N.succ (N.of_nat (2 * k)))) by lia.
+   rewrite N.odd_succ_succ. easy.
 Qed.
 
 Lemma Natodd_Ntestbit_odd :
@@ -1024,15 +1075,20 @@ Proof.
   induction k. easy.
   replace (2 * (S k) + 1) with (S (S (2 * k + 1))) by lia.
   rewrite Nat.odd_succ_succ. rewrite IHk.
-  do 2 rewrite N.bit0_odd. replace (N.of_nat (S (S (2 * k + 1)))) with (N.succ (N.succ (N.of_nat (2 * k + 1)))) by lia. rewrite N.odd_succ_succ. easy.
+  do 2 rewrite N.bit0_odd.
+  replace (N.of_nat (S (S (2 * k + 1)))) 
+     with (N.succ (N.succ (N.of_nat (2 * k + 1)))) by lia.
+  rewrite N.odd_succ_succ. easy.
 Qed.
 
 Lemma Nattestbit_Ntestbit :
   forall m n,
     Nat.testbit n m = N.testbit (N.of_nat n) (N.of_nat m).
 Proof.
-  induction m; intros. simpl. specialize (parity_decompose n) as [k [Hk | Hk]]; subst. apply Natodd_Ntestbit_even. apply Natodd_Ntestbit_odd.
-  remember (N.of_nat (S m)) as NSm. simpl. rewrite IHm. rewrite Nnat.Nat2N.inj_div2. rewrite <- N.testbit_succ_r_div2 by lia. subst. rewrite Nnat.Nat2N.inj_succ. easy.
+  induction m; intros. simpl. specialize (parity_decompose n) as [k [Hk | Hk]]; subst.
+   apply Natodd_Ntestbit_even. apply Natodd_Ntestbit_odd.
+  remember (N.of_nat (S m)) as NSm. simpl. rewrite IHm. rewrite Nnat.Nat2N.inj_div2.
+   rewrite <- N.testbit_succ_r_div2 by lia. subst. rewrite Nnat.Nat2N.inj_succ. easy.
 Qed.  
 
 Definition bindecomp n x := natsum n (fun i => Nat.b2n ((nat2fb x) i) * 2^i).
@@ -1043,7 +1099,8 @@ Lemma bindecomp_spec :
 Proof.
   unfold bindecomp. induction n; intros. easy.
   simpl. rewrite IHn. unfold nat2fb. rewrite N2fb_Ntestbit. rewrite <- Nattestbit_Ntestbit.
-  rewrite Nat.testbit_spec'. replace (2 ^ n + (2 ^ n + 0)) with ((2 ^ n) * 2) by lia. rewrite Nat.mod_mul_r. lia. apply Nat.pow_nonzero. easy. easy.
+  rewrite Nat.testbit_spec'. replace (2 ^ n + (2 ^ n + 0)) with ((2 ^ n) * 2) by lia. 
+  rewrite Nat.mod_mul_r. lia. apply Nat.pow_nonzero. easy. easy.
 Qed.
 
 Lemma modsummer'_correct :
@@ -1052,7 +1109,8 @@ Lemma modsummer'_correct :
     x < M ->
     C < M ->
     M < 2^(n-2) ->
-    bcexec (modsummer' i n (nat2fb C)) (false ` false ` [M]_n [x]_n [y]_n allfalse) = false ` false ` [M]_n [2^i * x mod M]_n [((bindecomp i C) * x + y) mod M]_n (hbf n M x).
+    bcexec (modsummer' i n (nat2fb C)) (false ` false ` [M]_n [x]_n [y]_n allfalse)
+                  = false ` false ` [M]_n [2^i * x mod M]_n [((bindecomp i C) * x + y) mod M]_n (hbf n M x).
 Admitted.
 
 Lemma modsummer_correct :
@@ -1061,7 +1119,8 @@ Lemma modsummer_correct :
     x < M ->
     C < M ->
     M < 2^(n-2) ->
-    bcexec (modsummer n C) (false ` false ` [M]_n [x]_n [y]_n allfalse) = false ` false ` [M]_n [2^(n-1) * x mod M]_n [(C * x + y) mod M]_n (hbf n M x).
+    bcexec (modsummer n C) (false ` false ` [M]_n [x]_n [y]_n allfalse)
+                    = false ` false ` [M]_n [2^(n-1) * x mod M]_n [(C * x + y) mod M]_n (hbf n M x).
 Admitted.
 
 Opaque modsummer.
