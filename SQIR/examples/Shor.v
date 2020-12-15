@@ -1295,13 +1295,19 @@ Qed.
 Lemma Shor_correct_full_implementation :
   exists β, 
     β>0 /\
-    forall (a r N m n ainv : nat),
+    forall (a r N m n : nat),
       BasicSetting a r N m n ->
-      (ainv < N)%nat -> ((a * ainv) mod N = 1)%nat ->
       (r > 3)%nat ->
-      probability_of_success_var a r N m n (modmult_rev_anc n) (f_modmult_circuit a ainv N n) >= β / Nat.log2 (Nat.log2 N).
+      probability_of_success_var a r N m n (modmult_rev_anc n) (f_modmult_circuit a (modinv a N) N n) >= β / Nat.log2 (Nat.log2 N).
 Proof.
-  destruct Shor_correct_var as [β [Hβ H]]. exists β. split. easy. intros. apply H; try easy.
+  destruct Shor_correct_var as [β [Hβ H]]. exists β. split. easy. intros.
+  assert (modinv a N < N)%nat.
+  { apply modinv_upper_bound. destruct H0 as [Ha _]. lia.
+  }
+  assert (a * (modinv a N) mod N = 1)%nat.
+  { apply Order_modinv_correct with (r := r). destruct H0 as [_ [Horder _]]. easy.
+  }
+  apply H; try easy.
   apply f_modmult_circuit_MMI with (r := r) (m := m); easy.
   destruct H0 as [Ha [_ [_ HN]]].
   intros. apply f_modmult_circuit_uc_well_typed; try easy.

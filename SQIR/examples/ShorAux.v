@@ -10,7 +10,81 @@ Local Coercion Z.of_nat : nat >-> BinNums.Z.
 (* ============================= *)
 
 Local Close Scope R_scope.
+Local Open Scope Z_scope.
+
+(*
+   exteuc a b = (n, m) :
+   a * n + b * m = gcd a b
+*)
+Fixpoint exteuc (a b : nat) :=
+  match a with
+  | O => (0, 1)
+  | S a' => let (p, q) := exteuc (b mod (S a')) (S a') in
+           (q - (b / a) * p, p)
+  end.
+
+Lemma exteuc_correct :
+  forall (t a b : nat),
+    (a < t)%nat ->
+    let (n, m) := exteuc a b in
+    a * n + b * m = Nat.gcd a b.
+Proof.
+  Local Opaque Nat.modulo Nat.div Z.mul.
+  induction t; intros. lia.
+  bdestruct (a <? t)%nat. apply IHt. lia.
+  assert (a = t) by lia.
+  destruct a. simpl. lia.
+  simpl. rename a into a'. remember (S a') as a.
+  replace (Z.pos (Pos.of_succ_nat a')) with (Z.of_nat a) by lia.
+  assert (b mod a < a)%nat by (apply Nat.mod_upper_bound; lia).
+  assert (b mod a < t)%nat by lia.
+  specialize (IHt (b mod a)%nat a H3).
+  destruct (exteuc (b mod a) a) as (p, q) eqn:E.
+  rewrite mod_Zmod in IHt by lia. rewrite Zmod_eq_full in IHt by lia.
+  nia.
+Qed.
+
+Local Close Scope Z_scope.
 Local Open Scope nat_scope.
+
+Definition modinv (a N : nat) := let (n, m) := exteuc a N in Z.to_nat (n mod N)%Z.
+
+Lemma modinv_correct :
+  forall a N,
+    0 < N ->
+    a * (modinv a N) mod N = (Nat.gcd a N) mod N.
+Proof.
+  intros. unfold modinv. 
+  assert (a < S a) by lia.
+  specialize (exteuc_correct (S a) a N H0) as G.
+  destruct (exteuc a N) as (n, m) eqn:E.
+  assert (((a * n + N * m) mod N)%Z = Nat.gcd a N mod N).
+  { rewrite G. rewrite mod_Zmod by lia. easy.
+  }
+  rewrite <- Zplus_mod_idemp_r in H1. replace (N * m)%Z with (m * N)%Z in H1 by lia.
+  rewrite Z_mod_mult in H1. rewrite Z.add_0_r in H1.
+  rewrite <- Zmult_mod_idemp_r in H1.
+  replace (n mod N)%Z with (Z.of_nat (Z.to_nat (n mod N)%Z)) in H1.
+  2:{ rewrite Z2Nat.id. easy.
+      assert (0 < N)%Z by lia.
+      specialize (Z.mod_pos_bound n N H2) as T.
+      lia.
+  }
+  rewrite <- Nat2Z.inj_mul in H1.
+  rewrite <- mod_Zmod in H1 by lia. 
+  apply Nat2Z.inj_iff. easy.
+Qed.
+
+Lemma modinv_upper_bound :
+  forall a N,
+    0 < N ->
+    modinv a N < N.
+Proof.
+  intros. unfold modinv. destruct (exteuc a N).
+  pattern N at 2. replace N with (Z.to_nat (Z.of_nat N)) by (rewrite Nat2Z.id; easy).
+  assert (0 <= z mod N < N)%Z by (apply Z_mod_lt; lia). 
+  apply Z2Nat.inj_lt; lia.
+Qed.
 
 (* r is the order of a modulo p *)
 Definition Order (a r N : nat) :=
@@ -39,7 +113,7 @@ Proof.
     + apply Nat.ltb_lt in S; easy.
     + apply Nat.ltb_ge in S. destruct H as [_ [? _]].
       apply Nat.ltb_lt in E. replace N with 1%nat in H by lia. simpl in H. discriminate H.
-  - apply Nat.ltb_ge in E. assert (N=0) by lia. destruct H as [_ [? _]]. rewrite H0 in H. simpl in H. lia.
+  - apply Nat.ltb_ge in E. assert (N=0) by lia. destruct H as [_ [? _]]. rewrite H0 in H. Local Transparent Nat.modulo. simpl in H. lia.
 Qed.
 
 Lemma Order_a_nonzero :
@@ -62,6 +136,41 @@ Proof.
   intros. exists (a^(pred r))%nat. destruct H as [? [? _]].
   assert (a * a ^ Init.Nat.pred r = a^1 * a^(Init.Nat.pred r))%nat. rewrite Nat.pow_1_r; easy. rewrite H1.
   rewrite <- Nat.pow_add_r. rewrite Nat.succ_pred; lia.
+Qed.
+
+Lemma natmul1 :
+  forall a b,
+    b <> 1 ->
+    ~(a * b = 1).
+Proof.
+  intros. intro. destruct a; destruct b; try lia.
+  destruct b. lia. assert (S a >= 1) by lia. assert (S (S b) >= 2) by lia.
+  assert (S a * S (S b) >= 2) by nia. lia.
+Qed.
+
+Lemma Order_rel_prime :
+  forall a r N,
+    Order a r N ->
+    Nat.gcd a N = 1.
+Proof.
+  intros. destruct (Order_a_inv_ex _ _ _ H) as [ainv G].
+  specialize (Nat.gcd_divide a N) as [[a' Ha] [N' HN]].
+  remember (Nat.gcd a N) as g. bdestruct (g =? 1). easy.
+  rewrite Ha, HN in G. replace (a' * g * ainv) with (a' * ainv * g) in G by lia.
+  rewrite Nat.mul_mod_distr_r in G. specialize (natmul1 ((a' * ainv) mod N') g H0) as T. easy.
+  apply Order_N_lb in H. lia.
+  apply Order_N_lb in H. lia.
+Qed.
+
+Lemma Order_modinv_correct :
+  forall a r N,
+    Order a r N ->
+    (a * (modinv a N)) mod N = 1.
+Proof.
+  intros. specialize (Order_rel_prime _ _ _ H) as G.
+  apply Order_N_lb in H.
+  rewrite modinv_correct by lia. rewrite G.
+  rewrite Nat.mod_small; easy.
 Qed.
 
 Lemma inv_pow :
@@ -600,7 +709,7 @@ Lemma nthcfexp_neq_0_nthmodseq :
 Proof.
   induction n; intros. unfold nthcfexp in H0. simpl in H0.
   unfold nthmodseq. simpl.
-  bdestruct (a =? 0). rewrite H1 in H0. simpl in H0. lia. lia.
+  bdestruct (a =? 0). rewrite H1 in H0. Local Transparent Nat.div. simpl in H0. lia. lia.
   bdestruct (a =? 0). rewrite H1 in H0. rewrite nthcfexp_Sn0a in H0. lia.
   assert (a > 0) by lia.
   rewrite nthmodseq_mod by lia. apply IHn.
