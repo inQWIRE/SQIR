@@ -426,6 +426,17 @@ Proof.
   simpl. rewrite denote_SKIP by easy. Msimpl. easy.
 Qed.
 
+Lemma eWT_uc_well_typed :
+  forall p dim,
+    dim > 0 ->
+    eWT dim p ->
+    @uc_well_typed _ dim (bc2ucom (bcelim p)).
+Proof.
+  intros.
+  destruct (bcelim p) eqn:Ep;
+    try (apply bcWT_uc_well_typed; try easy; rewrite <- Ep; apply eWT_bcWT; try easy; rewrite Ep; easy).
+  simpl. unfold SKIP. apply uc_well_typed_ID. lia.
+Qed.
 
 
 
