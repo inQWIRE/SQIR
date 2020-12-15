@@ -1,4 +1,4 @@
-Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
+Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
 Require Export RCIR.
 
 Local Open Scope bccom_scope.
@@ -40,6 +40,14 @@ Definition nat2fb n := N2fb (N.of_nat n).
 
 Definition reg_push (x : nat) (n : nat) (f : nat -> bool) := fb_push_n n (nat2fb x) f.
 
+Lemma fb_push_right:
+  forall n b f, 0 < n -> fb_push b f n = f (n-1).
+Proof.
+  intros. induction n. lia.
+  simpl. assert ((n - 0) = n) by lia.
+  rewrite H0. reflexivity.
+Qed.
+
 Lemma fb_push_n_left :
   forall n x f g,
     x < n -> fb_push_n n f g x = f x.
@@ -56,6 +64,24 @@ Qed.
 
 Notation "'[' x ']_' n f" := (reg_push x n f) (at level 15, n at level 9, right associativity).
 Notation "b ` f" := (fb_push b f) (at level 20, right associativity).
+
+Lemma reg_push_inv:
+  forall x n f a, a < n -> (reg_push x n f) a = (nat2fb x) a.
+Proof.
+  intros.
+  unfold nat2fb,N2fb,reg_push,fb_push_n.
+  destruct x.
+  simpl.
+  bdestruct (a <? n).
+  unfold nat2fb.
+  simpl. reflexivity.
+  lia.
+  bdestruct (a <? n).
+  unfold nat2fb.
+  simpl.
+  reflexivity.
+  lia.
+Qed.
 
 Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
 
@@ -259,7 +285,8 @@ Qed.
 
 Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
 
-Definition msma i b f g := fun (x : nat) => if (x <? i) then (carry b (S x) f g ⊕ (f (S x))) else (if (x =? i) then carry b (S x) f g else f x).
+Definition msma i b f g := fun (x : nat) => if (x <? i) then 
+        (carry b (S x) f g ⊕ (f (S x))) else (if (x =? i) then carry b (S x) f g else f x).
 
 Definition msmb i (b : bool) f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else g x.
 
@@ -669,7 +696,8 @@ Lemma comparator01_eWF :
     0 < n ->
     eWF (comparator01 n).
 Proof.
-  intros. unfold comparator01. repeat constructor. apply negator0_eWF. apply highb01_eWF. easy. apply eWF_bcinv. apply negator0_eWF.
+  intros. unfold comparator01. repeat constructor. apply negator0_eWF. 
+  apply highb01_eWF. easy. apply eWF_bcinv. apply negator0_eWF.
 Qed.
 
 Lemma negations_aux :
@@ -949,10 +977,29 @@ Opaque swapper12.
 Fixpoint doubler1' i n :=
   match i with
   | 0 => bcskip
-  | S i' => bcswap (2 + n + i') (2 + n + i); doubler1' i' n
+  | S i' => bcswap (n + i') (n + i); doubler1' i' n
   end.
-Definition doubler1 n := doubler1' (n - 1) n.
+Definition doubler1 n := doubler1' (n - 1) (2 + n).
 
+Definition double_prop x n (f:nat -> bool) :=
+         fun i => if i <? n then f i
+                   else if i =? n then f (n + x)
+                   else if (n <? i) && (i <=? n + x) then f (i-1) else f i.
+
+
+
+Lemma N_inj_pow: forall n, (N.of_nat (2 ^ n) = 2 ^ (N.of_nat n))%N.
+Proof.
+  intros.
+ induction n.
+ simpl. rewrite N.pow_0_r.
+ reflexivity.
+ simpl.
+ assert (N.pos (Pos.of_succ_nat n) = N.succ (N.of_nat n)) by lia.
+ rewrite H.
+ rewrite N.pow_succ_r.
+ rewrite <- IHn. lia. lia.
+Qed.
 
 Lemma reg_push_high_bit_zero:
    forall n x f, 
@@ -961,38 +1008,208 @@ Proof.
   intros. unfold reg_push. unfold nat2fb.
   fb_push_n_simpl.
   rewrite N2fb_Ntestbit.
-Check N.testbit_unique.
-  specialize (N.testbit_unique (N.of_nat x) (N.of_nat (n - 1)) false (N.of_nat x) 0%N) as H1.
-  assert ((N.of_nat x < 2 ^ N.of_nat (n - 1))%N).
-  assert (2 ^ N.of_nat (n - 1) = N.of_nat (2^(n-1)))%N.
-Admitted.
-
-Lemma fb_push_right:
-  forall n b f, 0 < n -> fb_push b f n = f (n-1).
-Proof.
-  intros. induction n. lia.
-  simpl. assert ((n - 0) = n) by lia.
-  rewrite H0. reflexivity.
+  rewrite Ntestbit_lt_pow2n.
+  reflexivity.
+  apply N2Z.inj_lt.
+  assert (N.of_nat ( 2 ^ (n - 1)) = (2 ^ N.of_nat (n - 1)))%N.
+  rewrite N_inj_pow.
+  reflexivity.
+  rewrite <- H1.
+  Check N2Z.inj_lt.
+  rewrite nat_N_Z.
+  rewrite nat_N_Z.
+  apply Nat2Z.inj_lt.
+  assumption.
 Qed.
 
-Lemma reg_push_high_bit_zero_1:
-  forall n x y f b0 b1,
-    0 < n ->
-    y < 2^(n - 1) -> (b0 ` b1 ` [x]_n [y]_n f) (2 + n + (n-1)) = false.
+Lemma reg_push_high_bit_gen_zero:
+   forall i m n x f,
+    0 < n -> i <= m < n -> x < 2^i -> ([x]_n f) m = false.
+Proof.
+  intros. unfold reg_push. unfold nat2fb.
+  fb_push_n_simpl.
+  rewrite N2fb_Ntestbit.
+  rewrite Ntestbit_lt_pow2n.
+  reflexivity.
+  apply N2Z.inj_lt.
+  assert (N.of_nat ( 2 ^ m) = (2 ^ N.of_nat m))%N.
+  rewrite N_inj_pow.
+  reflexivity.
+  rewrite <- H2.
+  rewrite nat_N_Z.
+  rewrite nat_N_Z.
+  apply Nat2Z.inj_lt.
+  assert (2 ^ i <= 2 ^ m).
+  apply Nat.pow_le_mono_r.
+  1 - 3 : lia.
+Qed.
+
+Lemma reg_push_high_bit_gen_zero_1:
+  forall i m n x y f b0 b1,
+    0 < n -> i <= m < n ->
+    y < 2^i -> (b0 ` b1 ` [x]_n [y]_n f) (2 + n + m) = false.
 Proof.
   intros.
   rewrite fb_push_right by lia. rewrite fb_push_right by lia.
-  assert (([x ]_ n [y ]_ n f) (2 + n + (n - 1) - 1 - 1)
-         = ([y ]_ n f) ((2 + n + (n - 1) - 1 - 1) - n)).
+  assert (([x ]_ n [y ]_ n f) (2 + n + m - 1 - 1)
+         = ([y ]_ n f) ((2 + n + m - 1 - 1) - n)).
   unfold reg_push.
   rewrite fb_push_n_right.
   reflexivity.
   lia.
-  rewrite H1.
-  assert ((2 + n + (n - 1) - 1 - 1 - n) = n - 1) by lia.
   rewrite H2.
-  rewrite reg_push_high_bit_zero.
-  reflexivity. assumption. assumption.
+  assert ((2 + n + m - 1 - 1 - n) = m) by lia.
+  rewrite H3.
+  rewrite (reg_push_high_bit_gen_zero i).
+  reflexivity.
+  1 - 3 : assumption.
+Qed.
+
+Lemma bcswap_same: forall a b f, f a = f b -> bcexec (bcswap a b) f = f.
+Proof.
+  intros.
+  rewrite bcswap_correct.
+  apply functional_extensionality; intros.
+  bdestruct (x =? a).
+  rewrite <- H. rewrite H0.
+  reflexivity.
+  bdestruct (x =? b).
+  rewrite H. rewrite H1.
+  reflexivity.
+  reflexivity.
+Qed.
+
+Lemma bcswap_neq :
+  forall a b c f, a <> c -> b <> c -> bcexec (bcswap a b) f c = f c.
+Proof.
+  intros.
+  rewrite bcswap_correct.
+  IfExpSimpl.
+  reflexivity.
+Qed.
+
+Definition times_two_spec (f:nat -> bool) :=  fun i => if i =? 0 then false else f (i-1).
+
+(* Showing the times_two spec is correct. *)
+
+Lemma nat2fb_even_0:
+  forall x, nat2fb (2 * x) 0 = false.
+Proof.
+  intros.
+  unfold nat2fb.
+  rewrite Nat2N.inj_double.
+  unfold N.double.
+  destruct (N.of_nat x).
+  unfold N2fb,allfalse.
+  reflexivity.
+  unfold N2fb.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma pos2fb_times_two_eq:
+  forall p x, x <> 0 -> pos2fb p (x - 1) = pos2fb p~0 x.
+Proof.
+  intros.
+  induction p.
+  simpl.
+  assert ((false ` true ` pos2fb p) x = (true ` pos2fb p) (x - 1)).
+  rewrite fb_push_right.
+  reflexivity. lia.
+  rewrite H0.
+  reflexivity.
+  simpl.
+  rewrite (fb_push_right x).
+  reflexivity. lia.
+  simpl.
+  rewrite (fb_push_right x).
+  reflexivity. lia.
+Qed.
+
+Lemma times_two_correct:
+   forall n x, 0 < n -> x < 2^(n-1)
+         -> (times_two_spec (nat2fb x)) = (nat2fb (2*x)).
+Proof.
+  intros.
+  unfold times_two_spec.
+  apply functional_extensionality; intros.
+  unfold nat2fb.
+  bdestruct (x0 =? 0).
+  rewrite H1.
+  specialize (nat2fb_even_0 x) as H2.
+  unfold nat2fb in H2.
+  rewrite H2.
+  reflexivity.
+  rewrite Nat2N.inj_double.
+  unfold N.double,N2fb.
+  destruct (N.of_nat x).
+  unfold allfalse.
+  reflexivity.
+  rewrite pos2fb_times_two_eq.
+  reflexivity. lia.
+Qed.
+
+Lemma doubler1_correct_aux :
+  forall i n f, bcexec (doubler1' i n) f = double_prop i n f.
+Proof.
+  intros i.
+  induction i.
+  unfold double_prop.
+  simpl.
+  intros.
+  apply functional_extensionality; intros.
+  bdestruct (x <? n).
+  reflexivity.
+  bdestruct (x =? n).
+  rewrite H0.
+  rewrite Nat.add_0_r.
+  reflexivity.
+  bdestruct (n <? x).
+  bdestruct (x <=? n + 0).
+  lia.
+  simpl.
+  reflexivity.
+  simpl. reflexivity.
+  intros.
+  simpl.
+  rewrite IHi.
+  unfold double_prop.
+  apply functional_extensionality; intros.
+  IfExpSimpl.
+  rewrite bcswap_neq.
+  reflexivity. lia. lia.
+  rewrite bcswap_correct.
+  IfExpSimpl.
+  reflexivity.
+  bdestruct (n <? x).
+  bdestruct ((x <=? n + i)).
+  simpl.
+  rewrite bcswap_correct.
+  bdestruct (x - 1 =? n + i). lia.
+  bdestruct (x - 1 =? n + S i).
+  lia.
+  bdestruct (x <=? n + S i).
+  reflexivity.
+  lia.
+  simpl.
+  rewrite bcswap_correct.
+  bdestruct (x =? n + i).
+  lia.
+  bdestruct (x =? n + S i).
+  bdestruct (x <=? n + S i). subst.
+  assert (n + S i - 1 = n + i) by lia.
+  rewrite H4. reflexivity.
+  lia.
+  bdestruct (x <=? n + S i). lia.
+  reflexivity.
+  simpl.
+  assert (x = n) by lia.
+  rewrite bcswap_correct.
+  bdestruct (x =? n + i).
+  lia.
+  bdestruct (x =? n + S i). 
+  lia.
+  reflexivity.
 Qed.
 
 Lemma doubler1_correct :
@@ -1002,7 +1219,82 @@ Lemma doubler1_correct :
     bcexec (doubler1 n) (b0 ` b1 ` [x]_n [y]_n f) = b0 ` b1 ` [x]_n [2 * y]_n f.
 Proof.
   intros.
-Admitted.
+  unfold doubler1.
+  rewrite doubler1_correct_aux; try lia.
+  apply functional_extensionality; intros.
+  unfold double_prop.
+  bdestruct (x0 <? 2 + n).
+  destruct x0. simpl. reflexivity.
+  rewrite fb_push_right by lia.
+  rewrite (fb_push_right (S x0)) by lia.
+  assert ((S x0 - 1) = x0) by lia.
+  rewrite H2.
+  destruct x0. simpl. reflexivity.
+  rewrite fb_push_right by lia.
+  rewrite (fb_push_right (S x0)) by lia.
+  assert ((S x0 - 1) = x0) by lia.
+  rewrite H3.
+  rewrite reg_push_inv by lia.
+  rewrite reg_push_inv by lia.
+  reflexivity.
+  bdestruct (x0 =? 2 + n).
+  rewrite H2.
+  repeat rewrite fb_push_right by lia.
+  assert (([x ]_ n [y ]_ n f) (2 + n + (n - 1) - 1 - 1)
+            = ([y ]_ n f) ((2 + n + (n - 1) - 1 - 1) - n)).
+  unfold reg_push.
+  rewrite fb_push_n_right by lia.
+  reflexivity.
+  rewrite H3.
+  assert (([x ]_ n [2 * y ]_ n f) (2 + n - 1 - 1) 
+          = ([2 * y ]_ n f) (2 + n - 1 - 1 - n)).
+  unfold reg_push.
+  rewrite fb_push_n_right by lia.
+  reflexivity.
+  rewrite H4.
+  assert ((2 + n + (n - 1) - 1 - 1 - n) = n - 1) by lia.
+  rewrite H5.
+  rewrite reg_push_high_bit_zero by lia.
+  assert ( (2 + n - 1 - 1 - n) = 0) by lia.
+  rewrite H6.
+  rewrite reg_push_inv by lia.
+  rewrite nat2fb_even_0.
+  reflexivity.
+  bdestruct ((2 + n <? x0)).
+  bdestruct ((x0 <=? 2 + n + (n - 1))).
+  simpl.
+  repeat rewrite fb_push_right by lia.
+  assert (([x ]_ n [y ]_ n f) (x0 - 1 - 1 - 1)
+       = ([y ]_ n f) (x0 - 1 - 1 - 1 - n)).
+  unfold reg_push.
+  rewrite fb_push_n_right by lia.
+  reflexivity.
+  assert (([x ]_ n [y + (y + 0) ]_ n f) (x0 - 1 - 1)
+        = ([y + (y + 0) ]_ n f) (x0 - 1 - 1 - n)).
+  unfold reg_push.
+  rewrite fb_push_n_right by lia.
+  reflexivity.
+  rewrite H5. rewrite H6.
+  assert (y + (y + 0) = 2 * y) by lia.
+  rewrite H7.
+  remember (x0 - (2 + n)) as y0.
+  assert ((x0 - 1 - 1 - 1 - n) = y0 - 1) by lia.
+  assert ((x0 - 1 - 1 - n) = y0) by lia.
+  rewrite H8. rewrite H9.
+  repeat rewrite reg_push_inv by lia.
+  rewrite <- (times_two_correct n).
+  unfold times_two_spec.
+  bdestruct (y0 =? 0).
+  lia.
+  reflexivity.
+  1 - 2 : lia.
+  simpl.
+  repeat rewrite fb_push_right by lia.
+  unfold reg_push.
+  repeat rewrite fb_push_n_right by lia.
+  reflexivity.
+  lia.
+Qed.
 
 Opaque doubler1.
 
