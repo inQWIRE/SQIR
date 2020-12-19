@@ -130,6 +130,52 @@ Fixpoint MAJseq' i n c0 : bccom :=
   end.
 Definition MAJseq n := MAJseq' (n - 1) n 0.
 
+Lemma MAJseq'_eWF :
+  forall i n,
+    0 < n ->
+    eWF (MAJseq' i n 0).
+Proof.
+  induction i; intros. simpl. apply MAJ_eWF; lia.
+  simpl. constructor. apply IHi; easy. apply MAJ_eWF; lia.
+Qed.
+
+Lemma MAJ_efresh:
+  forall a b c,
+    a <> b -> b <> c -> a <> c
+    -> a <> 1 -> b <> 1 -> c <> 1 ->
+    efresh 1 (MAJ c b a).
+Proof.
+  intros. unfold MAJ.
+  repeat apply efresh_seq.
+  unfold bccnot.
+  constructor. lia.
+  constructor. lia. 
+  unfold bccnot.
+  constructor. lia.
+  constructor. lia. 
+  unfold bcccnot.
+  constructor. lia.
+  constructor. lia. 
+  constructor. lia. 
+Qed.
+
+Lemma MAJseq'_efresh_1 :
+  forall i n,
+    0 < n ->
+    efresh 1 (MAJseq' i n 0).
+Proof.
+  induction i; intros. simpl.
+  apply MAJ_efresh.
+  1 - 6: lia.
+  simpl.
+  constructor.
+  apply IHi.
+  lia.
+  apply MAJ_efresh.
+  1 - 6 : lia.
+Qed.
+
+
 Fixpoint UMAseq' i n c0 : bccom :=
   match i with
   | 0 => UMA c0 (2 + n) 2
@@ -138,6 +184,89 @@ Fixpoint UMAseq' i n c0 : bccom :=
 Definition UMAseq n := UMAseq' (n - 1) n 0.
 
 Definition adder01 n : bccom := MAJseq n; UMAseq n.
+
+Lemma UMA_efresh:
+  forall a b c,
+    a <> b -> b <> c -> a <> c
+    -> a <> 1 -> b <> 1 -> c <> 1 ->
+    efresh 1 (UMA c b a).
+Proof.
+  intros. unfold UMA.
+  repeat apply efresh_seq.
+  unfold bcccnot.
+  constructor. lia.
+  constructor. lia. 
+  constructor. lia. 
+  unfold bccnot.
+  constructor. lia.
+  constructor. lia. 
+  unfold bcccnot.
+  constructor. lia.
+  constructor. lia. 
+Qed.
+
+Lemma UMAseq'_efresh :
+  forall i n,
+    0 < n ->
+    efresh 1 (UMAseq' i n 0).
+Proof.
+  induction i; intros. simpl.
+  apply UMA_efresh.
+  1 - 6: lia.
+  simpl.
+  constructor.
+  apply UMA_efresh.
+  1 - 6 : lia.
+  apply IHi.
+  lia.
+Qed.
+
+Lemma UMA_eWF:
+  forall a b c,
+    a <> b -> b <> c -> a <> c ->
+    eWF (UMA c b a).
+Proof.
+  intros.
+  unfold UMA.
+  repeat apply eWF_seq.
+  apply bcccnot_eWF.
+  1 - 3 : lia.
+  apply bccnot_eWF.
+  apply H1.
+  apply bccnot_eWF.
+  lia.
+Qed.
+
+Lemma UMAseq'_eWF: forall i n, 0 < n -> eWF (UMAseq' i n 0).
+Proof.
+  intros. induction i.
+  simpl.
+  apply UMA_eWF.
+  1 -3 : lia.
+  simpl.
+  apply eWF_seq.
+  apply UMA_eWF.
+  1 - 3: lia.
+  apply IHi.
+Qed.
+
+Lemma adder01_eWF: forall n, 0 < n -> eWF (adder01 n).
+Proof.
+ intros. unfold adder01, MAJseq, UMAseq.
+ apply eWF_seq. apply MAJseq'_eWF.
+ assumption.
+ apply UMAseq'_eWF.
+ assumption.
+Qed.
+
+Lemma adder01_efresh: forall n, 0 < n -> efresh 1 (adder01 n).
+Proof.
+ intros. unfold adder01, MAJseq, UMAseq.
+ constructor. apply MAJseq'_efresh_1.
+ assumption.
+ apply UMAseq'_efresh.
+ assumption.
+Qed.
 
 Fixpoint carry b n f g :=
   match n with
@@ -273,15 +402,6 @@ Proof.
   simpl. repeat (try constructor; try apply IHi; try lia).
 Qed.
 *)
-
-Lemma MAJseq'_eWF :
-  forall i n,
-    0 < n ->
-    eWF (MAJseq' i n 0).
-Proof.
-  induction i; intros. simpl. apply MAJ_eWF; lia.
-  simpl. constructor. apply IHi; easy. apply MAJ_eWF; lia.
-Qed.
 
 Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
 
@@ -528,6 +648,19 @@ Fixpoint swapper02' i n :=
   end.
 Definition swapper02 n := swapper02' n n.
 
+Lemma swapper02'_eWF: forall i n, eWF (swapper02' i n).
+Proof.
+ intros. induction i.
+ simpl. apply eWF_skip.
+ simpl. apply eWF_seq.
+ apply IHi. apply bcswap_eWF.
+Qed.
+
+Lemma swapper02_eWF: forall n, eWF (swapper02 n).
+Proof.
+ intros. unfold swapper02. apply swapper02'_eWF.
+Qed.
+
 Definition swapma i (f g : nat -> bool) := fun x => if (x <? i) then g x else f x.
 Definition swapmb i (f g : nat -> bool) := fun x => if (x <? i) then f x else g x.
 
@@ -602,6 +735,19 @@ Lemma negator0_eWF :
 Proof.
   intros. unfold negator0. apply negator0'_eWF.
 Qed.
+
+Lemma negator0'_efresh :
+  forall i, efresh 1 (negator0' i).
+Proof.
+  induction i. simpl. constructor. simpl. constructor. easy. constructor. lia.
+Qed.
+
+Lemma negator0_efresh :
+  forall n, efresh 1 (negator0 n).
+Proof.
+  intros. unfold negator0. apply negator0'_efresh.
+Qed.
+
 
 Definition negatem i (f : nat -> bool) := fun (x : nat) => if (x <? i) then ¬ (f x) else f x.
 
@@ -825,6 +971,38 @@ Opaque comparator01.
 
 Definition substractor01 n := (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
 
+Lemma substractor01_efresh:
+   forall n, 0 < n -> efresh 1 (substractor01 n).
+Proof.
+  intros.
+  unfold substractor01.
+  constructor. constructor.
+  constructor. constructor.
+  lia.
+  apply negator0_efresh.
+  apply adder01_efresh.
+  assumption.
+  apply efresh_bcinv.
+  constructor. constructor.
+  lia.
+  apply negator0_efresh.
+Qed.
+
+Lemma substractor01_eWF:
+   forall n, 0 < n -> eWF (substractor01 n).
+Proof.
+  intros.
+  unfold substractor01.
+  constructor. constructor.
+  constructor. constructor.
+  apply negator0_eWF.
+  apply adder01_eWF.
+  assumption.
+  apply eWF_bcinv.
+  constructor. constructor.
+  apply negator0_eWF.
+Qed.
+
 Lemma substractor01_correct :
   forall n x y b1 f,
     0 < n ->
@@ -846,6 +1024,32 @@ Opaque substractor01.
 
 Definition modadder21 n := swapper02 n; adder01 n; swapper02 n; 
        comparator01 n; (bccont 1 (substractor01 n); bcx 1); swapper02 n; bcinv (comparator01 n); swapper02 n.
+
+Lemma modadder21_eWF:
+ forall n, 0 < n -> eWF (modadder21 n).
+Proof.
+  intros. unfold modadder21.
+  constructor.  constructor.
+  constructor.  constructor.
+  constructor.  constructor.
+  constructor. 
+  apply swapper02_eWF.
+  apply adder01_eWF.
+  assumption.
+  apply swapper02_eWF.
+  apply comparator01_eWF.
+  assumption.
+  constructor. constructor.
+  apply substractor01_efresh.
+  lia.
+  apply substractor01_eWF.
+  lia.
+  constructor. 
+  apply swapper02_eWF.
+  apply eWF_bcinv. 
+  apply comparator01_eWF.
+  lia.   apply swapper02_eWF.
+Qed.
 
 Lemma mod_sum_lt :
   forall x y M,
@@ -939,6 +1143,23 @@ Fixpoint swapper12' i n :=
   end.
 Definition swapper12 n := swapper12' n n.
 
+Lemma swapper12'_eWF:
+  forall i n, eWF (swapper12' i n).
+Proof.
+  intros.
+  induction i.
+  simpl.
+  apply eWF_skip.
+  simpl. apply eWF_seq.
+  apply IHi. apply bcswap_eWF.
+Qed.
+
+Lemma swapper12_eWF:
+  forall n, eWF (swapper12 n).
+Proof.
+ intros. unfold swapper12. apply swapper12'_eWF.
+Qed.
+
 Local Opaque bcswap.
 Lemma swapper12'_correct :
   forall i n f g h u b1 b2,
@@ -989,6 +1210,22 @@ Definition double_prop x n (f:nat -> bool) :=
                    else if (n <? i) && (i <=? n + x) then f (i-1) else f i.
 
 
+Lemma doubler1'_eWF :
+  forall i n, eWF (doubler1' i n).
+Proof.
+  intros.
+  induction i.
+  simpl. constructor. 
+  simpl. constructor. 
+  apply bcswap_eWF.
+  apply IHi.  
+Qed.
+
+Lemma doubler1_eWF :
+  forall n, eWF (doubler1 n).
+Proof.
+  intros. unfold doubler1. apply doubler1'_eWF.
+Qed.
 
 Lemma N_inj_pow: forall n, (N.of_nat (2 ^ n) = 2 ^ (N.of_nat n))%N.
 Proof.
@@ -1302,6 +1539,22 @@ Opaque doubler1.
 
 Definition moddoubler01 n := doubler1 n; comparator01 n; bccont 1 (substractor01 n).
 
+Lemma moddoubler01_eWF :
+  forall n, 0 < n -> eWF (moddoubler01 n).
+Proof.
+  intros.
+  unfold moddoubler01.
+  constructor. constructor.
+  apply doubler1_eWF. 
+  apply comparator01_eWF.
+  lia. 
+  constructor. 
+  apply substractor01_efresh.
+  lia. 
+  apply substractor01_eWF.
+  lia. 
+Qed.
+
 Lemma moddoubler01_correct :
   forall n M x f,
     1 < n ->
@@ -1346,6 +1599,19 @@ Opaque moddoubler01.
 
 Definition modadder12 n := swapper12 n; modadder21 n; swapper12 n.
 
+Lemma modadder12_eWF :
+  forall n, 0 < n -> eWF (modadder12 n).
+Proof.
+  intros.
+  unfold modadder12.
+  apply eWF_seq.
+  apply eWF_seq.
+  apply swapper12_eWF.
+  apply modadder21_eWF.
+  lia. 
+  apply swapper12_eWF.
+Qed.
+
 Lemma modadder12_correct :
   forall n x y M f,
     1 < n ->
@@ -1374,6 +1640,35 @@ Fixpoint modsummer' i n (fC : nat -> bool) :=
         (if (fC i) then modadder12 n else bcskip)
   end.
 Definition modsummer n C := modsummer' (n - 1) n (nat2fb C).
+
+Lemma modsummer'_eWF :
+  forall i n f, 0 < n -> eWF (modsummer' i n f).
+Proof.
+  intros.
+  induction i.
+  simpl.
+  destruct (f 0).
+  apply modadder12_eWF.
+  lia. 
+  constructor. 
+  simpl.
+  constructor. constructor. constructor.  
+  apply IHi.
+  apply moddoubler01_eWF.
+  lia. 
+  apply bcswap_eWF.
+  destruct (f (S i)).
+  apply modadder12_eWF.
+  lia. constructor. 
+Qed.
+
+Lemma modsummer_eWF :
+  forall n C, 0 < n ->  eWF (modsummer n C).
+Proof.
+  intros. unfold modsummer. 
+  apply modsummer'_eWF.
+  lia.
+Qed. 
 
 Definition hbf n M x := fun (i : nat) => 
                   if (i =? 0) then false
@@ -1712,27 +2007,95 @@ Opaque modsummer.
 
 Definition modmult_half n C := modsummer n C; (bcinv (modsummer n 0)).
 
+Lemma modmult_half_eWF:
+  forall n C, 0 < n -> eWF (modmult_half n C).
+Proof.
+ intros.
+ unfold modmult_half.
+ constructor.
+ apply modsummer_eWF.
+ lia. 
+ apply eWF_bcinv.
+ apply modsummer_eWF.
+ lia. 
+Qed.
+
 Lemma modmult_half_correct :
   forall n x M C,
     1 < n ->
     x < M ->
     C < M ->
     M < 2^(n-2) ->
-    bcexec (modmult_half n C) (false ` false ` [M]_n [x]_n allfalse) = false ` false ` [M]_n [x]_n [C * x mod M]_n allfalse.
-Admitted.
+    bcexec (modmult_half n C) (false ` false ` [M]_n [x]_n allfalse)
+               = false ` false ` [M]_n [x]_n [C * x mod M]_n allfalse.
+Proof.
+  intros.
+  assert (false ` false ` [M]_n [x]_n allfalse 
+           = false ` false ` [M]_n [x]_n [0]_n allfalse).
+  unfold fb_push, reg_push, fb_push_n.
+  apply functional_extensionality.
+  intros.
+  destruct x0.
+  reflexivity.
+  destruct x0.
+  reflexivity.
+  IfExpSimpl.
+  1 - 4: reflexivity.
+  rewrite H3.
+  unfold modmult_half.
+  simpl.
+  rewrite modsummer_correct by lia.
+  apply (bcinv_reverse (modsummer n 0) (false ` false ` [M ]_ n [x ]_ n [(C * x) mod M ]_ n allfalse)).
+  2: {
+   rewrite modsummer_correct.
+   rewrite Nat.mul_0_l.
+   rewrite Nat.add_0_l.
+   rewrite Nat.add_0_r.
+   rewrite Nat.mod_mod.
+   reflexivity.
+   1 - 3: lia.
+   apply Nat.mod_upper_bound.
+   1 - 3: lia.
+  }
+ apply modsummer_eWF.
+ lia. 
+Qed.
 
 Opaque modmult_half.
 
-Definition modmult_full C Cinv n := modmult_half n C; swapper12 n; bcinv (modmult_half Cinv n).
+Definition modmult_full C Cinv n := modmult_half n C; swapper12 n; bcinv (modmult_half n Cinv).
 
 Lemma modmult_full_correct :
-  forall n x M C,
+  forall n x M C Cinv,
     1 < n ->
     x < M ->
     C < M ->
+    Cinv < M -> 
+    C * Cinv mod M = 1 ->
     M < 2^(n-2) ->
-    bcexec (modmult_half n C) (false ` false ` [M]_n [x]_n allfalse) = false ` false ` [M]_n [C * x mod M]_n allfalse.
-Admitted.
+    bcexec (modmult_full C Cinv n) (false ` false ` [M]_n [x]_n allfalse) 
+           = false ` false ` [M]_n [C * x mod M]_n allfalse.
+Proof.
+  intros.
+  unfold modmult_full.
+  simpl.
+  rewrite modmult_half_correct by lia.
+  rewrite swapper12_correct by lia.
+  apply (bcinv_reverse (modmult_half n Cinv) (false ` false ` [M ]_ n [(C * x) mod M ]_ n allfalse)).
+  apply modmult_half_eWF. lia.
+  rewrite modmult_half_correct; try lia.
+  rewrite Nat.mul_mod_idemp_r.
+  rewrite Nat.mul_assoc.
+  rewrite (Nat.mul_mod (Cinv * C)).
+  rewrite (Nat.mul_comm Cinv).
+  rewrite H3.
+  rewrite Nat.mul_1_l.
+  rewrite Nat.mod_mod.
+  rewrite (Nat.mod_small x) by lia.
+  reflexivity.
+  1 - 3 : lia.
+  apply Nat.mod_upper_bound. lia.
+Qed.
 
 Opaque modmult_full.
 
@@ -1787,7 +2150,9 @@ Fixpoint reverser' i n :=
   end.
 Definition reverser n := reverser' ((n - 1) / 2) n.
 
-Definition fbrev' i n (f : nat -> bool) := fun (x : nat) => if (x <=? i) then f (n - 1 - x) else if (x <? n - 1 - i) then f x else if (x <? n) then f (n - 1 - x) else f x.
+Definition fbrev' i n (f : nat -> bool) := fun (x : nat) => 
+            if (x <=? i) then f (n - 1 - x) else if (x <? n - 1 - i) 
+                         then f x else if (x <? n) then f (n - 1 - x) else f x.
 Definition fbrev n (f : nat -> bool) := fun (x : nat) => if (x <? n) then f (n - 1 - x) else f x.
 
 Lemma reverser'_correct :
@@ -1960,6 +2325,9 @@ Lemma modmult_rev_eWT :
   forall n M C Cinv,
     0 < n ->
     eWT (n + (modmult_rev_anc n)) (modmult_rev M C Cinv n).
+Proof.
+  intros.
+  unfold modmult_rev.
 Admitted.
 
 Opaque modmult_rev.
