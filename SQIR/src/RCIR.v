@@ -490,6 +490,19 @@ Proof.
   - apply IHp1. easy.
 Qed.
 
+Lemma eWT_two_bcinv :
+  forall p dim,
+    eWT dim p ->
+    eWT dim (bcinv (bcinv p)).
+Proof.
+  induction p; intros; inversion H; subst; simpl; constructor.
+  1 - 3 : lia.
+  - apply efresh_bcinv. apply efresh_bcinv. assumption.
+  - apply IHp. easy.
+  - apply IHp1. easy.
+  - apply IHp2. easy.
+Qed.
+
 Lemma bc_well_formed_bcinv :
   forall p,
     bc_well_formed p ->
@@ -566,6 +579,15 @@ Proof.
   intros. unfold bccnot. constructor. easy. constructor. easy. constructor. easy.
 Qed.
 
+Lemma bccnot_inv_eWT :
+  forall x y dim,
+    x <> y ->
+    x < dim -> y < dim ->
+    eWT dim (bcinv (bccnot x y)).
+Proof.
+  intros. unfold bccnot. constructor. easy. constructor. easy. constructor. easy.
+Qed.
+
 Lemma bccnot_eWF :
   forall x y,
     x <> y ->
@@ -583,6 +605,15 @@ Proof.
   intros. repeat (try constructor; try lia).
 Qed.
 
+Lemma bcccnot_inv_eWT :
+  forall a b c dim,
+    a <> b -> b <> c -> a <> c ->
+    a < dim -> b < dim -> c < dim ->
+    eWT dim (bcinv (bcccnot a b c)).
+Proof.
+  intros. repeat (try constructor; try lia).
+Qed.
+
 Lemma bcccnot_eWF :
   forall a b c,
     a <> b -> b <> c -> a <> c ->
@@ -595,6 +626,14 @@ Lemma bcswap_eWT :
   forall x y dim,
     x < dim -> y < dim ->
     eWT dim (bcswap x y).
+Proof.
+  intros. unfold bcswap. bdestruct (x =? y); repeat (try constructor; try lia).
+Qed.
+
+Lemma bcswap_inv_eWT :
+  forall x y dim,
+    x < dim -> y < dim ->
+    eWT dim (bcinv (bcswap x y)).
 Proof.
   intros. unfold bcswap. bdestruct (x =? y); repeat (try constructor; try lia).
 Qed.

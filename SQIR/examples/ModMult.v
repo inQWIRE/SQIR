@@ -4,7 +4,7 @@ Require Export RCIR.
 Local Open Scope bccom_scope.
 Local Open Scope nat_scope.
 
-Definition modmult_rev_anc n := 3 * n + 14.
+Definition modmult_rev_anc n := 3 * n + 15.
 
 Definition fb_push b f : nat -> bool :=
   fun x => match x with
@@ -96,6 +96,26 @@ Proof.
   intros. unfold MAJ. constructor. constructor. 1-2 : apply bccnot_eWF; easy. apply bcccnot_eWF; lia.
 Qed.
 
+Lemma MAJ_eWT :
+  forall a b c dim,
+    a <> b -> b <> c -> a <> c ->
+   a < dim -> b < dim -> c < dim ->
+    eWT dim (MAJ c b a).
+Proof.
+  intros. unfold MAJ. constructor. constructor. 1-2 : apply bccnot_eWT; easy. apply bcccnot_eWT; lia.
+Qed.
+
+Lemma MAJ_inv_eWT :
+  forall a b c dim,
+    a <> b -> b <> c -> a <> c ->
+   a < dim -> b < dim -> c < dim ->
+    eWT dim (bcinv (MAJ c b a)).
+Proof.
+  intros. unfold MAJ. simpl.
+  repeat constructor.
+  1 - 12: lia.
+Qed.
+
 Lemma MAJ_correct :
   forall a b c f,
     a <> b -> b <> c -> a <> c ->
@@ -137,6 +157,31 @@ Lemma MAJseq'_eWF :
 Proof.
   induction i; intros. simpl. apply MAJ_eWF; lia.
   simpl. constructor. apply IHi; easy. apply MAJ_eWF; lia.
+Qed.
+
+Lemma MAJseq'_eWT :
+  forall i n dim,
+    0 < n -> i < n -> (S (S (n + i))) < dim ->
+    eWT dim (MAJseq' i n 0).
+Proof.
+  induction i; intros. simpl. apply MAJ_eWT; lia.
+  simpl. constructor. apply IHi.
+  1 - 3: lia. 
+  apply MAJ_eWT.
+  1 - 6 : lia.
+Qed.
+
+Lemma MAJseq'_inv_eWT :
+  forall i n dim,
+    0 < n -> i < n -> (S (S (n + i))) < dim ->
+    eWT dim (bcinv (MAJseq' i n 0)).
+Proof.
+  induction i; intros. simpl. apply MAJ_inv_eWT; lia.
+  simpl. constructor.
+  apply MAJ_inv_eWT.
+  1 - 6: lia.
+  apply IHi.
+  1 - 3: lia. 
 Qed.
 
 Lemma MAJ_efresh:
@@ -237,6 +282,31 @@ Proof.
   lia.
 Qed.
 
+Lemma UMA_eWT:
+  forall a b c dim,
+    a <> b -> b <> c -> a <> c ->
+    a < dim -> b < dim -> c < dim ->
+    eWT dim (UMA c b a).
+Proof.
+  intros.
+  unfold UMA.
+  repeat constructor.
+  1 - 12 : lia.
+Qed.
+
+Lemma UMA_inv_eWT:
+  forall a b c dim,
+    a <> b -> b <> c -> a <> c ->
+    a < dim -> b < dim -> c < dim ->
+    eWT dim (bcinv (UMA c b a)).
+Proof.
+  intros.
+  unfold UMA.
+  simpl.
+  repeat constructor.
+  1 - 12 : lia.
+Qed.
+
 Lemma UMAseq'_eWF: forall i n, 0 < n -> eWF (UMAseq' i n 0).
 Proof.
   intros. induction i.
@@ -250,6 +320,35 @@ Proof.
   apply IHi.
 Qed.
 
+Lemma UMAseq'_eWT: forall i n dim, 0 < n 
+           -> (S (S (n + i))) < dim -> eWT dim (UMAseq' i n 0).
+Proof.
+  intros. induction i.
+  simpl.
+  apply UMA_eWT.
+  1 - 6 : lia.
+  simpl.
+  constructor.
+  apply UMA_eWT.
+  1 - 6: lia.
+  apply IHi.
+  lia. 
+Qed.
+
+Lemma UMAseq'_inv_eWT: forall i n dim, 0 < n 
+           -> (S (S (n + i))) < dim -> eWT dim (bcinv (UMAseq' i n 0)).
+Proof.
+  intros. induction i.
+  simpl.
+  apply UMA_inv_eWT.
+  1 - 6 : lia.
+  simpl.
+  constructor.
+  apply IHi. lia.
+  apply UMA_inv_eWT.
+  1 - 6: lia.
+Qed.
+
 Lemma adder01_eWF: forall n, 0 < n -> eWF (adder01 n).
 Proof.
  intros. unfold adder01, MAJseq, UMAseq.
@@ -257,6 +356,26 @@ Proof.
  assumption.
  apply UMAseq'_eWF.
  assumption.
+Qed.
+
+Lemma adder01_eWT: forall n dim, 0 < n -> (S (S (n + n))) < dim -> eWT dim (adder01 n).
+Proof.
+ intros. unfold adder01, MAJseq, UMAseq.
+ constructor. apply MAJseq'_eWT.
+ assumption. lia. lia.
+ apply UMAseq'_eWT.
+ lia. lia.
+Qed.
+
+Lemma adder01_inv_eWT: forall n dim, 0 < n -> (S (S (n + n))) < dim 
+         -> eWT dim (bcinv (adder01 n)).
+Proof.
+ intros. unfold adder01, MAJseq, UMAseq.
+ simpl.
+ constructor. apply UMAseq'_inv_eWT.
+ assumption. lia.
+ apply MAJseq'_inv_eWT.
+ lia. lia. lia.
 Qed.
 
 Lemma adder01_efresh: forall n, 0 < n -> efresh 1 (adder01 n).
@@ -656,9 +775,37 @@ Proof.
  apply IHi. apply bcswap_eWF.
 Qed.
 
+Lemma swapper02'_eWT: forall i n dim, (2 + n + n + i) < dim -> eWT dim (swapper02' i n).
+Proof.
+ intros. induction i.
+ simpl. constructor.
+ lia. simpl. constructor.
+ apply IHi. lia. apply bcswap_eWT.
+ 1 - 2: lia.
+Qed.
+
+Lemma swapper02'_inv_eWT: forall i n dim, (2 + n + n + i) < dim -> eWT dim (bcinv (swapper02' i n)).
+Proof.
+ intros. induction i.
+ simpl. constructor.
+ lia. simpl. constructor.
+ apply bcswap_inv_eWT. lia. lia.
+ apply IHi. lia. 
+Qed.
+
 Lemma swapper02_eWF: forall n, eWF (swapper02 n).
 Proof.
  intros. unfold swapper02. apply swapper02'_eWF.
+Qed.
+
+Lemma swapper02_eWT: forall n dim, (2 + n + n + n) < dim -> eWT dim (swapper02 n).
+Proof.
+ intros. unfold swapper02. apply swapper02'_eWT. lia.
+Qed.
+
+Lemma swapper02_inv_eWT: forall n dim, (2 + n + n + n) < dim -> eWT dim (bcinv (swapper02 n)).
+Proof.
+ intros. unfold swapper02. apply swapper02'_inv_eWT. lia.
 Qed.
 
 Definition swapma i (f g : nat -> bool) := fun x => if (x <? i) then g x else f x.
@@ -730,10 +877,41 @@ Proof.
   induction i. simpl. constructor. simpl. constructor. easy. constructor.
 Qed.
 
+Lemma negator0'_eWT :
+  forall i dim, 2 + i < dim -> eWT dim (negator0' i).
+Proof.
+  intros.
+  induction i. simpl. constructor. lia.
+  simpl. constructor.
+  apply IHi. lia. constructor. lia.
+Qed.
+
+Lemma negator0'_inv_eWT :
+  forall i dim, 2 + i < dim -> eWT dim (bcinv (negator0' i)).
+Proof.
+  intros.
+  induction i. simpl. constructor. lia.
+  simpl. constructor.
+  constructor. lia.
+  apply IHi. lia.
+Qed.
+
 Lemma negator0_eWF :
   forall n, eWF (negator0 n).
 Proof.
   intros. unfold negator0. apply negator0'_eWF.
+Qed.
+
+Lemma negator0_eWT :
+  forall n dim, 2 + n < dim -> eWT dim (negator0 n).
+Proof.
+  intros. unfold negator0. apply negator0'_eWT. lia.
+Qed.
+
+Lemma negator0_inv_eWT :
+  forall n dim, 2 + n < dim -> eWT dim (bcinv (negator0 n)).
+Proof.
+  intros. unfold negator0. apply negator0'_inv_eWT. lia.
 Qed.
 
 Lemma negator0'_efresh :
@@ -814,6 +992,27 @@ Proof.
   apply bccnot_eWF. lia. apply eWF_bcinv. unfold MAJseq. apply MAJseq'_eWF. easy.
 Qed.
 
+Lemma highb01_eWT :
+  forall n dim,
+    0 < n ->
+    S (S (S (n + n))) < dim ->
+    eWT dim (highb01 n).
+Proof.
+  intros. unfold highb01. constructor. constructor. unfold MAJseq. apply MAJseq'_eWT; lia.
+  apply bccnot_eWT; lia. unfold MAJseq. apply MAJseq'_inv_eWT; lia.
+Qed.
+
+Lemma highb01_inv_eWT :
+  forall n dim,
+    0 < n ->
+    S (S (S (n + n))) < dim ->
+    eWT dim (bcinv (highb01 n)).
+Proof.
+  intros. unfold highb01. simpl.
+  constructor. unfold MAJseq. apply eWT_two_bcinv. apply MAJseq'_eWT; lia.
+  constructor. apply bccnot_inv_eWT; lia. unfold MAJseq. apply MAJseq'_inv_eWT; lia.
+Qed.
+
 Local Opaque bccnot.
 Lemma highb01_correct :
   forall n b f g h,
@@ -845,6 +1044,34 @@ Lemma comparator01_eWF :
 Proof.
   intros. unfold comparator01. repeat constructor. apply negator0_eWF. 
   apply highb01_eWF. easy. apply eWF_bcinv. apply negator0_eWF.
+Qed.
+
+Lemma comparator01_eWT :
+  forall n dim,
+    0 < n -> S (S (S (n + n))) < dim ->
+    eWT dim (comparator01 n).
+Proof.
+  intros. unfold comparator01. constructor.
+  constructor.  constructor. constructor. lia.
+  apply negator0_eWT. lia. 
+  apply highb01_eWT. easy. easy.
+  simpl. constructor. apply negator0_inv_eWT.
+  lia.  constructor. lia.
+Qed.
+
+Lemma comparator01_inv_eWT :
+  forall n dim,
+    0 < n -> S (S (S (n + n))) < dim ->
+    eWT dim (bcinv (comparator01 n)).
+Proof.
+  intros. unfold comparator01. simpl. constructor.
+  constructor.  constructor. lia.
+  apply eWT_two_bcinv.
+  apply negator0_eWT. lia. 
+  constructor. 
+  apply highb01_inv_eWT. easy. easy.
+  constructor. apply negator0_inv_eWT.
+  lia.  constructor. lia.
 Qed.
 
 Lemma negations_aux :
@@ -1003,6 +1230,39 @@ Proof.
   apply negator0_eWF.
 Qed.
 
+Lemma substractor01_eWT:
+   forall n dim, 0 < n -> S (S (S (n + n))) < dim -> eWT dim (substractor01 n).
+Proof.
+  intros.
+  unfold substractor01.
+  constructor. constructor.
+  constructor. constructor. lia.
+  apply negator0_eWT. lia.
+  apply adder01_eWT.
+  assumption. lia.
+  simpl. constructor.
+  apply negator0_inv_eWT. lia.
+  constructor. lia.
+Qed.
+
+Lemma substractor01_inv_eWT:
+   forall n dim, 0 < n -> S (S (S (n + n))) < dim -> eWT dim (bcinv (substractor01 n)).
+Proof.
+  intros.
+  unfold substractor01.
+  simpl.
+  constructor. constructor.
+  constructor. lia.
+  apply eWT_two_bcinv.
+  apply negator0_eWT. lia.
+  constructor.
+  apply adder01_inv_eWT.
+  assumption. lia.
+  constructor.
+  apply negator0_inv_eWT. lia.
+  constructor. lia.
+Qed.
+
 Lemma substractor01_correct :
   forall n x y b1 f,
     0 < n ->
@@ -1049,6 +1309,58 @@ Proof.
   apply eWF_bcinv. 
   apply comparator01_eWF.
   lia.   apply swapper02_eWF.
+Qed.
+
+Lemma modadder21_eWT:
+ forall n dim, 0 < n -> 2 + n + n + n < dim -> eWT dim (modadder21 n).
+Proof.
+  intros. unfold modadder21.
+  constructor.  constructor.
+  constructor.  constructor.
+  constructor.  constructor.
+  constructor. 
+  apply swapper02_eWT. lia.
+  apply adder01_eWT.
+  assumption. lia.
+  apply swapper02_eWT; lia.
+  apply comparator01_eWT; lia.
+  constructor. constructor. lia.
+  apply substractor01_efresh.
+  lia.
+  apply substractor01_eWT.
+  lia. lia.
+  constructor. lia. 
+  apply swapper02_eWT;lia.
+  apply comparator01_inv_eWT; lia.
+  apply swapper02_eWT;lia.
+Qed.
+
+Lemma modadder21_inv_eWT:
+ forall n dim, 0 < n -> 2 + n + n + n < dim -> eWT dim (bcinv (modadder21 n)).
+Proof.
+  intros. unfold modadder21.
+  simpl.
+  constructor.
+  apply swapper02_inv_eWT. lia.
+  constructor.
+  apply eWT_two_bcinv.
+  apply comparator01_eWT; lia.
+  constructor.
+  apply swapper02_inv_eWT;lia.
+  constructor.  constructor.
+  constructor. lia.
+  constructor. lia.
+  apply efresh_bcinv.
+  apply substractor01_efresh.
+  lia.
+  apply substractor01_inv_eWT;lia.
+  constructor.
+  apply comparator01_inv_eWT; lia.
+  constructor.
+  apply swapper02_inv_eWT;lia.
+  constructor.
+  apply adder01_inv_eWT;lia.
+  apply swapper02_inv_eWT;lia.
 Qed.
 
 Lemma mod_sum_lt :
@@ -1154,10 +1466,43 @@ Proof.
   apply IHi. apply bcswap_eWF.
 Qed.
 
+Lemma swapper12'_eWT:
+  forall i n dim, (2 + n + n + i) < dim -> eWT dim (swapper12' i n).
+Proof.
+  intros.
+  induction i.
+  simpl. constructor. lia.
+  simpl. constructor.
+  apply IHi. lia. apply bcswap_eWT; lia.
+Qed.
+
+Lemma swapper12'_inv_eWT:
+  forall i n dim, (2 + n + n + i) < dim -> eWT dim (bcinv (swapper12' i n)).
+Proof.
+  intros.
+  induction i.
+  simpl. constructor. lia.
+  simpl. constructor.
+  apply bcswap_inv_eWT; lia.
+  apply IHi. lia.
+Qed.
+
 Lemma swapper12_eWF:
   forall n, eWF (swapper12 n).
 Proof.
  intros. unfold swapper12. apply swapper12'_eWF.
+Qed.
+
+Lemma swapper12_eWT:
+  forall n dim, (2 + n + n + n) < dim -> eWT dim (swapper12 n).
+Proof.
+ intros. unfold swapper12. apply swapper12'_eWT. lia.
+Qed.
+
+Lemma swapper12_inv_eWT:
+  forall n dim, (2 + n + n + n) < dim -> eWT dim (bcinv (swapper12 n)).
+Proof.
+ intros. unfold swapper12. apply swapper12'_inv_eWT. lia.
 Qed.
 
 Local Opaque bcswap.
@@ -1221,10 +1566,45 @@ Proof.
   apply IHi.  
 Qed.
 
+Lemma doubler1'_eWT :
+  forall i n dim, (n + i) < dim -> eWT dim (doubler1' i n).
+Proof.
+  intros.
+  induction i.
+  simpl. constructor. 
+  simpl. lia. 
+  simpl. constructor. 
+  apply bcswap_eWT; lia.
+  apply IHi. lia.  
+Qed.
+
+Lemma doubler1'_inv_eWT :
+  forall i n dim, (n + i) < dim -> eWT dim (bcinv (doubler1' i n)).
+Proof.
+  intros.
+  induction i.
+  simpl. constructor. lia. 
+  simpl. constructor.
+   apply IHi. lia.  
+  apply bcswap_inv_eWT; lia.
+Qed.
+
 Lemma doubler1_eWF :
   forall n, eWF (doubler1 n).
 Proof.
   intros. unfold doubler1. apply doubler1'_eWF.
+Qed.
+
+Lemma doubler1_eWT :
+  forall n dim, 0 < n -> (n + n + 1) < dim -> eWT dim (doubler1 n).
+Proof.
+  intros. unfold doubler1. apply doubler1'_eWT; lia.
+Qed.
+
+Lemma doubler1_inv_eWT :
+  forall n dim, 0 < n -> (n + n + 1) < dim -> eWT dim (bcinv (doubler1 n)).
+Proof.
+  intros. unfold doubler1. apply doubler1'_inv_eWT; lia.
 Qed.
 
 Lemma N_inj_pow: forall n, (N.of_nat (2 ^ n) = 2 ^ (N.of_nat n))%N.
@@ -1555,6 +1935,36 @@ Proof.
   lia. 
 Qed.
 
+Lemma moddoubler01_eWT :
+  forall n dim, 0 < n -> (n + n + 3) < dim -> eWT dim (moddoubler01 n).
+Proof.
+  intros.
+  unfold moddoubler01.
+  constructor. constructor.
+  apply doubler1_eWT; lia. 
+  apply comparator01_eWT;lia.
+  constructor. lia. 
+  apply substractor01_efresh.
+  lia. 
+  apply substractor01_eWT;lia.
+Qed.
+
+Lemma moddoubler01_inv_eWT :
+  forall n dim, 0 < n -> (n + n + 3) < dim -> eWT dim (bcinv (moddoubler01 n)).
+Proof.
+  intros.
+  unfold moddoubler01. simpl.
+  constructor.
+  constructor. lia. 
+  apply efresh_bcinv.
+  apply substractor01_efresh.
+  lia. 
+  apply substractor01_inv_eWT;lia.
+  constructor.
+  apply comparator01_inv_eWT;lia.
+  apply doubler1_inv_eWT; lia. 
+Qed.
+
 Lemma moddoubler01_correct :
   forall n M x f,
     1 < n ->
@@ -1612,6 +2022,30 @@ Proof.
   apply swapper12_eWF.
 Qed.
 
+Lemma modadder12_eWT :
+  forall n dim, 0 < n -> 2 + n + n + n < dim -> eWT dim (modadder12 n).
+Proof.
+  intros.
+  unfold modadder12.
+  constructor. constructor. 
+  apply swapper12_eWT;lia.
+  apply modadder21_eWT;lia.
+  apply swapper12_eWT;lia.
+Qed.
+
+Lemma modadder12_inv_eWT :
+  forall n dim, 0 < n -> 2 + n + n + n < dim -> eWT dim (bcinv (modadder12 n)).
+Proof.
+  intros.
+  unfold modadder12.
+  simpl.
+  constructor. 
+  apply swapper12_inv_eWT;lia.
+  constructor. 
+  apply modadder21_inv_eWT;lia.
+  apply swapper12_inv_eWT;lia.
+Qed.
+
 Lemma modadder12_correct :
   forall n x y M f,
     1 < n ->
@@ -1662,12 +2096,68 @@ Proof.
   lia. constructor. 
 Qed.
 
+Lemma modsummer'_eWT :
+  forall i n f dim, 0 < n ->
+       (2 + n + n + n + i) < dim -> eWT dim (modsummer' i n f).
+Proof.
+  intros.
+  induction i.
+  simpl.
+  destruct (f 0).
+  apply modadder12_eWT;lia. 
+  constructor. lia. 
+  simpl.
+  constructor. constructor. constructor.  
+  apply IHi. lia.
+  apply moddoubler01_eWT;lia.
+  apply bcswap_eWT;lia.
+  destruct (f (S i)).
+  apply modadder12_eWT;lia.
+  constructor. lia. 
+Qed.
+
+Lemma modsummer'_inv_eWT :
+  forall i n f dim, 0 < n ->
+       (2 + n + n + n + i) < dim -> eWT dim (bcinv (modsummer' i n f)).
+Proof.
+  intros.
+  induction i.
+  simpl.
+  destruct (f 0).
+  apply modadder12_inv_eWT;lia. 
+  constructor. lia. 
+  simpl.
+  constructor.
+  destruct (f (S i)).
+  apply modadder12_inv_eWT;lia.
+  constructor. lia. 
+  constructor.
+  apply bcswap_inv_eWT;lia.
+  constructor.
+  apply moddoubler01_inv_eWT;lia.
+  apply IHi. lia.
+Qed.
+
 Lemma modsummer_eWF :
   forall n C, 0 < n ->  eWF (modsummer n C).
 Proof.
   intros. unfold modsummer. 
   apply modsummer'_eWF.
   lia.
+Qed. 
+
+Lemma modsummer_eWT :
+  forall n C dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim (modsummer n C).
+Proof.
+  intros. unfold modsummer. 
+  apply modsummer'_eWT;lia.
+Qed. 
+
+Lemma modsummer_inv_eWT :
+  forall n C dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim (bcinv (modsummer n C)).
+Proof.
+  intros. unfold modsummer. 
+  apply modsummer'_inv_eWT;lia.
 Qed. 
 
 Definition hbf n M x := fun (i : nat) => 
@@ -2020,6 +2510,28 @@ Proof.
  lia. 
 Qed.
 
+Lemma modmult_half_eWT:
+  forall n C dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim (modmult_half n C).
+Proof.
+ intros.
+ unfold modmult_half.
+ constructor.
+ apply modsummer_eWT;lia.
+ apply modsummer_inv_eWT;lia.
+Qed.
+
+Lemma modmult_half_inv_eWT:
+  forall n C dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim (bcinv (modmult_half n C)).
+Proof.
+ intros.
+ unfold modmult_half.
+ simpl.
+ constructor.
+ apply eWT_two_bcinv.
+ apply modsummer_eWT;lia.
+ apply modsummer_inv_eWT;lia.
+Qed.
+
 Lemma modmult_half_correct :
   forall n x M C,
     1 < n ->
@@ -2065,6 +2577,16 @@ Opaque modmult_half.
 
 Definition modmult_full C Cinv n := modmult_half n C; swapper12 n; bcinv (modmult_half n Cinv).
 
+Lemma modmult_full_eWT:
+    forall n C Cinv dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim ((modmult_full C Cinv n)).
+Proof.
+  intros. unfold modmult_full.
+  constructor. constructor.
+  apply modmult_half_eWT;lia.
+  apply swapper12_eWT;lia.
+  apply modmult_half_inv_eWT;lia.
+Qed.
+
 Lemma modmult_full_correct :
   forall n x M C Cinv,
     1 < n ->
@@ -2107,6 +2629,22 @@ Fixpoint swapperh1' j n :=
   end.
 Definition swapperh1 n := swapperh1' n n.
 
+Lemma swapperh1'_eWT :
+  forall i n dim, 2 + n + i < dim -> eWT dim (swapperh1' i n).
+Proof.
+  induction i; intros. simpl. constructor. lia.
+  simpl. constructor. apply bcswap_eWT;lia.
+  apply IHi. lia.
+Qed.
+
+Lemma swapperh1'_inv_eWT :
+  forall i n dim, 2 + n + i < dim -> eWT dim (bcinv (swapperh1' i n)).
+Proof.
+  induction i; intros. simpl. constructor. lia.
+  simpl. constructor. apply IHi. lia.
+  apply bcswap_inv_eWT;lia.
+Qed.
+
 Lemma swapperh1_correct :
   forall n x,
     0 < n ->
@@ -2121,6 +2659,28 @@ Fixpoint genM0' i (f : nat -> bool) : bccom :=
   end.
 Definition genM0 M n := genM0' n (N2fb (N.of_nat M)).
 
+Lemma genM0'_eWT :
+  forall i f dim, 2 + i < dim -> eWT dim (genM0' i f).
+Proof.
+  induction i; intros. simpl. constructor. lia.
+  simpl. constructor.
+  apply IHi. lia.
+  destruct (f i).
+  constructor. lia.
+  constructor. lia.
+Qed.
+
+Lemma genM0'_inv_eWT :
+  forall i f dim, 2 + i < dim -> eWT dim (bcinv (genM0' i f)).
+Proof.
+  induction i; intros. simpl. constructor. lia.
+  simpl. constructor.
+  destruct (f i).
+  constructor. lia.
+  constructor. lia.
+  apply IHi. lia.
+Qed.
+
 Lemma genM0_correct :
   forall n M f b0 b1,
     M <= 2^(n-1) ->
@@ -2128,6 +2688,20 @@ Lemma genM0_correct :
 Admitted.
 
 Definition modmult M C Cinv n := swapperh1 n; genM0 M n; modmult_full C Cinv n; bcinv (swapperh1 n; genM0 M n).
+
+Lemma modmult_eWT :
+  forall M C Cinv n dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim (modmult M C Cinv n).
+Proof.
+  unfold modmult,swapperh1,genM0.
+  constructor.   constructor.
+  constructor.
+  apply swapperh1'_eWT. lia.
+  apply genM0'_eWT. lia.
+  apply modmult_full_eWT; lia.
+  simpl. constructor.
+  apply genM0'_inv_eWT. lia.
+  apply swapperh1'_inv_eWT. lia.
+Qed.
 
 Lemma modmult_correct :
   forall n x M C Cinv,
@@ -2213,10 +2787,43 @@ Proof.
   simpl. constructor. apply IHi. apply bcswap_eWF.
 Qed.
 
+Lemma reverser'_eWT :
+  forall i n dim, n + i < dim -> eWT dim (reverser' i n).
+Proof.
+  induction i; intros. simpl. apply bcswap_eWT;lia.
+  simpl. constructor. apply IHi. lia. apply bcswap_eWT;lia.
+Qed.
+
+Lemma reverser'_inv_eWT :
+  forall i n dim, n + i < dim -> eWT dim (bcinv (reverser' i n)).
+Proof.
+  induction i; intros. simpl. apply bcswap_inv_eWT;lia.
+  simpl. constructor. apply bcswap_inv_eWT;lia.
+  apply IHi. lia. 
+Qed.
+
 Lemma reverser_eWF :
   forall n, eWF (reverser n).
 Proof.
   intros. unfold reverser. apply reverser'_eWF.
+Qed.
+
+Lemma reverser_eWT :
+  forall n dim, 0 < n -> n + n < dim -> eWT dim (reverser n).
+Proof.
+  intros. unfold reverser. apply reverser'_eWT.
+  assert ((n - 1) / 2 < n).
+  apply Nat.div_lt_upper_bound.
+  lia. lia. lia.
+Qed.
+
+Lemma reverser_inv_eWT :
+  forall n dim, 0 < n -> n + n < dim -> eWT dim (bcinv (reverser n)).
+Proof.
+  intros. unfold reverser. apply reverser'_inv_eWT.
+  assert ((n - 1) / 2 < n).
+  apply Nat.div_lt_upper_bound.
+  lia. lia. lia.
 Qed.
 
 Opaque reverser.
@@ -2242,8 +2849,13 @@ Lemma fbrev_Sn :
     fb_push_n (S n) (fbrev (S n) (nat2fb x)) f = fb_push_n n (fbrev n (nat2fb (x / 2))) ((x mod 2 =? 1) ` f).
 Proof.
   intros. apply functional_extensionality; intro i.
-  bdestruct (i <? n). fb_push_n_simpl. unfold fbrev. IfExpSimpl. unfold nat2fb. do 2 rewrite N2fb_Ntestbit. do 2 rewrite <- Nattestbit_Ntestbit. replace (S n - 1 - i) with (S (n - 1 - i)) by lia. symmetry. apply Nat.div2_bits.
-  bdestruct (i =? n). subst. fb_push_n_simpl. replace (n - n) with 0 by lia. unfold fbrev. IfExpSimpl. unfold nat2fb. rewrite N2fb_Ntestbit. rewrite <- Nattestbit_Ntestbit. replace (S n - 1 - n) with 0 by lia. rewrite Nat.bit0_eqb. easy.
+  bdestruct (i <? n). fb_push_n_simpl. unfold fbrev. IfExpSimpl. unfold nat2fb. do 2 rewrite N2fb_Ntestbit.
+   do 2 rewrite <- Nattestbit_Ntestbit.
+   replace (S n - 1 - i) with (S (n - 1 - i)) by lia.
+   symmetry. apply Nat.div2_bits.
+   bdestruct (i =? n). subst. fb_push_n_simpl. replace (n - n) with 0 by lia. 
+   unfold fbrev. IfExpSimpl. unfold nat2fb. rewrite N2fb_Ntestbit.
+   rewrite <- Nattestbit_Ntestbit. replace (S n - 1 - n) with 0 by lia. rewrite Nat.bit0_eqb. easy.
   fb_push_n_simpl. destruct (i - n) eqn:E. lia. replace (i - S n) with n0 by lia. easy.
 Qed.
 
@@ -2327,8 +2939,12 @@ Lemma modmult_rev_eWT :
     eWT (n + (modmult_rev_anc n)) (modmult_rev M C Cinv n).
 Proof.
   intros.
-  unfold modmult_rev.
-Admitted.
+  unfold modmult_rev,modmult_rev_anc.
+  constructor.   constructor.
+  apply  reverser_inv_eWT; lia.
+  apply modmult_eWT; lia.
+  apply  reverser_eWT; lia.
+Qed.
 
 Opaque modmult_rev.
 
