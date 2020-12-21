@@ -703,6 +703,12 @@ Proof.
   destruct (Zis_gcd_unique _ _ _ _ H0 H1); lia.
 Qed.
 
+Lemma rel_prime_0_1 :
+  rel_prime 0 1.
+Proof.
+  unfold rel_prime. apply Zis_gcd_1.
+Qed.
+
 Local Opaque Nat.modulo Z.gcd Z.of_nat.
 Lemma Natgcd_Zgcd :
   forall (m a b : nat),
@@ -783,14 +789,11 @@ Qed.
   
 (* There exists a better bound by [1979 Hardy & Wright, Thm 328] *)
 Lemma ϕ_n_over_n_lowerbound :
-  exists β, 
-    β>0 /\
-    forall (n : nat),
-      (2 <= n)%nat ->
-      (ϕ n) / n >= β / (Nat.log2 n ^ 4).
+  forall (n : nat),
+    (2 <= n)%nat ->
+    (ϕ n) / n >= exp(-2) / (Nat.log2 n ^ 4).
 Proof.
-  destruct (φ_lower_bound) as [β [G T]]. exists β. split. easy.
-  intros. rewrite ϕ_φ_equal by lia. apply G. easy.
+  intros. rewrite ϕ_φ_equal by lia. apply φ_lower_bound. easy.
 Qed.
 
 (* ============================== *)
