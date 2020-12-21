@@ -4,8 +4,27 @@ Require Export RCIR.
 Local Open Scope bccom_scope.
 Local Open Scope nat_scope.
 
+(* 
+  This doc contains the implementation and correctness proof of the modular multiplier
+  for the Shor's algorithm.
+  
+  Modular multiplier finishes the computation of the formula C*x %M, where C and M are two
+  integer constants, and x is a integer variable. 
+
+  The high level picuture of the implementation is to take each bit of the binary format of C,
+  and then do the two consecutive steps on a three (n+1) qubits math representation as [x][M][y].
+  At i-th iteration, the x stores the current computation result for the formula C*x %M up to i-th bit.
+  M is the contant value for M, and [y] stores the computation result of 2^i * x % M.
+  The first step is to compute the 2^i * x % M based on the old value of 2^(i-1)*x % M. 
+  The second step is to add the 2^i*x %M value to the C*x%M if i-th bit of C is not zero. 
+*)
+
+(* This is the extra qubits needed for the algorithm presented in the doc. 
+   The extra qubit requirement is O(n) in our implementation. *)
 Definition modmult_rev_anc n := 3 * n + 15.
 
+(* fb_push is to take a qubit and then push it to the zero position 
+        in the bool function representation of a number. *)
 Definition fb_push b f : nat -> bool :=
   fun x => match x with
         | O => b
@@ -14,9 +33,11 @@ Definition fb_push b f : nat -> bool :=
 
 Definition allfalse := fun (_ : nat) => false.
 
+(* fb_push_n is the n repeatation of fb_push. *)
 Definition fb_push_n n f g : nat -> bool :=
   fun i => if (i <? n) then f i else g (i - n).
 
+(* A function to compile positive to a bool function. *)
 Fixpoint pos2fb p : nat -> bool :=
   match p with
   | xH => fb_push true allfalse
@@ -24,6 +45,7 @@ Fixpoint pos2fb p : nat -> bool :=
   | xO p' => fb_push false (pos2fb p')
   end.
 
+(* A function to compile N to a bool function. *)
 Definition N2fb n : nat -> bool :=
   match n with
   | 0%N => allfalse
@@ -36,10 +58,15 @@ Definition add_c b x y :=
   | true => Pos.add_carry x y
   end.
 
+(* A function to compile a natural number to a bool function. *)
 Definition nat2fb n := N2fb (N.of_nat n).
 
+(* reg_push is the encapsulation of fb_push_n. *)
 Definition reg_push (x : nat) (n : nat) (f : nat -> bool) := fb_push_n n (nat2fb x) f.
 
+(* The following three lemmas show that the relationship between
+   the bool function before and after the application of fb_push/fb_push_n
+   in different bit positions. *)
 Lemma fb_push_right:
   forall n b f, 0 < n -> fb_push b f n = f (n-1).
 Proof.
@@ -65,6 +92,8 @@ Qed.
 Notation "'[' x ']_' n f" := (reg_push x n f) (at level 15, n at level 9, right associativity).
 Notation "b ` f" := (fb_push b f) (at level 20, right associativity).
 
+(* The lemma shows that the reg_push of a number x that has n qubit is essentially
+   the same as turning the number to a bool function. *)
 Lemma reg_push_inv:
   forall x n f a, a < n -> (reg_push x n f) a = (nat2fb x) a.
 Proof.
@@ -83,6 +112,14 @@ Proof.
   lia.
 Qed.
 
+
+(* Single bit MAJ and UMA circuit implementations. 
+   MAJ circuit takes the carry value ci before the computation,
+   and two bits ai and bi in two numbers, and the returns three things:
+    ci ⊕ ai, bi ⊕ ai and the carry value of next bit.
+   The carry value is defined as: (ai && bi) ⊕ (bi && ci) ⊕ (ai && ci)
+   UMA takes the result of MAJ, and produces three things:
+   ci, si and ai. si represents the i-th bit computation value of a + b *)
 Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
 
 Definition MAJ a b c := bccnot c b ; bccnot c a ; bcccnot a b c.
@@ -130,6 +167,8 @@ Proof.
   unfold update. bnauto_expand (f' a :: f' b :: f' c :: (List.nil)).
 Qed.
 
+(* The following defines n-bits MAJ and UMA circuit. 
+   Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
 Fixpoint MAJseq' i n c0 : bccom :=
   match i with
   | 0 => MAJ c0 (2 + n) 2
@@ -323,6 +362,7 @@ Proof.
  assumption.
 Qed.
 
+(* Here we defined the specification of carry value for each bit. *)
 Fixpoint carry b n f g :=
   match n with
   | 0 => b
@@ -677,6 +717,8 @@ Proof.
   fb_push_n_simpl. easy.
 Qed.
 
+(* The following two lemmas show the correctness of the adder implementation based on MAJ;UMA circuit. 
+   The usage of the adder is based on the carry0 lemma. *)
 Lemma adder01_correct_carry0 :
   forall n x y f b1,
     0 < n ->
@@ -695,6 +737,9 @@ Qed.
 
 Opaque adder01.
 
+
+(* The following will swap the result of the addition of two numbers x and y (x+y) to the position
+   starting in 2 + n + n. Then, the original position that resides x+y will be empty for new computation. *)
 Fixpoint swapper02' i n :=
   match i with
   | 0 => bcskip
@@ -785,6 +830,8 @@ Qed.
 
 Opaque swapper02.
 
+(* The following will do the negation of the first input value in the qubit sequence 00[x][y][z].
+   THe actual effect is to make the sequence to be 00[-x][y][z]. *)
 Fixpoint negator0' i : bccom :=
   match i with
   | 0 => bcskip
@@ -872,6 +919,8 @@ Proof.
   replace 2%N with (N.of_nat 2) by lia. rewrite <- Nofnat_pow. lia.
 Qed.
 
+(* The correctness represents the actual effect of flip all bits for the number x.
+   The effect is to make the x number positions to store the value  2^n - 1 - x. *)
 Lemma negator0_correct :
   forall n x f b0 b1,
     0 < n ->
@@ -884,6 +933,13 @@ Qed.
 Opaque negator0.
 
 
+(* The following implements an comparator. 
+   THe first step is to adjust the adder circuit above to be
+    MAJ;high_bit_manipulate;UMA.
+    This is based on a binary number circuit observation that:
+    To compare if x < y, we just need to do x - y, and see the high bit of the binary
+    format of x - y. If the high_bit is zero, that means that x >= y;
+    otherwise x < y. *)
 Definition highb01 n : bccom := MAJseq n; bccnot (1 + n) 1; bcinv (MAJseq n).
 
 Local Opaque bccnot.
@@ -928,6 +984,12 @@ Qed.
 
 Opaque highb01.
 
+(* The actual comparator implementation. 
+    We first flip the x positions, then use the high-bit comparator above. 
+    Then, we use an inverse circuit of flipping x positions to turn the
+    low bits back to store the value x.
+    The actual implementation in the comparator is to do (x' + y)' as x - y,
+    and then, the high-bit actually stores the boolean result of x - y < 0.  *)
 Definition comparator01 n := (bcx 0; negator0 n); highb01 n; bcinv (bcx 0; negator0 n).
 
 Lemma comparator01_eWF :
@@ -1058,6 +1120,9 @@ Proof.
   intros. bdestruct (x <=? y). apply carry_leb_equiv_true; easy. apply carry_leb_equiv_false; easy.
 Qed.
 
+(* The correctness of comparator. We can see that the comparator will finally
+   produce no changes to the positions storing values x and y, 
+   but the high-bit will be a boolean predicate of(x <=? y). *)
 Lemma comparator01_correct :
   forall n x y f,
     0 < n ->
@@ -1074,6 +1139,8 @@ Qed.
 
 Opaque comparator01.
 
+(* The implementation of a subtractor. It takes two values [x][y], and the produces
+    the result of [x][y + 2^n - x]. *)
 Definition substractor01 n := (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
 
 Lemma substractor01_efresh:
@@ -1124,6 +1191,7 @@ Proof.
   constructor. lia.
 Qed.
 
+(* The correctness proof of the substractor. *)
 Lemma substractor01_correct :
   forall n x y b1 f,
     0 < n ->
@@ -1143,6 +1211,10 @@ Qed.
 
 Opaque substractor01.
 
+(* The implementation of a modulo adder. It takes [M][x][y], and then produces the result of [M][x+y % M][y]. 
+   The modulo operation is not reversible. It will flip the high-bit to be the comparator factor.
+   To flip the high-bit to zero, we use the inverse circuit of the comparator in the modulo adder to
+   flip the high-bit back to zero.*)
 Definition modadder21 n := swapper02 n; adder01 n; swapper02 n; 
        comparator01 n; (bccont 1 (substractor01 n); bcx 1); swapper02 n; bcinv (comparator01 n); swapper02 n.
 
@@ -1229,6 +1301,7 @@ Proof.
   assert (x + y >= M) by (apply mod_sum_lt; lia). lia.
 Qed.
 
+(* The correctness statement of the modulo adder. *)
 Lemma modadder21_correct :
   forall n x y M f,
     1 < n ->
@@ -1282,6 +1355,7 @@ Qed.
 
 Opaque modadder21.
 
+(* The swapper12 swaps the [x][y][z] to be [x][z][y]. *)
 Fixpoint swapper12' i n :=
   match i with
   | 0 => bcskip
@@ -1359,6 +1433,9 @@ Qed.
 
 Opaque swapper12.
 
+(* Here we implement the doubler circuit based on binary shift operation.
+   It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
+   Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
 Fixpoint doubler1' i n :=
   match i with
   | 0 => bcskip
@@ -1420,6 +1497,8 @@ Proof.
  rewrite <- IHn. lia. lia.
 Qed.
 
+(* This lemma says that if x is a value less than 2^(n-1), then the highest bit of
+   the n-bit cell is zero. *)
 Lemma reg_push_high_bit_zero:
    forall n x f, 
     0 < n -> x < 2^(n-1) -> ([x]_n f) (n - 1) = false.
@@ -1440,6 +1519,7 @@ Proof.
   assumption.
 Qed.
 
+(* This is a generalized case of the above lemma. *)
 Lemma reg_push_high_bit_gen_zero:
    forall i m n x f,
     0 < n -> i <= m < n -> x < 2^i -> ([x]_n f) m = false.
@@ -1462,6 +1542,8 @@ Proof.
   1 - 3 : lia.
 Qed.
 
+(* This is a generalized case of the above lemma in terms of making the case for
+   any value x located in any places in a bool function. *)
 Lemma reg_push_high_bit_gen_zero_1:
   forall i m n x y f b0 b1,
     0 < n -> i <= m < n ->
@@ -1630,6 +1712,7 @@ Proof.
   reflexivity.
 Qed.
 
+(* This is the correctness statement and proof of the doubler. *)
 Lemma doubler1_correct :
   forall n x y f b0 b1,
     0 < n ->
@@ -1716,6 +1799,11 @@ Qed.
 
 Opaque doubler1.
 
+
+(* Another version of the mod adder only for computing [x][M] -> [2*x % M}[M].
+   This version will mark the high-bit, and the high-bit is not clearable.
+   However, eventually, we will clean all high-bit
+   by using a inverse circuit of the whole implementation. *)
 Definition moddoubler01 n := doubler1 n; comparator01 n; bccont 1 (substractor01 n).
 
 Lemma moddoubler01_eWF :
@@ -1748,6 +1836,7 @@ Proof.
   apply substractor01_eWT;lia.
 Qed.
 
+(* The correctness statement and proof of the mod doubler.  *)
 Lemma moddoubler01_correct :
   forall n M x f,
     1 < n ->
@@ -1790,6 +1879,7 @@ Qed.
 
 Opaque moddoubler01.
 
+(* A new version of the modulo adder to do addition only [y][x] -> [y][x+y mod M]. *)
 Definition modadder12 n := swapper12 n; modadder21 n; swapper12 n.
 
 Lemma modadder12_eWF :
@@ -1816,6 +1906,7 @@ Proof.
   apply swapper12_eWT;lia.
 Qed.
 
+(* The correctness statement and proof of the second mod adder. *)
 Lemma modadder12_correct :
   forall n x y M f,
     1 < n ->
@@ -1836,6 +1927,12 @@ Qed.
 
 Opaque modadder12.
 
+(* The following implements the modulo adder for all bit positions in the
+   binary boolean function of C. 
+   For every bit in C, we do the two items:
+   we first to double the factor (originally 2^(i-1) * x %M, now 2^i * x %M).
+   Then, we see if we need to add the factor result to the sum of C*x%M
+   based on if the i-th bit of C is zero or not. *)
 Fixpoint modsummer' i n (fC : nat -> bool) :=
   match i with
   | 0 => if (fC 0) then modadder12 n else bcskip
@@ -2206,6 +2303,7 @@ Proof.
   lia. lia.
 Qed.
 
+(* This is the correctness statement and proof of the C*x%M sum implementation. *)
 Lemma modsummer_correct :
   forall n x y M C,
     1 < n ->
@@ -2236,6 +2334,8 @@ Qed.
 
 Opaque modsummer.
 
+(* This is the final clean-up step of the mod multiplier to do C*x %M. 
+    Here, modmult_half will first clean up all high bits.  *)
 Definition modmult_half n C := modsummer n C; (bcinv (modsummer n 0)).
 
 Lemma modmult_half_eWF:
@@ -2305,6 +2405,12 @@ Qed.
 
 Opaque modmult_half.
 
+(* The modmult_full circuit will take [M][x] bits and produce [M][C*x mod M].
+   The key concept is to first compute modmult_half on C, and get [M][x][C*x mod M], 
+   We then swap the valuex of x and C*x%M, and get [M][C*x mod M][x],
+   and then we do an inverse circuit on the modmult_half on the inverse value of C.
+   THe final step will turn the result to be [M][C*x mod M] and remove [x]. *)
+
 Definition modmult_full C Cinv n := modmult_half n C; swapper12 n; bcinv (modmult_half n Cinv).
 
 Lemma modmult_full_eWT:
@@ -2352,7 +2458,9 @@ Qed.
 
 Opaque modmult_full.
 
-(* head and register 1 *)
+(* The following is to do the final clean-up of the final clean-up.
+   It prepares the two high-bits (two zero bits), and then prepare the empty positions for storing value M. 
+   Then, it will insert the value M by using a circuit genM0 for the constant M. *)
 Fixpoint swapperh1' j n :=
   match j with
   | 0 => bcskip
@@ -2382,7 +2490,8 @@ Proof.
   intros. unfold swapperh1. apply swapperh1'_eWF.
 Qed.
 
-Definition swaph1m i n f := fun x => if (x <? i) then false else if (x <? n) then f x else if (x <? 2 + n) then false else if (x <? 2 + n + i) then f (x - 2 - n) else false.
+Definition swaph1m i n f := fun x => if (x <? i) then false else if (x <? n)
+                       then f x else if (x <? 2 + n) then false else if (x <? 2 + n + i) then f (x - 2 - n) else false.
 
 Lemma swapperh1'_correct :
   forall i n f,
@@ -2390,7 +2499,8 @@ Lemma swapperh1'_correct :
     i <= n ->
     bcexec (swapperh1' i n) (fb_push_n n f allfalse) = swaph1m i n f.
 Proof.
-  induction i; intros. simpl. apply functional_extensionality; intro x. unfold swaph1m. bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl. easy. fb_push_n_simpl. IfExpSimpl. easy. easy.
+  induction i; intros. simpl. apply functional_extensionality; intro x.
+   unfold swaph1m. bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl. easy. fb_push_n_simpl. IfExpSimpl. easy. easy.
   simpl. rewrite IHi by lia. rewrite bcswap_correct. apply functional_extensionality; intro x.
   unfold swaph1m. IfExpSimpl; try easy. subst. apply f_equal. lia.
 Qed.
@@ -2725,4 +2835,3 @@ Proof.
 Qed.
 
 Opaque modmult_rev.
-
