@@ -284,3 +284,23 @@ Proof.
   apply Rabs_no_R0. assumption.
   apply Rgt_ge. apply PI_RGT_0.
 Qed.
+
+
+Lemma QPE_semantics_var_full : forall k n (f : nat -> base_ucom n) z (ψ : Vector (2 ^ n)) (δ : R),
+    (n > 0)%nat -> (k > 1)%nat -> (forall i, (i < k)%nat -> uc_well_typed (f i)) -> Pure_State_Vector ψ -> 
+    (-1 / 2 ^ (k + 1) <= δ < 1 / 2 ^ (k + 1))%R ->
+    let θ := ((INR (funbool_to_nat k z) / 2 ^ k) + δ)%R in
+    (forall i, (i < k)%nat -> (uc_eval (f i)) × ψ = Cexp (2 * PI * θ * (INR (2^i))) .* ψ) ->
+    probability_of_outcome 
+      ((f_to_vec k z) ⊗ ψ)
+      (@Mmult _ _ (1 * 1) (uc_eval (QPE_var k n f)) (k ⨂ qubit0 ⊗ ψ)) >= 4 / (PI ^ 2).
+Proof.
+  intros.
+  assert (uc_well_typed (f O)) by (apply H1; lia).
+  assert ((uc_eval (f O)) × ψ = Cexp (2 * PI * θ) .* ψ).
+  { specialize (H4 O). simpl in H4. rewrite Rmult_1_r in H4. apply H4. lia.
+  }
+  specialize (QPE_semantics_full k n (f O) z ψ δ H H0 H5 H2 H3 H6) as G.
+  destruct H2 as [H2 H7].
+  rewrite <- QPE_var_equivalent with (c := f O) (θ := θ); easy.
+Qed.

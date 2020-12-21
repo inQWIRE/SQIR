@@ -16,3 +16,5 @@ SQIR/src/NDSem.v
 SQIR/src/VectorStates.v
 SQIR/src/UnitaryOps.v
 SQIR/src/Equivalences.v
+SQIR/src/RCIR.v
+SQIR/src/ModularMultSpec.v
