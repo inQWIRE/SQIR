@@ -1001,134 +1001,8 @@ Proof.
   exists x. split. destruct H2. lia. destruct H2. apply Nat.eqb_eq. easy.
 Qed.
 
-(* Euler's totient function *)
-Definition ϕ (n : nat) := Rsum n (fun x => if rel_prime_dec x n then 1 else 0).
 
-(*
-Lemma exp_ineq2 : forall x:R, x < 0 -> 1 + x < exp x.
-Proof.
-  intros. apply Rplus_lt_reg_l with (- exp 0). rewrite <- (Rplus_comm (exp x)).
-  assert (H0 := MVT_cor1 exp x 0 derivable_exp H). elim H0.
-  intros. destruct H1 as [H1 H2]. replace (exp x + - exp 0) with (- (exp 0 - exp x)) by lra.
-  rewrite H1. replace (- (derive_pt exp x0 (derivable_exp x0) * (0 - x))) with (x * derive_pt exp x0 (derivable_exp x0)) by lra.
-  replace (derive_pt exp x0 (derivable_exp x0)) with (exp x0).
-  
-  rewrite exp_0. rewrite <- Rplus_assoc. rewrite Rplus_opp_l. rewrite Rplus_0_l.
-  pattern x at 1. rewrite <- Rmult_1_r.
-  apply Rgt_lt. apply Rmult_lt_gt_compat_neg_l.
-  apply H.
-  rewrite <- exp_0. apply exp_increasing. lra.
-  symmetry . apply derive_pt_eq_0. apply derivable_pt_lim_exp.
-Qed.
-
-Lemma exp_ineq0 : forall x:R, 1 + x <= exp x.
-Proof.
-  intro. destruct (total_order_T x 0) as [[Hx | Hx] | Hx].
-  specialize (exp_ineq2 x). lra.
-  subst. rewrite exp_0. lra.
-  specialize (exp_ineq1 x). lra.
-Qed.
-
-Lemma exp_le_inv : forall x y : R, exp x <= exp y -> x <= y.
-Proof.
-  intros. destruct (Req_dec (exp x) (exp y)). apply exp_inv in H0. lra.
-  assert (exp x < exp y) by lra.
-  apply exp_lt_inv in H1. lra.
-Qed.
-
-Lemma ln_1_x_ineq : forall x : R, -1 < x -> ln (1 + x) <= x.
-Proof.
-  intros. specialize (exp_ineq0 x) as G.
-  rewrite <- (exp_ln (1 + x)) in G by lra.
-  apply exp_le_inv. easy.
-Qed.
-*)
-
-(* This might need to be treated as an axiom. [1979 Hardy & Wright, Thm 328] *)
-Lemma ϕ_n_over_n_lowerbound :
-  exists β, 
-    β>0 /\
-    forall (n : nat),
-      (2 < n)%nat ->
-      (ϕ n) / n >= β / Nat.log2 (Nat.log2 n).
-Admitted.
-
-(* sum_f_R0 facts *)
-Lemma rsum_swap_order :
-  forall (m n : nat) (f : nat -> nat -> R),
-    sum_f_R0 (fun j => sum_f_R0 (fun i => f j i) m) n = sum_f_R0 (fun i => sum_f_R0 (fun j => f j i) n) m.
-Proof.
-  intros. induction n; try easy.
-  simpl. rewrite IHn. rewrite <- sum_plus. reflexivity.
-Qed.
-
-Lemma find_decidable :
-    forall (m t : nat) (g : nat -> nat),
-    (exists i, i <= m /\ g i = t)%nat \/ (forall i, i <= m -> g i <> t)%nat.
-Proof.
-  induction m; intros.
-  - destruct (dec_eq_nat (g 0%nat) t).
-    + left. exists 0%nat. split; easy.
-    + right. intros. replace i with 0%nat by lia. easy.
-  - destruct (IHm t g).
-    + left. destruct H. exists x. destruct H. split; lia.
-    + destruct (dec_eq_nat (g (S m)) t).
-      -- left. exists (S m). lia.
-      -- right. intros. inversion H1. lia. apply H. lia.
-Qed.
-
-Lemma rsum_unique :
-    forall (n : nat) (f : nat -> R) (r : R),
-    (exists (i : nat), i <= n /\ f i = r /\ (forall (j : nat), j <= n -> j <> i -> f j = 0)) ->
-    sum_f_R0 f n = r.
-Proof.
-  intros.
-  destruct H as (? & ? & ? & ?).
-  induction n. simpl. apply INR_le in H. inversion H. subst. easy.
-  simpl. bdestruct (S n =? x).
-  - subst. replace (sum_f_R0 f n) with 0. lra.
-    symmetry. apply sum_eq_R0. intros. apply H1. apply le_INR. constructor. easy. lia.
-  - apply INR_le in H. inversion H. lia. subst. replace (f (S n)) with 0.
-    rewrite IHn. lra. apply le_INR. easy. intros. apply H1; auto. apply Rle_trans with n; auto.
-    apply le_INR. lia. symmetry. apply H1; auto. apply Rle_refl.
-Qed.
-
-Theorem rsum_subset :
-  forall (m n : nat) (f : nat -> R)  (g : nat -> nat),
-    m < n -> (forall (i : nat), 0 <= f i) -> (forall i, i <= m -> g i <= n)%nat ->
-    (forall i j, i <= m -> j <= m -> g i = g j -> i = j)%nat ->
-    sum_f_R0 (fun i => f (g i)) m <= sum_f_R0 f n.
-Proof.
-  intros.
-  set (h := (fun (i : nat) => sum_f_R0 (fun (j : nat) => if i =? g j then f (g j) else 0) m)).
-  assert (forall (i : nat), i <= n -> h i <= f i).
-  { intros. unfold h. simpl.
-    destruct (find_decidable m i g).
-    - destruct H4 as (i0 & H4 & H5).
-      replace (sum_f_R0 (fun j : nat => if i =? g j then f (g j) else 0) m) with (f i). lra.
-      symmetry. apply rsum_unique. exists i0. split.
-      + apply le_INR. easy.
-      + split. subst.  rewrite Nat.eqb_refl. easy.
-        intros. assert (i <> g j). unfold not. intros. subst. apply H2 in H8. apply H7. easy.
-        easy. apply INR_le. easy.
-      + replace (i  =? g j) with false. easy. symmetry. apply eqb_neq. easy.
-    - replace (sum_f_R0 (fun j : nat => if i =? g j then f (g j) else 0) m) with 0. easy.
-      symmetry. apply sum_eq_R0. intros. apply H4 in H5. rewrite eqb_neq. easy. lia.
-  }
-  assert (sum_f_R0 h n <= sum_f_R0 f n).
-  { apply sum_Rle. intros. apply H3. apply le_INR. easy. }
-  apply Rle_trans with (sum_f_R0 h n); auto.
-  unfold h. rewrite rsum_swap_order.
-  replace (sum_f_R0 (fun i : nat => f (g i)) m) with 
-  (sum_f_R0 (fun i : nat => sum_f_R0 (fun j : nat => if j =? g i then f (g i) else 0) n) m).
-  apply Rle_refl. apply sum_eq. intros.
-  apply rsum_unique. exists (g i). split.
-  - apply le_INR. auto. split.
-  - rewrite Nat.eqb_refl. easy.
-  - intros. rewrite eqb_neq; easy.
-Qed.
-
-(* The correctness specification. It succeed with prob proportional to 1/(log log N), which is asymptotically small, but big enough in practice.
+(* The correctness specification. It succeed with prob proportional to 1/(log N)^4, which is asymptotically small, but big enough in practice (poly time).
    With better technique (calculate the LCM of multiple outputs), the number of rounds may be reduced to constant. But I don't know how to specify that, and the analysis in Shor's original paper refers the correctness to "personal communication" with Knill. *)
 Lemma Shor_correct :
   exists β, 
@@ -1136,9 +1010,9 @@ Lemma Shor_correct :
     forall (a r N m n anc : nat) (c : base_ucom (n + anc)),
       BasicSetting a r N m n ->
       MultiplyCircuitProperty a N n anc c ->
-      (r > 3)%nat ->
+      (r > 1)%nat ->
       uc_well_typed c ->
-      probability_of_success a r N m n anc c >= β / Nat.log2 (Nat.log2 N).
+      probability_of_success a r N m n anc c >= β / (Nat.log2 N)^4.
 Proof.
   destruct ϕ_n_over_n_lowerbound as (β & Hβ & Heuler).
   unfold probability_of_success. unfold Shor_final_state. eexists. split.
@@ -1158,22 +1032,22 @@ Proof.
     intros. eapply Rge_trans. apply Rle_ge. apply sum_Rle. apply H5.
     rewrite <- scal_sum. unfold ϕ in Heuler.
     remember (sum_f_R0 (fun i : nat => if rel_prime_dec i (S r) then 1 else 0) r) as t.
-    assert (t / (S r) >= β / Nat.log2 (Nat.log2 N)).
+    assert (t / (S r) >= β / (Nat.log2 N^4)).
     { subst. replace (sum_f_R0 (fun i : nat => if rel_prime_dec i (S r) then 1 else 0) r) with (Rsum (S r) (fun i : nat => if rel_prime_dec i (S r) then 1 else 0)).
       eapply Rge_trans. apply Heuler. lia.
-      assert (Nat.log2 (Nat.log2 (S r)) <= Nat.log2 (Nat.log2 N)).
-      apply le_INR. apply Nat.log2_le_mono. apply Nat.log2_le_mono. destruct H. destruct H6. apply Nat.lt_le_incl. 
+      assert ((Nat.log2 (S r) ^ 4) <= (Nat.log2 N ^ 4)).
+      do 2 rewrite <- pow_INR. apply le_INR. apply Nat.pow_le_mono_l. apply Nat.log2_le_mono. destruct H. destruct H6. apply Nat.lt_le_incl. 
       apply Order_r_lt_N with a. auto.
       repeat rewrite Rdiv_unfold. apply Raux.Rinv_le in H6. apply Rmult_ge_compat_l. lra. lra. replace 0 with (INR 0%nat) by auto.
-      apply lt_INR. cut (1 <= Nat.log2 (Nat.log2 (S r)))%nat. lia. eapply Nat.le_trans.
-      assert (1 <= Nat.log2 (Nat.log2 4))%nat. unfold Nat.log2. simpl. lia. apply H7.
-      repeat apply Nat.log2_le_mono. lia.
+      rewrite <- pow_INR. apply lt_INR. cut (1 <= (Nat.log2 (S r)) ^ 4)%nat. lia. eapply Nat.le_trans.
+      assert (1 <= (Nat.log2 2) ^ 4)%nat. unfold Nat.log2. simpl. lia. apply H7.
+      apply Nat.pow_le_mono_l. apply Nat.log2_le_mono. lia.
       reflexivity.
     }
-    assert (4 / (PI^2 * S r) * t >= (4 * β / (PI ^ 2)) / Nat.log2 (Nat.log2 N)).
+    assert (4 / (PI^2 * S r) * t >= (4 * β / (PI ^ 2)) / (Nat.log2 N)^4).
     { repeat rewrite Rdiv_unfold. repeat rewrite Rinv_mult_distr. repeat rewrite Rdiv_unfold in H6.
       replace (4 * (/ PI ^ 2 * / S r) * t) with ((4 * / PI ^ 2) * (t * / S r)) by lra.
-      replace ( 4 * β * / PI ^ 2 * / Nat.log2 (Nat.log2 N)) with ((4 * / PI ^ 2) * (β * / Nat.log2 (Nat.log2 N))) by lra.
+      replace ( 4 * β * / PI ^ 2 * / (Nat.log2 N)^4) with ((4 * / PI ^ 2) * (β * / (Nat.log2 N)^4)) by lra.
       apply Rmult_ge_compat_l. interval. easy. interval. replace 0 with (INR 0%nat) by auto. apply not_INR. lia. 
     }
     apply H7.
@@ -1217,9 +1091,9 @@ Lemma Shor_correct_var :
     forall (a r N m n anc : nat) (u : nat -> base_ucom (n + anc)),
       BasicSetting a r N m n ->
       ModMulImpl a N n anc u ->
-      (r > 3)%nat ->
+      (r > 1)%nat ->
       (forall i, (i < m)%nat -> uc_well_typed (u i)) ->
-      probability_of_success_var a r N m n anc u >= β / Nat.log2 (Nat.log2 N).
+      probability_of_success_var a r N m n anc u >= β / (Nat.log2 N)^4.
 Proof.
   destruct ϕ_n_over_n_lowerbound as (β & Hβ & Heuler).
   unfold probability_of_success_var. unfold Shor_final_state_var. eexists. split.
@@ -1239,22 +1113,22 @@ Proof.
     intros. eapply Rge_trans. apply Rle_ge. apply sum_Rle. apply H5.
     rewrite <- scal_sum. unfold ϕ in Heuler.
     remember (sum_f_R0 (fun i : nat => if rel_prime_dec i (S r) then 1 else 0) r) as t.
-    assert (t / (S r) >= β / Nat.log2 (Nat.log2 N)).
+    assert (t / (S r) >= β / (Nat.log2 N^4)).
     { subst. replace (sum_f_R0 (fun i : nat => if rel_prime_dec i (S r) then 1 else 0) r) with (Rsum (S r) (fun i : nat => if rel_prime_dec i (S r) then 1 else 0)).
       eapply Rge_trans. apply Heuler. lia.
-      assert (Nat.log2 (Nat.log2 (S r)) <= Nat.log2 (Nat.log2 N)).
-      apply le_INR. apply Nat.log2_le_mono. apply Nat.log2_le_mono. destruct H. destruct H6. apply Nat.lt_le_incl. 
+      assert ((Nat.log2 (S r) ^ 4) <= (Nat.log2 N ^ 4)).
+      do 2 rewrite <- pow_INR. apply le_INR. apply Nat.pow_le_mono_l. apply Nat.log2_le_mono. destruct H. destruct H6. apply Nat.lt_le_incl. 
       apply Order_r_lt_N with a. auto.
       repeat rewrite Rdiv_unfold. apply Raux.Rinv_le in H6. apply Rmult_ge_compat_l. lra. lra. replace 0 with (INR 0%nat) by auto.
-      apply lt_INR. cut (1 <= Nat.log2 (Nat.log2 (S r)))%nat. lia. eapply Nat.le_trans.
-      assert (1 <= Nat.log2 (Nat.log2 4))%nat. unfold Nat.log2. simpl. lia. apply H7.
-      repeat apply Nat.log2_le_mono. lia.
+      rewrite <- pow_INR. apply lt_INR. cut (1 <= (Nat.log2 (S r)) ^ 4)%nat. lia. eapply Nat.le_trans.
+      assert (1 <= (Nat.log2 2) ^ 4)%nat. unfold Nat.log2. simpl. lia. apply H7.
+      apply Nat.pow_le_mono_l. apply Nat.log2_le_mono. lia.
       reflexivity.
     }
-    assert (4 / (PI^2 * S r) * t >= (4 * β / (PI ^ 2)) / Nat.log2 (Nat.log2 N)).
+    assert (4 / (PI^2 * S r) * t >= (4 * β / (PI ^ 2)) / (Nat.log2 N)^4).
     { repeat rewrite Rdiv_unfold. repeat rewrite Rinv_mult_distr. repeat rewrite Rdiv_unfold in H6.
       replace (4 * (/ PI ^ 2 * / S r) * t) with ((4 * / PI ^ 2) * (t * / S r)) by lra.
-      replace ( 4 * β * / PI ^ 2 * / Nat.log2 (Nat.log2 N)) with ((4 * / PI ^ 2) * (β * / Nat.log2 (Nat.log2 N))) by lra.
+      replace ( 4 * β * / PI ^ 2 * / (Nat.log2 N)^4) with ((4 * / PI ^ 2) * (β * / (Nat.log2 N)^4)) by lra.
       apply Rmult_ge_compat_l. interval. easy. interval. replace 0 with (INR 0%nat) by auto. apply not_INR. lia. 
     }
     apply H7.
@@ -1297,8 +1171,8 @@ Lemma Shor_correct_full_implementation :
     β>0 /\
     forall (a r N m n : nat),
       BasicSetting a r N m n ->
-      (r > 3)%nat ->
-      probability_of_success_var a r N m n (modmult_rev_anc n) (f_modmult_circuit a (modinv a N) N n) >= β / Nat.log2 (Nat.log2 N).
+      (r > 1)%nat ->
+      probability_of_success_var a r N m n (modmult_rev_anc n) (f_modmult_circuit a (modinv a N) N n) >= β / (Nat.log2 N)^4.
 Proof.
   destruct Shor_correct_var as [β [Hβ H]]. exists β. split. easy. intros.
   assert (modinv a N < N)%nat.
@@ -1312,3 +1186,5 @@ Proof.
   destruct H0 as [Ha [_ [_ HN]]].
   intros. apply f_modmult_circuit_uc_well_typed; try easy.
 Qed.
+
+Print Assumptions Shor_correct_full_implementation.
