@@ -4,3 +4,6 @@
 [submodule "VOQC/benchmarks/VOQC-benchmarks"]
 	path = VOQC/benchmarks/VOQC-benchmarks
 	url = https://github.com/inQWIRE/VOQC-benchmarks
+[submodule "externals/euler"]
+	path = externals/euler
+	url = https://github.com/taorunz/euler.git
