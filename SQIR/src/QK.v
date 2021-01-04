@@ -78,9 +78,55 @@ Inductive oper : Set :=
          | Cop (b : moves)
          | Nop (e:expr).
 
+Inductive confi : Set := Fram (v:var) (n:nat) | Frams (v:var) (n:nat) (cf:confi).
 
-(* a state is a quantum state in the first piece and normal bit registers. *)
-Definition state : Set := ((var -> (nat * (nat -> bool))) * (nat * (var -> nat))).
+Fixpoint confi_wf (cf:confi) (s: list var) : Prop :=
+   match cf with Fram v n => In v s
+               | Frams v n cf' => In v s /\ confi_wf cf' (v::s)
+   end.
+
+
+(* a state is a quantum state in the first piece and normal bit registers. 
+   We assume that quantum cells are finite and classical registers are infinite. *)
+Definition state : Set := ((var -> option (nat * (nat -> bool))) * (nat * (var -> nat))).
+
+(* compiling the lang with confi and the size of regs to a state. *)
+Fixpoint compile_fram (cf:confi) : ((var -> option (nat * (nat -> bool)))) := 
+    match cf with Fram v n => (fun x => if x =? v then Some (n, fun _ => false) else None)
+               | Frams v n cf' => (fun x => if x =? v then Some (n, fun _ => false) else compile_fram cf' x)
+    end.
+
+Definition compile (cf:confi) (n:nat) : state := (compile_fram cf, (n,fun _ => 0)).
+
+
+(* First, we need to interpret the pred. *)
+Definition eval_bound (y:var) (v:nat) (br : bound) : option nat :=
+      match br with Br n x m => 
+          if x =? y then Some (n * v + m) else None
+      end.
+
+Fixpoint eval_pred (x:nat) (y:var) (v:nat) (u: option nat) (p : pred) : Prop :=
+     match p with Unit br => 
+          match eval_bound y v br with None => False
+                                     | Some n => (x = n)
+          end
+               | Lt br => 
+          match eval_bound y v br with None => False
+                                     | Some n => (x < n)
+          end
+               | Space n m => (x mod n = m)
+               | Rel z br => 
+          match u with None => False
+                    | Some u' =>
+              match eval_bound z u' br with None => False
+                   | Some uf => (x = uf)
+              end
+         end
+       | Fun f => (f x = true)
+       | Conj p1 p2 => eval_pred x y v u p1 /\ eval_pred x y v u p2
+    end.
+
+
 
 Definition exec_bcx f x := update f x ((¬ (f x))).
 
