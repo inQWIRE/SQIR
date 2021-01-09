@@ -16,23 +16,23 @@ Inductive bound : Set :=
 
 (* Define predicate for applying gates on different circuit. *)
 Inductive pred : Set :=
-   | Unit : bound -> pred (* = m * var + m for exactly one *)
-   | Lt : bound -> pred (* < m * var + m *)
-   | Space : nat -> nat -> pred (* =  m * x + m for every one that sat the formula. *)
-   | Rel : var -> bound -> pred (* x := m * y + m *)
-   | Fun : (nat -> bool) -> pred (* f x *)
+   | Unit : var -> bound -> pred (* x = m * var + m for exactly one *)
+   | Lt : var -> bound -> pred (* x < m * var + m *)
+   | Space : var -> nat -> nat -> pred (* forall x, x =  m * x + m for every one that sat the formula. *)
+   | Rel : var -> var -> bound -> pred (* forall x, x := m * y + m *)
+   | Fun : var -> (nat -> bool) -> pred (* forall x , f x *)
    | Conj : pred -> pred -> pred. (* pred /\ pred *)
 
 Definition bound_wf (s : list var) (b:bound) : Prop :=
   match b with Br n y m => In y s end.
 
-Fixpoint pred_wf (s : list var) (x:var) (y: option var) (p:pred) : Prop :=
-  match p with Unit br => bound_wf s br
-             | Lt br => bound_wf s br
-             | Space n m => True
-             | Fun f => True
-             | Rel z br => (match y with None => False | Some y' => (x = z /\ bound_wf [y'] br) end)
-             | Conj p1 p2 => pred_wf s x y p1 /\ pred_wf s x y p2
+Fixpoint pred_wf (s : list var) (y: option var) (p:pred) : Prop :=
+  match p with Unit x br => bound_wf (x::s) br
+             | Lt x br => bound_wf (x::s) br
+             | Space x n m => True
+             | Fun x f => True
+             | Rel x z br => (match y with None => False | Some y' => (x = z /\ bound_wf (x::s) br) end)
+             | Conj p1 p2 => pred_wf s y p1 /\ pred_wf s y p2
   end.
 
 
@@ -43,22 +43,47 @@ Inductive fvar : Set := Pair: var -> var -> fvar.
 (* an example circuit using the predicate above. 
    bcx takes a variable representing the gates, the pred is a predicate defining
    the variable, and variables appears in pred must be bounded by var. *)
-Inductive bccom :=
+Inductive one_op :=
+  | QX | QY | QH | QZ | QS | QT.
+
+Inductive two_op := QSWAP | QCX | QCZ.
+
+Inductive bccom : Set :=
 | bcskip
-| bcx (x : var) (p : pred)
-| bcnot (x : var) (p :pred) (b : bcseq)
+| one (op : one_op) (x:var) (p:pred) (* apply a single qubit gate in a place at x that is defined by predicate p. *)
+| two (op : two_op) (x:var) (y:var) (p:pred)
+    (* apply a two qubit gate in a place at x and y that is defined by predicate p. *)
+| cu (x : var) (x:var) (y:var) (p : pred) (bs : list one_op)
+    (* apply a two qubit CU gate in a place at x and y that is defined by predicate p, followinng a series of ops on y. *)
+| bcseq (b1:bccom) (b2:bccom)
+   (* seqencing operators *)
+| bciter (b:bccom) (x:var) (p:pred).
+   (* repeat the b x times and x is defined by predicate p. *)
 
- with bcseq :=
-    | seq (b: bccom) (bcs : list bccom).
+Declare Scope bccom_scope.
+Delimit Scope bccom_scope with bccom.
+Local Open Scope bccom.
+Notation "p1 ; p2" := (bcseq p1 p2) (at level 50) : bccom_scope.
+Parameter x y : var.
+Definition const (n:nat) : bound := Br 0 x n.
 
-(* well-formedness of a bccom and bcseq based on the well-formedness of pred. *)
-Fixpoint bccom_wf (s : list var) (y: option var) (b: bccom) : Prop :=
-  match b with bcskip => True
-             | bcx x p => pred_wf s x y p
-             | bcnot x p b => pred_wf s x y p /\ bcseq_wf s (Some x) b
-  end
-  with bcseq_wf (s : list var) (y: option var) (b: bcseq) : Prop :=
-    match b with seq b' bs =>  fold_left (fun pr b1 => pr /\ bccom_wf s y b1) (b'::bs) True end. 
+(* Example programs using the quantum part of the language. *)
+(* First example is the Simon algorithm. *)
+
+Definition nH (n:nat) : bccom := one QH x (Lt x (const n)).
+Definition csimon (n:nat) (U:bccom) : bccom := nH n; U ; nH n.
+
+(* Second example is the deutsch_jozsa algorithm. *)
+Definition XatN (n:nat) : bccom := one QX x (Unit x (const n)).
+Definition cdeutsch_jozsa (n:nat) (U:bccom) : bccom := XatN n; nH (S n); U ; nH (S n).
+
+(* Define Grover's algorithm. *)
+Definition nCX (n:nat) : bccom := two (QCX) x y (Conj (Lt x (const (n-1))) (Unit x (const n))).
+Definition nX (n:nat) : bccom := one QX x (Lt x (const n)).
+Definition HatN (n:nat) : bccom := one QH x (Unit x (const n)).
+Definition body (n:nat) (U:bccom) := U ; nH n; nX n; HatN (n-1) ; nCX n; HatN (n-1); nX n; nH n.
+Definition grover (i n:nat) (U:bccom) := XatN n; nH (S n); bciter (body (S n) U) x (Unit x (const i)).
+
 
 (* Adding load/store opreation to transform qubits to bits. *)
 Inductive moves : Set := | store (q:var) (v:var) (* store a 2^n qubit in cell q to register v. *)
@@ -73,7 +98,7 @@ Inductive expr : Set :=
       | modu (v1:var) (v2:var)  (* x = v1 % v2 *).
 
 Inductive oper : Set :=
-         | Qop (q:var) (b:bcseq)
+         | Qop (q:var) (b:bccom)
          (* an quantum op is a sequence of quantum exprs and a cell name q indicating which cell the exps are applied.*)
          | Cop (b : moves)
          | Nop (e:expr).
@@ -105,6 +130,7 @@ Definition eval_bound (y:var) (v:nat) (br : bound) : option nat :=
           if x =? y then Some (n * v + m) else None
       end.
 
+(*
 Fixpoint eval_pred (x:nat) (y:var) (v:nat) (u: option nat) (p : pred) : Prop :=
      match p with Unit br => 
           match eval_bound y v br with None => False
@@ -135,7 +161,7 @@ Fixpoint exec_bcxs f n :=
         | 0 => exec_bcx f 0
         | S m => exec_bcxs (exec_bcx f m) m
   end.
-
+*)
 (*
 Inductive interpret : bccom -> nat -> (nat -> bool) -> (nat -> bool) -> Prop :=
   | BCSKIP : forall n f, interpret (NVar bcskip) n f f
