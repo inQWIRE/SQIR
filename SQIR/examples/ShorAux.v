@@ -1681,6 +1681,32 @@ Proof.
     + rewrite H7. rewrite Heqf. easy.
 Qed.
 
+Lemma cnttrue_upper_bound :
+  forall n f, cnttrue n f <= n.
+Proof.
+  induction n; intros. easy.
+  simpl. destruct (f (S n)); specialize (IHn f); lia.
+Qed.
+
+Lemma cnttrue_complement :
+  forall n f g, cnttrue n (fun i => f i && g i) + cnttrue n (fun i => f i && ¬ (g i)) = cnttrue n f.
+Proof.
+  intros. induction n. easy.
+  simpl. destruct (f (S n)); simpl; destruct (g (S n)); simpl; lia.
+Qed.
+
+Lemma not_qr_half :
+  forall p k,
+    k <> 0 -> prime p -> 2 < p ->
+    cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1) =
+    2 * cnttrue (p^k) (fun x => (Nat.gcd x (p^k) =? 1) && ¬ (qr_dec_b x (p^k))).
+Proof.
+  intros.
+  assert (cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1) = 2 * cnttrue (p^k) (fun x => (Nat.gcd x (p^k) =? 1) && qr_dec_b x (p^k))) by (apply qr_half; easy).
+  assert (cnttrue (p ^ k) (fun x : nat => (Nat.gcd x (p ^ k) =? 1) && qr_dec_b x (p ^ k)) + cnttrue (p ^ k) (fun x : nat => (Nat.gcd x (p ^ k) =? 1) && ¬ (qr_dec_b x (p ^ k))) = cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1)) by apply cnttrue_complement.
+  lia.
+Qed.
+
 
 (* ============================================= *)
 (* =   Additional lemmas on Vsum, C and Csum   = *)
