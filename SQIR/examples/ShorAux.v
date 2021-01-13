@@ -2413,6 +2413,126 @@ Proof.
     intros. apply n. flia H9.
 Qed.
 
+Local Opaque Nat.div.
+Lemma reduction_factor_order_finding :
+  forall p k q,
+    k <> 0 -> prime p -> 2 < p -> 2 < q ->
+    Nat.gcd (p ^ k) q = 1 ->
+    cnttrue (p^k * q) (fun a => Nat.gcd a (p^k * q) =? 1) <= 2 * cnttrue (p^k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && ((1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q))  ||  (1 <? (Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p ^ k * q))))).
+Proof.
+  intros.
+  assert (pk_lb : 2 < p ^ k) by (apply prime_power_lb; easy).
+  assert (cnttrue (p ^ k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && ¬ (d2p (ord (a mod p^k) (p^k)) =? d2p (ord (a mod q) q)))
+          <= cnttrue (p ^ k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && ((1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q))  ||  (1 <? (Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p ^ k * q)))))). {
+    apply cnttrue_indicate. intros a ? ?.
+    rewrite andb_true_iff in H5. destruct H5.
+    rewrite H5. simpl.
+    rewrite negb_true_iff in H6.
+    rewrite Nat.eqb_eq in H5. rewrite Nat.eqb_neq in H6.
+    assert (Nat.gcd a (p ^ k) = 1) by (apply Nat_gcd_1_mul_r_rev with (c := q); easy).
+    rewrite Nat.mul_comm in H5.
+    assert (Nat.gcd a q = 1) by (apply Nat_gcd_1_mul_r_rev with (c := p^k); easy).
+    rewrite Nat.mul_comm in H5.
+    assert (Nat.gcd (p ^ k * q) (a ^ (ord a (p ^ k * q) / 2) - 1) > 1 \/ Nat.gcd (p ^ k * q) (a ^ (ord a (p ^ k * q) / 2) + 1) > 1). {
+      apply d2p_neq_sufficient with (rp := ord a (p ^ k)) (rq := ord a q); try apply ord_Order; try easy; try flia H1 H2 pk_lb.
+      rewrite ord_mod by (try easy; try flia pk_lb).
+      rewrite ord_mod with (N := q) by (try easy; try flia H2).
+      easy.
+    }
+    destruct H9.
+    bdestruct (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q)). easy. rewrite Nat.gcd_comm in H9. flia H9 H10.
+    bdestruct (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)). rewrite orb_true_r. easy. rewrite Nat.gcd_comm in H9. flia H9 H10.
+  }
+  assert (cnttrue (p ^ k * q) (fun a : nat => Nat.gcd a (p ^ k * q) =? 1)
+          <= 2 * cnttrue (p ^ k * q) (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ¬ (d2p (ord (a mod p ^ k) (p ^ k)) =? d2p (ord (a mod q) q)))). {
+    clear H4.
+    assert (G0: Nat.gcd 0 (p ^ k * q) =? 1 = false) by (rewrite Nat.eqb_neq; rewrite Nat.gcd_0_l; flia H2 pk_lb).
+    assert (G1: Nat.gcd (p ^ k * q) (p ^ k * q) =? 1 = false) by (rewrite Nat.eqb_neq; rewrite Nat.gcd_diag_nonneg; flia H2 pk_lb).
+    rewrite cnttrue_Nsum by easy. rewrite cnttrue_Nsum.
+    2 : rewrite G0; tauto. 2 : rewrite G1; tauto.
+    assert (T1 : forall x : nat, x < p ^ k * q -> true = true) by (intros; easy).
+    assert (T2 : forall i j : nat, i < p ^ k -> j < q -> true = true -> exists x : nat, x < p ^ k * q /\ (x mod p ^ k, x mod q) = (i, j)). {
+      intros.
+      assert (crt2 i j (p ^ k) q < p ^ k * q) by (apply crt2_upper_bound; flia pk_lb H2).
+      exists (crt2 i j (p ^ k) q). split. easy.
+      rewrite pair_equal_spec. apply crt2_correct; try easy.
+    }
+    assert (T3 : forall x : nat, x < p ^ k * q -> x mod p ^ k < p ^ k /\ x mod q < q) by (intros; split; apply Nat.mod_upper_bound; flia H2 pk_lb).
+    assert (T4 : forall x : nat,
+               x < p ^ k * q ->
+               (if Nat.gcd x (p ^ k * q) =? 1 then 1 else 0) = (if Nat.gcd (crt2 (x mod p ^ k) (x mod q) (p ^ k) q) (p ^ k * q) =? 1 then 1 else 0)). {
+      intros.
+      assert (x = crt2 (x mod p ^ k) (x mod q) (p ^ k) q) by (apply crt2_correct; try easy; try (apply Nat.mod_upper_bound; flia H2 pk_lb)).
+      rewrite <- H5. easy.
+    }
+    assert (T5 : forall x y : nat, x < p ^ k * q -> y < p ^ k * q -> x <> y ->
+                            (x mod p ^ k, x mod q) <> (y mod p ^ k, y mod q)). {
+      intros. intro. rewrite pair_equal_spec in H7. destruct H7.
+      assert (x = crt2 (x mod p ^ k) (x mod q) (p ^ k) q) by (apply crt2_correct; try easy; try (apply Nat.mod_upper_bound; flia H2 pk_lb)).
+      assert (y = crt2 (y mod p ^ k) (y mod q) (p ^ k) q) by (apply crt2_correct; try easy; try (apply Nat.mod_upper_bound; flia H2 pk_lb)).
+      rewrite H7, H8 in H9. flia H6 H9 H10.
+    }
+    assert (T6 :  forall x : nat, x < p ^ k * q ->
+                           (if (Nat.gcd x (p ^ k * q) =? 1) && ¬ (d2p (ord (x mod p ^ k) (p ^ k)) =? d2p (ord (x mod q) q)) then 1 else 0) =
+                           (if (Nat.gcd (crt2 (x mod p ^ k) (x mod q) (p ^ k) q) (p ^ k * q) =? 1) && ¬ (d2p (ord (x mod p ^ k) (p ^ k)) =? d2p (ord (x mod q) q)) then 1 else 0)). {
+      intros.
+      assert (x = crt2 (x mod p ^ k) (x mod q) (p ^ k) q) by (apply crt2_correct; try easy; try (apply Nat.mod_upper_bound; flia H2 pk_lb)).
+      rewrite <- H5. easy.
+    }
+    rewrite (Nsum2dmask_bijection (p ^ k * q) _ (p ^ k) q (fun i j => if (Nat.gcd (crt2 i j (p^k) q) (p^k * q) =? 1) then 1 else 0) (fun _ _ => true) (fun x => (x mod (p ^ k), x mod q))) by easy.
+    rewrite <- Nsum2d_Nsum2dmask by easy. rewrite Nsum2d_swap_order.
+    rewrite (Nsum2dmask_bijection (p ^ k * q) _ (p ^ k) q (fun i j => if (Nat.gcd (crt2 i j (p^k) q) (p^k * q) =? 1) && ¬ (d2p (ord i (p ^ k)) =? d2p (ord j q)) then 1 else 0) (fun _ _ => true) (fun x => (x mod (p ^ k), x mod q))) by easy.
+    rewrite <- Nsum2d_Nsum2dmask by easy. rewrite Nsum2d_swap_order with (m := q).
+    do 2 rewrite <- Nsum2d'_Nsum2d. unfold Nsum2d'.
+    rewrite <- Nsum_scale.
+    apply Nsum_le. intros.
+    assert ((Nat.gcd (crt2 0 x (p ^ k) q) (p ^ k * q) =? 1) = false). {
+      unfold crt2. rewrite Nat.gcd_mod by flia H2 pk_lb.
+      rewrite Nat.eqb_neq.
+      replace (q * modinv q (p ^ k) * 0 + p ^ k * modinv (p ^ k) q * x) with (p ^ k * (modinv (p ^ k) q * x)) by flia.
+      rewrite Nat.gcd_mul_mono_l. rewrite Nat.mul_comm.
+      apply natmul1. flia pk_lb.
+    }
+    assert ((Nat.gcd (crt2 (p ^ k) x (p ^ k) q) (p ^ k * q) =? 1) = false). {
+      unfold crt2. rewrite Nat.gcd_mod by flia H2 pk_lb.
+      rewrite Nat.eqb_neq.
+      replace (q * modinv q (p ^ k) * p ^ k + p ^ k * modinv (p ^ k) q * x) with (p ^ k * (q * modinv q (p ^ k) + modinv (p ^ k) q * x)) by flia.
+      rewrite Nat.gcd_mul_mono_l. rewrite Nat.mul_comm.
+      apply natmul1. flia pk_lb.
+    }
+    rewrite <- cnttrue_Nsum by easy. rewrite <- cnttrue_Nsum by (try rewrite H5; try rewrite H6; easy).
+    bdestruct (Nat.gcd x q =? 1).
+    - rewrite cnttrue_same with (g := fun a : nat => Nat.gcd a (p ^ k) =? 1) at 1.
+      2:{ intros.
+          bdestruct (Nat.gcd x0 (p ^ k) =? 1).
+          rewrite Nat.eqb_eq. apply gcd_crt2; try easy; try flia pk_lb H2.
+          rewrite Nat.eqb_neq. intro. rewrite gcd_crt2 in H10; try easy; try flia pk_lb H2.
+      }
+      pattern cnttrue at 1.
+      rewrite cnttrue_same with (g := fun a : nat => (Nat.gcd a (p ^ k) =? 1) && ¬ (d2p (ord a (p ^ k)) =? (d2p (ord x q)))).
+      2:{ intros.
+          assert (forall a b c, a = b -> a && c = b && c) by (intros a b c Hab; rewrite Hab; easy).
+          apply H9.
+          bdestruct (Nat.gcd x0 (p ^ k) =? 1).
+          rewrite Nat.eqb_eq. apply gcd_crt2; try easy; try flia pk_lb H2.
+          rewrite Nat.eqb_neq. intro. rewrite gcd_crt2 in H11; try easy; try flia pk_lb H2.
+      }
+      apply d2p_half; easy.
+    - rewrite cnttrue_same with (g := fun _ => false) at 1.
+      2:{ intros. rewrite Nat.eqb_neq. intro. rewrite gcd_crt2 in H9; try easy; try flia pk_lb H2.
+      }
+      pattern cnttrue at 1.
+      rewrite cnttrue_same with (g := fun _ => false).
+      2:{ intros.
+          assert (forall a b, a = false -> a && b = false) by (intros a b Ha; rewrite Ha; easy).
+          apply H9.
+          rewrite Nat.eqb_neq. intro. rewrite gcd_crt2 in H10; try easy; try flia pk_lb H2.
+      }
+      rewrite cnttrue_allfalse. easy.
+  }
+  flia H4 H5.
+Qed.
+Local Transparent Nat.div.
 
 (* ============================================= *)
 (* =   Additional lemmas on Vsum, C and Csum   = *)
