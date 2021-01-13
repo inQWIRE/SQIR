@@ -126,6 +126,331 @@ Qed.
 Local Close Scope Z_scope.
 Local Open Scope nat_scope.
 
+Lemma natmul1 :
+  forall a b,
+    b <> 1 ->
+    ~(a * b = 1).
+Proof.
+  intros. intro. destruct a; destruct b; try lia.
+  destruct b. lia. assert (S a >= 1) by lia. assert (S (S b) >= 2) by lia.
+  assert (S a * S (S b) >= 2) by nia. lia.
+Qed.
+
+Lemma mul_mod_1_gcd :
+  forall a b p,
+    a * b mod p = 1 ->
+    Nat.gcd a p = 1.
+Proof.
+  intros. bdestruct (p =? 0). subst. easy.
+  bdestruct (p =? 1). subst. easy.
+  bdestruct (Nat.gcd a p =? 1). easy.
+  destruct (Nat.gcd_divide a p). destruct H4, H3.
+  rewrite H3 in H. rewrite H4 in H at 2.
+  replace (x0 * Nat.gcd a p * b) with (Nat.gcd a p * (x0 * b)) in H by flia.
+  replace (x * Nat.gcd a p) with (Nat.gcd a p * x) in H by flia.
+  rewrite Nat.mul_mod_distr_l in H.
+  rewrite Nat.mul_comm in H. apply natmul1 in H; easy.
+  intro. subst. flia H4 H0.
+  intro. rewrite H5 in H4. flia H4 H0.
+Qed.
+
+Fixpoint Nsum (n : nat) (f : nat -> nat) :=
+  match n with
+  | O => O
+  | S n' => Nsum n' f + f n'
+  end.
+
+Lemma Nsum_eq :
+  forall n f g,
+    (forall x, x < n -> f x = g x) ->
+    Nsum n f = Nsum n g.
+Proof.
+  intros. induction n. easy.
+  simpl. rewrite IHn. rewrite H. easy.
+  flia. intros. apply H. flia H0.
+Qed.
+
+Lemma Nsum_scale :
+  forall n f d,
+    Nsum n (fun i => d * f i) = d * Nsum n f.
+Proof.
+  intros. induction n. simpl. flia. 
+  simpl. rewrite IHn. flia.
+Qed.
+
+Lemma Nsum_le :
+  forall n f g,
+    (forall x, x < n -> f x <= g x) ->
+    Nsum n f <= Nsum n g.
+Proof.
+  intros. induction n. simpl. easy.
+  simpl.
+  assert (f n <= g n) by (apply H; flia).
+  assert (Nsum n f <= Nsum n g). {
+    apply IHn. intros. apply H. lia.
+  }
+  lia.
+Qed.
+
+Lemma Nsum_add :
+  forall n f g,
+    Nsum n (fun i => f i + g i) = Nsum n f + Nsum n g.
+Proof.
+  intros. induction n. easy.
+  simpl. rewrite IHn. flia.
+Qed.
+
+Lemma Nsum_delete :
+  forall n x f,
+    x < n ->
+    Nsum n (update f x 0) + f x = Nsum n f.
+Proof.
+  induction n; intros. lia.
+  simpl. bdestruct (x =? n). subst. rewrite update_index_eq.
+  rewrite Nsum_eq with (g := f). lia.
+  intros. rewrite update_index_neq. easy. lia.
+  assert (x < n) by lia. apply IHn with (f := f) in H1. rewrite <- H1.
+  rewrite update_index_neq. lia. easy.
+Qed.
+
+Lemma Nsum_zero :
+  forall n, Nsum n (fun _ => 0) = 0.
+Proof.
+  induction n. easy.
+  simpl. rewrite IHn. easy.
+Qed.
+
+Fixpoint Nsum2d (n m : nat) (f : nat -> nat -> nat) :=
+  match n with
+  | O => O
+  | S n' => Nsum2d n' m f + Nsum m (fun i => f n' i)
+  end.
+
+Lemma Nsum2d_eq :
+  forall n m f g,
+    (forall x y, x < n -> y < m -> f x y = g x y) ->
+    Nsum2d n m f = Nsum2d n m g.
+Proof.
+  intros. induction n. easy.
+  simpl. rewrite Nsum_eq with (g := (fun i : nat => g n i)).
+  rewrite IHn. lia.
+  intros. apply H; lia.
+  intros. apply H; lia.
+Qed.
+
+Lemma Nsum2d_allzero :
+  forall n m f,
+    (forall x y, x < n -> y < m -> f x y = 0) ->
+    Nsum2d n m f = 0.
+Proof.
+  intros. induction n. easy.
+  simpl. rewrite IHn. rewrite Nsum_eq with (g := (fun _ => 0)).
+  rewrite Nsum_zero. lia.
+  intros. apply H; lia.
+  intros. apply H; lia.
+Qed.
+
+Lemma Nsum2d_scale :
+  forall n m f d,
+    Nsum2d n m (fun i j => d * f i j) = d * Nsum2d n m f.
+Proof.
+  intros. induction n. simpl. flia.
+  simpl. rewrite IHn. rewrite Nsum_scale. flia.
+Qed.
+
+Lemma Nsum2d_eq_d2 :
+  forall n m f d,
+    (forall x, Nsum m (fun i => f x i) = d) ->
+    Nsum2d n m f = n * d.
+Proof.
+  induction n; intros. easy.
+  simpl. rewrite IHn with (d := d). rewrite H. flia.
+  apply H.
+Qed.
+
+Lemma Nsum2d_le :
+  forall n m f g,
+    (forall x y, x < n -> y < m -> f x y <= g x y) ->
+    Nsum2d n m f <= Nsum2d n m g.
+Proof.
+  intros. induction n. easy.
+  simpl.
+  assert (Nsum2d n m f <= Nsum2d n m g). {
+    apply IHn. intros. apply H; lia.
+  }
+  assert (Nsum m (f n) <= Nsum m (g n)). {
+    apply Nsum_le. intros. apply H; lia.
+  }
+  lia.
+Qed.
+
+Definition Nsum2d' n m f := Nsum n (fun i => Nsum m (fun j => f i j)).
+
+Lemma Nsum2d'_Nsum2d :
+  forall n m f,
+    Nsum2d' n m f = Nsum2d n m f.
+Proof.
+  intros. induction n; unfold Nsum2d' in *. easy.
+  simpl. rewrite IHn. easy.
+Qed.
+
+Lemma Nsum2d_swap_order :
+  forall n m f,
+    Nsum2d n m f = Nsum2d m n (fun i j => f j i).
+Proof.
+  intros. do 2 rewrite <- Nsum2d'_Nsum2d.
+  induction n; unfold Nsum2d' in *. simpl. rewrite Nsum_zero. easy.
+  simpl. rewrite IHn. rewrite Nsum_add. lia.
+Qed.
+
+Definition Nsum2dmask n m f (t : nat -> nat -> bool) := Nsum2d n m (fun i j => if t i j then f i j else 0).
+
+Definition upd2d {A} f x y (a : A) := fun i j => if ((i =? x) && (j =? y)) then a else f i j.
+
+Lemma upd2d_eq :
+  forall A x y f a,
+    @upd2d A f x y a x y = a.
+Proof.
+  intros. unfold upd2d. do 2 rewrite Nat.eqb_refl. easy.
+Qed.
+
+Lemma upd2d_neq :
+  forall A x y f a i j,
+    i <> x \/ j <> y ->
+    @upd2d A f x y a i j = f i j.
+Proof.
+  intros. unfold upd2d.
+  destruct H. apply Nat.eqb_neq in H. rewrite H. easy.
+  apply Nat.eqb_neq in H. rewrite H, andb_false_r. easy.
+Qed.
+
+Lemma upd2d_update :
+  forall A x y f a, @upd2d A f x y a x = update (f x) y a.
+Proof.
+  intros. unfold upd2d. rewrite Nat.eqb_refl. easy.
+Qed.
+
+Lemma Nsum2dmask_delete_d2 :
+  forall m n f t y,
+    y < m ->
+    Nsum2dmask (S n) m f (upd2d t n y false) + (if (t n y) then f n y else 0) = Nsum2dmask (S n) m f t.
+Proof.
+  intros. unfold Nsum2dmask. simpl.
+  rewrite Nsum2d_eq with (g := (fun i j : nat => if t i j then f i j else 0)).
+  rewrite Nsum_eq with (f := (fun i : nat => if upd2d t n y false n i then f n i else 0)) (g := update (fun i : nat => if t n i then f n i else 0) y 0).
+  rewrite plus_assoc_reverse. rewrite Nsum_delete. easy.
+  easy.
+  intros. bdestruct (y =? x). subst. rewrite upd2d_eq. rewrite update_index_eq. easy.
+  rewrite upd2d_neq by lia. rewrite update_index_neq by lia. easy.
+  intros. rewrite upd2d_neq by lia. easy.
+Qed.
+
+Lemma Nsum2dmask_delete :
+  forall n m f t x y,
+    x < n -> y < m ->
+    Nsum2dmask n m f (upd2d t x y false) + (if (t x y) then f x y else 0) = Nsum2dmask n m f t.
+Proof.
+  induction n. easy.
+  intros. bdestruct (x =? n). subst. apply Nsum2dmask_delete_d2. easy.
+  assert (x < n) by lia.
+  unfold Nsum2dmask in *. simpl.
+  assert (forall a b c, a + b + c = (a + c) + b) by (intros; lia).
+  rewrite H3. rewrite IHn by easy. rewrite Nsum_eq with (g := (fun i : nat => if t n i then f n i else 0)).
+  easy.
+  intros. rewrite upd2d_neq by lia. easy.
+Qed.
+
+Lemma Nsum2dmask_allfalse :
+  forall n m f t,
+    (forall x y, x < n -> y < m -> t x y = false) ->
+    Nsum2dmask n m f t = 0.
+Proof.
+  intros. unfold Nsum2dmask. induction n. easy.
+  simpl. rewrite IHn. rewrite Nsum_eq with (g := fun _ => 0). rewrite Nsum_zero. easy.
+  intros. rewrite H. easy. lia. easy.
+  intros. apply H. lia. easy.
+Qed.
+
+Lemma pair_neq :
+  forall x y i j : nat, (x, y) <> (i, j) -> x <> i \/ y <> j.
+Proof.
+  intros. bdestruct (x =? i); bdestruct (y =? j); subst; try easy.
+  right. easy. left. easy. left. easy.
+Qed.
+
+Lemma Nsum2dmask_bijection :
+  forall n f p q g (t : nat -> nat -> bool) (map : nat -> nat * nat),
+    (forall x, x < n -> let (i, j) := map x in t i j = true) ->
+    (forall i j, i < p -> j < q -> t i j = true -> exists x, x < n /\ map x = (i, j)) ->
+    (forall x, x < n -> let (i, j) := map x in i < p /\ j < q) ->
+    (forall x, x < n -> let (i, j) := map x in f x = g i j) ->
+    (forall x y, x < n -> y < n -> x <> y -> map x <> map y) ->
+    Nsum n f = Nsum2dmask p q g t.
+Proof.
+  induction n; intros.
+  - assert (forall x y, x < p -> y < q -> t x y = false). {
+      intros. specialize (H0 _ _ H4 H5).
+      destruct (t x y).
+      destruct H0. easy. destruct H0. lia. easy.
+    }
+    rewrite Nsum2dmask_allfalse by easy. easy.
+  - simpl. destruct (map n) as (i, j) eqn:E.
+    remember (upd2d t i j false) as u.
+    assert (t i j = true). {
+      specialize (H n). rewrite E in H. apply H. flia.
+    }
+    assert (i < p /\ j < q). {
+      specialize (H1 n). rewrite E in H1. apply H1. flia.
+    }
+    assert (f n = g i j). {
+      specialize (H2 n). rewrite E in H2. apply H2. flia.
+    }
+    assert (forall x, x < n -> map n <> map x). {
+      intros. specialize (H3 n x). apply H3; flia H7.
+    }
+    rewrite (IHn f p q g u map). subst. symmetry. rewrite <- Nsum2dmask_delete with (x := i) (y := j).
+    rewrite H4, H6. easy. easy. easy.
+    + intros. specialize (H7 _ H8). destruct (map x) eqn:E'.
+      rewrite E in H7. apply pair_neq in H7. rewrite Hequ.
+      rewrite upd2d_neq by flia H7.
+      specialize (H x). rewrite E' in H. apply H. flia H8.
+    + intros.
+      assert (t i0 j0 = true). {
+        rewrite Hequ in H10. destruct (t i0 j0) eqn:Et. easy.
+        bdestruct (i =? i0).
+        - bdestruct (j =? j0). subst. rewrite upd2d_eq in H10. easy.
+          rewrite upd2d_neq in H10. rewrite H10 in Et. easy. right. flia H12.
+        - rewrite upd2d_neq in H10. rewrite H10 in Et. easy. left. flia H11.
+      }
+      apply H0 in H11. destruct H11 as [x [? ?]].
+      bdestruct (x =? n). subst. rewrite E in H12.
+      apply pair_equal_spec in H12. destruct H12.
+      subst. rewrite upd2d_eq in H10. easy.
+      exists x. split. flia H11 H13. easy. easy. easy.
+    + intros. apply H1. flia H8.
+    + intros. apply H2. flia H8.
+    + intros. apply H3. flia H8. flia H9. easy.
+Qed.
+
+Lemma Nsum2d_Nsum2dmask :
+  forall n m f t,
+    (forall x y, x < n -> y < m -> t x y = true) ->
+    Nsum2d n m f = Nsum2dmask n m f t.
+Proof.
+  induction n; intros. easy.
+  unfold Nsum2dmask in *. simpl. rewrite IHn with (t := t).
+  symmetry. rewrite Nsum_eq with (g := (fun i : nat => f n i)). easy.
+  intros. rewrite H by lia. easy.
+  intros. apply H; lia.
+Qed.
+
+Lemma Nsum_Nsum2d :
+  forall n f,
+    Nsum n f = Nsum2d 1 n (fun _ i => f i).
+Proof.
+  intros. easy.
+Qed.
+
 Definition modinv (a N : nat) := let (n, m) := exteuc a N in Z.to_nat (n mod N)%Z.
 
 Lemma modinv_correct :
@@ -163,6 +488,82 @@ Proof.
   pattern N at 2. replace N with (Z.to_nat (Z.of_nat N)) by (rewrite Nat2Z.id; easy).
   assert (0 <= z mod N < N)%Z by (apply Z_mod_lt; lia). 
   apply Z2Nat.inj_lt; lia.
+Qed.
+
+Lemma modinv_coprime :
+  forall p q,
+    1 < p -> 0 < q ->
+    Nat.gcd p q = 1 ->
+    Nat.gcd (modinv q p) p = 1.
+Proof.
+  intros.
+  assert ((q * modinv q p) mod p = 1). {
+    rewrite modinv_correct, Nat.gcd_comm, H1.
+    apply Nat.mod_small. easy. lia.
+  }
+  rewrite Nat.mul_comm in H2.
+  apply mul_mod_1_gcd with (b := q). easy.
+Qed.
+
+Lemma Nsum_coprime_linear :
+  forall p f a b,
+    a < p -> b < p -> 1 < p ->
+    Nat.gcd a p = 1 ->
+    Nsum p (fun i => f ((i * a + b) mod p)) = Nsum p f.
+Proof.
+  intros. rewrite Nsum_Nsum2d, Nsum2d_Nsum2dmask with (t := (fun _ _ => true)).
+  2: intros; easy.
+  symmetry. apply Nsum2dmask_bijection with (map := fun i => (0, ((i + (p - b)) * modinv a p) mod p)).
+  - intros. easy.
+  - intros. assert (i = 0) by flia H3. subst.
+    exists ((j * a + b) mod p).
+    split. apply Nat.mod_upper_bound. flia H.
+    rewrite pair_equal_spec. split. easy.
+    rewrite <- Nat.mul_mod_idemp_l by flia H.
+    rewrite Nat.add_mod_idemp_l by flia H.
+    replace (j * a + b + (p - b)) with (j * a + p) by flia H0.
+    rewrite <- Nat.add_mod_idemp_r by flia H.
+    rewrite Nat.mod_same by flia H. rewrite Nat.add_0_r.
+    rewrite Nat.mul_mod_idemp_l by flia H.
+    replace (j * a * modinv a p) with (j * (a * modinv a p)) by flia.
+    rewrite <- Nat.mul_mod_idemp_r by flia H.
+    rewrite modinv_correct by flia H. rewrite H2. rewrite Nat.mod_small with (a := 1) by flia H1.
+    rewrite Nat.mul_1_r.
+    apply Nat.mod_small. easy.
+  - intros. split. flia. apply Nat.mod_upper_bound. flia H.
+  - intros.
+    rewrite <- Nat.add_mod_idemp_l by flia H.
+    rewrite Nat.mul_mod_idemp_l by flia H.
+    replace ((x + (p - b)) * modinv a p * a) with ((x + (p - b)) * (a * modinv a p)) by flia.
+    rewrite <- Nat.mul_mod_idemp_r by flia H.
+    rewrite modinv_correct by flia H. rewrite H2. rewrite Nat.mod_small with (a := 1) by flia H1.
+    rewrite Nat.mul_1_r. rewrite Nat.add_mod_idemp_l by flia H.
+    replace (x + (p - b) + b) with (x + p) by flia H0.
+    rewrite <- Nat.add_mod_idemp_r by flia H.
+    rewrite Nat.mod_same by flia H. rewrite Nat.add_0_r.
+    rewrite Nat.mod_small; easy.
+  - intros. intro. apply pair_equal_spec in H6.
+    destruct H6.
+    assert (((x + (p - b)) * modinv a p * a + b) mod p = ((y + (p - b)) * modinv a p * a + b) mod p). {
+      rewrite <- Nat.add_mod_idemp_l, <- Nat.mul_mod_idemp_l by flia H.
+      rewrite H7.
+      rewrite Nat.mul_mod_idemp_l, Nat.add_mod_idemp_l by flia H.
+      easy.
+    }
+    replace ((x + (p - b)) * modinv a p * a) with ((x + (p - b)) * (a * modinv a p)) in H8 by flia.
+    replace ((y + (p - b)) * modinv a p * a) with ((y + (p - b)) * (a * modinv a p)) in H8 by flia.
+    rewrite <- Nat.add_mod_idemp_l, <- Nat.mul_mod_idemp_r, modinv_correct in H8 by flia H.
+    rewrite H2, Nat.mod_small with (a := 1), Nat.mul_1_r in H8 by flia H1.
+    rewrite Nat.add_mod_idemp_l in H8 by flia H.
+    replace (x + (p - b) + b) with (x + p) in H8 by flia H0.
+    rewrite <- Nat.add_mod_idemp_r, Nat.mod_same, Nat.add_0_r, Nat.mod_small in H8 by flia H H3.
+    symmetry in H8.
+    rewrite <- Nat.add_mod_idemp_l, <- Nat.mul_mod_idemp_r, modinv_correct in H8 by flia H.
+    rewrite H2, Nat.mod_small with (a := 1), Nat.mul_1_r in H8 by flia H1.
+    rewrite Nat.add_mod_idemp_l in H8 by flia H.
+    replace (y + (p - b) + b) with (y + p) in H8 by flia H0.
+    rewrite <- Nat.add_mod_idemp_r, Nat.mod_same, Nat.add_0_r, Nat.mod_small in H8 by flia H H4.
+    flia H5 H8.
 Qed.
 
 (* r is the order of a modulo p *)
@@ -215,16 +616,6 @@ Proof.
   intros. exists (a^(pred r))%nat. destruct H as [? [? _]].
   assert (a * a ^ Init.Nat.pred r = a^1 * a^(Init.Nat.pred r))%nat. rewrite Nat.pow_1_r; easy. rewrite H1.
   rewrite <- Nat.pow_add_r. rewrite Nat.succ_pred; lia.
-Qed.
-
-Lemma natmul1 :
-  forall a b,
-    b <> 1 ->
-    ~(a * b = 1).
-Proof.
-  intros. intro. destruct a; destruct b; try lia.
-  destruct b. lia. assert (S a >= 1) by lia. assert (S (S b) >= 2) by lia.
-  assert (S a * S (S b) >= 2) by nia. lia.
 Qed.
 
 Lemma Order_rel_prime :
@@ -634,6 +1025,121 @@ Proof.
   apply Order_rel_prime with (r := r). easy.
 Qed.
 
+Lemma Order_mod :
+  forall a r N,
+    Order a r N ->
+    Order (a mod N) r N.
+Proof.
+  intros. destruct H as [? [? ?]].
+  split. easy.
+  split. rewrite <- pow_mod. easy.
+  intros. apply H1.
+  split. easy.
+  rewrite pow_mod. easy.
+Qed.
+
+Fixpoint ord' n a N :=
+  match n with
+  | O => O
+  | S n' => match (ord' n' a N) with
+           | O => (if (a ^ n mod N =? 1) then n else O)
+           | _ => ord' n' a N
+           end
+  end.
+Definition ord a N := ord' (φ N) a N.
+
+Lemma ord'_upper_bound :
+  forall n a N, ord' n a N <= n.
+Proof.
+  intros. induction n. easy.
+  simpl. destruct (ord' n a N). bdestruct ((a * a ^ n) mod N =? 1); lia. lia.
+Qed.
+
+Lemma ord'_a_pow_mod :
+  forall n a N, 2 <= N -> a ^ (ord' n a N) mod N = 1.
+Proof.
+  intros. induction n. simpl. rewrite Nat.mod_small; lia.
+  simpl. destruct (ord' n a N).
+  bdestruct ((a * a ^ n) mod N =? 1). simpl. rewrite H0. easy.
+  simpl. rewrite Nat.mod_small; lia. easy.
+Qed.
+
+Lemma ord'_non_zero_increase :
+  forall m n a N,
+    n <= m ->
+    ord' n a N <> 0 ->
+    ord' m a N = ord' n a N.
+Proof.
+  induction m; intros. assert (n = 0) by lia. subst. easy.
+  bdestruct (n =? S m). subst. easy.
+  assert (n <= m) by lia. specialize (IHm _ _ _ H2 H0).
+  simpl. rewrite IHm. destruct (ord' n a N). lia. easy.
+Qed.
+
+Lemma ord'_non_zero :
+  forall n a N, n <> 0 -> a ^ n mod N = 1 -> ord' n a N <> 0.
+Proof.
+  intros. destruct n. lia.
+  simpl. destruct (ord' n a N). simpl in H0. rewrite H0.
+  rewrite Nat.eqb_refl. lia. lia.
+Qed.
+
+Lemma ord_non_zero :
+  forall a N,
+    2 <= N -> Nat.gcd a N = 1 ->
+    ord a N <> 0.
+Proof.
+  intros. unfold ord.
+  assert (a ^ (φ N) mod N = 1). {
+    rewrite φ_φ' by easy. replace 1 with (1 mod N) by (apply Nat.mod_small; lia).
+    apply PTotient.euler_fermat_little. lia.
+    intro. rewrite H1 in H0. rewrite Nat.gcd_0_l in H0. lia.
+    easy.
+  }
+  assert (0 < φ N) by (apply φ_pos; easy).
+  apply ord'_non_zero; lia.
+Qed.
+
+Lemma ord'_lt_zero :
+  forall n m a N,
+    0 < m < ord' n a N ->
+    a ^ m mod N <> 1.
+Proof.
+  intros. intro.
+  assert (ord' m a N <> 0) by (apply ord'_non_zero; lia).
+  assert (m <= n) by (specialize (ord'_upper_bound n a N); lia).
+  assert (ord' m a N <= m) by (specialize (ord'_upper_bound m a N); lia).
+  apply ord'_non_zero_increase with (a := a) (N := N) in H2.
+  lia. easy.
+Qed.
+
+Lemma ord_Order :
+  forall a N,
+    2 <= N -> Nat.gcd a N = 1 ->
+    Order a (ord a N) N.
+Proof.
+  intros. unfold Order.
+  assert (ord a N <> 0) by (apply ord_non_zero; easy).
+  split. lia.
+  split. apply ord'_a_pow_mod. easy.
+  intros. destruct H2. bdestruct (r' <? ord a N). unfold ord in H4.
+  assert (a ^ r' mod N <> 1) by (apply ord'_lt_zero with (n := (φ N)); lia).
+  easy. easy.
+Qed.
+
+Lemma ord_mod :
+  forall a N,
+    2 <= N ->
+    Nat.gcd a N = 1 ->
+    ord a N = ord (a mod N) N.
+Proof.
+  intros.
+  assert (Nat.gcd (a mod N) N = 1) by (rewrite Nat.gcd_mod by flia H; rewrite Nat.gcd_comm; easy).
+  apply ord_Order in H0. apply ord_Order in H1. 2, 3: easy.
+  apply Order_mod in H0.
+  apply Order_unique with (a := (a mod N)) (N := N); easy.
+Qed.
+
 Lemma Order_not_factor :
   forall a r N x,
     Order a r N ->
@@ -717,6 +1223,122 @@ Proof.
     replace (p * (q * ((a / p + 1) / q)) - 1) with ((p * q) * (((a / p + 1) / q) - 1) + (p * q - 1)) by flia H H8.
     rewrite Nat_mod_add_l_mul_l by nia.
     apply Nat.mod_small. nia.
+Qed.
+
+Definition crt2 i j p q := (q * (modinv q p) * i + p * (modinv p q) * j) mod (p * q).
+
+Lemma mod_mul :
+  forall x p q,
+    p <> 0 -> q <> 0 ->
+    (x mod (p * q)) mod p = x mod p.
+Proof.
+  intros. rewrite Nat.mod_mul_r by easy.
+  rewrite Nat_mod_add_r_mul_l. apply Nat.mod_mod. easy. easy.
+Qed.
+
+Lemma crt2_sur :
+  forall x i j p q,
+    i < p -> j < q ->
+    Nat.gcd p q = 1 ->
+    x = crt2 i j p q ->
+    x mod p = i /\ x mod q = j.
+Proof.
+  intros. split; subst; unfold crt2.
+  - rewrite mod_mul by flia H H0.
+    replace (p * modinv p q * j) with (p * (modinv p q * j)) by flia.
+    rewrite Nat_mod_add_r_mul_l by flia H.
+    rewrite <- Nat.mul_mod_idemp_l by flia H.
+    rewrite modinv_correct by flia H.
+    rewrite Nat.gcd_comm, H1.
+    bdestruct (p =? 1). assert (i = 0) by flia H H2. subst. easy.
+    rewrite Nat.mod_small with (a := 1) by flia H H2.
+    rewrite Nat.mod_small by flia H. flia.
+  - replace (p * q) with (q * p) by flia.    
+    rewrite mod_mul by flia H H0.
+    replace (q * modinv q p * i) with (q * (modinv q p * i)) by flia.
+    rewrite Nat_mod_add_l_mul_l by flia H0.
+    rewrite <- Nat.mul_mod_idemp_l by flia H0.
+    rewrite modinv_correct by flia H0.
+    rewrite H1.
+    bdestruct (q =? 1). assert (j = 0) by flia H0 H2. subst. easy.
+    rewrite Nat.mod_small with (a := 1) by flia H0 H2.
+    rewrite Nat.mod_small by flia H0. flia.
+Qed.
+
+Lemma crt2_upper_bound :
+  forall i j p q, p <> 0 -> q <> 0 -> crt2 i j p q < p * q.
+Proof.
+  intros. unfold crt2. apply Nat.mod_upper_bound. nia.
+Qed.
+
+Lemma crt2_correct :
+  forall x i j p q,
+    i < p -> j < q -> x < p * q ->
+    Nat.gcd p q = 1 ->
+    x mod p = i /\ x mod q = j   <->   x = crt2 i j p q.
+Proof.
+  intros.
+  assert (crt2 i j p q mod p = i /\ crt2 i j p q mod q = j) by (apply crt2_sur; easy).
+  split. 2: intro; apply crt2_sur; easy.
+  intros. destruct H3, H4.
+  bdestruct (x =? crt2 i j p q). easy.
+  bdestruct (x <? crt2 i j p q).
+  - assert ((crt2 i j p q - x) mod p = 0) by (apply Nat_eq_mod_sub_0; rewrite H3, H4; easy).
+    assert ((crt2 i j p q - x) mod q = 0) by (apply Nat_eq_mod_sub_0; rewrite H5, H6; easy).
+    rewrite Nat.mod_divide in H9, H10 by flia H H0.
+    assert (Nat.divide (p * q) (crt2 i j p q - x)) by (apply Primisc.Nat_gcd_1_mul_divide; easy).
+    destruct H11.
+    destruct x0. flia H8 H11.
+    assert (crt2 i j p q < p * q) by (apply crt2_upper_bound; flia H H0).
+    flia H11 H12.
+  - assert ((x - crt2 i j p q) mod p = 0) by (apply Nat_eq_mod_sub_0; rewrite H3, H4; easy).
+    assert ((x - crt2 i j p q) mod q = 0) by (apply Nat_eq_mod_sub_0; rewrite H5, H6; easy).
+    rewrite Nat.mod_divide in H9, H10 by flia H H0.
+    assert (Nat.divide (p * q) (x - crt2 i j p q)) by (apply Primisc.Nat_gcd_1_mul_divide; easy).
+    destruct H11.
+    destruct x0. flia H8 H11.
+    flia H11 H1.
+Qed.
+
+Lemma gcd_crt2 :
+  forall i j p q,
+    1 < p -> 1 < q ->
+    Nat.gcd p q = 1 ->
+    Nat.gcd (crt2 i j p q) (p * q) = 1 <-> Nat.gcd i p = 1 /\ Nat.gcd j q = 1.
+Proof.
+  intros. split; intros.
+  unfold crt2 in H2. rewrite Nat.gcd_mod in H2 by flia H H0.
+  - split.
+    + bdestruct (Nat.gcd i p =? 1). easy.
+      destruct (Nat.gcd_divide i p). destruct H4, H5.
+      replace (p * q) with ((x0 * q) * Nat.gcd i p) in H2 by flia H5.
+      replace (q * modinv q p * i + p * modinv p q * j) with ((q * modinv q p * x + x0 * modinv p q * j) * Nat.gcd i p) in H2 by flia H4 H5.
+      rewrite Nat.gcd_mul_mono_r in H2.
+      apply natmul1 in H2; easy.
+    + bdestruct (Nat.gcd j q =? 1). easy.
+      destruct (Nat.gcd_divide j q). destruct H4, H5.
+      replace (p * q) with ((x0 * p) * Nat.gcd j q) in H2 by flia H5.
+      replace (q * modinv q p * i + p * modinv p q * j) with ((x0 * modinv q p * i + x * modinv p q * p) * Nat.gcd j q) in H2 by flia H4 H5.
+      rewrite Nat.gcd_mul_mono_r in H2.
+      apply natmul1 in H2; easy.
+  - destruct H2.
+    unfold crt2. rewrite Nat.gcd_mod by flia H H0.
+    apply Nat_gcd_1_mul_l.
+    rewrite <- Nat.gcd_mod by flia H.
+    replace (p * modinv p q * j) with (p * (modinv p q * j)) by flia.
+    rewrite Nat_mod_add_r_mul_l by flia H.
+    rewrite Nat.gcd_mod by flia H.
+    apply Nat_gcd_1_mul_r. apply Nat_gcd_1_mul_r.
+    easy. rewrite Nat.gcd_comm. apply modinv_coprime; try easy; try flia H H0.
+    rewrite Nat.gcd_comm. easy.
+    rewrite <- Nat.gcd_mod by flia H0.
+    replace (q * modinv q p * i) with (q * (modinv q p * i)) by flia.
+    rewrite Nat_mod_add_l_mul_l by flia H0.
+    rewrite Nat.gcd_mod by flia H0.
+    apply Nat_gcd_1_mul_r. apply Nat_gcd_1_mul_r.
+    rewrite Nat.gcd_comm. easy. rewrite Nat.gcd_comm. apply modinv_coprime; try easy; try flia H H0.
+    rewrite Nat.gcd_comm. easy.
+    rewrite Nat.gcd_comm. easy.
 Qed.
 
 Lemma Order_coprime_lcm :
@@ -1391,6 +2013,16 @@ Proof.
   intros. easy.
 Qed.
 
+Lemma cnttrue_extend_more :
+  forall m n f, cnttrue (n + m) f = cnttrue n f + cnttrue m (fun x => f (n + x)).
+Proof.
+  induction m; intros. simpl. do 2 rewrite Nat.add_0_r. easy.
+  simpl.
+  replace (n + S m) with (S (n + m)) by flia. simpl.
+  destruct (f (S (n + m))). rewrite IHm. lia.
+  apply IHm.
+Qed.
+
 Lemma cnttrue_allfalse :
   forall n, cnttrue n (fun _ => false) = O.
 Proof.
@@ -1445,6 +2077,24 @@ Proof.
   rewrite <- IHn. simpl.
   destruct (f (S n)). simpl. lia.
   simpl. lia.
+Qed.
+
+Lemma cnttrue_Nsum_aux :
+  forall n f,
+    f 0 = false ->
+    cnttrue n f = Nsum (S n) (fun i => if f i then 1 else 0).
+Proof.
+  intros. induction n. simpl. rewrite H. easy.
+  simpl. rewrite IHn. destruct (f (S n)); simpl; lia.
+Qed.
+
+Lemma cnttrue_Nsum :
+  forall n f,
+    f 0 = false -> f n = false ->
+    cnttrue n f = Nsum n (fun i => if f i then 1 else 0).
+Proof.
+  intros. destruct n. easy.
+  simpl. rewrite H0. rewrite cnttrue_Nsum_aux; easy.
 Qed.
 
 Lemma exists_pos_dec :
@@ -1695,6 +2345,20 @@ Proof.
   simpl. destruct (f (S n)); simpl; destruct (g (S n)); simpl; lia.
 Qed.
 
+Lemma cnttrue_indicate :
+  forall n f g,
+    (forall x, 0 < x <= n -> f x = true -> g x = true) ->
+    cnttrue n f <= cnttrue n g.
+Proof.
+  intros. induction n. easy.
+  assert (cnttrue n f <= cnttrue n g). {
+    apply IHn. intros. apply H. lia. easy.
+  }
+  simpl. destruct (f (S n)) eqn:Efsn. apply H in Efsn. 2: lia.
+  rewrite Efsn. lia.
+  destruct (g (S n)); lia.
+Qed.
+
 Lemma not_qr_half :
   forall p k,
     k <> 0 -> prime p -> 2 < p ->
@@ -1705,6 +2369,48 @@ Proof.
   assert (cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1) = 2 * cnttrue (p^k) (fun x => (Nat.gcd x (p^k) =? 1) && qr_dec_b x (p^k))) by (apply qr_half; easy).
   assert (cnttrue (p ^ k) (fun x : nat => (Nat.gcd x (p ^ k) =? 1) && qr_dec_b x (p ^ k)) + cnttrue (p ^ k) (fun x : nat => (Nat.gcd x (p ^ k) =? 1) && ¬ (qr_dec_b x (p ^ k))) = cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1)) by apply cnttrue_complement.
   lia.
+Qed.
+
+Lemma d2p_half :
+  forall p k d,
+    k <> 0 -> prime p -> 2 < p ->
+    cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1) <= 2 * cnttrue (p^k) (fun x => (Nat.gcd x (p^k) =? 1) && ¬ (d2p (ord x (p^k)) =? d)).
+Proof.
+  intros.
+  assert (2 < p ^ k) by (apply prime_power_lb; easy).
+  assert (forall a b, a <= b -> 2 * a <= 2 * b) by (intros; lia).
+  bdestruct (d =? d2p (φ (p ^ k))).
+  - rewrite qr_half by easy. apply H3.
+    apply cnttrue_indicate. intros.
+    rewrite andb_true_iff in *. destruct H6.
+    split; rewrite Nat.eqb_eq in *. easy.
+    rewrite <- negb_false_iff, negb_involutive.
+    apply Nat.eqb_neq. intro. subst.
+    unfold qr_dec_b in H7. destruct qr_dec in H7. easy.
+    assert (Order x (ord x (p ^ k)) (p ^ k)) by (apply ord_Order; lia).
+    apply qr_d2p_lt in H4; try easy. flia H4 H8.
+    bdestruct (x =? p^k). subst. rewrite Nat.gcd_diag_nonneg in H6 by flia H2.
+    flia H2 H6. flia H5 H9.
+    destruct e as [y [? ?]]. exists y. split.
+    bdestruct (y =? p ^ k). rewrite H11 in H10.
+    replace ((p ^ k) ^ 2) with ((p ^ k) * (p ^ k)) in H10 by (simpl; flia).
+    rewrite <- Nat.mul_mod_idemp_l in H10 by flia H2.
+    rewrite Nat.mod_same in H10 by flia H2. rewrite Nat.mul_0_l in H10.
+    rewrite Nat.mod_small in H10 by flia H2. flia H5 H10.
+    flia H9 H11.
+    easy.
+  - rewrite not_qr_half by easy. apply H3.
+    apply cnttrue_indicate. intros.
+    rewrite andb_true_iff in *. destruct H6.
+    split; rewrite Nat.eqb_eq in *. easy.
+    rewrite <- negb_false_iff, negb_involutive.
+    apply Nat.eqb_neq. intro. subst.
+    unfold qr_dec_b in H7. destruct qr_dec in H7. 2: easy.
+    assert (Order x (ord x (p ^ k)) (p ^ k)) by (apply ord_Order; lia).
+    apply not_qr_d2p_eq in H8; try easy. 
+    bdestruct (x =? p^k). subst. rewrite Nat.gcd_diag_nonneg in H6 by flia H2.
+    flia H2 H6. flia H5 H9.
+    intros. apply n. flia H9.
 Qed.
 
 
