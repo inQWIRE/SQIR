@@ -22,6 +22,12 @@ All of these scripts print gate count data to the console and write to a CSV fil
 
 To install PyZX using pip, run `pip install pyzx`. To run Qiskit on the benchmarks, use the command `python run_pyzx.py d f` where `d` is the input directory and `f` is the output filename.
 
+#### Translation Validation
+
+PyZX provides a function for checking equivalence of quantum programs, which can be used to validate compiler outputs (see Sec 3.2 of [arxiv:1904.04735](https://arxiv.org/pdf/1904.04735.pdf)). We can use this as a sanity check on VOQC's outputs. Use the `validate_outputs.sh` script to run VOQC on all the programs in VOQC-benchmarks/Arithmetic_and_Toffoli_partial and validate the results using PyZX. 
+
+At the time of writing, PyZX's translation validator will not succeed on programs compiled by VOQC from the VOQC-benchmarks/PF directory (see `validate_outputs_fail.sh`). This is not an indication of a bug in VOQC, but rather evidence that translation validation is an incomplete solution -- PyZX's translation validator cannot always show that two circuits are equivalent. It may also be the result of different roundoff error in PyZX versus VOQC. VOQC begins by converting float parameters to rational numbers, performs optimization over rationals, and then converts  rationals back to floats with 53 bits of precision.
+
 ### Qiskit
 
 To install Qiskit using pip, run `pip install qiskit`. To run Qiskit on the benchmarks, use the command `python run_qiskit.py d f` where `d` is the input directory and `f` is the output filename.
