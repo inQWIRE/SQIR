@@ -1927,78 +1927,12 @@ Proof.
   apply eq_gcd_prime_small_1. easy. lia.
 Qed.
 
-Lemma Euler_criterion_qr :
-  forall a p k,
-    k <> 0 -> prime p -> 2 < p -> a < p^k ->
-    (exists x, 0 < x < p^k /\ x^2 mod p^k = a) ->
-    a ^ (φ (p^k) / 2) mod p^k = 1.
-Admitted.
-
-Lemma Euler_criterion_not_qr :
-  forall a p k,
-    k <> 0 -> prime p -> 2 < p -> a < p^k ->
-    (forall x, 0 < x < p^k -> x^2 mod p^k <> a) ->
-    a ^ (φ (p^k) / 2) mod p^k = p^k - 1.
-Admitted.
-
-Lemma φ_odd_prime_pow :
-  forall p k,
-    k <> 0 -> prime p -> 2 < p ->
-    φ (p ^ k) = 2 * (φ (p ^ k) / 2)   /\   φ (p ^ k) / 2 <> 0.
-Proof.
-  intros.
-  specialize (prime_pow_φ _ H0 _ H) as T.
-  rewrite prime_φ with (p := p) in T by easy.
-  assert (p mod 2 = 1) by (apply odd_prime; try easy; try lia).
-  remember 2 as tmp. replace 1 with (1 mod 2) in H2 by easy. subst.
-  apply Nat_eq_mod_sub_0 in H2.
-  assert (φ (p ^ k) mod 2 = 0). {
-    rewrite T. rewrite <- Nat.mul_mod_idemp_r by easy. rewrite H2.
-    rewrite Nat.mul_0_r. easy.
-  }
-  apply Nat.mod_divide in H3. 2: easy.
-  destruct H3.
-  assert (φ (p ^ k) / 2 = x) by (rewrite H3; apply Nat.div_mul; easy).
-  assert (0 < φ (p ^ k)). {
-    apply φ_pos. specialize (prime_power_lb p k H H0 H1). flia.
-  }
-  rewrite H4. flia H3 H5.
-Qed.
-
-Lemma qr_d2p_lt :
-  forall a r p k,
-    k <> 0 -> prime p -> 2 < p -> a < p^k ->
-    (exists x, 0 < x < p^k /\ x^2 mod p^k = a) ->
-    Order a r (p ^ k) ->
-    d2p r < d2p (φ (p ^ k)).
-Proof.
-  intros. specialize (Euler_criterion_qr _ _ _ H H0 H1 H2 H3) as G.
-  apply Order_factor_mod1 with (r := r) in G.
-  assert (φ (p ^ k) = 2 * (φ (p ^ k) / 2) /\ (φ (p ^ k) / 2 <> 0)) by (apply φ_odd_prime_pow; easy).
-  destruct H5. rewrite H5. rewrite d2p_double. 2: easy.
-  specialize (d2p_factor _ _ H6 G). flia.
-  easy.
-Qed.
-
-Lemma not_qr_d2p_eq :
-  forall a r p k,
-    k <> 0 -> prime p -> 2 < p -> a < p^k ->
-    (forall x, 0 < x < p^k -> x^2 mod p^k <> a) ->
-    Order a r (p ^ k) ->
-    d2p r = d2p (φ (p ^ k)).
-Proof.
-  intros. specialize (Euler_criterion_not_qr _ _ _ H H0 H1 H2 H3) as G.
-  assert (φ (p ^ k) = 2 * (φ (p ^ k) / 2) /\ (φ (p ^ k) / 2 <> 0)) by (apply φ_odd_prime_pow; easy).
-  destruct H5.
-  assert (p ^ k > 2) by (apply prime_power_lb; easy).
-  assert (a ^ (φ (p ^ k) / 2) mod p ^ k <> 1) by flia G H7.
-  specialize (Order_not_factor  _ _ _ _ H4 H8) as T.
-  specialize (Order_factor_φ _ _ _ H4) as T2.
-  rewrite H5 in T2.
-  apply d2p_stuck in T2. 2: easy.
-  rewrite H5. rewrite d2p_double. 2: easy.
-  easy.
-Qed.
+Fixpoint modmul n (f : nat -> bool) N :=
+  match n with
+  | O => 1
+  | S n' => if (f n) then (n * (modmul n' f N)) mod N
+           else modmul n' f N
+end.
 
 Fixpoint cnttrue n (f : nat -> bool) :=
   match n with
@@ -2108,6 +2042,824 @@ Proof.
     + left. intros. bdestruct (x =? S n). subst. easy. apply e. lia.
     + right. destruct e. exists x. split. lia. easy.
 Qed.
+
+
+Ltac iauto := try lia; auto.
+
+Lemma modmul_same :
+  forall n f g N,
+    (forall x, 0 < x <= n -> f x = g x) ->
+    modmul n f N = modmul n g N.
+Proof.
+  induction n; intros. easy.
+  assert (f (S n) = g (S n)) by (apply H; lia).
+  simpl. rewrite H0. rewrite IHn with (g := g). easy.
+  intros. apply H. lia.
+Qed.
+
+Lemma modmul_coprime :
+  forall n f N, 1 < N -> (forall x, 0 < x <= n -> f x = true -> Nat.gcd x N = 1) -> 
+    Nat.gcd (modmul n f N) N = 1.
+Proof.
+  induction n; intros.
+  reflexivity.
+  simpl. destruct (f (S n)) eqn: H1.
+  replace (modmul n f N + n * modmul n f N) with (S n * modmul n f N) by reflexivity.
+  rewrite Nat.gcd_mod by lia. rewrite Nat_gcd_1_mul_r. reflexivity.
+  rewrite Nat.gcd_comm. apply H0; iauto.
+  rewrite Nat.gcd_comm. apply IHn. lia. intros. apply H0; iauto.
+  apply IHn. lia. intros. apply H0; iauto.
+Qed.
+
+Lemma modmul_update :
+  forall n t N x, 0 < N ->
+    0 < x <= n -> t x = true -> 
+    modmul n t N = (x * modmul n (update t x false) N) mod N.
+Proof.
+  induction n; intros.
+  - lia.
+  - bdestruct (x =? S n).
+    subst. simpl. rewrite H1. rewrite update_index_eq.
+    erewrite modmul_same. reflexivity.
+    intros. rewrite update_index_neq; iauto.
+
+    simpl. rewrite update_index_neq by easy. destruct (t (S n)).
+    + rewrite IHn with _ _ x; iauto.
+      remember (modmul n (update t x false) N) as s.
+      rewrite <- Nat.add_mod_idemp_r by lia.
+      rewrite Nat.mul_mod_idemp_r by lia.
+      rewrite Nat.mul_mod_idemp_r by lia.
+      replace (x * (s + n * s)) with (x * s + n * (x * s)) by lia.
+      rewrite <- Nat.add_mod by lia.
+      reflexivity.
+    + rewrite IHn with _ _ x; iauto.
+Qed.
+
+Lemma update_false_true :
+  forall f x y, (update f x false) y = true <-> (f y = true /\ y <> x).
+Proof.
+  intros. split. intro. split.
+  rewrite <- H. rewrite update_index_neq. reflexivity. intro. subst.
+  rewrite update_index_eq in H. discriminate.
+  intro. subst.
+  rewrite update_index_eq in H. discriminate.
+  intro. rewrite update_index_neq. easy. lia. 
+Qed.
+
+Lemma cnttrue_update_t_false :
+  forall n x f, 0 < x <= n -> f x = true -> S (cnttrue n (update f x false)) = cnttrue n f.
+Proof.
+  intros. 
+  assert (cnttrue n f > 0) by now apply cnttrue_pos with x.
+  rewrite cnttrue_update_t; iauto.
+Qed.
+      
+
+Lemma two2one_modmul :
+  forall n t f a N, (1 < N) ->
+    (forall x, 0 < x <= n -> t x = true -> 0 < (f x) <= n) ->
+    (forall x, 0 < x <= n -> t x = true -> t (f x) = true) ->
+    (forall y, 0 < y <= n -> t y = true -> (exists x, 0 < x <= n /\ t x = true /\ f x = y)) ->
+    (forall x, 0 < x <= n -> t x = true -> f (f x) = x) ->
+    (forall x, 0 < x <= n -> t x = true -> x <> f x) ->
+    (forall x y, 0 < x <= n -> 0 < y <= n -> t x = true -> t y = true -> f x = f y -> y = x) ->
+    (forall x, 0 < x <= n -> t x = true -> (x * f x) mod N = a mod N) ->
+    modmul n t N = a ^ ((cnttrue n t) / 2) mod N.
+Proof.
+  induction n; intros.
+  {
+    simpl. replace (0/2) with 0. simpl. rewrite Nat.mod_small. reflexivity.
+    apply H. rewrite Nat.div_small; lia.
+  }
+  Local Opaque Nat.div.
+  simpl. destruct (t (S n)) eqn: HtSn.
+  {
+    replace (modmul n t N + n * modmul n t N) with ((S n) * modmul n t N) by lia.
+    assert (0 < f (S n) <= n).
+    { apply H0 in HtSn as H7; try lia. assert (S n <> f (S n)). apply H4; auto. lia. lia.  }
+    assert (t (f (S n)) = true).
+    { apply H1; try flia; auto.  }
+    rewrite modmul_update with _ _ _ (f (S n)) by iauto.
+    rewrite <- cnttrue_update_t_false with _ (f (S n)) _ by iauto.
+    remember (update t (f (S n)) false) as t'.
+    replace (S (S (cnttrue n t')) / 2) with (1 + cnttrue n t' / 2) by now rewrite <- Nat.div_add_l by flia.
+    rewrite Nat.pow_add_r. rewrite Nat.pow_1_r.
+    rewrite Nat.mul_mod_idemp_r by lia.
+    rewrite Nat.mul_assoc.
+    rewrite <- Nat.mul_mod_idemp_l by lia.
+    rewrite H6 by now try lia.
+    rewrite IHn with t' f a _; auto; intros; clear IHn; subst.
+    rewrite Nat.mul_mod_idemp_r by lia.
+    rewrite Nat.mul_mod_idemp_l by lia. reflexivity.
+    {
+      assert (H11 := H10).
+      rewrite update_index_neq in H10.
+      assert (f x <> S n).
+      { unfold not. intro. replace (f (S n)) with x in *. rewrite update_index_eq in H11. discriminate.
+        rewrite <- H12. symmetry. apply H3. lia. easy. }
+      assert (0 < f x ≤ S n).
+      { apply H0. lia. easy. }
+      lia. unfold not. intro. subst. rewrite update_index_eq in H11. discriminate.
+    }
+    {
+      rewrite update_index_neq.
+      apply H1. lia. rewrite update_index_neq in H10. easy. 
+      unfold not. intro. subst. rewrite update_index_eq in H10. discriminate.
+      unfold not. intro. assert (S n = x). apply H5; iauto.
+      rewrite update_index_neq in H10. easy. intro. subst. rewrite update_index_eq in H10. discriminate.
+      subst. lia.
+    }
+    {
+      assert (y <> f (S n)).
+      { intro. subst. rewrite update_index_eq in H10. discriminate. }
+      rewrite update_index_neq in H10 by auto. assert (0 < y ≤ S n) by lia.
+      apply H2 in H12. destruct H12 as (x & Hx0 & Hx1 & Hx2). exists x.
+      split. assert (x <> S n).
+      { intro. subst. auto. } lia.
+      split. rewrite update_index_neq. easy.
+      intro. subst. rewrite H3 in H9. lia. lia. easy. easy. easy.
+    }
+    {
+     apply H3. lia. assert (x <> f (S n)).
+     { intro. subst. rewrite update_index_eq in H10. discriminate. }
+     rewrite update_index_neq in H10 by auto. easy.
+    }
+    {
+      apply H4. lia. assert (x <> f (S n)).
+      { intro. subst. rewrite update_index_eq in H10. discriminate. }
+      rewrite update_index_neq in H10 by auto. easy.
+    }
+    {
+      apply H5; try lia. assert (x <> f (S n)).
+      { intro. subst. rewrite update_index_eq in H11. discriminate. }
+      rewrite update_index_neq in H11 by auto. easy.
+      assert (y <> f (S n)).
+      { intro. subst. rewrite update_index_eq in H12. discriminate. }
+      rewrite update_index_neq in H12 by auto. easy.
+    }
+    {
+      apply H6. lia. assert (x <> f (S n)).
+      { intro. subst. rewrite update_index_eq in H10. discriminate. }
+      rewrite update_index_neq in H10 by auto. easy.
+    }
+  }
+  {
+    apply IHn with f; clear IHn; auto; intros.
+    + assert (0 < x <= S n) by lia. assert (H8i := H8). apply H0 in H8; auto.
+      assert (f x <> S n).
+      { unfold not. intro. rewrite <- H10 in HtSn. rewrite H1 in HtSn. easy. lia. easy. } lia.
+    + apply H1; auto. lia.
+    + assert (0 < y <= S n) by flia H7. apply H2 in H9; [| apply H8].
+      destruct H9 as (x & Hx1 & Hx2 & Hx3). exists x.
+      split; [| split]; iauto.
+      assert (x <> S n). { unfold not. intro. subst. contradict Hx2. rewrite HtSn. auto. }
+      lia.
+    + apply H3; iauto.
+    + apply H4; iauto.
+    + apply H5; iauto.
+    + apply H6; iauto.
+  }
+Qed. 
+
+(* facts about modinv *)
+
+Lemma modinv_correct_coprime :
+  forall a N, 1 < N -> Nat.gcd a N = 1 -> (a * modinv a N) mod N = 1.
+Proof.
+  intros.
+  rewrite modinv_correct by lia. rewrite H0.
+  rewrite Nat.mod_small by lia. reflexivity.
+Qed.
+
+Lemma modinv_range :
+  forall a N, 1 < N -> Nat.gcd a N = 1 -> 0 < modinv a N < N.
+Proof.
+  intros. split.
+  assert (modinv a N <> 0). intro. 
+  assert (a <> 0). intro. subst. rewrite Nat.gcd_0_l in H0. lia.
+  specialize (modinv_correct_coprime a N H H0) as H3. rewrite H1 in H3. rewrite Nat.mul_0_r in H3.
+  rewrite Nat.mod_small in H3 by lia. lia. lia. apply modinv_upper_bound. lia.
+Qed.
+
+Lemma modinv_coprime :
+  forall a N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd (modinv a N) N = 1.
+Proof.
+  intros.
+  rewrite Nat.gcd_comm.
+  eapply Nat_gcd_1_mul_r_rev.
+  rewrite Nat.mul_comm. rewrite <- Nat.gcd_mod by lia.
+  rewrite modinv_correct_coprime by now try lia.
+  apply Nat.gcd_1_l.
+Qed.
+
+Lemma modinv_modinv :
+  forall a N, 1 < N -> Nat.gcd a N = 1 -> 0 < a < N -> a = modinv (modinv a N) N.
+Proof.
+  intros. transitivity (a mod N).
+  now rewrite Nat.mod_small by lia.
+  transitivity (a * 1 mod N).
+  now rewrite Nat.mul_1_r.
+  transitivity (a * (modinv a N * modinv (modinv a N) N) mod N).
+  rewrite Nat.mul_mod with _ (modinv a N * modinv (modinv a N) N) _ by lia.
+  rewrite modinv_correct_coprime. repeat rewrite Nat.mul_1_r. rewrite Nat.mod_mod by lia.
+  now rewrite Nat.mod_small by lia. lia.
+  now rewrite modinv_coprime by now try lia.
+  replace ((a * (modinv a N * modinv (modinv a N) N))) with (modinv (modinv a N) N * (a * modinv a N)) by lia.
+  rewrite Nat.mul_mod by lia. rewrite modinv_correct_coprime by now try lia.
+  rewrite Nat.mul_1_r. rewrite Nat.mod_mod by lia.
+  rewrite Nat.mod_small. reflexivity.
+  apply modinv_upper_bound. lia.
+Qed.
+
+Lemma modinv_injective :
+  forall a b N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd b N = 1 -> 0 < a < N -> 0 < b < N ->
+    modinv a N = modinv b N -> a = b.
+Proof.
+  intros.  transitivity (a mod N).
+  now rewrite Nat.mod_small by lia.
+  transitivity (a * 1 mod N).
+  now rewrite Nat.mul_1_r.
+  replace 1 with ((modinv b N * b) mod N).
+  rewrite <- H4. rewrite Nat.mul_mod_idemp_r by lia.
+  rewrite Nat.mul_assoc. rewrite <- Nat.mul_mod_idemp_l by lia.
+  rewrite modinv_correct_coprime by iauto.
+  rewrite Nat.mod_small; lia. rewrite Nat.mul_comm.
+  rewrite modinv_correct_coprime by iauto.
+  reflexivity.
+Qed.
+
+Lemma modinv_unique :
+  forall a b N, 1 < N -> Nat.gcd a N = 1 -> 0 < b < N -> (a * b) mod N = 1 ->
+    b = modinv a N.
+Proof.
+  intros.
+  transitivity (b * (a * modinv a N mod N) mod N).
+  rewrite modinv_correct_coprime. rewrite Nat.mod_small. lia. lia. lia. easy.
+  rewrite Nat.mul_mod_idemp_r by lia.
+  replace (b * (a * modinv a N)) with (a * b * modinv a N) by lia.
+  rewrite <- Nat.mul_mod_idemp_l by lia. rewrite H2.
+  rewrite Nat.mul_1_l. rewrite Nat.mod_small. reflexivity.
+  specialize modinv_range with a N. lia.
+Qed.
+
+Lemma modinv_self :
+    forall a p k, 2 < p -> prime p -> k <> 0 -> Nat.gcd a (p ^ k) = 1 ->  a = modinv a (p ^ k) -> 
+      a = 1 \/ a = (p ^ k) - 1.
+Proof.
+  intros. 
+  assert (2 < p ^ k) by now apply prime_power_lb.
+  apply mod_sqr_sol with 1; iauto.
+  rewrite H3. apply modinv_range. lia. easy.
+  rewrite Nat.pow_1_l. rewrite Nat.mod_small by lia. easy.
+  simpl. rewrite H3 at 2. rewrite Nat.mul_1_r. rewrite modinv_correct_coprime.
+  reflexivity. lia. easy.
+Qed.
+
+Lemma modinv_mul :
+  forall a b N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd b N = 1 ->
+    modinv (a*b) N = (modinv a N * modinv b N) mod N.
+Proof.
+  intros. symmetry. apply modinv_unique. lia.
+  apply Nat_gcd_1_mul_l; easy.
+  split. assert ((modinv a N * modinv b N) mod N <> 0).
+  intro. apply Nat.mod_divide in H2. 
+  apply Nat.gauss in H2. apply Nat.divide_pos_le in H2.
+  assert (0 < modinv b N < N). apply modinv_range. lia. lia. lia.
+  assert (0 < modinv b N < N). apply modinv_range. lia. lia. lia.
+  rewrite Nat.gcd_comm.
+  apply modinv_coprime. lia. easy. lia. lia.
+  apply Nat.mod_upper_bound. lia.
+  rewrite Nat.mul_mod_idemp_r by lia.
+  replace (a * b * (modinv a N * modinv b N)) with ((a * modinv a N) * (b * modinv b N)) by lia.
+  rewrite Nat.mul_mod. rewrite modinv_correct_coprime. rewrite modinv_correct_coprime.
+  simpl. rewrite Nat.mod_small. reflexivity. lia. lia. easy. lia. easy. lia.
+Qed.
+
+Lemma modinv_mod :
+  forall a N, 1 < N -> Nat.gcd a N = 1 -> modinv a N = modinv (a mod N) N.
+Proof.
+  intros. apply modinv_unique. lia.
+  rewrite Nat.gcd_mod. rewrite Nat.gcd_comm. easy. lia.
+  apply modinv_range. lia. easy.
+  rewrite Nat.mul_mod_idemp_l. apply modinv_correct_coprime. lia. easy. lia.
+Qed.
+
+Lemma Wilson_on_prime_power :
+  forall p k, k <> 0 -> prime p -> 2 < p ->
+  modmul (p ^ k) (fun d : nat => Nat.gcd (p ^ k) d =? 1) (p ^ k) = p ^ k - 1.
+Proof.
+  intros.
+  assert (2 < p ^ k) by now apply prime_power_lb.
+  rewrite modmul_update with _ _ _ 1; try lia.
+  rewrite modmul_update with _ _ _ (p ^ k - 1); try lia.
+  rewrite Nat.mul_mod_idemp_r by lia.
+  rewrite Nat.mul_1_l.
+  replace (modmul (p ^ k) (update (update (fun d : nat => Nat.gcd (p ^ k) d =? 1) 1 false) (p ^ k - 1) false) (p ^ k)) with 1.
+  rewrite Nat.mul_1_r. apply Nat.mod_small. lia.
+  rewrite two2one_modmul with _ _ (fun x => modinv x (p ^ k)) 1 _; try lia; intros.
+  rewrite Nat.pow_1_l. symmetry. apply Nat.mod_small. lia.
+
+  assert (Nat.gcd x (p ^ k) = 1) as Hxcoprime.
+  { apply update_false_true in H4 as (H4 & H5).
+    apply update_false_true in H4 as (H4 & H6).
+    apply Nat.eqb_eq in H4. rewrite Nat.gcd_comm. easy.
+  }
+  assert (0 < modinv x (p ^ k) < p ^ k).
+  { apply modinv_range. lia. easy. } lia.
+  
+  apply update_false_true in H4 as (H4 & H5).
+  apply update_false_true in H4 as (H4 & H6).
+  apply Nat.eqb_eq in H4.
+  apply update_false_true. split. apply update_false_true. split.
+  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. rewrite modinv_coprime.
+  easy. lia. rewrite Nat.gcd_comm. easy.
+  intro. contradict H6. replace x with (x * modinv x (p ^ k)) by lia.
+  rewrite <- Nat.mod_small with (x * modinv x (p ^ k)) (p ^ k).
+  rewrite modinv_correct_coprime. lia. lia. rewrite Nat.gcd_comm. easy.
+  rewrite H7.
+  assert (x <> p ^ k). {  intro. subst. rewrite Nat.gcd_diag_nonneg in H4 by lia. lia. }
+  lia.
+  intro. contradict H5. apply modinv_injective with (p ^ k); try lia.
+  rewrite Nat.gcd_comm. easy. rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l by lia.
+  now rewrite Nat.gcd_1_r.  
+  assert (x <> p ^ k). {  intro. subst. rewrite Nat.gcd_diag_nonneg in H4 by lia. lia. }
+  lia. rewrite H7. apply modinv_unique; try lia. rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l by lia.
+  now rewrite Nat.gcd_1_r.
+  replace ((p ^ k - 1) * (p ^ k - 1)) with ((p ^ k - 2) * p ^ k + 1) by lia.
+  rewrite Nat.add_mod by lia. rewrite Nat.mod_mul by lia.
+  rewrite Nat.add_0_l. rewrite Nat.mod_mod by lia. rewrite Nat.mod_small by lia. reflexivity.
+
+  apply update_false_true in H4 as (H4 & H5).
+  apply update_false_true in H4 as (H4 & H6).
+  apply Nat.eqb_eq in H4. exists (modinv y (p ^ k)).
+  split. assert (0 < modinv y (p^k) < p^k). apply modinv_range. lia.
+  rewrite Nat.gcd_comm. easy. lia. split.
+  apply update_false_true. split. apply update_false_true. split.
+  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. apply modinv_coprime. lia.
+  rewrite Nat.gcd_comm. easy. intro. contradict H6. 
+  apply modinv_injective with (p^k). lia. rewrite Nat.gcd_comm. easy.
+  rewrite Nat.gcd_1_l. reflexivity.
+  assert (y <> p ^ k). {  intro. subst. rewrite Nat.gcd_diag_nonneg in H4 by lia. lia. }
+  lia. lia. rewrite H7. apply modinv_unique. lia. rewrite Nat.gcd_1_l. easy. lia.
+  rewrite Nat.mod_small by lia. lia.
+  intro. contradict H5. apply modinv_injective with (p^k). lia.
+  rewrite Nat.gcd_comm. easy. rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l.
+  rewrite Nat.gcd_1_r by lia. easy. lia.
+  assert (y <> p ^ k). {  intro. subst. rewrite Nat.gcd_diag_nonneg in H4 by lia. lia. }
+  lia. lia. rewrite H7. apply modinv_unique. lia.  rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l.
+  rewrite Nat.gcd_1_r by lia. easy. lia. lia.
+  replace ((p ^ k - 1) * (p ^ k - 1)) with ((p ^ k - 2) * p ^ k + 1) by lia.
+  rewrite Nat.add_mod by lia. rewrite Nat.mod_mul by lia.
+  rewrite Nat.add_0_l. rewrite Nat.mod_mod by lia. rewrite Nat.mod_small by lia. reflexivity.
+  rewrite <- modinv_modinv with _ (p^k). easy. lia.
+  rewrite Nat.gcd_comm. easy.
+  assert (y <> p ^ k). {  intro. subst. rewrite Nat.gcd_diag_nonneg in H4 by lia. lia. } lia.
+
+  apply update_false_true in H4 as (H4 & H5).
+  apply update_false_true in H4 as (H4 & H6).
+  apply Nat.eqb_eq in H4.
+  rewrite <- modinv_modinv with _ (p^k). easy. lia.
+  rewrite Nat.gcd_comm. easy.
+  assert (x <> p ^ k). {  intro. subst. rewrite Nat.gcd_diag_nonneg in H4 by lia. lia. } lia.
+
+  apply update_false_true in H4 as (H4 & H5).
+  apply update_false_true in H4 as (H4 & H6).
+  apply Nat.eqb_eq in H4.
+  intro. apply modinv_self in H7; iauto.
+  rewrite Nat.gcd_comm. easy.
+
+  apply update_false_true in H5 as (H5 & H5a).
+  apply update_false_true in H5 as (H5 & H5b).
+  apply Nat.eqb_eq in H5.
+  apply update_false_true in H6 as (H6 & H6a).
+  apply update_false_true in H6 as (H6 & H6b).
+  apply Nat.eqb_eq in H6.
+  apply modinv_injective with (p^k); iauto.
+  rewrite Nat.gcd_comm. easy. rewrite Nat.gcd_comm. easy.
+  assert (y <> p ^ k). {  intro. subst. rewrite Nat.gcd_diag_nonneg in H6 by lia. lia. } lia.
+  assert (x <> p ^ k). {  intro. subst. rewrite Nat.gcd_diag_nonneg in H5 by lia. lia. } lia.
+
+  apply update_false_true in H4 as (H4 & H5).
+  apply update_false_true in H4 as (H4 & H6).
+  apply Nat.eqb_eq in H4.
+  rewrite modinv_correct_coprime. symmetry. apply Nat.mod_small. lia. lia.
+  rewrite Nat.gcd_comm. easy.
+
+  apply update_false_true. split. rewrite Nat.eqb_eq. rewrite Nat_gcd_sub_diag_l.
+  rewrite Nat.gcd_1_r. easy. lia. lia.
+
+  rewrite Nat.eqb_eq. apply Nat.gcd_1_r.
+Qed.
+
+Definition moddiv x a N := (a * modinv x N) mod N.
+
+Lemma moddiv_correct :
+  forall x a N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd x N = 1 -> (x * moddiv x a N) mod N = a mod N.
+Proof.
+  intros. unfold moddiv.
+  rewrite Nat.mul_mod_idemp_r by lia.
+  replace (x * (a * modinv x N)) with (x * modinv x N * a) by lia.
+  rewrite <- Nat.mul_mod_idemp_l by lia. rewrite modinv_correct_coprime by now try lia.
+  rewrite Nat.mul_1_l. reflexivity.
+Qed.
+
+Lemma moddiv_range :
+  forall x a N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd x N = 1 ->
+    0 < moddiv x a N < N.
+Proof.
+  intros. split.
+  unfold moddiv. 
+  assert ((a * modinv x N) mod N <> 0).
+  intro. rewrite Nat.mod_divide in H2.
+  apply Nat.gauss in H2.
+  apply Nat.divide_pos_le in H2.
+  assert (0 < modinv x N < N). apply modinv_range. lia. easy. lia.
+  assert (0 < modinv x N < N). apply modinv_range. lia. easy. lia.
+  rewrite Nat.gcd_comm. easy. lia. lia.
+  unfold moddiv. apply Nat.mod_upper_bound. lia.
+Qed.
+
+Lemma moddiv_coprime :
+  forall x a N, 1 < N ->  Nat.gcd a N = 1 -> Nat.gcd x N = 1 ->
+    Nat.gcd (moddiv x a N) N = 1.
+Proof.
+  intros. unfold moddiv.
+  rewrite Nat.gcd_mod. apply Nat_gcd_1_mul_r.
+  rewrite Nat.gcd_comm. easy.
+  rewrite Nat.gcd_comm. apply modinv_coprime. lia. easy. lia.
+Qed.
+
+Lemma moddiv_moddiv :
+  forall x a N, 1 < N ->  Nat.gcd a N = 1 -> Nat.gcd x N = 1 -> 0 < x < N ->
+    x = moddiv (moddiv x a N) a N.
+Proof.
+  intros. unfold moddiv.
+  rewrite <- modinv_mod; try lia.
+  rewrite modinv_mul; iauto.
+  rewrite <- modinv_modinv; iauto.
+  rewrite Nat.mul_mod_idemp_r by lia.
+  rewrite Nat.mul_assoc.
+  rewrite <- Nat.mul_mod_idemp_l by lia.
+  rewrite modinv_correct_coprime; iauto.
+  rewrite Nat.mul_1_l. rewrite Nat.mod_small. easy. lia.
+  apply modinv_coprime. lia. easy.
+  apply Nat_gcd_1_mul_l. easy. apply modinv_coprime. lia. easy.
+Qed.
+
+Lemma mul_coprime_equal :
+    forall x y a N, 1 < N -> Nat.gcd a N = 1 -> 
+      0 < x < N -> 0 < y < N -> a * x mod N = a * y mod N -> x = y.
+Proof.
+  intros.
+  eapply Nat_mul_mod_cancel_l with x y _ _ in H0.
+  repeat rewrite Nat.mod_small in H0 by lia. easy. easy.
+Qed.
+
+Lemma moddiv_injective :
+  forall x y a N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd x N = 1 -> 
+    Nat.gcd y N = 1 -> 0 < x < N -> 0 < y < N ->
+    moddiv x a N = moddiv y a N -> x = y.
+Proof.
+  intros. rewrite moddiv_moddiv with x a N; iauto.
+  rewrite moddiv_moddiv with y a N; iauto.
+  rewrite H5. reflexivity.
+Qed.
+
+
+
+Lemma moddiv_unique :
+  forall x y a N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd x N = 1 ->
+    (x * y) mod N = a mod N -> 0 < y < N -> y = moddiv x a N.
+Proof.
+  intros. apply mul_coprime_equal with a N; iauto.
+  apply moddiv_range; iauto.
+  rewrite <- Nat.mul_mod_idemp_l by lia.
+  rewrite <- Nat.mul_mod_idemp_l with _ (moddiv x a N) _ by lia.
+  rewrite <- (moddiv_correct x a N) at 1 by iauto. rewrite <- H2.
+  rewrite Nat.mul_mod_idemp_l by lia. rewrite Nat.mul_mod_idemp_l by lia.
+  replace (x * moddiv x a N * y) with (x * y * moddiv x a N) by lia. reflexivity.
+Qed.
+
+
+Lemma moddiv_self_qr :
+forall x y a p k, 2 < p -> prime p -> k <> 0 -> Nat.gcd a (p ^ k) = 1 -> Nat.gcd x (p ^ k) = 1 ->
+  0 < a < p ^ k -> 0 < x < p ^ k -> 0 < y < p ^ k ->
+  y * y mod (p^k) = a mod (p^k) ->  x = moddiv x a (p ^ k) -> 
+  x = y \/ x = (p ^ k) - y.
+Proof.
+  intros.
+  apply mod_sqr_sol with a; iauto.
+  eapply pow_coprime_rev. apply H1. auto.
+  simpl. rewrite Nat.mul_1_r. rewrite H7. rewrite Nat.mod_small. easy. lia.
+  simpl. rewrite H8 at 2. rewrite Nat.mul_1_r. rewrite moddiv_correct; iauto.
+  rewrite Nat.mod_small by lia. easy.
+Qed.
+
+Lemma moddiv_self_not_qr :
+forall x a p k, 2 < p -> prime p -> k <> 0 -> Nat.gcd a (p ^ k) = 1 -> Nat.gcd x (p ^ k) = 1 ->
+  0 < a < p^k -> 0 < x < p^k -> (forall x, 0 < x < p^k -> x^2 mod p^k <> a) ->
+  x <> moddiv x a (p ^ k).
+Proof.
+  intros. intro.
+  apply H6 in H5 as H5x. contradict H5x.
+  simpl. rewrite Nat.mul_1_r. rewrite H7 at 2. rewrite moddiv_correct by iauto.
+  apply Nat.mod_small. lia.
+Qed.
+
+
+Lemma Euler_criterion_not_qr :
+  forall a p k,
+    k <> 0 -> prime p -> 2 < p -> a < p^k -> (Nat.gcd a p = 1) ->
+    (forall x, 0 < x < p^k -> x^2 mod p^k <> a) ->
+    a ^ (φ (p^k) / 2) mod p^k = p^k - 1.
+Proof.
+  intros. unfold φ, coprimes.
+  assert (2 < p ^ k) by now apply prime_power_lb.
+  assert (Nat.gcd a (p ^ k) = 1) by now apply pow_coprime.
+  rewrite <- cnttrue_filter_seq.
+  rewrite <- two2one_modmul with _ _ (fun x => moddiv x a (p ^ k)) _ _; intros. 
+  rewrite Wilson_on_prime_power; iauto.
+  lia.
+
+  rewrite Nat.eqb_eq in H8.
+  assert (0 < moddiv x a (p ^ k) < p ^ k). apply moddiv_range; iauto. rewrite Nat.gcd_comm. easy. lia.
+  
+  rewrite Nat.eqb_eq in H8.
+  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. apply moddiv_coprime; iauto.
+  rewrite Nat.gcd_comm. easy.
+
+  rewrite Nat.eqb_eq in H8. exists (moddiv y a (p^k)).
+  split. assert (0 < moddiv y a (p ^ k) < p ^ k). apply moddiv_range; iauto.
+  rewrite Nat.gcd_comm. easy. lia. split.
+  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. apply moddiv_coprime; iauto.
+  rewrite Nat.gcd_comm. easy. rewrite <- moddiv_moddiv; iauto.
+  rewrite Nat.gcd_comm. easy.
+  assert (y <> p^k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H8 by lia. lia. } lia.
+
+  rewrite Nat.eqb_eq in H8.
+  rewrite <- moddiv_moddiv; iauto.
+  rewrite Nat.gcd_comm. easy.
+  assert (x <> p^k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H8 by lia. lia. } lia.
+
+  rewrite Nat.eqb_eq in H8.
+  apply moddiv_self_not_qr; iauto.
+  rewrite Nat.gcd_comm. easy.
+  assert (a <> p^k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H6 by lia. lia. }
+  assert (a <> 0). { intro. subst. rewrite Nat.gcd_0_l in H6. lia. } lia.
+  assert (x <> p^k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H8 by lia. lia. } lia.
+
+  rewrite Nat.eqb_eq in H9.
+  rewrite Nat.eqb_eq in H10.
+  apply moddiv_injective with a (p ^ k); iauto.
+  now rewrite Nat.gcd_comm. now rewrite Nat.gcd_comm.
+  assert (y <> p^k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H10 by lia. lia. } lia.
+  assert (x <> p^k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H9 by lia. lia. } lia.
+
+  rewrite Nat.eqb_eq in H8.
+  apply moddiv_correct; iauto. rewrite Nat.gcd_comm. easy.
+Qed.
+
+Lemma Euler_criterion_qr :
+  forall a p k,
+    k <> 0 -> prime p -> 2 < p -> a < p^k -> Nat.gcd a p = 1 ->
+    (exists x, 0 < x < p^k /\ x^2 mod p^k = a) ->
+    a ^ (φ (p^k) / 2) mod p^k = 1.
+Proof.
+  intros. assert (2 < p ^ k) by now apply prime_power_lb.
+  assert (Nat.gcd a (p ^ k) = 1) by now apply pow_coprime.
+  unfold φ, coprimes. rewrite <- cnttrue_filter_seq.
+  destruct H4 as (x0 & ? & ?).
+  rewrite <- cnttrue_update_t_false with _ x0 _; iauto.
+  rewrite <- cnttrue_update_t_false with _ (p ^ k - x0) _; iauto.
+  remember (update (update (fun d : nat => Nat.gcd (p ^ k) d =? 1) x0 false) (p ^ k - x0) false) as t'.
+  replace (S (S (cnttrue (p ^ k) t')) / 2) with (1 + cnttrue (p ^ k) t' / 2) by now rewrite <- Nat.div_add_l by flia.
+  rewrite Nat.pow_add_r. simpl. rewrite Nat.mul_1_r.
+  rewrite <- Nat.mul_mod_idemp_r by lia.
+  rewrite <- two2one_modmul with _ _ (fun x => moddiv x a (p ^ k)) _ _; intros.
+  apply mul_coprime_equal with (p ^ k - 1) (p ^ k). lia.
+  rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l. apply Nat.gcd_1_r. lia.
+  split. assert (a * modmul (p ^ k) t' (p ^ k) mod (p ^ k) <> 0).
+  intro. apply Nat.mod_divide in H8; try lia. apply Nat.divide_gcd_iff' in H8.
+  assert (1 <> p ^ k) by lia. contradict H9. rewrite <- H8. symmetry.
+  apply Nat_gcd_1_mul_r. rewrite Nat.gcd_comm. easy. rewrite Nat.gcd_comm. apply modmul_coprime; iauto.
+  intros. subst. rewrite update_false_true in H10. rewrite update_false_true in H10. destruct H10.
+  destruct H7. rewrite <- Nat.eqb_eq. rewrite Nat.gcd_comm. easy. lia.
+  apply Nat.mod_upper_bound. lia. lia.
+  rewrite Nat.mul_1_r. rewrite Nat.mul_mod_idemp_r by lia.
+  rewrite Nat.mul_assoc. rewrite Nat.mul_mod by lia.
+  replace ((p ^ k - 1) * a mod p ^ k) with (x0 * (p ^ k - x0) mod p ^ k).
+  rewrite <- Nat.mul_mod by lia.
+  rewrite <- Nat.mul_assoc. rewrite <- Nat.mul_mod_idemp_r by lia. rewrite Heqt'. clear Heqt' t'.
+  rewrite <- modmul_update. rewrite <- modmul_update.
+  rewrite Wilson_on_prime_power by iauto. rewrite Nat.mod_small by lia. easy.
+  lia. lia. rewrite Nat.eqb_eq. rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia).
+  rewrite H7. easy. lia. lia.
+  rewrite update_false_true. rewrite Nat_gcd_sub_diag_l by lia. split.
+  rewrite Nat.eqb_eq. 
+  (* Nat.gcd (p ^ k) x0 = 1 *)
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia).
+  rewrite H7. easy.
+  (* p ^ k - x0 <> x0 *)
+  intro. apply Nat.add_sub_eq_nz in H8; iauto. replace (x0 + x0) with (2 * x0) in H8 by lia.
+  assert (Nat.gcd 2 (p ^ k) = 1). apply pow_coprime. apply eq_primes_gcd_1; iauto. reflexivity.
+  rewrite <- H8 in H9. apply Nat_gcd_1_mul_r_rev in H9. rewrite Nat.gcd_diag_nonneg in H9; iauto.
+
+  rewrite Nat.mul_sub_distr_r. rewrite Nat.mul_sub_distr_l. rewrite Nat.mul_1_l.
+  
+  rewrite Nat.div_mod with (x0 * x0) (p ^ k) by lia.
+  assert (x0 * p ^ k >= (p ^ k * (x0 * x0 / p ^ k) + (x0 * x0) mod p ^ k)).
+  rewrite <- Nat.div_mod by lia. apply Nat.mul_le_mono_pos_l; lia.
+  assert ((x0 * p ^ k >= (p ^ k * (x0 * x0 / p ^ k)))) by lia.
+  rewrite Nat.sub_add_distr. rewrite <- Nat_mod_add_r_mul_l with _ _ 1 by lia.
+  rewrite <- Nat_mod_add_r_mul_l with (p ^ k * a - a) _ 1 by lia.
+  repeat rewrite Nat.mul_1_r. rewrite <- Nat.add_sub_swap by nia.
+  rewrite <- Nat.add_sub_swap with _ _ a by nia.
+  rewrite <- Nat.add_sub_assoc. rewrite <- Nat.add_sub_assoc by lia.
+  replace (x0 * p ^ k - p ^ k * (x0 * x0 / p ^ k)) with ((x0 - x0 * x0 / p ^ k) * p ^ k) by nia.
+  rewrite Nat_mod_add_l_mul_r by lia. rewrite Nat_mod_add_l_mul_l by lia.
+  replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. reflexivity.
+  assert ((x0 * x0) mod p ^ k < p ^ k). apply Nat.mod_upper_bound. lia. lia.
+
+  lia. assert (0 < moddiv x a (p ^ k) < p ^ k). apply moddiv_range; iauto.
+  rewrite Heqt' in *. rewrite Nat.gcd_comm. rewrite update_false_true in H9. 
+  rewrite update_false_true in H9. destruct H9. destruct H9. rewrite Nat.eqb_eq in H9. easy. lia.
+  
+  rewrite Heqt' in *.
+  rewrite update_false_true in H9. 
+  rewrite update_false_true in H9. destruct H9. destruct H9. rewrite Nat.eqb_eq in H9.
+  rewrite update_false_true. rewrite update_false_true. split. split.
+  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. rewrite moddiv_coprime; iauto. rewrite Nat.gcd_comm.
+  easy. 
+  (* moddiv x a (p ^ k) <> x0 *)
+  intro. contradict H11. apply moddiv_injective with a (p ^ k); iauto.
+  rewrite Nat.gcd_comm. easy. rewrite Nat.gcd_comm.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. easy.
+  assert (x <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H9 by lia. lia. } lia.
+  rewrite H12. apply moddiv_unique; iauto.
+  rewrite Nat.gcd_comm.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. easy.
+  replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. rewrite Nat.mod_small. easy. lia.
+  (* moddiv x a (p ^ k) <> p ^ k - x0 *)
+  intro. contradict H10. apply moddiv_injective with a (p ^ k); iauto.
+  rewrite Nat.gcd_comm. easy.
+  rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l by lia.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. easy.
+  assert (x <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H9 by lia. lia. } lia.
+  rewrite H12. apply moddiv_unique; iauto. rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l by lia.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia).
+  rewrite H7. easy.
+  replace ((p ^ k - x0) * (p ^ k - x0)) with ((p ^ k - x0) ^ 2) by (simpl; lia).
+  rewrite <- neg_sqr_mod by lia. rewrite H7. rewrite Nat.mod_small; iauto.
+  
+  exists (moddiv y a (p ^ k)).
+  rewrite Heqt' in *.
+  rewrite update_false_true in H9. 
+  rewrite update_false_true in H9. destruct H9. destruct H9. rewrite Nat.eqb_eq in H9.
+  split. assert (0 < moddiv y a (p ^ k) < p ^ k). apply moddiv_range; iauto.
+  rewrite Nat.gcd_comm. easy. lia. split.
+  rewrite update_false_true. rewrite update_false_true. split. split.
+  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. apply moddiv_coprime; iauto. rewrite Nat.gcd_comm.
+  easy.
+  intro. contradict H11. apply moddiv_injective with a (p ^ k); iauto.
+  rewrite Nat.gcd_comm. easy. rewrite Nat.gcd_comm.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. easy.
+  assert (y <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H9 by lia. lia. } lia.
+  rewrite H12. apply moddiv_unique; iauto.
+  rewrite Nat.gcd_comm.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. easy.
+  replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. rewrite Nat.mod_small. easy. lia.
+  intro. contradict H10. apply moddiv_injective with a (p ^ k); iauto.
+  rewrite Nat.gcd_comm. easy.
+  rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l by lia.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. easy.
+  assert (y <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H9 by lia. lia. } lia.
+  rewrite H12. apply moddiv_unique; iauto. rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l by lia.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia).
+  rewrite H7. easy.
+  replace ((p ^ k - x0) * (p ^ k - x0)) with ((p ^ k - x0) ^ 2) by (simpl; lia).
+  rewrite <- neg_sqr_mod by lia. rewrite H7. rewrite Nat.mod_small; iauto.
+  rewrite <- moddiv_moddiv; iauto. rewrite Nat.gcd_comm. easy.
+  assert (y <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H9 by lia. lia. } lia.
+
+  rewrite Heqt' in *.
+  rewrite update_false_true in H9. 
+  rewrite update_false_true in H9. destruct H9. destruct H9. rewrite Nat.eqb_eq in H9.
+  rewrite <- moddiv_moddiv; iauto. rewrite Nat.gcd_comm. easy.
+  assert (x <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H9 by lia. lia. } lia.
+
+  rewrite Heqt' in *.
+  rewrite update_false_true in H9. 
+  rewrite update_false_true in H9. destruct H9. destruct H9. rewrite Nat.eqb_eq in H9.
+  intro.
+  assert (x = x0 \/ x = p ^ k - x0). apply moddiv_self_qr with a; iauto.
+  rewrite Nat.gcd_comm. easy.
+  assert (a <> p ^ k). { intro. rewrite H13 in *. rewrite Nat.gcd_diag_nonneg in H6 by lia. lia. }
+  assert (a <> 0).  { intro. rewrite H14 in *. rewrite Nat.gcd_0_l in H6. lia. } lia.
+  assert (x <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H9 by lia. lia. } lia.
+  replace (x0 * x0) with (x0 ^ 2) by (simpl; lia). rewrite H7. rewrite Nat.mod_small by lia. easy.
+  destruct H13. easy. easy.
+  
+  rewrite Heqt' in *.
+  rewrite update_false_true in *. 
+  rewrite update_false_true in *. destruct H10. destruct H10. 
+  destruct H11. destruct H11. rewrite Nat.eqb_eq in H10, H11.
+  apply moddiv_injective with a (p ^ k); iauto.
+  now rewrite Nat.gcd_comm. now rewrite Nat.gcd_comm.
+  assert (y <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H11 by lia. lia. } lia.
+  assert (x <> p ^ k). { intro. subst. rewrite Nat.gcd_diag_nonneg in H10 by lia. lia. } lia.
+
+  rewrite Heqt' in *.
+  rewrite update_false_true in H9. 
+  rewrite update_false_true in H9. destruct H9. destruct H9. rewrite Nat.eqb_eq in H9.
+  rewrite moddiv_correct; iauto. now rewrite Nat.gcd_comm.
+
+  rewrite update_false_true. split. rewrite Nat.eqb_eq. rewrite Nat_gcd_sub_diag_l by lia.
+  rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia).
+  rewrite H7. easy.
+  intro. apply Nat.add_sub_eq_nz in H8; iauto. replace (x0 + x0) with (2 * x0) in H8 by lia.
+  assert (Nat.gcd 2 (p ^ k) = 1). apply pow_coprime. apply eq_primes_gcd_1; iauto. reflexivity.
+  rewrite <- H8 in H9. apply Nat_gcd_1_mul_r_rev in H9. rewrite Nat.gcd_diag_nonneg in H9; iauto.
+  
+  rewrite Nat.eqb_eq. rewrite Nat_gcd_1_mul_r_rev with _ _ x0. easy.
+  rewrite <- Nat.gcd_mod by lia. replace (x0 * x0) with (x0 ^ 2) by (simpl; lia).
+  rewrite H7. easy.
+Qed.
+
+Lemma φ_odd_prime_pow :
+  forall p k,
+    k <> 0 -> prime p -> 2 < p ->
+    φ (p ^ k) = 2 * (φ (p ^ k) / 2)   /\   φ (p ^ k) / 2 <> 0.
+Proof.
+  intros.
+  specialize (prime_pow_φ _ H0 _ H) as T.
+  rewrite prime_φ with (p := p) in T by easy.
+  assert (p mod 2 = 1) by (apply odd_prime; try easy; try lia).
+  remember 2 as tmp. replace 1 with (1 mod 2) in H2 by easy. subst.
+  apply Nat_eq_mod_sub_0 in H2.
+  assert (φ (p ^ k) mod 2 = 0). {
+    rewrite T. rewrite <- Nat.mul_mod_idemp_r by easy. rewrite H2.
+    rewrite Nat.mul_0_r. easy.
+  }
+  apply Nat.mod_divide in H3. 2: easy.
+  destruct H3.
+  assert (φ (p ^ k) / 2 = x) by (rewrite H3; apply Nat.div_mul; easy).
+  assert (0 < φ (p ^ k)). {
+    apply φ_pos. specialize (prime_power_lb p k H H0 H1). flia.
+  }
+  rewrite H4. flia H3 H5.
+Qed.
+
+Lemma qr_d2p_lt :
+  forall a r p k,
+    k <> 0 -> prime p -> 2 < p -> a < p^k ->
+    (exists x, 0 < x < p^k /\ x^2 mod p^k = a) ->
+    Order a r (p ^ k) ->
+    d2p r < d2p (φ (p ^ k)).
+Proof.
+  intros.
+  assert (Nat.gcd a p = 1) as Ha. apply pow_coprime_rev with k. lia. apply Order_rel_prime with r. easy.
+  specialize (Euler_criterion_qr _ _ _ H H0 H1 H2 Ha H3) as G.
+  apply Order_factor_mod1 with (r := r) in G.
+  assert (φ (p ^ k) = 2 * (φ (p ^ k) / 2) /\ (φ (p ^ k) / 2 <> 0)) by (apply φ_odd_prime_pow; easy).
+  destruct H5. rewrite H5. rewrite d2p_double. 2: easy.
+  specialize (d2p_factor _ _ H6 G). flia.
+  easy.
+Qed.
+  
+  
+Lemma not_qr_d2p_eq :
+  forall a r p k,
+    k <> 0 -> prime p -> 2 < p -> a < p^k ->
+    (forall x, 0 < x < p^k -> x^2 mod p^k <> a) ->
+    Order a r (p ^ k) ->
+    d2p r = d2p (φ (p ^ k)).
+Proof.
+  intros.
+  assert (Nat.gcd a p = 1) as Ha. apply pow_coprime_rev with k. lia. apply Order_rel_prime with r. easy.
+  specialize (Euler_criterion_not_qr _ _ _ H H0 H1 H2 Ha H3) as G.
+  assert (φ (p ^ k) = 2 * (φ (p ^ k) / 2) /\ (φ (p ^ k) / 2 <> 0)) by (apply φ_odd_prime_pow; easy).
+  destruct H5.
+  assert (p ^ k > 2) by (apply prime_power_lb; easy).
+  assert (a ^ (φ (p ^ k) / 2) mod p ^ k <> 1) by flia G H7.
+  specialize (Order_not_factor  _ _ _ _ H4 H8) as T.
+  specialize (Order_factor_φ _ _ _ H4) as T2.
+  rewrite H5 in T2.
+  apply d2p_stuck in T2. 2: easy.
+  rewrite H5. rewrite d2p_double. 2: easy.
+  easy.
+Qed.
+
 
 Lemma qr_dec :
   forall a p, {forall x, 0 < x <= p -> x ^ 2 mod p <> a} + {exists x, 0 < x <= p /\ x ^ 2 mod p = a}.
