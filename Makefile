@@ -1,7 +1,7 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples shor mapper optimizer voqc clean
+KNOWNTARGETS := CoqMakefile all examples grover qpe-full mapper optimizer voqc clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
@@ -36,7 +36,9 @@ all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRota
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
-shor: invoke-coqmakefile $(examples)/Shor.vo
+grover: invoke-coqmakefile $(examples)/Grover.vo
+
+qpe-full: invoke-coqmakefile $(examples)/QPEGeneral.vo
 
 mapper: invoke-coqmakefile $(VOQC)/SimpleMappingWithLayout.vo
 
@@ -60,9 +62,6 @@ SQIR/examples/DeutschJozsa.vo: $(examples)/DeutschJozsa.v $(SQIR)/UnitaryOps.vo 
 SQIR/examples/GHZ.vo: $(examples)/GHZ.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
 	coqc $(COQ_OPTS) $(examples)/GHZ.v
 
-SQIR/examples/Grover.vo: $(examples)/Grover.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
-	coqc $(COQ_OPTS) $(examples)/Grover.v
-
 SQIR/examples/QPE.vo: $(examples)/QPE.v $(SQIR)/UnitaryOps.vo
 	coqc $(COQ_OPTS) $(examples)/QPE.v
 
@@ -78,16 +77,15 @@ SQIR/examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/
 SQIR/examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
 	coqc $(COQ_OPTS) $(examples)/Utilities.v
 
-# Built by 'make shor'
+# Built by 'make grover'
+
+SQIR/examples/Grover.vo: $(examples)/Grover.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
+	coqc $(COQ_OPTS) $(examples)/Grover.v
+
+# Built by 'make qpe-general'
 
 SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/QPEGeneral.v
-
-SQIR/examples/ModMult.vo: $(examples)/ModMult.v
-	coqc $(COQ_OPTS) $(examples)/ModMult.v
-
-SQIR/examples/Shor.vo: $(examples)/Shor.v $(examples)/QPEGeneral.vo $(examples)/ModMult.vo
-	coqc $(COQ_OPTS) $(examples)/Shor.v
 
 # Built by 'make mapper'
 

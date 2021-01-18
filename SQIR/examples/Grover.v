@@ -325,9 +325,9 @@ Proof.
   intros.
   unfold proj, pad.
   bdestruct_all.
-  repeat rewrite kron_assoc.
+  repeat rewrite kron_assoc by auto with wf_db.
   restore_dims. 
-  repeat rewrite kron_assoc.
+  repeat rewrite kron_assoc by auto with wf_db.
   rewrite id_kron.
   replace (2 ^ (n - 1 - (q + 1)) * 2)%nat 
     with (2 ^ (n - (q + 1)))%nat by unify_pows_two.

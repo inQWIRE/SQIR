@@ -12,6 +12,7 @@ Arithmetic_and_Toffoli_filenames=( $(ls -d VOQC-benchmarks/Arithmetic_and_Toffol
 currentTime=`date`
 for filename in "${Arithmetic_and_Toffoli_filenames[@]}"
 do
+    currentTime=`date`
     printf "${CYAN}[${currentTime}] Running VOQC on ${filename}${NOCOLOR}\n"
     (dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm) &> /dev/null
     printf "${CYAN}  Running translation validation...${NOCOLOR}\n"

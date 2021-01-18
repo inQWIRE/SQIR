@@ -69,13 +69,13 @@ We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE)
 
 #### examples
 
-Examples of verifying correctness properties of simple SQIR programs.
+Examples of verifying correctness properties of SQIR programs.
 
 - examples/DeutschJozsa.v : Deutsch-Jozsa algorithm
-- examples/GHZ.v : GHZ state prepatation
-- examples/Grover.v : Grover's algorithm (requires Coq version >= 8.12)
+- examples/GHZ.v : GHZ state preparation
+- examples/Grover.v : Grover's algorithm (use `make grover` to compile; requires Coq version >= 8.12)
 - examples/QPE.v : Quantum phase estimation (simplified)
-- examples/QPEGeneral.v : Quantum phase estimation (general) -- this file is not built by default to minimize SQIR's dependencies; see notes at the top of that file
+- examples/QPEGeneral.v : Quantum phase estimation (general) (use `make qpe-full` to compile; requires Interval package)
 - examples/Simon.v : Simon's algorithm
 - examples/Superdense.v : Superdense coding
 - examples/Teleport.v : Quantum teleportation
