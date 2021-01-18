@@ -17,8 +17,6 @@ echo "name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VO
 for filename in "${Arithmetic_and_Toffoli_filenames[@]}"
 do
     program_name=`basename "$filename" .qasm`
-    #currentTime=`date`
-    #printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
     (time dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
     python parseOutput.py ${program_name}.txt >> voqc_out.csv
     rm -rf ${program_name}.txt
@@ -30,17 +28,32 @@ printf "${CYAN}\tDONE${NOCOLOR}\n"
 currentTime=`date`
 printf "${GREEN}##### [${currentTime}] Running Qiskit...${NOCOLOR}\n"
 python run_qiskit.py VOQC-benchmarks/Arithmetic_and_Toffoli_partial qiskit_out.csv &> /dev/null
-printf "${CYAN}\tDONE${NOCOLOR}\n"
+if [ -f qiskit_out.csv ]; then
+    printf "${CYAN}\tDONE${NOCOLOR}\n"
+else
+    printf "${RED}\tFAILED - try running run_qiskit.py for more information${NOCOLOR}\n"
+    exit 1
+fi
 
 currentTime=`date`
 printf "${GREEN}##### [${currentTime}] Running tket...${NOCOLOR}\n"
 python run_tket.py VOQC-benchmarks/Arithmetic_and_Toffoli_partial tket_out.csv &> /dev/null
-printf "${CYAN}\tDONE${NOCOLOR}\n"
+if [ -f tket_out.csv ]; then
+    printf "${CYAN}\tDONE${NOCOLOR}\n"
+else
+    printf "${RED}\tFAILED - try running run_tket.py for more information${NOCOLOR}\n"
+    exit 1
+fi
 
 currentTime=`date`
 printf "${GREEN}##### [${currentTime}] Running PyZX...${NOCOLOR}\n"
 python run_pyzx.py VOQC-benchmarks/Arithmetic_and_Toffoli_partial pyzx_out.csv &> /dev/null
-printf "${CYAN}\tDONE${NOCOLOR}\n"
+if [ -f pyzx_out.csv ]; then
+    printf "${CYAN}\tDONE${NOCOLOR}\n"
+else
+    printf "${RED}\tFAILED - try running run_pyzx.py for more information${NOCOLOR}\n"
+    exit 1
+fi
 
 # print aggregate data
 python create_tables.py

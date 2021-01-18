@@ -68,9 +68,9 @@ def outputTable2(qiskit_dict, tket_dict, voqc_dict):
     print("----------------------------------------------------------------------")
     # Sort circuit names
     circuits = sorted_nicely(voqc_dict.keys())
-    qiskit_red = 0
-    tket_red = 0
-    voqc_red = 0
+    qiskit_red = []
+    tket_red = []
+    voqc_red = []
     for circuit in circuits:
         # orig is same in all dicts
         orig = qiskit_dict[circuit]["Orig. total"]
@@ -79,17 +79,17 @@ def outputTable2(qiskit_dict, tket_dict, voqc_dict):
         voqc = voqc_dict[circuit]["VOQC total"]
         print("%s| %s\t\t%s\t\t%s\t\t%s" %(circuit.ljust(15), orig, qiskit, tket, voqc))
         if circuit != "qcla_mod_7":
-            qiskit_red += (1.0-float(qiskit)/float(orig))*100
-            tket_red += (1.0-float(tket)/float(orig))*100
-            voqc_red += (1.0-float(voqc)/float(orig))*100
+            qiskit_red += [(1.0-float(qiskit)/float(orig))*100]
+            tket_red += [(1.0-float(tket)/float(orig))*100]
+            voqc_red += [(1.0-float(voqc)/float(orig))*100]
 
     # Print average reduction. One less circuit due to red box in paper
     num_cirs = len(circuits)-1
     print("----------------------------------------------------------------------")
-    print("%s| -\t\t%.1f%%\t\t%.1f%%\t\t%.1f%%" %("Avg Reduction".ljust(15),\
-                                             qiskit_red/num_cirs,\
-                                             tket_red/num_cirs,\
-                                             voqc_red/num_cirs))
+    print("%s| -\t\t%.1f%%\t\t%.1f%%\t\t%.1f%%" %("Geo Mean Reduction".ljust(15),\
+                                             geo_mean(qiskit_red),\
+                                             geo_mean(tket_red),\
+                                             geo_mean(voqc_red)))
 
 #############################################################################################
 
@@ -100,8 +100,8 @@ def outputTable3(voqc_dict, pyzx_dict):
     print("----------------------------------------------------------------------")
     # Sort circuit names
     circuits = sorted_nicely(voqc_dict.keys())
-    pyzx_red = 0
-    voqc_red = 0
+    pyzx_red = []
+    voqc_red = []
     for circuit in circuits:
         # orig is same in all dicts
         orig = voqc_dict[circuit]["Orig. T"]
@@ -110,15 +110,15 @@ def outputTable3(voqc_dict, pyzx_dict):
         print("%s| %s\t\t%s\t\t%s" %(circuit.ljust(15), orig, pyzx, voqc))
         # Exclude these two benchmarks from averages
         if circuit != "csla_mux_3" and circuit != "qcla_mod_7":
-            pyzx_red += (1.0-float(pyzx)/float(orig))*100
-            voqc_red += (1.0-float(voqc)/float(orig))*100
+            pyzx_red += [(1.0-float(pyzx)/float(orig))*100]
+            voqc_red += [(1.0-float(voqc)/float(orig))*100]
 
     # Print average reduction. 2 less circuits due to red boxes in paper
     num_cirs = len(circuits)-2
     print("----------------------------------------------------------------------")
-    print("%s| -\t\t%.1f%%\t\t%.1f%%" %("Avg Reduction".ljust(15),\
-                                        pyzx_red/num_cirs,\
-                                        voqc_red/num_cirs))
+    print("%s| -\t\t%.1f%%\t\t%.1f%%" %("Geo Mean Reduction".ljust(15),\
+                                        geo_mean(pyzx_red),\
+                                        geo_mean(voqc_red)))
 
 
 #############################################################################################
@@ -140,7 +140,6 @@ if __name__ == "__main__":
     #
     # The values are total gate count
     outputTable2(qiskit_dict, tket_dict, voqc_dict)
-
 
     # Construct Table 3 in the paper. The header for
     # this table is:

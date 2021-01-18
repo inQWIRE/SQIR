@@ -10,7 +10,8 @@ NOCOLOR='\033[0m'
 # Get files
 pf_filenames=( $(ls -d VOQC-benchmarks/PF/*.qasm) )
 Arithmetic_and_Toffoli_filenames=( $(ls -d VOQC-benchmarks/Arithmetic_and_Toffoli/*.qasm) )
-QFT_and_Adders_filenames=( $(ls -d VOQC-benchmarks/QFT_and_Adders/*.qasm) )
+Quipper_Adder_filenames=( $(ls -d VOQC-benchmarks/QFT_and_Adders/Adder*.qasm) )
+QFT_filenames=( $(ls -d VOQC-benchmarks/QFT_and_Adders/QFT*.qasm) )
 
 # Number of iterations stored as an array. The order
 # of these elements must match the order of the pf pf_filenames
@@ -92,12 +93,22 @@ echo""
 printf "${GREEN}##### Running on files in QFT_and_Adders #####${NOCOLOR}\n"
 > QFT_and_Adders_results.csv
 echo "name,Orig. total,Orig. Rz,Orig. T,Orig. H,Orig. X,Orig. CNOT,VOQC total,VOQC Rz,VOQC T,VOQC H,VOQC X,VOQC CNOT,parse time,optimization time,write time" >> QFT_and_Adders_results.csv
-for filename in "${QFT_and_Adders_filenames[@]}"
+for filename in "${Quipper_Adder_filenames[@]}"
 do
     program_name=`basename "$filename" .qasm`
     currentTime=`date`
     printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
     (time dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm) &> ${program_name}.txt
+    python parseOutput.py ${program_name}.txt >> QFT_and_Adders_results.csv
+    rm -rf ${program_name}.txt
+done
+
+for filename in "${QFT_filenames[@]}"
+do
+    program_name=`basename "$filename" .qasm`
+    currentTime=`date`
+    printf "${CYAN}   + [${currentTime}] Running on ${filename}${NOCOLOR}\n"
+    (time dune exec --root .. -- ./voqc.exe -i ${filename} -o out.qasm -l) &> ${program_name}.txt
     python parseOutput.py ${program_name}.txt >> QFT_and_Adders_results.csv
     rm -rf ${program_name}.txt
 done

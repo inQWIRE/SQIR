@@ -2,15 +2,18 @@
 
 SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation (IR) in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-We describe SQIR and its use in VOQC in our draft [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250). We present details on verifying SQIR programs in our draft [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240). The code corresponding to both drafts can be found in the 'POPL2021' branch. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
+We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We present details on verifying SQIR programs in our draft [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240). The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021). Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
 
 This repository is split into two parts: SQIR and VOQC. If you are interested in formal verification of quantum programs, you should focus on the SQIR directory (we also recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html)). If you are interested in our verified compiler then take a look at the VOQC directory.
 
 ## Table of Contents
 
+The bulk of this respository is Coq proofs about quantum programs and program transformations. Our verified program transformations can be *extracted* to OCaml to produce executable code. 
+
 * [Compilation](#compilation)
   * [Coq](#coq)
   * [OCaml](#ocaml)
+  * [Installing Dependencies](#installing-dependencies)
 * [Directory Contents](#directory-contents)
   * [SQIR](#sqir)
   * [VOQC](#voqc)
@@ -18,7 +21,7 @@ This repository is split into two parts: SQIR and VOQC. If you are interested in
 
 ## Compilation
 
-If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'.
+If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'. If you are unfamiliar with Coq/OCaml, you can find installation tips under 'Installing Dependencies'.
 
 ### Coq
 
@@ -38,6 +41,13 @@ Dependencies:
   * OpenQASM parser (`opam install openQASM`)
 
 For convenience, we have already performed extraction from Coq to OCaml; the extracted files are in VOQC/extraction/ml. `make voqc` will produce an executable in VOQC/_build/default. See [the README in the VOQC directory](VOQC/README.md) for instructions on how to run the optimizer.
+
+### Installing Dependencies
+
+To install our dependencies we recommend using [opam](https://opam.ocaml.org/doc/Install.html). A typical workflow on a new computer is:
+1. Install opam
+2. Set up a new switch with a recent version of OCaml (e.g. `opam switch create voqc 4.10.0`)
+3. Install dependencies with `opam install coq dune zarith batteries openQASM` (note: installing Coq will take a while!)
 
 ## Directory Contents
 
@@ -70,7 +80,7 @@ Examples of verifying correctness properties of simple SQIR programs.
 - examples/Superdense.v : Superdense coding
 - examples/Teleport.v : Quantum teleportation
 
-## VOQC
+### VOQC
 
 #### src
 

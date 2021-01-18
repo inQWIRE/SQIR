@@ -8,9 +8,9 @@ The benchmarks we use are in the [VOQC-benchmarks repository](https://github.com
 
 In the top (`../..`) directory, run `make voqc`. This will compile the OCaml code we have extracted from the verified Coq code. If you have modified the Coq code, then be sure to run `make optimizer` first. To run the optimizer, run `dune exec --root .. -- ./voqc.exe -i <prog> -o <out>`, which will optimize program prog and write the optimized result to out. It will print the initial and final gate counts. `--root ..` is needed because the voqc executable is built in the parent directory. We also support a command line option `-n <N>` that specifies a number of iterations to consider in the resource count and an option '-l' that indicates whether to use a "light" version of the optimizer that excludes rotation merging.
 
-To generate the data in Tables 2-3 of the VOQC paper (which runs a variety of optimizers on a subset of the full benchmark suite) use the `run_voqc_artifact.sh` script. It requires PyZX, Qiskit, and tket to be appropriately installed (see below). On our test machine (a Macbook Pro running macOS Catalina with OCaml 4.10.0) this script takes about 15 minutes.
+To generate the data in Tables 2-3 of the VOQC paper (which runs a variety of optimizers on a subset of the full benchmark suite) use the `run_voqc_artifact.sh` script. It requires PyZX, Qiskit, and tket to be appropriately installed (see below) as well as NumPy. On our test machine (a Macbook Pro running macOS Catalina with OCaml 4.10.0) this script takes about 15 minutes.
 
-To run VOQC on *all* the benchmarks run `./run_voqc.sh`. Some of the benchmarks are quite large, so this will take a while (~48 hours on our test machine). This script creates files Arithmetic_and_Toffoli_results.csv, PF_results.csv, and QFT_and_Adders.csv to summarize results.
+To run VOQC on *all* the benchmarks run `./run_voqc.sh`. Some of the benchmarks are quite large, so this will take a while (~24 hours on our test machine). This script creates files Arithmetic_and_Toffoli_results.csv, PF_results.csv, and QFT_and_Adders.csv to summarize results.
 
 ## Other Optimizers
 
