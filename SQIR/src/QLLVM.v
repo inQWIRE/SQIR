@@ -38,3 +38,20 @@ Inductive efun := elet qvar (ns : list var) (qs: list qvar) (ins : list inst) (r
 
 Inductive top := setFixedPointNum (n: const) | setBitLength (n:const) 
               | efixed (x: list var) | setUncomputeStrategy (x: string) | Funs (fs : list efun).
+
+(* The frontend level language. QC. *)
+Inductive C := varC (v:qvar) | natC (n:nat).
+
+Inductive E := cconst (c:C) | plusC (e1:E) (e2:E) 
+             | minusC (e1:E) (e2:E) | multC (e1:E) (e2:E)
+             | divC (e1:E) (e2:E) | modC (e1:E) (e2:E)
+             | facC (e:E) 
+             | powC (e:E) (n:C) 
+             | sinC (e:E) | cosC (e:E) | sqrtC (e:E)
+             | sigmaC (c1:C) (c2:C) (f:qvar) (v : E).
+
+Inductive cinst := letin (v:var) (e1:E) (e2:E).
+
+Inductive ctop := setFixedPointNumC (n: nat) | setBitLengthC (n:nat) 
+              | fixedC (x: list var) | setUncomputeStrategyC (x: string) | ins (cs : list cinst).
+
