@@ -55,3 +55,31 @@ Inductive cinst := letin (v:var) (e1:E) (e2:E).
 Inductive ctop := setFixedPointNumC (n: nat) | setBitLengthC (n:nat) 
               | fixedC (x: list var) | setUncomputeStrategyC (x: string) | ins (cs : list cinst).
 
+
+(* The language for RCIR+, a target language for QLLVM to compile to. *)
+Definition ivar := nat.
+
+Definition evar := nat.
+
+Inductive rtype := Q (n:nat).
+
+Inductive pos := Pair (x:evar) (n:nat).
+
+Inductive rexp (A: Type) : Type := | Foreign : A -> rexp A
+             | Rsikp : rexp A | Rcx : pos -> rexp A | Rcont : pos -> rexp A -> rexp A
+           | Rseq : rexp A -> rexp A -> rexp A.
+
+Inductive rfun (A:Type) :Type :=
+       Fun : (list (rtype * evar)) -> (list (rtype * ivar)) -> rexp A -> rfun A
+     | cast : rtype ->  evar -> rtype -> rfun A.
+
+Inductive rtop (A:Type) : Type := Define : list (rtype * evar) -> rtop A
+                               | Insts : rfun A -> rtop A.
+
+    
+
+
+
+
+
+
