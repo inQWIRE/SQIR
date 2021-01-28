@@ -122,7 +122,8 @@ Fixpoint gup {A} (f : nat -> A) (g : nat -> A) (n : nat) :=
 Definition pupdate (f : regs) (x: avar) (g: nat -> bool) :=
            fun j => if j ==? x then (match f j with None => None | Some (tv,gv) => Some (tv,g) end) else f j.
 
-(* The semantic definition of rexp. *)
+(* The semantic definition of expressions for RCIR+ including some well-formedness requirement.
+   TODO: need to split well-formedness requirement with RCIR+ semantics. *)
 Inductive estep : regs -> rexp -> regs -> Prop := 
   | skip_rule : forall r , estep r rskip r
   | x_rule : forall r x i n gv, r x = Some (Q n,gv) -> i < n -> estep r (rx (x,i)) (r [(x,i) |-> (¬ (gv i))])
