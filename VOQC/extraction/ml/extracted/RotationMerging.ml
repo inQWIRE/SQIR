@@ -167,8 +167,8 @@ let rec merge_rotations_at_end l n acc =
     RzQGateSet.RzQGateSet.coq_RzQ_Unitary gate_app **)
 
 let invert_gate g = match g with
-| App1 (r, q) ->
-  (match r with
+| App1 (y, q) ->
+  (match y with
    | RzQGateSet.RzQGateSet.URzQ_Rz a -> RzQGateSet.invert_rotation a q
    | _ -> g)
 | _ -> g

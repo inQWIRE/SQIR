@@ -1,6 +1,7 @@
 open Datatypes
 open FSetAVL
 open OrderedTypeEx
+open PeanoNat
 
 module FSet = Make(Nat_as_OT)
 
@@ -10,6 +11,25 @@ type 'u gate_app =
 | App3 of 'u * int * int * int
 
 type 'u gate_list = 'u gate_app list
+
+(** val uc_well_typed_l_b : int -> 'a1 gate_list -> bool **)
+
+let rec uc_well_typed_l_b dim = function
+| [] -> Nat.ltb 0 dim
+| g :: t0 ->
+  (match g with
+   | App1 (_, n) -> (&&) (Nat.ltb n dim) (uc_well_typed_l_b dim t0)
+   | App2 (_, m, n) ->
+     (&&) ((&&) ((&&) (Nat.ltb m dim) (Nat.ltb n dim)) (not ((=) m n)))
+       (uc_well_typed_l_b dim t0)
+   | App3 (_, m, n, p) ->
+     (&&)
+       ((&&)
+         ((&&)
+           ((&&)
+             ((&&) ((&&) (Nat.ltb m dim) (Nat.ltb n dim)) (Nat.ltb p dim))
+             (not ((=) m n))) (not ((=) n p))) (not ((=) m p)))
+       (uc_well_typed_l_b dim t0))
 
 (** val next_single_qubit_gate' :
     'a1 gate_list -> int -> 'a1 gate_app list -> (('a1 gate_list * 'a1) * 'a1

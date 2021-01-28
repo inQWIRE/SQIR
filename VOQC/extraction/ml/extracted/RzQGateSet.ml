@@ -110,6 +110,11 @@ let coq_CCZ a b c =
     (coq_CNOT b c) :: ((coq_TDAG c) :: ((coq_CNOT a c) :: ((coq_CNOT a b) :: (
     (coq_TDAG b) :: ((coq_CNOT a b) :: ((coq_T a) :: ((coq_T b) :: ((coq_T c) :: []))))))))))))
 
+(** val coq_SWAP : int -> int -> coq_RzQ_ucom_l **)
+
+let coq_SWAP q1 q2 =
+  (coq_CNOT q1 q2) :: ((coq_CNOT q2 q1) :: ((coq_CNOT q1 q2) :: []))
+
 (** val remove_prefix :
     coq_RzQ_ucom_l -> coq_RzQ_ucom_l -> RzQGateSet.coq_RzQ_Unitary gate_list
     option **)

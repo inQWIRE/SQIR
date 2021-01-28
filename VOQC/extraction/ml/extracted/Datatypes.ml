@@ -4,13 +4,6 @@ type comparison =
 | Lt
 | Gt
 
-(** val coq_CompOpp : comparison -> comparison **)
-
-let coq_CompOpp = function
-| Eq -> Eq
-| Lt -> Gt
-| Gt -> Lt
-
 type coq_CompareSpecT =
 | CompEqT
 | CompLtT

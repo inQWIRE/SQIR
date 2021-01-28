@@ -20,6 +20,26 @@ Inductive RzQ_Unitary : nat -> Set :=
   | URzQ_CNOT        : RzQ_Unitary 2.
 Definition U := RzQ_Unitary.
 
+(* List.nth takes an index, a list, and a default return value.
+   In our case, the default value will never be returned. *)
+Definition to_base {dim n} (u : U n) (qs : list nat) (pf : List.length qs = n) :=
+  match u with
+  | URzQ_H     => @SQIR.H dim (List.nth O qs O) 
+  | URzQ_X     => @SQIR.X dim (List.nth O qs O)
+  | URzQ_Rz a  => @SQIR.Rz dim (Qreals.Q2R a * PI)%R (List.nth O qs O)
+  | URzQ_CNOT  => @SQIR.CNOT dim (List.nth O qs O) (List.nth (S O) qs O)
+  end.
+
+Local Transparent SQIR.H SQIR.X SQIR.Rz SQIR.CNOT.
+Lemma to_base_uses_q : forall (dim n : nat) (u : U n) (qs : list nat) (pf : List.length qs = n),
+    uses (@to_base dim n u qs pf) qs.
+Proof.
+  intros.
+  destruct u; simpl;
+  constructor; apply nth_In; lia.
+Qed.
+Local Opaque SQIR.H SQIR.X SQIR.Rz SQIR.CNOT.
+
 Definition match_gate {n} (u u' : U n) : bool :=
   match u, u' with
   | URzQ_H, URzQ_H | URzQ_X, URzQ_X | URzQ_CNOT, URzQ_CNOT => true
@@ -27,29 +47,25 @@ Definition match_gate {n} (u u' : U n) : bool :=
   | _, _ => false
   end.
 
-Definition to_base {n} (u : U n) :=
-  match u with
-  | URzQ_H     => U_R (PI/2) 0 PI
-  | URzQ_X     => U_R PI 0 PI
-  | URzQ_Rz a  => U_R 0 0 (Qreals.Q2R a * PI)%R
-  | URzQ_CNOT  => U_CNOT
-  end.
-
-Lemma match_gate_implies_eq : forall n (u u' : U n), 
-  match_gate u u' = true -> to_base u = to_base u'. 
+Lemma match_gate_implies_eq : forall dim n (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
+  match_gate u u' = true -> uc_equiv (@to_base dim n u qs pf) (to_base u' qs pf).
 Proof.
-  intros n u u' H.
-  dependent destruction u; dependent destruction u'; 
-  auto; inversion H. simpl.
+  intros.
+  dependent destruction u; dependent destruction u'.
+  all: inversion H.
+  all: simpl; try reflexivity.
   apply Qeq_bool_iff in H1.
-  apply f_equal. apply RMicromega.Q2R_m in H1. rewrite H1. reflexivity.
+  apply RMicromega.Q2R_m in H1. rewrite H1. reflexivity.
 Qed.
 
 End RzQGateSet.
 Export RzQGateSet.
 
-Module RzQProps := UListRepresentationProps RzQGateSet.
-Export RzQProps.
+Module ULR := UListRepr RzQGateSet.
+Export ULR.
+
+Module NULR := NUListRepr RzQGateSet.
+(* NULR not exported because its notation conflicts with ULR. *)
 
 (* Useful shorthands. *)
 
@@ -72,7 +88,7 @@ Definition CNOT {dim} q1 q2 := @App2 _ dim URzQ_CNOT q1 q2.
 Definition RzQ_ucom dim := ucom RzQ_Unitary dim.
 Definition RzQ_ucom_l dim := gate_list RzQ_Unitary dim.
 Definition RzQ_com dim := com RzQ_Unitary dim.
-Definition RzQ_com_l dim := com_list RzQ_Unitary dim.
+Definition RzQ_com_l dim := NULR.com_list dim.
 
 (* Used to convert benchmarks to RzQ set. *)
 Definition CCX {dim} a b c : RzQ_ucom_l dim :=
@@ -86,7 +102,11 @@ Definition CCZ {dim} a b c : RzQ_ucom_l dim :=
   CNOT a b :: TDAG b :: CNOT a b :: 
   T a :: T b :: T c :: []. 
 
-(* re-define for with the match_gate arg. fixed *)
+(* Used in mapping. *)
+Definition SWAP {dim} q1 q2 : RzQ_ucom_l dim := 
+  CNOT q1 q2 :: CNOT q2 q1 :: CNOT q1 q2 :: [].
+
+(* re-define with the match_gate arg. fixed *)
 Definition remove_prefix {dim} (l pfx : RzQ_ucom_l dim) :=
   remove_prefix l pfx (fun n => @match_gate n).
 Definition remove_suffix {dim} (l sfx : RzQ_ucom_l dim) :=
@@ -148,8 +168,8 @@ Proof.
   specialize (bound_subs_multiples_of_2 (a + a')) as Hbound. 
   destruct Hbound as [k Hbound]. 
   destruct (Qeq_bool (bound (a + a')) 0) eqn:eq;
-  unfold uc_equiv_l, uc_equiv; simpl; rewrite Mmult_assoc, pad_mult;
-  repeat rewrite phase_shift_rotation; rewrite phase_mul;
+  unfold uc_equiv_l, uc_equiv; simpl;
+  repeat rewrite denote_Rz; rewrite Mmult_assoc, pad_mult, phase_mul;
   rewrite <- Rmult_plus_distr_r, Rplus_comm, <- Qreals.Q2R_plus.
   - apply Qeq_bool_eq in eq.
     rewrite eq in Hbound. rewrite Qplus_0_l in Hbound.

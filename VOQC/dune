@@ -1,3 +1,9 @@
 (executable
   (name voqc)
+  (modules voqc)
+  (libraries extracted_code))
+
+(executable
+  (name mapper)
+  (modules mapper)
   (libraries extracted_code))

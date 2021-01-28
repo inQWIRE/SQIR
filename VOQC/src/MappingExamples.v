@@ -1,8 +1,70 @@
-Require Import SimpleMapping.
+Require Import SimpleMappingWithLayout.
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
+Fixpoint merge_path (p1 : list nat) p2 :=
+  match p1 with
+  | [] | [_] => p2
+  | h :: t => h :: (merge_path t p2)
+  end.
+
+Lemma valid_path_extend_path : forall a n1 n2 (is_in_graph : nat -> nat -> Prop) p,
+  n1 <> n2 ->
+  is_in_graph n1 a \/ is_in_graph a n1 ->
+  valid_path a n2 is_in_graph p ->
+  valid_path n1 n2 is_in_graph (n1 :: p).
+Proof.
+  intros.
+  destruct p.
+  destruct H1 as [H2 _]; inversion H2.
+  destruct p.
+  destruct H1 as [_ [_ [_ H2]]]; inversion H2.
+  destruct H1 as [H2 [H3 [H4 H5]]].
+  inversion H2; subst.
+  repeat split; constructor; assumption.
+Qed.  
+
+Lemma valid_path_merge_path : forall a b c is_in_graph p1 p2, 
+  valid_path a b is_in_graph p1 -> 
+  valid_path b c is_in_graph p2 -> 
+  not_in_interior c p1 ->
+  valid_path a c is_in_graph (merge_path p1 p2).
+Proof.
+  intros a b c f p1 p2 Hp1 Hp2 NIp1.
+  (* Because p1 and p2 are valid paths, we know something about their
+     structure. Invert some hypotheses here for use later. *)
+  destruct p1; [| destruct p1].
+  1, 2: inversion NIp1.
+  destruct Hp1 as [H1 [H2 [H3 H4]]].
+  inversion H1; subst; clear H1.
+  destruct p2.
+  destruct Hp2 as [H _]; inversion H.
+  destruct Hp2 as [H [H1 [H5 H6]]].
+  inversion H; subst; clear H.
+  (* now a standard proof by induction *)
+  generalize dependent n0.
+  generalize dependent n.
+  induction p1.
+  - intros.
+    inversion H2; subst. inversion H7; subst.
+    2: inversion H8.
+    inversion H3; subst.
+    2: inversion H11.
+    simpl. 
+    repeat split; constructor; try assumption.
+    inversion NIp1; assumption.
+  - intros.
+    replace (merge_path (n :: n0 :: a :: p1) (n1 :: p2)) with (n :: (merge_path (n0 :: a :: p1) (n1 :: p2))) by reflexivity.
+    apply valid_path_extend_path with (a:=n0).
+    inversion NIp1; assumption.
+    inversion H3; assumption.
+    apply IHp1.
+    inversion H2; assumption.
+    inversion H3; assumption.
+    inversion H4; assumption.
+    inversion NIp1; assumption.
+Qed.
 
 (*************************)
 (** LNN Mapping Example **)
@@ -10,7 +72,7 @@ Local Close Scope R_scope.
 
 Module LNN.
 
-(* Creates a DAG of size dim where element i is connected to (i-1) and (i+1),
+(* Creates a graph of size dim where element i is connected to (i-1) and (i+1),
    but element 0 is not connected to element (dim-1). *)
 
 Inductive LNN_is_in_graph dim : nat -> nat -> Prop := 
@@ -43,14 +105,18 @@ Definition LNN_get_path n1 n2 :=
 Compute (LNN_get_path 2 5).
 Compute (LNN_get_path 6 1).
 
-Definition map_to_lnn {dim} (c : base_ucom dim) : base_ucom dim :=
-  simple_map c LNN_get_path (LNN_is_in_graph_b dim).
+(*Import RzQGateSet.
+Module SMP := SimpleMappingProofs RzQGateSet MappableRzQ.
+Import SMP.
+
+Definition map_to_lnn {dim} (l : RzQ_ucom_l dim) : base_ucom dim :=
+  simple_map_rzq l LNN_get_path (LNN_is_in_graph_b dim).
 
 (* Examples *)
 Definition test_lnn1 : base_ucom 3 := CNOT 2 1.
 Compute (map_to_lnn test_lnn1).
 Definition test_lnn2 : base_ucom 5 := CNOT 0 3; CNOT 4 1.
-Compute (map_to_lnn test_lnn2).
+Compute (map_to_lnn test_lnn2).*)
 
 (* Correctness *)
 
@@ -115,7 +181,7 @@ Proof.
   all: try (contradict H0; lia).
 Qed.
 
-Lemma map_to_lnn_sound : forall dim (c : base_ucom dim),
+(*Lemma map_to_lnn_sound : forall dim (c : base_ucom dim),
   uc_well_typed c -> map_to_lnn c ≡ c.
 Proof.
   intros.
@@ -137,7 +203,7 @@ Proof.
   apply LNN_get_path_valid.
   apply LNN_is_in_graph_reflects.
   assumption.
-Qed.
+Qed.*)
 
 End LNN.
 
@@ -192,7 +258,7 @@ Compute (LNN_ring_get_path 8 6 1).
 Compute (LNN_ring_get_path 8 6 3).
 Compute (LNN_ring_get_path 8 2 7).
 
-Definition map_to_lnn_ring {dim} (c : base_ucom dim) : base_ucom dim :=
+(*Definition map_to_lnn_ring {dim} (c : base_ucom dim) : base_ucom dim :=
   simple_map c (LNN_ring_get_path dim) (LNN_ring_is_in_graph_b dim).
 
 (* Examples *)
@@ -200,6 +266,7 @@ Definition test_lnn_ring1 : base_ucom 3 := CNOT 2 1.
 Compute (map_to_lnn_ring test_lnn_ring1).
 Definition test_lnn_ring2 : base_ucom 5 := CNOT 0 3; CNOT 4 1.
 Compute (map_to_lnn_ring test_lnn_ring2).
+*)
 
 (* Correctness *)
 
@@ -366,6 +433,7 @@ Proof.
   contradict H5; lia. 
 Qed.
 
+(*
 Lemma map_to_lnn_ring_sound : forall dim (c : base_ucom dim),
   uc_well_typed c -> map_to_lnn_ring c ≡ c.
 Proof.
@@ -389,6 +457,7 @@ Proof.
   apply LNN_ring_is_in_graph_reflects.
   assumption.
 Qed.
+*)
 
 End LNNRing.
 
@@ -523,7 +592,7 @@ Compute (grid_get_path test_nc 11 1).
 Compute (grid_get_path test_nc 6 9).
 Compute (grid_get_path test_nc 13 10).
 
-Definition map_to_grid numRows numCols (c : base_ucom (numRows * numCols)) : base_ucom (numRows * numCols) :=
+(*Definition map_to_grid numRows numCols (c : base_ucom (numRows * numCols)) : base_ucom (numRows * numCols) :=
   simple_map c (grid_get_path numCols) (grid_is_in_graph_b numRows numCols).
 
 (* Examples *)
@@ -531,6 +600,7 @@ Definition test_grid1 : base_ucom (test_nr * test_nc) := CNOT 2 1.
 Compute (map_to_grid test_nr test_nc test_grid1).
 Definition test_grid2 : base_ucom (test_nr * test_nc) := CNOT 0 3; CNOT 4 8; CNOT 12 6.
 Compute (map_to_grid test_nr test_nc test_grid2).
+*)
 
 (* Correctness *)
 
@@ -947,6 +1017,7 @@ Proof.
   all: try (contradict H0; lia).
 Qed.
 
+(*
 Lemma map_to_grid_sound : forall numRows numCols (c : base_ucom (numRows * numCols)),
   uc_well_typed c -> map_to_grid numRows numCols c ≡ c.
 Proof.
@@ -970,6 +1041,7 @@ Proof.
   apply grid_is_in_graph_reflects.
   assumption.
 Qed.
+*)
 
 End Grid.
 
@@ -1024,6 +1096,7 @@ Definition tenerife_get_path n1 n2 :=
   | _, _ => [] (* bad input case *)
   end.
 
+(*
 Definition map_to_tenerife (c : base_ucom 5) : base_ucom 5 :=
   simple_map c tenerife_get_path tenerife_is_in_graph_b.
 
@@ -1034,6 +1107,7 @@ Definition test_tenerife2 : base_ucom 5 := CNOT 3 0.
 Compute (map_to_tenerife test_tenerife2).
 Definition test_tenerife3 : base_ucom 5 := CNOT 0 2; X 3; CNOT 4 1; X 2; CNOT 3 2.
 Compute (map_to_tenerife test_tenerife3).
+*)
 
 (* Correctness *)
 
@@ -1104,6 +1178,7 @@ Proof.
     reflexivity.
 Qed.  
 
+(*
 Lemma map_to_tenerife_sound : forall (c : base_ucom 5),
   uc_well_typed c -> map_to_tenerife c ≡ c.
 Proof.
@@ -1127,5 +1202,6 @@ Proof.
   apply tenerife_is_in_graph_reflects.
   assumption.
 Qed.
+*)
 
 End Tenerife.

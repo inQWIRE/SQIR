@@ -724,6 +724,7 @@ Qed.
    this over the alternate definition of find_merge. *)
 Definition b2R (b : bool) : R := if b then 1%R else 0%R.
 Local Coercion b2R : bool >-> R.
+Local Transparent SQIR.H.
 Local Opaque ueval_r.
 Lemma find_merge_alt'_move_rotation : forall {dim} (l : RzQ_ucom_l dim) blst q smap l1 a q' l2 f a' (ψ : Vector (2 ^ dim)),
   uc_well_typed_l l ->
@@ -750,6 +751,7 @@ Proof.
     rewrite 2 Mmult_assoc, Mscale_mult_dist_r.
     eapply IHl; try apply fm; auto.
     intros q0 Hq01 Hq02. unfold classical.
+    unfold SQIR.H; simpl.
     rewrite <- Mmult_assoc, proj_commutes_1q_gate, Mmult_assoc, Hψ; auto.
     all: rewrite FSetFacts.add_iff in Hq02; auto.
   - (* RzQ gate *)
@@ -809,6 +811,7 @@ Proof.
     rewrite Hψ; auto.
 Qed.
 Local Transparent ueval_r.
+Local Opaque SQIR.H.
 
 (* Main lemma restated (and prettified) for find_merge. *)
 
@@ -832,7 +835,7 @@ Proof.
   inversion H; subst; clear H.
   assert (nil_rotation : @uc_equiv_l dim [Rz 0 q0'] []).
   { unfold uc_equiv_l, uc_equiv; simpl.
-    rewrite phase_shift_rotation.
+    rewrite denote_Rz.
     replace (Qreals.Q2R 0 * PI)%R with 0%R by lra.
     rewrite phase_0. 
     autorewrite with eval_db; try lia.
@@ -1030,7 +1033,7 @@ Fixpoint merge_rotations_at_end {dim} (l : RzQ_ucom_l dim) n acc :=
            end
   end.
 
-Definition invert_gate {dim} (g : gate_app RzQ_Unitary dim) :=
+Definition invert_gate {dim} (g : gate_app _ dim) :=
   match g with
   | App1 (URzQ_Rz a) q => invert_rotation a q
   | _ => g
@@ -1142,6 +1145,7 @@ Proof.
   reflexivity.
 Qed.
 
+Local Transparent SQIR.H SQIR.X SQIR.Rz SQIR.CNOT.
 Lemma invert_eq_SQIR_invert : forall {dim} (l : RzQ_ucom_l dim),
   dim > 0 ->
   uc_eval (list_to_ucom (invert l)) = uc_eval (UnitaryOps.invert (list_to_ucom l)).
@@ -1171,6 +1175,7 @@ Proof.
   simpl. rewrite Cexp_2PI.
   autorewrite with C_db R_db; reflexivity.
 Qed.
+Local Opaque SQIR.H SQIR.X SQIR.Rz SQIR.CNOT.
 
 Lemma invert_WT : forall {dim} (l : RzQ_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (invert l).

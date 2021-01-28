@@ -32,7 +32,7 @@ VOQC := VOQC/src
 
 COQ_OPTS := -R . Top
 
-all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
+all: examples optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
@@ -40,9 +40,7 @@ grover: invoke-coqmakefile $(examples)/Grover.vo
 
 qpe-full: invoke-coqmakefile $(examples)/QPEGeneral.vo
 
-mapper: invoke-coqmakefile $(VOQC)/SimpleMappingWithLayout.vo
-
-optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo VOQC/voqc.ml
+optimizer: invoke-coqmakefile $(VOQC)/Optimize.vo $(VOQC)/MappingExamples.vo VOQC/voqc.ml
 	cd VOQC/extraction && ./extract.sh
 	dune build voqc.exe --root VOQC
 
@@ -92,10 +90,10 @@ SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examp
 VOQC/src/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(SQIR)/UnitarySem.vo $(SQIR)/Equivalences.vo
 	coqc $(COQ_OPTS) $(VOQC)/SimpleMapping.v
 
-VOQC/src/MappingExamples.vo: $(VOQC)/MappingExamples.v $(VOQC)/SimpleMapping.vo
+VOQC/src/MappingExamples.vo: $(VOQC)/MappingExamples.v $(VOQC)/SimpleMappingWithLayout.vo
 	coqc $(COQ_OPTS) $(VOQC)/MappingExamples.v
 
-VOQC/src/SimpleMappingWithLayout.vo: $(VOQC)/SimpleMappingWithLayout.v $(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo 
+VOQC/src/SimpleMappingWithLayout.vo: $(VOQC)/SimpleMappingWithLayout.v #$(VOQC)/SimpleMapping.vo $(VOQC)/MappingExamples.vo 
 	coqc $(COQ_OPTS) $(VOQC)/SimpleMappingWithLayout.v
 
 # Built by 'make optimizer'
@@ -121,7 +119,7 @@ VOQC/src/NonUnitaryListRepresentation.vo: $(VOQC)/NonUnitaryListRepresentation.v
 VOQC/src/NotPropagation.vo: $(VOQC)/NotPropagation.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/NotPropagation.v
 
-VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/GateCancellation.vo $(VOQC)/RotationMerging.vo
+VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/GateCancellation.vo $(VOQC)/RotationMerging.vo $(VOQC)/SimpleMappingWithLayout.vo
 	coqc $(COQ_OPTS) $(VOQC)/Optimize.v
 
 VOQC/src/Optimize1qGates.vo: $(VOQC)/Optimize1qGates.v $(VOQC)/IBMGateSet.vo

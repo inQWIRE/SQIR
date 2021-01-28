@@ -179,8 +179,6 @@ Proof.
   rewrite <- Mscale_kron_dist_l.
   rewrite <- Mscale_kron_dist_r.
   do 2 (apply f_equal2; trivial).
-  rewrite hadamard_rotation.
-  repeat rewrite phase_shift_rotation.
   unfold Qreals.Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   solve_matrix; autorewrite with Cexp_db; C_field.
@@ -200,13 +198,12 @@ Proof.
   rewrite <- Mscale_kron_dist_l.
   rewrite <- Mscale_kron_dist_r.
   do 2 (apply f_equal2; trivial).
-  rewrite hadamard_rotation.
-  repeat rewrite phase_shift_rotation.
   unfold Qreals.Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
 
+Local Transparent SQIR.H.
 Lemma apply_H_equivalence3_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   apply_H_equivalence3 q l = Some l' ->
   l =l= l'.
@@ -235,6 +232,7 @@ Proof.
     assert (H : [@H dim n0] ++ [H n] =l= [H n] ++ [H n0]).
     { simpl. unfold uc_equiv_l; simpl. 
       repeat rewrite <- useq_assoc. 
+      unfold SQIR.H.
       rewrite U_V_comm. 
       reflexivity. lia. }
     rewrite H. 
@@ -264,6 +262,7 @@ Proof.
     unfold_uc_equiv_l. 
     apply H_swaps_CNOT.
 Qed.
+Local Opaque SQIR.H.
 
 Lemma apply_H_equivalence4_sound : forall {dim} (l l' : RzQ_ucom_l dim) q,
   apply_H_equivalence4 q l = Some l' ->
@@ -293,8 +292,8 @@ Proof.
   unfold uc_equiv_l; simpl.
   rewrite 2 SKIP_id_r.
   unfold uc_equiv; simpl.
-  rewrite hadamard_rotation.
-  repeat rewrite phase_shift_rotation.
+  repeat rewrite denote_H.
+  repeat rewrite denote_Rz.
   unfold Qreals.Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   autorewrite with eval_db.
@@ -333,8 +332,8 @@ Proof.
   unfold uc_equiv_l; simpl.
   rewrite 2 SKIP_id_r.
   unfold uc_equiv; simpl.
-  rewrite hadamard_rotation.
-  repeat rewrite phase_shift_rotation.
+  repeat rewrite denote_H.
+  repeat rewrite denote_Rz.
   unfold Qreals.Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   autorewrite with eval_db.

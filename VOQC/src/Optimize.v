@@ -162,3 +162,69 @@ Proof.
   apply optimize_light_sound.
   apply optimize_light_WT.
 Qed.
+
+
+(** In progress... adding mapping **)
+
+Require Import SimpleMappingWithLayout.
+
+Definition only_map 
+      (ldim pdim : nat) 
+      (l : RzQ_ucom_l ldim)
+      (m : qmap ldim pdim) 
+      (get_path : nat -> nat -> list nat) 
+      (is_in_graph_b : nat -> nat -> bool)
+  : option (RzQ_ucom_l pdim * qmap ldim pdim) :=
+  (* we can check that the layout and input programs are sensible (making
+     fewer assumptions for correctness), but we have to assume that get_path
+     and is_in_graph_b are well-formed unless we use a proper Coq graph library. *)
+  if layout_well_formed_b ldim pdim m && uc_well_typed_l_b ldim l
+  then Some (simple_map_rzq l m get_path is_in_graph_b)
+  else None.
+
+Definition optimize_then_map 
+      (ldim pdim : nat) 
+      (l : RzQ_ucom_l ldim)
+      (m : qmap ldim pdim) 
+      (get_path : nat -> nat -> list nat) 
+      (is_in_graph_b : nat -> nat -> bool)
+  : option (RzQ_ucom_l pdim * qmap ldim pdim) :=
+  if layout_well_formed_b ldim pdim m && uc_well_typed_l_b ldim l
+  then Some (simple_map_rzq (optimize l) m get_path is_in_graph_b)
+  else None.
+
+Definition map_then_optimize
+      (ldim pdim : nat) 
+      (l : RzQ_ucom_l ldim)
+      (m : qmap ldim pdim) 
+      (get_path : nat -> nat -> list nat) 
+      (is_in_graph_b : nat -> nat -> bool)
+  : option (RzQ_ucom_l pdim * qmap ldim pdim) :=
+  if layout_well_formed_b ldim pdim m && uc_well_typed_l_b ldim l
+  then let (l',m') := simple_map_rzq l m get_path is_in_graph_b in
+       Some (optimize l', m')
+  else None.
+
+(* In order for this ^ to be valid, the following must hold:
+
+Lemma optimize_respects_contraints_undirected : forall {dim} (l : RzQ_ucom_l dim),
+  respects_constraints_undirected is_in_graph_b l ->
+  respects_constraints_undirected is_in_graph_b (optimize l).
+
+Note that I'm using the "undirected" version of respects contraints -- meaning
+that this only works for graphs that are undirected. The issue is that 
+apply_H_equivalence3 (in HadamardReduction.v) does not preserve directionality.
+You can prove respects_contraints_directed if you remove that step from
+optimization. *)
+
+Definition optimize_then_map_then_optimize
+      (ldim pdim : nat) 
+      (l : RzQ_ucom_l ldim)
+      (m : qmap ldim pdim) 
+      (get_path : nat -> nat -> list nat) 
+      (is_in_graph_b : nat -> nat -> bool)
+  : option (RzQ_ucom_l pdim * qmap ldim pdim) :=
+  if layout_well_formed_b ldim pdim m && uc_well_typed_l_b ldim l
+  then let (l',m') := simple_map_rzq (optimize l) m get_path is_in_graph_b in
+       Some (optimize l', m')
+  else None.

@@ -251,7 +251,7 @@ Lemma propagate_Rz_sound : forall {dim} a (l : RzQ_ucom_l dim) q l',
 Proof.
   unfold propagate_Rz.
   intros dim a l q l' Hq res.
-  eapply propagate_preserves_semantics; try apply res.
+  apply (propagate_preserves_semantics l (Rz_commute_rules q) [Rz_cancel_rule q a] (length l)). 5: apply res.
   apply uc_equiv_l_rel.
   apply uc_app_mor_Proper.
   - clear l l' res.

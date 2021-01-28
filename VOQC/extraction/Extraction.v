@@ -6,6 +6,8 @@ Require Import HadamardReduction.
 Require Import RotationMerging.
 Require Import NotPropagation.
 Require Import Optimize.
+Require Import SimpleMappingWithLayout.
+Require Import MappingExamples.
 
 (* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -20,13 +22,18 @@ Extract Inlined Constant rev => "List.rev".
 Extract Inlined Constant rev_append => "List.rev_append".
 Extract Inlined Constant fold_right => "(fun f a l -> List.fold_right f l a)".
 Extract Inlined Constant forallb => "List.for_all".
+Extract Inlined Constant existsb => "List.exists".
 
-(* Standard extraction from nat -> OCaml int. *)
+(* Standard extraction from nat -> OCaml int and Z -> OCaml int. *)
 Require Coq.extraction.ExtrOcamlNatInt.
+Require Coq.extraction.ExtrOcamlZInt.
 
 (* Inline a few operations. *)
 Extraction Inline plus mult Nat.eq_dec.
-Extraction Inline Z.mul Z.div.
+Extraction Inline Z.add Z.sub Z.mul.
+
+(* Otherwise sub will be extracted to the (undefined) string "sub". *)
+Extract Inlined Constant Init.Nat.sub => "Nat.sub".
 
 (* Custom Extraction of rationals. *)
 Extract Inductive Q => "Q.t" [ "" ].
@@ -45,9 +52,9 @@ Extract Constant URzQ_P => "RzQGateSet.URzQ_Rz (Q.of_ints 1 2)".
 Extract Constant URzQ_Z => "RzQGateSet.URzQ_Rz (Q.of_int 1)".
 Extract Constant URzQ_PDAG => "RzQGateSet.URzQ_Rz (Q.of_ints 3 2)".
 Extract Constant URzQ_TDAG => "RzQGateSet.URzQ_Rz (Q.of_ints 7 4)".
-(* It's easier to extract this function by hand.
+(* It's easier to extract these functions by hand.
    bound is used in RzQGateSet; it puts a rational q in the range [0,2) *)
-Extract Constant bound => 
+Extract Constant RzQGateSet.bound => 
   "let round_to_multiple_of_2 q = 
       let num = Q.num q in 
       let den = Q.den q in
@@ -83,19 +90,20 @@ Extraction Implicit get_matching_prefix [dim].
 Extraction Implicit LCR [dim].
 
 (* From RzQGateSet.v *)
-Extraction Implicit T [dim].
-Extraction Implicit TDAG [dim].
-Extraction Implicit P [dim].
-Extraction Implicit PDAG [dim].
-Extraction Implicit Z [dim].
-Extraction Implicit Rz [dim].
-Extraction Implicit H [dim].
-Extraction Implicit X [dim].
-Extraction Implicit CNOT [dim].
-Extraction Implicit CCX [dim].
-Extraction Implicit CCZ [dim].
-Extraction Implicit combine_rotations [dim].
-Extraction Implicit invert_rotation [dim].
+Extraction Implicit RzQGateSet.T [dim].
+Extraction Implicit RzQGateSet.TDAG [dim].
+Extraction Implicit RzQGateSet.P [dim].
+Extraction Implicit RzQGateSet.PDAG [dim].
+Extraction Implicit RzQGateSet.Z [dim].
+Extraction Implicit RzQGateSet.Rz [dim].
+Extraction Implicit RzQGateSet.H [dim].
+Extraction Implicit RzQGateSet.X [dim].
+Extraction Implicit RzQGateSet.CNOT [dim].
+Extraction Implicit RzQGateSet.SWAP [dim].
+Extraction Implicit RzQGateSet.CCX [dim].
+Extraction Implicit RzQGateSet.CCZ [dim].
+Extraction Implicit RzQGateSet.combine_rotations [dim].
+Extraction Implicit RzQGateSet.invert_rotation [dim].
 Extraction Implicit RzQGateSet.remove_prefix [dim].
 Extraction Implicit RzQGateSet.remove_suffix [dim].
 Extraction Implicit RzQGateSet.replace_pattern [dim].
@@ -151,7 +159,16 @@ Extraction Implicit finalize [dim].
 Extraction Implicit not_propagation' [dim].
 Extraction Implicit not_propagation [dim].
 
-(* Optimize *)
+(* From Simplemappingwithlayout.v *)
+Extraction Implicit log2phys [ldim pdim].
+Extraction Implicit phys2log [ldim pdim].
+Extraction Implicit swap_in_map [ldim pdim].
+Extraction Implicit path_to_swaps [ldim pdim].
+Extraction Implicit fix_cnots [dim].
+Extraction Implicit simple_map [ldim pdim].
+Extraction Implicit simple_map_rzq [ldim pdim].
+
+(* From Optimize.v *)
 Extraction Implicit optimize [dim].
 Extraction Implicit optimize_lcr [dim].
 Extraction Implicit optimize_light [dim].
@@ -159,7 +176,14 @@ Extraction Implicit optimize_light_lcr [dim].
 
 (* Perform extraction. *)
 Separate Extraction
-  CCX CCZ
+  RzQGateSet.CCX RzQGateSet.CCZ
   URzQ_Z URzQ_P URzQ_PDAG URzQ_T URzQ_TDAG URzQ_Rz 
   optimize optimize_lcr
-  optimize_light optimize_light_lcr.
+  optimize_light optimize_light_lcr
+  trivial_layout layout_to_list only_map
+  optimize_then_map map_then_optimize
+  optimize_then_map_then_optimize
+  LNN.LNN_get_path LNN.LNN_is_in_graph_b
+  LNNRing.LNN_ring_get_path LNNRing.LNN_ring_is_in_graph_b
+  Grid.grid_get_path Grid.grid_is_in_graph_b
+  Tenerife.tenerife_get_path Tenerife.tenerife_is_in_graph_b. 
