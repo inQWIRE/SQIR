@@ -10,8 +10,6 @@ Definition ivar := nat.
 
 Definition evar := nat.
 
-Definition nvar := nat.
-
 Inductive rtype := Q (n:nat).
 
 Inductive avar := lvar : ivar -> avar | gvar : evar -> avar.
@@ -30,127 +28,45 @@ Definition avar_eq (r1 r2 : avar) : bool :=
 
 Notation "i '==?' j" := (avar_eq i j) (at level 50).
 
-(* Define predicate for applying gates on different circuit. *)
-(* all bound has the form nat * var + nat format. 
-   single var is 1 * var + 0, a constant is 0 * var - nat. *)
-
-Inductive bound : Set := 
-   | Br : nat -> nvar -> nat -> bound
-   | NBr : nat -> nvar -> nat -> bound
-   | Num : nat -> bound.
-
-Inductive pred : Set :=
-   | Unit : bound -> pred (* x = m * var + m for exactly one *)
-   | Space : nat -> nat -> pred. (* forall x, x =  m * x + m for every one that sat the formula. *)
-
-(*   | Rel : ivar -> ivar -> bound -> pred (* forall x, x := m * y + m *)
-   | Pow : ivar -> bound -> pred (* x = 2 ^ bound *)
-   | Fun : ivar -> (nat -> bool) -> pred (* forall x , f x *)
-   | AnDiv : ivar -> nat -> bound -> pred (* Angle x = n * Pi / 2 ^ y  *)
-   | Angle : ivar -> nat -> pred (* Angle x = n *)
-   | Conj : pred -> pred -> pred. (* pred /\ pred *)*)
-
-Definition update_nvar {A} (f : (nvar -> A)) (i : nvar) (x : A) :=
-  fun y => if y =? i then x else f y.
-
-Definition eval_pred (x:nat) (f : nvar -> Prop) (p:pred) : Prop :=
-   match p with 
-                 | Unit (Br n y m) => (x = (n * y + m) /\ f y)
-                 | Unit (NBr n y m) => (x = (n * y - m) /\ f y)
-                 | Unit (Num n) => (x = n)
-                 | Space n m => (exists y, x = n * y + m)
-   end.
-
-Definition neq_pred (x:nat) (yv : nat) (p:pred) : Prop :=
-   match p with 
-                 | Unit (Br n y m) => (x <> (n * yv + m))
-                 | Unit (NBr n y m) => (x <> (n * yv - m))
-                 | Unit (Num n) => (x <> n)
-                 | Space n m => (forall y, x <> n * y + m)
-   end.
-
-
 (* This is the expression in a function in the RCIR+ language. 
    It does not contain quantum gates. quantum gates will be foreign functions. *)
+Definition pos : Type := (avar * nat).
+
 Inductive rexp :=
-             | Skip : rexp | X : (avar * nvar) -> rexp | Cont : (avar * nvar) -> rexp -> rexp 
-     | Let : nvar -> pred -> rexp -> rexp | Seq : rexp -> rexp -> rexp | Copyto : avar -> avar -> rexp.
+             | Skip : rexp | X : pos -> rexp | CU : pos -> rexp -> rexp 
+             | Seq : rexp -> rexp -> rexp | Copyto : avar -> avar -> rexp
+             | Inv : rexp -> rexp.
 
 Definition regs := (avar -> option (rtype * (nat -> bool))).
 
+(* Defining the CNOT and CCX gate. *)
+Definition CNOT (p1 p2 : pos) := CU p1 (X p2).
 
-(* The following defines the well-formedness of an RCIR+ expression. 
-   The well-formedness depends on an input register set. *)
-Inductive bound_pred : list nvar -> pred -> Prop :=
-   | bound_pred_unit_br : forall xs n y m, In y xs -> bound_pred xs (Unit (Br n y m))
-   | bound_pred_unit_nbr : forall xs n y m, In y xs -> bound_pred xs (Unit (NBr n y m))
-   | bound_pred_unit_num : forall xs n, bound_pred xs (Unit (Num n))
-   | bound_pred_space : forall xs n m, bound_pred xs (Space n m).
+Definition CCX (p1 p2 p3 : pos) := CU p1 (CNOT p2 p3).
 
-Inductive bound_let : list nvar -> rexp -> Prop :=
-   | bound_let_skip : forall xs, bound_let xs Skip
-   | bound_let_x : forall xs y m, In m xs -> bound_let xs (X (y,m))
-   | bound_let_cont : forall xs y m e, In m xs -> bound_let xs e -> bound_let xs (Cont (y,m) e)
-   | bound_let_let : forall xs n p e, bound_pred xs p -> bound_let (n::xs) e -> bound_let xs (Let n p e)
-   | bound_let_seq : forall xs e1 e2, bound_let xs e1 -> bound_let xs e2 -> bound_let xs (Seq e1 e2)
-   | bound_let_copy : forall xs x y, bound_let xs (Copyto x y).
-
-Inductive map_elem : Set := Enum (n:nat) | Espace (n1:nat) (n2:nat).
 
 (* well-formedness of a predicate based on the relation of
     the input dimension number and the specified predicate type and number. *)
-Inductive WF_elem : nat -> map_elem -> Prop := 
-  | WF_unit_Num : forall n x, x < n -> WF_elem n (Enum x)
-  | WF_space : forall n x y, y < n -> WF_elem n (Espace x y).
 
-Definition nvar_map_pred (x:nvar) (p:pred) (f : nvar -> option map_elem) : (nvar -> option map_elem) :=
-   match p with Unit (Num n) => update_nvar f x (Some (Enum n))
-             | Unit (Br n y m) => (match f y with None => update_nvar f x None
-                                           | Some (Enum a) => update_nvar f x (Some (Enum (n * a + m)))
-                                           | Some (Espace n1 m1) => update_nvar f x (Some (Espace (n * n1) (n*m1 + m)))
-                                   end)
-             | Unit (NBr n y m) => (match f y with None => update_nvar f x None
-                                           | Some (Enum a) => update_nvar f x (Some (Enum (n * a - m)))
-                                           | Some (Espace n1 m1) => update_nvar f x (Some (Espace (n * n1) (n*m1 - m)))
-                                    end)
-            | Space n m => update_nvar f x (Some (Espace n m))
-   end.
+Inductive freevar_exp : avar -> nat -> rexp -> Prop := 
+   freevar_skip : forall a n, freevar_exp a n Skip
+ | freevar_x_eq : forall a x b, a <> b -> freevar_exp x b (X (x,a))
+ | freevar_x_neq : forall a x b y, x <> y -> freevar_exp x b (X (y,a))
+ | freevar_cont_eq : forall a x b e, a <> b -> freevar_exp x b e -> freevar_exp x b (CU (x,a) e)
+ | freevar_cont_neq : forall a x y b e, x <> y -> freevar_exp x b e -> freevar_exp x b (CU (y,a) e)
+ | freevar_seq : forall x a e1 e2, freevar_exp x a e1 -> freevar_exp x a e2 -> freevar_exp x a (Seq e1 e2)
+ |  freevar_copyto : forall x n a b, freevar_exp x n (Copyto a b)
+ | freevar_inv : forall x a e, freevar_exp x a e -> freevar_exp x a (Inv e).
 
+Inductive WF_rexp : regs -> rexp -> Prop := 
+  | WF_skip : forall r, WF_rexp r Skip
+  | WF_x : forall r x n a g, 0 < n -> r x = Some (Q n, g) -> a < n -> WF_rexp r (X (x,a)) 
+  | WF_cont : forall r x n a g e, 0 < n -> r x = Some (Q n, g) -> a < n -> freevar_exp x a e -> WF_rexp r (CU (x,a) e)
+  | WF_rseq : forall r e1 e2,  WF_rexp r e1 -> WF_rexp r e2 -> WF_rexp r (Seq e1 e2)
+  | WF_copy : forall r x y n m g1 g2, 0 < n -> 0 < m -> r x = Some (Q n, g1) -> r y = Some (Q m, g2) 
+                     -> n <= m -> WF_rexp r (Copyto x y)
+  | WF_inv : forall r e, WF_rexp r e -> WF_rexp r (Inv e).
 
-Fixpoint nvar_map (r:rexp) (f : nvar -> option map_elem) : (nvar -> option map_elem) :=
-   match r with Skip => f
-             | X (x,n) => f
-             | Let x p e => nvar_map e (nvar_map_pred x p f)
-             | Cont (x,n) e => nvar_map e f
-             | Seq e1 e2 => nvar_map e2 (nvar_map e1 f)
-             | Copyto x y => f
-   end.
-
-Inductive freevar_exp : avar -> nat -> (nvar -> option map_elem) -> rexp -> Prop := 
-   freevar_skip : forall a n f, freevar_exp a n f Skip
- | freevar_x_neq : forall a x b n f, a <> x -> freevar_exp a n f (X (x,b))
- | freevar_x_num : forall f x n m b,  f b = Some (Enum m) -> n <> m -> freevar_exp x n f (X (x,b))
- | freevar_x_space : forall f x n i j b,  f b = Some (Espace i j) -> (forall y, n <> i * y + j) -> freevar_exp x n f (X (x,b))
- | freevar_cont_neq : forall f a x n b e,  a <> x -> freevar_exp a n f e -> freevar_exp a n f (Cont (x,b) e)
- | freevar_cont_num : forall f x n m b e,  f b = Some (Enum m) -> n <> m ->
-                                 freevar_exp x n f e -> freevar_exp x n f (Cont (x,b) e)
- | freevar_cont_space : forall f x n i j b e,  f b = Some (Espace i j) -> (forall y, n <> i * y + j) ->
-                           freevar_exp x n f e -> freevar_exp x n f (Cont (x,b) e)
- | freevar_seq : forall f x n e1 e2, freevar_exp x n f e1 -> freevar_exp x n f e2 -> freevar_exp x n f (Seq e1 e2)
- |  freevar_copyto : forall x n f a b, freevar_exp x n f (Copyto a b).
-
-Inductive WF_rexp : (nvar -> option map_elem) -> regs -> rexp -> Prop := 
-  | WF_skip : forall f r, WF_rexp f r Skip
-  | WF_x : forall f r x n p a g, 0 < n -> r x = Some (Q n, g) ->
-                          f p = Some a -> WF_elem n a -> WF_rexp f r (X (x,p))
-  | WF_let : forall f r x p e, WF_rexp (nvar_map_pred x p f) r e -> WF_rexp f r (Let x p e)
-  | WF_cont_num : forall f r x n a p g e, 0 < n -> r x = Some (Q n, g) -> a < n -> f p = Some (Enum a)
-                    -> freevar_exp x a f e -> WF_rexp f r (Cont (x,p) e)
-  | WF_cont_space : forall f r x n a b p g e y, 0 < n -> r x = Some (Q n, g) -> a < n -> f p = Some (Espace a b)
-                    -> (exists z, y = a * z + b -> freevar_exp x y f e) -> WF_rexp f r (Cont (x,p) e)
-  | WF_rseq : forall f r e1 e2,  WF_rexp f r e1 -> WF_rexp f r e2 -> WF_rexp f r (Seq e1 e2)
-  | WF_copy : forall f r x y n m g1 g2, 0 < n -> 0 < m -> r x = Some (Q n, g1) -> r y = Some (Q m, g2) 
-                     -> n <= m -> WF_rexp f r (Copyto x y).
 
 (* A RCIR+ function can be a function with a RCIR+ expression or a cast oeration,
     or a RCIR+ foreign expression that might contain quantum gates.
@@ -177,7 +93,11 @@ Fixpoint gen_regs (l: list (rtype * ivar)) (r :regs) :=
              fun y => if y ==? lvar x then Some (Q n, allfalse) else gen_regs xl r y
    end.
 
-Definition allNone : (nvar -> option map_elem) := fun (_ : nvar) => None.
+Fixpoint drop_regs (l: list (rtype * ivar)) (r :regs) :=
+   match l with [] => r
+         | (Q n, x)::xl => 
+             fun y => if y ==? lvar x then None else drop_regs xl r y
+   end.
 
 (* The following defines the well-formedness of rfun that depends on an input register set
     having all variables being global variables. *)
@@ -196,7 +116,7 @@ Definition update_type (f : regs) (i : avar) (x : rtype) :=
 
 (* The well-formedness of a program is based on a step by step type checking on the wellfi*)
 Inductive WF_rfun {A} : regs -> (rfun A) -> regs -> Prop := 
-    | WF_fun : forall r l1 l2 e, WF_rexp allNone (gen_regs l2 (gen_regs_evar l1)) e -> type_match l1 r ->
+    | WF_fun : forall r l1 l2 e, WF_rexp (gen_regs l2 r) e -> type_match l1 r ->
                WF_rfun r (Fun A l1 l2 e) r
     | WF_cast : forall r n m x g, r (gvar x) = Some (Q n, g) -> 0 < n -> 0 < m ->
             WF_rfun r (Cast A (Q n) x (Q m)) (update_type r (gvar x) (Q m)).
@@ -211,7 +131,7 @@ Inductive WF_rtop {A} : rtop A -> Prop :=
 
 
 (* The semantic definition of expressions for RCIR+ including some well-formedness requirement. *)
-Definition pos_eq (r1 r2 : (avar * nvar)) : bool := 
+Definition pos_eq (r1 r2 : pos) : bool := 
                 match r1 with (lvar a1,b1) 
                             => match r2
                                with (lvar a2,b2)
@@ -226,8 +146,10 @@ Definition pos_eq (r1 r2 : (avar * nvar)) : bool :=
 
 Notation "i '=pos' j" := (pos_eq i j) (at level 50).
 
-(*
-Definition eupdate (f : regs) (x: (avar * nvar)) (v : bool) :=
+Definition nupdate {A} (f : nat -> A) (i : nat) (x : A) :=
+  fun j => if j =? i then x else f j.
+
+Definition eupdate (f : regs) (x: pos) (v : bool) :=
  match x with (a,b) => 
   fun j => if j ==? a then (match f j with None => None
                                 | Some (tv,gv) =>  Some (tv, nupdate gv b v) end) else f j
@@ -235,37 +157,58 @@ Definition eupdate (f : regs) (x: (avar * nvar)) (v : bool) :=
 
 Notation "f '[' i '|->' x ']'" := (eupdate f i x) (at level 10).
 
+Definition eget (f : regs) (x: pos) : option bool :=
+   match x with (a,b) => match f a with None => None
+                                      | Some (Q n,g) => Some (g b)
+                         end
+   end.
+
 Fixpoint gup {A} (f : nat -> A) (g : nat -> A) (n : nat) :=
   match n with 0 => f
              | S m => gup (update f m (g m)) g m
   end.
 
-
 Definition pupdate (f : regs) (x: avar) (g: nat -> bool) :=
            fun j => if j ==? x then (match f j with None => None | Some (tv,gv) => Some (tv,g) end) else f j.
-*)
 
-Definition eval_bound (f: nvar -> nat) (b:bound) : nat :=
-   match b with Br n x m => n * (f x) + m
-              | NBr n x m => n * (f x) - m
-              | Num n => n
-   end.
+Fixpoint app_inv p :=
+  match p with
+  | Skip => Skip
+  | X n => X n
+  | CU n p => CU n (app_inv p)
+  | Seq p1 p2 => Seq (app_inv p2) (app_inv p1)
+  | Copyto a b => Copyto a b
+  | Inv e => e
+  end.
 
-Inductive estep : (nvar -> nat) -> regs -> rexp -> regs -> Prop := 
-  | skip_rule : forall f r , estep f r Skip r
-  | let_rule_num : forall f r r' x p e, estep (update_nvar f x (eval_bound f p)) r e r' -> estep f r (Let x (Unit p) e) r'
-  | let_rule_space : forall f r r' x a b e, 
-                  (forall y , exists z , y = a * z + b -> estep (update_nvar f x y) r e r')
-                                             -> estep f r (Let x (Space a b) e) r'.
-  | x_rule : forall r x i n gv, r x = Some (Q n,gv) -> i < n -> estep r (rx (x,i)) (r [(x,i) |-> (¬ (gv i))])
-  | if_rule1 : forall r x i n gv e r', r x = Some (Q n,gv) -> i < n -> gv i = true
-                            -> estep r e r' -> estep r (rcont (x,i) e) r'
-  | if_rule2 : forall r x i n gv e, r x = Some (Q n,gv) -> i < n -> gv i = false
-                            -> estep r (rcont (x,i) e) r
-  | seq_rule : forall r e1 e2 r' r'', estep r e1 r' -> estep r' e2 r'' -> estep r (rseq e1 e2) r''
+Inductive estep : regs -> rexp -> regs -> Prop := 
+  | skip_rule : forall r , estep r Skip r
+  | x_rule : forall r x i n gv, r x = Some (Q n,gv) -> estep r (X (x,i)) (r [(x,i) |-> (¬ (gv i))])
+  | if_rule1 : forall r p e r', eget r p = Some true -> estep r e r' -> estep r (CU p e) r'
+  | if_rule2 : forall r p e, eget r p = Some false -> estep r (CU p e) r
+  | seq_rule : forall r e1 e2 r' r'', estep r e1 r' -> estep r' e2 r'' -> estep r (Seq e1 e2) r''
   | copy_rule : forall r x n fv y m gv,  r x = Some (Q n, fv) -> r y = Some (Q m,gv)
-               -> n <= m -> (forall i, 0 <= i < m -> gv i = false) 
-        -> estep r (copyto x y) (pupdate r y (gup gv fv n)).
+               -> (forall i, 0 <= i < m -> gv i = false) 
+        -> estep r (Copyto x y) (pupdate r y (gup gv fv n))
+  | inv_rule : forall r r' e, estep r (app_inv e) r' -> estep r (Inv e) r'.
+
+Definition update_type_val (f : regs) (i : avar) (x : rtype) :=
+  fun y => if y ==? i then (match f i with None => None
+                                 | Some (a,g) => Some (x,g)
+                            end) else f y.
+
+
+Inductive step_rfun {A} : regs -> rfun A -> regs -> Prop :=
+   | fun_step : forall r r' l1 l2 e,
+             estep (gen_regs l2 r) e r' -> step_rfun r (Fun A l1 l2 e) (drop_regs l2 r')
+   | cast_step : forall r nt mt x, step_rfun r (Cast A nt x mt) (update_type_val r (gvar x) mt).
+
+Inductive step_rfun_list {A} : regs -> list (rfun A) -> regs -> Prop :=
+   | empty_step : forall r, step_rfun_list r [] r
+   | many_step : forall r r' x xs, step_rfun r x r' -> step_rfun_list r (x::xs) r'.
+
+Inductive step_top {A} : rtop A -> regs -> Prop :=
+  | the_top_step : forall l fl r, step_rfun_list (gen_regs_evar l) fl r -> step_top (Prog A l fl) r.
 
 
 
