@@ -36,8 +36,9 @@ Inductive inst := assign (x:qvar) (e:exp) | uncompute.
 
 Inductive efun := elet qvar (ns : list var) (qs: list qvar) (ins : list inst) (ret : qvar).
 
-Inductive top := setFixedPointNum (n: const) | setBitLength (n:const) 
-              | efixed (x: list var) | setUncomputeStrategy (x: string) | Funs (fs : list efun).
+Inductive setting :=setFixedPointNum (n: const) | setBitLength (n:const) | efixed (x: list var) | setUncomputeStrategy (x: string).
+
+Inductive top := Prog (ss : list setting) (fs : list efun).
 
 (* The frontend level language. QC. *)
 Inductive C := varC (v:qvar) | natC (n:nat).
@@ -56,7 +57,7 @@ Inductive ctop := setFixedPointNumC (n: nat) | setBitLengthC (n:nat)
               | fixedC (x: list var) | setUncomputeStrategyC (x: string) | ins (cs : list cinst).
 
 
-(* The language for RCIR+, a target language for QLLVM to compile to. *)
+(* The language for RCIR+, a target language for QLLVM to compile to. 
 Local Open Scope nat_scope.
 Definition ivar := nat.
 
@@ -142,7 +143,7 @@ Inductive rfun :=
 
 Inductive rtop := Define : list (rtype * evar) -> rtop
                                | Insts : rfun -> rtop.
-
+*)
     
 
 
