@@ -490,7 +490,7 @@ Proof.
   apply Z2Nat.inj_lt; lia.
 Qed.
 
-Lemma modinv_coprime :
+Lemma modinv_coprime' :
   forall p q,
     1 < p -> 0 < q ->
     Nat.gcd p q = 1 ->
@@ -503,6 +503,17 @@ Proof.
   }
   rewrite Nat.mul_comm in H2.
   apply mul_mod_1_gcd with (b := q). easy.
+Qed.
+
+Lemma modinv_coprime :
+  forall p q,
+    1 < p ->
+    Nat.gcd p q = 1 ->
+    Nat.gcd (modinv q p) p = 1.
+Proof.
+  intros.
+  bdestruct (0 <? q). apply modinv_coprime'; easy.
+  assert (q = 0) by lia. subst. rewrite Nat.gcd_0_r in H0. lia.
 Qed.
 
 Lemma Nsum_coprime_linear :
@@ -848,27 +859,42 @@ Lemma sqr1_not_pm1 :
     x ^ 2 mod N = 1 ->
     x mod N <> 1 ->
     x mod N <> N - 1 ->
-    Nat.gcd N (x - 1) > 1 \/ Nat.gcd N (x + 1) > 1.
+    ((Nat.gcd N (x - 1) < N) /\ (Nat.gcd N (x - 1) > 1))
+    \/ ((Nat.gcd N (x + 1) < N) /\ (Nat.gcd N (x + 1) > 1)).
 Proof.
   intros.
   replace (x ^ 2) with (x * x) in H0 by (simpl; lia).
-  assert (1 < x).
-  { destruct x. rewrite Nat.mod_0_l in H0 by lia. easy.
-    destruct x. rewrite Nat.mod_small in H1; lia.
-    lia.
+  rewrite <- Nat.mul_mod_idemp_l, <- Nat.mul_mod_idemp_r in H0 by lia.
+  remember (x mod N) as y.
+  assert (1 < y).
+  { destruct y. rewrite Nat.mod_0_l in H0 by lia. easy.
+    destruct y. lia. lia.
   }
-  assert ((x * x - 1) mod N = 0).
+  assert ((y * y - 1) mod N = 0).
   { apply Nat_eq_mod_sub_0. rewrite H0. rewrite Nat.mod_small; easy.
   }
-  replace (x * x - 1) with ((x + 1) * (x - 1)) in H4 by lia.
-  apply Nat.mod_divide in H4. 2: lia.
-  bdestruct (Nat.gcd N (x + 1) =? 1).
-  - specialize (Nat.gauss _ _ _ H4 H5) as G.
-    apply Nat.divide_gcd_iff' in G.
-    left. rewrite G. lia.
-  - bdestruct (Nat.gcd N (x + 1) =? 0).
-    apply Nat.gcd_eq_0 in H6. lia.
+  assert (y < N - 1).
+  { assert (y < N). subst. apply Nat.mod_upper_bound. lia.
     lia.
+  }
+  replace (y * y - 1) with ((y + 1) * (y - 1)) in H4 by lia.
+  apply Nat.mod_divide in H4. 2: lia.
+  bdestruct (Nat.gcd N (y + 1) =? 1).
+  - specialize (Nat.gauss _ _ _ H4 H6) as G.
+    apply Nat.divide_gcd_iff' in G.
+    assert (Nat.gcd N (y - 1) <= y - 1) by (apply Nat_gcd_le_r; lia).
+    lia.
+  bdestruct (Nat.gcd N (y + 1) =? 0).
+  apply Nat.gcd_eq_0 in H7. lia.
+  right.
+  assert (Nat.gcd N (x + 1) = Nat.gcd N (y + 1)). {
+    rewrite <- Nat.gcd_mod by lia. rewrite Nat.gcd_comm.
+    rewrite <- Nat.add_mod_idemp_l by lia. rewrite <- Heqy.
+    rewrite Nat.mod_small by lia. easy.
+  }
+  rewrite H8.
+  assert (Nat.gcd N (y + 1) <= y + 1) by (apply Nat_gcd_le_r; lia).
+  split; lia.
 Qed.
 
 Lemma dec_search :
@@ -1639,7 +1665,8 @@ Lemma d2p_neq_sufficient :
     Order a rp p -> Order a rq q ->
     Order a r (p * q) ->
     d2p rp <> d2p rq ->
-    Nat.gcd (p * q) (a ^ (r / 2) - 1) > 1 \/ Nat.gcd (p * q) (a ^ (r / 2) + 1) > 1.
+    ((Nat.gcd (p * q) (a ^ (r / 2) - 1) < p * q) /\ (Nat.gcd (p * q) (a ^ (r / 2) - 1) > 1))
+    \/ ((Nat.gcd (p * q) (a ^ (r / 2) + 1) < p * q) /\ (Nat.gcd (p * q) (a ^ (r / 2) + 1) > 1)).
 Proof.
   intros ? ? ? ? ? ? Hp Hq Hgcd Hrp Hrq Hr Hd2p.
   specialize (d2p_neq_sufficient_aux _ _ _ _ _ _ Hp Hq Hgcd Hrp Hrq Hr Hd2p) as G.
@@ -2241,7 +2268,7 @@ Proof.
   rewrite Nat.mod_small in H3 by lia. lia. lia. apply modinv_upper_bound. lia.
 Qed.
 
-Lemma modinv_coprime :
+Lemma modinv_coprime_swap :
   forall a N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd (modinv a N) N = 1.
 Proof.
   intros.
@@ -2263,7 +2290,7 @@ Proof.
   rewrite Nat.mul_mod with _ (modinv a N * modinv (modinv a N) N) _ by lia.
   rewrite modinv_correct_coprime. repeat rewrite Nat.mul_1_r. rewrite Nat.mod_mod by lia.
   now rewrite Nat.mod_small by lia. lia.
-  now rewrite modinv_coprime by now try lia.
+  now rewrite modinv_coprime_swap by now try lia.
   replace ((a * (modinv a N * modinv (modinv a N) N))) with (modinv (modinv a N) N * (a * modinv a N)) by lia.
   rewrite Nat.mul_mod by lia. rewrite modinv_correct_coprime by now try lia.
   rewrite Nat.mul_1_r. rewrite Nat.mod_mod by lia.
@@ -2327,7 +2354,7 @@ Proof.
   assert (0 < modinv b N < N). apply modinv_range. lia. lia. lia.
   assert (0 < modinv b N < N). apply modinv_range. lia. lia. lia.
   rewrite Nat.gcd_comm.
-  apply modinv_coprime. lia. easy. lia. lia.
+  apply modinv_coprime_swap. lia. easy. lia. lia.
   apply Nat.mod_upper_bound. lia.
   rewrite Nat.mul_mod_idemp_r by lia.
   replace (a * b * (modinv a N * modinv b N)) with ((a * modinv a N) * (b * modinv b N)) by lia.
@@ -2371,7 +2398,7 @@ Proof.
   apply update_false_true in H4 as (H4 & H6).
   apply Nat.eqb_eq in H4.
   apply update_false_true. split. apply update_false_true. split.
-  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. rewrite modinv_coprime.
+  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. rewrite modinv_coprime_swap.
   easy. lia. rewrite Nat.gcd_comm. easy.
   intro. contradict H6. replace x with (x * modinv x (p ^ k)) by lia.
   rewrite <- Nat.mod_small with (x * modinv x (p ^ k)) (p ^ k).
@@ -2395,7 +2422,7 @@ Proof.
   split. assert (0 < modinv y (p^k) < p^k). apply modinv_range. lia.
   rewrite Nat.gcd_comm. easy. lia. split.
   apply update_false_true. split. apply update_false_true. split.
-  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. apply modinv_coprime. lia.
+  rewrite Nat.eqb_eq. rewrite Nat.gcd_comm. apply modinv_coprime_swap. lia.
   rewrite Nat.gcd_comm. easy. intro. contradict H6. 
   apply modinv_injective with (p^k). lia. rewrite Nat.gcd_comm. easy.
   rewrite Nat.gcd_1_l. reflexivity.
@@ -2486,7 +2513,7 @@ Proof.
   intros. unfold moddiv.
   rewrite Nat.gcd_mod. apply Nat_gcd_1_mul_r.
   rewrite Nat.gcd_comm. easy.
-  rewrite Nat.gcd_comm. apply modinv_coprime. lia. easy. lia.
+  rewrite Nat.gcd_comm. apply modinv_coprime_swap. lia. easy. lia.
 Qed.
 
 Lemma moddiv_moddiv :
@@ -2502,8 +2529,8 @@ Proof.
   rewrite <- Nat.mul_mod_idemp_l by lia.
   rewrite modinv_correct_coprime; iauto.
   rewrite Nat.mul_1_l. rewrite Nat.mod_small. easy. lia.
-  apply modinv_coprime. lia. easy.
-  apply Nat_gcd_1_mul_l. easy. apply modinv_coprime. lia. easy.
+  apply modinv_coprime_swap. lia. easy.
+  apply Nat_gcd_1_mul_l. easy. apply modinv_coprime. lia. rewrite Nat.gcd_comm. easy.
 Qed.
 
 Lemma mul_coprime_equal :
@@ -3170,12 +3197,12 @@ Lemma reduction_factor_order_finding :
   forall p k q,
     k <> 0 -> prime p -> 2 < p -> 2 < q ->
     Nat.gcd (p ^ k) q = 1 ->
-    cnttrue (p^k * q) (fun a => Nat.gcd a (p^k * q) =? 1) <= 2 * cnttrue (p^k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && ((1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q))  ||  (1 <? (Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p ^ k * q))))).
+    cnttrue (p^k * q) (fun a => Nat.gcd a (p^k * q) =? 1) <= 2 * cnttrue (p^k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && (((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)))  ||  ((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q))))).
 Proof.
   intros.
   assert (pk_lb : 2 < p ^ k) by (apply prime_power_lb; easy).
   assert (cnttrue (p ^ k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && ¬ (d2p (ord (a mod p^k) (p^k)) =? d2p (ord (a mod q) q)))
-          <= cnttrue (p ^ k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && ((1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q))  ||  (1 <? (Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p ^ k * q)))))). {
+          <= cnttrue (p ^ k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && (((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)))  ||  ((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q)))))). {
     apply cnttrue_indicate. intros a ? ?.
     rewrite andb_true_iff in H5. destruct H5.
     rewrite H5. simpl.
@@ -3185,15 +3212,23 @@ Proof.
     rewrite Nat.mul_comm in H5.
     assert (Nat.gcd a q = 1) by (apply Nat_gcd_1_mul_r_rev with (c := p^k); easy).
     rewrite Nat.mul_comm in H5.
-    assert (Nat.gcd (p ^ k * q) (a ^ (ord a (p ^ k * q) / 2) - 1) > 1 \/ Nat.gcd (p ^ k * q) (a ^ (ord a (p ^ k * q) / 2) + 1) > 1). {
+    assert (((Nat.gcd (p ^ k * q) (a ^ (ord a (p ^ k * q) / 2) - 1) < p ^ k * q) /\ (Nat.gcd (p ^ k * q) (a ^ (ord a (p ^ k * q) / 2) - 1) > 1)) \/ ((Nat.gcd (p ^ k * q) (a ^ (ord a (p ^ k * q) / 2) + 1) < p ^ k * q) /\ (Nat.gcd (p ^ k * q) (a ^ (ord a (p ^ k * q) / 2) + 1) > 1))). {
       apply d2p_neq_sufficient with (rp := ord a (p ^ k)) (rq := ord a q); try apply ord_Order; try easy; try flia H1 H2 pk_lb.
       rewrite ord_mod by (try easy; try flia pk_lb).
       rewrite ord_mod with (N := q) by (try easy; try flia H2).
       easy.
     }
     destruct H9.
-    bdestruct (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q)). easy. rewrite Nat.gcd_comm in H9. flia H9 H10.
-    bdestruct (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)). rewrite orb_true_r. easy. rewrite Nat.gcd_comm in H9. flia H9 H10.
+    bdestruct (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q)).
+    bdestruct (Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) <? p ^ k * q).
+    easy.
+    rewrite Nat.gcd_comm in H9. flia H9 H11.
+    rewrite Nat.gcd_comm in H9. flia H9 H10.
+    bdestruct (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)).
+    bdestruct (Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q) <? p ^ k * q).
+    rewrite orb_true_r. easy.
+    rewrite Nat.gcd_comm in H9. flia H9 H11.
+    rewrite Nat.gcd_comm in H9. flia H9 H10.
   }
   assert (cnttrue (p ^ k * q) (fun a : nat => Nat.gcd a (p ^ k * q) =? 1)
           <= 2 * cnttrue (p ^ k * q) (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ¬ (d2p (ord (a mod p ^ k) (p ^ k)) =? d2p (ord (a mod q) q)))). {
