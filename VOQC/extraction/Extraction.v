@@ -1,5 +1,14 @@
 Require Coq.extraction.Extraction.
+Require Import UnitaryListRepresentation.
+Require Import RzQGateSet.
+Require Import GateCancellation.
+Require Import HadamardReduction.
+Require Import RotationMerging.
+Require Import NotPropagation.
 Require Import Optimize.
+Require Import Layouts.
+Require Import SimpleMapping.
+Require Import ConnectivityGraph.
 
 (* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -11,10 +20,10 @@ Extract Inlined Constant negb => "not".
 Extract Inlined Constant length => "List.length".
 Extract Inlined Constant app => "List.append".
 Extract Inlined Constant List.rev => "List.rev".
-Extract Inlined Constant rev_append => "List.rev_append".
-Extract Inlined Constant fold_right => "(fun f a l -> List.fold_right f l a)".
-Extract Inlined Constant forallb => "List.for_all".
-Extract Inlined Constant existsb => "List.exists".
+Extract Inlined Constant List.rev_append => "List.rev_append".
+Extract Inlined Constant List.fold_right => "(fun f a l -> List.fold_right f l a)".
+Extract Inlined Constant List.forallb => "List.for_all".
+Extract Inlined Constant List.existsb => "List.exists".
 
 (* Standard extraction from nat -> OCaml int and Z -> OCaml int. *)
 Require Coq.extraction.ExtrOcamlNatInt.
@@ -176,6 +185,6 @@ Separate Extraction
   optimize_then_map map_then_optimize
   optimize_then_map_then_optimize
   LNN.get_path LNN.is_in_graph
-  LNNRing.get_path LNNRing.is_in_graph
-  Grid.get_path Grid.is_in_graph
-  Tenerife.get_path Tenerife.is_in_graph. 
+  LNNRing.get_path LNNRing.is_in_graph.
+  (*Grid.get_path Grid.is_in_graph
+  Tenerife.get_path Tenerife.is_in_graph. *)

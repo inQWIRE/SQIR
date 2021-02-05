@@ -1,10 +1,9 @@
 open Qasm2sqir
 open Printf
     
+open ConnectivityGraph
 open Optimize
 open GateCount
-open SimpleMappingWithLayout
-open MappingExamples
 
 (* To compile: 
      In the top-level (..) directory, `make optimizer`
@@ -26,7 +25,7 @@ open MappingExamples
    Here's one OCaml graph library I was looking at: https://opam.ocaml.org/packages/ocamlgraph/ *)
 
 let print_layout dim m =
-  List.iter (printf "%d ") (layout_to_list dim m)
+  List.iter (printf "%d ") (Layouts.layout_to_list dim m)
 
 let fname = ref ""
 let outf = ref ""
@@ -51,14 +50,14 @@ let origX = get_x_count p in
 let origCNOT = get_cnot_count p in
 let _ = printf "Original:\t %d Total, Rz %d, H %d, X %d, CNOT %d\n%!" 
         origTotal origRz origH origX origCNOT in
-let m = trivial_layout dim in
+let m = Layouts.trivial_layout dim in
 let _ = (printf "Input layout: "; print_layout dim m; printf "\n%!") in
-let get_path = LNNRing.get_path pdim in
-let is_in_graph = LNNRing.is_in_graph pdim in
-let p1 = only_map dim p m get_path is_in_graph_b in
-let p2 = optimize_then_map ldim pdim p m get_path is_in_graph in
-let p3 = map_then_optimize ldim pdim p m get_path is_in_graph in
-let p4 = optimize_then_map_then_optimize ldim pdim p m get_path is_in_graph in
+let get_path = LNNRing.get_path dim in
+let is_in_graph = LNNRing.is_in_graph dim in
+let p1 = only_map dim p m get_path is_in_graph in
+let p2 = optimize_then_map dim p m get_path is_in_graph in
+let p3 = map_then_optimize dim p m get_path is_in_graph in
+let p4 = optimize_then_map_then_optimize dim p m get_path is_in_graph in
 match p1 with
 | None -> printf "VOQC failed - Ill-formed input layout or input program"
 | Some (p1,m1) ->
@@ -70,7 +69,7 @@ match p1 with
     let _ = printf "Final (map):\t %d Total, Rz %d, H %d, X %d, CNOT %d\n%!" 
             finalTotal finalRz finalH finalX finalCNOT in
     let _ = (printf "Final layout: "; print_layout dim m1; printf "\n%!") in
-    write_qasm_file !outf p1 pdim;
+    write_qasm_file !outf p1 dim;
     match p2, p3, p4 with
     | Some (p2,_), Some (p3,_), Some (p4,_) ->
         let finalTotal = List.length p2 in

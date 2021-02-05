@@ -276,7 +276,7 @@ Proof.
   apply simple_map_sound; auto.
 Qed.
 
-Lemma map_only_respects_constraints_directed : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+Lemma only_map_respects_constraints_directed : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
   only_map l m CG.get_path CG.is_in_graph = Some (l', m') -> 
   respects_constraints_directed CG.is_in_graph l'.
 Proof.
@@ -342,3 +342,29 @@ Qed.
 (* ... and so on ... *)
 
 End OptimizeProofs.
+
+
+(* For example, we can specialize these proofs for the LNN graph: *)
+Module OP := OptimizeProofs LNN.CG.
+Export OP.
+
+Definition only_map_lnn {dim} (l : RzQ_ucom_l dim) (m : qmap dim) :=
+  only_map l m LNN.get_path (LNN.is_in_graph dim).
+
+Lemma only_map_lnn_sound : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  only_map_lnn l m = Some (l', m') -> 
+  map_qubits (log2phys m) l ≡ l' with ((log2phys m') ∘ (phys2log m))%prg.
+Proof. 
+  intros. 
+  apply only_map_sound. 
+  assumption. 
+Qed.
+
+Lemma only_map_lnn_respects_constraints_directed : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  only_map_lnn l m = Some (l', m') -> 
+  respects_constraints_directed (LNN.is_in_graph dim) l'.
+Proof. 
+  intros l m l' m' H. 
+  apply only_map_respects_constraints_directed in H.
+  assumption.
+Qed.

@@ -14,6 +14,7 @@ rm -f BinNums.ml Int.ml List.ml Nat.ml QArith_base.ml Specif.ml
 rm -f Order* FMap* MSet* FSet*
 
 # Move extracted files to a subdirectory.
-mv Bin*.ml Datatypes.ml GateCancellation.ml HadamardReduction.ml MappingExamples.ml \
-   NotPropagation.ml Optimize.ml PeanoNat.ml RotationMerging.ml RzQGateSet.ml \
-   SimpleMappingWithLayout.ml UnitaryListRepresentation.ml ml/extracted
+mv Bin*.ml Datatypes.ml ConnectivityGraph.ml GateCancellation.ml \
+   HadamardReduction.ml Layouts.ml NotPropagation.ml Optimize.ml PeanoNat.ml \
+   RotationMerging.ml RzQGateSet.ml SimpleMapping.ml UnitaryListRepresentation.ml \
+   ml/extracted
