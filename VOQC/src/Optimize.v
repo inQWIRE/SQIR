@@ -166,65 +166,179 @@ Qed.
 
 (** In progress... adding mapping **)
 
-Require Import SimpleMappingWithLayout.
+Require Import SimpleMapping.
 
-Definition only_map 
-      (ldim pdim : nat) 
-      (l : RzQ_ucom_l ldim)
-      (m : qmap ldim pdim) 
+(* Definitions of mapping/optimizing in different orders (specialized to
+   the RzQ gate set).
+
+   Q: Why write these wrapper functions in Coq instead of OCaml?
+   A: It would also be fine to write these functions in OCaml -- but then
+      we can't prove anything about them. "Obviously" composing simple_map
+      and optimize should be fine since they are both semantics-preserving,
+      but it's still nice to have a formal proof of this fact.  *)
+
+Definition simple_map_rzq {dim} 
+      (l : RzQ_ucom_l dim)
+      (m : qmap dim) 
       (get_path : nat -> nat -> list nat) 
-      (is_in_graph_b : nat -> nat -> bool)
-  : option (RzQ_ucom_l pdim * qmap ldim pdim) :=
+      (is_in_graph : nat -> nat -> bool)
+  : RzQ_ucom_l dim * qmap dim
+  := simple_map l m get_path is_in_graph RzQGateSet.CNOT RzQGateSet.SWAP RzQGateSet.H.
+
+Definition only_map {dim}
+      (l : RzQ_ucom_l dim)
+      (m : qmap dim) 
+      (get_path : nat -> nat -> list nat) 
+      (is_in_graph : nat -> nat -> bool)
+  : option (RzQ_ucom_l dim * qmap dim) :=
   (* we can check that the layout and input programs are sensible (making
      fewer assumptions for correctness), but we have to assume that get_path
      and is_in_graph_b are well-formed unless we use a proper Coq graph library. *)
-  if layout_well_formed_b ldim pdim m && uc_well_typed_l_b ldim l
-  then Some (simple_map_rzq l m get_path is_in_graph_b)
+  if layout_well_formed_b dim m && uc_well_typed_l_b dim l
+  then Some (simple_map_rzq l m get_path is_in_graph)
   else None.
 
-Definition optimize_then_map 
-      (ldim pdim : nat) 
-      (l : RzQ_ucom_l ldim)
-      (m : qmap ldim pdim) 
+Definition optimize_then_map {dim} 
+      (l : RzQ_ucom_l dim)
+      (m : qmap dim) 
       (get_path : nat -> nat -> list nat) 
-      (is_in_graph_b : nat -> nat -> bool)
-  : option (RzQ_ucom_l pdim * qmap ldim pdim) :=
-  if layout_well_formed_b ldim pdim m && uc_well_typed_l_b ldim l
-  then Some (simple_map_rzq (optimize l) m get_path is_in_graph_b)
+      (is_in_graph : nat -> nat -> bool)
+  : option (RzQ_ucom_l dim * qmap dim) :=
+  if layout_well_formed_b dim m && uc_well_typed_l_b dim l
+  then Some (simple_map_rzq (optimize l) m get_path is_in_graph)
   else None.
 
-Definition map_then_optimize
-      (ldim pdim : nat) 
-      (l : RzQ_ucom_l ldim)
-      (m : qmap ldim pdim) 
+Definition map_then_optimize {dim}
+      (l : RzQ_ucom_l dim)
+      (m : qmap dim) 
       (get_path : nat -> nat -> list nat) 
-      (is_in_graph_b : nat -> nat -> bool)
-  : option (RzQ_ucom_l pdim * qmap ldim pdim) :=
-  if layout_well_formed_b ldim pdim m && uc_well_typed_l_b ldim l
-  then let (l',m') := simple_map_rzq l m get_path is_in_graph_b in
+      (is_in_graph : nat -> nat -> bool)
+  : option (RzQ_ucom_l dim * qmap dim) :=
+  if layout_well_formed_b dim m && uc_well_typed_l_b dim l
+  then let (l',m') := simple_map_rzq l m get_path is_in_graph in
        Some (optimize l', m')
   else None.
 
-(* In order for this ^ to be valid, the following must hold:
-
-Lemma optimize_respects_contraints_undirected : forall {dim} (l : RzQ_ucom_l dim),
-  respects_constraints_undirected is_in_graph_b l ->
-  respects_constraints_undirected is_in_graph_b (optimize l).
-
-Note that I'm using the "undirected" version of respects contraints -- meaning
-that this only works for graphs that are undirected. The issue is that 
-apply_H_equivalence3 (in HadamardReduction.v) does not preserve directionality.
-You can prove respects_contraints_directed if you remove that step from
-optimization. *)
-
-Definition optimize_then_map_then_optimize
-      (ldim pdim : nat) 
-      (l : RzQ_ucom_l ldim)
-      (m : qmap ldim pdim) 
+Definition optimize_then_map_then_optimize {dim}
+      (l : RzQ_ucom_l dim)
+      (m : qmap dim) 
       (get_path : nat -> nat -> list nat) 
-      (is_in_graph_b : nat -> nat -> bool)
-  : option (RzQ_ucom_l pdim * qmap ldim pdim) :=
-  if layout_well_formed_b ldim pdim m && uc_well_typed_l_b ldim l
-  then let (l',m') := simple_map_rzq (optimize l) m get_path is_in_graph_b in
+      (is_in_graph : nat -> nat -> bool)
+  : option (RzQ_ucom_l dim * qmap dim) :=
+  if layout_well_formed_b dim m && uc_well_typed_l_b dim l
+  then let (l',m') := simple_map_rzq (optimize l) m get_path is_in_graph in
        Some (optimize l', m')
   else None.
+
+(* Assume the following is true: *)
+Lemma optimize_respects_contraints_directed : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph l ->
+  respects_constraints_directed is_in_graph (optimize l).
+Proof.
+Admitted.
+(* To complete this proof, you should write a XX_respects_contraints_directed 
+   lemma in each optimization file and then use those lemmas here. See the
+   proof of optimize_sound above. 
+
+   One small problem: this property isn't actually true :)
+
+   The issue is that apply_H_equivalence3 (in HadamardReduction.v) doesn't 
+   preserve directionality of CNOT interactions. I suggest removing this
+   function from the optimizer -- it doesn't do much in our benchmarks anyways. *)
+
+
+(* Now (given valid connectivity graph CG), we can prove correctness of our
+   mapping/optimization functions. 
+
+   --> so when we claim correctness of the OCaml code, we need to make sure 
+   that we respect the assumptions made in ConnectivityGraph *)
+Module OptimizeProofs (CG : ConnectivityGraph).
+
+Module SMP := SimpleMappingProofs RzQGateSet MappableRzQ CG.
+Export SMP.
+
+Definition dim := CG.dim.
+
+Lemma only_map_sound : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  only_map l m CG.get_path CG.is_in_graph = Some (l', m') -> 
+  map_qubits (log2phys m) l ≡ l' with ((log2phys m') ∘ (phys2log m))%prg.
+Proof.
+  intros l m l' m' H.
+  unfold only_map in H.
+  destruct (layout_well_formed_b dim m) eqn:WF.
+  2: inversion H.
+  destruct (uc_well_typed_l_b dim l) eqn:WT.
+  2: inversion H.
+  simpl in H.
+  inversion H.
+  apply layout_well_formed_b_equiv in WF.
+  apply uc_well_typed_l_b_equiv in WT.
+  apply simple_map_sound; auto.
+Qed.
+
+Lemma map_only_respects_constraints_directed : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  only_map l m CG.get_path CG.is_in_graph = Some (l', m') -> 
+  respects_constraints_directed CG.is_in_graph l'.
+Proof.
+  intros l m l' m' H.
+  unfold only_map in H.
+  destruct (layout_well_formed_b dim m) eqn:WF.
+  2: inversion H.
+  destruct (uc_well_typed_l_b dim l) eqn:WT.
+  2: inversion H.
+  simpl in H.
+  inversion H.
+  apply layout_well_formed_b_equiv in WF.
+  apply uc_well_typed_l_b_equiv in WT.
+  eapply simple_map_respects_constraints_directed; try apply H1; auto.
+Qed.
+
+Lemma optimize_then_map_sound : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  optimize_then_map l m CG.get_path CG.is_in_graph = Some (l', m') -> 
+  map_qubits (log2phys m) l ≡ l' with ((log2phys m') ∘ (phys2log m))%prg.
+Proof.
+  intros l m l' m' H.
+  unfold optimize_then_map in H.
+  destruct (layout_well_formed_b dim m) eqn:WF.
+  2: inversion H.
+  destruct (uc_well_typed_l_b dim l) eqn:WT.
+  2: inversion H.
+  simpl in H.
+  inversion H.
+  apply layout_well_formed_b_equiv in WF.
+  apply uc_well_typed_l_b_equiv in WT.
+  apply simple_map_sound in H1.
+  apply uc_eq_perm_trans with (l1:=map_qubits (log2phys m) l) (p12:=(fun x => x)) in H1.
+  apply uc_eq_perm_replace_perm with (p':=(log2phys m' ∘ phys2log m)%prg) in H1.
+  assumption.
+  auto.
+  apply uc_equiv_l_implies_uc_eq_perm.
+  apply map_qubits_equiv. (* <- this lemma is admitted; need to fix *)
+  symmetry.
+  (* apply optimize_sound. <- the right idea, but need to update SMP to support ≅l≅ *)
+  admit.
+  apply optimize_WT; auto.
+  assumption.  
+Admitted.
+
+Lemma optimize_then_map_respects_constraints_directed : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  optimize_then_map l m CG.get_path CG.is_in_graph = Some (l', m') -> 
+  respects_constraints_directed CG.is_in_graph l'.
+Proof.
+  intros l m l' m' H.
+  unfold optimize_then_map in H.
+  destruct (layout_well_formed_b dim m) eqn:WF.
+  2: inversion H.
+  destruct (uc_well_typed_l_b dim l) eqn:WT.
+  2: inversion H.
+  simpl in H.
+  inversion H.
+  apply layout_well_formed_b_equiv in WF.
+  apply uc_well_typed_l_b_equiv in WT.
+  eapply simple_map_respects_constraints_directed; try apply H1; auto.
+  apply optimize_WT; auto.
+Qed.
+
+(* ... and so on ... *)
+
+End OptimizeProofs.

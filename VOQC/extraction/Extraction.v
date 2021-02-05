@@ -1,13 +1,5 @@
 Require Coq.extraction.Extraction.
-Require Import UnitaryListRepresentation.
-Require Import RzQGateSet.
-Require Import GateCancellation.
-Require Import HadamardReduction.
-Require Import RotationMerging.
-Require Import NotPropagation.
 Require Import Optimize.
-Require Import SimpleMappingWithLayout.
-Require Import MappingExamples.
 
 (* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -18,7 +10,7 @@ Extract Inlined Constant snd => "snd".
 Extract Inlined Constant negb => "not".
 Extract Inlined Constant length => "List.length".
 Extract Inlined Constant app => "List.append".
-Extract Inlined Constant rev => "List.rev".
+Extract Inlined Constant List.rev => "List.rev".
 Extract Inlined Constant rev_append => "List.rev_append".
 Extract Inlined Constant fold_right => "(fun f a l -> List.fold_right f l a)".
 Extract Inlined Constant forallb => "List.for_all".
@@ -159,14 +151,14 @@ Extraction Implicit finalize [dim].
 Extraction Implicit not_propagation' [dim].
 Extraction Implicit not_propagation [dim].
 
-(* From Simplemappingwithlayout.v *)
-Extraction Implicit log2phys [ldim pdim].
-Extraction Implicit phys2log [ldim pdim].
-Extraction Implicit swap_in_map [ldim pdim].
-Extraction Implicit path_to_swaps [ldim pdim].
+(* From Simplemapping.v *)
+Extraction Implicit log2phys [dim].
+Extraction Implicit phys2log [dim].
+Extraction Implicit swap_in_map [dim].
+Extraction Implicit path_to_swaps [dim].
 Extraction Implicit fix_cnots [dim].
-Extraction Implicit simple_map [ldim pdim].
-Extraction Implicit simple_map_rzq [ldim pdim].
+Extraction Implicit simple_map [dim].
+Extraction Implicit simple_map_rzq [dim].
 
 (* From Optimize.v *)
 Extraction Implicit optimize [dim].
@@ -183,7 +175,7 @@ Separate Extraction
   trivial_layout layout_to_list only_map
   optimize_then_map map_then_optimize
   optimize_then_map_then_optimize
-  LNN.LNN_get_path LNN.LNN_is_in_graph_b
-  LNNRing.LNN_ring_get_path LNNRing.LNN_ring_is_in_graph_b
-  Grid.grid_get_path Grid.grid_is_in_graph_b
-  Tenerife.tenerife_get_path Tenerife.tenerife_is_in_graph_b. 
+  LNN.get_path LNN.is_in_graph
+  LNNRing.get_path LNNRing.is_in_graph
+  Grid.get_path Grid.is_in_graph
+  Tenerife.get_path Tenerife.is_in_graph. 

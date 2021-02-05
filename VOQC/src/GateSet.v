@@ -1,11 +1,20 @@
 Require Export UnitarySem.
 
 Local Open Scope ucom_scope.
-  Inductive uses {dim} : base_ucom dim -> list nat -> Prop :=
-  | uses_seq : forall c1 c2 qs, uses c1 qs -> uses c2 qs -> uses (c1; c2) qs
-  | uses_app1 : forall u q qs, List.In q qs -> uses (uapp1 u q) qs
-  | uses_app2 : forall u q1 q2 qs, List.In q1 qs -> List.In q2 qs -> uses (uapp2 u q1 q2) qs 
-  | uses_app3 : forall u q1 q2 q3 qs, List.In q1 qs -> List.In q2 qs -> List.In q3 qs -> uses (uapp3 u q1 q2 q3) qs.
+Local Close Scope R_scope.
+
+Inductive uses {dim} : base_ucom dim -> list nat -> Prop :=
+| uses_seq : forall c1 c2 qs, uses c1 qs -> uses c2 qs -> uses (c1; c2) qs
+| uses_app1 : forall u q qs, List.In q qs -> uses (uapp1 u q) qs
+| uses_app2 : forall u q1 q2 qs, List.In q1 qs -> List.In q2 qs -> uses (uapp2 u q1 q2) qs 
+| uses_app3 : forall u q1 q2 q3 qs, List.In q1 qs -> List.In q2 qs -> List.In q3 qs -> uses (uapp3 u q1 q2 q3) qs.
+
+Lemma one_elem_list : forall (m : nat), List.length (m :: []) = 1. 
+Proof. easy. Qed.
+Lemma two_elem_list : forall (m n : nat), List.length (m :: n :: []) = 2. 
+Proof. easy. Qed.
+Lemma three_elem_list : forall (m n p : nat), List.length (m :: n :: p :: []) = 3. 
+Proof. easy. Qed.
 
 (* General definition of a gate set used in ListRepresentation.v.
    An example gate set, commonly use in our optimizations, is in RzQGateSet.v. *)

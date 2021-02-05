@@ -1,7 +1,69 @@
-Require Import SimpleMappingWithLayout.
+Require Import QWIRE.Prelim.
 
-Local Close Scope C_scope.
-Local Close Scope R_scope.
+(** Specification of CNOT connectivity graph. **)
+
+(* For circuit mapping (SimpleMapping.v) we describe the input architecture
+   connectivity graph using two functions:
+   - get_path, which returns an undirected path between two nodes in the graph
+   - is_in_graph, which indicates whether there is a directed edge between 
+     two nodes
+   
+   Examples of get_path and is_in_graph for particular graphs can be found
+   at the end of this file. 
+
+   We use a loose formalism for describing paths in a graph -- a proper graph 
+   library would have more precise definitions. We represent a path between n1 
+   and n2 as a list of nodes with the following properties:
+   1. The path must begin with n1.
+   2. The path must end with n2.
+   3. For every n1' and n2' adjacent in the path, there must exist an 
+      undirected edge between n1' and n2'.  
+   4. The path does not go through n2 twice.
+   Restriction #4 is really just to make the proof easier, we might be
+   able to remove it.
+*)
+
+(** General defns and proofs, parameterized by is_in_graph **)
+
+Inductive begins_with : nat -> list nat -> Prop :=
+  | begins_with_cons : forall h t, begins_with h (h :: t).
+
+Inductive ends_with : nat -> list nat -> Prop :=
+  | end_with_single_elmt : forall x, ends_with x [x]
+  | ends_with_cons : forall x h t, ends_with x t -> ends_with x (h :: t).
+
+Inductive path_is_in_graph : list nat -> (nat -> nat -> bool) -> Prop :=
+  | path_in_graph_two_elmts : forall n1 n2 is_in_graph, 
+      (is_in_graph n1 n2 = true) \/ (is_in_graph n2 n1 = true) -> 
+      path_is_in_graph (n1 :: n2 :: []) is_in_graph
+  | path_in_graph_cons : forall n1 n2 t is_in_graph, 
+      (is_in_graph n1 n2 = true) \/ (is_in_graph n2 n1 = true) -> 
+      path_is_in_graph (n2 :: t) is_in_graph -> 
+      path_is_in_graph (n1 :: n2 :: t) is_in_graph.
+
+Inductive not_in_interior : nat -> list nat -> Prop :=
+  | not_in_interior_two_elmts : forall n n1 n2,
+      n1 <> n -> not_in_interior n (n1 :: n2 :: [])
+  | not_in_interior_cons : forall n n1 n2 t,
+      n1 <> n -> 
+      not_in_interior n (n2 :: t) ->
+      not_in_interior n (n1 :: n2 :: t).
+
+Definition valid_path n1 n2 is_in_graph p :=
+  (begins_with n1 p) /\ (ends_with n2 p) 
+    /\ (path_is_in_graph p is_in_graph) /\ (not_in_interior n2 p).
+
+Lemma valid_path_subpath : forall n1 n2 is_in_graph a b p ,
+  valid_path n1 n2 is_in_graph (n1 :: a :: b :: p) ->
+  valid_path a n2 is_in_graph (a :: b :: p).
+Proof.
+  intros n1 n2 is_in_graph a b p H.
+  destruct H as [_ [H1 [H2 H3]]] .
+  split; split; try split. 
+  - inversion H1; assumption.
+  - inversion H2; assumption.
+  - inversion H3; assumption.
+Qed.
 
 Fixpoint merge_path (p1 : list nat) p2 :=
   match p1 with
@@ -9,9 +71,9 @@ Fixpoint merge_path (p1 : list nat) p2 :=
   | h :: t => h :: (merge_path t p2)
   end.
 
-Lemma valid_path_extend_path : forall a n1 n2 (is_in_graph : nat -> nat -> Prop) p,
+Lemma valid_path_extend_path : forall a n1 n2 (is_in_graph : nat -> nat -> bool) p,
   n1 <> n2 ->
-  is_in_graph n1 a \/ is_in_graph a n1 ->
+  is_in_graph n1 a = true \/ is_in_graph a n1 = true ->
   valid_path a n2 is_in_graph p ->
   valid_path n1 n2 is_in_graph (n1 :: p).
 Proof.
@@ -66,20 +128,38 @@ Proof.
     inversion NIp1; assumption.
 Qed.
 
+(** Graph type for mapping; contains defns for get_path and is_in_graph. **)
+
+Module Type ConnectivityGraph.
+
+Parameter dim : nat. (* number of nodes (qubits) *)
+
+Parameter get_path : nat -> nat -> list nat.
+
+Parameter is_in_graph : nat -> nat -> bool.
+
+Axiom get_path_valid : forall n1 n2, 
+  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph (get_path n1 n2).
+
+(* Ensures paths returned by get_path produce well-typed programs. *)
+Axiom valid_graph : forall n1 n2, 
+  is_in_graph n1 n2 = true -> (n1 < dim /\ n2 < dim /\ n1 <> n2).
+
+End ConnectivityGraph.
+
+
 (*************************)
-(** LNN Mapping Example **)
+(**     LNN Example     **)
 (*************************)
 
-Module LNN.
+Module LNN <: ConnectivityGraph.
 
 (* Creates a graph of size dim where element i is connected to (i-1) and (i+1),
    but element 0 is not connected to element (dim-1). *)
 
-Inductive LNN_is_in_graph dim : nat -> nat -> Prop := 
-  | LNN_in_graph1 : forall n, n + 1 < dim -> LNN_is_in_graph dim n (n + 1)
-  | LNN_in_graph2 : forall n, n + 1 < dim -> LNN_is_in_graph dim (n + 1) n.
+Parameter dim : nat.
 
-Definition LNN_is_in_graph_b dim n1 n2 :=
+Definition is_in_graph n1 n2 :=
   ((n1 + 1 <? dim) && (n2 =? n1 + 1)) || ((n2 + 1 <? dim) && (n1 =? n2 + 1)).
 
 Fixpoint move_left n dist :=
@@ -94,7 +174,7 @@ Fixpoint move_right n dist :=
   | S n' => n :: move_right (n + 1) n'
   end.
 
-Definition LNN_get_path n1 n2 :=
+Definition get_path n1 n2 :=
   if n1 <? n2
   then move_right n1 (n2 - n1)
   else if n2 <? n1
@@ -102,207 +182,166 @@ Definition LNN_get_path n1 n2 :=
        else [] (* badly-typed case, n1=n2 *).
 
 (* Examples *)
-Compute (LNN_get_path 2 5).
-Compute (LNN_get_path 6 1).
+Compute (get_path 2 5).
+Compute (get_path 6 1).
 
-(*Import RzQGateSet.
-Module SMP := SimpleMappingProofs RzQGateSet MappableRzQ.
-Import SMP.
-
-Definition map_to_lnn {dim} (l : RzQ_ucom_l dim) : base_ucom dim :=
-  simple_map_rzq l LNN_get_path (LNN_is_in_graph_b dim).
-
-(* Examples *)
-Definition test_lnn1 : base_ucom 3 := CNOT 2 1.
-Compute (map_to_lnn test_lnn1).
-Definition test_lnn2 : base_ucom 5 := CNOT 0 3; CNOT 4 1.
-Compute (map_to_lnn test_lnn2).*)
-
-(* Correctness *)
-
-Lemma LNN_is_in_graph_valid : forall dim, 
-  valid_graph dim (LNN_is_in_graph dim).
+Lemma valid_graph : forall n1 n2, 
+  is_in_graph n1 n2 = true -> (n1 < dim /\ n2 < dim /\ n1 <> n2).
 Proof.
-  intros.
-  split; try split; inversion H; try lia.
+  intros n1 n2 H.
+  unfold is_in_graph in H.
+  apply orb_prop in H as [H | H].
+  apply andb_prop in H as [H1 H2].
+  apply Nat.ltb_lt in H1.
+  apply Nat.eqb_eq in H2.
+  repeat split; lia.
+  apply andb_prop in H as [H1 H2].
+  apply Nat.ltb_lt in H1.
+  apply Nat.eqb_eq in H2.
+  repeat split; lia.
 Qed.
 
-Lemma LNN_get_path_valid : forall dim, 
-  get_path_valid dim LNN_get_path (LNN_is_in_graph dim).
+Lemma get_path_valid : forall n1 n2, 
+  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph (get_path n1 n2).
 Proof.
-  intros dim n1 n2 Hn1 Hn2 Hn1n2.
-  unfold LNN_get_path.
+  intros n1 n2 Hn1 Hn2 Hn1n2.
+  unfold get_path.
   bdestruct_all. 
   - assert (move_right_valid_path : forall n dist, 
       dist > 0 -> n + dist < dim -> 
-      valid_path n (n + dist) (LNN_is_in_graph dim) (move_right n dist)).
+      valid_path n (n + dist) is_in_graph (move_right n dist)).
     { intros. 
       destruct dist; try lia. 
       generalize dependent n.
       induction dist; simpl in *.
-      - intros. repeat split; repeat constructor; lia.
+      - intros. 
+        repeat split; repeat constructor; try lia.
+        unfold is_in_graph. 
+        bdestruct_all; reflexivity.
       - intros. 
         apply valid_path_extend_path with (a:=n + 1); try lia.
-        left; constructor; lia.
+        left.
+        unfold is_in_graph. 
+        bdestruct_all; reflexivity.
         replace (n + S (S dist)) with (n + 1 + (S dist)) by lia.
         apply IHdist; lia. }
     replace n2 with (n1 + (n2 - n1)) at 1 by lia.
     apply move_right_valid_path; lia.
   - assert (move_left_valid_path : forall n dist, 
       dist > 0 -> dist <= n -> n < dim ->
-      valid_path n (n - dist) (LNN_is_in_graph dim) (move_left n dist)).
+      valid_path n (n - dist) is_in_graph (move_left n dist)).
     { intros. 
       destruct dist; try lia. 
       generalize dependent n.
       induction dist; simpl in *.
-      - intros. repeat split; repeat constructor; try lia.
-        remember (n - 1) as n'.
-        replace n with (n' + 1) by lia.
-        constructor; lia.
+      - intros. 
+        repeat split; repeat constructor; try lia.
+        unfold is_in_graph. 
+        bdestruct_all; reflexivity.
       - intros. 
         apply valid_path_extend_path with (a:=n - 1); try lia.
-        left. remember (n - 1) as n'.
-        replace n with (n' + 1) by lia.
-        constructor; lia. 
+        left. 
+        unfold is_in_graph. 
+        bdestruct_all; reflexivity.
         replace (n - S (S dist)) with (n - 1 - (S dist)) by lia.
         apply IHdist; lia. }
     replace n2 with (n1 - (n1 - n2)) at 1 by lia.
     apply move_left_valid_path; lia.
 Qed.
 
-Lemma LNN_is_in_graph_reflects : forall dim n1 n2,
-  reflect (LNN_is_in_graph dim n1 n2) (LNN_is_in_graph_b dim n1 n2).
-Proof.
-  intros.
-  unfold LNN_is_in_graph_b.
-  bdestruct_all; simpl; subst; constructor.
-  all: try (constructor; assumption). 
-  all: try (intros contra; inversion contra; subst). 
-  all: try (contradict H0; lia).
-Qed.
-
-(*Lemma map_to_lnn_sound : forall dim (c : base_ucom dim),
-  uc_well_typed c -> map_to_lnn c ≡ c.
-Proof.
-  intros.
-  unfold map_to_lnn.
-  eapply simple_map_sound.
-  apply LNN_is_in_graph_valid.
-  apply LNN_get_path_valid.
-  apply LNN_is_in_graph_reflects.
-  assumption.
-Qed.
-
-Lemma map_to_lnn_respects_constraints : forall dim (c : base_ucom dim),
-  uc_well_typed c -> respects_constraints (LNN_is_in_graph dim) (map_to_lnn c).
-Proof.
-  intros.
-  unfold map_to_lnn.
-  eapply simple_map_respect_constraints.
-  apply LNN_is_in_graph_valid.
-  apply LNN_get_path_valid.
-  apply LNN_is_in_graph_reflects.
-  assumption.
-Qed.*)
-
 End LNN.
 
-(******************************)
-(** LNN Ring Mapping Example **)
-(******************************)
+(*************************)
+(**   LNN Ring Example  **)
+(*************************)
 
-Module LNNRing.
+Module LNNRing <: ConnectivityGraph.
+
+Parameter dim : nat.
 
 (* Creates a DAG of size dim where element i is connected to ((i-1) mod dim) and 
    ((i+1) mod dim). *)
 
-Inductive LNN_ring_is_in_graph dim : nat -> nat -> Prop := 
-  | LNNR_in_graph1 : forall n, dim > 1 -> n < dim -> 
-      LNN_ring_is_in_graph dim n ((n + 1) mod dim)
-  | LNNR_in_graph2 : forall n, dim > 1 -> n < dim -> 
-      LNN_ring_is_in_graph dim ((n + 1) mod dim) n.
-
-Definition LNN_ring_is_in_graph_b dim n1 n2 :=
+Definition is_in_graph n1 n2 :=
   (1 <? dim) && (((n1 <? dim) && (n2 =? (n1 + 1) mod dim)) || ((n2 <? dim) && (n1 =? (n2 + 1) mod dim))).
 
-Fixpoint move_cw dim n dist :=
+Fixpoint move_cw n dist :=
   match dist with 
   | O => [n]
-  | S dist' => n :: move_cw dim ((n + 1) mod dim) dist'
+  | S dist' => n :: move_cw ((n + 1) mod dim) dist'
   end.
 
-Fixpoint move_ccw dim n dist :=
+Fixpoint move_ccw n dist :=
   match dist with 
   | O => [n]
-  | S dist' => n :: move_ccw dim ((dim + n - 1) mod dim) dist'
+  | S dist' => n :: move_ccw ((dim + n - 1) mod dim) dist'
   end.
 
-Definition LNN_ring_get_path dim n1 n2 :=
+Definition get_path n1 n2 :=
   if n1 <? n2
   then let dist_cw := n2 - n1 in
        let dist_ccw := dim + n1 - n2 in
          if dist_cw <? dist_ccw 
-         then move_cw dim n1 dist_cw
-         else move_ccw dim n1 dist_ccw 
+         then move_cw n1 dist_cw
+         else move_ccw n1 dist_ccw 
   else if n2 <? n1
        then let dist_cw := dim + n2 - n1 in
             let dist_ccw := n1 - n2 in
               if dist_cw <? dist_ccw 
-              then move_cw dim n1 dist_cw
-              else move_ccw dim n1 dist_ccw
+              then move_cw n1 dist_cw
+              else move_ccw n1 dist_ccw
        else [] (* badly-typed case, n1=n2 *).
 
-(* Examples *)
-Compute (LNN_ring_get_path 8 2 5).
-Compute (LNN_ring_get_path 8 6 1).
-Compute (LNN_ring_get_path 8 6 3).
-Compute (LNN_ring_get_path 8 2 7).
-
-(*Definition map_to_lnn_ring {dim} (c : base_ucom dim) : base_ucom dim :=
-  simple_map c (LNN_ring_get_path dim) (LNN_ring_is_in_graph_b dim).
-
-(* Examples *)
-Definition test_lnn_ring1 : base_ucom 3 := CNOT 2 1.
-Compute (map_to_lnn_ring test_lnn_ring1).
-Definition test_lnn_ring2 : base_ucom 5 := CNOT 0 3; CNOT 4 1.
-Compute (map_to_lnn_ring test_lnn_ring2).
-*)
-
-(* Correctness *)
-
-Lemma LNN_ring_is_in_graph_valid : forall dim, 
-  valid_graph dim (LNN_ring_is_in_graph dim).
+Lemma valid_graph : forall n1 n2, 
+  is_in_graph n1 n2 = true -> (n1 < dim /\ n2 < dim /\ n1 <> n2).
 Proof.
   intros.
-  split; try split; inversion H; try assumption.
-  1, 2: apply Nat.mod_upper_bound; lia.
-  - bdestruct (n1 + 1 <? dim).
-    rewrite Nat.mod_small; lia.
-    assert (n1 + 1 = dim) by lia. 
-    subst; rewrite Nat.mod_same; lia.
-  - bdestruct (n2 + 1 <? dim).
-    rewrite Nat.mod_small; lia.
-    assert (n2 + 1 = dim) by lia. 
-    subst; rewrite Nat.mod_same; lia.  
+  unfold is_in_graph in H.
+  apply andb_prop in H as [H1 H2].
+  apply orb_prop in H2 as [H2 | H2].
+  apply andb_prop in H2 as [H2 H3].
+  apply Nat.ltb_lt in H1.
+  apply Nat.ltb_lt in H2.
+  apply Nat.eqb_eq in H3; subst.
+  repeat split; auto.
+  apply Nat.mod_upper_bound; lia.
+  bdestruct (n1 + 1 <? dim).
+  rewrite Nat.mod_small; lia.
+  assert (Hdim : n1 + 1 = dim) by lia. 
+  rewrite <- Hdim. 
+  rewrite Nat.mod_same; lia.
+  apply andb_prop in H2 as [H2 H3].
+  apply Nat.ltb_lt in H1.
+  apply Nat.ltb_lt in H2.
+  apply Nat.eqb_eq in H3; subst.
+  repeat split; auto.
+  apply Nat.mod_upper_bound; lia.
+  bdestruct (n2 + 1 <? dim).
+  rewrite Nat.mod_small; lia.
+  assert (Hdim : n2 + 1 = dim) by lia. 
+  rewrite <- Hdim. 
+  rewrite Nat.mod_same; lia. 
 Qed.
 
 (* TODO: Proof is a little gross because of mod. Is there an 'lia' for expressions
    involving mod? If not, we should try to make something. *)
 
-Lemma move_cw_valid_path : forall dim n dist,
+Lemma move_cw_valid_path : forall n dist,
   0 < dist -> dist < dim -> n < dim ->
-  valid_path n ((n + dist) mod dim) (LNN_ring_is_in_graph dim) (move_cw dim n dist).
+  valid_path n ((n + dist) mod dim) is_in_graph (move_cw n dist).
 Proof.
   intros.
   destruct dist; try lia.
   generalize dependent n.
   induction dist; simpl in *.
   - intros.
-    split; [|split; [|split]]; repeat constructor; try lia.
+    repeat split; repeat constructor.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
     bdestruct (n + 1 <? dim).
     rewrite Nat.mod_small; lia.
-    assert (n + 1 = dim) by lia. 
-    subst; rewrite Nat.mod_same; lia.
+    assert (Hdim : n + 1 = dim) by lia. 
+    rewrite <- Hdim; rewrite Nat.mod_same; lia.
   - intros. 
     apply valid_path_extend_path with (a:=(n + 1) mod dim).
     bdestruct (n + S (S dist) <? dim).
@@ -315,7 +354,9 @@ Proof.
       apply Nat.div_str_pos; lia.
       lia. }
     rewrite H3. lia.
-    left; constructor; lia.
+    left.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
     replace ((n + S (S dist)) mod dim) with (((n + 1) mod dim + S dist) mod dim).
     2: { replace (n + S (S dist)) with (n + 1 + S dist) by lia.
          rewrite Nat.add_mod_idemp_l. 
@@ -336,9 +377,9 @@ Ltac rewrite_mod_sub e :=
         | rewrite (Nat.mod_small (a + b - c)); try lia ]
   end.
 
-Lemma move_ccw_valid_path : forall dim n dist,
+Lemma move_ccw_valid_path : forall n dist,
   0 < dist -> dist < dim -> n < dim ->
-  valid_path n ((dim + n - dist) mod dim) (LNN_ring_is_in_graph dim) (move_ccw dim n dist).
+  valid_path n ((dim + n - dist) mod dim) is_in_graph (move_ccw n dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -355,11 +396,13 @@ Proof.
          apply Nat.mod_small; assumption. }
     assert (x < dim).
     { subst. apply Nat.mod_upper_bound; lia. }
-    split; [|split; [|split]]; repeat constructor; try lia.
+    repeat split; repeat constructor. 
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
     bdestruct (x + 1 <? dim).
     rewrite Nat.mod_small; lia.
-    assert (x + 1 = dim) by lia. 
-    subst dim. rewrite Nat.mod_same; lia.
+    assert (Hdim : x + 1 = dim) by lia. 
+    rewrite <- Hdim. rewrite Nat.mod_same; lia.
   - intros.
     apply valid_path_extend_path with (a:=(dim + n - 1) mod dim).
     rewrite_mod_sub ((dim + n - S (S dist)) mod dim).
@@ -373,7 +416,8 @@ Proof.
          apply Nat.mod_small; assumption. }
     assert (x < dim).
     { subst. apply Nat.mod_upper_bound; lia. }
-    constructor; lia.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
     replace ((dim + n - S (S dist)) mod dim) with ((dim + (dim + n - 1) mod dim - S dist) mod dim).
     2: { rewrite_mod_sub ((dim + n - 1) mod dim).
          apply f_equal2; lia.
@@ -386,11 +430,11 @@ Proof.
     apply Nat.mod_upper_bound; lia.
 Qed.
 
-Lemma LNN_ring_get_path_valid : forall dim, 
-  get_path_valid dim (LNN_ring_get_path dim) (LNN_ring_is_in_graph dim).
+Lemma get_path_valid : forall n1 n2, 
+  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph (get_path n1 n2).
 Proof.
-  intros dim n1 n2 Hn1 Hn2 Hn1n2.
-  unfold LNN_ring_get_path.
+  intros n1 n2 Hn1 Hn2 Hn1n2.
+  unfold get_path.
   bdestruct_all. 
   - replace n2 with ((n1 + (n2 - n1)) mod dim) at 1.
     2: { rewrite Nat.mod_small; lia. }
@@ -418,54 +462,18 @@ Proof.
     apply move_ccw_valid_path; lia.
 Qed.
 
-Lemma LNN_ring_is_in_graph_reflects : forall dim n1 n2,
-  reflect (LNN_ring_is_in_graph dim n1 n2) (LNN_ring_is_in_graph_b dim n1 n2).
-Proof.
-  intros.
-  unfold LNN_ring_is_in_graph_b.
-  bdestruct_all; simpl; subst; constructor.
-  all: try (constructor; assumption). 
-  all: try (intros contra; inversion contra; subst). 
-  all: try (contradict H2; lia).
-  assert (n1 < dim). { rewrite H3. apply Nat.mod_upper_bound; lia. }
-  contradict H2; lia.
-  assert ((n + 1) mod dim < dim) by (apply Nat.mod_upper_bound; lia).
-  contradict H5; lia. 
-Qed.
-
-(*
-Lemma map_to_lnn_ring_sound : forall dim (c : base_ucom dim),
-  uc_well_typed c -> map_to_lnn_ring c ≡ c.
-Proof.
-  intros.
-  unfold map_to_lnn_ring.
-  eapply simple_map_sound.
-  apply LNN_ring_is_in_graph_valid.
-  apply LNN_ring_get_path_valid.
-  apply LNN_ring_is_in_graph_reflects.
-  assumption.
-Qed.
-
-Lemma map_to_lnn_ring_respects_constraints : forall dim (c : base_ucom dim),
-  uc_well_typed c -> respects_constraints (LNN_ring_is_in_graph dim) (map_to_lnn_ring c).
-Proof.
-  intros.
-  unfold map_to_lnn_ring.
-  eapply simple_map_respect_constraints.
-  apply LNN_ring_is_in_graph_valid.
-  apply LNN_ring_get_path_valid.
-  apply LNN_ring_is_in_graph_reflects.
-  assumption.
-Qed.
-*)
-
 End LNNRing.
 
-(*****************************)
-(** 2D Grid Mapping Example **)
-(*****************************)
+(*************************)
+(**   2D Grid Example   **)
+(*************************)
 
-Module Grid.
+Module Grid <: ConnectivityGraph.
+
+Parameter numRows : nat.
+Parameter numCols : nat.
+
+Definition dim := numRows * numCols.
 
 (* Creates a grid of size numRows by numCols. We will use the following mapping
    between qubit i and grid position (r,c):
@@ -479,47 +487,17 @@ Module Grid.
    (With some restrictions on valid indices.)
 *)
 
-Inductive grid_is_in_graph numRows numCols : nat -> nat -> Prop := 
-  | grid_up : forall i, i + numCols < numRows * numCols -> 
-      grid_is_in_graph numRows numCols (i + numCols) i
-  | grid_down : forall i, i + numCols < numRows * numCols -> 
-      grid_is_in_graph numRows numCols i (i + numCols)
-  | grid_left : forall i, i + 1 < numRows * numCols -> 
-      grid_is_in_graph numRows numCols (i + 1) i
-  | grid_right : forall i, i + 1 < numRows * numCols -> 
-      grid_is_in_graph numRows numCols i (i + 1).
-
-Definition grid_is_in_graph_b numRows numCols i i' :=
+Definition is_in_graph i i' :=
   ((i  + numCols <? numRows * numCols) && (i' =? i  + numCols)) ||
   ((i' + numCols <? numRows * numCols) && (i  =? i' + numCols)) ||
   ((i  + 1 <? numRows * numCols) && (i' =? i + 1)) ||
   ((i' + 1 <? numRows * numCols) && (i =? i' + 1)).
  
-(* Running example:
-  
-   numRows = 3
-   numCols = 5
-   
-   0  1  2  3  4
-   5  6  7  8  9
-   10 11 12 13 14
-*)
-Definition test_nr := 3.
-Definition test_nc := 5.
-Compute (grid_is_in_graph_b test_nr test_nc 2 0). (* -> false *)
-Compute (grid_is_in_graph_b test_nr test_nc 2 9). (* -> false *)
-Compute (grid_is_in_graph_b test_nr test_nc 2 7). (* -> true *)
-Compute (grid_is_in_graph_b test_nr test_nc 2 3). (* -> true *)
-Compute (grid_is_in_graph_b test_nr test_nc 8 3). (* -> true *)
-Compute (grid_is_in_graph_b test_nr test_nc 8 7). (* -> true *)
-Compute (grid_is_in_graph_b test_nr test_nc 15 0). (* -> false *)
-Compute (grid_is_in_graph_b test_nr test_nc 14 8). (* -> false *)
+Definition row i := i / numCols.
+Definition col i := i mod numCols.
 
-Definition row numCols i := i / numCols.
-Definition col numCols i := i mod numCols.
-
-Definition move_up numCols i := i - numCols.
-Definition move_down numCols i := i + numCols.
+Definition move_up i := i - numCols.
+Definition move_down i := i + numCols.
 Definition move_left i := i - 1.
 Definition move_right i := i + 1.
 
@@ -529,25 +507,25 @@ Fixpoint repeat_move f (i : nat) dist :=
   | S dist' => i :: repeat_move f (f i) dist'
   end.
 
-Definition grid_get_path numCols i1 i2 :=
-  let r1 := row numCols i1 in
-  let c1 := col numCols i1 in
-  let r2 := row numCols i2 in
-  let c2 := col numCols i2 in
+Definition get_path i1 i2 :=
+  let r1 := row i1 in
+  let c1 := col i1 in
+  let r2 := row i2 in
+  let c2 := col i2 in
   if ((r1 <? r2) && (c1 <? c2))
   then (* move down, right *)
-       let p1 := repeat_move (move_down numCols) i1 (r2 - r1) in
+       let p1 := repeat_move move_down i1 (r2 - r1) in
        let p2 := repeat_move move_right (i1 + (r2 - r1) * numCols) (c2 - c1) in
        merge_path p1 p2
   else if ((r1 <? r2) && (c1 =? c2))
   then (* move down *)
-       repeat_move (move_down numCols) i1 (r2 - r1)
+       repeat_move move_down i1 (r2 - r1)
   else if ((r1 <? r2) && (c2 <? c1))
   then (* move left, down *)
        (* Note: It makes the proof easier to move left -> down rather than 
           down -> left. So this case is a little different from the others. *)
        let p1 := repeat_move move_left i1 (c1 - c2) in
-       let p2 := repeat_move (move_down numCols) (i1 - (c1 - c2)) (r2 - r1) in
+       let p2 := repeat_move move_down (i1 - (c1 - c2)) (r2 - r1) in
        merge_path p1 p2
   else if ((r1 =? r2) && (c1 <? c2))
   then (* move right *)
@@ -560,76 +538,57 @@ Definition grid_get_path numCols i1 i2 :=
        repeat_move move_left i1 (c1 - c2)
   else if ((r2 <? r1) && (c1 <? c2))
   then (* move up, right *)
-       let p1 := repeat_move (move_up numCols) i1 (r1 - r2) in
+       let p1 := repeat_move move_up i1 (r1 - r2) in
        let p2 := repeat_move move_right (i1 - (r1 - r2) * numCols) (c2 - c1) in
        merge_path p1 p2
   else if ((r2 <? r1) && (c1 =? c2))
   then (* move up *)
-       repeat_move (move_up numCols) i1 (r1 - r2)
+       repeat_move move_up i1 (r1 - r2)
   else if ((r2 <? r1) && (c2 <? c1))
   then (* move up, left *)
-       let p1 := repeat_move (move_up numCols) i1 (r1 - r2) in
+       let p1 := repeat_move move_up i1 (r1 - r2) in
        let p2 := repeat_move move_left (i1 - (r1 - r2) * numCols) (c1 - c2) in
        merge_path p1 p2
   else (* impossible case - conditionals are exhaustive *)
        [].
 
-(* Running example:
-  
-   numRows = 3
-   numCols = 5
-   
-   0  1  2  3  4
-   5  6  7  8  9
-   10 11 12 13 14
-*)
-Compute (grid_get_path test_nc 2 5).
-Compute (grid_get_path test_nc 6 14).
-Compute (grid_get_path test_nc 4 14).
-Compute (grid_get_path test_nc 13 1).
-Compute (grid_get_path test_nc 10 2).
-Compute (grid_get_path test_nc 11 1).
-Compute (grid_get_path test_nc 6 9).
-Compute (grid_get_path test_nc 13 10).
-
-(*Definition map_to_grid numRows numCols (c : base_ucom (numRows * numCols)) : base_ucom (numRows * numCols) :=
-  simple_map c (grid_get_path numCols) (grid_is_in_graph_b numRows numCols).
-
-(* Examples *)
-Definition test_grid1 : base_ucom (test_nr * test_nc) := CNOT 2 1.
-Compute (map_to_grid test_nr test_nc test_grid1).
-Definition test_grid2 : base_ucom (test_nr * test_nc) := CNOT 0 3; CNOT 4 8; CNOT 12 6.
-Compute (map_to_grid test_nr test_nc test_grid2).
-*)
-
-(* Correctness *)
-
-Lemma grid_is_in_graph_implies_numCols_nonzero : forall numRows numCols i i',
-  grid_is_in_graph numRows numCols i i' -> numCols > 0.
+Lemma grid_is_in_graph_implies_numCols_nonzero : forall i i',
+  is_in_graph i i' = true -> numCols > 0.
 Proof.
-  intros.
-  inversion H; subst.
-  all: assert (Hz : 0 < numRows * numCols) by lia.
-  all: apply Nat.lt_0_mul' in Hz as [_ ?];
-       assumption.
+  intros i i' H.
+  unfold is_in_graph in H.
+  bdestruct(i + numCols <? numRows * numCols); try lia.
+  simpl in H.
+  bdestruct(i' + numCols <? numRows * numCols); try lia.
+  simpl in H.
+  bdestruct(i + 1 <? numRows * numCols); try lia.
+  simpl in H.
+  bdestruct(i' + 1 <? numRows * numCols); try lia.
+  simpl in H.
+  inversion H.
 Qed.
 
-Lemma grid_is_in_graph_valid : forall numRows numCols, 
-  valid_graph (numRows * numCols) (grid_is_in_graph numRows numCols).
+Lemma valid_graph : forall n1 n2, 
+  is_in_graph n1 n2 = true -> (n1 < dim /\ n2 < dim /\ n1 <> n2).
 Proof.
-  intros.
-  repeat split; inversion H; subst; try assumption; try lia.
-  all: apply grid_is_in_graph_implies_numCols_nonzero in H;
-       lia.
+  intros n1 n2 H.
+  specialize (grid_is_in_graph_implies_numCols_nonzero n1 n2 H) as H0.
+  unfold is_in_graph in H.
+  unfold dim.
+  apply orb_prop in H as [H | H].
+  apply orb_prop in H as [H | H].
+  apply orb_prop in H as [H | H].
+  all: apply andb_prop in H as [H1 H2].
+  all: apply Nat.ltb_lt in H1.
+  all: apply Nat.eqb_eq in H2.
+  all: repeat split; lia.
 Qed.
 
-Lemma move_up_valid_path : forall i dist numRows numCols,
+Lemma move_up_valid_path : forall i dist,
   numCols > 0 -> dist > 0 ->
   i < numRows * numCols ->
   dist * numCols <= i ->
-  valid_path i (i - dist * numCols)
-    (grid_is_in_graph numRows numCols)
-    (repeat_move (move_up numCols) i dist).
+  valid_path i (i - dist * numCols) is_in_graph (repeat_move move_up i dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -639,27 +598,23 @@ Proof.
     rewrite Nat.mul_1_l.
     simpl. unfold move_up.
     repeat split; repeat constructor; try lia.
-    remember (i - numCols) as x.
-    replace i with (x + numCols) by lia.
-    constructor; lia.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
   - intros.
     simpl in *; unfold move_up in *.
     apply valid_path_extend_path with (a:=i - numCols). 
     lia.
     left. 
-    remember (i - numCols) as x.
-    replace i with (x + numCols) by lia.
-    constructor; lia. 
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
     rewrite Nat.sub_add_distr.
     apply IHdist; lia.
 Qed.
 
-Lemma move_down_valid_path : forall i dist numRows numCols,
+Lemma move_down_valid_path : forall i dist,
   numCols > 0 -> dist > 0 ->
   i + dist * numCols < numRows * numCols ->
-  valid_path i (i + dist * numCols)
-    (grid_is_in_graph numRows numCols)
-    (repeat_move (move_down numCols) i dist).
+  valid_path i (i + dist * numCols) is_in_graph (repeat_move move_down i dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -668,23 +623,25 @@ Proof.
   - intros.
     rewrite Nat.mul_1_l.
     simpl. unfold move_down.
-    repeat split; repeat constructor; lia.
+    repeat split; repeat constructor; try lia.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
   - intros.
     simpl in *; unfold move_down in *.
     apply valid_path_extend_path with (a:=i + numCols).
     lia.
-    left; constructor; lia.
+    left.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
     rewrite plus_assoc.
     apply IHdist; lia.
 Qed.
 
-Lemma move_left_valid_path : forall i dist numRows numCols,
+Lemma move_left_valid_path : forall i dist,
   numCols > 0 -> dist > 0 ->
   i < numRows * numCols ->
   dist <= i ->
-  valid_path i (i - dist)
-    (grid_is_in_graph numRows numCols)
-    (repeat_move move_left i dist).
+  valid_path i (i - dist) is_in_graph (repeat_move move_left i dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -693,27 +650,23 @@ Proof.
   - intros.
     simpl. unfold move_left.
     repeat split; repeat constructor; try lia.
-    remember (i - 1) as x.
-    replace i with (x + 1) by lia.
-    constructor; lia.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
   - intros.
     simpl in *; unfold move_left in *.
     apply valid_path_extend_path with (a:=i - 1). 
     lia.
     left.
-    remember (i - 1) as x.
-    replace i with (x + 1) by lia.
-    constructor; lia. 
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
     replace (i - S (S dist)) with (i - 1 - S dist) by lia.
     apply IHdist; lia.
 Qed.
 
-Lemma move_right_valid_path : forall i dist numRows numCols,
+Lemma move_right_valid_path : forall i dist,
   numCols > 0 -> dist > 0 ->
   i + dist < numRows * numCols ->
-  valid_path i (i + dist)
-    (grid_is_in_graph numRows numCols)
-    (repeat_move move_right i dist).
+  valid_path i (i + dist) is_in_graph (repeat_move move_right i dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -721,21 +674,25 @@ Proof.
   induction dist.
   - intros.
     simpl. unfold move_right.
-    repeat split; repeat constructor; lia.
+    repeat split; repeat constructor; try lia.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
   - intros.
     simpl in *; unfold move_right in *.
     apply valid_path_extend_path with (a:=i + 1). 
     lia. 
-    left; constructor; lia.
+    left.
+    unfold is_in_graph.
+    bdestruct_all; reflexivity.
     replace (i + S (S dist)) with (i + 1 + S dist) by lia.
     apply IHdist; lia.
 Qed.
 
-Lemma not_in_interior_move_up : forall n1 n2 dist numCols,
+Lemma not_in_interior_move_up : forall n1 n2 dist,
   numCols <> 0 -> dist > 0 ->
   dist * numCols <= n1 ->
-  col numCols n1 <> col numCols n2 ->
-  not_in_interior n2 (repeat_move (move_up numCols) n1 dist).
+  col n1 <> col n2 ->
+  not_in_interior n2 (repeat_move move_up n1 dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -757,10 +714,10 @@ Proof.
     assumption.
 Qed.
 
-Lemma not_in_interior_move_down : forall n1 n2 dist numCols,
+Lemma not_in_interior_move_down : forall n1 n2 dist,
   numCols <> 0 -> dist > 0 ->
-  col numCols n1 <> col numCols n2 ->
-  not_in_interior n2 (repeat_move (move_down numCols) n1 dist).
+  col n1 <> col n2 ->
+  not_in_interior n2 (repeat_move move_down n1 dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -780,10 +737,10 @@ Proof.
     rewrite Nat.add_0_r; assumption.
 Qed.
 
-Lemma not_in_interior_move_left : forall n1 n2 dist numCols,
+Lemma not_in_interior_move_left : forall n1 n2 dist,
   numCols <> 0 -> dist > 0 ->
   dist <= n1 ->
-  row numCols n1 < row numCols n2 ->
+  row n1 < row n2 ->
   not_in_interior n2 (repeat_move move_left n1 dist).
 Proof.
   intros.
@@ -802,36 +759,35 @@ Proof.
     lia.
 Qed.
 
-Lemma grid_get_path_valid : forall numRows numCols, 
-  get_path_valid (numRows * numCols) 
-                 (grid_get_path numCols) 
-                 (grid_is_in_graph numRows numCols).
+Lemma get_path_valid : forall n1 n2, 
+  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph (get_path n1 n2).
 Proof.
-  intros numRows numCols n1 n2 Hn1 Hn2 Hn1n2.
+  unfold dim.
+  intros n1 n2 Hn1 Hn2 Hn1n2.
   assert (0 < numRows * numCols) by lia.
   apply Nat.lt_0_mul' in H as [_ H].
-  unfold grid_get_path.
+  unfold get_path.
   (* some aux. lemmas *)
   assert (Haux0 : numCols <> 0) by lia.
   assert (Haux1 : numCols * (n1 / numCols) <= n1).
   { apply Nat.mul_div_le. lia. }
   assert (Haux2 : numCols * (n2 / numCols) <= n2).
   { apply Nat.mul_div_le. lia. }
-  assert (Haux3 : (row numCols n1 - row numCols n2) * numCols <= n1).
+  assert (Haux3 : (row n1 - row n2) * numCols <= n1).
   { unfold row.
     rewrite Nat.mul_sub_distr_r.
     rewrite Nat.mul_comm. lia. }
   bdestruct_all; simpl.
   (* get rid of some clutter *)
   all: repeat match goal with
-       | H : row _ _ <> row _ _ |- _ => clear H
-       | H : col _ _ <> col _ _ |- _ => clear H
-       | H : row _ _ >= row _ _ |- _ => clear H
-       | H : col _ _ >= col _ _ |- _ => clear H
+       | H : row _ <> row _ |- _ => clear H
+       | H : col _ <> col _ |- _ => clear H
+       | H : row _ >= row _ |- _ => clear H
+       | H : col _ >= col _ |- _ => clear H
        end.
   - (* move down, right *)
-    remember (row numCols n2 - row numCols n1) as distR.
-    remember (col numCols n2 - col numCols n1) as distC.
+    remember (row n2 - row n1) as distR.
+    remember (col n2 - col n1) as distC.
     assert (n1 + distR * numCols + distC = n2).
     { unfold row, col in *; subst.
       do 2 rewrite Nat.mod_eq in H1; try assumption.
@@ -851,8 +807,8 @@ Proof.
     apply move_right_valid_path; try assumption; try lia.    
     apply not_in_interior_move_down; try lia.
   - (* move down, left *)
-    remember (row numCols n2 - row numCols n1) as distR.
-    remember (col numCols n1 - col numCols n2) as distC.
+    remember (row n2 - row n1) as distR.
+    remember (col n1 - col n2) as distC.
     assert (distC <= n1).
     { unfold row, col in *; subst.
       do 2 (rewrite Nat.mod_eq; try assumption).
@@ -874,9 +830,9 @@ Proof.
     apply move_left_valid_path; try assumption; try lia.
     replace n2 with (n1 - distC + distR * numCols); try assumption.
     apply move_down_valid_path; try assumption; try lia.   
-    apply not_in_interior_move_left with (numCols:=numCols); try lia.
+    apply not_in_interior_move_left; try lia.
   - (* move down *)
-    remember (row numCols n2 - row numCols n1) as distR.
+    remember (row n2 - row n1) as distR.
     assert (n1 + distR * numCols = n2).
     { unfold row, col in *; subst.
       do 2 rewrite Nat.mod_eq in H4; try assumption.
@@ -892,8 +848,8 @@ Proof.
     replace n2 with (n1 + distR * numCols); try assumption.
     apply move_down_valid_path; try assumption; try lia.
   - (* move up, right *)
-    remember (row numCols n1 - row numCols n2) as distR.
-    remember (col numCols n2 - col numCols n1) as distC.
+    remember (row n1 - row n2) as distR.
+    remember (col n2 - col n1) as distC.
     assert (n1 - distR * numCols + distC = n2).
     { unfold row, col in *; subst.
       do 2 (rewrite Nat.mod_eq; try assumption).
@@ -917,7 +873,7 @@ Proof.
     apply move_right_valid_path; try assumption; try lia.   
     apply not_in_interior_move_up; try assumption; try lia.
   - (* move right *)
-    remember (col numCols n2 - col numCols n1) as distC.
+    remember (col n2 - col n1) as distC.
     assert (n1 + distC = n2).
     { unfold row, col in *; subst.
       do 2 (rewrite Nat.mod_eq; try assumption). 
@@ -935,8 +891,8 @@ Proof.
     replace n2 with (n1 + distC); try assumption.
     apply move_right_valid_path; try assumption; try lia.
   - (* move up, left *)
-    remember (row numCols n1 - row numCols n2) as distR.
-    remember (col numCols n1 - col numCols n2) as distC.
+    remember (row n1 - row n2) as distR.
+    remember (col n1 - col n2) as distC.
     assert (distC <= n1 - distR * numCols).
     { unfold row, col in *; subst.
       do 2 (rewrite Nat.mod_eq; try assumption).
@@ -963,7 +919,7 @@ Proof.
     apply move_left_valid_path; try assumption; try lia.
     apply not_in_interior_move_up; try assumption; try lia. 
   - (* move left *)
-    remember (col numCols n1 - col numCols n2) as distC.
+    remember (col n1 - col n2) as distC.
     assert (n1 - distC = n2).
     { unfold row, col in *; subst.
       do 2 (rewrite Nat.mod_eq; try assumption).
@@ -979,7 +935,7 @@ Proof.
     apply move_left_valid_path; try assumption; try lia.
     subst. unfold col. rewrite Nat.mod_eq; lia.
   - (* move up *)
-    remember (row numCols n1 - row numCols n2) as distR.
+    remember (row n1 - row n2) as distR.
     assert (n1 - distR * numCols = n2).
     { unfold row, col in *; subst.
       do 2 rewrite Nat.mod_eq in H4; try assumption.
@@ -1006,50 +962,15 @@ Proof.
          | rewrite <- H5; rewrite Nat.mul_div_le; lia ]). 
 Qed.
 
-Lemma grid_is_in_graph_reflects : forall numRows numCols n1 n2,
-  reflect (grid_is_in_graph numRows numCols n1 n2) (grid_is_in_graph_b numRows numCols n1 n2).
-Proof.
-  intros.
-  unfold grid_is_in_graph_b.
-  bdestruct_all; simpl; subst; constructor. 
-  all: try (constructor; assumption). 
-  all: try (intros contra; inversion contra; subst). 
-  all: try (contradict H0; lia).
-Qed.
-
-(*
-Lemma map_to_grid_sound : forall numRows numCols (c : base_ucom (numRows * numCols)),
-  uc_well_typed c -> map_to_grid numRows numCols c ≡ c.
-Proof.
-  intros.
-  unfold map_to_grid.
-  eapply simple_map_sound.
-  apply grid_is_in_graph_valid.
-  apply grid_get_path_valid.
-  apply grid_is_in_graph_reflects.
-  assumption.
-Qed.
-
-Lemma map_to_grid_respects_constraints : forall numRows numCols (c : base_ucom (numRows * numCols)),
-  uc_well_typed c -> respects_constraints (grid_is_in_graph numRows numCols) (map_to_grid numRows numCols c).
-Proof.
-  intros.
-  unfold map_to_grid.
-  eapply simple_map_respect_constraints.
-  apply grid_is_in_graph_valid.
-  apply grid_get_path_valid.
-  apply grid_is_in_graph_reflects.
-  assumption.
-Qed.
-*)
-
 End Grid.
 
-(******************************)
-(** Tenerife Mapping Example **)
-(******************************)
+(*************************)
+(**   Tenerife Example  **)
+(*************************)
 
-Module Tenerife.
+Module Tenerife <: ConnectivityGraph.
+
+Definition dim := 5.
 
 (* Map to IBM's 5-qubit Tenerife machine. The connectivity graph for the 
    Tenerife machine is depicted here: https://github.com/Qiskit/ibmq-device-information/blob/master/backends/tenerife/V1/version_log.md 
@@ -1060,18 +981,15 @@ Module Tenerife.
 Definition tenerife_graph : list (nat * nat) := 
   (1, 0) :: (2, 0) :: (2, 1) :: (3, 2) :: (3, 4) :: (4, 2) :: [].
 
-Definition tenerife_is_in_graph n1 n2 := 
-  In (n1, n2) tenerife_graph.
-
 Definition beq_tup t t' := 
   match t, t' with
   | (n1, n2), (n1', n2') => (n1 =? n1') && (n2 =? n2')
   end.
 
-Definition tenerife_is_in_graph_b n1 n2 := 
+Definition is_in_graph n1 n2 := 
   existsb (beq_tup (n1, n2)) tenerife_graph.
 
-Definition tenerife_get_path n1 n2 :=
+Definition get_path n1 n2 :=
   match n1, n2 with 
   | 0, 1 => 0 :: 1 :: []
   | 0, 2 => 0 :: 2 :: []
@@ -1096,112 +1014,35 @@ Definition tenerife_get_path n1 n2 :=
   | _, _ => [] (* bad input case *)
   end.
 
-(*
-Definition map_to_tenerife (c : base_ucom 5) : base_ucom 5 :=
-  simple_map c tenerife_get_path tenerife_is_in_graph_b.
-
-(* Examples *)
-Definition test_tenerife1 : base_ucom 5 := CNOT 1 2.
-Compute (map_to_tenerife test_tenerife1).
-Definition test_tenerife2 : base_ucom 5 := CNOT 3 0.
-Compute (map_to_tenerife test_tenerife2).
-Definition test_tenerife3 : base_ucom 5 := CNOT 0 2; X 3; CNOT 4 1; X 2; CNOT 3 2.
-Compute (map_to_tenerife test_tenerife3).
-*)
-
-(* Correctness *)
-
-Lemma tenerife_is_in_graph_valid : 
-  valid_graph 5 tenerife_is_in_graph.
+Lemma valid_graph : forall n1 n2, 
+  is_in_graph n1 n2 = true -> (n1 < dim /\ n2 < dim /\ n1 <> n2).
 Proof.
-  unfold tenerife_is_in_graph; simpl.
-  split; try split;
-  repeat (destruct H; try (inversion H; subst; lia)).
+  intros n1 n2.
+  unfold dim, is_in_graph; simpl.
+  bdestruct_all; simpl.
+  all: intro Heq; try inversion Heq.
+  all: repeat split; lia.
 Qed.
 
-Lemma tenerife_get_path_valid : 
-  get_path_valid 5 tenerife_get_path tenerife_is_in_graph.
+Lemma get_path_valid : forall n1 n2, 
+  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph (get_path n1 n2).
 Proof.
-  split; [| split; [| split]].
+  unfold dim.
+  intros n1 n2 Hn1 Hn2 Hneq.
+  repeat split.
   - do 5 try destruct n1; do 5 try destruct n2;
-    try contradiction;
-    try (contradict H1; lia);
-    constructor.
+      try contradiction; try lia;
+      constructor.
   - do 5 try destruct n1; do 5 try destruct n2;
-    try contradiction;
-    try (contradict H1; lia);
-    repeat constructor.
+      try contradiction; try lia;
+      repeat constructor.
   - do 5 try destruct n1; do 5 try destruct n2;
-    try contradiction;
-    try (contradict H1; lia);
-    try constructor;
-    unfold tenerife_is_in_graph; simpl;
-    auto 8.
-    all: try constructor; auto 8.
+      try contradiction; try lia;
+      try constructor.
+    all: unfold is_in_graph; simpl; auto; try constructor; auto. 
   - do 5 try destruct n1; do 5 try destruct n2;
-    try contradiction;
-    try (contradict H1; lia);
-    try constructor; try constructor; lia.
-Qed.    
-
-
-Lemma beq_tup_refl : forall t t',
-  reflect (t = t') (beq_tup t t').
-Proof.
-  intros; unfold beq_tup.
-  destruct t; destruct t'.
-  bdestruct (n =? n1); bdestruct (n0 =? n2); simpl; 
-  constructor;
-  try (rewrite H, H0; reflexivity);
-  try (intros contra; inversion contra; subst; contradiction).
+      try contradiction; try lia;
+      repeat constructor; try lia.
 Qed.
-
-Lemma tenerife_is_in_graph_reflects : forall n1 n2,
-  reflect (tenerife_is_in_graph n1 n2) (tenerife_is_in_graph_b n1 n2).
-Proof.
-  intros.
-  unfold tenerife_is_in_graph, tenerife_is_in_graph_b.
-  remember (existsb (beq_tup (n1, n2)) tenerife_graph); symmetry in Heqb.
-  destruct b; constructor.
-  - apply existsb_exists in Heqb.
-    destruct Heqb. destruct H as [H1 H2].
-    eapply reflect_iff in H2.
-    2: { apply beq_tup_refl. }
-    subst; assumption.
-  - intros contra.
-    apply not_true_iff_false in Heqb.
-    rewrite existsb_exists in Heqb. 
-    destruct Heqb.
-    exists (n1, n2).
-    split; try assumption. 
-    erewrite <- (reflect_iff _ _ (beq_tup_refl (n1,n2) (n1,n2))). 
-    reflexivity.
-Qed.  
-
-(*
-Lemma map_to_tenerife_sound : forall (c : base_ucom 5),
-  uc_well_typed c -> map_to_tenerife c ≡ c.
-Proof.
-  intros.
-  unfold map_to_tenerife.
-  eapply simple_map_sound.
-  apply tenerife_is_in_graph_valid.
-  apply tenerife_get_path_valid.
-  apply tenerife_is_in_graph_reflects.
-  assumption.
-Qed.
-
-Lemma map_to_tenerife_respects_constraints : forall (c : base_ucom 5),
-  uc_well_typed c -> respects_constraints tenerife_is_in_graph (map_to_tenerife c).
-Proof.
-  intros.
-  unfold map_to_tenerife.
-  eapply simple_map_respect_constraints.
-  apply tenerife_is_in_graph_valid.
-  apply tenerife_get_path_valid.
-  apply tenerife_is_in_graph_reflects.
-  assumption.
-Qed.
-*)
 
 End Tenerife.

@@ -331,6 +331,15 @@ Definition LCR {U dim} (b : gate_list U dim) (opt : gate_list U dim -> gate_list
   | _ => None
   end.
 
+Definition map_qubits {U dim} (f : nat -> nat) (l : gate_list U dim) : gate_list U dim :=
+  let f (g : gate_app U dim) := 
+    match g with
+    | App1 u n => App1 u (f n)
+    | App2 u m n => App2 u (f m) (f n)
+    | App3 u m n p => App3 u (f m) (f n) (f p)
+    end in
+  List.map f l.
+
 Lemma cons_to_app : forall {A} (h : A) (t : list A), h :: t = [h] ++ t.
 Proof. reflexivity. Qed.
 
@@ -400,13 +409,6 @@ Proof.
 Qed.
 
 (** Conversion between gate_list and ucom in the base gate set. **)
-
-Lemma one_elem_list : forall (m : nat), List.length (m :: []) = 1. 
-Proof. easy. Qed.
-Lemma two_elem_list : forall (m n : nat), List.length (m :: n :: []) = 2. 
-Proof. easy. Qed.
-Lemma three_elem_list : forall (m n p : nat), List.length (m :: n :: p :: []) = 3. 
-Proof. easy. Qed.
 
 Local Open Scope ucom_scope.
 Fixpoint list_to_ucom {dim} (l : gate_list G.U dim) : base_ucom dim :=
@@ -1690,6 +1692,14 @@ Proof.
     rewrite Hpl.   
     reflexivity.
 Qed.
+
+Lemma map_qubits_equiv : forall {dim} (f : nat -> nat) (l1 l2 : gate_list G.U dim),
+  l1 =l= l2 ->
+  map_qubits f l1 =l= map_qubits f l2.
+Proof.
+  intros dim f l1 l2 H.
+  (* Definitely not true without some extra constraints on f and/or l1, l2 *)
+Admitted.
 
 (* Automation *)
 
