@@ -296,6 +296,12 @@ Definition get_path dim n1 n2 :=
               else move_ccw dim n1 dist_ccw
        else [] (* badly-typed case, n1=n2 *).
 
+(* Examples *)
+Compute (get_path 8 2 5).
+Compute (get_path 8 6 1).
+Compute (get_path 8 6 3).
+Compute (get_path 8 2 7).
+
 Module CG  <: ConnectivityGraph.
 
 Parameter dim : nat.
@@ -475,12 +481,11 @@ Qed.
 End CG.
 End LNNRing.
 
-(*
 (*************************)
 (**   2D Grid Example   **)
 (*************************)
 
-Module Grid <: ConnectivityGraph.
+Module Grid.
 
 (* Creates a grid of size numRows by numCols. We will use the following mapping
    between qubit i and grid position (r,c):
@@ -494,16 +499,32 @@ Module Grid <: ConnectivityGraph.
    (With some restrictions on valid indices.)
 *)
 
-Definition dim_type := prod nat nat.
-Definition to_nat := (fun pr:(prod nat nat) => fst pr * snd pr).
-
-Definition is_in_graph (dim:dim_type) i i' :=
-  let (numRows, numCols) := dim in
+Definition is_in_graph numRows numCols i i' :=
   ((i  + numCols <? numRows * numCols) && (i' =? i  + numCols)) ||
   ((i' + numCols <? numRows * numCols) && (i  =? i' + numCols)) ||
   ((i  + 1 <? numRows * numCols) && (i' =? i + 1)) ||
   ((i' + 1 <? numRows * numCols) && (i =? i' + 1)).
  
+(* Running example:
+  
+   numRows = 3
+   numCols = 5
+   
+   0  1  2  3  4
+   5  6  7  8  9
+   10 11 12 13 14
+*)
+Definition test_nr := 3.
+Definition test_nc := 5.
+Compute (is_in_graph test_nr test_nc 2 0). (* -> false *)
+Compute (is_in_graph test_nr test_nc 2 9). (* -> false *)
+Compute (is_in_graph test_nr test_nc 2 7). (* -> true *)
+Compute (is_in_graph test_nr test_nc 2 3). (* -> true *)
+Compute (is_in_graph test_nr test_nc 8 3). (* -> true *)
+Compute (is_in_graph test_nr test_nc 8 7). (* -> true *)
+Compute (is_in_graph test_nr test_nc 15 0). (* -> false *)
+Compute (is_in_graph test_nr test_nc 14 8). (* -> false *)
+
 Definition row numCols i := i / numCols.
 Definition col numCols i := i mod numCols.
 
@@ -518,8 +539,7 @@ Fixpoint repeat_move f (i : nat) dist :=
   | S dist' => i :: repeat_move f (f i) dist'
   end.
 
-Definition get_path (dim:dim_type) i1 i2 :=
-  let (numRows, numCols) := dim in
+Definition get_path numCols i1 i2 :=
   let r1 := row numCols i1 in
   let c1 := col numCols i1 in
   let r2 := row numCols i2 in
@@ -564,11 +584,37 @@ Definition get_path (dim:dim_type) i1 i2 :=
   else (* impossible case - conditionals are exhaustive *)
        [].
 
-Lemma grid_is_in_graph_implies_numCols_nonzero : forall numRows numCols i i',
-  is_in_graph (numRows, numCols) i i' = true -> numCols > 0.
+(* Running example:
+  
+   numRows = 3
+   numCols = 5
+   
+   0  1  2  3  4
+   5  6  7  8  9
+   10 11 12 13 14
+*)
+Compute (get_path test_nc 2 5).
+Compute (get_path test_nc 6 14).
+Compute (get_path test_nc 4 14).
+Compute (get_path test_nc 13 1).
+Compute (get_path test_nc 10 2).
+Compute (get_path test_nc 11 1).
+Compute (get_path test_nc 6 9).
+Compute (get_path test_nc 13 10).
+
+Module CG  <: ConnectivityGraph.
+
+Parameter numRows : nat.
+Parameter numCols : nat.
+Definition dim := numRows * numCols.
+Definition is_in_graph := is_in_graph numRows numCols.
+Definition get_path := get_path numCols.
+
+Lemma grid_is_in_graph_implies_numCols_nonzero : forall i i',
+  is_in_graph i i' = true -> numCols > 0.
 Proof.
-  intros numRows numCols i i' H.
-  unfold is_in_graph in H.
+  intros i i' H.
+  unfold is_in_graph, Grid.is_in_graph in H.
   bdestruct(i + numCols <? numRows * numCols); try lia.
   simpl in H.
   bdestruct(i' + numCols <? numRows * numCols); try lia.
@@ -580,14 +626,13 @@ Proof.
   inversion H.
 Qed.
 
-Lemma valid_graph : forall dim n1 n2, 
-  is_in_graph dim n1 n2 = true -> (n1 < to_nat dim /\ n2 < to_nat dim /\ n1 <> n2).
+Lemma valid_graph : forall n1 n2, 
+  is_in_graph n1 n2 = true -> (n1 < dim /\ n2 < dim /\ n1 <> n2).
 Proof.
-  intros dim n1 n2 H.
-  destruct dim.
-  unfold to_nat; simpl.
-  specialize (grid_is_in_graph_implies_numCols_nonzero n n0 n1 n2 H) as H0.
-  unfold is_in_graph in H.
+  intros n1 n2 H.
+  unfold dim.
+  specialize (grid_is_in_graph_implies_numCols_nonzero n1 n2 H) as H0.
+  unfold is_in_graph, Grid.is_in_graph in H.
   apply orb_prop in H as [H | H].
   apply orb_prop in H as [H | H].
   apply orb_prop in H as [H | H].
@@ -597,11 +642,11 @@ Proof.
   all: repeat split; lia.
 Qed.
 
-Lemma move_up_valid_path : forall numRows numCols i dist,
+Lemma move_up_valid_path : forall i dist,
   numCols > 0 -> dist > 0 ->
   i < numRows * numCols ->
   dist * numCols <= i ->
-  valid_path i (i - dist * numCols) (is_in_graph (numRows, numCols)) (repeat_move (move_up numCols) i dist).
+  valid_path i (i - dist * numCols) is_in_graph (repeat_move (move_up numCols) i dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -611,23 +656,23 @@ Proof.
     rewrite Nat.mul_1_l.
     simpl. unfold move_up.
     repeat split; repeat constructor; try lia.
-    unfold is_in_graph.
+    unfold is_in_graph, Grid.is_in_graph.
     bdestruct_all; reflexivity.
   - intros.
     simpl in *; unfold move_up in *.
     apply valid_path_extend_path with (a:=i - numCols). 
     lia.
     left. 
-    unfold is_in_graph.
+    unfold is_in_graph, Grid.is_in_graph.
     bdestruct_all; reflexivity.
     rewrite Nat.sub_add_distr.
     apply IHdist; lia.
 Qed.
 
-Lemma move_down_valid_path : forall numRows numCols  i dist,
+Lemma move_down_valid_path : forall i dist,
   numCols > 0 -> dist > 0 ->
   i + dist * numCols < numRows * numCols ->
-  valid_path i (i + dist * numCols) (is_in_graph (numRows, numCols)) (repeat_move (move_down numCols) i dist).
+  valid_path i (i + dist * numCols) is_in_graph (repeat_move (move_down numCols) i dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -637,24 +682,24 @@ Proof.
     rewrite Nat.mul_1_l.
     simpl. unfold move_down.
     repeat split; repeat constructor; try lia.
-    unfold is_in_graph.
+    unfold is_in_graph, Grid.is_in_graph.
     bdestruct_all; reflexivity.
   - intros.
     simpl in *; unfold move_down in *.
     apply valid_path_extend_path with (a:=i + numCols).
     lia.
     left.
-    unfold is_in_graph.
+    unfold is_in_graph, Grid.is_in_graph.
     bdestruct_all; reflexivity.
     rewrite plus_assoc.
     apply IHdist; lia.
 Qed.
 
-Lemma move_left_valid_path : forall numRows numCols  i dist,
+Lemma move_left_valid_path : forall i dist,
   numCols > 0 -> dist > 0 ->
   i < numRows * numCols ->
   dist <= i ->
-  valid_path i (i - dist) (is_in_graph (numRows, numCols)) (repeat_move move_left i dist).
+  valid_path i (i - dist) is_in_graph (repeat_move move_left i dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -663,23 +708,23 @@ Proof.
   - intros.
     simpl. unfold move_left.
     repeat split; repeat constructor; try lia.
-    unfold is_in_graph.
+    unfold is_in_graph, Grid.is_in_graph.
     bdestruct_all; reflexivity.
   - intros.
     simpl in *; unfold move_left in *.
     apply valid_path_extend_path with (a:=i - 1). 
     lia.
     left.
-    unfold is_in_graph.
+    unfold is_in_graph, Grid.is_in_graph.
     bdestruct_all; reflexivity.
     replace (i - S (S dist)) with (i - 1 - S dist) by lia.
     apply IHdist; lia.
 Qed.
 
-Lemma move_right_valid_path : forall numRows numCols  i dist,
+Lemma move_right_valid_path : forall i dist,
   numCols > 0 -> dist > 0 ->
   i + dist < numRows * numCols ->
-  valid_path i (i + dist) (is_in_graph (numRows, numCols)) (repeat_move move_right i dist).
+  valid_path i (i + dist) is_in_graph (repeat_move move_right i dist).
 Proof.
   intros.
   destruct dist; try lia.
@@ -688,20 +733,20 @@ Proof.
   - intros.
     simpl. unfold move_right.
     repeat split; repeat constructor; try lia.
-    unfold is_in_graph.
+    unfold is_in_graph, Grid.is_in_graph.
     bdestruct_all; reflexivity.
   - intros.
     simpl in *; unfold move_right in *.
     apply valid_path_extend_path with (a:=i + 1). 
     lia. 
     left.
-    unfold is_in_graph.
+    unfold is_in_graph, Grid.is_in_graph.
     bdestruct_all; reflexivity.
     replace (i + S (S dist)) with (i + 1 + S dist) by lia.
     apply IHdist; lia.
 Qed.
 
-Lemma not_in_interior_move_up : forall numCols n1 n2 dist,
+Lemma not_in_interior_move_up : forall n1 n2 dist,
   numCols <> 0 -> dist > 0 ->
   dist * numCols <= n1 ->
   col numCols n1 <> col numCols n2 ->
@@ -750,7 +795,7 @@ Proof.
     rewrite Nat.add_0_r; assumption.
 Qed.
 
-Lemma not_in_interior_move_left : forall numCols n1 n2 dist,
+Lemma not_in_interior_move_left : forall n1 n2 dist,
   numCols <> 0 -> dist > 0 ->
   dist <= n1 ->
   row numCols n1 < row numCols n2 ->
@@ -772,16 +817,14 @@ Proof.
     lia.
 Qed.
 
-Lemma get_path_valid : forall dim n1 n2, 
-  n1 < to_nat dim -> n2 < to_nat dim -> n1 <> n2 -> valid_path n1 n2 (is_in_graph dim) (get_path dim n1 n2).
+Lemma get_path_valid : forall n1 n2, 
+  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph (get_path n1 n2).
 Proof.
-  intros dim n1 n2 Hn1 Hn2 Hn1n2.
-  destruct dim as (numRows, numCols).
-  unfold to_nat in Hn1, Hn2.
-  simpl in Hn1, Hn2.
+  unfold dim.
+  intros n1 n2 Hn1 Hn2 Hn1n2.
   assert (0 < numRows * numCols) by lia.
   apply Nat.lt_0_mul' in H as [_ H].
-  unfold get_path.
+  unfold get_path, Grid.get_path.
   (* some aux. lemmas *)
   assert (Haux0 : numCols <> 0) by lia.
   assert (Haux1 : numCols * (n1 / numCols) <= n1).
@@ -845,7 +888,7 @@ Proof.
     apply move_left_valid_path; try assumption; try lia.
     replace n2 with (n1 - distC + distR * numCols); try assumption.
     apply move_down_valid_path; try assumption; try lia.   
-    apply not_in_interior_move_left with (numCols:=numCols); try lia.
+    apply not_in_interior_move_left; try lia.
   - (* move down *)
     remember (row numCols n2 - row numCols n1) as distR.
     assert (n1 + distR * numCols = n2).
@@ -977,16 +1020,14 @@ Proof.
          | rewrite <- H5; rewrite Nat.mul_div_le; lia ]). 
 Qed.
 
+End CG.
 End Grid.
 
 (*************************)
 (**   Tenerife Example  **)
 (*************************)
 
-Module Tenerife <: ConnectivityGraph.
-
-Definition dim_type := nat.
-Definition to_nat := (fun _:nat => 5). (* a little strange -- we're forcing the input dim to be 5 *)
+Module Tenerife.
 
 (* Map to IBM's 5-qubit Tenerife machine. The connectivity graph for the 
    Tenerife machine is depicted here: https://github.com/Qiskit/ibmq-device-information/blob/master/backends/tenerife/V1/version_log.md 
@@ -1002,10 +1043,10 @@ Definition beq_tup t t' :=
   | (n1, n2), (n1', n2') => (n1 =? n1') && (n2 =? n2')
   end.
 
-Definition is_in_graph (_:nat) n1 n2 := (* ignore dim arg *)
+Definition is_in_graph n1 n2 :=
   existsb (beq_tup (n1, n2)) tenerife_graph.
 
-Definition get_path (_:nat) n1 n2 :=
+Definition get_path n1 n2 :=
   match n1, n2 with 
   | 0, 1 => 0 :: 1 :: []
   | 0, 2 => 0 :: 2 :: []
@@ -1030,21 +1071,28 @@ Definition get_path (_:nat) n1 n2 :=
   | _, _ => [] (* bad input case *)
   end.
 
-Lemma valid_graph : forall (dim0:nat) n1 n2, 
-  is_in_graph dim0 n1 n2 = true -> (n1 < to_nat dim0 /\ n2 < to_nat dim0 /\ n1 <> n2).
+ Module CG <: ConnectivityGraph.
+
+Definition dim := 5.
+Definition is_in_graph := is_in_graph.
+Definition get_path := get_path.
+
+Lemma valid_graph : forall n1 n2, 
+  is_in_graph n1 n2 = true -> (n1 < dim /\ n2 < dim /\ n1 <> n2).
 Proof.
-  intros dim0 n1 n2.
-  unfold to_nat, is_in_graph; simpl.
+  unfold dim.
+  intros n1 n2.
+  unfold is_in_graph, Tenerife.is_in_graph; simpl.
   bdestruct_all; simpl.
   all: intro Heq; try inversion Heq.
   all: repeat split; lia.
 Qed.
 
-Lemma get_path_valid : forall (dim0:nat) n1 n2, 
-  n1 < to_nat dim0 -> n2 < to_nat dim0 -> n1 <> n2 -> valid_path n1 n2 (is_in_graph dim0) (get_path dim0 n1 n2).
+Lemma get_path_valid : forall n1 n2, 
+  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph (get_path n1 n2).
 Proof.
-  intros dim0 n1 n2 Hn1 Hn2 Hneq.
-  unfold to_nat in Hn1, Hn2.
+  unfold dim.
+  intros n1 n2 Hn1 Hn2 Hneq.
   repeat split.
   - do 5 try destruct n1; do 5 try destruct n2;
       try contradiction; try lia;
@@ -1061,5 +1109,5 @@ Proof.
     all: repeat constructor; lia.
 Qed.
 
+End CG.
 End Tenerife.
-*)

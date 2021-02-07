@@ -167,7 +167,7 @@ Extraction Implicit swap_in_map [dim].
 Extraction Implicit path_to_swaps [dim].
 Extraction Implicit fix_cnots [dim].
 Extraction Implicit simple_map [dim].
-Extraction Implicit simple_map_rzq [dim].
+Extraction Implicit respects_constraints_directed_b [dim].
 
 (* From Optimize.v *)
 Extraction Implicit optimize [dim].
@@ -184,7 +184,8 @@ Separate Extraction
   trivial_layout layout_to_list only_map
   optimize_then_map map_then_optimize
   optimize_then_map_then_optimize
+  respects_constraints_directed_b
   LNN.get_path LNN.is_in_graph
-  LNNRing.get_path LNNRing.is_in_graph.
-  (*Grid.get_path Grid.is_in_graph
-  Tenerife.get_path Tenerife.is_in_graph. *)
+  LNNRing.get_path LNNRing.is_in_graph
+  Grid.get_path Grid.is_in_graph
+  Tenerife.get_path Tenerife.is_in_graph.

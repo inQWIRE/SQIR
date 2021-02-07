@@ -144,6 +144,35 @@ Proof.
   constructor; auto.
 Qed.
 
+(* boolean version of respected_constraints_directed *)
+Fixpoint respects_constraints_directed_b {U dim} (is_in_graph : nat -> nat -> bool) (l : gate_list U dim) :=
+  match l with
+  | [] => true
+  | App1 _ _ :: t => respects_constraints_directed_b is_in_graph t
+  | App2 _ n1 n2 :: t => is_in_graph n1 n2 && respects_constraints_directed_b is_in_graph t
+  | _ => false
+  end.
+
+Lemma respects_constraints_directed_b_equiv : forall {U dim} is_in_graph (l : gate_list U dim),
+  respects_constraints_directed_b is_in_graph l = true <-> respects_constraints_directed is_in_graph l.
+Proof.
+  intros U dim f l.
+  split; intro H.
+  - induction l.
+    constructor.
+    destruct a; simpl in H.
+    apply IHl in H.
+    constructor; auto.
+    apply andb_prop in H as [H1 H2].
+    apply IHl in H2.
+    constructor; auto.
+    inversion H.
+  - induction H; auto.
+    simpl.
+    rewrite H, IHrespects_constraints_directed.
+    reflexivity.
+Qed.
+
 Module SimpleMappingProofs (G : GateSet) (MG : MappableGateSet G) (CG : ConnectivityGraph).
 
 Definition dim := CG.dim.
@@ -589,6 +618,46 @@ Proof.
   destruct g; simpl; rewrite H; rewrite Mmult_assoc; reflexivity.
 Qed.
 
+(*
+Lemma uc_eq_perm_map_qubits : forall (l1 l2 : gate_list G.U dim) p1 p2 (P1 : Square (2^dim)),
+  implements_permutation P1 p1 ->
+  l1 ≡ l2 with (p1 ∘ p2)%prg ->
+  l1 ≡ map_qubits p2 l2 with p1.
+Proof.
+  intros l1 l2 p1 p2 P1 HP1 [P [HP H]].
+  exists P1.
+  split; auto.
+  rewrite H.
+  eapply implements_permutation_Mmult in HP.  
+   
+
+Lemma foo : forall (l1 l2 l1' l2' : gate_list G.U dim) (m1 m2 m3 : qmap dim),
+l1 ≡ l1' with (log2phys m1 ∘ phys2log m2)%prg ->
+l2 ≡ l2' with (log2phys m3 ∘ phys2log m2)%prg ->
+(l1 ++ map_qubits (log2phys m2 ∘ phys2log m1)%prg l2) ≡ l1' ++ l2' with (log2phys m3 ∘ phys2log m1)%prg.
+Proof.
+  intros l1 l2 l1' l2' m1 m2 m3 [P1 [HP1 H1]] [P2 [HP2 H2]].
+  destruct m1; destruct m2; destruct m3.
+  unfold compose in *.
+  simpl in *.
+  exists (P2 × P1).
+
+split.
+admit.
+unfold eval in *.
+rewrite 2 list_to_ucom_append.
+simpl.
+rewrite H1, H2.
+
+P2 Pmap l2 P1 l1
+P2 P1 l2 l1 - P2 l2map P1 l1
+
+
+  implements_permutation P (fun x : nat => log2phys m2 (phys2log m1 x)) ->
+  uc_well_typed c ->
+  (uc_eval (UnitaryOps.map_qubits (log2phys m1) c)) × P = 
+      P × (uc_eval (UnitaryOps.map_qubits (log2phys m2) c)).
+
 Lemma uc_eq_perm_app_cong : forall (l1 l2 l1' l2' : gate_list G.U dim) p,
   uc_equiv_l l1 l1' ->
   l2 ≡ l2' with p ->
@@ -618,6 +687,7 @@ Proof.
   unfold eval.
   auto with wf_db.
 Qed.  
+*)
 
 Lemma fix_cnots_sound : forall (l : gate_list G.U dim),
   uc_equiv_l (fix_cnots l CG.is_in_graph CNOT H) l.
@@ -646,6 +716,37 @@ Proof.
     assumption.
     contradiction.
 Qed.
+
+Local Transparent SQIR.SKIP.
+Lemma SWAP_well_typed : forall a b,
+  a < dim -> b < dim -> a <> b ->
+  uc_well_typed (list_to_ucom (SWAP a b)).
+Proof.
+  intros.
+  simpl.
+  repeat rewrite MG.cnot_semantics.
+  repeat constructor.
+  all: try apply uc_well_typed_CNOT; auto.
+  unfold SKIP.  
+  apply uc_well_typed_ID.
+  lia.
+Qed.
+Local Opaque SQIR.SKIP.
+
+Local Transparent SQIR.SWAP.
+Lemma SWAP_semantics : forall a b,
+  dim > 0 -> eval (SWAP a b) = uc_eval (SQIR.SWAP a b).
+Proof.
+  intros.
+  unfold eval, SWAP, SQIR.SWAP.
+  simpl.
+  repeat rewrite MG.cnot_semantics.
+  rewrite denote_SKIP by auto.
+  Msimpl.
+  rewrite Mmult_assoc.
+  reflexivity.
+Qed.
+Local Opaque SQIR.SWAP.
 
 Local Opaque SWAP.
 Lemma path_to_swaps_sound : forall n1 n2 p m l m',
@@ -708,7 +809,7 @@ Proof.
     apply Mmult_unitary; auto.
     unfold eval.
     apply uc_eval_unitary.
-    admit. (*apply uc_well_typed_SWAP; auto.*)
+    apply SWAP_well_typed; auto.
     split.
     exists (log2phys m' ∘ phys2log m)%prg.
     intros x Hx.
@@ -722,12 +823,11 @@ Proof.
     rewrite H16; auto.
     intro f.
     rewrite Mmult_assoc.
-    assert (eval (SWAP a n) = uc_eval (SQIR.SWAP a n)).
-    admit. rewrite H9.
+    rewrite SWAP_semantics by lia.
     rewrite f_to_vec_SWAP by assumption.
     rewrite HP.
-    apply f_equal2; try reflexivity.
-    apply functional_extensionality; intro x.
+    apply f_to_vec_eq.
+    intros x Hx.
     unfold compose.
     unfold swap_in_map.
     destruct m; simpl.
@@ -735,37 +835,45 @@ Proof.
     rewrite update_index_neq by assumption.
     rewrite update_index_eq.
     apply f_equal.
-    rewrite H10.
+    rewrite H9.
     destruct (WFm a) as [_ [_ [_ ?]]]; auto.
     bdestruct (phys2log m' x =? n3 n).
     rewrite update_index_eq.
     apply f_equal.
-    rewrite H11.
+    rewrite H10.
     destruct (WFm n) as [_ [_ [_ ?]]]; auto.
     rewrite 2 update_index_neq.
     reflexivity.
     intro contra.
-    admit. (*symmetry in contra.
-    rewrite WFm in contra.
-    contradict H9.
-    symmetry. apply contra.*)
+    assert (H11: n3 (n1 (phys2log m' x)) = n3 n) by auto.
+    destruct (WFm' x) as [_ [? _]]; auto.
+    destruct (WFm (phys2log m' x)) as [_ [_ [H13 _]]]; auto.
+    simpl in H13.
+    rewrite H13 in H11.
+    contradiction.
     intro contra.
-    admit. (*symmetry in contra.
-    rewrite WFm in contra.
-    contradict H8.
-    symmetry. apply contra. *)
-    admit. (*simpl.
+    assert (H11: n3 (n1 (phys2log m' x)) = n3 a) by auto.
+    destruct (WFm' x) as [_ [? _]]; auto.
+    destruct (WFm (phys2log m' x)) as [_ [_ [H13 _]]]; auto.
+    simpl in H13.
+    rewrite H13 in H11.
+    contradiction.
+    unfold eval in *.
+    rewrite list_to_ucom_append.
+    simpl.
     rewrite res'.
+    simpl.
     rewrite denote_SKIP by lia.
-    destruct H6.
-    Msimpl. reflexivity.*)
+    destruct H7.
+    Msimpl.
+    reflexivity. 
     eapply valid_path_subpath.
     repeat split; try apply H2; try assumption.
     apply swap_in_map_well_formed; assumption.
     eapply valid_path_subpath.
     repeat split; try apply H1; try apply H2; try assumption.
     apply swap_in_map_well_formed; assumption.
-Admitted.
+Qed.
 
 (* Say that mapping program l (with initial layout m) onto the given 
    architecture produces program l' and final layout m'. Then the behavior
@@ -803,7 +911,9 @@ Proof.
       eapply path_to_swaps_sound in pth; auto.
       apply IHl in res'; auto.
 
-
+clear WT IHl res.
+simpl.
+rewrite cons_to_app.
       admit.
 
 
