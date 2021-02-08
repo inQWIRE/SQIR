@@ -19,6 +19,10 @@ CoqMakefile: Makefile _CoqProject
 invoke-coqmakefile: CoqMakefile
 	$(MAKE) --no-print-directory -f CoqMakefile $(filter-out $(KNOWNTARGETS),$(MAKECMDGOALS))
 
+invoke-coqmakefile-euler: _CoqProjectEuler
+	$(COQBIN)coq_makefile -f _CoqProjectEuler -o CoqMakefileEuler
+	$(MAKE) --no-print-directory -f CoqMakefileEuler $(filter-out $(KNOWNTARGETS),$(MAKECMDGOALS))
+
 .PHONY: invoke-coqmakefile $(KNOWNFILES)
 
 ###########################################################
@@ -36,7 +40,7 @@ all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRota
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
-shor: invoke-coqmakefile $(examples)/Shor.vo
+shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/Shor.vo
 
 mapper: invoke-coqmakefile $(VOQC)/SimpleMappingWithLayout.vo
 
@@ -86,8 +90,11 @@ SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examp
 SQIR/examples/ModMult.vo: $(examples)/ModMult.v
 	coqc $(COQ_OPTS) $(examples)/ModMult.v
 
-SQIR/examples/Shor.vo: $(examples)/Shor.v $(examples)/QPEGeneral.vo $(examples)/ModMult.vo
+SQIR/examples/Shor.vo: $(examples)/Shor.v $(examples)/QPEGeneral.vo $(examples)/ModMult.vo $(examples)/ShorAux.vo
 	coqc $(COQ_OPTS) $(examples)/Shor.v
+	
+SQIR/examples/ShorAux.vo: $(examples)/ShorAux.v
+	coqc $(COQ_OPTS) $(examples)/ShorAux.v
 
 # Built by 'make mapper'
 

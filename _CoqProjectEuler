@@ -1,0 +1,12 @@
+-R . Top
+#-arg -profile-ltac
+
+externals/euler/Misc.v
+externals/euler/Primes.v
+externals/euler/PTotient.v
+externals/euler/Primisc.v
+externals/euler/Totient.v
+externals/euler/Prod.v
+externals/euler/Harmonic.v
+externals/euler/Log.v
+externals/euler/Asympt.v
