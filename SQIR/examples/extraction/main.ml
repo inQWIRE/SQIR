@@ -8,7 +8,14 @@ open ShorExtr
 let rec sqir_to_qasm oc (u : base_ucom) k =
   match u with
   | Coq_useq (u1, u2) -> sqir_to_qasm oc u1 (fun _ -> sqir_to_qasm oc u2 k)
-  | Coq_uapp1 (U_R (f1,f2,f3), n) -> fprintf oc "u3(%f,%f,%f) q[%d];\n" f1 f2 f3 n ; k ()
+  | Coq_uapp1 (U_R (f1,f2,f3), n) -> 
+      if f1 = Float.pi /. 2.0 && f2 = 0.0 && f3 = Float.pi
+      then (fprintf oc "h q[%d];\n" n ; k ())
+      else if f1 = Float.pi && f2 = 0.0 && f3 = Float.pi
+      then (fprintf oc "x q[%d];\n" n ; k ())
+      else if f1 = 0.0 && f2 = 0.0
+      then (fprintf oc "u1(%f) q[%d];\n" f3 n ; k ())
+      else (fprintf oc "u3(%f,%f,%f) q[%d];\n" f1 f2 f3 n ; k ())
   | Coq_uapp2 (U_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n ; k ()
   | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of U_R) *)
 
@@ -49,10 +56,11 @@ if (!a <= 0 || !n <= !a) then printf "ERROR: Requires 0 < a < N\n%!" else
 if (Z.gcd (Z.of_int !a) (Z.of_int !n) > Z.one) then printf "ERROR: Requires a, N comprime\n%!" else 
 (printf "Generating circuit for N = %d and a = %d...\n%!" !n !a;
  let (u, num_qubits) = shor_circuit !a !n in
+ let u' = remove_skips u in
  (* print some stats *)
- let (c1,c2) = count_gates u in
+ let (c1,c2) = count_gates u' in
  printf "Produced a circuit with %d qubits, %d 1-qubit gates, and %d 2-qubit gates.\n%!" num_qubits c1 c2;
  (* write OpenQASM file *)
  printf("Writing file...\n%!");
- write_qasm_file "shor.qasm" u num_qubits;
+ write_qasm_file "shor.qasm" u' num_qubits;
  printf("Done.\n%!"))

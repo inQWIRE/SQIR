@@ -1,7 +1,9 @@
+open BinNums
 open ModMult
 open Nat
 open QPE
 open RCIR
+open Rdefinitions
 open SQIR
 open ShorAux
 
@@ -25,6 +27,34 @@ let shor_circuit a n =
       (bcelim (modmult_rev n (modexp a i n) (modexp ainv i n) n0))
   in
   ((coq_QPE_var m (add n0 anc) f), (add m (add n0 anc)))
+
+(** val remove_skips : base_ucom -> base_Unitary ucom **)
+
+let rec remove_skips u = match u with
+| Coq_useq (u1, u2) ->
+  (match remove_skips u1 with
+   | Coq_uapp1 (g, q) ->
+     (match g with
+      | U_R (_UU03b8_, _UU03d5_, _UU03bb_) ->
+        if (&&)
+             ((&&) (( = ) _UU03b8_ (coq_IZR Z0))
+               (( = ) _UU03d5_ (coq_IZR Z0))) (( = ) _UU03bb_ (coq_IZR Z0))
+        then remove_skips u2
+        else Coq_useq ((Coq_uapp1 (g, q)), (remove_skips u2))
+      | U_CNOT -> Coq_useq ((Coq_uapp1 (g, q)), (remove_skips u2)))
+   | x ->
+     (match remove_skips u2 with
+      | Coq_uapp1 (g, q) ->
+        (match g with
+         | U_R (_UU03b8_, _UU03d5_, _UU03bb_) ->
+           if (&&)
+                ((&&) (( = ) _UU03b8_ (coq_IZR Z0))
+                  (( = ) _UU03d5_ (coq_IZR Z0))) (( = ) _UU03bb_ (coq_IZR Z0))
+           then x
+           else Coq_useq (x, (Coq_uapp1 (g, q)))
+         | U_CNOT -> Coq_useq (x, (Coq_uapp1 (g, q))))
+      | x0 -> Coq_useq (x, x0)))
+| _ -> u
 
 (** val post_process : int -> int -> int -> unit **)
 

@@ -7,7 +7,7 @@ coqc -R ../../.. Top ShorExtr.v
 rm -f *.mli ShorExtr.vo
 
 # Remove empty files for cleanliness.
-rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml
+rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml ROrderedType.ml
 
 # Build extracted code.
 dune build main.exe
