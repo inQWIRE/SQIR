@@ -37,26 +37,38 @@ Definition Shor_final_state m n anc (c : base_ucom (n + anc)) := @Mmult _ _ 1 (u
 
 Definition Shor_final_state_var m n anc (f : nat -> base_ucom (n + anc)) := @Mmult _ _ 1 (uc_eval (QPE_var m (n + anc) f)) ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1) ⊗ (basis_vector (2^anc) 0)).
 
-(* The post-processing of Shor's algorithm is simply running continued fraction algorithm step by step. Each time a classical verifier examines whether the denominator is the order. *)
-Definition Shor_post (step s m : nat) := snd (ContinuedFraction step s (2^m)).
+(* The post-processing of Shor's algorithm is simply running continued fraction algorithm step by step. Each time a classical verifier examines whether the denominator is the order.
+   OF_post outputs a candidate of the order r. It might still not be the order, but 0 or a multiple of the order. We proved with no less than 1/polylog(N) probability its output is r. *)
+Definition OF_post_step (step o m : nat) := snd (ContinuedFraction step o (2^m)).
 
-Fixpoint Bsum n (f : nat -> bool) :=
-  match n with
-  | O => false
-  | S n' => f n' || Bsum n' f
+Fixpoint OF_post' (step a N o m : nat) :=
+  match step with
+  | O => O
+  | S step' => let pre := OF_post' step' a N o m in
+              if (pre =? O) then
+                (if (a ^ (OF_post_step step' o m) mod N =? 1) then OF_post_step step' o m
+                 else O)
+              else pre
   end.
+Definition OF_post a N o m := OF_post' (2 * m + 2) a N o m.
 
-(* We say a measurement result x is r_recoverable, if the execution of continued fraction algorithm provides a candidate that is exactly the order r. Because this process is deterministic, the conditioned probability is whether 1 or 0. *)
-Definition r_recoverable x m r : R := if Bsum (2 * m + 2) (fun step => Shor_post step x m =? r) then 1 else 0.
+Definition r_found o m r a N : R := if (OF_post a N o m =? r) then 1 else 0.
 
 (* The final success probability of Shor's order finding algorithm. It sums over all the possible measurement results, and adds the probability of recovering r conditioned on measurement result x. *)
+(* The main theorem states, given the basic settings, the probability of successully calculating order OF_post a N o m = ord a N is propotional to 1 / polylog N. *)
 Definition probability_of_success (a r N m n anc : nat) (c : base_ucom (n + anc)) :=
-  Rsum (2^m) (fun x => r_recoverable x m r * prob_partial_meas (basis_vector (2^m) x) (Shor_final_state m n anc c))%R.
+  Rsum (2^m) (fun x => r_found x m r a N * prob_partial_meas (basis_vector (2^m) x) (Shor_final_state m n anc c))%R.
 
 Definition probability_of_success_var (a r N m n anc : nat) (f : nat -> base_ucom (n + anc)) :=
-  Rsum (2^m) (fun x => r_recoverable x m r * prob_partial_meas (basis_vector (2^m) x) (Shor_final_state_var m n anc f))%R.
+  Rsum (2^m) (fun x => r_found x m r a N * prob_partial_meas (basis_vector (2^m) x) (Shor_final_state_var m n anc f))%R.
 
-(* The main theorem states, given the basic settings, the probability of success is propotional to 1 / log log N. The expected test time is polylog to the input length. *)
+(* The post processing for factorization. Notice here `a` is set as input, while the real implementation needs a randomized `a` from 1<a<N such that gcd a N <> 1.
+   The Shor's reduction proved in ShorAux.v ensures that with at least 1/2 probability, the randomly picked `a` will lead to a non-trivial factor if (OF_post a N o m = ord a N). The condition happens with probability at least 1/polylog(N) by the above main theorem.
+*)
+Definition Factor_post a N o m := if ((1 <? Nat.gcd (a ^ ((OF_post a N o m) / 2) - 1) N) && (Nat.gcd (a ^ ((OF_post a N o m) / 2) - 1) N <? N)) then Nat.gcd (a ^ ((OF_post a N o m) / 2) - 1) N else Nat.gcd (a ^ ((OF_post a N o m) / 2) + 1) N.
+
+
+
 
 
 (* ======================= *)
@@ -957,9 +969,9 @@ Lemma Shor_partial_correct :
     rel_prime k r ->
     exists step,
       (step < 2 * m + 2)%nat /\
-      Shor_post step (s_closest m k r) m = r.
+      OF_post_step step (s_closest m k r) m = r.
 Proof.
-  intros. unfold Shor_post.
+  intros. unfold OF_post_step.
   replace (2 * m + 2)%nat with (2 * (Nat.log2 (2^m) + 1))%nat by (rewrite Nat.log2_pow2; lia).
   apply Legendre_ContinuedFraction with (p := k).
   lia. apply s_closest_ub with (a := a) (N := N) (n := n); easy.
@@ -976,29 +988,108 @@ Proof.
   easy.
 Qed.
 
-Lemma bsum_exists :
-  forall (n : nat) (f : nat -> bool),
-    (exists i : nat, (i < n)%nat /\ f i = true) ->
-    Bsum n f = true.
+Lemma OF_post_step_inc :
+  forall s1 s2 o m,
+    (s1 <= s2)%nat ->
+    (o < 2^m)%nat ->
+    (OF_post_step s1 o m <= OF_post_step s2 o m)%nat.
 Proof.
-  intros. destruct H as (i & H0 & H1).
-  induction n.
-  - easy.
-  - inversion H0. simpl. subst. rewrite H1. auto.
-    simpl. rewrite IHn. btauto. auto.
+  intros. unfold OF_post_step, ContinuedFraction.
+  specialize (CF_ite_CFpq s1 0 o (2 ^ m) H0) as G. unfold nthmodseq in G. simpl in G. rewrite G. clear G.
+  specialize (CF_ite_CFpq s2 0 o (2 ^ m) H0) as G. unfold nthmodseq in G. simpl in G. rewrite G. clear G.
+  simpl.
+  specialize (CFq_inc (s2 - s1)%nat (s1 + 1)%nat o (2^m)%nat H0) as G.
+  replace (s2 - s1 + (s1 + 1))%nat with (s2 + 1)%nat in G by lia.
+  lia.
 Qed.
 
-Lemma r_recoverable_1 :
+Lemma OF_post'_nonzero_equal :
+  forall x step a N o m,
+    (OF_post' step a N o m <> 0)%nat ->
+    OF_post' (x + step) a N o m = OF_post' step a N o m.
+Proof.
+  induction x; intros. easy.
+  replace (S x + step)%nat with (S (x + step))%nat by lia.
+  simpl. rewrite IHx by easy. apply Nat.eqb_neq in H. rewrite H. easy.
+Qed.
+
+Lemma OF_post'_nonzero_pre :
+  forall step a N o m,
+    (OF_post' step a N o m <> 0)%nat ->
+    exists x, (x < step)%nat /\ OF_post_step x o m = OF_post' step a N o m.
+Proof.
+  induction step; intros. easy.
+  simpl in *.
+  bdestruct (OF_post' step a N o m =? 0).
+  - exists step. split. lia.
+    IfExpSimpl. 
+  - apply IHstep in H. destruct H as [x [H1 H2]]. exists x.
+    split. lia. easy.
+Qed.
+
+Lemma OF_post_step_r_aux :
+  forall a r N m o step,
+    Order a r N ->
+    OF_post_step step o m = r ->
+    (OF_post' (S step) a N o m <> 0)%nat.
+Proof.
+  intros. simpl.
+  bdestruct (OF_post' step a N o m =? 0).
+  - rewrite H0. destruct H as [? [? ?]]. rewrite H2, Nat.eqb_refl. lia.
+  - easy.
+Qed.
+
+Lemma OF_post'_pow :
+  forall a N o m step,
+    (1 < N)%nat ->
+    (a ^ (OF_post' step a N o m) mod N = 1)%nat.
+Proof.
+  intros. induction step. simpl. apply Nat.mod_small. easy.
+  simpl. bdestruct (OF_post' step a N o m =? 0).
+  bdestruct (a ^ OF_post_step step o m mod N =? 1). easy.
+  simpl. apply Nat.mod_small. easy.
+  apply IHstep.
+Qed.
+
+Lemma OF_post_step_r :
+  forall a r N m o step,
+    Order a r N ->
+    (o < 2 ^ m)%nat ->
+    OF_post_step step o m = r ->
+    OF_post' (S step) a N o m = r.
+Proof.
+  intros.
+  assert (OF_post' (S step) a N o m <> 0)%nat by (apply OF_post_step_r_aux with (r := r); easy).
+  assert (H3 := H2). apply OF_post'_nonzero_pre in H2. destruct H2 as [x [? ?]].
+  assert (OF_post_step x o m <= r)%nat. {
+    rewrite <- H1. apply OF_post_step_inc. lia. easy.
+  }
+  assert (1 < N)%nat by (apply Order_N_lb with (a := a) (r := r); easy).
+  destruct H as [Hr [Hp Hq]].
+  assert (OF_post' (S step) a N o m >= r)%nat. {
+    apply Hq. split. lia.
+    apply OF_post'_pow. easy.
+  }
+  lia.
+Qed.
+
+Lemma r_found_1 :
   forall a r N k m n : nat,
     BasicSetting a r N m n ->
     (0 <= k < r)%nat ->
     rel_prime k r ->
-    r_recoverable (s_closest m k r) m r = 1.
+    r_found (s_closest m k r) m r a N = 1.
 Proof.
-  intros. unfold r_recoverable.
-  rewrite bsum_exists. auto.
-  destruct (Shor_partial_correct a r N k m n); auto.
-  exists x. split. destruct H2. lia. destruct H2. apply Nat.eqb_eq. easy.
+  intros. unfold r_found, OF_post.
+  destruct (Shor_partial_correct a r N k m n) as [x [? ?]]; auto.
+  apply OF_post_step_r with (a := a) (N := N) in H3.
+  assert (OF_post' (S x) a N (s_closest m k r) m = OF_post' ((2 * m + 2 - (S x)) + (S x)) a N (s_closest m k r) m). {
+    symmetry. apply OF_post'_nonzero_equal. rewrite H3. lia.
+  }
+  replace (2 * m + 2 - S x + S x)%nat with (2 * m + 2)%nat in H4 by lia.
+  rewrite <- H4, H3, Nat.eqb_refl. easy.
+  destruct H as [_ [H _]]. easy.
+  eapply s_closest_ub. apply H. easy.
 Qed.
 
 
@@ -1019,7 +1110,7 @@ Proof.
   2:{
     intros. rename H1 into H2. assert (H1 : (r > 0)%nat) by (destruct H as [_ [[Hr _] _]]; lia).
     remember (fun x : nat =>
-    r_recoverable x m r *
+    r_found x m r a N *
     prob_partial_meas (basis_vector (2 ^ m) x)
       (uc_eval (QPE m (n + anc) c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0))) as f.
     cut (Rsum (2^m) f >= Rsum r (fun i => f (s_closest m i r))).
@@ -1070,16 +1161,15 @@ Proof.
       repeat rewrite Rmult_0_l. lra.
     - intros. unfold g. rewrite Heqf. remember (prob_partial_meas (basis_vector (2 ^ m) (s_closest m i (S r)))
       (uc_eval (QPE m (n + anc) c) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0))) as fi.
-      destruct (rel_prime_dec i (S r)). rewrite r_recoverable_1 with a _ N _ _ n; try lra; try lia; try easy.
-      rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_recoverable. destruct (Bsum (2*m + 2)
-        (fun step : nat => Shor_post step (s_closest m i (S r)) m =? S r)); lra.
+      destruct (rel_prime_dec i (S r)). rewrite r_found_1 with a _ N _ _ n; try lra; try lia; try easy.
+      rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_found. destruct (OF_post a N (s_closest m i (S r)) m =? S r); lra.
       subst. unfold prob_partial_meas. unfold Rsum. replace (2 ^ (n + anc))%nat with (S (pred (2 ^ (n + anc)))).
       apply cond_pos_sum. intros. unfold probability_of_outcome. interval.
       simpl. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
     - replace (2 ^ m)%nat with (S (pred (2 ^ m))).
       assert (forall i, 0 <= f i).
-      { intros. subst. unfold r_recoverable, prob_partial_meas, probability_of_outcome. apply Rmult_le_pos.
-        destruct (Bsum (2*m + 2) (fun step : nat => Shor_post step i m =? r)); lra.
+      { intros. subst. unfold r_found, prob_partial_meas, probability_of_outcome. apply Rmult_le_pos.
+        destruct (OF_post a N i m =? r); lra.
         unfold Rsum. replace (2 ^ (n+anc))%nat with (S (pred (2 ^ (n+anc)))).
         apply cond_pos_sum. intros. interval. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
       }
@@ -1114,7 +1204,7 @@ Proof.
   2:{
     intros. rename H1 into H2. assert (H1 : (r > 0)%nat) by (destruct H as [_ [[Hr _] _]]; lia).
     remember (fun x : nat =>
-    r_recoverable x m r *
+    r_found x m r a N *
     prob_partial_meas (basis_vector (2 ^ m) x)
       (uc_eval (QPE_var m (n + anc) u) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0))) as f.
     cut (Rsum (2^m) f >= Rsum r (fun i => f (s_closest m i r))).
@@ -1165,16 +1255,15 @@ Proof.
       repeat rewrite Rmult_0_l. lra.
     - intros. unfold g. rewrite Heqf. remember (prob_partial_meas (basis_vector (2 ^ m) (s_closest m i (S r)))
       (uc_eval (QPE_var m (n + anc) u) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0))) as fi.
-      destruct (rel_prime_dec i (S r)). rewrite r_recoverable_1 with a _ N _ _ n; try lra; try lia; try easy.
-      rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_recoverable. destruct (Bsum (2*m + 2)
-        (fun step : nat => Shor_post step (s_closest m i (S r)) m =? S r)); lra.
+      destruct (rel_prime_dec i (S r)). rewrite r_found_1 with a _ N _ _ n; try lra; try lia; try easy.
+      rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_found. destruct (OF_post a N (s_closest m i (S r)) m =? S r); lra.
       subst. unfold prob_partial_meas. unfold Rsum. replace (2 ^ (n + anc))%nat with (S (pred (2 ^ (n + anc)))).
       apply cond_pos_sum. intros. unfold probability_of_outcome. interval.
       simpl. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
     - replace (2 ^ m)%nat with (S (pred (2 ^ m))).
       assert (forall i, 0 <= f i).
-      { intros. subst. unfold r_recoverable, prob_partial_meas, probability_of_outcome. apply Rmult_le_pos.
-        destruct (Bsum (2*m + 2) (fun step : nat => Shor_post step i m =? r)); lra.
+      { intros. subst. unfold r_found, prob_partial_meas, probability_of_outcome. apply Rmult_le_pos.
+        destruct (OF_post a N i m =? r); lra.
         unfold Rsum. replace (2 ^ (n+anc))%nat with (S (pred (2 ^ (n+anc)))).
         apply cond_pos_sum. intros. interval. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
       }
