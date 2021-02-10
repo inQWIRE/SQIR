@@ -1,19 +1,109 @@
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Strings.String.
-
+From QuickChick Require Import QuickChick. Import QcNotation.
+Require Export ExtLib.Structures.Monads.
+Export MonadNotation.
+Open Scope monad_scope.
+Local Open Scope string.
 (* The language for RCIR+, a target language for QLLVM to compile to. *)
 Local Open Scope nat_scope.
 
 
 (* We first define two types variables appearing in an expression.
     global variables and local variables. *)
+
+Fixpoint string_of_nat_aux (time n : nat) (acc : string) : string :=
+  let d := match n mod 10 with
+           | 0 => "0" | 1 => "1" | 2 => "2" | 3 => "3" | 4 => "4" | 5 => "5"
+           | 6 => "6" | 7 => "7" | 8 => "8" | _ => "9"
+           end in
+  let acc' := d ++ acc in
+  match time with
+    | 0 => acc'
+    | S time' =>
+      match n / 10 with
+        | 0 => acc'
+        | n' => string_of_nat_aux time' n' acc'
+      end
+  end.
+
 Definition ivar := nat.
 
+
 Definition evar := nat.
+(*For whatever reason QuickChick does not want to derive these *)
+
 
 Inductive rtype := Q (n:nat).
+Derive Show for rtype.
 
+Fixpoint genRtype (min max : nat) : G rtype :=
+  liftM Q (choose (min, max)).
+Locate "<-".
+Locate "freq".
+Fixpoint genEvar (min max : nat ) : G evar :=
+  choose (min, max).
+Fixpoint genIvar (min max : nat ) : G ivar :=
+  choose (min, max).
+Fixpoint genListRtypeEvar (size : nat): G (list (rtype * evar)) :=
+  match size with
+  | 0 => ret []
+  | S size' =>   (bind (genListRtypeEvar size')
+                         (fun xs => bind (genRtype 4 8)
+                                      (fun x => bind (genEvar 1 4)
+                                                  (fun e => ret ((x, e):: xs)))))
+                    end. 
+Fixpoint genListRtypeIvar (size : nat): G (list (rtype * ivar)) :=
+  match size with
+  | 0 => ret []
+  | S size' =>   (bind (genListRtypeIvar size')
+                         (fun xs => bind (genRtype 4 8)
+                                      (fun x => bind (genIvar 1 4)
+                                                  (fun e => ret ((x, e):: xs)))))
+                    end. 
+
+Sample (genListRtypeIvar 3).
 Inductive avar := lvar : ivar -> avar | gvar : evar -> avar.
+Notation " 'freq' [ x ;;; y ] " := (freq_ (snd x) (cons x (cons y nil))) .
+Notation " 'freq' [ x ;;; y ;;; .. ;;; z ] " := (freq_ (snd x) (cons x (cons y .. (cons z nil) ..))).
+Notation " 'oneOf' ( x ;;; l ) " := (oneOf_ x (cons x l)) .
+Notation " 'oneOf' [ x ;;; y ;;; .. ;;; z ] " := (oneOf_ (snd x) (cons x (cons y .. (cons z nil) ..))).
+(*This isn't working Properly *)
+Fixpoint genAvar (min max : nat) : G avar :=
+  freq [ (1, (bind (genIvar min max) (fun i => ret (lvar i)))) ;;;
+         (1,  (bind (genEvar min max) (fun e => ret (gvar e))))
+        ].
 
+Fixpoint genAvarConst (label : nat) : G avar :=
+  freq [ (1, ret (lvar label)) ;;;
+          (1, ret (gvar label)) ]. 
+
+
+Derive Show for avar.
+Sample (genAvar 1 6).
+(* Warning: The following logical axioms were
+encountered: semBindOptSizeMonotonicIncl_r semBindOptSizeMonotonicIncl_l.
+Having invalid logical
+axiom in the environment when extracting may lead to incorrect or non-terminating ML terms.
+ [extraction-logical-axiom,extraction] 
+[lvar 4; lvar 2; lvar 5; lvar 3; gvar 4; lvar 4; lvar 5; gvar 5; gvar 2; lvar 6; lvar 4]*)
+
+
+Sample (genAvarConst 3).
+(* Warning: The following logical axioms were
+encountered: semBindOptSizeMonotonicIncl_r semBindOptSizeMonotonicIncl_l.
+Having invalid logical
+axiom in the environment when extracting may lead to incorrect or non-terminating ML terms.
+ [extraction-logical-axiom,extraction]
+[gvar 3; gvar 3; gvar 3; lvar 3; gvar 3; lvar 3; gvar 3; gvar 3; lvar 3; gvar 3; lvar 3] *)
+Locate "oneOf".
+Fixpoint genAvarOneOf (min max : nat) : G avar :=
+  oneOf [  (bind (genIvar min max) (fun i => ret (lvar i))) ;;
+         (bind (genEvar min max) (fun e => ret (gvar e)))
+        ].
+Sample (genAvarOneOf 1 6).
+(* [gvar 5; gvar 2; gvar 1; gvar 6; gvar 5; gvar 6; gvar 3; gvar 3; gvar 2; gvar 4; gvar 1]
+ *)
+Print genAvar.
 Definition avar_eq (r1 r2 : avar) : bool := 
                 match r1 with lvar a1 
                             => match r2
@@ -31,20 +121,31 @@ Notation "i '==?' j" := (avar_eq i j) (at level 50).
 (* This is the expression in a function in the RCIR+ language. 
    It does not contain quantum gates. quantum gates will be foreign functions. *)
 Definition pos : Type := (avar * nat).
-
+Instance showPair {A B : Type} `{Show A} `{Show B} : Show (A * B) :=
+  {
+    show p :=
+      let (a,b) := p in
+        "(" ++ show a ++ "," ++ show b ++ ")"
+  }.
+Fixpoint gen_pos (min max : nat) : G pos :=
+  (bind (choose (min, max)) (fun n =>
+           (bind (genAvarConst n) (fun a =>
+                (bind (choose (min, n)) (fun m => ret (a, m)))) )  )).
+Sample (gen_pos 1 6). 
 Inductive rexp :=
              | Skip : rexp | X : pos -> rexp | CU : pos -> rexp -> rexp 
              | Seq : rexp -> rexp -> rexp | Copyto : avar -> avar -> rexp
              | Inv : rexp -> rexp.
+Derive Show for rexp.
 
 
-(* define the format of registers and domain. *)
 Definition regs := (avar -> option (rtype * (nat -> bool))).
 
 Definition InDom (x:avar) (r:regs) : Prop :=  ~ (r x = None).
 
 Definition initRegs : regs := fun _ => None.
 
+(*Just a sample generator, could be improved *)
 
 (* Defining the CNOT and CCX gate. *)
 Definition CNOT (p1 p2 : pos) := CU p1 (X p2).
@@ -115,10 +216,8 @@ Fixpoint type_match (l: list (rtype * evar)) (r : regs) : Prop :=
           | (Q n, x)::xl => (match r (gvar x) with Some (Q m, f) => n = m | None => False end) /\  type_match xl r
     end.
 
-(* Define the top level of the language. Every program is a list of global variable
-   definitions plus a list of rfun functions. *)
+(* Define the top level of the language. Every program is a list of global variable definitions plus a list of rfun functions. *)
 Inductive rtop A := Prog : list (rtype * evar) -> list (rfun A) -> rtop A.
-
 
 Definition update_type (f : regs) (i : avar) (x : rtype) :=
   fun y => if y ==? i then Some (x,allfalse) else f y.
@@ -141,6 +240,8 @@ Inductive WF_rfun_list {A} : regs -> list (rfun A) -> Prop :=
 
 Inductive WF_rtop {A} : rtop A -> Prop := 
     | WF_prog : forall l fl,  WF_rfun_list (gen_regs_evar l) fl -> WF_rtop (Prog A l fl).
+
+
 
 (* The semantic definition of expressions for RCIR+ including some well-formedness requirement. *)
 Definition pos_eq (r1 r2 : pos) : bool := 
@@ -181,8 +282,88 @@ Fixpoint gup {A} (f : nat -> A) (g : nat -> A) (n : nat) :=
   end.
 
 Definition pupdate (f : regs) (x: avar) (g: nat -> bool) :=
-           fun j => if j ==? x then (match f j with None => None | Some (tv,gv) => Some (tv,g) end) else f j.
+  fun j => if j ==? x then (match f j with None => None | Some (tv,gv) => Some (tv,g) end) else f j.
+Definition emptyregs : regs :=
+  fun j => None.
+(* regs :  avar -> option (rtype * (nat -> bool)) *)
 
+Definition emptyfun : nat -> bool :=
+  fun j => false.
+Definition emptyreg : (rtype * (nat -> bool)) :=
+  (Q 3, emptyfun).
+
+
+
+Definition genBool : G bool :=
+  freq [ (1, ret false) ;;;
+         (1, ret true)
+
+      ].
+  
+Fixpoint genRandomSizedFun (size : nat) : G (nat -> bool) :=
+  match size with
+  |0 => bind (genBool) (fun v =>  ret (update emptyfun 0 v))
+  | S s' => bind (genBool) (fun v =>
+                (bind (genRandomSizedFun s') (fun g => ret ( update g s' v))))
+                                     end.
+Eval compute in show emptyreg.
+Sample (genRandomSizedFun 3).
+Sample genBool.
+
+Fixpoint show_reg_aux (reg : (rtype * (nat -> bool))) : string :=
+  let (rl, f) := reg in match rl with
+                          |Q n =>("(Q " ++ show n ++ ", " ++ show (funbool_to_list n f) ++ ")")end. 
+                                                                  
+Instance show_reg 
+  : Show (rtype * (nat -> bool)) :=
+  {
+    show p :=
+      show_reg_aux p 
+  }.
+
+Fixpoint genReg (min_size max_size : nat ) : G (rtype * (nat -> bool)) := 
+  (bind (choose (min_size, max_size)) (fun s => (bind (genRandomSizedFun s)
+                                               (fun f => ret (Q s, f))) )).
+Sample (genReg 2 6).
+(* like pupdate but adds a register to regs *)
+Definition update_regs (f : regs) (x: avar) (g: (rtype * (nat -> bool))) :=
+  fun j => if j ==? x then Some g else f j.
+
+Fixpoint show_regs_aux (regs :  avar -> option (rtype * (nat -> bool)))
+         (max_var_num : nat) : string :=
+  let (l, e) := (lvar max_var_num, gvar max_var_num) in match max_var_num with
+        | 0 => "{" ++ show l ++ ": " ++ show (regs l) ++ "}{" ++ show e ++ ": " ++ show (regs e) ++ "}"
+        | S s'=> "{" ++ show l ++ ": " ++ show (regs l) ++ "}{" ++ show e ++ ": " ++ show (regs e) ++ "}, " ++ (show_regs_aux regs s')
+                                                               end. 
+                                                                  
+  (* arbitrarily choosing 10 as the max register *)
+Instance show_regs 
+  : Show (regs) :=
+  {
+    show p :=
+      show_regs_aux p 1
+  }.
+Fixpoint genRegsSized (fuel reg_size_min reg_size_max : nat) : G regs :=
+  let reg := (genReg reg_size_min reg_size_max)
+    in match fuel with
+      |0 =>  freq [ (1, (bind (genIvar fuel fuel)
+          (fun i => (bind reg                                                                               (fun r => ret (update_regs emptyregs (lvar i) r) ))))) ;;;
+             (1, (bind (genEvar fuel fuel)
+          (fun e => (bind reg                                                                               (fun r => ret (update_regs emptyregs (gvar e) r) )))))  ;;;
+             (1, ret emptyregs)                                                               
+                  ]
+      |S s' =>    let regs := (genRegsSized s' reg_size_min reg_size_max) in
+          freq [ (1, (bind (genIvar fuel fuel)
+          (fun i => (bind reg                                                                               (fun r => (bind regs (fun rs => ret (update_regs rs (lvar i) r)) )))))) ;;;
+             (1, (bind (genEvar fuel fuel)
+          (fun e => (bind reg                                                                               (fun r => bind regs (fun rs => ret (update_regs rs (gvar e) r))) ))))  ;;;
+             (1, (bind regs (fun rs => ret rs)))                                                               
+                  ]
+
+                  end.
+(* genposfromregs? *)
+Sample (genRegsSized 1 4 4).
+(* TODO: Fix how it shows the functions *)
 Fixpoint app_inv p :=
   match p with
   | Skip => Skip
@@ -222,7 +403,6 @@ Inductive step_rfun_list {A} : regs -> list (rfun A) -> regs -> Prop :=
 
 Inductive step_top {A} : rtop A -> regs -> Prop :=
   | the_top_step : forall l fl r, step_rfun_list (gen_regs_evar l) fl r -> step_top (Prog A l fl) r.
-
 
 
 
