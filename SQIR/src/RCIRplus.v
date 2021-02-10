@@ -37,7 +37,14 @@ Inductive rexp :=
              | Seq : rexp -> rexp -> rexp | Copyto : avar -> avar -> rexp
              | Inv : rexp -> rexp.
 
+
+(* define the format of registers and domain. *)
 Definition regs := (avar -> option (rtype * (nat -> bool))).
+
+Definition InDom (x:avar) (r:regs) : Prop :=  ~ (r x = None).
+
+Definition initRegs : regs := fun _ => None.
+
 
 (* Defining the CNOT and CCX gate. *)
 Definition CNOT (p1 p2 : pos) := CU p1 (X p2).
@@ -75,8 +82,10 @@ Inductive WF_rexp : regs -> rexp -> Prop :=
 Inductive rfun A :=
        Fun : (list (rtype * evar)) -> (list (rtype * ivar)) -> rexp -> rfun A
      | Cast : rtype ->  evar -> rtype -> rfun A
+      (* init is to initialize a local variable with a number. 
+         A local variable refers to a constant in QSSA. *)
+     | Init : rtype -> evar -> (nat -> bool) -> rfun A
      | Foreign : (list (rtype * evar)) -> (list (rtype * ivar)) -> A -> rfun A.
-
 
 (* The following defines the initialization of a register set for the expression in a function. *)
 Definition allfalse := fun (_ : nat) => false.
@@ -106,7 +115,8 @@ Fixpoint type_match (l: list (rtype * evar)) (r : regs) : Prop :=
           | (Q n, x)::xl => (match r (gvar x) with Some (Q m, f) => n = m | None => False end) /\  type_match xl r
     end.
 
-(* Define the top level of the language. Every program is a list of global variable definitions plus a list of rfun functions. *)
+(* Define the top level of the language. Every program is a list of global variable
+   definitions plus a list of rfun functions. *)
 Inductive rtop A := Prog : list (rtype * evar) -> list (rfun A) -> rtop A.
 
 
@@ -115,20 +125,22 @@ Definition update_type (f : regs) (i : avar) (x : rtype) :=
 
 
 (* The well-formedness of a program is based on a step by step type checking on the wellfi*)
+Definition WF_type (t:rtype) : Prop := match t with Q 0 => False | _ => True end.
+
 Inductive WF_rfun {A} : regs -> (rfun A) -> regs -> Prop := 
     | WF_fun : forall r l1 l2 e, WF_rexp (gen_regs l2 r) e -> type_match l1 r ->
                WF_rfun r (Fun A l1 l2 e) r
     | WF_cast : forall r n m x g, r (gvar x) = Some (Q n, g) -> 0 < n -> 0 < m ->
-            WF_rfun r (Cast A (Q n) x (Q m)) (update_type r (gvar x) (Q m)).
+            WF_rfun r (Cast A (Q n) x (Q m)) (update_type r (gvar x) (Q m))
+    | WF_init : forall r x n t, WF_type t -> ~ InDom (gvar x) r -> WF_rfun r (Init A t x n) (update_type r (gvar x) t).
+
 
 Inductive WF_rfun_list {A} : regs -> list (rfun A) -> Prop :=
     | WF_empty : forall r, WF_rfun_list r []
     | WF_many : forall r x xs r', WF_rfun r x r' -> WF_rfun_list r' xs -> WF_rfun_list r (x::xs).
 
 Inductive WF_rtop {A} : rtop A -> Prop := 
-    | WF_prog : forall l fl, WF_rfun_list (gen_regs_evar l) (fl) -> WF_rtop (Prog A l fl).
-
-
+    | WF_prog : forall l fl,  WF_rfun_list (gen_regs_evar l) fl -> WF_rtop (Prog A l fl).
 
 (* The semantic definition of expressions for RCIR+ including some well-formedness requirement. *)
 Definition pos_eq (r1 r2 : pos) : bool := 
@@ -201,7 +213,8 @@ Definition update_type_val (f : regs) (i : avar) (x : rtype) :=
 Inductive step_rfun {A} : regs -> rfun A -> regs -> Prop :=
    | fun_step : forall r r' l1 l2 e,
              estep (gen_regs l2 r) e r' -> step_rfun r (Fun A l1 l2 e) (drop_regs l2 r')
-   | cast_step : forall r nt mt x, step_rfun r (Cast A nt x mt) (update_type_val r (gvar x) mt).
+   | cast_step : forall r nt mt x, step_rfun r (Cast A nt x mt) (update_type_val r (gvar x) mt)
+   | init_step : forall r t x n, step_rfun r (Init A t x n) (pupdate (update_type r (gvar x) t) (gvar x) n).
 
 Inductive step_rfun_list {A} : regs -> list (rfun A) -> regs -> Prop :=
    | empty_step : forall r, step_rfun_list r [] r
