@@ -216,17 +216,18 @@ Proof.
   - apply IHp1 with (dim := dim); easy.
   - apply IHp2 with (dim := dim); easy.
 Qed.
-    
+
 (* Implementation language to compile bc circuit to SQIR. *)
 Fixpoint bc2ucom {dim} (p : bccom) : base_ucom dim :=
   match p with
   | bcskip => SKIP
   | bcx n => X n
+  | bccont n (bcx m) => CNOT n m
   | bccont n p => control n (bc2ucom p)
   | bcseq p1 p2 => useq (bc2ucom p1) (bc2ucom p2)
   end.
 
-Local Transparent ID. 
+Local Transparent ID CNOT X. 
 Lemma bcfresh_is_fresh :
   forall q p {dim},
     bcfresh q p -> @is_fresh _ dim q (bc2ucom p).
@@ -234,7 +235,10 @@ Proof.
   intros. induction p; simpl; inversion H.
   - apply fresh_app1. easy.
   - apply fresh_X. easy.
-  - apply IHp in H4. apply fresh_control; easy.
+  - apply IHp in H4.
+    destruct p; try (apply fresh_control; easy).
+    inversion H4; subst.
+    constructor; easy.
   - apply IHp1 in H3. apply IHp2 in H4. apply fresh_seq; easy.
 Qed.
 
@@ -245,10 +249,13 @@ Proof.
   intros. induction p; simpl; inversion H.
   - constructor. easy.
   - apply uc_well_typed_X. easy.
-  - apply IHp in H4. apply bcfresh_is_fresh with (dim := dim) in H3. apply uc_well_typed_control; easy.
+  - apply IHp in H4.
+    destruct p; try (apply bcfresh_is_fresh with (dim := dim) in H3; apply uc_well_typed_control; easy).
+    inversion H3; inversion H4; subst.
+    constructor; easy.
   - apply IHp1 in H2. apply IHp2 in H3. apply WT_seq; easy.
 Qed.
-Local Opaque ID.
+Local Opaque ID CNOT X.
 
 Lemma bcfresh_bcexec_irrelevant :
   forall p q f,
@@ -274,20 +281,28 @@ Proof.
   - apply f_to_vec_X. inversion H0. easy.
   - inversion H0. assert (WT := H5). assert (FS := H4).
     apply bcfresh_is_fresh with (dim := dim) in H4. apply bcWT_uc_well_typed in H5.
-    rewrite control_correct; try easy.
+    assert (G: (uc_eval (control n (bc2ucom p))) × f_to_vec dim f = f_to_vec dim (if f n then bcexec p f else f)). {
+      rewrite control_correct; try easy.
+      destruct (f n) eqn:Efn.
+      + rewrite Mmult_plus_distr_r.
+        rewrite Mmult_assoc. rewrite IHp by easy.
+        rewrite f_to_vec_proj_neq, f_to_vec_proj_eq; try easy.
+        Msimpl. easy.
+        rewrite bcfresh_bcexec_irrelevant; easy.
+        rewrite Efn. easy.
+      + rewrite Mmult_plus_distr_r.
+        rewrite Mmult_assoc. rewrite IHp by easy.
+        rewrite f_to_vec_proj_eq, f_to_vec_proj_neq; try easy.
+        Msimpl. easy.
+        rewrite bcfresh_bcexec_irrelevant by easy.
+        rewrite Efn. easy.
+    }
+    destruct p; try apply G.
+    inversion WT; inversion FS; subst.
+    rewrite f_to_vec_CNOT by easy.
     destruct (f n) eqn:Efn.
-    + rewrite Mmult_plus_distr_r.
-      rewrite Mmult_assoc. rewrite IHp by easy.
-      rewrite f_to_vec_proj_neq, f_to_vec_proj_eq; try easy.
-      Msimpl. easy.
-      rewrite bcfresh_bcexec_irrelevant; easy.
-      rewrite Efn. easy.
-    + rewrite Mmult_plus_distr_r.
-      rewrite Mmult_assoc. rewrite IHp by easy.
-      rewrite f_to_vec_proj_eq, f_to_vec_proj_neq; try easy.
-      Msimpl. easy.
-      rewrite bcfresh_bcexec_irrelevant by easy.
-      rewrite Efn. easy.
+    simpl. rewrite xorb_true_r. easy.
+    rewrite xorb_false_r. rewrite update_same; easy.
   - inversion H0. specialize (IHp1 f H H3).
     rewrite Mmult_assoc. rewrite IHp1.
     specialize (IHp2 (bcexec p1 f) H H4).
@@ -629,4 +644,80 @@ Lemma bcswap_eWF :
     eWF (bcswap x y).
 Proof.
   intros. unfold bcswap. bdestruct (x =? y); repeat (try constructor; try lia).
+Qed.
+
+Definition csplit (p : bccom) :=
+  match p with
+  | bcskip => bcskip
+  | bcx n => bcx n
+  | bccont n (p1; p2) => bccont n p1; bccont n p2
+  | bccont n p => bccont n p
+  | p1; p2 => p1; p2
+  end.
+
+Lemma uc_eval_CNOT_control :
+  forall n m dim,
+    n < dim -> m < dim -> n <> m ->
+    @uc_eval dim (CNOT n m) = @uc_eval dim (control n (bc2ucom (bcx m))).
+Proof.
+  intros. rewrite denote_cnot. simpl. rewrite control_ucom_X. easy.
+  apply uc_well_typed_CNOT; easy.
+Qed.
+
+Lemma bc2ucom_csplit :
+  forall p dim,
+    bcWT dim p ->
+    uc_eval (@bc2ucom dim (csplit p)) = uc_eval (@bc2ucom dim p).
+Proof.
+  intros. destruct p; try easy.
+  destruct p; try easy.
+  simpl. inversion H; subst.
+  inversion H3; inversion H4; subst.
+  destruct p1 eqn:Ep1; destruct p2 eqn:Ep2; try easy;
+    try inversion H6; try inversion H7; try inversion H10; try inversion H11; subst;
+      repeat rewrite uc_eval_CNOT_control by easy; easy.
+Qed.
+
+Lemma uc_well_typed_csplit :
+  forall p dim,
+    bcWT dim p ->
+    uc_well_typed (@bc2ucom dim (csplit p)).
+Proof.
+  intros. assert (H1 := H).
+  apply bcWT_uc_well_typed in H1.
+  destruct p; try easy.
+  destruct p; try easy.
+  simpl. inversion H; subst.
+  inversion H4; inversion H5; subst.
+  destruct p1 eqn:Ep1; destruct p2 eqn:Ep2; try easy;
+    try inversion H7; try inversion H8; try inversion H11; try inversion H12; subst;
+      constructor;
+      try (apply uc_well_typed_CNOT; easy);
+      apply bcfresh_is_fresh with (dim := dim) in H7; apply bcfresh_is_fresh with (dim := dim) in H8;
+        apply bcWT_uc_well_typed with (dim := dim) in H11; apply bcWT_uc_well_typed with (dim := dim) in H12;
+          apply uc_well_typed_control; easy.
+Qed.
+
+Lemma bc2ucom_csplit_bcelim :
+  forall p dim f,
+    dim > 0 ->
+    eWT dim p ->
+    uc_eval (bc2ucom (csplit (bcelim p))) × f_to_vec dim f = f_to_vec dim (bcexec p f).
+Proof.
+  intros. rewrite bc2ucom_csplit. apply bc2ucom_eWT_variant; easy.
+  destruct (bcelim p) eqn:Ep; rewrite <- Ep;
+    try (apply eWT_bcWT; try easy; rewrite Ep; easy).
+  rewrite Ep. constructor. easy.
+Qed.
+
+Lemma eWT_uc_well_typed_csplit_bcelim :
+  forall p dim,
+    dim > 0 ->
+    eWT dim p ->
+    @uc_well_typed _ dim (bc2ucom (csplit (bcelim p))).
+Proof.
+  intros. apply uc_well_typed_csplit.
+  destruct (bcelim p) eqn:Ep; rewrite <- Ep;
+    try (apply eWT_bcWT; try easy; rewrite Ep; easy).
+  rewrite Ep. constructor. easy.
 Qed.

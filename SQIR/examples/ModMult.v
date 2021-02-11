@@ -21,7 +21,7 @@ Local Open Scope nat_scope.
 
 (* This is the extra qubits needed for the algorithm presented in the doc. 
    The extra qubit requirement is O(n) in our implementation. *)
-Definition modmult_rev_anc n := 3 * n + 15.
+Definition modmult_rev_anc n := 3 * n + 11.
 
 (* fb_push is to take a qubit and then push it to the zero position 
         in the bool function representation of a number. *)
@@ -1800,7 +1800,7 @@ Qed.
 Opaque doubler1.
 
 
-(* Another version of the mod adder only for computing [x][M] -> [2*x % M}[M].
+(* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
    This version will mark the high-bit, and the high-bit is not clearable.
    However, eventually, we will clean all high-bit
    by using a inverse circuit of the whole implementation. *)
@@ -1844,7 +1844,7 @@ Lemma moddoubler01_correct :
     M < 2^(n - 2) ->
     bcexec (moddoubler01 n) (false ` false ` [M]_n [x]_n f) = false ` (M <=? 2 * x) ` [M]_n [2 * x mod M]_n f.
 Proof.
- intros.
+  intros.
   assert (M < 2^(n-1)).
   { apply pow2_predn. replace (n - 1 - 1) with (n - 2) by lia. easy.
   }
@@ -1998,11 +1998,10 @@ Proof.
   apply modsummer'_eWT;lia.
 Qed. 
 
-Definition hbf n M x := fun (i : nat) => 
-                  if (i =? 0) then false
-                       else if (i <=? n)
-                            then (M <=? 2 * ((2^(i-1) * x) mod M)) else false.
-
+Definition hbf n M x := fun (i : nat) =>
+                          if (i =? 0) then false
+                          else if (i <=? n)
+                               then (M <=? 2 * ((2^(i-1) * x) mod M)) else false.
 Fixpoint natsum n (f : nat -> nat) :=
   match n with
   | 0 => 0
@@ -2783,7 +2782,7 @@ Proof.
   apply WF_qubit0.
 Qed.
 
-Definition modmult_rev M C Cinv n := bcinv (reverser n); modmult M C Cinv (S (S (S n))); reverser n.
+Definition modmult_rev M C Cinv n := bcinv (reverser n); modmult M C Cinv (S (S n)); reverser n.
 
 Lemma basis_vector_inc_from_anc :
   forall n x,
@@ -2799,7 +2798,7 @@ Qed.
 
 Lemma modmult_rev_correct :
   forall n x M C Cinv,
-    M > 1 -> M <= 2^n ->
+    M > 1 -> M < 2^n ->
     x < M -> C < M -> Cinv < M ->
     C * Cinv mod M = 1 ->
     bcexec (modmult_rev M C Cinv n) (fb_push_n n (fbrev n (nat2fb x)) allfalse) = (fb_push_n n (fbrev n (nat2fb (C * x mod M))) allfalse).
@@ -2810,14 +2809,14 @@ Proof.
   assert ((C * x) mod M < M) by (apply Nat.mod_upper_bound; lia).
   assert (M < 2^(S n)) by (simpl; lia).
   assert (M < 2^(S (S n))) by (simpl; lia).
-  assert (M < 2 ^ (S (S (S n)) - 2)) by (replace (S (S (S n)) - 2) with (S n) by lia; easy).
+  assert (M < 2 ^ (S (S n) - 2)) by (replace (S (S n) - 2) with n by lia; easy).
   unfold modmult_rev. simpl. erewrite bcinv_reverse.
   3: rewrite reverser_correct by lia; reflexivity.
   2: apply reverser_eWF.
   replace (fb_push_n n (nat2fb x) allfalse) with ([x]_n allfalse) by easy.
-  do 3 rewrite basis_vector_inc_from_anc by lia.
+  do 2 rewrite basis_vector_inc_from_anc by lia.
   rewrite modmult_correct by lia.
-  do 3 rewrite <- basis_vector_inc_from_anc by lia.
+  do 2 rewrite <- basis_vector_inc_from_anc by lia.
   apply reverser_correct. easy.
 Qed.
 

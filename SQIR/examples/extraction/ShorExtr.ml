@@ -11,7 +11,7 @@ open ShorAux
 
 let modexp = fun a i n -> Z.to_int (Z.powm (Z.of_int a) (Z.pow (Z.of_int 2) i) (Z.of_int n))
 
-(** val shor_circuit : int -> int -> base_ucom * int **)
+(** val shor_circuit : int -> int -> base_Unitary ucom * int **)
 
 let shor_circuit a n =
   let m =
@@ -24,9 +24,10 @@ let shor_circuit a n =
   let ainv = modinv a n in
   let f = fun i ->
     bc2ucom (add n0 anc)
-      (bcelim (modmult_rev n (modexp a i n) (modexp ainv i n) n0))
+      (csplit (bcelim (modmult_rev n (modexp a i n) (modexp ainv i n) n0)))
   in
-  ((coq_QPE_var m (add n0 anc) f), (add m (add n0 anc)))
+  ((Coq_useq ((coq_X (sub (add m n0) (Pervasives.succ 0))),
+  (coq_QPE_var m (add n0 anc) f))), (add m (add n0 anc)))
 
 (** val remove_skips : base_ucom -> base_Unitary ucom **)
 

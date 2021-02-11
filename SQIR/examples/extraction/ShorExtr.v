@@ -76,15 +76,15 @@ Extract Constant modexp => "fun a i n -> Z.to_int (Z.powm (Z.of_int a) (Z.pow (Z
 
 (* requires 0 < a < N, gcd a N = 1 
    returns a circuit + the number of qubits used *)
+Local Open Scope ucom_scope.
 Definition shor_circuit a N := 
   let m := Nat.log2 (2 * N^2)%nat in
   let n := Nat.log2_up N in
   let anc := modmult_rev_anc n in
   let ainv := modinv a N in
-  let f i := @bc2ucom (n + anc) (bcelim (modmult_rev N (modexp a i N) (modexp ainv i N) n)) in
-  (QPE_var m (n + anc) f, (m + (n + anc))%nat).
+  let f i := @bc2ucom (n + anc) (csplit (bcelim (modmult_rev N (modexp a i N) (modexp ainv i N) n))) in
+  (X (m + n - 1); QPE_var m (n + anc) f, (m + (n + anc))%nat).
 
-Local Open Scope ucom_scope.
 Require Export Reals.ROrderedType.
 Fixpoint remove_skips {dim} (u : base_ucom dim) :=
   match u with

@@ -11,7 +11,7 @@ Definition BasicSetting (a r N m n : nat) :=
   0 < a < N /\
   Order a r N /\
   N^2 < 2^m <= 2 * N^2 /\
-  N <= 2^n < 2 * N.
+  N < 2^n <= 2 * N.
 
 Definition basisPowerA (a r N n : nat) := basis_vector (2^n) (a^r mod N).
 
@@ -75,13 +75,13 @@ Definition Factor_post a N o m := if ((1 <? Nat.gcd (a ^ ((OF_post a N o m) / 2)
 (* =   ModMult Circuit   = *)
 (* ======================= *)
 
-Definition modmult_circuit a ainv N n := @bc2ucom (n + modmult_rev_anc n) (bcelim (modmult_rev N a ainv n)).
+Definition modmult_circuit a ainv N n := @bc2ucom (n + modmult_rev_anc n) (csplit (bcelim (modmult_rev N a ainv n))).
 
 Lemma modmult_circuit_MCP :
   forall a ainv N n,
     0 < a < N -> ainv < N ->
     a * ainv mod N = 1 ->
-    N <= 2^n ->
+    N < 2^n ->
     MultiplyCircuitProperty a N n (modmult_rev_anc n) (modmult_circuit a ainv N n).
 Proof.
   intros. unfold MultiplyCircuitProperty. intros. unfold modmult_circuit.
@@ -94,7 +94,7 @@ Proof.
   }
   do 2 rewrite <- f_to_vec_num_with_anc.
   assert (0 < n) by (destruct n; simpl in *; lia).
-  rewrite bc2ucom_eWT_variant.
+  rewrite bc2ucom_csplit_bcelim.
   2: unfold modmult_rev_anc; lia.
   2: apply modmult_rev_eWT; easy.
   rewrite modmult_rev_correct; try easy. lia.
@@ -104,15 +104,14 @@ Lemma modmult_circuit_uc_well_typed :
   forall a ainv N n,
     0 < a < N -> ainv < N ->
     a * ainv mod N = 1 ->
-    N <= 2^n ->
+    N < 2^n ->
     uc_well_typed (modmult_circuit a ainv N n).
 Proof.
-  intros. apply eWT_uc_well_typed. unfold modmult_rev_anc. lia. apply modmult_rev_eWT.
+  intros. apply eWT_uc_well_typed_csplit_bcelim. unfold modmult_rev_anc. lia. apply modmult_rev_eWT.
   destruct n; simpl in *; lia.
-Qed.
-  
+Qed.  
 
-Definition f_modmult_circuit a ainv N n := fun (i : nat) => @bc2ucom (n + modmult_rev_anc n) (bcelim (modmult_rev N (a^(2^i) mod N) (ainv^(2^i) mod N) n)).
+Definition f_modmult_circuit a ainv N n := fun (i : nat) => @bc2ucom (n + modmult_rev_anc n) (csplit (bcelim (modmult_rev N (a^(2^i) mod N) (ainv^(2^i) mod N) n))).
 
 Lemma f_modmult_circuit_MMI :
   forall a r N m n ainv,
@@ -137,10 +136,10 @@ Lemma f_modmult_circuit_uc_well_typed :
   forall a ainv N n i,
     0 < a < N -> ainv < N ->
     a * ainv mod N = 1 ->
-    N <= 2^n ->
+    N < 2^n ->
     uc_well_typed (f_modmult_circuit a ainv N n i).
 Proof.
-  intros. apply eWT_uc_well_typed. unfold modmult_rev_anc. lia. apply modmult_rev_eWT.
+  intros. apply eWT_uc_well_typed_csplit_bcelim. unfold modmult_rev_anc. lia. apply modmult_rev_eWT.
   destruct n; simpl in *; lia.
 Qed.
 
@@ -1290,7 +1289,8 @@ Lemma Shor_correct_full_implementation :
       (0 < a < N)%nat ->
       (Nat.gcd a N = 1)%nat ->
       let m := Nat.log2 (2 * N^2)%nat in
-      let n := Nat.log2_up N in
+      (*let n := Nat.log2_up N in*)
+      let n := Nat.log2 (2 * N) in
       probability_of_success_var a (ord a N) N m n (modmult_rev_anc n) (f_modmult_circuit a (modinv a N) N n) >= β / (Nat.log2 N)^4.
 Proof.
   destruct Shor_correct_var as [β [Hβ H]]. exists β. split. easy. intros.
@@ -1303,19 +1303,24 @@ Proof.
     assert (m = S (Nat.log2 (N^2))) by (apply Nat.log2_double; simpl; nia).
     split. rewrite H3. apply Nat.log2_spec. simpl. nia.
     apply Nat.log2_spec. simpl. nia.
+    (*
     split. apply Nat.log2_up_spec. lia.
     assert (n = Nat.pred (Nat.log2_up (2 * N))).
     { replace n with (Nat.pred (S n)) by lia. apply f_equal.
       rewrite Nat.log2_up_double. easy. lia.
     }
     rewrite H3. apply Nat.log2_up_spec. lia.
+     *)
+    assert (n = S (Nat.log2 N)) by (apply Nat.log2_double; simpl; nia).
+    split. rewrite H3. apply Nat.log2_spec. simpl. nia.
+    apply Nat.log2_spec. simpl. nia.
   }
   assert (modinv a N < N)%nat by (apply modinv_upper_bound; lia).
   assert (a * (modinv a N) mod N = 1)%nat by (apply Order_modinv_correct with (r := r); easy).
   apply H; try easy.
   apply f_modmult_circuit_MMI with (r := r) (m := m); easy.
   destruct H3 as [Ha [_ [_ HN]]].
-  intros. apply f_modmult_circuit_uc_well_typed; try easy.
+  intros. apply f_modmult_circuit_uc_well_typed; try easy; try lia.
 Qed.
 
 (*Print Assumptions Shor_correct_full_implementation.*)

@@ -9,8 +9,7 @@ let modmult_rev_anc n =
   add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) n)
     (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
     (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))))))))))))))
+    (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))))))))))
 
 (** val fb_push : bool -> (int -> bool) -> int -> bool **)
 
@@ -277,5 +276,4 @@ let reverser n =
 
 let modmult_rev m c cinv n =
   Coq_bcseq ((Coq_bcseq ((bcinv (reverser n)),
-    (modmult m c cinv (Pervasives.succ (Pervasives.succ (Pervasives.succ n)))))),
-    (reverser n))
+    (modmult m c cinv (Pervasives.succ (Pervasives.succ n))))), (reverser n))
