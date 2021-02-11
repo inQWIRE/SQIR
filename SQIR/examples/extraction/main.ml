@@ -19,12 +19,18 @@ let rec sqir_to_qasm oc (u : base_ucom) k =
   | Coq_uapp2 (U_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n ; k ()
   | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of U_R) *)
 
+let rec write_measurements oc dim =
+  if dim = 0 then ()
+  else (write_measurements oc (dim - 1) ; fprintf oc "measure q[%d] -> c[%d];\n" (dim - 1) (dim - 1))
+
 let write_qasm_file fname (u : base_ucom) dim =
   let oc = open_out fname in
   (fprintf oc "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n";
    fprintf oc "qreg q[%d];\n" dim;
+   fprintf oc "creg q[%d];\n" dim;
    fprintf oc "\n";
    ignore(sqir_to_qasm oc u (fun _ -> ()));
+   ignore(write_measurements oc dim);
    close_out oc)
    
 (* function to count gates *)
