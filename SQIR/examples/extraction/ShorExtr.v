@@ -74,25 +74,16 @@ Extraction Implicit SWAP [dim].
 Definition modexp a i N := a ^ (2 ^ i) mod N.
 Extract Constant modexp => "fun a i n -> Z.to_int (Z.powm (Z.of_int a) (Z.pow (Z.of_int 2) i) (Z.of_int n))".
 
-Fixpoint bc2ucom {dim} (p : bccom) : base_ucom dim :=
-  match p with
-  | bcskip => SKIP
-  | bcx n => X n
-  | bccont n1 (bcx n2) => CNOT n1 n2
-  | bccont n p => UnitaryOps.control n (bc2ucom p)
-  | bcseq p1 p2 => useq (bc2ucom p1) (bc2ucom p2)
-  end.
-
 (* requires 0 < a < N, gcd a N = 1 
    returns a circuit + the number of qubits used *)
 Local Open Scope ucom_scope.
 Definition shor_circuit a N := 
   let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2_up N in
+  let n := Nat.log2 (2 * N) in
   let anc := modmult_rev_anc n in
   let ainv := modinv a N in
   let f i := @bc2ucom (n + anc) (csplit (bcelim (modmult_rev N (modexp a i N) (modexp ainv i N) n))) in
-  (X (m + n - 1); QPE_var m (n + anc) f, (m + (n + anc))%nat).
+  (X (m + n - 1); QPE_var m (n + anc) f, (m + (n + anc))%nat, m).
 
 Require Export Reals.ROrderedType.
 Fixpoint remove_skips {dim} (u : base_ucom dim) :=

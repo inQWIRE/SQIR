@@ -1290,7 +1290,7 @@ Lemma Shor_correct_full_implementation :
       (Nat.gcd a N = 1)%nat ->
       let m := Nat.log2 (2 * N^2)%nat in
       (*let n := Nat.log2_up N in*)
-      let n := Nat.log2 (2 * N) in
+      let n := Nat.log2 (2 * N)%nat in
       probability_of_success_var a (ord a N) N m n (modmult_rev_anc n) (f_modmult_circuit a (modinv a N) N n) >= β / (Nat.log2 N)^4.
 Proof.
   destruct Shor_correct_var as [β [Hβ H]]. exists β. split. easy. intros.

@@ -23,14 +23,14 @@ let rec write_measurements oc dim =
   if dim = 0 then ()
   else (write_measurements oc (dim - 1) ; fprintf oc "measure q[%d] -> c[%d];\n" (dim - 1) (dim - 1))
 
-let write_qasm_file fname (u : base_ucom) dim =
+let write_qasm_file fname (u : base_ucom) dim m =
   let oc = open_out fname in
   (fprintf oc "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n";
    fprintf oc "qreg q[%d];\n" dim;
-   fprintf oc "creg q[%d];\n" dim;
+   fprintf oc "creg c[%d];\n" m;
    fprintf oc "\n";
    ignore(sqir_to_qasm oc u (fun _ -> ()));
-   ignore(write_measurements oc dim);
+   ignore(write_measurements oc m);
    close_out oc)
    
 (* function to count gates *)
@@ -61,12 +61,12 @@ let () =
 if (!a <= 0 || !n <= !a) then printf "ERROR: Requires 0 < a < N\n%!" else 
 if (Z.gcd (Z.of_int !a) (Z.of_int !n) > Z.one) then printf "ERROR: Requires a, N comprime\n%!" else 
 (printf "Generating circuit for N = %d and a = %d...\n%!" !n !a;
- let (u, num_qubits) = shor_circuit !a !n in
+ let ((u, num_qubits), num_cbits) = shor_circuit !a !n in
  let u' = remove_skips u in
  (* print some stats *)
  let (c1,c2) = count_gates u' in
  printf "Produced a circuit with %d qubits, %d 1-qubit gates, and %d 2-qubit gates.\n%!" num_qubits c1 c2;
  (* write OpenQASM file *)
  printf("Writing file...\n%!");
- write_qasm_file "shor.qasm" u' num_qubits;
+ write_qasm_file "shor.qasm" u' num_qubits num_cbits;
  printf("Done.\n%!"))
