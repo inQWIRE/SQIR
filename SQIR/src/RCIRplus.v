@@ -36,13 +36,13 @@ Definition evar := nat.
 Inductive rtype := Q (n:nat).
 Derive Show for rtype.
 
-Fixpoint genRtype (min max : nat) : G rtype :=
+Definition genRtype (min max : nat) : G rtype :=
   liftM Q (choose (min, max)).
 Locate "<-".
 Locate "freq".
-Fixpoint genEvar (min max : nat ) : G evar :=
+Definition genEvar (min max : nat ) : G evar :=
   choose (min, max).
-Fixpoint genIvar (min max : nat ) : G ivar :=
+Definition genIvar (min max : nat ) : G ivar :=
   choose (min, max).
 Fixpoint genListRtypeEvar (size : nat): G (list (rtype * evar)) :=
   match size with
@@ -68,12 +68,12 @@ Notation " 'freq' [ x ;;; y ;;; .. ;;; z ] " := (freq_ (snd x) (cons x (cons y .
 Notation " 'oneOf' ( x ;;; l ) " := (oneOf_ x (cons x l)) .
 Notation " 'oneOf' [ x ;;; y ;;; .. ;;; z ] " := (oneOf_ (snd x) (cons x (cons y .. (cons z nil) ..))).
 (*This isn't working Properly *)
-Fixpoint genAvar (min max : nat) : G avar :=
+Definition genAvar (min max : nat) : G avar :=
   freq [ (1, (bind (genIvar min max) (fun i => ret (lvar i)))) ;;;
          (1,  (bind (genEvar min max) (fun e => ret (gvar e))))
         ].
 
-Fixpoint genAvarConst (label : nat) : G avar :=
+Definition genAvarConst (label : nat) : G avar :=
   freq [ (1, ret (lvar label)) ;;;
           (1, ret (gvar label)) ]. 
 
@@ -96,7 +96,7 @@ axiom in the environment when extracting may lead to incorrect or non-terminatin
  [extraction-logical-axiom,extraction]
 [gvar 3; gvar 3; gvar 3; lvar 3; gvar 3; lvar 3; gvar 3; gvar 3; lvar 3; gvar 3; lvar 3] *)
 Locate "oneOf".
-Fixpoint genAvarOneOf (min max : nat) : G avar :=
+Definition genAvarOneOf (min max : nat) : G avar :=
   oneOf [  (bind (genIvar min max) (fun i => ret (lvar i))) ;;
          (bind (genEvar min max) (fun e => ret (gvar e)))
         ].
@@ -134,16 +134,45 @@ Fixpoint gen_pos (min max : nat) : G pos :=
 Sample (gen_pos 1 6). 
 Inductive rexp :=
              | Skip : rexp | X : pos -> rexp | CU : pos -> rexp -> rexp 
-             | Seq : rexp -> rexp -> rexp | Copyto : avar -> avar -> rexp
-             | Inv : rexp -> rexp.
+             | Seq : rexp -> rexp -> rexp | Copyto : avar -> avar -> rexp.
 Derive Show for rexp.
 
+(* The following defines the initialization of a register set for the expression in a function. *)
+Definition allfalse := fun (_ : nat) => false.
 
-Definition regs := (avar -> option (rtype * (nat -> bool))).
+(* The following defines the registers. *)
+Require Import OrderedTypeEx.
 
-Definition InDom (x:avar) (r:regs) : Prop :=  ~ (r x = None).
+Module Heap := FMapList.Make Nat_as_OT.
 
-Definition initRegs : regs := fun _ => None.
+Definition heap := Heap.t (rtype * (nat -> bool)).
+
+Definition empty_heap := @Heap.empty (rtype * (nat -> bool)).
+
+Module Regs := FMapList.Make Nat_as_OT.
+
+Definition regs := Regs.t (rtype * (nat -> bool)).
+
+Definition empty_regs := @Regs.empty (rtype * (nat -> bool)).
+
+Definition nupdate {A} (f : nat -> A) (i : nat) (x : A) :=
+  fun j => if j =? i then x else f j.
+
+Definition update_type_heap (h:heap) (x:evar) (t:rtype) : heap := Heap.add x (t,allfalse) h.
+
+Definition update_type_regs (r:regs) (x:ivar) (t:rtype) : regs := Regs.add x (t,allfalse) r.
+
+Definition update_val_heap (h:heap) (x:evar) (g:(nat -> bool)) : heap :=
+               match Heap.find x h with Some (t,v) => Heap.add x (t,v) h | None => h end.
+
+Definition update_val_regs (r:regs) (x:evar) (g:(nat -> bool)) : regs :=
+               match Regs.find x r with Some (t,v) => Regs.add x (t,v) r | None => r end.
+
+Definition update_bit_heap (h:heap) (u:evar) (b:nat) (v:bool) : heap :=
+              match Heap.find u h with Some (t,g) => Heap.add u (t,nupdate g b v) h | None => h end.
+
+Definition update_bit_regs (h:regs) (u:evar) (b:nat) (v:bool) : regs :=
+              match Regs.find u h with Some (t,g) => Regs.add u (t,nupdate g b v) h | None => h end.
 
 (*Just a sample generator, could be improved *)
 
@@ -163,17 +192,24 @@ Inductive freevar_exp : avar -> nat -> rexp -> Prop :=
  | freevar_cont_eq : forall a x b e, a <> b -> freevar_exp x b e -> freevar_exp x b (CU (x,a) e)
  | freevar_cont_neq : forall a x y b e, x <> y -> freevar_exp x b e -> freevar_exp x b (CU (y,a) e)
  | freevar_seq : forall x a e1 e2, freevar_exp x a e1 -> freevar_exp x a e2 -> freevar_exp x a (Seq e1 e2)
- |  freevar_copyto : forall x n a b, freevar_exp x n (Copyto a b)
- | freevar_inv : forall x a e, freevar_exp x a e -> freevar_exp x a (Inv e).
+ |  freevar_copyto : forall x n a b, freevar_exp x n (Copyto a b).
 
-Inductive WF_rexp : regs -> rexp -> Prop := 
-  | WF_skip : forall r, WF_rexp r Skip
-  | WF_x : forall r x n a g, 0 < n -> r x = Some (Q n, g) -> a < n -> WF_rexp r (X (x,a)) 
-  | WF_cont : forall r x n a g e, 0 < n -> r x = Some (Q n, g) -> a < n -> freevar_exp x a e -> WF_rexp r (CU (x,a) e)
-  | WF_rseq : forall r e1 e2,  WF_rexp r e1 -> WF_rexp r e2 -> WF_rexp r (Seq e1 e2)
-  | WF_copy : forall r x y n m g1 g2, 0 < n -> 0 < m -> r x = Some (Q n, g1) -> r y = Some (Q m, g2) 
-                     -> n <= m -> WF_rexp r (Copyto x y)
-  | WF_inv : forall r e, WF_rexp r e -> WF_rexp r (Inv e).
+Definition lookup (h:heap) (r:regs)  (x:avar) : option (rtype * (nat -> bool)) :=
+    match x with gvar u => Heap.find u h
+               | lvar u => Regs.find u r
+     end.
+
+Inductive WF_rexp : heap -> regs -> rexp -> Prop := 
+  | WF_skip : forall h r, WF_rexp h r Skip
+  | WF_x1 : forall h r x n a g, 0 < n -> Heap.MapsTo x (Q n, g) h -> a < n -> WF_rexp h r (X (gvar x,a))
+  | WF_x2 : forall h r x n a g, 0 < n -> Regs.MapsTo x (Q n, g) r -> a < n -> WF_rexp h r (X (lvar x,a))
+  | WF_cont1 : forall h r x n a g e, 0 < n -> Heap.MapsTo x (Q n, g) h -> a < n
+                         -> freevar_exp (gvar x) a e -> WF_rexp h r (CU (gvar x,a) e)
+  | WF_cont2 : forall h r x n a g e, 0 < n -> Regs.MapsTo x (Q n, g) r -> a < n
+                         -> freevar_exp (lvar x) a e -> WF_rexp h r (CU (lvar x,a) e)
+  | WF_rseq : forall h r e1 e2,  WF_rexp h r e1 -> WF_rexp h r e2 -> WF_rexp h r (Seq e1 e2)
+  | WF_copy : forall h r x y n m g1 g2, 0 < n -> 0 < m -> lookup h r x = Some (Q n, g1) -> lookup h r y = Some (Q m, g2) 
+                     -> n <= m -> WF_rexp h r (Copyto x y).
 
 
 (* A RCIR+ function can be a function with a RCIR+ expression or a cast oeration,
@@ -186,60 +222,52 @@ Inductive rfun A :=
       (* init is to initialize a local variable with a number. 
          A local variable refers to a constant in QSSA. *)
      | Init : rtype -> evar -> (nat -> bool) -> rfun A
+     | Inv : list (rfun A) -> rfun A
      | Foreign : (list (rtype * evar)) -> (list (rtype * ivar)) -> A -> rfun A.
 
-(* The following defines the initialization of a register set for the expression in a function. *)
-Definition allfalse := fun (_ : nat) => false.
-
-Fixpoint gen_regs_evar (l : list (rtype * evar)) : regs := 
-  match l with [] => (fun (_: avar) => None)
-            | (Q n, x)::xl => 
-               fun y => if y ==? gvar x then Some (Q n, allfalse) else gen_regs_evar xl y
+Fixpoint gen_heap (l : list (rtype * evar)) : heap := 
+  match l with [] => empty_heap
+            | (Q n, x)::xl => Heap.add x (Q n, allfalse) (gen_heap xl)
   end.
 
-Fixpoint gen_regs (l: list (rtype * ivar)) (r :regs) :=
-   match l with [] => r
-         | (Q n, x)::xl => 
-             fun y => if y ==? lvar x then Some (Q n, allfalse) else gen_regs xl r y
-   end.
-
-Fixpoint drop_regs (l: list (rtype * ivar)) (r :regs) :=
-   match l with [] => r
-         | (Q n, x)::xl => 
-             fun y => if y ==? lvar x then None else drop_regs xl r y
+Fixpoint gen_regs (l: list (rtype * ivar)) : regs :=
+   match l with [] => empty_regs
+         | (Q n, x)::xl => Regs.add x (Q n, allfalse) (gen_regs xl)
    end.
 
 (* The following defines the well-formedness of rfun that depends on an input register set
     having all variables being global variables. *)
-Fixpoint type_match (l: list (rtype * evar)) (r : regs) : Prop :=
+Fixpoint type_match (l: list (rtype * evar)) (r : heap) : Prop :=
     match l with [] => True
-          | (Q n, x)::xl => (match r (gvar x) with Some (Q m, f) => n = m | None => False end) /\  type_match xl r
+          | (Q n, x)::xl => 
+         (match Heap.find x r with Some (Q m, f) => n = m | None => False end) /\  type_match xl r
     end.
 
 (* Define the top level of the language. Every program is a list of global variable definitions plus a list of rfun functions. *)
 Inductive rtop A := Prog : list (rtype * evar) -> list (rfun A) -> rtop A.
 
+(*
 Definition update_type (f : regs) (i : avar) (x : rtype) :=
   fun y => if y ==? i then Some (x,allfalse) else f y.
-
+*)
 
 (* The well-formedness of a program is based on a step by step type checking on the wellfi*)
 Definition WF_type (t:rtype) : Prop := match t with Q 0 => False | _ => True end.
 
-Inductive WF_rfun {A} : regs -> (rfun A) -> regs -> Prop := 
-    | WF_fun : forall r l1 l2 e, WF_rexp (gen_regs l2 r) e -> type_match l1 r ->
-               WF_rfun r (Fun A l1 l2 e) r
-    | WF_cast : forall r n m x g, r (gvar x) = Some (Q n, g) -> 0 < n -> 0 < m ->
-            WF_rfun r (Cast A (Q n) x (Q m)) (update_type r (gvar x) (Q m))
-    | WF_init : forall r x n t, WF_type t -> ~ InDom (gvar x) r -> WF_rfun r (Init A t x n) (update_type r (gvar x) t).
-
-
-Inductive WF_rfun_list {A} : regs -> list (rfun A) -> Prop :=
-    | WF_empty : forall r, WF_rfun_list r []
-    | WF_many : forall r x xs r', WF_rfun r x r' -> WF_rfun_list r' xs -> WF_rfun_list r (x::xs).
+Inductive WF_rfun {A} : heap -> (rfun A) -> heap -> Prop := 
+    | WF_fun : forall h l1 l2 e, WF_rexp h (gen_regs l2) e -> type_match l1 h ->
+               WF_rfun h (Fun A l1 l2 e) h
+    | WF_cast : forall h n m x g, Heap.MapsTo x (Q n, g) h -> 0 < n -> 0 < m ->
+            WF_rfun h (Cast A (Q n) x (Q m)) (update_type_heap h x (Q m))
+    | WF_init : forall h x g t, WF_type t -> ~ Heap.In x h -> WF_rfun h (Init A t x g) (update_type_heap h x t)
+    | WF_inv : forall h h' l, WF_rfun_list h l h' -> WF_rfun h (Inv A l) h'
+with
+ WF_rfun_list {A} : heap -> list (rfun A) -> heap -> Prop :=
+    | WF_empty : forall h, WF_rfun_list h [] h
+    | WF_many : forall h h' h'' x xs, WF_rfun h x h' -> WF_rfun_list h' xs h'' -> WF_rfun_list h (x::xs) h''.
 
 Inductive WF_rtop {A} : rtop A -> Prop := 
-    | WF_prog : forall l fl,  WF_rfun_list (gen_regs_evar l) fl -> WF_rtop (Prog A l fl).
+    | WF_prog : forall l h fl,  WF_rfun_list (gen_heap l) fl h -> WF_rtop (Prog A l fl).
 
 
 
@@ -259,6 +287,7 @@ Definition pos_eq (r1 r2 : pos) : bool :=
 
 Notation "i '=pos' j" := (pos_eq i j) (at level 50).
 
+(*
 Definition nupdate {A} (f : nat -> A) (i : nat) (x : A) :=
   fun j => if j =? i then x else f j.
 
@@ -268,7 +297,9 @@ Definition eupdate (f : regs) (x: pos) (v : bool) :=
                                 | Some (tv,gv) =>  Some (tv, nupdate gv b v) end) else f j
  end.
 
+
 Notation "f '[' i '|->' x ']'" := (eupdate f i x) (at level 10).
+
 
 Definition eget (f : regs) (x: pos) : option bool :=
    match x with (a,b) => match f a with None => None
@@ -291,7 +322,7 @@ Definition emptyfun : nat -> bool :=
   fun j => false.
 Definition emptyreg : (rtype * (nat -> bool)) :=
   (Q 3, emptyfun).
-
+*)
 
 
 Definition genBool : G bool :=
@@ -302,11 +333,11 @@ Definition genBool : G bool :=
   
 Fixpoint genRandomSizedFun (size : nat) : G (nat -> bool) :=
   match size with
-  |0 => bind (genBool) (fun v =>  ret (update emptyfun 0 v))
+  |0 => bind (genBool) (fun v =>  ret (update allfalse 0 v))
   | S s' => bind (genBool) (fun v =>
                 (bind (genRandomSizedFun s') (fun g => ret ( update g s' v))))
                                      end.
-Eval compute in show emptyreg.
+Eval compute in show empty_regs.
 Sample (genRandomSizedFun 3).
 Sample genBool.
 
@@ -326,10 +357,11 @@ Fixpoint genReg (min_size max_size : nat ) : G (rtype * (nat -> bool)) :=
                                                (fun f => ret (Q s, f))) )).
 Sample (genReg 2 6).
 (* like pupdate but adds a register to regs *)
-Definition update_regs (f : regs) (x: avar) (g: (rtype * (nat -> bool))) :=
-  fun j => if j ==? x then Some g else f j.
+Definition update_regs (f : regs) (x: ivar) (g: (rtype * (nat -> bool))) :=
+  fun j => if j =? x then Some g else Regs.find j f.
 
-Fixpoint show_regs_aux (regs :  avar -> option (rtype * (nat -> bool)))
+(*
+Fixpoint show_regs_aux (regs :  ivar -> option (rtype * (nat -> bool)))
          (max_var_num : nat) : string :=
   let (l, e) := (lvar max_var_num, gvar max_var_num) in match max_var_num with
         | 0 => "{" ++ show l ++ ": " ++ show (regs l) ++ "}{" ++ show e ++ ": " ++ show (regs e) ++ "}"
@@ -347,16 +379,20 @@ Fixpoint genRegsSized (fuel reg_size_min reg_size_max : nat) : G regs :=
   let reg := (genReg reg_size_min reg_size_max)
     in match fuel with
       |0 =>  freq [ (1, (bind (genIvar fuel fuel)
-          (fun i => (bind reg                                                                               (fun r => ret (update_regs emptyregs (lvar i) r) ))))) ;;;
+          (fun i => (bind reg                                                                               
+               (fun r => ret (update_regs emptyregs (lvar i) r) ))))) ;;;
              (1, (bind (genEvar fuel fuel)
-          (fun e => (bind reg                                                                               (fun r => ret (update_regs emptyregs (gvar e) r) )))))  ;;;
+          (fun e => (bind reg                                                                               
+     (fun r => ret (update_regs emptyregs (gvar e) r) )))))  ;;;
              (1, ret emptyregs)                                                               
                   ]
       |S s' =>    let regs := (genRegsSized s' reg_size_min reg_size_max) in
           freq [ (1, (bind (genIvar fuel fuel)
-          (fun i => (bind reg                                                                               (fun r => (bind regs (fun rs => ret (update_regs rs (lvar i) r)) )))))) ;;;
+          (fun i => (bind reg                                                                               
+                          (fun r => (bind regs (fun rs => ret (update_regs rs (lvar i) r)) )))))) ;;;
              (1, (bind (genEvar fuel fuel)
-          (fun e => (bind reg                                                                               (fun r => bind regs (fun rs => ret (update_regs rs (gvar e) r))) ))))  ;;;
+          (fun e => (bind reg                                                                              
+                             (fun r => bind regs (fun rs => ret (update_regs rs (gvar e) r))) ))))  ;;;
              (1, (bind regs (fun rs => ret rs)))                                                               
                   ]
 
@@ -373,36 +409,152 @@ Fixpoint app_inv p :=
   | Copyto a b => Copyto a b
   | Inv e => e
   end.
+*)
 
-Inductive estep : regs -> rexp -> regs -> Prop := 
-  | skip_rule : forall r , estep r Skip r
-  | x_rule : forall r x i n gv, r x = Some (Q n,gv) -> estep r (X (x,i)) (r [(x,i) |-> (¬ (gv i))])
-  | if_rule1 : forall r p e r', eget r p = Some true -> estep r e r' -> estep r (CU p e) r'
-  | if_rule2 : forall r p e, eget r p = Some false -> estep r (CU p e) r
-  | seq_rule : forall r e1 e2 r' r'', estep r e1 r' -> estep r' e2 r'' -> estep r (Seq e1 e2) r''
-  | copy_rule : forall r x n fv y m gv,  r x = Some (Q n, fv) -> r y = Some (Q m,gv)
+Fixpoint gup {A} (f : nat -> A) (g : nat -> A) (n : nat) :=
+  match n with 0 => f
+             | S m => gup (update f m (g m)) g m
+  end.
+
+Inductive estep : heap -> regs -> rexp -> heap -> regs -> Prop := 
+  | skip_rule : forall h r , estep h r Skip h r
+  | x_rule1 : forall h r x i n gv, Regs.MapsTo x (Q n,gv) r
+                          -> estep h r (X (lvar x,i)) h (update_bit_regs r x i (¬ (gv i)))
+  | x_rule2 : forall h r x i n gv, Heap.MapsTo x (Q n,gv) h
+                       -> estep h r (X (gvar x,i)) (update_bit_heap h x i (¬ (gv i))) r
+  | if_rule_true1 : forall h r x i n gv e h' r', Regs.MapsTo x (Q n, gv) r -> gv i = true ->
+                         estep h r e h' r' -> estep h r (CU (lvar x,i) e) h r'
+  | if_rule_true2 : forall h r x i n gv e h' r', Heap.MapsTo x (Q n, gv) h -> gv i = true ->
+                         estep h r e h' r' -> estep h r (CU (gvar x,i) e) h r'
+  | if_rule_false1 : forall h r x i n gv e, Regs.MapsTo x (Q n, gv) r -> gv i = false -> estep h r (CU (lvar x, i) e) h r
+  | if_rule_false2 : forall h r x i n gv e, Heap.MapsTo x (Q n, gv) h -> gv i = false -> estep h r (CU (gvar x, i) e) h r
+  | seq_rule : forall h r e1 e2 h' r' h'' r'', estep h r e1 h' r'
+                        -> estep h' r' e2 h'' r'' -> estep h r (Seq e1 e2) h'' r''
+  | copy_rule1 : forall h r x n fv y m gv,  lookup h r x = Some (Q n, fv) -> Regs.MapsTo y (Q m,gv) r
                -> (forall i, 0 <= i < m -> gv i = false) 
-        -> estep r (Copyto x y) (pupdate r y (gup gv fv n))
-  | inv_rule : forall r r' e, estep r (app_inv e) r' -> estep r (Inv e) r'.
-
-Definition update_type_val (f : regs) (i : avar) (x : rtype) :=
-  fun y => if y ==? i then (match f i with None => None
-                                 | Some (a,g) => Some (x,g)
-                            end) else f y.
+               -> estep h r (Copyto x (lvar y)) h (update_val_regs r y (gup gv fv n))
+  | copy_rule2 : forall h r x n fv y m gv,  lookup h r x = Some (Q n, fv) -> Heap.MapsTo y (Q m,gv) h
+               -> (forall i, 0 <= i < m -> gv i = false) 
+               -> estep h r (Copyto x (lvar y)) (update_val_heap h y (gup gv fv n)) r.
 
 
-Inductive step_rfun {A} : regs -> rfun A -> regs -> Prop :=
-   | fun_step : forall r r' l1 l2 e,
-             estep (gen_regs l2 r) e r' -> step_rfun r (Fun A l1 l2 e) (drop_regs l2 r')
-   | cast_step : forall r nt mt x, step_rfun r (Cast A nt x mt) (update_type_val r (gvar x) mt)
-   | init_step : forall r t x n, step_rfun r (Init A t x n) (pupdate (update_type r (gvar x) t) (gvar x) n).
+Inductive step_rfun {A} : heap -> rfun A -> heap -> Prop :=
+   | fun_step : forall r h h' l1 l2 e,
+             estep h (gen_regs l2) e h' r -> step_rfun h (Fun A l1 l2 e) h'
+   | cast_step : forall h nt mt x, step_rfun h (Cast A nt x mt) (update_type_heap h x mt)
+   | init_step : forall h t x n, step_rfun h (Init A t x n) (update_val_heap (update_type_heap h x t) x n)
+   | inv_step : forall h h' l, step_rfun_list h l h' -> step_rfun h (Inv A l) h'
 
-Inductive step_rfun_list {A} : regs -> list (rfun A) -> regs -> Prop :=
-   | empty_step : forall r, step_rfun_list r [] r
-   | many_step : forall r r' x xs, step_rfun r x r' -> step_rfun_list r (x::xs) r'.
+with step_rfun_list {A} : heap -> list (rfun A) -> heap -> Prop :=
+   | empty_step : forall h, step_rfun_list h [] h
+   | many_step : forall h h' h'' x xs, step_rfun h x h' -> step_rfun_list h' xs h'' -> step_rfun_list h (x::xs) h''.
 
-Inductive step_top {A} : rtop A -> regs -> Prop :=
-  | the_top_step : forall l fl r, step_rfun_list (gen_regs_evar l) fl r -> step_top (Prog A l fl) r.
+Inductive step_top {A} : rtop A -> heap -> Prop :=
+  | the_top_step : forall l fl h, step_rfun_list (gen_heap l) fl h -> step_top (Prog A l fl) h.
+
+
+Require Import RCIR.
+
+(* fb_push is to take a qubit and then push it to the zero position 
+        in the bool function representation of a number. *)
+Definition fb_push b f : nat -> bool :=
+  fun x => match x with
+        | O => b
+        | S n => f n
+        end.
+
+(*
+Definition allfalse := fun (_ : nat) => false.
+*)
+
+(* fb_push_n is the n repeatation of fb_push. *)
+Definition fb_push_n n f g : nat -> bool :=
+  fun i => if (i <? n) then f i else g (i - n).
+
+(* A function to compile positive to a bool function. *)
+Fixpoint pos2fb p : nat -> bool :=
+  match p with
+  | xH => fb_push true allfalse
+  | xI p' => fb_push true (pos2fb p')
+  | xO p' => fb_push false (pos2fb p')
+  end.
+
+(* A function to compile N to a bool function. *)
+Definition N2fb n : nat -> bool :=
+  match n with
+  | 0%N => allfalse
+  | Npos p => pos2fb p
+  end.
+
+Definition add_c b x y :=
+  match b with
+  | false => Pos.add x y
+  | true => Pos.add_carry x y
+  end.
+
+(* A function to compile a natural number to a bool function. *)
+Definition nat2fb n := N2fb (N.of_nat n).
+
+(* reg_push is the encapsulation of fb_push_n. *)
+Definition reg_push (x : nat) (n : nat) (f : nat -> bool) := fb_push_n n (nat2fb x) f.
+
+
+(* The following three lemmas show that the relationship between
+   the bool function before and after the application of fb_push/fb_push_n
+   in different bit positions. *)
+Lemma fb_push_right:
+  forall n b f, 0 < n -> fb_push b f n = f (n-1).
+Proof.
+  intros. induction n. lia.
+  simpl. assert ((n - 0) = n) by lia.
+  rewrite H0. reflexivity.
+Qed.
+
+Lemma fb_push_n_left :
+  forall n x f g,
+    x < n -> fb_push_n n f g x = f x.
+Proof.
+  intros. unfold fb_push_n. rewrite <- Nat.ltb_lt in H. rewrite H. easy.
+Qed.
+
+Lemma fb_push_n_right :
+  forall n x f g,
+    n <= x -> fb_push_n n f g x = g (x - n).
+Proof.
+  intros. unfold fb_push_n. rewrite <- Nat.ltb_ge in H. rewrite H. easy.
+Qed.
+
+(* The lemma shows that the reg_push of a number x that has n qubit is essentially
+   the same as turning the number to a bool function. *)
+Lemma reg_push_inv:
+  forall x n f a, a < n -> (reg_push x n f) a = (nat2fb x) a.
+Proof.
+  intros.
+  unfold nat2fb,N2fb,reg_push,fb_push_n.
+  destruct x.
+  simpl.
+  bdestruct (a <? n).
+  unfold nat2fb.
+  simpl. reflexivity.
+  lia.
+  bdestruct (a <? n).
+  unfold nat2fb.
+  simpl.
+  reflexivity.
+  lia.
+Qed.
+
+Ltac fb_push_n_simpl := repeat (try rewrite fb_push_n_left by lia; try rewrite fb_push_n_right by lia).
+Ltac update_simpl := repeat (try rewrite update_index_neq by lia); try rewrite update_index_eq by lia.
+
+Ltac BreakIfExpression :=
+  match goal with
+  | [ |- context[if ?X <? ?Y then _ else _] ] => bdestruct (X <? Y); try lia
+  | [ |- context[if ?X <=? ?Y then _ else _] ] => bdestruct (X <=? Y); try lia
+  | [ |- context[if ?X =? ?Y then _ else _] ] => bdestruct (X =? Y); try lia
+  end.
+
+Ltac IfExpSimpl := repeat BreakIfExpression.
 
 
 
