@@ -216,7 +216,11 @@ Inductive WF_rexp : heap -> regs -> rexp -> Prop :=
     The requirement of quantum foreign gates in RCIR+ is that the input of registers
     for the functions to be all 0/1 bits, while the output also contains only 0/1 bits. *)
 Inductive rfun A :=
-       Fun : (list (rtype * evar)) -> (list (rtype * ivar)) -> rexp -> rfun A
+          (* list of input evar, and the return evar, and the ivar.
+             return evar cannot appear in the Fun.
+              the final avar is the return statement in the function.
+               After a function is returned. The value of avar will be written to the value of evar. *)
+       Fun : (list (rtype * evar)) -> evar -> (list (rtype * ivar)) -> rexp -> avar -> rfun A
      | Cast : rtype ->  evar -> rtype -> rfun A
       (* init is to initialize a local variable with a number. 
          A local variable refers to a constant in QSSA. *)
@@ -255,8 +259,12 @@ Definition WF_type (t:rtype) : Prop := match t with Q 0 => False | _ => True end
 
 (* We require every global variables are different *)
 Inductive WF_rfun {A} : heap -> (rfun A) -> heap -> Prop := 
-    | WF_fun : forall h l1 l2 e, WF_rexp h (gen_regs l2) e -> type_match l1 h ->
-               WF_rfun h (Fun A l1 l2 e) h
+    | WF_fun1 : forall h l1 x t v y l2 e s v', Heap.MapsTo x (t, v) h -> s = gen_regs l2 ->
+               Regs.MapsTo y (t,v') s -> WF_rexp (Heap.remove x h) s e 
+                -> type_match ((t,x)::l1) h -> WF_rfun h (Fun A l1 x l2 e (lvar y)) h
+    | WF_fun2 : forall h l1 x t v y l2 e s v', Heap.MapsTo x (t, v) h -> s = gen_regs l2 ->
+               Heap.MapsTo y (t,v') h -> WF_rexp (Heap.remove x h) s e 
+                -> type_match ((t,x)::l1) h -> WF_rfun h (Fun A l1 x l2 e (gvar y)) h
     | WF_cast : forall h n m x g, Heap.MapsTo x (Q n, g) h -> 0 < n -> 0 < m ->
             WF_rfun h (Cast A (Q n) x (Q m)) (update_type_heap h x (Q m))
     | WF_init : forall h x g t, WF_type t -> ~ Heap.In x h -> WF_rfun h (Init A t x g) (update_type_heap h x t)
@@ -441,8 +449,9 @@ Fixpoint remove_all (l:list evar) (h:heap) : heap :=
    end.
 
 Inductive step_rfun {A} : list evar -> heap -> rfun A -> list evar -> heap -> Prop :=
-   | fun_step : forall el r h h' l1 l2 e,
-             estep h (gen_regs l2) e h' r -> step_rfun el h (Fun A l1 l2 e) el h'
+   | fun_step : forall el r h h' l1 l2 e x a v n m fv, lookup h' r a = Some (Q n,v) -> 
+              Heap.MapsTo x (Q m, fv) h' -> estep h (gen_regs l2) e h' r
+              -> step_rfun el h (Fun A l1 x l2 e a) el (update_val_heap h' x (gup v fv n))
    | cast_step : forall el h nt mt x, step_rfun el h (Cast A nt x mt) el (update_type_heap h x mt)
    | init_step1 : forall el h t x, step_rfun el h (Init A t x None) el (update_val_heap (update_type_heap h x t) x allfalse)
    | init_step2 : forall el h t x n, step_rfun el h (Init A t x (Some n)) el (update_val_heap (update_type_heap h x t) x n)
