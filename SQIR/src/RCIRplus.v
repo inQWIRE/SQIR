@@ -7,7 +7,6 @@ Local Open Scope string.
 (* The language for RCIR+, a target language for QLLVM to compile to. *)
 Local Open Scope nat_scope.
 
-
 (* We first define two types variables appearing in an expression.
     global variables and local variables. *)
 
@@ -221,8 +220,8 @@ Inductive rfun A :=
      | Cast : rtype ->  evar -> rtype -> rfun A
       (* init is to initialize a local variable with a number. 
          A local variable refers to a constant in QSSA. *)
-     | Init : rtype -> evar -> (nat -> bool) -> rfun A
-     | Inv : list (rfun A) -> rfun A
+     | Init : rtype -> evar -> option (nat -> bool) -> rfun A
+     | Inv : evar -> rfun A
      | Foreign : (list (rtype * evar)) -> (list (rtype * ivar)) -> A -> rfun A.
 
 Fixpoint gen_heap (l : list (rtype * evar)) : heap := 
@@ -244,7 +243,7 @@ Fixpoint type_match (l: list (rtype * evar)) (r : heap) : Prop :=
     end.
 
 (* Define the top level of the language. Every program is a list of global variable definitions plus a list of rfun functions. *)
-Inductive rtop A := Prog : list (rtype * evar) -> list (rfun A) -> rtop A.
+Inductive rtop A := Prog : list (rfun A) -> rtop A.
 
 (*
 Definition update_type (f : regs) (i : avar) (x : rtype) :=
@@ -254,20 +253,21 @@ Definition update_type (f : regs) (i : avar) (x : rtype) :=
 (* The well-formedness of a program is based on a step by step type checking on the wellfi*)
 Definition WF_type (t:rtype) : Prop := match t with Q 0 => False | _ => True end.
 
+(* We require every global variables are different *)
 Inductive WF_rfun {A} : heap -> (rfun A) -> heap -> Prop := 
     | WF_fun : forall h l1 l2 e, WF_rexp h (gen_regs l2) e -> type_match l1 h ->
                WF_rfun h (Fun A l1 l2 e) h
     | WF_cast : forall h n m x g, Heap.MapsTo x (Q n, g) h -> 0 < n -> 0 < m ->
             WF_rfun h (Cast A (Q n) x (Q m)) (update_type_heap h x (Q m))
     | WF_init : forall h x g t, WF_type t -> ~ Heap.In x h -> WF_rfun h (Init A t x g) (update_type_heap h x t)
-    | WF_inv : forall h h' l, WF_rfun_list h l h' -> WF_rfun h (Inv A l) h'
-with
- WF_rfun_list {A} : heap -> list (rfun A) -> heap -> Prop :=
+    | WF_inv : forall h x e, Heap.MapsTo x e h -> WF_rfun h (Inv A x)  h.
+
+Inductive WF_rfun_list {A} : heap -> list (rfun A) -> heap -> Prop :=
     | WF_empty : forall h, WF_rfun_list h [] h
     | WF_many : forall h h' h'' x xs, WF_rfun h x h' -> WF_rfun_list h' xs h'' -> WF_rfun_list h (x::xs) h''.
 
 Inductive WF_rtop {A} : rtop A -> Prop := 
-    | WF_prog : forall l h fl,  WF_rfun_list (gen_heap l) fl h -> WF_rtop (Prog A l fl).
+    | WF_prog : forall h fl,  WF_rfun_list empty_heap fl h -> WF_rtop (Prog A fl).
 
 
 
@@ -411,9 +411,9 @@ Fixpoint app_inv p :=
   end.
 *)
 
-Fixpoint gup {A} (f : nat -> A) (g : nat -> A) (n : nat) :=
+Fixpoint gup (f : nat -> bool) (g : nat -> bool) (n : nat) :=
   match n with 0 => f
-             | S m => gup (update f m (g m)) g m
+             | S m => (if g m then gup (update f m (g m)) g m else gup f g m)
   end.
 
 Inductive estep : heap -> regs -> rexp -> heap -> regs -> Prop := 
@@ -431,29 +431,205 @@ Inductive estep : heap -> regs -> rexp -> heap -> regs -> Prop :=
   | seq_rule : forall h r e1 e2 h' r' h'' r'', estep h r e1 h' r'
                         -> estep h' r' e2 h'' r'' -> estep h r (Seq e1 e2) h'' r''
   | copy_rule1 : forall h r x n fv y m gv,  lookup h r x = Some (Q n, fv) -> Regs.MapsTo y (Q m,gv) r
-               -> (forall i, 0 <= i < m -> gv i = false) 
                -> estep h r (Copyto x (lvar y)) h (update_val_regs r y (gup gv fv n))
   | copy_rule2 : forall h r x n fv y m gv,  lookup h r x = Some (Q n, fv) -> Heap.MapsTo y (Q m,gv) h
-               -> (forall i, 0 <= i < m -> gv i = false) 
                -> estep h r (Copyto x (lvar y)) (update_val_heap h y (gup gv fv n)) r.
 
+Fixpoint remove_all (l:list evar) (h:heap) : heap :=
+   match l with [] => h
+             | (x::xl) => remove_all xl (Heap.remove x h)
+   end.
 
-Inductive step_rfun {A} : heap -> rfun A -> heap -> Prop :=
-   | fun_step : forall r h h' l1 l2 e,
-             estep h (gen_regs l2) e h' r -> step_rfun h (Fun A l1 l2 e) h'
-   | cast_step : forall h nt mt x, step_rfun h (Cast A nt x mt) (update_type_heap h x mt)
-   | init_step : forall h t x n, step_rfun h (Init A t x n) (update_val_heap (update_type_heap h x t) x n)
-   | inv_step : forall h h' l, step_rfun_list h l h' -> step_rfun h (Inv A l) h'
+Inductive step_rfun {A} : list evar -> heap -> rfun A -> list evar -> heap -> Prop :=
+   | fun_step : forall el r h h' l1 l2 e,
+             estep h (gen_regs l2) e h' r -> step_rfun el h (Fun A l1 l2 e) el h'
+   | cast_step : forall el h nt mt x, step_rfun el h (Cast A nt x mt) el (update_type_heap h x mt)
+   | init_step1 : forall el h t x, step_rfun el h (Init A t x None) el (update_val_heap (update_type_heap h x t) x allfalse)
+   | init_step2 : forall el h t x n, step_rfun el h (Init A t x (Some n)) el (update_val_heap (update_type_heap h x t) x n)
+   | inv_step : forall l h x, step_rfun l h (Inv A x) (x::l) h.
 
-with step_rfun_list {A} : heap -> list (rfun A) -> heap -> Prop :=
-   | empty_step : forall h, step_rfun_list h [] h
-   | many_step : forall h h' h'' x xs, step_rfun h x h' -> step_rfun_list h' xs h'' -> step_rfun_list h (x::xs) h''.
+Inductive step_rfun_list {A} : list evar -> heap -> list (rfun A) -> list evar -> heap -> Prop :=
+   | empty_step : forall el h, step_rfun_list el h [] el h
+   | many_step : forall el el' el'' h h' h'' x xs, step_rfun el h x el' h' ->
+                      step_rfun_list el' h' xs el'' h'' -> step_rfun_list el h (x::xs) el'' h''.
 
 Inductive step_top {A} : rtop A -> heap -> Prop :=
-  | the_top_step : forall l fl h, step_rfun_list (gen_heap l) fl h -> step_top (Prog A l fl) h.
+  | the_top_step : forall fl el h, step_rfun_list [] empty_heap fl el h -> step_top (Prog A fl) (remove_all el h).
 
 
 Require Import RCIR.
+Require Import OrderedType.
+
+Module Avar_as_OT <: OrderedType.
+
+Definition t := avar.
+
+Definition eq (x y: avar) := avar_eq x y = true.
+
+Definition lt (x y:avar) :=
+   match x with gvar x => match y with gvar y =>  x < y
+                                     | lvar y => True 
+                          end
+              | lvar x => match y with gvar y => False
+                                     | lvar y => x < y
+                          end
+   end.
+
+Lemma eq_refl : forall x : t, eq x x.
+Proof.
+ intros. unfold eq,avar_eq.
+ destruct x. apply Nat.eqb_eq. reflexivity.
+ apply Nat.eqb_eq. reflexivity.
+Qed.
+
+Lemma eq_sym : forall x y : t, eq x y -> eq y x.
+Proof.
+ intros. unfold eq,avar_eq in *.
+ destruct y. destruct x. apply Nat.eqb_eq. apply Nat.eqb_eq in H. lia.
+ inversion H.
+ destruct x. inversion H.
+ apply Nat.eqb_eq. apply Nat.eqb_eq in H. lia.
+Qed.
+
+Lemma eq_trans : forall x y z : t, eq x y -> eq y z -> eq x z.
+Proof.
+ intros. unfold eq,avar_eq in *.
+ destruct x. destruct y. destruct z. 
+ apply Nat.eqb_eq. apply Nat.eqb_eq in H. apply Nat.eqb_eq in H0.
+ lia.
+ inversion H0. inversion H.
+ destruct y. destruct z. 
+ inversion H. inversion H.
+ destruct z. inversion H0.
+ apply Nat.eqb_eq. apply Nat.eqb_eq in H. apply Nat.eqb_eq in H0.
+ lia.
+Qed.
+
+Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
+Proof.
+  intros. unfold lt in *.
+ destruct x. destruct y. destruct z. lia.
+ inversion H0. inversion H.
+ destruct y. destruct z. easy.
+ inversion H0.
+ destruct z. easy.
+ lia.
+Qed.
+
+Lemma lt_not_eq : forall x y : t, lt x y -> ~ eq x y.
+Proof.
+ intros. unfold lt,eq,avar_eq in *.
+ destruct x. destruct y.
+ apply not_true_iff_false.
+ apply Nat.eqb_neq. lia. easy.
+ destruct y. easy.
+ apply not_true_iff_false.
+ apply Nat.eqb_neq. lia.
+Qed.
+
+Lemma compare : forall (x y : avar), Compare lt eq x y.
+Proof.
+Admitted.
+
+Lemma eq_dec : forall (x y : avar), { eq x y } + { ~ eq x y }.
+Proof.
+Admitted.
+
+End Avar_as_OT.
+
+
+(* a pointer is an index for indicating the beginning place and the length of a variable in 
+   a line of qubits. *)
+Module Pointers := FMapList.Make Avar_as_OT.
+
+Definition pointers := Pointers.t (nat * nat).
+
+Definition empty_pointers := @Pointers.empty (nat * nat).
+
+Fixpoint copy_fun (bits : (nat -> bool)) (base:nat) (n:nat) (f:(nat -> bool)) : nat -> bool :=
+    match n with 0 => nupdate bits base (f 0)
+               | S m => nupdate (copy_fun bits base m f) (base + m) (f m)
+    end.
+
+Definition fold_heap := (@Heap.fold (rtype * (nat -> bool)) (nat * pointers * (nat -> bool))).
+
+Definition fold_regs := (@Regs.fold (rtype * (nat -> bool)) (nat * pointers * (nat -> bool))).
+
+(* We first compile registers/heap to a line of qubits. *)
+Definition compile_heap (h:heap) : (nat * pointers * (nat -> bool)) :=
+   fold_heap (fun a tv result =>
+               match tv with (Q n, f) => 
+                   match result with (new_base,new_pointers,bits) =>
+                       (new_base+n,Pointers.add (gvar a) (new_base,n) new_pointers, copy_fun bits new_base n f)
+                   end
+               end) h (0,empty_pointers,allfalse).
+
+Definition compile_regs (r:regs) (result :nat * pointers * (nat -> bool)) : (nat * pointers * (nat -> bool)) :=
+   fold_regs (fun a tv result =>
+               match tv with (Q n, f) => 
+                   match result with (new_base,new_pointers,bits) =>
+                       (new_base+n,Pointers.add (lvar a) (new_base,n) new_pointers, copy_fun bits new_base n f)
+                   end
+               end) r result.
+
+Lemma compile_heap_correct_1 : forall r x n f base base' pointers line, Heap.MapsTo x (Q n,f) r -> 
+                  (compile_heap r) = (base,pointers,line) -> Pointers.MapsTo (gvar x) (base',n) pointers.
+Proof.
+Admitted.
+
+
+Lemma compile_heap_correct_2 : forall r x n f base base' pointers line, Heap.MapsTo x (Q n,f) r -> 
+                  (compile_heap r) = (base,pointers,line) -> Pointers.MapsTo (gvar x) (base',n) pointers ->
+                  (forall m, 0 <= m < n -> line (base' + m) = f m).
+Proof.
+Admitted.
+
+(* copy the bits in basea -> basea + n to the bits in baseb -> baseb + n. *)
+Fixpoint compile_copy (basea: nat) (baseb: nat) (n : nat) : bccom :=
+    match n with 0 => bccnot basea baseb 
+               | S m => bcseq (bccnot basea baseb) (compile_copy basea baseb m)
+    end.
+
+(* compiling rexp to bccom. *)
+Fixpoint compile_exp (p: pointers) (e:rexp) : option bccom :=
+   match e with Skip => Some bcskip
+             | X (x,m) => (match Pointers.find x p with Some (base,n) => Some (bcx (base + m)) | None => None end)
+             | CU (x,m) e1 => (match Pointers.find x p with Some (base,n) =>
+                                   match (compile_exp p e1) with Some e1' => Some (bccont (base + m) e1')
+                                                               | None => None
+                                   end
+                                              | None => None
+                               end)
+             | Seq e1 e2 => match compile_exp p e1 with None => None
+                                                    | Some e1' => 
+                                   match compile_exp p e2 with None => None
+                                                | Some e2' => Some (bcseq e1' e2')
+                                   end
+                            end
+             | Copyto x y => (match Pointers.find x p with Some (basea,n)
+                         => match Pointers.find y p with Some (baseb,m) => Some (compile_copy basea baseb n)
+                                                       | None => None
+                            end
+                               | None => None
+                            end)
+   end.
+
+
+
+Lemma WF_exp_compiled : forall h r e base p f, WF_rexp h r e ->
+                 (compile_regs r (compile_heap h)) = (base,p,f) -> (exists b, compile_exp p e = Some b).
+Proof.
+ intros. induction e.
+ simpl. exists bcskip. reflexivity.
+ simpl. 
+Admitted.
+
+Lemma compile_exp_correct : forall h h' r r' e b base base' p p' env env', WF_rexp h r e ->
+           (compile_regs r (compile_heap h)) = (base,p,env) -> compile_exp p e = Some b
+                 -> estep h r e h' r' ->  (compile_regs r' (compile_heap h')) = (base',p',env') -> bcexec b env = env'.
+Proof.
+Admitted.
+
 
 (* fb_push is to take a qubit and then push it to the zero position 
         in the bool function representation of a number. *)
