@@ -117,9 +117,94 @@ Definition avar_eq (r1 r2 : avar) : bool :=
 
 Notation "i '==?' j" := (avar_eq i j) (at level 50).
 
+Tactic Notation "inv" hyp(H) := inversion H; subst; clear H.
+Tactic Notation "inv" hyp(H) "as" simple_intropattern(p) :=
+  inversion H as p; subst; clear H.
+
+Lemma avar_eqb_eq : forall a b, a ==? b = true -> a = b.
+Proof.
+ intros. unfold avar_eq in H.
+ destruct a. destruct b.
+ apply Nat.eqb_eq in H. rewrite H. easy.
+ inv H.
+ destruct b.
+ inv H.
+ apply Nat.eqb_eq in H. rewrite H. easy.
+Qed.
+
+Lemma avar_eqb_neq : forall a b, a ==? b = false -> a <> b.
+Proof.
+ intros. unfold avar_eq in H.
+ destruct a. destruct b.
+ apply Nat.eqb_neq in H. intros R. injection R as eq1.
+ rewrite eq1 in H. easy.
+ inv H. easy.
+ destruct b.
+ inv H. easy.
+ apply Nat.eqb_neq in H. intros R. injection R as eq1.
+ rewrite eq1 in H. easy.
+Qed.
+
+
 (* This is the expression in a function in the RCIR+ language. 
    It does not contain quantum gates. quantum gates will be foreign functions. *)
 Definition pos : Type := (avar * nat).
+(* The semantic definition of expressions for RCIR+ including some well-formedness requirement. *)
+Definition pos_eq (r1 r2 : pos) : bool := 
+                match r1 with (lvar a1,b1) 
+                            => match r2
+                               with (lvar a2,b2)
+                                     => (a1 =? a2) && (b1 =? b2)
+                                  | (gvar a2,b2) => false
+                                 end
+                     | (gvar a1,b1) => match r2 with (gvar a2,b2) => (a1 =? a2) && (b1 =? b2)
+                                                   | (lvar a2, b2) => false
+                                       end
+                end.
+
+
+Notation "i '=pos' j" := (pos_eq i j) (at level 50).
+
+Lemma pos_eqb_eq : forall a b, a =pos b = true -> a = b.
+Proof.
+ intros. unfold pos_eq in H.
+ destruct a. destruct a. destruct b. destruct a.
+ apply andb_true_iff in H.
+ destruct H. apply Nat.eqb_eq in H.
+ apply Nat.eqb_eq in H0. subst. easy.
+ inv H.
+ destruct b. destruct a.
+ inv H.
+ apply andb_true_iff in H.
+ destruct H. apply Nat.eqb_eq in H.
+ apply Nat.eqb_eq in H0. subst. easy.
+Qed.
+
+Lemma pos_eqb_neq : forall a b, a =pos b = false -> a <> b.
+Proof.
+ intros. unfold pos_eq in H.
+ destruct a. destruct a. destruct b. destruct a.
+ apply andb_false_iff in H.
+ destruct H. apply Nat.eqb_neq in H.
+ intros R. injection R as eq1.
+ rewrite eq1 in H. easy.
+ apply Nat.eqb_neq in H.
+ intros R. injection R as eq1.
+ rewrite H0 in H. easy.
+ intros R. injection R as eq1.
+ easy.
+ destruct b. destruct a.
+ intros R. injection R as eq1.
+ easy.
+ apply andb_false_iff in H.
+ destruct H. apply Nat.eqb_neq in H.
+ intros R. injection R as eq1.
+ rewrite eq1 in H. easy.
+ apply Nat.eqb_neq in H.
+ intros R. injection R as eq1.
+ rewrite H0 in H. easy.
+Qed.
+
 Instance showPair {A B : Type} `{Show A} `{Show B} : Show (A * B) :=
   {
     show p :=
@@ -135,6 +220,15 @@ Inductive rexp :=
              | Skip : rexp | X : pos -> rexp | CU : pos -> rexp -> rexp 
              | Seq : rexp -> rexp -> rexp | Copyto : avar -> avar -> rexp.
 Derive Show for rexp.
+
+Declare Scope rexp_scope.
+Delimit Scope rexp_scope with rexp.
+Local Open Scope rexp.
+Notation "p1 ; p2" := (Seq p1 p2) (at level 50) : rexp_scope.
+
+Definition RCNOT (x y : pos) := CU x (X y).
+Definition RSWAP (x y : pos) := if (x =pos y) then Skip else (RCNOT x y; RCNOT y x; RCNOT x y).
+Definition RCCX (x y z : pos) := CU x (RCNOT y z).
 
 (* The following defines the initialization of a register set for the expression in a function. *)
 Definition allfalse := fun (_ : nat) => false.
@@ -184,32 +278,141 @@ Definition CCX (p1 p2 p3 : pos) := CU p1 (CNOT p2 p3).
 (* well-formedness of a predicate based on the relation of
     the input dimension number and the specified predicate type and number. *)
 
-Inductive freevar_exp : avar -> nat -> rexp -> Prop := 
-   freevar_skip : forall a n, freevar_exp a n Skip
- | freevar_x_eq : forall a x b, a <> b -> freevar_exp x b (X (x,a))
- | freevar_x_neq : forall a x b y, x <> y -> freevar_exp x b (X (y,a))
- | freevar_cont_eq : forall a x b e, a <> b -> freevar_exp x b e -> freevar_exp x b (CU (x,a) e)
- | freevar_cont_neq : forall a x y b e, x <> y -> freevar_exp x b e -> freevar_exp x b (CU (y,a) e)
- | freevar_seq : forall x a e1 e2, freevar_exp x a e1 -> freevar_exp x a e2 -> freevar_exp x a (Seq e1 e2)
- |  freevar_copyto : forall x n a b, freevar_exp x n (Copyto a b).
+Inductive freevar_exp : pos -> rexp -> Prop := 
+   freevar_skip : forall v, freevar_exp v Skip
+ | freevar_x_eq : forall a x b, a <> b -> freevar_exp (x,b) (X (x,a))
+ | freevar_x_neq : forall a x b y, x <> y -> freevar_exp (x,b) (X (y,a))
+ | freevar_cu_eq : forall a x b e, a <> b -> freevar_exp (x,b) e -> freevar_exp (x,b) (CU (x,a) e)
+ | freevar_cu_neq : forall a x y b e, x <> y -> freevar_exp (x,b) e -> freevar_exp (x,b) (CU (y,a) e)
+ | freevar_seq : forall v e1 e2, freevar_exp v e1 -> freevar_exp v e2 -> freevar_exp v (Seq e1 e2)
+ |  freevar_copyto : forall v a b, freevar_exp v (Copyto a b).
 
 Definition lookup (h:heap) (r:regs)  (x:avar) : option (rtype * (nat -> bool)) :=
     match x with gvar u => Heap.find u h
                | lvar u => Regs.find u r
      end.
 
+Inductive well_defined (h:heap) (r:regs) : pos -> Prop :=
+     | well_defined_heap : forall x a n g, Heap.MapsTo x (Q n,g) h
+                                   -> a < n -> well_defined h r (gvar x,a)
+     | well_defined_regs : forall x a n g, Regs.MapsTo x (Q n, g) r
+                                    -> a < n -> well_defined h r (lvar x,a).
+
+Definition well_formed_heap (h:heap) : Prop :=
+            forall x n g, Heap.MapsTo x (Q n, g) h -> 0 < n.
+
+Definition well_formed_regs (r:regs) : Prop :=
+          forall x n g, Regs.MapsTo x (Q n, g) r -> 0 < n.
+
 Inductive WF_rexp : heap -> regs -> rexp -> Prop := 
   | WF_skip : forall h r, WF_rexp h r Skip
-  | WF_x1 : forall h r x n a g, 0 < n -> Heap.MapsTo x (Q n, g) h -> a < n -> WF_rexp h r (X (gvar x,a))
-  | WF_x2 : forall h r x n a g, 0 < n -> Regs.MapsTo x (Q n, g) r -> a < n -> WF_rexp h r (X (lvar x,a))
-  | WF_cont1 : forall h r x n a g e, 0 < n -> Heap.MapsTo x (Q n, g) h -> a < n
-                         -> freevar_exp (gvar x) a e -> WF_rexp h r (CU (gvar x,a) e)
-  | WF_cont2 : forall h r x n a g e, 0 < n -> Regs.MapsTo x (Q n, g) r -> a < n
-                         -> freevar_exp (lvar x) a e -> WF_rexp h r (CU (lvar x,a) e)
+  | WF_x : forall h r v, well_defined h r v -> WF_rexp h r (X v)
+  | WF_cu : forall h r v e, well_defined h r v -> freevar_exp v e -> WF_rexp h r e -> WF_rexp h r (CU v e)
   | WF_rseq : forall h r e1 e2,  WF_rexp h r e1 -> WF_rexp h r e2 -> WF_rexp h r (Seq e1 e2)
-  | WF_copy : forall h r x y n m g1 g2, 0 < n -> 0 < m -> lookup h r x = Some (Q n, g1) -> lookup h r y = Some (Q m, g2) 
+  | WF_copy : forall h r x y n m g1 g2, lookup h r x = Some (Q n, g1) -> lookup h r y = Some (Q m, g2) 
                      -> n <= m -> WF_rexp h r (Copyto x y).
 
+Lemma freevar_exp_rx : 
+    forall x y, x <> y -> 
+         freevar_exp x (X y).
+Proof.
+  intros. 
+  destruct x. destruct y.
+  destruct (a ==? a0) eqn:eq1.
+  apply avar_eqb_eq in eq1.
+  rewrite eq1 in H.
+  assert (n <> n0).
+  intros R. rewrite R in H.
+  contradiction.
+  rewrite eq1.
+  apply freevar_x_eq.
+  lia.
+  apply avar_eqb_neq in eq1.
+  apply freevar_x_neq. assumption.
+Qed.
+
+Lemma freevar_exp_rcnot : 
+    forall x y z,  x <> y -> x <> z ->
+    freevar_exp x (RCNOT y z).
+Proof.
+  intros. unfold RCNOT.
+  destruct x. destruct y.
+  destruct (a ==? a0) eqn:eq1.
+  apply avar_eqb_eq in eq1.
+  rewrite eq1 in H.
+  assert (n <> n0).
+  intros R. rewrite R in H.
+  contradiction.
+  rewrite eq1.
+  apply freevar_cu_eq.
+  lia.
+  destruct z. subst.
+  destruct (a0 ==? a1) eqn:eq1.
+  apply avar_eqb_eq in eq1.
+  rewrite eq1 in H0.
+  assert (n <> n1).
+  intros R. rewrite R in H0.
+  contradiction.
+  rewrite eq1.
+  apply freevar_x_eq.
+  lia.
+  apply avar_eqb_neq in eq1.
+  apply freevar_x_neq. assumption.
+  apply avar_eqb_neq in eq1.
+  apply freevar_cu_neq. assumption.
+  destruct z. subst.
+  destruct (a ==? a1) eqn:eq2.
+  apply avar_eqb_eq in eq2.
+  rewrite eq2 in H0.
+  assert (n <> n1).
+  intros R. rewrite R in H0.
+  contradiction.
+  rewrite eq2.
+  apply freevar_x_eq.
+  lia.
+  apply avar_eqb_neq in eq2.
+  apply freevar_x_neq. assumption.
+Qed.
+
+Lemma RCNOT_WF :
+  forall h r x y,
+    x <> y -> well_formed_heap h -> well_formed_regs r ->
+    well_defined h r x -> well_defined h r y ->
+    WF_rexp h r (RCNOT x y).
+Proof.
+  intros. unfold RCNOT. constructor. easy.
+  apply freevar_exp_rx. assumption.
+  constructor. easy.
+Qed.
+
+Lemma RSWAP_WF :
+  forall h r x y,
+    x <> y -> well_formed_heap h -> well_formed_regs r ->
+    well_defined h r x -> well_defined h r y ->
+    WF_rexp h r (RSWAP x y).
+Proof.
+  intros. unfold RSWAP.
+  destruct (x =pos y) eqn:eq1.
+  constructor. 
+  apply pos_eqb_neq in eq1.
+  constructor.  constructor. 
+  apply RCNOT_WF; assumption.
+  apply RCNOT_WF; auto.
+  apply RCNOT_WF; assumption.
+Qed.
+
+Lemma RCCX_WF :
+  forall h r x y z,
+    x <> y -> y <> z -> x <> z -> well_formed_heap h -> well_formed_regs r ->
+    well_defined h r x -> well_defined h r y -> well_defined h r z ->
+    WF_rexp h r (RCCX x y z).
+Proof.
+  intros. unfold RCCX. constructor. easy.
+  apply freevar_exp_rcnot; assumption.
+  constructor. assumption.
+  apply freevar_exp_rx. assumption.
+  constructor. assumption. 
+Qed.
 
 (* A RCIR+ function can be a function with a RCIR+ expression or a cast oeration,
     or a RCIR+ foreign expression that might contain quantum gates.
@@ -260,10 +463,10 @@ Definition WF_type (t:rtype) : Prop := match t with Q 0 => False | _ => True end
 (* We require every global variables are different *)
 Inductive WF_rfun {A} : heap -> (rfun A) -> heap -> Prop := 
     | WF_fun1 : forall h l1 x t v y l2 e s v', Heap.MapsTo x (t, v) h -> s = gen_regs l2 ->
-               Regs.MapsTo y (t,v') s -> WF_rexp (Heap.remove x h) s e 
+                well_formed_regs s -> Regs.MapsTo y (t,v') s -> WF_rexp (Heap.remove x h) s e 
                 -> type_match ((t,x)::l1) h -> WF_rfun h (Fun A l1 x l2 e (lvar y)) h
     | WF_fun2 : forall h l1 x t v y l2 e s v', Heap.MapsTo x (t, v) h -> s = gen_regs l2 ->
-               Heap.MapsTo y (t,v') h -> WF_rexp (Heap.remove x h) s e 
+              well_formed_regs s -> Heap.MapsTo y (t,v') h -> WF_rexp (Heap.remove x h) s e 
                 -> type_match ((t,x)::l1) h -> WF_rfun h (Fun A l1 x l2 e (gvar y)) h
     | WF_cast : forall h n m x g, Heap.MapsTo x (Q n, g) h -> 0 < n -> 0 < m ->
             WF_rfun h (Cast A (Q n) x (Q m)) (update_type_heap h x (Q m))
@@ -277,23 +480,6 @@ Inductive WF_rfun_list {A} : heap -> list (rfun A) -> heap -> Prop :=
 Inductive WF_rtop {A} : rtop A -> Prop := 
     | WF_prog : forall h fl,  WF_rfun_list empty_heap fl h -> WF_rtop (Prog A fl).
 
-
-
-(* The semantic definition of expressions for RCIR+ including some well-formedness requirement. *)
-Definition pos_eq (r1 r2 : pos) : bool := 
-                match r1 with (lvar a1,b1) 
-                            => match r2
-                               with (lvar a2,b2)
-                                     => (a1 =? a2) && (b1 =? b2)
-                                  | (gvar a2,b2) => false
-                                 end
-                     | (gvar a1,b1) => match r2 with (gvar a2,b2) => (a1 =? a2) && (b1 =? b2)
-                                                   | (lvar a2, b2) => false
-                                       end
-                end.
-
-
-Notation "i '=pos' j" := (pos_eq i j) (at level 50).
 
 (*
 Definition nupdate {A} (f : nat -> A) (i : nat) (x : A) :=
@@ -464,283 +650,6 @@ Inductive step_rfun_list {A} : list evar -> heap -> list (rfun A) -> list evar -
 
 Inductive step_top {A} : rtop A -> heap -> Prop :=
   | the_top_step : forall fl el h, step_rfun_list [] empty_heap fl el h -> step_top (Prog A fl) (remove_all el h).
-
-
-Require Import RCIR.
-Require Import OrderedType.
-
-Module Avar_as_OT <: OrderedType.
-
-Definition t := avar.
-
-Definition eq (x y: avar) := avar_eq x y = true.
-
-Definition lt (x y:avar) :=
-   match x with gvar x => match y with gvar y =>  x < y
-                                     | lvar y => True 
-                          end
-              | lvar x => match y with gvar y => False
-                                     | lvar y => x < y
-                          end
-   end.
-
-Lemma eq_refl : forall x : t, eq x x.
-Proof.
- intros. unfold eq,avar_eq.
- destruct x. apply Nat.eqb_eq. reflexivity.
- apply Nat.eqb_eq. reflexivity.
-Qed.
-
-Lemma eq_sym : forall x y : t, eq x y -> eq y x.
-Proof.
- intros. unfold eq,avar_eq in *.
- destruct y. destruct x. apply Nat.eqb_eq. apply Nat.eqb_eq in H. lia.
- inversion H.
- destruct x. inversion H.
- apply Nat.eqb_eq. apply Nat.eqb_eq in H. lia.
-Qed.
-
-Lemma eq_trans : forall x y z : t, eq x y -> eq y z -> eq x z.
-Proof.
- intros. unfold eq,avar_eq in *.
- destruct x. destruct y. destruct z. 
- apply Nat.eqb_eq. apply Nat.eqb_eq in H. apply Nat.eqb_eq in H0.
- lia.
- inversion H0. inversion H.
- destruct y. destruct z. 
- inversion H. inversion H.
- destruct z. inversion H0.
- apply Nat.eqb_eq. apply Nat.eqb_eq in H. apply Nat.eqb_eq in H0.
- lia.
-Qed.
-
-Lemma lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
-Proof.
-  intros. unfold lt in *.
- destruct x. destruct y. destruct z. lia.
- inversion H0. inversion H.
- destruct y. destruct z. easy.
- inversion H0.
- destruct z. easy.
- lia.
-Qed.
-
-Lemma lt_not_eq : forall x y : t, lt x y -> ~ eq x y.
-Proof.
- intros. unfold lt,eq,avar_eq in *.
- destruct x. destruct y.
- apply not_true_iff_false.
- apply Nat.eqb_neq. lia. easy.
- destruct y. easy.
- apply not_true_iff_false.
- apply Nat.eqb_neq. lia.
-Qed.
-
-Lemma compare : forall (x y : avar), Compare lt eq x y.
-Proof.
-Admitted.
-
-Lemma eq_dec : forall (x y : avar), { eq x y } + { ~ eq x y }.
-Proof.
-Admitted.
-
-End Avar_as_OT.
-
-
-(* a pointer is an index for indicating the beginning place and the length of a variable in 
-   a line of qubits. *)
-Module Pointers := FMapList.Make Avar_as_OT.
-
-Definition pointers := Pointers.t (nat * nat).
-
-Definition empty_pointers := @Pointers.empty (nat * nat).
-
-Fixpoint copy_fun (bits : (nat -> bool)) (base:nat) (n:nat) (f:(nat -> bool)) : nat -> bool :=
-    match n with 0 => nupdate bits base (f 0)
-               | S m => nupdate (copy_fun bits base m f) (base + m) (f m)
-    end.
-
-Definition fold_heap := (@Heap.fold (rtype * (nat -> bool)) (nat * pointers * (nat -> bool))).
-
-Definition fold_regs := (@Regs.fold (rtype * (nat -> bool)) (nat * pointers * (nat -> bool))).
-
-(* We first compile registers/heap to a line of qubits. *)
-Definition compile_heap (h:heap) : (nat * pointers * (nat -> bool)) :=
-   fold_heap (fun a tv result =>
-               match tv with (Q n, f) => 
-                   match result with (new_base,new_pointers,bits) =>
-                       (new_base+n,Pointers.add (gvar a) (new_base,n) new_pointers, copy_fun bits new_base n f)
-                   end
-               end) h (0,empty_pointers,allfalse).
-
-Definition compile_regs (r:regs) (result :nat * pointers * (nat -> bool)) : (nat * pointers * (nat -> bool)) :=
-   fold_regs (fun a tv result =>
-               match tv with (Q n, f) => 
-                   match result with (new_base,new_pointers,bits) =>
-                       (new_base+n,Pointers.add (lvar a) (new_base,n) new_pointers, copy_fun bits new_base n f)
-                   end
-               end) r result.
-
-Lemma compile_heap_correct_1 : forall r x n f base base' pointers line, Heap.MapsTo x (Q n,f) r -> 
-                  (compile_heap r) = (base,pointers,line) -> Pointers.MapsTo (gvar x) (base',n) pointers.
-Proof.
-Admitted.
-
-
-Lemma compile_heap_correct_2 : forall r x n f base base' pointers line, Heap.MapsTo x (Q n,f) r -> 
-                  (compile_heap r) = (base,pointers,line) -> Pointers.MapsTo (gvar x) (base',n) pointers ->
-                  (forall m, 0 <= m < n -> line (base' + m) = f m).
-Proof.
-Admitted.
-
-(* copy the bits in basea -> basea + n to the bits in baseb -> baseb + n. *)
-Fixpoint compile_copy (basea: nat) (baseb: nat) (n : nat) : bccom :=
-    match n with 0 => bccnot basea baseb 
-               | S m => bcseq (bccnot basea baseb) (compile_copy basea baseb m)
-    end.
-
-(* compiling rexp to bccom. *)
-Fixpoint compile_exp (p: pointers) (e:rexp) : option bccom :=
-   match e with Skip => Some bcskip
-             | X (x,m) => (match Pointers.find x p with Some (base,n) => Some (bcx (base + m)) | None => None end)
-             | CU (x,m) e1 => (match Pointers.find x p with Some (base,n) =>
-                                   match (compile_exp p e1) with Some e1' => Some (bccont (base + m) e1')
-                                                               | None => None
-                                   end
-                                              | None => None
-                               end)
-             | Seq e1 e2 => match compile_exp p e1 with None => None
-                                                    | Some e1' => 
-                                   match compile_exp p e2 with None => None
-                                                | Some e2' => Some (bcseq e1' e2')
-                                   end
-                            end
-             | Copyto x y => (match Pointers.find x p with Some (basea,n)
-                         => match Pointers.find y p with Some (baseb,m) => Some (compile_copy basea baseb n)
-                                                       | None => None
-                            end
-                               | None => None
-                            end)
-   end.
-
-
-
-Lemma WF_exp_compiled : forall h r e base p f, WF_rexp h r e ->
-                 (compile_regs r (compile_heap h)) = (base,p,f) -> (exists b, compile_exp p e = Some b).
-Proof.
- intros. induction e.
- simpl. exists bcskip. reflexivity.
- simpl. 
-Admitted.
-
-Lemma compile_exp_correct : forall h h' r r' e b base base' p p' env env', WF_rexp h r e ->
-           (compile_regs r (compile_heap h)) = (base,p,env) -> compile_exp p e = Some b
-                 -> estep h r e h' r' ->  (compile_regs r' (compile_heap h')) = (base',p',env') -> bcexec b env = env'.
-Proof.
-Admitted.
-
-
-(* fb_push is to take a qubit and then push it to the zero position 
-        in the bool function representation of a number. *)
-Definition fb_push b f : nat -> bool :=
-  fun x => match x with
-        | O => b
-        | S n => f n
-        end.
-
-(*
-Definition allfalse := fun (_ : nat) => false.
-*)
-
-(* fb_push_n is the n repeatation of fb_push. *)
-Definition fb_push_n n f g : nat -> bool :=
-  fun i => if (i <? n) then f i else g (i - n).
-
-(* A function to compile positive to a bool function. *)
-Fixpoint pos2fb p : nat -> bool :=
-  match p with
-  | xH => fb_push true allfalse
-  | xI p' => fb_push true (pos2fb p')
-  | xO p' => fb_push false (pos2fb p')
-  end.
-
-(* A function to compile N to a bool function. *)
-Definition N2fb n : nat -> bool :=
-  match n with
-  | 0%N => allfalse
-  | Npos p => pos2fb p
-  end.
-
-Definition add_c b x y :=
-  match b with
-  | false => Pos.add x y
-  | true => Pos.add_carry x y
-  end.
-
-(* A function to compile a natural number to a bool function. *)
-Definition nat2fb n := N2fb (N.of_nat n).
-
-(* reg_push is the encapsulation of fb_push_n. *)
-Definition reg_push (x : nat) (n : nat) (f : nat -> bool) := fb_push_n n (nat2fb x) f.
-
-
-(* The following three lemmas show that the relationship between
-   the bool function before and after the application of fb_push/fb_push_n
-   in different bit positions. *)
-Lemma fb_push_right:
-  forall n b f, 0 < n -> fb_push b f n = f (n-1).
-Proof.
-  intros. induction n. lia.
-  simpl. assert ((n - 0) = n) by lia.
-  rewrite H0. reflexivity.
-Qed.
-
-Lemma fb_push_n_left :
-  forall n x f g,
-    x < n -> fb_push_n n f g x = f x.
-Proof.
-  intros. unfold fb_push_n. rewrite <- Nat.ltb_lt in H. rewrite H. easy.
-Qed.
-
-Lemma fb_push_n_right :
-  forall n x f g,
-    n <= x -> fb_push_n n f g x = g (x - n).
-Proof.
-  intros. unfold fb_push_n. rewrite <- Nat.ltb_ge in H. rewrite H. easy.
-Qed.
-
-(* The lemma shows that the reg_push of a number x that has n qubit is essentially
-   the same as turning the number to a bool function. *)
-Lemma reg_push_inv:
-  forall x n f a, a < n -> (reg_push x n f) a = (nat2fb x) a.
-Proof.
-  intros.
-  unfold nat2fb,N2fb,reg_push,fb_push_n.
-  destruct x.
-  simpl.
-  bdestruct (a <? n).
-  unfold nat2fb.
-  simpl. reflexivity.
-  lia.
-  bdestruct (a <? n).
-  unfold nat2fb.
-  simpl.
-  reflexivity.
-  lia.
-Qed.
-
-Ltac fb_push_n_simpl := repeat (try rewrite fb_push_n_left by lia; try rewrite fb_push_n_right by lia).
-Ltac update_simpl := repeat (try rewrite update_index_neq by lia); try rewrite update_index_eq by lia.
-
-Ltac BreakIfExpression :=
-  match goal with
-  | [ |- context[if ?X <? ?Y then _ else _] ] => bdestruct (X <? Y); try lia
-  | [ |- context[if ?X <=? ?Y then _ else _] ] => bdestruct (X <=? Y); try lia
-  | [ |- context[if ?X =? ?Y then _ else _] ] => bdestruct (X =? Y); try lia
-  end.
-
-Ltac IfExpSimpl := repeat BreakIfExpression.
-
 
 
 
