@@ -325,18 +325,9 @@ Definition put (hr : heap * regs) (x:pos) (v:bool) : (heap * regs) :=
 
 Notation "f '[' i '|->' x ']'" := (put f i x) (at level 10).
 
-Lemma map_existentiality : forall hr hr', (forall x, get hr x = get hr' x) -> hr = hr'.
+Lemma map_ext : forall hr hr', (forall x, get hr x = get hr' x) -> hr = hr'.
 Proof.
 Admitted.
-
-Lemma put_val_same : forall hr x v, get hr x = Some v -> put hr x v = hr.
-Proof.
- intros. unfold get,put,lookup,update_bit_regs,update_bit_heap,nupdate in *.
- destruct x. destruct hr. destruct a.
- destruct (Regs.find (elt:=rtype * (nat -> bool)) i r) eqn:eq1.
- destruct p. destruct r0. inv H.
- assert (Regs.add i (Q n0, fun j : nat => if j =? n then b n else b j) r = r).
- Admitted.
 
 Lemma get_same : forall hr x v1 v2,
         get hr x = Some v1 -> get hr x = Some v2 -> v1 = v2.
@@ -473,7 +464,7 @@ Qed.
 Lemma get_index_eq : forall hr y v1 v2,
          get hr y <> None -> (hr[y |-> v1][ y |-> v2]) = hr[y |-> v2].
 Proof.
-  intros. apply map_existentiality.
+  intros. apply map_ext.
   intros.
   bdestruct (x =pos y).
   subst. rewrite get_1. rewrite get_1. reflexivity.
@@ -487,7 +478,7 @@ Lemma get_index_neq : forall hr x y v1 v2,
          x <> y -> get hr x <> None -> get hr y <> None -> 
            (hr[y |-> v1][ x |-> v2]) = (hr[x |-> v2][ y |-> v1]).
 Proof.
-  intros. apply map_existentiality.
+  intros. apply map_ext.
   intros.
   bdestruct (x =pos x0).
   bdestruct (y =pos x0).
@@ -512,6 +503,20 @@ Proof.
   intros R. subst. contradiction.
   intros R. subst. contradiction.
   intros R. subst. contradiction.
+Qed.
+
+
+Lemma put_val_same : forall hr x v, get hr x = Some v -> put hr x v = hr.
+Proof.
+ intros. 
+ apply map_ext.
+ intros.
+ bdestruct (x =pos x0). subst.
+ rewrite H. rewrite get_1.
+ reflexivity. rewrite H. easy.
+ rewrite get_neq.
+ reflexivity.
+ intros R. subst. contradiction.
 Qed.
 
 

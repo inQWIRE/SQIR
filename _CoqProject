@@ -17,4 +17,6 @@ SQIR/src/VectorStates.v
 SQIR/src/UnitaryOps.v
 SQIR/src/Equivalences.v
 SQIR/src/RCIR.v
-SQIR/src/ModularMultSpec.v
+SQIR/src/Map.v
+SQIR/src/MapS.v
+SQIR/src/RCIRplus.v
