@@ -262,19 +262,33 @@ Definition RCCX (x y z : pos) := CU x (RCNOT y z).
 Definition allfalse := fun (_ : nat) => false.
 
 (* The following defines the registers. *)
+Require Import Map.
 Require Import OrderedTypeEx.
 
-Module Heap := FMapList.Make Nat_as_OT.
+Module Heap := Map.Make(Nat_as_OT).
 
 Definition heap := Heap.t (rtype * (nat -> bool)).
 
 Definition empty_heap := @Heap.empty (rtype * (nat -> bool)).
 
-Module Regs := FMapList.Make Nat_as_OT.
+Module Regs := Map.Make(Nat_as_OT).
 
 Definition regs := Regs.t (rtype * (nat -> bool)).
 
 Definition empty_regs := @Regs.empty (rtype * (nat -> bool)).
+
+Definition lookup (hr : heap * regs) (x:avar) : option (rtype * (nat -> bool)) :=
+  match hr with (h,r) =>
+    match x with gvar u => Heap.find u h
+               | lvar u => Regs.find u r
+     end
+  end.
+
+Definition get (hr : heap * regs)  (x:pos) : option bool :=
+     match x with (u,a) => match lookup hr u with None => None
+                                 | Some (Q n, g) => Some (g a)
+                         end
+     end.
 
 Definition nupdate {A} (f : nat -> A) (i : nat) (x : A) :=
   fun j => if j =? i then x else f j.
@@ -309,6 +323,198 @@ Definition put (hr : heap * regs) (x:pos) (v:bool) : (heap * regs) :=
      end
    end.
 
+Notation "f '[' i '|->' x ']'" := (put f i x) (at level 10).
+
+Lemma map_existentiality : forall hr hr', (forall x, get hr x = get hr' x) -> hr = hr'.
+Proof.
+Admitted.
+
+Lemma put_val_same : forall hr x v, get hr x = Some v -> put hr x v = hr.
+Proof.
+ intros. unfold get,put,lookup,update_bit_regs,update_bit_heap,nupdate in *.
+ destruct x. destruct hr. destruct a.
+ destruct (Regs.find (elt:=rtype * (nat -> bool)) i r) eqn:eq1.
+ destruct p. destruct r0. inv H.
+ assert (Regs.add i (Q n0, fun j : nat => if j =? n then b n else b j) r = r).
+ Admitted.
+
+Lemma get_same : forall hr x v1 v2,
+        get hr x = Some v1 -> get hr x = Some v2 -> v1 = v2.
+    Proof.
+      intros.
+      unfold get,lookup in *.
+      destruct x. destruct hr.
+      destruct a.
+      destruct (Regs.find (elt:=rtype * (nat -> bool)) i r).
+      destruct p. destruct r0.
+      rewrite H in H0.
+      injection H0 as eq1. assumption. inv H.
+      destruct (Heap.find (elt:=rtype * (nat -> bool)) e h).
+      destruct p. destruct r0.
+      rewrite H in H0. injection H0 as eq1. assumption.
+      inv H.
+    Qed.
+
+Lemma get_1 : forall hr x v, get hr x <> None -> get (put hr x v) x = Some v.
+    Proof.
+      intros.
+      unfold get,lookup,put,update_bit_regs,update_bit_heap,nupdate in *.
+      destruct x. destruct hr.
+      destruct a.
+      destruct (Regs.find (elt:=rtype * (nat -> bool)) i r) eqn:eq1.
+      destruct p.
+      destruct (Regs.find (elt:=rtype * (nat -> bool)) i
+    (Regs.add i (r0, fun j : nat => if j =? n then v else b j) r)) eqn:eq2.
+      destruct p. destruct r1.
+      apply Regs.find_2 in eq2.
+      apply Regs.mapsto_add1 in eq2.
+      inv eq2.
+      bdestruct (n=?n). reflexivity. lia.
+      rewrite Regs.find_add in eq2. inv eq2.
+      contradiction.
+      destruct (Heap.find (elt:=rtype * (nat -> bool)) e h) eqn:eq1.
+      destruct p. destruct r0.
+      destruct (Heap.find (elt:=rtype * (nat -> bool)) e
+    (Heap.add e (Q n0, fun j : nat => if j =? n then v else b j) h)) eqn:eq2.
+      destruct p. destruct r0.
+      apply Heap.find_2 in eq2.
+      apply Heap.mapsto_add1 in eq2.
+      inv eq2.
+      bdestruct (n=?n). reflexivity. lia.
+      rewrite Heap.find_add in eq2. inv eq2.
+      contradiction.
+    Qed.
+
+Lemma get_neq : forall hr x y v,
+        x <> y -> get (put hr y v) x = get hr x.
+    Proof.
+      intros.
+      unfold get,lookup,put,update_bit_regs,update_bit_heap,nupdate in *.
+      destruct x. destruct hr. destruct y.
+      destruct a. destruct a0.
+      destruct (Regs.find (elt:=rtype * (nat -> bool)) i0 r) eqn:eq1.
+      destruct p. destruct r0.
+      destruct (Regs.find (elt:=rtype * (nat -> bool)) i
+      (Regs.add i0 (Q n1, fun j : nat => if j =? n0 then v else b j) r)) eqn:eq2.
+      destruct p. destruct r0.
+      destruct (Regs.find (elt:=rtype * (nat -> bool)) i r) eqn:eq3.
+      destruct p. destruct r0.
+      bdestruct (i =? i0). subst.
+      bdestruct (n=?n0). subst. contradiction.
+      apply Regs.find_2 in eq2.
+      apply Regs.mapsto_add1 in eq2.
+      rewrite eq1 in eq3.
+      inv eq2. inv eq3.
+      bdestruct (n=?n0). lia. reflexivity.
+      apply Regs.find_2 in eq2.
+      apply Regs.add_3 in eq2.
+      apply Regs.find_2 in eq3.
+      apply (Regs.mapsto_always_same (rtype * (nat -> bool)) i (Q n2, b0) (Q n3, b1)) in eq2.
+      inv eq2. reflexivity. assumption. lia.
+      apply Regs.find_2 in eq2.
+      bdestruct (i =? i0). subst.
+      rewrite eq1 in eq3. inv eq3.
+      apply Regs.add_3 in eq2.
+      apply Regs.find_1 in eq2. rewrite eq2 in eq3. inv eq3.
+      apply Regs.add_3 in eq2.
+      apply Regs.find_1 in eq2. rewrite eq2 in eq3. inv eq3.
+      lia.
+      bdestruct (i =? i0). subst.
+      rewrite Regs.find_add in eq2. inv eq2.
+      destruct (Regs.find (elt:=rtype * (nat -> bool)) i r) eqn:eq3.
+      apply Regs.find_2 in eq3.
+      assert (i0 <> i) by lia.
+      specialize (@Regs.add_2 (rtype * (nat -> bool)) r i0 i p
+                    (Q n1, fun j : nat => if j =? n0 then v else b j) H1 eq3) as eq4.
+      apply Regs.find_1 in eq4. rewrite eq4 in eq2. inv eq2.
+      reflexivity.
+      destruct (Regs.find (elt:=rtype * (nat -> bool)) i r) eqn:eq2.
+      bdestruct (i =? i0). subst. rewrite eq1 in eq2. inv eq2.
+      reflexivity. reflexivity.
+      reflexivity.
+      destruct a0. reflexivity.
+      destruct (Heap.find (elt:=rtype * (nat -> bool)) e0 h) eqn:eq1.
+      destruct p. destruct r0.
+      destruct (Heap.find (elt:=rtype * (nat -> bool)) e
+       (Heap.add e0 (Q n1, fun j : nat => if j =? n0 then v else b j) h)) eqn:eq2.
+      destruct p. destruct r0.
+      destruct (Heap.find (elt:=rtype * (nat -> bool)) e h) eqn:eq3.
+      destruct p. destruct r0.
+      bdestruct (e =? e0). subst.
+      bdestruct (n=?n0). subst. contradiction.
+      apply Heap.find_2 in eq2.
+      apply Heap.mapsto_add1 in eq2.
+      rewrite eq1 in eq3.
+      inv eq2. inv eq3.
+      bdestruct (n=?n0). lia. reflexivity.
+      apply Heap.find_2 in eq2.
+      apply Heap.add_3 in eq2.
+      apply Heap.find_2 in eq3.
+      apply (Heap.mapsto_always_same (rtype * (nat -> bool)) e (Q n2, b0) (Q n3, b1)) in eq2.
+      inv eq2. reflexivity. assumption. lia.
+      apply Heap.find_2 in eq2.
+      bdestruct (e =? e0). subst.
+      rewrite eq1 in eq3. inv eq3.
+      apply Heap.add_3 in eq2.
+      apply Heap.find_1 in eq2. rewrite eq2 in eq3. inv eq3.
+      lia.
+      bdestruct (e =? e0). subst.
+      rewrite Heap.find_add in eq2. inv eq2.
+      destruct (Heap.find (elt:=rtype * (nat -> bool)) e h) eqn:eq3.
+      apply Heap.find_2 in eq3.
+      assert (e0 <> e) by lia.
+      specialize (@Heap.add_2 (rtype * (nat -> bool)) h e0 e p
+                    (Q n1, fun j : nat => if j =? n0 then v else b j) H1 eq3) as eq4.
+      apply Heap.find_1 in eq4. rewrite eq4 in eq2. inv eq2.
+      reflexivity.
+      reflexivity. 
+Qed.
+
+Lemma get_index_eq : forall hr y v1 v2,
+         get hr y <> None -> (hr[y |-> v1][ y |-> v2]) = hr[y |-> v2].
+Proof.
+  intros. apply map_existentiality.
+  intros.
+  bdestruct (x =pos y).
+  subst. rewrite get_1. rewrite get_1. reflexivity.
+  assumption.
+  apply (get_1 hr y v1) in H. rewrite H. easy.
+  rewrite get_neq. rewrite get_neq. rewrite get_neq.
+  reflexivity. 1 - 3: assumption.
+Qed.
+
+Lemma get_index_neq : forall hr x y v1 v2,
+         x <> y -> get hr x <> None -> get hr y <> None -> 
+           (hr[y |-> v1][ x |-> v2]) = (hr[x |-> v2][ y |-> v1]).
+Proof.
+  intros. apply map_existentiality.
+  intros.
+  bdestruct (x =pos x0).
+  bdestruct (y =pos x0).
+  subst. contradiction.
+  subst. rewrite get_1.
+  rewrite get_neq. rewrite get_1. reflexivity.
+  1-2:assumption.
+  rewrite get_neq. assumption.
+  intros R. subst. contradiction.
+  bdestruct (y =pos x0). subst.
+  rewrite get_neq.
+  rewrite get_1. rewrite get_1.
+  reflexivity.
+  rewrite get_neq. assumption.
+  intros R. subst. contradiction.
+  assumption.
+  intros R. subst. contradiction.
+  rewrite get_neq. rewrite get_neq.
+  rewrite get_neq. rewrite get_neq.
+  reflexivity.
+  intros R. subst. contradiction.
+  intros R. subst. contradiction.
+  intros R. subst. contradiction.
+  intros R. subst. contradiction.
+Qed.
+
+
 (*Just a sample generator, could be improved *)
 
 (* Defining the CNOT and CCX gate. *)
@@ -329,18 +535,6 @@ Inductive freevar_exp : pos -> rexp -> Prop :=
  | freevar_seq : forall v e1 e2, freevar_exp v e1 -> freevar_exp v e2 -> freevar_exp v (Seq e1 e2)
  |  freevar_copyto : forall v a b, freevar_exp v (Copyto a b).
 
-Definition lookup (hr : heap * regs) (x:avar) : option (rtype * (nat -> bool)) :=
-  match hr with (h,r) =>
-    match x with gvar u => Heap.find u h
-               | lvar u => Regs.find u r
-     end
-  end.
-
-Definition get (hr : heap * regs)  (x:pos) : option bool :=
-     match x with (u,a) => match lookup hr u with None => None
-                                 | Some (Q n, g) => Some (g a)
-                         end
-     end.
 
 Inductive well_defined : (heap * regs) -> pos -> Prop :=
      | well_defined_heap : forall h r x a n g, Heap.MapsTo x (Q n,g) h
@@ -660,10 +854,10 @@ Definition xor_all (f: nat -> bool) (g:nat -> bool) :=
 
 Inductive estep : (heap * regs) -> rexp -> (heap * regs) -> Prop := 
   | skip_rule : forall hr , estep hr Skip hr
-  | x_rule : forall hr x b, get hr x = Some b -> estep hr (X x) (put hr x (¬ b))
+  | x_rule : forall hr x b, get hr x = Some b -> estep hr (X x) (hr[x |-> (¬ b)])
   | if_true : forall hr x e hr', get hr x = Some true ->
                             estep hr e hr' -> estep hr (CU x e) hr'
-  | if_false : forall hr x e, get hr x = Some true  -> estep hr (CU x e) hr
+  | if_false : forall hr x e, get hr x = Some false  -> estep hr (CU x e) hr
   | seq_rule : forall hr e1 e2 hr' hr'', estep hr e1 hr'
                         -> estep hr' e2 hr'' -> estep hr (Seq e1 e2) hr''
   | copy_rule : forall hr x y m n f g,  lookup hr x = Some (Q m,f) -> lookup hr y = Some (Q n, g) ->
@@ -689,8 +883,94 @@ Inductive step_rfun_list {A} : list evar -> heap -> list (rfun A) -> list evar -
                       step_rfun_list el' h' xs el'' h'' -> step_rfun_list el h (x::xs) el'' h''.
 
 Inductive step_top {A} : rtop A -> heap -> Prop :=
-  | the_top_step : forall fl el h, step_rfun_list [] empty_heap fl el h -> step_top (Prog A fl) (remove_all el h).
+  | the_top_step : forall fl el h, step_rfun_list nil empty_heap fl el h -> step_top (Prog A fl) (remove_all el h).
 
 
+Lemma RCNOT_correct :
+  forall hr x y fx fy,
+    x <> y ->
+    get hr x = Some fx -> get hr y = Some fy ->
+    estep hr (RCNOT x y) (hr[y |-> (fy ⊕ fx)]).
+Proof.
+  intros.
+  unfold RCNOT.
+  destruct fx.
+  apply if_true. assumption.
+  apply x_rule. assumption.
+  assert (fy ⊕ false = fy) by btauto.
+  rewrite H2. 
+  rewrite put_val_same.
+  apply if_false. assumption. assumption.
+Qed.
 
+Lemma RSWAP_correct :
+  forall hr x y fx fy,
+    get hr x = Some fx -> get hr y = Some fy ->
+    estep hr (RSWAP x y) (hr[y |-> fx][x |-> fy]).
+Proof.
+  intros.
+  unfold RSWAP.
+  bdestruct (x =pos y).
+  subst. rewrite H in H0.
+  injection H0 as eq1.
+  rewrite eq1.
+  rewrite put_val_same.
+  rewrite put_val_same.
+  constructor. subst. assumption.
+  rewrite put_val_same; subst;assumption.
+  eapply seq_rule.
+  eapply seq_rule.
+  apply RCNOT_correct. 
+  assumption. apply H. apply H0.
+  apply RCNOT_correct.
+  intros R. rewrite R in H1. contradiction.
+  apply get_1. rewrite H0. easy.
+  rewrite get_neq. apply H. assumption.
+  assert (fx ⊕ (fy ⊕ fx) = fy) by btauto.
+  rewrite H2.
+  assert (get ((hr [y |-> fy ⊕ fx]) [x |-> fy]) x = Some fy).
+  apply get_1.
+  rewrite get_neq. rewrite H. easy. assumption.
+  assert (get ((hr [y |-> fy ⊕ fx]) [x |-> fy]) y = Some (fy ⊕ fx)).
+  rewrite get_neq.
+  apply get_1. rewrite H0. easy.
+  intros R. rewrite R in H1. contradiction.
+  specialize (RCNOT_correct ((hr [y |-> fy ⊕ fx]) [x |-> fy])
+                       x y fy (fy ⊕ fx) H1 H3 H4) as eq1.
+  assert ((fy ⊕ fx) ⊕ fy = fx) by btauto.
+  rewrite H5 in eq1.
+  assert ((((hr [y |-> fy ⊕ fx]) [x |-> fy]) [y |-> fx])
+       = ((hr [y |-> fx]) [x |-> fy])).
+  rewrite get_index_neq.
+  rewrite get_index_eq. reflexivity.
+  rewrite H0. easy.
+  intros R. subst. contradiction.
+  rewrite get_1. easy. rewrite H0. easy.
+  rewrite get_neq. rewrite H. easy.
+  assumption.
+  rewrite H6 in eq1. assumption.
+Qed.
+
+Lemma RCCX_correct :
+  forall hr x y z fx fy fz,
+    x <> y ->
+    y <> z ->
+    x <> z ->
+    get hr x = Some fx -> get hr y = Some fy -> get hr z = Some fz ->
+    estep hr (RCCX x y z) (hr[z |-> (fz ⊕ (fy && fx))]).
+Proof.
+  intros. 
+  unfold RCCX.
+  destruct fx.
+  apply if_true. assumption.
+  assert ((fy && true) = fy) by btauto.
+  rewrite H5.
+  apply RCNOT_correct.
+  1-3:assumption.
+  assert (fz ⊕ (fy && false) = fz) by btauto.
+  rewrite H5.
+  rewrite put_val_same.
+  apply if_false. assumption.
+  assumption.
+Qed.
 
