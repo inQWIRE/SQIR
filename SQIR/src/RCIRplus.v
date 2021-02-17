@@ -145,6 +145,20 @@ Proof.
  rewrite eq1 in H. easy.
 Qed.
 
+Lemma avar_eq_reflect : forall r1 r2, reflect (r1 = r2) (avar_eq r1 r2). 
+Proof.
+  intros.
+  destruct (r1 ==? r2) eqn:eq1.
+  apply  ReflectT.
+  apply avar_eqb_eq in eq1.
+  assumption. 
+  constructor. 
+  apply avar_eqb_neq in eq1.
+  assumption. 
+Qed.
+
+Hint Resolve avar_eq_reflect : bdestruct.
+
 
 (* This is the expression in a function in the RCIR+ language. 
    It does not contain quantum gates. quantum gates will be foreign functions. *)
@@ -205,6 +219,20 @@ Proof.
  rewrite H0 in H. easy.
 Qed.
 
+Lemma pos_eq_reflect : forall r1 r2, reflect (r1 = r2) (pos_eq r1 r2). 
+Proof.
+  intros.
+  destruct (r1 =pos r2) eqn:eq1.
+  apply  ReflectT.
+  apply pos_eqb_eq in eq1.
+  assumption. 
+  constructor. 
+  apply pos_eqb_neq in eq1.
+  assumption. 
+Qed.
+
+Hint Resolve pos_eq_reflect : bdestruct.
+
 Instance showPair {A B : Type} `{Show A} `{Show B} : Show (A * B) :=
   {
     show p :=
@@ -256,16 +284,30 @@ Definition update_type_heap (h:heap) (x:evar) (t:rtype) : heap := Heap.add x (t,
 Definition update_type_regs (r:regs) (x:ivar) (t:rtype) : regs := Regs.add x (t,allfalse) r.
 
 Definition update_val_heap (h:heap) (x:evar) (g:(nat -> bool)) : heap :=
-               match Heap.find x h with Some (t,v) => Heap.add x (t,v) h | None => h end.
+               match Heap.find x h with Some (t,v) => Heap.add x (t,g) h | None => h end.
 
-Definition update_val_regs (r:regs) (x:evar) (g:(nat -> bool)) : regs :=
-               match Regs.find x r with Some (t,v) => Regs.add x (t,v) r | None => r end.
+Definition update_val_regs (r:regs) (x:ivar) (g:(nat -> bool)) : regs :=
+               match Regs.find x r with Some (t,v) => Regs.add x (t,g) r | None => r end.
+
+Definition put_all (hr : heap * regs) (x:avar) (g:(nat-> bool)) : (heap * regs) :=
+  match hr with (h,r) =>
+    match x with (gvar u) => (update_val_heap h u g,r)
+               | (lvar u) => (h,update_val_regs r u g)
+    end
+  end.
 
 Definition update_bit_heap (h:heap) (u:evar) (b:nat) (v:bool) : heap :=
               match Heap.find u h with Some (t,g) => Heap.add u (t,nupdate g b v) h | None => h end.
 
-Definition update_bit_regs (h:regs) (u:evar) (b:nat) (v:bool) : regs :=
+Definition update_bit_regs (h:regs) (u:ivar) (b:nat) (v:bool) : regs :=
               match Regs.find u h with Some (t,g) => Regs.add u (t,nupdate g b v) h | None => h end.
+
+Definition put (hr : heap * regs) (x:pos) (v:bool) : (heap * regs) :=
+   match hr with (h,r) =>
+     match x with (gvar u,a) => (update_bit_heap h u a v,r)
+               | (lvar u,a) => (h,update_bit_regs r u a v)
+     end
+   end.
 
 (*Just a sample generator, could be improved *)
 
@@ -287,16 +329,24 @@ Inductive freevar_exp : pos -> rexp -> Prop :=
  | freevar_seq : forall v e1 e2, freevar_exp v e1 -> freevar_exp v e2 -> freevar_exp v (Seq e1 e2)
  |  freevar_copyto : forall v a b, freevar_exp v (Copyto a b).
 
-Definition lookup (h:heap) (r:regs)  (x:avar) : option (rtype * (nat -> bool)) :=
+Definition lookup (hr : heap * regs) (x:avar) : option (rtype * (nat -> bool)) :=
+  match hr with (h,r) =>
     match x with gvar u => Heap.find u h
                | lvar u => Regs.find u r
+     end
+  end.
+
+Definition get (hr : heap * regs)  (x:pos) : option bool :=
+     match x with (u,a) => match lookup hr u with None => None
+                                 | Some (Q n, g) => Some (g a)
+                         end
      end.
 
-Inductive well_defined (h:heap) (r:regs) : pos -> Prop :=
-     | well_defined_heap : forall x a n g, Heap.MapsTo x (Q n,g) h
-                                   -> a < n -> well_defined h r (gvar x,a)
-     | well_defined_regs : forall x a n g, Regs.MapsTo x (Q n, g) r
-                                    -> a < n -> well_defined h r (lvar x,a).
+Inductive well_defined : (heap * regs) -> pos -> Prop :=
+     | well_defined_heap : forall h r x a n g, Heap.MapsTo x (Q n,g) h
+                                   -> a < n -> well_defined (h,r) (gvar x,a)
+     | well_defined_regs : forall h r x a n g, Regs.MapsTo x (Q n, g) r
+                                    -> a < n -> well_defined (h,r) (lvar x,a).
 
 Definition well_formed_heap (h:heap) : Prop :=
             forall x n g, Heap.MapsTo x (Q n, g) h -> 0 < n.
@@ -304,13 +354,16 @@ Definition well_formed_heap (h:heap) : Prop :=
 Definition well_formed_regs (r:regs) : Prop :=
           forall x n g, Regs.MapsTo x (Q n, g) r -> 0 < n.
 
-Inductive WF_rexp : heap -> regs -> rexp -> Prop := 
-  | WF_skip : forall h r, WF_rexp h r Skip
-  | WF_x : forall h r v, well_defined h r v -> WF_rexp h r (X v)
-  | WF_cu : forall h r v e, well_defined h r v -> freevar_exp v e -> WF_rexp h r e -> WF_rexp h r (CU v e)
-  | WF_rseq : forall h r e1 e2,  WF_rexp h r e1 -> WF_rexp h r e2 -> WF_rexp h r (Seq e1 e2)
-  | WF_copy : forall h r x y n m g1 g2, lookup h r x = Some (Q n, g1) -> lookup h r y = Some (Q m, g2) 
-                     -> n <= m -> WF_rexp h r (Copyto x y).
+Definition well_formed_mem (hr: heap * regs) : Prop :=
+       well_formed_heap (fst hr) /\ well_formed_regs (snd hr).
+
+Inductive WF_rexp : (heap * regs) -> rexp -> Prop := 
+  | WF_skip : forall hr, WF_rexp hr Skip
+  | WF_x : forall hr v, well_defined hr v -> WF_rexp hr (X v)
+  | WF_cu : forall hr v e, well_defined hr v -> freevar_exp v e -> WF_rexp hr e -> WF_rexp hr (CU v e)
+  | WF_rseq : forall hr e1 e2,  WF_rexp hr e1 -> WF_rexp hr e2 -> WF_rexp hr (Seq e1 e2)
+  | WF_copy : forall hr x y n m g1 g2, lookup hr x = Some (Q n, g1) -> lookup hr y = Some (Q m, g2) 
+                     -> n <= m -> WF_rexp hr (Copyto x y).
 
 Lemma freevar_exp_rx : 
     forall x y, x <> y -> 
@@ -375,10 +428,10 @@ Proof.
 Qed.
 
 Lemma RCNOT_WF :
-  forall h r x y,
-    x <> y -> well_formed_heap h -> well_formed_regs r ->
-    well_defined h r x -> well_defined h r y ->
-    WF_rexp h r (RCNOT x y).
+  forall hr x y,
+    x <> y -> well_formed_mem hr ->
+    well_defined hr x -> well_defined hr y ->
+    WF_rexp hr (RCNOT x y).
 Proof.
   intros. unfold RCNOT. constructor. easy.
   apply freevar_exp_rx. assumption.
@@ -386,10 +439,10 @@ Proof.
 Qed.
 
 Lemma RSWAP_WF :
-  forall h r x y,
-    x <> y -> well_formed_heap h -> well_formed_regs r ->
-    well_defined h r x -> well_defined h r y ->
-    WF_rexp h r (RSWAP x y).
+  forall hr x y,
+    x <> y -> well_formed_mem hr ->
+    well_defined hr x -> well_defined hr y ->
+    WF_rexp hr (RSWAP x y).
 Proof.
   intros. unfold RSWAP.
   destruct (x =pos y) eqn:eq1.
@@ -402,10 +455,10 @@ Proof.
 Qed.
 
 Lemma RCCX_WF :
-  forall h r x y z,
-    x <> y -> y <> z -> x <> z -> well_formed_heap h -> well_formed_regs r ->
-    well_defined h r x -> well_defined h r y -> well_defined h r z ->
-    WF_rexp h r (RCCX x y z).
+  forall hr x y z,
+    x <> y -> y <> z -> x <> z -> well_formed_mem hr ->
+    well_defined hr x -> well_defined hr y -> well_defined hr z ->
+    WF_rexp hr (RCCX x y z).
 Proof.
   intros. unfold RCCX. constructor. easy.
   apply freevar_exp_rcnot; assumption.
@@ -462,16 +515,13 @@ Definition WF_type (t:rtype) : Prop := match t with Q 0 => False | _ => True end
 
 (* We require every global variables are different *)
 Inductive WF_rfun {A} : heap -> (rfun A) -> heap -> Prop := 
-    | WF_fun1 : forall h l1 x t v y l2 e s v', Heap.MapsTo x (t, v) h -> s = gen_regs l2 ->
-                well_formed_regs s -> Regs.MapsTo y (t,v') s -> WF_rexp (Heap.remove x h) s e 
-                -> type_match ((t,x)::l1) h -> WF_rfun h (Fun A l1 x l2 e (lvar y)) h
-    | WF_fun2 : forall h l1 x t v y l2 e s v', Heap.MapsTo x (t, v) h -> s = gen_regs l2 ->
-              well_formed_regs s -> Heap.MapsTo y (t,v') h -> WF_rexp (Heap.remove x h) s e 
-                -> type_match ((t,x)::l1) h -> WF_rfun h (Fun A l1 x l2 e (gvar y)) h
+    | WF_fun : forall h l1 x t v y l2 e s v', Heap.MapsTo x (t, v) h -> s = gen_regs l2 ->
+                well_formed_regs s -> lookup (Heap.remove x h, s) y = Some (t,v') -> WF_rexp (Heap.remove x h, s) e
+                -> type_match ((t,x)::l1) h -> WF_rfun h (Fun A l1 x l2 e y) h
     | WF_cast : forall h n m x g, Heap.MapsTo x (Q n, g) h -> 0 < n -> 0 < m ->
             WF_rfun h (Cast A (Q n) x (Q m)) (update_type_heap h x (Q m))
     | WF_init : forall h x g t, WF_type t -> ~ Heap.In x h -> WF_rfun h (Init A t x g) (update_type_heap h x t)
-    | WF_inv : forall h x e, Heap.MapsTo x e h -> WF_rfun h (Inv A x)  h.
+    | WF_inv : forall h x e, Heap.MapsTo x e h -> WF_rfun h (Inv A x) h.
 
 Inductive WF_rfun_list {A} : heap -> list (rfun A) -> heap -> Prop :=
     | WF_empty : forall h, WF_rfun_list h [] h
@@ -550,9 +600,6 @@ Fixpoint genReg (min_size max_size : nat ) : G (rtype * (nat -> bool)) :=
   (bind (choose (min_size, max_size)) (fun s => (bind (genRandomSizedFun s)
                                                (fun f => ret (Q s, f))) )).
 Sample (genReg 2 6).
-(* like pupdate but adds a register to regs *)
-Definition update_regs (f : regs) (x: ivar) (g: (rtype * (nat -> bool))) :=
-  fun j => if j =? x then Some g else Regs.find j f.
 
 (*
 Fixpoint show_regs_aux (regs :  ivar -> option (rtype * (nat -> bool)))
@@ -605,29 +652,22 @@ Fixpoint app_inv p :=
   end.
 *)
 
-Fixpoint gup (f : nat -> bool) (g : nat -> bool) (n : nat) :=
-  match n with 0 => f
-             | S m => (if g m then gup (update f m (g m)) g m else gup f g m)
-  end.
+Definition mask_bits (f : nat -> bool) m :=
+    fun i => if i <? m then f i else false.
 
-Inductive estep : heap -> regs -> rexp -> heap -> regs -> Prop := 
-  | skip_rule : forall h r , estep h r Skip h r
-  | x_rule1 : forall h r x i n gv, Regs.MapsTo x (Q n,gv) r
-                          -> estep h r (X (lvar x,i)) h (update_bit_regs r x i (¬ (gv i)))
-  | x_rule2 : forall h r x i n gv, Heap.MapsTo x (Q n,gv) h
-                       -> estep h r (X (gvar x,i)) (update_bit_heap h x i (¬ (gv i))) r
-  | if_rule_true1 : forall h r x i n gv e h' r', Regs.MapsTo x (Q n, gv) r -> gv i = true ->
-                         estep h r e h' r' -> estep h r (CU (lvar x,i) e) h r'
-  | if_rule_true2 : forall h r x i n gv e h' r', Heap.MapsTo x (Q n, gv) h -> gv i = true ->
-                         estep h r e h' r' -> estep h r (CU (gvar x,i) e) h r'
-  | if_rule_false1 : forall h r x i n gv e, Regs.MapsTo x (Q n, gv) r -> gv i = false -> estep h r (CU (lvar x, i) e) h r
-  | if_rule_false2 : forall h r x i n gv e, Heap.MapsTo x (Q n, gv) h -> gv i = false -> estep h r (CU (gvar x, i) e) h r
-  | seq_rule : forall h r e1 e2 h' r' h'' r'', estep h r e1 h' r'
-                        -> estep h' r' e2 h'' r'' -> estep h r (Seq e1 e2) h'' r''
-  | copy_rule1 : forall h r x n fv y m gv,  lookup h r x = Some (Q n, fv) -> Regs.MapsTo y (Q m,gv) r
-               -> estep h r (Copyto x (lvar y)) h (update_val_regs r y (gup gv fv n))
-  | copy_rule2 : forall h r x n fv y m gv,  lookup h r x = Some (Q n, fv) -> Heap.MapsTo y (Q m,gv) h
-               -> estep h r (Copyto x (lvar y)) (update_val_heap h y (gup gv fv n)) r.
+Definition xor_all (f: nat -> bool) (g:nat -> bool) :=
+   fun i => xorb (f i) (g i).
+
+Inductive estep : (heap * regs) -> rexp -> (heap * regs) -> Prop := 
+  | skip_rule : forall hr , estep hr Skip hr
+  | x_rule : forall hr x b, get hr x = Some b -> estep hr (X x) (put hr x (¬ b))
+  | if_true : forall hr x e hr', get hr x = Some true ->
+                            estep hr e hr' -> estep hr (CU x e) hr'
+  | if_false : forall hr x e, get hr x = Some true  -> estep hr (CU x e) hr
+  | seq_rule : forall hr e1 e2 hr' hr'', estep hr e1 hr'
+                        -> estep hr' e2 hr'' -> estep hr (Seq e1 e2) hr''
+  | copy_rule : forall hr x y m n f g,  lookup hr x = Some (Q m,f) -> lookup hr y = Some (Q n, g) ->
+                estep hr (Copyto x y) (put_all hr y (xor_all (mask_bits f m) g)).
 
 Fixpoint remove_all (l:list evar) (h:heap) : heap :=
    match l with [] => h
@@ -635,9 +675,9 @@ Fixpoint remove_all (l:list evar) (h:heap) : heap :=
    end.
 
 Inductive step_rfun {A} : list evar -> heap -> rfun A -> list evar -> heap -> Prop :=
-   | fun_step : forall el r h h' l1 l2 e x a v n m fv, lookup h' r a = Some (Q n,v) -> 
-              Heap.MapsTo x (Q m, fv) h' -> estep h (gen_regs l2) e h' r
-              -> step_rfun el h (Fun A l1 x l2 e a) el (update_val_heap h' x (gup v fv n))
+   | fun_step : forall el r h h' l1 l2 e x a v n m fv, lookup (h',r) a = Some (Q n,v) -> 
+              Heap.MapsTo x (Q m, fv) h' -> estep (h,(gen_regs l2)) e (h',r)
+              -> step_rfun el h (Fun A l1 x l2 e a) el (update_val_heap h' x (xor_all v fv))
    | cast_step : forall el h nt mt x, step_rfun el h (Cast A nt x mt) el (update_type_heap h x mt)
    | init_step1 : forall el h t x, step_rfun el h (Init A t x None) el (update_val_heap (update_type_heap h x t) x allfalse)
    | init_step2 : forall el h t x n, step_rfun el h (Init A t x (Some n)) el (update_val_heap (update_type_heap h x t) x n)
