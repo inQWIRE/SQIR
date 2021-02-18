@@ -540,12 +540,13 @@ Inductive freevar_exp : pos -> rexp -> Prop :=
  | freevar_seq : forall v e1 e2, freevar_exp v e1 -> freevar_exp v e2 -> freevar_exp v (Seq e1 e2)
  |  freevar_copyto : forall v a b, freevar_exp v (Copyto a b).
 
-
 Inductive well_defined : (heap * regs) -> pos -> Prop :=
      | well_defined_heap : forall h r x a n g, Heap.MapsTo x (Q n,g) h
                                    -> a < n -> well_defined (h,r) (gvar x,a)
      | well_defined_regs : forall h r x a n g, Regs.MapsTo x (Q n, g) r
                                     -> a < n -> well_defined (h,r) (lvar x,a).
+
+Definition well_defined_all (hr : heap * regs) (x:avar) (n:nat) : Prop := forall i, i < n -> well_defined hr (x,i).
 
 Definition well_formed_heap (h:heap) : Prop :=
             forall x n g, Heap.MapsTo x (Q n, g) h -> 0 < n.
