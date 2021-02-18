@@ -1,4 +1,7 @@
 Require Import QWIRE.Prelim.
+Require Import VectorStates.
+
+Local Close Scope R_scope.
 
 (** Definition of layouts for mapping. **)
 
@@ -92,6 +95,26 @@ Proof.
   assumption.
 Qed.
 
+Lemma well_formed_log2phys_bij : forall {dim} (m : qmap dim),
+  layout_well_formed dim m ->
+  finite_bijection dim (log2phys m).
+Proof.
+  intros dim m WF.
+  exists (phys2log m).
+  apply WF.
+Qed.  
+
+Lemma well_formed_phys2log_bij : forall {dim} (m : qmap dim),
+  layout_well_formed dim m ->
+  finite_bijection dim (phys2log m).
+Proof.
+  intros dim m WF.
+  exists (log2phys m).
+  intros x Hx.
+  specialize (WF x Hx) as [? [? [? ?]]].
+  auto.
+Qed.  
+
 Lemma swap_in_map_well_formed : forall {dim} (m : qmap dim) n1 n2,
   n1 < dim -> n2 < dim -> layout_well_formed dim m -> 
   layout_well_formed dim (swap_in_map m n1 n2).
@@ -175,4 +198,23 @@ Proof.
   unfold layout_well_formed, trivial_layout, log2phys, phys2log.
   intros x Hx.
   auto.
+Qed.
+
+(* Most things that are true of log2phys will be true of phys2log too -- 
+   there is not an important conceptual difference between the two functions
+   (except in the swap_in_map function). The qmap construct is largely just 
+   a way to store a function with its inverse. So it's typically fine to 
+   switch the order of log2phys and phys2log. *)
+Definition invert_layout {dim} (m : qmap dim) : qmap dim := (snd m, fst m).
+
+Lemma invert_layout_well_formed : forall {dim} (m : qmap dim),
+  layout_well_formed dim m ->
+  layout_well_formed dim (invert_layout m).
+Proof.
+  intros dim m H.
+  intros x Hx.
+  specialize (H x Hx) as [? [? [? ?]]].
+  unfold invert_layout.
+  destruct m; simpl in *.
+  repeat split; auto.
 Qed.

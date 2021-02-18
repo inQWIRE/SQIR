@@ -33,6 +33,10 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma pad_id : forall n dim,
+  (n < dim)%nat -> @pad 1 n dim (I 2) = I (2 ^ dim).
+Proof. intros. unfold pad. gridify. reflexivity. Qed.
+
 Definition ueval_r (dim n : nat) (U : base_Unitary 1) : Square (2^dim) :=
   match U with
   | U_R θ ϕ λ => @pad 1 n dim (rotation θ ϕ λ)

@@ -22,7 +22,7 @@ Definition U := RzQ_Unitary.
 
 (* List.nth takes an index, a list, and a default return value.
    In our case, the default value will never be returned. *)
-Definition to_base {dim n} (u : U n) (qs : list nat) (pf : List.length qs = n) :=
+Definition to_base {n dim} (u : U n) (qs : list nat) (pf : List.length qs = n) :=
   match u with
   | URzQ_H     => @SQIR.H dim (List.nth O qs O) 
   | URzQ_X     => @SQIR.X dim (List.nth O qs O)
@@ -31,12 +31,50 @@ Definition to_base {dim n} (u : U n) (qs : list nat) (pf : List.length qs = n) :
   end.
 
 Local Transparent SQIR.H SQIR.X SQIR.Rz SQIR.CNOT.
-Lemma to_base_uses_q : forall (dim n : nat) (u : U n) (qs : list nat) (pf : List.length qs = n),
-    uses (@to_base dim n u qs pf) qs.
+Lemma to_base_only_uses_qs : forall {n} (dim : nat) (u : U n) (qs : list nat) (pf : List.length qs = n),
+    @only_uses _ dim (to_base u qs pf) qs.
 Proof.
   intros.
   destruct u; simpl;
   constructor; apply nth_In; lia.
+Qed.
+
+Lemma to_base_WT : forall {n} (dim : nat) (u : U n) (qs : list nat) (pf : List.length qs = n),
+  @uc_well_typed _ dim (to_base u qs pf) <-> (bounded_list qs dim /\ List.NoDup qs).
+Proof.
+  intros n dim u s pf.
+  unfold bounded_list.
+  split.
+  - intro H.
+    destruct u; inversion H; subst.
+    all: repeat (destruct s; simpl in *; try lia). 
+    all: split.
+    all: repeat constructor; auto.
+    1,2,3: intros x [Hx | Hx]; subst; easy. 
+    intros x [Hx | [Hx | Hx]]; subst; easy. 
+    intro contra.
+    destruct_In; auto.
+  - intros [H1 H2].
+    destruct u; constructor.
+    all: try apply H1.
+    all: try (apply nth_In; lia).
+    destruct s; [|destruct s; [|destruct s]]; simpl in pf; try lia. 
+    inversion H2; subst.
+    simpl. 
+    intro contra. 
+    contradict H3. 
+    subst; constructor; auto.
+Qed.
+
+Lemma to_base_map_commutes : forall {n} (dim : nat) (u : U n) (qs : list nat) (pf : List.length qs = n) (f : nat -> nat) (pfm : List.length (map f qs) = n),
+  @to_base _ dim u (map f qs) pfm = map_qubits f (to_base u qs pf).
+Proof.
+  intros n dim u qs pf f pfm.
+  destruct u; simpl.
+  1-3: erewrite map_nth_In; try reflexivity; lia.
+  erewrite 2 map_nth_In.
+  reflexivity.
+  1-2: lia.
 Qed.
 Local Opaque SQIR.H SQIR.X SQIR.Rz SQIR.CNOT.
 
@@ -47,8 +85,8 @@ Definition match_gate {n} (u u' : U n) : bool :=
   | _, _ => false
   end.
 
-Lemma match_gate_implies_eq : forall dim n (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
-  match_gate u u' = true -> uc_equiv (@to_base dim n u qs pf) (to_base u' qs pf).
+Lemma match_gate_implies_eq : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
+  match_gate u u' = true -> uc_equiv (@to_base n dim u qs pf) (to_base u' qs pf).
 Proof.
   intros.
   dependent destruction u; dependent destruction u'.
@@ -61,11 +99,11 @@ Qed.
 End RzQGateSet.
 Export RzQGateSet.
 
-Module ULR := UListRepr RzQGateSet.
-Export ULR.
+Module UL := UListProofs RzQGateSet.
+Export UL.
 
-Module NULR := NUListRepr RzQGateSet.
-(* NULR not exported because its notation conflicts with ULR. *)
+Module NUL := NUListProofs RzQGateSet.
+(* NUL not exported because its notation conflicts with UL. *)
 
 (* Useful shorthands. *)
 
@@ -88,7 +126,7 @@ Definition CNOT {dim} q1 q2 := @App2 _ dim URzQ_CNOT q1 q2.
 Definition RzQ_ucom dim := ucom RzQ_Unitary dim.
 Definition RzQ_ucom_l dim := gate_list RzQ_Unitary dim.
 Definition RzQ_com dim := com RzQ_Unitary dim.
-Definition RzQ_com_l dim := NULR.com_list dim.
+Definition RzQ_com_l dim := com_list RzQ_Unitary dim.
 
 (* Used to convert benchmarks to RzQ set. *)
 Definition CCX {dim} a b c : RzQ_ucom_l dim :=

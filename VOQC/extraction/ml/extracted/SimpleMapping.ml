@@ -58,3 +58,15 @@ let rec simple_map l m get_path is_in_graph cNOT sWAP h =
        let (t', m'') = simple_map t m' get_path is_in_graph cNOT sWAP h in
        ((List.append mapped_cnot t'), m'')
      | App3 (_, _, _, _) -> ([], m))
+
+(** val respects_constraints_directed_b :
+    (int -> int -> bool) -> 'a1 gate_list -> bool **)
+
+let rec respects_constraints_directed_b is_in_graph = function
+| [] -> true
+| g :: t ->
+  (match g with
+   | App1 (_, _) -> respects_constraints_directed_b is_in_graph t
+   | App2 (_, n1, n2) ->
+     (&&) (is_in_graph n1 n2) (respects_constraints_directed_b is_in_graph t)
+   | App3 (_, _, _, _) -> false)

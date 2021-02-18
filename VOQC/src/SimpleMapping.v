@@ -8,6 +8,21 @@ Require Export UnitaryListRepresentation.
    correspondence between logical (program) qubits and physical (machine)
    qubits. In cases where a CNOT is between adjacent qubits but in the wrong 
    orientation, insert H gates on the target and control. 
+
+   Inputs:
+     - l: a program over logical qubits
+     - m: an initial mapping between logical and physical qubits
+     - get_path: given two (physical) qubits, return an undirected path between them
+     - is_in_graph: is there a directed edge between two (physical) qubits?
+     - CNOT, SWAP, H: functions that output an appropriate sequence of gates
+   Outputs:
+     - a program over physical qubits
+     - a final mapping between logical and physical qubits
+
+   The proofs all assume that the number of logical and physical qubits ("dim")
+   are the same. In practice, we expect that the number of physical qubits 
+   will be >= the number of logical qubits. For this case, simply "cast" the input
+   program to a type with the appropriate dimension.
 *)
 
 (** Mapping function definition. **)
@@ -76,9 +91,9 @@ Module Type MappableGateSet (G :GateSet).
   Parameter had : G.U 1.
   Parameter cnot : G.U 2.
   Axiom had_semantics : forall (dim q : nat), 
-    @G.to_base dim 1 had (q :: []) (one_elem_list q) = SQIR.H q.
+    @G.to_base _ dim had (q :: []) (one_elem_list q) = SQIR.H q.
   Axiom cnot_semantics : forall (dim q1 q2 : nat),
-    @G.to_base dim 2 cnot (q1 :: q2 :: []) (two_elem_list q1 q2) = SQIR.CNOT q1 q2.
+    @G.to_base _ dim cnot (q1 :: q2 :: []) (two_elem_list q1 q2) = SQIR.CNOT q1 q2.
   Axiom no_other_2_q_gates : forall (u : G.U 2), u = cnot.
   Axiom no_3_q_gates : forall (u : G.U 3), False.
 
@@ -91,10 +106,10 @@ Module MappableRzQ <: MappableGateSet RzQGateSet.
   Definition had := URzQ_H.
   Definition cnot := URzQ_CNOT.
   Lemma had_semantics : forall (dim q : nat), 
-    @to_base dim 1 had (q :: []) (one_elem_list q) = SQIR.H q.
+    @to_base _ dim had (q :: []) (one_elem_list q) = SQIR.H q.
   Proof. intros. reflexivity. Qed.
   Lemma cnot_semantics : forall (dim q1 q2 : nat),
-    @to_base dim 2 cnot (q1 :: q2 :: []) (two_elem_list q1 q2) = SQIR.CNOT q1 q2.
+    @to_base _ dim cnot (q1 :: q2 :: []) (two_elem_list q1 q2) = SQIR.CNOT q1 q2.
   Proof. intros. reflexivity. Qed.  
   Lemma no_other_2_q_gates : forall (u : U 2), u = cnot.
   Proof. intros. dependent destruction u. reflexivity. Qed.
@@ -265,459 +280,475 @@ Proof.
     contradiction.
 Qed.
 
-(* Some facts about permutation matrices. *)
+(* Permutation matrices -- could be moved elsewhere *)
 
-Definition implements_permutation {n} (P : Square (2^n)) (p : nat -> nat) :=
-  WF_Unitary P /\ 
-  finite_bijection n p /\ 
-  (forall f, P × f_to_vec n f = f_to_vec n (fun x => f (p x))).
-(* I'm pretty sure that the last two conjuncts ("p is a permutation
-   function and P behaves like p") forces P to be unitary, but I had
-   some trouble proving this. -KH *)
+Definition perm_mat n (p : nat -> nat) : Square n :=
+  (fun x y => if (x =? p y) && (x <? n) && (y <? n) then C1 else C0).
 
-Lemma implements_permutation_I : forall n, implements_permutation (I (2^n)) (fun x : nat => x).
+Lemma perm_mat_WF : forall n p, WF_Matrix (perm_mat n p).
 Proof.
-  intro n.
-  split. apply id_unitary.
-  split. 
-  exists (fun x : nat => x). 
+  intros n p.
+  unfold WF_Matrix, perm_mat. 
+  intros x y [H | H].
+  bdestruct (x =? p y); bdestruct (x <? n); bdestruct (y <? n); trivial; lia.
+  bdestruct (x =? p y); bdestruct (x <? n); bdestruct (y <? n); trivial; lia.
+Qed. 
+Hint Resolve perm_mat_WF : wf_db.
+
+Lemma perm_mat_unitary : forall n p, 
+  finite_bijection n p -> WF_Unitary (perm_mat n p).
+Proof.
+  intros n p [pinv Hp].
+  split.
+  apply perm_mat_WF.
+  unfold Mmult, adjoint, perm_mat, I.
+  prep_matrix_equality.
+  destruct ((x =? y) && (x <? n)) eqn:H.
+  apply andb_prop in H as [H1 H2].
+  apply Nat.eqb_eq in H1.
+  apply Nat.ltb_lt in H2.
+  subst.
+  apply Csum_unique.
+  exists (p y).
+  destruct (Hp y) as [? _]; auto.
+  split; auto.
+  split.
+  bdestruct_all; simpl; lca.
+  intros x Hx.
+  bdestruct_all; simpl; lca.
+  apply Csum_0.
+  intros z.
+  bdestruct_all; simpl; try lca.
+  subst.
+  rewrite andb_true_r in H.
+  apply beq_nat_false in H.
+  assert (pinv (p x) = pinv (p y)) by auto.
+  destruct (Hp x) as [_ [_ [H5 _]]]; auto.
+  destruct (Hp y) as [_ [_ [H6 _]]]; auto.
+  contradict H.
+  rewrite <- H5, <- H6.
+  assumption.
+Qed.
+
+Lemma perm_mat_Mmult : forall n f g,
+  finite_bijection n g ->
+  perm_mat n f × perm_mat n g = perm_mat n (f ∘ g)%prg.
+Proof.
+  intros n f g [ginv Hgbij].
+  unfold perm_mat, Mmult, compose.
+  prep_matrix_equality.
+  destruct ((x =? f (g y)) && (x <? n) && (y <? n)) eqn:H.
+  apply andb_prop in H as [H H3].
+  apply andb_prop in H as [H1 H2].
+  apply Nat.eqb_eq in H1.
+  apply Nat.ltb_lt in H2.
+  apply Nat.ltb_lt in H3.
+  subst.
+  apply Csum_unique.
+  exists (g y).
+  destruct (Hgbij y) as [? _]; auto.
+  split; auto.
+  split.
+  bdestruct_all; simpl; lca.
+  intros x Hx.
+  bdestruct_all; simpl; lca.
+  apply Csum_0.
+  intros z.
+  bdestruct_all; simpl; try lca.
+  subst.
+  rewrite 2 andb_true_r in H.
+  apply beq_nat_false in H.
+  contradiction.
+Qed.
+
+Lemma perm_mat_I : forall n f,
+  (forall x, x < n -> f x = x) ->
+  perm_mat n f = I n.
+Proof.
+  intros n f Hinv.
+  unfold perm_mat, I.
+  prep_matrix_equality.
+  bdestruct_all; simpl; try lca.
+  rewrite Hinv in H2 by assumption.
+  contradiction.
+  rewrite Hinv in H2 by assumption.
+  contradiction.
+Qed.
+
+(* Given a permutation p over n qubits, produce a permutation over 2^n indices. *)
+Definition qubit_perm_to_nat_perm n (p : nat -> nat) :=
+  fun x:nat => funbool_to_nat n ((nat_to_funbool n x) ∘ p)%prg.
+
+Lemma qubit_perm_to_nat_perm_bij : forall n p,
+  finite_bijection n p -> finite_bijection (2^n) (qubit_perm_to_nat_perm n p).
+Proof.
+  intros n p [pinv Hp].
+  unfold qubit_perm_to_nat_perm.
+  exists (fun x => funbool_to_nat n ((nat_to_funbool n x) ∘ pinv)%prg).
+  intros x Hx.
+  repeat split.
+  apply funbool_to_nat_bound.
+  apply funbool_to_nat_bound.
+  unfold compose.
+  erewrite funbool_to_nat_eq.
+  2: { intros y Hy. 
+       rewrite funbool_to_nat_inverse. 
+       destruct (Hp y) as [_ [_ [_ H]]].
+       assumption.
+       rewrite H.
+       reflexivity.
+       destruct (Hp y) as [_ [? _]]; auto. }
+  rewrite nat_to_funbool_inverse; auto.
+  unfold compose.
+  erewrite funbool_to_nat_eq.
+  2: { intros y Hy. 
+       rewrite funbool_to_nat_inverse. 
+       destruct (Hp y) as [_ [_ [H _]]].
+       assumption.
+       rewrite H.
+       reflexivity.
+       destruct (Hp y) as [? _]; auto. }
+  rewrite nat_to_funbool_inverse; auto.
+Qed.  
+
+Definition perm_to_matrix n p :=
+  perm_mat (2 ^ n) (qubit_perm_to_nat_perm n p).
+ 
+Lemma perm_to_matrix_permutes_qubits : forall n p f, 
+  finite_bijection n p ->
+  perm_to_matrix n p × f_to_vec n f = f_to_vec n (fun x => f (p x)).
+Proof.
+  intros n p f [pinv Hp].
+  rewrite 2 basis_f_to_vec.
+  unfold perm_to_matrix, perm_mat, qubit_perm_to_nat_perm.
+  unfold basis_vector, Mmult, compose.
+  prep_matrix_equality.
+  destruct ((x =? funbool_to_nat n (fun x0 : nat => f (p x0))) && (y =? 0)) eqn:H.
+  apply andb_prop in H as [H1 H2].
+  rewrite Nat.eqb_eq in H1.
+  rewrite Nat.eqb_eq in H2.
+  apply Csum_unique.
+  exists (funbool_to_nat n f).
+  split.
+  apply funbool_to_nat_bound.
+  split.
+  erewrite funbool_to_nat_eq.
+  2: { intros. rewrite funbool_to_nat_inverse. reflexivity.
+  destruct (Hp x0) as [? _]; auto. }
+  specialize (funbool_to_nat_bound n f) as ?.
+  specialize (funbool_to_nat_bound n (fun x0 : nat => f (p x0))) as ?.
+  bdestruct_all; lca.
+  intros z Hz.
+  bdestructΩ (z =? funbool_to_nat n f).
+  lca.
+  apply Csum_0.
+  intros z.
+  bdestruct_all; simpl; try lca.
+  rewrite andb_true_r in H.
+  apply beq_nat_false in H.
+  subst z.
+  erewrite funbool_to_nat_eq in H2.
+  2: { intros. rewrite funbool_to_nat_inverse. reflexivity.
+  destruct (Hp x0) as [? _]; auto. }
+  contradiction.
+Qed.
+
+Lemma perm_to_matrix_unitary : forall n p, 
+  finite_bijection n p ->
+  WF_Unitary (perm_to_matrix n p).
+Proof.
+  intros.
+  apply perm_mat_unitary.
+  apply qubit_perm_to_nat_perm_bij.
+  assumption.
+Qed.
+
+Lemma qubit_perm_to_nat_perm_compose : forall n f g,
+  finite_bijection n f ->
+  (qubit_perm_to_nat_perm n f ∘ qubit_perm_to_nat_perm n g = 
+    qubit_perm_to_nat_perm n (g ∘ f))%prg.
+Proof.
+  intros n f g [finv Hbij].
+  unfold qubit_perm_to_nat_perm, compose.
+  apply functional_extensionality.
+  intro x.
+  apply funbool_to_nat_eq.
+  intros y Hy.
+  rewrite funbool_to_nat_inverse.
+  reflexivity.
+  destruct (Hbij y) as [? _]; auto.
+Qed.
+
+Lemma perm_to_matrix_Mmult : forall n f g,
+  finite_bijection n f ->
+  finite_bijection n g ->
+  perm_to_matrix n f × perm_to_matrix n g = perm_to_matrix n (g ∘ f)%prg.
+Proof.
   intros. 
-  repeat split; auto. 
-  intro f.
-  Msimpl. reflexivity.
-Qed.
-
-Lemma implements_permutation_Mmult : forall n (P1 P2 : Square (2^n)) p1 p2,
-  implements_permutation P1 p1 -> 
-  implements_permutation P2 p2 -> 
-  implements_permutation (P1 × P2) (compose p2 p1).
-Proof.
-  intros n P1 P2 p1 p2 [WFU1 [Hp1 HP1]] [WFU2 [Hp2 HP2]].
-  split.
-  apply Mmult_unitary; assumption. 
-  destruct Hp1 as [f1 Hf1].
-  destruct Hp2 as [f2 Hf2].
-  split.
-  exists (compose f1 f2).
-  intros x Hx.
-  unfold compose.
-  repeat split.
-  destruct (Hf1 x Hx) as [H0 _].
-  specialize (Hf2 (p1 x) H0) as [? _].
-  assumption.
-  destruct (Hf2 x Hx) as [_ [H0 _]].
-  specialize (Hf1 (f2 x) H0) as [_ [? _]].
-  assumption.
-  destruct (Hf1 x Hx) as [H0 _].
-  destruct (Hf2 (p1 x) H0) as [_ [_ [H1 _]]].
-  rewrite H1.
-  specialize (Hf1 x Hx) as [_ [_ [? _]]].
-  assumption.
-  destruct (Hf2 x Hx) as [_ [H0 _]].
-  destruct (Hf1 (f2 x) H0) as [_ [_ [_ H1]]].
-  rewrite H1.
-  specialize (Hf2 x Hx) as [_ [_ [_ ?]]].
-  assumption.
-  intro f.
-  rewrite Mmult_assoc.
-  rewrite HP2, HP1.
+  unfold perm_to_matrix.
+  rewrite perm_mat_Mmult.
+  rewrite qubit_perm_to_nat_perm_compose by assumption.
   reflexivity.
+  apply qubit_perm_to_nat_perm_bij.
+  assumption.
 Qed.
 
-Lemma implement_permutation_adjoint : forall (P : Square (2^dim)) (m1 m2 : qmap dim),
-  layout_well_formed dim m1 ->
-  layout_well_formed dim m2 ->
-  implements_permutation P (log2phys m1 ∘ phys2log m2)%prg -> 
-  implements_permutation (P†) (log2phys m2 ∘ phys2log m1)%prg.
+Lemma perm_to_matrix_I : forall n f,
+  finite_bijection n f ->
+  (forall x, x < n -> f x = x) ->
+  perm_to_matrix n f = I (2 ^ n).
 Proof.
-  intros P m1 m2 WFm1 WFm2 [WFP [_ HP]].
-  split; [split |].
-  destruct WFP. auto with wf_db.
-  apply transpose_unitary in WFP.
-  destruct WFP. auto.
-  split.
-  unfold compose.
-  exists (fun x : nat => log2phys m1 (phys2log m2 x)).
+  intros n f g Hbij. 
+  unfold perm_to_matrix.
+  apply perm_mat_I.
   intros x Hx.
-  repeat split.
-  destruct (WFm1 x Hx) as [_ [H0 _]].
-  destruct (WFm2 (phys2log m1 x) H0) as [? _].
+  unfold qubit_perm_to_nat_perm, compose. 
+  erewrite funbool_to_nat_eq.
+  2: { intros y Hy. rewrite Hbij by assumption. reflexivity. }
+  apply nat_to_funbool_inverse.
   assumption.
-  destruct (WFm2 x Hx) as [_ [H0 _]].
-  specialize (WFm1 (phys2log m2 x) H0) as [? _].
-  assumption.
-  destruct (WFm1 x Hx) as [_ [H0 _]].
-  destruct (WFm2 (phys2log m1 x) H0) as [_ [_ [H1 _]]].
-  rewrite H1.
-  specialize (WFm1 x Hx) as [_ [_ [_ ?]]].
-  assumption.
-  destruct (WFm2 x Hx) as [_ [H0 _]].
-  destruct (WFm1 (phys2log m2 x) H0) as [_ [_ [H1 _]]].
-  rewrite H1.
-  specialize (WFm2 x Hx) as [_ [_ [_ ?]]].
-  assumption.
-  intro f.
-  rewrite <- Mmult_1_l; auto with wf_db.
-  destruct WFP.
-  rewrite <- H1.
-  rewrite Mmult_assoc.
-  apply f_equal2; try reflexivity.
-  rewrite HP.
-  unfold compose.
-  apply f_to_vec_eq.
-  intros x Hx.
-  destruct (WFm2 x Hx) as [_ [H2 _]].
-  destruct (WFm1 (phys2log m2 x) H2) as [_ [_ [H3 _]]].
-  rewrite H3.
-  specialize (WFm2 x Hx) as [_ [_ [_ H4]]].
-  rewrite H4.
-  reflexivity.
 Qed.
 
-Module ULR := UListRepr G.
-Import ULR.
+Lemma perm_to_matrix_WF : forall n p, WF_Matrix (perm_to_matrix n p).
+Proof. intros. apply perm_mat_WF. Qed. 
+Hint Resolve perm_to_matrix_WF : wf_db.
 
-Lemma permute_commutes_with_map_qubits : 
-  forall {dim} (P : Square (2 ^ dim)) (m1 m2 : qmap dim) (c : base_ucom dim),
-  layout_well_formed dim m1 ->
-  layout_well_formed dim m2 ->
-  implements_permutation P (fun x : nat => log2phys m2 (phys2log m1 x)) ->
-  uc_well_typed c ->
-  (uc_eval (UnitaryOps.map_qubits (log2phys m1) c)) × P = 
-      P × (uc_eval (UnitaryOps.map_qubits (log2phys m2) c)).
-Proof.
-  intros dim P m1 m2 c WFm1 WFm2 [[WF _] [_ HP]] WT.
-  apply equal_on_basis_states_implies_equal; auto with wf_db.
-  induction c; intro f; try dependent destruction u;
-  inversion WT; subst; simpl; repeat rewrite Mmult_assoc.
-  - rewrite <- (Mmult_assoc _ P).  
-    rewrite IHc1 by assumption.
-    repeat rewrite <- Mmult_assoc.
-    do 2 (apply f_equal2; try reflexivity).
-    apply equal_on_basis_states_implies_equal; auto with wf_db.
-  - rewrite HP. 
-    remember (fun x : nat => f (log2phys m2 (phys2log m1 x))) as f'.
-    remember (log2phys m1 n) as x.
-    remember (log2phys m2 n) as y.
-    assert (x < dim).
-    { subst. destruct (WFm1 n) as [? _]; auto. }
-    assert (y < dim).
-    { subst. destruct (WFm2 n) as [? _]; auto. }
-    unfold pad.
-    bdestruct_all.
-    rewrite (f_to_vec_split 0 dim x) by assumption.
-    rewrite (f_to_vec_split 0 dim y) by assumption.
-    replace (f' x) with (f y).
-    2: { subst. apply f_equal. 
-         destruct (WFm1  n H1) as [_ [_ [? _]]]; auto. }
-    restore_dims.
-    replace (dim - 1 - y) with (dim - (y + 1)) by lia.
-    replace (dim - 1 - x) with (dim - (x + 1)) by lia. 
-    Msimpl.
-    rewrite (ket_decomposition (rotation r r0 r1 × ∣ Nat.b2n (f y) ⟩)); 
-      auto with wf_db.
-    distribute_plus. 
-    distribute_scale.
-    do 2 apply f_equal2; try reflexivity.
-    + remember (update f y false) as f0.
-      replace (f_to_vec y f) with (f_to_vec y f0).
-      replace ∣ 0 ⟩ with  ∣ Nat.b2n (f0 y) ⟩.
-      replace (f_to_vec (dim - (y + 1)) (shift f (y + 1))) 
-        with (f_to_vec (dim - (y + 1)) (shift f0 (y + 1))).
-      replace (dim - (y + 1)) with (dim - 1 - y) by lia.
-      rewrite <- f_to_vec_split by auto.
-      rewrite HP.
-      remember (update (fun x0 : nat => f (log2phys m2 (phys2log m1 x0))) x false) as f0'.
-      replace (f_to_vec dim (fun x0 : nat => f0 (log2phys m2 (phys2log m1 x0)))) with (f_to_vec dim f0').
-      rewrite (f_to_vec_split 0 dim x) by auto.
-      replace (dim - 1 - x) with (dim - (x + 1)) by lia. 
-      apply f_equal2; [apply f_equal2 |].
-      all: subst. 
-      symmetry.
-      1,7: apply f_to_vec_update_oob; lia.
-      1,5: repeat rewrite update_index_eq; reflexivity.
-      symmetry.
-      1,3: apply f_to_vec_shift_update_oob; right; lia.
-      apply f_to_vec_eq.
-      intros x Hx.
-      unfold update.
-      bdestruct (x =? log2phys m1 n); subst.
-      replace (phys2log m1 (log2phys m1 n)) with n.
-      2: { destruct (WFm1 n H1) as [_ [_ [? _]]]; auto. }
-      bdestruct_all; trivial.
-      bdestruct_all; trivial.
-      assert (x = log2phys m1 n).
-      { assert (H7: phys2log m2 (log2phys m2 (phys2log m1 x)) = phys2log m2 (log2phys m2 n)) by auto.
-        destruct (WFm1 x) as [_ [? _]]; auto.
-        destruct (WFm2 (phys2log m1 x)) as [_ [_ [H9 _]]]; auto.
-        destruct (WFm2 n) as [_ [_ [H10 _]]]; auto.
-        rewrite H9, H10 in H7.
-        assert (log2phys m1 (phys2log m1 x) = log2phys m1 n) by auto.
-        destruct (WFm1 x) as [_ [_ [_ ?]]]; subst; auto. }
-      contradiction.
-    + remember (update f y true) as f1.
-      replace (f_to_vec y f) with (f_to_vec y f1).
-      replace ∣ 1 ⟩ with  ∣ Nat.b2n (f1 y) ⟩.
-      replace (f_to_vec (dim - (y + 1)) (shift f (y + 1))) 
-        with (f_to_vec (dim - (y + 1)) (shift f1 (y + 1))).
-      replace (dim - (y + 1)) with (dim - 1 - y) by lia.
-      rewrite <- f_to_vec_split by auto.
-      rewrite HP.
-      remember (update (fun x0 : nat => f (log2phys m2 (phys2log m1 x0))) x true) as f1'.
-      replace (f_to_vec dim (fun x0 : nat => f1 (log2phys m2 (phys2log m1 x0)))) with (f_to_vec dim f1').
-      rewrite (f_to_vec_split 0 dim x) by auto.
-      replace (dim - 1 - x) with (dim - (x + 1)) by lia. 
-      apply f_equal2; [apply f_equal2 |].
-      all: subst. 
-      symmetry.
-      1,7: apply f_to_vec_update_oob; lia.
-      1,5: repeat rewrite update_index_eq; reflexivity.
-      symmetry.
-      1,3: apply f_to_vec_shift_update_oob; right; lia.
-      apply f_to_vec_eq.
-      intros x Hx.
-      unfold update.
-      bdestruct (x =? log2phys m1 n); subst.
-      replace (phys2log m1 (log2phys m1 n)) with n.
-      2: { destruct (WFm1 n H1) as [_ [_ [? _]]]; auto. }
-      bdestruct_all; trivial.
-      bdestruct_all; trivial.
-      assert (x = log2phys m1 n).
-      { assert (H7: phys2log m2 (log2phys m2 (phys2log m1 x)) = phys2log m2 (log2phys m2 n)) by auto.
-        destruct (WFm1 x) as [_ [? _]]; auto.
-        destruct (WFm2 (phys2log m1 x)) as [_ [_ [H9 _]]]; auto.
-        destruct (WFm2 n) as [_ [_ [H10 _]]]; auto.
-        rewrite H9, H10 in H7.
-        assert (log2phys m1 (phys2log m1 x) = log2phys m1 n) by auto.
-        destruct (WFm1 x) as [_ [_ [_ ?]]]; subst; auto. }
-      contradiction.
-  - rewrite HP.
-    remember (log2phys m2 n) as x.
-    remember (log2phys m2 n0) as y.
-    assert (x < dim).
-    { subst. destruct (WFm2 n) as [? _]; auto. }
-    assert (y < dim).
-    { subst. destruct (WFm2 n0) as [? _]; auto. }
-    assert (x <> y).
-    { subst. intro contra.
-      assert (H2: phys2log m2 (log2phys m2 n) = phys2log m2 (log2phys m2 n0)) by auto.
-      destruct (WFm2 n) as [_ [_ [H6 _]]]; auto.
-      destruct (WFm2 n0) as [_ [_ [H7 _]]]; auto.
-      rewrite H6, H7 in H2.
-      contradiction. }
-    replace (ueval_cnot dim x y) with (uc_eval (@SQIR.CNOT dim x y)) by reflexivity.
-    rewrite f_to_vec_CNOT by assumption.
-    rewrite HP.
-    remember (log2phys m1 n) as z.
-    remember (log2phys m1 n0) as w.
-    assert (z < dim).
-    { subst. destruct (WFm1 n) as [? _]; auto. }
-    assert (w < dim).
-    { subst. destruct (WFm1 n0) as [? _]; auto. }
-    assert (z <> w).
-    { subst. intro contra.
-      assert (H8: phys2log m1 (log2phys m1 n) = phys2log m1 (log2phys m1 n0)) by auto.
-      destruct (WFm1 n) as [_ [_ [H9 _]]]; auto.
-      destruct (WFm1 n0) as [_ [_ [H10 _]]]; auto.
-      rewrite H9, H10 in H8.
-      contradiction. }
-    replace (ueval_cnot dim z w) with (uc_eval (@SQIR.CNOT dim z w)) by reflexivity.
-    rewrite f_to_vec_CNOT by assumption.
-    apply f_to_vec_eq.
-    subst.
-    intros x Hx.
-    unfold update.
-    bdestruct (x =? log2phys m1 n0); subst.
-    replace (phys2log m1 (log2phys m1 n0)) with n0.
-    2: { destruct (WFm1 n0) as [_ [_ [? _]]]; auto. }
-    replace (phys2log m1 (log2phys m1 n)) with n.
-    2: { destruct (WFm1 n) as [_ [_ [? _]]]; auto. }
-    bdestruct_all; trivial.
-    bdestruct_all; trivial.
-    assert (x = log2phys m1 n0).
-    { assert (H11: phys2log m2 (log2phys m2 (phys2log m1 x)) = phys2log m2 (log2phys m2 n0)) by auto.
-      destruct (WFm1 x) as [_ [? _]]; auto.
-      destruct (WFm2 (phys2log m1 x)) as [_ [_ [H13 _]]]; auto.
-      destruct (WFm2 n0) as [_ [_ [H14 _]]]; auto.
-      rewrite H13, H14 in H11.
-      assert (log2phys m1 (phys2log m1 x) = log2phys m1 n0) by auto.
-      destruct (WFm1 x) as [_ [_ [_ ?]]]; subst; auto. }
-    contradiction.
-Qed.
+Module UL := UListProofs G.
+Import UL.
 
 (** Equivalence up to qubit reordering **)
 
-Definition uc_eq_perm (l1 l2 : gate_list G.U dim) p :=
-  exists P, implements_permutation P p /\ eval l1 = P × eval l2.
-Notation "c1 ≡ c2 'with' p" := (uc_eq_perm c1 c2 p) (at level 20).
+Definition uc_eq_perm (l1 l2 : gate_list G.U dim) pin pout :=
+  eval l1 = perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
+Notation "c1 ≡ c2 'with' p1 'and' p2" := (uc_eq_perm c1 c2 p1 p2) (at level 20).
 
-Lemma uc_eq_perm_refl : forall (l1 : gate_list G.U dim), 
-  l1 ≡ l1 with (fun x : nat => x).
-Proof. 
-  intros. 
-  exists (I (2 ^ dim)).
-  split. 
-  apply implements_permutation_I.
-  Msimpl. 
-  reflexivity.
-  unfold eval.
-  auto with wf_db.
-Qed.
-
-(* We can also prove the following, but it's tricky to state since we don't 
-   have a name for p's inverse.
-
-Lemma uc_eq_perm_sym : forall {dim : nat} (c1 c2 : base_ucom dim) P, 
-  c1 ≡ c2 with p -> c2 ≡ c1 with p^{-1}. 
-*)
-
-Lemma uc_eq_perm_trans : forall (l1 l2 l3 : gate_list G.U dim) p12 p23, 
-  l1 ≡ l2 with p12 -> l2 ≡ l3 with p23 -> l1 ≡ l3 with (compose p23 p12).
+Lemma finite_bijection_compose : forall n f g,
+  finite_bijection n f ->
+  finite_bijection n g ->
+  finite_bijection n (f ∘ g)%prg.
 Proof.
-  intros l1 l2 l3 p12 p23 H12 H23. 
-  destruct H12 as [P12 [HP12 H12]].
-  destruct H23 as [P23 [HP23 H23]].
-  exists (P12 × P23). 
-  split. 
-  apply implements_permutation_Mmult; assumption.
-  rewrite Mmult_assoc.
-  rewrite <- H23, <- H12. reflexivity.
-Qed.
-
-Lemma uc_eq_perm_replace_perm : forall (l1 l2 : gate_list G.U dim) p p',
-  (forall x, x < dim -> p x = p' x) ->
-  l1 ≡ l2 with p ->
-  l1 ≡ l2 with p'.
-Proof.
-  intros l1 l2 p p' Heq [P [HP H]]. 
-  exists P.
-  split; auto.
-  destruct HP as [WF [Hbij Hf]].
-  split; auto.
-  split.
-  destruct Hbij as [pinv Hbij].
-  exists pinv.
+  intros n f g [finv Hfbij] [ginv Hgbij].
+  exists (ginv ∘ finv)%prg.
+  unfold compose.
   intros x Hx.
-  specialize (Hbij x Hx) as [? [? [? ?]]].
-  repeat split; try rewrite <- Heq; auto.
-  intro f.
-  rewrite Hf.
-  apply f_to_vec_eq.
-  intros.
-  rewrite Heq; auto.
-Qed.
-
-Lemma uc_eq_perm_cons_cong : forall (g : gate_app G.U dim) (l1 l2 : gate_list G.U dim) p,
-  l1 ≡ l2 with p ->
-  (g :: l1) ≡ (g :: l2) with p.
-Proof.
-  intros g l1 l2 p [P [HP H]].
-  exists P.
-  split; auto.
-  unfold eval in *.
-  destruct g; simpl; rewrite H; rewrite Mmult_assoc; reflexivity.
-Qed.
-
-(*
-Lemma uc_eq_perm_map_qubits : forall (l1 l2 : gate_list G.U dim) p1 p2 (P1 : Square (2^dim)),
-  implements_permutation P1 p1 ->
-  l1 ≡ l2 with (p1 ∘ p2)%prg ->
-  l1 ≡ map_qubits p2 l2 with p1.
-Proof.
-  intros l1 l2 p1 p2 P1 HP1 [P [HP H]].
-  exists P1.
-  split; auto.
-  rewrite H.
-  eapply implements_permutation_Mmult in HP.  
-   
-
-Lemma foo : forall (l1 l2 l1' l2' : gate_list G.U dim) (m1 m2 m3 : qmap dim),
-l1 ≡ l1' with (log2phys m1 ∘ phys2log m2)%prg ->
-l2 ≡ l2' with (log2phys m3 ∘ phys2log m2)%prg ->
-(l1 ++ map_qubits (log2phys m2 ∘ phys2log m1)%prg l2) ≡ l1' ++ l2' with (log2phys m3 ∘ phys2log m1)%prg.
-Proof.
-  intros l1 l2 l1' l2' m1 m2 m3 [P1 [HP1 H1]] [P2 [HP2 H2]].
-  destruct m1; destruct m2; destruct m3.
-  unfold compose in *.
-  simpl in *.
-  exists (P2 × P1).
-
-split.
-admit.
-unfold eval in *.
-rewrite 2 list_to_ucom_append.
-simpl.
-rewrite H1, H2.
-
-P2 Pmap l2 P1 l1
-P2 P1 l2 l1 - P2 l2map P1 l1
-
-
-  implements_permutation P (fun x : nat => log2phys m2 (phys2log m1 x)) ->
-  uc_well_typed c ->
-  (uc_eval (UnitaryOps.map_qubits (log2phys m1) c)) × P = 
-      P × (uc_eval (UnitaryOps.map_qubits (log2phys m2) c)).
-
-Lemma uc_eq_perm_app_cong : forall (l1 l2 l1' l2' : gate_list G.U dim) p,
-  uc_equiv_l l1 l1' ->
-  l2 ≡ l2' with p ->
-  (l1 ++ l2) ≡ (l1' ++ l2') with p.
-Proof.
-  intros l1 l2 l1' l2' p Heq [P [HP H]].
-  exists P.
-  split; auto.
-  unfold eval in *.
-  rewrite 2 list_to_ucom_append.
-  simpl.
-  rewrite H, Heq.
-  rewrite Mmult_assoc.
-  reflexivity.
-Qed.
-
-Lemma uc_equiv_l_implies_uc_eq_perm : forall (l1 l2 : gate_list G.U dim),
-  uc_equiv_l l1 l2 -> l1 ≡ l2 with (fun x => x).
-Proof.
-  intros l1 l2 H.
-  unfold uc_equiv_l in H.
-  exists (I (2 ^ dim)).
-  split. 
-  apply implements_permutation_I.
-  Msimpl.
+  destruct (Hgbij x) as [? [_ [? _]]]; auto.
+  destruct (Hfbij (g x)) as [? [_ [Hinv1 _]]]; auto.
+  destruct (Hfbij x) as [_ [? [_ ?]]]; auto.
+  destruct (Hgbij (finv x)) as [_ [? [_ Hinv2]]]; auto.
+  repeat split; auto.
+  rewrite Hinv1. 
   assumption.
-  unfold eval.
-  auto with wf_db.
-Qed.  
-*)
-
-Lemma fix_cnots_sound : forall (l : gate_list G.U dim),
-  uc_equiv_l (fix_cnots l CG.is_in_graph CNOT H) l.
-Proof.
-  intros.
-  induction l; simpl.
-  reflexivity.
-  destruct a.
-  - rewrite IHl. reflexivity.
-  - assert (u = MG.cnot).
-    apply MG.no_other_2_q_gates.
-    subst.
-    destruct (CG.is_in_graph n n0) eqn:gr; rewrite IHl.
-    reflexivity.
-    repeat rewrite (cons_to_app _ l).
-    repeat rewrite app_comm_cons.
-    apply uc_app_congruence; try reflexivity.
-    unfold uc_equiv_l; simpl.
-    repeat rewrite MG.had_semantics.
-    repeat rewrite MG.cnot_semantics.
-    repeat rewrite <- useq_assoc.
-    rewrite H_swaps_CNOT.
-    reflexivity.
-  - assert False.
-    apply MG.no_3_q_gates.
-    assumption.
-    contradiction.
+  rewrite Hinv2. 
+  assumption.
 Qed.
 
-Local Transparent SQIR.SKIP.
+Lemma uc_eq_perm_nil : forall (m : qmap dim),
+  dim > 0 ->
+  layout_well_formed dim m ->
+  [] ≡ [] with (phys2log m) and (log2phys m).
+Proof.
+  intros m Hdim WF.
+  unfold uc_eq_perm.
+  unfold eval; simpl.
+  rewrite denote_SKIP by assumption.
+  Msimpl.
+  rewrite perm_to_matrix_Mmult, perm_to_matrix_I.
+  reflexivity.
+  apply finite_bijection_compose.
+  1,5: apply well_formed_phys2log_bij; assumption.
+  1,3: apply well_formed_log2phys_bij; assumption.
+  intros x Hx.
+  unfold compose.
+  destruct (WF x) as [_ [_ [? _]]]; auto.
+Qed.
+
+Lemma uc_eq_perm_nil_alt : forall (m : qmap dim),
+  dim > 0 ->
+  layout_well_formed dim m ->
+  [] ≡ [] with (log2phys m) and (phys2log m).
+Proof.
+  intros m Hdim WF.
+  replace (log2phys m) with (phys2log (invert_layout m)). 
+  replace (phys2log m) with (log2phys (invert_layout m)). 
+  apply uc_eq_perm_nil.
+  assumption.
+  apply invert_layout_well_formed.
+  assumption.
+  unfold invert_layout. destruct m. reflexivity.
+  unfold invert_layout. destruct m. reflexivity.
+Qed.
+
+Lemma permute_commutes_with_map_qubits : forall (m : qmap dim) (u : base_ucom dim),
+  layout_well_formed dim m ->
+  uc_well_typed u ->
+  perm_to_matrix dim (phys2log m) × uc_eval u = 
+    uc_eval (map_qubits (log2phys m) u) × perm_to_matrix dim (phys2log m).
+Proof.
+  intros m u WF WT.
+  induction u; try dependent destruction u;
+  inversion WT; subst; simpl.
+  - rewrite <- Mmult_assoc.
+    rewrite IHu2 by assumption.
+    rewrite Mmult_assoc.
+    rewrite IHu1 by assumption.
+    rewrite <- Mmult_assoc.
+    reflexivity.
+  - apply equal_on_basis_states_implies_equal; auto with wf_db.
+    intro f.
+    specialize (well_formed_phys2log_bij m WF) as Hbij.
+    repeat rewrite Mmult_assoc.
+    rewrite perm_to_matrix_permutes_qubits by assumption. 
+    assert (log2phys m n < dim).
+    destruct (WF n) as [? _]; auto.
+    unfold pad.
+    bdestruct_all.
+    rewrite (f_to_vec_split 0 dim n) by assumption.
+    rewrite (f_to_vec_split 0 dim (log2phys m n)) by assumption.
+    restore_dims.
+    replace (dim - 1 - n) with (dim - (n + 1)) by lia.
+    replace (dim - 1 - log2phys m n) with (dim - (log2phys m n + 1)) by lia. 
+    Msimpl.
+    destruct (WF n) as [_ [_ [Hinv _]]]; auto.
+    rewrite Hinv.
+    rewrite (ket_decomposition (rotation r r0 r1 × ∣ Nat.b2n (f n) ⟩)); 
+      auto with wf_db.
+    distribute_plus. 
+    distribute_scale.
+    apply f_equal2; apply f_equal2; try reflexivity.
+    + remember (update f n false) as f0.
+      replace (f_to_vec n f) with (f_to_vec n f0).
+      replace ∣ 0 ⟩ with  ∣ Nat.b2n (f0 n) ⟩.
+      replace (f_to_vec (dim - (n + 1)) (shift f (n + 1))) 
+        with (f_to_vec (dim - (n + 1)) (shift f0 (n + 1))).
+      replace (dim - (n + 1)) with (dim - 1 - n) by lia.
+      rewrite <- f_to_vec_split by auto.
+      rewrite perm_to_matrix_permutes_qubits by assumption.
+      remember (update (fun x : nat => f (phys2log m x)) (log2phys m n) false) as f0'.
+      replace (f_to_vec dim (fun x : nat => f0 (phys2log m x))) with (f_to_vec dim f0').
+      rewrite (f_to_vec_split 0 dim (log2phys m n)) by auto.
+      replace (dim - 1 - log2phys m n) with (dim - (log2phys m n + 1)) by lia.
+      apply f_equal2; [apply f_equal2 |].
+      all: subst. 
+      1,7: apply f_to_vec_update_oob; lia.
+      1,5: repeat rewrite update_index_eq; reflexivity.
+      1,3: apply f_to_vec_shift_update_oob; right; lia.
+      apply f_to_vec_eq.
+      intros x Hx.
+      unfold update.
+      bdestruct (x =? log2phys m n); subst.
+      rewrite Hinv.
+      bdestruct_all; trivial.
+      bdestruct_all; trivial.
+      contradict H4.
+      rewrite <- H5.
+      destruct (WF x) as [_ [_ [_ ?]]]; auto.
+    + remember (update f n true) as f1.
+      replace (f_to_vec n f) with (f_to_vec n f1).
+      replace ∣ 1 ⟩ with  ∣ Nat.b2n (f1 n) ⟩.
+      replace (f_to_vec (dim - (n + 1)) (shift f (n + 1))) 
+        with (f_to_vec (dim - (n + 1)) (shift f1 (n + 1))).
+      replace (dim - (n + 1)) with (dim - 1 - n) by lia.
+      rewrite <- f_to_vec_split by auto.
+      rewrite perm_to_matrix_permutes_qubits by assumption.
+      remember (update (fun x : nat => f (phys2log m x)) (log2phys m n) true) as f1'.
+      replace (f_to_vec dim (fun x : nat => f1 (phys2log m x))) with (f_to_vec dim f1').
+      rewrite (f_to_vec_split 0 dim (log2phys m n)) by auto.
+      replace (dim - 1 - log2phys m n) with (dim - (log2phys m n + 1)) by lia.
+      apply f_equal2; [apply f_equal2 |].
+      all: subst. 
+      1,7: apply f_to_vec_update_oob; lia.
+      1,5: repeat rewrite update_index_eq; reflexivity.
+      1,3: apply f_to_vec_shift_update_oob; right; lia.
+      apply f_to_vec_eq.
+      intros x Hx.
+      unfold update.
+      bdestruct (x =? log2phys m n); subst.
+      rewrite Hinv.
+      bdestruct_all; trivial.
+      bdestruct_all; trivial.
+      contradict H4.
+      rewrite <- H5.
+      destruct (WF x) as [_ [_ [_ ?]]]; auto.
+  - apply equal_on_basis_states_implies_equal; auto with wf_db.
+    intro f.
+    specialize (well_formed_phys2log_bij m WF) as Hbij.
+    repeat rewrite Mmult_assoc.
+    rewrite perm_to_matrix_permutes_qubits by assumption.
+    replace (ueval_cnot dim n n0) with (uc_eval (@SQIR.CNOT dim n n0)) by reflexivity.
+    rewrite f_to_vec_CNOT by assumption.
+    rewrite perm_to_matrix_permutes_qubits by assumption.
+    replace (ueval_cnot dim (log2phys m n) (log2phys m n0)) 
+      with (uc_eval (@SQIR.CNOT dim (log2phys m n) (log2phys m n0))) by reflexivity.
+    destruct (WF n) as [? [_ [? _]]]; auto.
+    destruct (WF n0) as [? [_ [? _]]]; auto.
+    rewrite f_to_vec_CNOT; auto.
+    apply f_to_vec_eq.
+    intros x Hx.
+    unfold update.
+    rewrite H1, H6.
+    bdestruct_all; try reflexivity.
+    contradict H8.
+    rewrite <- H7.
+    destruct (WF x) as [_ [_ [_ ?]]]; auto.
+    contradict H7.
+    rewrite H8.
+    destruct (WF x) as [_ [_ [_ ?]]]; auto.
+    intro contra.
+    contradict H5.
+    assert (phys2log m (log2phys m n) = phys2log m (log2phys m n0)) by auto.
+    rewrite H1, H6 in H5.
+    assumption.
+Qed.
+
+Lemma permute_commutes_with_map_qubits_alt : forall (m : qmap dim) (u : base_ucom dim),
+  layout_well_formed dim m ->
+  uc_well_typed u ->
+  perm_to_matrix dim (log2phys m) × uc_eval u = 
+    uc_eval (map_qubits (phys2log m) u) × perm_to_matrix dim (log2phys m).
+Proof.
+  intros m u WF WT.
+  replace (log2phys m) with (phys2log (invert_layout m)). 
+  replace (phys2log m) with (log2phys (invert_layout m)). 
+  apply permute_commutes_with_map_qubits.
+  apply invert_layout_well_formed.
+  assumption.
+  assumption.
+  unfold invert_layout. destruct m. reflexivity.
+  unfold invert_layout. destruct m. reflexivity.
+Qed.
+
+Lemma eval_append : forall (l1 l2 : gate_list G.U dim),
+  eval (l1 ++ l2) = eval l2 × eval l1.
+Proof.
+  intros.
+  unfold eval.
+  rewrite list_to_ucom_append.
+  reflexivity.
+Qed.
+
+Definition map_qubits_app {U dim} (f : nat -> nat) (g : gate_app U dim) : gate_app U dim :=
+  match g with
+  | App1 u n => App1 u (f n)
+  | App2 u m n => App2 u (f m) (f n)
+  | App3 u m n p => App3 u (f m) (f n) (f p)
+  end.
+
+Local Transparent SQIR.SKIP SQIR.ID.
+Lemma map_qubits_app_equiv_map_qubits : forall {dim} (f : nat -> nat) (g : gate_app G.U dim),
+  dim > 0 ->
+  finite_bijection dim f ->
+  uc_eval (list_to_ucom [map_qubits_app f g]) = 
+    uc_eval (map_qubits f (list_to_ucom [g])).
+Proof.
+  intros dim f g Hdim [finv Hbij].
+  destruct (Hbij 0) as [? _]; auto.
+  destruct g; simpl;
+    rewrite I_rotation; repeat rewrite pad_id; 
+    try assumption; Msimpl.
+  all: erewrite <- G.to_base_map_commutes; reflexivity.
+Qed.
+Local Opaque SQIR.ID.
+
 Lemma SWAP_well_typed : forall a b,
   a < dim -> b < dim -> a <> b ->
   uc_well_typed (list_to_ucom (SWAP a b)).
@@ -746,16 +777,16 @@ Proof.
   rewrite Mmult_assoc.
   reflexivity.
 Qed.
-Local Opaque SQIR.SWAP.
+Local Opaque SQIR.SWAP SWAP.
 
-Local Opaque SWAP.
 Lemma path_to_swaps_sound : forall n1 n2 p m l m',
+  dim > 0 ->
   valid_path n1 n2 CG.is_in_graph p ->
   layout_well_formed dim m ->
   path_to_swaps p m SWAP = (l, m') ->
-  l ≡ [] with (compose (log2phys m) (phys2log m')).
+  l ≡ [] with (log2phys m) and (phys2log m').
 Proof.
-  intros n1 n2 p m l m'.
+  intros n1 n2 p m l m' Hdim.
   generalize dependent l.
   generalize dependent m.
   generalize dependent n1.
@@ -769,10 +800,7 @@ Proof.
   destruct p.
   - (* base case *)
     inversion res; subst. 
-    apply uc_eq_perm_replace_perm with (p:=(fun x => x)). 
-    intros x Hx.
-    destruct (WFm x) as [_ [_ [_ ?]]]; auto.
-    apply uc_eq_perm_refl.
+    apply uc_eq_perm_nil_alt; auto.
   - (* inductive case *)
     destruct (path_to_swaps (n :: n0 :: p) (swap_in_map m a n) SWAP) eqn:res'.
     inversion res; subst.  
@@ -802,71 +830,43 @@ Proof.
     assert (WFm':=res').
     eapply path_to_swaps_well_formed in WFm'.
     eapply IHp in res'.
-    destruct res' as [P [HP res']].
-    exists (P × (eval (SWAP a n))).
-    destruct HP as [? [? HP]].
-    split; [split |].
-    apply Mmult_unitary; auto.
-    unfold eval.
-    apply uc_eval_unitary.
-    apply SWAP_well_typed; auto.
-    split.
-    exists (log2phys m' ∘ phys2log m)%prg.
-    intros x Hx.
-    unfold compose.
-    destruct (WFm x Hx) as [_ [? [_ ?]]].
-    destruct (WFm' x Hx) as [_ [? [_ ?]]].
-    destruct (WFm (phys2log m' x)) as [? [_ [H14 _]]]; auto.
-    destruct (WFm' (phys2log m x)) as [? [_ [H16 _]]]; auto.
-    repeat split; auto.
-    rewrite H14; auto.
-    rewrite H16; auto.
+    unfold uc_eq_perm in *.
+    rewrite eval_append, res'.
+    repeat rewrite Mmult_assoc.
+    apply f_equal2; try reflexivity.
+    apply f_equal2; try reflexivity.
+    apply equal_on_basis_states_implies_equal; auto with wf_db.
+    unfold eval; auto with wf_db.
     intro f.
     rewrite Mmult_assoc.
-    rewrite SWAP_semantics by lia.
+    rewrite SWAP_semantics by assumption.
     rewrite f_to_vec_SWAP by assumption.
-    rewrite HP.
+    rewrite perm_to_matrix_permutes_qubits.
+    rewrite perm_to_matrix_permutes_qubits.
     apply f_to_vec_eq.
     intros x Hx.
-    unfold compose.
-    unfold swap_in_map.
-    destruct m; simpl.
-    bdestruct (phys2log m' x =? n3 a).
+    unfold swap_in_map, log2phys; destruct m.
+    bdestruct (x =? n3 a).
     rewrite update_index_neq by assumption.
     rewrite update_index_eq.
-    apply f_equal.
-    rewrite H9.
+    subst.
     destruct (WFm a) as [_ [_ [_ ?]]]; auto.
-    bdestruct (phys2log m' x =? n3 n).
+    bdestruct (x =? n3 n).
     rewrite update_index_eq.
-    apply f_equal.
-    rewrite H10.
+    subst.
     destruct (WFm n) as [_ [_ [_ ?]]]; auto.
-    rewrite 2 update_index_neq.
+    rewrite update_index_neq.
+    rewrite update_index_neq.
     reflexivity.
     intro contra.
-    assert (H11: n3 (n1 (phys2log m' x)) = n3 n) by auto.
-    destruct (WFm' x) as [_ [? _]]; auto.
-    destruct (WFm (phys2log m' x)) as [_ [_ [H13 _]]]; auto.
-    simpl in H13.
-    rewrite H13 in H11.
-    contradiction.
+    subst.
+    destruct (WFm x) as [_ [_ [? _]]]; auto.
     intro contra.
-    assert (H11: n3 (n1 (phys2log m' x)) = n3 a) by auto.
-    destruct (WFm' x) as [_ [? _]]; auto.
-    destruct (WFm (phys2log m' x)) as [_ [_ [H13 _]]]; auto.
-    simpl in H13.
-    rewrite H13 in H11.
-    contradiction.
-    unfold eval in *.
-    rewrite list_to_ucom_append.
-    simpl.
-    rewrite res'.
-    simpl.
-    rewrite denote_SKIP by lia.
-    destruct H7.
-    Msimpl.
-    reflexivity. 
+    subst.
+    destruct (WFm x) as [_ [_ [? _]]]; auto.
+    apply well_formed_log2phys_bij; assumption.
+    apply well_formed_log2phys_bij.
+    apply swap_in_map_well_formed; assumption.
     eapply valid_path_subpath.
     repeat split; try apply H2; try assumption.
     apply swap_in_map_well_formed; assumption.
@@ -875,15 +875,156 @@ Proof.
     apply swap_in_map_well_formed; assumption.
 Qed.
 
-(* Say that mapping program l (with initial layout m) onto the given 
-   architecture produces program l' and final layout m'. Then the behavior
-   of l using layout m is the same as the behavior of l' followed by 
-   a conversion between m and m'. *)
+Lemma fix_cnots_sound : forall (l : gate_list G.U dim),
+  uc_equiv_l (fix_cnots l CG.is_in_graph CNOT H) l.
+Proof.
+  intros.
+  induction l; simpl.
+  reflexivity.
+  destruct a.
+  - rewrite IHl. reflexivity.
+  - assert (u = MG.cnot).
+    apply MG.no_other_2_q_gates.
+    subst.
+    destruct (CG.is_in_graph n n0) eqn:gr; rewrite IHl.
+    reflexivity.
+    repeat rewrite (cons_to_app _ l).
+    repeat rewrite app_comm_cons.
+    apply uc_app_congruence; try reflexivity.
+    unfold uc_equiv_l; simpl.
+    repeat rewrite MG.had_semantics.
+    repeat rewrite MG.cnot_semantics.
+    repeat rewrite <- useq_assoc.
+    rewrite H_swaps_CNOT.
+    reflexivity.
+  - assert False.
+    apply MG.no_3_q_gates.
+    assumption.
+    contradiction.
+Qed.
+
+(* These uc_eq_perm_* lemmas are specific to simple_map_sound -- they help
+   keep the main proof a little cleaner *)
+
+Lemma uc_eq_perm_cons_cong : forall (g : gate_app G.U dim) (l1 l2 : gate_list G.U dim) (m : qmap dim) p,
+  layout_well_formed dim m ->
+  uc_well_typed_l [g] ->
+  l1 ≡ l2 with (phys2log m) and p ->
+  (g :: l1) ≡ ((map_qubits_app (log2phys m) g) :: l2) with (phys2log m) and p.
+Proof.
+  intros g l1 l2 m p WF WT H.
+  unfold uc_eq_perm in *.
+  rewrite (cons_to_app _ l1).
+  rewrite (cons_to_app _ l2).
+  rewrite 2 eval_append.  
+  rewrite H.
+  repeat rewrite Mmult_assoc.
+  apply f_equal2; try reflexivity.
+  apply f_equal2; try reflexivity.
+  unfold eval.
+  rewrite map_qubits_app_equiv_map_qubits.
+  remember (list_to_ucom [g]) as u.
+  apply permute_commutes_with_map_qubits.
+  assumption.
+  subst.
+  apply list_to_ucom_WT.
+  assumption.
+  apply uc_well_typed_l_implies_dim_nonzero in WT.
+  assumption.
+  apply well_formed_log2phys_bij.
+  assumption.
+Qed.
+
+Lemma uc_eq_perm_uc_equiv_l_app : forall (l l1 l1' l2 : gate_list G.U dim) p_in p_out,
+  uc_equiv_l l1 l1' ->
+  l ≡ l1 ++ l2 with p_in and p_out ->
+  l ≡ l1' ++ l2 with p_in and p_out.
+Proof.
+  intros l l1 l1' l2 p_in p_out H1 H2.
+  unfold uc_equiv_l, uc_equiv, uc_eq_perm in *.
+  rewrite eval_append in *.
+  unfold eval in *.
+  rewrite H2, H1.
+  reflexivity.
+Qed.
+
+Lemma uc_eq_perm_app1 : forall (l1 l1' l2 l2' : gate_list G.U dim) (m1 m2 m3 : qmap dim),
+  layout_well_formed dim m1 ->
+  l1 ≡ l1' with (log2phys m1) and (phys2log m2) ->
+  l2 ≡ l2' with (phys2log m2) and (log2phys m3) ->
+  (l1' ++ l2) ≡ l1 ++ l2' with (phys2log m1) and (log2phys m3).
+Proof.
+  intros l1 l1' l2 l2' m1 m2 m3 WF H1 H2.
+  unfold uc_eq_perm in *.
+  rewrite 2 eval_append.
+  rewrite H1, H2.
+  repeat rewrite Mmult_assoc.
+  rewrite perm_to_matrix_Mmult.
+  rewrite (perm_to_matrix_I _ (phys2log m1 ∘ log2phys m1)%prg).
+  Msimpl.
+  reflexivity.
+  unfold eval; auto with wf_db.
+  apply finite_bijection_compose.
+  apply well_formed_phys2log_bij; assumption.
+  apply well_formed_log2phys_bij; assumption.
+  intros x Hx.
+  destruct (WF x) as [_ [_ [? _]]]; auto.
+  apply well_formed_log2phys_bij; assumption.
+  apply well_formed_phys2log_bij; assumption.
+Qed.
+
+Lemma uc_eq_perm_app2 : forall (l1 l2 : gate_list G.U dim) (g : gate_app G.U dim) (m : qmap dim) p,
+  layout_well_formed dim m ->
+  uc_well_typed_l [g] ->
+  l1 ≡ l2 with p and (phys2log m) ->
+  (l1 ++ [map_qubits_app (log2phys m) g]) ≡ l2 ++ [g] with p and (phys2log m).
+Proof.
+  intros l1 l2 g m p WF WT H.
+  unfold uc_eq_perm in *.
+  rewrite 2 eval_append.  
+  rewrite H.
+  repeat rewrite <- Mmult_assoc.
+  apply f_equal2; try reflexivity.
+  apply f_equal2; try reflexivity.
+  unfold eval.
+  rewrite map_qubits_app_equiv_map_qubits.
+  remember (list_to_ucom [g]) as u.
+  symmetry.
+  apply permute_commutes_with_map_qubits.
+  assumption.
+  subst.
+  apply list_to_ucom_WT.
+  assumption.
+  apply uc_well_typed_l_implies_dim_nonzero in WT.
+  assumption.
+  apply well_formed_log2phys_bij.
+  assumption.  
+Qed.
+
+(* Example: Consider an architecture with 3 qubits and LNN connectivity:
+       0 <-> 1 <-> 2.
+   Say we want to map the following program with input layout 
+   m_in={0->1, 1->2, 2->0} (where l->p means that logical qubit l is bound 
+   to physical qubit p):
+       P1  :=  H 1; CNOT 1 2; H 1.
+   The output of mapping will be the program
+       P2  :=  H 2; SWAP 1 2; CNOT 1 0; H 1 
+   and the map m_out={0->2, 1->1, 2->0}.
+
+   Running program P1 on input state ∣abc⟩, measuring all qubits, and obtaining
+   result ∣def⟩ (a,b,c,d,e,f ∈ {0,1}) is equivalent to running program P2 on input 
+   state ∣cab⟩ and obtaining the result ∣fed⟩.
+
+   We express this relationship as "P1 ≡ P2 with p_in and p_out", which says that
+   uc_eval P1 = p_in × uc_eval P2 × p_out where permutation p_in=(phys2log m)
+   is the inverse of the input logical->physical qubit mapping and permutation
+   p_out=(log2phys m') is the output logical->physical qubit mapping.
+*)
 Lemma simple_map_sound : forall (l : gate_list G.U dim) (m : qmap dim) l' m',
   uc_well_typed_l l ->
   layout_well_formed dim m ->
   simple_map l m CG.get_path CG.is_in_graph CNOT SWAP H = (l', m') -> 
-  map_qubits (log2phys m) l ≡ l' with ((log2phys m') ∘ (phys2log m))%prg.
+  l ≡ l' with (phys2log m) and (log2phys m').
 Proof. 
   intros l m l' m' WT.
   generalize dependent m'.
@@ -891,17 +1032,19 @@ Proof.
   generalize dependent m.
   induction l; intros m l' m' WFm res; simpl in res.
   - inversion res; subst.
-    simpl.
-    apply uc_eq_perm_replace_perm with (p:=(fun x => x)).
-    intros x Hx.
-    specialize (WFm x Hx) as [_ [_ [_ ?]]]; auto.
-    apply uc_eq_perm_refl.
+    apply uc_eq_perm_nil; auto.
+    apply uc_well_typed_l_implies_dim_nonzero in WT.
+    assumption.
   - destruct a; inversion WT; subst.
     + destruct (simple_map l m CG.get_path CG.is_in_graph CNOT SWAP H) eqn:res'.
       inversion res; subst.
       apply IHl in res'; auto.
-      simpl.
-      apply uc_eq_perm_cons_cong.
+      replace (App1 u (log2phys m n)) with (@map_qubits_app _ dim (log2phys m) (App1 u n)) by reflexivity.
+      apply uc_eq_perm_cons_cong; auto.
+      constructor.
+      assumption.
+      constructor.
+      apply uc_well_typed_l_implies_dim_nonzero in WT.
       assumption.
     + destruct (path_to_swaps (CG.get_path (log2phys m n) (log2phys m n0)) m SWAP) eqn:pth.
       destruct (simple_map l q CG.get_path CG.is_in_graph CNOT SWAP H) eqn:res'.
@@ -910,13 +1053,25 @@ Proof.
       eapply path_to_swaps_well_formed in pth'; auto.
       eapply path_to_swaps_sound in pth; auto.
       apply IHl in res'; auto.
-
-clear WT IHl res.
-simpl.
-rewrite cons_to_app.
-      admit.
-
-
+      eapply uc_eq_perm_uc_equiv_l_app. 
+      symmetry.
+      apply fix_cnots_sound.
+      rewrite (cons_to_app _ l).
+      eapply uc_eq_perm_app1. 
+      assumption.
+      2: apply res'.
+      replace (CNOT (log2phys q n) (log2phys q n0)) with (@map_qubits_app _ dim (log2phys q) (CNOT n n0)) by reflexivity.
+      rewrite <- (app_nil_l [App2 u _ _]).
+      assert (u = MG.cnot).
+      apply MG.no_other_2_q_gates.
+      subst.
+      apply uc_eq_perm_app2. 
+      assumption.
+      constructor; try assumption.
+      constructor.
+      lia.
+      apply pth.
+      lia.
       destruct (WFm n) as [H0 [_ [H1 _]]]; auto.
       destruct (WFm n0) as [H2 [_ [H3 _]]]; auto.
       apply CG.get_path_valid; auto.     
@@ -935,8 +1090,7 @@ rewrite cons_to_app.
       apply MG.no_3_q_gates.
       assumption.
       contradiction.
-Admitted.
-
+Qed.
 Lemma path_to_swaps_respects_undirected : forall n1 n2 p m l m',
   n1 < dim -> n2 < dim ->
   valid_path (log2phys m n1) (log2phys m n2) CG.is_in_graph p ->
@@ -1019,7 +1173,7 @@ Proof.
   destruct (WF n1) as [_ [_ [? _]]]; auto.
   apply swap_in_map_well_formed; auto.
 Qed.
-  
+
 Lemma fix_cnots_respects_constraints : forall (l : gate_list G.U dim),
   respects_constraints_undirected CG.is_in_graph l ->
   respects_constraints_directed CG.is_in_graph (fix_cnots l CG.is_in_graph CNOT H).
@@ -1080,6 +1234,67 @@ Proof.
     apply MG.no_3_q_gates.
     assumption.
     contradiction.
+Qed.
+
+Lemma simple_map_WT : forall (l : gate_list G.U dim) (m : qmap dim) l' m',
+  uc_well_typed_l l ->
+  layout_well_formed dim m ->
+  simple_map l m CG.get_path CG.is_in_graph CNOT SWAP H = (l', m') -> 
+  uc_well_typed_l l'.
+Proof. 
+  intros l m l' m' WT WF res.
+  apply simple_map_sound in res; auto.
+  unfold uc_eq_perm, eval in res.
+  apply list_to_ucom_WT. 
+  apply uc_eval_nonzero_iff.
+  apply list_to_ucom_WT in WT.
+  apply uc_eval_nonzero_iff in WT.
+  intro contra.
+  rewrite contra in res.
+  rewrite Mmult_0_r, Mmult_0_l in res.
+  contradiction.
+Qed.
+
+Definition uc_cong_perm (l1 l2 : gate_list G.U dim) pin pout :=
+  eval l1 ∝ perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
+Notation "c1 ≅ c2 'with' p1 'and' p2" := (uc_cong_perm c1 c2 p1 p2) (at level 20).
+
+Lemma uc_eq_perm_implies_uc_cong_perm : forall (l1 l2 : gate_list G.U dim) p1 p2,
+  l1 ≡ l2 with p1 and p2 -> l1 ≅ l2 with p1 and p2.
+Proof.
+  intros l1 l2 p1 p2 H.
+  exists 0%R.
+  rewrite Cexp_0.
+  rewrite Mscale_1_l.
+  apply H.
+Qed.
+
+Lemma uc_eq_perm_uc_cong_l : forall (l1 l2 l3 : gate_list G.U dim) p1 p2,
+  (l1 ≅l≅ l2)%ucom ->
+  l2 ≅ l3 with p1 and p2 ->
+  l1 ≅ l3 with p1 and p2.
+Proof.
+  intros l1 l2 l3 p1 p2 [r1 H1] [r2 H2].
+  exists (r1 + r2)%R.
+  unfold eval in *.
+  rewrite H1, H2. 
+  distribute_scale.
+  rewrite <- Cexp_add.
+  reflexivity.
+Qed.
+
+Lemma uc_eq_perm_uc_cong_l_alt : forall (l1 l2 l3 : gate_list G.U dim) p1 p2,
+  l1 ≅ l2 with p1 and p2 ->
+  (l2 ≅l≅ l3)%ucom ->
+  l1 ≅ l3 with p1 and p2.
+Proof.
+  intros l1 l2 l3 p1 p2 [r1 H1] [r2 H2].
+  exists (r1 + r2)%R.
+  unfold eval in *.
+  rewrite H1, H2. 
+  distribute_scale.
+  rewrite <- Cexp_add.
+  reflexivity.
 Qed.
 
 End SimpleMappingProofs.

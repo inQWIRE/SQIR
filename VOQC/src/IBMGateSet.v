@@ -25,6 +25,23 @@ Inductive IBM_Unitary : nat -> Set :=
   | UIBM_CNOT           : IBM_Unitary 2.
 Definition U := IBM_Unitary.
 
+Definition to_base {dim n} (u : U n) (qs : list nat) (pf : List.length qs = n) :=
+  match u with
+  | UIBM_U1 a      => @uapp1 _ dim (U_R 0 0 a) (List.nth O qs O) 
+  | UIBM_U2 a b    => @uapp1 _ dim (U_R (PI / 2) a b) (List.nth O qs O)
+  | UIBM_U3 a b c  => @uapp1 _ dim (U_R a b c) (List.nth O qs O)
+  | UIBM_CNOT      => @SQIR.CNOT dim (List.nth O qs O) (List.nth (S O) qs O)
+  end.
+Local Transparent SQIR.CNOT.
+Lemma to_base_uses_q : forall (dim n : nat) (u : U n) (qs : list nat) (pf : List.length qs = n),
+    uses (@to_base dim n u qs pf) qs.
+Proof.
+  intros.
+  destruct u; simpl;
+  constructor; apply nth_In; lia.
+Qed.
+Local Opaque SQIR.CNOT.
+
 Definition match_gate {n} (u u' : U n) : bool :=
   match u, u' with
   | UIBM_CNOT, UIBM_CNOT            => true
@@ -34,39 +51,31 @@ Definition match_gate {n} (u u' : U n) : bool :=
   | _, _ => false
   end.
 
-Definition to_base {n} (u : U n) :=
-  match u with
-  | UIBM_U1 a     => U_R 0 0 a
-  | UIBM_U2 a b   => U_R (PI / 2) a b
-  | UIBM_U3 a b c => U_R a b c
-  | UIBM_CNOT     => U_CNOT
-  end.
-
-Lemma match_gate_implies_eq : forall n (u u' : U n), 
-  match_gate u u' = true -> to_base u = to_base u'. 
+Lemma match_gate_implies_eq : forall dim n (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
+  match_gate u u' = true -> uc_equiv (@to_base dim n u qs pf) (to_base u' qs pf).
 Proof.
-  intros n u u' H.
-  dependent destruction u; dependent destruction u';
-  auto; inversion H. 
-  simpl.
+  intros.
+  dependent destruction u; dependent destruction u'.
+  all: inversion H.
+  all: simpl; try reflexivity.
   apply Reqb_eq in H1.
-  rewrite H1. reflexivity.
+  subst. reflexivity.
   apply andb_true_iff in H1. destruct H1.
   apply Reqb_eq in H0. apply Reqb_eq in H1.
-  rewrite H0, H1. reflexivity.
+  subst. reflexivity.
   apply andb_true_iff in H1. destruct H1.
   apply andb_true_iff in H0. destruct H0.
   apply Reqb_eq in H0. 
   apply Reqb_eq in H1.
   apply Reqb_eq in H2.
-  rewrite H0, H1, H2. reflexivity.
+  subst. reflexivity.
 Qed.
 
 End IBMGateSet.
 Export IBMGateSet.
 
-Module IBMProps := UListRepresentationProps IBMGateSet.
-Export IBMProps.
+Module IBMList := UListRepr IBMGateSet.
+Export IBMList.
 
 (* Useful shorthands. *)
 Definition U1 {dim} a q := @App1 _ dim (UIBM_U1 a) q.

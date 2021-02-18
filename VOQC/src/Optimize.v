@@ -261,7 +261,7 @@ Definition dim := CG.dim.
 
 Lemma only_map_sound : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
   only_map l m CG.get_path CG.is_in_graph = Some (l', m') -> 
-  map_qubits (log2phys m) l ≡ l' with ((log2phys m') ∘ (phys2log m))%prg.
+  l ≡ l' with (phys2log m) and (log2phys m').
 Proof.
   intros l m l' m' H.
   unfold only_map in H.
@@ -295,7 +295,7 @@ Qed.
 
 Lemma optimize_then_map_sound : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
   optimize_then_map l m CG.get_path CG.is_in_graph = Some (l', m') -> 
-  map_qubits (log2phys m) l ≡ l' with ((log2phys m') ∘ (phys2log m))%prg.
+  l ≅ l' with (phys2log m) and (log2phys m').
 Proof.
   intros l m l' m' H.
   unfold optimize_then_map in H.
@@ -308,18 +308,15 @@ Proof.
   apply layout_well_formed_b_equiv in WF.
   apply uc_well_typed_l_b_equiv in WT.
   apply simple_map_sound in H1.
-  apply uc_eq_perm_trans with (l1:=map_qubits (log2phys m) l) (p12:=(fun x => x)) in H1.
-  apply uc_eq_perm_replace_perm with (p':=(log2phys m' ∘ phys2log m)%prg) in H1.
-  assumption.
-  auto.
-  apply uc_equiv_l_implies_uc_eq_perm.
-  apply map_qubits_equiv. (* <- this lemma is admitted; need to fix *)
+  apply uc_eq_perm_uc_cong_l with (l2:=optimize l).
   symmetry.
-  (* apply optimize_sound. <- the right idea, but need to update SMP to support ≅l≅ *)
-  admit.
+  apply optimize_sound.
+  assumption.
+  apply uc_eq_perm_implies_uc_cong_perm.
+  apply H1.
   apply optimize_WT; auto.
   assumption.  
-Admitted.
+Qed.
 
 Lemma optimize_then_map_respects_constraints_directed : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
   optimize_then_map l m CG.get_path CG.is_in_graph = Some (l', m') -> 
@@ -339,7 +336,100 @@ Proof.
   apply optimize_WT; auto.
 Qed.
 
-(* ... and so on ... *)
+Lemma map_then_optimize_sound : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  map_then_optimize l m CG.get_path CG.is_in_graph = Some (l', m') -> 
+  l ≅ l' with (phys2log m) and (log2phys m').
+Proof.
+  intros l m l' m' H.
+  unfold map_then_optimize in H.
+  destruct (layout_well_formed_b dim m) eqn:WF.
+  2: inversion H.
+  destruct (uc_well_typed_l_b dim l) eqn:WT.
+  2: inversion H.
+  simpl in H.
+  destruct (simple_map_rzq l m CG.get_path CG.is_in_graph) eqn:Hmap.
+  inversion H; subst.
+  apply layout_well_formed_b_equiv in WF.
+  apply uc_well_typed_l_b_equiv in WT.
+  assert (Hmap':=Hmap).
+  apply simple_map_WT in Hmap'; auto.
+  apply simple_map_sound in Hmap; auto.
+  apply uc_eq_perm_uc_cong_l_alt with (l2:=r).
+  apply uc_eq_perm_implies_uc_cong_perm.
+  assumption.
+  symmetry.
+  apply optimize_sound.
+  assumption.
+Qed.
+
+Lemma map_then_optimize_respects_constraints_directed : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  map_then_optimize l m CG.get_path CG.is_in_graph = Some (l', m') -> 
+  respects_constraints_directed CG.is_in_graph l'.
+Proof.
+  intros l m l' m' H.
+  unfold map_then_optimize in H.
+  destruct (layout_well_formed_b dim m) eqn:WF.
+  2: inversion H.
+  destruct (uc_well_typed_l_b dim l) eqn:WT.
+  2: inversion H.
+  simpl in H.
+  destruct (simple_map_rzq l m CG.get_path CG.is_in_graph) eqn:Hmap.
+  inversion H; subst.
+  apply layout_well_formed_b_equiv in WF.
+  apply uc_well_typed_l_b_equiv in WT.
+  apply optimize_respects_contraints_directed.
+  eapply simple_map_respects_constraints_directed in Hmap; auto.
+Qed.
+
+Lemma optimize_then_map_then_optimize_sound : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  optimize_then_map_then_optimize l m CG.get_path CG.is_in_graph = Some (l', m') -> 
+  l ≅ l' with (phys2log m) and (log2phys m').
+Proof.
+  intros l m l' m' H.
+  unfold optimize_then_map_then_optimize in H.
+  destruct (layout_well_formed_b dim m) eqn:WF.
+  2: inversion H.
+  destruct (uc_well_typed_l_b dim l) eqn:WT.
+  2: inversion H.
+  destruct (simple_map_rzq (optimize l) m CG.get_path CG.is_in_graph) eqn:Hmap.
+  inversion H; subst.
+  apply layout_well_formed_b_equiv in WF.
+  apply uc_well_typed_l_b_equiv in WT.
+  assert (Hmap':=Hmap).
+  apply simple_map_WT in Hmap'; auto.
+  apply simple_map_sound in Hmap; auto.
+  apply uc_eq_perm_uc_cong_l_alt with (l2:=r).
+  apply uc_eq_perm_uc_cong_l with (l2:=optimize l).
+  symmetry.
+  apply optimize_sound.
+  assumption.
+  apply uc_eq_perm_implies_uc_cong_perm.
+  assumption.
+  symmetry.
+  apply optimize_sound.
+  assumption.
+  apply optimize_WT; assumption.
+  apply optimize_WT; assumption.
+Qed.
+
+Lemma optimize_then_map_then_optimize_respects_constraints_directed : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
+  optimize_then_map_then_optimize l m CG.get_path CG.is_in_graph = Some (l', m') -> 
+  respects_constraints_directed CG.is_in_graph l'.
+Proof.
+  intros l m l' m' H.
+  unfold optimize_then_map_then_optimize in H.
+  destruct (layout_well_formed_b dim m) eqn:WF.
+  2: inversion H.
+  destruct (uc_well_typed_l_b dim l) eqn:WT.
+  2: inversion H.
+  destruct (simple_map_rzq (optimize l) m CG.get_path CG.is_in_graph) eqn:Hmap.
+  inversion H; subst.
+  apply layout_well_formed_b_equiv in WF.
+  apply uc_well_typed_l_b_equiv in WT.
+  apply optimize_respects_contraints_directed.
+  eapply simple_map_respects_constraints_directed in Hmap; auto.
+  apply optimize_WT; auto.
+Qed.
 
 End OptimizeProofs.
 
@@ -353,7 +443,7 @@ Definition only_map_lnn {dim} (l : RzQ_ucom_l dim) (m : qmap dim) :=
 
 Lemma only_map_lnn_sound : forall (l : RzQ_ucom_l dim) (m : qmap dim) l' m',
   only_map_lnn l m = Some (l', m') -> 
-  map_qubits (log2phys m) l ≡ l' with ((log2phys m') ∘ (phys2log m))%prg.
+  l ≡ l' with (phys2log m) and (log2phys m').
 Proof. 
   intros. 
   apply only_map_sound. 
@@ -368,3 +458,4 @@ Proof.
   apply only_map_respects_constraints_directed in H.
   assumption.
 Qed.
+

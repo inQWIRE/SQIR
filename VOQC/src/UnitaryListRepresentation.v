@@ -331,19 +331,15 @@ Definition LCR {U dim} (b : gate_list U dim) (opt : gate_list U dim -> gate_list
   | _ => None
   end.
 
-Definition map_qubits {U dim} (f : nat -> nat) (l : gate_list U dim) : gate_list U dim :=
-  let f (g : gate_app U dim) := 
-    match g with
-    | App1 u n => App1 u (f n)
-    | App2 u m n => App2 u (f m) (f n)
-    | App3 u m n p => App3 u (f m) (f n) (f p)
-    end in
-  List.map f l.
+Ltac destruct_In :=
+  repeat match goal with
+  | H : List.In _ _ |- _ => inversion H; clear H
+  end.
 
 Lemma cons_to_app : forall {A} (h : A) (t : list A), h :: t = [h] ++ t.
 Proof. reflexivity. Qed.
 
-Module UListRepr (G : GateSet).
+Module UListProofs (G : GateSet).
 
 (* Facts about well-typedness. *)
 
@@ -450,23 +446,63 @@ Qed.
 Lemma list_to_ucom_WT : forall {dim} (l : gate_list G.U dim), 
   uc_well_typed_l l <-> uc_well_typed (list_to_ucom l).
 Proof.
-  intros. 
-  split; intros. 
-  - induction H; try dependent destruction u.
-    all: simpl. 
-    unfold SKIP. apply uc_well_typed_ID; lia.
-    all: constructor.
-   (*constructor. 
-    all: try (constructor; assumption).
-    all: apply IHuc_well_typed_l.
-  - induction l.
-    + simpl in H. constructor.
-      apply (uc_well_typed_implies_dim_nonzero _ H).
-    + destruct a;
-      inversion H; subst;
-      inversion H2; subst;
-      constructor; auto.
-Qed.*) Admitted.
+  intros dim l.
+  split; intro H. 
+  - induction H; simpl; try constructor; auto.
+    unfold SKIP. 
+    apply uc_well_typed_ID; auto.
+    all: apply G.to_base_WT; split. 
+    all: unfold bounded_list; intros; destruct_In; subst; auto. 
+    all: repeat constructor; auto.
+    all: intro contra; destruct_In; auto.
+  - induction l; simpl in H.
+    apply uc_well_typed_ID in H.
+    constructor; auto.
+    destruct a; inversion H; subst. 
+    apply G.to_base_WT in H2 as [H0 H1].
+    unfold bounded_list in H0.
+    constructor; auto.
+    apply H0.
+    constructor; auto.
+    apply G.to_base_WT in H2 as [H0 H1].
+    unfold bounded_list in H0.
+    constructor; auto.
+    apply H0.
+    constructor; auto.
+    apply H0.
+    apply in_cons.
+    constructor; auto.
+    inversion H1; subst.
+    intro contra.
+    contradict H5.
+    constructor; auto.
+    apply G.to_base_WT in H2 as [H0 H1].
+    unfold bounded_list in H0.
+    constructor; auto.
+    apply H0.
+    constructor; auto.
+    apply H0.
+    apply in_cons.
+    constructor; auto.
+    apply H0.
+    apply in_cons.
+    apply in_cons.
+    constructor; auto.
+    inversion H1; subst.
+    intro contra.
+    contradict H5.
+    constructor; auto.
+    inversion H1; subst.
+    inversion H6; subst.
+    intro contra.
+    contradict H7.
+    constructor; auto.
+    inversion H1; subst.
+    intro contra.
+    contradict H5.
+    apply in_cons.
+    constructor; auto.
+Qed.
 
 Definition eval {dim} (l : gate_list G.U dim) := uc_eval (list_to_ucom l).
 
@@ -653,7 +689,7 @@ Ltac simpl_dnr :=
   repeat match goal with 
   | H : does_not_reference (_ ++ _) _ = true |- _ =>
       apply does_not_reference_app in H
-  | H : does_not_reference [_] _ = _ |- _ =>
+  | H : does_not_reference (_ :: _) _ = _ |- _ =>
       simpl in H
   | H : does_not_reference_appl _ _ = _ |- _ =>
       simpl in H
@@ -667,46 +703,125 @@ Ltac simpl_dnr :=
       apply beq_nat_false in H
   end.
 
+Lemma only_uses_commutes_uapp1 : forall {dim} (g : base_Unitary 1) (u : base_ucom dim) q qs,
+  only_uses u qs ->
+  not (In q qs) ->
+  uapp1 g q ; u ≡ u ; uapp1 g q.
+Proof.
+  intros dim g u q qs Hou Hin.
+  induction Hou.
+  - rewrite <- useq_assoc.
+    rewrite IHHou1; auto.
+    rewrite useq_assoc.
+    rewrite IHHou2; auto.
+    rewrite <- useq_assoc.
+    reflexivity.
+  - apply U_V_comm.
+    intro contra; subst; auto.
+  - apply U_CNOT_comm.
+    intro contra; subst; auto.
+    intro contra; subst; auto.
+  - dependent destruction u.
+Qed.
+
+Lemma only_uses_commutes_uapp2 : forall {dim} (g : base_Unitary 2) (u : base_ucom dim) q1 q2 qs,
+  only_uses u qs ->
+  not (In q1 qs) ->
+  not (In q2 qs) ->
+  uapp2 g q1 q2 ; u ≡ u ; uapp2 g q1 q2.
+Proof.
+  intros dim g u q1 q2 qs Hou Hin1 Hin2.
+  induction Hou.
+  - rewrite <- useq_assoc.
+    rewrite IHHou1; auto.
+    rewrite useq_assoc.
+    rewrite IHHou2; auto.
+    rewrite <- useq_assoc.
+    reflexivity.
+  - symmetry.
+    apply U_CNOT_comm.
+    intro contra; subst; auto.
+    intro contra; subst; auto.
+  - apply CNOT_CNOT_comm.
+    all: intro contra; subst; auto.
+  - dependent destruction u.
+Qed.
+
+Lemma does_not_reference_commutes_only_uses : forall {dim} (l : gate_list G.U dim) (u : base_ucom dim) qs,
+  only_uses u qs ->
+  (forall q, In q qs -> does_not_reference l q = true) ->
+  u ; list_to_ucom l ≡ list_to_ucom l ; u. 
+Proof.
+  intros dim l u qs Hou Hdnr.
+  induction Hou.
+  - rewrite useq_assoc.
+    rewrite IHHou2; auto.
+    rewrite <- useq_assoc.
+    rewrite IHHou1; auto.
+    rewrite useq_assoc.
+    reflexivity.
+  - apply Hdnr in H.
+    clear Hdnr.
+    induction l; simpl.
+    rewrite SKIP_id_r, SKIP_id_l.
+    reflexivity.
+    destruct a as [u' | u' | u']; 
+    simpl; simpl_dnr;
+    rewrite useq_assoc;
+    rewrite <- IHl; auto;
+    rewrite <- useq_assoc;
+    rewrite only_uses_commutes_uapp1;
+    try (rewrite useq_assoc; reflexivity).
+    all: try apply G.to_base_only_uses_qs.
+    all: intro contra; destruct_In; auto.
+  - apply Hdnr in H.
+    apply Hdnr in H0.
+    clear Hdnr.
+    induction l; simpl.
+    rewrite SKIP_id_r, SKIP_id_l.
+    reflexivity.
+    destruct a as [u' | u' | u']; 
+    simpl; simpl_dnr;
+    rewrite useq_assoc;
+    rewrite <- IHl; auto;
+    rewrite <- useq_assoc;
+    rewrite only_uses_commutes_uapp2;
+    try (rewrite useq_assoc; reflexivity).
+    all: try apply G.to_base_only_uses_qs.
+    all: intro contra; destruct_In; auto.
+  - dependent destruction u.
+Qed.
+
 Lemma does_not_reference_commutes_app1 : forall {dim} (l : gate_list G.U dim) u q,
   does_not_reference l q = true ->
   [App1 u q] ++ l =l= l ++ [App1 u q]. 
 Proof.
   intros dim l u q H.
-  induction l.
-  - reflexivity.
-  - simpl in *.
-    destruct a as [u' | u' | u'];
-    simpl_dnr;
-    rewrite <- IHl; auto;
-    unfold uc_equiv_l; simpl;
-    repeat rewrite <- useq_assoc.
-    (*rewrite U_V_comm; auto; reflexivity.
-    remember (G.to_base u') as base; dependent destruction base.
-    rewrite (U_CNOT_comm _ n n0); auto; reflexivity.
-    remember (G.to_base u') as base; dependent destruction base.
-Qed.*) Admitted.
+  unfold uc_equiv_l.
+  rewrite 2 list_to_ucom_append. 
+  simpl.
+  rewrite SKIP_id_r.
+  eapply does_not_reference_commutes_only_uses.
+  apply G.to_base_only_uses_qs.
+  intros.
+  destruct_In; subst; auto.
+Qed.
 
 Lemma does_not_reference_commutes_app2 : forall {dim} (l : gate_list G.U dim) u m n,
   does_not_reference l m = true ->
   does_not_reference l n = true ->
   [App2 u m n] ++ l =l= l ++ [App2 u m n]. 
 Proof.
+  intros dim l u m n H1 H2.
+  unfold uc_equiv_l.
+  rewrite 2 list_to_ucom_append. 
+  simpl.
+  rewrite SKIP_id_r.
+  eapply does_not_reference_commutes_only_uses.
+  apply G.to_base_only_uses_qs.
   intros.
-  induction l.
-  - reflexivity.
-  - simpl in *.
-    destruct a as [u' | u' | u'];
-    simpl_dnr;
-    rewrite <- IHl; auto;
-    unfold uc_equiv_l; simpl;
-    repeat rewrite <- useq_assoc.
-    (*remember (G.to_base u) as base; dependent destruction base.
-    rewrite (U_CNOT_comm n0 m n); auto; reflexivity.
-    remember (G.to_base u) as base; dependent destruction base.
-    remember (G.to_base u') as base'; dependent destruction base'.
-    rewrite (CNOT_CNOT_comm m n n0 n1); auto; reflexivity.
-    remember (G.to_base u') as base; dependent destruction base.
-Qed.*) Admitted.
+  destruct_In; subst; auto.
+Qed.
 
 (** Correctness lemmas for ops on unitary programs. **)
 
@@ -1198,12 +1313,6 @@ Definition commute_rules_correct {U dim} (g : gate_app U dim) rules
   List.In r rules ->
   forall l l1 l2, (r l = Some (l1, l2) -> eq (g :: l) (l1 ++ [g] ++ l2)).
 
-(* Useful for handling *_rules_correct preconditions. *)
-Ltac destruct_In :=
-  repeat match goal with
-  | H : List.In _ _ |- _ => inversion H; clear H
-  end.
-
 Lemma propagate'_preserves_semantics : 
   forall {U dim} (l : gate_list U dim) 
     commute_rules cancel_rules n acc l' g eq 
@@ -1301,7 +1410,8 @@ Proof.
     apply_app_congruence.
     unfold uc_equiv_l; simpl; rewrite mg; reflexivity.    
     apply dnr. bdestructΩ (n1 =? n1); auto.
-    apply dnr. bdestructΩ (n2 =? n2). apply orb_true_intro; auto.
+    apply dnr. bdestructΩ (n2 =? n2);
+    try (apply orb_true_intro; auto).
 Qed.
 
 (* Note that in general (l =l= l') does not imply (rev l =l= rev l'). *)
@@ -1349,7 +1459,8 @@ Proof.
     rewrite <- does_not_reference_rev.
     apply dnr. bdestructΩ (n1 =? n1); auto.
     rewrite <- does_not_reference_rev.
-    apply dnr. bdestructΩ (n2 =? n2). apply orb_true_intro; auto.
+    apply dnr. bdestructΩ (n2 =? n2);
+    try (apply orb_true_intro; auto).
 Qed.
 
 Lemma remove_suffix_correct : forall {dim} (l sfx l' : gate_list G.U dim),
@@ -1546,7 +1657,7 @@ Proof.
         eapply G.match_gate_implies_eq in H3.
         unfold uc_equiv_l; simpl; rewrite H3; reflexivity.
         apply dnr. bdestructΩ (n2 =? n2); auto.
-        apply dnr. bdestructΩ (n3 =? n3). apply orb_true_intro; auto.
+        apply dnr. bdestructΩ (n3 =? n3); try (apply orb_true_intro; auto).
         intros q Hq.
         rewrite rev_append_rev.
         apply does_not_reference_app.
@@ -1693,14 +1804,6 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma map_qubits_equiv : forall {dim} (f : nat -> nat) (l1 l2 : gate_list G.U dim),
-  l1 =l= l2 ->
-  map_qubits f l1 =l= map_qubits f l2.
-Proof.
-  intros dim f l1 l2 H.
-  (* Definitely not true without some extra constraints on f and/or l1, l2 *)
-Admitted.
-
 (* Automation *)
 
 Ltac unfold_uc_equiv_l :=
@@ -1742,4 +1845,4 @@ Ltac destruct_list_ops :=
       dependent destruction r; try discriminate
   end.
 
-End UListRepr.
+End UListProofs.
