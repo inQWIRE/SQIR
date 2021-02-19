@@ -1,4 +1,9 @@
 (executable
-  (name main)
-  (flags (:standard -w -3-32-33-34-39))
-  (libraries zarith))
+  (name generate_circuit)
+  (modules generate_circuit)
+  (libraries extracted))
+
+(executable
+  (name post_process)
+  (modules post_process)
+  (libraries extracted))

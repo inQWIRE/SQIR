@@ -71,17 +71,8 @@ Extraction Implicit SWAP [dim].
 (* special extraction for modular exponentiation so we don't run into 
    efficiency issues (this is a littele hacky -- it would be better to
    extract all operations to OCaml's Z type). *)
-Definition modexp a i N := a ^ (2 ^ i) mod N.
-Extract Constant modexp => "fun a i n -> Z.to_int (Z.powm (Z.of_int a) (Z.pow (Z.of_int 2) i) (Z.of_int n))".
-
-Fixpoint bc2ucom {dim} (p : bccom) : base_ucom dim :=
-  match p with
-  | bcskip => SKIP
-  | bcx n => X n
-  | bccont n1 (bcx n2) => CNOT n1 n2
-  | bccont n p => UnitaryOps.control n (bc2ucom p)
-  | bcseq p1 p2 => useq (bc2ucom p1) (bc2ucom p2)
-  end.
+Definition modexp a x N := a ^ x mod N.
+Extract Constant modexp => "fun a x n -> Z.to_int (Z.powm (Z.of_int a) (Z.of_int x) (Z.of_int n))".
 
 (* requires 0 < a < N, gcd a N = 1 
    returns a circuit + the number of qubits used *)
@@ -91,7 +82,7 @@ Definition shor_circuit a N :=
   let n := Nat.log2_up N in
   let anc := modmult_rev_anc n in
   let ainv := modinv a N in
-  let f i := @bc2ucom (n + anc) (csplit (bcelim (modmult_rev N (modexp a i N) (modexp ainv i N) n))) in
+  let f i := modmult_circuit (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) N n in
   (X (m + n - 1); QPE_var m (n + anc) f, (m + (n + anc))%nat).
 
 Require Export Reals.ROrderedType.
@@ -176,8 +167,21 @@ Proof.
   all: Msimpl; reflexivity.
 Qed.
 
-Definition post_process (a N x : nat) := 
-  (). (* TODO: something to do with r_recoverable *)
+(* rewritten to use "modexp" *)
+Fixpoint OF_post' (step a N o m : nat) :=
+  match step with
+  | O => O
+  | S step' => let pre := OF_post' step' a N o m in
+              if (pre =? O) then
+                (if (modexp a (OF_post_step step' o m) N =? 1) then OF_post_step step' o m
+                 else O)
+              else pre
+  end.
+Definition OF_post a N o m := OF_post' (2 * m + 2) a N o m.
+
+Definition post_process (a N o : nat) := 
+  let m := Nat.log2 (2 * N^2)%nat in
+  OF_post a N o m.
 
 Extraction Implicit remove_skips [dim].
 Extract Inlined Constant Reqb => "( = )".
@@ -198,6 +202,9 @@ the above algorithm returns Some(p,q) with probability >= β / (Nat.log2 N)^4.
     
 TODO: Add proofs here of the claim above.
 (The proofs will likely just call Shor_correct_full_implementation.)
+
+(* The post-processing of Shor's algorithm is simply running continued fraction algorithm step by step. Each time a classical verifier examines whether the denominator is the order.
+   OF_post outputs a candidate of the order r. It might still not be the order, but 0 or a multiple of the order. We proved with no less than 1/polylog(N) probability its output is r. *)
 *)
  
 
