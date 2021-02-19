@@ -79,11 +79,11 @@ Extract Constant modexp => "fun a x n -> Z.to_int (Z.powm (Z.of_int a) (Z.of_int
 Local Open Scope ucom_scope.
 Definition shor_circuit a N := 
   let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2_up N in
+  let n := Nat.log2 (2 * N) in
   let anc := modmult_rev_anc n in
   let ainv := modinv a N in
   let f i := modmult_circuit (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) N n in
-  (X (m + n - 1); QPE_var m (n + anc) f, (m + (n + anc))%nat).
+  (X (m + n - 1); QPE_var m (n + anc) f, (m + (n + anc))%nat, m).
 
 Require Export Reals.ROrderedType.
 Fixpoint remove_skips {dim} (u : base_ucom dim) :=
