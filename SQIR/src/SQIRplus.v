@@ -426,7 +426,7 @@ Inductive qfun :=
               the final avar is the return statement in the function.
                After a function is returned. The value of avar will be written to the value of evar. *)
      | afun : nfun -> qfun
-     | Qfun : (list (rtype * evar)) -> evar -> (list (rtype * ivar)) -> rexp -> avar -> qfun
+     | Qfun : (list (rtype * evar)) -> evar -> (list (rtype * ivar)) -> qexp -> avar -> qfun
      | Cast : rtype ->  evar -> rtype -> qfun
       (* init is to initialize a local variable with a number. 
          A local variable refers to a constant in QSSA. *)
