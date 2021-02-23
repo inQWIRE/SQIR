@@ -7,3 +7,8 @@
   (name mapper)
   (modules mapper)
   (libraries extracted_code))
+  
+(executable
+  (name run_ibm)
+  (modules run_ibm)
+  (libraries extracted_code))

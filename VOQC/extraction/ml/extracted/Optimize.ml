@@ -1,7 +1,9 @@
+open CXCancellation
 open GateCancellation
 open HadamardReduction
 open Layouts
 open NotPropagation
+open Optimize1qGates
 open RotationMerging
 open SimpleMapping
 open UnitaryListRepresentation
@@ -91,3 +93,9 @@ let optimize_then_map_then_optimize dim l m get_path is_in_graph =
        in
        Some ((optimize l'), m')
   else None
+
+(** val optimize_ibm :
+    IBMGateSet.coq_IBM_ucom_l -> IBMGateSet.coq_IBM_ucom_l **)
+
+let optimize_ibm l =
+  cx_cancellation (optimize_1q_gates l)

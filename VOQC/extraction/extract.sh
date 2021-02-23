@@ -4,17 +4,18 @@
 coqc -R ../.. Top Extraction.v
 
 # Remove unneeded files.
-rm -f .*.au *.glob *.mli *.cmi *.cmo Extraction.vo
+rm -f .*.au *.glob *.mli *.cmi *.cmo *.vo*
 
-# Remove empty and unused files.
-rm -f BinNums.ml Int.ml List.ml Nat.ml QArith_base.ml Specif.ml
-
-# ml/extract contains custom FSetAVL and FMapAVL files, which are just wrappers 
-# around OCaml's maps and sets.
-rm -f Order* FMap* MSet* FSet*
+# Remove empty and unused files. Some files are unused because we manually
+# extract types like R and Q. We also use custom FSetAVL and FMapAVL files
+# (see ml/extract), which are wrappers around OCaml's maps and sets.
+rm -f BinNums.ml ClassicalDedekindReals.ml ConstructiveCauchyReals.ml \
+      FMap* FSet* Int.ml List.ml MSet* Nat.ml Order* Rdefinitions.ml ROrderedType.ml \
+      Ratan.ml Rtrigo1.ml Rtrigo_def.ml QArith_base.ml Specif.ml ZArith_dec.ml
 
 # Move extracted files to a subdirectory.
-mv Bin*.ml Datatypes.ml ConnectivityGraph.ml GateCancellation.ml \
-   HadamardReduction.ml Layouts.ml NotPropagation.ml Optimize.ml PeanoNat.ml \
-   RotationMerging.ml RzQGateSet.ml SimpleMapping.ml UnitaryListRepresentation.ml \
+mv Bin*.ml CXCancellation.ml ConnectivityGraph.ml Datatypes.ml GateCancellation.ml \
+   HadamardReduction.ml IBMGateSet.ml Layouts.ml NotPropagation.ml \
+   Optimize.ml Optimize1qGates.ml PeanoNat.ml RotationMerging.ml RzQGateSet.ml \
+   SimpleMapping.ml UnitaryListRepresentation.ml \
    ml/extracted

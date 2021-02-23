@@ -98,6 +98,9 @@ VOQC/src/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(VOQC)/ConnectivityGraph.vo 
 
 # Built by 'make optimizer'
 
+VOQC/src/CXCancellation.vo: $(VOQC)/CXCancellation.v $(VOQC)/IBMGateSet.vo
+	coqc $(COQ_OPTS) $(VOQC)/CXCancellation.v
+
 VOQC/src/GateCancellation.vo: $(VOQC)/GateCancellation.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/GateCancellation.v
 
@@ -107,7 +110,7 @@ VOQC/src/GateSet.vo: $(VOQC)/GateSet.v $(SQIR)/UnitarySem.vo
 VOQC/src/HadamardReduction.vo: $(VOQC)/HadamardReduction.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/HadamardReduction.v
 
-VOQC/src/IBMGateSet.vo: $(VOQC)/IBMGateSet.v $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
+VOQC/src/IBMGateSet.vo: $(VOQC)/IBMGateSet.v $(VOQC)/Quaternion.vo $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/IBMGateSet.v
 
 VOQC/src/UnitaryListRepresentation.vo: $(VOQC)/UnitaryListRepresentation.v $(VOQC)/GateSet.vo $(QWIRE)/Proportional.vo $(SQIR)/Equivalences.vo
@@ -119,11 +122,14 @@ VOQC/src/NonUnitaryListRepresentation.vo: $(VOQC)/NonUnitaryListRepresentation.v
 VOQC/src/NotPropagation.vo: $(VOQC)/NotPropagation.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/NotPropagation.v
 
-VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/GateCancellation.vo $(VOQC)/RotationMerging.vo $(VOQC)/SimpleMapping.vo
+VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/GateCancellation.vo $(VOQC)/RotationMerging.vo $(VOQC)/SimpleMapping.vo $(VOQC)/Optimize1qGates.vo $(VOQC)/CXCancellation.vo
 	coqc $(COQ_OPTS) $(VOQC)/Optimize.v
 
 VOQC/src/Optimize1qGates.vo: $(VOQC)/Optimize1qGates.v $(VOQC)/IBMGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/Optimize1qGates.v
+	
+VOQC/src/Quaternion.vo: $(VOQC)/Quaternion.v
+	coqc $(COQ_OPTS) $(VOQC)/Quaternion.v
 
 VOQC/src/RzQGateSet.vo: $(VOQC)/RzQGateSet.v $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/RzQGateSet.v

@@ -1,9 +1,9 @@
-open Qasm2sqir
+open RzQqasm2sqir
 open Printf
     
 open ConnectivityGraph
 open Optimize
-open GateCount
+open RzQGateCount
 
 (* To compile: 
      In the top-level (..) directory, `make optimizer`

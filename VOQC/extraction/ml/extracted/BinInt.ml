@@ -66,6 +66,15 @@ module Z =
 
   let compare = fun x y -> if x=y then Eq else if x<y then Lt else Gt
 
+  (** val sgn : int -> int **)
+
+  let sgn z =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 0)
+      (fun _ -> 1)
+      (fun _ -> (~-) 1)
+      z
+
   (** val leb : int -> int -> bool **)
 
   let leb x y =
@@ -107,6 +116,27 @@ module Z =
   (** val max : int -> int -> int **)
 
   let max = Pervasives.max
+
+  (** val abs : int -> int **)
+
+  let abs = Pervasives.abs
+
+  (** val of_nat : int -> int **)
+
+  let of_nat n =
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ -> 0)
+      (fun n0 -> (Pos.of_succ_nat n0))
+      n
+
+  (** val to_pos : int -> int **)
+
+  let to_pos z =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 1)
+      (fun p -> p)
+      (fun _ -> 1)
+      z
 
   (** val pos_div_eucl : int -> int -> int * int **)
 
@@ -163,6 +193,32 @@ module Z =
 
   let div a b =
     let (q, _) = div_eucl a b in q
+
+  (** val ggcd : int -> int -> int * (int * int) **)
+
+  let ggcd a b =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> ((abs b), (0, (sgn b))))
+      (fun a0 ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> ((abs a), ((sgn a), 0)))
+        (fun b0 ->
+        let (g, p) = Pos.ggcd a0 b0 in let (aa, bb) = p in (g, (aa, bb)))
+        (fun b0 ->
+        let (g, p) = Pos.ggcd a0 b0 in
+        let (aa, bb) = p in (g, (aa, ((~-) bb))))
+        b)
+      (fun a0 ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> ((abs a), ((sgn a), 0)))
+        (fun b0 ->
+        let (g, p) = Pos.ggcd a0 b0 in
+        let (aa, bb) = p in (g, (((~-) aa), bb)))
+        (fun b0 ->
+        let (g, p) = Pos.ggcd a0 b0 in
+        let (aa, bb) = p in (g, (((~-) aa), ((~-) bb))))
+        b)
+      a
 
   (** val eq_dec : int -> int -> bool **)
 

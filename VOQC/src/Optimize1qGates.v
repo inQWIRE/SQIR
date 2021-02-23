@@ -1,4 +1,3 @@
-Require Import UnitarySem.
 Require Export IBMGateSet.
 Require Import List.
 Open Scope ucom.
@@ -35,32 +34,28 @@ Fixpoint optimize_1q_gates' {dim} (l : IBM_ucom_l dim) (n: nat) acc : IBM_ucom_l
     end
   end.
 
-Fixpoint simplify_1q_gates {dim} (l : IBM_ucom_l dim) (n: nat) acc : IBM_ucom_l dim :=
-  match n with
-  | O => rev_append acc l
-  | S n' => 
-    match l with
-    | [] => rev_append acc []
-    | (App1 (UIBM_U1 a) q) :: t => 
-        if Reqb (cos a) 1 then simplify_1q_gates t n' acc
-        else simplify_1q_gates t n' (U1 a q :: acc)
-    | (App1 (UIBM_U3 a b c) q) :: t => 
-        if Reqb (cos a) 1 
-        then if Reqb (cos (b + c)) 1 
-             then simplify_1q_gates t n' acc
-             else simplify_1q_gates t n' (U1 (b + c) q :: acc)
-        else if Reqb (sin a) 1 
-             then simplify_1q_gates t n' (U2 b c q :: acc)
-             else if Reqb (sin a) (-1)
-                  then simplify_1q_gates t n' (U2 (b + PI) (c - PI) q :: acc)
-                  else simplify_1q_gates t n' (U3 a b c q :: acc)
-    | g :: t => simplify_1q_gates t n' (g :: acc)
-    end
+Fixpoint simplify_1q_gates {dim} (l : IBM_ucom_l dim)  acc : IBM_ucom_l dim :=
+  match l with
+  | [] => rev_append acc []
+  | (App1 (UIBM_U1 a) q) :: t => 
+      if Reqb (cos a) 1 then simplify_1q_gates t acc
+       else simplify_1q_gates t (U1 a q :: acc)
+  | (App1 (UIBM_U3 a b c) q) :: t => 
+      if Reqb (cos a) 1 
+      then if Reqb (cos (b + c)) 1 
+           then simplify_1q_gates t acc
+           else simplify_1q_gates t (U1 (b + c) q :: acc)
+      else if Reqb (sin a) 1 
+           then simplify_1q_gates t (U2 b c q :: acc)
+           else if Reqb (sin a) (-1)
+                then simplify_1q_gates t (U2 (b + PI) (c - PI) q :: acc)
+                else simplify_1q_gates t (U3 a b c q :: acc)
+  | g :: t => simplify_1q_gates t (g :: acc)
   end.
 
 Definition optimize_1q_gates {dim} (l : IBM_ucom_l dim) := 
   let l' := optimize_1q_gates' l (length l) [] in
-  simplify_1q_gates l' (length l') [].
+  simplify_1q_gates l' [].
 
 (** Proofs **)
 
@@ -92,52 +87,126 @@ Proof.
     rewrite IHn.
     2: { apply uc_well_typed_l_app; auto. }
     dependent destruction i; dependent destruction u. 
-    all: try (rewrite (cons_to_app _ (_ ++ _));
-              rewrite (app_assoc (rev acc));
-              rewrite (app_assoc (rev acc ++ _));
-              rewrite <- (app_assoc (rev acc))).
+    all: (simpl;
+          repeat rewrite (cons_to_app _ (_ ++ _));
+          apply_app_congruence_cong;
+          symmetry).
     + (* u1 ; u1 *)
       apply uc_equiv_cong_l.
-      setoid_rewrite combine_u1_u1; auto.
       rewrite (Rplus_comm a0 a).
-      reflexivity.
+      apply combine_u1_u1; assumption.
     + (* u2 ; u1 *)
       apply uc_equiv_cong_l.
-      setoid_rewrite combine_u2_u1; auto.
-      reflexivity.
+      apply combine_u2_u1; assumption.
     + (* u3 ; u1 *)
       apply uc_equiv_cong_l.
-      setoid_rewrite combine_u3_u1; auto.
-      rewrite (Rplus_comm a0 b).
-      reflexivity.
+      rewrite (Rplus_comm b a0).
+      apply combine_u3_u1; assumption.
     + (* u1 ; u2 *)
       apply uc_equiv_cong_l.
-      setoid_rewrite combine_u1_u2; auto.
-      reflexivity.
+      apply combine_u1_u2; assumption.
     + (* u2 ; u2 *)
-      setoid_rewrite combine_u2_u2; auto.
-      reflexivity.
+      apply combine_u2_u2; assumption.
     + (* u3 ; u2 *)
-      apply uc_equiv_cong_l.
-      setoid_rewrite U2_is_U3.
-      setoid_rewrite compose_u3_correct; auto.
-      reflexivity.
+      erewrite uc_cong_l_app_congruence.
+      2: { apply uc_equiv_cong_l. apply U2_is_U3. }
+      2: reflexivity.
+      apply combine_u3_u3; assumption.
     + (* u1 ; u3 *)
       apply uc_equiv_cong_l.
-      setoid_rewrite combine_u1_u3; auto.
-      reflexivity.
+      apply combine_u1_u3; assumption.
     + (* u2 ; u3 *)
-      apply uc_equiv_cong_l.
-      setoid_rewrite U2_is_U3.
-      setoid_rewrite compose_u3_correct; auto.
-      reflexivity.
+      erewrite uc_cong_l_app_congruence.
+      2: reflexivity.
+      2: { apply uc_equiv_cong_l. apply U2_is_U3. }      
+      apply combine_u3_u3; assumption.
     + (* u3 ; u3 *)
-      apply uc_equiv_cong_l.
-      setoid_rewrite compose_u3_correct; auto.
-      reflexivity.
+      apply combine_u3_u3; assumption.
   - inversion WT; subst.
     rewrite IHn; auto. simpl. rewrite <- app_assoc. reflexivity.
   - inversion u.
 Qed.
   
-(* etc... *)
+Lemma Reqb_reflect : forall (x y : R), reflect (x = y) (Reqb x y).
+Proof.
+  intros x y. apply iff_reflect. symmetry. apply Reqb_eq.
+Qed.
+Hint Resolve Reqb_reflect : bdestruct.
+
+Lemma simplify_1q_gates_sound : forall {dim} (l : IBM_ucom_l dim) acc,
+  uc_well_typed_l l ->
+  simplify_1q_gates l acc ≅l≅ rev_append acc l.
+Proof.
+  intros dim l acc WT.
+  rewrite rev_append_rev.
+  generalize dependent acc.
+  induction l; intros acc. 
+  simpl. rewrite rev_append_rev. reflexivity.
+  destruct a as [u | u | u]; simpl; 
+    dependent destruction u; inversion WT; subst.
+  - bdestruct (Reqb (cos a) 1); rewrite IHl by assumption.
+    apply uc_equiv_cong_l.
+    rewrite (cons_to_app _ l).
+    setoid_rewrite u1_to_skip; auto.
+    reflexivity.
+    simpl.
+    rewrite <- app_assoc.
+    reflexivity.
+  - rewrite IHl by assumption.
+    simpl.
+    rewrite <- app_assoc.
+    reflexivity.
+  - bdestruct (Reqb (cos a) 1).
+    bdestruct (Reqb (cos (b + c)) 1); rewrite IHl by assumption.
+    rewrite (cons_to_app _ l).
+    setoid_rewrite u3_to_u1; auto.
+    apply uc_equiv_cong_l.
+    setoid_rewrite u1_to_skip; auto.
+    reflexivity.
+    rewrite (cons_to_app _ l).
+    setoid_rewrite u3_to_u1; auto.
+    simpl.
+    rewrite <- app_assoc.
+    reflexivity.
+    bdestruct (Reqb (sin a) 1).
+    rewrite IHl by assumption.
+    rewrite (cons_to_app _ l).
+    setoid_rewrite u3_to_u2; auto.
+    simpl.
+    rewrite <- app_assoc.
+    reflexivity.
+    bdestruct (Reqb (sin a) (-1)); rewrite IHl by assumption.
+    rewrite (cons_to_app _ l).
+    setoid_rewrite u3_to_u2_neg; auto.
+    simpl.
+    rewrite <- app_assoc.
+    reflexivity.
+    simpl.
+    rewrite <- app_assoc.
+    reflexivity.
+  - rewrite IHl by assumption.
+    simpl.
+    rewrite <- app_assoc.
+    reflexivity.
+Qed.
+
+Lemma optimize_1q_gates_sound : forall {dim} (l : IBM_ucom_l dim),
+  uc_well_typed_l l ->
+  optimize_1q_gates l ≅l≅ l.
+Proof.
+  intros.
+  unfold optimize_1q_gates.
+  rewrite simplify_1q_gates_sound.
+  rewrite rev_append_rev.
+  simpl.
+  rewrite optimize_1q_gates'_sound by assumption.
+  rewrite rev_append_rev.
+  reflexivity.
+  eapply uc_cong_l_implies_WT. 
+  symmetry.
+  apply optimize_1q_gates'_sound.
+  assumption.
+  rewrite rev_append_rev.
+  simpl.
+  assumption.
+Qed.

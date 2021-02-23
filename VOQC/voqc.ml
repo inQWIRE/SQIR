@@ -1,8 +1,8 @@
-open Qasm2sqir
+open RzQqasm2sqir
 open Printf
     
 open Optimize
-open GateCount
+open RzQGateCount
 
 
 (* light argument parsing *)

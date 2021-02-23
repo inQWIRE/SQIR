@@ -459,3 +459,52 @@ Proof.
   assumption.
 Qed.
 
+(** In progress... adding IBM gate set **)
+
+Require Import IBMGateSet.
+Require Import Optimize1qGates.
+Require Import CXCancellation.
+
+Definition change_gate_set {dim : nat} {U1 U2 : nat -> Set} 
+      (f : forall n, U1 n -> U2 n) (l : gate_list U1 dim) : gate_list U2 dim := 
+  List.map (fun g => match g with
+                  | App1 u q1 => App1 (f 1%nat u) q1
+                  | App2 u q1 q2 => App2 (f 2%nat u) q1 q2
+                  | App3 u q1 q2 q3 => App3 (f 3%nat u) q1 q2 q3
+                  end) l.
+
+Definition RzQ_to_IBM_u n (u : RzQ_Unitary n) : IBM_Unitary n :=
+  match u with
+  | URzQ_H => UIBM_U2 0 PI
+  | URzQ_X => UIBM_U3 PI 0 PI
+  | URzQ_Rz a => UIBM_U1 (Qreals.Q2R a * PI)
+  | URzQ_CNOT => UIBM_CNOT
+  end.
+
+Definition RzQ_to_IBM {dim} (l : RzQ_ucom_l dim) : IBM_ucom_l dim := 
+  change_gate_set RzQ_to_IBM_u l.
+
+Definition optimize_ibm {dim} (l : IBM_ucom_l dim) :=
+  cx_cancellation (optimize_1q_gates l).
+
+Lemma optimize_ibm_sound : forall {dim} (l : IBM_ucom_l dim),
+  uc_well_typed_l l ->
+  optimize_ibm l ≅l≅ l.
+Proof.
+  intros.
+  unfold optimize_ibm.
+  eapply uc_cong_l_trans.
+  apply uc_equiv_cong_l.
+  apply cx_cancellation_sound.
+  eapply uc_cong_l_implies_WT. 
+  symmetry.
+  apply optimize_1q_gates_sound.
+  assumption.
+  assumption.
+  apply optimize_1q_gates_sound.
+  assumption.
+Qed.
+
+(* TODO: add function that takes a RzQ_ucom_l and performs
+     optimize -> RzQ_to_IBM -> optimize_IBM -> simple_map
+   and prove soundness RzQGateSet.UL.eval l ≅ IBMGateSet.UL.eval l *)

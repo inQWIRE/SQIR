@@ -5,7 +5,7 @@ open RzQGateSet
 open Printf
 module StringMap = Map.Make(String)
 
-(* This file contains details for converting between OpenQASM and SQIR programs. *)
+(* This file contains code for converting between OpenQASM and SQIR programs. *)
 
 (** Gate set definition **)
 

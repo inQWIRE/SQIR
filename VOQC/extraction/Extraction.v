@@ -9,6 +9,8 @@ Require Import Optimize.
 Require Import Layouts.
 Require Import SimpleMapping.
 Require Import ConnectivityGraph.
+Require Import Optimize1qGates.
+Require Import CXCancellation.
 
 (* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -35,6 +37,27 @@ Extraction Inline Z.add Z.sub Z.mul.
 
 (* Otherwise sub will be extracted to the (undefined) string "sub". *)
 Extract Inlined Constant Init.Nat.sub => "Nat.sub".
+
+(* Custom extraction from R -> OCaml float. *)
+Extract Inlined Constant R => "float".
+Extract Inlined Constant R0 => "0.0".
+Extract Inlined Constant R1 => "1.0".
+Extract Inlined Constant Rplus => "( +. )".
+Extract Inlined Constant Rmult => "( *. )".
+Extract Inlined Constant Ropp => "((-.) 0.0)".
+Extract Inlined Constant Rinv => "((/.) 1.0)".
+Extract Inlined Constant Rminus => "( -. )".
+Extract Inlined Constant Rdiv => "( /. )".
+Extract Inlined Constant cos => "cos".
+Extract Inlined Constant sin => "sin".
+Extract Inlined Constant tan => "tan".
+Extract Inlined Constant atan => "acos".
+Extract Inlined Constant acos => "atan".
+Extract Inlined Constant PI => "Float.pi".
+Extract Inlined Constant Reqb => "( = )".
+Extract Inlined Constant Rleb => "( <= )".
+Extract Inlined Constant Rltb => "( < )".
+Extract Inlined Constant IZR => "Float.of_int".
 
 (* Custom Extraction of rationals. *)
 Extract Inductive Q => "Q.t" [ "" ].
@@ -169,11 +192,27 @@ Extraction Implicit fix_cnots [dim].
 Extraction Implicit simple_map [dim].
 Extraction Implicit respects_constraints_directed_b [dim].
 
+(* From IBMGateSet.v *)
+Extraction Implicit IBMGateSet.U1 [dim].
+Extraction Implicit IBMGateSet.U2 [dim].
+Extraction Implicit IBMGateSet.U3 [dim].
+Extraction Implicit IBMGateSet.CNOT [dim].
+
+(* From Optimize1qGates.v *)
+Extraction Implicit optimize_1q_gates' [dim].
+Extraction Implicit simplify_1q_gates [dim].
+Extraction Implicit optimize_1q_gates [dim].
+
+(* From CXCancellation.v *)
+Extraction Implicit cx_cancellation' [dim].
+Extraction Implicit cx_cancellation [dim].
+
 (* From Optimize.v *)
 Extraction Implicit optimize [dim].
 Extraction Implicit optimize_lcr [dim].
 Extraction Implicit optimize_light [dim].
 Extraction Implicit optimize_light_lcr [dim].
+Extraction Implicit optimize_ibm [dim].
 
 (* Perform extraction. *)
 Separate Extraction
@@ -188,4 +227,5 @@ Separate Extraction
   LNN.get_path LNN.is_in_graph
   LNNRing.get_path LNNRing.is_in_graph
   Grid.get_path Grid.is_in_graph
-  Tenerife.get_path Tenerife.is_in_graph.
+  Tenerife.get_path Tenerife.is_in_graph
+  optimize_ibm.
