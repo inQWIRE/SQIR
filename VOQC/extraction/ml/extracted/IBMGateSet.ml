@@ -32,11 +32,11 @@ type coq_IBM_ucom_l = IBMGateSet.coq_IBM_Unitary gate_list
 
 let atan2 y x =
   if ( < ) (Float.of_int 0) x
-  then acos (( /. ) y x)
+  then atan (( /. ) y x)
   else if ( < ) x (Float.of_int 0)
        then if ( <= ) (Float.of_int 0) y
-            then ( +. ) (acos (( /. ) y x)) Float.pi
-            else ( -. ) (acos (( /. ) y x)) Float.pi
+            then ( +. ) (atan (( /. ) y x)) Float.pi
+            else ( -. ) (atan (( /. ) y x)) Float.pi
        else if ( < ) (Float.of_int 0) y
             then ( /. ) Float.pi (Float.of_int ((fun p->2*p) 1))
             else if ( < ) y (Float.of_int 0)
@@ -44,133 +44,47 @@ let atan2 y x =
                         (Float.of_int ((fun p->2*p) 1))
                  else Float.of_int 0
 
-(** val rw : float -> float -> float -> float **)
-
-let rw _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( *. ) (cos (( /. ) _UU03be_ (Float.of_int ((fun p->2*p) 1))))
-    (( -. )
-      (( *. ) (cos (( /. ) _UU03b8_1 (Float.of_int ((fun p->2*p) 1))))
-        (cos (( /. ) _UU03b8_2 (Float.of_int ((fun p->2*p) 1)))))
-      (( *. ) (sin (( /. ) _UU03b8_1 (Float.of_int ((fun p->2*p) 1))))
-        (sin (( /. ) _UU03b8_2 (Float.of_int ((fun p->2*p) 1))))))
-
-(** val rx : float -> float -> float -> float **)
-
-let rx _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( *. ) (sin (( /. ) _UU03be_ (Float.of_int ((fun p->2*p) 1))))
-    (( -. )
-      (( *. ) (sin (( /. ) _UU03b8_1 (Float.of_int ((fun p->2*p) 1))))
-        (cos (( /. ) _UU03b8_2 (Float.of_int ((fun p->2*p) 1)))))
-      (( *. ) (cos (( /. ) _UU03b8_1 (Float.of_int ((fun p->2*p) 1))))
-        (sin (( /. ) _UU03b8_2 (Float.of_int ((fun p->2*p) 1))))))
-
-(** val ry : float -> float -> float -> float **)
-
-let ry _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( *. ) (cos (( /. ) _UU03be_ (Float.of_int ((fun p->2*p) 1))))
-    (( +. )
-      (( *. ) (sin (( /. ) _UU03b8_1 (Float.of_int ((fun p->2*p) 1))))
-        (cos (( /. ) _UU03b8_2 (Float.of_int ((fun p->2*p) 1)))))
-      (( *. ) (cos (( /. ) _UU03b8_1 (Float.of_int ((fun p->2*p) 1))))
-        (sin (( /. ) _UU03b8_2 (Float.of_int ((fun p->2*p) 1))))))
-
-(** val rz : float -> float -> float -> float **)
-
-let rz _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( *. ) (sin (( /. ) _UU03be_ (Float.of_int ((fun p->2*p) 1))))
-    (( +. )
-      (( *. ) (cos (( /. ) _UU03b8_1 (Float.of_int ((fun p->2*p) 1))))
-        (cos (( /. ) _UU03b8_2 (Float.of_int ((fun p->2*p) 1)))))
-      (( *. ) (sin (( /. ) _UU03b8_1 (Float.of_int ((fun p->2*p) 1))))
-        (sin (( /. ) _UU03b8_2 (Float.of_int ((fun p->2*p) 1))))))
-
 (** val rm02 : float -> float -> float -> float **)
 
-let rm02 _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( +. )
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (rx _UU03b8_1 _UU03be_ _UU03b8_2)) (rz _UU03b8_1 _UU03be_ _UU03b8_2))
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (ry _UU03b8_1 _UU03be_ _UU03b8_2)) (rw _UU03b8_1 _UU03be_ _UU03b8_2))
+let rm02 x y z =
+  ( +. ) (( *. ) (sin x) (cos z)) (( *. ) (( *. ) (cos x) (cos y)) (sin z))
 
 (** val rm12 : float -> float -> float -> float **)
 
-let rm12 _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( -. )
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (ry _UU03b8_1 _UU03be_ _UU03b8_2)) (rz _UU03b8_1 _UU03be_ _UU03b8_2))
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (rx _UU03b8_1 _UU03be_ _UU03b8_2)) (rw _UU03b8_1 _UU03be_ _UU03b8_2))
+let rm12 _ y z =
+  ( *. ) (sin y) (sin z)
 
 (** val rm22 : float -> float -> float -> float **)
 
-let rm22 _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( -. )
-    (( -. ) (Float.of_int 1)
-      (( *. )
-        (( *. ) (Float.of_int ((fun p->2*p) 1))
-          (rx _UU03b8_1 _UU03be_ _UU03b8_2))
-        (rx _UU03b8_1 _UU03be_ _UU03b8_2)))
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (ry _UU03b8_1 _UU03be_ _UU03b8_2)) (ry _UU03b8_1 _UU03be_ _UU03b8_2))
+let rm22 x y z =
+  ( -. ) (( *. ) (cos x) (cos z)) (( *. ) (( *. ) (sin x) (cos y)) (sin z))
 
 (** val rm10 : float -> float -> float -> float **)
 
-let rm10 _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( +. )
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (rx _UU03b8_1 _UU03be_ _UU03b8_2)) (ry _UU03b8_1 _UU03be_ _UU03b8_2))
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (rz _UU03b8_1 _UU03be_ _UU03b8_2)) (rw _UU03b8_1 _UU03be_ _UU03b8_2))
+let rm10 _ y z =
+  ( *. ) (sin y) (cos z)
 
 (** val rm11 : float -> float -> float -> float **)
 
-let rm11 _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( -. )
-    (( -. ) (Float.of_int 1)
-      (( *. )
-        (( *. ) (Float.of_int ((fun p->2*p) 1))
-          (rx _UU03b8_1 _UU03be_ _UU03b8_2))
-        (rx _UU03b8_1 _UU03be_ _UU03b8_2)))
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (rz _UU03b8_1 _UU03be_ _UU03b8_2)) (rz _UU03b8_1 _UU03be_ _UU03b8_2))
+let rm11 _ y _ =
+  cos y
 
 (** val rm20_minus : float -> float -> float -> float **)
 
-let rm20_minus _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( +. )
-    (( *. )
-      (( *. ) (Float.of_int ((~-) ((fun p->2*p) 1)))
-        (rx _UU03b8_1 _UU03be_ _UU03b8_2)) (rz _UU03b8_1 _UU03be_ _UU03b8_2))
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (ry _UU03b8_1 _UU03be_ _UU03b8_2)) (rw _UU03b8_1 _UU03be_ _UU03b8_2))
+let rm20_minus x y z =
+  ( +. ) (( *. ) (cos x) (sin z)) (( *. ) (( *. ) (sin x) (cos y)) (cos z))
 
 (** val rm21 : float -> float -> float -> float **)
 
-let rm21 _UU03b8_1 _UU03be_ _UU03b8_2 =
-  ( +. )
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (ry _UU03b8_1 _UU03be_ _UU03b8_2)) (rz _UU03b8_1 _UU03be_ _UU03b8_2))
-    (( *. )
-      (( *. ) (Float.of_int ((fun p->2*p) 1))
-        (rx _UU03b8_1 _UU03be_ _UU03b8_2)) (rw _UU03b8_1 _UU03be_ _UU03b8_2))
+let rm21 x y _ =
+  ( *. ) (sin x) (sin y)
 
 (** val to_zyz_theta : float -> float -> float -> float **)
 
 let to_zyz_theta _UU03b8_1 _UU03be_ _UU03b8_2 =
   if ( < ) (rm22 _UU03b8_1 _UU03be_ _UU03b8_2) (Float.of_int 1)
   then if ( < ) (Float.of_int ((~-) 1)) (rm22 _UU03b8_1 _UU03be_ _UU03b8_2)
-       then atan (rm22 _UU03b8_1 _UU03be_ _UU03b8_2)
+       then acos (rm22 _UU03b8_1 _UU03be_ _UU03b8_2)
        else Float.pi
   else Float.of_int 0
 

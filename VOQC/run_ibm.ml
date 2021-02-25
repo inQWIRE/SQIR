@@ -1,7 +1,6 @@
-open IBMqasm2sqir
+open IBMUtils
 open Printf
 open Optimize
-open IBMGateCount
 
 (* light argument parsing *)
 let fname = ref ""
@@ -33,6 +32,6 @@ let finalU1 = get_u1_count p1 in
 let finalU2 = get_u2_count p1 in
 let finalU3 = get_u3_count p1 in
 let finalCNOT = get_cnot_count p1 in
-let _ = printf "Final (map):\t %d Total, U1 %d, U2 %d, U3 %d, CNOT %d\n%!" 
+let _ = printf "Final:\t\t %d Total, U1 %d, U2 %d, U3 %d, CNOT %d\n%!" 
         finalTotal finalU1 finalU2 finalU3 finalCNOT in
 write_qasm_file !outf p1 dim;

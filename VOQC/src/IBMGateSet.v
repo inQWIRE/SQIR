@@ -642,38 +642,19 @@ Definition atan2 (y x : R) : R :=
   else
        if 0 <? y then PI/2 else if y <? 0 then -PI/2 else 0.
 
-Definition rw (θ1 ξ θ2 : R) : R := 
-   cos (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) - sin (θ1 / 2) * sin (θ2 / 2)).
-   
-Definition rx (θ1 ξ θ2 : R) : R := 
-   sin (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) - cos (θ1 / 2) * sin (θ2 / 2)).
+Definition rm02 (x y z : R) : R := sin x * cos z + cos x * cos y * sin z.
 
-Definition ry (θ1 ξ θ2 : R) : R := 
-   cos (ξ / 2) * (sin (θ1 / 2) * cos (θ2 / 2) + cos (θ1 / 2) * sin (θ2 / 2)).
+Definition rm12 (x y z : R) : R := sin y * sin z.
 
-Definition rz (θ1 ξ θ2 : R) : R := 
-   sin (ξ / 2) * (cos (θ1 / 2) * cos (θ2 / 2) + sin (θ1 / 2) * sin (θ2 / 2)).
+Definition rm22 (x y z : R) : R := cos x * cos z - sin x * cos y * sin z.
 
-Definition rm02 (θ1 ξ θ2 : R) : R :=
-  2 * (rx θ1 ξ θ2) * (rz θ1 ξ θ2) + 2 * (ry θ1 ξ θ2) * (rw θ1 ξ θ2). 
+Definition rm10 (x y z : R) : R := sin y * cos z. 
 
-Definition rm12 (θ1 ξ θ2 : R) : R :=
-  2 * (ry θ1 ξ θ2) * (rz θ1 ξ θ2) - 2 * (rx θ1 ξ θ2) * (rw θ1 ξ θ2). 
+Definition rm11 (x y z: R) : R := cos y.
 
-Definition rm22 (θ1 ξ θ2 : R) : R :=
-  1 - 2 * (rx θ1 ξ θ2) * (rx θ1 ξ θ2) - 2 * (ry θ1 ξ θ2) * (ry θ1 ξ θ2).
+Definition rm20_minus (x y z : R) : R := cos x * sin z + sin x * cos y * cos z. 
 
-Definition rm10 (θ1 ξ θ2 : R) : R :=
-  2 * (rx θ1 ξ θ2) * (ry θ1 ξ θ2) + 2 * (rz θ1 ξ θ2) * (rw θ1 ξ θ2). 
-
-Definition rm11 (θ1 ξ θ2 : R) : R :=
-  1 - 2 * (rx θ1 ξ θ2) * (rx θ1 ξ θ2) - 2 * (rz θ1 ξ θ2) * (rz θ1 ξ θ2). 
-
-Definition rm20_minus (θ1 ξ θ2 : R) : R :=
-  - 2 * (rx θ1 ξ θ2) * (rz θ1 ξ θ2) + 2 * (ry θ1 ξ θ2) * (rw θ1 ξ θ2). 
-
-Definition rm21 (θ1 ξ θ2 : R) : R :=
-  2 * (ry θ1 ξ θ2) * (rz θ1 ξ θ2) + 2 * (rx θ1 ξ θ2) * (rw θ1 ξ θ2). 
+Definition rm21 (x y z : R) : R := sin x * sin y.
 
 Definition to_zyz_theta (θ1 ξ θ2 : R) : R :=
   if rm22 θ1 ξ θ2 <? 1

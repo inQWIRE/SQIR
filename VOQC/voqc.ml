@@ -1,9 +1,6 @@
-open RzQqasm2sqir
-open Printf
-    
 open Optimize
-open RzQGateCount
-
+open Printf
+open RzQUtils
 
 (* light argument parsing *)
 let niter = ref 1

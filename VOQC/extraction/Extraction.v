@@ -51,8 +51,8 @@ Extract Inlined Constant Rdiv => "( /. )".
 Extract Inlined Constant cos => "cos".
 Extract Inlined Constant sin => "sin".
 Extract Inlined Constant tan => "tan".
-Extract Inlined Constant atan => "acos".
-Extract Inlined Constant acos => "atan".
+Extract Inlined Constant atan => "atan".
+Extract Inlined Constant acos => "acos".
 Extract Inlined Constant PI => "Float.pi".
 Extract Inlined Constant Reqb => "( = )".
 Extract Inlined Constant Rleb => "( <= )".
@@ -217,7 +217,6 @@ Extraction Implicit optimize_ibm [dim].
 (* Perform extraction. *)
 Separate Extraction
   RzQGateSet.CCX RzQGateSet.CCZ
-  URzQ_Z URzQ_P URzQ_PDAG URzQ_T URzQ_TDAG URzQ_Rz 
   optimize optimize_lcr
   optimize_light optimize_light_lcr
   trivial_layout layout_to_list only_map
