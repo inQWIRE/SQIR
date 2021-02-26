@@ -2,6 +2,7 @@ open BinNums
 open ModMult
 open Nat
 open QPE
+open RCIR
 open Rdefinitions
 open SQIR
 open Shor
@@ -10,6 +11,24 @@ open ShorAux
 (** val modexp : int -> int -> int -> int **)
 
 let modexp = fun a x n -> Z.to_int (Z.powm (Z.of_int a) (Z.of_int x) (Z.of_int n))
+
+(** val bcmap : bccom -> (int -> int) -> bccom **)
+
+let rec bcmap p f =
+  match p with
+  | Coq_bcskip -> Coq_bcskip
+  | Coq_bcx n -> Coq_bcx (f n)
+  | Coq_bccont (n, p0) -> Coq_bccont ((f n), (bcmap p0 f))
+  | Coq_bcseq (p1, p2) -> Coq_bcseq ((bcmap p1 f), (bcmap p2 f))
+
+(** val modmult_circuit :
+    int -> int -> int -> int -> int -> int -> base_ucom **)
+
+let modmult_circuit m a ainv n n0 j =
+  bc2ucom (add m (add n0 (modmult_rev_anc n0)))
+    (csplit
+      (bcelim (Coq_bccont (j,
+        (bcmap (modmult_rev n a ainv n0) (fun x -> add x m))))))
 
 (** val shor_circuit : int -> int -> (base_Unitary ucom * int) * int **)
 
@@ -22,14 +41,14 @@ let shor_circuit a n =
   let n0 = PeanoNat.Nat.log2 (mul (Pervasives.succ (Pervasives.succ 0)) n) in
   let anc = modmult_rev_anc n0 in
   let ainv = modinv a n in
-  let f = fun i ->
-    modmult_circuit
+  let f = fun j i ->
+    modmult_circuit m
       (modexp a (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) n)
       (modexp ainv (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i)
-        n) n n0
+        n) n n0 j
   in
   (((Coq_useq ((coq_X (sub (add m n0) (Pervasives.succ 0))),
-  (coq_QPE_var m (add n0 anc) f))), (add m (add n0 anc))), m)
+  (coq_QPE_var2 m (add n0 anc) f))), (add m (add n0 anc))), m)
 
 (** val remove_skips : base_ucom -> base_Unitary ucom **)
 

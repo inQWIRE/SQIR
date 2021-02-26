@@ -82,8 +82,8 @@ Definition shor_circuit a N :=
   let n := Nat.log2 (2 * N) in
   let anc := modmult_rev_anc n in
   let ainv := modinv a N in
-  let f i := modmult_circuit (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) N n in
-  (X (m + n - 1); QPE_var m (n + anc) f, (m + (n + anc))%nat, m).
+  let f j i := modmult_circuit m (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) N n j in
+  (X (m + n - 1); QPE_var2 m (n + anc) f, (m + (n + anc))%nat, m).
 
 Require Export Reals.ROrderedType.
 Fixpoint remove_skips {dim} (u : base_ucom dim) :=

@@ -18,6 +18,7 @@ let () =
     usage;
 if (!a <= 0 || !n <= !a) then printf "ERROR: Requires 0 < a < N\n%!" else 
 if (Z.gcd (Z.of_int !a) (Z.of_int !n) > Z.one) then printf "ERROR: Requires a, N comprime\n%!" else 
+(* TODO: sanity checks for o? *)
 (* perform post-processing *)
 (printf "Performing post-processing for N = %d, a = %d, and o = %d...\n%!" !n !a !o;
  let res = post_process !a !n !o in

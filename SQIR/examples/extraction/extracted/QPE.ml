@@ -68,31 +68,30 @@ let reverse_qubits n =
 let coq_QFT_w_reverse n =
   Coq_useq ((coq_QFT n), (reverse_qubits n))
 
-(** val controlled_powers_var' :
-    int -> (int -> base_ucom) -> int -> int -> base_ucom **)
+(** val controlled_powers_var2' :
+    int -> int -> int -> (int -> int -> base_ucom) -> base_ucom **)
 
-let rec controlled_powers_var' n f k kmax =
+let rec controlled_powers_var2' n k kmax f =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> coq_SKIP __)
     (fun k' ->
     (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ ->
-      cast n (control n (sub kmax (Pervasives.succ 0)) (f 0)) (add kmax n))
-      (fun _ -> Coq_useq ((controlled_powers_var' n f k' kmax),
-      (cast n (control n (sub (sub kmax k') (Pervasives.succ 0)) (f k'))
-        (add kmax n))))
+      (fun _ -> f (sub kmax (Pervasives.succ 0)) 0)
+      (fun _ -> Coq_useq ((controlled_powers_var2' n k' kmax f),
+      (f (sub (sub kmax k') (Pervasives.succ 0)) k')))
       k')
     k
 
-(** val controlled_powers_var :
-    int -> (int -> base_ucom) -> int -> base_ucom **)
+(** val controlled_powers_var2 :
+    int -> int -> (int -> int -> base_ucom) -> base_ucom **)
 
-let controlled_powers_var n f k =
-  controlled_powers_var' n f k k
+let controlled_powers_var2 n k f =
+  controlled_powers_var2' n k k f
 
-(** val coq_QPE_var : int -> int -> (int -> base_ucom) -> base_ucom **)
+(** val coq_QPE_var2 :
+    int -> int -> (int -> int -> base_ucom) -> base_ucom **)
 
-let coq_QPE_var k n f =
+let coq_QPE_var2 k n f =
   Coq_useq ((Coq_useq ((cast k (npar k coq_U_H) (add k n)),
-    (controlled_powers_var n (fun x -> map_qubits n (fun q -> add k q) (f x))
-      k))), (cast k (invert k (coq_QFT_w_reverse k)) (add k n)))
+    (controlled_powers_var2 n k f))),
+    (cast k (invert k (coq_QFT_w_reverse k)) (add k n)))
