@@ -19,9 +19,7 @@ This is caused by our use of Zarith, and seems to be safe to ignore.
 
 ## Running Shor's
 
-After following the directions above, you should have an executable in the `_build` directory. You can run this executable with `dune exec -- ./main.exe -N <int> -a <int>` where `N` is the number you want to factor and `a` is a number coprime to `N`. The executable will produce an OpenQASM file `shor.qasm` that describes the quantum part of Shor's algorithm.
-
-**TODO:** Also do Shor post-processing.
+After following the directions above, you should have two executables in the `_build` directory: one that generates a circuit for the quantum part of Shor's algorithm and one that performs classical post-processing. You can run the first executable with `dune exec -- ./generate_circuit.exe -N <int> -a <int>` where `N` is the number you want to factor and `a` is a number coprime to `N`. This will produce an OpenQASM file `shor.qasm`. You can run the second executable with `dune exec -- ./post_process.exe -N <int> -a <int> -o <int>` where `o` is the measurement outcome from running the circuit.
 
 ## Guarantees
 
