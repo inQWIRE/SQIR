@@ -8,7 +8,7 @@ rm -f .*.au *.glob *.mli *.cmi *.cmo *.vo*
 
 # Remove empty and unused files. Some files are unused because we manually
 # extract types like R and Q. We also use custom FSetAVL and FMapAVL files
-# (see ml/extract), which are wrappers around OCaml's maps and sets.
+# (see ml/extracted), which are wrappers around OCaml's maps and sets.
 rm -f BinNums.ml ClassicalDedekindReals.ml ConstructiveCauchyReals.ml \
       FMap* FSet* Int.ml List.ml MSet* Nat.ml Order* Rdefinitions.ml ROrderedType.ml \
       Ratan.ml Rtrigo1.ml Rtrigo_def.ml QArith_base.ml Specif.ml ZArith_dec.ml

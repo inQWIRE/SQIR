@@ -1,4 +1,6 @@
 (library
-  (name extracted_code)
-  (wrapped false)
-  (libraries extracted openQASM unix batteries))
+  (name voqc)
+  (flags (:standard -w -3-33-39))
+  (libraries openQASM unix zarith))
+
+(include_subdirs unqualified)

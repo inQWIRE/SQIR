@@ -1,6 +1,9 @@
-open Optimize
 open Printf
-open RzQUtils
+open Voqc.Optimize
+open Voqc.RzQUtils
+
+(* TODO: incorporate run_ibm.ml and mapper.ml; voqc.ml should just be a wrapper
+   for providing command line args. to voqc *)
 
 (* light argument parsing *)
 let niter = ref 1

@@ -27,7 +27,6 @@ Dependencies:
   * OCaml version 4.08.1 
   * dune (`opam install dune`)
   * menhir (`opam install menhir`)
-  * batteries (`opam install batteries`)
   * OCaml OpenQASM parser (`opam install openQASM`)
 
 **Library**: Run `dune build extraction/libvoqc.so` in the VOQC directory. This will produce `libvoqc.so` in _build/default/extraction/.

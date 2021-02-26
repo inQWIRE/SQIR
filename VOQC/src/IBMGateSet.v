@@ -656,23 +656,23 @@ Definition rm20_minus (x y z : R) : R := cos x * sin z + sin x * cos y * cos z.
 
 Definition rm21 (x y z : R) : R := sin x * sin y.
 
-Definition to_zyz_theta (θ1 ξ θ2 : R) : R :=
-  if rm22 θ1 ξ θ2 <? 1
-  then if -1 <? rm22 θ1 ξ θ2 
-       then acos (rm22 θ1 ξ θ2)
+Definition to_zyz_theta (x y z : R) : R :=
+  if rm22 x y z <? 1
+  then if -1 <? rm22 x y z 
+       then acos (rm22 x y z)
        else PI else 0.
 
-Definition to_zyz_phi (θ1 ξ θ2 : R) : R :=
-  if rm22 θ1 ξ θ2 <? 1
-  then if -1 <? rm22 θ1 ξ θ2 
-       then atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2)
-       else - atan2 (rm10 θ1 ξ θ2) (rm11 θ1 ξ θ2) 
-  else atan2 (rm10 θ1 ξ θ2) (rm11 θ1 ξ θ2).
+Definition to_zyz_phi (x y z : R) : R :=
+  if rm22 x y z <? 1
+  then if -1 <? rm22 x y z
+       then atan2 (rm12 x y z) (rm02 x y z)
+       else - atan2 (rm10 x y z) (rm11 x y z) 
+  else atan2 (rm10 x y z) (rm11 x y z).
 
-Definition to_zyz_lambda (θ1 ξ θ2 : R) : R :=
-  if rm22 θ1 ξ θ2 <? 1
-  then if -1 <? rm22 θ1 ξ θ2 
-       then atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)
+Definition to_zyz_lambda (x y z : R) : R :=
+  if rm22 x y z <? 1
+  then if -1 <? rm22 x y z
+       then atan2 (rm21 x y z) (rm20_minus x y z)
        else 0 
   else 0.
 

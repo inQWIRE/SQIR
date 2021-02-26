@@ -37,7 +37,6 @@ Dependencies:
   * OCaml version >= 4.08.1 
   * zarith (`opam install zarith`)
   * dune (`opam install dune`)
-  * batteries (`opam install batteries`)
   * OpenQASM parser (`opam install openQASM`)
 
 For convenience, we have already performed extraction from Coq to OCaml; the extracted files are in VOQC/extraction/ml. `make voqc` will produce an executable in VOQC/_build/default. See [the README in the VOQC directory](VOQC/README.md) for instructions on how to run the optimizer.
@@ -47,7 +46,7 @@ For convenience, we have already performed extraction from Coq to OCaml; the ext
 To install our dependencies we recommend using [opam](https://opam.ocaml.org/doc/Install.html). A typical workflow on a new computer is:
 1. Install opam
 2. Set up a new switch with a recent version of OCaml (e.g. `opam switch create voqc 4.10.0`)
-3. Install dependencies with `opam install coq dune zarith batteries openQASM` (note: installing Coq will take a while!)
+3. Install dependencies with `opam install coq dune zarith openQASM` (note: installing Coq will take a while!)
 
 ## Directory Contents
 

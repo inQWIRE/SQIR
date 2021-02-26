@@ -56,6 +56,30 @@ let sqir_to_qasm_gate oc g =
 
 let write_qasm_file fname p dim = Qasm2sqir.write_qasm_file fname p dim sqir_to_qasm_gate 
 
+let sqir_to_qasm_gate_str g =
+  match g with
+  | App1 (RzQGateSet.URzQ_H, n) -> sprintf "h q[%d];\n" n
+  | App1 (RzQGateSet.URzQ_X, n) -> sprintf "x q[%d];\n" n
+  | App1 (RzQGateSet.URzQ_Rz(q), n) -> 
+      if Q.equal q (Q.of_ints 1 4)
+      then sprintf "t q[%d];\n" n
+      else if Q.equal q (Q.of_ints 1 2)
+      then sprintf "s q[%d];\n" n
+      else if Q.equal q (Q.of_int 1)
+      then sprintf "z q[%d];\n" n
+      else if Q.equal q (Q.of_ints 3 2)
+      then sprintf "sdg q[%d];\n" n
+      else if Q.equal q (Q.of_ints 7 4)
+      then sprintf "tdg q[%d];\n" n
+      else sprintf "rzq(%a,%a) q[%d];\n" Z.sprint (Q.num q) Z.sprint (Q.den q) n
+  | App2 (RzQGateSet.URzQ_CNOT, m, n) -> sprintf "cx q[%d], q[%d];\n" m n
+  | _ -> raise (Failure ("ERROR: Failed to write qasm file"))
+
+let write_qasm_file_str p dim =
+   let header = sprintf "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\ngate rzq(a,b) q {rz((a/b)*pi) q;}\nqreg q[%d];\n\n" dim in 
+   let i = (List.map sqir_to_qasm_gate_str p) in
+   header ^ String.concat "" i
+
 let get_rz_count l = 
   let f a x = match x with
               | App1 (RzQGateSet.URzQ_Rz(_), _) -> a + 1

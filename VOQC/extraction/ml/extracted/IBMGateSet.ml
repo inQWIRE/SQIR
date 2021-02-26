@@ -81,33 +81,28 @@ let rm21 x y _ =
 
 (** val to_zyz_theta : float -> float -> float -> float **)
 
-let to_zyz_theta _UU03b8_1 _UU03be_ _UU03b8_2 =
-  if ( < ) (rm22 _UU03b8_1 _UU03be_ _UU03b8_2) (Float.of_int 1)
-  then if ( < ) (Float.of_int ((~-) 1)) (rm22 _UU03b8_1 _UU03be_ _UU03b8_2)
-       then acos (rm22 _UU03b8_1 _UU03be_ _UU03b8_2)
+let to_zyz_theta x y z =
+  if ( < ) (rm22 x y z) (Float.of_int 1)
+  then if ( < ) (Float.of_int ((~-) 1)) (rm22 x y z)
+       then acos (rm22 x y z)
        else Float.pi
   else Float.of_int 0
 
 (** val to_zyz_phi : float -> float -> float -> float **)
 
-let to_zyz_phi _UU03b8_1 _UU03be_ _UU03b8_2 =
-  if ( < ) (rm22 _UU03b8_1 _UU03be_ _UU03b8_2) (Float.of_int 1)
-  then if ( < ) (Float.of_int ((~-) 1)) (rm22 _UU03b8_1 _UU03be_ _UU03b8_2)
-       then atan2 (rm12 _UU03b8_1 _UU03be_ _UU03b8_2)
-              (rm02 _UU03b8_1 _UU03be_ _UU03b8_2)
-       else ((-.) 0.0)
-              (atan2 (rm10 _UU03b8_1 _UU03be_ _UU03b8_2)
-                (rm11 _UU03b8_1 _UU03be_ _UU03b8_2))
-  else atan2 (rm10 _UU03b8_1 _UU03be_ _UU03b8_2)
-         (rm11 _UU03b8_1 _UU03be_ _UU03b8_2)
+let to_zyz_phi x y z =
+  if ( < ) (rm22 x y z) (Float.of_int 1)
+  then if ( < ) (Float.of_int ((~-) 1)) (rm22 x y z)
+       then atan2 (rm12 x y z) (rm02 x y z)
+       else ((-.) 0.0) (atan2 (rm10 x y z) (rm11 x y z))
+  else atan2 (rm10 x y z) (rm11 x y z)
 
 (** val to_zyz_lambda : float -> float -> float -> float **)
 
-let to_zyz_lambda _UU03b8_1 _UU03be_ _UU03b8_2 =
-  if ( < ) (rm22 _UU03b8_1 _UU03be_ _UU03b8_2) (Float.of_int 1)
-  then if ( < ) (Float.of_int ((~-) 1)) (rm22 _UU03b8_1 _UU03be_ _UU03b8_2)
-       then atan2 (rm21 _UU03b8_1 _UU03be_ _UU03b8_2)
-              (rm20_minus _UU03b8_1 _UU03be_ _UU03b8_2)
+let to_zyz_lambda x y z =
+  if ( < ) (rm22 x y z) (Float.of_int 1)
+  then if ( < ) (Float.of_int ((~-) 1)) (rm22 x y z)
+       then atan2 (rm21 x y z) (rm20_minus x y z)
        else Float.of_int 0
   else Float.of_int 0
 

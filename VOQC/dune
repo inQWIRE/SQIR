@@ -1,14 +1,14 @@
 (executable
   (name voqc)
   (modules voqc)
-  (libraries extracted_code))
+  (libraries voqc))
 
 (executable
   (name mapper)
   (modules mapper)
-  (libraries extracted_code))
+  (libraries voqc))
   
 (executable
   (name run_ibm)
   (modules run_ibm)
-  (libraries extracted_code))
+  (libraries voqc))

@@ -1,9 +1,7 @@
-open RzQqasm2sqir
 open Printf
-    
-open ConnectivityGraph
-open Optimize
-open RzQGateCount
+open Voqc.ConnectivityGraph
+open Voqc.Optimize
+open Voqc.RzQUtils
 
 (* To compile: 
      In the top-level (..) directory, `make optimizer`
@@ -25,7 +23,7 @@ open RzQGateCount
    Here's one OCaml graph library I was looking at: https://opam.ocaml.org/packages/ocamlgraph/ *)
 
 let print_layout dim m =
-  List.iter (printf "%d ") (Layouts.layout_to_list dim m)
+  List.iter (printf "%d ") (Voqc.Layouts.layout_to_list dim m)
 
 let fname = ref ""
 let outf = ref ""
@@ -50,7 +48,7 @@ let origX = get_x_count p in
 let origCNOT = get_cnot_count p in
 let _ = printf "Original:\t %d Total, Rz %d, H %d, X %d, CNOT %d\n%!" 
         origTotal origRz origH origX origCNOT in
-let m = Layouts.trivial_layout dim in
+let m = Voqc.Layouts.trivial_layout dim in
 let _ = (printf "Input layout: "; print_layout dim m; printf "\n%!") in
 let get_path = LNNRing.get_path dim in
 let is_in_graph = LNNRing.is_in_graph dim in

@@ -1,10 +1,9 @@
-open Optimize
-open Qasm2sqir
-open GateCount
-open GateCancellation
-open NotPropagation
-open HadamardReduction
-open RotationMerging
+open Voqc.Optimize
+open Voqc.GateCancellation
+open Voqc.NotPropagation
+open Voqc.HadamardReduction
+open Voqc.RotationMerging
+open Voqc.RzQUtils
 
 (* Input/output values are pairs of (circuit * number of qubits).
    The reason we track number of qubits is because it's used by our (naive) write_qasm function.
