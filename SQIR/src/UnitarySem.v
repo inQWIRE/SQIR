@@ -40,6 +40,8 @@ Definition ueval_r (dim n : nat) (U : base_Unitary 1) : Square (2^dim) :=
 
 (* Restriction: m <> n and m, n < dim *)
 
+Check σx.
+
 Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
   if (m <? n) then
     @pad (1+(n-m-1)+1) m dim (∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ I 2)
