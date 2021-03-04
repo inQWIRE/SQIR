@@ -671,18 +671,17 @@ Qed.
     or a RCIR+ foreign expression that might contain quantum gates.
     The requirement of quantum foreign gates in RCIR+ is that the input of registers
     for the functions to be all 0/1 bits, while the output also contains only 0/1 bits. *)
-Inductive rfun A :=
+Inductive rfun :=
           (* list of input evar, and the return evar, and the ivar.
              return evar cannot appear in the Fun.
               the final avar is the return statement in the function.
                After a function is returned. The value of avar will be written to the value of evar. *)
-       Fun : (list (rtype * evar)) -> evar -> (list (rtype * ivar)) -> rexp -> avar -> rfun A
-     | Cast : rtype ->  evar -> rtype -> rfun A
+       Fun : (list (rtype * evar)) -> evar -> (list (rtype * ivar)) -> rexp -> avar -> rfun
+     | Cast : rtype ->  evar -> rtype -> rfun
       (* init is to initialize a local variable with a number. 
          A local variable refers to a constant in QSSA. *)
-     | Init : rtype -> evar -> option (nat -> bool) -> rfun A
-     | Inv : evar -> rfun A
-     | Foreign : (list (rtype * evar)) -> (list (rtype * ivar)) -> A -> rfun A.
+     | Init : rtype -> evar -> option (nat -> bool) -> rfun
+     | Inv : evar -> rfun.
 
 Fixpoint gen_heap (l : list (rtype * evar)) : heap := 
   match l with [] => empty_heap
@@ -703,7 +702,7 @@ Fixpoint type_match (l: list (rtype * evar)) (r : heap) : Prop :=
     end.
 
 (* Define the top level of the language. Every program is a list of global variable definitions plus a list of rfun functions. *)
-Inductive rtop A := Prog : list (rfun A) -> rtop A.
+Inductive rtop := Prog : list (rfun) -> rtop.
 
 (*
 Definition update_type (f : regs) (i : avar) (x : rtype) :=
@@ -714,21 +713,21 @@ Definition update_type (f : regs) (i : avar) (x : rtype) :=
 Definition WF_type (t:rtype) : Prop := match t with Q 0 => False | _ => True end.
 
 (* We require every global variables are different *)
-Inductive WF_rfun {A} : heap -> (rfun A) -> heap -> Prop := 
+Inductive WF_rfun : heap -> (rfun) -> heap -> Prop := 
     | WF_fun : forall h l1 x t v y l2 e s v', Heap.MapsTo x (t, v) h -> s = gen_regs l2 ->
                 well_formed_regs s -> lookup (Heap.remove x h, s) y = Some (t,v') -> WF_rexp (Heap.remove x h, s) e
-                -> type_match ((t,x)::l1) h -> WF_rfun h (Fun A l1 x l2 e y) h
+                -> type_match ((t,x)::l1) h -> WF_rfun h (Fun l1 x l2 e y) h
     | WF_cast : forall h n m x g, Heap.MapsTo x (Q n, g) h -> 0 < n -> 0 < m ->
-            WF_rfun h (Cast A (Q n) x (Q m)) (update_type_heap h x (Q m))
-    | WF_init : forall h x g t, WF_type t -> ~ Heap.In x h -> WF_rfun h (Init A t x g) (update_type_heap h x t)
-    | WF_inv : forall h x e, Heap.MapsTo x e h -> WF_rfun h (Inv A x) h.
+            WF_rfun h (Cast (Q n) x (Q m)) (update_type_heap h x (Q m))
+    | WF_init : forall h x g t, WF_type t -> ~ Heap.In x h -> WF_rfun h (Init t x g) (update_type_heap h x t)
+    | WF_inv : forall h x e, Heap.MapsTo x e h -> WF_rfun h (Inv x) h.
 
-Inductive WF_rfun_list {A} : heap -> list (rfun A) -> heap -> Prop :=
+Inductive WF_rfun_list : heap -> list (rfun) -> heap -> Prop :=
     | WF_empty : forall h, WF_rfun_list h [] h
     | WF_many : forall h h' h'' x xs, WF_rfun h x h' -> WF_rfun_list h' xs h'' -> WF_rfun_list h (x::xs) h''.
 
-Inductive WF_rtop {A} : rtop A -> Prop := 
-    | WF_prog : forall h fl,  WF_rfun_list empty_heap fl h -> WF_rtop (Prog A fl).
+Inductive WF_rtop : rtop -> Prop := 
+    | WF_prog : forall h fl,  WF_rfun_list empty_heap fl h -> WF_rtop (Prog fl).
 
 
 (*
@@ -874,22 +873,22 @@ Fixpoint remove_all (l:list evar) (h:heap) : heap :=
              | (x::xl) => remove_all xl (Heap.remove x h)
    end.
 
-Inductive step_rfun {A} : list evar -> heap -> rfun A -> list evar -> heap -> Prop :=
+Inductive step_rfun : list evar -> heap -> rfun -> list evar -> heap -> Prop :=
    | fun_step : forall el r h h' l1 l2 e x a v n m fv, lookup (h',r) a = Some (Q n,v) -> 
               Heap.MapsTo x (Q m, fv) h' -> estep (h,(gen_regs l2)) e (h',r)
-              -> step_rfun el h (Fun A l1 x l2 e a) el (update_val_heap h' x (xor_all v fv))
-   | cast_step : forall el h nt mt x, step_rfun el h (Cast A nt x mt) el (update_type_heap h x mt)
-   | init_step1 : forall el h t x, step_rfun el h (Init A t x None) el (update_val_heap (update_type_heap h x t) x allfalse)
-   | init_step2 : forall el h t x n, step_rfun el h (Init A t x (Some n)) el (update_val_heap (update_type_heap h x t) x n)
-   | inv_step : forall l h x, step_rfun l h (Inv A x) (x::l) h.
+              -> step_rfun el h (Fun l1 x l2 e a) el (update_val_heap h' x (xor_all v fv))
+   | cast_step : forall el h nt mt x, step_rfun el h (Cast nt x mt) el (update_type_heap h x mt)
+   | init_step1 : forall el h t x, step_rfun el h (Init t x None) el (update_val_heap (update_type_heap h x t) x allfalse)
+   | init_step2 : forall el h t x n, step_rfun el h (Init t x (Some n)) el (update_val_heap (update_type_heap h x t) x n)
+   | inv_step : forall l h x, step_rfun l h (Inv x) (x::l) h.
 
-Inductive step_rfun_list {A} : list evar -> heap -> list (rfun A) -> list evar -> heap -> Prop :=
+Inductive step_rfun_list : list evar -> heap -> list (rfun) -> list evar -> heap -> Prop :=
    | empty_step : forall el h, step_rfun_list el h [] el h
    | many_step : forall el el' el'' h h' h'' x xs, step_rfun el h x el' h' ->
                       step_rfun_list el' h' xs el'' h'' -> step_rfun_list el h (x::xs) el'' h''.
 
-Inductive step_top {A} : rtop A -> heap -> Prop :=
-  | the_top_step : forall fl el h, step_rfun_list nil empty_heap fl el h -> step_top (Prog A fl) (remove_all el h).
+Inductive step_top : rtop -> heap -> Prop :=
+  | the_top_step : forall fl el h, step_rfun_list nil empty_heap fl el h -> step_top (Prog fl) (remove_all el h).
 
 
 Lemma RCNOT_correct :
@@ -979,4 +978,418 @@ Proof.
   apply if_false. assumption.
   assumption.
 Qed.
+
+(* an adder implementation. *)
+(* all calculations are assumed to perform in terms of two's complemetn. *)
+Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
+
+Definition MAJ a b c := RCNOT c b ; RCNOT c a ; RCCX a b c.
+Definition UMA a b c := RCCX a b c ; RCNOT c a ; RCNOT a b.
+
+Lemma MAJ_WF :
+  forall hr a b c,
+    a <> b -> b <> c -> a <> c ->
+    well_formed_mem hr ->
+    well_defined hr a -> well_defined hr b -> well_defined hr c ->
+    WF_rexp hr (MAJ c b a).
+Proof.
+  intros. unfold MAJ. constructor. constructor.
+  apply RCNOT_WF; assumption.
+  apply RCNOT_WF; assumption.
+  apply RCCX_WF.
+  intros R. rewrite R in H0. contradiction.
+  intros R. subst. contradiction.
+  intros R. subst. contradiction. 
+  1 - 4: assumption.  
+Qed.
+
+Lemma UMA_WF :
+  forall hr a b c,
+    a <> b -> b <> c -> a <> c ->
+    well_formed_mem hr ->
+    well_defined hr a -> well_defined hr b -> well_defined hr c ->
+    WF_rexp hr (UMA c b a).
+Proof.
+  intros. unfold UMA. constructor. constructor.
+  apply RCCX_WF.
+  intros R. rewrite R in H0. contradiction.
+  intros R. subst. contradiction.
+  intros R. subst. contradiction. 
+  1 - 4: assumption.  
+  apply RCNOT_WF; assumption.
+  apply RCNOT_WF.
+  intros R. subst. contradiction.
+  1 - 3 : assumption. 
+Qed.
+
+Lemma MAJ_correct :
+  forall hr a b c fa fb fc,
+    a <> b -> b <> c -> a <> c ->
+    get hr a = Some fa -> get hr b = Some fb -> get hr c = Some fc ->
+    estep hr (MAJ c b a) (hr[ a |-> majb fa fb fc][b |-> fb ⊕ fa][c |-> fc ⊕ fa]).
+(*Admitted. 
+(* The following proof works, but too slow. Admitted when debugging. *)*)
+Proof.
+  intros hr a b c fa fb fc Hab' Hbc' Hac' Vfa Vfb Vfc. 
+  unfold MAJ.
+  eapply seq_rule. 
+  eapply seq_rule. 
+  apply RCNOT_correct. assumption.
+  apply Vfa. apply Vfb.
+  apply RCNOT_correct. assumption.
+  rewrite get_neq. apply Vfa. assumption.
+  rewrite get_neq. apply Vfc.
+  intros R. subst. contradiction.
+  assert (c <> b). intros R. subst. contradiction.
+  assert (b <> a). intros R. subst. contradiction.
+  assert (c <> a). intros R. subst. contradiction.
+  assert (get ((hr [b |-> fb ⊕ fa]) [c |-> fc ⊕ fa]) c = Some (fc ⊕ fa)).
+  apply get_1. rewrite get_neq. rewrite Vfc. easy. assumption.
+  assert (get ((hr [b |-> fb ⊕ fa]) [c |-> fc ⊕ fa]) b = Some (fb ⊕ fa)).
+  rewrite get_index_neq. apply get_1. rewrite get_neq.
+  rewrite Vfb. easy. 1-2:assumption.
+  rewrite Vfc. easy.
+  rewrite Vfb. easy.
+  assert ( get ((hr [b |-> fb ⊕ fa]) [c |-> fc ⊕ fa]) a = Some fa).
+  rewrite get_neq. rewrite get_neq. 1 - 3:assumption.
+  specialize (RCCX_correct ((hr [b |-> fb ⊕ fa]) [c |-> fc ⊕ fa]) c b a (fc ⊕ fa) (fb ⊕ fa) fa
+                 H H0 H1 H2 H3 H4) as eq1.
+  assert (fa ⊕ (fb ⊕ fa && fc ⊕ fa) =  majb fa fb fc).
+  unfold majb. btauto.
+  rewrite H5 in eq1.
+  rewrite (get_index_neq (hr [b |-> fb ⊕ fa])) in eq1.
+  rewrite (get_index_neq hr a b) in eq1.
+  assumption. assumption. 
+  rewrite Vfa. easy.
+  rewrite Vfb. easy.
+  assumption.
+  rewrite get_neq. rewrite Vfa. easy.
+  assumption.
+  rewrite get_neq. rewrite Vfc. easy.
+  assumption.
+Qed.
+
+Lemma UMA_correct_partial :
+  forall hr' a b c fa fb fc,
+    a <> b -> b <> c -> a <> c ->
+    get hr' a = Some (majb fa fb fc) ->
+    get hr' b = Some (fb ⊕ fa) -> get hr' c = Some (fc ⊕ fa) ->
+    estep hr' (UMA c b a) (((hr'[a |-> fa])[b |-> fa ⊕ fb ⊕ fc])[c |-> fc]).
+Proof.
+  intros. unfold UMA.
+  assert (c <> b). intros R. subst. contradiction.
+  assert (b <> a). intros R. subst. contradiction.
+  assert (c <> a). intros R. subst. contradiction.
+  eapply seq_rule.
+  eapply seq_rule.
+  apply RCCX_correct; try assumption.
+  apply H4. apply H3. apply H2.
+  apply RCNOT_correct; try assumption.
+  rewrite get_1. reflexivity.
+  rewrite H2. easy.
+  rewrite get_neq; try assumption.
+  apply H4.
+  assert (majb fa fb fc ⊕ (fb ⊕ fa && fc ⊕ fa) = fa).
+  unfold majb. btauto.
+  rewrite H8.
+  assert ((fc ⊕ fa) ⊕ fa = fc) by btauto.
+  rewrite H9.
+  assert (get ((hr' [a |-> fa]) [c |-> fc]) c = Some fc).
+  rewrite get_1. reflexivity.
+  rewrite get_neq. rewrite H4. easy.
+  assumption.
+  assert (get ((hr' [a |-> fa]) [c |-> fc]) b = Some (fb ⊕ fa)).
+  rewrite get_neq; try assumption. rewrite get_neq; try assumption.
+  specialize (RCNOT_correct ((hr' [a |-> fa]) [c |-> fc]) c b fc (fb ⊕ fa) H5 H10 H11) as eq1.
+  assert ((fb ⊕ fa) ⊕ fc = (fa ⊕ fb) ⊕ fc) by btauto.
+  rewrite H12 in eq1.
+  rewrite (get_index_neq (hr' [a |-> fa])).
+  1-2:assumption.
+  rewrite get_neq. rewrite H4. easy.
+  assumption.
+  rewrite get_neq. rewrite H3. easy.
+  assumption.
+Qed.
+
+(* The following defines n-bits MAJ and UMA circuit. 
+   Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
+Fixpoint MAJseq (i:nat) (c:pos) (x:avar) (y:avar) : rexp :=
+  match i with
+  | 0 => MAJ c (y,0%nat) (x,0)
+  | S i' => MAJseq i' c x y; MAJ (x,i') (y,i) (x,i)
+  end.
+
+(*
+Definition MAJseq n := MAJseq' (n - 1) n 0.
+*)
+
+Lemma MAJseq_WF' :
+  forall i n hr c x y,
+    i <= n -> (fst c) <> x -> x <> y -> (fst c <> y) ->
+    well_formed_mem hr ->
+    well_defined hr c -> well_defined_all hr x (n+1)
+   ->  well_defined_all hr y (n+1) ->
+    WF_rexp hr (MAJseq i c x y).
+Proof.
+  induction i.
+  intros. simpl.
+  destruct c.
+  apply MAJ_WF.
+  intros R. inv R. contradiction.
+  intros R. inv R. contradiction.
+  intros R. inv R. contradiction.
+  assumption.
+  unfold well_defined_all in *.
+  apply H5. lia.
+  apply H6. lia. assumption.
+  intros. simpl. apply WF_rseq. 
+  apply (IHi n).
+  lia. 1 - 7:assumption. 
+  unfold well_defined_all in *.
+  apply MAJ_WF.
+  intros R. inv R. contradiction.
+  intros R. inv R. contradiction.
+  intros R. inv R. lia.
+  assumption.
+  apply H5. lia.
+  apply H6. lia.
+  apply H5. lia.
+Qed.
+
+Lemma MAJseq_WF : forall n hr c x y,
+    (fst c) <> x -> x <> y -> (fst c <> y) ->
+    well_formed_mem hr ->
+    well_defined hr c -> well_defined_all hr x (n+1)
+   ->  well_defined_all hr y (n+1) ->
+    WF_rexp hr (MAJseq n c x y).
+Proof.
+ intros. apply (MAJseq_WF' n n).
+ lia. 1-7:assumption.
+Qed.
+
+Fixpoint UMAseq (i:nat) (c:pos) (x:avar) (y:avar) : rexp :=
+  match i with
+  | 0 => UMA c (y,0) (x,0)
+  | S i' => UMA (x,i') (y, i) (x, i); UMAseq i' c x y
+  end.
+
+
+Definition adder (i:nat) (c:pos) (x:avar) (y:avar)
+         := MAJseq i c x y; UMAseq i c x y.
+
+Lemma UMAseq_WF' :
+  forall i n hr c x y,
+    i <= n -> (fst c) <> x -> x <> y -> (fst c <> y) ->
+    well_formed_mem hr ->
+    well_defined hr c -> well_defined_all hr x (n+1)
+   ->  well_defined_all hr y (n+1) ->
+    WF_rexp hr (UMAseq i c x y).
+Proof.
+  induction i.
+  intros. simpl.
+  destruct c.
+  apply UMA_WF.
+  intros R. inv R. contradiction.
+  intros R. inv R. contradiction.
+  intros R. inv R. contradiction.
+  assumption.
+  unfold well_defined_all in *.
+  apply H5. lia.
+  apply H6. lia. assumption.
+  intros. simpl. apply WF_rseq. 
+  apply UMA_WF.
+  intros R. inv R. contradiction.
+  intros R. inv R. contradiction.
+  intros R. inv R. lia.
+  assumption.
+  apply H5. lia.
+  apply H6. lia.
+  apply H5. lia.
+  apply (IHi n).
+  lia. 1 - 7:assumption. 
+Qed.
+
+Lemma UMAseq_WF : forall n hr c x y,
+    (fst c) <> x -> x <> y -> (fst c <> y) ->
+    well_formed_mem hr ->
+    well_defined hr c -> well_defined_all hr x (n+1)
+   ->  well_defined_all hr y (n+1) ->
+    WF_rexp hr (UMAseq n c x y).
+Proof.
+ intros. apply (UMAseq_WF' n n).
+ lia. 1-7:assumption.
+Qed.
+
+
+Lemma adder_WF: 
+  forall n hr c x y,
+    (fst c) <> x -> x <> y -> (fst c <> y) ->
+    well_formed_mem hr ->
+    well_defined hr c -> well_defined_all hr x (n+1)
+   ->  well_defined_all hr y (n+1) ->
+    WF_rexp hr (adder n c x y).
+Proof.
+ intros. unfold adder.
+ apply WF_rseq.
+ apply MAJseq_WF. 1 - 7:assumption.
+ apply UMAseq_WF. 1 - 7:assumption.
+Qed.
+
+(* Here we defined the specification of carry value for each bit. *)
+Fixpoint carry b n f g :=
+  match n with
+  | 0 => b
+  | S n' => let c := carry b n' f g in
+           let a := f n' in
+           let b := g n' in
+           (a && b) ⊕ (b && c) ⊕ (a && c)
+  end.
+
+Lemma carry_sym :
+  forall b n f g,
+    carry b n f g = carry b n g f.
+Proof.
+  intros. induction n. reflexivity.
+  simpl. rewrite IHn. btauto.
+Qed.
+
+Lemma carry_false_0_l: forall n f, 
+    carry false n allfalse f = false.
+Proof.
+  unfold allfalse.
+  induction n.
+  simpl.
+  reflexivity.
+  intros. simpl.
+  rewrite IHn. rewrite andb_false_r.
+  reflexivity.
+Qed.
+
+Lemma carry_false_0_r: forall n f, 
+    carry false n f allfalse = false.
+Proof.
+  unfold allfalse.
+  induction n.
+  simpl.
+  reflexivity.
+  intros. simpl.
+  rewrite IHn. rewrite andb_false_r.
+  reflexivity.
+Qed.
+
+Parameter a b c: ivar.
+
+Parameter u v : evar.
+
+Definition adder_fun (n:nat) (x:evar) (y:evar) := 
+       Fun (cons (Q n, x) [(Q n, y)]) u [(Q 1, a)] (adder n (lvar a,0) (gvar x) (gvar y)) (gvar x).
+
+(* A compilation from RCIR+ fun to RCIR. *) 
+Require Import RCIR.
+
+Fixpoint copy_trans (n:nat) (i:nat) (j:nat) := 
+         match n with 0 => bccnot i j
+                   | S m => bcseq (copy_trans m i j) (bccnot (i+m) (j+m))
+         end.
+
+Fixpoint rexp_trans (r:rexp) (varmp : avar -> nat * nat) : bccom :=
+   match r with Skip => bcskip
+              | X (a,b) => bcx (snd(varmp a) + b)
+              | CU (a,b) e => bccont (snd(varmp a) + b) (rexp_trans e varmp)
+              | Seq e1 e2 => bcseq (rexp_trans e1 varmp) (rexp_trans e2 varmp)
+              | Copyto x y => copy_trans (fst (varmp x)) (snd(varmp x)) (snd(varmp y))
+   end.
+
+Definition empty_map := fun (_ : avar) => (0,0).
+
+Fixpoint gen_map_e (l : list (rtype * evar)) (m:nat) : (avar -> nat * nat) :=
+        match l with [] => empty_map
+                 | (Q n,x)::xs => fun a => if a ==? (gvar x) then (n,m+n) else gen_map_e xs (m+n) a
+        end.
+
+Fixpoint gen_map_i (l : list (rtype * ivar)) (m:nat) (varmp: avar -> nat * nat) : (avar -> nat * nat) :=
+        match l with [] => varmp
+                 | (Q n,x)::xs => fun a => if a ==? (gvar x) then (n,m+n) else gen_map_i xs (m+n) varmp a
+        end.
+
+Definition fun_trans (l1:list (rtype * evar)) (x:evar) (l2 : list (rtype * ivar))
+         (r:rexp) (re:avar) (m:nat) (varmp : avar -> nat * nat)
+       := let new_map := (gen_map_i l2 m varmp) in 
+            let new_e := rexp_trans r new_map in 
+                 bcseq  (bcseq new_e (rexp_trans (Copyto re (gvar x)) new_map)) (bcinv new_e).
+     
+(* A general circuit of multiplication.  z = x * y, z = 2*n bits, x = n bit and y = n bits. *)
+Fixpoint MAJseq_g (i:nat) (c:pos) (x:avar) (y:avar) (p:nat) : rexp :=
+  match i with
+  | 0 => MAJ c (y,p) (x,0%nat)
+  | S i' => MAJseq_g i' c x y p; MAJ (x,i') (y,p+i) (x,i)
+  end.
+
+Fixpoint UMAseq_g (i:nat) (c:pos) (x:avar) (y:avar) (p:nat) : rexp :=
+  match i with
+  | 0 => UMA c (y,p) (x,0%nat)
+  | S i' => UMA (x,i') (y, p+i) (x, i); UMAseq_g i' c x y p
+  end.
+
+Definition adder_g (i:nat) (c:pos) (x:avar) (y:avar) (p:nat) : rexp := MAJseq_g i c x y p; UMAseq_g i c x y p.
+
+Fixpoint multer' (i:nat) (dim:nat) (p:nat) (c:pos) (x:avar) (y:avar) := 
+        match i with 0 => adder_g dim c x y p
+                 | S i' => adder_g dim c x y p ; multer' i' dim (S p) c x y
+        end.
+
+Definition multer (n:nat) (c:pos) (x:avar) (y:avar) := multer' n n 0 c x y.
+
+(* x is a n qubit number, while y is a 2n qubit number with n qubit are counted. 
+   Everytime using this function, we need to first cast a n qubit y number to 2n qubit.  *)
+Definition mult_fun (n:nat) (x:evar) (y:evar) (z:evar) :=
+      Fun (cons (Q n, x) [(Q (2*n), y)]) z [(Q 1, a)] (multer n (lvar a,0) (gvar x) (gvar y)) (gvar y).
+
+
+(* Here we define a general modulo function. *)
+Fixpoint negate n x i : rexp :=
+  match n with
+  | 0 => Skip
+  | S m => negate m x i; X (x,(i+m))
+  end.
+
+Fixpoint MAJseq_gi (i:nat) (c:pos) (x:avar) (p:nat) (y:avar) : rexp :=
+  match i with
+  | 0 => MAJ c (y,0%nat) (x,p)
+  | S i' => MAJseq_gi i' c x p y; MAJ (x,p+i') (y,i) (x,p+i)
+  end.
+
+Fixpoint UMAseq_gi (i:nat) (c:pos) (x:avar) (p:nat) (y:avar) : rexp :=
+  match i with
+  | 0 => UMA c (y,0%nat) (x,p)
+  | S i' => UMA (x,p+i') (y, i) (x, p+i); UMAseq_gi i' c x p y
+  end.
+
+(*
+Definition substractor01 n := (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
+*)
+
+Fixpoint one_div (dim:nat) (c:pos) (c1:pos) (x:avar) (p:nat)  (y:avar) :=
+      match p with 0 => negate dim y 0 ; MAJseq_g dim c y x 0; CU (x,dim-1) (X c1) ;
+                  CU c1 (MAJseq_g dim c y x 0) ; X c1 ;
+                CU c1 (UMAseq_g dim c y x 0; negate dim x 0) ; X c1 ; CU (x,dim-1) (X c1) ; negate dim y 0
+               | S p' => negate dim y 0 ; MAJseq_g dim c y x p; CU (x,p+dim-1) (X c1) ; 
+                       CU c1 (MAJseq_g dim c y x p) ; X c1 ;
+                CU c1 (UMAseq_g dim c y x p; negate dim x p) ; X c1 ; CU (x,p+dim-1) (X c1) ; negate dim y 0
+                 ; one_div dim c c1 x p' y
+      end.
+
+
+Fixpoint find_x_top (n:nat) (j:nat) (c:pos) (c1:pos) (x:avar) (y:avar) :=  
+        match n with 0 => Skip
+                 | S m => if m <? j then Skip else CU (x,m) (one_div m c c1 x (m-j) y) ; find_x_top m j c c1 x y
+        end.
+
+Fixpoint find_y_top (n:nat) (m:nat) (c:pos) (c1:pos) (x:avar) (y:avar) :=  
+        match n with 0 => Skip
+                 | S n' => CU (y,n') (find_x_top m n' c c1 x y) ; find_y_top n' m c c1 x y
+        end.
+
+
+
 
