@@ -485,6 +485,37 @@ Proof.
   rewrite carry_add_pos_eq. unfold add_c. rewrite Pos.add_carry_spec. replace (p + q + 1)%positive with (Pos.succ (p + q)) by lia. easy.
 Qed.
 
+
+(* The implementation of a new constant adder. *)
+Definition single_carry (i:nat) (c:nat) (M:nat -> bool) := if M 0 then bccnot i c else bcskip.
+
+(* for anything that is ge 2. *)
+Fixpoint half_carry (n:nat) (i:nat) (j:nat) (M : nat -> bool) := 
+    match n with 0 => (if M 1 then bccnot (i+1) j ; bcx j else bcskip) ; (if M 0 then bcccnot i (i+1) j else bccnot (i+1) j)
+              | S m => (if M (n+1) then bccnot (i+(n+1)) (j+n) ; bcx (j+n) else bcskip); bcccnot (j+m) (i+(n+1)) (j+n);
+                               half_carry m i j M; bcccnot (j+m) (i+(n+1)) (j+n)
+    end.
+
+Definition acarry (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) := 
+        if n <? 2 then bcskip else if n =? 2 then single_carry i c M 
+                    else bccnot (j+n) c; half_carry n i j M;bccnot (j+n) c;half_carry n i j M.
+
+Fixpoint add_carry (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) :=
+        match n with 0 | S 0 => bcskip
+                  | S m => acarry n i j c M ; bccnot c (i+n); acarry n i j c M ; add_carry m i j c M
+        end.
+
+Fixpoint add_const (n:nat) (i:nat) (M:nat -> bool) :=
+     match n with 0 => bcskip
+                | S m => if M m then bcx (i+m) else bcskip ; add_const m i M
+     end.
+
+
+(* n is the number of qubits, i is the start position for the variable to add,
+                         j is the start position of n dirty bit, and c is the position for the carry bit. *)
+Definition new_adder (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) := add_carry n i j c M ; add_const n i M.
+
+
 Lemma MAJseq'_efresh :
   forall i n j,
     0 < n ->
