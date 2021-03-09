@@ -14,8 +14,8 @@ rm -f BinNums.ml ClassicalDedekindReals.ml ConstructiveCauchyReals.ml \
       Ratan.ml Rtrigo1.ml Rtrigo_def.ml QArith_base.ml Specif.ml ZArith_dec.ml
 
 # Move extracted files to a subdirectory.
-mv Bin*.ml CXCancellation.ml ConnectivityGraph.ml Datatypes.ml GateCancellation.ml \
-   HadamardReduction.ml IBMGateSet.ml Layouts.ml NotPropagation.ml \
+mv Bin*.ml ChangeRotationBasis.ml CXCancellation.ml ConnectivityGraph.ml Datatypes.ml \
+   GateCancellation.ml HadamardReduction.ml IBMGateSet.ml Layouts.ml NotPropagation.ml \
    Optimize.ml Optimize1qGates.ml PeanoNat.ml RotationMerging.ml RzQGateSet.ml \
    SimpleMapping.ml UnitaryListRepresentation.ml \
    ml/extracted

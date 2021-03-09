@@ -9,6 +9,7 @@ Require Import Optimize.
 Require Import Layouts.
 Require Import SimpleMapping.
 Require Import ConnectivityGraph.
+Require Import ChangeRotationBasis.
 Require Import Optimize1qGates.
 Require Import CXCancellation.
 
@@ -55,7 +56,6 @@ Extract Inlined Constant atan => "atan".
 Extract Inlined Constant acos => "acos".
 Extract Inlined Constant PI => "Float.pi".
 Extract Inlined Constant Reqb => "( = )".
-Extract Inlined Constant Rleb => "( <= )".
 Extract Inlined Constant Rltb => "( < )".
 Extract Inlined Constant IZR => "Float.of_int".
 

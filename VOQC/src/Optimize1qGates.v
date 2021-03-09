@@ -1,3 +1,4 @@
+Require Import ChangeRotationBasis.
 Require Export IBMGateSet.
 Require Import List.
 Open Scope ucom.
@@ -126,12 +127,6 @@ Proof.
     rewrite IHn; auto. simpl. rewrite <- app_assoc. reflexivity.
   - inversion u.
 Qed.
-  
-Lemma Reqb_reflect : forall (x y : R), reflect (x = y) (Reqb x y).
-Proof.
-  intros x y. apply iff_reflect. symmetry. apply Reqb_eq.
-Qed.
-Hint Resolve Reqb_reflect : bdestruct.
 
 Lemma simplify_1q_gates_sound : forall {dim} (l : IBM_ucom_l dim) acc,
   uc_well_typed_l l ->

@@ -90,10 +90,10 @@ SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examp
 VOQC/src/ConnectivityGraph.vo: $(VOQC)/ConnectivityGraph.v
 	coqc $(COQ_OPTS) $(VOQC)/ConnectivityGraph.v
 
-VOQC/src/Layouts.vo: $(VOQC)/Layouts.v
+VOQC/src/Layouts.vo: $(VOQC)/Layouts.v $(SQIR)/VectorStates.vo
 	coqc $(COQ_OPTS) $(VOQC)/Layouts.v
 
-VOQC/src/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(VOQC)/ConnectivityGraph.vo $(VOQC)/Layouts.vo 
+VOQC/src/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(VOQC)/ConnectivityGraph.vo $(VOQC)/Layouts.vo $(VOQC)/UnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/SimpleMapping.v
 
 # Built by 'make optimizer'
@@ -110,7 +110,7 @@ VOQC/src/GateSet.vo: $(VOQC)/GateSet.v $(SQIR)/UnitarySem.vo
 VOQC/src/HadamardReduction.vo: $(VOQC)/HadamardReduction.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/HadamardReduction.v
 
-VOQC/src/IBMGateSet.vo: $(VOQC)/IBMGateSet.v $(VOQC)/Quaternion.vo $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
+VOQC/src/IBMGateSet.vo: $(VOQC)/IBMGateSet.v $(VOQC)/ChangeRotationBasis.vo $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/IBMGateSet.v
 
 VOQC/src/UnitaryListRepresentation.vo: $(VOQC)/UnitaryListRepresentation.v $(VOQC)/GateSet.vo $(QWIRE)/Proportional.vo $(SQIR)/Equivalences.vo
@@ -128,8 +128,8 @@ VOQC/src/Optimize.vo: $(VOQC)/Optimize.v $(VOQC)/NotPropagation.vo $(VOQC)/Hadam
 VOQC/src/Optimize1qGates.vo: $(VOQC)/Optimize1qGates.v $(VOQC)/IBMGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/Optimize1qGates.v
 	
-VOQC/src/Quaternion.vo: $(VOQC)/Quaternion.v
-	coqc $(COQ_OPTS) $(VOQC)/Quaternion.v
+VOQC/src/ChangeRotationBasis.vo: $(VOQC)/ChangeRotationBasis.v
+	coqc $(COQ_OPTS) $(VOQC)/ChangeRotationBasis.v
 
 VOQC/src/RzQGateSet.vo: $(VOQC)/RzQGateSet.v $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/RzQGateSet.v

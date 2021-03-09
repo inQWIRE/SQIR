@@ -110,10 +110,6 @@ Proof. intros. rewrite <- Mmult_assoc, braket_diff; Msimpl; easy. Qed.
 
 Hint Rewrite braket_same braket_diff braketbra_same braketbra_diff using lia : ket_db.
 
-Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
-Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
-Hint Rewrite RtoC_pow : RtoC_db.
-
 (* Improved group_Cexp based on group_radicals *)
 Ltac group_Cexp :=
   repeat rewrite <- Cexp_neg;

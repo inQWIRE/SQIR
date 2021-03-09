@@ -1,7 +1,6 @@
+Require Export ChangeRotationBasis.
 Require Export UnitaryListRepresentation.
 Require Export NonUnitaryListRepresentation.
-Require Export Reals.ROrderedType.
-Require Export Reals.Ratan.
 
 Local Open Scope R_scope.
 Local Open Scope matrix_scope.
@@ -629,63 +628,28 @@ Proof.
   lca.
 Qed.
 
-(* A few definitions (temporarily) copied from Quaternion.v *)
-Parameter Rleb : R -> R -> bool. 
-Parameter Rltb : R -> R -> bool.
-Infix "<=?" := Rleb : R_scope.
-Infix "<?" := Rltb : R_scope.
-
-Definition atan2 (y x : R) : R :=
-  if 0 <? x then atan (y/x)
-  else if x <? 0 then
-       if 0 <=? y then atan (y/x) + PI else atan (y/x) - PI
-  else
-       if 0 <? y then PI/2 else if y <? 0 then -PI/2 else 0.
-
-Definition rm02 (x y z : R) : R := sin x * cos z + cos x * cos y * sin z.
-
-Definition rm12 (x y z : R) : R := sin y * sin z.
-
-Definition rm22 (x y z : R) : R := cos x * cos z - sin x * cos y * sin z.
-
-Definition rm10 (x y z : R) : R := sin y * cos z. 
-
-Definition rm11 (x y z: R) : R := cos y.
-
-Definition rm20_minus (x y z : R) : R := cos x * sin z + sin x * cos y * cos z. 
-
-Definition rm21 (x y z : R) : R := sin x * sin y.
-
-Definition to_zyz_theta (x y z : R) : R :=
-  if rm22 x y z <? 1
-  then if -1 <? rm22 x y z 
-       then acos (rm22 x y z)
-       else PI else 0.
-
-Definition to_zyz_phi (x y z : R) : R :=
-  if rm22 x y z <? 1
-  then if -1 <? rm22 x y z
-       then atan2 (rm12 x y z) (rm02 x y z)
-       else - atan2 (rm10 x y z) (rm11 x y z) 
-  else atan2 (rm10 x y z) (rm11 x y z).
-
-Definition to_zyz_lambda (x y z : R) : R :=
-  if rm22 x y z <? 1
-  then if -1 <? rm22 x y z
-       then atan2 (rm21 x y z) (rm20_minus x y z)
-       else 0 
-  else 0.
-
-(* Main property proved in Quaternion.v *)
-Axiom yzy_to_zyz_correct : forall {dim} θ1 ξ θ2 q,
+Lemma yzy_to_zyz_correct : forall {dim} θ1 ξ θ2 ξ1 θ ξ2 q,
   (q < dim)%nat ->
-  @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≅
-    Rz (to_zyz_phi θ1 ξ θ2) q ; Ry (to_zyz_theta θ1 ξ θ2) q ; Rz (to_zyz_lambda θ1 ξ θ2) q.
+  yzy_to_zyz θ1 ξ θ2 = (ξ1, θ, ξ2) ->
+  @Ry dim θ1 q ; Rz ξ q ; Ry θ2 q ≅ Rz ξ1 q ; Ry θ q ; Rz ξ2 q.
+Proof.
+  intros dim θ1 ξ θ2 ξ1 θ ξ2 q Hq H.
+  apply ChangeRotationBasis.yzy_to_zyz_correct in H.
+  unfold uc_cong_l, uc_cong; simpl.
+  autorewrite with eval_db.
+  bdestruct_all.
+  gridify.
+  rewrite <- 2 Mmult_assoc.
+  destruct H as [c H].
+  exists c.
+  rewrite H.
+  lma.
+Qed.
 
-Definition compose_u3 θ1 ϕ1 λ1 θ2 ϕ2 λ2 :=
-  UIBM_U3 (to_zyz_theta θ1 (ϕ1 + λ2) θ2)
-          ((to_zyz_lambda θ1 (ϕ1 + λ2) θ2) + ϕ2) 
-          (λ1 + (to_zyz_phi θ1 (ϕ1 + λ2) θ2)).
+Definition compose_u3 x1 y1 z1 x2 y2 z2 :=
+  match (yzy_to_zyz x1 (y1 + z2) x2) with
+  | (x, y, z) => UIBM_U3 y (z + y2) (z1 + x)
+  end.
 
 Lemma u3_is_ZYZ_rotation : forall dim θ ϕ λ q,
   (q < dim)%nat ->
@@ -715,12 +679,10 @@ Proof.
   apply uc_equiv_cong in H0.
   rewrite H0. clear H0.
   assert (H0: forall a b c, @App1 _ dim (UIBM_U3 a b c) q = U3 a b c q) by reflexivity.
+  destruct (yzy_to_zyz θ1 (ϕ1 + λ2) θ2) eqn:yzy; destruct p.
   rewrite H0. clear H0.
-  rewrite u3_is_ZYZ_rotation by assumption.
-  rewrite u3_is_ZYZ_rotation by assumption.
-  rewrite u3_is_ZYZ_rotation by assumption.
-  rewrite uc_cong_assoc.
-  rewrite uc_cong_assoc.
+  rewrite 3 u3_is_ZYZ_rotation by assumption.
+  rewrite 2 uc_cong_assoc.
   rewrite (uc_cong_assoc (Rz λ2 q)).
   rewrite <- (uc_cong_assoc (Rz ϕ1 q)).
   specialize (@Rz_Rz_add dim q ϕ1 λ2) as H0.
@@ -729,15 +691,15 @@ Proof.
   rewrite <- (uc_cong_assoc (Rz (ϕ1 + λ2) q)).
   rewrite <- (uc_cong_assoc (Ry θ1 q)).
   rewrite <- (uc_cong_assoc (Ry θ1 q)).
-  rewrite yzy_to_zyz_correct by assumption.
-  rewrite (uc_cong_assoc (Rz (to_zyz_phi θ1 (ϕ1 + λ2) θ2) q)).
+  rewrite yzy_to_zyz_correct; try apply yzy; auto.
+  rewrite (uc_cong_assoc (Rz r0 q)).
   rewrite <- (uc_cong_assoc (Rz λ1 q)).
   rewrite <- (uc_cong_assoc (Rz λ1 q)).
-  specialize (@Rz_Rz_add dim q λ1 (to_zyz_phi θ1 (ϕ1 + λ2) θ2)) as H0.
+  specialize (@Rz_Rz_add dim q λ1 r0) as H0.
   apply uc_equiv_cong in H0.
   rewrite H0. clear H0.
   repeat rewrite uc_cong_assoc.
-  specialize (@Rz_Rz_add dim q (to_zyz_lambda θ1 (ϕ1 + λ2) θ2) ϕ2) as H0.
+  specialize (@Rz_Rz_add dim q r ϕ2) as H0.
   apply uc_equiv_cong in H0.
   rewrite H0. clear H0.
   reflexivity.
