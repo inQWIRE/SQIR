@@ -1,777 +1,674 @@
-Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
-Require Export RCIR.
+Require Import Reals.
+Require Import Psatz.
+Require Import SQIR.
+Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
+Require Import Dirac.
 
-Local Open Scope bccom_scope.
+(**********************)
+(** Unitary Programs **)
+(**********************)
+Definition var := nat.
+
+Definition posi : Type := (var * nat).
+
+Definition posi_eq (r1 r2 : posi) : bool := 
+                match r1 with (x1,y1)
+                            => match r2
+                               with (x2,y2) => (x1 =? x2) && (y1 =? y2)
+                               end
+                end.
+
+Declare Scope scom_scope.
+Delimit Scope scom_scope with scom.
+Local Open Scope scom_scope.
 Local Open Scope nat_scope.
 
-(* 
-  This doc contains the implementation and correctness proof of the modular multiplier
-  for the Shor's algorithm.
-  
-  Modular multiplier finishes the computation of the formula C*x %M, where C and M are two
-  integer constants, and x is a integer variable. 
+Notation "i '==?' j" := (posi_eq i j) (at level 50).
 
-  The high level picuture of the implementation is to take each bit of the binary format of C,
-  and then do the two consecutive steps on a three (n+1) qubits math representation as [x][M][y].
-  At i-th iteration, the x stores the current computation result for the formula C*x %M up to i-th bit.
-  M is the contant value for M, and [y] stores the computation result of 2^i * x % M.
-  The first step is to compute the 2^i * x % M based on the old value of 2^(i-1)*x % M. 
-  The second step is to add the 2^i*x %M value to the C*x%M if i-th bit of C is not zero. 
-*)
 
-(* This is the extra qubits needed for the algorithm presented in the doc. 
-   The extra qubit requirement is O(n) in our implementation. *)
-Definition modmult_rev_anc n := 3 * n + 11.
-
-(* fb_push is to take a qubit and then push it to the zero position 
-        in the bool function representation of a number. *)
-Definition fb_push b f : nat -> bool :=
-  fun x => match x with
-        | O => b
-        | S n => f n
-        end.
-
-Definition allfalse := fun (_ : nat) => false.
-
-(* fb_push_n is the n repeatation of fb_push. *)
-Definition fb_push_n n f g : nat -> bool :=
-  fun i => if (i <? n) then f i else g (i - n).
-
-(* A function to compile positive to a bool function. *)
-Fixpoint pos2fb p : nat -> bool :=
-  match p with
-  | xH => fb_push true allfalse
-  | xI p' => fb_push true (pos2fb p')
-  | xO p' => fb_push false (pos2fb p')
-  end.
-
-(* A function to compile N to a bool function. *)
-Definition N2fb n : nat -> bool :=
-  match n with
-  | 0%N => allfalse
-  | Npos p => pos2fb p
-  end.
-
-Definition add_c b x y :=
-  match b with
-  | false => Pos.add x y
-  | true => Pos.add_carry x y
-  end.
-
-(* A function to compile a natural number to a bool function. *)
-Definition nat2fb n := N2fb (N.of_nat n).
-
-(* reg_push is the encapsulation of fb_push_n. *)
-Definition reg_push (x : nat) (n : nat) (f : nat -> bool) := fb_push_n n (nat2fb x) f.
-
-(* The following three lemmas show that the relationship between
-   the bool function before and after the application of fb_push/fb_push_n
-   in different bit positions. *)
-Lemma fb_push_right:
-  forall n b f, 0 < n -> fb_push b f n = f (n-1).
+Lemma posi_eqb_eq : forall a b, a ==? b = true -> a = b.
 Proof.
-  intros. induction n. lia.
-  simpl. assert ((n - 0) = n) by lia.
-  rewrite H0. reflexivity.
+ intros. unfold posi_eq in H.
+ destruct a. destruct b.
+ apply andb_true_iff in H.
+ destruct H. apply Nat.eqb_eq in H.
+ apply Nat.eqb_eq in H0. subst. easy.
 Qed.
 
-Lemma fb_push_n_left :
-  forall n x f g,
-    x < n -> fb_push_n n f g x = f x.
+Lemma posi_eqb_neq : forall a b, a ==? b = false -> a <> b.
 Proof.
-  intros. unfold fb_push_n. rewrite <- Nat.ltb_lt in H. rewrite H. easy.
+ intros. unfold posi_eq in H.
+ destruct a. destruct b.
+ apply andb_false_iff in H.
+ destruct H. apply Nat.eqb_neq in H.
+ intros R. injection R as eq1.
+ rewrite eq1 in H. easy.
+ apply Nat.eqb_neq in H.
+ intros R. injection R as eq1.
+ rewrite H0 in H. easy.
 Qed.
 
-Lemma fb_push_n_right :
-  forall n x f g,
-    n <= x -> fb_push_n n f g x = g (x - n).
-Proof.
-  intros. unfold fb_push_n. rewrite <- Nat.ltb_ge in H. rewrite H. easy.
-Qed.
-
-Notation "'[' x ']_' n f" := (reg_push x n f) (at level 15, n at level 9, right associativity).
-Notation "b ` f" := (fb_push b f) (at level 20, right associativity).
-
-(* The lemma shows that the reg_push of a number x that has n qubit is essentially
-   the same as turning the number to a bool function. *)
-Lemma reg_push_inv:
-  forall x n f a, a < n -> (reg_push x n f) a = (nat2fb x) a.
+Lemma posi_eq_reflect : forall r1 r2, reflect (r1 = r2) (posi_eq r1 r2). 
 Proof.
   intros.
-  unfold nat2fb,N2fb,reg_push,fb_push_n.
-  destruct x.
-  simpl.
-  bdestruct (a <? n).
-  unfold nat2fb.
-  simpl. reflexivity.
-  lia.
-  bdestruct (a <? n).
-  unfold nat2fb.
-  simpl.
-  reflexivity.
-  lia.
+  destruct (r1 ==? r2) eqn:eq1.
+  apply  ReflectT.
+  apply posi_eqb_eq in eq1.
+  assumption. 
+  constructor. 
+  apply posi_eqb_neq in eq1.
+  assumption. 
 Qed.
 
-
-(* Single bit MAJ and UMA circuit implementations. 
-   MAJ circuit takes the carry value ci before the computation,
-   and two bits ai and bi in two numbers, and the returns three things:
-    ci ⊕ ai, bi ⊕ ai and the carry value of next bit.
-   The carry value is defined as: (ai && bi) ⊕ (bi && ci) ⊕ (ai && ci)
-   UMA takes the result of MAJ, and produces three things:
-   ci, si and ai. si represents the i-th bit computation value of a + b *)
-Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
-
-Definition MAJ a b c := bccnot c b ; bccnot c a ; bcccnot a b c.
-Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
-
-Lemma MAJ_eWF :
-  forall a b c,
-    a <> b -> b <> c -> a <> c ->
-    eWF (MAJ c b a).
-Proof.
-  intros. unfold MAJ. constructor. constructor. 1-2 : apply bccnot_eWF; easy. apply bcccnot_eWF; lia.
-Qed.
-
-Lemma MAJ_eWT :
-  forall a b c dim,
-    a <> b -> b <> c -> a <> c ->
-    a < dim -> b < dim -> c < dim ->
-    eWT dim (MAJ c b a).
-Proof.
-  intros. unfold MAJ. constructor. constructor. 1-2 : apply bccnot_eWT; easy. apply bcccnot_eWT; lia.
-Qed.
-
-Lemma MAJ_correct :
-  forall a b c f,
-    a <> b -> b <> c -> a <> c ->
-    bcexec (MAJ c b a) f = ((f[a |-> majb (f a) (f b) (f c)])
-                              [b |-> (f b ⊕ f a)])[c |-> (f c ⊕ f a)].
-(*Admitted. 
-(* The following proof works, but too slow. Admitted when debugging. *)*)
-Proof.
-  intros ? ? ? ? Hab' Hbc' Hac'. apply functional_extensionality; intro i. simpl.
-  unfold update, majb. bnauto.
-Qed.
-
-Lemma UMA_correct_partial :
-  forall a b c f' fa fb fc,
-    a <> b -> b <> c -> a <> c ->
-    f' a = majb fa fb fc ->
-    f' b = (fb ⊕ fa) -> f' c = (fc ⊕ fa) ->
-    bcexec (UMA c b a) f' = ((f'[a |-> fa])[b |-> fa ⊕ fb ⊕ fc])[c |-> fc].
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
-Proof.
-  unfold majb. intros. apply functional_extensionality; intro i. simpl.
-  unfold update. bnauto_expand (f' a :: f' b :: f' c :: (List.nil)).
-Qed.
-
-(* The following defines n-bits MAJ and UMA circuit. 
-   Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
-Fixpoint MAJseq' i n c0 : bccom :=
-  match i with
-  | 0 => MAJ c0 (2 + n) 2
-  | S i' => MAJseq' i' n c0; MAJ (2 + i') (2 + n + i) (2 + i)
-  end.
-Definition MAJseq n := MAJseq' (n - 1) n 0.
-
-Lemma MAJseq'_eWF :
-  forall i n,
-    0 < n ->
-    eWF (MAJseq' i n 0).
-Proof.
-  induction i; intros. simpl. apply MAJ_eWF; lia.
-  simpl. constructor. apply IHi; easy. apply MAJ_eWF; lia.
-Qed.
-
-Lemma MAJseq'_eWT :
-  forall i n dim,
-    0 < n -> i < n -> (S (S (n + i))) < dim ->
-    eWT dim (MAJseq' i n 0).
-Proof.
-  induction i; intros. simpl. apply MAJ_eWT; lia.
-  simpl. constructor. apply IHi.
-  1 - 3: lia. 
-  apply MAJ_eWT.
-  1 - 6 : lia.
-Qed.
-
-Lemma MAJ_efresh:
-  forall a b c,
-    a <> b -> b <> c -> a <> c
-    -> a <> 1 -> b <> 1 -> c <> 1 ->
-    efresh 1 (MAJ c b a).
-Proof.
-  intros. unfold MAJ.
-  repeat apply efresh_seq.
-  unfold bccnot.
-  constructor. lia.
-  constructor. lia. 
-  unfold bccnot.
-  constructor. lia.
-  constructor. lia. 
-  unfold bcccnot.
-  constructor. lia.
-  constructor. lia. 
-  constructor. lia. 
-Qed.
-
-Lemma MAJseq'_efresh_1 :
-  forall i n,
-    0 < n ->
-    efresh 1 (MAJseq' i n 0).
-Proof.
-  induction i; intros. simpl.
-  apply MAJ_efresh.
-  1 - 6: lia.
-  simpl.
-  constructor.
-  apply IHi.
-  lia.
-  apply MAJ_efresh.
-  1 - 6 : lia.
-Qed.
+Hint Resolve posi_eq_reflect : bdestruct.
 
 
-Fixpoint UMAseq' i n c0 : bccom :=
-  match i with
-  | 0 => UMA c0 (2 + n) 2
-  | S i' => UMA (2 + i') (2 + n + i) (2 + i); UMAseq' i' n c0
-  end.
-Definition UMAseq n := UMAseq' (n - 1) n 0.
+Definition rz_val : Type := (nat * (nat -> bool)).
 
-Definition adder01 n : bccom := MAJseq n; UMAseq n.
+Inductive val := nval (b:bool) (r:rz_val) | hval (b1:bool) (b2:bool) (r:rz_val) | qval (r:rz_val).
 
-Lemma UMA_efresh:
-  forall a b c,
-    a <> b -> b <> c -> a <> c
-    -> a <> 1 -> b <> 1 -> c <> 1 ->
-    efresh 1 (UMA c b a).
-Proof.
-  intros. unfold UMA.
-  repeat apply efresh_seq.
-  unfold bcccnot.
-  constructor. lia.
-  constructor. lia. 
-  constructor. lia. 
-  unfold bccnot.
-  constructor. lia.
-  constructor. lia. 
-  unfold bcccnot.
-  constructor. lia.
-  constructor. lia. 
-Qed.
+(* Update the value at one index of a boolean function. *)
+Definition eupdate {S} (f : posi -> S) (i : posi) (x : S) :=
+  fun j => if j ==? i then x else f j.
 
-Lemma UMAseq'_efresh :
-  forall i n,
-    0 < n ->
-    efresh 1 (UMAseq' i n 0).
-Proof.
-  induction i; intros. simpl.
-  apply UMA_efresh.
-  1 - 6: lia.
-  simpl.
-  constructor.
-  apply UMA_efresh.
-  1 - 6 : lia.
-  apply IHi.
-  lia.
-Qed.
-
-Lemma UMA_eWF:
-  forall a b c,
-    a <> b -> b <> c -> a <> c ->
-    eWF (UMA c b a).
-Proof.
-  intros.
-  unfold UMA.
-  repeat apply eWF_seq.
-  apply bcccnot_eWF.
-  1 - 3 : lia.
-  apply bccnot_eWF.
-  apply H1.
-  apply bccnot_eWF.
-  lia.
-Qed.
-
-Lemma UMA_eWT:
-  forall a b c dim,
-    a <> b -> b <> c -> a <> c ->
-    a < dim -> b < dim -> c < dim ->
-    eWT dim (UMA c b a).
-Proof.
-  intros.
-  unfold UMA.
-  repeat constructor.
-  1 - 12 : lia.
-Qed.
-
-Lemma UMAseq'_eWF: forall i n, 0 < n -> eWF (UMAseq' i n 0).
-Proof.
-  intros. induction i.
-  simpl.
-  apply UMA_eWF.
-  1 -3 : lia.
-  simpl.
-  apply eWF_seq.
-  apply UMA_eWF.
-  1 - 3: lia.
-  apply IHi.
-Qed.
-
-Lemma UMAseq'_eWT: forall i n dim, 0 < n 
-           -> (S (S (n + i))) < dim -> eWT dim (UMAseq' i n 0).
-Proof.
-  intros. induction i.
-  simpl.
-  apply UMA_eWT.
-  1 - 6 : lia.
-  simpl.
-  constructor.
-  apply UMA_eWT.
-  1 - 6: lia.
-  apply IHi.
-  lia. 
-Qed.
-
-Lemma adder01_eWF: forall n, 0 < n -> eWF (adder01 n).
-Proof.
- intros. unfold adder01, MAJseq, UMAseq.
- apply eWF_seq. apply MAJseq'_eWF.
- assumption.
- apply UMAseq'_eWF.
- assumption.
-Qed.
-
-Lemma adder01_eWT: forall n dim, 0 < n -> (S (S (n + n))) < dim -> eWT dim (adder01 n).
-Proof.
- intros. unfold adder01, MAJseq, UMAseq.
- constructor. apply MAJseq'_eWT.
- assumption. lia. lia.
- apply UMAseq'_eWT.
- lia. lia.
-Qed.
-
-Lemma adder01_efresh: forall n, 0 < n -> efresh 1 (adder01 n).
-Proof.
- intros. unfold adder01, MAJseq, UMAseq.
- constructor. apply MAJseq'_efresh_1.
- assumption.
- apply UMAseq'_efresh.
- assumption.
-Qed.
-
-(* Here we defined the specification of carry value for each bit. *)
-Fixpoint carry b n f g :=
-  match n with
-  | 0 => b
-  | S n' => let c := carry b n' f g in
-           let a := f n' in
-           let b := g n' in
-           (a && b) ⊕ (b && c) ⊕ (a && c)
-  end.
-
-Lemma carry_sym :
-  forall b n f g,
-    carry b n f g = carry b n g f.
-Proof.
-  intros. induction n. reflexivity.
-  simpl. rewrite IHn. btauto.
-Qed.
-
-Lemma carry_false_0_l: forall n f, 
-    carry false n allfalse f = false.
-Proof.
-  unfold allfalse.
-  induction n.
-  simpl.
-  reflexivity.
-  intros. simpl.
-  rewrite IHn. rewrite andb_false_r.
-  reflexivity.
-Qed.
-
-Lemma carry_false_0_r: forall n f, 
-    carry false n f allfalse = false.
-Proof.
-  unfold allfalse.
-  induction n.
-  simpl.
-  reflexivity.
-  intros. simpl.
-  rewrite IHn. rewrite andb_false_r.
-  reflexivity.
-Qed.
-
-Lemma carry_fbpush :
-  forall n a ax ay fx fy,
-    carry a (S n) (fb_push ax fx) (fb_push ay fy) = carry (majb a ax ay) n fx fy.
-Proof.
-  induction n; intros.
-  simpl. unfold majb. btauto.
-  remember (S n) as Sn. simpl. rewrite IHn. unfold fb_push. subst.
-  simpl. easy.
-Qed.
-
-Lemma carry_succ :
-  forall m p,
-    carry true m (pos2fb p) allfalse = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
-Proof.
-  induction m; intros. simpl. destruct p; reflexivity.
-  replace allfalse with (fb_push false allfalse).
-  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
-  }
-  Local Opaque fb_push carry.
-  destruct p; simpl.
-  rewrite carry_fbpush; unfold majb; simpl. rewrite IHm. reflexivity.
-  rewrite carry_fbpush; unfold majb; simpl. rewrite carry_false_0_r. Local Transparent fb_push. simpl. btauto.
-  rewrite carry_fbpush; unfold majb; simpl. Local Transparent carry. destruct m; reflexivity.
-Qed.
-
-Lemma carry_succ' :
-  forall m p,
-    carry true m allfalse (pos2fb p) = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
-Proof.
-  intros. rewrite carry_sym. apply carry_succ.
-Qed.
-
-Lemma carry_succ0 :
-  forall m, carry true m allfalse allfalse = pos2fb xH m.
-Proof.
-  induction m. easy. 
-  replace allfalse with (fb_push false allfalse).
-  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
-  }
-  rewrite carry_fbpush. unfold majb. simpl. rewrite carry_false_0_l. easy.
-Qed.
-
-Lemma carry_add_pos_eq :
-  forall m b p q,
-    carry b m (pos2fb p) (pos2fb q) ⊕ (pos2fb p) m ⊕ (pos2fb q) m = pos2fb (add_c b p q) m.
-Proof.
-  induction m; intros. simpl. destruct p, q, b; reflexivity.
-  Local Opaque carry.
-  destruct p, q, b; simpl; rewrite carry_fbpush; 
-    try (rewrite IHm; reflexivity);
-    try (unfold majb; simpl; 
-         try rewrite carry_succ; try rewrite carry_succ'; 
-         try rewrite carry_succ0; try rewrite carry_false_0_l;
-         try rewrite carry_false_0_r;
-         unfold allfalse; try btauto; try (destruct m; reflexivity)).
-Qed.
-
-Lemma carry_add_eq_carry0 :
-  forall m x y,
-    carry false m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y)) m.
-Proof.
-  intros.
-  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
-  rewrite carry_false_0_l. easy.
-  rewrite carry_false_0_l. btauto.
-  rewrite carry_false_0_r. btauto.
-  apply carry_add_pos_eq.
-Qed.
-
-Lemma carry_add_eq_carry1 :
-  forall m x y,
-    carry true m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y + 1)) m.
+Lemma eupdate_index_eq {S} : forall (f : posi -> S) i b, (eupdate f i b) i = b.
 Proof.
   intros. 
-  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
-  rewrite carry_succ0. destruct m; easy.
-  rewrite carry_succ'. replace (q + 1)%positive with (Pos.succ q) by lia. btauto.
-  rewrite carry_succ. replace (p + 1)%positive with (Pos.succ p) by lia. btauto.
-  rewrite carry_add_pos_eq. unfold add_c. rewrite Pos.add_carry_spec. replace (p + q + 1)%positive with (Pos.succ (p + q)) by lia. easy.
+  unfold eupdate.
+  bdestruct (i ==? i). easy.
+  contradiction.
+Qed.
+
+Lemma eupdate_index_neq {S}: forall (f : posi -> S) i j b, i <> j -> (eupdate f i b) j = f j.
+Proof.
+  intros. 
+  unfold eupdate.
+  bdestruct (j ==? i).
+  subst. contradiction.
+  reflexivity.
+Qed.
+
+Lemma eupdate_same {S}: forall (f : posi -> S) i b,
+  b = f i -> eupdate f i b = f.
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros.
+  unfold eupdate.
+  bdestruct (x ==? i); subst; reflexivity.
+Qed.
+
+Lemma eupdate_twice_eq {S}: forall (f : posi -> S) i b b',
+  eupdate (eupdate f i b) i b' = eupdate f i b'.
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros.
+  unfold eupdate.
+  bdestruct (x ==? i); subst; reflexivity.
+Qed.  
+
+Lemma eupdate_twice_neq {S}: forall (f : posi -> S) i j b b',
+  i <> j -> eupdate (eupdate f i b) j b' = eupdate (eupdate f j b') i b.
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros.
+  unfold eupdate.
+  bdestruct (x ==? i); bdestruct (x ==? j); subst; easy.
 Qed.
 
 
-(* The implementation of a new constant adder. *)
-Definition single_carry (i:nat) (c:nat) (M:nat -> bool) := if M 0 then bccnot i c else bcskip.
+Inductive scom := SKIP | X (p:posi) | CU (p:posi) (e:scom)
+        | RZ (q:nat) (p:posi) (* 2 * PI * i / 2^q *)
+        | Lshift (x:var)
+        | Rshift (x:var)
+        | Seq (s1:scom) (s2:scom).
 
-(* for anything that is ge 2. *)
-Fixpoint half_carry (n:nat) (i:nat) (j:nat) (M : nat -> bool) := 
-    match n with 0 => (if M 1 then bccnot (i+1) j ; bcx j else bcskip) ; (if M 0 then bcccnot i (i+1) j else bccnot (i+1) j)
-              | S m => (if M (n+1) then bccnot (i+(n+1)) (j+n) ; bcx (j+n) else bcskip); bcccnot (j+m) (i+(n+1)) (j+n);
-                               half_carry m i j M; bcccnot (j+m) (i+(n+1)) (j+n)
-    end.
+Notation "p1 ; p2" := (Seq p1 p2) (at level 50) : scom_scope.
+Notation "f '[' i '|->' x ']'" := (eupdate f i x) (at level 10).
 
-Definition acarry (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) := 
-        if n <? 2 then bcskip else if n =? 2 then single_carry i c M 
-                    else bccnot (j+n) c; half_carry n i j M;bccnot (j+n) c;half_carry n i j M.
+Inductive face := Exp (s:scom) | QFT (x:var) | RQFT (x:var)
+               | Reset (x:var) (* reset has no semantic meaning in the face level.
+                                  It is to set shifted bits to the normal position. *)
+               | Rev (x:var) (* move the positions in x to be upside-down. *)
+               | H (x:var) | FSeq (p1:face) (p2:face).
 
-Fixpoint add_carry (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) :=
-        match n with 0 | S 0 => bcskip
-                  | S m => acarry n i j c M ; bccnot c (i+n); acarry n i j c M ; add_carry m i j c M
-        end.
+Coercion Exp : scom >-> face.
 
-Fixpoint add_const (n:nat) (i:nat) (M:nat -> bool) :=
-     match n with 0 => bcskip
-                | S m => if M m then bcx (i+m) else bcskip ; add_const m i M
+Notation "p1 ;; p2" := (FSeq p1 p2) (at level 49) : scom_scope.
+
+Inductive type := Had | Phi | Nor.
+
+Require Import Coq.FSets.FMapList.
+Require Import Coq.Structures.OrderedTypeEx.
+Module Env := FMapList.Make Nat_as_OT.
+
+Definition env := Env.t type.
+
+Inductive exp_WF : (var -> nat) -> scom -> Prop :=
+      | skip_wf : forall env, exp_WF env SKIP
+      | x_wf : forall env a b n, env a = n -> b < n -> exp_WF env (X (a,b))
+      | cu_wf : forall env a b e n, env a = n -> b < n -> exp_WF env e -> exp_WF env (CU (a,b) e)
+      | rz_wf : forall env a b q n, env a = n -> b < n -> exp_WF env (RZ q (a,b))
+      | seq_wf : forall env e1 e2, exp_WF env e1 -> exp_WF env e2 -> exp_WF env (Seq e1 e2).
+
+Inductive well_typed_exp : env -> scom -> Prop :=
+    | skip_refl : forall env, well_typed_exp env (SKIP)
+    | x_refl : forall env a b, Env.MapsTo a Nor env -> well_typed_exp env (X (a,b))
+    | x_had : forall env a b, Env.MapsTo a Had env -> well_typed_exp env (X (a,b))
+    | cu_refl : forall env a b e, Env.MapsTo a Nor env -> well_typed_exp env e -> well_typed_exp env (CU (a,b) e)
+    | rz_refl :forall env q a b, Env.MapsTo a Nor env -> well_typed_exp env (RZ q (a,b))
+    | rz_had : forall env a b, Env.MapsTo a Had env -> well_typed_exp env (RZ 1 (a,b))
+    | rz_qft : forall env q a b, Env.MapsTo a Phi env -> well_typed_exp env (RZ q (a,b))
+    | lshift_refl : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Lshift x)
+    | rshift_refl : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rshift x)
+    | e_seq : forall env p1 p2, well_typed_exp env p1 -> well_typed_exp env p2 -> well_typed_exp env (p1 ; p2).
+
+Inductive well_typed (f: var -> nat) : env -> face -> env -> Prop :=
+   | t_exp : forall env e, well_typed_exp env e -> exp_WF f e -> well_typed f env (Exp e) env
+   | t_qft : forall env x, Env.MapsTo x Nor env -> well_typed f env (QFT x) (Env.add x Phi env)
+   | t_rqft : forall env x, Env.MapsTo x Phi env -> well_typed f env (RQFT x) (Env.add x Nor env)
+   | t_had : forall env x, Env.MapsTo x Had env -> well_typed f env (H x) (Env.add x Nor env)
+   | t_rhad : forall env x, Env.MapsTo x Nor env -> well_typed f env (H x) (Env.add x Had env)
+   | t_rev : forall env x, Env.In x env -> well_typed f env (Rev x) env
+   | t_seq : forall env p1 p2 env' env'', well_typed f env p1 env' -> well_typed f env' p2 env''
+                         -> well_typed f env (p1 ;; p2) env''.
+
+Fixpoint addto (f : nat -> bool) (n:nat) :=
+   match n with 0 => update f 0 (¬ (f 0))
+             | S m => if f n then update (addto f m) n false
+                             else update f n true
+   end.
+
+Definition rotate (r :rz_val) (q:nat) :=
+    match r with (n,f) => if q <? n then (n,addto f q) else (q+1,addto f q) end.
+
+Definition times_rotate (v : val) (q:nat) := 
+     match v with nval b r =>  nval b (rotate r q)
+                  | hval b1 b2 r => hval b1 (¬ b2) r
+                  | qval r =>  qval (rotate r q)
      end.
 
 
-(* n is the number of qubits, i is the start position for the variable to add,
-                         j is the start position of n dirty bit, and c is the position for the carry bit. *)
-Definition new_adder (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) := add_carry n i j c M ; add_const n i M.
+Definition exchange (v: val) :=
+     match v with nval b r => nval (¬ b) r
+                  | hval b1 b2 r => hval b2 b1 r
+                  | a => a
+     end.
 
+Definition get_cu (v : val) :=
+    match v with nval b r => Some b 
+                 | hval b1 b2 r => Some b1
+                 | _ => None
+    end.
 
-Lemma MAJseq'_efresh :
-  forall i n j,
-    0 < n ->
-    j = 1   \/   2 + i < j < 2 + n   \/  2 + n + i < j ->
-    efresh j (MAJseq' i n 0).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
-Proof.
-  induction i; intros. simpl. repeat (try constructor; try lia).
-  simpl. repeat (try constructor; try apply IHi; try lia).
-Qed.
+Fixpoint lshift' (n:nat) (f:posi -> val) (x:var) := 
+   match n with 0 => f
+             | S m => lshift' m (f[(x,n) |-> f (x,m)]) x
+   end.
+Definition lshift (f:posi -> val) (x:var) (n:nat) := let v := f (x,n) in (lshift' n f x)[(x,0) |-> v].
 
-Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
+Fixpoint rshift' (n:nat) (f:posi -> val) (x:var) := 
+   match n with 0 => f
+             | S m => ((rshift' m f x)[(x,m) |-> f (x,n)])
+   end.
+Definition rshift (f:posi -> val) (x:var) (n:nat) := 
+              let v := f (x,0) in (rshift' n f x)[(x,n) |-> v].
 
-Definition msma i b f g := fun (x : nat) => if (x <? i) then 
-        (carry b (S x) f g ⊕ (f (S x))) else (if (x =? i) then carry b (S x) f g else f x).
+Inductive exp_sem (env : var -> nat) : (posi -> val) -> scom -> (posi -> val) -> Prop :=
+    | skip_sem : forall st, exp_sem env st (SKIP) st
+    | x_sem : forall st p, exp_sem env st (X p) (st[p |-> (exchange (st p))])
+    | cu_false_sem : forall st p e, get_cu (st p) = Some false -> exp_sem env st (CU p e) st
+    | cu_true_sem : forall st p e st', get_cu (st p) = Some true -> exp_sem env st e st' -> exp_sem env st (CU p e) st'
+    | rz_sem : forall st q p, exp_sem env st (RZ q p) (st[p |-> times_rotate (st p) q])
+    | lshift_sem : forall st x, get_cu (st (x,(env x)-1)) = Some false
+                                                      ->  exp_sem env st (Lshift x) (lshift st x (env x))
+    | rshift_sem : forall st x, get_cu (st (x,0)) = Some false
+                                                        ->  exp_sem env st (Rshift x) (rshift st x (env x))
+    | seq_sem : forall st st' st'' e1 e2, exp_sem env st e1 st' -> exp_sem env st' e2 st'' -> exp_sem env st (e1 ; e2) st''.
 
-Definition msmb i (b : bool) f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else g x.
+Definition h_case (v : val) :=
+    match v with nval b r => if b then hval true false r else hval true true r
+               | hval true true r => nval false r
+               | hval true false r => nval true r
+               | hval false true r => nval true (rotate r 1)
+               | hval false false r => nval false (rotate r 1)
+               | a => a
+    end.
 
-Definition msmc i b f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else (carry b x f g ⊕ f x ⊕ g x).
+Fixpoint h_sem (f:posi -> val) (x:var) (n : nat) := 
+    match n with 0 => f
+              | S m => h_sem (f[(x,m) |-> h_case (f (x,m))]) x m
+    end.
 
-Definition sumfb b f g := fun (x : nat) => carry b x f g ⊕ f x ⊕ g x.
-
-Ltac fb_push_n_simpl := repeat (try rewrite fb_push_n_left by lia; try rewrite fb_push_n_right by lia).
-Ltac update_simpl := repeat (try rewrite update_index_neq by lia); try rewrite update_index_eq by lia.
-
-Ltac BreakIfExpression :=
-  match goal with
-  | [ |- context[if ?X <? ?Y then _ else _] ] => bdestruct (X <? Y); try lia
-  | [ |- context[if ?X <=? ?Y then _ else _] ] => bdestruct (X <=? Y); try lia
-  | [ |- context[if ?X =? ?Y then _ else _] ] => bdestruct (X =? Y); try lia
+Definition seq_val (v:val) :=
+  match v with nval b r => b
+             | _ => false
   end.
 
-Ltac IfExpSimpl := repeat BreakIfExpression.
+Definition allfalse := fun (_:nat) => false.
 
-Lemma msm_eq1 :
-  forall n i c f g,
-    S i < n ->
-    msma i c f g i ⊕ msma i c f g (S i) = msma (S i) c f g i.
+Fixpoint get_seq (f:posi -> val) (x:var) (base:nat) (n:nat) : (nat -> bool) :=
+     match n with 0 => allfalse
+              | S m => fun (i:nat) => if i =? (base + m) then seq_val (f (x,base+m)) else ((get_seq f x base m) i)
+     end.
+
+Definition up_qft (v:val) (m: nat) (f:nat -> bool) :=
+   match v with nval b (n,g) => qval (m,f)
+              | a => a
+   end.
+
+Fixpoint qft_val' (f:posi -> val) (x:var) (n:nat) (base:nat) :=
+    match n with 0 => f
+              | S m => qft_val' (f[(x,base) |-> up_qft (f (x,base)) n (get_seq f x base n)]) x m (base +1)
+    end.
+
+Definition qft_val (f:posi -> val) (x:var) (n:nat) := qft_val' f x n 0.
+
+Definition no_rot (f:posi -> val) (x:var) :=
+    forall n, (exists b i r, (f (x,n)) = nval b (i,r) /\ r = allfalse).
+
+Definition all_qft (f:posi -> val) (x:var) := forall n, (exists r, f (x,n) = qval r).
+
+Definition reverse (f:posi -> val) (x:var) (n:nat) := fun a =>
+             if ((fst a) =? x) && ((snd a) <? n) then f (x, (n-1) - (snd a)) else f a.
+
+(* Semantics of the whole program. *)
+Inductive prog_sem (f:var -> nat) : (posi -> val) -> face -> (posi -> val) -> Prop := 
+        | sem_exp : forall st e st', exp_sem f st e st' -> prog_sem f st (Exp e) st'
+        | sem_had : forall st x, prog_sem f st (H x) (h_sem st x (f x))
+        | sem_qft : forall st x, no_rot st x -> prog_sem f st (QFT x) (qft_val st x (f x))
+        | sem_rqft : forall st x st', all_qft st x -> st = qft_val st' x (f x) -> prog_sem f st (RQFT x) st'
+        | sem_rev : forall st x, prog_sem f st (Rev x) (reverse st x (f x))
+        | sem_seq : forall st e1 e2 st' st'', prog_sem f st e1 st' -> prog_sem f st' e2 st''
+                              -> prog_sem f st (e1 ;; e2) st''.
+
+Lemma rev_twice_same : forall f st x, reverse (reverse st x (f x)) x (f x) = st.
 Proof.
-  intros. unfold msma. IfExpSimpl. easy.
+  intros. unfold reverse.
+  apply functional_extensionality.
+  intros.
+  destruct x0. simpl.
+  bdestruct (n =? x).
+  subst.
+  bdestruct ((n0 <? f x)).
+  simpl.
+  bdestruct ((x =? x)).
+  bdestruct ((f x - 1 - n0 <? f x)).
+  simpl.
+  assert (f x - 1 - (f x - 1 - n0)= n0) by lia.
+  rewrite H3. easy.
+  simpl. lia.
+  lia. simpl. easy.
+  simpl. easy.
 Qed.
 
-Lemma msm_eq2 :
-  forall n i c f g,
-    S i < n ->
-    msmb i c f g (S i) ⊕ msma i c f g (S i) = msmb (S i) c f g (S i).
+(* Adds an equality in the context *)
+Ltac ctx e1 e2 :=
+  let H := fresh "HCtx" in
+  assert (e1 = e2) as H by reflexivity.
+
+(* Standard inversion/subst/clear abbrev. *)
+Tactic Notation "inv" hyp(H) := inversion H; subst; clear H.
+Tactic Notation "inv" hyp(H) "as" simple_intropattern(p) :=
+  inversion H as p; subst; clear H.
+
+
+(* Definition of the adder and the modmult in the language. *)
+Definition CNOT (x y : posi) := CU x (X y).
+Definition SWAP (x y : posi) := if (x ==? y) then SKIP else (CNOT x y; CNOT y x; CNOT x y).
+Definition CCX (x y z : posi) := CU x (CNOT y z).
+
+Definition nor_mode (f : posi -> val)  (x:posi) : Prop :=
+       match f x with nval a b => True | _ => False end.
+
+Lemma nor_mode_nval : forall f x, nor_mode f x -> (exists r, f x = nval true r \/ f x = nval false r).
 Proof.
-  intros. unfold msma. unfold msmb. IfExpSimpl. btauto.
+  intros. unfold nor_mode in *. destruct (f x); inv H0.
+  exists r.
+  destruct b. left. easy. right. easy.
 Qed.
 
-Lemma msm_eq3 :
-  forall n i c f g,
-    S i < n ->
-    majb (msma i c f g (S i)) (msmb i c f g (S i)) (msma i c f g i) = msma (S i) c f g (S i).
+Lemma neq_sym {A} : forall (x y: A), x <> y -> y <> x.
 Proof.
-  intros. unfold msma. unfold msmb. IfExpSimpl.
-  simpl. unfold majb. easy.
+ intros. intros R.
+ subst. contradiction.
 Qed.
 
-Local Opaque MAJ.
-Lemma MAJseq'_correct :
-  forall i n c f g h b1,
-    0 < n -> i < n ->
-    bcexec (MAJseq' i n 0) (c ` b1 ` fb_push_n n f (fb_push_n n g h)) = 
-           (c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmb i c f g) h).
+Lemma nor_mode_up : forall f x y v, x <> y -> nor_mode f x -> nor_mode (f[y |-> v]) x.
+Proof.
+  intros. unfold nor_mode in *.
+  assert ((f [y |-> v]) x = (f x)).
+  rewrite eupdate_index_neq. reflexivity. apply neq_sym. assumption.
+  rewrite H2.
+  destruct (f x); inv H1. easy.
+Qed.
+
+Definition get_cua (v:val) := 
+    match v with nval x r => x | a => false end.
+
+Definition put_cu (v:val) (b:bool) :=
+    match v with nval x r => nval b r | a => a end.
+
+Fixpoint init_v (n:nat) (x:var) (M: nat -> bool) :=
+      match n with 0 => SKIP
+                | S m => if M m then X (x,m) ; init_v m x M else init_v m x M
+      end.
+
+Lemma nor_mode_ups : forall f f' x v, f x = f' x -> nor_mode f x ->
+                                    nor_mode (f[x |-> put_cu (f' x) v]) x.
+Proof.
+  intros. unfold nor_mode in *.
+  rewrite eupdate_index_eq.
+  unfold put_cu. rewrite <- H0.
+  destruct (f x); inv H1. easy.
+Qed.
+
+Lemma nor_mode_get : forall f x, nor_mode f x -> (exists b, get_cua (f x) = b).
+Proof.
+  intros. unfold nor_mode in *. destruct (f x); inv H0.
+  exists b. unfold get_cua. reflexivity.
+Qed.
+
+Lemma x_nor : forall env f x v, nor_mode f x -> put_cu (f x) (¬ (get_cua (f x))) = v ->
+                            exp_sem env f (X x) (f[x |-> v]).
+Proof.
+ intros.
+ apply nor_mode_nval in H0.
+ destruct H0. destruct H0.
+ unfold get_cua in H1. rewrite H0 in H1. 
+ unfold put_cu in H1. subst. 
+ assert ((exchange (f x)) = nval (¬ true) x0).
+ unfold exchange. rewrite H0. reflexivity.
+ rewrite <- H1. apply x_sem.
+ unfold get_cua in H1. rewrite H0 in H1.
+ unfold put_cu in H1. subst.
+ assert ((exchange (f x)) = nval (¬ false) x0).
+ unfold exchange. rewrite H0.
+ reflexivity. 
+ rewrite <- H1. apply x_sem.
+Qed.
+
+Lemma cu_false_nor : forall env f f' x e, nor_mode f x -> get_cua (f x) = false
+                                         ->  f' = f -> exp_sem env f (CU x e) f'.
+Proof.
+ intros. subst. constructor.
+ unfold get_cu.
+ apply nor_mode_nval in H0.
+ destruct H0. destruct H0.
+ rewrite H0 in H1. unfold get_cua in H1. inv H1.
+ rewrite H0. reflexivity.
+Qed.
+
+Lemma put_get_cu : forall f x, nor_mode f x -> put_cu (f x) (get_cua (f x)) = f x.
+Proof.
+ intros. unfold put_cu, get_cua.
+ unfold nor_mode in H0. destruct (f x); inv H0.
+ reflexivity.
+Qed.
+
+Lemma get_put_cu : forall f x v, nor_mode f x -> get_cua (put_cu (f x) v) = v.
+Proof.
+ intros. unfold put_cu, get_cua.
+ unfold nor_mode in H0. destruct (f x); inv H0.
+ reflexivity.
+Qed.
+
+(*
+Definition vxor (a b:val) := (get_cua a) ⊕ (get_cua b).
+
+Definition vand (a b:val) := (get_cua a) && (get_cua b).
+
+Notation "p1 '[⊕]' p2" := (vxor p1 p2) (at level 50) : scom_scope.
+
+Notation "p1 '[&&]' p2" := (vand p1 p2) (at level 50) : scom_scope.
+
+Lemma vxor_l_t : forall r b, vxor (nval true r) b = (¬ (get_cua b)).
+Proof.
+  intros. unfold vxor. unfold get_cua. destruct b.
+  btauto. btauto. btauto.
+Qed.
+
+Lemma vxor_l_f : forall r b, vxor (nval false r) b = ((get_cua b)).
+Proof.
+  intros. unfold vxor. unfold get_cua. destruct b.
+  btauto. btauto. btauto.
+Qed.
+*)
+
+Lemma xorb_andb_distr_l : forall x y z, (x ⊕ y) && z = (x && z) ⊕ (y && z).
+Proof.
+ intros. btauto.
+Qed.
+
+Lemma xorb_andb_distr_r : forall x y z, z && (x ⊕ y) = (z && x) ⊕ (z && y).
+Proof.
+ intros. btauto.
+Qed.
+
+
+Ltac bt_simpl := repeat (try rewrite xorb_false_r; try rewrite xorb_false_l;
+            try rewrite xorb_true_r; try rewrite xorb_true_r; 
+            try rewrite andb_false_r; try rewrite andb_false_l;
+            try rewrite andb_true_r; try rewrite andb_true_l;
+            try rewrite xorb_andb_distr_l; try rewrite xorb_andb_distr_r;
+            try rewrite andb_diag).
+
+
+
+Lemma get_cua_t : forall b r, get_cua (nval b r) = b.
+Proof.
+ intros. unfold get_cua. reflexivity.
+Qed.
+
+Lemma cnot_sem : forall env f x y, nor_mode f x -> nor_mode f y -> 
+              exp_sem env f (CNOT x y) (f[y |-> put_cu (f y) (get_cua (f x) ⊕ get_cua (f y))]).
+Proof.
+ intros.
+ unfold CNOT.
+ assert (eq1 := H0).
+ apply nor_mode_nval in H0.
+ destruct H0. destruct H0.
+ constructor.
+ unfold get_cu. rewrite H0. reflexivity.
+ apply x_nor. assumption.
+ rewrite H0. rewrite get_cua_t.
+ easy.
+ rewrite H0. rewrite get_cua_t.
+ apply cu_false_nor.
+ assumption.
+ rewrite H0. rewrite get_cua_t. reflexivity.
+ rewrite eupdate_same. reflexivity.
+ rewrite  xorb_false_l.
+ rewrite put_get_cu. reflexivity. assumption.
+Qed.
+
+Lemma cnot_nor : forall env f x y v, nor_mode f x -> nor_mode f y -> 
+          put_cu (f y) (get_cua (f x) ⊕ get_cua (f y)) = v
+           -> exp_sem env f (CNOT x y) (f[y |-> v]).
+Proof.
+  intros. subst. apply cnot_sem; assumption.
+Qed.
+
+Lemma cnot_nor_1 : forall env f f' x y v, nor_mode f x -> nor_mode f y -> 
+          put_cu (f y) (get_cua (f x) ⊕ get_cua (f y)) = v
+           -> f[y|-> v] = f'
+           -> exp_sem env f (CNOT x y) f'.
+Proof.
+  intros. subst. apply cnot_sem; assumption.
+Qed.
+
+Lemma ccx_sem : forall env f x y z, nor_mode f x -> nor_mode f y -> nor_mode f z
+                     -> x <> y -> y <> z -> x <> z -> 
+                    exp_sem env f (CCX x y z) (f[z |-> put_cu (f z) (get_cua (f z) ⊕ (get_cua (f y) && get_cua (f x)))]).
+Proof.
+ intros. 
+ assert (eq1 := H0).
+ unfold CCX. apply nor_mode_nval in H0.
+ destruct H0. destruct H0.
+ constructor. rewrite H0. unfold get_cu. reflexivity.
+ apply cnot_nor. 1-2:assumption.
+ rewrite H0. rewrite get_cua_t.
+ bt_simpl. rewrite xorb_comm. reflexivity.
+ apply cu_false_nor.
+ assumption. rewrite H0. rewrite get_cua_t. easy.
+ rewrite H0. rewrite get_cua_t.
+ bt_simpl. rewrite put_get_cu. apply eupdate_same. 
+ easy. assumption.
+Qed.
+
+Lemma ccx_nor : forall env f f' x y z v, nor_mode f x -> nor_mode f y -> nor_mode f z
+                     -> x <> y -> y <> z -> x <> z -> 
+                       put_cu (f z) (get_cua (f z) ⊕ (get_cua (f y) && get_cua (f x))) = v ->
+                       f = f' ->
+                    exp_sem env f (CCX x y z) (f'[z |-> v]).
+Proof.
+ intros. subst. apply ccx_sem. 1 - 6: assumption. 
+Qed.
+
+Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
+
+Definition MAJ a b c := CNOT c b ; CNOT c a ; CCX a b c.
+Definition UMA a b c := CCX a b c ; CNOT c a ; CNOT a b.
+
+Ltac nor_sym := try (apply neq_sym; assumption) ; try assumption.
+
+Lemma MAJ_correct :
+  forall a b c env f,
+    nor_mode f a -> nor_mode f b -> nor_mode f c ->
+    a <> b -> b <> c -> a <> c ->
+    exp_sem env f (MAJ c b a) (((f[a |-> put_cu (f a) (majb (get_cua (f a)) (get_cua (f b)) (get_cua (f c)))])
+                              [b |-> put_cu (f b) (get_cua (f b) ⊕ get_cua (f a))])
+                              [c |-> put_cu (f c) (get_cua (f c) ⊕ (get_cua (f a)))]).
+(*Admitted. 
+(* The following proof works, but too slow. Admitted when debugging. *)*)
+Proof.
+  intros ? ? ? ? ? HNa HNb HNc Hab' Hbc' Hac'.
+  unfold MAJ.
+  eapply seq_sem.
+  eapply seq_sem.
+  apply cnot_sem. assumption. assumption.
+  apply cnot_sem.
+  apply nor_mode_up. assumption.
+  assumption.
+  apply nor_mode_up. apply neq_sym. assumption.
+  assumption.
+  rewrite eupdate_index_neq.
+  rewrite eupdate_index_neq.
+  assert ((((f [a
+     |-> put_cu (f a)
+           (majb (get_cua (f a)) (get_cua (f b)) (get_cua (f c)))]) [b
+    |-> put_cu (f b) (get_cua (f b) ⊕ get_cua (f a))]) [c
+   |-> put_cu (f c) (get_cua (f c) ⊕ get_cua (f a))])
+      = (((f [b
+    |-> put_cu (f b) (get_cua (f b) ⊕ get_cua (f a))]) [c
+   |-> put_cu (f c) (get_cua (f c) ⊕ get_cua (f a))])
+      [a
+     |-> put_cu (f a)
+           (majb (get_cua (f a)) (get_cua (f b)) (get_cua (f c)))])).
+  rewrite (eupdate_twice_neq f).
+  rewrite (eupdate_twice_neq (f [b |-> put_cu (f b) (get_cua (f b) ⊕ get_cua (f a))])).
+  easy. 1-2:assumption.
+  rewrite H0. clear H0.
+  apply ccx_nor.
+  apply nor_mode_ups. rewrite eupdate_index_neq.
+  reflexivity. assumption.
+  apply nor_mode_up. apply neq_sym. assumption.
+  assumption.
+  apply nor_mode_up. assumption.
+  apply nor_mode_ups ; easy.
+  apply nor_mode_up. assumption. apply nor_mode_up; assumption.
+  1-3:nor_sym.
+  rewrite eupdate_index_neq by nor_sym.
+  rewrite eupdate_index_neq by nor_sym.
+  rewrite eupdate_index_neq by nor_sym.
+  rewrite eupdate_index_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu by assumption.
+  rewrite get_put_cu by assumption.
+  unfold majb.
+  bt_simpl.
+  assert ((get_cua (f a)
+   ⊕ ((get_cua (f a) ⊕ (get_cua (f a) && get_cua (f c)))
+      ⊕ ((get_cua (f b) && get_cua (f a))
+         ⊕ (get_cua (f b) && get_cua (f c))))) = 
+    (((get_cua (f a) && get_cua (f b)) ⊕ (get_cua (f b) && get_cua (f c)))
+   ⊕ (get_cua (f a) && get_cua (f c)))) by btauto.
+  rewrite H0. easy.
+  rewrite xorb_comm.
+  rewrite (xorb_comm (get_cua (f a))). easy.
+  1 - 2 : nor_sym.
+Qed.
+
+Lemma UMA_correct_partial :
+  forall a b c env f' fa fb fc,
+    nor_mode f' a -> nor_mode f' b -> nor_mode f' c ->
+    a <> b -> b <> c -> a <> c ->
+    get_cua (f' a) = majb fa fb fc ->
+    get_cua (f' b) = (fb ⊕ fa) -> get_cua (f' c) = (fc ⊕ fa) ->
+    exp_sem env f' (UMA c b a) (((f'[a |-> put_cu (f' a) fa])
+                  [b |-> put_cu (f' b) (fa ⊕ fb ⊕ fc)])[c |-> put_cu (f' c) fc]).
 (* Admitted.
 (* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
-  induction i; intros.
-  - simpl. rewrite MAJ_correct by lia. simpl.
-    fb_push_n_simpl. replace (n - n) with 0 by lia.
-    apply functional_extensionality. intros.
-    bdestruct (x =? 0). subst. simpl. update_simpl. easy.
-    bdestruct (x =? 2 + n). subst. simpl. update_simpl. fb_push_n_simpl. replace (n - n) with 0 by lia. unfold msmb. bnauto.
-    bdestruct (x =? 2). subst. simpl. update_simpl. fb_push_n_simpl. unfold msma. bnauto.
-    update_simpl.
-    destruct x. easy. simpl. destruct x. easy. simpl.
-    bdestruct (x <? n). fb_push_n_simpl. unfold msma. bnauto.
-    fb_push_n_simpl. symmetry. fb_push_n_simpl.
-    bdestruct (x <? n + n). fb_push_n_simpl. unfold msmb. IfExpSimpl. easy.
-    fb_push_n_simpl. easy.
-  - simpl. rewrite IHi by lia. rewrite MAJ_correct by lia. simpl.
-    fb_push_n_simpl. replace (n + S i - n) with (S i) by lia.
-    apply functional_extensionality. intros.
-    bdestruct (x =? 2 + i). subst. simpl. update_simpl. fb_push_n_simpl. apply msm_eq1 with (n := n). easy.
-    bdestruct (x =? 2 + n + (1 + i)). subst. simpl. update_simpl. fb_push_n_simpl. replace (n + S i - n) with (S i) by lia. apply msm_eq2 with (n := n). easy.
-    bdestruct (x =? 3 + i). subst. simpl. update_simpl. fb_push_n_simpl. apply msm_eq3 with (n := n). easy.
-    update_simpl.
-    destruct x. easy. destruct x. easy. simpl.
-    bdestruct (x <? n). fb_push_n_simpl. unfold msma. IfExpSimpl. easy. easy.
-    fb_push_n_simpl. symmetry. fb_push_n_simpl.
-    bdestruct (x <? n + n). fb_push_n_simpl. unfold msmb. IfExpSimpl. easy. easy.
-    fb_push_n_simpl. easy.
+  unfold majb. intros.
+  unfold UMA.
+  eapply seq_sem.
+  eapply seq_sem.
+  apply ccx_sem.
+  1 - 3: assumption. 1 - 3: nor_sym.
+  apply cnot_nor.
+  apply nor_mode_ups. easy. assumption.
+  apply nor_mode_up. nor_sym. assumption.
+  reflexivity.
+  rewrite eupdate_index_neq by nor_sym.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  eapply cnot_nor_1.
+  apply nor_mode_ups.
+  rewrite eupdate_index_neq. easy. nor_sym.
+  apply nor_mode_up. nor_sym. assumption.
+  apply nor_mode_up. nor_sym.
+  apply nor_mode_up. nor_sym. assumption.
+  reflexivity.
+  rewrite eupdate_index_neq by nor_sym.
+  rewrite eupdate_index_neq by nor_sym.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu by assumption.
+  assert ((get_cua (f' a) ⊕ (get_cua (f' b) && get_cua (f' c))) = fa).
+  rewrite H6. rewrite H7. rewrite H8.
+  btauto. rewrite H9.
+  assert (((fa ⊕ get_cua (f' c)) ⊕ get_cua (f' b)) = ((fa ⊕ fb) ⊕ fc)).
+  rewrite H7. rewrite H8. btauto. rewrite H10.
+  rewrite (eupdate_twice_neq (f' [a |-> put_cu (f' a) fa])).
+  rewrite H8.
+  assert ((fa ⊕ (fc ⊕ fa)) = fc) by btauto.
+  rewrite H11. reflexivity. nor_sym. assumption.
 Qed.
 
-Local Opaque UMA.
-Local Transparent carry.
-Lemma UMAseq'_correct :
-  forall i n c f g h b1,
-    0 < n -> i < n ->
-    bcexec (UMAseq' i n 0) ((c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h)) = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
-Proof.
-  induction i; intros.
-  - simpl. rewrite UMA_correct_partial with (fa := f 0) (fb := g 0) (fc := carry c 0 f g). 2-4 : lia.
-    apply functional_extensionality. intros.
-    bdestruct (x =? 0). subst. simpl. update_simpl. easy.
-    bdestruct (x =? 2 + n). subst. simpl. update_simpl. fb_push_n_simpl. replace (n - n) with 0 by lia. unfold sumfb. IfExpSimpl. simpl. btauto.
-    bdestruct (x =? 2). subst. simpl. update_simpl. fb_push_n_simpl. easy.
-    update_simpl.
-    destruct x. easy. simpl. destruct x. easy. simpl.
-    bdestruct (x <? n). fb_push_n_simpl. unfold msma. IfExpSimpl. easy.
-    fb_push_n_simpl. symmetry. fb_push_n_simpl.
-    bdestruct (x <? n + n). fb_push_n_simpl. unfold msmc, sumfb. IfExpSimpl. easy.
-    fb_push_n_simpl. easy.
-    simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. simpl. unfold majb. simpl. btauto.
-    simpl. fb_push_n_simpl. replace (n - n) with 0 by lia. unfold msmc. IfExpSimpl. btauto.
-    simpl. easy.
-  - simpl.
-    replace (bcexec (UMA (S (S i)) (S (S (n + S i))) (S (S (S i)))) ((c ⊕ f 0) ` b1 ` fb_push_n n (msma (S i) c f g) (fb_push_n n (msmc (S i) c f g) h))) with (((c ⊕ f 0) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h))).
-    2:{ rewrite UMA_correct_partial with (fa := f (S i)) (fb := g (S i)) (fc := carry c (S i) f g). 2-4 : lia.
-        apply functional_extensionality. intros.
-        bdestruct (x =? 2 + i). subst. simpl. update_simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. easy.
-        bdestruct (x =? 2 + n + (1 + i)). subst. simpl. update_simpl. fb_push_n_simpl. replace (n + S i - n) with (S i) by lia. unfold msmc. IfExpSimpl. simpl. btauto.
-        bdestruct (x =? 3 + i). subst. simpl. update_simpl. simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. easy.
-        update_simpl.
-        destruct x. easy. simpl. destruct x. easy. simpl.
-        bdestruct (x <? n). fb_push_n_simpl. unfold msma. IfExpSimpl. easy. easy.
-        fb_push_n_simpl. symmetry. fb_push_n_simpl.
-        bdestruct (x <? n + n). fb_push_n_simpl. unfold msmc, sumfb. IfExpSimpl. easy. easy.
-        fb_push_n_simpl. easy.
-        simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. simpl. unfold majb. btauto.
-        simpl. fb_push_n_simpl. replace (n + S i - n) with (S i) by lia. unfold msmc. IfExpSimpl. btauto.
-        simpl. fb_push_n_simpl. unfold msma. IfExpSimpl. easy.
-    } 
-    rewrite IHi by lia. easy.
-Qed.
-Local Opaque carry.
 
-Lemma adder01_correct_fb :
-  forall n c f g h b1,
-    0 < n ->
-    bcexec (adder01 n) (c ` b1 ` fb_push_n n f (fb_push_n n g h)) = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
-Proof.
-  intros. unfold adder01. simpl. unfold MAJseq, UMAseq. rewrite MAJseq'_correct by lia.
-  replace (fb_push_n n (msmb (n - 1) c f g) h ) with (fb_push_n n (msmc (n - 1) c f g) h).
-  2:{ apply functional_extensionality. intros.
-      bdestruct (x <? n). fb_push_n_simpl. unfold msmc, msmb. IfExpSimpl. easy.
-      fb_push_n_simpl. easy.
-  }
-  apply UMAseq'_correct; lia.
-Qed.
+(* The following defines n-bits MAJ and UMA circuit. 
+   Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
+Fixpoint MAJseq' n x y c : scom :=
+  match n with
+  | 0 => MAJ c (y,0) (x,0)
+  | S m => MAJseq' m x y c; MAJ (x, m) (y, n) (x, n)
+  end.
+Definition MAJseq n x y c := MAJseq' (n - 1) x y c.
 
-Lemma sumfb_correct_carry0 :
-  forall x y,
-    sumfb false (nat2fb x) (nat2fb y) = nat2fb (x + y).
-Proof.
-  intros. unfold nat2fb. rewrite Nnat.Nat2N.inj_add.
-  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
-Qed.
+Fixpoint UMAseq' n x y c : scom :=
+  match n with
+  | 0 => UMA c (y,0) (x,0)
+  | S m => UMA (x, m) (y,n) (x, n); UMAseq' m x y c
+  end.
+Definition UMAseq n x y c := UMAseq' (n - 1) x y c.
 
-Lemma sumfb_correct_carry1 :
-  forall x y,
-    sumfb true (nat2fb x) (nat2fb y) = nat2fb (x + y + 1).
-Proof.
-  intros. unfold nat2fb. do 2 rewrite Nnat.Nat2N.inj_add.
-  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry1. easy.
-Qed.
-
-Lemma sumfb_correct_N_carry0 :
-  forall x y,
-    sumfb false (N2fb x) (N2fb y) = N2fb (x + y).
-Proof.
-  intros. apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
-Qed.
-
-Lemma pos2fb_Postestbit :
-  forall n i,
-    (pos2fb n) i = Pos.testbit n (N.of_nat i).
-Proof.
-  induction n; intros.
-  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
-  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
-  - destruct i; simpl. easy. easy.
-Qed.
-
-Lemma N2fb_Ntestbit :
-  forall n i,
-    (N2fb n) i = N.testbit n (N.of_nat i).
-Proof.
-  intros. destruct n. easy.
-  simpl. apply pos2fb_Postestbit.
-Qed.
-
-Lemma Z2N_Nat2Z_Nat2N :
-  forall x,
-    Z.to_N (Z.of_nat x) = N.of_nat x.
-Proof.
-  destruct x; easy.
-Qed.
-
-Lemma Nofnat_mod :
-  forall x y,
-    y <> 0 ->
-    N.of_nat (x mod y) = ((N.of_nat x) mod (N.of_nat y))%N.
-Proof.
-  intros. specialize (Zdiv.mod_Zmod x y H) as G.
-  repeat rewrite <- Z2N_Nat2Z_Nat2N. rewrite G. rewrite Z2N.inj_mod; lia.
-Qed.
-
-Lemma Nofnat_pow :
-  forall x y,
-    N.of_nat (x ^ y) = ((N.of_nat x) ^ (N.of_nat y))%N.
-Proof.
-  intros. induction y. easy.
-  Local Opaque N.pow. replace (N.of_nat (S y)) with ((N.of_nat y) + 1)%N by lia.
- simpl. rewrite N.pow_add_r. rewrite N.pow_1_r. rewrite Nnat.Nat2N.inj_mul. rewrite IHy. lia.
-Qed.
-
-Lemma reg_push_exceed :
-  forall n x f,
-    [x]_n f = [x mod 2^n]_n f.
-Proof.
-  intros. unfold reg_push. unfold nat2fb.
-  apply functional_extensionality; intro i.
-  bdestruct (i <? n). fb_push_n_simpl. rewrite Nofnat_mod. 2: apply Nat.pow_nonzero; lia.
-  rewrite Nofnat_pow. simpl.
-  do 2 rewrite N2fb_Ntestbit. rewrite N.mod_pow2_bits_low. easy. lia.
-  fb_push_n_simpl. easy.
-Qed.
-
-(* The following two lemmas show the correctness of the adder implementation based on MAJ;UMA circuit. 
-   The usage of the adder is based on the carry0 lemma. *)
-Lemma adder01_correct_carry0 :
-  forall n x y f b1,
-    0 < n ->
-    bcexec (adder01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [x + y]_n f).
-Proof.
-  intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry0. easy.
-Qed.
-
-Lemma adder01_correct_carry1 :
-  forall n x y f b1,
-    0 < n ->
-    bcexec (adder01 n) (true ` b1 ` [x]_n [y]_n f) = (true` b1 ` [x]_n [x + y + 1]_n f).
-Proof.
-  intros. unfold reg_push. rewrite adder01_correct_fb by easy. rewrite sumfb_correct_carry1. easy.
-Qed.
-
-Opaque adder01.
+Definition adder01 n x y c: scom := MAJseq n x y c; UMAseq n x y c.
 
 
 (* The following will swap the result of the addition of two numbers x and y (x+y) to the position
-   starting in 2 + n + n. Then, the original position that resides x+y will be empty for new computation. *)
+   starting in 2 + n + n. Then, the original position that resides x+y will be empty for new computation. 
 Fixpoint swapper02' i n :=
   match i with
   | 0 => bcskip
@@ -861,16 +758,17 @@ Proof.
 Qed.
 
 Opaque swapper02.
+*)
 
 (* The following will do the negation of the first input value in the qubit sequence 00[x][y][z].
    THe actual effect is to make the sequence to be 00[-x][y][z]. *)
-Fixpoint negator0' i : bccom :=
+Fixpoint negator0 i x : scom :=
   match i with
-  | 0 => bcskip
-  | S i' => negator0' i'; bcx (2 + i')
+  | 0 => SKIP
+  | S i' => negator0 i' x; X (x, i')
   end.
-Definition negator0 n := negator0' n.
 
+(*
 Lemma negator0'_eWF :
   forall i, eWF (negator0' i).
 Proof.
@@ -963,7 +861,7 @@ Proof.
 Qed.
 
 Opaque negator0.
-
+*)
 
 (* The following implements an comparator. 
    THe first step is to adjust the adder circuit above to be
@@ -972,9 +870,25 @@ Opaque negator0.
     To compare if x < y, we just need to do x - y, and see the high bit of the binary
     format of x - y. If the high_bit is zero, that means that x >= y;
     otherwise x < y. *)
-Definition highb01 n : bccom := MAJseq n; bccnot (1 + n) 1; bcinv (MAJseq n).
+Fixpoint nRZ (q:nat) (x:posi) (n:nat) := 
+   match n with 0 => SKIP
+             | S m => RZ q x; nRZ q x m 
+   end.
 
-Local Opaque bccnot.
+Fixpoint sinv p :=
+  match p with
+  | SKIP => SKIP
+  | X n => X n
+  | CU n p => CU n (sinv p)
+  | Seq p1 p2 => sinv p2; sinv p1
+  | Lshift x => Rshift x
+  | Rshift x => Lshift x
+  | RZ q p1 => nRZ q p1 (2^q - 1)
+  end.
+
+Definition highb01 n x y c1 c2: scom := MAJseq n x y c1; CNOT (x,n) c2; sinv (MAJseq n x y c1).
+
+(*
 Lemma highb01_eWF :
   forall n,
     0 < n ->
@@ -1015,15 +929,16 @@ Proof.
 Qed.
 
 Opaque highb01.
-
+*)
 (* The actual comparator implementation. 
     We first flip the x positions, then use the high-bit comparator above. 
     Then, we use an inverse circuit of flipping x positions to turn the
     low bits back to store the value x.
     The actual implementation in the comparator is to do (x' + y)' as x - y,
     and then, the high-bit actually stores the boolean result of x - y < 0.  *)
-Definition comparator01 n := (bcx 0; negator0 n); highb01 n; bcinv (bcx 0; negator0 n).
+Definition comparator01 n x y c1 c2 := (X c1; negator0 n x); highb01 n x y c1 c2; sinv (X c1; negator0 n x).
 
+(*
 Lemma comparator01_eWF :
   forall n,
     0 < n ->
@@ -1152,9 +1067,10 @@ Proof.
   intros. bdestruct (x <=? y). apply carry_leb_equiv_true; easy. apply carry_leb_equiv_false; easy.
 Qed.
 
+*)
 (* The correctness of comparator. We can see that the comparator will finally
    produce no changes to the positions storing values x and y, 
-   but the high-bit will be a boolean predicate of(x <=? y). *)
+   but the high-bit will be a boolean predicate of(x <=? y). 
 Lemma comparator01_correct :
   forall n x y f,
     0 < n ->
@@ -1170,11 +1086,13 @@ Proof.
 Qed.
 
 Opaque comparator01.
+*)
 
 (* The implementation of a subtractor. It takes two values [x][y], and the produces
     the result of [x][y + 2^n - x]. *)
-Definition substractor01 n := (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
+Definition substractor01 n x y c1:= (X c1; negator0 n x); adder01 n x y c1; sinv (X c1; negator0 n x).
 
+(*
 Lemma substractor01_efresh:
    forall n, 0 < n -> efresh 1 (substractor01 n).
 Proof.
@@ -1242,14 +1160,18 @@ Proof.
 Qed.
 
 Opaque substractor01.
+*)
 
 (* The implementation of a modulo adder. It takes [M][x][y], and then produces the result of [M][x+y % M][y]. 
    The modulo operation is not reversible. It will flip the high-bit to be the comparator factor.
    To flip the high-bit to zero, we use the inverse circuit of the comparator in the modulo adder to
    flip the high-bit back to zero.*)
-Definition modadder21 n := swapper02 n; adder01 n; swapper02 n; 
-       comparator01 n; (bccont 1 (substractor01 n); bcx 1); swapper02 n; bcinv (comparator01 n); swapper02 n.
-
+Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
+                                       comparator01 n M x c1 c2; (* compare M < x + y (in position x) *)
+                                       CU c2 (substractor01 n M x c1) ; X c2; (* doing -M + x to x, then flip c2. *)
+                                       comparator01 n y x c1 c2. (* compare M with x+y % M to clean c2. *)
+         
+(*
 Lemma modadder21_eWF:
  forall n, 0 < n -> eWF (modadder21 n).
 Proof.
@@ -1386,8 +1308,8 @@ Proof.
 Qed.
 
 Opaque modadder21.
-
-(* The swapper12 swaps the [x][y][z] to be [x][z][y]. *)
+*)
+(* The swapper12 swaps the [x][y][z] to be [x][z][y]. 
 Fixpoint swapper12' i n :=
   match i with
   | 0 => bcskip
@@ -1464,10 +1386,13 @@ Proof.
 Qed.
 
 Opaque swapper12.
-
+*)
 (* Here we implement the doubler circuit based on binary shift operation.
    It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
    Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
+Definition doubler1 y := Lshift y.
+
+(*
 Fixpoint doubler1' i n :=
   match i with
   | 0 => bcskip
@@ -1830,14 +1755,15 @@ Proof.
 Qed.
 
 Opaque doubler1.
-
+*)
 
 (* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
    This version will mark the high-bit, and the high-bit is not clearable.
    However, eventually, we will clean all high-bit
    by using a inverse circuit of the whole implementation. *)
-Definition moddoubler01 n := doubler1 n; comparator01 n; bccont 1 (substractor01 n).
-
+Definition moddoubler01 n x M c1 c2 :=
+                doubler1 x; comparator01 n x M c1 c2; CU c2 (substractor01 n x M c1).
+(*
 Lemma moddoubler01_eWF :
   forall n, 0 < n -> eWF (moddoubler01 n).
 Proof.
@@ -1910,8 +1836,9 @@ Proof.
 Qed.
 
 Opaque moddoubler01.
-
+*)
 (* A new version of the modulo adder to do addition only [y][x] -> [y][x+y mod M]. *)
+(*
 Definition modadder12 n := swapper12 n; modadder21 n; swapper12 n.
 
 Lemma modadder12_eWF :
@@ -1958,22 +1885,59 @@ Proof.
 Qed.
 
 Opaque modadder12.
-
+*)
 (* The following implements the modulo adder for all bit positions in the
    binary boolean function of C. 
    For every bit in C, we do the two items:
    we first to double the factor (originally 2^(i-1) * x %M, now 2^i * x %M).
    Then, we see if we need to add the factor result to the sum of C*x%M
-   based on if the i-th bit of C is zero or not. *)
-Fixpoint modsummer' i n (fC : nat -> bool) :=
-  match i with
-  | 0 => if (fC 0) then modadder12 n else bcskip
-  | S i' => modsummer' i' n fC; moddoubler01 n; 
-          bcswap 1 (2 + n + n + n + i);
-        (if (fC i) then modadder12 n else bcskip)
-  end.
-Definition modsummer n C := modsummer' (n - 1) n (nat2fb C).
+   based on if the i-th bit of C is zero or not.
+modadder21 n x y M c1 c2
+[M][x][0][0] -> [M][2^i * x % M][C^i*x % M][0]
+ *)
+(* A function to compile positive to a bool function. *)
+(* fb_push is to take a qubit and then push it to the zero position 
+        in the bool function representation of a number. *)
+Definition fb_push b f : nat -> bool :=
+  fun x => match x with
+        | O => b
+        | S n => f n
+        end.
 
+Fixpoint pos2fb p : nat -> bool :=
+  match p with
+  | xH => fb_push true allfalse
+  | xI p' => fb_push true (pos2fb p')
+  | xO p' => fb_push false (pos2fb p')
+  end.
+
+(* A function to compile N to a bool function. *)
+Definition N2fb n : nat -> bool :=
+  match n with
+  | 0%N => allfalse
+  | Npos p => pos2fb p
+  end.
+
+Definition add_c b x y :=
+  match b with
+  | false => Pos.add x y
+  | true => Pos.add_carry x y
+  end.
+
+Definition nat2fb n := N2fb (N.of_nat n).
+
+(* A function to compile a natural number to a bool function. *)
+
+Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
+  match i with
+  | 0 => if (fC 0) then adder01 n x y c1 else SKIP
+  | S i' => modsummer' i' n M x y c1 c2 s fC; moddoubler01 n x M c1 c2; 
+          SWAP c2 (s,i);
+        (if (fC i) then modadder21 n y x M c1 c2 else SKIP)
+  end.
+Definition modsummer n M x y c1 c2 s C := modsummer' (n - 1) n M x y c1 c2 s (nat2fb C).
+
+(*
 Lemma modsummer'_eWF :
   forall i n f, 0 < n -> eWF (modsummer' i n f).
 Proof.
@@ -2364,505 +2328,15 @@ Proof.
 Qed.
 
 Opaque modsummer.
-
+*)
 (* This is the final clean-up step of the mod multiplier to do C*x %M. 
     Here, modmult_half will first clean up all high bits.  *)
-Definition modmult_half n C := modsummer n C; (bcinv (modsummer n 0)).
+Definition modmult_half n M x y c1 c2 s C := modsummer n M x y c1 c2 s C; (sinv (modsummer n M x y c1 c2 s 0)).
 
-Lemma modmult_half_eWF:
-  forall n C, 0 < n -> eWF (modmult_half n C).
-Proof.
- intros.
- unfold modmult_half.
- constructor.
- apply modsummer_eWF.
- lia. 
- apply eWF_bcinv.
- apply modsummer_eWF.
- lia. 
-Qed.
+Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C; sinv (modmult_half n M x y c1 c2 s Cinv).
 
-Lemma modmult_half_eWT:
-  forall n C dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim (modmult_half n C).
-Proof.
- intros.
- unfold modmult_half.
- constructor.
- apply modsummer_eWT;lia.
- apply bcinv_eWT.
- apply modsummer_eWT;lia.
-Qed.
+Definition modmult M C Cinv n x y z s c1 c2 := init_v n z M; modmult_full C Cinv n z x y c1 c2 s; sinv (init_v n z M).
 
-Lemma modmult_half_correct :
-  forall n x M C,
-    1 < n ->
-    x < M ->
-    C < M ->
-    M < 2^(n-2) ->
-    bcexec (modmult_half n C) (false ` false ` [M]_n [x]_n allfalse)
-               = false ` false ` [M]_n [x]_n [C * x mod M]_n allfalse.
-Proof.
-  intros.
-  assert (false ` false ` [M]_n [x]_n allfalse 
-           = false ` false ` [M]_n [x]_n [0]_n allfalse).
-  unfold fb_push, reg_push, fb_push_n.
-  apply functional_extensionality.
-  intros.
-  destruct x0.
-  reflexivity.
-  destruct x0.
-  reflexivity.
-  IfExpSimpl.
-  1 - 4: reflexivity.
-  rewrite H3.
-  unfold modmult_half.
-  simpl.
-  rewrite modsummer_correct by lia.
-  apply (bcinv_reverse (modsummer n 0) (false ` false ` [M ]_ n [x ]_ n [(C * x) mod M ]_ n allfalse)).
-  2: {
-   rewrite modsummer_correct.
-   rewrite Nat.mul_0_l.
-   rewrite Nat.add_0_l.
-   rewrite Nat.add_0_r.
-   rewrite Nat.mod_mod.
-   reflexivity.
-   1 - 3: lia.
-   apply Nat.mod_upper_bound.
-   1 - 3: lia.
-  }
- apply modsummer_eWF.
- lia. 
-Qed.
-
-Opaque modmult_half.
-
-(* The modmult_full circuit will take [M][x] bits and produce [M][C*x mod M].
-   The key concept is to first compute modmult_half on C, and get [M][x][C*x mod M], 
-   We then swap the valuex of x and C*x%M, and get [M][C*x mod M][x],
-   and then we do an inverse circuit on the modmult_half on the inverse value of C.
-   THe final step will turn the result to be [M][C*x mod M] and remove [x]. *)
-
-Definition modmult_full C Cinv n := modmult_half n C; swapper12 n; bcinv (modmult_half n Cinv).
-
-Lemma modmult_full_eWT:
-    forall n C Cinv dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim ((modmult_full C Cinv n)).
-Proof.
-  intros. unfold modmult_full.
-  constructor. constructor.
-  apply modmult_half_eWT;lia.
-  apply swapper12_eWT;lia.
-  apply bcinv_eWT.
-  apply modmult_half_eWT;lia.
-Qed.
-
-Lemma modmult_full_correct :
-  forall n x M C Cinv,
-    1 < n ->
-    x < M ->
-    C < M ->
-    Cinv < M -> 
-    C * Cinv mod M = 1 ->
-    M < 2^(n-2) ->
-    bcexec (modmult_full C Cinv n) (false ` false ` [M]_n [x]_n allfalse) 
-           = false ` false ` [M]_n [C * x mod M]_n allfalse.
-Proof.
-  intros.
-  unfold modmult_full.
-  simpl.
-  rewrite modmult_half_correct by lia.
-  rewrite swapper12_correct by lia.
-  apply (bcinv_reverse (modmult_half n Cinv) (false ` false ` [M ]_ n [(C * x) mod M ]_ n allfalse)).
-  apply modmult_half_eWF. lia.
-  rewrite modmult_half_correct; try lia.
-  rewrite Nat.mul_mod_idemp_r.
-  rewrite Nat.mul_assoc.
-  rewrite (Nat.mul_mod (Cinv * C)).
-  rewrite (Nat.mul_comm Cinv).
-  rewrite H3.
-  rewrite Nat.mul_1_l.
-  rewrite Nat.mod_mod.
-  rewrite (Nat.mod_small x) by lia.
-  reflexivity.
-  1 - 3 : lia.
-  apply Nat.mod_upper_bound. lia.
-Qed.
-
-Opaque modmult_full.
-
-(* The following is to do the final clean-up of the final clean-up.
-   It prepares the two high-bits (two zero bits), and then prepare the empty positions for storing value M. 
-   Then, it will insert the value M by using a circuit genM0 for the constant M. *)
-Fixpoint swapperh1' j n :=
-  match j with
-  | 0 => bcskip
-  | S j' => swapperh1' j' n; bcswap j' (2 + n + j')
-  end.
-Definition swapperh1 n := swapperh1' n n.
-
-Lemma swapperh1'_eWF :
-  forall i n, eWF (swapperh1' i n).
-Proof.
-  induction i; intros. simpl. constructor. 
-  simpl. constructor. 
-  apply IHi. apply bcswap_eWF. 
-Qed.
-
-Lemma swapperh1'_eWT :
-  forall i n dim, 2 + n + i < dim -> eWT dim (swapperh1' i n).
-Proof.
-  induction i; intros. simpl. constructor. lia.
-  simpl. constructor. 
-  apply IHi. lia. apply bcswap_eWT; lia.
-Qed.
-
-Lemma swapperh1_eWF :
-  forall n, eWF (swapperh1 n).
-Proof.
-  intros. unfold swapperh1. apply swapperh1'_eWF.
-Qed.
-
-Definition swaph1m i n f := fun x => if (x <? i) then false else if (x <? n)
-                       then f x else if (x <? 2 + n) then false else if (x <? 2 + n + i) then f (x - 2 - n) else false.
-
-Lemma swapperh1'_correct :
-  forall i n f,
-    0 < n ->
-    i <= n ->
-    bcexec (swapperh1' i n) (fb_push_n n f allfalse) = swaph1m i n f.
-Proof.
-  induction i; intros. simpl. apply functional_extensionality; intro x.
-   unfold swaph1m. bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl. easy. fb_push_n_simpl. IfExpSimpl. easy. easy.
-  simpl. rewrite IHi by lia. rewrite bcswap_correct. apply functional_extensionality; intro x.
-  unfold swaph1m. IfExpSimpl; try easy. subst. apply f_equal. lia.
-Qed.
-  
-Lemma swapperh1_correct :
-  forall n x,
-    0 < n ->
-    bcexec (swapperh1 n) ([x]_n allfalse) = false ` false ` (fb_push_n n allfalse ([x]_n allfalse)).
-Proof.
-  intros. unfold swapperh1, reg_push. rewrite swapperh1'_correct by lia. unfold swaph1m. apply functional_extensionality; intro i.
-  bdestruct (i <? n). destruct i. easy. destruct i. easy. simpl. fb_push_n_simpl. easy.
-  bdestruct (i =? n). subst. simpl. IfExpSimpl. destruct n. easy. destruct n. easy. simpl. fb_push_n_simpl. easy.
-  bdestruct (i =? S n). subst. simpl. IfExpSimpl. destruct n. easy. simpl. fb_push_n_simpl. easy.
-  bdestruct (i <? 2 + n + n). IfExpSimpl. destruct i. lia. destruct i. lia. simpl. fb_push_n_simpl. rewrite Nat.sub_0_r. easy.
-  IfExpSimpl. destruct i. lia. destruct i. lia. simpl. fb_push_n_simpl. easy.
-Qed.
-
-Fixpoint genM0' i (f : nat -> bool) : bccom :=
-  match i with
-  | 0 => bcskip
-  | S i' => genM0' i' f; if (f i') then bcx (2 + i') else bcskip
-  end.
-Definition genM0 M n := genM0' n (nat2fb M).
-
-Definition genM0m i f := fun x => if (x <? i) then f x else false.
-
-Lemma genM0'_eWF :
-  forall i f, eWF (genM0' i f).
-Proof.
-  induction i; intros. simpl. constructor. 
-  simpl. constructor. 
-  apply IHi. destruct (f i). constructor. constructor.
-Qed.
-
-Lemma genM0'_eWT :
-  forall i f dim, 2 + i < dim -> eWT dim (genM0' i f).
-Proof.
-  induction i; intros. simpl. constructor. lia.
-  simpl. constructor.
-  apply IHi. lia.
-  destruct (f i).
-  constructor. lia.
-  constructor. lia.
-Qed.
-
-Lemma genM0_eWF :
-  forall M n, eWF (genM0 M n).
-Proof.
-  intros. unfold genM0. apply genM0'_eWF.
-Qed.
-
-Lemma genM0'_correct :
-  forall i n f g b0 b1,
-    0 < n ->
-    i <= n ->
-    bcexec (genM0' i f) (b0 ` b1 ` (fb_push_n n allfalse g)) = b0 ` b1 ` (fb_push_n n (genM0m i f)) g.
-Proof.
-  induction i; intros; simpl; apply functional_extensionality; intro x.
-  - destruct x. easy. destruct x. easy. simpl.
-    bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl. easy.
-    fb_push_n_simpl. easy.
-  - rewrite IHi by lia. destruct (f i) eqn:E. simpl.
-    bdestruct (x =? 2 + i). subst. update_simpl. simpl. fb_push_n_simpl. unfold genM0m. IfExpSimpl. rewrite E. easy.
-    update_simpl. destruct x. easy. destruct x. easy. simpl.
-    bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl; easy.
-    fb_push_n_simpl. easy.
-    simpl. destruct x. easy. destruct x. easy. simpl.
-    bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl. easy. replace x with i by lia. rewrite E. easy. easy.
-    fb_push_n_simpl. easy.
-Qed.
-
-Lemma genM0_correct :
-  forall n M f b0 b1,
-    0 < n ->
-    bcexec (genM0 M n) (b0 ` b1 ` (fb_push_n n allfalse f)) = b0 ` b1 ` [M]_n f.
-Proof.
-  intros. unfold genM0. rewrite genM0'_correct by lia. apply functional_extensionality; intro x.
-  destruct x. easy. destruct x. easy.  simpl.
-  unfold reg_push. bdestruct (x <? n); fb_push_n_simpl.
-  unfold genM0m. IfExpSimpl; easy.
-  easy.
-Qed.
-
-Definition modmult M C Cinv n := swapperh1 n; genM0 M n; modmult_full C Cinv n; bcinv (swapperh1 n; genM0 M n).
-
-Lemma modmult_eWT :
-  forall M C Cinv n dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim (modmult M C Cinv n).
-Proof.
-  unfold modmult,swapperh1,genM0.
-  constructor.   constructor.
-  constructor.
-  apply swapperh1'_eWT. lia.
-  apply genM0'_eWT. lia.
-  apply modmult_full_eWT; lia.
-  simpl. constructor.
-  apply bcinv_eWT. apply genM0'_eWT. lia.
-  apply bcinv_eWT. apply swapperh1'_eWT. lia.
-Qed.
-
-Lemma modmult_correct :
-  forall n x M C Cinv,
-    1 < n ->
-    x < M ->
-    C < M ->
-    Cinv < M ->
-    C * Cinv mod M = 1 ->
-    M < 2^(n-2) ->
-    bcexec (modmult M C Cinv n) ([x]_n allfalse) = [C * x mod M]_n allfalse.
-Proof.
-  intros. unfold modmult. remember (swapperh1 n; genM0 M n) as p.
-  assert (forall y, bcexec p ([y]_n allfalse) = false ` false ` [M]_n [y]_n allfalse).
-  { rewrite Heqp. intros. simpl. rewrite swapperh1_correct by lia.
-    rewrite genM0_correct by lia. easy.
-  }
-  simpl. rewrite H5. rewrite modmult_full_correct by lia. erewrite bcinv_reverse.
-  3: apply H5.
-  easy. subst. constructor. apply swapperh1_eWF. apply genM0'_eWF.
-Qed.
-
-Opaque modmult.
+Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; Exp (modmult M C Cinv n x y z s c1 c2);; Rev x.
 
 
-Fixpoint reverser' i n :=
-  match i with
-  | 0 => bcswap 0 (n - 1)
-  | S i' => reverser' i' n; bcswap i (n - 1 - i)
-  end.
-Definition reverser n := reverser' ((n - 1) / 2) n.
-
-Definition fbrev' i n (f : nat -> bool) := fun (x : nat) => 
-            if (x <=? i) then f (n - 1 - x) else if (x <? n - 1 - i) 
-                         then f x else if (x <? n) then f (n - 1 - x) else f x.
-Definition fbrev n (f : nat -> bool) := fun (x : nat) => if (x <? n) then f (n - 1 - x) else f x.
-
-Lemma reverser'_correct :
-  forall i n f g,
-    0 < n ->
-    i <= (n - 1) / 2 ->
-    bcexec (reverser' i n) (fb_push_n n f g) = fb_push_n n (fbrev' i n f) g.
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
-Proof.
-  induction i; intros.
-  - simpl. rewrite bcswap_correct by lia. apply functional_extensionality; intro. unfold fbrev'.
-    bdestruct (x =? 0). subst. fb_push_n_simpl. IfExpSimpl; apply f_equal; lia.
-    bdestruct (x =? n - 1). subst. fb_push_n_simpl. IfExpSimpl. apply f_equal. lia.
-    bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl. easy.
-    fb_push_n_simpl. easy.
-  - assert ((n - 1) / 2 < n) by (apply Nat.div_lt_upper_bound; lia).
-    simpl. rewrite IHi by lia. rewrite bcswap_correct by lia. apply functional_extensionality; intro. unfold fbrev'.
-    assert (2 * ((n - 1) / 2) <= n - 1) by (apply Nat.mul_div_le; easy).
-    bdestruct (x =? S i). subst. fb_push_n_simpl. IfExpSimpl; easy.
-    bdestruct (x =? n - 1 - S i). subst. fb_push_n_simpl. IfExpSimpl. apply f_equal. lia.
-    bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl; easy.
-    fb_push_n_simpl. easy.
-Qed.
-
-Lemma fbrev'_fbrev :
-  forall n f,
-    0 < n ->
-    fbrev n f = fbrev' ((n - 1) / 2) n f.
-Proof.
-  intros. unfold fbrev, fbrev'. apply functional_extensionality; intro.
-  assert ((n - 1) / 2 < n) by (apply Nat.div_lt_upper_bound; lia).
-  assert (2 * ((n - 1) / 2) <= n - 1) by (apply Nat.mul_div_le; easy).
-  assert (n - 1 - (n - 1) / 2 <= (n - 1) / 2 + 1).
-  { assert (n - 1 <= 2 * ((n - 1) / 2) + 1).
-    { assert (2 <> 0) by easy.
-      specialize (Nat.mul_succ_div_gt (n - 1) 2 H2) as G.
-      lia.
-    }
-    lia.
-  }
-  IfExpSimpl; easy.
-Qed.
-
-Lemma reverser_correct :
-  forall n f g,
-    0 < n ->
-    bcexec (reverser n) (fb_push_n n f g) = fb_push_n n (fbrev n f) g.
-Proof.
-  intros. unfold reverser. rewrite reverser'_correct by lia. rewrite fbrev'_fbrev by easy. easy.
-Qed.
-
-Lemma reverser'_eWF :
-  forall i n, eWF (reverser' i n).
-Proof.
-  induction i; intros. simpl. apply bcswap_eWF.
-  simpl. constructor. apply IHi. apply bcswap_eWF.
-Qed.
-
-Lemma reverser'_eWT :
-  forall i n dim, n + i < dim -> eWT dim (reverser' i n).
-Proof.
-  induction i; intros. simpl. apply bcswap_eWT;lia.
-  simpl. constructor. apply IHi. lia. apply bcswap_eWT;lia.
-Qed.
-
-Lemma reverser_eWF :
-  forall n, eWF (reverser n).
-Proof.
-  intros. unfold reverser. apply reverser'_eWF.
-Qed.
-
-Lemma reverser_eWT :
-  forall n dim, 0 < n -> n + n < dim -> eWT dim (reverser n).
-Proof.
-  intros. unfold reverser. apply reverser'_eWT.
-  assert ((n - 1) / 2 < n).
-  apply Nat.div_lt_upper_bound.
-  lia. lia. lia.
-Qed.
-
-Opaque reverser.
-
-Lemma fbrev_involutive :
-  forall n f,
-    fbrev n (fbrev n f) = f.
-Proof.
-  intros. unfold fbrev. apply functional_extensionality; intro x. IfExpSimpl; apply f_equal; lia.
-Qed.
-
-Lemma f_to_vec_eq :
-  forall n f1 f2,
-    (forall i, i < n -> f1 i = f2 i) ->
-    f_to_vec n f1 = f_to_vec n f2.
-Proof.
-  induction n; intros. easy.
-  simpl. rewrite IHn with (f2 := f2). rewrite H. easy. lia. intros. apply H. lia.
-Qed.
-
-Lemma fbrev_Sn :
-  forall n x f,
-    fb_push_n (S n) (fbrev (S n) (nat2fb x)) f = fb_push_n n (fbrev n (nat2fb (x / 2))) ((x mod 2 =? 1) ` f).
-Proof.
-  intros. apply functional_extensionality; intro i.
-  bdestruct (i <? n). fb_push_n_simpl. unfold fbrev. IfExpSimpl. unfold nat2fb. do 2 rewrite N2fb_Ntestbit.
-   do 2 rewrite <- Nattestbit_Ntestbit.
-   replace (S n - 1 - i) with (S (n - 1 - i)) by lia.
-   symmetry. apply Nat.div2_bits.
-   bdestruct (i =? n). subst. fb_push_n_simpl. replace (n - n) with 0 by lia. 
-   unfold fbrev. IfExpSimpl. unfold nat2fb. rewrite N2fb_Ntestbit.
-   rewrite <- Nattestbit_Ntestbit. replace (S n - 1 - n) with 0 by lia. rewrite Nat.bit0_eqb. easy.
-  fb_push_n_simpl. destruct (i - n) eqn:E. lia. replace (i - S n) with n0 by lia. easy.
-Qed.
-
-Lemma f_to_vec_num :
-  forall n x f,
-    f_to_vec n (fb_push_n n (fbrev n (nat2fb x)) f) = basis_vector (2^n) (x mod (2^n)).
-Proof.
-  induction n; intros. simpl in *. replace 1 with (2^0) by easy. rewrite <- kron_n_0_is_0_vector. easy.
-  simpl. replace (2 ^ n + (2 ^ n + 0)) with (2 * (2^n)) by lia.
-  assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
-  rewrite Nat.mod_mul_r by lia.
-  rewrite fbrev_Sn. rewrite IHn. fb_push_n_simpl. replace (n - n) with 0 by lia.
-  remember ((x / 2) mod 2^n) as y.
-  assert (y < 2 ^ n) by (subst; apply Nat.mod_upper_bound; easy).
-  replace (((x mod 2 =? 1) ` f) 0) with (x mod 2 =? 1) by easy.
-  destruct (x mod 2) eqn:E.
-  - replace (0 + 2 * y) with (2 * y) by lia.
-    rewrite <- (basis_vector_append_0 (2^n) y); easy.
-  - assert (x mod 2 < 2) by (apply Nat.mod_upper_bound; easy).
-    replace (S n0) with 1 by lia.
-    replace (1 + 2 * y) with (2 * y + 1) by lia.
-    rewrite <- (basis_vector_append_1 (2^n) y); easy.
-Qed.
-
-Lemma f_to_vec_num_with_anc :
-  forall anc n x,
-    f_to_vec (n + anc) (fb_push_n n (fbrev n (nat2fb x)) allfalse) = basis_vector (2^n) (x mod (2^n)) ⊗ (basis_vector (2^anc) 0).
-Proof.
-  induction anc; intros. rewrite Nat.add_0_r. rewrite <- kron_n_0_is_0_vector. simpl. rewrite kron_1_r. apply f_to_vec_num.
-  replace (n + S anc) with (S (n + anc)) by lia. simpl. fb_push_n_simpl. simpl. rewrite IHanc.
-  replace (basis_vector (2 ^ anc + (2 ^ anc + 0)) 0) with (basis_vector (2 * 2^anc) (2 * 0)) by easy.
-  assert (2^anc <> 0) by (apply Nat.pow_nonzero; easy).
-  rewrite <- (basis_vector_append_0 (2^anc) 0) by lia.
-  restore_dims. rewrite kron_assoc. easy.
-  apply basis_vector_WF. apply Nat.mod_upper_bound. apply Nat.pow_nonzero; easy.
-  apply basis_vector_WF. lia.
-  apply WF_qubit0.
-Qed.
-
-Definition modmult_rev M C Cinv n := bcinv (reverser n); modmult M C Cinv (S (S n)); reverser n.
-
-Lemma basis_vector_inc_from_anc :
-  forall n x,
-    x < 2^n ->
-    [x]_n allfalse = [x]_(S n) allfalse.
-Proof.
-  intros. apply functional_extensionality; intro i. unfold reg_push.
-  bdestruct (i <? n). fb_push_n_simpl. easy.
-  bdestruct (i =? n). subst. fb_push_n_simpl. unfold nat2fb. rewrite N2fb_Ntestbit. rewrite <- Nattestbit_Ntestbit. rewrite Nat.testbit_eqb.
-  replace (x / 2^n) with 0 by (symmetry; apply Nat.div_small; easy). easy.
-  fb_push_n_simpl. easy.
-Qed.
-
-Lemma modmult_rev_correct :
-  forall n x M C Cinv,
-    M > 1 -> M < 2^n ->
-    x < M -> C < M -> Cinv < M ->
-    C * Cinv mod M = 1 ->
-    bcexec (modmult_rev M C Cinv n) (fb_push_n n (fbrev n (nat2fb x)) allfalse) = (fb_push_n n (fbrev n (nat2fb (C * x mod M))) allfalse).
-Proof.
-  intros.
-  assert (0 < n) by (destruct n; simpl in *; lia).
-  assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
-  assert ((C * x) mod M < M) by (apply Nat.mod_upper_bound; lia).
-  assert (M < 2^(S n)) by (simpl; lia).
-  assert (M < 2^(S (S n))) by (simpl; lia).
-  assert (M < 2 ^ (S (S n) - 2)) by (replace (S (S n) - 2) with n by lia; easy).
-  unfold modmult_rev. simpl. erewrite bcinv_reverse.
-  3: rewrite reverser_correct by lia; reflexivity.
-  2: apply reverser_eWF.
-  replace (fb_push_n n (nat2fb x) allfalse) with ([x]_n allfalse) by easy.
-  do 2 rewrite basis_vector_inc_from_anc by lia.
-  rewrite modmult_correct by lia.
-  do 2 rewrite <- basis_vector_inc_from_anc by lia.
-  apply reverser_correct. easy.
-Qed.
-
-Lemma modmult_rev_eWT :
-  forall n M C Cinv,
-    0 < n ->
-    eWT (n + (modmult_rev_anc n)) (modmult_rev M C Cinv n).
-Proof.
-  intros.
-  unfold modmult_rev,modmult_rev_anc.
-  constructor.   constructor.
-  apply bcinv_eWT. apply reverser_eWT; lia.
-  apply modmult_eWT; lia.
-  apply  reverser_eWT; lia.
-Qed.
-
-Opaque modmult_rev.
