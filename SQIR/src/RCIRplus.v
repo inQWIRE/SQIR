@@ -3,7 +3,7 @@ Require Import Psatz.
 Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
 Require Import Dirac.
-
+Require Import QPE.
 (**********************)
 (** Unitary Programs **)
 (**********************)
@@ -121,6 +121,7 @@ Qed.
 
 Inductive scom := SKIP | X (p:posi) | CU (p:posi) (e:scom)
         | RZ (q:nat) (p:posi) (* 2 * PI * i / 2^q *)
+        | RRZ (q:nat) (p:posi) 
         | Lshift (x:var)
         | Rshift (x:var)
         | Seq (s1:scom) (s2:scom).
@@ -151,6 +152,7 @@ Inductive exp_WF : (var -> nat) -> scom -> Prop :=
       | x_wf : forall env a b n, env a = n -> b < n -> exp_WF env (X (a,b))
       | cu_wf : forall env a b e n, env a = n -> b < n -> exp_WF env e -> exp_WF env (CU (a,b) e)
       | rz_wf : forall env a b q n, env a = n -> b < n -> exp_WF env (RZ q (a,b))
+      | rrz_wf : forall env a b q n, env a = n -> b < n -> exp_WF env (RRZ q (a,b))
       | seq_wf : forall env e1 e2, exp_WF env e1 -> exp_WF env e2 -> exp_WF env (Seq e1 e2).
 
 Inductive well_typed_exp : env -> scom -> Prop :=
@@ -161,6 +163,9 @@ Inductive well_typed_exp : env -> scom -> Prop :=
     | rz_refl :forall env q a b, Env.MapsTo a Nor env -> well_typed_exp env (RZ q (a,b))
     | rz_had : forall env a b, Env.MapsTo a Had env -> well_typed_exp env (RZ 1 (a,b))
     | rz_qft : forall env q a b, Env.MapsTo a Phi env -> well_typed_exp env (RZ q (a,b))
+    | rrz_refl :forall env q a b, Env.MapsTo a Nor env -> well_typed_exp env (RRZ q (a,b))
+    | rrz_had : forall env a b, Env.MapsTo a Had env -> well_typed_exp env (RRZ 1 (a,b))
+    | rrz_qft : forall env q a b, Env.MapsTo a Phi env -> well_typed_exp env (RRZ q (a,b))
     | lshift_refl : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Lshift x)
     | rshift_refl : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rshift x)
     | e_seq : forall env p1 p2, well_typed_exp env p1 -> well_typed_exp env p2 -> well_typed_exp env (p1 ; p2).
@@ -188,6 +193,20 @@ Definition times_rotate (v : val) (q:nat) :=
      match v with nval b r =>  nval b (rotate r q)
                   | hval b1 b2 r => hval b1 (¬ b2) r
                   | qval r =>  qval (rotate r q)
+     end.
+
+Fixpoint addto_n (f:nat -> bool) (n:nat) :=
+    match n with 0 => f
+               | S m => addto_n (addto f m) m
+    end.
+
+Definition r_rotate (r :rz_val) (q:nat) :=
+    match r with (n,f) => if q <? n then (n,addto_n f q) else (q+1,addto_n f q) end.
+
+Definition times_r_rotate (v : val) (q:nat) := 
+     match v with nval b r =>  nval b (r_rotate r q)
+                  | hval b1 b2 r => hval b1 (¬ b2) r
+                  | qval r =>  qval (r_rotate r q)
      end.
 
 
@@ -222,6 +241,7 @@ Inductive exp_sem (env : var -> nat) : (posi -> val) -> scom -> (posi -> val) ->
     | cu_false_sem : forall st p e, get_cu (st p) = Some false -> exp_sem env st (CU p e) st
     | cu_true_sem : forall st p e st', get_cu (st p) = Some true -> exp_sem env st e st' -> exp_sem env st (CU p e) st'
     | rz_sem : forall st q p, exp_sem env st (RZ q p) (st[p |-> times_rotate (st p) q])
+    | rrz_sem : forall st q p, exp_sem env st (RRZ q p) (st[p |-> times_r_rotate (st p) q])
     | lshift_sem : forall st x, get_cu (st (x,(env x)-1)) = Some false
                                                       ->  exp_sem env st (Lshift x) (lshift st x (env x))
     | rshift_sem : forall st x, get_cu (st (x,0)) = Some false
@@ -681,11 +701,6 @@ Fixpoint negator0 i x : scom :=
     To compare if x < y, we just need to do x - y, and see the high bit of the binary
     format of x - y. If the high_bit is zero, that means that x >= y;
     otherwise x < y. *)
-Fixpoint nRZ (q:nat) (x:posi) (n:nat) := 
-   match n with 0 => SKIP
-             | S m => RZ q x; nRZ q x m 
-   end.
-
 Fixpoint sinv p :=
   match p with
   | SKIP => SKIP
@@ -694,7 +709,8 @@ Fixpoint sinv p :=
   | Seq p1 p2 => sinv p2; sinv p1
   | Lshift x => Rshift x
   | Rshift x => Lshift x
-  | RZ q p1 => nRZ q p1 (2^q - 1)
+  | RZ q p1 => RRZ q p1
+  | RRZ q p1 => RZ q p1
   end.
 
 Fixpoint finv p :=
@@ -735,7 +751,7 @@ Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
 (* Here we implement the doubler circuit based on binary shift operation.
    It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
    Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
-Definition doubler1 y := Lshift y.
+Definition doubler1 y := Rshift y.
 
 (* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
    This version will mark the high-bit, and the high-bit is not clearable.
@@ -840,6 +856,212 @@ Definition rz_modmult_half (y:var) (x:var) (n:nat) (c:posi) (a:nat -> bool) (N:n
 
 Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (C:nat -> bool) (Cinv : nat -> bool) (N:nat -> bool) :=
                  rz_modmult_half y x n c C N ;; finv (rz_modmult_half y x n c Cinv N).
+
+
+
+(*  Compilation to bcom. *)
+(* Controlled rotation cascade on n qubits. *)
+
+
+Inductive varType := NType | SType.
+
+Definition id_fun := fun (i:nat) => i.
+
+Fixpoint compile_var' (l: list (var * nat * varType)) (dim:nat) :=
+   match l with [] => fun _ => (0,0,NType,0,id_fun)
+              | (x,n,NType):: l' => fun i => if x =? i
+                           then (dim,n,NType,0%nat,id_fun) else (compile_var' l' (dim + n)) i
+              | (x,n,SType):: l' => fun i => if x =? i
+                           then (dim,n,SType,0%nat,id_fun) else (compile_var' l' (dim + n+1)) i
+   end.
+Definition compile_var l := compile_var' l 0.
+
+Fixpoint get_dim (l: list (var * nat * varType)) :=
+   match l with [] => 0
+             | (x,n,NType) :: l' => n + get_dim l'
+             | (x,n,SType) :: l' => (n+1) + get_dim l'
+   end.
+
+Definition inter_num (size:nat) (t : varType) :=
+   match t with NType => size
+              | SType => size+1
+   end.
+
+Definition adj_offset (index:nat) (offset:nat) (size:nat) (t:varType) :=
+    (index + offset) mod (inter_num size t).
+
+Definition rz_ang (n:nat) : R := ((2%R * PI)%R / 2%R^n).
+
+Definition rrz_ang (n:nat) : R := (1 - ((2%R * PI)%R / 2%R^n)).
+
+Definition vars := nat -> (nat * nat * varType * nat * (nat -> nat)).
+
+Definition shift_fun (f:nat -> nat) (offset:nat) (size:nat) := fun i => f ((i + offset) mod size).
+
+Definition trans_lshift (f:vars) (x:var) :=
+     match f x with (start, size, t, offset,g) => 
+              fun i => if i =? x then (start, size, t, 
+                            (offset + 1) mod (inter_num size t),
+                              shift_fun g (offset + 1) (inter_num size t)) else f i
+     end.
+
+Definition trans_rshift (f:vars) (x:var) :=
+     match f x with (start, size, t, offset,g) => 
+              fun i => if i =? x then (start, size, t, 
+                     (offset + (inter_num size t) - 1) mod (inter_num size t),
+               shift_fun g (offset + (inter_num size t) - 1) (inter_num size t)) else f i
+     end.
+
+Definition find_pos (f : vars) (a:var) (b:nat) :=
+       match f a with (start, size, t, offset,g) => start + g b
+       end.
+
+Fixpoint trans_exp (f : vars) (dim:nat) (exp:scom) :
+                 (base_ucom dim * vars) :=
+  match exp with SKIP => (SQIR.SKIP, f)
+              | X (a,b) => (SQIR.X (find_pos f a b),f)
+              | RZ q (a,b) => (SQIR.Rz (rz_ang q) (find_pos f a b),f)
+              | RRZ q (a,b) => (SQIR.Rz (rrz_ang q) (find_pos f a b),f)
+              | Lshift x => (SQIR.SKIP, trans_lshift f x)
+              | Rshift x => (SQIR.SKIP, trans_rshift f x)
+              | CU (a,b) (X (c,d)) => (SQIR.CNOT (find_pos f a b) (find_pos f c d),f)
+              | CU (a,b) e1 => match trans_exp f dim e1 with (e1',f') => 
+                                  ((control (find_pos f a b) e1'),f')
+                               end
+              | e1 ; e2 => match trans_exp f dim e1 with (e1',f') => 
+                             match trans_exp f' dim e2 with (e2',f'') => 
+                                        (SQIR.useq e1' e2', f'')
+                             end
+                            end
+  end.
+
+(* generalized Controlled rotation cascade on n qubits. *)
+Fixpoint controlled_rotations_gen {dim} (start n : nat) : base_ucom dim :=
+  match n with
+  | 0 | 1 => SQIR.SKIP
+  | 2     => control (start+1) (Rz (2 * PI / 2 ^ n)%R start) (* makes 0,1 cases irrelevant *)
+  | S n'  => SQIR.useq (controlled_rotations_gen start n')
+                 (control (start + n') (Rz (2 * PI / 2 ^ n)%R start))
+  end.
+
+(* generalized Quantum Fourier transform on n qubits. 
+   We use the definition below (with cast and map_qubits) for proof convenience.
+   For a more standard functional definition of QFT see Quipper:
+   https://www.mathstat.dal.ca/~selinger/quipper/doc/src/Quipper/Libraries/QFT.html *)
+Fixpoint QFT_gen {dim} (start n:nat) : base_ucom dim :=
+  match n with
+  | 0    => SQIR.SKIP
+  | 1    => SQIR.H start
+  | S n' => SQIR.useq (SQIR.H start) (SQIR.useq (controlled_rotations_gen start n)
+            (map_qubits S (QFT_gen start n')))
+  end.
+
+Definition trans_qft {dim} (f:vars) (x:var) : base_ucom dim :=
+          match f x with (start, size, t, offset,g) => QFT_gen start size end.
+
+Definition trans_rqft {dim} (f:vars) (x:var) : base_ucom dim :=
+          match f x with (start, size, t, offset,g) => invert (QFT_gen start size) end.
+
+Fixpoint nH {dim} (start offset size n:nat) : base_ucom dim :=
+     match n with 0 => SQIR.SKIP
+               | S m => SQIR.useq (SQIR.H (((start + offset) mod size) + m)) (nH start offset size m)
+     end.
+
+Definition trans_h {dim} (f:vars) (x:var) : base_ucom dim :=
+   match f x with (start, size, t, offset, g) => nH start offset (inter_num size t) size end.
+
+Check cons.
+
+Definition rev_meaning (g:nat -> nat) (offset size:nat) :=
+       fun i => g (((size - 1) - ((i + size - offset) mod size)) + offset).
+
+Definition trans_rev (f:vars) (x:var) := 
+    match f x with (start,size,t,offset,g) => 
+               fun i => if x =? i then (start,size,t,offset,rev_meaning g offset (inter_num size t)) else f i
+    end.
+
+Fixpoint move_bits {dim} (lstart rstart n:nat) : base_ucom dim :=
+   match n with 0 => SQIR.SKIP
+             | S m => SQIR.useq (SQIR.SWAP (lstart + m) (rstart + m)) (move_bits lstart rstart m)
+   end.
+
+Fixpoint move_left' {dim} (n start m : nat) : base_ucom dim :=
+       match n with 0 => SQIR.SKIP
+                 | S i => SQIR.useq (move_bits start (start + m) m) (move_left' i (start+m) m)
+       end.
+
+Definition move_left {dim} (start m size: nat) : base_ucom dim := move_left' (size/m) start m.
+
+Fixpoint move_right' {dim} (n start m : nat) : base_ucom dim :=
+       match n with 0 => SQIR.SKIP
+               | S i => SQIR.useq (move_bits (start - m) start m) (move_right' i (start - m) m)
+       end.
+Definition move_right {dim} (start m size: nat) : base_ucom dim := move_right' (size/m) (start+size) m.
+
+Fixpoint small_move_left' {dim} (start n : nat) : base_ucom dim :=
+   match n with 0 => SQIR.SKIP
+             | S m => SQIR.useq (SQIR.SWAP (start+m) (start+n)) (small_move_left' start m)
+   end.
+
+Fixpoint small_move_left {dim} (start m size: nat) : base_ucom dim :=
+   match size with 0 => SQIR.SKIP
+            | S i => SQIR.useq (small_move_left' start m) (small_move_left (start+1) m i)
+   end.
+
+Fixpoint small_move_right' {dim} (start n : nat) : base_ucom dim :=
+   match n with 0 => SQIR.SKIP
+             | S m => SQIR.useq (small_move_right' start m) (SQIR.SWAP (start+m) (start+n))
+   end.
+
+Fixpoint small_move_right {dim} (start m size: nat) : base_ucom dim :=
+   match size with 0 => SQIR.SKIP
+            | S i => SQIR.useq (small_move_right' start m) (small_move_right (start-1) m i)
+   end.
+
+Definition move_reset {dim} (start offset size : nat) : base_ucom dim :=
+   if offset <? size - offset then SQIR.useq (move_left start offset size)
+                                   (small_move_left (start+(size/offset)*offset) offset (size mod offset))
+      else SQIR.useq (move_right start offset size) (small_move_right (start+size mod offset - 1) offset (size mod offset)).
+
+Definition set_reset_fun (f:vars) (x:var) (start size:nat) (t:varType) :=
+      fun i => if i =? x then (start,size,t,0%nat,id_fun) else f i.
+
+Definition trans_reset {dim} (f:vars) (x:var) : (base_ucom dim * vars) :=
+   match f x with  (start,size,t,offset,g) =>
+            (move_reset start offset (inter_num size t), set_reset_fun f x start size t)
+   end.
+
+Fixpoint trans_face (f:vars) (dim:nat) (exp:face) : (base_ucom dim * vars) :=
+     match exp with Exp s => trans_exp f dim s
+                 | QFT x => (trans_qft f x, f)
+                 | RQFT x => (trans_qft f x, f)
+                 | H x => (trans_h f x, f)
+                 | FSeq e1 e2 =>  
+                         match trans_face f dim e1 with (e1',f') => 
+                             match trans_face f' dim e2 with (e2',f'') => 
+                                        (SQIR.useq e1' e2', f'')
+                             end
+                            end
+                 | Rev x => (SQIR.SKIP, trans_rev f x)
+                 | Reset x => trans_reset f x
+     end.
+
+Parameter x y z s c1 c2: var.
+
+Definition modmult_vars (n:nat) := cons (x,n,SType) (cons (y,n,NType) (cons (z,n,NType)
+                               (cons (s,n,NType) (cons (c1,1,NType) (cons (c2,1,NType) []))))).
+
+Definition modmult_var_fun (n:nat) := compile_var (modmult_vars n).
+
+Definition modmult_sqir M C Cinv n := trans_face (modmult_var_fun n)
+            (get_dim (modmult_vars n)) (modmult_rev M C Cinv n x y z s (c1,0) (c2,0)).
+
+Definition rz_mod_vars (n:nat) := cons (x,n,NType) (cons (y,n,NType) (cons (c1,1,NType) [])).
+
+Definition rz_var_fun (n:nat) := compile_var (rz_mod_vars n).
+
+Definition rz_mod_sqir M C Cinv n := trans_face (rz_var_fun n)
+            (get_dim (rz_mod_vars n)) (rz_modmult_full x y n (c1,0) C Cinv M).
 
 
 
