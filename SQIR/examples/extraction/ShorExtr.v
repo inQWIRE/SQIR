@@ -74,98 +74,35 @@ Extraction Implicit SWAP [dim].
 Definition modexp a x N := a ^ x mod N.
 Extract Constant modexp => "fun a x n -> Z.to_int (Z.powm (Z.of_int a) (Z.of_int x) (Z.of_int n))".
 
+(* @Liyi: you can change the adder by commenting/uncommenting the following definitions *)
+Require Import RCIRplus.
+
+(* Old defn *)
+(*Definition modmult_circuit a ainv N n i := 
+  @bc2ucom (n + ModMult.modmult_rev_anc n) 
+           (RCIR.csplit (RCIR.bcelim (ModMult.modmult_rev N (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) n))).
+Definition num_qubits n : nat := n + modmult_rev_anc n.*)
+
+(* New defn #1 *)
+(*Definition modmult_circuit a ainv N n i :=
+  fst (modmult_sqir N (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) n).
+Definition num_qubits n : nat := get_dim (modmult_vars n).*)
+
+(* New defn #2 *)
+Definition modmult_circuit a ainv N n i := 
+  fst (rz_mod_sqir N (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) n).
+Definition num_qubits n : nat := get_dim (rz_mod_vars n).
+
 (* requires 0 < a < N, gcd a N = 1 
    returns a circuit + the number of qubits used *)
 Local Open Scope ucom_scope.
 Definition shor_circuit a N := 
   let m := Nat.log2 (2 * N^2)%nat in
   let n := Nat.log2 (2 * N) in
-  let anc := modmult_rev_anc n in
   let ainv := modinv a N in
-  let f j i := modmult_circuit m (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) N n j in
-  (X (m + n - 1); QPE_var2 m (n + anc) f, (m + (n + anc))%nat, m).
-
-Require Export Reals.ROrderedType.
-Fixpoint remove_skips {dim} (u : base_ucom dim) :=
-  match u with
-  | u1 ; u2 =>
-      match remove_skips u1, remove_skips u2 with
-      | uapp1 g q, u2' => 
-          match g with
-          | U_R θ ϕ λ => if Reqb θ 0 && Reqb ϕ 0 && Reqb λ 0
-                        then u2' else uapp1 g q ; u2'
-          | _ => uapp1 g q ; u2'
-          end
-      | u1', uapp1 g q =>  
-          match g with
-          | U_R θ ϕ λ => if Reqb θ 0 && Reqb ϕ 0 && Reqb λ 0
-                        then u1' else u1' ; uapp1 g q
-          | _ => u1' ; uapp1 g q
-          end
-      | u1', u2' => u1' ; u2'
-      end
-  | _ => u 
-  end.
-
-Lemma Reqb_reflect : forall (x y : R), reflect (x = y) (Reqb x y).
-Proof.
-  intros x y.
-  apply iff_reflect. symmetry. apply Reqb_eq.
-Qed.
-
-Hint Resolve Reqb_reflect : bdestruct.
-
-Lemma pad_id : forall n dim,
-  (n < dim)%nat -> @pad 1 n dim (I 2) = I (2 ^ dim).
-Proof. intros. unfold pad. gridify. reflexivity. Qed.
-
-Lemma remove_skips_WT : forall {dim} (u : base_ucom dim),
-  uc_well_typed u -> uc_well_typed (remove_skips u).
-Proof.
-  intros dim u WT.
-  induction u; auto.
-  inversion WT; subst.
-  apply IHu1 in H1.
-  apply IHu2 in H2.
-  simpl.
-  destruct (remove_skips u1) as [| g1 | g1 | g1];
-  destruct (remove_skips u2) as [| g2 | g2 | g2];
-  try dependent destruction g1;
-  try dependent destruction g2;
-  try (constructor; auto).
-  all: repeat match goal with
-       | |- context[Reqb ?a ?b] => bdestruct (Reqb a b)
-       end; try reflexivity.
-  all: subst; simpl.
-  all: try (constructor; auto).
-  all: inversion H1; inversion H2; subst; auto.
-Qed.
-
-Lemma remove_skips_preserves_semantics : forall {dim} (u : base_ucom dim),
-  uc_well_typed u -> u ≡ remove_skips u.
-Proof.
-  intros dim u WT.
-  induction WT; try reflexivity.
-  unfold uc_equiv in *. 
-  simpl.
-  rewrite IHWT1, IHWT2.
-  assert (H1 : uc_well_typed (remove_skips c1)).
-  apply remove_skips_WT; auto.
-  assert (H2 : uc_well_typed (remove_skips c2)).
-  apply remove_skips_WT; auto.
-  destruct (remove_skips c1) as [| g1 | g1 | g1];
-  destruct (remove_skips c2) as [| g2 | g2 | g2];
-  try reflexivity;
-  try dependent destruction g1;
-  try dependent destruction g2.
-  all: repeat match goal with
-       | |- context[Reqb ?a ?b] => bdestruct (Reqb a b)
-       end; try reflexivity.
-  all: subst; simpl.
-  all: inversion WT1; inversion WT2; inversion H1; inversion H2; subst.
-  all: rewrite I_rotation, pad_id by auto.
-  all: Msimpl; reflexivity.
-Qed.
+  let numq := num_qubits n in
+  let f i := modmult_circuit a ainv N n i in
+  (SQIR.X (m + n - 1); QPE_var m numq f, (m + numq)%nat, m).
 
 (* rewritten to use "modexp" *)
 Fixpoint OF_post' (step a N o m : nat) :=
@@ -183,10 +120,9 @@ Definition post_process (a N o : nat) :=
   let m := Nat.log2 (2 * N^2)%nat in
   OF_post a N o m.
 
-Extraction Implicit remove_skips [dim].
-Extract Inlined Constant Reqb => "( = )".
-
-Separate Extraction shor_circuit post_process remove_skips.
+Separate Extraction shor_circuit post_process 
+  (* also, always extract all adder variants *)
+  Shor.modmult_circuit modmult_sqir rz_mod_sqir Nat.ltb.
 
 (* Shor's algorithm:
 

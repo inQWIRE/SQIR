@@ -1,9 +1,6 @@
-open BinNums
-open ModMult
 open Nat
 open QPE
-open RCIR
-open Rdefinitions
+open RCIRplus
 open SQIR
 open Shor
 open ShorAux
@@ -12,23 +9,19 @@ open ShorAux
 
 let modexp = fun a x n -> Z.to_int (Z.powm (Z.of_int a) (Z.of_int x) (Z.of_int n))
 
-(** val bcmap : bccom -> (int -> int) -> bccom **)
+(** val modmult_circuit : int -> int -> int -> int -> int -> base_ucom **)
 
-let rec bcmap p f =
-  match p with
-  | Coq_bcskip -> Coq_bcskip
-  | Coq_bcx n -> Coq_bcx (f n)
-  | Coq_bccont (n, p0) -> Coq_bccont ((f n), (bcmap p0 f))
-  | Coq_bcseq (p1, p2) -> Coq_bcseq ((bcmap p1 f), (bcmap p2 f))
+let modmult_circuit a ainv n n0 i =
+  fst
+    (rz_mod_sqir n
+      (modexp a (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) n)
+      (modexp ainv (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i)
+        n) n0)
 
-(** val modmult_circuit :
-    int -> int -> int -> int -> int -> int -> base_ucom **)
+(** val num_qubits : int -> int **)
 
-let modmult_circuit m a ainv n n0 j =
-  bc2ucom (add m (add n0 (modmult_rev_anc n0)))
-    (csplit
-      (bcelim (Coq_bccont (j,
-        (bcmap (modmult_rev n a ainv n0) (fun x -> add x m))))))
+let num_qubits n =
+  get_dim (rz_mod_vars n)
 
 (** val shor_circuit : int -> int -> (base_Unitary ucom * int) * int **)
 
@@ -39,44 +32,11 @@ let shor_circuit a n =
         (PeanoNat.Nat.pow n (Pervasives.succ (Pervasives.succ 0))))
   in
   let n0 = PeanoNat.Nat.log2 (mul (Pervasives.succ (Pervasives.succ 0)) n) in
-  let anc = modmult_rev_anc n0 in
   let ainv = modinv a n in
-  let f = fun j i ->
-    modmult_circuit m
-      (modexp a (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) n)
-      (modexp ainv (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i)
-        n) n n0 j
-  in
+  let numq = num_qubits n0 in
+  let f = fun i -> modmult_circuit a ainv n n0 i in
   (((Coq_useq ((coq_X (sub (add m n0) (Pervasives.succ 0))),
-  (coq_QPE_var2 m (add n0 anc) f))), (add m (add n0 anc))), m)
-
-(** val remove_skips : base_ucom -> base_Unitary ucom **)
-
-let rec remove_skips u = match u with
-| Coq_useq (u1, u2) ->
-  (match remove_skips u1 with
-   | Coq_uapp1 (g, q) ->
-     (match g with
-      | U_R (_UU03b8_, _UU03d5_, _UU03bb_) ->
-        if (&&)
-             ((&&) (( = ) _UU03b8_ (coq_IZR Z0))
-               (( = ) _UU03d5_ (coq_IZR Z0))) (( = ) _UU03bb_ (coq_IZR Z0))
-        then remove_skips u2
-        else Coq_useq ((Coq_uapp1 (g, q)), (remove_skips u2))
-      | U_CNOT -> Coq_useq ((Coq_uapp1 (g, q)), (remove_skips u2)))
-   | x ->
-     (match remove_skips u2 with
-      | Coq_uapp1 (g, q) ->
-        (match g with
-         | U_R (_UU03b8_, _UU03d5_, _UU03bb_) ->
-           if (&&)
-                ((&&) (( = ) _UU03b8_ (coq_IZR Z0))
-                  (( = ) _UU03d5_ (coq_IZR Z0))) (( = ) _UU03bb_ (coq_IZR Z0))
-           then x
-           else Coq_useq (x, (Coq_uapp1 (g, q)))
-         | U_CNOT -> Coq_useq (x, (Coq_uapp1 (g, q))))
-      | x0 -> Coq_useq (x, x0)))
-| _ -> u
+  (coq_QPE_var m numq f))), (add m numq)), m)
 
 (** val coq_OF_post' : int -> int -> int -> int -> int -> int **)
 

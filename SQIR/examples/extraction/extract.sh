@@ -13,7 +13,7 @@ rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml ROrderedType.ml
 mv BinInt.ml BinPos.ml Nat.ml RCIR.ml Rtrigo1.ml ShorAux.ml \
    BinNat.ml Datatypes.ml PeanoNat.ml Rdefinitions.ml SQIR.ml \
    ShorExtr.ml BinNums.ml ModMult.ml QPE.ml Rpow_def.ml Shor.ml \
-   UnitaryOps.ml extracted
+   UnitaryOps.ml RCIRplus.ml extracted
 
 # Build extracted code.
 dune build generate_circuit.exe

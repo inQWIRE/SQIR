@@ -1,29 +1,47 @@
 open Printf
 open SQIR
 open ShorExtr
-open Voqc.IBMGateSet
-open Voqc.IBMUtils
-open Voqc.Optimize
 
-(* tail recursive append *)
-let app l1 l2 = List.rev_append (List.rev l1) l2
-
-let rec ucom_to_gate_list (u : base_ucom) : coq_IBM_ucom_l =
+(* functions to write SQIR data structure to OpenQASM *)
+let rec sqir_to_qasm oc (u : base_ucom) k =
   match u with
-  | Coq_useq (u1, u2) -> app (ucom_to_gate_list u1) (ucom_to_gate_list u2)
-  | Coq_uapp1 (U_R (f1,f2,f3), n) -> [ App1 (UIBM_U3(f1,f2,f3), n) ]
-  | Coq_uapp2 (U_CNOT, m, n) -> [ App2 (UIBM_CNOT, m, n) ]
-  | _ -> raise (Failure ("ERROR: Failed to convert ucom to gate_list"))
+  | Coq_useq (u1, u2) -> sqir_to_qasm oc u1 (fun _ -> sqir_to_qasm oc u2 k)
+  | Coq_uapp1 (U_R (f1,f2,f3), n) -> 
+      if f1 = Float.pi /. 2.0 && f2 = 0.0 && f3 = Float.pi
+      then (fprintf oc "h q[%d];\n" n ; k ())
+      else if f1 = Float.pi && f2 = 0.0 && f3 = Float.pi
+      then (fprintf oc "x q[%d];\n" n ; k ())
+      else if f1 = 0.0 && f2 = 0.0
+      then (fprintf oc "u1(%f) q[%d];\n" f3 n ; k ())
+      else (fprintf oc "u3(%f,%f,%f) q[%d];\n" f1 f2 f3 n ; k ())
+  | Coq_uapp2 (U_CNOT, m, n) -> fprintf oc "cx q[%d], q[%d];\n" m n ; k ()
+  | _ -> raise (Failure ("ERROR: Failed to write qasm file")) (* badly typed case (e.g. App2 of U_R) *)
 
-let rec write_measurements oc n =
-  if n = 0 then ()
-  else (write_measurements oc (n - 1) ; fprintf oc "measure q[%d] -> c[%d];\n" (n - 1) (n - 1))
+let rec write_measurements oc dim =
+  if dim = 0 then ()
+  else (write_measurements oc (dim - 1) ; fprintf oc "measure q[%d] -> c[%d];\n" (dim - 1) (dim - 1))
 
-let add_measurements fname n =
-  let oc = open_out_gen [Open_append] 0o666 fname in (* open & append to file *)
-  fprintf oc "creg c[%d];\n" n;
-  write_measurements oc n;
-  close_out oc
+let write_qasm_file fname (u : base_ucom) dim m =
+  let oc = open_out fname in
+  (fprintf oc "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n";
+   fprintf oc "qreg q[%d];\n" dim;
+   fprintf oc "creg c[%d];\n" m;
+   fprintf oc "\n";
+   ignore(sqir_to_qasm oc u (fun _ -> ()));
+   ignore(write_measurements oc m);
+   close_out oc)
+   
+(* function to count gates *)
+let rec count_gates_aux (u : base_ucom) k =
+  match u with
+  | Coq_useq (u1, u2) -> 
+       let k' (c1, c2) =
+         count_gates_aux u2 (fun (c1', c2') -> k (c1 + c1', c2 + c2')) in
+       count_gates_aux u1 k'
+  | Coq_uapp1 (U_R (_,_,_), _) -> k (1,0)
+  | Coq_uapp2 (U_CNOT, _, _) -> k (0,1)
+  | _ -> raise (Failure ("ERROR: Failed to count gates")) 
+let count_gates u = count_gates_aux u (fun x -> x)
 
 (* light argument parsing *)
 let n = ref 0
@@ -44,7 +62,21 @@ if (Z.gcd (Z.of_int !a) (Z.of_int !n) > Z.one) then printf "ERROR: Requires a, N
  let t1 = Unix.gettimeofday () in
  let ((u, num_qubits), num_cbits) = shor_circuit !a !n in
  let _ = printf "Time to generate: %fs\n%!" (Unix.gettimeofday () -. t1) in
- let _ = printf "Converting from SQIR ucom to VOQC gate_list...\n%!" in
+ let _ = printf "Counting gates...\n%!" in
+ let t2 = Unix.gettimeofday () in
+ let (c1,c2) = count_gates u in
+ let _ = printf "%d qubits, %d 1-qubit gates, and %d 2-qubit gates.\n%!" num_qubits c1 c2 in
+ let _ = printf "Time to count gates: %fs\n" (Unix.gettimeofday () -. t2) in
+ let _ = printf("Writing file to shor.qasm...\n%!") in
+ let t3 = Unix.gettimeofday () in
+ let _ = write_qasm_file "shor.qasm" u num_qubits num_cbits in
+ printf "Time to write file: %fs\n%!" (Unix.gettimeofday () -. t3))
+
+
+
+(* ignore the following -- it's from my attempt at runing VOQC *)
+
+ (* let _ = printf "Converting from SQIR ucom to VOQC gate_list...\n%!" in
  let t2 = Unix.gettimeofday () in
  let l = ucom_to_gate_list u in
  let _ = printf "Time to convert: %fs\n%!" (Unix.gettimeofday () -. t2) in
@@ -69,5 +101,5 @@ if (Z.gcd (Z.of_int !a) (Z.of_int !n) > Z.one) then printf "ERROR: Requires a, N
  let finalCNOT = get_cnot_count l' in
  let _ = printf "Final stats:\t %d qubits, U1 %d, U2 %d, U3 %d, CNOT %d\n%!" 
          num_qubits finalU1 finalU2 finalU3 finalCNOT in
- ())
+ ()) *)
 

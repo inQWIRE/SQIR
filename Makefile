@@ -40,7 +40,7 @@ all: examples mapper optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRota
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
-shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/Shor.vo
+shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/Shor.vo SQIR/src/RCIRplus.vo
 
 mapper: invoke-coqmakefile $(VOQC)/SimpleMappingWithLayout.vo
 
@@ -87,10 +87,13 @@ SQIR/examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
 SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/QPEGeneral.v
 
+SQIR/src/RCIRplus.vo: SQIR/src//RCIRplus.v $(examples)/QPE.vo
+	coqc $(COQ_OPTS) SQIR/src//RCIRplus.v
+
 SQIR/examples/ModMult.vo: $(examples)/ModMult.v
 	coqc $(COQ_OPTS) $(examples)/ModMult.v
 
-SQIR/examples/Shor.vo: $(examples)/Shor.v $(examples)/QPEGeneral.vo $(examples)/ModMult.vo $(examples)/ShorAux.vo
+SQIR/examples/Shor.vo: $(examples)/Shor.v $(examples)/QPEGeneral.vo $(examples)/ModMult.vo $(examples)/ModMultA.vo $(examples)/ShorAux.vo
 	coqc $(COQ_OPTS) $(examples)/Shor.v
 	
 SQIR/examples/ShorAux.vo: $(examples)/ShorAux.v

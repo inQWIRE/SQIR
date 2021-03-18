@@ -37,6 +37,11 @@ module Nat =
         m)
       n
 
+  (** val ltb : int -> int -> bool **)
+
+  let ltb n m =
+    (<=) (Pervasives.succ n) m
+
   (** val pow : int -> int -> int **)
 
   let rec pow n m =
