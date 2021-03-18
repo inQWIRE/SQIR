@@ -1046,7 +1046,67 @@ Fixpoint trans_face (f:vars) (dim:nat) (exp:face) : (base_ucom dim * vars) :=
                  | Reset x => trans_reset f x
      end.
 
-Parameter x y z s c1 c2: var.
+Definition x := 1.
+
+Definition y := 2.
+
+Definition z := 3.
+
+Definition s := 4.
+
+Definition c1 := 5.
+
+Definition c2 := 6.
+
+Definition csplit (p : scom) :=
+  match p with
+  | SKIP => SKIP
+  | X n => X n
+  | RZ q p => RZ q p
+  | RRZ q p => RRZ q p
+  | Lshift x => Lshift x
+  | Rshift x => Rshift x
+  | CU n (p1; p2) => CU n p1; CU n p2
+  | CU n p => CU n p
+  | p1; p2 => p1; p2
+  end.
+
+Fixpoint csplit_face (p : face) :=
+  match p with
+  | Exp s => Exp (csplit s)
+  | FSeq e1 e2 => FSeq (csplit_face e1) (csplit_face e2)
+  | p => p
+  end.
+
+Fixpoint bcelim p :=
+  match p with
+  | SKIP => SKIP
+  | X q => X q
+  | RZ q p => RZ q p
+  | RRZ q p => RRZ q p
+  | Lshift x => Lshift x
+  | Rshift x => Rshift x
+  | CU q p => match bcelim p with
+                 | SKIP => SKIP
+                 | p' => CU q p'
+                 end
+  | Seq p1 p2 => match bcelim p1, bcelim p2 with
+                  | SKIP, p2' => p2'
+                  | p1', SKIP => p1'
+                  | p1', p2' => Seq p1' p2'
+                  end
+  end.
+
+Fixpoint bcelim_face p :=
+   match p with 
+     | Exp s => Exp (bcelim s)
+     | FSeq e1 e2 => match bcelim_face e1, bcelim_face e2 with
+                           |  Exp SKIP, e2' => e2'
+                           | e1', Exp SKIP => e1'
+                           | e1',e2' => e1' ;; e2'
+                     end
+     | e => e
+   end.
 
 Definition modmult_vars (n:nat) := cons (x,n,SType) (cons (y,n,NType) (cons (z,n,NType)
                                (cons (s,n,NType) (cons (c1,1,NType) (cons (c2,1,NType) []))))).
@@ -1054,18 +1114,18 @@ Definition modmult_vars (n:nat) := cons (x,n,SType) (cons (y,n,NType) (cons (z,n
 Definition modmult_var_fun (n:nat) := compile_var (modmult_vars n).
 
 Definition modmult_sqir M C Cinv n := trans_face (modmult_var_fun n)
-            (get_dim (modmult_vars n)) (modmult_rev M C Cinv n x y z s (c1,0) (c2,0)).
+            (get_dim (modmult_vars n)) (csplit_face (bcelim_face(modmult_rev (nat2fb M) C Cinv n x y z s (c1,0) (c2,0)))).
+
+Definition f_modmult_circuit a ainv N n := fun i => modmult_sqir N (a^(2^i) mod N) (ainv^(2^i) mod N) n.
 
 Definition rz_mod_vars (n:nat) := cons (x,n,NType) (cons (y,n,NType) (cons (c1,1,NType) [])).
 
 Definition rz_var_fun (n:nat) := compile_var (rz_mod_vars n).
 
 Definition rz_mod_sqir M C Cinv n := trans_face (rz_var_fun n)
-            (get_dim (rz_mod_vars n)) (rz_modmult_full x y n (c1,0) C Cinv M).
+            (get_dim (rz_mod_vars n)) (csplit_face (bcelim_face (rz_modmult_full x y n (c1,0) (nat2fb C) (nat2fb Cinv) (nat2fb M)))).
 
-
-
-
-
+Definition rz_f_modmult_circuit a ainv N n := fun i => 
+                            rz_mod_sqir N (a^(2^i) mod N) (ainv^(2^i) mod N) n.
 
 
