@@ -98,6 +98,17 @@ Proof.
   bdestruct (x ==? i); subst; reflexivity.
 Qed.
 
+Lemma eupdate_same_1 {S}: forall (f f': posi -> S) i b b',
+ f = f' -> b = b' -> eupdate f i b = eupdate f' i b'.
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros.
+  unfold eupdate.
+  bdestruct (x ==? i); subst; reflexivity.
+Qed.
+
+
 Lemma eupdate_twice_eq {S}: forall (f : posi -> S) i b b',
   eupdate (eupdate f i b) i b' = eupdate f i b'.
 Proof.
@@ -621,6 +632,21 @@ Proof.
   1 - 2 : nor_sym.
 Qed.
 
+Lemma MAJ_nor : 
+  forall a b c env f f',
+    nor_mode f a -> nor_mode f b -> nor_mode f c ->
+    a <> b -> b <> c -> a <> c -> f' = (((f[a |-> put_cu (f a) (majb (get_cua (f a)) (get_cua (f b)) (get_cua (f c)))])
+                              [b |-> put_cu (f b) (get_cua (f b) ⊕ get_cua (f a))])
+                              [c |-> put_cu (f c) (get_cua (f c) ⊕ (get_cua (f a)))]) ->
+    exp_sem env f (MAJ c b a) f'.
+(*Admitted. 
+(* The following proof works, but too slow. Admitted when debugging. *)*)
+Proof.
+  intros. subst. apply MAJ_correct.
+  1-6:assumption.
+Qed.
+
+
 Lemma UMA_correct_partial :
   forall a b c env f' fa fb fc,
     nor_mode f' a -> nor_mode f' b -> nor_mode f' c ->
@@ -667,6 +693,20 @@ Proof.
   rewrite H11. reflexivity. nor_sym. assumption.
 Qed.
 
+Lemma UMA_nor :
+  forall a b c env f' f'' fa fb fc,
+    nor_mode f' a -> nor_mode f' b -> nor_mode f' c ->
+    a <> b -> b <> c -> a <> c ->
+    get_cua (f' a) = majb fa fb fc ->
+    get_cua (f' b) = (fb ⊕ fa) -> get_cua (f' c) = (fc ⊕ fa) ->
+    f'' = (((f'[a |-> put_cu (f' a) fa])
+                  [b |-> put_cu (f' b) (fa ⊕ fb ⊕ fc)])[c |-> put_cu (f' c) fc]) ->
+    exp_sem env f' (UMA c b a) f''.
+Proof.
+ intros. subst. apply UMA_correct_partial.
+ 1 - 9 : assumption.
+Qed.
+
 
 (* The following defines n-bits MAJ and UMA circuit. 
    Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
@@ -686,6 +726,982 @@ Definition UMAseq n x y c := UMAseq' (n - 1) x y c.
 
 Definition adder01 n x y c: scom := MAJseq n x y c; UMAseq n x y c.
 
+(* Here we defined the specification of carry value for each bit. *)
+(* fb_push is to take a qubit and then push it to the zero position 
+        in the bool function representation of a number. *)
+Definition fb_push b f : nat -> bool :=
+  fun x => match x with
+        | O => b
+        | S n => f n
+        end.
+
+(* fb_push_n is the n repeatation of fb_push.
+Definition fb_push_n n f g : nat -> bool :=
+  fun i => if (i <? n) then f i else g (i - n).
+*)
+
+(* A function to compile positive to a bool function. *)
+Fixpoint pos2fb p : nat -> bool :=
+  match p with
+  | xH => fb_push true allfalse
+  | xI p' => fb_push true (pos2fb p')
+  | xO p' => fb_push false (pos2fb p')
+  end.
+
+(* A function to compile N to a bool function. *)
+Definition N2fb n : nat -> bool :=
+  match n with
+  | 0%N => allfalse
+  | Npos p => pos2fb p
+  end.
+
+Definition add_c b x y :=
+  match b with
+  | false => Pos.add x y
+  | true => Pos.add_carry x y
+  end.
+
+Fixpoint carry b n f g :=
+  match n with
+  | 0 => b
+  | S n' => let c := carry b n' f g in
+           let a := f n' in
+           let b := g n' in
+           (a && b) ⊕ (b && c) ⊕ (a && c)
+  end.
+
+Lemma carry_1 : forall b f g, carry b 1 f g = majb (f 0) (g 0) b.
+Proof.
+ intros. simpl. unfold majb. easy.
+Qed.
+
+Lemma carry_n : forall n b f g, carry b (S n) f g = majb (f n) (g n) (carry b n f g).
+Proof.
+ intros. simpl. unfold majb. easy.
+Qed.
+
+Lemma carry_sym :
+  forall b n f g,
+    carry b n f g = carry b n g f.
+Proof.
+  intros. induction n. reflexivity.
+  simpl. rewrite IHn. btauto.
+Qed.
+
+Lemma carry_false_0_l: forall n f, 
+    carry false n allfalse f = false.
+Proof.
+  unfold allfalse.
+  induction n.
+  simpl.
+  reflexivity.
+  intros. simpl.
+  rewrite IHn. rewrite andb_false_r.
+  reflexivity.
+Qed.
+
+Lemma carry_false_0_r: forall n f, 
+    carry false n f allfalse = false.
+Proof.
+  unfold allfalse.
+  induction n.
+  simpl.
+  reflexivity.
+  intros. simpl.
+  rewrite IHn. rewrite andb_false_r.
+  reflexivity.
+Qed.
+
+Lemma carry_fbpush :
+  forall n a ax ay fx fy,
+    carry a (S n) (fb_push ax fx) (fb_push ay fy) = carry (majb a ax ay) n fx fy.
+Proof.
+  induction n; intros.
+  simpl. unfold majb. btauto.
+  remember (S n) as Sn. simpl. rewrite IHn. unfold fb_push. subst.
+  simpl. easy.
+Qed.
+
+Lemma carry_succ :
+  forall m p,
+    carry true m (pos2fb p) allfalse = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
+Proof.
+  induction m; intros. simpl. destruct p; reflexivity.
+  replace allfalse with (fb_push false allfalse).
+  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
+  }
+  Local Opaque fb_push carry.
+  destruct p; simpl.
+  rewrite carry_fbpush; unfold majb; simpl. rewrite IHm. reflexivity.
+  rewrite carry_fbpush; unfold majb; simpl. rewrite carry_false_0_r. Local Transparent fb_push. simpl. btauto.
+  rewrite carry_fbpush; unfold majb; simpl. Local Transparent carry. destruct m; reflexivity.
+Qed.
+
+Lemma carry_succ' :
+  forall m p,
+    carry true m allfalse (pos2fb p) = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
+Proof.
+  intros. rewrite carry_sym. apply carry_succ.
+Qed.
+
+Lemma carry_succ0 :
+  forall m, carry true m allfalse allfalse = pos2fb xH m.
+Proof.
+  induction m. easy. 
+  replace allfalse with (fb_push false allfalse).
+  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
+  }
+  rewrite carry_fbpush. unfold majb. simpl. rewrite carry_false_0_l. easy.
+Qed.
+
+Lemma carry_add_pos_eq :
+  forall m b p q,
+    carry b m (pos2fb p) (pos2fb q) ⊕ (pos2fb p) m ⊕ (pos2fb q) m = pos2fb (add_c b p q) m.
+Proof.
+  induction m; intros. simpl. destruct p, q, b; reflexivity.
+  Local Opaque carry.
+  destruct p, q, b; simpl; rewrite carry_fbpush; 
+    try (rewrite IHm; reflexivity);
+    try (unfold majb; simpl; 
+         try rewrite carry_succ; try rewrite carry_succ'; 
+         try rewrite carry_succ0; try rewrite carry_false_0_l;
+         try rewrite carry_false_0_r;
+         unfold allfalse; try btauto; try (destruct m; reflexivity)).
+Qed.
+
+Lemma carry_add_eq_carry0 :
+  forall m x y,
+    carry false m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y)) m.
+Proof.
+  intros.
+  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
+  rewrite carry_false_0_l. easy.
+  rewrite carry_false_0_l. btauto.
+  rewrite carry_false_0_r. btauto.
+  apply carry_add_pos_eq.
+Qed.
+
+Lemma carry_add_eq_carry1 :
+  forall m x y,
+    carry true m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y + 1)) m.
+Proof.
+  intros. 
+  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
+  rewrite carry_succ0. destruct m; easy.
+  rewrite carry_succ'. replace (q + 1)%positive with (Pos.succ q) by lia. btauto.
+  rewrite carry_succ. replace (p + 1)%positive with (Pos.succ p) by lia. btauto.
+  rewrite carry_add_pos_eq. unfold add_c. rewrite Pos.add_carry_spec. replace (p + q + 1)%positive with (Pos.succ (p + q)) by lia. easy.
+Qed.
+
+Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
+
+Definition msma i b f g := fun (x : nat) => if (x <? i) then 
+        (carry b (S x) f g ⊕ (f (S x))) else (if (x =? i) then carry b (S x) f g else f x).
+
+Definition msmb i (b : bool) f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else g x.
+
+Definition msmc i b f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else (carry b x f g ⊕ f x ⊕ g x).
+
+Definition sumfb b f g := fun (x : nat) => carry b x f g ⊕ f x ⊕ g x.
+
+(*
+Ltac fb_push_n_simpl := repeat (try rewrite fb_push_n_left by lia; try rewrite fb_push_n_right by lia).
+Ltac update_simpl := repeat (try rewrite update_index_neq by lia); try rewrite update_index_eq by lia.
+*)
+Ltac BreakIfExpression :=
+  match goal with
+  | [ |- context[if ?X <? ?Y then _ else _] ] => bdestruct (X <? Y); try lia
+  | [ |- context[if ?X <=? ?Y then _ else _] ] => bdestruct (X <=? Y); try lia
+  | [ |- context[if ?X =? ?Y then _ else _] ] => bdestruct (X =? Y); try lia
+  end.
+
+Ltac IfExpSimpl := repeat BreakIfExpression.
+
+Lemma msm_eq1 :
+  forall n i c f g,
+    S i < n ->
+    msma i c f g i ⊕ msma i c f g (S i) = msma (S i) c f g i.
+Proof.
+  intros. unfold msma. IfExpSimpl. easy.
+Qed.
+
+Lemma msm_eq2 :
+  forall n i c f g,
+    S i < n ->
+    msmb i c f g (S i) ⊕ msma i c f g (S i) = msmb (S i) c f g (S i).
+Proof.
+  intros. unfold msma. unfold msmb. IfExpSimpl. btauto.
+Qed.
+       
+
+Lemma msm_eq3 :
+  forall n i c f g,
+    S i < n ->
+    majb (msma i c f g (S i)) (msmb i c f g (S i)) (msma i c f g i) = msma (S i) c f g (S i).
+Proof.
+  intros. unfold msma. unfold msmb. IfExpSimpl.
+  simpl. unfold majb. easy.
+Qed.
+
+Definition var_prop (f:var -> nat) (x y c : var) (n:nat) : Prop :=
+      n <= (f x) /\  n <= f y /\ f c = 1.
+
+Definition get_cus (f:posi -> val) (x:var) := fun i => match f (x,i) with nval b r => b | _ => false end.
+
+Lemma get_cus_cua : forall f x n, get_cus f x n = get_cua (f (x,n)).
+Proof.
+  intros.
+  unfold get_cus,get_cua.
+  destruct (f (x,n)). easy. easy. easy.
+Qed.
+
+Definition put_cus (f:posi -> val) (x:var) (g:nat -> bool) (n:nat) : (posi -> val) :=
+     fun a => if fst a =? x then if snd a <? n then put_cu (f a) (g (snd a)) else f a else f a.
+
+Lemma cus_get_neq : forall (f:posi -> val) (x y :var) g n i, 
+              x <> y -> get_cua ((put_cus f y g n) (x,i)) = get_cua (f (x,i)).
+Proof.
+ intros.
+ unfold get_cua.
+ unfold put_cus.
+ simpl.
+ bdestruct (x =? y).
+ lia. easy.
+Qed.
+
+Lemma put_cus_out : forall (f:posi -> val) (x y :var) g n i, 
+              n <= i -> ((put_cus f y g n) (x,i)) = (f (x,i)).
+Proof. 
+  intros.
+  unfold put_cus.
+  simpl.
+  bdestruct (x =? y).
+  bdestruct (i <? n). lia.
+  easy. easy.
+Qed.
+
+Definition nor_modes (f:posi -> val) (x:var) (n:nat) :=
+      forall i, i < n -> nor_mode f (x,i).
+
+Lemma nor_mode_cus_eq: forall f x g n y i, 
+       nor_mode f (y,i) -> nor_mode (put_cus f x g n) (y,i).
+Proof.
+  intros. unfold nor_mode in *.
+  unfold put_cus.
+  simpl.
+  bdestruct (y =? x).
+  bdestruct (i <? n).
+  destruct (f (y, i)).
+  unfold put_cu. easy.
+  inv H0. inv H0.
+  apply H0. apply H0.
+Qed.
+
+Lemma cus_get_eq : forall (f:posi -> val) (x :var) g n i, 
+              i < n -> nor_modes f x n -> get_cua ((put_cus f x g n) (x,i)) = g i.
+Proof.
+ intros.
+ unfold get_cua.
+ unfold put_cus.
+ simpl.
+ bdestruct (x =? x).
+ bdestruct (i <? n).
+ unfold put_cu.
+ specialize (H1 i H3). unfold nor_mode in *.
+ destruct (f (x, i)) eqn:eq1. easy.
+ inv H1. inv H1.
+ lia. lia.
+Qed.
+
+Lemma put_cus_eq : forall (f:posi -> val) (x:var) g n i, 
+          i < n -> (put_cus f x g n) (x,i) = put_cu (f (x,i)) (g i).
+Proof.
+ intros.
+ unfold put_cus.
+ simpl.
+ bdestruct (x =? x).
+ bdestruct (i <? n). easy. lia. lia.
+Qed.
+
+Lemma put_cus_neq : forall (f:posi -> val) (x y:var) g n i, 
+              x <> y -> (put_cus f x g n) (y,i) = f (y,i).
+Proof.
+ intros.
+ unfold put_cus.
+ simpl.
+ bdestruct (y =? x). lia. easy.
+Qed.
+
+Lemma put_cus_neq_1 : forall (f:posi -> val) (x:var) g n c, 
+              x <> fst c -> (put_cus f x g n) c = f c.
+Proof.
+ intros.
+ destruct c. apply put_cus_neq.
+ simpl in H0. assumption.
+Qed.
+
+Lemma put_cus_neq_2 : forall (f:posi -> val) (y:var) g n i, 
+           n <= i -> (put_cus f y g n) (y,i) = f (y,i).
+Proof.
+ intros.
+ unfold put_cus.
+ simpl.
+ bdestruct (y =? y).
+ bdestruct (i <? n). lia. easy.
+ easy.
+Qed.
+
+Definition get_r (v:val) :=
+   match v with nval x r => r
+              | qval r => r
+              | hval x y r => r
+   end.
+
+Lemma get_r_put_same : forall (f:posi -> val) x y g n i,
+      get_r (put_cus f x g n (y,i)) = get_r (f (y,i)).
+Proof.
+ intros.
+ unfold put_cus.
+ simpl.
+ bdestruct (y =? x).
+ bdestruct (i <? n).
+ unfold put_cu.
+ destruct (f (y, i)).
+ unfold get_r. easy. easy. easy. easy. easy.
+Qed.
+
+Lemma put_cu_mid_eq : forall (f g:posi -> val) a v, 
+              nor_mode f a -> nor_mode g a -> get_r (f a) = get_r (g a) -> (put_cu (f a) v) = (put_cu (g a) v).
+Proof.
+ intros.
+ unfold put_cu. unfold nor_mode in *.
+ destruct (f a). destruct (g a).
+ unfold get_r in H2. subst.
+ easy. inv H1. inv H1.
+ inv H0. inv H0.
+Qed.
+
+Lemma put_cus_twice_neq : forall (f:posi -> val) (x y:var) g1 g2 n, 
+              x <> y -> (put_cus (put_cus f x g1 n) y g2 n)
+                          = (put_cus (put_cus f y g2 n) x g1 n).
+Proof.
+ intros.
+ apply functional_extensionality.
+ unfold put_cus. intros.
+ destruct x0. simpl.
+ bdestruct (v =? y).
+ bdestruct (v =? x). lia. easy.
+ easy.
+Qed.
+
+
+Lemma msmb_put : forall n i st x b f g, 
+        S i < n -> put_cus st x (msmb (S i) b f g) n = (put_cus st x
+             (msmb i b f g) n)[(x,S i) |-> put_cu (st (x,S i)) (msmb i b f g (S i) ⊕ msma i b f g (S i))].
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros. destruct x0.
+  bdestruct (x =? v).
+  subst.
+  unfold put_cus. simpl.
+  bdestruct (n0 =? S i). subst.
+  rewrite eupdate_index_eq.
+  bdestruct (v =? v).
+  bdestruct (S i <? n).
+  assert ((msmb (S i) b f g (S i)) = (msmb i b f g (S i) ⊕ msma i b f g (S i))).
+  erewrite msm_eq2. easy. apply H0.
+  rewrite H3. easy. lia. lia.
+  rewrite eupdate_index_neq. simpl.
+  bdestruct (v =? v).
+  bdestruct (n0 <? n).
+  unfold msmb.
+  bdestruct (n0 <=? S i).
+  bdestruct (n0 <=? i).
+  easy. lia.
+  bdestruct (n0 <=? i). lia. easy.
+  easy. easy. intros R. inv R. lia.
+  rewrite put_cus_neq. rewrite eupdate_index_neq.
+  rewrite put_cus_neq. easy. assumption.
+  intros R. inv R. lia. lia.
+Qed.
+
+Lemma iner_neq : forall (x y:var) (a b:nat), x <> y -> (x,a) <> (y,b).
+Proof.
+  intros. intros R.
+  inv R. contradiction.
+Qed.
+
+Lemma iner_neq_1 : forall (x:var) (c:posi) a, x <> fst c -> (x,a) <> c.
+Proof.
+  intros. intros R.
+  destruct c.
+  inv R. contradiction.
+Qed.
+
+Lemma msma_put : forall n i st x b f g, 
+        S i < n -> put_cus st x (msma (S i) b f g) n = ((put_cus st x
+             (msma i b f g) n)[(x,S i) |-> put_cu (st (x,S i))
+                          (majb (msma i b f g (S i)) (msmb i b f g (S i)) (msma i b f g i))])
+                      [(x,i) |-> put_cu (st (x,i)) (msma i b f g i ⊕ msma i b f g (S i))].
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros. destruct x0.
+  unfold put_cus. simpl.
+  bdestruct (v =? x). subst.
+  bdestruct (n0 =? i). subst.
+  rewrite eupdate_index_eq.
+  bdestruct (i <? n).
+  unfold put_cu.
+  destruct (st (x, i)).
+  assert ((msma (S i) b f g i)  = (msma i b f g i ⊕ msma i b f g (S i))).
+  erewrite <- msm_eq1. easy. apply H0.
+  rewrite H2. easy. easy. easy.
+  lia.
+  rewrite eupdate_index_neq.
+  bdestruct (n0 =? S i). subst.
+  rewrite eupdate_index_eq.
+  bdestruct (S i <? n).
+  unfold put_cu.
+  destruct (st (x, S i)).
+  assert ((msma (S i) b f g (S i))  = majb (msma i b f g (S i)) (msmb i b f g (S i)) (msma i b f g i)).
+  erewrite <- msm_eq3. easy. apply H2.
+  rewrite H3. easy. easy. easy. lia.
+  rewrite eupdate_index_neq.
+  simpl.
+  bdestruct (n0 <? n).
+  bdestruct (x =? x).
+  assert ((msma (S i) b f g n0) = (msma i b f g n0)).
+  unfold msma.
+  bdestruct (n0 <? S i).
+  bdestruct (n0 <? i).
+  easy. lia.
+  bdestruct (n0 =? S i).
+  lia.
+  bdestruct (n0 <? i). lia.
+  bdestruct (n0 =? i). lia.
+  easy.
+  rewrite H5. easy.
+  lia.
+  bdestruct (x =? x). easy. easy.
+  intros R. inv R. lia.
+  intros R. inv R. lia.
+  rewrite eupdate_index_neq.
+  rewrite eupdate_index_neq. simpl.
+  bdestruct (v =? x). lia.
+  easy.
+  apply iner_neq. lia.
+  apply iner_neq. lia.
+Qed.
+
+Lemma eupdates_twice_neq : forall f x g n c v, x <> fst c 
+           -> (put_cus f x g n)[c |-> v] = put_cus (f[c |-> v]) x g n.
+Proof.
+  intros. unfold put_cus.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x0 ==? c).
+  subst.
+  rewrite eupdate_index_eq.
+  bdestruct (fst c =? x).
+  subst. contradiction.
+  rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq.
+  bdestruct (fst x0 =? x).
+  rewrite eupdate_index_neq.
+  easy. nor_sym.
+  rewrite eupdate_index_neq by nor_sym.
+  easy. nor_sym.
+Qed.
+
+Lemma same_eupdate : forall (f f' : posi -> val) c v, f = f' -> f[c |-> v] = f'[c |-> v].
+Proof.
+  intros. 
+  apply functional_extensionality.
+  intros.
+  bdestruct (c ==? x).
+  subst.
+  rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq.
+  rewrite eupdate_index_neq. subst. easy.
+  assumption. assumption.
+Qed.
+
+Lemma same_eupdate_1 : forall (f f' : posi -> val) c v v', f = f' -> v = v' -> f[c |-> v] = f'[c |-> v'].
+Proof.
+  intros. 
+  apply functional_extensionality.
+  intros.
+  bdestruct (c ==? x).
+  subst.
+  rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq.
+  rewrite eupdate_index_neq. subst. easy.
+  assumption. assumption.
+Qed.
+
+Lemma msma_0 : forall f x b g n, 0 < n -> nor_modes f x n -> put_cus f x (msma 0 b (get_cus f x) g) n =
+                     f[(x,0) |-> put_cu (f (x,0)) (carry b (S 0) (get_cus f x) g)].
+Proof.
+  intros.
+  unfold put_cus, msma.
+  apply functional_extensionality.
+  intros.
+  destruct x0. simpl in *.
+  bdestruct (v =? x). subst.
+  bdestruct (n0 <? n).
+  bdestruct (n0 =? 0).
+  subst.
+  rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq.
+  rewrite get_cus_cua.
+  rewrite put_get_cu. easy.
+  unfold nor_modes in *. apply H1. lia.
+  intros R. inv R. contradiction.
+  rewrite eupdate_index_neq. easy.
+  intros R. inv R. lia.
+  rewrite eupdate_index_neq. easy.
+  apply iner_neq. lia.
+Qed.
+
+Lemma msmb_0 : forall S f b y n, 0 < n -> nor_modes S y n -> put_cus S y (msmb 0 b f (get_cus S y)) n =
+                     S[(y,0) |-> put_cu (S (y,0)) (f 0 ⊕ (get_cua (S (y,0))))].
+Proof.
+  intros.
+  unfold put_cus, msmb.
+  apply functional_extensionality.
+  intros.
+  destruct x. simpl in *.
+  bdestruct (v =? y). subst.
+  bdestruct (n0 <? n).
+  bdestruct (n0 <=? 0).
+  inv H3.
+  rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq.
+  rewrite get_cus_cua.
+  rewrite put_get_cu. easy.
+  unfold nor_modes in *. apply H1. lia.
+  intros R. inv R. lia.
+  rewrite eupdate_index_neq. easy.
+  intros R. inv R. lia.
+  rewrite eupdate_index_neq. easy.
+  apply iner_neq. lia.
+Qed.
+
+Lemma MAJseq'_correct :
+  forall i n env S x y c,
+    0 < n -> i < n -> nor_modes S x n -> nor_modes S y n -> nor_mode S c ->
+    x <> y -> x <> fst c -> y <> fst c ->
+    exp_sem env S (MAJseq' i x y c) 
+     (put_cus 
+        (put_cus (S[c |-> put_cu (S c) (get_cua (S c) ⊕ get_cua (S (x,0)))])
+                   x (msma i (get_cua (S c)) (get_cus S x) (get_cus S y)) n)
+          y (msmb i (get_cua (S c)) (get_cus S x) (get_cus S y)) n).
+Proof.
+  induction i; intros.
+  - simpl. apply MAJ_nor.
+    unfold nor_modes in *. apply H2. easy.
+    unfold nor_modes in *. apply H3. easy.
+    assumption.
+    apply iner_neq; assumption.
+    apply iner_neq_1; assumption.
+    apply iner_neq_1; assumption.
+    rewrite <- eupdates_twice_neq.
+    rewrite <- eupdates_twice_neq.
+    apply same_eupdate.
+    rewrite msma_0.
+    rewrite <- eupdates_twice_neq.
+    rewrite eupdate_twice_neq.
+    apply same_eupdate_1.
+    rewrite msmb_0.
+    apply eupdate_same_1. easy.
+    rewrite get_cus_cua.
+    rewrite xorb_comm. easy. lia.
+    assumption. simpl.
+    rewrite carry_1.
+    rewrite get_cus_cua.
+    rewrite get_cus_cua. easy.
+    apply iner_neq ; assumption.
+    simpl. nor_sym. lia.
+    assumption. assumption. assumption.
+  - simpl. econstructor.
+    apply IHi. apply H0. lia.
+    1 - 6 : assumption.
+    apply MAJ_nor.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up.
+    apply iner_neq_1; assumption.
+    unfold nor_modes in *. apply H2. lia.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up.
+    apply iner_neq_1; assumption.
+    unfold nor_modes in *. apply H3. lia.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up.
+    apply iner_neq_1; assumption.
+    unfold nor_modes in *. apply H2. lia.
+    apply iner_neq; assumption.
+    apply iner_neq; lia.
+    intros R. inv R. lia.
+    rewrite cus_get_neq by assumption.
+    rewrite cus_get_eq.
+    rewrite cus_get_eq.
+    rewrite msmb_put.
+    rewrite eupdate_twice_neq.
+    apply same_eupdate_1.
+    rewrite put_cus_twice_neq.
+    rewrite msma_put.
+    apply same_eupdate_1.
+    apply same_eupdate_1.
+    rewrite put_cus_twice_neq. easy. lia.
+    rewrite put_cus_twice_neq. 
+    rewrite cus_get_eq.
+    apply put_cu_mid_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    unfold nor_modes in H3. apply H2. lia.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    unfold nor_modes in H3. apply H2. lia.
+    rewrite get_r_put_same.
+    rewrite get_r_put_same. rewrite get_r_put_same. easy.  lia.
+    unfold nor_modes in *.
+    intros.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    apply H2. lia. assumption.
+    rewrite put_cus_neq.
+    rewrite put_cus_neq.
+    rewrite cus_get_eq.
+    apply put_cu_mid_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    unfold nor_modes in H2. apply H2. lia.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    unfold nor_modes in H2. apply H2. lia.
+    rewrite get_r_put_same. easy.
+    lia.
+    unfold nor_modes in *. intros.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    unfold nor_modes in H2. apply H2.
+    1- 5: lia.
+    rewrite put_cus_neq.
+    apply put_cu_mid_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    apply H3. lia.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    apply H3. lia.
+    rewrite get_r_put_same.
+    rewrite get_r_put_same. easy.
+    assumption. apply iner_neq. lia.
+    lia. lia.
+    unfold nor_modes. intros.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    apply H3. lia. lia.
+    unfold nor_modes. intros.
+    apply nor_mode_up. apply iner_neq_1; assumption.
+    apply H2. lia.
+Qed.
+
+Lemma nor_mode_up_1 : forall f x v, nor_mode f x -> nor_mode (f[x |-> put_cu (f x) v]) x.
+Proof.
+  intros.
+  unfold nor_mode in *.
+  rewrite eupdate_index_eq.
+  unfold put_cu.
+  destruct (f x).
+  easy. inv H0. inv H0.
+Qed.
+
+Lemma get_cua_eq : forall f x v, nor_mode f x -> get_cua ((f[x |-> put_cu (f x) v]) x) = v.
+Proof.
+  intros.
+  unfold get_cua.
+  rewrite eupdate_index_eq.
+  unfold put_cu.
+  unfold nor_mode in H0.
+  destruct (f x). easy. inv H0. inv H0.
+Qed.
+
+Lemma double_put_cu : forall (f:posi -> val) x v v', put_cu (put_cu (f x) v) v' = put_cu (f x) v'.
+Proof.
+  intros.
+  unfold put_cu.
+  destruct (f x). easy. easy. easy.
+Qed.
+
+Lemma put_cu_cus : forall (f:posi -> val) x y g i n v, put_cu (put_cus f y g n (x,i)) v = put_cu (f (x,i)) v.
+Proof.
+  intros.
+  unfold put_cus,put_cu.
+  simpl.
+  bdestruct (x =? y).
+  bdestruct (i <? n).
+  destruct (f (x,i)). easy. easy. easy. easy. easy.
+Qed.
+
+Local Transparent carry.
+
+Lemma UMAseq'_correct :
+  forall i n env S x y c,
+    0 < n -> i < n -> nor_modes S x n -> nor_modes S y n -> nor_mode S c ->
+    x <> y -> x <> fst c -> y <> fst c ->
+    exp_sem env (put_cus 
+        (put_cus (S[c |-> put_cu (S c) (get_cua (S c) ⊕ get_cua (S (x,0)))])
+                   x (msma i (get_cua (S c)) (get_cus S x) (get_cus S y)) n)
+          y (msmc i (get_cua (S c)) (get_cus S x) (get_cus S y)) n) (UMAseq' i x y c) 
+         (put_cus S y (sumfb (get_cua (S c)) (get_cus S x) (get_cus S y)) n).
+Proof.
+  induction i; intros. 
+  - simpl.
+    apply UMA_nor with (fa := (get_cus S x) 0) (fb := (get_cus S y) 0)
+                   (fc := carry (get_cua (S c)) 0 (get_cus S x) (get_cus S y)).
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption. apply H2. lia.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1; assumption. apply H3. lia.
+    destruct c.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up_1. apply H4. apply iner_neq. assumption.
+    apply iner_neq_1; assumption.
+    apply iner_neq_1; assumption.
+    rewrite put_cus_neq by lia.
+    rewrite cus_get_eq.
+    unfold msma.
+    bdestruct (0 <? 0). lia.
+    bdestruct (0 =? 0). 
+    rewrite carry_1.
+    unfold carry. easy. lia. lia.
+    unfold nor_modes. intros.
+    apply nor_mode_up. apply iner_neq_1. assumption.
+    apply H2. lia.
+    rewrite cus_get_eq.
+    unfold msmc.
+    bdestruct (0 <=? 0).
+    rewrite xorb_comm. easy.
+    lia. lia.
+    unfold nor_modes. intros.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1. assumption.
+    apply H3. lia.
+    rewrite put_cus_neq_1 by lia.
+    rewrite put_cus_neq_1 by lia.
+    rewrite get_cua_eq.
+    simpl. rewrite get_cus_cua. easy.
+    assumption.
+    apply functional_extensionality. intros.
+    bdestruct (x0 ==? c).
+    subst. rewrite eupdate_index_eq.
+    rewrite put_cus_neq_1. simpl.
+    rewrite put_cus_neq_1.
+    rewrite put_cus_neq_1.
+    rewrite eupdate_index_eq.
+    rewrite double_put_cu.
+    rewrite put_get_cu. easy. 
+    1 - 4: assumption.
+    rewrite eupdate_index_neq by nor_sym.
+    bdestruct (x0 ==? (y,0)).
+    subst.
+    rewrite eupdate_index_eq.
+    simpl.
+    rewrite put_cu_cus.
+    rewrite put_cu_cus.
+    rewrite eupdate_index_neq by nor_sym.
+    rewrite get_cus_cua.
+    rewrite put_cus_eq.
+    unfold sumfb. simpl.
+    rewrite get_cus_cua.
+    rewrite xorb_assoc.
+    rewrite xorb_comm. easy. lia.
+    rewrite eupdate_index_neq by nor_sym.
+    bdestruct (x0 ==? (x,0)).
+    subst. rewrite eupdate_index_eq.
+    rewrite put_cus_neq_1.
+    rewrite put_cu_cus.
+    rewrite put_cu_cus.
+    rewrite eupdate_index_neq.
+    rewrite put_get_cu. easy.
+    apply H2. lia. nor_sym. simpl. lia.
+    rewrite eupdate_index_neq by nor_sym.
+    destruct x0.
+    bdestruct (v =? y). subst.
+    bdestruct (n0 <? n).
+    rewrite put_cus_eq by assumption.
+    rewrite put_cus_eq by assumption.
+    rewrite put_cus_neq by assumption.
+    rewrite eupdate_index_neq by nor_sym.
+    unfold sumfb,msmc.
+    bdestruct (n0 <=? 0).
+    assert (n0 <> 0). intros R. subst. contradiction.
+    lia. easy.
+    rewrite put_cus_neq_2 by lia.
+    rewrite put_cus_neq_2 by lia.
+    rewrite put_cus_neq by lia.
+    rewrite eupdate_index_neq by nor_sym.
+    easy.
+    rewrite put_cus_neq by lia.
+    rewrite put_cus_neq by lia.
+    unfold put_cus. simpl.
+    bdestruct (v =? x).
+    bdestruct (n0 <? n).
+    subst.
+    rewrite eupdate_index_neq by nor_sym.
+    unfold put_cu.
+    destruct (S (x, n0)) eqn:eq1.
+    unfold msma.
+    bdestruct (n0 <? 0). lia.
+    bdestruct (n0 =? 0).
+    assert (n0 <> 0). intros R. subst. contradiction.
+    lia. rewrite get_cus_cua.
+    rewrite eq1. rewrite get_cua_t. easy. easy. easy.
+    rewrite eupdate_index_neq. easy. nor_sym.
+    rewrite eupdate_index_neq. easy. nor_sym.
+  - simpl.
+    eapply seq_sem.
+    2 : { apply IHi. 
+          1-2: lia. 
+          1-6: assumption. }
+    apply UMA_nor with (fa := (get_cus S x) (Datatypes.S i)) (fb := (get_cus S y) (Datatypes.S i))
+                   (fc := carry (get_cua (S c)) (Datatypes.S i) (get_cus S x) (get_cus S y)).
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1. assumption.
+    apply H2. assumption.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1. assumption.
+    apply H3. assumption.
+    apply nor_mode_cus_eq.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1. assumption.
+    apply H2. lia.
+    apply iner_neq; assumption.
+    apply iner_neq; lia.
+    intros R. inv R. lia.
+    rewrite cus_get_neq by lia.
+    rewrite cus_get_eq.
+    simpl.
+    unfold msma.
+    bdestruct (Datatypes.S i <? Datatypes.S i). lia.
+    bdestruct (Datatypes.S i =? Datatypes.S i).
+    rewrite carry_n. simpl. easy. lia. lia.
+    unfold nor_modes. intros.
+    apply nor_mode_up. apply iner_neq_1. assumption.
+    apply H2. lia.
+    rewrite cus_get_eq. unfold msmc.
+    bdestruct ( Datatypes.S i <=? Datatypes.S i).
+    rewrite xorb_comm. easy. lia. lia.
+    unfold nor_modes. intros.
+    apply nor_mode_cus_eq.
+    apply nor_mode_up. apply iner_neq_1. assumption.
+    apply H3. lia.
+    rewrite cus_get_neq by lia.
+    rewrite cus_get_eq.
+    unfold msma.
+    bdestruct (i <? Datatypes.S i). easy. lia. lia.
+    unfold nor_modes. intros.
+    apply nor_mode_up. apply iner_neq_1. assumption.
+    apply H2. lia.
+    repeat rewrite put_cu_cus.
+    apply functional_extensionality.
+    intros.
+    bdestruct (x0 ==? (x,i)).
+    subst.
+    rewrite eupdate_index_eq.
+    rewrite put_cus_twice_neq.
+    rewrite put_cus_eq.
+    rewrite put_cu_cus.
+    unfold msma.
+    bdestruct (i <? i). lia.
+    bdestruct (i =? i). easy. lia. lia. lia.
+    rewrite eupdate_index_neq by nor_sym.
+    bdestruct (x0 ==? (y,Datatypes.S i)).
+    subst.
+    rewrite eupdate_index_eq.
+    rewrite put_cus_eq.
+    rewrite put_cu_cus.
+    unfold msmc.
+    bdestruct (Datatypes.S i <=? i). lia.
+    assert (((carry (get_cua (S c)) (Datatypes.S i) 
+      (get_cus S x) (get_cus S y) ⊕ get_cus S x (Datatypes.S i))
+   ⊕ get_cus S y (Datatypes.S i)) = 
+     ((get_cus S x (Datatypes.S i) ⊕ get_cus S y (Datatypes.S i))
+   ⊕ carry (get_cua (S c)) (Datatypes.S i) 
+       (get_cus S x) (get_cus S y))) by btauto.
+    rewrite H10. easy. lia. 
+    rewrite eupdate_index_neq by nor_sym.
+    bdestruct (x0 ==? (x,Datatypes.S i)).
+    subst.
+    rewrite eupdate_index_eq.
+    rewrite put_cus_twice_neq.
+    rewrite put_cus_eq.
+    rewrite put_cu_cus.
+    unfold msma.
+    bdestruct (Datatypes.S i <? i). lia.
+    bdestruct (Datatypes.S i =? i). lia. easy.
+    lia. lia.
+    rewrite eupdate_index_neq by nor_sym.
+    destruct x0.
+    bdestruct (v =? y).
+    bdestruct (n0 <? n).
+    subst.
+    rewrite put_cus_eq.
+    rewrite put_cus_eq.
+    rewrite put_cu_cus.
+    rewrite put_cu_cus.
+    unfold msmc.
+    bdestruct (n0 <=? i).
+    bdestruct (n0 <=? Datatypes.S i). easy.
+    lia.
+    bdestruct (n0 <=? Datatypes.S i).
+    assert (n0 <> Datatypes.S i).
+    intros R. subst. contradiction.
+    lia. easy. lia. lia.
+    rewrite put_cus_out by lia.
+    rewrite put_cus_out by lia.
+    rewrite put_cus_out by lia.
+    rewrite put_cus_out by lia.
+    easy.
+    bdestruct (v =? x).
+    bdestruct (n0 <? n).
+    subst.
+    rewrite put_cus_neq by lia.
+    rewrite put_cus_eq by lia.
+    rewrite put_cus_neq by lia.
+    rewrite put_cus_eq by lia.
+    unfold msma.
+    bdestruct (n0 <? i).
+    bdestruct (n0 <? Datatypes.S i).
+    easy. lia.
+    bdestruct (n0 =? i).
+    subst. contradiction.
+    bdestruct (n0 <? Datatypes.S i). lia.
+    bdestruct (n0 =? Datatypes.S i).
+    subst. contradiction.
+    easy.
+    rewrite put_cus_out by lia.
+    rewrite put_cus_out by lia.
+    rewrite put_cus_out by lia.
+    rewrite put_cus_out by lia.
+    easy.
+    rewrite put_cus_neq by lia.
+    rewrite put_cus_neq by lia.
+    rewrite put_cus_neq by lia.
+    rewrite put_cus_neq by lia.
+    easy.
+Qed.
+
 (* The following will do the negation of the first input value in the qubit sequence 00[x][y][z].
    THe actual effect is to make the sequence to be 00[-x][y][z]. *)
 Fixpoint negator0 i x : scom :=
@@ -693,6 +1709,8 @@ Fixpoint negator0 i x : scom :=
   | 0 => SKIP
   | S i' => negator0 i' x; X (x, i')
   end.
+
+
 
 (* The following implements an comparator. 
    THe first step is to adjust the adder circuit above to be
@@ -772,31 +1790,6 @@ modadder21 n x y M c1 c2
 (* A function to compile positive to a bool function. *)
 (* fb_push is to take a qubit and then push it to the zero position 
         in the bool function representation of a number. *)
-Definition fb_push b f : nat -> bool :=
-  fun x => match x with
-        | O => b
-        | S n => f n
-        end.
-
-Fixpoint pos2fb p : nat -> bool :=
-  match p with
-  | xH => fb_push true allfalse
-  | xI p' => fb_push true (pos2fb p')
-  | xO p' => fb_push false (pos2fb p')
-  end.
-
-(* A function to compile N to a bool function. *)
-Definition N2fb n : nat -> bool :=
-  match n with
-  | 0%N => allfalse
-  | Npos p => pos2fb p
-  end.
-
-Definition add_c b x y :=
-  match b with
-  | false => Pos.add x y
-  | true => Pos.add_carry x y
-  end.
 
 Definition nat2fb n := N2fb (N.of_nat n).
 

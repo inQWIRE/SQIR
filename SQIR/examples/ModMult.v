@@ -617,7 +617,8 @@ Local Transparent carry.
 Lemma UMAseq'_correct :
   forall i n c f g h b1,
     0 < n -> i < n ->
-    bcexec (UMAseq' i n 0) ((c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h)) = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
+    bcexec (UMAseq' i n 0) ((c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h))
+ = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
 (* Admitted.
 (* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
