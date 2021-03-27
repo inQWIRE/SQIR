@@ -1,6 +1,0 @@
-(library
-  (name voqc)
-  (flags (:standard -w -3-33-39))
-  (libraries openQASM unix zarith))
-
-(include_subdirs unqualified)

@@ -55,13 +55,6 @@ Definition CU {dim} θ ϕ λ c t : base_ucom dim :=
   CNOT c t ;
   uapp1 (U_R (θ/2) ϕ 0) t.
 
-(* Standard Toffoli decomposition *)
-Definition CCX {dim} a b c : base_ucom dim :=
-  H c ; CNOT b c ; TDAG c ; CNOT a c ; 
-  T c ; CNOT b c ; TDAG c ; CNOT a c ; 
-  CNOT a b ; TDAG b ; CNOT a b ; 
-  T a ; T b ; T c ; H c. 
-
 (* Convert a program to be controlled by qubit q *)
 Fixpoint control {dim} q (c : base_ucom dim) : base_ucom dim :=
   match c with
