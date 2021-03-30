@@ -718,7 +718,7 @@ Definition make_grid m n : c_graph :=
   (m * n, Grid.get_path n, Grid.is_in_graph m n).
 
 Definition trivial_layout n : layout n := Layouts.trivial_layout n.
-Definition list_to_layout {dim} l : layout dim :=
+Definition list_to_layout l : layout (length l) :=
   Layouts.list_to_layout l.
 Definition layout_to_list {dim} (la : layout dim) n :=
   Layouts.layout_to_list n (cast_layout la n).

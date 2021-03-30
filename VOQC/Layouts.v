@@ -164,7 +164,7 @@ Fixpoint list_to_layout' {dim} l acc : qmap dim :=
       (fun x => if x =? h then acc else fst m' x, 
        fun x => if x =? acc then h else snd m' x)
   end.
-Definition list_to_layout {dim} l : qmap dim := 
+Definition list_to_layout l : qmap (length l) := 
   list_to_layout' l 0.
 
 (* TODO: May be useful to prove that layout_to_list and list_to_layout are inverses. *)
@@ -187,8 +187,8 @@ Definition test_layout : qmap 5 :=
 
 Compute (layout_to_list 5 (trivial_layout 5)).
 Compute (layout_to_list 5 test_layout).
-Compute (layout_to_list 5 (@list_to_layout 5 (0 :: 1 :: 2 :: 3 :: 4 :: []))).
-Compute (layout_to_list 5 (@list_to_layout 5 (3 :: 4 :: 1 :: 2 :: 0 :: []))).
+Compute (layout_to_list 5 (list_to_layout (0 :: 1 :: 2 :: 3 :: 4 :: []))).
+Compute (layout_to_list 5 (list_to_layout (3 :: 4 :: 1 :: 2 :: 0 :: []))).
 
 (* The trivial layout is always well formed. *)
 Lemma trivial_layout_well_formed : forall dim,
