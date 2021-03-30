@@ -102,23 +102,24 @@ Export RzQGateSet.
 Module RzQList := UListProofs RzQGateSet.
 
 (* Define constants to make extraction easier. *)
-Definition Q_zero : Q := 0.
-Definition Q_one : Q := 1.
-Definition Q_half : Q := 1 / 2.
-Definition Q_three_halves : Q := 3 / 2.
-Definition Q_quarter : Q := 1 / 4.
-Definition Q_seven_quarters : Q := 7 / 4.
+Definition zero_Q : Q := 0.
+Definition one_Q : Q := 1.
+Definition half_Q : Q := 1 / 2.
+Definition three_halves_Q : Q := 3 / 2.
+Definition quarter_Q : Q := 1 / 4.
+Definition seven_quarters_Q : Q := 7 / 4.
+Definition two_Q : Q := 2.
 
 (* Useful shorthands. *)
 
 Definition Rzq {dim} i q := @App1 _ dim (URzQ_Rz i) q.
 Definition H {dim} q := @App1 _ dim URzQ_H q.
 Definition X {dim} q := @App1 _ dim URzQ_X q.
-Definition T {dim} q := @Rzq dim Q_quarter q.
-Definition TDAG {dim} q := @Rzq dim Q_seven_quarters q.
-Definition P {dim} q := @Rzq dim Q_half q.
-Definition PDAG {dim} q := @Rzq dim Q_three_halves q.
-Definition Z {dim} q := @Rzq dim Q_one q.
+Definition T {dim} q := @Rzq dim quarter_Q q.
+Definition TDAG {dim} q := @Rzq dim seven_quarters_Q q.
+Definition P {dim} q := @Rzq dim half_Q q.
+Definition PDAG {dim} q := @Rzq dim three_halves_Q q.
+Definition Z {dim} q := @Rzq dim one_Q q.
 Definition CNOT {dim} q1 q2 := @App2 _ dim URzQ_CNOT q1 q2.
 
 Definition RzQ_ucom dim := ucom RzQ_Unitary dim.
@@ -156,10 +157,6 @@ Definition replace_pattern {dim} (l pat rep : RzQ_ucom_l dim) :=
 (* Check whether a (unitary) program is well typed. *)
 Definition RzQ_ucom_l_well_typed_b dim (l : RzQ_ucom_l dim) := 
   uc_well_typed_l_b dim l.
-
-(* Define some constants to make extraction easier. *)
-Definition zero_Q := 0.
-Definition two_Q := 2.
 
 (* Put a rational into the range [0,2) by adding/subtracting multiples of 2 *)
 Definition round_to_multiple_of_2 (a : Q) : BinInt.Z :=

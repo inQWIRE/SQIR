@@ -203,8 +203,8 @@ Definition count_clifford_rzq {dim} (l : circ dim) :=
   let f g := match g with
              | App1 (U_Rzq q) _ =>
                  let q' := RzQGateSet.bound q in
-                 Qeq_bool q' Q_zero || Qeq_bool q' Q_half || 
-                   Qeq_bool q' Q_three_halves || Qeq_bool q' Q_one
+                 Qeq_bool q' zero_Q || Qeq_bool q' half_Q || 
+                   Qeq_bool q' three_halves_Q || Qeq_bool q' one_Q
              | _ => false end in
   length (filter f l).
 
@@ -946,14 +946,19 @@ End LNN10.
 Module SMPLNN := SimpleMappingProofs LNN10.
 Import SMPLNN.
 
-Lemma cast_commutes : forall {dim} (f : forall {dim0}, circ dim0 -> circ dim0) (c : circ dim) n,
-  cast (f c) n = f (cast c n).
+Lemma cast_commutes_with_optimize_nam : forall {dim} (c : circ dim) n,
+  cast (optimize_nam c) n = optimize_nam (cast c n).
 Proof.
-  intros dim f c n.
-  induction c.
-  simpl.
-  (* yikes.. we need a property that says that f does not look at its first argument
-     (and we need to prove this for all the optimizations too...) *)
+  (* This is actually a non-trivial property. Basically it requires showing that
+     optimize_nam never uses its implicit dimension. This is true, but will be a
+     pain to prove because of all the subcomponents of optimize_nam. I think a 
+     better solution would be to remove the implicit dimension (and cast) 
+     entirely... -KH *)
+Admitted.
+
+Lemma cast_commutes_with_optimize_ibm : forall {dim} (c : circ dim) n,
+  cast (optimize_ibm c) n = optimize_ibm (cast c n).
+Proof.
 Admitted.
 
 Lemma optimize_then_map_preserves_semantics : forall (c : circ dim) c' la',
@@ -963,13 +968,16 @@ Proof.
   intros c c' la' H.
   unfold optimize_then_map in H.
   destruct (check_well_typed c 10) eqn:WT; inversion H.
+  clear H.
   apply simple_map_sound in H1.
   apply uc_eq_perm_uc_cong_l with (l2:=cast (optimize_ibm (optimize_nam c)) (get_dim (make_lnn 10))).
   symmetry.
-  rewrite cast_commutes. 
+  rewrite cast_commutes_with_optimize_ibm.
+  rewrite cast_commutes_with_optimize_nam.
   rewrite optimize_ibm_preserves_semantics.
-  rewrite cast_commutes. 
   rewrite optimize_nam_preserves_semantics.
+  unfold get_dim, make_lnn; simpl.
+(* annoying... *)
 Admitted.
 
 Lemma optimize_then_map_respects_constraints : forall (c : circ dim) c' la',

@@ -531,7 +531,7 @@ Definition U3 {dim} a b c q : RzQ_ucom_l dim :=
 
 Definition standard_to_RzQ_u {dim} (g : gate_app Std_Unitary dim) : RzQ_ucom_l dim :=
   match g with
-  | App1 U_I m              => [Rzq Q_zero m]
+  | App1 U_I m              => [Rzq zero_Q m]
   | App1 U_X m              => [RzQGateSet.X m]
   | App1 U_Y m              => RzQGateSet.Y m
   | App1 U_Z m              => [RzQGateSet.Z m]
@@ -694,13 +694,13 @@ Proof.
   destruct a; dependent destruction s; 
   unfold change_gate_set; simpl; try reflexivity.
   all: unfold StdList.uc_cong_l; simpl; repeat rewrite <- uc_cong_assoc.
-  all: unfold Q_one, Q_half, Q_three_halves, Q_quarter, Q_seven_quarters.
+  all: unfold one_Q, half_Q, three_halves_Q, quarter_Q, seven_quarters_Q.
   all: try (apply uc_equiv_cong;
             repeat rewrite Q2R_1_2_PI; repeat rewrite Q2R_3_2_PI;
             repeat rewrite Q2R_1_4_PI; repeat rewrite Q2R_7_4_PI;
             try rewrite Q2R_1_PI; repeat rewrite Q2R_R2Q_PI; reflexivity).
   (* U_I *)
-  unfold Q_zero.
+  unfold zero_Q.
   rewrite RMicromega.Q2R_0, Rmult_0_l.
   apply uc_equiv_cong.
   rewrite Rz_0_id.
@@ -939,12 +939,12 @@ Proof. intros. apply RzQ_to_standard_inv. Qed.
 Definition replace_rzq_u {dim} (g : gate_app Std_Unitary dim) : standard_ucom_l dim :=
   match g with
   | App1 (U_Rzq q) m => 
-      if Qeq_bool q Q_zero then [App1 U_I m]
-      else if Qeq_bool q Q_one then [App1 U_Z m]
-      else if Qeq_bool q Q_half then [App1 U_S m]
-      else if Qeq_bool q Q_three_halves then [App1 U_Sdg m]
-      else if Qeq_bool q Q_quarter then [App1 U_T m]
-      else if Qeq_bool q Q_seven_quarters then [App1 U_Tdg m]
+      if Qeq_bool q zero_Q then [App1 U_I m]
+      else if Qeq_bool q one_Q then [App1 U_Z m]
+      else if Qeq_bool q half_Q then [App1 U_S m]
+      else if Qeq_bool q three_halves_Q then [App1 U_Sdg m]
+      else if Qeq_bool q quarter_Q then [App1 U_T m]
+      else if Qeq_bool q seven_quarters_Q then [App1 U_Tdg m]
       else [App1 (U_Rz (Qreals.Q2R q * PI)) m]
   | g => [g]
   end.
@@ -1004,26 +1004,26 @@ Proof.
       dependent destruction s; simpl;
       repeat rewrite <- useq_assoc; try rewrite SKIP_id_r; try reflexivity.
     destruct_Qeq_bool; simpl; rewrite SKIP_id_r.
-    unfold Q_zero.
+    unfold zero_Q.
     rewrite RMicromega.Q2R_0.
     rewrite Rmult_0_l.
     reflexivity.
-    unfold Q_one.
+    unfold one_Q.
     rewrite RMicromega.Q2R_1.
     rewrite Rmult_1_l.
     reflexivity.
-    unfold Q_half.
+    unfold half_Q.
     rewrite Q2R_1_2_PI.
     reflexivity.
-    unfold Q_three_halves.
+    unfold three_halves_Q.
     bdestruct (n <? dim)%nat.
     rewrite Q2R_3_2_PI by assumption.
     reflexivity.
     unfold uc_equiv; simpl; unfold SQIR.PDAG; autorewrite with eval_db; gridify.
-    unfold Q_quarter.
+    unfold quarter_Q.
     rewrite Q2R_1_4_PI.
     reflexivity.
-    unfold Q_seven_quarters.
+    unfold seven_quarters_Q.
     bdestruct (n <? dim)%nat.
     rewrite Q2R_7_4_PI by assumption.
     reflexivity.

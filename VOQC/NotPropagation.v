@@ -162,7 +162,7 @@ Proof.
       rewrite <- (does_not_reference_commutes_app1 _ URzQ_H).
       apply_app_congruence.
       unfold_uc_equiv_l.
-      unfold Q_one.
+      unfold one_Q.
       replace (Qreals.Q2R 1 * PI)%R with PI.
       apply H_comm_Z.
       unfold Qreals.Q2R; simpl; lra.
