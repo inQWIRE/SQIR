@@ -1,3 +1,10 @@
+Require Import CXCancellation.
+Require Import GateCancellation.
+Require Import HadamardReduction.
+Require Import NotPropagation.
+Require Import OptimizationsPreserveMapping.
+Require Import Optimize1qGates.
+Require Import RotationMerging.
 Require Import RzQGateSet.
 Require Import SimpleMapping.
 Require Import StandardGateSet.
@@ -7,12 +14,9 @@ Local Close Scope Q_scope.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-(* This is the "main" file that contains the versions of VOQC transformations
-   that are extracted to OCaml (along with their correctness properties). The 
-   definitions and proofs in this file are largely wrappers around / renamed 
-   versions of other definitions and proofs.
-
-   TODO: make names in repo consistent with names in VOQC user manual *)
+(* This file contains the VOQC transformations that are extracted to OCaml, 
+   along with their correctness properties. The definitions and proofs in this 
+   file are largely wrappers around other definitions and proofs. *)
 
 
 Definition circ := standard_ucom_l.
@@ -24,10 +28,7 @@ Definition c_graph : Type := nat * (nat -> nat -> list nat) * (nat -> nat -> boo
 Definition get_dim (cg : c_graph) := fst (fst cg).
 Definition get_get_path (cg : c_graph) := snd (fst cg).
 Definition get_is_in_graph (cg : c_graph) := snd cg.
-
-(** Utility functions **)
-
-(* Cast changes the dependent type of a circuit --> will be extracted to a no-op *)
+(* Cast functions change dependent types --> will be extracted to no-ops *)
 Fixpoint cast {dim} (c : circ dim) dim' : @circ dim' := 
   match c with 
   | [] => []
@@ -35,8 +36,12 @@ Fixpoint cast {dim} (c : circ dim) dim' : @circ dim' :=
   | App2 g m n :: t => App2 g m n :: cast t dim'
   | App3 g m n p :: t => App3 g m n p :: cast t dim'
   end.
+Definition cast_layout {dim} (la : layout dim) dim' : layout dim' := la.
 
-Definition check_well_typed {dim} (n : nat) (c : circ dim) :=
+
+(** Utility functions **)
+
+Definition check_well_typed {dim} (c : circ dim) (n : nat) :=
   uc_well_typed_l_b n (cast c n).
 Definition convert_to_ibm {dim} (c : circ dim) :=
   StandardGateSet.convert_to_ibm c.
@@ -47,22 +52,32 @@ Definition replace_rzq {dim} (c : circ dim) :=
 Definition decompose_to_cnot {dim} (c : circ dim) :=
   StandardGateSet.decompose_to_cnot c.
 
-Lemma check_well_typed_correct : forall {dim} n (c : circ dim),
-  check_well_typed n c = true <-> uc_well_typed_l (cast c n).
+Lemma check_well_typed_correct : forall {dim} (c : circ dim) n,
+  check_well_typed c n = true <-> uc_well_typed_l (cast c n).
 Proof. intros. apply uc_well_typed_l_b_equiv. Qed.
 
 Lemma convert_to_ibm_preserves_semantics : forall {dim} (c : circ dim),
-  uc_well_typed_l c -> (convert_to_ibm c =l= c)%ucom.
-Proof. intros. apply StandardGateSet.convert_to_ibm_sound. assumption. Qed.
+  (convert_to_ibm c =l= c)%ucom.
+Proof. intros. apply StandardGateSet.convert_to_ibm_sound. Qed.
+
+Ltac show_preserves_WT H :=
+  eapply uc_equiv_l_implies_WT;
+  [ symmetry; apply H | assumption ].
+
+Ltac show_preserves_WT_cong H :=
+  eapply uc_cong_l_implies_WT;
+  [ symmetry; apply H | assumption ].
 
 Lemma convert_to_ibm_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (convert_to_ibm c).
-Proof.
-  intros.
-  eapply uc_equiv_l_implies_WT.
-  symmetry.
-  apply convert_to_ibm_preserves_semantics.
-  assumption.
+Proof. intros dim c H. show_preserves_WT (convert_to_ibm_preserves_semantics c). Qed.
+
+Lemma convert_to_ibm_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph U_CX (convert_to_ibm l).
+Proof. 
+  intros. 
+  apply OptimizationsPreserveMapping.convert_to_ibm_preserves_mapping.
   assumption.
 Qed.
 
@@ -71,17 +86,22 @@ Lemma convert_to_ibm_uses_ibm_gates : forall {dim} (c : circ dim),
 Proof. intros. apply StandardGateSet.convert_to_ibm_gates. Qed.
 
 Lemma convert_to_rzq_preserves_semantics : forall {dim} (c : circ dim),
-  uc_well_typed_l c -> (convert_to_rzq c ≅l≅ c)%ucom.
-Proof. intros. apply StandardGateSet.convert_to_rzq_sound. assumption. Qed.
+  (convert_to_rzq c ≅l≅ c)%ucom.
+Proof. intros. apply StandardGateSet.convert_to_rzq_sound. Qed.
 
 Lemma convert_to_rzq_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (convert_to_rzq c).
-Proof.
-  intros.
-  eapply uc_cong_l_implies_WT.
-  symmetry.
-  apply convert_to_rzq_preserves_semantics.
-  assumption.
+Proof. 
+  intros dim c H. 
+  show_preserves_WT_cong (convert_to_rzq_preserves_semantics c). 
+Qed.
+
+Lemma convert_to_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph U_CX (convert_to_rzq l).
+Proof. 
+  intros. 
+  apply OptimizationsPreserveMapping.convert_to_rzq_preserves_mapping.
   assumption.
 Qed.
 
@@ -95,11 +115,14 @@ Proof. intros. apply StandardGateSet.replace_rzq_sound. Qed.
 
 Lemma replace_rzq_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (replace_rzq c).
-Proof.
-  intros.
-  eapply uc_equiv_l_implies_WT.
-  symmetry.
-  apply replace_rzq_preserves_semantics.
+Proof. intros dim c H. show_preserves_WT (replace_rzq_preserves_semantics c). Qed.
+
+Lemma replace_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph U_CX (replace_rzq l).
+Proof. 
+  intros. 
+  apply OptimizationsPreserveMapping.replace_rzq_preserves_mapping.
   assumption.
 Qed.
 
@@ -114,11 +137,8 @@ Proof. intros. apply StandardGateSet.decompose_to_cnot_sound. Qed.
 Lemma decompose_to_cnot_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (decompose_to_cnot c).
 Proof.
-  intros.
-  eapply uc_equiv_l_implies_WT.
-  symmetry.
-  apply decompose_to_cnot_preserves_semantics.
-  assumption.
+  intros dim c H.
+  show_preserves_WT (decompose_to_cnot_preserves_semantics c).
 Qed.
 
 Lemma decompose_to_cnot_uses_cnot_gates : forall {dim} (c : circ dim),
@@ -269,9 +289,6 @@ Qed.
 
 (** IBM optimizations **)
 
-Require Import Optimize1qGates.
-Require Import CXCancellation.
-
 Definition optimize_1q_gates {dim} (c : circ dim) : circ dim :=
   IBM_to_standard (Optimize1qGates.optimize_1q_gates (standard_to_IBM c)).
 
@@ -286,74 +303,116 @@ Definition optimize_ibm {dim} (c : circ dim) : circ dim :=
 
 Lemma optimize_1q_gates_preserves_semantics : forall {dim} (c : circ dim),
   uc_well_typed_l c -> (optimize_1q_gates c ≅l≅ c)%ucom.
-Proof.
-  intros dim c WT.
-  unfold optimize_1q_gates. 
+Proof. 
+  intros dim c H.
+  unfold optimize_1q_gates.
   erewrite IBM_to_standard_cong.
-  2: { apply Optimize1qGates.optimize_1q_gates_sound. 
-       apply StandardGateSet.standard_to_IBM_WT.
-       assumption. }
   apply uc_equiv_cong_l.
   apply IBM_to_standard_inv.
+  apply Optimize1qGates.optimize_1q_gates_sound.
+  apply StandardGateSet.standard_to_IBM_WT.
   assumption.
 Qed.
 
 Lemma optimize_1q_gates_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (optimize_1q_gates c).
 Proof.
-  intros.
-  eapply uc_cong_l_implies_WT.
-  symmetry.
-  apply optimize_1q_gates_preserves_semantics.
-  assumption.
-  assumption.
+  intros dim c H.
+  show_preserves_WT_cong (optimize_1q_gates_preserves_semantics c H).
 Qed.
+
+Ltac show_preserves_mapping_ibm :=
+  unfold optimize_1q_gates, cx_cancellation, optimize_ibm;
+  repeat (try apply IBM_to_standard_preserves_mapping;
+          try apply OptimizationsPreserveMapping.optimize_1q_gates_preserves_mapping;
+          try apply OptimizationsPreserveMapping.cx_cancellation_preserves_mapping;
+          try apply standard_to_IBM_preserves_mapping;
+          try assumption).
 
 Lemma optimize_1q_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) c -> 
-  respects_constraints_directed (get_is_in_graph cg) (optimize_1q_gates c).
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (optimize_1q_gates c).
+Proof. intros. show_preserves_mapping_ibm. Qed.
+
+Lemma cx_cancellation_preserves_semantics : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> (cx_cancellation c =l= c)%ucom.
 Proof.
-  intros dim c cg H.
-  admit.
+  intros dim c WT.
+  unfold cx_cancellation. 
+  erewrite IBM_to_standard_equiv.
+  apply IBM_to_standard_inv.
+  apply CXCancellation.cx_cancellation_sound. 
+  apply StandardGateSet.standard_to_IBM_WT.
+  assumption.
 Qed.
 
-Lemma optimize_sound : forall {dim} (l : IBM_ucom_l dim),
-  uc_well_typed_l l -> optimize l ≅l≅ l.
+Lemma cx_cancellation_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (cx_cancellation c).
 Proof.
-  intros.
-  unfold optimize.
-  eapply uc_cong_l_trans.
+  intros dim c H.
+  show_preserves_WT (cx_cancellation_preserves_semantics c H).
+Qed.
+
+Lemma cx_cancellation_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (cx_cancellation c).
+Proof. intros. show_preserves_mapping_ibm. Qed.
+
+Lemma optimize_ibm_preserves_semantics : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> (optimize_ibm c ≅l≅ c)%ucom.
+Proof. 
+  intros dim c WT.
+  unfold optimize_ibm. 
+  erewrite IBM_to_standard_cong.
   apply uc_equiv_cong_l.
-  apply cx_cancellation_sound.
-  eapply uc_cong_l_implies_WT. 
+  apply IBM_to_standard_inv.
+  eapply IBMList.uc_cong_l_trans.
+  apply IBMList.uc_equiv_cong_l.
+  apply CXCancellation.cx_cancellation_sound. 
+  eapply IBMList.uc_cong_l_implies_WT. 
   symmetry.
-  apply optimize_1q_gates_sound.
+  apply Optimize1qGates.optimize_1q_gates_sound.
+  apply StandardGateSet.standard_to_IBM_WT.
   assumption.
-  assumption.
-  apply optimize_1q_gates_sound.
+  apply StandardGateSet.standard_to_IBM_WT.
+  assumption. 
+  apply Optimize1qGates.optimize_1q_gates_sound.
+  apply StandardGateSet.standard_to_IBM_WT.
   assumption.
 Qed.
 
-Lemma optimize_WT : forall {dim} (l : IBM_ucom_l dim),
-  uc_well_typed_l l -> uc_well_typed_l (optimize l).
+Lemma optimize_ibm_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (optimize_ibm c).
 Proof.
-  intros.
-  eapply uc_cong_l_implies_WT.
-  symmetry.
-  apply optimize_sound.
-  assumption.
-  assumption.
+  intros dim c H.
+  show_preserves_WT_cong (optimize_ibm_preserves_semantics c H).
 Qed.
+
+Lemma optimize_ibm_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (optimize_ibm c).
+Proof. intros. show_preserves_mapping_ibm. Qed.
 
 
 (** Nam optimizations **)
 
-Require Import NotPropagation.
-Require Import HadamardReduction.
-Require Import GateCancellation.
-Require Import RotationMerging.
+Definition not_propagation {dim} (c : circ dim) : circ dim :=
+  RzQ_to_standard (NotPropagation.not_propagation (standard_to_RzQ c)).
 
-(* 'optimize' function applies our optimizations in the following order:
+Definition hadamard_reduction {dim} (c : circ dim) : circ dim :=
+  RzQ_to_standard (HadamardReduction.hadamard_reduction (standard_to_RzQ c)).
+
+Definition cancel_single_qubit_gates {dim} (c : circ dim) : circ dim :=
+  RzQ_to_standard (GateCancellation.cancel_single_qubit_gates (standard_to_RzQ c)).
+
+Definition cancel_two_qubit_gates {dim} (c : circ dim) : circ dim :=
+  RzQ_to_standard (GateCancellation.cancel_two_qubit_gates (standard_to_RzQ c)).
+
+Definition merge_rotations {dim} (c : circ dim) : circ dim :=
+  RzQ_to_standard (RotationMerging.merge_rotations (standard_to_RzQ c)).
+
+(* optimize_nam function applies our optimizations in the following order,
+   as designed by Nam et al. :
    0, 1, 3, 2, 3, 1, 2, 4, 3, 2 
    
    0 - not propagation
@@ -362,218 +421,572 @@ Require Import RotationMerging.
    3 - two qubit gate cancellation
    4 - rotation merging *) 
 
-Definition optimize {dim} (l : RzQ_ucom_l dim) : RzQ_ucom_l dim :=
-  cancel_single_qubit_gates 
-    (cancel_two_qubit_gates 
-      (merge_rotations
-        (cancel_single_qubit_gates 
-          (hadamard_reduction 
-            (cancel_two_qubit_gates 
-              (cancel_single_qubit_gates 
-                (cancel_two_qubit_gates 
-                  (hadamard_reduction 
-                    (not_propagation l))))))))). 
+Definition optimize_nam {dim} (c : circ dim) : circ dim :=
+  RzQ_to_standard
+    (GateCancellation.cancel_single_qubit_gates 
+      (GateCancellation.cancel_two_qubit_gates 
+        (RotationMerging.merge_rotations
+          (GateCancellation.cancel_single_qubit_gates 
+            (HadamardReduction.hadamard_reduction 
+              (GateCancellation.cancel_two_qubit_gates 
+                (GateCancellation.cancel_single_qubit_gates 
+                  (GateCancellation.cancel_two_qubit_gates 
+                    (HadamardReduction.hadamard_reduction 
+                      (NotPropagation.not_propagation 
+                        (standard_to_RzQ c))))))))))). 
+
+(* Light version of the optimizer that excludes rotation merging
+   (used for evaluating on QFT & adder programs). *)
+Definition optimize_nam_light {dim} (c : circ dim) : circ dim :=
+  RzQ_to_standard
+    (GateCancellation.cancel_single_qubit_gates 
+      (HadamardReduction.hadamard_reduction 
+        (GateCancellation.cancel_two_qubit_gates 
+          (GateCancellation.cancel_single_qubit_gates 
+            (GateCancellation.cancel_two_qubit_gates 
+              (HadamardReduction.hadamard_reduction 
+                (NotPropagation.not_propagation 
+                  (standard_to_RzQ c)))))))).
 
 (* LCR optimizer for multiple iterations. *)
-Definition optimize_lcr {dim} (l : RzQ_ucom_l dim) :=
-  LCR l optimize (fun n => @match_gate n).
-
-(* Light version of the optimizer used for QFT-based adder programs (following Nam et al.). *)
-Definition optimize_light {dim} (l : RzQ_ucom_l dim) : RzQ_ucom_l dim :=
-  cancel_single_qubit_gates 
-    (hadamard_reduction 
-      (cancel_two_qubit_gates 
-        (cancel_single_qubit_gates 
-          (cancel_two_qubit_gates 
-            (hadamard_reduction 
-              (not_propagation l)))))). 
+Definition optimize_nam_lcr {dim} (c : circ dim) : option (circ dim * circ dim * circ dim) :=
+  LCR c optimize_nam (fun n => @match_gate n).
 
 Lemma cancel_single_qubit_gates_sound' : forall {dim} (l : RzQ_ucom_l dim),
-  uc_well_typed_l l -> cancel_single_qubit_gates l ≅l≅ l.
-Proof. intros. apply uc_equiv_cong_l. apply cancel_single_qubit_gates_sound. auto. Qed.
+  uc_well_typed_l l -> RzQList.uc_cong_l (GateCancellation.cancel_single_qubit_gates l) l.
+Proof. 
+  intros. apply RzQList.uc_equiv_cong_l. 
+  apply GateCancellation.cancel_single_qubit_gates_sound. assumption. 
+Qed.
 
 Lemma cancel_two_qubit_gates_sound' : forall {dim} (l : RzQ_ucom_l dim),
-  uc_well_typed_l l -> cancel_two_qubit_gates l ≅l≅ l.
-Proof. intros. apply uc_equiv_cong_l. apply cancel_two_qubit_gates_sound. auto. Qed.
+  uc_well_typed_l l -> RzQList.uc_cong_l (GateCancellation.cancel_two_qubit_gates l) l.
+Proof. 
+  intros. apply RzQList.uc_equiv_cong_l. 
+  apply GateCancellation.cancel_two_qubit_gates_sound. assumption. 
+Qed.
 
 Lemma merge_rotations_sound' : forall {dim} (l : RzQ_ucom_l dim),
-  uc_well_typed_l l -> merge_rotations l ≅l≅ l.
-Proof. intros. apply uc_equiv_cong_l. apply merge_rotations_sound. auto. Qed.
+  uc_well_typed_l l -> RzQList.uc_cong_l (RotationMerging.merge_rotations l) l.
+Proof. 
+  intros. apply RzQList.uc_equiv_cong_l. 
+  apply RotationMerging.merge_rotations_sound. assumption.
+Qed.
 
-Lemma optimize_sound : forall {dim} (l : RzQ_ucom_l dim),
-  uc_well_typed_l l -> optimize l ≅l≅ l.
+Ltac show_preserves_semantics_nam :=
+  unfold not_propagation, hadamard_reduction, cancel_single_qubit_gates, cancel_two_qubit_gates, merge_rotations, optimize_nam, optimize_nam_light;
+  erewrite RzQ_to_standard_cong;
+  [ apply RzQ_to_standard_inv 
+  | repeat (try rewrite NotPropagation.not_propagation_sound;
+            try rewrite HadamardReduction.hadamard_reduction_sound;
+            try rewrite cancel_single_qubit_gates_sound';
+            try rewrite cancel_two_qubit_gates_sound';
+            try rewrite merge_rotations_sound';
+            try apply StandardGateSet.standard_to_RzQ_WT;
+            try apply NotPropagation.not_propagation_WT;
+            try apply HadamardReduction.hadamard_reduction_WT;
+            try apply GateCancellation.cancel_single_qubit_gates_WT;
+            try apply GateCancellation.cancel_two_qubit_gates_WT;
+            try apply RotationMerging.merge_rotations_WT;
+            try assumption; try reflexivity) ].
+
+Lemma not_propagation_preserves_semantics : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> (not_propagation c ≅l≅ c)%ucom.
+Proof. intros. show_preserves_semantics_nam. Qed.
+
+Lemma not_propagation_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (not_propagation c).
 Proof.
-  intros.
-  unfold optimize.
-  repeat ((* soundness *)
-          try rewrite not_propagation_sound;
-          try rewrite hadamard_reduction_sound;
-          try rewrite cancel_single_qubit_gates_sound';
-          try rewrite cancel_two_qubit_gates_sound';
-          try rewrite merge_rotations_sound';
-          (* well-typedness *)
-          try apply not_propagation_WT;
-          try apply hadamard_reduction_WT;
-          try apply cancel_single_qubit_gates_WT;
-          try apply cancel_two_qubit_gates_WT;
-          try apply merge_rotations_WT;
+  intros dim c H.
+  show_preserves_WT_cong (not_propagation_preserves_semantics c H).
+Qed.
+
+Ltac show_preserves_mapping_nam :=
+  unfold not_propagation, hadamard_reduction, cancel_single_qubit_gates, cancel_two_qubit_gates, merge_rotations, optimize_nam, optimize_nam_light;
+  repeat (try apply RzQ_to_standard_preserves_mapping;
+          try apply OptimizationsPreserveMapping.not_propagation_preserves_mapping;
+          try apply OptimizationsPreserveMapping.hadamard_reduction_preserves_mapping;
+          try apply OptimizationsPreserveMapping.cancel_single_qubit_gates_preserves_mapping;
+          try apply OptimizationsPreserveMapping.cancel_two_qubit_gates_preserves_mapping;
+          try apply OptimizationsPreserveMapping.merge_rotations_preserves_mapping;
+          try apply standard_to_RzQ_preserves_mapping;
           try assumption).
-  reflexivity.
+
+Lemma not_propagation_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (not_propagation c).
+Proof. intros. show_preserves_mapping_nam. Qed.
+
+Lemma hadamard_reduction_preserves_semantics : forall {dim} (c : circ dim),
+  (hadamard_reduction c ≅l≅ c)%ucom.
+Proof. intros. show_preserves_semantics_nam. Qed.
+
+Lemma hadamard_reduction_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (hadamard_reduction c).
+Proof.
+  intros dim c H.
+  show_preserves_WT_cong (hadamard_reduction_preserves_semantics c).
 Qed.
 
-Lemma optimize_WT : forall {dim} (l : RzQ_ucom_l dim),
-  uc_well_typed_l l -> uc_well_typed_l (optimize l).
+Lemma hadamard_reduction_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (hadamard_reduction c).
+Proof. intros. show_preserves_mapping_nam. Qed.
+
+Lemma cancel_single_qubit_gates_preserves_semantics : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> (cancel_single_qubit_gates c ≅l≅ c)%ucom.
+Proof. intros. show_preserves_semantics_nam. Qed.
+
+Lemma cancel_single_qubit_gates_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (cancel_single_qubit_gates c).
 Proof.
-  intros.
-  unfold optimize.
-  repeat (try apply not_propagation_WT;
-          try apply hadamard_reduction_WT;
-          try apply cancel_single_qubit_gates_WT;
-          try apply cancel_two_qubit_gates_WT;
-          try apply merge_rotations_WT;
-          auto).
+  intros dim c H.
+  show_preserves_WT_cong (cancel_single_qubit_gates_preserves_semantics c H).
 Qed.
 
-Lemma optimize_lcr_sound : forall {dim} (p l c r : RzQ_ucom_l dim) n,
-  (n > 2)%nat -> uc_well_typed_l p ->
-  optimize_lcr p = Some (l, c, r) ->
-  niter p n ≅l≅ (l ++ (niter c (n - 2)) ++ r).
+Lemma cancel_single_qubit_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (cancel_single_qubit_gates c).
+Proof. intros. show_preserves_mapping_nam. Qed.
+
+Lemma cancel_two_qubit_gates_preserves_semantics : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> (cancel_two_qubit_gates c ≅l≅ c)%ucom.
+Proof. intros. show_preserves_semantics_nam. Qed.
+
+Lemma cancel_two_qubit_gates_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (cancel_two_qubit_gates c).
 Proof.
-  intros dim p l c r n Hn WT H.
+  intros dim c H.
+  show_preserves_WT_cong (cancel_two_qubit_gates_preserves_semantics c H).
+Qed.
+
+Lemma cancel_two_qubit_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (cancel_two_qubit_gates c).
+Proof. intros. show_preserves_mapping_nam. Qed.
+
+Lemma merge_rotations_preserves_semantics : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> (merge_rotations c ≅l≅ c)%ucom.
+Proof. intros. show_preserves_semantics_nam. Qed.
+
+Lemma merge_rotations_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (merge_rotations c).
+Proof.
+  intros dim c H.
+  show_preserves_WT_cong (merge_rotations_preserves_semantics c H).
+Qed.
+
+Lemma merge_rotations_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (merge_rotations c).
+Proof. intros. show_preserves_mapping_nam. Qed.
+
+Lemma optimize_nam_preserves_semantics : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> (optimize_nam c ≅l≅ c)%ucom.
+Proof. intros. show_preserves_semantics_nam. Qed.
+
+Lemma optimize_nam_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (optimize_nam c).
+Proof.
+  intros dim c H.
+  show_preserves_WT_cong (optimize_nam_preserves_semantics c H).
+Qed.
+
+Lemma optimize_nam_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (optimize_nam c).
+Proof. intros. show_preserves_mapping_nam. Qed.
+
+Lemma optimize_nam_light_preserves_semantics : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> (optimize_nam_light c ≅l≅ c)%ucom.
+Proof. intros. show_preserves_semantics_nam. Qed.
+
+Lemma optimize_nam_light_preserves_WT : forall {dim} (c : circ dim),
+  uc_well_typed_l c -> uc_well_typed_l (optimize_nam_light c).
+Proof.
+  intros dim c H.
+  show_preserves_WT_cong (optimize_nam_light_preserves_semantics c H).
+Qed.
+
+Lemma optimize_nam_light_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (optimize_nam_light c).
+Proof. intros. show_preserves_mapping_nam. Qed.
+
+Lemma optimize_nam_lcr_preserves_semantics : forall {dim} (c0 l c r : circ dim) n,
+  n > 2 -> uc_well_typed_l c0 -> 
+  optimize_nam_lcr c0 = Some (l, c, r) ->
+  (niter c0 n ≅l≅ (l ++ (niter c (n - 2)) ++ r))%ucom.
+Proof. 
+  intros dim c0 l c r n Hn WT H.
   eapply LCR_correct in H.
   apply H.
   all: try assumption.
-  apply optimize_sound.
-  apply optimize_WT.
+  apply optimize_nam_preserves_semantics.
+  apply optimize_nam_preserves_WT.
 Qed.
 
-Lemma optimize_light_sound : forall {dim} (l : RzQ_ucom_l dim),
-  uc_well_typed_l l -> optimize_light l ≅l≅ l.
+Lemma niter_WT : forall {dim} (c : circ dim) n,
+  uc_well_typed_l c -> uc_well_typed_l (niter c n).
 Proof.
+  intros dim c n WT.
+  induction n.
+  constructor.
+  eapply uc_well_typed_l_implies_dim_nonzero.
+  apply WT.
+  simpl.
+  apply uc_well_typed_l_app; split; assumption.
+Qed.
+
+Lemma niter_WT_inv : forall {dim} (c : circ dim) n,
+  n > 0 -> uc_well_typed_l (niter c n) -> uc_well_typed_l c.
+Proof.
+  intros dim c n Hn WT.
+  destruct n; try lia.
+  induction n; simpl in WT.
+  rewrite app_nil_r in WT.
+  assumption.
+  apply IHn; try lia.
+  simpl.
+  apply uc_well_typed_l_app in WT as [_ WT].
+  assumption.
+Qed.
+
+Lemma optimize_nam_lcr_preserves_WT : forall {dim} (c0 l c r : circ dim) n,
+  n > 2 -> uc_well_typed_l c0 -> 
+  optimize_nam_lcr c0 = Some (l, c, r) ->
+  uc_well_typed_l l /\ uc_well_typed_l c /\ uc_well_typed_l r.
+Proof.
+  intros dim c0 l c r n Hn WT H.
+  apply optimize_nam_lcr_preserves_semantics with (n0:=n) in H; try assumption.
+  apply uc_cong_l_implies_WT in H.
+  apply uc_well_typed_l_app in H as [H1 H23].
+  apply uc_well_typed_l_app in H23 as [H2 H3].
+  repeat split; try assumption.
+  apply niter_WT_inv with (n0:=n-2).
+  lia. apply H2.
+  apply niter_WT.
+  assumption.
+Qed.
+
+Lemma optimize_nam_lcr_preserves_mapping : forall {dim} (c0 l c r : circ dim) (cg : c_graph),
+  respects_constraints_directed (get_is_in_graph cg) U_CX c0 -> 
+  optimize_nam_lcr c0 = Some (l, c, r) ->
+  respects_constraints_directed (get_is_in_graph cg) U_CX l
+    /\ respects_constraints_directed (get_is_in_graph cg) U_CX c
+    /\ respects_constraints_directed (get_is_in_graph cg) U_CX r.
+Proof. 
+  intros dim c0 l c r cg Hcg H.
+  eapply OptimizationsPreserveMapping.LCR_preserves_mapping in H.
+  apply H.
+  assumption.
   intros.
-  unfold optimize_light.
-  repeat ((* soundness *)
-          try rewrite not_propagation_sound;
-          try rewrite hadamard_reduction_sound;
-          try rewrite cancel_single_qubit_gates_sound';
-          try rewrite cancel_two_qubit_gates_sound';
-          (* well-typedness *)
-          try apply not_propagation_WT;
-          try apply hadamard_reduction_WT;
-          try apply cancel_single_qubit_gates_WT;
-          try apply cancel_two_qubit_gates_WT;
-          try assumption).
-  reflexivity.
-Qed.
-
-Lemma optimize_light_WT : forall {dim} (l : RzQ_ucom_l dim),
-  uc_well_typed_l l -> uc_well_typed_l (optimize_light l).
-Proof.
-  intros.
-  unfold optimize_light.
-  repeat (try apply not_propagation_WT;
-          try apply hadamard_reduction_WT;
-          try apply cancel_single_qubit_gates_WT;
-          try apply cancel_two_qubit_gates_WT;
-          auto).
-Qed.
-
-
-
-Definition optimize_nam {dim} (c : circ dim) : circ dim :=
-  RzQ_to_standard (OptimizeNam.optimize (standard_to_RzQ c)).
-
-Lemma optimize_nam_preserves_semantics : forall {dim} (c : @circ dim),
-  uc_well_typed_l c -> (optimize_nam c ≅l≅ c)%ucom.
-Proof.
-  intros dim c H.
-  unfold optimize_nam. 
-  erewrite RzQ_to_standard_cong.
-  2: { apply OptimizeNam.optimize_sound. admit. }
-  apply RzQ_to_standard_inv.
+  apply optimize_nam_preserves_mapping.
   assumption.
 Qed.
 
 
-Lemma optimize_preserves_mapping
-
-
-Definition optimize_nam_lcr {dim} (l : RzQ_ucom_l dim) :=
-
-
-Definition optimize_nam_light {dim} (l : RzQ_ucom_l dim) : RzQ_ucom_l dim :=
-
-not_propagation
-hadamard_reduction
-cancel_single_qubit_gates
-cancel_two_qubit_gates
-merge_rotations
-
-Lemma optimize_lcr_sound : forall {dim} (p l c r : RzQ_ucom_l dim) n,
-  (n > 2)%nat -> uc_well_typed_l p ->
-  optimize_lcr p = Some (l, c, r) ->
-  niter p n ≅l≅ (l ++ (niter c (n - 2)) ++ r).
-
-
-
-
-
-Definition optimize_ibm {dim} (l : IBM_ucom_l dim) :=
-
-optimize_1q_gates
-cx_cancellation
-
-
 (** Mapping **)
 
+Definition check_layout {dim} (la : layout dim) (n : nat) :=
+  layout_well_formed_b n (cast_layout la n).
 
-Definition layout {dim} := qmap dim.
-Definition c_graph := nat * (nat -> nat -> list nat) * (nat -> nat -> bool).
+Definition check_graph (cg : c_graph) : bool :=
+  let n := get_dim cg in
+  let get_path := get_get_path cg in
+  let is_in_graph := get_is_in_graph cg in
+  ConnectivityGraph.check_graph n get_path is_in_graph.
 
-Definition cast_layout {dim} (la : @layout dim) dim' : @layout dim' := la.
-  let (f, g) := la in (f, g).
+Definition check_constraints {dim} (c : circ dim) (cg : c_graph) :=
+  let n := get_dim cg in
+  let is_in_graph := get_is_in_graph cg in
+  respects_constraints_directed_b is_in_graph (cast c n).
 
-check_layout : layout -> (n : int) -> bool
-check_constraints : circ -> c_graph -> bool
+Definition simple_map {cdim ldim} (c : circ cdim) (la : layout ldim) (cg : c_graph) :=
+  let n := get_dim cg in
+  let get_path := get_get_path cg in
+  let is_in_graph := get_is_in_graph cg in
+  SimpleMapping.simple_map (cast c n) (cast_layout la n) get_path is_in_graph. 
+
+Definition make_tenerife (_:unit) : c_graph := 
+  (5, Tenerife.get_path, Tenerife.is_in_graph).
+Definition make_lnn n : c_graph := 
+  (n, LNN.get_path, LNN.is_in_graph n).
+Definition make_lnn_ring n : c_graph := 
+  (n, LNNRing.get_path n, LNNRing.is_in_graph n).
+Definition make_grid m n : c_graph := 
+  (m * n, Grid.get_path n, Grid.is_in_graph m n).
+
+Definition trivial_layout n : layout n := Layouts.trivial_layout n.
+Definition list_to_layout {dim} l : layout dim :=
+  Layouts.list_to_layout l.
+Definition layout_to_list {dim} (la : layout dim) n :=
+  Layouts.layout_to_list n (cast_layout la n).
+
+Lemma check_layout_correct : forall {dim} (la : layout dim) n,
+  check_layout la n = true -> layout_well_formed n (cast_layout la n).
+Proof. intros. apply layout_well_formed_b_equiv. assumption. Qed.
+
+Definition graph_well_formed (cg : c_graph) :=
+  let dim := get_dim cg in
+  let get_path := get_get_path cg in
+  let is_in_graph := get_is_in_graph cg in
+  forall n1 n2, n1 < dim -> n2 < dim -> n1 <> n2 -> 
+           valid_path n1 n2 is_in_graph dim (get_path n1 n2).
+
+Lemma check_graph_correct : forall (cg : c_graph),
+  check_graph cg = true -> graph_well_formed cg.
+Proof. 
+  unfold graph_well_formed. 
+  intros.
+  apply ConnectivityGraph.check_graph_correct; assumption. 
+Qed.
+
+Lemma check_constraints_correct : forall {dim} (c : circ dim) (cg : c_graph),
+  check_constraints c cg = true <-> 
+  respects_constraints_directed (get_is_in_graph cg) U_CX (cast c (get_dim cg)).
+Proof. intros. apply respects_constraints_directed_b_equiv. Qed.
+
+Module MappingProofs.
+
+ (* Assume the existence of a c_graph that satisfies graph_well_formed *)
+  Parameter cg : c_graph.
+  Axiom cg_WF : graph_well_formed cg.
+
+  Module CG <: ConnectivityGraph.
+  Definition dim := get_dim cg.
+  Definition get_path := get_get_path cg.
+  Definition is_in_graph := get_is_in_graph cg.
+  Definition get_path_valid := cg_WF.
+  End CG.
+
+  Module SMP := SimpleMappingProofs CG.
+  Import SMP.
+
+  Lemma simple_map_preserves_semantics : forall {cdim ldim} 
+        (c : circ cdim) (la : layout ldim) c' la',
+    uc_well_typed_l (cast c dim) ->
+    layout_well_formed dim (cast_layout la dim) ->
+    simple_map c la cg = (c', la') ->
+    (cast c dim) ≡ c' with (@phys2log dim (cast_layout la dim)) and (log2phys la').
+  Proof. intros. apply simple_map_sound; assumption. Qed.
+
+  Lemma simple_map_preserves_WT : forall {cdim ldim} 
+        (c : circ cdim) (la : layout ldim) c' la',
+    uc_well_typed_l (cast c dim) ->
+    layout_well_formed dim (cast_layout la dim) ->
+    simple_map c la cg = (c', la') ->
+    uc_well_typed_l c'.
+  Proof. 
+    intros cdim ldim c la c' la' WT WF H. 
+    apply (simple_map_preserves_semantics _ _ _ _ WT WF) in H.
+    unfold uc_eq_perm in H.
+    apply list_to_ucom_WT. 
+    apply uc_eval_nonzero_iff.
+    apply list_to_ucom_WT in WT.
+    apply uc_eval_nonzero_iff in WT.
+    intro contra.
+    unfold eval in H.
+    unfold dim, CG.dim in *.
+    rewrite contra in H.
+    rewrite Mmult_0_r in H.
+    rewrite Mmult_0_l in H.
+    contradiction.
+  Qed.
+
+  Lemma simple_map_respects_constraints : forall {cdim ldim} 
+        (c : circ cdim) (la : layout ldim) c' la',
+    uc_well_typed_l (cast c dim) ->
+    layout_well_formed dim (cast_layout la dim) ->
+    simple_map c la cg = (c', la') ->
+    respects_constraints_directed (get_is_in_graph cg) U_CX c'.
+  Proof.
+    intros cdim ldim c la c' la' WT WF H. 
+    apply simple_map_respects_constraints_directed in H; assumption. 
+  Qed.
+
+  Lemma simple_map_layout_well_formed : forall {cdim ldim} 
+        (c : circ cdim) (la : layout ldim) c' la',
+    uc_well_typed_l (cast c dim) ->
+    layout_well_formed dim (cast_layout la dim) ->
+    simple_map c la cg = (c', la') ->
+    layout_well_formed dim la'.
+  Proof.
+    intros cdim ldim c la c' la' WT WF H. 
+    apply simple_map_well_formed in H; assumption. 
+  Qed.
+
+End MappingProofs.
+
+Lemma make_tenerife_well_formed : graph_well_formed (make_tenerife ()).
+Proof.
+  unfold graph_well_formed, make_tenerife.
+  intros.
+  apply Tenerife.get_path_valid; assumption.
+Qed.
+
+Lemma make_lnn_well_formed : forall n, graph_well_formed (make_lnn n).
+Proof.
+  unfold graph_well_formed, make_lnn.
+  intros.
+  apply LNN.get_path_valid; assumption.
+Qed.
+
+Lemma make_lnn_ring_well_formed : forall n, graph_well_formed (make_lnn_ring n).
+Proof.
+  unfold graph_well_formed, make_lnn_ring.
+  intros.
+  apply LNNRing.get_path_valid; assumption.
+Qed.
+
+Lemma make_grid_well_formed : forall m n, graph_well_formed (make_grid m n).
+Proof.
+  unfold graph_well_formed, make_grid.
+  intros.
+  apply Grid.get_path_valid; assumption.
+Qed.
+
+Lemma trivial_layout_well_formed : forall n, layout_well_formed n (trivial_layout n).
+Proof. intros. apply Layouts.trivial_layout_well_formed. Qed.
 
 
-Definition simple_map {cdim ldim} (c : @circ cdim) (la : @layout ldim) (cg : c_graph) :=
-  let (n, get_path, is_in_graph) := cg in
-  if check_well_typed c n && check_layout la n 
-  then Some (SimpleMapping.simple_map (cast c n) (cast_layout la n) get_path is_in_graph) 
-  else None
+(** Examples of composing transformations **)
 
-make_tenerife : unit -> c\_graph
-make_lnn : (n : int) -> c\_graph
-make_lnn_ring : (n : int) -> c\_graph
-make_grid : (m : int) -> (n : int) -> c\_graph
-trivial_layout : (n : int) -> layout
-list_to_layout : list int -> layout
-layout_to_list : layout -> list int
+Definition safe_map {cdim ldim} (c : circ cdim) (la : layout ldim) (cg : c_graph) :=
+  let n := get_dim cg in
+  let get_path := get_get_path cg in
+  let is_in_graph := get_is_in_graph cg in
+  if check_well_typed c n && check_layout la n && check_graph cg
+  then Some (simple_map c la cg) 
+  else None.
 
+Module MappingProofs'.
 
+ (* Assume the existence of inputs s.t. safe_map returns Some (_,_) *)
+  Parameters cdim ldim : nat.
+  Parameter c : circ cdim.
+  Parameter la : layout ldim.
+  Parameter cg : c_graph.
+  Axiom safe_map_returns_Some : exists c' la', safe_map c la cg = Some (c', la').
 
-(** Example of composing transformations **)
+  Lemma cg_WF : graph_well_formed cg.
+  Proof. 
+    unfold graph_well_formed. 
+    intros n1 n2 Hn1 Hn2 Hneq.
+    specialize safe_map_returns_Some as H.
+    destruct H as [c' [la' H]].
+    unfold safe_map in H.
+    destruct (check_graph cg) eqn:Hcg.
+    apply check_graph_correct; assumption.
+    rewrite andb_false_r in H.
+    inversion H.
+  Qed.
 
-Definition optimize_then_map c :=
+  Module CG <: ConnectivityGraph.
+  Definition dim := get_dim cg.
+  Definition get_path := get_get_path cg.
+  Definition is_in_graph := get_is_in_graph cg.
+  Definition get_path_valid := cg_WF.
+  End CG.
+
+  Module SMP := SimpleMappingProofs CG.
+  Import SMP.
+
+  Lemma safe_map_preserves_semantics : forall c' la',
+    safe_map c la cg = Some (c', la') ->
+    (* No additional assumptions! *)
+    (cast c (get_dim cg)) ≡ c' with (@phys2log dim (cast_layout la dim)) and (@log2phys dim la').
+  Proof. 
+    intros c' la' H.
+    unfold safe_map in H.
+    destruct (check_well_typed c (get_dim cg)) eqn:HWT;
+      destruct (check_layout la (get_dim cg)) eqn:HWF;
+      destruct (check_graph cg);
+      simpl in H; inversion H; subst.
+    apply check_well_typed_correct in HWT.
+    apply check_layout_correct in HWF.
+    apply simple_map_sound; assumption. 
+  Qed.
+
+  Lemma safe_map_respects_constraints : forall c' la',
+    safe_map c la cg = Some (c', la') ->
+    (* No additional assumptions! *)
+    respects_constraints_directed (get_is_in_graph cg) U_CX c'.
+  Proof. 
+    intros c' la' H.
+    unfold safe_map in H.
+    destruct (check_well_typed c (get_dim cg)) eqn:HWT;
+      destruct (check_layout la (get_dim cg)) eqn:HWF;
+      destruct (check_graph cg);
+      simpl in H; inversion H; subst.
+    apply check_well_typed_correct in HWT.
+    apply check_layout_correct in HWF.
+    eapply simple_map_respects_constraints_directed; try apply H1; assumption. 
+  Qed.
+
+End MappingProofs'.
+
+Definition optimize_then_map {dim} (c : circ dim) :=
   let gr := make_lnn 10 in         (* 10-qubit LNN architecture *)
   let la := trivial_layout 10 in   (* trivial layout on 10 qubits *)
   if check_well_typed c 10         (* check that c is well-typed & uses <=10 qubits *)
   then 
     let c' := optimize_nam c in    (* optimization #1 *)
     let c'' := optimize_ibm c' in  (* optimization #2 *)
-    simple_map c'' la gr           (* map *)
+    Some (simple_map c'' la gr)    (* map *)
   else None.
 
-Definition map_then_optimize c :=
+Module LNN10 <: ConnectivityGraph.
+  Definition dim := 10.
+  Definition get_path := LNN.get_path.
+  Definition is_in_graph := LNN.is_in_graph 10.
+  Definition get_path_valid := LNN.get_path_valid 10.
+End LNN10.
+
+Module SMPLNN := SimpleMappingProofs LNN10.
+Import SMPLNN.
+
+Lemma cast_commutes : forall {dim} (f : forall {dim0}, circ dim0 -> circ dim0) (c : circ dim) n,
+  cast (f c) n = f (cast c n).
+Proof.
+  intros dim f c n.
+  induction c.
+  simpl.
+  (* yikes.. we need a property that says that f does not look at its first argument
+     (and we need to prove this for all the optimizations too...) *)
+Admitted.
+
+Lemma optimize_then_map_preserves_semantics : forall (c : circ dim) c' la',
+  optimize_then_map c = Some (c', la') -> 
+  c ≅ c' with (@phys2log dim (trivial_layout 10)) and (log2phys la').
+Proof.
+  intros c c' la' H.
+  unfold optimize_then_map in H.
+  destruct (check_well_typed c 10) eqn:WT; inversion H.
+  apply simple_map_sound in H1.
+  apply uc_eq_perm_uc_cong_l with (l2:=cast (optimize_ibm (optimize_nam c)) (get_dim (make_lnn 10))).
+  symmetry.
+  rewrite cast_commutes. 
+  rewrite optimize_ibm_preserves_semantics.
+  rewrite cast_commutes. 
+  rewrite optimize_nam_preserves_semantics.
+Admitted.
+
+Lemma optimize_then_map_respects_constraints : forall (c : circ dim) c' la',
+  optimize_then_map c = Some (c', la') -> 
+  respects_constraints_directed LNN10.is_in_graph U_CX c'.
+Proof.
+Admitted.
+
+Definition map_then_optimize {dim} (c : circ dim) :=
   let gr := make_lnn 10 in               (* 10-qubit LNN architecture *)
   let la := trivial_layout 10 in         (* trivial layout on 10 qubits *)
   if check_well_typed c 10               (* check that c is well-typed & uses <=10 qubits *)
   then 
-    match simple_map c la gr with        (* map *)
-    | Some (c', la') => 
-        let c'' := optimize_nam c' in    (* optimization #1 *)
-        let c''' := optimize_ibm c'' in  (* optimization #2 *)
-        (c''', la') 
-    | None => None
+    let (c', la') := simple_map c la gr in  (* map *)
+    let c'' := optimize_nam c' in           (* optimization #1 *)
+    let c''' := optimize_ibm c'' in         (* optimization #2 *)
+    Some (c''', la') 
   else None.
+
+(* TODO: prove properties *)

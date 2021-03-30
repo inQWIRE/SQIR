@@ -32,7 +32,7 @@ VOQC := VOQC
 
 COQ_OPTS := -R . Top
 
-all: examples optimizer $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
+all: examples voqc $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
@@ -40,7 +40,7 @@ grover: invoke-coqmakefile $(examples)/Grover.vo
 
 qpe-full: invoke-coqmakefile $(examples)/QPEGeneral.vo
 
-voqc: invoke-coqmakefile $(VOQC)/VOQC.vo
+voqc: invoke-coqmakefile $(VOQC)/Main.vo
 
 # Built by 'make examples'
 
@@ -78,7 +78,7 @@ SQIR/examples/Grover.vo: $(examples)/Grover.v $(SQIR)/UnitaryOps.vo $(examples)/
 SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/QPEGeneral.v
 
-# Built by 'make optimizer'
+# Built by 'make voqc'
 
 VOQC/ChangeRotationBasis.vo: $(VOQC)/ChangeRotationBasis.v
 	coqc $(COQ_OPTS) $(VOQC)/ChangeRotationBasis.v
@@ -113,6 +113,9 @@ VOQC/NonUnitaryListRepresentation.vo: $(VOQC)/NonUnitaryListRepresentation.v $(V
 VOQC/NotPropagation.vo: $(VOQC)/NotPropagation.v $(SQIR)/Equivalences.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/NotPropagation.v
 
+VOQC/OptimizationsPreserveMapping.vo: $(VOQC)/OptimizationsPreserveMapping.v $(VOQC)/CXCancellation.vo $(VOQC)/GateCancellation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/NotPropagation.vo $(VOQC)/Optimize1qGates.vo $(VOQC)/RotationMerging.vo $(VOQC)/SimpleMapping.vo
+	coqc $(COQ_OPTS) $(VOQC)/OptimizationsPreserveMapping.v
+
 VOQC/Optimize1qGates.vo: $(VOQC)/Optimize1qGates.v $(VOQC)/IBMGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/Optimize1qGates.v
 
@@ -128,7 +131,7 @@ VOQC/SimpleMapping.vo: $(VOQC)/SimpleMapping.v $(VOQC)/ConnectivityGraph.vo $(VO
 VOQC/StandardGateSet.vo: $(VOQC)/StandardGateSet.v $(VOQC)/IBMGateSet.vo $(VOQC)/RzQGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/StandardGateSet.v
 
-VOQC/Main.vo: $(VOQC)/Main.v $(VOQC)/CXCancellation.vo $(VOQC)/GateCancellation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/NotPropagation.vo $(VOQC)/Optimize1qGates.vo $(VOQC)/RotationMerging.vo $(VOQC)/SimpleMapping.vo
+VOQC/Main.vo: $(VOQC)/Main.v $(VOQC)/OptimizationsPreserveMapping.vo
 	coqc $(COQ_OPTS) $(VOQC)/Main.v
 
 # Misc. files built by 'make all'

@@ -38,16 +38,16 @@ Inductive respects_constraints_undirected {U dim} : (nat -> nat -> bool) -> gate
       respects_constraints_undirected is_in_graph t ->
       respects_constraints_undirected is_in_graph (App2 u n1 n2 :: t).
 
-Inductive respects_constraints_directed {U dim} : (nat -> nat -> bool) -> gate_list U dim -> Prop :=
-  | res_dir_nil : forall is_in_graph,
-      respects_constraints_directed is_in_graph []
-  | res_dir_app1 : forall u n t is_in_graph, 
-      respects_constraints_directed is_in_graph t ->
-      respects_constraints_directed is_in_graph (App1 u n :: t)
-  | res_dir_app2 : forall u n1 n2 t is_in_graph, 
+Inductive respects_constraints_directed {U : nat -> Set} {dim} : (nat -> nat -> bool) -> U 2%nat -> gate_list U dim -> Prop :=
+  | res_dir_nil : forall is_in_graph cnot,
+      respects_constraints_directed is_in_graph cnot []
+  | res_dir_app1 : forall u n t is_in_graph cnot, 
+      respects_constraints_directed is_in_graph cnot t ->
+      respects_constraints_directed is_in_graph cnot (App1 u n :: t)
+  | res_dir_app2 : forall n1 n2 t is_in_graph cnot, 
       is_in_graph n1 n2 = true -> (* directed *) 
-      respects_constraints_directed is_in_graph t ->
-      respects_constraints_directed is_in_graph (App2 u n1 n2 :: t).
+      respects_constraints_directed is_in_graph cnot t ->
+      respects_constraints_directed is_in_graph cnot (App2 cnot n1 n2 :: t).
 
 Lemma respects_constraints_undirected_app : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph,
   respects_constraints_undirected is_in_graph l1 ->
@@ -62,12 +62,12 @@ Proof.
   constructor; auto.
 Qed.
 
-Lemma respects_constraints_directed_app : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph,
-  respects_constraints_directed is_in_graph l1 ->
-  respects_constraints_directed is_in_graph l2 ->
-  respects_constraints_directed is_in_graph (l1 ++ l2).
+Lemma respects_constraints_directed_app : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph cnot,
+  respects_constraints_directed is_in_graph cnot l1 ->
+  respects_constraints_directed is_in_graph cnot l2 ->
+  respects_constraints_directed is_in_graph cnot (l1 ++ l2).
 Proof.
-  intros U dim l1 l2 is_in_graph Hl1 Hl2.
+  intros U dim l1 l2 is_in_graph cnot Hl1 Hl2.
   induction Hl1.
   simpl; assumption.
   rewrite <- app_comm_cons.
@@ -75,33 +75,34 @@ Proof.
   constructor; auto.
 Qed.
 
-(* boolean version of respected_constraints_directed *)
-Fixpoint respects_constraints_directed_b {U dim} (is_in_graph : nat -> nat -> bool) (l : gate_list U dim) :=
+(* boolean version of respected_constraints_directed for the std gate set *)
+Fixpoint respects_constraints_directed_b {dim} (is_in_graph : nat -> nat -> bool) (l : standard_ucom_l dim) :=
   match l with
   | [] => true
   | App1 _ _ :: t => respects_constraints_directed_b is_in_graph t
-  | App2 _ n1 n2 :: t => is_in_graph n1 n2 && respects_constraints_directed_b is_in_graph t
+  | App2 U_CX n1 n2 :: t => is_in_graph n1 n2 && respects_constraints_directed_b is_in_graph t
   | _ => false
   end.
 
-Lemma respects_constraints_directed_b_equiv : forall {U dim} is_in_graph (l : gate_list U dim),
-  respects_constraints_directed_b is_in_graph l = true <-> respects_constraints_directed is_in_graph l.
+Lemma respects_constraints_directed_b_equiv : forall {dim} is_in_graph (l : standard_ucom_l dim),
+  respects_constraints_directed_b is_in_graph l = true <-> 
+  respects_constraints_directed is_in_graph U_CX l.
 Proof.
-  intros U dim f l.
+  intros dim f l.
   split; intro H.
   - induction l.
     constructor.
     destruct a; simpl in H.
     apply IHl in H.
     constructor; auto.
+    dependent destruction s; simpl in H.
     apply andb_prop in H as [H1 H2].
     apply IHl in H2.
     constructor; auto.
-    inversion H.
-  - induction H; auto.
-    simpl.
-    rewrite H, IHrespects_constraints_directed.
-    reflexivity.
+    all: inversion H.
+  - induction l; auto.
+    destruct a; inversion H; subst; simpl; auto.
+    apply andb_true_intro; auto.
 Qed.
 
 (* "Optimized" decomposition of SWAP chooses between (CX a b; CX b a; CX a b) 
@@ -188,7 +189,7 @@ Module SimpleMappingProofs (CG : ConnectivityGraph).
 Definition dim := CG.dim.
 
 Lemma path_to_swaps_well_formed : forall n1 n2 p m l m',
-  valid_path n1 n2 CG.is_in_graph p ->
+  valid_path n1 n2 CG.is_in_graph dim p ->
   layout_well_formed dim m ->
   path_to_swaps p m = (l, m') ->
   layout_well_formed dim m'.
@@ -203,27 +204,15 @@ Proof.
   destruct p. inversion res; subst. assumption.
   destruct (path_to_swaps (n :: n0 :: p) (swap_in_map m a n)) eqn:res'.
   inversion res; subst.
-  destruct Hpath as [H1 [H2 [H3 H4]]].
+  destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
   inversion H1; subst.
+  inversion H4; subst.
   eapply IHp; try apply res'.
   repeat split.
   inversion H2; subst. assumption.
-  inversion H3; subst. assumption. 
-  inversion H4; subst. assumption.
-  assert (a < dim)%nat.
-  { inversion H3; subst.
-    destruct H8.
-    apply CG.valid_graph in H0 as [? _].
-    assumption. 
-    apply CG.valid_graph in H0 as [_ [? _]]. 
-    assumption. }
-  assert (n < dim).
-  { inversion H3; subst.
-    destruct H9.
-    apply CG.valid_graph in H5 as [_ [? _]].
-    assumption. 
-    apply CG.valid_graph in H5 as [? _]. 
-    assumption. }
+  inversion H3; subst. assumption.
+  assumption. 
+  inversion H5; subst. assumption.
   apply swap_in_map_well_formed; assumption.
 Qed.
 
@@ -273,6 +262,21 @@ Proof.
     assumption.
   - inversion res; subst.
     assumption.
+Qed.
+
+Lemma simple_map_well_formed : forall (l l' : standard_ucom_l dim) m m',
+  uc_well_typed_l l ->
+  layout_well_formed dim m ->
+  simple_map l m CG.get_path CG.is_in_graph = (l', m') ->
+  layout_well_formed dim m'.
+Proof.
+  intros l m l' m' WT WF res.
+  unfold simple_map in res.
+  destruct (insert_swaps (decompose_to_cnot l) l' CG.get_path) eqn:sw.
+  inversion res; subst.
+  eapply insert_swaps_well_formed; try apply sw.
+  apply decompose_to_cnot_WT; assumption.
+  assumption.
 Qed.
 
 (* Permutation matrices -- could be moved elsewhere *)
@@ -766,7 +770,7 @@ Qed.
 
 Lemma path_to_swaps_sound : forall n1 n2 p m l m',
   dim > 0 ->
-  valid_path n1 n2 CG.is_in_graph p ->
+  valid_path n1 n2 CG.is_in_graph dim p ->
   layout_well_formed dim m ->
   path_to_swaps p m = (l, m') ->
   l ≡ [] with (log2phys m) and (phys2log m').
@@ -789,29 +793,9 @@ Proof.
   - (* inductive case *)
     destruct (path_to_swaps (n :: n0 :: p) (swap_in_map m a n)) eqn:res'.
     inversion res; subst.  
-    destruct Hpath as [H1 [H2 [H3 H4]]].
+    destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
     inversion H1; subst.
-    assert (a < dim).
-    { inversion H3; subst.
-      destruct H8.
-      apply CG.valid_graph in H0 as [? _].
-      assumption. 
-      apply CG.valid_graph in H0 as [_ [? _]]. 
-      assumption. }
-    assert (n < dim).
-    { inversion H3; subst.
-      destruct H9.
-      apply CG.valid_graph in H5 as [_ [? _]].
-      assumption. 
-      apply CG.valid_graph in H5 as [? _]. 
-      assumption. }
-    assert (a <> n).
-    { inversion H3; subst.
-      destruct H10.
-      apply CG.valid_graph in H6 as [_ [_ ?]].
-      assumption. 
-      apply CG.valid_graph in H6 as [_ [_ ?]]. 
-      lia. }
+    inversion H4; subst.
     assert (WFm':=res').
     eapply path_to_swaps_well_formed in WFm'.
     eapply IHp in res'.
@@ -1039,12 +1023,6 @@ Proof.
   reflexivity.
 Qed.
 
-Ltac impossible_gate :=
-  match goal with
-  | H : forall_gates ?p (?g :: _) |- _ => 
-      assert (p g) by (apply H; left; reflexivity); contradiction
-  end.
-
 (* Example: Consider an architecture with 3 qubits and LNN connectivity:
        0 <-> 1 <-> 2.
    Say we want to map the following program with input layout 
@@ -1153,7 +1131,7 @@ Qed.
 
 Lemma path_to_swaps_respects_undirected : forall n1 n2 p m l m',
   n1 < dim -> n2 < dim ->
-  valid_path (log2phys m n1) (log2phys m n2) CG.is_in_graph p ->
+  valid_path (log2phys m n1) (log2phys m n2) CG.is_in_graph dim p ->
   layout_well_formed dim m ->
   path_to_swaps p m = (l, m') ->
   respects_constraints_undirected CG.is_in_graph (l ++ [CNOT (log2phys m' n1) (log2phys m' n2)]).
@@ -1171,34 +1149,23 @@ Proof.
   destruct p.
   inversion res; subst. 
   constructor. 
-  destruct Hpath as [H1 [H2 [H3 H4]]].
+  destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
   inversion H1; subst.
   inversion H2; subst.
   inversion H3; subst.
-  inversion H6; subst.
+  inversion H7; subst.
   assumption.
-  inversion H7.
-  inversion H6; subst.
+  inversion H8.
+  inversion H7; subst.
   assumption.
-  inversion H7.
+  inversion H8.
   constructor.
   destruct (path_to_swaps (n :: n0 :: p) (swap_in_map m a n)) eqn:res'.
   inversion res; subst.
-  destruct Hpath as [H1 [H2 [H3 H4]]].
+  destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
   inversion H1; subst.
   inversion H3; subst.
-  assert (log2phys m n1 < dim).
-  { destruct H8 as [H0 | H0].
-    apply CG.valid_graph in H0 as [H0 _].
-    assumption. 
-    apply CG.valid_graph in H0 as [_ [H0 _]].
-    assumption. }
-  assert (n < dim).
-  { destruct H8 as [H5 | H5].
-    apply CG.valid_graph in H5 as [_ [H5 _]].
-    assumption. 
-    apply CG.valid_graph in H5 as [H5 _]. 
-    assumption. }
+  inversion H4; subst.
   rewrite <- app_comm_cons.
   apply res_und_app2; try assumption. 
   eapply IHp; try apply res'.
@@ -1208,28 +1175,29 @@ Proof.
   repeat split.
   inversion H2; subst. assumption.
   inversion H3; subst. assumption. 
-  inversion H4; subst. assumption.  
+  assumption.
+  inversion H5; subst. assumption.  
   unfold swap_in_map. 
   destruct m; simpl.
   bdestruct (n2 =? n4 (n3 n1)).
   subst.
-  inversion H4; subst.
-  contradict H11.
+  inversion H5; subst.
+  contradict H12.
   destruct (WF (n3 n1)) as [_ [_ [_ ?]]]; auto. 
   bdestruct (n2 =? n4 n).
   subst.
-  inversion H4; subst.
-  inversion H14; subst.
-  contradict H11.
+  inversion H5; subst.
+  inversion H17; subst.
+  contradict H12.
   destruct (WF n) as [_ [_ [_ ?]]]; auto.
-  contradict H13.
+  contradict H16.
   destruct (WF n) as [_ [_ [_ ?]]]; auto.
   reflexivity.
   unfold swap_in_map. 
   destruct m; simpl.
   bdestruct (n1 =? n4 (n3 n1)).
   reflexivity.
-  contradict H6.
+  contradict H0.
   destruct (WF n1) as [_ [_ [? _]]]; auto.
   apply swap_in_map_well_formed; auto.
 Qed.
@@ -1339,7 +1307,7 @@ Qed.
 Lemma fix_cnots_respects_constraints : forall (l : standard_ucom_l dim),
   forall_gates only_cnots l ->
   respects_constraints_undirected CG.is_in_graph l ->
-  respects_constraints_directed CG.is_in_graph (fix_cnots l CG.is_in_graph).
+  respects_constraints_directed CG.is_in_graph U_CX (fix_cnots l CG.is_in_graph).
 Proof.
   intros l H1 H2.
   induction H2. 
@@ -1391,7 +1359,7 @@ Lemma simple_map_respects_constraints_directed : forall (l : standard_ucom_l dim
   uc_well_typed_l l ->
   layout_well_formed dim m ->
   simple_map l m CG.get_path CG.is_in_graph = (l', m') -> 
-  respects_constraints_directed CG.is_in_graph l'.
+  respects_constraints_directed CG.is_in_graph U_CX l'.
 Proof. 
   intros l m l' m' WT WF res.
   unfold simple_map in res.

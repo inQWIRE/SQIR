@@ -2,7 +2,7 @@ Require Import DensitySem.
 Require Import RzQGateSet.
 Require Import Coq.Reals.ROrderedType.
 
-Module RzQProps := NonUListRepresentationProps RzQGateSet.
+Module RzQProps := NUListProofs RzQGateSet.
 Export RzQProps.
 
 Local Open Scope com_scope.
@@ -267,7 +267,7 @@ Proof.
         all: repeat rewrite <- super_Mmult;
              apply f_equal2; try reflexivity;
              autorewrite with eval_db; gridify. 
-        all: rewrite pauli_x_rotation; Qsimpl; reflexivity.
+        all: Qsimpl; reflexivity.
       * (* p = Rz *)
         destruct (propagate_classical_through_ucom u n b) eqn:prop.
         inversion res; subst; simpl.
@@ -277,7 +277,7 @@ Proof.
              apply f_equal2; try reflexivity;
              autorewrite with eval_db; gridify. 
         all: do 2 (apply f_equal2; try reflexivity).
-        all: rewrite phase_shift_rotation; solve_matrix.
+        all: solve_matrix.
     + (* a = App2 u n n0 *)
       bdestruct (q =? n).
       2: { bdestruct (q =? n0).
@@ -291,7 +291,7 @@ Proof.
                 autorewrite with eval_db;
                 bdestruct (q + 1 <=? dim).
            2,4: Msimpl; reflexivity.
-           all: gridify; Qsimpl; reflexivity. }  
+           all: gridify; Qsimpl. reflexivity. }  
       destruct (propagate_classical_through_ucom u q b) eqn:prop.
       destruct b; inversion res; subst; simpl.
       * repeat rewrite super_Mmult.

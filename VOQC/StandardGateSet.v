@@ -267,7 +267,6 @@ Proof.
   intros. 
   unfold uc_equiv; simpl.
   autorewrite with eval_db.
-  bdestruct_all.
   gridify.
   apply f_equal2; try reflexivity.
   apply f_equal2; try reflexivity.
@@ -278,14 +277,12 @@ Proof.
   replace (PI / 2 / 2) with (PI / 4) by lra;
   autorewrite with trig_db RtoC_db;
   lca.
-  Msimpl. 
-  reflexivity.
 Qed.
 
-Lemma rx_to_rz : forall dim a q, (q < dim)%nat ->
+Lemma rx_to_rz : forall dim a q,
   @SQIR.Rx dim a q ≅ SQIR.H q ; SQIR.Rz a q ; SQIR.H q.
 Proof.
-  intros dim a q Hq. 
+  intros dim a q. 
   assert (H: @Rx dim a q ≅ U3 a (- (PI / 2)) (PI / 2) q).
   reflexivity.  
   rewrite H.
@@ -294,9 +291,13 @@ Proof.
   replace (- (PI / 2) + PI / 2) with 0 by lra.
   apply uc_equiv_cong.
   rewrite Rz_0_id.
+  bdestruct (q <? dim)%nat.
   rewrite ID_equiv_SKIP by assumption.
   rewrite SKIP_id_l, SKIP_id_r by assumption.
   reflexivity. 
+  unfold uc_equiv; simpl.
+  autorewrite with eval_db.
+  gridify.
 Qed.
 
 Lemma ry_to_rz : forall dim a q,
@@ -377,7 +378,7 @@ Qed.
 
 Definition standard_to_IBM_u {dim} (g : gate_app Std_Unitary dim) : IBM_ucom_l dim :=
   match g with
-  | App1 U_I m              => []
+  | App1 U_I m              => [IBMGateSet.Rz 0 m]
   | App1 U_X m              => [IBMGateSet.X m]
   | App1 U_Y m              => [IBMGateSet.Y m]
   | App1 U_Z m              => [IBMGateSet.Z m]
@@ -474,26 +475,21 @@ Proof.
 Qed.
 
 Lemma IBM_to_standard_inv : forall {dim} (l : standard_ucom_l dim),
-  uc_well_typed_l l ->
   StdList.uc_equiv_l (IBM_to_standard (standard_to_IBM l)) l.
 Proof.
-  intros dim l WT.
+  intros dim l.
   induction l.
   reflexivity.
   unfold standard_to_IBM, IBM_to_standard.
   rewrite change_gate_set_cons.
   rewrite change_gate_set_app.
-  rewrite IHl by (inversion WT; auto).
+  rewrite IHl.
   rewrite cons_to_app.
   StdList.apply_app_congruence.
-  destruct a; inversion WT; subst; dependent destruction s; 
+  destruct a; dependent destruction s; 
   unfold change_gate_set; simpl; try reflexivity.
   all: unfold StdList.uc_equiv_l; simpl;
-       repeat rewrite <- useq_assoc; try reflexivity.
-  (* U_I case is the only non-trivial one *)
-  rewrite ID_equiv_SKIP by assumption.
-  rewrite SKIP_id_r.
-  reflexivity. 
+       repeat rewrite <- useq_assoc; reflexivity.
 Qed.
 
 Lemma standard_to_IBM_WT : forall {dim} (l : standard_ucom_l dim),
@@ -535,7 +531,7 @@ Definition U3 {dim} a b c q : RzQ_ucom_l dim :=
 
 Definition standard_to_RzQ_u {dim} (g : gate_app Std_Unitary dim) : RzQ_ucom_l dim :=
   match g with
-  | App1 U_I m              => []
+  | App1 U_I m              => [Rzq Q_zero m]
   | App1 U_X m              => [RzQGateSet.X m]
   | App1 U_Y m              => RzQGateSet.Y m
   | App1 U_Z m              => [RzQGateSet.Z m]
@@ -632,16 +628,6 @@ Proof.
 Qed.
 
 Local Open Scope R.
-Lemma Rz_2PI : forall {dim} q, (q < dim)%nat ->
-  @SQIR.Rz dim (2 * PI) q ≡ SKIP.
-Proof.
-  intros dim q Hq.
-  unfold uc_equiv; autorewrite with eval_db; try lia.
-  gridify.
-  rewrite phase_2pi.
-  reflexivity.
-Qed.
-
 Lemma Q2R_1_4_PI : forall {dim} q, 
   @SQIR.Rz dim (Qreals.Q2R (1 / 4) * PI) q ≡ SQIR.Rz (PI / 4) q.
 Proof.
@@ -652,14 +638,17 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma Q2R_7_4_PI : forall {dim} q, (q < dim)%nat ->
+Lemma Q2R_7_4_PI : forall {dim} q, 
   @SQIR.Rz dim (Qreals.Q2R (7 / 4) * PI) q ≡ SQIR.Rz (- (PI / 4)) q.
 Proof.
-  intros dim q Hq.
+  intros dim q.
   unfold Qreals.Q2R; simpl.
+  unfold uc_equiv; autorewrite with eval_db; try lia.
+  gridify.
   replace (7 * / 4 * PI) with (2 * PI + - (PI / 4)) by lra.
-  rewrite <- Rz_Rz_add, Rz_2PI by assumption.
-  rewrite SKIP_id_l.
+  rewrite <- phase_mul.
+  rewrite phase_2pi.
+  Msimpl.
   reflexivity.
 Qed.
 
@@ -673,14 +662,17 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma Q2R_3_2_PI : forall {dim} q, (q < dim)%nat ->
+Lemma Q2R_3_2_PI : forall {dim} q,
   @SQIR.Rz dim (Qreals.Q2R (3 / 2) * PI) q ≡ SQIR.Rz (- (PI / 2)) q.
 Proof.
-  intros dim q Hq.
+  intros dim q.
   unfold Qreals.Q2R; simpl.
+  unfold uc_equiv; autorewrite with eval_db; try lia.
+  gridify.
   replace (3 * / 2 * PI) with (2 * PI + - (PI / 2)) by lra.
-  rewrite <- Rz_Rz_add, Rz_2PI by assumption.
-  rewrite SKIP_id_l.
+  rewrite <- phase_mul.
+  rewrite phase_2pi.
+  Msimpl.
   reflexivity.
 Qed.
 
@@ -688,53 +680,53 @@ Lemma Q2R_1_PI : Qreals.Q2R 1 * PI = PI.
 Proof. unfold Qreals.Q2R; simpl. lra. Qed.
 
 Lemma RzQ_to_standard_inv : forall {dim} (l : standard_ucom_l dim),
-  uc_well_typed_l l ->
   StdList.uc_cong_l (RzQ_to_standard (standard_to_RzQ l)) l.
 Proof.
-  intros dim l WT.
+  intros dim l.
   induction l.
   reflexivity.
   unfold standard_to_RzQ, RzQ_to_standard.
   rewrite change_gate_set_cons.
   rewrite change_gate_set_app.
-  rewrite IHl by (inversion WT; auto).
+  rewrite IHl.
   rewrite cons_to_app.
   StdList.apply_app_congruence_cong.
-  destruct a; inversion WT; subst; dependent destruction s; 
+  destruct a; dependent destruction s; 
   unfold change_gate_set; simpl; try reflexivity.
   all: unfold StdList.uc_cong_l; simpl; repeat rewrite <- uc_cong_assoc.
   all: unfold Q_one, Q_half, Q_three_halves, Q_quarter, Q_seven_quarters.
   all: try (apply uc_equiv_cong;
-            repeat rewrite Q2R_1_2_PI; repeat rewrite Q2R_3_2_PI by assumption;
-            repeat rewrite Q2R_1_4_PI; repeat rewrite Q2R_7_4_PI by assumption;
+            repeat rewrite Q2R_1_2_PI; repeat rewrite Q2R_3_2_PI;
+            repeat rewrite Q2R_1_4_PI; repeat rewrite Q2R_7_4_PI;
             try rewrite Q2R_1_PI; repeat rewrite Q2R_R2Q_PI; reflexivity).
   (* U_I *)
+  unfold Q_zero.
+  rewrite RMicromega.Q2R_0, Rmult_0_l.
   apply uc_equiv_cong.
-  rewrite ID_equiv_SKIP by assumption.
-  rewrite SKIP_id_r.
+  rewrite Rz_0_id.
   reflexivity. 
   (* U_Y *)
   apply uc_equiv_cong.
-  inversion WT; subst.
-  rewrite Q2R_1_2_PI, Q2R_3_2_PI by assumption.
+  rewrite Q2R_1_2_PI, Q2R_3_2_PI.
+  rewrite 2 SKIP_id_r.
   unfold uc_equiv; simpl.
   autorewrite with eval_db; try lia.
   gridify.
   do 2 (apply f_equal2; try reflexivity).
   solve_matrix; autorewrite with Cexp_db; lca.
   (* U_Rx *)
-  rewrite rx_to_rz by assumption. 
+  rewrite rx_to_rz. 
   apply uc_equiv_cong.
   rewrite Q2R_R2Q_PI.
   reflexivity.
   (* U_Ry *)
   rewrite ry_to_rz.
   apply uc_equiv_cong.
-  rewrite Q2R_1_2_PI, Q2R_3_2_PI, Q2R_R2Q_PI by assumption.
+  rewrite Q2R_1_2_PI, Q2R_3_2_PI, Q2R_R2Q_PI.
   reflexivity.
   (* U_U2 *)
   apply uc_equiv_cong.
-  rewrite 2 Q2R_R2Q_PI by assumption.
+  rewrite 2 Q2R_R2Q_PI.
   rewrite u2_to_rz.
   reflexivity.
   (* U_U3 *)
@@ -824,6 +816,14 @@ Definition only_cnots {dim} (g : gate_app Std_Unitary dim) :=
   | _ => True
   end.
 
+(* Tactic for eliminating impossible cases, like a U_CZ gate in a program
+   that satisfies forall_gates only_cnots *)
+Ltac impossible_gate :=
+  match goal with
+  | H : forall_gates ?p (?g :: _) |- _ => 
+      assert (p g) by (apply H; left; reflexivity); contradiction
+  end.
+
 Lemma decompose_to_cnot_gates : forall {dim} (l : standard_ucom_l dim),
   forall_gates only_cnots (decompose_to_cnot l).
 Proof.
@@ -899,9 +899,8 @@ Proof.
 Qed.
 
 Lemma convert_to_ibm_sound : forall {dim} (l : standard_ucom_l dim),
-  uc_well_typed_l l ->
   StdList.uc_equiv_l (convert_to_ibm l) l.
-Proof. intros. apply IBM_to_standard_inv. assumption. Qed.
+Proof. intros. apply IBM_to_standard_inv. Qed.
 
 Definition convert_to_rzq {dim} (l : standard_ucom_l dim) : standard_ucom_l dim := 
   RzQ_to_standard (standard_to_RzQ l).
@@ -933,9 +932,8 @@ Proof.
 Qed.
 
 Lemma convert_to_rzq_sound : forall {dim} (l : standard_ucom_l dim),
-  uc_well_typed_l l ->
   StdList.uc_cong_l (convert_to_rzq l) l.
-Proof. intros. apply RzQ_to_standard_inv. assumption. Qed.
+Proof. intros. apply RzQ_to_standard_inv. Qed.
 
 (* Replace Rzq gates with I, Z, S, Sdg, T, Tdg, or Rz gates. *)
 Definition replace_rzq_u {dim} (g : gate_app Std_Unitary dim) : standard_ucom_l dim :=
