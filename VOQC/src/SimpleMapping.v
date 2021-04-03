@@ -105,7 +105,7 @@ End MappableRzQ.
 
 (** Proofs **)
 
-Local Close Scope C_scope.
+Local Close Scope C_scope. 
 Local Close Scope R_scope.
 Local Close Scope Q_scope.
 
@@ -131,6 +131,7 @@ Inductive respects_constraints_directed {U dim} : (nat -> nat -> bool) -> gate_l
       respects_constraints_directed is_in_graph t ->
       respects_constraints_directed is_in_graph (App2 u n1 n2 :: t).
 
+  
 Lemma respects_constraints_directed_app : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph,
   respects_constraints_directed is_in_graph l1 ->
   respects_constraints_directed is_in_graph l2 ->
@@ -143,7 +144,53 @@ Proof.
   constructor; auto.
   constructor; auto.
 Qed.
+Lemma respects_constraints_directed_app_split : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph,
+ 
+  respects_constraints_directed is_in_graph (l1 ++ l2) ->
+  respects_constraints_directed is_in_graph l2 /\ respects_constraints_directed is_in_graph l1.
+Proof.
+  intros U dim l1 l2 is_in_graph H.
+  split.
+  - induction l1.
+    simpl in H.
+    assumption.
+    rewrite <- app_comm_cons in H.
+    destruct a; remember (l1 ++ l2) as l; inversion H; subst;
+    try (apply IHl1 in H2); try assumption.
+    + apply IHl1 in H6. assumption.
+  -induction l1.
+   + apply res_dir_nil.
+   + rewrite <- app_comm_cons in H;   
+   destruct a; remember (l1 ++ l2) as l; inversion H; subst.
+   * apply IHl1 in H2.
+     apply res_dir_app1 with (u0 := u) (n0 := n)in H2.
+     assumption.
+   * apply IHl1 in H6.
+     apply res_dir_app2 with (u0 := u) (n1 := n) (n2 := n0)in H6.
+     assumption.
+     assumption.
 
+Qed.
+
+
+Lemma rev_respects_constraints: forall {U dim} (l : gate_list U dim) (is_in_graph : nat -> nat -> bool),
+    respects_constraints_directed is_in_graph l ->
+    respects_constraints_directed is_in_graph (rev l).
+Proof.
+  intros.
+  induction l.
+  - simpl. assumption.
+  - simpl.
+    apply respects_constraints_directed_app.
+    apply IHl.
+    inversion H; subst.
+    apply H2.
+    apply H4.
+    destruct a; try constructor; try constructor.
+    inversion H; subst.
+    assumption.
+    inversion H; subst.
+Qed. 
 Module SimpleMappingProofs (G : GateSet) (MG : MappableGateSet G) (CG : ConnectivityGraph).
 
 Definition dim := CG.dim.

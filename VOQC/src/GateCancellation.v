@@ -7,6 +7,7 @@ Local Close Scope C_scope.
 Local Close Scope R_scope.
 Local Close Scope Q_scope.
 
+
 (**********************************************************************)
 (** Optimization: simple cancellation and combination w/ commutation **)
 (**********************************************************************)
@@ -28,7 +29,6 @@ Local Close Scope Q_scope.
 *)
 
 (** Propagation rules for Rz **)
-
 Definition Rz_commute_rule1 {dim} q (l : RzQ_ucom_l dim) :=
   match (next_single_qubit_gate l q) with
   | Some (l1, URzQ_H, l2) => 
@@ -63,6 +63,7 @@ Definition Rz_commute_rule2 {dim} q (l : RzQ_ucom_l dim) :=
       else None
   | _ => None
   end.
+
 
 Definition Rz_commute_rule3 {dim} q (l : RzQ_ucom_l dim) :=
   match (next_two_qubit_gate l q) with
@@ -185,7 +186,7 @@ Definition CNOT_cancel_rule {dim} q1 q2 (l : RzQ_ucom_l dim) :=
   end.
 
 (** Gate Cancellation Routines **)
-
+Locate propagate.
 Definition propagate_Rz {dim} a (l : RzQ_ucom_l dim) q :=
   propagate l (Rz_commute_rules q) [Rz_cancel_rule q a] (length l).
 
@@ -243,7 +244,6 @@ Definition cancel_two_qubit_gates {dim} (l : RzQ_ucom_l dim) :=
   cancel_two_qubit_gates' l (length l) [].
 
 (** Proofs **)
-
 Lemma propagate_Rz_sound : forall {dim} a (l : RzQ_ucom_l dim) q l',
   q < dim ->
   propagate_Rz a l q = Some l' ->

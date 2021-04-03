@@ -36,6 +36,7 @@ Definition finalize {dim} qs : RzQ_ucom_l dim :=
 (* l   : input program
    qs  : qubits where an X gate is currently being propagated
    acc : accumulator for tail recursion *)
+
 Fixpoint not_propagation' {dim} (l acc : RzQ_ucom_l dim) qs :=
   match l with
   | [] => rev_append acc (finalize qs)
@@ -139,7 +140,6 @@ Proof.
   subst.
   contradiction.
 Qed.
-
 Lemma not_propagation'_preserves_semantics : forall {dim} (l acc : RzQ_ucom_l dim) qs,
   uc_well_typed_l l ->
   not_propagation' l acc qs ≅l≅ 
@@ -312,7 +312,6 @@ Proof.
         apply finalize_dnr; auto.
         apply finalize_dnr; auto.
 Qed.
-
 Lemma not_propagation_sound : forall {dim} (l : RzQ_ucom_l dim), 
   uc_well_typed_l l -> not_propagation l ≅l≅ l.
 Proof.

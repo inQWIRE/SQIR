@@ -76,7 +76,7 @@ Fixpoint uc_well_typed_l_b {U} dim (l : gate_list U dim) : bool :=
    not a single-qubit gate. Otherwise, it returns Some (l1, g, l2) where g is 
    the next gate, l1 is the portion of the program before the gate, and l2 is
    the portion of the program after the gate.
-*)
+ *)
 Fixpoint next_single_qubit_gate' {U dim} (l : gate_list U dim) (q : nat) acc
              : option (gate_list U dim * U 1 * gate_list U dim) :=
   match l with
@@ -91,6 +91,10 @@ Fixpoint next_single_qubit_gate' {U dim} (l : gate_list U dim) (q : nat) acc
                          then None 
                          else next_single_qubit_gate' t q (App3 u m n p :: acc)
   end.
+
+
+
+
 Definition next_single_qubit_gate {U dim} (l : gate_list U dim) q :=
   next_single_qubit_gate' l q [].
 

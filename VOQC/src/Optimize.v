@@ -368,3 +368,52 @@ Proof.
   apply only_map_respects_constraints_directed in H.
   assumption.
 Qed.
+Require Import NotPropagationRespectsConstraints.
+Require Import GateCancellationRespectsConstraints.
+Require Import RotationMergingRespectsConstraints. 
+(* Same as optimize but without hadamard reduction *)
+Definition respectful_optimize {dim} (l : RzQ_ucom_l dim) : RzQ_ucom_l dim :=
+  cancel_single_qubit_gates 
+    (cancel_two_qubit_gates 
+      (merge_rotations
+        (cancel_single_qubit_gates 
+            (cancel_two_qubit_gates 
+              (cancel_single_qubit_gates 
+                (cancel_two_qubit_gates  
+                    (not_propagation l))))))). 
+
+(*TODO: Function Composition Lemma *)
+Lemma respectful_optimize_respects_constraints_directed :
+  forall {dim} (l: RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool) ,
+
+    respects_constraints_directed is_in_graph l ->
+    respects_constraints_directed is_in_graph (respectful_optimize l).
+Proof.
+  intros.
+  unfold respectful_optimize.
+  assert (respects_constraints_directed is_in_graph (not_propagation l)).
+  apply not_propagation_respects_constraints_directed.
+  assumption.
+  assert (respects_constraints_directed is_in_graph (cancel_two_qubit_gates (not_propagation l))).
+  eapply cancel_two_qubit_gates_respects_constraints.
+  apply H0; assumption. reflexivity.
+  assert (respects_constraints_directed is_in_graph (cancel_single_qubit_gates (cancel_two_qubit_gates (not_propagation l)))).
+  eapply cancel_single_qubit_gates_respects_constraints.
+  apply H1; assumption. reflexivity.
+  assert (respects_constraints_directed is_in_graph (cancel_two_qubit_gates (cancel_single_qubit_gates (cancel_two_qubit_gates (not_propagation l))))).
+  eapply cancel_two_qubit_gates_respects_constraints.
+  apply H2; assumption. reflexivity.
+  assert (respects_constraints_directed is_in_graph (cancel_single_qubit_gates (cancel_two_qubit_gates (cancel_single_qubit_gates (cancel_two_qubit_gates (not_propagation l)))))).
+  eapply cancel_single_qubit_gates_respects_constraints.
+  apply H3; assumption. reflexivity.
+  assert (respects_constraints_directed is_in_graph (merge_rotations (cancel_single_qubit_gates (cancel_two_qubit_gates (cancel_single_qubit_gates (cancel_two_qubit_gates (not_propagation l))))))).
+  eapply merge_rotations_respects_constraints.
+  apply H4; assumption. reflexivity.
+    assert (respects_constraints_directed is_in_graph (cancel_two_qubit_gates (merge_rotations (cancel_single_qubit_gates (cancel_two_qubit_gates (cancel_single_qubit_gates (cancel_two_qubit_gates (not_propagation l)))))))).
+  eapply cancel_two_qubit_gates_respects_constraints.
+  apply H5; assumption. reflexivity.
+  
+  eapply cancel_single_qubit_gates_respects_constraints.
+  apply H6; assumption. reflexivity.
+Qed. 
+  
