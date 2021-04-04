@@ -158,6 +158,61 @@ Module Env := FMapList.Make Nat_as_OT.
 
 Definition env := Env.t type.
 
+(* Adds an equality in the context *)
+Ltac ctx e1 e2 :=
+  let H := fresh "HCtx" in
+  assert (e1 = e2) as H by reflexivity.
+
+(* Standard inversion/subst/clear abbrev. *)
+Tactic Notation "inv" hyp(H) := inversion H; subst; clear H.
+Tactic Notation "inv" hyp(H) "as" simple_intropattern(p) :=
+  inversion H as p; subst; clear H.
+
+Lemma posi_neq_f : forall (p p' : posi), p <> p' -> fst p <> fst p' \/ snd p <> snd p'.
+Proof.
+ intros. destruct p. destruct p'.
+ simpl in *.
+ bdestruct (v =? v0).
+ subst. right.
+ intros R. subst. contradiction.
+ bdestruct (n =? n0).
+ subst.
+ left.
+ intros R. subst. contradiction.
+ left. lia.
+Qed.
+
+Lemma posi_neq_b : forall (p p' : posi), fst p <> fst p' \/ snd p <> snd p' -> p <> p'.
+Proof.
+ intros. destruct p. destruct p'.
+ simpl in *.
+ intros R. inv R.
+ destruct H0.
+ lia.
+ lia.
+Qed.
+
+Inductive exp_fresh : posi -> scom -> Prop :=
+      | skip_fresh : forall p, exp_fresh p SKIP
+      | x_fresh : forall p p' , p <> p' -> exp_fresh p (X p')
+      | cu_fresh : forall p p' e, p <> p' -> exp_fresh p e -> exp_fresh p (CU p' e)
+      | rz_fresh : forall p p' q, p <> p' -> exp_fresh p (RZ q p')
+      | rrz_fresh : forall p p' q, p <> p' -> exp_fresh p (RRZ q p')
+      | seq_fresh : forall p e1 e2, exp_fresh p e1 -> exp_fresh p e2 -> exp_fresh p (Seq e1 e2)
+      | lshift_fresh : forall p x, fst p <> x -> exp_fresh p (Lshift x)
+      | rshift_fresh : forall p x, fst p <> x -> exp_fresh p (Rshift x).
+
+Inductive exp_fwf : scom -> Prop :=
+      | skip_fwf : exp_fwf SKIP
+      | x_fwf : forall p,  exp_fwf (X p)
+      | cu_fwf : forall p e, exp_fresh p e -> exp_fwf e -> exp_fwf (CU p e)
+      | rz_fwf : forall p q, exp_fwf (RZ q p)
+      | rrz_fwf : forall p q, exp_fwf (RRZ q p)
+      | seq_fwf : forall e1 e2, exp_fwf e1 -> exp_fwf e2 -> exp_fwf (Seq e1 e2)
+      | lshift_fwf : forall x, exp_fwf (Lshift x)
+      | rshift_fwf : forall x, exp_fwf (Rshift x).
+
+
 Inductive exp_WF : (var -> nat) -> scom -> Prop :=
       | skip_wf : forall env, exp_WF env SKIP
       | x_wf : forall env a b n, env a = n -> b < n -> exp_WF env (X (a,b))
@@ -180,6 +235,46 @@ Inductive well_typed_exp : env -> scom -> Prop :=
     | lshift_refl : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Lshift x)
     | rshift_refl : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rshift x)
     | e_seq : forall env p1 p2, well_typed_exp env p1 -> well_typed_exp env p2 -> well_typed_exp env (p1 ; p2).
+
+Inductive right_mode_val : type -> val -> Prop :=
+    | right_nor: forall b r, right_mode_val Nor (nval b r)
+    | right_had: forall b1 b2 r, right_mode_val Had (hval b1 b2 r)
+    | right_phi: forall r, right_mode_val Phi (qval r).
+
+Definition right_mode_vals (f:posi -> val) (x:var) (t:type) : Prop :=
+    forall i, right_mode_val t (f (x,i)).
+
+Inductive right_mode : env -> (posi -> val) -> scom -> Prop :=
+    | skip_right : forall env f, right_mode env f SKIP
+    | x_right : forall env f a b t, Env.MapsTo a t env -> right_mode_val t (f (a,b)) -> right_mode env f (X (a,b))
+    | cu_right : forall env f a b t e, Env.MapsTo a t env -> right_mode_val t (f (a,b))
+                      -> right_mode env f e -> right_mode env f (CU (a,b) e)
+    | rz_right : forall env f a b t q,  Env.MapsTo a t env -> right_mode_val t (f (a,b)) -> right_mode env f (RZ q (a,b))
+    | rrz_right : forall env f a b t q,  Env.MapsTo a t env -> right_mode_val t (f (a,b)) -> right_mode env f (RRZ q (a,b))
+    | lshift_right : forall env f a t, Env.MapsTo a t env -> right_mode_vals f a t -> right_mode env f (Lshift a) 
+    | rshift_right : forall env f a t, Env.MapsTo a t env -> right_mode_vals f a t -> right_mode env f (Rshift a)
+    | seq_right : forall env f e1 e2, right_mode env f e1 -> right_mode env f e2 -> right_mode env f (e1 ; e2).
+
+Lemma mapsto_always_same : forall k v1 v2 s,
+           @Env.MapsTo (type) k v1 s ->
+            @Env.MapsTo (type) k v2 s -> 
+                       v1 = v2.
+Proof.
+     intros.
+     apply Env.find_1 in H0.
+     apply Env.find_1 in H1.
+     rewrite H0 in H1.
+     injection H1.
+     easy.
+Qed.
+
+Lemma right_mode_cu : forall env f x i e, well_typed_exp env (CU (x,i) e)
+                          -> right_mode env f (CU (x,i) e) -> (exists b r, (f (x,i)) = nval b r).
+Proof.
+  intros. inv H0. inv H1. apply (mapsto_always_same x Nor t env0) in H8. subst.
+  inv H9. exists b. exists r. easy.
+  assumption.
+Qed.
 
 Inductive well_typed (f: var -> nat) : env -> face -> env -> Prop :=
    | t_exp : forall env e, well_typed_exp env e -> exp_WF f e -> well_typed f env (Exp e) env
@@ -335,15 +430,7 @@ Proof.
   simpl. easy.
 Qed.
 
-(* Adds an equality in the context *)
-Ltac ctx e1 e2 :=
-  let H := fresh "HCtx" in
-  assert (e1 = e2) as H by reflexivity.
 
-(* Standard inversion/subst/clear abbrev. *)
-Tactic Notation "inv" hyp(H) := inversion H; subst; clear H.
-Tactic Notation "inv" hyp(H) "as" simple_intropattern(p) :=
-  inversion H as p; subst; clear H.
 
 
 (* Definition of the adder and the modmult in the language. *)
@@ -493,6 +580,327 @@ Proof.
  intros. unfold get_cua. reflexivity.
 Qed.
 
+(* Proofs of types and syntax. *)
+Ltac nor_sym := try (apply neq_sym; assumption) ; try assumption.
+
+(*
+Fixpoint lshift' (n:nat) (f:posi -> val) (x:var) := 
+   match n with 0 => f
+             | S m => lshift' m (f[(x,n) |-> f (x,m)]) x
+   end.
+Definition lshift (f:posi -> val) (x:var) (n:nat) := let v := f (x,n) in (lshift' n f x)[(x,0) |-> v].
+
+Fixpoint rshift' (n:nat) (f:posi -> val) (x:var) := 
+   match n with 0 => f
+             | S m => ((rshift' m f x)[(x,m) |-> f (x,n)])
+   end.
+Definition rshift (f:posi -> val) (x:var) (n:nat) := 
+              let v := f (x,0) in (rshift' n f x)[(x,n) |-> v].
+*)
+
+Fixpoint sinv p :=
+  match p with
+  | SKIP => SKIP
+  | X n => X n
+  | CU n p => CU n (sinv p)
+  | Seq p1 p2 => sinv p2; sinv p1
+  | Lshift x => Rshift x
+  | Rshift x => Lshift x
+  | RZ q p1 => RRZ q p1
+  | RRZ q p1 => RZ q p1
+  end.
+
+Lemma scinv_involutive :
+  forall p,
+    sinv (sinv p) = p.
+Proof.
+  induction p; simpl; try easy.
+  - rewrite IHp. easy.
+  - rewrite IHp1, IHp2. easy.
+Qed.
+
+
+Fixpoint finv p :=
+   match p with 
+    | Exp s => Exp (sinv s)
+    | QFT x => RQFT x
+    | RQFT x => QFT x
+    | Reset x => Reset x
+    | Rev x => Rev x
+    | H x => H x
+    | FSeq p1 p2 => FSeq (finv p2) (finv p1)
+   end.
+
+Lemma iner_neq : forall (x y:var) (a b:nat), x <> y -> (x,a) <> (y,b).
+Proof.
+  intros. intros R.
+  inv R. contradiction.
+Qed.
+
+Lemma iner_neq_1 : forall (x:var) (c:posi) a, x <> fst c -> (x,a) <> c.
+Proof.
+  intros. intros R.
+  destruct c.
+  inv R. contradiction.
+Qed.
+
+Lemma lshift'_irrelevant :
+   forall n f x p, fst p <> x -> lshift' n f x p = f p.
+Proof.
+  intros.  generalize dependent f. 
+  induction n.
+  intros. simpl. easy.
+  intros. simpl.
+  rewrite IHn.
+  rewrite eupdate_index_neq.
+  easy.
+  apply iner_neq_1. lia.
+Qed.
+
+
+Lemma rshift'_irrelevant :
+   forall n f x p, fst p <> x -> rshift' n f x p = f p.
+Proof.
+  intros.
+  induction n.
+  intros. simpl. easy.
+  intros. simpl.
+  rewrite eupdate_index_neq.
+  rewrite IHn. easy.
+  apply iner_neq_1. lia.
+Qed.
+
+Lemma efresh_exp_sem_irrelevant :
+  forall env p e f f',
+    exp_fresh p e ->
+    exp_sem env f e f' ->
+    f' p = f p.
+Proof.
+  intros. induction H1.
+  easy. inv H0.
+  rewrite eupdate_index_neq. easy. nor_sym. easy.
+  apply IHexp_sem.
+  inv H0.
+  assumption.
+  inv H0.
+  rewrite eupdate_index_neq. easy. nor_sym.
+  inv H0.
+  rewrite eupdate_index_neq. easy. nor_sym.
+  inv H0.
+  unfold lshift.
+  rewrite eupdate_index_neq. 
+  rewrite lshift'_irrelevant. easy. lia.
+  apply iner_neq_1. lia.
+  inv H0.
+  unfold rshift.
+  rewrite eupdate_index_neq.
+  rewrite rshift'_irrelevant. easy. lia.
+  apply iner_neq_1.
+  lia.
+  rewrite IHexp_sem2.
+  rewrite IHexp_sem1.
+  easy.
+  inv H0. assumption.
+  inv H0. assumption.
+Qed.
+
+Lemma fresh_sinv :
+  forall p e,
+    exp_fresh p e ->
+    exp_fresh p (sinv e).
+Proof.
+  intros. induction H0; simpl; try constructor; try assumption.
+Qed.
+
+Lemma fwf_sinv :
+  forall p,
+    exp_fwf p ->
+    exp_fwf (sinv p).
+Proof.
+  intros. induction H0; simpl; try constructor; try assumption.
+  apply fresh_sinv. assumption.
+Qed.
+
+Lemma typed_sinv :
+  forall tenv p,
+    well_typed_exp tenv p ->
+    well_typed_exp tenv (sinv p).
+Proof.
+  intros. induction p; simpl; try assumption.
+  inv H0. constructor. assumption.
+  apply IHp. assumption.
+  inv H0. constructor. assumption.
+  apply rrz_had. assumption.
+  apply rrz_qft. assumption.
+  inv H0. constructor. assumption.
+  apply rz_had. assumption.
+  apply rz_qft. assumption.
+  inv H0. constructor.  assumption.
+  inv H0. constructor. assumption.
+  inv H0.
+  constructor.
+  apply IHp2. assumption.
+  apply IHp1. assumption.
+Qed.
+
+Lemma right_mode_sinv :
+  forall tenv f p,
+    right_mode tenv f p ->
+    right_mode tenv f (sinv p).
+Proof.
+  intros. induction p; simpl; try assumption.
+  inv H0. 
+  eapply cu_right. apply H3.
+  assumption. apply IHp. assumption.
+  inv H0.
+  econstructor.
+  apply H5. assumption.
+  inv H0.
+  econstructor.
+  apply H5. assumption.
+  inv H0.
+  econstructor.
+  apply H2. assumption.
+  inv H0.
+  econstructor.
+  apply H2. assumption.
+  inv H0.
+  constructor.
+  apply IHp2. assumption.
+  apply IHp1. assumption.
+Qed.
+
+Lemma exchange_twice_same :
+   forall (f: posi -> val) p, exchange (exchange (f p)) = f p.
+Proof.
+  intros. unfold exchange.
+  destruct (f p) eqn:eq1.
+  assert ((¬ (¬ b)) = b) by btauto.
+  rewrite H0. easy.
+  easy.
+  easy.
+Qed.   
+
+Lemma get_cu_good : forall tenv f p e, well_typed_exp tenv (CU p e) 
+            -> right_mode tenv f (CU p e) -> (exists b, get_cu (f p) = Some b).
+Proof.
+  intros. 
+  unfold get_cu.
+  inv H0. inv H1. 
+  apply (mapsto_always_same a Nor t tenv) in H8. subst.
+  inv H9.
+  exists b0. easy. easy.
+Qed.
+
+Lemma two_cu_same : forall env f f' p e1 e2, get_cu (f p) = Some true ->
+                     exp_fwf (CU p e1) -> exp_sem env f (e1 ; e2) f' 
+                    -> exp_sem env f (CU p e1; CU p e2) f'.
+Proof.
+  intros.
+  inv H2.
+  econstructor.
+  apply cu_true_sem. assumption.
+  apply H6.
+  apply cu_true_sem.
+  rewrite (efresh_exp_sem_irrelevant env0 p e1 f st').
+  assumption.
+  inv H1. assumption. assumption.
+  assumption. 
+Qed.
+
+Lemma sinv_correct :
+  forall tenv env e f,
+    exp_fwf e -> well_typed_exp tenv e -> right_mode tenv f e ->
+    exp_sem env f (sinv e; e) f.
+Proof.
+  induction e; intros; simpl.
+  - econstructor. constructor. constructor.
+  - econstructor. constructor.
+    remember (f [p |-> exchange (f p)]) as f'.
+    assert (f = f'[p |-> exchange (f' p)]).
+    subst.
+    rewrite eupdate_index_eq.
+    rewrite eupdate_twice_eq.
+    rewrite exchange_twice_same.
+    rewrite eupdate_same. easy. easy.
+    rewrite H3.
+    apply x_sem.
+  - specialize (typed_sinv tenv (CU p e) H1) as eq1. simpl in eq1.
+    specialize (right_mode_sinv tenv f (CU p e) H2) as eq2. simpl in eq2.
+    specialize (get_cu_good tenv f p (sinv e) eq1 eq2) as eq3.
+    destruct eq3. destruct x.
+    apply two_cu_same. assumption.
+    inv H0.
+    apply cu_fwf.
+    apply fresh_sinv. assumption.
+    apply fwf_sinv. assumption.
+    apply IHe. inv H0. assumption.
+    inv H1.
+    assumption.
+    inv H2. assumption.
+    econstructor.
+    apply cu_false_sem. assumption.
+    apply cu_false_sem. assumption.
+  - 
+Admitted.
+
+Lemma sinv_involutive :
+  forall p,
+    sinv (sinv p) = p.
+Proof.
+  induction p; simpl; try easy.
+  - rewrite IHp. easy.
+  - rewrite IHp1, IHp2. easy.
+Qed.
+
+Lemma sinv_correct_rev :
+  forall tenv env e f,
+    exp_fwf e -> well_typed_exp tenv e -> right_mode tenv f e ->
+    exp_sem env f (e; sinv e) f.
+Proof.
+  intros. apply fwf_sinv in H0.
+  assert ((e; sinv e) = sinv (sinv e) ; sinv e).
+  rewrite sinv_involutive. easy.
+  rewrite H3.
+  apply (sinv_correct tenv). assumption.
+  apply typed_sinv. assumption.
+  apply right_mode_sinv. assumption.
+Qed.
+
+Lemma exp_sem_same_out:
+   forall env0 e f g1 g2, exp_sem env0 f e g1 -> exp_sem env0 f e g2 -> g1 = g2.
+Proof.
+ intros env0 e.
+ induction e;simpl.
+ intros. inv H0. inv H1. easy.
+ intros. inv H0. inv H1. easy.
+ intros. inv H0. inv H1. easy.
+ intros.
+ rewrite H6 in H4. inv H4.
+ inv H1. rewrite H5 in H6. inv H6.
+ apply (IHe f); assumption.
+ intros. inv H0. inv H1. easy.
+ intros. inv H0. inv H1. easy.
+ intros. inv H0. inv H1. easy.
+ intros. inv H0. inv H1. easy.
+ intros. inv H0. inv H1.
+ specialize (IHe1 f st' st'0 H5 H4).
+ subst.
+ apply (IHe2 st'0); assumption.
+Qed.
+
+Lemma sinv_reverse :
+  forall (tenv:env) (env0: var -> nat) e f g,
+    exp_fwf e -> well_typed_exp tenv e -> right_mode tenv f e ->
+    exp_sem env0 f e g ->
+    exp_sem env0 g (sinv e) f.
+Proof.
+  intros. specialize (sinv_correct_rev tenv env0 e f H0 H1 H2) as G.
+  inv G. apply (exp_sem_same_out env0 e f g st') in H7.
+  subst. assumption. assumption.
+Qed.
+
+(* Proofs of semantics. *)
 Lemma cnot_sem : forall env f x y, nor_mode f x -> nor_mode f y -> 
               exp_sem env f (CNOT x y) (f[y |-> put_cu (f y) (get_cua (f x) ⊕ get_cua (f y))]).
 Proof.
@@ -562,8 +970,6 @@ Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
 
 Definition MAJ a b c := CNOT c b ; CNOT c a ; CCX a b c.
 Definition UMA a b c := CCX a b c ; CNOT c a ; CNOT a b.
-
-Ltac nor_sym := try (apply neq_sym; assumption) ; try assumption.
 
 Lemma MAJ_correct :
   forall a b c env f,
@@ -1162,19 +1568,6 @@ Proof.
   rewrite put_cus_neq. rewrite eupdate_index_neq.
   rewrite put_cus_neq. easy. assumption.
   intros R. inv R. lia. lia.
-Qed.
-
-Lemma iner_neq : forall (x y:var) (a b:nat), x <> y -> (x,a) <> (y,b).
-Proof.
-  intros. intros R.
-  inv R. contradiction.
-Qed.
-
-Lemma iner_neq_1 : forall (x:var) (c:posi) a, x <> fst c -> (x,a) <> c.
-Proof.
-  intros. intros R.
-  destruct c.
-  inv R. contradiction.
 Qed.
 
 Lemma msma_put : forall n i st x b f g, 
@@ -2175,46 +2568,7 @@ Qed.
     To compare if x < y, we just need to do x - y, and see the high bit of the binary
     format of x - y. If the high_bit is zero, that means that x >= y;
     otherwise x < y. *)
-Fixpoint sinv p :=
-  match p with
-  | SKIP => SKIP
-  | X n => X n
-  | CU n p => CU n (sinv p)
-  | Seq p1 p2 => sinv p2; sinv p1
-  | Lshift x => Rshift x
-  | Rshift x => Lshift x
-  | RZ q p1 => RRZ q p1
-  | RRZ q p1 => RZ q p1
-  end.
 
-Lemma scinv_involutive :
-  forall p,
-    sinv (sinv p) = p.
-Proof.
-  induction p; simpl; try easy.
-  - rewrite IHp. easy.
-  - rewrite IHp1, IHp2. easy.
-Qed.
-
-Lemma scinv_correct :
-  forall env p f,
-    exp_sem env f (sinv p; p) f.
-Proof.
-  induction p; intros; simpl.
-  - econstructor. constructor. constructor.
-Admitted.
-
-
-Fixpoint finv p :=
-   match p with 
-    | Exp s => Exp (sinv s)
-    | QFT x => RQFT x
-    | RQFT x => QFT x
-    | Reset x => Reset x
-    | Rev x => Rev x
-    | H x => H x
-    | FSeq p1 p2 => FSeq (finv p2) (finv p1)
-   end.
 
 Definition highb01 n x y c1 c2: scom := MAJseq n x y c1; CNOT (x,n) c2; sinv (MAJseq n x y c1).
 
