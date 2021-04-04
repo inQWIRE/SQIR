@@ -90,7 +90,7 @@ SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examp
 SQIR/src/RCIRplus.vo: SQIR/src//RCIRplus.v $(examples)/QPE.vo
 	coqc $(COQ_OPTS) SQIR/src//RCIRplus.v
 
-SQIR/examples/ModMult.vo: $(examples)/ModMult.v
+SQIR/examples/ModMult.vo: $(examples)/ModMult.v $(SQIR)/UnitaryOps.vo
 	coqc $(COQ_OPTS) $(examples)/ModMult.v
 
 SQIR/examples/Shor.vo: $(examples)/Shor.v $(examples)/QPEGeneral.vo $(examples)/ModMult.vo $(examples)/ModMultA.vo $(examples)/ShorAux.vo

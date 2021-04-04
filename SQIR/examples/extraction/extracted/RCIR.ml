@@ -1,7 +1,3 @@
-open SQIR
-open UnitaryOps
-
-let __ = let rec f _ = Obj.repr f in Obj.repr f
 
 type bccom =
 | Coq_bcskip
@@ -26,17 +22,6 @@ let bcswap x y =
 let bcccnot x y z =
   Coq_bccont (x, (bccnot y z))
 
-(** val bc2ucom : int -> bccom -> base_ucom **)
-
-let rec bc2ucom dim = function
-| Coq_bcskip -> coq_SKIP __
-| Coq_bcx n -> coq_X n
-| Coq_bccont (n, p0) ->
-  (match p0 with
-   | Coq_bcx m -> coq_CNOT n m
-   | _ -> control dim n (bc2ucom dim p0))
-| Coq_bcseq (p1, p2) -> Coq_useq ((bc2ucom dim p1), (bc2ucom dim p2))
-
 (** val bcelim : bccom -> bccom **)
 
 let rec bcelim = function
@@ -57,14 +42,4 @@ let rec bcelim = function
 let rec bcinv = function
 | Coq_bccont (n, p0) -> Coq_bccont (n, (bcinv p0))
 | Coq_bcseq (p1, p2) -> Coq_bcseq ((bcinv p2), (bcinv p1))
-| x -> x
-
-(** val csplit : bccom -> bccom **)
-
-let csplit = function
-| Coq_bccont (n, p0) ->
-  (match p0 with
-   | Coq_bcseq (p1, p2) ->
-     Coq_bcseq ((Coq_bccont (n, p1)), (Coq_bccont (n, p2)))
-   | _ -> Coq_bccont (n, p0))
 | x -> x

@@ -657,11 +657,9 @@ Definition csplit (p : bccom) :=
 
 Lemma uc_eval_CNOT_control :
   forall n m dim,
-    n < dim -> m < dim -> n <> m ->
     @uc_eval dim (CNOT n m) = @uc_eval dim (control n (bc2ucom (bcx m))).
 Proof.
   intros. rewrite denote_cnot. simpl. rewrite control_ucom_X. easy.
-  apply uc_well_typed_CNOT; easy.
 Qed.
 
 Lemma bc2ucom_csplit :
@@ -675,7 +673,7 @@ Proof.
   inversion H3; inversion H4; subst.
   destruct p1 eqn:Ep1; destruct p2 eqn:Ep2; try easy;
     try inversion H6; try inversion H7; try inversion H10; try inversion H11; subst;
-      repeat rewrite uc_eval_CNOT_control by easy; easy.
+      repeat rewrite uc_eval_CNOT_control; easy.
 Qed.
 
 Lemma uc_well_typed_csplit :

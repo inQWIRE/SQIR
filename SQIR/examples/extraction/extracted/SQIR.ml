@@ -67,8 +67,3 @@ let coq_TDAG n =
 
 let coq_CNOT m n =
   Coq_uapp2 (U_CNOT, m, n)
-
-(** val coq_SWAP : int -> int -> base_ucom **)
-
-let coq_SWAP m n =
-  Coq_useq ((Coq_useq ((coq_CNOT m n), (coq_CNOT n m))), (coq_CNOT m n))

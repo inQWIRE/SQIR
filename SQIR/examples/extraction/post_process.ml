@@ -1,5 +1,5 @@
 open Printf
-open ShorExtr
+(*open ShorExtr*)
 
 (* light argument parsing *)
 let n = ref 0
@@ -21,5 +21,5 @@ if (Z.gcd (Z.of_int !a) (Z.of_int !n) > Z.one) then printf "ERROR: Requires a, N
 (* TODO: sanity checks for o? *)
 (* perform post-processing *)
 (printf "Performing post-processing for N = %d, a = %d, and o = %d...\n%!" !n !a !o;
- let res = post_process !a !n !o in
+ let res = 7(*post_process !a !n !o*) in
  printf "Result is: %d\n%!" res)
