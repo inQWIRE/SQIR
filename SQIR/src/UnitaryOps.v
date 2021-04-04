@@ -419,94 +419,14 @@ Proof.
     intro contra.
     contradict nWT.
     constructor; auto.
-    admit.
+    admit. (* easy, will fix later *)
   - admit.
 Admitted.
-
-Lemma control_not_fresh : forall {dim} n (c : base_ucom dim),
-  not (is_fresh n c) -> uc_eval (control n c) = Zero.
-Proof.
-  intros dim n c nfr.
-  induction c; try dependent destruction u.
-  - assert (not (is_fresh n c1) \/ not (is_fresh n c2)).
-    apply Classical_Prop.not_and_or.
-    intros [contra1 contra2].
-    contradict nfr.
-    constructor; auto.
-    simpl.
-    destruct H as [H | H].
-    rewrite IHc1 by assumption.
-    Msimpl. reflexivity.
-    rewrite IHc2 by assumption.
-    Msimpl. reflexivity.
-  - assert (not (n <> n0)).
-    intro contra.
-    contradict nfr.
-    constructor; auto.
-    admit.
-  - admit.
-Admitted.
-
-Fixpoint is_fresh_b {U dim} q (u : ucom U dim) :=
-  match u with
-  | u1 ; u2 => is_fresh_b q u1 && is_fresh_b q u2
-  | uapp1 _ n => negb (q =? n)
-  | uapp2 _ m n => negb (q =? m) && negb (q =? n)
-  | uapp3 _ m n p => negb (q =? m) && negb (q =? n) && negb (q =? p)
-  end.
-
-Ltac rewrite_bool_exps :=
-  repeat match goal with
-  | H : _ && _ = true |- _ => apply andb_prop in H as [? ?]
-  | H : _ =? _ = false |- _ => apply beq_nat_false in H 
-  | H : negb _ = true |- _ => apply negb_true_iff in H
-  | |- _ && _ = true => apply andb_true_iff; split
-  | |- _ =? _ = false => apply Nat.eqb_neq
-  | |- negb _ = true => apply negb_true_iff
-  end. 
-
-Lemma is_fresh_b_equiv : forall {U dim} q (u : ucom U dim),
-  is_fresh_b q u = true <-> is_fresh q u.
-Proof.
-  intros U dim q u.
-  split; intro H.
-  - induction u; simpl in H.
-    apply andb_prop in H as [H1 H2].
-    constructor; auto.
-    rewrite_bool_exps.
-    constructor; auto.
-    rewrite_bool_exps.
-    constructor; auto.
-    rewrite_bool_exps.
-    constructor; auto.
-  - induction H; simpl.
-    rewrite IHis_fresh1, IHis_fresh2.
-    reflexivity.
-    rewrite_bool_exps; auto.
-    rewrite_bool_exps; auto.
-    rewrite_bool_exps; auto.
-Qed.
-
-Lemma invert_uc_equiv : forall {dim} (c1 c2 c3 : base_ucom dim),
-  uc_well_typed c3 -> c1 ≡ c2 ; c3 -> c1 ; invert c3 ≡ c2.
-Proof.
-  intros dim c1 c2 c3 WT H.
-  apply uc_eval_unitary_iff in WT.
-  destruct WT as [_ WFU].
-  unfold uc_equiv in *.
-  simpl in *.
-  rewrite <- invert_correct, H.
-  rewrite <- Mmult_assoc.
-  rewrite WFU.
-  Msimpl.
-  reflexivity.
-Qed.
-
 
 Lemma control_cong : forall {dim} n (c c' : base_ucom dim),
-  c ≡ c' -> control n c ≡ control n c'.
+  is_fresh n c -> is_fresh n c' -> c ≡ c' -> control n c ≡ control n c'.
 Proof.
-  intros dim n c c' H.
+  intros dim n c c' Hfrc Hfrc' H.
   unfold uc_equiv in *.
   destruct (uc_well_typed_b c) eqn:WT.
   2: { rewrite <- not_true_iff_false in WT.
@@ -518,11 +438,17 @@ Proof.
        rewrite uc_eval_zero_iff in H.
        rewrite control_not_WT by assumption.
        reflexivity. }
-(* not true that is_fresh n c <-> is-fresh n c', so this lemma does not hold without
-   preconds is_fresh n c && is_fresh n c' *)
-rewrite 2 control_correct.
-Admitted.
-
+  apply uc_well_typed_b_equiv in WT.
+  assert (uc_well_typed c').
+  { apply WT_if_nonzero.
+    intro contra.
+    rewrite contra in H.
+    rewrite <- uc_eval_nonzero_iff in WT.
+    contradiction. }
+  rewrite 2 control_correct by assumption.
+  rewrite H.
+  reflexivity.
+Qed.
 
 (* Sanity check *)
 Local Transparent X CU.
