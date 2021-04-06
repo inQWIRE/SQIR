@@ -1,7 +1,7 @@
 Require Import Reals.
 Require Import Psatz.
 Require Import SQIR.
-Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
+Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
 Require Import Dirac.
 Require Import QPE.
 (**********************)
@@ -63,7 +63,7 @@ Qed.
 Hint Resolve posi_eq_reflect : bdestruct.
 
 
-Definition rz_val : Type := (nat * (nat -> bool)).
+Definition rz_val : Type := (nat -> bool).
 
 Inductive val := nval (b:bool) (r:rz_val) | hval (b1:bool) (b2:bool) (r:rz_val) | qval (r:rz_val).
 
@@ -167,6 +167,715 @@ Ltac ctx e1 e2 :=
 Tactic Notation "inv" hyp(H) := inversion H; subst; clear H.
 Tactic Notation "inv" hyp(H) "as" simple_intropattern(p) :=
   inversion H as p; subst; clear H.
+
+(*
+Ltac fb_push_n_simpl := repeat (try rewrite fb_push_n_left by lia; try rewrite fb_push_n_right by lia).
+Ltac update_simpl := repeat (try rewrite update_index_neq by lia); try rewrite update_index_eq by lia.
+*)
+Ltac BreakIfExpression :=
+  match goal with
+  | [ |- context[if ?X <? ?Y then _ else _] ] => bdestruct (X <? Y); try lia
+  | [ |- context[if ?X <=? ?Y then _ else _] ] => bdestruct (X <=? Y); try lia
+  | [ |- context[if ?X =? ?Y then _ else _] ] => bdestruct (X =? Y); try lia
+  end.
+
+Ltac IfExpSimpl := repeat BreakIfExpression.
+
+(* Here we defined the specification of carry value for each bit. *)
+(* fb_push is to take a qubit and then push it to the zero position 
+        in the bool function representation of a number. *)
+Definition allfalse := fun (_:nat) => false.
+
+Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
+
+Definition fb_push b f : nat -> bool :=
+  fun x => match x with
+        | O => b
+        | S n => f n
+        end.
+
+Lemma fb_push_right:
+  forall n b f, 0 < n -> fb_push b f n = f (n-1).
+Proof.
+  intros. induction n. lia.
+  simpl. assert ((n - 0) = n) by lia.
+  rewrite H1. reflexivity.
+Qed.
+
+(* fb_push_n is the n repeatation of fb_push.
+Definition fb_push_n n f g : nat -> bool :=
+  fun i => if (i <? n) then f i else g (i - n).
+*)
+
+(* A function to compile positive to a bool function. *)
+Fixpoint pos2fb p : nat -> bool :=
+  match p with
+  | xH => fb_push true allfalse
+  | xI p' => fb_push true (pos2fb p')
+  | xO p' => fb_push false (pos2fb p')
+  end.
+
+(* A function to compile N to a bool function. *)
+Definition N2fb n : nat -> bool :=
+  match n with
+  | 0%N => allfalse
+  | Npos p => pos2fb p
+  end.
+
+Definition nat2fb n := N2fb (N.of_nat n).
+
+Definition add_c b x y :=
+  match b with
+  | false => Pos.add x y
+  | true => Pos.add_carry x y
+  end.
+
+Fixpoint carry b n f g :=
+  match n with
+  | 0 => b
+  | S n' => let c := carry b n' f g in
+           let a := f n' in
+           let b := g n' in
+           (a && b) ⊕ (b && c) ⊕ (a && c)
+  end.
+
+Lemma carry_1 : forall b f g, carry b 1 f g = majb (f 0) (g 0) b.
+Proof.
+ intros. simpl. unfold majb. easy.
+Qed.
+
+Lemma carry_n : forall n b f g, carry b (S n) f g = majb (f n) (g n) (carry b n f g).
+Proof.
+ intros. simpl. unfold majb. easy.
+Qed.
+
+Lemma carry_sym :
+  forall b n f g,
+    carry b n f g = carry b n g f.
+Proof.
+  intros. induction n. reflexivity.
+  simpl. rewrite IHn. btauto.
+Qed.
+
+Lemma carry_false_0_l: forall n f, 
+    carry false n allfalse f = false.
+Proof.
+  unfold allfalse.
+  induction n.
+  simpl.
+  reflexivity.
+  intros. simpl.
+  rewrite IHn. rewrite andb_false_r.
+  reflexivity.
+Qed.
+
+Lemma carry_false_0_r: forall n f, 
+    carry false n f allfalse = false.
+Proof.
+  unfold allfalse.
+  induction n.
+  simpl.
+  reflexivity.
+  intros. simpl.
+  rewrite IHn. rewrite andb_false_r.
+  reflexivity.
+Qed.
+
+Lemma carry_fbpush :
+  forall n a ax ay fx fy,
+    carry a (S n) (fb_push ax fx) (fb_push ay fy) = carry (majb a ax ay) n fx fy.
+Proof.
+  induction n; intros.
+  simpl. unfold majb. btauto.
+  remember (S n) as Sn. simpl. rewrite IHn. unfold fb_push. subst.
+  simpl. easy.
+Qed.
+
+Lemma carry_succ :
+  forall m p,
+    carry true m (pos2fb p) allfalse = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
+Proof.
+  induction m; intros. simpl. destruct p; reflexivity.
+  replace allfalse with (fb_push false allfalse).
+  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
+  }
+  Local Opaque fb_push carry.
+  destruct p; simpl.
+  rewrite carry_fbpush; unfold majb; simpl. rewrite IHm. reflexivity.
+  rewrite carry_fbpush; unfold majb; simpl. rewrite carry_false_0_r. Local Transparent fb_push. simpl. btauto.
+  rewrite carry_fbpush; unfold majb; simpl. Local Transparent carry. destruct m; reflexivity.
+Qed.
+
+Lemma carry_succ' :
+  forall m p,
+    carry true m allfalse (pos2fb p) = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
+Proof.
+  intros. rewrite carry_sym. apply carry_succ.
+Qed.
+
+Lemma carry_succ0 :
+  forall m, carry true m allfalse allfalse = pos2fb xH m.
+Proof.
+  induction m. easy. 
+  replace allfalse with (fb_push false allfalse).
+  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
+  }
+  rewrite carry_fbpush. unfold majb. simpl. rewrite carry_false_0_l. easy.
+Qed.
+
+Lemma carry_add_pos_eq :
+  forall m b p q,
+    carry b m (pos2fb p) (pos2fb q) ⊕ (pos2fb p) m ⊕ (pos2fb q) m = pos2fb (add_c b p q) m.
+Proof.
+  induction m; intros. simpl. destruct p, q, b; reflexivity.
+  Local Opaque carry.
+  destruct p, q, b; simpl; rewrite carry_fbpush; 
+    try (rewrite IHm; reflexivity);
+    try (unfold majb; simpl; 
+         try rewrite carry_succ; try rewrite carry_succ'; 
+         try rewrite carry_succ0; try rewrite carry_false_0_l;
+         try rewrite carry_false_0_r;
+         unfold allfalse; try btauto; try (destruct m; reflexivity)).
+Qed.
+
+Lemma carry_add_eq_carry0 :
+  forall m x y,
+    carry false m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y)) m.
+Proof.
+  intros.
+  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
+  rewrite carry_false_0_l. easy.
+  rewrite carry_false_0_l. btauto.
+  rewrite carry_false_0_r. btauto.
+  apply carry_add_pos_eq.
+Qed.
+
+Lemma carry_add_eq_carry1 :
+  forall m x y,
+    carry true m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y + 1)) m.
+Proof.
+  intros. 
+  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
+  rewrite carry_succ0. destruct m; easy.
+  rewrite carry_succ'. replace (q + 1)%positive with (Pos.succ q) by lia. btauto.
+  rewrite carry_succ. replace (p + 1)%positive with (Pos.succ p) by lia. btauto.
+  rewrite carry_add_pos_eq. unfold add_c. rewrite Pos.add_carry_spec. replace (p + q + 1)%positive with (Pos.succ (p + q)) by lia. easy.
+Qed.
+
+Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
+
+Definition msma i b f g := fun (x : nat) => if (x <? i) then 
+        (carry b (S x) f g ⊕ (f (S x))) else (if (x =? i) then carry b (S x) f g else f x).
+
+Definition msmb i (b : bool) f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else g x.
+
+Definition msmc i b f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else (carry b x f g ⊕ f x ⊕ g x).
+
+Definition sumfb b f g := fun (x : nat) => carry b x f g ⊕ f x ⊕ g x.
+
+Definition negatem i (f : nat -> bool) := fun (x : nat) => if (x <? i) then ¬ (f x) else f x.
+
+Lemma sumfb_correct_carry0 :
+  forall x y,
+    sumfb false (nat2fb x) (nat2fb y) = nat2fb (x + y).
+Proof.
+  intros. unfold nat2fb. rewrite Nnat.Nat2N.inj_add.
+  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
+Qed.
+
+Lemma sumfb_correct_carry1 :
+  forall x y,
+    sumfb true (nat2fb x) (nat2fb y) = nat2fb (x + y + 1).
+Proof.
+  intros. unfold nat2fb. do 2 rewrite Nnat.Nat2N.inj_add.
+  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry1. easy.
+Qed.
+
+Lemma sumfb_correct_N_carry0 :
+  forall x y,
+    sumfb false (N2fb x) (N2fb y) = N2fb (x + y).
+Proof.
+  intros. apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
+Qed.
+
+Lemma pos2fb_Postestbit :
+  forall n i,
+    (pos2fb n) i = Pos.testbit n (N.of_nat i).
+Proof.
+  induction n; intros.
+  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
+  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
+  - destruct i; simpl. easy. easy.
+Qed.
+
+Lemma N2fb_Ntestbit :
+  forall n i,
+    (N2fb n) i = N.testbit n (N.of_nat i).
+Proof.
+  intros. destruct n. easy.
+  simpl. apply pos2fb_Postestbit.
+Qed.
+
+Lemma Z2N_Nat2Z_Nat2N :
+  forall x,
+    Z.to_N (Z.of_nat x) = N.of_nat x.
+Proof.
+  destruct x; easy.
+Qed.
+
+Lemma Nofnat_mod :
+  forall x y,
+    y <> 0 ->
+    N.of_nat (x mod y) = ((N.of_nat x) mod (N.of_nat y))%N.
+Proof.
+  intros. specialize (Zdiv.mod_Zmod x y H0) as G.
+  repeat rewrite <- Z2N_Nat2Z_Nat2N. rewrite G. rewrite Z2N.inj_mod; lia.
+Qed.
+
+Lemma Nofnat_pow :
+  forall x y,
+    N.of_nat (x ^ y) = ((N.of_nat x) ^ (N.of_nat y))%N.
+Proof.
+  intros. induction y. easy.
+  Local Opaque N.pow. replace (N.of_nat (S y)) with ((N.of_nat y) + 1)%N by lia.
+ simpl. rewrite N.pow_add_r. rewrite N.pow_1_r. rewrite Nnat.Nat2N.inj_mul. rewrite IHy. lia.
+Qed.
+
+Lemma negatem_Nlnot :
+  forall (n : nat) (x : N) i,
+    negatem n (N2fb x) i = N.testbit (N.lnot x (N.of_nat n)) (N.of_nat i).
+Proof.
+  intros. unfold negatem. rewrite N2fb_Ntestbit. symmetry.
+  bdestruct (i <? n). apply N.lnot_spec_low. lia.
+  apply N.lnot_spec_high. lia.
+Qed.
+
+Lemma negatem_arith :
+  forall n x,
+    x < 2^n ->
+    negatem n (nat2fb x) = nat2fb (2^n - 1 - x).
+Proof.
+  intros. unfold nat2fb. apply functional_extensionality; intro i.
+  rewrite negatem_Nlnot. rewrite N2fb_Ntestbit.
+  do 2 rewrite Nnat.Nat2N.inj_sub. rewrite Nofnat_pow. simpl.
+  bdestruct (x =? 0). subst. simpl. rewrite N.ones_equiv. rewrite N.pred_sub. rewrite N.sub_0_r. easy.
+  rewrite N.lnot_sub_low. rewrite N.ones_equiv. rewrite N.pred_sub. easy.
+  apply N.log2_lt_pow2. assert (0 < x) by lia. lia.
+  replace 2%N with (N.of_nat 2) by lia. rewrite <- Nofnat_pow. lia.
+Qed.
+
+
+(* Here, we define the addto / addto_n functions for angle rotation. *)
+Definition cut_n (f:nat -> bool) (n:nat) := fun i => if i <? n then f i else allfalse i.
+ 
+Definition fbrev' i n (f : nat -> bool) := fun (x : nat) => 
+            if (x <=? i) then f (n - 1 - x) else if (x <? n - 1 - i) 
+                         then f x else if (x <? n) then f (n - 1 - x) else f x.
+Definition fbrev n (f : nat -> bool) := fun (x : nat) => if (x <? n) then f (n - 1 - x) else f x.
+
+Lemma fbrev'_fbrev :
+  forall n f,
+    0 < n ->
+    fbrev n f = fbrev' ((n - 1) / 2) n f.
+Proof.
+  intros. unfold fbrev, fbrev'. apply functional_extensionality; intro.
+  assert ((n - 1) / 2 < n) by (apply Nat.div_lt_upper_bound; lia).
+  assert (2 * ((n - 1) / 2) <= n - 1) by (apply Nat.mul_div_le; easy).
+  assert (n - 1 - (n - 1) / 2 <= (n - 1) / 2 + 1).
+  { assert (n - 1 <= 2 * ((n - 1) / 2) + 1).
+    { assert (2 <> 0) by easy.
+      specialize (Nat.mul_succ_div_gt (n - 1) 2 H3) as G.
+      lia.
+    }
+    lia.
+  }
+  IfExpSimpl; easy.
+Qed.
+
+Lemma allfalse_0 : forall n, cut_n allfalse n = nat2fb 0.
+Proof.
+  intros. unfold nat2fb. simpl.
+  unfold cut_n.
+  apply functional_extensionality; intro.
+  bdestruct (x <? n).
+  easy. easy.
+Qed.
+
+Lemma f_num_aux_0: forall n f x, cut_n f n = nat2fb x 
+                -> f n = false -> cut_n f (S n) = nat2fb x.
+Proof.
+  intros.
+  rewrite <- H0.
+  unfold cut_n.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x0 <? n).
+  bdestruct (x0 <? S n).
+  easy.
+  lia.
+  bdestruct (x0 <? S n).
+  assert (x0 = n) by lia.
+  subst. rewrite H1. easy.
+  easy.
+Qed.
+
+Definition twoton_fun (n:nat) := fun i => if i <? n then false else if i=? n then true else false.
+
+
+Definition times_two_spec (f:nat -> bool) :=  fun i => if i =? 0 then false else f (i-1).
+
+(* Showing the times_two spec is correct. *)
+
+Lemma nat2fb_even_0:
+  forall x, nat2fb (2 * x) 0 = false.
+Proof.
+  intros.
+  unfold nat2fb.
+  rewrite Nat2N.inj_double.
+  unfold N.double.
+  destruct (N.of_nat x).
+  unfold N2fb,allfalse.
+  reflexivity.
+  unfold N2fb.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma pos2fb_times_two_eq:
+  forall p x, x <> 0 -> pos2fb p (x - 1) = pos2fb p~0 x.
+Proof.
+  intros.
+  induction p.
+  simpl.
+  assert ((fb_push false (fb_push true (pos2fb p))) x = (fb_push true (pos2fb p)) (x - 1)).
+  rewrite fb_push_right.
+  reflexivity. lia.
+  rewrite H1.
+  reflexivity.
+  simpl.
+  rewrite (fb_push_right x).
+  reflexivity. lia.
+  simpl.
+  rewrite (fb_push_right x).
+  reflexivity. lia.
+Qed.
+
+Lemma times_two_correct:
+   forall x, (times_two_spec (nat2fb x)) = (nat2fb (2*x)).
+Proof.
+  intros.
+  unfold times_two_spec.
+  apply functional_extensionality; intros.
+  unfold nat2fb.
+  bdestruct (x0 =? 0).
+  rewrite H0.
+  specialize (nat2fb_even_0 x) as H3.
+  unfold nat2fb in H3.
+  rewrite H3.
+  reflexivity.
+  rewrite Nat2N.inj_double.
+  unfold N.double,N2fb.
+  destruct (N.of_nat x).
+  unfold allfalse.
+  reflexivity.
+  rewrite pos2fb_times_two_eq.
+  reflexivity. lia.
+Qed.
+
+
+Lemma f_twoton_eq : forall n, twoton_fun n = nat2fb (2^n).
+Proof.
+  intros.
+  induction n.
+  simpl.
+  unfold twoton_fun.
+  apply functional_extensionality.
+  intros. 
+  IfExpSimpl.
+  unfold fb_push. destruct x. easy. lia.
+  unfold fb_push. destruct x. lia. easy.
+  assert ((2 ^ S n) = 2 * (2^n)). simpl. lia.
+  rewrite H0.
+  rewrite <- times_two_correct.
+  rewrite <- IHn.
+  unfold twoton_fun,times_two_spec.
+  apply functional_extensionality; intros.
+  bdestruct (x =? 0).
+  subst.
+  bdestruct (0 <? S n).
+  easy. lia.
+  bdestruct (x <? S n).
+  bdestruct (x - 1 <? n).
+  easy. lia.
+  bdestruct (x =? S n).
+  bdestruct (x - 1 <? n). lia.
+  bdestruct (x - 1 =? n). easy.
+  lia.
+  bdestruct (x-1<? n). easy.
+  bdestruct (x-1 =? n). lia.
+  easy.
+Qed.
+
+Local Transparent carry.
+
+Lemma carry_cut_n_false : forall i n f, carry false i (cut_n f n) (twoton_fun n) = false.
+Proof.
+  intros.
+  induction i.
+  simpl. easy.
+  simpl. rewrite IHi.
+  unfold cut_n,twoton_fun.
+  IfExpSimpl. btauto.
+  simpl.
+  btauto.
+  simpl. easy.
+Qed.
+
+Local Opaque carry.
+
+Lemma sumfb_cut_n : forall n f, f n = true -> sumfb false (cut_n f n) (twoton_fun n)  = cut_n f (S n).
+Proof.
+  intros.
+  unfold sumfb.
+  apply functional_extensionality; intros.
+  rewrite carry_cut_n_false.
+  unfold cut_n, twoton_fun.
+  IfExpSimpl. btauto.
+  subst. rewrite H0. simpl.  easy.
+  simpl. easy.
+Qed.
+
+Lemma f_num_aux_1: forall n f x, cut_n f n = nat2fb x -> f n = true 
+                  -> cut_n f (S n) = nat2fb (x + 2^n).
+Proof.
+  intros.
+  rewrite <- sumfb_correct_carry0.
+  rewrite <- H0.
+  rewrite <- f_twoton_eq.
+  rewrite sumfb_cut_n.
+  easy. easy.
+Qed.
+
+Lemma f_num_0 : forall f n, (exists x, cut_n f n = nat2fb x).
+Proof.
+  intros.
+  induction n.
+  exists 0.
+  rewrite <- (allfalse_0 0).
+  unfold cut_n.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x <? 0).
+  inv H0. easy.
+  destruct (bool_dec (f n) true).
+  destruct IHn.
+  exists (x + 2^n).
+  rewrite (f_num_aux_1 n f x).
+  easy. easy. easy.
+  destruct IHn.
+  exists x. rewrite (f_num_aux_0 n f x).
+  easy. easy.
+  apply not_true_is_false in n0. easy.
+Qed.
+
+Lemma f_num_small : forall f n x, cut_n f n = nat2fb x -> x < 2^n.
+Proof.
+  intros.
+Admitted.
+
+Definition addto (r : nat -> bool) (n:nat) : nat -> bool := fun i => if i <? n 
+                    then (cut_n (fbrev n (sumfb false (cut_n (fbrev n r) n) (nat2fb 1))) n) i else r i.
+
+Definition addto_n (r:nat -> bool) n := fun i => if i <? n
+                        then (cut_n (fbrev n (sumfb false 
+                  (cut_n (fbrev n r) n) (sumfb false (nat2fb 1) (negatem n (nat2fb 1))))) n) i else r i.
+
+Lemma addto_n_0 : forall r, addto_n r 0 = r.
+Proof.
+  intros.
+  unfold addto_n.
+  apply functional_extensionality.
+  intros.
+  IfExpSimpl. easy.
+Qed.
+
+Lemma addto_0 : forall r, addto r 0 = r.
+Proof.
+  intros.
+  unfold addto.
+  apply functional_extensionality.
+  intros.
+  IfExpSimpl. easy.
+Qed.
+
+Lemma cut_n_fbrev_flip : forall n f, cut_n (fbrev n f) n = fbrev n (cut_n f n).
+Proof.
+  intros.
+  unfold cut_n, fbrev.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x <? n).
+  bdestruct (n - 1 - x <? n).
+  easy. lia. easy.
+Qed.
+
+Lemma cut_n_if_cut : forall n f g, cut_n (fun i => if i <? n then f i else g i) n = cut_n f n.
+Proof.
+  intros.
+  unfold cut_n.
+  apply functional_extensionality; intros.
+  bdestruct (x <? n).
+  easy. easy.
+Qed.
+
+Lemma fbrev_twice_same: forall n f, fbrev n (fbrev n f) = f.
+Proof.
+  intros.
+  unfold fbrev.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x <? n).
+  bdestruct (n - 1 - x <? n).
+  assert ((n - 1 - (n - 1 - x)) = x) by lia.
+  rewrite H2. easy.
+  lia. easy.
+Qed.
+
+Lemma cut_n_mod : forall n x, cut_n (nat2fb x) n = (nat2fb (x mod 2^n)).
+Proof.
+  intros.
+  unfold nat2fb.
+Admitted.
+
+Lemma add_to_r_same : forall q r, addto (addto_n r q) q = r.
+Proof.
+  intros.
+  destruct q eqn:eq1.
+  rewrite addto_n_0.
+  rewrite addto_0. easy.
+  unfold addto_n.
+  specialize (f_num_0 (fbrev (S n) r) (S n)) as eq2.
+  destruct eq2.
+  rewrite negatem_arith.
+  rewrite sumfb_correct_carry0.
+  assert (1 < 2 ^ (S n)).
+  apply Nat.pow_gt_1. lia. lia.
+  assert ((1 + (2 ^ S n - 1 - 1)) = 2^ S n -1) by lia.
+  rewrite H2.
+  rewrite H0.
+  rewrite sumfb_correct_carry0.
+  unfold addto.
+  rewrite (cut_n_fbrev_flip (S n) (fun i0 : nat =>
+                 if i0 <? S n
+                 then
+                  cut_n
+                    (fbrev (S n)
+                       (nat2fb
+                          (x + (2 ^ S n - 1))))
+                    (S n) i0
+                 else r i0)).
+  rewrite cut_n_if_cut.
+  rewrite (cut_n_fbrev_flip (S n)
+                      (nat2fb
+                         (x + (2 ^ S n - 1)))).
+  rewrite cut_n_mod.
+  rewrite <- cut_n_fbrev_flip.
+  rewrite fbrev_twice_same.
+  rewrite cut_n_mod.
+  rewrite Nat.mod_mod by lia.
+  rewrite sumfb_correct_carry0.
+  assert (((x + (2 ^ S n - 1)) mod 2 ^ S n + 1) = ((x + (2 ^ S n - 1)) mod 2 ^ S n + (1 mod 2^ S n))).
+  assert (1 mod 2^ S n = 1).
+  rewrite Nat.mod_small. easy. easy.
+  rewrite H3. easy.
+  rewrite H3.
+  rewrite cut_n_fbrev_flip.
+  rewrite cut_n_mod.
+  rewrite <- Nat.add_mod by lia.
+  assert ((x + (2 ^ S n - 1) + 1) = x + 2 ^ S n) by lia.
+  rewrite H4.
+  rewrite Nat.add_mod by lia.
+  rewrite Nat.mod_same by lia.
+  assert (x mod 2 ^ S n = x).
+  rewrite Nat.mod_small. easy.
+  apply (f_num_small (fbrev (S n) r)). easy.
+  rewrite H5.
+  rewrite plus_0_r.
+  rewrite H5.
+  rewrite <- H0.
+  rewrite <- cut_n_fbrev_flip.
+  rewrite fbrev_twice_same.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x0 <? S n).
+  unfold cut_n.
+  bdestruct (x0 <? S n).
+  easy. lia. easy.
+  apply Nat.pow_gt_1. lia. lia.
+Qed.
+
+Lemma add_to_same : forall q r, addto_n (addto r q) q = r.
+Proof.
+  intros.
+  destruct q eqn:eq1.
+  rewrite addto_n_0.
+  rewrite addto_0. easy.
+  unfold addto.
+  specialize (f_num_0 (fbrev (S n) r) (S n)) as eq2.
+  destruct eq2.
+  rewrite H0.
+  rewrite sumfb_correct_carry0.
+  unfold addto_n.
+  rewrite negatem_arith.
+  rewrite sumfb_correct_carry0.
+  assert (1 < 2 ^ (S n)).
+  apply Nat.pow_gt_1. lia. lia.
+  assert ((1 + (2 ^ S n - 1 - 1)) = 2^ S n -1) by lia.
+  rewrite H2.
+  rewrite (cut_n_fbrev_flip (S n) (fun i0 : nat =>
+                 if i0 <? S n
+                 then
+                  cut_n
+                    (fbrev (S n)
+                       (nat2fb (x + 1))) 
+                    (S n) i0
+                 else r i0)).
+  rewrite cut_n_if_cut.
+  rewrite (cut_n_fbrev_flip (S n)
+                      (nat2fb (x+1))).
+  rewrite cut_n_mod.
+  rewrite <- cut_n_fbrev_flip.
+  rewrite fbrev_twice_same.
+  rewrite cut_n_mod.
+  rewrite Nat.mod_mod by lia.
+  assert ((2 ^ S n - 1) = (2 ^ S n - 1) mod (2^ S n)).
+  rewrite Nat.mod_small by lia.
+  easy.
+  rewrite H3.
+  rewrite sumfb_correct_carry0.
+  rewrite cut_n_fbrev_flip.
+  rewrite cut_n_mod.
+  rewrite <- Nat.add_mod by lia.
+  assert ((x + 1 + (2 ^ S n - 1))  = x + 2 ^ S n) by lia.
+  rewrite H4.
+  rewrite Nat.add_mod by lia.
+  rewrite Nat.mod_same by lia.
+  rewrite plus_0_r.
+  rewrite Nat.mod_mod by lia.
+  rewrite Nat.mod_small.
+  rewrite <- H0.
+  rewrite cut_n_fbrev_flip.
+  rewrite fbrev_twice_same.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x0 <? S n).
+  unfold cut_n.
+  bdestruct (x0 <? S n).
+  easy. lia. easy.
+  apply (f_num_small (fbrev (S n) r)). easy.
+  apply Nat.pow_gt_1. lia. lia.
+Qed.
+
 
 Lemma posi_neq_f : forall (p p' : posi), p <> p' -> fst p <> fst p' \/ snd p <> snd p'.
 Proof.
@@ -286,14 +995,7 @@ Inductive well_typed (f: var -> nat) : env -> face -> env -> Prop :=
    | t_seq : forall env p1 p2 env' env'', well_typed f env p1 env' -> well_typed f env' p2 env''
                          -> well_typed f env (p1 ;; p2) env''.
 
-Fixpoint addto (f : nat -> bool) (n:nat) :=
-   match n with 0 => update f 0 (¬ (f 0))
-             | S m => if f n then update (addto f m) n false
-                             else update f n true
-   end.
-
-Definition rotate (r :rz_val) (q:nat) :=
-    match r with (n,f) => if q <? n then (n,addto f q) else (q+1,addto f q) end.
+Definition rotate (r :rz_val) (q:nat) := addto r q.
 
 Definition times_rotate (v : val) (q:nat) := 
      match v with nval b r =>  nval b (rotate r q)
@@ -301,13 +1003,7 @@ Definition times_rotate (v : val) (q:nat) :=
                   | qval r =>  qval (rotate r q)
      end.
 
-Fixpoint addto_n (f:nat -> bool) (n:nat) :=
-    match n with 0 => f
-               | S m => addto_n (addto f m) m
-    end.
-
-Definition r_rotate (r :rz_val) (q:nat) :=
-    match r with (n,f) => if q <? n then (n,addto_n f q) else (q+1,addto_n f q) end.
+Definition r_rotate (r :rz_val) (q:nat) := addto_n r q.
 
 Definition times_r_rotate (v : val) (q:nat) := 
      match v with nval b r =>  nval b (r_rotate r q)
@@ -328,30 +1024,32 @@ Definition get_cu (v : val) :=
                  | _ => None
     end.
 
-Fixpoint lshift' (n:nat) (f:posi -> val) (x:var) := 
-   match n with 0 => f
-             | S m => lshift' m (f[(x,n) |-> f (x,m)]) x
+Fixpoint lshift' (n:nat) (size:nat) (f:posi -> val) (x:var) := 
+   match n with 0 => f[(x,0) |-> f(x,size)]
+             | S m => ((lshift' m size f x)[ (x,n) |-> f(x,m)])
    end.
-Definition lshift (f:posi -> val) (x:var) (n:nat) := let v := f (x,n) in (lshift' n f x)[(x,0) |-> v].
+Definition lshift (f:posi -> val) (x:var) (n:nat) := lshift' n n f x.
 
-Fixpoint rshift' (n:nat) (f:posi -> val) (x:var) := 
-   match n with 0 => f
-             | S m => ((rshift' m f x)[(x,m) |-> f (x,n)])
+Fixpoint rshift' (n:nat) (size:nat) (f:posi -> val) (x:var) := 
+   match n with 0 => f[(x,size) |-> f(x,0)]
+             | S m => ((rshift' m size f x)[(x,m) |-> f (x,n)])
    end.
-Definition rshift (f:posi -> val) (x:var) (n:nat) := 
-              let v := f (x,0) in (rshift' n f x)[(x,n) |-> v].
+Definition rshift (f:posi -> val) (x:var) (n:nat) := rshift' n n f x.
 
-Inductive exp_sem (env : var -> nat) : (posi -> val) -> scom -> (posi -> val) -> Prop :=
+Inductive varType := SType (n1:nat) (n2:nat).
+
+Definition inter_env (enva: var -> varType) (x:var) :=
+             match  (enva x) with SType n1 n2 => n1 + n2 end.
+
+Inductive exp_sem (env : var -> varType) : (posi -> val) -> scom -> (posi -> val) -> Prop :=
     | skip_sem : forall st, exp_sem env st (SKIP) st
     | x_sem : forall st p, exp_sem env st (X p) (st[p |-> (exchange (st p))])
     | cu_false_sem : forall st p e, get_cu (st p) = Some false -> exp_sem env st (CU p e) st
     | cu_true_sem : forall st p e st', get_cu (st p) = Some true -> exp_sem env st e st' -> exp_sem env st (CU p e) st'
     | rz_sem : forall st q p, exp_sem env st (RZ q p) (st[p |-> times_rotate (st p) q])
     | rrz_sem : forall st q p, exp_sem env st (RRZ q p) (st[p |-> times_r_rotate (st p) q])
-    | lshift_sem : forall st x, get_cu (st (x,(env x)-1)) = Some false
-                                                      ->  exp_sem env st (Lshift x) (lshift st x (env x))
-    | rshift_sem : forall st x, get_cu (st (x,0)) = Some false
-                                                        ->  exp_sem env st (Rshift x) (rshift st x (env x))
+    | lshift_sem : forall st x, exp_sem env st (Lshift x) (lshift st x (inter_env env x))
+    | rshift_sem : forall st x, exp_sem env st (Rshift x) (rshift st x (inter_env env x))
     | seq_sem : forall st st' st'' e1 e2, exp_sem env st e1 st' -> exp_sem env st' e2 st'' -> exp_sem env st (e1 ; e2) st''.
 
 Definition h_case (v : val) :=
@@ -373,27 +1071,25 @@ Definition seq_val (v:val) :=
              | _ => false
   end.
 
-Definition allfalse := fun (_:nat) => false.
-
 Fixpoint get_seq (f:posi -> val) (x:var) (base:nat) (n:nat) : (nat -> bool) :=
      match n with 0 => allfalse
               | S m => fun (i:nat) => if i =? (base + m) then seq_val (f (x,base+m)) else ((get_seq f x base m) i)
      end.
 
-Definition up_qft (v:val) (m: nat) (f:nat -> bool) :=
-   match v with nval b (n,g) => qval (m,f)
+Definition up_qft (v:val) (f:nat -> bool) :=
+   match v with nval b r => qval f
               | a => a
    end.
 
 Fixpoint qft_val' (f:posi -> val) (x:var) (n:nat) (base:nat) :=
     match n with 0 => f
-              | S m => qft_val' (f[(x,base) |-> up_qft (f (x,base)) n (get_seq f x base n)]) x m (base +1)
+              | S m => qft_val' (f[(x,base) |-> up_qft (f (x,base)) (get_seq f x base n)]) x m (base +1)
     end.
 
 Definition qft_val (f:posi -> val) (x:var) (n:nat) := qft_val' f x n 0.
 
 Definition no_rot (f:posi -> val) (x:var) :=
-    forall n, (exists b i r, (f (x,n)) = nval b (i,r) /\ r = allfalse).
+    forall n, (exists b r, (f (x,n)) = nval b r /\ r = allfalse).
 
 Definition all_qft (f:posi -> val) (x:var) := forall n, (exists r, f (x,n) = qval r).
 
@@ -401,16 +1097,16 @@ Definition reverse (f:posi -> val) (x:var) (n:nat) := fun a =>
              if ((fst a) =? x) && ((snd a) <? n) then f (x, (n-1) - (snd a)) else f a.
 
 (* Semantics of the whole program. *)
-Inductive prog_sem (f:var -> nat) : (posi -> val) -> face -> (posi -> val) -> Prop := 
+Inductive prog_sem (f:var -> varType) : (posi -> val) -> face -> (posi -> val) -> Prop := 
         | sem_exp : forall st e st', exp_sem f st e st' -> prog_sem f st (Exp e) st'
-        | sem_had : forall st x, prog_sem f st (H x) (h_sem st x (f x))
-        | sem_qft : forall st x, no_rot st x -> prog_sem f st (QFT x) (qft_val st x (f x))
-        | sem_rqft : forall st x st', all_qft st x -> st = qft_val st' x (f x) -> prog_sem f st (RQFT x) st'
-        | sem_rev : forall st x, prog_sem f st (Rev x) (reverse st x (f x))
+        | sem_had : forall st x, prog_sem f st (H x) (h_sem st x (inter_env f x))
+        | sem_qft : forall st x, no_rot st x -> prog_sem f st (QFT x) (qft_val st x (inter_env f x))
+        | sem_rqft : forall st x st', all_qft st x -> st = qft_val st' x (inter_env f x) -> prog_sem f st (RQFT x) st'
+        | sem_rev : forall st x, prog_sem f st (Rev x) (reverse st x (inter_env f x))
         | sem_seq : forall st e1 e2 st' st'', prog_sem f st e1 st' -> prog_sem f st' e2 st''
                               -> prog_sem f st (e1 ;; e2) st''.
 
-Lemma rev_twice_same : forall f st x, reverse (reverse st x (f x)) x (f x) = st.
+Lemma rev_twice_same : forall f st x, reverse (reverse st x (inter_env f x)) x (inter_env f x) = st.
 Proof.
   intros. unfold reverse.
   apply functional_extensionality.
@@ -418,12 +1114,12 @@ Proof.
   destruct x0. simpl.
   bdestruct (n =? x).
   subst.
-  bdestruct ((n0 <? f x)).
+  bdestruct ((n0 <? inter_env f x)).
   simpl.
   bdestruct ((x =? x)).
-  bdestruct ((f x - 1 - n0 <? f x)).
+  bdestruct ((inter_env f x - 1 - n0 <? inter_env f x)).
   simpl.
-  assert (f x - 1 - (f x - 1 - n0)= n0) by lia.
+  assert (inter_env f x - 1 - (inter_env f x - 1 - n0)= n0) by lia.
   rewrite H3. easy.
   simpl. lia.
   lia. simpl. easy.
@@ -645,25 +1341,29 @@ Proof.
 Qed.
 
 Lemma lshift'_irrelevant :
-   forall n f x p, fst p <> x -> lshift' n f x p = f p.
+   forall n size f x p, fst p <> x -> lshift' n size f x p = f p.
 Proof.
-  intros.  generalize dependent f. 
+  intros.
   induction n.
-  intros. simpl. easy.
-  intros. simpl.
-  rewrite IHn.
+  simpl.
+  rewrite eupdate_index_neq. easy.
+  apply iner_neq_1. lia.
+  simpl.
   rewrite eupdate_index_neq.
+  rewrite IHn.
   easy.
   apply iner_neq_1. lia.
 Qed.
 
 
 Lemma rshift'_irrelevant :
-   forall n f x p, fst p <> x -> rshift' n f x p = f p.
+   forall n size f x p, fst p <> x -> rshift' n size f x p = f p.
 Proof.
   intros.
   induction n.
-  intros. simpl. easy.
+  intros. simpl.
+  rewrite eupdate_index_neq. easy.
+  apply iner_neq_1. lia.
   intros. simpl.
   rewrite eupdate_index_neq.
   rewrite IHn. easy.
@@ -688,15 +1388,10 @@ Proof.
   rewrite eupdate_index_neq. easy. nor_sym.
   inv H0.
   unfold lshift.
-  rewrite eupdate_index_neq. 
   rewrite lshift'_irrelevant. easy. lia.
-  apply iner_neq_1. lia.
   inv H0.
   unfold rshift.
-  rewrite eupdate_index_neq.
   rewrite rshift'_irrelevant. easy. lia.
-  apply iner_neq_1.
-  lia.
   rewrite IHexp_sem2.
   rewrite IHexp_sem1.
   easy.
@@ -770,6 +1465,17 @@ Proof.
   apply IHp1. assumption.
 Qed.
 
+Lemma right_mode_not_change_exp :
+    forall env tenv f f' e1 e2,
+     right_mode tenv f e1 ->
+     exp_sem env f e2 f' -> 
+     right_mode tenv f' e1.
+Proof.
+  intros. 
+  induction H1. assumption.
+  unfold exchange.
+Admitted.
+
 Lemma exchange_twice_same :
    forall (f: posi -> val) p, exchange (exchange (f p)) = f p.
 Proof.
@@ -808,6 +1514,212 @@ Proof.
   assumption. 
 Qed.
 
+Lemma rotate_r_same : forall r q, (rotate (r_rotate r q) q) = r.
+Proof.
+  intros. unfold rotate,r_rotate.
+  rewrite add_to_r_same.
+  easy.
+Qed.
+
+Lemma rotate_same : forall r q, (r_rotate (rotate r q) q) = r.
+Proof.
+  intros. unfold rotate,r_rotate.
+  rewrite add_to_same.
+  easy.
+Qed.
+
+
+Lemma times_rotate_r_same: forall r q, times_rotate (times_r_rotate r q) q = r.
+Proof.
+  intros.
+  unfold times_rotate, times_r_rotate.
+  destruct r.
+  rewrite rotate_r_same.
+  easy.
+  assert ((¬ (¬ b2)) = b2) by btauto.
+  rewrite H0. easy.
+  rewrite rotate_r_same.
+  easy.
+Qed.
+
+Lemma times_rotate_same: forall r q, times_r_rotate (times_rotate r q) q = r.
+Proof.
+  intros.
+  unfold times_rotate, times_r_rotate.
+  destruct r.
+  rewrite rotate_same.
+  easy.
+  assert ((¬ (¬ b2)) = b2) by btauto.
+  rewrite H0. easy.
+  rewrite rotate_same.
+  easy.
+Qed.
+
+Ltac tuple_eq := intros R; inv R; lia.
+
+Lemma lshift'_0 : forall m n f x, m <= n -> lshift' m n f x (x,0) = f (x,n).
+Proof.
+ intros.
+ induction m.
+ simpl. 
+ rewrite eupdate_index_eq.
+ easy.
+ simpl.
+ rewrite eupdate_index_neq by tuple_eq.
+ rewrite IHm. easy. lia.
+Qed.
+
+Lemma lshift'_gt : forall i m n f x, m < i -> lshift' m n f x (x,i) = f (x,i).
+Proof.
+  intros.
+  induction m.
+  simpl.
+  rewrite eupdate_index_neq. easy.
+  tuple_eq.
+  simpl.
+  rewrite eupdate_index_neq.
+  rewrite IHm.
+  easy. lia.
+  tuple_eq.
+Qed.
+
+Lemma lshift'_le : forall i m n f x, S i <= m <= n  -> lshift' m n f x (x,S i) = f (x,i).
+Proof.
+  induction m.
+  simpl.
+  intros. inv H0. inv H1.
+  intros.
+  simpl.
+  bdestruct (i =? m). subst.
+  rewrite eupdate_index_eq. easy. 
+  rewrite eupdate_index_neq.
+  rewrite IHm. easy.
+  lia.
+  tuple_eq.
+Qed.
+
+Lemma rshift'_0 : forall m n f x, m <= n -> rshift' m n f x (x,n) = f (x,0).
+Proof.
+ intros.
+ induction m.
+ simpl. 
+ rewrite eupdate_index_eq.
+ easy.
+ simpl.
+ rewrite eupdate_index_neq.
+ rewrite IHm. easy. lia.
+ tuple_eq.
+Qed.
+
+Lemma rshift'_gt : forall i m n f x, m <= n < i -> rshift' m n f x (x,i) = f (x,i).
+Proof.
+  induction m.
+  simpl.
+  intros.
+  rewrite eupdate_index_neq. easy.
+  tuple_eq.
+  intros.
+  simpl.
+  rewrite eupdate_index_neq.
+  rewrite IHm. easy.
+  lia.
+  tuple_eq.
+Qed.
+
+Lemma rshift'_le : forall i m n f x, i < m <= n  -> rshift' m n f x (x,i) = f (x,S i).
+Proof.
+  induction m.
+  simpl.
+  intros. inv H0. inv H1.
+  intros.
+  simpl.
+  bdestruct (i =? m). subst.
+  rewrite eupdate_index_eq. easy. 
+  rewrite eupdate_index_neq.
+  rewrite IHm. easy.
+  lia.
+  tuple_eq.
+Qed.
+
+Lemma lr_shift_same : forall n f x,
+                 lshift ((rshift f x n)) x n = f.
+Proof.
+  intros.
+  unfold lshift,rshift.
+  apply functional_extensionality.
+  intros.
+  destruct x0.
+  bdestruct (v =? x). subst.
+  bdestruct (n0 =? 0). subst.
+  rewrite lshift'_0.
+  rewrite rshift'_0. easy. easy. easy.
+  destruct n0. lia.
+  bdestruct (S n0 <=? n).
+  rewrite lshift'_le.
+  rewrite rshift'_le.
+  easy. lia. lia.
+  rewrite lshift'_gt.
+  rewrite rshift'_gt. easy.
+  lia. lia.
+  rewrite lshift'_irrelevant.
+  rewrite rshift'_irrelevant.
+  easy. simpl; assumption.
+  simpl;assumption.
+Qed.
+
+Lemma rl_shift_same : forall n f x,
+                 rshift ((lshift f x n)) x n = f.
+Proof.
+  intros.
+  unfold lshift,rshift.
+  apply functional_extensionality.
+  intros.
+  destruct x0.
+  bdestruct (v =? x). subst.
+  bdestruct (n0 =? n). subst.
+  rewrite rshift'_0.
+  rewrite lshift'_0. easy. easy. easy.
+  bdestruct (n0 <? n).
+  rewrite rshift'_le.
+  rewrite lshift'_le.
+  easy. lia. lia.
+  rewrite rshift'_gt.
+  rewrite lshift'_gt. easy.
+  lia. lia.
+  rewrite rshift'_irrelevant.
+  rewrite lshift'_irrelevant.
+  easy. simpl; assumption.
+  simpl;assumption.
+Qed.
+
+Lemma exp_sem_assoc_l : forall env f f' e1 e2 e3, 
+               exp_sem env f (e1 ; e2 ; e3) f' -> 
+               exp_sem env f (e1 ; (e2 ; e3)) f'.
+Proof.
+  intros.
+  inv H0.
+  inv H4.
+  econstructor.
+  apply H3.
+  econstructor.
+  apply H7. assumption.
+Qed.
+
+Lemma exp_sem_assoc_r : forall env f f' e1 e2 e3, 
+               exp_sem env f (e1 ; (e2 ; e3)) f' -> 
+               exp_sem env f (e1 ; e2 ; e3) f'.
+Proof.
+  intros.
+  inv H0.
+  inv H6.
+  econstructor.
+  econstructor.
+  apply H4.
+  apply H3. assumption.
+Qed.
+
+
+
 Lemma sinv_correct :
   forall tenv env e f,
     exp_fwf e -> well_typed_exp tenv e -> right_mode tenv f e ->
@@ -841,8 +1753,101 @@ Proof.
     econstructor.
     apply cu_false_sem. assumption.
     apply cu_false_sem. assumption.
-  - 
-Admitted.
+  - econstructor.
+    constructor. 
+    assert ((f [p |-> times_r_rotate (f p) q])
+                  [p |-> times_rotate ((f [p |-> times_r_rotate (f p) q]) p) q] = f).
+    rewrite eupdate_index_eq.
+    rewrite eupdate_twice_eq.
+    apply functional_extensionality.
+    intros. 
+    bdestruct (x ==? p).
+    subst.
+    rewrite eupdate_index_eq.
+    rewrite times_rotate_r_same. easy.
+    rewrite eupdate_index_neq. easy. nor_sym.
+    assert (exp_sem env0 (f [p |-> times_r_rotate (f p) q])
+  (RZ q p) f = exp_sem env0 (f [p |-> times_r_rotate (f p) q]) (RZ q p)
+       ((f [p |-> times_r_rotate (f p) q]) [p |-> times_rotate
+           ((f [p |-> times_r_rotate (f p) q]) p) q])).
+     rewrite H3. easy.
+    rewrite H4.
+    constructor.
+  - econstructor.
+    constructor. 
+    assert ((f [p |-> times_rotate (f p) q])
+                  [p |-> times_r_rotate ((f [p |-> times_rotate (f p) q]) p) q] = f).
+    rewrite eupdate_index_eq.
+    rewrite eupdate_twice_eq.
+    apply functional_extensionality.
+    intros. 
+    bdestruct (x ==? p).
+    subst.
+    rewrite eupdate_index_eq.
+    rewrite times_rotate_same. easy.
+    rewrite eupdate_index_neq. easy. nor_sym.
+    assert (exp_sem env0 (f [p |-> times_rotate (f p) q])
+  (RRZ q p) f = exp_sem env0 (f [p |-> times_rotate (f p) q]) (RRZ q p)
+       ((f [p |-> times_rotate (f p) q]) [p
+     |-> times_r_rotate
+           ((f [p |-> times_rotate (f p) q]) p)
+           q])).
+     rewrite H3. easy.
+    rewrite H4.
+    constructor.
+ - econstructor.
+   constructor.
+   assert (lshift (rshift f x (inter_env env0 x)) x (inter_env env0 x) = f).
+   rewrite lr_shift_same. easy. 
+   assert (exp_sem env0 (rshift f x (inter_env env0 x)) (Lshift x) f
+           = exp_sem env0 (rshift f x (inter_env env0 x)) (Lshift x) 
+             (lshift (rshift f x (inter_env env0 x)) x (inter_env env0 x))).
+   rewrite H3. easy.
+   rewrite H4.
+   constructor.
+ - econstructor.
+   constructor.
+   assert (rshift (lshift f x (inter_env env0 x)) x (inter_env env0 x) = f).
+   rewrite rl_shift_same. easy. 
+   assert (exp_sem env0 (lshift f x (inter_env env0 x)) (Rshift x) f
+           = exp_sem env0 (lshift f x (inter_env env0 x)) (Rshift x) 
+             (rshift (lshift f x (inter_env env0 x)) x (inter_env env0 x))).
+   rewrite H3. easy.
+   rewrite H4.
+   constructor.
+ - apply exp_sem_assoc_r.
+   assert (exp_sem env0 f (sinv e2; (sinv e1; e1) ; e2) f ->
+     exp_sem env0 f (sinv e2; (sinv e1; (e1; e2))) f).
+   intros.
+   inv H3. inv H7. inv H10.
+   econstructor.
+   apply H6.
+   econstructor.
+   apply H7.
+   econstructor.
+   apply H11. easy.
+   apply H3.
+   assert (exp_sem env0 f (sinv e2 ; e2) f -> exp_sem env0 f ((sinv e2; (sinv e1; e1)); e2) f).
+   intros.
+   inv H4.
+   econstructor.
+   econstructor.
+   apply H8.
+   apply IHe1.
+   inv H0. assumption.
+   inv H1. assumption.
+   inv H2.
+   apply right_mode_sinv in H11.
+   eapply right_mode_not_change_exp.
+   apply H9.
+   apply H8.
+   apply H10.
+   apply H4.
+   apply IHe2.
+   inv H0. assumption.
+   inv H1. assumption.
+   inv H2. assumption. 
+Qed.
 
 Lemma sinv_involutive :
   forall p,
@@ -890,7 +1895,7 @@ Proof.
 Qed.
 
 Lemma sinv_reverse :
-  forall (tenv:env) (env0: var -> nat) e f g,
+  forall (tenv:env) (env0: var -> varType) e f g,
     exp_fwf e -> well_typed_exp tenv e -> right_mode tenv f e ->
     exp_sem env0 f e g ->
     exp_sem env0 g (sinv e) f.
@@ -966,7 +1971,7 @@ Proof.
  intros. subst. apply ccx_sem. 1 - 6: assumption. 
 Qed.
 
-Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
+
 
 Definition MAJ a b c := CNOT c b ; CNOT c a ; CCX a b c.
 Definition UMA a b c := CCX a b c ; CNOT c a ; CNOT a b.
@@ -1131,197 +2136,6 @@ Fixpoint UMAseq' n x y c : scom :=
 Definition UMAseq n x y c := UMAseq' (n - 1) x y c.
 
 Definition adder01 n x y c: scom := MAJseq n x y c; UMAseq n x y c.
-
-(* Here we defined the specification of carry value for each bit. *)
-(* fb_push is to take a qubit and then push it to the zero position 
-        in the bool function representation of a number. *)
-Definition fb_push b f : nat -> bool :=
-  fun x => match x with
-        | O => b
-        | S n => f n
-        end.
-
-(* fb_push_n is the n repeatation of fb_push.
-Definition fb_push_n n f g : nat -> bool :=
-  fun i => if (i <? n) then f i else g (i - n).
-*)
-
-(* A function to compile positive to a bool function. *)
-Fixpoint pos2fb p : nat -> bool :=
-  match p with
-  | xH => fb_push true allfalse
-  | xI p' => fb_push true (pos2fb p')
-  | xO p' => fb_push false (pos2fb p')
-  end.
-
-(* A function to compile N to a bool function. *)
-Definition N2fb n : nat -> bool :=
-  match n with
-  | 0%N => allfalse
-  | Npos p => pos2fb p
-  end.
-
-Definition add_c b x y :=
-  match b with
-  | false => Pos.add x y
-  | true => Pos.add_carry x y
-  end.
-
-Fixpoint carry b n f g :=
-  match n with
-  | 0 => b
-  | S n' => let c := carry b n' f g in
-           let a := f n' in
-           let b := g n' in
-           (a && b) ⊕ (b && c) ⊕ (a && c)
-  end.
-
-Lemma carry_1 : forall b f g, carry b 1 f g = majb (f 0) (g 0) b.
-Proof.
- intros. simpl. unfold majb. easy.
-Qed.
-
-Lemma carry_n : forall n b f g, carry b (S n) f g = majb (f n) (g n) (carry b n f g).
-Proof.
- intros. simpl. unfold majb. easy.
-Qed.
-
-Lemma carry_sym :
-  forall b n f g,
-    carry b n f g = carry b n g f.
-Proof.
-  intros. induction n. reflexivity.
-  simpl. rewrite IHn. btauto.
-Qed.
-
-Lemma carry_false_0_l: forall n f, 
-    carry false n allfalse f = false.
-Proof.
-  unfold allfalse.
-  induction n.
-  simpl.
-  reflexivity.
-  intros. simpl.
-  rewrite IHn. rewrite andb_false_r.
-  reflexivity.
-Qed.
-
-Lemma carry_false_0_r: forall n f, 
-    carry false n f allfalse = false.
-Proof.
-  unfold allfalse.
-  induction n.
-  simpl.
-  reflexivity.
-  intros. simpl.
-  rewrite IHn. rewrite andb_false_r.
-  reflexivity.
-Qed.
-
-Lemma carry_fbpush :
-  forall n a ax ay fx fy,
-    carry a (S n) (fb_push ax fx) (fb_push ay fy) = carry (majb a ax ay) n fx fy.
-Proof.
-  induction n; intros.
-  simpl. unfold majb. btauto.
-  remember (S n) as Sn. simpl. rewrite IHn. unfold fb_push. subst.
-  simpl. easy.
-Qed.
-
-Lemma carry_succ :
-  forall m p,
-    carry true m (pos2fb p) allfalse = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
-Proof.
-  induction m; intros. simpl. destruct p; reflexivity.
-  replace allfalse with (fb_push false allfalse).
-  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
-  }
-  Local Opaque fb_push carry.
-  destruct p; simpl.
-  rewrite carry_fbpush; unfold majb; simpl. rewrite IHm. reflexivity.
-  rewrite carry_fbpush; unfold majb; simpl. rewrite carry_false_0_r. Local Transparent fb_push. simpl. btauto.
-  rewrite carry_fbpush; unfold majb; simpl. Local Transparent carry. destruct m; reflexivity.
-Qed.
-
-Lemma carry_succ' :
-  forall m p,
-    carry true m allfalse (pos2fb p) = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
-Proof.
-  intros. rewrite carry_sym. apply carry_succ.
-Qed.
-
-Lemma carry_succ0 :
-  forall m, carry true m allfalse allfalse = pos2fb xH m.
-Proof.
-  induction m. easy. 
-  replace allfalse with (fb_push false allfalse).
-  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
-  }
-  rewrite carry_fbpush. unfold majb. simpl. rewrite carry_false_0_l. easy.
-Qed.
-
-Lemma carry_add_pos_eq :
-  forall m b p q,
-    carry b m (pos2fb p) (pos2fb q) ⊕ (pos2fb p) m ⊕ (pos2fb q) m = pos2fb (add_c b p q) m.
-Proof.
-  induction m; intros. simpl. destruct p, q, b; reflexivity.
-  Local Opaque carry.
-  destruct p, q, b; simpl; rewrite carry_fbpush; 
-    try (rewrite IHm; reflexivity);
-    try (unfold majb; simpl; 
-         try rewrite carry_succ; try rewrite carry_succ'; 
-         try rewrite carry_succ0; try rewrite carry_false_0_l;
-         try rewrite carry_false_0_r;
-         unfold allfalse; try btauto; try (destruct m; reflexivity)).
-Qed.
-
-Lemma carry_add_eq_carry0 :
-  forall m x y,
-    carry false m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y)) m.
-Proof.
-  intros.
-  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
-  rewrite carry_false_0_l. easy.
-  rewrite carry_false_0_l. btauto.
-  rewrite carry_false_0_r. btauto.
-  apply carry_add_pos_eq.
-Qed.
-
-Lemma carry_add_eq_carry1 :
-  forall m x y,
-    carry true m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y + 1)) m.
-Proof.
-  intros. 
-  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
-  rewrite carry_succ0. destruct m; easy.
-  rewrite carry_succ'. replace (q + 1)%positive with (Pos.succ q) by lia. btauto.
-  rewrite carry_succ. replace (p + 1)%positive with (Pos.succ p) by lia. btauto.
-  rewrite carry_add_pos_eq. unfold add_c. rewrite Pos.add_carry_spec. replace (p + q + 1)%positive with (Pos.succ (p + q)) by lia. easy.
-Qed.
-
-Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
-
-Definition msma i b f g := fun (x : nat) => if (x <? i) then 
-        (carry b (S x) f g ⊕ (f (S x))) else (if (x =? i) then carry b (S x) f g else f x).
-
-Definition msmb i (b : bool) f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else g x.
-
-Definition msmc i b f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else (carry b x f g ⊕ f x ⊕ g x).
-
-Definition sumfb b f g := fun (x : nat) => carry b x f g ⊕ f x ⊕ g x.
-
-(*
-Ltac fb_push_n_simpl := repeat (try rewrite fb_push_n_left by lia; try rewrite fb_push_n_right by lia).
-Ltac update_simpl := repeat (try rewrite update_index_neq by lia); try rewrite update_index_eq by lia.
-*)
-Ltac BreakIfExpression :=
-  match goal with
-  | [ |- context[if ?X <? ?Y then _ else _] ] => bdestruct (X <? Y); try lia
-  | [ |- context[if ?X <=? ?Y then _ else _] ] => bdestruct (X <=? Y); try lia
-  | [ |- context[if ?X =? ?Y then _ else _] ] => bdestruct (X =? Y); try lia
-  end.
-
-Ltac IfExpSimpl := repeat BreakIfExpression.
 
 Lemma msm_eq1 :
   forall n i c f g,
@@ -2166,77 +2980,10 @@ Proof.
   subst. apply adder01_correct_fb. 1-7:assumption.
 Qed.
 
-Definition nat2fb n := N2fb (N.of_nat n).
-
 Check put_cus.
 
 Definition reg_push (f : posi -> val)  (x : var) (v:nat) (n : nat) : posi -> val := put_cus f x (nat2fb v) n.
 
-Lemma sumfb_correct_carry0 :
-  forall x y,
-    sumfb false (nat2fb x) (nat2fb y) = nat2fb (x + y).
-Proof.
-  intros. unfold nat2fb. rewrite Nnat.Nat2N.inj_add.
-  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
-Qed.
-
-Lemma sumfb_correct_carry1 :
-  forall x y,
-    sumfb true (nat2fb x) (nat2fb y) = nat2fb (x + y + 1).
-Proof.
-  intros. unfold nat2fb. do 2 rewrite Nnat.Nat2N.inj_add.
-  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry1. easy.
-Qed.
-
-Lemma sumfb_correct_N_carry0 :
-  forall x y,
-    sumfb false (N2fb x) (N2fb y) = N2fb (x + y).
-Proof.
-  intros. apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
-Qed.
-
-Lemma pos2fb_Postestbit :
-  forall n i,
-    (pos2fb n) i = Pos.testbit n (N.of_nat i).
-Proof.
-  induction n; intros.
-  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
-  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
-  - destruct i; simpl. easy. easy.
-Qed.
-
-Lemma N2fb_Ntestbit :
-  forall n i,
-    (N2fb n) i = N.testbit n (N.of_nat i).
-Proof.
-  intros. destruct n. easy.
-  simpl. apply pos2fb_Postestbit.
-Qed.
-
-Lemma Z2N_Nat2Z_Nat2N :
-  forall x,
-    Z.to_N (Z.of_nat x) = N.of_nat x.
-Proof.
-  destruct x; easy.
-Qed.
-
-Lemma Nofnat_mod :
-  forall x y,
-    y <> 0 ->
-    N.of_nat (x mod y) = ((N.of_nat x) mod (N.of_nat y))%N.
-Proof.
-  intros. specialize (Zdiv.mod_Zmod x y H0) as G.
-  repeat rewrite <- Z2N_Nat2Z_Nat2N. rewrite G. rewrite Z2N.inj_mod; lia.
-Qed.
-
-Lemma Nofnat_pow :
-  forall x y,
-    N.of_nat (x ^ y) = ((N.of_nat x) ^ (N.of_nat y))%N.
-Proof.
-  intros. induction y. easy.
-  Local Opaque N.pow. replace (N.of_nat (S y)) with ((N.of_nat y) + 1)%N by lia.
- simpl. rewrite N.pow_add_r. rewrite N.pow_1_r. rewrite Nnat.Nat2N.inj_mul. rewrite IHy. lia.
-Qed.
 
 Lemma reg_push_exceed :
   forall n x v f,
@@ -2424,7 +3171,7 @@ Fixpoint negator0 i x : scom :=
   | S i' => negator0 i' x; X (x, i')
   end.
 
-Definition negatem i (f : nat -> bool) := fun (x : nat) => if (x <? i) then ¬ (f x) else f x.
+
 
 Lemma negatem_put_get : forall i n f x, S i <= n ->
        put_cus f x (negatem (S i) (get_cus n f x)) n =
@@ -2515,29 +3262,6 @@ Lemma negator0_nor :
     exp_sem env f (negator0 i x) f'.
 Proof.
  intros. subst. apply negator0_correct. 1 - 3: assumption.
-Qed.
-
-Lemma negatem_Nlnot :
-  forall (n : nat) (x : N) i,
-    negatem n (N2fb x) i = N.testbit (N.lnot x (N.of_nat n)) (N.of_nat i).
-Proof.
-  intros. unfold negatem. rewrite N2fb_Ntestbit. symmetry.
-  bdestruct (i <? n). apply N.lnot_spec_low. lia.
-  apply N.lnot_spec_high. lia.
-Qed.
-
-Lemma negatem_arith :
-  forall n x,
-    x < 2^n ->
-    negatem n (nat2fb x) = nat2fb (2^n - 1 - x).
-Proof.
-  intros. unfold nat2fb. apply functional_extensionality; intro i.
-  rewrite negatem_Nlnot. rewrite N2fb_Ntestbit.
-  do 2 rewrite Nnat.Nat2N.inj_sub. rewrite Nofnat_pow. simpl.
-  bdestruct (x =? 0). subst. simpl. rewrite N.ones_equiv. rewrite N.pred_sub. rewrite N.sub_0_r. easy.
-  rewrite N.lnot_sub_low. rewrite N.ones_equiv. rewrite N.pred_sub. easy.
-  apply N.log2_lt_pow2. assert (0 < x) by lia. lia.
-  replace 2%N with (N.of_nat 2) by lia. rewrite <- Nofnat_pow. lia.
 Qed.
 
 (* The correctness represents the actual effect of flip all bits for the number x.
@@ -2712,7 +3436,7 @@ Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (C:nat -> bool) (Cin
 (* Controlled rotation cascade on n qubits. *)
 
 
-Inductive varType := NType | SType.
+
 
 Definition id_fun := fun (i:nat) => i.
 
