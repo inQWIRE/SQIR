@@ -1036,22 +1036,24 @@ Fixpoint rshift' (n:nat) (size:nat) (f:posi -> val) (x:var) :=
    end.
 Definition rshift (f:posi -> val) (x:var) (n:nat) := rshift' n n f x.
 
+(*
 Inductive varType := SType (n1:nat) (n2:nat).
 
-Definition inter_env (enva: var -> varType) (x:var) :=
+Definition inter_env (enva: var -> nat) (x:var) :=
              match  (enva x) with SType n1 n2 => n1 + n2 end.
+*)
 
 Definition get_cua (v:val) := 
     match v with nval x r => x | a => false end.
 
-Fixpoint exp_sem (env: var -> varType) (e:scom) (st: posi -> val) : (posi -> val) :=
+Fixpoint exp_sem (env: var -> nat) (e:scom) (st: posi -> val) : (posi -> val) :=
    match e with SKIP => st
               | X p => (st[p |-> (exchange (st p))])
               | CU p e' => if get_cua (st p) then exp_sem env e' st else st
               | RZ q p => (st[p |-> times_rotate (st p) q])
               | RRZ q p => (st[p |-> times_r_rotate (st p) q])
-              | Lshift x => (lshift st x (inter_env env x))
-              | Rshift x => (rshift st x (inter_env env x))
+              | Lshift x => (lshift st x (env x))
+              | Rshift x => (rshift st x (env x))
               | e1 ; e2 => exp_sem env e2 (exp_sem env e1 st)
     end.
 
@@ -1113,16 +1115,16 @@ Definition reverse (f:posi -> val) (x:var) (n:nat) := fun a =>
              if ((fst a) =? x) && ((snd a) <? n) then f (x, (n-1) - (snd a)) else f a.
 
 (* Semantics of the whole program. *)
-Inductive prog_sem (f:var -> varType) : (posi -> val) -> face -> (posi -> val) -> Prop := 
+Inductive prog_sem (f:var -> nat) : (posi -> val) -> face -> (posi -> val) -> Prop := 
         | sem_exp : forall st e st', exp_sem f e st = st' -> prog_sem f st (Exp e) st'
-        | sem_had : forall st x, prog_sem f st (H x) (h_sem st x (inter_env f x))
-        | sem_qft : forall st x, no_rot st x -> prog_sem f st (QFT x) (qft_val st x (inter_env f x))
-        | sem_rqft : forall st x st', all_qft st x -> st = qft_val st' x (inter_env f x) -> prog_sem f st (RQFT x) st'
-        | sem_rev : forall st x, prog_sem f st (Rev x) (reverse st x (inter_env f x))
+        | sem_had : forall st x, prog_sem f st (H x) (h_sem st x (f x))
+        | sem_qft : forall st x, no_rot st x -> prog_sem f st (QFT x) (qft_val st x (f x))
+        | sem_rqft : forall st x st', all_qft st x -> st = qft_val st' x (f x) -> prog_sem f st (RQFT x) st'
+        | sem_rev : forall st x, prog_sem f st (Rev x) (reverse st x (f x))
         | sem_seq : forall st e1 e2 st' st'', prog_sem f st e1 st' -> prog_sem f st' e2 st''
                               -> prog_sem f st (e1 ;; e2) st''.
 
-Lemma rev_twice_same : forall f st x, reverse (reverse st x (inter_env f x)) x (inter_env f x) = st.
+Lemma rev_twice_same : forall f st x, reverse (reverse st x (f x)) x (f x) = st.
 Proof.
   intros. unfold reverse.
   apply functional_extensionality.
@@ -1130,12 +1132,12 @@ Proof.
   destruct x0. simpl.
   bdestruct (n =? x).
   subst.
-  bdestruct ((n0 <? inter_env f x)).
+  bdestruct ((n0 <? f x)).
   simpl.
   bdestruct ((x =? x)).
-  bdestruct ((inter_env f x - 1 - n0 <? inter_env f x)).
+  bdestruct (( f x - 1 - n0 <? f x)).
   simpl.
-  assert (inter_env f x - 1 - (inter_env f x - 1 - n0)= n0) by lia.
+  assert ( f x - 1 - ( f x - 1 - n0)= n0) by lia.
   rewrite H3. easy.
   simpl. lia.
   lia. simpl. easy.
@@ -1782,11 +1784,11 @@ Proof.
     rewrite eupdate_index_neq. easy. nor_sym.
     rewrite H3. easy.
  - simpl.
-   assert (lshift (rshift f x (inter_env env0 x)) x (inter_env env0 x) = f).
+   assert (lshift (rshift f x ( env0 x)) x ( env0 x) = f).
    rewrite lr_shift_same. easy. 
    rewrite H3. easy.
  - simpl.
-   assert (rshift (lshift f x (inter_env env0 x)) x (inter_env env0 x) = f).
+   assert (rshift (lshift f x ( env0 x)) x ( env0 x) = f).
    rewrite rl_shift_same. easy. 
    rewrite H3. easy.
  - assert (sinv (e1; e2) = sinv e2; sinv e1). simpl. easy.
@@ -1844,7 +1846,7 @@ Proof.
 Qed.
 
 Lemma sinv_reverse :
-  forall (tenv:env) (env0: var -> varType) e f g,
+  forall (tenv:env) (env0: var -> nat) e f g,
     exp_fwf e -> well_typed_exp tenv e -> right_mode tenv f e ->
     exp_sem env0 e f = g ->
     exp_sem env0 (sinv e) g = f.
@@ -3136,53 +3138,53 @@ Qed.
 
 Definition id_fun := fun (i:nat) => i.
 
-Fixpoint compile_var' (l: list (var * nat * varType)) (dim:nat) :=
-   match l with [] => fun _ => (0,0,NType,0,id_fun)
-              | (x,n,NType):: l' => fun i => if x =? i
-                           then (dim,n,NType,0%nat,id_fun) else (compile_var' l' (dim + n)) i
-              | (x,n,SType):: l' => fun i => if x =? i
-                           then (dim,n,SType,0%nat,id_fun) else (compile_var' l' (dim + n+1)) i
+Fixpoint compile_var' (l: list (var * nat)) (dim:nat) :=
+   match l with [] => fun _ => (0,0,0,id_fun)
+              | (x,n):: l' => fun i => if x =? i
+                           then (dim,n,0%nat,id_fun) else (compile_var' l' (dim + n)) i
    end.
+
 Definition compile_var l := compile_var' l 0.
 
-Fixpoint get_dim (l: list (var * nat * varType)) :=
+Fixpoint get_dim (l: list (var * nat)) :=
    match l with [] => 0
-             | (x,n,NType) :: l' => n + get_dim l'
-             | (x,n,SType) :: l' => (n+1) + get_dim l'
+             | (x,n) :: l' => n + get_dim l'
    end.
 
+(*
 Definition inter_num (size:nat) (t : varType) :=
    match t with NType => size
               | SType => size+1
    end.
+*)
 
-Definition adj_offset (index:nat) (offset:nat) (size:nat) (t:varType) :=
-    (index + offset) mod (inter_num size t).
+Definition adj_offset (index:nat) (offset:nat) (size:nat) :=
+    (index + offset) mod size.
 
 Definition rz_ang (n:nat) : R := ((2%R * PI)%R / 2%R^n).
 
 Definition rrz_ang (n:nat) : R := (1 - ((2%R * PI)%R / 2%R^n)).
 
-Definition vars := nat -> (nat * nat * varType * nat * (nat -> nat)).
+Definition vars := nat -> (nat * nat * nat * (nat -> nat)).
 
 Definition shift_fun (f:nat -> nat) (offset:nat) (size:nat) := fun i => f ((i + offset) mod size).
 
 Definition trans_lshift (f:vars) (x:var) :=
-     match f x with (start, size, t, offset,g) => 
-              fun i => if i =? x then (start, size, t, 
-                            (offset + 1) mod (inter_num size t),
-                              shift_fun g (offset + 1) (inter_num size t)) else f i
+     match f x with (start, size, offset,g) => 
+              fun i => if i =? x then (start, size,
+                            (offset + 1) mod size,
+                              shift_fun g (offset + 1) size) else f i
      end.
 
 Definition trans_rshift (f:vars) (x:var) :=
-     match f x with (start, size, t, offset,g) => 
-              fun i => if i =? x then (start, size, t, 
-                     (offset + (inter_num size t) - 1) mod (inter_num size t),
-               shift_fun g (offset + (inter_num size t) - 1) (inter_num size t)) else f i
+     match f x with (start, size, offset,g) => 
+              fun i => if i =? x then (start, size, 
+                     (offset + size - 1) mod size,
+               shift_fun g (offset + size - 1) size) else f i
      end.
 
 Definition find_pos (f : vars) (a:var) (b:nat) :=
-       match f a with (start, size, t, offset,g) => start + g b
+       match f a with (start, size, offset,g) => start + g b
        end.
 
 Fixpoint trans_exp (f : vars) (dim:nat) (exp:scom) :
@@ -3203,6 +3205,94 @@ Fixpoint trans_exp (f : vars) (dim:nat) (exp:scom) :
                              end
                             end
   end.
+
+Lemma fresh_is_fresh :
+  forall x a e vs (dim:nat),
+    exp_fresh (x,a) e ->
+      @is_fresh _ dim (find_pos vs x a) (fst (trans_exp vs dim e)).
+Proof.
+
+Admitted.
+(*
+@is_fresh _ dim q (bc2ucom p).
+Proof.
+  intros. induction p; simpl; inversion H.
+  - apply fresh_app1. easy.
+  - apply fresh_X. easy.
+  - apply IHp in H4.
+    destruct p; try (apply fresh_control; easy).
+    inversion H4; subst.
+    constructor; easy.
+  - apply IHp1 in H3. apply IHp2 in H4. apply fresh_seq; easy.
+Qed.
+*)
+(*
+Lemma bcWT_uc_well_typed :
+  forall p {dim},
+    bcWT dim p -> @uc_well_typed _ dim (bc2ucom p).
+Proof.
+  intros. induction p; simpl; inversion H.
+  - constructor. easy.
+  - apply uc_well_typed_X. easy.
+  - apply IHp in H4.
+    destruct p; try (apply bcfresh_is_fresh with (dim := dim) in H3; apply uc_well_typed_control; easy).
+    inversion H3; inversion H4; subst.
+    constructor; easy.
+  - apply IHp1 in H2. apply IHp2 in H3. apply WT_seq; easy.
+Qed.
+Local Opaque ID CNOT X.
+
+Lemma bcfresh_bcexec_irrelevant :
+  forall p q f,
+    bcfresh q p ->
+    bcexec p f q = f q.
+Proof.
+  induction p; intros.
+  - easy.
+  - inversion H; subst. simpl. apply update_index_neq. lia.
+  - inversion H; subst. apply IHp with (f := f) in H4. simpl. destruct (f n); easy.
+  - inversion H; subst. apply IHp1 with (f := f) in H3. apply IHp2 with (f := bcexec p1 f) in H4. simpl.
+    rewrite H4. rewrite H3. easy.
+Qed.
+*)
+
+Lemma trans_exp_sem :
+  forall dim e f env vs,
+    dim > 0 ->
+    (uc_eval (fst (trans_exp vs dim e))) × (f_to_vec dim f) = f_to_vec dim (exp_sem env e f).
+Proof.
+  intros dim p. induction p; intros; simpl.
+  - rewrite denote_SKIP. Msimpl. easy. easy.
+  - apply f_to_vec_X. inversion H0. easy.
+  - inversion H0. assert (WT := H5). assert (FS := H4).
+    apply bcfresh_is_fresh with (dim := dim) in H4. apply bcWT_uc_well_typed in H5.
+    assert (G: (uc_eval (control n (bc2ucom p))) × f_to_vec dim f = f_to_vec dim (if f n then bcexec p f else f)). {
+      rewrite control_correct; try easy.
+      destruct (f n) eqn:Efn.
+      + rewrite Mmult_plus_distr_r.
+        rewrite Mmult_assoc. rewrite IHp by easy.
+        rewrite f_to_vec_proj_neq, f_to_vec_proj_eq; try easy.
+        Msimpl. easy.
+        rewrite bcfresh_bcexec_irrelevant; easy.
+        rewrite Efn. easy.
+      + rewrite Mmult_plus_distr_r.
+        rewrite Mmult_assoc. rewrite IHp by easy.
+        rewrite f_to_vec_proj_eq, f_to_vec_proj_neq; try easy.
+        Msimpl. easy.
+        rewrite bcfresh_bcexec_irrelevant by easy.
+        rewrite Efn. easy.
+    }
+    destruct p; try apply G.
+    inversion WT; inversion FS; subst.
+    rewrite f_to_vec_CNOT by easy.
+    destruct (f n) eqn:Efn.
+    simpl. rewrite xorb_true_r. easy.
+    rewrite xorb_false_r. rewrite update_same; easy.
+  - inversion H0. specialize (IHp1 f H H3).
+    rewrite Mmult_assoc. rewrite IHp1.
+    specialize (IHp2 (bcexec p1 f) H H4).
+    easy.
+Qed.
 
 (* here, backs to mod-multiplier proofs. *)
 
