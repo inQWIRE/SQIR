@@ -5,7 +5,7 @@ Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
 Inductive bccom :=
 | bcskip
 | bcx (n : nat)
-(*| bcnot (x y : nat)*)
+| bcswap (m n : nat)
 | bccont (n : nat) (p : bccom)
 | bcseq (p1 p2 : bccom)
 .
@@ -18,14 +18,13 @@ Notation "f '[' i '|->' x ']'" := (update f i x) (at level 10).
 Local Open Scope nat_scope.
 
 Definition bccnot (x y : nat) := bccont x (bcx y).
-Definition bcswap (x y : nat) := if (x =? y) then bcskip else (bccnot x y; bccnot y x; bccnot x y).
 Definition bcccnot (x y z : nat) := bccont x (bccnot y z).
 
 Fixpoint bcexec (p : bccom) (f : nat -> bool) :=
   match p with
   | bcskip => f
-  | bcx n => f [n |-> (¬ (f n))]
-  (*  | bccnot x y => update f y ((f y) ⊕ (f x)) *)
+  | bcx n => f [n |-> ¬ (f n)]
+  | bcswap m n => (f [n |-> f m]) [m |-> f n]
   | bccont n p => if f n then bcexec p f else f
   | bcseq p1 p2 => bcexec p2 (bcexec p1 f)
   end.
@@ -155,11 +154,7 @@ Qed.
 Lemma bcswap_correct :
   forall x y f,
     bcexec (bcswap x y) f = fun i => if i =? x then f y else if i =? y then f x else f i.
-Proof.
-  intros. apply functional_extensionality; intro i. unfold bcswap.
-  bdestruct (x =? y); simpl. bnauto.
-  unfold update. bnauto.
-Qed.
+Proof. intros. reflexivity. Qed.
 
 Lemma bcccnot_correct :
   forall x y z f,
@@ -176,6 +171,7 @@ Inductive bcfresh : nat -> bccom -> Prop :=
 | bcfresh_skip : forall q, q <> 0 -> bcfresh q bcskip 
      (* q <> 0 fits the requirement in SQIR, which is unnecessary in principle *)
 | bcfresh_x : forall q n, q <> n -> bcfresh q (bcx n)
+| bcfresh_swap : forall q m n, q <> m -> q <> n -> bcfresh q (bcswap m n)
 | bcfresh_cont : forall q n p, q <> n -> bcfresh q p -> bcfresh q (bccont n p)
 | bcfresh_seq  : forall q p1 p2, bcfresh q p1 -> bcfresh q p2 -> bcfresh q (p1; p2)
 .
@@ -183,6 +179,7 @@ Inductive bcfresh : nat -> bccom -> Prop :=
 Inductive bc_well_formed : bccom -> Prop :=
 | bcWF_skip : bc_well_formed bcskip
 | bcWF_x : forall n, bc_well_formed (bcx n)
+| bcWF_swap : forall m n, bc_well_formed (bcswap m n)
 | bcWF_cont : forall n p,  bcfresh n p -> bc_well_formed p -> bc_well_formed (bccont n p)
 | bcWF_seq : forall p1 p2, bc_well_formed p1 -> bc_well_formed p2 -> bc_well_formed (p1; p2)
 .
@@ -190,6 +187,7 @@ Inductive bc_well_formed : bccom -> Prop :=
 Inductive bcWT (dim : nat) : bccom -> Prop :=
 | bcWT_skip : dim > 0 -> bcWT dim bcskip
 | bcWT_x : forall n, n < dim -> bcWT dim (bcx n)
+| bcWT_swap : forall m n, m < dim -> n < dim -> m <> n -> bcWT dim (bcswap m n)
 | bcWT_cont : forall n p, n < dim -> bcfresh n p -> bcWT dim p -> bcWT dim (bccont n p)
 | bcWT_seq : forall p1 p2, bcWT dim p1 -> bcWT dim p2 -> bcWT dim (p1; p2)
 .
@@ -222,12 +220,13 @@ Fixpoint bc2ucom {dim} (p : bccom) : base_ucom dim :=
   match p with
   | bcskip => SKIP
   | bcx n => X n
+  | bcswap m n => SWAP m n
   | bccont n (bcx m) => CNOT n m
   | bccont n p => control n (bc2ucom p)
   | bcseq p1 p2 => useq (bc2ucom p1) (bc2ucom p2)
   end.
 
-Local Transparent ID CNOT X. 
+Local Transparent ID CNOT X SWAP. 
 Lemma bcfresh_is_fresh :
   forall q p {dim},
     bcfresh q p -> @is_fresh _ dim q (bc2ucom p).
@@ -235,6 +234,7 @@ Proof.
   intros. induction p; simpl; inversion H.
   - apply fresh_app1. easy.
   - apply fresh_X. easy.
+  - unfold SWAP. repeat constructor; easy.
   - apply IHp in H4.
     destruct p; try (apply fresh_control; easy).
     inversion H4; subst.
@@ -249,13 +249,14 @@ Proof.
   intros. induction p; simpl; inversion H.
   - constructor. easy.
   - apply uc_well_typed_X. easy.
+  - apply uc_well_typed_SWAP. easy.
   - apply IHp in H4.
     destruct p; try (apply bcfresh_is_fresh with (dim := dim) in H3; apply uc_well_typed_control; easy).
     inversion H3; inversion H4; subst.
     constructor; easy.
   - apply IHp1 in H2. apply IHp2 in H3. apply WT_seq; easy.
 Qed.
-Local Opaque ID CNOT X.
+Local Opaque ID CNOT X SWAP.
 
 Lemma bcfresh_bcexec_irrelevant :
   forall p q f,
@@ -265,6 +266,7 @@ Proof.
   induction p; intros.
   - easy.
   - inversion H; subst. simpl. apply update_index_neq. lia.
+  - inversion H; subst. simpl. rewrite 2 update_index_neq by lia. reflexivity.
   - inversion H; subst. apply IHp with (f := f) in H4. simpl. destruct (f n); easy.
   - inversion H; subst. apply IHp1 with (f := f) in H3. apply IHp2 with (f := bcexec p1 f) in H4. simpl.
     rewrite H4. rewrite H3. easy.
@@ -279,6 +281,7 @@ Proof.
   intros dim p. induction p; intros; simpl.
   - rewrite denote_SKIP. Msimpl. easy. easy.
   - apply f_to_vec_X. inversion H0. easy.
+  - inversion H0. apply f_to_vec_SWAP; easy.
   - inversion H0. assert (WT := H5). assert (FS := H4).
     apply bcfresh_is_fresh with (dim := dim) in H4. apply bcWT_uc_well_typed in H5.
     assert (G: (uc_eval (control n (bc2ucom p))) × f_to_vec dim f = f_to_vec dim (if f n then bcexec p f else f)). {
@@ -311,8 +314,6 @@ Qed.
 
 Fixpoint bcelim p :=
   match p with
-  | bcskip => bcskip
-  | bcx q => bcx q
   | bccont q p => match bcelim p with
                  | bcskip => bcskip
                  | p' => bccont q p'
@@ -322,11 +323,13 @@ Fixpoint bcelim p :=
                   | p1', bcskip => p1'
                   | p1', p2' => bcseq p1' p2'
                   end
+  | _ => p
   end.
 
 Inductive efresh : nat -> bccom -> Prop :=
 | efresh_skip : forall q, efresh q bcskip 
 | efresh_x : forall q n, q <> n -> efresh q (bcx n)
+| efresh_swap : forall q m n, q <> m -> q <> n -> efresh q (bcswap m n)
 | efresh_cont : forall q n p, q <> n -> efresh q p -> efresh q (bccont n p)
 | efresh_seq  : forall q p1 p2, efresh q p1 -> efresh q p2 -> efresh q (p1; p2)
 .
@@ -334,6 +337,7 @@ Inductive efresh : nat -> bccom -> Prop :=
 Inductive eWF : bccom -> Prop :=
 | eWF_skip : eWF bcskip
 | eWF_x : forall n, eWF (bcx n)
+| eWF_swap : forall m n, eWF (bcswap m n)
 | eWF_cont : forall n p,  efresh n p -> eWF p -> eWF (bccont n p)
 | eWF_seq : forall p1 p2, eWF p1 -> eWF p2 -> eWF (p1; p2)
 .
@@ -341,6 +345,7 @@ Inductive eWF : bccom -> Prop :=
 Inductive eWT (dim : nat) : bccom -> Prop :=
 | eWT_skip : dim > 0 -> eWT dim bcskip
 | eWT_x : forall n, n < dim -> eWT dim (bcx n)
+| eWT_swap : forall m n, m < dim -> n < dim -> m <> n -> eWT dim (bcswap m n)
 | eWT_cont : forall n p, n < dim -> efresh n p -> eWT dim p -> eWT dim (bccont n p)
 | eWT_seq : forall p1 p2, eWT dim p1 -> eWT dim p2 -> eWT dim (p1; p2)
 .
@@ -353,6 +358,7 @@ Proof.
   induction p; intros.
   - easy.
   - inversion H; subst. simpl. apply update_index_neq. lia.
+  - inversion H; subst. simpl. rewrite 2 update_index_neq; try lia. easy.
   - inversion H; subst. apply IHp with (f := f) in H4. simpl. destruct (f n); easy.
   - inversion H; subst. apply IHp1 with (f := f) in H3. apply IHp2 with (f := bcexec p1 f) in H4. simpl.
     rewrite H4. rewrite H3. easy.
@@ -378,6 +384,7 @@ Lemma efresh_bcfresh :
 Proof.
   induction p; intros; simpl.
   simpl in H. contradiction.
+  inversion H0; subst. constructor; easy.
   inversion H0; subst. constructor; easy.
   simpl in *.
   destruct (bcelim p) eqn:Ep; try easy;
@@ -458,10 +465,9 @@ Qed.
 (* Define bcinv op. For any bc_seq op, inv means to reverse the order. *)
 Fixpoint bcinv p :=
   match p with
-  | bcskip => bcskip
-  | bcx n => bcx n
   | bccont n p => bccont n (bcinv p)
   | bcseq p1 p2 => bcinv p2; bcinv p1
+  | _ => p
   end.
 
 Lemma bcinv_involutive :
@@ -511,7 +517,7 @@ Lemma eWT_two_bcinv :
     eWT dim (bcinv (bcinv p)).
 Proof.
   induction p; intros; inversion H; subst; simpl; constructor.
-  1 - 3 : lia.
+  all: try lia.
   - apply efresh_bcinv. apply efresh_bcinv. assumption.
   - apply IHp. easy.
   - apply IHp1. easy.
@@ -540,6 +546,16 @@ Proof.
   - apply functional_extensionality; intros. unfold update.
     bdestruct (x =? n). rewrite Nat.eqb_refl. subst. destruct (f n); easy.
     easy.
+  - apply functional_extensionality; intros. unfold update.
+    bdestruct (x =? m); subst. 
+    bdestruct (n =? m); subst.
+    reflexivity.
+    rewrite Nat.eqb_refl. 
+    reflexivity.
+    bdestruct (x =? n); subst.
+    rewrite Nat.eqb_refl. 
+    reflexivity.
+    reflexivity.
   - inversion H; subst. destruct (f n) eqn:Efn.
     assert (efresh n (bcinv p)) by (apply efresh_bcinv; easy).
     rewrite efresh_bcexec_irrelevant by easy. rewrite Efn.
@@ -591,10 +607,9 @@ Lemma bcinv_eWT :
     eWT dim (bcinv p).
 Proof.
   induction p; intros; inversion H; subst; simpl.
-  - constructor. easy.
-  - constructor. easy.
-  - constructor. easy. apply efresh_bcinv. easy. apply IHp. easy.
-  - constructor. apply IHp2. easy. apply IHp1. easy.
+  all: constructor; try easy.
+  apply efresh_bcinv. easy. apply IHp. easy.
+  apply IHp2. easy. apply IHp1. easy.
 Qed.
 
 Lemma bccnot_eWT :
@@ -633,26 +648,23 @@ Qed.
 
 Lemma bcswap_eWT :
   forall x y dim,
-    x < dim -> y < dim ->
+    x < dim -> y < dim -> x <> y ->
     eWT dim (bcswap x y).
 Proof.
-  intros. unfold bcswap. bdestruct (x =? y); repeat (try constructor; try lia).
+  intros. constructor; assumption.
 Qed.
 
 Lemma bcswap_eWF :
   forall x y,
     eWF (bcswap x y).
 Proof.
-  intros. unfold bcswap. bdestruct (x =? y); repeat (try constructor; try lia).
+  intros. constructor.
 Qed.
 
 Definition csplit (p : bccom) :=
   match p with
-  | bcskip => bcskip
-  | bcx n => bcx n
   | bccont n (p1; p2) => bccont n p1; bccont n p2
-  | bccont n p => bccont n p
-  | p1; p2 => p1; p2
+  | _ => p
   end.
 
 Lemma uc_eval_CNOT_control :

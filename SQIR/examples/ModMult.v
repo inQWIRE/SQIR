@@ -5,39 +5,50 @@ Local Open Scope bccom_scope.
 Local Open Scope nat_scope.
 
 (* 
-  This doc contains the implementation and correctness proof of the modular multiplier
-  for the Shor's algorithm.
+  This file contains an implementation and proof of correctness for the modular
+  multiplier circuit used in Shor's algorithm.
   
-  Modular multiplier finishes the computation of the formula C*x %M, where C and M are two
-  integer constants, and x is a integer variable. 
+  The modular multiplier circuit computes ((C * x) % M) where C and M are integer
+  constants and x is an integer variable.
 
-  The high level picuture of the implementation is to take each bit of the binary format of C,
-  and then do the two consecutive steps on a three (n+1) qubits math representation as [x][M][y].
-  At i-th iteration, the x stores the current computation result for the formula C*x %M up to i-th bit.
-  M is the contant value for M, and [y] stores the computation result of 2^i * x % M.
-  The first step is to compute the 2^i * x % M based on the old value of 2^(i-1)*x % M. 
-  The second step is to add the 2^i*x %M value to the C*x%M if i-th bit of C is not zero. 
+  The main definition in this file is (modmult_rev M C Cinv n). M and C are the 
+  constants in the spec above, Cinv is C's inverse modulo M, and n is the number 
+  of bits in M.
+
+  The final correctness property proved is:
+
+  Lemma modmult_rev_correct : forall n x M C Cinv,
+    1 < M < 2^n ->
+    x < M -> C < M -> Cinv < M ->
+    C * Cinv mod M = 1 ->
+    bcexec (modmult_rev M C Cinv n) (fb_push_n n (fbrev n (nat2fb x)) allfalse) = 
+      (fb_push_n n (fbrev n (nat2fb (C * x mod M))) allfalse).
+
+  i.e. evaluating the output circuit on input [rev x][00...0] produces 
+  [rev ((C * x) % M)][00...0] where (rev X) outputs the binary form of integer
+  X in reverse. 
 *)
 
-(* This is the extra qubits needed for the algorithm presented in the doc. 
-   The extra qubit requirement is O(n) in our implementation. *)
-Definition modmult_rev_anc n := 3 * n + 11.
 
-(* fb_push is to take a qubit and then push it to the zero position 
-        in the bool function representation of a number. *)
+(* Some preliminaries defining (nat -> bool) <-> Pos conversion.
+   
+   TODO: this file should reuse the nat_to_funbool function in SQIR/VectorStates.v
+   instead of defining nat2fb. *)
+
+(* push bool b to position 0 of f; shift all other values right *)
 Definition fb_push b f : nat -> bool :=
   fun x => match x with
         | O => b
         | S n => f n
         end.
 
-Definition allfalse := fun (_ : nat) => false.
-
-(* fb_push_n is the n repeatation of fb_push. *)
+(* n repetitions of fb_push. *)
 Definition fb_push_n n f g : nat -> bool :=
   fun i => if (i <? n) then f i else g (i - n).
 
-(* A function to compile positive to a bool function. *)
+Definition allfalse := fun (_ : nat) => false.
+
+(* compile a positive to a bool function. *)
 Fixpoint pos2fb p : nat -> bool :=
   match p with
   | xH => fb_push true allfalse
@@ -45,21 +56,171 @@ Fixpoint pos2fb p : nat -> bool :=
   | xO p' => fb_push false (pos2fb p')
   end.
 
-(* A function to compile N to a bool function. *)
+(* compile a nat to a bool function. *)
 Definition N2fb n : nat -> bool :=
   match n with
   | 0%N => allfalse
   | Npos p => pos2fb p
   end.
 
+Definition nat2fb n := N2fb (N.of_nat n).
+
+
+(*********** Definitions ***********)
+
+(* This is the number of ancilla qubits ("scratch space") needed for the
+   modmult_rev circuit. n is the number of bits in the modulus M. *)
+Definition modmult_rev_anc n := 3 * n + 11.
+
+(* MAJ takes the old carry value ci, bits ai and bi, and returns ci ⊕ ai, bi ⊕ ai, 
+   and a new carry value, which is defined as (ai && bi) ⊕ (bi && ci) ⊕ (ai && ci). *)
+Definition MAJ a b c := bccnot c b ; bccnot c a ; bcccnot a b c.
+   
+(* UMA takes the result of MAJ, and produces three ci, si, and ai where si 
+   represents the i-th bit of a + b *)
+Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
+
+(* The following defines n-bit MAJ and UMA circuits. 
+   MAJ;UMA transforms [x][y] to [x][(x+y) % 2^n] *)
+Fixpoint MAJseq' i n c0 : bccom :=
+  match i with
+  | 0 => MAJ c0 (2 + n) 2
+  | S i' => MAJseq' i' n c0; MAJ (2 + i') (2 + n + i) (2 + i)
+  end.
+Definition MAJseq n := MAJseq' (n - 1) n 0.
+
+Fixpoint UMAseq' i n c0 : bccom :=
+  match i with
+  | 0 => UMA c0 (2 + n) 2
+  | S i' => UMA (2 + i') (2 + n + i) (2 + i); UMAseq' i' n c0
+  end.
+Definition UMAseq n := UMAseq' (n - 1) n 0.
+
+Definition adder01 n : bccom := MAJseq n; UMAseq n.
+
+(* swapper02 swaps [x][y][z] to be [z][y][x]. *)
+Fixpoint swapper02' i n :=
+  match i with
+  | 0 => bcskip
+  | S i' => swapper02' i' n; bcswap (2 + i') (2 + n + n + i')
+  end.
+Definition swapper02 n := swapper02' n n.
+
+(* The following will negate the first input value in the state 00[x][y][z],
+   producing 00[-x][y][z]. *)
+Fixpoint negator0' i : bccom :=
+  match i with
+  | 0 => bcskip
+  | S i' => negator0' i'; bcx (2 + i')
+  end.
+Definition negator0 n := negator0' n.
+
+(* To determine if x < y, we need to compute x - y and check the high bit of the
+   result. If the high_bit is zero, then means that x >= y; otherwise x < y. *)
+Definition highb01 n : bccom := MAJseq n; bccnot (1 + n) 1; bcinv (MAJseq n).
+
+(* Implementation of a comparator, using highb01. The high bit stores the boolean
+   result of x - y < 0.  *)
+Definition comparator01 n :=
+  (bcx 0; negator0 n); highb01 n; bcinv (bcx 0; negator0 n).
+
+(* Implementation of a subtractor. On input [x][y], it produces [x][y + 2^n - x]. *)
+Definition subtractor01 n := 
+  (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
+
+(* The implementation of a modulo adder. On input [M][x][y], it produces 
+   [M][x+y % M][y]. The modulo operation is not reversible - it will flip the 
+   high-bit to be the comparator factor. To return the high-bit to zero, we use 
+   the inverse circuit of the comparator. *)
+Definition modadder21 n := 
+  swapper02 n; adder01 n; swapper02 n; 
+  comparator01 n; (bccont 1 (subtractor01 n); bcx 1); 
+  swapper02 n; bcinv (comparator01 n); swapper02 n.
+
+(* swapper12 swaps [x][y][z] to be [x][z][y]. *)
+Fixpoint swapper12' i n :=
+  match i with
+  | 0 => bcskip
+  | S i' => swapper12' i' n; bcswap (2 + n + i') (2 + n + n + i')
+  end.
+Definition swapper12 n := swapper12' n n.
+
+(* Here we implement a doubler circuit based on the binary shift operation. *)
+Fixpoint doubler1' i n :=
+  match i with
+  | 0 => bcskip
+  | S i' => bcswap (n + i') (n + i); doubler1' i' n
+  end.
+Definition doubler1 n := doubler1' (n - 1) (2 + n).
+
+(* Another version of the mod adder only for computing [x][M] -> [2*x % M][M]. *)
+Definition moddoubler01 n := doubler1 n; comparator01 n; bccont 1 (subtractor01 n).
+
+(* Alternate version of the modulo adder to do addition [y][x] -> [y][x+y mod M]. *)
+Definition modadder12 n := swapper12 n; modadder21 n; swapper12 n.
+
+(* The following implements a modulo adder for all bit positions in C.
+   For every bit in C, it:
+   1. doubles the factor (originally 2^(i-1)* x %M, now 2^i * x %M)
+   2. adds the result to the sum of C*x%M based on whether the ith bit of C is zero *)
+Fixpoint modsummer' i n (fC : nat -> bool) :=
+  match i with
+  | 0 => if (fC 0) then modadder12 n else bcskip
+  | S i' => modsummer' i' n fC; moddoubler01 n; 
+          bcswap 1 (2 + n + n + n + i);
+        (if (fC i) then modadder12 n else bcskip)
+  end.
+Definition modsummer n C := modsummer' (n - 1) n (nat2fb C).
+
+(* modsummer + cleanup of high bits *)
+Definition modmult_half n C := modsummer n C; (bcinv (modsummer n 0)).
+
+(* On input [M][x][00..0], modmult_full produces [M][C*x mod M][00..0]. The 
+   strategy is to run modmult_half on C (producing [M][x][C*x mod M]), then swap 
+   the values of x and C*x%M (producing [M][C*x mod M][x]), and finally run 
+   the inverse of modmult_half using C's inverse (producing [M][C*x mod M][00..0]). *)
+Definition modmult_full C Cinv n := 
+  modmult_half n C; swapper12 n; bcinv (modmult_half n Cinv).
+
+(* The following performs clean-up of the final state. It prepares the two high-bits
+   (two zero bits) and empty positions for storing M. It then inserts the value
+   M using genM0. *)
+Fixpoint swapperh1' j n :=
+  match j with
+  | 0 => bcskip
+  | S j' => swapperh1' j' n; bcswap j' (2 + n + j')
+  end.
+Definition swapperh1 n := swapperh1' n n.
+
+Fixpoint genM0' i (f : nat -> bool) : bccom :=
+  match i with
+  | 0 => bcskip
+  | S i' => genM0' i' f; if (f i') then bcx (2 + i') else bcskip
+  end.
+Definition genM0 M n := genM0' n (nat2fb M).
+
+Definition modmult M C Cinv n := 
+  swapperh1 n; genM0 M n; modmult_full C Cinv n; bcinv (swapperh1 n; genM0 M n).
+
+Definition safe_swap a b := if a =? b then bcskip else bcswap a b.
+Fixpoint reverser' i n :=
+  match i with
+  | 0 => safe_swap 0 (n - 1)
+  | S i' => reverser' i' n; safe_swap i (n - 1 - i)
+  end.
+Definition reverser n := reverser' ((n - 1) / 2) n.
+
+Definition modmult_rev M C Cinv n := 
+  bcinv (reverser n); modmult M C Cinv (S (S n)); reverser n.
+
+
+(*********** Proofs ***********)
+
 Definition add_c b x y :=
   match b with
   | false => Pos.add x y
   | true => Pos.add_carry x y
   end.
-
-(* A function to compile a natural number to a bool function. *)
-Definition nat2fb n := N2fb (N.of_nat n).
 
 (* reg_push is the encapsulation of fb_push_n. *)
 Definition reg_push (x : nat) (n : nat) (f : nat -> bool) := fb_push_n n (nat2fb x) f.
@@ -112,19 +273,6 @@ Proof.
   lia.
 Qed.
 
-
-(* Single bit MAJ and UMA circuit implementations. 
-   MAJ circuit takes the carry value ci before the computation,
-   and two bits ai and bi in two numbers, and the returns three things:
-    ci ⊕ ai, bi ⊕ ai and the carry value of next bit.
-   The carry value is defined as: (ai && bi) ⊕ (bi && ci) ⊕ (ai && ci)
-   UMA takes the result of MAJ, and produces three things:
-   ci, si and ai. si represents the i-th bit computation value of a + b *)
-Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
-
-Definition MAJ a b c := bccnot c b ; bccnot c a ; bcccnot a b c.
-Definition UMA a b c := bcccnot a b c ; bccnot c a ; bccnot a b.
-
 Lemma MAJ_eWF :
   forall a b c,
     a <> b -> b <> c -> a <> c ->
@@ -141,6 +289,8 @@ Lemma MAJ_eWT :
 Proof.
   intros. unfold MAJ. constructor. constructor. 1-2 : apply bccnot_eWT; easy. apply bcccnot_eWT; lia.
 Qed.
+
+Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
 
 Lemma MAJ_correct :
   forall a b c f,
@@ -166,15 +316,6 @@ Proof.
   unfold majb. intros. apply functional_extensionality; intro i. simpl.
   unfold update. bnauto_expand (f' a :: f' b :: f' c :: (List.nil)).
 Qed.
-
-(* The following defines n-bits MAJ and UMA circuit. 
-   Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
-Fixpoint MAJseq' i n c0 : bccom :=
-  match i with
-  | 0 => MAJ c0 (2 + n) 2
-  | S i' => MAJseq' i' n c0; MAJ (2 + i') (2 + n + i) (2 + i)
-  end.
-Definition MAJseq n := MAJseq' (n - 1) n 0.
 
 Lemma MAJseq'_eWF :
   forall i n,
@@ -232,16 +373,6 @@ Proof.
   apply MAJ_efresh.
   1 - 6 : lia.
 Qed.
-
-
-Fixpoint UMAseq' i n c0 : bccom :=
-  match i with
-  | 0 => UMA c0 (2 + n) 2
-  | S i' => UMA (2 + i') (2 + n + i) (2 + i); UMAseq' i' n c0
-  end.
-Definition UMAseq n := UMAseq' (n - 1) n 0.
-
-Definition adder01 n : bccom := MAJseq n; UMAseq n.
 
 Lemma UMA_efresh:
   forall a b c,
@@ -484,37 +615,6 @@ Proof.
   rewrite carry_succ. replace (p + 1)%positive with (Pos.succ p) by lia. btauto.
   rewrite carry_add_pos_eq. unfold add_c. rewrite Pos.add_carry_spec. replace (p + q + 1)%positive with (Pos.succ (p + q)) by lia. easy.
 Qed.
-
-
-(* The implementation of a new constant adder. *)
-Definition single_carry (i:nat) (c:nat) (M:nat -> bool) := if M 0 then bccnot i c else bcskip.
-
-(* for anything that is ge 2. *)
-Fixpoint half_carry (n:nat) (i:nat) (j:nat) (M : nat -> bool) := 
-    match n with 0 => (if M 1 then bccnot (i+1) j ; bcx j else bcskip) ; (if M 0 then bcccnot i (i+1) j else bccnot (i+1) j)
-              | S m => (if M (n+1) then bccnot (i+(n+1)) (j+n) ; bcx (j+n) else bcskip); bcccnot (j+m) (i+(n+1)) (j+n);
-                               half_carry m i j M; bcccnot (j+m) (i+(n+1)) (j+n)
-    end.
-
-Definition acarry (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) := 
-        if n <? 2 then bcskip else if n =? 2 then single_carry i c M 
-                    else bccnot (j+n) c; half_carry n i j M;bccnot (j+n) c;half_carry n i j M.
-
-Fixpoint add_carry (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) :=
-        match n with 0 | S 0 => bcskip
-                  | S m => acarry n i j c M ; bccnot c (i+n); acarry n i j c M ; add_carry m i j c M
-        end.
-
-Fixpoint add_const (n:nat) (i:nat) (M:nat -> bool) :=
-     match n with 0 => bcskip
-                | S m => if M m then bcx (i+m) else bcskip ; add_const m i M
-     end.
-
-
-(* n is the number of qubits, i is the start position for the variable to add,
-                         j is the start position of n dirty bit, and c is the position for the carry bit. *)
-Definition new_adder (n:nat) (i:nat) (j:nat) (c:nat) (M:nat -> bool) := add_carry n i j c M ; add_const n i M.
-
 
 Lemma MAJseq'_efresh :
   forall i n j,
@@ -770,16 +870,6 @@ Qed.
 
 Opaque adder01.
 
-
-(* The following will swap the result of the addition of two numbers x and y (x+y) to the position
-   starting in 2 + n + n. Then, the original position that resides x+y will be empty for new computation. *)
-Fixpoint swapper02' i n :=
-  match i with
-  | 0 => bcskip
-  | S i' => swapper02' i' n; bcswap (2 + i') (2 + n + n + i')
-  end.
-Definition swapper02 n := swapper02' n n.
-
 Lemma swapper02'_eWF: forall i n, eWF (swapper02' i n).
 Proof.
  intros. induction i.
@@ -788,13 +878,14 @@ Proof.
  apply IHi. apply bcswap_eWF.
 Qed.
 
-Lemma swapper02'_eWT: forall i n dim, (2 + n + n + i) < dim -> eWT dim (swapper02' i n).
+Lemma swapper02'_eWT: forall i n dim, 
+  n > 0 -> (2 + n + n + i) < dim -> eWT dim (swapper02' i n).
 Proof.
  intros. induction i.
  simpl. constructor.
  lia. simpl. constructor.
  apply IHi. lia. apply bcswap_eWT.
- 1 - 2: lia.
+ all: lia.
 Qed.
 
 Lemma swapper02_eWF: forall n, eWF (swapper02 n).
@@ -802,9 +893,10 @@ Proof.
  intros. unfold swapper02. apply swapper02'_eWF.
 Qed.
 
-Lemma swapper02_eWT: forall n dim, (2 + n + n + n) < dim -> eWT dim (swapper02 n).
+Lemma swapper02_eWT: forall n dim, 
+  n > 0 -> (2 + n + n + n) < dim -> eWT dim (swapper02 n).
 Proof.
- intros. unfold swapper02. apply swapper02'_eWT. lia.
+ intros. unfold swapper02. apply swapper02'_eWT; lia.
 Qed.
 
 Definition swapma i (f g : nat -> bool) := fun x => if (x <? i) then g x else f x.
@@ -828,7 +920,6 @@ Proof.
   fb_push_n_simpl. easy.
 Qed.
 
-Local Opaque bcswap.
 Lemma swapper02'_correct :
   forall i n f g h u b1 b2,
     0 < n ->
@@ -842,7 +933,8 @@ Proof.
     replace (swapmb 0 f h) with h by (apply functional_extensionality; intro; IfExpSimpl; easy).
     easy.
   - simpl. rewrite IHi by lia.
-    apply functional_extensionality; intro. rewrite bcswap_correct by lia.
+    apply functional_extensionality; intro. 
+    unfold update.
     bdestruct (x =? S (S i)). subst. simpl. fb_push_n_simpl. unfold swapma, swapmb. IfExpSimpl. apply f_equal. lia.
     bdestruct (x =? S (S (n + n + i))). subst. simpl. fb_push_n_simpl. unfold swapma, swapmb. IfExpSimpl. apply f_equal. lia.
     destruct x. easy. simpl. destruct x. easy. simpl.
@@ -862,15 +954,6 @@ Proof.
 Qed.
 
 Opaque swapper02.
-
-(* The following will do the negation of the first input value in the qubit sequence 00[x][y][z].
-   THe actual effect is to make the sequence to be 00[-x][y][z]. *)
-Fixpoint negator0' i : bccom :=
-  match i with
-  | 0 => bcskip
-  | S i' => negator0' i'; bcx (2 + i')
-  end.
-Definition negator0 n := negator0' n.
 
 Lemma negator0'_eWF :
   forall i, eWF (negator0' i).
@@ -965,16 +1048,6 @@ Qed.
 
 Opaque negator0.
 
-
-(* The following implements an comparator. 
-   THe first step is to adjust the adder circuit above to be
-    MAJ;high_bit_manipulate;UMA.
-    This is based on a binary number circuit observation that:
-    To compare if x < y, we just need to do x - y, and see the high bit of the binary
-    format of x - y. If the high_bit is zero, that means that x >= y;
-    otherwise x < y. *)
-Definition highb01 n : bccom := MAJseq n; bccnot (1 + n) 1; bcinv (MAJseq n).
-
 Local Opaque bccnot.
 Lemma highb01_eWF :
   forall n,
@@ -1016,14 +1089,6 @@ Proof.
 Qed.
 
 Opaque highb01.
-
-(* The actual comparator implementation. 
-    We first flip the x positions, then use the high-bit comparator above. 
-    Then, we use an inverse circuit of flipping x positions to turn the
-    low bits back to store the value x.
-    The actual implementation in the comparator is to do (x' + y)' as x - y,
-    and then, the high-bit actually stores the boolean result of x - y < 0.  *)
-Definition comparator01 n := (bcx 0; negator0 n); highb01 n; bcinv (bcx 0; negator0 n).
 
 Lemma comparator01_eWF :
   forall n,
@@ -1172,15 +1237,11 @@ Qed.
 
 Opaque comparator01.
 
-(* The implementation of a subtractor. It takes two values [x][y], and the produces
-    the result of [x][y + 2^n - x]. *)
-Definition substractor01 n := (bcx 0; negator0 n); adder01 n; bcinv (bcx 0; negator0 n).
-
-Lemma substractor01_efresh:
-   forall n, 0 < n -> efresh 1 (substractor01 n).
+Lemma subtractor01_efresh:
+   forall n, 0 < n -> efresh 1 (subtractor01 n).
 Proof.
   intros.
-  unfold substractor01.
+  unfold subtractor01.
   constructor. constructor.
   constructor. constructor.
   lia.
@@ -1193,11 +1254,11 @@ Proof.
   apply negator0_efresh.
 Qed.
 
-Lemma substractor01_eWF:
-   forall n, 0 < n -> eWF (substractor01 n).
+Lemma subtractor01_eWF:
+   forall n, 0 < n -> eWF (subtractor01 n).
 Proof.
   intros.
-  unfold substractor01.
+  unfold subtractor01.
   constructor. constructor.
   constructor. constructor.
   apply negator0_eWF.
@@ -1208,11 +1269,11 @@ Proof.
   apply negator0_eWF.
 Qed.
 
-Lemma substractor01_eWT:
-   forall n dim, 0 < n -> S (S (S (n + n))) < dim -> eWT dim (substractor01 n).
+Lemma subtractor01_eWT:
+   forall n dim, 0 < n -> S (S (S (n + n))) < dim -> eWT dim (subtractor01 n).
 Proof.
   intros.
-  unfold substractor01.
+  unfold subtractor01.
   constructor. constructor.
   constructor. constructor. lia.
   apply negator0_eWT. lia.
@@ -1224,16 +1285,16 @@ Proof.
   constructor. lia.
 Qed.
 
-(* The correctness proof of the substractor. *)
-Lemma substractor01_correct :
+(* The correctness proof of the subtractor. *)
+Lemma subtractor01_correct :
   forall n x y b1 f,
     0 < n ->
     x < 2^(n-1) ->
     y < 2^(n-1) ->
-    bcexec (substractor01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [y + 2^n - x]_n f).
+    bcexec (subtractor01 n) (false ` b1 ` [x]_n [y]_n f) = (false ` b1 ` [x]_n [y + 2^n - x]_n f).
 Proof.
   intros. specialize (pow2_predn n x H0) as G0. specialize (pow2_predn n y H1) as G1.
-  unfold substractor01. remember (bcx 0; negator0 n) as negations. simpl. subst.
+  unfold subtractor01. remember (bcx 0; negator0 n) as negations. simpl. subst.
   rewrite negations_aux by easy. rewrite adder01_correct_carry1 by easy.
   erewrite bcinv_reverse. 3: apply negations_aux; easy.
   replace (2^n) with (2^(n-1) + 2^(n-1)).
@@ -1242,14 +1303,7 @@ Proof.
   constructor. constructor. apply negator0_eWF.
 Qed.
 
-Opaque substractor01.
-
-(* The implementation of a modulo adder. It takes [M][x][y], and then produces the result of [M][x+y % M][y]. 
-   The modulo operation is not reversible. It will flip the high-bit to be the comparator factor.
-   To flip the high-bit to zero, we use the inverse circuit of the comparator in the modulo adder to
-   flip the high-bit back to zero.*)
-Definition modadder21 n := swapper02 n; adder01 n; swapper02 n; 
-       comparator01 n; (bccont 1 (substractor01 n); bcx 1); swapper02 n; bcinv (comparator01 n); swapper02 n.
+Opaque subtractor01.
 
 Lemma modadder21_eWF:
  forall n, 0 < n -> eWF (modadder21 n).
@@ -1266,9 +1320,9 @@ Proof.
   apply comparator01_eWF.
   assumption.
   constructor. constructor.
-  apply substractor01_efresh.
+  apply subtractor01_efresh.
   lia.
-  apply substractor01_eWF.
+  apply subtractor01_eWF.
   lia.
   constructor. 
   apply swapper02_eWF.
@@ -1285,15 +1339,15 @@ Proof.
   constructor.  constructor.
   constructor.  constructor.
   constructor. 
-  apply swapper02_eWT. lia.
+  apply swapper02_eWT; lia.
   apply adder01_eWT.
   assumption. lia.
   apply swapper02_eWT; lia.
   apply comparator01_eWT; lia.
   constructor. constructor. lia.
-  apply substractor01_efresh.
+  apply subtractor01_efresh.
   lia.
-  apply substractor01_eWT.
+  apply subtractor01_eWT.
   lia. lia.
   constructor. lia. 
   apply swapper02_eWT;lia.
@@ -1351,14 +1405,14 @@ Proof.
   { replace (2^(n-1)) with (2^(n-2) + 2^(n-2)). lia.
     destruct n. lia. destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
   }
-  unfold modadder21. remember (bccont 1 (substractor01 n); bcx 1) as csub01. simpl. subst.
+  unfold modadder21. remember (bccont 1 (subtractor01 n); bcx 1) as csub01. simpl. subst.
   rewrite swapper02_correct by lia. rewrite adder01_correct_carry0 by lia.
   rewrite swapper02_correct by lia. rewrite comparator01_correct by lia.
-  replace (bcexec (bccont 1 (substractor01 n); bcx 1)
+  replace (bcexec (bccont 1 (subtractor01 n); bcx 1)
       (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f))
               with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f). 
   2:{ simpl. bdestruct (M <=? x + y).
-      - rewrite substractor01_correct by lia.
+      - rewrite subtractor01_correct by lia.
         replace (x + y + 2^n - M) with (x + y - M + 2^n) by lia.
         rewrite reg_push_exceed with (x := x + y - M + 2 ^ n).
         assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
@@ -1388,14 +1442,6 @@ Qed.
 
 Opaque modadder21.
 
-(* The swapper12 swaps the [x][y][z] to be [x][z][y]. *)
-Fixpoint swapper12' i n :=
-  match i with
-  | 0 => bcskip
-  | S i' => swapper12' i' n; bcswap (2 + n + i') (2 + n + n + i')
-  end.
-Definition swapper12 n := swapper12' n n.
-
 Lemma swapper12'_eWF:
   forall i n, eWF (swapper12' i n).
 Proof.
@@ -1408,7 +1454,7 @@ Proof.
 Qed.
 
 Lemma swapper12'_eWT:
-  forall i n dim, (2 + n + n + i) < dim -> eWT dim (swapper12' i n).
+  forall i n dim, n > 0 -> (2 + n + n + i) < dim -> eWT dim (swapper12' i n).
 Proof.
   intros.
   induction i.
@@ -1424,12 +1470,11 @@ Proof.
 Qed.
 
 Lemma swapper12_eWT:
-  forall n dim, (2 + n + n + n) < dim -> eWT dim (swapper12 n).
+  forall n dim, n > 0 -> (2 + n + n + n) < dim -> eWT dim (swapper12 n).
 Proof.
- intros. unfold swapper12. apply swapper12'_eWT. lia.
+ intros. unfold swapper12. apply swapper12'_eWT; lia.
 Qed.
 
-Local Opaque bcswap.
 Lemma swapper12'_correct :
   forall i n f g h u b1 b2,
     0 < n ->
@@ -1443,7 +1488,8 @@ Proof.
     replace (swapmb 0 f h) with h by (apply functional_extensionality; intro; IfExpSimpl; easy).
     easy.
   - simpl. rewrite IHi by lia.
-    apply functional_extensionality; intro. rewrite bcswap_correct by lia.
+    apply functional_extensionality; intro.
+    unfold update.
     bdestruct (x =? S (S (n + i))). subst. simpl. fb_push_n_simpl. 
     unfold swapma, swapmb. IfExpSimpl. replace (n + n + i - n - n) with (n + i - n) by lia. easy.
     bdestruct (x =? S (S (n + n + i))). subst. simpl. fb_push_n_simpl. 
@@ -1465,16 +1511,6 @@ Proof.
 Qed.
 
 Opaque swapper12.
-
-(* Here we implement the doubler circuit based on binary shift operation.
-   It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
-   Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
-Fixpoint doubler1' i n :=
-  match i with
-  | 0 => bcskip
-  | S i' => bcswap (n + i') (n + i); doubler1' i' n
-  end.
-Definition doubler1 n := doubler1' (n - 1) (2 + n).
 
 Definition double_prop x n (f:nat -> bool) :=
          fun i => if i <? n then f i
@@ -1709,15 +1745,15 @@ Proof.
   unfold double_prop.
   apply functional_extensionality; intros.
   IfExpSimpl.
-  rewrite bcswap_neq.
-  reflexivity. lia. lia.
-  rewrite bcswap_correct.
+  rewrite 2 update_index_neq by lia.
+  reflexivity.
+  unfold update.
   IfExpSimpl.
   reflexivity.
   bdestruct (n <? x).
   bdestruct ((x <=? n + i)).
   simpl.
-  rewrite bcswap_correct.
+  unfold update.
   bdestruct (x - 1 =? n + i). lia.
   bdestruct (x - 1 =? n + S i).
   lia.
@@ -1725,7 +1761,7 @@ Proof.
   reflexivity.
   lia.
   simpl.
-  rewrite bcswap_correct.
+  unfold update.
   bdestruct (x =? n + i).
   lia.
   bdestruct (x =? n + S i).
@@ -1737,7 +1773,7 @@ Proof.
   reflexivity.
   simpl.
   assert (x = n) by lia.
-  rewrite bcswap_correct.
+  unfold update.
   bdestruct (x =? n + i).
   lia.
   bdestruct (x =? n + S i). 
@@ -1832,13 +1868,6 @@ Qed.
 
 Opaque doubler1.
 
-
-(* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
-   This version will mark the high-bit, and the high-bit is not clearable.
-   However, eventually, we will clean all high-bit
-   by using a inverse circuit of the whole implementation. *)
-Definition moddoubler01 n := doubler1 n; comparator01 n; bccont 1 (substractor01 n).
-
 Lemma moddoubler01_eWF :
   forall n, 0 < n -> eWF (moddoubler01 n).
 Proof.
@@ -1849,9 +1878,9 @@ Proof.
   apply comparator01_eWF.
   lia. 
   constructor. 
-  apply substractor01_efresh.
+  apply subtractor01_efresh.
   lia. 
-  apply substractor01_eWF.
+  apply subtractor01_eWF.
   lia. 
 Qed.
 
@@ -1864,9 +1893,9 @@ Proof.
   apply doubler1_eWT; lia. 
   apply comparator01_eWT;lia.
   constructor. lia. 
-  apply substractor01_efresh.
+  apply subtractor01_efresh.
   lia. 
-  apply substractor01_eWT;lia.
+  apply subtractor01_eWT;lia.
 Qed.
 
 (* The correctness statement and proof of the mod doubler.  *)
@@ -1891,7 +1920,7 @@ Proof.
  rewrite doubler1_correct; try lia.
  rewrite comparator01_correct; try lia.
  simpl. bdestruct (M <=? x + (x + 0)).
-  - rewrite substractor01_correct; try lia.
+  - rewrite subtractor01_correct; try lia.
     replace (x + (x + 0) + 2 ^ n - M) with (x + (x + 0) - M + 2^n) by lia.
     rewrite reg_push_exceed with (x := (x + (x + 0) - M + 2^n)).
     assert (2^n <> 0) by (apply Nat.pow_nonzero; easy).
@@ -1911,9 +1940,6 @@ Proof.
 Qed.
 
 Opaque moddoubler01.
-
-(* A new version of the modulo adder to do addition only [y][x] -> [y][x+y mod M]. *)
-Definition modadder12 n := swapper12 n; modadder21 n; swapper12 n.
 
 Lemma modadder12_eWF :
   forall n, 0 < n -> eWF (modadder12 n).
@@ -1959,21 +1985,6 @@ Proof.
 Qed.
 
 Opaque modadder12.
-
-(* The following implements the modulo adder for all bit positions in the
-   binary boolean function of C. 
-   For every bit in C, we do the two items:
-   we first to double the factor (originally 2^(i-1) * x %M, now 2^i * x %M).
-   Then, we see if we need to add the factor result to the sum of C*x%M
-   based on if the i-th bit of C is zero or not. *)
-Fixpoint modsummer' i n (fC : nat -> bool) :=
-  match i with
-  | 0 => if (fC 0) then modadder12 n else bcskip
-  | S i' => modsummer' i' n fC; moddoubler01 n; 
-          bcswap 1 (2 + n + n + n + i);
-        (if (fC i) then modadder12 n else bcskip)
-  end.
-Definition modsummer n C := modsummer' (n - 1) n (nat2fb C).
 
 Lemma modsummer'_eWF :
   forall i n f, 0 < n -> eWF (modsummer' i n f).
@@ -2107,7 +2118,6 @@ Proof.
   apply negb_false_iff in H0.
   assumption.
 Qed.
-            
 
 Lemma Nattestbit_Ntestbit :
   forall m n,
@@ -2139,6 +2149,7 @@ Proof.
  simpl. lia.
 Qed.
 
+Local Opaque Nat.mul.
 Lemma modsummer'_correct :
   forall i n x y M C,
     i < n ->
@@ -2160,7 +2171,7 @@ Proof.
      then false
      else
       if i <=? 0
-      then M <=? (2 ^ (i - 1) * x) mod M + ((2 ^ (i - 1) * x) mod M + 0)
+      then M <=? (2 * ((2 ^ (i - 1) * x) mod M))
       else false)
               = (fun _ : nat => false)).
   apply functional_extensionality.
@@ -2169,7 +2180,8 @@ Proof.
   lia. reflexivity.
   destruct (N2fb (N.of_nat C) 0) eqn:eq.
   rewrite N2fb_Ntestbit in eq.
-  unfold hbf,allfalse. simpl. rewrite H5.
+  unfold hbf,allfalse.
+  rewrite H5.
   rewrite bindecomp_spec.
   apply nat_is_odd_testbit in eq.
   apply Nat.odd_spec in eq.
@@ -2188,7 +2200,6 @@ Proof.
   rewrite Nat.mod_add in H9.
   easy. lia.
   rewrite H9.
-  rewrite Nat.add_0_r.
   rewrite Nat.mul_1_l.
   apply Nat.mod_small_iff in H1 as eq2.
   rewrite eq2.
@@ -2209,9 +2220,9 @@ Proof.
   rewrite H6.
   rewrite Nat.mod_mul.
   simpl.
-  rewrite Nat.add_0_r.
   apply Nat.mod_small_iff in H1 as eq1.
   apply Nat.mod_small_iff in H2 as eq2.
+  rewrite mult_1_l, mult_0_l, plus_0_l.
   rewrite eq1. rewrite eq2.
   unfold hbf,allfalse. simpl. rewrite H5.
   reflexivity.
@@ -2291,44 +2302,35 @@ Proof.
     reflexivity.
     lia.
    }
+  simpl in H5.
   rewrite H5.
   destruct (nat2fb C (S i)) eqn:eq.
   rewrite modadder12_correct.
-  simpl.
-  rewrite Nat.add_0_r.
-  rewrite <- Nat.add_mod.
+  rewrite Nat.mul_mod_idemp_r.
   rewrite <- Nat.add_mod.
   rewrite bindecomp_seq.
-  assert (S i = i + 1) by lia.
-  rewrite H6 in eq.
+  replace (S i) with (i + 1) in eq by lia.
   rewrite eq.
   simpl.
-  assert ((2 ^ i * x + 2 ^ i * x) = ((2 ^ i + (2 ^ i + 0)) * x)) by lia.
-  rewrite H7.
-  assert (2 ^ (i + 1) = 2 ^ (S i)).
-  rewrite H6. reflexivity.
-  rewrite H8.
-  simpl.
-  assert (((2 ^ i + (2 ^ i + 0)) * x + (bindecomp (i + 1) C * x + y))
-       = ((bindecomp (i + 1) C + (2 ^ i + (2 ^ i + 0) + 0)) * x + y)) by lia.
-  rewrite H9.
+  replace (2 * (2 ^ i * x)) with (2 * 2 ^ i * x) by lia.
+  rewrite <- pow_two_succ_l.
+  replace (2 * 2 ^ i * x + (bindecomp (i + 1) C * x + y)) 
+    with ((bindecomp (i + 1) C + 1 * (2 ^ i * 2)) * x + y) by lia.
   reflexivity.
   1 - 3 : lia.
   apply Nat.mod_bound_pos. lia. lia.
   apply Nat.mod_bound_pos. lia. lia.
   assumption.
   simpl.
-  rewrite Nat.add_0_r.
-  rewrite <- Nat.add_mod.
+  rewrite Nat.mul_mod_idemp_r.
   rewrite bindecomp_seq.
-  assert (S i = i + 1) by lia.
-  rewrite H6 in eq.
+  replace (S i) with (i + 1) in eq by lia.
   rewrite eq.
   simpl.
-  assert ((2 ^ i * x + 2 ^ i * x) = ((2 ^ i + (2 ^ i + 0)) * x)) by lia.
-  rewrite H7.
-  rewrite Nat.add_0_r.
-  rewrite Nat.add_0_r.
+  replace (2 * (2 ^ i * x)) with (2 * 2 ^ i * x) by lia.
+  rewrite <- pow_two_succ_l.
+  replace (bindecomp (i + 1) C * x + y)
+    with ((bindecomp (i + 1) C + 0 * (2 ^ i * 2)) * x + y) by lia.
   reflexivity.
   1 - 2 : lia.
   apply Nat.mod_bound_pos. lia. lia.
@@ -2365,10 +2367,6 @@ Proof.
 Qed.
 
 Opaque modsummer.
-
-(* This is the final clean-up step of the mod multiplier to do C*x %M. 
-    Here, modmult_half will first clean up all high bits.  *)
-Definition modmult_half n C := modsummer n C; (bcinv (modsummer n 0)).
 
 Lemma modmult_half_eWF:
   forall n C, 0 < n -> eWF (modmult_half n C).
@@ -2437,14 +2435,6 @@ Qed.
 
 Opaque modmult_half.
 
-(* The modmult_full circuit will take [M][x] bits and produce [M][C*x mod M].
-   The key concept is to first compute modmult_half on C, and get [M][x][C*x mod M], 
-   We then swap the valuex of x and C*x%M, and get [M][C*x mod M][x],
-   and then we do an inverse circuit on the modmult_half on the inverse value of C.
-   THe final step will turn the result to be [M][C*x mod M] and remove [x]. *)
-
-Definition modmult_full C Cinv n := modmult_half n C; swapper12 n; bcinv (modmult_half n Cinv).
-
 Lemma modmult_full_eWT:
     forall n C Cinv dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim ((modmult_full C Cinv n)).
 Proof.
@@ -2490,16 +2480,6 @@ Qed.
 
 Opaque modmult_full.
 
-(* The following is to do the final clean-up of the final clean-up.
-   It prepares the two high-bits (two zero bits), and then prepare the empty positions for storing value M. 
-   Then, it will insert the value M by using a circuit genM0 for the constant M. *)
-Fixpoint swapperh1' j n :=
-  match j with
-  | 0 => bcskip
-  | S j' => swapperh1' j' n; bcswap j' (2 + n + j')
-  end.
-Definition swapperh1 n := swapperh1' n n.
-
 Lemma swapperh1'_eWF :
   forall i n, eWF (swapperh1' i n).
 Proof.
@@ -2533,7 +2513,7 @@ Lemma swapperh1'_correct :
 Proof.
   induction i; intros. simpl. apply functional_extensionality; intro x.
    unfold swaph1m. bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl. easy. fb_push_n_simpl. IfExpSimpl. easy. easy.
-  simpl. rewrite IHi by lia. rewrite bcswap_correct. apply functional_extensionality; intro x.
+  simpl. rewrite IHi by lia. unfold update. apply functional_extensionality; intro x.
   unfold swaph1m. IfExpSimpl; try easy. subst. apply f_equal. lia.
 Qed.
   
@@ -2549,13 +2529,6 @@ Proof.
   bdestruct (i <? 2 + n + n). IfExpSimpl. destruct i. lia. destruct i. lia. simpl. fb_push_n_simpl. rewrite Nat.sub_0_r. easy.
   IfExpSimpl. destruct i. lia. destruct i. lia. simpl. fb_push_n_simpl. easy.
 Qed.
-
-Fixpoint genM0' i (f : nat -> bool) : bccom :=
-  match i with
-  | 0 => bcskip
-  | S i' => genM0' i' f; if (f i') then bcx (2 + i') else bcskip
-  end.
-Definition genM0 M n := genM0' n (nat2fb M).
 
 Definition genM0m i f := fun x => if (x <? i) then f x else false.
 
@@ -2616,8 +2589,6 @@ Proof.
   easy.
 Qed.
 
-Definition modmult M C Cinv n := swapperh1 n; genM0 M n; modmult_full C Cinv n; bcinv (swapperh1 n; genM0 M n).
-
 Lemma modmult_eWT :
   forall M C Cinv n dim, 0 < n -> (2 + n + n + n + n) < dim -> eWT dim (modmult M C Cinv n).
 Proof.
@@ -2654,18 +2625,20 @@ Qed.
 
 Opaque modmult.
 
-
-Fixpoint reverser' i n :=
-  match i with
-  | 0 => bcswap 0 (n - 1)
-  | S i' => reverser' i' n; bcswap i (n - 1 - i)
-  end.
-Definition reverser n := reverser' ((n - 1) / 2) n.
-
 Definition fbrev' i n (f : nat -> bool) := fun (x : nat) => 
             if (x <=? i) then f (n - 1 - x) else if (x <? n - 1 - i) 
                          then f x else if (x <? n) then f (n - 1 - x) else f x.
 Definition fbrev n (f : nat -> bool) := fun (x : nat) => if (x <? n) then f (n - 1 - x) else f x.
+
+Lemma safe_swap_correct :
+  forall x y f,
+    bcexec (safe_swap x y) f = bcexec (bcswap x y) f.
+Proof.
+  intros. apply functional_extensionality; intro i. unfold safe_swap.
+  simpl. unfold update.
+  bdestruct (x =? y); simpl. bnauto.
+  unfold update. reflexivity.
+Qed.
 
 Lemma reverser'_correct :
   forall i n f g,
@@ -2676,13 +2649,18 @@ Lemma reverser'_correct :
 (* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros.
-  - simpl. rewrite bcswap_correct by lia. apply functional_extensionality; intro. unfold fbrev'.
+  - simpl. rewrite safe_swap_correct. 
+    simpl. unfold update.
+    apply functional_extensionality; intro. unfold fbrev'.
     bdestruct (x =? 0). subst. fb_push_n_simpl. IfExpSimpl; apply f_equal; lia.
     bdestruct (x =? n - 1). subst. fb_push_n_simpl. IfExpSimpl. apply f_equal. lia.
     bdestruct (x <? n). fb_push_n_simpl. IfExpSimpl. easy.
     fb_push_n_simpl. easy.
   - assert ((n - 1) / 2 < n) by (apply Nat.div_lt_upper_bound; lia).
-    simpl. rewrite IHi by lia. rewrite bcswap_correct by lia. apply functional_extensionality; intro. unfold fbrev'.
+    simpl. rewrite IHi by lia. 
+    rewrite safe_swap_correct. 
+    simpl. unfold update.
+    apply functional_extensionality; intro. unfold fbrev'.
     assert (2 * ((n - 1) / 2) <= n - 1) by (apply Nat.mul_div_le; easy).
     bdestruct (x =? S i). subst. fb_push_n_simpl. IfExpSimpl; easy.
     bdestruct (x =? n - 1 - S i). subst. fb_push_n_simpl. IfExpSimpl. apply f_equal. lia.
@@ -2717,18 +2695,24 @@ Proof.
   intros. unfold reverser. rewrite reverser'_correct by lia. rewrite fbrev'_fbrev by easy. easy.
 Qed.
 
+Lemma safe_swap_eWF :
+  forall x y, eWF (safe_swap x y).
+Proof. intros. unfold safe_swap. destruct (x =? y); constructor. Qed.
+
 Lemma reverser'_eWF :
   forall i n, eWF (reverser' i n).
 Proof.
-  induction i; intros. simpl. apply bcswap_eWF.
-  simpl. constructor. apply IHi. apply bcswap_eWF.
+  induction i; intros. simpl. apply safe_swap_eWF.
+  simpl. constructor. apply IHi. apply safe_swap_eWF.
 Qed.
 
 Lemma reverser'_eWT :
   forall i n dim, n + i < dim -> eWT dim (reverser' i n).
 Proof.
-  induction i; intros. simpl. apply bcswap_eWT;lia.
-  simpl. constructor. apply IHi. lia. apply bcswap_eWT;lia.
+  induction i; intros. simpl. 
+  unfold safe_swap. bdestruct (0 =? n - 1); constructor; lia.
+  simpl. constructor. apply IHi. lia. 
+  unfold safe_swap. bdestruct (S i =? n - 1 - S i); constructor; lia.
 Qed.
 
 Lemma reverser_eWF :
@@ -2800,6 +2784,7 @@ Proof.
     rewrite <- (basis_vector_append_1 (2^n) y); easy.
 Qed.
 
+Local Transparent Nat.mul.
 Lemma f_to_vec_num_with_anc :
   forall anc n x,
     f_to_vec (n + anc) (fb_push_n n (fbrev n (nat2fb x)) allfalse) = basis_vector (2^n) (x mod (2^n)) ⊗ (basis_vector (2^anc) 0).
@@ -2814,8 +2799,6 @@ Proof.
   apply basis_vector_WF. lia.
   apply WF_qubit0.
 Qed.
-
-Definition modmult_rev M C Cinv n := bcinv (reverser n); modmult M C Cinv (S (S n)); reverser n.
 
 Lemma basis_vector_inc_from_anc :
   forall n x,
