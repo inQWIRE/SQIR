@@ -3,14 +3,6 @@ open BinNums
 open Nat
 open RCIR
 
-(** val modmult_rev_anc : int -> int **)
-
-let modmult_rev_anc n =
-  add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) n)
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))))))))))
-
 (** val fb_push : bool -> (int -> bool) -> int -> bool **)
 
 let fb_push b f x =
@@ -41,6 +33,14 @@ let coq_N2fb = function
 
 let nat2fb n =
   coq_N2fb (N.of_nat n)
+
+(** val modmult_rev_anc : int -> int **)
+
+let modmult_rev_anc n =
+  add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) n)
+    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
+    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
+    (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))))))))))
 
 (** val coq_MAJ : int -> int -> int -> bccom **)
 
@@ -99,9 +99,9 @@ let adder01 n =
 let rec swapper02' i n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Coq_bcskip)
-    (fun i' -> Coq_bcseq ((swapper02' i' n),
-    (bcswap (add (Pervasives.succ (Pervasives.succ 0)) i')
-      (add (add (add (Pervasives.succ (Pervasives.succ 0)) n) n) i'))))
+    (fun i' -> Coq_bcseq ((swapper02' i' n), (Coq_bcswap
+    ((add (Pervasives.succ (Pervasives.succ 0)) i'),
+    (add (add (add (Pervasives.succ (Pervasives.succ 0)) n) n) i')))))
     i
 
 (** val swapper02 : int -> bccom **)
@@ -136,9 +136,9 @@ let comparator01 n =
   Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((Coq_bcx 0), (negator0 n))),
     (highb01 n))), (bcinv (Coq_bcseq ((Coq_bcx 0), (negator0 n)))))
 
-(** val substractor01 : int -> bccom **)
+(** val subtractor01 : int -> bccom **)
 
-let substractor01 n =
+let subtractor01 n =
   Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((Coq_bcx 0), (negator0 n))),
     (adder01 n))), (bcinv (Coq_bcseq ((Coq_bcx 0), (negator0 n)))))
 
@@ -148,7 +148,7 @@ let modadder21 n =
   Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((Coq_bcseq
     ((Coq_bcseq ((swapper02 n), (adder01 n))), (swapper02 n))),
     (comparator01 n))), (Coq_bcseq ((Coq_bccont ((Pervasives.succ 0),
-    (substractor01 n))), (Coq_bcx (Pervasives.succ 0)))))), (swapper02 n))),
+    (subtractor01 n))), (Coq_bcx (Pervasives.succ 0)))))), (swapper02 n))),
     (bcinv (comparator01 n)))), (swapper02 n))
 
 (** val swapper12' : int -> int -> bccom **)
@@ -156,9 +156,9 @@ let modadder21 n =
 let rec swapper12' i n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Coq_bcskip)
-    (fun i' -> Coq_bcseq ((swapper12' i' n),
-    (bcswap (add (add (Pervasives.succ (Pervasives.succ 0)) n) i')
-      (add (add (add (Pervasives.succ (Pervasives.succ 0)) n) n) i'))))
+    (fun i' -> Coq_bcseq ((swapper12' i' n), (Coq_bcswap
+    ((add (add (Pervasives.succ (Pervasives.succ 0)) n) i'),
+    (add (add (add (Pervasives.succ (Pervasives.succ 0)) n) n) i')))))
     i
 
 (** val swapper12 : int -> bccom **)
@@ -171,7 +171,8 @@ let swapper12 n =
 let rec doubler1' i n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Coq_bcskip)
-    (fun i' -> Coq_bcseq ((bcswap (add n i') (add n i)), (doubler1' i' n)))
+    (fun i' -> Coq_bcseq ((Coq_bcswap ((add n i'), (add n i))),
+    (doubler1' i' n)))
     i
 
 (** val doubler1 : int -> bccom **)
@@ -184,7 +185,7 @@ let doubler1 n =
 
 let moddoubler01 n =
   Coq_bcseq ((Coq_bcseq ((doubler1 n), (comparator01 n))), (Coq_bccont
-    ((Pervasives.succ 0), (substractor01 n))))
+    ((Pervasives.succ 0), (subtractor01 n))))
 
 (** val modadder12 : int -> bccom **)
 
@@ -197,9 +198,8 @@ let rec modsummer' i n fC =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> if fC 0 then modadder12 n else Coq_bcskip)
     (fun i' -> Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((modsummer' i' n fC),
-    (moddoubler01 n))),
-    (bcswap (Pervasives.succ 0)
-      (add (add (add (add (Pervasives.succ (Pervasives.succ 0)) n) n) n) i)))),
+    (moddoubler01 n))), (Coq_bcswap ((Pervasives.succ 0),
+    (add (add (add (add (Pervasives.succ (Pervasives.succ 0)) n) n) n) i))))),
     (if fC i then modadder12 n else Coq_bcskip)))
     i
 
@@ -224,8 +224,8 @@ let modmult_full c cinv n =
 let rec swapperh1' j n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Coq_bcskip)
-    (fun j' -> Coq_bcseq ((swapperh1' j' n),
-    (bcswap j' (add (add (Pervasives.succ (Pervasives.succ 0)) n) j'))))
+    (fun j' -> Coq_bcseq ((swapperh1' j' n), (Coq_bcswap (j',
+    (add (add (Pervasives.succ (Pervasives.succ 0)) n) j')))))
     j
 
 (** val swapperh1 : int -> bccom **)
@@ -256,13 +256,18 @@ let modmult m c cinv n =
     (modmult_full c cinv n))),
     (bcinv (Coq_bcseq ((swapperh1 n), (genM0 m n)))))
 
+(** val safe_swap : int -> int -> bccom **)
+
+let safe_swap a b =
+  if (=) a b then Coq_bcskip else Coq_bcswap (a, b)
+
 (** val reverser' : int -> int -> bccom **)
 
 let rec reverser' i n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> bcswap 0 (sub n (Pervasives.succ 0)))
+    (fun _ -> safe_swap 0 (sub n (Pervasives.succ 0)))
     (fun i' -> Coq_bcseq ((reverser' i' n),
-    (bcswap i (sub (sub n (Pervasives.succ 0)) i))))
+    (safe_swap i (sub (sub n (Pervasives.succ 0)) i))))
     i
 
 (** val reverser : int -> bccom **)

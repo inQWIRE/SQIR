@@ -2,6 +2,7 @@
 type bccom =
 | Coq_bcskip
 | Coq_bcx of int
+| Coq_bcswap of int * int
 | Coq_bccont of int * bccom
 | Coq_bcseq of bccom * bccom
 
@@ -10,13 +11,6 @@ type bccom =
 let bccnot x y =
   Coq_bccont (x, (Coq_bcx y))
 
-(** val bcswap : int -> int -> bccom **)
-
-let bcswap x y =
-  if (=) x y
-  then Coq_bcskip
-  else Coq_bcseq ((Coq_bcseq ((bccnot x y), (bccnot y x))), (bccnot x y))
-
 (** val bcccnot : int -> int -> int -> bccom **)
 
 let bcccnot x y z =
@@ -24,7 +18,7 @@ let bcccnot x y z =
 
 (** val bcelim : bccom -> bccom **)
 
-let rec bcelim = function
+let rec bcelim p = match p with
 | Coq_bccont (q, p0) ->
   (match bcelim p0 with
    | Coq_bcskip -> Coq_bcskip
@@ -35,11 +29,11 @@ let rec bcelim = function
    | x -> (match bcelim p2 with
            | Coq_bcskip -> x
            | x0 -> Coq_bcseq (x, x0)))
-| x -> x
+| _ -> p
 
 (** val bcinv : bccom -> bccom **)
 
-let rec bcinv = function
+let rec bcinv p = match p with
 | Coq_bccont (n, p0) -> Coq_bccont (n, (bcinv p0))
 | Coq_bcseq (p1, p2) -> Coq_bcseq ((bcinv p2), (bcinv p1))
-| x -> x
+| _ -> p

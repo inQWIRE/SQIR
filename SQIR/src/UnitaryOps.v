@@ -138,6 +138,33 @@ Inductive is_fresh {U dim} : nat -> ucom U dim -> Prop :=
   | fresh_app2 : forall q u m n, q <> m -> q <> n -> is_fresh q (uapp2 u m n)
   | fresh_app3 : forall q u m n p,  q <> m -> q <> n -> q <> p -> is_fresh q (uapp3 u m n p).
 
+Fixpoint is_fresh_b {U dim} q (c : ucom U dim) :=
+  match c with
+  | c1 ; c2 => is_fresh_b q c1 && is_fresh_b q c2
+  | uapp1 _ m => negb (m =? q)
+  | uapp2 _ m n => negb (m =? q) && negb (n =? q)
+  | uapp3 _ m n p => negb (m =? q) && negb (n =? q) && negb (p =? q)
+  end.
+
+Ltac simpl_fresh_b :=
+  repeat match goal with
+  | H : _ && _ = true |- _ => apply andb_true_iff in H as [? ?]
+  | H : negb _ = true |- _ => apply negb_true_iff in H
+  | H : (_ =? _) = false |- _ => apply Nat.eqb_neq in H
+  | |- _ && _ = true => apply andb_true_iff; split
+  | |- negb _ = true => apply negb_true_iff
+  | |- (_ =? _) = false => apply Nat.eqb_neq
+  end.
+
+Lemma is_fresh_b_equiv : forall U dim q (c : ucom U dim),
+  is_fresh_b q c = true <-> is_fresh q c.
+Proof.
+  intros U dim q c.
+  split; intro H.
+  - induction c; simpl in H; simpl_fresh_b; constructor; auto.
+  - induction c; inversion H; subst; simpl; simpl_fresh_b; auto.
+Qed.
+
 Lemma uc_well_typed_control : forall dim q (c : base_ucom dim),
   (q < dim)%nat -> is_fresh q c -> uc_well_typed c -> 
   uc_well_typed (control q c).
@@ -166,15 +193,31 @@ Lemma fresh_CCX : forall {dim} q c1 c2 t,
   q <> c1 -> q <> c2 -> q <> t -> @is_fresh _ dim q (CCX c1 c2 t).
 Proof. intros. repeat constructor; auto. Qed.
 
+Ltac invert_is_fresh :=
+  repeat match goal with
+  | H : is_fresh _ _ |- _ => inversion H; subst; clear H
+  end; clear_dups.
+
 Lemma fresh_control : forall {dim} q1 q2 c,
-  q1 <> q2 -> @is_fresh _ dim q1 c -> 
-  @is_fresh _ dim q1 (UnitaryOps.control q2 c).
+  (q1 <> q2 /\ @is_fresh _ dim q1 c) <-> @is_fresh _ dim q1 (control q2 c).
 Proof.
-  intros.
-  induction H0; simpl; try dependent destruction u.
-  apply fresh_seq; auto.
-  apply fresh_CU; auto.
-  apply fresh_CCX; auto.
+  intros dim q1 q2 c.
+  split. 
+  - intros [H1 H2].
+    induction H2; simpl; try dependent destruction u.
+    apply fresh_seq; auto.
+    apply fresh_CU; auto.
+    apply fresh_CCX; auto.
+  - intro H.
+    split.
+    induction c; try dependent destruction u; inversion H; subst.
+    auto.
+    invert_is_fresh; auto.
+    invert_is_fresh; auto. 
+    induction c; try dependent destruction u; inversion H; subst.
+    constructor; auto.
+    constructor. invert_is_fresh; auto.
+    constructor; invert_is_fresh; auto. 
 Qed.
 Local Opaque SQIR.H X Rz CNOT.
 
@@ -278,6 +321,39 @@ Proof.
       rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus.
       apply f_equal; apply f_equal; lra.
 Qed.
+
+Lemma UR_not_WT : forall (dim a b : nat) r r0 r1,
+  ~ uc_well_typed (@uapp1 _ dim (U_R r r0 r1) b) ->
+  uc_eval (@CU dim r r0 r1 a b) = Zero.
+Proof.
+  intros dim a b r r0 r1 H.
+  simpl. 
+  assert (@pad 1 b dim (rotation (r / 2) r0 0) = Zero).
+  { unfold pad. gridify. 
+    assert (uc_well_typed (@uapp1 _ (b + 1 + d) (U_R r r0 r1) b)).
+    constructor; lia.
+    contradiction. }
+  rewrite H0.
+  Msimpl_light.
+  reflexivity.
+Qed.
+
+Lemma UR_not_fresh : forall (dim a b : nat) r r0 r1,
+  ~ is_fresh a (@uapp1 _ dim (U_R r r0 r1) b) ->
+  uc_eval (@CU dim r r0 r1 a b) = Zero.
+Proof.
+  intros dim a b r r0 r1 H.
+  simpl. 
+  assert (uc_eval (@CNOT dim a b) = Zero).
+  { assert (a = b).
+    apply Classical_Prop.NNPP.
+    intro contra. contradict H.
+    constructor; assumption.
+    autorewrite with eval_db. gridify. }
+  rewrite H0.
+  Msimpl_light.
+  reflexivity.
+Qed.
 Local Opaque CU.
 
 Hint Rewrite f_to_vec_CNOT f_to_vec_Rz f_to_vec_X using lia : f_to_vec_db.
@@ -332,6 +408,46 @@ Proof.
   unfold ueval_cnot, pad.
   gridify.
 Qed.
+
+Lemma CCX_not_WT : forall (dim a b c : nat),
+  ~ uc_well_typed (@CNOT dim b c) -> uc_eval (@CCX dim a b c) = Zero.
+Proof.
+  intros dim a b c H.
+  unfold CCX.
+  simpl.
+  assert (uc_eval (@CNOT dim b c) = Zero).
+  { autorewrite with eval_db.
+    gridify.
+    assert (uc_well_typed (@CNOT (b + (1 + d + 1) + d0) b (b + 1 + d))).
+    apply uc_well_typed_CNOT; repeat split; lia.  
+    contradiction. 
+    assert (uc_well_typed (@CNOT (c + (1 + d + 1) + d0) (c + 1 + d) c)).
+    apply uc_well_typed_CNOT; repeat split; lia.  
+    contradiction. }
+  rewrite H0.
+  Msimpl_light.
+  reflexivity.
+Qed.
+
+Local Transparent CNOT.
+Lemma CCX_not_fresh : forall (dim a b c : nat),
+  ~ is_fresh a (@CNOT dim b c) -> uc_eval (@CCX dim a b c) = Zero.
+Proof.
+  intros dim a b c H.
+  unfold CCX.
+  simpl.
+  assert (ueval_cnot dim  a b = Zero \/ ueval_cnot dim  a c = Zero).
+  { assert (a = b \/ a = c).
+    apply Classical_Prop.NNPP.
+    intro contra. contradict H.
+    apply Classical_Prop.not_or_and in contra as [? ?].
+    constructor; assumption.
+    destruct H0.
+    left. autorewrite with eval_db. gridify.
+    right. autorewrite with eval_db. gridify. }
+  destruct H0; rewrite H0; Msimpl_light; reflexivity.
+Qed.
+Local Opaque CNOT.
 Local Opaque CCX.
 
 Lemma CCX_correct : forall (dim : nat) a b c,
@@ -415,18 +531,35 @@ Proof.
     Msimpl. reflexivity.
     rewrite IHc2 by assumption.
     Msimpl. reflexivity.
-  - assert (not (n0 < dim)%nat).
-    intro contra.
-    contradict nWT.
-    constructor; auto.
-    admit. (* easy, will fix later *)
-  - admit.
-Admitted.
+  - apply UR_not_WT. assumption.
+  - apply CCX_not_WT. assumption.
+Qed.
 
-Lemma control_cong : forall {dim} n (c c' : base_ucom dim),
-  is_fresh n c -> is_fresh n c' -> c ≡ c' -> control n c ≡ control n c'.
+Lemma control_not_fresh : forall {dim} n (c : base_ucom dim),
+  not (is_fresh n c) -> uc_eval (control n c) = Zero.
 Proof.
-  intros dim n c c' Hfrc Hfrc' H.
+  intros dim n c nfr.
+  induction c; try dependent destruction u.
+  - assert (not (is_fresh n c1) \/ not (is_fresh n c2)).
+    apply Classical_Prop.not_and_or.
+    intros [contra1 contra2].
+    contradict nfr.
+    constructor; auto.
+    simpl.
+    destruct H as [H | H].
+    rewrite IHc1 by assumption.
+    Msimpl. reflexivity.
+    rewrite IHc2 by assumption.
+    Msimpl. reflexivity.
+  - apply UR_not_fresh. assumption.
+  - apply CCX_not_fresh. assumption.
+Qed.
+
+(* c ≡ c' implies (uc_well_typed c <-> uc_well_typed c' *)
+Lemma control_cong : forall {dim} n (c c' : base_ucom dim),
+  c ≡ c' -> (is_fresh n c <-> is_fresh n c') -> control n c ≡ control n c'.
+Proof.
+  intros dim n c c' H Hfr.
   unfold uc_equiv in *.
   destruct (uc_well_typed_b c) eqn:WT.
   2: { rewrite <- not_true_iff_false in WT.
@@ -445,6 +578,16 @@ Proof.
     rewrite contra in H.
     rewrite <- uc_eval_nonzero_iff in WT.
     contradiction. }
+  destruct (is_fresh_b n c) eqn:Hfr'.
+  2: { rewrite <- not_true_iff_false in Hfr'.
+       rewrite is_fresh_b_equiv in Hfr'.
+       rewrite control_not_fresh by assumption.
+       rewrite Hfr in Hfr'.
+       rewrite control_not_fresh by assumption.
+       reflexivity. }
+  apply is_fresh_b_equiv in Hfr'.
+  assert (is_fresh n c').
+  { apply Hfr. assumption. }
   rewrite 2 control_correct by assumption.
   rewrite H.
   reflexivity.
