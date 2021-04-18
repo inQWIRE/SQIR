@@ -281,7 +281,8 @@ Proof.
   - apply f_to_vec_X. inversion H0. easy.
   - inversion H0. assert (WT := H5). assert (FS := H4).
     apply bcfresh_is_fresh with (dim := dim) in H4. apply bcWT_uc_well_typed in H5.
-    assert (G: (uc_eval (control n (bc2ucom p))) × f_to_vec dim f = f_to_vec dim (if f n then bcexec p f else f)). {
+    assert (G: (uc_eval (control n (bc2ucom p))) × f_to_vec dim f
+               = f_to_vec dim (if f n then bcexec p f else f)). {
       rewrite control_correct; try easy.
       destruct (f n) eqn:Efn.
       + rewrite Mmult_plus_distr_r.
