@@ -1,7 +1,7 @@
 (executable
   (name generate_circuit)
   (modules generate_circuit)
-  (libraries extracted voqc))
+  (libraries extracted unix))
 
 (executable
   (name post_process)

@@ -1,5 +1,6 @@
 open Printf
 
+open AltGateSet
 open ShorExtr
 
 let rec sqir_to_qasm oc (u : coq_U ucom) k =
@@ -70,34 +71,4 @@ if (Z.gcd (Z.of_int !a) (Z.of_int !n) > Z.one) then printf "ERROR: Requires a, N
  let _ = write_qasm_file "shor.qasm" u num_qubits num_cbits in
  printf "Time to write file: %fs\n%!" (Unix.gettimeofday () -. t3))
 
-
-
-(* ignore the following -- it's from my attempt at runing VOQC *)
-
- (* let _ = printf "Converting from SQIR ucom to VOQC gate_list...\n%!" in
- let t2 = Unix.gettimeofday () in
- let l = ucom_to_gate_list u in
- let _ = printf "Time to convert: %fs\n%!" (Unix.gettimeofday () -. t2) in
- let _ = printf "Optimizing resulting gate_list...\n%!" in
- let t3 = Unix.gettimeofday () in
- let l' = optimize_ibm l in
- let _ = printf "Time to optimize: %fs\n" (Unix.gettimeofday () -. t3) in
- let _ = printf "Writing result to shor.qasm...\n%!" in
- let t4 = Unix.gettimeofday () in
- let _ = write_qasm_file "shor.qasm" l' num_qubits in
- let _ = add_measurements "shor.qasm" num_cbits in
- let _ = printf "Time to write: %fs\n\n" (Unix.gettimeofday () -. t4) in
- let origU1 = get_u1_count l in
- let origU2 = get_u2_count l in
- let origU3 = get_u3_count l in
- let origCNOT = get_cnot_count l in
- let _ = printf "Original stats:\t %d qubits, U1 %d, U2 %d, U3 %d, CNOT %d\n%!" 
-         num_qubits origU1 origU2 origU3 origCNOT in
- let finalU1 = get_u1_count l' in
- let finalU2 = get_u2_count l' in
- let finalU3 = get_u3_count l' in
- let finalCNOT = get_cnot_count l' in
- let _ = printf "Final stats:\t %d qubits, U1 %d, U2 %d, U3 %d, CNOT %d\n%!" 
-         num_qubits finalU1 finalU2 finalU3 finalCNOT in
- ()) *)
 
