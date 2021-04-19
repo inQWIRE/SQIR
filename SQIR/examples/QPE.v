@@ -867,7 +867,7 @@ Proof.
   reflexivity. 
   apply pow_le. lra. 
   apply npar_WT; try lia.
-  apply uc_well_typed_invert.
+  rewrite <- uc_well_typed_invert.
   apply QFT_w_reverse_WT.
   lia.
 Qed.

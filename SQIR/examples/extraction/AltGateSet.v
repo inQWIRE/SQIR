@@ -728,6 +728,44 @@ Fixpoint bc2ucom (bc : bccom) : ucom U :=
   | bcseq bc1 bc2 => (bc2ucom bc1) >> (bc2ucom bc2)
   end.
 
+Lemma bc2ucom_WF : forall bc, well_formed (bc2ucom bc).
+Proof.
+  induction bc; repeat constructor; auto.
+  simpl. unfold control. apply control'_WF.
+  assumption.
+Qed.
+
+Lemma bc2ucom_fresh : forall dim q bc,
+  is_fresh q (to_base_ucom dim (bc2ucom bc)) <->
+  @is_fresh _ dim q (RCIR.bc2ucom bc).
+Proof.
+  intros dim q bc.
+  induction bc; try reflexivity.
+  simpl.
+  destruct bc; try reflexivity.
+  rewrite <- UnitaryOps.fresh_control.
+  unfold control.
+  rewrite <- fresh_control'.
+  rewrite IHbc.
+  reflexivity.
+  lia.
+  apply bc2ucom_WF.
+  rewrite <- UnitaryOps.fresh_control.
+  unfold control.
+  rewrite <- fresh_control'.
+  rewrite IHbc.
+  reflexivity.
+  lia.
+  apply bc2ucom_WF.
+  split; intro H; inversion H; subst; simpl.
+  constructor.
+  apply IHbc1; auto.
+  apply IHbc2; auto.
+  constructor.
+  apply IHbc1; auto.
+  apply IHbc2; auto.
+Qed.
+
 Lemma bc2ucom_correct : forall dim (bc : bccom),
   uc_eval dim (bc2ucom bc) = UnitarySem.uc_eval (RCIR.bc2ucom bc).
 Proof.
@@ -739,20 +777,15 @@ Proof.
   apply control_ucom_X.
   apply UnitaryOps.control_cong.
   apply IHbc.
-  admit. 
-  (* is_fresh n (to_base_ucom dim (bc2ucom (bccont n0 bc))) <->
-     is_fresh n (RCIR.bc2ucom (bccont n0 bc)) *)
+  apply bc2ucom_fresh. 
   apply UnitaryOps.control_cong.
   apply IHbc.
-  admit.
-  (* is_fresh n (to_base_ucom dim (bc2ucom (bc1; bc2)%bccom)) <->
-     is_fresh n (RCIR.bc2ucom (bc1; bc2)%bccom) *)
-  admit.
-  (* well_formed (bc2ucom bc) *)
+  apply bc2ucom_fresh. 
+  apply bc2ucom_WF. 
   unfold uc_eval in *. simpl.
   rewrite IHbc1, IHbc2.
   reflexivity.  
-Admitted.
+Qed.
 
 Fixpoint map_qubits (f : nat -> nat) (c : ucom U) : ucom U :=
   match c with
@@ -777,14 +810,30 @@ Qed.
 Fixpoint npar n (u : U 1) : ucom U :=
   match n with
   | O => SKIP
-  | S O =>  uapp u [O]
+  | S O => uapp u [O]
   | S n' => npar n' u >> uapp u [n']
   end.
 
-Lemma npar_same : forall n,
+Lemma npar_H_same : forall n,
   uc_eval n (npar n U_H) = UnitarySem.uc_eval (UnitaryOps.npar n SQIR.U_H).
 Proof.
-Admitted.
+  intro dim.
+  assert (H : forall n, (0 < dim)%nat -> (n <= dim)%nat -> 
+            uc_eval dim (npar n U_H) = 
+              UnitarySem.uc_eval (UnitaryOps.npar' dim n SQIR.U_H)).
+  { intros n Hdim Hn.
+    induction n; try reflexivity.
+    destruct n.
+    unfold uc_eval. simpl. autorewrite with eval_db. gridify.
+    rewrite hadamard_rotation. reflexivity. lia.
+    unfold uc_eval in *.
+    simpl in *.
+    rewrite IHn.
+    reflexivity.
+    lia. }
+  destruct dim; try reflexivity.
+  apply H; lia.
+Qed.
 
 Fixpoint invert (u : ucom U) : ucom U :=
   match u with
@@ -794,8 +843,8 @@ Fixpoint invert (u : ucom U) : ucom U :=
       | U_X, (q1 :: List.nil)%list => X q1
       | U_H, (q1 :: List.nil) => H q1
       | U_U1 r1, (q1 :: List.nil) => U1 (- r1) q1
-      | U_U2 r1 r2, (q1 :: List.nil) => U3 (- (PI/2)) (- r1) (- r2) q1
-      | U_U3 r1 r2 r3, (q1 :: List.nil) => U3 (- r1) (- r2) (- r3) q1
+      | U_U2 r1 r2, (q1 :: List.nil) => U2 (- r2 - PI) (- r1 + PI) q1
+      | U_U3 r1 r2 r3, (q1 :: List.nil) => U3 (- r1) (- r3) (- r2) q1
       | U_CX, (q1 :: q2 :: List.nil) => CX q1 q2
       | U_CU1 r, (q1 :: q2 :: List.nil) => CU1 (- r) q1 q2
       | U_SWAP, (q1 :: q2 :: List.nil) => SWAP q1 q2
@@ -808,8 +857,96 @@ Fixpoint invert (u : ucom U) : ucom U :=
       end
   end.
 
+Lemma is_fresh_invert : forall {dim} q (u : base_ucom dim),
+  is_fresh q u <-> is_fresh q (UnitaryOps.invert u).
+Proof.
+  intros dim q u.
+  split; intro H.
+  - induction u; try dependent destruction u.
+    inversion H; subst.
+    constructor; auto.
+    invert_is_fresh; constructor; auto.
+    invert_is_fresh; constructor; auto.
+  - induction u; try dependent destruction u.
+    inversion H; subst.
+    constructor; auto.
+    invert_is_fresh; constructor; auto.
+    invert_is_fresh; constructor; auto.
+Qed.
+
+Local Transparent sqirU1 sqirU2 sqirU3 SQIR.SWAP SQIR.CNOT.
 Lemma invert_same : forall dim u,
+  well_formed u -> (* WF isn't necessary, but makes the proof easier *)
   uc_eval dim (invert u) = 
     UnitarySem.uc_eval (UnitaryOps.invert (to_base_ucom dim u)).
 Proof.
-Admitted.
+  intros dim u WF.
+  induction u.
+  unfold uc_eval in *.
+  simpl.
+  inversion WF; subst.
+  rewrite IHu1, IHu2; auto.
+  destruct u; simpl_WF; simpl. 
+  (* U_X *)
+  rewrite invert_X.
+  reflexivity.
+  (* U_H *)
+  rewrite invert_H.
+  reflexivity.
+  (* U_U1 *)
+  unfold uc_eval. simpl.
+  rewrite Ropp_0.
+  apply f_equal.
+  unfold rotation.
+  solve_matrix; autorewrite with Cexp_db trig_db R_db; lca.
+  (* U_U2 *)
+  unfold uc_eval. simpl.
+  apply f_equal.
+  unfold rotation.
+  solve_matrix; autorewrite with Cexp_db trig_db R_db; lca.
+  (* U_U3 *)
+  reflexivity.
+  (* U_CX *)
+  reflexivity.
+  (* U_CU1 *)
+  rewrite invert_control.
+  unfold uc_eval. simpl.
+  apply control_cong.
+  unfold uc_equiv. simpl.
+  rewrite Ropp_0.
+  apply f_equal.
+  unfold rotation.
+  solve_matrix; autorewrite with Cexp_db trig_db R_db; lca.
+  split; intro; invert_is_fresh; repeat constructor; auto.
+  (* U_SWAP *)
+  unfold uc_eval. simpl. 
+  rewrite Mmult_assoc. 
+  reflexivity.
+  (* U_CCX *)
+  rewrite invert_control.
+  reflexivity.
+  (* U_CSWAP *)
+  rewrite invert_control.
+  unfold uc_eval. simpl.
+  apply control_cong.
+  unfold uc_equiv. simpl.
+  rewrite Mmult_assoc. 
+  reflexivity.
+  split; intro; invert_is_fresh; repeat constructor; auto.
+  (* U_C3X *)
+  rewrite invert_control.
+  apply control_cong.
+  rewrite invert_control.
+  reflexivity.
+  apply is_fresh_invert.
+  (* U_C4X *)
+  rewrite invert_control.
+  apply control_cong.
+  rewrite invert_control.
+  apply control_cong.
+  rewrite invert_control.
+  reflexivity.
+  apply is_fresh_invert.
+  apply is_fresh_invert.
+Qed.
+Local Opaque sqirU1 sqirU2 sqirU3 SQIR.SWAP SQIR.CNOT.

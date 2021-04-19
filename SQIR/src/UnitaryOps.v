@@ -20,11 +20,14 @@ Fixpoint invert {dim} (c : base_ucom dim) : base_ucom dim :=
   end.
 
 Lemma uc_well_typed_invert : forall (dim : nat) (c : base_ucom dim),
-  uc_well_typed c -> uc_well_typed (invert c).
+  uc_well_typed c <-> uc_well_typed (invert c).
 Proof.
-  intros dim c WT.
+  intros dim c. 
+  split; intro H.
   induction c; try dependent destruction u; 
-  inversion WT; subst; constructor; auto.
+    inversion H; subst; constructor; auto.
+  induction c; try dependent destruction u;
+    inversion H; subst; constructor; auto.
 Qed.
 
 Lemma invert_correct : forall (dim : nat) (c : base_ucom dim),
@@ -43,6 +46,36 @@ Proof.
     Qsimpl. reflexivity.
     Qsimpl. reflexivity.
 Qed.
+
+(* A few common inverses *)
+
+Hint Rewrite sin_neg cos_neg : trig_db.
+
+Local Transparent X.
+Lemma invert_X : forall dim n, invert (@X dim n) ≡ X n.
+Proof.
+  intros dim n.
+  unfold uc_equiv. simpl. 
+  autorewrite with eval_db.
+  gridify.
+  do 2 (apply f_equal2; try reflexivity).
+  unfold rotation. 
+  solve_matrix; try rewrite Ropp_div; autorewrite with Cexp_db trig_db; lca.
+Qed.
+Local Opaque X.
+
+Local Transparent H.
+Lemma invert_H : forall dim n, invert (@H dim n) ≡ H n.
+Proof.
+  intros dim n.
+  unfold uc_equiv. simpl. 
+  autorewrite with eval_db.
+  gridify.
+  do 2 (apply f_equal2; try reflexivity).
+  unfold rotation. 
+  solve_matrix; try rewrite Ropp_div; autorewrite with Cexp_db trig_db; lca.
+Qed.
+Local Opaque H.
 
 (** Programs with arbitrary control **)
 
@@ -612,6 +645,63 @@ Proof.
   all: rewrite Mplus_comm; reflexivity.
 Qed.
 Local Opaque X CU.
+
+Lemma invert_fresh : forall dim q (u : base_ucom dim),
+  is_fresh q u <-> is_fresh q (invert u).
+Proof.
+  intros dim q u.
+  split; intro H.
+  induction u; try dependent destruction u; inversion H; subst; constructor; auto.
+  induction u; try dependent destruction u; inversion H; subst; constructor; auto.
+Qed.
+
+Lemma proj_adjoint : forall dim q b, (proj q dim b) † = proj q dim b.
+Proof.
+  intros.
+  unfold proj, pad.
+  gridify.
+  Msimpl.
+  reflexivity.
+Qed.
+
+Lemma invert_control : forall dim q (u : base_ucom dim),
+  invert (control q u) ≡ control q (invert u).
+Proof.
+  intros dim q u.
+  unfold uc_equiv.
+  destruct (uc_well_typed_b u) eqn:WT.
+  2: { rewrite <- not_true_iff_false in WT.
+       rewrite uc_well_typed_b_equiv in WT.
+       rewrite <- invert_correct.
+       rewrite (control_not_WT _ u) by assumption.
+       rewrite uc_well_typed_invert in WT.
+       rewrite (control_not_WT _ (invert _)) by assumption.
+       lma. }
+  rewrite uc_well_typed_b_equiv in WT.
+  destruct (is_fresh_b q u) eqn:Hfr.
+  2: { rewrite <- not_true_iff_false in Hfr.
+       rewrite is_fresh_b_equiv in Hfr.
+       rewrite <- invert_correct.
+       rewrite (control_not_fresh _ u) by assumption.
+       rewrite invert_fresh in Hfr.
+       rewrite (control_not_fresh _ (invert _)) by assumption.
+       lma. }
+  rewrite is_fresh_b_equiv in Hfr.
+  assert (uc_well_typed (invert u)).
+  rewrite <- uc_well_typed_invert; auto.
+  assert (is_fresh q (invert u)).
+  rewrite <- invert_fresh; auto.
+  rewrite <- invert_correct.
+  rewrite control_correct by assumption.
+  rewrite control_correct by assumption.
+  rewrite <- invert_correct.
+  distribute_adjoint.
+  rewrite 2 proj_adjoint.
+  rewrite invert_correct.
+  rewrite proj_fresh_commutes by assumption.
+  reflexivity.
+Qed.
+
 (** n iterations of a program **)
 
 Fixpoint niter {dim} n (c : base_ucom dim) : base_ucom dim :=

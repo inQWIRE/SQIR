@@ -51,6 +51,22 @@ Definition QPE_var k (f : nat -> bccom) : ucom U :=
   controlled_powers_var (fun x => map_bccom (fun q => k + q)%nat (f x)) k >>
   invert (QFT_w_reverse k).
 
+Definition modexp a x N := a ^ x mod N.
+Definition modmult_circuit a ainv N n i := 
+  RCIR.bcelim (ModMult.modmult_rev N (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) n).
+Definition num_qubits n : nat := n + modmult_rev_anc n.
+
+(* requires 0 < a < N, gcd a N = 1 
+   returns a circuit + the number of qubits used *)
+Definition shor_circuit a N := 
+  let m := Nat.log2 (2 * N^2)%nat in
+  let n := Nat.log2 (2 * N) in
+  let ainv := modinv a N in
+  let numq := num_qubits n in
+  let f i := modmult_circuit a ainv N n i in
+  (X (m + n - 1) >> QPE_var m f, (m + numq)%nat, m).
+
+
 (** Proofs **)
 
 Lemma controlled_rotations_same : forall n,
@@ -162,22 +178,6 @@ Admitted.
 
 (* ... and so on, ending with QPE_var_same *)
 
-(* Finally, the defn of shor_circuit + its correctness property: *)
-Definition modexp a x N := a ^ x mod N.
-Definition modmult_circuit a ainv N n i := 
-  RCIR.bcelim (ModMult.modmult_rev N (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) n).
-Definition num_qubits n : nat := n + modmult_rev_anc n.
-
-(* requires 0 < a < N, gcd a N = 1 
-   returns a circuit + the number of qubits used *)
-Definition shor_circuit a N := 
-  let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2 (2 * N) in
-  let ainv := modinv a N in
-  let numq := num_qubits n in
-  let f i := modmult_circuit a ainv N n i in
-  (X (m + n - 1) >> QPE_var m f, (m + numq)%nat, m).
-
 (* Final correctness property is a wrapper around Shor_correct_full_implementation
    in Shor.v *)
 
@@ -192,5 +192,8 @@ Lemma Shor_correct_full_implementation :
       let n := Nat.log2 (2 * N)%nat in
       probability_of_success_var a (ord a N) N m n (modmult_rev_anc n) (f_modmult_circuit a (modinv a N) N n) >= β / (Nat.log2 N)^4.
 Proof.
+
+(* Double check that we're not using admitted lemmas *)
+Print Assumptions shor_circuit_correct.
 
 *)
