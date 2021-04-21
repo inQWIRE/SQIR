@@ -6059,9 +6059,6 @@ Proof.
     apply H4. lia. lia. lia.
 Qed.
 
-
-
-
 Local Transparent carry.
 
 Lemma UMAseq'_correct :
@@ -6392,600 +6389,7 @@ Proof.
   apply UMAseq'_correct. assumption. lia. 1 - 6: assumption.
   apply H0. lia. 1 - 6 : assumption.
 Qed.
-
-
-
-
-Lemma efresh_trans_same: forall e dim vs vs' p, exp_fresh p e -> 
-                vs' = (snd (trans_exp vs dim e)) ->
-                 find_pos vs p = find_pos vs' p.
-Proof.
- induction e; intros; subst.
- eauto. eauto.
- specialize (trans_exp_cu vs dim p e) as eq1.
- destruct eq1. destruct H1.
- destruct H1. subst. rewrite H2 in *.
- simpl in *. easy.
- destruct (trans_exp vs dim e) eqn:eq1.
- rewrite H1. simpl.
- apply (IHe dim). inv H0. easy.
- rewrite eq1. easy.
- inv H0. simpl. easy.
- inv H0. simpl. easy.
- inv H0. simpl.
- unfold find_pos,trans_lshift,shift_fun.
- destruct p.
- destruct (vs x) eqn:eq1.
- destruct p eqn:eq2. 
- destruct p0 eqn:eq3.
- unfold start,vmap.
- bdestruct (v =? x). simpl in *. lia. easy.
- inv H0. simpl.
- unfold find_pos,trans_rshift,shift_fun.
- destruct p.
- destruct (vs x) eqn:eq1.
- destruct p eqn:eq2. 
- destruct p0 eqn:eq3. 
- unfold start,vmap.
- bdestruct (v =? x). simpl in *. lia. easy.
- inv H0. simpl.
- destruct (trans_exp vs dim e1) eqn:eq1.
- destruct (trans_exp v dim e2) eqn:eq2. simpl.
- specialize (IHe1 dim vs v p H4).
- rewrite IHe1.
- apply (IHe2 dim); try assumption.
- rewrite eq2. easy.
- rewrite eq1. easy.
-Qed.
-
-Lemma trans_exp_cu_snd_same : forall vs dim p e, 
-         snd (trans_exp vs dim (CU p e)) = snd (trans_exp vs dim e).
-Proof.
-  intros.
-  specialize (trans_exp_cu vs dim p e) as eq1.
-  destruct eq1. destruct H0.
-  destruct H0. subst.
-  rewrite H1. simpl. easy.
-  destruct (trans_exp vs dim e) eqn:eq1.
-  rewrite H0. easy.
-Qed.
-
-Lemma vsize_vs_same: forall e dim vs vs' p, vs' = (snd (trans_exp vs dim e)) -> vsize vs' p = vsize vs p.
-Proof.
- induction e; intros;subst; try easy.
- apply (IHe dim).
- rewrite trans_exp_cu_snd_same. easy.
- simpl.
- unfold trans_lshift, vsize.
- destruct (vs x) eqn:eq1.
- destruct p0 eqn:eq2.
- destruct p1 eqn:eq3.
- bdestruct (p =? x). subst.
- rewrite eq1. simpl. easy.
- easy.
- simpl.
- unfold trans_rshift, vsize.
- destruct (vs x) eqn:eq1.
- destruct p0 eqn:eq2.
- destruct p1 eqn:eq3.
- bdestruct (p =? x). subst.
- rewrite eq1. simpl. easy.
- easy.
- simpl.
- destruct (trans_exp vs dim e1) eqn:eq1.
- destruct (trans_exp v dim e2) eqn:eq2.
- simpl.
- specialize (IHe1 dim vs v p).
- rewrite eq1 in IHe1. simpl in IHe1.
- rewrite <- IHe1.
- rewrite (IHe2 dim v v0). easy.
- rewrite eq2. easy. easy.
-Qed.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Check trans_exp.
-
-
-
-
-Lemma avs_bij_aux: forall e dim vs vs' avs avs', 
-           vs' = fst (trans_avs vs dim e avs) -> 
-           avs' = snd (trans_avs vs dim e avs) ->
-          vars_anti_same vs ->
-        (forall i, i < dim -> snd (avs i) < vsize vs (fst (avs i))) ->
-         (forall i, i < dim -> snd (avs' i) < vsize vs (fst (avs' i))).
-Proof.
-  induction e; intros.
-  simpl in *. subst. apply H3. easy.
-  simpl in *. subst. apply H3. easy.
-  simpl in H0. simpl in H1.
-  apply (IHe dim vs vs' avs avs'); try assumption.
-  simpl in *. subst. apply H3. easy.
-  simpl in *. subst. apply H3. easy.
-  rewrite <- trans_exp_avs_same in H0.
-  apply (vars_anti_vs_same (Lshift x) dim vs vs') in H2.
-  unfold vars_anti_same in H2.
-  rewrite trans_exp_avs_same with (avs := avs) in H0.
-  rewrite H1. simpl.
-  bdestruct ((start vs x <=? i)).
-  bdestruct ((i - start vs x <? vsize vs x)).
-  simpl.
-  destruct (H2 x) as [X1 [X2 [X3 [X4]]]].
-  specialize (X3 ((i - start vs x))).
-  rewrite <- trans_exp_avs_same in H0.
-  rewrite (vsize_vs_same (Lshift x) dim vs vs') in X3.
-  rewrite H0 in X3. simpl in X3. apply X3. lia. easy.
-  simpl. apply H3. easy.
-  simpl. apply H3. easy.
-  easy.
-  rewrite <- trans_exp_avs_same in H0.
-  apply (vars_anti_vs_same (Rshift x) dim vs vs') in H2.
-  unfold vars_anti_same in H2.
-  rewrite trans_exp_avs_same with (avs := avs) in H0.
-  rewrite H1. simpl.
-  bdestruct ((start vs x <=? i)).
-  bdestruct ((i - start vs x <? vsize vs x)).
-  simpl.
-  destruct (H2 x) as [X1 [X2 [X3 [X4]]]].
-  specialize (X3 ((i - start vs x))).
-  rewrite <- trans_exp_avs_same in H0.
-  rewrite (vsize_vs_same (Rshift x) dim vs vs') in X3.
-  rewrite H0 in X3. simpl in X3. apply X3. lia. easy.
-  simpl. apply H3. easy.
-  simpl. apply H3. easy.
-  easy.
-  simpl in H0. simpl in H1.
-  destruct (trans_avs vs dim e1 avs) eqn:eq1.
-  specialize (IHe1 dim vs v avs p).
-  rewrite eq1 in IHe1.
-  assert (v = fst (v,p)) by easy.
-  assert (p = snd (v,p)) by easy.
-  specialize (IHe1 H5 H6 H2 H3).
-  apply (vars_anti_vs_same e1 dim vs v) in H2.
-  specialize (IHe2 dim v vs' p avs').
-  rewrite <- H0 in IHe2.
-  rewrite <- H1 in IHe2.
-  assert (vs' = vs') by easy. assert (avs' = avs') by easy.
-  assert ((forall i : nat, i < dim -> snd (p i) < vsize v (fst (p i)))).
-  intros. rewrite (vsize_vs_same e1 dim vs v). apply IHe1. easy.
-  rewrite trans_exp_avs_same with (avs := avs). rewrite eq1. easy.
-  specialize (IHe2 H7 H8 H2 H9).
-  rewrite <- (vsize_vs_same e1 dim vs v). apply IHe2. easy.
-  rewrite trans_exp_avs_same with (avs := avs). rewrite eq1. easy.
-  rewrite trans_exp_avs_same with (avs := avs). rewrite eq1. easy.
-Qed.
-
-Lemma avs_bij : forall e dim vs vs' avs avs', 
-           vs' = fst (trans_avs vs dim e avs) -> 
-           avs' = snd (trans_avs vs dim e avs) ->
-        vars_finite_bij vs -> vars_sparse vs -> vars_anti_same vs ->
-         (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
-         (forall i, i < dim -> find_pos vs (avs i) = i) ->
-         (forall i, i < dim -> snd (avs i) < vsize vs (fst (avs i))) ->
-         (forall i, snd i < vsize vs (fst i) -> avs' (find_pos vs' i) = i)
-        /\ (forall i, i < dim -> find_pos vs' (avs' i) = i).
-Proof.
-  induction e; intros.
-  simpl in H1. subst. easy.
-  simpl in H1. subst. easy.
-  simpl in H1.
-  apply (IHe dim vs vs' avs avs') ; try assumption.
-  simpl in H1. subst. easy.
-  simpl in H1. subst. easy.
-  split. intros.
-  simpl in H1.
-  rewrite H1.
-  rewrite <- trans_exp_avs_same in H0.
-  rewrite <- (start_vs_same (Lshift x) dim vs vs') by assumption.
-  bdestruct ((start vs' x <=? find_pos vs' i)).
-  bdestruct ((find_pos vs' i - start vs' x <? vsize vs x)). simpl.
-  destruct i.
-  bdestruct (x =? v). rewrite H11.
-  unfold find_pos.
-  assert ((start vs' v + vmap vs' v n - start vs' v) = vmap vs' v n) by lia.
-  rewrite H12.
-  rewrite H0.
-  simpl. unfold trans_lshift.
-  rewrite H11.
-  destruct (vs v) eqn:eq1.
-  destruct p. destruct p.
-  unfold avmap,vmap.
-  bdestruct (v =? v). simpl.
-  unfold vars_anti_same in H4.
-  specialize (H4 v).
-  destruct H4 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
-  rewrite shift_fun_twice. easy.
-  unfold vsize in H8. simpl in H8.
-  rewrite eq1 in H8. simpl in H8. lia.
-  unfold vmap,vsize in X1.
-  rewrite eq1 in X1. simpl in X1. easy.
-  unfold avmap,vsize in X3.
-  rewrite eq1 in X3. simpl in X3. easy.
-  unfold avmap,vmap in X6.
-  rewrite eq1 in X6. simpl in X6. intros. easy.
-  unfold vsize in H8. simpl in H8. rewrite eq1 in H8. easy. lia. 
-  apply (vars_sparse_vs_same (Lshift x) dim vs vs' H0) in H3.
-  unfold vars_sparse in H3.
-  specialize (H3 x v H11).
-  rewrite (vsize_vs_same (Lshift x) dim vs vs') in H3.
-  rewrite (vsize_vs_same (Lshift x) dim vs vs') in H3.
-  simpl in H8.
-  unfold vars_anti_same in H4.
-  specialize (H4 v).
-  destruct H4 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
-  specialize (vars_fun_lt (Lshift x) dim vs vs' v H0 X1) as eq1.
-  apply eq1 in H8.
-  specialize (H3 (find_pos vs' (v, n) - start vs' x) (vmap vs' v n) H10 H8).
-  assert (start vs' x + (find_pos vs' (v, n) - start vs' x) = find_pos vs' (v, n)) by lia.
-  rewrite H4 in H3.
-  unfold find_pos in H3. contradiction. easy. easy.
-  simpl.
-  assert (fst i <> x).
-  intros R.
-  unfold find_pos in H10.
-  unfold find_pos in H9.
-  destruct i. simpl in R.
-  rewrite R in *.
-  assert (start vs' x + vmap vs' x n - start vs' x  = vmap vs' x n) by lia.
-  rewrite H11 in H10. simpl in H8.
-  apply (vars_anti_vs_same (Lshift x) dim vs vs' H0) in H4.
-  specialize (H4 x).
-  destruct H4 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
-  rewrite (vsize_vs_same (Lshift x) dim vs) in X1.
-  apply X1 in H8. lia. easy.
-  subst. unfold find_pos.
-  destruct i. simpl.
-  unfold trans_lshift,start,vmap.
-  destruct (vs x) eqn:eq1.
-  destruct p. destruct p. 
-  bdestruct (v =? x). simpl in H11. lia. simpl.
-  assert (fst (fst (fst (vs v))) + snd (fst (vs v)) n = find_pos vs (v,n)).
-  unfold find_pos,start,vmap. easy.
-  rewrite H1. rewrite H5. easy. lia.
-  simpl.
-  assert (fst i <> x).
-  intros R.
-  unfold find_pos in H9.
-  destruct i. simpl in R. subst. lia.
-  subst. unfold find_pos.
-  destruct i. simpl.
-  unfold trans_lshift,start,vmap.
-  destruct (vs x) eqn:eq1.
-  destruct p. destruct p. 
-  bdestruct (v =? x). simpl in H10. lia. simpl.
-  assert (fst (fst (fst (vs v))) + snd (fst (vs v)) n = find_pos vs (v,n)).
-  unfold find_pos,start,vmap. easy.
-  rewrite H1. rewrite H5. easy. lia.
-  intros.
-  simpl in H1.
-  rewrite H1.
-  bdestruct (((start vs x <=? i))).
-  bdestruct ((i - start vs x <? vsize vs x)). simpl.
-  rewrite (start_vs_same (Lshift x) dim vs vs') by assumption.
-  rewrite H0.
-  simpl.
-  unfold vmap,avmap,trans_lshift.
-  destruct (vs x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x =? x). simpl.
-  assert (eq2 := H10).
-  unfold vsize in eq2. rewrite eq1 in eq2. simpl in eq2.
-  assert (shift_fun n0 1 n2 (ashift_fun n (n2 - 1) n2 (i - start vs x)) 
-         = shift_fun n0 (n2 - (n2 -1)) n2 (ashift_fun n (n2 - 1) n2 (i - start vs x))).
-  assert (n2 - (n2 -1) = 1) by lia. rewrite H12. easy.
-  rewrite H12.
-  unfold vars_anti_same in H4.
-  specialize (H4 x).
-  unfold vsize,vmap,avmap in H4.
-  rewrite eq1 in H4. simpl in H4.
-  rewrite (shift_fun_back_1); try easy.
-  lia. lia. lia. 
-  simpl.
-  assert (x <> fst (avs i)).
-  intros R.
-  rewrite R in H9. rewrite R in H10.
-  unfold find_pos in H6.
-  specialize (H6 i H8).
-  destruct (avs i) eqn:eq1.
-  simpl in H9. simpl in H10.
-  assert ( i - start vs v = vmap vs v n) by lia.
-  rewrite H11 in H10.
-  specialize (H7 i H8).
-  rewrite eq1 in H7. simpl in H7.
-  unfold vars_anti_same in H4.
-  specialize (H4 v). destruct H4.
-  apply H4 in H7. lia.
-  rewrite H0. simpl.
-  unfold trans_lshift,find_pos,start,vmap.
-  destruct (avs i) eqn:eq1.
-  destruct (vs x) eqn:eq2.
-  destruct p. destruct p.
-  bdestruct (v =? x). simpl in H11. lia.
-  assert (fst (fst (fst (vs v))) + snd (fst (vs v)) n = find_pos vs (avs i)).
-  rewrite eq1. unfold find_pos,start,vmap. easy.
-  rewrite H13. rewrite H6. easy. lia. 
-  simpl.
-  assert (x <> fst (avs i)).
-  intros R.
-  specialize (H6 i H8).
-  unfold find_pos in H6.
-  destruct (avs i) eqn:eq1.
-  simpl in R. rewrite R in H9. lia.
-  rewrite H0. simpl.
-  unfold trans_lshift,find_pos,start,vmap.
-  destruct (avs i) eqn:eq1.
-  destruct (vs x) eqn:eq2.
-  destruct p. destruct p.
-  bdestruct (v =? x). simpl in H10. lia.
-  assert (fst (fst (fst (vs v))) + snd (fst (vs v)) n = find_pos vs (avs i)).
-  rewrite eq1. unfold find_pos,start,vmap. easy.
-  rewrite H12. rewrite H6. easy. lia. 
-  split. intros.
-  simpl in H1.
-  rewrite H1.
-  rewrite <- trans_exp_avs_same in H0.
-  rewrite <- (start_vs_same (Rshift x) dim vs vs') by assumption.
-  bdestruct ((start vs' x <=? find_pos vs' i)).
-  bdestruct ((find_pos vs' i - start vs' x <? vsize vs x)). simpl.
-  destruct i.
-  bdestruct (x =? v). rewrite H11.
-  unfold find_pos.
-  assert ((start vs' v + vmap vs' v n - start vs' v) = vmap vs' v n) by lia.
-  rewrite H12.
-  rewrite H0.
-  simpl. unfold trans_rshift.
-  rewrite H11.
-  destruct (vs v) eqn:eq1.
-  destruct p. destruct p.
-  unfold avmap,vmap.
-  bdestruct (v =? v). simpl.
-  unfold vars_anti_same in H4.
-  specialize (H4 v).
-  unfold vsize,vmap,avmap in H4. rewrite eq1 in H4. simpl in H4.
-  destruct H4 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
-  rewrite shift_fun_back; try easy.
-  unfold vsize in H8. simpl in H8.
-  rewrite eq1 in H8. simpl in H8. lia.
-  lia. 
-  apply (vars_sparse_vs_same (Rshift x) dim vs vs' H0) in H3.
-  unfold vars_sparse in H3.
-  specialize (H3 x v H11).
-  rewrite (vsize_vs_same (Rshift x) dim vs vs') in H3.
-  rewrite (vsize_vs_same (Rshift x) dim vs vs') in H3.
-  simpl in H8.
-  unfold vars_anti_same in H4.
-  specialize (H4 v).
-  destruct H4 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
-  specialize (vars_fun_lt (Rshift x) dim vs vs' v H0 X1) as eq1.
-  apply eq1 in H8.
-  specialize (H3 (find_pos vs' (v, n) - start vs' x) (vmap vs' v n) H10 H8).
-  assert (start vs' x + (find_pos vs' (v, n) - start vs' x) = find_pos vs' (v, n)) by lia.
-  rewrite H4 in H3.
-  unfold find_pos in H3. contradiction. easy. easy.
-  simpl.
-  assert (fst i <> x).
-  intros R.
-  unfold find_pos in H10.
-  unfold find_pos in H9.
-  destruct i. simpl in R.
-  rewrite R in *.
-  assert (start vs' x + vmap vs' x n - start vs' x  = vmap vs' x n) by lia.
-  rewrite H11 in H10. simpl in H8.
-  apply (vars_anti_vs_same (Rshift x) dim vs vs' H0) in H4.
-  specialize (H4 x).
-  destruct H4 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
-  rewrite (vsize_vs_same (Rshift x) dim vs) in X1.
-  apply X1 in H8. lia. easy.
-  subst. unfold find_pos.
-  destruct i. simpl.
-  unfold trans_rshift,start,vmap.
-  destruct (vs x) eqn:eq1.
-  destruct p. destruct p. 
-  bdestruct (v =? x). simpl in H11. lia. simpl.
-  assert (fst (fst (fst (vs v))) + snd (fst (vs v)) n = find_pos vs (v,n)).
-  unfold find_pos,start,vmap. easy.
-  rewrite H1. rewrite H5. easy. lia.
-  simpl.
-  assert (fst i <> x).
-  intros R.
-  unfold find_pos in H9.
-  destruct i. simpl in R. subst. lia.
-  subst. unfold find_pos.
-  destruct i. simpl.
-  unfold trans_rshift,start,vmap.
-  destruct (vs x) eqn:eq1.
-  destruct p. destruct p. 
-  bdestruct (v =? x). simpl in H10. lia. simpl.
-  assert (fst (fst (fst (vs v))) + snd (fst (vs v)) n = find_pos vs (v,n)).
-  unfold find_pos,start,vmap. easy.
-  rewrite H1. rewrite H5. easy. lia.
-  intros.
-  simpl in H1.
-  rewrite H1.
-  bdestruct (((start vs x <=? i))).
-  bdestruct ((i - start vs x <? vsize vs x)). simpl.
-  rewrite (start_vs_same (Rshift x) dim vs vs') by assumption.
-  rewrite H0.
-  simpl.
-  unfold vmap,avmap,trans_rshift.
-  destruct (vs x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x =? x). simpl.
-  assert (eq2 := H10).
-  unfold vsize in eq2. rewrite eq1 in eq2. simpl in eq2.
-  unfold vars_anti_same in H4.
-  specialize (H4 x).
-  unfold vsize,vmap,avmap in H4.
-  rewrite eq1 in H4. simpl in H4.
-  rewrite (shift_fun_back_1); try easy.
-  lia. lia. lia. 
-  simpl.
-  assert (x <> fst (avs i)).
-  intros R.
-  rewrite R in H9. rewrite R in H10.
-  unfold find_pos in H6.
-  specialize (H6 i H8).
-  destruct (avs i) eqn:eq1.
-  simpl in H9. simpl in H10.
-  assert ( i - start vs v = vmap vs v n) by lia.
-  rewrite H11 in H10.
-  specialize (H7 i H8).
-  rewrite eq1 in H7. simpl in H7.
-  unfold vars_anti_same in H4.
-  specialize (H4 v). destruct H4.
-  apply H4 in H7. lia.
-  rewrite H0. simpl.
-  unfold trans_rshift,find_pos,start,vmap.
-  destruct (avs i) eqn:eq1.
-  destruct (vs x) eqn:eq2.
-  destruct p. destruct p.
-  bdestruct (v =? x). simpl in H11. lia.
-  assert (fst (fst (fst (vs v))) + snd (fst (vs v)) n = find_pos vs (avs i)).
-  rewrite eq1. unfold find_pos,start,vmap. easy.
-  rewrite H13. rewrite H6. easy. lia. 
-  simpl.
-  assert (x <> fst (avs i)).
-  intros R.
-  specialize (H6 i H8).
-  unfold find_pos in H6.
-  destruct (avs i) eqn:eq1.
-  simpl in R. rewrite R in H9. lia.
-  rewrite H0. simpl.
-  unfold trans_rshift,find_pos,start,vmap.
-  destruct (avs i) eqn:eq1.
-  destruct (vs x) eqn:eq2.
-  destruct p. destruct p.
-  bdestruct (v =? x). simpl in H10. lia.
-  assert (fst (fst (fst (vs v))) + snd (fst (vs v)) n = find_pos vs (avs i)).
-  rewrite eq1. unfold find_pos,start,vmap. easy.
-  rewrite H12. rewrite H6. easy. lia.
-  simpl in H0. simpl in H1. 
-  destruct (trans_avs vs dim e1 avs) eqn:eq1.
-  specialize (IHe1 dim vs v avs p).
-  rewrite eq1 in IHe1.
-  assert (v = fst (v, p)) by easy.
-  assert (p = snd (v, p)) by easy.
-  specialize (IHe1 H8 H9 H2 H3 H4 H5 H6 H7).
-  destruct IHe1.
-  specialize (IHe2 dim v vs' p avs').
-  rewrite <- H0 in IHe2. rewrite <- H1 in IHe2.
-  assert (vs' = vs') by easy.
-  assert (avs' = avs') by easy.
-  assert (v = snd (trans_exp vs dim e1)).
-  erewrite trans_exp_avs_same. rewrite eq1. easy.
-  specialize (avs_bij_aux e1 dim vs v avs p) as eq2.
-  rewrite eq1 in eq2.
-  specialize (eq2 H8 H9 H4 H7).
-  apply (vars_finite_bij_vs_same e1 dim vs v H14) in H2.
-  apply (vars_sparse_vs_same e1 dim vs v H14) in H3.
-  apply (vars_anti_vs_same e1 dim vs v H14) in H4.
-  assert ((forall i : var * nat,
-        snd i < vsize v (fst i) -> p (find_pos v i) = i)).
-  intros. apply H10.
-  rewrite <- (vsize_vs_same e1 dim vs v). easy. easy.
-  assert ((forall i : nat, i < dim -> snd (p i) < vsize v (fst (p i)))).
-  intros.
-  rewrite (vsize_vs_same e1 dim vs v). apply eq2. easy.
-  rewrite trans_exp_avs_same with (avs := avs). rewrite eq1. easy.
-  specialize (IHe2 H12 H13 H2 H3 H4 H15 H11 H16).
-  split. intros. destruct IHe2. apply H18.
-  rewrite (vsize_vs_same e1 dim vs v). easy.
-  rewrite trans_exp_avs_same with (avs := avs). rewrite eq1. easy.
-  easy.
-Qed.
-
-   
-(*   
-Lemma finite_bij_lt : forall vs, vars_finite_bij vs 
-         -> (forall x i, i < vsize vs x -> vmap vs x i < vsize vs x).
-Proof.
-  intros. unfold vars_finite_bij in H0.
-  unfold weak_finite_bijection in H0.
-  destruct (H0 x).
-  apply H2. easy.
-Qed.
-
-    vs' = snd ((trans_exp vs dim e)) ->
-    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
-    (forall i, i < dim ->  i) = i) ->
-*)
-
-
-
-Lemma efresh_trans_avs_same: forall e f dim vs avs avs' rmax p, 
-    vars_sparse vs -> vars_anti_same vs -> 
-       exp_fresh p e -> (snd p < vsize vs (fst p)) ->
-                avs' = (snd (trans_avs vs dim e avs)) ->
-                 (trans_state avs' rmax f) (find_pos vs p)
-                        = (trans_state avs rmax f) (find_pos vs p).
-Proof.
- induction e; intros; subst.
- simpl. eauto. simpl. easy.
- simpl. rewrite (IHe f dim vs avs). easy. inv H2. easy. easy.
- inv H2. easy. assumption. easy.
- simpl. eauto. simpl. eauto.
- inv H2. simpl.
- unfold trans_state.
- specialize (var_not_over_lap_1 x p vs H0 H1 H3 H6) as eq1. 
- bdestruct ((start vs x <=? find_pos vs p)). 
- bdestruct ((find_pos vs p - start vs x <? vsize vs x)). lia.
- simpl. easy.
- simpl. easy.
- inv H2. simpl.
- unfold trans_state.
- specialize (var_not_over_lap_1 x p vs H0 H1 H3 H6) as eq1. 
- bdestruct ((start vs x <=? find_pos vs p)). 
- bdestruct ((find_pos vs p - start vs x <? vsize vs x)). lia.
- simpl. easy.
- simpl. easy.
- simpl.
- inv H2.
- destruct (trans_avs vs dim e1 avs) eqn:eq1.
- specialize (IHe1 f dim vs avs p0 rmax p H0 H1 H7 H3).
- rewrite eq1 in IHe1. assert (p0 = snd (v, p0)) by easy.
- specialize (IHe1 H2).
- remember ((snd (trans_avs v dim e2 p0))) as avs'.
- specialize (IHe2 f dim v p0 avs' rmax p).
- assert (v = fst (trans_avs vs dim e1 avs)). rewrite eq1. easy.
- rewrite <- trans_exp_avs_same in H4.
- apply (vars_sparse_vs_same e1 dim vs v H4) in H0.
- apply (vars_anti_vs_same e1 dim vs v H4) in H1.
- rewrite <- (vsize_vs_same e1 dim vs v) in H3.
- specialize (IHe2 H0 H1 H8 H3 Heqavs').
- rewrite <- IHe1.
- rewrite (efresh_trans_same e1 dim vs v).
- 1-4: easy. 
-Qed.
-
-
-
-
-
-
-(* here, backs to mod-multiplier proofs. *)
-
+(*
 Lemma adder01_nor_fb :
   forall n env S S' x y c,
     0 < n -> nor_modes S x n -> nor_modes S y n -> nor_mode S c ->
@@ -6998,7 +6402,7 @@ Proof.
 Qed.
 
 Check put_cus.
-
+*)
 Definition reg_push (f : posi -> val)  (x : var) (v:nat) (n : nat) : posi -> val := put_cus f x (nat2fb v) n.
 
 
@@ -7095,43 +6499,32 @@ Lemma adder01_correct_carry0 :
     v1 < 2^n -> v2 < 2^n ->
     S' = reg_push (reg_push (S[c |-> put_cu (S c) false]) x v1 n) y v2 n ->
     S'' = reg_push (reg_push (S[c |-> put_cu (S c) false]) x v1 n) y (v1+v2) n ->
-    exp_sem env S' (adder01 n x y c) S''.
+    exp_sem env (adder01 n x y c) S' = S''.
 Proof.
-  intros. unfold reg_push in *. apply adder01_nor_fb. assumption.
-  subst. 
-  unfold nor_modes. intros. 
-  apply nor_mode_cus_eq. apply nor_mode_cus_eq.
-  apply nor_mode_up. apply iner_neq_1; assumption.
-  apply H1. lia. 
-  subst.
-  unfold nor_modes. intros. 
-  apply nor_mode_cus_eq. apply nor_mode_cus_eq.
-  apply nor_mode_up. apply iner_neq_1; assumption.
-  apply H2. lia. 
-  subst.
-  unfold nor_modes. intros. destruct c.
-  apply nor_mode_cus_eq. apply nor_mode_cus_eq.
-  apply nor_mode_ups. easy. assumption. assumption.
-  assumption. assumption.
-  subst.
-  destruct c. simpl in *.
+  intros. unfold reg_push in *. rewrite adder01_correct_fb; try assumption.
+  subst. destruct c. simpl in *. rewrite cus_get_neq by lia.
   rewrite cus_get_neq by lia.
-  rewrite cus_get_neq by lia.
-  rewrite eupdate_index_eq.
-  rewrite get_put_cu by assumption.
-  rewrite put_cus_twice_eq.
+  rewrite eupdate_index_eq. 
+  rewrite get_put_cu by easy.
   rewrite get_cus_put_neq by lia.
   rewrite get_cus_put_eq.
   rewrite get_cus_put_eq.
-  rewrite sumfb_correct_carry0. easy.
-  assumption.
-  unfold nor_modes. intros.
-  apply nor_mode_cus_eq.
-  apply nor_mode_up. apply iner_neq. lia.
-  apply H2. lia. assumption.
-  unfold nor_modes. intros.
-  apply nor_mode_up. apply iner_neq. lia.
-  apply H1. lia.
+  rewrite sumfb_correct_carry0.
+  rewrite put_cus_twice_eq. easy. easy.
+  unfold nor_modes. intros. 
+  apply nor_mode_cus_eq. apply nor_mode_up. iner_p.
+  apply H2. easy. easy.
+  unfold nor_modes. intros. apply nor_mode_up. iner_p.
+  apply H1. easy. subst.
+  unfold nor_modes. intros. 
+  repeat apply nor_mode_cus_eq. apply nor_mode_up. iner_p.
+  apply H1. easy. subst.
+  unfold nor_modes. intros. 
+  repeat apply nor_mode_cus_eq. apply nor_mode_up. iner_p.
+  apply H2. easy. subst.
+  destruct c.
+  repeat apply nor_mode_cus_eq.
+  apply nor_mode_up_1. easy.
 Qed.
 
 Lemma adder01_correct_carry1 :
@@ -7141,53 +6534,44 @@ Lemma adder01_correct_carry1 :
     v1 < 2^n -> v2 < 2^n ->
     S' = reg_push (reg_push (S[c |-> put_cu (S c) true]) x v1 n) y v2 n ->
     S'' = reg_push (reg_push (S[c |-> put_cu (S c) true]) x v1 n) y (v1+v2+1) n ->
-    exp_sem env S' (adder01 n x y c) S''.
+    exp_sem env (adder01 n x y c) S'  = S''.
 Proof.
-  intros. unfold reg_push in *. apply adder01_nor_fb. assumption.
-  subst. 
-  unfold nor_modes. intros. 
-  apply nor_mode_cus_eq. apply nor_mode_cus_eq.
-  apply nor_mode_up. apply iner_neq_1; assumption.
-  apply H1. lia. 
-  subst.
-  unfold nor_modes. intros. 
-  apply nor_mode_cus_eq. apply nor_mode_cus_eq.
-  apply nor_mode_up. apply iner_neq_1; assumption.
-  apply H2. lia. 
-  subst.
-  unfold nor_modes. intros. destruct c.
-  apply nor_mode_cus_eq. apply nor_mode_cus_eq.
-  apply nor_mode_ups. easy. assumption. assumption.
-  assumption. assumption.
-  subst.
-  destruct c. simpl in *.
+  intros. unfold reg_push in *. rewrite adder01_correct_fb; try assumption.
+  subst. destruct c. simpl in *. rewrite cus_get_neq by lia.
   rewrite cus_get_neq by lia.
-  rewrite cus_get_neq by lia.
-  rewrite eupdate_index_eq.
-  rewrite get_put_cu by assumption.
-  rewrite put_cus_twice_eq.
+  rewrite eupdate_index_eq. 
+  rewrite get_put_cu by easy.
   rewrite get_cus_put_neq by lia.
   rewrite get_cus_put_eq.
   rewrite get_cus_put_eq.
-  rewrite sumfb_correct_carry1. easy.
-  assumption.
-  unfold nor_modes. intros.
-  apply nor_mode_cus_eq.
-  apply nor_mode_up. apply iner_neq. lia.
-  apply H2. lia. assumption.
-  unfold nor_modes. intros.
-  apply nor_mode_up. apply iner_neq. lia.
-  apply H1. lia.
+  rewrite sumfb_correct_carry1.
+  rewrite put_cus_twice_eq. easy. easy.
+  unfold nor_modes. intros. 
+  apply nor_mode_cus_eq. apply nor_mode_up. iner_p.
+  apply H2. lia. easy.
+  unfold nor_modes. intros. 
+  apply nor_mode_up. iner_p. apply H1. easy.
+  subst.
+  unfold nor_modes. intros. 
+  repeat apply nor_mode_cus_eq. apply nor_mode_up. iner_p.
+  apply H1. easy. 
+  subst.
+  unfold nor_modes. intros. 
+  repeat apply nor_mode_cus_eq. apply nor_mode_up. iner_p.
+  apply H2. easy. 
+  subst.
+  destruct c.
+  repeat apply nor_mode_cus_eq.
+  apply nor_mode_up_1. easy.
 Qed.
 
 (* The following will do the negation of the first input value in the qubit sequence 00[x][y][z].
    THe actual effect is to make the sequence to be 00[-x][y][z]. *)
 Fixpoint negator0 i x : exp :=
   match i with
-  | 0 => SKIP
+  | 0 => SKIP (x,0)
   | S i' => negator0 i' x; X (x, i')
   end.
-
 
 
 Lemma negatem_put_get : forall i n f x, S i <= n ->
@@ -7231,7 +6615,7 @@ Lemma negator0_correct :
     0 < n ->
     i <= n ->
     nor_modes f x n ->
-    exp_sem env f (negator0 i x) (put_cus f x (negatem i (get_cus n f x)) n).
+    exp_sem env (negator0 i x) f = (put_cus f x (negatem i (get_cus n f x)) n).
 Proof.
  induction i; intros.
  simpl.
@@ -7241,35 +6625,23 @@ Proof.
  lia. easy.
  rewrite H3.
  rewrite put_get_cus_eq. constructor. assumption.
- simpl. econstructor.
- apply IHi. apply H0. lia. assumption.
+ simpl. 
+ rewrite (IHi n) ; try lia; try easy.
  rewrite negatem_put_get.
- apply x_nor.
- apply nor_mode_cus_eq. apply H2. lia.
- assert ((¬ (get_cua
-        (put_cus f x (negatem i (get_cus n f x)) n (x, i))))
-         = (¬ (get_cua (f (x, i))))).
- unfold put_cus, get_cua, negatem, put_cu,get_cus. simpl.
- bdestruct (x =? x).
- bdestruct (i <? n).
- unfold nor_modes in H2.
- specialize (H2 i H4). unfold nor_mode in H2.
- destruct (f (x,i)).
- bdestruct (i <? i). lia. easy. easy. easy.
- easy. lia.
- rewrite H3.
- assert ((put_cus f x (negatem i (get_cus n f x)) n (x, i)) = f (x,i)).
- unfold put_cus,put_cu,negatem,get_cus. simpl.
- bdestruct (x =? x).
- bdestruct (i <? n).
- unfold nor_modes in H2.
- specialize (H2 i H5). unfold nor_mode in H2.
- destruct (f (x,i)).
- bdestruct (i <? i). lia. easy. easy. easy.
- easy. easy.
- rewrite H4. easy. lia.
+ assert (exchange (put_cus f x (negatem i (get_cus n f x)) n (x, i)) = 
+            put_cu (f (x, i)) (¬ (get_cua (f (x, i))))).
+ unfold negatem. simpl.
+ unfold put_cus. simpl. bdestruct (x=?x).
+ bdestruct (i<?n). bdestruct (i <? i). lia.
+ assert (nor_mode f (x,i)).
+ apply H2. easy.
+ unfold nor_mode in H6. destruct (f (x,i)) eqn:eq1.
+ rewrite get_cus_cua.
+ unfold exchange,put_cu,get_cua. rewrite eq1. easy. lia. lia. lia. lia. lia.
+ rewrite H3. easy. lia.
 Qed.
 
+(*
 Lemma negator0_nor :
   forall i n env f f' x,
     0 < n ->
@@ -7280,26 +6652,22 @@ Lemma negator0_nor :
 Proof.
  intros. subst. apply negator0_correct. 1 - 3: assumption.
 Qed.
-
+*)
 (* The correctness represents the actual effect of flip all bits for the number x.
    The effect is to make the x number positions to store the value  2^n - 1 - x. *)
 Lemma negator0_sem :
-  forall n env x v f f' f'',
+  forall n env x v f,
     0 < n ->
     v < 2^n -> nor_modes f x n ->
-    f' =  (reg_push f x v n) ->
-    f'' = reg_push f x (2^n - 1 - v) n ->
-    exp_sem env f' (negator0 n x) f''.
+    exp_sem env (negator0 n x) (reg_push f x v n) = reg_push f x (2^n - 1 - v) n.
 Proof.
   intros. unfold reg_push in *.
-  apply (negator0_nor n n). assumption. lia.
-  subst.
+  rewrite (negator0_correct n n); try assumption.
+  rewrite put_cus_twice_eq.
+  rewrite get_cus_put_eq; try easy.
+  rewrite negatem_arith ; try easy. lia.
   unfold nor_modes. intros.
   apply nor_mode_cus_eq. apply H2. lia.
-  subst. rewrite get_cus_put_eq.
-  rewrite negatem_arith.
-  rewrite put_cus_twice_eq. easy.
-  1-3:assumption.
 Qed.
 
 (* The following implements an comparator. 
@@ -7309,37 +6677,102 @@ Qed.
     To compare if x < y, we just need to do x - y, and see the high bit of the binary
     format of x - y. If the high_bit is zero, that means that x >= y;
     otherwise x < y. *)
+Local Opaque CNOT. Local Opaque CCX.
 
-
-Definition highb01 n x y c1 c2: exp := MAJseq n x y c1; CNOT (x,n) c2; inv_exp (MAJseq n x y c1).
+Definition highb01 n x y c1 c2: exp := MAJseq n x y c1; CNOT (x,n-1) c2; inv_exp (MAJseq n x y c1).
 
 Definition no_equal (x y:var) (c1 c2 : posi) : Prop := x <> y /\ x <> fst c1 /\  x <> fst c2 
                    /\ y <> fst c1 /\ y <> fst c2 /\ fst c1 <> fst c2.
 
+Lemma get_cus_up : forall n f x c v, fst c <> x -> get_cus n (f[c |-> v]) x = get_cus n f x.
+Proof.
+  intros.
+  apply functional_extensionality; intro.
+  unfold get_cus.
+  bdestruct (x0 <? n). destruct c. simpl in *. rewrite eupdate_index_neq by iner_p.
+  easy. easy.
+Qed.
+
+Check put_cus.
+
+Lemma put_cus_update_flip : forall n f g x c v, fst c <> x -> put_cus (f[c |-> v]) x g n = (put_cus f x g n)[c |-> v].
+Proof.
+  intros.
+  apply functional_extensionality; intro.
+  bdestruct (c ==? x0). subst. rewrite eupdate_index_eq.
+  destruct x0. rewrite put_cus_neq by iner_p.
+  rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq by iner_p.
+  destruct x0.
+  bdestruct (v0 =? x). subst. bdestruct (n0 <? n). 
+  rewrite put_cus_eq by iner_p.
+  rewrite put_cus_eq by iner_p.
+  rewrite eupdate_index_neq by iner_p. easy.
+  rewrite put_cus_out by lia.
+  rewrite put_cus_out by lia.
+  rewrite eupdate_index_neq by iner_p. easy.
+  rewrite put_cus_neq by iner_p.
+  rewrite put_cus_neq by iner_p.
+  rewrite eupdate_index_neq by iner_p. easy.
+Qed.
+
+
 
 Lemma highb01_correct :
-  forall n env f f' x y c1 c2,
+  forall n tenv env f x y c1 c2,
     0 < n -> no_equal x y c1 c2 ->
     nor_mode f c2 -> nor_mode f c1 -> nor_modes f x n -> nor_modes f y n -> 
-    get_cua (f c2) = false ->
-    f' = f[c2 |-> put_cu (f c2) (carry (get_cua (f c1)) n (get_cus n f x) (get_cus n f y))] ->
-    exp_sem env f (highb01 n x y c1 c2) f'.
+    get_cua (f c2) = false -> well_typed_exp tenv (MAJseq n x y c1) -> right_mode_exp tenv f (MAJseq n x y c1) ->
+    exp_sem env (highb01 n x y c1 c2) f = f[c2 |-> put_cu (f c2) (carry (get_cua (f c1)) n (get_cus n f x) (get_cus n f y))].
 Proof.
   intros. unfold highb01. unfold no_equal in H1.
-  simpl. unfold MAJseq. econstructor. 
-  econstructor. apply MAJseq'_correct. apply H0. lia.
-  1-3:assumption. 1-3:easy.
-  assert (forall u b0, bcexec (bccnot (S n) 1) (b0 ` false ` u) = b0 ` (u (n - 1)) ` u).
-  { intros. rewrite bccnot_correct by lia. apply functional_extensionality; intro.
-    bdestruct (x =? 1). subst. update_simpl. Local Opaque xorb. simpl.
-    destruct n eqn:E. lia. simpl. rewrite Nat.sub_0_r. btauto.
-    update_simpl. destruct x. easy. destruct x. lia. easy.
-  }
-  rewrite H0. fb_push_n_simpl.
-  erewrite bcinv_reverse. 3: apply MAJseq'_correct; lia.
-  unfold msma. IfExpSimpl. replace (S (n - 1)) with n by lia. easy.
-  apply MAJseq'_eWF. easy.
-Qed.
+  destruct H1 as [V1 [V2 [V3 [V4 [V5 V6]]]]].
+  simpl. unfold MAJseq. rewrite (MAJseq'_correct (n-1) n); try easy.
+  rewrite cnot_sem.
+  rewrite cus_get_neq; try lia.
+  rewrite cus_get_eq ; try lia.
+  destruct c2. simpl in *.
+  rewrite cus_get_neq; try lia.
+  rewrite cus_get_neq; try lia.
+  rewrite eupdate_index_neq.
+  rewrite H6. bt_simpl.
+  rewrite put_cus_neq by lia.
+  rewrite put_cus_neq by lia.
+  rewrite eupdate_index_neq.
+  erewrite inv_exp_reverse. easy.
+  apply majseq_fwf; try iner_p.
+  apply H7. admit.
+  rewrite (MAJseq'_correct (n-1) n); try easy.
+  destruct c1. simpl in *.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_index_neq by iner_p.
+  repeat rewrite get_cus_up by iner_p.
+  rewrite eupdate_twice_neq by iner_p.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite put_cus_update_flip by iner_p.
+  apply eupdate_same_1. easy.
+  unfold msma.
+  bdestruct (n - 1 <? n - 1). lia.
+  bdestruct (n - 1 =? n - 1).
+  assert ((S (n - 1)) = n) by lia. rewrite H10. easy. lia. lia.
+  unfold nor_modes. intros.
+  apply nor_mode_up ; iner_p. apply H4. easy.
+  unfold nor_modes. intros.
+  apply nor_mode_up ; iner_p. apply H5. easy.
+  destruct c1. simpl in *.
+  apply nor_mode_up ; iner_p. destruct c1. iner_p.
+  destruct c1. iner_p.
+  unfold nor_modes. intros.
+  apply nor_mode_up ; iner_p. apply H4. easy.
+  unfold nor_modes. intros.
+  apply nor_mode_cus_eq.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up ; iner_p. apply H4. lia.
+  destruct c2. simpl in *.
+  apply nor_mode_cus_eq.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up ; iner_p. destruct c1. iner_p. lia.
+Admitted.
 
 (* The actual comparator implementation. 
     We first flip the x positions, then use the high-bit comparator above. 
