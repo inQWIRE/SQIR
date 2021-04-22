@@ -11,73 +11,64 @@ Local Close Scope Q_scope.
 Require Import SimpleMapping.
 Require Import UnitaryListRepresentationRespectsConstraints.
 
+Require Import StandardGateSet.
+Import StdList.
+
 Lemma Rz_commute_rule1_respects_constraints: forall {dim} q  (in_l out_l1 out_l2 : RzQ_ucom_l dim)
-      (is_in_graph : nat->nat->bool) cnot, 
-    respects_constraints_directed is_in_graph cnot in_l
+      (is_in_graph : nat->nat->bool) , 
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l
     -> (@Rz_commute_rule1 dim q in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph cnot out_l1
-    /\ respects_constraints_directed is_in_graph cnot out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1
+    /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof.
   intros.
+   
   unfold Rz_commute_rule1 in H0.
+  destruct_matches. 
   repeat destruct_matches.
 
-  assert_next_single_qubit_gate.  
-  prove_next_gates_assertion. 
-  clear_next_gates. 
+  assert_and_prove_next_gate.  
   destruct H1 as [respects_g0 respects_g].
 
-  assert_next_two_qubit_gate.
-  prove_next_gates_assertion. 
-  clear_next_gates.
-  destruct H1 as [respects_g2 [respects_g1 iiggn0n]].
 
-  assert_next_single_qubit_gate.
-  prove_next_gates_assertion.
-  clear_next_gates.
-  destruct H1 as [respects_g4 respects_g3].
+  assert_and_prove_next_gate.
+  destruct H1 as [respects_g2 [respects_g1 iiggn0n]].
+  assert_and_prove_next_gate.
+  destruct H1 as [respects_g4 respects_g3].    
+
   split.
-  - inversion H0; subst. 
+  - inversion H0; subst.
     repeat (try apply respects_constraints_directed_app; auto; try constructor).  
-    apply respects_constraints_directed_app with (l1 := CNOT n0 q :: g4).
+
     
-    constructor. 
     symmetry in HeqH2.
     rewrite Nat.eqb_eq in HeqH2.
     subst.
+    assumption.
     
-    assumption. 
-
   - inversion H0; subst.
     assumption. 
 Qed.
 
 
-
 Lemma Rz_commute_rule2_respects_constraints: forall {dim} q (in_l out_l1 out_l2 : RzQ_ucom_l dim)
       (is_in_graph : nat->nat->bool), 
-    respects_constraints_directed is_in_graph in_l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l ->
     (@Rz_commute_rule2 dim q in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph out_l1
-    /\ respects_constraints_directed is_in_graph out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1
+    /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof. 
   intros.
   unfold Rz_commute_rule2 in H0.
-  repeat destruct_matches.
+  repeat destruct_matches. 
 
-  assert_next_two_qubit_gate.  
-  prove_next_gates_assertion. 
-  clear_next_gates. 
+  assert_and_prove_next_gate.
   destruct H1 as  [respects_g0 [respects_g iiggn0n]].
 
-  assert_next_single_qubit_gate.  
-  prove_next_gates_assertion. 
-  clear_next_gates. 
+  assert_and_prove_next_gate.
   destruct H1 as [respects_g2 respects_g1].
 
-  assert_next_two_qubit_gate.  
-  prove_next_gates_assertion. 
-  clear_next_gates. 
+  assert_and_prove_next_gate. 
   destruct H1 as  [respects_g4 [respects_g3 iiggn2n1]].
 
   
@@ -92,18 +83,15 @@ Qed.
 
 Lemma Rz_commute_rule3_respects_constraints: forall {dim} q  (in_l out_l1 out_l2 : RzQ_ucom_l dim)
       (is_in_graph : nat->nat->bool), 
-    respects_constraints_directed is_in_graph in_l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l ->
     (@Rz_commute_rule3 dim q in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph out_l1 /\ respects_constraints_directed is_in_graph out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1 /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof.
   intros.
   unfold Rz_commute_rule3 in H0.
   repeat destruct_matches. 
 
-  assert_next_two_qubit_gate.
-
-  prove_next_gates_assertion. 
-  clear_next_gates. 
+  assert_and_prove_next_gate. 
   destruct H1 as  [respects_g4 [respects_g3 iiggn2n1]].
 
   split;
@@ -114,19 +102,17 @@ Qed.
 
 Lemma X_commute_rule_respects_constraints: forall {dim} q (in_l out_l1 out_l2 : RzQ_ucom_l dim)
       (is_in_graph : nat->nat->bool), 
-    respects_constraints_directed is_in_graph in_l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l ->
     (@X_commute_rule dim q in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph out_l1 /\ respects_constraints_directed is_in_graph out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1 /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof.
   intros.
   unfold X_commute_rule in H0.
   repeat destruct_matches. 
 
   
-  assert_next_two_qubit_gate.
+  assert_and_prove_next_gate.
 
-  prove_next_gates_assertion. 
-  clear_next_gates. 
   destruct H1 as  [respects_g4 [respects_g3 iiggn2n1]].
 
    split; inversion H0; subst;
@@ -135,17 +121,15 @@ Qed.
 
 Lemma CNOT_commute_rule1_respects_constraints: forall {dim} q (in_l out_l1 out_l2 : RzQ_ucom_l dim)
       (is_in_graph : nat->nat->bool), 
-    respects_constraints_directed is_in_graph in_l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l ->
     (@CNOT_commute_rule1 dim q in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph out_l1 /\ respects_constraints_directed is_in_graph out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1 /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof.
   intros.
   unfold CNOT_commute_rule1 in H0.
   repeat destruct_matches. 
 
-  assert_next_single_qubit_gate.
-  prove_next_gates_assertion.
-  clear_next_gates.
+  assert_and_prove_next_gate.
   destruct H1. 
 
   split;
@@ -156,16 +140,15 @@ Qed.
 
 Lemma CNOT_commute_rule2_respects_constraints: forall {dim} q1 q2 (in_l out_l1 out_l2 : RzQ_ucom_l dim)
       (is_in_graph : nat->nat->bool), 
-    respects_constraints_directed is_in_graph in_l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l ->
     (@CNOT_commute_rule2 dim q1 q2 in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph out_l1 /\ respects_constraints_directed is_in_graph out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1 /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof.
   intros.
   unfold CNOT_commute_rule2 in H0.
   repeat destruct_matches.
-  assert_next_two_qubit_gate.
-  apply next_two_qubit_gate_respects_constraints
-  with (l := in_l) (l1 := g0) (l2 := g) (g1 := URzQ_CNOT) (q := q2); assumption. 
+  assert_and_prove_next_gate. 
+
   destruct H1 as [respects_g0 [ respects_g is_in_graphn0n]].
   split;
     inversion H0; subst; 
@@ -181,18 +164,14 @@ Qed.
 
 Lemma CNOT_commute_rule3_respects_constraints: forall {dim} q1 q2 (in_l out_l1 out_l2 : RzQ_ucom_l dim)
       (is_in_graph : nat->nat->bool), 
-    respects_constraints_directed is_in_graph in_l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l ->
     (@CNOT_commute_rule3 dim q1 q2 in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph out_l1 /\ respects_constraints_directed is_in_graph out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1 /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof.
   intros.
   unfold CNOT_commute_rule3 in H0.
   repeat destruct_matches.
-  assert_next_two_qubit_gate.
-
-  apply next_two_qubit_gate_respects_constraints
-    with (l := in_l) (l1 := g0) (l2 := g) (g1 := URzQ_CNOT) (q := q1); assumption. 
-  
+  assert_and_prove_next_gate. 
   destruct H1 as [respects_g0 [ respects_g is_in_graphn0n]].
 
   split;
@@ -208,33 +187,22 @@ Qed.
 
 Lemma CNOT_commute_rule4_respects_constraints: forall {dim} q1 q2  (in_l out_l1 out_l2 : RzQ_ucom_l dim)
       (is_in_graph : nat->nat->bool), 
-    respects_constraints_directed is_in_graph in_l
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l
     -> (@CNOT_commute_rule4 dim q1 q2 in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph out_l1
-    /\ respects_constraints_directed is_in_graph out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1
+    /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof.
   intros.
   unfold CNOT_commute_rule4 in H0.
   repeat destruct_matches.
 
-  assert_next_single_qubit_gate.
-  
-  apply next_single_qubit_gate_respects_constraints
-        with (l := in_l) (l1 := g0) (l2 := g) (g5 := URzQ_H) (q := q2); assumption. 
-  clear_next_gates.
+  assert_and_prove_next_gate. 
   destruct H1 as [respects_g0 respects_g].
 
-  assert_next_two_qubit_gate.
-  eapply next_two_qubit_gate_respects_constraints.
-  apply respects_g.
-  apply HeqH0.
+  assert_and_prove_next_gate. 
   destruct H1 as [respects_g2  [respects_g1 is_in_n0_n]].
 
-  assert_next_single_qubit_gate.
-
-  eapply next_single_qubit_gate_respects_constraints.
-  apply respects_g1.
-  apply HeqH3.
+  assert_and_prove_next_gate. 
   destruct H1 as [respects_g4  respects_g3].
 
   
@@ -257,36 +225,22 @@ Qed.
 
 Lemma CNOT_commute_rule5_respects_constraints: forall {dim} q1 q2  (in_l out_l1 out_l2 : RzQ_ucom_l dim)
       (is_in_graph : nat->nat->bool), 
-    respects_constraints_directed is_in_graph in_l
+    respects_constraints_directed is_in_graph URzQ_CNOT in_l
     -> (@CNOT_commute_rule5 dim q1 q2 in_l) = (Some (out_l1, out_l2)) ->
-    respects_constraints_directed is_in_graph out_l1
-    /\ respects_constraints_directed is_in_graph out_l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT out_l1
+    /\ respects_constraints_directed is_in_graph URzQ_CNOT out_l2.
 Proof.
   intros.
   unfold CNOT_commute_rule5 in H0.
   repeat destruct_matches.
 
-  assert_next_single_qubit_gate.
-  eapply next_single_qubit_gate_respects_constraints.
-   
-  apply H. 
-  apply HeqH1.
+  assert_and_prove_next_gate. 
   destruct H1 as [respects_g0  respects_g].
-  clear_next_gates.
   
-  assert_next_two_qubit_gate.
-  eapply next_two_qubit_gate_respects_constraints.
-  apply respects_g.
-  apply HeqH0.
-  clear_next_gates.
-  
+  assert_and_prove_next_gate.
   destruct H1 as [respects_g2  [respects_g1 is_in_n0_n]].
 
-  assert_next_single_qubit_gate.
-
-  eapply next_single_qubit_gate_respects_constraints.
-  apply respects_g1.
-  apply HeqH3.
+  assert_and_prove_next_gate. 
   destruct H1 as [respects_g4  respects_g3].
 
   split;
@@ -297,7 +251,7 @@ Qed.
 
 Lemma combines_rotations_respects_constraints:
   forall {dim} a a' q (is_in_graph : nat-> nat-> bool),
-    respects_constraints_directed is_in_graph (@combine_rotations dim a a' q).
+    respects_constraints_directed is_in_graph URzQ_CNOT (@combine_rotations dim a a' q).
 Proof.
   intros.
   unfold combine_rotations.
@@ -307,14 +261,15 @@ Proof.
   constructor.
 Qed. 
 
-Lemma try_rewrites_respects_constraints: forall {U dim} (l l' : gate_list U dim)
+Lemma try_rewrites_respects_constraints: forall { dim} (l l' : RzQ_ucom_l dim)
                                            rules  (is_in_graph : nat -> nat -> bool),
-    respects_constraints_directed is_in_graph l ->
-    (forall r, List.In r rules -> forall l l',   respects_constraints_directed is_in_graph l ->
-                                        r l = Some l'
-                                       -> respects_constraints_directed is_in_graph l') ->
+    respects_constraints_directed is_in_graph URzQ_CNOT l ->
+    (forall r, List.In r rules -> forall l l',
+          respects_constraints_directed is_in_graph URzQ_CNOT l ->
+          r l = Some l'
+          -> respects_constraints_directed is_in_graph URzQ_CNOT l') ->
     try_rewrites l rules = Some l' -> 
-    respects_constraints_directed is_in_graph l'.
+    respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   intros.
   induction rules.
@@ -333,15 +288,17 @@ Proof.
   apply H1. 
 Qed.
 
-Lemma try_rewrites2_respects_constraints: forall {U dim} (l l1 l2 : gate_list U dim)
-                                           rules  (is_in_graph : nat -> nat -> bool),
-    respects_constraints_directed is_in_graph l ->
-    (forall r, List.In r rules -> forall l l1 l2,   respects_constraints_directed is_in_graph l ->
-                                        r l = Some (l1, l2) 
-                                        -> respects_constraints_directed is_in_graph l1
-    /\ respects_constraints_directed is_in_graph l2) ->
+Lemma try_rewrites2_respects_constraints: forall {dim} (l l1 l2 : RzQ_ucom_l dim)
+                                                 rules  (is_in_graph : nat -> nat -> bool),
+    respects_constraints_directed is_in_graph URzQ_CNOT l ->
+    (forall r, List.In r rules -> forall l l1 l2,
+          respects_constraints_directed is_in_graph URzQ_CNOT l ->
+          r l = Some (l1, l2) 
+          -> respects_constraints_directed is_in_graph URzQ_CNOT l1
+             /\ respects_constraints_directed is_in_graph URzQ_CNOT l2) ->
     try_rewrites2 l rules = Some (l1, l2) -> 
-    respects_constraints_directed is_in_graph l1 /\ respects_constraints_directed is_in_graph l2.
+    respects_constraints_directed is_in_graph URzQ_CNOT l1
+    /\ respects_constraints_directed is_in_graph URzQ_CNOT l2.
 Proof.
   intros.
   induction rules.
@@ -362,30 +319,32 @@ Proof.
 
 Qed.
 
-Definition cancel_rules_respect_constraints {dim U}  rules is_in_graph :=
+Definition cancel_rules_respect_constraints {dim }  rules is_in_graph :=
   forall r, 
-  List.In r rules ->
-  forall (l l' : gate_list U dim), (respects_constraints_directed is_in_graph l -> r l = Some l'
-                                   -> respects_constraints_directed is_in_graph l').
+    List.In r rules ->
+    forall (l l' : RzQ_ucom_l dim),
+      (respects_constraints_directed is_in_graph URzQ_CNOT l -> r l = Some l'
+       -> respects_constraints_directed is_in_graph URzQ_CNOT l').
 
 
-Definition commute_rules_respect_constraints  {dim U} rules is_in_graph :=
+Definition commute_rules_respect_constraints  {dim } rules is_in_graph :=
   forall r, 
-  List.In r rules ->
-  forall (l l1 l2: gate_list U dim), (respects_constraints_directed is_in_graph l -> r l = Some (l1, l2)
-                   -> respects_constraints_directed is_in_graph l1
-                   /\ respects_constraints_directed is_in_graph l2).
+    List.In r rules ->
+    forall (l l1 l2: RzQ_ucom_l dim),
+      (respects_constraints_directed is_in_graph URzQ_CNOT l -> r l = Some (l1, l2)
+       -> respects_constraints_directed is_in_graph URzQ_CNOT l1
+          /\ respects_constraints_directed is_in_graph URzQ_CNOT  l2).
 
 Lemma propagate'_respects_constraints : 
-  forall {U dim} (l : gate_list U dim) 
+  forall { dim} (l : RzQ_ucom_l dim) 
     commute_rules cancel_rules n acc l'  is_in_graph,
-    respects_constraints_directed is_in_graph l ->
-      respects_constraints_directed is_in_graph acc -> 
+    respects_constraints_directed is_in_graph URzQ_CNOT l ->
+      respects_constraints_directed is_in_graph URzQ_CNOT acc -> 
 
   cancel_rules_respect_constraints cancel_rules is_in_graph ->
   commute_rules_respect_constraints commute_rules is_in_graph ->
   propagate' l commute_rules cancel_rules n acc = Some l' ->
-  respects_constraints_directed is_in_graph l'.
+  respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
 
   intros.
@@ -409,8 +368,8 @@ Proof.
   
   destruct (try_rewrites2 l commute_rules) eqn:rewr2; try discriminate.
   destruct p.
-  assert (respects_constraints_directed is_in_graph g
-          /\ respects_constraints_directed is_in_graph g0). 
+  assert (respects_constraints_directed is_in_graph URzQ_CNOT g
+          /\ respects_constraints_directed is_in_graph URzQ_CNOT g0). 
   apply try_rewrites2_respects_constraints with (l0 := l) (l1:= g) (l2:= g0)
                                                 (rules := commute_rules).
   assumption.
@@ -429,11 +388,11 @@ Qed.
 Lemma propagate_respects_constraints :  forall {dim} (l l' : RzQ_ucom_l dim)
                                            n  commute_rules cancel_rules 
                                           (is_in_graph : nat-> nat-> bool),
-    respects_constraints_directed is_in_graph l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT l ->
       cancel_rules_respect_constraints  cancel_rules is_in_graph ->
       commute_rules_respect_constraints commute_rules is_in_graph  ->
     propagate l commute_rules cancel_rules n = Some l' ->
-    respects_constraints_directed is_in_graph l'.
+    respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   intros.
   apply (propagate'_respects_constraints l commute_rules cancel_rules n [] l' is_in_graph) ; try assumption; try constructor.
@@ -442,7 +401,7 @@ Qed.
 
 Lemma Rz_cancel_rule_respects_constraints: 
      forall { dim}  (is_in_graph : nat->nat->bool) a q, 
-    @cancel_rules_respect_constraints dim RzQ_Unitary [Rz_cancel_rule q a] is_in_graph.
+    @cancel_rules_respect_constraints dim [Rz_cancel_rule q a] is_in_graph.
 Proof.
   intros.
   unfold cancel_rules_respect_constraints.
@@ -451,12 +410,7 @@ Proof.
   destruct_In.
   rewrite <- H2 in H1.
   repeat destruct_matches.
-
-  assert_next_single_qubit_gate.
-  eapply next_single_qubit_gate_respects_constraints.
-  apply H0.
-  apply HeqH.
-  
+  assert_and_prove_next_gate. 
   destruct H as [respects_g0  respects_g].
   inversion H1.
   apply respects_constraints_directed_app.
@@ -468,7 +422,7 @@ Qed.
 
 Lemma H_cancel_rule_respects_constraints: 
      forall { dim}  (is_in_graph : nat->nat->bool)  q, 
-    @cancel_rules_respect_constraints dim RzQ_Unitary [H_cancel_rule q] is_in_graph.
+    @cancel_rules_respect_constraints dim [H_cancel_rule q] is_in_graph.
 Proof.
   intros.
   unfold cancel_rules_respect_constraints.
@@ -478,12 +432,7 @@ Proof.
   rewrite <- H2 in H1.
   repeat destruct_matches. 
 
-  assert_next_single_qubit_gate.
-  
-  eapply next_single_qubit_gate_respects_constraints.
-  apply H0.
-  apply HeqH.
-  
+  assert_and_prove_next_gate.
   destruct H as [respects_g0  respects_g].
   inversion H1.
   apply respects_constraints_directed_app.
@@ -495,7 +444,7 @@ Qed.
 
 Lemma X_cancel_rule_respects_constraints: 
      forall { dim}  (is_in_graph : nat->nat->bool)  q, 
-    @cancel_rules_respect_constraints dim RzQ_Unitary [X_cancel_rule q] is_in_graph.
+    @cancel_rules_respect_constraints dim  [X_cancel_rule q] is_in_graph.
 Proof.
   intros.
   unfold cancel_rules_respect_constraints.
@@ -504,12 +453,7 @@ Proof.
   destruct_In.
   rewrite <- H2 in H1.
   repeat destruct_matches. 
-  assert_next_single_qubit_gate.
-  
-  eapply next_single_qubit_gate_respects_constraints.
-  apply H0.
-  apply HeqH.
-  
+  assert_and_prove_next_gate.
   destruct H as [respects_g0  respects_g].
 
   inversion H1.
@@ -518,10 +462,10 @@ Proof.
   assumption.
   assumption. 
 Qed.
-(* 586 to 625 *)
+
 Lemma CNOT_cancel_rule_respects_constraints: 
      forall { dim}  (is_in_graph : nat->nat->bool) q1 q2, 
-    @cancel_rules_respect_constraints dim RzQ_Unitary [CNOT_cancel_rule q1 q2] is_in_graph.
+    @cancel_rules_respect_constraints dim [CNOT_cancel_rule q1 q2] is_in_graph.
 Proof.
   intros.
   unfold cancel_rules_respect_constraints.
@@ -530,11 +474,7 @@ Proof.
   destruct_In.
   rewrite <- H2 in H1.
   repeat destruct_matches.
-  assert_next_two_qubit_gate. 
-  eapply next_two_qubit_gate_respects_constraints.
-  apply H0.
-  apply HeqH.
-  
+  assert_and_prove_next_gate. 
   destruct H as [respects_g0 [ respects_g is_inn0n]].
   inversion H1.
   apply respects_constraints_directed_app. 
@@ -546,7 +486,7 @@ Qed.
 
 Lemma Rz_commute_rules_respect_constraints: 
      forall { dim} n (is_in_graph : nat->nat->bool), 
-    @commute_rules_respect_constraints dim RzQ_Unitary (Rz_commute_rules n) is_in_graph.
+    @commute_rules_respect_constraints dim (Rz_commute_rules n) is_in_graph.
 Proof.
   intros.
   unfold commute_rules_respect_constraints.
@@ -575,7 +515,7 @@ Qed.
 
 Lemma CNOT_commute_rules_respect_constraints: 
      forall { dim} n1 n2 (is_in_graph : nat->nat->bool), 
-    @commute_rules_respect_constraints dim RzQ_Unitary (CNOT_commute_rules n1 n2) is_in_graph.
+    @commute_rules_respect_constraints dim  (CNOT_commute_rules n1 n2) is_in_graph.
 Proof.
   intros.
   unfold commute_rules_respect_constraints.
@@ -613,9 +553,9 @@ Qed.
 Lemma propagate_Rz_respects_constraints : forall {dim} a (l : RzQ_ucom_l dim)
                                                  (is_in_graph : nat -> nat -> bool) (q : nat) l',
 
-     respects_constraints_directed is_in_graph l ->
+     respects_constraints_directed is_in_graph URzQ_CNOT l ->
      propagate_Rz a l q = Some l' ->
-     respects_constraints_directed is_in_graph (l').
+     respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   intros. 
   unfold propagate_Rz in H0.
@@ -630,16 +570,16 @@ Qed.
 Lemma propagate_H_respects_constraints : forall {dim}  (l : RzQ_ucom_l dim)
                                                  (is_in_graph : nat -> nat -> bool) (q : nat) l',
 
-     respects_constraints_directed is_in_graph l ->
+     respects_constraints_directed is_in_graph URzQ_CNOT l ->
      propagate_H  l q = Some l' ->
-     respects_constraints_directed is_in_graph (l').
+     respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   intros. 
   unfold propagate_H in H0.
   eapply propagate_respects_constraints.
   apply H.
   apply H_cancel_rule_respects_constraints.
-  assert (@commute_rules_respect_constraints  dim RzQ_Unitary [] is_in_graph).
+  assert (@commute_rules_respect_constraints  dim  [] is_in_graph).
   unfold commute_rules_respect_constraints.
   intros.
   destruct_In.
@@ -650,16 +590,16 @@ Qed.
 Lemma propagate_X_respects_constraints : forall {dim} (l : RzQ_ucom_l dim)
                                                  (is_in_graph : nat -> nat -> bool) (q : nat) l',
 
-     respects_constraints_directed is_in_graph l ->
+     respects_constraints_directed is_in_graph URzQ_CNOT l ->
      propagate_X  l q = Some l' ->
-     respects_constraints_directed is_in_graph (l').
+     respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   intros. 
   unfold propagate_X in H0.
   eapply propagate_respects_constraints.
   apply H.
   apply X_cancel_rule_respects_constraints.
-  assert (@commute_rules_respect_constraints  dim RzQ_Unitary [X_commute_rule q] is_in_graph).
+  assert (@commute_rules_respect_constraints  dim [X_commute_rule q] is_in_graph).
   unfold commute_rules_respect_constraints.
   intros.
   destruct_In.
@@ -675,9 +615,9 @@ Qed.
 Lemma propagate_CNOT_respects_constraints : forall {dim}  (l : RzQ_ucom_l dim)
                                                  (is_in_graph : nat -> nat -> bool) (q1 q2 : nat) l',
 
-     respects_constraints_directed is_in_graph l ->
+     respects_constraints_directed is_in_graph URzQ_CNOT l ->
      propagate_CNOT  l q1 q2 = Some l' ->
-     respects_constraints_directed is_in_graph (l').
+     respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   intros. 
   unfold propagate_Rz in H0.
@@ -692,10 +632,10 @@ Qed.
 Lemma cancel_single_qubit_gates'_respects_constraints : forall {dim}  (l l' acc: RzQ_ucom_l dim)
                                                  (is_in_graph : nat -> nat -> bool) (n : nat) ,
 
-    respects_constraints_directed is_in_graph l ->
-    respects_constraints_directed is_in_graph acc ->
+    respects_constraints_directed is_in_graph URzQ_CNOT l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT acc ->
      cancel_single_qubit_gates'  l n acc =  l' ->
-     respects_constraints_directed is_in_graph l'.
+     respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   
   intros.
@@ -711,37 +651,28 @@ Proof.
     assumption.
     assumption.
   - intros.
-    (*generalize dependent n. *)
-    
-
-    
     induction l.
     +
       intros. 
       unfold cancel_single_qubit_gates' in H1.
-      subst. 
-      rewrite rev_append_rev.
-      apply respects_constraints_directed_app.
-      apply rev_respects_constraints.
-      assumption.
-      assumption.
+      subst.
+      apply rev_append_respects_constraints; assumption. 
+
     +
       intros. 
       unfold cancel_single_qubit_gates' in H1.
-     
       destruct a.      
       dependent destruction r.
-      (* These should be able to be ltac'd *)
       *  remember (propagate_H l n0) as pH.
          
         destruct pH.
         
         {
           fold (@cancel_single_qubit_gates' dim l0 n acc) in H1.   
-          assert (respects_constraints_directed is_in_graph l0).
+          assert (respects_constraints_directed is_in_graph URzQ_CNOT l0).
           eapply propagate_H_respects_constraints.
           inversion H.
-          apply H4. 
+          apply H5.  
           symmetry in HeqpH. 
           apply HeqpH.
 
@@ -757,7 +688,7 @@ Proof.
           
           apply IHn with (l0:= l) (acc0:= (RzQGateSet.H n0 :: acc)).
           
-          apply H4.
+          apply H5.
           constructor. 
           apply H0. 
           reflexivity. 
@@ -768,10 +699,10 @@ Proof.
         
         {
           fold (@cancel_single_qubit_gates' dim l0 n acc) in H1.   
-          assert (respects_constraints_directed is_in_graph l0).
+          assert (respects_constraints_directed is_in_graph URzQ_CNOT l0).
           eapply propagate_X_respects_constraints.
           inversion H.
-          apply H4. 
+          apply H5. 
           symmetry in HeqpX. 
           apply HeqpX.
 
@@ -787,7 +718,7 @@ Proof.
           
           apply IHn with (l0:= l) (acc0:= (RzQGateSet.X n0 :: acc)).
           
-          apply H4.
+          apply H5.
           constructor. 
           apply H0. 
           reflexivity. 
@@ -799,10 +730,10 @@ Proof.
         
         {
           fold (@cancel_single_qubit_gates' dim l0 n acc) in H1.   
-          assert (respects_constraints_directed is_in_graph l0).
+          assert (respects_constraints_directed is_in_graph URzQ_CNOT l0).
           eapply propagate_Rz_respects_constraints.
           inversion H.
-          apply H4. 
+          apply H5. 
           symmetry in HeqpRz. 
           apply HeqpRz.
 
@@ -813,12 +744,12 @@ Proof.
         }
 
         {
-          fold (@cancel_single_qubit_gates' dim l n (RzQGateSet.Rz a n0 :: acc)) in H1.
+          fold (@cancel_single_qubit_gates' dim l n (Rzq a n0 :: acc)) in H1.
           inversion H; subst. 
           
-          apply IHn with (l0:= l) (acc0:= (RzQGateSet.Rz a n0 :: acc)).
+          apply IHn with (l0:= l) (acc0:= (Rzq a n0 :: acc)).
           
-          apply H4.
+          apply H5.
           constructor. 
           apply H0. 
           reflexivity. 
@@ -827,8 +758,8 @@ Proof.
       * fold (@cancel_single_qubit_gates' dim l n (App2 r n0 n1 :: acc)) in H1. 
        
         inversion H; subst.
-        apply IHn with (l0 :=l) (acc0 := App2 r n0 n1 :: acc).
-        apply H8.
+        apply IHn with (l0 :=l) (acc0 := App2 URzQ_CNOT n0 n1 :: acc).
+        apply H9.
         constructor.
         assumption.
         assumption.
@@ -839,9 +770,9 @@ Qed.
 Lemma cancel_single_qubit_gates_respects_constraints : forall {dim}  (l l': RzQ_ucom_l dim)
                                                  (is_in_graph : nat -> nat -> bool) ,
 
-    respects_constraints_directed is_in_graph l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT l ->
      cancel_single_qubit_gates  l =  l' ->
-     respects_constraints_directed is_in_graph l'.
+     respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   intros.
   apply cancel_single_qubit_gates'_respects_constraints with (l0 := l) (acc := []) (n := (length l)) . 
@@ -854,10 +785,10 @@ Proof.
 Lemma cancel_two_qubit_gates'_respects_constraints : forall {dim}  (l l' acc: RzQ_ucom_l dim)
                                                  (is_in_graph : nat -> nat -> bool) (n : nat) ,
 
-    respects_constraints_directed is_in_graph l ->
-    respects_constraints_directed is_in_graph acc ->
+    respects_constraints_directed is_in_graph URzQ_CNOT l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT acc ->
      cancel_two_qubit_gates'  l n acc =  l' ->
-     respects_constraints_directed is_in_graph l'.
+     respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   
   intros.
@@ -867,11 +798,8 @@ Proof.
   induction n. 
   
   - intros. inversion H1. 
-    subst. unfold cancel_two_qubit_gates'. rewrite rev_append_rev.
-    apply respects_constraints_directed_app.
-    apply rev_respects_constraints.
-    assumption.
-    assumption.
+    subst. unfold cancel_two_qubit_gates'.
+    apply rev_append_respects_constraints; assumption. 
   - intros.
 
     
@@ -882,11 +810,7 @@ Proof.
       intros. 
       unfold cancel_two_qubit_gates' in H1.
       subst. 
-      rewrite rev_append_rev.
-      apply respects_constraints_directed_app.
-      apply rev_respects_constraints.
-      assumption.
-      assumption.
+      apply rev_append_respects_constraints; assumption. 
     +
       intros. 
       unfold cancel_two_qubit_gates' in H1.  
@@ -897,7 +821,7 @@ Proof.
          
         inversion H; subst.
         apply IHn  with (l0 :=l) (acc0 := (App1 URzQ_H n0 :: acc)).
-        apply H4.
+        apply H5.
         constructor.
         assumption.
         reflexivity.
@@ -905,7 +829,7 @@ Proof.
          
         inversion H; subst.
         apply IHn  with (l0 :=l) (acc0 := (App1 URzQ_X n0 :: acc)).
-        apply H4.
+        apply H5.
         constructor.
         assumption.
         reflexivity.
@@ -913,7 +837,7 @@ Proof.
          
         inversion H; subst.
         apply IHn  with (l0 :=l) (acc0 := (App1 (URzQ_Rz a) n0 :: acc)).
-        apply H4.
+        apply H5.
         constructor.
         assumption.
         reflexivity.
@@ -923,7 +847,7 @@ Proof.
         dependent destruction r. 
         {
           fold (@cancel_two_qubit_gates' dim l0 n acc) in H1.   
-          assert (respects_constraints_directed is_in_graph l0).
+          assert (respects_constraints_directed is_in_graph URzQ_CNOT l0).
           eapply propagate_CNOT_respects_constraints.
           inversion H.
           apply H8. 
@@ -944,7 +868,7 @@ Proof.
           
           apply H8.
           constructor. 
-          apply H5.
+          apply H6.
           assumption. 
           reflexivity. 
         }
@@ -955,9 +879,9 @@ Qed.
 Lemma cancel_two_qubit_gates_respects_constraints : forall {dim}  (l l': RzQ_ucom_l dim)
                                                  (is_in_graph : nat -> nat -> bool) ,
 
-    respects_constraints_directed is_in_graph l ->
+    respects_constraints_directed is_in_graph URzQ_CNOT l ->
      cancel_two_qubit_gates  l =  l' ->
-     respects_constraints_directed is_in_graph l'.
+     respects_constraints_directed is_in_graph URzQ_CNOT l'.
 Proof.
   intros.
   apply cancel_two_qubit_gates'_respects_constraints with (l0 := l) (acc := []) (n := (length l)) . 

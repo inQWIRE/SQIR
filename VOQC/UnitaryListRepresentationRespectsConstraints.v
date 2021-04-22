@@ -59,7 +59,7 @@ Proof.
   assumption. 
   
    
-Qed.       
+Qed.
 
 
 
@@ -192,12 +192,9 @@ Proof.
   eapply H2. apply Hr. apply Hrcdl0. apply rls. apply rewr2. 
   apply IHn with (l := g0) (acc := (rev_append g acc)).
   apply H.
-  rewrite rev_append_rev.
-  apply respects_constraints_directed_app.
-  apply rev_respects_constraints.
+  apply rev_append_respects_constraints; try assumption.  
   apply H.
   assumption.
-  apply res.
 Qed. 
   
 Lemma propagate_respects_constraints :  forall {dim} (l l' : RzQ_ucom_l dim)
@@ -212,82 +209,413 @@ Proof.
   intros.
   apply (propagate'_respects_constraints l commute_rules cancel_rules n [] l' is_in_graph);
     try assumption; try constructor.
+Qed.
+
+
+Lemma next_gate'_respects_constraints:
+  forall {U dim} (l l1 l2 acc: gate_list U dim) g
+         (f : nat -> bool)
+         is_in_graph cnot,
+
+    respects_constraints_directed is_in_graph cnot l -> 
+    respects_constraints_directed is_in_graph cnot acc ->
+    next_gate' l f acc  = Some (l1, g,  l2) ->
+    respects_constraints_directed is_in_graph cnot l1
+
+    /\ respects_constraints_directed is_in_graph cnot l2
+   /\ respects_constraints_directed is_in_graph cnot [g].
+Proof.
+  intros.
+  generalize dependent acc. 
+  induction l; intros. 
+  - simpl in H1.
+    inversion H1.
+  - inversion H1; subst.
+
+    repeat destruct_matches; 
+      try (
+          inversion H3; subst;
+          try split; 
+          try apply rev_append_respects_constraints; try assumption;  try constructor; 
+          try split ; 
+          try inversion H; try subst;  try assumption ;
+          try constructor; try constructor) .
+
+    all: try(
+             assert(respects_constraints_directed is_in_graph cnot (App1 u n :: acc));
+             try constructor; try assumption; try apply H2; try assumption) .
+    
+    
+    all: try (eapply IHl;  try assumption;  try apply H2;  try assumption ).
+    assumption. 
+    
+    all: try (
+             assert(respects_constraints_directed is_in_graph u
+                                                  (App2 u n n0 :: acc));
+             
+             try apply res_dir_app2; try apply H8; try assumption; try apply H0). 
 Qed. 
 
+Lemma next_gate_respects_constraints:
+  forall {U dim} (l l1 l2: gate_list U dim) g
+         (f : nat -> bool)
+         is_in_graph cnot ,
 
+    respects_constraints_directed is_in_graph cnot l ->
+     Some (l1, g,  l2) = next_gate l f  ->
+    respects_constraints_directed is_in_graph cnot l1
 
+    /\ respects_constraints_directed is_in_graph cnot l2
+   /\ respects_constraints_directed is_in_graph cnot [g].
+Proof.
+  intros.
+  eapply next_gate'_respects_constraints.
+  apply H.
+  apply res_dir_nil.
+  unfold next_gate in H0.
+  symmetry in H0.
+  apply H0. 
+Qed.
 
-(* Some maybe helpful Ltacs for proofs *)
-Ltac destruct_matches :=
-  
-  match goal with
-  | H :   match ?Y with _ => _  end = _ |- _ =>
-    let h:= fresh in remember Y as h;
-                     try destruct h;
-                     try dependent destruction h;
-                     try discriminate; destruct_pairs; subst
-  end.
-
-Ltac assert_next_single_qubit_gate  :=
-  
-  match reverse goal with
-  |[ H :   Some (?l11, ?gat, ?l22) = next_single_qubit_gate ?in_l ?qub 
-    |- respects_constraints_directed ?iig ?c _ /\
-       respects_constraints_directed ?iig ?c _] =>
-    assert (respects_constraints_directed iig c l11
-            /\ respects_constraints_directed iig c l22)
-  | H :   Some (?l11, ?gat, ?l22) = next_single_qubit_gate ?in_l ?qub 
-     |- respects_constraints_directed ?iig ?c _  =>
-   assert (respects_constraints_directed iig c l11
-           /\ respects_constraints_directed iig c l22)
-           
-  end.
-Open Scope ucom.
-Require Export RzQGateSet.
-Ltac assert_next_two_qubit_gate :=
-  match reverse goal with
-  |[ H :   Some (?l11, URzQ_CNOT, ?n0, ?n, ?l22) = next_two_qubit_gate ?in_l ?qub 
-    |- respects_constraints_directed ?iig ?c _ /\
-       respects_constraints_directed ?iig ?c _] =>
-    assert (respects_constraints_directed iig c l11
-            /\ respects_constraints_directed iig c l22
-            /\ iig n0 n = true)
-  |[ H :   Some (?l11, URzQ_CNOT, ?n0, ?n, ?l22) = next_two_qubit_gate ?in_l ?qub 
-     |- respects_constraints_directed ?iig ?c _] =>
-   assert (respects_constraints_directed iig c l11
-           /\ respects_constraints_directed iig c l22
-           /\ iig n0 n = true)
-  end.
-
-Ltac prove_next_gates_assertion  :=
+(* This is nested matches so it finds the first hypothesis and doesn't try to find first match expression*)
+Ltac assert_and_prove_next_gate :=
   
   match reverse goal with
-  | H :   Some (?l11, ?gat, ?l22) = next_single_qubit_gate ?in_l ?qub 
-    |- respects_constraints_directed ?iig ?c ?ll1 /\
-       respects_constraints_directed ?iig ?c ?ll2 =>
+  |[ H1 : respects_constraints_directed ?iig ?cnot _ |- _] =>
+   match reverse goal with
+   |[ H :   Some ?tuple = ?n_g ?in_l ?qub 
+      |-  _ ] =>
+    match n_g with
+    | next_single_qubit_gate =>
+      match tuple with
+      |(?l11, ?gat,  ?l22) =>
+       assert (respects_constraints_directed iig cnot l11
+               /\ respects_constraints_directed iig cnot l22);
+       [try eapply (next_single_qubit_gate_respects_constraints in_l l11 l22 gat qub);
+        try assumption|]; clear H end
+    | next_two_qubit_gate =>
+      match tuple with
+      |(?l11, ?cnot, ?n0, ?n, ?l22) =>
+       assert (respects_constraints_directed iig cnot l11
+               /\ respects_constraints_directed iig cnot l22
+               /\ iig n0 n = true);
+       [try eapply (next_two_qubit_gate_respects_constraints in_l l11 l22 cnot qub);
+        try assumption|]; clear H end
+    | next_gate =>
+      match tuple with
+        (?l11, ?gat, ?l22) => 
+        assert (respects_constraints_directed iig cnot l11
+                /\ respects_constraints_directed iig cnot l22
+                /\ respects_constraints_directed iig cnot [gat]);
+               [try eapply (next_gate_respects_constraints in_l l11 l22 gat qub);
+        try assumption|]; clear H end
+    end 
+   end
+  end.
+      
+ Lemma remove_prefix_respects_constraints:
+   forall {U dim} (l l' pfx: gate_list U dim)
+          (match_gate : (forall {n}, U n -> U n -> bool))
+         is_in_graph cons,
+
+    respects_constraints_directed is_in_graph cons l -> 
+    respects_constraints_directed is_in_graph cons pfx ->
+    remove_prefix l pfx (fun n => @match_gate n)  = Some l' ->
+    respects_constraints_directed is_in_graph cons l'.
+Proof.
+  intros.
+  generalize dependent l'.
+  generalize dependent l.
+  induction pfx.
+  - intros.
+    induction l.
+    + inversion H1.
+      constructor.
+    + simpl in H1. 
+      destruct a; inversion H1;
+        inversion H;  try constructor; try assumption. 
+      
+
+  - intros.
+    induction l. 
+    + simpl in H1. destruct a; inversion H1.
+
+    + simpl in H1. 
+      repeat destruct_matches.
+
+      *
+        eapply IHpfx.
+        inversion H0; subst; assumption. 
+        assert_and_prove_next_gate. 
+        destruct H2 as [rcdg0 rcdg].
+        assert (respects_constraints_directed is_in_graph cons (g0 ++ g)).
+        apply respects_constraints_directed_app.
+        apply rcdg0. apply rcdg. 
+        apply H2.
+        assumption. 
+
+      * eapply IHpfx.
+        inversion H0; subst; assumption.
+        assert_and_prove_next_gate.
+        destruct H2 as [iigg0 [iigg iigA2]].
+        assert (respects_constraints_directed is_in_graph cons (g0++g)). 
+        apply respects_constraints_directed_app; assumption.
+        apply H2.
+        apply H1. 
+Qed.
+
+Lemma remove_suffix_respects_constraints:
+  forall {U dim} (l l' sfx: gate_list U dim) (match_gate : (forall {n}, U n -> U n -> bool))
+         is_in_graph cnot,
+
+    respects_constraints_directed is_in_graph cnot l -> 
+    respects_constraints_directed is_in_graph cnot  sfx ->
+    remove_suffix l sfx (fun n => @match_gate n)  = Some l' ->
+    respects_constraints_directed is_in_graph cnot l'.
+Proof.
+  intros.
+  unfold remove_suffix in H1. 
+  destruct_matches.
+  inversion H1; subst.
+  assert (respects_constraints_directed is_in_graph cnot g). 
+  eapply remove_prefix_respects_constraints.
+  apply rev_append_respects_constraints. 
+  apply H. apply res_dir_nil. 
+  apply rev_append_respects_constraints. 
+  apply H0. apply res_dir_nil. 
+  symmetry in HeqH2.
+  apply HeqH2.
+  apply rev_append_respects_constraints; try assumption; try constructor. 
+Qed. 
+
+  
+Ltac assert_get_matching_prefix' :=
+      match reverse goal with
+    |[ H :  get_matching_prefix' ?l1 ?l2 ?pacc ?lacc _ _ _ = _ 
+       |- respects_constraints_directed ?iig ?c _ /\
+           _] =>
+     assert (respects_constraints_directed iig c l1
+             /\ respects_constraints_directed iig c l2
+             /\ respects_constraints_directed iig c pacc
+             /\ respects_constraints_directed iig c lacc
+            )
+  
+    end.
+
+ Lemma get_matching_prefix'_respects_constraints:
+   forall {U dim} n (l1 l2 pacc lacc l2a l2b u2: gate_list U  dim) blst
+          (match_gate : (forall {n}, U n -> U n -> bool))
+         is_in_graph cnot ,
+
+    respects_constraints_directed is_in_graph cnot l1 -> 
+    respects_constraints_directed is_in_graph cnot l2 ->
+      
+    respects_constraints_directed is_in_graph cnot  lacc ->
+    respects_constraints_directed is_in_graph cnot pacc ->
+    get_matching_prefix' l1 l2 pacc lacc blst n (fun n => @match_gate n)  = (l2a, u2, l2b) ->
+    respects_constraints_directed is_in_graph cnot l2a
+    /\ respects_constraints_directed is_in_graph cnot l2b
+    /\ respects_constraints_directed is_in_graph cnot u2.
+Proof.
+  intros.
+  generalize dependent l1.
+  generalize dependent l2.
+  generalize dependent pacc.
+  generalize dependent lacc.
+  generalize dependent blst.  
+  induction n.
+  - intros.
+    simpl in H3. 
+    inversion H3; subst; clear H3. 
+    split.
+    + apply rev_append_respects_constraints; try assumption;  constructor. 
+
+    + split.
+      assumption.
+      apply rev_append_respects_constraints; try assumption; try constructor.
+
+  - intros. 
+    simpl in H3. 
+    repeat destruct_matches;
+
+      (* Each case has one or two next gate type calls*)
+      try (assert_and_prove_next_gate; destruct H4 as [rcdg0 [rcdg rcdaun0]]) ;
+      try (assert_and_prove_next_gate; destruct H4 as [rcdg2 rcdg1]) ;
+      try destruct rcdg1 as [rcdg11 rcdg12];
+  
+      (* Last two cases *)
+      try (inversion H3; subst; clear H3; split;
+           [apply rev_append_respects_constraints; try assumption; try constructor|
+            split;
+            [assumption|apply rev_append_respects_constraints; try assumption; try constructor]] 
+          ).
+    +
+      assert_get_matching_prefix'. 
+       split; try assumption; split; try assumption. 
+       apply respects_constraints_directed_app;
+         assumption. 
+       split.
+       constructor.
+       assumption.
+       apply rev_append_respects_constraints; try assumption; try constructor.
+       destruct H4 as [s1 [s2 [s3 s4]]]; eapply IHn. 
+       apply s4. apply s3. apply s2. apply s1. 
+       apply H3.
+    +
+      assert_get_matching_prefix'.
+      split; try assumption; split; try  assumption; split; try assumption. 
+      constructor. 
+      apply rev_append_respects_constraints; try assumption; try constructor.
+      destruct H4 as [s1 [s2 [s3 s4]]]; eapply IHn. 
+      apply s4. apply s3. apply s2. apply s1. 
+      apply H3.
+    +
+      assert_get_matching_prefix'.             
+      split; try assumption; split; try  assumption; split; try assumption. 
+      constructor. 
+      apply rev_append_respects_constraints; try assumption; try constructor. 
+      destruct H4 as [s1 [s2 [s3 s4]]]; eapply IHn. 
+      apply s4. apply s3. apply s2. apply s1. 
+      apply H3.
+      
+    +
+      assert_get_matching_prefix'.
+      split; try assumption; split; try assumption; split; try assumption; try constructor.  
+      inversion rcdaun0; subst. 
+      constructor.
+      assumption. 
+      apply rev_append_respects_constraints; try assumption; try constructor.
+      destruct H4 as [s1 [s2 [s3 s4]]]; eapply IHn. 
+      apply s4. apply s3. apply s2. apply s1. 
+      apply H3.
+       
+
+    + assert_get_matching_prefix'.
+      split; try assumption; split.
+      apply respects_constraints_directed_app; try assumption. 
+      
+      split.
+      inversion rcdaun0; subst; try constructor; try assumption.
+      apply rev_append_respects_constraints; try assumption. 
+      destruct H4 as [s1 [s2 [s3 s4]]]; eapply IHn. 
+      apply s4. apply s3. apply s2. apply s1. 
+      apply H3.
+      
+    + assert_get_matching_prefix'.
+      
+      split; try assumption; split; try assumption; split; try assumption. 
+      inversion rcdaun0; subst; try constructor; try assumption.
+      apply rev_append_respects_constraints; try assumption. 
+      destruct H4 as [s1 [s2 [s3 s4]]]; eapply IHn. 
+      apply s4. apply s3. apply s2. apply s1. 
+      apply H3.      
+
+    + assert_get_matching_prefix'.
+
+      
+      split; try assumption; split; try assumption; split; try assumption. 
+      inversion rcdaun0; subst; try constructor; try assumption.
+      apply rev_append_respects_constraints; try assumption. 
+      destruct H4 as [s1 [s2 [s3 s4]]]; eapply IHn. 
+       apply s4. apply s3. apply s2. apply s1. 
+       apply H3.
+
+    +assert_get_matching_prefix'.
+      
+      split; try assumption; split; try assumption; split; try assumption. 
+      inversion rcdaun0; subst; try constructor; try assumption.
+      apply rev_append_respects_constraints; try assumption. 
+      destruct H4 as [s1 [s2 [s3 s4]]]; eapply IHn. 
+       apply s4. apply s3. apply s2. apply s1. 
+       apply H3.
+Qed.
+
+
+Lemma get_matching_prefix_respects_constraints:
+  forall {U dim}  (l1 l2 pacc lacc l2a l2b u2: gate_list U dim)
+         (match_gate : (forall {n}, U n -> U n -> bool))
+         is_in_graph cnot ,
+
+    respects_constraints_directed is_in_graph cnot l1 -> 
+    respects_constraints_directed is_in_graph cnot l2 ->
     
-    try (eapply next_single_qubit_gate_respects_constraints
-           with (l := in_l) (l1 := l11) (l2 := l22) (g5 := gat) (q0 := qub));
-    try (eapply next_single_qubit_gate_respects_constraints
-           with (l := in_l) (l1 := l11) (l2 := l22) (g1 := gat) (q0 := qub));
-    try assumption
-        
-  | H :   Some  (?l11, URzQ_CNOT, ?n0, ?n, ?l22) = next_two_qubit_gate ?in_l ?qub 
-    |- respects_constraints_directed ?iig ?c ?ll1 /\
-       respects_constraints_directed ?iig ?c ?ll2 /\ ?iig ?n0 ?n = true=>
-    
-    try (eapply next_two_qubit_gate_respects_constraints
-           with (l := in_l) (l1 := l11) (l2 := l22) (g5 := URzQ_CNOT) (q0 := qub));
-        try (eapply next_two_qubit_gate_respects_constraints
-      with (l := in_l) (l1 := l11) (l2 := l22) (g1 := URzQ_CNOT) (q0 := qub));
-    try assumption
-  end.
 
-Ltac clear_next_gates  :=
+    get_matching_prefix l1 l2 (fun n => @match_gate n) = (l2a, u2, l2b) ->
+    respects_constraints_directed is_in_graph cnot l2a
+    /\ respects_constraints_directed is_in_graph cnot l2b
+    /\ respects_constraints_directed is_in_graph cnot u2.
+Proof.
+  intros.
+  unfold get_matching_prefix in H1.
+  eapply get_matching_prefix'_respects_constraints.
+  apply H. apply H0. apply res_dir_nil. apply res_dir_nil. apply H1. 
+Qed.
+
+
+Lemma LCR_respects_constraints: 
+  forall {dim}  (b  l2a l2b u2: standard_ucom_l dim) opt
+         (match_gate : (forall {n}, U n -> U n -> bool))
+         is_in_graph ,
+    (forall p, respects_constraints_directed is_in_graph U_CX p -> 
+        respects_constraints_directed is_in_graph U_CX (opt p)) -> 
+    respects_constraints_directed is_in_graph U_CX b -> 
+    LCR b opt (fun n => @match_gate n) = Some (l2a, u2, l2b) ->
+    respects_constraints_directed is_in_graph U_CX l2a
+    /\ respects_constraints_directed is_in_graph U_CX l2b
+    /\ respects_constraints_directed is_in_graph U_CX u2.
+Proof.
+  intros.
+  unfold LCR in H1.
+  repeat destruct_matches.
+  assert (respects_constraints_directed is_in_graph U_CX (opt b)).
+  apply H. assumption.
   
-  match reverse goal with
-  | H :   Some (_) = _
-    |- _ =>
-    clear H
+  assert (respects_constraints_directed is_in_graph U_CX (opt b ++ opt b)).
+  apply respects_constraints_directed_app; assumption. 
 
-  end.
+  assert (respects_constraints_directed is_in_graph U_CX (opt b ++ opt b ++ opt b)). 
+  apply respects_constraints_directed_app. assumption.
+  apply respects_constraints_directed_app; assumption. 
+
+  
+  assert (respects_constraints_directed is_in_graph U_CX (opt (opt b ++ opt b))).
+  apply H; assumption. 
+
+    assert (respects_constraints_directed is_in_graph U_CX (opt (opt b ++ opt b ++ opt b))).
+  apply H; assumption. 
+
+  
+  assert (    respects_constraints_directed is_in_graph U_CX l
+    /\ respects_constraints_directed is_in_graph U_CX g
+    /\ respects_constraints_directed is_in_graph U_CX l0). 
+  eapply get_matching_prefix_respects_constraints; try assumption.
+  apply H2. apply H5. symmetry in HeqH2. apply HeqH2.  
+  inversion H1; subst.
+  split. apply H7. split. apply H7.
+  destruct H7 as [rcdl2a [rcdl2b rcdl0]].
+  assert (respects_constraints_directed is_in_graph U_CX g0). 
+  eapply remove_prefix_respects_constraints.
+  apply H6. apply rcdl2a. symmetry in HeqH0. apply HeqH0. 
+  eapply remove_suffix_respects_constraints.
+  apply H7. apply rcdl2b. symmetry. apply HeqH1. 
+Qed.   
+
+
+Lemma replace_pattern_respects_constraints:
+  forall {dim} (l l' pat rep: RzQ_ucom_l dim) match_gate is_in_graph  ,
+
+    respects_constraints_directed is_in_graph URzQ_CNOT l -> 
+    respects_constraints_directed is_in_graph URzQ_CNOT pat ->
+    respects_constraints_directed is_in_graph URzQ_CNOT rep ->
+    replace_pattern l pat rep match_gate = Some l' -> 
+    respects_constraints_directed is_in_graph URzQ_CNOT l'.
+Proof. 
+  intros.
+  unfold replace_pattern in H2.
+  destruct_matches.
+  inversion H2; subst.
+  assert (respects_constraints_directed is_in_graph URzQ_CNOT g).
+  eapply remove_prefix_respects_constraints. 
+  apply H. apply H0. symmetry in HeqH3.  apply HeqH3.
+  apply respects_constraints_directed_app; assumption.
+Qed.

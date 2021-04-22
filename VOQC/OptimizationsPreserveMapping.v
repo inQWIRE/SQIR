@@ -119,50 +119,98 @@ Proof.
 Qed.
 
 (** Optimizations preserve constraints **)
-
-(*** @Aaron ***)
-
+Require Import GateCancellationRespectsConstraints.
+Require Import CXCancellationRespectsConstraints.
+Require Import Optimize1qGatesRespectsConstraints.
+Require Import HadamardReductionRespectsConstraints.
+Require Import RotationMergingRespectsConstraints.
+Require Import NotPropagationRespectsConstraints. 
 Lemma cx_cancellation_preserves_mapping : forall {dim} (l : IBM_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph UIBM_CNOT l ->
   respects_constraints_directed is_in_graph UIBM_CNOT (cx_cancellation l).
 Proof.
-Admitted.
+  intros.
+  unfold cx_cancellation.
+  apply cx_cancellation'_respects_constraints.
+  assumption.
+  constructor. 
+Qed. 
+
 
 Lemma optimize_1q_gates_preserves_mapping : forall {dim} (l : IBM_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph UIBM_CNOT l ->
   respects_constraints_directed is_in_graph UIBM_CNOT (optimize_1q_gates l).
 Proof.
-Admitted.
+  intros.
+  unfold optimize_1q_gates.
+  
+  apply simplify_1q_gates_respects_constraints.
+
+  assumption. 
+  apply optimize_1q_gates'_respects_constraints.
+  assumption.
+  assumption.
+  constructor. constructor. 
+Qed. 
 
 Lemma cancel_single_qubit_gates_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph URzQ_CNOT l ->
   respects_constraints_directed is_in_graph URzQ_CNOT (cancel_single_qubit_gates l).
 Proof.
-Admitted.
+  intros.
+  eapply cancel_single_qubit_gates_respects_constraints.
+  apply H.
+  reflexivity. 
+Qed.
 
 Lemma cancel_two_qubit_gates_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph URzQ_CNOT l ->
   respects_constraints_directed is_in_graph URzQ_CNOT (cancel_two_qubit_gates l).
 Proof.
-Admitted.
-
+  intros.
+  eapply cancel_two_qubit_gates_respects_constraints.
+  apply H.
+  reflexivity. 
+Qed.
+(* Changed to respectful_hadamard_reduction which doesn't use 3 *)(*
 Lemma hadamard_reduction_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph URzQ_CNOT l ->
   respects_constraints_directed is_in_graph URzQ_CNOT (hadamard_reduction l).
 Proof.
 Admitted.
+                                                                   *)
+Lemma hadamard_reduction_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph URzQ_CNOT l ->
+  respects_constraints_directed is_in_graph URzQ_CNOT (respectful_hadamard_reduction l).
+Proof.
+  intros. 
+  eapply respectful_hadamard_reduction_respects_constraints.
+  apply H. 
+  reflexivity.
+Qed. 
+
 
 Lemma merge_rotations_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph URzQ_CNOT l ->
   respects_constraints_directed is_in_graph URzQ_CNOT (merge_rotations l).
 Proof.
-Admitted.
+  intros. 
+  eapply merge_rotations_respects_constraints.
+  apply H.
+  reflexivity. 
+Qed. 
+
 
 Lemma not_propagation_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph URzQ_CNOT l ->
   respects_constraints_directed is_in_graph URzQ_CNOT (not_propagation l).
 Proof.
-Admitted.
+  intros.
+  eapply not_propagation_respects_constraints_directed. 
+  assumption.
+Qed.
+
+Search "LCR".
 
 Lemma LCR_preserves_mapping : forall {dim} (p l c r : standard_ucom_l dim) (opt : standard_ucom_l dim -> standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph U_CX p ->
