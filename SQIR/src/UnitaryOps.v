@@ -199,18 +199,39 @@ Proof.
 Qed.
 
 Lemma uc_well_typed_control : forall dim q (c : base_ucom dim),
-  (q < dim)%nat -> is_fresh q c -> uc_well_typed c -> 
+  ((q < dim)%nat /\ is_fresh q c /\ uc_well_typed c) <-> 
   uc_well_typed (control q c).
 Proof.
-  intros dim q c ? Hfr WT.
-  induction c; try dependent destruction u; simpl;
-  inversion Hfr; inversion WT; subst.
-  constructor.
-  apply IHc1; auto.
-  apply IHc2; auto.  
-  1,2: repeat constructor; try assumption.
-  all: try apply uc_well_typed_Rz; try apply uc_well_typed_CNOT; auto.
-  all: apply uc_well_typed_H; auto.
+  intros dim q c.
+  split.
+  - intros [H [Hfr WT]].
+    induction c; try dependent destruction u; simpl;
+      inversion Hfr; inversion WT; subst.
+    constructor.
+    apply IHc1; auto.
+    apply IHc2; auto.  
+    1,2: repeat constructor; try assumption.
+    all: try apply uc_well_typed_Rz; try apply uc_well_typed_CNOT; auto.
+    1,2: apply uc_well_typed_H; auto.
+  - intro H.
+    induction c; try dependent destruction u.
+    inversion H; subst.
+    apply IHc1 in H2 as [? [? ?]].
+    apply IHc2 in H3 as [_ [? ?]].
+    repeat split; try constructor; auto.
+    inversion H; subst.
+    inversion H2; subst.
+    apply uc_well_typed_CNOT in H5 as [? [? ?]].
+    repeat split; try constructor; auto.
+    inversion H; subst.
+    repeat match goal with
+       | H : uc_well_typed (_ ; _) |- _ => inversion H; subst; clear H
+       end. 
+    repeat split; auto.
+    apply uc_well_typed_Rz in H7; auto. 
+    apply uc_well_typed_CNOT in H8 as [? [? ?]].
+    apply uc_well_typed_CNOT in H11 as [? [? ?]].
+    constructor; auto.
 Qed.  
 
 Local Transparent SQIR.H X Rz CNOT.
@@ -853,6 +874,30 @@ Proof.
     gridify; reflexivity.
   - autorewrite with eval_db.
     gridify; reflexivity.
+Qed.
+
+Lemma cast_cong_r : forall {dim} (u u' : base_ucom dim) n,
+  uc_well_typed u -> (u ≡ u')%ucom -> (cast u (dim + n) ≡ cast u' (dim + n))%ucom.
+Proof.
+  intros dim u u' n WT H.
+  unfold uc_equiv in *. 
+  rewrite <- 2 pad_dims_r.
+  rewrite H. reflexivity.
+  apply uc_eval_nonzero_iff.
+  apply uc_eval_nonzero_iff in WT.
+  rewrite <- H; assumption.
+  assumption.
+Qed.
+
+Lemma cast_cong_l : forall {dim} (u u' : base_ucom dim) n,
+  (u ≡ u')%ucom -> 
+  (cast (UnitaryOps.map_qubits (fun q : nat => (n + q)%nat) u) (n + dim) ≡ 
+   cast (UnitaryOps.map_qubits (fun q : nat => (n + q)%nat) u') (n + dim))%ucom.
+Proof.
+  intros dim u u' n H.
+  unfold uc_equiv in *. 
+  rewrite <- 2 pad_dims_l.
+  rewrite H. reflexivity.
 Qed.
 
 (** n copies of a gate in parallel **)

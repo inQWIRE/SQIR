@@ -5,8 +5,14 @@ open Shor
 
 (** val shor_circuit : int -> int -> (coq_U ucom * int) * int **)
 
-let shor_circuit =
-  shor_circuit
+let shor_circuit a n =
+  let m =
+    PeanoNat.Nat.log2
+      (mul (Pervasives.succ (Pervasives.succ 0))
+        (PeanoNat.Nat.pow n (Pervasives.succ (Pervasives.succ 0))))
+  in
+  let n0 = PeanoNat.Nat.log2 (mul (Pervasives.succ (Pervasives.succ 0)) n) in
+  let numq = num_qubits n0 in (((shor_circuit a n), (add m numq)), m)
 
 (** val coq_OF_post' : int -> int -> int -> int -> int -> int **)
 
