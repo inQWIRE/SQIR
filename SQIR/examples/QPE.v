@@ -88,13 +88,13 @@ Proof.
   destruct n; try lia.
   induction n.
   simpl. 
-  apply uc_well_typed_control; try lia.
+  apply uc_well_typed_control; repeat split; try lia.
   1,2: constructor; auto.
   replace (controlled_rotations (S (S (S n)))) with (cast (controlled_rotations (S (S n))) (S (S (S n))) ; control (S (S n)) (Rz (2 * PI / 2 ^ (S (S (S n)))) 0)) by reflexivity.
   constructor.
   apply typed_cast; try lia.
   apply IHn; try lia.
-  apply uc_well_typed_control; try lia.
+  apply uc_well_typed_control; repeat split; try lia.
   1,2: constructor; lia.
 Qed.
 Local Opaque Rz.
@@ -867,7 +867,7 @@ Proof.
   reflexivity. 
   apply pow_le. lra. 
   apply npar_WT; try lia.
-  apply uc_well_typed_invert.
+  rewrite <- uc_well_typed_invert.
   apply QFT_w_reverse_WT.
   lia.
 Qed.

@@ -20,11 +20,14 @@ Fixpoint invert {dim} (c : base_ucom dim) : base_ucom dim :=
   end.
 
 Lemma uc_well_typed_invert : forall (dim : nat) (c : base_ucom dim),
-  uc_well_typed c -> uc_well_typed (invert c).
+  uc_well_typed c <-> uc_well_typed (invert c).
 Proof.
-  intros dim c WT.
+  intros dim c. 
+  split; intro H.
   induction c; try dependent destruction u; 
-  inversion WT; subst; constructor; auto.
+    inversion H; subst; constructor; auto.
+  induction c; try dependent destruction u;
+    inversion H; subst; constructor; auto.
 Qed.
 
 Lemma invert_correct : forall (dim : nat) (c : base_ucom dim),
@@ -43,6 +46,36 @@ Proof.
     Qsimpl. reflexivity.
     Qsimpl. reflexivity.
 Qed.
+
+(* A few common inverses *)
+
+Hint Rewrite sin_neg cos_neg : trig_db.
+
+Local Transparent X.
+Lemma invert_X : forall dim n, invert (@X dim n) ≡ X n.
+Proof.
+  intros dim n.
+  unfold uc_equiv. simpl. 
+  autorewrite with eval_db.
+  gridify.
+  do 2 (apply f_equal2; try reflexivity).
+  unfold rotation. 
+  solve_matrix; try rewrite Ropp_div; autorewrite with Cexp_db trig_db; lca.
+Qed.
+Local Opaque X.
+
+Local Transparent H.
+Lemma invert_H : forall dim n, invert (@H dim n) ≡ H n.
+Proof.
+  intros dim n.
+  unfold uc_equiv. simpl. 
+  autorewrite with eval_db.
+  gridify.
+  do 2 (apply f_equal2; try reflexivity).
+  unfold rotation. 
+  solve_matrix; try rewrite Ropp_div; autorewrite with Cexp_db trig_db; lca.
+Qed.
+Local Opaque H.
 
 (** Programs with arbitrary control **)
 
@@ -166,18 +199,39 @@ Proof.
 Qed.
 
 Lemma uc_well_typed_control : forall dim q (c : base_ucom dim),
-  (q < dim)%nat -> is_fresh q c -> uc_well_typed c -> 
+  ((q < dim)%nat /\ is_fresh q c /\ uc_well_typed c) <-> 
   uc_well_typed (control q c).
 Proof.
-  intros dim q c ? Hfr WT.
-  induction c; try dependent destruction u; simpl;
-  inversion Hfr; inversion WT; subst.
-  constructor.
-  apply IHc1; auto.
-  apply IHc2; auto.  
-  1,2: repeat constructor; try assumption.
-  all: try apply uc_well_typed_Rz; try apply uc_well_typed_CNOT; auto.
-  all: apply uc_well_typed_H; auto.
+  intros dim q c.
+  split.
+  - intros [H [Hfr WT]].
+    induction c; try dependent destruction u; simpl;
+      inversion Hfr; inversion WT; subst.
+    constructor.
+    apply IHc1; auto.
+    apply IHc2; auto.  
+    1,2: repeat constructor; try assumption.
+    all: try apply uc_well_typed_Rz; try apply uc_well_typed_CNOT; auto.
+    1,2: apply uc_well_typed_H; auto.
+  - intro H.
+    induction c; try dependent destruction u.
+    inversion H; subst.
+    apply IHc1 in H2 as [? [? ?]].
+    apply IHc2 in H3 as [_ [? ?]].
+    repeat split; try constructor; auto.
+    inversion H; subst.
+    inversion H2; subst.
+    apply uc_well_typed_CNOT in H5 as [? [? ?]].
+    repeat split; try constructor; auto.
+    inversion H; subst.
+    repeat match goal with
+       | H : uc_well_typed (_ ; _) |- _ => inversion H; subst; clear H
+       end. 
+    repeat split; auto.
+    apply uc_well_typed_Rz in H7; auto. 
+    apply uc_well_typed_CNOT in H8 as [? [? ?]].
+    apply uc_well_typed_CNOT in H11 as [? [? ?]].
+    constructor; auto.
 Qed.  
 
 Local Transparent SQIR.H X Rz CNOT.
@@ -612,6 +666,63 @@ Proof.
   all: rewrite Mplus_comm; reflexivity.
 Qed.
 Local Opaque X CU.
+
+Lemma invert_fresh : forall dim q (u : base_ucom dim),
+  is_fresh q u <-> is_fresh q (invert u).
+Proof.
+  intros dim q u.
+  split; intro H.
+  induction u; try dependent destruction u; inversion H; subst; constructor; auto.
+  induction u; try dependent destruction u; inversion H; subst; constructor; auto.
+Qed.
+
+Lemma proj_adjoint : forall dim q b, (proj q dim b) † = proj q dim b.
+Proof.
+  intros.
+  unfold proj, pad.
+  gridify.
+  Msimpl.
+  reflexivity.
+Qed.
+
+Lemma invert_control : forall dim q (u : base_ucom dim),
+  invert (control q u) ≡ control q (invert u).
+Proof.
+  intros dim q u.
+  unfold uc_equiv.
+  destruct (uc_well_typed_b u) eqn:WT.
+  2: { rewrite <- not_true_iff_false in WT.
+       rewrite uc_well_typed_b_equiv in WT.
+       rewrite <- invert_correct.
+       rewrite (control_not_WT _ u) by assumption.
+       rewrite uc_well_typed_invert in WT.
+       rewrite (control_not_WT _ (invert _)) by assumption.
+       lma. }
+  rewrite uc_well_typed_b_equiv in WT.
+  destruct (is_fresh_b q u) eqn:Hfr.
+  2: { rewrite <- not_true_iff_false in Hfr.
+       rewrite is_fresh_b_equiv in Hfr.
+       rewrite <- invert_correct.
+       rewrite (control_not_fresh _ u) by assumption.
+       rewrite invert_fresh in Hfr.
+       rewrite (control_not_fresh _ (invert _)) by assumption.
+       lma. }
+  rewrite is_fresh_b_equiv in Hfr.
+  assert (uc_well_typed (invert u)).
+  rewrite <- uc_well_typed_invert; auto.
+  assert (is_fresh q (invert u)).
+  rewrite <- invert_fresh; auto.
+  rewrite <- invert_correct.
+  rewrite control_correct by assumption.
+  rewrite control_correct by assumption.
+  rewrite <- invert_correct.
+  distribute_adjoint.
+  rewrite 2 proj_adjoint.
+  rewrite invert_correct.
+  rewrite proj_fresh_commutes by assumption.
+  reflexivity.
+Qed.
+
 (** n iterations of a program **)
 
 Fixpoint niter {dim} n (c : base_ucom dim) : base_ucom dim :=
@@ -763,6 +874,30 @@ Proof.
     gridify; reflexivity.
   - autorewrite with eval_db.
     gridify; reflexivity.
+Qed.
+
+Lemma cast_cong_r : forall {dim} (u u' : base_ucom dim) n,
+  uc_well_typed u -> (u ≡ u')%ucom -> (cast u (dim + n) ≡ cast u' (dim + n))%ucom.
+Proof.
+  intros dim u u' n WT H.
+  unfold uc_equiv in *. 
+  rewrite <- 2 pad_dims_r.
+  rewrite H. reflexivity.
+  apply uc_eval_nonzero_iff.
+  apply uc_eval_nonzero_iff in WT.
+  rewrite <- H; assumption.
+  assumption.
+Qed.
+
+Lemma cast_cong_l : forall {dim} (u u' : base_ucom dim) n,
+  (u ≡ u')%ucom -> 
+  (cast (UnitaryOps.map_qubits (fun q : nat => (n + q)%nat) u) (n + dim) ≡ 
+   cast (UnitaryOps.map_qubits (fun q : nat => (n + q)%nat) u') (n + dim))%ucom.
+Proof.
+  intros dim u u' n H.
+  unfold uc_equiv in *. 
+  rewrite <- 2 pad_dims_l.
+  rewrite H. reflexivity.
 Qed.
 
 (** n copies of a gate in parallel **)

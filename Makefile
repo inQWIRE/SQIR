@@ -93,10 +93,10 @@ SQIR/src/RCIRplus.vo: SQIR/src//RCIRplus.v $(examples)/QPE.vo
 SQIR/examples/ModMult.vo: $(examples)/ModMult.v $(SQIR)/UnitaryOps.vo
 	coqc $(COQ_OPTS) $(examples)/ModMult.v
 
-SQIR/examples/Shor.vo: $(examples)/Shor.v $(examples)/QPEGeneral.vo $(examples)/ModMult.vo $(examples)/ModMultA.vo $(examples)/ShorAux.vo
+SQIR/examples/Shor.vo: $(examples)/Shor.v $(examples)/QPEGeneral.vo $(examples)/ModMult.vo $(examples)/ShorAux.vo
 	coqc $(COQ_OPTS) $(examples)/Shor.v
 	
-SQIR/examples/ShorAux.vo: $(examples)/ShorAux.v
+SQIR/examples/ShorAux.vo: $(examples)/ShorAux.v $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/ShorAux.v
 
 # Built by 'make mapper'

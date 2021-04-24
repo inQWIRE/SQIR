@@ -66,23 +66,23 @@ let reverse_qubits n =
 let coq_QFT_w_reverse n =
   Coq_useq ((coq_QFT n), (reverse_qubits n))
 
-(** val controlled_powers_var' : (int -> bccom) -> int -> int -> bccom **)
+(** val controlled_powers' : (int -> bccom) -> int -> int -> bccom **)
 
-let rec controlled_powers_var' f k kmax =
+let rec controlled_powers' f k kmax =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> Coq_bcskip)
     (fun k' ->
     (fun fO fS n -> if n=0 then fO () else fS (n-1))
       (fun _ -> Coq_bccont ((sub kmax (Pervasives.succ 0)), (f 0)))
-      (fun _ -> Coq_bcseq ((controlled_powers_var' f k' kmax), (Coq_bccont
+      (fun _ -> Coq_bcseq ((controlled_powers' f k' kmax), (Coq_bccont
       ((sub (sub kmax k') (Pervasives.succ 0)), (f k')))))
       k')
     k
 
-(** val controlled_powers_var : (int -> bccom) -> int -> coq_U ucom **)
+(** val controlled_powers : (int -> bccom) -> int -> coq_U ucom **)
 
-let controlled_powers_var f k =
-  bc2ucom (controlled_powers_var' f k k)
+let controlled_powers f k =
+  bc2ucom (controlled_powers' f k k)
 
 (** val map_bccom : (int -> int) -> bccom -> bccom **)
 
@@ -93,11 +93,11 @@ let rec map_bccom f = function
 | Coq_bccont (a, bc1) -> Coq_bccont ((f a), (map_bccom f bc1))
 | Coq_bcseq (bc1, bc2) -> Coq_bcseq ((map_bccom f bc1), (map_bccom f bc2))
 
-(** val coq_QPE_var : int -> (int -> bccom) -> coq_U ucom **)
+(** val coq_QPE : int -> (int -> bccom) -> coq_U ucom **)
 
-let coq_QPE_var k f =
+let coq_QPE k f =
   Coq_useq ((Coq_useq ((npar k U_H),
-    (controlled_powers_var (fun x -> map_bccom (fun q -> add k q) (f x)) k))),
+    (controlled_powers (fun x -> map_bccom (fun q -> add k q) (f x)) k))),
     (invert (coq_QFT_w_reverse k)))
 
 (** val modexp : int -> int -> int -> int **)
@@ -118,7 +118,7 @@ let modmult_circuit a ainv n n0 i =
 let num_qubits n =
   add n (modmult_rev_anc n)
 
-(** val shor_circuit : int -> int -> (coq_U ucom * int) * int **)
+(** val shor_circuit : int -> int -> coq_U ucom **)
 
 let shor_circuit a n =
   let m =
@@ -128,7 +128,5 @@ let shor_circuit a n =
   in
   let n0 = PeanoNat.Nat.log2 (mul (Pervasives.succ (Pervasives.succ 0)) n) in
   let ainv = modinv a n in
-  let numq = num_qubits n0 in
   let f = fun i -> modmult_circuit a ainv n n0 i in
-  (((Coq_useq ((coq_X (sub (add m n0) (Pervasives.succ 0))),
-  (coq_QPE_var m f))), (add m numq)), m)
+  Coq_useq ((coq_X (sub (add m n0) (Pervasives.succ 0))), (coq_QPE m f))

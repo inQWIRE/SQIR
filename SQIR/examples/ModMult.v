@@ -2739,15 +2739,6 @@ Proof.
   intros. unfold fbrev. apply functional_extensionality; intro x. IfExpSimpl; apply f_equal; lia.
 Qed.
 
-Lemma f_to_vec_eq :
-  forall n f1 f2,
-    (forall i, i < n -> f1 i = f2 i) ->
-    f_to_vec n f1 = f_to_vec n f2.
-Proof.
-  induction n; intros. easy.
-  simpl. rewrite IHn with (f2 := f2). rewrite H. easy. lia. intros. apply H. lia.
-Qed.
-
 Lemma fbrev_Sn :
   forall n x f,
     fb_push_n (S n) (fbrev (S n) (nat2fb x)) f = fb_push_n n (fbrev n (nat2fb (x / 2))) ((x mod 2 =? 1) ` f).

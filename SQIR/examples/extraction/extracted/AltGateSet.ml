@@ -37,6 +37,11 @@ let coq_H q =
 let coq_U1 r1 q =
   Coq_uapp ((Pervasives.succ 0), (U_U1 r1), (q :: []))
 
+(** val coq_U2 : coq_R -> coq_R -> int -> coq_U ucom **)
+
+let coq_U2 r1 r2 q =
+  Coq_uapp ((Pervasives.succ 0), (U_U2 (r1, r2)), (q :: []))
+
 (** val coq_U3 : coq_R -> coq_R -> coq_R -> int -> coq_U ucom **)
 
 let coq_U3 r1 r2 r3 q =
@@ -398,16 +403,15 @@ let rec invert = function
       | q1 :: l ->
         (match l with
          | [] ->
-           coq_U3
-             (coq_Ropp (coq_Rdiv coq_PI (coq_IZR (Zpos (Coq_xO Coq_xH)))))
-             (coq_Ropp r1) (coq_Ropp r2) q1
+           coq_U2 (coq_Rminus (coq_Ropp r2) coq_PI)
+             (coq_Rplus (coq_Ropp r1) coq_PI) q1
          | _ :: _ -> coq_SKIP))
    | U_U3 (r1, r2, r3) ->
      (match qs with
       | [] -> coq_SKIP
       | q1 :: l ->
         (match l with
-         | [] -> coq_U3 (coq_Ropp r1) (coq_Ropp r2) (coq_Ropp r3) q1
+         | [] -> coq_U3 (coq_Ropp r1) (coq_Ropp r3) (coq_Ropp r2) q1
          | _ :: _ -> coq_SKIP))
    | U_CX ->
      (match qs with
