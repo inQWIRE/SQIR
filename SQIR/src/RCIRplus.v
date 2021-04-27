@@ -7029,51 +7029,43 @@ Proof.
   intros. specialize (majseq_well_typed n tenv f x y c1 H0 H4 H5 H3 H7) as H8.
   unfold highb01. unfold no_equal in H1.
   destruct H1 as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  simpl. unfold MAJseq. rewrite (MAJseq'_correct (n-1) n); try easy.
-  rewrite highbit_correct.
-  rewrite cus_get_neq; try lia.
-  rewrite cus_get_eq ; try lia.
-  destruct c2. simpl in *.
-  rewrite cus_get_neq; try lia.
-  rewrite cus_get_neq; try lia.
-  rewrite eupdate_index_neq.
-  rewrite H6. bt_simpl.
+  destruct c1. destruct c2.
+  simpl. unfold MAJseq. rewrite (MAJseq'_correct (n-1) n); (try easy; try lia).
+  rewrite highbit_correct; try lia.
+  rewrite put_cu_cus. rewrite put_cu_cus.
+  rewrite get_cus_cua by lia.
   rewrite put_cus_neq by lia.
-  rewrite put_cus_neq by lia.
-  rewrite eupdate_index_neq.
+  rewrite cus_get_eq; try lia.
+  rewrite eupdate_index_neq by iner_p.
   erewrite inv_exp_reverse. easy.
-  apply majseq_fwf; try iner_p.
-  apply H8. apply right_mode_exp_up_same. easy.
-  rewrite (MAJseq'_correct (n-1) n); try easy.
-  destruct c1. simpl in *.
-  rewrite eupdate_index_neq by iner_p.
-  rewrite eupdate_index_neq by iner_p.
+  apply majseq'_fwf ; try easy. apply H8.
+  apply right_mode_exp_up_same. apply H7.
+  rewrite (MAJseq'_correct (n-1) n); (try easy; try lia).
+  repeat rewrite eupdate_index_neq by iner_p.
   repeat rewrite get_cus_up by iner_p.
   rewrite eupdate_twice_neq by iner_p.
   rewrite put_cus_update_flip by iner_p.
   rewrite put_cus_update_flip by iner_p.
   apply eupdate_same_1. easy.
-  unfold msma.
-  bdestruct (n - 1 <? n - 1). lia.
+  unfold msma. bdestruct (n - 1 <? n - 1). lia.
   bdestruct (n - 1 =? n - 1).
-  assert ((S (n - 1)) = n) by lia. rewrite H10. easy. lia. lia.
+  assert ((S (n - 1)) = n) by lia. rewrite H10. easy. lia.
   unfold nor_modes. intros.
   apply nor_mode_up ; iner_p. apply H4. easy.
   unfold nor_modes. intros.
   apply nor_mode_up ; iner_p. apply H5. easy.
-  destruct c1. simpl in *.
-  apply nor_mode_up ; iner_p. destruct c1. iner_p.
-  destruct c1. iner_p.
+  apply nor_mode_up ; iner_p. 
   unfold nor_modes. intros.
   apply nor_mode_up ; iner_p. apply H4. easy.
+  apply nor_mode_cus_eq.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up ; iner_p.
   unfold nor_modes. intros.
   apply nor_mode_cus_eq.
   apply nor_mode_cus_eq.
-  apply nor_mode_up ; iner_p. apply H4. lia.
-  destruct c2. simpl in *.
-  apply nor_mode_cus_eq.
-  apply nor_mode_cus_eq.
-  apply nor_mode_up ; iner_p. destruct c1. iner_p. lia.
+  apply nor_mode_up ; iner_p. apply H4. easy.
+  repeat rewrite put_cus_neq by iner_p.
+  rewrite eupdate_index_neq by iner_p. easy.
 Qed.
 
 Local Opaque highb01.
@@ -7204,7 +7196,78 @@ Proof.
   intros. bdestruct (x <=? y). apply carry_leb_equiv_true; easy. apply carry_leb_equiv_false; easy.
 Qed.
 
-Lemma reg_push_update_flip : forall n f g x c v, fst c <> x -> reg_push (f[c |-> v]) x g n = (reg_push f x g n)[c |-> v].
+Lemma pow2_low_bit_false : forall n i, i < n -> nat2fb (2^n) i = false.
+Proof.
+ intros. unfold nat2fb.
+ rewrite N2fb_Ntestbit.
+ assert (N.of_nat i < N.of_nat n)%N.
+ lia.
+ specialize (N.mul_pow2_bits_low 1 (N.of_nat n) (N.of_nat i) H1) as eq1.
+ assert (1 * 2 ^ N.of_nat n = 2 ^ N.of_nat n)%N by lia.
+ rewrite H2 in eq1.
+ assert (2%N = (N.of_nat 2)) by easy. rewrite H3 in eq1.
+ rewrite Nofnat_pow.
+ rewrite eq1. easy.
+Qed.
+
+Lemma carry_false_lt: forall n f g,
+    (forall i, i <= n -> g i = false) -> 
+    carry false n f g = false.
+Proof.
+  induction n;intros.
+  simpl. easy.
+  simpl.
+  rewrite IHn.
+  rewrite H0 by lia. btauto.
+  intros. rewrite H0. easy. lia.
+Qed.
+
+Lemma low_bit_same : forall n x, 0 < n -> x < 2^n -> 
+    (forall i, i < n -> nat2fb (x + 2^n) i = nat2fb x i).
+Proof.
+  intros.
+  rewrite <- sumfb_correct_carry0.
+  unfold sumfb.
+  rewrite pow2_low_bit_false by easy. bt_simpl.
+  rewrite carry_false_lt. btauto.
+  intros.
+  apply pow2_low_bit_false. lia.
+Qed.
+
+Lemma carry_low_bit_same : forall m b n x g, m <= n -> 0 < n -> x < 2^n -> 
+    carry b m (nat2fb (x + 2^n)) g = carry b m (nat2fb x) g.
+Proof.
+  induction m;intros. simpl. easy.
+  simpl.
+  rewrite IHm by lia.
+  rewrite low_bit_same by lia. easy.
+Qed.
+
+
+Lemma majb_carry_s_eq : forall n x y, 0 < n -> x < 2^n -> y < 2^n ->
+      majb true false (carry true n (nat2fb (2^n - 1 - x)) (nat2fb y)) 
+       = carry true (S n) (nat2fb ((2^n - 1 - x) + 2^n)) (nat2fb y).
+Proof.
+  intros. simpl. unfold majb.
+  assert (nat2fb (2 ^ n - 1 - x + 2 ^ n) n = true).
+  unfold nat2fb. rewrite N2fb_Ntestbit.
+  rewrite Ntestbit_in_pow2n_pow2Sn. easy.
+  split. 
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. lia.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nnat.Nat2N.inj_succ. 
+  rewrite <- Nofnat_pow.
+  rewrite Nat.pow_succ_r. lia. lia.
+  rewrite H3.
+  assert (nat2fb y n = false).
+  unfold nat2fb. rewrite N2fb_Ntestbit.
+  rewrite Ntestbit_lt_pow2n. easy.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. lia.
+  rewrite H4. rewrite carry_low_bit_same. easy.
+  easy. lia. lia.
+Qed.
+
+Lemma reg_push_update_flip : forall n f g x c v, fst c <> x 
+         -> reg_push (f[c |-> v]) x g n = (reg_push f x g n)[c |-> v].
 Proof.
   intros. unfold reg_push.
   rewrite put_cus_update_flip. easy. lia.
@@ -7300,56 +7363,125 @@ Lemma comparator01_correct :
     nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> nor_mode f c2 -> right_mode_exp tenv f (MAJseq n x y c1) ->
     right_mode_exp tenv f (X c1) -> right_mode_exp tenv f (negator0 n x) ->
     f' = reg_push (reg_push ((f[c1 |-> put_cu (f c1) false])[c2 |-> put_cu (f c2) false]) x v1 n) y v2 n ->
-    f'' = reg_push (reg_push ((f[c1 |-> put_cu (f c1) false])[c2 |-> put_cu (f c2) (x <=? y)]) x v1 n) y v2 n ->
+    f'' = reg_push (reg_push ((f[c1 |-> put_cu (f c1) false])[c2 |-> put_cu (f c2) (¬(v1 <=? v2))]) x v1 n) y v2 n ->
     exp_sem env (comparator01 n x y c1 c2) f' = f''.
 Proof.
   intros. specialize (majseq_well_typed n tenv f x y c1 H0 H4 H5 H6 H8) as eq1.
   unfold comparator01. remember ((X c1; negator0 n x)) as negations. simpl. subst.
   unfold no_equal in *.
   destruct H3 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
-  rewrite eupdate_twice_neq.
+  destruct c1. destruct c2.
+  rewrite eupdate_twice_neq by iner_p.
   rewrite reg_push_twice_neq by easy.
   rewrite reg_push_update_flip by iner_p.
-  assert (exists b r, f c1 = nval b r).
-  unfold nor_mode in H6. destruct (f c1). exists b. exists r. easy. lia. lia.
+  assert (exists b r, f (v, n0) = nval b r).
+  unfold nor_mode in H6. destruct (f (v, n0)). exists b. exists r. easy. lia. lia.
   destruct H3. destruct H3.
   rewrite negations_aux with (r := x1); try easy.
   unfold reg_push.
   rewrite highb01_correct with (tenv := tenv); try easy.
+  assert (put_cus
+  (put_cus
+     ((f [(v, n0) |-> put_cu (f (v, n0)) false]) [
+      (v0, n1) |-> put_cu (f (v0, n1)) (¬(v1 <=? v2))]) x 
+     (nat2fb v1) n) y (nat2fb v2) n
+      = (reg_push
+    ((reg_push
+     (f[
+      (v0, n1) |-> put_cu (f (v0, n1)) (¬(v1 <=? v2))]) y v2 n)[(v, n0) |-> put_cu (f (v, n0)) false]) x v1 n)).
+  unfold reg_push.
+  rewrite eupdate_twice_neq by iner_p.
+  rewrite put_cus_twice_neq by lia. 
+  rewrite put_cus_update_flip by iner_p. easy. 
+  rewrite H11. clear H11.
   erewrite inv_exp_reverse. easy.
   constructor. constructor. apply negator0_fwf.
-  constructor. inv H9. constructor. inv H15. apply H12.
-  rewrite H3 in H9. inv H9. rewrite H3 in H13. inv H13.
+  constructor. inv H9. constructor. inv H16. apply H15.
+  assert ((@pair var nat v n0) = (@pair Env.key nat v n0)). easy.
+  rewrite H11 in H6. unfold nor_mode in H6. rewrite <- H9 in H6. lia.
+  assert ((@pair var nat v n0) = (@pair Env.key nat v n0)). easy.
+  rewrite H9 in H6. unfold nor_mode in H6. rewrite <- H12 in H6. lia.
   apply negator0_well_typed with (f := f). apply H4. easy.
-  apply right_mode_exp_put_cus_same. apply right_mode_exp_put_cus_same.
-  apply right_mode_exp_up_same_1.
-  apply nor_mode_up. destruct c1. destruct c2. iner_p. easy. easy.
-  apply right_mode_exp_up_same_1. easy. easy.
-  constructor. easy. easy.
-  rewrite put_cus_twice_neq by lia.
-  rewrite eupdate_twice_neq.
-  rewrite put_cus_update_flip.
-  rewrite H3.
-  assert (put_cu (nval x0 x1) false = nval false x1). unfold put_cu. easy.
-  assert ((put_cus
-     ((put_cus (f [c2 |-> put_cu (f c2) (x <=? y)]) y 
-         (nat2fb v2) n) [c1 |-> put_cu (nval x0 x1) false]) x
-     (nat2fb v1) n) = (reg_push
-     ((reg_push (f [c2 |-> put_cu (f c2) (x <=? y)]) y 
-         v2 n) [c1 |-> put_cu (nval x0 x1) false]) x v1 n)).
-  unfold reg_push. easy. rewrite H12.
-  rewrite negations_aux with (r := x1); try easy.
   unfold reg_push.
-  destruct c1. destruct c2.
-  rewrite cus_get_neq by iner_p.
+  apply right_mode_exp_put_cus_same.
+  apply right_mode_exp_up_same_1 ; try easy.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up. iner_p. easy.
+  apply right_mode_exp_put_cus_same.
+  apply right_mode_exp_up_same.
+  constructor. easy. apply H10.
+  Check negations_aux.
+  rewrite negations_aux with (r := x1); try easy.
+  repeat rewrite cus_get_neq by iner_p.
   rewrite eupdate_index_eq.
-  unfold get_cua.
   rewrite get_cus_put_eq; try lia.
-  rewrite get_cus_put_neq by lia.
-  rewrite get_cus_up by iner_p.
-  rewrite get_cus_put_eq .
-
-Admitted.
+  rewrite get_cus_put_neq; try lia.
+  rewrite <- put_cus_update_flip with (f := (f [(v0, n1) |-> put_cu (f (v0, n1)) false])).
+  rewrite get_cus_put_eq; try lia.
+  assert ((get_cua (nval true x1)) = true). unfold get_cua. easy.
+  rewrite H11.
+  rewrite majb_carry_s_eq.
+  specialize (carry_leb_equiv (n+1) v1 v2) as eq2.
+  assert (n+1 -1 = n) by lia.
+  rewrite H12 in eq2. clear H12.
+  assert ((n + 1) = S n) by lia.
+  rewrite H12 in eq2. clear H12. 
+  rewrite Nat.pow_succ_r in eq2.
+  assert (2 * 2 ^ n - 1 - v1 = 2 ^ n - 1 - v1 + 2 ^ n) by lia.
+  rewrite H12 in eq2. rewrite eq2.
+  rewrite put_cu_cus.
+  rewrite put_cu_cus.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite double_put_cu.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite eupdate_twice_neq by iner_p.
+  rewrite eupdate_twice_eq.
+  rewrite put_cus_update_flip by iner_p.
+  bt_simpl. unfold reg_push. easy.
+  1-7:lia. 
+  unfold nor_modes. intros.
+  repeat apply nor_mode_up ; iner_p. apply H5. easy.
+  iner_p.
+  unfold nor_modes. intros.
+  apply nor_mode_up ; iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up ; iner_p. apply H4. easy. iner_p.
+  rewrite H3. unfold put_cu. easy.
+  unfold reg_push.
+  unfold nor_modes. intros. apply nor_mode_cus_eq.
+  apply nor_mode_up ; iner_p.
+  apply H4. easy.
+  apply nor_mode_cus_eq. apply nor_mode_up ; iner_p.
+  apply nor_mode_cus_eq. apply nor_mode_up_1; iner_p.
+  apply nor_mode_cus_eq.
+  unfold nor_mode. rewrite eupdate_index_eq. lia.
+  unfold nor_modes. intros.
+  apply nor_mode_cus_eq. apply nor_mode_up; iner_p.
+  apply nor_mode_cus_eq. apply nor_mode_up; iner_p.
+  apply H4. easy.
+  unfold nor_modes. intros.
+  apply nor_mode_cus_eq. apply nor_mode_up; iner_p.
+  apply nor_mode_cus_eq. apply nor_mode_up; iner_p.
+  apply H5. easy.
+  rewrite put_cus_neq; iner_p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite put_cus_neq; iner_p.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu. easy. apply H7.
+  apply right_mode_exp_put_cus_same.
+  assert (nval true x1 = put_cu (f (v,n0)) true).
+  rewrite H3. easy. rewrite H11.
+  apply right_mode_exp_up_same_1.
+  apply nor_mode_cus_eq. apply nor_mode_up; iner_p. easy.
+  apply right_mode_exp_put_cus_same.
+  apply right_mode_exp_up_same. easy. iner_p.
+  rewrite H3. easy.
+  unfold nor_modes. intros.
+  apply nor_mode_cus_eq. apply nor_mode_up; iner_p.
+  apply H4. easy.
+Qed.
 
 (* The implementation of a subtractor. It takes two values [x][y], and the produces
     the result of [x][y + 2^n - x]. *)
@@ -7362,7 +7494,7 @@ Definition substractor01 n x y c1:= (X c1; negator0 n x); adder01 n x y c1; inv_
    flip the high-bit back to zero.*)
 Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
                                        comparator01 n M x c1 c2; (* compare M < x + y (in position x) *)
-                                       CU c2 (substractor01 n M x c1) ; X c2; (* doing -M + x to x, then flip c2. *)
+                                       X c2 ; CU c2 (substractor01 n M x c1) ; (* doing -M + x to x, then flip c2. *)
                                        comparator01 n y x c1 c2. (* compare M with x+y % M to clean c2. *)
 
 (* Here we implement the doubler circuit based on binary shift operation.
