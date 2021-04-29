@@ -1,53 +1,50 @@
 # SQIR & VOQC
 
-SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation (IR) in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
+SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We present details on verifying SQIR programs in our draft [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240). The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021). Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
+We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We present details on verifying SQIR programs in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), to appear at ITP 2021. The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021) of this respository. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
 
-This repository is split into two parts: SQIR and VOQC. If you are interested in formal verification of quantum programs, you should focus on the SQIR directory (we also recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html)). If you are interested in our verified compiler then take a look at the VOQC directory.
+This repository contains our Coq formalization of SQIR and VOQC. If you are interested in running the VOQC compiler, then you should use our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)). The OCaml library is *extracted* from our Coq definitions and the Python library is a wrapper around the OCaml library.
+
+If you are interested in learning more about formal verification of quantum programs, we recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html).
 
 ## Table of Contents
 
-The bulk of this respository is Coq proofs about quantum programs and program transformations. Our verified program transformations can be *extracted* to OCaml to produce executable code. 
-
+* [Setup](#setup)
 * [Compilation](#compilation)
-  * [Coq](#coq)
-  * [OCaml](#ocaml)
-  * [Installing Dependencies](#installing-dependencies)
 * [Directory Contents](#directory-contents)
   * [SQIR](#sqir)
   * [VOQC](#voqc)
 * [Acknowledgements](#acknowledgements)
 
+## Setup
+
+To compile SQIR and VOQC, you will need Coq and the [Coq Interval package](http://coq-interval.gforge.inria.fr/). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **version 8.12.0**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
+
+Assuming you have opam installed (following the instructions in the link above), follow the steps below to set up your environment.
+```
+# environment setup
+opam init
+eval $(opam env)
+
+# install some version of the OCaml compiler in a switch named "voqc"
+opam switch create voqc 4.10.0
+eval $(opam env)
+
+# install Coq (this will take a while!)
+opam install coq.8.12.0
+
+# install Interval package (optional, needed for 'make all')
+opam install --jobs=2 coq-interval
+```
+
+*Notes*:
+* Depending on your system, you may need to replace 4.10.0 in the instructions above with something like "ocaml-base-compiler.4.10.0". Any version of OCaml >= 4.08.1 should be fine. 
+* opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
+
 ## Compilation
 
-If you would like to compile our Coq proofs follow the instructions under 'Coq' below. If you just want to use the VOQC optimizer, follow the instructions under 'OCaml'. If you are unfamiliar with Coq/OCaml, you can find installation tips under 'Installing Dependencies'.
-
-### Coq
-
-Dependencies:
-  * OCaml version >= 4.08.1
-  * Coq version >= 8.10.1
-
-Run `make` to compile the core files of SQIR, `make optimizer` to compile proofs about VOQC, and `make examples` to compile proofs of correctness for small quantum programs. Use `make all` to compile everything. Our proofs are resource intensive so expect `make all` to take a little while. On a Macbook Pro running Coq version 8.12.0 and OCaml version 4.10.0 compilation takes around 30 minutes.
-
-### OCaml
-
-Dependencies:
-  * OCaml version >= 4.08.1 
-  * zarith (`opam install zarith`)
-  * dune (`opam install dune`)
-  * batteries (`opam install batteries`)
-  * OpenQASM parser (`opam install openQASM`)
-
-For convenience, we have already performed extraction from Coq to OCaml; the extracted files are in VOQC/extraction/ml. `make voqc` will produce an executable in VOQC/_build/default. See [the README in the VOQC directory](VOQC/README.md) for instructions on how to run the optimizer.
-
-### Installing Dependencies
-
-To install our dependencies we recommend using [opam](https://opam.ocaml.org/doc/Install.html). A typical workflow on a new computer is:
-1. Install opam
-2. Set up a new switch with a recent version of OCaml (e.g. `opam switch create voqc 4.10.0`)
-3. Install dependencies with `opam install coq dune zarith batteries openQASM` (note: installing Coq will take a while!)
+Run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, and `make examples` to compile proofs of correctness for example SQIR programs. Use `make all` to compile everything. Our proofs are resource intensive so expect `make all` to take a little while. On a Macbook Pro running Coq version 8.12.0 and OCaml version 4.10.0 compilation takes around 30 minutes.
 
 ## Directory Contents
 
@@ -73,49 +70,48 @@ Examples of verifying correctness properties of SQIR programs.
 
 - examples/DeutschJozsa.v : Deutsch-Jozsa algorithm
 - examples/GHZ.v : GHZ state preparation
-- examples/Grover.v : Grover's algorithm (use `make grover` to compile; requires Coq version >= 8.12)
-- examples/QPE.v : Quantum phase estimation (simplified)
-- examples/QPEGeneral.v : Quantum phase estimation (general) (use `make qpe-full` to compile; requires Interval package)
+- examples/Grover.v : Grover's algorithm (use `make grover` to compile separately)
+- examples/QPE.v : Simplified quantum phase estimation
+- examples/QPEGeneral.v : General quantum phase estimation (use `make qpe-full` to compile separately)
 - examples/Simon.v : Simon's algorithm
 - examples/Superdense.v : Superdense coding
 - examples/Teleport.v : Quantum teleportation
 
 ### VOQC
 
-#### src
+Verified transformations of SQIR programs. The optimizations and mapping routines extracted to our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) are all listed in **Main.v**. So this file is a good starting point for getting familiar with VOQC.
 
-Verified transformations of SQIR programs.
+The rest of the files in the VOQC directory can be split into the following categories:
 
 - Utilities
-  - src/UnitaryListRepresentation.v : List representation of unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs.
-  - src/NonUnitaryListRepresentation.v : List representation of non-unitary SQIR programs.
-  - src/RzQGateSet.v : Fixed gate set used in our optimizer.
+  - UnitaryListRepresentation.v : List representation of unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs.
+  - NonUnitaryListRepresentation.v : List representation of non-unitary SQIR programs.
+  - GateSet.v
+  - RzQGateSet.v : "RzQ" gate set {H, X, Rzq, CX}.
+  - IBMGateSet.v : "IBM" gate set {U1, U2, U3, CX}.
+  - StandardGateSet.v : Full gate set {I, X, Y, Z, H, S, T, Sdg, Tdg, Rx, Ry, Rz, Rzq, U1, U2, U3, CX, CZ, SWAP, CCX, CCZ}.
 
-- Optimizations on unitary programs
-  - src/GateCancellation.v : 'Single-qubit gate cancellation' and 'two-qubit gate cancellation' optimizations from Nam et al.
-  - src/HadamardReduction.v : 'Hadamard reduction' optimization from Nam et al.
-  - src/NotPropagation.v : 'Not propagation' preprocessing step from Nam et al.
-  - src/RotationMerging.v : 'Rotation merging using phase polynomials' optimization from Nam et al.
+- Optimizations over unitary programs, inspired by those in [Qiskit](https://github.com/Qiskit/qiskit-terra) and [Nam et al. [2018]](https://www.nature.com/articles/s41534-018-0072-4)
+  - GateCancellation.v : "Single-qubit gate cancellation" and "two-qubit gate cancellation" from Nam et al.
+  - HadamardReduction.v : "Hadamard reduction" from Nam et al.
+  - NotPropagation.v : "Not propagation" from Nam et al.
+  - RotationMerging.v : "Rotation merging using phase polynomials" from Nam et al.
+  - CXCancellation.v : [CXCancellation](https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.CXCancellation.html) from Qiskit.
+  - ChangeRotationBasis.v : Auxiliary proof for Optimize1qGates.
+  - Optimize1qGates.v : [Optimize1qGates](https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.Optimize1qGates.html) from Qiskit.
 
-- Optimizations on non-unitary programs
-  - src/RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.
-  - src/PropagateClassical.v : Track classical states to remove redundant measurements and CNOT operations.
+- Optimizations over non-unitary programs
+  - RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.
+  - PropagateClassical.v : Track classical states to remove redundant measurements and CNOT operations.
 
-- Mapping routines for unitary SQIR programs
-  - src/SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
-  - src/MappingExamples.v: Verified circuit mapping examples for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
-  - src/SimpleMappingWithLayout.v: Extends the simple mapping examples with an arbitrary initial layout.
+- Mapping routines
+  - ConnectivityGraph.v : Utilities for describing an architecture connectivity graph. Includes graphs for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
+  - Layouts.v : Utilities for describing a physical <-> logical qubit mapping.
+  - MappingConstraints.v : Utilities for describing a program that satisfies architecture constraints. 
+  - SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
 
 - Experimental extensions
-  - src/BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
-
-#### extraction
-
-Code to extract unitary optimizations to OCaml (Extraction.v and extract.sh) and parse OpenQASM files into SQIR. Also contains pre-extracted versions of VOQC's optimizations. 
-
-#### benchmarks
-
-Instructions for running VOQC on the benchmarks presented in our paper can be found in [the README in the benchmarks directory](VOQC/benchmarks/README.md).
+  - BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
 
 ## Acknowledgements
 
@@ -128,4 +124,4 @@ This project is the result of the efforts of many people. The primary contacts f
 * Kartik Singhal
 * Runzhou Tao
 
-This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040.
+This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040 and the Air Force Office of Scientific Research under Grant Number FA95502110051.

@@ -1,3 +1,0 @@
-(executable
-  (name voqc)
-  (libraries extracted_code))

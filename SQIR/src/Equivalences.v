@@ -384,3 +384,31 @@ Proof.
       apply f_equal2; trivial.
       solve_matrix.
 Qed.
+
+Local Transparent SWAP.
+Lemma SWAP_extends_CNOT : forall {dim} a b c,
+  a < dim -> b < dim -> c < dim ->
+  a <> b -> b <> c -> a <> c ->
+  @SWAP dim a b ; CNOT b c ; SWAP a b ≡ CNOT a c.
+Proof.
+  intros.
+  eapply equal_on_basis_states_implies_equal; auto with wf_db.
+  intro f.
+  unfold SWAP.
+  simpl uc_eval.
+  repeat rewrite Mmult_assoc.
+  repeat rewrite f_to_vec_CNOT by auto.
+  repeat (try rewrite update_index_eq; try rewrite update_index_neq by auto).
+  repeat rewrite (update_twice_neq _ a) by auto. 
+  repeat rewrite update_twice_eq. 
+  repeat rewrite (update_twice_neq _ b) by auto.
+  rewrite update_twice_eq. 
+  rewrite (update_same _ a).
+  rewrite (update_same _ b).
+  destruct (f a); destruct (f b); reflexivity.
+  rewrite update_index_neq by auto.
+  destruct (f a); destruct (f b); reflexivity.
+  rewrite update_index_neq by auto.
+  destruct (f a); destruct (f b); reflexivity.
+Qed.
+Local Opaque SWAP.

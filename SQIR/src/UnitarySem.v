@@ -33,6 +33,10 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma pad_id : forall n dim,
+  (n < dim)%nat -> @pad 1 n dim (I 2) = I (2 ^ dim).
+Proof. intros. unfold pad. gridify. reflexivity. Qed.
+
 Definition ueval_r (dim n : nat) (U : base_Unitary 1) : Square (2^dim) :=
   match U with
   | U_R θ ϕ λ => @pad 1 n dim (rotation θ ϕ λ)
@@ -533,8 +537,17 @@ Qed.
 Lemma denote_Rx : forall dim θ n, uc_eval (Rx θ n) = @pad 1 n dim (x_rotation θ).
 Proof.
   intros. unfold uc_eval; simpl.
-  rewrite Rx_rotation.
-  reflexivity.
+  rewrite <- Rx_rotation.
+  unfold pad.
+  gridify.
+  apply f_equal2; try reflexivity.
+  apply f_equal2; try reflexivity.
+  unfold rotation. 
+  solve_matrix.
+  replace (-(PI/2))%R with (-(2*PI) + 3*PI/2)%R by lra.
+  autorewrite with Cexp_db. lca.
+  replace (-(PI/2))%R with (-(2*PI) + 3*PI/2)%R by lra.
+  autorewrite with Cexp_db. lca.
 Qed.
 
 Lemma denote_Ry : forall dim θ n, uc_eval (Ry θ n) = @pad 1 n dim (y_rotation θ).
