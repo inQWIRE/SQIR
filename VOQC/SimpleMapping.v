@@ -1,5 +1,6 @@
 Require Export ConnectivityGraph.
 Require Export Layouts.
+Require Export MappingConstraints.
 Require Import StandardGateSet.
 Import StdList.
 
@@ -24,56 +25,6 @@ Import StdList.
    will be >= the number of logical qubits. For this case, simply "cast" the input
    program to a type with the appropriate dimension.
 *)
-
-(** Predicates describing a correctly mapped program (gate set independent). **)
-
-Inductive respects_constraints_undirected {U dim} : (nat -> nat -> bool) -> gate_list U dim -> Prop :=
-  | res_und_nil : forall is_in_graph,
-      respects_constraints_undirected is_in_graph []
-  | res_und_app1 : forall u n t is_in_graph, 
-      respects_constraints_undirected is_in_graph t ->
-      respects_constraints_undirected is_in_graph (App1 u n :: t)
-  | res_und_app2 : forall u n1 n2 t is_in_graph, 
-      is_in_graph n1 n2 = true \/ is_in_graph n2 n1 = true -> (* undirected *)
-      respects_constraints_undirected is_in_graph t ->
-      respects_constraints_undirected is_in_graph (App2 u n1 n2 :: t).
-
-Inductive respects_constraints_directed {U : nat -> Set} {dim} : (nat -> nat -> bool) -> U 2%nat -> gate_list U dim -> Prop :=
-  | res_dir_nil : forall is_in_graph cnot,
-      respects_constraints_directed is_in_graph cnot []
-  | res_dir_app1 : forall u n t is_in_graph cnot, 
-      respects_constraints_directed is_in_graph cnot t ->
-      respects_constraints_directed is_in_graph cnot (App1 u n :: t)
-  | res_dir_app2 : forall n1 n2 t is_in_graph cnot, 
-      is_in_graph n1 n2 = true -> (* directed *) 
-      respects_constraints_directed is_in_graph cnot t ->
-      respects_constraints_directed is_in_graph cnot (App2 cnot n1 n2 :: t).
-
-Lemma respects_constraints_undirected_app : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph,
-  respects_constraints_undirected is_in_graph l1 ->
-  respects_constraints_undirected is_in_graph l2 ->
-  respects_constraints_undirected is_in_graph (l1 ++ l2).
-Proof.
-  intros U dim l1 l2 is_in_graph Hl1 Hl2.
-  induction Hl1.
-  simpl; assumption.
-  rewrite <- app_comm_cons.
-  constructor; auto.
-  constructor; auto.
-Qed.
-
-Lemma respects_constraints_directed_app : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph cnot,
-  respects_constraints_directed is_in_graph cnot l1 ->
-  respects_constraints_directed is_in_graph cnot l2 ->
-  respects_constraints_directed is_in_graph cnot (l1 ++ l2).
-Proof.
-  intros U dim l1 l2 is_in_graph cnot Hl1 Hl2.
-  induction Hl1.
-  simpl; assumption.
-  rewrite <- app_comm_cons.
-  constructor; auto.
-  constructor; auto.
-Qed.
 
 (* boolean version of respected_constraints_directed for the std gate set *)
 Fixpoint respects_constraints_directed_b {dim} (is_in_graph : nat -> nat -> bool) (l : standard_ucom_l dim) :=
@@ -104,60 +55,6 @@ Proof.
     destruct a; inversion H; subst; simpl; auto.
     apply andb_true_intro; auto.
 Qed.
-
-
-Lemma respects_constraints_directed_app_split : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph cnot,
-
-  respects_constraints_directed is_in_graph cnot (l1 ++ l2)->
-  respects_constraints_directed is_in_graph cnot l2 /\
-  respects_constraints_directed is_in_graph cnot l1.
-Proof.
-  intros U dim l1 l2 is_in_graph cnot H.
-  split.
-  - induction l1.
-    simpl in H.
-    assumption.
-    rewrite <- app_comm_cons in H.
-    destruct a; remember (l1 ++ l2) as l; inversion H; subst;
-    try (apply IHl1 in H2); try assumption.
-    + apply IHl1 in H3. assumption.
-    + apply IHl1 in H7.  assumption. 
-  -induction l1.
-   + apply res_dir_nil.
-   + rewrite <- app_comm_cons in H;   
-   destruct a; remember (l1 ++ l2) as l; inversion H; subst.
-   * apply IHl1 in H3.
-     apply res_dir_app1 with (u0 := u) (n0 := n).
-     assumption.
-   * apply IHl1 in H7.
-     apply res_dir_app2 with (n1 := n) (n2 := n0) in H7.
-     assumption.
-     assumption.
-
-Qed.
-
-
-Lemma rev_respects_constraints:
-  forall {U dim} (l : gate_list U dim) (is_in_graph : nat -> nat -> bool) cnot,
-    respects_constraints_directed is_in_graph cnot l ->
-    respects_constraints_directed is_in_graph cnot (rev l).
-Proof.
-  intros.
-  induction l.
-  - simpl. assumption.
-  - simpl.
-    apply respects_constraints_directed_app.
-    apply IHl.
-    inversion H; subst.
-    assumption. 
-    assumption.
-    destruct a; try constructor; try constructor.
-    inversion H; subst.
-    constructor; try assumption.
-    constructor.
-     
-    inversion H; subst.
-Qed. 
 
 (* "Optimized" decomposition of SWAP chooses between (CX a b; CX b a; CX a b) 
     and (CX b a; CX a b; CX b a) depending on which will introduce fewer H gates. *)
@@ -1534,76 +1431,3 @@ Proof.
 Qed.
 
 End SimpleMappingProofs.
-
-(* Some maybe helpful Ltacs for proofs *)
-Ltac destruct_matches :=
-  
-  match goal with
-  | H :   match ?Y with _ => _  end = _ |- _ =>
-    let h:= fresh in remember Y as h;
-                     try destruct h;
-                     try dependent destruction h;
-                     try discriminate; destruct_pairs; subst
-  end.
-
-Ltac assert_next_single_qubit_gate  :=
-  
-  match reverse goal with
-  |[ H :   Some (?l11, ?gat, ?l22) = next_single_qubit_gate ?in_l ?qub 
-    |- respects_constraints_directed ?iig _ /\
-       respects_constraints_directed ?iig _] =>
-    assert (respects_constraints_directed iig l11
-            /\ respects_constraints_directed iig l22)
-  | H :   Some (?l11, ?gat, ?l22) = next_single_qubit_gate ?in_l ?qub 
-     |- respects_constraints_directed ?iig _  =>
-   assert (respects_constraints_directed iig l11
-           /\ respects_constraints_directed iig l22)
-           
-end.
-
-Ltac assert_next_two_qubit_gate :=
-  match reverse goal with
-  |[ H :   Some (?l11, URzQ_CNOT, ?n0, ?n, ?l22) = next_two_qubit_gate ?in_l ?qub 
-    |- respects_constraints_directed ?iig _ /\
-       respects_constraints_directed ?iig _] =>
-    assert (respects_constraints_directed iig l11
-            /\ respects_constraints_directed iig l22
-            /\ iig n0 n = true)
-  |[ H :   Some (?l11, URzQ_CNOT, ?n0, ?n, ?l22) = next_two_qubit_gate ?in_l ?qub 
-     |- respects_constraints_directed ?iig _] =>
-   assert (respects_constraints_directed iig l11
-           /\ respects_constraints_directed iig l22
-           /\ iig n0 n = true)
-  end. 
-Ltac prove_next_gates_assertion  :=
-  
-  match reverse goal with
-  | H :   Some (?l11, ?gat, ?l22) = next_single_qubit_gate ?in_l ?qub 
-    |- respects_constraints_directed ?iig ?ll1 /\
-       respects_constraints_directed ?iig ?ll2 =>
-    
-    try (eapply next_single_qubit_gate_respects_constraints
-           with (l := in_l) (l1 := l11) (l2 := l22) (g5 := gat) (q0 := qub));
-    try (eapply next_single_qubit_gate_respects_constraints
-           with (l := in_l) (l1 := l11) (l2 := l22) (g1 := gat) (q0 := qub));
-    try assumption
-        
-  | H :   Some  (?l11, URzQ_CNOT, ?n0, ?n, ?l22) = next_two_qubit_gate ?in_l ?qub 
-    |- respects_constraints_directed ?iig ?ll1 /\
-       respects_constraints_directed ?iig ?ll2 /\ ?iig ?n0 ?n = true=>
-    
-    try (eapply next_two_qubit_gate_respects_constraints
-           with (l := in_l) (l1 := l11) (l2 := l22) (g5 := URzQ_CNOT) (q0 := qub));
-        try (eapply next_two_qubit_gate_respects_constraints
-      with (l := in_l) (l1 := l11) (l2 := l22) (g1 := URzQ_CNOT) (q0 := qub));
-    try assumption
-  end.
-
-Ltac clear_next_gates  :=
-  
-  match reverse goal with
-  | H :   Some (_) = _
-    |- _ =>
-    clear H
-
-  end.

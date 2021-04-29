@@ -279,6 +279,7 @@ Proof.
         all: do 2 (apply f_equal2; try reflexivity).
         all: solve_matrix.
     + (* a = App2 u n n0 *)
+      dependent destruction p; simpl.
       bdestruct (q =? n).
       2: { bdestruct (q =? n0).
            inversion res.
@@ -291,7 +292,7 @@ Proof.
                 autorewrite with eval_db;
                 bdestruct (q + 1 <=? dim).
            2,4: Msimpl; reflexivity.
-           all: gridify; Qsimpl. reflexivity. }  
+           all: gridify; Qsimpl; reflexivity. }  
       destruct (propagate_classical_through_ucom u q b) eqn:prop.
       destruct b; inversion res; subst; simpl.
       * repeat rewrite super_Mmult.
@@ -354,7 +355,7 @@ Proof.
       apply f_equal2; try reflexivity.
       autorewrite with eval_db. 
       destruct b; simpl; gridify. 
-      all: rewrite pauli_x_rotation; Qsimpl; reflexivity.
+      all: Qsimpl; reflexivity.
     + destruct (propagate_classical_through_ucom u n b) eqn:prop.
       inversion res; subst; simpl.
       repeat rewrite super_Mmult.
@@ -365,8 +366,9 @@ Proof.
       autorewrite with eval_db. 
       destruct b; simpl; gridify. 
       all: do 2 (apply f_equal2; try reflexivity).
-      all: rewrite phase_shift_rotation; solve_matrix.
-  - inversion WT; subst.
+      all: solve_matrix.
+  - dependent destruction p; simpl.
+    inversion WT; subst.
     bdestruct (q =? n).
     2: { bdestruct (q =? n0).
          inversion res; subst; simpl. reflexivity.

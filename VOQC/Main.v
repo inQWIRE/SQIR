@@ -2,7 +2,6 @@ Require Import CXCancellation.
 Require Import GateCancellation.
 Require Import HadamardReduction.
 Require Import NotPropagation.
-Require Import OptimizationsPreserveMapping.
 Require Import Optimize1qGates.
 Require Import RotationMerging.
 Require Import RzQGateSet.
@@ -77,7 +76,7 @@ Lemma convert_to_ibm_preserves_mapping : forall {dim} (l : standard_ucom_l dim) 
   respects_constraints_directed is_in_graph U_CX (convert_to_ibm l).
 Proof. 
   intros. 
-  apply OptimizationsPreserveMapping.convert_to_ibm_preserves_mapping.
+  apply StandardGateSet.convert_to_ibm_preserves_mapping.
   assumption.
 Qed.
 
@@ -101,7 +100,7 @@ Lemma convert_to_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) 
   respects_constraints_directed is_in_graph U_CX (convert_to_rzq l).
 Proof. 
   intros. 
-  apply OptimizationsPreserveMapping.convert_to_rzq_preserves_mapping.
+  apply StandardGateSet.convert_to_rzq_preserves_mapping.
   assumption.
 Qed.
 
@@ -122,7 +121,7 @@ Lemma replace_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is
   respects_constraints_directed is_in_graph U_CX (replace_rzq l).
 Proof. 
   intros. 
-  apply OptimizationsPreserveMapping.replace_rzq_preserves_mapping.
+  apply StandardGateSet.replace_rzq_preserves_mapping.
   assumption.
 Qed.
 
@@ -324,8 +323,8 @@ Qed.
 Ltac show_preserves_mapping_ibm :=
   unfold optimize_1q_gates, cx_cancellation, optimize_ibm;
   repeat (try apply IBM_to_standard_preserves_mapping;
-          try apply OptimizationsPreserveMapping.optimize_1q_gates_preserves_mapping;
-          try apply OptimizationsPreserveMapping.cx_cancellation_preserves_mapping;
+          try apply Optimize1qGates.optimize_1q_gates_respects_constraints;
+          try apply CXCancellation.cx_cancellation_respects_constraints;
           try apply standard_to_IBM_preserves_mapping;
           try assumption).
 
@@ -504,11 +503,11 @@ Qed.
 Ltac show_preserves_mapping_nam :=
   unfold not_propagation, hadamard_reduction, cancel_single_qubit_gates, cancel_two_qubit_gates, merge_rotations, optimize_nam, optimize_nam_light;
   repeat (try apply RzQ_to_standard_preserves_mapping;
-          try apply OptimizationsPreserveMapping.not_propagation_preserves_mapping;
-          try apply OptimizationsPreserveMapping.hadamard_reduction_preserves_mapping;
-          try apply OptimizationsPreserveMapping.cancel_single_qubit_gates_preserves_mapping;
-          try apply OptimizationsPreserveMapping.cancel_two_qubit_gates_preserves_mapping;
-          try apply OptimizationsPreserveMapping.merge_rotations_preserves_mapping;
+          try apply NotPropagation.not_propagation_respects_constraints;
+          try apply HadamardReduction.hadamard_reduction_respects_constraints;
+          try apply GateCancellation.cancel_single_qubit_gates_respects_constraints;
+          try apply GateCancellation.cancel_two_qubit_gates_respects_constraints;
+          try apply RotationMerging.merge_rotations_respects_constraints;
           try apply standard_to_RzQ_preserves_mapping;
           try assumption).
 
@@ -677,11 +676,12 @@ Lemma optimize_nam_lcr_preserves_mapping : forall {dim} (c0 l c r : circ dim) (c
     /\ respects_constraints_directed (get_is_in_graph cg) U_CX r.
 Proof. 
   intros dim c0 l c r cg Hcg H.
-  eapply OptimizationsPreserveMapping.LCR_preserves_mapping in H.
-  apply H.
-  assumption.
+  eapply MappingConstraints.LCR_respects_constraints in H as [H0 [H1 H2]].
+  repeat split. 
+  apply H0. apply H2. apply H1.
   intros.
   apply optimize_nam_preserves_mapping.
+  assumption.
   assumption.
 Qed.
 
@@ -926,7 +926,10 @@ Module MappingProofs'.
 
 End MappingProofs'.
 
-Definition optimize_then_map {dim} (c : circ dim) :=
+(* We require c's dim to be 10 for now - otherwise the proof is a pain.
+   We can easily remove this requirement once we remove the dimension from
+   a program's type. -KH *)
+Definition optimize_then_map (c : circ 10) :=
   let gr := make_lnn 10 in         (* 10-qubit LNN architecture *)
   let la := trivial_layout 10 in   (* trivial layout on 10 qubits *)
   if check_well_typed c 10         (* check that c is well-typed & uses <=10 qubits *)
@@ -946,47 +949,70 @@ End LNN10.
 Module SMPLNN := SimpleMappingProofs LNN10.
 Import SMPLNN.
 
-Lemma cast_commutes_with_optimize_nam : forall {dim} (c : circ dim) n,
-  cast (optimize_nam c) n = optimize_nam (cast c n).
-Proof.
-  (* This is actually a non-trivial property. Basically it requires showing that
-     optimize_nam never uses its implicit dimension. This is true, but will be a
-     pain to prove because of all the subcomponents of optimize_nam. I think a 
-     better solution would be to remove the implicit dimension (and cast) 
-     entirely... -KH *)
-Admitted.
+Lemma cast_same : forall {dim} (c : circ dim), cast c dim = c.
+Proof. 
+  intros dim c. 
+  induction c. 
+  reflexivity. 
+  simpl. 
+  destruct a; rewrite IHc; reflexivity.
+Qed.
 
-Lemma cast_commutes_with_optimize_ibm : forall {dim} (c : circ dim) n,
-  cast (optimize_ibm c) n = optimize_ibm (cast c n).
-Proof.
-Admitted.
+Lemma cast_layout_same : forall {dim} (la : layout dim), cast_layout la dim = la.
+Proof. intros dim la. reflexivity. Qed.
 
-Lemma optimize_then_map_preserves_semantics : forall (c : circ dim) c' la',
+Lemma optimize_then_map_preserves_semantics : forall (c : circ 10) c' la',
   optimize_then_map c = Some (c', la') -> 
   c ≅ c' with (@phys2log dim (trivial_layout 10)) and (log2phys la').
 Proof.
   intros c c' la' H.
   unfold optimize_then_map in H.
   destruct (check_well_typed c 10) eqn:WT; inversion H.
+  apply check_well_typed_correct in WT.
+  rewrite cast_same in WT.
   clear H.
   apply simple_map_sound in H1.
-  apply uc_eq_perm_uc_cong_l with (l2:=cast (optimize_ibm (optimize_nam c)) (get_dim (make_lnn 10))).
-  symmetry.
-  rewrite cast_commutes_with_optimize_ibm.
-  rewrite cast_commutes_with_optimize_nam.
+  all: unfold get_dim, make_lnn in *; simpl fst in *.
+  apply uc_eq_perm_uc_cong_l with (l2:=cast (optimize_ibm (optimize_nam c)) 10).
+  rewrite cast_same.
   rewrite optimize_ibm_preserves_semantics.
   rewrite optimize_nam_preserves_semantics.
-  unfold get_dim, make_lnn; simpl.
-(* annoying... *)
-Admitted.
+  reflexivity.
+  assumption.
+  apply optimize_nam_preserves_WT.
+  assumption.
+  rewrite cast_layout_same in H1.
+  apply uc_eq_perm_implies_uc_cong_perm.
+  apply H1.
+  rewrite cast_same.
+  apply optimize_ibm_preserves_WT.
+  apply optimize_nam_preserves_WT.
+  assumption.
+  rewrite cast_layout_same.
+  apply trivial_layout_well_formed.
+Qed.
 
-Lemma optimize_then_map_respects_constraints : forall (c : circ dim) c' la',
+Lemma optimize_then_map_respects_constraints : forall (c : circ 10) c' la',
   optimize_then_map c = Some (c', la') -> 
   respects_constraints_directed LNN10.is_in_graph U_CX c'.
 Proof.
-Admitted.
+  intros c c' la' H.
+  unfold optimize_then_map in H.
+  destruct (check_well_typed c 10) eqn:WT; inversion H.
+  apply check_well_typed_correct in WT.
+  rewrite cast_same in WT.
+  clear H. 
+  eapply simple_map_respects_constraints_directed; try apply H1.
+  all: unfold get_dim, make_lnn; simpl fst.
+  rewrite cast_same.
+  apply optimize_ibm_preserves_WT.
+  apply optimize_nam_preserves_WT.
+  assumption.
+  rewrite cast_layout_same.
+  apply trivial_layout_well_formed.
+Qed.
 
-Definition map_then_optimize {dim} (c : circ dim) :=
+Definition map_then_optimize (c : circ 10) :=
   let gr := make_lnn 10 in               (* 10-qubit LNN architecture *)
   let la := trivial_layout 10 in         (* trivial layout on 10 qubits *)
   if check_well_typed c 10               (* check that c is well-typed & uses <=10 qubits *)
@@ -997,4 +1023,61 @@ Definition map_then_optimize {dim} (c : circ dim) :=
     Some (c''', la') 
   else None.
 
-(* TODO: prove properties *)
+Lemma map_then_optimize_preserves_semantics : forall (c : circ 10) c' la',
+  map_then_optimize c = Some (c', la') -> 
+  c ≅ c' with (@phys2log dim (trivial_layout 10)) and (log2phys la').
+Proof.
+  intros c c' la' H.
+  unfold map_then_optimize in H.
+  destruct (check_well_typed c 10) eqn:WT; inversion H.
+  apply check_well_typed_correct in WT.
+  rewrite cast_same in WT.
+  clear H.
+  destruct (simple_map c (trivial_layout 10) (make_lnn 10)) eqn:res.
+  inversion H1; subst; clear H1.
+  assert (WTs:=res).
+  apply simple_map_WT in WTs.
+  apply simple_map_sound in res.
+  all: unfold get_dim, make_lnn in *; simpl fst in *.
+  rewrite cast_same, cast_layout_same in res.
+  apply uc_eq_perm_uc_cong_l_alt with (l2:=s).
+  apply uc_eq_perm_implies_uc_cong_perm.
+  apply res.
+  rewrite optimize_ibm_preserves_semantics.
+  rewrite optimize_nam_preserves_semantics.
+  reflexivity.
+  assumption.
+  apply optimize_nam_preserves_WT.
+  assumption.
+  rewrite cast_same.
+  assumption.
+  rewrite cast_layout_same.
+  apply trivial_layout_well_formed.
+  rewrite cast_same.
+  assumption.
+  rewrite cast_layout_same.
+  apply trivial_layout_well_formed.
+Qed.
+
+Lemma map_then_optimize_respects_constraints : forall (c : circ 10) c' la',
+  map_then_optimize c = Some (c', la') -> 
+  respects_constraints_directed LNN10.is_in_graph U_CX c'.
+Proof.
+  intros c c' la' H.
+  unfold map_then_optimize in H.
+  destruct (check_well_typed c 10) eqn:WT; inversion H.
+  apply check_well_typed_correct in WT.
+  rewrite cast_same in WT.
+  clear H. 
+  destruct (simple_map c (trivial_layout 10) (make_lnn 10)) eqn:res.
+  inversion H1; subst; clear H1.
+  apply simple_map_respects_constraints_directed in res.
+  replace LNN10.is_in_graph with (get_is_in_graph (make_lnn 10)) by reflexivity.
+  apply optimize_ibm_preserves_mapping.
+  apply optimize_nam_preserves_mapping.
+  simpl. assumption. 
+  rewrite cast_same.
+  assumption.
+  rewrite cast_layout_same.
+  apply trivial_layout_well_formed.
+Qed.

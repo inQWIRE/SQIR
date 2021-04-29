@@ -4,6 +4,7 @@ Require Export QArith.
 (* Other gate sets *)
 Require Import IBMGateSet.
 Require Import RzQGateSet.
+Require Import MappingConstraints.
 
 (* This gate set is intended to be the "standard" gate set that contains every gate
    we could ever want. Optimizations are not defined directly over this set.
@@ -1029,4 +1030,113 @@ Proof.
     reflexivity.
     unfold uc_equiv; simpl; unfold SQIR.TDAG; autorewrite with eval_db; gridify.
     reflexivity.
+Qed.
+
+Lemma standard_to_IBM_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph UIBM_CNOT (standard_to_IBM l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold standard_to_IBM.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+Lemma IBM_to_standard_preserves_mapping : forall {dim} (l : IBM_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph UIBM_CNOT l ->
+  respects_constraints_directed is_in_graph U_CX (IBM_to_standard l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold IBM_to_standard.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+Lemma standard_to_RzQ_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph URzQ_CNOT (standard_to_RzQ l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold standard_to_RzQ.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+Lemma RzQ_to_standard_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph URzQ_CNOT l ->
+  respects_constraints_directed is_in_graph U_CX (RzQ_to_standard l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold RzQ_to_standard.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+Lemma convert_to_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph U_CX (convert_to_rzq l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold convert_to_rzq.
+  apply RzQ_to_standard_preserves_mapping.
+  apply standard_to_RzQ_preserves_mapping.
+  assumption.
+Qed.
+
+Lemma convert_to_ibm_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph U_CX (convert_to_ibm l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold convert_to_ibm.
+  apply IBM_to_standard_preserves_mapping.
+  apply standard_to_IBM_preserves_mapping.
+  assumption.
+Qed.
+
+Lemma replace_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph U_CX (replace_rzq l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold replace_rzq.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  simpl.
+  destruct_Qeq_bool; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
 Qed.

@@ -1,7 +1,7 @@
 Require Import DensitySem.
 Require Import RzQGateSet.
 
-Module RzQProps := NonUListRepresentationProps RzQGateSet.
+Module RzQProps := NUListProofs RzQGateSet.
 Export RzQProps.
 
 Local Open Scope com_scope.
@@ -46,7 +46,7 @@ Qed.
 
 (* list version of the equivalence above *)
 Lemma RzQ_Meas : forall {dim} i n (l1 l2 : RzQ_com_l dim), 
-  (UC [Rz i n]) :: [Meas n l1 l2] =l= [Meas n l1 l2].
+  (UC [Rzq i n]) :: [Meas n l1 l2] =l= [Meas n l1 l2].
 Proof.
   intros.
   unfold c_equiv_l; simpl.
@@ -57,7 +57,6 @@ Proof.
   apply seq_congruence; try reflexivity.
   unfold c_equiv; simpl.
   intros.
-  rewrite phase_shift_rotation.
   unfold super.
   autorewrite with eval_db; try assumption.
   bdestruct (n + 1 <=? dim); Msimpl; reflexivity.
@@ -141,7 +140,7 @@ Compute (remove_Rz_before_meas test3).
 
 Lemma next_Rz_gate_preserves_structure : forall dim (l : RzQ_ucom_l dim) l1 i n l2,
   next_Rz_gate l = Some (l1, i, n, l2) ->
-  l = l1 ++ [Rz i n] ++ l2.
+  l = l1 ++ [Rzq i n] ++ l2.
 Proof.
   intros.
   generalize dependent l1.
@@ -202,7 +201,7 @@ Proof.
     do 2 (apply c_app_congruence; try reflexivity).
     repeat rewrite app_assoc.
     apply c_app_congruence; try reflexivity.
-    rewrite (c_app_congruence ([UC [Rz q n0]] ++ l2)).
+    rewrite (c_app_congruence ([UC [Rzq q n0]] ++ l2)).
     2: apply does_not_reference_c_commutes_app1; assumption.
     2: reflexivity.
     rewrite <- app_assoc.

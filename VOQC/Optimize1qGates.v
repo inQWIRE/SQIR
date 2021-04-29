@@ -2,6 +2,7 @@ Require Import ChangeRotationBasis.
 Require Export IBMGateSet.
 Require Import List.
 Import IBMList.
+Require Import MappingConstraints.
 Open Scope ucom.
 
 Local Open Scope ucom_scope.
@@ -59,7 +60,7 @@ Definition optimize_1q_gates {dim} (l : IBM_ucom_l dim) :=
   let l' := optimize_1q_gates' l (length l) [] in
   simplify_1q_gates l' [].
 
-(** Proofs **)
+(** semantics preservation **)
 
 Lemma U2_is_U3 : forall {dim} a b q,
   [@U2 dim a b q] =l= [U3 (PI/2) a b q].
@@ -206,3 +207,75 @@ Proof.
   simpl.
   assumption.
 Qed.
+
+(** mapping preservation **)
+
+Lemma optimize_1q_gates'_respects_constraints: forall {dim} (l acc : IBM_ucom_l dim) (is_in_graph : nat -> nat -> bool) n,
+  respects_constraints_directed is_in_graph UIBM_CNOT l -> 
+  respects_constraints_directed is_in_graph UIBM_CNOT acc ->
+  respects_constraints_directed is_in_graph UIBM_CNOT (optimize_1q_gates' l n acc).
+Proof.
+  intros.
+  generalize dependent acc.
+  generalize dependent l. 
+  induction n.
+  - intros.
+    simpl.
+    apply rev_append_respects_constraints; try assumption. 
+  - intros.
+    simpl.
+    destruct l.
+    apply rev_append_respects_constraints; try assumption; constructor. 
+    destruct g.
+    + inversion H; subst.
+      destruct (next_single_qubit_gate l n0) eqn:nsqg.
+      repeat destruct p.
+      eapply IHn.
+      symmetry in nsqg.
+      eapply next_single_qubit_gate_respects_constraints with (is_in_graph0:=is_in_graph) (cnot:=UIBM_CNOT) in nsqg as [? ?].
+      apply respects_constraints_directed_app; assumption.
+      assumption.
+      constructor.
+      assumption.
+      eapply IHn; try constructor; assumption.
+    + inversion H; subst.
+      eapply IHn; try constructor; assumption.
+    + inversion i.    
+Qed. 
+
+Lemma simplify_1q_gates_respects_constraints: forall {dim} (l acc : IBM_ucom_l dim) (is_in_graph : nat -> nat -> bool) ,
+  respects_constraints_directed is_in_graph UIBM_CNOT l -> 
+  respects_constraints_directed is_in_graph UIBM_CNOT acc ->
+  respects_constraints_directed is_in_graph UIBM_CNOT (simplify_1q_gates l acc).
+Proof.
+  intros.
+  generalize dependent acc.
+  induction l.
+  - intros.
+    apply rev_append_respects_constraints; assumption. 
+  - intros.
+    simpl.
+    inversion H; subst. 
+    dependent destruction u. 
+    destruct (Reqb (cos a) 1); apply IHl; try constructor; auto.
+    apply IHl; try constructor; auto.
+    destruct (Reqb (cos a) 1).
+    destruct (Reqb (cos (b + c)) 1); apply IHl; try constructor; auto.
+    destruct (Reqb (sin a) 1).
+    apply IHl; try constructor; auto.
+    destruct (Reqb (sin a) (-1)); apply IHl; try constructor; auto.
+    apply IHl; try constructor; auto.
+Qed. 
+
+Lemma optimize_1q_gates_respects_constraints: forall {dim} (l : IBM_ucom_l dim) (is_in_graph : nat -> nat -> bool) ,
+  respects_constraints_directed is_in_graph UIBM_CNOT l -> 
+  respects_constraints_directed is_in_graph UIBM_CNOT (optimize_1q_gates l).
+Proof.
+  intros.
+  unfold optimize_1q_gates.
+  apply simplify_1q_gates_respects_constraints.
+  apply optimize_1q_gates'_respects_constraints. 
+  assumption.
+  constructor.
+  constructor.
+Qed. 
