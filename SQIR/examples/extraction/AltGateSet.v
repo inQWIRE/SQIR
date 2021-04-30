@@ -17,67 +17,42 @@ Inductive well_formed {U} : ucom U -> Prop :=
   | WF_useq : forall u1 u2, well_formed u1 -> well_formed u2 -> well_formed (u1 >> u2)
   | WF_uapp : forall n (g : U n) qs, length qs = n -> well_formed (uapp g qs).
 
-Lemma uapp1_WF : forall {U : nat -> Set} (g : U 1%nat) qs,
-  well_formed (uapp g qs) -> exists a, qs = a :: List.nil.
+(* RNR: Next three lemmas aren't needed but replace old 
+   lemmas and could possibly be useful *)
+Lemma uapp_WF_length : forall {U : nat -> Set} (n : nat) (g : U n) qs,
+  well_formed (uapp g qs) -> length qs = n.
 Proof.
-  intros U g qs H.
-  inversion H; subst.
-  do 2 (destruct qs; try inversion H1).
-  exists n.
-  reflexivity.
+  intros.
+  inversion H; subst; easy.
 Qed.
 
-Lemma uapp2_WF : forall {U : nat -> Set} (g : U 2%nat) qs,
-  well_formed (uapp g qs) -> exists a b, qs = a :: b :: List.nil.
+Lemma destruct_list_S : forall {A} (l : list A) (n : nat),
+    length l = S n ->
+    exists x l', length l' = n /\ l = x :: l'.
 Proof.
-  intros U g qs H.
-  inversion H; subst.
-  do 3 (destruct qs; try inversion H1).
-  exists n. exists n0.
-  reflexivity.
+  intros A l.
+  induction l; intros.
+  - discriminate.
+  - eauto.
 Qed.
 
-Lemma uapp3_WF : forall {U : nat -> Set} (g : U 3%nat) qs,
-  well_formed (uapp g qs) -> exists a b c, qs = a :: b :: c :: List.nil.
-Proof.
-  intros U g qs H.
-  inversion H; subst.
-  do 4 (destruct qs; try inversion H1).
-  exists n. exists n0. exists n1.
-  reflexivity.
-Qed.
-
-Lemma uapp4_WF : forall {U : nat -> Set} (g : U 4%nat) qs,
-  well_formed (uapp g qs) -> exists a b c d, qs = a :: b :: c :: d:: List.nil.
-Proof.
-  intros U g qs H.
-  inversion H; subst.
-  do 5 (destruct qs; try inversion H1).
-  exists n. exists n0. exists n1. exists n2.
-  reflexivity.
-Qed.
-
-Lemma uapp5_WF : forall {U : nat -> Set} (g : U 5%nat) qs,
-  well_formed (uapp g qs) -> exists a b c d e, qs = a :: b :: c :: d :: e :: List.nil.
-Proof.
-  intros U g qs H.
-  inversion H; subst.
-  do 6 (destruct qs; try inversion H1).
-  exists n. exists n0. exists n1. exists n2. exists n3.
-  reflexivity.
-Qed.
+Lemma destruct_list_0 : forall {A} (l : list A),
+    length l = 0%nat ->
+    l = nil.
+Proof. destruct l; easy. Qed.
 
 Ltac simpl_WF :=
-  match goal with 
-  | WF : well_formed (uapp _ _) |- _ =>
-      try (apply uapp1_WF in WF; destruct WF as [? ?]);
-      try (apply uapp2_WF in WF; destruct WF as [? [? ?]]);
-      try (apply uapp3_WF in WF; destruct WF as [? [? [? ?]]]);
-      try (apply uapp4_WF in WF; destruct WF as [? [? [? [? ?]]]]);
-      try (apply uapp5_WF in WF; destruct WF as [? [? [? [? [? ?]]]]])
-  end;
-  subst.
+  repeat match goal with
+  | [H : well_formed _ |- _] => apply uapp_WF_length in H
+  | [H : length ?l = ?n |- _] => destruct l; inversion H; clear H
+  end.
 
+Ltac simpl_WF_alt :=
+  repeat match goal with
+  | [H : well_formed _ |- _] => apply uapp_WF_length in H
+  | [H : length ?l = S ?n |- _] => apply destruct_list_S in H as [? [? [? ?]]]; subst
+  | [H : length ?l = O |- _] => apply destruct_list_0 in H; subst
+  end.
 
 (** Gate set for Shor's **)
 
@@ -158,7 +133,15 @@ Proof.
   inversion WT; subst.
   inversion WF; subst.
   constructor; auto.
-  destruct u; simpl in *; simpl_WF; invert_WT.
+
+(*  destruct u; simpl in *.
+  apply uapp_WF_length in WF as L.
+  destruct l; inversion L; clear L.
+  destruct l; inversion H0. *)
+  destruct u; simpl in *; simpl_WF''; invert_WT.
+
+  
+  (* destruct u; simpl in *; simpl_WF; invert_WT. *)
   (* U_X, U_H, U_U1, U_U2, U_U3, U_CX, U_SWAP, & SKIP cases *) 
   all: repeat constructor; try lia.
   (* U_CU1 *)
@@ -472,7 +455,7 @@ Proof.
   destruct u; simpl.
   inversion WF; subst.
   constructor; apply IHn; assumption.
-  destruct u; simpl_WF; repeat constructor.
+  destruct u; simpl_WF''; repeat constructor.
   apply IHn. repeat constructor.
   apply IHn. repeat constructor.
   do 3 apply IHn. repeat constructor.
@@ -536,7 +519,7 @@ Proof.
     simpl.
     constructor; apply IHn; auto; lia.
     simpl.
-    destruct u; simpl_WF.
+    destruct u; simpl_WF''.
     (* solve the cases that don't make a recursive call *)
     all: match goal with
          | |- context[control' _ _ _] => idtac
@@ -568,12 +551,12 @@ Proof.
     apply decompose_CCX_WF.
     apply IHn.
     assumption.
-    simpl in Hfu. specialize (fuel_CCX_bound2 x1 x2 x3 x0 n) as ?. lia. 
+    simpl in Hfu. specialize (fuel_CCX_bound2 n2 n3 n4 n1 n) as ?. lia. 
     apply control'_WF.
     apply decompose_CCX_WF.
     apply IHn.
     assumption.
-    simpl in Hfu. specialize (fuel_CCX_bound1 x1 x2 x3) as ?. lia. 
+    simpl in Hfu. specialize (fuel_CCX_bound1 n2 n3 n4) as ?. lia. 
     apply decompose_CCX_WF.
     invert_is_fresh; repeat constructor; auto.
   - generalize dependent u.
@@ -595,7 +578,7 @@ Proof.
     apply H4.
     lia.
     apply H3.
-    destruct u; simpl_WF; simpl in *.
+    destruct u; simpl_WF''; simpl in *.
     (* solve the cases that don't make a call to UnitaryOps.control *)
     all: match goal with
          | H : context[UnitaryOps.control _ _] |- _ => idtac
@@ -629,9 +612,9 @@ Proof.
     invert_is_fresh.
     do 3 (apply UnitaryOps.fresh_control; split; auto).
     repeat constructor; auto.
-    specialize (fuel_CCX_bound1 x1 x2 x3) as ?. lia. 
+    specialize (fuel_CCX_bound1 n2 n3 n4) as ?. lia. 
     apply decompose_CCX_WF.
-    specialize (fuel_CCX_bound2 x1 x2 x3 x0 n) as ?. lia. 
+    specialize (fuel_CCX_bound2 n2 n3 n4 n1 n) as ?. lia. 
     apply control'_WF.
     apply decompose_CCX_WF.
     rewrite fuel_CCX_eq; lia.
@@ -710,7 +693,7 @@ Proof.
   unfold uc_eval in *.
   simpl in *.
   rewrite 2 IHn; try lia; auto.
-  destruct u; simpl_WF.
+  destruct u; simpl_WF''.
   (* C-X *)
   unfold uc_eval.
   simpl.
@@ -764,12 +747,12 @@ Proof.
   apply decompose_CCX_is_control_CX.
   apply decompose_CCX_fresh.
   simpl in Hfu. 
-  specialize (fuel_CCX_bound1 x1 x2 x3) as ?. lia.
+  specialize (fuel_CCX_bound1 n2 n3 n4) as ?. lia.
   apply decompose_CCX_WF.
   apply cont_decompose_CCX_fresh.
   simpl in Hfu. lia.
   simpl in Hfu.
-  specialize (fuel_CCX_bound2 x1 x2 x3 x0 n) as ?. lia.
+  specialize (fuel_CCX_bound2 n2 n3 n4 n1 n) as ?. lia.
   apply control'_WF. 
   apply decompose_CCX_WF.
   apply cont_cont_decompose_CCX_fresh.
@@ -894,7 +877,7 @@ Proof.
   rewrite <- IHu1, <- IHu2 by assumption.
   reflexivity.
   simpl.
-  destruct u; simpl_WF; reflexivity.
+  destruct u; simpl_WF''; reflexivity.
 Qed.
 
 Lemma map_qubits_control' : forall f q u n,
@@ -912,7 +895,7 @@ Proof.
   inversion WF; subst.
   simpl in Hfu.
   rewrite 2 IHn; auto; try lia.
-  destruct u; simpl_WF; simpl in *; try reflexivity.
+  destruct u; simpl_WF''; simpl in *; try reflexivity.
   (* C-CU1 *)
   rewrite IHn.
   reflexivity. 
@@ -926,9 +909,9 @@ Proof.
   (* C-C4X *)
   rewrite 3 IHn.
   reflexivity.
-  specialize (fuel_CCX_bound1 x1 x2 x3) as ?. lia. 
+  specialize (fuel_CCX_bound1 n2 n3 n4) as ?. lia. 
   apply decompose_CCX_WF.
-  specialize (fuel_CCX_bound2 x1 x2 x3 x0 n) as ?. lia. 
+  specialize (fuel_CCX_bound2 n2 n3 n4 n1 n) as ?. lia. 
   apply control'_WF.
   apply decompose_CCX_WF.
   rewrite fuel_CCX_eq; lia.
@@ -1027,7 +1010,7 @@ Proof.
   simpl.
   inversion WF; subst.
   rewrite IHu1, IHu2; auto.
-  destruct u; simpl_WF; simpl. 
+  destruct u; simpl_WF''; simpl. 
   (* U_X *)
   rewrite invert_X.
   reflexivity.
