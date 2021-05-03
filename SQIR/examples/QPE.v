@@ -601,24 +601,6 @@ Lemma QFT_w_reverse_semantics_inverse : forall n (f : nat -> bool),
     (/ √(2 ^ n) .* vsum (2^n) (fun k => Cexp (- 2 * PI * INR (funbool_to_nat n f * k) / (2 ^ n)) .* basis_vector (2^n) k)).
 Proof.
   intros n f Hn.
-  remember (-2 * PI * INR (funbool_to_nat n f) / 2 ^ n)%R as c.
-  rewrite (vsum_eq _ _ (fun k : nat => Cexp (c * INR k) .* basis_vector (2 ^ n) k)).
-  rewrite <- vkron_to_vsum1.
-  subst.
-  apply vkron_to_vsum1. lia.
-  intros i Hi.
-  subst. apply f_equal2; try reflexivity. apply f_equal. 
-  rewrite mult_INR. lra.
-  intros i Hi. 
-  rewrite Cexp_shift by lia.
-  subst. do 2 (apply f_equal2; try reflexivity). apply f_equal.
-  field_simplify_eq; try nonzero.
-  repeat rewrite Rmult_assoc.
-  rewrite <- pow_add.
-  replace (n - (n - i - 1) + (n - i - 1))%nat with n by lia.
-  reflexivity.
-
-  intros n f Hn.
   rewrite <- invert_correct. 
   rewrite <- (Mmult_1_l _ _ (_ .* _)); auto with wf_db.
   assert (H : (n > 0)%nat) by lia.
