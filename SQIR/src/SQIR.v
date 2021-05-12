@@ -48,7 +48,7 @@ Definition Y {dim} n : base_ucom dim := uapp1 U_Y  n.
 Definition Z {dim} n : base_ucom dim := uapp1 U_Z n. 
 Definition ID {dim} n : base_ucom dim := uapp1 (U_R 0 0 0) n. 
 Definition SKIP {dim} : base_ucom dim := ID 0.
-Definition Rx {dim} θ n : base_ucom dim := uapp1 (U_R θ (3*PI/2) (PI/2)) n.
+Definition Rx {dim} θ n : base_ucom dim := uapp1 (U_R θ (-(PI/2)) (PI/2)) n.
 Definition Ry {dim} θ n : base_ucom dim := uapp1 (U_R θ 0 0) n.
 Definition Rz {dim} λ n : base_ucom dim := uapp1 (U_R 0 0 λ) n.
 Definition T {dim} n : base_ucom dim := Rz (PI / 4) n.
@@ -60,6 +60,23 @@ Definition CZ {dim} m n : base_ucom dim :=
   H n ; CNOT m n ; H n.
 Definition SWAP {dim} m n : base_ucom dim :=
   CNOT m n; CNOT n m; CNOT m n.
+Definition U1 {dim} a n : base_ucom dim := uapp1 (U_R 0 0 a) n.
+Definition U2 {dim} a b n : base_ucom dim := uapp1 (U_R (PI / 2) a b) n.
+Definition U3 {dim} a b c n : base_ucom dim := uapp1 (U_R a b c) n.
+
+(* Standard Toffoli decomposition *)
+Definition CCX {dim} a b c : base_ucom dim :=
+  H c ; CNOT b c ; TDAG c ; CNOT a c ;
+  T c ; CNOT b c ; TDAG c ; CNOT a c ;
+  CNOT a b ; TDAG b ; CNOT a b ;
+  T a ; T b ; T c ; H c.
+
+(* CCZ is the same as CCX, but without the Hadamards *)
+Definition CCZ {dim} a b c : base_ucom dim :=
+  CNOT b c ; TDAG c ; CNOT a c ;
+  T c ; CNOT b c ; TDAG c ; CNOT a c ;
+  CNOT a b ; TDAG b ; CNOT a b ;
+  T a ; T b ; T c.
 
 (*************************)
 (** Well Typed Circuits **)

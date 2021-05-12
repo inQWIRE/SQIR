@@ -351,14 +351,13 @@ Qed.
 
 Lemma bitwise_xor_bijective: forall (n s: nat), 
    (n > 0)%nat -> (s < 2 ^ n)%nat ->
-   weak_finite_bijection (2 ^ n) (fun i => bitwise_xor n i s).
+   finite_bijection (2 ^ n) (fun i => bitwise_xor n i s).
 Proof.
-  intros.
-  split. 
-  intros.
+  intros n s Hn Hs.
+  exists (fun i => bitwise_xor n i s). 
+  intros x Hx.
+  repeat split.
   apply bitwise_xor_bound.
-  exists (fun i => bitwise_xor n i s).
-  repeat split; intros.
   apply bitwise_xor_bound.
   rewrite <- bitwise_xor_assoc, bitwise_xor_eq, bitwise_xor_comm.
   apply bitwise_xor_0_l.

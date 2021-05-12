@@ -88,13 +88,6 @@ Definition CU {dim} θ ϕ λ c t : base_ucom dim :=
   CNOT c t ;
   uapp1 (U_R (θ/2) ϕ 0) t.
 
-(* Standard Toffoli decomposition *)
-Definition CCX {dim} a b c : base_ucom dim :=
-  H c ; CNOT b c ; TDAG c ; CNOT a c ; 
-  T c ; CNOT b c ; TDAG c ; CNOT a c ; 
-  CNOT a b ; TDAG b ; CNOT a b ; 
-  T a ; T b ; T c ; H c. 
-
 (* Convert a program to be controlled by qubit q *)
 Fixpoint control {dim} q (c : base_ucom dim) : base_ucom dim :=
   match c with
@@ -142,10 +135,6 @@ Lemma braketbra_diff : forall x y z, (x + y = 1)%nat -> bra x × (ket y × bra z
 Proof. intros. rewrite <- Mmult_assoc, braket_diff; Msimpl; easy. Qed.
 
 Hint Rewrite braket_same braket_diff braketbra_same braketbra_diff using lia : ket_db.
-
-Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
-Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
-Hint Rewrite RtoC_pow : RtoC_db.
 
 (* Improved group_Cexp based on group_radicals *)
 Ltac group_Cexp :=

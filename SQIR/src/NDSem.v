@@ -1,5 +1,4 @@
-Require Import QWIRE.Quantum.
-Require Import UnitarySem.
+Require Export UnitarySem.
 Require Import Setoid.
 
 Local Open Scope com.
