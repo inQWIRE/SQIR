@@ -34,7 +34,7 @@ eval $(opam env)
 # install Coq -- this will take a while!
 opam install coq
 
-# install Interval package (optional, needed for 'make all')
+# install Interval package (optional, needed to compile QPEGeneral.v)
 opam install coq-interval
 ```
 
