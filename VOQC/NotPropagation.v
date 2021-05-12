@@ -3,6 +3,8 @@ Require Export RzQGateSet.
 Import RzQList.
 Require Import MappingConstraints.
 
+Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *) 
+
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 Local Close Scope Q_scope.
@@ -47,7 +49,7 @@ Fixpoint not_propagation' {dim} (l acc : RzQ_ucom_l dim) qs :=
       not_propagation' t acc qs'
   | App1 URzQ_H q :: t =>
       if FSet.mem q qs
-      then not_propagation' t (Z q :: H q :: acc) (FSet.remove q qs)
+      then not_propagation' t (RzQGateSet.Z q :: H q :: acc) (FSet.remove q qs)
       else not_propagation' t (H q :: acc) qs
   | App1 (URzQ_Rz a) q :: t =>
       if FSet.mem q qs
@@ -164,9 +166,9 @@ Proof.
       apply_app_congruence.
       unfold_uc_equiv_l.
       unfold one_Q.
-      replace (Qreals.Q2R 1 * PI)%R with PI.
+      replace (Q2R 1 * PI)%R with PI.
       apply H_comm_Z.
-      unfold Qreals.Q2R; simpl; lra.
+      unfold Q2R; simpl; lra.
       apply finalize_dnr.
       apply FSet.remove_1; auto.
     + rewrite (cons_to_app _ l).

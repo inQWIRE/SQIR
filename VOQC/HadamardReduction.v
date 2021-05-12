@@ -5,6 +5,8 @@ Require Import MappingConstraints.
 Import RzQList.
 Open Scope ucom.
 
+Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *) 
+
 Local Close Scope Q_scope.
 
 (*******************************************)
@@ -202,7 +204,7 @@ Proof.
   rewrite <- Mscale_kron_dist_l.
   rewrite <- Mscale_kron_dist_r.
   do 2 (apply f_equal2; trivial).
-  unfold Qreals.Q2R; simpl.
+  unfold Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
@@ -221,7 +223,7 @@ Proof.
   rewrite <- Mscale_kron_dist_l.
   rewrite <- Mscale_kron_dist_r.
   do 2 (apply f_equal2; trivial).
-  unfold Qreals.Q2R; simpl.
+  unfold Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   solve_matrix; autorewrite with Cexp_db; C_field.
 Qed.
@@ -256,7 +258,7 @@ Proof.
   unfold uc_equiv; simpl.
   repeat rewrite denote_H.
   repeat rewrite denote_Rz.
-  unfold Qreals.Q2R; simpl.
+  unfold Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   autorewrite with eval_db.
   gridify.
@@ -296,7 +298,7 @@ Proof.
   unfold uc_equiv; simpl.
   repeat rewrite denote_H.
   repeat rewrite denote_Rz.
-  unfold Qreals.Q2R; simpl.
+  unfold Q2R; simpl.
   rewrite P_simplifies, PDAG_simplifies.
   autorewrite with eval_db.
   gridify.

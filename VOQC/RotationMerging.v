@@ -8,6 +8,8 @@ Require Import FSets.FSetProperties.
 Import RzQList.
 Require Import MappingConstraints.
 
+Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *) 
+
 Module FSet := FSetAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
 Module FSetFacts := FSetFacts.Facts FSet.
 Module FSetProps := FSetProperties.Properties FSet.
@@ -733,7 +735,7 @@ Lemma find_merge_alt'_move_rotation : forall {dim} (l : RzQ_ucom_l dim) blst q s
   find_merge_alt' l blst q smap = Some (l1, a, q', l2) ->
   (forall q, (q < dim)%nat -> not (FSet.In q blst) -> 
         classical q (get_boolean_expr smap f q) ψ) ->
-  eval l1 × ((Cexp (f q * (Qreals.Q2R a' * PI))) .* ψ) = eval (l1 ++ [Rzq a' q']) × ψ.
+  eval l1 × ((Cexp (f q * (Q2R a' * PI))) .* ψ) = eval (l1 ++ [Rzq a' q']) × ψ.
 Proof.
   intros dim l blst q smap l1 a q' l2 f a' ψ WT H Hψ.
   generalize dependent ψ.
@@ -767,7 +769,7 @@ Proof.
       unfold eval in *; simpl.
       rewrite <- Hψ at 2.
       rewrite Mmult_assoc, <- (Mmult_assoc _ _ ψ).
-      replace (ueval_r dim q' (U_R 0 0 (Qreals.Q2R a' * PI))) with (@uc_eval dim (SQIR.Rz (Qreals.Q2R a' * PI) q')) by reflexivity.
+      replace (ueval_r dim q' (U_R 0 0 (Q2R a' * PI))) with (@uc_eval dim (SQIR.Rz (Q2R a' * PI) q')) by reflexivity.
       rewrite proj_Rz, Mscale_mult_dist_l, Hψ; auto.
     + destruct (find_merge_alt' l blst q smap) eqn:fm; try discriminate.
       do 3 destruct p.
@@ -777,7 +779,7 @@ Proof.
       eapply IHl; try apply fm; auto.
       intros q0 Hq01 Hq02. unfold classical.
       rewrite <- Mmult_assoc.
-      replace (ueval_r dim n (U_R 0 0 (Qreals.Q2R a * PI))) with (@uc_eval dim (SQIR.Rz (Qreals.Q2R a * PI) n)) by reflexivity.
+      replace (ueval_r dim n (U_R 0 0 (Q2R a * PI))) with (@uc_eval dim (SQIR.Rz (Q2R a * PI) n)) by reflexivity.
       rewrite proj_Rz_comm, Mmult_assoc, Hψ; auto.
   - (* CNOT gate *)
     bdestruct (FSet.mem n blst); bdestruct (FSet.mem n0 blst); simpl in H;
@@ -838,7 +840,7 @@ Proof.
   assert (nil_rotation : @uc_equiv_l dim [Rzq 0 q0'] []).
   { unfold uc_equiv_l, uc_equiv; simpl.
     rewrite denote_Rz.
-    replace (Qreals.Q2R 0 * PI)%R with 0%R by lra.
+    replace (Q2R 0 * PI)%R with 0%R by lra.
     rewrite phase_0. 
     autorewrite with eval_db; try lia.
     gridify; trivial. }
@@ -857,7 +859,7 @@ Proof.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
   simpl.
-  replace (pad q dim (rotation 0 0 (Qreals.Q2R a0' * PI))) with (uc_eval (@SQIR.Rz dim (Qreals.Q2R a0' * PI) q)) by reflexivity.
+  replace (pad q dim (rotation 0 0 (Q2R a0' * PI))) with (uc_eval (@SQIR.Rz dim (Q2R a0' * PI) q)) by reflexivity.
   specialize f_to_vec_classical as cla.
   unfold classical in cla.
   rewrite <- cla with (q:=q) at 2 by lia.
@@ -901,7 +903,7 @@ Proof.
     repeat rewrite phase_shift_rotation.
     autorewrite with eval_db; try lia.
     gridify.
-    all: rewrite phase_mul, <- Rmult_plus_distr_r, Qreals.Q2R_plus, Rplus_comm.
+    all: rewrite phase_mul, <- Rmult_plus_distr_r, Q2R_plus, Rplus_comm.
     all: reflexivity. }
   rewrite (app_assoc [Rzq a q0']).
   rewrite double_rotation; rewrite 2 eq.
@@ -915,7 +917,7 @@ Proof.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
   simpl.
-  replace (pad q dim (rotation 0 0 (Qreals.Q2R a * PI))) with (uc_eval (@SQIR.Rz dim (Qreals.Q2R a * PI) q)) by reflexivity.
+  replace (pad q dim (rotation 0 0 (Q2R a * PI))) with (uc_eval (@SQIR.Rz dim (Q2R a * PI) q)) by reflexivity.
   specialize f_to_vec_classical as cla.
   unfold classical in cla.
   rewrite <- cla with (q:=q) at 1 by lia.
@@ -1061,7 +1063,7 @@ Definition merge_rotations {dim} (l : RzQ_ucom_l dim) :=
 (* Examples *)
 
 Definition test3 : RzQ_ucom_l 4 := T 3 :: CNOT 0 3 :: P 0 :: CNOT 1 2 :: CNOT 0 1 :: TDAG 2 :: T 0 :: CNOT 1 2 :: CNOT 2 1 :: TDAG 1 :: CNOT 3 0 :: CNOT 0 3 :: T 0 :: T 3 :: [].
-Definition test4 : RzQ_ucom_l 2 := T 1 :: CNOT 0 1 :: Z 1 :: CNOT 0 1 :: Z 0 :: T 1 :: CNOT 1 0 :: [].
+Definition test4 : RzQ_ucom_l 2 := T 1 :: CNOT 0 1 :: RzQGateSet.Z 1 :: CNOT 0 1 :: RzQGateSet.Z 0 :: T 1 :: CNOT 1 0 :: [].
 Definition test5 : RzQ_ucom_l 4 := CNOT 2 3 :: T 0 :: T 3 :: CNOT 0 1 :: CNOT 2 3 :: CNOT 1 2 :: CNOT 1 0 :: CNOT 3 2 :: CNOT 1 2 :: CNOT 0 1 :: T 2 :: TDAG 1 :: [].
 Definition test6 : RzQ_ucom_l 3 := T 1 :: T 2 :: CNOT 0 1 :: CNOT 1 2 :: CNOT 1 0 :: T 0 :: CNOT 2 1 :: TDAG 1 :: [].
 
@@ -1168,12 +1170,12 @@ Proof.
   all: unfold rotation; solve_matrix.
   all: autorewrite with R_db C_db trig_db; try lca.
   all: try rewrite Cexp_neg; try rewrite Cexp_0; try rewrite Cexp_PI; try lca. 
-  rewrite Qreals.Q2R_minus.
+  rewrite Q2R_minus.
   autorewrite with R_db.
   repeat rewrite Rmult_plus_distr_r.
   rewrite Cexp_add, <- Cexp_neg.
-  replace (Qreals.Q2R two_Q * PI)%R with (2 * PI)%R. 
-  2: unfold Qreals.Q2R, two_Q; simpl; lra. 
+  replace (Q2R two_Q * PI)%R with (2 * PI)%R. 
+  2: unfold Q2R, two_Q; simpl; lra. 
   simpl. rewrite Cexp_2PI.
   autorewrite with C_db R_db; reflexivity.
 Qed.

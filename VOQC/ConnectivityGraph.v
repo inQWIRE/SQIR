@@ -677,9 +677,8 @@ Proof.
   simpl in H.
   bdestruct(i + 1 <? numRows * numCols); try lia.
   simpl in H.
-  bdestruct(i' + 1 <? numRows * numCols); try lia.
-  simpl in H.
-  inversion H.
+  bdestruct(i' + 1 <? numRows * numCols); try lia;
+  try (simpl in H; inversion H).
 Qed.
 
 Lemma move_up_valid_path : forall numRows numCols i dist,

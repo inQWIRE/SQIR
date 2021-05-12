@@ -2,6 +2,8 @@ Require Export UnitaryListRepresentation.
 Require Export NonUnitaryListRepresentation.
 Require Export QArith.
 
+Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *) 
+
 Local Open Scope Z_scope.
 Local Open Scope Q_scope.
 
@@ -26,7 +28,7 @@ Definition to_base {n dim} (u : U n) (qs : list nat) (pf : List.length qs = n) :
   match u with
   | URzQ_H     => @SQIR.H dim (List.nth O qs O) 
   | URzQ_X     => @SQIR.X dim (List.nth O qs O)
-  | URzQ_Rz a  => @SQIR.Rz dim (Qreals.Q2R a * PI)%R (List.nth O qs O)
+  | URzQ_Rz a  => @SQIR.Rz dim (Q2R a * PI)%R (List.nth O qs O)
   | URzQ_CNOT  => @SQIR.CNOT dim (List.nth O qs O) (List.nth (S O) qs O)
   end.
 
@@ -213,7 +215,7 @@ Proof.
     autorewrite with eval_db; gridify.
     do 2 (apply f_equal2; try reflexivity). 
     unfold phase_shift; solve_matrix. 
-    unfold Qreals.Q2R; simpl.
+    unfold Q2R; simpl.
     replace (IZR (k * 2) * / 1 * PI)%R with (IZR (2 * k) * PI)%R.
     symmetry. apply Cexp_2nPI.
     rewrite Zmult_comm. lra.
@@ -225,7 +227,7 @@ Proof.
     rewrite <- (Mmult_1_r _ _ (phase_shift _)) at 1; auto with wf_db.
     apply f_equal2; try reflexivity.
     unfold phase_shift; solve_matrix. 
-    unfold Qreals.Q2R; simpl.
+    unfold Q2R; simpl.
     replace (IZR (k * 2) * / 1 * PI)%R with (IZR (2 * k) * PI)%R. 
     symmetry. apply Cexp_2nPI.
     rewrite Zmult_comm. lra.
@@ -239,7 +241,7 @@ Local Open Scope ucom.
 Local Transparent SQIR.Rz.
 Lemma invert_rotation_semantics : forall {dim} a q,
   RzQList.list_to_ucom [@invert_rotation dim a q] ≡ 
-    invert (SQIR.Rz (Qreals.Q2R a * PI)%R q).
+    invert (SQIR.Rz (Q2R a * PI)%R q).
 Proof.
   intros dim a q.
   simpl. 
@@ -255,8 +257,8 @@ Proof.
   autorewrite with R_db.
   rewrite Rmult_plus_distr_r.
   rewrite Cexp_add, <- Cexp_neg.
-  replace (Qreals.Q2R two_Q * PI)%R with (2 * PI)%R. 
-  2: unfold Qreals.Q2R, two_Q; simpl; lra. 
+  replace (Q2R two_Q * PI)%R with (2 * PI)%R. 
+  2: unfold Q2R, two_Q; simpl; lra. 
   rewrite Cexp_2PI.
   autorewrite with C_db R_db; reflexivity.
 Qed.

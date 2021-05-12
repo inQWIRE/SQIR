@@ -1,6 +1,8 @@
 Require Import DensitySem.
 Require Import RzQGateSet.
 
+Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *) 
+
 Module RzQProps := NUListProofs RzQGateSet.
 Export RzQProps.
 
@@ -53,7 +55,7 @@ Proof.
   rewrite instr_to_com_UC, instr_to_com_Meas. 
   simpl.
   rewrite skip_id_r.
-  rewrite <- Rz_mif with (θ:=(Qreals.Q2R i * PI)%R) at 2.
+  rewrite <- Rz_mif with (θ:=(Q2R i * PI)%R) at 2.
   apply seq_congruence; try reflexivity.
   unfold c_equiv; simpl.
   intros.
@@ -126,13 +128,13 @@ Definition remove_Rz_before_meas {dim} (l : RzQ_com_l dim) :=
 
 (** Examples **)
 
-Definition test1 : RzQ_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 [] [] :: [].
+Definition test1 : RzQ_com_l 3 := UC (X 2 :: RzQGateSet.Z 0 :: CNOT 1 2 :: []) :: Meas 0 [] [] :: [].
 Compute (count_ops test1).
 Compute (remove_Rz_before_meas test1).
-Definition test2 : RzQ_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: Meas 0 (UC [P 1] :: Meas 1 [] [] :: []) [] :: [].
+Definition test2 : RzQ_com_l 3 := UC (X 2 :: RzQGateSet.Z 0 :: CNOT 1 2 :: []) :: Meas 0 (UC [P 1] :: Meas 1 [] [] :: []) [] :: [].
 Compute (count_ops test2).
 Compute (remove_Rz_before_meas test2).
-Definition test3 : RzQ_com_l 3 := UC (X 2 :: Z 0 :: CNOT 1 2 :: []) :: UC (H 2 :: []) :: Meas 2 [] [UC [H 1]] :: Meas 0 (UC [P 1] :: Meas 0 [] [] :: Meas 1 [] [] :: []) [UC (X 2 :: CNOT 1 2 :: [])] :: [].
+Definition test3 : RzQ_com_l 3 := UC (X 2 :: RzQGateSet.Z 0 :: CNOT 1 2 :: []) :: UC (H 2 :: []) :: Meas 2 [] [UC [H 1]] :: Meas 0 (UC [P 1] :: Meas 0 [] [] :: Meas 1 [] [] :: []) [UC (X 2 :: CNOT 1 2 :: [])] :: [].
 Compute (count_ops test3).
 Compute (remove_Rz_before_meas test3).
 

@@ -6,6 +6,8 @@ Require Import IBMGateSet.
 Require Import RzQGateSet.
 Require Import MappingConstraints.
 
+Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *) 
+
 (* This gate set is intended to be the "standard" gate set that contains every gate
    we could ever want. Optimizations are not defined directly over this set.
    Instead, we define optimizations over specialized sets (e.g. RzQ, IBM) and 
@@ -78,7 +80,7 @@ Definition to_base {n dim} (u : U n) (qs : list nat) (pf : List.length qs = n) :
   | U_Rx r         => @SQIR.Rx dim r (List.nth O qs O)
   | U_Ry r         => @SQIR.Ry dim r (List.nth O qs O)
   | U_Rz r         => @SQIR.Rz dim r (List.nth O qs O)
-  | U_Rzq q        => @SQIR.Rz dim (Qreals.Q2R q * PI)%R (List.nth O qs O)
+  | U_Rzq q        => @SQIR.Rz dim (Q2R q * PI)%R (List.nth O qs O)
   | U_U1 r         => @SQIR.U1 dim r (List.nth O qs O)
   | U_U2 r1 r2     => @SQIR.U2 dim r1 r2 (List.nth O qs O)
   | U_U3 r1 r2 r3  => @SQIR.U3 dim r1 r2 r3 (List.nth O qs O)
@@ -391,7 +393,7 @@ Definition standard_to_IBM_u {dim} (g : gate_app Std_Unitary dim) : IBM_ucom_l d
   | App1 (U_Rx r) m         => [IBMGateSet.Rx r m]
   | App1 (U_Ry r) m         => [IBMGateSet.Ry r m]
   | App1 (U_Rz r) m         => [IBMGateSet.Rz r m]
-  | App1 (U_Rzq q) m        => [IBMGateSet.Rz (Qreals.Q2R q * PI) m]
+  | App1 (U_Rzq q) m        => [IBMGateSet.Rz (Q2R q * PI) m]
   | App1 (U_U1 r) m         => [IBMGateSet.U1 r m]
   | App1 (U_U2 r1 r2) m     => [IBMGateSet.U2 r1 r2 m]
   | App1 (U_U3 r1 r2 r3) m  => [IBMGateSet.U3 r1 r2 r3 m]
@@ -518,7 +520,7 @@ Qed.
    that converts from floats to rationals (which is ok). -KH *)
 Axiom R2Q : R -> Q.
 Definition R2Q_PI x := R2Q (x / PI).
-Axiom Q2R_R2Q_PI : forall r, (Qreals.Q2R (R2Q_PI r) * PI)%R = r.
+Axiom Q2R_R2Q_PI : forall r, (Q2R (R2Q_PI r) * PI)%R = r.
 Definition Rx {dim} a q : RzQ_ucom_l dim := H q :: Rzq (R2Q_PI a) q :: H q :: [].
 Definition Rz {dim} a q := @App1 _ dim (URzQ_Rz (R2Q_PI a)) q.
 Definition Ry {dim} a q : RzQ_ucom_l dim := 
@@ -630,20 +632,20 @@ Qed.
 
 Local Open Scope R.
 Lemma Q2R_1_4_PI : forall {dim} q, 
-  @SQIR.Rz dim (Qreals.Q2R (1 / 4) * PI) q ≡ SQIR.Rz (PI / 4) q.
+  @SQIR.Rz dim (Q2R (1 / 4) * PI) q ≡ SQIR.Rz (PI / 4) q.
 Proof.
   intros dim q.
-  unfold Qreals.Q2R; simpl.
+  unfold Q2R; simpl.
   autorewrite with R_db.
   rewrite Rmult_comm.
   reflexivity.
 Qed.
 
 Lemma Q2R_7_4_PI : forall {dim} q, 
-  @SQIR.Rz dim (Qreals.Q2R (7 / 4) * PI) q ≡ SQIR.Rz (- (PI / 4)) q.
+  @SQIR.Rz dim (Q2R (7 / 4) * PI) q ≡ SQIR.Rz (- (PI / 4)) q.
 Proof.
   intros dim q.
-  unfold Qreals.Q2R; simpl.
+  unfold Q2R; simpl.
   unfold uc_equiv; autorewrite with eval_db; try lia.
   gridify.
   replace (7 * / 4 * PI) with (2 * PI + - (PI / 4)) by lra.
@@ -654,20 +656,20 @@ Proof.
 Qed.
 
 Lemma Q2R_1_2_PI : forall {dim} q, 
-  @SQIR.Rz dim (Qreals.Q2R (1 / 2) * PI) q ≡ SQIR.Rz (PI / 2) q.
+  @SQIR.Rz dim (Q2R (1 / 2) * PI) q ≡ SQIR.Rz (PI / 2) q.
 Proof.
   intros dim q.
-  unfold Qreals.Q2R; simpl.
+  unfold Q2R; simpl.
   autorewrite with R_db.
   rewrite Rmult_comm.
   reflexivity.
 Qed.
 
 Lemma Q2R_3_2_PI : forall {dim} q,
-  @SQIR.Rz dim (Qreals.Q2R (3 / 2) * PI) q ≡ SQIR.Rz (- (PI / 2)) q.
+  @SQIR.Rz dim (Q2R (3 / 2) * PI) q ≡ SQIR.Rz (- (PI / 2)) q.
 Proof.
   intros dim q.
-  unfold Qreals.Q2R; simpl.
+  unfold Q2R; simpl.
   unfold uc_equiv; autorewrite with eval_db; try lia.
   gridify.
   replace (3 * / 2 * PI) with (2 * PI + - (PI / 2)) by lra.
@@ -677,8 +679,8 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma Q2R_1_PI : Qreals.Q2R 1 * PI = PI.
-Proof. unfold Qreals.Q2R; simpl. lra. Qed.
+Lemma Q2R_1_PI : Q2R 1 * PI = PI.
+Proof. unfold Q2R; simpl. lra. Qed.
 
 Lemma RzQ_to_standard_inv : forall {dim} (l : standard_ucom_l dim),
   StdList.uc_cong_l (RzQ_to_standard (standard_to_RzQ l)) l.
@@ -946,7 +948,7 @@ Definition replace_rzq_u {dim} (g : gate_app Std_Unitary dim) : standard_ucom_l 
       else if Qeq_bool q three_halves_Q then [App1 U_Sdg m]
       else if Qeq_bool q quarter_Q then [App1 U_T m]
       else if Qeq_bool q seven_quarters_Q then [App1 U_Tdg m]
-      else [App1 (U_Rz (Qreals.Q2R q * PI)) m]
+      else [App1 (U_Rz (Q2R q * PI)) m]
   | g => [g]
   end.
 
@@ -967,7 +969,7 @@ Ltac destruct_Qeq_bool :=
       destruct (Qeq_bool a b) eqn:? 
   | H : Qeq_bool _ _ = true |- _ => apply Qeq_bool_iff in H
   | H : Qeq_bool _ _ = false |- _ => clear H
-  | H : (_ == _)%Q |- _ => apply Qreals.Qeq_eqR in H; try rewrite H
+  | H : (_ == _)%Q |- _ => apply Qeq_eqR in H; try rewrite H
   end.
 
 Lemma replace_rzq_gates : forall {dim} (l : standard_ucom_l dim),
