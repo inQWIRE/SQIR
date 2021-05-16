@@ -362,7 +362,7 @@ Inductive exp_fwf : exp -> Prop :=
       | sr_fwf : forall n x, exp_fwf (SR n x)
       | srr_fwf : forall n x, exp_fwf (SRR n x)
       | cu_fwf : forall p e, exp_fresh p e -> exp_fwf e -> exp_fwf (CU p e)
-      | cnot_fwf : forall p1 p2, p1 <> p2 -> exp_fwf (HCNOT p1 p2)
+      | hcnot_fwf : forall p1 p2, p1 <> p2 -> exp_fwf (HCNOT p1 p2)
       | rz_fwf : forall p q, exp_fwf (RZ q p)
       | rrz_fwf : forall p q, exp_fwf (RRZ q p)
       | seq_fwf : forall e1 e2, exp_fwf e1 -> exp_fwf e2 -> exp_fwf (Seq e1 e2).
@@ -7214,92 +7214,55 @@ Proof.
 Qed.
 
 (* generalized Controlled rotation cascade on n qubits. *)
-Fixpoint controlled_rotations_gen {dim} (start n : nat) : base_ucom dim :=
+
+(* SQIR.Rz (rz_ang q) (find_pos f p) *)
+
+Fixpoint controlled_rotations_gen (f : vars) (dim:nat) (x:var) (n : nat) (i:nat) : base_ucom dim :=
   match n with
-  | 0 | 1 => SQIR.SKIP
-  | 2     => control (start+1) (Rz (2 * PI / 2 ^ n)%R start) (* makes 0,1 cases irrelevant *)
-  | S n'  => SQIR.useq (controlled_rotations_gen start n')
-                 (control (start + n') (Rz (2 * PI / 2 ^ n)%R start))
+  | 0 | 1 => SQIR.ID (find_pos f (x,i))
+  | S m  => SQIR.useq (controlled_rotations_gen f dim x m i)
+                 (control (find_pos f (x,m+i)) (SQIR.Rz (rz_ang n) (find_pos f (x,i))))
   end.
 
 (* generalized Quantum Fourier transform on n qubits. 
    We use the definition below (with cast and map_qubits) for proof convenience.
    For a more standard functional definition of QFT see Quipper:
    https://www.mathstat.dal.ca/~selinger/quipper/doc/src/Quipper/Libraries/QFT.html *)
-Fixpoint QFT_gen {dim} (start n:nat) : base_ucom dim :=
+
+Fixpoint QFT_gen (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom dim :=
   match n with
-  | 0    => SQIR.SKIP
-  | 1    => SQIR.H start
-  | S n' => SQIR.useq (SQIR.H start) (SQIR.useq (controlled_rotations_gen start n)
-            (map_qubits S (QFT_gen start n')))
+  | 0    => SQIR.ID (find_pos f (x,0))
+  | S m => SQIR.useq (SQIR.H (find_pos f (x,m))) (SQIR.useq (controlled_rotations_gen f dim x (size-m) m)
+            (QFT_gen f dim x m size))
   end.
 
-Definition trans_qft {dim} (f:vars) (x:var) : base_ucom dim :=
-          match f x with (start, size, avg,g) => QFT_gen start size end.
+Definition trans_qft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
+          QFT_gen f dim x (vsize f x) (vsize f x).
 
-Definition trans_rqft {dim} (f:vars) (x:var) : base_ucom dim :=
-          match f x with (start, size, avg,g) => invert (QFT_gen start size) end.
+Fixpoint controlled_rotations_gen_r (f : vars) (dim:nat) (x:var) (n : nat) (i:nat) : base_ucom dim :=
+  match n with
+  | 0 | 1 => SQIR.ID (find_pos f (x,i))
+  | S m  => SQIR.useq (control (find_pos f (x,m+i)) (SQIR.Rz (rrz_ang n) (find_pos f (x,i))))
+                  (controlled_rotations_gen_r f dim x m i)
+  end.
 
-Fixpoint nH {dim} (start n:nat) : base_ucom dim :=
-     match n with 0 => SQIR.SKIP
-               | S m => SQIR.useq (SQIR.H (start + m)) (nH start m)
+Fixpoint QFT_gen_r (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom dim :=
+  match n with
+  | 0    => SQIR.ID (find_pos f (x,0))
+  | S m => SQIR.useq (controlled_rotations_gen_r f dim x (size-m) m)
+            (SQIR.useq (SQIR.H (find_pos f (x,m))) (QFT_gen_r f dim x m size))
+  end.
+
+Definition trans_rqft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
+          QFT_gen_r f dim x (vsize f x) (vsize f x).
+
+Fixpoint nH (f : vars) (dim:nat) (x:var) (n:nat) : base_ucom dim :=
+     match n with 0 => SQIR.ID (find_pos f (x,0))
+               | S m => SQIR.useq (SQIR.H (find_pos f (x,m))) (nH f dim x m)
      end.
 
-Definition trans_h {dim} (f:vars) (x:var) : base_ucom dim :=
-   match f x with (start, size, t, g) => @nH dim start size end.
-
-(*
-Fixpoint move_bits {dim} (lstart rstart n:nat) : base_ucom dim :=
-   match n with 0 => SQIR.SKIP
-             | S m => SQIR.useq (SQIR.SWAP (lstart + m) (rstart + m)) (move_bits lstart rstart m)
-   end.
-
-Fixpoint move_left' {dim} (n start m : nat) : base_ucom dim :=
-       match n with 0 => SQIR.SKIP
-                 | S i => SQIR.useq (move_bits start (start + m) m) (move_left' i (start+m) m)
-       end.
-
-Definition move_left {dim} (start m size: nat) : base_ucom dim := move_left' (size/m) start m.
-
-Fixpoint move_right' {dim} (n start m : nat) : base_ucom dim :=
-       match n with 0 => SQIR.SKIP
-               | S i => SQIR.useq (move_bits (start - m) start m) (move_right' i (start - m) m)
-       end.
-Definition move_right {dim} (start m size: nat) : base_ucom dim := move_right' (size/m) (start+size) m.
-
-Fixpoint small_move_left' {dim} (start n : nat) : base_ucom dim :=
-   match n with 0 => SQIR.SKIP
-             | S m => SQIR.useq (SQIR.SWAP (start+m) (start+n)) (small_move_left' start m)
-   end.
-
-Fixpoint small_move_left {dim} (start m size: nat) : base_ucom dim :=
-   match size with 0 => SQIR.SKIP
-            | S i => SQIR.useq (small_move_left' start m) (small_move_left (start+1) m i)
-   end.
-
-Fixpoint small_move_right' {dim} (start n : nat) : base_ucom dim :=
-   match n with 0 => SQIR.SKIP
-             | S m => SQIR.useq (small_move_right' start m) (SQIR.SWAP (start+m) (start+n))
-   end.
-
-Fixpoint small_move_right {dim} (start m size: nat) : base_ucom dim :=
-   match size with 0 => SQIR.SKIP
-            | S i => SQIR.useq (small_move_right' start m) (small_move_right (start-1) m i)
-   end.
-
-Definition move_reset {dim} (start offset size : nat) : base_ucom dim :=
-   if offset <? size - offset then SQIR.useq (move_left start offset size)
-                                   (small_move_left (start+(size/offset)*offset) offset (size mod offset))
-      else SQIR.useq (move_right start offset size) (small_move_right (start+size mod offset - 1) offset (size mod offset)).
-
-Definition set_reset_fun (f:vars) (x:var) (start size:nat) (t:varType) :=
-      fun i => if i =? x then (start,size,t,0%nat,id_fun) else f i.
-
-Definition trans_reset {dim} (f:vars) (x:var) : (base_ucom dim * vars) :=
-   match f x with  (start,size,t,offset,g) =>
-            (move_reset start offset (inter_num size t), set_reset_fun f x start size t)
-   end.
-*)
+Definition trans_h (f : vars) (dim:nat) (x:var) : base_ucom dim := nH f dim x (vsize f x).
+        
 
 (*
 Inductive pexp := SExp (s:sexp) | QFT (x:var) | RQFT (x:var)
@@ -7309,9 +7272,9 @@ Inductive pexp := SExp (s:sexp) | QFT (x:var) | RQFT (x:var)
 
 Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
      match exp with SExp s => (trans_sexp vs dim s avs)
-                 | QFT x => (trans_qft vs x, vs, avs)
-                 | RQFT x => (trans_rqft vs x, vs, avs)
-                 | H x => (trans_h vs x, vs, avs)
+                 | QFT x => (trans_qft vs dim x, vs, avs)
+                 | RQFT x => (trans_rqft vs dim x, vs, avs)
+                 | H x => (trans_h vs dim x, vs, avs)
                  | FSeq e1 e2 =>  
                          match trans_pexp vs dim e1 avs with (e1',vs',avs') => 
                              match trans_pexp vs' dim e2 avs' with (e2',vs'',avs'') => 
@@ -7320,6 +7283,32 @@ Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
                             end
      end.
 
+
+Inductive pexp_WF : vars -> nat -> pexp -> Prop :=
+      | qft_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (QFT x)
+      | rqft_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (RQFT x)
+      | h_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (H x)
+      | sexp_wf : forall vs rs e, sexp_WF vs rs e -> pexp_WF vs rs (SExp e)
+      | fseq_wf : forall vs rs e1 e2, pexp_WF vs rs e1 -> pexp_WF vs rs e2 -> pexp_WF vs rs (FSeq e1 e2).
+
+Lemma trans_pexp_sem :
+  forall dim (e:pexp) f env env' rmax vs (avs : nat -> posi),
+    vars_start_diff vs ->
+    vars_finite_bij vs ->
+    vars_sparse vs ->
+    vars_anti_same vs ->
+    pexp_WF vs rmax e ->
+    exp_com_WF vs dim ->
+    exp_com_gt vs avs dim ->
+    well_typed_pexp (size_env vs) env e env' ->
+    right_mode_env (size_env vs) env f ->
+    avs_prop vs avs dim ->
+    dim > 0 ->
+    (uc_eval (fst (fst (trans_pexp vs dim e avs)))) × (vkron dim (trans_state avs rmax f)) 
+         = vkron dim (trans_state (snd (trans_pexp vs dim e avs)) rmax (prog_sem (size_env vs) e f)).
+Proof.
+  intros dim e. induction e; intros; simpl.
+Admitted.
 
 (* Definition of the adder and the modmult in the language. *)
 Definition CNOT (x y : posi) := CU x (X y).
@@ -7360,8 +7349,8 @@ Qed.
 
 
 (* Proofs of semantics. *)
-Lemma cnot_sem : forall env f x y, nor_mode f x -> nor_mode f y -> 
-              exp_sem env (CNOT x y) f = (f[y |-> put_cu (f y) (get_cua (f x) ⊕ get_cua (f y))]).
+Lemma cnot_sem : forall f x y, nor_mode f x -> nor_mode f y -> 
+              exp_sem (CNOT x y) f = (f[y |-> put_cu (f y) (get_cua (f x) ⊕ get_cua (f y))]).
 Proof.
  intros.
  unfold CNOT.
@@ -7400,24 +7389,24 @@ Proof.
  rewrite eq2 in H1. inv H1.
 Qed.
 
-Lemma cnot_nor : forall env f x y v, nor_mode f x -> nor_mode f y -> 
+Lemma cnot_nor : forall f x y v, nor_mode f x -> nor_mode f y -> 
           put_cu (f y) (get_cua (f x) ⊕ get_cua (f y)) = v
-           -> exp_sem env (CNOT x y) f = (f[y |-> v]).
+           -> exp_sem (CNOT x y) f = (f[y |-> v]).
 Proof.
   intros. subst. apply cnot_sem; assumption.
 Qed.
 
-Lemma cnot_nor_1 : forall env f f' x y v, nor_mode f x -> nor_mode f y -> 
+Lemma cnot_nor_1 : forall f f' x y v, nor_mode f x -> nor_mode f y -> 
           put_cu (f y) (get_cua (f x) ⊕ get_cua (f y)) = v
            -> f[y|-> v] = f'
-           -> exp_sem env (CNOT x y) f = f'.
+           -> exp_sem (CNOT x y) f = f'.
 Proof.
   intros. subst. apply cnot_sem; assumption.
 Qed.
 
-Lemma ccx_sem : forall env f x y z, nor_mode f x -> nor_mode f y -> nor_mode f z
+Lemma ccx_sem : forall f x y z, nor_mode f x -> nor_mode f y -> nor_mode f z
                      -> x <> y -> y <> z -> x <> z -> 
-                    exp_sem env (CCX x y z) f = (f[z |-> put_cu (f z) (get_cua (f z) ⊕ (get_cua (f y) && get_cua (f x)))]).
+                    exp_sem (CCX x y z) f = (f[z |-> put_cu (f z) (get_cua (f z) ⊕ (get_cua (f y) && get_cua (f x)))]).
 Proof.
  intros. 
  assert (eq1 := H0).
@@ -7440,56 +7429,44 @@ Proof.
  rewrite put_get_cu. rewrite eupdate_same. easy. easy. assumption.
 Qed.
 
-Lemma ccx_nor : forall env f f' x y z v, nor_mode f x -> nor_mode f y -> nor_mode f z
+Lemma ccx_nor : forall f f' x y z v, nor_mode f x -> nor_mode f y -> nor_mode f z
                      -> x <> y -> y <> z -> x <> z -> 
                        put_cu (f z) (get_cua (f z) ⊕ (get_cua (f y) && get_cua (f x))) = v ->
                        f = f' ->
-                    exp_sem env (CCX x y z) f = (f'[z |-> v]).
+                    exp_sem (CCX x y z) f = (f'[z |-> v]).
 Proof.
  intros. subst. apply ccx_sem. 1 - 6: assumption. 
 Qed.
 
-Lemma cnot_well_typed : forall f tenv x y, nor_mode f x -> nor_mode f y 
-            -> right_mode_exp tenv f (CNOT x y) -> well_typed_exp tenv (CNOT x y).
-Proof.
-  intros.
-  unfold CNOT.
-  inv H2. unfold nor_mode in *. inv H8.
-  rewrite <- H4 in *.
-  constructor. easy. inv H9. inv H8. rewrite <- H7 in *.
-  constructor. easy.
-  rewrite <- H2 in *. lia. 
-  rewrite <- H7 in *. lia.
-  rewrite <- H2 in *. lia. 
-  rewrite <- H4 in *. lia. 
-Qed.
-
-Lemma ccx_well_typed : forall f tenv x y z, nor_mode f x -> nor_mode f y -> nor_mode f z
-            -> right_mode_exp tenv f (CCX x y z) -> well_typed_exp tenv (CCX x y z).
-Proof.
-  intros.
-  unfold CCX in *.
-  inv H3. unfold nor_mode in H0. inv H9.
-  rewrite <- H5 in *.
-  constructor. easy. eapply cnot_well_typed. apply H1. apply H2.
-  easy. rewrite <- H3 in *. lia.
-  rewrite <- H5 in *. lia.
-Qed.
-
-Lemma swap_well_typed : forall f tenv x y, nor_mode f x -> nor_mode f y 
-            -> right_mode_exp tenv f (SWAP x y) -> well_typed_exp tenv (SWAP x y).
-Proof.
-  intros.
-  unfold SWAP in *.
-  bdestruct (x ==? y). constructor.
-  inv H2. inv H8. constructor. constructor.
-  eapply cnot_well_typed. apply H0. apply H1. easy.
-  eapply cnot_well_typed. apply H1. apply H0. easy.
-  eapply cnot_well_typed. apply H0. apply H1. easy.
-Qed.
-
 Local Opaque CNOT. Local Opaque CCX.
 
+(* modmult adder based on QFT. *)
+Fixpoint rz_adder (x:var) (n:nat) (M: nat -> bool) :=
+    match n with 0 => (SKIP (x,0))
+               | S m => (if M m then SR m x else SKIP (x,m)) ; rz_adder x m M
+    end.
+
+Definition one_cu_adder (x:var) (n:nat) (c3:posi) (M:nat -> bool) := CU c3 (rz_adder x n M).
+
+(* assuming the input is in qft stage. *)
+Definition rz_modadder (x:var) (n:nat) (y c: posi) (a:nat -> bool) (N:nat -> bool) :=
+    (SExp (Exp (one_cu_adder x n y a ; rz_adder x n N))) ;;; RQFT x ;;; (SExp (Exp (CNOT (x,n-1) c))) ;;; QFT x
+          ;;; (SExp (Exp (one_cu_adder x n c N ; one_cu_adder x n y a)));;;
+     RQFT x ;;; (SExp (Exp (X (x,n-1) ; CNOT (x,n-1) c; X (x,n-1))));;; QFT x;;; SExp (Exp (one_cu_adder x n y a)).
+
+(* Mod adder. [x][0] -> [x][ax%N] having the a and N as constant. *)
+Fixpoint rz_modmult' (y:var) (x:var) (n:nat) (size:nat) (c:posi) (a:nat -> bool) (N:nat -> bool) :=
+     match n with 0 => SExp (Exp (SKIP (x,0)))
+               | S m => rz_modadder x size (y,m) c a N ;;; rz_modmult' y x m size c a N
+     end.
+Definition rz_modmult_half (y:var) (x:var) (n:nat) (c:posi) (a:nat -> bool) (N:nat -> bool) :=
+                 QFT x ;;; rz_modmult' y x n n c a N ;;; RQFT x.
+
+Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (C:nat -> bool) (Cinv : nat -> bool) (N:nat -> bool) :=
+                 rz_modmult_half y x n c C N ;;; inv_pexp (rz_modmult_half y x n c Cinv N).
+
+
+(* modmult adder based on classical circuits. *)
 Definition MAJ a b c := CNOT c b ; CNOT c a ; CCX a b c.
 Definition UMA a b c := CCX a b c ; CNOT c a ; CNOT a b.
 
@@ -7504,6 +7481,7 @@ Proof.
   apply ccx_fwf; easy. 
 Qed.
 
+(*
 Lemma maj_well_typed : forall f tenv x y z, nor_mode f x -> nor_mode f y -> nor_mode f z
             -> right_mode_exp tenv f (MAJ x y z) -> well_typed_exp tenv (MAJ x y z).
 Proof.
@@ -7514,6 +7492,7 @@ Proof.
   eapply cnot_well_typed. apply H2. easy. easy.
   eapply ccx_well_typed. apply H0. easy. easy. easy.
 Qed.
+*)
 
 Lemma uma_fwf : forall x y z, x <> y -> y <> z -> z <> x -> exp_fwf (UMA x y z).
 Proof.
@@ -7526,28 +7505,17 @@ Proof.
   apply cnot_fwf. easy.
 Qed.
 
-Lemma uma_well_typed : forall f tenv x y z, nor_mode f x -> nor_mode f y -> nor_mode f z
-            -> right_mode_exp tenv f (UMA x y z) -> well_typed_exp tenv (UMA x y z).
-Proof.
-  intros.
-  unfold UMA in *. inv H3. inv H8.
-  constructor. constructor.
-  eapply ccx_well_typed. apply H0. easy. easy. easy.
-  eapply cnot_well_typed. apply H2. easy. easy.
-  eapply cnot_well_typed. apply H0. easy. easy.
-Qed.
-
 Lemma MAJ_correct :
-  forall a b c env f,
+  forall a b c f,
     nor_mode f a -> nor_mode f b -> nor_mode f c ->
     a <> b -> b <> c -> a <> c ->
-    exp_sem env (MAJ c b a) f = (((f[a |-> put_cu (f a) (majb (get_cua (f a)) (get_cua (f b)) (get_cua (f c)))])
+    exp_sem (MAJ c b a) f = (((f[a |-> put_cu (f a) (majb (get_cua (f a)) (get_cua (f b)) (get_cua (f c)))])
                               [b |-> put_cu (f b) (get_cua (f b) ⊕ get_cua (f a))])
                               [c |-> put_cu (f c) (get_cua (f c) ⊕ (get_cua (f a)))]).
 (*Admitted. 
 (* The following proof works, but too slow. Admitted when debugging. *)*)
 Proof.
-  intros ? ? ? ? ? HNa HNb HNc Hab' Hbc' Hac'.
+  intros ? ? ? ? HNa HNb HNc Hab' Hbc' Hac'.
   unfold MAJ.
   simpl.
   rewrite cnot_sem.
@@ -7610,29 +7578,13 @@ Proof.
   apply nor_mode_up ; nor_sym.
 Qed.
 
-(*
-Lemma MAJ_nor : 
-  forall a b c env f f',
-    nor_mode f a -> nor_mode f b -> nor_mode f c ->
-    a <> b -> b <> c -> a <> c -> f' = (((f[a |-> put_cu (f a) (majb (get_cua (f a)) (get_cua (f b)) (get_cua (f c)))])
-                              [b |-> put_cu (f b) (get_cua (f b) ⊕ get_cua (f a))])
-                              [c |-> put_cu (f c) (get_cua (f c) ⊕ (get_cua (f a)))]) ->
-    exp_sem env f (MAJ c b a) f'.
-(*Admitted. 
-(* The following proof works, but too slow. Admitted when debugging. *)*)
-Proof.
-  intros. subst. apply MAJ_correct.
-  1-6:assumption.
-Qed.
-*)
-
 Lemma UMA_correct_partial :
-  forall a b c env f' fa fb fc,
+  forall a b c f' fa fb fc,
     nor_mode f' a -> nor_mode f' b -> nor_mode f' c ->
     a <> b -> b <> c -> a <> c ->
     get_cua (f' a) = majb fa fb fc ->
     get_cua (f' b) = (fb ⊕ fa) -> get_cua (f' c) = (fc ⊕ fa) ->
-    exp_sem env (UMA c b a) f' = (((f'[a |-> put_cu (f' a) fa])
+    exp_sem (UMA c b a) f' = (((f'[a |-> put_cu (f' a) fa])
                   [b |-> put_cu (f' b) (fa ⊕ fb ⊕ fc)])[c |-> put_cu (f' c) fc]).
 (* Admitted.
 (* The following proof works, but too slow. Admitted when debugging. *) *)
@@ -7706,22 +7658,6 @@ Qed.
 
 Local Transparent CNOT. Local Transparent CCX.
 
-(*
-Lemma UMA_nor :
-  forall a b c env f' f'' fa fb fc,
-    nor_mode f' a -> nor_mode f' b -> nor_mode f' c ->
-    a <> b -> b <> c -> a <> c ->
-    get_cua (f' a) = majb fa fb fc ->
-    get_cua (f' b) = (fb ⊕ fa) -> get_cua (f' c) = (fc ⊕ fa) ->
-    f'' = (((f'[a |-> put_cu (f' a) fa])
-                  [b |-> put_cu (f' b) (fa ⊕ fb ⊕ fc)])[c |-> put_cu (f' c) fc]) ->
-    exp_sem env f' (UMA c b a) f''.
-Proof.
- intros. subst. apply UMA_correct_partial.
- 1 - 9 : assumption.
-Qed.
-*)
-
 (* The following defines n-bits MAJ and UMA circuit. 
    Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
 Fixpoint MAJseq' n x y c : exp :=
@@ -7752,25 +7688,6 @@ Proof.
   apply majseq'_fwf; assumption.
 Qed.
 
-Lemma majseq'_well_typed : forall m n tenv f x y c, m < n -> nor_modes f x n -> nor_modes f y n -> nor_mode f c
-            -> right_mode_exp tenv f (MAJseq' m x y c)  -> well_typed_exp tenv (MAJseq' m x y c).
-Proof.
-  intros.
-  induction m; simpl.
-  eapply maj_well_typed. apply H3. apply H2. lia. apply H1. lia.
-  simpl in H4. easy.
-  simpl in H4. inv H4.
-  constructor. apply IHm. lia. easy.
-  eapply maj_well_typed. apply H1. lia. apply H2. lia. apply H1. lia. easy.
-Qed.
-
-Lemma majseq_well_typed : forall n tenv f x y c, 0 < n -> nor_modes f x n -> nor_modes f y n -> nor_mode f c
-            -> right_mode_exp tenv f (MAJseq n x y c)  -> well_typed_exp tenv (MAJseq n x y c).
-Proof.
-  intros. unfold MAJseq in *.
-  apply (majseq'_well_typed (n-1) n tenv f); try assumption. lia.
-Qed.
-
 Fixpoint UMAseq' n x y c : exp :=
   match n with
   | 0 => UMA c (y,0) (x,0)
@@ -7798,6 +7715,7 @@ Proof.
   apply umaseq'_fwf; assumption.
 Qed.
 
+(*
 Lemma umaseq'_well_typed : forall m n tenv f x y c, m < n -> nor_modes f x n -> nor_modes f y n -> nor_mode f c
             -> right_mode_exp tenv f (UMAseq' m x y c)  -> well_typed_exp tenv (UMAseq' m x y c).
 Proof.
@@ -7817,7 +7735,7 @@ Proof.
   intros. unfold UMAseq in *.
   apply (umaseq'_well_typed (n-1) n tenv f); try assumption. lia.
 Qed.
-
+*)
 
 Definition adder01 n x y c: exp := MAJseq n x y c; UMAseq n x y c.
 
@@ -7829,14 +7747,6 @@ Proof.
   apply umaseq_fwf; assumption.
 Qed.
 
-Lemma adder_well_typed : forall tenv f n x y c,
-       0 < n -> nor_modes f x n -> nor_modes f y n -> nor_mode f c -> 
-       right_mode_exp tenv f (adder01 n x y c) -> well_typed_exp tenv (adder01 n x y c).
-Proof.
-  intros. unfold adder01 in *. inv H4. constructor.
-  apply majseq_well_typed with (f:=f); try assumption.
-  apply umaseq_well_typed with (f:=f); try assumption.
-Qed.
 
 Lemma msm_eq1 :
   forall n i c f g,
@@ -8005,15 +7915,13 @@ Proof.
   apply iner_neq. lia.
 Qed.
 
-Local Opaque MAJ.
-
-Local Opaque UMA.
+Local Opaque MAJ. Local Opaque UMA.
 
 Lemma MAJseq'_correct :
-  forall i n env S x y c,
+  forall i n S x y c,
     0 < n -> i < n -> nor_modes S x n -> nor_modes S y n -> nor_mode S c ->
     x <> y -> x <> fst c -> y <> fst c ->
-    exp_sem env (MAJseq' i x y c) S = 
+    exp_sem (MAJseq' i x y c) S = 
      (put_cus 
         (put_cus (S[c |-> put_cu (S c) (get_cua (S c) ⊕ get_cua (S (x,0)))])
                    x (msma i (get_cua (S c)) (get_cus n S x) (get_cus n S y)) n)
@@ -8218,10 +8126,10 @@ Qed.
 Local Transparent carry.
 
 Lemma UMAseq'_correct :
-  forall i n env S x y c,
+  forall i n S x y c,
     0 < n -> i < n -> nor_modes S x n -> nor_modes S y n -> nor_mode S c ->
     x <> y -> x <> fst c -> y <> fst c ->
-    exp_sem env (UMAseq' i x y c) (put_cus 
+    exp_sem (UMAseq' i x y c) (put_cus 
         (put_cus (S[c |-> put_cu (S c) (get_cua (S c) ⊕ get_cua (S (x,0)))])
                    x (msma i (get_cua (S c)) (get_cus n S x) (get_cus n S y)) n)
           y (msmc i (get_cua (S c)) (get_cus n S x) (get_cus n S y)) n) = 
@@ -8363,7 +8271,7 @@ Proof.
     rewrite put_cus_eq by lia.
     rewrite put_cu_twice_eq.
     rewrite eupdate_index_neq.
-    rewrite <- (IHi n env0).
+    rewrite <- (IHi n).
     assert (((((put_cus
         (put_cus
            (S [c |-> put_cu (S c) (get_cua (S c) ⊕ get_cua (S (x, 0)))]) x
@@ -8527,10 +8435,10 @@ Qed.
 
 (* adder correctness proofs. *)
 Lemma adder01_correct_fb :
-  forall n env S x y c,
+  forall n S x y c,
     0 < n -> nor_modes S x n -> nor_modes S y n -> nor_mode S c ->
     x <> y -> x <> fst c -> y <> fst c ->
-    exp_sem env (adder01 n x y c) S = (put_cus S y (sumfb (get_cua (S c)) (get_cus n S x) (get_cus n S y)) n).
+    exp_sem (adder01 n x y c) S = (put_cus S y (sumfb (get_cua (S c)) (get_cus n S x) (get_cus n S y)) n).
 Proof.
   intros. unfold adder01. unfold MAJseq, UMAseq.
   simpl.
@@ -8649,13 +8557,13 @@ Qed.
 (* The following two lemmas show the correctness of the adder implementation based on MAJ;UMA circuit. 
    The usage of the adder is based on the carry0 lemma. *)
 Lemma adder01_correct_carry0 :
-  forall n env (S S' S'' : posi -> val) x y c v1 v2,
+  forall n (S S' S'' : posi -> val) x y c v1 v2,
     0 < n -> nor_modes S x n -> nor_modes S y n -> nor_mode S c ->
     x <> y -> x <> fst c -> y <> fst c ->
     v1 < 2^n -> v2 < 2^n ->
     S' = reg_push (reg_push (S[c |-> put_cu (S c) false]) x v1 n) y v2 n ->
     S'' = reg_push (reg_push (S[c |-> put_cu (S c) false]) x v1 n) y (v1+v2) n ->
-    exp_sem env (adder01 n x y c) S' = S''.
+    exp_sem (adder01 n x y c) S' = S''.
 Proof.
   intros. unfold reg_push in *. rewrite adder01_correct_fb; try assumption.
   subst. destruct c. simpl in *. rewrite cus_get_neq by lia.
@@ -8684,13 +8592,13 @@ Proof.
 Qed.
 
 Lemma adder01_correct_carry1 :
-  forall n env (S S' S'' : posi -> val) x y c v1 v2,
+  forall n (S S' S'' : posi -> val) x y c v1 v2,
     0 < n -> nor_modes S x n -> nor_modes S y n -> nor_mode S c ->
     x <> y -> x <> fst c -> y <> fst c ->
     v1 < 2^n -> v2 < 2^n ->
     S' = reg_push (reg_push (S[c |-> put_cu (S c) true]) x v1 n) y v2 n ->
     S'' = reg_push (reg_push (S[c |-> put_cu (S c) true]) x v1 n) y (v1+v2+1) n ->
-    exp_sem env (adder01 n x y c) S'  = S''.
+    exp_sem (adder01 n x y c) S'  = S''.
 Proof.
   intros. unfold reg_push in *. rewrite adder01_correct_fb; try assumption.
   subst. destruct c. simpl in *. rewrite cus_get_neq by lia.
@@ -8736,20 +8644,6 @@ Proof.
   constructor. constructor. easy. constructor.
 Qed.
 
-Lemma negator0_well_typed : forall tenv f n x, nor_modes f x n ->
-       right_mode_exp tenv f (negator0 n x) -> well_typed_exp tenv (negator0 n x).
-Proof.
-  intros. induction n;simpl. constructor.
-  simpl in H1. inv H1. constructor.
-  apply IHn. 
-  unfold nor_modes. intros. apply H0. lia. easy.
-  constructor. inv H7. 
-  specialize (H0 n). unfold nor_mode in H0.
-  assert ((@pair var nat x n) = (@pair Env.key nat x n)). easy.
-  rewrite H1 in *. inv H8. rewrite <- H4 in *. easy.
-  rewrite <- H2 in *. lia.
-  rewrite <- H4 in *. lia.
-Qed.
 
 Lemma negatem_put_get : forall i n f x, S i <= n ->
        put_cus f x (negatem (S i) (get_cus n f x)) n =
@@ -8788,11 +8682,11 @@ Proof.
 Qed.
 
 Lemma negator0_correct :
-  forall i n env f x,
+  forall i n f x,
     0 < n ->
     i <= n ->
     nor_modes f x n ->
-    exp_sem env (negator0 i x) f = (put_cus f x (negatem i (get_cus n f x)) n).
+    exp_sem (negator0 i x) f = (put_cus f x (negatem i (get_cus n f x)) n).
 Proof.
  induction i; intros.
  simpl.
@@ -8833,10 +8727,10 @@ Qed.
 (* The correctness represents the actual effect of flip all bits for the number x.
    The effect is to make the x number positions to store the value  2^n - 1 - x. *)
 Lemma negator0_sem :
-  forall n env x v f,
+  forall n x v f,
     0 < n ->
     v < 2^n -> nor_modes f x n ->
-    exp_sem env (negator0 n x) (reg_push f x v n) = reg_push f x (2^n - 1 - v) n.
+    exp_sem (negator0 n x) (reg_push f x v n) = reg_push f x (2^n - 1 - v) n.
 Proof.
   intros. unfold reg_push in *.
   rewrite (negator0_correct n n); try assumption.
@@ -8879,47 +8773,6 @@ Proof.
   apply majseq_fwf; try assumption.
 Qed.
 
-Lemma highbit_well_typed : forall tenv f n x c2, 0 < n -> nor_modes f x n -> nor_mode f c2
-             -> right_mode_exp tenv f (highbit n x c2) -> well_typed_exp tenv (highbit n x c2).
-Proof.
- intros. inv H3. inv H8.  inv H7. repeat constructor.
- unfold nor_modes in H1. specialize (H1 (n-1)). assert (n - 1 < n) by lia.
- specialize (H1 H3).
- assert (f (@pair var nat x (Init.Nat.sub n (S O))) = (f (@pair Env.key nat x (Init.Nat.sub n (S O))))) by easy.
- inv H9.
- unfold nor_mode in H1. 
- rewrite H4 in *. inv H14. easy.
- rewrite <- H5 in H1. lia. rewrite <- H7 in H1. lia.
- inv H10. unfold nor_mode in H2.
- inv H7. constructor. easy.
- rewrite <- H3 in H2. lia. rewrite <- H6 in H2. easy.
- eapply cnot_well_typed. apply H1. lia. easy. easy.
- unfold nor_mode in H2.
- inv H10. constructor. inv H7. easy.
- rewrite <- H3 in H2. lia. rewrite <- H6 in H2. easy.
- unfold nor_modes in H1.
- assert (n - 1 < n) by lia.
- specialize (H1 (n-1) H3).
- unfold nor_mode in H1.
- assert (f (@pair var nat x (Init.Nat.sub n (S O))) = (f (@pair Env.key nat x (Init.Nat.sub n (S O))))) by easy.
- rewrite H4 in *.
- inv H9. inv H14. easy.
- rewrite <- H5 in H1. easy. 
- rewrite <- H7 in H1. easy. 
-Qed.
-
-Lemma highb01_well_typed : forall tenv f n x y c1 c2, 0 < n -> nor_modes f x n -> nor_modes f y n
-      -> nor_mode f c1 -> nor_mode f c2 ->
-       right_mode_exp tenv f (highb01 n x y c1 c2) -> well_typed_exp tenv (highb01 n x y c1 c2).
-Proof.
-  intros. inv H5. inv H10.
-  constructor.  constructor.
-  apply majseq_well_typed with (f:=f); try assumption.
-  apply highbit_well_typed with (f:=f); try assumption.
-  apply typed_inv_exp.
-  apply majseq_well_typed with (f:=f); try assumption.
-Qed.
-
 Lemma get_cus_up : forall n f x c v, fst c <> x -> get_cus n (f[c |-> v]) x = get_cus n f x.
 Proof.
   intros.
@@ -8929,12 +8782,12 @@ Proof.
   easy. easy.
 Qed.
 
-Lemma exp_sem_seq : forall env e1 e2 f, exp_sem env (e1 ; e2) f = exp_sem env e2 (exp_sem env e1 f).
+Lemma exp_sem_seq : forall e1 e2 f, exp_sem (e1 ; e2) f = exp_sem e2 (exp_sem e1 f).
 Proof.
 intros. simpl. easy.
 Qed.
 
-Lemma exp_sem_x : forall env p f, exp_sem env (X p) f = (f[p |-> exchange (f p)]).
+Lemma exp_sem_x : forall p f, exp_sem (X p) f = (f[p |-> exchange (f p)]).
 Proof.
 intros. simpl. easy.
 Qed.
@@ -8946,9 +8799,9 @@ Proof.
 Qed.
 
 Lemma highbit_correct :
-  forall n env f x c2,
+  forall n f x c2,
     0 < n -> fst c2 <> x -> nor_mode f c2 -> nor_modes f x n -> get_cua (f c2) = false ->
-    exp_sem env (highbit n x c2) f = f[c2 |-> put_cu (f c2) ((majb true false (get_cus n f x (n-1))) ⊕ true)].
+    exp_sem (highbit n x c2) f = f[c2 |-> put_cu (f c2) ((majb true false (get_cus n f x (n-1))) ⊕ true)].
 Proof.
  intros. unfold highbit. repeat rewrite exp_sem_seq.
  rewrite exp_sem_x with (f:=f). rewrite exp_sem_x with (f := (f [(x, n - 1) |-> exchange (f (x, n - 1))])).
@@ -9004,14 +8857,14 @@ Qed.
 Local Opaque highbit.
 
 Lemma highb01_correct :
-  forall n tenv env f x y c1 c2,
+  forall n aenv tenv f x y c1 c2,
     0 < n -> no_equal x y c1 c2 ->
     nor_mode f c2 -> nor_mode f c1 -> nor_modes f x n -> nor_modes f y n -> 
-    get_cua (f c2) = false -> right_mode_exp tenv f (MAJseq n x y c1) ->
-    exp_sem env (highb01 n x y c1 c2) f =
+    get_cua (f c2) = false -> well_typed_exp tenv (MAJseq n x y c1) -> right_mode_env aenv tenv f ->
+    exp_sem (highb01 n x y c1 c2) f =
       f[c2 |-> put_cu (f c2) ((majb true false (carry (get_cua (f c1)) n (get_cus n f x) (get_cus n f y))) ⊕ true)].
 Proof.
-  intros. specialize (majseq_well_typed n tenv f x y c1 H0 H4 H5 H3 H7) as H8.
+  intros.
   unfold highb01. unfold no_equal in H1.
   destruct H1 as [V1 [V2 [V3 [V4 [V5 V6]]]]].
   destruct c1. destruct c2.
@@ -9023,8 +8876,8 @@ Proof.
   rewrite cus_get_eq; try lia.
   rewrite eupdate_index_neq by iner_p.
   erewrite inv_exp_reverse. easy.
-  apply majseq'_fwf ; try easy. apply H8.
-  apply right_mode_exp_up_same. apply H7.
+  apply majseq'_fwf ; try easy. apply H7.
+  apply right_mode_exp_up_same. apply H8.
   rewrite (MAJseq'_correct (n-1) n); (try easy; try lia).
   repeat rewrite eupdate_index_neq by iner_p.
   repeat rewrite get_cus_up by iner_p.
@@ -9064,11 +8917,11 @@ Local Opaque highb01.
 Definition comparator01 n x y c1 c2 := (X c1; negator0 n x); highb01 n x y c1 c2; inv_exp (X c1; negator0 n x).
 
 Lemma negations_aux :
-  forall env n x c v S v' r,
+  forall n x c v S v' r,
     0 < n -> fst c <> x ->
     v < 2^n ->
     v' = nval false r -> nor_modes S x n ->
-    exp_sem env (X c; negator0 n x) (reg_push (S[c |-> v']) x v n) 
+    exp_sem (X c; negator0 n x) (reg_push (S[c |-> v']) x v n) 
            = (reg_push (S[c |-> nval true r]) x (2^n - 1 - v) n).
 Proof.
   intros; subst. simpl.
@@ -9277,43 +9130,17 @@ Proof.
   constructor. constructor. apply negator0_fwf. 
 Qed.
 
-Lemma comparator01_well_typed : forall tenv f n x y c1 c2, 0 < n -> nor_modes f x n -> nor_modes f y n -> 
-           nor_mode f c1 -> nor_mode f c2 -> right_mode_exp tenv f (comparator01 n x y c1 c2) 
-          -> well_typed_exp tenv (comparator01 n x y c1 c2).
-Proof.
- intros. unfold comparator01 in *.
- inv H5. inv H10. inv H11.
- constructor. constructor. constructor.
- inv H13. constructor.
- unfold nor_mode in H3. inv H11.
- rewrite <- H8 in H3. easy. 
- rewrite <- H5 in H3. lia.
- rewrite <- H8 in H3. lia.
- inv H9.
- apply negator0_well_typed with (f:=f). easy. easy.
- apply highb01_well_typed with (f:=f); try easy.
- simpl. constructor.
- apply typed_inv_exp.
- inv H9. 
- apply negator0_well_typed with (f:=f). easy. easy.
- inv H13. constructor.
- unfold nor_mode in H3. inv H11.
- rewrite <- H8 in H3. easy. 
- rewrite <- H5 in H3. lia.
- rewrite <- H8 in H3. lia.
-Qed.
-
 Lemma comparator01_correct :
-  forall tenv env n x y c1 c2 v1 v2 f f' f'',
+  forall tenv aenv n x y c1 c2 v1 v2 f f' f'',
     0 < n -> 
     v1 < 2^n -> v2 < 2^n -> no_equal x y c1 c2 ->
-    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> nor_mode f c2 -> right_mode_exp tenv f (MAJseq n x y c1) ->
-    right_mode_exp tenv f (X c1) -> right_mode_exp tenv f (negator0 n x) ->
+    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> nor_mode f c2 -> well_typed_exp tenv (MAJseq n x y c1) ->
+    well_typed_exp tenv (X c1) -> well_typed_exp tenv (negator0 n x) -> right_mode_env aenv tenv f ->
     f' = reg_push (reg_push ((f[c1 |-> put_cu (f c1) false])[c2 |-> put_cu (f c2) false]) x v1 n) y v2 n ->
     f'' = reg_push (reg_push ((f[c1 |-> put_cu (f c1) false])[c2 |-> put_cu (f c2) (¬(v1 <=? v2))]) x v1 n) y v2 n ->
-    exp_sem env (comparator01 n x y c1 c2) f' = f''.
+    exp_sem (comparator01 n x y c1 c2) f' = f''.
 Proof.
-  intros. specialize (majseq_well_typed n tenv f x y c1 H0 H4 H5 H6 H8) as eq1.
+  intros.
   unfold comparator01. remember ((X c1; negator0 n x)) as negations. simpl. subst.
   unfold no_equal in *.
   destruct H3 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
@@ -9326,7 +9153,7 @@ Proof.
   destruct H3. destruct H3.
   rewrite negations_aux with (r := x1); try easy.
   unfold reg_push.
-  rewrite highb01_correct with (tenv := tenv); try easy.
+  rewrite highb01_correct with (tenv := tenv) (aenv := aenv); try easy.
   assert (put_cus
   (put_cus
      ((f [(v, n0) |-> put_cu (f (v, n0)) false]) [
@@ -9340,23 +9167,17 @@ Proof.
   rewrite eupdate_twice_neq by iner_p.
   rewrite put_cus_twice_neq by lia. 
   rewrite put_cus_update_flip by iner_p. easy. 
-  rewrite H11. clear H11.
+  rewrite H12. clear H12.
   erewrite inv_exp_reverse. easy.
   constructor. constructor. apply negator0_fwf.
-  constructor. inv H9. constructor. inv H16. apply H15.
-  assert ((@pair var nat v n0) = (@pair Env.key nat v n0)). easy.
-  rewrite H11 in H6. unfold nor_mode in H6. rewrite <- H9 in H6. lia.
-  assert ((@pair var nat v n0) = (@pair Env.key nat v n0)). easy.
-  rewrite H9 in H6. unfold nor_mode in H6. rewrite <- H12 in H6. lia.
-  apply negator0_well_typed with (f := f). apply H4. easy.
+  constructor. apply H9. easy. 
   unfold reg_push.
   apply right_mode_exp_put_cus_same.
   apply right_mode_exp_up_same_1 ; try easy.
   apply nor_mode_cus_eq.
   apply nor_mode_up. iner_p. easy.
   apply right_mode_exp_put_cus_same.
-  apply right_mode_exp_up_same.
-  constructor. easy. apply H10.
+  apply right_mode_exp_up_same. apply H11.
   Check negations_aux.
   rewrite negations_aux with (r := x1); try easy.
   repeat rewrite cus_get_neq by iner_p.
@@ -9366,16 +9187,16 @@ Proof.
   rewrite <- put_cus_update_flip with (f := (f [(v0, n1) |-> put_cu (f (v0, n1)) false])).
   rewrite get_cus_put_eq; try lia.
   assert ((get_cua (nval true x1)) = true). unfold get_cua. easy.
-  rewrite H11.
+  rewrite H12.
   rewrite majb_carry_s_eq.
   specialize (carry_leb_equiv (n+1) v1 v2) as eq2.
   assert (n+1 -1 = n) by lia.
-  rewrite H12 in eq2. clear H12.
+  rewrite H13 in eq2. clear H13.
   assert ((n + 1) = S n) by lia.
-  rewrite H12 in eq2. clear H12. 
+  rewrite H13 in eq2. clear H13. 
   rewrite Nat.pow_succ_r in eq2.
   assert (2 * 2 ^ n - 1 - v1 = 2 ^ n - 1 - v1 + 2 ^ n) by lia.
-  rewrite H12 in eq2. rewrite eq2.
+  rewrite H13 in eq2. rewrite eq2.
   rewrite put_cu_cus.
   rewrite put_cu_cus.
   rewrite eupdate_index_neq by iner_p.
@@ -9419,7 +9240,7 @@ Proof.
   rewrite get_put_cu. easy. apply H7.
   apply right_mode_exp_put_cus_same.
   assert (nval true x1 = put_cu (f (v,n0)) true).
-  rewrite H3. easy. rewrite H11.
+  rewrite H3. easy. rewrite H12.
   apply right_mode_exp_up_same_1.
   apply nor_mode_cus_eq. apply nor_mode_up; iner_p. easy.
   apply right_mode_exp_put_cus_same.
@@ -9438,17 +9259,17 @@ Definition subtractor01 n x y c1:= (X c1; negator0 n x); adder01 n x y c1; inv_e
 
 (* The correctness proof of the subtractor. *)
 Lemma subtractor01_correct :
-  forall tenv env n x y c1 v1 v2 f f' f'',
+  forall tenv aenv n x y c1 v1 v2 f f' f'',
     0 < n ->
     v1 < 2^n ->
     v2 < 2^n ->     x <> y -> x <> fst c1 -> y <> fst c1 ->
-    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> right_mode_exp tenv f (MAJseq n x y c1) ->
-    right_mode_exp tenv f (X c1) -> right_mode_exp tenv f (negator0 n x) ->
+    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> well_typed_exp tenv (MAJseq n x y c1) ->
+    well_typed_exp tenv (X c1) -> well_typed_exp tenv (negator0 n x) -> right_mode_env aenv tenv f ->
     f' = reg_push (reg_push (f[c1 |-> put_cu (f c1) false]) x v1 n) y v2 n ->
     f'' = reg_push (reg_push (f[c1 |-> put_cu (f c1) false]) x v1 n) y (v2 + 2^n - v1) n ->
-    exp_sem env (subtractor01 n x y c1) f' = f''.
+    exp_sem (subtractor01 n x y c1) f' = f''.
 Proof.
-  intros. specialize (majseq_well_typed n tenv f x y c1 H0 H6 H7 H8 H9) as eq1.
+  intros.
   unfold subtractor01. remember (X c1; negator0 n x) as negations. simpl. subst.
   rewrite reg_push_twice_neq by iner_p.
   rewrite reg_push_update_flip by iner_p.
@@ -9457,7 +9278,7 @@ Proof.
   rewrite <- reg_push_update_flip by iner_p.
   rewrite reg_push_twice_neq by iner_p.
   assert (nval true r = put_cu (f c1) true).
-  rewrite eq2. easy. rewrite H12. 
+  rewrite eq2. easy. rewrite H13. 
   Check adder01_correct_carry1.
   rewrite adder01_correct_carry1 with (S0 := f) (v1 := (2 ^ n - 1 - v1)) (v2:=v2)
        (S'' := reg_push (reg_push (f [c1 |-> put_cu (f c1) true])
@@ -9466,21 +9287,18 @@ Proof.
   rewrite reg_push_update_flip by iner_p.
   erewrite inv_exp_reverse. unfold put_cu. easy.
   constructor. constructor. apply negator0_fwf.
-  constructor. inv H10. constructor. inv H17. apply H14.
-  unfold nor_mode in H8. rewrite <- H10 in H8. lia.
-  unfold nor_mode in H8. rewrite <- H15 in H8. lia.
-  apply negator0_well_typed with (f := f). apply H6. easy.
+  constructor. apply H10. easy.
   unfold reg_push.
   repeat apply right_mode_exp_put_cus_same.
   assert (nval false r = put_cu (f c1) false).
-  unfold put_cu. rewrite eq2. easy. rewrite H13.
-  apply right_mode_exp_up_same. constructor. easy. easy.
+  unfold put_cu. rewrite eq2. easy. rewrite H14.
+  apply right_mode_exp_up_same. apply H12.
   rewrite reg_push_twice_neq by iner_p.
   rewrite reg_push_update_flip by iner_p.
   rewrite negations_aux with (r:=r); (try lia; try easy).
-  rewrite <- H12.
+  rewrite <- H13.
   assert ((2 ^ n - 1 - v1 + v2 + 1) = (v2 + 2 ^ n - v1)) by lia.
-  rewrite H13. easy.
+  rewrite H14. easy.
   unfold nor_modes. intros.
   unfold reg_push. apply nor_mode_cus_eq. apply H6. easy. lia.
   unfold nor_modes. intros.
@@ -9505,15 +9323,15 @@ Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
                                        inv_exp(comparator01 n y x c1 c2). (* compare M with x+y % M to clean c2. *)
 
 Lemma adder01_sem_carry0 :
-  forall n env (f f' : posi -> val) x y c v1 v2,
+  forall n (f f' : posi -> val) x y c v1 v2,
     0 < n -> nor_modes f x n -> nor_modes f y n -> nor_mode f c ->
     x <> y -> x <> fst c -> y <> fst c ->
     v1 < 2^n -> v2 < 2^n -> get_r (f c) = get_r (f' c) -> nor_mode f' c ->
-    exp_sem env (adder01 n x y c) (reg_push (reg_push (f[c |-> put_cu (f' c) false]) x v1 n) y v2 n)
+    exp_sem (adder01 n x y c) (reg_push (reg_push (f[c |-> put_cu (f' c) false]) x v1 n) y v2 n)
                = reg_push (reg_push (f[c |-> put_cu (f' c) false]) x v1 n) y (v1+v2) n.
 Proof.
   intros.
-  specialize (adder01_correct_carry0 n env0 f ( reg_push
+  specialize (adder01_correct_carry0 n f ( reg_push
         (reg_push (f [c |-> put_cu (f c) false]) x v1 n) y v2
         n) (reg_push (reg_push (f [c |-> put_cu (f c) false]) x v1 n) y
   (v1 + v2) n) x y c v1 v2 H0 H1 H2 H3 H4 H5 H6 H7 H8) as eq1.
@@ -9526,18 +9344,19 @@ Proof.
 Qed.
 
 Lemma comparator01_sem :
-  forall tenv env n x y c1 c2 v1 v2 f f',
+  forall tenv aenv n x y c1 c2 v1 v2 f f',
     0 < n -> 
     v1 < 2^n -> v2 < 2^n -> no_equal x y c1 c2 ->
-    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> nor_mode f c2 -> right_mode_exp tenv f (MAJseq n x y c1) ->
-    right_mode_exp tenv f (X c1) -> right_mode_exp tenv f (negator0 n x) -> get_r (f c1) = get_r (f' c1) -> nor_mode f' c1
+    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> nor_mode f c2 -> well_typed_exp tenv (MAJseq n x y c1) ->
+    well_typed_exp tenv (X c1) -> well_typed_exp tenv (negator0 n x) -> right_mode_env aenv tenv f ->
+    get_r (f c1) = get_r (f' c1) -> nor_mode f' c1
      -> get_r (f c2) = get_r (f' c2) -> nor_mode f' c2 ->
-    exp_sem env (comparator01 n x y c1 c2) (reg_push (reg_push 
+    exp_sem (comparator01 n x y c1 c2) (reg_push (reg_push 
           ((f[c1 |-> put_cu (f' c1) false])[c2 |-> put_cu (f' c2) false]) x v1 n) y v2 n)
       = (reg_push (reg_push ((f[c1 |-> put_cu (f' c1) false])[c2 |-> put_cu (f' c2) (¬(v1 <=? v2))]) x v1 n) y v2 n).
 Proof.
-  intros. 
-  specialize (comparator01_correct tenv env0 n x y c1 c2 v1 v2 f
+  intros.
+  specialize (comparator01_correct tenv aenv n x y c1 c2 v1 v2 f
   (reg_push
      (reg_push
         ((f [c1 |-> put_cu (f c1) false]) [c2
@@ -9546,48 +9365,44 @@ Proof.
   (reg_push
      ((f [c1 |-> put_cu (f c1) false]) [c2
       |-> put_cu (f c2) (¬ (v1 <=? v2))]) x v1 n) y v2 n) H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 H10) as eq1.
-  unfold put_cu in *. unfold get_r in H11. unfold get_r in H13.
+  unfold put_cu in *. unfold get_r in H12. unfold get_r in H14.
   unfold nor_mode in H6. unfold nor_mode in H7.
   destruct (f c1) eqn:eq2.  destruct (f c2) eqn:eq3.
-  unfold nor_mode in H12. unfold nor_mode in H14.
+  unfold nor_mode in H13. unfold nor_mode in H15.
   destruct (f' c1) eqn:eq4.  destruct (f' c2) eqn:eq5. subst.
-  rewrite eq1. easy. easy. easy.
-  1-8: lia.
+  rewrite eq1. 1-12:easy.
 Qed.
 
 Lemma subtractor01_sem :
-  forall tenv env n x y c1 v1 v2 f f',
+  forall tenv aenv n x y c1 v1 v2 f f',
     0 < n ->
     v1 < 2^n ->
-    v2 < 2^n ->     x <> y -> x <> fst c1 -> y <> fst c1 ->
-    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> right_mode_exp tenv f (MAJseq n x y c1) ->
-    right_mode_exp tenv f (X c1) -> right_mode_exp tenv f (negator0 n x) -> get_r (f c1) = get_r (f' c1) -> nor_mode f' c1 ->
-    exp_sem env (subtractor01 n x y c1) (reg_push (reg_push (f[c1 |-> put_cu (f' c1) false]) x v1 n) y v2 n) 
+    v2 < 2^n ->  x <> y -> x <> fst c1 -> y <> fst c1 ->
+    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> well_typed_exp tenv (MAJseq n x y c1) ->
+    well_typed_exp tenv (X c1) -> well_typed_exp tenv (negator0 n x) -> right_mode_env aenv tenv f ->
+    get_r (f c1) = get_r (f' c1) -> nor_mode f' c1 ->
+    exp_sem (subtractor01 n x y c1) (reg_push (reg_push (f[c1 |-> put_cu (f' c1) false]) x v1 n) y v2 n) 
      = (reg_push (reg_push (f[c1 |-> put_cu (f' c1) false]) x v1 n) y (v2 + 2^n - v1) n).
 Proof.
   intros.
-  specialize (subtractor01_correct tenv env0 n x y c1 v1 v2 f
+  specialize (subtractor01_correct tenv aenv n x y c1 v1 v2 f
      (reg_push (reg_push (f [c1 |-> put_cu (f c1) false]) x v1 n) y v2 n)
      (reg_push (reg_push (f [c1 |-> put_cu (f c1) false]) x v1 n) y
         (v2 + 2 ^ n - v1) n) H0 H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11) as eq1.
   unfold put_cu,get_r in *.
-  unfold nor_mode in H8. unfold nor_mode in H13.
-  destruct (f c1) eqn:eq2. destruct (f' c1) eqn:eq3.
-  subst. rewrite eq1. easy. easy. easy.
-  1-4: lia.
+  unfold nor_mode in H8. unfold nor_mode in H14.
+  destruct (f c1) eqn:eq2. destruct (f' c1) eqn:eq4.
+  subst. rewrite eq1. 1-4:easy.
+  1-4:lia.
 Qed.
-
-
 
 (* The correctness statement of the modulo adder. *)
 Lemma modadder21_correct :
-  forall tenv env n x y M c1 c2 v1 v2 vM f,
+  forall tenv aenv n x y M c1 c2 v1 v2 vM f,
     0 < n -> v1 < vM -> v2 < vM -> vM < 2^(n-1) -> no_equal_5 x y M c1 c2 ->
     nor_modes f x n -> nor_modes f y n -> nor_modes f M n -> nor_mode f c1 -> nor_mode f c2
-     -> right_mode_exp tenv f (MAJseq n y x c1) -> right_mode_exp tenv f (MAJseq n M x c1) ->
-    right_mode_exp tenv f (X c1) -> right_mode_exp tenv f (negator0 n y) -> right_mode_exp tenv f (negator0 n M) 
-          -> right_mode_exp tenv f (highb01 n y x c1 c2) ->
-    exp_sem env (modadder21 n x y M c1 c2) 
+     -> well_typed_exp tenv (modadder21 n x y M c1 c2) -> right_mode_env aenv tenv f ->
+    exp_sem (modadder21 n x y M c1 c2) 
       (reg_push (reg_push (reg_push ((f[c1 |-> put_cu (f c1) false])[c2 |-> put_cu (f c2) false]) M vM n) y v2 n) x v1 n)
     = (reg_push (reg_push (reg_push ((f[c1 |-> put_cu (f c1) false])[c2 |-> put_cu (f c2) false]) M vM n) y v2 n) x ((v1 + v2) mod vM) n).
 Proof.
@@ -9614,7 +9429,7 @@ Proof.
   rewrite reg_push_update_flip by iner_p.
   rewrite reg_push_update_flip with (x:=y) by iner_p.
   rewrite eupdate_twice_neq by iner_p.
-  rewrite comparator01_sem with (tenv := tenv); (try lia; try easy).
+  rewrite comparator01_sem with (tenv := tenv) (aenv := aenv); (try lia; try easy).
   rewrite exp_sem_x.
   assert (exchange
             (reg_push
@@ -9639,7 +9454,7 @@ Proof.
   rewrite <- reg_push_update_flip by iner_p.
   rewrite eupdate_twice_eq.
   rewrite eupdate_twice_neq by iner_p.
-  rewrite subtractor01_sem with (tenv:= tenv); (try lia; try easy).
+  rewrite subtractor01_sem with (tenv:= tenv) (aenv:=aenv); (try lia; try easy).
   erewrite inv_exp_reverse.
   rewrite reg_push_update_flip with (x := M) by iner_p.
   rewrite reg_push_update_flip with (x := M) by iner_p.
@@ -9648,14 +9463,15 @@ Proof.
   rewrite <- reg_push_update_flip with (x := y) by iner_p.
   easy.
   apply comparator01_fwf. unfold no_equal. split. lia. easy.
-  apply comparator01_well_typed with (f:=f); try easy.
-  Local Transparent comparator01.
-  constructor. constructor. constructor. apply H12. easy. apply H15.
-  apply right_mode_inv_exp. constructor.  easy. easy.
-  right_simpl. 
-  constructor. constructor. constructor. apply H12. easy. apply H15.
-  apply right_mode_inv_exp. constructor.  easy. easy.
-  rewrite comparator01_sem with (tenv := tenv); (try lia; try easy).
+  unfold modadder21 in H10. inv H10. 
+  apply typed_inv_exp in H20. rewrite inv_exp_involutive in H20. apply H20.
+  unfold reg_push. 
+  repeat apply right_mode_exp_put_cus_same.
+  apply right_mode_exp_up_same_1.
+  apply nor_mode_up ; try iner_p. apply nor_mode_cus_eq. easy. easy.
+  apply right_mode_exp_up_same_1. apply nor_mode_cus_eq. easy. easy.
+  apply right_mode_exp_put_cus_same. apply H11.
+  rewrite comparator01_sem with (tenv := tenv) (aenv:=aenv); (try lia; try easy).
   rewrite <- reg_push_update_flip by iner_p.
   rewrite <- reg_push_update_flip by iner_p.
   rewrite reg_push_twice_neq with (x:=M) by iner_p.
@@ -9689,6 +9505,11 @@ Proof.
   apply H5. easy.
   nor_mode_simpl. nor_mode_simpl.
   right_simpl. right_simpl. right_simpl.
+  Local Transparent adder01 subtractor01 comparator01.
+  inv H10. inv H19. inv H18. inv H19. inv H18. easy.
+  inv H10. inv H19. inv H21. inv H22. inv H21. inv H22. easy.
+  inv H10. inv H20. inv H18. rewrite inv_exp_involutive in H22. easy.
+  unfold reg_push. apply right_mode_exp_put_cus_same. easy.
   unfold reg_push. rewrite put_cus_neq by iner_p. easy.
   unfold reg_push. rewrite put_cus_neq by iner_p. easy.
   unfold nor_modes. intros. nor_mode_simpl.
@@ -9696,11 +9517,14 @@ Proof.
   unfold nor_modes. intros. nor_mode_simpl.
   apply H5. easy. nor_mode_simpl.
   right_simpl. right_simpl. right_simpl.
+  inv H10. inv H19. inv H21. inv H22. inv H21. inv H24. easy.
+  inv H10. inv H19. inv H21. inv H22. inv H21. inv H22. easy.
+  inv H10. inv H19. inv H18. inv H19. inv H23. inv H19. inv H23. easy.
+  unfold reg_push. apply right_mode_exp_up_same_1.
+  nor_mode_simpl. apply H9.
+  apply right_mode_exp_put_cus_same. easy.
   unfold reg_push. rewrite eupdate_index_neq by iner_p.
   rewrite put_cus_neq by iner_p. easy.
-  rewrite reg_push_update_flip by iner_p.
-  rewrite reg_push_update_flip by iner_p.
-  rewrite eupdate_twice_eq.
   erewrite inv_exp_reverse.
   rewrite reg_push_update_flip with (x := M) by iner_p.
   rewrite reg_push_update_flip with (x := M) by iner_p.
@@ -9709,17 +9533,22 @@ Proof.
   rewrite <- reg_push_update_flip with (x := y) by iner_p.
   easy.
   apply comparator01_fwf. unfold no_equal. split. lia. easy.
-  apply comparator01_well_typed with (f:=f); try easy.
-  constructor. constructor. constructor. apply H12. easy. apply H15.
-  apply right_mode_inv_exp. constructor.  easy. easy.
-  right_simpl. 
-  constructor. constructor. constructor. apply H12. easy. apply H15.
-  apply right_mode_inv_exp. constructor.  easy. easy.
-  rewrite comparator01_sem with (tenv := tenv); (try lia; try easy).
+  Local Opaque comparator01.
+  inv H10.
+  apply typed_inv_exp in H20. rewrite inv_exp_involutive in H20. apply H20.
+  unfold reg_push.
+  repeat apply right_mode_exp_put_cus_same.
+  apply right_mode_exp_up_same_1. nor_mode_simpl. easy.
+  apply right_mode_exp_up_same_1. nor_mode_simpl. easy.
+  apply right_mode_exp_put_cus_same. apply H11.
+  rewrite comparator01_sem with (tenv := tenv) (aenv:=aenv); (try lia; try easy).
   rewrite reg_push_update_flip by iner_p.
   rewrite reg_push_update_flip by iner_p.
-  rewrite <- reg_push_update_flip with (x:=M) by iner_p.
-  rewrite reg_push_twice_neq with (x:=M) by iner_p.
+  rewrite reg_push_update_flip with (x := M) by iner_p.
+  rewrite reg_push_update_flip with (x := x) by iner_p.
+  rewrite eupdate_twice_eq.
+  rewrite reg_push_update_flip with (x:=M) by iner_p.
+  rewrite reg_push_twice_neq with (x:=y) (y:=M) by iner_p.
   rewrite reg_push_update_flip with (x:=y) by iner_p.
   rewrite plus_comm.
   rewrite <- mod_sum_lt_bool by lia.
@@ -9731,13 +9560,21 @@ Proof.
   unfold nor_modes. intros. nor_mode_simpl. apply H6. lia.
   unfold nor_modes. intros. nor_mode_simpl. apply H5. lia.
   nor_mode_simpl. nor_mode_simpl.
-  right_simpl. right_simpl. right_simpl.
+  Local Transparent comparator01.
+  inv H10. inv H19. inv H18. inv H19. inv H18. easy.
+  inv H10. inv H19. inv H18. inv H19. inv H23. inv H19. inv H23. easy.
+  inv H10. inv H20. inv H18. rewrite inv_exp_involutive in H22. easy.
+  right_simpl. 
   unfold reg_push. rewrite put_cus_neq by iner_p. easy.
   unfold reg_push. rewrite put_cus_neq by iner_p. easy.
   unfold no_equal. split. lia. easy.
   unfold nor_modes. intros. nor_mode_simpl. apply H7. lia.
   unfold nor_modes. intros. nor_mode_simpl. apply H5. lia.
-  1-2:nor_mode_simpl. 1-3:right_simpl.
+  1-2:nor_mode_simpl. 
+  inv H10. inv H18. inv H20. inv H21. inv H20. inv H23. easy.
+  inv H10. inv H19. inv H17. easy.
+  inv H10. inv H18. inv H20. inv H21. inv H20. inv H21. easy.
+  right_simpl.
   unfold reg_push. rewrite put_cus_neq by iner_p. easy.
   unfold reg_push. rewrite put_cus_neq by iner_p. easy.
   unfold nor_modes. intros. nor_mode_simpl. apply H6. lia.
@@ -9793,50 +9630,8 @@ Definition modmult M C Cinv n x y z s c1 c2 := Exp (init_v n z M);; modmult_full
 
 Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; modmult M C Cinv n x y z s c1 c2;; Rev x.
 
-(* another modmult adder based on QFT. *)
-Fixpoint rz_adding (x:var) (n:nat) (pos:nat) (M: nat -> bool) :=
-    match n with 0 => SKIP
-               | S m => (if M (pos+m) then RZ n (x,pos) else SKIP) ; rz_adding x m pos M
-    end.
 
-(* adding x and M. *)
-Fixpoint rz_adder' (x:var) (n:nat) (pos:nat) (M:nat -> bool) :=
-     match n with 0 => SKIP
-               | S m => rz_adding x n pos M ; rz_adder' x m (pos+1) M
-     end.
-
-Definition rz_adder (x:var) (n:nat) (M: nat -> bool) := rz_adder' x n 0 M.
-
-Definition one_cu_adder (x:var) (n:nat) (c3:posi) (M:nat -> bool) := CU c3 (rz_adder x n M).
 (*
-Definition two_cu_adder (x:var) (n:nat) (c1 c2:posi) (M:nat -> bool) := CU c1 (CU c2 (rz_adder x n M)).
-*)
-
-(* assuming the input is in qft stage. *)
-Definition rz_modadder (x:var) (n:nat) (y c: posi) (a:nat -> bool) (N:nat -> bool) :=
-    Exp (one_cu_adder x n y a ; rz_adder x n N) ;; RQFT x;; Exp (CNOT (x,n-1) c) ;; QFT x
-          ;; Exp (one_cu_adder x n c N ; one_cu_adder x n y a);;
-     RQFT x ;; Exp (X (x,n-1) ; CNOT (x,n-1) c; X (x,n-1));; QFT x;;  one_cu_adder x n y a.
-
-(* Mod adder. [x][0] -> [x][ax%N] having the a and N as constant. *)
-Fixpoint rz_modmult' (y:var) (x:var) (n:nat) (size:nat) (c:posi) (a:nat -> bool) (N:nat -> bool) :=
-     match n with 0 => Exp SKIP
-               | S m => rz_modadder x size (y,m) c a N ;; rz_modmult' y x m size c a N
-     end.
-Definition rz_modmult_half (y:var) (x:var) (n:nat) (c:posi) (a:nat -> bool) (N:nat -> bool) :=
-                 QFT x ;; rz_modmult' y x n n c a N ;; RQFT x.
-
-Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (C:nat -> bool) (Cinv : nat -> bool) (N:nat -> bool) :=
-                 rz_modmult_half y x n c C N ;; finv (rz_modmult_half y x n c Cinv N).
-
-
-
-
-
-
-
-
-
 Definition x := 1.
 
 Definition y := 2.
@@ -9919,4 +9714,4 @@ Definition rz_mod_sqir M C Cinv n := trans_pexp (rz_var_fun n)
 Definition rz_f_modmult_circuit a ainv N n := fun i => 
                             rz_mod_sqir N (a^(2^i) mod N) (ainv^(2^i) mod N) n.
 
-
+*)
