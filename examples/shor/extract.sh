@@ -13,7 +13,8 @@ rm -f *.glob *.mli *.vo*
 
 # Remove empty files.
 rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml List.ml \
-   QArith_base.ml Rdefinitions.ml Rpow_def.ml Rtrigo1.ml Specif.ml ZArith_dec.ml
+   QArith_base.ml Rdefinitions.ml Ring_theory.ml Rpow_def.ml Rtrigo1.ml \
+   Specif.ml ZArith_dec.ml
 
 # Move the remaining extracted files to the 'extracted' subdirectory.
 echo "Moving generated files to extracted/..."

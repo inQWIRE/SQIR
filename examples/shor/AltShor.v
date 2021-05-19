@@ -484,11 +484,11 @@ Proof.
   rewrite update_index_eq.
   rewrite nat_to_funbool_0, nat_to_funbool_1. 
   bdestructΩ (m + n - 1 - m =? n - 1).
-  reflexivity.
+  try reflexivity.
   rewrite update_index_neq by lia.
   rewrite nat_to_funbool_0, nat_to_funbool_1. 
   bdestructΩ (i - m =? n - 1).
-  reflexivity.
+  try reflexivity.
   rewrite update_index_neq by lia.
   rewrite 2 nat_to_funbool_0.
   reflexivity.

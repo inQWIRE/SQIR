@@ -2573,7 +2573,7 @@ Proof.
     bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl; easy.
     fb_push_n_simpl. easy.
     simpl. destruct x. easy. destruct x. easy. simpl.
-    bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl. easy. replace x with i by lia. rewrite E. easy. easy.
+    bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl. easy. replace x with i by lia. rewrite E. easy. try easy.
     fb_push_n_simpl. easy.
 Qed.
 
