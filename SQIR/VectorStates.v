@@ -725,6 +725,27 @@ Proof.
       reflexivity.
 Qed.
 
+Lemma f_to_vec_merge : forall f1 f2 m n, 
+  f_to_vec m f1 ⊗ f_to_vec n f2 = 
+    f_to_vec (m + n) (fun x => if x <? m then f1 x else f2 (x - m)%nat).
+Proof.
+  intros f1 f2 m n.
+  induction n.
+  - simpl. Msimpl. 
+    replace (m + 0)%nat with m by lia.
+    apply f_to_vec_eq; intros i Hi.
+    bdestructΩ (i <? m).
+    reflexivity.
+  - replace (m + S n)%nat with (S (m + n)) by lia.
+    simpl. 
+    restore_dims.
+    rewrite <- kron_assoc; auto with wf_db.
+    rewrite IHn.
+    bdestructΩ (m + n <? m).
+    replace (m + n - m)%nat with n by lia.
+    reflexivity.
+Qed.
+
 (* lemmas to describe the action of various gates on f_to_vec states *)
 
 Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool),
@@ -1760,6 +1781,20 @@ Proof.
   reflexivity.
   replace (n - 0)%nat with n by lia.
   rewrite update_same; rewrite IHn; reflexivity.
+Qed.
+
+Lemma nat_to_funbool_1 : forall n, nat_to_funbool n 1 = (fun x => x =? n - 1).
+Proof.
+  intro n.
+  unfold nat_to_funbool, nat_to_binlist.
+  simpl.
+  apply functional_extensionality.
+  intro x.
+  bdestruct (x =? n - 1).
+  subst. rewrite update_index_eq. reflexivity.
+  rewrite update_index_neq by lia.
+  rewrite list_to_funbool_repeat_false.
+  reflexivity.
 Qed.
 
 Local Open Scope R_scope.

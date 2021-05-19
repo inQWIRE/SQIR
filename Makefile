@@ -1,7 +1,7 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples grover qpe-full voqc clean
+KNOWNTARGETS := CoqMakefile all examples voqc shor clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
@@ -19,6 +19,10 @@ CoqMakefile: Makefile _CoqProject
 invoke-coqmakefile: CoqMakefile
 	$(MAKE) --no-print-directory -f CoqMakefile $(filter-out $(KNOWNTARGETS),$(MAKECMDGOALS))
 
+invoke-coqmakefile-euler: _CoqProjectEuler
+	$(COQBIN)coq_makefile -f _CoqProjectEuler -o CoqMakefileEuler
+	$(MAKE) --no-print-directory -f CoqMakefileEuler $(filter-out $(KNOWNTARGETS),$(MAKECMDGOALS))
+
 .PHONY: invoke-coqmakefile $(KNOWNFILES)
 
 ###########################################################
@@ -26,57 +30,68 @@ invoke-coqmakefile: CoqMakefile
 ###########################################################
 
 QWIRE := externals/QWIRE
-SQIR := SQIR/src
-examples := SQIR/examples
+SQIR := SQIR
+examples := examples
 VOQC := VOQC
 
 COQ_OPTS := -R . Top
 
-all: examples voqc grover qpe-full $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo
+all: examples voqc $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo shor
 
-examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
+examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Grover.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
-grover: invoke-coqmakefile $(examples)/Grover.vo
-
-qpe-full: invoke-coqmakefile $(examples)/QPEGeneral.vo
+shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/AltShor.vo
 
 voqc: invoke-coqmakefile $(VOQC)/Main.vo
 
 # Built by 'make examples'
 
-SQIR/examples/Deutsch.vo: $(examples)/Deutsch.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
+examples/Deutsch.vo: $(examples)/Deutsch.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
 	coqc $(COQ_OPTS) $(examples)/Deutsch.v
 
-SQIR/examples/DeutschJozsa.vo: $(examples)/DeutschJozsa.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
+examples/DeutschJozsa.vo: $(examples)/DeutschJozsa.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
 	coqc $(COQ_OPTS) $(examples)/DeutschJozsa.v
 
-SQIR/examples/GHZ.vo: $(examples)/GHZ.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
+examples/GHZ.vo: $(examples)/GHZ.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
 	coqc $(COQ_OPTS) $(examples)/GHZ.v
 
-SQIR/examples/QPE.vo: $(examples)/QPE.v $(SQIR)/UnitaryOps.vo
-	coqc $(COQ_OPTS) $(examples)/QPE.v
-
-SQIR/examples/Simon.vo: $(examples)/Simon.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo
-	coqc $(COQ_OPTS) $(examples)/Simon.v
-
-SQIR/examples/Superdense.vo: $(examples)/Superdense.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
-	coqc $(COQ_OPTS) $(examples)/Superdense.v
-
-SQIR/examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/DensitySem.vo $(SQIR)/NDSem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
-	coqc $(COQ_OPTS) $(examples)/Teleport.v
-
-SQIR/examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
-	coqc $(COQ_OPTS) $(examples)/Utilities.v
-
-# Built by 'make grover'
-
-SQIR/examples/Grover.vo: $(examples)/Grover.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
+examples/Grover.vo: $(examples)/Grover.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
 	coqc $(COQ_OPTS) $(examples)/Grover.v
 
-# Built by 'make qpe-general'
+examples/QPE.vo: $(examples)/QPE.v $(SQIR)/UnitaryOps.vo
+	coqc $(COQ_OPTS) $(examples)/QPE.v
 
-SQIR/examples/QPEGeneral.vo: $(examples)/QPEGeneral.v $(examples)/QPE.vo $(examples)/Utilities.vo
-	coqc $(COQ_OPTS) $(examples)/QPEGeneral.v
+examples/Simon.vo: $(examples)/Simon.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo
+	coqc $(COQ_OPTS) $(examples)/Simon.v
+
+examples/Superdense.vo: $(examples)/Superdense.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo
+	coqc $(COQ_OPTS) $(examples)/Superdense.v
+
+examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/DensitySem.vo $(SQIR)/NDSem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
+	coqc $(COQ_OPTS) $(examples)/Teleport.v
+
+examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
+	coqc $(COQ_OPTS) $(examples)/Utilities.v
+
+# Built by 'make shor'
+
+examples/shor/AltGateSet.vo: $(examples)/shor/AltGateSet.v $(SQIR)/UnitaryOps.vo $(SQIR)/RCIR.vo
+	coqc $(COQ_OPTS) $(examples)/shor/AltGateSet.v
+	
+examples/shor/AltShor.vo: $(examples)/shor/AltShor.v $(examples)/shor/AltGateSet.vo $(examples)/shor/Shor.vo
+	coqc $(COQ_OPTS) $(examples)/shor/AltShor.v
+
+examples/shor/ModMult.vo: $(examples)/shor/ModMult.v $(SQIR)/UnitaryOps.vo $(SQIR)/VectorStates.vo $(SQIR)/RCIR.vo
+	coqc $(COQ_OPTS) $(examples)/shor/ModMult.v
+
+examples/shor/QPEGeneral.vo: $(examples)/shor/QPEGeneral.v $(examples)/QPE.vo $(examples)/Utilities.vo
+	coqc $(COQ_OPTS) $(examples)/shor/QPEGeneral.v
+
+examples/shor/Shor.vo: $(examples)/shor/Shor.v $(examples)/shor/QPEGeneral.vo $(examples)/shor/ModMult.vo $(examples)/shor/ShorAux.vo
+	coqc $(COQ_OPTS) $(examples)/shor/Shor.v
+	
+examples/shor/ShorAux.vo: $(examples)/shor/ShorAux.v $(examples)/Utilities.vo
+	coqc $(COQ_OPTS) $(examples)/shor/ShorAux.v
 
 # Built by 'make voqc'
 

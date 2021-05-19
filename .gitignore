@@ -9,6 +9,8 @@
 # Ignore auto-generated Makefiles
 CoqMakefile
 CoqMakefile.conf
+CoqMakefileEuler
+CoqMakefileEuler.conf
 
 # Ignore OCaml object files
 *.cmo

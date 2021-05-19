@@ -9,10 +9,11 @@ externals/QWIRE/Quantum.v
 externals/QWIRE/Dirac.v
 externals/QWIRE/Proportional.v
 
-SQIR/src/SQIR.v
-SQIR/src/UnitarySem.v
-SQIR/src/DensitySem.v
-SQIR/src/NDSem.v
-SQIR/src/VectorStates.v
-SQIR/src/UnitaryOps.v
-SQIR/src/Equivalences.v
+SQIR/SQIR.v
+SQIR/UnitarySem.v
+SQIR/DensitySem.v
+SQIR/NDSem.v
+SQIR/VectorStates.v
+SQIR/UnitaryOps.v
+SQIR/Equivalences.v
+SQIR/RCIR.v

@@ -1,0 +1,9 @@
+(executable
+  (name generate_circuit)
+  (modules generate_circuit)
+  (libraries extracted unix))
+
+(executable
+  (name post_process)
+  (modules post_process)
+  (libraries extracted))
