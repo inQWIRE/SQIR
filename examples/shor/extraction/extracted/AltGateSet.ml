@@ -1,8 +1,4 @@
-open BinNums
-open List
 open RCIR
-open Rdefinitions
-open Rtrigo1
 
 type 'u ucom =
 | Coq_useq of 'u ucom * 'u ucom
@@ -11,11 +7,11 @@ type 'u ucom =
 type coq_U =
 | U_X
 | U_H
-| U_U1 of coq_R
-| U_U2 of coq_R * coq_R
-| U_U3 of coq_R * coq_R * coq_R
+| U_U1 of float
+| U_U2 of float * float
+| U_U3 of float * float * float
 | U_CX
-| U_CU1 of coq_R
+| U_CU1 of float
 | U_SWAP
 | U_CCX
 | U_CSWAP
@@ -32,17 +28,17 @@ let coq_X q =
 let coq_H q =
   Coq_uapp ((Pervasives.succ 0), U_H, (q :: []))
 
-(** val coq_U1 : coq_R -> int -> coq_U ucom **)
+(** val coq_U1 : float -> int -> coq_U ucom **)
 
 let coq_U1 r1 q =
   Coq_uapp ((Pervasives.succ 0), (U_U1 r1), (q :: []))
 
-(** val coq_U2 : coq_R -> coq_R -> int -> coq_U ucom **)
+(** val coq_U2 : float -> float -> int -> coq_U ucom **)
 
 let coq_U2 r1 r2 q =
   Coq_uapp ((Pervasives.succ 0), (U_U2 (r1, r2)), (q :: []))
 
-(** val coq_U3 : coq_R -> coq_R -> coq_R -> int -> coq_U ucom **)
+(** val coq_U3 : float -> float -> float -> int -> coq_U ucom **)
 
 let coq_U3 r1 r2 r3 q =
   Coq_uapp ((Pervasives.succ 0), (U_U3 (r1, r2, r3)), (q :: []))
@@ -50,25 +46,24 @@ let coq_U3 r1 r2 r3 q =
 (** val coq_T : int -> coq_U ucom **)
 
 let coq_T q =
-  coq_U1 (coq_Rdiv coq_PI (coq_IZR (Zpos (Coq_xO (Coq_xO Coq_xH))))) q
+  coq_U1 (( /. ) Float.pi 4.0) q
 
 (** val coq_Tdg : int -> coq_U ucom **)
 
 let coq_Tdg q =
-  coq_U1
-    (coq_Ropp (coq_Rdiv coq_PI (coq_IZR (Zpos (Coq_xO (Coq_xO Coq_xH)))))) q
+  coq_U1 (((-.) 0.0) (( /. ) Float.pi 4.0)) q
 
 (** val coq_SKIP : coq_U ucom **)
 
 let coq_SKIP =
-  coq_U1 (coq_IZR Z0) 0
+  coq_U1 0.0 0
 
 (** val coq_CX : int -> int -> coq_U ucom **)
 
 let coq_CX q1 q2 =
   Coq_uapp ((Pervasives.succ (Pervasives.succ 0)), U_CX, (q1 :: (q2 :: [])))
 
-(** val coq_CU1 : coq_R -> int -> int -> coq_U ucom **)
+(** val coq_CU1 : float -> int -> int -> coq_U ucom **)
 
 let coq_CU1 r q1 q2 =
   Coq_uapp ((Pervasives.succ (Pervasives.succ 0)), (U_CU1 r),
@@ -107,51 +102,36 @@ let coq_C4X q1 q2 q3 q4 q5 =
 (** val decompose_CH : int -> int -> coq_U ucom **)
 
 let decompose_CH a b =
-  Coq_useq ((Coq_useq
-    ((coq_U3 (coq_Rdiv coq_PI (coq_IZR (Zpos (Coq_xO (Coq_xO Coq_xH)))))
-       (coq_IZR Z0) (coq_IZR Z0) b), (coq_CX a b))),
-    (coq_U3
-      (coq_Ropp (coq_Rdiv coq_PI (coq_IZR (Zpos (Coq_xO (Coq_xO Coq_xH))))))
-      (coq_IZR Z0) (coq_IZR Z0) b))
+  Coq_useq ((Coq_useq ((coq_U3 (( /. ) Float.pi 4.0) 0.0 0.0 b),
+    (coq_CX a b))), (coq_U3 (((-.) 0.0) (( /. ) Float.pi 4.0)) 0.0 0.0 b))
 
-(** val decompose_CU1 : coq_R -> int -> int -> coq_U ucom **)
+(** val decompose_CU1 : float -> int -> int -> coq_U ucom **)
 
 let decompose_CU1 r1 a b =
-  Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
-    ((coq_U1 (coq_Rdiv r1 (coq_IZR (Zpos (Coq_xO Coq_xH)))) a),
-    (coq_U1 (coq_Rdiv r1 (coq_IZR (Zpos (Coq_xO Coq_xH)))) b))),
-    (coq_CX a b))),
-    (coq_U1 (coq_Ropp (coq_Rdiv r1 (coq_IZR (Zpos (Coq_xO Coq_xH))))) b))),
-    (coq_CX a b))
+  Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((coq_U1 (( /. ) r1 2.0) a),
+    (coq_U1 (( /. ) r1 2.0) b))), (coq_CX a b))),
+    (coq_U1 (((-.) 0.0) (( /. ) r1 2.0)) b))), (coq_CX a b))
 
-(** val decompose_CU2 : coq_R -> coq_R -> int -> int -> coq_U ucom **)
+(** val decompose_CU2 : float -> float -> int -> int -> coq_U ucom **)
 
 let decompose_CU2 r1 r2 a b =
   Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
-    ((coq_U1 (coq_Rdiv (coq_Rplus r2 r1) (coq_IZR (Zpos (Coq_xO Coq_xH)))) a),
-    (coq_U1 (coq_Rdiv (coq_Rminus r2 r1) (coq_IZR (Zpos (Coq_xO Coq_xH)))) b))),
-    (coq_CX a b))),
-    (coq_U3
-      (coq_Ropp (coq_Rdiv coq_PI (coq_IZR (Zpos (Coq_xO (Coq_xO Coq_xH))))))
-      (coq_IZR Z0)
-      (coq_Rdiv (coq_Ropp (coq_Rplus r1 r2)) (coq_IZR (Zpos (Coq_xO Coq_xH))))
-      b))), (coq_CX a b))),
-    (coq_U3 (coq_Rdiv coq_PI (coq_IZR (Zpos (Coq_xO (Coq_xO Coq_xH))))) r1
-      (coq_IZR Z0) b))
+    ((coq_U1 (( /. ) (( +. ) r2 r1) 2.0) a),
+    (coq_U1 (( /. ) (( -. ) r2 r1) 2.0) b))), (coq_CX a b))),
+    (coq_U3 (((-.) 0.0) (( /. ) Float.pi 4.0)) 0.0
+      (( /. ) (((-.) 0.0) (( +. ) r1 r2)) 2.0) b))), (coq_CX a b))),
+    (coq_U3 (( /. ) Float.pi 4.0) r1 0.0 b))
 
 (** val decompose_CU3 :
-    coq_R -> coq_R -> coq_R -> int -> int -> coq_U ucom **)
+    float -> float -> float -> int -> int -> coq_U ucom **)
 
 let decompose_CU3 r1 r2 r3 a b =
   Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
-    ((coq_U1 (coq_Rdiv (coq_Rplus r3 r2) (coq_IZR (Zpos (Coq_xO Coq_xH)))) a),
-    (coq_U1 (coq_Rdiv (coq_Rminus r3 r2) (coq_IZR (Zpos (Coq_xO Coq_xH)))) b))),
-    (coq_CX a b))),
-    (coq_U3 (coq_Ropp (coq_Rdiv r1 (coq_IZR (Zpos (Coq_xO Coq_xH)))))
-      (coq_IZR Z0)
-      (coq_Rdiv (coq_Ropp (coq_Rplus r2 r3)) (coq_IZR (Zpos (Coq_xO Coq_xH))))
-      b))), (coq_CX a b))),
-    (coq_U3 (coq_Rdiv r1 (coq_IZR (Zpos (Coq_xO Coq_xH)))) r2 (coq_IZR Z0) b))
+    ((coq_U1 (( /. ) (( +. ) r3 r2) 2.0) a),
+    (coq_U1 (( /. ) (( -. ) r3 r2) 2.0) b))), (coq_CX a b))),
+    (coq_U3 (((-.) 0.0) (( /. ) r1 2.0)) 0.0
+      (( /. ) (((-.) 0.0) (( +. ) r2 r3)) 2.0) b))), (coq_CX a b))),
+    (coq_U3 (( /. ) r1 2.0) r2 0.0 b))
 
 (** val decompose_CSWAP : int -> int -> int -> coq_U ucom **)
 
@@ -357,7 +337,7 @@ let rec bc2ucom = function
 
 let rec map_qubits f = function
 | Coq_useq (c1, c2) -> Coq_useq ((map_qubits f c1), (map_qubits f c2))
-| Coq_uapp (n, g, qs) -> Coq_uapp (n, g, (map f qs))
+| Coq_uapp (n, g, qs) -> Coq_uapp (n, g, (List.map f qs))
 
 (** val npar : int -> coq_U -> coq_U ucom **)
 
@@ -395,7 +375,7 @@ let rec invert = function
       | [] -> coq_SKIP
       | q1 :: l ->
         (match l with
-         | [] -> coq_U1 (coq_Ropp r1) q1
+         | [] -> coq_U1 (((-.) 0.0) r1) q1
          | _ :: _ -> coq_SKIP))
    | U_U2 (r1, r2) ->
      (match qs with
@@ -403,15 +383,15 @@ let rec invert = function
       | q1 :: l ->
         (match l with
          | [] ->
-           coq_U2 (coq_Rminus (coq_Ropp r2) coq_PI)
-             (coq_Rplus (coq_Ropp r1) coq_PI) q1
+           coq_U2 (( -. ) (((-.) 0.0) r2) Float.pi)
+             (( +. ) (((-.) 0.0) r1) Float.pi) q1
          | _ :: _ -> coq_SKIP))
    | U_U3 (r1, r2, r3) ->
      (match qs with
       | [] -> coq_SKIP
       | q1 :: l ->
         (match l with
-         | [] -> coq_U3 (coq_Ropp r1) (coq_Ropp r3) (coq_Ropp r2) q1
+         | [] -> coq_U3 (((-.) 0.0) r1) (((-.) 0.0) r3) (((-.) 0.0) r2) q1
          | _ :: _ -> coq_SKIP))
    | U_CX ->
      (match qs with
@@ -430,7 +410,7 @@ let rec invert = function
          | [] -> coq_SKIP
          | q2 :: l0 ->
            (match l0 with
-            | [] -> coq_CU1 (coq_Ropp r) q1 q2
+            | [] -> coq_CU1 (((-.) 0.0) r) q1 q2
             | _ :: _ -> coq_SKIP)))
    | U_SWAP ->
      (match qs with

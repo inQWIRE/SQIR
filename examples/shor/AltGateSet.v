@@ -3,6 +3,8 @@ Require Import RCIR.
 
 (** New version of SQIR's ucom type **)
 
+(** TODO - integrate in the SQIR directory **)
+
 (* Experimenting with a version of ucom that uses a list argument and no 
    dependent dim type *)
 Inductive ucom (U : nat -> Set) : Set :=
@@ -72,10 +74,6 @@ Inductive U : nat -> Set :=
   | U_C3X : U 4
   | U_C4X : U 5.
 
-Definition sqirU1 {dim} a n : base_ucom dim := uapp1 (U_R 0 0 a) n.
-Definition sqirU2 {dim} a b n : base_ucom dim := uapp1 (U_R (PI / 2) a b) n.
-Definition sqirU3 {dim} a b c n : base_ucom dim := uapp1 (U_R a b c) n.
-
 Fixpoint to_base_ucom dim (u : ucom U) : base_ucom dim :=
   match u with
   | u1 >> u2 => (to_base_ucom dim u1 ; to_base_ucom dim u2)%ucom
@@ -83,11 +81,11 @@ Fixpoint to_base_ucom dim (u : ucom U) : base_ucom dim :=
       match g, qs with
       | U_X, (q1 :: List.nil)%list => SQIR.X q1
       | U_H, (q1 :: List.nil) => H q1
-      | U_U1 r1, (q1 :: List.nil) => sqirU1 r1 q1
-      | U_U2 r1 r2, (q1 :: List.nil) => sqirU2 r1 r2 q1
-      | U_U3 r1 r2 r3, (q1 :: List.nil) => sqirU3 r1 r2 r3 q1
+      | U_U1 r1, (q1 :: List.nil) => U1 r1 q1
+      | U_U2 r1 r2, (q1 :: List.nil) => U2 r1 r2 q1
+      | U_U3 r1 r2 r3, (q1 :: List.nil) => U3 r1 r2 r3 q1
       | U_CX, (q1 :: q2 :: List.nil) => CNOT q1 q2
-      | U_CU1 r, (q1 :: q2 :: List.nil) => UnitaryOps.control q1 (sqirU1 r q2)
+      | U_CU1 r, (q1 :: q2 :: List.nil) => UnitaryOps.control q1 (U1 r q2)
       | U_SWAP, (q1 :: q2 :: List.nil) => SWAP q1 q2
       | U_CCX, (q1 :: q2 :: q3 :: List.nil) => UnitaryOps.control q1 (CNOT q2 q3)
       | U_CSWAP, (q1 :: q2 :: q3 :: List.nil) => UnitaryOps.control q1 (SWAP q2 q3)
@@ -120,7 +118,7 @@ Ltac invert_WT :=
   | H : uc_well_typed _ |- _ => inversion H; clear H; subst
   end.
 
-Local Transparent SQIR.ID SQIR.X SQIR.H SQIR.Rz sqirU2 sqirU3 SQIR.CNOT SQIR.SWAP.
+Local Transparent SQIR.ID SQIR.X SQIR.H SQIR.Rz SQIR.CNOT SQIR.SWAP.
 Local Opaque UnitaryOps.control.
 Lemma change_dim_WT : forall (u : ucom U) (m n : nat),
   (m <= n)%nat -> 
@@ -133,15 +131,7 @@ Proof.
   inversion WT; subst.
   inversion WF; subst.
   constructor; auto.
-
-(*  destruct u; simpl in *.
-  apply uapp_WF_length in WF as L.
-  destruct l; inversion L; clear L.
-  destruct l; inversion H0. *)
-  destruct u; simpl in *; simpl_WF''; invert_WT.
-
-  
-  (* destruct u; simpl in *; simpl_WF; invert_WT. *)
+  destruct u; simpl in *; simpl_WF; invert_WT.
   (* U_X, U_H, U_U1, U_U2, U_U3, U_CX, U_SWAP, & SKIP cases *) 
   all: repeat constructor; try lia.
   (* U_CU1 *)
@@ -186,16 +176,20 @@ Proof.
   apply uc_well_typed_control; repeat split; try constructor; lia.
 Qed.
 Local Transparent UnitaryOps.control.
-Local Opaque SQIR.ID SQIR.X SQIR.H SQIR.Rz sqirU2 sqirU3 SQIR.CNOT SQIR.SWAP.
+Local Opaque SQIR.ID SQIR.X SQIR.H SQIR.Rz SQIR.U1 SQIR.U2 SQIR.U3 SQIR.CNOT SQIR.SWAP.
+
+(* Defining constants separately for easier extraction. *)
+Definition R2 : R := 2.
+Definition R4 : R := 4.
 
 Definition X q := uapp U_X [q].
 Definition H q := uapp U_H [q].
 Definition U1 r1 q := uapp (U_U1 r1) [q].
 Definition U2 r1 r2 q := uapp (U_U2 r1 r2) [q].
 Definition U3 r1 r2 r3 q := uapp (U_U3 r1 r2 r3) [q].
-Definition T q := U1 (PI / 4) q.
-Definition Tdg q := U1 (- (PI / 4)) q.
-Definition SKIP := U1 0 O. (* used as a dummy value *)
+Definition T q := U1 (PI / R4) q.
+Definition Tdg q := U1 (- (PI / R4)) q.
+Definition SKIP := U1 R0 O. (* used as a dummy value *)
 Definition CX q1 q2 := uapp U_CX (q1 :: q2 :: List.nil).
 Definition CU1 r q1 q2 := uapp (U_CU1 r) (q1 :: q2 :: List.nil).
 Definition SWAP q1 q2 := uapp U_SWAP (q1 :: q2 :: List.nil).
@@ -205,18 +199,18 @@ Definition C3X q1 q2 q3 q4 := uapp U_C3X (q1 :: q2 :: q3 :: q4 :: List.nil).
 Definition C4X q1 q2 q3 q4 q5 := uapp U_C4X (q1 :: q2 :: q3 :: q4 :: q5 :: List.nil).
 
 Definition decompose_CH (a b : nat) : ucom U := 
-  U3 (PI/4) 0 0 b >> CX a b >> U3 (- (PI/4)) 0 0 b. 
+  U3 (PI/R4) R0 R0 b >> CX a b >> U3 (- (PI/R4)) R0 R0 b. 
 
 Definition decompose_CU1 r1 (a b : nat) : ucom U := 
-  U1 (r1/2) a >> U1 (r1/2) b >> CX a b >> U1 (- (r1/2)) b >> CX a b.
+  U1 (r1/R2) a >> U1 (r1/R2) b >> CX a b >> U1 (- (r1/R2)) b >> CX a b.
 
 Definition decompose_CU2 r1 r2 (a b : nat) : ucom U := 
-  U1 ((r2+r1)/2) a >> U1 ((r2-r1)/2) b >> CX a b >>
-  U3 (-(PI/4)) 0 (-(r1+r2)/2) b >> CX a b >> U3 (PI/4) r1 0 b.
+  U1 ((r2+r1)/R2) a >> U1 ((r2-r1)/R2) b >> CX a b >>
+  U3 (-(PI/R4)) R0 (-(r1+r2)/R2) b >> CX a b >> U3 (PI/R4) r1 R0 b.
 
 Definition decompose_CU3 r1 r2 r3 (a b : nat) : ucom U := 
-  U1 ((r3+r2)/2) a >> U1 ((r3-r2)/2) b >> CX a b >>
-  U3 (-(r1/2)) 0 (-(r2+r3)/2) b >> CX a b >> U3 (r1/2) r2 0 b.
+  U1 ((r3+r2)/R2) a >> U1 ((r3-r2)/R2) b >> CX a b >>
+  U3 (-(r1/R2)) R0 (-(r2+r3)/R2) b >> CX a b >> U3 (r1/R2) r2 R0 b.
 
 Definition decompose_CSWAP (a b c : nat) : ucom U := 
   CCX a b c >> CCX a c b >> CCX a b c.
@@ -295,7 +289,7 @@ Qed.
 
 Hint Rewrite <- RtoC_minus : RtoC_db.
 
-Local Transparent SQIR.H sqirU3.
+Local Transparent SQIR.H SQIR.U3.
 Lemma decompose_CH_is_control_H : forall dim a b,
   uc_eval dim (decompose_CH a b) = 
     UnitarySem.uc_eval (UnitaryOps.control a (SQIR.H b)).
@@ -351,7 +345,9 @@ Proof.
       rewrite <- Mscale_kron_dist_r.
       do 2 (apply f_equal2; try reflexivity).
       apply aux1.
-    + rewrite aux2.
+    + unfold R4. 
+      replace R0 with 0 by reflexivity.
+      rewrite aux2.
       reflexivity.
   - rewrite Rminus_0_r, Rplus_0_l, Rplus_0_r.
     apply f_equal2.
@@ -359,18 +355,20 @@ Proof.
       rewrite <- Mscale_kron_dist_r.
       do 4 (apply f_equal2; try reflexivity).
       apply aux1.
-    + rewrite aux2.
+    + unfold R4.
+      replace R0 with 0 by reflexivity.
+      rewrite aux2.
       reflexivity.
 Qed.
-Local Opaque SQIR.H.
+Local Opaque SQIR.H SQIR.U3.
 
-Local Transparent SQIR.Rz.
+Local Transparent SQIR.Rz SQIR.U1.
 Lemma decompose_CU1_is_control_U1 : forall dim r a b,
   uc_eval dim (decompose_CU1 r a b) = 
-    UnitarySem.uc_eval (UnitaryOps.control a (sqirU1 r b)).
+    UnitarySem.uc_eval (UnitaryOps.control a (SQIR.U1 r b)).
 Proof.
   intros dim r a b.
-  unfold sqirU1, decompose_CU1, uc_eval.
+  unfold SQIR.U1, decompose_CU1, uc_eval.
   simpl.
   autorewrite with R_db.
   repeat rewrite phase_shift_rotation.
@@ -383,31 +381,34 @@ Proof.
   autorewrite with eval_db.
   gridify.
 Qed.
-Local Opaque SQIR.Rz.
+Local Opaque SQIR.Rz SQIR.U1.
 
-Local Transparent sqirU2.
+Local Transparent SQIR.U2.
 Lemma decompose_CU2_is_control_U2 : forall dim r1 r2 a b,
   uc_eval dim (decompose_CU2 r1 r2 a b) = 
-    UnitarySem.uc_eval (UnitaryOps.control a (sqirU2 r1 r2 b)).
+    UnitarySem.uc_eval (UnitaryOps.control a (SQIR.U2 r1 r2 b)).
 Proof.
   intros dim r1 r2 a b.
-  unfold sqirU2, decompose_CU2, uc_eval.
+  unfold SQIR.U2, decompose_CU2, uc_eval.
   simpl.
   replace (PI / 2 / 2)%R with (PI / 4)%R by lra.
   replace (- (PI / 2) / 2)%R with (- (PI / 4))%R by lra.
   reflexivity.
 Qed.
+Local Opaque SQIR.U2.
 
+Local Transparent SQIR.U3.
 Lemma decompose_CU3_is_control_U3 : forall dim r1 r2 r3 a b,
   uc_eval dim (decompose_CU3 r1 r2 r3 a b) = 
-    UnitarySem.uc_eval (UnitaryOps.control a (sqirU3 r1 r2 r3 b)).
+    UnitarySem.uc_eval (UnitaryOps.control a (SQIR.U3 r1 r2 r3 b)).
 Proof.
   intros dim r1 r2 r3 a b.
-  unfold sqirU3, decompose_CU3, uc_eval.
+  unfold SQIR.U3, decompose_CU3, uc_eval.
   simpl.
   replace (- r1 / 2)%R with (- (r1 / 2))%R by lra.
   reflexivity.
 Qed.
+Local Opaque SQIR.U3.
 
 Local Transparent SQIR.SWAP.
 Lemma decompose_CSWAP_is_control_SWAP : forall dim a b c,
@@ -455,16 +456,16 @@ Proof.
   destruct u; simpl.
   inversion WF; subst.
   constructor; apply IHn; assumption.
-  destruct u; simpl_WF''; repeat constructor.
+  destruct u; simpl_WF; repeat constructor.
   apply IHn. repeat constructor.
   apply IHn. repeat constructor.
   do 3 apply IHn. repeat constructor.
 Qed.
 
-Local Transparent SQIR.Rz SQIR.H SQIR.X SQIR.CNOT SQIR.SWAP UnitaryOps.CU.
+Local Transparent SQIR.Rz SQIR.U1 SQIR.U2 SQIR.U3 SQIR.H SQIR.X SQIR.CNOT SQIR.SWAP UnitaryOps.CU.
 Lemma decompose_CU1_fresh : forall dim a r b c,
   UnitaryOps.is_fresh a (to_base_ucom dim (decompose_CU1 r b c)) <->
-  UnitaryOps.is_fresh a (UnitaryOps.control b (@sqirU1 dim r c)).
+  UnitaryOps.is_fresh a (UnitaryOps.control b (@SQIR.U1 dim r c)).
 Proof.
   intros dim a r b c.
   split; intro H; simpl in *.
@@ -519,7 +520,7 @@ Proof.
     simpl.
     constructor; apply IHn; auto; lia.
     simpl.
-    destruct u; simpl_WF''.
+    destruct u; simpl_WF.
     (* solve the cases that don't make a recursive call *)
     all: match goal with
          | |- context[control' _ _ _] => idtac
@@ -578,7 +579,7 @@ Proof.
     apply H4.
     lia.
     apply H3.
-    destruct u; simpl_WF''; simpl in *.
+    destruct u; simpl_WF; simpl in *.
     (* solve the cases that don't make a call to UnitaryOps.control *)
     all: match goal with
          | H : context[UnitaryOps.control _ _] |- _ => idtac
@@ -674,9 +675,9 @@ Proof.
   apply decompose_CCX_WF.
   auto.
 Qed.
-Local Opaque SQIR.Rz SQIR.H SQIR.X SQIR.CNOT SQIR.SWAP UnitaryOps.CU.
+Local Opaque SQIR.Rz SQIR.U1 SQIR.U2 SQIR.U3 SQIR.H SQIR.X SQIR.CNOT SQIR.SWAP UnitaryOps.CU.
 
-Local Opaque sqirU1 sqirU2 sqirU3 decompose_CU1.
+Local Opaque decompose_CU1.
 Lemma control'_correct : forall dim a u n,
   (fuel u < n)%nat ->
   well_formed u ->
@@ -693,7 +694,7 @@ Proof.
   unfold uc_eval in *.
   simpl in *.
   rewrite 2 IHn; try lia; auto.
-  destruct u; simpl_WF''.
+  destruct u; simpl_WF.
   (* C-X *)
   unfold uc_eval.
   simpl.
@@ -837,7 +838,7 @@ Proof.
   reflexivity.  
 Qed.
 
-Local Transparent SQIR.X SQIR.CNOT SQIR.SWAP sqirU1.
+Local Transparent SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
 Lemma bcfresh_is_fresh : forall {dim} q bc,
     bcfresh q bc -> @is_fresh _ dim q (to_base_ucom dim (bc2ucom bc)).
 Proof.
@@ -848,7 +849,7 @@ Proof.
   apply bc2ucom_WF.
   split; auto.
 Qed.
-Local Opaque SQIR.X SQIR.CNOT SQIR.SWAP.
+Local Opaque SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
 
 Fixpoint map_qubits (f : nat -> nat) (c : ucom U) : ucom U :=
   match c with
@@ -877,7 +878,7 @@ Proof.
   rewrite <- IHu1, <- IHu2 by assumption.
   reflexivity.
   simpl.
-  destruct u; simpl_WF''; reflexivity.
+  destruct u; simpl_WF; reflexivity.
 Qed.
 
 Lemma map_qubits_control' : forall f q u n,
@@ -895,7 +896,7 @@ Proof.
   inversion WF; subst.
   simpl in Hfu.
   rewrite 2 IHn; auto; try lia.
-  destruct u; simpl_WF''; simpl in *; try reflexivity.
+  destruct u; simpl_WF; simpl in *; try reflexivity.
   (* C-CU1 *)
   rewrite IHn.
   reflexivity. 
@@ -998,7 +999,7 @@ Proof.
     invert_is_fresh; constructor; auto.
 Qed.
 
-Local Transparent sqirU1 sqirU2 sqirU3 SQIR.SWAP SQIR.CNOT.
+Local Transparent SQIR.U1 SQIR.U2 SQIR.U3 SQIR.SWAP SQIR.CNOT.
 Lemma invert_same : forall dim u,
   well_formed u -> (* WF isn't necessary, but makes the proof easier *)
   uc_eval dim (invert u) = 
@@ -1010,7 +1011,7 @@ Proof.
   simpl.
   inversion WF; subst.
   rewrite IHu1, IHu2; auto.
-  destruct u; simpl_WF''; simpl. 
+  destruct u; simpl_WF; simpl. 
   (* U_X *)
   rewrite invert_X.
   reflexivity.
@@ -1073,4 +1074,4 @@ Proof.
   apply is_fresh_invert.
   apply is_fresh_invert.
 Qed.
-Local Opaque sqirU1 sqirU2 sqirU3 SQIR.SWAP SQIR.CNOT.
+Local Opaque SQIR.U1 SQIR.U2 SQIR.U3 SQIR.SWAP SQIR.CNOT.

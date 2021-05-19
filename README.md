@@ -15,6 +15,7 @@ If you are interested in learning more about formal verification of quantum prog
 * [Directory Contents](#directory-contents)
   * [SQIR](#sqir)
   * [VOQC](#voqc)
+  * [examples](#examples)
 * [Acknowledgements](#acknowledgements)
 
 ## Setup
@@ -34,14 +35,13 @@ eval $(opam env)
 # install Coq -- this will take a while!
 opam install coq
 
-# install Interval package (optional, needed to compile QPEGeneral.v)
+# install Interval package (optional, needed to compile proofs in examples/shor)
 opam install coq-interval
 ```
 
 *Notes*:
 * Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any version of OCaml >= 4.05.0 should be fine. 
 * We require Coq version >= 8.12.0. We have tested compilation with 8.12.x and 8.13.x.
-* We require Interval version >= 4.0.0.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
 
 ## Compilation
@@ -52,32 +52,18 @@ Run `make` to compile the core files of SQIR, `make voqc` to compile proofs abou
 
 ### SQIR
 
-#### src
-
 Definition of the SQIR language.
 
-- src/SQIR.v : General definition of the SQIR language.
-- src/UnitarySem.v : Semantics for unitary SQIR programs.
-- src/DensitySem.v : Density matrix semantics for general SQIR programs.
-- src/NDSem.v : Non-deterministic semantics for general SQIR programs.
-- src/VectorStates.v : Utilities for describing states as vectors.
-- src/UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
-- src/Equivalences.v : Verified circuit equivalences for peephole optimizations.
+- DensitySem.v : Density matrix semantics for general SQIR programs.
+- Equivalences.v : Verified circuit equivalences for peephole optimizations.
+- NDSem.v : Non-deterministic semantics for general SQIR programs.
+- RCIR.v : 
+- SQIR.v : General definition of the SQIR language.
+- UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
+- UnitarySem.v : Semantics for unitary SQIR programs.
+- VectorStates.v : Utilities for describing states as vectors.
 
 We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which we have linked as a git submodule in the externals directory.
-
-#### examples
-
-Examples of verifying correctness properties of SQIR programs.
-
-- examples/DeutschJozsa.v : Deutsch-Jozsa algorithm
-- examples/GHZ.v : GHZ state preparation
-- examples/Grover.v : Grover's algorithm (use `make grover` to compile separately)
-- examples/QPE.v : Simplified quantum phase estimation
-- examples/QPEGeneral.v : General quantum phase estimation (use `make qpe-full` to compile separately)
-- examples/Simon.v : Simon's algorithm
-- examples/Superdense.v : Superdense coding
-- examples/Teleport.v : Quantum teleportation
 
 ### VOQC
 
@@ -114,6 +100,20 @@ The rest of the files in the VOQC directory can be split into the following cate
 
 - Experimental extensions
   - BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
+
+### examples
+
+Examples of verifying correctness properties of quantum algorithms.
+
+- Deutsch.v : Deutsch algorithm
+- DeutschJozsa.v : Deutsch-Jozsa algorithm
+- GHZ.v : GHZ state preparation
+- Grover.v : Grover's algorithm (use `make grover` to compile separately)
+- QPE.v : Simplified quantum phase estimation
+- shor/ : Shor's algorithm, including general quantum phase estimation (use `make shor` to compile separately, see the [README](shor/README.md) in the shor directory for more details)
+- Simon.v : Simon's algorithm
+- Superdense.v : Superdense coding
+- Teleport.v : Quantum teleportation
 
 ## Acknowledgements
 

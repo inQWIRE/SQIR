@@ -1,0 +1,1 @@
+dune exec --root extraction -- ./generate_circuit.exe -N $1 -a $2

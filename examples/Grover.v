@@ -290,7 +290,7 @@ Proof.
     with (UnitaryOps.control (n - (S (S p))) (generalized_Toffoli' (S p)))
     by reflexivity.
   apply fresh_control. 
-  lia.
+  split. lia.
   apply IHp; lia.
 Qed.
 
@@ -303,7 +303,9 @@ Proof.
   apply uc_well_typed_X. lia.
   destruct m.
   apply uc_well_typed_X. lia.
-  apply uc_well_typed_control. lia.
+  apply uc_well_typed_control. 
+  repeat split.
+  lia.
   apply fresh_generalized_Toffoli'; lia.
   apply IHm. lia.
 Qed.

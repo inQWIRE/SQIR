@@ -725,15 +725,6 @@ Proof.
       reflexivity.
 Qed.
 
-Lemma f_to_vec_eq :
-  forall n f1 f2,
-    (forall i, i < n -> f1 i = f2 i) ->
-    f_to_vec n f1 = f_to_vec n f2.
-Proof.
-  induction n; intros. easy.
-  simpl. rewrite IHn with (f2 := f2). rewrite H. easy. lia. intros. apply H. lia.
-Qed.
-
 Lemma f_to_vec_merge : forall f1 f2 m n, 
   f_to_vec m f1 ⊗ f_to_vec n f2 = 
     f_to_vec (m + n) (fun x => if x <? m then f1 x else f2 (x - m)%nat).

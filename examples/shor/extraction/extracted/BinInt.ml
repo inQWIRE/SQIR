@@ -105,6 +105,13 @@ module Z =
        | Zneg y' -> coq_CompOpp (Pos.compare x' y')
        | _ -> Lt)
 
+  (** val sgn : coq_Z -> coq_Z **)
+
+  let sgn = function
+  | Z0 -> Z0
+  | Zpos _ -> Zpos Coq_xH
+  | Zneg _ -> Zneg Coq_xH
+
   (** val leb : coq_Z -> coq_Z -> bool **)
 
   let leb x y =
@@ -119,6 +126,12 @@ module Z =
     | Lt -> true
     | _ -> false
 
+  (** val abs : coq_Z -> coq_Z **)
+
+  let abs = function
+  | Zneg p -> Zpos p
+  | x -> x
+
   (** val to_nat : coq_Z -> int **)
 
   let to_nat = function
@@ -132,6 +145,12 @@ module Z =
       (fun _ -> Z0)
       (fun n0 -> Zpos (Pos.of_succ_nat n0))
       n
+
+  (** val to_pos : coq_Z -> positive **)
+
+  let to_pos = function
+  | Zpos p -> p
+  | _ -> Coq_xH
 
   (** val pos_div_eucl : positive -> coq_Z -> coq_Z * coq_Z **)
 
@@ -187,4 +206,28 @@ module Z =
 
   let modulo a b =
     let (_, r) = div_eucl a b in r
+
+  (** val ggcd : coq_Z -> coq_Z -> coq_Z * (coq_Z * coq_Z) **)
+
+  let ggcd a b =
+    match a with
+    | Z0 -> ((abs b), (Z0, (sgn b)))
+    | Zpos a0 ->
+      (match b with
+       | Z0 -> ((abs a), ((sgn a), Z0))
+       | Zpos b0 ->
+         let (g, p) = Pos.ggcd a0 b0 in
+         let (aa, bb) = p in ((Zpos g), ((Zpos aa), (Zpos bb)))
+       | Zneg b0 ->
+         let (g, p) = Pos.ggcd a0 b0 in
+         let (aa, bb) = p in ((Zpos g), ((Zpos aa), (Zneg bb))))
+    | Zneg a0 ->
+      (match b with
+       | Z0 -> ((abs a), ((sgn a), Z0))
+       | Zpos b0 ->
+         let (g, p) = Pos.ggcd a0 b0 in
+         let (aa, bb) = p in ((Zpos g), ((Zneg aa), (Zpos bb)))
+       | Zneg b0 ->
+         let (g, p) = Pos.ggcd a0 b0 in
+         let (aa, bb) = p in ((Zpos g), ((Zneg aa), (Zneg bb))))
  end

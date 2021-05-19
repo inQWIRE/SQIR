@@ -131,9 +131,7 @@ Lemma natmul1 :
     b <> 1 ->
     ~(a * b = 1).
 Proof.
-  intros. intro. destruct a; destruct b; try lia.
-  destruct b. lia. assert (S a >= 1) by lia. assert (S (S b) >= 2) by lia.
-  assert (S a * S (S b) >= 2) by nia. lia.
+  intros. intro. destruct a; destruct b; lia.
 Qed.
 
 Lemma mul_mod_1_gcd :
@@ -255,7 +253,9 @@ Lemma Nsum2d_scale :
     Nsum2d n m (fun i j => d * f i j) = d * Nsum2d n m f.
 Proof.
   intros. induction n. simpl. flia.
-  simpl. rewrite IHn. rewrite Nsum_scale. flia.
+  simpl. rewrite IHn. rewrite Nsum_scale. 
+  rewrite Nat.mul_add_distr_l.
+  reflexivity.
 Qed.
 
 Lemma Nsum2d_eq_d2 :
@@ -281,7 +281,7 @@ Proof.
   assert (Nsum m (f n) <= Nsum m (g n)). {
     apply Nsum_le. intros. apply H; lia.
   }
-  lia.
+  apply Nat.add_le_mono; assumption.
 Qed.
 
 Definition Nsum2d' n m f := Nsum n (fun i => Nsum m (fun j => f i j)).
@@ -300,7 +300,7 @@ Lemma Nsum2d_swap_order :
 Proof.
   intros. do 2 rewrite <- Nsum2d'_Nsum2d.
   induction n; unfold Nsum2d' in *. simpl. rewrite Nsum_zero. easy.
-  simpl. rewrite IHn. rewrite Nsum_add. lia.
+  simpl. rewrite IHn. rewrite Nsum_add. reflexivity.
 Qed.
 
 Definition Nsum2dmask n m f (t : nat -> nat -> bool) := Nsum2d n m (fun i j => if t i j then f i j else 0).

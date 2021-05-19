@@ -6,8 +6,8 @@ Require Import AltGateSet.
 Fixpoint controlled_rotations n : ucom U :=
   match n with
   | 0 | 1 => SKIP
-  | 2     => CU1 (2 * PI / 2 ^ n) 1 0
-  | S n'  => controlled_rotations n' >> CU1 (2 * PI / 2 ^ n) n' 0
+  | 2     => CU1 (R2 * PI / R2 ^ n) 1 0
+  | S n'  => controlled_rotations n' >> CU1 (R2 * PI / R2 ^ n) n' 0
   end.
 
 Fixpoint QFT n : ucom U :=

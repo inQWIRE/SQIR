@@ -1,11 +1,7 @@
 open AltGateSet
-open BinNums
 open ModMult
 open Nat
 open RCIR
-open Rdefinitions
-open Rpow_def
-open Rtrigo1
 open ShorAux
 
 (** val controlled_rotations : int -> coq_U ucom **)
@@ -20,12 +16,12 @@ let rec controlled_rotations n =
       (fun fO fS n -> if n=0 then fO () else fS (n-1))
         (fun _ ->
         coq_CU1
-          (coq_Rdiv (coq_Rmult (coq_IZR (Zpos (Coq_xO Coq_xH))) coq_PI)
-            (pow (coq_IZR (Zpos (Coq_xO Coq_xH))) n)) (Pervasives.succ 0) 0)
+          (( /. ) (( *. ) 2.0 Float.pi)
+            ((fun a b -> a ** Float.of_int b) 2.0 n)) (Pervasives.succ 0) 0)
         (fun _ -> Coq_useq ((controlled_rotations n'),
         (coq_CU1
-          (coq_Rdiv (coq_Rmult (coq_IZR (Zpos (Coq_xO Coq_xH))) coq_PI)
-            (pow (coq_IZR (Zpos (Coq_xO Coq_xH))) n)) n' 0)))
+          (( /. ) (( *. ) 2.0 Float.pi)
+            ((fun a b -> a ** Float.of_int b) 2.0 n)) n' 0)))
         n0)
       n')
     n

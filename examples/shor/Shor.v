@@ -451,18 +451,21 @@ Proof.
   replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two. easy.
   bdestruct (r =? 0). subst. easy.
   remember (fun i : nat => ((i + 2^k) mod r)%nat) as u.
-  assert (weak_finite_bijection r u).
-  { rewrite Hequ. split. intros. apply Nat.mod_upper_bound. easy.
+  assert (finite_bijection r u).
+  { rewrite Hequ. 
     exists (fun i : nat => ((r - (2^k) mod r + i) mod r)).
-    split. intros. apply Nat.mod_upper_bound. easy.
-    split. intros. rewrite Nat.add_mod with (a := x) by easy.
+    intros x Hx.
+    repeat split.
+    apply Nat.mod_upper_bound. easy.
+    apply Nat.mod_upper_bound. easy.
+    rewrite Nat.add_mod with (a := x) by easy.
     rewrite Nat.add_mod_idemp_r by easy. rewrite Nat.add_comm.
     replace (x mod r + 2 ^ k mod r + (r - 2 ^ k mod r))%nat with (x mod r + (2 ^ k mod r + (r - 2 ^ k mod r)))%nat by lia.
     rewrite le_plus_minus_r. pattern r at 2. rewrite <- Nat.mul_1_l. rewrite Nat.mod_add by easy. rewrite Nat.mod_mod. apply Nat.mod_small. easy. easy.
     specialize (Nat.mod_upper_bound (2^k)%nat r H). lia.
-    intros. rewrite <- Nat.add_mod_idemp_r by easy. rewrite Nat.add_mod_idemp_l by easy.
-    replace (r - 2 ^ k mod r + y + 2 ^ k mod r)%nat with (2 ^ k mod r + (r - 2 ^ k mod r) + y)%nat by lia.
-    rewrite le_plus_minus_r. replace (r + y)%nat with (y + 1 * r)%nat by lia. rewrite Nat.mod_add by easy. apply Nat.mod_small. easy.
+    rewrite <- Nat.add_mod_idemp_r by easy. rewrite Nat.add_mod_idemp_l by easy.
+    replace (r - 2 ^ k mod r + x + 2 ^ k mod r)%nat with (2 ^ k mod r + (r - 2 ^ k mod r) + x)%nat by lia.
+    rewrite le_plus_minus_r. replace (r + x)%nat with (x + 1 * r)%nat by lia. rewrite Nat.mod_add by easy. apply Nat.mod_small. easy.
     specialize (Nat.mod_upper_bound (2^k)%nat r H). lia.
   }
   rewrite vsum_reorder with (f0 := u) by easy.
@@ -1136,7 +1139,8 @@ Proof.
       rewrite <- Rmult_1_l. apply Rle_mult_inv_pos. lra. interval.
       replace (-2) with (Ropp 2) by lra. rewrite exp_Ropp.
       replace 1 with (/ 1) by lra. apply Rle_Rinv; lra.
-      replace 1 with (/ 1) by lra. apply Rle_Rinv; interval.
+      replace 1 with (/ 1) by lra. apply Rle_Rinv; try interval. 
+      interval with (i_prec 53). (* idk why we need i_prec 53 -KH *)
       rename r into r'. remember (S r') as r.
       eapply Rge_trans. apply Heuler. lia.
       assert ((Nat.log2 (S r) ^ 4) <= (Nat.log2 N ^ 4)).
@@ -1230,7 +1234,8 @@ Proof.
       rewrite <- Rmult_1_l. apply Rle_mult_inv_pos. lra. interval.
       replace (-2) with (Ropp 2) by lra. rewrite exp_Ropp.
       replace 1 with (/ 1) by lra. apply Rle_Rinv; lra.
-      replace 1 with (/ 1) by lra. apply Rle_Rinv; interval.
+      replace 1 with (/ 1) by lra. apply Rle_Rinv; try interval.
+      interval with (i_prec 53). (* idk why we need i_prec 53 -KH *)
       rename r into r'. remember (S r') as r.
       eapply Rge_trans. apply Heuler. lia.
       assert ((Nat.log2 (S r) ^ 4) <= (Nat.log2 N ^ 4)).
