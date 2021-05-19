@@ -110,7 +110,7 @@ Examples of verifying correctness properties of quantum algorithms.
 - GHZ.v : GHZ state preparation
 - Grover.v : Grover's algorithm (use `make grover` to compile separately)
 - QPE.v : Simplified quantum phase estimation
-- shor/ : Shor's algorithm, including general quantum phase estimation (use `make shor` to compile separately, see the [README](shor/README.md) in the shor directory for more details)
+- shor/ : Shor's algorithm, including general quantum phase estimation (use `make shor` to compile separately, see the [README](examples/shor/README.md) in the shor directory for more details)
 - Simon.v : Simon's algorithm
 - Superdense.v : Superdense coding
 - Teleport.v : Quantum teleportation
