@@ -4196,6 +4196,12 @@ Definition inter_num (size:nat) (t : varType) :=
 Definition vars_start_diff (vs: vars) :=
         forall x y,  x <> y -> start vs x <> start vs y.
 
+Definition weak_finite_bijection (n : nat) (f : nat -> nat) :=
+  (forall x, x < n -> f x < n)%nat /\ 
+  (exists g, (forall y, y < n -> g y < n)%nat /\
+        (forall x, (x < n)%nat -> g (f x) = x) /\ 
+        (forall y, (y < n)%nat -> f (g y) = y)).
+
 Definition vars_finite_bij (vs:vars) :=
    forall x,  weak_finite_bijection (vsize vs x) (vmap vs x).
 
@@ -4565,6 +4571,7 @@ Proof.
   rewrite H6. rewrite Heqq.
   inv H1. inv H0.
   apply fresh_control.
+  split.
   apply find_pos_prop; try assumption. 
   apply IHe; try assumption. easy.
   subst. inv H0. inv H1.
@@ -4649,11 +4656,10 @@ Proof.
   apply find_pos_prop; try assumption.
   rewrite H6. 
   apply uc_well_typed_control.
-  inv H3. inv H4.
+  inv H3. inv H4. split.
   apply H5. easy.
-  inv H3. inv H4.
+  split.
   apply fresh_is_fresh; try assumption.
-  inv H3. inv H4.
   apply IHe; try assumption.
   inv H4.
   simpl. constructor.
@@ -7446,6 +7452,17 @@ Fixpoint rz_adder (x:var) (n:nat) (M: nat -> bool) :=
                | S m => (if M m then SR m x else SKIP (x,m)) ; rz_adder x m M
     end.
 
+Check phi_modes.
+
+Check cut_n.
+
+Lemma rz_adder_sem : forall n f x M, phi_modes f x n ->
+                   get_r_qft (exp_sem (rz_adder x n M) f) x
+                    = cut_n (fbrev n (sumfb false (fbrev n (get_r_qft f x)) (fbrev n M))) n.
+Proof.
+  intros.
+Admitted.
+
 Definition one_cu_adder (x:var) (n:nat) (c3:posi) (M:nat -> bool) := CU c3 (rz_adder x n M).
 
 (* assuming the input is in qft stage. *)
@@ -7464,6 +7481,8 @@ Definition rz_modmult_half (y:var) (x:var) (n:nat) (c:posi) (a:nat -> bool) (N:n
 
 Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (C:nat -> bool) (Cinv : nat -> bool) (N:nat -> bool) :=
                  rz_modmult_half y x n c C N ;;; inv_pexp (rz_modmult_half y x n c Cinv N).
+
+
 
 
 (* modmult adder based on classical circuits. *)
@@ -9629,6 +9648,411 @@ Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C
 Definition modmult M C Cinv n x y z s c1 c2 := Exp (init_v n z M);; modmult_full C Cinv n z x y c1 c2 s;; inv_sexp (Exp (init_v n z M)).
 
 Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; modmult M C Cinv n x y z s c1 c2;; Rev x.
+
+
+(* The definition of QSSA. *)
+
+Definition fvar := nat.
+
+(*  a type for const values that cannot appear in a quantum circuit,
+   and register values that can appear in a guantum circuit. *)
+Inductive atype := C : nat -> atype | Q : nat -> atype.
+
+
+Definition aty_eq  (t1 t2:atype) : bool := 
+   match t1 with C n => match t2 with C m => n =? m
+                            | _ => false
+                        end
+               | Q n => match t2 with Q m => n =? m
+                           | _ => false
+                        end
+   end.
+
+Notation "i '=a=' j" := (aty_eq i j) (at level 50).
+
+Lemma aty_eqb_eq : forall a b, a =a= b = true -> a = b.
+Proof.
+ intros. unfold aty_eq in H0.
+ destruct a. destruct b.
+ apply Nat.eqb_eq in H0. subst. easy.
+ inv H0.
+ destruct b. inv H0.
+ apply Nat.eqb_eq in H0. subst. easy.
+Qed.
+
+Lemma aty_eqb_neq : forall a b, a =a= b = false -> a <> b.
+Proof.
+ intros. unfold aty_eq in H0.
+ destruct a. destruct b.
+ apply Nat.eqb_neq in H0.
+ intros R. inv R. contradiction.
+ intros R. inv R.
+ destruct b. 
+ intros R. inv R.
+ apply Nat.eqb_neq in H0.
+ intros R. inv R. contradiction.
+Qed.
+
+Lemma aty_eq_reflect : forall r1 r2, reflect (r1 = r2) (aty_eq r1 r2). 
+Proof.
+  intros.
+  destruct (r1 =a= r2) eqn:eq1.
+  apply  ReflectT.
+  apply aty_eqb_eq in eq1.
+  assumption. 
+  constructor. 
+  apply aty_eqb_neq in eq1.
+  assumption. 
+Qed.
+
+Inductive btype := Nat : btype | Flt : btype.
+
+Definition bty_eq (t1 t2:btype) : bool := match (t1,t2) with (Nat,Nat) => true
+                                                           | (Flt,Flt) => true
+                                                            | _ => false
+                                          end.
+
+Notation "i '=b=' j" := (bty_eq i j) (at level 50).
+
+
+Lemma bty_eqb_eq : forall a b, a =b= b = true -> a = b.
+Proof.
+ intros. unfold bty_eq in H0.
+ destruct a. destruct b.
+ easy. inv H0.
+ destruct b. inv H0. easy.
+Qed.
+
+Lemma bty_eqb_neq : forall a b, a =b= b = false -> a <> b.
+Proof.
+ intros. unfold bty_eq in H0.
+ destruct a. destruct b. inv H0. easy.
+ destruct b. easy. inv H0.
+Qed.
+
+Lemma bty_eq_reflect : forall r1 r2, reflect (r1 = r2) (bty_eq r1 r2). 
+Proof.
+  intros.
+  destruct (r1 =b= r2) eqn:eq1.
+  apply  ReflectT.
+  apply bty_eqb_eq in eq1.
+  assumption. 
+  constructor. 
+  apply bty_eqb_neq in eq1.
+  assumption. 
+Qed.
+
+Definition typ :Type := (atype * btype).
+
+Definition ty_eq (t1 t2:typ) : bool :=
+   match t1 with (a1,b1) => match t2 with (a2,b2) => aty_eq a1 a2 && bty_eq b1 b2 end end.
+
+Notation "i '=t=' j" := (ty_eq i j) (at level 50).
+
+Lemma ty_eqb_eq : forall a b, a =t= b = true -> a = b.
+Proof.
+ intros. unfold ty_eq in H0.
+ destruct a. destruct b.
+ apply andb_true_iff in H0. destruct H0.
+ apply aty_eqb_eq in H0. apply bty_eqb_eq in H1.
+ subst. easy.
+Qed.
+
+Lemma ty_eqb_neq : forall a b, a =t= b = false -> a <> b.
+Proof.
+ intros. unfold ty_eq in H0.
+ destruct a. destruct b.
+ apply andb_false_iff in H0. destruct H0.
+ apply aty_eqb_neq in H0. intros R. inv R. contradiction.
+ apply bty_eqb_neq in H0. intros R. inv R. contradiction.
+Qed.
+
+Lemma ty_eq_reflect : forall r1 r2, reflect (r1 = r2) (ty_eq r1 r2). 
+Proof.
+  intros.
+  destruct (r1 =t= r2) eqn:eq1.
+  apply  ReflectT.
+  apply ty_eqb_eq in eq1.
+  assumption. 
+  constructor. 
+  apply ty_eqb_neq in eq1.
+  assumption. 
+Qed.
+
+Hint Resolve aty_eq_reflect bty_eq_reflect ty_eq_reflect : bdestruct.
+
+
+Inductive factor := Var (v:var)
+                 | Num (v:nat) (n:nat) (t:btype). (*a value is represented as a bool binary. *)
+
+Inductive flag := QFTA | Classic.
+
+(* the SSA form is to restrict non-loop instructions. x = y op z, 
+    where we compute y op z and then we store the value into x, so if x is freshly defined, then x = y op z. 
+    if one wants to use instructions in a loop, then use the qadd/qsub/qmul. *)
+Inductive iexp := eplus (f:flag) (x : factor) (y: factor)
+      | eminus (f:flag) (x:factor) (y:factor)
+      | emult (f:flag) (x:factor) (y:factor)
+      | ediv (f:flag) (x:factor) (y:factor)
+      | emod (f:flag) (x:factor) (y:factor)
+      | eload (v:var).
+
+Inductive comexp := clt (f:flag) (x:factor) (y:factor)
+                  | ceq (f:flag) (x:factor) (y:factor).
+
+(* qadd/qsub/qmul has the property as x = y op x, which is corresponding to
+   [y][x] -> [y][y op x] structure. *)
+Inductive qexp := inst (v:var) (n:nat) (t:btype) (e:iexp)
+                | qadd (f:flag) (v:factor) (x:var)
+                | qsub (f:flag) (v:factor) (x:var)
+                | qmul (f:flag) (v:factor) (x:var)
+                | call (f:fvar) (l:list var)
+                | qif (c:comexp) (e1:qexp) (e2:qexp)
+                | qwhile (c:comexp) (e:qexp)
+                | ret (l:list var)
+                | qseq (q1:qexp) (q2:qexp).
+
+(*functions will do automatic inverse computation after a function is returned.
+  for each ret statement, there is a list of pairs of vars, and the left one is the global variables to return,
+   while the left one is the local variables. after a function call is returned,
+    it will store all the local variables to their correponding global variables, and then reverse the computation.  *)
+
+Definition func : Type := (fvar * qexp * list (nat * btype)).
+    (* a function is a fun name, a starting block label, and a list of blocks. *)
+
+Definition prog : Type := (nat * nat * nat * list (var * nat) * list func). 
+   (* a program is a nat representing the stack size and number of loop limit in a while loop. a nat number 
+    indicating the number of denominator for each fixed-pointer number, and a list of global vars, and a list of functions. *)
+
+
+(* Define the well-formedness of exp. It is SSA + variable-dominance, as well as type match. *)
+(* The following relation defines the SSA + variable dominance for expressions and instructions. *)
+Inductive ssa_factor : list var -> factor -> Prop :=
+   | ssa_jfactor : forall r x, In x r -> ssa_factor r (Var x)
+   | ssa_cfactor_num : forall r n m t, ssa_factor r (Num n m t).
+
+Inductive ssa_exp : list var -> iexp -> Prop := 
+  | eplus_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (eplus f x y)
+  | eminus_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (eminus f x y)
+  | emult_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (emult f x y)
+  | ediv_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (ediv f x y)
+  | emod_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (emod f x y)
+  | eload_ssa : forall r x, In x r -> ssa_exp r (eload x).
+
+Inductive ssa_comexp : list var -> comexp -> Prop :=
+     | ssa_clt : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_comexp r (clt f x y)
+     | ssa_ceq : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_comexp r (ceq f x y).
+
+Inductive ssa_inst : list var -> qexp -> list var -> Prop :=
+   | ssa_assign : forall r x n t e, ~ In x r -> ssa_exp r e -> ssa_inst r (inst x n t e) (x::r)
+   | ssa_add : forall r f x y, ssa_factor r x -> In y r -> ssa_inst r (qadd f x y) r
+   | ssa_sub : forall r f x y, ssa_factor r x -> In y r -> ssa_inst r (qsub f x y) r
+   | ssa_mul : forall r f x y, ssa_factor r x -> In y r -> ssa_inst r (qmul f x y) r
+   | ssa_if : forall r r' r'' c e1 e2, ssa_comexp r c ->
+                 ssa_inst r e1 r' -> ssa_inst r' e2 r'' -> ssa_inst r (qif c e1 e2) r''
+   | ssa_while : forall r r' c e, ssa_comexp r c -> ssa_inst r e r' -> ssa_inst r (qwhile c e) r'
+   | ssa_ret : forall r l, (forall a , In a l -> In a r) -> ssa_inst r (ret l) r
+   | ssa_call : forall r f l, (forall a, In a l -> In a r) -> ssa_inst r (call f l) r
+   | ssa_seq : forall r r' r'' e1 e2, ssa_inst r e1 r' -> ssa_inst r' e2 r'' -> ssa_inst r (qseq e1 e2) r''.
+
+Inductive ssa_funs : list var -> list func -> list var -> Prop :=
+   ssa_fun_empty : forall r, ssa_funs r [] r
+  | ssa_fun_many : forall r r' r'' f e fs l, ssa_inst r e r' -> ssa_funs r' fs r'' -> ssa_funs r ((f,e,l)::fs) r''.
+
+
+Inductive ssa_prog : prog -> Prop :=
+  | ssa_top : forall n m i l l' fs, ssa_funs (fst (split l)) fs l' -> ssa_prog (n,m,i,l,fs).
+
+
+(* The following relation defines the type system for expressions and instructions and functions. *)
+Module BEnv := FMapList.Make Nat_as_OT.
+
+Definition benv := BEnv.t typ.
+
+Definition empty_benv := @BEnv.empty typ.
+
+Module FTEnv := FMapList.Make Nat_as_OT.
+
+Definition ftmenv := FTEnv.t (func).
+
+Definition type_up_zero (t : atype) : Prop := 
+   match t with (C n) => (0 < n)%nat
+              | (Q n) => (0 < n)%nat
+   end.
+
+Definition asubtype (t1 t2: atype) : bool :=
+   if aty_eq t1 t2 then true else
+           (match t1 with C n => match t2 with Q m => n =? m
+                                             | _ => false
+                                 end
+                         | _ => false
+            end).
+
+Inductive subtype : typ -> typ -> Prop :=
+   subtype_ref : forall t, subtype t t
+  | subtype_cq : forall n b, subtype (C n, b) (Q n, b).
+
+Inductive type_factor (benv:benv) : typ -> factor -> Prop :=
+     type_fac_var : forall t' t x, BEnv.MapsTo x t' benv -> subtype t' t -> type_factor benv t (Var x)
+   | type_fac_nat : forall n m t' t, subtype (C m,t') t -> type_factor benv t (Num n m t').
+
+Definition mat_cq (a:atype) (n:nat) : Prop :=
+   match a with Q m => (n = m)
+              | C m => (n = m)
+   end.
+
+Inductive type_iexp (gs:list var) (benv:benv) : typ -> iexp -> Prop :=
+   type_plus:  forall t f x y, type_factor benv t x -> type_factor benv t y -> type_iexp gs benv t (eplus f x y)
+  | type_minus:  forall t f x y, type_factor benv t x -> type_factor benv t y -> type_iexp gs benv t (eminus f x y)
+  | type_mult:  forall a b f x y, type_factor benv (a,b) x -> type_factor benv (a,Nat) y -> type_iexp gs benv (a,b) (emult f x y)
+  | type_div:  forall a n b f x y, type_factor benv (a,b) x -> mat_cq a n
+                              -> type_factor benv (C n,Nat) y -> type_iexp gs benv (a,b) (ediv f x y)
+  | type_mod:  forall a n b f x y, type_factor benv (a,b) x -> mat_cq a n
+                                -> type_factor benv (C n,Nat) y -> type_iexp gs benv (a,b) (emod f x y)
+  | type_load : forall n b t x, In x gs -> BEnv.MapsTo x (Q n, b) benv -> t = (Q n,b) -> type_iexp gs benv t (eload x).
+
+
+Inductive type_cexp (gs:list var) (benv:benv) : typ -> comexp -> Prop :=
+   type_clt : forall c n b f x y, type_factor benv (c n,b) x -> 
+                     type_factor benv (c n,b) y -> type_cexp gs benv (c 1,b) (clt f x y)
+  |  type_ceq : forall c n b f x y, type_factor benv (c n,b) x ->
+                     type_factor benv (c n,b) y -> type_cexp gs benv (c 1,b) (ceq f x y).
+
+Inductive type_qexp_h (fm:ftmenv) (fs:list var) (gs:list var): benv -> qexp -> Prop :=
+ | htype_qadd : forall benv t f x y, type_factor benv t x -> BEnv.MapsTo y t benv -> type_qexp_h fm fs gs benv (qadd f x y)
+ | htype_qsub : forall benv t f x y, type_factor benv t x ->  BEnv.MapsTo y t benv -> type_qexp_h fm fs gs benv (qsub f x y)
+ | htype_qmul : forall benv a b f x y, type_factor benv (a,Nat) x ->  BEnv.MapsTo y (a,b) benv -> type_qexp_h fm fs gs benv (qmul f x y)
+ | htype_call : forall benv f, In f fs -> type_qexp_h fm fs gs benv (call f)
+ | htype_if : forall benv t ce e1 e2, type_cexp gs benv t ce -> type_qexp_h fm fs gs benv e1 ->
+                     type_qexp_h fm fs gs benv e2 ->  type_qexp_h fm fs gs benv (qif ce e1 e2)
+ | htype_while : forall benv t ce e, type_cexp gs benv t ce ->
+                            type_qexp_h fm fs gs benv e -> type_qexp_h fm fs gs benv (qwhile ce e)
+ | htype_ret : forall benv l, (forall x, In x l -> ~ In x gs) -> type_qexp_h fm fs gs benv (ret l)
+ | htype_qseq : forall benv e1 e2, type_qexp_h fm fs gs benv e1 ->
+                              type_qexp_h fm fs gs benv e2 -> type_qexp_h fm fs gs benv (qseq e1 e2).
+
+
+Inductive type_qexp (fs:list var) (gs:list var): benv -> qexp -> benv -> Prop :=
+   type_inst_cq: forall benv benv' c x n t e, type_iexp gs benv (c n,t) e -> ~ In x gs
+                  -> BEnv.Equal benv' (BEnv.add x (c n,t) benv) -> type_qexp fs gs benv (inst x n t e) benv'
+ | type_qadd : forall benv t f x y, type_factor benv t x -> BEnv.MapsTo y t benv -> type_qexp fs gs benv (qadd f x y) benv
+ | type_qsub : forall benv t f x y, type_factor benv t x -> BEnv.MapsTo y t benv -> type_qexp fs gs benv (qsub f x y) benv
+ | type_qmul : forall benv a b f x y, type_factor benv (a,Nat) x -> BEnv.MapsTo y (a,b) benv -> type_qexp fs gs benv (qmul f x y) benv
+ | type_call : forall benv f, In f fs -> type_qexp fs gs benv (call f) benv
+ | type_if : forall benv benv' benv'' t ce e1 e2, type_cexp gs benv t ce -> type_qexp fs gs benv e1 benv' ->
+                     type_qexp fs gs benv' e2 benv'' ->  type_qexp fs gs benv (qif ce e1 e2) benv''
+ | type_while : forall benv t ce e, type_cexp gs benv t ce ->
+                            type_qexp_h fs gs benv e -> type_qexp fs gs benv (qwhile ce e) benv
+ | type_ret : forall benv l, (forall x, In x l -> ~ In x gs) -> type_qexp fs gs benv (ret l) benv
+ | type_qseq : forall benv benv' benv'' e1 e2, type_qexp fs gs benv e1 benv' ->
+              type_qexp fs gs benv' e2 benv'' -> type_qexp fs gs benv (qseq e1 e2) benv''.
+
+Inductive type_funs (gs:list var): benv -> list var -> list func -> list var -> Prop :=
+   type_fun_empty : forall benv fs, type_funs gs benv fs [] fs
+ | type_fun_many : forall benv benv' fs fs' f e l, ~ In f fs -> type_qexp fs gs benv e benv'
+                -> type_funs gs benv fs l fs' -> type_funs gs benv fs ((f,e)::l) (f::fs').
+
+Inductive gen_benv : benv -> list (var * nat) -> benv -> Prop := 
+    gen_benv_empty : forall benv, gen_benv benv [] benv
+  | gen_benv_many : forall benv benv' x n l, gen_benv benv l benv' -> gen_benv benv ((x,n)::l) (BEnv.add x (Q n,Nat) benv').
+
+Inductive type_prog : prog -> Prop :=
+  type_prog_t : forall n m i l fl benv fs, m <= n -> gen_benv empty_benv l benv ->
+              type_funs (fst (split l)) benv [] fl fs -> type_prog (n,m,i,l,fl).
+
+
+
+(*The semantics of QLLVM. *)
+
+Module Reg := FMapList.Make Nat_as_OT.
+
+Definition reg := Reg.t nat.
+
+Module FEnv := FMapList.Make Nat_as_OT.
+
+Definition fmenv := FEnv.t (func * benv).
+
+
+Inductive sem_factor : reg -> factor -> nat -> Prop :=
+   | sem_factor_var : forall r x n, Reg.MapsTo x n r -> sem_factor r (Var x) n
+   | sem_factor_num : forall r m n t, sem_factor r (Num n m t) (n mod (2^m)).
+
+Definition get_n (t:typ) := match t with (Q n,t) => n | (C n,t) => n end.
+
+Inductive sem_iexp (M: fmenv) : reg -> typ -> iexp -> nat -> Prop :=
+   | sem_eplus : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
+                           sem_iexp M r t (eplus f x y) ((n1+n2) mod (2^(get_n t)))
+   | sem_eminus : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
+                           sem_iexp M r t (eminus f x y) (if n1 <? n2 then 2^(get_n t) + n2 - n1 else n1 - n2)
+   | sem_emult : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
+                           sem_iexp M r t (emult f x y) ((n1*n2) mod (2^(get_n t))) 
+   | sem_ediv : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
+                           sem_iexp M r t (ediv f x y) (n1/n2) 
+   | sem_emod : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
+                           sem_iexp M r t (ediv f x y) (n1 mod n2) 
+   | sem_eload : forall r x t v, Reg.MapsTo x v r -> sem_iexp M r t (eload x) (v mod (2^(get_n t))).
+
+Inductive sem_cexp (M:fmenv) (benv:benv) : reg -> comexp -> bool -> Prop :=
+    | sem_clt : forall r f x y t n1 n2, sem_factor r x n1 -> sem_factor r y n2 ->
+                     type_factor benv t x -> type_factor benv t y ->
+                           sem_cexp M benv r (clt f x y) ((n1 mod (2^(get_n t))) <? (n2 mod (2^ get_n t)))
+    | sem_ceq : forall r f x y t n1 n2, sem_factor r x n1 -> sem_factor r y n2 ->
+                     type_factor benv t x -> type_factor benv t y ->
+                           sem_cexp M benv r (ceq f x y) ((n1 mod (2^(get_n t))) =? (n2 mod (2^ get_n t))).
+
+Inductive sem_qexp (M: fmenv) (benv:benv) : reg -> qexp -> reg -> Prop :=
+   | sem_inst : forall r x m e bt t n, BEnv.MapsTo x t benv -> sem_iexp M r t e n 
+                 -> sem_qexp M benv r (inst x m bt e) (Reg.add x n r)
+   | sem_qadd : forall r f x y t n1 n2, sem_factor r x n1 -> Reg.MapsTo y n2 r -> BEnv.MapsTo y t benv
+                -> sem_qexp M benv r (qadd f x y) (Reg.add y ((n1 mod (2^(get_n t)))+(n2 mod (2^(get_n t))) mod (get_n t)) r)
+   | sem_qsub : forall r f x y t n1 n2, sem_factor r x n1 -> Reg.MapsTo y n2 r -> BEnv.MapsTo y t benv
+                -> sem_qexp M benv r (qadd f x y) (Reg.add y (if (n1 mod (2^(get_n t))) <? (n2 mod (2^(get_n t)))
+                        then 2^(get_n t) + (n2 mod (2^(get_n t))) - (n1 mod (2^(get_n t)))
+                 else (n1 mod (2^(get_n t))) - (n2 mod (2^(get_n t)))) r)
+   | sem_times : forall r f x y t n1 n2, sem_factor r x n1 -> Reg.MapsTo y n2 r -> BEnv.MapsTo y t benv
+                -> sem_qexp M benv r (qmul f x y) (Reg.add y ((n1 mod (2^(get_n t)))*(n2 mod (2^(get_n t))) mod (get_n t)) r)
+   | sem_call :  forall r f x y t n1 n2, FEnv.MapsTo f (e,benv') -> 
+                         sem_qexp M benv' r e r' -> 
+                -> sem_qexp M benv r (call f) (Reg.add y ((n1 mod (2^(get_n t)))*(n2 mod (2^(get_n t))) mod (get_n t)) r)
+
+with sem_func (M:fmenv) (benv:benv) (endr :reg) : qexp -> Prop :=
+   sem_fun_rule : forall e r r', sem_qexp M benv r e r' -> sem_func M benv endr e.
+
+
+
+
+Inductive comexp := clt (f:flag) (x:factor) (y:factor)
+                  | ceq (f:flag) (x:factor) (y:factor).
+
+(* qadd/qsub/qmul has the property as x = y op x, which is corresponding to
+   [y][x] -> [y][y op x] structure. *)
+Inductive qexp := inst (v:var) (n:nat) (t:btype) (e:iexp)
+                | qadd (f:flag) (v:factor) (x:var)
+                | qsub (f:flag) (v:factor) (x:var)
+                | qmul (f:flag) (v:factor) (x:var)
+                | call (f:fvar)
+                | qif (c:comexp) (e1:qexp) (e2:qexp)
+                | qwhile (c:comexp) (e:qexp)
+                | ret (l:list (var * var))
+                | qseq (q1:qexp) (q2:qexp).
+
+
+Inductive comexp := clt (f:flag) (x:factor) (y:factor)
+                  | ceq (f:flag) (x:factor) (y:factor).
+
+(* qadd/qsub/qmul has the property as x = y op x, which is corresponding to
+   [y][x] -> [y][y op x] structure. *)
+Inductive qexp := inst (v:var) (n:nat) (t:btype) (e:iexp)
+                | qadd (f:flag) (v:factor) (x:factor)
+                | qsub (f:flag) (v:factor) (x:factor)
+                | qmul (f:flag) (v:factor) (x:factor)
+                | call (f:fvar)
+                | qif (c:comexp) (e1:qexp) (e2:qexp)
+                | qwhile (c:comexp) (e:qexp)
+                | ret (l:list (var * var))
+                | qseq (q1:qexp) (q2:qexp).
+
+
 
 
 (*
