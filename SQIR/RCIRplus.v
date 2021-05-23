@@ -225,28 +225,21 @@ Inductive exp := SKIP (p:posi) | X (p:posi) | CU (p:posi) (e:exp)
         | SR (q:nat) (x:var) (* a series of RZ gates for QFT mode. *)
         | SRR (q:nat) (x:var) (* a series of RRZ gates for QFT mode. *)
         | HCNOT (p1:posi) (p2:posi)
+        | Lshift (x:var)
+        | Rshift (x:var)
+        | Rev (x:var)
         | Seq (s1:exp) (s2:exp).
 
 Notation "p1 ; p2" := (Seq p1 p2) (at level 50) : exp_scope.
 
-
-Inductive sexp :=  | Lshift (x:var) | Rshift (x:var) 
-                   | Rev (x:var)  (* move the positions in x to be upside-down. *)
-                 (*  | Reset (x:var) *)
-                   | Exp (s:exp) | SSeq (s1:sexp) (s2:sexp).
-
-Coercion Exp : exp >-> sexp.
-
-Notation "p1 ;; p2" := (SSeq p1 p2) (at level 49) : exp_scope.
-
-Inductive pexp := SExp (s:sexp) | QFT (x:var) | RQFT (x:var)
+Inductive pexp := Exp (s:exp) | QFT (x:var) | RQFT (x:var)
                | H (x:var) | FSeq (p1:pexp) (p2:pexp).
 
-Coercion SExp : sexp >-> pexp.
+Coercion Exp : exp >-> pexp.
 
 Definition Z (p:posi) := RZ 1 p.
 
-Notation "p1 ;;; p2" := (FSeq p1 p2) (at level 48) : exp_scope.
+Notation "p1 ;; p2" := (FSeq p1 p2) (at level 48) : exp_scope.
 
 Fixpoint inv_exp p :=
   match p with
@@ -255,24 +248,18 @@ Fixpoint inv_exp p :=
   | CU n p => CU n (inv_exp p)
   | SR n x => SRR n x
   | SRR n x => SR n x
+  | Lshift x => Rshift x
+  | Rshift x => Lshift x
+  | Rev x => Rev x
   | HCNOT p1 p2 => HCNOT p1 p2
   | Seq p1 p2 => inv_exp p2; inv_exp p1
   | RZ q p1 => RRZ q p1
   | RRZ q p1 => RZ q p1
   end.
 
-Fixpoint inv_sexp p :=
-  match p with 
-  | Exp e => Exp (inv_exp e)
-  | Lshift x => Rshift x
-  | Rshift x => Lshift x
-  | Rev x => Rev x
-  | p1 ;; p2 => inv_sexp p2 ;; inv_sexp p1
-  end.
-
 Fixpoint inv_pexp p :=
    match p with 
-    | SExp s => SExp (inv_sexp s)
+    | Exp s => Exp (inv_exp s)
     | QFT x => RQFT x
     | RQFT x => QFT x
     | H x => H x
@@ -293,39 +280,39 @@ Fixpoint nX x n :=
    end.
 
 (* Grover diffusion operator. *)
-Definition diff_half (x c:var) (n:nat) := H x ;;; H c ;;; SExp (Exp (nX x n; X (c,0))). 
+Definition diff_half (x c:var) (n:nat) := H x ;; H c ;;  (Exp (nX x n; X (c,0))). 
 
 Definition diff_1 (x c :var) (n:nat) :=
-  diff_half x c n ;;; SExp (Exp (GCCX x n)) ;;; (inv_pexp (diff_half x c n)).
+  diff_half x c n ;; (Exp (GCCX x n)) ;; (inv_pexp (diff_half x c n)).
 
 (*The second implementation of grover's diffusion operator.
   The whole circuit is a little different, and the input for the diff_2 circuit is asssumed to in Had mode. *)
 Definition diff_2 (x c :var) (n:nat) :=
-  H x ;;; SExp (Exp (GCCX x n)) ;;; H x.
+  H x ;; (Exp (GCCX x n)) ;; H x.
 
 Fixpoint is_all_true C n :=
   match n with 0 => true
            | S m => C m && is_all_true C m
   end.
 
-Definition const_u (C :nat -> bool) (n:nat) c := if is_all_true C n then SExp (Exp (X (c,0))) else SKIP (c,0).
+Definition const_u (C :nat -> bool) (n:nat) c := if is_all_true C n then (Exp (X (c,0))) else SKIP (c,0).
 
 Fixpoint niter_prog n (c:var) (P : pexp) : pexp :=
   match n with
   | 0    => SKIP (c,0)
   | 1    => P
-  | S n' => niter_prog n' c P ;;; P
+  | S n' => niter_prog n' c P ;; P
   end.
 
-Definition body (C:nat -> bool) (x c:var) (n:nat) := const_u C n c;;; diff_2 x c n.
+Definition body (C:nat -> bool) (x c:var) (n:nat) := const_u C n c;; diff_2 x c n.
 
 Definition grover_e (i:nat) (C:nat -> bool) (x c:var) (n:nat) := 
-        H x;;; H c ;;; SExp (Exp (Z (c,0))) ;;; niter_prog i c (body C x c n).
+        H x;; H c ;; (Exp (Z (c,0))) ;; niter_prog i c (body C x c n).
 
 (** Definition of Deutsch-Jozsa program. **)
 
 Definition deutsch_jozsa (x c:var) (n:nat) :=
-  SExp (Exp (nX x n; X (c,0))) ;;; H x ;;; H c ;;; SExp (Exp (X (c,0)));;; H c ;;; H x.
+  (Exp (nX x n; X (c,0))) ;; H x ;; H c ;; (Exp (X (c,0)));; H c ;; H x.
 
 Inductive type := Had | Phi (n:nat) | Nor.
 
@@ -344,6 +331,9 @@ Inductive exp_fresh : posi -> exp -> Prop :=
       | x_fresh : forall p p' , p <> p' -> exp_fresh p (X p')
       | sr_fresh : forall p x n, or_not_r (fst p) x n (snd p) -> exp_fresh p (SR n x)
       | srr_fresh : forall p x n, or_not_r (fst p) x n (snd p) -> exp_fresh p (SRR n x)
+      | lshift_fresh : forall p x, fst p <> x -> exp_fresh p (Lshift x)
+      | rshift_fresh : forall p x, fst p <> x -> exp_fresh p (Rshift x)
+      | rev_fresh : forall p x, fst p <> x -> exp_fresh p (Rev x)
       | cu_fresh : forall p p' e, p <> p' -> exp_fresh p e -> exp_fresh p (CU p' e)
       | cnot_fresh : forall p p1 p2, p <> p1 -> p <> p2 -> exp_fresh p (HCNOT p1 p2)
       | rz_fresh : forall p p' q, p <> p' -> exp_fresh p (RZ q p')
@@ -361,6 +351,9 @@ Inductive exp_fwf : exp -> Prop :=
       | x_fwf : forall p,  exp_fwf (X p)
       | sr_fwf : forall n x, exp_fwf (SR n x)
       | srr_fwf : forall n x, exp_fwf (SRR n x)
+      | lshift_fwf : forall x, exp_fwf (Lshift x)
+      | rshift_fwf : forall x, exp_fwf (Rshift x)
+      | rev_fwf : forall x, exp_fwf (Rev x)
       | cu_fwf : forall p e, exp_fresh p e -> exp_fwf e -> exp_fwf (CU p e)
       | hcnot_fwf : forall p1 p2, p1 <> p2 -> exp_fwf (HCNOT p1 p2)
       | rz_fwf : forall p q, exp_fwf (RZ q p)
@@ -381,24 +374,64 @@ Inductive well_typed_exp : env -> exp -> Prop :=
     | rrz_had : forall env p, Env.MapsTo (fst p) Had env -> well_typed_exp env (RRZ 1 p)
     | sr_had : forall env n m x, Env.MapsTo x (Phi n) env -> m < n -> well_typed_exp env (SR m x)
     | srr_had : forall env n m x, Env.MapsTo x (Phi n) env -> m < n -> well_typed_exp env (SRR m x)
+    | lshift_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Lshift x)
+    | lshift_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Lshift x)
+    | rshift_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rshift x)
+    | rshift_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Rshift x)
+    | rev_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rev x)
+    | rev_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Rev x)
     | e_seq : forall env p1 p2, well_typed_exp env p1 
                           -> well_typed_exp env p2 -> well_typed_exp env (p1 ; p2).
 
 
-Inductive well_typed_sexp : env -> sexp -> Prop :=
-    | lshift_nor : forall env x, Env.MapsTo x Nor env -> well_typed_sexp env (Lshift x)
-    | lshift_had : forall env x, Env.MapsTo x Had env -> well_typed_sexp env (Lshift x)
-    | rshift_nor : forall env x, Env.MapsTo x Nor env -> well_typed_sexp env (Rshift x)
-    | rshift_had : forall env x, Env.MapsTo x Had env -> well_typed_sexp env (Rshift x)
-    | rev_nor : forall env x, Env.MapsTo x Nor env -> well_typed_sexp env (Rev x)
-    | rev_had : forall env x, Env.MapsTo x Had env -> well_typed_sexp env (Rev x)
-    | exp_refl : forall env e, exp_fwf e -> well_typed_exp env e -> well_typed_sexp env (Exp e)
-    | se_seq : forall env e1 e2, well_typed_sexp env e1
-                  -> well_typed_sexp env e2 -> well_typed_sexp env (e1 ;; e2).
+(* Defining matching shifting stack. *)
+Inductive sexp := Ls | Rs | Re.
+
+Definition lookup_ls (l : (var -> option (list sexp))) (x:var) : option sexp :=
+    match l x with Some (v::yl) => Some v | _ => None end.
+
+Definition pop_ls (l : (var -> option (list sexp))) (x:var) :=
+     match l x with Some ([]) => update l x None | Some ([v]) => (update l x None) | Some (v::vl) => update l x (Some vl) | _ => l end.
+
+Definition insert_ls (l : (var -> option (list sexp))) (x:var) (s:sexp) :=
+  match l x with None => update l x (Some ([s])) | Some vl => update l x (Some (s::vl)) end.
+
+Definition empty_ls : ((var -> option (list sexp))) := fun x => None.
+
+Inductive exp_neu_t : (var -> option (list sexp)) -> exp ->  (var -> option (list sexp)) -> Prop :=
+      | skip_neu_t : forall l p, exp_neu_t l (SKIP p) l
+      | x_neu_t : forall l p,  exp_neu_t l (X p) l
+      | sr_neu_t : forall l n x, exp_neu_t l (SR n x) l
+      | srr_neu_t : forall l n x, exp_neu_t l (SRR n x) l
+      | lshift_neu_a : forall l l' e x, lookup_ls l x = e -> e <> Some Rs -> l' = (insert_ls l x Ls) -> exp_neu_t l (Lshift x) l'
+      | lshift_neu_b : forall l l' x, lookup_ls l x = Some Rs -> l' = (pop_ls l x) -> exp_neu_t l (Lshift x) l'
+      | rshift_neu_a : forall l l' e x, lookup_ls l x = e -> e <> Some Ls -> l' = (insert_ls l x Rs) -> exp_neu_t l (Rshift x) l'
+      | rshift_neu_b : forall l l' x, lookup_ls l x = Some Ls -> l' = pop_ls l x -> exp_neu_t l (Rshift x) l'
+      | rev_neu_a : forall l l' e x, lookup_ls l x = e -> e <> Some Re -> l' = (insert_ls l x Re) -> exp_neu_t l (Rev x) l'
+      | rev_neu_b : forall l l' x, lookup_ls l x = Some Re -> l' = pop_ls l x -> exp_neu_t l (Rev x) l'
+      | cu_neu_t : forall l p e, exp_neu_t empty_ls e empty_ls -> exp_neu_t l (CU p e) l
+      | hcnot_neu_t : forall l p1 p2, exp_neu_t l (HCNOT p1 p2) l
+      | rz_neu_t : forall l p q, exp_neu_t l (RZ q p) l
+      | rrz_neu_t : forall l p q, exp_neu_t l (RRZ q p) l
+      | seq_neu_t : forall l l' l'' e1 e2, exp_neu_t l e1 l' -> exp_neu_t l' e2 l'' -> exp_neu_t l (Seq e1 e2) l''.
+
+Inductive exp_neu : exp -> Prop :=
+      | skip_neu : forall p, exp_neu (SKIP p)
+      | x_neu : forall p,  exp_neu (X p)
+      | sr_neu : forall n x, exp_neu (SR n x)
+      | srr_neu : forall n x, exp_neu (SRR n x)
+      | lshift_neu : forall x, exp_neu (Lshift x)
+      | rshift_neu : forall x, exp_neu (Rshift x)
+      | rev_neu : forall x, exp_neu (Rev x)
+      | cu_neu : forall p e, exp_neu_t empty_ls e empty_ls -> exp_neu (CU p e)
+      | hcnot_neu : forall p1 p2, exp_neu (HCNOT p1 p2)
+      | rz_neu : forall p q, exp_neu (RZ q p)
+      | rrz_neu : forall p q, exp_neu (RRZ q p)
+      | seq_neu : forall e1 e2, exp_neu e1 -> exp_neu e2 -> exp_neu (Seq e1 e2).
 
 
 Inductive well_typed_pexp (aenv: var -> nat) : env -> pexp -> env -> Prop :=
-    | sexp_refl : forall env e, well_typed_sexp env e -> well_typed_pexp aenv env (SExp e) env
+    | exp_refl : forall env e, exp_fwf e -> exp_neu e -> well_typed_exp env e -> well_typed_pexp aenv env (Exp e) env
     | qft_nor :  forall env env' x, Env.MapsTo x Nor env -> Env.Equal env' (Env.add x (Phi (aenv x)) env)
                    -> well_typed_pexp aenv env (QFT x) env'
     | rqft_phi :  forall env env' x, Env.MapsTo x (Phi (aenv x)) env -> Env.Equal env' (Env.add x Nor env) -> 
@@ -408,7 +441,7 @@ Inductive well_typed_pexp (aenv: var -> nat) : env -> pexp -> env -> Prop :=
     | h_had : forall env env' x, Env.MapsTo x Had env -> Env.Equal env' (Env.add x Nor env) ->  
                                    well_typed_pexp aenv env (H x) env'
     | fe_seq : forall env env' env'' e1 e2, well_typed_pexp aenv env e1 env' -> 
-                 well_typed_pexp aenv env' e2 env'' -> well_typed_pexp aenv env (e1 ;;; e2) env''.
+                 well_typed_pexp aenv env' e2 env'' -> well_typed_pexp aenv env (e1 ;; e2) env''.
 
 
 Inductive right_mode_val : type -> val -> Prop :=
@@ -1743,25 +1776,29 @@ Definition hexchange (v1:val) (v2:val) :=
              | _ => v1
   end.
 
-(* This is the semantics for basic gate set of the language. *)
-Fixpoint exp_sem (e:exp) (st: posi -> val) : (posi -> val) :=
-   match e with (SKIP p) => st
-              | X p => (st[p |-> (exchange (st p))])
-              | HCNOT p1 p2 => (st[p1 |-> (hexchange (st p1) (st p2))])
-              | CU p e' => if get_cua (st p) then exp_sem e' st else st
-              | RZ q p => (st[p |-> times_rotate (st p) q])
-              | RRZ q p => (st[p |-> times_r_rotate (st p) q])
-              | SR n x => sr_rotate st x n (*n is the highest position to rotate. *)
-              | SRR n x => srr_rotate st x n
-              | e1 ; e2 => exp_sem e2 (exp_sem e1 st)
-    end.
-
 Definition reverse (f:posi -> val) (x:var) (n:nat) := fun (a: var * nat) =>
              if ((fst a) =? x) && ((snd a) <? n) then f (x, (n-1) - (snd a)) else f a.
 
 
-Lemma x_nor_sem : forall f x v, nor_mode f x -> put_cu (f x) (¬ (get_cua (f x))) = v ->
-                            exp_sem (X x) f = (f[x |-> v]).
+(* This is the semantics for basic gate set of the language. *)
+Fixpoint exp_sem (env:var -> nat) (e:exp) (st: posi -> val) : (posi -> val) :=
+   match e with (SKIP p) => st
+              | X p => (st[p |-> (exchange (st p))])
+              | HCNOT p1 p2 => (st[p1 |-> (hexchange (st p1) (st p2))])
+              | CU p e' => if get_cua (st p) then exp_sem env e' st else st
+              | RZ q p => (st[p |-> times_rotate (st p) q])
+              | RRZ q p => (st[p |-> times_r_rotate (st p) q])
+              | SR n x => sr_rotate st x n (*n is the highest position to rotate. *)
+              | SRR n x => srr_rotate st x n
+              | Lshift x => (lshift st x (env x))
+              | Rshift x => (rshift st x (env x))
+              | Rev x => (reverse st x (env x))
+              | e1 ; e2 => exp_sem env e2 (exp_sem env e1 st)
+    end.
+
+
+Lemma x_nor_sem : forall aenv f x v, nor_mode f x -> put_cu (f x) (¬ (get_cua (f x))) = v ->
+                            exp_sem aenv (X x) f = (f[x |-> v]).
 Proof.
  intros.
  apply nor_mode_nval in H0.
@@ -1887,10 +1924,94 @@ Proof.
  destruct p. iner_p.
 Qed.
 
+Lemma lshift'_0 : forall m n f x, m <= n -> lshift' m n f x (x,0) = f (x,n).
+Proof.
+ intros.
+ induction m.
+ simpl. 
+ rewrite eupdate_index_eq.
+ easy.
+ simpl.
+ rewrite eupdate_index_neq by tuple_eq.
+ rewrite IHm. easy. lia.
+Qed.
+
+Lemma lshift'_gt : forall i m n f x, m < i -> lshift' m n f x (x,i) = f (x,i).
+Proof.
+  intros.
+  induction m.
+  simpl.
+  rewrite eupdate_index_neq. easy.
+  tuple_eq.
+  simpl.
+  rewrite eupdate_index_neq.
+  rewrite IHm.
+  easy. lia.
+  tuple_eq.
+Qed.
+
+Lemma lshift'_le : forall i m n f x, S i <= m <= n  -> lshift' m n f x (x,S i) = f (x,i).
+Proof.
+  induction m.
+  simpl.
+  intros. inv H0. inv H1.
+  intros.
+  simpl.
+  bdestruct (i =? m). subst.
+  rewrite eupdate_index_eq. easy. 
+  rewrite eupdate_index_neq.
+  rewrite IHm. easy.
+  lia.
+  tuple_eq.
+Qed.
+
+Lemma rshift'_0 : forall m n f x, m <= n -> rshift' m n f x (x,n) = f (x,0).
+Proof.
+ intros.
+ induction m.
+ simpl. 
+ rewrite eupdate_index_eq.
+ easy.
+ simpl.
+ rewrite eupdate_index_neq.
+ rewrite IHm. easy. lia.
+ tuple_eq.
+Qed.
+
+Lemma rshift'_gt : forall i m n f x, m <= n < i -> rshift' m n f x (x,i) = f (x,i).
+Proof.
+  induction m.
+  simpl.
+  intros.
+  rewrite eupdate_index_neq. easy.
+  tuple_eq.
+  intros.
+  simpl.
+  rewrite eupdate_index_neq.
+  rewrite IHm. easy.
+  lia.
+  tuple_eq.
+Qed.
+
+Lemma rshift'_le : forall i m n f x, i < m <= n  -> rshift' m n f x (x,i) = f (x,S i).
+Proof.
+  induction m.
+  simpl.
+  intros. inv H0. inv H1.
+  intros.
+  simpl.
+  bdestruct (i =? m). subst.
+  rewrite eupdate_index_eq. easy. 
+  rewrite eupdate_index_neq.
+  rewrite IHm. easy.
+  lia.
+  tuple_eq.
+Qed.
+
 Lemma efresh_exp_sem_irrelevant :
-  forall e p f,
+  forall e aenv  p f,
     exp_fresh p e ->
-    exp_sem e f p = f p.
+    exp_sem aenv e f p = f p.
 Proof.
   induction e;intros.
   subst. simpl. easy.
@@ -1917,21 +2038,27 @@ Proof.
   rewrite srr_rotate'_ge; try easy. lia.
   inv H0. simpl.
   rewrite eupdate_index_neq by iner_p. easy.
+  simpl. unfold lshift. inv H0.
+  apply lshift'_irrelevant. easy.
+  simpl. unfold rshift. inv H0.
+  apply rshift'_irrelevant. easy.
+  simpl. unfold reverse. inv H0.
+  bdestruct ((fst p =? x)). lia. simpl. easy.
   inv H0. simpl.
-  apply (IHe1) with (f := f) in H4.
-  apply (IHe2) with (f := (exp_sem e1 f)) in H5.
+  apply (IHe1) with (aenv := aenv) (f := f) in H4.
+  apply (IHe2) with (aenv := aenv) (f := (exp_sem aenv e1 f)) in H5.
   rewrite H5. rewrite H4. easy.
 Qed.
 
 
-Lemma two_cu_same : forall f p e1 e2, get_cua (f p) = true ->
-                     exp_fwf (CU p e1) -> exp_sem (e1 ; e2) f = exp_sem (CU p e1; CU p e2) f. 
+Lemma two_cu_same : forall aenv f p e1 e2, get_cua (f p) = true ->
+                     exp_fwf (CU p e1) -> exp_sem aenv (e1 ; e2) f = exp_sem aenv (CU p e1; CU p e2) f. 
 Proof.
   intros.
   inv H1.
   simpl.
   destruct (get_cua (f p)) eqn:eq1.
-  rewrite (efresh_exp_sem_irrelevant e1 p f) by assumption.
+  rewrite (efresh_exp_sem_irrelevant e1 aenv p f) by assumption.
   destruct (get_cua (f p)). easy.
   inv eq1. inv H0.
 Qed.
@@ -1940,7 +2067,7 @@ Definition right_mode_env (aenv: var -> nat) (env: env) (st: posi -> val)
             := forall t p, snd p < aenv (fst p) -> Env.MapsTo (fst p) t env -> right_mode_val t (st p).
 
 Lemma well_typed_right_mode_exp : forall e aenv env f, well_typed_exp env e
-          -> right_mode_env aenv env f -> right_mode_env aenv env (exp_sem e f).
+          -> right_mode_env aenv env f -> right_mode_env aenv env (exp_sem aenv e f).
 Proof.
   induction e; intros; simpl.
   easy. 
@@ -2033,111 +2160,6 @@ Proof.
   constructor. easy. easy.
   rewrite eupdate_index_neq by iner_p.
   apply H1. easy. easy.
-  inv H0.
-  specialize (IHe1 aenv env0 f H5 H1).
-  specialize (IHe2 aenv env0 (exp_sem e1 f) H6 IHe1).
-  easy.
-Qed.
-
-
-(* This is the semantics for shifting/virtual qubit states. *)
-Fixpoint sexp_sem (env: var -> nat) (e:sexp) (st: posi -> val) : (posi -> val) :=
-   match e with | Lshift x => (lshift st x (env x))
-                | Rshift x => (rshift st x (env x))
-                | Rev x => (reverse st x (env x))
-              | Exp e => exp_sem e st
-              | e1 ;; e2 => sexp_sem env e2 (sexp_sem env e1 st)
-    end.
-
-
-Lemma lshift'_0 : forall m n f x, m <= n -> lshift' m n f x (x,0) = f (x,n).
-Proof.
- intros.
- induction m.
- simpl. 
- rewrite eupdate_index_eq.
- easy.
- simpl.
- rewrite eupdate_index_neq by tuple_eq.
- rewrite IHm. easy. lia.
-Qed.
-
-Lemma lshift'_gt : forall i m n f x, m < i -> lshift' m n f x (x,i) = f (x,i).
-Proof.
-  intros.
-  induction m.
-  simpl.
-  rewrite eupdate_index_neq. easy.
-  tuple_eq.
-  simpl.
-  rewrite eupdate_index_neq.
-  rewrite IHm.
-  easy. lia.
-  tuple_eq.
-Qed.
-
-Lemma lshift'_le : forall i m n f x, S i <= m <= n  -> lshift' m n f x (x,S i) = f (x,i).
-Proof.
-  induction m.
-  simpl.
-  intros. inv H0. inv H1.
-  intros.
-  simpl.
-  bdestruct (i =? m). subst.
-  rewrite eupdate_index_eq. easy. 
-  rewrite eupdate_index_neq.
-  rewrite IHm. easy.
-  lia.
-  tuple_eq.
-Qed.
-
-Lemma rshift'_0 : forall m n f x, m <= n -> rshift' m n f x (x,n) = f (x,0).
-Proof.
- intros.
- induction m.
- simpl. 
- rewrite eupdate_index_eq.
- easy.
- simpl.
- rewrite eupdate_index_neq.
- rewrite IHm. easy. lia.
- tuple_eq.
-Qed.
-
-Lemma rshift'_gt : forall i m n f x, m <= n < i -> rshift' m n f x (x,i) = f (x,i).
-Proof.
-  induction m.
-  simpl.
-  intros.
-  rewrite eupdate_index_neq. easy.
-  tuple_eq.
-  intros.
-  simpl.
-  rewrite eupdate_index_neq.
-  rewrite IHm. easy.
-  lia.
-  tuple_eq.
-Qed.
-
-Lemma rshift'_le : forall i m n f x, i < m <= n  -> rshift' m n f x (x,i) = f (x,S i).
-Proof.
-  induction m.
-  simpl.
-  intros. inv H0. inv H1.
-  intros.
-  simpl.
-  bdestruct (i =? m). subst.
-  rewrite eupdate_index_eq. easy. 
-  rewrite eupdate_index_neq.
-  rewrite IHm. easy.
-  lia.
-  tuple_eq.
-Qed.
-
-Lemma well_typed_right_mode_sexp : forall e aenv tenv f, well_typed_sexp tenv e
-          -> right_mode_env aenv tenv f -> right_mode_env aenv tenv (sexp_sem aenv e f).
-Proof.
-  induction e; intros; simpl.
   unfold right_mode_env in *. intros.
   unfold lshift.
   destruct p. 
@@ -2165,13 +2187,12 @@ Proof.
   subst. apply H1. simpl in *. lia. easy.
   simpl in *. apply H1. easy. easy.
   simpl in *. apply H1. easy. easy.
-  apply well_typed_right_mode_exp.
-  inv H0. easy. easy.
   inv H0.
-  specialize (IHe1 aenv tenv f H5 H1).
-  specialize (IHe2 aenv tenv (sexp_sem aenv e1 f) H6 IHe1).
+  specialize (IHe1 aenv env0 f H5 H1).
+  specialize (IHe2 aenv env0 (exp_sem aenv e1 f) H6 IHe1).
   easy.
 Qed.
+
 
 (* This is the semantics for switching qubit representation states. *)
 Definition h_case (v : val) :=
@@ -2374,11 +2395,11 @@ Definition fbrev {A} n (f : nat -> A) := fun (x : nat) => if (x <? n) then f (n 
 *)
 
 Fixpoint prog_sem (env:var -> nat) (e:pexp) (st:posi-> val) : (posi -> val) :=
-    match e with SExp e => sexp_sem env e st
+    match e with Exp e => exp_sem env e st
                | H x => h_sem st x (env x)
                | QFT x => turn_qft st x (env x)
                | RQFT x => turn_rqft st x (env x)
-               | e1 ;;; e2 => prog_sem env e2 (prog_sem env e1 st)
+               | e1 ;; e2 => prog_sem env e2 (prog_sem env e1 st)
     end.
 
 Lemma assign_r_right_mode : forall n i size f x r, i < n <= size -> 
@@ -2469,7 +2490,7 @@ Lemma well_typed_right_mode_pexp : forall e aenv tenv tenv' f, well_typed_pexp a
           -> right_mode_env aenv tenv f -> right_mode_env aenv tenv' (prog_sem aenv e f).
 Proof.
   induction e; intros; simpl.
-  apply well_typed_right_mode_sexp. inv H0. easy. inv H0. easy. 
+  apply well_typed_right_mode_exp. inv H0. easy. inv H0. easy. 
   inv H0. unfold turn_qft.
   unfold right_mode_env in *. intros.
   destruct p. simpl in *.
@@ -2551,21 +2572,12 @@ Proof.
   - rewrite IHp1, IHp2. easy.
 Qed.
 
-Lemma inv_sexp_involutive :
-  forall p,
-    inv_sexp (inv_sexp p) = p.
-Proof.
-  induction p; simpl; try easy.
-  - rewrite inv_exp_involutive. easy.
-  - rewrite IHp1, IHp2. easy.
-Qed.
-
 Lemma inv_pexp_involutive :
   forall p,
     inv_pexp (inv_pexp p) = p.
 Proof.
   induction p; simpl; try easy.
-  - rewrite inv_sexp_involutive. easy.
+  - rewrite inv_exp_involutive. easy.
   - rewrite IHp1, IHp2. easy.
 Qed.
 
@@ -2587,6 +2599,433 @@ Proof.
   apply fresh_inv_exp. assumption.
 Qed.
 
+Lemma lookup_insert_ls : forall l x a, lookup_ls (insert_ls l x a) x = Some a.
+Proof.
+  intros. unfold lookup_ls,insert_ls.
+  destruct (l x).
+  rewrite update_index_eq. easy.
+  rewrite update_index_eq. easy.
+Qed.
+
+Lemma lookup_insert_ls_out : forall l x y a, x <> y -> lookup_ls (insert_ls l x a) y = lookup_ls l y.
+Proof.
+  intros. unfold lookup_ls,insert_ls.
+  destruct (l x).
+  rewrite update_index_neq by lia. easy.
+  rewrite update_index_neq by lia. easy.
+Qed.
+
+Lemma lookup_pop_ls_out : forall l x y, x <> y -> lookup_ls (pop_ls l x) y = lookup_ls l y.
+Proof.
+  intros. unfold lookup_ls,pop_ls.
+  destruct (l x). destruct l0.
+  rewrite update_index_neq by lia. easy.
+  destruct l0.
+  rewrite update_index_neq by lia. easy.
+  rewrite update_index_neq by lia. easy. easy.
+Qed.
+
+Definition well_formed_ls (l: (var -> option (list sexp))) : Prop :=
+   (forall x, match l x with Some ([]) => False | _ => True end).
+
+Lemma pop_insert_ls : forall l x a, well_formed_ls l -> pop_ls (insert_ls l x a) x = l.
+Proof.
+  intros. unfold well_formed_ls,pop_ls,insert_ls in *.
+  destruct (l x) eqn:eq1. destruct l0.
+  specialize (H0 x). rewrite eq1 in H0. lia.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. easy.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. easy.
+Qed.
+
+Lemma insert_pop_ls : forall l x a, lookup_ls l x = Some a -> insert_ls (pop_ls l x) x a = l.
+Proof.
+  intros. unfold lookup_ls,pop_ls,insert_ls in *.
+  destruct (l x) eqn:eq1. destruct l0.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. easy.
+  destruct l0.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. inv H0. easy.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. inv H0. easy. inv H0.  
+Qed.
+
+Lemma pop_insert_ls_out : forall l x y a, x <> y -> 
+                      pop_ls (insert_ls l x a) y = (insert_ls (pop_ls l y) x a).
+Proof.
+  intros. unfold pop_ls,insert_ls in *.
+  destruct (l x) eqn:eq1.
+  repeat rewrite update_index_neq by lia.
+  destruct (l y) eqn:eq2.
+  repeat rewrite update_index_neq by lia.
+  destruct l1.
+  rewrite update_index_neq by lia. rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l1.
+  repeat rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia. rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite eq1. easy.
+  rewrite update_index_neq by lia.
+  destruct (l y) eqn:eq2.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite eq1. easy.
+Qed.
+
+Lemma pop_twice_ls_out : forall l x y, x <> y -> pop_ls (pop_ls l x) y = (pop_ls (pop_ls l y) x).
+Proof.
+  intros. unfold pop_ls in *.
+  destruct (l x) eqn:eq1.
+  destruct (l y) eqn:eq2.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia. 
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l0.
+  rewrite update_index_neq by lia. 
+  rewrite eq2.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  rewrite eq1. easy.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  rewrite eq1. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq2. rewrite eq1. easy.
+  destruct (l y) eqn:eq2. destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq1. easy.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq1. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq1. easy.
+  rewrite eq1. easy.
+Qed.
+
+
+Lemma well_formed_insert_ls : forall l x a, well_formed_ls l -> well_formed_ls (insert_ls l x a).
+Proof.
+  intros. unfold well_formed_ls,insert_ls in *. intros.
+  destruct (l x) eqn:eq1. 
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+Qed.
+
+Lemma well_formed_pop_ls : forall l x, well_formed_ls l -> well_formed_ls (pop_ls l x).
+Proof.
+  intros. unfold well_formed_ls,pop_ls in *. intros.
+  destruct (l x) eqn:eq1. destruct l0. 
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+  destruct l0.
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+  apply H0.
+Qed.
+
+Lemma neu_well_formed_ls : forall l l' p, exp_neu_t l p l' -> well_formed_ls l -> well_formed_ls l'.
+Proof.
+  intros.
+  induction H0; try easy.
+  subst. apply well_formed_insert_ls; easy.
+  subst. apply well_formed_pop_ls; easy.
+  subst. apply well_formed_insert_ls; easy.
+  subst. apply well_formed_pop_ls; easy.
+  subst. apply well_formed_insert_ls; easy.
+  subst. apply well_formed_pop_ls; easy.
+  apply IHexp_neu_t2.
+  apply IHexp_neu_t1. easy.
+Qed.
+
+
+Definition opp_ls (s : sexp) := match s with Ls => Rs | Rs => Ls | Re => Re end.
+
+Lemma get_insert_ls_a : forall l x a, l x = None ->  (insert_ls l x a) x = Some ([a]).
+Proof.
+ intros. unfold insert_ls.
+ destruct (l x) eqn:eq1.
+ rewrite update_index_eq. inv H0.
+ rewrite update_index_eq. easy.
+Qed.
+
+Lemma get_insert_ls_b : forall l x vl a, l x = Some vl -> (insert_ls l x a) x = Some (a::vl).
+Proof.
+ intros. unfold insert_ls.
+ destruct (l x) eqn:eq1.
+ rewrite update_index_eq. inv H0. easy. inv H0.
+Qed.
+
+Lemma get_insert_ls_out : forall l x y a, x <> y -> (insert_ls l x a) y = l y.
+Proof.
+ intros. unfold insert_ls.
+ destruct (l x) eqn:eq1.
+ rewrite update_index_neq by lia. easy.
+ rewrite update_index_neq by lia. easy.
+Qed.
+
+Lemma get_lookup_ls : forall l x a vl, l x = Some (a::vl) -> lookup_ls l x = Some a.
+Proof.
+ intros. unfold lookup_ls.
+ destruct (l x) eqn:eq1. destruct l0. inv H0. inv H0. easy. inv H0.
+Qed.
+
+Lemma get_pop_ls : forall l x vl, well_formed_ls l -> (pop_ls l x) x = Some vl -> (exists a, l x = Some (a::vl)).
+Proof.
+ intros. unfold well_formed_ls,pop_ls in *.
+ destruct (l x) eqn:eq1. destruct l0.
+ specialize (H0 x). rewrite eq1 in H0. lia.
+ destruct l0. rewrite update_index_eq in H1. inv H1.
+ rewrite update_index_eq in H1. inv H1. exists s. easy.
+ rewrite eq1 in H1. inv H1.
+Qed.
+
+Lemma get_pop_ls_out : forall l x y, x <> y -> (pop_ls l x) y = l y.
+Proof.
+ intros. unfold pop_ls in *.
+ destruct (l x) eqn:eq1. destruct l0.
+ rewrite update_index_neq by lia. easy.
+ destruct l0.
+ rewrite update_index_neq by lia. easy.
+ rewrite update_index_neq by lia. easy. easy.
+Qed.
+
+Definition exp_neu_prop (l:(var -> option (list sexp))) := forall x vl, l x = Some vl
+                 -> (forall i a, i + 1 < length vl -> nth_error vl (i+1) = Some a -> nth_error vl i <> Some (opp_ls a)).
+
+Lemma exp_neu_t_prop : forall p l l', exp_neu_t l p l' -> well_formed_ls l -> exp_neu_prop l -> exp_neu_prop l'.
+Proof.
+ induction p; intros; try easy.
+ 1-8:inv H0; easy.
+ unfold exp_neu_prop in *.
+ intros. inv H0.  
+ bdestruct (x =? x0). subst.
+ assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
+ destruct (l x0). right. exists l0. easy. left. easy.
+ destruct H0.
+ apply get_insert_ls_a with (a := Ls) in H0.
+ rewrite H3 in H0. inv H0. simpl in H4. lia.
+ destruct H0. specialize (H2 x0 x H0). 
+ apply get_insert_ls_b with (a := Ls) in H0 as eq1.
+ rewrite H3 in eq1. inv eq1.
+ destruct i. simpl in *. destruct x. inv H5. inv H5. 
+ simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
+ unfold opp_ls. destruct a. easy. contradiction. easy.
+ simpl in *. apply H2. lia. easy.
+ apply H2 with (x := x0).
+ rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
+ bdestruct (x =? x0). subst.
+ specialize (get_pop_ls l x0 vl H1 H3) as eq1.
+ destruct eq1.
+ specialize (H2 x0 (x::vl) H0) as eq1.
+ specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
+ rewrite get_pop_ls_out in H3 by lia.
+ apply H2 with (x := x0); try easy.
+ unfold exp_neu_prop in *.
+ intros. inv H0.  
+ bdestruct (x =? x0). subst.
+ assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
+ destruct (l x0). right. exists l0. easy. left. easy.
+ destruct H0.
+ apply get_insert_ls_a with (a := Rs) in H0.
+ rewrite H3 in H0. inv H0. simpl in H4. lia.
+ destruct H0. specialize (H2 x0 x H0). 
+ apply get_insert_ls_b with (a := Rs) in H0 as eq1.
+ rewrite H3 in eq1. inv eq1.
+ destruct i. simpl in *. destruct x. inv H5. inv H5. 
+ simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
+ unfold opp_ls. destruct a. easy. easy. easy.
+ simpl in *. apply H2. lia. easy.
+ apply H2 with (x := x0).
+ rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
+ bdestruct (x =? x0). subst.
+ specialize (get_pop_ls l x0 vl H1 H3) as eq1.
+ destruct eq1.
+ specialize (H2 x0 (x::vl) H0) as eq1.
+ specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
+ rewrite get_pop_ls_out in H3 by lia.
+ apply H2 with (x := x0); try easy.
+ unfold exp_neu_prop in *.
+ intros. inv H0.  
+ bdestruct (x =? x0). subst.
+ assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
+ destruct (l x0). right. exists l0. easy. left. easy.
+ destruct H0.
+ apply get_insert_ls_a with (a := Re) in H0.
+ rewrite H3 in H0. inv H0. simpl in H4. lia.
+ destruct H0. specialize (H2 x0 x H0). 
+ apply get_insert_ls_b with (a := Re) in H0 as eq1.
+ rewrite H3 in eq1. inv eq1.
+ destruct i. simpl in *. destruct x. inv H5. inv H5. 
+ simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
+ unfold opp_ls. destruct a. easy. easy. easy.
+ simpl in *. apply H2. lia. easy.
+ apply H2 with (x := x0).
+ rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
+ bdestruct (x =? x0). subst.
+ specialize (get_pop_ls l x0 vl H1 H3) as eq1.
+ destruct eq1.
+ specialize (H2 x0 (x::vl) H0) as eq1.
+ specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
+ rewrite get_pop_ls_out in H3 by lia.
+ apply H2 with (x := x0); try easy.
+ inv H0.
+ apply IHp2 with (l := l'0); try easy. 
+ apply neu_well_formed_ls with (l := l) (p := p1); try easy.
+ apply IHp1 with (l := l); try easy.
+Qed.
+
+
+Lemma neu_t_inv_exp :
+  forall p l l',
+    well_formed_ls l -> 
+   exp_neu_prop l ->
+    exp_neu_t l p l' ->
+    exp_neu_t l' (inv_exp p) l.
+Proof.
+  induction p; intros; simpl.
+  1-3: inv H2 ; constructor.
+  apply IHp; try easy.
+  1-5: inv H2 ; constructor.
+  specialize (neu_well_formed_ls l l' (Lshift x) H2 H0) as eq1.
+  inv H2. 
+  apply rshift_neu_b.
+  rewrite lookup_insert_ls. easy.
+  rewrite pop_insert_ls. easy. easy.
+  unfold exp_neu_prop in H1.
+  destruct ((pop_ls l x) x) eqn:eq2. destruct l0.
+  specialize (eq1 x). rewrite eq2 in eq1. lia.
+  specialize (get_pop_ls l x (s::l0) H0 eq2) as eq3.
+  destruct eq3. unfold lookup_ls in H4.
+  rewrite H2 in H4. inv H4.
+  specialize (H1 x (Rs::s::l0) H2 0 Ls). simpl in H1.
+  assert (s <> Ls). intros R. subst. assert (Some Ls = Some Ls) by easy.
+  apply H1 in H3. easy. lia.
+  eapply rshift_neu_a. unfold lookup_ls. rewrite eq2. easy. intros R.  inv R. easy.
+  rewrite insert_pop_ls; try easy. unfold lookup_ls. rewrite H2. easy.
+  eapply rshift_neu_a. unfold lookup_ls. rewrite eq2. easy. easy.
+  rewrite insert_pop_ls; try easy.
+  specialize (neu_well_formed_ls l l' (Rshift x) H2 H0) as eq1.
+  inv H2. 
+  apply lshift_neu_b.
+  rewrite lookup_insert_ls. easy.
+  rewrite pop_insert_ls. easy. easy.
+  unfold exp_neu_prop in H1.
+  destruct ((pop_ls l x) x) eqn:eq2. destruct l0.
+  specialize (eq1 x). rewrite eq2 in eq1. lia.
+  specialize (get_pop_ls l x (s::l0) H0 eq2) as eq3.
+  destruct eq3. unfold lookup_ls in H4.
+  rewrite H2 in H4. inv H4.
+  specialize (H1 x (Ls::s::l0) H2 0 Rs). simpl in H1.
+  assert (s <> Rs). intros R. subst. assert (Some Rs = Some Rs) by easy.
+  apply H1 in H3. easy. lia.
+  eapply lshift_neu_a. unfold lookup_ls. rewrite eq2. easy. intros R.  inv R. easy.
+  rewrite insert_pop_ls; try easy. unfold lookup_ls. rewrite H2. easy.
+  eapply lshift_neu_a. unfold lookup_ls. rewrite eq2. easy. easy.
+  rewrite insert_pop_ls; try easy.
+  specialize (neu_well_formed_ls l l' (Rev x) H2 H0) as eq1.
+  inv H2. 
+  apply rev_neu_b.
+  rewrite lookup_insert_ls. easy.
+  rewrite pop_insert_ls. easy. easy.
+  unfold exp_neu_prop in H1.
+  destruct ((pop_ls l x) x) eqn:eq2. destruct l0.
+  specialize (eq1 x). rewrite eq2 in eq1. lia.
+  specialize (get_pop_ls l x (s::l0) H0 eq2) as eq3.
+  destruct eq3. unfold lookup_ls in H4.
+  rewrite H2 in H4. inv H4.
+  specialize (H1 x (Re::s::l0) H2 0 Re). simpl in H1.
+  assert (s <> Re). intros R. subst. assert (Some Re = Some Re) by easy.
+  apply H1 in H3. easy. lia.
+  eapply rev_neu_a. unfold lookup_ls. rewrite eq2. easy. intros R.  inv R. easy.
+  rewrite insert_pop_ls; try easy. unfold lookup_ls. rewrite H2. easy.
+  eapply rev_neu_a. unfold lookup_ls. rewrite eq2. easy. easy.
+  rewrite insert_pop_ls; try easy.
+  inv H2. econstructor.
+  apply IHp2.
+  specialize (neu_well_formed_ls l l'0 p1 H6 H0) as eq1. apply eq1.
+  eapply exp_neu_t_prop. apply H6. easy. easy. easy.
+  apply IHp1; try easy.
+Qed.
+
+Lemma neu_inv_exp :
+  forall p,
+    exp_neu p ->
+    exp_neu (inv_exp p).
+Proof.
+  intros. induction H0; simpl; try constructor; try assumption.
+  apply neu_t_inv_exp.
+  unfold well_formed_ls. intros. unfold empty_ls. easy.
+  unfold exp_neu_prop. intros. unfold empty_ls in *. inv H1.
+  easy.
+Qed.
+
 Lemma typed_inv_exp :
   forall tenv p,
     well_typed_exp tenv p ->
@@ -2601,26 +3040,11 @@ Proof.
   apply rz_had. assumption.
   inv H0. eapply srr_had. apply H4. easy.
   inv H0. eapply sr_had. apply H4. easy.
-  inv H0. constructor.
-  apply IHp2. assumption.
-  apply IHp1. assumption.
-Qed.
-
-Lemma typed_inv_sexp :
-  forall tenv p,
-    well_typed_sexp tenv p ->
-    well_typed_sexp tenv (inv_sexp p).
-Proof.
-  intros. induction p; simpl; try assumption.
   inv H0. constructor. easy.
-  apply rshift_had. apply H3.
+  apply rshift_had. easy.
   inv H0. constructor. easy.
   apply lshift_had. easy.
-  inv H0.
-  constructor. apply fwf_inv_exp. easy.
-  apply typed_inv_exp. easy.
-  inv H0.
-  constructor.
+  inv H0. constructor.
   apply IHp2. assumption.
   apply IHp1. assumption.
 Qed.
@@ -2802,8 +3226,8 @@ Proof.
   rewrite times_rotate_same. easy.
 Qed.
 
-Lemma exp_sem_assoc : forall f e1 e2 e3, 
-               exp_sem (e1 ; e2 ; e3) f = exp_sem (e1 ; (e2 ; e3)) f.
+Lemma exp_sem_assoc : forall aenv f e1 e2 e3, 
+               exp_sem aenv (e1 ; e2 ; e3) f = exp_sem aenv (e1 ; (e2 ; e3)) f.
 Proof.
   intros. simpl. easy.
 Qed.
@@ -2811,7 +3235,7 @@ Qed.
 Lemma inv_exp_correct :
   forall tenv aenv e f,
     exp_fwf e -> well_typed_exp tenv e -> right_mode_env aenv tenv f ->
-    exp_sem (inv_exp e; e) f = f.
+    exp_sem aenv (inv_exp e; e) f = f.
 Proof.
   induction e; intros.
   - simpl. easy.
@@ -2872,19 +3296,25 @@ Proof.
     rewrite eupdate_index_eq.
     inv H0. rewrite eupdate_index_neq by easy.
     rewrite hexchange_twice_same. easy.
+ - simpl.
+   rewrite lr_shift_same. easy.
+ - simpl.
+   rewrite rl_shift_same. easy.
+ - simpl.
+   rewrite rev_twice_same. easy.
  - assert (inv_exp (e1; e2) = inv_exp e2; inv_exp e1). simpl. easy.
    rewrite H3.
    rewrite exp_sem_assoc.
-   assert (exp_sem (inv_exp e2; (inv_exp e1; (e1; e2))) f 
-             = exp_sem (inv_exp e1 ; (e1 ; e2)) (exp_sem (inv_exp e2) f)).
+   assert (exp_sem aenv (inv_exp e2; (inv_exp e1; (e1; e2))) f 
+             = exp_sem aenv (inv_exp e1 ; (e1 ; e2)) (exp_sem aenv (inv_exp e2) f)).
    simpl. easy.
    rewrite H4.
    rewrite <- exp_sem_assoc.
-   assert ( forall f', exp_sem ((inv_exp e1; e1); e2) f' = exp_sem e2 (exp_sem ((inv_exp e1; e1)) f')).
+   assert ( forall f', exp_sem aenv ((inv_exp e1; e1); e2) f' = exp_sem aenv e2 (exp_sem aenv ((inv_exp e1; e1)) f')).
    intros. simpl. easy.
    rewrite H5.
    rewrite IHe1.
-   assert (exp_sem e2 (exp_sem (inv_exp e2) f) = exp_sem (inv_exp e2 ; e2) f).
+   assert (exp_sem aenv e2 (exp_sem aenv (inv_exp e2) f) = exp_sem aenv (inv_exp e2 ; e2) f).
    simpl. easy.
    rewrite H6.
    rewrite IHe2. easy.
@@ -2923,8 +3353,10 @@ Lemma typed_inv_pexp :
 Proof.
   induction p; intros; simpl; try assumption.
   simpl. inv H0.
-  apply sexp_refl.
-  apply typed_inv_sexp. easy.
+  apply exp_refl.
+  apply fwf_inv_exp. easy.
+  apply neu_inv_exp; easy.
+  apply typed_inv_exp. easy.
   inv H0.
   econstructor.
   apply mapsto_equal with (s1 := (Env.add x (Phi (aenv x)) tenv)).
@@ -2982,7 +3414,7 @@ Qed.
 Lemma inv_exp_correct_rev :
   forall aenv tenv e f,
     exp_fwf e -> well_typed_exp tenv e -> right_mode_env aenv tenv f ->
-    exp_sem (e; inv_exp e) f = f.
+    exp_sem aenv (e; inv_exp e) f = f.
 Proof.
   intros. apply fwf_inv_exp in H0.
   assert ((e; inv_exp e) = inv_exp (inv_exp e) ; inv_exp e).
@@ -2993,66 +3425,8 @@ Proof.
   assumption.
 Qed.
 
-Lemma sexp_sem_assoc : forall env f e1 e2 e3, 
-               sexp_sem env (e1 ;; e2 ;; e3) f = sexp_sem env (e1 ;; (e2 ;; e3)) f.
-Proof.
-  intros. simpl. easy.
-Qed.
-
-Lemma inv_sexp_correct :
-  forall tenv aenv e f,
-    well_typed_sexp tenv e -> right_mode_env aenv tenv f ->
-    sexp_sem aenv (inv_sexp e ;; e) f = f.
-Proof.
-  induction e; intros.
- - simpl.
-   rewrite lr_shift_same. easy.
- - simpl.
-   rewrite rl_shift_same. easy.
- - simpl.
-   rewrite rev_twice_same. easy.
-  - simpl. inv H0.
-    specialize (inv_exp_correct tenv aenv s f H3 H5 H1) as eq1.
-    simpl in eq1. easy.
- - assert (inv_sexp (e1;; e2) = inv_sexp e2;; inv_sexp e1). simpl. easy.
-   rewrite H2.
-   rewrite sexp_sem_assoc.
-   assert (sexp_sem aenv (inv_sexp e2;; (inv_sexp e1;; (e1;; e2))) f
-             = sexp_sem aenv (inv_sexp e1 ;; (e1 ;; e2)) (sexp_sem aenv (inv_sexp e2) f)).
-   simpl. easy.
-   rewrite H3.
-   rewrite <- sexp_sem_assoc.
-   assert ( forall f', sexp_sem aenv ((inv_sexp e1;; e1);; e2) f' = sexp_sem aenv e2 (sexp_sem aenv ((inv_sexp e1;; e1)) f')).
-   intros. simpl. easy.
-   rewrite H4.
-   rewrite IHe1.
-   assert (sexp_sem aenv e2 (sexp_sem aenv (inv_sexp e2) f) = sexp_sem aenv (inv_sexp e2 ;; e2) f).
-   simpl. easy.
-   rewrite H5.
-   rewrite IHe2. easy.
-   inv H0. easy.
-   easy.
-   inv H0. easy.
-   apply well_typed_right_mode_sexp.
-   apply typed_inv_sexp. inv H0. easy. easy.
-Qed.
-
-Lemma inv_sexp_correct_rev :
-  forall tenv aenv e f,
-    well_typed_sexp tenv e -> right_mode_env aenv tenv f ->
-    sexp_sem aenv (e;; inv_sexp e) f = f.
-Proof.
-  intros.
-  assert ((e;; inv_sexp e) = inv_sexp (inv_sexp e) ;; inv_sexp e).
-  rewrite inv_sexp_involutive. easy.
-  rewrite H2.
-  apply (inv_sexp_correct tenv).
-  apply typed_inv_sexp. easy.
-  easy.
-Qed.
-
 Lemma pexp_sem_assoc : forall env f e1 e2 e3, 
-               prog_sem env (e1 ;;; e2 ;;; e3) f = prog_sem env (e1 ;;; (e2 ;;; e3)) f.
+               prog_sem env (e1 ;; e2 ;; e3) f = prog_sem env (e1 ;; (e2 ;; e3)) f.
 Proof.
   intros. simpl. easy.
 Qed.
@@ -3409,7 +3783,7 @@ Qed.
 
 Lemma qft_uniform_exp_trans : 
     forall e f aenv tenv, qft_uniform aenv tenv f -> well_typed_exp tenv e
-            -> right_mode_env aenv tenv f -> qft_uniform aenv tenv (exp_sem e f).
+            -> right_mode_env aenv tenv f -> qft_uniform aenv tenv (exp_sem aenv e f).
 Proof.
   induction e; intros; simpl.
   easy.
@@ -3537,22 +3911,10 @@ Proof.
   unfold get_r_qft.
   rewrite eupdate_index_neq by iner_p. easy.
   inv H1.
-  specialize (IHe1 f aenv tenv H0 H6 H2).
-  apply well_typed_right_mode_exp with (e := e1) in H2; try easy.
-  specialize (IHe2 (exp_sem e1 f) aenv tenv IHe1). apply IHe2; try easy.
-Qed.
-
-Lemma qft_uniform_sexp_trans : 
-    forall e f aenv tenv, qft_uniform aenv tenv f -> well_typed_sexp tenv e
-            -> right_mode_env aenv tenv f -> qft_uniform aenv tenv (sexp_sem aenv e f).
-Proof.
-  induction e; intros; simpl.
   unfold qft_uniform in *.
   intros.
   bdestruct (x0 =? x). subst.
-  inv H1.
-  apply mapsto_always_same with (v2:=Nor) in H3; try easy.
-  apply mapsto_always_same with (v2:=Had) in H3; try easy.
+  apply mapsto_always_same with (v2:=Nor) in H1; try easy.
   assert (get_snd_r (lshift f x (aenv x)) (x0, i) = get_snd_r f (x0,i)).
   unfold get_snd_r,lshift. rewrite lshift'_irrelevant. easy. easy.
   rewrite H6. rewrite H0.
@@ -3563,7 +3925,17 @@ Proof.
   unfold qft_uniform in *.
   intros.
   bdestruct (x0 =? x). subst.
-  inv H1.
+  apply mapsto_always_same with (v2:=Had) in H1; try easy.
+  assert (get_snd_r (lshift f x (aenv x)) (x0, i) = get_snd_r f (x0,i)).
+  unfold get_snd_r,lshift. rewrite lshift'_irrelevant. easy. easy.
+  rewrite H6. rewrite H0.
+  assert ((get_r_qft (lshift f x (aenv x)) x0) = get_r_qft f x0).
+  unfold get_r_qft,lshift.
+  rewrite lshift'_irrelevant. easy. easy.
+  rewrite H7. easy. 1-2:easy.
+  unfold qft_uniform in *.
+  intros.
+  bdestruct (x0 =? x). subst. inv H1.
   apply mapsto_always_same with (v2:=Nor) in H3; try easy.
   apply mapsto_always_same with (v2:=Had) in H3; try easy.
   unfold get_snd_r, rshift,get_r_qft.
@@ -3580,10 +3952,10 @@ Proof.
   simpl in *.
   bdestruct (x0 =? x). lia. simpl.
   rewrite H0. 1-3:easy.
-  apply qft_uniform_exp_trans; try easy. inv H1. easy.
-  inv H1. specialize (IHe1 f aenv tenv H0 H6 H2).
-  apply IHe2; try easy.
-  apply well_typed_right_mode_sexp; easy.
+  inv H1.
+  specialize (IHe1 f aenv tenv H0 H6 H2).
+  apply well_typed_right_mode_exp with (e := e1) in H2; try easy.
+  specialize (IHe2 (exp_sem aenv e1 f) aenv tenv IHe1). apply IHe2; try easy.
 Qed.
 
 Lemma assign_seq_out_1 : forall n f h x y i, x <> y -> assign_seq f x h n (y,i) = f (y,i).
@@ -3623,7 +3995,7 @@ Lemma qft_uniform_pexp_trans :
 Proof.
   induction e; intros; simpl.
   inv H1.
-  apply qft_uniform_sexp_trans; try easy.
+  apply qft_uniform_exp_trans; try easy.
   inv H1.
   unfold qft_uniform in *. intros.
   bdestruct (x0 =? x). subst. 
@@ -3697,7 +4069,7 @@ Definition qft_gt (aenv: var -> nat) (tenv:env) (f:posi -> val) :=
 
 Lemma qft_gt_exp_trans : 
     forall e f aenv tenv, qft_gt aenv tenv f -> well_typed_exp tenv e
-            -> right_mode_env aenv tenv f -> qft_gt aenv tenv (exp_sem e f).
+            -> right_mode_env aenv tenv f -> qft_gt aenv tenv (exp_sem aenv e f).
 Proof.
   induction e; intros; simpl.
   easy.
@@ -3775,17 +4147,6 @@ Proof.
   unfold get_r_qft in *.
   rewrite eupdate_index_neq by iner_p.
   rewrite H0; try easy.
-  inv H1.
-  specialize (IHe1 f aenv tenv H0 H6 H2).
-  apply IHe2 ; try easy.
-  apply well_typed_right_mode_exp; easy.
-Qed.
-
-Lemma qft_gt_sexp_trans : 
-    forall e f aenv tenv, qft_gt aenv tenv f -> well_typed_sexp tenv e
-            -> right_mode_env aenv tenv f -> qft_gt aenv tenv (sexp_sem aenv e f).
-Proof.
-  induction e; intros; simpl.
   unfold qft_gt in *.
   intros.
   bdestruct (x0 =? x). subst.
@@ -3814,10 +4175,10 @@ Proof.
   simpl in *.
   bdestruct (x0 =? x). lia. simpl.
   rewrite H0. 1-3:easy.
-  apply qft_gt_exp_trans; try easy. inv H1. easy.
-  inv H1. specialize (IHe1 f aenv tenv H0 H6 H2).
-  apply IHe2; try easy.
-  apply well_typed_right_mode_sexp; easy.
+  inv H1.
+  specialize (IHe1 f aenv tenv H0 H6 H2).
+  apply IHe2 ; try easy.
+  apply well_typed_right_mode_exp; easy.
 Qed.
 
 Lemma qft_gt_pexp_trans : 
@@ -3826,7 +4187,7 @@ Lemma qft_gt_pexp_trans :
 Proof.
   induction e; intros; simpl.
   inv H1.
-  apply qft_gt_sexp_trans; try easy.
+  apply qft_gt_exp_trans; try easy.
   inv H1.
   unfold qft_gt in *. intros.
   bdestruct (x0 =? x). subst. 
@@ -3887,11 +4248,11 @@ Qed.
 Lemma inv_pexp_correct_rev :
   forall e tenv tenv' aenv f,
     well_typed_pexp aenv tenv e tenv' -> right_mode_env aenv tenv f ->
-    qft_uniform aenv tenv f -> qft_gt aenv tenv f -> prog_sem aenv (e;;; inv_pexp e) f = f.
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f -> prog_sem aenv (e;; inv_pexp e) f = f.
 Proof. 
   induction e; intros.
  - simpl. inv H0.
-    specialize (inv_sexp_correct_rev tenv' aenv s f H6 H1) as eq1.
+    specialize (inv_exp_correct_rev aenv tenv' s f H5 H8 H1) as eq1.
     simpl in eq1. easy.
  - simpl. unfold turn_qft,turn_rqft.
    apply functional_extensionality. intros.
@@ -3938,21 +4299,21 @@ Proof.
    unfold right_mode_env in H1. apply H1. easy. easy.
    rewrite had_twice_same with (t := Had). easy. intros. 
    unfold right_mode_env in H1. apply H1. easy. easy.
- - assert (inv_pexp (e1;;; e2) = inv_pexp e2;;; inv_pexp e1). simpl. easy.
+ - assert (inv_pexp (e1;; e2) = inv_pexp e2;; inv_pexp e1). simpl. easy.
    rewrite H4.
    rewrite pexp_sem_assoc.
-   assert (prog_sem aenv (e1;;; (e2;;; (inv_pexp e2;;; inv_pexp e1))) f
-             = prog_sem aenv (e2 ;;; (inv_pexp e2 ;;; inv_pexp e1)) (prog_sem aenv (e1) f)).
+   assert (prog_sem aenv (e1;; (e2;; (inv_pexp e2;; inv_pexp e1))) f
+             = prog_sem aenv (e2 ;; (inv_pexp e2 ;; inv_pexp e1)) (prog_sem aenv (e1) f)).
    simpl. easy.
    rewrite H5.
    rewrite <- pexp_sem_assoc.
-   assert ( forall f', prog_sem aenv ((e2;;; inv_pexp e2);;; inv_pexp e1) f'
-            = prog_sem aenv (inv_pexp e1) (prog_sem aenv ((e2;;; inv_pexp e2)) f')).
+   assert ( forall f', prog_sem aenv ((e2;; inv_pexp e2);; inv_pexp e1) f'
+            = prog_sem aenv (inv_pexp e1) (prog_sem aenv ((e2;; inv_pexp e2)) f')).
    intros. simpl. easy.
    rewrite H6.
    inv H0.
    rewrite (IHe2 env' tenv').
-   assert (prog_sem aenv (inv_pexp e1) (prog_sem aenv e1 f) = prog_sem aenv (e1 ;;; inv_pexp e1) f).
+   assert (prog_sem aenv (inv_pexp e1) (prog_sem aenv e1 f) = prog_sem aenv (e1 ;; inv_pexp e1) f).
    simpl. easy.
    rewrite H0.
    rewrite (IHe1 tenv env'). easy. easy. easy. easy. easy. easy.
@@ -3965,10 +4326,10 @@ Lemma inv_pexp_correct :
   forall e tenv tenv' aenv f,
     well_typed_pexp aenv tenv e tenv' -> right_mode_env aenv tenv' f ->
     qft_uniform aenv tenv' f -> qft_gt aenv tenv' f ->
-    prog_sem aenv (inv_pexp e ;;; e) f = f.
+    prog_sem aenv (inv_pexp e ;; e) f = f.
 Proof. 
   intros.
-  assert ((inv_pexp e;;; e) = (inv_pexp e;;; inv_pexp (inv_pexp e))).
+  assert ((inv_pexp e;; e) = (inv_pexp e;; inv_pexp (inv_pexp e))).
   rewrite inv_pexp_involutive. easy.
   rewrite H4.
   assert (well_typed_pexp aenv tenv' (inv_pexp e) tenv).
@@ -3979,7 +4340,7 @@ Qed.
 
 
 Lemma exp_sem_same_out:
-   forall e f g1 g2, exp_sem e f = g1 -> exp_sem e f = g2 -> g1 = g2.
+   forall e aenv f g1 g2, exp_sem aenv e f = g1 -> exp_sem aenv e f = g2 -> g1 = g2.
 Proof.
  intros e.
  induction e;simpl; intros; subst; try easy.
@@ -3988,8 +4349,8 @@ Qed.
 Lemma inv_exp_reverse :
   forall (tenv:env) (aenv: var -> nat) e f g,
     exp_fwf e -> well_typed_exp tenv e -> right_mode_env aenv tenv f ->
-    exp_sem e f = g ->
-    exp_sem (inv_exp e) g = f.
+    exp_sem aenv e f = g ->
+    exp_sem aenv (inv_exp e) g = f.
 Proof.
   intros. specialize (inv_exp_correct_rev aenv tenv e f H0 H1 H2) as G.
   simpl in G.
@@ -4196,12 +4557,6 @@ Definition inter_num (size:nat) (t : varType) :=
 Definition vars_start_diff (vs: vars) :=
         forall x y,  x <> y -> start vs x <> start vs y.
 
-Definition weak_finite_bijection (n : nat) (f : nat -> nat) :=
-  (forall x, x < n -> f x < n)%nat /\ 
-  (exists g, (forall y, y < n -> g y < n)%nat /\
-        (forall x, (x < n)%nat -> g (f x) = x) /\ 
-        (forall y, (y < n)%nat -> f (g y) = y)).
-
 Definition vars_finite_bij (vs:vars) :=
    forall x,  weak_finite_bijection (vsize vs x) (vmap vs x).
 
@@ -4243,7 +4598,10 @@ Inductive exp_WF : vars -> exp -> Prop :=
       | rrz_wf : forall vs p q, snd p < vsize vs (fst p) -> exp_WF vs (RRZ q p)
       | sr_wf : forall vs n x, S n < vsize vs x -> exp_WF vs (SR n x)
       | ssr_wf : forall vs n x, S n < vsize vs x -> exp_WF vs (SRR n x)       
-      | seq_wf : forall vs e1 e2, exp_WF vs e1 -> exp_WF vs e2 -> exp_WF vs (Seq e1 e2).
+      | seq_wf : forall vs e1 e2, exp_WF vs e1 -> exp_WF vs e2 -> exp_WF vs (Seq e1 e2)
+      | lshift_wf : forall vs x, 0 < vsize vs x -> exp_WF vs (Lshift x)
+      | rshift_wf : forall vs x, 0 < vsize vs x -> exp_WF vs (Rshift x)
+      | rev_wf : forall vs x, 0 < vsize vs x -> exp_WF vs (Rev x).
 
 
 Inductive exp_rmax : nat -> exp -> Prop :=
@@ -4255,7 +4613,10 @@ Inductive exp_rmax : nat -> exp -> Prop :=
       | rrz_rmax : forall rs p q, q < rs -> exp_rmax rs (RRZ q p)
       | sr_rmax : forall rs n x, S n < rs -> exp_rmax rs (SR n x)
       | srr_rmax : forall rs n x, S n < rs -> exp_rmax rs (SRR n x)
-      | seq_rmax : forall rs e1 e2, exp_rmax rs e1 -> exp_rmax rs e2 -> exp_rmax rs (Seq e1 e2).
+      | seq_rmax : forall rs e1 e2, exp_rmax rs e1 -> exp_rmax rs e2 -> exp_rmax rs (Seq e1 e2)
+      | lshift_rmax : forall vs x, exp_rmax vs (Lshift x)
+      | rshift_rmax : forall vs x, exp_rmax vs (Rshift x)
+      | rev_rmax : forall vs x, exp_rmax vs (Rev x).
 
 
 Fixpoint gen_sr_gate' (f:vars) (dim:nat) (x:var) (n:nat) (size:nat) : base_ucom dim := 
@@ -4571,7 +4932,6 @@ Proof.
   rewrite H6. rewrite Heqq.
   inv H1. inv H0.
   apply fresh_control.
-  split.
   apply find_pos_prop; try assumption. 
   apply IHe; try assumption. easy.
   subst. inv H0. inv H1.
@@ -4656,10 +5016,11 @@ Proof.
   apply find_pos_prop; try assumption.
   rewrite H6. 
   apply uc_well_typed_control.
-  inv H3. inv H4. split.
+  inv H3. inv H4.
   apply H5. easy.
-  split.
+  inv H3. inv H4.
   apply fresh_is_fresh; try assumption.
+  inv H3. inv H4.
   apply IHe; try assumption.
   inv H4.
   simpl. constructor.
@@ -5628,9 +5989,7 @@ Qed.
 
 
 Inductive sexp_WF : vars -> nat -> sexp -> Prop :=
-      | lshift_wf : forall vs rs x, 0 < vsize vs x -> sexp_WF vs rs (Lshift x)
-      | rshift_wf : forall vs rs x, 0 < vsize vs x -> sexp_WF vs rs (Rshift x)
-      | rev_wf : forall vs rs x, 0 < vsize vs x -> sexp_WF vs rs (Rev x)
+
       | exp_wf : forall vs rs e, exp_WF vs e -> exp_rmax rs e -> sexp_WF vs rs (Exp e)
       | sseq_wf : forall vs rs e1 e2, sexp_WF vs rs e1 -> sexp_WF vs rs e2 -> sexp_WF vs rs (SSeq e1 e2).
 
@@ -9783,7 +10142,7 @@ Hint Resolve aty_eq_reflect bty_eq_reflect ty_eq_reflect : bdestruct.
 
 
 Inductive factor := Var (v:var)
-                 | Num (v:nat) (n:nat) (t:btype). (*a value is represented as a bool binary. *)
+                 | Num (v:nat -> bool) (n:nat) (t:btype). (*a value is represented as a bool binary. *)
 
 Inductive flag := QFTA | Classic.
 
@@ -9803,13 +10162,13 @@ Inductive comexp := clt (f:flag) (x:factor) (y:factor)
 (* qadd/qsub/qmul has the property as x = y op x, which is corresponding to
    [y][x] -> [y][y op x] structure. *)
 Inductive qexp := inst (v:var) (n:nat) (t:btype) (e:iexp)
-                | qadd (f:flag) (v:factor) (x:var)
-                | qsub (f:flag) (v:factor) (x:var)
-                | qmul (f:flag) (v:factor) (x:var)
-                | call (f:fvar) (l:list var)
+                | qadd (f:flag) (v:factor) (x:factor)
+                | qsub (f:flag) (v:factor) (x:factor)
+                | qmul (f:flag) (v:factor) (x:factor)
+                | call (f:fvar)
                 | qif (c:comexp) (e1:qexp) (e2:qexp)
                 | qwhile (c:comexp) (e:qexp)
-                | ret (l:list var)
+                | ret (l:list (var * var))
                 | qseq (q1:qexp) (q2:qexp).
 
 (*functions will do automatic inverse computation after a function is returned.
@@ -9817,7 +10176,7 @@ Inductive qexp := inst (v:var) (n:nat) (t:btype) (e:iexp)
    while the left one is the local variables. after a function call is returned,
     it will store all the local variables to their correponding global variables, and then reverse the computation.  *)
 
-Definition func : Type := (fvar * qexp * list (nat * btype)).
+Definition func : Type := (fvar * qexp).
     (* a function is a fun name, a starting block label, and a list of blocks. *)
 
 Definition prog : Type := (nat * nat * nat * list (var * nat) * list func). 
@@ -9845,19 +10204,19 @@ Inductive ssa_comexp : list var -> comexp -> Prop :=
 
 Inductive ssa_inst : list var -> qexp -> list var -> Prop :=
    | ssa_assign : forall r x n t e, ~ In x r -> ssa_exp r e -> ssa_inst r (inst x n t e) (x::r)
-   | ssa_add : forall r f x y, ssa_factor r x -> In y r -> ssa_inst r (qadd f x y) r
-   | ssa_sub : forall r f x y, ssa_factor r x -> In y r -> ssa_inst r (qsub f x y) r
-   | ssa_mul : forall r f x y, ssa_factor r x -> In y r -> ssa_inst r (qmul f x y) r
+   | ssa_add : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_inst r (qadd f x y) r
+   | ssa_sub : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_inst r (qsub f x y) r
+   | ssa_mul : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_inst r (qmul f x y) r
    | ssa_if : forall r r' r'' c e1 e2, ssa_comexp r c ->
                  ssa_inst r e1 r' -> ssa_inst r' e2 r'' -> ssa_inst r (qif c e1 e2) r''
    | ssa_while : forall r r' c e, ssa_comexp r c -> ssa_inst r e r' -> ssa_inst r (qwhile c e) r'
-   | ssa_ret : forall r l, (forall a , In a l -> In a r) -> ssa_inst r (ret l) r
-   | ssa_call : forall r f l, (forall a, In a l -> In a r) -> ssa_inst r (call f l) r
+   | ssa_ret : forall r l, (forall a b, In (a,b) l -> In a r /\ In b r) -> ssa_inst r (ret l) r
+   | ssa_call : forall r f, ssa_inst r (call f) r
    | ssa_seq : forall r r' r'' e1 e2, ssa_inst r e1 r' -> ssa_inst r' e2 r'' -> ssa_inst r (qseq e1 e2) r''.
 
 Inductive ssa_funs : list var -> list func -> list var -> Prop :=
    ssa_fun_empty : forall r, ssa_funs r [] r
-  | ssa_fun_many : forall r r' r'' f e fs l, ssa_inst r e r' -> ssa_funs r' fs r'' -> ssa_funs r ((f,e,l)::fs) r''.
+  | ssa_fun_many : forall r r' r'' f e fs, ssa_inst r e r' -> ssa_funs r' fs r'' -> ssa_funs r ((f,e)::fs) r''.
 
 
 Inductive ssa_prog : prog -> Prop :=
@@ -9870,10 +10229,6 @@ Module BEnv := FMapList.Make Nat_as_OT.
 Definition benv := BEnv.t typ.
 
 Definition empty_benv := @BEnv.empty typ.
-
-Module FTEnv := FMapList.Make Nat_as_OT.
-
-Definition ftmenv := FTEnv.t (func).
 
 Definition type_up_zero (t : atype) : Prop := 
    match t with (C n) => (0 < n)%nat
@@ -9894,7 +10249,7 @@ Inductive subtype : typ -> typ -> Prop :=
 
 Inductive type_factor (benv:benv) : typ -> factor -> Prop :=
      type_fac_var : forall t' t x, BEnv.MapsTo x t' benv -> subtype t' t -> type_factor benv t (Var x)
-   | type_fac_nat : forall n m t' t, subtype (C m,t') t -> type_factor benv t (Num n m t').
+   | type_fac_nat : forall n m t, type_factor benv (C m,t) (Num n m t).
 
 Definition mat_cq (a:atype) (n:nat) : Prop :=
    match a with Q m => (n = m)
@@ -9918,32 +10273,35 @@ Inductive type_cexp (gs:list var) (benv:benv) : typ -> comexp -> Prop :=
   |  type_ceq : forall c n b f x y, type_factor benv (c n,b) x ->
                      type_factor benv (c n,b) y -> type_cexp gs benv (c 1,b) (ceq f x y).
 
-Inductive type_qexp_h (fm:ftmenv) (fs:list var) (gs:list var): benv -> qexp -> Prop :=
- | htype_qadd : forall benv t f x y, type_factor benv t x -> BEnv.MapsTo y t benv -> type_qexp_h fm fs gs benv (qadd f x y)
- | htype_qsub : forall benv t f x y, type_factor benv t x ->  BEnv.MapsTo y t benv -> type_qexp_h fm fs gs benv (qsub f x y)
- | htype_qmul : forall benv a b f x y, type_factor benv (a,Nat) x ->  BEnv.MapsTo y (a,b) benv -> type_qexp_h fm fs gs benv (qmul f x y)
- | htype_call : forall benv f, In f fs -> type_qexp_h fm fs gs benv (call f)
- | htype_if : forall benv t ce e1 e2, type_cexp gs benv t ce -> type_qexp_h fm fs gs benv e1 ->
-                     type_qexp_h fm fs gs benv e2 ->  type_qexp_h fm fs gs benv (qif ce e1 e2)
+Inductive type_qexp_h (fs:list var) (gs:list var): benv -> qexp -> Prop :=
+ | htype_qadd : forall benv t f x y, type_factor benv t x -> type_factor benv t y -> type_qexp_h fs gs benv (qadd f x y)
+ | htype_qsub : forall benv t f x y, type_factor benv t x -> type_factor benv t y -> type_qexp_h fs gs benv (qsub f x y)
+ | htype_qmul : forall benv a b f x y, type_factor benv (a,b) x ->
+                              type_factor benv (a,Nat) y -> type_qexp_h fs gs benv (qmul f x y)
+ | htype_call : forall benv f, In f fs -> type_qexp_h fs gs benv (call f)
+ | htype_if : forall benv t ce e1 e2, type_cexp gs benv t ce -> type_qexp_h fs gs benv e1 ->
+                     type_qexp_h fs gs benv e2 ->  type_qexp_h fs gs benv (qif ce e1 e2)
  | htype_while : forall benv t ce e, type_cexp gs benv t ce ->
-                            type_qexp_h fm fs gs benv e -> type_qexp_h fm fs gs benv (qwhile ce e)
- | htype_ret : forall benv l, (forall x, In x l -> ~ In x gs) -> type_qexp_h fm fs gs benv (ret l)
- | htype_qseq : forall benv e1 e2, type_qexp_h fm fs gs benv e1 ->
-                              type_qexp_h fm fs gs benv e2 -> type_qexp_h fm fs gs benv (qseq e1 e2).
+                            type_qexp_h fs gs benv e -> type_qexp_h fs gs benv (qwhile ce e)
+ | htype_ret : forall benv l, (forall x, In x (fst (split l)) -> In x gs) 
+                 -> (forall x, In x (snd (split l)) -> ~ In x gs) -> type_qexp_h fs gs benv (ret l)
+ | htype_qseq : forall benv e1 e2, type_qexp_h fs gs benv e1 -> type_qexp_h fs gs benv e2 -> type_qexp_h fs gs benv (qseq e1 e2).
 
 
 Inductive type_qexp (fs:list var) (gs:list var): benv -> qexp -> benv -> Prop :=
    type_inst_cq: forall benv benv' c x n t e, type_iexp gs benv (c n,t) e -> ~ In x gs
                   -> BEnv.Equal benv' (BEnv.add x (c n,t) benv) -> type_qexp fs gs benv (inst x n t e) benv'
- | type_qadd : forall benv t f x y, type_factor benv t x -> BEnv.MapsTo y t benv -> type_qexp fs gs benv (qadd f x y) benv
- | type_qsub : forall benv t f x y, type_factor benv t x -> BEnv.MapsTo y t benv -> type_qexp fs gs benv (qsub f x y) benv
- | type_qmul : forall benv a b f x y, type_factor benv (a,Nat) x -> BEnv.MapsTo y (a,b) benv -> type_qexp fs gs benv (qmul f x y) benv
+ | type_qadd : forall benv t f x y, type_factor benv t x -> type_factor benv t y -> type_qexp fs gs benv (qadd f x y) benv
+ | type_qsub : forall benv t f x y, type_factor benv t x -> type_factor benv t y -> type_qexp fs gs benv (qsub f x y) benv
+ | type_qmul : forall benv a b f x y, type_factor benv (a,b) x ->
+                              type_factor benv (a,Nat) y -> type_qexp fs gs benv (qmul f x y) benv
  | type_call : forall benv f, In f fs -> type_qexp fs gs benv (call f) benv
  | type_if : forall benv benv' benv'' t ce e1 e2, type_cexp gs benv t ce -> type_qexp fs gs benv e1 benv' ->
                      type_qexp fs gs benv' e2 benv'' ->  type_qexp fs gs benv (qif ce e1 e2) benv''
  | type_while : forall benv t ce e, type_cexp gs benv t ce ->
                             type_qexp_h fs gs benv e -> type_qexp fs gs benv (qwhile ce e) benv
- | type_ret : forall benv l, (forall x, In x l -> ~ In x gs) -> type_qexp fs gs benv (ret l) benv
+ | type_ret : forall benv l, (forall x, In x (fst (split l)) -> In x gs) 
+                 -> (forall x, In x (snd (split l)) -> ~ In x gs) -> type_qexp fs gs benv (ret l) benv
  | type_qseq : forall benv benv' benv'' e1 e2, type_qexp fs gs benv e1 benv' ->
               type_qexp fs gs benv' e2 benv'' -> type_qexp fs gs benv (qseq e1 e2) benv''.
 
@@ -9963,96 +10321,112 @@ Inductive type_prog : prog -> Prop :=
 
 
 (*The semantics of QLLVM. *)
+Local Open Scope Z_scope.
 
 Module Reg := FMapList.Make Nat_as_OT.
 
-Definition reg := Reg.t nat.
+Definition reg := Reg.t (typ * (nat -> bool)).
 
 Module FEnv := FMapList.Make Nat_as_OT.
 
-Definition fmenv := FEnv.t (func * benv).
+Definition fmenv := FEnv.t func.
 
 
-Inductive sem_factor : reg -> factor -> nat -> Prop :=
-   | sem_factor_var : forall r x n, Reg.MapsTo x n r -> sem_factor r (Var x) n
-   | sem_factor_num : forall r m n t, sem_factor r (Num n m t) (n mod (2^m)).
+Inductive sem_factor : reg -> factor -> (typ * (nat -> bool)) -> Prop :=
+   | sem_factor_var : forall r x t n, Reg.MapsTo x (t,n) r -> sem_factor r (Var x) (t,n)
+   | sem_factor_num : forall r m n t, sem_factor r (Num n m t) ((C m,t), n).
 
-Definition get_n (t:typ) := match t with (Q n,t) => n | (C n,t) => n end.
-
-Inductive sem_iexp (M: fmenv) : reg -> typ -> iexp -> nat -> Prop :=
-   | sem_eplus : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
-                           sem_iexp M r t (eplus f x y) ((n1+n2) mod (2^(get_n t)))
-   | sem_eminus : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
-                           sem_iexp M r t (eminus f x y) (if n1 <? n2 then 2^(get_n t) + n2 - n1 else n1 - n2)
-   | sem_emult : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
-                           sem_iexp M r t (emult f x y) ((n1*n2) mod (2^(get_n t))) 
-   | sem_ediv : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
-                           sem_iexp M r t (ediv f x y) (n1/n2) 
-   | sem_emod : forall r f x y n1 n2 t, sem_factor r x n1 -> sem_factor r y n2 ->
-                           sem_iexp M r t (ediv f x y) (n1 mod n2) 
-   | sem_eload : forall r x t v, Reg.MapsTo x v r -> sem_iexp M r t (eload x) (v mod (2^(get_n t))).
-
-Inductive sem_cexp (M:fmenv) (benv:benv) : reg -> comexp -> bool -> Prop :=
-    | sem_clt : forall r f x y t n1 n2, sem_factor r x n1 -> sem_factor r y n2 ->
-                     type_factor benv t x -> type_factor benv t y ->
-                           sem_cexp M benv r (clt f x y) ((n1 mod (2^(get_n t))) <? (n2 mod (2^ get_n t)))
-    | sem_ceq : forall r f x y t n1 n2, sem_factor r x n1 -> sem_factor r y n2 ->
-                     type_factor benv t x -> type_factor benv t y ->
-                           sem_cexp M benv r (ceq f x y) ((n1 mod (2^(get_n t))) =? (n2 mod (2^ get_n t))).
-
-Inductive sem_qexp (M: fmenv) (benv:benv) : reg -> qexp -> reg -> Prop :=
-   | sem_inst : forall r x m e bt t n, BEnv.MapsTo x t benv -> sem_iexp M r t e n 
-                 -> sem_qexp M benv r (inst x m bt e) (Reg.add x n r)
-   | sem_qadd : forall r f x y t n1 n2, sem_factor r x n1 -> Reg.MapsTo y n2 r -> BEnv.MapsTo y t benv
-                -> sem_qexp M benv r (qadd f x y) (Reg.add y ((n1 mod (2^(get_n t)))+(n2 mod (2^(get_n t))) mod (get_n t)) r)
-   | sem_qsub : forall r f x y t n1 n2, sem_factor r x n1 -> Reg.MapsTo y n2 r -> BEnv.MapsTo y t benv
-                -> sem_qexp M benv r (qadd f x y) (Reg.add y (if (n1 mod (2^(get_n t))) <? (n2 mod (2^(get_n t)))
-                        then 2^(get_n t) + (n2 mod (2^(get_n t))) - (n1 mod (2^(get_n t)))
-                 else (n1 mod (2^(get_n t))) - (n2 mod (2^(get_n t)))) r)
-   | sem_times : forall r f x y t n1 n2, sem_factor r x n1 -> Reg.MapsTo y n2 r -> BEnv.MapsTo y t benv
-                -> sem_qexp M benv r (qmul f x y) (Reg.add y ((n1 mod (2^(get_n t)))*(n2 mod (2^(get_n t))) mod (get_n t)) r)
-   | sem_call :  forall r f x y t n1 n2, FEnv.MapsTo f (e,benv') -> 
-                         sem_qexp M benv' r e r' -> 
-                -> sem_qexp M benv r (call f) (Reg.add y ((n1 mod (2^(get_n t)))*(n2 mod (2^(get_n t))) mod (get_n t)) r)
-
-with sem_func (M:fmenv) (benv:benv) (endr :reg) : qexp -> Prop :=
-   sem_fun_rule : forall e r r', sem_qexp M benv r e r' -> sem_func M benv endr e.
+(* The first nat is the number of bits for tenths.
+    There is no way to express sin/cos/sqrt semantics using the real number calculation of them in Coq.
+    They are defined in terms of taylor expansions. *)
+(*
+Inductive gen_listval : reg -> list factor -> list Z -> Prop :=
+    | gen_val_empty : forall r, gen_listval r [] []
+    | gen_val_many : forall r xs vs x t v, sem_factor r x (t,v) -> gen_listval r xs vs -> gen_listval r (x::xs) (v::vs).
 
 
+Inductive gen_reg : list Z -> list ty_var -> reg -> Prop :=
+   | gen_reg_empty : gen_reg [] [] (@Reg.empty (atype * Z))
+   | gen_reg_many : forall n ns t x ts r, gen_reg ns ts r -> gen_reg (n::ns) ((t,x)::ts) (Reg.add x (t,n) r).
+
+Definition get_fun_type (f:fvar) (M:fmenv) : option atype :=
+     match (FEnv.find f M) with None => None
+                             | Some (elet t f ns ins ret) => Some t
+     end.
+*)
+Inductive sem_exp (M: fmenv) (tenth : nat) : reg -> exp -> (atype * Z) -> Prop :=
+   | sem_eplus : forall r x y n1 n2 t1 t2 t3, sem_factor r x (t1,n1) -> sem_factor r y (t2,n2) ->
+                     meet_type t1 t2 = Some t3 -> sem_exp M tenth r (eplus x y) (t3,trunk t3 (n1+n2))
+   | sem_eminus : forall r x y n1 n2 t1 t2 t3, sem_factor r x (t1,n1) -> sem_factor r y (t2,n2) ->
+                     meet_type t1 t2 = Some t3 -> sem_exp M tenth r (eminus x y) (t3,trunk t3 (n1-n2))
+   | sem_emult : forall r x y n1 n2 t1 t2 t3, sem_factor r x (t1,n1) -> sem_factor r y (t2,n2) ->
+                     meet_type t1 t2 = Some t3 -> sem_exp M tenth r (emult x y) (t3,trunk t3 (n1*n2))
+   | sem_ediv : forall r x y n1 n2 t1 t2 t3, sem_factor r x (t1,n1) -> sem_factor r y (t2,n2) ->
+                     meet_type t1 t2 = Some t3 -> sem_exp M tenth r (ediv x y) (t3,trunk t3 (n1 / n2))
+   | sem_emod : forall r x y n1 n2 t1 t2 t3, sem_factor r x  (t1,n1) -> sem_factor r y (t2,n2) ->
+                     meet_type t1 t2 = Some t3 -> sem_exp M tenth r (emod x y) (t3,trunk t3 (n1 mod n2))
+   | sem_efac : forall r x n t, sem_factor r x (t,n)
+                       -> sem_exp M tenth r (efac x) (t,trunk t (Z_of_nat (fact (Z.to_nat (Z.abs n)))))
+   | sem_epow : forall r x y n1 n2 t1 t2, sem_factor r x (t1,n1) -> sem_factor r y (t2,n2) ->
+                                       sem_exp M tenth r (epow x y) (t1, trunk t1 (n1 ^ (Z_of_nat (fact (Z.to_nat (Z.abs n2))))))
+   | sem_ecall : forall r f tu vs ns t v, FEnv.MapsTo f tu M -> gen_listval r vs ns
+                  -> sem_efun M tenth ns tu (t,v) -> sem_exp M tenth r (ecall f vs) (t, v)
+   | sem_sigma : forall r c1 t1 v1 c2 t2 v2 f vs ns tu t v x, sem_factor r c1 (t1,v1) -> sem_factor r c2 (t2,v2) -> v1 < v2
+                   -> get_fun_type f M = Some t -> gen_listval r vs ns -> FEnv.MapsTo f tu M
+                     -> sem_sigma_fun M tenth (Z.to_nat (v2 - v1)) (t,0) (v1::ns) tu (t,v)
+                      -> sem_exp M tenth r (sigma c1 c2 f ((Var x)::vs)) (t,v)
+
+with sem_inst (M: fmenv) (tenth : nat) : reg -> inst -> reg -> Prop :=
+    | sem_theinst : forall r x e, sem_inst M tenth r (assign x e) r
+
+with sem_insts (M: fmenv) (tenth : nat) : reg -> list inst -> reg -> Prop :=
+   | sem_inst_empty : forall r, sem_insts M tenth r [] r
+   | sem_inst_many : forall r x xs, sem_insts M tenth r (x::xs) r
+
+with sem_efun (M: fmenv) (tenth : nat) : list Z -> efun -> (atype * Z) -> Prop :=
+    | sem_thefun : forall r r' vs t t' f ts ins ret v, gen_reg vs ts r ->
+        sem_insts M tenth r ins r' -> Reg.MapsTo ret (t',v) r' ->
+        sem_efun M tenth vs (elet t f ts ins ret) (t,v)
+
+with sem_sigma_fun (M:fmenv) (tenth : nat) : nat -> (atype * Z) -> list Z -> efun -> (atype * Z) -> Prop :=
+    | sem_sigma_fun_empty : forall ns ef tv, sem_sigma_fun M tenth 0 tv ns ef tv
+    | sem_sigma_fun_many : forall n n' ns ef t v v' tv, sem_efun M tenth (n'::ns) ef (t,v')
+                             -> sem_sigma_fun M tenth n (t,v+v') ((n'+1)::ns) ef tv
+                             -> sem_sigma_fun M tenth (S n) (t,v) (n'::ns) ef tv.
 
 
-Inductive comexp := clt (f:flag) (x:factor) (y:factor)
-                  | ceq (f:flag) (x:factor) (y:factor).
+Fixpoint find_tenth (l : list setting) : option nat :=
+   match l with [] => None
+              | (setFixedPointNum n :: xs) => Some n
+              | (x::xs) => find_tenth xs
+   end.
 
-(* qadd/qsub/qmul has the property as x = y op x, which is corresponding to
-   [y][x] -> [y][y op x] structure. *)
-Inductive qexp := inst (v:var) (n:nat) (t:btype) (e:iexp)
-                | qadd (f:flag) (v:factor) (x:var)
-                | qsub (f:flag) (v:factor) (x:var)
-                | qmul (f:flag) (v:factor) (x:var)
-                | call (f:fvar)
-                | qif (c:comexp) (e1:qexp) (e2:qexp)
-                | qwhile (c:comexp) (e:qexp)
-                | ret (l:list (var * var))
-                | qseq (q1:qexp) (q2:qexp).
+Fixpoint gen_fmenv (l : list efun) : fmenv :=
+   match l with [] => (@FEnv.empty (efun))
+             | ((elet t f ns ins ret)::xs) => FEnv.add f (elet t f ns ins ret) (gen_fmenv xs)
+   end.
 
-
-Inductive comexp := clt (f:flag) (x:factor) (y:factor)
-                  | ceq (f:flag) (x:factor) (y:factor).
-
-(* qadd/qsub/qmul has the property as x = y op x, which is corresponding to
-   [y][x] -> [y][y op x] structure. *)
-Inductive qexp := inst (v:var) (n:nat) (t:btype) (e:iexp)
-                | qadd (f:flag) (v:factor) (x:factor)
-                | qsub (f:flag) (v:factor) (x:factor)
-                | qmul (f:flag) (v:factor) (x:factor)
-                | call (f:fvar)
-                | qif (c:comexp) (e1:qexp) (e2:qexp)
-                | qwhile (c:comexp) (e:qexp)
-                | ret (l:list (var * var))
-                | qseq (q1:qexp) (q2:qexp).
+Inductive sem_top : top -> (atype * Z) -> Prop :=
+   | sem_thetop : forall ss fs main n M tv, find_tenth ss = Some n -> gen_fmenv fs = M
+                   -> sem_efun M n [] main tv
+                    -> sem_top (Prog ss fs main) tv.
 
 
+(* The frontend level language. QC. *)
+Inductive QC := varC (v:var) | natC (n:nat).
+
+Inductive QE := cconst (c:QC) | plusC (e1:QE) (e2:QE) 
+             | minusC (e1:QE) (e2:QE) | multC (e1:QE) (e2:QE)
+             | divC (e1:QE) (e2:QE) | modC (e1:QE) (e2:QE)
+             | facC (e:QE) 
+             | powC (e:QE) (n:QC) 
+             | sinC (e:QE) | cosC (e:QE) | sqrtC (e:QE)
+             | sigmaC (c1:QC) (c2:QC) (f:var) (v : QE).
+
+Inductive cinst := letin (v:var) (e1:QE) (e2:QE).
+
+Inductive ctop := setFixedPointNumC (n: nat) | setBitLengthC (n:nat) 
+              | fixedC (x: list var) | setUncomputeStrategyC (x: string) | ins (cs : list cinst).
 
 
 (*
