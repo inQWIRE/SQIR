@@ -126,20 +126,6 @@ module Z =
     | Lt -> true
     | _ -> false
 
-  (** val max : coq_Z -> coq_Z -> coq_Z **)
-
-  let max n m =
-    match compare n m with
-    | Lt -> m
-    | _ -> n
-
-  (** val min : coq_Z -> coq_Z -> coq_Z **)
-
-  let min n m =
-    match compare n m with
-    | Gt -> m
-    | _ -> n
-
   (** val abs : coq_Z -> coq_Z **)
 
   let abs = function

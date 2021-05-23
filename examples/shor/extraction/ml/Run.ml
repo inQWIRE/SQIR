@@ -1,7 +1,6 @@
 open Printf
 
 open AltGateSet
-open ShorExtr
 
 let rec sqir_to_qasm oc (u : coq_U ucom) k =
   match u with
@@ -32,43 +31,30 @@ let write_qasm_file fname (u : coq_U ucom) dim m =
    fprintf oc "\n";
    ignore(sqir_to_qasm oc u (fun _ -> ()));
    ignore(write_measurements oc m);
-   ignore(fprintf oc "\n"); (* ddsim is fussy about having a newline at the end... *)
+   ignore(fprintf oc "\n"); (* ddsim is fussy about having a newline at the end *)
    close_out oc)
-   
-(* function to count gates *)
-let rec count_gates_aux (u : coq_U ucom) acc =
-  match u with
-  | Coq_useq (u1, u2) -> count_gates_aux u1 (count_gates_aux u2 acc)
-  | Coq_uapp (_, _, _) -> 1 + acc
-let count_gates u = count_gates_aux u 0
 
-(* light argument parsing *)
-let n = ref 0
-let a = ref 0
-let usage = "usage: " ^ Sys.argv.(0) ^ " [-N int] [-a int]"
-let speclist = [
-    ("-N", Arg.Set_int n, ": number to factor");
-    ("-a", Arg.Set_int a, ": coprime value");
-  ]
-let () =
-  Arg.parse
-    speclist
-    (fun x -> raise (Arg.Bad ("Bad argument : " ^ x)))
-    usage;
-if (!a <= 0 || !n <= !a) then printf "ERROR: Requires 0 < a < N\n%!" else 
-if (Z.gcd (Z.of_int !a) (Z.of_int !n) > Z.one) then printf "ERROR: Requires a, N comprime\n%!" else 
-(printf "Generating circuit for N = %d and a = %d...\n%!" !n !a;
- let t1 = Unix.gettimeofday () in
- let ((u, num_qubits), num_cbits) = shor_circuit !a !n in 
- let _ = printf "Time to generate: %fs\n%!" (Unix.gettimeofday () -. t1) in
- let _ = printf "Counting gates...\n%!" in
- let t2 = Unix.gettimeofday () in
- let c = count_gates u in
- let _ = printf "%d qubits and %d gates.\n%!" num_qubits c in
- let _ = printf "Time to count gates: %fs\n" (Unix.gettimeofday () -. t2) in
- let _ = printf("Writing file to shor.qasm...\n%!") in
- let t3 = Unix.gettimeofday () in
- let _ = write_qasm_file "shor.qasm" u num_qubits num_cbits in
- printf "Time to write file: %fs\n%!" (Unix.gettimeofday () -. t3))
-
-
+(* slow because it has to do file I/O, start Python, import qiskit, do simulation *)
+let run_circuit n k u =
+  (* write circuit to shor.qasm *)
+  write_qasm_file "shor.qasm" u n k;
+  (* simulate circuit using run_circuit.py *)
+  let inc = Unix.open_process_in "python run_circuit.py" in
+  try 
+    let line = input_line inc in
+    let x = int_of_string line in
+    (close_in inc; printf "Measurement outcome is %d\n" x; x)
+  with _ ->
+    (close_in_noerr inc;
+     failwith "Error occurred while getting measurement results.\n")
+ 
+let run_circuit_cached () =
+  (* simulate circuit using run_circuit.py -c *)
+  let inc = Unix.open_process_in "python run_circuit.py -c" in
+  try 
+    let line = input_line inc in
+    let x = int_of_string line in
+    (close_in inc; printf "Measurement outcome is %d\n" x; x) 
+  with _ ->
+    (close_in_noerr inc;
+     failwith "Error occurred while getting measurement results.\n")

@@ -37,6 +37,11 @@ module Nat =
         m)
       n
 
+  (** val ltb : int -> int -> bool **)
+
+  let ltb n m =
+    (<=) (Pervasives.succ n) m
+
   (** val pow : int -> int -> int **)
 
   let rec pow n m =
@@ -72,6 +77,14 @@ module Nat =
       (fun _ -> y)
       (fun y' -> sub y' (snd (divmod x y' 0 y')))
       y
+
+  (** val gcd : int -> int -> int **)
+
+  let rec gcd a b =
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ -> b)
+      (fun a' -> gcd (modulo b (Pervasives.succ a')) (Pervasives.succ a'))
+      a
 
   (** val log2_iter : int -> int -> int -> int -> int **)
 
