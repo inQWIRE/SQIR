@@ -493,7 +493,7 @@ Proof.
       rewrite kron_1_l.
       Search ((_ ⊗ _ ) × (_⊗_)).
       restore_dims.
-      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^ n + 0)) × uc_eval (circuit' data base base (S n))))).
+      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data base base (S n)))).
       rewrite Mmult_1_l.
       rewrite Mmult_1_r.
       rewrite kron_mixed_product.
@@ -514,7 +514,11 @@ Proof.
       restore_dims.
       apply WF_uc_eval.
       restore_dims.
-      admit. (*TODO*)
+      Search (_ × _ ⊗ (_ × _)).
+      prep_matrix_equality.
+      rewrite kron_mixed_product.
+      simpl.
+      reflexivity.
       apply WF_σx.
       simpl in H.
       apply eq_add_S in H.
@@ -530,6 +534,177 @@ Proof.
       apply eq_add_S in H0.
       apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
       apply gt_Sn_O.
+    + rewrite circuit'_individual_qubit_non_meas_same_base_true.
+      rewrite circuit'_helper_growth.
+      simpl.
+      fold circuit'.
+      replace (circuit'_helper (zip (zip data base) base) (S n)0) with (circuit' data base base (S n)).
+      rewrite IHn.
+      rewrite unfold_pad.
+      simpl.
+      rewrite kron_1_l.
+      Search ((_ ⊗ _ ) × (_⊗_)).
+      restore_dims.
+      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data base base (S n)))).
+      rewrite Mmult_1_l.
+      rewrite Mmult_1_r.
+      rewrite kron_mixed_product.
+      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
+      rewrite IHn.
+      replace (σx × ket 0) with (ket 1).
+      reflexivity.
+      solve_matrix.
+      simpl in H.
+      apply eq_add_S in H.
+      assumption.
+      simpl in H0.
+      apply eq_add_S in H0.
+      assumption.
+      simpl.
+      reflexivity.
+      apply WF_σx.
+      restore_dims.
+      apply WF_uc_eval.
+      restore_dims.
+      Search (_ × _ ⊗ (_ × _)).
+      prep_matrix_equality.
+      rewrite kron_mixed_product.
+      simpl.
+      reflexivity.
+      apply WF_σx.
+      simpl in H.
+      apply eq_add_S in H.
+      assumption.
+      simpl in H0.
+      apply eq_add_S in H0.
+      assumption.
+      unfold circuit'.
+      reflexivity.
+      simpl in H.
+      simpl in H0.
+      apply eq_add_S in H.
+      apply eq_add_S in H0.
+      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
+      apply gt_Sn_O.
+    + simpl.
+      rewrite circuit'_helper_growth.
+      simpl.
+      fold circuit'.
+      replace (circuit'_helper (zip (zip data base) base) (S n)0) with (circuit' data base base (S n)).
+      rewrite IHn.
+      rewrite circuit'_individual_qubit_non_meas_same_base_false.
+      simpl.
+      Search ((_ ⊗ _ ) × (_⊗_)).
+      restore_dims.
+      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data base base (S n)))).
+      rewrite Mmult_1_l.
+      rewrite kron_mixed_product.
+      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
+      rewrite IHn.
+      replace (σx × ket 0) with (ket 1).
+      rewrite Mmult_1_l.
+      reflexivity.
+      apply WF_ket.
+      solve_matrix.
+      simpl in H.
+      apply eq_add_S in H.
+      assumption.
+      simpl in H0.
+      apply eq_add_S in H0.
+      assumption.
+      simpl.
+      reflexivity.
+      simpl in H.
+      apply eq_add_S in H.
+      apply WF_kron.
+      reflexivity.
+      reflexivity.
+      apply WF_I.
+      restore_dims.
+      apply WF_uc_eval.
+      restore_dims.
+      Search (_ × _ ⊗ (_ × _)).
+      prep_matrix_equality.
+      rewrite kron_mixed_product.
+      simpl.
+      reflexivity.
+      apply gt_Sn_O.
+      apply lt_O_Sn.
+      simpl in H.
+      apply eq_add_S in H.
+      assumption.
+      simpl in H0.
+      apply eq_add_S in H0.
+      assumption.
+      unfold circuit'.
+      reflexivity.
+      simpl in H.
+      simpl in H0.
+      apply eq_add_S in H.
+      apply eq_add_S in H0.
+      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
+    + simpl.
+      rewrite circuit'_helper_growth.
+      rewrite circuit'_individual_qubit_non_meas_same_base_false.      
+      simpl.
+      fold circuit'.
+      replace (circuit'_helper (zip (zip data base) base) (S n)0) with (circuit' data base base (S n)).
+      rewrite IHn.
+      simpl.
+      Search ((_ ⊗ _ ) × (_⊗_)).
+      restore_dims.
+      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data base base (S n)))).
+      rewrite Mmult_1_l.
+      rewrite kron_mixed_product.
+      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
+      rewrite IHn.
+      replace (σx × ket 0) with (ket 1).
+      restore_dims.
+      rewrite Mmult_1_l.
+      reflexivity.
+      apply WF_ket.
+      solve_matrix.
+      simpl in H.
+      apply eq_add_S in H.
+      assumption.
+      simpl in H0.
+      apply eq_add_S in H0.
+      assumption.
+      simpl.
+      reflexivity.
+      apply WF_kron.
+      reflexivity.
+      reflexivity.
+      apply WF_I.
+      restore_dims.
+      apply WF_uc_eval.
+      restore_dims.
+      Search (_ × _ ⊗ (_ × _)).
+      prep_matrix_equality.
+      rewrite kron_mixed_product.
+      simpl.
+      reflexivity.
+      simpl in H.
+      apply eq_add_S in H.
+      assumption.
+      simpl in H0.
+      apply eq_add_S in H0.
+      assumption.
+      unfold circuit'.
+      reflexivity.
+      apply gt_Sn_O.
+      apply lt_O_Sn.
+      simpl in H.
+      simpl in H0.
+      apply eq_add_S in H.
+      apply eq_add_S in H0.
+      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
+   + simpl in H.
+     apply eq_add_S in H.
+     assumption.
+   
+
 Admitted.
+
 
 
