@@ -415,23 +415,354 @@ Inductive exp_neu_t : (var -> option (list sexp)) -> exp ->  (var -> option (lis
       | rrz_neu_t : forall l p q, exp_neu_t l (RRZ q p) l
       | seq_neu_t : forall l l' l'' e1 e2, exp_neu_t l e1 l' -> exp_neu_t l' e2 l'' -> exp_neu_t l (Seq e1 e2) l''.
 
-Inductive exp_neu : exp -> Prop :=
-      | skip_neu : forall p, exp_neu (SKIP p)
-      | x_neu : forall p,  exp_neu (X p)
-      | sr_neu : forall n x, exp_neu (SR n x)
-      | srr_neu : forall n x, exp_neu (SRR n x)
-      | lshift_neu : forall x, exp_neu (Lshift x)
-      | rshift_neu : forall x, exp_neu (Rshift x)
-      | rev_neu : forall x, exp_neu (Rev x)
-      | cu_neu : forall p e, exp_neu_t empty_ls e empty_ls -> exp_neu (CU p e)
-      | hcnot_neu : forall p1 p2, exp_neu (HCNOT p1 p2)
-      | rz_neu : forall p q, exp_neu (RZ q p)
-      | rrz_neu : forall p q, exp_neu (RRZ q p)
-      | seq_neu : forall e1 e2, exp_neu e1 -> exp_neu e2 -> exp_neu (Seq e1 e2).
+Lemma lookup_insert_ls : forall l x a, lookup_ls (insert_ls l x a) x = Some a.
+Proof.
+  intros. unfold lookup_ls,insert_ls.
+  destruct (l x).
+  rewrite update_index_eq. easy.
+  rewrite update_index_eq. easy.
+Qed.
 
+Lemma lookup_insert_ls_out : forall l x y a, x <> y -> lookup_ls (insert_ls l x a) y = lookup_ls l y.
+Proof.
+  intros. unfold lookup_ls,insert_ls.
+  destruct (l x).
+  rewrite update_index_neq by lia. easy.
+  rewrite update_index_neq by lia. easy.
+Qed.
+
+Lemma lookup_pop_ls_out : forall l x y, x <> y -> lookup_ls (pop_ls l x) y = lookup_ls l y.
+Proof.
+  intros. unfold lookup_ls,pop_ls.
+  destruct (l x). destruct l0.
+  rewrite update_index_neq by lia. easy.
+  destruct l0.
+  rewrite update_index_neq by lia. easy.
+  rewrite update_index_neq by lia. easy. easy.
+Qed.
+
+Definition well_formed_ls (l: (var -> option (list sexp))) : Prop :=
+   (forall x, match l x with Some ([]) => False | _ => True end).
+
+Lemma pop_insert_ls : forall l x a, well_formed_ls l -> pop_ls (insert_ls l x a) x = l.
+Proof.
+  intros. unfold well_formed_ls,pop_ls,insert_ls in *.
+  destruct (l x) eqn:eq1. destruct l0.
+  specialize (H0 x). rewrite eq1 in H0. lia.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. easy.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. easy.
+Qed.
+
+Lemma insert_pop_ls : forall l x a, lookup_ls l x = Some a -> insert_ls (pop_ls l x) x a = l.
+Proof.
+  intros. unfold lookup_ls,pop_ls,insert_ls in *.
+  destruct (l x) eqn:eq1. destruct l0.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. easy.
+  destruct l0.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. inv H0. easy.
+  rewrite update_index_eq.
+  rewrite update_twice_eq.
+  rewrite update_same. easy. inv H0. easy. inv H0.  
+Qed.
+
+Lemma pop_insert_ls_out : forall l x y a, x <> y -> 
+                      pop_ls (insert_ls l x a) y = (insert_ls (pop_ls l y) x a).
+Proof.
+  intros. unfold pop_ls,insert_ls in *.
+  destruct (l x) eqn:eq1.
+  repeat rewrite update_index_neq by lia.
+  destruct (l y) eqn:eq2.
+  repeat rewrite update_index_neq by lia.
+  destruct l1.
+  rewrite update_index_neq by lia. rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l1.
+  repeat rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia. rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite eq1. easy.
+  rewrite update_index_neq by lia.
+  destruct (l y) eqn:eq2.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite eq1. easy.
+Qed.
+
+Lemma pop_twice_ls_out : forall l x y, x <> y -> pop_ls (pop_ls l x) y = (pop_ls (pop_ls l y) x).
+Proof.
+  intros. unfold pop_ls in *.
+  destruct (l x) eqn:eq1.
+  destruct (l y) eqn:eq2.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia. 
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l0.
+  rewrite update_index_neq by lia. 
+  rewrite eq2.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  destruct l1.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq1.
+  rewrite update_twice_neq by lia. easy.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  rewrite eq1. easy.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq2.
+  rewrite eq1. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq2. rewrite eq1. easy.
+  destruct (l y) eqn:eq2. destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq1. easy.
+  destruct l0.
+  rewrite update_index_neq by lia.
+  rewrite eq1. easy.
+  rewrite update_index_neq by lia.
+  rewrite eq1. easy.
+  rewrite eq1. easy.
+Qed.
+
+
+Lemma well_formed_insert_ls : forall l x a, well_formed_ls l -> well_formed_ls (insert_ls l x a).
+Proof.
+  intros. unfold well_formed_ls,insert_ls in *. intros.
+  destruct (l x) eqn:eq1. 
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+Qed.
+
+Lemma well_formed_pop_ls : forall l x, well_formed_ls l -> well_formed_ls (pop_ls l x).
+Proof.
+  intros. unfold well_formed_ls,pop_ls in *. intros.
+  destruct (l x) eqn:eq1. destruct l0. 
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+  destruct l0.
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+  bdestruct (x =? x0). subst.
+  rewrite update_index_eq. lia.
+  rewrite update_index_neq by lia. apply H0.
+  apply H0.
+Qed.
+
+Lemma neu_well_formed_ls : forall l l' p, exp_neu_t l p l' -> well_formed_ls l -> well_formed_ls l'.
+Proof.
+  intros.
+  induction H0; try easy.
+  subst. apply well_formed_insert_ls; easy.
+  subst. apply well_formed_pop_ls; easy.
+  subst. apply well_formed_insert_ls; easy.
+  subst. apply well_formed_pop_ls; easy.
+  subst. apply well_formed_insert_ls; easy.
+  subst. apply well_formed_pop_ls; easy.
+  apply IHexp_neu_t2.
+  apply IHexp_neu_t1. easy.
+Qed.
+
+
+Definition opp_ls (s : sexp) := match s with Ls => Rs | Rs => Ls | Re => Re end.
+
+Lemma get_insert_ls_a : forall l x a, l x = None ->  (insert_ls l x a) x = Some ([a]).
+Proof.
+ intros. unfold insert_ls.
+ destruct (l x) eqn:eq1.
+ rewrite update_index_eq. inv H0.
+ rewrite update_index_eq. easy.
+Qed.
+
+Lemma get_insert_ls_b : forall l x vl a, l x = Some vl -> (insert_ls l x a) x = Some (a::vl).
+Proof.
+ intros. unfold insert_ls.
+ destruct (l x) eqn:eq1.
+ rewrite update_index_eq. inv H0. easy. inv H0.
+Qed.
+
+Lemma get_insert_ls_out : forall l x y a, x <> y -> (insert_ls l x a) y = l y.
+Proof.
+ intros. unfold insert_ls.
+ destruct (l x) eqn:eq1.
+ rewrite update_index_neq by lia. easy.
+ rewrite update_index_neq by lia. easy.
+Qed.
+
+Lemma get_lookup_ls : forall l x a vl, l x = Some (a::vl) -> lookup_ls l x = Some a.
+Proof.
+ intros. unfold lookup_ls.
+ destruct (l x) eqn:eq1. destruct l0. inv H0. inv H0. easy. inv H0.
+Qed.
+
+Lemma get_pop_ls : forall l x vl, well_formed_ls l -> (pop_ls l x) x = Some vl -> (exists a, l x = Some (a::vl)).
+Proof.
+ intros. unfold well_formed_ls,pop_ls in *.
+ destruct (l x) eqn:eq1. destruct l0.
+ specialize (H0 x). rewrite eq1 in H0. lia.
+ destruct l0. rewrite update_index_eq in H1. inv H1.
+ rewrite update_index_eq in H1. inv H1. exists s. easy.
+ rewrite eq1 in H1. inv H1.
+Qed.
+
+Lemma get_pop_ls_out : forall l x y, x <> y -> (pop_ls l x) y = l y.
+Proof.
+ intros. unfold pop_ls in *.
+ destruct (l x) eqn:eq1. destruct l0.
+ rewrite update_index_neq by lia. easy.
+ destruct l0.
+ rewrite update_index_neq by lia. easy.
+ rewrite update_index_neq by lia. easy. easy.
+Qed.
+
+Definition exp_neu_prop (l:(var -> option (list sexp))) := forall x vl, l x = Some vl
+                 -> (forall i a, i + 1 < length vl -> nth_error vl (i+1) = Some a -> nth_error vl i <> Some (opp_ls a)).
+
+Lemma exp_neu_t_prop : forall p l l', exp_neu_t l p l' -> well_formed_ls l -> exp_neu_prop l -> exp_neu_prop l'.
+Proof.
+ induction p; intros; try easy.
+ 1-8:inv H0; easy.
+ unfold exp_neu_prop in *.
+ intros. inv H0.  
+ bdestruct (x =? x0). subst.
+ assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
+ destruct (l x0). right. exists l0. easy. left. easy.
+ destruct H0.
+ apply get_insert_ls_a with (a := Ls) in H0.
+ rewrite H3 in H0. inv H0. simpl in H4. lia.
+ destruct H0. specialize (H2 x0 x H0). 
+ apply get_insert_ls_b with (a := Ls) in H0 as eq1.
+ rewrite H3 in eq1. inv eq1.
+ destruct i. simpl in *. destruct x. inv H5. inv H5. 
+ simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
+ unfold opp_ls. destruct a. easy. contradiction. easy.
+ simpl in *. apply H2. lia. easy.
+ apply H2 with (x := x0).
+ rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
+ bdestruct (x =? x0). subst.
+ specialize (get_pop_ls l x0 vl H1 H3) as eq1.
+ destruct eq1.
+ specialize (H2 x0 (x::vl) H0) as eq1.
+ specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
+ rewrite get_pop_ls_out in H3 by lia.
+ apply H2 with (x := x0); try easy.
+ unfold exp_neu_prop in *.
+ intros. inv H0.  
+ bdestruct (x =? x0). subst.
+ assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
+ destruct (l x0). right. exists l0. easy. left. easy.
+ destruct H0.
+ apply get_insert_ls_a with (a := Rs) in H0.
+ rewrite H3 in H0. inv H0. simpl in H4. lia.
+ destruct H0. specialize (H2 x0 x H0). 
+ apply get_insert_ls_b with (a := Rs) in H0 as eq1.
+ rewrite H3 in eq1. inv eq1.
+ destruct i. simpl in *. destruct x. inv H5. inv H5. 
+ simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
+ unfold opp_ls. destruct a. easy. easy. easy.
+ simpl in *. apply H2. lia. easy.
+ apply H2 with (x := x0).
+ rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
+ bdestruct (x =? x0). subst.
+ specialize (get_pop_ls l x0 vl H1 H3) as eq1.
+ destruct eq1.
+ specialize (H2 x0 (x::vl) H0) as eq1.
+ specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
+ rewrite get_pop_ls_out in H3 by lia.
+ apply H2 with (x := x0); try easy.
+ unfold exp_neu_prop in *.
+ intros. inv H0.  
+ bdestruct (x =? x0). subst.
+ assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
+ destruct (l x0). right. exists l0. easy. left. easy.
+ destruct H0.
+ apply get_insert_ls_a with (a := Re) in H0.
+ rewrite H3 in H0. inv H0. simpl in H4. lia.
+ destruct H0. specialize (H2 x0 x H0). 
+ apply get_insert_ls_b with (a := Re) in H0 as eq1.
+ rewrite H3 in eq1. inv eq1.
+ destruct i. simpl in *. destruct x. inv H5. inv H5. 
+ simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
+ unfold opp_ls. destruct a. easy. easy. easy.
+ simpl in *. apply H2. lia. easy.
+ apply H2 with (x := x0).
+ rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
+ bdestruct (x =? x0). subst.
+ specialize (get_pop_ls l x0 vl H1 H3) as eq1.
+ destruct eq1.
+ specialize (H2 x0 (x::vl) H0) as eq1.
+ specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
+ rewrite get_pop_ls_out in H3 by lia.
+ apply H2 with (x := x0); try easy.
+ inv H0.
+ apply IHp2 with (l := l'0); try easy. 
+ apply neu_well_formed_ls with (l := l) (p := p1); try easy.
+ apply IHp1 with (l := l); try easy.
+Qed.
+
+Definition exp_neu (e:exp) :=
+      (exists l l', well_formed_ls l /\ exp_neu_prop l /\ exp_neu_t l e l').
 
 Inductive well_typed_pexp (aenv: var -> nat) : env -> pexp -> env -> Prop :=
-    | exp_refl : forall env e, exp_fwf e -> exp_neu e -> well_typed_exp env e -> well_typed_pexp aenv env (Exp e) env
+    | exp_refl : forall env e, exp_fwf e -> exp_neu e -> 
+                well_typed_exp env e -> well_typed_pexp aenv env (Exp e) env
     | qft_nor :  forall env env' x, Env.MapsTo x Nor env -> Env.Equal env' (Env.add x (Phi (aenv x)) env)
                    -> well_typed_pexp aenv env (QFT x) env'
     | rqft_phi :  forall env env' x, Env.MapsTo x (Phi (aenv x)) env -> Env.Equal env' (Env.add x Nor env) -> 
@@ -2599,349 +2930,6 @@ Proof.
   apply fresh_inv_exp. assumption.
 Qed.
 
-Lemma lookup_insert_ls : forall l x a, lookup_ls (insert_ls l x a) x = Some a.
-Proof.
-  intros. unfold lookup_ls,insert_ls.
-  destruct (l x).
-  rewrite update_index_eq. easy.
-  rewrite update_index_eq. easy.
-Qed.
-
-Lemma lookup_insert_ls_out : forall l x y a, x <> y -> lookup_ls (insert_ls l x a) y = lookup_ls l y.
-Proof.
-  intros. unfold lookup_ls,insert_ls.
-  destruct (l x).
-  rewrite update_index_neq by lia. easy.
-  rewrite update_index_neq by lia. easy.
-Qed.
-
-Lemma lookup_pop_ls_out : forall l x y, x <> y -> lookup_ls (pop_ls l x) y = lookup_ls l y.
-Proof.
-  intros. unfold lookup_ls,pop_ls.
-  destruct (l x). destruct l0.
-  rewrite update_index_neq by lia. easy.
-  destruct l0.
-  rewrite update_index_neq by lia. easy.
-  rewrite update_index_neq by lia. easy. easy.
-Qed.
-
-Definition well_formed_ls (l: (var -> option (list sexp))) : Prop :=
-   (forall x, match l x with Some ([]) => False | _ => True end).
-
-Lemma pop_insert_ls : forall l x a, well_formed_ls l -> pop_ls (insert_ls l x a) x = l.
-Proof.
-  intros. unfold well_formed_ls,pop_ls,insert_ls in *.
-  destruct (l x) eqn:eq1. destruct l0.
-  specialize (H0 x). rewrite eq1 in H0. lia.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. easy.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. easy.
-Qed.
-
-Lemma insert_pop_ls : forall l x a, lookup_ls l x = Some a -> insert_ls (pop_ls l x) x a = l.
-Proof.
-  intros. unfold lookup_ls,pop_ls,insert_ls in *.
-  destruct (l x) eqn:eq1. destruct l0.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. easy.
-  destruct l0.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. inv H0. easy.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. inv H0. easy. inv H0.  
-Qed.
-
-Lemma pop_insert_ls_out : forall l x y a, x <> y -> 
-                      pop_ls (insert_ls l x a) y = (insert_ls (pop_ls l y) x a).
-Proof.
-  intros. unfold pop_ls,insert_ls in *.
-  destruct (l x) eqn:eq1.
-  repeat rewrite update_index_neq by lia.
-  destruct (l y) eqn:eq2.
-  repeat rewrite update_index_neq by lia.
-  destruct l1.
-  rewrite update_index_neq by lia. rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l1.
-  repeat rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia. rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite eq1. easy.
-  rewrite update_index_neq by lia.
-  destruct (l y) eqn:eq2.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite eq1. easy.
-Qed.
-
-Lemma pop_twice_ls_out : forall l x y, x <> y -> pop_ls (pop_ls l x) y = (pop_ls (pop_ls l y) x).
-Proof.
-  intros. unfold pop_ls in *.
-  destruct (l x) eqn:eq1.
-  destruct (l y) eqn:eq2.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia. 
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l0.
-  rewrite update_index_neq by lia. 
-  rewrite eq2.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  rewrite eq1. easy.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  rewrite eq1. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq2. rewrite eq1. easy.
-  destruct (l y) eqn:eq2. destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq1. easy.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq1. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq1. easy.
-  rewrite eq1. easy.
-Qed.
-
-
-Lemma well_formed_insert_ls : forall l x a, well_formed_ls l -> well_formed_ls (insert_ls l x a).
-Proof.
-  intros. unfold well_formed_ls,insert_ls in *. intros.
-  destruct (l x) eqn:eq1. 
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-Qed.
-
-Lemma well_formed_pop_ls : forall l x, well_formed_ls l -> well_formed_ls (pop_ls l x).
-Proof.
-  intros. unfold well_formed_ls,pop_ls in *. intros.
-  destruct (l x) eqn:eq1. destruct l0. 
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-  destruct l0.
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-  apply H0.
-Qed.
-
-Lemma neu_well_formed_ls : forall l l' p, exp_neu_t l p l' -> well_formed_ls l -> well_formed_ls l'.
-Proof.
-  intros.
-  induction H0; try easy.
-  subst. apply well_formed_insert_ls; easy.
-  subst. apply well_formed_pop_ls; easy.
-  subst. apply well_formed_insert_ls; easy.
-  subst. apply well_formed_pop_ls; easy.
-  subst. apply well_formed_insert_ls; easy.
-  subst. apply well_formed_pop_ls; easy.
-  apply IHexp_neu_t2.
-  apply IHexp_neu_t1. easy.
-Qed.
-
-
-Definition opp_ls (s : sexp) := match s with Ls => Rs | Rs => Ls | Re => Re end.
-
-Lemma get_insert_ls_a : forall l x a, l x = None ->  (insert_ls l x a) x = Some ([a]).
-Proof.
- intros. unfold insert_ls.
- destruct (l x) eqn:eq1.
- rewrite update_index_eq. inv H0.
- rewrite update_index_eq. easy.
-Qed.
-
-Lemma get_insert_ls_b : forall l x vl a, l x = Some vl -> (insert_ls l x a) x = Some (a::vl).
-Proof.
- intros. unfold insert_ls.
- destruct (l x) eqn:eq1.
- rewrite update_index_eq. inv H0. easy. inv H0.
-Qed.
-
-Lemma get_insert_ls_out : forall l x y a, x <> y -> (insert_ls l x a) y = l y.
-Proof.
- intros. unfold insert_ls.
- destruct (l x) eqn:eq1.
- rewrite update_index_neq by lia. easy.
- rewrite update_index_neq by lia. easy.
-Qed.
-
-Lemma get_lookup_ls : forall l x a vl, l x = Some (a::vl) -> lookup_ls l x = Some a.
-Proof.
- intros. unfold lookup_ls.
- destruct (l x) eqn:eq1. destruct l0. inv H0. inv H0. easy. inv H0.
-Qed.
-
-Lemma get_pop_ls : forall l x vl, well_formed_ls l -> (pop_ls l x) x = Some vl -> (exists a, l x = Some (a::vl)).
-Proof.
- intros. unfold well_formed_ls,pop_ls in *.
- destruct (l x) eqn:eq1. destruct l0.
- specialize (H0 x). rewrite eq1 in H0. lia.
- destruct l0. rewrite update_index_eq in H1. inv H1.
- rewrite update_index_eq in H1. inv H1. exists s. easy.
- rewrite eq1 in H1. inv H1.
-Qed.
-
-Lemma get_pop_ls_out : forall l x y, x <> y -> (pop_ls l x) y = l y.
-Proof.
- intros. unfold pop_ls in *.
- destruct (l x) eqn:eq1. destruct l0.
- rewrite update_index_neq by lia. easy.
- destruct l0.
- rewrite update_index_neq by lia. easy.
- rewrite update_index_neq by lia. easy. easy.
-Qed.
-
-Definition exp_neu_prop (l:(var -> option (list sexp))) := forall x vl, l x = Some vl
-                 -> (forall i a, i + 1 < length vl -> nth_error vl (i+1) = Some a -> nth_error vl i <> Some (opp_ls a)).
-
-Lemma exp_neu_t_prop : forall p l l', exp_neu_t l p l' -> well_formed_ls l -> exp_neu_prop l -> exp_neu_prop l'.
-Proof.
- induction p; intros; try easy.
- 1-8:inv H0; easy.
- unfold exp_neu_prop in *.
- intros. inv H0.  
- bdestruct (x =? x0). subst.
- assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
- destruct (l x0). right. exists l0. easy. left. easy.
- destruct H0.
- apply get_insert_ls_a with (a := Ls) in H0.
- rewrite H3 in H0. inv H0. simpl in H4. lia.
- destruct H0. specialize (H2 x0 x H0). 
- apply get_insert_ls_b with (a := Ls) in H0 as eq1.
- rewrite H3 in eq1. inv eq1.
- destruct i. simpl in *. destruct x. inv H5. inv H5. 
- simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
- unfold opp_ls. destruct a. easy. contradiction. easy.
- simpl in *. apply H2. lia. easy.
- apply H2 with (x := x0).
- rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
- bdestruct (x =? x0). subst.
- specialize (get_pop_ls l x0 vl H1 H3) as eq1.
- destruct eq1.
- specialize (H2 x0 (x::vl) H0) as eq1.
- specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
- rewrite get_pop_ls_out in H3 by lia.
- apply H2 with (x := x0); try easy.
- unfold exp_neu_prop in *.
- intros. inv H0.  
- bdestruct (x =? x0). subst.
- assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
- destruct (l x0). right. exists l0. easy. left. easy.
- destruct H0.
- apply get_insert_ls_a with (a := Rs) in H0.
- rewrite H3 in H0. inv H0. simpl in H4. lia.
- destruct H0. specialize (H2 x0 x H0). 
- apply get_insert_ls_b with (a := Rs) in H0 as eq1.
- rewrite H3 in eq1. inv eq1.
- destruct i. simpl in *. destruct x. inv H5. inv H5. 
- simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
- unfold opp_ls. destruct a. easy. easy. easy.
- simpl in *. apply H2. lia. easy.
- apply H2 with (x := x0).
- rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
- bdestruct (x =? x0). subst.
- specialize (get_pop_ls l x0 vl H1 H3) as eq1.
- destruct eq1.
- specialize (H2 x0 (x::vl) H0) as eq1.
- specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
- rewrite get_pop_ls_out in H3 by lia.
- apply H2 with (x := x0); try easy.
- unfold exp_neu_prop in *.
- intros. inv H0.  
- bdestruct (x =? x0). subst.
- assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
- destruct (l x0). right. exists l0. easy. left. easy.
- destruct H0.
- apply get_insert_ls_a with (a := Re) in H0.
- rewrite H3 in H0. inv H0. simpl in H4. lia.
- destruct H0. specialize (H2 x0 x H0). 
- apply get_insert_ls_b with (a := Re) in H0 as eq1.
- rewrite H3 in eq1. inv eq1.
- destruct i. simpl in *. destruct x. inv H5. inv H5. 
- simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
- unfold opp_ls. destruct a. easy. easy. easy.
- simpl in *. apply H2. lia. easy.
- apply H2 with (x := x0).
- rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
- bdestruct (x =? x0). subst.
- specialize (get_pop_ls l x0 vl H1 H3) as eq1.
- destruct eq1.
- specialize (H2 x0 (x::vl) H0) as eq1.
- specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
- rewrite get_pop_ls_out in H3 by lia.
- apply H2 with (x := x0); try easy.
- inv H0.
- apply IHp2 with (l := l'0); try easy. 
- apply neu_well_formed_ls with (l := l) (p := p1); try easy.
- apply IHp1 with (l := l); try easy.
-Qed.
-
-
 Lemma neu_t_inv_exp :
   forall p l l',
     well_formed_ls l -> 
@@ -3019,11 +3007,13 @@ Lemma neu_inv_exp :
     exp_neu p ->
     exp_neu (inv_exp p).
 Proof.
-  intros. induction H0; simpl; try constructor; try assumption.
-  apply neu_t_inv_exp.
-  unfold well_formed_ls. intros. unfold empty_ls. easy.
-  unfold exp_neu_prop. intros. unfold empty_ls in *. inv H1.
-  easy.
+  intros. unfold exp_neu in *.
+  destruct H0. destruct H0. destruct H0. destruct H1.
+  exists x0. exists x. split.
+  apply neu_well_formed_ls with (l := x) (p := p); try easy.
+  split.
+  apply exp_neu_t_prop with (l := x) (p := p); try easy. 
+  apply neu_t_inv_exp; try easy.
 Qed.
 
 Lemma typed_inv_exp :
@@ -4557,6 +4547,13 @@ Definition inter_num (size:nat) (t : varType) :=
 Definition vars_start_diff (vs: vars) :=
         forall x y,  x <> y -> start vs x <> start vs y.
 
+(* A weaker property sometimes easier to prove. *)
+Definition weak_finite_bijection (n : nat) (f : nat -> nat) :=
+  (forall x, x < n -> f x < n)%nat /\ 
+  (exists g, (forall y, y < n -> g y < n)%nat /\
+        (forall x, (x < n)%nat -> g (f x) = x) /\ 
+        (forall y, (y < n)%nat -> f (g y) = y)).
+
 Definition vars_finite_bij (vs:vars) :=
    forall x,  weak_finite_bijection (vsize vs x) (vmap vs x).
 
@@ -4630,1068 +4627,6 @@ Fixpoint gen_srr_gate' (f:vars) (dim:nat) (x:var) (n:nat) (size:nat) : base_ucom
              | S m => SQIR.useq (gen_srr_gate' f dim x m size) (SQIR.Rz (rrz_ang (size - m)) (find_pos f (x,m)))
    end.
 Definition gen_srr_gate (f:vars) (dim:nat) (x:var) (n:nat) := gen_srr_gate' f dim x (S n) (S n).
-
-Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) : base_ucom dim :=
-  match exp with SKIP p => SQIR.ID (find_pos f p)
-              | X p => SQIR.X (find_pos f p)
-              | RZ q p => SQIR.Rz (rz_ang q) (find_pos f p)
-              | RRZ q p => SQIR.Rz (rrz_ang q) (find_pos f p)
-              | SR n x => gen_sr_gate f dim x n
-              | SRR n x => gen_srr_gate f dim x n
-              | HCNOT p1 p2 => SQIR.CNOT (find_pos f p1) (find_pos f p2)
-              | CU p1 (X p2) => SQIR.CNOT (find_pos f p1) (find_pos f p2)
-              | CU p e1 => control (find_pos f p) (trans_exp f dim e1)
-              | e1 ; e2 => SQIR.useq (trans_exp f dim e1) (trans_exp f dim e2)
-  end.
-
-Definition exp_com_WF (vs:vars) (dim:nat) :=
-    forall p, snd p < vsize vs (fst p) -> find_pos vs p < dim.
-
-Definition exp_com_gt (vs:vars) (avs: nat -> posi) (dim:nat) :=
-    forall i, i >= dim -> vsize vs (fst (avs i)) = 0.
-
-Fixpoint turn_angle (rval : nat -> bool) (n : nat) : R :=
-  match n with 0 => (0:R)
-            | S m => ((1/ (2^(Nat.b2n(rval m))))%R + turn_angle rval m)%R
-  end.
-
-Definition z_phase (b:bool) : R := if b then 1%R else (-1)%R.
-
-Definition compile_val (v:val) (r_max : nat) : Vector 2 := 
-   match v with nval b r => Cexp ((turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
-             | hval b1 b2 r => Cexp ((turn_angle r r_max)) .*
-                              ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)
-             | qval q r => Cexp ((turn_angle q r_max)) .* (∣0⟩ .+ (Cexp ((turn_angle r r_max))) .* ∣1⟩)
-  end.
-
-Lemma WF_compile_val : forall v r, WF_Matrix (compile_val v r).
-Proof.
-  intros. unfold compile_val.
-  destruct v;auto with wf_db.
-Qed.
-
-Hint Resolve WF_compile_val : wf_db.
-
-Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) : (nat -> Vector 2) :=
-        fun i => compile_val (f (avs i)) rmax.
-
-Lemma WF_trans_state : forall avs r f i, WF_Matrix (trans_state avs r f i).
-Proof.
-  intros. unfold trans_state. auto with wf_db.
-Qed.
-
-Hint Resolve WF_trans_state : wf_db.
-
-Lemma trans_exp_cu : forall vs dim p e, 
-       (exists p1, e = X p1 /\ 
-             trans_exp vs dim (CU p e) = SQIR.CNOT (find_pos vs p) (find_pos vs p1))
-    \/ (trans_exp vs dim (CU p e) = ((control (find_pos vs p) (trans_exp vs dim e)))).
-Proof.
-  intros.
-  simpl in *.
-  destruct e. right. easy.
-  left.
-  exists p0. easy.
-  right. easy.
-  right. easy. right. easy. right. easy.
-  right. easy. right. easy. right. easy.
-Qed.
-
-Lemma find_pos_prop : forall vs p1 p2, vars_start_diff vs -> vars_finite_bij vs ->
-            vars_sparse vs ->
-            snd p1 < vsize vs (fst p1) -> snd p2 < vsize vs (fst p2) ->
-            p1 <> p2 -> find_pos vs p1 <> find_pos vs p2.
-Proof.
-  intros.
-  unfold find_pos,vars_start_diff in *.
-  destruct p1. destruct p2.
-  simpl in *.
-  destruct (vs v) eqn:eq1.
-  destruct (vs v0) eqn:eq2.
-  destruct p. destruct p0.
-  bdestruct (v =? v0).
-  subst.
-  assert (n <> n0). intros R. subst. contradiction.
-  rewrite eq1 in eq2.
-  inv eq2.
-  specialize (finite_bij_inj vs v0 H1) as eq3.
-  specialize (eq3 n n0 H3 H4 H6) as eq4. lia.
-  specialize (H2 v v0 H6).
-  apply H2.
-  apply finite_bij_lt;  assumption.
-  apply finite_bij_lt;  assumption.
-Qed.
-
-Lemma trans_state_update : forall dim (vs:vars) (avs: nat -> posi) rmax f (p:posi) v,
-      (snd p < vsize vs (fst p)) ->
-     (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
-     (forall i, i < dim -> find_pos vs (avs i) = i) ->
-    (forall x , x < dim -> (trans_state avs rmax (f [p |-> v]))  x
-            = update (trans_state avs rmax f) (find_pos vs p) (compile_val v rmax) x).
-Proof.
-  intros.
-  unfold trans_state.
-  bdestruct (x =? (find_pos vs p)).
-  subst.
-  rewrite H1 by assumption.
-  rewrite eupdate_index_eq.
-  rewrite update_index_eq. easy.
-  rewrite eupdate_index_neq.
-  rewrite update_index_neq. easy. lia.
-  intros R. subst. rewrite H2 in H4. lia. lia.
-Qed.
-
-
-
-Local Transparent SQIR.ID SQIR.CNOT SQIR.X SQIR.Rz. 
-
-Lemma vkron_fun_gt : forall i m (f : nat -> Vector 2) v, i <= m -> vkron i (update f m v) = vkron i f.
-Proof.
-  intros. induction i.
-  simpl. easy.
-  simpl.
-  rewrite IHi by lia.
-  rewrite update_index_neq. easy. lia.
-Qed.
-
-Lemma vkron_shift_gt : forall i m j (f : nat -> Vector 2) v, j < m ->
-                vkron i (shift (update f j v) m) = vkron i (shift f m).
-Proof.
-  intros. induction i.
-  simpl. easy.
-  simpl.
-  rewrite IHi by lia.
-  assert (shift (update f j v) m i = shift f m i).
-  unfold shift.
-  rewrite update_index_neq. easy. lia.
-  rewrite H1. easy.
-Qed.
-
-
-Lemma vkron_split_up : forall n i (f : nat -> Vector 2) v,
-  (forall j, WF_Matrix (f j)) -> WF_Matrix v ->
-(*  (forall j, j < n -> WF_Matrix (f j)) -> Maybe necessary? *)
-  i < n ->
-  vkron n (update f i v) = (vkron i f) ⊗ v ⊗ (vkron (n - (i + 1)) (shift f (i + 1))).
-Proof.
-  intros.
-  rewrite (vkron_split n i).
-  rewrite vkron_fun_gt by lia.
-  assert ((n - 1 - i) = n - (i + 1)) by lia. rewrite H3.
-  rewrite vkron_shift_gt.
-  rewrite update_index_eq. easy. lia.
-  intros.
-  bdestruct (i =? j). subst.
-  rewrite update_index_eq. assumption.
-  rewrite update_index_neq.
-  apply H0. lia. lia.
-Qed.
-
-
-
-Lemma denote_ID_1 : forall dim n, n < dim -> uc_eval (ID n) = I (2 ^ dim).
-Proof.
-  intros.
-  rewrite denote_ID. unfold pad.
-  bdestruct (n+1<=? dim).
-  gridify. easy. lia.
-Qed.
-
-Lemma vkron_X : forall (n i : nat) (f : nat -> Vector 2),
-  i < n ->
-  (forall j, WF_Matrix (f j))  ->
-  (uc_eval (SQIR.X i)) × (vkron n f) 
-      = vkron i f ⊗ (σx × (f i)) ⊗ vkron (n - (i + 1)) (shift f (i + 1)).
-Proof.
-  intros.
-  autorewrite with eval_db.
-  rewrite (vkron_split n i f H1 H0). 
-  simpl; replace (n - 1 - i) with (n - (i + 1)) by lia.
-  repad. 
-  Msimpl. easy.
-Qed.
-
-Lemma vkron_Rz : forall (n i : nat) q (f : nat -> Vector 2),
-  i < n ->
-  (forall j, WF_Matrix (f j))  ->
-  (uc_eval (SQIR.Rz q i)) × (vkron n f) 
-      = vkron i f ⊗ (phase_shift q × f i) ⊗ vkron (n - (i + 1)) (shift f (i + 1)).
-Proof.
-  intros.
-  autorewrite with eval_db.
-  rewrite (vkron_split n i f H1 H0). 
-  simpl; replace (n - 1 - i) with (n - (i + 1)) by lia.
-  repad. 
-  Msimpl. easy.
-Qed.
-
-Definition size_env (vs : vars):= fun i => vsize vs i.
-
-Lemma is_fresh_sr_gates : forall m n size x dim vs, 0 < n -> m <= n -> m <= size
-       -> n < vsize vs x -> vars_finite_bij vs
-       -> is_fresh (find_pos vs (x,n)) (gen_sr_gate' vs dim x m size).
-Proof.
-  induction m; intros; simpl.
-  apply fresh_app1.
-  specialize (finite_bij_inj vs x H4 0 n) as eq1.
-  assert (0 < vsize vs x) by lia.
-  specialize (eq1 H5 H3). lia.
-  constructor.
-  apply IHm; try lia. easy.
-  apply fresh_app1.  
-  specialize (finite_bij_inj vs x H4 m n) as eq1.
-  assert (m < vsize vs x) by lia.
-  specialize (eq1 H5 H3). lia.
-Qed.
-
-
-Lemma is_fresh_sr_gate_start : forall m n size x y dim vs, m <= size -> x <> y
-       -> n < vsize vs x -> m < vsize vs y -> vars_finite_bij vs -> vars_sparse vs
-       -> is_fresh (find_pos vs (x,n)) (gen_sr_gate' vs dim y m size).
-Proof.
-  induction m; intros; simpl.
-  apply fresh_app1.
-  unfold vars_sparse in *.
-  specialize (finite_bij_lt vs H4 x n H2) as eq1.
-  specialize (finite_bij_lt vs H4 y 0 H3) as eq2.
-  apply H5; try lia.
-  constructor.
-  apply IHm; try lia. easy. easy.
-  apply fresh_app1.  
-  specialize (finite_bij_lt vs H4 x n H2) as eq1.
-  assert (m < vsize vs y) by lia.
-  specialize (finite_bij_lt vs H4 y m H6) as eq2.
-  apply H5; try lia.
-Qed.
-
-Lemma is_fresh_srr_gates : forall m n size x dim vs, 0 < n -> m <= n -> m <= size
-       -> n < vsize vs x -> vars_finite_bij vs
-       -> is_fresh (find_pos vs (x,n)) (gen_srr_gate' vs dim x m size).
-Proof.
-  induction m; intros; simpl.
-  apply fresh_app1.
-  specialize (finite_bij_inj vs x H4 0 n) as eq1.
-  assert (0 < vsize vs x) by lia.
-  specialize (eq1 H5 H3). lia.
-  constructor.
-  apply IHm; try lia. easy.
-  apply fresh_app1.  
-  specialize (finite_bij_inj vs x H4 m n) as eq1.
-  assert (m < vsize vs x) by lia.
-  specialize (eq1 H5 H3). lia.
-Qed.
-
-Lemma is_fresh_srr_gate_start : forall m n size x y dim vs, m <= size -> x <> y
-       -> n < vsize vs x -> m < vsize vs y -> vars_finite_bij vs -> vars_sparse vs
-       -> is_fresh (find_pos vs (x,n)) (gen_srr_gate' vs dim y m size).
-Proof.
-  induction m; intros; simpl.
-  apply fresh_app1.
-  unfold vars_sparse in *.
-  specialize (finite_bij_lt vs H4 x n H2) as eq1.
-  specialize (finite_bij_lt vs H4 y 0 H3) as eq2.
-  apply H5; try lia.
-  constructor.
-  apply IHm; try lia. easy. easy.
-  apply fresh_app1.  
-  specialize (finite_bij_lt vs H4 x n H2) as eq1.
-  assert (m < vsize vs y) by lia.
-  specialize (finite_bij_lt vs H4 y m H6) as eq2.
-  apply H5; try lia.
-Qed.
-
-Lemma fresh_is_fresh :
-  forall p e vs (dim:nat),
-    exp_fresh p e -> exp_WF vs e ->
-    snd p < vsize vs (fst p) ->
-    vars_start_diff vs -> vars_finite_bij vs ->
-    vars_sparse vs ->
-      @is_fresh _ dim (find_pos vs p) ((trans_exp vs dim e)).
-Proof.
-  intros.
-  remember (find_pos vs p) as q.
-  generalize dependent vs.
-  induction e; intros.
-  subst.
-  apply fresh_app1.
-  inv H0. inv H1.
-  apply find_pos_prop; try assumption.
-  subst.
-  apply fresh_app1.
-  inv H0. inv H1.
-  apply find_pos_prop; try assumption.
-  specialize (trans_exp_cu vs dim p0 e) as eq1.
-  destruct eq1. destruct H6. destruct H6.
-  subst. rewrite H7.
-  apply fresh_app2.
-  inv H0. inv H1. inv H12.
-  apply find_pos_prop; try assumption.
-  apply find_pos_prop; try assumption.
-  inv H1. inv H11. assumption.
-  inv H0. inv H11. assumption.
-  rewrite H6. rewrite Heqq.
-  inv H1. inv H0.
-  apply fresh_control.
-  apply find_pos_prop; try assumption. 
-  apply IHe; try assumption. easy.
-  subst. inv H0. inv H1.
-  simpl.
-  apply fresh_app1.
-  apply find_pos_prop; try assumption.
-  subst. inv H0. inv H1.
-  simpl.
-  apply fresh_app1.
-  apply find_pos_prop; try assumption.
-  subst. inv H0. inv H1.
-  simpl. unfold gen_sr_gate.
-  unfold or_not_r in *.
-  bdestruct (x =? fst p). subst. destruct H8. lia.
-  specialize (is_fresh_sr_gates (S q0) (snd p) (S q0) (fst p) dim vs) as eq1.
-  destruct p.
-  simpl in *. unfold find_pos. apply eq1; try lia. easy.
-  destruct p.
-  specialize (is_fresh_sr_gate_start (S q0) n (S q0) v x dim vs) as eq1.
-  apply eq1; try lia. iner_p. iner_p. easy. easy.
-  subst. inv H0. inv H1.
-  simpl. unfold gen_sr_gate.
-  unfold or_not_r in *.
-  bdestruct (x =? fst p). subst. destruct H8. lia.
-  specialize (is_fresh_srr_gates (S q0) (snd p) (S q0) (fst p) dim vs) as eq1.
-  destruct p.
-  simpl in *. unfold find_pos. apply eq1; try lia. easy.
-  destruct p.
-  specialize (is_fresh_srr_gate_start (S q0) n (S q0) v x dim vs) as eq1.
-  apply eq1; try lia. iner_p. iner_p. easy. easy.
-  simpl.
-  apply fresh_app2.
-  inv H0. inv H1.
-  apply find_pos_prop; try assumption. subst.
-  apply find_pos_prop; try assumption.
-  inv H1. easy.
-  inv H0. easy.
-  simpl.
-  apply fresh_seq; try assumption.
-  inv H1. inv H0.
-  apply IHe1; try assumption. easy.
-  inv H1. inv H0.
-  apply IHe2; try assumption. easy. 
-Qed.
-
-Lemma gen_sr_gate_uc_well_typed : forall n size x dim vs, n <= size ->
-     n < vsize vs x -> exp_com_WF vs dim -> uc_well_typed (gen_sr_gate' vs dim x n size).
-Proof.
-  induction n; intros; simpl.
-  constructor. unfold exp_com_WF in H2.
-  specialize (H2 (x,0)). apply H2. iner_p.
-  constructor. apply IHn; try lia. easy.
-  constructor.
-  specialize (H2 (x,n)). apply H2. simpl. lia.
-Qed.
-
-Lemma gen_srr_gate_uc_well_typed : forall n size x dim vs, n <= size ->
-     n < vsize vs x -> exp_com_WF vs dim -> uc_well_typed (gen_srr_gate' vs dim x n size).
-Proof.
-  induction n; intros; simpl.
-  constructor. unfold exp_com_WF in H2.
-  specialize (H2 (x,0)). apply H2. iner_p.
-  constructor. apply IHn; try lia. easy.
-  constructor.
-  specialize (H2 (x,n)). apply H2. simpl. lia.
-Qed.
-
-Lemma trans_exp_uc_well_typed : forall e dim vs,     
-     vars_start_diff vs -> vars_finite_bij vs ->
-       vars_sparse vs -> exp_fwf e -> exp_WF vs e ->
-            exp_com_WF vs dim ->  @uc_well_typed _ dim (((trans_exp vs dim e))).
-Proof.
-  induction e; intros.
-  simpl. inv H4. constructor. apply H5. easy. 
-  simpl. inv H4. constructor. apply H5. easy. 
-  specialize (trans_exp_cu vs dim p e) as eq1.
-  destruct eq1. destruct H6. destruct H6. subst. simpl.
-  inv H4. constructor. apply H5. easy. 
-  apply H5. inv H11. assumption.
-  inv H3. inv H8.
-  inv H11.
-  apply find_pos_prop; try assumption.
-  rewrite H6. 
-  apply uc_well_typed_control.
-  inv H3. inv H4.
-  apply H5. easy.
-  inv H3. inv H4.
-  apply fresh_is_fresh; try assumption.
-  inv H3. inv H4.
-  apply IHe; try assumption.
-  inv H4.
-  simpl. constructor.
-  apply H5. easy.
-  inv H4.
-  simpl. constructor.
-  apply H5. easy.
-  simpl. unfold gen_sr_gate.
-  apply gen_sr_gate_uc_well_typed; try easy.
-  inv H4. easy.
-  simpl. unfold gen_srr_gate.
-  apply gen_srr_gate_uc_well_typed; try easy.
-  inv H4. easy.
-  simpl. inv H4.
-  constructor. apply H5. easy.
-  apply H5. easy.
-  apply find_pos_prop; try assumption.
-  inv H3. easy.
-  simpl.
-  inv H3. inv H4.
-  constructor.
-  apply IHe1; try easy.
-  apply IHe2; try easy.
-Qed.
-
-Lemma two_n_kron_n: forall {m p} n i (A : Matrix m p),
-  WF_Matrix A -> (i + n) ⨂ A = (n ⨂ A) ⊗ (i ⨂ A).
-Proof.
-  intros.
-  induction n.
-  simpl.
-  Msimpl. rewrite plus_0_r.
-  reflexivity.
-  rewrite kron_n_assoc by assumption.
-  restore_dims.
-  rewrite kron_assoc.
-  rewrite <- IHn.
-  assert ((m ^ n * m ^ i) = m ^ (i + n)).
-  rewrite Nat.pow_add_r. lia.
-  rewrite H1. clear H1.
-  assert ((p ^ n * p ^ i) = p ^ (i + n)).
-  rewrite Nat.pow_add_r. lia.
-  rewrite H1. clear H1.
-  rewrite <- kron_n_assoc by assumption.
-  assert ((i + S n) =  S (i + n)) by lia.
-  rewrite H1. easy.
-  assumption.
-  auto with wf_db.
-  auto with wf_db.
-Qed.
-
-Lemma uc_cnot_control : forall (n i j : nat),
-  i < n -> j < n -> i <> j ->
-  (@uc_eval n (SQIR.CNOT i j)) = (uc_eval (control i (SQIR.X j))).
-Proof.
-  intros.
-  rewrite control_correct.
-  autorewrite with eval_db.
-  bdestruct ( i <? j).
-  assert ((i + (1 + (j - i - 1) + 1)) = j + 1) by lia.
-  rewrite H4. 
-  bdestruct (j + 1 <=? n).
-  unfold proj,pad.
-  bdestruct (i + 1 <=? n).
-  simpl.
-  autorewrite with ket_db.
-  rewrite Mplus_comm.
-  restore_dims.
-  rewrite kron_plus_distr_l.
-  rewrite kron_plus_distr_r.
-  rewrite kron_assoc.
-  rewrite kron_assoc.
-  assert ((I 2 ⊗ I (2 ^ (n - (j + 1)))) = I (2^ S (n - (j + 1)))).
-  rewrite <- kron_n_I.
-  rewrite <- kron_n_assoc.
-  rewrite kron_n_I. easy.
-  auto with wf_db.
-  rewrite H7.
-  rewrite kron_assoc.
-  assert ((I (2 ^ (j - i - 1)) ⊗ I (2 ^ S (n - (j + 1)))) = I (2 ^ (n - (i + 1)))).
-  Check @kron_n_I.
-  Check two_n_kron_n.
-  rewrite <- kron_n_I.
-  rewrite <- kron_n_I.
-  rewrite <- two_n_kron_n.
-  rewrite kron_n_I.
-  assert ((S (n - (j + 1)) + (j - i - 1)) = (n - (i + 1))) by lia.
-  rewrite H8. easy. 
-  auto with wf_db.
-  restore_dims.
-  rewrite H8.
-  gridify. easy.
-  1-9:auto with wf_db.
-  lia. lia.
-  bdestruct (j <? i).
-  assert (j + (1 + (i - j - 1) + 1) = i + 1) by lia.
-  rewrite H5. 
-  unfold proj,pad.
-  bdestruct (i + 1 <=? n).
-  bdestruct (j + 1 <=? n).
-  simpl.
-  autorewrite with ket_db.
-  rewrite Mplus_comm.
-  restore_dims.
-  rewrite kron_plus_distr_l.
-  gridify. easy. lia. lia. lia.
-  constructor. easy.
-  constructor. easy.
-Qed.
-
-Lemma vkron_proj_eq : forall f q n r b,
-  (forall j : nat, WF_Matrix (f j)) ->
-  q < n -> f q = r .* ket (Nat.b2n b) -> 
-  proj q n b × (vkron n f) = vkron n f.
-Proof.
-  intros f q n r b ? ? ?.
-  rewrite (vkron_split n q) by (try assumption; try lia). 
-  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
-  unfold proj, pad.
-  gridify. 
-  do 2 (apply f_equal2; try reflexivity). 
-  rewrite H2. destruct b; solve_matrix.
-Qed.
-
-Lemma vkron_proj_neq : forall f q n r b b',
-  (forall j : nat, WF_Matrix (f j)) ->
-  q < n -> f q = r .* ket (Nat.b2n b) -> b <> b' ->
-  proj q n b' × (vkron n f) = Zero.
-Proof.
-  intros f q n r b b' ? ? H ?.
-  rewrite (vkron_split n q) by (try assumption; try lia). 
-  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
-  unfold proj, pad.
-  gridify. rewrite H.
-  destruct b. destruct b'. contradiction. lma.
-  destruct b'.  lma. contradiction.
-Qed.
-
-
-Local Opaque SQIR.ID SQIR.CNOT SQIR.X SQIR.Rz. 
-
-Lemma trans_exp_cu_eval : forall vs dim p e, 
-          vars_start_diff vs -> vars_finite_bij vs -> vars_sparse vs ->
-                 exp_fwf (CU p e) ->
-                 exp_WF vs (CU p e) -> exp_com_WF vs dim ->
-                 (uc_eval ( (trans_exp vs dim (CU p e)))) = 
-                    (uc_eval (control (find_pos vs p) ( (trans_exp vs dim e)))).
-Proof.
-  intros.
-  specialize (trans_exp_cu vs dim p e) as eq1.
-  destruct eq1.
-  destruct H6. destruct H6. subst.
-  simpl.
-  rewrite uc_cnot_control. easy.
-  inv H4. apply H5. easy.
-  inv H4. inv H11. apply H5. easy.
-  inv H3. inv H9. inv H4. inv H12. 
-  apply find_pos_prop; try assumption.
-  rewrite H6. easy.
-Qed.
-
-Lemma turn_angle_add_same : forall n r q, q < n -> (turn_angle r n + rz_ang q)%R = (turn_angle (rotate r q) n)%R.
-Proof.
-
-Admitted.
-
-Lemma turn_angle_add_r_same : forall n r q, q < n -> (turn_angle r n + rrz_ang q)%R = (turn_angle (r_rotate r q) n)%R.
-Proof.
-
-Admitted.
-
-Lemma Z_0_bit : σz × ∣0⟩ = ∣0⟩.
-Proof.
-  solve_matrix.
-Qed.
-
-Lemma Z_1_bit : σz × ∣1⟩ = (-1)%R .* ∣1⟩.
-Proof.
-  solve_matrix.
-Qed.
-
-Lemma rz_ang_trans_sem : forall vs dim avs tenv q rmax f p size, 
-    exp_com_WF vs dim -> snd p < vsize vs (fst p) -> q < rmax ->
-    right_mode_env (size_env vs) tenv f -> Env.MapsTo (fst p) (Phi size) tenv ->
-    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
-           (phase_shift (rz_ang q) × trans_state avs rmax f (find_pos vs p))
-                = compile_val (times_rotate (f p) q) rmax.
-Proof.
-      intros.
-      unfold trans_state.
-      rewrite H5 by assumption.
-      apply (H3 (Phi size)) in H1; try easy. inv H1. 
-      unfold times_rotate.
-      unfold compile_val.
-      distribute_scale.
-      rewrite Mmult_plus_distr_l.
-      distribute_scale.
-      assert (∣0⟩ = ket (Nat.b2n false)).
-      autorewrite with ket_db. easy. rewrite H1.
-      rewrite phase_shift_on_basis_state.
-      simpl. rewrite Rmult_0_l. simpl. rewrite Cexp_0. Msimpl.
-      assert (∣1⟩ = ket (Nat.b2n true)).
-      autorewrite with ket_db. easy. rewrite H6.
-      rewrite phase_shift_on_basis_state. simpl.
-      distribute_scale.
-      rewrite <- Cexp_add. rewrite Rmult_1_l.
-      rewrite turn_angle_add_same. easy. easy.
-Qed.
-
-Lemma rrz_ang_trans_sem : forall vs dim avs tenv q rmax f p size, 
-    exp_com_WF vs dim -> snd p < vsize vs (fst p) -> q < rmax ->
-    right_mode_env (size_env vs) tenv f -> Env.MapsTo (fst p) (Phi size) tenv ->
-    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
-           (phase_shift (rrz_ang q) × trans_state avs rmax f (find_pos vs p))
-                = compile_val (times_r_rotate (f p) q) rmax.
-Proof.
-      intros.
-      unfold trans_state.
-      rewrite H5 by assumption.
-      apply (H3 (Phi size)) in H1; try easy. inv H1. 
-      unfold times_rotate.
-      unfold compile_val.
-      distribute_scale.
-      rewrite Mmult_plus_distr_l.
-      distribute_scale.
-      assert (∣0⟩ = ket (Nat.b2n false)).
-      autorewrite with ket_db. easy. rewrite H1.
-      rewrite phase_shift_on_basis_state.
-      simpl. rewrite Rmult_0_l. simpl. rewrite Cexp_0. Msimpl.
-      assert (∣1⟩ = ket (Nat.b2n true)).
-      autorewrite with ket_db. easy. rewrite H6.
-      rewrite phase_shift_on_basis_state. simpl.
-      distribute_scale.
-      rewrite <- Cexp_add. rewrite Rmult_1_l.
-      rewrite turn_angle_add_r_same. easy. easy.
-Qed.
-
-Lemma gen_sr_gate_eval : forall n size asize tenv f vs avs dim rmax x, n <= size <= asize ->
-    exp_com_WF vs dim -> n < vsize vs x -> size < rmax -> Env.MapsTo x (Phi asize) tenv ->
-    right_mode_env (size_env vs) tenv f ->
-    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
-    (forall i, i < dim -> find_pos vs (avs i) = i) ->
-    uc_eval (gen_sr_gate' vs dim x n size) × vkron dim (trans_state avs rmax f)
-    = vkron dim (trans_state avs rmax (sr_rotate' f x n size)).
-Proof.
-  induction n; intros; simpl.
-  rewrite denote_ID.
-  assert (find_pos vs (x,0) < dim).
-  apply H1. easy. unfold find_pos in H6.
-  unfold pad.
-  bdestruct (start vs x + vmap vs x 0 + 1 <=? dim).
-  repeat rewrite id_kron.
-  assert (2 ^ (start vs x + vmap vs x 0) * 2 = 2 ^ (start vs x + vmap vs x 0) * (2^1)).
-  rewrite Nat.pow_1_r. easy. rewrite H10.
-  repeat rewrite <- Nat.pow_add_r. Msimpl. easy.
-  unfold find_pos in H8. lia.
-  rewrite Mmult_assoc.
-  rewrite IHn with (asize := asize) (tenv := tenv); (try lia; try easy).
-  rewrite vkron_Rz. 
-  assert (vkron dim (trans_state avs rmax ((sr_rotate' f x n size) [(x, n)
-                      |-> times_rotate (f (x, n)) (size - n)])) = 
-          vkron dim (update (trans_state avs rmax (sr_rotate' f x n size))
-                        (find_pos vs (x, n)) (compile_val (times_rotate (f (x, n)) (size - n)) rmax))).
-  erewrite vkron_eq. reflexivity. intros.
-  apply (trans_state_update dim). simpl. lia. easy. assumption. assumption.
-  rewrite H8.
-  rewrite vkron_split_up.
-  Check rz_ang_trans_sem.
-  replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
-  rewrite (rz_ang_trans_sem vs dim avs tenv (size - n) rmax 
-      (sr_rotate' f x n size) (x,n) asize); (try lia; try easy).
-  rewrite sr_rotate'_ge; try easy.
-  simpl. lia.
-  unfold right_mode_env in *. intros.
-  destruct p.
-  bdestruct (x =? v). subst.
-  bdestruct (n0 <? n). 
-  rewrite sr_rotate'_lt_1; try lia.
-  simpl in H10.
-  apply mapsto_always_same with (v1:=(Phi asize)) in H10; try easy.
-  specialize (H5 (Phi asize) (v,n0) H9). simpl in H5. apply H5 in H4.
-  inv H4. unfold times_rotate. constructor.
-  rewrite sr_rotate'_ge ; try lia. apply H5; try easy. simpl. lia.
-  rewrite sr_rotate'_irrelevant; try easy.
-  apply H5; try easy. simpl. lia.
-  auto with wf_db. auto with wf_db.
-  apply H1. simpl. lia.
-  replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
-  apply H1. simpl. lia.
-  auto with wf_db. 
-Qed.
-
-Lemma gen_srr_gate_eval : forall n size asize tenv f vs avs dim rmax x, n <= size <= asize ->
-    exp_com_WF vs dim -> n < vsize vs x -> size < rmax -> Env.MapsTo x (Phi asize) tenv ->
-    right_mode_env (size_env vs) tenv f ->
-    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
-    (forall i, i < dim -> find_pos vs (avs i) = i) ->
-    uc_eval (gen_srr_gate' vs dim x n size) × vkron dim (trans_state avs rmax f)
-    = vkron dim (trans_state avs rmax (srr_rotate' f x n size)).
-Proof.
-  induction n; intros; simpl.
-  rewrite denote_ID.
-  assert (find_pos vs (x,0) < dim).
-  apply H1. easy. unfold find_pos in H6.
-  unfold pad.
-  bdestruct (start vs x + vmap vs x 0 + 1 <=? dim).
-  repeat rewrite id_kron.
-  assert (2 ^ (start vs x + vmap vs x 0) * 2 = 2 ^ (start vs x + vmap vs x 0) * (2^1)).
-  rewrite Nat.pow_1_r. easy. rewrite H10.
-  repeat rewrite <- Nat.pow_add_r. Msimpl. easy.
-  unfold find_pos in H8. lia.
-  rewrite Mmult_assoc.
-  rewrite IHn with (asize := asize) (tenv := tenv); (try lia; try easy).
-  rewrite vkron_Rz. 
-  assert (vkron dim (trans_state avs rmax ((srr_rotate' f x n size) [(x, n)
-                      |-> times_r_rotate (f (x, n)) (size - n)])) = 
-          vkron dim (update (trans_state avs rmax (srr_rotate' f x n size))
-                        (find_pos vs (x, n)) (compile_val (times_r_rotate (f (x, n)) (size - n)) rmax))).
-  erewrite vkron_eq. reflexivity. intros.
-  apply (trans_state_update dim). simpl. lia. easy. assumption. assumption.
-  rewrite H8.
-  rewrite vkron_split_up.
-  replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
-  rewrite (rrz_ang_trans_sem vs dim avs tenv (size - n) rmax 
-      (srr_rotate' f x n size) (x,n) asize); (try lia; try easy).
-  rewrite srr_rotate'_ge; try easy.
-  simpl. lia.
-  unfold right_mode_env in *. intros.
-  destruct p.
-  bdestruct (x =? v). subst.
-  bdestruct (n0 <? n). 
-  rewrite srr_rotate'_lt_1; try lia.
-  simpl in H10.
-  apply mapsto_always_same with (v1:=(Phi asize)) in H10; try easy.
-  specialize (H5 (Phi asize) (v,n0) H9). simpl in H5. apply H5 in H4.
-  inv H4. unfold times_r_rotate. constructor.
-  rewrite srr_rotate'_ge ; try lia. apply H5; try easy. simpl. lia.
-  rewrite srr_rotate'_irrelevant; try easy.
-  apply H5; try easy. simpl. lia.
-  auto with wf_db. auto with wf_db.
-  apply H1. simpl. lia.
-  replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
-  apply H1. simpl. lia.
-  auto with wf_db. 
-Qed.
-
-Lemma trans_exp_sem :
-  forall dim e f tenv rmax vs (avs : nat -> posi),
-    vars_start_diff vs ->
-    vars_finite_bij vs ->
-    vars_sparse vs ->
-    exp_fwf e ->
-    exp_WF vs e ->
-    exp_com_WF vs dim ->
-    well_typed_exp tenv e ->
-    right_mode_env (size_env vs) tenv f ->
-         (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
-         (forall i, i < dim -> find_pos vs (avs i) = i) ->
-         (forall i, i < dim -> snd (avs i) < vsize vs (fst (avs i))) ->
-    exp_rmax rmax e ->
-    dim > 0 ->
-    (uc_eval ((trans_exp vs dim e))) × (vkron dim (trans_state avs rmax f)) 
-                =  vkron dim (trans_state avs rmax (exp_sem e f)).
-Proof.
-  intros dim e. induction e; intros.
-  - simpl. rewrite denote_ID_1. Msimpl. easy.
-    apply H5. inv H4. easy.
-  - simpl.
-    rewrite vkron_X. 
-    assert (vkron dim (trans_state avs rmax (f [p |-> exchange (f p)])) = 
-                   vkron dim (update (trans_state avs rmax f)
-                        (find_pos vs p) (compile_val (exchange (f p)) rmax))).
-    erewrite vkron_eq. reflexivity. intros.
-    apply (trans_state_update dim). inv H4. easy. assumption. assumption. lia.
-    rewrite H13.  rewrite vkron_split_up.
-    assert ((σx × trans_state avs rmax f (find_pos vs p))
-                 = compile_val (exchange (f p)) rmax).
-    { unfold trans_state.
-      inv H4.
-      rewrite H8 by assumption.
-      inv H6. unfold right_mode_env in H7.
-      apply (H7 Nor) in H16. inv H16.
-      unfold exchange. 
-      unfold compile_val.
-      distribute_scale.
-      destruct b. simpl.
-      autorewrite with ket_db. easy.
-      simpl.
-      autorewrite with ket_db. easy. easy.
-      apply (H7 Had) in H16.
-      inv H16. 
-      unfold exchange.
-      unfold compile_val.
-      distribute_scale.
-      autorewrite with ket_db.
-      rewrite Mplus_comm. easy. easy.
-      }
-    rewrite H14. easy.
-    intros.
-    auto with wf_db.
-    auto with wf_db.
-    apply H5. inv H4. assumption.
-    apply H5. inv H4. assumption.
-    auto with wf_db.
-  - rewrite trans_exp_cu_eval by assumption.
-    rewrite control_correct.
-    simpl. 
-    assert (exists r', (trans_state avs rmax f) (find_pos vs p) = r' .* (ket (Nat.b2n (get_cua (f p))))).
-    inv H3. inv H4.
-    unfold trans_state. 
-    rewrite H8 by assumption.
-    inv H6. apply (H7 Nor) in H17; try easy. inv H17.
-    unfold compile_val,get_cua.
-    exists (Cexp (turn_angle r rmax)). easy.
-    destruct H13.
-    rewrite Mmult_plus_distr_r.
-    rewrite Mmult_assoc.
-    specialize (IHe f tenv rmax vs avs).
-    inv H3. inv H4. inv H6. apply (H7 Nor) in H18 as eq1.
-    rewrite IHe; try easy.
-    destruct (get_cua (f p)) eqn:eq2.
-    erewrite vkron_proj_neq.
-    rewrite vkron_proj_eq with (r := x).
-    Msimpl. easy. auto with wf_db. apply H5. easy.
-    unfold trans_state in *. rewrite efresh_exp_sem_irrelevant. easy.
-    rewrite H8; try easy.
-    auto with wf_db.
-    apply H5; easy. rewrite H13. reflexivity. easy.
-    rewrite vkron_proj_eq with (r := x).
-    rewrite vkron_proj_neq with (r := x) (b := false). Msimpl. easy.
-    auto with wf_db.
-    apply H5. easy.
-    unfold trans_state in *. rewrite efresh_exp_sem_irrelevant. easy.
-    rewrite H8; try easy. easy.
-    auto with wf_db.
-    apply H5; easy. rewrite H13. reflexivity. inv H11. easy.
-    easy.
-    apply fresh_is_fresh; try easy.
-    inv H3. easy. inv H4. easy. inv H4. easy.
-    apply trans_exp_uc_well_typed; try easy. inv H3. easy. inv H4. easy.
-  - simpl.
-    rewrite vkron_Rz. 
-    assert (vkron dim (trans_state avs rmax (f [p |-> times_rotate (f p) q])) = 
-                   vkron dim (update (trans_state avs rmax f)
-                        (find_pos vs p) (compile_val (times_rotate (f p) q) rmax))).
-    erewrite vkron_eq. reflexivity. intros.
-    apply (trans_state_update dim). inv H4. easy. assumption. assumption. lia.
-    rewrite H13.  rewrite vkron_split_up.
-    assert ((phase_shift (rz_ang q) × trans_state avs rmax f (find_pos vs p))
-                 = compile_val (times_rotate (f p) q) rmax).
-    { unfold trans_state.
-      inv H4.
-      rewrite H8 by assumption.
-      inv H6. apply (H7 Nor) in H16; try easy. inv H16. 
-      unfold times_rotate. destruct b.
-      unfold compile_val.
-      distribute_scale.
-      rewrite phase_shift_on_basis_state.
-      distribute_scale.
-      rewrite <- Cexp_add. simpl. rewrite Rmult_1_l.
-      inv H11. rewrite turn_angle_add_same. easy. easy.
-      unfold compile_val.
-      distribute_scale.
-      rewrite phase_shift_on_basis_state.
-      distribute_scale. simpl. 
-      rewrite <- Cexp_add. simpl.
-      autorewrite with R_db. easy.
-      apply (H7 Had) in H16. inv H16. 
-      unfold compile_val,times_rotate. unfold rz_ang,z_phase.
-      assert ((2 * PI / 2 ^ 1)%R = PI) by lra. rewrite H14.
-      rewrite phase_pi. destruct b1. destruct b2.
-      distribute_scale. gridify.
-      rewrite Z_0_bit. rewrite Z_1_bit. easy.
-      simpl. distribute_scale. gridify. distribute_scale.
-      rewrite Z_0_bit. rewrite Z_1_bit.
-      rewrite Mscale_assoc.
-      assert (((-1)%R * (-1)%R)%C = C1) by lca.
-      rewrite H16. Msimpl. easy.
-      destruct b2.
-      distribute_scale. gridify. distribute_scale.
-      rewrite Z_0_bit. rewrite Z_1_bit. easy.
-      simpl.
-      distribute_scale. gridify. distribute_scale.
-      rewrite Z_0_bit. rewrite Z_1_bit. 
-      rewrite Mscale_assoc.
-      assert (((-1)%R * (-1)%R)%C = C1) by lca.
-      rewrite H16. Msimpl. easy. easy.
-      }
-    rewrite H14. easy.
-    intros.
-    auto with wf_db.
-    auto with wf_db.
-    apply H5. inv H4. assumption.
-    apply H5. inv H4. assumption.
-    auto with wf_db.
-  - simpl.
-    rewrite vkron_Rz. 
-    assert (vkron dim (trans_state avs rmax (f [p |-> times_r_rotate (f p) q])) = 
-                   vkron dim (update (trans_state avs rmax f)
-                        (find_pos vs p) (compile_val (times_r_rotate (f p) q) rmax))).
-    erewrite vkron_eq. reflexivity. intros.
-    apply (trans_state_update dim). inv H4. easy. assumption. assumption. lia.
-    rewrite H13.  rewrite vkron_split_up.
-    assert ((phase_shift (rrz_ang q) × trans_state avs rmax f (find_pos vs p))
-                 = compile_val (times_r_rotate (f p) q) rmax).
-    { unfold trans_state.
-      inv H4.
-      rewrite H8 by assumption.
-      inv H6. apply (H7 Nor) in H16.
-      inv H16.
-      unfold times_r_rotate. destruct b. 
-      unfold compile_val.
-      distribute_scale.
-      rewrite phase_shift_on_basis_state.
-      distribute_scale.
-      rewrite <- Cexp_add. simpl. rewrite Rmult_1_l.
-      inv H11. rewrite turn_angle_add_r_same. easy. easy.
-      unfold compile_val.
-      distribute_scale.
-      rewrite phase_shift_on_basis_state.
-      distribute_scale. simpl. 
-      rewrite <- Cexp_add. simpl.
-      autorewrite with R_db. easy. easy.
-      apply (H7 Had) in H16. inv H16.
-      unfold compile_val,times_r_rotate. unfold rrz_ang,z_phase.
-      assert ((2 * PI - 2 * PI / 2 ^ 1)%R = PI) by lra. rewrite H14.
-      rewrite phase_pi. destruct b1. destruct b2.
-      distribute_scale. gridify.
-      rewrite Z_0_bit. rewrite Z_1_bit. easy.
-      simpl. distribute_scale. gridify. distribute_scale.
-      rewrite Z_0_bit. rewrite Z_1_bit.
-      rewrite Mscale_assoc.
-      assert (((-1)%R * (-1)%R)%C = C1) by lca.
-      rewrite H16. Msimpl. easy.
-      destruct b2.
-      distribute_scale. gridify. distribute_scale.
-      rewrite Z_0_bit. rewrite Z_1_bit. easy.
-      simpl.
-      distribute_scale. gridify. distribute_scale.
-      rewrite Z_0_bit. rewrite Z_1_bit. 
-      rewrite Mscale_assoc.
-      assert (((-1)%R * (-1)%R)%C = C1) by lca.
-      rewrite H16. Msimpl. easy. easy.
-      }
-    rewrite H14. easy.
-    intros.
-    auto with wf_db.
-    auto with wf_db.
-    apply H5. inv H4. assumption.
-    apply H5. inv H4. assumption.
-    auto with wf_db.
-  - Local Opaque gen_sr_gate. simpl.
-    Local Transparent gen_sr_gate. unfold gen_sr_gate,sr_rotate.
-    inv H6. inv H4. inv H3. inv H11.
-    rewrite gen_sr_gate_eval with (asize := n) (tenv := tenv); try easy.
-  - Local Opaque gen_srr_gate. simpl.
-    Local Transparent gen_srr_gate. unfold gen_srr_gate,srr_rotate.
-    inv H6. inv H4. inv H3. inv H11.
-    rewrite gen_srr_gate_eval with (asize := n) (tenv := tenv); try easy.
-  - simpl. inv H3. inv H4.
-    rewrite uc_cnot_control; try easy.
-    rewrite control_correct. inv H6.
-    apply (H7 Had) in H16 as eq1.
-    apply (H7 Had) in H17 as eq2. inv eq1. inv eq2.
-    unfold hexchange.
-    rewrite Mmult_plus_distr_r.
-    rewrite Mmult_assoc.
-    assert ((uc_eval (SQIR.X (find_pos vs p2))
-      × vkron dim (trans_state avs rmax f))
-      = (vkron dim (trans_state avs rmax (f[p2 |-> exchange (f p2)])))).
-    rewrite vkron_X. 
-    assert (vkron dim (trans_state avs rmax (f [p2 |-> exchange (f p2)])) = 
-                   vkron dim (update (trans_state avs rmax f)
-                        (find_pos vs p2) (compile_val (exchange (f p2)) rmax))).
-    erewrite vkron_eq. reflexivity. intros.
-    apply (trans_state_update dim). easy. assumption. assumption. lia.
-    rewrite H19.  rewrite vkron_split_up.
-    assert ((σx × trans_state avs rmax f (find_pos vs p2))
-                 = compile_val (exchange (f p2)) rmax).
-    { unfold trans_state.
-      rewrite H8 by assumption.
-      unfold exchange.
-      rewrite <- H6. 
-      unfold compile_val.
-      distribute_scale.
-      autorewrite with ket_db. rewrite Mplus_comm. easy.
-      }
-    rewrite H20. easy.
-    auto with wf_db.
-    auto with wf_db.
-    apply H5. assumption.
-    apply H5. assumption.
-    auto with wf_db.
-    rewrite H19. clear H19.
-    destruct (eqb b0 b3) eqn:eq1.
-    apply Bool.eqb_prop in eq1.
-    rewrite <- H6. unfold exchange. subst.
-    rewrite H6. rewrite H3.
-    rewrite eupdate_same by easy.
-    rewrite eupdate_same by easy.
-    rewrite <- Mmult_plus_distr_r.
-    rewrite Mplus_comm.
-    rewrite proj_sum.
-    Msimpl. easy.
-    apply H5. easy.
-    apply eqb_false_iff in eq1.
-    rewrite <- H6. unfold exchange.
-    rewrite (vkron_split dim (find_pos vs p1)).
-    assert (trans_state avs rmax f (find_pos vs p1) = Cexp ((turn_angle r rmax)) .*
-                              ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)).
-    unfold trans_state,compile_val. rewrite H8; try easy. rewrite <- H3. easy.
-    rewrite H19.
-    distribute_scale.
-    distribute_plus.
-    distribute_scale.
-    assert (@Mmult (2 ^ dim) (2 ^ dim) 1 
-            (proj (find_pos vs p1) dim false)
-            (vkron (find_pos vs p1) (trans_state avs rmax f) ⊗ ∣1⟩
-              ⊗ vkron (dim - 1 - find_pos vs p1)
-                  (shift (trans_state avs rmax f) (find_pos vs p1 + 1))) = Zero).
-    replace ((dim - 1 - find_pos vs p1)) with (dim - (1 + find_pos vs p1)) by lia.
-    unfold proj,pad.
-    assert (∣1⟩ = ket (Nat.b2n true)). autorewrite with ket_db. simpl. easy. rewrite H20.
-    gridify.
-    assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H16.
-    autorewrite with ket_db. easy.
-    rewrite H20. clear H20. Msimpl.
-    rewrite (vkron_split dim (find_pos vs p1) (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]))).
-    assert (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]) (find_pos vs p1) = Cexp ((turn_angle r rmax)) .*
-                              ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)).
-    unfold trans_state,compile_val. rewrite H8; try easy.
-    rewrite eupdate_index_neq by iner_p. rewrite <- H3. easy.
-    rewrite H20. clear H20.
-    distribute_scale.
-    distribute_plus.
-    distribute_scale.
-    assert (@Mmult (2 ^ dim) (2 ^ dim) 1 
-            (proj (find_pos vs p1) dim true)
-            (vkron (find_pos vs p1)
-                (trans_state avs rmax (f [p2 |-> hval b3 b0 r0])) ⊗ ∣0⟩
-              ⊗ vkron (dim - 1 - find_pos vs p1)
-                  (shift
-                     (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]))
-                     (find_pos vs p1 + 1))) = Zero).
-    replace ((dim - 1 - find_pos vs p1)) with (dim - (1 + find_pos vs p1)) by lia.
-    unfold proj,pad.
-    assert (∣0⟩ = ket (Nat.b2n false)). autorewrite with ket_db. simpl. easy. rewrite H20.
-    gridify.
-    assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H16.
-    autorewrite with ket_db. easy.
-    rewrite H20. clear H20. Msimpl.
-
-    admit.
-    auto with wf_db.
-    apply H5. easy.
-    auto with wf_db.
-    apply H5. easy.
-    1-2:easy.
-    assert (SQIR.X (find_pos vs p2) = trans_exp vs dim (X p2)) by easy.
-    rewrite H3.
-    apply fresh_is_fresh; try easy. constructor. easy. constructor. easy.
-    assert (SQIR.X (find_pos vs p2) = trans_exp vs dim (X p2)) by easy. rewrite H3.
-    apply trans_exp_uc_well_typed; try easy. constructor. constructor. easy.
-    apply H5. easy. apply H5. easy.
-    apply find_pos_prop; try easy.
-  - simpl. inv H3. inv H4. inv H6. inv H11.
-    rewrite Mmult_assoc. rewrite (IHe1 f tenv); try easy.
-    rewrite (IHe2 (exp_sem e1 f) tenv); try easy.
-    apply well_typed_right_mode_exp; try easy.
-Admitted.
-
 
 Definition shift_fun (f:nat -> nat) (offset:nat) (size:nat) :=
          fun i => if i <? size then f ((i + offset) mod size) else f i.
@@ -5817,14 +4752,6 @@ Definition trans_rshift (f:vars) (x:var) :=
                               shift_fun g 1 size,ashift_fun ag (size - 1) size) else f i
      end.
 
-
-Definition vars_anti_same (vs:vars) :=
-     forall x, (forall i, i < vsize vs x -> vmap vs x i < vsize vs x) /\
-     (forall i, i >= vsize vs x -> vmap vs x i >= vsize vs x) /\
-     (forall i, i < vsize vs x -> avmap vs x i < vsize vs x) /\
-     (forall i, i >= vsize vs x -> avmap vs x i >= vsize vs x) /\
-     (forall i, vmap vs x (avmap vs x i) = i) /\ (forall i, avmap vs x (vmap vs x i) = i).
-
 Definition lshift_avs (dim:nat) (f : vars) (avs : nat -> posi) (x:var)
            := (fun i => if (i <? dim) && (start f x <=? i) && (i - start f x  <? vsize f x)
                                        then (x, avmap (trans_lshift f x) x (i - start f x)) else avs i).
@@ -5842,7 +4769,26 @@ Definition rev_avs (dim:nat) (f : vars) (avs : nat -> posi) (x:var)
            := (fun i => if (i <? dim) && (start f x <=? i) && (i - start f x <? vsize f x)
                             then (x,avmap (trans_rev f x) x (i - start f x)) else avs i).
 
-Fixpoint trans_sexp (f : vars) (dim:nat) (exp:sexp) (avs: nat -> posi) :
+Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (base_ucom dim * vars  * (nat -> posi)) :=
+  match exp with SKIP p => (SQIR.ID (find_pos f p), f, avs)
+              | X p => (SQIR.X (find_pos f p), f, avs)
+              | RZ q p => (SQIR.Rz (rz_ang q) (find_pos f p), f, avs)
+              | RRZ q p => (SQIR.Rz (rrz_ang q) (find_pos f p), f, avs)
+              | SR n x => (gen_sr_gate f dim x n, f, avs)
+              | SRR n x => (gen_srr_gate f dim x n, f, avs)
+              | Lshift x => (SQIR.ID (find_pos f (x,0)), trans_lshift f x, lshift_avs dim f avs x)
+              | Rshift x => (SQIR.ID (find_pos f (x,0)), trans_rshift f x, rshift_avs dim f avs x)
+              | Rev x => (SQIR.ID (find_pos f (x,0)), trans_rev f x, rev_avs dim f avs x)
+              | HCNOT p1 p2 => (SQIR.CNOT (find_pos f p1) (find_pos f p2), f, avs)
+              | CU p1 (X p2) => (SQIR.CNOT (find_pos f p1) (find_pos f p2), f, avs)
+              | CU p e1 => match trans_exp f dim e1 avs with (e1', f',avs')
+                              => (control (find_pos f p) e1', f, avs) end
+              | e1 ; e2 => match trans_exp f dim e1 avs with (e1', f', avs') => 
+                                  match trans_exp f' dim e2 avs' with (e2',f'',avs'') => (SQIR.useq e1' e2', f'', avs'') end
+                           end
+   end.
+
+(*
   (base_ucom dim * vars  * (nat -> posi)) :=
   match exp with Lshift x => (SQIR.ID (find_pos f (x,0)), trans_lshift f x, 
                               lshift_avs dim f avs x)
@@ -5850,12 +4796,118 @@ Fixpoint trans_sexp (f : vars) (dim:nat) (exp:sexp) (avs: nat -> posi) :
               | Rshift x => (SQIR.ID (find_pos f (x,0)),trans_rshift f x, rshift_avs dim f avs x)
 
               | Rev x => (SQIR.ID (find_pos f (x,0)),trans_rev f x,rev_avs dim f avs x)
-              | Exp e => (trans_exp f dim e, f,avs)
-              | e1 ;; e2 => match trans_sexp f dim e1 avs with (e1',f',avs') =>
-                               match trans_sexp f' dim e2 avs' with (e2',f'',avs'')
-                                          => (SQIR.useq e1' e2', f'',avs'')  end end
+*)
+
+Definition exp_com_WF (vs:vars) (dim:nat) :=
+    forall p, snd p < vsize vs (fst p) -> find_pos vs p < dim.
+
+Definition exp_com_gt (vs:vars) (avs: nat -> posi) (dim:nat) :=
+    forall i, i >= dim -> vsize vs (fst (avs i)) = 0.
+
+Fixpoint turn_angle (rval : nat -> bool) (n : nat) : R :=
+  match n with 0 => (0:R)
+            | S m => ((1/ (2^(Nat.b2n(rval m))))%R + turn_angle rval m)%R
   end.
 
+Definition z_phase (b:bool) : R := if b then 1%R else (-1)%R.
+
+Definition compile_val (v:val) (r_max : nat) : Vector 2 := 
+   match v with nval b r => Cexp ((turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
+             | hval b1 b2 r => Cexp ((turn_angle r r_max)) .*
+                              ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)
+             | qval q r => Cexp ((turn_angle q r_max)) .* (∣0⟩ .+ (Cexp ((turn_angle r r_max))) .* ∣1⟩)
+  end.
+
+Lemma WF_compile_val : forall v r, WF_Matrix (compile_val v r).
+Proof.
+  intros. unfold compile_val.
+  destruct v;auto with wf_db.
+Qed.
+
+Hint Resolve WF_compile_val : wf_db.
+
+Definition trans_state (avs : nat -> posi) (rmax : nat) (f : posi -> val) : (nat -> Vector 2) :=
+        fun i => compile_val (f (avs i)) rmax.
+
+Lemma WF_trans_state : forall avs r f i, WF_Matrix (trans_state avs r f i).
+Proof.
+  intros. unfold trans_state. auto with wf_db.
+Qed.
+
+Hint Resolve WF_trans_state : wf_db.
+
+Lemma trans_exp_cu : forall vs avs dim p e, 
+       (exists p1, e = X p1 /\ 
+             trans_exp vs dim (CU p e) avs = (SQIR.CNOT (find_pos vs p) (find_pos vs p1),vs,avs))
+    \/ (trans_exp vs dim (CU p e) avs = ((control (find_pos vs p) (fst (fst (trans_exp vs dim e avs))), vs, avs))).
+Proof.
+  intros.
+  simpl in *.
+  destruct e. right. easy.
+  left.
+  exists p0. easy.
+  right. destruct (trans_exp vs dim (CU p0 e) avs) eqn:eq1.
+  destruct p1. easy.
+  right. easy. right. easy. right. easy.
+  right. easy. right. easy. right. easy.
+  right. easy. right. easy. right. simpl.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p0.
+  destruct (trans_exp v dim e2 p1) eqn:eq2. destruct p0. simpl. easy.
+Qed.
+
+Lemma find_pos_prop : forall vs p1 p2, vars_start_diff vs -> vars_finite_bij vs ->
+            vars_sparse vs ->
+            snd p1 < vsize vs (fst p1) -> snd p2 < vsize vs (fst p2) ->
+            p1 <> p2 -> find_pos vs p1 <> find_pos vs p2.
+Proof.
+  intros.
+  unfold find_pos,vars_start_diff in *.
+  destruct p1. destruct p2.
+  simpl in *.
+  destruct (vs v) eqn:eq1.
+  destruct (vs v0) eqn:eq2.
+  destruct p. destruct p0.
+  bdestruct (v =? v0).
+  subst.
+  assert (n <> n0). intros R. subst. contradiction.
+  rewrite eq1 in eq2.
+  inv eq2.
+  specialize (finite_bij_inj vs v0 H1) as eq3.
+  specialize (eq3 n n0 H3 H4 H6) as eq4. lia.
+  specialize (H2 v v0 H6).
+  apply H2.
+  apply finite_bij_lt;  assumption.
+  apply finite_bij_lt;  assumption.
+Qed.
+
+Lemma trans_state_update : forall dim (vs:vars) (avs: nat -> posi) rmax f (p:posi) v,
+      (snd p < vsize vs (fst p)) ->
+     (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
+     (forall i, i < dim -> find_pos vs (avs i) = i) ->
+    (forall x , x < dim -> (trans_state avs rmax (f [p |-> v]))  x
+            = update (trans_state avs rmax f) (find_pos vs p) (compile_val v rmax) x).
+Proof.
+  intros.
+  unfold trans_state.
+  bdestruct (x =? (find_pos vs p)).
+  subst.
+  rewrite H1 by assumption.
+  rewrite eupdate_index_eq.
+  rewrite update_index_eq. easy.
+  rewrite eupdate_index_neq.
+  rewrite update_index_neq. easy. lia.
+  intros R. subst. rewrite H2 in H4. lia. lia.
+Qed.
+
+(*We define helper properties for vars during translation. *)
+Definition size_env (vs : vars):= fun i => vsize vs i.
+
+Definition vars_anti_same (vs:vars) :=
+     forall x, (forall i, i < vsize vs x -> vmap vs x i < vsize vs x) /\
+     (forall i, i >= vsize vs x -> vmap vs x i >= vsize vs x) /\
+     (forall i, i < vsize vs x -> avmap vs x i < vsize vs x) /\
+     (forall i, i >= vsize vs x -> avmap vs x i >= vsize vs x) /\
+     (forall i, vmap vs x (avmap vs x i) = i) /\ (forall i, avmap vs x (vmap vs x i) = i).
 
 Definition avs_prop (vs:vars) (avs: nat -> posi) (dim : nat) :=
        forall i, i < dim -> (start vs (fst (avs i)) <= i /\ i - start vs (fst (avs i))  < vsize vs (fst (avs i))
@@ -5986,15 +5038,6 @@ Proof.
   rewrite <- V3.
   apply X3. easy.
 Qed.
-
-
-Inductive sexp_WF : vars -> nat -> sexp -> Prop :=
-
-      | exp_wf : forall vs rs e, exp_WF vs e -> exp_rmax rs e -> sexp_WF vs rs (Exp e)
-      | sseq_wf : forall vs rs e1 e2, sexp_WF vs rs e1 -> sexp_WF vs rs e2 -> sexp_WF vs rs (SSeq e1 e2).
-
-
-
 
 Lemma lshift_avs_lshift_same : forall vs avs dim rmax f x,
           vars_sparse vs -> vars_anti_same vs -> avs_prop vs avs dim -> exp_com_WF vs dim
@@ -6215,9 +5258,12 @@ Proof.
 Qed.
 
 Lemma vsize_vs_same: forall e dim vs vs' avs p,
-         vs' = (snd (fst (trans_sexp vs dim e avs))) -> vsize vs' p = vsize vs p.
+         vs' = (snd (fst (trans_exp vs dim e avs))) -> vsize vs' p = vsize vs p.
 Proof.
  induction e; intros;subst; try easy.
+ specialize (trans_exp_cu vs avs dim p e) as eq1.
+ destruct eq1. destruct H0. destruct H0. subst. rewrite H1. simpl. easy.
+ rewrite H0. simpl. easy.
  simpl.
  unfold trans_lshift, vsize.
  destruct (vs x) eqn:eq1.
@@ -6243,8 +5289,8 @@ Proof.
  rewrite eq1. simpl. easy.
  easy.
  simpl.
- destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p0.
- destruct (trans_sexp v dim e2 p1) eqn:eq2. destruct p0.
+ destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p0.
+ destruct (trans_exp v dim e2 p1) eqn:eq2. destruct p0.
  simpl.
  specialize (IHe1 dim vs v avs p).
  rewrite eq1 in IHe1. simpl in IHe1.
@@ -6254,7 +5300,7 @@ Proof.
 Qed.
 
 Lemma size_env_vs_same : forall vs vs' e dim avs,
-         vs' = (snd (fst (trans_sexp vs dim e avs))) -> size_env vs' = size_env vs.
+         vs' = (snd (fst (trans_exp vs dim e avs))) -> size_env vs' = size_env vs.
 Proof.
  intros. unfold size_env.
   apply functional_extensionality.
@@ -6262,9 +5308,12 @@ Proof.
   erewrite vsize_vs_same. reflexivity. apply H0.
 Qed.
 
-Lemma start_vs_same: forall e dim vs vs' avs p, vs' = (snd (fst (trans_sexp vs dim e avs))) -> start vs' p = start vs p.
+Lemma start_vs_same: forall e dim vs vs' avs p, vs' = (snd (fst (trans_exp vs dim e avs))) -> start vs' p = start vs p.
 Proof.
  induction e; intros;subst; try easy.
+ specialize (trans_exp_cu vs avs dim p e) as eq1.
+ destruct eq1. destruct H0. destruct H0. subst. rewrite H1. simpl. easy.
+ rewrite H0. simpl. easy.
  simpl.
  unfold trans_lshift, start.
  destruct (vs x) eqn:eq1.
@@ -6290,8 +5339,8 @@ Proof.
  rewrite eq1. simpl. easy.
  easy.
  simpl.
- destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p0.
- destruct (trans_sexp v dim e2 p1) eqn:eq2. destruct p0.
+ destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p0.
+ destruct (trans_exp v dim e2 p1) eqn:eq2. destruct p0.
  simpl.
  specialize (IHe1 dim vs v avs p).
  rewrite eq1 in IHe1. simpl in IHe1.
@@ -6300,7 +5349,7 @@ Proof.
  rewrite eq2. easy. easy.
 Qed.
 
-Lemma vars_start_diff_vs_same : forall vs vs' e dim avs, vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma vars_start_diff_vs_same : forall vs vs' e dim avs, vs' = (snd (fst (trans_exp vs dim e avs)))
                     -> vars_start_diff vs -> vars_start_diff vs'.
 Proof.
   intros.
@@ -6331,11 +5380,16 @@ Proof.
   lia.
 Qed.
 
-Lemma vars_fun_lt : forall e dim vs vs' avs x, vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma vars_fun_lt : forall e dim vs vs' avs x, vs' = (snd (fst (trans_exp vs dim e avs)))
           -> (forall i, i < vsize vs x -> vmap vs x i < vsize vs x)
           -> (forall i, i < vsize vs x -> vmap vs' x i < vsize vs x).
 Proof.
   induction e; intros.
+  1-2:subst; simpl; apply H1; easy.
+  specialize (trans_exp_cu vs avs dim p e) as eq1.
+  destruct eq1. destruct H3. destruct H3. subst. rewrite H4. simpl. apply H1. easy.
+  subst. rewrite H3. simpl. apply H1. easy.
+  1-5:subst; simpl; apply H1; easy.
   simpl in *.
   unfold vmap,vsize in *.
   unfold trans_lshift in H0.
@@ -6375,13 +5429,13 @@ Proof.
   rewrite eq1 in H1. rewrite eq1 in H2. simpl in *.
   apply H1. easy. rewrite eq1 in H2. simpl in *. easy.
   apply H1. easy.
-  simpl in H0. subst. apply H1. easy.
-  subst. simpl.
-  destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
-  destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p. simpl.
-  assert (v = snd (fst (trans_sexp vs dim e1 avs))). rewrite eq1. easy.
+  simpl in H0.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+  destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p.
+  simpl in *. subst.
+  assert (v = snd (fst (trans_exp vs dim e1 avs))). rewrite eq1. easy.
   specialize (IHe1 dim vs v avs x H0 H1).
-  assert (v0 = snd (fst (trans_sexp v dim e2 p0))). rewrite eq2. easy.
+  assert (v0 = snd (fst (trans_exp v dim e2 p0))). rewrite eq2. easy.
   specialize (IHe2 dim v v0 p0 x H3).
   assert ((forall i : nat,
         i < vsize v x -> vmap v x i < vsize v x)).
@@ -6414,11 +5468,16 @@ Proof.
 Qed.
 
 
-Lemma vars_afun_lt : forall e dim vs vs' avs x, vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma vars_afun_lt : forall e dim vs vs' avs x, vs' = (snd (fst (trans_exp vs dim e avs)))
           -> (forall i, i < vsize vs x -> avmap vs x i < vsize vs x)
           -> (forall i, i < vsize vs x -> avmap vs' x i < vsize vs x).
 Proof.
   induction e; intros.
+  1-2:subst; simpl; apply H1; easy.
+  specialize (trans_exp_cu vs avs dim p e) as eq1.
+  destruct eq1. destruct H3. destruct H3. subst. rewrite H4. simpl. apply H1. easy.
+  subst. rewrite H3. simpl. apply H1. easy.
+  1-5:subst; simpl; apply H1; easy.
   simpl in *.
   unfold avmap,vsize in *.
   unfold trans_lshift in H0.
@@ -6458,13 +5517,12 @@ Proof.
   rewrite eq1 in H1. rewrite eq1 in H2. simpl in *.
   apply H1. easy. rewrite eq1 in H2. simpl in *. easy.
   apply H1. easy.
-  subst. simpl. apply H1. easy.
-  subst. simpl.
-  destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
-  destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p. simpl.
-  assert (v = snd (fst (trans_sexp vs dim e1 avs))). rewrite eq1. easy.
+  simpl in H0.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+  destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p. simpl in *. subst.
+  assert (v = snd (fst (trans_exp vs dim e1 avs))). rewrite eq1. easy.
   specialize (IHe1 dim vs v avs x H0 H1).
-  assert (v0 = snd (fst (trans_sexp v dim e2 p0))). rewrite eq2. easy.
+  assert (v0 = snd (fst (trans_exp v dim e2 p0))). rewrite eq2. easy.
   specialize (IHe2 dim v v0 p0 x H3).
   assert ((forall i : nat,
         i < vsize v x -> avmap v x i < vsize v x)).
@@ -6472,10 +5530,9 @@ Proof.
   rewrite (vsize_vs_same e1 dim vs v avs). apply IHe1.
   rewrite <- (vsize_vs_same e1 dim vs v avs). assumption. easy. easy.
   specialize (IHe2 H4).
-  rewrite <- (vsize_vs_same e1 dim vs v avs).
+  rewrite <- (vsize_vs_same e1 dim vs v avs). 
   apply IHe2.
-  rewrite (vsize_vs_same e1 dim vs v avs). easy.
-  easy. easy.
+  rewrite (vsize_vs_same e1 dim vs v avs). easy. easy. easy.
 Qed.
 
 Lemma shift_fun_twice : forall f g off size, off <= size -> 
@@ -6618,11 +5675,14 @@ Definition exists_fun_bij (vs:vars) (x:var) := exists g : nat -> nat,
 
 Lemma trans_same_bij:  forall e dim vs vs' avs x, 
     (forall i, i < vsize vs x -> vmap vs x i < vsize vs x) ->
-      vs' = (snd (fst (trans_sexp vs dim e avs)))
+      vs' = (snd (fst (trans_exp vs dim e avs)))
        -> 0 < vsize vs x ->
        exists_fun_bij vs x -> exists_fun_bij vs' x.
 Proof.
-  induction e; intros; subst.
+  induction e; intros; subst; try easy.
+- specialize (trans_exp_cu vs avs dim p e) as eq1.
+  destruct eq1. destruct H1. destruct H1. subst. rewrite H4. simpl. easy.
+  rewrite H1. simpl. easy.
 - unfold exists_fun_bij in *.
   rewrite (vsize_vs_same (Lshift x) dim vs) with (avs := avs).
   simpl in *.
@@ -6790,12 +5850,11 @@ Proof.
   bdestruct (x0 =? x). lia.
   assert (snd (fst (vs x0)) (g y) = vmap vs x0 (g y)) by easy.
   rewrite H5. rewrite Hb. easy. assumption. easy.
-- simpl in *. easy.
 - simpl in *.
-  destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
-  destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+  destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p.
   simpl in *.
-  assert (v = (snd (fst (trans_sexp vs dim e1 avs)))).
+  assert (v = (snd (fst (trans_exp vs dim e1 avs)))).
   rewrite eq1. easy.
   specialize (IHe1 dim vs v avs x H0 H1 H2 H3).
   assert ((forall i : nat, i < vsize v x -> vmap v x i < vsize v x) ).
@@ -6803,14 +5862,14 @@ Proof.
   rewrite (vsize_vs_same e1 dim vs v avs).
   rewrite (vsize_vs_same e1 dim vs v avs) in H4.
   apply (vars_fun_lt e1 dim) with (avs := avs). easy. apply H0. easy. easy. easy.
-  assert (v0 = snd (fst (trans_sexp v dim e2 p0))).
+  assert (v0 = snd (fst (trans_exp v dim e2 p0))).
   rewrite eq2. easy.
   assert (0 < vsize v x).
   rewrite (vsize_vs_same e1 dim vs) with (avs := avs). easy. rewrite eq1. easy.
   specialize (IHe2 dim v v0 p0 x H4 H5 H6 IHe1). easy.
 Qed.
 
-Lemma vars_finite_bij_vs_same : forall e dim vs vs' avs, vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma vars_finite_bij_vs_same : forall e dim vs vs' avs, vs' = (snd (fst (trans_exp vs dim e avs)))
                     -> vars_finite_bij vs -> vars_finite_bij vs'.
 Proof.
   intros. unfold vars_finite_bij in *.
@@ -6834,7 +5893,7 @@ Proof.
   specialize (trans_same_bij e dim vs vs' avs x H1 H0 H4 H2) as eq1. easy.
 Qed.
 
-Lemma vars_sparse_vs_same : forall e dim vs vs' avs, vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma vars_sparse_vs_same : forall e dim vs vs' avs, vs' = (snd (fst (trans_exp vs dim e avs)))
                     -> vars_sparse vs -> vars_sparse vs'.
 Proof.
   intros.
@@ -6846,11 +5905,16 @@ Proof.
   apply H1; easy.
 Qed.
 
-Lemma vars_fun_ge : forall e dim vs vs' avs x, vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma vars_fun_ge : forall e dim vs vs' avs x, vs' = (snd (fst (trans_exp vs dim e avs)))
           -> (forall i, i >= vsize vs x -> vmap vs x i >= vsize vs x)
           -> (forall i, i >= vsize vs x -> vmap vs' x i >= vsize vs x).
 Proof.
   induction e; intros.
+  1-2:subst; simpl; apply H1; easy.
+  specialize (trans_exp_cu vs avs dim p e) as eq1.
+  destruct eq1. destruct H3. destruct H3. subst. rewrite H4. simpl. apply H1. easy.
+  subst. rewrite H3. simpl. apply H1. easy.
+  1-5:subst; simpl; apply H1; easy.
   simpl in *.
   unfold vmap,vsize in *.
   unfold trans_lshift in H0.
@@ -6890,13 +5954,12 @@ Proof.
   bdestruct (i <? n2). lia.
   rewrite eq1 in H1. simpl in H1. apply H1. easy.
   apply H1. easy.
-  subst. simpl. apply H1.  easy.
   subst. simpl.
-  destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
-  destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p. simpl.
-  assert (v = snd (fst (trans_sexp vs dim e1 avs))). rewrite eq1. easy.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+  destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p. simpl.
+  assert (v = snd (fst (trans_exp vs dim e1 avs))). rewrite eq1. easy.
   specialize (IHe1 dim vs v avs x H0 H1).
-  assert (v0 = snd (fst (trans_sexp v dim e2 p0))). rewrite eq2. easy.
+  assert (v0 = snd (fst (trans_exp v dim e2 p0))). rewrite eq2. easy.
   specialize (IHe2 dim v v0 p0 x H3).
   assert ((forall i : nat,
         i >= vsize v x -> vmap v x i >= vsize v x)).
@@ -6910,11 +5973,16 @@ Proof.
   easy. easy.
 Qed.
 
-Lemma vars_afun_ge : forall e dim vs vs' avs x, vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma vars_afun_ge : forall e dim vs vs' avs x, vs' = (snd (fst (trans_exp vs dim e avs)))
           -> (forall i, i >= vsize vs x -> avmap vs x i >= vsize vs x)
           -> (forall i, i >= vsize vs x -> avmap vs' x i >= vsize vs x).
 Proof.
   induction e; intros.
+  1-2:subst; simpl; apply H1; easy.
+  specialize (trans_exp_cu vs avs dim p e) as eq1.
+  destruct eq1. destruct H3. destruct H3. subst. rewrite H4. simpl. apply H1. easy.
+  subst. rewrite H3. simpl. apply H1. easy.
+  1-5:subst; simpl; apply H1; easy.
   simpl in *.
   unfold avmap,vsize in *.
   unfold trans_lshift in H0.
@@ -6954,13 +6022,12 @@ Proof.
   bdestruct (i <? n2). lia.
   rewrite eq1 in H1. simpl in H1. apply H1. easy.
   apply H1. easy.
-  subst. simpl. apply H1. easy.
   subst. simpl.
-  destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
-  destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p. simpl.
-  assert (v = snd (fst (trans_sexp vs dim e1 avs))). rewrite eq1. easy.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+  destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p. simpl.
+  assert (v = snd (fst (trans_exp vs dim e1 avs))). rewrite eq1. easy.
   specialize (IHe1 dim vs v avs x H0 H1).
-  assert (v0 = snd (fst (trans_sexp v dim e2 p0))). rewrite eq2. easy.
+  assert (v0 = snd (fst (trans_exp v dim e2 p0))). rewrite eq2. easy.
   specialize (IHe2 dim v v0 p0 x H3).
   assert ((forall i : nat,
         i >= vsize v x -> avmap v x i >= vsize v x)).
@@ -6975,7 +6042,7 @@ Proof.
 Qed.
 
 Lemma vars_vs_anti_bij :
-    forall e dim vs vs' avs x, vs' = (snd (fst (trans_sexp vs dim e avs))) ->
+    forall e dim vs vs' avs x, vs' = (snd (fst (trans_exp vs dim e avs))) ->
      (forall i : nat, i < vsize vs x -> vmap vs x i < vsize vs x) ->
      (forall i : nat, i >= vsize vs x -> vmap vs x i >= vsize vs x) ->
     (forall i : nat, i < vsize vs x -> avmap vs x i < vsize vs x) ->
@@ -6985,6 +6052,11 @@ Lemma vars_vs_anti_bij :
       (forall i : nat, vmap vs' x (avmap vs' x i) = i) /\ (forall i : nat, avmap vs' x (vmap vs' x i) = i).
 Proof.
  induction e; intros.
+ 1-2:subst; simpl; easy.
+ specialize (trans_exp_cu vs avs dim p e) as eq1.
+ destruct eq1. destruct H7. destruct H7. subst. rewrite H8. simpl. easy.
+ subst. rewrite H7. simpl. easy.
+ 1-5:subst; simpl; easy.
 -
  subst. simpl. split. intros.
  unfold trans_lshift.
@@ -7106,11 +6178,10 @@ Proof.
  rewrite eq1 in *. simpl in *.
  rewrite fbrev_back ; try easy.
  unfold vmap,avmap in H6. rewrite H6. easy.
-- split. subst. simpl. easy. subst. simpl. easy.
 -
  subst. simpl.
- destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
- destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p. simpl.
+ destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+ destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p. simpl.
  specialize (IHe1 dim vs v avs x).
  rewrite eq1 in IHe1.
  assert (v = snd (fst (b, v, p0))) by easy.
@@ -7133,7 +6204,7 @@ Proof.
  rewrite eq1. easy. easy. easy.
 Qed.
 
-Lemma vars_anti_vs_same: forall e dim vs vs' avs, vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma vars_anti_vs_same: forall e dim vs vs' avs, vs' = (snd (fst (trans_exp vs dim e avs)))
                     -> vars_anti_same vs -> vars_anti_same vs'.
 Proof.
   intros.
@@ -7159,7 +6230,7 @@ Qed.
 
 
 Lemma wf_vs_same: forall e1 e2 avs dim vs vs', exp_WF vs e1 -> 
-                vs' = (snd (fst (trans_sexp vs dim e2 avs))) -> exp_WF vs' e1.
+                vs' = (snd (fst (trans_exp vs dim e2 avs))) -> exp_WF vs' e1.
 Proof.
   intros.
   induction H0. constructor.
@@ -7183,30 +6254,26 @@ Proof.
   constructor.
   apply IHexp_WF1. easy.
   apply IHexp_WF2. easy.
-Qed.
-
-Lemma swf_vs_same: forall e1 e2 rmax avs dim vs vs', sexp_WF vs rmax e1 -> 
-                vs' = (snd (fst (trans_sexp vs dim e2 avs))) -> sexp_WF vs' rmax e1.
-Proof.
-  intros.
-  induction H0. constructor.
+  constructor.
   rewrite (vsize_vs_same e2 dim vs vs' avs). easy. easy.
   constructor.
   rewrite (vsize_vs_same e2 dim vs vs' avs). easy. easy.
   constructor.
   rewrite (vsize_vs_same e2 dim vs vs' avs). easy. easy.
-  constructor. eapply wf_vs_same. apply H0. apply H1. easy.
-  constructor.
-  apply IHsexp_WF1. easy.
-  apply IHsexp_WF2. easy.
 Qed.
 
 
-Lemma exists_same_vs_var : forall e dim x n avs vs vs', vs' = (snd (fst (trans_sexp vs dim e avs)))->
+Lemma exists_same_vs_var : forall e dim x n avs vs vs', vs' = (snd (fst (trans_exp vs dim e avs)))->
                   n < vsize vs x -> 
                  (exists n', n' < vsize vs x /\ find_pos vs' (x,n) = find_pos vs (x,n')).
 Proof.
  induction e; intros.
+ 1-2:subst; exists n; easy.
+ specialize (trans_exp_cu vs avs dim p e) as eq1.
+ destruct eq1. destruct H2. destruct H2. subst. rewrite H3. simpl.
+ exists n. easy.
+ subst. rewrite H2. exists n. simpl. easy.
+ 1-5:subst; exists n; easy.
 - 
  specialize (start_vs_same (Lshift x) dim vs vs' avs x0 H0) as eq1.
  specialize (vsize_vs_same (Lshift x) dim vs vs' avs x0 H0) as eq2.
@@ -7285,11 +6352,10 @@ Proof.
  destruct (vs x) eqn:eq3. destruct p. destruct p.
  bdestruct (x0 =? x). lia.
  easy.
-- rewrite H0. simpl. exists n. easy.
 - 
  simpl in H0.
- destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
- destruct (trans_sexp v dim e2 p0 ) eqn:eq2. destruct p.
+ destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+ destruct (trans_exp v dim e2 p0 ) eqn:eq2. destruct p.
  simpl in H0. subst.
  specialize (IHe2 dim x n p0 v v0).
  rewrite eq2 in IHe2.
@@ -7309,10 +6375,15 @@ Proof.
  rewrite eq1. easy.
 Qed.
 
-Lemma exp_com_WF_vs_same : forall e dim avs vs vs', vs' = (snd (fst (trans_sexp vs dim e avs)))
+Lemma exp_com_WF_vs_same : forall e dim avs vs vs', vs' = (snd (fst (trans_exp vs dim e avs)))
           -> exp_com_WF vs dim -> exp_com_WF vs' dim.
 Proof.
  induction e; intros.
+ 1-2:subst; easy.
+ specialize (trans_exp_cu vs avs dim p e) as eq1.
+ destruct eq1. destruct H2. destruct H2. subst. easy.
+ subst. rewrite H2. easy.
+ 1-5:subst; easy.
  unfold exp_com_WF in *.
  intros.
  specialize (vsize_vs_same (Lshift x) dim vs vs' avs (fst p) H0) as eq1.
@@ -7340,11 +6411,9 @@ Proof.
  assert ((fst p, snd p) = p). destruct p. simpl. easy.
  rewrite H5 in H4. rewrite H4.
  apply H1. simpl. easy.
- rewrite H0. simpl. easy.
- simpl in H0.
- destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
- destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p.
- simpl in H0.
+ rewrite H0. simpl in *.
+ destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+ destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p.
  specialize (IHe1 dim avs vs v).
  specialize (IHe2 dim p0 v v0).
  subst.
@@ -7354,11 +6423,16 @@ Proof.
 Qed.
 
 Lemma exp_com_gt_vs_same :
-    forall e dim vs vs' avs avs', vs' = (snd (fst (trans_sexp vs dim e avs)))
-      -> avs' = snd (trans_sexp vs dim e avs)
+    forall e dim vs vs' avs avs', vs' = (snd (fst (trans_exp vs dim e avs)))
+      -> avs' = snd (trans_exp vs dim e avs)
           -> exp_com_gt vs avs dim -> exp_com_gt vs' avs' dim.
 Proof.
  induction e; intros.
+ 1-2:subst; easy.
+ specialize (trans_exp_cu vs avs dim p e) as eq1.
+ destruct eq1. destruct H3. destruct H3. subst. easy.
+ subst. rewrite H3. easy.
+ 1-5:subst; easy.
  unfold exp_com_gt in *. intros.
  rewrite (vsize_vs_same (Lshift x) dim vs vs' avs) by try assumption.
  rewrite H1. simpl. unfold lshift_avs.
@@ -7371,11 +6445,9 @@ Proof.
  rewrite (vsize_vs_same (Rev x) dim vs vs' avs) by try assumption.
  rewrite H1. simpl. unfold rev_avs.
  bdestruct ((i <? dim)). lia. simpl. apply H2. easy.
- rewrite H1. rewrite H0. simpl. easy.
- rewrite H0. rewrite H1. simpl in *.
- destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
- destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p.
- simpl in *.
+ rewrite H1. rewrite H0. simpl in *.
+ destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+ destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p. simpl in *.
  specialize (IHe1 dim vs v avs p0).
  rewrite eq1 in IHe1. simpl in IHe1.
  apply IHe1 in H2.
@@ -7383,11 +6455,16 @@ Proof.
  1-3:easy.
 Qed.
 
-Lemma avs_prop_vs_same : forall e dim vs vs' avs avs', vs' = (snd (fst (trans_sexp vs dim e avs)))
-      -> avs' = snd (trans_sexp vs dim e avs) -> vars_anti_same vs -> vars_sparse vs
+Lemma avs_prop_vs_same : forall e dim vs vs' avs avs', vs' = (snd (fst (trans_exp vs dim e avs)))
+      -> avs' = snd (trans_exp vs dim e avs) -> vars_anti_same vs -> vars_sparse vs
           -> avs_prop vs avs dim -> avs_prop vs' avs' dim.
 Proof.
  induction e; intros.
+ 1-2:subst; easy.
+ specialize (trans_exp_cu vs avs dim p e) as eq1.
+ destruct eq1. destruct H5. destruct H5. subst. easy.
+ subst. rewrite H5. easy.
+ 1-5:subst; easy.
 -
  specialize (vs_avs_bij_r vs avs dim H4 H2) as Q1.
  specialize (vs_avs_size vs avs dim H4 H2) as Q2.
@@ -7502,11 +6579,10 @@ Proof.
  unfold start,vsize,avmap. 
  bdestruct (fst (avs i) =? x). lia.
  unfold start,vsize,avmap in H4. easy. lia.
-- subst. simpl. easy.
 -
  subst. simpl.
- destruct (trans_sexp vs dim e1 avs) eqn:eq1. destruct p.
- destruct (trans_sexp v dim e2 p0) eqn:eq2. destruct p.
+ destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+ destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p.
  simpl.
  specialize (IHe1 dim vs v avs p0).
  rewrite eq1 in IHe1. simpl in IHe1.
@@ -7519,64 +6595,1114 @@ Proof.
  rewrite eq1. easy.
 Qed.
 
-Lemma trans_sexp_sem :
-  forall dim (e:sexp) f env rmax vs (avs : nat -> posi),
+Lemma efresh_trans_same: forall e dim vs vs' avs p, exp_fresh p e -> 
+                vs' = (snd (fst (trans_exp vs dim e avs))) ->
+                 find_pos vs p = find_pos vs' p.
+Proof.
+ induction e; intros; subst; try easy.
+ specialize (trans_exp_cu vs avs dim p e) as eq1.
+ destruct eq1. destruct H1. destruct H1. subst. easy.
+ rewrite H1. easy.
+ inv H0. simpl.
+ unfold find_pos,trans_lshift,shift_fun.
+ destruct p.
+ destruct (vs x) eqn:eq1. destruct p. destruct p.
+ unfold start,vmap.
+ bdestruct (v =? x). simpl in *. lia. easy.
+ inv H0. simpl.
+ unfold find_pos,trans_rshift,shift_fun.
+ destruct p.
+ destruct (vs x) eqn:eq1. destruct p. destruct p.
+ unfold start,vmap.
+ bdestruct (v =? x). simpl in *. lia. easy.
+ inv H0. simpl.
+ unfold find_pos,trans_rev. destruct p.
+ destruct (vs x) eqn:eq1. destruct p. destruct p.
+ unfold start,vmap.
+ bdestruct (v =? x). simpl in *. lia. easy.
+ inv H0. simpl.
+ destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p0.
+ destruct (trans_exp v dim e2 p1) eqn:eq2. destruct p0. simpl.
+ specialize (IHe1 dim vs v avs p H4).
+ rewrite IHe1.
+ apply (IHe2 dim) with (avs := p1); try assumption.
+ rewrite eq2. easy.
+ rewrite eq1. easy.
+Qed.
+
+Check trans_exp.
+
+Lemma list_neq {A:Type} : forall (l :list A) a, l <> (a :: l).
+Proof.
+  induction l; intros.
+  easy.
+  intros R. inv R. specialize (IHl a0). contradiction.
+Qed.
+
+Lemma neu_trans_state : forall e l vs dim avs, exp_neu_t l e l -> snd (trans_exp vs dim e avs) = avs.
+Proof.
+  induction e; intros; try easy.
+  specialize (trans_exp_cu vs avs dim p e) as eq1.
+  destruct eq1. destruct H1. destruct H1. subst. rewrite H2. easy.
+  rewrite H1. easy.
+  inv H0. unfold insert_ls in H5. destruct (l x) eqn:eq1.
+  assert (l x <> (update l x (Some (Ls :: l0))) x).
+  rewrite update_index_eq. rewrite eq1. intros R. inv R.
+  specialize (list_neq l0 Ls) as eq2. contradiction.
+  rewrite <- H5 in H0. contradiction.
+  assert (l x <> update l x (Some ([Ls])) x).
+  rewrite update_index_eq. rewrite eq1. easy.
+  rewrite <- H5 in H0. contradiction.
+Admitted.
+
+
+Local Transparent SQIR.ID SQIR.CNOT SQIR.X SQIR.Rz. 
+
+Lemma vkron_fun_gt : forall i m (f : nat -> Vector 2) v, i <= m -> vkron i (update f m v) = vkron i f.
+Proof.
+  intros. induction i.
+  simpl. easy.
+  simpl.
+  rewrite IHi by lia.
+  rewrite update_index_neq. easy. lia.
+Qed.
+
+Lemma vkron_shift_gt : forall i m j (f : nat -> Vector 2) v, j < m ->
+                vkron i (shift (update f j v) m) = vkron i (shift f m).
+Proof.
+  intros. induction i.
+  simpl. easy.
+  simpl.
+  rewrite IHi by lia.
+  assert (shift (update f j v) m i = shift f m i).
+  unfold shift.
+  rewrite update_index_neq. easy. lia.
+  rewrite H1. easy.
+Qed.
+
+
+Lemma vkron_split_up : forall n i (f : nat -> Vector 2) v,
+  (forall j, WF_Matrix (f j)) -> WF_Matrix v ->
+(*  (forall j, j < n -> WF_Matrix (f j)) -> Maybe necessary? *)
+  i < n ->
+  vkron n (update f i v) = (vkron i f) ⊗ v ⊗ (vkron (n - (i + 1)) (shift f (i + 1))).
+Proof.
+  intros.
+  rewrite (vkron_split n i).
+  rewrite vkron_fun_gt by lia.
+  assert ((n - 1 - i) = n - (i + 1)) by lia. rewrite H3.
+  rewrite vkron_shift_gt.
+  rewrite update_index_eq. easy. lia.
+  intros.
+  bdestruct (i =? j). subst.
+  rewrite update_index_eq. assumption.
+  rewrite update_index_neq.
+  apply H0. lia. lia.
+Qed.
+
+
+
+Lemma denote_ID_1 : forall dim n, n < dim -> uc_eval (ID n) = I (2 ^ dim).
+Proof.
+  intros.
+  rewrite denote_ID. unfold pad.
+  bdestruct (n+1<=? dim).
+  gridify. easy. lia.
+Qed.
+
+Lemma vkron_X : forall (n i : nat) (f : nat -> Vector 2),
+  i < n ->
+  (forall j, WF_Matrix (f j))  ->
+  (uc_eval (SQIR.X i)) × (vkron n f) 
+      = vkron i f ⊗ (σx × (f i)) ⊗ vkron (n - (i + 1)) (shift f (i + 1)).
+Proof.
+  intros.
+  autorewrite with eval_db.
+  rewrite (vkron_split n i f H1 H0). 
+  simpl; replace (n - 1 - i) with (n - (i + 1)) by lia.
+  repad. 
+  Msimpl. easy.
+Qed.
+
+Lemma vkron_Rz : forall (n i : nat) q (f : nat -> Vector 2),
+  i < n ->
+  (forall j, WF_Matrix (f j))  ->
+  (uc_eval (SQIR.Rz q i)) × (vkron n f) 
+      = vkron i f ⊗ (phase_shift q × f i) ⊗ vkron (n - (i + 1)) (shift f (i + 1)).
+Proof.
+  intros.
+  autorewrite with eval_db.
+  rewrite (vkron_split n i f H1 H0). 
+  simpl; replace (n - 1 - i) with (n - (i + 1)) by lia.
+  repad. 
+  Msimpl. easy.
+Qed.
+
+Lemma is_fresh_sr_gates : forall m n size x dim vs, 0 < n -> m <= n -> m <= size
+       -> n < vsize vs x -> vars_finite_bij vs
+       -> is_fresh (find_pos vs (x,n)) (gen_sr_gate' vs dim x m size).
+Proof.
+  induction m; intros; simpl.
+  apply fresh_app1.
+  specialize (finite_bij_inj vs x H4 0 n) as eq1.
+  assert (0 < vsize vs x) by lia.
+  specialize (eq1 H5 H3). lia.
+  constructor.
+  apply IHm; try lia. easy.
+  apply fresh_app1.  
+  specialize (finite_bij_inj vs x H4 m n) as eq1.
+  assert (m < vsize vs x) by lia.
+  specialize (eq1 H5 H3). lia.
+Qed.
+
+
+Lemma is_fresh_sr_gate_start : forall m n size x y dim vs, m <= size -> x <> y
+       -> n < vsize vs x -> m < vsize vs y -> vars_finite_bij vs -> vars_sparse vs
+       -> is_fresh (find_pos vs (x,n)) (gen_sr_gate' vs dim y m size).
+Proof.
+  induction m; intros; simpl.
+  apply fresh_app1.
+  unfold vars_sparse in *.
+  specialize (finite_bij_lt vs H4 x n H2) as eq1.
+  specialize (finite_bij_lt vs H4 y 0 H3) as eq2.
+  apply H5; try lia.
+  constructor.
+  apply IHm; try lia. easy. easy.
+  apply fresh_app1.  
+  specialize (finite_bij_lt vs H4 x n H2) as eq1.
+  assert (m < vsize vs y) by lia.
+  specialize (finite_bij_lt vs H4 y m H6) as eq2.
+  apply H5; try lia.
+Qed.
+
+Lemma is_fresh_srr_gates : forall m n size x dim vs, 0 < n -> m <= n -> m <= size
+       -> n < vsize vs x -> vars_finite_bij vs
+       -> is_fresh (find_pos vs (x,n)) (gen_srr_gate' vs dim x m size).
+Proof.
+  induction m; intros; simpl.
+  apply fresh_app1.
+  specialize (finite_bij_inj vs x H4 0 n) as eq1.
+  assert (0 < vsize vs x) by lia.
+  specialize (eq1 H5 H3). lia.
+  constructor.
+  apply IHm; try lia. easy.
+  apply fresh_app1.  
+  specialize (finite_bij_inj vs x H4 m n) as eq1.
+  assert (m < vsize vs x) by lia.
+  specialize (eq1 H5 H3). lia.
+Qed.
+
+Lemma is_fresh_srr_gate_start : forall m n size x y dim vs, m <= size -> x <> y
+       -> n < vsize vs x -> m < vsize vs y -> vars_finite_bij vs -> vars_sparse vs
+       -> is_fresh (find_pos vs (x,n)) (gen_srr_gate' vs dim y m size).
+Proof.
+  induction m; intros; simpl.
+  apply fresh_app1.
+  unfold vars_sparse in *.
+  specialize (finite_bij_lt vs H4 x n H2) as eq1.
+  specialize (finite_bij_lt vs H4 y 0 H3) as eq2.
+  apply H5; try lia.
+  constructor.
+  apply IHm; try lia. easy. easy.
+  apply fresh_app1.  
+  specialize (finite_bij_lt vs H4 x n H2) as eq1.
+  assert (m < vsize vs y) by lia.
+  specialize (finite_bij_lt vs H4 y m H6) as eq2.
+  apply H5; try lia.
+Qed.
+
+Lemma fresh_is_fresh :
+  forall p e vs (dim:nat) avs,
+    exp_fresh p e -> exp_WF vs e ->
+    snd p < vsize vs (fst p) ->
+    vars_start_diff vs -> vars_finite_bij vs ->
+    vars_sparse vs ->
+      @is_fresh _ dim (find_pos vs p) (fst (fst (trans_exp vs dim e avs))).
+Proof.
+  intros.
+  remember (find_pos vs p) as q.
+  generalize dependent vs.
+  generalize dependent avs.
+  induction e; intros.
+  subst.
+  apply fresh_app1.
+  inv H0. inv H1.
+  apply find_pos_prop; try assumption.
+  subst.
+  apply fresh_app1.
+  inv H0. inv H1.
+  apply find_pos_prop; try assumption.
+  specialize (trans_exp_cu vs avs dim p0 e) as eq1.
+  destruct eq1. destruct H6. destruct H6.
+  subst. rewrite H7. simpl.
+  apply fresh_app2.
+  inv H0. inv H1. inv H12.
+  apply find_pos_prop; try assumption.
+  apply find_pos_prop; try assumption.
+  inv H1. inv H11. assumption.
+  inv H0. inv H11. assumption.
+  rewrite H6. rewrite Heqq.
+  inv H1. inv H0.
+  apply fresh_control. split.
+  apply find_pos_prop; try assumption. 
+  apply IHe; try assumption. easy.
+  subst. inv H0. inv H1.
+  simpl.
+  apply fresh_app1.
+  apply find_pos_prop; try assumption.
+  subst. inv H0. inv H1.
+  simpl.
+  apply fresh_app1.
+  apply find_pos_prop; try assumption.
+  subst. inv H0. inv H1.
+  simpl. unfold gen_sr_gate.
+  unfold or_not_r in *.
+  bdestruct (x =? fst p). subst. destruct H8. lia.
+  specialize (is_fresh_sr_gates (S q0) (snd p) (S q0) (fst p) dim vs) as eq1.
+  destruct p.
+  simpl in *. unfold find_pos. apply eq1; try lia. easy.
+  destruct p.
+  specialize (is_fresh_sr_gate_start (S q0) n (S q0) v x dim vs) as eq1.
+  apply eq1; try lia. iner_p. iner_p. easy. easy.
+  subst. inv H0. inv H1.
+  simpl. unfold gen_sr_gate.
+  unfold or_not_r in *.
+  bdestruct (x =? fst p). subst. destruct H8. lia.
+  specialize (is_fresh_srr_gates (S q0) (snd p) (S q0) (fst p) dim vs) as eq1.
+  destruct p.
+  simpl in *. unfold find_pos. apply eq1; try lia. easy.
+  destruct p.
+  specialize (is_fresh_srr_gate_start (S q0) n (S q0) v x dim vs) as eq1.
+  apply eq1; try lia. iner_p. iner_p. easy. easy.
+  simpl.
+  apply fresh_app2.
+  inv H0. inv H1.
+  apply find_pos_prop; try assumption. subst.
+  apply find_pos_prop; try assumption.
+  inv H1. easy.
+  inv H0. easy.
+  inv H0. simpl. inv H1.
+  apply fresh_app1.
+  assert (start vs x + vmap vs x 0 = find_pos vs (x,0)).
+  unfold find_pos. easy. rewrite H0.
+  apply find_pos_prop; try assumption.
+  destruct p. iner_p.
+  inv H0. simpl. inv H1.
+  apply fresh_app1.
+  assert (start vs x + vmap vs x 0 = find_pos vs (x,0)).
+  unfold find_pos. easy. rewrite H0.
+  apply find_pos_prop; try assumption.
+  destruct p. iner_p.
+  inv H0. simpl. inv H1.
+  apply fresh_app1.
+  assert (start vs x + vmap vs x 0 = find_pos vs (x,0)).
+  unfold find_pos. easy. rewrite H0.
+  apply find_pos_prop; try assumption.
+  destruct p. iner_p.
+  simpl.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p0.
+  destruct (trans_exp v dim e2 p1) eqn:eq2. destruct p0. simpl.
+  apply fresh_seq; try assumption.
+  inv H1. inv H0.
+  assert (b = (fst (fst (trans_exp vs dim e1 avs)))). rewrite eq1. easy.
+  rewrite H0.
+  apply IHe1; try assumption. easy.
+  inv H1. inv H0.
+  assert (b0 = (fst (fst (trans_exp v dim e2 p1)))). rewrite eq2. easy. subst.
+  apply IHe2; try assumption.
+  apply (wf_vs_same e2 e1 avs dim vs v). easy. rewrite eq1. easy.
+  rewrite (vsize_vs_same e1 dim vs v avs); try easy. rewrite eq1. easy.
+  eapply vars_start_diff_vs_same. rewrite eq1. easy. easy.
+  eapply vars_finite_bij_vs_same. rewrite eq1. easy. easy.
+  eapply vars_sparse_vs_same. rewrite eq1. easy. easy.
+  rewrite (efresh_trans_same e1 dim vs v avs p); try easy.
+  rewrite eq1. easy.
+Qed.
+
+Lemma gen_sr_gate_uc_well_typed : forall n size x dim vs, n <= size ->
+     n < vsize vs x -> exp_com_WF vs dim -> uc_well_typed (gen_sr_gate' vs dim x n size).
+Proof.
+  induction n; intros; simpl.
+  constructor. unfold exp_com_WF in H2.
+  specialize (H2 (x,0)). apply H2. iner_p.
+  constructor. apply IHn; try lia. easy.
+  constructor.
+  specialize (H2 (x,n)). apply H2. simpl. lia.
+Qed.
+
+Lemma gen_srr_gate_uc_well_typed : forall n size x dim vs, n <= size ->
+     n < vsize vs x -> exp_com_WF vs dim -> uc_well_typed (gen_srr_gate' vs dim x n size).
+Proof.
+  induction n; intros; simpl.
+  constructor. unfold exp_com_WF in H2.
+  specialize (H2 (x,0)). apply H2. iner_p.
+  constructor. apply IHn; try lia. easy.
+  constructor.
+  specialize (H2 (x,n)). apply H2. simpl. lia.
+Qed.
+
+Lemma trans_exp_uc_well_typed : forall e dim vs avs,     
+     vars_start_diff vs -> vars_finite_bij vs ->
+       vars_sparse vs -> exp_fwf e -> exp_WF vs e ->
+            exp_com_WF vs dim ->  @uc_well_typed _ dim (fst (fst (trans_exp vs dim e avs))).
+Proof.
+  induction e; intros.
+  1-2:constructor; apply H5; inv H4; easy.
+  specialize (trans_exp_cu vs avs dim p e) as eq1.
+  destruct eq1. destruct H6. destruct H6. subst. rewrite H7. inv H4. inv H11.
+  constructor. apply H5. easy. apply H5. easy.
+  apply find_pos_prop; try assumption. inv H3. inv H9. easy.
+  rewrite H6. simpl. inv H4. inv H3.
+  apply uc_well_typed_control. split. apply H5.  easy.
+  split.
+  apply fresh_is_fresh; try assumption.
+  apply IHe; try easy.
+  1-2:constructor; apply H5; inv H4; easy.
+  simpl. unfold gen_sr_gate.
+  apply gen_sr_gate_uc_well_typed; try easy.
+  inv H4. easy.
+  simpl. unfold gen_srr_gate.
+  apply gen_srr_gate_uc_well_typed; try easy.
+  inv H4. easy.
+  simpl. inv H4.
+  constructor. apply H5. easy.
+  apply H5. easy.
+  apply find_pos_prop; try assumption.
+  inv H3. easy.
+  simpl. constructor.
+  assert (start vs x + vmap vs x 0 = find_pos vs (x,0)). easy.
+  rewrite H6. apply H5. inv H4. easy.
+  simpl. constructor.
+  assert (start vs x + vmap vs x 0 = find_pos vs (x,0)). easy.
+  rewrite H6. apply H5. inv H4. easy.
+  simpl. constructor.
+  assert (start vs x + vmap vs x 0 = find_pos vs (x,0)). easy.
+  rewrite H6. apply H5. inv H4. easy.
+  simpl.
+  inv H3. inv H4.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+  destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p.
+  constructor.
+  assert ((fst (fst (trans_exp vs dim e1 avs))) = b). rewrite eq1. easy.
+  rewrite <- H3.
+  apply IHe1; try easy.
+  assert ((fst (fst (trans_exp v dim e2 p0))) = b0). rewrite eq2. easy.
+  rewrite <- H3.
+  apply IHe2; try easy.
+  eapply vars_start_diff_vs_same. rewrite eq1. easy. easy.
+  eapply vars_finite_bij_vs_same. rewrite eq1. easy. easy.
+  eapply vars_sparse_vs_same. rewrite eq1. easy. easy.
+  eapply wf_vs_same. apply H11. rewrite eq1. easy.
+  eapply exp_com_WF_vs_same. rewrite eq1. easy. easy.
+Qed.
+
+Lemma two_n_kron_n: forall {m p} n i (A : Matrix m p),
+  WF_Matrix A -> (i + n) ⨂ A = (n ⨂ A) ⊗ (i ⨂ A).
+Proof.
+  intros.
+  induction n.
+  simpl.
+  Msimpl. rewrite plus_0_r.
+  reflexivity.
+  rewrite kron_n_assoc by assumption.
+  restore_dims.
+  rewrite kron_assoc.
+  rewrite <- IHn.
+  assert ((m ^ n * m ^ i) = m ^ (i + n)).
+  rewrite Nat.pow_add_r. lia.
+  rewrite H1. clear H1.
+  assert ((p ^ n * p ^ i) = p ^ (i + n)).
+  rewrite Nat.pow_add_r. lia.
+  rewrite H1. clear H1.
+  rewrite <- kron_n_assoc by assumption.
+  assert ((i + S n) =  S (i + n)) by lia.
+  rewrite H1. easy.
+  assumption.
+  auto with wf_db.
+  auto with wf_db.
+Qed.
+
+Lemma uc_cnot_control : forall (n i j : nat),
+  i < n -> j < n -> i <> j ->
+  (@uc_eval n (SQIR.CNOT i j)) = (uc_eval (control i (SQIR.X j))).
+Proof.
+  intros.
+  rewrite control_correct.
+  autorewrite with eval_db.
+  bdestruct ( i <? j).
+  assert ((i + (1 + (j - i - 1) + 1)) = j + 1) by lia.
+  rewrite H4. 
+  bdestruct (j + 1 <=? n).
+  unfold proj,pad.
+  bdestruct (i + 1 <=? n).
+  simpl.
+  autorewrite with ket_db.
+  rewrite Mplus_comm.
+  restore_dims.
+  rewrite kron_plus_distr_l.
+  rewrite kron_plus_distr_r.
+  rewrite kron_assoc.
+  rewrite kron_assoc.
+  assert ((I 2 ⊗ I (2 ^ (n - (j + 1)))) = I (2^ S (n - (j + 1)))).
+  rewrite <- kron_n_I.
+  rewrite <- kron_n_assoc.
+  rewrite kron_n_I. easy.
+  auto with wf_db.
+  rewrite H7.
+  rewrite kron_assoc.
+  assert ((I (2 ^ (j - i - 1)) ⊗ I (2 ^ S (n - (j + 1)))) = I (2 ^ (n - (i + 1)))).
+  Check @kron_n_I.
+  Check two_n_kron_n.
+  rewrite <- kron_n_I.
+  rewrite <- kron_n_I.
+  rewrite <- two_n_kron_n.
+  rewrite kron_n_I.
+  assert ((S (n - (j + 1)) + (j - i - 1)) = (n - (i + 1))) by lia.
+  rewrite H8. easy. 
+  auto with wf_db.
+  restore_dims.
+  rewrite H8.
+  gridify. easy.
+  1-9:auto with wf_db.
+  lia. lia.
+  bdestruct (j <? i).
+  assert (j + (1 + (i - j - 1) + 1) = i + 1) by lia.
+  rewrite H5. 
+  unfold proj,pad.
+  bdestruct (i + 1 <=? n).
+  bdestruct (j + 1 <=? n).
+  simpl.
+  autorewrite with ket_db.
+  rewrite Mplus_comm.
+  restore_dims.
+  rewrite kron_plus_distr_l.
+  gridify. easy. lia. lia. lia.
+  constructor. easy.
+  constructor. easy.
+Qed.
+
+Lemma vkron_proj_eq : forall f q n r b,
+  (forall j : nat, WF_Matrix (f j)) ->
+  q < n -> f q = r .* ket (Nat.b2n b) -> 
+  proj q n b × (vkron n f) = vkron n f.
+Proof.
+  intros f q n r b ? ? ?.
+  rewrite (vkron_split n q) by (try assumption; try lia). 
+  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
+  unfold proj, pad.
+  gridify. 
+  do 2 (apply f_equal2; try reflexivity). 
+  rewrite H2. destruct b; solve_matrix.
+Qed.
+
+Lemma vkron_proj_neq : forall f q n r b b',
+  (forall j : nat, WF_Matrix (f j)) ->
+  q < n -> f q = r .* ket (Nat.b2n b) -> b <> b' ->
+  proj q n b' × (vkron n f) = Zero.
+Proof.
+  intros f q n r b b' ? ? H ?.
+  rewrite (vkron_split n q) by (try assumption; try lia). 
+  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
+  unfold proj, pad.
+  gridify. rewrite H.
+  destruct b. destruct b'. contradiction. lma.
+  destruct b'.  lma. contradiction.
+Qed.
+
+
+Local Opaque SQIR.ID SQIR.CNOT SQIR.X SQIR.Rz. 
+
+Lemma trans_exp_cu_eval : forall vs avs dim p e, 
+          vars_start_diff vs -> vars_finite_bij vs -> vars_sparse vs ->
+                 exp_fwf (CU p e) ->
+                 exp_WF vs (CU p e) -> exp_com_WF vs dim ->
+                 (uc_eval (fst (fst (trans_exp vs dim (CU p e) avs)))) = 
+                    (uc_eval (control (find_pos vs p) (fst (fst (trans_exp vs dim e avs))))).
+Proof.
+  intros.
+  specialize (trans_exp_cu vs avs dim p e) as eq1.
+  destruct eq1.
+  destruct H6. destruct H6. subst. rewrite H7.
+  simpl.
+  rewrite uc_cnot_control. easy.
+  inv H4. apply H5. easy.
+  inv H4. inv H11. apply H5. easy.
+  inv H3. inv H9. inv H4. inv H12. 
+  apply find_pos_prop; try assumption.
+  rewrite H6. easy.
+Qed.
+
+Lemma turn_angle_add_same : forall n r q, q < n -> (turn_angle r n + rz_ang q)%R = (turn_angle (rotate r q) n)%R.
+Proof.
+
+Admitted.
+
+Lemma turn_angle_add_r_same : forall n r q, q < n -> (turn_angle r n + rrz_ang q)%R = (turn_angle (r_rotate r q) n)%R.
+Proof.
+
+Admitted.
+
+Lemma Z_0_bit : σz × ∣0⟩ = ∣0⟩.
+Proof.
+  solve_matrix.
+Qed.
+
+Lemma Z_1_bit : σz × ∣1⟩ = (-1)%R .* ∣1⟩.
+Proof.
+  solve_matrix.
+Qed.
+
+Lemma rz_ang_trans_sem : forall vs dim avs tenv q rmax f p size, 
+    exp_com_WF vs dim -> snd p < vsize vs (fst p) -> q < rmax ->
+    right_mode_env (size_env vs) tenv f -> Env.MapsTo (fst p) (Phi size) tenv ->
+    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
+           (phase_shift (rz_ang q) × trans_state avs rmax f (find_pos vs p))
+                = compile_val (times_rotate (f p) q) rmax.
+Proof.
+      intros.
+      unfold trans_state.
+      rewrite H5 by assumption.
+      apply (H3 (Phi size)) in H1; try easy. inv H1. 
+      unfold times_rotate.
+      unfold compile_val.
+      distribute_scale.
+      rewrite Mmult_plus_distr_l.
+      distribute_scale.
+      assert (∣0⟩ = ket (Nat.b2n false)).
+      autorewrite with ket_db. easy. rewrite H1.
+      rewrite phase_shift_on_basis_state.
+      simpl. rewrite Rmult_0_l. simpl. rewrite Cexp_0. Msimpl.
+      assert (∣1⟩ = ket (Nat.b2n true)).
+      autorewrite with ket_db. easy. rewrite H6.
+      rewrite phase_shift_on_basis_state. simpl.
+      distribute_scale.
+      rewrite <- Cexp_add. rewrite Rmult_1_l.
+      rewrite turn_angle_add_same. easy. easy.
+Qed.
+
+Lemma rrz_ang_trans_sem : forall vs dim avs tenv q rmax f p size, 
+    exp_com_WF vs dim -> snd p < vsize vs (fst p) -> q < rmax ->
+    right_mode_env (size_env vs) tenv f -> Env.MapsTo (fst p) (Phi size) tenv ->
+    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
+           (phase_shift (rrz_ang q) × trans_state avs rmax f (find_pos vs p))
+                = compile_val (times_r_rotate (f p) q) rmax.
+Proof.
+      intros.
+      unfold trans_state.
+      rewrite H5 by assumption.
+      apply (H3 (Phi size)) in H1; try easy. inv H1. 
+      unfold times_rotate.
+      unfold compile_val.
+      distribute_scale.
+      rewrite Mmult_plus_distr_l.
+      distribute_scale.
+      assert (∣0⟩ = ket (Nat.b2n false)).
+      autorewrite with ket_db. easy. rewrite H1.
+      rewrite phase_shift_on_basis_state.
+      simpl. rewrite Rmult_0_l. simpl. rewrite Cexp_0. Msimpl.
+      assert (∣1⟩ = ket (Nat.b2n true)).
+      autorewrite with ket_db. easy. rewrite H6.
+      rewrite phase_shift_on_basis_state. simpl.
+      distribute_scale.
+      rewrite <- Cexp_add. rewrite Rmult_1_l.
+      rewrite turn_angle_add_r_same. easy. easy.
+Qed.
+
+Lemma gen_sr_gate_eval : forall n size asize tenv f vs avs dim rmax x, n <= size <= asize ->
+    exp_com_WF vs dim -> n < vsize vs x -> size < rmax -> Env.MapsTo x (Phi asize) tenv ->
+    right_mode_env (size_env vs) tenv f ->
+    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
+    (forall i, i < dim -> find_pos vs (avs i) = i) ->
+    uc_eval (gen_sr_gate' vs dim x n size) × vkron dim (trans_state avs rmax f)
+    = vkron dim (trans_state avs rmax (sr_rotate' f x n size)).
+Proof.
+  induction n; intros; simpl.
+  rewrite denote_ID.
+  assert (find_pos vs (x,0) < dim).
+  apply H1. easy. unfold find_pos in H6.
+  unfold pad.
+  bdestruct (start vs x + vmap vs x 0 + 1 <=? dim).
+  repeat rewrite id_kron.
+  assert (2 ^ (start vs x + vmap vs x 0) * 2 = 2 ^ (start vs x + vmap vs x 0) * (2^1)).
+  rewrite Nat.pow_1_r. easy. rewrite H10.
+  repeat rewrite <- Nat.pow_add_r. Msimpl. easy.
+  unfold find_pos in H8. lia.
+  rewrite Mmult_assoc.
+  rewrite IHn with (asize := asize) (tenv := tenv); (try lia; try easy).
+  rewrite vkron_Rz. 
+  assert (vkron dim (trans_state avs rmax ((sr_rotate' f x n size) [(x, n)
+                      |-> times_rotate (f (x, n)) (size - n)])) = 
+          vkron dim (update (trans_state avs rmax (sr_rotate' f x n size))
+                        (find_pos vs (x, n)) (compile_val (times_rotate (f (x, n)) (size - n)) rmax))).
+  erewrite vkron_eq. reflexivity. intros.
+  apply (trans_state_update dim). simpl. lia. easy. assumption. assumption.
+  rewrite H8.
+  rewrite vkron_split_up.
+  Check rz_ang_trans_sem.
+  replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
+  rewrite (rz_ang_trans_sem vs dim avs tenv (size - n) rmax 
+      (sr_rotate' f x n size) (x,n) asize); (try lia; try easy).
+  rewrite sr_rotate'_ge; try easy.
+  simpl. lia.
+  unfold right_mode_env in *. intros.
+  destruct p.
+  bdestruct (x =? v). subst.
+  bdestruct (n0 <? n). 
+  rewrite sr_rotate'_lt_1; try lia.
+  simpl in H10.
+  apply mapsto_always_same with (v1:=(Phi asize)) in H10; try easy.
+  specialize (H5 (Phi asize) (v,n0) H9). simpl in H5. apply H5 in H4.
+  inv H4. unfold times_rotate. constructor.
+  rewrite sr_rotate'_ge ; try lia. apply H5; try easy. simpl. lia.
+  rewrite sr_rotate'_irrelevant; try easy.
+  apply H5; try easy. simpl. lia.
+  auto with wf_db. auto with wf_db.
+  apply H1. simpl. lia.
+  replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
+  apply H1. simpl. lia.
+  auto with wf_db. 
+Qed.
+
+Lemma gen_srr_gate_eval : forall n size asize tenv f vs avs dim rmax x, n <= size <= asize ->
+    exp_com_WF vs dim -> n < vsize vs x -> size < rmax -> Env.MapsTo x (Phi asize) tenv ->
+    right_mode_env (size_env vs) tenv f ->
+    (forall i, snd i < vsize vs (fst i) -> avs (find_pos vs i) = i) ->
+    (forall i, i < dim -> find_pos vs (avs i) = i) ->
+    uc_eval (gen_srr_gate' vs dim x n size) × vkron dim (trans_state avs rmax f)
+    = vkron dim (trans_state avs rmax (srr_rotate' f x n size)).
+Proof.
+  induction n; intros; simpl.
+  rewrite denote_ID.
+  assert (find_pos vs (x,0) < dim).
+  apply H1. easy. unfold find_pos in H6.
+  unfold pad.
+  bdestruct (start vs x + vmap vs x 0 + 1 <=? dim).
+  repeat rewrite id_kron.
+  assert (2 ^ (start vs x + vmap vs x 0) * 2 = 2 ^ (start vs x + vmap vs x 0) * (2^1)).
+  rewrite Nat.pow_1_r. easy. rewrite H10.
+  repeat rewrite <- Nat.pow_add_r. Msimpl. easy.
+  unfold find_pos in H8. lia.
+  rewrite Mmult_assoc.
+  rewrite IHn with (asize := asize) (tenv := tenv); (try lia; try easy).
+  rewrite vkron_Rz. 
+  assert (vkron dim (trans_state avs rmax ((srr_rotate' f x n size) [(x, n)
+                      |-> times_r_rotate (f (x, n)) (size - n)])) = 
+          vkron dim (update (trans_state avs rmax (srr_rotate' f x n size))
+                        (find_pos vs (x, n)) (compile_val (times_r_rotate (f (x, n)) (size - n)) rmax))).
+  erewrite vkron_eq. reflexivity. intros.
+  apply (trans_state_update dim). simpl. lia. easy. assumption. assumption.
+  rewrite H8.
+  rewrite vkron_split_up.
+  replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
+  rewrite (rrz_ang_trans_sem vs dim avs tenv (size - n) rmax 
+      (srr_rotate' f x n size) (x,n) asize); (try lia; try easy).
+  rewrite srr_rotate'_ge; try easy.
+  simpl. lia.
+  unfold right_mode_env in *. intros.
+  destruct p.
+  bdestruct (x =? v). subst.
+  bdestruct (n0 <? n). 
+  rewrite srr_rotate'_lt_1; try lia.
+  simpl in H10.
+  apply mapsto_always_same with (v1:=(Phi asize)) in H10; try easy.
+  specialize (H5 (Phi asize) (v,n0) H9). simpl in H5. apply H5 in H4.
+  inv H4. unfold times_r_rotate. constructor.
+  rewrite srr_rotate'_ge ; try lia. apply H5; try easy. simpl. lia.
+  rewrite srr_rotate'_irrelevant; try easy.
+  apply H5; try easy. simpl. lia.
+  auto with wf_db. auto with wf_db.
+  apply H1. simpl. lia.
+  replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
+  apply H1. simpl. lia.
+  auto with wf_db. 
+Qed.
+
+Lemma trans_exp_sem :
+  forall dim e f tenv rmax vs (avs : nat -> posi),
     vars_start_diff vs ->
     vars_finite_bij vs ->
     vars_sparse vs ->
     vars_anti_same vs ->
-    sexp_WF vs rmax e ->
+    exp_fwf e ->
+    exp_WF vs e ->
     exp_com_WF vs dim ->
     exp_com_gt vs avs dim ->
-    well_typed_sexp env e ->
-    right_mode_env (size_env vs) env f ->
-    avs_prop vs avs dim ->
+    well_typed_exp tenv e ->
+    right_mode_env (size_env vs) tenv f ->
+    avs_prop vs avs dim -> 
+    exp_rmax rmax e ->
+    (exists l l', exp_neu_t l e l') ->
     dim > 0 ->
-    (uc_eval (fst (fst (trans_sexp vs dim e avs)))) × (vkron dim (trans_state avs rmax f)) 
-         = vkron dim (trans_state (snd (trans_sexp vs dim e avs)) rmax (sexp_sem (size_env vs) e f)).
+    (uc_eval (fst (fst (trans_exp vs dim e avs)))) × (vkron dim (trans_state avs rmax f)) 
+                =  vkron dim (trans_state (snd (trans_exp vs dim e avs)) rmax (exp_sem (size_env vs) e f)).
 Proof.
-  intros dim e. induction e; intros; simpl.
-  - rewrite denote_ID_1. Msimpl. unfold size_env. 
-    rewrite <- lshift_avs_lshift_same; try easy.
-    inv H4. easy. unfold exp_com_WF,find_pos in H5.
-    specialize (H5 (x,0)). simpl in H5. apply H5. inv H4. easy.
-  - rewrite denote_ID_1. Msimpl. unfold size_env. rewrite <- rshift_avs_rshift_same; try easy.
-    inv H4. easy. unfold exp_com_WF,find_pos in H5.
-    specialize (H5 (x,0)). simpl in H5. apply H5. inv H4. easy.
-  - rewrite denote_ID_1. Msimpl. unfold size_env. rewrite <- rev_avs_rev_same; try easy.
-    inv H4. easy. unfold exp_com_WF,find_pos in H5.
-    specialize (H5 (x,0)). simpl in H5. apply H5. inv H4. easy.
-  - erewrite trans_exp_sem. easy. 1-3:assumption. inv H7.  easy. inv H4. easy. easy.
-    inv H7. apply H14. easy.
+  intros dim e. induction e; intros.
+  - simpl. rewrite denote_ID_1. Msimpl. easy.
+    apply H6. inv H5. easy.
+  - simpl.
+    rewrite vkron_X. 
+    assert (vkron dim (trans_state avs rmax (f [p |-> exchange (f p)])) = 
+                   vkron dim (update (trans_state avs rmax f)
+                        (find_pos vs p) (compile_val (exchange (f p)) rmax))).
+    erewrite vkron_eq. reflexivity. intros.
+    apply (trans_state_update dim). inv H5. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy. easy.
+    rewrite H14.  rewrite vkron_split_up.
+    assert ((σx × trans_state avs rmax f (find_pos vs p))
+                 = compile_val (exchange (f p)) rmax).
+    { unfold trans_state.
+      inv H5. rewrite vs_avs_bij_l with (dim := dim); try easy.
+      inv H8. unfold right_mode_env in H9.
+      apply (H9 Nor) in H17. inv H17.
+      unfold exchange. 
+      unfold compile_val.
+      distribute_scale.
+      destruct b. simpl.
+      autorewrite with ket_db. easy.
+      simpl.
+      autorewrite with ket_db. easy. easy.
+      apply (H9 Had) in H17.
+      inv H17. 
+      unfold exchange.
+      unfold compile_val.
+      distribute_scale.
+      autorewrite with ket_db.
+      rewrite Mplus_comm. easy. easy.
+      }
+    rewrite H15. easy.
+    intros.
+    auto with wf_db.
+    auto with wf_db.
+    apply H6. inv H5. assumption.
+    apply H6. inv H5. assumption.
+    auto with wf_db.
+  - rewrite trans_exp_cu_eval by assumption.
+    assert ((snd (trans_exp vs dim (CU p e) avs)) = avs).
+    specialize (trans_exp_cu vs avs dim p e) as eq1. destruct eq1.
+    destruct H14. destruct H14. rewrite H15. easy. rewrite H14. easy.
+    rewrite H14. clear H14.
+    rewrite control_correct.
+    simpl. 
+    assert (exists r', (trans_state avs rmax f) (find_pos vs p) = r' .* (ket (Nat.b2n (get_cua (f p))))).
+    inv H4. inv H5.
+    unfold trans_state. 
+    rewrite vs_avs_bij_l with (dim := dim); try easy.
+    inv H8. apply (H9 Nor) in H18; try easy. inv H18.
+    unfold compile_val,get_cua.
+    exists (Cexp (turn_angle r rmax)). easy.
+    destruct H14.
+    assert ((snd (trans_exp vs dim e avs)) = avs) as eq3.
+    destruct H12. destruct H12. inv H12. rewrite neu_trans_state with (l := empty_ls) ; try easy. 
+    rewrite Mmult_plus_distr_r.
+    rewrite Mmult_assoc.
+    specialize (IHe f tenv rmax vs avs).
+    inv H4. inv H5. inv H8. apply (H9 Nor) in H19 as eq1.
+    rewrite IHe; try easy.
+    destruct (get_cua (f p)) eqn:eq2.
+    erewrite vkron_proj_neq.
+    rewrite vkron_proj_eq with (r := x). rewrite eq3.
+    Msimpl. easy. auto with wf_db. apply H6. easy. rewrite eq3.
+    unfold trans_state in *. rewrite efresh_exp_sem_irrelevant. easy.
+    rewrite vs_avs_bij_l with (dim := dim); try easy.
+    auto with wf_db.
+    apply H6; easy. rewrite H14. reflexivity. easy.
+    rewrite vkron_proj_eq with (r := x).
+    rewrite vkron_proj_neq with (r := x) (b := false). Msimpl. easy.
+    auto with wf_db.
+    apply H6. easy. rewrite eq3.
+    unfold trans_state in *. rewrite efresh_exp_sem_irrelevant. easy.
+    rewrite vs_avs_bij_l with (dim := dim); try easy. easy.
+    auto with wf_db.
+    apply H6; easy. rewrite H14. reflexivity. inv H11. easy.
+    destruct H12. destruct H4. inv H4. exists empty_ls. exists empty_ls. easy. easy.
+    apply fresh_is_fresh; try easy.
+    inv H4. easy. inv H5. easy. inv H5. easy.
+    apply trans_exp_uc_well_typed; try easy. inv H4. easy. inv H5. easy.
+  - simpl.
+    rewrite vkron_Rz. 
+    assert (vkron dim (trans_state avs rmax (f [p |-> times_rotate (f p) q])) = 
+                   vkron dim (update (trans_state avs rmax f)
+                        (find_pos vs p) (compile_val (times_rotate (f p) q) rmax))).
+    erewrite vkron_eq. reflexivity. intros.
+    apply (trans_state_update dim). inv H5. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy. easy.
+    rewrite H14.  rewrite vkron_split_up.
+    assert ((phase_shift (rz_ang q) × trans_state avs rmax f (find_pos vs p))
+                 = compile_val (times_rotate (f p) q) rmax).
+    { unfold trans_state.
+      inv H5.
+      rewrite vs_avs_bij_l with (dim := dim); try easy.
+      inv H8. apply (H9 Nor) in H17; try easy. inv H17. 
+      unfold times_rotate. destruct b.
+      unfold compile_val.
+      distribute_scale.
+      rewrite phase_shift_on_basis_state.
+      distribute_scale.
+      rewrite <- Cexp_add. simpl. rewrite Rmult_1_l.
+      inv H11. rewrite turn_angle_add_same. easy. easy.
+      unfold compile_val.
+      distribute_scale.
+      rewrite phase_shift_on_basis_state.
+      distribute_scale. simpl. 
+      rewrite <- Cexp_add. simpl.
+      autorewrite with R_db. easy.
+      apply (H9 Had) in H17. inv H17. 
+      unfold compile_val,times_rotate. unfold rz_ang,z_phase.
+      assert ((2 * PI / 2 ^ 1)%R = PI) by lra. rewrite H15.
+      rewrite phase_pi. destruct b1. destruct b2.
+      distribute_scale. gridify.
+      rewrite Z_0_bit. rewrite Z_1_bit. easy.
+      simpl. distribute_scale. gridify. distribute_scale.
+      rewrite Z_0_bit. rewrite Z_1_bit.
+      rewrite Mscale_assoc.
+      assert (((-1)%R * (-1)%R)%C = C1) by lca.
+      rewrite H17. Msimpl. easy.
+      destruct b2.
+      distribute_scale. gridify. distribute_scale.
+      rewrite Z_0_bit. rewrite Z_1_bit. easy.
+      simpl.
+      distribute_scale. gridify. distribute_scale.
+      rewrite Z_0_bit. rewrite Z_1_bit. 
+      rewrite Mscale_assoc.
+      assert (((-1)%R * (-1)%R)%C = C1) by lca.
+      rewrite H17. Msimpl. easy. easy.
+      }
+    rewrite H15. easy.
+    intros.
+    auto with wf_db.
+    auto with wf_db.
+    apply H6. inv H5. assumption.
+    apply H6. inv H5. assumption.
+    auto with wf_db.
+  - simpl.
+    rewrite vkron_Rz. 
+    assert (vkron dim (trans_state avs rmax (f [p |-> times_r_rotate (f p) q])) = 
+                   vkron dim (update (trans_state avs rmax f)
+                        (find_pos vs p) (compile_val (times_r_rotate (f p) q) rmax))).
+    erewrite vkron_eq. reflexivity. intros.
+    apply (trans_state_update dim). inv H5. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy. easy.
+    rewrite H14.  rewrite vkron_split_up.
+    assert ((phase_shift (rrz_ang q) × trans_state avs rmax f (find_pos vs p))
+                 = compile_val (times_r_rotate (f p) q) rmax).
+    { unfold trans_state.
+      inv H5.
+      rewrite vs_avs_bij_l with (dim := dim); try easy.
+      inv H8. apply (H9 Nor) in H17.
+      inv H17.
+      unfold times_r_rotate. destruct b. 
+      unfold compile_val.
+      distribute_scale.
+      rewrite phase_shift_on_basis_state.
+      distribute_scale.
+      rewrite <- Cexp_add. simpl. rewrite Rmult_1_l.
+      inv H11. rewrite turn_angle_add_r_same. easy. easy.
+      unfold compile_val.
+      distribute_scale.
+      rewrite phase_shift_on_basis_state.
+      distribute_scale. simpl. 
+      rewrite <- Cexp_add. simpl.
+      autorewrite with R_db. easy. easy.
+      apply (H9 Had) in H17. inv H17.
+      unfold compile_val,times_r_rotate. unfold rrz_ang,z_phase.
+      assert ((2 * PI - 2 * PI / 2 ^ 1)%R = PI) by lra. rewrite H15.
+      rewrite phase_pi. destruct b1. destruct b2.
+      distribute_scale. gridify.
+      rewrite Z_0_bit. rewrite Z_1_bit. easy.
+      simpl. distribute_scale. gridify. distribute_scale.
+      rewrite Z_0_bit. rewrite Z_1_bit.
+      rewrite Mscale_assoc.
+      assert (((-1)%R * (-1)%R)%C = C1) by lca.
+      rewrite H17. Msimpl. easy.
+      destruct b2.
+      distribute_scale. gridify. distribute_scale.
+      rewrite Z_0_bit. rewrite Z_1_bit. easy.
+      simpl.
+      distribute_scale. gridify. distribute_scale.
+      rewrite Z_0_bit. rewrite Z_1_bit. 
+      rewrite Mscale_assoc.
+      assert (((-1)%R * (-1)%R)%C = C1) by lca.
+      rewrite H17. Msimpl. easy. easy.
+      }
+    rewrite H15. easy.
+    intros.
+    auto with wf_db.
+    auto with wf_db.
+    apply H6. inv H5. assumption.
+    apply H6. inv H5. assumption.
+    auto with wf_db.
+  - Local Opaque gen_sr_gate. simpl.
+    Local Transparent gen_sr_gate. unfold gen_sr_gate,sr_rotate.
+    inv H8. inv H5. inv H4. inv H11.
+    rewrite gen_sr_gate_eval with (asize := n) (tenv := tenv); try easy.
     apply vs_avs_bij_l with (dim := dim); try easy.
     apply vs_avs_bij_r with (dim := dim); try easy.
-    apply vs_avs_size with (dim := dim); try easy.
-    inv H4. easy. easy.
-  - simpl. inv H4. inv H7.
-    destruct (trans_sexp vs dim e1 avs) as [p avs'] eqn:eq1.
-    destruct p as [e1' vs']. 
-    destruct (trans_sexp vs' dim e2 avs') as [p avs''] eqn:eq2.
-    destruct p as [e2' vs'']. simpl.
-    specialize (IHe1 f env0 rmax vs avs H0 H1 H2 H3 H15 H5 H6 H13 H8 H9 H10).
-    rewrite eq1 in IHe1. simpl in IHe1.
-    rewrite Mmult_assoc. rewrite IHe1.
-    specialize (IHe2 (sexp_sem (size_env vs) e1 f) env0 rmax vs' avs').
-    rewrite eq2 in IHe2. simpl in IHe2.
-    rewrite IHe2; try assumption.
-    erewrite (size_env_vs_same vs vs'). easy.
+  - Local Opaque gen_srr_gate. simpl.
+    Local Transparent gen_srr_gate. unfold gen_srr_gate,srr_rotate.
+    inv H8. inv H5. inv H4. inv H11.
+    rewrite gen_srr_gate_eval with (asize := n) (tenv := tenv); try easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy.
+  - 
+(*
+simpl. inv H4. inv H5.
+    rewrite uc_cnot_control; try easy.
+    rewrite control_correct. inv H6.
+    apply (H7 Had) in H16 as eq1.
+    apply (H7 Had) in H17 as eq2. inv eq1. inv eq2.
+    unfold hexchange.
+    rewrite Mmult_plus_distr_r.
+    rewrite Mmult_assoc.
+    assert ((uc_eval (SQIR.X (find_pos vs p2))
+      × vkron dim (trans_state avs rmax f))
+      = (vkron dim (trans_state avs rmax (f[p2 |-> exchange (f p2)])))).
+    rewrite vkron_X. 
+    assert (vkron dim (trans_state avs rmax (f [p2 |-> exchange (f p2)])) = 
+                   vkron dim (update (trans_state avs rmax f)
+                        (find_pos vs p2) (compile_val (exchange (f p2)) rmax))).
+    erewrite vkron_eq. reflexivity. intros.
+    apply (trans_state_update dim). easy. assumption. assumption. lia.
+    rewrite H19.  rewrite vkron_split_up.
+    assert ((σx × trans_state avs rmax f (find_pos vs p2))
+                 = compile_val (exchange (f p2)) rmax).
+    { unfold trans_state.
+      rewrite H8 by assumption.
+      unfold exchange.
+      rewrite <- H6. 
+      unfold compile_val.
+      distribute_scale.
+      autorewrite with ket_db. rewrite Mplus_comm. easy.
+      }
+    rewrite H20. easy.
+    auto with wf_db.
+    auto with wf_db.
+    apply H5. assumption.
+    apply H5. assumption.
+    auto with wf_db.
+    rewrite H19. clear H19.
+    destruct (eqb b0 b3) eqn:eq1.
+    apply Bool.eqb_prop in eq1.
+    rewrite <- H6. unfold exchange. subst.
+    rewrite H6. rewrite H3.
+    rewrite eupdate_same by easy.
+    rewrite eupdate_same by easy.
+    rewrite <- Mmult_plus_distr_r.
+    rewrite Mplus_comm.
+    rewrite proj_sum.
+    Msimpl. easy.
+    apply H5. easy.
+    apply eqb_false_iff in eq1.
+    rewrite <- H6. unfold exchange.
+    rewrite (vkron_split dim (find_pos vs p1)).
+    assert (trans_state avs rmax f (find_pos vs p1) = Cexp ((turn_angle r rmax)) .*
+                              ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)).
+    unfold trans_state,compile_val. rewrite H8; try easy. rewrite <- H3. easy.
+    rewrite H19.
+    distribute_scale.
+    distribute_plus.
+    distribute_scale.
+    assert (@Mmult (2 ^ dim) (2 ^ dim) 1 
+            (proj (find_pos vs p1) dim false)
+            (vkron (find_pos vs p1) (trans_state avs rmax f) ⊗ ∣1⟩
+              ⊗ vkron (dim - 1 - find_pos vs p1)
+                  (shift (trans_state avs rmax f) (find_pos vs p1 + 1))) = Zero).
+    replace ((dim - 1 - find_pos vs p1)) with (dim - (1 + find_pos vs p1)) by lia.
+    unfold proj,pad.
+    assert (∣1⟩ = ket (Nat.b2n true)). autorewrite with ket_db. simpl. easy. rewrite H20.
+    gridify.
+    assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H16.
+    autorewrite with ket_db. easy.
+    rewrite H20. clear H20. Msimpl.
+    rewrite (vkron_split dim (find_pos vs p1) (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]))).
+    assert (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]) (find_pos vs p1) = Cexp ((turn_angle r rmax)) .*
+                              ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)).
+    unfold trans_state,compile_val. rewrite H8; try easy.
+    rewrite eupdate_index_neq by iner_p. rewrite <- H3. easy.
+    rewrite H20. clear H20.
+    distribute_scale.
+    distribute_plus.
+    distribute_scale.
+    assert (@Mmult (2 ^ dim) (2 ^ dim) 1 
+            (proj (find_pos vs p1) dim true)
+            (vkron (find_pos vs p1)
+                (trans_state avs rmax (f [p2 |-> hval b3 b0 r0])) ⊗ ∣0⟩
+              ⊗ vkron (dim - 1 - find_pos vs p1)
+                  (shift
+                     (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]))
+                     (find_pos vs p1 + 1))) = Zero).
+    replace ((dim - 1 - find_pos vs p1)) with (dim - (1 + find_pos vs p1)) by lia.
+    unfold proj,pad.
+    assert (∣0⟩ = ket (Nat.b2n false)). autorewrite with ket_db. simpl. easy. rewrite H20.
+    gridify.
+    assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H16.
+    autorewrite with ket_db. easy.
+    rewrite H20. clear H20. Msimpl.
+
+    admit.
+    auto with wf_db.
+    apply H5. easy.
+    auto with wf_db.
+    apply H5. easy.
+    1-2:easy.
+    assert (SQIR.X (find_pos vs p2) = trans_exp vs dim (X p2)) by easy.
+    rewrite H3.
+    apply fresh_is_fresh; try easy. constructor. easy. constructor. easy.
+    assert (SQIR.X (find_pos vs p2) = trans_exp vs dim (X p2)) by easy. rewrite H3.
+    apply trans_exp_uc_well_typed; try easy. constructor. constructor. easy.
+    apply H5. easy. apply H5. easy.
+    apply find_pos_prop; try easy.
+*) admit.
+  - simpl. rewrite denote_ID_1. Msimpl. unfold size_env. 
+    rewrite <- lshift_avs_lshift_same; try easy.
+    inv H5. easy. unfold exp_com_WF,find_pos in H6.
+    specialize (H6 (x,0)). simpl in H6. apply H6. inv H5. easy.
+  - simpl. rewrite denote_ID_1. Msimpl. unfold size_env. rewrite <- rshift_avs_rshift_same; try easy.
+    inv H5. easy. unfold exp_com_WF,find_pos in H6.
+    specialize (H6 (x,0)). simpl in H6. apply H6. inv H5. easy.
+  - simpl. rewrite denote_ID_1. Msimpl. unfold size_env. rewrite <- rev_avs_rev_same; try easy.
+    inv H5. easy. unfold exp_com_WF,find_pos in H6.
+    specialize (H6 (x,0)). simpl in H6. apply H6. inv H5. easy.
+  - simpl.
+    destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+    destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p. simpl. inv H4. inv H5. inv H8. inv H11.
+    rewrite Mmult_assoc.
+    assert (b = fst (fst (trans_exp vs dim e1 avs))). rewrite eq1. easy.
+    rewrite H4.
+    rewrite (IHe1 f tenv); try easy.
+    assert (b0 = fst (fst (trans_exp v dim e2 p0))). rewrite eq2. easy.
+    rewrite H5. rewrite eq1. simpl.
+    rewrite (IHe2 (exp_sem (size_env vs) e1 f) tenv); try easy.
+    rewrite eq2. simpl.
+    rewrite (size_env_vs_same vs v e1 dim avs). easy.
     rewrite eq1. easy.
-    eapply vars_start_diff_vs_same. rewrite eq1. easy. easy.
-    eapply vars_finite_bij_vs_same. rewrite eq1. easy. assumption.
-    eapply vars_sparse_vs_same. rewrite eq1. easy. easy.
-    eapply vars_anti_vs_same. rewrite eq1. easy. easy.
-    eapply swf_vs_same. apply H16. rewrite eq1. easy.
-    eapply exp_com_WF_vs_same. rewrite eq1. easy. easy.
-    eapply exp_com_gt_vs_same. rewrite eq1. easy. rewrite eq1. easy. easy.
-    rewrite (size_env_vs_same vs vs' e1 dim avs).
-    apply well_typed_right_mode_sexp; try easy. rewrite eq1. easy.
-    eapply avs_prop_vs_same. rewrite eq1. easy. rewrite eq1. easy.
-    easy. easy. easy.
-Qed.
+    apply (vars_start_diff_vs_same vs v e1 dim avs).
+    rewrite eq1. easy. easy.
+    apply (vars_finite_bij_vs_same e1 dim vs v avs).
+    rewrite eq1. easy. easy.
+    apply (vars_sparse_vs_same e1 dim vs v avs).
+    rewrite eq1. easy. easy.
+    apply (vars_anti_vs_same e1 dim vs v avs).
+    rewrite eq1. easy. easy.
+    apply (wf_vs_same e2 e1 avs dim vs v). easy.
+    rewrite eq1. easy.
+    apply (exp_com_WF_vs_same e1 dim avs vs v).
+    rewrite eq1. easy. easy.
+    apply (exp_com_gt_vs_same e1 dim vs v avs p0).
+    rewrite eq1. easy. rewrite eq1. easy. easy.
+    rewrite (size_env_vs_same vs v e1 dim avs); try easy.
+    apply well_typed_right_mode_exp; try easy.
+    rewrite eq1. easy.
+    apply (avs_prop_vs_same e1 dim vs v avs p0).
+    rewrite eq1. easy. rewrite eq1. easy. easy.
+    easy. easy.
+    destruct H12. destruct H8. inv H8.
+    exists l'. exists x0. easy.
+    destruct H12. destruct H5. inv H5.
+    exists x. exists l'. easy.
+Admitted.
 
 (* generalized Controlled rotation cascade on n qubits. *)
 
@@ -7636,7 +7762,7 @@ Inductive pexp := SExp (s:sexp) | QFT (x:var) | RQFT (x:var)
 *)
 
 Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
-     match exp with SExp s => (trans_sexp vs dim s avs)
+     match exp with Exp s => (trans_exp vs dim s avs)
                  | QFT x => (trans_qft vs dim x, vs, avs)
                  | RQFT x => (trans_rqft vs dim x, vs, avs)
                  | H x => (trans_h vs dim x, vs, avs)
@@ -7648,12 +7774,11 @@ Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
                             end
      end.
 
-
 Inductive pexp_WF : vars -> nat -> pexp -> Prop :=
       | qft_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (QFT x)
       | rqft_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (RQFT x)
       | h_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (H x)
-      | sexp_wf : forall vs rs e, sexp_WF vs rs e -> pexp_WF vs rs (SExp e)
+      | sexp_wf : forall vs rs e, exp_WF vs e -> exp_rmax rs e -> pexp_WF vs rs (Exp e)
       | fseq_wf : forall vs rs e1 e2, pexp_WF vs rs e1 -> pexp_WF vs rs e2 -> pexp_WF vs rs (FSeq e1 e2).
 
 Lemma trans_pexp_sem :
@@ -7674,6 +7799,8 @@ Lemma trans_pexp_sem :
 Proof.
   intros dim e. induction e; intros; simpl.
 Admitted.
+
+
 
 (* Definition of the adder and the modmult in the language. *)
 Definition CNOT (x y : posi) := CU x (X y).
@@ -7714,8 +7841,8 @@ Qed.
 
 
 (* Proofs of semantics. *)
-Lemma cnot_sem : forall f x y, nor_mode f x -> nor_mode f y -> 
-              exp_sem (CNOT x y) f = (f[y |-> put_cu (f y) (get_cua (f x) ⊕ get_cua (f y))]).
+Lemma cnot_sem : forall f x y aenv, nor_mode f x -> nor_mode f y -> 
+              exp_sem aenv (CNOT x y) f = (f[y |-> put_cu (f y) (get_cua (f x) ⊕ get_cua (f y))]).
 Proof.
  intros.
  unfold CNOT.
@@ -7754,24 +7881,24 @@ Proof.
  rewrite eq2 in H1. inv H1.
 Qed.
 
-Lemma cnot_nor : forall f x y v, nor_mode f x -> nor_mode f y -> 
+Lemma cnot_nor : forall f x y v aenv, nor_mode f x -> nor_mode f y -> 
           put_cu (f y) (get_cua (f x) ⊕ get_cua (f y)) = v
-           -> exp_sem (CNOT x y) f = (f[y |-> v]).
+           -> exp_sem aenv (CNOT x y) f = (f[y |-> v]).
 Proof.
   intros. subst. apply cnot_sem; assumption.
 Qed.
 
-Lemma cnot_nor_1 : forall f f' x y v, nor_mode f x -> nor_mode f y -> 
+Lemma cnot_nor_1 : forall f f' x y v aenv, nor_mode f x -> nor_mode f y -> 
           put_cu (f y) (get_cua (f x) ⊕ get_cua (f y)) = v
            -> f[y|-> v] = f'
-           -> exp_sem (CNOT x y) f = f'.
+           -> exp_sem aenv (CNOT x y) f = f'.
 Proof.
   intros. subst. apply cnot_sem; assumption.
 Qed.
 
-Lemma ccx_sem : forall f x y z, nor_mode f x -> nor_mode f y -> nor_mode f z
+Lemma ccx_sem : forall f x y z aenv, nor_mode f x -> nor_mode f y -> nor_mode f z
                      -> x <> y -> y <> z -> x <> z -> 
-                    exp_sem (CCX x y z) f = (f[z |-> put_cu (f z) (get_cua (f z) ⊕ (get_cua (f y) && get_cua (f x)))]).
+                    exp_sem aenv (CCX x y z) f = (f[z |-> put_cu (f z) (get_cua (f z) ⊕ (get_cua (f y) && get_cua (f x)))]).
 Proof.
  intros. 
  assert (eq1 := H0).
@@ -7794,11 +7921,11 @@ Proof.
  rewrite put_get_cu. rewrite eupdate_same. easy. easy. assumption.
 Qed.
 
-Lemma ccx_nor : forall f f' x y z v, nor_mode f x -> nor_mode f y -> nor_mode f z
+Lemma ccx_nor : forall f f' x y z v aenv, nor_mode f x -> nor_mode f y -> nor_mode f z
                      -> x <> y -> y <> z -> x <> z -> 
                        put_cu (f z) (get_cua (f z) ⊕ (get_cua (f y) && get_cua (f x))) = v ->
                        f = f' ->
-                    exp_sem (CCX x y z) f = (f'[z |-> v]).
+                    exp_sem aenv (CCX x y z) f = (f'[z |-> v]).
 Proof.
  intros. subst. apply ccx_sem. 1 - 6: assumption. 
 Qed.
@@ -7815,8 +7942,8 @@ Check phi_modes.
 
 Check cut_n.
 
-Lemma rz_adder_sem : forall n f x M, phi_modes f x n ->
-                   get_r_qft (exp_sem (rz_adder x n M) f) x
+Lemma rz_adder_sem : forall n f x M aenv , phi_modes f x n ->
+                   get_r_qft (exp_sem aenv (rz_adder x n M) f) x
                     = cut_n (fbrev n (sumfb false (fbrev n (get_r_qft f x)) (fbrev n M))) n.
 Proof.
   intros.
@@ -7826,9 +7953,9 @@ Definition one_cu_adder (x:var) (n:nat) (c3:posi) (M:nat -> bool) := CU c3 (rz_a
 
 (* assuming the input is in qft stage. *)
 Definition rz_modadder (x:var) (n:nat) (y c: posi) (a:nat -> bool) (N:nat -> bool) :=
-    (SExp (Exp (one_cu_adder x n y a ; rz_adder x n N))) ;;; RQFT x ;;; (SExp (Exp (CNOT (x,n-1) c))) ;;; QFT x
-          ;;; (SExp (Exp (one_cu_adder x n c N ; one_cu_adder x n y a)));;;
-     RQFT x ;;; (SExp (Exp (X (x,n-1) ; CNOT (x,n-1) c; X (x,n-1))));;; QFT x;;; SExp (Exp (one_cu_adder x n y a)).
+    (SExp (Exp (one_cu_adder x n y a ; rz_adder x n N))) ;; RQFT x ;; (SExp (Exp (CNOT (x,n-1) c))) ;; QFT x
+          ;; (SExp (Exp (one_cu_adder x n c N ; one_cu_adder x n y a)));;
+     RQFT x ;; (SExp (Exp (X (x,n-1) ; CNOT (x,n-1) c; X (x,n-1))));; QFT x;; SExp (Exp (one_cu_adder x n y a)).
 
 (* Mod adder. [x][0] -> [x][ax%N] having the a and N as constant. *)
 Fixpoint rz_modmult' (y:var) (x:var) (n:nat) (size:nat) (c:posi) (a:nat -> bool) (N:nat -> bool) :=
