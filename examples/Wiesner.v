@@ -21,7 +21,6 @@ Proof.
     exists a.
     split.
     + simpl in H.
-      Search (S _ = S _ -> _ = _).
       apply eq_add_S in H.
       assumption.
     + reflexivity.
@@ -149,7 +148,6 @@ Proof.
   solve_matrix.
 Qed.
 
-Search pad.
 
 Lemma circuit'_individual_qubit_non_meas_same_base_false: forall base n i, (n > 0)%nat -> (i < n)%nat -> uc_eval (circuit'_qubit_i_non_meas false base base n i) = I (2 ^ n). 
 Proof.
@@ -251,7 +249,6 @@ Lemma circuit_growth_same_base: forall n data base, length data = (S n) -> lengt
     destruct data, base; try discriminate.
     destruct data, base; try discriminate.
     simpl.
-    Search pad.
     destruct b, b0; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP; try (repeat rewrite unfold_pad); try simpl; try auto.
 Abort.
 
@@ -302,8 +299,7 @@ Proof.
     Opaque circuit'_qubit_i_non_meas.
     simpl.
     destruct b0, b.
-    + Search (circuit'_qubit_i_non_meas).
-      rewrite circuit'_individual_qubit_non_meas_same_base_true; try trivial (* For assuption (S n > 0) *).
+    + rewrite circuit'_individual_qubit_non_meas_same_base_true; try trivial (* For assuption (S n > 0) *).
       simpl.
 Abort.
 
@@ -883,7 +879,6 @@ Proof.
       apply le_n_S.
       apply le_n_S.
       apply le_plus_l.
-      Search (_ + S _)%nat.
       rewrite <- Nat.add_succ_comm.
       rewrite <- Nat.add_succ_comm.
       rewrite plus_Sn_m.
@@ -1154,8 +1149,68 @@ Proof.
       apply gt_Sn_O.
       apply diff_true_false.
       apply gt_Sn_O.
-
-Admitted.
+    + rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
+      simpl.
+      repeat rewrite Mmult_1_l.
+      repeat rewrite Mmult_1_r.
+      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
+      rewrite IHn.
+      replace (S (S n)) with (1 + (S n))%nat. 
+      rewrite IHn.
+      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
+      restore_dims.
+      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
+      rewrite id_kron.
+      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
+      restore_dims.
+      reflexivity.
+      rewrite mult_comm.
+      rewrite Nat.pow_1_r.
+      rewrite pow_two_succ_r.
+      replace (S i + 1)%nat with (S (S i)).
+      reflexivity.
+      rewrite Nat.add_1_r.
+      reflexivity.
+      apply WF_I.
+      apply WF_I.
+      apply WF_uc_eval.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      auto.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      replace (S i) with (i + 1)%nat.
+      replace (S (S n)) with (1 + (S n))%nat.
+      rewrite plus_Sn_m.
+      rewrite <- Nat.add_assoc.
+      reflexivity.
+      auto.
+      apply Nat.add_1_r.
+      restore_dims.
+      apply WF_uc_eval.
+      restore_dims.
+      apply WF_uc_eval.
+      apply gt_Sn_O.
+      apply lt_O_Sn.
+      apply gt_Sn_O.
+      constructor.
+      replace (i + S (S n))%nat with (S (S (i +n)))%nat.
+      apply le_n_S.
+      apply le_n_S.
+      apply le_plus_l.
+      rewrite <- Nat.add_succ_comm.
+      rewrite <- Nat.add_succ_comm.
+      rewrite plus_Sn_m.
+      rewrite plus_Sn_m.
+      reflexivity.
+Qed.
 
 Theorem circuit'_helper_growth: forall n l, (length l = S n) ->  uc_eval(circuit'_helper l (S (S n)) 1) =  I 2 ⊗ uc_eval (circuit'_helper l (S n) 0).
   intros.
@@ -1233,7 +1288,6 @@ Proof.
       rewrite unfold_pad.
       simpl.
       rewrite kron_1_l.
-      Search ((_ ⊗ _ ) × (_⊗_)).
       restore_dims.
       replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data base base (S n)))).
       rewrite Mmult_1_l.
@@ -1256,7 +1310,6 @@ Proof.
       restore_dims.
       apply WF_uc_eval.
       restore_dims.
-      Search (_ × _ ⊗ (_ × _)).
       prep_matrix_equality.
       rewrite kron_mixed_product.
       simpl.
@@ -1286,7 +1339,6 @@ Proof.
       rewrite unfold_pad.
       simpl.
       rewrite kron_1_l.
-      Search ((_ ⊗ _ ) × (_⊗_)).
       restore_dims.
       replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data base base (S n)))).
       rewrite Mmult_1_l.
@@ -1309,7 +1361,6 @@ Proof.
       restore_dims.
       apply WF_uc_eval.
       restore_dims.
-      Search (_ × _ ⊗ (_ × _)).
       prep_matrix_equality.
       rewrite kron_mixed_product.
       simpl.
@@ -1337,7 +1388,6 @@ Proof.
       rewrite IHn.
       rewrite circuit'_individual_qubit_non_meas_same_base_false.
       simpl.
-      Search ((_ ⊗ _ ) × (_⊗_)).
       restore_dims.
       replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data base base (S n)))).
       rewrite Mmult_1_l.
@@ -1366,7 +1416,6 @@ Proof.
       restore_dims.
       apply WF_uc_eval.
       restore_dims.
-      Search (_ × _ ⊗ (_ × _)).
       prep_matrix_equality.
       rewrite kron_mixed_product.
       simpl.
@@ -1394,7 +1443,6 @@ Proof.
       replace (circuit'_helper (zip (zip data base) base) (S n)0) with (circuit' data base base (S n)).
       rewrite IHn.
       simpl.
-      Search ((_ ⊗ _ ) × (_⊗_)).
       restore_dims.
       replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data base base (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data base base (S n)))).
       rewrite Mmult_1_l.
@@ -1422,7 +1470,6 @@ Proof.
       restore_dims.
       apply WF_uc_eval.
       restore_dims.
-      Search (_ × _ ⊗ (_ × _)).
       prep_matrix_equality.
       rewrite kron_mixed_product.
       simpl.
