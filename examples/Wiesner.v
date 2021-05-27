@@ -326,6 +326,8 @@ Theorem kron_dist_mult_id : forall n m (B C : Square m) , (I n) ⊗ (B × C) = (
  reflexivity.
  apply WF_I.
 Qed.
+  
+ 
  
 Lemma circuit'_helper_growth_i: forall n l i, (length l = S n) -> uc_eval(circuit'_helper l ((S i) + (S n)) (S i)) =  I (2^(S i)) ⊗ uc_eval (circuit'_helper l (S n) 0).
 Proof.
@@ -703,7 +705,6 @@ Proof.
       replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
       replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
       restore_dims.
-      Search "kron_".
       rewrite kron_dist_mult_id.
       rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
       rewrite id_kron.
@@ -714,7 +715,6 @@ Proof.
       apply WF_I.
       apply WF_σx.
       apply WF_I.
-      Search (_ ^ _ * _ )%nat.
       rewrite <- Nat.pow_add_r.
       replace (S i + 1)%nat with (S (S i)).
       reflexivity.
@@ -725,7 +725,6 @@ Proof.
       apply WF_uc_eval.
       rewrite Nat.add_0_r.
       rewrite double_mult.
-      Search (_ *_ ^ _)%nat.
       rewrite Nat.pow_succ_r.
       reflexivity.
       apply Nat.le_0_l.
@@ -746,9 +745,7 @@ Proof.
       simpl in H.
       apply eq_add_S.
       assumption.
-      Search ((S _ + _) = S (_ + _))%nat.      
       rewrite Nat.add_succ_l.
-      Search (_ = _ -> S _ = S _)%nat.
       apply eq_S.
       replace (S i) with (i + 1)%nat.
       replace (S (S n)) with (1 + (S n))%nat.
@@ -758,6 +755,406 @@ Proof.
       apply Nat.add_1_r.
       apply gt_Sn_O.
       apply gt_Sn_O.
+    + rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
+      remember (hadamard × σx) as hx.
+      rewrite 2 unfold_pad.
+      simpl.
+      rewrite i_1_i_S.
+      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
+      rewrite IHn.
+      replace (S (S n)) with (1 + (S n))%nat. 
+      rewrite IHn.
+      rewrite kron_1_l.
+      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
+      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
+      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
+      restore_dims.
+      rewrite kron_dist_mult_id.
+      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
+      rewrite id_kron.
+      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
+      rewrite <- kron_assoc.
+      restore_dims.
+      reflexivity.
+      apply WF_I.
+      subst.
+      apply WF_mult.
+      apply WF_hadamard.
+      apply WF_σx.
+      apply WF_I.
+      rewrite <- Nat.pow_add_r.
+      replace (S i + 1)%nat with (S (S i)).
+      reflexivity.
+      rewrite Nat.add_1_r.
+      reflexivity.
+      apply WF_I.
+      apply WF_I.
+      apply WF_uc_eval.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      rewrite Nat.add_assoc.
+      rewrite Nat.add_comm.
+      rewrite Nat.add_sub.
+      reflexivity.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      subst.
+      apply WF_mult.
+      apply WF_hadamard.
+      apply WF_σx.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      auto.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      rewrite Nat.add_succ_l.
+      apply eq_S.
+      replace (S i) with (i + 1)%nat.
+      replace (S (S n)) with (1 + (S n))%nat.
+      rewrite <- Nat.add_assoc.
+      reflexivity.
+      auto.
+      apply Nat.add_1_r.
+      apply diff_false_true.
+      apply gt_Sn_O.
+      apply diff_false_true.
+      apply gt_Sn_O.
+    + rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
+      simpl.
+      repeat rewrite Mmult_1_l.
+      repeat rewrite Mmult_1_r.
+      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
+      rewrite IHn.
+      replace (S (S n)) with (1 + (S n))%nat. 
+      rewrite IHn.
+      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
+      restore_dims.
+      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
+      rewrite id_kron.
+      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
+      restore_dims.
+      reflexivity.
+      rewrite mult_comm.
+      rewrite Nat.pow_1_r.
+      rewrite pow_two_succ_r.
+      replace (S i + 1)%nat with (S (S i)).
+      reflexivity.
+      rewrite Nat.add_1_r.
+      reflexivity.
+      apply WF_I.
+      apply WF_I.
+      apply WF_uc_eval.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      auto.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      replace (S i) with (i + 1)%nat.
+      replace (S (S n)) with (1 + (S n))%nat.
+      rewrite plus_Sn_m.
+      rewrite <- Nat.add_assoc.
+      reflexivity.
+      auto.
+      apply Nat.add_1_r.
+      restore_dims.
+      apply WF_uc_eval.
+      restore_dims.
+      apply WF_uc_eval.
+      apply gt_Sn_O.
+      apply lt_O_Sn.
+      apply gt_Sn_O.
+      constructor.
+      replace (i + S (S n))%nat with (S (S (i +n)))%nat.
+      apply le_n_S.
+      apply le_n_S.
+      apply le_plus_l.
+      Search (_ + S _)%nat.
+      rewrite <- Nat.add_succ_comm.
+      rewrite <- Nat.add_succ_comm.
+      rewrite plus_Sn_m.
+      rewrite plus_Sn_m.
+      reflexivity.
+    + rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
+      rewrite 2 unfold_pad.
+      simpl.
+      rewrite i_1_i_S.
+      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
+      rewrite IHn.
+      replace (S (S n)) with (1 + (S n))%nat. 
+      rewrite IHn.
+      rewrite kron_1_l.
+      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
+      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
+      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
+      restore_dims.
+      rewrite kron_dist_mult_id.
+      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
+      rewrite id_kron.
+      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
+      rewrite <- kron_assoc.
+      restore_dims.
+      reflexivity.
+      apply WF_I.
+      apply WF_hadamard.
+      apply WF_I.
+      rewrite <- Nat.pow_add_r.
+      replace (S i + 1)%nat with (S (S i)).
+      reflexivity.
+      rewrite Nat.add_1_r.
+      reflexivity.
+      apply WF_I.
+      apply WF_I.
+      apply WF_uc_eval.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      rewrite Nat.add_assoc.
+      rewrite Nat.add_comm.
+      rewrite Nat.add_sub.
+      reflexivity.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      apply WF_hadamard.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      auto.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      rewrite Nat.add_succ_l.
+      apply eq_S.
+      replace (S i) with (i + 1)%nat.
+      replace (S (S n)) with (1 + (S n))%nat.
+      rewrite <- Nat.add_assoc.
+      reflexivity.
+      auto.
+      apply Nat.add_1_r.
+      apply diff_false_true.
+      apply gt_Sn_O.
+      apply diff_false_true.
+      apply gt_Sn_O.
+    + rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
+      remember (hadamard × σx) as hx.
+      rewrite 2 unfold_pad.
+      simpl.
+      rewrite i_1_i_S.
+      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
+      rewrite IHn.
+      replace (S (S n)) with (1 + (S n))%nat. 
+      rewrite IHn.
+      rewrite kron_1_l.
+      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
+      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
+      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
+      restore_dims.
+      rewrite kron_dist_mult_id.
+      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
+      rewrite id_kron.
+      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
+      rewrite <- kron_assoc.
+      restore_dims.
+      reflexivity.
+      apply WF_I.
+      subst.
+      apply WF_mult.
+      apply WF_hadamard.
+      apply WF_σx.
+      apply WF_I.
+      rewrite <- Nat.pow_add_r.
+      replace (S i + 1)%nat with (S (S i)).
+      reflexivity.
+      rewrite Nat.add_1_r.
+      reflexivity.
+      apply WF_I.
+      apply WF_I.
+      apply WF_uc_eval.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      rewrite Nat.add_assoc.
+      rewrite Nat.add_comm.
+      rewrite Nat.add_sub.
+      reflexivity.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      subst.
+      apply WF_mult.
+      apply WF_hadamard.
+      apply WF_σx.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      auto.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      rewrite Nat.add_succ_l.
+      apply eq_S.
+      replace (S i) with (i + 1)%nat.
+      replace (S (S n)) with (1 + (S n))%nat.
+      rewrite <- Nat.add_assoc.
+      reflexivity.
+      auto.
+      apply Nat.add_1_r.
+      apply diff_true_false.
+      apply gt_Sn_O.
+      apply diff_true_false.
+      apply gt_Sn_O. 
+    + rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
+      rewrite 2 unfold_pad.
+      simpl.
+      rewrite i_1_i_S.
+      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
+      rewrite IHn.
+      replace (S (S n)) with (1 + (S n))%nat. 
+      rewrite IHn.
+      rewrite kron_1_l.
+      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
+      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
+      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
+      restore_dims.
+      rewrite kron_dist_mult_id.
+      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
+      rewrite id_kron.
+      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
+      rewrite <- kron_assoc.
+      restore_dims.
+      reflexivity.
+      apply WF_I.
+      apply WF_σx.
+      apply WF_I.
+      rewrite <- Nat.pow_add_r.
+      replace (S i + 1)%nat with (S (S i)).
+      reflexivity.
+      rewrite Nat.add_1_r.
+      reflexivity.
+      apply WF_I.
+      apply WF_I.
+      apply WF_uc_eval.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      rewrite Nat.add_assoc.
+      rewrite Nat.add_comm.
+      rewrite Nat.add_sub.
+      reflexivity.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      apply WF_σx.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      auto.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      rewrite Nat.add_succ_l.
+      apply eq_S.
+      replace (S i) with (i + 1)%nat.
+      replace (S (S n)) with (1 + (S n))%nat.
+      rewrite <- Nat.add_assoc.
+      reflexivity.
+      auto.
+      apply Nat.add_1_r.
+      apply gt_Sn_O.
+      apply gt_Sn_O.
+    + rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
+      rewrite 2 unfold_pad.
+      simpl.
+      rewrite i_1_i_S.
+      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
+      rewrite IHn.
+      replace (S (S n)) with (1 + (S n))%nat. 
+      rewrite IHn.
+      rewrite kron_1_l.
+      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
+      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
+      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
+      restore_dims.
+      rewrite kron_dist_mult_id.
+      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
+      rewrite id_kron.
+      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
+      rewrite <- kron_assoc.
+      restore_dims.
+      reflexivity.
+      apply WF_I.
+      apply WF_hadamard.
+      apply WF_I.
+      rewrite <- Nat.pow_add_r.
+      replace (S i + 1)%nat with (S (S i)).
+      reflexivity.
+      rewrite Nat.add_1_r.
+      reflexivity.
+      apply WF_I.
+      apply WF_I.
+      apply WF_uc_eval.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      rewrite Nat.add_assoc.
+      rewrite Nat.add_comm.
+      rewrite Nat.add_sub.
+      reflexivity.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      apply WF_hadamard.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      auto.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      rewrite Nat.add_succ_l.
+      apply eq_S.
+      replace (S i) with (i + 1)%nat.
+      replace (S (S n)) with (1 + (S n))%nat.
+      rewrite <- Nat.add_assoc.
+      reflexivity.
+      auto.
+      apply Nat.add_1_r.
+      apply diff_true_false.
+      apply gt_Sn_O.
+      apply diff_true_false.
+      apply gt_Sn_O.
+
 Admitted.
 
 Theorem circuit'_helper_growth: forall n l, (length l = S n) ->  uc_eval(circuit'_helper l (S (S n)) 1) =  I 2 ⊗ uc_eval (circuit'_helper l (S n) 0).
