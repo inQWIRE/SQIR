@@ -323,6 +323,7 @@ Module Env := FMapList.Make Nat_as_OT.
 Module EnvFacts := FMapFacts.Facts (Env).
 
 Definition env := Env.t type.
+Definition empty_env := @Env.empty type.
 
 Definition or_not_r (x y:var) (n1 n2:nat) := x <> y \/ S n1 < n2.
 
@@ -902,8 +903,16 @@ Proof.
   rewrite H1. reflexivity.
 Qed.
 
-
-
+Lemma fb_push_same : forall b f g, (forall i, fb_push b f i = fb_push b g i) -> f = g.
+Proof.
+intros.
+apply functional_extensionality; intros.
+specialize (H0 (S x)).
+rewrite fb_push_right in H0; try lia.
+rewrite fb_push_right in H0; try lia.
+simpl in H0.
+assert (x-0 = x) by lia. rewrite H1 in H0. easy. 
+Qed.
 
 (* fb_push_n is the n repeatation of fb_push.
 Definition fb_push_n n f g : nat -> bool :=
@@ -1456,6 +1465,65 @@ Proof.
  apply N.mod_pow2_bits_high. lia.
 Qed.
 
+Lemma pos2fb_sem : forall x y, pos2fb x = pos2fb y -> x = y.
+Proof.
+ induction x; intros.
+ simpl in *.
+ destruct y. simpl in H0.
+ assert (forall i, fb_push true (pos2fb x) i = fb_push true (pos2fb y) i).
+ intros. rewrite H0. easy.
+ apply fb_push_same in H1. apply IHx in H1. subst. easy.
+ simpl in H0.
+ assert (forall i, fb_push true (pos2fb x) i = fb_push false (pos2fb y) i).
+ intros. rewrite H0. easy.
+ specialize (H1 0). simpl in H1. inv H1.
+ simpl in H0.
+ assert (forall i, fb_push true (pos2fb x) i = fb_push true allfalse i).
+ intros. rewrite H0. easy.
+ apply fb_push_same in H1.
+ specialize (pos2fb_no_zero x) as eq1.
+ destruct eq1. rewrite H1 in H2. unfold allfalse in H2. inv H2.
+ destruct y. simpl in *.
+ assert (forall i, fb_push false (pos2fb x) i = fb_push true (pos2fb y) i).
+ intros. rewrite H0. easy.
+ specialize (H1 0). simpl in H1. inv H1.
+ simpl in *.
+ assert (forall i, fb_push false (pos2fb x) i = fb_push false (pos2fb y) i).
+ intros. rewrite H0. easy.
+ apply fb_push_same in H1. apply IHx in H1. subst. easy.
+ simpl in *.
+ assert (forall i, fb_push false (pos2fb x) i = fb_push true allfalse i).
+ intros. rewrite H0. easy.
+ specialize (H1 0). simpl in H1. inv H1.
+ destruct y. simpl in *.
+ assert (forall i, fb_push true allfalse i = fb_push true (pos2fb y) i).
+ intros. rewrite H0. easy.
+ apply fb_push_same in H1. 
+ specialize (pos2fb_no_zero y) as eq1. destruct eq1.
+ rewrite <- H1 in H2. unfold allfalse in H2. inv H2.
+ simpl in *. 
+ assert (forall i, fb_push true allfalse i = fb_push false (pos2fb y) i).
+ intros. rewrite H0. easy.
+ specialize (H1 0). simpl in H1. inv H1. easy.
+Qed.
+
+Lemma nat2fb_sem : forall x y, nat2fb x = nat2fb y -> x = y.
+Proof.
+  intros. unfold nat2fb,N2fb in H0.
+  destruct (N.of_nat x) eqn:eq1.
+  destruct (N.of_nat y) eqn:eq2.
+  simpl in eq1. lia.
+  specialize (pos2fb_no_zero p) as eq3.
+  destruct eq3.
+  rewrite <- H0 in H1. unfold allfalse in H1. inv H1.
+  destruct (N.of_nat y) eqn:eq2.
+  specialize (pos2fb_no_zero p) as eq3.
+  destruct eq3.
+  rewrite H0 in H1. unfold allfalse in H1. inv H1.
+  apply pos2fb_sem in H0. subst.
+  rewrite <- eq1 in eq2. lia.
+Qed.
+
 Lemma f_num_small : forall f n x, cut_n f n = nat2fb x -> x < 2^n.
 Proof.
   induction n; intros. simpl in *.
@@ -1469,15 +1537,23 @@ Proof.
   destruct (N.of_nat x) eqn:eq1. lia.
   specialize (pos2fb_no_zero p) as eq2.
   destruct eq2. rewrite <- H0 in H2. unfold allfalse in H2.
-  inv H2.  
-Admitted.
+  inv H2.
+  specialize (f_num_0 f n) as eq1.
+  destruct eq1.
+  destruct (f n) eqn:eq2.
+  rewrite f_num_aux_1 with (x := x0) in H0; try easy.
+  apply IHn in H1. simpl.
+  apply nat2fb_sem in H0. subst. lia.
+  rewrite f_num_aux_0 with (x := x0) in H0; try easy.
+  apply nat2fb_sem in H0. subst.
+  apply IHn in H1. simpl. lia.
+Qed.
 
 Definition addto (r : nat -> bool) (n:nat) : nat -> bool := fun i => if i <? n 
                     then (cut_n (fbrev n (sumfb false (cut_n (fbrev n r) n) (nat2fb 1))) n) i else r i.
 
 Definition addto_n (r:nat -> bool) n := fun i => if i <? n
-                        then (cut_n (fbrev n (sumfb false 
-                  (cut_n (fbrev n r) n) (sumfb false (nat2fb 1) (negatem n (nat2fb 1))))) n) i else r i.
+               then (cut_n (fbrev n (sumfb false (cut_n (fbrev n r) n) (negatem n (nat2fb 0)))) n) i else r i.
 
 Lemma addto_n_0 : forall r, addto_n r 0 = r.
 Proof.
@@ -1569,13 +1645,12 @@ Proof.
   specialize (f_num_0 (fbrev (S n) r) (S n)) as eq2.
   destruct eq2.
   rewrite negatem_arith.
+  rewrite H0.
   rewrite sumfb_correct_carry0.
   assert (1 < 2 ^ (S n)).
   apply Nat.pow_gt_1. lia. lia.
-  assert ((1 + (2 ^ S n - 1 - 1)) = 2^ S n -1) by lia.
+  assert (((2 ^ S n - 1 - 0)) = 2^ S n -1) by lia.
   rewrite H2.
-  rewrite H0.
-  rewrite sumfb_correct_carry0.
   unfold addto.
   rewrite (cut_n_fbrev_flip (S n) (fun i0 : nat =>
                  if i0 <? S n
@@ -1623,7 +1698,8 @@ Proof.
   unfold cut_n.
   bdestruct (x0 <? S n).
   easy. lia. easy.
-  apply Nat.pow_gt_1. lia. lia.
+  specialize (Nat.pow_nonzero 2 (S n)) as eq2.
+  assert (2 <> 0) by lia. apply eq2 in H1. lia.
 Qed.
 
 Lemma add_to_same : forall q r, addto_n (addto r q) q = r.
@@ -1638,12 +1714,10 @@ Proof.
   rewrite H0.
   rewrite sumfb_correct_carry0.
   unfold addto_n.
-  rewrite negatem_arith.
-  rewrite sumfb_correct_carry0.
-  assert (1 < 2 ^ (S n)).
-  apply Nat.pow_gt_1. lia. lia.
-  assert ((1 + (2 ^ S n - 1 - 1)) = 2^ S n -1) by lia.
-  rewrite H2.
+  assert (0 < 2^ (S n)).
+  specialize (Nat.pow_nonzero 2 (S n)) as eq2.
+  assert (2 <> 0) by lia. apply eq2 in H1. lia.
+  rewrite negatem_arith by lia.
   rewrite (cut_n_fbrev_flip (S n) (fun i0 : nat =>
                  if i0 <? S n
                  then
@@ -1663,10 +1737,13 @@ Proof.
   assert ((2 ^ S n - 1) = (2 ^ S n - 1) mod (2^ S n)).
   rewrite Nat.mod_small by lia.
   easy.
-  rewrite H3.
+  rewrite H2.
   rewrite sumfb_correct_carry0.
   rewrite cut_n_fbrev_flip.
   rewrite cut_n_mod.
+  assert ((x + 1) mod 2 ^ S n + ((2 ^ S n - 1) mod 2 ^ S n - 0)
+           = ((x + 1) mod 2 ^ S n + ((2 ^ S n - 1) mod 2 ^ S n))) by lia.
+  rewrite H3.
   rewrite <- Nat.add_mod by lia.
   assert ((x + 1 + (2 ^ S n - 1))  = x + 2 ^ S n) by lia.
   rewrite H4.
@@ -1685,7 +1762,6 @@ Proof.
   bdestruct (x0 <? S n).
   easy. lia. easy.
   apply (f_num_small (fbrev (S n) r)). easy.
-  apply Nat.pow_gt_1. lia. lia.
 Qed.
 
 
@@ -3713,18 +3789,15 @@ Proof.
   rewrite sumfb_lt_same with (n:= size - n) (g:= (fun i : nat =>
    if i <? size
    then if i <? size then r (size - 1 - i) else r i
-   else allfalse i)) (h' := (sumfb false (nat2fb 1) (negatem size (nat2fb 1)))); try lia. easy.
+   else allfalse i)) (h' := (negatem size (nat2fb 0))); try lia. easy.
   intros. 
   bdestruct (i <? size - n).
   bdestruct (i <? size).
   assert ((size - n - 1 - i + n) = (size - 1 - i)) by lia. rewrite H7. easy. lia. lia.
   intros.
-  rewrite sumfb_lt_same with (n:= size - n) (g := nat2fb 1)
-    (h' := (negatem size (nat2fb 1))). easy. lia.
-  intros. easy.
-  intros. unfold negatem.
-  bdestruct (i0 <? size - n).
-  bdestruct (i0 <? size). easy.
+  rewrite nat2fb_0. unfold negatem.
+  bdestruct (i <? size - n).
+  bdestruct (i <? size). easy.
   1-3:lia.
   bdestruct (x + n <? size). lia. easy.
 Qed.
@@ -8107,22 +8180,33 @@ Proof.
  simpl. lia.
 Qed.
 
-Lemma pos2fb_bound : forall n p m , (Pos.to_nat p) < 2 ^ n -> n <= m -> pos2fb p m = false.
-Proof.
-intros n p.
-induction p.
-intros. simpl.
-Admitted.
+(*
+Check nat2fb_bound.
 
 Lemma N2fb_bound :
     forall n x m, x < 2 ^ n -> n <= m -> (nat2fb x) m = false.
 Proof.
  intros.
+ specialize (nat
  unfold nat2fb.
  unfold N2fb.
  destruct (N.of_nat x) eqn:eq.
  unfold allfalse. reflexivity.
  eapply (pos2fb_bound n). lia. lia.
+Qed.
+*)
+
+Lemma f_num_nat2fb : forall n f, (forall i, i >= n -> f i = false) -> (exists x, f = nat2fb x).
+Proof.
+  intros.
+  specialize (f_num_0 f n) as eq1.
+  destruct eq1.
+  assert (f = cut_n f n).
+  unfold cut_n.
+  apply functional_extensionality; intro.
+  bdestruct (x0 <? n). easy.
+  rewrite H0. easy. easy.
+  exists x. rewrite H2. easy.
 Qed.
 
 Lemma add_to_sem : forall n q r, 0 < q <= n ->
@@ -8133,6 +8217,42 @@ Proof.
   apply functional_extensionality; intro.
   bdestruct (x <? q).
   bdestruct (x <? n).
+Admitted. 
+
+Lemma add_to_n_sem : forall n q r, 0 < q <= n ->
+                 (forall i , i >= n -> r i = false) ->
+                 (addto_n r q) = cut_n (fbrev n (sumfb false (fbrev n r) (nat2fb (2^n - 2^(n-q))))) n.
+Proof.
+  intros. unfold addto_n.
+  apply functional_extensionality; intro.
+  bdestruct (x <? q).
+  rewrite negatem_arith.
+  assert ((forall i : nat, i >= n -> fbrev q r i = false)).
+  intros. unfold fbrev.
+  bdestruct (i <? q). lia. rewrite H1. easy. lia.
+  specialize (f_num_nat2fb n (fbrev q r) H3) as eq1.
+  destruct eq1.
+  rewrite H4.
+  rewrite cut_n_mod.
+  assert (2 ^ q <> 0).
+  apply Nat.pow_nonzero. lia.
+  rewrite sumfb_correct_carry0.
+  assert ((2 ^ q - 1 - 0) = ((2 ^ q -1) mod 2^q)).
+  rewrite Nat.mod_small by lia.
+  lia. rewrite H6.
+  rewrite cut_n_fbrev_flip.
+  rewrite cut_n_mod.
+  rewrite <- Nat.add_mod by lia.
+  assert (forall i : nat, i >= n -> fbrev n r i = false).
+  intros. unfold fbrev.
+  bdestruct (i <? n). lia. rewrite H1. easy. lia.
+  specialize (f_num_nat2fb n (fbrev n r) H7) as eq2.
+  destruct eq2.
+  rewrite H8.
+  rewrite sumfb_correct_carry0.
+  rewrite cut_n_fbrev_flip.
+  rewrite cut_n_mod.
+  Check Nat.add_mod.
 Admitted. 
 
 Lemma sumfb_assoc : forall f g h n, 
@@ -8174,12 +8294,45 @@ Fixpoint rz_adder (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
                | S m => (rz_adder x m size M;if M m then SR (size - n) x else SKIP (x,m))
     end.
 
-Lemma phi_mode_same : forall e aenv f x n, phi_modes f x n -> phi_modes (exp_sem aenv e f) x n.
+Lemma sr_rotate'_phi : forall m n size f x, m <= n <= size -> phi_modes f x size
+             -> phi_modes ((sr_rotate' f x m n)) x size.
 Proof.
-  induction e; intros; simpl; try easy.
-  unfold phi_modes in *.
+  induction m; intros ; simpl; try easy.
+  unfold phi_modes in *. intros.
+  unfold phi_mode in *. 
+  bdestruct (m =? i). subst.
+  rewrite eupdate_index_eq.
+  unfold times_rotate.
+  apply H1 in H2. destruct (f (x,i)) eqn:eq1. lia. lia. lia.
+  rewrite eupdate_index_neq by iner_p.
+  apply IHm with (size := size). lia. easy. lia.
+Qed.
+
+Lemma rz_adder_well_typed : forall n x size M f aenv tenv, n <= size ->
+             phi_modes f x size -> well_typed_exp tenv (rz_adder x n size M)
+             -> right_mode_env aenv tenv f -> phi_modes (exp_sem aenv (rz_adder x n size M) f) x size.
+Proof.
+  induction n; intros.
+  simpl in *. easy.
+  simpl in *.
+  inv H2.
+  specialize (IHn x size M f aenv tenv).
+  assert (n <= size) by lia.
+  specialize (IHn H2 H1 H7 H3).
+  unfold phi_modes in *. 
   intros.
-Admitted.
+  unfold phi_mode in *.
+  destruct (M n) eqn:eq1. simpl.
+  unfold sr_rotate.
+  specialize (sr_rotate'_phi (S (size - S n)) (S (size - S n)) size 
+                 (exp_sem aenv (rz_adder x n size M) f) x) as eq2.
+  assert (S (size - S n) <= S (size - S n) <= size) by lia.
+  assert (phi_modes (exp_sem aenv (rz_adder x n size M) f) x size).
+  unfold phi_modes. unfold phi_mode. apply IHn.
+  specialize (eq2 H5 H6).
+  unfold phi_modes in eq2. unfold phi_mode in eq2. apply eq2; try lia.
+  simpl. apply IHn; lia.
+Qed. 
 
 Lemma rz_adder_gt : forall n size aenv M f x, n <= size ->
                 (forall i, i >= size -> get_r_qft f x i = false) ->
@@ -8211,7 +8364,9 @@ Proof.
   simpl. apply IHn. lia. apply H1. lia.
 Qed.
 
-Lemma rz_adder_sem : forall n size f x A M aenv , n <= size -> phi_modes f x size ->
+Lemma rz_adder_sem : forall n size f x A M aenv tenv, n <= size -> phi_modes f x size ->
+                 (forall i, i <= size -> well_typed_exp tenv (rz_adder x i size (nat2fb M)))
+                   -> right_mode_env aenv tenv f ->
                   M < 2^size -> A < 2^size ->
                   fbrev size (get_r_qft f x) = nat2fb A ->
                   (get_r_qft (exp_sem aenv (rz_adder x n size (nat2fb M)) f) x)
@@ -8221,29 +8376,30 @@ Proof.
   unfold bindecomp. simpl.
   rewrite plus_0_r.
   rewrite Nat.mod_small by lia.
-  rewrite <- H4.
+  rewrite <- H6.
   rewrite fbrev_twice_same. easy.
   destruct (nat2fb M n) eqn:eq1.
   simpl.
   unfold sr_rotate.
   rewrite sr_rotate_get_r by lia.
   unfold get_phi_r.
-  specialize (IHn size f x A M aenv).
+  specialize (IHn size f x A M aenv tenv).
   assert (n <= size) by lia.
-  specialize (IHn H5 H1 H2 H3 H4).
+  specialize (IHn H7 H1 H2 H3 H4 H5 H6).
   unfold get_r_qft in IHn.
-  specialize (phi_mode_same (rz_adder x n size (nat2fb M)) aenv f x size H1) as eq3.
-  unfold phi_modes in eq3. assert (0 < size) by lia. specialize (eq3 0 H6).
+  specialize (H2 n H7).
+  apply rz_adder_well_typed with (aenv:=aenv) (f:= f) in H2 as eq3; try easy.
+  unfold phi_modes in eq3. assert (0 < size) by lia. specialize (eq3 0 H8).
   unfold phi_mode in eq3.
   specialize (rz_adder_gt n size aenv (nat2fb M) f x) as X1.
   assert (n <= size) by lia.
   specialize (X1 H7).
   assert ((forall i : nat, i >= size -> get_r_qft f x i = false)).
   intros.
-  specialize (nat2fb_bound size A H3 i H8) as X2.
-  rewrite <- H4 in X2.
+  specialize (nat2fb_bound size A H5 i H10) as X2.
+  rewrite <- H6 in X2.
   unfold fbrev in X2. bdestruct (i <? size). lia.
-  easy. specialize (X1 H8).
+  easy. specialize (X1 H10).
   unfold get_r_qft in X1.
   destruct (exp_sem aenv (rz_adder x n size (nat2fb M)) f (x, 0)) eqn:eq2. lia. lia.
   unfold times_rotate,rotate.
@@ -8252,7 +8408,7 @@ Proof.
   rewrite IHn. rewrite fbrev_twice_same.
   rewrite sumfb_correct_carry0.
   assert ((size - S (size - S n)) = n) by lia.
-  rewrite H9.
+  rewrite H11.
   rewrite bindecomp_seq. rewrite eq1. simpl.
   rewrite plus_0_r.
   rewrite cut_n_mod.
@@ -8261,11 +8417,177 @@ Proof.
   apply Nat.pow_lt_mono_r; try lia. 
   assert (((A + bindecomp n M) mod 2 ^ size + 2 ^ n)
           = ((A + bindecomp n M) mod 2 ^ size + 2 ^ n mod 2^size)).
-  rewrite <- H10. easy. rewrite H11.
+  rewrite <- H12. easy. rewrite H13.
   rewrite <- Nat.add_mod by lia.
   rewrite plus_assoc. easy.
   simpl.
-  rewrite IHn with (A := A); try easy.
+  rewrite IHn with (A := A) (tenv:=tenv); try easy.
+  rewrite bindecomp_seq.
+  rewrite eq1. simpl. rewrite plus_0_r. easy. lia.
+Qed.
+
+Fixpoint rz_sub (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
+    match n with 0 => (SKIP (x,0))
+               | S m => (rz_sub x m size M;if M m then SRR (size - n) x else SKIP (x,m))
+    end.
+
+Lemma srr_rotate_get_r : forall n size f x, 0 < n <= size -> get_r_qft (srr_rotate' f x n size) x
+                 = get_phi_r (times_r_rotate (f (x,0)) size).
+Proof.
+  induction n;intros; simpl. lia.
+  unfold get_r_qft.
+  bdestruct (n =? 0). subst. 
+  rewrite eupdate_index_eq.
+  unfold get_phi_r.
+  assert (size - 0=size) by lia. rewrite H1. easy.
+  rewrite eupdate_index_neq by iner_p.
+  unfold get_r_qft in IHn. rewrite IHn. easy. lia.
+Qed.
+
+Lemma srr_rotate'_phi : forall m n size f x, m <= n <= size -> phi_modes f x size
+             -> phi_modes ((srr_rotate' f x m n)) x size.
+Proof.
+  induction m; intros ; simpl; try easy.
+  unfold phi_modes in *. intros.
+  unfold phi_mode in *. 
+  bdestruct (m =? i). subst.
+  rewrite eupdate_index_eq.
+  unfold times_r_rotate.
+  apply H1 in H2. destruct (f (x,i)) eqn:eq1. lia. lia. lia.
+  rewrite eupdate_index_neq by iner_p.
+  apply IHm with (size := size). lia. easy. lia.
+Qed.
+
+Lemma rz_sub_well_typed : forall n x size M f aenv tenv, n <= size ->
+             phi_modes f x size -> well_typed_exp tenv (rz_sub x n size M)
+             -> right_mode_env aenv tenv f -> phi_modes (exp_sem aenv (rz_sub x n size M) f) x size.
+Proof.
+  induction n; intros.
+  simpl in *. easy.
+  simpl in *.
+  inv H2.
+  specialize (IHn x size M f aenv tenv).
+  assert (n <= size) by lia.
+  specialize (IHn H2 H1 H7 H3).
+  unfold phi_modes in *. 
+  intros.
+  unfold phi_mode in *.
+  destruct (M n) eqn:eq1. simpl.
+  unfold srr_rotate.
+  specialize (srr_rotate'_phi (S (size - S n)) (S (size - S n)) size 
+                 (exp_sem aenv (rz_sub x n size M) f) x) as eq2.
+  assert (S (size - S n) <= S (size - S n) <= size) by lia.
+  assert (phi_modes (exp_sem aenv (rz_sub x n size M) f) x size).
+  unfold phi_modes. unfold phi_mode. apply IHn.
+  specialize (eq2 H5 H6).
+  unfold phi_modes in eq2. unfold phi_mode in eq2. apply eq2; try lia.
+  simpl. apply IHn; lia.
+Qed. 
+
+Lemma rz_sub_gt : forall n size aenv M f x, n <= size ->
+                (forall i, i >= size -> get_r_qft f x i = false) ->
+               (forall i, i >= size -> get_r_qft (exp_sem aenv (rz_sub x n size M) f) x i = false).
+Proof.
+  induction n; intros; simpl.
+  unfold get_r_qft in *.
+  destruct (f (x,0)). easy. easy. rewrite H1. easy. easy.
+  destruct (M n). simpl.
+  unfold srr_rotate.
+  rewrite srr_rotate_get_r ; try lia.
+  unfold get_r_qft in IHn.
+  destruct ((exp_sem aenv (rz_sub x n size M) f (x, 0))) eqn:eq1.
+  unfold get_phi_r. 
+  unfold times_r_rotate. destruct b. easy. easy.
+  unfold get_phi_r.
+  unfold times_r_rotate. easy.
+  unfold get_phi_r.
+  unfold times_r_rotate.
+  specialize (IHn size aenv M f x).
+  assert (n <= size) by lia.
+  specialize (IHn H3).
+  rewrite eq1 in IHn.
+  specialize (IHn H1).
+  assert ((S (size - S n)) = size - n) by lia.
+  rewrite H4.
+  unfold r_rotate,addto_n.
+  bdestruct (i <? size - n). lia. rewrite IHn. easy. lia.
+  simpl. apply IHn. lia. apply H1. lia.
+Qed.
+
+Lemma rz_sub_sem : forall n size f x A M aenv tenv, n <= size -> phi_modes f x size ->
+                 (forall i, i <= size -> well_typed_exp tenv (rz_sub x i size (nat2fb M)))
+                   -> right_mode_env aenv tenv f ->
+                  M < 2^size -> A < 2^size ->
+                  fbrev size (get_r_qft f x) = nat2fb A ->
+                  (get_r_qft (exp_sem aenv (rz_sub x n size (nat2fb M)) f) x)
+                    = (fbrev size (nat2fb ((A + 2^size - (bindecomp n M)) mod 2^size))).
+Proof.
+  induction n;intros;simpl.
+  unfold bindecomp. simpl.
+  assert ((A + 2 ^ size - 0) = A + 2^size) by lia. rewrite H7.
+  rewrite Nat.add_mod by lia.
+  rewrite Nat.mod_same by lia.
+  rewrite plus_0_r.
+  rewrite Nat.mod_mod by lia.
+  rewrite Nat.mod_small by lia.
+  rewrite <- H6.
+  rewrite fbrev_twice_same. easy.
+  destruct (nat2fb M n) eqn:eq1.
+  simpl.
+  unfold srr_rotate.
+  rewrite srr_rotate_get_r by lia.
+  unfold get_phi_r.
+  specialize (IHn size f x A M aenv tenv).
+  assert (n <= size) by lia.
+  specialize (IHn H7 H1 H2 H3 H4 H5 H6).
+  unfold get_r_qft in IHn.
+  specialize (H2 n H7).
+  apply rz_sub_well_typed with (aenv:=aenv) (f:= f) in H2 as eq3; try easy.
+  unfold phi_modes in eq3. assert (0 < size) by lia. specialize (eq3 0 H8).
+  unfold phi_mode in eq3.
+  specialize (rz_sub_gt n size aenv (nat2fb M) f x) as X1.
+  assert (n <= size) by lia.
+  specialize (X1 H7).
+  assert ((forall i : nat, i >= size -> get_r_qft f x i = false)).
+  intros.
+  specialize (nat2fb_bound size A H5 i H10) as X2.
+  rewrite <- H6 in X2.
+  unfold fbrev in X2. bdestruct (i <? size). lia.
+  easy. specialize (X1 H10).
+  unfold get_r_qft in X1.
+  destruct (exp_sem aenv (rz_sub x n size (nat2fb M)) f (x, 0)) eqn:eq2. lia. lia.
+  unfold times_r_rotate,r_rotate.
+  rewrite (add_to_n_sem size); (try easy; try lia).
+  rewrite cut_n_fbrev_flip.
+  rewrite IHn. rewrite fbrev_twice_same.
+  rewrite sumfb_correct_carry0.
+  assert ((size - S (size - S n)) = n) by lia.
+  rewrite H11.
+  rewrite bindecomp_seq. rewrite eq1. simpl.
+  rewrite plus_0_r.
+  rewrite cut_n_mod.
+  assert (2^n < 2^size).
+  apply Nat.pow_lt_mono_r_iff. lia. lia.
+  assert (2 ^ n <> 0).
+  apply Nat.pow_nonzero. lia.
+  assert ((2 ^ size - 2 ^ n) = (2 ^ size - 2 ^ n) mod 2 ^ size).
+  rewrite Nat.mod_small. easy. lia.
+  rewrite H14.
+  rewrite <- Nat.add_mod by lia.
+  assert (bindecomp n M < 2^n).
+  rewrite bindecomp_spec.
+  apply Nat.mod_upper_bound ; lia.
+  assert (2 ^ S n <= 2^size).
+  apply Nat.pow_le_mono_r; lia.
+  simpl in H16.
+  assert (A + 2 ^ size - bindecomp n M + (2 ^ size - 2 ^ n) = 
+           (2 ^ size + (A + 2 ^ size - (bindecomp n M + 2 ^ n)))) by lia.
+  rewrite H17.
+  rewrite Nat.add_mod by lia.
+  rewrite Nat.mod_same by lia. rewrite plus_0_l.
+  rewrite Nat.mod_mod by lia. easy.
+  simpl.
+  rewrite IHn with (A := A) (tenv:=tenv); try easy.
   rewrite bindecomp_seq.
   rewrite eq1. simpl. rewrite plus_0_r. easy. lia.
 Qed.
