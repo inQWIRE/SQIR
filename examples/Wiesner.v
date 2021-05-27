@@ -230,7 +230,21 @@ Fixpoint uc_eval_circuit_same_base data :=
 
 Definition R_Bool_Rel (r : R) b := (r = 1 /\ b = true) \/ (r = 0 /\ b = false).
 
+Lemma i_1_i_S: forall (i j: nat), i + 1 <=? i + S j = true.
+  intros.
+  induction j.
+  apply Nat.leb_refl.
+  apply leb_complete in IHj.
+  apply leb_correct.
+  eapply Nat.le_trans.
+  apply IHj.
+  apply plus_le_compat_l.
+  constructor.
+  constructor.
+Qed.
+
 Lemma circuit_growth_same_base: forall n data base, length data = (S n) -> length base = (S n) -> @pad 1 0 (S n) σx × uc_eval (circuit'_helper (zip (zip data base) base) (S n) 1) = uc_eval_circuit_same_base data ⊗ σx.
+
   intros.
   induction n.
   - simpl.
@@ -305,16 +319,24 @@ Fixpoint target_state n (data: list bool) : Vector (2^n) :=
   | d::data' => (if d then ket 1 else ket 0) ⊗ target_state (n-1) data'
   end.
 
-
-Theorem circuit'_helper_growth: forall n l, (length l = S n) ->  uc_eval(circuit'_helper l (S (S n)) 1) =  I 2 ⊗ uc_eval (circuit'_helper l (S n) 0).
+Theorem kron_dist_mult_id : forall n m (B C : Square m) , (I n) ⊗ (B × C) = ((I n) ⊗ B) × ((I n) ⊗ C).
+ intros.
+ rewrite kron_mixed_product.
+ rewrite Mmult_1_l.
+ reflexivity.
+ apply WF_I.
+Qed.
+ 
+Lemma circuit'_helper_growth_i: forall n l i, (length l = S n) -> uc_eval(circuit'_helper l ((S i) + (S n)) (S i)) =  I (2^(S i)) ⊗ uc_eval (circuit'_helper l (S n) 0).
 Proof.
   intro n.
   induction n; intros.
   - destruct l; try discriminate.
     destruct l; try discriminate.
-    destruct p.
-    destruct p.
-    destruct b, b1, b0;
+    destruct i.
+    * destruct p.
+      destruct p.
+      destruct b, b1, b0;
       simpl.
       rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
       restore_dims.
@@ -329,100 +351,423 @@ Proof.
       auto.
       auto.
       auto.
-    + simpl.
-      rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
-      restore_dims.
-      simpl.
-      rewrite denote_SKIP.
-      rewrite denote_SKIP.
-      solve_matrix.
-      auto.
-      auto.
-      auto.
-      auto.
-      auto.
-      auto.
-    + simpl.
-      rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
-      restore_dims.
-      rewrite 2 denote_SKIP.
-      rewrite 2 unfold_pad.
-      simpl.
-      solve_matrix.
-      auto.
-      auto.
-      auto.
-      auto.
-      apply diff_false_true.
-      auto.
-    + simpl.
-      rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
-      restore_dims.
-      rewrite 2 denote_SKIP.
-      rewrite 2 unfold_pad.
-      simpl.
-      solve_matrix.
-      auto.
-      auto.
-      apply diff_false_true.
-      auto.
-      apply diff_false_true.
-      auto.
-    + simpl.
-      rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
-      restore_dims.
-      rewrite 2 denote_SKIP.
-      rewrite 2 unfold_pad.
-      simpl.
-      solve_matrix.
-      auto.
-      auto.
-      apply diff_true_false.
-      auto.
-      apply diff_true_false.
-      auto.
-    + simpl.
-      rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
-      restore_dims.
-      rewrite 2 denote_SKIP.
-      rewrite 2 unfold_pad.
-      simpl.
-      solve_matrix.
-      auto.
-      auto.
-      apply diff_true_false.
-      auto.
-      apply diff_true_false.
-      auto.
-    + simpl.
-      rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
-      restore_dims.
-      rewrite 2 denote_SKIP.
-      rewrite 2 unfold_pad.
-      simpl.
-      solve_matrix.
-      auto.
-      auto.
-      auto.
-      auto.
-    + simpl.
-      rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
-      rewrite 2 denote_SKIP.
-      solve_matrix.
-      auto.
-      auto.
-      auto.
-      auto.
-      auto.
-      auto.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
+        restore_dims.
+        simpl.
+        rewrite denote_SKIP.
+        rewrite denote_SKIP.
+        solve_matrix.
+        auto.
+        auto.
+        auto.
+        auto.
+        auto.
+        auto.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
+        restore_dims.
+        rewrite 2 denote_SKIP.
+        rewrite 2 unfold_pad.
+        simpl.
+        solve_matrix.
+        auto.
+        auto.
+        auto.
+        auto.
+        apply diff_false_true.
+        auto.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
+        restore_dims.
+        rewrite 2 denote_SKIP.
+        rewrite 2 unfold_pad.
+        simpl.
+        solve_matrix.
+        auto.
+        auto.
+        apply diff_false_true.
+        auto.
+        apply diff_false_true.
+        auto.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
+        restore_dims.
+        rewrite 2 denote_SKIP.
+        rewrite 2 unfold_pad.
+        simpl.
+        solve_matrix.
+        auto.
+        auto.
+        apply diff_true_false.
+        auto.
+        apply diff_true_false.
+        auto.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
+        restore_dims.
+        rewrite 2 denote_SKIP.
+        rewrite 2 unfold_pad.
+        simpl.
+        solve_matrix.
+        auto.
+        auto.
+        apply diff_true_false.
+        auto.
+        apply diff_true_false.
+        auto.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
+        restore_dims.
+        rewrite 2 denote_SKIP.
+        rewrite 2 unfold_pad.
+        simpl.
+        solve_matrix.
+        auto.
+        auto.
+        auto.
+        auto.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
+        rewrite 2 denote_SKIP.
+        solve_matrix.
+        auto.
+        auto.
+        auto.
+        auto.
+        auto.
+        auto.
+    * simpl.
+      destruct p.
+      destruct p.
+      destruct b, b0, b1.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
+        rewrite unfold_pad.
+        simpl.
+        rewrite Nat.leb_refl.
+        rewrite 2 denote_SKIP.
+        rewrite unfold_pad.
+        simpl.
+        restore_dims.
+        repeat rewrite kron_1_r.
+        repeat rewrite kron_1_l.
+        repeat rewrite Mmult_1_r.
+        rewrite <- kron_1_r.
+        restore_dims.
+        rewrite Nat.sub_diag.
+        rewrite Nat.pow_0_r.
+        restore_dims.
+        reflexivity.
+        apply WF_σx.
+        apply WF_kron; try reflexivity.
+        apply WF_kron; try reflexivity.
+        apply WF_I.
+        apply WF_σx.
+        apply WF_I.
+        apply WF_σx.
+        auto.
+        apply gt_Sn_O.
+        auto.
+        apply gt_Sn_O.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
+        rewrite unfold_pad.
+        simpl.
+        rewrite Nat.leb_refl.
+        rewrite 2 denote_SKIP.
+        rewrite unfold_pad.
+        simpl.
+        restore_dims.
+        repeat rewrite kron_1_r.
+        repeat rewrite kron_1_l.
+        repeat rewrite Mmult_1_r.
+        rewrite <- kron_1_r.
+        restore_dims.
+        rewrite Nat.sub_diag.
+        rewrite Nat.pow_0_r.
+        restore_dims.
+        reflexivity.
+        apply WF_mult.
+        apply WF_hadamard.
+        apply WF_σx.
+        apply WF_kron; try reflexivity.
+        apply WF_kron; try reflexivity.
+        apply WF_I.
+        apply WF_mult.
+        apply WF_hadamard.
+        apply WF_σx.
+        apply WF_I.
+        apply WF_mult.
+        apply WF_hadamard.
+        apply WF_σx.
+        auto.
+        apply gt_Sn_O.
+        auto.
+        apply gt_Sn_O.
+        apply diff_false_true.
+        apply gt_Sn_O.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
+        simpl.
+        rewrite 2 denote_SKIP.
+        simpl.
+        restore_dims.
+        repeat rewrite kron_1_r.
+        repeat rewrite kron_1_l.
+        repeat rewrite Mmult_1_r.
+        rewrite id_kron.
+        repeat rewrite Nat.add_0_r.
+        repeat rewrite double_mult.
+        rewrite mult_comm.
+        rewrite <- pow_two_succ_r.
+        reflexivity.
+        apply WF_I.
+        apply WF_I.
+        auto.
+        apply gt_Sn_O.
+        auto.
+        auto.
+        apply gt_Sn_O.
+        rewrite Nat.add_1_r.
+        constructor.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
+        rewrite unfold_pad.
+        simpl.
+        rewrite Nat.leb_refl.
+        rewrite 2 denote_SKIP.
+        rewrite unfold_pad.
+        simpl.
+        restore_dims.
+        repeat rewrite kron_1_r.
+        repeat rewrite kron_1_l.
+        repeat rewrite Mmult_1_r.
+        rewrite <- kron_1_r.
+        restore_dims.
+        rewrite Nat.sub_diag.
+        rewrite Nat.pow_0_r.
+        restore_dims.
+        reflexivity.
+        apply WF_hadamard.
+        apply WF_kron; try reflexivity.
+        apply WF_kron; try reflexivity.
+        apply WF_I.
+        apply WF_hadamard.
+        apply WF_I.
+        apply WF_hadamard.
+        auto.
+        apply gt_Sn_O.
+        apply diff_false_true.
+        auto.
+        apply diff_false_true.
+        apply gt_Sn_O.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
+        rewrite unfold_pad.
+        simpl.
+        rewrite Nat.leb_refl.
+        rewrite 2 denote_SKIP.
+        rewrite unfold_pad.
+        simpl.
+        restore_dims.
+        repeat rewrite kron_1_r.
+        repeat rewrite kron_1_l.
+        repeat rewrite Mmult_1_r.
+        rewrite <- kron_1_r.
+        restore_dims.
+        rewrite Nat.sub_diag.
+        rewrite Nat.pow_0_r.
+        restore_dims.
+        reflexivity.
+        apply WF_mult.
+        apply WF_hadamard.
+        apply WF_σx.
+        apply WF_kron; try reflexivity.
+        apply WF_kron; try reflexivity.
+        apply WF_I.
+        apply WF_mult.
+        apply WF_hadamard.
+        apply WF_σx.
+        apply WF_I.
+        apply WF_mult.
+        apply WF_hadamard.
+        apply WF_σx.
+        auto.
+        apply gt_Sn_O.
+        auto.
+        apply diff_true_false.
+        auto.
+        apply diff_true_false.
+        apply gt_Sn_O.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
+        rewrite unfold_pad.
+        simpl.
+        rewrite Nat.leb_refl.
+        rewrite 2 denote_SKIP.
+        rewrite unfold_pad.
+        simpl.
+        restore_dims.
+        repeat rewrite kron_1_r.
+        repeat rewrite kron_1_l.
+        repeat rewrite Mmult_1_r.
+        rewrite <- kron_1_r.
+        restore_dims.
+        rewrite Nat.sub_diag.
+        rewrite Nat.pow_0_r.
+        restore_dims.
+        reflexivity.
+        apply WF_σx.
+        apply WF_kron; try reflexivity.
+        apply WF_kron; try reflexivity.
+        apply WF_I.
+        apply WF_σx.
+        apply WF_I.
+        apply WF_σx.
+        auto.
+        apply gt_Sn_O.
+        auto.
+        apply gt_Sn_O.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
+        rewrite unfold_pad.
+        simpl.
+        rewrite Nat.leb_refl.
+        rewrite 2 denote_SKIP.
+        rewrite unfold_pad.
+        simpl.
+        restore_dims.
+        repeat rewrite kron_1_r.
+        repeat rewrite kron_1_l.
+        repeat rewrite Mmult_1_r.
+        rewrite <- kron_1_r.
+        restore_dims.
+        rewrite Nat.sub_diag.
+        rewrite Nat.pow_0_r.
+        restore_dims.
+        reflexivity.
+        apply WF_hadamard.
+        apply WF_kron; try reflexivity.
+        apply WF_kron; try reflexivity.
+        apply WF_I.
+        apply WF_hadamard.
+        apply WF_I.
+        apply WF_hadamard.
+        auto.
+        apply gt_Sn_O.
+        apply diff_true_false.
+        auto.
+        apply diff_true_false.
+        apply gt_Sn_O.
+      + simpl.
+        rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
+        simpl.
+        rewrite 2 denote_SKIP.
+        simpl.
+        restore_dims.
+        repeat rewrite kron_1_r.
+        repeat rewrite kron_1_l.
+        repeat rewrite Mmult_1_r.
+        rewrite id_kron.
+        repeat rewrite Nat.add_0_r.
+        repeat rewrite double_mult.
+        rewrite mult_comm.
+        rewrite <- pow_two_succ_r.
+        reflexivity.
+        apply WF_I.
+        apply WF_I.
+        auto.
+        apply gt_Sn_O.
+        auto.
+        auto.
+        apply gt_Sn_O.
+        rewrite Nat.add_1_r.
+        constructor.
   - destruct l; try discriminate.
     simpl.
     destruct p.
     destruct p.
     simpl.
-    rewrite IHn.
+    destruct b, b0, b1.
+    + rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
+      rewrite 2 unfold_pad.
+      simpl.
+      rewrite i_1_i_S.
+      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
+      rewrite IHn.
+      replace (S (S n)) with (1 + (S n))%nat. 
+      rewrite IHn.
+      rewrite kron_1_l.
+      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
+      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
+      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
+      restore_dims.
+      Search "kron_".
+      rewrite kron_dist_mult_id.
+      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
+      rewrite id_kron.
+      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
+      rewrite <- kron_assoc.
+      restore_dims.
+      reflexivity.
+      apply WF_I.
+      apply WF_σx.
+      apply WF_I.
+      Search (_ ^ _ * _ )%nat.
+      rewrite <- Nat.pow_add_r.
+      replace (S i + 1)%nat with (S (S i)).
+      reflexivity.
+      rewrite Nat.add_1_r.
+      reflexivity.
+      apply WF_I.
+      apply WF_I.
+      apply WF_uc_eval.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      Search (_ *_ ^ _)%nat.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      rewrite Nat.add_assoc.
+      rewrite Nat.add_comm.
+      rewrite Nat.add_sub.
+      reflexivity.
+      rewrite Nat.add_0_r.
+      rewrite double_mult.
+      rewrite Nat.pow_succ_r.
+      reflexivity.
+      apply Nat.le_0_l.
+      apply WF_σx.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      auto.
+      simpl in H.
+      apply eq_add_S.
+      assumption.
+      Search ((S _ + _) = S (_ + _))%nat.      
+      rewrite Nat.add_succ_l.
+      Search (_ = _ -> S _ = S _)%nat.
+      apply eq_S.
+      replace (S i) with (i + 1)%nat.
+      replace (S (S n)) with (1 + (S n))%nat.
+      rewrite <- Nat.add_assoc.
+      reflexivity.
+      auto.
+      apply Nat.add_1_r.
+      apply gt_Sn_O.
+      apply gt_Sn_O.
 Admitted.
 
+Theorem circuit'_helper_growth: forall n l, (length l = S n) ->  uc_eval(circuit'_helper l (S (S n)) 1) =  I 2 ⊗ uc_eval (circuit'_helper l (S n) 0).
+  intros.
+  replace (S (S n)) with (1+(S n))%nat.
+  - rewrite (circuit'_helper_growth_i n l 0%nat).
+    + reflexivity.
+    + assumption.
+  - auto.
+Qed.
 
 Theorem circuit'_same_base_correct: forall n data base, (length data = S n) -> (length base = S n) -> (uc_eval (circuit' data base base (S n))) × initial_state (S n) = target_state (S n)  data.
 Proof.
@@ -532,6 +877,7 @@ Proof.
       simpl in H0.
       apply eq_add_S in H.
       apply eq_add_S in H0.
+    
       apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
       apply gt_Sn_O.
     + rewrite circuit'_individual_qubit_non_meas_same_base_true.
@@ -702,9 +1048,10 @@ Proof.
    + simpl in H.
      apply eq_add_S in H.
      assumption.
-   
+   + simpl in H0.
+     apply eq_add_S in H0.
+     assumption.
+Qed.
 
-Admitted.
-
-
+Definition qbool (b : bool) := if b then ∣1⟩ else ∣0⟩.
 
