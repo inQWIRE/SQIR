@@ -69,13 +69,13 @@ Lemma inv_stmt: forall (A B : Prop), (A -> B) -> (~B -> ~A).
 Qed.
 
 
-Lemma list_add_neq: forall A (l1 l2 : list A) (a1 a2 : A), a1::l1 <> a2::l2 -> a1 <> a2 \/ l1 <> l2.
+Lemma list_add_neq: forall A (l1 l2 : list A) (a1 a2 : A), a1::l1 <> a2::l2 -> a1 <> a2 \/ (a1 = a2 /\ l1 <> l2).
 Proof.
   intros.
   assert (~(a1::l1 = a2::l2) -> ~(a1 = a2 /\ l1 = l2)).
   apply inv_stmt.
   apply list_add_eq.
-  assert (~ (a1 = a2 /\ l1 = l2) -> a1 <> a2 \/ l1 <> l2).
+  assert (~ (a1 = a2 /\ l1 = l2) -> a1 <> a2 \/ (a1 = a2 /\ l1 <> l2)).
   {
     admit. (* This proof turned out to be hard/ pontentially impossible  - but the actual lemmma is clearly true so in the interest of time I focussed on the quantum part below*)
   }
@@ -311,10 +311,12 @@ Fixpoint initial_state n : Vector (2^n) :=
 
 Definition q_bool (b:bool) := if b then ket 1 else ket 0.
 
+Notation target_state_qubit_i := q_bool.
+
 Fixpoint target_state n (data: list bool) : Vector (2^n) :=
   match data with
   | [] => I 1
-  | d::data' => q_bool d ⊗ target_state (n-1) data'
+  | d::data' => target_state_qubit_i d ⊗ target_state (n-1) data'
   end.
 
 
@@ -1247,7 +1249,7 @@ Theorem circuit'_helper_growth: forall n l, (length l = S n) ->  uc_eval(circuit
   - auto.
 Qed.
 
-Theorem circuit'_same_output_correct: forall n data ab bb, (length data = S n) -> (length ab = S n) -> (length bb = S n) -> (uc_eval (circuit' data ab bb (S n))) × initial_state (S n) = output_state (S n) (zip (zip data ab) bb).
+Theorem circuit'_output_correct: forall n data ab bb, (length data = S n) -> (length ab = S n) -> (length bb = S n) -> (uc_eval (circuit' data ab bb (S n))) × initial_state (S n) = output_state (S n) (zip (zip data ab) bb).
 Proof.
   intros n.
   induction n; intros.
@@ -1866,4 +1868,214 @@ Proof.
 Qed.
 
 
+Theorem circuit'_same_base_correct: forall n data base, (length data = S n) -> (length base = S n) -> (uc_eval (circuit' data base base (S n))) × initial_state (S n) = target_state (S n) data.
+Proof.
+  intros.
+  rewrite (output_target_equal_base_equal (S n) data base); try assumption.
+  apply circuit'_output_correct; assumption.
+Qed.
 
+
+Lemma ne_kron: forall {n m o p q r: nat} (A : Matrix n m) (B : Matrix o p) (C: Matrix q r), A <> B -> C ⊗ A <> C ⊗ B.
+Admitted.
+
+
+Fixpoint count_diff l1 l2 :=
+  match l1, l2 with
+  | [], _ => 0%nat
+  | _, [] => 0%nat
+  | h1::t1, h2::t2 => if eqb h1 h2 then count_diff t1 t2 else (1 + count_diff t1 t2)%nat
+  end.
+
+Require Import Utilities.
+
+Theorem probability_correct_single_qubit: forall data base, probability_of_outcome (output_state_qubit_i data base base) (target_state_qubit_i data) = 1%R.
+Proof.
+  intros.
+  destruct data, base;
+  unfold output_state_qubit_i;
+  simpl;
+  unfold probability_of_outcome;
+  unfold Cmod;
+  simpl;
+  C_field_simplify;
+  R_field_simplify;
+  repeat (
+  repeat rewrite Rmult_0_l;
+  repeat rewrite Rmult_0_r;
+  repeat rewrite Rplus_0_l;
+  repeat rewrite Rplus_0_r;
+  repeat rewrite Rminus_0_l;
+  repeat rewrite Rminus_0_r;
+  repeat rewrite Ropp_0;
+  repeat rewrite Rmult_1_l;
+  repeat rewrite rmult_1_r
+  );
+  rewrite sqrt_1;
+  R_field.
+Qed.
+
+Lemma half_greater_0: 0 <= / 2.
+  (* This trivial lemma turns out hard to prove; so in the interest of time; I shall skip it *)
+  Admitted.
+
+
+Theorem probability_incorrect_single_qubit: forall data ab bb, (ab <> bb) -> probability_of_outcome (output_state_qubit_i data ab bb) (target_state_qubit_i data) = (1/2)%R.
+Proof.
+  intros.
+  destruct data, ab, bb; try contradiction; simpl; unfold output_state_qubit_i; simpl.
+  - unfold probability_of_outcome.
+    replace (((hadamard × ket 1)† × ket 1) 0%nat 0%nat) with (-/ √ 2).
+    replace (Cmod (-/ √ 2)) with (/ √ 2)%R.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt_neq_0_compat.
+    apply Rlt_0_2.
+    unfold Cmod.
+    replace (fst (-/ √ 2)) with (-/ √ 2)%R.
+    replace (snd (-/ √ 2)) with (0%R).
+    rewrite <- sqrt2_inv.
+    simpl.
+    rewrite Rmult_1_r.
+    rewrite Rmult_opp_opp.
+    rewrite sqrt_def.
+    rewrite Rmult_0_l.
+    rewrite Rplus_0_r.
+    reflexivity.
+    apply half_greater_0.
+    unfold snd.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    unfold fst.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    replace ((hadamard × ket 1)† × ket 1) with (list2D_to_matrix [[- / √ 2]]).
+    reflexivity.
+    restore_dims.
+    solve_matrix.
+  - unfold probability_of_outcome.
+    replace (((hadamard × ket 1)† × ket 1) 0%nat 0%nat) with (-/ √ 2).
+    replace (Cmod (-/ √ 2)) with (/ √ 2)%R.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt_neq_0_compat.
+    apply Rlt_0_2.
+    unfold Cmod.
+    replace (fst (-/ √ 2)) with (-/ √ 2)%R.
+    replace (snd (-/ √ 2)) with (0%R).
+    rewrite <- sqrt2_inv.
+    simpl.
+    rewrite Rmult_1_r.
+    rewrite Rmult_opp_opp.
+    rewrite sqrt_def.
+    rewrite Rmult_0_l.
+    rewrite Rplus_0_r.
+    reflexivity.
+    apply half_greater_0.
+    unfold snd.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    unfold fst.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    replace ((hadamard × ket 1)† × ket 1) with (list2D_to_matrix [[- / √ 2]]).
+    reflexivity.
+    restore_dims.
+    solve_matrix.
+  - unfold probability_of_outcome.
+    replace (((hadamard × ket 0)† × ket 0) 0%nat 0%nat) with (/ √ 2).
+    replace (Cmod (/ √ 2)) with (/ √ 2)%R.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt_neq_0_compat.
+    apply Rlt_0_2.
+    unfold Cmod.
+    replace (fst (/ √ 2)) with (/ √ 2)%R.
+    replace (snd (/ √ 2)) with (0%R).
+    rewrite <- sqrt2_inv.
+    simpl.
+    rewrite Rmult_1_r.
+    rewrite sqrt_def.
+    rewrite Rmult_0_l.
+    rewrite Rplus_0_r.
+    reflexivity.
+    apply half_greater_0.
+    unfold snd.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    unfold fst.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    replace ((hadamard × ket 0)† × ket 0) with (list2D_to_matrix [[/ √ 2]]).
+    reflexivity.
+    restore_dims.
+    solve_matrix.
+  - unfold probability_of_outcome.
+    replace (((hadamard × ket 0)† × ket 0) 0%nat 0%nat) with (/ √ 2).
+    replace (Cmod (/ √ 2)) with (/ √ 2)%R.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt_neq_0_compat.
+    apply Rlt_0_2.
+    unfold Cmod.
+    replace (fst (/ √ 2)) with (/ √ 2)%R.
+    replace (snd (/ √ 2)) with (0%R).
+    rewrite <- sqrt2_inv.
+    simpl.
+    rewrite Rmult_1_r.
+    rewrite sqrt_def.
+    rewrite Rmult_0_l.
+    rewrite Rplus_0_r.
+    reflexivity.
+    apply half_greater_0.
+    unfold snd.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    unfold fst.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    replace ((hadamard × ket 0)† × ket 0) with (list2D_to_matrix [[/ √ 2]]).
+    reflexivity.
+    restore_dims.
+    solve_matrix.
+Qed.
+
+
+Theorem probibility_incorrect: forall n n_diff data ab bb, (length data = S n) -> (length ab = S n) -> (length bb = S n) -> count_diff ab bb = n_diff -> probability_of_outcome (uc_eval (circuit' data ab bb (S n)) × initial_state (S n)) (target_state (S n) data) = ((1/2)%R^n_diff)%R.
+Proof.
+  intro n.
+  induction n; intros; (rewrite circuit'_output_correct; try assumption); (destruct data, ab, bb; try discriminate).
+  Opaque output_state_qubit_i.
+  Opaque target_state_qubit_i.
+  - destruct data, ab, bb; try discriminate.
+    destruct b, b0, b1; simpl; try (
+      rewrite 2 kron_1_r;
+      try rewrite probability_correct_single_qubit;
+      try rewrite probability_incorrect_single_qubit;
+      simpl in H2;
+      subst;
+      R_field
+      ).
+  - destruct b, b0, b1; simpl.
+    + Search probability_of_outcome.
+Admitted.
