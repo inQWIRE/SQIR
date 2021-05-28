@@ -775,6 +775,13 @@ Inductive well_typed_pexp (aenv: var -> nat) : env -> pexp -> env -> Prop :=
     | fe_seq : forall env env' env'' e1 e2, well_typed_pexp aenv env e1 env' -> 
                  well_typed_pexp aenv env' e2 env'' -> well_typed_pexp aenv env (e1 ;; e2) env''.
 
+Inductive pexp_fresh : posi -> pexp -> Prop :=
+      | e_fresh : forall p e, exp_fresh p e -> pexp_fresh p (Exp e)
+      | qft_fresh : forall p x, fst p <> x -> pexp_fresh p (QFT x)
+      | rqft_fresh : forall p x, fst p <> x -> pexp_fresh p (RQFT x)
+      | h_fresh : forall p x, fst p <> x -> pexp_fresh p (H x)
+      | fseq_fresh : forall p e1 e2, pexp_fresh p e1 -> pexp_fresh p e2 -> pexp_fresh p (FSeq e1 e2).
+
 
 Inductive right_mode_val : type -> val -> Prop :=
     | right_nor: forall b r, right_mode_val Nor (nval b r)
@@ -1152,6 +1159,25 @@ Proof.
   intros. induction y. easy.
   Local Opaque N.pow. replace (N.of_nat (S y)) with ((N.of_nat y) + 1)%N by lia.
  simpl. rewrite N.pow_add_r. rewrite N.pow_1_r. rewrite Nnat.Nat2N.inj_mul. rewrite IHy. lia.
+Qed.
+
+Lemma Ntestbit_lt_pow2n :
+  forall x n,
+    (x < 2^n)%N ->
+    N.testbit x n = false.
+Proof.
+  intros. apply N.mod_small in H0. rewrite <- H0. apply N.mod_pow2_bits_high. lia.
+Qed.
+
+Lemma Ntestbit_in_pow2n_pow2Sn :
+  forall x n,
+    (2^n <= x < 2^(N.succ n))%N ->
+    N.testbit x n = true.
+Proof.
+  intros. assert (N.log2 x = n) by (apply N.log2_unique; lia).
+  rewrite <- H1. apply N.bit_log2.
+  assert (2^n <> 0)%N by (apply N.pow_nonzero; easy).
+  lia.
 Qed.
 
 Lemma negatem_Nlnot :
@@ -2026,6 +2052,7 @@ Proof.
  reflexivity.
 Qed.
 
+
 (*
 Definition vxor (a b:val) := (get_cua a) ⊕ (get_cua b).
 
@@ -2123,6 +2150,14 @@ Proof.
   easy. nor_sym.
 Qed.
 
+Lemma get_cus_up : forall n f x c v, fst c <> x -> get_cus n (f[c |-> v]) x = get_cus n f x.
+Proof.
+  intros.
+  apply functional_extensionality; intro.
+  unfold get_cus.
+  bdestruct (x0 <? n). destruct c. simpl in *. rewrite eupdate_index_neq by iner_p.
+  easy. easy.
+Qed.
 
 (*A function to get the rotation angle of a state. *)
 Definition get_r (v:val) :=
@@ -2548,7 +2583,6 @@ Proof.
   apply (IHe2) with (aenv := aenv) (f := (exp_sem aenv e1 f)) in H5.
   rewrite H5. rewrite H4. easy.
 Qed.
-
 
 Lemma two_cu_same : forall aenv f p e1 e2, get_cua (f p) = true ->
                      exp_fwf (CU p e1) -> exp_sem aenv (e1 ; e2) f = exp_sem aenv (CU p e1; CU p e2) f. 
@@ -4490,6 +4524,19 @@ Proof.
   subst. easy.
 Qed.
 
+Lemma inv_pexp_reverse :
+  forall (tenv tenv':env) (aenv: var -> nat) e f g,
+    well_typed_pexp aenv tenv e tenv' -> right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    prog_sem aenv e f = g ->
+    prog_sem aenv (inv_pexp e) g = f.
+Proof.
+  intros. 
+  specialize (inv_pexp_correct_rev e tenv tenv' aenv f H0 H1 H2 H3) as G.
+  simpl in G.
+  subst. easy.
+Qed.
+
 
 Ltac nor_mode_simpl := repeat (try (apply nor_mode_up ; iner_p); try apply nor_mode_cus_eq; try easy). 
 
@@ -4586,6 +4633,253 @@ Qed.
 
 Ltac right_simpl := repeat (try apply right_mode_exp_put_cus_same; try apply right_mode_exp_up_same;
                  (try (apply right_mode_exp_up_same_1; nor_mode_simpl)); try easy).
+
+Lemma fresh_inv_pexp :
+  forall p e,
+    pexp_fresh p e ->
+    pexp_fresh p (inv_pexp e).
+Proof.
+  intros. induction H0; simpl; try constructor; try assumption.
+  apply fresh_inv_exp. easy.
+Qed.
+
+Lemma fresh_pexp_sem_irrelevant :
+  forall e aenv  p f,
+    pexp_fresh p e ->
+    prog_sem aenv e f p = f p.
+Proof.
+  induction e;intros.
+  inv H0. simpl. apply efresh_exp_sem_irrelevant. easy.
+  simpl. inv H0.
+  unfold turn_qft.
+  rewrite assign_r_out; try easy.
+  simpl. inv H0. unfold turn_rqft.
+  rewrite assign_seq_out; try easy.
+  simpl. inv H0.
+  destruct p.
+  rewrite h_sem_out; try easy. iner_p.
+  inv H0. simpl.
+  rewrite IHe2.
+  rewrite IHe1; try easy. easy.
+Qed.
+
+Lemma sr_rotate'_out_1 : forall n size f x p v, n <= size -> fst p <> x ->
+       sr_rotate' (f[p |-> v]) x n size = (sr_rotate' f x n size)[p |-> v].
+Proof.
+  induction n; intros; simpl. easy.
+  rewrite eupdate_twice_neq.
+  rewrite IHn; try easy.
+  rewrite eupdate_index_neq. easy.
+  destruct p. iner_p. lia.
+  destruct p. iner_p.
+Qed.
+
+Lemma sr_rotate'_gt_1 : forall n size f x p v, n <= size -> size < snd p ->
+       sr_rotate' (f[p |-> v]) x n size = (sr_rotate' f x n size)[p |-> v].
+Proof.
+  induction n; intros; simpl. easy.
+  rewrite eupdate_twice_neq.
+  rewrite IHn; try easy.
+  rewrite eupdate_index_neq. easy.
+  destruct p. intros R. inv R. simpl in H1. lia.
+  lia.
+  destruct p. intros R. inv R. simpl in H1. lia.
+Qed.
+
+Lemma srr_rotate'_out_1 : forall n size f x p v, n <= size -> fst p <> x ->
+       srr_rotate' (f[p |-> v]) x n size = (srr_rotate' f x n size)[p |-> v].
+Proof.
+  induction n; intros; simpl. easy.
+  rewrite eupdate_twice_neq.
+  rewrite IHn; try easy.
+  rewrite eupdate_index_neq. easy.
+  destruct p. iner_p. lia.
+  destruct p. iner_p.
+Qed.
+
+Lemma srr_rotate'_gt_1 : forall n size f x p v, n <= size -> size < snd p ->
+       srr_rotate' (f[p |-> v]) x n size = (srr_rotate' f x n size)[p |-> v].
+Proof.
+  induction n; intros; simpl. easy.
+  rewrite eupdate_twice_neq.
+  rewrite IHn; try easy.
+  rewrite eupdate_index_neq. easy.
+  destruct p. intros R. inv R. simpl in H1. lia.
+  lia.
+  destruct p. intros R. inv R. simpl in H1. lia.
+Qed.
+
+Lemma lshift'_out : forall n size f x p v, n <= size -> fst p <> x ->
+       lshift' n size (f[p |-> v]) x = (lshift' n size f x)[p |-> v].
+Proof.
+  induction n; intros; simpl. destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_twice_neq by iner_p. easy.
+  rewrite IHn; try easy.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_twice_neq by iner_p. easy. lia.
+Qed.
+
+Lemma rshift'_out : forall n size f x p v, n <= size -> fst p <> x ->
+       rshift' n size (f[p |-> v]) x = (rshift' n size f x)[p |-> v].
+Proof.
+  induction n; intros; simpl. destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_twice_neq by iner_p. easy.
+  rewrite IHn; try easy.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_twice_neq by iner_p. easy. lia.
+Qed.
+
+Lemma efresh_exp_sem_out :
+  forall e aenv  p f v,
+    exp_fresh p e ->
+    exp_sem aenv e (f[p |-> v]) = ((exp_sem aenv e f)[p |-> v]).
+Proof.
+  induction e;intros.
+  subst. simpl. easy.
+  simpl in *. inv H0.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_twice_neq by iner_p. easy.
+  simpl.
+  inv H0. rewrite eupdate_index_neq by iner_p.
+  destruct (get_cua (f p)) eqn:eq1.
+  rewrite IHe; try easy. easy.
+  simpl in *. inv H0.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_twice_neq by iner_p. easy.
+  simpl in *. inv H0.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_twice_neq by iner_p. easy.
+  simpl in *. inv H0.
+  unfold or_not_r in H3. destruct H3.
+  unfold sr_rotate.
+  rewrite sr_rotate'_out_1; try easy.
+  unfold sr_rotate.
+  rewrite sr_rotate'_gt_1; try easy.
+  simpl in *. inv H0.
+  unfold or_not_r in H3. destruct H3.
+  unfold srr_rotate.
+  rewrite srr_rotate'_out_1; try easy.
+  unfold srr_rotate.
+  rewrite srr_rotate'_gt_1; try easy.
+  simpl in *. inv H0.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_twice_neq by iner_p.
+  rewrite eupdate_index_neq by iner_p. easy.
+  inv H0. simpl.
+  unfold lshift.
+  rewrite lshift'_out; try lia. easy.
+  inv H0. simpl.
+  unfold rshift.
+  rewrite rshift'_out; try lia. easy.
+  inv H0. simpl.
+  unfold reverse.
+  apply functional_extensionality; intros; simpl.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  bdestruct (fst x0 =? x). 
+  bdestruct (snd x0 <? aenv x). simpl.
+  destruct x0. simpl in H0.
+  subst. rewrite eupdate_index_neq.
+  simpl. bdestruct (x =? x).
+  bdestruct ((n0 <? aenv x)). simpl. easy. simpl in H1. lia. lia.
+  iner_p. simpl.
+  bdestruct ((v0,n) ==? x0).
+  rewrite <- H2.  repeat rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_index_neq by iner_p.
+  bdestruct (fst x0 =? x). 
+  bdestruct (snd x0 <? aenv x). simpl. lia. simpl. easy. simpl. easy.
+  simpl.
+  bdestruct ((v0,n) ==? x0).
+  rewrite <- H1.  repeat rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite eupdate_index_neq by iner_p.
+  bdestruct (fst x0 =? x). 
+  bdestruct (snd x0 <? aenv x). simpl. lia. simpl. easy. simpl. easy.
+  inv H0. simpl.
+  apply (IHe1) with (aenv := aenv) (f := f) (v:=v) in H4.
+  apply (IHe2) with (aenv := aenv) (f := (exp_sem aenv e1 f)) (v:=v) in H5.
+  rewrite H4. rewrite H5. easy.
+Qed.
+
+Check assign_r_out.
+
+Lemma assign_r_out_1 : forall n f x h p v, fst p <> x ->
+            assign_r (f[p |-> v]) x h n = ((assign_r f x h n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn by easy.
+  rewrite eupdate_twice_neq by iner_p. easy.
+Qed.
+
+Lemma assign_seq_out_fun : forall n f x h p v, fst p <> x ->
+            assign_seq (f[p |-> v]) x h n = ((assign_seq f x h n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn by easy.
+  rewrite eupdate_twice_neq by iner_p. easy.
+Qed.
+
+Lemma h_sem_out_fun : forall n f x p v, fst p <> x ->
+            h_sem (f[p |-> v]) x n = ((h_sem f x n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn by easy.
+  rewrite eupdate_twice_neq by iner_p. easy.
+Qed.
+
+Lemma fresh_pexp_sem_out :
+  forall e aenv  p f v,
+    pexp_fresh p e ->
+    prog_sem aenv e (f[p |-> v]) = ((prog_sem aenv e f)[p |-> v]).
+Proof.
+  induction e;intros.
+  inv H0. simpl. rewrite efresh_exp_sem_out. easy. easy.
+  simpl. inv H0.
+  unfold turn_qft.
+  rewrite get_cus_up by easy.
+  rewrite assign_r_out_1 by easy. easy.
+  simpl. inv H0. unfold turn_rqft.
+  unfold get_r_qft.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite assign_seq_out_fun by iner_p. easy.
+  simpl. inv H0.
+  rewrite h_sem_out_fun by iner_p. easy.
+  simpl. inv H0.
+  rewrite IHe1 by easy.
+  rewrite IHe2 by easy. easy.
+Qed.
+
+Lemma inv_pexp_reverse_1 :
+  forall (tenv tenv':env) (aenv: var -> nat) e f g c v,
+    well_typed_pexp aenv tenv e tenv' -> right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    pexp_fresh c e ->
+    prog_sem aenv e f = g ->
+    prog_sem aenv (inv_pexp e) (g[c |-> v]) = (f[c |-> v]).
+Proof.
+  intros. 
+  Check inv_pexp_reverse.
+  specialize (inv_pexp_reverse tenv tenv' aenv e f g H0 H1 H2 H3 H5) as G.
+  apply functional_extensionality; intros.
+  bdestruct (x ==? c). rewrite H6 in *.
+  rewrite fresh_pexp_sem_out. rewrite G. easy.
+  apply fresh_inv_pexp. easy.
+  rewrite fresh_pexp_sem_out. rewrite G. easy.
+  apply fresh_inv_pexp. easy.
+Qed.
+
 
 (*  Compilation to bcom. *)
 (* Controlled rotation cascade on n qubits. *)
@@ -8289,9 +8583,9 @@ Proof.
   unfold get_r_qft in IHn. rewrite IHn. easy. lia.
 Qed.
 
-Fixpoint rz_adder (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
+Fixpoint rz_adder' (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
     match n with 0 => (SKIP (x,0))
-               | S m => (rz_adder x m size M;if M m then SR (size - n) x else SKIP (x,m))
+               | S m => (rz_adder' x m size M;if M m then SR (size - n) x else SKIP (x,m))
     end.
 
 Lemma sr_rotate'_phi : forall m n size f x, m <= n <= size -> phi_modes f x size
@@ -8309,8 +8603,8 @@ Proof.
 Qed.
 
 Lemma rz_adder_well_typed : forall n x size M f aenv tenv, n <= size ->
-             phi_modes f x size -> well_typed_exp tenv (rz_adder x n size M)
-             -> right_mode_env aenv tenv f -> phi_modes (exp_sem aenv (rz_adder x n size M) f) x size.
+             phi_modes f x size -> well_typed_exp tenv (rz_adder' x n size M)
+             -> right_mode_env aenv tenv f -> phi_modes (exp_sem aenv (rz_adder' x n size M) f) x size.
 Proof.
   induction n; intros.
   simpl in *. easy.
@@ -8325,9 +8619,9 @@ Proof.
   destruct (M n) eqn:eq1. simpl.
   unfold sr_rotate.
   specialize (sr_rotate'_phi (S (size - S n)) (S (size - S n)) size 
-                 (exp_sem aenv (rz_adder x n size M) f) x) as eq2.
+                 (exp_sem aenv (rz_adder' x n size M) f) x) as eq2.
   assert (S (size - S n) <= S (size - S n) <= size) by lia.
-  assert (phi_modes (exp_sem aenv (rz_adder x n size M) f) x size).
+  assert (phi_modes (exp_sem aenv (rz_adder' x n size M) f) x size).
   unfold phi_modes. unfold phi_mode. apply IHn.
   specialize (eq2 H5 H6).
   unfold phi_modes in eq2. unfold phi_mode in eq2. apply eq2; try lia.
@@ -8336,7 +8630,7 @@ Qed.
 
 Lemma rz_adder_gt : forall n size aenv M f x, n <= size ->
                 (forall i, i >= size -> get_r_qft f x i = false) ->
-               (forall i, i >= size -> get_r_qft (exp_sem aenv (rz_adder x n size M) f) x i = false).
+               (forall i, i >= size -> get_r_qft (exp_sem aenv (rz_adder' x n size M) f) x i = false).
 Proof.
   induction n; intros; simpl.
   unfold get_r_qft in *.
@@ -8345,7 +8639,7 @@ Proof.
   unfold sr_rotate.
   rewrite sr_rotate_get_r ; try lia.
   unfold get_r_qft in IHn.
-  destruct ((exp_sem aenv (rz_adder x n size M) f (x, 0))) eqn:eq1.
+  destruct ((exp_sem aenv (rz_adder' x n size M) f (x, 0))) eqn:eq1.
   unfold get_phi_r. 
   unfold times_rotate. destruct b. easy. easy.
   unfold get_phi_r.
@@ -8365,11 +8659,11 @@ Proof.
 Qed.
 
 Lemma rz_adder_sem : forall n size f x A M aenv tenv, n <= size -> phi_modes f x size ->
-                 (forall i, i <= size -> well_typed_exp tenv (rz_adder x i size (nat2fb M)))
+                 (forall i, i <= size -> well_typed_exp tenv (rz_adder' x i size (nat2fb M)))
                    -> right_mode_env aenv tenv f ->
                   M < 2^size -> A < 2^size ->
                   fbrev size (get_r_qft f x) = nat2fb A ->
-                  (get_r_qft (exp_sem aenv (rz_adder x n size (nat2fb M)) f) x)
+                  (get_r_qft (exp_sem aenv (rz_adder' x n size (nat2fb M)) f) x)
                     = (fbrev size (nat2fb ((A + (bindecomp n M)) mod 2^size))).
 Proof.
   induction n;intros;simpl.
@@ -8401,7 +8695,7 @@ Proof.
   unfold fbrev in X2. bdestruct (i <? size). lia.
   easy. specialize (X1 H10).
   unfold get_r_qft in X1.
-  destruct (exp_sem aenv (rz_adder x n size (nat2fb M)) f (x, 0)) eqn:eq2. lia. lia.
+  destruct (exp_sem aenv (rz_adder' x n size (nat2fb M)) f (x, 0)) eqn:eq2. lia. lia.
   unfold times_rotate,rotate.
   rewrite (add_to_sem size); (try easy; try lia).
   rewrite cut_n_fbrev_flip.
@@ -8426,9 +8720,65 @@ Proof.
   rewrite eq1. simpl. rewrite plus_0_r. easy. lia.
 Qed.
 
-Fixpoint rz_sub (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
+Definition rz_adder (x:var) (n:nat) (M:nat -> bool) := rz_adder' x n n M.
+
+Lemma well_typed_exp_rz_adder_aux : forall m size tenv f x M, S m <= size 
+            -> phi_modes f x size
+           -> well_typed_exp tenv (rz_adder' x (S m) size (nat2fb M))
+            -> well_typed_exp tenv (rz_adder' x m size (nat2fb M)).
+Proof.
+ induction m;intros. simpl. constructor.
+ simpl. constructor.
+ apply IHm with (f:=f). lia. easy.
+ inv H2. inv H6. simpl. constructor. easy. easy.
+ simpl in H2. inv H2. inv H6.
+ easy.
+Qed.
+
+Lemma well_typed_exp_rz_adder_1 : forall m n size tenv f x M, m+n <= size 
+            -> phi_modes f x size
+           -> well_typed_exp tenv (rz_adder' x (m + n) size (nat2fb M))
+            -> well_typed_exp tenv (rz_adder' x m size (nat2fb M)).
+Proof.
+ induction n;intros.
+ rewrite plus_0_r in H2. easy.
+ assert ((m + S n) = S (m + n)) by lia.
+ rewrite H3 in H2.
+ simpl in H2.
+ apply IHn with (f := f) ; try lia. easy.
+ inv H2. easy.
+Qed.
+
+Lemma well_typed_exp_rz_adder : forall size tenv f x M, phi_modes f x size
+           -> well_typed_exp tenv (rz_adder x size (nat2fb M))
+            -> (forall i, i <= size -> well_typed_exp tenv (rz_adder' x i size (nat2fb M))).
+Proof.
+ intros.
+ remember (size - i) as n.
+ unfold rz_adder in H1.
+ assert ((rz_adder' x size size (nat2fb M)) = (rz_adder' x (i + (size - i)) size (nat2fb M))).
+ assert (i + (size - i)= size) by lia. rewrite H3. easy.
+ rewrite H3 in H1.
+ apply well_typed_exp_rz_adder_1 with (f:=f) in H1. easy. lia. easy.
+Qed.
+
+Lemma rz_adder_full : forall size f x A M aenv tenv, phi_modes f x size ->
+                   well_typed_exp tenv (rz_adder x size (nat2fb M))
+                   -> right_mode_env aenv tenv f ->
+                  M < 2^size -> A < 2^size ->
+                  fbrev size (get_r_qft f x) = nat2fb A ->
+                  (get_r_qft (exp_sem aenv (rz_adder x size (nat2fb M)) f) x)
+                    = (fbrev size (nat2fb ((A + M) mod 2^size))).
+Proof.
+  intros. unfold rz_adder. rewrite rz_adder_sem with (A:=A) (tenv := tenv); try easy.
+  rewrite bindecomp_spec.
+  rewrite (Nat.mod_small M) by easy. easy.
+  apply well_typed_exp_rz_adder with (f:=f); easy.
+Qed.
+
+Fixpoint rz_sub' (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
     match n with 0 => (SKIP (x,0))
-               | S m => (rz_sub x m size M;if M m then SRR (size - n) x else SKIP (x,m))
+               | S m => (rz_sub' x m size M;if M m then SRR (size - n) x else SKIP (x,m))
     end.
 
 Lemma srr_rotate_get_r : forall n size f x, 0 < n <= size -> get_r_qft (srr_rotate' f x n size) x
@@ -8459,8 +8809,8 @@ Proof.
 Qed.
 
 Lemma rz_sub_well_typed : forall n x size M f aenv tenv, n <= size ->
-             phi_modes f x size -> well_typed_exp tenv (rz_sub x n size M)
-             -> right_mode_env aenv tenv f -> phi_modes (exp_sem aenv (rz_sub x n size M) f) x size.
+             phi_modes f x size -> well_typed_exp tenv (rz_sub' x n size M)
+             -> right_mode_env aenv tenv f -> phi_modes (exp_sem aenv (rz_sub' x n size M) f) x size.
 Proof.
   induction n; intros.
   simpl in *. easy.
@@ -8475,9 +8825,9 @@ Proof.
   destruct (M n) eqn:eq1. simpl.
   unfold srr_rotate.
   specialize (srr_rotate'_phi (S (size - S n)) (S (size - S n)) size 
-                 (exp_sem aenv (rz_sub x n size M) f) x) as eq2.
+                 (exp_sem aenv (rz_sub' x n size M) f) x) as eq2.
   assert (S (size - S n) <= S (size - S n) <= size) by lia.
-  assert (phi_modes (exp_sem aenv (rz_sub x n size M) f) x size).
+  assert (phi_modes (exp_sem aenv (rz_sub' x n size M) f) x size).
   unfold phi_modes. unfold phi_mode. apply IHn.
   specialize (eq2 H5 H6).
   unfold phi_modes in eq2. unfold phi_mode in eq2. apply eq2; try lia.
@@ -8486,7 +8836,7 @@ Qed.
 
 Lemma rz_sub_gt : forall n size aenv M f x, n <= size ->
                 (forall i, i >= size -> get_r_qft f x i = false) ->
-               (forall i, i >= size -> get_r_qft (exp_sem aenv (rz_sub x n size M) f) x i = false).
+               (forall i, i >= size -> get_r_qft (exp_sem aenv (rz_sub' x n size M) f) x i = false).
 Proof.
   induction n; intros; simpl.
   unfold get_r_qft in *.
@@ -8495,7 +8845,7 @@ Proof.
   unfold srr_rotate.
   rewrite srr_rotate_get_r ; try lia.
   unfold get_r_qft in IHn.
-  destruct ((exp_sem aenv (rz_sub x n size M) f (x, 0))) eqn:eq1.
+  destruct ((exp_sem aenv (rz_sub' x n size M) f (x, 0))) eqn:eq1.
   unfold get_phi_r. 
   unfold times_r_rotate. destruct b. easy. easy.
   unfold get_phi_r.
@@ -8515,11 +8865,11 @@ Proof.
 Qed.
 
 Lemma rz_sub_sem : forall n size f x A M aenv tenv, n <= size -> phi_modes f x size ->
-                 (forall i, i <= size -> well_typed_exp tenv (rz_sub x i size (nat2fb M)))
+                 (forall i, i <= size -> well_typed_exp tenv (rz_sub' x i size (nat2fb M)))
                    -> right_mode_env aenv tenv f ->
                   M < 2^size -> A < 2^size ->
                   fbrev size (get_r_qft f x) = nat2fb A ->
-                  (get_r_qft (exp_sem aenv (rz_sub x n size (nat2fb M)) f) x)
+                  (get_r_qft (exp_sem aenv (rz_sub' x n size (nat2fb M)) f) x)
                     = (fbrev size (nat2fb ((A + 2^size - (bindecomp n M)) mod 2^size))).
 Proof.
   induction n;intros;simpl.
@@ -8555,7 +8905,7 @@ Proof.
   unfold fbrev in X2. bdestruct (i <? size). lia.
   easy. specialize (X1 H10).
   unfold get_r_qft in X1.
-  destruct (exp_sem aenv (rz_sub x n size (nat2fb M)) f (x, 0)) eqn:eq2. lia. lia.
+  destruct (exp_sem aenv (rz_sub' x n size (nat2fb M)) f (x, 0)) eqn:eq2. lia. lia.
   unfold times_r_rotate,r_rotate.
   rewrite (add_to_n_sem size); (try easy; try lia).
   rewrite cut_n_fbrev_flip.
@@ -8591,6 +8941,244 @@ Proof.
   rewrite bindecomp_seq.
   rewrite eq1. simpl. rewrite plus_0_r. easy. lia.
 Qed.
+
+Definition rz_sub (x:var) (n:nat) (M:nat -> bool) := rz_sub' x n n M.
+
+Lemma well_typed_exp_rz_sub_aux : forall m size tenv f x M, S m <= size 
+            -> phi_modes f x size
+           -> well_typed_exp tenv (rz_sub' x (S m) size (nat2fb M))
+            -> well_typed_exp tenv (rz_sub' x m size (nat2fb M)).
+Proof.
+ induction m;intros. simpl. constructor.
+ simpl. constructor.
+ apply IHm with (f:=f). lia. easy.
+ inv H2. inv H6. simpl. constructor. easy. easy.
+ simpl in H2. inv H2. inv H6.
+ easy.
+Qed.
+
+Lemma well_typed_exp_rz_sub_1 : forall m n size tenv f x M, m+n <= size 
+            -> phi_modes f x size
+           -> well_typed_exp tenv (rz_sub' x (m + n) size (nat2fb M))
+            -> well_typed_exp tenv (rz_sub' x m size (nat2fb M)).
+Proof.
+ induction n;intros.
+ rewrite plus_0_r in H2. easy.
+ assert ((m + S n) = S (m + n)) by lia.
+ rewrite H3 in H2.
+ simpl in H2.
+ apply IHn with (f := f) ; try lia. easy.
+ inv H2. easy.
+Qed.
+
+Lemma well_typed_exp_rz_sub : forall size tenv f x M, phi_modes f x size
+           -> well_typed_exp tenv (rz_sub x size (nat2fb M))
+            -> (forall i, i <= size -> well_typed_exp tenv (rz_sub' x i size (nat2fb M))).
+Proof.
+ intros.
+ remember (size - i) as n.
+ unfold rz_sub in H1.
+ assert ((rz_sub' x size size (nat2fb M)) = (rz_sub' x (i + (size - i)) size (nat2fb M))).
+ assert (i + (size - i)= size) by lia. rewrite H3. easy.
+ rewrite H3 in H1.
+ apply well_typed_exp_rz_sub_1 with (f:=f) in H1. easy. lia. easy.
+Qed.
+
+Lemma rz_sub_full : forall size f x A M aenv tenv, phi_modes f x size ->
+                    well_typed_exp tenv (rz_sub x size (nat2fb M))
+                   -> right_mode_env aenv tenv f ->
+                  M < 2^size -> A < 2^size ->
+                  fbrev size (get_r_qft f x) = nat2fb A ->
+                  (get_r_qft (exp_sem aenv (rz_sub x size (nat2fb M)) f) x)
+                    = (fbrev size (nat2fb ((A + 2^size - M) mod 2^size))).
+Proof.
+  intros. unfold rz_sub. rewrite rz_sub_sem with (A:=A) (tenv := tenv); try easy.
+  rewrite bindecomp_spec.
+  rewrite (Nat.mod_small M) by easy. easy.
+  apply well_typed_exp_rz_sub with (f := f); easy.
+Qed.
+
+Definition rz_compare_half (x:var) (n:nat) (c:posi) (M:nat) := 
+    Exp (rz_sub x n (nat2fb M));; RQFT x ;; Exp (CNOT (x,0) c).
+
+Lemma efresh_rz_sub: forall n c x size M, fst c <> x -> n <= size -> exp_fresh c (rz_sub' x n size M).
+Proof.
+  induction n;intros; simpl.
+  constructor. destruct c. iner_p.
+  constructor. apply IHn. easy. lia.
+  destruct (M n).
+  constructor.
+  unfold or_not_r. left. easy.
+  constructor. destruct c. iner_p.
+Qed.
+
+Lemma rz_compare_half_sem : forall size f c x A M aenv tenv tenv',
+                    phi_modes f x (S size) -> aenv x = S size -> fst c <> x
+                     -> nor_mode f c -> get_cua (f c) = false ->
+                    well_typed_pexp aenv tenv (rz_compare_half x (S size) c M) tenv'
+                   -> right_mode_env aenv tenv f ->
+                  M < 2^size -> A < 2^size ->
+                  fbrev (S size) (get_r_qft f x) = nat2fb A ->
+                  get_cua ((prog_sem aenv (rz_compare_half x (S size) c M) f) c) = (A <? M).
+Proof.
+  intros. unfold rz_compare_half. 
+  remember (rz_sub x (S size) (nat2fb M)) as e1. simpl.
+  rewrite Heqe1. clear Heqe1.
+  unfold turn_rqft.
+  inv H5. inv H13. inv H12.
+  rewrite rz_sub_full with (A:=A) (tenv:= env'0); try easy.
+  rewrite H1.
+  rewrite cnot_sem.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  rewrite assign_seq_lt by lia.
+  rewrite assign_seq_out by iner_p.
+  rewrite efresh_exp_sem_irrelevant with (p := c).
+  rewrite H4.
+  unfold get_cua. bt_simpl.
+  unfold fbrev. bdestruct (0 <? S size). simpl.
+  assert ((size - 0 - 0) = size) by lia. rewrite H12.
+  unfold nat2fb.
+  rewrite N2fb_Ntestbit.
+  bdestruct (A <? M).
+  apply Ntestbit_in_pow2n_pow2Sn.
+  assert ((2 ^ size + (2 ^ size + 0)) = 2^ S size). simpl. easy.
+  rewrite H17.
+  split.
+  assert (2^size <= (A + 2 ^ S size - M) mod 2 ^ S size).
+  assert ((A + 2 ^ S size - M) = 2^S size - (M - A)) by lia.
+  rewrite H18.
+  assert ((2 ^ S size - (M - A)) < 2 ^ S size) by lia.
+  rewrite Nat.mod_small by lia.
+  assert (M - A < 2^size) by lia. lia.
+  assert (N.of_nat(2 ^ size) <= N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size))%N by lia.
+  simpl in *. rewrite Nofnat_pow in H19. simpl in H19. lia.
+  assert ((A + 2 ^ S size - M) mod 2 ^ S size < 2 ^ S size).
+  apply Nat.mod_upper_bound. lia.
+  assert (N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size) < N.of_nat (2 ^ S size))%N by lia.
+  rewrite Nofnat_pow in H19. 
+  assert (N.of_nat (S size) = N.succ (N.of_nat size)) by lia.
+  rewrite H20 in H19. simpl in *. lia.
+  apply Ntestbit_lt_pow2n.
+  assert ((2 ^ size + (2 ^ size + 0)) = 2^ S size). simpl. easy.
+  rewrite H17. clear H17.
+  assert ((A + 2 ^ S size - M) mod 2 ^ S size < 2 ^ size).
+  assert ((A + 2 ^ S size - M) = 2 ^ S size + (A - M)) by lia.
+  rewrite H17. clear H17.
+  assert (2^ size <> 0).
+  apply Nat.pow_nonzero. lia.
+  rewrite Nat.add_mod by (simpl;lia).
+  rewrite Nat.mod_same by (simpl;lia).
+  rewrite plus_0_l.
+  rewrite Nat.mod_mod by (simpl;lia).
+  rewrite Nat.mod_small by (simpl;lia).
+  simpl. lia.
+  assert (N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size) < N.of_nat (2 ^ size))%N by lia.
+  rewrite Nofnat_pow in H18. 
+  simpl in *. lia. lia.
+  apply efresh_rz_sub; try easy.
+  unfold nor_mode.
+  rewrite assign_seq_out by iner_p.
+  rewrite efresh_exp_sem_irrelevant with (p := c).
+  apply H3.
+  apply efresh_rz_sub; try easy.
+  unfold nor_mode.
+  rewrite assign_seq_lt by lia. lia.
+  unfold nor_mode.
+  rewrite assign_seq_out by iner_p.
+  rewrite efresh_exp_sem_irrelevant with (p := c).
+  apply H3.
+  apply efresh_rz_sub; try easy.
+  simpl. lia. simpl. lia.
+Qed.
+
+Definition rz_compare (x:var) (n:nat) (c:posi) (M:nat) := 
+    Exp (rz_sub x n (nat2fb M));; RQFT x ;; Exp (CNOT (x,0) c) ;; (inv_pexp (Exp (rz_sub x n (nat2fb M));; RQFT x)).
+
+Lemma rz_compare_sem : forall size f c x A M aenv tenv tenv',
+                    phi_modes f x (S size) -> aenv x = S size -> fst c <> x
+                     -> nor_mode f c -> get_cua (f c) = false ->
+                    well_typed_pexp aenv tenv (rz_compare_half x (S size) c M) tenv'
+                   -> right_mode_env aenv tenv f -> qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+                  pexp_fresh c (Exp (rz_sub x (S size) (nat2fb M));; RQFT x) ->
+                  M < 2^size -> A < 2^size ->
+                  fbrev (S size) (get_r_qft f x) = nat2fb A ->
+                     prog_sem aenv (rz_compare x (S size) c M) f = f[c|-> put_cu (f c) (A <? M)].
+Proof.
+  intros. unfold rz_compare. unfold rz_compare_half in *. 
+  inv H5.
+  remember (rz_sub x (S size) (nat2fb M);; RQFT x) as e1. 
+  remember (prog_sem aenv e1 f) as g.
+  simpl.
+  rewrite <- Heqg.
+  rewrite cnot_sem.
+  rewrite inv_pexp_reverse_1 with (tenv:= tenv) (tenv' := env') (f:=f); try easy.
+  rewrite Heqg.
+  rewrite Heqe1 in *.
+  remember (rz_sub x (S size) (nat2fb M)) as e2. simpl in *.
+  unfold turn_rqft.
+  inv H16. inv H15.
+  rewrite rz_sub_full with (A:=A) (tenv:= env'0); try easy.
+  rewrite H1.
+  rewrite assign_seq_lt by lia.
+  rewrite assign_seq_out by iner_p.
+  rewrite efresh_exp_sem_irrelevant with (p := c).
+  rewrite H4.
+  unfold get_cua. bt_simpl.
+  unfold fbrev. bdestruct (0 <? S size). simpl.
+  assert ((size - 0 - 0) = size) by lia. rewrite H15.
+  assert ((nat2fb ((A + (2 ^ size + (2 ^ size + 0)) - M)
+                mod (2 ^ size + (2 ^ size + 0))) size) = (A <? M)).
+  unfold nat2fb.
+  rewrite N2fb_Ntestbit.
+  bdestruct (A <? M).
+  apply Ntestbit_in_pow2n_pow2Sn.
+  assert ((2 ^ size + (2 ^ size + 0)) = 2^ S size). simpl. easy.
+  rewrite H20.
+  split.
+  assert (2^size <= (A + 2 ^ S size - M) mod 2 ^ S size).
+  assert ((A + 2 ^ S size - M) = 2^S size - (M - A)) by lia.
+  rewrite H21.
+  assert ((2 ^ S size - (M - A)) < 2 ^ S size) by lia.
+  rewrite Nat.mod_small by lia.
+  assert (M - A < 2^size) by lia. lia.
+  assert (N.of_nat(2 ^ size) <= N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size))%N by lia.
+  simpl in *. rewrite Nofnat_pow in H22. simpl in H22. lia.
+  assert ((A + 2 ^ S size - M) mod 2 ^ S size < 2 ^ S size).
+  apply Nat.mod_upper_bound. lia.
+  assert (N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size) < N.of_nat (2 ^ S size))%N by lia.
+  rewrite Nofnat_pow in H22. 
+  assert (N.of_nat (S size) = N.succ (N.of_nat size)) by lia.
+  rewrite H23 in H22. simpl in *. lia.
+  apply Ntestbit_lt_pow2n.
+  assert ((2 ^ size + (2 ^ size + 0)) = 2^ S size). simpl. easy.
+  rewrite H20. clear H20.
+  assert ((A + 2 ^ S size - M) mod 2 ^ S size < 2 ^ size).
+  assert ((A + 2 ^ S size - M) = 2 ^ S size + (A - M)) by lia.
+  rewrite H20. clear H20.
+  assert (2^ size <> 0).
+  apply Nat.pow_nonzero. lia.
+  rewrite Nat.add_mod by (simpl;lia).
+  rewrite Nat.mod_same by (simpl;lia).
+  rewrite plus_0_l.
+  rewrite Nat.mod_mod by (simpl;lia).
+  rewrite Nat.mod_small by (simpl;lia).
+  simpl. lia.
+  assert (N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size) < N.of_nat (2 ^ size))%N by lia.
+  rewrite Nofnat_pow in H21. 
+  simpl in *. lia. rewrite H16. easy. lia.
+  inv H9. inv H20. easy. simpl. lia. simpl. lia.
+  subst. simpl. unfold turn_rqft.
+  unfold nor_mode. simpl.
+  rewrite assign_seq_lt. lia. rewrite H1. lia.
+  subst.
+  unfold nor_mode.
+  rewrite fresh_pexp_sem_irrelevant with (p := c).
+  apply H3. easy.
+Qed.
+
+
+
 
 
 Definition one_cu_adder (x:var) (n:nat) (c3:posi) (M:nat -> bool) := CU c3 (rz_adder x n n M).
@@ -9906,15 +10494,6 @@ Proof.
   apply majseq_fwf; try assumption.
 Qed.
 
-Lemma get_cus_up : forall n f x c v, fst c <> x -> get_cus n (f[c |-> v]) x = get_cus n f x.
-Proof.
-  intros.
-  apply functional_extensionality; intro.
-  unfold get_cus.
-  bdestruct (x0 <? n). destruct c. simpl in *. rewrite eupdate_index_neq by iner_p.
-  easy. easy.
-Qed.
-
 Lemma exp_sem_seq : forall e1 e2 f, exp_sem (e1 ; e2) f = exp_sem e2 (exp_sem e1 f).
 Proof.
 intros. simpl. easy.
@@ -10080,25 +10659,6 @@ Lemma pow2_predn :
 Proof.
   intros. destruct n. simpl in *. lia.
   simpl in *. rewrite Nat.sub_0_r in H0. lia.
-Qed.
-
-Lemma Ntestbit_lt_pow2n :
-  forall x n,
-    (x < 2^n)%N ->
-    N.testbit x n = false.
-Proof.
-  intros. apply N.mod_small in H0. rewrite <- H0. apply N.mod_pow2_bits_high. lia.
-Qed.
-
-Lemma Ntestbit_in_pow2n_pow2Sn :
-  forall x n,
-    (2^n <= x < 2^(N.succ n))%N ->
-    N.testbit x n = true.
-Proof.
-  intros. assert (N.log2 x = n) by (apply N.log2_unique; lia).
-  rewrite <- H1. apply N.bit_log2.
-  assert (2^n <> 0)%N by (apply N.pow_nonzero; easy).
-  lia.
 Qed.
 
 Lemma carry_leb_equiv_true :
