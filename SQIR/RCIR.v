@@ -662,11 +662,13 @@ Proof.
   intros. constructor.
 Qed.
 
+(*
 Definition csplit (p : bccom) :=
   match p with
   | bccont n (p1; p2) => bccont n p1; bccont n p2
   | _ => p
   end.
+*)
 
 Lemma uc_eval_CNOT_control :
   forall n m dim,
@@ -675,6 +677,7 @@ Proof.
   intros. rewrite denote_cnot. simpl. rewrite control_ucom_X. easy.
 Qed.
 
+(*
 Lemma bc2ucom_csplit :
   forall p dim,
     bcWT dim p ->
@@ -708,27 +711,30 @@ Proof.
         apply bcWT_uc_well_typed with (dim := dim) in H11; apply bcWT_uc_well_typed with (dim := dim) in H12;
           apply uc_well_typed_control; easy.
 Qed.
+*)
 
-Lemma bc2ucom_csplit_bcelim :
+Lemma bc2ucom_bcelim :
   forall p dim f,
     dim > 0 ->
     eWT dim p ->
-    uc_eval (bc2ucom (csplit (bcelim p))) × f_to_vec dim f = f_to_vec dim (bcexec p f).
+    uc_eval (bc2ucom (bcelim p)) × f_to_vec dim f = f_to_vec dim (bcexec p f).
 Proof.
-  intros. rewrite bc2ucom_csplit. apply bc2ucom_eWT_variant; easy.
+  intros. apply bc2ucom_eWT_variant; easy.
+  (*
   destruct (bcelim p) eqn:Ep; rewrite <- Ep;
     try (apply eWT_bcWT; try easy; rewrite Ep; easy).
   rewrite Ep. constructor. easy.
+   *)
 Qed.
 
-Lemma eWT_uc_well_typed_csplit_bcelim :
+Lemma eWT_uc_well_typed_bcelim :
   forall p dim,
     dim > 0 ->
     eWT dim p ->
-    @uc_well_typed _ dim (bc2ucom (csplit (bcelim p))).
+    @uc_well_typed _ dim (bc2ucom (bcelim p)).
 Proof.
-  intros. apply uc_well_typed_csplit.
+  intros.
   destruct (bcelim p) eqn:Ep; rewrite <- Ep;
-    try (apply eWT_bcWT; try easy; rewrite Ep; easy).
-  rewrite Ep. constructor. easy.
+    try (apply bcWT_uc_well_typed; apply eWT_bcWT; try easy; rewrite Ep; easy; easy).
+  rewrite Ep. simpl. apply uc_well_typed_ID. easy.
 Qed.

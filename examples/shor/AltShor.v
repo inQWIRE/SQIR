@@ -462,11 +462,11 @@ Proof.
   subst f.
   unfold f_modmult_circuit, modexp.
   rewrite bc2ucom_correct.
-  rewrite bc2ucom_csplit.
+  (*rewrite bc2ucom_csplit.*)
   reflexivity.
-  apply eWT_bcWT.
+  (*apply eWT_bcWT.
   apply bcelim_modmult_rev_neq_bcskip.
-  apply modmult_rev_eWT; auto.
+  apply modmult_rev_eWT; auto.*)
   rewrite 4 basis_f_to_vec_alt.
   rewrite f_to_vec_X by lia.
   rewrite f_to_vec_merge.

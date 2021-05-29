@@ -76,7 +76,7 @@ Definition Factor_post a N o m := if ((1 <? Nat.gcd (a ^ ((OF_post a N o m) / 2)
 (* =   ModMult Circuit   = *)
 (* ======================= *)
 
-Definition modmult_circuit a ainv N n := @bc2ucom (n + modmult_rev_anc n) (csplit (bcelim (modmult_rev N a ainv n))).
+Definition modmult_circuit a ainv N n := @bc2ucom (n + modmult_rev_anc n) (bcelim (modmult_rev N a ainv n)).
 
 Lemma modmult_circuit_MCP :
   forall a ainv N n,
@@ -95,7 +95,7 @@ Proof.
   }
   do 2 rewrite <- f_to_vec_num_with_anc.
   assert (0 < n) by (destruct n; simpl in *; lia).
-  rewrite bc2ucom_csplit_bcelim.
+  rewrite bc2ucom_bcelim.
   2: unfold modmult_rev_anc; lia.
   2: apply modmult_rev_eWT; easy.
   rewrite modmult_rev_correct; try easy. lia.
@@ -108,11 +108,11 @@ Lemma modmult_circuit_uc_well_typed :
     N < 2^n ->
     uc_well_typed (modmult_circuit a ainv N n).
 Proof.
-  intros. apply eWT_uc_well_typed_csplit_bcelim. unfold modmult_rev_anc. lia. apply modmult_rev_eWT.
+  intros. apply eWT_uc_well_typed_bcelim. unfold modmult_rev_anc. lia. apply modmult_rev_eWT.
   destruct n; simpl in *; lia.
 Qed.  
 
-Definition f_modmult_circuit a ainv N n := fun (i : nat) => @bc2ucom (n + modmult_rev_anc n) (csplit (bcelim (modmult_rev N (a^(2^i) mod N) (ainv^(2^i) mod N) n))).
+Definition f_modmult_circuit a ainv N n := fun (i : nat) => @bc2ucom (n + modmult_rev_anc n) (bcelim (modmult_rev N (a^(2^i) mod N) (ainv^(2^i) mod N) n)).
 
 Lemma f_modmult_circuit_MMI :
   forall a r N m n ainv,
@@ -140,7 +140,7 @@ Lemma f_modmult_circuit_uc_well_typed :
     N < 2^n ->
     uc_well_typed (f_modmult_circuit a ainv N n i).
 Proof.
-  intros. apply eWT_uc_well_typed_csplit_bcelim. unfold modmult_rev_anc. lia. apply modmult_rev_eWT.
+  intros. apply eWT_uc_well_typed_bcelim. unfold modmult_rev_anc. lia. apply modmult_rev_eWT.
   destruct n; simpl in *; lia.
 Qed.
 
