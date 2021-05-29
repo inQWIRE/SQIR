@@ -53,36 +53,6 @@ Proof.
     apply IHn; assumption. 
 Qed.
 
-Lemma list_add_eq: forall A (l1 l2 : list A) (a1 a2 : A), a1 = a2 /\ l1 = l2 -> a1::l1=a2::l2.
-Proof.
-  intros.
-  destruct H.
-  subst.
-  reflexivity.
-Qed.
-
-Lemma inv_stmt: forall (A B : Prop), (A -> B) -> (~B -> ~A).
-  intros.
-  contradict H0.
-  apply H.
-  assumption.
-Qed.
-
-
-Lemma list_add_neq: forall A (l1 l2 : list A) (a1 a2 : A), a1::l1 <> a2::l2 -> a1 <> a2 \/ (a1 = a2 /\ l1 <> l2).
-Proof.
-  intros.
-  assert (~(a1::l1 = a2::l2) -> ~(a1 = a2 /\ l1 = l2)).
-  apply inv_stmt.
-  apply list_add_eq.
-  assert (~ (a1 = a2 /\ l1 = l2) -> a1 <> a2 \/ (a1 = a2 /\ l1 <> l2)).
-  {
-    admit. (* This proof turned out to be hard/ pontentially impossible  - but the actual lemmma is clearly true so in the interest of time I focussed on the quantum part below*)
-  }
-  apply H1.
-  apply H0.
-  apply H.
-Admitted.
 
 Require Import QWIRE.Dirac.
 Require Import UnitarySem.
@@ -135,9 +105,9 @@ Definition bob_measure {U} n : com U n := bob_measure_helper n n.
 
 Definition circuit (alice_data alice_base bob_base : list bool) (n : nat) :=
   alice (zip alice_base alice_data) n; bob bob_base n; bob_measure n.
+(* The initial circuit layout turned out to be a bad design, since the interwoven pattern made inductive reasoning very challanging. Hence, this layout exists soely for documentation and as an example of what NOT to do. - See circuit' for a better definition *)
 
-
-
+Local Close Scope com_scope.
 
 Definition circuit' (alice_data alice_base bob_base : list bool) (n : nat) :=
   circuit'_helper (zip (zip alice_data alice_base) bob_base) n 0.
@@ -1889,7 +1859,7 @@ Fixpoint count_diff l1 l2 :=
 
 Require Import Utilities.
 
-Theorem probability_correct_single_qubit: forall data base, probability_of_outcome (output_state_qubit_i data base base) (target_state_qubit_i data) = 1%R.
+Theorem probability_correct_single_qubit: forall data base, probability_of_outcome (output_state_qubit_i data base base) (target_state_qubit_i data) = 1.
 Proof.
   intros.
   destruct data, base;
