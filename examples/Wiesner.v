@@ -1,7 +1,8 @@
 Require Import Lists.List.
 Import ListNotations.
 
-Definition bit_string := list bool. 
+Notation bit_string := (list bool).
+Notation combined_bit_string := (list (bool * bool * bool)).
 
 Fixpoint zip {A} {B} (l1 : list A) (l2 : list B) :=
   match l1, l2 with
@@ -57,8 +58,8 @@ Qed.
 Require Import QWIRE.Dirac.
 Require Import UnitarySem.
 Require Import DensitySem.
-Require Import SQIR. 
-Local Open Scope ucom.    
+Require Import SQIR.
+Local Open Scope ucom.
 
 Definition alice_bit_manip (base : bool) (data : bool) (n i : nat) : base_ucom n :=
   (if data then X i else SKIP);
@@ -77,17 +78,17 @@ Definition bob_bit_manip (base : bool) (n i : nat) : base_ucom n :=
   if base then H i else SKIP.
 
 
-Fixpoint bob_helper (base : list bool) (i n : nat) : base_ucom n :=
+Fixpoint bob_helper (base : bit_string) (i n : nat) : base_ucom n :=
   match base with
   | [] => SKIP
   | b::base' => bob_bit_manip b n i ; bob_helper base' (S i) n
 end.
 
-Definition bob (base: list bool) (n : nat) : base_ucom n := bob_helper base 0 n.
+Definition bob (base: bit_string) (n : nat) : base_ucom n := bob_helper base 0 n.
 
 Definition circuit'_qubit_i_non_meas (ad ab bb : bool) (n i : nat) : base_ucom n := alice_bit_manip ab ad n i; bob_bit_manip bb n i.
 
-Fixpoint circuit'_helper (l : (list ((bool * bool) * bool))) (n : nat) (i : nat) : base_ucom n :=
+Fixpoint circuit'_helper (l : combined_bit_string) (n : nat) (i : nat) : base_ucom n :=
   match l with
   | [] => SKIP
   | ((ad,ab),bb)::l' => circuit'_helper l' n (S i); circuit'_qubit_i_non_meas ad ab bb n i
@@ -103,13 +104,13 @@ end.
 
 Definition bob_measure {U} n : com U n := bob_measure_helper n n.
 
-Definition circuit (alice_data alice_base bob_base : list bool) (n : nat) :=
+Definition circuit (alice_data alice_base bob_base : bit_string) (n : nat) :=
   alice (zip alice_base alice_data) n; bob bob_base n; bob_measure n.
 (* The initial circuit layout turned out to be a bad design, since the interwoven pattern made inductive reasoning very challanging. Hence, this layout exists soely for documentation and as an example of what NOT to do. - See circuit' for a better definition *)
 
 Local Close Scope com_scope.
 
-Definition circuit' (alice_data alice_base bob_base : list bool) (n : nat) :=
+Definition circuit' (alice_data alice_base bob_base : bit_string) (n : nat) :=
   circuit'_helper (zip (zip alice_data alice_base) bob_base) n 0.
 
 
@@ -192,11 +193,6 @@ Fixpoint uc_eval_circuit_same_base data :=
     | [] => I 1
     | d::data' => uc_eval_circuit_same_base data' ⊗ mat_data d
   end.
-
-
-
-
-Definition R_Bool_Rel (r : R) b := (r = 1 /\ b = true) \/ (r = 0 /\ b = false).
 
 Lemma i_1_i_S: forall (i j: nat), i + 1 <=? i + S j = true.
   intros.
@@ -283,7 +279,7 @@ Definition q_bool (b:bool) := if b then ket 1 else ket 0.
 
 Notation target_state_qubit_i := q_bool.
 
-Fixpoint target_state n (data: list bool) : Vector (2^n) :=
+Fixpoint target_state n (data: bit_string) : Vector (2^n) :=
   match data with
   | [] => I 1
   | d::data' => target_state_qubit_i d ⊗ target_state (n-1) data'
@@ -296,7 +292,7 @@ Definition output_state_qubit_i (d ab bb : bool) :=
   else
     hadamard × q_bool d.
 
-Fixpoint output_state n (l: list (bool * bool * bool)) : Vector (2 ^ n) :=
+Fixpoint output_state n (l: combined_bit_string) : Vector (2 ^ n) :=
   match l with
   | [] => I 1
   | (d, ab, bb)::l' => output_state_qubit_i d ab bb ⊗ output_state (n-1) l'
@@ -315,7 +311,8 @@ Proof.
     destruct b0; unfold output_state_qubit_i; simpl; rewrite <- minus_n_O; rewrite <- IHn; try (simpl in H; simpl in H0; apply eq_add_S in H; apply eq_add_S in H0; assumption); try (reflexivity).
 Qed.
 
-Theorem kron_dist_mult_id : forall n m (B C : Square m) , (I n) ⊗ (B × C) = ((I n) ⊗ B) × ((I n) ⊗ C).
+Lemma kron_dist_mult_id : forall n m (B C : Square m) , (I n) ⊗ (B × C) = ((I n) ⊗ B) × ((I n) ⊗ C).
+  (* This lemma could potentially be extracted, since it seems quite useful *)
  intros.
  rewrite kron_mixed_product.
  rewrite Mmult_1_l.
@@ -1844,11 +1841,6 @@ Proof.
   rewrite (output_target_equal_base_equal (S n) data base); try assumption.
   apply circuit'_output_correct; assumption.
 Qed.
-
-
-Lemma ne_kron: forall {n m o p q r: nat} (A : Matrix n m) (B : Matrix o p) (C: Matrix q r), A <> B -> C ⊗ A <> C ⊗ B.
-Admitted.
-
 
 Fixpoint count_diff l1 l2 :=
   match l1, l2 with
