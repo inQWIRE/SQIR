@@ -49,16 +49,55 @@ Qed.
 
 Opaque gcCC4X.
 
+Lemma ugcount_npar :
+  forall n u, 0 < n -> ugcount (npar n u) <= n.
+Proof.
+  intros. induction n. lia.
+  destruct n. simpl. lia.
+  assert (0 < S n) by lia. apply IHn in H0.
+  remember (S n) as Sn.
+  destruct Sn; simpl in *; lia. 
+Qed.
+
+Lemma ugcount_invert :
+  forall u, ugcount (invert u) = ugcount u.
+Proof.
+  induction u.
+  simpl. rewrite IHu1, IHu2. lia.
+  destruct u; do 6 (destruct l; simpl; try lia).
+Qed.
+
+Lemma ugcount_map_qubits :
+  forall u f, ugcount (map_qubits f u) = ugcount u.
+Proof.
+  induction u; intros; try (simpl; lia).
+  simpl. rewrite IHu1, IHu2. easy.
+Qed.
+
 (* Can be extended to C4X, CSWAP. But it is not used in Shor's so ignored here. *)
 Fixpoint bcgcount (c : bccom) : nat :=
   match c with
   | bcseq c1 c2 => (bcgcount c1) + (bcgcount c2)
+  | bccont n (bcskip) => 1
   | bccont n (bcx q) => 1
   | bccont n1 (bccont n2 (bcx q)) => 1
   | bccont n1 (bccont n2 (bccont n3 (bcx q))) => 1
-  | bccont n c => gcCC4X * (bcgcount c)
+  | bccont _ c => gcCC4X * (bcgcount c)
   | _ => 1
   end.
+
+Lemma bcgcount_bccont :
+  forall c n, bcgcount (bccont n c) <= gcCC4X * bcgcount c.
+Proof.
+  assert (gcCC4X >= 191). {
+    Local Transparent gcCC4X.
+    unfold gcCC4X. lia.
+    Local Opaque gcCC4X.
+  }
+  induction c; intros; simpl; try lia.
+  remember (bcgcount c) as f.
+  do 2 (destruct c; try easy; try (simpl in *; nia)).
+Qed.
 
 Lemma ugcount_leq_bcgcount :
   forall c, ugcount (bc2ucom c) <= bcgcount c.
@@ -156,4 +195,21 @@ Proof.
     destruct (bcelim c1) eqn:E1;
       destruct (bcelim c2) eqn:E2;
       try (simpl in *; nia).
+Qed.
+
+Lemma bcgcount_bcinv :
+  forall c, bcgcount (bcinv c) = bcgcount c.
+Proof.
+  induction c; simpl; try lia.
+  do 3 (destruct c; try easy; try (simpl in *; nia)).
+Qed.
+
+Local Opaque gcCC4X.
+Lemma bcgcount_map_bccom :
+  forall c f, bcgcount (map_bccom f c) = bcgcount c.
+Proof.
+  induction c; intros; try (simpl; lia).
+  - simpl. rewrite IHc. remember (bcgcount c) as C.
+    do 3 (destruct c; simpl in *; try easy).
+  - simpl. rewrite IHc1, IHc2. easy.
 Qed.

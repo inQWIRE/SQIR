@@ -36,15 +36,6 @@ Fixpoint controlled_powers' (f : nat -> bccom) k kmax : bccom :=
 Definition controlled_powers (f : nat -> bccom) k : ucom U := 
   bc2ucom (controlled_powers' f k k).
 
-Fixpoint map_bccom (f : nat -> nat) (bc : bccom) : bccom :=
-  match bc with
-  | bcskip => bcskip
-  | bcx a => bcx (f a)
-  | bcswap a b => bcswap (f a) (f b)
-  | bccont a bc1 => bccont (f a) (map_bccom f bc1)
-  | bcseq bc1 bc2 => bcseq (map_bccom f bc1) (map_bccom f bc2)
-  end.
-
 Definition QPE k (f : nat -> bccom) : ucom U :=
   npar k U_H >>
   controlled_powers (fun x => map_bccom (fun q => k + q)%nat (f x)) k >>
@@ -306,31 +297,6 @@ Proof.
   constructor; apply bc2ucom_WF.
   destruct (bcelim bc1); destruct (bcelim bc2); try easy;
     simpl in *; try rewrite IHbc2; try rewrite IHbc1; easy.
-Qed.
-
-Lemma map_qubits_bcfresh : forall k q (bc : bccom),
-  (q < k)%nat ->
-  bcelim bc <> bcskip ->
-  bcfresh q (map_bccom (fun i : nat => (k + i)%nat) (bcelim bc)).
-Proof.
-  intros k q bc Hq H.
-  induction bc. simpl. 
-  contradict H; reflexivity.
-  1-2: simpl; constructor; lia.
-  simpl. 
-  destruct (bcelim bc) eqn:bce.
-  contradict H.
-  simpl. rewrite bce. reflexivity.
-  1-4: simpl in *; constructor; try lia; apply IHbc; easy.
-  simpl.
-  destruct (bcelim bc1) eqn:bce1; destruct (bcelim bc2) eqn:bce2.
-  contradict H.
-  simpl. rewrite bce1, bce2. reflexivity.
-  all: try (apply IHbc1; easy).
-  all: try (apply IHbc2; easy).
-  all: simpl; constructor.
-  all: try (apply IHbc1; easy).
-  all: try (apply IHbc2; easy).
 Qed.
 
 Local Opaque npar controlled_powers QFT_w_reverse QPE.QFT_w_reverse.
