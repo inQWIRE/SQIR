@@ -1816,11 +1816,6 @@ Proof.
   R_field.
 Qed.
 
-Lemma half_greater_0: 0 <= / 2.
-  (* This trivial lemma turns out hard to prove; so in the interest of time; I shall skip it *)
-  Admitted.
-
-
 Theorem probability_incorrect_single_qubit: forall data ab bb, (ab <> bb) -> probability_of_outcome (output_state_qubit_i data ab bb) (target_state_qubit_i data) = (1/2)%R.
 Proof.
   intros.
@@ -1844,7 +1839,7 @@ Proof.
     rewrite Rmult_0_l.
     rewrite Rplus_0_r.
     reflexivity.
-    apply half_greater_0.
+    lra.
     unfold snd.
     simpl.
     R_field_simplify.
@@ -1878,7 +1873,7 @@ Proof.
     rewrite Rmult_0_l.
     rewrite Rplus_0_r.
     reflexivity.
-    apply half_greater_0.
+    lra.
     unfold snd.
     simpl.
     R_field_simplify.
@@ -1911,7 +1906,7 @@ Proof.
     rewrite Rmult_0_l.
     rewrite Rplus_0_r.
     reflexivity.
-    apply half_greater_0.
+    lra.
     unfold snd.
     simpl.
     R_field_simplify.
@@ -1944,7 +1939,7 @@ Proof.
     rewrite Rmult_0_l.
     rewrite Rplus_0_r.
     reflexivity.
-    apply half_greater_0.
+    lra.
     unfold snd.
     simpl.
     R_field_simplify.
