@@ -38,7 +38,7 @@ COQ_OPTS := -R . Top
 
 all: examples voqc $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMeasure.vo $(VOQC)/BooleanCompilation.vo shor
 
-examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Grover.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
+examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Grover.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo $(examples)/Wiesner.vo
 
 shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/AltShor.vo
 
@@ -72,6 +72,9 @@ examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/Densi
 
 examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
 	coqc $(COQ_OPTS) $(examples)/Utilities.v
+
+examples/Wiesner.vo: $(examples)/Wiesner.v $(SQIR)/UnitaryOps.vo $(examples)/Utilities.vo $(QWIRE)/Dirac.vo
+	coqc $(COQ_OPTS) $(examples)/Wiesner.v
 
 # Built by 'make shor'
 
