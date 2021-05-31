@@ -1961,6 +1961,8 @@ Proof.
     solve_matrix.
 Qed.
 
+Theorem norm_tensor: forall n (A : Vector n) (B : Vector n), @norm (n) (A ⊗ B) = (@norm n A * @norm n B)%R.
+  Admitted.
 
 Theorem probibility_incorrect: forall n n_diff data ab bb, (length data = S n) -> (length ab = S n) -> (length bb = S n) -> count_diff ab bb = n_diff -> probability_of_outcome (uc_eval (circuit' data ab bb (S n)) × initial_state (S n)) (target_state (S n) data) = ((1/2)%R^n_diff)%R.
 Proof.
@@ -1977,6 +1979,38 @@ Proof.
       subst;
       R_field
       ).
-  - destruct b, b0, b1; simpl.
-    + Search probability_of_outcome.
-Admitted.
+  - destruct b, b0, b1; simpl;
+      try ( (* Case no diff *)
+      rewrite probability_of_outcome_is_norm;
+      restore_dims;
+      rewrite kron_adjoint;
+      rewrite kron_mixed_product;
+      restore_dims;
+      rewrite norm_tensor;
+      rewrite Rpow_mult_distr;
+      rewrite <- probability_of_outcome_is_norm;
+      rewrite probability_correct_single_qubit;
+      rewrite <- circuit'_output_correct; try (simpl in H; simpl in H0; simpl in H1; apply eq_add_S in H; apply eq_add_S in H0; apply eq_add_S in H1; assumption);
+      rewrite <- probability_of_outcome_is_norm;
+      simpl in H2;
+      rewrite (IHn n_diff); try (simpl in H; simpl in H0; simpl in H1; apply eq_add_S in H; apply eq_add_S in H0; apply eq_add_S in H1; assumption); try (subst; trivial);
+      rewrite Rmult_1_l;
+      reflexivity);
+      try ( (* Case diff *)
+      rewrite probability_of_outcome_is_norm;
+      restore_dims;
+      rewrite kron_adjoint;
+      rewrite kron_mixed_product;
+      restore_dims;
+      rewrite norm_tensor;
+      rewrite Rpow_mult_distr;
+      rewrite <- probability_of_outcome_is_norm;
+      rewrite probability_incorrect_single_qubit; try apply diff_false_true; try apply diff_true_false;
+      rewrite <- circuit'_output_correct; try (simpl in H; simpl in H0; simpl in H1; apply eq_add_S in H; apply eq_add_S in H0; apply eq_add_S in H1; assumption);
+      rewrite <- probability_of_outcome_is_norm;
+      simpl in H2;
+      rewrite (IHn (n_diff - 1)%nat); try (simpl in H; simpl in H0; simpl in H1; apply eq_add_S in H; apply eq_add_S in H0; apply eq_add_S in H1; assumption); try (subst; trivial); try lia;
+      replace (S (count_diff ab bb) - 1)%nat with (count_diff ab bb) by lia;
+      rewrite tech_pow_Rmult;
+      reflexivity).
+Qed.
