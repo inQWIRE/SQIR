@@ -207,68 +207,6 @@ Lemma i_1_i_S: forall (i j: nat), i + 1 <=? i + S j = true.
   constructor.
 Qed.
 
-Lemma circuit_growth_same_base: forall n data base, length data = (S n) -> length base = (S n) -> @pad 1 0 (S n) σx × uc_eval (circuit'_helper (zip (zip data base) base) (S n) 1) = uc_eval_circuit_same_base data ⊗ σx.
-
-  intros.
-  induction n.
-  - simpl.
-    destruct data, base; try discriminate.
-    destruct data, base; try discriminate.
-    simpl.
-    destruct b, b0; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP; try (repeat rewrite unfold_pad); try simpl; try auto.
-Abort.
-
-    
-    
-
-Lemma circuit_growth_old: forall z' z n, (n > 0)%nat -> (n = length (z')) -> (uc_eval (circuit'_helper (z::z') (S n) 1)) = uc_eval (circuit'_helper z' n 0) ⊗ I 2.
-Proof.
-  intros z'.
-  induction z'; intros.
-  - simpl in H0.
-    subst.
-    contradict H.
-    apply gt_irrefl.
-  - Opaque circuit'_qubit_i_non_meas.
-    simpl.
-    destruct a, z; destruct p, p0.
-    simpl.
-Abort.
-
-  Theorem circuit_individual_qubit_same_base: forall data base (n: nat), (length data = S n) -> (length base = S n) -> uc_eval (circuit' data base base (S n)) = uc_eval_circuit_same_base data.
-Proof.
-  intros.
-  generalize dependent base.
-  generalize dependent data.
-  induction n; intros.
-  - simpl.
-    destruct data, base; try discriminate.
-    destruct data, base; try discriminate.
-    simpl.
-    rewrite denote_SKIP; try auto.
-    destruct b, b0; try rewrite circuit'_individual_qubit_non_meas_same_base_true; try rewrite circuit'_individual_qubit_non_meas_same_base_false; simpl; restore_dims; try auto; try (rewrite Mmult_1_r; rewrite unfold_pad; simpl; try rewrite kron_1_l; try rewrite kron_1_r; solve_matrix; try apply WF_pad; try apply WF_σx; try apply WF_I); try solve_matrix.
-  - unfold circuit'.
-    assert (length (zip (zip data base) base)  = S (S n)).
-    {
-      assert (length (zip data base) = S (S n)).
-      {
-        apply zip_same_length.
-        assumption.
-        assumption.
-      }
-      apply zip_same_length.
-      assumption.
-      assumption.
-    }
-    destruct data; try discriminate H.
-    destruct base; try discriminate H0.
-    Opaque circuit'_qubit_i_non_meas.
-    simpl.
-    destruct b0, b.
-    + rewrite circuit'_individual_qubit_non_meas_same_base_true; try trivial (* For assuption (S n > 0) *).
-      simpl.
-Abort.
-
 Fixpoint initial_state n : Vector (2^n) :=
   match n with
   | 0 => I 1
@@ -298,7 +236,6 @@ Fixpoint output_state n (l: combined_bit_string) : Vector (2 ^ n) :=
   | (d, ab, bb)::l' => output_state_qubit_i d ab bb ⊗ output_state (n-1) l'
   end.
 
-
 Theorem output_target_equal_base_equal: forall n data base, length data = n -> length base = n -> target_state n data = output_state n (zip (zip data base) base).
 Proof.
   intro n.
@@ -319,6 +256,8 @@ Lemma kron_dist_mult_id : forall n m (B C : Square m) , (I n) ⊗ (B × C) = ((I
  reflexivity.
  apply WF_I.
 Qed.
+
+Opaque circuit'_qubit_i_non_meas. (* For usage of lemmata *)
 
 Lemma circuit'_helper_growth_i: forall n l i, (length l = S n) -> uc_eval(circuit'_helper l ((S i) + (S n)) (S i)) =  I (2^(S i)) ⊗ uc_eval (circuit'_helper l (S n) 0).
 Proof.
