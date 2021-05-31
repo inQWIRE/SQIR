@@ -1781,7 +1781,7 @@ Proof.
   apply circuit'_output_correct; assumption.
 Qed.
 
-Theorem norm_tensor: forall (A : Vector 1) (B : Vector 1), @norm (1) (A ⊗ B) = (@norm 1 A * @norm 1 B)%R.
+Theorem norm_kron: forall (A : Vector 1) (B : Vector 1), @norm (1) (A ⊗ B) = (@norm 1 A * @norm 1 B)%R.
   unfold norm.
   unfold kron.
   intros.
@@ -1868,7 +1868,7 @@ Proof.
     restore_dims;
     rewrite kron_adjoint;
     rewrite kron_mixed_product;
-    rewrite norm_tensor;
+    rewrite norm_kron;
     rewrite IHn; try (simpl in H; apply eq_add_S in H; assumption);
     simpl;
     rewrite ket2bra;
@@ -2085,7 +2085,7 @@ Proof.
       rewrite kron_adjoint;
       rewrite kron_mixed_product;
       restore_dims;
-      rewrite norm_tensor;
+      rewrite norm_kron;
       rewrite Rpow_mult_distr;
       rewrite <- probability_of_outcome_is_norm;
       rewrite probability_correct_single_qubit;
@@ -2101,7 +2101,7 @@ Proof.
       rewrite kron_adjoint;
       rewrite kron_mixed_product;
       restore_dims;
-      rewrite norm_tensor;
+      rewrite norm_kron;
       rewrite Rpow_mult_distr;
       rewrite <- probability_of_outcome_is_norm;
       rewrite probability_incorrect_single_qubit; try apply diff_false_true; try apply diff_true_false;
