@@ -1781,14 +1781,114 @@ Proof.
   apply circuit'_output_correct; assumption.
 Qed.
 
-Fixpoint count_diff l1 l2 :=
-  match l1, l2 with
-  | [], _ => 0%nat
-  | _, [] => 0%nat
-  | h1::t1, h2::t2 => if eqb h1 h2 then count_diff t1 t2 else (1 + count_diff t1 t2)%nat
-  end.
+Theorem norm_tensor: forall (A : Vector 1) (B : Vector 1), @norm (1) (A ⊗ B) = (@norm 1 A * @norm 1 B)%R.
+  unfold norm.
+  unfold kron.
+  intros.
+  simpl.
+  remember (fst (A 0%nat 0%nat)) as a10.
+  remember (snd (A 0%nat 0%nat)) as a20.
+  remember (fst (B 0%nat 0%nat)) as b10.
+  remember (snd (B 0%nat 0%nat)) as b20.
+  replace (a10 * a10)%R with (a10 ^ 2)%R by lra.
+  replace (- a20 * a20)%R with (-(a20 ^ 2))%R by lra.
+  replace (b10 * b10)%R with (b10 ^ 2)%R by lra.
+  replace (- b20 * b20)%R with (-(b20 ^ 2))%R by lra.
+  rewrite <- sqrt_mult.
+  rewrite 3 Rplus_0_l.
+  repeat (
+  repeat rewrite Rmult_minus_distr_l;
+  repeat rewrite Rmult_minus_distr_r;
+  repeat rewrite Rmult_plus_distr_l;
+  repeat rewrite Rmult_plus_distr_r
+    ).
+  repeat rewrite Rminus_unfold.
+  repeat rewrite Ropp_involutive.
+  rewrite <- (Rplus_comm (- (a20 * b20 * (a10 * b10))) (a10 * b10 * (a10 * b10))).
+  repeat rewrite Ropp_mult_distr_l.
+  repeat rewrite Ropp_involutive.
+  repeat rewrite Ropp_mult_distr_r.
+  repeat rewrite <- Rmult_plus_distr_r.
+  repeat rewrite Ropp_mult_distr_r.
+  repeat rewrite Ropp_involutive.
+  rewrite Ropp_plus_distr.
+  rewrite Ropp_mult_distr_l.
+  rewrite Ropp_mult_distr_r.
+  repeat rewrite Ropp_involutive.
+  replace ((- a20 * b20 + a10 * b10) * (a10 * b10))%R with ((-a20 * b20 * a10 + a10 ^2 * b10) * b10)%R by lra.
+  replace ( (a10 * b10 + - a20 * b20) * (a20 * - b20) )%R with ((-a10 *b10 *a20 + a20 ^ 2 * b20) * b20)%R by lra.
+  replace (((a10 * b20 + a20 * b10) * (a10 * b20)))%R with ((a10 ^2 *b20 + a20 * b10 * a10) * b20)%R by lra.
+  rewrite Rmult_opp_opp.
+  replace ((a10 * b20 + a20 * b10) * (a20 * b10))%R with ((a10 *b20 *a20 + a20 ^2 * b10) * b10)%R by lra.
+  rewrite <- Rplus_assoc.
+  rewrite Rplus_comm.
+  rewrite Rplus_assoc.
+  rewrite <- Rmult_plus_distr_r.
+  rewrite <- Rplus_assoc.
+  rewrite <- Rplus_assoc.
+  rewrite <- Rmult_plus_distr_r.
+  rewrite <- Rplus_assoc.
+  replace ((a10 * b20 * a20 + a20 ^ 2 * b10 + - a20 * b20 * a10 + a10 ^ 2 * b10))%R with ((a10 ^2 + a20 ^2) * b10 )%R by lra.
+  replace ( (- a10 * b10 * a20 + a20 ^ 2 * b20 + a10 ^ 2 * b20 + a20 * b10 * a10))%R with ((a10 ^2  + a20^2)*b20)%R by lra.
+  rewrite Rmult_assoc.
+  rewrite Rmult_assoc.
+  replace (b10 * b10)%R with (b10 * b10 ^ 1)%R by lra.
+  replace (b20 * b20)%R with (b20 * b20 ^ 1)%R by lra.
+  rewrite (tech_pow_Rmult b10 1).
+  rewrite (tech_pow_Rmult b20 1).
+  reflexivity.
+  apply Rplus_le_le_0_compat.
+  apply Rle_refl.
+  replace ( a10 ^ 2 - - a20 ^ 2)%R with (a10 ^2 + a20 ^2)%R by lra.
+  apply Rplus_le_le_0_compat; apply pow2_ge_0.
+  apply Rplus_le_le_0_compat.
+  apply Rle_refl.
+  replace ( b10 ^ 2 - - b20 ^ 2)%R with (b10 ^2 + b20 ^2)%R by lra.
+  apply Rplus_le_le_0_compat; apply pow2_ge_0.
+Qed.
+
+Lemma target_state_norm: forall n data, (length data = S n) -> norm ((target_state (S n) data)† × (target_state (S n) data)) = 1.
+Proof.
+  intro n.
+  induction n; intros.
+  - destruct data; try discriminate.
+    destruct data; try discriminate.
+    destruct b;
+    simpl;
+    rewrite kron_1_r;
+    rewrite ket2bra;
+    try rewrite bra1ket1; try rewrite bra0ket0;
+    unfold norm;
+    simpl;
+    replace (0 + (1 * 1 - - 0 * 0))%R with 1%R by lra;
+    apply sqrt_1.
+  - destruct data; try discriminate.
+    destruct b;
+    simpl;
+    restore_dims;
+    rewrite kron_adjoint;
+    rewrite kron_mixed_product;
+    rewrite norm_tensor;
+    rewrite IHn; try (simpl in H; apply eq_add_S in H; assumption);
+    simpl;
+    rewrite ket2bra;
+    try rewrite bra1ket1; try rewrite bra0ket0;
+    unfold norm;
+    simpl;
+    replace (0 + (1 * 1 - - 0 * 0))%R with 1%R by lra;
+    rewrite sqrt_1;
+    lra.
+Qed.
 
 Require Import Utilities.
+
+Theorem probibility_correct: forall n data base, (length data = S n) -> (length base = S n) -> probability_of_outcome (uc_eval (circuit' data base base (S n)) × initial_state (S n)) (target_state (S n) data) = 1%R.
+  intros.
+  rewrite circuit'_same_base_correct; try assumption.
+  rewrite probability_of_outcome_is_norm.
+  rewrite target_state_norm; try assumption.
+  lra.
+Qed.
 
 Theorem probability_correct_single_qubit: forall data base, probability_of_outcome (output_state_qubit_i data base base) (target_state_qubit_i data) = 1.
 Proof.
@@ -1956,71 +2056,12 @@ Proof.
     solve_matrix.
 Qed.
 
-Theorem norm_tensor: forall (A : Vector 1) (B : Vector 1), @norm (1) (A ⊗ B) = (@norm 1 A * @norm 1 B)%R.
-  unfold norm.
-  unfold kron.
-  intros.
-  simpl.
-  remember (fst (A 0%nat 0%nat)) as a10.
-  remember (snd (A 0%nat 0%nat)) as a20.
-  remember (fst (B 0%nat 0%nat)) as b10.
-  remember (snd (B 0%nat 0%nat)) as b20.
-  replace (a10 * a10)%R with (a10 ^ 2)%R by lra.
-  replace (- a20 * a20)%R with (-(a20 ^ 2))%R by lra.
-  replace (b10 * b10)%R with (b10 ^ 2)%R by lra.
-  replace (- b20 * b20)%R with (-(b20 ^ 2))%R by lra.
-  rewrite <- sqrt_mult.
-  rewrite 3 Rplus_0_l.
-  repeat (
-  repeat rewrite Rmult_minus_distr_l;
-  repeat rewrite Rmult_minus_distr_r;
-  repeat rewrite Rmult_plus_distr_l;
-  repeat rewrite Rmult_plus_distr_r
-    ).
-  repeat rewrite Rminus_unfold.
-  repeat rewrite Ropp_involutive.
-  rewrite <- (Rplus_comm (- (a20 * b20 * (a10 * b10))) (a10 * b10 * (a10 * b10))).
-  repeat rewrite Ropp_mult_distr_l.
-  repeat rewrite Ropp_involutive.
-  repeat rewrite Ropp_mult_distr_r.
-  repeat rewrite <- Rmult_plus_distr_r.
-  repeat rewrite Ropp_mult_distr_r.
-  repeat rewrite Ropp_involutive.
-  rewrite Ropp_plus_distr.
-  rewrite Ropp_mult_distr_l.
-  rewrite Ropp_mult_distr_r.
-  repeat rewrite Ropp_involutive.
-  replace ((- a20 * b20 + a10 * b10) * (a10 * b10))%R with ((-a20 * b20 * a10 + a10 ^2 * b10) * b10)%R by lra.
-  replace ( (a10 * b10 + - a20 * b20) * (a20 * - b20) )%R with ((-a10 *b10 *a20 + a20 ^ 2 * b20) * b20)%R by lra.
-  replace (((a10 * b20 + a20 * b10) * (a10 * b20)))%R with ((a10 ^2 *b20 + a20 * b10 * a10) * b20)%R by lra.
-  rewrite Rmult_opp_opp.
-  replace ((a10 * b20 + a20 * b10) * (a20 * b10))%R with ((a10 *b20 *a20 + a20 ^2 * b10) * b10)%R by lra.
-  rewrite <- Rplus_assoc.
-  rewrite Rplus_comm.
-  rewrite Rplus_assoc.
-  rewrite <- Rmult_plus_distr_r.
-  rewrite <- Rplus_assoc.
-  rewrite <- Rplus_assoc.
-  rewrite <- Rmult_plus_distr_r.
-  rewrite <- Rplus_assoc.
-  replace ((a10 * b20 * a20 + a20 ^ 2 * b10 + - a20 * b20 * a10 + a10 ^ 2 * b10))%R with ((a10 ^2 + a20 ^2) * b10 )%R by lra.
-  replace ( (- a10 * b10 * a20 + a20 ^ 2 * b20 + a10 ^ 2 * b20 + a20 * b10 * a10))%R with ((a10 ^2  + a20^2)*b20)%R by lra.
-  rewrite Rmult_assoc.
-  rewrite Rmult_assoc.
-  replace (b10 * b10)%R with (b10 * b10 ^ 1)%R by lra.
-  replace (b20 * b20)%R with (b20 * b20 ^ 1)%R by lra.
-  rewrite (tech_pow_Rmult b10 1).
-  rewrite (tech_pow_Rmult b20 1).
-  reflexivity.
-  apply Rplus_le_le_0_compat.
-  apply Rle_refl.
-  replace ( a10 ^ 2 - - a20 ^ 2)%R with (a10 ^2 + a20 ^2)%R by lra.
-  apply Rplus_le_le_0_compat; apply pow2_ge_0.
-  apply Rplus_le_le_0_compat.
-  apply Rle_refl.
-  replace ( b10 ^ 2 - - b20 ^ 2)%R with (b10 ^2 + b20 ^2)%R by lra.
-  apply Rplus_le_le_0_compat; apply pow2_ge_0.
-Qed.
+Fixpoint count_diff l1 l2 :=
+  match l1, l2 with
+  | [], _ => 0%nat
+  | _, [] => 0%nat
+  | h1::t1, h2::t2 => if eqb h1 h2 then count_diff t1 t2 else (1 + count_diff t1 t2)%nat
+  end.
 
 Theorem probibility_incorrect: forall n n_diff data ab bb, (length data = S n) -> (length ab = S n) -> (length bb = S n) -> count_diff ab bb = n_diff -> probability_of_outcome (uc_eval (circuit' data ab bb (S n)) × initial_state (S n)) (target_state (S n) data) = ((1/2)%R^n_diff)%R.
 Proof.
