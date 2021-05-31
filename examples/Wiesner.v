@@ -1781,7 +1781,7 @@ Proof.
   apply circuit'_output_correct; assumption.
 Qed.
 
-Theorem norm_kron: forall (A : Vector 1) (B : Vector 1), @norm (1) (A ⊗ B) = (@norm 1 A * @norm 1 B)%R.
+Lemma norm_kron: forall (A : Vector 1) (B : Vector 1), @norm (1) (A ⊗ B) = (@norm 1 A * @norm 1 B)%R.
   unfold norm.
   unfold kron.
   intros.
