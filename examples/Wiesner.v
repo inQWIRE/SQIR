@@ -1,3 +1,18 @@
+
+(**
+Wiesner's quantum money proposed by Stephen Wiesner in 1983 (https://doi.org/10.1145%2F1008908.1008920), is a quantum verification scheme that intends to encode an $n$ bit integer. 
+Given two parties, Alice and Bob, Alice will encode the n bit integer by choosing a basis such that each bit of the integer will either be encoded to quantum $\ket{1}$ in the basis $\ket{0}, \ket{1}$ or the basis $\ket{-},\ket{+}$.
+Physically this corresponds to choice of orthogonal polarization.
+Bob will then decode the integer using his basis.
+Using the no-cloning property, it follows that when Bob measures to get the classical information, he will certainly get the correct output if his basis is equal.
+If his basis does not match, he will have a chance of $\frac{1}{2^{n_{diff}}}$ getting the correct result, where $n_{diff}$ is the number of bits his basis differs from Alice's.
+It follows that his chance getting the correct output using a random is $(\frac{3}{4})^n$.
+
+In the context of money, the $n$-bit integer would be a serial number, Alice the central bank, and Bob a malicious \nth{3} party trying to copy money.
+While the central bank can validate bills with a given serial numbers, while the 3rd party would be unable to decode the bill to get a valid serial number to copy.
+
+In the following we will prove the correctness in case of equal bases and the probability of outcome in case of incorrect bases for the Wiesner's quantum money with n qubits.
+*)
 Require Import Lists.List.
 Import ListNotations.
 
