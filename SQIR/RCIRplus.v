@@ -11114,6 +11114,7 @@ Proof.
   rewrite fresh_pexp_sem_irrelevant.
   rewrite IHn; try easy. lia.
   apply pexp_fresh_mod_adder; try easy. lia.
+  destruct c. iner_p.
   rewrite IHn; try easy. lia.
 Qed.
 
@@ -13982,10 +13983,11 @@ Inductive qexp := skip
 Definition func : Type := ( fvar * list var * qexp * qvar).
     (* a function is a fun name, a starting block label, and a list of blocks, and the returned variable. *)
 
-Definition prog : Type := (nat * nat * nat * list var * list func * fvar). 
-   (* a program is a nat representing the stack size and a number for the total number of bits in each binary. a nat number 
+Definition prog : Type := (nat * nat * nat * nat * list var * list func * fvar * var). 
+   (* a program is a nat representing the stack size, a number for the number of while to allow in a loop
+       and a number for the total number of bits in each binary. a nat number 
     indicating the number of denominator for each fixed-pointer number, and a list of global vars, and a list of functions.
-     and the main function to call. *)
+     and the main function to call, and the final global var to write to. *)
 
 
 (* Define the well-formedness of exp. It is SSA + variable-dominance, as well as type match. *)
@@ -14114,8 +14116,8 @@ Inductive type_funs (gs:list var) : fenv -> list func -> fenv -> Prop :=
 (* ( fvar * list var * qexp ). *)
 
 Inductive type_prog : prog -> Prop :=
-  type_prog_t : forall si n m l fl fenv main, m <= n -> FEnv.In main fenv ->
-              type_funs l empty_fenv fl fenv -> type_prog (si,n,m,l,fl,main).
+  type_prog_t : forall si sloop n m l fl fenv main rx, m <= n -> FEnv.In main fenv ->
+              type_funs l empty_fenv fl fenv -> type_prog (si,sloop,n,m,l,fl,main, rx).
 
 
 
@@ -14137,7 +14139,7 @@ Inductive sem_cexp (s_lit size:nat) : nat -> reg -> cexp -> nat -> bool -> Prop 
                               S sn < s_lit -> sem_cexp s_lit size sn reg (clt f x y) (S sn) (b1 <? b2)
   | sem_ceq : forall sn reg f x y n1 b1 n2 b2, sem_factor size reg x n1 -> 
                       sem_factor size reg y n2 -> n1 = nat2fb b1 -> n2 = nat2fb b2 -> 
-                             S (S sn) < s_lit -> sem_cexp s_lit size sn reg (clt f x y) (S (S sn)) (b1 =? b2).
+                             (S sn) < s_lit -> sem_cexp s_lit size sn reg (clt f x y) (S sn) (b1 =? b2).
 
 Fixpoint init_reg (r:reg) (l:list var) : reg  :=
     match l with [] => r
@@ -14175,9 +14177,487 @@ Fixpoint init_reg_g (r:reg) (l:list var) : reg  :=
    end.
 
 Inductive sem_prog (fv:fenv) : prog -> (nat -> bool) -> Prop :=
-    sem_main : forall s_lit size m gl fl main l e benv rx sn reg v, 
+    sem_main : forall s_lit sloop size m gl fl main rx' l e benv rx sn reg v, 
          FEnv.MapsTo main (l,e,benv,rx) fv ->
          sem_qexp fv s_lit size 0 (init_reg (init_reg_g empty_reg gl) l) e sn reg skip ->
          Reg.MapsTo rx v reg ->
-         sem_prog fv (s_lit,size,m,gl,fl,main) v.
+         sem_prog fv (s_lit,sloop,size,m,gl,fl,main,rx') v.
+
+Definition var_map := Reg.t var.
+
+Definition empty_var_map := @Reg.empty var.
+
+Definition ac_size (size:nat) := S (S size).
+
+Fixpoint a_nat2fb (f:nat->bool) (n:nat) :=
+             match n with 0 => 0
+                       | S m => (Nat.b2n (f m)) + a_nat2fb f m
+             end.                            
+
+
+Definition find_factor_type (benv:benv) (fc:factor) : option atype :=
+    match fc with (Var (L x)) => BEnv.find x benv
+                | (Var (G x)) => Some Q
+                | Num n => Some C
+    end.
+
+Lemma xor_not : forall a b, xorb (a<?b) (b<?a) = false -> a = b.
+Proof.
+  intros.
+  bdestruct (a <? b).
+  bdestruct (b <? a). lia. simpl in H0. inv H0.
+  bdestruct (b <? a). simpl in H0. inv H0.
+  lia.
+Qed.
+
+
+Definition compare_c (size:nat) (reg:reg) (x y : factor) (stack:var) (sn:nat) (op : nat -> nat -> bool) := 
+      match x with Num n => match y with Num m => 
+            match Reg.find (L stack) reg with None => None
+                | Some sv => Some (sn,Reg.add (L stack) (update sv sn (op (a_nat2fb n size) (a_nat2fb m size))) reg)
+            end
+                             | Var vy => match Reg.find vy reg with None => None
+                                          | Some y_val => 
+            match Reg.find (L stack) reg with None => None
+                | Some sv => Some (sn,Reg.add (L stack) (update sv sn (op (a_nat2fb n size) (a_nat2fb y_val size))) reg)
+            end
+                                         end
+                            end
+                 | Var vx => match Reg.find vx reg with None => None
+                                | Some x_val => match y with Num m =>
+           match Reg.find (L stack) reg with None => None
+                | Some sv => Some (sn,Reg.add (L stack) (update sv sn (op (a_nat2fb x_val size) (a_nat2fb m size))) reg)
+            end
+                                                  | Var vy => match Reg.find vy reg with None => None
+                                        | Some y_val => 
+           match Reg.find (L stack) reg with None => None
+                | Some sv => Some (sn,Reg.add (L stack) (update sv sn (op (a_nat2fb x_val size) (a_nat2fb y_val size))) reg)
+            end
+                                                              end
+                                                 end
+                              end
+      end.
+
+(*
+Definition insert_circuit {A B:Type} (x:option (A,B)) (y:option ) := 
+       match Reg.find x reg with None => None
+              | Some vx => 
+           match Reg.find y reg with None => None 
+                | Some vy =>
+            match Reg.find (L stack) reg with None => None
+                | Some sv => Some (Reg.add (L stack) (update sv sn (a_nat2fb vx size <? a_nat2fb vy size)) reg)
+            end
+          end
+       end.
+*)
+
+Definition rz_comparator (x:var) (n:nat) (c:posi) (M:nat) := 
+    Exp (rz_sub x n (nat2fb M));; RQFT x ;; Exp (CNOT (x,0) c);; inv_pexp (Exp (rz_sub x n (nat2fb M));; RQFT x).
+
+
+Definition lt_circuit (size:nat) (reg:reg) (vmap:var_map) (x y :qvar) (stack:var) (sn:nat)  :=
+           match Reg.find x vmap with None => None
+                           | Some u =>
+                       match Reg.find y vmap with None => None
+                             | Some v => 
+                      match Reg.find (L stack) vmap with None => None
+                        | Some stackv =>
+                  match Reg.find x reg with None => None
+                       | Some vx => Some (Exp (comparator01 (ac_size size) u v (stackv,S sn) (stackv,sn)))      
+                  end
+                end
+              end
+            end.     
+
+Definition lt_circuit_qft_l (size:nat) (reg:reg) (vmap:var_map) (x:qvar) (y:nat->bool) (stack:var) (sn:nat)  :=
+           match Reg.find x vmap with None => None
+                           | Some u =>
+                      match Reg.find (L stack) vmap with None => None
+                        | Some stackv => Some (rz_comparator u (ac_size size) (stackv,sn) (a_nat2fb y size))      
+                      end
+           end.                                      
+
+Definition eq_circuit (size:nat) (reg:reg) (vmap:var_map) (x y :qvar) (stack:var) (sn:nat) :=
+           match Reg.find x vmap with None => None
+                           | Some u =>
+                       match Reg.find y vmap with None => None
+                             | Some v => 
+                      match Reg.find (L stack) vmap with None => None
+                        | Some stackv =>
+                  match Reg.find x reg with None => None
+                       | Some vx => Some (Exp (
+                            comparator01 (ac_size size) u v (stackv,S sn) (stackv,sn); 
+                            comparator01 (ac_size size) v u(stackv,S sn) (stackv,sn); X (stackv,sn)))    
+                  end
+                end
+              end
+            end.   
+
+Definition eq_circuit_qft_l (size:nat) (reg:reg) (vmap:var_map) (x:qvar) (y:nat->bool) (stack:var) (sn:nat)  :=
+           match Reg.find x vmap with None => None
+                           | Some u =>
+                      match Reg.find (L stack) vmap with None => None
+                        | Some stackv => Some (rz_comparator u (ac_size size) (stackv,sn) (a_nat2fb y size);; 
+                                               rz_comparator u (ac_size size) (stackv,sn) (a_nat2fb y size) ;; Exp (X (stackv,sn)))      
+                      end
+           end.  
+
+Definition insert_circuit (gv:option (nat * Reg.t (nat -> bool))) (e:option pexp) : option (option pexp * nat * Reg.t (nat -> bool)) :=
+          match gv with None => None
+               | Some (sn,reg) => Some (e,sn,reg)
+          end.
+
+Definition insert_init (e: option pexp) (size:nat) (x:qvar) (vmap:var_map) (reg:reg) : option pexp :=
+       match e with None => None
+              | Some e' => match Reg.find x vmap with None => None
+                                   | Some u => match Reg.find x reg with None => None
+                                             | Some uv => Some (Exp (init_v (ac_size size) u uv) ;; e')
+                                               end
+                           end
+       end.
+
+Definition circuit_lt_l (size :nat) (reg:reg) (vmap:var_map) (x y:factor) (stack:var) (sn:nat) := 
+            match x with Num n => None
+                      | Var vx => match y with Num yn => None
+                                      | Var vy => (insert_init
+                                                            (lt_circuit size reg vmap vx vy stack sn) size vy vmap reg)
+                                  end
+            end.
+
+Definition circuit_lt_r (size :nat) (reg:reg) (vmap:var_map) (x y:factor) (stack:var) (sn:nat) := 
+            match x with Num n => None
+                      | Var vx => match y with Num yn => (insert_init
+                                                            (lt_circuit_qft_l size reg vmap vx yn stack sn) size vx vmap reg)
+                                      | Var vy => (insert_init
+                                                            (lt_circuit size reg vmap vx vy stack sn) size vx vmap reg)
+                                  end
+            end.
+
+Definition circuit_lt_m (size :nat) (reg:reg) (vmap:var_map) (x y:factor) (stack:var) (sn:nat) := 
+            match x with Num n => None
+                      | Var vx => match y with Num yn => lt_circuit_qft_l size reg vmap vx yn stack sn
+                                      | Var vy => (lt_circuit size reg vmap vx vy stack sn)
+                                  end
+            end.
+
+Definition circuit_eq_l (size :nat) (reg:reg) (vmap:var_map) (x y:factor) (stack:var) (sn:nat) := 
+            match x with Num n => None
+                      | Var vx => match y with Num n => None
+                                      | Var vy => (insert_init
+                                                            (eq_circuit size reg vmap vx vy stack sn) size vy vmap reg)
+                                  end
+            end.
+
+Definition circuit_eq_r (size :nat) (reg:reg) (vmap:var_map) (x y:factor) (stack:var) (sn:nat) := 
+            match x with Num n => None
+                      | Var vx => match y with Num yn => (insert_init
+                                                            (eq_circuit_qft_l size reg vmap vx yn stack sn) size vx vmap reg)
+                                      | Var vy => (insert_init
+                                                            (eq_circuit size reg vmap vx vy stack sn) size vx vmap reg)
+                                  end
+            end.
+
+Definition circuit_eq_m (size :nat) (reg:reg) (vmap:var_map) (x y:factor) (stack:var) (sn:nat) := 
+            match x with Num n => None
+                      | Var vx => match y with Num yn => (eq_circuit_qft_l size reg vmap vx yn stack sn)
+                                      | Var vy => (eq_circuit size reg vmap vx vy stack sn)
+                                  end
+            end.
+
+Definition trans_cexp (sn sl size:nat) (stack temp:var) (benv:benv) (reg: reg) (vmap : var_map) (e:cexp) :=
+      if sn <? sl then None else
+          match e with clt f x y => match find_factor_type benv x with None => None
+                                      | Some C =>
+                                       match find_factor_type benv y with None => None
+                                                          | Some C => insert_circuit (compare_c size reg x y stack sn (Nat.ltb)) None
+                                                          | Some Q => insert_circuit (compare_c size reg x y stack sn (Nat.ltb))
+                                                                                (circuit_lt_l size reg vmap x y stack sn)
+                                       end
+                                      | Some Q =>
+                               match find_factor_type benv y with None => None
+                                                          | Some C => insert_circuit (compare_c size reg x y stack sn (Nat.eqb))
+                                                                                (circuit_lt_r size reg vmap x y stack sn)
+                                                          | Some Q => insert_circuit (compare_c size reg x y stack sn (Nat.ltb))
+                                                                                (circuit_lt_m size reg vmap x y stack sn)
+                                       end
+                                     end
+                    | ceq f x y => match find_factor_type benv x with None => None
+                                      | Some C =>
+                                       match find_factor_type benv y with None => None
+                                                          | Some C => insert_circuit (compare_c size reg x y stack sn (Nat.eqb)) None
+                                                          | Some Q => insert_circuit (compare_c size reg x y stack sn (Nat.eqb))
+                                                                                (circuit_eq_l size reg vmap x y stack sn)
+                                       end
+                                      | Some Q =>
+                                       match find_factor_type benv y with None => None
+                                                          | Some C => insert_circuit (compare_c size reg x y stack sn (Nat.eqb))
+                                                                                (circuit_eq_r size reg vmap x y stack sn)
+                                                          | Some Q => insert_circuit (compare_c size reg x y stack sn (Nat.eqb))
+                                                                                (circuit_eq_m size reg vmap x y stack sn)
+                                       end
+                                     end
+          end.
+
+Definition find_stack_pos (reg:reg) (vmap :var_map) (stack:var) (sn:nat) := 
+              match Reg.find (L stack) reg with None => None
+                                           | Some st => Some (st sn)
+                          end.
+
+Definition combine_c (e1 e2:option pexp) : option pexp :=
+          match e1 with None => e2
+               | Some e1' => match e2 with None => None
+                                        | Some e2' => Some (e1';;e2')
+                              end
+          end.
+
+Definition add_two_c (size:nat) (reg:reg) (x:factor) (xa:atype) (y : qvar) (f:flag) (vmap : var_map) (stack:var) (sn:nat) :=
+      match Reg.find y reg with None => None
+                | Some vn =>  
+             match x with Num n => Some (None,sn,Reg.add y (cut_n (sumfb false n vn) size) reg) 
+                      | Var vx => if xa =a= C then 
+                               match Reg.find vx reg with None => None
+                                          | Some vxn => Some (None,sn,Reg.add y (cut_n (sumfb false vn vxn) size) reg) 
+                               end
+                              else
+       match Reg.find vx reg with None => None
+                                          | Some vxn => 
+           match Reg.find y vmap with None => None | Some vy =>
+            match Reg.find vx vmap with None => None | Some vx' =>
+                Some (Some (match f with QFTA => Exp (rz_adder vy size vxn)
+                             | Classic => Exp (init_v size vx' vxn ;adder01 size vx' vy (stack,sn);init_v size vx' vxn) end)
+                         ,sn,Reg.add y (cut_n (sumfb false vn vxn) size) reg) 
+             end
+           end
+       end
+      end
+    end.
+
+Definition add_two_q (size:nat) (reg:reg) (x:factor) (xa:atype) (y : qvar) (f:flag) (vmap : var_map) (stack:var) (sn:nat) := 
+           match Reg.find y vmap with None => None | Some vy =>
+             match x with Num n => 
+              match Reg.find y reg with None => None
+                     | Some ny => 
+                    Some ((match f with QFTA => Some (Exp (rz_adder vy size n))
+                              | Classic => None end),sn,Reg.add y (cut_n (sumfb false n ny) size) reg)
+              end
+               | Var vx =>
+              match Reg.find y reg with None => None
+                     | Some ny => 
+                if xa =a= C then 
+                 match Reg.find vx reg with None => None | Some nx => 
+                        match Reg.find vx vmap with None => None | Some vx => 
+                          Some (Some (match f with QFTA => Exp (rz_adder vy size nx)
+                                | Classic => Exp (init_v size vx nx; adder01 size vx vy (stack,sn); init_v size vx nx)
+                                    end),sn,Reg.add y (cut_n (sumfb false nx ny) size) reg)
+                        end
+                 end
+             else 
+                 match Reg.find vx reg with None => None | Some nx => 
+                        match Reg.find vx vmap with None => None | Some vx => 
+                          Some ((match f with QFTA => None
+                                | Classic => Some (Exp (adder01 size vx vy (stack,sn)))
+                                    end),sn,Reg.add y (cut_n (sumfb false nx ny) size) reg)
+                        end
+                    end
+                 end
+            end
+          end.
+
+Definition sub_two_c (size:nat) (reg:reg) (x:factor) (xa:atype) (y : qvar) (f:flag) (vmap : var_map) (stack:var) (sn:nat) :=
+      match Reg.find y reg with None => None
+                | Some vn =>  
+             match x with Num n => Some (None,sn,Reg.add y (sumfb true n (negatem size vn)) reg) 
+                      | Var vx => if xa =a= C then 
+                               match Reg.find vx reg with None => None
+                                          | Some vxn => Some (None,sn,Reg.add y (cut_n (sumfb true vn (negatem size vxn)) size) reg) 
+                               end
+                              else
+       match Reg.find vx reg with None => None
+                                          | Some vxn => 
+           match Reg.find y vmap with None => None | Some vy =>
+            match Reg.find vx vmap with None => None | Some vx' =>
+                Some (Some (match f with QFTA => Exp (rz_sub vy size vxn)
+                             | Classic => Exp (init_v size vx' vxn ;subtractor01 size vx' vy (stack,sn);init_v size vx' vxn) end)
+                         ,sn,Reg.add y (cut_n (sumfb true vn (negatem size vxn)) size) reg) 
+             end
+           end
+       end
+      end
+    end.
+
+Definition sub_two_q (size:nat) (reg:reg) (x:factor) (xa:atype) (y : qvar) (f:flag) (vmap : var_map) (stack:var) (sn:nat) := 
+           match Reg.find y vmap with None => None | Some vy =>
+             match x with Num n => 
+              match Reg.find y reg with None => None
+                     | Some ny => 
+                    Some ((match f with QFTA => Some (Exp (rz_sub vy size n))
+                              | Classic => None end),sn,Reg.add y (cut_n (sumfb true n (negatem size ny)) size) reg)
+              end
+               | Var vx =>
+              match Reg.find y reg with None => None
+                     | Some ny => 
+                if xa =a= C then 
+                 match Reg.find vx reg with None => None | Some nx => 
+                        match Reg.find vx vmap with None => None | Some vx => 
+                          Some (Some (match f with QFTA => Exp (rz_sub vy size nx)
+                                | Classic => Exp (init_v size vx nx; subtractor01 size vx vy (stack,sn); init_v size vx nx)
+                                    end),sn,Reg.add y (cut_n (sumfb true nx (negatem size ny)) size) reg)
+                        end
+                 end
+             else 
+                 match Reg.find vx reg with None => None | Some nx => 
+                        match Reg.find vx vmap with None => None | Some vx => 
+                          Some ((match f with QFTA => None
+                                | Classic => Some (Exp (subtractor01 size vx vy (stack,sn)))
+                                    end),sn,Reg.add y (cut_n (sumfb false nx ny) size) reg)
+                        end
+                    end
+                 end
+            end
+          end.
+
+Definition combine_if (stack : var) (sn:nat) (vmap : var_map) (p1:pexp) (e1:option pexp) (e2:option pexp) :=
+    match Reg.find (L stack) vmap with None => None
+            | Some sv => 
+     match e1 with None => match e2 with None => Some p1
+                                  | Some e2' => Some (p1;; Exp (X (sv,sn)) ;; PCU (sv,sn) e2')
+                           end
+                  | Some e1' => match e2 with None => Some (p1;; PCU (sv,sn) e1')
+                              | Some e2' => Some (p1;; (PCU (sv,sn) e1') ;; Exp (X (sv,sn)) ;; PCU (sv,sn) e2')
+                                end
+      end
+     end.
+
+Definition combine_seq (e1:option pexp) (e2:option pexp) :=
+   match e1 with None => e2
+        | Some e1' => match e2 with None => Some e1' | Some e2' => Some (e1' ;; e2') end
+   end.
+
+Definition fmap :Type := list (fvar * pexp * qvar * var_map).
+Fixpoint lookup_fmap (l:fmap) (x:var) : option (pexp * qvar * var_map) :=
+   match l with [] => None
+          | ((y,a,v,b)::xl) => if x =? y then Some (a,v,b) else lookup_fmap xl x
+   end.
+
+Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0) 
+                  | S m => CNOT (x,m) (y,m) ; copyto x y m
+    end.
+
+Fixpoint trans_qexp (sn sl size:nat) (stack temp:var) (benv:benv) (reg: reg) (vmap : var_map) (fmap:fmap) (e:qexp) (sloop:nat) :=
+   match e with qwhile c e' => 
+         let fix trans_while (sn sl size:nat) (stack temp:var) benv reg vmap fmap (sloop:nat) :=
+            match sloop with 0 => Some (None,sn,reg)
+                     | S m => match trans_cexp sn sl size stack temp benv reg vmap c with None => None 
+                                | Some (cir,sn',reg') => 
+                          match find_stack_pos reg vmap stack sn with Some true =>  
+                                match trans_qexp sn' sl size stack temp benv reg' vmap fmap e' m
+                                                                with None => None
+                                                                   | Some (e_cir,sn'',reg'')
+                                               => match trans_while sn'' sl size stack temp benv reg'' vmap fmap m with None => None
+                                                             | Some (e2',sn3,reg3) =>
+                                                         Some (combine_c (combine_c cir e_cir) e2',sn3,reg3)
+                                                  end
+                                 end
+                             | Some false => Some (cir,sn',reg')
+                             | None => None
+                           end
+                          end
+            end in trans_while sn sl size stack temp benv reg vmap fmap sloop
+
+           | qadd f x y => match find_factor_type benv (Var y) with None => None
+                                      | Some C => match find_factor_type benv x with None => None
+                                            | Some c => add_two_c size reg x c y f vmap stack sn
+                                            end
+                                      | Some Q => match find_factor_type benv x with None => None
+                                          | Some c => add_two_q size reg x c y f vmap stack sn
+                                       end
+                             end
+           | qsub f x y => match find_factor_type benv (Var y) with None => None
+                                      | Some C => match find_factor_type benv x with None => None
+                                            | Some c => sub_two_c size reg x c y f vmap stack sn
+                                            end
+                                      | Some Q => match find_factor_type benv x with None => None
+                                          | Some c => sub_two_q size reg x c y f vmap stack sn
+                                       end
+                             end
+           | qif ce e1 e2 => match trans_cexp sn sl size stack temp benv reg vmap ce with None => None
+                               | Some (None,sn',reg') =>
+                                    match Reg.find (L stack) reg' with None => None
+                                         | Some st => if st sn then trans_qexp sn' sl size stack temp benv reg' vmap fmap e1 sloop
+                                                        else trans_qexp sn' sl size stack temp benv reg' vmap fmap e2 sloop
+                                    end
+                               | Some (Some cir,sn',reg') => 
+                match trans_qexp sn' sl size stack temp benv reg' vmap fmap e1 sloop with None => None
+                    | Some ( e1',sn1,reg1) => 
+                     match trans_qexp sn1 sl size stack temp benv reg1 vmap fmap e2 sloop with None => None
+                      | Some ( e2',sn2,reg2) => Some (combine_if stack sn vmap cir e1' e2',sn2,reg2)
+                     end
+                 end
+             end
+           | qseq e1 e2 => match trans_qexp sn sl size stack temp benv reg vmap fmap e1 sloop with None => None
+                    | Some ( e1',sn1,reg1) => 
+                     match trans_qexp sn1 sl size stack temp benv reg1 vmap fmap e2 sloop with None => None
+                      | Some ( e2',sn2,reg2) => Some (combine_seq e1' e2',sn2,reg2)
+                     end
+                 end
+           | call f x => match lookup_fmap fmap f with None => None
+                       | Some (e',u,vmap') => match Reg.find u vmap' with None => None
+                                                  | Some u' => 
+                                       match Reg.find x vmap with None => None
+                                             | Some x' => Some (Some (e';; Exp (copyto u' x' size);;inv_pexp e'), sn,reg)
+                                              end
+                                       end
+                        end
+       | _ => None
+   end.
+
+Definition stack (l:list var) : var := S(list_max l).
+
+Fixpoint gen_vmap_l' (l:list var) (vmap:var_map) (n:nat) :=
+         match l with [] => vmap
+              | (x::xl) => gen_vmap_l' xl (Reg.add (L x) n vmap) (S (S n))
+         end.
+Definition gen_vmap_l (l:list var) (vmap:var_map) := gen_vmap_l' l vmap 1.
+ 
+Fixpoint trans_funs (fv:fenv) (sl size sloop:nat) (temp:var) (reg:reg) (vmap : var_map) (fmap:fmap) (l:list func) :=
+    match l with [] => Some fmap
+            | (( f , ls , e , rx)::xl) =>
+                 match FEnv.find f fv with None => None
+                           | Some (ls',e',benv,rx') => 
+                    match trans_qexp 0 sl size (stack ls) temp benv (init_reg reg ((stack ls)::ls))
+                       (gen_vmap_l ls vmap) fmap e sloop with None => None
+                    | Some (None,sn1,reg1) => 
+                    match Reg.find (G temp) vmap with None => None
+                     | Some xt' => trans_funs fv sl size sloop temp reg vmap ((f,Exp (SKIP (xt',0)), rx, (gen_vmap_l ls vmap))::fmap) xl
+                    end
+                  | Some (Some e1,sn1,reg1) => 
+                        trans_funs fv sl size sloop temp reg vmap ((f,e1, rx, (gen_vmap_l ls vmap))::fmap) xl
+                    end
+                 end
+     end.
+
+
+Fixpoint gen_vmap_g' (l:list var) (vmap:var_map) (n:nat) :=
+         match l with [] => vmap
+              | (x::xl) => gen_vmap_g' xl (Reg.add (G x) n vmap) (S (S n))
+         end.
+Definition gen_vmap_g (l:list var) (vmap:var_map) := gen_vmap_l' l vmap 0.
+
+Definition temp (l:list var) : var := S(list_max l).
+
+Definition trans_prog (p:prog) (fv:fenv) :=
+   match p with (sl,sloop,size,m,ls,fl,f,rx') =>
+       match (trans_funs fv sl size sloop (temp ls) (init_reg_g empty_reg ls) (gen_vmap_g ls empty_var_map) [] fl)
+            with None => None
+       | Some fmap => match lookup_fmap fmap f with None => None
+            | Some (e,x,vmap') =>
+                match Reg.find x vmap' with None => None
+                  | Some ax => Some (e;; copyto ax rx' size ;; inv_pexp e)
+                end
+             end
+       end
+   end.
+
+
+ 
 
