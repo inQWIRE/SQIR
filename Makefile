@@ -73,6 +73,21 @@ examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/Densi
 examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
 	coqc $(COQ_OPTS) $(examples)/Utilities.v
 
+
+#Built VSQIR.v
+
+SQIR/VSQIR.vo: $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo
+	coqc $(COQ_OPTS) $(SQIR)/VSQIR.v
+
+SQIR/CLArith.vo: $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo
+	coqc $(COQ_OPTS) $(SQIR)/CLArith.v
+
+SQIR/RZArith.vo: $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo
+	coqc $(COQ_OPTS) $(SQIR)/RZArith.v
+
+SQIR/MiniQASM.vo: $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo $(SQIR)/CLArith.vo $(SQIR)/RZArith.vo
+	coqc $(COQ_OPTS) $(SQIR)/MiniQASM.v
+
 # Built by 'make shor'
 
 examples/shor/AltGateSet.vo: $(examples)/shor/AltGateSet.v $(SQIR)/UnitaryOps.vo $(SQIR)/RCIR.vo
