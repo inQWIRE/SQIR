@@ -211,6 +211,8 @@ Inductive qexp := skip
                 | qadd (f:flag) (v:factor) (x:qvar) (* *)
                 | qsub (f:flag) (v:factor) (x:qvar)
                 | qmul (f:flag) (v:factor) (x:qvar)
+                | qfac (x:var) (v:factor)
+                | qdiv (f:flag) (x:var) (v:factor)
                 | call (f:fvar) (v: qvar)
                 | qif (c:cexp) (e1:qexp) (e2:qexp)
                 | qwhile (c:cexp) (e:qexp)
@@ -329,6 +331,11 @@ Inductive type_qexp (gs:list var) (fv:fenv): benv -> qexp -> benv -> Prop :=
  | htype_qmul : forall benv t1 t2 f x y, type_factor gs benv t1 x
              -> type_factor gs benv t2 (Var y) ->
               type_qexp gs fv benv (qmul f x y) (BEnv.add (var_raw y) (meet_type t1 t2) benv)
+ | htype_qdiv : forall benv f x y, BEnv.MapsTo x C benv -> type_factor gs benv C y ->
+              type_qexp gs fv benv (qdiv f x y)  benv
+ | htype_qfac : forall benv x y, BEnv.MapsTo x C benv -> type_factor gs benv C y ->
+              type_qexp gs fv benv (qfac x y)  benv
+
  | htype_call_ll : forall benv fbenv f tvl e x t rx t', FEnv.MapsTo f (tvl,e,fbenv, L rx) fv ->
                     BEnv.MapsTo x t benv -> BEnv.MapsTo rx t' fbenv
                           -> type_qexp gs fv benv (call f (L x)) (BEnv.add x (meet_type t t') benv)
@@ -395,6 +402,11 @@ Inductive sem_qexp (fv:fenv) (s_lit size:nat): nat -> reg -> qexp -> nat -> reg 
  | sem_mul : forall sn reg f x vx n1 y vy n2, sem_factor size reg x vx -> sem_factor size reg (Var y) vy ->
              vx = nat2fb n1 -> vy = nat2fb n2 ->
       sem_qexp fv s_lit size sn reg (qmul f x y) sn (Reg.add y (nat2fb ((n1 * n2) mod size)) reg) skip
+ | sem_div : forall sn reg f x vx n1 y vy n2, sem_factor size reg (Var (L x)) vx -> sem_factor size reg y vy ->
+             vx = nat2fb n1 -> vy = nat2fb n2 ->
+      sem_qexp fv s_lit size sn reg (qdiv f x y) sn (Reg.add (L x) (nat2fb ((n1 / n2) mod size)) reg) skip
+ | sem_fac : forall sn reg x y vy n, sem_factor size reg y vy -> vy = nat2fb n ->
+      sem_qexp fv s_lit size sn reg (qfac x y) sn (Reg.add (L x) (nat2fb ((fact n) mod size)) reg) skip
  | sem_call : forall sn reg reg' f x l e benv rx v, FEnv.MapsTo f (l,e,benv,rx) fv -> 
            sem_qexp fv s_lit size sn (init_reg reg l) e sn reg' skip ->
            Reg.MapsTo rx v reg' -> 
@@ -677,6 +689,22 @@ Definition sub_two_q (size:nat) (reg:reg) (x:factor) (xa:atype) (y : qvar) (f:fl
                                     end),sn,Reg.add y (cut_n (sumfb false nx ny) size) reg)
         end.
 
+Definition fac_two_q (size:nat) (reg:reg) (x:var) (y : factor) := 
+  match y with Num n => let ny := a_nat2fb n size in 
+                    ret (Reg.add (L x) (cut_n (nat2fb (fact ny)) size) reg)
+            | Var vy =>  
+               do ny <- Reg.find vy reg @ let ny' := a_nat2fb ny size in 
+                              ret (Reg.add (L x) (cut_n (nat2fb (fact ny')) size) reg)
+  end.
+
+Definition div_two_q (size:nat) (reg:reg) (x:var) (y : factor) (f:flag) := 
+  match y with Num n =>
+         do nx <- Reg.find (L x) reg @ ret (Reg.add (L x) (cut_n (nat2fb (a_nat2fb nx size / (a_nat2fb n size))) size) reg)
+            | Var vy => 
+       do ny <- Reg.find vy reg @
+        do nx <- Reg.find (L x) reg @
+            ret (Reg.add (L x) (cut_n (nat2fb (a_nat2fb nx size / (a_nat2fb ny size))) size) reg)
+  end.
 
 Definition combine_if (stack : var) (sn:nat) (vmap : var_map) (p1:pexp) (e1:option pexp) (e2:option pexp) :=
   do sv <- Reg.find (L stack) vmap @
@@ -687,6 +715,7 @@ Definition combine_if (stack : var) (sn:nat) (vmap : var_map) (p1:pexp) (e1:opti
                               | Some e2' => Some (p1;; (PCU (sv,sn) e1') ;; Exp (X (sv,sn)) ;; PCU (sv,sn) e2')
                                 end
       end.
+
 
 Definition combine_seq (e1:option pexp) (e2:option pexp) :=
    match e1 with None => e2
@@ -740,6 +769,10 @@ Fixpoint trans_qexp (sn sl size:nat) (stack temp:var) (benv:benv) (reg: reg) (vm
                                           | Some c => sub_two_q size reg x c y f vmap stack sn
                                        end
                              end
+           | qdiv f x y => do reg' <- div_two_q size reg x y f @ ret (None,sn,reg')
+           | qfac x y => do reg' <- fac_two_q size reg x y @ ret (None,sn,reg')
+
+
            | qif ce e1 e2 => match trans_cexp sn sl size stack temp benv reg vmap ce with None => None
                                | Some (None,sn',reg') =>
                                     match Reg.find (L stack) reg' with None => None
