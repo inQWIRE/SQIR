@@ -17,20 +17,21 @@ Definition basisPowerA (a r N n : nat) := basis_vector (2^n) (a^r mod N).
 
 Definition ω_neg (r : nat) := Cexp (-2 * PI / r)%R.
 
-(* The ψ states are the eigenstates of the modular multiplication circuit. Described in https://cs.uwaterloo.ca/~watrous/LectureNotes/CPSC519.Winter2006/10.pdf. *)
+(* The ψ states are the eigenstates of the modular multiplication circuit. Described in 
+   https://cs.uwaterloo.ca/~watrous/QC-notes/QC-notes.10.pdf. *)
 Definition ψ (a r N j n : nat) :=
-  (1%R / (RtoC (√ r)%R)) .* vsum r (fun x => (ω_neg r)^(j * x) .* (basisPowerA a x N n)).
+  (1 / (√ r)%R) .* vsum r (fun x => (ω_neg r)^(j * x) .* (basisPowerA a x N n)).
 
 (* The description of the circuit implementing "multiply a modulo N". *)
 Definition MultiplyCircuitProperty (a N n anc : nat) (c : base_ucom (n + anc)) : Prop :=
   forall x : nat,
     ((0 <= x < N)%nat ->
-     @Mmult _ _ (1 * 1) (uc_eval c) ((basis_vector (2^n) x) ⊗ (basis_vector (2^anc) 0)) = basis_vector (2^n) (a * x mod N) ⊗ (basis_vector (2^anc) 0)).
+     @Mmult _ _ 1 (uc_eval c) ((basis_vector (2^n) x) ⊗ (basis_vector (2^anc) 0)) = basis_vector (2^n) (a * x mod N) ⊗ (basis_vector (2^anc) 0)).
 
 Definition ModMulImpl (a N n anc : nat) (f : nat -> base_ucom (n + anc)) : Prop :=
   forall i x : nat,
     ((0 <= x < N)%nat ->
-     @Mmult _ _ (1 * 1) (uc_eval (f i)) ((basis_vector (2^n) x) ⊗ (basis_vector (2^anc) 0)) = basis_vector (2^n) (a^(2^i) * x mod N) ⊗ (basis_vector (2^anc) 0)).
+     @Mmult _ _ 1 (uc_eval (f i)) ((basis_vector (2^n) x) ⊗ (basis_vector (2^anc) 0)) = basis_vector (2^n) (a^(2^i) * x mod N) ⊗ (basis_vector (2^anc) 0)).
 
 (* The Shor's algorithm applies QPE on the modular multiplication circuit c and state |1⟩. *)
 Definition Shor_final_state m n anc (c : base_ucom (n + anc)) := @Mmult _ _ 1 (uc_eval (QPE m (n + anc) c)) ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1) ⊗ (basis_vector (2^anc) 0)).
@@ -264,7 +265,7 @@ Proof.
   intros. destruct H as [HN [_ [_ [Hn _]]]].
   assert (N <> 0)%nat by lia. specialize (Nat.mod_upper_bound (a^x)%nat N H). lia.
 Qed.
-
+  
 Lemma ψ_pure_state_vector :
   forall a r N m n j : nat,
     BasicSetting a r N m n ->
@@ -285,7 +286,7 @@ Proof.
         replace ((ω_neg r ^ (j * i)) ^* * ω_neg r ^ (j * x))%C with (ω_neg r ^ (j * x) * (ω_neg r ^ (j * i)) ^* )%C by lca.
         easy.
     }
-    assert (G := H). specialize (Pow_mod_ub a r N m n G) as Hpmub.
+    specialize (Pow_mod_ub a r N m n H) as Hpmub.
     rewrite vsum_diagonal.
     2:{ rename j into x. intros. unfold basisPowerA.
         rewrite basis_vector_product_neq. Msimpl. easy.
@@ -301,17 +302,15 @@ Proof.
         simpl. do 2 rewrite Cmult_1_r. Msimpl. easy.
     } 
     rewrite vsum_constant.
-    do 2 rewrite Mscale_assoc.
-    assert (√ r <> 0).
-    { destruct H as [_ [[Hr _] _]]. apply sqrt_neq_0_compat. apply lt_INR in Hr. simpl in Hr. easy.
-    }
-    rewrite <- RtoC_div by easy.
+    do 2 rewrite Mscale_assoc.    
+    destruct H as [_ [[Hr _] _]]. apply lt_INR in Hr. simpl in Hr.
+    rewrite <- RtoC_div by nonzero.
+    simpl; unfold Rdiv.
     rewrite Cconj_R. do 2 rewrite <- RtoC_mult.
-    assert (forall x, x * r = x * (√r * √r)).
-    { intro. apply Rmult_eq_compat_l. destruct H as [_ [[Hr _] _]]. apply lt_INR in Hr. simpl in Hr. apply Rlt_le in Hr. specialize (Rsqr_sqrt r Hr) as Hr2. unfold Rsqr in Hr2. lra.
-    } 
-    replace (1 / √ r * (1 / √ r) * r) with ((/ √ r * √ r) * ((/ √ r) * √ r)) by (rewrite H1; lra).
-    rewrite Rinv_l by easy. rewrite Rmult_1_r. Msimpl. easy.
+    field_simplify (1 * / √ r * (1 * / √ r) * r)%R; try nonzero.
+    rewrite pow2_sqrt; try lra.
+    field_simplify (r / r); try nonzero.
+    Msimpl; reflexivity.
 Qed.
 
 Lemma ψ_basis_vector_pure_state :
@@ -351,17 +350,14 @@ Proof.
   rewrite Nat.pow_0_r.
   rewrite Nat.mod_1_l by lia.
   rewrite Mscale_assoc.
-  replace (1 / √ r * (1 / √ r) * r)%C with C1.
+  replace (C1 / √ r * (1%nat / √ r) * r)%C with C1.
   lma.
-  field_simplify_eq.
+  apply lt_0_INR in H0. 
+  simpl; field_simplify_eq; try nonzero.
   rewrite <- RtoC_mult.
   rewrite sqrt_def. 
   reflexivity.
-  apply pos_INR.
-  apply RtoC_neq.
-  apply sqrt_neq_0_compat.
-  apply lt_0_INR. 
-  assumption.
+  lra.
 Qed.
 
 Lemma MC_eigenvalue :
@@ -568,7 +564,8 @@ Lemma Inv__pow_2_m_and_N_square:
     BasicSetting a r N m n ->
     1 / (2 * 2^m) < 1 / (2 * N^2).
 Proof.
-  intros. destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
+  intros. destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]].
+  specialize (Order_N_lb _ _ _ HOrder) as HN. apply lt_INR in HN. simpl in HN.
   assert (0 < 2 ^ m) by nonzero.
   assert (0 < N^2) by nra.
   unfold Rdiv. do 2 rewrite Rinv_mult_distr by lra.
@@ -584,7 +581,10 @@ Lemma round_k_r_2_m_nonneg :
     (0 <= k < r)%nat ->
     (0 <= round (k / r * 2 ^ m))%Z.
 Proof.
-  intros. apply round_pos. destruct H0 as [Hk Hr]. assert (0 < r)%nat by lia. apply le_INR in Hk. simpl in Hk. apply lt_INR in Hr. apply lt_INR in H0. simpl in H0. assert (0 <= k / r). unfold Rdiv. apply Rle_mult_inv_pos; easy. assert (0 < 2 ^ m) by nonzero. nra. 
+  intros. apply round_pos. destruct H0 as [Hk Hr].
+  assert (0 < r)%nat by lia. apply le_INR in Hk. simpl in Hk. apply lt_INR in Hr, H0. simpl in H0.
+  assert (0 <= k / r). unfold Rdiv. apply Rle_mult_inv_pos; easy. assert (0 < 2 ^ m) by nonzero.
+  nra. 
 Qed.
 
 (* ======================================================== *)
@@ -601,7 +601,8 @@ Lemma s_closest_is_closest :
     (0 <= k < r)%nat ->
     -1 / (2 * 2^m) < (s_closest m k r) / (2^m) - k / r <= 1 / (2 * 2^m).
 Proof.
-  intros. assert (HBS := H). destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. unfold s_closest. assert (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
+  intros. pose (HBS := H). destruct H as [Ha [HOrder [[Hm1 Hm2] HN2]]]. unfold s_closest.
+  pose (HN := HOrder). apply Order_N_lb in HN. apply lt_INR in HN. simpl in HN.
   assert (PowM : 0 < 2 ^ m) by nonzero.
   specialize (round_k_r_2_m_nonneg _ _ _ _ _ _ HBS H0) as H.
   unfold Rdiv.
@@ -885,13 +886,10 @@ Proof.
   }
   assert (0 < √ r) by (apply sqrt_lt_R0; lra).
   unfold scale. rewrite Cmod_mult. rewrite <- RtoC_div by lra. rewrite Cmod_R. rewrite Rpow_mult_distr. rewrite pow2_abs.
-  replace (1 / √ r) with (/ √ r) by lra. rewrite <- sqrt_inv by lra. rewrite pow2_sqrt.
-  2:{ apply Rlt_le. nonzero.
-  }
+  replace (1 / √ r) with (/ √ r) by lra. rewrite <- sqrt_inv by lra.
+  rewrite pow2_sqrt by (apply Rlt_le; nonzero).
   replace (4 / (PI * (PI * 1) * r)) with (/r * (4 / (PI ^ 2))).
-  2:{ replace (/ r * (4 / PI ^ 2)) with (4 * ((/ PI ^2) * (/r))) by lra. rewrite <- Rinv_mult_distr. easy.
-      apply pow_nonzero. apply PI_neq0. lra.
-  }
+  2:{ R_field_simplify; trivial. split; try lra; apply PI_neq0. }
   apply Rmult_ge_compat_l. apply Rinv_0_lt_compat in H3. lra.
   rewrite <- kron_adjoint. rewrite kron_n_0_is_0_vector. rewrite <- Nat.pow_add_r. 
   restore_dims.
@@ -907,7 +905,8 @@ Lemma QPE_MMI_correct :
     ModMulImpl a N n anc f ->
     (forall i, (i < m)%nat -> uc_well_typed (f i)) ->
     (0 <= k < r)%nat ->
-    prob_partial_meas (basis_vector (2^m) (s_closest m k r)) ((uc_eval (QPE_var m (n + anc) f)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1) ⊗ (basis_vector (2^anc) 0))) >= 4 / (PI ^ 2 * r).
+    prob_partial_meas (basis_vector (2^m) (s_closest m k r))
+      ((uc_eval (QPE_var m (n + anc) f)) × ((basis_vector (2^m) 0) ⊗ (basis_vector (2^n) 1) ⊗ (basis_vector (2^anc) 0))) >= 4 / (PI ^ 2 * r).
 Proof.
   Local Opaque QPE_var pow.
   intros. remember (f O) as c.
@@ -926,10 +925,10 @@ Proof.
       replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two.
       simpl. simpl in G. rewrite Nat.pow_1_l in G. rewrite <- G.
       reflexivity.
-      destruct H as [HN [_ [_ [Hn _ ]]]]. assert (2 ^ n >= 2)%nat by lia. destruct n. simpl in H. lia. lia.
+      destruct H as [HN [_ [_ [Hn _ ]]]]. assert (2^n >= 2)%nat by lia. destruct n; simpl in H; lia.
       assert (0 < 2^anc)%nat by (apply pow_positive; lia).
       specialize (ψ_basis_vector_pure_state a r N m n j O (2^anc)%nat H H3) as [G' _]. replace (2^n * 2^anc)%nat with (2^(n+anc))%nat in G' by unify_pows_two. easy.
-      rewrite Heqc. apply H1. destruct H as [HN [_ [[Hm _] _]]]. destruct m. simpl in Hm. nia. lia.
+      rewrite Heqc. apply H1. destruct H as [HN [_ [[Hm _] _]]]. destruct m; simpl in Hm; nia.
       specialize (H0 O). subst. simpl in H0. rewrite Nat.mul_1_r in H0.
       replace (2 * PI * (j / r)) with (2 * PI * j / r) by lra. apply MC_eigenvalue with (m := m). easy. unfold MultiplyCircuitProperty. apply H0.
       apply H1.
@@ -997,9 +996,10 @@ Lemma OF_post_step_inc :
     (OF_post_step s1 o m <= OF_post_step s2 o m)%nat.
 Proof.
   intros. unfold OF_post_step, ContinuedFraction.
-  specialize (CF_ite_CFpq s1 0 o (2 ^ m) H0) as G. unfold nthmodseq in G. simpl in G. rewrite G. clear G.
-  specialize (CF_ite_CFpq s2 0 o (2 ^ m) H0) as G. unfold nthmodseq in G. simpl in G. rewrite G. clear G.
-  simpl.
+  
+  specialize (CF_ite_CFpq s1 0 o (2 ^ m) H0) as G1.
+  specialize (CF_ite_CFpq s2 0 o (2 ^ m) H0) as G2.
+  unfold nthmodseq in *. simpl in *. rewrite G1, G2. simpl.
   specialize (CFq_inc (s2 - s1)%nat (s1 + 1)%nat o (2^m)%nat H0) as G.
   replace (s2 - s1 + (s1 + 1))%nat with (s2 + 1)%nat in G by lia.
   lia.
@@ -1062,7 +1062,7 @@ Lemma OF_post_step_r :
 Proof.
   intros.
   assert (OF_post' (S step) a N o m <> 0)%nat by (apply OF_post_step_r_aux with (r := r); easy).
-  assert (H3 := H2). apply OF_post'_nonzero_pre in H2. destruct H2 as [x [? ?]].
+  pose (H3 := H2). apply OF_post'_nonzero_pre in H3. destruct H3 as [x [? ?]].
   assert (OF_post_step x o m <= r)%nat. {
     rewrite <- H1. apply OF_post_step_inc. lia. easy.
   }
@@ -1287,7 +1287,7 @@ Proof.
   rewrite Rdiv_unfold. apply Rmult_gt_0_compat; try lra; try interval.
 Qed.
 
-Lemma Shor_correct_full_implementation :
+Lemma Shor_correct_full :
   exists β, 
     β>0 /\
     forall (a N : nat),
@@ -1304,7 +1304,7 @@ Proof.
     subst. apply ord_Order; lia.
   }
   assert (BasicSetting a r N m n).
-  { unfold BasicSetting. split. easy. split. easy. split.
+  { unfold BasicSetting. split; split; try easy. split.
     assert (m = S (Nat.log2 (N^2))) by (apply Nat.log2_double; simpl; nia).
     split. rewrite H3. apply Nat.log2_spec. simpl. nia.
     apply Nat.log2_spec. simpl. nia.
@@ -1328,4 +1328,4 @@ Proof.
   intros. apply f_modmult_circuit_uc_well_typed; try easy; try lia.
 Qed.
 
-(*Print Assumptions Shor_correct_full_implementation.*)
+(* Print Assumptions Shor_correct_full. *)
