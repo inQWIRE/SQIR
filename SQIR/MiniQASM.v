@@ -69,14 +69,14 @@ Qed.
 
 (*  a type for const values that cannot appear in a quantum circuit,
    and register values that can appear in a guantum circuit. *)
-Inductive atype := C : atype | Q : atype.
+Inductive atype := C : nat -> atype | Q : nat -> atype.
 
 
 Definition aty_eq  (t1 t2:atype) : bool := 
-   match t1 with C => match t2 with C  => true
+   match t1 with C n => match t2 with C m  => n =? m
                             | _ => false
                         end
-               | Q => match t2 with Q => true
+               | Q n => match t2 with Q m => n =? m
                            | _ => false
                         end
    end.
@@ -86,15 +86,19 @@ Notation "i '=a=' j" := (aty_eq i j) (at level 50).
 Lemma aty_eqb_eq : forall a b, a =a= b = true -> a = b.
 Proof.
  intros. unfold aty_eq in H.
- destruct a. destruct b. easy. inv H.
- destruct b. inv H. easy.
+ destruct a. destruct b. apply Nat.eqb_eq in H. subst. easy.
+ inv H.
+ destruct b. inv H. apply Nat.eqb_eq in H. subst. easy.
 Qed.
 
 Lemma aty_eqb_neq : forall a b, a =a= b = false -> a <> b.
 Proof.
  intros. unfold aty_eq in H.
- destruct a. destruct b. inv H. easy.
- destruct b. easy. inv H. 
+ destruct a. destruct b. apply Nat.eqb_neq in H.
+ intros R. inv R. contradiction.
+ easy.
+ destruct b. easy.
+ apply Nat.eqb_neq in H. intros R. inv R. easy.
 Qed.
 
 Lemma aty_eq_reflect : forall r1 r2, reflect (r1 = r2) (aty_eq r1 r2). 
@@ -183,7 +187,9 @@ End QvarType.
 
 
 Inductive factor := Var (v:qvar)
-                 | Num (n:nat-> bool). (*a value is represented as a bool binary. *)
+                 | Num (n:nat).
+     (* the first m in Num represents the number of bits.
+      a value is represented as a natural number x. it means x / 2^m where m is the number of denominator. *)
 
 Inductive flag := QFTA | Classic.
 
@@ -208,9 +214,12 @@ Inductive cexp := clt (f:flag) (x:factor) (y:factor)
                   | ceq (f:flag) (x:factor) (y:factor).
 
 Inductive qexp := skip
+                | init (v:nat) (x:qvar)
                 | qadd (f:flag) (v:factor) (x:qvar) (* *)
                 | qsub (f:flag) (v:factor) (x:qvar)
                 | qmul (f:flag) (v:factor) (x:qvar)
+                | qxor (v:factor) (x:qvar)
+                | split (x:qvar) (y:var) (z:var)
                 | qfac (x:var) (v:factor)
                 | qdiv (f:flag) (x:var) (v:factor)
                 | call (f:fvar) (v: qvar)
@@ -223,14 +232,42 @@ Inductive qexp := skip
    while the left one is the local variables. after a function call is returned,
     it will store all the local variables to their correponding global variables, and then reverse the computation.  *)
 
+Notation "p1 ;;; p2" := (qseq p1 p2) (at level 50) : exp_scope.
+
 Definition func : Type := ( fvar * list var * qexp * qvar).
     (* a function is a fun name, a starting block label, and a list of blocks, and the returned variable. *)
 
-Definition prog : Type := (nat * nat * nat * nat * list var * list func * fvar * var). 
+Definition prog : Type := (nat * nat * nat * list var * list func * fvar * var). 
    (* a program is a nat representing the stack size, a number for the number of while to allow in a loop
-       and a number for the total number of bits in each binary. a nat number 
-    indicating the number of denominator for each fixed-pointer number, and a list of global vars, and a list of functions.
+      a nat number indicating the number of denominator for each fixed-pointer number,
+          and a list of global vars, and a list of functions.
      and the main function to call, and the final global var to write to. *)
+
+Definition hash_qr (b:qvar) (a:qvar) := qadd QFTA (Var b) a;;;
+             qxor (Var a) b;;;qadd QFTA (Var b) a;;; qxor (Var a) b.
+
+Definition g := 1.
+Definition x := 2.
+Definition a := 3.
+Definition b := 4.
+Definition y := 5.
+Definition c := 6.
+Definition d := 7.
+Definition f := 8.
+Definition result := 9.
+
+Definition hash_oracle (key:nat) :=
+     (f, (g::x::a::b::y::c::d::[]),
+      qadd Classic (Num 10) (L x);;;
+      init 1 (L y);;;
+      split (L y) c d ;;;
+      qwhile (clt Classic (Var (L x)) (Num 0))
+           (hash_qr (L a) (L c);;; hash_qr (L b) (L d) ;;; hash_qr (L a) (L d)
+                ;;; hash_qr (L b) (L c);;; qsub Classic (Num 1) (L x));;;
+      qif (clt QFTA (Var (L y)) (Num key)) (init 1 (L g)) (skip), L g).
+
+Definition hash_prog (s_size:nat) (size:nat) (key:nat) := 
+         (s_size,size,0,[result],[hash_oracle key],f,result).
 
 
 (* Define the well-formedness of exp. It is SSA + variable-dominance, as well as type match. *)
