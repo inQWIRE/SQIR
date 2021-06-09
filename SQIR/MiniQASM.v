@@ -256,10 +256,11 @@ Inductive iexp := eplus (f:flag) (x : factor) (y: factor)
    for comparator operations, both are floats. *)
 
 Inductive cexp := clt (f:flag) (b:btype) (x:factor) (y:factor)
-                  | ceq (f:flag) (b:btype) (x:factor) (y:factor).
+                  | ceq (f:flag) (b:btype) (x:factor) (y:factor)
+                  | iseven (x:factor).
 
 Inductive qexp := skip
-                | init (b:btype) (x:qvar) (v:nat -> bool)  
+                | init (b:btype) (x:qvar) (v:factor)  
                 | nadd (f:flag) (v:factor) (x:qvar) 
                 | nsub (f:flag) (v:factor) (x:qvar)
                 | nmul (f:flag) (v:factor) (x:qvar)
@@ -269,6 +270,8 @@ Inductive qexp := skip
                 | qxor (b:btype) (v:factor) (x:qvar)
                 | nfac (x:var) (v:factor)
                 | fdiv (x:var) (v:factor)
+                | rec_1 (x:var) (v:factor) 
+                | qinv (e:qexp)
                 | call (f:fvar) (v: qvar)
                 | qif (c:cexp) (e1:qexp) (e2:qexp)
                 | qwhile (c:cexp) (e:qexp)
@@ -284,36 +287,11 @@ Notation "p1 ;;; p2" := (qseq p1 p2) (at level 50) : exp_scope.
 Definition func : Type := ( fvar * list (btype * var) * qexp * qvar).
     (* a function is a fun name, a starting block label, and a list of blocks, and the returned variable. *)
 
-Definition prog : Type := (nat * nat * nat * list (btype * var) * list func * fvar * var). 
+Definition prog : Type := (nat * nat * nat * list (btype * var * (nat -> bool)) * list func * fvar * var). 
    (* a program is a nat representing the stack size, a number for the number of while to allow in a loop
        and a number of bits in Flt and Nat
           and a list of global vars, and a list of functions.
      and the main function to call, and the final global var to write to. *)
-
-Definition hash_qr (b:qvar) (a:qvar) := nadd QFTA (Var b) a;;;
-             qxor Nat (Var a) b;;;nadd QFTA (Var b) a;;; qxor Nat (Var a) b.
-
-Definition g :var := 1.
-Definition x :var := 2.
-Definition a :var := 3.
-Definition b :var := 4.
-Definition c :var := 6.
-Definition d :var := 7.
-Definition f :var := 8.
-Definition result :var := 9.
-
-Definition hash_oracle (key:nat) (sndk:nat) :=
-     (f, ((Bl,g)::(Nat,x)::(Nat,a)::(Nat,b)::(Nat,c)::(Nat,d)::[]),
-      nadd Classic (Num (nat2fb 10)) (L x);;;
-      init Nat (L d) (nat2fb 1);;;
-      qwhile (clt Classic Nat (Var (L x)) (Num (nat2fb 0)))
-           (hash_qr (L a) (L c);;; hash_qr (L b) (L d) ;;; hash_qr (L a) (L d)
-                ;;; hash_qr (L b) (L c);;; nsub Classic (Num (nat2fb 1)) (L x));;;
-      qif (ceq QFTA Nat (Var (L c)) (Num (nat2fb key))) 
-                (qif (ceq QFTA Nat (Var (L d)) (Num (nat2fb sndk))) (init Bl (L g) (nat2fb 1)) (skip)) (skip), L g).
-
-Definition hash_prog (s_size:nat) (l_size:nat) (size:nat) (key:nat) (sndk:nat) : prog := 
-         (s_size,l_size, size,[(Bl,result)],[hash_oracle key sndk],f,result).
 
 
 (* Define the well-formedness of exp. It is SSA + variable-dominance, as well as type match. *)
@@ -384,7 +362,7 @@ Proof.
   apply functional_extensionality.
   intros.
   unfold qupdate.
-  bdestruct (x0 =q= i); subst; reflexivity.
+  bdestruct (x =q= i); subst; reflexivity.
 Qed.
 
 Lemma qupdate_twice_eq : forall {A} (f : qvar -> A) i b b',
@@ -394,7 +372,7 @@ Proof.
   apply functional_extensionality.
   intros.
   unfold qupdate.
-  bdestruct (x0 =q= i); subst; reflexivity.
+  bdestruct (x =q= i); subst; reflexivity.
 Qed.  
 
 Lemma qupdate_twice_neq : forall {A} (f : qvar -> A) i j b b',
@@ -404,7 +382,7 @@ Proof.
   apply functional_extensionality.
   intros.
   unfold qupdate.
-  bdestruct (x0 =q= i); bdestruct (x0 =q= j); subst; easy.
+  bdestruct (x =q= i); bdestruct (x =q= j); subst; easy.
 Qed.
 
 Definition fenv : Type := (var -> option (list (btype * var) * qexp * benv * qvar)).
@@ -429,9 +407,19 @@ Definition type_cexp (benv:benv) (c:cexp) :=
             | ceq f b x y => 
              do re1 <- type_factor benv b x @
                 do re2 <- type_factor benv b y @ ret (meet_type re1 re2)
+            | iseven x => match type_factor benv Nat x with Some (C Nat) => Some (C Nat) | _ => None end
+          
    end.
-
+(*
 Definition var_raw (t:qvar) := match t with G x => x | L x => x end.
+*)
+
+Definition allow_inv (e:qexp) : bool :=
+   match e with skip => true | init _ _ _ => true | nadd _ _ _ => true | nsub _ _ _
+              | nmul _ _ _ | fadd _ _ _ | fsub _ _ _ | fmul _ _ _ | qxor _ _ _
+              | nfac _ _ | fdiv _ _ => true
+             | _ => false
+   end.
 
 Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
    match e with skip => Some benv
@@ -458,6 +446,8 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
              | qxor b x y => 
              do re1 <- benv y @ 
                do re2 <- type_factor benv b x @ ret (qupdate benv y (Some (meet_type re1 re2)))
+             | qinv e => if allow_inv e then type_qexp fv benv e else None
+
              | nfac x v => 
                  do re1 <- benv (L x) @
                    match re1 with C Nat => 
@@ -468,6 +458,15 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
                                    | _ => None
                    end
              | fdiv x v => 
+                 do re1 <- benv (L x) @
+                   match re1 with C Flt => 
+                    do re2 <- type_factor benv Nat v @
+                               match re2 with C Nat => ret benv
+                                           | _ => None
+                               end
+                                   | _ => None
+                   end
+             | rec_1 x v => 
                  do re1 <- benv (L x) @
                    match re1 with C Flt => 
                     do re2 <- type_factor benv Nat v @
@@ -506,9 +505,9 @@ Fixpoint type_funs (benv:benv) (fv:fenv) (l:list func) : option fenv :=
                      type_funs benv (update fv f (Some (l,e,benv',rx))) fs
      end.
 
-Fixpoint gen_genv (l:list (btype * var)) : benv := 
+Fixpoint gen_genv (l:list (btype * var * (nat->bool))) : benv := 
    match l with [] => (fun _ => None)
-             | ((t,x)::xl) => qupdate (gen_genv xl) (G x) (Some (Q t))
+             | ((t,x,v)::xl) => qupdate (gen_genv xl) (G x) (Some (Q t))
    end.
 
 (* ( fvar * list var * qexp ). *)
@@ -541,12 +540,13 @@ Definition sem_cexp (sl_size sn size:nat) (reg:reg) (ce:cexp) : option bool :=
    if sn <? sl_size then
           match ce with clt f b x y => 
               match b with Bl => Some (a_nat2fb (sem_factor size reg Bl x) 1 <? a_nat2fb ((sem_factor size reg Bl x)) 1)
-                       | _ => Some (a_nat2fb (sem_factor size reg Bl x) size <? a_nat2fb ((sem_factor size reg Bl x)) size)
+                       | _ => Some (a_nat2fb (sem_factor size reg b x) size <? a_nat2fb ((sem_factor size reg b x)) size)
               end
                    | ceq f b x y =>
               match b with Bl => Some (a_nat2fb (sem_factor size reg Bl x) 1 =? a_nat2fb ((sem_factor size reg Bl x)) 1)
-                         | _ => Some (a_nat2fb (sem_factor size reg Bl x) size =? a_nat2fb ((sem_factor size reg Bl x)) size)
+                         | _ => Some (a_nat2fb (sem_factor size reg b x) size =? a_nat2fb ((sem_factor size reg b x)) size)
               end
+                   | iseven x => Some ((a_nat2fb (sem_factor size reg Nat x) size) mod 2 =? 0)
           end
    else None.
 
@@ -559,7 +559,7 @@ Definition sub_def (f1 f2:nat -> bool) (size:nat) :=
 
 Fixpoint sem_qexp (fv:fenv) (s_lit sloop sn size:nat) (r:reg) (e:qexp) : option (nat * reg) :=
      match e with skip => Some (sn,r)
-              | init b x v => ret (sn,qupdate r x (bin_xor (r x) v (if b =b= Bl then 1 else size)))
+              | init b x v => ret (sn,qupdate r x (bin_xor (r x) (sem_factor size r b v) (if b =b= Bl then 1 else size)))
               | nadd f x y => ret (sn,qupdate r y (nat2fb (((a_nat2fb (sem_factor size r Nat x) size)+(a_nat2fb (r y) size)) mod 2^size)))
               | nsub f x y => ret (sn,qupdate r y (nat2fb (sub_def (sem_factor size r Nat x) (r y) size)))
               | nmul f x y => ret (sn,qupdate r y (nat2fb ((a_nat2fb (sem_factor size r Nat x) size)*(a_nat2fb (r y) size) mod 2^size)))
@@ -569,6 +569,7 @@ Fixpoint sem_qexp (fv:fenv) (s_lit sloop sn size:nat) (r:reg) (e:qexp) : option 
               | qxor b x y => ret (sn,qupdate r y (bin_xor (sem_factor size r Nat x) (r y) (if b =b= Bl then 1 else size)))
               | nfac x y => ret (sn, qupdate r (L x) (nat2fb ((fact (a_nat2fb (sem_factor size r Nat y) size)) mod 2^size)))
               | fdiv x y => ret (sn,qupdate r (L x) (nat2fb (((a_nat2fb (r (L x)) size)) / (a_nat2fb (sem_factor size r Nat y) size))))
+              | rec_1 x y => ret (sn,qupdate r (L x) (nat2fb ((2^size / (a_nat2fb (sem_factor size r Nat y) size)))))
               | qif ce e1 e2 => do bv <- sem_cexp s_lit sn size r ce @
                                   match bv with true => sem_qexp fv s_lit sloop (S sn) size r e1
                                               | false => sem_qexp fv s_lit sloop (S sn) size r e2
@@ -598,11 +599,12 @@ Fixpoint init_reg (r:reg) (l:list (btype * var)) : reg  :=
               | ((t,x)::xl) => init_reg (qupdate r (L x) (nat2fb 0)) xl
    end.
 
-Fixpoint init_reg_g (r:reg) (l:list (btype*var)) : reg  :=
+Fixpoint init_reg_g (r:reg) (l:list (btype*var * (nat->bool))) : reg  :=
     match l with [] => r
-              | ((t,x)::xl) => init_reg_g (qupdate r (G x) (nat2fb 0)) xl
+              | ((t,x,v)::xl) => init_reg_g (qupdate r (G x) v) xl
    end.
 
+(*
 Definition sem_prog (p:prog) : option (reg) :=
      match p with (slit,sloop,size,l,fl,f,rx) =>
          do fv <- type_prog p @
@@ -613,29 +615,124 @@ Definition sem_prog (p:prog) : option (reg) :=
                           end
               end
      end.
+*)
+
+(*define example hash_function as the oracle for grover's search. *)
+Definition hash_qr (b:qvar) (a:qvar) := nadd QFTA (Var b) a;;;
+             qxor Nat (Var a) b;;;nadd QFTA (Var b) a;;; qxor Nat (Var a) b.
+
+Definition g :var := 1.
+Definition x :var := 2.
+Definition a :var := 3.
+Definition b :var := 4.
+Definition c :var := 6.
+Definition d :var := 7.
+Definition f :var := 8.
+Definition result :var := 9.
+
+Definition hash_oracle (key:nat) (sndk:nat) :=
+     (f, ((Bl,g)::(Nat,x)::(Nat,a)::(Nat,b)::(Nat,c)::(Nat,d)::[]),
+      nadd Classic (Num (nat2fb 10)) (L x);;;
+      init Nat (L d) (Num (nat2fb 1));;;
+      qwhile (clt Classic Nat (Var (L x)) (Num (nat2fb 0)))
+           (hash_qr (L a) (L c);;; hash_qr (L b) (L d) ;;; hash_qr (L a) (L d)
+                ;;; hash_qr (L b) (L c);;; nsub Classic (Num (nat2fb 1)) (L x));;;
+      qif (ceq QFTA Nat (Var (L c)) (Num (nat2fb key))) 
+                (qif (ceq QFTA Nat (Var (L d)) (Num (nat2fb sndk))) (init Bl (L g) (Num (nat2fb 1))) (skip)) (skip), L g).
+
+Definition hash_prog (s_size:nat) (l_size:nat) (size:nat) (key:nat) (sndk:nat) : prog := 
+         (s_size,l_size, size,[(Bl,result,nat2fb 0)],[hash_oracle key sndk],f,result).
+
+
+(* define sin/cos. a = x^2, b = x^1/3/5/...., d is the result *)
+Definition n : var := 10. 
+Definition rc : var := 10. 
+Definition fac : var := 10. 
+
+
+Definition taylor_sin : func := 
+     (f, ((Flt,a)::(Nat,g)::(Nat,n)::(Nat,fac)::(Nat,rc)::[]),
+                         init Flt (L a) (Var (G x));;;
+                         init Flt (L d) (Var (G x));;;
+                         init Nat (L g) (Num (nat2fb 0));;;
+                         init Nat (L n) (Num (nat2fb 1));;;
+                         init Flt (L fac) (Num (nat2fb 0));;;
+                         init Flt (L rc) (Num (nat2fb 0));;;
+         qwhile (clt QFTA Nat (Var (L g)) (Num (nat2fb 5))) 
+             (qif (iseven (Var (L g))) 
+                      (nadd QFTA (Num (nat2fb 2)) ((L n));;;
+                       nfac (fac) (Var (L n));;;
+                       rec_1 (rc) (Var (L fac));;;
+                       fmul QFTA (Var (G x)) (L a);;;
+                       fmul QFTA (Var (G x)) (L a);;;
+                       fmul QFTA (Var (L rc)) (L a);;;
+                       fsub QFTA (Var (L a)) (L d);;;
+                       qinv (fmul QFTA (Var (L rc)) (L a));;;
+                       nadd QFTA (Num (nat2fb 1)) ((L g)))
+                     (nadd QFTA (Num (nat2fb 2)) ((L n));;;
+                       nfac (fac) (Var (L n));;;
+                       rec_1 (rc) (Var (L fac));;;
+                       fmul QFTA (Var (G x)) (L a);;;
+                       fmul QFTA (Var (G x)) (L a);;;
+                       fmul QFTA (Var (L rc)) (L a);;;
+                       fadd QFTA (Var (L a)) (L d);;;
+                       qinv (fmul QFTA (Var (L rc)) (L a));;;
+                       nadd QFTA (Num (nat2fb 1)) (L g)))
+             ,L d).
+
+Definition sin_prog (s_size:nat) (l_size:nat) (size:nat) (v:nat->bool) : prog := 
+         (s_size,l_size, size,[(Flt,result,v)],[taylor_sin],f,result).
+
+Definition taylor_cos (size:nat) : func := 
+     (f, ((Flt,a)::(Nat,g)::(Nat,n)::(Nat,fac)::(Nat,rc)::[]),
+                         init Flt (L a) (Num (negatem size (nat2fb 0)));;;
+                         init Flt (L d) (Num (negatem size (nat2fb 0)));;;
+                         init Nat (L g) (Num (nat2fb 0));;;
+                         init Nat (L n) (Num (nat2fb 0));;;
+                         init Flt (L fac) (Num (nat2fb 0));;;
+                         init Flt (L rc) (Num (nat2fb 0));;;
+         qwhile (clt QFTA Nat (Var (L g)) (Num (nat2fb 5))) 
+             (qif (iseven (Var (L g))) 
+                      (nadd QFTA (Num (nat2fb 2)) ((L n));;;
+                       nfac (fac) (Var (L n));;;
+                       rec_1 (rc) (Var (L fac));;;
+                       fmul QFTA (Var (G x)) (L a);;;
+                       fmul QFTA (Var (G x)) (L a);;;
+                       fmul QFTA (Var (L rc)) (L a);;;
+                       fsub QFTA (Var (L a)) (L d);;;
+                       qinv (fmul QFTA (Var (L rc)) (L a));;;
+                       nadd QFTA (Num (nat2fb 1)) ((L g)))
+                     (nadd QFTA (Num (nat2fb 2)) ((L n));;;
+                       nfac (fac) (Var (L n));;;
+                       rec_1 (rc) (Var (L fac));;;
+                       fmul QFTA (Var (G x)) (L a);;;
+                       fmul QFTA (Var (G x)) (L a);;;
+                       fmul QFTA (Var (L rc)) (L a);;;
+                       fadd QFTA (Var (L a)) (L d);;;
+                       qinv (fmul QFTA (Var (L rc)) (L a));;;
+                       nadd QFTA (Num (nat2fb 1)) (L g)))
+             ,L d).
+
+Definition cos_prog (s_size:nat) (l_size:nat) (size:nat) (v:nat->bool) : prog := 
+         (s_size,l_size, size,[(Flt,result,v)],[taylor_cos size],f,result).
 
 (* Compilation from MiniQASM to VSQIR starts here. *)
-Definition var_map := Reg.t var.
-
-Definition empty_var_map := @Reg.empty var.
 
 Definition ac_size (size:nat) := S (S size).
 
-
-
-
+(*
 Definition find_factor_type (benv:benv) (fc:factor) : option atype :=
     match fc with (Var (L x)) => BEnv.find x benv
                 | (Var (G x)) => Some Q
                 | Num n => Some C
     end.
-
+*)
 Lemma xor_not : forall a b, xorb (a<?b) (b<?a) = false -> a = b.
 Proof.
   intros.
-  bdestruct (a <? b).
-  bdestruct (b <? a). lia. simpl in H. inv H.
-  bdestruct (b <? a). simpl in H. inv H.
+  bdestruct (a0 <? b0).
+  bdestruct (b0 <? a0). lia. simpl in H. inv H.
+  bdestruct (b0 <? a0). simpl in H. inv H.
   lia.
 Qed.
 
