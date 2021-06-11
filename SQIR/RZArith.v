@@ -2874,5 +2874,71 @@ Proof.
   lia. simpl. lia.
 Qed.
 
+Check one_cu_adder.
 
+Fixpoint swaps (x:var) (y:var) (n:nat) :=
+   match n with 0 => SKIP (x,0)
+             | S m => swaps x y m ;SWAP (x,m) (y,m)
+   end.
 
+Fixpoint nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
+   match n with 0 => SKIP (x,0)
+            | S m => one_cu_adder ex size (x,size - n) M; nat_mult' m size x ex (cut_n (times_two_spec M) size)
+   end.
+Definition nat_mult (size:nat) (x:var) (ex:var) (M:nat -> bool) (Minv : nat -> bool) := 
+       nat_mult' size size x ex M; swaps x ex size ; inv_exp (nat_mult' size size x ex Minv).
+
+Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
+
+Fixpoint flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
+   match n with 0 => SKIP (x,0)
+            | S m => one_cu_adder ex size (x,m) M; flt_mult' m size x ex (cut_n (div_two_spec M) size)
+   end.
+Definition flt_mult (size:nat) (x ex:var) (M:nat -> bool) := flt_mult' size size x ex M.
+
+Fixpoint rz_full_adder (x:var) (n:nat) (y:var) :=
+    match n with 0 => (SKIP (x,0))
+               | S m => (CU (y,m) (SR m x); rz_full_adder x m y)
+    end.
+Definition one_cu_full_adder (c:posi) (x:var) (n:nat) (y:var) := CU c (rz_full_adder x n y).
+
+Fixpoint nat_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) :=
+   match n with 0 => SKIP (x,0)
+            | S m => nat_full_mult' m size x y re ex; 
+                  one_cu_full_adder (x,m) re size y ; SWAP (y,0) (ex,m); Lshift y
+   end.
+Definition nat_full_mult_quar (size:nat) (x y:var) (re:var) (ex:var) := nat_full_mult' size size x y re ex.
+
+Fixpoint clean_high (n:nat) (y:var) (ex:var) :=
+    match n with 0 => SKIP (y,0)
+               | S m => clean_high m y ex ;SWAP (y,0) (ex,m) ; Lshift y
+    end.
+
+Definition nat_full_mult (size:nat) (x y:var) (re:var) (ex:var) := nat_full_mult_quar size x y re ex ; inv_exp (clean_high size y ex).
+
+Fixpoint flt_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) :=
+   match n with 0 => SKIP (x,0)
+            | S m => one_cu_full_adder (x,size - n) re size y ; SWAP (y,size - 1) (ex,m); Rshift y;
+                     flt_full_mult' m size x y re ex
+   end.
+Definition flt_full_mult_quar (size:nat) (x y:var) (re:var) (ex:var) := flt_full_mult' size size x y re ex.
+
+Fixpoint clean_high_flt (n:nat) (size:nat) (y:var) (ex:var) :=
+    match n with 0 => SKIP (y,0)
+               | S m => clean_high_flt m size y ex ;SWAP (y,size-1) (ex,m) ; Rshift y
+    end.
+
+Definition flt_full_mult (size:nat) (x y:var) (re:var) (ex:var) :=
+                  nat_full_mult_quar size x y re ex ; inv_exp (clean_high_flt size size y ex).
+
+(*
+Definition moddoubler01 n x M c1 c2 :=
+                doubler1 x;  (comparator01 n x M c1 c2; CU c2 (subtractor01 n M x c1)).
+
+Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
+  match i with
+  | 0 => if (fC 0) then (adder01 n x y c1) else (SKIP (x,0))
+  | S i' =>  modsummer' i' n M x y c1 c2 s fC; moddoubler01 n x M c1 c2;
+          (SWAP c2 (s,i));
+        (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
+*)
