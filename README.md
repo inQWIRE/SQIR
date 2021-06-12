@@ -43,6 +43,7 @@ opam install coq-interval
 * Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any version of OCaml >= 4.05.0 should be fine. 
 * We require Coq version >= 8.12.0. We have tested compilation with 8.12.x and 8.13.x.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
+* If opam is not able to find coq-interval, try running `opam repo add coq-released https://coq.inria.fr/opam/released` first.
 
 ## Compilation
 
