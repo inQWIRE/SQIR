@@ -67,6 +67,42 @@ Proof.
   assumption. 
 Qed.
 
+Definition qdty_eq  (t1 t2:(qvar * nat)) : bool := 
+     (fst t1 =q= fst t2) && (snd t1 =? snd t2).
+
+Notation "i '=qd=' j" := (qdty_eq i j) (at level 50).
+
+Lemma qdty_eqb_eq : forall a b, a =qd= b = true -> a = b.
+Proof.
+ intros. unfold qdty_eq in H.
+ destruct a. destruct b.
+ apply andb_true_iff in H. destruct H.
+ apply qty_eqb_eq in H.
+ apply Nat.eqb_eq in H0. simpl in *. subst. easy.
+Qed.
+
+Lemma qdty_eqb_neq : forall a b, a =qd= b = false -> a <> b.
+Proof.
+ intros. unfold qdty_eq in H.
+ destruct a. destruct b.
+ apply andb_false_iff in H. destruct H.
+ apply qty_eqb_neq in H. intros R. inv R. easy.
+ apply Nat.eqb_neq in H.
+ intros R. inv R. contradiction.
+Qed.
+
+Lemma qdty_eq_reflect : forall r1 r2, reflect (r1 = r2) (qdty_eq r1 r2). 
+Proof.
+  intros.
+  destruct (r1 =qd= r2) eqn:eq1.
+  apply  ReflectT.
+  apply qdty_eqb_eq in eq1.
+  assumption. 
+  constructor. 
+  apply qdty_eqb_neq in eq1.
+  assumption. 
+Qed.
+
 (*  a type for const values that cannot appear in a quantum circuit,
    and register values that can appear in a guantum circuit. *)
 Inductive btype := Nat : btype | Flt : btype | Bl : btype.
@@ -209,7 +245,7 @@ Proof.
   assumption. 
 Qed.
 
-Hint Resolve aty_eq_reflect qty_eq_reflect bty_eq_reflect typ_eq_reflect : bdestruct.
+Hint Resolve aty_eq_reflect qty_eq_reflect qdty_eq_reflect bty_eq_reflect typ_eq_reflect : bdestruct.
 
 Inductive ttyp := TPtr (t:typ) (n:nat) | TNor (t:typ).
 
@@ -327,8 +363,8 @@ Inductive qexp := skip
                 | ndiv (x:cfac) (y:cfac) (v:cfac) (*x := y/n where x,n are a nat *)
                 | nmod (x:cfac) (y:cfac) (v:cfac) (* x := y mod n where x,n are a nat *)
                 | nfac (x:cfac) (v:cfac) (* x := n! where x is a nat & n is  nat *)
-                | fdiv (x:cfac) (v:cfac) (* x := x / n where n is a natural number. *)
-                | fnmul (x:cfac) (v:cfac) (* x := x * n where n is a natural number. *)
+                | fdiv (x:cfac) (v:cfac) (* x := x / n where n is a natural number, x is a float. *)
+                | fnmul (x:cfac) (v:cfac) (* x := x * n where n is a natural number, x is a nat. *)
                 | ncsub (x:cfac) (y:cfac) (z:cfac) (* x := y - z all natural and C type *)
                 | ncadd (x:cfac) (y:cfac) (z:cfac) (* x := y + z all natural and C type *)
                 | ncmul (x:cfac) (y:cfac) (z:cfac) (* x := y * z all natural and C type *)
@@ -698,29 +734,36 @@ Definition type_prog (p:prog) : option fenv :=
 
 (*The semantics of QLLVM. *)
 
-Definition reg : Type := (qvar -> (nat -> bool)).
+Definition reg : Type := ((qvar * nat) -> (nat -> bool)).
 
-Definition empty_reg : (qvar -> (nat -> bool)) := fun _ => allfalse.
+Definition empty_reg : ((qvar * nat) -> (nat -> bool)) := fun _ => allfalse.
 
 Definition sem_factor (size:nat) (reg:reg) (b:btype) (fc:factor) := 
-   match fc with Var x => reg x
+   match fc with Var x => reg (x,0)
             | Num n => match b with Bl => cut_n n 1
                                  | Nat => cut_n n size
                                  | Flt => cut_n n size
                        end
    end.
 
+Definition sem_cfac (size:nat) (reg:reg) (b:btype) (fc:cfac) :=
+    match fc with Ptr x n => reg (L x,a_nat2fb (sem_factor size reg Nat n) size)
+               | Nor x => sem_factor size reg b x
+    end.
+
+
+
 Definition sem_cexp (sl_size sn size:nat) (reg:reg) (ce:cexp) : option (nat * bool) :=
    if sn <? sl_size then
           match ce with clt f b x y => 
-              match b with Bl => Some (S sn,a_nat2fb (sem_factor size reg Bl x) 1 <? a_nat2fb ((sem_factor size reg Bl x)) 1)
-                       | _ => Some (S sn, a_nat2fb (sem_factor size reg b x) size <? a_nat2fb ((sem_factor size reg b x)) size)
+              match b with Bl => Some (S sn,a_nat2fb (sem_cfac size reg Bl x) 1 <? a_nat2fb ((sem_cfac size reg Bl x)) 1)
+                       | _ => Some (S sn, a_nat2fb (sem_cfac size reg b x) size <? a_nat2fb ((sem_cfac size reg b x)) size)
               end
                    | ceq f b x y =>
-              match b with Bl => Some (S sn,a_nat2fb (sem_factor size reg Bl x) 1 =? a_nat2fb ((sem_factor size reg Bl x)) 1)
-                         | _ => Some (S sn,a_nat2fb (sem_factor size reg b x) size =? a_nat2fb ((sem_factor size reg b x)) size)
+              match b with Bl => Some (S sn,a_nat2fb (sem_cfac size reg Bl x) 1 =? a_nat2fb ((sem_cfac size reg Bl x)) 1)
+                         | _ => Some (S sn,a_nat2fb (sem_cfac size reg b x) size =? a_nat2fb ((sem_cfac size reg b x)) size)
               end
-                   | iseven x => Some (sn,(a_nat2fb (sem_factor size reg Nat x) size) mod 2 =? 0)
+                   | iseven x => Some (sn,(a_nat2fb (sem_cfac size reg Nat x) size) mod 2 =? 0)
           end
    else None.
 
@@ -731,127 +774,205 @@ Definition sub_def (f1 f2:nat -> bool) (size:nat) :=
          if a_nat2fb f1 size <? a_nat2fb f2 size then (a_nat2fb f1 size + 2^size - a_nat2fb f2 size) mod 2^size
                   else (a_nat2fb f1 size + a_nat2fb f2 size) mod 2^size.
 
-Fixpoint init_reg (r:reg) (l:list (btype * var)) : reg  :=
+Definition qdupdate {A} (f : (qvar * nat) -> A) (i : (qvar * nat)) (x : A) :=
+  fun j => if j =qd= i then x else f j.
+
+Lemma qdupdate_index_eq : forall {A} (f : (qvar * nat) -> A) i b, (qdupdate f i b) i = b.
+Proof.
+  intros. 
+  unfold qdupdate.
+  bdestruct (i =qd= i). easy. easy.
+Qed.
+
+Lemma qdupdate_index_neq : forall {A} (f : (qvar * nat) -> A) i j b, i <> j -> (qdupdate f i b) j = f j.
+Proof.
+  intros. 
+  unfold qdupdate.
+  bdestruct (j =qd= i). subst. easy. easy.
+Qed.
+
+Lemma qdupdate_same : forall {A} (f : (qvar * nat) -> A) i b,
+  b = f i -> qdupdate f i b = f.
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros.
+  unfold qdupdate.
+  bdestruct (x =qd= i); subst; reflexivity.
+Qed.
+
+Lemma qdupdate_twice_eq : forall {A} (f : (qvar * nat) -> A) i b b',
+  qdupdate (qdupdate f i b) i b' = qdupdate f i b'.
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros.
+  unfold qdupdate.
+  bdestruct (x =qd= i); subst; reflexivity.
+Qed.  
+
+Lemma qdupdate_twice_neq : forall {A} (f : (qvar * nat) -> A) i j b b',
+  i <> j -> qdupdate (qdupdate f i b) j b' = qdupdate (qdupdate f j b') i b.
+Proof.
+  intros.
+  apply functional_extensionality.
+  intros.
+  unfold qdupdate.
+  bdestruct (x =qd= i); bdestruct (x =qd= j); subst; easy.
+Qed.
+
+Fixpoint init_reg_n (r:reg) (x:qvar) (n:nat) :=
+   match n with 0 => r
+          | S m => qdupdate (init_reg_n r x m) (x,m) (nat2fb 0)
+   end.
+
+Fixpoint init_reg (r:reg) (l:list (btype * var * nat)) : reg  :=
    match l with [] => r
-             | ((t,x)::xl) => qupdate (init_reg r xl) (L x) (nat2fb 0)
+             | ((t,x,n)::xl) => (init_reg (init_reg_n r (L x) n) xl)
+   end.
+
+Definition eval_var (size:nat) (r:reg) (x:cfac) :=
+   match x with Ptr x n => Some (L x,a_nat2fb (sem_factor size r Nat n) size)
+              | Nor (Var x) => Some (x,0)
+              | Nor (Num x) => None
    end.
 
 Inductive sem_qexp (fv:fenv) (s_lit size:nat): nat -> reg -> qexp -> nat -> reg -> qexp -> Prop :=
- | sem_init : forall sn reg b x v,
+ | sem_init : forall sn reg b x v yn,
+      eval_var size reg x = Some yn ->
       sem_qexp fv s_lit size sn reg (init b x v) sn
-                (qupdate reg x (bin_xor (reg x) (sem_factor size reg b v) (if b =b= Bl then 1 else size))) skip
- | sem_nadd : forall sn reg f x y,
-      sem_qexp fv s_lit size sn reg (nadd f x y) sn (qupdate reg y (sumfb false (sem_factor size reg Nat x) (reg y))) skip
- | sem_nsub : forall sn reg f x y, 
+                (qdupdate reg yn (bin_xor (reg yn) (sem_cfac size reg b v) (if b =b= Bl then 1 else size))) skip
+ | sem_nadd : forall sn reg f x y yn,
+      eval_var size reg y = Some yn ->
+      sem_qexp fv s_lit size sn reg (nadd f x y) sn (qdupdate reg yn (sumfb false (sem_cfac size reg Nat x) (reg yn))) skip
+ | sem_nsub : forall sn reg f x y yn, 
+      eval_var size reg y = Some yn ->
       sem_qexp fv s_lit size sn reg (nsub f x y) sn
-               (qupdate reg y (sumfb true (sem_factor size reg Nat x) (negatem size (reg y)))) skip
- | sem_nmul : forall sn reg f x y, 
+               (qdupdate reg yn (sumfb true (sem_cfac size reg Nat x) (negatem size (reg yn)))) skip
+ | sem_nmul : forall sn reg f x y yn,
+      eval_var size reg y = Some yn ->
       sem_qexp fv s_lit size sn reg (nmul f x y) sn 
-                  (qupdate reg y (nat2fb
-                      ((a_nat2fb (sem_factor size reg Nat x) size * a_nat2fb (reg y) size) mod 2^size))) skip
- | sem_nqmul : forall sn reg f x y z, 
-         reg z = nat2fb 0 ->
+                  (qdupdate reg yn (nat2fb
+                      ((a_nat2fb (sem_cfac size reg Nat x) size * a_nat2fb (reg yn) size) mod 2^size))) skip
+ | sem_nqmul : forall sn reg f x y z zn, 
+      eval_var size reg z = Some zn ->
+      reg zn = nat2fb 0 ->
       sem_qexp fv s_lit size sn reg (nqmul f x y z) sn 
-                  (qupdate reg z  (nat2fb
-                      ((a_nat2fb (sem_factor size reg Nat x) size
-                                 * (a_nat2fb (sem_factor size reg Nat x) size)) mod 2^size))) skip
- | sem_fadd : forall sn reg f x y,
+                  (qdupdate reg zn  (nat2fb
+                      ((a_nat2fb (sem_cfac size reg Nat x) size
+                                 * (a_nat2fb (sem_cfac size reg Nat x) size)) mod 2^size))) skip
+ | sem_fadd : forall sn reg f x y yn,
+      eval_var size reg y = Some yn ->
       sem_qexp fv s_lit size sn reg (fadd f x y) sn 
-               (qupdate reg y (sumfb false (sem_factor size reg Flt x) (reg y))) skip
- | sem_fsub : forall sn reg f x y,
+               (qdupdate reg yn (sumfb false (sem_cfac size reg Flt x) (reg yn))) skip
+ | sem_fsub : forall sn reg f x y yn,
       sem_qexp fv s_lit size sn reg (fsub f x y) sn 
-                     (qupdate reg y (sumfb true (sem_factor size reg Flt x) (negatem size (reg y)))) skip
- | sem_fmul : forall sn reg f x y z,
-      reg z = nat2fb 0 ->
+                     (qdupdate reg yn (sumfb true (sem_cfac size reg Flt x) (negatem size (reg yn)))) skip
+ | sem_fmul : forall sn reg f x y z zn,
+      eval_var size reg z = Some zn ->
+      reg zn = nat2fb 0 ->
       sem_qexp fv s_lit size sn reg (fmul f x y z) sn 
-                  (qupdate reg z (nat2fb 
-                       ((a_nat2fb (sem_factor size reg Flt x) size
-                             * a_nat2fb (sem_factor size reg Flt x) size) / 2^size))) skip
- | sem_xor : forall sn reg b x y,
-      sem_qexp fv s_lit size sn reg (qxor b x y) sn (qupdate reg y
-                (bin_xor (sem_factor size reg b x) (reg y) (if b =b= Bl then 1 else size))) skip
- | sem_fac : forall sn reg x y,
+                  (qdupdate reg zn (nat2fb 
+                       ((a_nat2fb (sem_cfac size reg Flt x) size
+                             * a_nat2fb (sem_cfac size reg Flt x) size) / 2^size))) skip
+ | sem_xor : forall sn reg b x y yn,
+      eval_var size reg y = Some yn ->
+      sem_qexp fv s_lit size sn reg (qxor b x y) sn (qdupdate reg yn
+                (bin_xor (sem_cfac size reg b x) (reg yn) (if b =b= Bl then 1 else size))) skip
+ | sem_fac : forall sn reg x y xn,
+      eval_var size reg x = Some xn ->
+      reg xn = nat2fb 0 ->
       sem_qexp fv s_lit size sn reg (nfac x y) sn
-            (qupdate reg (L x) (nat2fb ((fact (a_nat2fb (sem_factor size reg Nat y) size)) mod 2^size))) skip
+            (qdupdate reg xn (nat2fb ((fact (a_nat2fb (sem_cfac size reg Nat y) size)) mod 2^size))) skip
 
- | sem_fdiv : forall sn reg x y, 
+ | sem_fdiv : forall sn reg x y xn, 
+      eval_var size reg x = Some xn ->
       sem_qexp fv s_lit size sn reg (fdiv x y) sn
-           (qupdate reg (L x) (nat2fb (((a_nat2fb (reg (L x)) size)) / (a_nat2fb (sem_factor size reg Nat y) size)))) skip
- | sem_fndiv : forall sn reg x y z, 
-       (a_nat2fb (sem_factor size reg Nat x) size) < (a_nat2fb (sem_factor size reg Nat y) size) ->
+           (qdupdate reg xn (nat2fb (((a_nat2fb (reg xn) size)) / (a_nat2fb (sem_cfac size reg Nat y) size)))) skip
+ | sem_fndiv : forall sn reg x y z zn,
+       eval_var size reg z = Some zn ->
+       (a_nat2fb (sem_cfac size reg Nat x) size) < (a_nat2fb (sem_cfac size reg Nat y) size) ->
       sem_qexp fv s_lit size sn reg (fndiv x y z) sn
-           (qupdate reg (L z) (nat2fb
-                (((a_nat2fb (sem_factor size reg Nat x) size) * 2^size)
-                            / (a_nat2fb (sem_factor size reg Nat y) size)))) skip
- | sem_fnmul : forall sn reg x y, 
+           (qdupdate reg zn (nat2fb
+                (((a_nat2fb (sem_cfac size reg Nat x) size) * 2^size)
+                            / (a_nat2fb (sem_cfac size reg Nat y) size)))) skip
+ | sem_fnmul : forall sn reg x y xn, 
+       eval_var size reg x = Some xn ->
       sem_qexp fv s_lit size sn reg (fnmul x y) sn
-           (qupdate reg (L x) (nat2fb
-                (((a_nat2fb (reg (L x)) size) * (a_nat2fb (sem_factor size reg Nat y) size)) mod 2^ size))) skip
- | sem_qinv_in : forall sn reg b x v, 
+           (qdupdate reg xn (nat2fb
+                (((a_nat2fb (reg xn) size) * (a_nat2fb (sem_cfac size reg Nat y) size)) mod 2^ size))) skip
+ | sem_qinv_in : forall sn reg b x v xn, 
+       eval_var size reg x = Some xn ->
       sem_qexp fv s_lit size sn reg (qinv (init b x v)) sn
-           (qupdate reg x (bin_xor (reg x) (sem_factor size reg b v) (if b =b= Bl then 1 else size))) skip
- | sem_qinv_nadd : forall sn reg f x y, 
+           (qdupdate reg xn (bin_xor (reg xn) (sem_cfac size reg b v) (if b =b= Bl then 1 else size))) skip
+ | sem_qinv_nadd : forall sn reg f x y yn, 
+       eval_var size reg y = Some yn ->
       sem_qexp fv s_lit size sn reg (qinv (nadd f x y)) sn
-           (qupdate reg y (sumfb true (sem_factor size reg Nat x) (negatem size (reg y)))) skip
- | sem_qinv_nsub : forall sn reg f x y, 
+           (qdupdate reg yn (sumfb true (sem_cfac size reg Nat x) (negatem size (reg yn)))) skip
+ | sem_qinv_nsub : forall sn reg f x y yn, 
+       eval_var size reg y = Some yn ->
       sem_qexp fv s_lit size sn reg (qinv (nsub f x y)) sn
-           (qupdate reg y (sumfb false (sem_factor size reg Nat x) (reg y))) skip
- | sem_qinv_nmul : forall sn reg f x y v1, 
-          (v1 * (a_nat2fb (sem_factor size reg Nat x) size)) mod 2^size = 1 ->
+           (qdupdate reg yn (sumfb false (sem_cfac size reg Nat x) (reg yn))) skip
+ | sem_qinv_nmul : forall sn reg f x y v1 yn, 
+       eval_var size reg y = Some yn ->
+          (v1 * (a_nat2fb (sem_cfac size reg Nat x) size)) mod 2^size = 1 ->
       sem_qexp fv s_lit size sn reg (qinv (nmul f x y)) sn
-           (qupdate reg y (nat2fb v1)) skip
- | sem_qinv_nqmul : forall sn reg f x y z, 
-      sem_qexp fv s_lit size sn reg (qinv (nqmul f x y z)) sn (qupdate reg z (nat2fb 0)) skip
- | sem_qinv_fadd : forall sn reg f x y, 
+           (qdupdate reg yn (nat2fb v1)) skip
+ | sem_qinv_nqmul : forall sn reg f x y z zn, 
+       eval_var size reg z = Some zn ->
+      sem_qexp fv s_lit size sn reg (qinv (nqmul f x y z)) sn (qdupdate reg zn (nat2fb 0)) skip
+ | sem_qinv_fadd : forall sn reg f x y yn, 
+       eval_var size reg y = Some yn ->
       sem_qexp fv s_lit size sn reg (qinv (fadd f x y)) sn
-           (qupdate reg y (sumfb true (sem_factor size reg Flt x) (negatem size (reg y)))) skip
- | sem_qinv_fsub : forall sn reg f x y, 
+           (qdupdate reg yn (sumfb true (sem_cfac size reg Flt x) (negatem size (reg yn)))) skip
+ | sem_qinv_fsub : forall sn reg f x y yn, 
+       eval_var size reg y = Some yn ->
       sem_qexp fv s_lit size sn reg (qinv (fsub f x y)) sn
-           (qupdate reg y (sumfb false (sem_factor size reg Flt x) (reg y))) skip
- | sem_qinv_fmul : forall sn reg f x y z, 
-      sem_qexp fv s_lit size sn reg (qinv (fmul f x y z)) sn (qupdate reg z (nat2fb 0)) skip
- | sem_qinv_xor : forall sn reg b x v, 
-      sem_qexp fv s_lit size sn reg (qinv (qxor b x v)) sn (qupdate reg v
-                (bin_xor (sem_factor size reg b x) (reg v) (if b =b= Bl then 1 else size))) skip
- | sem_call : forall sn reg reg' f x l e benv rx, fv f = Some (l,e,benv,rx) -> 
+           (qdupdate reg yn (sumfb false (sem_cfac size reg Flt x) (reg yn))) skip
+ | sem_qinv_fmul : forall sn reg f x y z zn, 
+       eval_var size reg z = Some zn ->
+      sem_qexp fv s_lit size sn reg (qinv (fmul f x y z)) sn (qdupdate reg zn (nat2fb 0)) skip
+ | sem_qinv_xor : forall sn reg b x y yn, 
+       eval_var size reg y = Some yn ->
+      sem_qexp fv s_lit size sn reg (qinv (qxor b x y)) sn (qdupdate reg yn
+                (bin_xor (sem_cfac size reg b x) (reg yn) (if b =b= Bl then 1 else size))) skip
+ | sem_call : forall sn reg reg' f x xn l e benv rx, fv f = Some (l,e,benv,rx) -> 
            sem_qexp fv s_lit size sn (init_reg reg l) e sn reg' skip ->
-           sem_qexp fv s_lit size sn reg (call f x) sn (qupdate reg x (reg' rx)) skip
+       eval_var size reg x = Some xn ->
+           sem_qexp fv s_lit size sn reg (call f x) sn (qdupdate reg xn (reg' (rx,0))) skip
  | sem_if_t : forall sn sn' reg ce e1 e2, sem_cexp s_lit size sn reg ce = Some (sn',true) ->
                  sem_qexp fv s_lit size sn reg (qif ce e1 e2) sn' reg e1
  | sem_if_f : forall sn sn' reg ce e1 e2, sem_cexp s_lit size sn reg ce = Some (sn',false) ->
                  sem_qexp fv s_lit size sn reg (qif ce e1 e2) sn' reg e2
- | sem_while : forall sn reg ce e,
-                 sem_qexp fv s_lit size sn reg (qfor ce e) sn reg ((qseq (qif ce e skip) (qfor ce e)))
+
+ | sem_for : forall sn reg x n e sn' reg',
+                 sem_for_exp fv s_lit size sn (qdupdate reg (L x,0) (nat2fb 0)) e x n sn' reg' ->
+                 sem_qexp fv s_lit size sn reg (qfor x n e) sn' reg' skip
+
  | sem_qseq_con : forall sn reg e1 e2 sn' reg' e1',
                 sem_qexp fv s_lit size sn reg e1 sn' reg' e1' ->
                   sem_qexp fv s_lit size sn reg (qseq e1 e2) sn' reg' (qseq e1' e2)
  | sem_qseq_skip : forall sn reg e, 
-                  sem_qexp fv s_lit size sn reg (qseq skip e) sn reg e.
+                  sem_qexp fv s_lit size sn reg (qseq skip e) sn reg e
+
+with sem_for_exp (fv:fenv) (s_lit size:nat): nat -> reg -> qexp -> var -> nat -> nat -> reg -> Prop :=
+  | sem_for_empty : forall sn reg x e, sem_for_exp fv s_lit size sn reg e x 0 sn reg
+  | sem_for_many : forall sn reg x m e sn' reg' sn'' reg'',
+    sem_qexp fv s_lit size sn reg e sn' reg' skip ->
+     sem_for_exp fv s_lit size sn' (qdupdate reg' (L x,0) (nat2fb ((a_nat2fb (reg' (L x,0)) size) + 1))) e x m sn'' reg'' ->
+     sem_for_exp fv s_lit size sn reg e x (S m) sn'' reg''.
 
 
 Fixpoint init_reg_g (l:list (btype * var * (nat -> bool))) : reg  :=
    match l with [] => (fun _ => allfalse)
-             | ((t,x,v)::xl) => qupdate (init_reg_g xl) (G x) v
+             | ((t,x,v)::xl) => qdupdate (init_reg_g xl) (G x,0) v
    end.
 
 Inductive sem_prog (fv:fenv) : prog -> (nat -> bool) -> Prop :=
-    sem_main : forall s_lit sloop size gl fl main rx' l e benv rx sn reg, 
+    sem_main : forall s_lit size gl fl main rx' l e benv rx sn reg, 
          fv main = Some (l,e,benv,rx) ->
          sem_qexp fv s_lit size 0 (init_reg (init_reg_g gl) l) e sn reg skip ->
-         sem_prog fv (s_lit,sloop,size,gl,fl,main,rx') (reg rx).
-
-(*
-Definition sem_prog (p:prog) : option (reg) :=
-     match p with (slit,sloop,size,l,fl,f,rx) =>
-         do fv <- type_prog p @
-            do tu <- fv f @
-              match tu with (vl,e,bsv,rex) => 
-                do result <- sem_qexp fv slit sloop 0 size (init_reg (init_reg_g (fun _ => allfalse) vl) l) e @
-                          match result with (sn',r') => ret (qupdate (fun _ => allfalse) (G rx) (r' rex))
-                          end
-              end
-     end.
-*)
+         sem_prog fv (s_lit,size,gl,fl,main,rx') (reg (rx,0)).
 
 
 
