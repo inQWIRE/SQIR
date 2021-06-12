@@ -324,15 +324,20 @@ Inductive qexp := skip
                 | fsub (f:flag) (v:cfac) (x:cfac)
                 | fmul (f:flag) (v1:cfac) (v2:cfac) (z:cfac)
                 | qxor (b:btype) (v:cfac) (x:cfac)
-                | nfac (x:cfac) (v:cfac)
+                | ndiv (x:cfac) (y:cfac) (v:cfac) (*x := y/n where x,n are a nat *)
+                | nmod (x:cfac) (y:cfac) (v:cfac) (* x := y mod n where x,n are a nat *)
+                | nfac (x:cfac) (v:cfac) (* x := n! where x is a nat & n is  nat *)
                 | fdiv (x:cfac) (v:cfac) (* x := x / n where n is a natural number. *)
                 | fnmul (x:cfac) (v:cfac) (* x := x * n where n is a natural number. *)
+                | ncsub (x:cfac) (y:cfac) (z:cfac) (* x := y - z all natural and C type *)
+                | ncadd (x:cfac) (y:cfac) (z:cfac) (* x := y + z all natural and C type *)
+                | ncmul (x:cfac) (y:cfac) (z:cfac) (* x := y * z all natural and C type *)
                 | fndiv (x:cfac) (v:cfac) (z:cfac)(* z = x/v where x and v are natural numbers, z is float
                            x and v are both integers, but the final result in z must be a float < 1 *)
                 | qinv (e:qexp)
                 | call (f:fvar) (v: cfac)
                 | qif (c:cexp) (e1:qexp) (e2:qexp)
-                | qwhile (x:var) (n:nat) (e:qexp)
+                | qfor (x:var) (n:nat) (e:qexp)
                 | qseq (q1:qexp) (q2:qexp).
 
 (*functions will do automatic inverse computation after a function is returned.
@@ -586,6 +591,18 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
 
              | qinv e => if allow_inv e then type_qexp fv benv e else None
 
+             | ndiv x y v => 
+             do re1 <- type_factor benv Nat x @
+                do re2 <- type_factor benv Nat y @ 
+                  do re3 <- type_factor benv Nat v @ 
+                       if is_q re1 || is_q re2 || is_q re3 then None else ret benv
+
+             | nmod x y v => 
+             do re1 <- type_factor benv Nat x @
+                do re2 <- type_factor benv Nat y @ 
+                  do re3 <- type_factor benv Nat v @ 
+                       if is_q re1 || is_q re2 || is_q re3 then None else ret benv
+
              | nfac x y => 
              do re1 <- type_factor benv Nat x @
                 do re2 <- type_factor benv Nat y @ 
@@ -597,6 +614,24 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
                        if is_q re1 || is_q re2 then None else ret benv
 
              | fndiv x y z => 
+             do re1 <- type_factor benv Nat x @
+                do re2 <- type_factor benv Nat y @ 
+                  do re3 <- type_factor benv Flt z @ 
+                       if is_q re1 || is_q re2 || is_q re3 then None else ret benv
+
+             | ncadd x y z => 
+             do re1 <- type_factor benv Nat x @
+                do re2 <- type_factor benv Nat y @ 
+                  do re3 <- type_factor benv Flt z @ 
+                       if is_q re1 || is_q re2 || is_q re3 then None else ret benv
+
+             | ncsub x y z => 
+             do re1 <- type_factor benv Nat x @
+                do re2 <- type_factor benv Nat y @ 
+                  do re3 <- type_factor benv Flt z @ 
+                       if is_q re1 || is_q re2 || is_q re3 then None else ret benv
+
+             | ncmul x y z => 
              do re1 <- type_factor benv Nat x @
                 do re2 <- type_factor benv Nat y @ 
                   do re3 <- type_factor benv Flt z @ 
@@ -621,7 +656,7 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
                    do benv' <- type_qexp fv benv e1 @
                        type_qexp fv benv' e2
 
-              | qwhile x n e => 
+              | qfor x n e => 
                  do re <- type_factor benv Nat (Nor (Var (L x))) @
                      if is_q re then None else type_qexp fv benv e
 
@@ -660,126 +695,6 @@ Definition type_prog (p:prog) : option fenv :=
       do fv <- type_funs (gen_genv l) (fun _ => None) fl @
             do block <- fv main @ ret fv
    end.
-
-(*define example hash_function as the oracle for grover's search. *)
-Definition hash_qr (b:qvar) (a:qvar) := nadd QFTA (Nor (Var b)) (Nor (Var a));;;
-             qxor Nat (Nor (Var a)) (Nor (Var b));;;nadd QFTA (Nor (Var b)) (Nor (Var a))
-                   ;;; qxor Nat (Nor (Var a)) (Nor (Var b)).
-
-Definition g :var := 1.
-Definition x :var := 7.
-Definition a :var := 3.
-Definition b :var := 4.
-Definition c :var := 6.
-Definition d :var := 100.
-Definition f :var := 8.
-Definition result :var := 9.
-
-Definition hash_oracle (key:nat) (sndk:nat) :=
-     (f, ((Bl,g,1)::(Nat,x,1)::(Nat,a,1)::(Nat,b,1)::(Nat,c,1)::(Nat,d,1)::[]),
-      init Nat (Nor (Var (L d))) (Nor (Num (nat2fb 1)));;;
-      qwhile x 10
-           (hash_qr (L a) (L c);;; hash_qr (L b) (L d) ;;; hash_qr (L a) (L d)
-                ;;; hash_qr (L b) (L c);;; nadd Classic (Nor (Num (nat2fb 1))) (Nor (Var (L x))));;;
-      qif (ceq QFTA Nat (Nor (Var (L c))) (Nor (Num (nat2fb key))))
-                (qif (ceq QFTA Nat (Nor (Var (L d))) (Nor (Num (nat2fb sndk))))
-                    (init Bl (Nor (Var (L g))) (Nor (Num (nat2fb 1)))) (skip)) (skip), L g).
-
-Definition hash_prog (s_size:nat) (size:nat) (key:nat) (sndk:nat) : prog := 
-         (s_size, size,[(Bl,result,nat2fb 0)],[hash_oracle key sndk],f,result).
-
-
-(* define sin/cos. a = x^2, b = x^1/3/5/...., d is the result
-    the input of sin/cos function is x/2 (not x) range from [0,pi/2) *)
-
-
-Definition x2 := 6.
-Definition x3 := 0.
-(*
-Definition x5 := 1.
-Definition x7 := 2.
-Definition x9 := 3.
-Definition x11 := 4.
-*)
-Definition n : var := 10. 
-Definition e : var := 15. 
-Definition rc : var := 11. 
-Definition re : var := 14. 
-Definition fac : var := 12. 
-Definition xc : var := 13. 
-
-Definition taylor_sin : func := 
-     (f, ((Flt,x3,5)::(Flt,x2,1)::(Flt,e,1)::
-              (Nat,g,1)::(Nat,n,1)::(Nat, xc,1)::(Nat,fac,1)::(Flt,rc,1)::(Flt,re,1)::[]),
-                         fmul QFTA (Nor (Var (G x))) (Nor (Var (G x))) (Nor (Var (L x2)));;;
-                         fmul QFTA (Nor (Var (G x))) (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 0)));;;
-                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 0))) (Ptr x3 (Num (nat2fb 1)));;;
-                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 1))) (Ptr x3 (Num (nat2fb 2)));;;
-                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 2))) (Ptr x3 (Num (nat2fb 3)));;;
-                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 3))) (Ptr x3 (Num (nat2fb 4)));;;
-                         init Flt (Nor (Var (L re))) (Nor (Var (G x)));;;
-                         nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
-                         nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
-         qwhile g 5 
-             (qif (iseven (Nor (Var (L g)))) 
-                      (nadd QFTA (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
-                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
-                       nmul QFTA (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
-                       fndiv (Nor (Var (L xc))) (Nor (Var (L fac))) (Nor (Var (L rc)));;;
-                       fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e)));;;
-                       fsub QFTA (Nor (Var (L re))) (Nor (Var (L e)));;;
-                       qinv (fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e))));;;
-                       nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var ((L g)))))
-                      (nadd QFTA (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
-                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
-                       nmul QFTA (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
-                       fndiv (Nor (Var (L xc))) (Nor (Var (L fac))) (Nor (Var (L rc)));;;
-                       fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e)));;;
-                       fadd QFTA (Nor (Var (L re))) (Nor (Var (L e)));;;
-                       qinv (fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e))));;;
-                       nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var ((L g))))))
-             ,L re).
-
-Definition sin_prog (s_size:nat) (size:nat) (v:nat->bool) : prog := 
-         (s_size, size,[(Flt,result,v)],[taylor_sin],f,result).
-
-Parameter Pi_4 : nat -> bool. (*a binary representation of PI/4 *)
-
-Definition taylor_cos : func := 
-     (f, ((Flt,x3,5)::(Flt,x2,1)::(Flt,e,1)::
-              (Nat,g,1)::(Nat,n,1)::(Nat, xc,1)::(Nat,fac,1)::(Flt,rc,1)::(Flt,re,1)::[]),
-                         fsub QFTA (Nor (Num Pi_4)) (Nor (Var (G x)));;;
-                         fmul QFTA (Nor (Var (G x))) (Nor (Var (G x))) (Nor (Var (L x2)));;;
-                         fmul QFTA (Nor (Var (G x))) (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 0)));;;
-                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 0))) (Ptr x3 (Num (nat2fb 1)));;;
-                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 1))) (Ptr x3 (Num (nat2fb 2)));;;
-                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 2))) (Ptr x3 (Num (nat2fb 3)));;;
-                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 3))) (Ptr x3 (Num (nat2fb 4)));;;
-                         init Flt (Nor (Var (L re))) (Nor (Var (G x)));;;
-                         nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
-                         nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
-         qwhile g 5 
-             (qif (iseven (Nor (Var (L g)))) 
-                      (nadd QFTA (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
-                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
-                       nmul QFTA (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
-                       fndiv (Nor (Var (L xc))) (Nor (Var (L fac))) (Nor (Var (L rc)));;;
-                       fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e)));;;
-                       fsub QFTA (Nor (Var (L re))) (Nor (Var (L e)));;;
-                       qinv (fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e))));;;
-                       nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var ((L g)))))
-                      (nadd QFTA (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
-                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
-                       nmul QFTA (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
-                       fndiv (Nor (Var (L xc))) (Nor (Var (L fac))) (Nor (Var (L rc)));;;
-                       fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e)));;;
-                       fadd QFTA (Nor (Var (L re))) (Nor (Var (L e)));;;
-                       qinv (fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e))));;;
-                       nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var ((L g))))))
-             ,L re).
-
-Definition cos_prog (s_size:nat) (size:nat) (v:nat->bool) : prog := 
-         (s_size, size,[(Flt,result,v)],[taylor_cos],f,result).
 
 (*The semantics of QLLVM. *)
 
@@ -906,7 +821,7 @@ Inductive sem_qexp (fv:fenv) (s_lit size:nat): nat -> reg -> qexp -> nat -> reg 
  | sem_if_f : forall sn sn' reg ce e1 e2, sem_cexp s_lit size sn reg ce = Some (sn',false) ->
                  sem_qexp fv s_lit size sn reg (qif ce e1 e2) sn' reg e2
  | sem_while : forall sn reg ce e,
-                 sem_qexp fv s_lit size sn reg (qwhile ce e) sn reg ((qseq (qif ce e skip) (qwhile ce e)))
+                 sem_qexp fv s_lit size sn reg (qfor ce e) sn reg ((qseq (qif ce e skip) (qfor ce e)))
  | sem_qseq_con : forall sn reg e1 e2 sn' reg' e1',
                 sem_qexp fv s_lit size sn reg e1 sn' reg' e1' ->
                   sem_qexp fv s_lit size sn reg (qseq e1 e2) sn' reg' (qseq e1' e2)
@@ -1230,7 +1145,7 @@ Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0)
     end.
 
 Fixpoint trans_qexp (sn sl size:nat) (stack temp:var) (benv:benv) (reg: reg) (vmap : var_map) (fmap:fmap) (e:qexp) (sloop:nat) :=
-   match e with qwhile c e' => 
+   match e with qfor c e' => 
          let fix trans_while (sn sl size:nat) (stack temp:var) benv reg vmap fmap (sloop:nat) :=
             match sloop with 0 => Some (None,sn,reg)
                      | S m => match trans_cexp sn sl size stack temp benv reg vmap c with None => None 
@@ -1343,4 +1258,154 @@ Definition trans_prog (p:prog) (fv:fenv) :=
           end
    end.
 
+(*define example hash_function as the oracle for grover's search. *)
+Definition hash_qr (b:qvar) (a:qvar) := nadd QFTA (Nor (Var b)) (Nor (Var a));;;
+             qxor Nat (Nor (Var a)) (Nor (Var b));;;nadd QFTA (Nor (Var b)) (Nor (Var a))
+                   ;;; qxor Nat (Nor (Var a)) (Nor (Var b)).
 
+Definition g :var := 1.
+Definition x :var := 7.
+Definition a :var := 3.
+Definition b :var := 4.
+Definition c :var := 6.
+Definition d :var := 100.
+Definition f :var := 8.
+Definition result :var := 9.
+
+Definition hash_oracle (key:nat) (sndk:nat) :=
+     (f, ((Bl,g,1)::(Nat,x,1)::(Nat,a,1)::(Nat,b,1)::(Nat,c,1)::(Nat,d,1)::[]),
+      init Nat (Nor (Var (L d))) (Nor (Num (nat2fb 1)));;;
+      qfor x 10
+           (hash_qr (L a) (L c);;; hash_qr (L b) (L d) ;;; hash_qr (L a) (L d)
+                ;;; hash_qr (L b) (L c);;; nadd Classic (Nor (Num (nat2fb 1))) (Nor (Var (L x))));;;
+      qif (ceq QFTA Nat (Nor (Var (L c))) (Nor (Num (nat2fb key))))
+                (qif (ceq QFTA Nat (Nor (Var (L d))) (Nor (Num (nat2fb sndk))))
+                    (init Bl (Nor (Var (L g))) (Nor (Num (nat2fb 1)))) (skip)) (skip), L g).
+
+Definition hash_prog (s_size:nat) (size:nat) (key:nat) (sndk:nat) : prog := 
+         (s_size, size,[(Bl,result,nat2fb 0)],[hash_oracle key sndk],f,result).
+
+
+(* define sin/cos. a = x^2, b = x^1/3/5/...., d is the result
+    the input of sin/cos function is x/2 (not x) range from [0,pi/2) *)
+
+
+Definition x2 := 6.
+Definition x3 := 0.
+(*
+Definition x5 := 1.
+Definition x7 := 2.
+Definition x9 := 3.
+Definition x11 := 4.
+*)
+Definition n : var := 10. 
+Definition e : var := 15. 
+Definition rc : var := 11. 
+Definition re : var := 14. 
+Definition fac : var := 12. 
+Definition xc : var := 13. 
+Definition f1 :var := 16.
+Definition n1 : var := 17. 
+
+Definition m : var := 22. 
+Definition x4 : var := 23. 
+
+Definition x_n (size:nat): func :=
+   (f1, ((Nat,n,1)::(Nat,m,1)::(Nat, n1,5)::(Flt, x3,5)::(Flt, x4,6)::(Flt,e,1)::[]),
+               qfor n 5 (
+                nmod (Nor (Var (L m))) (Nor (Var (L n))) (Nor (Num (nat2fb 2)));;;
+                qif (ceq QFTA Nat (Nor (Var (L m))) (Nor (Num (nat2fb 0)))) 
+                 (ndiv (Nor (Var (L n))) (Nor (Var (L n))) (Nor (Num (nat2fb 2)));;;
+                  nadd QFTA (Nor (Num (nat2fb 1))) (Ptr n1 (Var (L n1))))
+                 (ndiv (Nor (Var (L n))) (Nor (Var (L n))) (Nor (Num (nat2fb 2)))));;;
+
+               init Flt (Ptr x3 ((Num (nat2fb 0)))) (Nor (Var (G x)));;;
+               init Flt (Nor (Var (L x4))) (Nor (Num (negatem size (nat2fb 0))));;;
+               qfor n 5 (
+                   qif (ceq QFTA Nat (Nor (Var (L n))) (Nor (Num (nat2fb 0))))
+                   (skip)
+                   (ncsub (Nor (Var (L m))) (Nor (Var (L n))) (Nor (Num (nat2fb 1)));;;
+                    fmul QFTA (Ptr x3 (Var (L m))) (Ptr x3 (Var (L m))) (Ptr x3 (Var (L n)))
+                    ));;;
+               qfor n 5 (
+                   qif (ceq QFTA Nat (Ptr n1 (Var (L n))) (Nor (Num (nat2fb 0))))
+                   (skip)
+                   (ncadd (Nor (Var (L m))) (Nor (Var (L n))) (Nor (Num (nat2fb 1)));;;
+                    fmul QFTA (Ptr x3 (Var (L n))) (Ptr x4 (Var (L n))) (Ptr x4 (Var (L m)))
+                    ));;;
+                init Flt (Nor (Var (L e))) (Ptr x4 (Num (nat2fb 5)))
+
+,L e).
+
+Definition taylor_sin : func := 
+     (f, ((Flt,x3,5)::(Flt,x2,1)::(Flt,e,1)::
+              (Nat,g,1)::(Nat,n,1)::(Nat, xc,1)::(Nat,fac,1)::(Flt,rc,1)::(Flt,re,1)::[]),
+                         fmul QFTA (Nor (Var (G x))) (Nor (Var (G x))) (Nor (Var (L x2)));;;
+                         fmul QFTA (Nor (Var (G x))) (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 0)));;;
+                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 0))) (Ptr x3 (Num (nat2fb 1)));;;
+                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 1))) (Ptr x3 (Num (nat2fb 2)));;;
+                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 2))) (Ptr x3 (Num (nat2fb 3)));;;
+                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 3))) (Ptr x3 (Num (nat2fb 4)));;;
+                         init Flt (Nor (Var (L re))) (Nor (Var (G x)));;;
+                         nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
+                         nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
+         qfor g 5 
+             (qif (iseven (Nor (Var (L g)))) 
+                      (nadd QFTA (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
+                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
+                       nmul QFTA (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
+                       fndiv (Nor (Var (L xc))) (Nor (Var (L fac))) (Nor (Var (L rc)));;;
+                       fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e)));;;
+                       fsub QFTA (Nor (Var (L re))) (Nor (Var (L e)));;;
+                       qinv (fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e))));;;
+                       nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var ((L g)))))
+                      (nadd QFTA (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
+                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
+                       nmul QFTA (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
+                       fndiv (Nor (Var (L xc))) (Nor (Var (L fac))) (Nor (Var (L rc)));;;
+                       fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e)));;;
+                       fadd QFTA (Nor (Var (L re))) (Nor (Var (L e)));;;
+                       qinv (fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e))));;;
+                       nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var ((L g))))))
+             ,L re).
+
+Definition sin_prog (s_size:nat) (size:nat) (v:nat->bool) : prog := 
+         (s_size, size,[(Flt,result,v)],(x_n size:: taylor_sin::[]),f,result).
+
+Parameter Pi_4 : nat -> bool. (*a binary representation of PI/4 *)
+
+Definition taylor_cos : func := 
+     (f, ((Flt,x3,5)::(Flt,x2,1)::(Flt,e,1)::
+              (Nat,g,1)::(Nat,n,1)::(Nat, xc,1)::(Nat,fac,1)::(Flt,rc,1)::(Flt,re,1)::[]),
+                         fsub QFTA (Nor (Num Pi_4)) (Nor (Var (G x)));;;
+                         fmul QFTA (Nor (Var (G x))) (Nor (Var (G x))) (Nor (Var (L x2)));;;
+                         fmul QFTA (Nor (Var (G x))) (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 0)));;;
+                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 0))) (Ptr x3 (Num (nat2fb 1)));;;
+                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 1))) (Ptr x3 (Num (nat2fb 2)));;;
+                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 2))) (Ptr x3 (Num (nat2fb 3)));;;
+                         fmul QFTA (Nor (Var (L x2))) (Ptr x3 (Num (nat2fb 3))) (Ptr x3 (Num (nat2fb 4)));;;
+                         init Flt (Nor (Var (L re))) (Nor (Var (G x)));;;
+                         nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
+                         nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
+         qfor g 5 
+             (qif (iseven (Nor (Var (L g)))) 
+                      (nadd QFTA (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
+                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
+                       nmul QFTA (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
+                       fndiv (Nor (Var (L xc))) (Nor (Var (L fac))) (Nor (Var (L rc)));;;
+                       fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e)));;;
+                       fsub QFTA (Nor (Var (L re))) (Nor (Var (L e)));;;
+                       qinv (fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e))));;;
+                       nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var ((L g)))))
+                      (nadd QFTA (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
+                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
+                       nmul QFTA (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
+                       fndiv (Nor (Var (L xc))) (Nor (Var (L fac))) (Nor (Var (L rc)));;;
+                       fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e)));;;
+                       fadd QFTA (Nor (Var (L re))) (Nor (Var (L e)));;;
+                       qinv (fmul QFTA (Nor (Var (L rc))) (Ptr x (Var (L g))) (Nor (Var (L e))));;;
+                       nadd QFTA (Nor (Num (nat2fb 1))) (Nor (Var ((L g))))))
+             ,L re).
+
+Definition cos_prog (s_size:nat) (size:nat) (v:nat->bool) : prog := 
+         (s_size, size,[(Flt,result,v)],(x_n size:: taylor_cos::[]),f,result).
