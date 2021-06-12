@@ -1,0 +1,1 @@
+dune exec --root extraction -- ./run_shor.exe -N $1 -a $2

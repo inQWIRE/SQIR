@@ -134,7 +134,7 @@ Definition subtractor01 n :=
    the inverse circuit of the comparator. *)
 Definition modadder21 n := 
   swapper02 n; adder01 n; swapper02 n; 
-  comparator01 n; (bccont 1 (subtractor01 n); bcx 1); 
+  comparator01 n; (bygatectrl 1 (subtractor01 n); bcx 1); 
   swapper02 n; bcinv (comparator01 n); swapper02 n.
 
 (* swapper12 swaps [x][y][z] to be [x][z][y]. *)
@@ -154,7 +154,7 @@ Fixpoint doubler1' i n :=
 Definition doubler1 n := doubler1' (n - 1) (2 + n).
 
 (* Another version of the mod adder only for computing [x][M] -> [2*x % M][M]. *)
-Definition moddoubler01 n := doubler1 n; comparator01 n; bccont 1 (subtractor01 n).
+Definition moddoubler01 n := doubler1 n; comparator01 n; bygatectrl 1 (subtractor01 n).
 
 (* Alternate version of the modulo adder to do addition [y][x] -> [y][x+y mod M]. *)
 Definition modadder12 n := swapper12 n; modadder21 n; swapper12 n.
@@ -209,7 +209,7 @@ Fixpoint reverser' i n :=
   | S i' => reverser' i' n; safe_swap i (n - 1 - i)
   end.
 Definition reverser n := reverser' ((n - 1) / 2) n.
-
+  
 Definition modmult_rev M C Cinv n := 
   bcinv (reverser n); modmult M C Cinv (S (S n)); reverser n.
 
@@ -1319,7 +1319,9 @@ Proof.
   apply swapper02_eWF.
   apply comparator01_eWF.
   assumption.
-  constructor. constructor.
+  constructor.
+  apply eWF_bygatectrl.
+  constructor.
   apply subtractor01_efresh.
   lia.
   apply subtractor01_eWF.
@@ -1344,7 +1346,9 @@ Proof.
   assumption. lia.
   apply swapper02_eWT; lia.
   apply comparator01_eWT; lia.
-  constructor. constructor. lia.
+  constructor.
+  apply eWT_bygatectrl.
+  constructor. lia.
   apply subtractor01_efresh.
   lia.
   apply subtractor01_eWT.
@@ -1405,13 +1409,16 @@ Proof.
   { replace (2^(n-1)) with (2^(n-2) + 2^(n-2)). lia.
     destruct n. lia. destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
   }
-  unfold modadder21. remember (bccont 1 (subtractor01 n); bcx 1) as csub01. simpl. subst.
+  unfold modadder21. remember (bygatectrl 1 (subtractor01 n); bcx 1) as csub01. simpl. subst.
   rewrite swapper02_correct by lia. rewrite adder01_correct_carry0 by lia.
   rewrite swapper02_correct by lia. rewrite comparator01_correct by lia.
-  replace (bcexec (bccont 1 (subtractor01 n); bcx 1)
+  replace (bcexec (bygatectrl 1 (subtractor01 n); bcx 1)
       (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f))
               with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f). 
-  2:{ simpl. bdestruct (M <=? x + y).
+  2:{ simpl.
+      rewrite bygatectrl_correct by (apply subtractor01_efresh; lia).
+      simpl.
+      bdestruct (M <=? x + y).
       - rewrite subtractor01_correct by lia.
         replace (x + y + 2^n - M) with (x + y - M + 2^n) by lia.
         rewrite reg_push_exceed with (x := x + y - M + 2 ^ n).
@@ -1876,7 +1883,8 @@ Proof.
   constructor. constructor.
   apply doubler1_eWF. 
   apply comparator01_eWF.
-  lia. 
+  lia.
+  apply eWF_bygatectrl.
   constructor. 
   apply subtractor01_efresh.
   lia. 
@@ -1892,6 +1900,7 @@ Proof.
   constructor. constructor.
   apply doubler1_eWT; lia. 
   apply comparator01_eWT;lia.
+  apply eWT_bygatectrl.
   constructor. lia. 
   apply subtractor01_efresh.
   lia. 
@@ -1919,7 +1928,10 @@ Proof.
  rewrite bcseq_correct.
  rewrite doubler1_correct; try lia.
  rewrite comparator01_correct; try lia.
- simpl. bdestruct (M <=? x + (x + 0)).
+ simpl.
+ rewrite bygatectrl_correct by (apply subtractor01_efresh; lia).
+ simpl.
+ bdestruct (M <=? x + (x + 0)).
   - rewrite subtractor01_correct; try lia.
     replace (x + (x + 0) + 2 ^ n - M) with (x + (x + 0) - M + 2^n) by lia.
     rewrite reg_push_exceed with (x := (x + (x + 0) - M + 2^n)).
@@ -2573,7 +2585,7 @@ Proof.
     bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl; easy.
     fb_push_n_simpl. easy.
     simpl. destruct x. easy. destruct x. easy. simpl.
-    bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl. easy. replace x with i by lia. rewrite E. easy. easy.
+    bdestruct (x <? n). fb_push_n_simpl. unfold genM0m. IfExpSimpl. easy. replace x with i by lia. rewrite E. easy. try easy.
     fb_push_n_simpl. easy.
 Qed.
 

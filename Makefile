@@ -40,7 +40,7 @@ all: examples voqc $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBeforeMe
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Grover.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo
 
-shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/AltShor.vo
+shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/Main.vo
 
 voqc: invoke-coqmakefile $(VOQC)/Main.vo
 
@@ -95,6 +95,9 @@ examples/shor/AltGateSet.vo: $(examples)/shor/AltGateSet.v $(SQIR)/UnitaryOps.vo
 	
 examples/shor/AltShor.vo: $(examples)/shor/AltShor.v $(examples)/shor/AltGateSet.vo $(examples)/shor/Shor.vo
 	coqc $(COQ_OPTS) $(examples)/shor/AltShor.v
+
+examples/shor/Main.vo: $(examples)/shor/Main.v $(examples)/shor/AltShor.vo
+	coqc $(COQ_OPTS) $(examples)/shor/Main.v
 
 examples/shor/ModMult.vo: $(examples)/shor/ModMult.v $(SQIR)/UnitaryOps.vo $(SQIR)/VectorStates.vo $(SQIR)/RCIR.vo
 	coqc $(COQ_OPTS) $(examples)/shor/ModMult.v

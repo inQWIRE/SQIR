@@ -13,15 +13,15 @@ rm -f *.glob *.mli *.vo*
 
 # Remove empty files.
 rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml List.ml \
-   QArith_base.ml Rdefinitions.ml Rpow_def.ml Rtrigo1.ml Specif.ml ZArith_dec.ml
+   QArith_base.ml Rdefinitions.ml Ring_theory.ml Rpow_def.ml Rtrigo1.ml \
+   Specif.ml ZArith_dec.ml
 
-# Move the remaining extracted files to the 'extracted' subdirectory.
-echo "Moving generated files to extracted/..."
-mv AltGateSet.ml AltShor.ml Bin*.ml Datatypes.ml ModMult.ml Nat.ml \
-   PeanoNat.ml RCIR.ml Shor.ml ShorAux.ml ShorExtr.ml  \
-   extracted
+# Move the remaining extracted files to the 'ml' subdirectory.
+echo "Moving generated files to ml/..."
+mv AltGateSet.ml AltShor.ml Bin*.ml Datatypes.ml Main.ml ModMult.ml  \
+   Nat.ml PeanoNat.ml RCIR.ml Shor.ml ShorAux.ml \
+   ml
    
 # Build extracted code.
 echo "Building extracted code..."
-dune build generate_circuit.exe
-dune build post_process.exe
+dune build run_shor.exe

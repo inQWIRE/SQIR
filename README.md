@@ -43,10 +43,11 @@ opam install coq-interval
 * Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any version of OCaml >= 4.05.0 should be fine. 
 * We require Coq version >= 8.12.0. We have tested compilation with 8.12.x and 8.13.x.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
+* If opam is not able to find coq-interval, try running `opam repo add coq-released https://coq.inria.fr/opam/released` first.
 
 ## Compilation
 
-Run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, and `make examples` to compile proofs of correctness for example SQIR programs. Use `make all` to compile everything. Our proofs are resource intensive so expect `make all` to take a little while. On a Macbook Pro running Coq version 8.12.2 and OCaml version 4.11.1 compilation takes around 30 minutes.
+Run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, `make examples` to compile proofs of correctness for example quantum algorithms (excluding those in examples/shor), and `make shor` to compile proofs about Shor's algorithm. Use `make all` to compile everything. Our proofs are resource intensive so expect `make all` to take a little while. On a Macbook Pro running Coq version 8.12.2 and OCaml version 4.11.1 compilation takes around 30 minutes.
 
 ## Directory Contents
 
@@ -57,8 +58,8 @@ Definition of the SQIR language.
 - DensitySem.v : Density matrix semantics for general SQIR programs.
 - Equivalences.v : Verified circuit equivalences for peephole optimizations.
 - NDSem.v : Non-deterministic semantics for general SQIR programs.
-- RCIR.v : 
-- SQIR.v : General definition of the SQIR language.
+- RCIR.v : Definition of the RCIR language, which allows writing classical circuits (see 'bccom' type).
+- SQIR.v : Definition of the SQIR language, which allows writing quantum circuits (see 'ucom' type).
 - UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
 - UnitarySem.v : Semantics for unitary SQIR programs.
 - VectorStates.v : Utilities for describing states as vectors.
@@ -74,7 +75,7 @@ The rest of the files in the VOQC directory can be split into the following cate
 - Utilities
   - UnitaryListRepresentation.v : List representation of unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs.
   - NonUnitaryListRepresentation.v : List representation of non-unitary SQIR programs.
-  - GateSet.v
+  - GateSet.v : Coq module for describing a quantum gate set.
   - RzQGateSet.v : "RzQ" gate set {H, X, Rzq, CX}.
   - IBMGateSet.v : "IBM" gate set {U1, U2, U3, CX}.
   - StandardGateSet.v : Full gate set {I, X, Y, Z, H, S, T, Sdg, Tdg, Rx, Ry, Rz, Rzq, U1, U2, U3, CX, CZ, SWAP, CCX, CCZ}.
@@ -110,7 +111,7 @@ Examples of verifying correctness properties of quantum algorithms.
 - GHZ.v : GHZ state preparation
 - Grover.v : Grover's algorithm (use `make grover` to compile separately)
 - QPE.v : Simplified quantum phase estimation
-- shor/ : Shor's algorithm, including general quantum phase estimation (use `make shor` to compile separately, see the [README](shor/README.md) in the shor directory for more details)
+- shor/ : Shor's algorithm, including general quantum phase estimation (use `make shor` to compile separately, see the [README](examples/shor/README.md) in the shor directory for more details)
 - Simon.v : Simon's algorithm
 - Superdense.v : Superdense coding
 - Teleport.v : Quantum teleportation

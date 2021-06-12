@@ -1,41 +1,56 @@
 # examples/shor
 
-This directory contains code to extract the Coq formalism of Shor's algorithm to OCaml.
+This directory contains a formalization of Shor's algorithm in SQIR.
 
-## Compiling Shor's
+## Directory Contents
+
+Main file
+* Main.v - prettified statements of correctness; just a wrapper around proofs in other files
+
+Core formalization
+* ModMult.v - modular exponentiation, defined in RCIR
+* QPEGeneral.v - general statement of correctness for ../QPE.v
+* Shor.v
+
+Utilities
+* AltGateSet.v - alternate SQIR gate set to avoid decomposing many-qubit gates; will integrate this into ../../SQIR at some point
+* AltShor.v - Shor's algorithm defined in the new gate set; proofs that the new definition is equivalent to the old (Shor.v)
+* ShorAux.v - Number theory results, reduction from fatorization to order finding, and other useful facts for Shor.v
+
+## Compilation
 
 The first step is to compile the Coq code. You can do this by running `make shor` in the top-level (`../..`) directory. Note that this requires the Coq Interval package (`opam install coq-interval`).
 
-The next step is to run our extraction with `./extract.sh` in the current directory. This will produce a bunch of .ml files in `extraction/extracted` and compile them into an executable in the `extraction/_build` directory. You may need to install dune and zarith first (`opam install dune zarith`). If you are on MacOS, you may see the following warning:
+The next step is to extract the compiled Coq code to OCaml by running `./extract.sh` in the current directory. This will produce a bunch of .ml files in `extraction/extracted` and compile them into an executable in the `extraction/_build` directory. You may need to install dune and zarith first (`opam install dune zarith`). If you are on MacOS, you may see the following warning:
 ```
 ld: warning: directory not found for option '-L/opt/local/lib'
 ld: warning: directory not found for option '-L/opt/homebrew/lib'
 ```
 This is caused by our use of zarith, and seems to be safe to ignore.
 
-## Running Shor's
+## Running Extracted Code
 
-After following the directions above, you should have two executables in the `extracted/_build` directory: one that generates a circuit for the quantum part of Shor's algorithm and one that performs classical post-processing. You can run the first executable with `./generate_circuit.sh N a` where `N` is the number you want to factor and the `a` is a number coprime to `N`. This will produce an OpenQASM file `shor.qasm`. You can run the second executable with `./post_process.sh N a o` where `o` is a measurement outcome from running the circuit.
+Our extracted code uses the ddsim simulator (through its Qiskit interface) to execute Shor's circuit (see extraction/run_circuit.py). So in order to run our extracted code you will need **Python version >= 3.6, qiskit, and ddsim**. Once you have a suitable version of Python, you can install the latter two with `pip install qiskit jkq.ddsim`. If you run into trouble with your Python environment, then consider using anaconda per [these directions for installing qiskit](https://qiskit.org/documentation/getting_started.html).
+
+Now you should be able to run Shor's with our script `./run_shor.sh N a` where `N` is the number you want to factor and the `a` is a number coprime to `N`.
 
 Example:
 ```
 $ ./generate_circuit.sh 15 7
-Generating circuit for N = 15 and a = 7...
-Time to generate: 0.072962s
-Counting gates...
-35 qubits and 21909 gates.
-Time to count gates: 0.000477s
-Writing file to shor.qasm...
-Time to write file: 0.248348s
-
-$ # execute the resulting shor.qasm file (not shown here)
-
-$ # say that the result of execution is 192
-$ ./post_process.sh 15 7 192
-Performing post-processing for N = 15, a = 7, and o = 192...
-Result is: 4
+TODO: add check that N can be written as (p^k * q) for k>0, prime p>2, q>2, and p^k, q coprime
+Running Shor's for N = 15 and a = 7...
+Measurement outcome is 128
+Failed to find non-trivial factor. Try another measurement outcome? (Y/n) Y
+Measurement outcome is 192
+Non-trivial factor is 3.
 ```
 
-## Guarantees
+## Verified Properties
 
-**TODO:** Text description of what our Coq proofs guarantee about the OCaml code.
+TODO: add text description of correctness
+
+Some assumptions introduced by extraction (see extraction/ShorExtr.v)
+* OCaml floats satisfy the same properties as Coq Real numbers. (Unfortunately this is NOT TRUE, but maybe somewhat accurate? We can try to be more specific by listing all facts we use about Real numbers... but this may be a long list. -KH)
+* The simulator we use to run Shor's returns a vector that is consistent with our uc_eval denotation function.
+* OCaml rationals satisfy the same properties as Coq rational numbers.
+* Our utility functions in Python and OCaml (e.g. for file parsing and running the simulator) do not introduce unintended behavior.
