@@ -662,18 +662,40 @@ Proof.
   intros. constructor.
 Qed.
 
-Definition csplit (p : bccom) :=
-  match p with
-  | bccont n (p1; p2) => bccont n p1; bccont n p2
-  | _ => p
-  end.
-
 Lemma uc_eval_CNOT_control :
   forall n m dim,
     @uc_eval dim (CNOT n m) = @uc_eval dim (control n (bc2ucom (bcx m))).
 Proof.
   intros. rewrite denote_cnot. simpl. rewrite control_ucom_X. easy.
 Qed.
+
+Lemma bc2ucom_bcelim :
+  forall p dim f,
+    dim > 0 ->
+    eWT dim p ->
+    uc_eval (bc2ucom (bcelim p)) × f_to_vec dim f = f_to_vec dim (bcexec p f).
+Proof.
+  intros. apply bc2ucom_eWT_variant; easy.
+Qed.
+
+Lemma eWT_uc_well_typed_bcelim :
+  forall p dim,
+    dim > 0 ->
+    eWT dim p ->
+    @uc_well_typed _ dim (bc2ucom (bcelim p)).
+Proof.
+  intros.
+  destruct (bcelim p) eqn:Ep; rewrite <- Ep;
+    try (apply bcWT_uc_well_typed; apply eWT_bcWT; try easy; rewrite Ep; easy; easy).
+  rewrite Ep. simpl. apply uc_well_typed_ID. easy.
+Qed.
+
+(*
+Definition csplit (p : bccom) :=
+  match p with
+  | bccont n (p1; p2) => bccont n p1; bccont n p2
+  | _ => p
+  end.
 
 Lemma bc2ucom_csplit :
   forall p dim,
@@ -708,27 +730,115 @@ Proof.
         apply bcWT_uc_well_typed with (dim := dim) in H11; apply bcWT_uc_well_typed with (dim := dim) in H12;
           apply uc_well_typed_control; easy.
 Qed.
+*)
 
-Lemma bc2ucom_csplit_bcelim :
-  forall p dim f,
-    dim > 0 ->
-    eWT dim p ->
-    uc_eval (bc2ucom (csplit (bcelim p))) × f_to_vec dim f = f_to_vec dim (bcexec p f).
+Fixpoint bygatectrl n c :=
+  match c with
+  | c1; c2 => bygatectrl n c1; bygatectrl n c2
+  | c => bccont n c
+  end.
+
+Lemma bcexec_bccont :
+  forall c n f,
+    efresh n c -> bcexec (bccont n c) f n = f n.
 Proof.
-  intros. rewrite bc2ucom_csplit. apply bc2ucom_eWT_variant; easy.
-  destruct (bcelim p) eqn:Ep; rewrite <- Ep;
-    try (apply eWT_bcWT; try easy; rewrite Ep; easy).
-  rewrite Ep. constructor. easy.
+  induction c; intros; simpl; bnauto.
+  inversion H; subst. rewrite update_index_neq in Heqb0 by (apply neq_sym; easy). rewrite Heqb in Heqb0. easy. 
+  inversion H; subst. rewrite update_index_neq in Heqb0 by (apply neq_sym; easy). rewrite Heqb in Heqb0. easy.
+  inversion H; subst. do 2 rewrite update_index_neq in Heqb0 by (apply neq_sym; easy). rewrite Heqb in Heqb0. easy.
+  inversion H; subst. rewrite efresh_bcexec_irrelevant in Heqb1 by easy. rewrite Heqb in Heqb1. easy.
+  inversion H; subst. do 2 rewrite efresh_bcexec_irrelevant in Heqb0 by easy. rewrite Heqb in Heqb0. easy.
 Qed.
 
-Lemma eWT_uc_well_typed_csplit_bcelim :
-  forall p dim,
-    dim > 0 ->
-    eWT dim p ->
-    @uc_well_typed _ dim (bc2ucom (csplit (bcelim p))).
+Lemma bcexec_bccont_bcfresh :
+  forall c n f,
+    bcfresh n c -> bcexec (bccont n c) f n = f n.
 Proof.
-  intros. apply uc_well_typed_csplit.
-  destruct (bcelim p) eqn:Ep; rewrite <- Ep;
-    try (apply eWT_bcWT; try easy; rewrite Ep; easy).
-  rewrite Ep. constructor. easy.
+  intros. apply bcexec_bccont. apply bcfresh_efresh. easy.
 Qed.
+
+Lemma bygatectrl_correct :
+  forall c n f,
+    efresh n c -> bcexec (bygatectrl n c) f = bcexec (bccont n c) f.
+Proof.
+  induction c; intros;
+    try (simpl; easy).
+  inversion H; subst.
+  simpl. rewrite IHc2 by easy.
+  simpl. rewrite IHc1 by easy.
+  rewrite bcexec_bccont by easy.
+  simpl. destruct (f n) eqn:Ef; try easy.
+Qed.
+
+Lemma bygatectrl_correct_bcfresh :
+  forall c n f,
+    bcfresh n c -> bcexec (bygatectrl n c) f = bcexec (bccont n c) f.
+Proof.
+  intros. apply bygatectrl_correct. apply bcfresh_efresh. easy.
+Qed.
+
+Lemma eWF_bygatectrl :
+  forall c n,
+    eWF (bccont n c) -> eWF (bygatectrl n c).
+Proof.
+  induction c; intros;
+    try (simpl; easy).
+  inversion H; subst. inversion H2; subst. inversion H3; subst.
+  simpl. constructor.
+  apply IHc1. constructor; easy.
+  apply IHc2. constructor; easy.
+Qed.
+
+Lemma eWT_bygatectrl :
+  forall c n dim,
+    eWT dim (bccont n c) -> eWT dim (bygatectrl n c).
+Proof.
+  induction c; intros;
+    try (simpl; easy).
+  inversion H; subst. inversion H3; subst. inversion H4; subst.
+  simpl. constructor.
+  apply IHc1. constructor; easy.
+  apply IHc2. constructor; easy.
+Qed.
+
+Lemma bygatectrl_bcinv :
+  forall c n, bygatectrl n (bcinv c) = bcinv (bygatectrl n c).
+Proof.
+  intros. induction c; simpl; try easy.
+  rewrite IHc1, IHc2. easy.
+Qed.
+
+Fixpoint map_bccom (f : nat -> nat) (bc : bccom) : bccom :=
+  match bc with
+  | bcskip => bcskip
+  | bcx a => bcx (f a)
+  | bcswap a b => bcswap (f a) (f b)
+  | bccont a bc1 => bccont (f a) (map_bccom f bc1)
+  | bcseq bc1 bc2 => bcseq (map_bccom f bc1) (map_bccom f bc2)
+  end.
+
+Lemma map_qubits_bcfresh : forall k q (bc : bccom),
+  (q < k)%nat ->
+  bcelim bc <> bcskip ->
+  bcfresh q (map_bccom (fun i : nat => (k + i)%nat) (bcelim bc)).
+Proof.
+  intros k q bc Hq H.
+  induction bc. simpl. 
+  contradict H; reflexivity.
+  1-2: simpl; constructor; lia.
+  simpl. 
+  destruct (bcelim bc) eqn:bce.
+  contradict H.
+  simpl. rewrite bce. reflexivity.
+  1-4: simpl in *; constructor; try lia; apply IHbc; easy.
+  simpl.
+  destruct (bcelim bc1) eqn:bce1; destruct (bcelim bc2) eqn:bce2.
+  contradict H.
+  simpl. rewrite bce1, bce2. reflexivity.
+  all: try (apply IHbc1; easy).
+  all: try (apply IHbc2; easy).
+  all: simpl; constructor.
+  all: try (apply IHbc1; easy).
+  all: try (apply IHbc2; easy).
+Qed.
+
