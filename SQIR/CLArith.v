@@ -11,9 +11,125 @@ Local Open Scope nat_scope.
 
 Local Opaque CNOT. Local Opaque CCX.
 
+(* 
+  This file contains an implementation and proof of correctness for a modular
+  multiplier similar to the one defined in shor/ModMult.v, but rewritten to
+  use QVM.
+*)
+
+
+(*********** Definitions ***********)
+
 (* modmult adder based on classical circuits. *)
 Definition MAJ a b c := CNOT c b ; CNOT c a ; CCX a b c.
 Definition UMA a b c := CCX a b c ; CNOT c a ; CNOT a b.
+
+(* The following defines n-bits MAJ and UMA circuit. 
+   Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
+Fixpoint MAJseq' n x y c : exp :=
+  match n with
+  | 0 => MAJ c (y,0) (x,0)
+  | S m => MAJseq' m x y c; MAJ (x, m) (y, n) (x, n)
+  end.
+Definition MAJseq n x y c := MAJseq' (n - 1) x y c.
+
+Fixpoint UMAseq' n x y c : exp :=
+  match n with
+  | 0 => UMA c (y,0) (x,0)
+  | S m => UMA (x, m) (y,n) (x, n); UMAseq' m x y c
+  end.
+Definition UMAseq n x y c := UMAseq' (n - 1) x y c.
+
+Definition adder01 n x y c: exp := MAJseq n x y c; UMAseq n x y c.
+
+(* The following implements an comparator. 
+   THe first step is to adjust the adder circuit above to be
+    MAJ;high_bit_manipulate;UMA.
+    This is based on a binary number circuit observation that:
+    To compare if x < y, we just need to do x - y, and see the high bit of the binary
+    format of x - y. If the high_bit is zero, that means that x >= y;
+    otherwise x < y. *)
+Definition highbit n x c2 := X (x,n-1) ; X c2 ; CNOT (x,n-1) c2 ; X c2; X (x,n-1).
+
+Definition highb01 n x y c1 c2: exp := MAJseq n x y c1; highbit n x c2 ; inv_exp (MAJseq n x y c1).
+
+(* The following will do the negation of the first input value in the qubit sequence 00[x][y][z].
+   THe actual effect is to make the sequence to be 00[-x][y][z]. *)
+Fixpoint negator0 i x : exp :=
+  match i with
+  | 0 => SKIP (x,0)
+  | S i' => negator0 i' x; X (x, i')
+  end.
+
+(* The actual comparator implementation. 
+    We first flip the x positions, then use the high-bit comparator above. 
+    Then, we use an inverse circuit of flipping x positions to turn the
+    low bits back to store the value x.
+    The actual implementation in the comparator is to do (x' + y)' as x - y,
+    and then, the high-bit actually stores the boolean result of x - y < 0.  *)
+Definition comparator01 n x y c1 c2 := (X c1; negator0 n x); highb01 n x y c1 c2; inv_exp (X c1; negator0 n x).
+
+(* The implementation of a subtractor. It takes two values [x][y], and the produces
+    the result of [x][y + 2^n - x]. *)
+Definition subtractor01 n x y c1:= (X c1; negator0 n x); adder01 n x y c1; inv_exp (X c1; negator0 n x).
+
+(* The implementation of a modulo adder. It takes [M][x][y], and then produces the result of [M][x+y % M][y]. 
+   The modulo operation is not reversible. It will flip the high-bit to be the comparator factor.
+   To flip the high-bit to zero, we use the inverse circuit of the comparator in the modulo adder to
+   flip the high-bit back to zero.*)
+Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
+                                       comparator01 n M x c1 c2; (* compare M < x + y (in position x) *)
+                                       X c2 ; CU c2 (subtractor01 n M x c1) ; (* doing -M + x to x, then flip c2. *)
+                                       inv_exp(comparator01 n y x c1 c2). (* compare M with x+y % M to clean c2. *)
+
+(* Here we implement the doubler circuit based on binary shift operation.
+   It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
+   Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
+Definition doubler1 y := Rshift y.
+
+(* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
+   This version will mark the high-bit, and the high-bit is not clearable.
+   However, eventually, we will clean all high-bit
+   by using a inverse circuit of the whole implementation. *)
+Definition moddoubler01 n x M c1 c2 :=
+                doubler1 x;  (comparator01 n x M c1 c2; CU c2 (subtractor01 n M x c1)).
+
+(* The following implements the modulo adder for all bit positions in the
+   binary boolean function of C. 
+   For every bit in C, we do the two items:
+   we first to double the factor (originally 2^(i-1) * x %M, now 2^i * x %M).
+   Then, we see if we need to add the factor result to the sum of C*x%M
+   based on if the i-th bit of C is zero or not.
+modadder21 n x y M c1 c2
+[M][x][0][0] -> [M][2^i * x % M][C^i*x % M][0]
+ *)
+(* A function to compile positive to a bool function. *)
+(* fb_push is to take a qubit and then push it to the zero position 
+        in the bool function representation of a number. *)
+
+(* A function to compile a natural number to a bool function. *)
+
+Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
+  match i with
+  | 0 => if (fC 0) then (adder01 n x y c1) else (SKIP (x,0))
+  | S i' =>  modsummer' i' n M x y c1 c2 s fC; moddoubler01 n x M c1 c2;
+          (SWAP c2 (s,i));
+        (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
+  end.
+Definition modsummer n M x y c1 c2 s C := modsummer' (n - 1) n M x y c1 c2 s (nat2fb C).
+
+(* This is the final clean-up step of the mod multiplier to do C*x %M. 
+    Here, modmult_half will first clean up all high bits.  *)
+Definition modmult_half n M x y c1 c2 s C := modsummer n M x y c1 c2 s C; (inv_exp (modsummer n M x y c1 c2 s 0)).
+
+Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C; inv_exp (modmult_half n M x y c1 c2 s Cinv).
+
+Definition modmult M C Cinv n x y z s c1 c2 := (init_v n z M); modmult_full C Cinv n z x y c1 c2 s; inv_exp ( (init_v n z M)).
+
+Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; modmult M C Cinv n x y z s c1 c2;; Rev x.
+
+
+(*********** Proofs ***********)
 
 Lemma maj_fwf : forall x y z aenv, x <> y -> y <> z -> z <> x -> exp_fwf aenv (MAJ x y z).
 Proof.
@@ -203,15 +319,6 @@ Qed.
 
 Local Transparent CNOT. Local Transparent CCX.
 
-(* The following defines n-bits MAJ and UMA circuit. 
-   Eventually, MAJ;UMA circuit takes [x][y] and produce [x][(x+y) % 2 ^ n] *)
-Fixpoint MAJseq' n x y c : exp :=
-  match n with
-  | 0 => MAJ c (y,0) (x,0)
-  | S m => MAJseq' m x y c; MAJ (x, m) (y, n) (x, n)
-  end.
-Definition MAJseq n x y c := MAJseq' (n - 1) x y c.
-
 Lemma majseq'_fwf : forall n x y c aenv,
        x <> fst c -> y <> fst c -> x <> y -> exp_fwf aenv (MAJseq' n x y c).
 Proof.
@@ -232,13 +339,6 @@ Proof.
   intros. unfold MAJseq.
   apply majseq'_fwf; assumption.
 Qed.
-
-Fixpoint UMAseq' n x y c : exp :=
-  match n with
-  | 0 => UMA c (y,0) (x,0)
-  | S m => UMA (x, m) (y,n) (x, n); UMAseq' m x y c
-  end.
-Definition UMAseq n x y c := UMAseq' (n - 1) x y c.
 
 Lemma umaseq'_fwf : forall n x y c aenv,
        x <> fst c -> y <> fst c -> x <> y -> exp_fwf aenv (UMAseq' n x y c).
@@ -282,8 +382,6 @@ Proof.
 Qed.
 *)
 
-Definition adder01 n x y c: exp := MAJseq n x y c; UMAseq n x y c.
-
 Lemma adder_fwf : forall n x y c aenv,
        x <> fst c -> y <> fst c -> x <> y -> exp_fwf aenv (adder01 n x y c).
 Proof.
@@ -321,8 +419,6 @@ Qed.
 
 Definition var_prop (f:var -> nat) (x y c : var) (n:nat) : Prop :=
       n <= (f x) /\  n <= f y /\ f c = 1.
-
-
 
 Lemma msmb_put : forall n i st x b f g, 
         S i < n -> put_cus st x (msmb (S i) b f g) n = (put_cus st x
@@ -1102,20 +1198,12 @@ Proof.
 Qed.
 
 Local Opaque adder01.
-(* The following will do the negation of the first input value in the qubit sequence 00[x][y][z].
-   THe actual effect is to make the sequence to be 00[-x][y][z]. *)
-Fixpoint negator0 i x : exp :=
-  match i with
-  | 0 => SKIP (x,0)
-  | S i' => negator0 i' x; X (x, i')
-  end.
 
 Lemma negator0_fwf : forall n x aenv, exp_fwf aenv (negator0 n x).
 Proof.
   intros. induction n;simpl.
   constructor. constructor. easy. constructor.
 Qed.
-
 
 Lemma negatem_put_get : forall i n f x, S i <= n ->
        put_cus f x (negatem (S i) (get_cus n f x)) n =
@@ -1213,18 +1301,7 @@ Proof.
   apply nor_mode_cus_eq. apply H1. lia.
 Qed.
 
-(* The following implements an comparator. 
-   THe first step is to adjust the adder circuit above to be
-    MAJ;high_bit_manipulate;UMA.
-    This is based on a binary number circuit observation that:
-    To compare if x < y, we just need to do x - y, and see the high bit of the binary
-    format of x - y. If the high_bit is zero, that means that x >= y;
-    otherwise x < y. *)
 Local Opaque CNOT. Local Opaque CCX.
-
-Definition highbit n x c2 := X (x,n-1) ; X c2 ; CNOT (x,n-1) c2 ; X c2; X (x,n-1).
-
-Definition highb01 n x y c1 c2: exp := MAJseq n x y c1; highbit n x c2 ; inv_exp (MAJseq n x y c1).
 
 Definition no_equal (x y:var) (c1 c2 : posi) : Prop := x <> y /\ x <> fst c1 /\  x <> fst c2 
                    /\ y <> fst c1 /\ y <> fst c2 /\ fst c1 <> fst c2.
@@ -1370,14 +1447,6 @@ Proof.
 Qed.
 
 Local Opaque highb01.
-
-(* The actual comparator implementation. 
-    We first flip the x positions, then use the high-bit comparator above. 
-    Then, we use an inverse circuit of flipping x positions to turn the
-    low bits back to store the value x.
-    The actual implementation in the comparator is to do (x' + y)' as x - y,
-    and then, the high-bit actually stores the boolean result of x - y < 0.  *)
-Definition comparator01 n x y c1 c2 := (X c1; negator0 n x); highb01 n x y c1 c2; inv_exp (X c1; negator0 n x).
 
 Lemma negations_aux :
   forall n x c v S v' r aenv,
@@ -1697,10 +1766,6 @@ Qed.
 
 Local Opaque comparator01.
 
-(* The implementation of a subtractor. It takes two values [x][y], and the produces
-    the result of [x][y + 2^n - x]. *)
-Definition subtractor01 n x y c1:= (X c1; negator0 n x); adder01 n x y c1; inv_exp (X c1; negator0 n x).
-
 (* The correctness proof of the subtractor. *)
 Lemma subtractor01_correct :
   forall tenv aenv n x y c1 v1 v2 f f' f'',
@@ -1755,16 +1820,6 @@ Local Opaque subtractor01.
 
 Definition no_equal_5 (x y M:var) (c1 c2 : posi) : Prop := x <> y /\ x <> M /\ x <> fst c1 /\  x <> fst c2 
                    /\ y <> M /\ y <> fst c1 /\ y <> fst c2 /\ M <> fst c1 /\ M <> fst c2 /\ fst c1 <> fst c2.
-
-
-(* The implementation of a modulo adder. It takes [M][x][y], and then produces the result of [M][x+y % M][y]. 
-   The modulo operation is not reversible. It will flip the high-bit to be the comparator factor.
-   To flip the high-bit to zero, we use the inverse circuit of the comparator in the modulo adder to
-   flip the high-bit back to zero.*)
-Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
-                                       comparator01 n M x c1 c2; (* compare M < x + y (in position x) *)
-                                       X c2 ; CU c2 (subtractor01 n M x c1) ; (* doing -M + x to x, then flip c2. *)
-                                       inv_exp(comparator01 n y x c1 c2). (* compare M with x+y % M to clean c2. *)
 
 Lemma adder01_sem_carry0 :
   forall n (f f' : posi -> val) x y c v1 v2 aenv,
@@ -2027,50 +2082,3 @@ Proof.
   unfold reg_push. rewrite put_cus_neq by iner_p.
   rewrite eupdate_index_neq by iner_p. easy.
 Qed.
-
-(* Here we implement the doubler circuit based on binary shift operation.
-   It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
-   Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
-Definition doubler1 y := Rshift y.
-
-(* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
-   This version will mark the high-bit, and the high-bit is not clearable.
-   However, eventually, we will clean all high-bit
-   by using a inverse circuit of the whole implementation. *)
-Definition moddoubler01 n x M c1 c2 :=
-                doubler1 x;  (comparator01 n x M c1 c2; CU c2 (subtractor01 n M x c1)).
-
-(* The following implements the modulo adder for all bit positions in the
-   binary boolean function of C. 
-   For every bit in C, we do the two items:
-   we first to double the factor (originally 2^(i-1) * x %M, now 2^i * x %M).
-   Then, we see if we need to add the factor result to the sum of C*x%M
-   based on if the i-th bit of C is zero or not.
-modadder21 n x y M c1 c2
-[M][x][0][0] -> [M][2^i * x % M][C^i*x % M][0]
- *)
-(* A function to compile positive to a bool function. *)
-(* fb_push is to take a qubit and then push it to the zero position 
-        in the bool function representation of a number. *)
-
-(* A function to compile a natural number to a bool function. *)
-
-Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
-  match i with
-  | 0 => if (fC 0) then (adder01 n x y c1) else (SKIP (x,0))
-  | S i' =>  modsummer' i' n M x y c1 c2 s fC; moddoubler01 n x M c1 c2;
-          (SWAP c2 (s,i));
-        (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
-  end.
-Definition modsummer n M x y c1 c2 s C := modsummer' (n - 1) n M x y c1 c2 s (nat2fb C).
-
-(* This is the final clean-up step of the mod multiplier to do C*x %M. 
-    Here, modmult_half will first clean up all high bits.  *)
-Definition modmult_half n M x y c1 c2 s C := modsummer n M x y c1 c2 s C; (inv_exp (modsummer n M x y c1 c2 s 0)).
-
-Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C; inv_exp (modmult_half n M x y c1 c2 s Cinv).
-
-Definition modmult M C Cinv n x y z s c1 c2 := (init_v n z M); modmult_full C Cinv n z x y c1 c2 s; inv_exp ( (init_v n z M)).
-
-Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; modmult M C Cinv n x y z s c1 c2;; Rev x.
-

@@ -1,7 +1,7 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples voqc shor clean
+KNOWNTARGETS := CoqMakefile all examples voqc shor qvm clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
@@ -44,6 +44,8 @@ shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/Main.vo
 
 voqc: invoke-coqmakefile $(VOQC)/Main.vo
 
+qvm : invoke-coqmakefile SQIR/MiniQASM.vo
+
 # Built by 'make examples'
 
 examples/Deutsch.vo: $(examples)/Deutsch.v $(SQIR)/UnitarySem.vo $(QWIRE)/Dirac.vo $(QWIRE)/Proportional.vo
@@ -73,19 +75,18 @@ examples/Teleport.vo: $(examples)/Teleport.v $(SQIR)/UnitarySem.vo $(SQIR)/Densi
 examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
 	coqc $(COQ_OPTS) $(examples)/Utilities.v
 
+# Built by 'make qvm'
 
-#Built VSQIR.v
-
-SQIR/VSQIR.vo: $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo
+SQIR/VSQIR.vo: $(SQIR)/VSQIR.v $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo
 	coqc $(COQ_OPTS) $(SQIR)/VSQIR.v
 
-SQIR/CLArith.vo: $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo
+SQIR/CLArith.vo: $(SQIR)/CLArith.v $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo
 	coqc $(COQ_OPTS) $(SQIR)/CLArith.v
 
-SQIR/RZArith.vo: $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo
+SQIR/RZArith.vo: $(SQIR)/RZArith.v $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo
 	coqc $(COQ_OPTS) $(SQIR)/RZArith.v
 
-SQIR/MiniQASM.vo: $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo $(SQIR)/CLArith.vo $(SQIR)/RZArith.vo
+SQIR/MiniQASM.vo: $(SQIR)/MiniQASM.v $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo $(SQIR)/CLArith.vo $(SQIR)/RZArith.vo
 	coqc $(COQ_OPTS) $(SQIR)/MiniQASM.v
 
 # Built by 'make shor'

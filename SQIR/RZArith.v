@@ -11,7 +11,79 @@ Local Open Scope nat_scope.
 
 Local Opaque CNOT. Local Opaque CCX.
 
-(* modmult adder based on QFT. *)
+(* 
+  This file contains an implementation and proof of correctness for the modular
+  multiplier circuit based on QFT.
+
+  @Liyi: Link to relevant paper?
+  
+  The modular multiplier circuit computes ((A * x) % N) where A and N are integer
+  constants and x is an integer variable. The main definition in this file is 
+  (rz_modmult_full y x n c A Ainv N). The main correctness property is
+  rz_modmult_full_sem.
+
+  @Liyi: Describe the different arguments to rz_modmult_full and summarize what
+  rz_modmult_full_sem is saying.
+*)
+
+
+(*********** Definitions ***********)
+
+Fixpoint rz_adder' (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
+  match n with 
+  | 0 => SKIP (x,0)
+  | S m => rz_adder' x m size M ; if M m then SR (size - n) x else SKIP (x,m)
+  end.
+
+Definition rz_adder (x:var) (n:nat) (M:nat -> bool) := rz_adder' x n n M.
+
+Fixpoint rz_sub' (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
+  match n with 
+  | 0 => SKIP (x,0)
+  | S m => rz_sub' x m size M ; if M m then SRR (size - n) x else SKIP (x,m)
+  end.
+
+Definition rz_sub (x:var) (n:nat) (M:nat -> bool) := rz_sub' x n n M.
+
+Definition rz_compare_half (x:var) (n:nat) (c:posi) (M:nat) := 
+  Exp (rz_sub x n (nat2fb M)) ;; RQFT x ;; Exp (CNOT (x,0) c).
+
+Definition rz_compare (x:var) (n:nat) (c:posi) (M:nat) := 
+ rz_compare_half x n c M ;; (inv_pexp (Exp (rz_sub x n (nat2fb M)) ;; RQFT x)).
+
+Definition qft_cu (x:var) (c:posi) := 
+  RQFT x ;; Exp (CNOT (x,0) c) ;; QFT x.
+
+Definition qft_acu (x:var) (c:posi) := 
+  RQFT x ;; Exp (X (x,0); CNOT (x,0) c; X (x,0)) ;; QFT x.
+
+Definition one_cu_adder (x:var) (n:nat) (c:posi) (M:nat -> bool) := CU c (rz_adder x n M).
+
+Definition mod_adder_half (x:var) (n:nat) (c:posi) (A:nat -> bool) (M:nat -> bool) :=
+  Exp (rz_adder x n A; (rz_sub x n M)) ;; qft_cu x c ;; Exp (one_cu_adder x n c M).
+
+Definition clean_hbit (x:var) (n:nat) (c:posi) (M:nat -> bool) := 
+  Exp (rz_sub x n M) ;; qft_acu x c ;; Exp( inv_exp (rz_sub x n M)).
+
+Definition mod_adder (x:var) (n:nat) (c:posi) (A:nat -> bool) (M:nat -> bool) :=
+  mod_adder_half x n c A M ;; clean_hbit x n c A.
+
+(* modular multiplier: takes [x][0] -> [x][ax%N] where a and N are constant. *)
+Fixpoint rz_modmult' (y:var) (x:var) (n:nat) (size:nat) (c:posi) (A:nat) (M:nat) :=
+   match n with
+   | 0 => Exp (SKIP (y,0))
+   | S m => rz_modmult' y x m size c A M;;
+           PCU (x,size - n) (mod_adder y size c (nat2fb ((2^m * A) mod M)) (nat2fb M))
+   end.
+
+Definition rz_modmult_half y x size c A M := 
+   QFT y ;; rz_modmult' y x size size c A M ;; RQFT y.
+
+Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (A:nat) (Ainv :nat) (N:nat) :=
+  rz_modmult_half y x n c A N ;; inv_pexp (rz_modmult_half x y n c Ainv N).
+
+
+(*********** Proofs ***********)
 
 Fixpoint natsum n (f : nat -> nat) :=
   match n with
@@ -116,7 +188,6 @@ Proof.
  simpl. lia.
 Qed.
 
-
 Lemma f_num_nat2fb : forall n f, (forall i, i >= n -> f i = false) -> (exists x, f = nat2fb x).
 Proof.
   intros.
@@ -209,11 +280,6 @@ Proof.
   rewrite eupdate_index_neq by iner_p.
   unfold get_r_qft in IHn. rewrite IHn. easy. lia.
 Qed.
-
-Fixpoint rz_adder' (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
-    match n with 0 => (SKIP (x,0))
-               | S m => (rz_adder' x m size M;if M m then SR (size - n) x else SKIP (x,m))
-    end.
 
 Lemma sr_rotate'_phi : forall m n size f x, m <= n <= size -> phi_modes f x size
              -> phi_modes ((sr_rotate' f x m n)) x size.
@@ -347,8 +413,6 @@ Proof.
   rewrite eq1. simpl. rewrite plus_0_r. easy. lia.
 Qed.
 
-Definition rz_adder (x:var) (n:nat) (M:nat -> bool) := rz_adder' x n n M.
-
 Lemma well_typed_exp_rz_adder_aux : forall m size tenv f x M, S m <= size 
             -> phi_modes f x size
            -> well_typed_exp tenv (rz_adder' x (S m) size (nat2fb M))
@@ -403,12 +467,6 @@ Proof.
   rewrite (Nat.mod_small M) by easy. easy.
   apply well_typed_exp_rz_adder with (f:=f); easy.
 Qed.
-
-
-Fixpoint rz_sub' (x:var) (n:nat) (size:nat) (M: nat -> bool) :=
-    match n with 0 => (SKIP (x,0))
-               | S m => (rz_sub' x m size M;if M m then SRR (size - n) x else SKIP (x,m))
-    end.
 
 Lemma srr_rotate_get_r : forall n size f x, 0 < n <= size -> get_r_qft (srr_rotate' f x n size) x
                  = get_phi_r (times_r_rotate (f (x,0)) size).
@@ -571,7 +629,6 @@ Proof.
   rewrite eq1. simpl. rewrite plus_0_r. easy. lia.
 Qed.
 
-Definition rz_sub (x:var) (n:nat) (M:nat -> bool) := rz_sub' x n n M.
 
 Lemma well_typed_exp_rz_sub_aux : forall m size tenv f x M, S m <= size 
             -> phi_modes f x size
@@ -627,9 +684,6 @@ Proof.
   rewrite (Nat.mod_small M) by easy. easy.
   apply well_typed_exp_rz_sub with (f := f); easy.
 Qed.
-
-Definition rz_compare_half (x:var) (n:nat) (c:posi) (M:nat) := 
-    Exp (rz_sub x n (nat2fb M));; RQFT x ;; Exp (CNOT (x,0) c).
 
 Lemma efresh_rz_adder: forall n c x size M aenv, fst c <> x -> n <= size -> exp_fresh aenv c (rz_adder' x n size M).
 Proof.
@@ -747,9 +801,6 @@ Proof.
   apply efresh_rz_sub; try easy.
   simpl. lia.
 Qed.
-
-Definition rz_compare (x:var) (n:nat) (c:posi) (M:nat) := 
-    Exp (rz_sub x n (nat2fb M));; RQFT x ;; Exp (CNOT (x,0) c) ;; (inv_pexp (Exp (rz_sub x n (nat2fb M));; RQFT x)).
 
 Lemma rz_compare_sem : forall size f c x A M aenv l l' tenv tenv',
                     phi_modes f x (S size) -> aenv x = S size -> fst c <> x
@@ -1056,8 +1107,6 @@ Proof.
   apply Nat.mod_upper_bound. lia.
 Qed.
 
-Definition qft_cu (x:var) (c:posi) := RQFT x ;; Exp (CNOT (x,0) c) ;; QFT x.
-
 Lemma qft_cu_sem : forall l tenv tenv' aenv f x c size, phi_modes f x (S size) -> aenv x = S size
           -> nor_mode f c -> fst c <> x ->
           well_typed_pexp aenv l tenv (RQFT x) l tenv' -> right_mode_env aenv tenv f ->
@@ -1094,8 +1143,6 @@ Proof.
   unfold nor_mode,turn_rqft.
   rewrite assign_seq_out; easy. 
 Qed.
-
-Definition qft_acu (x:var) (c:posi) := RQFT x ;; Exp (X (x,0); CNOT (x,0) c; X (x,0)) ;; QFT x.
 
 Lemma qft_acu_sem : forall l tenv tenv' aenv f x c size, phi_modes f x (S size) -> aenv x = S size
           -> nor_mode f c -> fst c <> x ->
@@ -1147,11 +1194,6 @@ Proof.
   rewrite eupdate_index_neq.
   rewrite assign_seq_out; easy. destruct c. iner_p. 
 Qed.
-
-Definition one_cu_adder (x:var) (n:nat) (c:posi) (M:nat -> bool) := CU c (rz_adder x n M).
-
-Definition mod_adder_half (x:var) (n:nat) (c:posi) (A:nat -> bool) (M:nat -> bool) :=
-          Exp (rz_adder x n A; (rz_sub x n M)) ;; qft_cu x c ;; Exp (one_cu_adder x n c M).
 
 Lemma get_r_qft_out : forall x c v f, fst c <> x -> get_r_qft (f[c |-> v]) x = get_r_qft f x.
 Proof.
@@ -1390,9 +1432,6 @@ Proof.
   apply exp_neu_same with (l1 := l'1)  in eq5. subst. easy. easy.
 Qed.
 
-Definition clean_hbit (x:var) (n:nat) (c:posi) (M:nat -> bool) := 
-           Exp (rz_sub x n M) ;; qft_acu x c ;; Exp( inv_exp (rz_sub x n M)).
-
 Lemma clean_hbit_sem: forall size f x c B A aenv l tenv tenv', 
          phi_modes f x (S size) -> aenv x = S size -> nor_mode f c -> fst c <> x ->
          well_typed_pexp aenv l tenv (Exp (rz_sub x (S size) (nat2fb A))) l tenv -> right_mode_env aenv tenv f ->
@@ -1432,10 +1471,6 @@ Proof.
   apply qft_uniform_exp_trans; try easy.
   apply qft_gt_exp_trans; try easy.
 Qed.
-
-Definition mod_adder (x:var) (n:nat) (c:posi) (A:nat -> bool) (M:nat -> bool) :=
-              mod_adder_half x n c A M ;; clean_hbit x n c A.
-
 
 Lemma put_cu_get_r : forall c f b, nor_mode f c -> put_cu (f c) b = nval b (get_r (f c)).
 Proof.
@@ -2108,21 +2143,6 @@ Proof.
   apply H18. easy. easy.
 Qed.
 
-(*
-Definition mod_adder (x:var) (n:nat) (c:posi) (A:nat -> bool) (M:nat -> bool) :=
-              mod_adder_half x n c A M ;; clean_hbit x n c A.
-Definition cu_mod_adder (y:var) (n:nat) (x1:posi) (c:posi) (A:nat -> bool) (M:nat -> bool) :=
-                  CU x1 (mod_adder y n c A M). 
-*)
-
-(* Mod adder. [x][0] -> [x][ax%N] having the a and N as constant. *)
-Fixpoint rz_modmult' (y:var) (x:var) (n:nat) (size:nat) (c:posi) (A:nat) (M:nat) :=
-     match n with 0 => (Exp (SKIP (y,0)))
-               | S m => rz_modmult' y x m size c A M;;
-                      PCU (x,size - n) (mod_adder y size c (nat2fb ((2^m * A) mod M)) (nat2fb M))
-     end.
-Definition rz_modmult_half y x size c A M := QFT y ;; rz_modmult' y x size size c A M ;; RQFT y.
-
 Lemma phi_nor_mode_rz_modmult' : forall n size y x c aenv f A M, phi_modes f y size -> 
           nor_mode f c -> fst c <> y -> 0 < aenv y ->
        nor_mode (prog_sem aenv (rz_modmult' y x n size c A M) f) c
@@ -2770,10 +2790,6 @@ Qed.
 
 Opaque rz_modmult_half.
 
-Definition rz_modmult_full (y:var) (x:var) (n:nat)
-           (c:posi) (A:nat) (Ainv :nat) (N:nat) :=
-                 rz_modmult_half y x n c A N ;; inv_pexp (rz_modmult_half x y n c Ainv N).
-
 Lemma rz_modmult_full_sem : forall size y f x c A Ainv M X aenv l tenv ,
          nor_modes f x (S size) -> nor_modes f y (S size) -> aenv y = S size -> aenv x = S size ->
           nor_mode f c -> fst c <> x -> fst c <> y -> x <> y -> get_cua (f c) = false
@@ -2873,6 +2889,12 @@ Proof.
   apply Nat.mod_upper_bound. lia. simpl. lia.
   lia. simpl. lia.
 Qed.
+
+
+
+
+
+(** @Liyi: the rest of this file is unused. Can we delete? **)
 
 Check one_cu_adder.
 

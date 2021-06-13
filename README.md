@@ -37,6 +37,9 @@ opam install coq
 
 # install Interval package (optional, needed to compile proofs in examples/shor)
 opam install coq-interval
+
+# install ext-lib (optional, needed for "make qvm")
+opam install coq-ext-lib
 ```
 
 *Notes*:
