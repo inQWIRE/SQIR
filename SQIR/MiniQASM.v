@@ -364,7 +364,7 @@ Inductive qexp := skip
                 | nmod (x:cfac) (y:cfac) (v:cfac) (* x := y mod n where x,n are a nat *)
                 | nfac (x:cfac) (v:cfac) (* x := n! where x is a nat & n is  nat *)
                 | fdiv (x:cfac) (v:cfac) (* x := x / n where n is a natural number, x is a float. *)
-                | fnmul (x:cfac) (v:cfac) (* x := x * n where n is a natural number, x is a nat. *)
+                | fnmul (x:cfac) (v:cfac) (* x := x * n where n is a natural number, x is a float. *)
                 | ncsub (x:cfac) (y:cfac) (z:cfac) (* x := y - z all natural and C type *)
                 | ncadd (x:cfac) (y:cfac) (z:cfac) (* x := y + z all natural and C type *)
                 | ncmul (x:cfac) (y:cfac) (z:cfac) (* x := y * z all natural and C type *)
@@ -373,7 +373,7 @@ Inductive qexp := skip
                 | qinv (e:qexp)
                 | call (f:fvar) (v: cfac)
                 | qif (c:cexp) (e1:qexp) (e2:qexp)
-                | qfor (x:var) (n:nat) (e:qexp)
+                | qfor (x:var) (n:cfac) (e:qexp)
                 | qseq (q1:qexp) (q2:qexp).
 
 (*functions will do automatic inverse computation after a function is returned.
@@ -509,8 +509,9 @@ Definition type_factor (benv:benv) (t:btype) (fc:cfac) :=
    end.
 
 
-Definition meet_type (t1 t2 : typ) := match t1 with (Q,b) => (Q,b)
-                   | (C,b) => match t2 with (Q,b2) => (Q,b) | _ => (C,b) end end.
+Definition meet_type (t1 t2 : typ) := 
+          match t1 with (Q,b) => (Q,b)
+               | (C,b) => match t2 with (Q,b2) => (Q,b) | _ => (C,b) end end.
 
 
 Definition type_cexp (benv:benv) (c:cexp) := 
@@ -556,7 +557,7 @@ Definition get_core (c:ttyp) :=
               | TPtr t' n => t'
    end.
 
-Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
+Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp):=
    match e with skip => Some benv
              | init b x v => 
                do re <- type_factor benv b x @
@@ -569,14 +570,14 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
                 do re2 <- type_factor benv Nat y @ 
                    do core <- get_var y @
                     do old <- benv core @
-                       ret (qupdate benv core (Some (put_shell old (meet_type re1 re2))))
+                       ret (qupdate benv core (Some (put_shell old (Q,Nat))))
 
              | nsub f x y => 
              do re1 <- type_factor benv Nat x @
                 do re2 <- type_factor benv Nat y @ 
                    do core <- get_var y @
                     do old <- benv core @
-                       ret (qupdate benv core (Some (put_shell old (meet_type re1 re2))))
+                       ret (qupdate benv core (Some (put_shell old (Q,Nat))))
 
              | nmul f x y => 
              do re1 <- type_factor benv Nat x @
@@ -584,7 +585,7 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
                    do core <- get_var y @
                     do old <- benv core @ 
                         if is_q re1 then None else 
-                            ret (qupdate benv core (Some (put_shell old (meet_type re1 re2))))
+                            ret (qupdate benv core (Some (put_shell old (Q,Nat))))
 
              | nqmul f x y z => 
              do re1 <- type_factor benv Nat x @
@@ -684,7 +685,8 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
                         do re1 <- fbenv rx @
                               do core <- get_var x @
                            do old <- benv core @
-                                ret (qupdate benv core (Some (put_shell old (meet_type (get_core re1) (get_core old)))))
+                                ret (qupdate benv core
+                                  (Some (put_shell old (meet_type (get_core re1) (get_core old)))))
                    end
 
               | qif ce e1 e2 => 
@@ -693,8 +695,9 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp) :=
                        type_qexp fv benv' e2
 
               | qfor x n e => 
-                 do re <- type_factor benv Nat (Nor (Var (L x))) @
-                     if is_q re then None else type_qexp fv benv e
+                 do re1 <- type_factor benv Nat (Nor (Var (L x))) @
+                  do re2 <- type_factor benv Nat n @     
+                     if is_q re1 || is_q re2 then None else type_qexp fv benv e
 
               | qseq e1 e2 => 
                  do benv' <- type_qexp fv benv e1 @ type_qexp fv benv' e2
@@ -946,8 +949,9 @@ Inductive sem_qexp (fv:fenv) (s_lit size:nat): nat -> reg -> qexp -> nat -> reg 
                  sem_qexp fv s_lit size sn reg (qif ce e1 e2) sn' reg e2
 
  | sem_for : forall sn reg x n e sn' reg',
-                 sem_for_exp fv s_lit size sn (qdupdate reg (L x,0) (nat2fb 0)) e x n sn' reg' ->
-                 sem_qexp fv s_lit size sn reg (qfor x n e) sn' reg' skip
+                 sem_for_exp fv s_lit size sn (qdupdate reg (L x,0) (nat2fb 0))
+                   e x (a_nat2fb (sem_cfac size reg Nat n) size) sn' reg' ->
+                           sem_qexp fv s_lit size sn reg (qfor x n e) sn' reg' skip
 
  | sem_qseq_con : forall sn reg e1 e2 sn' reg' e1',
                 sem_qexp fv s_lit size sn reg e1 sn' reg' e1' ->
@@ -974,6 +978,264 @@ Inductive sem_prog (fv:fenv) : prog -> (nat -> bool) -> Prop :=
          sem_qexp fv s_lit size 0 (init_reg (init_reg_g gl) l) e sn reg skip ->
          sem_prog fv (s_lit,size,gl,fl,main,rx') (reg (rx,0)).
 
+Fixpoint collect_cvars (bv:benv) (e:qexp) : list qvar :=
+   match e with skip
+              | init _ _ _
+              | nadd _ _ _
+              | nsub _ _ _ 
+              | nmul _ _ _ 
+              | nqmul _ _ _ _
+              | fadd _ _ _ 
+              | fsub _ _ _
+              | fmul _ _ _ _ => []
+              | qxor b v x => match get_var x with None => []
+                                             | Some xn => match bv xn with None => []
+                                                    | Some t => if is_q (get_core t) then [] else [xn]
+                                                         end
+                              end
+               | ndiv x y z => match get_var x with None => [] | Some xn => [xn] end
+               | nmod x y z => match get_var x with None => [] | Some xn => [xn] end
+               | nfac x y => match get_var x with None => [] | Some xn => [xn] end
+               | fdiv x y => match get_var x with None => [] | Some xn => [xn] end
+               | fnmul x y => match get_var x with None => [] | Some xn => [xn] end
+               | ncsub x y z => match get_var x with None => [] | Some xn => [xn] end
+               | ncadd x y z => match get_var x with None => [] | Some xn => [xn] end
+               | ncmul x y z => match get_var x with None => [] | Some xn => [xn] end
+               | fndiv x y z => match get_var z with None => [] | Some xn => [xn] end
+               | qinv e => collect_cvars bv e
+               | call f x => match get_var x with None => []
+                                             | Some xn => match bv xn with None => []
+                                                    | Some t => if is_q (get_core t) then [] else [xn]
+                                                         end
+                              end
+               | qif ce e1 e2 => []
+               | qfor x n e => collect_cvars bv e
+               | qseq x y => (collect_cvars bv x)++(collect_cvars bv y)
+   end.
+
+Definition in_scope_cfac (l:list qvar) (e:cfac) :=
+   match e with Nor (Num x) => True
+             | Nor (Var x) => In x l
+             | Ptr x (Num n) => In (L x) l
+             | Ptr x (Var y) => In (L x) l /\ In y l
+   end.
+
+Definition in_scope_if_cexp (l:list qvar) (e:cexp) : Prop :=
+    match e with clt f b x y => in_scope_cfac l x /\ in_scope_cfac l y
+               | ceq f b x y => in_scope_cfac l x /\ in_scope_cfac l y
+               | iseven x => in_scope_cfac l x
+    end.
+
+Fixpoint in_scope_if (l:list qvar) (e:qexp): Prop :=
+   match e with skip => True
+              | init b x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | nadd b x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | nsub b x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | nmul b x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | nqmul b x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
+              | fadd b x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | fsub b x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | fmul b x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
+              | qxor b x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | ndiv x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
+              | nmod x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
+              | nfac x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | fdiv x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | fnmul x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | ncsub x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
+              | ncadd x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
+              | ncmul x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
+              | fndiv x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
+              | qinv e => in_scope_if l e
+              | call f x => in_scope_cfac l x
+              | qif ce e1 e2 => in_scope_if_cexp l ce /\ in_scope_if l e1 /\ in_scope_if l e2
+              | qfor x n e => in_scope_if (@List.remove qvar (QvarType.eq_dec) (L x) l) e
+              | qseq e1 e2 => in_scope_if l e1 /\ in_scope_if l e2
+    end.
+
+Definition is_qseq (x:qexp) := match x with a ;;; b => True | _ => False end.
+
+Inductive in_scope_ifs (l:list qvar) : list qexp -> Prop :=
+   in_scope_if_empty : in_scope_ifs l []
+   | in_scope_if_many: forall e el, in_scope_if l e -> in_scope_ifs l el -> in_scope_ifs l (e:: el).
+
+Fixpoint turn_qseq_lst (e:qexp) :=
+   match e with (e1 ;;; e2) => turn_qseq_lst e1 ++ turn_qseq_lst e2
+             | e => [e]
+   end.
+
+Inductive well_formed_qexp (bv:benv) : qexp -> list qexp -> Prop :=
+  | wtq_skip : forall el, well_formed_qexp bv skip el
+  | wtq_init : forall el b x v, well_formed_qexp bv (init b x v) el
+  | wtq_nadd : forall el b x v, well_formed_qexp bv (nadd b x v) el
+  | wtq_nsub : forall el b x v, well_formed_qexp bv (nsub b x v) el
+  | wtq_nmul : forall el b x v, well_formed_qexp bv (nmul b x v) el
+  | wtq_nqmul: forall el b x y z, well_formed_qexp bv (nqmul b x y z) el
+  | wtq_fadd : forall el b x v, well_formed_qexp bv (fadd b x v) el
+  | wtq_fsub : forall el b x v, well_formed_qexp bv (fsub b x v) el
+  | wtq_fmul : forall el b x y z, well_formed_qexp bv (fmul b x y z) el
+  | wtq_qxor : forall el b x v, well_formed_qexp bv (fsub b x v) el
+  | wtq_ndiv : forall el x y z, well_formed_qexp bv (ndiv x y z) el
+  | wtq_nmod : forall el x y z, well_formed_qexp bv (nmod x y z) el
+  | wtq_nfac : forall el x y, well_formed_qexp bv (nfac x y) el
+  | wtq_fdiv : forall el x y, well_formed_qexp bv (fdiv x y) el
+  | wtq_fnmul : forall el x y, well_formed_qexp bv (fnmul x y) el
+  | wtq_ncsub : forall el x y z, well_formed_qexp bv (ncsub x y z) el
+  | wtq_ncadd : forall el x y z, well_formed_qexp bv (ncadd x y z) el
+  | wtq_ncmul : forall el x y z, well_formed_qexp bv (ncmul x y z) el
+  | wtq_fndiv : forall el x y z, well_formed_qexp bv (fndiv x y z) el
+  | wtq_qinv : forall el e, well_formed_qexp bv e el -> well_formed_qexp bv (qinv e) el
+  | wtq_call : forall el f x, well_formed_qexp bv (call f x) el
+  | wtq_if_q : forall el ce t e1 e2, type_cexp bv ce = Some t -> is_q t = true -> 
+                    in_scope_ifs (collect_cvars bv e1 ++ collect_cvars bv e2) el ->
+                    well_formed_qexps bv (turn_qseq_lst e1) -> well_formed_qexps bv (turn_qseq_lst e2) ->
+                    well_formed_qexp bv (qif ce e1 e2) el
+  | wtq_if_c : forall el ce t e1 e2, type_cexp bv ce = Some t -> is_q t = false -> 
+                    well_formed_qexps bv (turn_qseq_lst e1) -> well_formed_qexps bv (turn_qseq_lst e2) ->
+                    well_formed_qexp bv (qif ce e1 e2) el
+  | wtq_for : forall el x n e,  well_formed_qexps bv (turn_qseq_lst e) ->  well_formed_qexp bv (qfor x n e) el
+with well_formed_qexps (bv:benv) : list qexp -> Prop :=
+    well_formed_qexps_empty : well_formed_qexps bv []
+  | well_formed_qexps_many : forall x xl, well_formed_qexp bv x xl -> well_formed_qexps bv xl -> well_formed_qexps bv (x :: xl).
+
+Definition inter_range (x : var) (n:nat) (y:var) (m:nat) :=
+     (x <= y < (x+n)) \/ (x < y + m <= (x + n)) \/ (y < x /\ x+n < y+m).
+
+Inductive diff_vars:  list (btype * var * nat) -> var -> nat -> Prop :=
+    diff_vars_empty : forall x n, diff_vars ([]) x n
+  | diff_vars_many : forall b y m yl x n, ~ inter_range x n y m -> diff_vars yl x n -> diff_vars ((b,y,m)::yl) x n.
+
+Inductive diff_var_lst : list (btype * var * nat) -> list (btype * var * nat) -> Prop :=
+   diff_var_lst_empty : forall l, diff_var_lst l []
+ | diff_var_lst_many : forall b x n l1 l2, diff_vars l2 x n -> diff_var_lst l1 ((b,x,n)::l2) -> diff_var_lst ((b,x,n)::l1) l2.
+
+Inductive well_formed_func (bv:benv) : list (btype * var * nat) -> list func -> Prop :=
+   well_formed_func_empty : forall olds, well_formed_func bv olds []
+ | well_formed_func_many : forall f args e rx olds xl, well_formed_qexps bv (turn_qseq_lst e) 
+               -> diff_var_lst ([]) (olds++args) -> well_formed_func bv olds ((f,args,e,rx)::xl).
+
+
+Definition is_qt (b:ttyp) := 
+   match b with TNor t => is_q t
+             | TPtr x n => is_q x
+   end.
+
+Definition par_eval_fc (size:nat) (bv:benv) (reg:reg) (b:btype) (fc:factor) := 
+   match fc with Var x => do re <- bv x @ if is_qt re then None else Some (reg (x,0))
+            | Num n => match b with Bl => Some (cut_n n 1)
+                                 | Nat => Some (cut_n n size)
+                                 | Flt => Some (cut_n n size)
+                       end
+   end.
+
+Definition par_eval_cfac (size:nat) (smap : qvar -> nat) (bv:benv) (reg:reg) (b:btype) (fc:cfac) := 
+   match fc with Nor x => par_eval_fc size bv reg b x
+        | Ptr x n => do v <- par_eval_fc size bv reg Nat n @
+                              if a_nat2fb v size <? smap (L x) then
+                               (do re <- bv (L x) @ if is_qt re then None else Some (reg (L x,a_nat2fb v size))) else None
+   end.
+
+Definition par_find_var (size:nat) (bv:benv) (reg:reg) (fc:cfac) :=
+       match fc with Nor (Var x) => Some (x,0)
+                  | Nor (Num x) => None
+                  | Ptr x n => do val <- par_eval_fc size bv reg Nat n @ Some (L x,a_nat2fb val size)
+       end.
+
+Definition get_vars (size:nat) (bv:benv) (reg:reg) (e:qexp) :=
+   match e with skip => Some ([])
+              | init b x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | nadd b x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | nsub b x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | nmul b x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | nqmul b x y z => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ 
+                                   do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
+              | fadd b x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+
+              | fsub b x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | fmul b x y z => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ 
+                                   do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
+              | qxor b x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | ndiv x y z => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ 
+                                   do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
+
+              | nmod x y z => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ 
+                                   do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
+              | nfac x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | fdiv x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | fnmul x y => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+
+              | ncsub x y z => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ 
+                                   do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
+              | ncadd x y z => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ 
+                                   do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
+              | ncmul x y z => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ 
+                                   do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
+              | fndiv x y z => do var1 <- par_find_var size bv reg x @
+                                  do var2 <- par_find_var size bv reg y @ 
+                                   do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
+
+              | qinv e => None
+              | call f x => do var1 <- (par_find_var size bv reg x) @ ret ([var1])
+              | qif ce e1 e2 => None
+              | qfor x n e => None
+              | qseq e1 e2 => None
+   end.
+
+
+Definition is_qinv (x:qexp) := match x with qinv e => True | _ => False end.
+
+Definition is_no_pass (x:qexp) := match x with qinv _ | qif _ _ _ | qfor _ _ _ | qseq _ _ => True | _ => False end.
+
+Definition intersection (l1 l2 : list (qvar * nat)) : list (qvar * nat) :=
+  List.filter (fun n => List.existsb (qdty_eq n) l2) l1.
+
+Lemma intersectionP l1 l2 n : In n (intersection l1 l2) <-> In n l1 /\ In n l2.
+Proof.
+unfold intersection.
+rewrite filter_In, existsb_exists; split.
+- intros [H1 [m [H2 e]]]; split; trivial.
+  apply qdty_eqb_eq in e. subst. easy.
+- intros [H1 H2]; split; trivial.
+  exists n. split. easy.
+  bdestruct (n =qd= n). easy. easy.
+Qed.
+
+
+Inductive inv_match (l:list (qvar * nat)) (size:nat) (bv:benv) (reg:reg) (x:qexp) : list qexp -> option (list qexp) -> Prop :=
+     inv_match_empty : inv_match l size bv reg x [] None
+    | inv_match_many_1 : forall y yl , x = y -> inv_match l size bv reg x (y::yl) (Some yl)
+    | inv_match_many_2 : forall y yl l' b, x <> y -> (get_vars size bv reg y) = Some l' -> intersection l l'  <> []
+                                 -> inv_match l size bv reg x yl b -> inv_match l size bv reg x (y::yl) b.
+
+Inductive inv_well_match_l (size:nat) (bv:benv) (reg:reg) : list qexp -> list qexp -> Prop :=
+     inv_well_match_empty : forall el, inv_well_match_l size bv reg [] el
+   | inv_well_match_many_1 : forall l e xl el el', get_vars size bv reg e = Some l ->
+             inv_match l size bv reg e el (Some el') -> 
+                inv_well_match_l size bv reg xl el'
+   | inv_well_match_many_2 : forall x xl el, is_no_pass x ->
+               inv_well_match_l size bv reg xl [] -> inv_well_match_l size bv reg (x::xl) el
+   | inv_well_match_many_3 : forall x xl el, ~ is_no_pass x ->
+               inv_well_match_l size bv reg xl (x::el) -> inv_well_match_l size bv reg (x::xl) el.
+
+Definition inv_well_match (size:nat) (bv:benv) (reg:reg) (e:qexp) : Prop :=
+    inv_well_match_l size bv reg (turn_qseq_lst e) [].
 
 
 (* Compilation from MiniQASM to VSQIR starts here. *)
@@ -995,6 +1257,8 @@ Proof.
   bdestruct (b <? a). simpl in H. inv H.
   lia.
 Qed.
+
+
 
 Definition compare_c (size:nat) (reg:reg) (x y : factor) (stack:var) (sn:nat) (op : nat -> nat -> bool) := 
     match x with Num n =>
