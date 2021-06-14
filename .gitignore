@@ -21,3 +21,6 @@ _build/
 
 # python temp directory
 __pycache__/
+
+# Nix shell
+shell.nix
