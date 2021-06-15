@@ -1,9 +1,12 @@
 Require Import Arith Vector Bvector Equality MSets OrderedTypeEx Lia.
 From QuickChick Require Import QuickChick.
-Require Import VSQIR.
+Require Import VSQIR Utilities.
 Import Vector (hd, tl).
+Import Decidability (dec).
+Import VSQIR (exp(..), pexp(..), CNOT).
 
 Module Nat_as_OT := Update_OT Nat_as_OT.
+(* Used for finite sets of variables *)
 Module VarSet := Make Nat_as_OT.
 Import VarSet.
 
@@ -13,6 +16,7 @@ Open Scope nat_scope.
 Open Scope bool_scope.
 Open Scope exp_scope.
 
+(* Bitwise xor *)
 Infix "(+)" := (BVxor _) (at level 50, left associativity).
 
 Definition show_bit b :=
@@ -21,6 +25,7 @@ Definition show_bit b :=
   | true => "1"
   end.
 
+(* Order is reversed because Bvectors are little-endian *)
 Fixpoint show_bvector' {n} : Bvector n -> string :=
   match n with
   | 0 => fun _ => ""
@@ -29,6 +34,7 @@ Fixpoint show_bvector' {n} : Bvector n -> string :=
 
 Instance show_bvector n : Show (Bvector n) := {| show := show_bvector' |}.
 
+(* Lists Bvectors with one "1" flipped to "0" *)
 Fixpoint shrink_bvector' {n} : Bvector n -> list (Bvector n) :=
   match n with
   | 0 => fun _ => nil
@@ -44,9 +50,11 @@ Fixpoint shrink_bvector' {n} : Bvector n -> list (Bvector n) :=
 Instance shrink_bvector n : Shrink (Bvector n) :=
   {| shrink := shrink_bvector' |}.
 
+(* Uniformly randomly selected boolean *)
 Definition gen_bool :=
-  elems_ false (Datatypes.cons false (Datatypes.cons true Datatypes.nil)).
+  elems_ false (false :: true :: nil)%list.
 
+(* Uniformly randomly selected Bvector *)
 Fixpoint gen_bvector' {n} : G (Bvector n) :=
   match n with
   | 0 => returnGen Bnil
@@ -56,12 +64,14 @@ Fixpoint gen_bvector' {n} : G (Bvector n) :=
 
 Instance gen_bvector n : Gen (Bvector n) := {| arbitrary := gen_bvector' |}.
 
+(* The natural number represented in binary in the sequence of bits *)
 Fixpoint bvector2nat {n} : Bvector n -> nat :=
   match n with
   | 0 => fun _ => 0
   | S n' => fun v => Nat.b2n (hd v) + 2 * bvector2nat (tl v)
   end.
 
+(* Represents the natural number in binary, trucating if necessary *)
 Fixpoint nat2bvector n : nat -> Bvector n :=
   match n with
   | 0 => fun _ => Bnil
@@ -84,35 +94,42 @@ Proof.
   - rewrite Nat.add_b2n_double_div2. apply IHn.
 Qed.
 
+(* Rotation of 0, multiplication by 1 *)
 Definition zero_angle : rz_val :=
   fun _ => false.
 
+(* A single-qubit state representing either |0> or |1> *)
 Definition basis_val b := nval b zero_angle.
 
+(* The single-qubit state |0> *)
 Definition zero_val := basis_val false.
 
+(* A program state is a mapping from positions to values *)
 Definition state := posi -> val.
 
+(* A program state with all qubits set to |0>, used for initialization *)
 Definition zero_state : state := fun p => zero_val.
 
 Notation "x |-> vx , st" :=
     (eupdate st x vx) (at level 100, vx at next level, right associativity).
 Infix "|->" := (eupdate zero_state) (at level 100).
 
+(* Updates a whole variable rather than a single position *)
 Reserved Notation "x |=> vx , st" 
     (at level 100, vx at next level, right associativity).
-Fixpoint update_var {n} (st : state) x (vx : Bvector n) :=
-  match n, vx with
-  | 0, _ => st
-  | S n', b :: vx' => (x |=> vx', (x, n') |-> basis_val b, st)
-  | S _, _ => st
+Fixpoint update_var {n} (st : state) x : Bvector n -> state :=
+  match n with
+  | 0 => fun _ => st
+  | S n' => fun vx => (x |=> tl vx, (x, n') |-> basis_val (hd vx), st)
   end
 where "x |=> vx , st" := (update_var st x vx).
 
 Infix "|=>" := (update_var zero_state) (at level 100).
 
+(* A finite set of variables (nats) *)
 Definition var_set := VarSet.t.
 
+(* Converts a decidable Prop to a boolean representing the decision *)
 Definition dec2bool P `{H : Dec P} : bool :=
   let '{| dec := d |} := H in
   if d then true else false.
@@ -124,6 +141,7 @@ Proof.
   discriminate.
 Qed.
 
+(* A For_all Prop is decidable if the sub-Prop is decidable for all variables *)
 Instance dec_var_set_for_all {P : var -> Prop} `{forall x, Dec (P x)} :
   forall vars, Dec (For_all P vars).
 Proof.
@@ -139,11 +157,14 @@ Proof.
     + intros x Hx. apply dec2bool_correct. apply Hc. assumption.
 Defined.
 
+(* An environment mapping variables to their sizes *)
 Definition f_env := var -> nat.
 
+(* A Prop is true for every position in an environment *)
 Definition for_all_env (P : posi -> Prop) (vars : var_set) (env : f_env) := 
   For_all (fun x => forall i, i < env x -> P (x, i)) vars.
 
+(* It's decidable whether a Prop is true for a finite number of nats *)
 Definition dec_fin :
   forall (P : nat -> Prop) `{forall i, Dec (P i)} n,
   Dec (forall i, i < n -> P i).
@@ -168,6 +189,7 @@ Proof.
   apply dec_var_set_for_all.
 Defined.
 
+(* Two rotations can be equivalent up to a given precision *)
 Definition rz_val_equiv prec (z z' : rz_val) :=
   forall i, i < prec -> z i = z' i.
 
@@ -178,6 +200,7 @@ Proof.
   intros i. apply Eq__Dec.
 Defined.
 
+(* Value equivalence is based on rotation equivalence up to a given precision *)
 Inductive val_equiv prec : val -> val -> Prop :=
   | val_equiv_nval b z z' :
       rz_val_equiv prec z z' -> val_equiv prec (nval b z) (nval b z')
@@ -209,9 +232,11 @@ Proof.
     left. constructor; assumption.
 Defined.
     
+(* States are equivalent if all values in the environment are equivalent *)
 Definition st_equiv vars env prec (st st' : state) :=
   for_all_env (fun x => val_equiv prec (st x) (st' x)) vars env.
 
+(* Get the variables in an exp *)
 Fixpoint get_exp_vars e :=
   match e with
   | SKIP p => singleton (fst p)
@@ -228,6 +253,7 @@ Fixpoint get_exp_vars e :=
   | e1; e2 => union (get_exp_vars e1) (get_exp_vars e2)
   end.
 
+(* Get the variables in a pexp *)
 Fixpoint get_vars e :=
   match e with
   | Exp e' => get_exp_vars e'
@@ -238,6 +264,7 @@ Fixpoint get_vars e :=
   | e1;; e2 => union (get_vars e1) (get_vars e2)
   end.
 
+(* Get the maximum precision in rotations of an exp *)
 Fixpoint get_exp_prec e :=
   match e with
   | SKIP _ => 0
@@ -254,6 +281,7 @@ Fixpoint get_exp_prec e :=
   | e1; e2 => max (get_exp_prec e1) (get_exp_prec e2)
   end.
 
+(* Get the maximum precision in rotations of a pexp *)
 Fixpoint get_prec (env : f_env) e :=
   match e with
   | Exp e' => get_exp_prec e'
@@ -264,14 +292,22 @@ Fixpoint get_prec (env : f_env) e :=
   | e1;; e2 => max (get_prec env e1) (get_prec env e2)
   end.
 
+(* Is the pexp an oracle for a function from Bvectors to Bvectors? *)
 Definition is_oracle x y env (f : Bvector (env x) -> Bvector (env y)) e :=
   forall vx vy,
   st_equiv (get_vars e) env (get_prec env e)
       (prog_sem env e (x |=> vx, y |=> vy)) (x |=> vx, y |=> vy (+) f vx).
 
+(* Is the pexp an oracle for a function from Bvectors to bools? *)
+Definition is_oracle_bool x y env (f : Bvector (env x) -> bool) e :=
+  env y = 1 /\
+  is_oracle x y env (fun v => Vector.const (f v) _) e.
+
+(* Is the pexp an oracle for a function from nats to nats? *)
 Definition is_oracle_nat x y env (f : nat -> nat) e :=
   is_oracle x y env (fun v => nat2bvector (env y) (f (bvector2nat v))) e.
 
+(* Is the pexp an oracle for a function from nats to bools? *)
 Definition is_oracle_nat_bool x y env (f : nat -> bool) e :=
   env y = 1 /\
   is_oracle x y env (fun v => Vector.const (f (bvector2nat v)) _) e.
@@ -282,24 +318,28 @@ Instance checkable_and {P Q : Prop} `{Checkable P} `{Checkable Q} :
     checker '(conj p q) := conjoin (checker p :: checker q :: nil)%list
   |}.
 
+(* Example: an oracle for the "not" function *)
 Module NotExample.
 
   Example x := 0.
   Example y := 1.
 
-  Example not_function := Nat.even.
+  (* Given a bvector of length 1, negate its only element *)
+  Example not_function (vx : Bvector 1) := negb (hd vx).
 
+  (* An oracle for the "not" function *)
   Example not_oracle := Exp (X (x, 0); CNOT (x, 0) (y, 0); X (x, 0)).
 
+  (* The environment assumed by the "not" oracle *)
   Example not_oracle_env :=
     fun x' => if (x' =? x) || (x' =? y) then 1 else 0.
 
   Conjecture not_oracle_correct :
-    is_oracle_nat_bool x y not_oracle_env not_function not_oracle.
+    is_oracle_bool x y not_oracle_env not_function not_oracle.
 
 End NotExample.
 
+(* Test the oracle (must be done outside of the module) *)
 (*
 QuickChick NotExample.not_oracle_correct.
 *)
-
