@@ -15,66 +15,30 @@ In the following we will prove the correctness in case of equal bases and the pr
 *)
 Require Import Lists.List.
 Import ListNotations.
-
-Notation bit_string := (list bool).
-Notation combined_bit_string := (list (bool * bool * bool)).
-
-Fixpoint zip {A} {B} (l1 : list A) (l2 : list B) :=
-  match l1, l2 with
-  | [], _ => []
-  | _, []  => []
-  | h1::t1, h2::t2 => (h1, h2) :: (zip t1 t2)
-  end.
-
-
-Lemma length_add: forall A (l1 : list A) n, length l1 = S n -> (exists l (a: A), length l = n /\ a::l = l1).
-Proof.
-  intros.
-  induction l1.
-  - contradict H.
-    auto.
-  - exists l1.
-    exists a.
-    split.
-    + simpl in H.
-      apply eq_add_S in H.
-      assumption.
-    + reflexivity.
-Qed.
-
-Theorem zip_same_length: forall A B (l1 : list A) (l2 : list B) n, length l1 = n -> length l2 = n -> length (zip l1 l2) = n.
-Proof.
-  intros.
-  generalize dependent l1.
-  generalize dependent l2.
-  induction n.
-  - intros.
-    apply length_zero_iff_nil in H.
-    apply length_zero_iff_nil in H0.
-    subst.
-    auto.
-  - intros.
-    apply length_add in H.
-    destruct H.
-    destruct H.
-    destruct H.
-    apply length_add in H0.
-    destruct H0.
-    destruct H0.
-    destruct H0.
-    rewrite <- H1.
-    rewrite <- H2.
-    simpl.
-    apply eq_S.
-    apply IHn; assumption. 
-Qed.
-
-
 Require Import QWIRE.Dirac.
 Require Import UnitarySem.
 Require Import DensitySem.
 Require Import SQIR.
 Local Open Scope ucom.
+Require Import Utilities.
+
+Notation bit_string := (list bool).
+Notation combined_bit_string := (list (bool * bool * bool)).
+
+Lemma length_add: forall A (l1 : list A) n, length l1 = S n -> (exists l (a: A), length l = n /\ a::l = l1).
+Proof.
+  intros A [] n; [discriminate | eauto].
+Qed.
+
+Theorem combine_same_length: forall A B (l1 : list A) (l2 : list B) n, length l1 = n -> length l2 = n -> length (combine l1 l2) = n.
+Proof.
+  intros.
+  Search (combine _ _).
+  rewrite combine_length.
+  rewrite H, H0.
+  apply min_l.
+  constructor.
+Qed.
 
 Definition alice_bit_manip (base : bool) (data : bool) (n i : nat) : base_ucom n :=
   (if data then X i else SKIP);
@@ -120,18 +84,18 @@ end.
 Definition bob_measure {U} n : com U n := bob_measure_helper n n.
 
 Definition circuit (alice_data alice_base bob_base : bit_string) (n : nat) :=
-  alice (zip alice_base alice_data) n; bob bob_base n; bob_measure n.
+  alice (combine alice_base alice_data) n; bob bob_base n; bob_measure n.
 (* The initial circuit layout turned out to be a bad design, since the interwoven pattern made inductive reasoning very challanging. Hence, this layout exists soely for documentation and as an example of what NOT to do. - See circuit' for a better definition *)
 
 Local Close Scope com_scope.
 
 Definition circuit' (alice_data alice_base bob_base : bit_string) (n : nat) :=
-  circuit'_helper (zip (zip alice_data alice_base) bob_base) n 0.
+  circuit'_helper (combine (combine alice_data alice_base) bob_base) n 0.
 
 
 Lemma MmultHHX: (hadamard × hadamard × σx) = σx.
 Proof.
-  solve_matrix.
+   rewrite MmultHH, Mmult_1_l; auto with wf_db.
 Qed.
 
 
@@ -146,8 +110,7 @@ Proof.
       rewrite pad_id.
       * reflexivity.
       * assumption.
-    + apply WF_pad.
-      apply WF_hadamard.
+    + auto with wf_db.
   - assumption.
   - repeat rewrite Mmult_1_l; try apply WF_I. 
     reflexivity.
@@ -163,8 +126,7 @@ Proof.
     restore_dims.
     rewrite MmultHHX.
     reflexivity.
-  - repeat rewrite Mmult_1_l; try apply WF_pad; try apply WF_σx.
-    reflexivity.
+  - repeat rewrite Mmult_1_l; auto with wf_db.
   - assumption.
 Qed.
 
@@ -173,12 +135,10 @@ Lemma circuit'_individual_qubit_non_meas_diff_base_false: forall base_a base_b n
 Proof.
   intros.
   destruct base_a, base_b; subst; try contradiction; simpl; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP.
-  - rewrite Mmult_1_r; try apply WF_pad; try apply WF_hadamard.
-    rewrite Mmult_1_l; try apply WF_pad; try apply WF_hadamard.
-    reflexivity.
+  - rewrite Mmult_1_r; auto with wf_db.
+    rewrite Mmult_1_l; auto with wf_db.
   - assumption.
-  - repeat (rewrite Mmult_1_r; try apply WF_pad; try apply WF_I; try apply WF_hadamard).
-    reflexivity.
+  - repeat (rewrite Mmult_1_r; auto with wf_db).
   - assumption.
 Qed.
 
@@ -189,13 +149,9 @@ Proof.
   - rewrite Mmult_1_l.
     + rewrite pad_mult.
       reflexivity.
-    + rewrite pad_mult.
-      apply WF_pad.
-      apply WF_mult.
-      * apply WF_hadamard.
-      * apply WF_σx.
+    + rewrite pad_mult; auto with wf_db.
   - assumption.
-  - rewrite Mmult_1_l; try apply WF_pad; try apply WF_σx.
+  - rewrite Mmult_1_l; auto with wf_db.
     rewrite pad_mult.
     reflexivity.
   - assumption.
@@ -210,6 +166,7 @@ Fixpoint uc_eval_circuit_same_base data :=
   end.
 
 Lemma i_1_i_S: forall (i j: nat), i + 1 <=? i + S j = true.
+Proof.
   intros.
   induction j.
   apply Nat.leb_refl.
@@ -251,7 +208,7 @@ Fixpoint output_state n (l: combined_bit_string) : Vector (2 ^ n) :=
   | (d, ab, bb)::l' => output_state_qubit_i d ab bb ⊗ output_state (n-1) l'
   end.
 
-Theorem output_target_equal_base_equal: forall n data base, length data = n -> length base = n -> target_state n data = output_state n (zip (zip data base) base).
+Theorem output_target_equal_base_equal: forall n data base, length data = n -> length base = n -> target_state n data = output_state n (combine (combine data base) base).
 Proof.
   intro n.
   induction n; intros.
@@ -264,15 +221,20 @@ Proof.
 Qed.
 
 Lemma kron_dist_mult_id : forall n m (B C : Square m) , (I n) ⊗ (B × C) = ((I n) ⊗ B) × ((I n) ⊗ C).
+Proof.
   (* This lemma could potentially be extracted, since it seems quite useful *)
  intros.
  rewrite kron_mixed_product.
- rewrite Mmult_1_l.
- reflexivity.
- apply WF_I.
+ rewrite Mmult_1_l; auto with wf_db.
 Qed.
 
 Opaque circuit'_qubit_i_non_meas. (* For usage of lemmata *)
+
+Local Hint Resolve diff_true_false : core.
+Local Hint Resolve diff_false_true : core.
+Local Hint Resolve gt_Sn_O : core.
+Local Hint Resolve Nat.le_0_l : core.
+Local Hint Resolve Nat.lt_0_succ : core.
 
 Lemma circuit'_helper_growth_i: forall n l i, (length l = S n) -> uc_eval(circuit'_helper l ((S i) + (S n)) (S i)) =  I (2^(S i)) ⊗ uc_eval (circuit'_helper l (S n) 0).
 Proof.
@@ -284,884 +246,111 @@ Proof.
     * destruct p.
       destruct p.
       destruct b, b1, b0;
-      simpl.
-      rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
-      restore_dims.
-      rewrite unfold_pad.
-      rewrite unfold_pad.
-      simpl.
-      rewrite denote_SKIP.
-      rewrite denote_SKIP.
-      simpl.
+      simpl;      
+      try (rewrite 2 circuit'_individual_qubit_non_meas_same_base_true; auto);
+      try (rewrite 2 circuit'_individual_qubit_non_meas_same_base_false; auto);
+      try (rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true; auto);
+      try (rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false; auto);
+      restore_dims;
+      try rewrite 2 unfold_pad; auto;
+      try rewrite 2 denote_SKIP; auto;
+      simpl;
       solve_matrix.
-      auto.
-      auto.
-      auto.
-      auto.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
-        restore_dims.
-        simpl.
-        rewrite denote_SKIP.
-        rewrite denote_SKIP.
-        solve_matrix.
-        auto.
-        auto.
-        auto.
-        auto.
-        auto.
-        auto.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
-        restore_dims.
-        rewrite 2 denote_SKIP.
-        rewrite 2 unfold_pad.
-        simpl.
-        solve_matrix.
-        auto.
-        auto.
-        auto.
-        auto.
-        apply diff_false_true.
-        auto.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
-        restore_dims.
-        rewrite 2 denote_SKIP.
-        rewrite 2 unfold_pad.
-        simpl.
-        solve_matrix.
-        auto.
-        auto.
-        apply diff_false_true.
-        auto.
-        apply diff_false_true.
-        auto.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
-        restore_dims.
-        rewrite 2 denote_SKIP.
-        rewrite 2 unfold_pad.
-        simpl.
-        solve_matrix.
-        auto.
-        auto.
-        apply diff_true_false.
-        auto.
-        apply diff_true_false.
-        auto.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
-        restore_dims.
-        rewrite 2 denote_SKIP.
-        rewrite 2 unfold_pad.
-        simpl.
-        solve_matrix.
-        auto.
-        auto.
-        apply diff_true_false.
-        auto.
-        apply diff_true_false.
-        auto.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
-        restore_dims.
-        rewrite 2 denote_SKIP.
-        rewrite 2 unfold_pad.
-        simpl.
-        solve_matrix.
-        auto.
-        auto.
-        auto.
-        auto.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
-        rewrite 2 denote_SKIP.
-        solve_matrix.
-        auto.
-        auto.
-        auto.
-        auto.
-        auto.
-        auto.
     * simpl.
       destruct p.
       destruct p.
-      destruct b, b0, b1.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
-        rewrite unfold_pad.
-        simpl.
-        rewrite Nat.leb_refl.
-        rewrite 2 denote_SKIP.
-        rewrite unfold_pad.
-        simpl.
-        restore_dims.
-        repeat rewrite kron_1_r.
-        repeat rewrite kron_1_l.
-        repeat rewrite Mmult_1_r.
-        rewrite <- kron_1_r.
-        restore_dims.
-        rewrite Nat.sub_diag.
-        rewrite Nat.pow_0_r.
-        restore_dims.
-        reflexivity.
-        apply WF_σx.
-        apply WF_kron; try reflexivity.
-        apply WF_kron; try reflexivity.
-        apply WF_I.
-        apply WF_σx.
-        apply WF_I.
-        apply WF_σx.
-        auto.
-        apply gt_Sn_O.
-        auto.
-        apply gt_Sn_O.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
-        rewrite unfold_pad.
-        simpl.
-        rewrite Nat.leb_refl.
-        rewrite 2 denote_SKIP.
-        rewrite unfold_pad.
-        simpl.
-        restore_dims.
-        repeat rewrite kron_1_r.
-        repeat rewrite kron_1_l.
-        repeat rewrite Mmult_1_r.
-        rewrite <- kron_1_r.
-        restore_dims.
-        rewrite Nat.sub_diag.
-        rewrite Nat.pow_0_r.
-        restore_dims.
-        reflexivity.
-        apply WF_mult.
-        apply WF_hadamard.
-        apply WF_σx.
-        apply WF_kron; try reflexivity.
-        apply WF_kron; try reflexivity.
-        apply WF_I.
-        apply WF_mult.
-        apply WF_hadamard.
-        apply WF_σx.
-        apply WF_I.
-        apply WF_mult.
-        apply WF_hadamard.
-        apply WF_σx.
-        auto.
-        apply gt_Sn_O.
-        auto.
-        apply gt_Sn_O.
-        apply diff_false_true.
-        apply gt_Sn_O.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
-        simpl.
-        rewrite 2 denote_SKIP.
-        simpl.
-        restore_dims.
-        repeat rewrite kron_1_r.
-        repeat rewrite kron_1_l.
-        repeat rewrite Mmult_1_r.
-        rewrite id_kron.
-        repeat rewrite Nat.add_0_r.
-        repeat rewrite double_mult.
-        rewrite mult_comm.
-        rewrite <- pow_two_succ_r.
-        reflexivity.
-        apply WF_I.
-        apply WF_I.
-        auto.
-        apply gt_Sn_O.
-        auto.
-        auto.
-        apply gt_Sn_O.
-        rewrite Nat.add_1_r.
-        constructor.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
-        rewrite unfold_pad.
-        simpl.
-        rewrite Nat.leb_refl.
-        rewrite 2 denote_SKIP.
-        rewrite unfold_pad.
-        simpl.
-        restore_dims.
-        repeat rewrite kron_1_r.
-        repeat rewrite kron_1_l.
-        repeat rewrite Mmult_1_r.
-        rewrite <- kron_1_r.
-        restore_dims.
-        rewrite Nat.sub_diag.
-        rewrite Nat.pow_0_r.
-        restore_dims.
-        reflexivity.
-        apply WF_hadamard.
-        apply WF_kron; try reflexivity.
-        apply WF_kron; try reflexivity.
-        apply WF_I.
-        apply WF_hadamard.
-        apply WF_I.
-        apply WF_hadamard.
-        auto.
-        apply gt_Sn_O.
-        apply diff_false_true.
-        auto.
-        apply diff_false_true.
-        apply gt_Sn_O.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
-        rewrite unfold_pad.
-        simpl.
-        rewrite Nat.leb_refl.
-        rewrite 2 denote_SKIP.
-        rewrite unfold_pad.
-        simpl.
-        restore_dims.
-        repeat rewrite kron_1_r.
-        repeat rewrite kron_1_l.
-        repeat rewrite Mmult_1_r.
-        rewrite <- kron_1_r.
-        restore_dims.
-        rewrite Nat.sub_diag.
-        rewrite Nat.pow_0_r.
-        restore_dims.
-        reflexivity.
-        apply WF_mult.
-        apply WF_hadamard.
-        apply WF_σx.
-        apply WF_kron; try reflexivity.
-        apply WF_kron; try reflexivity.
-        apply WF_I.
-        apply WF_mult.
-        apply WF_hadamard.
-        apply WF_σx.
-        apply WF_I.
-        apply WF_mult.
-        apply WF_hadamard.
-        apply WF_σx.
-        auto.
-        apply gt_Sn_O.
-        auto.
-        apply diff_true_false.
-        auto.
-        apply diff_true_false.
-        apply gt_Sn_O.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
-        rewrite unfold_pad.
-        simpl.
-        rewrite Nat.leb_refl.
-        rewrite 2 denote_SKIP.
-        rewrite unfold_pad.
-        simpl.
-        restore_dims.
-        repeat rewrite kron_1_r.
-        repeat rewrite kron_1_l.
-        repeat rewrite Mmult_1_r.
-        rewrite <- kron_1_r.
-        restore_dims.
-        rewrite Nat.sub_diag.
-        rewrite Nat.pow_0_r.
-        restore_dims.
-        reflexivity.
-        apply WF_σx.
-        apply WF_kron; try reflexivity.
-        apply WF_kron; try reflexivity.
-        apply WF_I.
-        apply WF_σx.
-        apply WF_I.
-        apply WF_σx.
-        auto.
-        apply gt_Sn_O.
-        auto.
-        apply gt_Sn_O.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
-        rewrite unfold_pad.
-        simpl.
-        rewrite Nat.leb_refl.
-        rewrite 2 denote_SKIP.
-        rewrite unfold_pad.
-        simpl.
-        restore_dims.
-        repeat rewrite kron_1_r.
-        repeat rewrite kron_1_l.
-        repeat rewrite Mmult_1_r.
-        rewrite <- kron_1_r.
-        restore_dims.
-        rewrite Nat.sub_diag.
-        rewrite Nat.pow_0_r.
-        restore_dims.
-        reflexivity.
-        apply WF_hadamard.
-        apply WF_kron; try reflexivity.
-        apply WF_kron; try reflexivity.
-        apply WF_I.
-        apply WF_hadamard.
-        apply WF_I.
-        apply WF_hadamard.
-        auto.
-        apply gt_Sn_O.
-        apply diff_true_false.
-        auto.
-        apply diff_true_false.
-        apply gt_Sn_O.
-      + simpl.
-        rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
-        simpl.
-        rewrite 2 denote_SKIP.
-        simpl.
-        restore_dims.
-        repeat rewrite kron_1_r.
-        repeat rewrite kron_1_l.
-        repeat rewrite Mmult_1_r.
-        rewrite id_kron.
-        repeat rewrite Nat.add_0_r.
-        repeat rewrite double_mult.
-        rewrite mult_comm.
-        rewrite <- pow_two_succ_r.
-        reflexivity.
-        apply WF_I.
-        apply WF_I.
-        auto.
-        apply gt_Sn_O.
-        auto.
-        auto.
-        apply gt_Sn_O.
-        rewrite Nat.add_1_r.
-        constructor.
+      destruct b, b0, b1;
+      simpl;
+      try rewrite 2 circuit'_individual_qubit_non_meas_same_base_true;
+      try rewrite 2 circuit'_individual_qubit_non_meas_same_base_false;
+      try rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true;
+      try rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false;
+      auto;
+      repeat rewrite unfold_pad;
+      repeat rewrite denote_SKIP;
+      auto;
+      simpl;
+      Msimpl;
+      try rewrite Nat.leb_refl;
+      repeat rewrite Nat.sub_diag;
+      repeat rewrite Nat.pow_0_r;
+      Msimpl;
+      auto with wf_db;
+      repeat rewrite Nat.add_0_r;
+      try (rewrite id_kron;
+      repeat rewrite Nat.add_0_r;
+      repeat rewrite double_mult;
+      rewrite mult_comm;
+      rewrite <- pow_two_succ_r);
+      auto;
+      rewrite Nat.add_1_r;
+      constructor.
   - destruct l; try discriminate.
     simpl.
     destruct p.
     destruct p.
     simpl.
-    destruct b, b0, b1.
-    + rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
-      rewrite 2 unfold_pad.
-      simpl.
-      rewrite i_1_i_S.
-      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
-      rewrite IHn.
-      replace (S (S n)) with (1 + (S n))%nat. 
-      rewrite IHn.
-      rewrite kron_1_l.
-      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
-      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
-      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
-      restore_dims.
-      rewrite kron_dist_mult_id.
-      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
-      rewrite id_kron.
-      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
-      rewrite <- kron_assoc.
-      restore_dims.
-      reflexivity.
-      apply WF_I.
-      apply WF_σx.
-      apply WF_I.
-      rewrite <- Nat.pow_add_r.
-      replace (S i + 1)%nat with (S (S i)).
-      reflexivity.
-      rewrite Nat.add_1_r.
-      reflexivity.
-      apply WF_I.
-      apply WF_I.
-      apply WF_uc_eval.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      rewrite Nat.add_assoc.
-      rewrite Nat.add_comm.
-      rewrite Nat.add_sub.
-      reflexivity.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      apply WF_σx.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      auto.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      rewrite Nat.add_succ_l.
-      apply eq_S.
-      replace (S i) with (i + 1)%nat.
-      replace (S (S n)) with (1 + (S n))%nat.
-      rewrite <- Nat.add_assoc.
-      reflexivity.
-      auto.
-      apply Nat.add_1_r.
-      apply gt_Sn_O.
-      apply gt_Sn_O.
-    + rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
-      remember (hadamard × σx) as hx.
-      rewrite 2 unfold_pad.
-      simpl.
-      rewrite i_1_i_S.
-      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
-      rewrite IHn.
-      replace (S (S n)) with (1 + (S n))%nat. 
-      rewrite IHn.
-      rewrite kron_1_l.
-      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
-      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
-      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
-      restore_dims.
-      rewrite kron_dist_mult_id.
-      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
-      rewrite id_kron.
-      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
-      rewrite <- kron_assoc.
-      restore_dims.
-      reflexivity.
-      apply WF_I.
-      subst.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      apply WF_I.
-      rewrite <- Nat.pow_add_r.
-      replace (S i + 1)%nat with (S (S i)).
-      reflexivity.
-      rewrite Nat.add_1_r.
-      reflexivity.
-      apply WF_I.
-      apply WF_I.
-      apply WF_uc_eval.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      rewrite Nat.add_assoc.
-      rewrite Nat.add_comm.
-      rewrite Nat.add_sub.
-      reflexivity.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      subst.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      auto.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      rewrite Nat.add_succ_l.
-      apply eq_S.
-      replace (S i) with (i + 1)%nat.
-      replace (S (S n)) with (1 + (S n))%nat.
-      rewrite <- Nat.add_assoc.
-      reflexivity.
-      auto.
-      apply Nat.add_1_r.
-      apply diff_false_true.
-      apply gt_Sn_O.
-      apply diff_false_true.
-      apply gt_Sn_O.
-    + rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
-      simpl.
-      repeat rewrite Mmult_1_l.
-      repeat rewrite Mmult_1_r.
-      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
-      rewrite IHn.
-      replace (S (S n)) with (1 + (S n))%nat. 
-      rewrite IHn.
-      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
-      restore_dims.
-      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
-      rewrite id_kron.
-      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
-      restore_dims.
-      reflexivity.
-      rewrite mult_comm.
-      rewrite Nat.pow_1_r.
-      rewrite pow_two_succ_r.
-      replace (S i + 1)%nat with (S (S i)).
-      reflexivity.
-      rewrite Nat.add_1_r.
-      reflexivity.
-      apply WF_I.
-      apply WF_I.
-      apply WF_uc_eval.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      auto.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      replace (S i) with (i + 1)%nat.
-      replace (S (S n)) with (1 + (S n))%nat.
-      rewrite plus_Sn_m.
-      rewrite <- Nat.add_assoc.
-      reflexivity.
-      auto.
-      apply Nat.add_1_r.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      apply WF_uc_eval.
-      apply gt_Sn_O.
-      apply lt_O_Sn.
-      apply gt_Sn_O.
-      constructor.
-      replace (i + S (S n))%nat with (S (S (i +n)))%nat.
-      apply le_n_S.
-      apply le_n_S.
-      apply le_plus_l.
-      rewrite <- Nat.add_succ_comm.
-      rewrite <- Nat.add_succ_comm.
-      rewrite plus_Sn_m.
-      rewrite plus_Sn_m.
-      reflexivity.
-    + rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
-      rewrite 2 unfold_pad.
-      simpl.
-      rewrite i_1_i_S.
-      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
-      rewrite IHn.
-      replace (S (S n)) with (1 + (S n))%nat. 
-      rewrite IHn.
-      rewrite kron_1_l.
-      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
-      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
-      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
-      restore_dims.
-      rewrite kron_dist_mult_id.
-      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
-      rewrite id_kron.
-      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
-      rewrite <- kron_assoc.
-      restore_dims.
-      reflexivity.
-      apply WF_I.
-      apply WF_hadamard.
-      apply WF_I.
-      rewrite <- Nat.pow_add_r.
-      replace (S i + 1)%nat with (S (S i)).
-      reflexivity.
-      rewrite Nat.add_1_r.
-      reflexivity.
-      apply WF_I.
-      apply WF_I.
-      apply WF_uc_eval.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      rewrite Nat.add_assoc.
-      rewrite Nat.add_comm.
-      rewrite Nat.add_sub.
-      reflexivity.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      apply WF_hadamard.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      auto.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      rewrite Nat.add_succ_l.
-      apply eq_S.
-      replace (S i) with (i + 1)%nat.
-      replace (S (S n)) with (1 + (S n))%nat.
-      rewrite <- Nat.add_assoc.
-      reflexivity.
-      auto.
-      apply Nat.add_1_r.
-      apply diff_false_true.
-      apply gt_Sn_O.
-      apply diff_false_true.
-      apply gt_Sn_O.
-    + rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true.
-      remember (hadamard × σx) as hx.
-      rewrite 2 unfold_pad.
-      simpl.
-      rewrite i_1_i_S.
-      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
-      rewrite IHn.
-      replace (S (S n)) with (1 + (S n))%nat. 
-      rewrite IHn.
-      rewrite kron_1_l.
-      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
-      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
-      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
-      restore_dims.
-      rewrite kron_dist_mult_id.
-      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
-      rewrite id_kron.
-      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
-      rewrite <- kron_assoc.
-      restore_dims.
-      reflexivity.
-      apply WF_I.
-      subst.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      apply WF_I.
-      rewrite <- Nat.pow_add_r.
-      replace (S i + 1)%nat with (S (S i)).
-      reflexivity.
-      rewrite Nat.add_1_r.
-      reflexivity.
-      apply WF_I.
-      apply WF_I.
-      apply WF_uc_eval.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      rewrite Nat.add_assoc.
-      rewrite Nat.add_comm.
-      rewrite Nat.add_sub.
-      reflexivity.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      subst.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      auto.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      rewrite Nat.add_succ_l.
-      apply eq_S.
-      replace (S i) with (i + 1)%nat.
-      replace (S (S n)) with (1 + (S n))%nat.
-      rewrite <- Nat.add_assoc.
-      reflexivity.
-      auto.
-      apply Nat.add_1_r.
-      apply diff_true_false.
-      apply gt_Sn_O.
-      apply diff_true_false.
-      apply gt_Sn_O. 
-    + rewrite 2 circuit'_individual_qubit_non_meas_same_base_true.
-      rewrite 2 unfold_pad.
-      simpl.
-      rewrite i_1_i_S.
-      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
-      rewrite IHn.
-      replace (S (S n)) with (1 + (S n))%nat. 
-      rewrite IHn.
-      rewrite kron_1_l.
-      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
-      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
-      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
-      restore_dims.
-      rewrite kron_dist_mult_id.
-      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
-      rewrite id_kron.
-      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
-      rewrite <- kron_assoc.
-      restore_dims.
-      reflexivity.
-      apply WF_I.
-      apply WF_σx.
-      apply WF_I.
-      rewrite <- Nat.pow_add_r.
-      replace (S i + 1)%nat with (S (S i)).
-      reflexivity.
-      rewrite Nat.add_1_r.
-      reflexivity.
-      apply WF_I.
-      apply WF_I.
-      apply WF_uc_eval.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      rewrite Nat.add_assoc.
-      rewrite Nat.add_comm.
-      rewrite Nat.add_sub.
-      reflexivity.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      apply WF_σx.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      auto.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      rewrite Nat.add_succ_l.
-      apply eq_S.
-      replace (S i) with (i + 1)%nat.
-      replace (S (S n)) with (1 + (S n))%nat.
-      rewrite <- Nat.add_assoc.
-      reflexivity.
-      auto.
-      apply Nat.add_1_r.
-      apply gt_Sn_O.
-      apply gt_Sn_O.
-    + rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false.
-      rewrite 2 unfold_pad.
-      simpl.
-      rewrite i_1_i_S.
-      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
-      rewrite IHn.
-      replace (S (S n)) with (1 + (S n))%nat. 
-      rewrite IHn.
-      rewrite kron_1_l.
-      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
-      replace ((i + (1 + S n) - (i + 1)))%nat with (S n).
-      replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat.
-      restore_dims.
-      rewrite kron_dist_mult_id.
-      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
-      rewrite id_kron.
-      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
-      rewrite <- kron_assoc.
-      restore_dims.
-      reflexivity.
-      apply WF_I.
-      apply WF_hadamard.
-      apply WF_I.
-      rewrite <- Nat.pow_add_r.
-      replace (S i + 1)%nat with (S (S i)).
-      reflexivity.
-      rewrite Nat.add_1_r.
-      reflexivity.
-      apply WF_I.
-      apply WF_I.
-      apply WF_uc_eval.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      rewrite Nat.add_assoc.
-      rewrite Nat.add_comm.
-      rewrite Nat.add_sub.
-      reflexivity.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      apply WF_hadamard.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      auto.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      rewrite Nat.add_succ_l.
-      apply eq_S.
-      replace (S i) with (i + 1)%nat.
-      replace (S (S n)) with (1 + (S n))%nat.
-      rewrite <- Nat.add_assoc.
-      reflexivity.
-      auto.
-      apply Nat.add_1_r.
-      apply diff_true_false.
-      apply gt_Sn_O.
-      apply diff_true_false.
-      apply gt_Sn_O.
-    + rewrite 2 circuit'_individual_qubit_non_meas_same_base_false.
-      simpl.
-      repeat rewrite Mmult_1_l.
-      repeat rewrite Mmult_1_r.
-      replace (S (i + S (S n))) with (S (S i) + (S n))%nat.
-      rewrite IHn.
-      replace (S (S n)) with (1 + (S n))%nat. 
-      rewrite IHn.
-      replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat.
-      restore_dims.
-      rewrite <- (kron_assoc (I (2^S i)) (I (2 ^1)) (uc_eval (circuit'_helper l (S n) 0))).
-      rewrite id_kron.
-      replace (2 ^ (S i) * 2 ^ 1)%nat with (2 ^ S (S i))%nat.
-      restore_dims.
-      reflexivity.
-      rewrite mult_comm.
-      rewrite Nat.pow_1_r.
-      rewrite pow_two_succ_r.
-      replace (S i + 1)%nat with (S (S i)).
-      reflexivity.
-      rewrite Nat.add_1_r.
-      reflexivity.
-      apply WF_I.
-      apply WF_I.
-      apply WF_uc_eval.
-      rewrite Nat.add_0_r.
-      rewrite double_mult.
-      rewrite Nat.pow_succ_r.
-      reflexivity.
-      apply Nat.le_0_l.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      auto.
-      simpl in H.
-      apply eq_add_S.
-      assumption.
-      replace (S i) with (i + 1)%nat.
-      replace (S (S n)) with (1 + (S n))%nat.
-      rewrite plus_Sn_m.
-      rewrite <- Nat.add_assoc.
-      reflexivity.
-      auto.
-      apply Nat.add_1_r.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      apply WF_uc_eval.
-      apply gt_Sn_O.
-      apply lt_O_Sn.
-      apply gt_Sn_O.
-      constructor.
-      replace (i + S (S n))%nat with (S (S (i +n)))%nat.
-      apply le_n_S.
-      apply le_n_S.
-      apply le_plus_l.
-      rewrite <- Nat.add_succ_comm.
-      rewrite <- Nat.add_succ_comm.
-      rewrite plus_Sn_m.
-      rewrite plus_Sn_m.
-      reflexivity.
+    destruct b, b0, b1;
+    try rewrite 2 circuit'_individual_qubit_non_meas_same_base_true; auto;
+    try rewrite 2 circuit'_individual_qubit_non_meas_diff_base_true; auto;
+    try rewrite 2 circuit'_individual_qubit_non_meas_same_base_false; auto;
+    try rewrite 2 circuit'_individual_qubit_non_meas_diff_base_false; auto;
+    simpl;
+    try (rewrite <- Nat.add_succ_l;
+        replace (S i) with (S i + 0)%nat by lia;
+        rewrite <- Nat.add_assoc;
+        apply plus_lt_compat_l;
+        simpl;
+        auto);
+    remember (hadamard × σx) as hx;
+    repeat rewrite unfold_pad; auto with wf_db;
+    replace (S (S n)) with (1 + (S n))%nat by lia;
+    simpl;
+    try rewrite i_1_i_S;
+    replace (S (i + S (S n))) with (S (S i) + (S n))%nat by lia;
+    rewrite IHn; auto;
+    replace (S (S n)) with (1 + (S n))%nat by lia;
+    rewrite IHn; auto with wf_db;
+    replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat; try (rewrite Nat.add_0_r; rewrite double_mult; rewrite Nat.pow_succ_r; try reflexivity; try apply Nat.le_0_l);
+    replace ((i + (1 + S n) - (i + 1)))%nat with (S n) by lia;
+    replace (2 ^ n + (2 ^n +0))%nat with (2 ^ (S n))%nat; try (rewrite Nat.add_0_r; rewrite double_mult; rewrite Nat.pow_succ_r; try reflexivity; try apply Nat.le_0_l);
+    restore_dims;
+    repeat rewrite kron_1_l; auto with wf_db;
+    repeat rewrite kron_1_r; auto with wf_db;
+    simpl;
+    replace (2 ^ i + (2 ^ i + 0))%nat with (2 ^ (S i))%nat; try (rewrite Nat.add_0_r; rewrite double_mult; rewrite Nat.pow_succ_r; try reflexivity; try apply Nat.le_0_l);
+    try rewrite kron_mixed_prod;
+    try rewrite kron_dist_mult_id;
+    restore_dims;
+    repeat (rewrite <- kron_assoc; auto with wf_db);
+    try rewrite id_kron;
+    replace ((2 * 2 ^ i + (2 * 2 ^ i + 0)))%nat with (2 * 2 ^ i * 2)%nat;
+    try (restore_dims;
+         reflexivity);
+    try (
+        rewrite Nat.add_0_r;
+        rewrite double_mult;
+        repeat rewrite <- Nat.pow_succ_r';
+        rewrite mult_comm;
+        repeat rewrite <- Nat.pow_succ_r';
+        reflexivity
+      );
+    try (rewrite Heqhx; auto with wf_db);
+    try (
+        repeat rewrite Nat.add_0_r;
+        repeat rewrite double_mult;
+        rewrite id_kron;
+        repeat rewrite <- Nat.pow_succ_r';
+        repeat rewrite <- Nat.pow_add_r;
+        rewrite mult_comm;
+        repeat rewrite <- Nat.pow_succ_r';
+        replace (S (S i) + (S n))%nat with (S i + S (S n))%nat by lia;
+        reflexivity
+        ).
 Qed.
 
 Theorem circuit'_helper_growth: forall n l, (length l = S n) ->  uc_eval(circuit'_helper l (S (S n)) 1) =  I 2 ⊗ uc_eval (circuit'_helper l (S n) 0).
+Proof.
   intros.
   replace (S (S n)) with (1+(S n))%nat.
   - rewrite (circuit'_helper_growth_i n l 0%nat).
@@ -1170,624 +359,72 @@ Theorem circuit'_helper_growth: forall n l, (length l = S n) ->  uc_eval(circuit
   - auto.
 Qed.
 
-Theorem circuit'_output_correct: forall n data ab bb, (length data = S n) -> (length ab = S n) -> (length bb = S n) -> (uc_eval (circuit' data ab bb (S n))) × initial_state (S n) = output_state (S n) (zip (zip data ab) bb).
+Local Hint Resolve eq_add_S : length_db.
+Local Hint Resolve combine_same_length : length_db.
+
+(* Main correctness proof *)
+Theorem circuit'_output_correct: forall n data ab bb, (length data = S n) -> (length ab = S n) -> (length bb = S n) -> (uc_eval (circuit' data ab bb (S n))) × initial_state (S n) = output_state (S n) (combine (combine data ab) bb).
 Proof.
   intros n.
   induction n; intros.
   - simpl.
     destruct data, ab, bb; try discriminate.
     destruct data, ab, bb; try discriminate.
-    destruct b, b0, b1; simpl; try rewrite circuit'_individual_qubit_non_meas_same_base_true; try rewrite circuit'_individual_qubit_non_meas_same_base_false; try rewrite circuit'_individual_qubit_non_meas_diff_base_false; try rewrite circuit'_individual_qubit_non_meas_diff_base_true; try rewrite denote_SKIP; try rewrite denote_X; try rewrite denote_H; try auto; try apply diff_true_false; try apply diff_false_true.
-     + simpl.
-      rewrite Mmult_1_r.
-      rewrite kron_1_r.
-      restore_dims.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      rewrite kron_1_r.
+    destruct b, b0, b1; simpl;
+      try rewrite circuit'_individual_qubit_non_meas_same_base_true;
+      try rewrite circuit'_individual_qubit_non_meas_same_base_false;
+      try rewrite circuit'_individual_qubit_non_meas_diff_base_false;
+      try rewrite circuit'_individual_qubit_non_meas_diff_base_true;
+      try rewrite denote_SKIP;
+      try rewrite denote_X;
+      try rewrite denote_H;
+      try auto;
+      simpl;
+      Msimpl;
+      restore_dims;
+      try rewrite unfold_pad;
+      simpl;
+      Msimpl;
+      auto with wf_db;
       solve_matrix.
-      apply WF_σx.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      rewrite kron_1_r.
-      apply WF_σx.
-      apply WF_σx.
-    + simpl.
-      rewrite Mmult_1_r.
-      rewrite kron_1_r.
-      restore_dims.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      rewrite kron_1_r.
-      solve_matrix.
-      unfold output_state_qubit_i.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      restore_dims.
-      apply WF_pad.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-    + simpl.
-      rewrite Mmult_1_r.
-      rewrite kron_1_r.
-      restore_dims.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      rewrite kron_1_r.
-      solve_matrix.
-      unfold output_state_qubit_i.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      restore_dims.
-      apply WF_pad.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-    + simpl.
-      rewrite Mmult_1_r.
-      rewrite kron_1_r.
-      restore_dims.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      rewrite kron_1_r.
-      solve_matrix.
-      apply WF_σx.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      rewrite kron_1_r.
-      apply WF_σx.
-      apply WF_σx.
-    + rewrite Mmult_1_l.
-      rewrite Mmult_1_l.
-      reflexivity.
-      rewrite kron_1_r.
-      apply WF_ket.
-      apply WF_I.
-    + simpl.
-      rewrite Mmult_1_r.
-      rewrite kron_1_r.
-      restore_dims.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      rewrite kron_1_r.
-      solve_matrix.
-      unfold output_state_qubit_i.
-      apply WF_hadamard.
-      restore_dims.
-      apply WF_pad.
-      apply WF_hadamard.
-    + simpl.
-      rewrite Mmult_1_r.
-      rewrite kron_1_r.
-      restore_dims.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      rewrite kron_1_r.
-      solve_matrix.
-      unfold output_state_qubit_i.
-      apply WF_hadamard.
-      restore_dims.
-      apply WF_pad.
-      apply WF_hadamard.
-    + rewrite Mmult_1_l.
-      rewrite Mmult_1_l.
-      reflexivity.
-      rewrite kron_1_r.
-      apply WF_ket.
-      apply WF_I.
-  
   - simpl.
     destruct data, ab, bb; try discriminate.
     simpl.
-    rewrite <- (IHn data ab bb).
-    destruct b, b0, b1.
-    + rewrite circuit'_individual_qubit_non_meas_same_base_true.
-      rewrite circuit'_helper_growth.
-      simpl.
-      fold circuit'.
-      replace (circuit'_helper (zip (zip data ab) bb) (S n)0) with (circuit' data ab bb (S n)).
-      rewrite IHn.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      restore_dims.
-      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))).
-      rewrite Mmult_1_l.
-      rewrite Mmult_1_r.
-      rewrite kron_mixed_product.
-      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
-      rewrite IHn.
-      replace (σx × ket 0) with (ket 1).
+    rewrite <- (IHn data ab bb); auto with length_db.
+    destruct b, b0, b1;
+      try rewrite circuit'_individual_qubit_non_meas_same_base_true;
+      try rewrite circuit'_individual_qubit_non_meas_diff_base_true;
+      try rewrite circuit'_individual_qubit_non_meas_same_base_false;
+      try rewrite circuit'_individual_qubit_non_meas_diff_base_false;
+      auto with length_db;
+      rewrite circuit'_helper_growth;
+      auto with length_db;
+      simpl;
+      fold circuit';
+      replace (circuit'_helper (combine (combine data ab) bb) (S n)0) with (circuit' data ab bb (S n)) by auto;
+      rewrite IHn; auto with length_db;
+      try rewrite unfold_pad;
+      simpl;
+      try rewrite kron_1_l; auto with wf_db;
+      restore_dims;
+      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))); auto with wf_db;
+      Msimpl; auto with wf_db;
+      restore_dims;
+      try rewrite kron_mixed_product; auto with wf_db;
+      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)) by auto with wf_db;
+      rewrite IHn; auto with length_db;
+      restore_dims;
+      unfold output_state_qubit_i;
+      simpl;
+      try rewrite Mmult_assoc;
+      restore_dims;
+      Msimpl;
+      simpl;
+      restore_dims;
+      replace (σx × ket 0) with (ket 1) by solve_matrix;
+      restore_dims;
       reflexivity.
-      solve_matrix.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      simpl.
-      reflexivity.
-      apply WF_σx.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      prep_matrix_equality.
-      rewrite kron_mixed_product.
-      simpl.
-      reflexivity.
-      apply WF_σx.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      unfold circuit'.
-      reflexivity.
-      simpl in H.
-      simpl in H0.
-      simpl in H1.
-      apply eq_add_S in H.
-      apply eq_add_S in H0.
-      apply eq_add_S in H1.
-      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
-      apply gt_Sn_O.
-    + rewrite circuit'_individual_qubit_non_meas_diff_base_true.
-      rewrite circuit'_helper_growth.
-      simpl.
-      fold circuit'.
-      replace (circuit'_helper (zip (zip data ab) bb) (S n)0) with (circuit' data ab bb (S n)).
-      rewrite IHn.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      restore_dims.
-      replace (hadamard × σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((hadamard × σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))).
-      rewrite Mmult_1_l.
-      rewrite Mmult_1_r.
-      rewrite kron_mixed_product.
-      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
-      rewrite IHn.
-      replace (hadamard × σx × ket 0) with (hadamard × ket 1).
-      reflexivity.
-      solve_matrix.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      simpl.
-      reflexivity.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      prep_matrix_equality.
-      rewrite kron_mixed_product.
-      simpl.
-      reflexivity.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      unfold circuit'.
-      reflexivity.
-      simpl in H.
-      simpl in H0.
-      simpl in H1.
-      apply eq_add_S in H.
-      apply eq_add_S in H0.
-      apply eq_add_S in H1.
-      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
-      apply diff_true_false.
-      apply gt_Sn_O.
-    + rewrite circuit'_individual_qubit_non_meas_diff_base_true.
-      rewrite circuit'_helper_growth.
-      simpl.
-      fold circuit'.
-      replace (circuit'_helper (zip (zip data ab) bb) (S n)0) with (circuit' data ab bb (S n)).
-      rewrite IHn.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      restore_dims.
-      replace (hadamard × σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((hadamard × σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))).
-      rewrite Mmult_1_l.
-      rewrite Mmult_1_r.
-      rewrite kron_mixed_product.
-      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
-      rewrite IHn.
-      replace (hadamard × σx × ket 0) with (hadamard × ket 1).
-      reflexivity.
-      solve_matrix.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      simpl.
-      reflexivity.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      prep_matrix_equality.
-      rewrite kron_mixed_product.
-      simpl.
-      reflexivity.
-      apply WF_mult.
-      apply WF_hadamard.
-      apply WF_σx.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      unfold circuit'.
-      reflexivity.
-      simpl in H.
-      simpl in H0.
-      simpl in H1.
-      apply eq_add_S in H.
-      apply eq_add_S in H0.
-      apply eq_add_S in H1.
-      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
-      apply diff_false_true.
-      apply gt_Sn_O.
-    + rewrite circuit'_individual_qubit_non_meas_same_base_true.
-      rewrite circuit'_helper_growth.
-      simpl.
-      fold circuit'.
-      replace (circuit'_helper (zip (zip data ab) bb) (S n)0) with (circuit' data ab bb (S n)).
-      rewrite IHn.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      restore_dims.
-      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))).
-      rewrite Mmult_1_l.
-      rewrite Mmult_1_r.
-      rewrite kron_mixed_product.
-      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
-      rewrite IHn.
-      replace (σx × ket 0) with (ket 1).
-      reflexivity.
-      solve_matrix.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      simpl.
-      reflexivity.
-      apply WF_σx.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      prep_matrix_equality.
-      rewrite kron_mixed_product.
-      simpl.
-      reflexivity.
-      apply WF_σx.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      unfold circuit'.
-      reflexivity.
-      simpl in H.
-      simpl in H0.
-      simpl in H1.
-      apply eq_add_S in H.
-      apply eq_add_S in H0.
-      apply eq_add_S in H1.
-      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
-      apply gt_Sn_O.
-    + simpl.
-      rewrite circuit'_helper_growth.
-      simpl.
-      fold circuit'.
-      replace (circuit'_helper (zip (zip data ab) bb) (S n)0) with (circuit' data ab bb (S n)).
-      rewrite IHn.
-      rewrite circuit'_individual_qubit_non_meas_same_base_false.
-      simpl.
-      restore_dims.
-      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))).
-      rewrite Mmult_1_l.
-      rewrite kron_mixed_product.
-      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
-      rewrite IHn.
-      replace (σx × ket 0) with (ket 1).
-      rewrite Mmult_1_l.
-      reflexivity.
-      apply WF_ket.
-      solve_matrix.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      simpl.
-      reflexivity.
-      simpl in H.
-      apply eq_add_S in H.
-      apply WF_kron.
-      reflexivity.
-      reflexivity.
-      apply WF_I.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      prep_matrix_equality.
-      rewrite kron_mixed_product.
-      simpl.
-      reflexivity.
-      apply gt_Sn_O.
-      apply lt_O_Sn.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      unfold circuit'.
-      reflexivity.
-      simpl in H.
-      simpl in H0.
-      simpl in H1.
-      apply eq_add_S in H.
-      apply eq_add_S in H0.
-      apply eq_add_S in H1.
-      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
-    + rewrite circuit'_individual_qubit_non_meas_diff_base_false.
-      rewrite circuit'_helper_growth.
-      simpl.
-      fold circuit'.
-      replace (circuit'_helper (zip (zip data ab) bb) (S n)0) with (circuit' data ab bb (S n)).
-      rewrite IHn.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      restore_dims.
-      replace (hadamard ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((hadamard × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))).
-      rewrite Mmult_1_l.
-      rewrite Mmult_1_r.
-      rewrite kron_mixed_product.
-      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
-      rewrite IHn.
-      replace (hadamard × ket 0) with (hadamard × ket 0).
-      reflexivity.
-      solve_matrix.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      simpl.
-      reflexivity.
-      apply WF_hadamard.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      prep_matrix_equality.
-      rewrite kron_mixed_product.
-      simpl.
-      reflexivity.
-      apply WF_hadamard.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      unfold circuit'.
-      reflexivity.
-      simpl in H.
-      simpl in H0.
-      simpl in H1.
-      apply eq_add_S in H.
-      apply eq_add_S in H0.
-      apply eq_add_S in H1.
-      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
-      apply diff_true_false.
-      apply gt_Sn_O.
-    + rewrite circuit'_individual_qubit_non_meas_diff_base_false.
-      rewrite circuit'_helper_growth.
-      simpl.
-      fold circuit'.
-      replace (circuit'_helper (zip (zip data ab) bb) (S n)0) with (circuit' data ab bb (S n)).
-      rewrite IHn.
-      rewrite unfold_pad.
-      simpl.
-      rewrite kron_1_l.
-      restore_dims.
-      replace (hadamard ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((hadamard × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))).
-      rewrite Mmult_1_l.
-      rewrite Mmult_1_r.
-      rewrite kron_mixed_product.
-      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
-      rewrite IHn.
-      replace (hadamard × ket 0) with (hadamard × ket 0).
-      reflexivity.
-      solve_matrix.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      simpl.
-      reflexivity.
-      apply WF_hadamard.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      prep_matrix_equality.
-      rewrite kron_mixed_product.
-      simpl.
-      reflexivity.
-      apply WF_hadamard.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      unfold circuit'.
-      reflexivity.
-      simpl in H.
-      simpl in H0.
-      simpl in H1.
-      apply eq_add_S in H.
-      apply eq_add_S in H0.
-      apply eq_add_S in H1.
-      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
-      apply diff_false_true.
-      apply gt_Sn_O.
-    + simpl.
-      rewrite circuit'_helper_growth.
-      rewrite circuit'_individual_qubit_non_meas_same_base_false.      
-      simpl.
-      fold circuit'.
-      replace (circuit'_helper (zip (zip data ab) bb) (S n)0) with (circuit' data ab bb (S n)).
-      rewrite IHn.
-      simpl.
-      restore_dims.
-      replace (σx ⊗ (I (2 ^n + (2 ^ n + 0))) × ((I 2) ⊗ (uc_eval (circuit' data ab bb (S n))))) with ((σx × I 2) ⊗ ( (I (2 ^n + (2 ^n + 0))) × uc_eval (circuit' data ab bb (S n)))).
-      rewrite Mmult_1_l.
-      rewrite kron_mixed_product.
-      replace (ket 0 ⊗ initial_state n) with (initial_state (S n)).
-      rewrite IHn.
-      replace (σx × ket 0) with (ket 1).
-      restore_dims.
-      rewrite Mmult_1_l.
-      reflexivity.
-      apply WF_ket.
-      solve_matrix.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      simpl.
-      reflexivity.
-      apply WF_kron.
-      reflexivity.
-      reflexivity.
-      apply WF_I.
-      restore_dims.
-      apply WF_uc_eval.
-      restore_dims.
-      prep_matrix_equality.
-      rewrite kron_mixed_product.
-      simpl.
-      reflexivity.
-      simpl in H.
-      apply eq_add_S in H.
-      assumption.
-      simpl in H0.
-      apply eq_add_S in H0.
-      assumption.
-      simpl in H1.
-      apply eq_add_S in H1.
-      assumption.
-      unfold circuit'.
-      reflexivity.
-      apply gt_Sn_O.
-      apply lt_O_Sn.
-      simpl in H.
-      simpl in H0.
-      simpl in H1.
-      apply eq_add_S in H.
-      apply eq_add_S in H0.
-      apply eq_add_S in H1.
-      apply zip_same_length; try (apply zip_same_length; try assumption); try assumption.
-   + simpl in H.
-     apply eq_add_S in H.
-     assumption.
-   + simpl in H0.
-     apply eq_add_S in H0.
-     assumption.
-   + simpl in H1.
-     apply eq_add_S in H1.
-     assumption.
 Qed.
-
 
 Theorem circuit'_same_base_correct: forall n data base, (length data = S n) -> (length base = S n) -> (uc_eval (circuit' data base base (S n))) × initial_state (S n) = target_state (S n) data.
 Proof.
@@ -1797,6 +434,7 @@ Proof.
 Qed.
 
 Lemma norm_kron: forall (A : Vector 1) (B : Vector 1), @norm (1) (A ⊗ B) = (@norm 1 A * @norm 1 B)%R.
+Proof.
   unfold norm.
   unfold kron.
   intros.
@@ -1895,9 +533,8 @@ Proof.
     lra.
 Qed.
 
-Require Import Utilities.
-
 Theorem probibility_correct: forall n data base, (length data = S n) -> (length base = S n) -> probability_of_outcome (uc_eval (circuit' data base base (S n)) × initial_state (S n)) (target_state (S n) data) = 1%R.
+Proof.
   intros.
   rewrite circuit'_same_base_correct; try assumption.
   rewrite probability_of_outcome_is_norm.
@@ -1934,8 +571,44 @@ Qed.
 Theorem probability_incorrect_single_qubit: forall data ab bb, (ab <> bb) -> probability_of_outcome (output_state_qubit_i data ab bb) (target_state_qubit_i data) = (1/2)%R.
 Proof.
   intros.
-  destruct data, ab, bb; try contradiction; simpl; unfold output_state_qubit_i; simpl.
-  - unfold probability_of_outcome.
+  (* We assert the target cases to later not have to duplicate them and have more readable code *)
+  assert (probability_of_outcome (hadamard × ket 0) (ket 0) = (1/2)%R). 
+  { unfold probability_of_outcome.
+    replace (((hadamard × ket 0)† × ket 0) 0%nat 0%nat) with (/ √ 2).
+    replace (Cmod (/ √ 2)) with (/ √ 2)%R.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt_neq_0_compat.
+    apply Rlt_0_2.
+    unfold Cmod.
+    replace (fst (/ √ 2)) with (/ √ 2)%R.
+    replace (snd (/ √ 2)) with (0%R).
+    rewrite <- sqrt2_inv.
+    simpl.
+    rewrite Rmult_1_r.
+    rewrite sqrt_def.
+    rewrite Rmult_0_l.
+    rewrite Rplus_0_r.
+    reflexivity.
+    lra.
+    unfold snd.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    unfold fst.
+    simpl.
+    R_field_simplify.
+    reflexivity.
+    apply sqrt2_neq_0.
+    replace ((hadamard × ket 0)† × ket 0) with (list2D_to_matrix [[/ √ 2]]).
+    reflexivity.
+    restore_dims.
+    solve_matrix.
+  }
+  assert (probability_of_outcome (hadamard × ket 1) (ket 1) = (1/2)%R).
+  { unfold probability_of_outcome.
     replace (((hadamard × ket 1)† × ket 1) 0%nat 0%nat) with (-/ √ 2).
     replace (Cmod (-/ √ 2)) with (/ √ 2)%R.
     simpl.
@@ -1969,106 +642,8 @@ Proof.
     reflexivity.
     restore_dims.
     solve_matrix.
-  - unfold probability_of_outcome.
-    replace (((hadamard × ket 1)† × ket 1) 0%nat 0%nat) with (-/ √ 2).
-    replace (Cmod (-/ √ 2)) with (/ √ 2)%R.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt_neq_0_compat.
-    apply Rlt_0_2.
-    unfold Cmod.
-    replace (fst (-/ √ 2)) with (-/ √ 2)%R.
-    replace (snd (-/ √ 2)) with (0%R).
-    rewrite <- sqrt2_inv.
-    simpl.
-    rewrite Rmult_1_r.
-    rewrite Rmult_opp_opp.
-    rewrite sqrt_def.
-    rewrite Rmult_0_l.
-    rewrite Rplus_0_r.
-    reflexivity.
-    lra.
-    unfold snd.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt2_neq_0.
-    unfold fst.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt2_neq_0.
-    replace ((hadamard × ket 1)† × ket 1) with (list2D_to_matrix [[- / √ 2]]).
-    reflexivity.
-    restore_dims.
-    solve_matrix.
-  - unfold probability_of_outcome.
-    replace (((hadamard × ket 0)† × ket 0) 0%nat 0%nat) with (/ √ 2).
-    replace (Cmod (/ √ 2)) with (/ √ 2)%R.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt_neq_0_compat.
-    apply Rlt_0_2.
-    unfold Cmod.
-    replace (fst (/ √ 2)) with (/ √ 2)%R.
-    replace (snd (/ √ 2)) with (0%R).
-    rewrite <- sqrt2_inv.
-    simpl.
-    rewrite Rmult_1_r.
-    rewrite sqrt_def.
-    rewrite Rmult_0_l.
-    rewrite Rplus_0_r.
-    reflexivity.
-    lra.
-    unfold snd.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt2_neq_0.
-    unfold fst.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt2_neq_0.
-    replace ((hadamard × ket 0)† × ket 0) with (list2D_to_matrix [[/ √ 2]]).
-    reflexivity.
-    restore_dims.
-    solve_matrix.
-  - unfold probability_of_outcome.
-    replace (((hadamard × ket 0)† × ket 0) 0%nat 0%nat) with (/ √ 2).
-    replace (Cmod (/ √ 2)) with (/ √ 2)%R.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt_neq_0_compat.
-    apply Rlt_0_2.
-    unfold Cmod.
-    replace (fst (/ √ 2)) with (/ √ 2)%R.
-    replace (snd (/ √ 2)) with (0%R).
-    rewrite <- sqrt2_inv.
-    simpl.
-    rewrite Rmult_1_r.
-    rewrite sqrt_def.
-    rewrite Rmult_0_l.
-    rewrite Rplus_0_r.
-    reflexivity.
-    lra.
-    unfold snd.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt2_neq_0.
-    unfold fst.
-    simpl.
-    R_field_simplify.
-    reflexivity.
-    apply sqrt2_neq_0.
-    replace ((hadamard × ket 0)† × ket 0) with (list2D_to_matrix [[/ √ 2]]).
-    reflexivity.
-    restore_dims.
-    solve_matrix.
+  }
+  destruct data, ab, bb; try contradiction; simpl; unfold output_state_qubit_i; simpl; assumption.
 Qed.
 
 Fixpoint count_diff l1 l2 :=
@@ -2078,6 +653,7 @@ Fixpoint count_diff l1 l2 :=
   | h1::t1, h2::t2 => if eqb h1 h2 then count_diff t1 t2 else (1 + count_diff t1 t2)%nat
   end.
 
+(* Main incorrect probability proof *)
 Theorem probibility_incorrect: forall n n_diff data ab bb, (length data = S n) -> (length ab = S n) -> (length bb = S n) -> count_diff ab bb = n_diff -> probability_of_outcome (uc_eval (circuit' data ab bb (S n)) × initial_state (S n)) (target_state (S n) data) = ((1/2)%R^n_diff)%R.
 Proof.
   intro n.
