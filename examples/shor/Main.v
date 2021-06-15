@@ -11,16 +11,17 @@ Require Import AltShor.
 (** Coq definitions that will be extracted to OCaml **)
 
 (* Shor's runs on (n + k) qubits and returns the result of measuring n qubits. *)
-Definition n N := Nat.log2 (2 * N^2)%nat.
-Definition k N := AltShor.num_qubits (Nat.log2 (2 * N)).
+Definition n (N : nat) := Nat.log2 (2 * N^2).
+Definition k (N : nat) := AltShor.num_qubits (Nat.log2 (2 * N)).
 
 (* Shor circuit *)
+(* RNR: Why is this necessary? *)
 Definition shor_circuit (a N : nat) := AltShor.shor_circuit a N. 
 
 (* Continued fraction expansion *)
 Definition cont_frac_exp (a N o : nat) := Shor.OF_post a N o (n N).
 
-(* (run_circuit dim n cir) will produce the result of running cir on the dim-qubit 
+(* (run_circuit dim n circ) will produce the result of running circ on the dim-qubit 
    zero state and measuring the first n qubits.
 
    run_circuit will be extracted to a function that calls the ddsim simulator
@@ -30,6 +31,10 @@ Definition cont_frac_exp (a N o : nat) := Shor.OF_post a N o (n N).
 
    TODO: we should have some correctness axiom for run_circuit that says that
    it behaves identically to our uc_eval function.  *)
+(* RNR: This would be an axiom? Why is that helpful, if run_circuit isn't verified?
+   
+   Also 'We use multiple trials to cheat a little' is unclear. *)
+
 Parameter run_circuit : nat -> nat -> ucom U -> nat.
 
 (* given r = ord(a,N), try to find a factor of N (based on Shor.Factor_post) *)
@@ -63,8 +68,8 @@ Definition end_to_end_shors a N :=
 (** Some utilities for stating correctness properties. **)
 
 (* The probability that measuring the first m qubits of v produces x. *)
-Definition prob_meas_outcome m n (v : Vector (2^(m+n))) x :=
-  @prob_partial_meas _ n (basis_vector (2^m) x) v.
+Definition prob_meas_outcome m n (v : Vector (2^(m+n))) (x : nat) : R :=
+  @prob_partial_meas m n (basis_vector (2^m) x) v.
 
 (* The probability that the result of measuring the first m qubits of v 
    satisfies predicate f. *)
@@ -121,10 +126,166 @@ Admitted.
    of a prime. Do we have a proof of this? -KH *) 
 Definition k1 a N : nat := ((ord a N) / 2) + 1.
 Definition k2 a N : nat := ((ord a N) / 2) - 1.
-Definition coprime a b := Nat.gcd a b = S O.
+Definition coprime (a b : nat) : Prop := Nat.gcd a b = 1%nat.
 Definition nontrivial_factor a b := 
   (a <? b) && (1 <? Nat.gcd a b) && (Nat.gcd a b <? b).
 
+Search prime.
+
+(** * Section on Prime Numbers *)
+
+Section Primes.
+
+Require Import Wf.
+
+Local Open Scope nat_scope.
+
+(*
+Definition divides (a b : nat) := exists n, a * n = b. 
+
+Infix "|" := divides (at level 30).
+
+Definition Prime (p : nat) := p <> 0 /\ forall a, a | p -> a = 1 \/ a = p.
+
+Definition Composite (n : nat) := exists a b, a > 1 /\ b > 1 /\ a * b = n.
+ *)
+
+Lemma decidable_prime : forall n, prime n \/ ~ prime n.
+Proof. unfold prime. decide equality. Qed.
+  
+(* Fundamental theorem of arithmetic *)
+(* Leaving out uniqueness for now *)
+Lemma prime_factorization : forall n, n > 1 -> exists l, n = fold_left Nat.mul l 1 /\ Forall prime l. 
+Proof.
+  intros n H.
+  induction n as [ n IHn ] using (well_founded_induction lt_wf).
+  destruct (decidable_prime n).
+  - exists [n]. split; simpl. lia.
+    repeat constructor; easy.
+  - apply not_prime_decomp in H as [a [b [Ha [Hb M]]]]; auto.
+    destruct (IHn a) as [la Hla]; try lia.
+    rewrite <- (mult_1_r a). subst. apply mult_lt_compat_l; lia.
+    destruct (IHn b) as [lb Hlb]; try lia.
+    rewrite <- (mult_1_l b). subst. apply mult_lt_compat_r; lia.
+    exists (la ++ lb).
+    split.
+    + destruct Hla as [Hla _], Hlb as [Hlb _].
+      subst.
+      rewrite fold_left_app.
+      rewrite (Misc.fold_left_mul_from_1 (fold_left _ _ _)).
+      reflexivity.
+    + apply Forall_app.
+      tauto.
+Qed.
+
+Lemma simplify_primality_gen : forall N l,
+    N = fold_left Nat.mul l 1 ->
+    (forall p k, prime p -> N <> p ^ k) -> 
+    length l > 1 ->
+    Forall prime l ->
+    Forall Nat.Odd l ->
+    (exists p k q, (k <> 0) /\ prime p /\ (p > 2) /\ (q > 2) /\ coprime (p ^ k) q /\ N = p ^ k * q)%nat.
+Proof.    
+  intros N l. generalize N. 
+  induction l.
+  intros.
+  simpl in H1; lia.
+  destruct l as [| b [| c l]]; intros.
+  - simpl in H1; lia.
+  - bdestruct (a =? b).
+    + subst.
+      inversion H2; subst.
+      specialize (H0 b 2 H5). contradict H0.
+      simpl. lia.
+    + exists a, 1, b.
+      inversion H2; subst. inversion H8; subst.
+      inversion H3; subst. inversion H11; subst.
+      repeat split; auto. 
+      specialize (prime_ge_2 a H7) as Ha. destruct H10. lia.
+      specialize (prime_ge_2 b H6) as Hb. destruct H12. lia.
+      rewrite Nat.pow_1_r. unfold coprime. apply eq_primes_gcd_1; auto.
+      simpl. lia.
+  - remember (fold_left Nat.mul (b :: c :: l) 1) as N'. symmetry in HeqN'.
+    specialize (IHl N' eq_refl).
+    (* Equivalently, destruct whether b is a prime power *)
+    bdestruct (N' =? b ^ (2 + length l)). bdestruct (a =? b).
+    + inversion H2; subst.
+      specialize (H0 b (3 + length l) H8).
+      contradict H0.
+      simpl in *.
+      rewrite Misc.fold_left_mul_from_1 in *.
+      rewrite <- H4.
+      lia.
+    + exists b, (2 + length l), a.
+      inversion H2; subst. inversion H9; subst. inversion H10; subst.
+      inversion H3; subst. inversion H14; subst. inversion H16; subst.
+      repeat split; auto.
+      lia.
+      specialize (prime_ge_2 b H7) as PG2. destruct H15. lia.
+      specialize (prime_ge_2 a H8) as PG2. destruct H13. lia.
+      rewrite <- (Nat.pow_1_r a).
+      apply Prod.diff_prime_power_coprime; auto.
+      simpl in *. rewrite Misc.fold_left_mul_from_1 in *.
+      rewrite <- H4.
+      lia.
+    + destruct IHl as [p [k [q [Hk [Pp [Gp2 [Gq2 [COP NE]]]]]]]].
+      (* slightly annoying *) admit.
+      simpl; lia.
+      inversion H2; auto.
+      inversion H3; auto.
+      bdestruct (a =? p).
+      * subst. exists p, (S k), q.
+        repeat split; auto.
+        (* also a bit annoying *) admit.
+        simpl in *. rewrite Misc.fold_left_mul_from_1 in *.
+        rewrite <- (Nat.mul_assoc p), <- NE.
+        lia.
+      * subst. exists p, k, (q * a).
+        repeat split; auto.
+        inversion H3; subst. destruct H7; lia.
+        apply Misc.Nat_gcd_1_mul_r; auto.
+        rewrite <- (Nat.pow_1_r a). inversion H2; subst.
+        apply Prod.diff_prime_power_coprime; auto.
+        simpl in *. rewrite Misc.fold_left_mul_from_1 in *.        
+        rewrite Nat.mul_assoc, <- NE.
+        lia.
+Admitted.
+
+Lemma Odd_decompose_Odd : forall N l,
+  Nat.Odd N ->
+  N = fold_left Nat.mul l 1 ->
+  Forall Nat.Odd l.
+Proof.
+  intros; subst.
+  induction l; auto.
+  simpl in H.
+  rewrite Misc.fold_left_mul_from_1 in H.
+  apply Nat.odd_spec in H.
+  rewrite Nat.odd_mul in H.
+  apply andb_true_iff in H as [Ha Hl].
+  rewrite Nat.add_0_r in Ha.
+  apply Nat.odd_spec in Ha, Hl.
+  auto.
+Qed.  
+
+Lemma simplify_primality : forall N,
+    ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k) ->
+    (exists p k q, (k <> 0) /\ prime p /\ (p > 2) /\ (q > 2) /\ coprime (p ^ k) q /\ N = p ^ k * q)%nat.
+Proof.
+  intros.
+  assert (GN : N > 1).
+  { destruct H0. specialize (H1 2 0 eq_refl). simpl in *. lia. }  
+  destruct (prime_factorization N) as [l [HN FP]]; auto.
+  eapply simplify_primality_gen with (l:=l); auto.
+  destruct l. simpl in *; lia.
+  destruct l. inversion FP; subst. simpl in *. rewrite Nat.add_0_r in H. easy.  
+  simpl; lia.
+  apply Odd_decompose_Odd with N; auto.
+Qed.  
+
+End Primes.
+
+(* Can replace with conditions above using simplify_primality. *)
 Lemma shor_factor_correct : forall p k q N a,
   (k <> 0)%nat -> prime p -> (p > 2)%nat -> (q > 2)%nat -> coprime (p ^ k) q ->
   N = (p ^ k * q)%nat ->
