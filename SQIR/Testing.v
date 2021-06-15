@@ -1,4 +1,4 @@
-Require Import Arith Vector Bvector MSets OrderedTypeEx Lia.
+Require Import Arith Vector Bvector Equality MSets OrderedTypeEx Lia.
 From QuickChick Require Import QuickChick.
 Require Import VSQIR.
 Import Vector (hd, tl).
@@ -55,6 +55,34 @@ Fixpoint gen_bvector' {n} : G (Bvector n) :=
   end.
 
 Instance gen_bvector n : Gen (Bvector n) := {| arbitrary := gen_bvector' |}.
+
+Fixpoint bvector2nat {n} : Bvector n -> nat :=
+  match n with
+  | 0 => fun _ => 0
+  | S n' => fun v => Nat.b2n (hd v) + 2 * bvector2nat (tl v)
+  end.
+
+Fixpoint nat2bvector n : nat -> Bvector n :=
+  match n with
+  | 0 => fun _ => Bnil
+  | S n' => fun i => Nat.odd i :: nat2bvector n' (i / 2)
+  end.
+
+Lemma bvector2nat2bvector :
+  forall n v, nat2bvector n (bvector2nat v) = v.
+Proof.
+  intros n. induction n; intros v; dependent destruction v; try reflexivity.
+  cbn - [ "*" Nat.div ].
+  assert
+    (forall h h' (t t' : Bvector n), h = h' -> t = t' -> h :: t = h' :: t').
+  { intros. subst. reflexivity. }
+  apply H.
+  - destruct h; cbn - [ "*" ].
+    + rewrite Nat.odd_succ, Nat.even_spec. econstructor. reflexivity.
+    + rewrite <- Nat.negb_even, negb_false_iff, Nat.even_spec.
+      econstructor. reflexivity.
+  - rewrite Nat.add_b2n_double_div2. apply IHn.
+Qed.
 
 Definition zero_angle : rz_val :=
   fun _ => false.
@@ -241,17 +269,37 @@ Definition is_oracle x y env (f : Bvector (env x) -> Bvector (env y)) e :=
   st_equiv (get_vars e) env (get_prec env e)
       (prog_sem env e (x |=> vx, y |=> vy)) (x |=> vx, y |=> vy (+) f vx).
 
-Example x := 0.
-Example y := 1.
+Definition is_oracle_nat x y env (f : nat -> nat) e :=
+  is_oracle x y env (fun v => nat2bvector (env y) (f (bvector2nat v))) e.
 
-Example not_function : Bvector 1 -> Bvector 1 := (Bneg 1).
+Definition is_oracle_nat_bool x y env (f : nat -> bool) e :=
+  env y = 1 /\
+  is_oracle x y env (fun v => Vector.const (f (bvector2nat v)) _) e.
 
-Example not_oracle := Exp (X (x, 0); CNOT (x, 0) (y, 0); X (x, 0)).
+Instance checkable_and {P Q : Prop} `{Checkable P} `{Checkable Q} :
+  Checkable (P /\ Q) :=
+  {|
+    checker '(conj p q) := conjoin (checker p :: checker q :: nil)%list
+  |}.
 
-Example not_oracle_env :=
-  fun x' => if (x' =? x) || (x' =? y) then 1 else 0.
+Module NotExample.
 
-Conjecture not_oracle_correct :
-  is_oracle x y not_oracle_env not_function not_oracle.
+  Example x := 0.
+  Example y := 1.
 
-(* QuickChick not_oracle_correct. *)
+  Example not_function := Nat.even.
+
+  Example not_oracle := Exp (X (x, 0); CNOT (x, 0) (y, 0); X (x, 0)).
+
+  Example not_oracle_env :=
+    fun x' => if (x' =? x) || (x' =? y) then 1 else 0.
+
+  Conjecture not_oracle_correct :
+    is_oracle_nat_bool x y not_oracle_env not_function not_oracle.
+
+End NotExample.
+
+(*
+QuickChick NotExample.not_oracle_correct.
+*)
+
