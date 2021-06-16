@@ -1869,9 +1869,10 @@ Definition trans_prog (p:prog) (fv:fenv) :=
 
 (*Proofs of compilation correctness. *)
 
-Lemma gen_clt_c_two_cases : forall size smap vmap bv r bt stack sn x y p a b, 
+(*
+Lemma gen_clt_c_correct : forall size smap vmap bv r bt stack sn x y p a b, 
       gen_clt_c size smap vmap bv r bt stack sn x y = Some (p,a,b) 
-         -> (p = None /\ (exists b', b = Some b')) \/ ((exists p', p = Some p') /\ b = None).
+         -> (p = None /\ sem_cexp ) \/ ((exists p', p = Some p') /\ b = None).
 Proof.
   intros. unfold gen_clt_c in *.
   destruct (type_factor bv bt x) eqn:eq1.
@@ -1902,10 +1903,13 @@ Proof.
   destruct (¬ (qvar_eq size bv r x y)) eqn:eq1.
   simpl in H.
 Qed.
+*)
 
-Lemma compile_cexp_sem_two_cases : forall sl size smap vmap bv r stack sn e p a b, 
-      compile_cexp sl size smap vmap bv r stack sn e = Some (p,a,b) 
-         -> (p = None /\ (exists b', b = Some b')) \/ ((exists p', p = Some p') /\ b = None).
+Lemma compile_cexp_sem_two_cases : forall sl size smap vmap bv r stack sn e p a b re, 
+      compile_cexp sl size smap vmap bv r stack sn e = Some (p,a,b) ->
+      sem_cexp sl sn size e = re ->
+         -> (p = None /\ (exists b', b = Some b' /\ re = Some (sn,b') ))
+              \/ ((exists p', p = Some p' /\ b = None)).
 Proof.
   intros. induction e.
   simpl in *.

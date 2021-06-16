@@ -1304,7 +1304,7 @@ Qed.
 Local Opaque CNOT. Local Opaque CCX.
 
 Definition no_equal (x y:var) (c1 c2 : posi) : Prop := x <> y /\ x <> fst c1 /\  x <> fst c2 
-                   /\ y <> fst c1 /\ y <> fst c2 /\ fst c1 <> fst c2.
+                   /\ y <> fst c1 /\ y <> fst c2 /\ c1 <> c2.
 
 Lemma highbit_fwf : forall n x c2 aenv, fst c2 <> x -> exp_fwf aenv (highbit n x c2).
 Proof.
@@ -1961,7 +1961,8 @@ Proof.
   rewrite <- reg_push_update_flip with (x := y) by iner_p.
   rewrite <- reg_push_update_flip with (x := y) by iner_p.
   easy.
-  apply comparator01_fwf. unfold no_equal. split. lia. easy.
+  apply comparator01_fwf. unfold no_equal. split. lia. split. easy.
+  split. easy. split. lia. split. lia. iner_p.
   unfold modadder21 in H9. inv H9. 
   apply typed_inv_exp in H19. rewrite inv_exp_involutive in H19. apply H19.
   unfold reg_push. 
@@ -1997,7 +1998,7 @@ Proof.
   bdestruct (vM <=? v1 + v2). simpl. easy. lia.
   assert ((v1 + v2) mod vM < vM).
   apply Nat.mod_upper_bound. lia. lia.
-  unfold no_equal. split. lia. easy.
+  unfold no_equal. split. lia. split. easy. split. easy. split. easy. split. easy. iner_p.
   unfold nor_modes. intros. nor_mode_simpl.
   apply H5. easy.
   unfold nor_modes. intros. nor_mode_simpl.
@@ -2031,7 +2032,8 @@ Proof.
   rewrite <- reg_push_update_flip with (x := y) by iner_p.
   rewrite <- reg_push_update_flip with (x := y) by iner_p.
   easy.
-  apply comparator01_fwf. unfold no_equal. split. lia. easy.
+  apply comparator01_fwf. unfold no_equal. split. lia.
+  split. easy. split. easy. split. easy. split. easy. iner_p.
   Local Opaque comparator01.
   inv H9.
   apply typed_inv_exp in H19. rewrite inv_exp_involutive in H19. apply H19.
@@ -2055,7 +2057,8 @@ Proof.
   rewrite Nat.mod_small by lia. easy.
   assert ((v1 + v2) mod vM < vM).
   apply Nat.mod_upper_bound. lia. lia.
-  unfold no_equal. split. lia. easy.
+  unfold no_equal. split. lia.
+  split. easy. split. easy. split. easy. split. easy. iner_p.
   unfold nor_modes. intros. nor_mode_simpl. apply H5. lia.
   unfold nor_modes. intros. nor_mode_simpl. apply H4. lia.
   nor_mode_simpl. nor_mode_simpl.
@@ -2066,7 +2069,8 @@ Proof.
   right_simpl. 
   unfold reg_push. rewrite put_cus_neq by iner_p. easy.
   unfold reg_push. rewrite put_cus_neq by iner_p. easy.
-  unfold no_equal. split. lia. easy.
+  unfold no_equal. split. lia.
+  split. easy. split. easy. split. easy. split. easy. iner_p.
   unfold nor_modes. intros. nor_mode_simpl. apply H6. lia.
   unfold nor_modes. intros. nor_mode_simpl. apply H4. lia.
   1-2:nor_mode_simpl. 
