@@ -29,9 +29,9 @@ Definition QFT_w_reverse n := QFT n >> reverse_qubits n.
 Fixpoint controlled_powers' (f : nat -> bccom) k kmax : bccom :=
   match k with
   | O    => bcskip
-  | S O  => bccont (kmax - 1) (f O)
+  | S O  => bygatectrl (kmax - 1) (f O)
   | S k' => bcseq (controlled_powers' f k' kmax)
-                 (bccont (kmax - k' - 1) (f k'))
+                 (bygatectrl (kmax - k' - 1) (f k'))
   end.
 Definition controlled_powers (f : nat -> bccom) k : ucom U := 
   bc2ucom (controlled_powers' f k k).
@@ -56,6 +56,18 @@ Definition shor_circuit a N :=
 
 
 (** Proofs **)
+
+Lemma uc_eval_bygatectrl_correct :
+  forall c n dim, @uc_eval dim (bc2ucom (bygatectrl n c)) = @uc_eval dim (control n (bc2ucom c)).
+Proof.
+  induction c; intros;
+    try (simpl; easy).
+  rewrite bc2ucom_correct.
+  simpl. do 2 rewrite <- bc2ucom_correct. rewrite IHc1, IHc2.
+  repeat (rewrite control_correct by apply bc2ucom_WF; simpl).
+  rewrite control_correct. simpl. easy.
+  constructor; apply bc2ucom_WF.
+Qed.
 
 Lemma controlled_rotations_WF : forall n, well_formed (controlled_rotations n).
 Proof.
@@ -236,7 +248,8 @@ Proof.
   { intros n f f' k kmax Hkmax Hfeq Hfr' Hfr.
     destruct k; try reflexivity.
     induction k. 
-    simpl. 
+    simpl.
+    rewrite uc_eval_bygatectrl_correct.
     rewrite control_correct.  
     rewrite cast_control_commute.
     apply control_cong.
@@ -248,19 +261,21 @@ Proof.
     apply bc2ucom_WF.
     replace (controlled_powers' f (S (S k)) kmax)
       with (bcseq (controlled_powers' f (S k) kmax)
-                  (bccont (kmax - (S k) - 1) (f (S k)))) 
+                  (bygatectrl (kmax - (S k) - 1) (f (S k)))) 
       by reflexivity.
     replace (controlled_powers_var' f' (S (S k)) kmax)
       with (controlled_powers_var' f' (S k) kmax ;
             cast (UnitaryOps.control (kmax - (S k) - 1) (f' (S k))) (kmax + n))%ucom 
       by reflexivity.
     remember (S k) as k'.
+    specialize (uc_eval_bygatectrl_correct (f k')) as G.
     unfold uc_eval in *.
     simpl in *.
     rewrite IHk.
     apply f_equal2; try reflexivity.
     specialize control_correct as aux.
     unfold uc_eval in aux.
+    rewrite G.
     rewrite aux. clear aux.
     rewrite cast_control_commute.
     apply control_cong.
