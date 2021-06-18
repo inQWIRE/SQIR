@@ -2602,7 +2602,8 @@ Admitted.
 
 
 
-(*define example hash_function as the oracle for grover's search. *)
+(*define example hash_function as the oracle for grover's search.
+  https://qibo.readthedocs.io/en/stable/tutorials/hash-grover/README.html *)
 Definition hash_qr (b:qvar) (a:qvar) := nadd QFTA (Nor (Var b)) (Nor (Var a));;;
              qxor Nat (Nor (Var a)) (Nor (Var b));;;nadd QFTA (Nor (Var b)) (Nor (Var a))
                    ;;; qxor Nat (Nor (Var a)) (Nor (Var b)).
