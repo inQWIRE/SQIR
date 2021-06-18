@@ -2098,6 +2098,91 @@ Proof.
   rewrite eq1. 1-11:easy.
 Qed.
 
+Lemma comparator01_sem_a :
+  forall tenv aenv n x y c1 c2 v1 v2 f,
+    0 < n -> 
+    v1 < 2^n -> v2 < 2^n -> no_equal x y c1 c2 ->
+    nor_modes f x n -> nor_modes f y n -> nor_mode f c1 -> nor_mode f c2 -> well_typed_exp tenv (MAJseq n x y c1) ->
+    well_typed_exp tenv (X c1) -> well_typed_exp tenv (negator0 n x) -> right_mode_env aenv tenv f ->
+    get_cus n f x = nat2fb v1 -> get_cus n f y = nat2fb v2 -> get_cua (f c1) = false -> get_cua (f c2) = false ->
+    exp_sem aenv (comparator01 n x y c1 c2) f = f[c2 |-> put_cu (f c2) (¬(v1 <=? v2))].
+Proof.
+  intros.
+  assert (f = reg_push (reg_push ((f[c1 |-> put_cu (f c1) false])[c2 |-> put_cu (f c2) false]) x v1 n) y v2 n).
+  apply functional_extensionality. intros.
+  unfold reg_push in *.
+  destruct x0.
+  unfold no_equal in *.
+  destruct H2 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
+  bdestruct (y =? v). subst.
+  bdestruct (n0 <? n). 
+  rewrite put_cus_eq by lia.
+  rewrite put_cus_neq by iner_p.
+  repeat rewrite eupdate_index_neq by iner_p.
+  rewrite <- put_cus_eq with (n := n) by lia.
+  rewrite <- H12.
+  rewrite put_get_cus_eq ; easy.
+  rewrite put_cus_neq_2 by iner_p.
+  rewrite put_cus_neq_2 by iner_p.
+  bdestruct (c2 ==? (v,n0)). subst.
+  rewrite eupdate_index_eq.
+  rewrite <- H14.
+  rewrite put_get_cu ; easy.
+  rewrite eupdate_index_neq by iner_p.
+  bdestruct (c1 ==? (v,n0)). subst.
+  rewrite eupdate_index_eq.
+  rewrite <- H13.
+  rewrite put_get_cu ; easy.
+  rewrite eupdate_index_neq by iner_p. easy.
+  rewrite put_cus_neq by iner_p.
+  bdestruct (x =? v). subst.
+  bdestruct (n0 <? n). 
+  rewrite put_cus_eq by lia.
+  repeat rewrite eupdate_index_neq by iner_p.
+  rewrite <- put_cus_eq with (n := n) by lia.
+  rewrite <- H11.
+  rewrite put_get_cus_eq ; easy.
+  rewrite put_cus_neq_2 by iner_p.
+  bdestruct (c2 ==? (v,n0)). subst.
+  rewrite eupdate_index_eq.
+  rewrite <- H14.
+  rewrite put_get_cu ; easy.
+  rewrite eupdate_index_neq by iner_p.
+  bdestruct (c1 ==? (v,n0)). subst.
+  rewrite eupdate_index_eq.
+  rewrite <- H13.
+  rewrite put_get_cu ; easy.
+  rewrite eupdate_index_neq by iner_p. easy.
+  rewrite put_cus_neq by iner_p.
+  bdestruct (c2 ==? (v,n0)). subst.
+  rewrite eupdate_index_eq.
+  rewrite <- H14.
+  rewrite put_get_cu ; easy.
+  rewrite eupdate_index_neq by iner_p.
+  bdestruct (c1 ==? (v,n0)). subst.
+  rewrite eupdate_index_eq.
+  rewrite <- H13.
+  rewrite put_get_cu ; easy.
+  rewrite eupdate_index_neq by iner_p. easy.
+  rewrite H15. 
+  erewrite comparator01_correct with (tenv:=tenv) (v1:=v1) (v2:=v2) (f:=f)
+       (f':= reg_push
+        (reg_push
+           ((f [c1 |-> put_cu (f c1) false]) [c2 |-> put_cu (f c2) false])
+           x v1 n) y v2 n); try easy.
+  unfold reg_push.
+  destruct c2.
+  rewrite put_cu_cus.
+  rewrite put_cu_cus.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  unfold no_equal in *.
+  destruct H2 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite eupdate_twice_eq. easy.
+Qed.
+
 Lemma comparator01_sem_true :
   forall tenv aenv n x y c1 c2 v1 v2 f f',
     0 < n -> 

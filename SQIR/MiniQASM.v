@@ -665,7 +665,7 @@ Definition var_raw (t:qvar) := match t with G x => x | L x => x end.
 *)
 Fixpoint a_nat2fb (f:nat->bool) (n:nat) :=
              match n with 0 => 0
-                       | S m => (Nat.b2n (f m)) + a_nat2fb f m
+                       | S m => (2^m * (Nat.b2n (f m))) + a_nat2fb f m
              end.  
 
 
@@ -675,7 +675,7 @@ Definition allow_inv (e:qexp) : bool :=
              | _ => false
    end.
 
-Definition is_q (t:typ) : bool := match t with (Q,c) => true | _ => false end.
+Definition is_q (t:typ) : bool := fst t =a= Q.
 
 Definition get_var (c:cfac) : option qvar :=
    match c with Nor (Var x) => Some x
@@ -1389,13 +1389,16 @@ Definition gen_clt_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                then 
                    do t2v <- par_eval_cfac size smap bv r b y @
                       Some (Some (Exp (init_v size (vmap vy) t2v;
-                         comparator01 size (vmap vy) (vmap vx) (stack,S sn) (stack,sn) ;init_v size (vmap vy) t2v)),S sn,None)
+                         comparator01 (if b =b= Bl then 1 else size) (vmap vy) (vmap vx) (vmap (L stack,0),S sn)
+                                    (vmap (L stack,0),sn) ;init_v size (vmap vy) t2v)),S sn,None)
                 else if is_q t1 && (is_q t2) then
-                       Some (Some (Exp (comparator01 size (vmap vy) (vmap vx) (stack,S sn) (stack,sn))),S sn, None)
+                       Some (Some (Exp (comparator01 (if b =b= Bl then 1 else size) (vmap vy) (vmap vx) 
+                              (vmap (L stack,0),S sn) (vmap (L stack,0),sn))),S sn, None)
                 else if (¬ (is_q t1)) && (is_q t2) then
                    do t1v <- par_eval_cfac size smap bv r b x @
                        Some (Some (Exp (init_v size (vmap vy) t1v;
-                         comparator01 size (vmap vy) (vmap vx) (stack,S sn) (stack,sn) ;init_v size (vmap vy) t1v)),S sn,None)
+                         comparator01 (if b =b= Bl then 1 else size) (vmap vy) (vmap vx)
+                    (vmap (L stack,0),S sn) (vmap (L stack,0),sn) ;init_v size (vmap vy) t1v)),S sn,None)
                 else do t1v <- par_eval_cfac size smap bv r b x @
                       do t2v <- par_eval_cfac size smap bv r b y @
                            Some (None,sn,Some (a_nat2fb t1v size <? a_nat2fb t2v size)).
@@ -1410,16 +1413,23 @@ Definition gen_ceq_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                then 
                    do t2v <- par_eval_cfac size smap bv r b y @
                        Some (Some (Exp (init_v size (vmap vy) t2v;
-                         comparator01 size (vmap vy) (vmap vx) (stack,S sn) (stack,sn);
-                        comparator01 size (vmap vx) (vmap vy) (stack,S sn) (stack,sn) ; init_v size (vmap vy) t2v)),S sn, None)
+                         comparator01 (if b =b= Bl then 1 else size) 
+                               (vmap vy) (vmap vx) (vmap (L stack,0),S sn) (vmap (L stack,0),sn);
+                        comparator01 (if b =b= Bl then 1 else size) (vmap vx) (vmap vy)
+                      (vmap (L stack,0),S sn) (vmap (L stack,0),sn) ; init_v size (vmap vy) t2v)),S sn, None)
                 else if is_q t1 && (is_q t2) then
-                       Some (Some (Exp (comparator01 size (vmap vy) (vmap vx) (stack,S sn) (stack,sn);
-                        comparator01 size (vmap vx) (vmap vy) (stack,S sn) (stack,sn))),S sn, None)
+                       Some (Some (Exp (comparator01 (if b =b= Bl then 1 else size)
+                             (vmap vy) (vmap vx) (vmap (L stack,0),S sn) (vmap (L stack,0),sn);
+                        comparator01 (if b =b= Bl then 1 else size)
+                          (vmap vx) (vmap vy) (vmap (L stack,0),S sn) (vmap (L stack,0),sn))),S sn, None)
                 else if (¬ (is_q t1)) && (is_q t2) then
                    do t1v <- par_eval_cfac size smap bv r b x @
                       Some (Some (Exp (init_v size (vmap vy) t1v;
-                         comparator01 size (vmap vy) (vmap vx) (stack,S sn) (stack,sn);
-                        comparator01 size (vmap vx) (vmap vy) (stack,S sn) (stack,sn) ;init_v size (vmap vy) t1v)),S sn, None)
+                         comparator01 (if b =b= Bl then 1 else size)
+                                (vmap vy) (vmap vx) (vmap (L stack,0),S sn) (vmap (L stack,0),sn);
+                        comparator01 (if b =b= Bl then 1 else size)
+                               (vmap vx) (vmap vy)
+                      (vmap (L stack,0),S sn) (vmap (L stack,0),sn) ;init_v size (vmap vy) t1v)),S sn, None)
                 else do t1v <- par_eval_cfac size smap bv r b x @
                       do t2v <- par_eval_cfac size smap bv r b y @
                       Some (None,sn,Some (a_nat2fb t1v size =? a_nat2fb t2v size)).
@@ -1869,61 +1879,726 @@ Definition trans_prog (p:prog) (fv:fenv) :=
 
 (*Proofs of compilation correctness. *)
 
-(*
-Lemma gen_clt_c_correct : forall size smap vmap bv r bt stack sn x y p a b, 
-      gen_clt_c size smap vmap bv r bt stack sn x y = Some (p,a,b) 
-         -> (p = None /\ sem_cexp ) \/ ((exists p', p = Some p') /\ b = None).
+Lemma a_nat2fb_small : forall n f, a_nat2fb f n < 2^n.
 Proof.
-  intros. unfold gen_clt_c in *.
-  destruct (type_factor bv bt x) eqn:eq1.
-  destruct (type_factor bv bt y) eqn:eq2.
-  destruct (par_find_var size bv r x) eqn:eq3.
-  destruct (par_find_var size bv r y) eqn:eq4.
-  simpl in *.
-  destruct (is_q p0) eqn:eq5.
-  destruct (is_q p1) eqn:eq6.
-  simpl in *.
-  right. split. inv H. 
-  exists (comparator01 size (vmap p3) (vmap p2) (stack0, S sn)
-       (stack0, sn)). easy. inv H. easy.
-  simpl in *.
-  destruct (par_eval_cfac size smap bv r bt y) eqn:eq7.
-  inv H. right. split.
-  exists ((init_v size (vmap p3) b0;
-      comparator01 size (vmap p3) (vmap p2) (stack0, S sn)
-        (stack0, sn)); init_v size (vmap p3) b0).
-  easy. easy. inv H.
-  destruct (is_q p1) eqn:eq6.
-  simpl in *.
-  destruct (par_eval_cfac size smap bv r bt x) eqn:eq7.
-  split. 
-  unfold bind in *.
-  simpl in *.
-  bdestruct (sn <? sl).
-  destruct (¬ (qvar_eq size bv r x y)) eqn:eq1.
-  simpl in H.
+  intros.
+  induction n;simpl.
+  lia.
+  destruct (f n). simpl. lia. simpl. lia.
 Qed.
+
+Lemma nat2fb_a_nat2fb' : forall n m f, m <= n -> (forall i, m <= i -> f i = false)
+             -> nat2fb (a_nat2fb f n) = f.
+Proof.
+  induction n; intros; unfold nat2fb; simpl.
+  apply functional_extensionality.
+  intros. rewrite H0. easy. lia.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x =? n). subst.
+Admitted.
+
+Lemma nat2fb_a_nat2fb : forall n f, (forall i, n <= i -> f i = false)
+             -> nat2fb (a_nat2fb f n) = f.
+Proof.
+  intros. rewrite nat2fb_a_nat2fb' with (m := n). easy. lia. easy.
+Qed.
+
+Definition is_bl (t:option ttyp) : bool :=
+ match t with Some (TNor (a,Bl)) => true
+            | Some (TPtr (a,Bl) x) => true
+            | _ => false
+ end.
+
+Definition is_qtt (t:option ttyp) : Prop :=
+ match t with Some (TNor (Q,b)) => True
+            | Some (TPtr (Q,b) x) => True
+            | _ => False
+ end.
+
+Definition cexp_set_up (ce:cexp) (sl size:nat) (stack:var)
+          (sn:nat) (vmap : (qvar*nat) -> var) (r:reg) (bv:benv) (f:posi -> val) (aenv:var -> nat) (tenv:env) :=
+  match ce with clt fl b x y => 
+     match par_find_var size bv r x with None => True
+                     | Some vx => 
+        match par_find_var size bv r y with None => True
+                         | Some vy => 
+             ((vmap vx) <> (vmap vy) /\ (vmap vx) <> vmap (L stack,0)
+                /\ (vmap vy) <> vmap (L stack,0) /\
+                Reg.In vx r /\ Reg.In vy r /\ nor_modes f (vmap vx) size /\
+               nor_modes f (vmap vy) size /\ nor_modes f (vmap (L stack,0)) (S sl)
+            /\ well_typed_exp tenv (MAJseq (if is_bl (bv (fst vx)) then 1 else size)
+                                    (vmap vy) (vmap vx) (vmap (L stack,0),S sn))
+           /\ well_typed_exp tenv (X ((vmap (L stack,0),S sn))) 
+            /\ well_typed_exp tenv (negator0 (if is_bl (bv (fst vx)) then 1 else size) (vmap vy))
+           /\ right_mode_env aenv tenv f)
+        end
+      end
+       | ceq fl b x y => 
+     match par_find_var size bv r x with None => True
+                     | Some vx => 
+        match par_find_var size bv r y with None => True
+                         | Some vy => 
+             ((vmap vx) <> (vmap vy) /\ (vmap vx) <> vmap (L stack,0)
+                /\ (vmap vy) <> vmap (L stack,0) /\  Reg.In vx r /\ Reg.In vy r /\
+              nor_modes f (vmap vx) size /\
+               nor_modes f (vmap vy) size /\ nor_modes f (vmap (L stack,0)) (S sl)
+            /\ well_typed_exp tenv (MAJseq (if is_bl (bv (fst vx)) then 1 else size)
+                        (vmap vx) (vmap vy) (vmap (L stack,0),S sn))
+            /\ well_typed_exp tenv (MAJseq (if is_bl (bv (fst vx)) then 1 else size)
+                         (vmap vy) (vmap vx) (vmap (L stack,0),S sn))
+           /\ well_typed_exp tenv (X ((vmap (L stack,0),S sn))) 
+           /\ well_typed_exp tenv (negator0 (if is_bl (bv (fst vx)) then 1 else size) (vmap vx))
+                 /\ well_typed_exp tenv (negator0 (if is_bl (bv (fst vx)) then 1 else size) (vmap vy))
+           /\ right_mode_env aenv tenv f)
+         end
+     end
+        | iseven x => True
+  end.
+
+
+Definition reg_typed (r:reg) (bv:benv) (size:nat) (stack:var) : Prop :=
+   forall x v, fst x <> L stack -> Reg.MapsTo x v r -> bv (fst x) <> None ->
+           (forall i, (if is_bl (bv (fst x)) then 1 else size) <= i -> v i = false).
+
+Definition reg_match_q (stack:var) (r:reg) (f:posi -> val)
+           (bv:benv) (vmap : (qvar*nat) -> var) (aenv:var -> nat) : Prop := 
+  forall x v, fst x <> L stack -> Reg.MapsTo x v r -> (bv (fst x)) <> None ->
+         is_qtt (bv (fst x)) -> 
+            get_cus (aenv (vmap x)) f (vmap x) = v.
+
+Definition reg_match_c (stack:var) (f:posi -> val) (bv:benv)
+             (vmap : (qvar*nat) -> var) (aenv:var -> nat) : Prop := 
+  forall x, fst x <> L stack -> bv (fst x) <> None ->
+                    ~ is_qtt (bv (fst x)) -> get_cus (aenv (vmap x)) f (vmap x) = nat2fb 0.
+
+Definition reg_same_c (stack:var) (rh:reg) (rl:reg) (bv:benv)
+             (vmap : (qvar*nat) -> var) (aenv:var -> nat) : Prop := 
+  forall x, fst x <> L stack -> bv (fst x) <> None ->
+                    ~ is_qtt (bv (fst x)) -> Reg.find x rh = Reg.find x rl.
+
+Definition reg_match_st (sl sn:nat) (stack:var) (f:posi -> val)
+             (vmap : (qvar*nat) -> var) : Prop := 
+          forall i, sn <= i -> get_cus (S sl) f (vmap (L stack,0)) i = false.
+
+Definition aenv_match (stack:var) (size:nat) (bv:benv) (aenv: var -> nat) (vmap : (qvar*nat) -> var) : Prop := 
+          forall x, fst x <> L stack -> aenv (vmap x) = (if is_bl (bv (fst x)) then 1 else size).
+
+Definition no_equal_stack (stack:var) (ce:cexp) (size:nat) (bv:benv) (r:reg) :=
+    match ce with clt fl b x y => 
+     match par_find_var size bv r x with None => 
+             match par_find_var size bv r y with None => True
+                       | Some vy => fst vy <> L stack
+             end
+                     | Some vx => 
+        match par_find_var size bv r y with None => fst vx <> L stack
+                    | Some vy => fst vx <> L stack /\ fst vy <> L stack
+        end
+     end
+      | ceq fl b x y => 
+     match par_find_var size bv r x with None => 
+             match par_find_var size bv r y with None => True
+                       | Some vy => fst vy <> L stack
+             end
+                     | Some vx => 
+        match par_find_var size bv r y with None => fst vx <> L stack
+                    | Some vy => fst vx <> L stack /\ fst vy <> L stack
+        end
+      end
+      | iseven x => True
+   end.
+
+
+
+Lemma par_find_var_means_cfac : 
+   forall size bv r b x vx, par_find_var size bv r x = Some vx -> 
+     sem_cfac size r b x = Reg.find vx r.
+Proof.
+  intros.
+  unfold par_find_var,sem_cfac in *.
+  destruct x.
+  unfold par_eval_fc,sem_factor in *.
+  destruct v.
+  destruct (bv v) eqn:eq1.
+  simpl in *.
+  destruct (is_qt t) eqn:eq2. inv H.
+  destruct (Reg.find (elt:=nat -> bool) (v, 0) r) eqn:eq3.
+  inv H. easy. inv H.
+  simpl in *. inv H.
+  simpl in *.
+  inv H. easy.
+  unfold sem_factor.
+  destruct v.
+  inv H. easy. inv H.
+Qed.
+
+Lemma type_factor_means_q : forall x vx b t size bv r, type_factor bv b x = Some t -> 
+   par_find_var size bv r x = Some vx -> is_q t = true -> is_qtt (bv (fst vx)).
+Proof.
+  intros.
+  unfold type_factor,typ_factor,par_find_var,par_eval_fc,is_qtt,is_qt,is_q in *.
+  destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
+  destruct (bv v0) eqn:eq3. 
+  destruct t0 eqn:eq4.
+  destruct (bv (L x0)) eqn:eq5.
+  destruct t2. destruct t2. inv H. inv H. inv H.
+  destruct (bv (L x0)) eqn:eq5.
+  destruct t2. destruct t2.
+  destruct t1. simpl in *.
+  bdestruct (b1 =b= Nat).
+  bdestruct (a0 =a= Q). inv H0. simpl in H.
+  bdestruct ((a0 =a= C)).
+  bdestruct (b0 =b= b). simpl in H. inv H.
+  destruct (Reg.find (elt:=nat -> bool) (v0, 0) r).
+  inv H0. simpl in *.
+  rewrite eq5.
+  bdestruct (a =a= Q). subst. lia. inv H1. inv H0.
+  simpl in H. inv H. simpl in H. inv H. inv H. inv H. inv H.
+  destruct (bv (L x0)) eqn:eq4. inv H0. inv H0.
+  simpl in *. inv H0.
+  simpl in *.
+  destruct (bv (L x0)).
+  destruct t0. destruct t0.
+  bdestruct (b0 =b= b). inv H. simpl in H1.
+  bdestruct (a =a= Q). subst. lia. inv H1. inv H. inv H. inv H.
+  destruct v eqn:eq2.
+  inv H0. simpl in *.
+  destruct (bv v0). destruct t0.
+  inv H.
+  destruct t0.
+  simpl in *.
+  bdestruct (b0 =b= b). inv H.
+  simpl in H1.
+  bdestruct (a =a= Q). subst. easy.
+  inv H1. inv H. inv H. inv H0.
+Qed.
+
+Lemma type_factor_means_b : forall x vx b t size bv r, type_factor bv b x = Some t -> 
+   par_find_var size bv r x = Some vx -> is_bl (bv (fst vx)) = (b =b= Bl).
+Proof.
+  intros.
+  unfold type_factor,typ_factor,par_find_var,par_eval_fc,is_bl,is_qt,is_q in *.
+  destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
+  destruct (bv v0) eqn:eq3. 
+  destruct t0 eqn:eq4.
+  destruct (bv (L x0)) eqn:eq5.
+  destruct t2. destruct t2. inv H. inv H. inv H.
+  destruct (bv (L x0)) eqn:eq5.
+  destruct t2. destruct t2.
+  destruct t1. simpl in *.
+  bdestruct (b1 =b= Nat).
+  simpl in *.
+  bdestruct (a0 =a= C).
+  bdestruct (b0 =b= b). 
+  bdestruct (a0 =a= Q).
+  simpl in *. inv H0. simpl in *. inv H.
+  destruct (Reg.find (elt:=nat -> bool) (v0, 0) r) eqn:eq6.
+  inv H0. simpl in *. rewrite eq5.
+  destruct b eqn:eq7.
+  simpl. easy. simpl. easy. simpl. easy.
+  inv H0. simpl in H. inv H. simpl in H. inv H. inv H. inv H. inv H.
+  inv H0.
+  simpl in *. inv H0. simpl in *.
+  destruct (bv (L x0)) eqn:eq1.
+  destruct t0. destruct t0.
+  bdestruct (b0 =b= b). inv H.
+  destruct b. easy. easy. easy. inv H. inv H. inv H.
+  destruct v eqn:eq2. inv H0. simpl in *.
+  destruct (bv v0). destruct t0. inv H.
+  destruct t0. simpl in *.
+  bdestruct (b0 =b= b). inv H.
+  destruct b. easy. easy. easy. inv H. inv H. inv H0.
+Qed.
+
+Lemma type_factor_means_q_false : forall x vx b t size bv r, type_factor bv b x = Some t -> 
+   par_find_var size bv r x = Some vx -> is_q t = false -> bv (fst (vx)) <> None -> ~ is_qtt (bv (fst vx)).
+Proof.
+  intros.
+  unfold type_factor,typ_factor,par_find_var,par_eval_fc,is_qtt,is_qt,is_q in *.
+  destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
+  destruct (bv v0) eqn:eq3. 
+  destruct t0 eqn:eq4.
+  destruct (bv (L x0)) eqn:eq5.
+  destruct t2. destruct t2. inv H. inv H. inv H.
+  destruct (bv (L x0)) eqn:eq5.
+  destruct t2. destruct t2.
+  destruct t1. simpl in *.
+  bdestruct (b1 =b= Nat).
+  bdestruct (a0 =a= Q). inv H0. simpl in H.
+  bdestruct ((a0 =a= C)).
+  bdestruct (b0 =b= b). simpl in H. inv H.
+  destruct (Reg.find (elt:=nat -> bool) (v0, 0) r).
+  inv H0. simpl in *.
+  rewrite eq5.
+  bdestruct (a =a= Q). inv H1. destruct a. easy. easy. inv H0.
+  simpl in H. inv H. simpl in H. inv H. inv H. inv H. inv H.
+  destruct (bv (L x0)) eqn:eq4. inv H0. inv H0.
+  simpl in *. inv H0.
+  simpl in *.
+  destruct (bv (L x0)).
+  destruct t0. destruct t0.
+  bdestruct (b0 =b= b). inv H. simpl in H1.
+  bdestruct (a =a= Q). inv H1. destruct a. easy. easy. inv H. inv H. inv H.
+  destruct v eqn:eq2.
+  inv H0. simpl in *.
+  destruct (bv v0). destruct t0.
+  inv H.
+  destruct t0.
+  simpl in *.
+  bdestruct (b0 =b= b). inv H.
+  simpl in H1.
+  bdestruct (a =a= Q). inv H1. destruct a. easy. easy.
+  inv H. inv H. inv H0.
+Qed.
+
+Lemma type_factor_means_some : forall x vx b t size bv r, type_factor bv b x = Some t -> 
+   par_find_var size bv r x = Some vx -> bv (fst vx) <> None.
+Proof.
+  intros.
+  unfold type_factor,typ_factor,par_find_var,par_eval_fc,is_qt,is_q in *.
+  destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
+  destruct (bv v0) eqn:eq3. 
+  destruct t0 eqn:eq4.
+  destruct (bv (L x0)) eqn:eq5.
+  destruct t2. destruct t2. inv H. inv H. inv H.
+  destruct (bv (L x0)) eqn:eq5.
+  destruct t2. destruct t2.
+  destruct t1. simpl in *.
+  bdestruct (a0 =a= Q).
+  simpl in *. inv H0.
+  bdestruct (b1 =b= Nat).
+  simpl in *.
+  bdestruct (a0 =a= C).
+  bdestruct (b0 =b= b).
+  simpl in *. inv H.
+  destruct (Reg.find (elt:=nat -> bool) (v0, 0) r) eqn:eq6.
+  inv H0. simpl in *. rewrite eq5. easy.
+  inv H0. simpl in H. inv H. simpl in H. inv H. inv H. inv H. inv H.
+  inv H0.
+  simpl in *. inv H0. simpl in *.
+  destruct (bv (L x0)) eqn:eq1.
+  destruct t0. destruct t0.
+  bdestruct (b0 =b= b). inv H. easy.
+  inv H. inv H. inv H.
+  destruct v eqn:eq2. inv H0. simpl in *.
+  destruct (bv v0). destruct t0. inv H.
+  destruct t0. simpl in *.
+  bdestruct (b0 =b= b). inv H.
+  easy. inv H. inv H. inv H0.
+Qed.
+
+Definition get_var_factor (x:factor) :=
+   match x with Var v => [v]
+                  | Num v => []
+   end.
+
+Definition get_var_cfac (x:cfac) :=
+    match x with Ptr x v => ((L x):: get_var_factor v)
+               | Nor v => get_var_factor v
+    end.
+
+Definition get_var_cexp (x:cexp) :=
+   match x with clt f b x y => get_var_cfac x ++ get_var_cfac y
+              | ceq f b x y => get_var_cfac x ++ get_var_cfac y
+              | iseven x => get_var_cfac x
+   end.
+
+Definition not_stack (stack:var) (l:list qvar) := forall x, In x l -> x <> L stack.
+
+
+(*
+Inductive factor := Var (v:qvar)
+                 | Num (n:nat -> bool).
+     (* the first m in Num represents the number of bits.
+      a value is represented as a natural number x. it means x / 2^m where m is the number of denominator. *)
+
+Inductive cfac := Ptr (x:var) (v:factor) | Nor (v:factor).
 *)
 
-Lemma compile_cexp_sem_two_cases : forall sl size smap vmap bv r stack sn e p a b re, 
-      compile_cexp sl size smap vmap bv r stack sn e = Some (p,a,b) ->
-      sem_cexp sl sn size e = re ->
+
+Lemma par_find_var_lh : forall b x bv vmap aenv size stack rl rh t vx, type_factor bv b x = Some t
+      -> par_find_var size bv rl x = Some vx -> not_stack stack (get_var_cfac x) ->
+     reg_same_c stack rh rl bv vmap aenv -> par_find_var size bv rh x = Some vx.
+Proof.
+  intros.
+  unfold reg_same_c in *.
+  unfold type_factor,typ_factor,par_find_var,par_eval_fc,is_qt,is_q in *.
+  destruct x eqn:eq1. destruct v eqn:eq2.
+  destruct (bv (L x0)) eqn:eq3.
+  simpl in *. destruct t0. destruct t0.
+  destruct (bv v0) eqn:eq4. destruct t0. destruct t0.
+  inv H. destruct t0. simpl in *.
+  bdestruct (b1 =b= Nat).
+  simpl in *.
+  bdestruct (a0 =a= C).
+  bdestruct (b0 =b= b).
+  simpl in *. inv H.
+  bdestruct (C =a= Q). easy.
+  destruct (Reg.find (elt:=nat -> bool) (v0, 0) rl) eqn:eq5.
+  inv H0.
+  rewrite <- H2 in eq5.
+  rewrite eq5. easy.
+  unfold not_stack in H1.
+  simpl.
+  apply H1. simpl.
+  right. left. easy.
+  simpl. rewrite eq4. easy.
+  unfold is_qtt.
+  simpl.
+  rewrite eq4. easy.
+  inv H0. simpl in *. inv H. simpl in *. inv H. inv H. inv H. inv H.
+  simpl in *. inv H.
+  destruct (bv (L x0)). destruct t0. destruct t0.
+  simpl in *.
+  bdestruct (b0 =b= b).
+  inv H. inv H0. easy. inv H.
+  simpl in *. inv H. simpl in *. inv H.
+  destruct v. easy. inv H0.
+Qed.
+
+Lemma not_stack_shrink_l : forall l1 l2 stack, not_stack stack (l1++l2) -> not_stack stack l1.
+Proof.
+ intros. unfold not_stack in *.
+ intros. 
+ apply H.
+ apply in_or_app. left. easy.
+Qed.
+
+Lemma not_stack_shrink_r : forall l1 l2 stack, not_stack stack (l1++l2) -> not_stack stack l2.
+Proof.
+ intros. unfold not_stack in *.
+ intros. 
+ apply H.
+ apply in_or_app. right. easy.
+Qed.
+
+Lemma par_find_var_get : forall size bv rl x vx, par_find_var size bv rl x = Some vx -> In (fst vx) (get_var_cfac x).
+Proof.
+  intros.
+  unfold par_find_var,get_var_cfac in *.
+  destruct x.
+  destruct (par_eval_fc size bv rl Nat v) eqn:eq1.
+  simpl in *. inv H. simpl. left. easy.
+  simpl in *. inv H.
+  unfold get_var_factor. destruct v.
+  inv H. simpl. left. easy. inv H.
+Qed.
+
+Local Opaque comparator01.
+
+Lemma compile_cexp_sem : forall sl size smap vmap bv rh rl stack sn e p a b re f aenv tenv, 
+      compile_cexp sl size smap vmap bv rl stack sn e = Some (p,a,b) ->
+      sem_cexp sl sn size rh e = re -> reg_typed rh bv size stack -> 
+      0 < size -> 0 < sl ->
+      no_equal_stack stack e size bv rh ->
+      reg_match_q stack rh f bv vmap aenv ->
+      reg_same_c stack rh rl bv vmap aenv ->
+      reg_match_c stack f bv vmap aenv ->
+      reg_match_st sl sn stack f vmap ->
+      aenv_match stack size bv aenv vmap ->
+      not_stack stack (get_var_cexp e) ->
+      cexp_set_up e sl size stack sn vmap rh bv f aenv tenv
          -> (p = None /\ (exists b', b = Some b' /\ re = Some (sn,b') ))
-              \/ ((exists p', p = Some p' /\ b = None)).
+              \/ ((exists p', p = Some p' /\ b = None
+          /\ re = Some (S sn,get_cua (prog_sem aenv p' f (vmap (L stack,0),sn))))).
 Proof.
   intros. induction e.
   simpl in *.
   bdestruct (sn <? sl).
-  destruct (¬ (qvar_eq size bv r x y)) eqn:eq1.
-  simpl in H.
-Qed.
+  destruct (¬ (qvar_eq size bv rl x y)) eqn:eq1.
+  unfold gen_clt_c in H.
+  destruct (type_factor bv b0 x) eqn:eq2.
+  destruct (type_factor bv b0 y) eqn:eq3.
+  destruct (par_find_var size bv rl x) eqn:eq4.
+  destruct (par_find_var size bv rl y) eqn:eq5.
+  assert (par_find_var size bv rh x = Some p2).
+  eapply par_find_var_lh.
+  apply eq2. apply eq4.
+  apply not_stack_shrink_l in H10. apply H10. apply H6.
+  assert (par_find_var size bv rh y = Some p3).
+  eapply par_find_var_lh.
+  apply eq3. apply eq5.
+  apply not_stack_shrink_r in H10. apply H10. apply H6.
+  rewrite H13 in *. rewrite H14 in *.
+  simpl in *.
+  destruct H11 as [X1 [X2 [X3 [X4 [X5 [X6 [X7 [X8 [X9 [X10 [X11 X12]]]]]]]]]]].
+  destruct (is_q p0) eqn:eq6.
+  destruct (is_q p1) eqn:eq7.
+  simpl in *.
+  inv H. right.
+  exists (comparator01 (if b0 =b= Bl then 1 else size) 
+       (vmap p3) (vmap p2) (vmap (L stack0, 0), S sn)
+       (vmap (L stack0, 0), sn)).
+  split. easy. split. easy.
+  unfold sem_cexp.
+  bdestruct (sn <? sl).
+  rewrite par_find_var_means_cfac with (bv:=bv) (vx := p2).
+  rewrite par_find_var_means_cfac with (bv:=bv) (vx := p3).
+  simpl in *.
+  destruct (Reg.find (elt:=nat -> bool) p2 rh) eqn:eq8.
+  destruct (Reg.find (elt:=nat -> bool) p3 rh) eqn:eq9.
+  destruct b0 eqn:eq10.
+  bdestruct (Nat =b= Bl). inv H0.
+  rewrite comparator01_sem_a with (tenv := tenv)
+        (v1:= a_nat2fb b1 size) (v2:= a_nat2fb b size); try easy.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb b size <? a_nat2fb b1 size).
+  bdestruct ((a_nat2fb b1 size <=? a_nat2fb b size)). lia.
+  simpl. easy.
+  bdestruct ((a_nat2fb b1 size <=? a_nat2fb b size)).
+  simpl. easy. lia.
+  apply X8. lia.
+  apply a_nat2fb_small.
+  apply a_nat2fb_small.
+  unfold no_equal. split. lia.
+  split. easy. split. easy. split. easy.
+  split. easy. iner_p.
+  apply X8 ; lia.
+  apply X8 ; lia.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Nat) (t := p0) (size:=size) (r:= rh) in X9; try easy.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Nat) (t := p0) (size:=size) (r:= rh) in X11; try easy.
+  unfold reg_match_q in H5.
+  destruct H4.
+  apply Reg.find_2 in eq9.
+  apply par_find_var_get in eq5.
+  apply not_stack_shrink_r in H10.
+  apply H10 in eq5.
+  specialize (H1 p3 b1 eq5 eq9) as eq11.
+  apply H5 in eq9; try easy.
+  rewrite nat2fb_a_nat2fb.
+  assert ( (aenv (vmap p3)) = size).
+  unfold aenv_match in H9.
+  specialize (H9 p3 eq5).
+  rewrite type_factor_means_b with (x := y) 
+           (b:=Nat) (t := p1) (size:=size) (r:= rh) in H9; try easy.
+  rewrite H15 in eq9. easy.
+  rewrite type_factor_means_b with (x := y) 
+           (b:=Nat) (t := p1) (size:=size) (r:= rh) in eq11; try easy.
+  simpl in eq11.
+  apply eq11.
+  apply type_factor_means_some with (x := y) 
+           (b:=Nat) (t := p1) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_some with (x := y) 
+           (b:=Nat) (t := p1) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_q with (x := y) 
+           (b:=Nat) (t := p1) (size:=size) (r:= rh) ; try easy.
+  unfold reg_match_q in H5.
+  destruct H4.
+  apply Reg.find_2 in eq8.
+  apply par_find_var_get in eq4.
+  apply not_stack_shrink_l in H10.
+  apply H10 in eq4.
+  specialize (H1 p2 b eq4 eq8) as eq11.
+  apply H5 in eq8; try easy.
+  rewrite nat2fb_a_nat2fb.
+  assert ( (aenv (vmap p2)) = size).
+  unfold aenv_match in H9.
+  specialize (H9 p2 eq4).
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Nat) (t := p0) (size:=size) (r:= rh) in H9; try easy.
+  rewrite H15 in eq8. easy.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Nat) (t := p0) (size:=size) (r:= rh) in eq11; try easy.
+  simpl in eq11.
+  apply eq11.
+  apply type_factor_means_some with (x := x) 
+           (b:=Nat) (t := p0) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_some with (x := x) 
+           (b:=Nat) (t := p0) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_q with (x := x) 
+           (b:=Nat) (t := p0) (size:=size) (r:= rh) ; try easy.
+  unfold reg_match_st in H8.
+  specialize (H8 (S sn)).
+  rewrite <- H8.
+  rewrite get_cus_cua. easy. lia. lia.
+  unfold reg_match_st in H8.
+  specialize (H8 (sn)).
+  rewrite <- H8.
+  rewrite get_cus_cua. easy. lia. lia.
 
-Lemma compile_cexp_sem_none : forall sl size smap vmap bv r stack sn e, 
-      compile_cexp sl size smap vmap bv r stack sn e = Some (None,a,Some b) -> 
+  bdestruct (Flt =b= Bl). inv H0.
+  rewrite comparator01_sem_a with (tenv := tenv)
+        (v1:= a_nat2fb b1 size) (v2:= a_nat2fb b size); try easy.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb b size <? a_nat2fb b1 size).
+  bdestruct ((a_nat2fb b1 size <=? a_nat2fb b size)). lia.
+  simpl. easy.
+  bdestruct ((a_nat2fb b1 size <=? a_nat2fb b size)).
+  simpl. easy. lia.
+  apply X8. lia.
+  apply a_nat2fb_small.
+  apply a_nat2fb_small.
+  unfold no_equal. split. lia.
+  split. easy. split. easy. split. easy.
+  split. easy. iner_p.
+  apply X8 ; lia.
+  apply X8 ; lia.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Flt) (t := p0) (size:=size) (r:= rh) in X9; try easy.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Flt) (t := p0) (size:=size) (r:= rh) in X11; try easy.
+  unfold reg_match_q in H5.
+  destruct H4.
+  apply Reg.find_2 in eq9.
+  apply par_find_var_get in eq5.
+  apply not_stack_shrink_r in H10.
+  apply H10 in eq5.
+  specialize (H1 p3 b1 eq5 eq9) as eq11.
+  apply H5 in eq9; try easy.
+  rewrite nat2fb_a_nat2fb.
+  assert ( (aenv (vmap p3)) = size).
+  unfold aenv_match in H9.
+  specialize (H9 p3 eq5).
+  rewrite type_factor_means_b with (x := y) 
+           (b:=Flt) (t := p1) (size:=size) (r:= rh) in H9; try easy.
+  rewrite H15 in eq9. easy.
+  rewrite type_factor_means_b with (x := y) 
+           (b:=Flt) (t := p1) (size:=size) (r:= rh) in eq11; try easy.
+  simpl in eq11.
+  apply eq11.
+  apply type_factor_means_some with (x := y) 
+           (b:=Flt) (t := p1) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_some with (x := y) 
+           (b:=Flt) (t := p1) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_q with (x := y) 
+           (b:=Flt) (t := p1) (size:=size) (r:= rh) ; try easy.
+  unfold reg_match_q in H5.
+  destruct H4.
+  apply Reg.find_2 in eq8.
+  apply par_find_var_get in eq4.
+  apply not_stack_shrink_l in H10.
+  apply H10 in eq4.
+  specialize (H1 p2 b eq4 eq8) as eq11.
+  apply H5 in eq8; try easy.
+  rewrite nat2fb_a_nat2fb.
+  assert ( (aenv (vmap p2)) = size).
+  unfold aenv_match in H9.
+  specialize (H9 p2 eq4).
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Flt) (t := p0) (size:=size) (r:= rh) in H9; try easy.
+  rewrite H15 in eq8. easy.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Flt) (t := p0) (size:=size) (r:= rh) in eq11; try easy.
+  simpl in eq11.
+  apply eq11.
+  apply type_factor_means_some with (x := x) 
+           (b:=Flt) (t := p0) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_some with (x := x) 
+           (b:=Flt) (t := p0) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_q with (x := x) 
+           (b:=Flt) (t := p0) (size:=size) (r:= rh) ; try easy.
+  unfold reg_match_st in H8.
+  specialize (H8 (S sn)).
+  rewrite <- H8.
+  rewrite get_cus_cua. easy. lia. lia.
+  unfold reg_match_st in H8.
+  specialize (H8 (sn)).
+  rewrite <- H8.
+  rewrite get_cus_cua. easy. lia. lia.
 
+  bdestruct (Bl =b= Bl).
+  rewrite comparator01_sem_a with (tenv := tenv)
+        (v1:= a_nat2fb b1 1) (v2:= a_nat2fb b 1); try easy.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  simpl. repeat rewrite plus_0_r.
+  bdestruct (Nat.b2n (b 0) <? Nat.b2n (b1 0)).
+  bdestruct ((Nat.b2n (b1 0) <=? Nat.b2n (b 0))). lia.
+  simpl. easy.
+  bdestruct (((Nat.b2n (b1 0) <=? Nat.b2n (b 0)))).
+  simpl. easy. lia.
+  apply X8. lia. lia.
+  apply a_nat2fb_small.
+  apply a_nat2fb_small.
+  unfold no_equal. split. lia.
+  split. easy. split. easy. split. easy.
+  split. easy. iner_p.
+  unfold nor_modes. intros.
+  apply X7. lia.
+  unfold nor_modes. intros.
+  apply X6. lia.
+  apply X8;lia.
+  apply X8;lia.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Bl) (t := p0) (size:=size) (r:= rh) in X9; try easy.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Bl) (t := p0) (size:=size) (r:= rh) in X11; try easy.
+  unfold reg_match_q in H5.
+  destruct H4.
+  apply Reg.find_2 in eq9.
+  apply par_find_var_get in eq5.
+  apply not_stack_shrink_r in H10.
+  apply H10 in eq5.
+  specialize (H1 p3 b1 eq5 eq9) as eq11.
+  apply H5 in eq9; try easy.
+  rewrite nat2fb_a_nat2fb.
+  assert ( (aenv (vmap p3)) = 1).
+  unfold aenv_match in H9.
+  specialize (H9 p3 eq5).
+  rewrite type_factor_means_b with (x := y) 
+           (b:=Bl) (t := p1) (size:=size) (r:= rh) in H9; try easy.
+  rewrite H15 in eq9. easy.
+  rewrite type_factor_means_b with (x := y) 
+           (b:=Bl) (t := p1) (size:=size) (r:= rh) in eq11; try easy.
+  simpl in eq11.
+  apply eq11.
+  apply type_factor_means_some with (x := y) 
+           (b:=Bl) (t := p1) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_some with (x := y) 
+           (b:=Bl) (t := p1) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_q with (x := y) 
+           (b:=Bl) (t := p1) (size:=size) (r:= rh) ; try easy.
+  unfold reg_match_q in H5.
+  destruct H4.
+  apply Reg.find_2 in eq8.
+  apply par_find_var_get in eq4.
+  apply not_stack_shrink_l in H10.
+  apply H10 in eq4.
+  specialize (H1 p2 b eq4 eq8) as eq11.
+  apply H5 in eq8; try easy.
+  rewrite nat2fb_a_nat2fb.
+  assert ( (aenv (vmap p2)) = 1).
+  unfold aenv_match in H9.
+  specialize (H9 p2 eq4).
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Bl) (t := p0) (size:=size) (r:= rh) in H9; try easy.
+  rewrite H15 in eq8. easy.
+  rewrite type_factor_means_b with (x := x) 
+           (b:=Bl) (t := p0) (size:=size) (r:= rh) in eq11; try easy.
+  simpl in eq11.
+  apply eq11.
+  apply type_factor_means_some with (x := x) 
+           (b:=Bl) (t := p0) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_some with (x := x) 
+           (b:=Bl) (t := p0) (size:=size) (r:= rh) ; try easy.
+  apply type_factor_means_q with (x := x) 
+           (b:=Bl) (t := p0) (size:=size) (r:= rh) ; try easy.
+  unfold reg_match_st in H8.
+  specialize (H8 (S sn)).
+  rewrite <- H8.
+  rewrite get_cus_cua. easy. lia. lia.
+  unfold reg_match_st in H8.
+  specialize (H8 (sn)).
+  rewrite <- H8.
+  rewrite get_cus_cua. easy. lia. lia. easy.
 
+  apply RegFacts.in_find_iff in X5. easy.
+  apply RegFacts.in_find_iff in X4. easy.
+  easy. easy. lia.
 
-
+  simpl in *.
+  destruct (par_eval_cfac size smap bv rl b0 y) eqn:eq8.
+  inv H. right.
+  exists ((init_v size (vmap p3) b1;
+    comparator01 (if b0 =b= Bl then 1 else size) (vmap p3) (vmap p2)
+      (vmap (L stack0, 0), S sn) (vmap (L stack0, 0), sn)); init_v size (vmap p3) b1).
+  split. easy. split. easy.
+  simpl.
+Admitted.
 
 
 
