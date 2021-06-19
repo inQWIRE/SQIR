@@ -16,7 +16,7 @@ Local Opaque CNOT. Local Opaque CCX.
   multiplier circuit based on QFT.
 
   @Liyi: Link to relevant paper?
-  
+  https://arxiv.org/abs/quant-ph/0205095
   The modular multiplier circuit computes ((A * x) % N) where A and N are integer
   constants and x is an integer variable. The main definition in this file is 
   (rz_modmult_full y x n c A Ainv N). The main correctness property is
@@ -24,6 +24,14 @@ Local Opaque CNOT. Local Opaque CCX.
 
   @Liyi: Describe the different arguments to rz_modmult_full and summarize what
   rz_modmult_full_sem is saying.
+  In rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (A:nat) (Ainv :nat) (N:nat),
+  y is a group of n ancilla qubits, x is the input number, (n-2) is the qubit size of x.
+  c is an ancilla qubit for storing data, A is the input number and Ainv is the invers of A,
+  such that (A * Ainv) mod N = 1, N is the mod factor.
+  The result of the circuit will produce (A*x) mod N in the y group qubits,
+  while the x group will be all zero. If users want to make the values to x,
+  feel free to add a swap gates between x and y.
+
 *)
 
 
