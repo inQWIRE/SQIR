@@ -2949,9 +2949,9 @@ Fixpoint clean_high (n:nat) (y:var) (ex:var) :=
 (*Here x and y are in nor_mode and re in phi_mode. [x][y][phi(re)] ->[x][y][phi(x*y mod 2^n)], re is supposed to be zero, 
     ex is in nor_mode. *)
 Definition nat_full_mult (size:nat) (x y:var) (re:var) (ex:var) :=
-          (Exp (Rev re ;Rev x; Rev y));; QFT re ;;
+          (Exp (Rev re ; Rev y));; QFT re ;;
          (Exp (nat_full_mult_quar size x y re ex ; inv_exp (clean_high size y ex)))
-           ;; RQFT re ;; (Exp (Rev re; Rev x; Rev y)).
+           ;; RQFT re ;; (Exp (Rev re; Rev y)).
 
 Fixpoint flt_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) :=
    match n with 0 => SKIP (x,0)
@@ -2968,9 +2968,9 @@ Fixpoint clean_high_flt (n:nat) (size:nat) (y:var) (ex:var) :=
 (*Here x and y are in nor_mode and re in phi_mode. [x][y][phi(re)] ->[x][y][phi((x*2^n*y)/2^n)], re is supposed to be zero, 
     ex is in nor_mode. *)
 Definition flt_full_mult (size:nat) (x y:var) (re:var) (ex:var) :=
-           (Exp (Rev re; Rev x; Rev y));;QFT re ;;
+           (Exp (Rev re; Rev y));;QFT re ;;
             (Exp (nat_full_mult_quar size x y re ex ; inv_exp (clean_high_flt size size y ex)))
-              ;;RQFT re ;;(Exp (Rev re; Rev x; Rev y)).
+              ;;RQFT re ;;(Exp (Rev re; Rev y)).
 
 (*
 Definition moddoubler01 n x M c1 c2 :=
