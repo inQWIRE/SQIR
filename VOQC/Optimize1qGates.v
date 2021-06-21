@@ -30,7 +30,7 @@ Fixpoint optimize_1q_gates' {dim} (l : IBM_ucom_l dim) (n: nat) acc : IBM_ucom_l
           | UIBM_U3 a b c, UIBM_U2 a' b'    => compose_u3 a b c (PI/2) a' b'
           | UIBM_U3 a b c, UIBM_U3 a' b' c' => compose_u3 a b c a' b' c'
           end in
-        optimize_1q_gates' (l1 ++ l2) n' (App1 unew q :: acc)
+        optimize_1q_gates' (App1 unew q :: l1 ++ l2) n' acc
       | None => optimize_1q_gates' t n' (App1 u q :: acc)
       end
     | g :: t => optimize_1q_gates' t n' (g :: acc)
@@ -88,7 +88,8 @@ Proof.
     apply uc_equiv_cong_l in nsqg.
     rewrite nsqg.
     rewrite IHn.
-    2: { apply uc_well_typed_l_app; auto. }
+    2: { constructor; auto.
+         apply uc_well_typed_l_app; auto. }
     dependent destruction i; dependent destruction u. 
     all: (simpl;
           repeat rewrite (cons_to_app _ (_ ++ _));
@@ -233,9 +234,9 @@ Proof.
       eapply IHn.
       symmetry in nsqg.
       eapply next_single_qubit_gate_respects_constraints with (is_in_graph0:=is_in_graph) (cnot:=UIBM_CNOT) in nsqg as [? ?].
+      constructor.
       apply respects_constraints_directed_app; assumption.
       assumption.
-      constructor.
       assumption.
       eapply IHn; try constructor; assumption.
     + inversion H; subst.
