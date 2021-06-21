@@ -44,7 +44,7 @@ shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/Main.vo
 
 voqc: invoke-coqmakefile $(VOQC)/Main.vo
 
-qvm : invoke-coqmakefile SQIR/MiniQASM.vo
+qvm : invoke-coqmakefile SQIR/MiniQASM.vo $(SQIR)/Testing.vo
 
 # Built by 'make examples'
 
@@ -79,6 +79,9 @@ examples/Utilities.vo: $(examples)/Utilities.v $(SQIR)/VectorStates.vo
 
 SQIR/VSQIR.vo: $(SQIR)/VSQIR.v $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo
 	coqc $(COQ_OPTS) $(SQIR)/VSQIR.v
+
+SQIR/Testing.vo: $(SQIR)/VSQIR.vo $(examples)/Utilities.vo
+	coqc $(COQ_OPTS) $(SQIR)/Testing.v
 
 SQIR/CLArith.vo: $(SQIR)/CLArith.v $(SQIR)/UnitaryOps.vo $(SQIR)/SQIR.vo $(QWIRE)/Dirac.v $(examples)/QPE.vo $(SQIR)/VSQIR.vo
 	coqc $(COQ_OPTS) $(SQIR)/CLArith.v
