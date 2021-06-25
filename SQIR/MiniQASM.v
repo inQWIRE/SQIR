@@ -495,6 +495,7 @@ Inductive qexp := skip
                 | fsub (f:flag) (v:cfac) (x:cfac)
                 | fmul (f:flag) (v1:cfac) (v2:cfac) (z:cfac)
                 | qxor (b:btype) (v:cfac) (x:cfac)
+                | slrot (b:btype) (x:cfac)
                 | ndiv (x:cfac) (y:cfac) (v:cfac) (*x := y/n where x,n are a nat *)
                 | nmod (x:cfac) (y:cfac) (v:cfac) (* x := y mod n where x,n are a nat *)
                 | nfac (x:cfac) (v:cfac) (* x := n! where x is a nat & n is  nat *)
@@ -763,6 +764,8 @@ Fixpoint type_qexp (fv:fenv) (benv:benv) (e:qexp):=
                     do old <- benv core @
                        ret (qupdate benv core (Some (put_shell old (meet_type re1 re2))))
 
+             | slrot b x => ret benv
+
              | qinv e => if allow_inv e then type_qexp fv benv e else None
 
              | ndiv x y v => 
@@ -945,6 +948,8 @@ Definition eval_var (size:nat) (r:reg) (x:cfac) :=
               | Nor (Num x) => None
    end.
 
+Definition l_rotate (f:nat -> bool) (n:nat) := fun i => f ((i + n - 1) mod n).
+
 Inductive sem_qexp (fv:fenv) (s_lit size:nat) : nat -> reg -> qexp -> nat -> reg -> Prop :=
    sem_qexp_skip : forall sn r, sem_qexp fv s_lit size sn r skip sn r
  | sem_qexp_init : forall sn r b x v xn x_val val,
@@ -973,9 +978,14 @@ Inductive sem_qexp (fv:fenv) (s_lit size:nat) : nat -> reg -> qexp -> nat -> reg
         -> sem_cfac size r Flt y = Some y_val -> Reg.MapsTo zn (nat2fb 0) r ->
          sem_qexp fv s_lit size sn r (fmul f x y z) sn (Reg.add zn
              (nat2fb (((a_nat2fb x_val size) * (a_nat2fb y_val size)) / 2^size)) r)
- | sem_qexp_xor : forall sn r b x y yn y_val x_val, eval_var size r y = Some yn ->
+ | sem_qexp_xor : forall sn r b x xn x_val, eval_var size r x = Some xn -> sem_cfac size r b x = Some x_val ->
+         sem_qexp fv s_lit size sn r (slrot b x) sn (Reg.add xn (l_rotate x_val (if b =b= Bl then 1 else size)) r)
+
+ | sem_qexp_lrot : forall sn r b x y yn y_val x_val, eval_var size r y = Some yn ->
             Reg.MapsTo yn y_val r -> sem_cfac size r b x = Some x_val ->
          sem_qexp fv s_lit size sn r (qxor b x y) sn (Reg.add yn (bin_xor x_val y_val (if b =b= Bl then 1 else size)) r)
+
+
  | sem_qexp_nfac : forall sn r x y xn y_val, eval_var size r x = Some xn ->
               sem_cfac size r Nat y = Some y_val -> 
         sem_qexp fv s_lit size sn r (nfac x y) sn (Reg.add xn (nat2fb (fact (a_nat2fb y_val size) mod 2^size)) r)
@@ -1101,6 +1111,10 @@ Fixpoint collect_cvars (bv:benv) (e:qexp) : list qvar :=
                                                     | Some t => if is_q (get_core t) then [] else [xn]
                                                          end
                               end
+              | slrot b x => match get_var x with None => []
+                                             | Some xn => [xn]
+                              end
+
                | ndiv x y z => match get_var x with None => [] | Some xn => [xn] end
                | nmod x y z => match get_var x with None => [] | Some xn => [xn] end
                | nfac x y => match get_var x with None => [] | Some xn => [xn] end
@@ -1145,6 +1159,7 @@ Fixpoint in_scope_if (l:list qvar) (e:qexp): Prop :=
               | fsub b x y => in_scope_cfac l x /\ in_scope_cfac l y
               | fmul b x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
               | qxor b x y => in_scope_cfac l x /\ in_scope_cfac l y
+              | slrot b x => in_scope_cfac l x
               | ndiv x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
               | nmod x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
               | nfac x y => in_scope_cfac l x /\ in_scope_cfac l y
@@ -1271,6 +1286,7 @@ Definition get_vars (size:nat) (bv:benv) (reg:reg) (e:qexp) :=
                                    do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
               | qxor b x y => do var1 <- par_find_var size bv reg x @
                                   do var2 <- par_find_var size bv reg y @ ret (var1::var2::[])
+              | slrot b x => do var1 <- par_find_var size bv reg x @ ret (var1::[])
               | ndiv x y z => do var1 <- par_find_var size bv reg x @
                                   do var2 <- par_find_var size bv reg y @ 
                                    do var3 <- par_find_var size bv reg z @  ret (var1::var2::var3::[])
@@ -1595,6 +1611,16 @@ Definition qxor_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  do t2v <- par_eval_cfac size smap bv r Nat y @
                    Some (None,sn,Some (Reg.add vx (bin_xor t1v t2v size) r)).
 
+Definition lrot_c (size:nat) (b:btype) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
+                 (bv:benv) (r:reg) (sn:nat) (x:cfac) :=
+     do t1 <- type_factor bv b x @
+             do vx <- par_find_var size bv r x @  
+             if is_q t1 then
+                       Some (Some (Exp (Rshift (vmap vx))),sn, None)
+             else
+                 do t1v <- par_eval_cfac size smap bv r b x @
+                   Some (None,sn,Some (Reg.add vx (l_rotate t1v (if b =b= Bl then 1 else size)) r)).
+
 
 Definition combine_if (sv : var) (sn:nat) (vmap: (qvar*nat) -> var)
                       (p1:pexp) (e1:option pexp) (e2:option pexp) :=
@@ -1665,7 +1691,7 @@ Fixpoint trans_qexp (sl size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                      deal_result r (qxor_c size smap vmap bv r temp stack sn fv x y) 
                         else None
 
-
+           | slrot b x =>  deal_result r (lrot_c size b smap vmap bv r sn x)
 
            | ndiv x y n => do t2v <- par_eval_cfac size smap bv r Nat y @
                              do t3v <- par_eval_cfac size smap bv r Nat n @
