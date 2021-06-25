@@ -1548,9 +1548,7 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                do vy <- par_find_var size bv r y @
                do vz <- par_find_var size bv r z @
              if is_q t1 && ((is_q t2)) && is_q t3 then
-                       Some (Some (Exp (Rev (vmap vx);Rev (vmap vy);Rev (vmap vz);
-                         nat_full_mult size (vmap vx) (vmap vy) (vmap vz) temp; 
-                     Rev (vmap vz);Rev (vmap vy);Rev (vmap vx))),sn, r)
+                       Some (Some (nat_full_mult size (vmap vx) (vmap vy) (vmap vz) temp),sn, r)
                 else None.
 
 Definition fmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
@@ -1562,18 +1560,17 @@ Definition fmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                do vy <- par_find_var size bv r y @
                do vz <- par_find_var size bv r z @
              if is_q t1 && ((is_q t2)) && is_q t3 then
-                       Some (Some (Exp (Rev (vmap vx);
-                         flt_full_mult size (vmap vx) (vmap vy) (vmap vz) temp; Rev (vmap vx))),sn, r)
+                       Some (Some (flt_full_mult size (vmap vx) (vmap vy) (vmap vz) temp),sn, r)
              else if (¬ (is_q t1)) && ((is_q t2)) && is_q t3 then
                  do t1v <- par_eval_cfac size smap bv r Nat x @
-                       Some (Some (Exp (init_v size (vmap vx) t1v; Rev (vmap vy);
-                         flt_full_mult size (vmap vx) (vmap vy) (vmap vz) temp;
-                                  Rev (vmap vy);init_v size (vmap vx) t1v)),sn, r)
+                       Some (Some (Exp (init_v size (vmap vx) t1v);;
+                         flt_full_mult size (vmap vx) (vmap vy) (vmap vz) temp;;
+                                 Exp (init_v size (vmap vx) t1v)),sn, r)
              else if (¬ (is_q t1)) && (¬ (is_q t2)) && is_q t3 then
                  do t2v <- par_eval_cfac size smap bv r Nat y @
-                       Some (Some (Exp (init_v size (vmap vy) t2v; Rev (vmap vx); Rev (vmap vy); Rev (vmap vz);
-                         flt_full_mult size (vmap vx) (vmap vy) (vmap vz) temp;
-                          Rev (vmap vz);Rev (vmap vy);Rev (vmap vx);init_v size (vmap vy) t2v)),sn, r)
+                       Some (Some (Exp (init_v size (vmap vy) t2v);;
+                         flt_full_mult size (vmap vx) (vmap vy) (vmap vz) temp
+                          ;;Exp (init_v size (vmap vy) t2v)),sn, r)
                 else None.
 
 Fixpoint bin_xor_c (n:nat) (x y : var) : exp :=
