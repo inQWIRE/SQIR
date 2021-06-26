@@ -1,3 +1,4 @@
+open Datatypes
 
 module Nat =
  struct

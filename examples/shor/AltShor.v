@@ -26,6 +26,15 @@ Fixpoint reverse_qubits' dim n : ucom U :=
 Definition reverse_qubits n := reverse_qubits' n (n/2)%nat.
 Definition QFT_w_reverse n := QFT n >> reverse_qubits n.
 
+Fixpoint bc2ucom (bc : bccom) : ucom U :=
+  match bc with
+  | bcskip => SKIP
+  | bcx a => X a
+  | bcswap a b => SWAP a b
+  | bccont a bc1 => control a (bc2ucom bc1)
+  | bcseq bc1 bc2 => (bc2ucom bc1) >> (bc2ucom bc2)
+  end.
+
 Fixpoint controlled_powers' (f : nat -> bccom) k kmax : bccom :=
   match k with
   | O    => bcskip
@@ -216,6 +225,78 @@ Qed.
 
 Lemma QFT_w_reverse_WF : forall n, well_formed (QFT_w_reverse n).
 Proof. constructor. apply QFT_WF. apply reverse_qubits_WF. Qed.
+
+Lemma bc2ucom_WF : forall bc, well_formed (bc2ucom bc).
+Proof.
+  induction bc; repeat constructor; auto.
+  simpl. unfold control. apply control'_WF.
+  assumption.
+Qed.
+
+Lemma bc2ucom_fresh : forall dim q bc,
+  is_fresh q (to_base_ucom dim (bc2ucom bc)) <->
+  @is_fresh _ dim q (RCIR.bc2ucom bc).
+Proof.
+  intros dim q bc.
+  induction bc; try reflexivity.
+  simpl.
+  destruct bc; try reflexivity.
+  rewrite <- UnitaryOps.fresh_control.
+  unfold control.
+  rewrite <- fresh_control'.
+  rewrite IHbc.
+  reflexivity.
+  lia.
+  apply bc2ucom_WF.
+  rewrite <- UnitaryOps.fresh_control.
+  unfold control.
+  rewrite <- fresh_control'.
+  rewrite IHbc.
+  reflexivity.
+  lia.
+  apply bc2ucom_WF.
+  split; intro H; inversion H; subst; simpl.
+  constructor.
+  apply IHbc1; auto.
+  apply IHbc2; auto.
+  constructor.
+  apply IHbc1; auto.
+  apply IHbc2; auto.
+Qed.
+
+Lemma bc2ucom_correct : forall dim (bc : bccom),
+  uc_eval dim (bc2ucom bc) = UnitarySem.uc_eval (RCIR.bc2ucom bc).
+Proof.
+  intros dim bc.
+  induction bc; try reflexivity.
+  simpl.
+  rewrite control_correct.
+  destruct bc; try reflexivity.
+  apply control_ucom_X.
+  apply UnitaryOps.control_cong.
+  apply IHbc.
+  apply bc2ucom_fresh. 
+  apply UnitaryOps.control_cong.
+  apply IHbc.
+  apply bc2ucom_fresh. 
+  apply bc2ucom_WF. 
+  unfold uc_eval in *. simpl.
+  rewrite IHbc1, IHbc2.
+  reflexivity.  
+Qed.
+
+Local Transparent SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
+Lemma bcfresh_is_fresh : forall {dim} q bc,
+    bcfresh q bc -> @is_fresh _ dim q (to_base_ucom dim (bc2ucom bc)).
+Proof.
+  intros dim q bc Hfr. 
+  induction bc; simpl; inversion Hfr; repeat constructor; auto.
+  unfold control.
+  apply fresh_control'. lia.
+  apply bc2ucom_WF.
+  split; auto.
+Qed.
+Local Opaque SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
 
 Lemma controlled_powers_same : forall n (f : nat -> bccom) k (f' : nat -> base_ucom n),
   (k > 0)%nat ->

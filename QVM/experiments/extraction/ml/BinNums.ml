@@ -7,3 +7,8 @@ type positive =
 type coq_N =
 | N0
 | Npos of positive
+
+type coq_Z =
+| Z0
+| Zpos of positive
+| Zneg of positive

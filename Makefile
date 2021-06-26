@@ -31,7 +31,7 @@ invoke-coqmakefile-euler: _CoqProjectEuler
 
 COQ_OPTS := -R . Top
 
-all: examples voqc VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMeasure.vo VOQC/BooleanCompilation.vo shor
+all: examples voqc VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMeasure.vo VOQC/BooleanCompilation.vo shor qvm
 
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Grover.vo examples/QPE.vo examples/Simon.vo examples/Superdense.vo examples/Teleport.vo
 
@@ -88,21 +88,21 @@ QVM/OracleExample.vo: QVM/OracleExample.v QVM/MiniQASM.vo
 	coqc $(COQ_OPTS) QVM/OracleExample.v
 
 # Built by 'make shor'
-
-examples/shor/AltGateSet.vo: examples/shor/AltGateSet.v SQIR/UnitaryOps.vo SQIR/RCIR.vo
-	coqc $(COQ_OPTS) examples/shor/AltGateSet.v
 	
-examples/shor/AltShor.vo: examples/shor/AltShor.v examples/shor/AltGateSet.vo examples/shor/Shor.vo
+examples/shor/AltShor.vo: examples/shor/AltShor.v utilities/AltGateSet.vo examples/shor/Shor.vo
 	coqc $(COQ_OPTS) examples/shor/AltShor.v
 
 examples/shor/Main.vo: examples/shor/Main.v examples/shor/AltShor.vo
 	coqc $(COQ_OPTS) examples/shor/Main.v
 
-examples/shor/ModMult.vo: examples/shor/ModMult.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo SQIR/RCIR.vo
+examples/shor/ModMult.vo: examples/shor/ModMult.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo examples/shor/RCIR.vo
 	coqc $(COQ_OPTS) examples/shor/ModMult.v
 
 examples/shor/QPEGeneral.vo: examples/shor/QPEGeneral.v examples/QPE.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/shor/QPEGeneral.v
+
+examples/shor/RCIR.vo: examples/shor/RCIR.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo
+	coqc $(COQ_OPTS) examples/shor/RCIR.v
 
 examples/shor/Shor.vo: examples/shor/Shor.v examples/shor/QPEGeneral.vo examples/shor/ModMult.vo examples/shor/ShorAux.vo
 	coqc $(COQ_OPTS) examples/shor/Shor.v
@@ -179,7 +179,7 @@ VOQC/BooleanCompilation.vo: VOQC/BooleanCompilation.v SQIR/VectorStates.vo exter
 
 # Using a custom clean target to remove files from subdirectories
 clean:
-	rm -rf CoqMakefile CoqMakefile.conf */*/*.vo* */*/*.glob */*/*.aux */*.vo* */*.glob */*.aux .lia.cache
+	rm -rf CoqMakefile CoqMakefile.conf */*/*.vo* */*/*.glob */*/.*.aux */*.vo* */*.glob */.*.aux .lia.cache
 
 # This should be the last rule, to handle any targets not declared above
 #%: invoke-coqmakefile

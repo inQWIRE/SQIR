@@ -1,3 +1,4 @@
+open Datatypes
 
 module Nat =
  struct
@@ -29,6 +30,11 @@ module Nat =
         m)
       n
 
+  (** val ltb : int -> int -> bool **)
+
+  let ltb n m =
+    (<=) (Pervasives.succ n) m
+
   (** val pow : int -> int -> int **)
 
   let rec pow n m =
@@ -48,6 +54,14 @@ module Nat =
         (fun u' -> divmod x' y q u')
         u)
       x
+
+  (** val div : int -> int -> int **)
+
+  let div x y =
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ -> y)
+      (fun y' -> fst (divmod x y' 0 y'))
+      y
 
   (** val modulo : int -> int -> int **)
 
