@@ -10,12 +10,7 @@ type coq_U =
 | U_U2 of float * float
 | U_U3 of float * float * float
 | U_CX
-| U_CU1 of float
-| U_SWAP
 | U_CCX
-| U_CSWAP
-| U_C3X
-| U_C4X
 
 (** val coq_X : int -> coq_U ucom **)
 
@@ -57,41 +52,11 @@ let coq_SKIP =
 let coq_CX q1 q2 =
   Coq_uapp ((Pervasives.succ (Pervasives.succ 0)), U_CX, (q1 :: (q2 :: [])))
 
-(** val coq_CU1 : float -> int -> int -> coq_U ucom **)
-
-let coq_CU1 r q1 q2 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ 0)), (U_CU1 r),
-    (q1 :: (q2 :: [])))
-
-(** val coq_SWAP : int -> int -> coq_U ucom **)
-
-let coq_SWAP q1 q2 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ 0)), U_SWAP, (q1 :: (q2 :: [])))
-
 (** val coq_CCX : int -> int -> int -> coq_U ucom **)
 
 let coq_CCX q1 q2 q3 =
   Coq_uapp ((Pervasives.succ (Pervasives.succ (Pervasives.succ 0))), U_CCX,
     (q1 :: (q2 :: (q3 :: []))))
-
-(** val coq_CSWAP : int -> int -> int -> coq_U ucom **)
-
-let coq_CSWAP q1 q2 q3 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ (Pervasives.succ 0))), U_CSWAP,
-    (q1 :: (q2 :: (q3 :: []))))
-
-(** val coq_C3X : int -> int -> int -> int -> coq_U ucom **)
-
-let coq_C3X q1 q2 q3 q4 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ 0)))), U_C3X, (q1 :: (q2 :: (q3 :: (q4 :: [])))))
-
-(** val coq_C4X : int -> int -> int -> int -> int -> coq_U ucom **)
-
-let coq_C4X q1 q2 q3 q4 q5 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ 0))))), U_C4X,
-    (q1 :: (q2 :: (q3 :: (q4 :: (q5 :: []))))))
 
 (** val decompose_CH : int -> int -> coq_U ucom **)
 
@@ -126,11 +91,6 @@ let decompose_CU3 r1 r2 r3 a b =
     (coq_U3 (((-.) 0.0) (( /. ) r1 2.0)) 0.0
       (( /. ) (((-.) 0.0) (( +. ) r2 r3)) 2.0) b))), (coq_CX a b))),
     (coq_U3 (( /. ) r1 2.0) r2 0.0 b))
-
-(** val decompose_CSWAP : int -> int -> int -> coq_U ucom **)
-
-let decompose_CSWAP a b c =
-  Coq_useq ((Coq_useq ((coq_CCX a b c), (coq_CCX a c b))), (coq_CCX a b c))
 
 (** val decompose_CCX : int -> int -> int -> coq_U ucom **)
 
@@ -170,7 +130,7 @@ let rec control' a c n =
           | [] -> coq_SKIP
           | b :: l0 ->
             (match l0 with
-             | [] -> coq_CU1 r a b
+             | [] -> decompose_CU1 r a b
              | _ :: _ -> coq_SKIP))
        | U_U2 (r1, r2) ->
          (match l with
@@ -196,26 +156,6 @@ let rec control' a c n =
                (match l1 with
                 | [] -> coq_CCX a b c0
                 | _ :: _ -> coq_SKIP)))
-       | U_CU1 r ->
-         (match l with
-          | [] -> coq_SKIP
-          | b :: l0 ->
-            (match l0 with
-             | [] -> coq_SKIP
-             | c0 :: l1 ->
-               (match l1 with
-                | [] -> control' a (decompose_CU1 r b c0) n'
-                | _ :: _ -> coq_SKIP)))
-       | U_SWAP ->
-         (match l with
-          | [] -> coq_SKIP
-          | b :: l0 ->
-            (match l0 with
-             | [] -> coq_SKIP
-             | c0 :: l1 ->
-               (match l1 with
-                | [] -> coq_CSWAP a b c0
-                | _ :: _ -> coq_SKIP)))
        | U_CCX ->
          (match l with
           | [] -> coq_SKIP
@@ -227,70 +167,9 @@ let rec control' a c n =
                 | [] -> coq_SKIP
                 | d :: l2 ->
                   (match l2 with
-                   | [] -> coq_C3X a b c0 d
-                   | _ :: _ -> coq_SKIP))))
-       | U_CSWAP ->
-         (match l with
-          | [] -> coq_SKIP
-          | b :: l0 ->
-            (match l0 with
-             | [] -> coq_SKIP
-             | c0 :: l1 ->
-               (match l1 with
-                | [] -> coq_SKIP
-                | d :: l2 ->
-                  (match l2 with
-                   | [] -> control' a (decompose_CSWAP b c0 d) n'
-                   | _ :: _ -> coq_SKIP))))
-       | U_C3X ->
-         (match l with
-          | [] -> coq_SKIP
-          | b :: l0 ->
-            (match l0 with
-             | [] -> coq_SKIP
-             | c0 :: l1 ->
-               (match l1 with
-                | [] -> coq_SKIP
-                | d :: l2 ->
-                  (match l2 with
-                   | [] -> coq_SKIP
-                   | e :: l3 ->
-                     (match l3 with
-                      | [] -> coq_C4X a b c0 d e
-                      | _ :: _ -> coq_SKIP)))))
-       | U_C4X ->
-         (match l with
-          | [] -> coq_SKIP
-          | b :: l0 ->
-            (match l0 with
-             | [] -> coq_SKIP
-             | c0 :: l1 ->
-               (match l1 with
-                | [] -> coq_SKIP
-                | d :: l2 ->
-                  (match l2 with
-                   | [] -> coq_SKIP
-                   | e :: l3 ->
-                     (match l3 with
-                      | [] -> coq_SKIP
-                      | f :: l4 ->
-                        (match l4 with
-                         | [] ->
-                           control' a
-                             (control' b
-                               (control' c0 (decompose_CCX d e f) n') n') n'
-                         | _ :: _ -> coq_SKIP))))))))
+                   | [] -> control' a (decompose_CCX b c0 d) n'
+                   | _ :: _ -> coq_SKIP))))))
     n
-
-(** val fuel_CU1 : int **)
-
-let fuel_CU1 =
-  Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
-
-(** val fuel_CSWAP : int **)
-
-let fuel_CSWAP =
-  Pervasives.succ (Pervasives.succ 0)
 
 (** val fuel_CCX : int **)
 
@@ -298,9 +177,7 @@ let fuel_CCX =
   Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
     (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
     (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ 0)))))))))))))))))))))
+    (Pervasives.succ (Pervasives.succ 0)))))))))))))
 
 (** val fuel : coq_U ucom -> int **)
 
@@ -308,9 +185,7 @@ let rec fuel = function
 | Coq_useq (c1, c2) -> Pervasives.succ (Pervasives.max (fuel c1) (fuel c2))
 | Coq_uapp (_, u, _) ->
   (match u with
-   | U_CU1 _ -> Pervasives.succ fuel_CU1
-   | U_CSWAP -> Pervasives.succ fuel_CSWAP
-   | U_C4X -> Pervasives.succ fuel_CCX
+   | U_CCX -> Pervasives.succ fuel_CCX
    | _ -> 0)
 
 (** val control : int -> coq_U ucom -> coq_U ucom **)

@@ -1,5 +1,6 @@
-open AltGateSet
+open AltGateSet2
 open Nat
+open RCIR
 open VSQIR
 
 (** val rz_ang : int -> float **)
@@ -158,3 +159,13 @@ let rec trans_pexp vs dim exp0 avs =
     let (e1', vs') = p in
     let (p0, avs'') = trans_pexp vs' dim e2 avs' in
     let (e2', vs'') = p0 in (((Coq_useq (e1', e2')), vs''), avs'')
+
+(** val bc2ucom : bccom -> coq_U ucom **)
+
+let rec bc2ucom = function
+| Coq_bcskip -> coq_SKIP
+| Coq_bcx a -> coq_X a
+| Coq_bcswap (a, b) ->
+  Coq_useq ((Coq_useq ((coq_CX a b), (coq_CX b a))), (coq_CX a b))
+| Coq_bccont (a, bc1) -> control a (bc2ucom bc1)
+| Coq_bcseq (bc1, bc2) -> Coq_useq ((bc2ucom bc1), (bc2ucom bc2))

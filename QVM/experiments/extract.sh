@@ -2,7 +2,8 @@
 
 # Compile AltVSQIR.
 echo "Compiling AltVSQIR..."
-coqc -R ../.. Top AltVSQIR.v
+#coqc -R ../.. Top AltGateSet2.v
+#coqc -R ../.. Top AltVSQIR.v
 
 # Change into the extraction directory.
 cd extraction
@@ -22,7 +23,7 @@ rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml \
 
 # Move the remaining extracted files to the 'ml' subdirectory.
 echo "Moving generated files to ml/..."
-mv AltGateSet.ml AltShor.ml AltVSQIR.ml Bin*.ml CLArith.ml Datatypes.ml \
+mv AltGateSet2.ml AltVSQIR.ml Bin*.ml CLArith.ml Datatypes.ml \
    ModMult.ml Nat.ml PeanoNat.ml RCIR.ml RZArith.ml VSQIR.ml \
    ml
 

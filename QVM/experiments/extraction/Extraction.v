@@ -1,6 +1,5 @@
 Require Coq.extraction.Extraction.
-Require Import AltGateSet.
-Require Import AltShor.
+Require Import AltGateSet2.
 Require Import AltVSQIR.
 Require Import CLArith.
 Require Import ModMult.
@@ -20,8 +19,9 @@ Extract Inlined Constant R4 => "4.0".
 
 (* Perform extraction *)
 Separate Extraction 
-    AltShor.bc2ucom
+    (*AltShor.bc2ucom*)
     AltVSQIR.trans_pexp
+    AltVSQIR.bc2ucom
     CLArith.modmult_rev 
     ModMult.modmult_rev 
     RZArith.rz_modmult_full.
