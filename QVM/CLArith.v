@@ -129,6 +129,18 @@ Definition modmult M C Cinv n x y z s c1 c2 := (init_v n z M); modmult_full C Ci
 Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; modmult M C Cinv n x y z s c1 c2;; Rev x.
 
 
+Definition x_var := 0. Definition y_var := 1. Definition z_var := 2. Definition s_var := 3.
+Definition c_var := 4.
+Definition vars_for_cl' (size:nat) := gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
+
+Definition vars_for_cl (size:nat) := fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) else vars_for_cl' size x.
+
+Definition real_modmult_rev (M C Cinv size:nat) :=
+    modmult_rev (nat2fb M) C Cinv size x_var y_var z_var s_var (c_var,0) (c_var,1).
+
+Definition trans_modmult_rev (M C Cinv size:nat) :=
+        trans_pexp (vars_for_cl size) (4*size+2) (real_modmult_rev M C Cinv size) (avs_for_arith size).
+
 (*********** Proofs ***********)
 
 Lemma maj_fwf : forall x y z aenv, x <> y -> y <> z -> z <> x -> exp_fwf aenv (MAJ x y z).
@@ -2427,3 +2439,73 @@ Proof.
   unfold reg_push. rewrite put_cus_neq by iner_p.
   rewrite eupdate_index_neq by iner_p. easy.
 Qed.
+
+
+(*Here x and y are two input z = (x * y) + z 
+Definition adder01 n x y c: exp := MAJseq n x y c; UMAseq n x y c.*)
+Definition one_cl_cu_adder (c2:posi) (ex:var) (re:var) (n:nat) (c1:posi) (M:nat -> bool)
+                                  := CU c2 (init_v n ex M; adder01 n ex re c1; init_v n ex M).
+
+(* z = x * M *)
+Fixpoint cl_nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:nat->bool) :=
+   match n with 0 => SKIP (x,0)
+            | S m => one_cl_cu_adder (x,m) ex re size c M; cl_nat_mult' m size x ex re c (cut_n (times_two_spec M) size)
+   end.
+Definition cl_nat_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
+       cl_nat_mult' size size x ex re c M.
+
+Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
+
+Fixpoint cl_flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:nat->bool) :=
+   match n with 0 => SKIP (x,0)
+            | S m => one_cl_cu_adder (x,size - n) ex re size c M; 
+                       cl_flt_mult' m size x ex re c (cut_n (div_two_spec M) size)
+   end.
+Definition flt_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
+               cl_flt_mult' size size x ex re c M.
+
+(* z = x * y *)
+Definition one_cu_cl_full_adder (c2:posi) (y:var) (x:var) (c1:posi)  (n:nat) := CU c2 (adder01 n x y c1).
+
+Fixpoint cl_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) (c:posi) :=
+   match n with 0 => SKIP (x,0)
+            | S m => cl_full_mult' m size x y re ex c;
+                 one_cu_cl_full_adder (x,m) re y c size; SWAP (y,size-1) (ex,m) ; Lshift y
+   end.
+Definition cl_full_mult_quar (size:nat) (x y:var) (re:var) (ex:var) (c:posi)
+                              := cl_full_mult' size size x y re ex c.
+
+Fixpoint clean_high (n:nat) (size:nat) (y:var) (ex:var) :=
+    match n with 0 => SKIP (y,0)
+               | S m => clean_high m size y ex ;SWAP (y,size-1) (ex,m) ; Lshift y
+    end.
+
+(*Here x and y are in nor_mode and re in phi_mode. 
+      [x][y][phi(re)] ->[x][y][phi(x*y mod 2^n)], re is supposed to be zero, 
+    ex is in nor_mode. *)
+Definition cl_full_mult (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
+         (Exp (cl_full_mult_quar size x y re ex c; inv_exp (clean_high size size y ex))).
+
+
+
+Fixpoint clf_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) (c:posi) :=
+   match n with 0 => SKIP (x,0)
+            | S m => one_cu_cl_full_adder (x,m) re y c size; SWAP (y,0) (ex,m); Rshift y;
+                      clf_full_mult' m size x y re ex c
+   end.
+Definition clf_full_mult_quar (size:nat) (x y:var) (re:var) (ex:var) (c:posi)
+                       := clf_full_mult' size size x y re ex c.
+
+Fixpoint clean_high_flt (n:nat) (size:nat) (y:var) (ex:var) :=
+    match n with 0 => SKIP (y,0)
+               | S m => clean_high_flt m size y ex ;SWAP (y,0) (ex,m); Rshift y
+    end.
+
+(*Here x and y are in nor_mode and re in phi_mode.
+      [x][y][phi(re)] ->[x][y][phi((x*2^n*y)/2^n)], re is supposed to be zero, 
+    ex is in nor_mode. *)
+Definition clf_full_mult (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
+            (Exp (clf_full_mult_quar size x y re ex c; inv_exp (clean_high_flt size size y ex))).
+
+
+

@@ -5,6 +5,7 @@ Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
 Require Import Dirac.
 Require Import QPE.
 Require Import VSQIR.
+Require Import CLArith.
 
 Local Open Scope exp_scope.
 Local Open Scope nat_scope.
@@ -89,6 +90,17 @@ Definition rz_modmult_half y x size c A M :=
 
 Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (A:nat) (Ainv :nat) (N:nat) :=
   rz_modmult_half y x n c A N ;; inv_pexp (rz_modmult_half x y n c Ainv N).
+
+Definition vars_for_rz' (size:nat) := gen_vars size (x_var::(y_var::[])).
+
+Definition vars_for_rz (size:nat) := 
+       fun x => if x =? c_var then (size * 2,1,id_nat,id_nat) else vars_for_rz' size x.
+
+Definition real_rz_modmult_rev (M C Cinv size:nat) :=
+    rz_modmult_full y_var x_var size (c_var,0) C Cinv M.
+
+Definition trans_rz_modmult_rev (M C Cinv size:nat) :=
+        trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev M C Cinv size) (avs_for_arith size).
 
 
 (*********** Proofs ***********)
@@ -2903,28 +2915,21 @@ Qed.
 
 
 (** @Liyi: the rest of this file is unused. Can we delete? **)
-
-Check one_cu_adder.
-
-Fixpoint swaps (x:var) (y:var) (n:nat) :=
-   match n with 0 => SKIP (x,0)
-             | S m => swaps x y m ;SWAP (x,m) (y,m)
-   end.
+Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
 
 Fixpoint nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
    match n with 0 => SKIP (x,0)
-            | S m => one_cu_adder ex size (x,size - n) M; nat_mult' m size x ex (cut_n (times_two_spec M) size)
+            | S m => one_cu_adder ex size (x,size - n) M; nat_mult' m size x ex (cut_n (div_two_spec M) size)
    end.
-Definition nat_mult (size:nat) (x:var) (ex:var) (M:nat -> bool) (Minv : nat -> bool) := 
-       nat_mult' size size x ex M; swaps x ex size ; inv_exp (nat_mult' size size x ex Minv).
-
-Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
+Definition nat_mult (size:nat) (x:var) (re:var) (M:nat -> bool) := 
+       Exp (Rev x; Rev re) ;; nat_mult' size size x re M;; inv_pexp (Exp (Rev x; Rev re)).
 
 Fixpoint flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
    match n with 0 => SKIP (x,0)
-            | S m => one_cu_adder ex size (x,m) M; flt_mult' m size x ex (cut_n (div_two_spec M) size)
+            | S m => one_cu_adder ex size (x,m) M; flt_mult' m size x ex (cut_n (times_two_spec M) size)
    end.
-Definition flt_mult (size:nat) (x ex:var) (M:nat -> bool) := flt_mult' size size x ex M.
+Definition flt_mult (size:nat) (x re:var) (M:nat -> bool) := 
+       Exp (Rev x; Rev re) ;; flt_mult' size size x re M;; inv_pexp (Exp (Rev x; Rev re)).
 
 (* y is in nor_mode, and y is in phi, [y][x] -> [y][x+y] *)
 Fixpoint rz_full_adder (x:var) (n:nat) (y:var) :=
@@ -2983,3 +2988,36 @@ Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
           (SWAP c2 (s,i));
         (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
 *)
+
+Definition rz_comparator (x:var) (n:nat) (c:posi) (M:nat) := 
+    Exp (Rev x);; QFT x;; Exp (rz_sub x n (nat2fb M));; RQFT x ;; Exp (CNOT (x,0) c);; 
+      inv_pexp (Exp (Rev x);; QFT x;; Exp (rz_sub x n (nat2fb M));; RQFT x).
+
+Fixpoint rz_full_sub (x:var) (n:nat) (y:var) :=
+    match n with 0 => (SKIP (x,0))
+               | S m => (CU (y,m) (SRR m x); rz_full_sub x m y)
+    end.
+
+Definition rz_full_adder_form (x:var) (n:nat) (y:var) :=
+       Exp (Rev x; Rev y);; QFT x ;; rz_full_adder x n y ;; (inv_pexp (Exp (Rev x; Rev y);; QFT x)).
+
+Definition rz_full_sub_form (x:var) (n:nat) (y:var) :=
+       Exp (Rev x; Rev y);; QFT x ;; rz_full_sub x n y ;; (inv_pexp (Exp (Rev x; Rev y);; QFT x)).
+
+Definition rz_adder_form (x:var) (n:nat) (M:nat -> bool) :=
+       Exp (Rev x);; QFT x;; rz_adder x n M ;; (inv_pexp (Exp (Rev x);; QFT x)).
+
+Definition rz_sub_right (x:var) (n:nat) (M:nat -> bool) :=
+       Exp (Rev x);; QFT x;; rz_sub x n M ;; (inv_pexp (Exp (Rev x);; QFT x)).
+
+Definition rz_sub_left (M:nat -> bool) (x:var) (n:nat) :=
+       Exp (Rev x);; QFT x;; rz_sub x n M ;; (inv_pexp (Exp (Rev x);; QFT x));; negator0 n x.
+
+Definition rz_full_comparator (x:var) (n:nat) (c:posi) (y:var) := 
+    Exp (Rev x; Rev y);; QFT x;; QFT y;; Exp (rz_full_sub x n y);; RQFT x ;; Exp (CNOT (x,0) c);; 
+      inv_pexp (Exp (Rev x; Rev y);; QFT x;; QFT y;; Exp (rz_full_sub x n y);; RQFT x).
+
+(* vars for rz_mulmolt 16 bits *)
+
+
+
