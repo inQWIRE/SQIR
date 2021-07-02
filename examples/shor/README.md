@@ -36,7 +36,7 @@ Now you should be able to run Shor's with our script `./run_shor.sh N a` where `
 
 Example:
 ```
-$ ./generate_circuit.sh 15 7
+$ ./run_shor.sh 15 7
 TODO: add check that N can be written as (p^k * q) for k>0, prime p>2, q>2, and p^k, q coprime
 Running Shor's for N = 15 and a = 7...
 Measurement outcome is 128

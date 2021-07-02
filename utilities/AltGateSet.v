@@ -1,9 +1,6 @@
 Require Import UnitaryOps.
-Require Import RCIR.
 
-(** New version of SQIR's ucom type **)
-
-(** TODO - integrate in the SQIR directory **)
+(** TODO: replace SQIR's ucom type with the ucom type defined below **)
 
 (* Experimenting with a version of ucom that uses a list argument and no 
    dependent dim type *)
@@ -56,10 +53,8 @@ Ltac simpl_WF_alt :=
   | [H : length ?l = O |- _] => apply destruct_list_0 in H; subst
   end.
 
-(** Gate set for Shor's **)
+(** More general gate set **)
 
-(* U2 and U3 aren't used for the inputs I tried, but I'm including them
-   for full generality in the control' function. -KH *)
 Inductive U : nat -> Set :=
   | U_X : U 1
   | U_H : U 1
@@ -769,87 +764,6 @@ Lemma control_correct : forall dim a u,
   uc_eval dim (control a u) = 
     UnitarySem.uc_eval (UnitaryOps.control a (to_base_ucom dim u)).
 Proof. intros. apply control'_correct; auto. Qed.
-
-Fixpoint bc2ucom (bc : bccom) : ucom U :=
-  match bc with
-  | bcskip => SKIP
-  | bcx a => X a
-  | bcswap a b => SWAP a b
-  | bccont a bc1 => control a (bc2ucom bc1)
-  | bcseq bc1 bc2 => (bc2ucom bc1) >> (bc2ucom bc2)
-  end.
-
-Lemma bc2ucom_WF : forall bc, well_formed (bc2ucom bc).
-Proof.
-  induction bc; repeat constructor; auto.
-  simpl. unfold control. apply control'_WF.
-  assumption.
-Qed.
-
-Lemma bc2ucom_fresh : forall dim q bc,
-  is_fresh q (to_base_ucom dim (bc2ucom bc)) <->
-  @is_fresh _ dim q (RCIR.bc2ucom bc).
-Proof.
-  intros dim q bc.
-  induction bc; try reflexivity.
-  simpl.
-  destruct bc; try reflexivity.
-  rewrite <- UnitaryOps.fresh_control.
-  unfold control.
-  rewrite <- fresh_control'.
-  rewrite IHbc.
-  reflexivity.
-  lia.
-  apply bc2ucom_WF.
-  rewrite <- UnitaryOps.fresh_control.
-  unfold control.
-  rewrite <- fresh_control'.
-  rewrite IHbc.
-  reflexivity.
-  lia.
-  apply bc2ucom_WF.
-  split; intro H; inversion H; subst; simpl.
-  constructor.
-  apply IHbc1; auto.
-  apply IHbc2; auto.
-  constructor.
-  apply IHbc1; auto.
-  apply IHbc2; auto.
-Qed.
-
-Lemma bc2ucom_correct : forall dim (bc : bccom),
-  uc_eval dim (bc2ucom bc) = UnitarySem.uc_eval (RCIR.bc2ucom bc).
-Proof.
-  intros dim bc.
-  induction bc; try reflexivity.
-  simpl.
-  rewrite control_correct.
-  destruct bc; try reflexivity.
-  apply control_ucom_X.
-  apply UnitaryOps.control_cong.
-  apply IHbc.
-  apply bc2ucom_fresh. 
-  apply UnitaryOps.control_cong.
-  apply IHbc.
-  apply bc2ucom_fresh. 
-  apply bc2ucom_WF. 
-  unfold uc_eval in *. simpl.
-  rewrite IHbc1, IHbc2.
-  reflexivity.  
-Qed.
-
-Local Transparent SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
-Lemma bcfresh_is_fresh : forall {dim} q bc,
-    bcfresh q bc -> @is_fresh _ dim q (to_base_ucom dim (bc2ucom bc)).
-Proof.
-  intros dim q bc Hfr. 
-  induction bc; simpl; inversion Hfr; repeat constructor; auto.
-  unfold control.
-  apply fresh_control'. lia.
-  apply bc2ucom_WF.
-  split; auto.
-Qed.
-Local Opaque SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
 
 Fixpoint map_qubits (f : nat -> nat) (c : ucom U) : ucom U :=
   match c with

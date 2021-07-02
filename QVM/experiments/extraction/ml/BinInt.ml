@@ -216,11 +216,6 @@ module Z =
   let div a b =
     let (q, _) = div_eucl a b in q
 
-  (** val modulo : coq_Z -> coq_Z -> coq_Z **)
-
-  let modulo a b =
-    let (_, r) = div_eucl a b in r
-
   (** val ggcd : coq_Z -> coq_Z -> coq_Z * (coq_Z * coq_Z) **)
 
   let ggcd a b =

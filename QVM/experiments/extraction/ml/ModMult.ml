@@ -34,14 +34,6 @@ let coq_N2fb = function
 let nat2fb n =
   coq_N2fb (N.of_nat n)
 
-(** val modmult_rev_anc : int -> int **)
-
-let modmult_rev_anc n =
-  add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) n)
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))))))))))
-
 (** val coq_MAJ : int -> int -> int -> bccom **)
 
 let coq_MAJ a b c =
