@@ -8841,3 +8841,18 @@ Lemma ccx_nor : forall f f' x y z v aenv, nor_mode f x -> nor_mode f y -> nor_mo
 Proof.
  intros. subst. apply ccx_sem. 1 - 6: assumption. 
 Qed.
+
+
+Definition id_nat := fun i :nat => i.
+Definition avs_for_arith (size:nat) := fun x => (x/size, x mod size).
+Fixpoint gen_vars' (size:nat) (l : list var) (start:nat) :=
+      match l with [] => (fun _ => (0,0,id_nat,id_nat))
+             | (x::xl) => (fun y => if x =? y then (start,size,id_nat,id_nat) else 
+                                gen_vars' size xl (start+size) y)
+      end.
+Definition gen_vars (size:nat) (l:list var) := gen_vars' size l 0.
+
+
+
+
+

@@ -129,6 +129,18 @@ Definition modmult M C Cinv n x y z s c1 c2 := (init_v n z M); modmult_full C Ci
 Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; modmult M C Cinv n x y z s c1 c2;; Rev x.
 
 
+Definition x_var := 0. Definition y_var := 1. Definition z_var := 2. Definition s_var := 3.
+Definition c_var := 4.
+Definition vars_for_cl' (size:nat) := gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
+
+Definition vars_for_cl (size:nat) := fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) else vars_for_cl' size x.
+
+Definition real_modmult_rev (M C Cinv size:nat) :=
+    modmult_rev (nat2fb M) C Cinv size x_var y_var z_var s_var (c_var,0) (c_var,1).
+
+Definition trans_modmult_rev (M C Cinv size:nat) :=
+        trans_pexp (vars_for_cl size) (4*size+2) (real_modmult_rev M C Cinv size) (avs_for_arith size).
+
 (*********** Proofs ***********)
 
 Lemma maj_fwf : forall x y z aenv, x <> y -> y <> z -> z <> x -> exp_fwf aenv (MAJ x y z).

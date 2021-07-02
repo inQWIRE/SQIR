@@ -91,6 +91,17 @@ Definition rz_modmult_half y x size c A M :=
 Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (A:nat) (Ainv :nat) (N:nat) :=
   rz_modmult_half y x n c A N ;; inv_pexp (rz_modmult_half x y n c Ainv N).
 
+Definition vars_for_rz' (size:nat) := gen_vars size (x_var::(y_var::[])).
+
+Definition vars_for_rz (size:nat) := 
+       fun x => if x =? c_var then (size * 2,1,id_nat,id_nat) else vars_for_rz' size x.
+
+Definition real_rz_modmult_rev (M C Cinv size:nat) :=
+    rz_modmult_full y_var x_var size (c_var,0) C Cinv M.
+
+Definition trans_rz_modmult_rev (M C Cinv size:nat) :=
+        trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev M C Cinv size) (avs_for_arith size).
+
 
 (*********** Proofs ***********)
 
@@ -3007,24 +3018,6 @@ Definition rz_full_comparator (x:var) (n:nat) (c:posi) (y:var) :=
       inv_pexp (Exp (Rev x; Rev y);; QFT x;; QFT y;; Exp (rz_full_sub x n y);; RQFT x).
 
 (* vars for rz_mulmolt 16 bits *)
-Definition id_nat := fun i :nat => i.
-Definition vars_for_rz := fun x => if x =? 0 then (0, 17,id_nat,id_nat) 
-                           else if x =? 1 then (17,17,id_nat,id_nat)
-                           else if x =? 2 then (34,1,id_nat,id_nat)
-                           else (0,0,id_nat,id_nat).
-
-Definition vars_for_cl := fun x => if x =? 0 then (0, 17,id_nat,id_nat) 
-                           else if x =? 1 then (17,17,id_nat,id_nat)
-                           else if x =? 2 then (34,17,id_nat,id_nat)
-                           else if x =? 3 then (51,17,id_nat,id_nat)
-                           else if x =? 4 then (68,2,id_nat,id_nat)
-                           else (0,0,id_nat,id_nat).
-
-Definition dim_for_rz := 35.
-
-Definition dim_for_cl := 70.
-
-Definition avs_for_both := fun x => (x/17, x mod 17).
 
 
 
