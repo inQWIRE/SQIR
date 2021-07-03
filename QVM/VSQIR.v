@@ -5677,10 +5677,10 @@ Fixpoint turn_angle (rval : nat -> bool) (n : nat) : R :=
 Definition z_phase (b:bool) : R := if b then 1%R else (-1)%R.
 
 Definition compile_val (v:val) (r_max : nat) : Vector 2 := 
-   match v with nval b r => Cexp ((turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
-             | hval b1 b2 r => Cexp ((turn_angle r r_max)) .*
+   match v with nval b r => Cexp (2*PI * (turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
+             | hval b1 b2 r => Cexp (2*PI * (turn_angle r r_max)) .*
                               ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)
-             | qval q r => Cexp ((turn_angle q r_max)) .* (∣0⟩ .+ (Cexp ((turn_angle r r_max))) .* ∣1⟩)
+             | qval q r => Cexp (2*PI * (turn_angle q r_max)) .* (∣0⟩ .+ (Cexp (2*PI * (turn_angle r r_max))) .* ∣1⟩)
   end.
 
 Lemma WF_compile_val : forall v r, WF_Matrix (compile_val v r).
