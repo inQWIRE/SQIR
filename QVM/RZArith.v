@@ -102,6 +102,32 @@ Definition real_rz_modmult_rev (M C Cinv size:nat) :=
 Definition trans_rz_modmult_rev (M C Cinv size:nat) :=
         trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev M C Cinv size) (avs_for_arith size).
 
+(*An alternative implementation for comparison on efficiency. *)
+Definition one_cu_sub (x:var) (n:nat) (c:posi) (M:nat -> bool) := CU c (rz_sub x n M).
+
+Definition rz_modadder_alt (c1:posi) (x:var) (n:nat) (c:posi) (A:nat -> bool) (M:nat -> bool) :=
+  Exp (one_cu_adder x n c1 A; (rz_sub x n M)) ;; qft_cu x c ;; Exp (one_cu_adder x n c M; one_cu_sub x n c1 A)
+      ;; qft_acu x c;; (Exp (one_cu_adder x n c1 A)).
+
+Fixpoint rz_modmult_alt' (y:var) (x:var) (n:nat) (size:nat) (c:posi) (A:nat) (M:nat) :=
+   match n with
+   | 0 => Exp (SKIP (y,0))
+   | S m => rz_modmult_alt' y x m size c A M;;
+            rz_modadder_alt (x,size-n) y size c (nat2fb ((2^m * A) mod M)) (nat2fb M)
+   end.
+
+Definition rz_modmult_half_alt y x size c A M := 
+   QFT y ;; rz_modmult_alt' y x size size c A M ;; RQFT y.
+
+Definition rz_modmult_full_alt (y:var) (x:var) (n:nat) (c:posi) (A:nat) (Ainv :nat) (N:nat) :=
+  rz_modmult_half_alt y x n c A N ;; inv_pexp (rz_modmult_half_alt x y n c Ainv N).
+
+Definition real_rz_modmult_rev_alt (M C Cinv size:nat) :=
+    rz_modmult_full_alt y_var x_var size (c_var,0) C Cinv M.
+
+Definition trans_rz_modmult_rev_alt (M C Cinv size:nat) :=
+        trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev_alt M C Cinv size) (avs_for_arith size).
+
 
 (*********** Proofs ***********)
 
