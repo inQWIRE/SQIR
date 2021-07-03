@@ -4021,17 +4021,18 @@ Fixpoint gen_vars_vmap' (vmaps: list ((qvar * nat) * var)) (size:nat) (i:nat) :=
                    ((fun a => if a =? y then (m,size,id_nat,id_nat) else vars a),m+size)
                            end
   end.
-Definition gen_vars_vmap (vmaps: list ((qvar * nat) * var)) (size:nat) (sn:nat) :=
+Definition gen_vars_vmap (vmaps: list ((qvar * nat) * var)) (size:nat) (sn:nat) : (vars * nat) :=
        match gen_vars_vmap' vmaps size 0 with (vars,i) => 
            ((fun x => if x =? stack then (i+size,S sn,id_nat,id_nat) else 
                       if x =? temp then (i,size,id_nat,id_nat)
                      else vars x),i+size+(S sn))
        end.
 
-Definition avs_gen (size:nat) (length : nat) := 
+Definition avs_gen (size:nat) (length : nat) : nat -> posi := 
               fun x => (x / size, if (x/size) <? length+1 then x mod size else x - (x/size * (length+1))).
 
-Definition prog_to_sqir (p:prog) (f:flag) :=
+
+Definition prog_to_sqir (p:prog) (f:flag) : option (nat * nat * pexp * vars * (nat -> posi)) :=
    match trans_prog p f with Some (Value (vmaps,size,sn,p)) => 
           match gen_vars_vmap vmaps size sn with (vars,d) => 
              match avs_gen size (length vmaps) with avs =>
@@ -4040,6 +4041,18 @@ Definition prog_to_sqir (p:prog) (f:flag) :=
           end
         | _ => None 
    end.
+
+Check prog_to_sqir.
+
+Check trans_pexp.
+
+(*
+Definition prog_to_sqir_real (p:prog) (f:flag) :=
+  match prog_to_sqir p f with Some (d,size,p,vars,avs) => (fst (trans_pexp vars d p avs))
+                  None => ?
+  end
+
+*)            
 
 
 
