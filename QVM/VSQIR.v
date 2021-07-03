@@ -8638,8 +8638,8 @@ Fixpoint controlled_rotations_gen (f : vars) (dim:nat) (x:var) (n : nat) (i:nat)
 Fixpoint QFT_gen (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom dim :=
   match n with
   | 0    => SQIR.ID (find_pos f (x,0))
-  | S m => SQIR.useq (SQIR.H (find_pos f (x,m))) (SQIR.useq (controlled_rotations_gen f dim x (size-m) m)
-            (QFT_gen f dim x m size))
+  | S m => SQIR.useq  (QFT_gen f dim x m size)
+             (SQIR.useq (SQIR.H (find_pos f (x,m))) ((controlled_rotations_gen f dim x (size-m) m)))
   end.
 
 Definition trans_qft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
