@@ -133,7 +133,7 @@ Definition taylor_sin : func :=
                        qinv ((Nor (Var (L e))))))
              ,Nor (Var (L re))).
 
-Definition sin_prog (s_size:nat) (size:nat) : prog := 
+Definition sin_prog (size:nat) : prog := 
          (size,[(TNor Q FixedP,result)],(taylor_sin::[]),f,result).
 
 Parameter Pi_4 : nat -> bool. (*a binary representation of PI/4 *)
@@ -170,7 +170,7 @@ Definition taylor_cos : func :=
                        qinv ((Nor (Var (L e))))))
              ,Nor (Var (L re))).
 
-Definition cos_prog (s_size:nat) (size:nat) : prog := 
+Definition cos_prog (size:nat) : prog := 
          (size,[(TNor Q FixedP,result)],(taylor_cos::[]),f,result).
 
 
