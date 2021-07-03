@@ -4051,8 +4051,7 @@ Definition prog_to_sqir_real (p:prog) (f:flag) :=
   match prog_to_sqir p f with Some (d,size,p,vars,avs) => (fst (trans_pexp vars d p avs))
                   None => ?
   end
-
-*)            
+*)         
 
 
 
