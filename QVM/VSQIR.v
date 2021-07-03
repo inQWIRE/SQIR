@@ -8642,6 +8642,7 @@ Fixpoint QFT_gen (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom d
 Definition trans_qft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
           QFT_gen f dim x (vsize f x) (vsize f x).
 
+(*
 Fixpoint controlled_rotations_gen_r (f : vars) (dim:nat) (x:var) (n : nat) (i:nat) : base_ucom dim :=
   match n with
   | 0 | 1 => SQIR.ID (find_pos f (x,i))
@@ -8655,9 +8656,10 @@ Fixpoint QFT_gen_r (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom
   | S m => SQIR.useq (controlled_rotations_gen_r f dim x (size-m) m)
             (SQIR.useq (SQIR.H (find_pos f (x,m))) (QFT_gen_r f dim x m size))
   end.
+*)
 
 Definition trans_rqft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
-          QFT_gen_r f dim x (vsize f x) (vsize f x).
+          invert (QFT_gen f dim x (vsize f x) (vsize f x)).
 
 Fixpoint nH (f : vars) (dim:nat) (x:var) (n:nat) : base_ucom dim :=
      match n with 0 => SQIR.ID (find_pos f (x,0))
