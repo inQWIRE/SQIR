@@ -8046,12 +8046,14 @@ Proof.
   rewrite H6. easy.
 Qed.
 
-Lemma turn_angle_add_same : forall n r q, q < n -> (turn_angle r n + rz_ang q)%R = (turn_angle (rotate r q) n)%R.
+Lemma turn_angle_add_same : forall n r q, q < n ->
+       (2 * PI * turn_angle r n + rz_ang q)%R = (2 * PI *  turn_angle (rotate r q) n)%R.
 Proof.
 
 Admitted.
 
-Lemma turn_angle_add_r_same : forall n r q, q < n -> (turn_angle r n + rrz_ang q)%R = (turn_angle (r_rotate r q) n)%R.
+Lemma turn_angle_add_r_same : forall n r q, q < n -> 
+          (2 * PI * turn_angle r n + rrz_ang q)%R = (2 * PI *  turn_angle (r_rotate r q) n)%R.
 Proof.
 
 Admitted.
@@ -8304,7 +8306,8 @@ Proof.
     rewrite vs_avs_bij_l with (dim := dim); try easy.
     inv H8. apply (H9 Nor) in H18; try easy. inv H18.
     unfold compile_val,get_cua.
-    exists (Cexp (turn_angle r rmax)). easy.
+    exists (Cexp (2 * PI * turn_angle r rmax)). 
+    easy.
     destruct H14.
     assert ((snd (trans_exp vs dim e avs)) = avs) as eq3.
     inv H12. rewrite neu_trans_state with (l := l') ; try easy. 
@@ -8642,6 +8645,7 @@ Fixpoint QFT_gen (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom d
 Definition trans_qft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
           QFT_gen f dim x (vsize f x) (vsize f x).
 
+(*
 Fixpoint controlled_rotations_gen_r (f : vars) (dim:nat) (x:var) (n : nat) (i:nat) : base_ucom dim :=
   match n with
   | 0 | 1 => SQIR.ID (find_pos f (x,i))
@@ -8655,9 +8659,10 @@ Fixpoint QFT_gen_r (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom
   | S m => SQIR.useq (controlled_rotations_gen_r f dim x (size-m) m)
             (SQIR.useq (SQIR.H (find_pos f (x,m))) (QFT_gen_r f dim x m size))
   end.
+*)
 
 Definition trans_rqft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
-          QFT_gen_r f dim x (vsize f x) (vsize f x).
+          invert (QFT_gen f dim x (vsize f x) (vsize f x)).
 
 Fixpoint nH (f : vars) (dim:nat) (x:var) (n:nat) : base_ucom dim :=
      match n with 0 => SQIR.ID (find_pos f (x,0))
