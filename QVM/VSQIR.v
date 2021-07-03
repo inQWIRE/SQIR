@@ -8046,12 +8046,14 @@ Proof.
   rewrite H6. easy.
 Qed.
 
-Lemma turn_angle_add_same : forall n r q, q < n -> (turn_angle r n + rz_ang q)%R = (turn_angle (rotate r q) n)%R.
+Lemma turn_angle_add_same : forall n r q, q < n ->
+       (2 * PI * turn_angle r n + rz_ang q)%R = (2 * PI *  turn_angle (rotate r q) n)%R.
 Proof.
 
 Admitted.
 
-Lemma turn_angle_add_r_same : forall n r q, q < n -> (turn_angle r n + rrz_ang q)%R = (turn_angle (r_rotate r q) n)%R.
+Lemma turn_angle_add_r_same : forall n r q, q < n -> 
+          (2 * PI * turn_angle r n + rrz_ang q)%R = (2 * PI *  turn_angle (r_rotate r q) n)%R.
 Proof.
 
 Admitted.
@@ -8304,7 +8306,8 @@ Proof.
     rewrite vs_avs_bij_l with (dim := dim); try easy.
     inv H8. apply (H9 Nor) in H18; try easy. inv H18.
     unfold compile_val,get_cua.
-    exists (Cexp (turn_angle r rmax)). easy.
+    exists (Cexp (2 * PI * turn_angle r rmax)). 
+    easy.
     destruct H14.
     assert ((snd (trans_exp vs dim e avs)) = avs) as eq3.
     inv H12. rewrite neu_trans_state with (l := l') ; try easy. 
