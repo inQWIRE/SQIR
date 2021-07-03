@@ -94,10 +94,10 @@ Definition rz_modmult_full (y:var) (x:var) (n:nat) (c:posi) (A:nat) (Ainv :nat) 
 Definition vars_for_rz' (size:nat) := gen_vars size (x_var::(y_var::[])).
 
 Definition vars_for_rz (size:nat) := 
-       fun x => if x =? c_var then (size * 2,1,id_nat,id_nat) else vars_for_rz' size x.
+       fun x => if x =? z_var then (size * 2,1,id_nat,id_nat) else vars_for_rz' size x.
 
 Definition real_rz_modmult_rev (M C Cinv size:nat) :=
-    rz_modmult_full y_var x_var size (c_var,0) C Cinv M.
+    rz_modmult_full y_var x_var size (z_var,0) C Cinv M.
 
 Definition trans_rz_modmult_rev (M C Cinv size:nat) :=
         trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev M C Cinv size) (avs_for_arith size).
@@ -123,7 +123,7 @@ Definition rz_modmult_full_alt (y:var) (x:var) (n:nat) (c:posi) (A:nat) (Ainv :n
   rz_modmult_half_alt y x n c A N ;; inv_pexp (rz_modmult_half_alt x y n c Ainv N).
 
 Definition real_rz_modmult_rev_alt (M C Cinv size:nat) :=
-    rz_modmult_full_alt y_var x_var size (c_var,0) C Cinv M.
+    rz_modmult_full_alt y_var x_var size (z_var,0) C Cinv M.
 
 Definition trans_rz_modmult_rev_alt (M C Cinv size:nat) :=
         trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev_alt M C Cinv size) (avs_for_arith size).
