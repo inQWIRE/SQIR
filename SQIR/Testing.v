@@ -53,13 +53,12 @@ Instance shrink_bvector n : Shrink (Bvector n) :=
   {| shrink := shrink_bvector' |}.
 
 (* Uniformly randomly selected boolean *)
-Definition gen_bool :=
-  elems_ false (false :: true :: nil)%list.
+Definition gen_bool : G bool := elems_ false (false :: true :: nil).
 
 (* Uniformly randomly selected Bvector *)
 Fixpoint gen_bvector' {n} : G (Bvector n) :=
   match n with
-  | 0 => returnGen Bnil
+  | 0 => ret Bnil
   | S n' =>
       bind gen_bool (fun b => bind gen_bvector' (fun v => ret (b :: v)))
   end.

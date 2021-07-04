@@ -1387,7 +1387,7 @@ Qed.
 
 Definition qvar_eq (size:nat) (bv:benv) (reg:reg) (x y: cfac) := 
         match par_find_var size bv reg x with None => false
-                    | Some a => match par_find_var size bv reg x with None => false
+                    | Some a => match par_find_var size bv reg y with None => false
                          | Some b => (a =qd= b)
                                 end
         end.
