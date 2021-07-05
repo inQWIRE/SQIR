@@ -88,10 +88,20 @@ let coq_N2fb = function
 let nat2fb n =
   coq_N2fb (N.of_nat n)
 
+(** val cut_n : (int -> bool) -> int -> int -> bool **)
+
+let cut_n f n i =
+  if PeanoNat.Nat.ltb i n then f i else allfalse i
+
 (** val fbrev : int -> (int -> 'a1) -> int -> 'a1 **)
 
 let fbrev n f x =
   if PeanoNat.Nat.ltb x n then f (sub (sub n (Pervasives.succ 0)) x) else f x
+
+(** val times_two_spec : (int -> bool) -> int -> bool **)
+
+let times_two_spec f i =
+  if (=) i 0 then false else f (sub i (Pervasives.succ 0))
 
 (** val init_v : int -> var -> (int -> bool) -> exp **)
 

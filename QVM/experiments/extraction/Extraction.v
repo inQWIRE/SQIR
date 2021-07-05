@@ -14,6 +14,10 @@ Require Coq.extraction.ExtrOcamlNatInt.
 
 (* Custom extraction files. *)
 Require ExtrOcamlList.
+
+Extract Inlined Constant List.tl => "List.tl".
+Extract Inlined Constant List.hd_error => "(fun l -> List.nth_opt l 0)".
+
 Require ExtrOcamlR.
 Extract Inlined Constant R2 => "2.0".
 Extract Inlined Constant R4 => "4.0".
@@ -25,5 +29,5 @@ Separate Extraction
     AltVSQIR.trans_modmult_rev
     AltVSQIR.trans_rz_modmult_rev
     AltVSQIR.trans_rz_modmult_rev_alt
-    (*OracleExample.sin_prog
-    AltVSQIR.prog_to_sqir_real*).
+    OracleExample.sin_prog
+    AltVSQIR.prog_to_sqir_real.

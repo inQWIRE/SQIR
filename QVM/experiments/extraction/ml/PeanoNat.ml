@@ -35,6 +35,22 @@ module Nat =
   let ltb n m =
     (<=) (Pervasives.succ n) m
 
+  (** val compare : int -> int -> comparison **)
+
+  let rec compare = fun n m -> if n=m then Eq else if n<m then Lt else Gt
+
+  (** val max : int -> int -> int **)
+
+  let rec max n m =
+    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+      (fun _ -> m)
+      (fun n' ->
+      (fun fO fS n -> if n=0 then fO () else fS (n-1))
+        (fun _ -> n)
+        (fun m' -> Pervasives.succ (max n' m'))
+        m)
+      n
+
   (** val pow : int -> int -> int **)
 
   let rec pow n m =
@@ -70,4 +86,10 @@ module Nat =
       (fun _ -> y)
       (fun y' -> sub y' (snd (divmod x y' 0 y')))
       y
+
+  (** val b2n : bool -> int **)
+
+  let b2n = function
+  | true -> Pervasives.succ 0
+  | false -> 0
  end

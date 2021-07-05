@@ -186,3 +186,62 @@ let vars_for_cl size x =
 let real_modmult_rev m c cinv size =
   modmult_rev (nat2fb m) c cinv size x_var y_var z_var s_var (c_var, 0)
     (c_var, (Pervasives.succ 0))
+
+(** val one_cl_cu_adder :
+    posi -> var -> var -> int -> posi -> (int -> bool) -> exp **)
+
+let one_cl_cu_adder c2 ex re n c1 m =
+  CU (c2, (Seq ((Seq ((init_v n ex m), (adder01 n ex re c1))),
+    (init_v n ex m))))
+
+(** val cl_nat_mult' :
+    int -> int -> var -> var -> var -> posi -> (int -> bool) -> exp **)
+
+let rec cl_nat_mult' n size x ex re c m =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun m0 -> Seq ((one_cl_cu_adder (x, m0) ex re size c m),
+    (cl_nat_mult' m0 size x ex re c (cut_n (times_two_spec m) size))))
+    n
+
+(** val cl_nat_mult :
+    int -> var -> var -> var -> posi -> (int -> bool) -> exp **)
+
+let cl_nat_mult size x re ex c m =
+  cl_nat_mult' size size x ex re c m
+
+(** val one_cu_cl_full_adder : posi -> var -> var -> posi -> int -> exp **)
+
+let one_cu_cl_full_adder c2 y x c1 n =
+  CU (c2, (adder01 n x y c1))
+
+(** val cl_full_mult' :
+    int -> int -> var -> var -> var -> var -> posi -> exp **)
+
+let rec cl_full_mult' n size x y re ex c =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun m -> Seq ((Seq ((Seq ((cl_full_mult' m size x y re ex c),
+    (one_cu_cl_full_adder (x, m) re y c size))),
+    (coq_SWAP (y, (sub size (Pervasives.succ 0))) (ex, m)))), (Lshift y)))
+    n
+
+(** val cl_full_mult_quar : int -> var -> var -> var -> var -> posi -> exp **)
+
+let cl_full_mult_quar size x y re ex c =
+  cl_full_mult' size size x y re ex c
+
+(** val clean_high : int -> int -> var -> var -> exp **)
+
+let rec clean_high n size y ex =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (y, 0))
+    (fun m -> Seq ((Seq ((clean_high m size y ex),
+    (coq_SWAP (y, (sub size (Pervasives.succ 0))) (ex, m)))), (Lshift y)))
+    n
+
+(** val cl_full_mult : int -> var -> var -> var -> var -> posi -> pexp **)
+
+let cl_full_mult size x y re ex c =
+  Exp (Seq ((cl_full_mult_quar size x y re ex c),
+    (inv_exp (clean_high size size y ex))))

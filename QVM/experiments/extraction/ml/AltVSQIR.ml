@@ -1,5 +1,7 @@
 open AltGateSet2
 open CLArith
+open Datatypes
+open MiniQASM
 open Nat
 open RCIR
 open RZArith
@@ -141,6 +143,17 @@ let rec trans_pexp vs dim exp0 avs =
     let (e1', vs') = p in
     let (p0, avs'') = trans_pexp vs' dim e2 avs' in
     let (e2', vs'') = p0 in (((Coq_useq (e1', e2')), vs''), avs'')
+
+(** val prog_to_sqir_real : prog -> flag -> coq_U ucom **)
+
+let prog_to_sqir_real p f =
+  match prog_to_sqir p f with
+  | Some p0 ->
+    let (p1, avs) = p0 in
+    let (p2, vars0) = p1 in
+    let (p3, p4) = p2 in
+    let (d, _) = p3 in fst (fst (trans_pexp vars0 d p4 avs))
+  | None -> coq_SKIP
 
 (** val trans_rz_modmult_rev :
     int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
