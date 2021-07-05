@@ -3664,18 +3664,18 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
    match e with qfor x n e' => 
      do t2v' <- par_eval_cfac_check smap bv size r Nat n @
        match t2v' with Value t2v =>
-         let fix trans_while (r:cstore) (sn:nat) (es:estore) (i:nat) : option (@value (option pexp * nat * cstore * estore)) :=
+         let fix trans_while (r:cstore) (sn:nat) (i:nat) : option (@value (option pexp * nat * cstore * estore)) :=
             match i with 0 => Some (Value (None,sn,r,es))
-                     | S m => do re <- trans_qexp size smap vmap bv fl r temp stack sn fv es e' @
+                     | S m => do re <- trans_qexp size smap vmap bv fl r temp stack sn fv empty_estore e' @
                                match re with Value (cir,sn',r',es') =>
-                                 do re' <- trans_while r' sn' es' m @
+                                 do re' <- trans_while r' sn' m @
                                   match re' with Value (cir',sn'',r'',es'') =>
-                                     Some (Value (combine_c cir cir',sn'',r'',es''))
+                                     Some (Value (combine_c cir cir',sn'',r'',empty_estore))
                                      | _ => Some Error
                                   end
                                      | _ => Some Error
                                end
-            end in trans_while (Store.add (L x,0) (nat2fb 0) r) sn (empty_estore) (a_nat2fb t2v size)
+            end in trans_while (Store.add (L x,0) (nat2fb 0) r) sn (a_nat2fb t2v size)
             | _ => Some Error
 
        end
