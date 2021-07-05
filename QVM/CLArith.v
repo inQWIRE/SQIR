@@ -2443,6 +2443,14 @@ Qed.
 
 (*Here x and y are two input z = (x * y) + z 
 Definition adder01 n x y c: exp := MAJseq n x y c; UMAseq n x y c.*)
+Definition vars_for_adder01' (size:nat) := gen_vars size (x_var::(y_var::(([])))).
+
+Definition vars_for_adder01 (size:nat) :=
+            fun x => if x =? z_var then (size * 2,1,id_nat,id_nat) else vars_for_adder01' size x.
+
+Definition adder01_out (size:nat) := adder01 size x_var y_var (z_var,0).
+
+
 Definition one_cl_cu_adder (c2:posi) (ex:var) (re:var) (n:nat) (c1:posi) (M:nat -> bool)
                                   := CU c2 (init_v n ex M; adder01 n ex re c1; init_v n ex M).
 
@@ -2453,6 +2461,13 @@ Fixpoint cl_nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:n
    end.
 Definition cl_nat_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
        cl_nat_mult' size size x ex re c M.
+
+Definition vars_for_cl_nat_m' (size:nat) := gen_vars size (x_var::(y_var::(z_var::([])))).
+
+Definition vars_for_cl_nat_m (size:nat) :=
+            fun x => if x =? s_var then (size * 3,1,id_nat,id_nat) else vars_for_cl_nat_m' size x.
+
+Definition cl_nat_mult_out (size:nat) (M:nat -> bool) := cl_nat_mult size x_var y_var z_var (s_var,0) M.
 
 Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
 
@@ -2486,6 +2501,13 @@ Fixpoint clean_high (n:nat) (size:nat) (y:var) (ex:var) :=
 Definition cl_full_mult (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
          (Exp (cl_full_mult_quar size x y re ex c; inv_exp (clean_high size size y ex))).
 
+
+Definition vars_for_cl_nat_full_m' (size:nat) := gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
+
+Definition vars_for_cl_nat_full_m (size:nat) :=
+            fun x => if x =? c_var then (size * 4,1,id_nat,id_nat) else vars_for_cl_nat_full_m' size x.
+
+Definition cl_full_mult_out (size:nat) := cl_full_mult size x_var y_var z_var s_var (c_var,0).
 
 
 Fixpoint clf_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) (c:posi) :=

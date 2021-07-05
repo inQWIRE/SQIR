@@ -2940,7 +2940,7 @@ Qed.
 
 
 
-(** @Liyi: the rest of this file is unused. Can we delete? **)
+(** @Liyi: the rest of this file is unused. Can we delete? No, they are code for Finn's random testing. **)
 Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
 
 Fixpoint nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
@@ -2948,7 +2948,12 @@ Fixpoint nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
             | S m => one_cu_adder ex size (x,size - n) M; nat_mult' m size x ex (cut_n (div_two_spec M) size)
    end.
 Definition nat_mult (size:nat) (x:var) (re:var) (M:nat -> bool) := 
-       Exp (Rev x; Rev re) ;; nat_mult' size size x re M;; inv_pexp (Exp (Rev x; Rev re)).
+       Exp (Rev x; Rev re) ;; QFT re ;; nat_mult' size size x re M;; RQFT re;; inv_pexp (Exp (Rev x; Rev re)).
+
+Definition vars_for_rz_nat_m (size:nat) := gen_vars size (x_var::(y_var::(([])))).
+
+Definition nat_mult_out (size:nat) (M:nat -> bool) := nat_mult size x_var y_var M.
+
 
 Fixpoint flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
    match n with 0 => SKIP (x,0)
@@ -2983,6 +2988,10 @@ Definition nat_full_mult (size:nat) (x y:var) (re:var) (ex:var) :=
           (Exp (Rev re ; Rev x; Rev y));; QFT re ;;
          (Exp (nat_full_mult_quar size x y re ex ; inv_exp (clean_high size y ex)))
            ;; RQFT re ;; (Exp (Rev re; Rev x; Rev y)).
+
+Definition vars_for_rz_nat_full_m (size:nat) := gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
+
+Definition nat_full_mult_out (size:nat) := nat_full_mult x_var y_var z_var s_var.
 
 Fixpoint flt_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) :=
    match n with 0 => SKIP (x,0)
@@ -3027,6 +3036,11 @@ Fixpoint rz_full_sub (x:var) (n:nat) (y:var) :=
 Definition rz_full_adder_form (x:var) (n:nat) (y:var) :=
        Exp (Rev x; Rev y);; QFT x ;; rz_full_adder x n y ;; (inv_pexp (Exp (Rev x; Rev y);; QFT x)).
 
+Definition vars_for_rz_full_add (size:nat) := gen_vars size (x_var::(y_var::(([])))).
+
+Definition rz_full_adder_out (size:nat) := rz_full_adder_form x_var size y_var.
+
+
 Definition rz_full_sub_form (x:var) (n:nat) (y:var) :=
        Exp (Rev x; Rev y);; QFT x ;; rz_full_sub x n y ;; (inv_pexp (Exp (Rev x; Rev y);; QFT x)).
 
@@ -3044,6 +3058,8 @@ Definition rz_full_comparator (x:var) (n:nat) (c:posi) (y:var) :=
       inv_pexp (Exp (Rev x; Rev y);; QFT x;; QFT y;; Exp (rz_full_sub x n y);; RQFT x).
 
 (* vars for rz_mulmolt 16 bits *)
+Definition vars_for_rz_adder (size:nat) := gen_vars size (x_var::((([])))).
 
+Definition rz_adder_out (size:nat) (M:nat-> bool) := rz_adder_form x_var size M.
 
 
