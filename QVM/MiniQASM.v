@@ -3799,7 +3799,7 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                       match t3v with Value t3v' => match vx with Value vx' =>
                        do txv <- Store.find vx' r @
                                Some (Value (None,sn,Store.add vx' 
-                            (nat2fb (((a_nat2fb txv size) * 2^size) / (a_nat2fb t3v' size))) r,es))
+                            (fbrev size (nat2fb (((a_nat2fb (fbrev size txv) size)) / (a_nat2fb t3v' size)))) r,es))
                         | _ => Some Error end | _ => Some Error end
 
            | ncadd x y n => do t2v <- par_eval_cfac_check smap bv size r Nat y @
@@ -3843,8 +3843,8 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                              do t3v <- par_eval_cfac_check smap bv size r Nat n @
                               do vx <- par_find_var_check smap bv size r x @
                                match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx' (nat2fb ((((a_nat2fb t2v' size) * 2^size)
-                                      / (a_nat2fb t3v' size)) mod 2^size)) r,es)))
+                               Some (Value ((None,sn,Store.add vx' (fbrev size (nat2fb ((((a_nat2fb t2v' size) * 2^size)
+                                      / (a_nat2fb t3v' size)) mod 2^size))) r,es)))
                              | _ => Some Error end | _ => Some Error end | _ => Some Error end
 
            | qseq e1 e2 => match trans_qexp size smap vmap bv fl r temp stack sn fv es e1 with None => None
