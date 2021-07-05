@@ -1780,29 +1780,30 @@ let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
   bind (par_eval_cfac_check smap bv size r Nat n) (fun t2v' ->
     match t2v' with
     | Value t2v ->
-      let rec trans_while r0 sn0 es0 i =
+      let rec trans_while r0 sn0 i =
         (fun fO fS n -> if n=0 then fO () else fS (n-1))
-          (fun _ -> Some (Value (((None, sn0), r0), es0)))
+          (fun _ -> Some (Value (((None, sn0), r0), es)))
           (fun m ->
           bind
-            (trans_qexp size smap vmap bv fl r0 temp0 stack0 sn0 fv es0 e')
-            (fun re ->
+            (trans_qexp size smap vmap bv fl r0 temp0 stack0 sn0 fv
+              empty_estore e') (fun re ->
             match re with
             | Value x0 ->
-              let (p, es') = x0 in
+              let (p, _) = x0 in
               let (p0, r') = p in
               let (cir, sn') = p0 in
-              bind (trans_while r' sn' es' m) (fun re' ->
+              bind (trans_while r' sn' m) (fun re' ->
                 match re' with
                 | Value x1 ->
-                  let (p1, es'') = x1 in
+                  let (p1, _) = x1 in
                   let (p2, r'') = p1 in
                   let (cir', sn'') = p2 in
-                  Some (Value ((((combine_c cir cir'), sn''), r''), es''))
+                  Some (Value ((((combine_c cir cir'), sn''), r''),
+                  empty_estore))
                 | Error -> Some Error)
             | Error -> Some Error))
           i
-      in trans_while (Store.add ((L x), 0) (nat2fb 0) r) sn empty_estore
+      in trans_while (Store.add ((L x), 0) (nat2fb 0) r) sn
            (a_nat2fb t2v size)
     | Error -> Some Error)
 | Coq_qseq (e1, e2) ->

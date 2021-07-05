@@ -83,24 +83,17 @@ run 7 13 15;;
 run 17 11 31;;
 run 32 2 63;;*)
 
+(* testing... *)
+match MiniQASM.trans_prog (sin_prog 31) QFTA with
+| None -> printf "FAILED :o\n%!"
+  | Some _ -> printf "succeeded ^.^\n%!"
+;;
+
+(* these both end up being 1-gate (SKIP) programs *)
 let c_qfta = prog_to_sqir_real (sin_prog 31) QFTA;;
 let (x,y,z) = count_gates c_qfta;;
 printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
-write_qasm_file "foo1.qasm" c_qfta 10;;
-match (sin_prog 3) with
-| (p0, _) ->
-  let (p1, _) = p0 in
-  let (p2, fl) = p1 in
-  let (_, l) = p2 in
-  match (MiniQASM.gen_genv l) with
-  | None -> printf "FAILED at gen_genv\n%!"
-  | Some bv -> 
-    (match (MiniQASM.type_funs bv MiniQASM.fenv_empty fl) with
-     | None -> printf "FAILED at type_funs\n%!"
-     | Some _ -> printf "succeeded\n%!")
-;;
 
 let c_classic = prog_to_sqir_real (sin_prog 31) Classic;;
 let (x,y,z) = count_gates c_classic;;
 printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
-write_qasm_file "foo2.qasm" c_classic 10;;

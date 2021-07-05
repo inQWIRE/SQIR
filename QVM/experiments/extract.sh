@@ -3,7 +3,7 @@
 # Compile AltVSQIR.
 echo "Compiling AltVSQIR..."
 #coqc -R ../.. Top AltGateSet2.v
-#coqc -R ../.. Top AltVSQIR.v
+coqc -R ../.. Top AltVSQIR.v
 
 # Change into the extraction directory.
 cd extraction

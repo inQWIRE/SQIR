@@ -94,7 +94,7 @@ let taylor_sin =
     (Q, FixedP)), re) :: [])))))))))), (Coq_qseq ((Coq_qseq ((Coq_qseq
     ((Coq_qseq ((Coq_qseq ((Coq_qseq ((Coq_qseq ((Coq_qseq ((Coq_qseq
     ((Coq_init ((Nor (Var (L re))), (Nor (Var (G x))))), (Coq_fmul ((Nor (Var
-    (G x2))), (Nor (Var (G x))), (Nor (Var (L re))))))), (Coq_fmul ((Index
+    (L x2))), (Nor (Var (G x))), (Nor (Var (L re))))))), (Coq_fmul ((Index
     ((L x3), (Num (nat2fb 0)))), (Nor (Var (L x2))), (Nor (Var (G x))))))),
     (Coq_fmul ((Index ((L x3), (Num (nat2fb (Pervasives.succ 0))))), (Index
     ((L x3), (Num (nat2fb 0)))), (Nor (Var (L x2))))))), (Coq_fmul ((Index
@@ -121,22 +121,22 @@ let taylor_sin =
     (nat2fb (Pervasives.succ (Pervasives.succ (Pervasives.succ
       (Pervasives.succ 0))))))), (Nor (Var (L xc))))))), (Coq_fndiv ((Nor
     (Var (L rc))), (Nor (Var (L xc))), (Nor (Var (L fac))))))), (Coq_fmul
-    ((Nor (Var (L e))), (Nor (Var (L rc))), (Index ((L x), (Var (L g)))))))),
-    (Coq_fsub ((Nor (Var (L re))), (Nor (Var (L e))))))), (Coq_qinv (Nor (Var
-    (L e)))))), (Coq_qseq ((Coq_qseq ((Coq_qseq ((Coq_qseq ((Coq_qseq
-    ((Coq_qseq ((Coq_ncadd ((Nor (Var (L n))), (Nor (Num
-    (nat2fb (Pervasives.succ (Pervasives.succ 0))))), (Nor (Var (L n))))),
-    (Coq_nfac ((Nor (Var (L fac))), (Nor (Var (L n))))))), (Coq_ncmul ((Nor
-    (Var (L xc))), (Nor (Num
+    ((Nor (Var (L e))), (Nor (Var (L rc))), (Index ((L x3), (Var (L
+    g)))))))), (Coq_fsub ((Nor (Var (L re))), (Nor (Var (L e))))))),
+    (Coq_qinv (Nor (Var (L e)))))), (Coq_qseq ((Coq_qseq ((Coq_qseq
+    ((Coq_qseq ((Coq_qseq ((Coq_qseq ((Coq_ncadd ((Nor (Var (L n))), (Nor
+    (Num (nat2fb (Pervasives.succ (Pervasives.succ 0))))), (Nor (Var (L
+    n))))), (Coq_nfac ((Nor (Var (L fac))), (Nor (Var (L n))))))), (Coq_ncmul
+    ((Nor (Var (L xc))), (Nor (Num
     (nat2fb (Pervasives.succ (Pervasives.succ (Pervasives.succ
       (Pervasives.succ 0))))))), (Nor (Var (L xc))))))), (Coq_fndiv ((Nor
     (Var (L rc))), (Nor (Var (L xc))), (Nor (Var (L fac))))))), (Coq_fmul
-    ((Nor (Var (L e))), (Nor (Var (L rc))), (Index ((L x), (Var (L g)))))))),
-    (Coq_fadd ((Nor (Var (L re))), (Nor (Var (L e))))))), (Coq_qinv (Nor (Var
-    (L e))))))))))))), (Nor (Var (L re))))
+    ((Nor (Var (L e))), (Nor (Var (L rc))), (Index ((L x3), (Var (L
+    g)))))))), (Coq_fadd ((Nor (Var (L re))), (Nor (Var (L e))))))),
+    (Coq_qinv (Nor (Var (L e))))))))))))), (Nor (Var (L re))))
 
 (** val sin_prog : int -> prog **)
 
 let sin_prog size =
-  ((((size, (((TNor (Q, FixedP)), result) :: [])), (taylor_sin :: [])), f),
-    result)
+  ((((size, (((TNor (Q, FixedP)), x) :: (((TNor (Q, FixedP)),
+    result) :: []))), (taylor_sin :: [])), f), result)
