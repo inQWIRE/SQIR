@@ -4,7 +4,7 @@ Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat. 
 Require Import Dirac.
 Require Import QPE.
-Require Import VSQIR.
+Require Import PQASM.
 Require Import CLArith.
 
 Local Open Scope exp_scope.

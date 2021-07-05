@@ -72,19 +72,19 @@ examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo
 
 # Built by 'make qvm'
 
-QVM/VSQIR.vo: QVM/VSQIR.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo
-	coqc $(COQ_OPTS) QVM/VSQIR.v
+QVM/PQASM.vo: QVM/PQASM.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo
+	coqc $(COQ_OPTS) QVM/PQASM.v
 
-QVM/CLArith.vo: QVM/CLArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/VSQIR.vo
+QVM/CLArith.vo: QVM/CLArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo
 	coqc $(COQ_OPTS) QVM/CLArith.v
 
-QVM/RZArith.vo: QVM/RZArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/VSQIR.vo
+QVM/RZArith.vo: QVM/RZArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo
 	coqc $(COQ_OPTS) QVM/RZArith.v
 
-QVM/MiniQASM.vo: QVM/MiniQASM.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/VSQIR.vo QVM/CLArith.vo QVM/RZArith.vo
-	coqc $(COQ_OPTS) QVM/MiniQASM.v
+QVM/QIMP.vo: QVM/QIMP.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo QVM/CLArith.vo QVM/RZArith.vo
+	coqc $(COQ_OPTS) QVM/QIMP.v
 
-QVM/OracleExample.vo: QVM/OracleExample.v QVM/MiniQASM.vo
+QVM/OracleExample.vo: QVM/OracleExample.v QVM/QIMP.vo
 	coqc $(COQ_OPTS) QVM/OracleExample.v
 
 # Built by 'make shor'

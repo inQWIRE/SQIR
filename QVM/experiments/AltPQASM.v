@@ -6,7 +6,7 @@
 Require Import Prelim.
 Require Import RCIR.
 Require Import AltGateSet2.
-Require Import VSQIR.
+Require Import PQASM.
 Require Import RZArith.
 Require Import CLArith.
 Require Import MiniQASM.
@@ -68,20 +68,6 @@ Fixpoint QFT_gen (f : vars) (x:var) (n : nat) (size:nat) : ucom U :=
 
 Definition trans_qft (f:vars) (x:var) : ucom U := 
     QFT_gen f x (vsize f x) (vsize f x).
-
-Fixpoint controlled_rotations_gen_r (f : vars) (x:var) (n : nat) (i:nat) : ucom U :=
-    match n with
-    | 0 | 1 => AltGateSet2.ID (find_pos f (x,i))
-    | S m  => (control (find_pos f (x,m+i)) (U1 (rrz_ang n) (find_pos f (x,i)))) >>
-              (controlled_rotations_gen_r f x m i)
-    end.
-
-Fixpoint QFT_gen_r (f : vars) (x:var) (n : nat) (size:nat) : ucom U :=
-    match n with
-    | 0 => AltGateSet2.ID (find_pos f (x,0))
-    | S m => (controlled_rotations_gen_r f x (size-m) m) >>
-             ((AltGateSet2.H (find_pos f (x,m))) >> (QFT_gen_r f x m size))
-    end.
 
 Definition trans_rqft (f:vars) (x:var) : ucom U :=
           invert (QFT_gen f x (vsize f x) (vsize f x)).

@@ -4,10 +4,10 @@ Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat. 
 Require Import Dirac.
 Require Import QPE.
-Require Import VSQIR.
+Require Import PQASM.
 Require Import CLArith.
 Require Import RZArith.
-Require Import MiniQASM.
+Require Import QIMP.
 
 Require Import Coq.FSets.FMapList.
 Require Import Coq.FSets.FMapFacts.
@@ -137,8 +137,6 @@ Definition taylor_sin : func :=
 
 Definition sin_prog (size:nat) : prog := 
          (size,((TNor Q FixedP, x)::[(TNor Q FixedP,result)]),(taylor_sin::[]),f,result).
-
-Eval compute in (type_prog (sin_prog 64)).
 
 Parameter Pi_4 : nat -> bool. (*a binary representation of PI/4 *)
 
