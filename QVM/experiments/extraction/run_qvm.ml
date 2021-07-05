@@ -1,7 +1,7 @@
 open Printf
 
 open AltGateSet2
-open AltVSQIR
+open AltPQASM
 open OracleExample
 
 (* write to qasm file *)
@@ -84,7 +84,7 @@ run 17 11 31;;
 run 32 2 63;;*)
 
 (* testing... *)
-match MiniQASM.trans_prog (sin_prog 31) QFTA with
+match QIMP.trans_prog (sin_prog 1) Classic with
 | None -> printf "FAILED :o\n%!"
   | Some _ -> printf "succeeded ^.^\n%!"
 ;;

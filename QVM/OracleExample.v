@@ -4,10 +4,10 @@ Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat. 
 Require Import Dirac.
 Require Import QPE.
-Require Import VSQIR.
+Require Import PQASM.
 Require Import CLArith.
 Require Import RZArith.
-Require Import MiniQASM.
+Require Import QIMP.
 
 Require Import Coq.FSets.FMapList.
 Require Import Coq.FSets.FMapFacts.
@@ -111,6 +111,7 @@ Definition taylor_sin : func :=
 Definition sin_prog (size:nat) : prog := 
          (size,((TNor Q FixedP, x)::[(TNor Q FixedP,result)]),(taylor_sin::[]),f,result).
 
+<<<<<<< HEAD
 Definition smapa := fun i => if i =? x3 then 5 else 1.
 
 Definition vmapa := 
@@ -120,6 +121,8 @@ Definition vmapa :=
                ::(TNor C FixedP,rc)::(TNor Q FixedP,re)::[]) vmapg i
    end.
 
+=======
+>>>>>>> 7308aeb0a99787fe7ee26afe1fdea64c5b6d59da
 Parameter Pi_4 : nat -> bool. (*a binary representation of PI/4 *)
 
 Definition taylor_cos : func := 

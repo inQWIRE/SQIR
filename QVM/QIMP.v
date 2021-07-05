@@ -4,7 +4,7 @@ Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat. 
 Require Import Dirac.
 Require Import QPE.
-Require Import VSQIR.
+Require Import PQASM.
 Require Import CLArith.
 Require Import RZArith.
 
@@ -2463,7 +2463,7 @@ Definition inv_well_match (size:nat) (bv:benv) (store:store) (e:qexp) : Prop :=
     inv_well_match_l size bv store (turn_qseq_lst e) [].
 *)
 
-(* Compilation from MiniQASM to VSQIR starts here. *)
+(* Compilation from MiniQASM to PQASM starts here. *)
 
 
 Definition ac_size (size:nat) := S (S size).

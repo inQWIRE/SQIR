@@ -4,7 +4,7 @@ Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat. 
 Require Import Dirac.
 Require Import QPE.
-Require Import VSQIR.
+Require Import PQASM.
 
 Local Open Scope exp_scope.
 Local Open Scope nat_scope.
@@ -185,8 +185,6 @@ Lemma MAJ_correct :
     exp_sem aenv (MAJ c b a) f = (((f[a |-> put_cu (f a) (majb (get_cua (f a)) (get_cua (f b)) (get_cua (f c)))])
                               [b |-> put_cu (f b) (get_cua (f b) ⊕ get_cua (f a))])
                               [c |-> put_cu (f c) (get_cua (f c) ⊕ (get_cua (f a)))]).
-(*Admitted. 
-(* The following proof works, but too slow. Admitted when debugging. *)*)
 Proof.
   intros ? ? ? ? ? HNa HNb HNc Hab' Hbc' Hac'.
   unfold MAJ.
@@ -259,8 +257,6 @@ Lemma UMA_correct_partial :
     get_cua (f' b) = (fb ⊕ fa) -> get_cua (f' c) = (fc ⊕ fa) ->
     exp_sem aenv (UMA c b a) f' = (((f'[a |-> put_cu (f' a) fa])
                   [b |-> put_cu (f' b) (fa ⊕ fb ⊕ fc)])[c |-> put_cu (f' c) fc]).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   unfold majb. intros.
   unfold UMA.

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Compile AltVSQIR.
-echo "Compiling AltVSQIR..."
+# Compile AltPQASM.
+echo "Compiling AltPQASM..."
 #coqc -R ../.. Top AltGateSet2.v
-coqc -R ../.. Top AltVSQIR.v
+coqc -R ../.. Top AltPQASM.v
 
 # Change into the extraction directory.
 cd extraction
@@ -23,8 +23,8 @@ rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml List.ml \
 
 # Move the remaining extracted files to the 'ml' subdirectory.
 echo "Moving generated files to ml/..."
-mv AltGateSet2.ml AltVSQIR.ml Bin*.ml Bool.ml CLArith.ml Datatypes.ml Factorial.ml \
-   MiniQASM.ml ModMult.ml Nat.ml PeanoNat.ml Prelim.ml RCIR.ml RZArith.ml VSQIR.ml \
+mv AltGateSet2.ml AltPQASM.ml Bin*.ml Bool.ml CLArith.ml Datatypes.ml Factorial.ml \
+   QIMP.ml ModMult.ml Nat.ml PeanoNat.ml Prelim.ml RCIR.ml RZArith.ml PQASM.ml \
    FMapList.ml Order* OracleExample.ml \
    ml
 
