@@ -9,7 +9,7 @@ Require Import AltGateSet2.
 Require Import PQASM.
 Require Import RZArith.
 Require Import CLArith.
-Require Import MiniQASM.
+Require Import QIMP.
 
 Definition rz_ang (n:nat) : R := ((R2 * PI)%R / R2^n). (* redefined using R2 *)
 
@@ -94,6 +94,15 @@ Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
                              end
                             end
      end.
+
+(* z = x + y (CL) *)
+Definition trans_cl_adder (size:nat) :=
+  trans_pexp (CLArith.vars_for_adder01 size) (2 * size + 1) (CLArith.adder01_out size) (PQASM.avs_for_arith size).
+
+(* x = M * x (CL) *)
+Definition trans_cl_const_mul (size M:nat) :=
+  trans_pexp (CLArith.vars_for_cl_nat_m size) (3 * size + 1) (CLArith.cl_nat_mult_out size (nat2fb M)) (PQASM.avs_for_arith size).
+
 
 (* Compile a prog to a circuit. *)
 Definition prog_to_sqir_real (p:prog) (f:flag) : ucom U :=

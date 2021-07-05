@@ -20,10 +20,20 @@ Extract Inlined Constant R4 => "4.0".
 
 (* Perform extraction *)
 Separate Extraction 
+    (* RCIR modular multiplier *)
     ModMult.modmult_rev 
     AltPQASM.bc2ucom
+    
+    (* QVM classical modular multiplier *)
     AltPQASM.trans_modmult_rev
+    
+    (* QVM QFT-based adder *)
     AltPQASM.trans_rz_modmult_rev
-    AltPQASM.trans_rz_modmult_rev_alt
+    
+    (* QVM sine functiom *)
     OracleExample.sin_prog
-    AltPQASM.prog_to_sqir_real.
+    AltPQASM.prog_to_sqir_real
+    
+    (* QVM classical adders *)
+    AltPQASM.trans_cl_adder
+    AltPQASM.trans_cl_const_mul.

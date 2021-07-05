@@ -1,11 +1,11 @@
 open AltGateSet2
 open CLArith
 open Datatypes
-open MiniQASM
 open Nat
+open PQASM
+open QIMP
 open RCIR
 open RZArith
-open VSQIR
 
 (** val rz_ang : int -> float **)
 
@@ -144,6 +144,22 @@ let rec trans_pexp vs dim exp0 avs =
     let (p0, avs'') = trans_pexp vs' dim e2 avs' in
     let (e2', vs'') = p0 in (((Coq_useq (e1', e2')), vs''), avs'')
 
+(** val trans_cl_adder : int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_cl_adder size =
+  trans_pexp (vars_for_adder01 size)
+    (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
+    (Exp (adder01_out size)) (avs_for_arith size)
+
+(** val trans_cl_const_mul :
+    int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_cl_const_mul size m =
+  trans_pexp (vars_for_cl_nat_m size)
+    (add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
+      (Pervasives.succ 0)) (Exp (cl_nat_mult_out size (nat2fb m)))
+    (avs_for_arith size)
+
 (** val prog_to_sqir_real : prog -> flag -> coq_U ucom **)
 
 let prog_to_sqir_real p f =
@@ -162,14 +178,6 @@ let trans_rz_modmult_rev m c cinv size =
   trans_pexp (vars_for_rz size)
     (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
     (real_rz_modmult_rev m c cinv size) (avs_for_arith size)
-
-(** val trans_rz_modmult_rev_alt :
-    int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
-
-let trans_rz_modmult_rev_alt m c cinv size =
-  trans_pexp (vars_for_rz size)
-    (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
-    (real_rz_modmult_rev_alt m c cinv size) (avs_for_arith size)
 
 (** val trans_modmult_rev :
     int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)

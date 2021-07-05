@@ -1,5 +1,5 @@
 open Nat
-open VSQIR
+open PQASM
 
 (** val coq_MAJ : posi -> posi -> posi -> exp **)
 
@@ -187,6 +187,26 @@ let real_modmult_rev m c cinv size =
   modmult_rev (nat2fb m) c cinv size x_var y_var z_var s_var (c_var, 0)
     (c_var, (Pervasives.succ 0))
 
+(** val vars_for_adder01' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_adder01' size =
+  gen_vars size (x_var :: (y_var :: []))
+
+(** val vars_for_adder01 :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_adder01 size x =
+  if (=) x z_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ 0))), (Pervasives.succ
+         0)), id_nat), id_nat)
+  else vars_for_adder01' size x
+
+(** val adder01_out : int -> exp **)
+
+let adder01_out size =
+  adder01 size x_var y_var (z_var, 0)
+
 (** val one_cl_cu_adder :
     posi -> var -> var -> int -> posi -> (int -> bool) -> exp **)
 
@@ -209,6 +229,26 @@ let rec cl_nat_mult' n size x ex re c m =
 
 let cl_nat_mult size x re ex c m =
   cl_nat_mult' size size x ex re c m
+
+(** val vars_for_cl_nat_m' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_nat_m' size =
+  gen_vars size (x_var :: (y_var :: (z_var :: [])))
+
+(** val vars_for_cl_nat_m :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_nat_m size x =
+  if (=) x s_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))),
+         (Pervasives.succ 0)), id_nat), id_nat)
+  else vars_for_cl_nat_m' size x
+
+(** val cl_nat_mult_out : int -> (int -> bool) -> exp **)
+
+let cl_nat_mult_out size m =
+  cl_nat_mult size x_var y_var z_var (s_var, 0) m
 
 (** val one_cu_cl_full_adder : posi -> var -> var -> posi -> int -> exp **)
 

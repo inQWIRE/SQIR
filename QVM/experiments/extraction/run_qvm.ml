@@ -4,6 +4,13 @@ open AltGateSet2
 open AltPQASM
 open OracleExample
 
+(* find max qubit value used (hacky) *)
+let rec get_dim_aux (u : coq_U ucom) acc =
+  match u with
+  | Coq_useq (u1, u2) -> get_dim_aux u1 (get_dim_aux u2 acc)
+  | Coq_uapp (_, _, qs) -> List.fold_left max acc qs
+let get_dim u = get_dim_aux u 0
+
 (* write to qasm file *)
 let rec sqir_to_qasm oc (u : coq_U ucom) k =
   match u with
@@ -85,10 +92,11 @@ run 32 2 63;;*)
 
 (* testing... *)
 match QIMP.trans_prog (sin_prog 1) Classic with
-| None -> printf "FAILED :o\n%!"
+  | None -> printf "FAILED :o\n%!"
   | Some _ -> printf "succeeded ^.^\n%!"
 ;;
 
+(*
 (* these both end up being 1-gate (SKIP) programs *)
 let c_qfta = prog_to_sqir_real (sin_prog 31) QFTA;;
 let (x,y,z) = count_gates c_qfta;;
@@ -97,3 +105,13 @@ printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
 let c_classic = prog_to_sqir_real (sin_prog 31) Classic;;
 let (x,y,z) = count_gates c_classic;;
 printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
+*)
+
+let c1 = fst (fst (trans_cl_adder 3));;
+let (x,y,z) = count_gates c1;;
+printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
+write_qasm_file "test1.qasm" c1 7;;
+let c2 = fst (fst (trans_cl_const_mul 3 5));;
+let (x,y,z) = count_gates c2;;
+printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
+write_qasm_file "test2.qasm" c2 10;;

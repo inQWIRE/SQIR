@@ -5,9 +5,9 @@ open FMapList
 open Factorial
 open Nat
 open OrderedTypeEx
+open PQASM
 open Prelim
 open RZArith
-open VSQIR
 
 type __ = Obj.t
 

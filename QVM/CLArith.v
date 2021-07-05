@@ -2437,74 +2437,82 @@ Proof.
 Qed.
 
 
-(*Here x and y are two input z = (x * y) + z 
-Definition adder01 n x y c: exp := MAJseq n x y c; UMAseq n x y c.*)
-Definition vars_for_adder01' (size:nat) := gen_vars size (x_var::(y_var::(([])))).
+(** Functions for extraction & evaluation: **)
 
+Definition vars_for_adder01' (size:nat) := gen_vars size (x_var::y_var::[]).
 Definition vars_for_adder01 (size:nat) :=
-            fun x => if x =? z_var then (size * 2,1,id_nat,id_nat) else vars_for_adder01' size x.
+  fun x => if x =? z_var then (size * 2,1,id_nat,id_nat) else vars_for_adder01' size x.
 
+(* z = x + y *)
 Definition adder01_out (size:nat) := adder01 size x_var y_var (z_var,0).
 
-
-Definition one_cl_cu_adder (c2:posi) (ex:var) (re:var) (n:nat) (c1:posi) (M:nat -> bool)
-                                  := CU c2 (init_v n ex M; adder01 n ex re c1; init_v n ex M).
+Definition one_cl_cu_adder (c2:posi) (ex:var) (re:var) (n:nat) (c1:posi) (M:nat -> bool) :=
+  CU c2 (init_v n ex M; adder01 n ex re c1; init_v n ex M).
 
 (* z = x * M *)
 Fixpoint cl_nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:nat->bool) :=
-   match n with 0 => SKIP (x,0)
-            | S m => one_cl_cu_adder (x,m) ex re size c M; cl_nat_mult' m size x ex re c (cut_n (times_two_spec M) size)
+   match n with 
+   | 0 => SKIP (x,0)
+   | S m => one_cl_cu_adder (x,m) ex re size c M; 
+           cl_nat_mult' m size x ex re c (cut_n (times_two_spec M) size)
    end.
 Definition cl_nat_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
-       cl_nat_mult' size size x ex re c M.
+  cl_nat_mult' size size x ex re c M.
 
-Definition vars_for_cl_nat_m' (size:nat) := gen_vars size (x_var::(y_var::(z_var::([])))).
+Definition vars_for_cl_nat_m' (size:nat) := gen_vars size (x_var::y_var::z_var::[]).
 
 Definition vars_for_cl_nat_m (size:nat) :=
-            fun x => if x =? s_var then (size * 3,1,id_nat,id_nat) else vars_for_cl_nat_m' size x.
+  fun x => if x =? s_var then (size * 3,1,id_nat,id_nat) else vars_for_cl_nat_m' size x.
 
-Definition cl_nat_mult_out (size:nat) (M:nat -> bool) := cl_nat_mult size x_var y_var z_var (s_var,0) M.
+Definition cl_nat_mult_out (size:nat) (M:nat -> bool) := 
+  cl_nat_mult size x_var y_var z_var (s_var,0) M.
 
 Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
 
 Fixpoint cl_flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:nat->bool) :=
-   match n with 0 => SKIP (x,0)
-            | S m => one_cl_cu_adder (x,size - n) ex re size c M; 
-                       cl_flt_mult' m size x ex re c (cut_n (div_two_spec M) size)
-   end.
+  match n with 
+  | 0 => SKIP (x,0)
+  | S m => one_cl_cu_adder (x,size - n) ex re size c M; 
+          cl_flt_mult' m size x ex re c (cut_n (div_two_spec M) size)
+  end.
 Definition flt_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
-               cl_flt_mult' size size x ex re c M.
+  cl_flt_mult' size size x ex re c M.
 
 (* z = x * y *)
-Definition one_cu_cl_full_adder (c2:posi) (y:var) (x:var) (c1:posi)  (n:nat) := CU c2 (adder01 n x y c1).
+Definition one_cu_cl_full_adder (c2:posi) (y:var) (x:var) (c1:posi) (n:nat) := 
+  CU c2 (adder01 n x y c1).
 
 Fixpoint cl_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) (c:posi) :=
-   match n with 0 => SKIP (x,0)
-            | S m => cl_full_mult' m size x y re ex c;
-                 one_cu_cl_full_adder (x,m) re y c size; SWAP (y,size-1) (ex,m) ; Lshift y
+   match n with 
+   | 0 => SKIP (x,0)
+   | S m => cl_full_mult' m size x y re ex c;
+           one_cu_cl_full_adder (x,m) re y c size; 
+           SWAP (y,size-1) (ex,m) ; Lshift y
    end.
-Definition cl_full_mult_quar (size:nat) (x y:var) (re:var) (ex:var) (c:posi)
-                              := cl_full_mult' size size x y re ex c.
+Definition cl_full_mult_quar (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
+  cl_full_mult' size size x y re ex c.
 
 Fixpoint clean_high (n:nat) (size:nat) (y:var) (ex:var) :=
-    match n with 0 => SKIP (y,0)
-               | S m => clean_high m size y ex ;SWAP (y,size-1) (ex,m) ; Lshift y
-    end.
+  match n with 
+  | 0 => SKIP (y,0)
+  | S m => clean_high m size y ex ;SWAP (y,size-1) (ex,m) ; Lshift y
+  end.
 
-(*Here x and y are in nor_mode and re in phi_mode. 
+(* Here x and y are in nor_mode and re in phi_mode. 
       [x][y][phi(re)] ->[x][y][phi(x*y mod 2^n)], re is supposed to be zero, 
     ex is in nor_mode. *)
 Definition cl_full_mult (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
-         (Exp (cl_full_mult_quar size x y re ex c; inv_exp (clean_high size size y ex))).
+  Exp (cl_full_mult_quar size x y re ex c; inv_exp (clean_high size size y ex)).
 
-
-Definition vars_for_cl_nat_full_m' (size:nat) := gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
+Definition vars_for_cl_nat_full_m' (size:nat) := 
+  gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
 
 Definition vars_for_cl_nat_full_m (size:nat) :=
-            fun x => if x =? c_var then (size * 4,1,id_nat,id_nat) else vars_for_cl_nat_full_m' size x.
+  fun x => if x =? c_var then (size * 4,1,id_nat,id_nat) 
+        else vars_for_cl_nat_full_m' size x.
 
-Definition cl_full_mult_out (size:nat) := cl_full_mult size x_var y_var z_var s_var (c_var,0).
-
+Definition cl_full_mult_out (size:nat) := 
+   cl_full_mult size x_var y_var z_var s_var (c_var,0).
 
 Fixpoint clf_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) (c:posi) :=
    match n with 0 => SKIP (x,0)

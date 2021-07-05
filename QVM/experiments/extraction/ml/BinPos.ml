@@ -175,13 +175,6 @@ module Pos =
   let compare =
     compare_cont Eq
 
-  (** val max : positive -> positive -> positive **)
-
-  let max p p' =
-    match compare p p' with
-    | Gt -> p
-    | _ -> p'
-
   (** val ggcdn :
       int -> positive -> positive -> positive * (positive * positive) **)
 

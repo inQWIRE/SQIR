@@ -1,5 +1,5 @@
-open MiniQASM
-open VSQIR
+open PQASM
+open QIMP
 
 (** val g : var **)
 
