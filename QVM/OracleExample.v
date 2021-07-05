@@ -106,12 +106,13 @@ Definition taylor_sin : func :=
               (TNor C Nat,g)::(TNor C Nat,n)::(TNor C Nat, xc)::(TNor C Nat,fac)
                ::(TNor C FixedP,rc)::(TNor Q FixedP,re)::[]),
                          init (Nor (Var (L re))) (Nor (Var (G x)));;;
-                         fmul (Nor (Var (G x2))) (Nor (Var (G x))) (Nor (Var (L re)));;;
+                         fmul (Nor (Var (L x2))) (Nor (Var (G x))) (Nor (Var (L re)));;;
                          fmul (Index (L x3) (Num (nat2fb 0))) (Nor (Var (L x2))) (Nor (Var (G x)));;;
                          fmul (Index (L x3) (Num (nat2fb 1))) (Index (L x3) (Num (nat2fb 0))) (Nor (Var (L x2)));;;
                          fmul (Index (L x3) (Num (nat2fb 2))) (Index (L x3) (Num (nat2fb 1))) (Nor (Var (L x2)));;;
                          fmul (Index (L x3) (Num (nat2fb 3))) (Index (L x3) (Num (nat2fb 2))) (Nor (Var (L x2)));;;
                          fmul (Index (L x3) (Num (nat2fb 4))) (Index (L x3) (Num (nat2fb 3))) (Nor (Var (L x2)));;;
+
 
                          ncadd (Nor (Var (L n))) (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
                          ncadd (Nor (Var  (L xc))) (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
@@ -121,20 +122,23 @@ Definition taylor_sin : func :=
                        nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
                        ncmul (Nor (Var (L xc))) (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
                        fndiv (Nor (Var (L rc))) (Nor (Var (L xc))) (Nor (Var (L fac)));;;
-                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x) (Var (L g)));;;
+                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;;
                        fsub (Nor (Var (L re))) (Nor (Var (L e)));;;
                        qinv ((Nor (Var (L e)))))
                       (ncadd (Nor (Var ((L n)))) (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
                        nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
                        ncmul (Nor (Var (L xc))) (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
                        fndiv (Nor (Var (L rc))) (Nor (Var (L xc))) (Nor (Var (L fac)));;;
-                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x) (Var (L g)));;;
+                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;;
                        fadd (Nor (Var (L re))) (Nor (Var (L e)));;;
                        qinv ((Nor (Var (L e))))))
+
              ,Nor (Var (L re))).
 
 Definition sin_prog (size:nat) : prog := 
-         (size,[(TNor Q FixedP,result)],(taylor_sin::[]),f,result).
+         (size,((TNor Q FixedP, x)::[(TNor Q FixedP,result)]),(taylor_sin::[]),f,result).
+
+Eval compute in (type_prog (sin_prog 64)).
 
 Parameter Pi_4 : nat -> bool. (*a binary representation of PI/4 *)
 
@@ -171,6 +175,6 @@ Definition taylor_cos : func :=
              ,Nor (Var (L re))).
 
 Definition cos_prog (size:nat) : prog := 
-         (size,[(TNor Q FixedP,result)],(taylor_cos::[]),f,result).
+         (size,((TNor Q FixedP, x)::[(TNor Q FixedP,result)]),(taylor_cos::[]),f,result).
 
 
