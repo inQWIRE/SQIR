@@ -27,6 +27,11 @@ let coq_H q =
 let coq_U1 r1 q =
   Coq_uapp ((Pervasives.succ 0), (U_U1 r1), (q :: []))
 
+(** val coq_U2 : float -> float -> int -> coq_U ucom **)
+
+let coq_U2 r1 r2 q =
+  Coq_uapp ((Pervasives.succ 0), (U_U2 (r1, r2)), (q :: []))
+
 (** val coq_U3 : float -> float -> float -> int -> coq_U ucom **)
 
 let coq_U3 r1 r2 r3 q =
@@ -46,6 +51,11 @@ let coq_Tdg q =
 
 let coq_SKIP =
   coq_U1 0.0 0
+
+(** val coq_ID : int -> coq_U ucom **)
+
+let coq_ID q =
+  coq_U1 0.0 q
 
 (** val coq_CX : int -> int -> coq_U ucom **)
 
@@ -192,3 +202,67 @@ let rec fuel = function
 
 let control a c =
   control' a c (Pervasives.succ (fuel c))
+
+(** val invert : coq_U ucom -> coq_U ucom **)
+
+let rec invert = function
+| Coq_useq (u1, u2) -> Coq_useq ((invert u2), (invert u1))
+| Coq_uapp (_, g, qs) ->
+  (match g with
+   | U_X ->
+     (match qs with
+      | [] -> coq_SKIP
+      | q1 :: l -> (match l with
+                    | [] -> coq_X q1
+                    | _ :: _ -> coq_SKIP))
+   | U_H ->
+     (match qs with
+      | [] -> coq_SKIP
+      | q1 :: l -> (match l with
+                    | [] -> coq_H q1
+                    | _ :: _ -> coq_SKIP))
+   | U_U1 r1 ->
+     (match qs with
+      | [] -> coq_SKIP
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_U1 (((-.) 0.0) r1) q1
+         | _ :: _ -> coq_SKIP))
+   | U_U2 (r1, r2) ->
+     (match qs with
+      | [] -> coq_SKIP
+      | q1 :: l ->
+        (match l with
+         | [] ->
+           coq_U2 (( -. ) (((-.) 0.0) r2) Float.pi)
+             (( +. ) (((-.) 0.0) r1) Float.pi) q1
+         | _ :: _ -> coq_SKIP))
+   | U_U3 (r1, r2, r3) ->
+     (match qs with
+      | [] -> coq_SKIP
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_U3 (((-.) 0.0) r1) (((-.) 0.0) r3) (((-.) 0.0) r2) q1
+         | _ :: _ -> coq_SKIP))
+   | U_CX ->
+     (match qs with
+      | [] -> coq_SKIP
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP
+         | q2 :: l0 -> (match l0 with
+                        | [] -> coq_CX q1 q2
+                        | _ :: _ -> coq_SKIP)))
+   | U_CCX ->
+     (match qs with
+      | [] -> coq_SKIP
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP
+         | q2 :: l0 ->
+           (match l0 with
+            | [] -> coq_SKIP
+            | q3 :: l1 ->
+              (match l1 with
+               | [] -> coq_CCX q1 q2 q3
+               | _ :: _ -> coq_SKIP)))))

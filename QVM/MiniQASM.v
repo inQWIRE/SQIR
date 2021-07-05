@@ -11,8 +11,6 @@ Require Import RZArith.
 Require Import Coq.FSets.FMapList.
 Require Import Coq.FSets.FMapFacts.
 Require Import Coq.Structures.OrderedTypeEx.
-Require Import ExtLib.Data.Monads.OptionMonad.
-Require Import ExtLib.Structures.Monads.
 
 (* The definition of QSSA. *)
 Local Open Scope exp_scope.
@@ -686,6 +684,9 @@ Module FEnvFacts := FMapFacts.Facts (FEnv).
 Definition fenv := FEnv.t (list (typ * var) * qexp * benv * cfac).
 Definition fenv_empty := @FEnv.empty (list (typ * var) * qexp * benv * cfac).
 
+Definition bind {A B} (a : option A) f : option B := 
+  match a with None => None | Some a => f a end.
+Definition ret {A} (a : A) := Some a.
 Notation "'do' X '<-' A '@' B" := (bind A (fun X => B)) (at level 200, X ident, A at level 100, B at level 200).
 
 Definition typ_factor (bv:benv) (t:btype) (fc:factor) :=
@@ -1448,7 +1449,6 @@ Definition bv_store_sub (smap : qvar -> nat) (bv:benv) (st:store) :=
 Definition bv_store_gt_0 (smap : qvar -> nat) (bv:benv) :=
          forall x, BEnv.In x bv -> 0 < smap x.
    
-
 Lemma factor_progress: forall e smap size bv st t t', typ_factor bv t e = Some t' ->
         bv_store_sub smap bv st -> bv_store_gt_0 smap bv
          -> (exists v, sem_factor size st t e = Some v).
@@ -1485,7 +1485,10 @@ Proof.
  assert ((@pair qvar nat v O) = (@pair BEnv.key nat v O)) by easy.
  rewrite H3 in *.
  rewrite eq2 in H. inv H.
- apply H1. easy. inv H. inv H. inv H.
+ apply H1. easy.
+ unfold bind in H.
+ bdestruct (b =b= t). easy. easy.
+ inv H.
  destruct t.
  exists (cut_n n size). easy.
  exists (fbrev size (cut_n n size)). easy.
@@ -1529,7 +1532,15 @@ Proof.
  assert ((@pair qvar nat v O) = (@pair BEnv.key nat v O)) by easy.
  rewrite H3 in *.
  rewrite eq2 in H. inv H.
- apply H1. easy. simpl in H. inv H. simpl in H. inv H. inv H.
+ apply H1. easy. 
+ simpl in H.
+ bdestruct (b =b= t).
+ easy. 
+ rewrite andb_false_r in H. easy.
+ simpl in H.
+ bdestruct (a =a= a0).
+ easy. easy.
+ inv H.
  bdestruct (a =a= C). inv H.
  destruct t.
  exists (cut_n n size). easy.
@@ -1545,6 +1556,7 @@ Proof.
  induction e; intros; simpl in *.
  destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
  destruct t0.
+ unfold bind in *.
  bdestruct (b =b= t).
  destruct (typ_factor_full bv C Nat v) eqn:eq2. inv H.
  destruct (sem_factor size st Nat v) eqn:eq3.
@@ -1561,6 +1573,7 @@ Proof.
  destruct H2. destruct H2.
  apply Store.find_1 in H2.
  assert ((@pair qvar nat x (a_nat2fb b size)) = (@pair BEnv.key nat x (a_nat2fb b size))) by easy.
+
  rewrite H4 in *.
  rewrite eq4 in H2. inv H2.
  destruct x0. simpl in H3. easy.
@@ -2864,7 +2877,7 @@ Proof.
   intros.
   unfold par_find_var,sem_cfac in *.
   destruct x.
-  unfold par_eval_fc,sem_factor in *.
+  unfold par_eval_fc,sem_factor,bind in *.
   destruct v.
   destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
   simpl in *.
@@ -2937,7 +2950,7 @@ Lemma type_factor_means_q : forall x vx b t size bv r, type_factor bv b x = Some
    par_find_var bv size r x = Some vx -> fst t = Q -> is_qtt (BEnv.find (fst vx) bv).
 Proof.
   intros.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_qtt,is_q in *.
+  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_qtt,is_q,bind in *.
   destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
   destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
   destruct t0 eqn:eq4.
@@ -2968,7 +2981,7 @@ Lemma type_factor_means_b : forall x vx b t size bv r, type_factor bv b x = Some
    par_find_var bv size r x = Some vx -> is_bl (BEnv.find (fst vx) bv) = (b =b= Bl).
 Proof.
   intros.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_bl,is_q in *.
+  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_bl,is_q,bind in *.
   destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
   destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
   destruct t0.
@@ -3004,7 +3017,7 @@ Lemma type_factor_means_q_false : forall x vx b t size bv r, type_factor bv b x 
    par_find_var bv size r x = Some vx -> fst t = C -> BEnv.find (fst (vx)) bv <> None -> ~ is_qtt (BEnv.find (fst vx) bv).
 Proof.
   intros.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_qtt,is_q in *.
+  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_qtt,is_q,bind in *.
   destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
   destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
   destruct t0.
@@ -3038,7 +3051,7 @@ Lemma type_factor_means_some : forall x vx b t size bv r, type_factor bv b x = S
    par_find_var bv size r x = Some vx -> BEnv.find (fst vx) bv <> None.
 Proof.
   intros.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_q in *.
+  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_q,bind in *.
   destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
   destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
   destruct t0 eqn:eq4.

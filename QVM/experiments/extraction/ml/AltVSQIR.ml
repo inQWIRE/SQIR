@@ -1,6 +1,8 @@
 open AltGateSet2
+open CLArith
 open Nat
 open RCIR
+open RZArith
 open VSQIR
 
 (** val rz_ang : int -> float **)
@@ -18,7 +20,7 @@ let rrz_ang n =
 
 let rec gen_sr_gate' f x n size =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> coq_SKIP)
+    (fun _ -> coq_ID (find_pos f (x, 0)))
     (fun m -> Coq_useq ((gen_sr_gate' f x m size),
     (coq_U1 (rz_ang (sub size m)) (find_pos f (x, m)))))
     n
@@ -32,7 +34,7 @@ let gen_sr_gate f x n =
 
 let rec gen_srr_gate' f x n size =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> coq_SKIP)
+    (fun _ -> coq_ID (find_pos f (x, 0)))
     (fun m -> Coq_useq ((gen_srr_gate' f x m size),
     (coq_U1 (rrz_ang (sub size m)) (find_pos f (x, m)))))
     n
@@ -47,7 +49,7 @@ let gen_srr_gate f x n =
 
 let rec trans_exp f dim exp0 avs =
   match exp0 with
-  | SKIP _ -> ((coq_SKIP, f), avs)
+  | SKIP p -> (((coq_ID (find_pos f p)), f), avs)
   | X p -> (((coq_X (find_pos f p)), f), avs)
   | CU (p, e1) ->
     (match e1 with
@@ -60,9 +62,14 @@ let rec trans_exp f dim exp0 avs =
   | SR (n, x) -> (((gen_sr_gate f x n), f), avs)
   | SRR (n, x) -> (((gen_srr_gate f x n), f), avs)
   | HCNOT (p1, p2) -> (((coq_CX (find_pos f p1) (find_pos f p2)), f), avs)
-  | Lshift x -> ((coq_SKIP, (trans_lshift f x)), (lshift_avs dim f avs x))
-  | Rshift x -> ((coq_SKIP, (trans_rshift f x)), (rshift_avs dim f avs x))
-  | Rev x -> ((coq_SKIP, (trans_rev f x)), (rev_avs dim f avs x))
+  | Lshift x ->
+    (((coq_ID (find_pos f (x, 0))), (trans_lshift f x)),
+      (lshift_avs dim f avs x))
+  | Rshift x ->
+    (((coq_ID (find_pos f (x, 0))), (trans_rshift f x)),
+      (rshift_avs dim f avs x))
+  | Rev x ->
+    (((coq_ID (find_pos f (x, 0))), (trans_rev f x)), (rev_avs dim f avs x))
   | Seq (e1, e2) ->
     let (p, avs') = trans_exp f dim e1 avs in
     let (e1', f') = p in
@@ -73,10 +80,10 @@ let rec trans_exp f dim exp0 avs =
 
 let rec controlled_rotations_gen f x n i =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> coq_SKIP)
+    (fun _ -> coq_ID (find_pos f (x, i)))
     (fun m ->
     (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> coq_SKIP)
+      (fun _ -> coq_ID (find_pos f (x, i)))
       (fun _ -> Coq_useq ((controlled_rotations_gen f x m i),
       (control (find_pos f (x, (add m i)))
         (coq_U1 (rz_ang n) (find_pos f (x, i))))))
@@ -87,7 +94,7 @@ let rec controlled_rotations_gen f x n i =
 
 let rec coq_QFT_gen f x n size =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> coq_SKIP)
+    (fun _ -> coq_ID (find_pos f (x, 0)))
     (fun m -> Coq_useq ((coq_H (find_pos f (x, m))), (Coq_useq
     ((controlled_rotations_gen f x (sub size m) m),
     (coq_QFT_gen f x m size)))))
@@ -98,41 +105,16 @@ let rec coq_QFT_gen f x n size =
 let trans_qft f x =
   coq_QFT_gen f x (vsize f x) (vsize f x)
 
-(** val controlled_rotations_gen_r :
-    vars -> var -> int -> int -> coq_U ucom **)
-
-let rec controlled_rotations_gen_r f x n i =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> coq_SKIP)
-    (fun m ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> coq_SKIP)
-      (fun _ -> Coq_useq
-      ((control (find_pos f (x, (add m i)))
-         (coq_U1 (rrz_ang n) (find_pos f (x, i)))),
-      (controlled_rotations_gen_r f x m i)))
-      m)
-    n
-
-(** val coq_QFT_gen_r : vars -> var -> int -> int -> coq_U ucom **)
-
-let rec coq_QFT_gen_r f x n size =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> coq_SKIP)
-    (fun m -> Coq_useq ((controlled_rotations_gen_r f x (sub size m) m),
-    (Coq_useq ((coq_H (find_pos f (x, m))), (coq_QFT_gen_r f x m size)))))
-    n
-
 (** val trans_rqft : vars -> var -> coq_U ucom **)
 
 let trans_rqft f x =
-  coq_QFT_gen_r f x (vsize f x) (vsize f x)
+  invert (coq_QFT_gen f x (vsize f x) (vsize f x))
 
 (** val nH : vars -> var -> int -> coq_U ucom **)
 
 let rec nH f x n =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> coq_SKIP)
+    (fun _ -> coq_ID (find_pos f (x, 0)))
     (fun m -> Coq_useq ((coq_H (find_pos f (x, m))), (nH f x m)))
     n
 
@@ -159,6 +141,32 @@ let rec trans_pexp vs dim exp0 avs =
     let (e1', vs') = p in
     let (p0, avs'') = trans_pexp vs' dim e2 avs' in
     let (e2', vs'') = p0 in (((Coq_useq (e1', e2')), vs''), avs'')
+
+(** val trans_rz_modmult_rev :
+    int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_rz_modmult_rev m c cinv size =
+  trans_pexp (vars_for_rz size)
+    (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
+    (real_rz_modmult_rev m c cinv size) (avs_for_arith size)
+
+(** val trans_rz_modmult_rev_alt :
+    int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_rz_modmult_rev_alt m c cinv size =
+  trans_pexp (vars_for_rz size)
+    (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
+    (real_rz_modmult_rev_alt m c cinv size) (avs_for_arith size)
+
+(** val trans_modmult_rev :
+    int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_modmult_rev m c cinv size =
+  trans_pexp (vars_for_cl size)
+    (add
+      (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
+        (Pervasives.succ 0)))) size) (Pervasives.succ (Pervasives.succ 0)))
+    (real_modmult_rev m c cinv size) (avs_for_arith size)
 
 (** val bc2ucom : bccom -> coq_U ucom **)
 

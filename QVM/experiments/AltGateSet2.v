@@ -143,6 +143,7 @@ Definition U3 r1 r2 r3 q := uapp (U_U3 r1 r2 r3) [q].
 Definition T q := U1 (PI / R4) q.
 Definition Tdg q := U1 (- (PI / R4)) q.
 Definition SKIP := U1 R0 O. (* used as a dummy value *)
+Definition ID q := U1 R0 q.
 Definition CX q1 q2 := uapp U_CX (q1 :: q2 :: List.nil).
 Definition CCX q1 q2 q3 := uapp U_CCX (q1 :: q2 :: q3 :: List.nil).
 

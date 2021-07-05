@@ -1,3 +1,4 @@
+open CLArith
 open Nat
 open VSQIR
 
@@ -90,3 +91,69 @@ let rz_modmult_half y x size c a m =
 let rz_modmult_full y x n c a ainv n0 =
   PSeq ((rz_modmult_half y x n c a n0),
     (inv_pexp (rz_modmult_half x y n c ainv n0)))
+
+(** val vars_for_rz' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz' size =
+  gen_vars size (x_var :: (y_var :: []))
+
+(** val vars_for_rz :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz size x =
+  if (=) x z_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ 0))), (Pervasives.succ
+         0)), id_nat), id_nat)
+  else vars_for_rz' size x
+
+(** val real_rz_modmult_rev : int -> int -> int -> int -> pexp **)
+
+let real_rz_modmult_rev m c cinv size =
+  rz_modmult_full y_var x_var size (z_var, 0) c cinv m
+
+(** val one_cu_sub : var -> int -> posi -> (int -> bool) -> exp **)
+
+let one_cu_sub x n c m =
+  CU (c, (rz_sub x n m))
+
+(** val rz_modadder_alt :
+    posi -> var -> int -> posi -> (int -> bool) -> (int -> bool) -> pexp **)
+
+let rz_modadder_alt c1 x n c a m =
+  PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((one_cu_adder x n c1 a),
+    (rz_sub x n m)))), (qft_cu x c))), (Exp (Seq ((one_cu_adder x n c m),
+    (one_cu_sub x n c1 a)))))), (qft_acu x c))), (Exp
+    (one_cu_adder x n c1 a)))
+
+(** val rz_modmult_alt' :
+    var -> var -> int -> int -> posi -> int -> int -> pexp **)
+
+let rec rz_modmult_alt' y x n size c a m =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> Exp (SKIP (y, 0)))
+    (fun m0 -> PSeq ((rz_modmult_alt' y x m0 size c a m),
+    (rz_modadder_alt (x, (sub size n)) y size c
+      (nat2fb
+        (PeanoNat.Nat.modulo
+          (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) m0) a)
+          m)) (nat2fb m))))
+    n
+
+(** val rz_modmult_half_alt :
+    var -> var -> int -> posi -> int -> int -> pexp **)
+
+let rz_modmult_half_alt y x size c a m =
+  PSeq ((PSeq ((QFT y), (rz_modmult_alt' y x size size c a m))), (RQFT y))
+
+(** val rz_modmult_full_alt :
+    var -> var -> int -> posi -> int -> int -> int -> pexp **)
+
+let rz_modmult_full_alt y x n c a ainv n0 =
+  PSeq ((rz_modmult_half_alt y x n c a n0),
+    (inv_pexp (rz_modmult_half_alt x y n c ainv n0)))
+
+(** val real_rz_modmult_rev_alt : int -> int -> int -> int -> pexp **)
+
+let real_rz_modmult_rev_alt m c cinv size =
+  rz_modmult_full_alt y_var x_var size (z_var, 0) c cinv m

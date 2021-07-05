@@ -139,3 +139,50 @@ let modmult m c cinv n x y z s c1 c2 =
 let modmult_rev m c cinv n x y z s c1 c2 =
   PSeq ((PSeq ((Exp (Rev x)), (Exp (modmult m c cinv n x y z s c1 c2)))),
     (Exp (Rev x)))
+
+(** val x_var : int **)
+
+let x_var =
+  0
+
+(** val y_var : int **)
+
+let y_var =
+  Pervasives.succ 0
+
+(** val z_var : int **)
+
+let z_var =
+  Pervasives.succ (Pervasives.succ 0)
+
+(** val s_var : int **)
+
+let s_var =
+  Pervasives.succ (Pervasives.succ (Pervasives.succ 0))
+
+(** val c_var : int **)
+
+let c_var =
+  Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
+
+(** val vars_for_cl' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl' size =
+  gen_vars size (x_var :: (y_var :: (z_var :: (s_var :: []))))
+
+(** val vars_for_cl :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl size x =
+  if (=) x c_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ
+            (Pervasives.succ 0))))), (Pervasives.succ (Pervasives.succ 0))),
+         id_nat), id_nat)
+  else vars_for_cl' size x
+
+(** val real_modmult_rev : int -> int -> int -> int -> pexp **)
+
+let real_modmult_rev m c cinv size =
+  modmult_rev (nat2fb m) c cinv size x_var y_var z_var s_var (c_var, 0)
+    (c_var, (Pervasives.succ 0))

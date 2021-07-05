@@ -4,6 +4,7 @@ Require Import AltVSQIR.
 Require Import CLArith.
 Require Import ModMult.
 Require Import RZArith.
+Require Import OracleExample.
 
 (* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -19,9 +20,10 @@ Extract Inlined Constant R4 => "4.0".
 
 (* Perform extraction *)
 Separate Extraction 
-    (*AltShor.bc2ucom*)
-    AltVSQIR.trans_pexp
-    AltVSQIR.bc2ucom
-    CLArith.modmult_rev 
     ModMult.modmult_rev 
-    RZArith.rz_modmult_full.
+    AltVSQIR.bc2ucom
+    AltVSQIR.trans_modmult_rev
+    AltVSQIR.trans_rz_modmult_rev
+    AltVSQIR.trans_rz_modmult_rev_alt
+    (*OracleExample.sin_prog
+    AltVSQIR.prog_to_sqir_real*).

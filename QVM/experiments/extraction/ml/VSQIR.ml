@@ -227,3 +227,31 @@ let coq_SWAP x y =
 
 let coq_CCX x y z =
   CU (x, (coq_CNOT y z))
+
+(** val id_nat : int -> int **)
+
+let id_nat i =
+  i
+
+(** val avs_for_arith : int -> int -> int * int **)
+
+let avs_for_arith size x =
+  ((PeanoNat.Nat.div x size), (PeanoNat.Nat.modulo x size))
+
+(** val gen_vars' :
+    int -> var list -> int -> int -> ((int * int) * (int -> int)) * (int ->
+    int) **)
+
+let rec gen_vars' size l start0 x =
+  match l with
+  | [] -> (((0, 0), id_nat), id_nat)
+  | x0 :: xl ->
+    if (=) x0 x
+    then (((start0, size), id_nat), id_nat)
+    else gen_vars' size xl (add start0 size) x
+
+(** val gen_vars :
+    int -> var list -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let gen_vars size l =
+  gen_vars' size l 0

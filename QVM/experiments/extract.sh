@@ -16,7 +16,7 @@ coqc -R ../../.. Top Extraction.v
 echo "Deleting unneeded files..."
 rm -f *.glob *.mli *.vo*
 
-# Remove empty files.
+# Remove empty/unused files.
 rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml \
    QArith_base.ml Rdefinitions.ml Ring_theory.ml Rpow_def.ml Rtrigo1.ml \
    Specif.ml ZArith_dec.ml
