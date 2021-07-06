@@ -137,4 +137,5 @@ write_qasm_file "test6.qasm" c6;;
 let c7 = fst (fst (trans_rz_mul 3));;
 let (x,y,z) = count_gates c7;;
 printf "%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" (get_dim c7) x y z;;
+
 write_qasm_file "test7.qasm" c7;;

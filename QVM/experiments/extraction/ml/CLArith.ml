@@ -285,3 +285,23 @@ let rec clean_high n size y ex =
 let cl_full_mult size x y re ex c =
   Exp (Seq ((cl_full_mult_quar size x y re ex c),
     (inv_exp (clean_high size size y ex))))
+
+(** val vars_for_cl_nat_full_m' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_nat_full_m' size =
+  gen_vars size (x_var :: (y_var :: (z_var :: (s_var :: []))))
+
+(** val vars_for_cl_nat_full_m :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_nat_full_m size x =
+  if (=) x c_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ
+            (Pervasives.succ 0))))), (Pervasives.succ 0)), id_nat), id_nat)
+  else vars_for_cl_nat_full_m' size x
+
+(** val cl_full_mult_out : int -> pexp **)
+
+let cl_full_mult_out size =
+  cl_full_mult size x_var y_var z_var s_var (c_var, 0)

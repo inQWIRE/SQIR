@@ -95,15 +95,40 @@ Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
                             end
      end.
 
-(* z = x + y (CL) *)
+(* z = M + x (TOFF-based) *)
+(*
+ Definition trans_cl_const_adder (size:nat) :=
+   TODO
+*)
+
+(* z = x + y (TOFF-based) *)
 Definition trans_cl_adder (size:nat) :=
   trans_pexp (CLArith.vars_for_adder01 size) (2 * size + 1) (CLArith.adder01_out size) (PQASM.avs_for_arith size).
 
-(* x = M * x (CL) *)
+(* z = M * x (TOFF-based) *)
 Definition trans_cl_const_mul (size M:nat) :=
   trans_pexp (CLArith.vars_for_cl_nat_m size) (3 * size + 1) (CLArith.cl_nat_mult_out size (nat2fb M)) (PQASM.avs_for_arith size).
 
+(* z = x * y (TOFF-based) *)
+Definition trans_cl_mul (size:nat) :=
+  trans_pexp (CLArith.vars_for_cl_nat_full_m size) (4 * size + 1) (CLArith.cl_full_mult_out size) (PQASM.avs_for_arith size).
 
+(* z = M + x (QFT-based) *)
+Definition trans_rz_const_adder (size M:nat) :=
+  trans_pexp (RZArith.vars_for_rz_adder size) size (RZArith.rz_adder_out size (nat2fb M)) (PQASM.avs_for_arith size).
+
+(* z = x + y (QFT-based) *)
+Definition trans_rz_adder (size:nat) :=
+  trans_pexp (RZArith.vars_for_rz_full_add size) (2 * size) (RZArith.rz_full_adder_out size) (PQASM.avs_for_arith size).
+
+(* z = M * x (QFT-based) *)
+Definition trans_rz_const_mul (size M:nat) :=
+  trans_pexp (RZArith.vars_for_rz_nat_m size) (2 * size) (RZArith.nat_mult_out size (nat2fb M)) (PQASM.avs_for_arith size).
+
+(* z = x * y (QFT-based) *)
+Definition trans_rz_mul (size:nat) :=
+  trans_pexp (RZArith.vars_for_rz_nat_full_m size) (4 * size) (RZArith.nat_full_mult_out size) (PQASM.avs_for_arith size). 
+  
 (* Compile a prog to a circuit. *)
 Definition prog_to_sqir_real (p:prog) (f:flag) : ucom U :=
   match prog_to_sqir p f with 
