@@ -2,7 +2,7 @@ open Printf
 
 open AltGateSet2
 open AltPQASM
-open OracleExample
+(*open OracleExample*)
 
 (* find max qubit value used (hacky) *)
 let rec get_dim_aux (u : coq_U ucom) acc =
@@ -81,29 +81,6 @@ let run_modmult_experiments c cinv m =
     let _ = write_qasm_file ("cl-mod-mul-" ^ fname) cl_circ in
     ();;
 
-(*run_modmult_experiments 2 2 3;;
-run_modmult_experiments 5 3 7;;
-run_modmult_experiments 7 13 15;;
-run_modmult_experiments 17 11 31;;
-run_modmult_experiments 32 2 63;;*)
-
-(* testing... *)
-match QIMP.trans_prog (sin_prog 1) Classic with
-  | None -> printf "Failed\n%!"
-  | Some _ -> printf "Succeeded\n%!"
-;;
-
-(*
-(* these both end up being 1-gate (SKIP) programs *)
-let c_qfta = prog_to_sqir_real (sin_prog 31) QFTA;;
-let (x,y,z) = count_gates c_qfta;;
-printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
-
-let c_classic = prog_to_sqir_real (sin_prog 31) Classic;;
-let (x,y,z) = count_gates c_classic;;
-printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
-*)
-
 let run_adders size m =
   let size_of_m = int_of_float (ceil (log10 (float_of_int m) /. log10 2.0)) in
   let fname = (string_of_int size) ^ ".qasm" in
@@ -167,8 +144,28 @@ let run_multipliers size m =
     let _ = write_qasm_file ("rz-mul-" ^ fname) rz_mul in
     ();;
 
+run_modmult_experiments 2 2 3;;
+run_modmult_experiments 5 3 7;;
+run_modmult_experiments 7 13 15;;
+run_modmult_experiments 17 11 31;;
+run_modmult_experiments 32 2 63;;
+
+(*
+(* stack overflows :'( *)
+let c_qfta = prog_to_sqir_real (sin_prog 4) Classic;;
+let (x,y,z) = count_gates c_qfta;;
+printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
+
+let c_classic = prog_to_sqir_real (sin_prog 4) QFTA;;
+let (x,y,z) = count_gates c_classic;;
+printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
+*)
+
+(*
 run_adders 32 3647837559;; (* overflows! *)
-(*run_adders 8 143;;
+*)
+
+run_adders 8 143;;
 run_adders 16 38168;;
 run_multipliers 8 143;;
-run_multipliers 16 38168;;*)
+run_multipliers 16 38168;;
