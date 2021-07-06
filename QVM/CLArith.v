@@ -2453,8 +2453,7 @@ Definition one_cl_cu_adder (c2:posi) (ex:var) (re:var) (n:nat) (c1:posi) (M:nat 
 Fixpoint cl_nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:nat->bool) :=
    match n with 
    | 0 => SKIP (x,0)
-   | S m => one_cl_cu_adder (x,m) ex re size c M; 
-           cl_nat_mult' m size x ex re c (cut_n (times_two_spec M) size)
+   | S m => cl_nat_mult' m size x ex re c (cut_n (times_two_spec M) size); one_cl_cu_adder (x,size-n) ex re size c M
    end.
 Definition cl_nat_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
   cl_nat_mult' size size x ex re c M.
@@ -2466,8 +2465,6 @@ Definition vars_for_cl_nat_m (size:nat) :=
 
 Definition cl_nat_mult_out (size:nat) (M:nat -> bool) := 
   cl_nat_mult size x_var y_var z_var (s_var,0) M.
-
-Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
 
 Fixpoint cl_flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:nat->bool) :=
   match n with 
@@ -2518,8 +2515,8 @@ Definition cl_full_mult_out (size:nat) :=
 (* @Liyi: what are the clf functions for? *)
 Fixpoint clf_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) (c:posi) :=
    match n with 0 => SKIP (x,0)
-            | S m => one_cu_cl_full_adder (x,m) re y c size; SWAP (y,0) (ex,m); Rshift y;
-                      clf_full_mult' m size x y re ex c
+            | S m => clf_full_mult' m size x y re ex c; 
+                  one_cu_cl_full_adder (x,m) re y c size; SWAP (y,0) (ex,m); Rshift y
    end.
 Definition clf_full_mult_quar (size:nat) (x y:var) (re:var) (ex:var) (c:posi)
                        := clf_full_mult' size size x y re ex c.
@@ -2539,15 +2536,15 @@ Definition clf_full_mult (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
 (* compare x <=? y *)
 Definition comparator02 n x y c1 c2 := (negator0 n x); highb01 n x y c1 c2; inv_exp (negator0 n x).
 
-Fixpoint cl_moder' i (n:nat) (x y ex:var) c1 c2 (M:nat) := 
+Fixpoint cl_moder' i (n:nat) (x y ex:var) c1 c2 (M:nat -> bool) := 
      match i with 0 => SKIP (x,0)
-           | S j => init_v n y (nat2fb (2^j * M)) ; comparator02 n y x c1 c2 ; 
-                       CU c2 (subtractor01 n y x c1); init_v n y (nat2fb (2^j * M)) ; SWAP c2 (ex,j);
-                       cl_moder' j n x y ex c1 c2 M
+           | S j => init_v n y M ; comparator02 n y x c1 c2 ; 
+                       CU c2 (subtractor01 n y x c1); init_v n y M ; SWAP c2 (ex,j);
+                       cl_moder' j n x y ex c1 c2 (cut_n (div_two_spec M) n)
      end.
 Definition cl_moder (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
     let i := findnum M n in 
-         cl_moder' (S i) n x y ex c1 c2 M ; copyto x re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 M).
+         cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M)) ; copyto x re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M))).
 
 Definition vars_for_cl_moder' (size:nat) := 
   gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
@@ -2559,17 +2556,16 @@ Definition vars_for_cl_moder (size:nat) :=
 Definition cl_moder_out (size:nat) := 
    cl_moder size x_var y_var z_var s_var (c_var,0) (c_var, 1).
 
-
 Definition cl_div (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
     let i := findnum M n in 
-         cl_moder' (S i) n x y ex c1 c2 M ; copyto ex re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 M).
+         cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M)) ; copyto ex re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M))).
 
 Definition vars_for_cl_div' (size:nat) := 
   gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
 
 Definition vars_for_cl_div (size:nat) :=
   fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) 
-        else vars_for_cl_moder' size x.
+        else vars_for_cl_div' size x.
 
 Definition cl_div_out (size:nat) := 
    cl_div size x_var y_var z_var s_var (c_var,0) (c_var, 1).
@@ -2577,7 +2573,7 @@ Definition cl_div_out (size:nat) :=
 
 (* mod value is in x, and ex stores div results. *)
 Definition cl_div_mod (n:nat) (x y ex:var) c1 c2 (M:nat) :=
-   let i := findnum M n in cl_moder' (S i) n x y ex c1 c2 M.
+   let i := findnum M n in cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M)).
 
 Definition vars_for_cl_div_mod' (size:nat) := 
   gen_vars size (x_var::(y_var::(z_var::([])))).

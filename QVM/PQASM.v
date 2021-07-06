@@ -8869,3 +8869,5 @@ Definition findnum (x:nat) (n:nat) := findnum' (n-1) x (2^(n-1)) 0.
 Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0) 
                   | S m => CNOT (x,m) (y,m) ; copyto x y m
     end.
+
+Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
