@@ -3144,6 +3144,8 @@ Definition vars_for_rz_div_mod (size:nat) :=
   fun x => if x =? z_var then ((S size) * 2,1,id_nat,id_nat) 
         else vars_for_rz_div_mod' (S size) x.
 
+Definition avs_for_rz_div_mod (size:nat) := fun x => (x/ (S size), x mod (S size)).
+
 Definition rz_div_mod_out (size:nat) := 
    rz_div_mod size x_var y_var (z_var,0).
 
