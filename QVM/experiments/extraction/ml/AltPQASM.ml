@@ -196,8 +196,7 @@ let trans_rz_const_mul size m =
 let trans_rz_mul size =
   trans_pexp (vars_for_rz_nat_full_m size)
     (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-      (Pervasives.succ (Pervasives.succ 0)))))) size)
-    (nat_full_mult_out size) (avs_for_arith size)
+      0)))) size) (nat_full_mult_out size) (avs_for_arith size)
 
 (** val prog_to_sqir_real : prog -> flag -> coq_U ucom **)
 
