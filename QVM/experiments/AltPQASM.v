@@ -41,7 +41,6 @@ Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (ucom U *
     | Rshift x => (AltGateSet2.ID (find_pos f (x,0)), trans_rshift f x, rshift_avs dim f avs x)
     | Rev x => (AltGateSet2.ID (find_pos f (x,0)), trans_rev f x, rev_avs dim f avs x)
     | HCNOT p1 p2 => (AltGateSet2.CX (find_pos f p1) (find_pos f p2), f, avs)
-    | CU p1 (X p2) => (AltGateSet2.CX (find_pos f p1) (find_pos f p2), f, avs)
     | CU p e1 => match trans_exp f dim e1 avs with 
                  | (e1', f',avs') => (control (find_pos f p) e1', f, avs) end
     | (e1 ; e2)%exp => match trans_exp f dim e1 avs with 
@@ -61,9 +60,9 @@ Fixpoint controlled_rotations_gen (f : vars) (x:var) (n : nat) (i:nat) : ucom U 
 Fixpoint QFT_gen (f : vars) (x:var) (n : nat) (size:nat) : ucom U :=
     match n with
     | 0 => AltGateSet2.ID (find_pos f (x,0))
-    | S m => (AltGateSet2.H (find_pos f (x,m))) >> 
-             ((controlled_rotations_gen f x (size-m) m) >>
-             (QFT_gen f x m size))
+    | S m => (QFT_gen f x m size) >>
+             ((AltGateSet2.H (find_pos f (x,m))) >> 
+             (controlled_rotations_gen f x (size-m) m))
     end.
 
 Definition trans_qft (f:vars) (x:var) : ucom U := 
