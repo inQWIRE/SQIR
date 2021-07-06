@@ -265,3 +265,11 @@ let rec gen_vars' size l start0 x =
 
 let gen_vars size l =
   gen_vars' size l 0
+
+(** val copyto : var -> var -> int -> exp **)
+
+let rec copyto x y size =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun m -> Seq ((coq_CNOT (x, m) (y, m)), (copyto x y m)))
+    size

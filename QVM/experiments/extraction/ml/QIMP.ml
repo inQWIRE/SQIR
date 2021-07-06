@@ -1067,14 +1067,6 @@ let rec lookup_fmap l x =
     then Some (((((a, p), smap), vmap), bv), r)
     else lookup_fmap xl x
 
-(** val copyto : var -> var -> int -> exp **)
-
-let rec copyto x y size =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> SKIP (x, 0))
-    (fun m -> Seq ((coq_CNOT (x, m) (y, m)), (copyto x y m)))
-    size
-
 (** val combine_c : pexp option -> pexp option -> pexp option **)
 
 let combine_c e1 e2 =

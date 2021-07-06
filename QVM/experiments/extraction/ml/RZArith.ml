@@ -112,18 +112,13 @@ let vars_for_rz size x =
 let real_rz_modmult_rev m c cinv size =
   rz_modmult_full y_var x_var size (z_var, 0) c cinv m
 
-(** val div_two_spec : (int -> bool) -> int -> bool **)
-
-let div_two_spec f i =
-  f (add i (Pervasives.succ 0))
-
 (** val nat_mult' : int -> int -> var -> var -> (int -> bool) -> exp **)
 
 let rec nat_mult' n size x ex m =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> SKIP (x, 0))
     (fun m0 -> Seq ((one_cu_adder ex size (x, (sub size n)) m),
-    (nat_mult' m0 size x ex (cut_n (div_two_spec m) size))))
+    (nat_mult' m0 size x ex (cut_n (times_two_spec m) size))))
     n
 
 (** val nat_mult : int -> var -> var -> (int -> bool) -> pexp **)

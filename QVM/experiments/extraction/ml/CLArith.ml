@@ -220,8 +220,9 @@ let one_cl_cu_adder c2 ex re n c1 m =
 let rec cl_nat_mult' n size x ex re c m =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> SKIP (x, 0))
-    (fun m0 -> Seq ((one_cl_cu_adder (x, m0) ex re size c m),
-    (cl_nat_mult' m0 size x ex re c (cut_n (times_two_spec m) size))))
+    (fun m0 -> Seq
+    ((cl_nat_mult' m0 size x ex re c (cut_n (times_two_spec m) size)),
+    (one_cl_cu_adder (x, (sub size n)) ex re size c m)))
     n
 
 (** val cl_nat_mult :
