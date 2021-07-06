@@ -2554,7 +2554,7 @@ Definition vars_for_cl_moder' (size:nat) :=
 
 Definition vars_for_cl_moder (size:nat) :=
   fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) 
-        else vars_for_cl_nat_full_m' size x.
+        else vars_for_cl_moder' size x.
 
 Definition cl_moder_out (size:nat) := 
    cl_moder size x_var y_var z_var s_var (c_var,0) (c_var, 1).
@@ -2569,8 +2569,31 @@ Definition vars_for_cl_div' (size:nat) :=
 
 Definition vars_for_cl_div (size:nat) :=
   fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) 
-        else vars_for_cl_nat_full_m' size x.
+        else vars_for_cl_moder' size x.
 
 Definition cl_div_out (size:nat) := 
    cl_div size x_var y_var z_var s_var (c_var,0) (c_var, 1).
+
+
+(* mod value is in x, and ex stores div results. *)
+Definition cl_div_mod (n:nat) (x y ex:var) c1 c2 (M:nat) :=
+   let i := findnum M n in cl_moder' (S i) n x y ex c1 c2 M.
+
+Definition vars_for_cl_div_mod' (size:nat) := 
+  gen_vars size (x_var::(y_var::(z_var::([])))).
+
+Definition vars_for_cl_div_mod (size:nat) :=
+  fun x => if x =? s_var then (size * 3,2,id_nat,id_nat) 
+        else vars_for_cl_div_mod' size x.
+
+Definition cl_div_mod_out (size:nat) := 
+   cl_div_mod size x_var y_var z_var (s_var,0) (s_var, 1).
+
+
+
+
+
+
+
+
 

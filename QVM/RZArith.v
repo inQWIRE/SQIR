@@ -3077,4 +3077,68 @@ Definition vars_for_rz_adder (size:nat) := gen_vars size (x_var::[]).
 
 Definition rz_adder_out (size:nat) (M:nat-> bool) := rz_adder_form x_var size M.
 
+(* compare x >= M *)
+Definition rz_compare_half2 (x:var) (n:nat) (c:posi) (M:nat -> bool) := 
+  Exp (rz_sub x n M) ;; RQFT x ;; Exp (X (x,0); CNOT (x,0) c ; X (x,0)).
+
+(* if x >= M, then the effect of x states. at this point, high-bit of x is 0. 
+    otherwise, clean up x, and move on. *)
+Fixpoint rz_moder' i (n:nat) (x ex:var) c (M:nat) := 
+     match i with 0 => Exp (SKIP (x,0))
+           | S j => rz_compare_half2 x n c (nat2fb (2^j * M)) ;; 
+                     PCU c (inv_pexp (Exp (rz_sub x n (nat2fb (2^j * M)))));;
+                     QFT x ;; Exp (SWAP c (ex,j));;
+                       rz_moder' j n x ex c M
+     end.
+
+Definition rz_moder (n:nat) (x re ex:var) c (M:nat) := 
+    let i := findnum M n in 
+        Exp (Rev x; Rev re);; QFT x;;
+          rz_moder' (S i) n x ex c M ;; (Exp (copyto x re n));; inv_pexp (rz_moder' (S i) n x ex c M);;
+        inv_pexp (Exp (Rev x; Rev re);; QFT x).
+
+Definition vars_for_rz_moder' (size:nat) := 
+  gen_vars size (x_var::(y_var::(z_var::([])))).
+
+Definition vars_for_rz_moder (size:nat) :=
+  fun x => if x =? s_var then (size * 3,1,id_nat,id_nat) 
+        else vars_for_rz_moder' size x.
+
+Definition rz_moder_out (size:nat) := 
+   rz_moder size x_var y_var z_var (s_var,0).
+
+Definition rz_div (n:nat) (x re ex:var) c (M:nat) := 
+    let i := findnum M n in 
+        Exp (Rev x; Rev re);; QFT x;;
+         rz_moder' (S i) n x ex c M ;; Exp (copyto ex re n);; inv_pexp (rz_moder' (S i) n x ex c M);;
+        inv_pexp (Exp (Rev x; Rev re);; QFT x).
+
+Definition vars_for_rz_div' (size:nat) := 
+  gen_vars size (x_var::(y_var::(z_var::([])))).
+
+Definition vars_for_rz_div (size:nat) :=
+  fun x => if x =? s_var then (size * 3,1,id_nat,id_nat) 
+        else vars_for_rz_div' size x.
+
+Definition rz_div_out (size:nat) := 
+   rz_div size x_var y_var z_var (s_var,0).
+
+Definition rz_div_mod (n:nat) (x ex:var) c (M:nat) := 
+    let i := findnum M n in 
+        Exp (Rev x);; QFT x;;
+            rz_moder' (S i) n x ex c M;;
+        inv_pexp (Exp (Rev x);; QFT x).
+
+Definition vars_for_rz_div_mod' (size:nat) := 
+  gen_vars size (x_var::(y_var::(([])))).
+
+Definition vars_for_rz_div_mod (size:nat) :=
+  fun x => if x =? z_var then (size * 2,1,id_nat,id_nat) 
+        else vars_for_rz_div_mod' size x.
+
+Definition rz_div_mod_out (size:nat) := 
+   rz_div_mod size x_var y_var (z_var,0).
+
+
+
 
