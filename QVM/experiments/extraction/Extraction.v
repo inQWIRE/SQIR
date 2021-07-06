@@ -32,6 +32,8 @@ Separate Extraction
     
     (* QVM sine functiom *)
     OracleExample.sin_prog
+    OracleExample.hash_prog
+    QIMP.type_prog
     AltPQASM.prog_to_sqir_real
     
     (* QVM classical adders *)

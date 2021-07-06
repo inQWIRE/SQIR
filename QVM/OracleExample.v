@@ -23,9 +23,9 @@ Local Open Scope nat_scope.
 
 (*define example hash_function as the oracle for grover's search.
   https://qibo.readthedocs.io/en/stable/tutorials/hash-grover/README.html *)
-Definition hash_qr (b:qvar) (a:qvar) := nadd (Nor (Var a)) (Nor (Var b));;;
-             qxor (Nor (Var b)) (Nor (Var a));;;nadd (Nor (Var a)) (Nor (Var b))
-                   ;;; qxor (Nor (Var b)) (Nor (Var a)).
+Definition hash_qr (b:qvar) (a:qvar) := nadd (Nor (Var b)) (Nor (Var a));;;
+             qxor (Nor (Var a)) (Nor (Var b));;; nadd (Nor (Var b)) (Nor (Var a))
+                   ;;; qxor (Nor (Var a)) (Nor (Var b)).
 
 Definition g :var := 1.
 Definition x :var := 7.
@@ -41,10 +41,10 @@ Definition hash_oracle (key:nat) (sndk:nat) :func :=
       init (Nor (Var (L d))) (Nor (Num (nat2fb 1)));;;
       qfor x (Nor (Num (nat2fb 10)))
            (hash_qr (L a) (L c);;; hash_qr (L b) (L d) ;;; hash_qr (L a) (L d)
-                ;;; hash_qr (L b) (L c);;; nadd (Nor (Num (nat2fb 1))) (Nor (Var (L x))));;;
+                ;;; hash_qr (L b) (L c);;;
       qif (ceq Nat (Nor (Var (L c))) (Nor (Num (nat2fb key))))
                 (qif (ceq Nat (Nor (Var (L d))) (Nor (Num (nat2fb sndk))))
-                    (init (Nor (Var (L g))) (Nor (Num (nat2fb 1)))) (skip)) (skip), (Nor (Var (L g)))).
+                    (init (Nor (Var (L g))) (Nor (Num (nat2fb 1)))) (skip)) (skip)), (Nor (Var (L g)))).
 
 Definition hash_prog (size:nat) (key:nat) (sndk:nat) : prog := 
          (size,[(TNor Q Bl,result)],[hash_oracle key sndk],f,result).
@@ -105,7 +105,31 @@ Definition taylor_sin : func :=
      (f, ((TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
               (TNor C Nat,g)::(TNor C Nat,n)::(TNor C Nat, xc)::(TNor C Nat,fac)
                ::(TNor C FixedP,rc)::(TNor Q FixedP,re)::[]),
-                         ncadd (Nor (Var (L n))) (Nor (Num (nat2fb 1))) (Nor (Var (L n)))
+                         init (Nor (Var (L re))) (Nor (Var (G x)));;;
+                         fmul (Nor (Var (L x2))) (Nor (Var (G x))) (Nor (Var (L re)));;;
+                         fmul (Index (L x3) (Num (nat2fb 0))) (Nor (Var (L x2))) (Nor (Var (G x)));;;
+                         fmul (Index (L x3) (Num (nat2fb 1))) (Index (L x3) (Num (nat2fb 0))) (Nor (Var (L x2)));;;
+                         fmul (Index (L x3) (Num (nat2fb 2))) (Index (L x3) (Num (nat2fb 1))) (Nor (Var (L x2)));;;
+                         fmul (Index (L x3) (Num (nat2fb 3))) (Index (L x3) (Num (nat2fb 2))) (Nor (Var (L x2)));;;
+                         fmul (Index (L x3) (Num (nat2fb 4))) (Index (L x3) (Num (nat2fb 3))) (Nor (Var (L x2)));;;
+                         ncadd (Nor (Var (L n))) (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
+                         ncadd (Nor (Var  (L xc))) (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
+         qfor g (Nor (Num (nat2fb 5))) 
+             (qif (iseven (Nor (Var (L g)))) 
+                      (ncadd (Nor (Var ((L n)))) (Nor (Var ((L n)))) (Nor (Num (nat2fb 2)));;;
+                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
+                       ncmul (Nor (Var (L xc))) (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
+                       fndiv (Nor (Var (L rc))) (Nor (Var (L xc))) (Nor (Var (L fac)));;;
+                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;;
+                       fsub (Nor (Var (L re))) (Nor (Var (L e)));;;
+                       qinv ((Nor (Var (L e)))))
+                      (ncadd (Nor (Var ((L n)))) (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
+                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
+                       ncmul (Nor (Var (L xc))) (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
+                       fndiv (Nor (Var (L rc))) (Nor (Var (L xc))) (Nor (Var (L fac)));;;
+                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;;
+                       fadd (Nor (Var (L re))) (Nor (Var (L e)));;;
+                       qinv ((Nor (Var (L e))))))
              ,Nor (Var (L re))).
 
 Definition sin_prog (size:nat) : prog := 

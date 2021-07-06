@@ -501,8 +501,8 @@ let rec type_qexp fv bv = function
       if (&&) (no_rot e1) (no_rot e2)
       then if aty_eq (fst rce) C
            then type_qexp fv bv' e2
-           else if (&&) ((&&) (aty_eq (fst rce) Q) (has_c_exp bv e1))
-                     (has_c_exp bv e2)
+           else if (&&) ((&&) (aty_eq (fst rce) Q) (negb (has_c_exp bv e1)))
+                     (negb (has_c_exp bv e2))
                 then type_qexp fv bv' e2
                 else None
       else None))
@@ -1679,10 +1679,10 @@ let combine_if sv sn p1 e1 e2 =
 
 (** val trans_qexp :
     int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> int -> fmap -> estore -> qexp -> (((pexp
+    -> var -> var -> int -> fmap -> estore -> estore -> qexp -> (((pexp
     option * int) * cstore) * estore) value option **)
 
-let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
+let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es bases = function
 | Coq_qinv x ->
   bind (par_find_var_check smap bv size r x) (fun vx ->
     match vx with
@@ -1745,12 +1745,14 @@ let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
          (match o with
           | Some b ->
             if b
-            then trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv es e1
-            else trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv es e2
+            then trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv bases
+                   bases e1
+            else trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv bases
+                   bases e2
           | None ->
             bind
-              (trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv
-                empty_estore e1) (fun e1_val ->
+              (trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv bases
+                bases e1) (fun e1_val ->
               match e1_val with
               | Value x0 ->
                 let (p0, _) = x0 in
@@ -1758,7 +1760,7 @@ let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
                 let (e1_cir, sn1) = p1 in
                 bind
                   (trans_qexp size smap vmap bv fl r1 temp0 stack0 sn1 fv
-                    empty_estore e2) (fun e2_val ->
+                    bases bases e2) (fun e2_val ->
                   match e2_val with
                   | Value x1 ->
                     let (p2, _) = x1 in
@@ -1772,8 +1774,10 @@ let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
          (match o with
           | Some b ->
             if b
-            then trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv es e1
-            else trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv es e2
+            then trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv bases
+                   bases e1
+            else trans_qexp size smap vmap bv fl r temp0 stack0 sn' fv bases
+                   bases e2
           | None -> Some Error))
     | Error -> Some Error)
 | Coq_qfor (x, n, e') ->
@@ -1785,8 +1789,8 @@ let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
           (fun _ -> Some (Value (((None, sn0), r0), es)))
           (fun m ->
           bind
-            (trans_qexp size smap vmap bv fl r0 temp0 stack0 sn0 fv
-              empty_estore e') (fun re ->
+            (trans_qexp size smap vmap bv fl r0 temp0 stack0 sn0 fv bases
+              bases e') (fun re ->
             match re with
             | Value x0 ->
               let (p, _) = x0 in
@@ -1798,8 +1802,7 @@ let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
                   let (p1, _) = x1 in
                   let (p2, r'') = p1 in
                   let (cir', sn'') = p2 in
-                  Some (Value ((((combine_c cir cir'), sn''), r''),
-                  empty_estore))
+                  Some (Value ((((combine_c cir cir'), sn''), r''), bases))
                 | Error -> Some Error)
             | Error -> Some Error))
           i
@@ -1807,7 +1810,7 @@ let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
            (a_nat2fb t2v size)
     | Error -> Some Error)
 | Coq_qseq (e1, e2) ->
-  (match trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es e1 with
+  (match trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es bases e1 with
    | Some v ->
      (match v with
       | Value x ->
@@ -1815,7 +1818,7 @@ let rec trans_qexp size smap vmap bv fl r temp0 stack0 sn fv es = function
         let (p0, store1) = p in
         let (e1', sn1) = p0 in
         (match trans_qexp size smap vmap bv fl store1 temp0 stack0 sn1 fv es1
-                 e2 with
+                 bases e2 with
          | Some v0 ->
            (match v0 with
             | Value x0 ->
@@ -2120,12 +2123,27 @@ let rec init_cstore r = function
 | p :: xl ->
   let (t0, x) = p in init_cstore (init_cstore_n r (L x) (get_type_num t0)) xl
 
-(** val trans_funs :
-    fenv -> int -> int -> var -> var -> flag -> cstore -> (qvar -> int) ->
-    ((qvar * int) -> var) -> ((qvar * int) * var) list -> int -> fmap -> func
-    list -> ((((qvar * int) * var) list * int) * fmap) value option **)
+(** val init_estore_n : estore -> qvar -> int -> estore **)
 
-let rec trans_funs fv size sn temp0 stack0 fl r smap vmap vmaps vmap_num fmap0 = function
+let rec init_estore_n es x n =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> es)
+    (fun m -> Store.add (x, m) [] (init_estore_n es x m))
+    n
+
+(** val init_estore : estore -> (typ * var) list -> estore **)
+
+let rec init_estore r = function
+| [] -> r
+| p :: xl ->
+  let (t0, x) = p in init_estore (init_estore_n r (L x) (get_type_num t0)) xl
+
+(** val trans_funs :
+    fenv -> int -> int -> var -> var -> flag -> cstore -> estore -> (qvar ->
+    int) -> ((qvar * int) -> var) -> ((qvar * int) * var) list -> int -> fmap
+    -> func list -> ((((qvar * int) * var) list * int) * fmap) value option **)
+
+let rec trans_funs fv size sn temp0 stack0 fl r es smap vmap vmaps vmap_num fmap0 = function
 | [] -> Some (Value ((vmaps, sn), fmap0))
 | f0 :: xl ->
   let (p, rx) = f0 in
@@ -2137,22 +2155,23 @@ let rec trans_funs fv size sn temp0 stack0 fl r smap vmap vmaps vmap_num fmap0 =
      let (_, bv) = p2 in
      (match trans_qexp size (gen_smap_l ls smap)
               (gen_vmap_l ls vmap vmap_num) bv fl (init_cstore r ls) temp0
-              stack0 0 fmap0 empty_estore e with
+              stack0 0 fmap0 (init_estore es ls) (init_estore es ls) e with
       | Some v ->
         (match v with
          | Value x ->
-           let (p3, _) = x in
+           let (p3, es0) = x in
            let (p4, store1) = p3 in
            let (o, sn1) = p4 in
            (match o with
             | Some _ ->
               let (vmaps', vmap_num') = gen_vmap_ll ls vmaps vmap_num in
               trans_funs fv size (PeanoNat.Nat.max sn sn1) temp0 stack0 fl r
-                smap (gen_vmap_l ls vmap vmap_num) vmaps' vmap_num' (((((((f,
-                rx), (Exp (SKIP (stack0, 0)))), (gen_smap_l ls smap)),
-                (gen_vmap_l ls vmap vmap_num)), bv), store1) :: fmap0) xl
+                es0 smap (gen_vmap_l ls vmap vmap_num) vmaps' vmap_num'
+                (((((((f, rx), (Exp (SKIP (stack0, 0)))),
+                (gen_smap_l ls smap)), (gen_vmap_l ls vmap vmap_num)), bv),
+                store1) :: fmap0) xl
             | None ->
-              trans_funs fv size sn temp0 stack0 fl r smap vmap vmaps
+              trans_funs fv size sn temp0 stack0 fl r es0 smap vmap vmaps
                 vmap_num (((((((f, rx), (Exp (SKIP (stack0, 0)))),
                 (gen_smap_l ls smap)), (gen_vmap_l ls vmap vmap_num)), bv),
                 store1) :: fmap0) xl)
@@ -2204,6 +2223,13 @@ let rec gen_vmap_gl' l vmaps i =
 let gen_vmap_gl l =
   gen_vmap_gl' l [] (Pervasives.succ (Pervasives.succ 0))
 
+(** val init_estore_g : (typ * var) list -> estore **)
+
+let rec init_estore_g = function
+| [] -> empty_estore
+| p :: xl ->
+  let (t0, x) = p in init_estore_n (init_estore_g xl) (G x) (get_type_num t0)
+
 (** val trans_prog' :
     prog -> flag -> fenv -> (((((qvar * int) * var)
     list * int) * int) * pexp) value option **)
@@ -2215,7 +2241,7 @@ let trans_prog' p flag0 fv =
   let (size, ls) = p2 in
   let (vmap, vmap_num) = gen_vmap_g ls in
   bind
-    (trans_funs fv size 0 temp stack flag0 empty_cstore
+    (trans_funs fv size 0 temp stack flag0 empty_cstore (init_estore_g ls)
       (gen_smap_l ls (fun _ -> 0)) vmap (gen_vmap_gl ls) vmap_num [] fl)
     (fun v ->
     match v with

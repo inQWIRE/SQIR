@@ -91,7 +91,7 @@ run 17 11 31;;
 run 32 2 63;;*)
 
 (* testing... *)
-match QIMP.trans_prog (sin_prog 1) Classic with
+match QIMP.trans_prog (hash_prog 4 1 1) Classic with
   | None -> printf "FAILED :o\n%!"
   | Some _ -> printf "succeeded ^.^\n%!"
 ;;
