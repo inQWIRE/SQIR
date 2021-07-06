@@ -133,6 +133,17 @@ let nat_mult size x re m =
     (Exp (nat_mult' size size x re m)))), (RQFT re))),
     (inv_pexp (Exp (Seq ((Rev x), (Rev re))))))
 
+(** val vars_for_rz_nat_m :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_nat_m size =
+  gen_vars size (x_var :: (y_var :: []))
+
+(** val nat_mult_out : int -> (int -> bool) -> pexp **)
+
+let nat_mult_out size m =
+  nat_mult size x_var y_var m
+
 (** val rz_full_adder : var -> int -> var -> exp **)
 
 let rec rz_full_adder x n y =
@@ -201,6 +212,17 @@ let rz_full_adder_form x n y =
     (rz_full_adder x n y)))),
     (inv_pexp (PSeq ((Exp (Seq ((Rev x), (Rev y)))), (QFT x)))))
 
+(** val vars_for_rz_full_add :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_full_add size =
+  gen_vars size (x_var :: (y_var :: []))
+
+(** val rz_full_adder_out : int -> pexp **)
+
+let rz_full_adder_out size =
+  rz_full_adder_form x_var size y_var
+
 (** val rz_full_sub_form : var -> int -> var -> pexp **)
 
 let rz_full_sub_form x n y =
@@ -228,3 +250,14 @@ let rz_full_comparator x n c y =
     (coq_CNOT (x, 0) c)))),
     (inv_pexp (PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev y)))),
       (QFT x))), (QFT y))), (Exp (rz_full_sub x n y)))), (RQFT x)))))
+
+(** val vars_for_rz_adder :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_adder size =
+  gen_vars size (x_var :: [])
+
+(** val rz_adder_out : int -> (int -> bool) -> pexp **)
+
+let rz_adder_out size m =
+  rz_adder_form x_var size m

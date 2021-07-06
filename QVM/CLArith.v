@@ -2514,6 +2514,8 @@ Definition vars_for_cl_nat_full_m (size:nat) :=
 Definition cl_full_mult_out (size:nat) := 
    cl_full_mult size x_var y_var z_var s_var (c_var,0).
 
+
+(* @Liyi: what are the clf functions for? *)
 Fixpoint clf_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) (c:posi) :=
    match n with 0 => SKIP (x,0)
             | S m => one_cu_cl_full_adder (x,m) re y c size; SWAP (y,0) (ex,m); Rshift y;

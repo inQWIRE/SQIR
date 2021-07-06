@@ -34,6 +34,12 @@ Separate Extraction
     OracleExample.sin_prog
     AltPQASM.prog_to_sqir_real
     
-    (* QVM classical adders *)
+    (* QVM classical adders/multipliers *)
     AltPQASM.trans_cl_adder
-    AltPQASM.trans_cl_const_mul.
+    AltPQASM.trans_cl_const_mul
+    AltPQASM.trans_cl_mul
+    
+    (* QVM QFT-based adders/multpliers *)
+    AltPQASM.trans_rz_const_adder
+    AltPQASM.trans_rz_adder
+    AltPQASM.trans_rz_const_mul.
