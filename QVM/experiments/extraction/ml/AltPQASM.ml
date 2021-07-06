@@ -54,11 +54,8 @@ let rec trans_exp f dim exp0 avs =
   | SKIP p -> (((coq_ID (find_pos f p)), f), avs)
   | X p -> (((coq_X (find_pos f p)), f), avs)
   | CU (p, e1) ->
-    (match e1 with
-     | X p2 -> (((coq_CX (find_pos f p) (find_pos f p2)), f), avs)
-     | _ ->
-       let (p0, _) = trans_exp f dim e1 avs in
-       let (e1', _) = p0 in (((control (find_pos f p) e1'), f), avs))
+    let (p0, _) = trans_exp f dim e1 avs in
+    let (e1', _) = p0 in (((control (find_pos f p) e1'), f), avs)
   | RZ (q, p) -> (((coq_U1 (rz_ang q) (find_pos f p)), f), avs)
   | RRZ (q, p) -> (((coq_U1 (rrz_ang q) (find_pos f p)), f), avs)
   | SR (n, x) -> (((gen_sr_gate f x n), f), avs)
@@ -97,9 +94,9 @@ let rec controlled_rotations_gen f x n i =
 let rec coq_QFT_gen f x n size =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> coq_ID (find_pos f (x, 0)))
-    (fun m -> Coq_useq ((coq_H (find_pos f (x, m))), (Coq_useq
-    ((controlled_rotations_gen f x (sub size m) m),
-    (coq_QFT_gen f x m size)))))
+    (fun m -> Coq_useq ((coq_QFT_gen f x m size), (Coq_useq
+    ((coq_H (find_pos f (x, m))),
+    (controlled_rotations_gen f x (sub size m) m)))))
     n
 
 (** val trans_qft : vars -> var -> coq_U ucom **)
