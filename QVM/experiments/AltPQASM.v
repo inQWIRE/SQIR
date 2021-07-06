@@ -126,10 +126,8 @@ Definition trans_rz_const_mul (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_nat_m size) (2 * size) (RZArith.nat_mult_out size (nat2fb M)) (PQASM.avs_for_arith size).
 
 (* z = x * y (QFT-based) *)
-(*
 Definition trans_rz_mul (size:nat) :=
-  trans_pexp (RZArith.vars_for_rz_nat_full_m size) ?? (RZArith.nat_full_mult_out size) (PQASM.avs_for_arith size).
-*)    
+  trans_pexp (RZArith.vars_for_rz_nat_full_m size) (4 * size) (RZArith.nat_full_mult_out size) (PQASM.avs_for_arith size). 
   
 (* Compile a prog to a circuit. *)
 Definition prog_to_sqir_real (p:prog) (f:flag) : ucom U :=

@@ -189,6 +189,17 @@ let nat_full_mult size x y re ex =
     (inv_exp (clean_high size y ex))))))), (RQFT re))), (Exp (Seq ((Seq ((Rev
     re), (Rev x))), (Rev y)))))
 
+(** val vars_for_rz_nat_full_m :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_nat_full_m size =
+  gen_vars size (x_var :: (y_var :: (z_var :: (s_var :: []))))
+
+(** val nat_full_mult_out : int -> pexp **)
+
+let nat_full_mult_out size =
+  nat_full_mult size x_var y_var z_var s_var
+
 (** val rz_comparator : var -> int -> posi -> int -> pexp **)
 
 let rz_comparator x n c m =

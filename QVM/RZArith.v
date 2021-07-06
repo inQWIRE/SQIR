@@ -2998,10 +2998,9 @@ Definition nat_full_mult (size:nat) (x y:var) (re:var) (ex:var) :=
   RQFT re ;; Exp (Rev re; Rev x; Rev y).
 
 Definition vars_for_rz_nat_full_m (size:nat) := 
-  gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
+  gen_vars size (x_var::y_var::z_var::s_var::[]).
 
-Definition nat_full_mult_out (size:nat) := nat_full_mult x_var y_var z_var s_var.
-(* @Liyi: need to provide one more var arg for the func. above? *)
+Definition nat_full_mult_out (size:nat) := nat_full_mult size x_var y_var z_var s_var.
 
 Fixpoint flt_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (ex:var) :=
   match n with 

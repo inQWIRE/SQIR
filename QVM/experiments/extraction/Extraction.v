@@ -42,4 +42,5 @@ Separate Extraction
     (* QVM QFT-based adders/multpliers *)
     AltPQASM.trans_rz_const_adder
     AltPQASM.trans_rz_adder
-    AltPQASM.trans_rz_const_mul.
+    AltPQASM.trans_rz_const_mul
+    AltPQASM.trans_rz_mul.
