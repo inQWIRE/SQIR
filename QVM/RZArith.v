@@ -2943,7 +2943,7 @@ Qed.
 Fixpoint nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
   match n with 
   | 0 => SKIP (x,0)
-  | S m => one_cu_adder ex size (x,size - n) M; 
+  | S m => one_cu_adder ex size (x,m) M; 
           nat_mult' m size x ex (cut_n (times_two_spec M) size)
   end.
 Definition nat_mult (size:nat) (x:var) (re:var) (M:nat -> bool) := 
@@ -2958,7 +2958,7 @@ Definition nat_mult_out (size:nat) (M:nat -> bool) := nat_mult size x_var y_var 
 Fixpoint flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
   match n with 
   | 0 => SKIP (x,0)
-  | S m => one_cu_adder ex size (x,m) M; 
+  | S m => one_cu_adder ex size (x,size-n) M; 
           flt_mult' m size x ex (cut_n (div_two_spec M) size)
   end.
 Definition flt_mult (size:nat) (x re:var) (M:nat -> bool) := 
