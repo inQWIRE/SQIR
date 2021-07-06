@@ -9,7 +9,7 @@ let rec get_dim_aux (u : coq_U ucom) acc =
   match u with
   | Coq_useq (u1, u2) -> get_dim_aux u1 (get_dim_aux u2 acc)
   | Coq_uapp (_, _, qs) -> List.fold_left max acc qs
-let get_dim u = get_dim_aux u 0
+let get_dim u = 1 + get_dim_aux u 0
 
 (* write to qasm file *)
 let rec sqir_to_qasm oc (u : coq_U ucom) k =
@@ -29,7 +29,8 @@ let rec write_measurements oc dim =
   if dim = 0 then ()
   else (write_measurements oc (dim - 1) ; fprintf oc "measure q[%d] -> c[%d];\n" (dim - 1) (dim - 1))
 
-let write_qasm_file fname (u : coq_U ucom) dim =
+let write_qasm_file fname (u : coq_U ucom) =
+  let dim = get_dim u in
   let oc = open_out fname in
   (fprintf oc "OPENQASM 2.0;\ninclude \"qelib1.inc\";\n\n";
    fprintf oc "qreg q[%d];\n" dim;
@@ -51,47 +52,43 @@ let rec count_gates_aux (u : coq_U ucom) acc =
   | _ -> failwith "ERROR: Failed to count gates"
 let count_gates u = count_gates_aux u (0,0,0)
 
-(* main function *)
-let run c cinv m =
+let run_modmult_experiments c cinv m =
   if (c * cinv) mod m <> 1
   then failwith "Invalid inputs to run function"
   else 
     let n = int_of_float (ceil (log10 (float_of_int (2 * m)) /. log10 2.0)) in (* = log2up m *)
-    let dim_for_rz = 2 * n + 1 in
-    let dim_for_cl = 4 * n + 2 in
-    let dim_for_sqir = 4 * n + 11 in
     let fname = string_of_int (int_of_float (ceil (log10 (float_of_int m) /. log10 2.0))) ^ ".qasm" in
 
     let _ = printf "Generating circuit for ModMult.modmult_rev, inputs c=%d and m=%d...\n%!" c m in
     let sqir_circ = bc2ucom (ModMult.modmult_rev m c cinv n) in
     let (x,y,z) = count_gates sqir_circ in
     let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates, %d total\n%!" 
-              dim_for_sqir x y z (x+y+z) in
-    let _ = write_qasm_file ("sqir-mod-mul-" ^ fname) sqir_circ dim_for_sqir in
+              (get_dim sqir_circ) x y z (x+y+z) in
+    let _ = write_qasm_file ("sqir-mod-mul-" ^ fname) sqir_circ in
 
     let _ = printf "Generating circuit for RZArith.rz_modmult_full, inputs c=%d and m=%d...\n%!" c m in
     let rz_circ = fst (fst (trans_rz_modmult_rev m c cinv n)) in
     let (x,y,z) = count_gates rz_circ in
     let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates, %d total\n%!" 
-              dim_for_rz x y z (x+y+z) in
-    let _ = write_qasm_file ("rz-mod-mul-" ^ fname) rz_circ dim_for_rz in
+              (get_dim rz_circ) x y z (x+y+z) in
+    let _ = write_qasm_file ("rz-mod-mul-" ^ fname) rz_circ in
 
     let _ = printf "Generating circuit for CLArith.modmult_rev, inputs c=%d and m=%d...\n%!" c m in
     let cl_circ = fst (fst (trans_modmult_rev m c cinv n)) in
     let (x,y,z) = count_gates cl_circ in
     let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates, %d total\n%!" 
-              dim_for_cl x y z (x+y+z) in
-    let _ = write_qasm_file ("cl-mod-mul-" ^ fname) cl_circ dim_for_cl in
+              (get_dim cl_circ) x y z (x+y+z) in
+    let _ = write_qasm_file ("cl-mod-mul-" ^ fname) cl_circ in
     ();;
 
-(*run 2 2 3;;
-run 5 3 7;;
-run 7 13 15;;
-run 17 11 31;;
-run 32 2 63;;*)
+(*run_modmult_experiments 2 2 3;;
+run_modmult_experiments 5 3 7;;
+run_modmult_experiments 7 13 15;;
+run_modmult_experiments 17 11 31;;
+run_modmult_experiments 32 2 63;;*)
 
 (* testing... *)
-match QIMP.trans_prog (hash_prog 4 1 1) Classic with
+match QIMP.trans_prog (sin_prog 1) Classic with
   | None -> printf "FAILED :o\n%!"
   | Some _ -> printf "succeeded ^.^\n%!"
 ;;
@@ -109,9 +106,35 @@ printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
 
 let c1 = fst (fst (trans_cl_adder 3));;
 let (x,y,z) = count_gates c1;;
-printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
-write_qasm_file "test1.qasm" c1 7;;
+printf "%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" (get_dim c1) x y z;;
+write_qasm_file "test1.qasm" c1;;
+
 let c2 = fst (fst (trans_cl_const_mul 3 5));;
 let (x,y,z) = count_gates c2;;
-printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
-write_qasm_file "test2.qasm" c2 10;;
+printf "%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" (get_dim c2) x y z;;
+write_qasm_file "test2.qasm" c2;;
+
+let c3 = fst (fst (trans_cl_mul 3));;
+let (x,y,z) = count_gates c3;;
+printf "%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" (get_dim c3) x y z;;
+write_qasm_file "test3.qasm" c3;;
+
+let c4 = fst (fst (trans_rz_const_adder 3 5));;
+let (x,y,z) = count_gates c4;;
+printf "%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" (get_dim c4) x y z;;
+write_qasm_file "test4.qasm" c4;;
+
+let c5 = fst (fst (trans_rz_adder 3));;
+let (x,y,z) = count_gates c5;;
+printf "%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" (get_dim c5) x y z;;
+write_qasm_file "test5.qasm" c5;;
+
+let c6 = fst (fst (trans_rz_const_mul 3 5));;
+let (x,y,z) = count_gates c6;;
+printf "%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" (get_dim c6) x y z;;
+write_qasm_file "test6.qasm" c6;;
+
+let c7 = fst (fst (trans_rz_mul 3));;
+let (x,y,z) = count_gates c7;;
+printf "%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" (get_dim c7) x y z;;
+write_qasm_file "test7.qasm" c7;;
