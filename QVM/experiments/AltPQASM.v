@@ -128,10 +128,37 @@ Definition trans_rz_adder (size:nat) :=
 Definition trans_rz_const_mul (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_nat_m size) (2 * size) (RZArith.nat_mult_out size (nat2fb M)) (PQASM.avs_for_arith size).
 
+
 (* z = x * y (QFT-based) *)
 Definition trans_rz_mul (size:nat) :=
   trans_pexp (RZArith.vars_for_rz_nat_full_m size) (4 * size) (RZArith.nat_full_mult_out size) (PQASM.avs_for_arith size). 
-  
+
+
+(* z = x mod y (Classical-based) *)
+Definition trans_cl_mod (size M:nat) :=
+  trans_pexp (CLArith.vars_for_cl_moder size) (4 * size + 2) (CLArith.cl_moder_out size M) (PQASM.avs_for_arith size). 
+
+(* z = x / y (Classical-based) *)
+Definition trans_cl_div (size M:nat) :=
+  trans_pexp (CLArith.vars_for_cl_div size) (4 * size + 2) (CLArith.cl_div_out size M) (PQASM.avs_for_arith size). 
+
+(* z = x mod y,x/y (Classical-based) *)
+Definition trans_cl_div_mod (size M:nat) :=
+  trans_pexp (CLArith.vars_for_cl_div_mod size) (3 * size + 2) (CLArith.cl_div_mod_out size M) (PQASM.avs_for_arith size). 
+
+
+(* z = x mod y (QFT-based) *)
+Definition trans_rz_mod (size M:nat) :=
+  trans_pexp (RZArith.vars_for_rz_moder size) (3 * (S size) + 1) (RZArith.rz_moder_out size M) (RZArith.avs_for_rz_moder size). 
+
+(* z = x / y (QFT-based) *)
+Definition trans_rz_div (size M:nat) :=
+  trans_pexp (RZArith.vars_for_rz_div size) (3 * (S size) + 1) (RZArith.rz_div_out size M) (RZArith.avs_for_rz_div size). 
+
+(* z = x mod y,x/y (QFT-based) *)
+Definition trans_rz_div_mod (size M:nat) :=
+  trans_pexp (RZArith.vars_for_rz_div_mod size) (2 * (S size) + 1) (RZArith.rz_div_mod_out size M) (RZArith.avs_for_rz_div_mod size). 
+
 (* Compile a prog to a circuit. *)
 Definition prog_to_sqir_real (p:prog) (f:flag) : ucom U :=
   match prog_to_sqir p f with 

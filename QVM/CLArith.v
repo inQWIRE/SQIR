@@ -2553,7 +2553,7 @@ Definition vars_for_cl_moder (size:nat) :=
   fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) 
         else vars_for_cl_moder' size x.
 
-Definition cl_moder_out (size:nat) := 
+Definition cl_moder_out (size:nat)  := 
    cl_moder size x_var y_var z_var s_var (c_var,0) (c_var, 1).
 
 Definition cl_div (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
