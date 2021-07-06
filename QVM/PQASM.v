@@ -235,6 +235,37 @@ Notation "p1 ; p2" := (Seq p1 p2) (at level 50) : exp_scope.
 Inductive pexp := Exp (s:exp) | QFT (x:var) | RQFT (x:var)
                | H (x:var) | PCU (p:posi) (e:pexp) | PSeq (p1:pexp) (p2:pexp).
 
+
+Fixpoint exp_elim (p:exp) :=
+  match p with
+  | CU q p => match exp_elim p with
+                 | SKIP a => SKIP a 
+                 | p' => CU q p'
+                 end
+  | Seq p1 p2 => match exp_elim p1, exp_elim p2 with
+                  | SKIP a, p2' => p2'
+                  | p1', SKIP a => p1'
+                  | p1', p2' => Seq p1' p2'
+                  end
+  | _ => p
+  end.
+
+Fixpoint pexp_elim (p:pexp) :=
+   match p with Exp s => Exp (exp_elim s)
+       | PCU p e => 
+            match pexp_elim e with
+                 | Exp (SKIP a) => Exp (SKIP a) 
+                 | e' => PCU p e'
+                 end
+       | PSeq e1 e2 => 
+              match pexp_elim e1, pexp_elim e2 with
+                  | Exp (SKIP a), p2' => p2'
+                  | p1', Exp (SKIP a) => p1'
+                  | p1', p2' => PSeq p1' p2'
+                  end
+  | _ => p
+  end.
+
 Coercion Exp : exp >-> pexp.
 
 Definition Z (p:posi) := RZ 1 p.
@@ -8692,6 +8723,8 @@ Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
                              end
                             end
      end.
+
+
 
 Inductive pexp_WF : vars -> nat -> pexp -> Prop :=
       | qft_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (QFT x)

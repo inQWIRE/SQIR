@@ -43,7 +43,6 @@ Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (ucom U *
     | Rshift x => (AltGateSet2.ID (find_pos f (x,0)), trans_rshift f x, rshift_avs dim f avs x)
     | Rev x => (AltGateSet2.ID (find_pos f (x,0)), trans_rev f x, rev_avs dim f avs x)
     | HCNOT p1 p2 => (AltGateSet2.CX (find_pos f p1) (find_pos f p2), f, avs)
-    | CU p1 (X p2) => (AltGateSet2.CX (find_pos f p1) (find_pos f p2), f, avs)
     | CU p e1 => match trans_exp f dim e1 avs with 
                  | (e1', f',avs') => (control (find_pos f p) e1', f, avs) end
     | (e1 ; e2)%exp => match trans_exp f dim e1 avs with 
@@ -82,21 +81,22 @@ Fixpoint nH (f : vars) (x:var) (n:nat) : ucom U :=
 
 Definition trans_h (f : vars) (x:var) : ucom U := nH f x (vsize f x).
        
-Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
+Fixpoint trans_pexp' (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
      match exp with Exp s => (trans_exp vs dim s avs)
                  | QFT x => (trans_qft vs x, vs, avs)
                  | RQFT x => (trans_rqft vs x, vs, avs)
                  | H x => (trans_h vs x, vs, avs)
-                 | PCU p1 (X p2) => (AltGateSet2.CX (find_pos vs p1) (find_pos vs p2), vs, avs)
-                 | PCU p e1 => match trans_pexp vs dim e1 avs with (e1', vs',avs')
+                 | PCU p e1 => match trans_pexp' vs dim e1 avs with (e1', vs',avs')
                               => (control (find_pos vs p) e1', vs, avs) end
                  | PSeq e1 e2 =>  
-                         match trans_pexp vs dim e1 avs with (e1',vs',avs') => 
-                             match trans_pexp vs' dim e2 avs' with (e2',vs'',avs'') => 
+                         match trans_pexp' vs dim e1 avs with (e1',vs',avs') => 
+                             match trans_pexp' vs' dim e2 avs' with (e2',vs'',avs'') => 
                                         (e1' >> e2', vs'', avs'')
                              end
                             end
      end.
+
+Definition trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) := trans_pexp' (vs) dim (pexp_elim exp) avs.
 
 (* z = M + x (TOFF-based) *)
 (*
