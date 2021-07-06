@@ -2970,7 +2970,7 @@ Definition flt_mult (size:nat) (x re:var) (M:nat -> bool) :=
 Fixpoint rz_full_adder (x:var) (n:nat) (y:var) :=
   match n with
   | 0 => (SKIP (x,0))
-  | S m => (CU (y,m) (SR m x); rz_full_adder x m y)
+  | S m => ((CU (y,m) (SR m x)); rz_full_adder x m y)
   end.
 Definition one_cu_full_adder (c:posi) (x:var) (n:nat) (y:var) := 
   CU c (rz_full_adder x n y).
@@ -3044,7 +3044,7 @@ Definition rz_comparator (x:var) (n:nat) (c:posi) (M:nat) :=
 Fixpoint rz_full_sub (x:var) (n:nat) (y:var) :=
   match n with 
   | 0 => SKIP (x,0)
-  | S m => (CU (y,m) (SRR m x); rz_full_sub x m y)
+  | S m => ((CU (y,m) (SRR m x)); rz_full_sub x m y)
   end.
 
 Definition rz_full_adder_form (x:var) (n:nat) (y:var) :=

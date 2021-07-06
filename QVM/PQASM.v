@@ -8857,7 +8857,15 @@ Fixpoint gen_vars' (size:nat) (l : list var) (start:nat) :=
       end.
 Definition gen_vars (size:nat) (l:list var) := gen_vars' size l 0.
 
+Fixpoint findnum' (size:nat) (x:nat) (y:nat) (i:nat) := 
+       match size with 0 => i
+              | S n => if y <=? x then i else findnum' n (2 * x) y (i+1)
+       end.
+
+(* find a number that is great-equal than 2^(n-1), assume that the number is less than 2^n *)
+Definition findnum (x:nat) (n:nat) := findnum' (n-1) x (2^(n-1)) 0.
 
 
-
-
+Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0) 
+                  | S m => CNOT (x,m) (y,m) ; copyto x y m
+    end.

@@ -2536,4 +2536,41 @@ Definition clf_full_mult (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
             (Exp (clf_full_mult_quar size x y re ex c; inv_exp (clean_high_flt size size y ex))).
 
 
+(* compare x <=? y *)
+Definition comparator02 n x y c1 c2 := (negator0 n x); highb01 n x y c1 c2; inv_exp (negator0 n x).
+
+Fixpoint cl_moder' i (n:nat) (x y ex:var) c1 c2 (M:nat) := 
+     match i with 0 => SKIP (x,0)
+           | S j => init_v n y (nat2fb (2^j * M)) ; comparator02 n y x c1 c2 ; 
+                       CU c2 (subtractor01 n y x c1); init_v n y (nat2fb (2^j * M)) ; SWAP c2 (ex,j);
+                       cl_moder' j n x y ex c1 c2 M
+     end.
+Definition cl_moder (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
+    let i := findnum M n in 
+         cl_moder' (S i) n x y ex c1 c2 M ; copyto x re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 M).
+
+Definition vars_for_cl_moder' (size:nat) := 
+  gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
+
+Definition vars_for_cl_moder (size:nat) :=
+  fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) 
+        else vars_for_cl_nat_full_m' size x.
+
+Definition cl_moder_out (size:nat) := 
+   cl_moder size x_var y_var z_var s_var (c_var,0) (c_var, 1).
+
+
+Definition cl_div (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
+    let i := findnum M n in 
+         cl_moder' (S i) n x y ex c1 c2 M ; copyto ex re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 M).
+
+Definition vars_for_cl_div' (size:nat) := 
+  gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
+
+Definition vars_for_cl_div (size:nat) :=
+  fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) 
+        else vars_for_cl_nat_full_m' size x.
+
+Definition cl_div_out (size:nat) := 
+   cl_div size x_var y_var z_var s_var (c_var,0) (c_var, 1).
 

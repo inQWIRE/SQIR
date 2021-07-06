@@ -29,6 +29,8 @@ Fixpoint gen_srr_gate' (f:vars) (x:var) (n:nat) (size:nat) : ucom U :=
     end.
 Definition gen_srr_gate (f:vars) (x:var) (n:nat) := gen_srr_gate' f x (S n) (S n).
 
+Check control.
+
 Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (ucom U * vars  * (nat -> posi)) :=
     match exp with
     | SKIP p => (AltGateSet2.ID (find_pos f p), f, avs)

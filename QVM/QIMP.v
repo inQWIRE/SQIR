@@ -3219,10 +3219,6 @@ Fixpoint lookup_fmap (l:fmap) (x:fvar) : option (cfac * pexp * (qvar -> nat) * (
           | ((y,a,p,smap,vmap,bv,r)::xl) => if x =? y then Some (a,p,smap,vmap,bv,r) else lookup_fmap xl x
    end.
 
-Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0) 
-                  | S m => CNOT (x,m) (y,m) ; copyto x y m
-    end.
-
 Definition combine_c (e1 e2:option pexp) : option pexp :=
           match e1 with None => e2
                | Some e1' => match e2 with None => Some e1'
