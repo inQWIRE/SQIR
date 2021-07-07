@@ -4,7 +4,7 @@ Require Import AltPQASM.
 Require Import CLArith.
 Require Import ModMult.
 Require Import RZArith.
-Require Import OracleExample.
+(*Require Import OracleExample.*)
 
 (* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -31,8 +31,8 @@ Separate Extraction
     AltPQASM.trans_rz_modmult_rev
     
     (* QVM sine functiom *)
-    OracleExample.sin_prog
-    AltPQASM.prog_to_sqir_real
+    (*OracleExample.sin_prog
+    AltPQASM.prog_to_sqir_real*)
     
     (* QVM classical adders/multipliers *)
     AltPQASM.trans_cl_adder

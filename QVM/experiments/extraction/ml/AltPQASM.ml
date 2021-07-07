@@ -1,9 +1,7 @@
 open AltGateSet2
 open CLArith
-open Datatypes
 open Nat
 open PQASM
-open QIMP
 open RCIR
 open RZArith
 
@@ -161,7 +159,7 @@ let trans_cl_adder size =
 let trans_cl_const_mul size m =
   trans_pexp (vars_for_cl_nat_m size)
     (add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
-      (Pervasives.succ 0)) (Exp (cl_nat_mult_out size (nat2fb m)))
+      (Pervasives.succ 0)) (cl_nat_mult_out size (nat2fb m))
     (avs_for_arith size)
 
 (** val trans_cl_mul : int -> (coq_U ucom * vars) * (int -> posi) **)
@@ -254,17 +252,6 @@ let trans_rz_div_mod size m =
   trans_pexp (vars_for_rz_div_mod size)
     (add (mul (Pervasives.succ (Pervasives.succ 0)) (Pervasives.succ size))
       (Pervasives.succ 0)) (rz_div_mod_out size m) (avs_for_rz_div_mod size)
-
-(** val prog_to_sqir_real : prog -> flag -> coq_U ucom **)
-
-let prog_to_sqir_real p f =
-  match prog_to_sqir p f with
-  | Some p0 ->
-    let (p1, avs) = p0 in
-    let (p2, vars0) = p1 in
-    let (p3, p4) = p2 in
-    let (d, _) = p3 in fst (fst (trans_pexp vars0 d p4 avs))
-  | None -> coq_SKIP
 
 (** val trans_rz_modmult_rev :
     int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
