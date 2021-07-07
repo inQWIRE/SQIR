@@ -102,7 +102,7 @@ Definition x_n (size:nat): func :=
 ,Nor (Var (L e))).
 
 Definition taylor_sin : func := 
-     (f, ((TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
+     (f, ((TNor C Nat, m)::(TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
               (TNor C Nat,g)::(TNor C Nat,n)::(TNor C Nat, xc)::(TNor C Nat,fac)
                ::(TNor C FixedP,rc)::(TNor Q FixedP,re)::[]),
                          init (Nor (Var (L re))) (Nor (Var (G x)));;;
@@ -114,7 +114,7 @@ Definition taylor_sin : func :=
                          fmul (Index (L x3) (Num (nat2fb 4))) (Index (L x3) (Num (nat2fb 3))) (Nor (Var (L x2)));;;
                          ncadd (Nor (Var (L n))) (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
                          ncadd (Nor (Var  (L xc))) (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
-         qfor g (Nor (Num (nat2fb 5))) 
+         qfor g (Nor ((Var (L m)))) 
              (qif (iseven (Nor (Var (L g)))) 
                       (ncadd (Nor (Var ((L n)))) (Nor (Var ((L n)))) (Nor (Num (nat2fb 2)));;;
                        nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
