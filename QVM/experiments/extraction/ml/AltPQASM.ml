@@ -158,18 +158,15 @@ let trans_cl_adder size =
 
 let trans_cl_const_mul size m =
   trans_pexp (vars_for_cl_nat_m size)
-    (add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
-      (Pervasives.succ 0)) (cl_nat_mult_out size (nat2fb m))
-    (avs_for_arith size)
+    (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
+    (cl_nat_mult_out size (nat2fb m)) (avs_for_arith size)
 
 (** val trans_cl_mul : int -> (coq_U ucom * vars) * (int -> posi) **)
 
 let trans_cl_mul size =
   trans_pexp (vars_for_cl_nat_full_m size)
-    (add
-      (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
-        (Pervasives.succ 0)))) size) (Pervasives.succ 0))
-    (cl_full_mult_out size) (avs_for_arith size)
+    (add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
+      (Pervasives.succ 0)) (cl_full_mult_out size) (avs_for_arith size)
 
 (** val trans_rz_const_adder :
     int -> int -> (coq_U ucom * vars) * (int -> posi) **)
@@ -197,8 +194,8 @@ let trans_rz_const_mul size m =
 
 let trans_rz_mul size =
   trans_pexp (vars_for_rz_nat_full_m size)
-    (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-      0)))) size) (nat_full_mult_out size) (avs_for_arith size)
+    (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
+    (nat_full_mult_out size) (avs_for_arith size)
 
 (** val trans_cl_mod : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
 
