@@ -9,7 +9,7 @@ Require Import AltGateSet2.
 Require Import PQASM.
 Require Import RZArith.
 Require Import CLArith.
-Require Import QIMP.
+(*Require Import QIMP.*)
 
 Definition rz_ang (n:nat) : R := ((R2 * PI)%R / R2^n). (* redefined using R2 *)
 
@@ -156,12 +156,14 @@ Definition trans_rz_div (size M:nat) :=
 Definition trans_rz_div_mod (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_div_mod size) (2 * (S size) + 1) (RZArith.rz_div_mod_out size M) (RZArith.avs_for_rz_div_mod size). 
 
+(*
 (* Compile a prog to a circuit. *)
 Definition prog_to_sqir_real (p:prog) (f:flag) : ucom U :=
   match prog_to_sqir p f with 
   | Some (d,size,p,vars,avs) => fst (fst (trans_pexp vars d p avs))
   | None => AltGateSet2.SKIP
 end.
+*)
 
 (* Redefine funcs in RZArith and CLArith to use the new trans_pexp *)
 Definition trans_rz_modmult_rev (M C Cinv size:nat) :=
