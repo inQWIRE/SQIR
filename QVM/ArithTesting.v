@@ -1,6 +1,6 @@
 From Coq Require Import Arith NArith Vector Bvector.
 From QuickChick Require Import QuickChick.
-Require Import VSQIR Testing RZArith.
+Require Import PQASM Testing RZArith.
 
 Open Scope exp_scope.
 
@@ -54,7 +54,9 @@ Module RzAdd.
 
 End RzAdd.
 
-(* QuickChick RzAdd.mod_add_spec. *)
+(*
+QuickChick RzAdd.mod_add_spec.
+*)
 
 Module ModMul.
 
@@ -85,5 +87,7 @@ Module ModMul.
 
 End ModMul.
 
-QuickChickWith (updMaxSuccess stdArgs 1) (ModMul.mod_mul_spec 16).
+(*
+QuickChickWith (updMaxSuccess stdArgs 1) ModMul.mod_mul_spec.
+ *)
 
