@@ -16,8 +16,11 @@ Require Import Coq.Structures.OrderedTypeEx.
 Local Open Scope exp_scope.
 Local Open Scope nat_scope.
 
+(* Define function variables. *)
 Definition fvar := nat.
 
+
+(* Flag for setting if one wants to generate QFT circuit or classical circuit. *)
 Inductive flag := QFTA | Classic.
 
 Definition flag_eq  (t1 t2:flag) : bool := 
@@ -57,6 +60,7 @@ Proof.
   assumption. 
 Qed.
 
+(* Global and local variables are different like @x and %x in LLVM. *)
 Inductive qvar := G (v:var) | L (v:var).
 
 Definition qty_eq  (t1 t2:qvar) : bool := 
@@ -199,6 +203,7 @@ Proof.
   assumption. 
 Qed.
 
+(* Variables can be C or Q mode. Q stands for quantum variables, while C stands for constants. *)
 Inductive atype := C : atype | Q : atype.
 
 
@@ -240,6 +245,7 @@ Proof.
   assumption. 
 Qed.
 
+(* A type for a variable in a program can be an Array type or a single value type. *)
 Inductive  typ :Type := TArray (a:atype) (b:btype) (n:nat) | TNor (a:atype) (b:btype).
 
 Definition typ_eq  (t1 t2:typ) : bool := 
@@ -306,6 +312,7 @@ Qed.
 
 Hint Resolve flag_eq_reflect aty_eq_reflect qty_eq_reflect qdty_eq_reflect bty_eq_reflect typ_eq_reflect : bdestruct.
 
+(* Make maps in Coq. *)
 Module QvarType <: OrderedType.
 
  Definition t := qvar.
@@ -510,23 +517,14 @@ Module QvarNatType <: OrderedType.
 
 End QvarNatType.
 
+
+(* Basic element is a Var or a number. Number is represented as bitstring. *)
 Inductive factor := Var (v:qvar)
                  | Num (n:nat -> bool).
      (* the first m in Num represents the number of bits.
       a value is represented as a natural number x. it means x / 2^m where m is the number of denominator. *)
 
 Inductive cfac := Index (x:qvar) (v:factor) | Nor (v:factor).
-
-(* the SSA form is to restrict non-loop instructions. x = y op z, 
-    where we compute y op z and then we store the value into x, so if x is freshly defined, then x = y op z. 
-    if one wants to use instructions in a loop, then use the qadd/qsub/qmul. 
-Inductive iexp := eplus (f:flag) (x : factor) (y: factor)
-      | eminus (f:flag) (x:factor) (y:factor)
-      | emult (f:flag) (x:factor) (y:factor)
-      | ediv (f:flag) (x:factor) (y:factor)
-      | emod (f:flag) (x:factor) (y:factor)
-      | eload (v:var).
-*)
 
 
 (* qadd/qsub/qmul has the property as x = y op x, which is corresponding to
@@ -582,45 +580,6 @@ Definition prog : Type := (nat * list (typ * var) * list func * fvar * var).
           and a list of global vars, and a list of functions.
      and the main function to call, and the final global var to write to. *)
 
-
-(* Define the well-formedness of exp. It is SSA + variable-dominance, as well as type match. *)
-(* The following relation defines the SSA + variable dominance for expressions and instructions. 
-Inductive ssa_factor : list var -> factor -> Prop :=
-   | ssa_jfactor : forall r x, In x r -> ssa_factor r (Var x)
-   | ssa_cfactor_num : forall r n m t, ssa_factor r (Num n m t).
-
-Inductive ssa_exp : list var -> iexp -> Prop := 
-  | eplus_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (eplus f x y)
-  | eminus_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (eminus f x y)
-  | emult_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (emult f x y)
-  | ediv_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (ediv f x y)
-  | emod_ssa : forall f r x y , ssa_factor r x -> ssa_factor r y -> ssa_exp r (emod f x y)
-  | eload_ssa : forall r x, In x r -> ssa_exp r (eload x).
-
-Inductive ssa_comexp : list var -> comexp -> Prop :=
-     | ssa_clt : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_comexp r (clt f x y)
-     | ssa_ceq : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_comexp r (ceq f x y).
-
-Inductive ssa_inst : list var -> qexp -> list var -> Prop :=
-   | ssa_assign : forall r x n t e, ~ In x r -> ssa_exp r e -> ssa_inst r (inst x n t e) (x::r)
-   | ssa_add : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_inst r (qadd f x y) r
-   | ssa_sub : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_inst r (qsub f x y) r
-   | ssa_mul : forall r f x y, ssa_factor r x -> ssa_factor r y -> ssa_inst r (qmul f x y) r
-   | ssa_if : forall r r' r'' c e1 e2, ssa_comexp r c ->
-                 ssa_inst r e1 r' -> ssa_inst r' e2 r'' -> ssa_inst r (qif c e1 e2) r''
-   | ssa_while : forall r r' c e, ssa_comexp r c -> ssa_inst r e r' -> ssa_inst r (qwhile c e) r'
-   | ssa_ret : forall r l, (forall a b, In (a,b) l -> In a r /\ In b r) -> ssa_inst r (ret l) r
-   | ssa_call : forall r f, ssa_inst r (call f) r
-   | ssa_seq : forall r r' r'' e1 e2, ssa_inst r e1 r' -> ssa_inst r' e2 r'' -> ssa_inst r (qseq e1 e2) r''.
-
-Inductive ssa_funs : list var -> list func -> list var -> Prop :=
-   ssa_fun_empty : forall r, ssa_funs r [] r
-  | ssa_fun_many : forall r r' r'' f e fs, ssa_inst r e r' -> ssa_funs r' fs r'' -> ssa_funs r ((f,e)::fs) r''.
-
-
-Inductive ssa_prog : prog -> Prop :=
-  | ssa_top : forall n m i l l' fs, ssa_funs (fst (split l)) fs l' -> ssa_prog (n,m,i,l,fs).
-*)
 
 (* The following relation defines the type system for expressions and instructions and functions. *)
 (* Defining matching shifting stack. *)
@@ -678,7 +637,7 @@ Proof.
   bdestruct (x =q= i); bdestruct (x =q= j); subst; easy.
 Qed.
 
-
+(*Function map consists with an argument list, an expression, a type environment for function body and return type. *)
 Module FEnv := FMapList.Make Nat_as_OT.
 Module FEnvFacts := FMapFacts.Facts (FEnv).
 Definition fenv := FEnv.t (list (typ * var) * qexp * benv * cfac).
@@ -733,7 +692,7 @@ Definition type_factor_full (bv:benv) (a:atype) (t:btype) (fc:cfac) :=
                | Nor c => typ_factor_full bv a t c
    end.
 
-
+(* C \subseteq Q *)
 Definition meet_type (t1 t2 : (atype * btype)) := 
           match t1 with (Q,b) => (Q,b)
                | (C,b) => match t2 with (Q,b2) => (Q,b) | _ => (C,b) end end.
@@ -750,7 +709,7 @@ Definition type_cexp (benv:benv) (c:cexp) :=
           
    end.
 (*
-Definition var_raw (t:qvar) := match t with G x => x | L x => x end.
+a_nat2fb is to turn a nat-> bool value to nat. 
 *)
 Fixpoint a_nat2fb (f:nat->bool) (n:nat) :=
              match n with 0 => 0
@@ -787,10 +746,7 @@ Definition get_index (c:cfac) : option factor :=
    end.
 
 (*
-Definition put_shell (c:ttyp) (t:typ) :=
-   match c with TNor t' => TNor t
-              | TPtr t' n => TPtr t n
-   end.
+Get the btype of a typ.
 *)
 
 Definition get_ct (c:typ) :=
@@ -803,6 +759,8 @@ Definition sub_nor (t1 t2:(atype * btype)) :=
                              => (b1 =b= b2) && (if a1 =a= C then true else a2 =a= Q)
                            end end.
 
+(* For any Q-mode statements (the assigmment variable being Q mode) we require that the 
+   assignment variables are different from the arguments. *)
 Definition fresh_loop_fac (x:var) (fc:factor) :=
    match fc with Var y => if y =q= (L x) then false else true
              | Num b => true
@@ -841,6 +799,8 @@ Fixpoint fresh_loop_c (x:var) (e:qexp) :=
              | qseq e1 e2 => (fresh_loop_c x e1) && (fresh_loop_c x e2)
    end.
 
+(* slrot is current static, so it cannot be used inside a if-condition,
+    and we plan to make it also non-static. *)
 Fixpoint no_rot (e:qexp) :=
    match e with skip => true
              | init y v => true
@@ -885,6 +845,7 @@ Definition is_q_cfac (bv:benv) (c:cfac) :=
               | Nor x => is_q_fac bv x
     end.
 
+(* Checks if an expression in if-branch has a C mode assigment. *)
 Fixpoint has_c_exp (bv:benv) (e:qexp) :=
    match e with skip => false
              | init y v => false
@@ -913,6 +874,7 @@ Fixpoint has_c_exp (bv:benv) (e:qexp) :=
              | qseq e1 e2 => has_c_exp bv e1 && has_c_exp bv e2
    end.
 
+(* Typing rule for statements. *)
 Fixpoint type_qexp (fv:fenv) (bv:benv) (e:qexp):=
    match e with skip => Some bv
              | init x v => 
@@ -1095,7 +1057,7 @@ Fixpoint gen_genv (l:list (typ * var)) : option benv :=
                    if no_zero t then Some (BEnv.add (G x) t new_env) else None
    end.
 
-(* ( fvar * list var * qexp ). *)
+(* A program type will return a function environment. *)
 Definition type_prog (p:prog) : option fenv :=
    match p with (n,l,fl,main,rx) => 
     do bv <- gen_genv l @ 
@@ -1107,7 +1069,9 @@ Definition type_prog (p:prog) : option fenv :=
               end
    end.
 
-(* Well-type checks for inv. *)
+(* Well-type checks for inv.
+   inv must have a previous defined statement,
+   and nested inv must match one-by-one with a predecessor *)
 Definition qvar_eq_fac (c:cfac) (x:qvar) :=
     match get_var c with None => false
             | Some y => x =q= y
@@ -1385,7 +1349,9 @@ Fixpoint well_formed_inv (l:list qexp) (e:qexp) (size:nat) :=
                          end
    end.
 
-(*The semantics of QLLVM. *)
+(*The semantics of QLLVM.
+   A store is impelemented as a a list of history values, and the top in the list is the current value.
+   We kept history values to do inv. *)
 Module Store := FMapList.Make QvarNatType.
 Module StoreFacts := FMapFacts.Facts (Store).
 Definition store : Type := Store.t (list (nat -> bool)).
@@ -1448,7 +1414,9 @@ Definition bv_store_sub (smap : qvar -> nat) (bv:benv) (st:store) :=
 
 Definition bv_store_gt_0 (smap : qvar -> nat) (bv:benv) :=
          forall x, BEnv.In x bv -> 0 < smap x.
-   
+
+
+(* Type Progesss theorem *)
 Lemma factor_progress: forall e smap size bv st t t', typ_factor bv t e = Some t' ->
         bv_store_sub smap bv st -> bv_store_gt_0 smap bv
          -> (exists v, sem_factor size st t e = Some v).
@@ -1769,6 +1737,8 @@ Definition eval_var (smap : qvar -> nat) (size:nat) (r:store) (x:cfac) :=
 
 Definition l_rotate (f:nat -> bool) (n:nat) := fun i => f ((i + n - 1) mod n).
 
+(* Semantics for statments. Just like C. 
+   For dealing with inv, we pop out history values. *)
 Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> qexp -> @value store -> Prop :=
    sem_qexp_skip : forall r, sem_qexp smap fv bv size r skip (Value r)
  | sem_qexp_init_error_1 : forall r x v,
@@ -2143,6 +2113,7 @@ Fixpoint check_store_g (l:list (btype * var)) (r:store) : Prop  :=
              | ((t,x)::xl) => Store.In (G x,0) r /\ check_store_g xl r
    end.
 
+(* Program semantics is to evaluate the main function. *)
 Inductive sem_prog (fv:fenv) : prog -> (@value (nat -> bool)) -> Prop :=
     sem_main_error_1 : forall size gl fl main x l e bv rx r r',
               FEnv.MapsTo main (l,e,bv,rx) fv ->
@@ -2173,6 +2144,8 @@ Definition well_formed_fv (fv:fenv) (r:store) (smap: qvar -> nat) :=
                       /\ bv_store_gt_0 (gen_smap_l l smap) fbv)
              /\ (forall xn, get_var rx = Some xn -> BEnv.In xn fbv).
 
+
+(* Type soundness theorem for statements. *)
 Lemma qexp_progress : forall e fv smap size bv bv' st inl, well_formed_fv fv st smap ->
         type_qexp fv bv e = Some bv' -> well_formed_inv ([]) e size = Some inl ->
         bv_store_sub smap bv st -> bv_store_gt_0 smap bv
@@ -2194,278 +2167,10 @@ Proof.
   induction e; intros; simpl in *.
 Admitted.
 
-(*
-Fixpoint collect_cvars (bv:benv) (e:qexp) : list qvar :=
-   match e with skip
-              | init _ _ _
-              | nadd _ _ _
-              | nsub _ _ _ 
-              | nmul _ _ _ _
-              | fadd _ _ _ 
-              | fsub _ _ _
-              | fmul _ _ _ _ => []
-              | qxor b v x => match get_var x with None => []
-                                             | Some xn => match bv xn with None => []
-                                                    | Some t => if is_q (get_core t) then [] else [xn]
-                                                         end
-                              end
-              | slrot b x => match get_var x with None => []
-                                             | Some xn => [xn]
-                              end
-
-               | ndiv x y z => match get_var x with None => [] | Some xn => [xn] end
-               | nmod x y z => match get_var x with None => [] | Some xn => [xn] end
-               | nfac x y => match get_var x with None => [] | Some xn => [xn] end
-               | fdiv x y => match get_var x with None => [] | Some xn => [xn] end
-               | ncsub x y z => match get_var x with None => [] | Some xn => [xn] end
-               | ncadd x y z => match get_var x with None => [] | Some xn => [xn] end
-               | fcsub x y z => match get_var x with None => [] | Some xn => [xn] end
-               | fcadd x y z => match get_var x with None => [] | Some xn => [xn] end
-               | ncmul x y z => match get_var x with None => [] | Some xn => [xn] end
-               | fndiv x y z => match get_var z with None => [] | Some xn => [xn] end
-               | qinv e => collect_cvars bv e
-               | call f x => match get_var x with None => []
-                                             | Some xn => match bv xn with None => []
-                                                    | Some t => if is_q (get_core t) then [] else [xn]
-                                                         end
-                              end
-               | qif ce e1 e2 => []
-               | qfor x n e => collect_cvars bv e
-               | qseq x y => (collect_cvars bv x)++(collect_cvars bv y)
-   end.
-
-Definition in_scope_cfac (l:list qvar) (e:cfac) :=
-   match e with Nor (Num x) => True
-             | Nor (Var x) => In x l
-             | Ptr x (Num n) => In (L x) l
-             | Ptr x (Var y) => In (L x) l /\ In y l
-   end.
-
-Definition in_scope_if_cexp (l:list qvar) (e:cexp) : Prop :=
-    match e with clt f b x y => in_scope_cfac l x /\ in_scope_cfac l y
-               | ceq f b x y => in_scope_cfac l x /\ in_scope_cfac l y
-               | iseven x => in_scope_cfac l x
-    end.
-
-Fixpoint in_scope_if (l:list qvar) (e:qexp): Prop :=
-   match e with skip => True
-              | init b x y => in_scope_cfac l x /\ in_scope_cfac l y
-              | nadd b x y => in_scope_cfac l x /\ in_scope_cfac l y
-              | nsub b x y => in_scope_cfac l x /\ in_scope_cfac l y
-              | nmul b x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | fadd b x y => in_scope_cfac l x /\ in_scope_cfac l y
-              | fsub b x y => in_scope_cfac l x /\ in_scope_cfac l y
-              | fmul b x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | qxor b x y => in_scope_cfac l x /\ in_scope_cfac l y
-              | slrot b x => in_scope_cfac l x
-              | ndiv x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | nmod x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | nfac x y => in_scope_cfac l x /\ in_scope_cfac l y
-              | fdiv x y => in_scope_cfac l x /\ in_scope_cfac l y
-              | ncsub x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | ncadd x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | fcsub x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | fcadd x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | ncmul x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | fndiv x y z => in_scope_cfac l x /\ in_scope_cfac l y /\ in_scope_cfac l z
-              | qinv e => in_scope_if l e
-              | call f x => in_scope_cfac l x
-              | qif ce e1 e2 => in_scope_if_cexp l ce /\ in_scope_if l e1 /\ in_scope_if l e2
-              | qfor x n e => in_scope_if (@List.remove qvar (QvarType.eq_dec) (L x) l) e
-              | qseq e1 e2 => in_scope_if l e1 /\ in_scope_if l e2
-    end.
-
-Definition is_qseq (x:qexp) := match x with a ;;; b => True | _ => False end.
-
-Inductive in_scope_ifs (l:list qvar) : list qexp -> Prop :=
-   in_scope_if_empty : in_scope_ifs l []
-   | in_scope_if_many: forall e el, in_scope_if l e -> in_scope_ifs l el -> in_scope_ifs l (e:: el).
-
-Fixpoint turn_qseq_lst (e:qexp) :=
-   match e with (e1 ;;; e2) => turn_qseq_lst e1 ++ turn_qseq_lst e2
-             | e => [e]
-   end.
-
-Inductive well_formed_qexp (bv:benv) : qexp -> list qexp -> Prop :=
-  | wtq_skip : forall el, well_formed_qexp bv skip el
-  | wtq_init : forall el b x v, well_formed_qexp bv (init b x v) el
-  | wtq_nadd : forall el b x v, well_formed_qexp bv (nadd b x v) el
-  | wtq_nsub : forall el b x v, well_formed_qexp bv (nsub b x v) el
-  | wtq_nmul: forall el b x y z, well_formed_qexp bv (nmul b x y z) el
-  | wtq_fadd : forall el b x v, well_formed_qexp bv (fadd b x v) el
-  | wtq_fsub : forall el b x v, well_formed_qexp bv (fsub b x v) el
-  | wtq_fmul : forall el b x y z, well_formed_qexp bv (fmul b x y z) el
-  | wtq_qxor : forall el b x v, well_formed_qexp bv (fsub b x v) el
-  | wtq_ndiv : forall el x y z, well_formed_qexp bv (ndiv x y z) el
-  | wtq_nmod : forall el x y z, well_formed_qexp bv (nmod x y z) el
-  | wtq_nfac : forall el x y, well_formed_qexp bv (nfac x y) el
-  | wtq_fdiv : forall el x y, well_formed_qexp bv (fdiv x y) el
-  | wtq_ncsub : forall el x y z, well_formed_qexp bv (ncsub x y z) el
-  | wtq_ncadd : forall el x y z, well_formed_qexp bv (ncadd x y z) el
-  | wtq_fcsub : forall el x y z, well_formed_qexp bv (fcsub x y z) el
-  | wtq_fcadd : forall el x y z, well_formed_qexp bv (fcadd x y z) el
-  | wtq_ncmul : forall el x y z, well_formed_qexp bv (ncmul x y z) el
-  | wtq_fndiv : forall el x y z, well_formed_qexp bv (fndiv x y z) el
-  | wtq_qinv : forall el e, well_formed_qexp bv e el -> well_formed_qexp bv (qinv e) el
-  | wtq_call : forall el f x, well_formed_qexp bv (call f x) el
-  | wtq_if_q : forall el ce t e1 e2, type_cexp bv ce = Some t -> is_q t = true -> 
-                    in_scope_ifs (collect_cvars bv e1 ++ collect_cvars bv e2) el ->
-                    well_formed_qexps bv (turn_qseq_lst e1) -> well_formed_qexps bv (turn_qseq_lst e2) ->
-                    well_formed_qexp bv (qif ce e1 e2) el
-  | wtq_if_c : forall el ce t e1 e2, type_cexp bv ce = Some t -> is_q t = false -> 
-                    well_formed_qexps bv (turn_qseq_lst e1) -> well_formed_qexps bv (turn_qseq_lst e2) ->
-                    well_formed_qexp bv (qif ce e1 e2) el
-  | wtq_for : forall el x n e,  well_formed_qexps bv (turn_qseq_lst e) ->  well_formed_qexp bv (qfor x n e) el
-with well_formed_qexps (bv:benv) : list qexp -> Prop :=
-    well_formed_qexps_empty : well_formed_qexps bv []
-  | well_formed_qexps_many : forall x xl, well_formed_qexp bv x xl -> well_formed_qexps bv xl -> well_formed_qexps bv (x :: xl).
-
-Definition inter_range (x : var) (n:nat) (y:var) (m:nat) :=
-     (x <= y < (x+n)) \/ (x < y + m <= (x + n)) \/ (y < x /\ x+n < y+m).
-
-Inductive diff_vars:  list (btype * var * nat) -> var -> nat -> Prop :=
-    diff_vars_empty : forall x n, diff_vars ([]) x n
-  | diff_vars_many : forall b y m yl x n, ~ inter_range x n y m -> diff_vars yl x n -> diff_vars ((b,y,m)::yl) x n.
-
-Inductive diff_var_lst : list (btype * var * nat) -> list (btype * var * nat) -> Prop :=
-   diff_var_lst_empty : forall l, diff_var_lst l []
- | diff_var_lst_many : forall b x n l1 l2, diff_vars l2 x n -> diff_var_lst l1 ((b,x,n)::l2) -> diff_var_lst ((b,x,n)::l1) l2.
-
-Inductive well_formed_func (bv:benv) : list (btype * var * nat) -> list func -> Prop :=
-   well_formed_func_empty : forall olds, well_formed_func bv olds []
- | well_formed_func_many : forall f args e rx olds xl, well_formed_qexps bv (turn_qseq_lst e) 
-               -> diff_var_lst ([]) (olds++args) -> well_formed_func bv olds ((f,args,e,rx)::xl).
-
-
-Definition is_qt (b:ttyp) := 
-   match b with TNor t => is_q t
-             | TPtr x n => is_q x
-   end.
-
-Definition par_eval_fc (size:nat) (bv:benv) (store:store) (b:btype) (fc:factor) := 
-   match fc with Var x => do re <- bv x @ if is_qt re then None else (Store.find (x,0) store)
-            | Num n => match b with Bl => Some (cut_n n 1)
-                                 | Nat => Some (cut_n n size)
-                                 | FixedP => Some (cut_n n size)
-                       end
-   end.
-
-Definition par_eval_cfac (size:nat) (smap : qvar -> nat) (bv:benv) (store:store) (b:btype) (fc:cfac) := 
-   match fc with Nor x => par_eval_fc size bv store b x
-        | Ptr x n => do v <- par_eval_fc size bv store Nat n @
-                              if a_nat2fb v size <? smap (L x) then
-                               (do re <- bv (L x) @ if is_qt re then None else (Store.find (L x,a_nat2fb v size) store)) else None
-   end.
-
-Definition par_find_var (size:nat) (bv:benv) (store:store) (fc:cfac) :=
-       match fc with Nor (Var x) => Some (x,0)
-                  | Nor (Num x) => None
-                  | Ptr x n => do val <- par_eval_fc size bv store Nat n @ Some (L x,a_nat2fb val size)
-       end.
-
-Definition get_vars (size:nat) (bv:benv) (store:store) (e:qexp) :=
-   match e with skip => Some ([])
-              | init b x y => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ ret (var1::var2::[])
-              | nadd b x y => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ ret (var1::var2::[])
-              | nsub b x y => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ ret (var1::var2::[])
-              | nmul b x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-              | fadd b x y => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ ret (var1::var2::[])
-
-              | fsub b x y => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ ret (var1::var2::[])
-              | fmul b x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-              | qxor b x y => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ ret (var1::var2::[])
-              | slrot b x => do var1 <- par_find_var size bv store x @ ret (var1::[])
-              | ndiv x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-
-              | nmod x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-              | nfac x y => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ ret (var1::var2::[])
-              | fdiv x y => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ ret (var1::var2::[])
-
-              | ncsub x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-              | ncadd x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-              | fcsub x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-              | fcadd x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-              | ncmul x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-              | fndiv x y z => do var1 <- par_find_var size bv store x @
-                                  do var2 <- par_find_var size bv store y @ 
-                                   do var3 <- par_find_var size bv store z @  ret (var1::var2::var3::[])
-
-              | qinv e => None
-              | call f x => do var1 <- (par_find_var size bv store x) @ ret ([var1])
-              | qif ce e1 e2 => None
-              | qfor x n e => None
-              | qseq e1 e2 => None
-   end.
-
-
-Definition is_qinv (x:qexp) := match x with qinv e => True | _ => False end.
-
-Definition is_no_pass (x:qexp) := match x with qinv _ | qif _ _ _ | qfor _ _ _ | qseq _ _ => True | _ => False end.
-
-Definition intersection (l1 l2 : list (qvar * nat)) : list (qvar * nat) :=
-  List.filter (fun n => List.existsb (qdty_eq n) l2) l1.
-
-Lemma intersectionP l1 l2 n : In n (intersection l1 l2) <-> In n l1 /\ In n l2.
-Proof.
-unfold intersection.
-rewrite filter_In, existsb_exists; split.
-- intros [H1 [m [H2 e]]]; split; trivial.
-  apply qdty_eqb_eq in e. subst. easy.
-- intros [H1 H2]; split; trivial.
-  exists n. split. easy.
-  bdestruct (n =qd= n). easy. easy.
-Qed.
-
-
-Inductive inv_match (l:list (qvar * nat)) (size:nat) (bv:benv) (store:store) (x:qexp) : list qexp -> option (list qexp) -> Prop :=
-     inv_match_empty : inv_match l size bv store x [] None
-    | inv_match_many_1 : forall y yl , x = y -> inv_match l size bv store x (y::yl) (Some yl)
-    | inv_match_many_2 : forall y yl l' b, x <> y -> (get_vars size bv store y) = Some l' -> intersection l l'  <> []
-                                 -> inv_match l size bv store x yl b -> inv_match l size bv store x (y::yl) b.
-
-Inductive inv_well_match_l (size:nat) (bv:benv) (store:store) : list qexp -> list qexp -> Prop :=
-     inv_well_match_empty : forall el, inv_well_match_l size bv store [] el
-   | inv_well_match_many_1 : forall l e xl el el', get_vars size bv store e = Some l ->
-             inv_match l size bv store e el (Some el') -> 
-                inv_well_match_l size bv store xl el'
-   | inv_well_match_many_2 : forall x xl el, is_no_pass x ->
-               inv_well_match_l size bv store xl [] -> inv_well_match_l size bv store (x::xl) el
-   | inv_well_match_many_3 : forall x xl el, ~ is_no_pass x ->
-               inv_well_match_l size bv store xl (x::el) -> inv_well_match_l size bv store (x::xl) el.
-
-Definition inv_well_match (size:nat) (bv:benv) (store:store) (e:qexp) : Prop :=
-    inv_well_match_l size bv store (turn_qseq_lst e) [].
-*)
 
 (* Compilation from MiniQASM to PQASM starts here. *)
 
-
+(* When compiling scrath space, we genearte two extra for ancilla qubits in addition.  *)
 Definition ac_size (size:nat) := S (S size).
 
 (*
@@ -2484,6 +2189,7 @@ Proof.
   lia.
 Qed.
 
+(* cstore is to store the current value for C-mode variables/constants. *)
 Definition cstore : Type := Store.t ((nat -> bool)).
 Definition empty_cstore := @Store.empty ((nat -> bool)).
 
@@ -2507,11 +2213,13 @@ Definition make_value (size:nat) (b:btype) (c: option (nat -> bool)) :=
                 | FixedP => Some (fbrev size (cut_n cv size))
       end.
 
+(* Partially evaluate a factor by cstore. *)
 Definition par_eval_fc (bv:benv) (size:nat) (r:cstore) (b:btype) (fc:factor) := 
    match fc with Var x => do re <- BEnv.find x bv @ if is_q re then None else make_value size b (Store.find (x,0) r)
             | Num n => make_value size b (Some n)
    end.
 
+(* Partially evaluate a factor. *)
 Definition par_eval_cfac (smap : qvar -> nat) (bv:benv) (size:nat) (r:cstore) (b:btype) (fc:cfac) := 
    match fc with Nor x => par_eval_fc bv size r b x
         | Index x n => do v <- par_eval_fc bv size r Nat n @
@@ -2520,6 +2228,7 @@ Definition par_eval_cfac (smap : qvar -> nat) (bv:benv) (size:nat) (r:cstore) (b
                       else make_value size b (Store.find (x,a_nat2fb v size) r)) else None
    end.
 
+(* Partially evaluate a factor but also checks array index. *)
 Definition par_eval_cfac_check (smap : qvar -> nat) (bv:benv) (size:nat) (r:cstore) (b:btype) (fc:cfac) := 
    match fc with Nor x => do val <- par_eval_fc bv size r b x @ Some (Value val)
         | Index x n => do v <- par_eval_fc bv size r Nat n @
@@ -2528,12 +2237,16 @@ Definition par_eval_cfac_check (smap : qvar -> nat) (bv:benv) (size:nat) (r:csto
                   do val <- make_value size b (Store.find (x,a_nat2fb v size) r) @ Some (Value val)) else Some Error
    end.
 
+(* Partially find an indexed-variable.
+   Every variable has the form (x,n) where x is the variable and n is the indexed.
+   For Nor variable, n is always 0. *)
 Definition par_find_var (bv:benv) (size:nat)  (r:cstore) (fc:cfac) :=
        match fc with Nor (Var x) => Some (x,0)
                   | Nor (Num x) => None
                   | Index x n => do val <- par_eval_fc bv size r Nat n @ Some (x,a_nat2fb val size)
        end.
 
+(* Partially find an indexed-variable with array bound checks. *)
 Definition par_find_var_check (smap:qvar -> nat) (bv:benv) (size:nat)  (r:cstore) (fc:cfac) :=
        match fc with Nor (Var x) => Some (Value (x,0))
                   | Nor (Num x) => None
@@ -2541,6 +2254,7 @@ Definition par_find_var_check (smap:qvar -> nat) (bv:benv) (size:nat)  (r:cstore
                       if a_nat2fb val size <? smap x then Some (Value (x,a_nat2fb val size)) else Some Error
        end.
 
+(* Check if two variables are equal *)
 Definition qvar_eq (bv:benv) (size:nat)  (r:cstore) (x y: cfac) := 
         match par_find_var bv size r x with None => false
                     | Some a => match par_find_var bv size r y with None => false
@@ -2550,7 +2264,7 @@ Definition qvar_eq (bv:benv) (size:nat)  (r:cstore) (x y: cfac) :=
 
 Definition get_size (size:nat) (t:btype) := if t =b= Bl then 1 else size.
 
-(* compare x <? y *)
+(* Circuit generation for <. *)
 Definition clt_circuit_two (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
                         (x y :(qvar*nat)) (stack: var) (sn:nat) :=
             if f =fl= Classic then
@@ -2576,7 +2290,7 @@ Definition clt_circuit_right (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> v
                 rz_full_comparator (temp) (get_size size b) (stack, sn)  (vmap y);;
                         Exp (init_v (get_size size b) (temp) x).
 
-
+(* Different cases in < *)
 Definition gen_clt_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (size:nat)  (f:flag)
                 (r:cstore) (b:btype) (stack temp:var) (sn:nat) (x y: cfac)
                                       : option (@value (option pexp * nat * option bool)) := 
@@ -2697,7 +2411,7 @@ Definition gen_ceq_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (
                       Some (Value (None, sn, Some ((a_nat2fb t1v' size =? a_nat2fb t2v' size))))
                           | _ => Some Error end | _ => Some Error end.
 
-
+(* This definition compiles conditional expressions. *)
 Definition compile_cexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (e:cexp)
                                       : option (@value (option pexp * nat * option bool)) := 
@@ -2758,6 +2472,7 @@ Definition is_qtt (t:option typ) : Prop :=
             | _ => False
  end.
 
+(* Set up theorem assumptions for cexp. *)
 Definition cexp_set_up (ce:cexp) (sl size:nat) (stack:var)
           (sn:nat) (vmap : (qvar*nat) -> var) (r:cstore) (bv:benv) (f:posi -> val) (aenv:var -> nat) (tenv:env) :=
   match ce with clt b x y => 
@@ -2850,6 +2565,7 @@ Definition no_equal_stack (temp stack:var) (ce:cexp) (size:nat) (bv:benv) (r:cst
       | iseven x => True
    end.
 
+(* Defining the equivalence relation between (cstore, circuit-run) and semantics store in QIMP. *)
 Definition cstore_store_match (smap : qvar -> nat) (s:store) (r:cstore) (bv:benv) :=
        forall x i v vl t, i < smap x -> Store.MapsTo (x,i) (v::vl) s -> 
                     BEnv.MapsTo x t bv -> ~ is_qtt (Some t) -> Store.MapsTo (x,i) v r.
@@ -3177,6 +2893,7 @@ Qed.
 
 Local Opaque comparator01.
 
+(* Main theorem for the correctness of cexp. Compilation correctness. *)
 Lemma compile_cexp_sem : forall sl size smap vmap bv fl rh rl temp stack sn e st re f aenv tenv, 
       compile_cexp size smap vmap bv fl rl temp stack sn e = Some st ->
       sem_cexp smap size rh e = Some re -> store_typed rl bv size stack -> 
@@ -3237,6 +2954,8 @@ Definition deal_result (r:cstore) (re : option (option pexp * nat * option cstor
              | Some (a,b,Some r') => Some (a,b,r')
     end.
 
+(* estore is to  store the list of statements for inv functions. 
+   Once we compile an inv operation, we need to locate the predesessor of the variable in inv. *)
 Definition estore : Type := Store.t (list pexp).
 Definition empty_estore := @Store.empty (list pexp).
 
@@ -3497,6 +3216,7 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                        | _ => Some Error
                     end.
 
+(* z  = x * y for fixedp *)
 Definition fmul_circuit_two (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y z:(qvar*nat)) (temp stack: var) (sn:nat) :=
             if f =fl= Classic then
@@ -3573,6 +3293,7 @@ Definition fmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                        | _ => Some Error
                     end.
 
+(* z  = x xor y *)
 Fixpoint bin_xor_q (n:nat) (x y : var) : exp :=
    match n with 0 => SKIP (x,0)
       | S m => CNOT (x,m) (y,m);bin_xor_q m x y
@@ -3617,6 +3338,7 @@ Definition qxor_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:
                |_ => Some Error
             end.
 
+(* init circuit for quantum Q mode variables only. *)
 Definition init_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:benv) (r:cstore) (sn:nat) (es:estore) (x y:cfac) 
               : option (@value (option pexp * nat * cstore * estore)) :=
            do vxv <- par_find_var_check smap bv size r x @
@@ -3643,6 +3365,7 @@ Definition init_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:
                |_ => Some Error
            end.
 
+(* Rshift operation. No circuit cost. *)
 Definition lrot_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:benv) (r:cstore) (sn:nat) (es:estore) (x:cfac) :=
     do vxv <- par_find_var_check smap bv size r x @
        match vxv with Value vx => 
@@ -3667,6 +3390,8 @@ Definition combine_if (sv : var) (sn:nat) (p1:pexp) (e1:option pexp) (e2:option 
                          end
     end.
 
+(* The main function to translate statements.
+   C mode statements are evaluated, while Q mode statements are to generate circuits. *)
 Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (fl:flag) (r:cstore) (temp stack:var)
                   (sn:nat) (fv:fmap) (es:estore) (bases:estore) (e:qexp) : option (@value (option pexp * nat * cstore * estore)) :=
@@ -3950,15 +3675,8 @@ Fixpoint init_estore (r:estore) (l:list (typ * var)) : estore  :=
    end.
 
 (*
-trans_qexp (sl size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
-                 (bv:benv) (r:store) (temp stack:var) (sn:nat) (fv:fmap) (e:qexp)
-
-Definition func : Type := ( fvar * list (typ * var) * qexp * cfac).
-Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
-                 (bv:benv) (fl:flag) (r:cstore) (temp stack:var)
-                  (sn:nat) (fv:fmap) (es:estore) (e:qexp) : option (@value (option pexp * nat * cstore * estore)) :=
-
-Definition fmap :Type := list (fvar * cfac * pexp * (qvar -> nat) * ((qvar*nat) -> var) * benv * cstore).
+Translating a list of functions to fmap, which contains generate circuits for functions,
+and other information for compiling function call.
 
 *) 
 
@@ -4011,10 +3729,9 @@ Fixpoint init_estore_g (l:list (typ * var)) : estore  :=
 
 
 (*
-Definition prog : Type := (nat * list (typ * var) * list func * fvar * var). 
-
-Fixpoint trans_funs (fv:fenv) (size:nat) (temp stack:var) (fl:flag) (r:cstore)
-                  (smap: qvar -> nat) (vmap : (qvar*nat) -> var) (vmaps: list ((qvar *nat)*var)) (vmap_num:nat) (fmap:fmap) (l:list func) :=
+Generating a program compiled circuit.
+We assume program is a dynamic entity, where we require users to give all inputs for the main arguments
+so that we can run the main function, and then the function call of main is compiled.
 *)
 
 Definition trans_prog' (p:prog) (flag:flag) (fv:fenv) :=
@@ -4040,6 +3757,10 @@ Definition trans_prog' (p:prog) (flag:flag) (fv:fenv) :=
     end
    end.
 
+
+(*
+Set up translation for generating code in Ocaml.
+*)
 Definition trans_prog (p:prog) (f:flag) :=
    match type_prog p with None => None | Some fv => trans_prog' p f fv end.
 
