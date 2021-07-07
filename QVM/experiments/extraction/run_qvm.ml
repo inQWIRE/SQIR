@@ -115,7 +115,7 @@ let run_multipliers size m =
   if size < size_of_m 
   then failwith "Invalid inputs to run_multipliers"
   else
-    let _ = printf "Generating circuit for TOFF-based constant multiplier, input size=%d M=%d...\n%!" size m in
+    let _ = printf "Generating circuit for TOFF-based constant multiplier, inputs size=%d M=%d...\n%!" size m in
     let cl_const_mul = fst (fst (trans_cl_const_mul size m)) in
     let (x,y,z) = count_gates cl_const_mul in
     let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
@@ -144,6 +144,55 @@ let run_multipliers size m =
     let _ = write_qasm_file ("rz-mul-" ^ fname) rz_mul in
     ();;
 
+let run_div_mod size m =
+  let size_of_m = int_of_float (ceil (log10 (float_of_int m) /. log10 2.0)) in
+  let fname = (string_of_int size) ^ ".qasm" in
+  if size < size_of_m 
+  then failwith "Invalid inputs to run_multipliers"
+  else
+    let _ = printf "Generating circuit for TOFF-based constant modder, inputs size=%d M=%d...\n%!" size m in
+    let cl_mod = fst (fst (trans_cl_mod size m)) in
+    let (x,y,z) = count_gates cl_mod in
+    let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+              (get_dim cl_mod) x y z in
+    let _ = write_qasm_file ("cl-mod-" ^ fname) cl_mod in
+
+    let _ = printf "Generating circuit for TOFF-based constant divider, inputs size=%d M=%d...\n%!" size m in
+    let cl_div = fst (fst (trans_cl_div size m)) in
+    let (x,y,z) = count_gates cl_div in
+    let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+              (get_dim cl_div) x y z in
+    let _ = write_qasm_file ("cl-div-" ^ fname) cl_div in
+    
+    let _ = printf "Generating circuit for TOFF-based constant modder/divider, inputs size=%d M=%d...\n%!" size m in
+    let cl_div_mod = fst (fst (trans_cl_div_mod size m)) in
+    let (x,y,z) = count_gates cl_div_mod in
+    let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+              (get_dim cl_div_mod) x y z in
+    let _ = write_qasm_file ("cl-div-mod-" ^ fname) cl_div_mod in
+    
+    let _ = printf "Generating circuit for QFT-based constant modder, inputs size=%d M=%d...\n%!" size m in
+    let rz_mod = fst (fst (trans_rz_mod size m)) in
+    let (x,y,z) = count_gates rz_mod in
+    let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+              (get_dim rz_mod) x y z in
+    let _ = write_qasm_file ("rz-mod-" ^ fname) rz_mod in
+
+    let _ = printf "Generating circuit for QFT-based constant divider, inputs size=%d M=%d...\n%!" size m in
+    let rz_div = fst (fst (trans_rz_div size m)) in
+    let (x,y,z) = count_gates rz_div in
+    let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+              (get_dim rz_div) x y z in
+    let _ = write_qasm_file ("rz-div-" ^ fname) rz_div in
+    
+    let _ = printf "Generating circuit for QFT-based constant modder/divider, inputs size=%d M=%d...\n%!" size m in
+    let rz_div_mod = fst (fst (trans_rz_div_mod size m)) in
+    let (x,y,z) = count_gates rz_div_mod in
+    let _ = printf "\t%d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+              (get_dim rz_div_mod) x y z in
+    let _ = write_qasm_file ("rz-div-mod-" ^ fname) rz_div_mod in
+    ();;
+
 run_modmult_experiments 2 2 3;;
 run_modmult_experiments 5 3 7;;
 run_modmult_experiments 7 13 15;;
@@ -151,12 +200,12 @@ run_modmult_experiments 17 11 31;;
 run_modmult_experiments 32 2 63;;
 
 (*
-(* stack overflows :'( *)
-let c_qfta = prog_to_sqir_real (sin_prog 4) Classic;;
+(* overflows! *)
+let c_qfta = prog_to_sqir_real (sin_prog 31) Classic;;
 let (x,y,z) = count_gates c_qfta;;
 printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
 
-let c_classic = prog_to_sqir_real (sin_prog 4) QFTA;;
+let c_classic = prog_to_sqir_real (sin_prog 31) QFTA;;
 let (x,y,z) = count_gates c_classic;;
 printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
 *)
@@ -169,3 +218,5 @@ run_adders 8 143;;
 run_adders 16 38168;;
 run_multipliers 8 143;;
 run_multipliers 16 38168;;
+run_div_mod 8 143;;
+run_div_mod 16 38168;;

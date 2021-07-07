@@ -243,8 +243,8 @@ Fixpoint exp_elim (p:exp) :=
                  | p' => CU q p'
                  end
   | Seq p1 p2 => match exp_elim p1, exp_elim p2 with
-                  | SKIP a, p2' => p2'
-                  | p1', SKIP a => p1'
+                  | SKIP _, p2' => p2'
+                  | p1', SKIP _ => p1'
                   | p1', p2' => Seq p1' p2'
                   end
   | _ => p
@@ -259,8 +259,8 @@ Fixpoint pexp_elim (p:pexp) :=
                  end
        | PSeq e1 e2 => 
               match pexp_elim e1, pexp_elim e2 with
-                  | Exp (SKIP a), p2' => p2'
-                  | p1', Exp (SKIP a) => p1'
+                  | Exp (SKIP _), p2' => p2'
+                  | p1', Exp (SKIP _) => p1'
                   | p1', p2' => PSeq p1' p2'
                   end
   | _ => p
@@ -1912,7 +1912,7 @@ Definition put_cu (v:val) (b:bool) :=
     match v with nval x r => nval b r | a => a end.
 
 Definition get_cua (v:val) := 
-    match v with nval x r => x | a => false end.
+    match v with nval x r => x | _ => false end.
 
 Lemma get_cua_eq : forall f x v, nor_mode f x -> get_cua ((f[x |-> put_cu (f x) v]) x) = v.
 Proof.

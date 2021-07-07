@@ -34,6 +34,111 @@ type pexp =
 | PCU of posi * pexp
 | PSeq of pexp * pexp
 
+(** val exp_elim : exp -> exp **)
+
+let rec exp_elim p = match p with
+| CU (q, p0) -> (match exp_elim p0 with
+                 | SKIP a -> SKIP a
+                 | x -> CU (q, x))
+| Seq (p1, p2) ->
+  (match exp_elim p1 with
+   | SKIP _ -> exp_elim p2
+   | X p0 ->
+     let p1' = X p0 in
+     (match exp_elim p2 with
+      | SKIP _ -> p1'
+      | x -> Seq (p1', x))
+   | CU (p0, e) ->
+     let p1' = CU (p0, e) in
+     (match exp_elim p2 with
+      | SKIP _ -> p1'
+      | x -> Seq (p1', x))
+   | RZ (q, p0) ->
+     let p1' = RZ (q, p0) in
+     (match exp_elim p2 with
+      | SKIP _ -> p1'
+      | x -> Seq (p1', x))
+   | RRZ (q, p0) ->
+     let p1' = RRZ (q, p0) in
+     (match exp_elim p2 with
+      | SKIP _ -> p1'
+      | x -> Seq (p1', x))
+   | HCNOT (p0, p3) ->
+     let p1' = HCNOT (p0, p3) in
+     (match exp_elim p2 with
+      | SKIP _ -> p1'
+      | x -> Seq (p1', x))
+   | x -> (match exp_elim p2 with
+           | SKIP _ -> x
+           | x0 -> Seq (x, x0)))
+| _ -> p
+
+(** val pexp_elim : pexp -> pexp **)
+
+let rec pexp_elim p = match p with
+| Exp s -> Exp (exp_elim s)
+| PCU (p0, e) ->
+  (match pexp_elim e with
+   | Exp s -> (match s with
+               | SKIP a -> Exp (SKIP a)
+               | x -> PCU (p0, (Exp x)))
+   | x -> PCU (p0, x))
+| PSeq (e1, e2) ->
+  (match pexp_elim e1 with
+   | Exp s ->
+     (match s with
+      | SKIP _ -> pexp_elim e2
+      | X p0 ->
+        let p1' = Exp (X p0) in
+        (match pexp_elim e2 with
+         | Exp s0 -> (match s0 with
+                      | SKIP _ -> p1'
+                      | x -> PSeq (p1', (Exp x)))
+         | x -> PSeq (p1', x))
+      | CU (p0, e) ->
+        let p1' = Exp (CU (p0, e)) in
+        (match pexp_elim e2 with
+         | Exp s0 -> (match s0 with
+                      | SKIP _ -> p1'
+                      | x -> PSeq (p1', (Exp x)))
+         | x -> PSeq (p1', x))
+      | RZ (q, p0) ->
+        let p1' = Exp (RZ (q, p0)) in
+        (match pexp_elim e2 with
+         | Exp s0 -> (match s0 with
+                      | SKIP _ -> p1'
+                      | x -> PSeq (p1', (Exp x)))
+         | x -> PSeq (p1', x))
+      | RRZ (q, p0) ->
+        let p1' = Exp (RRZ (q, p0)) in
+        (match pexp_elim e2 with
+         | Exp s0 -> (match s0 with
+                      | SKIP _ -> p1'
+                      | x -> PSeq (p1', (Exp x)))
+         | x -> PSeq (p1', x))
+      | x ->
+        let p1' = Exp x in
+        (match pexp_elim e2 with
+         | Exp s0 ->
+           (match s0 with
+            | SKIP _ -> p1'
+            | x0 -> PSeq (p1', (Exp x0)))
+         | x0 -> PSeq (p1', x0)))
+   | PCU (p0, e) ->
+     let p1' = PCU (p0, e) in
+     (match pexp_elim e2 with
+      | Exp s -> (match s with
+                  | SKIP _ -> p1'
+                  | x -> PSeq (p1', (Exp x)))
+      | x -> PSeq (p1', x))
+   | x ->
+     (match pexp_elim e2 with
+      | Exp s -> (match s with
+                  | SKIP _ -> x
+                  | x0 -> PSeq (x, (Exp x0)))
+      | x0 -> PSeq (x, x0)))
+| _ -> p
+
 (** val inv_exp : exp -> exp **)
 
 let rec inv_exp = function
@@ -266,6 +371,25 @@ let rec gen_vars' size l start0 x =
 let gen_vars size l =
   gen_vars' size l 0
 
+(** val findnum' : int -> int -> int -> int -> int **)
+
+let rec findnum' size x y i =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> i)
+    (fun n ->
+    if (<=) y x
+    then i
+    else findnum' n (mul (Pervasives.succ (Pervasives.succ 0)) x) y
+           (add i (Pervasives.succ 0)))
+    size
+
+(** val findnum : int -> int -> int **)
+
+let findnum x n =
+  findnum' (sub n (Pervasives.succ 0)) x
+    (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0))
+      (sub n (Pervasives.succ 0))) 0
+
 (** val copyto : var -> var -> int -> exp **)
 
 let rec copyto x y size =
@@ -273,3 +397,8 @@ let rec copyto x y size =
     (fun _ -> SKIP (x, 0))
     (fun m -> Seq ((coq_CNOT (x, m) (y, m)), (copyto x y m)))
     size
+
+(** val div_two_spec : (int -> bool) -> int -> bool **)
+
+let div_two_spec f i =
+  f (add i (Pervasives.succ 0))

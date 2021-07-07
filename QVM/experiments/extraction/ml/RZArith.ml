@@ -117,7 +117,7 @@ let real_rz_modmult_rev m c cinv size =
 let rec nat_mult' n size x ex m =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
     (fun _ -> SKIP (x, 0))
-    (fun m0 -> Seq ((one_cu_adder ex size (x, (sub size n)) m),
+    (fun m0 -> Seq ((one_cu_adder ex size (x, m0) m),
     (nat_mult' m0 size x ex (cut_n (times_two_spec m) size))))
     n
 
@@ -267,3 +267,139 @@ let vars_for_rz_adder size =
 
 let rz_adder_out size m =
   rz_adder_form x_var size m
+
+(** val rz_compare_half3 : var -> int -> posi -> (int -> bool) -> pexp **)
+
+let rz_compare_half3 x n c m =
+  PSeq ((PSeq ((Exp (rz_sub x n m)), (RQFT x))), (Exp (coq_CNOT (x, 0) c)))
+
+(** val rz_moder' :
+    int -> int -> var -> var -> posi -> (int -> bool) -> pexp **)
+
+let rec rz_moder' i n x ex c m =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> Exp (SKIP (x, 0)))
+    (fun j -> PSeq ((PSeq ((PSeq ((PSeq ((rz_compare_half3 x n c m), (PCU (c,
+    (inv_pexp (Exp (rz_sub x n m))))))), (QFT x))), (Exp
+    (coq_SWAP c (ex, j))))),
+    (rz_moder' j n x ex c (cut_n (div_two_spec m) n))))
+    i
+
+(** val rz_moder : int -> var -> var -> var -> posi -> int -> pexp **)
+
+let rz_moder n x re ex c m =
+  let i = findnum m n in
+  PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev re)))), (QFT
+  x))),
+  (rz_moder' (Pervasives.succ i) n x ex c
+    (nat2fb
+      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
+  (Exp (copyto x re n)))),
+  (inv_pexp
+    (rz_moder' (Pervasives.succ i) n x ex c
+      (nat2fb
+        (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))),
+  (inv_pexp (PSeq ((Exp (Seq ((Rev x), (Rev re)))), (QFT x)))))
+
+(** val vars_for_rz_moder' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_moder' size =
+  gen_vars size (x_var :: (y_var :: (z_var :: [])))
+
+(** val vars_for_rz_moder :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_moder size x =
+  if (=) x s_var
+  then ((((mul (Pervasives.succ size) (Pervasives.succ (Pervasives.succ
+            (Pervasives.succ 0)))), (Pervasives.succ 0)), id_nat), id_nat)
+  else vars_for_rz_moder' (Pervasives.succ size) x
+
+(** val avs_for_rz_moder : int -> int -> int * int **)
+
+let avs_for_rz_moder size x =
+  ((PeanoNat.Nat.div x (Pervasives.succ size)),
+    (PeanoNat.Nat.modulo x (Pervasives.succ size)))
+
+(** val rz_moder_out : int -> int -> pexp **)
+
+let rz_moder_out size =
+  rz_moder size x_var y_var z_var (s_var, 0)
+
+(** val rz_div : int -> var -> var -> var -> posi -> int -> pexp **)
+
+let rz_div n x re ex c m =
+  let i = findnum m n in
+  PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))),
+  (rz_moder' (Pervasives.succ i) n x ex c
+    (nat2fb
+      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
+  (Exp (copyto ex re n)))),
+  (inv_pexp
+    (rz_moder' (Pervasives.succ i) n x ex c
+      (nat2fb
+        (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))),
+  (inv_pexp (PSeq ((Exp (Rev x)), (QFT x)))))
+
+(** val vars_for_rz_div' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_div' size =
+  gen_vars size (x_var :: (y_var :: (z_var :: [])))
+
+(** val vars_for_rz_div :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_div size x =
+  if (=) x s_var
+  then ((((mul (Pervasives.succ size) (Pervasives.succ (Pervasives.succ
+            (Pervasives.succ 0)))), (Pervasives.succ 0)), id_nat), id_nat)
+  else vars_for_rz_div' (Pervasives.succ size) x
+
+(** val avs_for_rz_div : int -> int -> int * int **)
+
+let avs_for_rz_div size x =
+  ((PeanoNat.Nat.div x (Pervasives.succ size)),
+    (PeanoNat.Nat.modulo x (Pervasives.succ size)))
+
+(** val rz_div_out : int -> int -> pexp **)
+
+let rz_div_out size =
+  rz_div size x_var y_var z_var (s_var, 0)
+
+(** val rz_div_mod : int -> var -> var -> posi -> int -> pexp **)
+
+let rz_div_mod n x ex c m =
+  let i = findnum m n in
+  PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))),
+  (rz_moder' (Pervasives.succ i) n x ex c
+    (nat2fb
+      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
+  (inv_pexp (PSeq ((Exp (Rev x)), (QFT x)))))
+
+(** val vars_for_rz_div_mod' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_div_mod' size =
+  gen_vars size (x_var :: (y_var :: []))
+
+(** val vars_for_rz_div_mod :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_rz_div_mod size x =
+  if (=) x z_var
+  then ((((mul (Pervasives.succ size) (Pervasives.succ (Pervasives.succ 0))),
+         (Pervasives.succ 0)), id_nat), id_nat)
+  else vars_for_rz_div_mod' (Pervasives.succ size) x
+
+(** val avs_for_rz_div_mod : int -> int -> int * int **)
+
+let avs_for_rz_div_mod size x =
+  ((PeanoNat.Nat.div x (Pervasives.succ size)),
+    (PeanoNat.Nat.modulo x (Pervasives.succ size)))
+
+(** val rz_div_mod_out : int -> int -> pexp **)
+
+let rz_div_mod_out size =
+  rz_div_mod size x_var y_var (z_var, 0)
