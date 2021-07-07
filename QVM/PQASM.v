@@ -235,6 +235,37 @@ Notation "p1 ; p2" := (Seq p1 p2) (at level 50) : exp_scope.
 Inductive pexp := Exp (s:exp) | QFT (x:var) | RQFT (x:var)
                | H (x:var) | PCU (p:posi) (e:pexp) | PSeq (p1:pexp) (p2:pexp).
 
+
+Fixpoint exp_elim (p:exp) :=
+  match p with
+  | CU q p => match exp_elim p with
+                 | SKIP a => SKIP a 
+                 | p' => CU q p'
+                 end
+  | Seq p1 p2 => match exp_elim p1, exp_elim p2 with
+                  | SKIP _, p2' => p2'
+                  | p1', SKIP _ => p1'
+                  | p1', p2' => Seq p1' p2'
+                  end
+  | _ => p
+  end.
+
+Fixpoint pexp_elim (p:pexp) :=
+   match p with Exp s => Exp (exp_elim s)
+       | PCU p e => 
+            match pexp_elim e with
+                 | Exp (SKIP a) => Exp (SKIP a) 
+                 | e' => PCU p e'
+                 end
+       | PSeq e1 e2 => 
+              match pexp_elim e1, pexp_elim e2 with
+                  | Exp (SKIP _), p2' => p2'
+                  | p1', Exp (SKIP _) => p1'
+                  | p1', p2' => PSeq p1' p2'
+                  end
+  | _ => p
+  end.
+
 Coercion Exp : exp >-> pexp.
 
 Definition Z (p:posi) := RZ 1 p.
@@ -1881,7 +1912,7 @@ Definition put_cu (v:val) (b:bool) :=
     match v with nval x r => nval b r | a => a end.
 
 Definition get_cua (v:val) := 
-    match v with nval x r => x | a => false end.
+    match v with nval x r => x | _ => false end.
 
 Lemma get_cua_eq : forall f x v, nor_mode f x -> get_cua ((f[x |-> put_cu (f x) v]) x) = v.
 Proof.
@@ -5677,10 +5708,10 @@ Fixpoint turn_angle (rval : nat -> bool) (n : nat) : R :=
 Definition z_phase (b:bool) : R := if b then 1%R else (-1)%R.
 
 Definition compile_val (v:val) (r_max : nat) : Vector 2 := 
-   match v with nval b r => Cexp ((turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
-             | hval b1 b2 r => Cexp ((turn_angle r r_max)) .*
+   match v with nval b r => Cexp (2*PI * (turn_angle r r_max)) .* ∣ Nat.b2n b ⟩
+             | hval b1 b2 r => Cexp (2*PI * (turn_angle r r_max)) .*
                               ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)
-             | qval q r => Cexp ((turn_angle q r_max)) .* (∣0⟩ .+ (Cexp ((turn_angle r r_max))) .* ∣1⟩)
+             | qval q r => Cexp (2*PI * (turn_angle q r_max)) .* (∣0⟩ .+ (Cexp (2*PI * (turn_angle r r_max))) .* ∣1⟩)
   end.
 
 Lemma WF_compile_val : forall v r, WF_Matrix (compile_val v r).
@@ -8046,12 +8077,14 @@ Proof.
   rewrite H6. easy.
 Qed.
 
-Lemma turn_angle_add_same : forall n r q, q < n -> (turn_angle r n + rz_ang q)%R = (turn_angle (rotate r q) n)%R.
+Lemma turn_angle_add_same : forall n r q, q < n ->
+       (2 * PI * turn_angle r n + rz_ang q)%R = (2 * PI *  turn_angle (rotate r q) n)%R.
 Proof.
 
 Admitted.
 
-Lemma turn_angle_add_r_same : forall n r q, q < n -> (turn_angle r n + rrz_ang q)%R = (turn_angle (r_rotate r q) n)%R.
+Lemma turn_angle_add_r_same : forall n r q, q < n -> 
+          (2 * PI * turn_angle r n + rrz_ang q)%R = (2 * PI *  turn_angle (r_rotate r q) n)%R.
 Proof.
 
 Admitted.
@@ -8304,7 +8337,8 @@ Proof.
     rewrite vs_avs_bij_l with (dim := dim); try easy.
     inv H8. apply (H9 Nor) in H18; try easy. inv H18.
     unfold compile_val,get_cua.
-    exists (Cexp (turn_angle r rmax)). easy.
+    exists (Cexp (2 * PI * turn_angle r rmax)). 
+    easy.
     destruct H14.
     assert ((snd (trans_exp vs dim e avs)) = avs) as eq3.
     inv H12. rewrite neu_trans_state with (l := l') ; try easy. 
@@ -8635,13 +8669,14 @@ Fixpoint controlled_rotations_gen (f : vars) (dim:nat) (x:var) (n : nat) (i:nat)
 Fixpoint QFT_gen (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom dim :=
   match n with
   | 0    => SQIR.ID (find_pos f (x,0))
-  | S m => SQIR.useq (SQIR.H (find_pos f (x,m))) (SQIR.useq (controlled_rotations_gen f dim x (size-m) m)
-            (QFT_gen f dim x m size))
+  | S m => SQIR.useq  (QFT_gen f dim x m size)
+             (SQIR.useq (SQIR.H (find_pos f (x,m))) ((controlled_rotations_gen f dim x (size-m) m)))
   end.
 
 Definition trans_qft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
           QFT_gen f dim x (vsize f x) (vsize f x).
 
+(*
 Fixpoint controlled_rotations_gen_r (f : vars) (dim:nat) (x:var) (n : nat) (i:nat) : base_ucom dim :=
   match n with
   | 0 | 1 => SQIR.ID (find_pos f (x,i))
@@ -8655,9 +8690,10 @@ Fixpoint QFT_gen_r (f : vars) (dim:nat) (x:var) (n : nat) (size:nat) : base_ucom
   | S m => SQIR.useq (controlled_rotations_gen_r f dim x (size-m) m)
             (SQIR.useq (SQIR.H (find_pos f (x,m))) (QFT_gen_r f dim x m size))
   end.
+*)
 
 Definition trans_rqft (f:vars) (dim:nat) (x:var) : base_ucom dim :=
-          QFT_gen_r f dim x (vsize f x) (vsize f x).
+          invert (QFT_gen f dim x (vsize f x) (vsize f x)).
 
 Fixpoint nH (f : vars) (dim:nat) (x:var) (n:nat) : base_ucom dim :=
      match n with 0 => SQIR.ID (find_pos f (x,0))
@@ -8687,6 +8723,8 @@ Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
                              end
                             end
      end.
+
+
 
 Inductive pexp_WF : vars -> nat -> pexp -> Prop :=
       | qft_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (QFT x)
@@ -8841,3 +8879,28 @@ Lemma ccx_nor : forall f f' x y z v aenv, nor_mode f x -> nor_mode f y -> nor_mo
 Proof.
  intros. subst. apply ccx_sem. 1 - 6: assumption. 
 Qed.
+
+
+Definition id_nat := fun i :nat => i.
+Definition avs_for_arith (size:nat) := fun x => (x/size, x mod size).
+Fixpoint gen_vars' (size:nat) (l : list var) (start:nat) :=
+      match l with [] => (fun _ => (0,0,id_nat,id_nat))
+             | (x::xl) => (fun y => if x =? y then (start,size,id_nat,id_nat) else 
+                                gen_vars' size xl (start+size) y)
+      end.
+Definition gen_vars (size:nat) (l:list var) := gen_vars' size l 0.
+
+Fixpoint findnum' (size:nat) (x:nat) (y:nat) (i:nat) := 
+       match size with 0 => i
+              | S n => if y <=? x then i else findnum' n (2 * x) y (i+1)
+       end.
+
+(* find a number that is great-equal than 2^(n-1), assume that the number is less than 2^n *)
+Definition findnum (x:nat) (n:nat) := findnum' (n-1) x (2^(n-1)) 0.
+
+
+Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0) 
+                  | S m => CNOT (x,m) (y,m) ; copyto x y m
+    end.
+
+Definition div_two_spec (f:nat->bool) := fun i => f (i+1).

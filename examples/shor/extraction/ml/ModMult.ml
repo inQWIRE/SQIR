@@ -147,9 +147,10 @@ let subtractor01 n =
 let modadder21 n =
   Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((Coq_bcseq ((Coq_bcseq
     ((Coq_bcseq ((swapper02 n), (adder01 n))), (swapper02 n))),
-    (comparator01 n))), (Coq_bcseq ((Coq_bccont ((Pervasives.succ 0),
-    (subtractor01 n))), (Coq_bcx (Pervasives.succ 0)))))), (swapper02 n))),
-    (bcinv (comparator01 n)))), (swapper02 n))
+    (comparator01 n))), (Coq_bcseq
+    ((bygatectrl (Pervasives.succ 0) (subtractor01 n)), (Coq_bcx
+    (Pervasives.succ 0)))))), (swapper02 n))), (bcinv (comparator01 n)))),
+    (swapper02 n))
 
 (** val swapper12' : int -> int -> bccom **)
 
@@ -184,8 +185,8 @@ let doubler1 n =
 (** val moddoubler01 : int -> bccom **)
 
 let moddoubler01 n =
-  Coq_bcseq ((Coq_bcseq ((doubler1 n), (comparator01 n))), (Coq_bccont
-    ((Pervasives.succ 0), (subtractor01 n))))
+  Coq_bcseq ((Coq_bcseq ((doubler1 n), (comparator01 n))),
+    (bygatectrl (Pervasives.succ 0) (subtractor01 n)))
 
 (** val modadder12 : int -> bccom **)
 

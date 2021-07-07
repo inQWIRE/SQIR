@@ -1,9 +1,9 @@
 Require Import Arith NArith Vector Bvector Equality MSets OrderedTypeEx Lia.
 From QuickChick Require Import QuickChick.
-Require Import VSQIR Utilities.
+Require Import PQASM Utilities.
 Import Vector (hd, tl).
 Import Decidability (dec).
-Import VSQIR (exp(..), pexp(..), CNOT).
+Import PQASM (exp(..), pexp(..), CNOT).
 
 Module Nat_as_OT := Update_OT Nat_as_OT.
 (* Used for finite sets of variables *)

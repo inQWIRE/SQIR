@@ -62,6 +62,15 @@ let reverse_qubits n =
 let coq_QFT_w_reverse n =
   Coq_useq ((coq_QFT n), (reverse_qubits n))
 
+(** val bc2ucom : bccom -> coq_U ucom **)
+
+let rec bc2ucom = function
+| Coq_bcskip -> coq_SKIP
+| Coq_bcx a -> coq_X a
+| Coq_bcswap (a, b) -> coq_SWAP a b
+| Coq_bccont (a, bc1) -> control a (bc2ucom bc1)
+| Coq_bcseq (bc1, bc2) -> Coq_useq ((bc2ucom bc1), (bc2ucom bc2))
+
 (** val controlled_powers' : (int -> bccom) -> int -> int -> bccom **)
 
 let rec controlled_powers' f k kmax =
@@ -79,15 +88,6 @@ let rec controlled_powers' f k kmax =
 
 let controlled_powers f k =
   bc2ucom (controlled_powers' f k k)
-
-(** val map_bccom : (int -> int) -> bccom -> bccom **)
-
-let rec map_bccom f = function
-| Coq_bcskip -> Coq_bcskip
-| Coq_bcx a -> Coq_bcx (f a)
-| Coq_bcswap (a, b) -> Coq_bcswap ((f a), (f b))
-| Coq_bccont (a, bc1) -> Coq_bccont ((f a), (map_bccom f bc1))
-| Coq_bcseq (bc1, bc2) -> Coq_bcseq ((map_bccom f bc1), (map_bccom f bc2))
 
 (** val coq_QPE : int -> (int -> bccom) -> coq_U ucom **)
 

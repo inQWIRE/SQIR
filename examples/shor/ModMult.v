@@ -297,8 +297,6 @@ Lemma MAJ_correct :
     a <> b -> b <> c -> a <> c ->
     bcexec (MAJ c b a) f = ((f[a |-> majb (f a) (f b) (f c)])
                               [b |-> (f b ⊕ f a)])[c |-> (f c ⊕ f a)].
-(*Admitted. 
-(* The following proof works, but too slow. Admitted when debugging. *)*)
 Proof.
   intros ? ? ? ? Hab' Hbc' Hac'. apply functional_extensionality; intro i. simpl.
   unfold update, majb. bnauto.
@@ -310,8 +308,6 @@ Lemma UMA_correct_partial :
     f' a = majb fa fb fc ->
     f' b = (fb ⊕ fa) -> f' c = (fc ⊕ fa) ->
     bcexec (UMA c b a) f' = ((f'[a |-> fa])[b |-> fa ⊕ fb ⊕ fc])[c |-> fc].
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   unfold majb. intros. apply functional_extensionality; intro i. simpl.
   unfold update. bnauto_expand (f' a :: f' b :: f' c :: (List.nil)).
@@ -621,8 +617,6 @@ Lemma MAJseq'_efresh :
     0 < n ->
     j = 1   \/   2 + i < j < 2 + n   \/  2 + n + i < j ->
     efresh j (MAJseq' i n 0).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros. simpl. repeat (try constructor; try lia).
   simpl. repeat (try constructor; try apply IHi; try lia).
@@ -682,8 +676,6 @@ Lemma MAJseq'_correct :
     0 < n -> i < n ->
     bcexec (MAJseq' i n 0) (c ` b1 ` fb_push_n n f (fb_push_n n g h)) = 
            (c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmb i c f g) h).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros.
   - simpl. rewrite MAJ_correct by lia. simpl.
@@ -719,8 +711,6 @@ Lemma UMAseq'_correct :
     0 < n -> i < n ->
     bcexec (UMAseq' i n 0) ((c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h))
  = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros.
   - simpl. rewrite UMA_correct_partial with (fa := f 0) (fb := g 0) (fc := carry c 0 f g). 2-4 : lia.
@@ -2657,8 +2647,6 @@ Lemma reverser'_correct :
     0 < n ->
     i <= (n - 1) / 2 ->
     bcexec (reverser' i n) (fb_push_n n f g) = fb_push_n n (fbrev' i n f) g.
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros.
   - simpl. rewrite safe_swap_correct. 
