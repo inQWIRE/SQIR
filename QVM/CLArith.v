@@ -2439,6 +2439,7 @@ Qed.
 
 (** Functions for extraction & evaluation: **)
 
+(* Supporting data for adder01 *)
 Definition vars_for_adder01' (size:nat) := gen_vars size (x_var::y_var::[]).
 Definition vars_for_adder01 (size:nat) :=
   fun x => if x =? z_var then (size * 2,1,id_nat,id_nat) else vars_for_adder01' size x.
@@ -2446,6 +2447,8 @@ Definition vars_for_adder01 (size:nat) :=
 (* z = x + y *)
 Definition adder01_out (size:nat) := adder01 size x_var y_var (z_var,0).
 
+
+(* Implementing x * M circuit *)
 Definition one_cl_cu_adder (c2:posi) (ex:var) (re:var) (n:nat) (c1:posi) (M:nat -> bool) :=
   CU c2 (init_v n ex M; adder01 n ex re c1; init_v n ex M).
 
@@ -2485,6 +2488,8 @@ Definition vars_for_cl_nat_m (size:nat) :=
 Definition cl_nat_mult_out (size:nat) (M:nat -> bool) := 
   cl_nat_mult size x_var y_var (z_var,0) M.
 
+
+(* Implementing x * M circuit for fixedP values *)
 Fixpoint cl_flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:nat->bool) :=
   match n with 
   | 0 => SKIP (x,0)
@@ -2494,7 +2499,7 @@ Fixpoint cl_flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:n
 Definition cl_flt_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
   cl_flt_mult' size size x ex re c M.
 
-(* z = x * y *)
+(* z = x * y circuit for nats *)
 Definition one_cu_cl_full_adder_i (c2:posi) (y:var) (x:var) (c1:posi) (n:nat) (i:nat) := 
   CU c2 (adder_i n x y c1 i).
 
@@ -2522,7 +2527,7 @@ Definition cl_full_mult_out (size:nat) :=
    cl_full_mult size x_var y_var z_var (s_var,0).
 
 
-(* @Liyi: what are the clf functions for? *)
+(* x * y circuit for fixedP values. *)
 Definition one_cu_cl_full_adder (c2:posi) (y:var) (x:var) (c1:posi) (n:nat) := 
   CU c2 (adder01 n x y c1).
 
@@ -2550,6 +2555,8 @@ Definition clf_full_mult (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
 (* compare x <=? y *)
 Definition comparator02 n x y c1 c2 := (negator0 n x); highb01 n x y c1 c2; inv_exp (negator0 n x).
 
+
+(* x % M circuit. *)
 Fixpoint cl_moder' i (n:nat) (x y ex:var) c1 c2 (M:nat -> bool) := 
      match i with 0 => SKIP (x,0)
            | S j => init_v n y M ; comparator02 n y x c1 c2 ; 
@@ -2570,6 +2577,7 @@ Definition vars_for_cl_moder (size:nat) :=
 Definition cl_moder_out (size:nat)  := 
    cl_moder size x_var y_var z_var s_var (c_var,0) (c_var, 1).
 
+(* x / M circuit. *)
 Definition cl_div (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
     let i := findnum M n in 
          cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M)) ; copyto ex re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M))).
@@ -2585,7 +2593,7 @@ Definition cl_div_out (size:nat) :=
    cl_div size x_var y_var z_var s_var (c_var,0) (c_var, 1).
 
 
-(* mod value is in x, and ex stores div results. *)
+(* x = (x % M, x / M) mod value is in x, and ex stores div results. *)
 Definition cl_div_mod (n:nat) (x y ex:var) c1 c2 (M:nat) :=
    let i := findnum M n in cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M)).
 
