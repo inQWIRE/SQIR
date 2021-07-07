@@ -122,24 +122,31 @@ let rec nH f x n =
 let trans_h f x =
   nH f x (vsize f x)
 
-(** val trans_pexp :
+(** val trans_pexp' :
     vars -> int -> pexp -> (int -> posi) -> (coq_U ucom * vars) * (int ->
     posi) **)
 
-let rec trans_pexp vs dim exp0 avs =
+let rec trans_pexp' vs dim exp0 avs =
   match exp0 with
   | Exp s -> trans_exp vs dim s avs
   | QFT x -> (((trans_qft vs x), vs), avs)
   | RQFT x -> (((trans_rqft vs x), vs), avs)
   | H x -> (((trans_h vs x), vs), avs)
   | PCU (p, e1) ->
-    let (p0, _) = trans_pexp vs dim e1 avs in
+    let (p0, _) = trans_pexp' vs dim e1 avs in
     let (e1', _) = p0 in (((control (find_pos vs p) e1'), vs), avs)
   | PSeq (e1, e2) ->
-    let (p, avs') = trans_pexp vs dim e1 avs in
+    let (p, avs') = trans_pexp' vs dim e1 avs in
     let (e1', vs') = p in
-    let (p0, avs'') = trans_pexp vs' dim e2 avs' in
+    let (p0, avs'') = trans_pexp' vs' dim e2 avs' in
     let (e2', vs'') = p0 in (((Coq_useq (e1', e2')), vs''), avs'')
+
+(** val trans_pexp :
+    vars -> int -> pexp -> (int -> posi) -> (coq_U ucom * vars) * (int ->
+    posi) **)
+
+let trans_pexp vs dim exp0 avs =
+  trans_pexp' vs dim (pexp_elim exp0) avs
 
 (** val trans_cl_adder : int -> (coq_U ucom * vars) * (int -> posi) **)
 
@@ -194,6 +201,59 @@ let trans_rz_mul size =
   trans_pexp (vars_for_rz_nat_full_m size)
     (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
       0)))) size) (nat_full_mult_out size) (avs_for_arith size)
+
+(** val trans_cl_mod : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_cl_mod size m =
+  trans_pexp (vars_for_cl_moder size)
+    (add
+      (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
+        (Pervasives.succ 0)))) size) (Pervasives.succ (Pervasives.succ 0)))
+    (Exp (cl_moder_out size m)) (avs_for_arith size)
+
+(** val trans_cl_div : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_cl_div size m =
+  trans_pexp (vars_for_cl_div size)
+    (add
+      (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
+        (Pervasives.succ 0)))) size) (Pervasives.succ (Pervasives.succ 0)))
+    (Exp (cl_div_out size m)) (avs_for_arith size)
+
+(** val trans_cl_div_mod :
+    int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_cl_div_mod size m =
+  trans_pexp (vars_for_cl_div_mod size)
+    (add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
+      (Pervasives.succ (Pervasives.succ 0))) (Exp (cl_div_mod_out size m))
+    (avs_for_arith size)
+
+(** val trans_rz_mod : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_rz_mod size m =
+  trans_pexp (vars_for_rz_moder size)
+    (add
+      (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
+        (Pervasives.succ size)) (Pervasives.succ 0)) (rz_moder_out size m)
+    (avs_for_rz_moder size)
+
+(** val trans_rz_div : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_rz_div size m =
+  trans_pexp (vars_for_rz_div size)
+    (add
+      (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
+        (Pervasives.succ size)) (Pervasives.succ 0)) (rz_div_out size m)
+    (avs_for_rz_div size)
+
+(** val trans_rz_div_mod :
+    int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+
+let trans_rz_div_mod size m =
+  trans_pexp (vars_for_rz_div_mod size)
+    (add (mul (Pervasives.succ (Pervasives.succ 0)) (Pervasives.succ size))
+      (Pervasives.succ 0)) (rz_div_mod_out size m) (avs_for_rz_div_mod size)
 
 (** val prog_to_sqir_real : prog -> flag -> coq_U ucom **)
 

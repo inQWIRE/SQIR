@@ -306,3 +306,123 @@ let vars_for_cl_nat_full_m size x =
 
 let cl_full_mult_out size =
   cl_full_mult size x_var y_var z_var s_var (c_var, 0)
+
+(** val comparator02 : int -> var -> var -> posi -> posi -> exp **)
+
+let comparator02 n x y c1 c2 =
+  Seq ((Seq ((negator0 n x), (highb01 n x y c1 c2))),
+    (inv_exp (negator0 n x)))
+
+(** val cl_moder' :
+    int -> int -> var -> var -> var -> posi -> posi -> (int -> bool) -> exp **)
+
+let rec cl_moder' i n x y ex c1 c2 m =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun j -> Seq ((Seq ((Seq ((Seq ((Seq ((init_v n y m),
+    (comparator02 n y x c1 c2))), (CU (c2, (subtractor01 n y x c1))))),
+    (init_v n y m))), (coq_SWAP c2 (ex, j)))),
+    (cl_moder' j n x y ex c1 c2 (cut_n (div_two_spec m) n))))
+    i
+
+(** val cl_moder :
+    int -> var -> var -> var -> var -> posi -> posi -> int -> exp **)
+
+let cl_moder n x re y ex c1 c2 m =
+  let i = findnum m n in
+  Seq ((Seq
+  ((cl_moder' (Pervasives.succ i) n x y ex c1 c2
+     (nat2fb
+       (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))),
+  (copyto x re n))),
+  (inv_exp
+    (cl_moder' (Pervasives.succ i) n x y ex c1 c2
+      (nat2fb
+        (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))
+
+(** val vars_for_cl_moder' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_moder' size =
+  gen_vars size (x_var :: (y_var :: (z_var :: (s_var :: []))))
+
+(** val vars_for_cl_moder :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_moder size x =
+  if (=) x c_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ
+            (Pervasives.succ 0))))), (Pervasives.succ (Pervasives.succ 0))),
+         id_nat), id_nat)
+  else vars_for_cl_moder' size x
+
+(** val cl_moder_out : int -> int -> exp **)
+
+let cl_moder_out size =
+  cl_moder size x_var y_var z_var s_var (c_var, 0) (c_var, (Pervasives.succ
+    0))
+
+(** val cl_div :
+    int -> var -> var -> var -> var -> posi -> posi -> int -> exp **)
+
+let cl_div n x re y ex c1 c2 m =
+  let i = findnum m n in
+  Seq ((Seq
+  ((cl_moder' (Pervasives.succ i) n x y ex c1 c2
+     (nat2fb
+       (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))),
+  (copyto ex re n))),
+  (inv_exp
+    (cl_moder' (Pervasives.succ i) n x y ex c1 c2
+      (nat2fb
+        (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))
+
+(** val vars_for_cl_div' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_div' size =
+  gen_vars size (x_var :: (y_var :: (z_var :: (s_var :: []))))
+
+(** val vars_for_cl_div :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_div size x =
+  if (=) x c_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ
+            (Pervasives.succ 0))))), (Pervasives.succ (Pervasives.succ 0))),
+         id_nat), id_nat)
+  else vars_for_cl_div' size x
+
+(** val cl_div_out : int -> int -> exp **)
+
+let cl_div_out size =
+  cl_div size x_var y_var z_var s_var (c_var, 0) (c_var, (Pervasives.succ 0))
+
+(** val cl_div_mod :
+    int -> var -> var -> var -> posi -> posi -> int -> exp **)
+
+let cl_div_mod n x y ex c1 c2 m =
+  let i = findnum m n in
+  cl_moder' (Pervasives.succ i) n x y ex c1 c2
+    (nat2fb
+      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))
+
+(** val vars_for_cl_div_mod' :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_div_mod' size =
+  gen_vars size (x_var :: (y_var :: (z_var :: [])))
+
+(** val vars_for_cl_div_mod :
+    int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
+
+let vars_for_cl_div_mod size x =
+  if (=) x s_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))),
+         (Pervasives.succ (Pervasives.succ 0))), id_nat), id_nat)
+  else vars_for_cl_div_mod' size x
+
+(** val cl_div_mod_out : int -> int -> exp **)
+
+let cl_div_mod_out size =
+  cl_div_mod size x_var y_var z_var (s_var, 0) (s_var, (Pervasives.succ 0))

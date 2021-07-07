@@ -43,4 +43,14 @@ Separate Extraction
     AltPQASM.trans_rz_const_adder
     AltPQASM.trans_rz_adder
     AltPQASM.trans_rz_const_mul
-    AltPQASM.trans_rz_mul.
+    AltPQASM.trans_rz_mul
+    
+    (* QVM TOFF-based divmod *)
+    AltPQASM.trans_cl_mod
+    AltPQASM.trans_cl_div
+    AltPQASM.trans_cl_div_mod
+    
+    (* QVM QFT-based divmod *)
+    AltPQASM.trans_rz_mod
+    AltPQASM.trans_rz_div
+    AltPQASM.trans_rz_div_mod.
