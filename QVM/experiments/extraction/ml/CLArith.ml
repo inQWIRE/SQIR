@@ -207,105 +207,113 @@ let vars_for_adder01 size x =
 let adder01_out size =
   adder01 size x_var y_var (z_var, 0)
 
-(** val one_cl_cu_adder :
-    posi -> var -> var -> int -> posi -> (int -> bool) -> exp **)
+(** val coq_MAJseq'_i : int -> var -> var -> posi -> int -> exp **)
 
-let one_cl_cu_adder c2 ex re n c1 m =
-  CU (c2, (Seq ((Seq ((init_v n ex m), (adder01 n ex re c1))),
-    (init_v n ex m))))
-
-(** val cl_nat_mult' :
-    int -> int -> var -> var -> var -> posi -> (int -> bool) -> exp **)
-
-let rec cl_nat_mult' n size x ex re c m =
+let rec coq_MAJseq'_i n x y c i =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> SKIP (x, 0))
-    (fun m0 -> Seq
-    ((cl_nat_mult' m0 size x ex re c (cut_n (times_two_spec m) size)),
-    (one_cl_cu_adder (x, (sub size n)) ex re size c m)))
+    (fun _ -> coq_MAJ c (y, i) (x, 0))
+    (fun m -> Seq ((coq_MAJseq'_i m x y c i),
+    (coq_MAJ (x, m) (y, (add n i)) (x, n))))
     n
 
-(** val cl_nat_mult :
-    int -> var -> var -> var -> posi -> (int -> bool) -> exp **)
+(** val coq_MAJseq_i : int -> var -> var -> posi -> int -> exp **)
 
-let cl_nat_mult size x re ex c m =
-  cl_nat_mult' size size x ex re c m
+let coq_MAJseq_i n x y c i =
+  coq_MAJseq'_i (sub n (Pervasives.succ 0)) x y c i
+
+(** val coq_UMAseq'_i : int -> var -> var -> posi -> int -> exp **)
+
+let rec coq_UMAseq'_i n x y c i =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> coq_UMA c (y, i) (x, 0))
+    (fun m -> Seq ((coq_UMA (x, m) (y, (add n i)) (x, n)),
+    (coq_UMAseq'_i m x y c i)))
+    n
+
+(** val coq_UMAseq_i : int -> var -> var -> posi -> int -> exp **)
+
+let coq_UMAseq_i n x y c i =
+  coq_UMAseq'_i (sub n (Pervasives.succ 0)) x y c i
+
+(** val adder_i : int -> var -> var -> posi -> int -> exp **)
+
+let adder_i n x y c i =
+  Seq ((coq_MAJseq_i n x y c i), (coq_UMAseq_i n x y c i))
+
+(** val cl_nat_mult' :
+    int -> int -> var -> var -> posi -> (int -> bool) -> exp **)
+
+let rec cl_nat_mult' n size x re c m =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (re, 0))
+    (fun m0 -> Seq ((cl_nat_mult' m0 size x re c m),
+    (if m m0 then adder_i (sub size m0) x re c m0 else SKIP (re, 0))))
+    n
+
+(** val cl_nat_mult : int -> var -> var -> posi -> (int -> bool) -> pexp **)
+
+let cl_nat_mult size x re c m =
+  Exp (cl_nat_mult' size size x re c m)
 
 (** val vars_for_cl_nat_m' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
 
 let vars_for_cl_nat_m' size =
-  gen_vars size (x_var :: (y_var :: (z_var :: [])))
+  gen_vars size (x_var :: (y_var :: []))
 
 (** val vars_for_cl_nat_m :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
 
 let vars_for_cl_nat_m size x =
-  if (=) x s_var
-  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))),
-         (Pervasives.succ 0)), id_nat), id_nat)
+  if (=) x z_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ 0))), (Pervasives.succ
+         0)), id_nat), id_nat)
   else vars_for_cl_nat_m' size x
 
-(** val cl_nat_mult_out : int -> (int -> bool) -> exp **)
+(** val cl_nat_mult_out : int -> (int -> bool) -> pexp **)
 
 let cl_nat_mult_out size m =
-  cl_nat_mult size x_var y_var z_var (s_var, 0) m
+  cl_nat_mult size x_var y_var (z_var, 0) m
 
-(** val one_cu_cl_full_adder : posi -> var -> var -> posi -> int -> exp **)
+(** val one_cu_cl_full_adder_i :
+    posi -> var -> var -> posi -> int -> int -> exp **)
 
-let one_cu_cl_full_adder c2 y x c1 n =
-  CU (c2, (adder01 n x y c1))
+let one_cu_cl_full_adder_i c2 y x c1 n i =
+  CU (c2, (adder_i n x y c1 i))
 
-(** val cl_full_mult' :
-    int -> int -> var -> var -> var -> var -> posi -> exp **)
+(** val cl_full_mult' : int -> int -> var -> var -> var -> posi -> exp **)
 
-let rec cl_full_mult' n size x y re ex c =
+let rec cl_full_mult' n size x y re c =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> SKIP (x, 0))
-    (fun m -> Seq ((Seq ((Seq ((cl_full_mult' m size x y re ex c),
-    (one_cu_cl_full_adder (x, m) re y c size))),
-    (coq_SWAP (y, (sub size (Pervasives.succ 0))) (ex, m)))), (Lshift y)))
+    (fun _ -> SKIP (re, 0))
+    (fun m -> Seq ((cl_full_mult' m size x y re c),
+    (one_cu_cl_full_adder_i (y, m) x re c (sub size m) m)))
     n
 
-(** val cl_full_mult_quar : int -> var -> var -> var -> var -> posi -> exp **)
+(** val cl_full_mult : int -> var -> var -> var -> posi -> pexp **)
 
-let cl_full_mult_quar size x y re ex c =
-  cl_full_mult' size size x y re ex c
-
-(** val clean_high : int -> int -> var -> var -> exp **)
-
-let rec clean_high n size y ex =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> SKIP (y, 0))
-    (fun m -> Seq ((Seq ((clean_high m size y ex),
-    (coq_SWAP (y, (sub size (Pervasives.succ 0))) (ex, m)))), (Lshift y)))
-    n
-
-(** val cl_full_mult : int -> var -> var -> var -> var -> posi -> pexp **)
-
-let cl_full_mult size x y re ex c =
-  Exp (Seq ((cl_full_mult_quar size x y re ex c),
-    (inv_exp (clean_high size size y ex))))
+let cl_full_mult size x y re c =
+  Exp (cl_full_mult' size size x y re c)
 
 (** val vars_for_cl_nat_full_m' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
 
 let vars_for_cl_nat_full_m' size =
-  gen_vars size (x_var :: (y_var :: (z_var :: (s_var :: []))))
+  gen_vars size (x_var :: (y_var :: (z_var :: [])))
 
 (** val vars_for_cl_nat_full_m :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
 
 let vars_for_cl_nat_full_m size x =
-  if (=) x c_var
-  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ
-            (Pervasives.succ 0))))), (Pervasives.succ 0)), id_nat), id_nat)
+  if (=) x s_var
+  then ((((mul size (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))),
+         (Pervasives.succ 0)), id_nat), id_nat)
   else vars_for_cl_nat_full_m' size x
 
 (** val cl_full_mult_out : int -> pexp **)
 
 let cl_full_mult_out size =
-  cl_full_mult size x_var y_var z_var s_var (c_var, 0)
+  cl_full_mult size x_var y_var z_var (s_var, 0)
 
 (** val comparator02 : int -> var -> var -> posi -> posi -> exp **)
 

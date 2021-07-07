@@ -9,7 +9,7 @@ Require Import AltGateSet2.
 Require Import PQASM.
 Require Import RZArith.
 Require Import CLArith.
-Require Import QIMP.
+(*Require Import QIMP.*)
 
 Definition rz_ang (n:nat) : R := ((R2 * PI)%R / R2^n). (* redefined using R2 *)
 
@@ -110,11 +110,11 @@ Definition trans_cl_adder (size:nat) :=
 
 (* z = M * x (TOFF-based) *)
 Definition trans_cl_const_mul (size M:nat) :=
-  trans_pexp (CLArith.vars_for_cl_nat_m size) (3 * size + 1) (CLArith.cl_nat_mult_out size (nat2fb M)) (PQASM.avs_for_arith size).
+  trans_pexp (CLArith.vars_for_cl_nat_m size) (2 * size + 1) (CLArith.cl_nat_mult_out size (nat2fb M)) (PQASM.avs_for_arith size).
 
 (* z = x * y (TOFF-based) *)
 Definition trans_cl_mul (size:nat) :=
-  trans_pexp (CLArith.vars_for_cl_nat_full_m size) (4 * size + 1) (CLArith.cl_full_mult_out size) (PQASM.avs_for_arith size).
+  trans_pexp (CLArith.vars_for_cl_nat_full_m size) (3 * size + 1) (CLArith.cl_full_mult_out size) (PQASM.avs_for_arith size).
 
 (* z = M + x (QFT-based) *)
 Definition trans_rz_const_adder (size M:nat) :=
@@ -130,7 +130,7 @@ Definition trans_rz_const_mul (size M:nat) :=
 
 (* z = x * y (QFT-based) *)
 Definition trans_rz_mul (size:nat) :=
-  trans_pexp (RZArith.vars_for_rz_nat_full_m size) (4 * size) (RZArith.nat_full_mult_out size) (PQASM.avs_for_arith size). 
+  trans_pexp (RZArith.vars_for_rz_nat_full_m size) (3 * size) (RZArith.nat_full_mult_out size) (PQASM.avs_for_arith size). 
 
 (* z = x mod y (TOFF-based) *)
 Definition trans_cl_mod (size M:nat) :=
@@ -156,12 +156,14 @@ Definition trans_rz_div (size M:nat) :=
 Definition trans_rz_div_mod (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_div_mod size) (2 * (S size) + 1) (RZArith.rz_div_mod_out size M) (RZArith.avs_for_rz_div_mod size). 
 
+(*
 (* Compile a prog to a circuit. *)
 Definition prog_to_sqir_real (p:prog) (f:flag) : ucom U :=
   match prog_to_sqir p f with 
   | Some (d,size,p,vars,avs) => fst (fst (trans_pexp vars d p avs))
   | None => AltGateSet2.SKIP
 end.
+*)
 
 (* Redefine funcs in RZArith and CLArith to use the new trans_pexp *)
 Definition trans_rz_modmult_rev (M C Cinv size:nat) :=

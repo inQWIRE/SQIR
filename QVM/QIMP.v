@@ -3146,17 +3146,17 @@ Definition fsub_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
 
 (*nat : x = y * z *)
 Definition nmul_circuit_two (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
-                        (x y z:(qvar*nat)) (temp stack: var) (sn:nat) :=
+                        (x y z:(qvar*nat)) (stack: var) (sn:nat) :=
             if f =fl= Classic then
-               cl_full_mult size (vmap y) (vmap z) (vmap x) (temp) (stack,sn)
+               cl_full_mult size (vmap y) (vmap z) (vmap x) (stack,sn)
             else 
-               nat_full_mult size (vmap y) (vmap z) (vmap x) (temp).
+               nat_full_mult size (vmap y) (vmap z) (vmap x).
 
 
 Definition nmul_circuit_one (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
-                        (x y :(qvar*nat)) (z:(nat->bool)) (stack temp: var) (sn:nat) :=
+                        (x y :(qvar*nat)) (z:(nat->bool)) (stack: var) (sn:nat) :=
             if f =fl= Classic then
-                     Exp (cl_nat_mult size (vmap y) (vmap x) temp (stack,sn) z)
+                     (cl_nat_mult size (vmap y) (vmap x) (stack,sn) z)
             else nat_mult size (vmap y) (vmap x) z.
 
 Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
@@ -3172,8 +3172,8 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                     match vyv with Value vy => 
                      match vzv with Value vz =>
                      do exps <- Store.find vx es @
-                         Some (Value (Some (nmul_circuit_two size f vmap vy vz vx temp stack sn),sn,r,
-                      Store.add vx ((nmul_circuit_two size f vmap vy vz vx temp stack sn)::exps) es))
+                         Some (Value (Some (nmul_circuit_two size f vmap vy vz vx stack sn),sn,r,
+                      Store.add vx ((nmul_circuit_two size f vmap vy vz vx stack sn)::exps) es))
                       | _ => Some Error
                      end
                        | _ => Some Error
@@ -3184,8 +3184,8 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                      match vyv with Value vy => 
                        match vzv with Value tzv => 
                      do exps <- Store.find vx es @
-                           Some (Value (Some (nmul_circuit_one size f vmap vx vy tzv stack temp sn),sn,r,
-                      Store.add vx ((nmul_circuit_one size f vmap vx vy tzv stack temp sn)::exps) es))
+                           Some (Value (Some (nmul_circuit_one size f vmap vx vy tzv stack sn),sn,r,
+                      Store.add vx ((nmul_circuit_one size f vmap vx vy tzv stack sn)::exps) es))
                       | _ => Some Error
                      end
                        | _ => Some Error
@@ -3196,8 +3196,8 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                      match vzv with Value vz => 
                        match vyv with Value tyv => 
                      do exps <- Store.find vx es @
-                           Some (Value (Some (nmul_circuit_one size f vmap vx vz tyv stack temp sn),sn,r,
-                      Store.add vx ((nmul_circuit_one size f vmap vx vz tyv stack temp sn)::exps) es))
+                           Some (Value (Some (nmul_circuit_one size f vmap vx vz tyv stack sn),sn,r,
+                      Store.add vx ((nmul_circuit_one size f vmap vx vz tyv stack sn)::exps) es))
                       | _ => Some Error
                      end
                        | _ => Some Error
@@ -3221,19 +3221,19 @@ Definition fmul_circuit_two (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y z:(qvar*nat)) (temp stack: var) (sn:nat) :=
             if f =fl= Classic then
                Exp (Rev (vmap y); Rev (vmap z); Rev (vmap x));;
-               cl_full_mult size (vmap y) (vmap z) (vmap x) (temp) (stack,sn);;
+               clf_full_mult size (vmap y) (vmap z) (vmap x) (temp) (stack,sn);;
                (inv_pexp (Exp (Rev (vmap y); Rev (vmap z); Rev (vmap x))))
             else 
                Exp (Rev (vmap y); Rev (vmap z); Rev (vmap x));;
-               nat_full_mult size (vmap y) (vmap z) (vmap x) (temp);;
+               flt_full_mult size (vmap y) (vmap z) (vmap x) (temp);;
                (inv_pexp (Exp (Rev (vmap y); Rev (vmap z); Rev (vmap x)))).
 
 
 Definition fmul_circuit_one (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y :(qvar*nat)) (z:(nat->bool)) (stack temp: var) (sn:nat) :=
             if f =fl= Classic then
-                     Exp (cl_nat_mult size (vmap y) (vmap x) temp (stack,sn) z)
-            else nat_mult size (vmap y) (vmap x) z.
+                     Exp (cl_flt_mult size (vmap y) (vmap x) temp (stack,sn) z)
+            else flt_mult size (vmap y) (vmap x) z.
 
 
 Definition fmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
