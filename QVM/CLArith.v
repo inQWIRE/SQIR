@@ -2491,7 +2491,7 @@ Fixpoint cl_flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (re:var) (c:posi) (M:n
   | S m => one_cl_cu_adder (x,size - n) ex re size c M; 
           cl_flt_mult' m size x ex re c (cut_n (div_two_spec M) size)
   end.
-Definition flt_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
+Definition cl_flt_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> bool) := 
   cl_flt_mult' size size x ex re c M.
 
 (* z = x * y *)
