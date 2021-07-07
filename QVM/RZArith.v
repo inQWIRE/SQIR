@@ -3020,7 +3020,7 @@ Fixpoint clean_high_flt (n:nat) (size:nat) (y:var) (ex:var) :=
    ex is in nor_mode. *)
 Definition flt_full_mult (size:nat) (x y:var) (re:var) (ex:var) :=
   Exp (Rev re; Rev x; Rev y);; QFT re ;;
-  Exp (nat_full_mult_quar size x y re ex ; inv_exp (clean_high_flt size size y ex)) ;;
+  Exp (flt_full_mult_quar size x y re ex ; inv_exp (clean_high_flt size size y ex)) ;;
   RQFT re ;;(Exp (Rev re; Rev x; Rev y)).
 
 (*
