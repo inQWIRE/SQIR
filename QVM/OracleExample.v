@@ -28,23 +28,23 @@ Local Open Scope nat_scope.
 Fixpoint rotate_left_n (x : qvar) n :=
   match n with
   | 0 => skip
-  | S n' => slrot Nat (Nor (Var x));;; rotate_left_n x n'
+  | S n' => slrot (Nor (Var x));;; rotate_left_n x n'
   end.
 
 (*define example hash_function as the oracle for grover's search.
   https://qibo.readthedocs.io/en/stable/tutorials/hash-grover/README.html *)
 Definition qr_qexp (a b c d : qvar) :=
-  nadd QFTA (Nor (Var b)) (Nor (Var a));;;
-  qxor Nat (Nor (Var a)) (Nor (Var d));;;
+  nadd (Nor (Var a)) (Nor (Var b));;;
+  qxor (Nor (Var d)) (Nor (Var a)) ;;;
   rotate_left_n d (32 - 16);;;
-  nadd QFTA (Nor (Var d)) (Nor (Var c));;;
-  qxor Nat (Nor (Var c)) (Nor (Var b));;;
+  nadd (Nor (Var c)) (Nor (Var d));;;
+  qxor (Nor (Var b)) (Nor (Var c));;;
   rotate_left_n b (32 - 12);;;
-  nadd QFTA (Nor (Var b)) (Nor (Var a));;;
-  qxor Nat (Nor (Var a)) (Nor (Var d));;;
+  nadd (Nor (Var a)) (Nor (Var b));;;
+  qxor (Nor (Var d)) (Nor (Var a));;;
   rotate_left_n d (32 - 8);;;
-  nadd QFTA (Nor (Var d)) (Nor (Var c));;;
-  qxor Nat (Nor (Var c)) (Nor (Var b));;;
+  nadd (Nor (Var c)) (Nor (Var d));;;
+  qxor (Nor (Var b)) (Nor (Var c));;;
   rotate_left_n b (32 - 7).
 
 Open Scope bits_scope.
@@ -82,8 +82,8 @@ Definition a : var := 0.
 Definition b : var := 1.
 Definition c : var := 2.
 Definition d : var := 3.
-Definition tmp : var := 4.
-Definition stack : var := 5.
+Definition tmp : var := 101.
+Definition stack : var := 102.
 
 Definition qr_vmap : qvar * nat -> var :=
   fun '(x, _) =>
@@ -93,21 +93,34 @@ Definition qr_vmap : qvar * nat -> var :=
   end.
 
 Definition qr_benv :=
-  gen_genv (cons (Nat, a) (cons (Nat, b) (cons (Nat, c) (cons (Nat, d) nil)))).
+ match
+  gen_genv (cons (TNor Q Nat, a) (cons (TNor Q Nat, b) (cons (TNor Q Nat, c) (cons (TNor Q Nat, d) nil))))
+  with None => empty_benv | Some bv => bv
+ end.
+
+Definition qr_estore := init_estore_g (map (fun x => (TNor Q Nat, x)) (seq 0 16)).
+
+Definition qr_smap := 
+(gen_smap_l (cons (TNor Q Nat, a) (cons (TNor Q Nat, b) (cons (TNor Q Nat, c) (cons (TNor Q Nat, d) nil)))) (fun _ => 0)).
 
 Definition compile_qr := 
   trans_qexp
-    0 32 (fun _ => 1) qr_vmap qr_benv (Reg.empty _) tmp stack 0 nil
+    32 (fun _ => 1) qr_vmap qr_benv QFTA empty_cstore tmp stack 0 nil qr_estore qr_estore
     (qr_qexp (G a) (G b) (G c) (G d)).
 
 Definition qr_pexp : pexp.
 Proof.
+(*
   destruct (compile_qr) eqn:E1.
+  destruct v.
+  destruct x.
   - destruct p, p, o.
     + apply p.
     + discriminate.
   - discriminate.
 Defined.
+*)
+Admitted.
 
 Definition qr_env : f_env := fun _ => 32.
 
@@ -167,21 +180,27 @@ Module DRTesting.
     | G x' => x'
     end.
 
-  Definition dr_benv := gen_genv (map (fun x => (Nat, x)) (seq 0 16)).
+  Definition dr_benv :=
+   match  gen_genv (map (fun x => (TNor Q Nat, x)) (seq 0 16)) with None => empty_benv | Some bv => bv end.
 
   Definition compile_dr :=
-    trans_qexp 0 32 (fun _ => 1) dr_vmap dr_benv (Reg.empty _) tmp stack 0 nil
+    trans_qexp 32 (fun _ => 1) dr_vmap dr_benv QFTA (empty_cstore) tmp stack 0 nil qr_estore qr_estore
     (dr_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
              (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
 
   Definition dr_pexp : pexp.
   Proof.
+(*
+
     destruct (compile_dr) eqn:E1.
     - destruct p, p, o.
       + apply p.
       + discriminate.
     - discriminate.
   Defined.
+*)
+  Admitted.
+
 
   Definition dr_env : f_env := fun _ => 32.
 
@@ -326,22 +345,26 @@ Module ChaChaTesting.
     | G x' => x'
     end.
 
-  Definition chacha_benv := gen_genv (map (fun x => (Nat, x)) (seq 0 16)).
+  Definition chacha_benv := 
+   match gen_genv (map (fun x => (TNor Q Nat, x)) (seq 0 16)) with None => empty_benv | Some bv => bv end.
 
   Definition compile_chacha :=
     trans_qexp
-    0 32 (fun _ => 1) chacha_vmap chacha_benv (Reg.empty _) tmp stack 0 nil
+    32 (fun _ => 1) chacha_vmap chacha_benv QFTA (empty_cstore) tmp stack 0 nil qr_estore qr_estore
     (chacha_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
              (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
 
   Definition chacha_pexp : pexp.
   Proof.
+(*
     destruct (compile_chacha) eqn:E1.
     - destruct p, p, o.
       + apply p.
       + discriminate.
     - discriminate.
   Defined.
+*)
+Admitted.
 
   Definition chacha_env : f_env := fun _ => 32.
 
@@ -431,23 +454,23 @@ Definition out : qvar := G 16.
 Definition collision_qexp
   (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 : DWORD) :=
   chacha_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15;;;
-  qif (ceq QFTA Nat (Nor (Var x0)) (Nor (Num (getBit v0))))
-  (qif (ceq QFTA Nat (Nor (Var x1)) (Nor (Num (getBit v1))))
-  (qif (ceq QFTA Nat (Nor (Var x2)) (Nor (Num (getBit v2))))
-  (qif (ceq QFTA Nat (Nor (Var x3)) (Nor (Num (getBit v3))))
-  (qif (ceq QFTA Nat (Nor (Var x4)) (Nor (Num (getBit v4))))
-  (qif (ceq QFTA Nat (Nor (Var x5)) (Nor (Num (getBit v5))))
-  (qif (ceq QFTA Nat (Nor (Var x6)) (Nor (Num (getBit v6))))
-  (qif (ceq QFTA Nat (Nor (Var x7)) (Nor (Num (getBit v7))))
-  (qif (ceq QFTA Nat (Nor (Var x8)) (Nor (Num (getBit v8))))
-  (qif (ceq QFTA Nat (Nor (Var x9)) (Nor (Num (getBit v9))))
-  (qif (ceq QFTA Nat (Nor (Var x10)) (Nor (Num (getBit v10))))
-  (qif (ceq QFTA Nat (Nor (Var x11)) (Nor (Num (getBit v11))))
-  (qif (ceq QFTA Nat (Nor (Var x12)) (Nor (Num (getBit v12))))
-  (qif (ceq QFTA Nat (Nor (Var x13)) (Nor (Num (getBit v13))))
-  (qif (ceq QFTA Nat (Nor (Var x14)) (Nor (Num (getBit v14))))
-  (qif (ceq QFTA Nat (Nor (Var x15)) (Nor (Num (getBit v15))))
-  (init Bl (Nor (Var out)) (Nor (Num (fun _ => true))))
+  qif (ceq Nat (Nor (Var x0)) (Nor (Num (getBit v0))))
+  (qif (ceq Nat (Nor (Var x1)) (Nor (Num (getBit v1))))
+  (qif (ceq Nat (Nor (Var x2)) (Nor (Num (getBit v2))))
+  (qif (ceq Nat (Nor (Var x3)) (Nor (Num (getBit v3))))
+  (qif (ceq Nat (Nor (Var x4)) (Nor (Num (getBit v4))))
+  (qif (ceq Nat (Nor (Var x5)) (Nor (Num (getBit v5))))
+  (qif (ceq Nat (Nor (Var x6)) (Nor (Num (getBit v6))))
+  (qif (ceq Nat (Nor (Var x7)) (Nor (Num (getBit v7))))
+  (qif (ceq Nat (Nor (Var x8)) (Nor (Num (getBit v8))))
+  (qif (ceq Nat (Nor (Var x9)) (Nor (Num (getBit v9))))
+  (qif (ceq Nat (Nor (Var x10)) (Nor (Num (getBit v10))))
+  (qif (ceq Nat (Nor (Var x11)) (Nor (Num (getBit v11))))
+  (qif (ceq Nat (Nor (Var x12)) (Nor (Num (getBit v12))))
+  (qif (ceq Nat (Nor (Var x13)) (Nor (Num (getBit v13))))
+  (qif (ceq Nat (Nor (Var x14)) (Nor (Num (getBit v14))))
+  (qif (ceq Nat (Nor (Var x15)) (Nor (Num (getBit v15))))
+  (init (Nor (Var out)) (Nor (Num (fun _ => true))))
   skip) skip) skip) skip) skip) skip) skip) skip)
   skip) skip) skip) skip) skip) skip) skip) skip.
 
@@ -545,7 +568,7 @@ Definition x_n (size:nat): func :=
 ,Nor (Var (L e))).
 
 Definition taylor_sin : func := 
-     (f, ((TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
+     (f, ((TNor C Nat, m)::(TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
               (TNor C Nat,g)::(TNor C Nat,n)::(TNor C Nat, xc)::(TNor C Nat,fac)
                ::(TNor C FixedP,rc)::(TNor Q FixedP,re)::[]),
                          init (Nor (Var (L re))) (Nor (Var (G x)));;;
@@ -557,7 +580,7 @@ Definition taylor_sin : func :=
                          fmul (Index (L x3) (Num (nat2fb 4))) (Index (L x3) (Num (nat2fb 3))) (Nor (Var (L x2)));;;
                          ncadd (Nor (Var (L n))) (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
                          ncadd (Nor (Var  (L xc))) (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
-         qfor g (Nor (Num (nat2fb 5))) 
+         qfor g (Nor ((Var (L m)))) 
              (qif (iseven (Nor (Var (L g)))) 
                       (ncadd (Nor (Var ((L n)))) (Nor (Var ((L n)))) (Nor (Num (nat2fb 2)));;;
                        nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
