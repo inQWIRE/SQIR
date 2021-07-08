@@ -939,7 +939,7 @@ Fixpoint type_qexp (fv:fenv) (bv:benv) (e:qexp):=
              do re1 <- type_factor bv Nat x @
                 do re2 <- type_factor bv Nat y @ 
                   do re3 <- type_factor bv Nat v @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) && (fst re3 =a= C) then ret bv else None
+                       if (fst re3 =a= C) then ret bv else None
 
              | nmod x y v => 
              do re1 <- type_factor bv Nat x @
@@ -3365,6 +3365,45 @@ Definition init_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:
                |_ => Some Error
            end.
 
+(* ndiv circuit for quantum Q/C mode variables only. *)
+Definition div_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
+                 (bv:benv) (fl:flag) (r:cstore) (temp temp1 stack:var) (sn:nat) (es:estore) (x y:cfac) (z:nat -> bool)
+              : option (@value (option pexp * nat * cstore * estore)) :=
+           do vxv <- par_find_var_check smap bv size r x @
+            match vxv with Value vx =>
+              do t <- BEnv.find (fst vx) bv @
+              if is_q t then 
+                do t2 <- type_factor bv (get_ct t) y @
+                 if fst t2 =a= Q then
+                  do vyv <- par_find_var_check smap bv size r y @
+                   match vyv with Value vy =>
+                    do exps <- Store.find vx es @ 
+                     if fl =fl= QFTA then 
+                     Some (Value (Some ((rz_div size (vmap vy) (vmap vx) temp (a_nat2fb z size))) ,sn,r,
+                          Store.add vx (((rz_div size (vmap vy) (vmap vx) temp (a_nat2fb z size)))::exps) es))
+                     else 
+                     Some (Value (Some (Exp (cl_div size (vmap vy) (vmap vx) temp temp1 (stack,sn) (a_nat2fb z size))),sn,r,
+                          Store.add vx (Exp ((cl_div size (vmap vy) (vmap vx) temp temp1 (stack,sn) (a_nat2fb z size)))::exps) es))
+
+                   | _ => Some Error
+                  end
+                 else do t2v <- par_eval_cfac_check smap bv size r (snd t2) y @
+                   match t2v with Value t2v' => 
+                    do exps <- Store.find vx es @ 
+                     Some (Value (Some (Exp (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v')),sn,r,
+                      Store.add vx ((Exp (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v'))::exps) es))
+                    | _ => Some Error
+                   end
+               else do t2v <- par_eval_cfac_check smap bv size r Nat y @
+                         match t2v with Value t2v' => 
+                               Some (Value ((None,sn,Store.add vx (nat2fb ((a_nat2fb t2v' size) / (a_nat2fb z size))) r,es)))
+                             | _ => Some Error
+                         end
+
+               |_ => Some Error
+           end.
+
+
 (* Rshift operation. No circuit cost. *)
 Definition lrot_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:benv) (r:cstore) (sn:nat) (es:estore) (x:cfac) :=
     do vxv <- par_find_var_check smap bv size r x @
@@ -3393,14 +3432,14 @@ Definition combine_if (sv : var) (sn:nat) (p1:pexp) (e1:option pexp) (e2:option 
 (* The main function to translate statements.
    C mode statements are evaluated, while Q mode statements are to generate circuits. *)
 Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
-                 (bv:benv) (fl:flag) (r:cstore) (temp stack:var)
+                 (bv:benv) (fl:flag) (r:cstore) (temp temp1 stack:var)
                   (sn:nat) (fv:fmap) (es:estore) (bases:estore) (e:qexp) : option (@value (option pexp * nat * cstore * estore)) :=
    match e with qfor x n e' => 
      do t2v' <- par_eval_cfac_check smap bv size r Nat n @
        match t2v' with Value t2v =>
          let fix trans_while (r:cstore) (sn:nat) (i:nat) : option (@value (option pexp * nat * cstore * estore)) :=
             match i with 0 => Some (Value (None,sn,r,es))
-                     | S m => do re <- trans_qexp size smap vmap bv fl r temp stack sn fv bases bases e' @
+                     | S m => do re <- trans_qexp size smap vmap bv fl r temp temp1 stack sn fv bases bases e' @
                                match re with Value (cir,sn',r',es') =>
                                  do re' <- trans_while r' sn' m @
                                   match re' with Value (cir',sn'',r'',es'') =>
@@ -3448,13 +3487,13 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
 
            | qif ce e1 e2 => do ce_val <- compile_cexp size smap vmap bv fl r temp stack sn ce @
                  match ce_val with Value (cir,sn',Some true) => 
-                   trans_qexp size smap vmap bv fl r temp stack sn' fv bases bases e1
+                   trans_qexp size smap vmap bv fl r temp temp1 stack sn' fv bases bases e1
                       | Value (cir,sn',Some false) => 
-                   trans_qexp size smap vmap bv fl r temp stack sn' fv bases bases e2
+                   trans_qexp size smap vmap bv fl r temp temp1 stack sn' fv bases bases e2
                 | Value (Some cir,sn',_) => 
-                 do e1_val <- trans_qexp size smap vmap bv fl r temp stack sn' fv bases bases e1 @
+                 do e1_val <- trans_qexp size smap vmap bv fl r temp temp1 stack sn' fv bases bases e1 @
                    match e1_val with Value (e1_cir,sn1,r1,es1)  =>
-                  do e2_val <- trans_qexp size smap vmap bv fl r1 temp stack sn1 fv bases bases e2 @
+                  do e2_val <- trans_qexp size smap vmap bv fl r1 temp temp1 stack sn1 fv bases bases e2 @
                    match e2_val with Value (e2_cir,sn2,r2,es2) => 
                            Some (Value (combine_if stack sn cir e1_cir e2_cir,sn2,r2,es))
                          | _ => Some Error
@@ -3494,12 +3533,10 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
            | skip => Some (Value (None,sn,r,es))
 
 
-           | ndiv x y n => do t2v <- par_eval_cfac_check smap bv size r Nat y @
-                             do t3v <- par_eval_cfac_check smap bv size r Nat n @
-                              do vx <- par_find_var_check smap bv size r x @
-                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx' (nat2fb ((a_nat2fb t2v' size) / (a_nat2fb t3v' size))) r,es)))
-                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
+           | ndiv x y n => do t2v <- par_eval_cfac_check smap bv size r Nat n @
+                           match t2v with Value t2v' => div_c size smap vmap bv fl r temp temp1 stack sn es x y t2v'
+                                     | _ => Some Error
+                           end
 
 
            | nmod x y n => do t2v <- par_eval_cfac_check smap bv size r Nat y @
@@ -3568,9 +3605,9 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                                       / (a_nat2fb t3v' size)) mod 2^size))) r,es)))
                              | _ => Some Error end | _ => Some Error end | _ => Some Error end
 
-           | qseq e1 e2 => match trans_qexp size smap vmap bv fl r temp stack sn fv es bases e1 with None => None
+           | qseq e1 e2 => match trans_qexp size smap vmap bv fl r temp temp1 stack sn fv es bases e1 with None => None
                     | Some (Value ( e1',sn1,store1,es1)) => 
-                     match trans_qexp size smap vmap bv fl store1 temp stack sn1 fv es1 bases e2 with None => None
+                     match trans_qexp size smap vmap bv fl store1 temp temp1 stack sn1 fv es1 bases e2 with None => None
                       | Some (Value ( e2',sn2,store2,es2)) => Some (Value (combine_seq e1' e2',sn2,store2,es2))
                       | _ => Some Error
                      end
@@ -3680,7 +3717,7 @@ and other information for compiling function call.
 
 *) 
 
-Fixpoint trans_funs (fv:fenv) (size sn:nat) (temp stack:var) (fl:flag) (r:cstore) (es:estore)
+Fixpoint trans_funs (fv:fenv) (size sn:nat) (temp temp1 stack:var) (fl:flag) (r:cstore) (es:estore)
                   (smap: qvar -> nat) (vmap : (qvar*nat) -> var) 
             (vmaps: list ((qvar *nat)*var)) (vmap_num:nat) (fmap:fmap) (l:list func) :=
     match l with [] => Some (Value (vmaps , sn, fmap))
@@ -3689,15 +3726,15 @@ Fixpoint trans_funs (fv:fenv) (size sn:nat) (temp stack:var) (fl:flag) (r:cstore
                            | Some (ls',e',bv,rx') => 
                     match trans_qexp size 
                    (gen_smap_l ls smap) (gen_vmap_l ls vmap vmap_num)
-                     bv fl (init_cstore r (ls)) temp stack 0 fmap (init_estore es ls) (init_estore es ls) e
+                     bv fl (init_cstore r (ls)) temp temp1 stack 0 fmap (init_estore es ls) (init_estore es ls) e
                     with None => None
                     | Some Error => Some Error
                     | Some (Value (None,sn1,store1,es)) => 
-         trans_funs fv size sn temp stack fl r es smap vmap vmaps vmap_num ((f,rx,Exp (SKIP ((stack),0)), (gen_smap_l ls smap),
+         trans_funs fv size sn temp temp1 stack fl r es smap vmap vmaps vmap_num ((f,rx,Exp (SKIP ((stack),0)), (gen_smap_l ls smap),
                               (gen_vmap_l ls vmap vmap_num),bv,store1)::fmap) xl
                   | Some (Value (Some e1,sn1,store1,es)) =>
         match gen_vmap_ll ls vmaps vmap_num with (vmaps',vmap_num') =>
-         trans_funs fv size (Nat.max sn sn1) temp stack fl r es smap (gen_vmap_l ls vmap vmap_num)
+         trans_funs fv size (Nat.max sn sn1) temp temp1 stack fl r es smap (gen_vmap_l ls vmap vmap_num)
                  vmaps' vmap_num' ((f,rx,Exp (SKIP ((stack),0)), (gen_smap_l ls smap),
                               (gen_vmap_l ls vmap vmap_num),bv,store1)::fmap) xl
         end
@@ -3713,13 +3750,14 @@ Fixpoint gen_vmap_g' (l:list (typ * var)) (vmap:(qvar*nat) -> var) (i:nat) :=
 Definition gen_vmap_g (l:list (typ * var)) := gen_vmap_g' l (fun _ => 0) 2.
 
 Definition temp : var := 0.
-Definition stack : var := 1.
+Definition temp1 : var := 1.
+Definition stack : var := 2.
 
 Fixpoint gen_vmap_gl' (l:list (typ * var))  (vmaps: list ((qvar*nat) * var)) (i:nat) :=
          match l with [] => vmaps
-              | ((t,x)::xl) => gen_vmap_gl' xl (gen_vmap_n_l vmaps (L x) i (get_type_num t)) (i+(get_type_num t))
+              | ((t,x)::xl) => gen_vmap_gl' xl (gen_vmap_n_l vmaps (G x) i (get_type_num t)) (i+(get_type_num t))
          end.
-Definition gen_vmap_gl (l:list (typ * var)) := gen_vmap_gl' l ([]) 2.
+Definition gen_vmap_gl (l:list (typ * var)) := gen_vmap_gl' l ([]) 3.
 
 
 Fixpoint init_estore_g (l:list (typ * var)) : estore  :=
@@ -3737,7 +3775,7 @@ so that we can run the main function, and then the function call of main is comp
 Definition trans_prog' (p:prog) (flag:flag) (fv:fenv) :=
    match p with (size,ls,fl,f,rx') =>
      let (vmap,vmap_num) := gen_vmap_g ls in
-      do v <- (trans_funs fv size 0 temp stack flag empty_cstore (init_estore_g ls) (gen_smap_l ls (fun _ => 0))
+      do v <- (trans_funs fv size 0 temp temp1 stack flag empty_cstore (init_estore_g ls) (gen_smap_l ls (fun _ => 0))
             vmap (gen_vmap_gl ls) vmap_num ([]) fl) @
        match v with Error => Some Error
                | (Value (vmaps,sn,fmap)) => 
