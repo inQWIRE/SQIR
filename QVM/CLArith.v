@@ -85,7 +85,7 @@ Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
 (* Here we implement the doubler circuit based on binary shift operation.
    It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
    Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
-Definition doubler1 y := Lshift y.
+Definition doubler1 y := Rshift y.
 
 (* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
    This version will mark the high-bit, and the high-bit is not clearable.
@@ -111,7 +111,7 @@ modadder21 n x y M c1 c2
 
 Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
   match i with
-  | 0 => if (fC 0) then (copyto x y n) else (SKIP (x,0))
+  | 0 => if (fC 0) then (modadder21 y x  n) else (SKIP (x,0))
   | S i' =>  modsummer' i' n M x y c1 c2 s fC; moddoubler01 n x M c1 c2;
           (SWAP c2 (s,i));
         (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
