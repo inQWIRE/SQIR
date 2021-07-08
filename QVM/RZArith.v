@@ -2967,20 +2967,20 @@ Definition flt_mult (size:nat) (x re:var) (M:nat -> bool) :=
 
 (* Implementing x * y multiplier for nats values. *)
 (* y is in nor_mode, and y is in phi, [y][x] -> [y][x+y] *)
-Fixpoint rz_full_adder_i (re:var) (y:var) (n:nat) (i:nat) :=
+Fixpoint rz_full_adder_i (size:nat) (re:var) (y:var) (n:nat) (i:nat) :=
   match n with
   | 0 => (SKIP (re,0))
-  | S m => (rz_full_adder_i re y m i; (CU (y,m) (SR (m+i) re)))
+  | S m => (rz_full_adder_i size re y m i; (CU (y,m) (SR (size - n - i) re)))
   end.
-Definition one_cu_full_adder_i (c:posi) (re:var) (y:var) (n i : nat) := 
-  CU c (rz_full_adder_i re y n i).
+Definition one_cu_full_adder_i (c:posi) (re:var) (y:var) (size n i : nat) := 
+  CU c (rz_full_adder_i size re y n i).
 
 (* Here x and y are in nor_mode and re in phi_mode. 
   [x][y][phi(re)] ->[x][y][phi(x*y)], re is supposed to be zero *)
 Fixpoint nat_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) :=
    match n with 0 => SKIP (re,0)
             | S m => nat_full_mult' m size x y re;
-                 one_cu_full_adder_i (x,size - n) re y (size-m) m
+                 one_cu_full_adder_i (x,size - n) re y size (size-m) m
    end.
 
 (* Here x and y are in nor_mode and re in phi_mode. 
