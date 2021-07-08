@@ -2970,7 +2970,7 @@ Definition flt_mult (size:nat) (x re:var) (M:nat -> bool) :=
 Fixpoint rz_full_adder_i (re:var) (y:var) (n:nat) (i:nat) :=
   match n with
   | 0 => (SKIP (re,0))
-  | S m => ((CU (y,m+i) (SR (m+i) re)); rz_full_adder_i re y m i)
+  | S m => ((CU (y,m) (SR (m+i) re)); rz_full_adder_i re y m i)
   end.
 Definition one_cu_full_adder_i (c:posi) (re:var) (y:var) (n i : nat) := 
   CU c (rz_full_adder_i re y n i).
@@ -2978,7 +2978,7 @@ Definition one_cu_full_adder_i (c:posi) (re:var) (y:var) (n i : nat) :=
 (* Here x and y are in nor_mode and re in phi_mode. 
   [x][y][phi(re)] ->[x][y][phi(x*y)], re is supposed to be zero *)
 Fixpoint nat_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) :=
-   match n with 0 => SKIP (x,0)
+   match n with 0 => SKIP (re,0)
             | S m => nat_full_mult' m size x y re;
                  one_cu_full_adder_i (x,size - n) re y (size-m) m
    end.
@@ -2997,7 +2997,7 @@ Definition vars_for_rz_nat_full_m (size:nat) :=
 Definition nat_full_mult_out (size:nat) := nat_full_mult size x_var y_var z_var.
 
 
-(* Implementing x * y multiplier for fixedp values. *)
+(* Implementing x + y addition for fixedp values. *)
 Fixpoint rz_full_adder (x:var) (n:nat) (y:var) :=
   match n with
   | 0 => (SKIP (x,0))
