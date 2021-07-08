@@ -9,7 +9,6 @@ Require Import AltGateSet2.
 Require Import PQASM.
 Require Import RZArith.
 Require Import CLArith.
-(*Require Import QIMP.*)
 
 Definition rz_ang (n:nat) : R := ((R2 * PI)%R / R2^n). (* redefined using R2 *)
 
@@ -28,8 +27,6 @@ Fixpoint gen_srr_gate' (f:vars) (x:var) (n:nat) (size:nat) : ucom U :=
     | S m => (gen_srr_gate' f x m size) >> (U1 (rrz_ang (size - m)) (find_pos f (x,m)))
     end.
 Definition gen_srr_gate (f:vars) (x:var) (n:nat) := gen_srr_gate' f x (S n) (S n).
-
-Check control.
 
 Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (ucom U * vars  * (nat -> posi)) :=
     match exp with
@@ -98,12 +95,6 @@ Fixpoint trans_pexp' (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
 
 Definition trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) := trans_pexp' (vs) dim (pexp_elim exp) avs.
 
-(* z = M + x (TOFF-based) *)
-(*
- Definition trans_cl_const_adder (size:nat) :=
-   TODO
-*)
-
 (* z = x + y (TOFF-based) *)
 Definition trans_cl_adder (size:nat) :=
   trans_pexp (CLArith.vars_for_adder01 size) (2 * size + 1) (CLArith.adder01_out size) (PQASM.avs_for_arith size).
@@ -140,7 +131,7 @@ Definition trans_cl_mod (size M:nat) :=
 Definition trans_cl_div (size M:nat) :=
   trans_pexp (CLArith.vars_for_cl_div size) (4 * size + 1) (CLArith.cl_div_out size M) (PQASM.avs_for_arith size). 
 
-(* z = x mod y,x/y (TOFF-based) *)
+(* z = x mod y, x / y (TOFF-based) *)
 Definition trans_cl_div_mod (size M:nat) :=
   trans_pexp (CLArith.vars_for_cl_div_mod size) (3 * size + 1) (CLArith.cl_div_mod_out size M) (PQASM.avs_for_arith size). 
 
@@ -152,18 +143,9 @@ Definition trans_rz_mod (size M:nat) :=
 Definition trans_rz_div (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_div size) (3 * (S size)) (RZArith.rz_div_out size M) (RZArith.avs_for_rz_div size). 
 
-(* z = x mod y,x/y (QFT-based) *)
+(* z = x mod y, x / y (QFT-based) *)
 Definition trans_rz_div_mod (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_div_mod size) (2 * (S size)) (RZArith.rz_div_mod_out size M) (RZArith.avs_for_rz_div_mod size). 
-
-(*
-(* Compile a prog to a circuit. *)
-Definition prog_to_sqir_real (p:prog) (f:flag) : ucom U :=
-  match prog_to_sqir p f with 
-  | Some (d,size,p,vars,avs) => fst (fst (trans_pexp vars d p avs))
-  | None => AltGateSet2.SKIP
-end.
-*)
 
 (* Redefine funcs in RZArith and CLArith to use the new trans_pexp *)
 Definition trans_rz_modmult_rev (M C Cinv size:nat) :=
@@ -183,62 +165,3 @@ Fixpoint bc2ucom (bc : bccom) : ucom U :=
   | bcseq bc1 bc2 => (bc2ucom bc1) >> (bc2ucom bc2)
   end.
   
-Lemma bc2ucom_WF : forall bc, well_formed (bc2ucom bc).
-Proof.
-  induction bc; repeat constructor; auto.
-  simpl. unfold control. apply control'_WF.
-  assumption.
-Qed.
-
-(*Lemma bc2ucom_fresh : forall dim q bc,
-UnitaryOps.is_fresh q (to_base_ucom dim (bc2ucom bc)) <->
-@UnitaryOps.is_fresh _ dim q (RCIR.bc2ucom bc).
-Proof.
-intros dim q bc.
-induction bc; try reflexivity.
-simpl.
-destruct bc; try reflexivity.
-rewrite <- UnitaryOps.fresh_control.
-unfold control.
-rewrite <- fresh_control'.
-rewrite IHbc.
-reflexivity.
-lia.
-apply bc2ucom_WF.
-rewrite <- UnitaryOps.fresh_control.
-unfold control.
-rewrite <- fresh_control'.
-rewrite IHbc.
-reflexivity.
-lia.
-apply bc2ucom_WF.
-split; intro H; inversion H; subst; simpl.
-constructor.
-apply IHbc1; auto.
-apply IHbc2; auto.
-constructor.
-apply IHbc1; auto.
-apply IHbc2; auto.
-Qed.
-
-Lemma bc2ucom_correct : forall dim (bc : bccom),
-uc_eval dim (bc2ucom bc) = UnitarySem.uc_eval (RCIR.bc2ucom bc).
-Proof.
-intros dim bc.
-induction bc; try reflexivity.
-simpl.
-rewrite control_correct.
-destruct bc; try reflexivity.
-apply UnitaryOps.control_ucom_X.
-apply UnitaryOps.control_cong.
-apply IHbc.
-apply bc2ucom_fresh. 
-apply UnitaryOps.control_cong.
-apply IHbc.
-apply bc2ucom_fresh. 
-apply bc2ucom_WF. 
-unfold uc_eval in *. simpl.
-rewrite IHbc1, IHbc2.
-reflexivity.  
-Qed.
-*)
