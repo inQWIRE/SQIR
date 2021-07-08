@@ -78,7 +78,7 @@ Definition subtractor01 n x y c1:= (X c1; negator0 n x); adder01 n x y c1; inv_e
    To flip the high-bit to zero, we use the inverse circuit of the comparator in the modulo adder to
    flip the high-bit back to zero.*)
 Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
-                                       comparator01 n M x c1 c2; (* compare M < x + y (in position x) *)
+                                       comparator01 n M x c1 c2; (* compare M > x + y (in position x) *)
                                        X c2 ; CU c2 (subtractor01 n M x c1) ; (* doing -M + x to x, then flip c2. *)
                                        inv_exp(comparator01 n y x c1 c2). (* compare M with x+y % M to clean c2. *)
 
@@ -92,7 +92,7 @@ Definition doubler1 y := Lshift y.
    However, eventually, we will clean all high-bit
    by using a inverse circuit of the whole implementation. *)
 Definition moddoubler01 n x M c1 c2 :=
-                doubler1 x;  (comparator01 n x M c1 c2; CU c2 (subtractor01 n M x c1)).
+                doubler1 x;  (comparator01 n M x c1 c2; X c2; CU c2 (subtractor01 n M x c1)).
 
 (* The following implements the modulo adder for all bit positions in the
    binary boolean function of C. 
@@ -111,7 +111,7 @@ modadder21 n x y M c1 c2
 
 Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
   match i with
-  | 0 => if (fC 0) then (adder01 n x y c1) else (SKIP (x,0))
+  | 0 => if (fC 0) then (copyto x y n) else (SKIP (x,0))
   | S i' =>  modsummer' i' n M x y c1 c2 s fC; moddoubler01 n x M c1 c2;
           (SWAP c2 (s,i));
         (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
@@ -126,7 +126,7 @@ Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C
 
 Definition modmult M C Cinv n x y z s c1 c2 := (init_v n z M); modmult_full C Cinv n z x y c1 c2 s; inv_exp ( (init_v n z M)).
 
-Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; modmult M C Cinv n x y z s c1 c2;; Rev x.
+Definition modmult_rev M C Cinv n x y z s c1 c2 := modmult M C Cinv n x y z s c1 c2.
 
 
 Definition x_var := 0. Definition y_var := 1. Definition z_var := 2. Definition s_var := 3.
