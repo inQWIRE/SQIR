@@ -483,6 +483,8 @@ End NotExample.
 QuickChick NotExample.not_oracle_correct.
 *)
 
+Definition dec2checker P `{Dec P} := checker (dec2bool P).
+
 Infix "<*>" := kron (at level 40, only parsing).
 
 Definition nat_bool_to_n_bool f n : bool := f (N.to_nat n).

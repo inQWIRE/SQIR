@@ -23,8 +23,6 @@ Require Import Testing.
 Local Open Scope exp_scope.
 Local Open Scope nat_scope.
 
-Definition dec2checker P `{Dec P} := checker (dec2bool P).
-
 Fixpoint rotate_left_n (x : qvar) n :=
   match n with
   | 0 => skip

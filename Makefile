@@ -75,7 +75,7 @@ examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo
 QVM/PQASM.vo: QVM/PQASM.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo
 	coqc $(COQ_OPTS) QVM/PQASM.v
 
-QVM/Testing.vo: QVM/PQASM.vo examples/Utilities.vo
+QVM/Testing.vo: QVM/Testing.v QVM/PQASM.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) QVM/Testing.v
 
 QVM/CLArith.vo: QVM/CLArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo
