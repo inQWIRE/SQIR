@@ -2939,7 +2939,7 @@ Qed.
 
 
 (** Functions for extraction & evaluation: **)
-
+(* Implementing x * M multiplier. *)
 Fixpoint nat_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
   match n with 
   | 0 => SKIP (x,0)
@@ -2955,6 +2955,7 @@ Definition vars_for_rz_nat_m (size:nat) := gen_vars size (x_var::y_var::[]).
 (* z = M * x *)
 Definition nat_mult_out (size:nat) (M:nat -> bool) := nat_mult size x_var y_var M.
 
+(* Implementing x * M multiplier for fixedP values. *)
 Fixpoint flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
   match n with 
   | 0 => SKIP (x,0)
@@ -2964,11 +2965,12 @@ Fixpoint flt_mult' (n:nat) (size:nat) (x:var) (ex:var) (M:nat->bool) :=
 Definition flt_mult (size:nat) (x re:var) (M:nat -> bool) := 
   Exp (Rev x; Rev re) ;; flt_mult' size size x re M;; inv_pexp (Exp (Rev x; Rev re)).
 
+(* Implementing x * y multiplier for nats values. *)
 (* y is in nor_mode, and y is in phi, [y][x] -> [y][x+y] *)
 Fixpoint rz_full_adder_i (re:var) (y:var) (n:nat) (i:nat) :=
   match n with
   | 0 => (SKIP (re,0))
-  | S m => ((CU (y,m+i) (SR (m+i) re)); rz_full_adder_i re y m i)
+  | S m => ((CU (y,m) (SR (m+i) re)); rz_full_adder_i re y m i)
   end.
 Definition one_cu_full_adder_i (c:posi) (re:var) (y:var) (n i : nat) := 
   CU c (rz_full_adder_i re y n i).
@@ -2976,7 +2978,7 @@ Definition one_cu_full_adder_i (c:posi) (re:var) (y:var) (n i : nat) :=
 (* Here x and y are in nor_mode and re in phi_mode. 
   [x][y][phi(re)] ->[x][y][phi(x*y)], re is supposed to be zero *)
 Fixpoint nat_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) :=
-   match n with 0 => SKIP (x,0)
+   match n with 0 => SKIP (re,0)
             | S m => nat_full_mult' m size x y re;
                  one_cu_full_adder_i (x,size - n) re y (size-m) m
    end.
@@ -2994,6 +2996,8 @@ Definition vars_for_rz_nat_full_m (size:nat) :=
 
 Definition nat_full_mult_out (size:nat) := nat_full_mult size x_var y_var z_var.
 
+
+(* Implementing x + y addition for fixedp values. *)
 Fixpoint rz_full_adder (x:var) (n:nat) (y:var) :=
   match n with
   | 0 => (SKIP (x,0))
@@ -3037,45 +3041,52 @@ Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
         (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
 *)
 
+(* Implementing x < M comparator. *)
 Definition rz_comparator (x:var) (n:nat) (c:posi) (M:nat) := 
   Exp (Rev x);; QFT x;; Exp (rz_sub x n (nat2fb M));; RQFT x ;; Exp (CNOT (x,0) c);; 
   inv_pexp (Exp (Rev x);; QFT x;; Exp (rz_sub x n (nat2fb M));; RQFT x).
 
-Fixpoint rz_full_sub (x:var) (n:nat) (y:var) :=
-  match n with 
-  | 0 => SKIP (x,0)
-  | S m => ((CU (y,m) (SRR m x)); rz_full_sub x m y)
-  end.
 
+(* Implementing x + y / X + M addition. *)
 Definition rz_full_adder_form (x:var) (n:nat) (y:var) :=
   Exp (Rev x; Rev y);; QFT x ;; rz_full_adder x n y ;; 
-  inv_pexp (Exp (Rev x; Rev y);; QFT x).
-
-Definition vars_for_rz_full_add (size:nat) := gen_vars size (x_var::y_var::[]).
-
-Definition rz_full_adder_out (size:nat) := rz_full_adder_form x_var size y_var.
-
-Definition rz_full_sub_form (x:var) (n:nat) (y:var) :=
-  Exp (Rev x; Rev y);; QFT x ;; rz_full_sub x n y ;; 
   inv_pexp (Exp (Rev x; Rev y);; QFT x).
 
 Definition rz_adder_form (x:var) (n:nat) (M:nat -> bool) :=
   Exp (Rev x);; QFT x;; rz_adder x n M ;; 
   inv_pexp (Exp (Rev x);; QFT x).
 
-Definition rz_sub_right (x:var) (n:nat) (M:nat -> bool) :=
-  Exp (Rev x);; QFT x;; rz_sub x n M ;; inv_pexp (Exp (Rev x);; QFT x).
-
-Definition rz_sub_left (M:nat -> bool) (x:var) (n:nat) :=
-  Exp (Rev x);; QFT x;; rz_sub x n M;; inv_pexp (Exp (Rev x);; QFT x);; negator0 n x.
-
-Definition rz_full_comparator (x:var) (n:nat) (c:posi) (y:var) := 
-    Exp (Rev x; Rev y);; QFT x;; QFT y;; Exp (rz_full_sub x n y);; RQFT x ;; Exp (CNOT (x,0) c);;
-    inv_pexp (Exp (Rev x; Rev y);; QFT x;; QFT y;; Exp (rz_full_sub x n y);; RQFT x).
-
 Definition vars_for_rz_adder (size:nat) := gen_vars size (x_var::[]).
 
 Definition rz_adder_out (size:nat) (M:nat-> bool) := rz_adder_form x_var size M.
+
+Definition vars_for_rz_full_add (size:nat) := gen_vars size (x_var::y_var::[]).
+
+Definition rz_full_adder_out (size:nat) := rz_full_adder_form x_var size y_var.
+
+(* Implementing x - y subtractor. *)
+Fixpoint rz_full_sub (x:var) (n:nat) (y:var) :=
+  match n with 
+  | 0 => SKIP (x,0)
+  | S m => ((CU (y,m) (SRR m x)); rz_full_sub x m y)
+  end.
+
+Definition rz_full_sub_form (x:var) (n:nat) (y:var) :=
+  Exp (Rev x; Rev y);; QFT x ;; rz_full_sub x n y ;; 
+  inv_pexp (Exp (Rev x; Rev y);; QFT x).
+
+(* Implementing x - M subtractor. *)
+Definition rz_sub_right (x:var) (n:nat) (M:nat -> bool) :=
+  Exp (Rev x);; QFT x;; rz_sub x n M ;; inv_pexp (Exp (Rev x);; QFT x).
+
+(* Implementing M - x subtractor. *)
+Definition rz_sub_left (M:nat -> bool) (x:var) (n:nat) :=
+  Exp (Rev x);; QFT x;; rz_sub x n M;; inv_pexp (Exp (Rev x);; QFT x);; negator0 n x.
+
+(* Implementing x < y comparator. *)
+Definition rz_full_comparator (x:var) (n:nat) (c:posi) (y:var) := 
+    Exp (Rev x; Rev y);; QFT x;; QFT y;; Exp (rz_full_sub x n y);; RQFT x ;; Exp (CNOT (x,0) c);;
+    inv_pexp (Exp (Rev x; Rev y);; QFT x;; QFT y;; Exp (rz_full_sub x n y);; RQFT x).
 
 (* compare x < M *)
 Definition rz_compare_half3 (x:var) (n:nat) (c:posi) (M:nat -> bool) := 
@@ -3095,6 +3106,7 @@ Fixpoint rz_moder' i (n:nat) (x ex:var) c (M:nat -> bool) :=
                        rz_moder' j n x ex c (cut_n (div_two_spec M) n)
      end.
 
+(* x % M circuit. *)
 Definition rz_moder (n:nat) (x re ex:var) c (M:nat) := 
     let i := findnum M n in 
         Exp (Rev x; Rev re);; QFT x;;
@@ -3114,6 +3126,7 @@ Definition avs_for_rz_moder (size:nat) := fun x => (x/ (S size), x mod (S size))
 Definition rz_moder_out (size:nat) := 
    rz_moder size x_var y_var z_var (s_var,0).
 
+(* x / M  circuit. *)
 Definition rz_div (n:nat) (x re ex:var) c (M:nat) := 
     let i := findnum M n in 
         Exp (Rev x);; QFT x;;
@@ -3133,6 +3146,8 @@ Definition avs_for_rz_div (size:nat) := fun x => (x/ (S size), x mod (S size)).
 Definition rz_div_out (size:nat) := 
    rz_div size x_var y_var z_var (s_var,0).
 
+
+(* x = (x % M, x / M)  circuit. *)
 Definition rz_div_mod (n:nat) (x ex:var) c (M:nat) := 
     let i := findnum M n in 
         Exp (Rev x);; QFT x;;

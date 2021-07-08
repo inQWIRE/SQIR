@@ -17,4 +17,4 @@ To run these programs through VOQC, clone the [mlvoqc](https://github.com/inQWIR
 
 ## Running Quipper
 
-@Finn - can you add instructions for downloading/installing/running Quipper here?
+Quipper is an embedded, scalable functional programming language for quantum computing. The linke for downloading Quipper is here: https://www.mathstat.dal.ca/~selinger/quipper/. Installation process is described in the same link.
