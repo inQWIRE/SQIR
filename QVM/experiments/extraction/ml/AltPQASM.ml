@@ -203,8 +203,8 @@ let trans_cl_mod size m =
   trans_pexp (vars_for_cl_moder size)
     (add
       (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
-        (Pervasives.succ 0)))) size) (Pervasives.succ (Pervasives.succ 0)))
-    (Exp (cl_moder_out size m)) (avs_for_arith size)
+        (Pervasives.succ 0)))) size) (Pervasives.succ 0)) (Exp
+    (cl_moder_out size m)) (avs_for_arith size)
 
 (** val trans_cl_div : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
 
@@ -212,8 +212,8 @@ let trans_cl_div size m =
   trans_pexp (vars_for_cl_div size)
     (add
       (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
-        (Pervasives.succ 0)))) size) (Pervasives.succ (Pervasives.succ 0)))
-    (Exp (cl_div_out size m)) (avs_for_arith size)
+        (Pervasives.succ 0)))) size) (Pervasives.succ 0)) (Exp
+    (cl_div_out size m)) (avs_for_arith size)
 
 (** val trans_cl_div_mod :
     int -> int -> (coq_U ucom * vars) * (int -> posi) **)
@@ -221,34 +221,29 @@ let trans_cl_div size m =
 let trans_cl_div_mod size m =
   trans_pexp (vars_for_cl_div_mod size)
     (add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
-      (Pervasives.succ (Pervasives.succ 0))) (Exp (cl_div_mod_out size m))
-    (avs_for_arith size)
+      (Pervasives.succ 0)) (Exp (cl_div_mod_out size m)) (avs_for_arith size)
 
 (** val trans_rz_mod : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
 
 let trans_rz_mod size m =
   trans_pexp (vars_for_rz_moder size)
-    (add
-      (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
-        (Pervasives.succ size)) (Pervasives.succ 0)) (rz_moder_out size m)
-    (avs_for_rz_moder size)
+    (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
+      (Pervasives.succ size)) (rz_moder_out size m) (avs_for_rz_moder size)
 
 (** val trans_rz_div : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
 
 let trans_rz_div size m =
   trans_pexp (vars_for_rz_div size)
-    (add
-      (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
-        (Pervasives.succ size)) (Pervasives.succ 0)) (rz_div_out size m)
-    (avs_for_rz_div size)
+    (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
+      (Pervasives.succ size)) (rz_div_out size m) (avs_for_rz_div size)
 
 (** val trans_rz_div_mod :
     int -> int -> (coq_U ucom * vars) * (int -> posi) **)
 
 let trans_rz_div_mod size m =
   trans_pexp (vars_for_rz_div_mod size)
-    (add (mul (Pervasives.succ (Pervasives.succ 0)) (Pervasives.succ size))
-      (Pervasives.succ 0)) (rz_div_mod_out size m) (avs_for_rz_div_mod size)
+    (mul (Pervasives.succ (Pervasives.succ 0)) (Pervasives.succ size))
+    (rz_div_mod_out size m) (avs_for_rz_div_mod size)
 
 (** val trans_rz_modmult_rev :
     int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
@@ -265,8 +260,8 @@ let trans_modmult_rev m c cinv size =
   trans_pexp (vars_for_cl size)
     (add
       (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
-        (Pervasives.succ 0)))) size) (Pervasives.succ (Pervasives.succ 0)))
-    (real_modmult_rev m c cinv size) (avs_for_arith size)
+        (Pervasives.succ 0)))) size) (Pervasives.succ 0)) (Exp
+    (real_modmult_rev m c cinv size)) (avs_for_arith size)
 
 (** val bc2ucom : bccom -> coq_U ucom **)
 

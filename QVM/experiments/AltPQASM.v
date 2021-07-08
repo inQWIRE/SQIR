@@ -9,6 +9,8 @@ Require Import AltGateSet2.
 Require Import PQASM.
 Require Import RZArith.
 Require Import CLArith.
+Require Import QIMP.
+Require Import OracleExample.
 (*Require Import QIMP.*)
 
 Definition rz_ang (n:nat) : R := ((R2 * PI)%R / R2^n). (* redefined using R2 *)
@@ -158,6 +160,33 @@ Definition trans_rz_modmult_rev_alt (M C Cinv size:nat) :=
         trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev_alt M C Cinv size) (avs_for_arith size).
 Definition trans_modmult_rev (M C Cinv size:nat) :=
         trans_pexp (vars_for_cl size) (4*size+1) (real_modmult_rev M C Cinv size) (avs_for_arith size).
+
+(* Trans QIMP examples. *)
+Definition trans_dmc_qft (size:nat) :=
+   match compile_dm_qft with Some (Value (Some p,n,a,b)) => 
+             Some (trans_pexp (vars_for_dm_c size) (2*size + 1) p (avs_for_arith size))
+        | _ => None
+   end.
+
+Definition trans_dmc_cl (size:nat) :=
+   match compile_dm_classic with Some (Value (Some p,n,a,b)) => 
+             Some (trans_pexp (vars_for_dm_c size) (2*size + 1) p (avs_for_arith size))
+        | _ => None
+   end.
+
+Definition trans_dmq_qft (size:nat) :=
+   match compile_dmq_qft with Some (Value (Some p,n,a,b)) => 
+             Some (trans_pexp (vars_for_dm_c size) (6*size + 1) p (avs_for_arith size))
+        | _ => None
+   end.
+
+Definition trans_dmq_cl (size:nat) :=
+   match compile_dmq_classic with Some (Value (Some p,n,a,b)) => 
+             Some (trans_pexp (vars_for_dm_c size) (6*size + 1) p (avs_for_arith size))
+        | _ => None
+   end.
+    
+    
 
 (* Also want bc2ucom for comparison's sake *)
 Fixpoint bc2ucom (bc : bccom) : ucom U :=

@@ -7,11 +7,6 @@ type var = int
 
 type posi = var * int
 
-(** val posi_eq : posi -> posi -> bool **)
-
-let posi_eq r1 r2 =
-  let (x1, y1) = r1 in let (x2, y2) = r2 in (&&) ((=) x1 x2) ((=) y1 y2)
-
 type exp =
 | SKIP of posi
 | X of posi
@@ -331,13 +326,6 @@ let rev_avs dim f avs x i =
 let coq_CNOT x y =
   CU (x, (X y))
 
-(** val coq_SWAP : posi -> posi -> exp **)
-
-let coq_SWAP x y =
-  if posi_eq x y
-  then SKIP x
-  else Seq ((Seq ((coq_CNOT x y), (coq_CNOT y x))), (coq_CNOT x y))
-
 (** val coq_CCX : posi -> posi -> posi -> exp **)
 
 let coq_CCX x y z =
@@ -386,7 +374,7 @@ let rec findnum' size x y i =
 (** val findnum : int -> int -> int **)
 
 let findnum x n =
-  findnum' (sub n (Pervasives.succ 0)) x
+  findnum' n x
     (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0))
       (sub n (Pervasives.succ 0))) 0
 

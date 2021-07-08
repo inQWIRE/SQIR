@@ -190,40 +190,76 @@ Definition test_fun : qexp := ndiv (Nor (Var (L x_var))) (Nor (Var (L y_var))) (
 
 Definition temp_var := 5. Definition temp1_var := 6. Definition stack_var := 7.
 
-Definition qr_vmap : qvar * nat -> var :=
-  fun '(x, _) =>
-  match x with
-  | L x' => x'
-  | G x' => x'
-  end.
-
 Definition var_list := (cons (TNor C Nat, x_var) (cons (TNor C Nat, y_var) 
                    (cons (TNor C Nat, z_var) (cons (TNor Q Nat, s_var) (cons (TNor Q Nat, c_var) nil))))).
 
-Definition qr_benv :=
+Definition dmc_benv :=
  match
   gen_env var_list empty_benv
   with None => empty_benv | Some bv => bv
  end.
 
-Definition qr_estore := init_estore empty_estore var_list.
+Fixpoint dmc_vmap'  (l : list (typ * var)) (n:nat) :=
+  match l with [] => (fun _ => 100)
+       | (t,x)::xl => if is_q t then (fun i => if i =qd= (L x,0) then n else dmc_vmap' xl (S n) i) else dmc_vmap' xl (S n)
+  end.
+Definition dmc_vmap := dmc_vmap' var_list 0.
 
-Definition qr_cstore := init_cstore empty_cstore var_list.
 
-Definition compile_qr_qft := 
+Definition dmc_estore := init_estore empty_estore var_list.
+
+Definition dmc_cstore := Store.add (L z_var,0) (nat2fb 5) (Store.add (L y_var,0) (nat2fb 10) (init_cstore empty_cstore var_list)).
+
+Definition compile_dm_qft := 
   trans_qexp
-    8 (fun _ => 1) qr_vmap qr_benv QFTA qr_cstore temp_var temp1_var stack_var 0 nil qr_estore qr_estore
+    8 (fun _ => 1) dmc_vmap dmc_benv QFTA dmc_cstore temp_var temp1_var stack_var 0 nil dmc_estore dmc_estore
     (test_fun).
 
-Definition compile_qr_classic := 
+Definition compile_dm_classic := 
   trans_qexp
-    8 (fun _ => 1) qr_vmap qr_benv Classic qr_cstore temp_var temp1_var stack_var 0 nil qr_estore qr_estore
+    8 (fun _ => 1) dmc_vmap dmc_benv Classic dmc_cstore temp_var temp1_var stack_var 0 nil dmc_estore dmc_estore
     (test_fun).
 
-Check compile_qr_qft.
+Definition vars_for_dm_c' (size:nat) := 
+  gen_vars size ((0::(1::([])))).
 
+Definition vars_for_dm_c (size:nat) :=
+  fun x => if x =? stack_var then (size * 2,1,id_nat,id_nat) 
+        else vars_for_dm_c' size x.
 
+Definition var_list_q := (cons (TNor Q Nat, x_var) (cons (TNor Q Nat, y_var) 
+                   (cons (TNor C Nat, z_var) (cons (TNor Q Nat, s_var) (cons (TNor Q Nat, c_var) nil))))).
 
+Definition dmq_benv :=
+ match
+  gen_env var_list_q empty_benv
+  with None => empty_benv | Some bv => bv
+ end.
+
+Definition dmq_vmap := dmc_vmap' var_list_q 0.
+
+Definition dmq_estore := init_estore empty_estore var_list_q.
+
+Definition dmq_cstore := Store.add (L z_var,0) (nat2fb 5) (init_cstore empty_cstore var_list_q).
+
+Definition compile_dmq_qft := 
+  trans_qexp
+    8 (fun _ => 1) dmq_vmap dmq_benv QFTA dmq_cstore temp_var temp1_var stack_var 0 nil dmq_estore dmq_estore
+    (test_fun).
+
+Definition compile_dmq_classic := 
+  trans_qexp
+    8 (fun _ => 1) dmq_vmap dmq_benv Classic dmq_cstore temp_var temp1_var stack_var 0 nil dmq_estore dmq_estore
+    (test_fun).
+
+Definition vars_for_dm_q' (size:nat) := 
+  gen_vars size ((0::(1::(2::(3::[]))))).
+
+Definition vars_for_dm_q (size:nat) :=
+  fun x => if x =? temp_var then (size * 4,size,id_nat,id_nat) 
+        else if x =? temp1_var then (size * 5,size,id_nat,id_nat)
+             else if x =? stack_var then (size * 6, 1,id_nat,id_nat)
+              else vars_for_dm_c' size x.
 
 
 
