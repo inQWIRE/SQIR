@@ -85,7 +85,7 @@ Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
 (* Here we implement the doubler circuit based on binary shift operation.
    It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
    Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
-Definition doubler1 y := Rshift y.
+Definition doubler1 y := Lshift y.
 
 (* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
    This version will mark the high-bit, and the high-bit is not clearable.
@@ -122,7 +122,7 @@ Definition modsummer n M x y c1 c2 s C := modsummer' (n - 1) n M x y c1 c2 s (na
     Here, modmult_half will first clean up all high bits.  *)
 Definition modmult_half n M x y c1 c2 s C := modsummer n M x y c1 c2 s C; (inv_exp (modsummer n M x y c1 c2 s 0)).
 
-Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C; inv_exp (modmult_half n M x y c1 c2 s Cinv).
+Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C; inv_exp (modmult_half n M y x c1 c2 s Cinv).
 
 Definition modmult M C Cinv n x y z s c1 c2 := (init_v n z M); modmult_full C Cinv n z x y c1 c2 s; inv_exp ( (init_v n z M)).
 
@@ -2500,8 +2500,8 @@ Definition cl_flt_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> b
   cl_flt_mult' size size x ex re c M.
 
 (* z = x * y circuit for nats *)
-Definition one_cu_cl_full_adder_i (c2:posi) (y:var) (x:var) (c1:posi) (n:nat) (i:nat) := 
-  CU c2 (adder_i n x y c1 i).
+Definition one_cu_cl_full_adder_i (c2:posi) (x:var) (re:var) (c1:posi) (n:nat) (i:nat) := 
+  CU c2 (adder_i n x re c1 i).
 
 Fixpoint cl_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (c:posi) :=
    match n with 
@@ -2557,55 +2557,55 @@ Definition comparator02 n x y c1 c2 := (negator0 n x); highb01 n x y c1 c2; inv_
 *)
 
 (* x % M circuit. *)
-Fixpoint cl_moder' i (n:nat) (x y ex:var) c1 c2 (M:nat -> bool) := 
+Fixpoint cl_moder' i (n:nat) (x y ex:var) c1 (M:nat -> bool) := 
      match i with 0 => SKIP (x,0)
-           | S j => init_v n y M ; X c2 ; comparator01 n y x c1 c2 ; 
-                       CU c2 (subtractor01 n y x c1); SWAP c2 (ex,j); init_v n y M ; 
-                       cl_moder' j n x y ex c1 c2 (cut_n (div_two_spec M) n)
+           | S j => init_v n y M ; X (ex,j) ; comparator01 n y x c1 (ex,j) ; 
+                       CU (ex,j) (subtractor01 n y x c1); init_v n y M ; 
+                       cl_moder' j n x y ex c1 (cut_n (div_two_spec M) n)
      end.
-Definition cl_moder (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
+Definition cl_moder (n:nat) (x re y ex:var) c1 (M:nat) := 
     let i := findnum M n in 
-         cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M)) ; copyto x re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M))).
+         cl_moder' (S i) n x y ex c1 (nat2fb (2^i*M)) ; copyto x re n; inv_exp (cl_moder' (S i) n x y ex c1 (nat2fb (2^i*M))).
 
 Definition vars_for_cl_moder' (size:nat) := 
   gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
 
 Definition vars_for_cl_moder (size:nat) :=
-  fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) 
+  fun x => if x =? c_var then (size * 4,1,id_nat,id_nat) 
         else vars_for_cl_moder' size x.
 
 Definition cl_moder_out (size:nat)  := 
-   cl_moder size x_var y_var z_var s_var (c_var,0) (c_var, 1).
+   cl_moder size x_var y_var z_var s_var (c_var,0).
 
 (* x / M circuit. *)
-Definition cl_div (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
+Definition cl_div (n:nat) (x re y ex:var) c1 (M:nat) := 
     let i := findnum M n in 
-         cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M)) ; copyto ex re n; inv_exp (cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M))).
+         cl_moder' (S i) n x y ex c1 (nat2fb (2^i*M)) ; copyto ex re n; inv_exp (cl_moder' (S i) n x y ex c1 (nat2fb (2^i*M))).
 
 Definition vars_for_cl_div' (size:nat) := 
   gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
 
 Definition vars_for_cl_div (size:nat) :=
-  fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) 
+  fun x => if x =? c_var then (size * 4,1,id_nat,id_nat) 
         else vars_for_cl_div' size x.
 
 Definition cl_div_out (size:nat) := 
-   cl_div size x_var y_var z_var s_var (c_var,0) (c_var, 1).
+   cl_div size x_var y_var z_var s_var (c_var,0).
 
 
 (* x = (x % M, x / M) mod value is in x, and ex stores div results. *)
-Definition cl_div_mod (n:nat) (x y ex:var) c1 c2 (M:nat) :=
-   let i := findnum M n in cl_moder' (S i) n x y ex c1 c2 (nat2fb (2^i*M)).
+Definition cl_div_mod (n:nat) (x y ex:var) c1 (M:nat) :=
+   let i := findnum M n in cl_moder' (S i) n x y ex c1 (nat2fb (2^i*M)).
 
 Definition vars_for_cl_div_mod' (size:nat) := 
   gen_vars size (x_var::(y_var::(z_var::([])))).
 
 Definition vars_for_cl_div_mod (size:nat) :=
-  fun x => if x =? s_var then (size * 3,2,id_nat,id_nat) 
+  fun x => if x =? s_var then (size * 3,1,id_nat,id_nat) 
         else vars_for_cl_div_mod' size x.
 
 Definition cl_div_mod_out (size:nat) := 
-   cl_div_mod size x_var y_var z_var (s_var,0) (s_var, 1).
+   cl_div_mod size x_var y_var z_var (s_var,0).
 
 
 
