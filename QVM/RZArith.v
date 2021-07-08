@@ -3149,7 +3149,7 @@ Definition rz_div_out (size:nat) :=
 
 (* x = (x % M, x / M)  circuit. *)
 Definition rz_div_mod (n:nat) (x ex:var) c (M:nat) := 
-    let i := findnum M n in 
+    let i := findnum M (n-1) in 
         Exp (Rev x);; QFT x;;
             rz_moder' (S i) n x ex c (nat2fb (2^i * M));;
         inv_pexp (Exp (Rev x);; QFT x).
