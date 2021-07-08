@@ -2500,8 +2500,8 @@ Definition cl_flt_mult (size:nat) (x:var) (re:var) (ex:var) (c:posi) (M:nat -> b
   cl_flt_mult' size size x ex re c M.
 
 (* z = x * y circuit for nats *)
-Definition one_cu_cl_full_adder_i (c2:posi) (y:var) (x:var) (c1:posi) (n:nat) (i:nat) := 
-  CU c2 (adder_i n x y c1 i).
+Definition one_cu_cl_full_adder_i (c2:posi) (x:var) (re:var) (c1:posi) (n:nat) (i:nat) := 
+  CU c2 (adder_i n x re c1 i).
 
 Fixpoint cl_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) (c:posi) :=
    match n with 
