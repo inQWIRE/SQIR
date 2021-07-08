@@ -2552,15 +2552,15 @@ Definition clf_full_mult (size:nat) (x y:var) (re:var) (ex:var) (c:posi) :=
             (Exp (clf_full_mult_quar size x y re ex c; inv_exp (clean_high_flt size size y ex))).
 
 
-(* compare x <=? y *)
+(* compare x <=? y 
 Definition comparator02 n x y c1 c2 := (negator0 n x); highb01 n x y c1 c2; inv_exp (negator0 n x).
-
+*)
 
 (* x % M circuit. *)
 Fixpoint cl_moder' i (n:nat) (x y ex:var) c1 c2 (M:nat -> bool) := 
      match i with 0 => SKIP (x,0)
-           | S j => init_v n y M ; comparator02 n y x c1 c2 ; 
-                       CU c2 (subtractor01 n y x c1); init_v n y M ; SWAP c2 (ex,j);
+           | S j => init_v n y M ; X c2 ; comparator01 n y x c1 c2 ; 
+                       CU c2 (subtractor01 n y x c1); SWAP c2 (ex,j); init_v n y M ; 
                        cl_moder' j n x y ex c1 c2 (cut_n (div_two_spec M) n)
      end.
 Definition cl_moder (n:nat) (x re y ex:var) c1 c2 (M:nat) := 
