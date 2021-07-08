@@ -2970,7 +2970,7 @@ Definition flt_mult (size:nat) (x re:var) (M:nat -> bool) :=
 Fixpoint rz_full_adder_i (re:var) (y:var) (n:nat) (i:nat) :=
   match n with
   | 0 => (SKIP (re,0))
-  | S m => ((CU (y,m) (SR (m+i) re)); rz_full_adder_i re y m i)
+  | S m => (rz_full_adder_i re y m i; (CU (y,m) (SR (m+i) re)))
   end.
 Definition one_cu_full_adder_i (c:posi) (re:var) (y:var) (n i : nat) := 
   CU c (rz_full_adder_i re y n i).
@@ -2987,9 +2987,9 @@ Fixpoint nat_full_mult' (n:nat) (size:nat) (x:var) (y:var) (re:var) :=
    [x][y][phi(re)] ->[x][y][phi(x*y mod 2^n)], re is supposed to be zero, 
    ex is in nor_mode. *)
 Definition nat_full_mult (size:nat) (x y:var) (re:var) :=
-  Exp (Rev re ; Rev x; Rev y);; QFT re ;;
+  Exp (Rev re ; Rev x);; QFT re ;;
   Exp (nat_full_mult' size size x y re) ;;
-  RQFT re ;; Exp (Rev re; Rev x; Rev y).
+  RQFT re ;; Exp (Rev re; Rev x).
 
 Definition vars_for_rz_nat_full_m (size:nat) := 
   gen_vars size (x_var::y_var::z_var::[]).
