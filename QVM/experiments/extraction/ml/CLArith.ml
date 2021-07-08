@@ -196,6 +196,13 @@ let vars_for_adder01 size x =
 let adder01_out size =
   adder01 size x_var y_var (z_var, 0)
 
+(** val one_cl_cu_adder :
+    posi -> var -> var -> int -> posi -> (int -> bool) -> exp **)
+
+let one_cl_cu_adder c2 ex re n c1 m =
+  CU (c2, (Seq ((Seq ((init_v n ex m), (adder01 n ex re c1))),
+    (init_v n ex m))))
+
 (** val coq_MAJseq'_i : int -> var -> var -> posi -> int -> exp **)
 
 let rec coq_MAJseq'_i n x y c i =
@@ -264,6 +271,22 @@ let vars_for_cl_nat_m size x =
 let cl_nat_mult_out size m =
   cl_nat_mult size x_var y_var (z_var, 0) m
 
+(** val cl_flt_mult' :
+    int -> int -> var -> var -> var -> posi -> (int -> bool) -> exp **)
+
+let rec cl_flt_mult' n size x ex re c m =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun m0 -> Seq ((one_cl_cu_adder (x, (sub size n)) ex re size c m),
+    (cl_flt_mult' m0 size x ex re c (cut_n (div_two_spec m) size))))
+    n
+
+(** val cl_flt_mult :
+    int -> var -> var -> var -> posi -> (int -> bool) -> exp **)
+
+let cl_flt_mult size x re ex c m =
+  cl_flt_mult' size size x ex re c m
+
 (** val one_cu_cl_full_adder_i :
     posi -> var -> var -> posi -> int -> int -> exp **)
 
@@ -303,6 +326,43 @@ let vars_for_cl_nat_full_m size x =
 
 let cl_full_mult_out size =
   cl_full_mult size x_var y_var z_var (s_var, 0)
+
+(** val one_cu_cl_full_adder : posi -> var -> var -> posi -> int -> exp **)
+
+let one_cu_cl_full_adder c2 y x c1 n =
+  CU (c2, (adder01 n x y c1))
+
+(** val clf_full_mult' :
+    int -> int -> var -> var -> var -> var -> posi -> exp **)
+
+let rec clf_full_mult' n size x y re ex c =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun m -> Seq ((Seq ((Seq ((clf_full_mult' m size x y re ex c),
+    (one_cu_cl_full_adder (x, m) re y c size))), (coq_SWAP (y, 0) (ex, m)))),
+    (Rshift y)))
+    n
+
+(** val clf_full_mult_quar :
+    int -> var -> var -> var -> var -> posi -> exp **)
+
+let clf_full_mult_quar size x y re ex c =
+  clf_full_mult' size size x y re ex c
+
+(** val clean_high_flt : int -> int -> var -> var -> exp **)
+
+let rec clean_high_flt n size y ex =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (y, 0))
+    (fun m -> Seq ((Seq ((clean_high_flt m size y ex),
+    (coq_SWAP (y, 0) (ex, m)))), (Rshift y)))
+    n
+
+(** val clf_full_mult : int -> var -> var -> var -> var -> posi -> pexp **)
+
+let clf_full_mult size x y re ex c =
+  Exp (Seq ((clf_full_mult_quar size x y re ex c),
+    (inv_exp (clean_high_flt size size y ex))))
 
 (** val cl_moder' :
     int -> int -> var -> var -> var -> posi -> (int -> bool) -> exp **)

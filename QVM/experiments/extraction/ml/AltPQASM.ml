@@ -1,7 +1,9 @@
 open AltGateSet2
 open CLArith
 open Nat
+open OracleExample
 open PQASM
+open QIMP
 open RCIR
 open RZArith
 
@@ -262,6 +264,92 @@ let trans_modmult_rev m c cinv size =
       (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
         (Pervasives.succ 0)))) size) (Pervasives.succ 0)) (Exp
     (real_modmult_rev m c cinv size)) (avs_for_arith size)
+
+(** val trans_dmc_qft :
+    int -> ((coq_U ucom * vars) * (int -> posi)) option **)
+
+let trans_dmc_qft size =
+  match compile_dm_qft with
+  | Some v ->
+    (match v with
+     | Value x ->
+       let (p0, _) = x in
+       let (p1, _) = p0 in
+       let (o, _) = p1 in
+       (match o with
+        | Some p ->
+          Some
+            (trans_pexp (vars_for_dm_c size)
+              (add (mul (Pervasives.succ (Pervasives.succ 0)) size)
+                (Pervasives.succ 0)) p (avs_for_arith size))
+        | None -> None)
+     | Error -> None)
+  | None -> None
+
+(** val trans_dmc_cl : int -> ((coq_U ucom * vars) * (int -> posi)) option **)
+
+let trans_dmc_cl size =
+  match compile_dm_classic with
+  | Some v ->
+    (match v with
+     | Value x ->
+       let (p0, _) = x in
+       let (p1, _) = p0 in
+       let (o, _) = p1 in
+       (match o with
+        | Some p ->
+          Some
+            (trans_pexp (vars_for_dm_c size)
+              (add (mul (Pervasives.succ (Pervasives.succ 0)) size)
+                (Pervasives.succ 0)) p (avs_for_arith size))
+        | None -> None)
+     | Error -> None)
+  | None -> None
+
+(** val trans_dmq_qft :
+    int -> ((coq_U ucom * vars) * (int -> posi)) option **)
+
+let trans_dmq_qft size =
+  match compile_dmq_qft with
+  | Some v ->
+    (match v with
+     | Value x ->
+       let (p0, _) = x in
+       let (p1, _) = p0 in
+       let (o, _) = p1 in
+       (match o with
+        | Some p ->
+          Some
+            (trans_pexp (vars_for_dm_c size)
+              (add
+                (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
+                  (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))))))
+                  size) (Pervasives.succ 0)) p (avs_for_arith size))
+        | None -> None)
+     | Error -> None)
+  | None -> None
+
+(** val trans_dmq_cl : int -> ((coq_U ucom * vars) * (int -> posi)) option **)
+
+let trans_dmq_cl size =
+  match compile_dmq_classic with
+  | Some v ->
+    (match v with
+     | Value x ->
+       let (p0, _) = x in
+       let (p1, _) = p0 in
+       let (o, _) = p1 in
+       (match o with
+        | Some p ->
+          Some
+            (trans_pexp (vars_for_dm_c size)
+              (add
+                (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ
+                  (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))))))
+                  size) (Pervasives.succ 0)) p (avs_for_arith size))
+        | None -> None)
+     | Error -> None)
+  | None -> None
 
 (** val bc2ucom : bccom -> coq_U ucom **)
 

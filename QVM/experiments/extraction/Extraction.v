@@ -48,4 +48,10 @@ Separate Extraction
     (* QVM QFT-based divmod *)
     AltPQASM.trans_rz_mod
     AltPQASM.trans_rz_div
-    AltPQASM.trans_rz_div_mod.
+    AltPQASM.trans_rz_div_mod
+    
+    (* QIMP examples*)
+    AltPQASM.trans_dmc_qft
+    AltPQASM.trans_dmc_cl
+    AltPQASM.trans_dmq_qft
+    AltPQASM.trans_dmq_cl.

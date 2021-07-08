@@ -139,6 +139,22 @@ let vars_for_rz_nat_m size =
 let nat_mult_out size m =
   nat_mult size x_var y_var m
 
+(** val flt_mult' : int -> int -> var -> var -> (int -> bool) -> exp **)
+
+let rec flt_mult' n size x ex m =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun m0 -> Seq ((one_cu_adder ex size (x, (sub size n)) m),
+    (flt_mult' m0 size x ex (cut_n (div_two_spec m) size))))
+    n
+
+(** val flt_mult : int -> var -> var -> (int -> bool) -> pexp **)
+
+let flt_mult size x re m =
+  PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev re)))), (Exp
+    (flt_mult' size size x re m)))),
+    (inv_pexp (Exp (Seq ((Rev x), (Rev re))))))
+
 (** val rz_full_adder_i : int -> var -> var -> int -> int -> exp **)
 
 let rec rz_full_adder_i size re y n i =
@@ -189,6 +205,51 @@ let rec rz_full_adder x n y =
     (fun m -> Seq ((CU ((y, m), (SR (m, x)))), (rz_full_adder x m y)))
     n
 
+(** val one_cu_full_adder : posi -> var -> int -> var -> exp **)
+
+let one_cu_full_adder c x n y =
+  CU (c, (rz_full_adder x n y))
+
+(** val flt_full_mult' : int -> int -> var -> var -> var -> var -> exp **)
+
+let rec flt_full_mult' n size x y re ex =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun m -> Seq ((Seq ((Seq ((one_cu_full_adder (x, m) re size y),
+    (coq_SWAP (y, (sub size (Pervasives.succ 0))) (ex, m)))), (Lshift y))),
+    (flt_full_mult' m size x y re ex)))
+    n
+
+(** val flt_full_mult_quar : int -> var -> var -> var -> var -> exp **)
+
+let flt_full_mult_quar size x y re ex =
+  flt_full_mult' size size x y re ex
+
+(** val clean_high_flt : int -> int -> var -> var -> exp **)
+
+let rec clean_high_flt n size y ex =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (y, 0))
+    (fun m -> Seq ((Seq ((clean_high_flt m size y ex),
+    (coq_SWAP (y, (sub size (Pervasives.succ 0))) (ex, m)))), (Lshift y)))
+    n
+
+(** val flt_full_mult : int -> var -> var -> var -> var -> pexp **)
+
+let flt_full_mult size x y re ex =
+  PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Seq ((Rev re), (Rev x))), (Rev
+    y)))), (QFT re))), (Exp (Seq ((flt_full_mult_quar size x y re ex),
+    (inv_exp (clean_high_flt size size y ex))))))), (RQFT re))), (Exp (Seq
+    ((Seq ((Rev re), (Rev x))), (Rev y)))))
+
+(** val rz_comparator : var -> int -> posi -> int -> pexp **)
+
+let rz_comparator x n c m =
+  PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))), (Exp
+    (rz_sub x n (nat2fb m))))), (RQFT x))), (Exp (coq_CNOT (x, 0) c)))),
+    (inv_pexp (PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))), (Exp
+      (rz_sub x n (nat2fb m))))), (RQFT x)))))
+
 (** val rz_full_adder_form : var -> int -> var -> pexp **)
 
 let rz_full_adder_form x n y =
@@ -223,6 +284,36 @@ let vars_for_rz_full_add size =
 
 let rz_full_adder_out size =
   rz_full_adder_form x_var size y_var
+
+(** val rz_full_sub : var -> int -> var -> exp **)
+
+let rec rz_full_sub x n y =
+  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun _ -> SKIP (x, 0))
+    (fun m -> Seq ((CU ((y, m), (SRR (m, x)))), (rz_full_sub x m y)))
+    n
+
+(** val rz_full_sub_form : var -> int -> var -> pexp **)
+
+let rz_full_sub_form x n y =
+  PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev y)))), (QFT x))), (Exp
+    (rz_full_sub x n y)))),
+    (inv_pexp (PSeq ((Exp (Seq ((Rev x), (Rev y)))), (QFT x)))))
+
+(** val rz_sub_right : var -> int -> (int -> bool) -> pexp **)
+
+let rz_sub_right x n m =
+  PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))), (Exp (rz_sub x n m)))),
+    (inv_pexp (PSeq ((Exp (Rev x)), (QFT x)))))
+
+(** val rz_full_comparator : var -> int -> posi -> var -> pexp **)
+
+let rz_full_comparator x n c y =
+  PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev y)))),
+    (QFT x))), (QFT y))), (Exp (rz_full_sub x n y)))), (RQFT x))), (Exp
+    (coq_CNOT (x, 0) c)))),
+    (inv_pexp (PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev y)))),
+      (QFT x))), (QFT y))), (Exp (rz_full_sub x n y)))), (RQFT x)))))
 
 (** val rz_compare_half3 : var -> int -> posi -> (int -> bool) -> pexp **)
 

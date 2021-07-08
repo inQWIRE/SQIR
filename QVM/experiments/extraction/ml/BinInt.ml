@@ -126,11 +126,31 @@ module Z =
     | Lt -> true
     | _ -> false
 
+  (** val max : coq_Z -> coq_Z -> coq_Z **)
+
+  let max n m =
+    match compare n m with
+    | Lt -> m
+    | _ -> n
+
+  (** val min : coq_Z -> coq_Z -> coq_Z **)
+
+  let min n m =
+    match compare n m with
+    | Gt -> m
+    | _ -> n
+
   (** val abs : coq_Z -> coq_Z **)
 
   let abs = function
   | Zneg p -> Zpos p
   | x -> x
+
+  (** val to_nat : coq_Z -> int **)
+
+  let to_nat = function
+  | Zpos p -> Pos.to_nat p
+  | _ -> 0
 
   (** val of_nat : int -> coq_Z **)
 

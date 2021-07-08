@@ -1,4 +1,10 @@
 
+(** val negb : bool -> bool **)
+
+let negb = function
+| true -> false
+| false -> true
+
 (** val fst : ('a1 * 'a2) -> 'a1 **)
 
 let fst = function
