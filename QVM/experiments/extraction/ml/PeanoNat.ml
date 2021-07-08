@@ -70,4 +70,10 @@ module Nat =
       (fun _ -> y)
       (fun y' -> sub y' (snd (divmod x y' 0 y')))
       y
+
+  (** val b2n : bool -> int **)
+
+  let b2n = function
+  | true -> Pervasives.succ 0
+  | false -> 0
  end

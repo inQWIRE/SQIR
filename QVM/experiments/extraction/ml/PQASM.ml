@@ -386,7 +386,7 @@ let rec findnum' size x y i =
 (** val findnum : int -> int -> int **)
 
 let findnum x n =
-  findnum' (sub n (Pervasives.succ 0)) x
+  findnum' n x
     (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0))
       (sub n (Pervasives.succ 0))) 0
 

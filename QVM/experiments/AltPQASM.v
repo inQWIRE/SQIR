@@ -9,6 +9,8 @@ Require Import AltGateSet2.
 Require Import PQASM.
 Require Import RZArith.
 Require Import CLArith.
+Require Import QIMP.
+Require Import OracleExample.
 (*Require Import QIMP.*)
 
 Definition rz_ang (n:nat) : R := ((R2 * PI)%R / R2^n). (* redefined using R2 *)
@@ -98,11 +100,6 @@ Fixpoint trans_pexp' (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
 
 Definition trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) := trans_pexp' (vs) dim (pexp_elim exp) avs.
 
-(* z = M + x (TOFF-based) *)
-(*
- Definition trans_cl_const_adder (size:nat) :=
-   TODO
-*)
 
 (* z = x + y (TOFF-based) *)
 Definition trans_cl_adder (size:nat) :=
@@ -156,22 +153,40 @@ Definition trans_rz_div (size M:nat) :=
 Definition trans_rz_div_mod (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_div_mod size) (2 * (S size)) (RZArith.rz_div_mod_out size M) (RZArith.avs_for_rz_div_mod size). 
 
-(*
-(* Compile a prog to a circuit. *)
-Definition prog_to_sqir_real (p:prog) (f:flag) : ucom U :=
-  match prog_to_sqir p f with 
-  | Some (d,size,p,vars,avs) => fst (fst (trans_pexp vars d p avs))
-  | None => AltGateSet2.SKIP
-end.
-*)
-
 (* Redefine funcs in RZArith and CLArith to use the new trans_pexp *)
 Definition trans_rz_modmult_rev (M C Cinv size:nat) :=
         trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev M C Cinv size) (avs_for_arith size).
 Definition trans_rz_modmult_rev_alt (M C Cinv size:nat) :=
         trans_pexp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev_alt M C Cinv size) (avs_for_arith size).
 Definition trans_modmult_rev (M C Cinv size:nat) :=
-        trans_pexp (vars_for_cl size) (4*size+2) (real_modmult_rev M C Cinv size) (avs_for_arith size).
+        trans_pexp (vars_for_cl size) (4*size+1) (real_modmult_rev M C Cinv size) (avs_for_arith size).
+
+(* Trans QIMP examples. *)
+Definition trans_dmc_qft (size:nat) :=
+   match compile_dm_qft with Some (Value (Some p,n,a,b)) => 
+             Some (trans_pexp (vars_for_dm_c size) (2*size + 1) p (avs_for_arith size))
+        | _ => None
+   end.
+
+Definition trans_dmc_cl (size:nat) :=
+   match compile_dm_classic with Some (Value (Some p,n,a,b)) => 
+             Some (trans_pexp (vars_for_dm_c size) (2*size + 1) p (avs_for_arith size))
+        | _ => None
+   end.
+
+Definition trans_dmq_qft (size:nat) :=
+   match compile_dmq_qft with Some (Value (Some p,n,a,b)) => 
+             Some (trans_pexp (vars_for_dm_c size) (6*size + 1) p (avs_for_arith size))
+        | _ => None
+   end.
+
+Definition trans_dmq_cl (size:nat) :=
+   match compile_dmq_classic with Some (Value (Some p,n,a,b)) => 
+             Some (trans_pexp (vars_for_dm_c size) (6*size + 1) p (avs_for_arith size))
+        | _ => None
+   end.
+    
+    
 
 (* Also want bc2ucom for comparison's sake *)
 Fixpoint bc2ucom (bc : bccom) : ucom U :=
@@ -189,56 +204,3 @@ Proof.
   simpl. unfold control. apply control'_WF.
   assumption.
 Qed.
-
-(*Lemma bc2ucom_fresh : forall dim q bc,
-UnitaryOps.is_fresh q (to_base_ucom dim (bc2ucom bc)) <->
-@UnitaryOps.is_fresh _ dim q (RCIR.bc2ucom bc).
-Proof.
-intros dim q bc.
-induction bc; try reflexivity.
-simpl.
-destruct bc; try reflexivity.
-rewrite <- UnitaryOps.fresh_control.
-unfold control.
-rewrite <- fresh_control'.
-rewrite IHbc.
-reflexivity.
-lia.
-apply bc2ucom_WF.
-rewrite <- UnitaryOps.fresh_control.
-unfold control.
-rewrite <- fresh_control'.
-rewrite IHbc.
-reflexivity.
-lia.
-apply bc2ucom_WF.
-split; intro H; inversion H; subst; simpl.
-constructor.
-apply IHbc1; auto.
-apply IHbc2; auto.
-constructor.
-apply IHbc1; auto.
-apply IHbc2; auto.
-Qed.
-
-Lemma bc2ucom_correct : forall dim (bc : bccom),
-uc_eval dim (bc2ucom bc) = UnitarySem.uc_eval (RCIR.bc2ucom bc).
-Proof.
-intros dim bc.
-induction bc; try reflexivity.
-simpl.
-rewrite control_correct.
-destruct bc; try reflexivity.
-apply UnitaryOps.control_ucom_X.
-apply UnitaryOps.control_cong.
-apply IHbc.
-apply bc2ucom_fresh. 
-apply UnitaryOps.control_cong.
-apply IHbc.
-apply bc2ucom_fresh. 
-apply bc2ucom_WF. 
-unfold uc_eval in *. simpl.
-rewrite IHbc1, IHbc2.
-reflexivity.  
-Qed.
-*)

@@ -80,12 +80,12 @@ Definition subtractor01 n x y c1:= (X c1; negator0 n x); adder01 n x y c1; inv_e
 Definition modadder21 n x y M c1 c2 := adder01 n y x c1 ; (*  adding y to x *)
                                        comparator01 n M x c1 c2; (* compare M > x + y (in position x) *)
                                        X c2 ; CU c2 (subtractor01 n M x c1) ; (* doing -M + x to x, then flip c2. *)
-                                       inv_exp(comparator01 n y x c1 c2). (* compare M with x+y % M to clean c2. *)
+                                       inv_exp(comparator01 n y x c1 c2). (* compare x with x+y % M to clean c2. *)
 
 (* Here we implement the doubler circuit based on binary shift operation.
    It assumes an n-1 value x that live in a cell of n-bits (so the high-bit must be zero). 
    Then, we shift one position, so that the value looks like 2*x in a n-bit cell. *)
-Definition doubler1 y := Rshift y.
+Definition doubler1 y := Lshift y.
 
 (* Another version of the mod adder only for computing [x][M] -> [2*x % M][M].
    This version will mark the high-bit, and the high-bit is not clearable.
@@ -109,37 +109,36 @@ modadder21 n x y M c1 c2
 
 (* A function to compile a natural number to a bool function. *)
 
-Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
+Fixpoint modsummer' i n M x y c1 s (fC : nat -> bool) :=
   match i with
-  | 0 => if (fC 0) then (copyto x y n) else (SKIP (x,0))
-  | S i' =>  modsummer' i' n M x y c1 c2 s fC; moddoubler01 n x M c1 c2;
-          (SWAP c2 (s,i));
-        (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
+  | 0 => if (fC 0) then (modadder21 n y x M c1 (s,0)) else (SKIP (x,0))
+  | S i' =>  modsummer' i' n M x y c1 s fC; moddoubler01 n x M c1 (s,i');
+        (if (fC i) then (modadder21 n y x M c1 (s,i)) else (SKIP (x,i)))
   end.
-Definition modsummer n M x y c1 c2 s C := modsummer' (n - 1) n M x y c1 c2 s (nat2fb C).
+Definition modsummer n M x y c1 s C := modsummer' (n - 1) n M x y c1 s (nat2fb C).
 
 (* This is the final clean-up step of the mod multiplier to do C*x %M. 
     Here, modmult_half will first clean up all high bits.  *)
-Definition modmult_half n M x y c1 c2 s C := modsummer n M x y c1 c2 s C; (inv_exp (modsummer n M x y c1 c2 s 0)).
+Definition modmult_half n M x y c1 s C := modsummer n M x y c1 s C; (inv_exp (modsummer n M x y c1 s 0)).
 
-Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C; inv_exp (modmult_half n M y x c1 c2 s Cinv).
+Definition modmult_full C Cinv n M x y c1 s := modmult_half n M x y c1 s C; inv_exp (modmult_half n M y x c1 s Cinv).
 
-Definition modmult M C Cinv n x y z s c1 c2 := (init_v n z M); modmult_full C Cinv n z x y c1 c2 s; inv_exp ( (init_v n z M)).
+Definition modmult M C Cinv n x y z s c1 := (init_v n z M); modmult_full C Cinv n z x y c1 s; inv_exp ( (init_v n z M)).
 
-Definition modmult_rev M C Cinv n x y z s c1 c2 := modmult M C Cinv n x y z s c1 c2.
+Definition modmult_rev M C Cinv n x y z s c1 := modmult M C Cinv n x y z s c1.
 
 
 Definition x_var := 0. Definition y_var := 1. Definition z_var := 2. Definition s_var := 3.
 Definition c_var := 4.
 Definition vars_for_cl' (size:nat) := gen_vars size (x_var::(y_var::(z_var::(s_var::[])))).
 
-Definition vars_for_cl (size:nat) := fun x => if x =? c_var then (size * 4,2,id_nat,id_nat) else vars_for_cl' size x.
+Definition vars_for_cl (size:nat) := fun x => if x =? c_var then (size * 4,1,id_nat,id_nat) else vars_for_cl' size x.
 
 Definition real_modmult_rev (M C Cinv size:nat) :=
-    modmult_rev (nat2fb M) C Cinv size x_var y_var z_var s_var (c_var,0) (c_var,1).
+    modmult (nat2fb M) C Cinv size x_var y_var z_var s_var (c_var,0).
 
 Definition trans_modmult_rev (M C Cinv size:nat) :=
-        trans_pexp (vars_for_cl size) (4*size+2) (real_modmult_rev M C Cinv size) (avs_for_arith size).
+        trans_pexp (vars_for_cl size) (4*size+1) (real_modmult_rev M C Cinv size) (avs_for_arith size).
 
 (*********** Proofs ***********)
 
