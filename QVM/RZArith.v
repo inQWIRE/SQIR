@@ -3098,73 +3098,62 @@ Definition rz_compare_half2 (x:var) (n:nat) (c:posi) (M:nat -> bool) :=
 
 (* if x >= M, then the effect of x states. at this point, high-bit of x is 0. 
     otherwise, clean up x, and move on. *)
-Fixpoint rz_moder' i (n:nat) (x ex:var) c (M:nat -> bool) := 
+Fixpoint rz_moder' i (n:nat) (x ex:var) (M:nat -> bool) := 
      match i with 0 => Exp (SKIP (x,0))
-           | S j => rz_compare_half3 x n c M ;; QFT x;;
-                     PCU c (inv_pexp (Exp (rz_sub x n M)));;
-                     Exp (X c; SWAP c (ex,j));;
-                       rz_moder' j n x ex c (cut_n (div_two_spec M) n)
+           | S j => rz_compare_half3 x n (ex,j) M ;; QFT x;;
+                     Exp (CU (ex,j) ((rz_adder x n M)));;
+                     Exp (X (ex,j));;
+                       rz_moder' j n x ex (cut_n (div_two_spec M) n)
      end.
 
 (* x % M circuit. *)
-Definition rz_moder (n:nat) (x re ex:var) c (M:nat) := 
+Definition rz_moder (n:nat) (x re ex:var) (M:nat) := 
     let i := findnum M n in 
         Exp (Rev x; Rev re);; QFT x;;
-          rz_moder' (S i) n x ex c (nat2fb (2^i * M))
-            ;; (Exp (copyto x re n));; inv_pexp (rz_moder' (S i) n x ex c (nat2fb (2^i * M)));;
+          rz_moder' (S i) n x ex (nat2fb (2^i * M))
+            ;; (Exp (copyto x re n));; inv_pexp (rz_moder' (S i) n x ex (nat2fb (2^i * M)));;
         inv_pexp (Exp (Rev x; Rev re);; QFT x).
 
-Definition vars_for_rz_moder' (size:nat) := 
-  gen_vars size (x_var::(y_var::(z_var::([])))).
+Definition vars_for_rz_moder (size:nat) := 
+  gen_vars (S size) (x_var::(y_var::(z_var::([])))).
 
-Definition vars_for_rz_moder (size:nat) :=
-  fun x => if x =? s_var then ((S size) * 3,1,id_nat,id_nat) 
-        else vars_for_rz_moder' (S size) x.
 
 Definition avs_for_rz_moder (size:nat) := fun x => (x/ (S size), x mod (S size)).
 
 Definition rz_moder_out (size:nat) := 
-   rz_moder size x_var y_var z_var (s_var,0).
+   rz_moder (S size) x_var y_var z_var.
 
 (* x / M  circuit. *)
-Definition rz_div (n:nat) (x re ex:var) c (M:nat) := 
+Definition rz_div (n:nat) (x re ex:var) (M:nat) := 
     let i := findnum M n in 
         Exp (Rev x);; QFT x;;
-         rz_moder' (S i) n x ex c (nat2fb (2^i * M)) ;;
-           Exp (copyto ex re n);; inv_pexp (rz_moder' (S i) n x ex c (nat2fb (2^i * M)));;
+         rz_moder' (S i) n x ex (nat2fb (2^i * M)) ;;
+           Exp (copyto ex re n);; inv_pexp (rz_moder' (S i) n x ex (nat2fb (2^i * M)));;
         inv_pexp (Exp (Rev x);; QFT x).
 
-Definition vars_for_rz_div' (size:nat) := 
+Definition vars_for_rz_div (size:nat) := 
   gen_vars size (x_var::(y_var::(z_var::([])))).
-
-Definition vars_for_rz_div (size:nat) :=
-  fun x => if x =? s_var then ((S size) * 3,1,id_nat,id_nat) 
-        else vars_for_rz_div' (S size) x.
 
 Definition avs_for_rz_div (size:nat) := fun x => (x/ (S size), x mod (S size)).
 
 Definition rz_div_out (size:nat) := 
-   rz_div size x_var y_var z_var (s_var,0).
+   rz_div (S size) x_var y_var z_var.
 
 
 (* x = (x % M, x / M)  circuit. *)
-Definition rz_div_mod (n:nat) (x ex:var) c (M:nat) := 
-    let i := findnum M n in 
+Definition rz_div_mod (n:nat) (x ex:var) (M:nat) := 
+    let i := findnum M (n-1) in 
         Exp (Rev x);; QFT x;;
-            rz_moder' (S i) n x ex c (nat2fb (2^i * M));;
+            rz_moder' (S i) n x ex (nat2fb (2^i * M));;
         inv_pexp (Exp (Rev x);; QFT x).
 
-Definition vars_for_rz_div_mod' (size:nat) := 
-  gen_vars size (x_var::(y_var::(([])))).
-
-Definition vars_for_rz_div_mod (size:nat) :=
-  fun x => if x =? z_var then ((S size) * 2,1,id_nat,id_nat) 
-        else vars_for_rz_div_mod' (S size) x.
+Definition vars_for_rz_div_mod (size:nat) := 
+  gen_vars (S size) (x_var::(y_var::(([])))).
 
 Definition avs_for_rz_div_mod (size:nat) := fun x => (x/ (S size), x mod (S size)).
 
 Definition rz_div_mod_out (size:nat) := 
-   rz_div_mod size x_var y_var (z_var,0).
+   rz_div_mod (S size) x_var y_var.
 
 
 
