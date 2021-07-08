@@ -3124,7 +3124,7 @@ Definition vars_for_rz_moder (size:nat) :=
 Definition avs_for_rz_moder (size:nat) := fun x => (x/ (S size), x mod (S size)).
 
 Definition rz_moder_out (size:nat) := 
-   rz_moder size x_var y_var z_var (s_var,0).
+   rz_moder (S size) x_var y_var z_var (s_var,0).
 
 (* x / M  circuit. *)
 Definition rz_div (n:nat) (x re ex:var) c (M:nat) := 
@@ -3144,7 +3144,7 @@ Definition vars_for_rz_div (size:nat) :=
 Definition avs_for_rz_div (size:nat) := fun x => (x/ (S size), x mod (S size)).
 
 Definition rz_div_out (size:nat) := 
-   rz_div size x_var y_var z_var (s_var,0).
+   rz_div (S size) x_var y_var z_var (s_var,0).
 
 
 (* x = (x % M, x / M)  circuit. *)
