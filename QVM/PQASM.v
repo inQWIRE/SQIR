@@ -8896,7 +8896,7 @@ Fixpoint findnum' (size:nat) (x:nat) (y:nat) (i:nat) :=
        end.
 
 (* find a number that is great-equal than 2^(n-1), assume that the number is less than 2^n *)
-Definition findnum (x:nat) (n:nat) := findnum' (n-1) x (2^(n-1)) 0.
+Definition findnum (x:nat) (n:nat) := findnum' n x (2^(n-1)) 0.
 
 
 Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0) 
