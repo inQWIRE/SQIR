@@ -3164,7 +3164,7 @@ Definition vars_for_rz_div_mod (size:nat) :=
 Definition avs_for_rz_div_mod (size:nat) := fun x => (x/ (S size), x mod (S size)).
 
 Definition rz_div_mod_out (size:nat) := 
-   rz_div_mod size x_var y_var (z_var,0).
+   rz_div_mod (S size) x_var y_var (z_var,0).
 
 
 
