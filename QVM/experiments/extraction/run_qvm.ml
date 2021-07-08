@@ -193,30 +193,7 @@ let run_div_mod size m =
     let _ = write_qasm_file ("rz-div-mod-" ^ fname) rz_div_mod in
     ();;
 
-run_modmult_experiments 2 2 3;;
-run_modmult_experiments 5 3 7;;
-run_modmult_experiments 7 13 15;;
-run_modmult_experiments 17 11 31;;
-run_modmult_experiments 32 2 63;;
-
-(*
-(* overflows! *)
-let c_qfta = prog_to_sqir_real (sin_prog 31) Classic;;
-let (x,y,z) = count_gates c_qfta;;
-printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
-
-let c_classic = prog_to_sqir_real (sin_prog 31) QFTA;;
-let (x,y,z) = count_gates c_classic;;
-printf "%d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" x y z;;
-*)
-
-(*
-run_adders 32 3647837559;; (* overflows! *)
-*)
-
-run_adders 8 143;;
+run_modmult_experiments 139 117 173;;
 run_adders 16 38168;;
-run_multipliers 8 143;;
 run_multipliers 16 38168;;
-run_div_mod 8 143;;
 run_div_mod 16 38168;;
