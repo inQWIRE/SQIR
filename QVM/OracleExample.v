@@ -210,14 +210,14 @@ Definition dmc_estore := init_estore empty_estore var_list.
 
 Definition dmc_cstore := Store.add (L z_var,0) (nat2fb 5) (Store.add (L y_var,0) (nat2fb 10) (init_cstore empty_cstore var_list)).
 
-Definition compile_dm_qft := 
+Definition compile_dm_qft (size:nat) := 
   trans_qexp
-    8 (fun _ => 1) dmc_vmap dmc_benv QFTA dmc_cstore temp_var temp1_var stack_var 0 nil dmc_estore dmc_estore
+    size (fun _ => 1) dmc_vmap dmc_benv QFTA dmc_cstore temp_var temp1_var stack_var 0 nil dmc_estore dmc_estore
     (test_fun).
 
-Definition compile_dm_classic := 
+Definition compile_dm_classic (size:nat) := 
   trans_qexp
-    8 (fun _ => 1) dmc_vmap dmc_benv Classic dmc_cstore temp_var temp1_var stack_var 0 nil dmc_estore dmc_estore
+    size (fun _ => 1) dmc_vmap dmc_benv Classic dmc_cstore temp_var temp1_var stack_var 0 nil dmc_estore dmc_estore
     (test_fun).
 
 Definition vars_for_dm_c' (size:nat) := 
@@ -242,14 +242,14 @@ Definition dmq_estore := init_estore empty_estore var_list_q.
 
 Definition dmq_cstore := Store.add (L z_var,0) (nat2fb 5) (init_cstore empty_cstore var_list_q).
 
-Definition compile_dmq_qft := 
+Definition compile_dmq_qft (size:nat)  := 
   trans_qexp
-    8 (fun _ => 1) dmq_vmap dmq_benv QFTA dmq_cstore temp_var temp1_var stack_var 0 nil dmq_estore dmq_estore
+    size (fun _ => 1) dmq_vmap dmq_benv QFTA dmq_cstore temp_var temp1_var stack_var 0 nil dmq_estore dmq_estore
     (test_fun).
 
-Definition compile_dmq_classic := 
+Definition compile_dmq_classic (size:nat)  := 
   trans_qexp
-    8 (fun _ => 1) dmq_vmap dmq_benv Classic dmq_cstore temp_var temp1_var stack_var 0 nil dmq_estore dmq_estore
+    size (fun _ => 1) dmq_vmap dmq_benv Classic dmq_cstore temp_var temp1_var stack_var 0 nil dmq_estore dmq_estore
     (test_fun).
 
 Definition vars_for_dm_q' (size:nat) := 
