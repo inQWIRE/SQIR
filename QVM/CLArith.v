@@ -126,7 +126,7 @@ Definition modmult_full C Cinv n M x y c1 c2 s := modmult_half n M x y c1 c2 s C
 
 Definition modmult M C Cinv n x y z s c1 c2 := (init_v n z M); modmult_full C Cinv n z x y c1 c2 s; inv_exp ( (init_v n z M)).
 
-Definition modmult_rev M C Cinv n x y z s c1 c2 := Rev x;; modmult M C Cinv n x y z s c1 c2;; Rev x.
+Definition modmult_rev M C Cinv n x y z s c1 c2 := modmult M C Cinv n x y z s c1 c2.
 
 
 Definition x_var := 0. Definition y_var := 1. Definition z_var := 2. Definition s_var := 3.
