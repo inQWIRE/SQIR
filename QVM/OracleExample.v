@@ -183,3 +183,47 @@ Definition cos_prog (size:nat) : prog :=
          (size,((TNor Q FixedP, x)::[(TNor Q FixedP,result)]),(taylor_cos::[]),f,result).
 
 
+
+Definition test_fun : qexp := ndiv (Nor (Var (L x_var))) (Nor (Var (L y_var))) (Nor (Var (L z_var)))
+                           ;;; nmul (Nor (Var (L s_var))) (Nor (Var (L x_var))) (Nor (Var (L c_var))).
+
+
+Definition temp_var := 5. Definition temp1_var := 6. Definition stack_var := 7.
+
+Definition qr_vmap : qvar * nat -> var :=
+  fun '(x, _) =>
+  match x with
+  | L x' => x'
+  | G x' => x'
+  end.
+
+Definition var_list := (cons (TNor C Nat, x_var) (cons (TNor C Nat, y_var) 
+                   (cons (TNor C Nat, z_var) (cons (TNor Q Nat, s_var) (cons (TNor Q Nat, c_var) nil))))).
+
+Definition qr_benv :=
+ match
+  gen_env var_list empty_benv
+  with None => empty_benv | Some bv => bv
+ end.
+
+Definition qr_estore := init_estore empty_estore var_list.
+
+Definition qr_cstore := init_cstore empty_cstore var_list.
+
+Definition compile_qr_qft := 
+  trans_qexp
+    8 (fun _ => 1) qr_vmap qr_benv QFTA qr_cstore temp_var temp1_var stack_var 0 nil qr_estore qr_estore
+    (test_fun).
+
+Definition compile_qr_classic := 
+  trans_qexp
+    8 (fun _ => 1) qr_vmap qr_benv Classic qr_cstore temp_var temp1_var stack_var 0 nil qr_estore qr_estore
+    (test_fun).
+
+Check compile_qr_qft.
+
+
+
+
+
+
