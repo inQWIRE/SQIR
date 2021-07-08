@@ -87,6 +87,7 @@ Definition c : var := 2.
 Definition d : var := 3.
 Definition tmp : var := 101.
 Definition stack : var := 102.
+Definition tmp1 : var := 103.
 
 Definition qr_vmap : qvar * nat -> var :=
   fun '(x, _) =>
@@ -107,7 +108,7 @@ Definition qr_smap :=
 Definition qr_pexp := 
   match
   trans_qexp
-    32 (fun _ => 1) qr_vmap qr_benv QFTA empty_cstore tmp stack 0 nil
+    32 (fun _ => 1) qr_vmap qr_benv QFTA empty_cstore tmp tmp1 stack 0 nil
     chacha_estore chacha_estore
     (qr_qexp (G a) (G b) (G c) (G d))
   with
@@ -167,6 +168,7 @@ Module DRTesting.
 
   Definition tmp : var := 16.
   Definition stack : var := 17.
+  Definition tmp1 : var := 18.
 
   Definition dr_vmap : qvar * nat -> var :=
     fun '(x, _) =>
@@ -182,7 +184,7 @@ Module DRTesting.
     init_estore_g (map (fun x => (TNor Q Nat, x)) (seq 0 16)).
 
   Definition compile_dr :=
-    trans_qexp 32 (fun _ => 1) dr_vmap dr_benv QFTA (empty_cstore) tmp stack 0 nil dr_estore dr_estore
+    trans_qexp 32 (fun _ => 1) dr_vmap dr_benv QFTA (empty_cstore) tmp tmp1 stack 0 nil dr_estore dr_estore
     (dr_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
              (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
 
@@ -335,6 +337,7 @@ Module ChaChaTesting.
 
   Definition tmp : var := 16.
   Definition stack : var := 17.
+  Definition tmp1 : var := 18.
 
   Definition chacha_vmap : qvar * nat -> var :=
     fun '(x, _) =>
@@ -348,7 +351,7 @@ Module ChaChaTesting.
 
   Definition compile_chacha :=
     trans_qexp
-    32 (fun _ => 1) chacha_vmap chacha_benv QFTA (empty_cstore) tmp stack 0 nil
+    32 (fun _ => 1) chacha_vmap chacha_benv QFTA (empty_cstore) tmp tmp1 stack 0 nil
     chacha_estore chacha_estore
     (chacha_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
              (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
