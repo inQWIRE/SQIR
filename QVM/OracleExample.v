@@ -20,16 +20,19 @@ Require Import Nat Bvector.
 From Bits Require Import bits.
 Require Import Testing.
 
-(* The definition of QSSA. *)
 Local Open Scope exp_scope.
 Local Open Scope nat_scope.
 
+Definition dec2checker P `{Dec P} := checker (dec2bool P).
 
 Fixpoint rotate_left_n (x : qvar) n :=
   match n with
   | 0 => skip
   | S n' => slrot (Nor (Var x));;; rotate_left_n x n'
   end.
+
+Definition chacha_estore :=
+  init_estore_g (map (fun x => (TNor Q Nat, x)) (seq 0 16)).
 
 (*define example hash_function as the oracle for grover's search.
   https://qibo.readthedocs.io/en/stable/tutorials/hash-grover/README.html *)
@@ -98,34 +101,27 @@ Definition qr_benv :=
   with None => empty_benv | Some bv => bv
  end.
 
-Definition qr_estore := init_estore_g (map (fun x => (TNor Q Nat, x)) (seq 0 16)).
-
 Definition qr_smap := 
 (gen_smap_l (cons (TNor Q Nat, a) (cons (TNor Q Nat, b) (cons (TNor Q Nat, c) (cons (TNor Q Nat, d) nil)))) (fun _ => 0)).
 
-Definition compile_qr := 
+Definition qr_pexp := 
+  match
   trans_qexp
-    32 (fun _ => 1) qr_vmap qr_benv QFTA empty_cstore tmp stack 0 nil qr_estore qr_estore
-    (qr_qexp (G a) (G b) (G c) (G d)).
-
-Definition qr_pexp : pexp.
-Proof.
-(*
-  destruct (compile_qr) eqn:E1.
-  destruct v.
-  destruct x.
-  - destruct p, p, o.
-    + apply p.
-    + discriminate.
-  - discriminate.
-Defined.
-*)
-Admitted.
+    32 (fun _ => 1) qr_vmap qr_benv QFTA empty_cstore tmp stack 0 nil
+    chacha_estore chacha_estore
+    (qr_qexp (G a) (G b) (G c) (G d))
+  with
+  | Some (Value (Some p, _, _, _)) => p
+  | _ => SKIP (a, 0)
+  end.
 
 Definition qr_env : f_env := fun _ => 32.
 
-Conjecture qr_oracle_spec :
-  forall va vb vc vd,
+Definition qr_oracle_spec : Checker :=
+  forAllShrink arbitrary shrink (fun va =>
+  forAllShrink arbitrary shrink (fun vb =>
+  forAllShrink arbitrary shrink (fun vc =>
+  forAllShrink arbitrary shrink (fun vd =>
   let
     '(a', b', c', d') :=
     qr_spec (bvector2bits va) (bvector2bits vb)
@@ -135,9 +131,10 @@ Conjecture qr_oracle_spec :
   let vb' := bits2bvector b' in
   let vc' := bits2bvector c' in
   let vd' := bits2bvector d' in
-  st_equiv (get_vars qr_pexp) qr_env (get_prec qr_env qr_pexp)
+  dec2checker
+  (st_equiv (get_vars qr_pexp) qr_env (get_prec qr_env qr_pexp)
     (prog_sem qr_env qr_pexp (a |=> va, b |=> vb, c |=> vc, d |=> vd))
-        (a |=> va', b |=> vb', c |=> vc', d |=> vd').
+        (a |=> va', b |=> vb', c |=> vc', d |=> vd')))))).
 
 End QRTesting.
 
@@ -166,8 +163,6 @@ Definition dr_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 :=
   qr_qexp x2 x7 x8 x13;;;
   qr_qexp x3 x4 x9 x14.
 
-Definition dec2checker P `{Dec P} := checker (dec2bool P).
-
 Module DRTesting.
 
   Definition tmp : var := 16.
@@ -183,8 +178,11 @@ Module DRTesting.
   Definition dr_benv :=
    match  gen_genv (map (fun x => (TNor Q Nat, x)) (seq 0 16)) with None => empty_benv | Some bv => bv end.
 
+  Definition dr_estore :=
+    init_estore_g (map (fun x => (TNor Q Nat, x)) (seq 0 16)).
+
   Definition compile_dr :=
-    trans_qexp 32 (fun _ => 1) dr_vmap dr_benv QFTA (empty_cstore) tmp stack 0 nil qr_estore qr_estore
+    trans_qexp 32 (fun _ => 1) dr_vmap dr_benv QFTA (empty_cstore) tmp stack 0 nil dr_estore dr_estore
     (dr_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
              (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
 
@@ -350,7 +348,8 @@ Module ChaChaTesting.
 
   Definition compile_chacha :=
     trans_qexp
-    32 (fun _ => 1) chacha_vmap chacha_benv QFTA (empty_cstore) tmp stack 0 nil qr_estore qr_estore
+    32 (fun _ => 1) chacha_vmap chacha_benv QFTA (empty_cstore) tmp stack 0 nil
+    chacha_estore chacha_estore
     (chacha_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
              (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
 
