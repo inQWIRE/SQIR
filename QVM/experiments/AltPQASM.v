@@ -9,6 +9,7 @@ Require Import AltGateSet2.
 Require Import PQASM.
 Require Import RZArith.
 Require Import CLArith.
+(*Require Import QIMP.*)
 
 Definition rz_ang (n:nat) : R := ((R2 * PI)%R / R2^n). (* redefined using R2 *)
 
@@ -27,6 +28,8 @@ Fixpoint gen_srr_gate' (f:vars) (x:var) (n:nat) (size:nat) : ucom U :=
     | S m => (gen_srr_gate' f x m size) >> (U1 (rrz_ang (size - m)) (find_pos f (x,m)))
     end.
 Definition gen_srr_gate (f:vars) (x:var) (n:nat) := gen_srr_gate' f x (S n) (S n).
+
+Check control.
 
 Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (ucom U * vars  * (nat -> posi)) :=
     match exp with
@@ -95,6 +98,7 @@ Fixpoint trans_pexp' (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
 
 Definition trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) := trans_pexp' (vs) dim (pexp_elim exp) avs.
 
+
 (* z = x + y (TOFF-based) *)
 Definition trans_cl_adder (size:nat) :=
   trans_pexp (CLArith.vars_for_adder01 size) (2 * size + 1) (CLArith.adder01_out size) (PQASM.avs_for_arith size).
@@ -131,7 +135,7 @@ Definition trans_cl_mod (size M:nat) :=
 Definition trans_cl_div (size M:nat) :=
   trans_pexp (CLArith.vars_for_cl_div size) (4 * size + 1) (CLArith.cl_div_out size M) (PQASM.avs_for_arith size). 
 
-(* z = x mod y, x / y (TOFF-based) *)
+(* z = x mod y,x/y (TOFF-based) *)
 Definition trans_cl_div_mod (size M:nat) :=
   trans_pexp (CLArith.vars_for_cl_div_mod size) (3 * size + 1) (CLArith.cl_div_mod_out size M) (PQASM.avs_for_arith size). 
 
@@ -143,7 +147,7 @@ Definition trans_rz_mod (size M:nat) :=
 Definition trans_rz_div (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_div size) (3 * (S size)) (RZArith.rz_div_out size M) (RZArith.avs_for_rz_div size). 
 
-(* z = x mod y, x / y (QFT-based) *)
+(* z = x mod y,x/y (QFT-based) *)
 Definition trans_rz_div_mod (size M:nat) :=
   trans_pexp (RZArith.vars_for_rz_div_mod size) (2 * (S size)) (RZArith.rz_div_mod_out size M) (RZArith.avs_for_rz_div_mod size). 
 
@@ -165,3 +169,9 @@ Fixpoint bc2ucom (bc : bccom) : ucom U :=
   | bcseq bc1 bc2 => (bc2ucom bc1) >> (bc2ucom bc2)
   end.
   
+Lemma bc2ucom_WF : forall bc, well_formed (bc2ucom bc).
+Proof.
+  induction bc; repeat constructor; auto.
+  simpl. unfold control. apply control'_WF.
+  assumption.
+Qed.
