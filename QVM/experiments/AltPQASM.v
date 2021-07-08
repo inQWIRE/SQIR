@@ -134,15 +134,15 @@ Definition trans_rz_mul (size:nat) :=
 
 (* z = x mod y (TOFF-based) *)
 Definition trans_cl_mod (size M:nat) :=
-  trans_pexp (CLArith.vars_for_cl_moder size) (4 * size + 2) (CLArith.cl_moder_out size M) (PQASM.avs_for_arith size). 
+  trans_pexp (CLArith.vars_for_cl_moder size) (4 * size + 1) (CLArith.cl_moder_out size M) (PQASM.avs_for_arith size). 
 
 (* z = x / y (TOFF-based) *)
 Definition trans_cl_div (size M:nat) :=
-  trans_pexp (CLArith.vars_for_cl_div size) (4 * size + 2) (CLArith.cl_div_out size M) (PQASM.avs_for_arith size). 
+  trans_pexp (CLArith.vars_for_cl_div size) (4 * size + 1) (CLArith.cl_div_out size M) (PQASM.avs_for_arith size). 
 
 (* z = x mod y,x/y (TOFF-based) *)
 Definition trans_cl_div_mod (size M:nat) :=
-  trans_pexp (CLArith.vars_for_cl_div_mod size) (3 * size + 2) (CLArith.cl_div_mod_out size M) (PQASM.avs_for_arith size). 
+  trans_pexp (CLArith.vars_for_cl_div_mod size) (3 * size + 1) (CLArith.cl_div_mod_out size M) (PQASM.avs_for_arith size). 
 
 (* z = x mod y (QFT-based) *)
 Definition trans_rz_mod (size M:nat) :=
