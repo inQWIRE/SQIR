@@ -111,7 +111,7 @@ modadder21 n x y M c1 c2
 
 Fixpoint modsummer' i n M x y c1 c2 s (fC : nat -> bool) :=
   match i with
-  | 0 => if (fC 0) then (copyto x y n) else (SKIP (x,0))
+  | 0 => if (fC 0) then (modadder21 n y x M c1 c2) else (SKIP (x,0))
   | S i' =>  modsummer' i' n M x y c1 c2 s fC; moddoubler01 n x M c1 c2;
           (SWAP c2 (s,i));
         (if (fC i) then (modadder21 n y x M c1 c2) else (SKIP (x,i)))
