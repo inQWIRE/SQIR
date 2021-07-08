@@ -193,31 +193,28 @@ let run_div_mod size m =
     let _ = write_qasm_file ("rz-div-mod-" ^ fname) rz_div_mod in
     ();;
 
-(*
 run_modmult_experiments 139 117 173;;
 run_adders 16 38168;;
 run_multipliers 16 38168;;
 run_div_mod 16 38168;;
-*)
-
 
 (* Testing for Liyi *)
-
-match (trans_dmc_qft 4) with 
+(*
+match (trans_dmc_qft 8) with 
 | None -> printf "trans_dmc_qft returned None\n%!"
 | Some c -> printf "trans_dmc_qft returned Some\n%!";
             let (x,y,z) = count_gates (fst (fst c)) in
             printf "\tcircuit has %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
               (get_dim (fst (fst c))) x y z;;
 
-match (trans_dmc_cl 4) with 
+match (trans_dmc_cl 8) with 
 | None -> printf "trans_dmc_cl returned None\n%!"
 | Some c -> printf "trans_dmc_cl returned Some\n%!";
             let (x,y,z) = count_gates (fst (fst c)) in
             printf "\tcircuit has %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
               (get_dim (fst (fst c))) x y z;;
 
-match (trans_dmq_qft 4) with 
+match (trans_dmq_qft 8) with 
 | None -> printf "trans_dmq_qft returned None\n%!"
 | Some c -> printf "trans_dmq_qft returned Some\n%!";
             let (x,y,z) = count_gates (fst (fst c)) in
@@ -230,3 +227,4 @@ match (trans_dmq_cl 8) with
             let (x,y,z) = count_gates (fst (fst c)) in
             printf "\tcircuit has %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
               (get_dim (fst (fst c))) x y z;;
+*)
