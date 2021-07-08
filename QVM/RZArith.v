@@ -3100,9 +3100,9 @@ Definition rz_compare_half2 (x:var) (n:nat) (c:posi) (M:nat -> bool) :=
     otherwise, clean up x, and move on. *)
 Fixpoint rz_moder' i (n:nat) (x ex:var) c (M:nat -> bool) := 
      match i with 0 => Exp (SKIP (x,0))
-           | S j => rz_compare_half3 x n c M ;; 
+           | S j => rz_compare_half3 x n c M ;; QFT x;;
                      PCU c (inv_pexp (Exp (rz_sub x n M)));;
-                     QFT x ;; X c;; Exp (SWAP c (ex,j));;
+                     Exp (X c; SWAP c (ex,j));;
                        rz_moder' j n x ex c (cut_n (div_two_spec M) n)
      end.
 
