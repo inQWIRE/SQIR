@@ -269,7 +269,7 @@ let trans_modmult_rev m c cinv size =
     int -> ((coq_U ucom * vars) * (int -> posi)) option **)
 
 let trans_dmc_qft size =
-  match compile_dm_qft with
+  match compile_dm_qft size with
   | Some v ->
     (match v with
      | Value x ->
@@ -289,7 +289,7 @@ let trans_dmc_qft size =
 (** val trans_dmc_cl : int -> ((coq_U ucom * vars) * (int -> posi)) option **)
 
 let trans_dmc_cl size =
-  match compile_dm_classic with
+  match compile_dm_classic size with
   | Some v ->
     (match v with
      | Value x ->
@@ -310,7 +310,7 @@ let trans_dmc_cl size =
     int -> ((coq_U ucom * vars) * (int -> posi)) option **)
 
 let trans_dmq_qft size =
-  match compile_dmq_qft with
+  match compile_dmq_qft size with
   | Some v ->
     (match v with
      | Value x ->
@@ -332,7 +332,7 @@ let trans_dmq_qft size =
 (** val trans_dmq_cl : int -> ((coq_U ucom * vars) * (int -> posi)) option **)
 
 let trans_dmq_cl size =
-  match compile_dmq_classic with
+  match compile_dmq_classic size with
   | Some v ->
     (match v with
      | Value x ->

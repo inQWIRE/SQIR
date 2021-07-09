@@ -163,25 +163,25 @@ Definition trans_modmult_rev (M C Cinv size:nat) :=
 
 (* Trans QIMP examples. *)
 Definition trans_dmc_qft (size:nat) :=
-   match compile_dm_qft with Some (Value (Some p,n,a,b)) => 
+   match compile_dm_qft size with Some (Value (Some p,n,a,b)) => 
              Some (trans_pexp (vars_for_dm_c size) (2*size + 1) p (avs_for_arith size))
         | _ => None
    end.
 
 Definition trans_dmc_cl (size:nat) :=
-   match compile_dm_classic with Some (Value (Some p,n,a,b)) => 
+   match compile_dm_classic size with Some (Value (Some p,n,a,b)) => 
              Some (trans_pexp (vars_for_dm_c size) (2*size + 1) p (avs_for_arith size))
         | _ => None
    end.
 
 Definition trans_dmq_qft (size:nat) :=
-   match compile_dmq_qft with Some (Value (Some p,n,a,b)) => 
+   match compile_dmq_qft size with Some (Value (Some p,n,a,b)) => 
              Some (trans_pexp (vars_for_dm_c size) (6*size + 1) p (avs_for_arith size))
         | _ => None
    end.
 
 Definition trans_dmq_cl (size:nat) :=
-   match compile_dmq_classic with Some (Value (Some p,n,a,b)) => 
+   match compile_dmq_classic size with Some (Value (Some p,n,a,b)) => 
              Some (trans_pexp (vars_for_dm_c size) (6*size + 1) p (avs_for_arith size))
         | _ => None
    end.

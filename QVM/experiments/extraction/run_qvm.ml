@@ -193,40 +193,41 @@ let run_div_mod size m =
     let _ = write_qasm_file ("rz-div-mod-" ^ fname) rz_div_mod in
     ();;
 
-(*
+let run_partial_eval_exp size =
+  let fname = (string_of_int size) ^ ".qasm" in
+  let _ = printf "Generating circuits for partial eval experiments, input size=%d...\n%!" size in
+  match (trans_dmc_qft size) with 
+  | None -> printf "ERROR: trans_dmc_qft returned None\n%!"
+  | Some c -> let c = fst (fst c) in
+              let (x,y,z) = count_gates c in
+              (printf "\ttrans_dmc_qft: %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+                 (get_dim c) x y z;
+               write_qasm_file ("partial-eval-rz-const-" ^ fname) c);
+  match (trans_dmc_cl size) with 
+  | None -> printf "ERROR: trans_dmc_cl returned None\n%!"
+  | Some c -> let c = fst (fst c) in
+              let (x,y,z) = count_gates c in
+              (printf "\ttrans_dmc_cl: %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+                 (get_dim c) x y z;
+               write_qasm_file ("partial-eval-cl-const-" ^ fname) c);
+  match (trans_dmq_qft size) with 
+  | None -> printf "ERROR: trans_dmc_cl returned None\n%!"
+  | Some c -> let c = fst (fst c) in
+              let (x,y,z) = count_gates c in
+              (printf "\ttrans_dmq_qft: %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+                 (get_dim c) x y z;
+              write_qasm_file ("partial-eval-rz-" ^ fname) c);
+  match (trans_dmq_cl size) with 
+  | None -> printf "ERROR: trans_dmq_cl returned None\n%!"
+  | Some c -> let c = fst (fst c) in
+              let (x,y,z) = count_gates c in
+              (printf "\ttrans_dmq_cl: %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
+                 (get_dim c) x y z;
+               write_qasm_file ("partial-eval-cl-" ^ fname) c);
+  ();;
+
 run_modmult_experiments 139 117 173;;
 run_adders 16 38168;;
 run_multipliers 16 38168;;
 run_div_mod 16 38168;;
-*)
-
-
-(* Testing for Liyi *)
-
-match (trans_dmc_qft 4) with 
-| None -> printf "trans_dmc_qft returned None\n%!"
-| Some c -> printf "trans_dmc_qft returned Some\n%!";
-            let (x,y,z) = count_gates (fst (fst c)) in
-            printf "\tcircuit has %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
-              (get_dim (fst (fst c))) x y z;;
-
-match (trans_dmc_cl 4) with 
-| None -> printf "trans_dmc_cl returned None\n%!"
-| Some c -> printf "trans_dmc_cl returned Some\n%!";
-            let (x,y,z) = count_gates (fst (fst c)) in
-            printf "\tcircuit has %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
-              (get_dim (fst (fst c))) x y z;;
-
-match (trans_dmq_qft 4) with 
-| None -> printf "trans_dmq_qft returned None\n%!"
-| Some c -> printf "trans_dmq_qft returned Some\n%!";
-            let (x,y,z) = count_gates (fst (fst c)) in
-            printf "\tcircuit has %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
-              (get_dim (fst (fst c))) x y z;;
-
-match (trans_dmq_cl 8) with 
-| None -> printf "trans_dmq_cl returned None\n%!"
-| Some c -> printf "trans_dmq_cl returned Some\n%!";
-            let (x,y,z) = count_gates (fst (fst c)) in
-            printf "\tcircuit has %d qubits, %d 1-qubit gates, %d 2-qubit gates, %d 3-qubit gates\n%!" 
-              (get_dim (fst (fst c))) x y z;;
+run_partial_eval_exp 16;;
