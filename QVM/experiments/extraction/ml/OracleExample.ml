@@ -105,24 +105,20 @@ let dmc_cstore =
       (init_cstore empty_cstore var_list))
 
 (** val compile_dm_qft :
-    (((pexp option * int) * cstore) * estore) value option **)
+    int -> (((pexp option * int) * cstore) * estore) value option **)
 
-let compile_dm_qft =
-  trans_qexp (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ 0)))))))) (fun _ -> Pervasives.succ 0) dmc_vmap dmc_benv
-    QFTA dmc_cstore temp_var temp1_var stack_var 0 [] dmc_estore dmc_estore
+let compile_dm_qft size =
+  trans_qexp size (fun _ -> Pervasives.succ 0) dmc_vmap dmc_benv QFTA
+    dmc_cstore temp_var temp1_var stack_var 0 [] dmc_estore dmc_estore
     test_fun
 
 (** val compile_dm_classic :
-    (((pexp option * int) * cstore) * estore) value option **)
+    int -> (((pexp option * int) * cstore) * estore) value option **)
 
-let compile_dm_classic =
-  trans_qexp (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ 0)))))))) (fun _ -> Pervasives.succ 0) dmc_vmap dmc_benv
-    Classic dmc_cstore temp_var temp1_var stack_var 0 [] dmc_estore
-    dmc_estore test_fun
+let compile_dm_classic size =
+  trans_qexp size (fun _ -> Pervasives.succ 0) dmc_vmap dmc_benv Classic
+    dmc_cstore temp_var temp1_var stack_var 0 [] dmc_estore dmc_estore
+    test_fun
 
 (** val vars_for_dm_c' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -171,21 +167,17 @@ let dmq_cstore =
     (init_cstore empty_cstore var_list_q)
 
 (** val compile_dmq_qft :
-    (((pexp option * int) * cstore) * estore) value option **)
+    int -> (((pexp option * int) * cstore) * estore) value option **)
 
-let compile_dmq_qft =
-  trans_qexp (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ 0)))))))) (fun _ -> Pervasives.succ 0) dmq_vmap dmq_benv
-    QFTA dmq_cstore temp_var temp1_var stack_var 0 [] dmq_estore dmq_estore
+let compile_dmq_qft size =
+  trans_qexp size (fun _ -> Pervasives.succ 0) dmq_vmap dmq_benv QFTA
+    dmq_cstore temp_var temp1_var stack_var 0 [] dmq_estore dmq_estore
     test_fun
 
 (** val compile_dmq_classic :
-    (((pexp option * int) * cstore) * estore) value option **)
+    int -> (((pexp option * int) * cstore) * estore) value option **)
 
-let compile_dmq_classic =
-  trans_qexp (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ 0)))))))) (fun _ -> Pervasives.succ 0) dmq_vmap dmq_benv
-    Classic dmq_cstore temp_var temp1_var stack_var 0 [] dmq_estore
-    dmq_estore test_fun
+let compile_dmq_classic size =
+  trans_qexp size (fun _ -> Pervasives.succ 0) dmq_vmap dmq_benv Classic
+    dmq_cstore temp_var temp1_var stack_var 0 [] dmq_estore dmq_estore
+    test_fun
