@@ -4,219 +4,19 @@ Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat. 
 Require Import Dirac.
 Require Import QPE.
+Require Import BasicUtility.
 (**********************)
 (** Unitary Programs **)
 (**********************)
-Definition var := nat.
-
-Definition posi : Type := (var * nat).
-
-Definition posi_eq (r1 r2 : posi) : bool := 
-                match r1 with (x1,y1)
-                            => match r2
-                               with (x2,y2) => (x1 =? x2) && (y1 =? y2)
-                               end
-                end.
 
 Declare Scope exp_scope.
 Delimit Scope exp_scope with exp.
 Local Open Scope exp_scope.
 Local Open Scope nat_scope.
 
-Lemma mod_sum_lt :
-  forall x y M,
-    x < M ->
-    y < M ->
-    (x + y) mod M < x <-> x + y >= M.
-Proof.
-  intros. split; intros.
-  - assert ((x + y) mod M < x + y) by lia.
-    rewrite Nat.div_mod with (y := M) in H2 by lia.
-    assert (0 < (x + y) / M) by nia.
-    rewrite Nat.div_str_pos_iff in H3 by lia. lia.
-  - rewrite Nat.mod_eq by lia.
-    assert (1 <= (x + y) / M < 2).
-    { split.
-      apply Nat.div_le_lower_bound; lia.
-      apply Nat.div_lt_upper_bound; lia.
-    }
-    replace (M * ((x + y) / M)) with M by nia.
-    lia.
-Qed.
-
-
-Lemma mod_sum_lt_bool :
-  forall x y M,
-    x < M ->
-    y < M ->
-    ¬ (M <=? x + y) = (x <=? (x + y) mod M).
-Proof.
-  intros. bdestruct (M <=? x + y); bdestruct (x <=? (x + y) mod M); try easy.
-  assert ((x + y) mod M < x) by (apply mod_sum_lt; lia). lia.
-  assert (x + y >= M) by (apply mod_sum_lt; lia). lia.
-Qed.
-
-Notation "i '==?' j" := (posi_eq i j) (at level 50).
-
-
-Lemma posi_eqb_eq : forall a b, a ==? b = true -> a = b.
-Proof.
- intros. unfold posi_eq in H.
- destruct a. destruct b.
- apply andb_true_iff in H.
- destruct H. apply Nat.eqb_eq in H.
- apply Nat.eqb_eq in H0. subst. easy.
-Qed.
-
-Lemma posi_eqb_neq : forall a b, a ==? b = false -> a <> b.
-Proof.
- intros. unfold posi_eq in H.
- destruct a. destruct b.
- apply andb_false_iff in H.
- destruct H. apply Nat.eqb_neq in H.
- intros R. injection R as eq1.
- rewrite eq1 in H. easy.
- apply Nat.eqb_neq in H.
- intros R. injection R as eq1.
- rewrite H0 in H. easy.
-Qed.
-
-Lemma posi_eq_reflect : forall r1 r2, reflect (r1 = r2) (posi_eq r1 r2). 
-Proof.
-  intros.
-  destruct (r1 ==? r2) eqn:eq1.
-  apply  ReflectT.
-  apply posi_eqb_eq in eq1.
-  assumption. 
-  constructor. 
-  apply posi_eqb_neq in eq1.
-  assumption. 
-Qed.
-
-Hint Resolve posi_eq_reflect : bdestruct.
-
-
-Definition rz_val : Type := (nat -> bool).
-
-Inductive val := nval (b:bool) (r:rz_val) | hval (b1:bool) (b2:bool) (r:rz_val) | qval (rc:rz_val) (r:rz_val).
-
-(* Update the value at one index of a boolean function. *)
-Definition eupdate {S} (f : posi -> S) (i : posi) (x : S) :=
-  fun j => if j ==? i then x else f j.
-
-Lemma eupdate_index_eq {S} : forall (f : posi -> S) i b, (eupdate f i b) i = b.
-Proof.
-  intros. 
-  unfold eupdate.
-  bdestruct (i ==? i). easy.
-  contradiction.
-Qed.
-
-Lemma eupdate_index_neq {S}: forall (f : posi -> S) i j b, i <> j -> (eupdate f i b) j = f j.
-Proof.
-  intros. 
-  unfold eupdate.
-  bdestruct (j ==? i).
-  subst. contradiction.
-  reflexivity.
-Qed.
-
-Lemma eupdate_same {S}: forall (f : posi -> S) i b,
-  b = f i -> eupdate f i b = f.
-Proof.
-  intros.
-  apply functional_extensionality.
-  intros.
-  unfold eupdate.
-  bdestruct (x ==? i); subst; reflexivity.
-Qed.
-
-Lemma eupdate_same_1 {S}: forall (f f': posi -> S) i b b',
- f = f' -> b = b' -> eupdate f i b = eupdate f' i b'.
-Proof.
-  intros.
-  apply functional_extensionality.
-  intros.
-  unfold eupdate.
-  bdestruct (x ==? i); subst; reflexivity.
-Qed.
-
-
-Lemma eupdate_twice_eq {S}: forall (f : posi -> S) i b b',
-  eupdate (eupdate f i b) i b' = eupdate f i b'.
-Proof.
-  intros.
-  apply functional_extensionality.
-  intros.
-  unfold eupdate.
-  bdestruct (x ==? i); subst; reflexivity.
-Qed.  
-
-Lemma eupdate_twice_neq {S}: forall (f : posi -> S) i j b b',
-  i <> j -> eupdate (eupdate f i b) j b' = eupdate (eupdate f j b') i b.
-Proof.
-  intros.
-  apply functional_extensionality.
-  intros.
-  unfold eupdate.
-  bdestruct (x ==? i); bdestruct (x ==? j); subst; easy.
-Qed.
-
-
-Notation "f '[' i '|->' x ']'" := (eupdate f i x) (at level 10).
-
-
-Lemma same_eupdate : forall (f f' : posi -> val) c v, f = f' -> f[c |-> v] = f'[c |-> v].
-Proof.
-  intros. 
-  apply functional_extensionality.
-  intros.
-  bdestruct (c ==? x).
-  subst.
-  rewrite eupdate_index_eq. easy.
-  rewrite eupdate_index_neq.
-  rewrite eupdate_index_neq. subst. easy.
-  assumption. assumption.
-Qed.
-
-Lemma same_eupdate_1 : forall (f f' : posi -> val) c v v', f = f' -> v = v' -> f[c |-> v] = f'[c |-> v'].
-Proof.
-  intros. 
-  apply functional_extensionality.
-  intros.
-  bdestruct (c ==? x).
-  subst.
-  rewrite eupdate_index_eq. easy.
-  rewrite eupdate_index_neq.
-  rewrite eupdate_index_neq. subst. easy.
-  assumption. assumption.
-Qed.
-
-(* Adds an equality in the context *)
-Ltac ctx e1 e2 :=
-  let H := fresh "HCtx" in
-  assert (e1 = e2) as H by reflexivity.
-
-(* Standard inversion/subst/clear abbrev. *)
-Tactic Notation "inv" hyp(H) := inversion H; subst; clear H.
-Tactic Notation "inv" hyp(H) "as" simple_intropattern(p) :=
-  inversion H as p; subst; clear H.
-
-(*
-Ltac fb_push_n_simpl := repeat (try rewrite fb_push_n_left by lia; try rewrite fb_push_n_right by lia).
-Ltac update_simpl := repeat (try rewrite update_index_neq by lia); try rewrite update_index_eq by lia.
-*)
-Ltac BreakIfExpression :=
-  match goal with
-  | [ |- context[if ?X <? ?Y then _ else _] ] => bdestruct (X <? Y); try lia
-  | [ |- context[if ?X <=? ?Y then _ else _] ] => bdestruct (X <=? Y); try lia
-  | [ |- context[if ?X =? ?Y then _ else _] ] => bdestruct (X =? Y); try lia
-  end.
-
-Ltac IfExpSimpl := repeat BreakIfExpression.
-
 (* irrelavent vars. *)
-Definition vars_neq (l:list var) := forall n m x y, nth_error l m = Some x ->  nth_error l n = Some y -> n <> m -> x <> y.
+Definition vars_neq (l:list var) := forall n m x y,
+   nth_error l m = Some x ->  nth_error l n = Some y -> n <> m -> x <> y.
 
 
 Inductive exp := SKIP (p:posi) | X (p:posi) | CU (p:posi) (e:exp)
@@ -228,13 +28,12 @@ Inductive exp := SKIP (p:posi) | X (p:posi) | CU (p:posi) (e:exp)
         | Lshift (x:var)
         | Rshift (x:var)
         | Rev (x:var)
+        | QFT (x:var)
+        | RQFT (x:var)
+        | H (x:var)
         | Seq (s1:exp) (s2:exp).
 
 Notation "p1 ; p2" := (Seq p1 p2) (at level 50) : exp_scope.
-
-Inductive pexp := Exp (s:exp) | QFT (x:var) | RQFT (x:var)
-               | H (x:var) | PCU (p:posi) (e:pexp) | PSeq (p1:pexp) (p2:pexp).
-
 
 Fixpoint exp_elim (p:exp) :=
   match p with
@@ -250,27 +49,7 @@ Fixpoint exp_elim (p:exp) :=
   | _ => p
   end.
 
-Fixpoint pexp_elim (p:pexp) :=
-   match p with Exp s => Exp (exp_elim s)
-       | PCU p e => 
-            match pexp_elim e with
-                 | Exp (SKIP a) => Exp (SKIP a) 
-                 | e' => PCU p e'
-                 end
-       | PSeq e1 e2 => 
-              match pexp_elim e1, pexp_elim e2 with
-                  | Exp (SKIP _), p2' => p2'
-                  | p1', Exp (SKIP _) => p1'
-                  | p1', p2' => PSeq p1' p2'
-                  end
-  | _ => p
-  end.
-
-Coercion Exp : exp >-> pexp.
-
 Definition Z (p:posi) := RZ 1 p.
-
-Notation "p1 ;; p2" := (PSeq p1 p2) (at level 48) : exp_scope.
 
 Fixpoint inv_exp p :=
   match p with
@@ -283,19 +62,12 @@ Fixpoint inv_exp p :=
   | Rshift x => Lshift x
   | Rev x => Rev x
   | HCNOT p1 p2 => HCNOT p1 p2
-  | Seq p1 p2 => inv_exp p2; inv_exp p1
   | RZ q p1 => RRZ q p1
   | RRZ q p1 => RZ q p1
-  end.
-
-Fixpoint inv_pexp p :=
-   match p with 
-    | Exp s => Exp (inv_exp s)
-    | QFT x => RQFT x
-    | RQFT x => QFT x
-    | H x => H x
-    | PCU n p => PCU n (inv_pexp p)
-    | PSeq p1 p2 => PSeq (inv_pexp p2) (inv_pexp p1)
+  | QFT x => RQFT x
+  | RQFT x => QFT x
+  | H x => H x
+  | Seq p1 p2 => inv_exp p2; inv_exp p1
    end.
 
 
@@ -312,39 +84,39 @@ Fixpoint nX x n :=
    end.
 
 (* Grover diffusion operator. *)
-Definition diff_half (x c:var) (n:nat) := H x ;; H c ;;  (Exp (nX x n; X (c,0))). 
+Definition diff_half (x c:var) (n:nat) := H x ; H c ;  ((nX x n; X (c,0))). 
 
 Definition diff_1 (x c :var) (n:nat) :=
-  diff_half x c n ;; (Exp (GCCX x n)) ;; (inv_pexp (diff_half x c n)).
+  diff_half x c n ; ((GCCX x n)) ; (inv_exp (diff_half x c n)).
 
 (*The second implementation of grover's diffusion operator.
   The whole circuit is a little different, and the input for the diff_2 circuit is asssumed to in Had mode. *)
 Definition diff_2 (x c :var) (n:nat) :=
-  H x ;; (Exp (GCCX x n)) ;; H x.
+  H x ; ((GCCX x n)) ; H x.
 
 Fixpoint is_all_true C n :=
   match n with 0 => true
            | S m => C m && is_all_true C m
   end.
 
-Definition const_u (C :nat -> bool) (n:nat) c := if is_all_true C n then (Exp (X (c,0))) else SKIP (c,0).
+Definition const_u (C :nat -> bool) (n:nat) c := if is_all_true C n then ((X (c,0))) else SKIP (c,0).
 
-Fixpoint niter_prog n (c:var) (P : pexp) : pexp :=
+Fixpoint niter_prog n (c:var) (P : exp) : exp :=
   match n with
   | 0    => SKIP (c,0)
   | 1    => P
-  | S n' => niter_prog n' c P ;; P
+  | S n' => niter_prog n' c P ; P
   end.
 
-Definition body (C:nat -> bool) (x c:var) (n:nat) := const_u C n c;; diff_2 x c n.
+Definition body (C:nat -> bool) (x c:var) (n:nat) := const_u C n c; diff_2 x c n.
 
 Definition grover_e (i:nat) (C:nat -> bool) (x c:var) (n:nat) := 
-        H x;; H c ;; (Exp (Z (c,0))) ;; niter_prog i c (body C x c n).
+        H x; H c ; ((Z (c,0))) ; niter_prog i c (body C x c n).
 
 (** Definition of Deutsch-Jozsa program. **)
 
 Definition deutsch_jozsa (x c:var) (n:nat) :=
-  (Exp (nX x n; X (c,0))) ;; H x ;; H c ;; (Exp (X (c,0)));; H c ;; H x.
+  ((nX x n; X (c,0))) ; H x ; H c ; ((X (c,0))); H c ; H x.
 
 Inductive type := Had | Phi (n:nat) | Nor.
 
@@ -357,547 +129,6 @@ Module EnvFacts := FMapFacts.Facts (Env).
 Definition env := Env.t type.
 Definition empty_env := @Env.empty type.
 
-Definition or_not_r (x y:var) (n1 n2:nat) := x <> y \/ n1 < n2.
-
-Definition or_not_eq (x y:var) (n1 n2:nat) := x <> y \/ n1 <= n2.
-
-Lemma posi_eq_dec : forall x y : posi, {x = y}+{x <> y}.
-Proof.
-  intros. 
-  bdestruct (x ==? y). left. easy. right. easy.
-Qed.
-
-Inductive exp_fresh (aenv:var->nat): posi -> exp -> Prop :=
-      | skip_fresh : forall p p1, p <> p1 -> exp_fresh aenv p (SKIP p1)
-      | x_fresh : forall p p' , p <> p' -> exp_fresh aenv p (X p')
-      | sr_fresh : forall p x n, or_not_r (fst p) x n (snd p) -> exp_fresh aenv p (SR n x)
-      | srr_fresh : forall p x n, or_not_r (fst p) x n (snd p) -> exp_fresh aenv p (SRR n x)
-      | lshift_fresh : forall p x, or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (Lshift x)
-      | rshift_fresh : forall p x, or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (Rshift x)
-      | rev_fresh : forall p x, or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (Rev x)
-      | cu_fresh : forall p p' e, p <> p' -> exp_fresh aenv p e -> exp_fresh aenv p (CU p' e)
-      | cnot_fresh : forall p p1 p2, p <> p1 -> p <> p2 -> exp_fresh aenv p (HCNOT p1 p2)
-      | rz_fresh : forall p p' q, p <> p' -> exp_fresh aenv p (RZ q p')
-      | rrz_fresh : forall p p' q, p <> p' -> exp_fresh aenv p (RRZ q p')
-      | seq_fresh : forall p e1 e2, exp_fresh aenv p e1 -> exp_fresh aenv p e2 -> exp_fresh aenv p (Seq e1 e2).
-
-
-Inductive exp_fwf (aenv:var->nat) : exp -> Prop :=
-      | skip_fwf : forall p, exp_fwf aenv (SKIP p)
-      | x_fwf : forall p,  exp_fwf aenv (X p)
-      | sr_fwf : forall n x, exp_fwf aenv (SR n x)
-      | srr_fwf : forall n x, exp_fwf aenv (SRR n x)
-      | lshift_fwf : forall x, exp_fwf aenv (Lshift x)
-      | rshift_fwf : forall x, exp_fwf aenv (Rshift x)
-      | rev_fwf : forall x, exp_fwf aenv (Rev x)
-      | cu_fwf : forall p e, exp_fresh aenv p e -> exp_fwf aenv e -> exp_fwf aenv (CU p e)
-      | hcnot_fwf : forall p1 p2, p1 <> p2 -> exp_fwf aenv (HCNOT p1 p2)
-      | rz_fwf : forall p q, exp_fwf aenv (RZ q p)
-      | rrz_fwf : forall p q, exp_fwf aenv (RRZ q p)
-      | seq_fwf : forall e1 e2, exp_fwf aenv e1 -> exp_fwf aenv e2 -> exp_fwf aenv (Seq e1 e2).
-
-Inductive well_typed_exp : env -> exp -> Prop :=
-    | skip_refl : forall env, forall p, well_typed_exp env (SKIP p)
-    | x_nor : forall env p, Env.MapsTo (fst p) Nor env -> well_typed_exp env (X p)
-    | x_had : forall env p, Env.MapsTo (fst p) Had env -> well_typed_exp env (X p)
-    | cu_nor : forall env p e, Env.MapsTo (fst p) Nor env
-                        ->  well_typed_exp env e -> well_typed_exp env (CU p e)
-    | cnot_had : forall env p1 p2, Env.MapsTo (fst p1) Had env -> Env.MapsTo (fst p2) Had env
-                         -> well_typed_exp env (HCNOT p1 p2)
-    | rz_nor : forall env q p, Env.MapsTo (fst p) Nor env -> well_typed_exp env (RZ q p)
-    | rz_had : forall env p, Env.MapsTo (fst p) Had env -> well_typed_exp env (RZ 1 p)
-    | rrz_nor : forall env q p, Env.MapsTo (fst p) Nor env -> well_typed_exp env (RRZ q p)
-    | rrz_had : forall env p, Env.MapsTo (fst p) Had env -> well_typed_exp env (RRZ 1 p)
-    | sr_had : forall env n m x, Env.MapsTo x (Phi n) env -> m < n -> well_typed_exp env (SR m x)
-    | srr_had : forall env n m x, Env.MapsTo x (Phi n) env -> m < n -> well_typed_exp env (SRR m x)
-    | lshift_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Lshift x)
-    | lshift_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Lshift x)
-    | rshift_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rshift x)
-    | rshift_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Rshift x)
-    | rev_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rev x)
-    | rev_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Rev x)
-    | e_seq : forall env p1 p2, well_typed_exp env p1 
-                          -> well_typed_exp env p2 -> well_typed_exp env (p1 ; p2).
-
-
-(* Defining matching shifting stack. *)
-Inductive sexp := Ls | Rs | Re.
-
-Definition ls_type : Type := (var -> option (list sexp)).
-
-Definition lookup_ls (l : ls_type) (x:var) : option sexp :=
-    match l x with Some (v::yl) => Some v | _ => None end.
-
-Definition pop_ls (l : ls_type) (x:var) :=
-     match l x with Some ([]) => update l x None 
-           | Some ([v]) => (update l x None) | Some (v::vl) => update l x (Some vl) | _ => l end.
-
-Definition insert_ls (l : ls_type) (x:var) (s:sexp) :=
-  match l x with None => update l x (Some ([s])) | Some vl => update l x (Some (s::vl)) end.
-
-Definition empty_ls : (ls_type) := fun x => None.
-
-Inductive exp_neu : ls_type -> exp ->  ls_type -> Prop :=
-      | skip_neu : forall l p, exp_neu l (SKIP p) l
-      | x_neu : forall l p,  exp_neu l (X p) l
-      | sr_neu : forall l n x, exp_neu l (SR n x) l
-      | srr_neu : forall l n x, exp_neu l (SRR n x) l
-      | lshift_neu_a : forall l l' e x, lookup_ls l x = e -> e <> Some Rs -> l' = (insert_ls l x Ls) -> exp_neu l (Lshift x) l'
-      | lshift_neu_b : forall l l' x, lookup_ls l x = Some Rs -> l' = (pop_ls l x) -> exp_neu l (Lshift x) l'
-      | rshift_neu_a : forall l l' e x, lookup_ls l x = e -> e <> Some Ls -> l' = (insert_ls l x Rs) -> exp_neu l (Rshift x) l'
-      | rshift_neu_b : forall l l' x, lookup_ls l x = Some Ls -> l' = pop_ls l x -> exp_neu l (Rshift x) l'
-      | rev_neu_a : forall l l' e x, lookup_ls l x = e -> e <> Some Re -> l' = (insert_ls l x Re) -> exp_neu l (Rev x) l'
-      | rev_neu_b : forall l l' x, lookup_ls l x = Some Re -> l' = pop_ls l x -> exp_neu l (Rev x) l'
-      | cu_neu : forall l p e, exp_neu l e l -> exp_neu l (CU p e) l
-      | hcnot_neu : forall l p1 p2, exp_neu l (HCNOT p1 p2) l
-      | rz_neu : forall l p q, exp_neu l (RZ q p) l
-      | rrz_neu : forall l p q, exp_neu l (RRZ q p) l
-      | seq_neu : forall l l' l'' e1 e2, exp_neu l e1 l' -> exp_neu l' e2 l'' -> exp_neu l (Seq e1 e2) l''.
-
-Inductive pexp_neu : ls_type -> pexp ->  ls_type -> Prop :=
-      | sexp_neu : forall l l' e, exp_neu l e l' -> pexp_neu l e l'
-      | qft_neu : forall l x , pexp_neu l (QFT x) l
-      | rqft_neu : forall l x , pexp_neu l (RQFT x) l
-      | h_neu : forall l x , pexp_neu l (H x) l
-      | pcu_neu : forall l p e, pexp_neu l e l -> pexp_neu l (PCU p e) l
-      | pseq_neu : forall l l' l'' e1 e2, pexp_neu l e1 l' -> pexp_neu l' e2 l'' -> pexp_neu l (PSeq e1 e2) l''.
-
-
-Lemma lookup_insert_ls : forall l x a, lookup_ls (insert_ls l x a) x = Some a.
-Proof.
-  intros. unfold lookup_ls,insert_ls.
-  destruct (l x).
-  rewrite update_index_eq. easy.
-  rewrite update_index_eq. easy.
-Qed.
-
-Lemma lookup_insert_ls_out : forall l x y a, x <> y -> lookup_ls (insert_ls l x a) y = lookup_ls l y.
-Proof.
-  intros. unfold lookup_ls,insert_ls.
-  destruct (l x).
-  rewrite update_index_neq by lia. easy.
-  rewrite update_index_neq by lia. easy.
-Qed.
-
-Lemma lookup_pop_ls_out : forall l x y, x <> y -> lookup_ls (pop_ls l x) y = lookup_ls l y.
-Proof.
-  intros. unfold lookup_ls,pop_ls.
-  destruct (l x). destruct l0.
-  rewrite update_index_neq by lia. easy.
-  destruct l0.
-  rewrite update_index_neq by lia. easy.
-  rewrite update_index_neq by lia. easy. easy.
-Qed.
-
-Definition well_formed_ls (l: ls_type) : Prop :=
-   (forall x, match l x with Some ([]) => False | _ => True end).
-
-Lemma pop_insert_ls : forall l x a, well_formed_ls l -> pop_ls (insert_ls l x a) x = l.
-Proof.
-  intros. unfold well_formed_ls,pop_ls,insert_ls in *.
-  destruct (l x) eqn:eq1. destruct l0.
-  specialize (H0 x). rewrite eq1 in H0. lia.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. easy.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. easy.
-Qed.
-
-Lemma insert_pop_ls : forall l x a, lookup_ls l x = Some a -> insert_ls (pop_ls l x) x a = l.
-Proof.
-  intros. unfold lookup_ls,pop_ls,insert_ls in *.
-  destruct (l x) eqn:eq1. destruct l0.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. easy.
-  destruct l0.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. inv H0. easy.
-  rewrite update_index_eq.
-  rewrite update_twice_eq.
-  rewrite update_same. easy. inv H0. easy. inv H0.  
-Qed.
-
-Lemma pop_insert_ls_out : forall l x y a, x <> y -> 
-                      pop_ls (insert_ls l x a) y = (insert_ls (pop_ls l y) x a).
-Proof.
-  intros. unfold pop_ls,insert_ls in *.
-  destruct (l x) eqn:eq1.
-  repeat rewrite update_index_neq by lia.
-  destruct (l y) eqn:eq2.
-  repeat rewrite update_index_neq by lia.
-  destruct l1.
-  rewrite update_index_neq by lia. rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l1.
-  repeat rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia. rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite eq1. easy.
-  rewrite update_index_neq by lia.
-  destruct (l y) eqn:eq2.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite eq1. easy.
-Qed.
-
-Lemma pop_twice_ls_out : forall l x y, x <> y -> pop_ls (pop_ls l x) y = (pop_ls (pop_ls l y) x).
-Proof.
-  intros. unfold pop_ls in *.
-  destruct (l x) eqn:eq1.
-  destruct (l y) eqn:eq2.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia. 
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l0.
-  rewrite update_index_neq by lia. 
-  rewrite eq2.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  destruct l1.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq1.
-  rewrite update_twice_neq by lia. easy.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  rewrite eq1. easy.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq2.
-  rewrite eq1. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq2. rewrite eq1. easy.
-  destruct (l y) eqn:eq2. destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq1. easy.
-  destruct l0.
-  rewrite update_index_neq by lia.
-  rewrite eq1. easy.
-  rewrite update_index_neq by lia.
-  rewrite eq1. easy.
-  rewrite eq1. easy.
-Qed.
-
-
-Lemma well_formed_insert_ls : forall l x a, well_formed_ls l -> well_formed_ls (insert_ls l x a).
-Proof.
-  intros. unfold well_formed_ls,insert_ls in *. intros.
-  destruct (l x) eqn:eq1. 
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-Qed.
-
-Lemma well_formed_pop_ls : forall l x, well_formed_ls l -> well_formed_ls (pop_ls l x).
-Proof.
-  intros. unfold well_formed_ls,pop_ls in *. intros.
-  destruct (l x) eqn:eq1. destruct l0. 
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-  destruct l0.
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-  bdestruct (x =? x0). subst.
-  rewrite update_index_eq. lia.
-  rewrite update_index_neq by lia. apply H0.
-  apply H0.
-Qed.
-
-Lemma exp_neu_well_formed_ls : forall l l' p, exp_neu l p l' -> well_formed_ls l -> well_formed_ls l'.
-Proof.
-  intros.
-  induction H0; try easy.
-  subst. apply well_formed_insert_ls; easy.
-  subst. apply well_formed_pop_ls; easy.
-  subst. apply well_formed_insert_ls; easy.
-  subst. apply well_formed_pop_ls; easy.
-  subst. apply well_formed_insert_ls; easy.
-  subst. apply well_formed_pop_ls; easy.
-  apply IHexp_neu2.
-  apply IHexp_neu1. easy.
-Qed.
-
-Lemma pexp_neu_well_formed_ls : forall l l' p, pexp_neu l p l' -> well_formed_ls l -> well_formed_ls l'.
-Proof.
-  intros.
-  induction H0; try easy.
-  eapply exp_neu_well_formed_ls. apply H0. easy.
-  apply IHpexp_neu2. apply IHpexp_neu1. easy.
-Qed.
-
-Definition opp_ls (s : sexp) := match s with Ls => Rs | Rs => Ls | Re => Re end.
-
-Lemma get_insert_ls_a : forall l x a, l x = None ->  (insert_ls l x a) x = Some ([a]).
-Proof.
- intros. unfold insert_ls.
- destruct (l x) eqn:eq1.
- rewrite update_index_eq. inv H0.
- rewrite update_index_eq. easy.
-Qed.
-
-Lemma get_insert_ls_b : forall l x vl a, l x = Some vl -> (insert_ls l x a) x = Some (a::vl).
-Proof.
- intros. unfold insert_ls.
- destruct (l x) eqn:eq1.
- rewrite update_index_eq. inv H0. easy. inv H0.
-Qed.
-
-Lemma get_insert_ls_out : forall l x y a, x <> y -> (insert_ls l x a) y = l y.
-Proof.
- intros. unfold insert_ls.
- destruct (l x) eqn:eq1.
- rewrite update_index_neq by lia. easy.
- rewrite update_index_neq by lia. easy.
-Qed.
-
-Lemma get_lookup_ls : forall l x a vl, l x = Some (a::vl) -> lookup_ls l x = Some a.
-Proof.
- intros. unfold lookup_ls.
- destruct (l x) eqn:eq1. destruct l0. inv H0. inv H0. easy. inv H0.
-Qed.
-
-Lemma get_pop_ls : forall l x vl, well_formed_ls l -> (pop_ls l x) x = Some vl -> (exists a, l x = Some (a::vl)).
-Proof.
- intros. unfold well_formed_ls,pop_ls in *.
- destruct (l x) eqn:eq1. destruct l0.
- specialize (H0 x). rewrite eq1 in H0. lia.
- destruct l0. rewrite update_index_eq in H1. inv H1.
- rewrite update_index_eq in H1. inv H1. exists s. easy.
- rewrite eq1 in H1. inv H1.
-Qed.
-
-Lemma get_pop_ls_out : forall l x y, x <> y -> (pop_ls l x) y = l y.
-Proof.
- intros. unfold pop_ls in *.
- destruct (l x) eqn:eq1. destruct l0.
- rewrite update_index_neq by lia. easy.
- destruct l0.
- rewrite update_index_neq by lia. easy.
- rewrite update_index_neq by lia. easy. easy.
-Qed.
-
-Definition exp_neu_prop (l:ls_type) := forall x vl, l x = Some vl
-                 -> (forall i a, i + 1 < length vl -> nth_error vl (i+1) = Some a -> nth_error vl i <> Some (opp_ls a)).
-
-Lemma exp_neu_t_prop : forall p l l', exp_neu l p l' -> well_formed_ls l -> exp_neu_prop l -> exp_neu_prop l'.
-Proof.
- induction p; intros; try easy.
- 1-8:inv H0; easy.
- unfold exp_neu_prop in *.
- intros. inv H0.  
- bdestruct (x =? x0). subst.
- assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
- destruct (l x0). right. exists l0. easy. left. easy.
- destruct H0.
- apply get_insert_ls_a with (a := Ls) in H0.
- rewrite H3 in H0. inv H0. simpl in H4. lia.
- destruct H0. specialize (H2 x0 x H0). 
- apply get_insert_ls_b with (a := Ls) in H0 as eq1.
- rewrite H3 in eq1. inv eq1.
- destruct i. simpl in *. destruct x. inv H5. inv H5. 
- simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
- unfold opp_ls. destruct a. easy. contradiction. easy.
- simpl in *. apply H2. lia. easy.
- apply H2 with (x := x0).
- rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
- bdestruct (x =? x0). subst.
- specialize (get_pop_ls l x0 vl H1 H3) as eq1.
- destruct eq1.
- specialize (H2 x0 (x::vl) H0) as eq1.
- specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
- rewrite get_pop_ls_out in H3 by lia.
- apply H2 with (x := x0); try easy.
- unfold exp_neu_prop in *.
- intros. inv H0.  
- bdestruct (x =? x0). subst.
- assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
- destruct (l x0). right. exists l0. easy. left. easy.
- destruct H0.
- apply get_insert_ls_a with (a := Rs) in H0.
- rewrite H3 in H0. inv H0. simpl in H4. lia.
- destruct H0. specialize (H2 x0 x H0). 
- apply get_insert_ls_b with (a := Rs) in H0 as eq1.
- rewrite H3 in eq1. inv eq1.
- destruct i. simpl in *. destruct x. inv H5. inv H5. 
- simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
- unfold opp_ls. destruct a. easy. easy. easy.
- simpl in *. apply H2. lia. easy.
- apply H2 with (x := x0).
- rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
- bdestruct (x =? x0). subst.
- specialize (get_pop_ls l x0 vl H1 H3) as eq1.
- destruct eq1.
- specialize (H2 x0 (x::vl) H0) as eq1.
- specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
- rewrite get_pop_ls_out in H3 by lia.
- apply H2 with (x := x0); try easy.
- unfold exp_neu_prop in *.
- intros. inv H0.  
- bdestruct (x =? x0). subst.
- assert (l x0 = None \/ (exists vl', l x0 = Some vl')).
- destruct (l x0). right. exists l0. easy. left. easy.
- destruct H0.
- apply get_insert_ls_a with (a := Re) in H0.
- rewrite H3 in H0. inv H0. simpl in H4. lia.
- destruct H0. specialize (H2 x0 x H0). 
- apply get_insert_ls_b with (a := Re) in H0 as eq1.
- rewrite H3 in eq1. inv eq1.
- destruct i. simpl in *. destruct x. inv H5. inv H5. 
- simpl in *. apply get_lookup_ls in H0. rewrite H0 in H8.
- unfold opp_ls. destruct a. easy. easy. easy.
- simpl in *. apply H2. lia. easy.
- apply H2 with (x := x0).
- rewrite get_insert_ls_out in H3. easy. lia. lia. easy. 
- bdestruct (x =? x0). subst.
- specialize (get_pop_ls l x0 vl H1 H3) as eq1.
- destruct eq1.
- specialize (H2 x0 (x::vl) H0) as eq1.
- specialize (eq1 (S i) a). simpl in eq1. apply eq1. lia. easy.
- rewrite get_pop_ls_out in H3 by lia.
- apply H2 with (x := x0); try easy.
- inv H0.
- apply IHp2 with (l := l'0); try easy. 
- apply exp_neu_well_formed_ls with (l := l) (p := p1); try easy.
- apply IHp1 with (l := l); try easy.
-Qed.
-
-Lemma pexp_neu_t_prop : forall p l l', pexp_neu l p l' -> well_formed_ls l -> exp_neu_prop l -> exp_neu_prop l'.
-Proof.
- induction p; intros; inv H0; try easy.
- eapply exp_neu_t_prop. apply H5. easy. easy.
- eapply IHp2. apply H8.
- eapply pexp_neu_well_formed_ls.
- apply H6. easy.
- apply IHp1 with (l := l). easy. easy. easy.
-Qed.
-
-Inductive pexp_fresh (aenv:var -> nat): posi -> pexp -> Prop :=
-      | sexp_fresh : forall p e, exp_fresh aenv p e -> pexp_fresh aenv p (Exp e)
-      | qft_fresh : forall p x , or_not_eq (fst p) x (aenv x) (snd p) -> pexp_fresh aenv p (QFT x)
-      | rqft_fresh : forall p x , or_not_eq (fst p) x (aenv x) (snd p) -> pexp_fresh aenv p (RQFT x)
-      | h_fresh : forall p x , or_not_eq (fst p) x (aenv x) (snd p) -> pexp_fresh aenv p (H x)
-      | pcu_fresh : forall p1 p2 e, p1 <> p2 -> pexp_fresh aenv p1 e -> pexp_fresh aenv p1 (PCU p2 e)
-      | pseq_fresh : forall p e1 e2, pexp_fresh aenv p e1 -> pexp_fresh aenv p e2 -> pexp_fresh aenv p (PSeq e1 e2).
-
-Inductive well_typed_pexp (aenv: var -> nat) : ls_type -> env -> pexp -> ls_type -> env -> Prop :=
-    | exp_refl : forall l l' env e, exp_fwf aenv e -> exp_neu l e l' -> 
-                well_typed_exp env e -> well_typed_pexp aenv l env (Exp e) l' env
-    | qft_nor :  forall l env env' x, Env.MapsTo x Nor env -> Env.Equal env' (Env.add x (Phi (aenv x)) env)
-                   -> well_typed_pexp aenv l env (QFT x) l env'
-    | rqft_phi :  forall l env env' x, Env.MapsTo x (Phi (aenv x)) env -> Env.Equal env' (Env.add x Nor env) -> 
-                 well_typed_pexp aenv l env (RQFT x) l env'
-    | h_nor : forall l env env' x, Env.MapsTo x Nor env -> Env.Equal env' (Env.add x Had env) ->  
-                  well_typed_pexp aenv l env (H x) l env'
-    | h_had : forall l env env' x, Env.MapsTo x Had env -> Env.Equal env' (Env.add x Nor env) ->  
-                                   well_typed_pexp aenv l env (H x) l env'
-    | pcu_nor : forall l env p e, Env.MapsTo (fst p) Nor env -> pexp_neu l e l ->
-                        pexp_fresh aenv p e -> well_typed_pexp aenv l env e l env -> well_typed_pexp aenv l env (PCU p e) l env
-    | pe_seq : forall l l' l'' env env' env'' e1 e2, well_typed_pexp aenv l env e1 l' env' -> 
-                 well_typed_pexp aenv l' env' e2 l'' env'' -> well_typed_pexp aenv l env (e1 ;; e2) l'' env''.
-
-
-Inductive right_mode_val : type -> val -> Prop :=
-    | right_nor: forall b r, right_mode_val Nor (nval b r)
-    | right_had: forall b1 b2 r, r 0 = false -> right_mode_val Had (hval b1 b2 r)
-    | right_phi: forall n rc r, right_mode_val (Phi n) (qval rc r).
-
-(*
-Definition right_mode_vals (f:posi -> val) (x:var) (t:type) : Prop :=
-    forall i, right_mode_val t (f (x,i)).
-*)
-
-(*
-Inductive right_mode_pexp : env -> (posi -> val) -> pexp -> env -> Prop :=
-    | qft_right : forall env env' f a t, Env.MapsTo a t env -> right_mode_vals f a t ->
-             well_typed_pexp env (QFT a) env' -> right_mode_pexp env f (QFT a) env'
-    | rqft_right : forall env env' f a t, Env.MapsTo a t env -> right_mode_vals f a t -> 
-                        well_typed_pexp env (RQFT a) env' -> right_mode_pexp env f (RQFT a) env'
-    | h_right : forall env env' f a t, Env.MapsTo a t env -> right_mode_vals f a t ->
-                     well_typed_pexp env (H a) env' -> right_mode_pexp env f (H a) env'
-    | sexp_right : forall env f e, right_mode_sexp env f e -> right_mode_pexp env f (SExp e) env
-    | pseq_right : forall env env' env'' f e1 e2, right_mode_pexp env f e1 env'
-                     -> right_mode_pexp env' f e2 env'' -> right_mode_pexp env f (e1 ;;; e2) env''.
-*)
-(*
-Inductive right_mode_exp : env -> (posi -> val) -> exp -> Prop :=
-    | skip_right : forall env f, forall p, right_mode_exp env f (SKIP p)
-    | x_right : forall env f a b t, Env.MapsTo a t env -> right_mode_val t (f (a,b)) -> right_mode_exp env f (X (a,b))
-    | cu_right : forall env f a b t e, Env.MapsTo a t env -> right_mode_val t (f (a,b))
-                      -> right_mode_exp env f e -> right_mode_exp env f (CU (a,b) e)
-    | rz_right : forall env f a b t q,  Env.MapsTo a t env -> right_mode_val t (f (a,b)) -> right_mode_exp env f (RZ q (a,b))
-    | rrz_right : forall env f a b t q,  Env.MapsTo a t env -> right_mode_val t (f (a,b)) -> right_mode_exp env f (RRZ q (a,b))
-    | seq_right : forall env f e1 e2, right_mode_exp env f e1 -> right_mode_exp env f e2 -> right_mode_exp env f (e1 ; e2).
-
-Inductive right_mode_sexp : env -> (posi -> val) -> sexp -> Prop :=
-    | lshift_right : forall env f a t, Env.MapsTo a t env -> right_mode_vals f a t -> right_mode_sexp env f (Lshift a) 
-    | rshift_right : forall env f a t, Env.MapsTo a t env -> right_mode_vals f a t -> right_mode_sexp env f (Rshift a)
-    | rev_right : forall env f a t, Env.MapsTo a t env -> right_mode_vals f a t -> right_mode_sexp env f (Rev a)
-    | exp_right : forall env f e, right_mode_exp env f e -> right_mode_sexp env f (Exp e)
-    | sseq_right : forall env f e1 e2, right_mode_sexp env f e1 -> right_mode_sexp env f e2 -> right_mode_sexp env f (e1 ;; e2).
-
-
-Inductive right_mode_pexp : env -> (posi -> val) -> pexp -> env -> Prop :=
-    | qft_right : forall env env' f a t, Env.MapsTo a t env -> right_mode_vals f a t ->
-             well_typed_pexp env (QFT a) env' -> right_mode_pexp env f (QFT a) env'
-    | rqft_right : forall env env' f a t, Env.MapsTo a t env -> right_mode_vals f a t -> 
-                        well_typed_pexp env (RQFT a) env' -> right_mode_pexp env f (RQFT a) env'
-    | h_right : forall env env' f a t, Env.MapsTo a t env -> right_mode_vals f a t ->
-                     well_typed_pexp env (H a) env' -> right_mode_pexp env f (H a) env'
-    | sexp_right : forall env f e, right_mode_sexp env f e -> right_mode_pexp env f (SExp e) env
-    | pseq_right : forall env env' env'' f e1 e2, right_mode_pexp env f e1 env'
-                     -> right_mode_pexp env' f e2 env'' -> right_mode_pexp env f (e1 ;;; e2) env''.
-*)
 Lemma mapsto_always_same : forall k v1 v2 s,
            @Env.MapsTo (type) k v1 s ->
             @Env.MapsTo (type) k v2 s -> 
@@ -942,943 +173,156 @@ Proof.
       assumption.
 Qed.
 
+
+Definition or_not_r (x y:var) (n1 n2:nat) := x <> y \/ n1 < n2.
+
+Definition or_not_eq (x y:var) (n1 n2:nat) := x <> y \/ n1 <= n2.
+
+
+Inductive exp_fresh (aenv:var->nat): posi -> exp -> Prop :=
+      | skip_fresh : forall p p1, p <> p1 -> exp_fresh aenv p (SKIP p1)
+      | x_fresh : forall p p' , p <> p' -> exp_fresh aenv p (X p')
+      | sr_fresh : forall p x n, or_not_r (fst p) x n (snd p) -> exp_fresh aenv p (SR n x)
+      | srr_fresh : forall p x n, or_not_r (fst p) x n (snd p) -> exp_fresh aenv p (SRR n x)
+      | lshift_fresh : forall p x, or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (Lshift x)
+      | rshift_fresh : forall p x, or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (Rshift x)
+      | rev_fresh : forall p x, or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (Rev x)
+      | cu_fresh : forall p p' e, p <> p' -> exp_fresh aenv p e -> exp_fresh aenv p (CU p' e)
+      | cnot_fresh : forall p p1 p2, p <> p1 -> p <> p2 -> exp_fresh aenv p (HCNOT p1 p2)
+      | rz_fresh : forall p p' q, p <> p' -> exp_fresh aenv p (RZ q p')
+      | rrz_fresh : forall p p' q, p <> p' -> exp_fresh aenv p (RRZ q p')
+      | qft_fresh : forall p x , or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (QFT x)
+      | rqft_fresh : forall p x , or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (RQFT x)
+      | h_fresh : forall p x , or_not_eq (fst p) x (aenv x) (snd p) -> exp_fresh aenv p (H x)
+      | seq_fresh : forall p e1 e2, exp_fresh aenv p e1 -> exp_fresh aenv p e2 -> exp_fresh aenv p (Seq e1 e2).
+
+(* Defining matching shifting stack. *)
+Inductive sexp := Ls | Rs | Re.
+
+Inductive exp_neu_l (x:var) : list sexp -> exp ->  list sexp -> Prop :=
+      | skip_neul : forall l p, exp_neu_l x l (SKIP p) l
+      | x_neul : forall l p,  exp_neu_l x l (X p) l
+      | sr_neul : forall l y n, exp_neu_l x l (SR n y) l
+      | srr_neul : forall l y n, exp_neu_l x l (SRR n y) l
+      | cu_neul : forall l p e, exp_neu_l x l (CU p e) l
+      | hcnot_neul : forall l p1 p2, exp_neu_l x l (HCNOT p1 p2) l
+      | rz_neul : forall l p q, exp_neu_l x l (RZ q p) l
+      | rrz_neul : forall l p q, exp_neu_l x l (RRZ q p) l
+      | qft_neul : forall l y, exp_neu_l x l (QFT y) l
+      | rqft_neul : forall l y , exp_neu_l x l (RQFT y) l
+      | h_neul : forall l y, exp_neu_l x l (H y) l
+      | lshift_neul_a : forall l, exp_neu_l x (Rs::l) (Lshift x) l
+      | lshift_neul_b : forall l a, a <> Rs -> exp_neu_l x (a::l) (Lshift x) (Ls::(a::l))
+      | lshift_neul_ne : forall l y, x <> y -> exp_neu_l x l (Lshift y) l
+      | rshift_neul_a : forall l, exp_neu_l x (Ls::l) (Rshift x) l
+      | rshift_neul_b : forall l a, a <> Ls -> exp_neu_l x (a::l) (Rshift x) (Ls::(a::l))
+      | rshift_neul_ne : forall l y, x <> y -> exp_neu_l x l (Rshift y) l
+      | rev_neul_a : forall l, exp_neu_l x (Re::l) (Rev x) l
+      | rev_neul_b : forall l a, a <> Re -> exp_neu_l x (a::l) (Rev x) (Re::(a::l))
+      | rev_neul_ne : forall l y, x <> y -> exp_neu_l x l (Rev y) l
+      | seq_neul : forall l l' l'' e1 e2, exp_neu_l x l e1 l' -> exp_neu_l x l' e2 l'' -> exp_neu_l x l (Seq e1 e2) l''.
+
+Inductive exp_neu (xl : list var) : exp -> Prop :=
+      | skip_neu : forall p, exp_neu xl (SKIP p)
+      | x_neu : forall p,  exp_neu xl (X p)
+      | sr_neu : forall n y, exp_neu xl (SR n y)
+      | srr_neu : forall y n, exp_neu xl (SRR n y)
+      | cu_neu : forall p e, (forall x , In x xl -> exp_neu_l x [] e []) -> exp_neu xl (CU p e)
+      | hcnot_neu : forall p1 p2, exp_neu xl (HCNOT p1 p2)
+      | rz_neu : forall p q, exp_neu xl (RZ q p)
+      | rrz_neu : forall p q, exp_neu xl (RRZ q p)
+      | qft_neu : forall y, exp_neu xl (QFT y)
+      | rqft_neu : forall y , exp_neu xl (RQFT y)
+      | h_neu : forall y, exp_neu xl (H y)
+      | lshift_neu : forall y, exp_neu xl (Lshift y)
+      | rshift_neu : forall y, exp_neu xl (Rshift y)
+      | rev_neu : forall y, exp_neu xl (Rev y)
+      | seq_neu : forall e1 e2, exp_neu xl e1 -> exp_neu xl e2 -> exp_neu xl (e1 ; e2).
+
+
+(* Type System. *)
+Inductive well_typed_exp : env -> exp -> Prop :=
+    | skip_refl : forall env, forall p, well_typed_exp env (SKIP p)
+    | x_nor : forall env p, Env.MapsTo (fst p) Nor env -> well_typed_exp env (X p)
+    | x_had : forall env p, Env.MapsTo (fst p) Had env -> well_typed_exp env (X p)
+    | cnot_had : forall env p1 p2, p1 <> p2 -> Env.MapsTo (fst p1) Had env -> Env.MapsTo (fst p2) Had env
+                         -> well_typed_exp env (HCNOT p1 p2)
+    | rz_nor : forall env q p, Env.MapsTo (fst p) Nor env -> well_typed_exp env (RZ q p)
+    | rz_had : forall env p, Env.MapsTo (fst p) Had env -> well_typed_exp env (RZ 1 p)
+    | rrz_nor : forall env q p, Env.MapsTo (fst p) Nor env -> well_typed_exp env (RRZ q p)
+    | rrz_had : forall env p, Env.MapsTo (fst p) Had env -> well_typed_exp env (RRZ 1 p)
+    | sr_phi : forall env n m x, Env.MapsTo x (Phi n) env -> m < n -> well_typed_exp env (SR m x)
+    | srr_phi : forall env n m x, Env.MapsTo x (Phi n) env -> m < n -> well_typed_exp env (SRR m x)
+    | lshift_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Lshift x)
+    | lshift_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Lshift x)
+    | rshift_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rshift x)
+    | rshift_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Rshift x)
+    | rev_nor : forall env x, Env.MapsTo x Nor env -> well_typed_exp env (Rev x)
+    | rev_had : forall env x, Env.MapsTo x Had env -> well_typed_exp env (Rev x).
+
 (*
-Lemma right_mode_cu : forall env f x i e, well_typed_exp env (CU (x,i) e)
-                          -> right_mode_exp env f (CU (x,i) e) -> (exists b r, (f (x,i)) = nval b r).
-Proof.
-  intros. inv H0. inv H1. apply (mapsto_always_same x Nor t env0) in H8. subst.
-  inv H9. exists b. exists r. easy.
-  assumption.
-Qed.
+Definition opp_ls (s : sexp) := match s with Ls => Rs | Rs => Ls | Re => Re end.
 *)
 
-
-(* Here we defined the specification of carry value for each bit. *)
-(* fb_push is to take a qubit and then push it to the zero position 
-        in the bool function representation of a number. *)
-Definition allfalse := fun (_:nat) => false.
-
-Definition majb a b c := (a && b) ⊕ (b && c) ⊕ (a && c).
-
-Definition fb_push b f : nat -> bool :=
-  fun x => match x with
-        | O => b
-        | S n => f n
-        end.
-
-Lemma fb_push_right:
-  forall n b f, 0 < n -> fb_push b f n = f (n-1).
-Proof.
-  intros. induction n. lia.
-  simpl. assert ((n - 0) = n) by lia.
-  rewrite H1. reflexivity.
-Qed.
-
-Lemma fb_push_same : forall b f g, (forall i, fb_push b f i = fb_push b g i) -> f = g.
-Proof.
-intros.
-apply functional_extensionality; intros.
-specialize (H0 (S x)).
-rewrite fb_push_right in H0; try lia.
-rewrite fb_push_right in H0; try lia.
-simpl in H0.
-assert (x-0 = x) by lia. rewrite H1 in H0. easy. 
-Qed.
-
-(* fb_push_n is the n repeatation of fb_push.
-Definition fb_push_n n f g : nat -> bool :=
-  fun i => if (i <? n) then f i else g (i - n).
-*)
-
-(* A function to compile positive to a bool function. *)
-Fixpoint pos2fb p : nat -> bool :=
-  match p with
-  | xH => fb_push true allfalse
-  | xI p' => fb_push true (pos2fb p')
-  | xO p' => fb_push false (pos2fb p')
-  end.
-
-(* A function to compile N to a bool function. *)
-Definition N2fb n : nat -> bool :=
-  match n with
-  | 0%N => allfalse
-  | Npos p => pos2fb p
-  end.
-
-Definition nat2fb n := N2fb (N.of_nat n).
-
-Definition add_c b x y :=
-  match b with
-  | false => Pos.add x y
-  | true => Pos.add_carry x y
-  end.
-
-Fixpoint carry b n f g :=
-  match n with
-  | 0 => b
-  | S n' => let c := carry b n' f g in
-           let a := f n' in
-           let b := g n' in
-           (a && b) ⊕ (b && c) ⊕ (a && c)
-  end.
-
-Lemma carry_1 : forall b f g, carry b 1 f g = majb (f 0) (g 0) b.
-Proof.
- intros. simpl. unfold majb. easy.
-Qed.
-
-Lemma carry_n : forall n b f g, carry b (S n) f g = majb (f n) (g n) (carry b n f g).
-Proof.
- intros. simpl. unfold majb. easy.
-Qed.
-
-Lemma carry_sym :
-  forall b n f g,
-    carry b n f g = carry b n g f.
-Proof.
-  intros. induction n. reflexivity.
-  simpl. rewrite IHn. btauto.
-Qed.
-
-Lemma carry_false_0_l: forall n f, 
-    carry false n allfalse f = false.
-Proof.
-  unfold allfalse.
-  induction n.
-  simpl.
-  reflexivity.
-  intros. simpl.
-  rewrite IHn. rewrite andb_false_r.
-  reflexivity.
-Qed.
-
-Lemma carry_false_0_r: forall n f, 
-    carry false n f allfalse = false.
-Proof.
-  unfold allfalse.
-  induction n.
-  simpl.
-  reflexivity.
-  intros. simpl.
-  rewrite IHn. rewrite andb_false_r.
-  reflexivity.
-Qed.
-
-Lemma carry_fbpush :
-  forall n a ax ay fx fy,
-    carry a (S n) (fb_push ax fx) (fb_push ay fy) = carry (majb a ax ay) n fx fy.
-Proof.
-  induction n; intros.
-  simpl. unfold majb. btauto.
-  remember (S n) as Sn. simpl. rewrite IHn. unfold fb_push. subst.
-  simpl. easy.
-Qed.
-
-Lemma carry_succ :
-  forall m p,
-    carry true m (pos2fb p) allfalse = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
-Proof.
-  induction m; intros. simpl. destruct p; reflexivity.
-  replace allfalse with (fb_push false allfalse).
-  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
-  }
-  Local Opaque fb_push carry.
-  destruct p; simpl.
-  rewrite carry_fbpush; unfold majb; simpl. rewrite IHm. reflexivity.
-  rewrite carry_fbpush; unfold majb; simpl. rewrite carry_false_0_r. Local Transparent fb_push. simpl. btauto.
-  rewrite carry_fbpush; unfold majb; simpl. Local Transparent carry. destruct m; reflexivity.
-Qed.
-
-Lemma carry_succ' :
-  forall m p,
-    carry true m allfalse (pos2fb p) = pos2fb (Pos.succ p) m ⊕ (pos2fb p) m.
-Proof.
-  intros. rewrite carry_sym. apply carry_succ.
-Qed.
-
-Lemma carry_succ0 :
-  forall m, carry true m allfalse allfalse = pos2fb xH m.
-Proof.
-  induction m. easy. 
-  replace allfalse with (fb_push false allfalse).
-  2:{ unfold fb_push, allfalse. apply functional_extensionality. intros. destruct x; reflexivity.
-  }
-  rewrite carry_fbpush. unfold majb. simpl. rewrite carry_false_0_l. easy.
-Qed.
-
-Lemma carry_add_pos_eq :
-  forall m b p q,
-    carry b m (pos2fb p) (pos2fb q) ⊕ (pos2fb p) m ⊕ (pos2fb q) m = pos2fb (add_c b p q) m.
-Proof.
-  induction m; intros. simpl. destruct p, q, b; reflexivity.
-  Local Opaque carry.
-  destruct p, q, b; simpl; rewrite carry_fbpush; 
-    try (rewrite IHm; reflexivity);
-    try (unfold majb; simpl; 
-         try rewrite carry_succ; try rewrite carry_succ'; 
-         try rewrite carry_succ0; try rewrite carry_false_0_l;
-         try rewrite carry_false_0_r;
-         unfold allfalse; try btauto; try (destruct m; reflexivity)).
-Qed.
-
-Lemma carry_add_eq_carry0 :
-  forall m x y,
-    carry false m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y)) m.
-Proof.
-  intros.
-  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
-  rewrite carry_false_0_l. easy.
-  rewrite carry_false_0_l. btauto.
-  rewrite carry_false_0_r. btauto.
-  apply carry_add_pos_eq.
-Qed.
-
-Lemma carry_add_eq_carry1 :
-  forall m x y,
-    carry true m (N2fb x) (N2fb y) ⊕ (N2fb x) m ⊕ (N2fb y) m = (N2fb (x + y + 1)) m.
-Proof.
-  intros. 
-  destruct x as [|p]; destruct y as [|q]; simpl; unfold allfalse.
-  rewrite carry_succ0. destruct m; easy.
-  rewrite carry_succ'. replace (q + 1)%positive with (Pos.succ q) by lia. btauto.
-  rewrite carry_succ. replace (p + 1)%positive with (Pos.succ p) by lia. btauto.
-  rewrite carry_add_pos_eq. unfold add_c. rewrite Pos.add_carry_spec.
-  replace (p + q + 1)%positive with (Pos.succ (p + q)) by lia. easy.
-Qed.
-
-Definition fbxor f g := fun (i : nat) => f i ⊕ g i.
-
-Definition msma i b f g := fun (x : nat) => if (x <? i) then 
-        (carry b (S x) f g ⊕ (f (S x))) else (if (x =? i) then carry b (S x) f g else f x).
-
-Definition msmb i (b : bool) f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else g x.
-
-Definition msmc i b f g := fun (x : nat) => if (x <=? i) then (f x ⊕ g x) else (carry b x f g ⊕ f x ⊕ g x).
-
-Definition sumfb b f g := fun (x : nat) => carry b x f g ⊕ f x ⊕ g x.
-
-Definition negatem i (f : nat -> bool) := fun (x : nat) => if (x <? i) then ¬ (f x) else f x.
-
-Lemma sumfb_correct_carry0 :
-  forall x y,
-    sumfb false (nat2fb x) (nat2fb y) = nat2fb (x + y).
-Proof.
-  intros. unfold nat2fb. rewrite Nnat.Nat2N.inj_add.
-  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
-Qed.
-
-Lemma sumfb_correct_carry1 :
-  forall x y,
-    sumfb true (nat2fb x) (nat2fb y) = nat2fb (x + y + 1).
-Proof.
-  intros. unfold nat2fb. do 2 rewrite Nnat.Nat2N.inj_add.
-  apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry1. easy.
-Qed.
-
-Lemma sumfb_correct_N_carry0 :
-  forall x y,
-    sumfb false (N2fb x) (N2fb y) = N2fb (x + y).
-Proof.
-  intros. apply functional_extensionality. intros. unfold sumfb. rewrite carry_add_eq_carry0. easy.
-Qed.
-
-Lemma pos2fb_Postestbit :
-  forall n i,
-    (pos2fb n) i = Pos.testbit n (N.of_nat i).
-Proof.
-  induction n; intros.
-  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
-  - destruct i; simpl. easy. rewrite IHn. destruct i; simpl. easy. rewrite Pos.pred_N_succ. easy.
-  - destruct i; simpl. easy. easy.
-Qed.
-
-Lemma N2fb_Ntestbit :
-  forall n i,
-    (N2fb n) i = N.testbit n (N.of_nat i).
-Proof.
-  intros. destruct n. easy.
-  simpl. apply pos2fb_Postestbit.
-Qed.
-
-Lemma Z2N_Nat2Z_Nat2N :
-  forall x,
-    Z.to_N (Z.of_nat x) = N.of_nat x.
-Proof.
-  destruct x; easy.
-Qed.
-
-Lemma Nofnat_mod :
-  forall x y,
-    y <> 0 ->
-    N.of_nat (x mod y) = ((N.of_nat x) mod (N.of_nat y))%N.
-Proof.
-  intros. specialize (Zdiv.mod_Zmod x y H0) as G.
-  repeat rewrite <- Z2N_Nat2Z_Nat2N. rewrite G. rewrite Z2N.inj_mod; lia.
-Qed.
-
-Lemma Nofnat_pow :
-  forall x y,
-    N.of_nat (x ^ y) = ((N.of_nat x) ^ (N.of_nat y))%N.
-Proof.
-  intros. induction y. easy.
-  Local Opaque N.pow. replace (N.of_nat (S y)) with ((N.of_nat y) + 1)%N by lia.
- simpl. rewrite N.pow_add_r. rewrite N.pow_1_r. rewrite Nnat.Nat2N.inj_mul. rewrite IHy. lia.
-Qed.
-
-Lemma Ntestbit_lt_pow2n :
-  forall x n,
-    (x < 2^n)%N ->
-    N.testbit x n = false.
-Proof.
-  intros. apply N.mod_small in H0. rewrite <- H0. apply N.mod_pow2_bits_high. lia.
-Qed.
-
-Lemma Ntestbit_in_pow2n_pow2Sn :
-  forall x n,
-    (2^n <= x < 2^(N.succ n))%N ->
-    N.testbit x n = true.
-Proof.
-  intros. assert (N.log2 x = n) by (apply N.log2_unique; lia).
-  rewrite <- H1. apply N.bit_log2.
-  assert (2^n <> 0)%N by (apply N.pow_nonzero; easy).
-  lia.
-Qed.
-
-Lemma negatem_Nlnot :
-  forall (n : nat) (x : N) i,
-    negatem n (N2fb x) i = N.testbit (N.lnot x (N.of_nat n)) (N.of_nat i).
-Proof.
-  intros. unfold negatem. rewrite N2fb_Ntestbit. symmetry.
-  bdestruct (i <? n). apply N.lnot_spec_low. lia.
-  apply N.lnot_spec_high. lia.
-Qed.
-
-Lemma negatem_arith :
-  forall n x,
-    x < 2^n ->
-    negatem n (nat2fb x) = nat2fb (2^n - 1 - x).
-Proof.
-  intros. unfold nat2fb. apply functional_extensionality; intro i.
-  rewrite negatem_Nlnot. rewrite N2fb_Ntestbit.
-  do 2 rewrite Nnat.Nat2N.inj_sub. rewrite Nofnat_pow. simpl.
-  bdestruct (x =? 0). subst. simpl. rewrite N.ones_equiv. rewrite N.pred_sub. rewrite N.sub_0_r. easy.
-  rewrite N.lnot_sub_low. rewrite N.ones_equiv. rewrite N.pred_sub. easy.
-  apply N.log2_lt_pow2. assert (0 < x) by lia. lia.
-  replace 2%N with (N.of_nat 2) by lia. rewrite <- Nofnat_pow. lia.
-Qed.
-
-
-(* Here, we define the addto / addto_n functions for angle rotation. *)
-Definition cut_n (f:nat -> bool) (n:nat) := fun i => if i <? n then f i else allfalse i.
- 
-Definition fbrev' i n (f : nat -> bool) := fun (x : nat) => 
-            if (x <=? i) then f (n - 1 - x) else if (x <? n - 1 - i) 
-                         then f x else if (x <? n) then f (n - 1 - x) else f x.
-Definition fbrev {A} n (f : nat -> A) := fun (x : nat) => if (x <? n) then f (n - 1 - x) else f x.
-
-Lemma fbrev'_fbrev :
-  forall n f,
-    0 < n ->
-    fbrev n f = fbrev' ((n - 1) / 2) n f.
-Proof.
-  intros. unfold fbrev, fbrev'. apply functional_extensionality; intro.
-  assert ((n - 1) / 2 < n) by (apply Nat.div_lt_upper_bound; lia).
-  assert (2 * ((n - 1) / 2) <= n - 1) by (apply Nat.mul_div_le; easy).
-  assert (n - 1 - (n - 1) / 2 <= (n - 1) / 2 + 1).
-  { assert (n - 1 <= 2 * ((n - 1) / 2) + 1).
-    { assert (2 <> 0) by easy.
-      specialize (Nat.mul_succ_div_gt (n - 1) 2 H3) as G.
-      lia.
-    }
-    lia.
-  }
-  IfExpSimpl; easy.
-Qed.
-
-Lemma allfalse_0 : forall n, cut_n allfalse n = nat2fb 0.
-Proof.
-  intros. unfold nat2fb. simpl.
-  unfold cut_n.
-  apply functional_extensionality; intro.
-  bdestruct (x <? n).
-  easy. easy.
-Qed.
-
-Lemma f_num_aux_0: forall n f x, cut_n f n = nat2fb x 
-                -> f n = false -> cut_n f (S n) = nat2fb x.
-Proof.
-  intros.
-  rewrite <- H0.
-  unfold cut_n.
-  apply functional_extensionality.
-  intros.
-  bdestruct (x0 <? n).
-  bdestruct (x0 <? S n).
-  easy.
-  lia.
-  bdestruct (x0 <? S n).
-  assert (x0 = n) by lia.
-  subst. rewrite H1. easy.
-  easy.
-Qed.
-
-Definition twoton_fun (n:nat) := fun i => if i <? n then false else if i=? n then true else false.
-
-
-Definition times_two_spec (f:nat -> bool) :=  fun i => if i =? 0 then false else f (i-1).
-
-(* Showing the times_two spec is correct. *)
-
-Lemma nat2fb_even_0:
-  forall x, nat2fb (2 * x) 0 = false.
-Proof.
-  intros.
-  unfold nat2fb.
-  rewrite Nat2N.inj_double.
-  unfold N.double.
-  destruct (N.of_nat x).
-  unfold N2fb,allfalse.
-  reflexivity.
-  unfold N2fb.
-  simpl.
-  reflexivity.
-Qed.
-
-Lemma pos2fb_times_two_eq:
-  forall p x, x <> 0 -> pos2fb p (x - 1) = pos2fb p~0 x.
-Proof.
-  intros.
-  induction p.
-  simpl.
-  assert ((fb_push false (fb_push true (pos2fb p))) x = (fb_push true (pos2fb p)) (x - 1)).
-  rewrite fb_push_right.
-  reflexivity. lia.
-  rewrite H1.
-  reflexivity.
-  simpl.
-  rewrite (fb_push_right x).
-  reflexivity. lia.
-  simpl.
-  rewrite (fb_push_right x).
-  reflexivity. lia.
-Qed.
-
-Lemma times_two_correct:
-   forall x, (times_two_spec (nat2fb x)) = (nat2fb (2*x)).
-Proof.
-  intros.
-  unfold times_two_spec.
-  apply functional_extensionality; intros.
-  unfold nat2fb.
-  bdestruct (x0 =? 0).
-  rewrite H0.
-  specialize (nat2fb_even_0 x) as H3.
-  unfold nat2fb in H3.
-  rewrite H3.
-  reflexivity.
-  rewrite Nat2N.inj_double.
-  unfold N.double,N2fb.
-  destruct (N.of_nat x).
-  unfold allfalse.
-  reflexivity.
-  rewrite pos2fb_times_two_eq.
-  reflexivity. lia.
-Qed.
-
-
-Lemma f_twoton_eq : forall n, twoton_fun n = nat2fb (2^n).
-Proof.
-  intros.
-  induction n.
-  simpl.
-  unfold twoton_fun.
-  apply functional_extensionality.
-  intros. 
-  IfExpSimpl.
-  unfold fb_push. destruct x. easy. lia.
-  unfold fb_push. destruct x. lia. easy.
-  assert ((2 ^ S n) = 2 * (2^n)). simpl. lia.
-  rewrite H0.
-  rewrite <- times_two_correct.
-  rewrite <- IHn.
-  unfold twoton_fun,times_two_spec.
-  apply functional_extensionality; intros.
-  bdestruct (x =? 0).
-  subst.
-  bdestruct (0 <? S n).
-  easy. lia.
-  bdestruct (x <? S n).
-  bdestruct (x - 1 <? n).
-  easy. lia.
-  bdestruct (x =? S n).
-  bdestruct (x - 1 <? n). lia.
-  bdestruct (x - 1 =? n). easy.
-  lia.
-  bdestruct (x-1<? n). easy.
-  bdestruct (x-1 =? n). lia.
-  easy.
-Qed.
-
-Local Transparent carry.
-
-Lemma carry_cut_n_false : forall i n f, carry false i (cut_n f n) (twoton_fun n) = false.
-Proof.
-  intros.
-  induction i.
-  simpl. easy.
-  simpl. rewrite IHi.
-  unfold cut_n,twoton_fun.
-  IfExpSimpl. btauto.
-  simpl.
-  btauto.
-  simpl. easy.
-Qed.
-
-Lemma carry_lt_same : forall m n f g h b, m < n -> (forall i, i < n -> f i = g i)
-                          -> carry b m f h = carry b m g h.
-Proof.
- induction m; intros; simpl. easy.
- rewrite H1. rewrite (IHm n) with (g:= g); try lia. easy.
- easy. lia.
-Qed.
-
-Lemma carry_lt_same_1 : forall m n f g h h' b, m < n -> (forall i, i < n -> f i = g i)
-                 -> (forall i, i < n -> h i = h' i) -> carry b m f h = carry b m g h'.
-Proof.
- induction m; intros; simpl. easy.
- rewrite H1. rewrite H2. rewrite (IHm n) with (g:= g) (h' := h'); try lia. easy.
- easy. easy. lia. lia.
-Qed.
-
-Local Opaque carry.
-
-Lemma sumfb_cut_n : forall n f, f n = true -> sumfb false (cut_n f n) (twoton_fun n)  = cut_n f (S n).
-Proof.
-  intros.
-  unfold sumfb.
-  apply functional_extensionality; intros.
-  rewrite carry_cut_n_false.
-  unfold cut_n, twoton_fun.
-  IfExpSimpl. btauto.
-  subst. rewrite H0. simpl.  easy.
-  simpl. easy.
-Qed.
-
-Lemma f_num_aux_1: forall n f x, cut_n f n = nat2fb x -> f n = true 
-                  -> cut_n f (S n) = nat2fb (x + 2^n).
-Proof.
-  intros.
-  rewrite <- sumfb_correct_carry0.
-  rewrite <- H0.
-  rewrite <- f_twoton_eq.
-  rewrite sumfb_cut_n.
-  easy. easy.
-Qed.
-
-Lemma f_num_0 : forall f n, (exists x, cut_n f n = nat2fb x).
-Proof.
-  intros.
-  induction n.
-  exists 0.
-  rewrite <- (allfalse_0 0).
-  unfold cut_n.
-  apply functional_extensionality.
-  intros.
-  bdestruct (x <? 0).
-  inv H0. easy.
-  destruct (bool_dec (f n) true).
-  destruct IHn.
-  exists (x + 2^n).
-  rewrite (f_num_aux_1 n f x).
-  easy. easy. easy.
-  destruct IHn.
-  exists x. rewrite (f_num_aux_0 n f x).
-  easy. easy.
-  apply not_true_is_false in n0. easy.
-Qed.
-
-Lemma cut_n_1_1: forall (r:rz_val), r 0 = true -> cut_n r 1 = nat2fb 1.
-Proof.
-  intros. unfold cut_n.
-  apply functional_extensionality. intros.
-  bdestruct (x <? 1).
-  assert (x = 0) by lia. subst.
-  unfold nat2fb. simpl. rewrite H0. easy.
-  unfold nat2fb. simpl. 
-  rewrite fb_push_right. easy. lia.
-Qed.
-
-Lemma cut_n_1_0: forall (r:rz_val), r 0 = false -> cut_n r 1 = nat2fb 0.
-Proof.
-  intros. unfold cut_n.
-  apply functional_extensionality. intros.
-  bdestruct (x <? 1).
-  assert (x = 0) by lia. subst.
-  unfold nat2fb. simpl. rewrite H0. easy.
-  unfold nat2fb. simpl. easy.
-Qed.
-
-Lemma nat2fb_0: nat2fb 0 = allfalse.
-Proof.
- unfold nat2fb. simpl. easy.
-Qed.
-
-Lemma pos2fb_no_zero : forall p, (exists i, pos2fb p i = true).
-Proof.
-  intros. induction p.
-  simpl. exists 0.
-  simpl. easy.
-  simpl. destruct IHp.
-  exists (S x).
-  simpl. easy. simpl.
-  exists 0. simpl. easy.
-Qed.
-
-Lemma cut_n_eq : forall n f, (forall i, i >= n -> f i = false) -> cut_n f n = f.
-Proof.
- intros. unfold cut_n.
- apply functional_extensionality; intro.
- bdestruct (x <? n). easy. rewrite H0. easy. lia. 
-Qed.
-
-
-
-Lemma nat2fb_bound : forall n x, x < 2^n -> (forall i, i >= n -> nat2fb x i = false).
-Proof.
- intros. 
- unfold nat2fb in *. 
- assert ((N.of_nat x < (N.of_nat 2)^ (N.of_nat n))%N).
- rewrite <- Nofnat_pow. lia.
- apply N.mod_small in H2.
- rewrite N2fb_Ntestbit.
- rewrite <- H2.
- apply N.mod_pow2_bits_high. lia.
-Qed.
-
-Lemma pos2fb_sem : forall x y, pos2fb x = pos2fb y -> x = y.
-Proof.
- induction x; intros.
- simpl in *.
- destruct y. simpl in H0.
- assert (forall i, fb_push true (pos2fb x) i = fb_push true (pos2fb y) i).
- intros. rewrite H0. easy.
- apply fb_push_same in H1. apply IHx in H1. subst. easy.
- simpl in H0.
- assert (forall i, fb_push true (pos2fb x) i = fb_push false (pos2fb y) i).
- intros. rewrite H0. easy.
- specialize (H1 0). simpl in H1. inv H1.
- simpl in H0.
- assert (forall i, fb_push true (pos2fb x) i = fb_push true allfalse i).
- intros. rewrite H0. easy.
- apply fb_push_same in H1.
- specialize (pos2fb_no_zero x) as eq1.
- destruct eq1. rewrite H1 in H2. unfold allfalse in H2. inv H2.
- destruct y. simpl in *.
- assert (forall i, fb_push false (pos2fb x) i = fb_push true (pos2fb y) i).
- intros. rewrite H0. easy.
- specialize (H1 0). simpl in H1. inv H1.
- simpl in *.
- assert (forall i, fb_push false (pos2fb x) i = fb_push false (pos2fb y) i).
- intros. rewrite H0. easy.
- apply fb_push_same in H1. apply IHx in H1. subst. easy.
- simpl in *.
- assert (forall i, fb_push false (pos2fb x) i = fb_push true allfalse i).
- intros. rewrite H0. easy.
- specialize (H1 0). simpl in H1. inv H1.
- destruct y. simpl in *.
- assert (forall i, fb_push true allfalse i = fb_push true (pos2fb y) i).
- intros. rewrite H0. easy.
- apply fb_push_same in H1. 
- specialize (pos2fb_no_zero y) as eq1. destruct eq1.
- rewrite <- H1 in H2. unfold allfalse in H2. inv H2.
- simpl in *. 
- assert (forall i, fb_push true allfalse i = fb_push false (pos2fb y) i).
- intros. rewrite H0. easy.
- specialize (H1 0). simpl in H1. inv H1. easy.
-Qed.
-
-Lemma nat2fb_sem : forall x y, nat2fb x = nat2fb y -> x = y.
-Proof.
-  intros. unfold nat2fb,N2fb in H0.
-  destruct (N.of_nat x) eqn:eq1.
-  destruct (N.of_nat y) eqn:eq2.
-  simpl in eq1. lia.
-  specialize (pos2fb_no_zero p) as eq3.
-  destruct eq3.
-  rewrite <- H0 in H1. unfold allfalse in H1. inv H1.
-  destruct (N.of_nat y) eqn:eq2.
-  specialize (pos2fb_no_zero p) as eq3.
-  destruct eq3.
-  rewrite H0 in H1. unfold allfalse in H1. inv H1.
-  apply pos2fb_sem in H0. subst.
-  rewrite <- eq1 in eq2. lia.
-Qed.
-
-Lemma f_num_small : forall f n x, cut_n f n = nat2fb x -> x < 2^n.
-Proof.
-  induction n; intros. simpl in *.
-  assert (cut_n f 0 = allfalse).
-  unfold cut_n.
-  apply functional_extensionality.
-  intros. bdestruct (x0 <? 0). lia. easy.
-  rewrite H1 in H0.
-  unfold nat2fb in H0.
-  unfold N2fb in H0.
-  destruct (N.of_nat x) eqn:eq1. lia.
-  specialize (pos2fb_no_zero p) as eq2.
-  destruct eq2. rewrite <- H0 in H2. unfold allfalse in H2.
-  inv H2.
-  specialize (f_num_0 f n) as eq1.
-  destruct eq1.
-  destruct (f n) eqn:eq2.
-  rewrite f_num_aux_1 with (x := x0) in H0; try easy.
-  apply IHn in H1. simpl.
-  apply nat2fb_sem in H0. subst. lia.
-  rewrite f_num_aux_0 with (x := x0) in H0; try easy.
-  apply nat2fb_sem in H0. subst.
-  apply IHn in H1. simpl. lia.
-Qed.
-
-Definition addto (r : nat -> bool) (n:nat) : nat -> bool := fun i => if i <? n 
-                    then (cut_n (fbrev n (sumfb false (cut_n (fbrev n r) n) (nat2fb 1))) n) i else r i.
-
-Definition addto_n (r:nat -> bool) n := fun i => if i <? n
-               then (cut_n (fbrev n (sumfb false (cut_n (fbrev n r) n) (negatem n (nat2fb 0)))) n) i else r i.
-
-Lemma addto_n_0 : forall r, addto_n r 0 = r.
-Proof.
-  intros.
-  unfold addto_n.
-  apply functional_extensionality.
-  intros.
-  IfExpSimpl. easy.
-Qed.
-
-Lemma addto_0 : forall r, addto r 0 = r.
-Proof.
-  intros.
-  unfold addto.
-  apply functional_extensionality.
-  intros.
-  IfExpSimpl. easy.
-Qed.
-
-Lemma cut_n_fbrev_flip : forall n f, cut_n (fbrev n f) n = fbrev n (cut_n f n).
-Proof.
-  intros.
-  unfold cut_n, fbrev.
-  apply functional_extensionality.
-  intros.
-  bdestruct (x <? n).
-  bdestruct (n - 1 - x <? n).
-  easy. lia. easy.
-Qed.
-
-Lemma cut_n_if_cut : forall n f g, cut_n (fun i => if i <? n then f i else g i) n = cut_n f n.
-Proof.
-  intros.
-  unfold cut_n.
-  apply functional_extensionality; intros.
-  bdestruct (x <? n).
-  easy. easy.
-Qed.
-
-Lemma fbrev_twice_same {A}: forall n f, @fbrev A n (fbrev n f) = f.
-Proof.
-  intros.
-  unfold fbrev.
-  apply functional_extensionality.
-  intros.
-  bdestruct (x <? n).
-  bdestruct (n - 1 - x <? n).
-  assert ((n - 1 - (n - 1 - x)) = x) by lia.
-  rewrite H2. easy.
-  lia. easy.
-Qed.
-
-Lemma cut_n_mod : forall n x, cut_n (nat2fb x) n = (nat2fb (x mod 2^n)).
-Proof.
-  intros.
-  bdestruct (x <? 2^n).
-  rewrite Nat.mod_small by lia.
-  unfold cut_n.
-  apply functional_extensionality; intros.
-  bdestruct (x0 <? n). easy.
-  specialize (nat2fb_bound n x H0 x0) as eq1.
-  rewrite eq1. easy. lia.
-  unfold cut_n.
-  apply functional_extensionality; intros.
-  bdestruct (x0 <? n).
-  unfold nat2fb.
-  rewrite N2fb_Ntestbit.
-  rewrite N2fb_Ntestbit.
-  rewrite <- N.mod_pow2_bits_low with (n := N.of_nat n).
-  rewrite Nofnat_mod.
-  rewrite Nofnat_pow. simpl. easy.
-  apply Nat.pow_nonzero. lia. lia.
-  assert (x mod 2 ^ n < 2^n).
-  apply Nat.mod_small_iff.
-  apply Nat.pow_nonzero. lia.
-  rewrite Nat.mod_mod. easy.
-  apply Nat.pow_nonzero. lia.  
-  specialize (nat2fb_bound n (x mod 2^n) H2 x0 H1) as eq1.
-  rewrite eq1. easy.
-Qed.
-
-Lemma add_to_r_same : forall q r, addto (addto_n r q) q = r.
-Proof.
-  intros.
-  destruct q eqn:eq1.
-  rewrite addto_n_0.
-  rewrite addto_0. easy.
-  unfold addto_n.
-  specialize (f_num_0 (fbrev (S n) r) (S n)) as eq2.
-  destruct eq2.
-  rewrite negatem_arith.
-  rewrite H0.
-  rewrite sumfb_correct_carry0.
-  assert (1 < 2 ^ (S n)).
-  apply Nat.pow_gt_1. lia. lia.
-  assert (((2 ^ S n - 1 - 0)) = 2^ S n -1) by lia.
-  rewrite H2.
-  unfold addto.
-  rewrite (cut_n_fbrev_flip (S n) (fun i0 : nat =>
-                 if i0 <? S n
-                 then
-                  cut_n
-                    (fbrev (S n)
-                       (nat2fb
-                          (x + (2 ^ S n - 1))))
-                    (S n) i0
-                 else r i0)).
-  rewrite cut_n_if_cut.
-  rewrite (cut_n_fbrev_flip (S n)
-                      (nat2fb
-                         (x + (2 ^ S n - 1)))).
-  rewrite cut_n_mod.
-  rewrite <- cut_n_fbrev_flip.
-  rewrite fbrev_twice_same.
-  rewrite cut_n_mod.
-  rewrite Nat.mod_mod by lia.
-  rewrite sumfb_correct_carry0.
-  assert (((x + (2 ^ S n - 1)) mod 2 ^ S n + 1) = ((x + (2 ^ S n - 1)) mod 2 ^ S n + (1 mod 2^ S n))).
-  assert (1 mod 2^ S n = 1).
-  rewrite Nat.mod_small. easy. easy.
-  rewrite H3. easy.
-  rewrite H3.
-  rewrite cut_n_fbrev_flip.
-  rewrite cut_n_mod.
-  rewrite <- Nat.add_mod by lia.
-  assert ((x + (2 ^ S n - 1) + 1) = x + 2 ^ S n) by lia.
-  rewrite H4.
-  rewrite Nat.add_mod by lia.
-  rewrite Nat.mod_same by lia.
-  assert (x mod 2 ^ S n = x).
-  rewrite Nat.mod_small. easy.
-  apply (f_num_small (fbrev (S n) r)). easy.
-  rewrite H5.
-  rewrite plus_0_r.
-  rewrite H5.
-  rewrite <- H0.
-  rewrite <- cut_n_fbrev_flip.
-  rewrite fbrev_twice_same.
-  apply functional_extensionality.
-  intros.
-  bdestruct (x0 <? S n).
-  unfold cut_n.
-  bdestruct (x0 <? S n).
-  easy. lia. easy.
-  specialize (Nat.pow_nonzero 2 (S n)) as eq2.
-  assert (2 <> 0) by lia. apply eq2 in H1. lia.
-Qed.
-
-Lemma add_to_same : forall q r, addto_n (addto r q) q = r.
-Proof.
-  intros.
-  destruct q eqn:eq1.
-  rewrite addto_n_0.
-  rewrite addto_0. easy.
-  unfold addto.
-  specialize (f_num_0 (fbrev (S n) r) (S n)) as eq2.
-  destruct eq2.
-  rewrite H0.
-  rewrite sumfb_correct_carry0.
-  unfold addto_n.
-  assert (0 < 2^ (S n)).
-  specialize (Nat.pow_nonzero 2 (S n)) as eq2.
-  assert (2 <> 0) by lia. apply eq2 in H1. lia.
-  rewrite negatem_arith by lia.
-  rewrite (cut_n_fbrev_flip (S n) (fun i0 : nat =>
-                 if i0 <? S n
-                 then
-                  cut_n
-                    (fbrev (S n)
-                       (nat2fb (x + 1))) 
-                    (S n) i0
-                 else r i0)).
-  rewrite cut_n_if_cut.
-  rewrite (cut_n_fbrev_flip (S n)
-                      (nat2fb (x+1))).
-  rewrite cut_n_mod.
-  rewrite <- cut_n_fbrev_flip.
-  rewrite fbrev_twice_same.
-  rewrite cut_n_mod.
-  rewrite Nat.mod_mod by lia.
-  assert ((2 ^ S n - 1) = (2 ^ S n - 1) mod (2^ S n)).
-  rewrite Nat.mod_small by lia.
-  easy.
-  rewrite H2.
-  rewrite sumfb_correct_carry0.
-  rewrite cut_n_fbrev_flip.
-  rewrite cut_n_mod.
-  assert ((x + 1) mod 2 ^ S n + ((2 ^ S n - 1) mod 2 ^ S n - 0)
-           = ((x + 1) mod 2 ^ S n + ((2 ^ S n - 1) mod 2 ^ S n))) by lia.
-  rewrite H3.
-  rewrite <- Nat.add_mod by lia.
-  assert ((x + 1 + (2 ^ S n - 1))  = x + 2 ^ S n) by lia.
-  rewrite H4.
-  rewrite Nat.add_mod by lia.
-  rewrite Nat.mod_same by lia.
-  rewrite plus_0_r.
-  rewrite Nat.mod_mod by lia.
-  rewrite Nat.mod_small.
-  rewrite <- H0.
-  rewrite cut_n_fbrev_flip.
-  rewrite fbrev_twice_same.
-  apply functional_extensionality.
-  intros.
-  bdestruct (x0 <? S n).
-  unfold cut_n.
-  bdestruct (x0 <? S n).
-  easy. lia. easy.
-  apply (f_num_small (fbrev (S n) r)). easy.
-Qed.
-
-
-Lemma posi_neq_f : forall (p p' : posi), p <> p' -> fst p <> fst p' \/ snd p <> snd p'.
-Proof.
- intros. destruct p. destruct p'.
- simpl in *.
- bdestruct (v =? v0).
- subst. right.
- intros R. subst. contradiction.
- bdestruct (n =? n0).
- subst.
- left.
- intros R. subst. contradiction.
- left. lia.
-Qed.
-
-Lemma posi_neq_b : forall (p p' : posi), fst p <> fst p' \/ snd p <> snd p' -> p <> p'.
-Proof.
- intros. destruct p. destruct p'.
- simpl in *.
- intros R. inv R.
- destruct H0.
- lia.
- lia.
-Qed.
-
+Inductive well_typed_pexp (avar : list var) (aenv: var -> nat) : env -> exp -> env -> Prop :=
+    | exp_refl : forall env e, 
+                well_typed_exp env e -> well_typed_pexp avar aenv env e env
+    | qft_nor :  forall env env' x, Env.MapsTo x Nor env -> Env.Equal env' (Env.add x (Phi (aenv x)) env)
+                   -> well_typed_pexp avar aenv env (QFT x) env'
+    | rqft_phi :  forall env env' x, Env.MapsTo x (Phi (aenv x)) env -> Env.Equal env' (Env.add x Nor env) -> 
+                 well_typed_pexp avar aenv env (RQFT x) env'
+    | h_nor : forall env env' x, Env.MapsTo x Nor env -> Env.Equal env' (Env.add x Had env) ->  
+                  well_typed_pexp avar aenv env (H x) env'
+    | h_had : forall env env' x, Env.MapsTo x Had env -> Env.Equal env' (Env.add x Nor env) ->  
+                                   well_typed_pexp avar aenv env (H x) env'
+    | pcu_nor : forall env p e, Env.MapsTo (fst p) Nor env -> exp_fresh aenv p e -> exp_neu avar e ->
+                       well_typed_pexp avar aenv env e env -> well_typed_pexp avar aenv env (CU p e) env
+    | pe_seq : forall env env' env'' e1 e2, well_typed_pexp avar aenv env e1 env' -> 
+                 well_typed_pexp avar aenv env' e2 env'' -> well_typed_pexp avar aenv env (e1 ; e2) env''.
+
+Inductive exp_WF (aenv:var -> nat): exp -> Prop :=
+      | skip_wf : forall p, snd p < aenv (fst p) -> exp_WF aenv (SKIP p)
+      | x_wf : forall p, snd p < aenv (fst p)  -> exp_WF aenv  (X p)
+      | cu_wf : forall p e, snd p < aenv (fst p)  -> exp_WF aenv  e -> exp_WF aenv  (CU p e)
+      | hcnot_wf : forall p1 p2, snd p1 < aenv (fst p1) 
+                              -> snd p2 < aenv (fst p2)  -> exp_WF aenv  (HCNOT p1 p2)
+      | rz_wf : forall p q, snd p < aenv (fst p)  -> exp_WF aenv  (RZ q p)
+      | rrz_wf : forall p q, snd p < aenv (fst p)  -> exp_WF aenv  (RRZ q p)
+      | sr_wf : forall n x, S n < aenv x -> exp_WF aenv  (SR n x)
+      | ssr_wf : forall n x, S n < aenv x -> exp_WF aenv  (SRR n x)       
+      | seq_wf : forall e1 e2, exp_WF aenv e1 -> exp_WF aenv  e2 -> exp_WF aenv  (Seq e1 e2)
+      | lshift_wf : forall x, 0 < aenv x -> exp_WF aenv  (Lshift x)
+      | rshift_wf : forall x, 0 < aenv x -> exp_WF aenv  (Rshift x)
+      | rev_wf : forall x, 0 < aenv x -> exp_WF aenv  (Rev x)
+      | qft_wf : forall x, 0 < aenv x -> exp_WF aenv (QFT x)
+      | rqft_wf : forall x, 0 < aenv x -> exp_WF aenv (RQFT x)
+      | h_wf : forall x, 0 < aenv x -> exp_WF aenv (H x).
+
+Fixpoint get_vars e : list var :=
+    match e with SKIP p => [(fst p)]
+              | X p => [(fst p)]
+              | CU p e => (fst p)::(get_vars e)
+              | HCNOT p1 p2 => ((fst p1)::(fst p2)::[])
+              | RZ q p => ((fst p)::[])
+              | RRZ q p => ((fst p)::[])
+              | SR n x => (x::[])
+              | SRR n x => (x::[])
+              | Lshift x => (x::[])
+              | Rshift x => (x::[])
+              | Rev x => (x::[])
+              | QFT x => (x::[])
+              | RQFT x => (x::[])
+              | H x => (x::[])
+              | Seq e1 e2 => get_vars e1 ++ (get_vars e2)
+   end.
+
+Inductive right_mode_val : type -> val -> Prop :=
+    | right_nor: forall b r, right_mode_val Nor (nval b r)
+    | right_had: forall b1 b2 r, r 0 = false -> right_mode_val Had (hval b1 b2 r)
+    | right_phi: forall n rc r, right_mode_val (Phi n) (qval rc r).
+
+Definition right_mode_env (aenv: var -> nat) (env: env) (st: posi -> val)
+            := forall t p, snd p < aenv (fst p) -> Env.MapsTo (fst p) t env -> right_mode_val t (st p).
 
 (* helper functions/lemmas for NOR states. *)
 Definition nor_mode (f : posi -> val)  (x:posi) : Prop :=
@@ -2758,9 +1202,6 @@ Proof.
   destruct (get_cua (f p)). easy.
   inv eq1. inv H0.
 Qed.
-
-Definition right_mode_env (aenv: var -> nat) (env: env) (st: posi -> val)
-            := forall t p, snd p < aenv (fst p) -> Env.MapsTo (fst p) t env -> right_mode_val t (st p).
 
 Lemma well_typed_right_mode_exp : forall e aenv env f, well_typed_exp env e
           -> right_mode_env aenv env f -> right_mode_env aenv env (exp_sem aenv e f).
@@ -5481,22 +3922,6 @@ Qed.
 
 
 (* Compiled RCIR+ circuit well-formedness. *)
-Inductive exp_WF : vars -> exp -> Prop :=
-      | skip_wf : forall vs p, snd p < vsize vs (fst p) -> exp_WF vs (SKIP p)
-      | x_wf : forall vs p, snd p < vsize vs (fst p) -> exp_WF vs (X p)
-      | cu_wf : forall vs p e, snd p < vsize vs (fst p) -> exp_WF vs e -> exp_WF vs (CU p e)
-      | hcnot_wf : forall vs p1 p2, snd p1 < vsize vs (fst p1)
-                              -> snd p2 < vsize vs (fst p2) -> exp_WF vs (HCNOT p1 p2)
-      | rz_wf : forall vs p q, snd p < vsize vs (fst p) -> exp_WF vs (RZ q p)
-      | rrz_wf : forall vs p q, snd p < vsize vs (fst p) -> exp_WF vs (RRZ q p)
-      | sr_wf : forall vs n x, S n < vsize vs x -> exp_WF vs (SR n x)
-      | ssr_wf : forall vs n x, S n < vsize vs x -> exp_WF vs (SRR n x)       
-      | seq_wf : forall vs e1 e2, exp_WF vs e1 -> exp_WF vs e2 -> exp_WF vs (Seq e1 e2)
-      | lshift_wf : forall vs x, 0 < vsize vs x -> exp_WF vs (Lshift x)
-      | rshift_wf : forall vs x, 0 < vsize vs x -> exp_WF vs (Rshift x)
-      | rev_wf : forall vs x, 0 < vsize vs x -> exp_WF vs (Rev x).
-
-
 Inductive exp_rmax : nat -> exp -> Prop :=
       | skip_rmax : forall rs p, exp_rmax rs (SKIP p)
       | x_rmax : forall rs p, exp_rmax rs (X p)
