@@ -39,7 +39,7 @@ shor: invoke-coqmakefile invoke-coqmakefile-euler examples/shor/Main.vo
 
 voqc: invoke-coqmakefile VOQC/Main.vo
 
-qvm : invoke-coqmakefile QVM/OracleExample.vo
+qvm : invoke-coqmakefile QVM/OracleExample.vo QVM/Testing.vo
 
 # Built by 'make examples'
 
@@ -75,6 +75,9 @@ examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo
 QVM/PQASM.vo: QVM/PQASM.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo
 	coqc $(COQ_OPTS) QVM/PQASM.v
 
+QVM/Testing.vo: QVM/Testing.v QVM/PQASM.vo examples/Utilities.vo
+	coqc $(COQ_OPTS) QVM/Testing.v
+
 QVM/CLArith.vo: QVM/CLArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo
 	coqc $(COQ_OPTS) QVM/CLArith.v
 
@@ -84,7 +87,7 @@ QVM/RZArith.vo: QVM/RZArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Di
 QVM/QIMP.vo: QVM/QIMP.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo QVM/CLArith.vo QVM/RZArith.vo
 	coqc $(COQ_OPTS) QVM/QIMP.v
 
-QVM/OracleExample.vo: QVM/OracleExample.v QVM/QIMP.vo
+QVM/OracleExample.vo: QVM/OracleExample.v QVM/QIMP.vo QVM/Testing.vo
 	coqc $(COQ_OPTS) QVM/OracleExample.v
 
 # Built by 'make shor'
