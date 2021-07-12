@@ -963,3 +963,20 @@ Proof.
  lia.
 Qed.
 
+Lemma xorb_andb_distr_l : forall x y z, (x ⊕ y) && z = (x && z) ⊕ (y && z).
+Proof.
+ intros. btauto.
+Qed.
+
+Lemma xorb_andb_distr_r : forall x y z, z && (x ⊕ y) = (z && x) ⊕ (z && y).
+Proof.
+ intros. btauto.
+Qed.
+
+
+Ltac bt_simpl := repeat (try rewrite xorb_false_r; try rewrite xorb_false_l;
+            try rewrite xorb_true_r; try rewrite xorb_true_r; 
+            try rewrite andb_false_r; try rewrite andb_false_l;
+            try rewrite andb_true_r; try rewrite andb_true_l;
+            try rewrite xorb_andb_distr_l; try rewrite xorb_andb_distr_r;
+            try rewrite andb_diag).
