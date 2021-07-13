@@ -3530,6 +3530,66 @@ Proof.
   rewrite eupdate_twice_neq by iner_p. easy. lia.
 Qed.
 
+Lemma assign_r_out_fun : forall n f x h p v, fst p <> x ->
+            assign_r (f[p |-> v]) x h n = ((assign_r f x h n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn by easy.
+  rewrite eupdate_twice_neq by iner_p. easy.
+Qed.
+
+Lemma assign_r_ge_fun : forall n f x h p v, n <= snd p ->
+            assign_r (f[p |-> v]) x h n = ((assign_r f x h n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p. simpl in *.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn.
+  rewrite eupdate_twice_neq by iner_p. easy. simpl. lia.
+Qed.
+
+Lemma assign_seq_out_fun : forall n f x h p v, fst p <> x ->
+            assign_seq (f[p |-> v]) x h n = ((assign_seq f x h n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn by easy.
+  rewrite eupdate_twice_neq by iner_p. easy.
+Qed.
+
+Lemma assign_seq_ge_fun : forall n f x h p v, n <= snd p ->
+            assign_seq (f[p |-> v]) x h n = ((assign_seq f x h n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p. simpl in *.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn.
+  rewrite eupdate_twice_neq by iner_p. easy. simpl; lia.
+Qed.
+
+Lemma h_sem_out_fun : forall n f x p v, fst p <> x ->
+            h_sem (f[p |-> v]) x n = ((h_sem f x n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn by easy.
+  rewrite eupdate_twice_neq by iner_p. easy.
+Qed.
+
+Lemma h_sem_ge_fun : forall n f x p v, n <= snd p ->
+            h_sem (f[p |-> v]) x n = ((h_sem f x n)[p |-> v]).
+Proof.
+  induction n; intros;simpl. easy.
+  destruct p. simpl in *.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn.
+  rewrite eupdate_twice_neq by iner_p. easy. simpl;lia.
+Qed.
+
 Lemma efresh_exp_sem_out :
   forall e aenv  p f v,
     exp_fresh aenv p e ->
@@ -3648,82 +3708,7 @@ Proof.
   rewrite eupdate_index_neq by iner_p.
   rewrite eupdate_index_neq by iner_p. simpl.
   bdestruct (v1 =? x). lia. simpl. easy. 
-  inv H0. simpl.
-  apply (IHe1) with (aenv := aenv) (f := f) (v:=v) in H4.
-  apply (IHe2) with (aenv := aenv) (f := (exp_sem aenv e1 f)) (v:=v) in H5.
-  rewrite H4. rewrite H5. easy.
-Qed.
-
-Check assign_r_out.
-
-Lemma assign_r_out_fun : forall n f x h p v, fst p <> x ->
-            assign_r (f[p |-> v]) x h n = ((assign_r f x h n)[p |-> v]).
-Proof.
-  induction n; intros;simpl. easy.
-  destruct p.
-  rewrite eupdate_index_neq by iner_p.
-  rewrite IHn by easy.
-  rewrite eupdate_twice_neq by iner_p. easy.
-Qed.
-
-Lemma assign_r_ge_fun : forall n f x h p v, n <= snd p ->
-            assign_r (f[p |-> v]) x h n = ((assign_r f x h n)[p |-> v]).
-Proof.
-  induction n; intros;simpl. easy.
-  destruct p. simpl in *.
-  rewrite eupdate_index_neq by iner_p.
-  rewrite IHn.
-  rewrite eupdate_twice_neq by iner_p. easy. simpl. lia.
-Qed.
-
-Lemma assign_seq_out_fun : forall n f x h p v, fst p <> x ->
-            assign_seq (f[p |-> v]) x h n = ((assign_seq f x h n)[p |-> v]).
-Proof.
-  induction n; intros;simpl. easy.
-  destruct p.
-  rewrite eupdate_index_neq by iner_p.
-  rewrite IHn by easy.
-  rewrite eupdate_twice_neq by iner_p. easy.
-Qed.
-
-Lemma assign_seq_ge_fun : forall n f x h p v, n <= snd p ->
-            assign_seq (f[p |-> v]) x h n = ((assign_seq f x h n)[p |-> v]).
-Proof.
-  induction n; intros;simpl. easy.
-  destruct p. simpl in *.
-  rewrite eupdate_index_neq by iner_p.
-  rewrite IHn.
-  rewrite eupdate_twice_neq by iner_p. easy. simpl; lia.
-Qed.
-
-Lemma h_sem_out_fun : forall n f x p v, fst p <> x ->
-            h_sem (f[p |-> v]) x n = ((h_sem f x n)[p |-> v]).
-Proof.
-  induction n; intros;simpl. easy.
-  destruct p.
-  rewrite eupdate_index_neq by iner_p.
-  rewrite IHn by easy.
-  rewrite eupdate_twice_neq by iner_p. easy.
-Qed.
-
-Lemma h_sem_ge_fun : forall n f x p v, n <= snd p ->
-            h_sem (f[p |-> v]) x n = ((h_sem f x n)[p |-> v]).
-Proof.
-  induction n; intros;simpl. easy.
-  destruct p. simpl in *.
-  rewrite eupdate_index_neq by iner_p.
-  rewrite IHn.
-  rewrite eupdate_twice_neq by iner_p. easy. simpl;lia.
-Qed.
-
-Lemma fresh_pexp_sem_out :
-  forall e aenv  p f v,
-    pexp_fresh aenv p e ->
-    prog_sem aenv e (f[p |-> v]) = ((prog_sem aenv e f)[p |-> v]).
-Proof.
-  induction e;intros.
-  inv H0. simpl. rewrite efresh_exp_sem_out. easy. easy.
-  simpl. inv H0.
+  simpl in *. inv H0.
   unfold turn_qft.
   unfold or_not_eq in H3. destruct H3.
   rewrite get_cus_up by easy.
@@ -3751,32 +3736,28 @@ Proof.
   rewrite h_sem_out_fun by iner_p. easy.
   rewrite h_sem_ge_fun by iner_p. easy.
   simpl. inv H0.
-  rewrite eupdate_index_neq by iner_p.
-  destruct (get_cua (f p)).
-  rewrite IHe; try easy. easy.
-  simpl. inv H0.
   rewrite IHe1 by easy.
   rewrite IHe2 by easy. easy.
 Qed.
 
 Lemma inv_pexp_reverse_1 :
-  forall l l' (tenv tenv':env) (aenv: var -> nat) e f g c v,
-    well_typed_pexp aenv l tenv e l' tenv' -> right_mode_env aenv tenv f ->
+  forall (tenv tenv':env) avars (aenv: var -> nat) e f g c v,
+   (forall u, In u (get_vars e) -> In u avars) ->
+    well_typed_pexp avars aenv tenv e  tenv' -> right_mode_env aenv tenv f ->
     qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
-    pexp_fresh aenv c e ->
-    prog_sem aenv e f = g ->
-    well_formed_ls l -> exp_neu_prop l ->
-    prog_sem aenv (inv_pexp e) (g[c |-> v]) = (f[c |-> v]).
+    exp_fresh aenv c e ->
+    exp_sem aenv e f = g ->
+    exp_sem aenv (inv_exp e) (g[c |-> v]) = (f[c |-> v]).
 Proof.
   intros. 
   Check inv_pexp_reverse.
-  specialize (inv_pexp_reverse l l' tenv tenv' aenv e f g H0 H1 H2 H3 H5 H6 H7) as G.
+  specialize (inv_pexp_reverse tenv tenv' avars aenv e f g H0 H1 H2 H3 H4) as G.
   apply functional_extensionality; intros.
-  bdestruct (x ==? c). rewrite H8 in *.
-  rewrite fresh_pexp_sem_out. rewrite G. easy.
-  apply fresh_inv_pexp. easy.
-  rewrite fresh_pexp_sem_out. rewrite G. easy.
-  apply fresh_inv_pexp. easy.
+  bdestruct (x ==? c). rewrite H7 in *.
+  rewrite efresh_exp_sem_out. rewrite G. easy. easy.
+  apply fresh_inv_exp. easy.
+  rewrite efresh_exp_sem_out. rewrite G. easy. easy.
+  apply fresh_inv_exp. easy.
 Qed.
 
 
