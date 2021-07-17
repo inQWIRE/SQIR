@@ -6,6 +6,7 @@ Require Import Dirac.
 Require Import QPE.
 Require Import BasicUtility.
 Require Import MathSpec.
+Require Import Classical_Prop.
 (**********************)
 (** Unitary Programs **)
 (**********************)
@@ -249,22 +250,8 @@ Inductive exp_neu_l (x:var) : list sexp -> exp ->  list sexp -> Prop :=
       | rev_neul_ne : forall l y, x <> y -> exp_neu_l x l (Rev y) l
       | seq_neul : forall l l' l'' e1 e2, exp_neu_l x l e1 l' -> exp_neu_l x l' e2 l'' -> exp_neu_l x l (Seq e1 e2) l''.
 
-Inductive exp_neu (xl : list var) : exp -> Prop :=
-      | skip_neu : forall p, exp_neu xl (SKIP p)
-      | x_neu : forall p,  exp_neu xl (X p)
-      | sr_neu : forall n y, exp_neu xl (SR n y)
-      | srr_neu : forall y n, exp_neu xl (SRR n y)
-      | cu_neu : forall p e, (forall x , In x xl -> exp_neu_l x [] e []) -> exp_neu xl (CU p e)
-      | hcnot_neu : forall p1 p2, exp_neu xl (HCNOT p1 p2)
-      | rz_neu : forall p q, exp_neu xl (RZ q p)
-      | rrz_neu : forall p q, exp_neu xl (RRZ q p)
-      | qft_neu : forall y, exp_neu xl (QFT y)
-      | rqft_neu : forall y , exp_neu xl (RQFT y)
-      | h_neu : forall y, exp_neu xl (H y)
-      | lshift_neu : forall y, exp_neu xl (Lshift y)
-      | rshift_neu : forall y, exp_neu xl (Rshift y)
-      | rev_neu : forall y, exp_neu xl (Rev y)
-      | seq_neu : forall e1 e2, exp_neu xl e1 -> exp_neu xl e2 -> exp_neu xl (e1 ; e2).
+Definition exp_neu (xl : list var) (e:exp) : Prop :=
+    forall x, In x xl -> exp_neu_l x [] e [].
 
 Definition exp_neu_prop (l:list sexp) :=
     (forall i a, i + 1 < length l -> nth_error l i = Some a -> nth_error l (i+1) <> Some (opp_ls a)).
@@ -369,22 +356,39 @@ Inductive well_typed_exp : env -> exp -> Prop :=
 (*
 Definition opp_ls (s : sexp) := match s with Ls => Rs | Rs => Ls | Re => Re end.
 *)
+Fixpoint get_vars e : list var :=
+    match e with SKIP p => [(fst p)]
+              | X p => [(fst p)]
+              | CU p e => (fst p)::(get_vars e)
+              | HCNOT p1 p2 => ((fst p1)::(fst p2)::[])
+              | RZ q p => ((fst p)::[])
+              | RRZ q p => ((fst p)::[])
+              | SR n x => (x::[])
+              | SRR n x => (x::[])
+              | Lshift x => (x::[])
+              | Rshift x => (x::[])
+              | Rev x => (x::[])
+              | QFT x => (x::[])
+              | RQFT x => (x::[])
+              | H x => (x::[])
+              | Seq e1 e2 => get_vars e1 ++ (get_vars e2)
+   end.
 
-Inductive well_typed_pexp (avar : list var) (aenv: var -> nat) : env -> exp -> env -> Prop :=
+Inductive well_typed_pexp (aenv: var -> nat) : env -> exp -> env -> Prop :=
     | exp_refl : forall env e, 
-                well_typed_exp env e -> well_typed_pexp avar aenv env e env
+                well_typed_exp env e -> well_typed_pexp aenv env e env
     | qft_nor :  forall env env' x, Env.MapsTo x Nor env -> Env.Equal env' (Env.add x (Phi (aenv x)) env)
-                   -> well_typed_pexp avar aenv env (QFT x) env'
+                   -> well_typed_pexp aenv env (QFT x) env'
     | rqft_phi :  forall env env' x, Env.MapsTo x (Phi (aenv x)) env -> Env.Equal env' (Env.add x Nor env) -> 
-                 well_typed_pexp avar aenv env (RQFT x) env'
+                 well_typed_pexp aenv env (RQFT x) env'
     | h_nor : forall env env' x, Env.MapsTo x Nor env -> Env.Equal env' (Env.add x Had env) ->  
-                  well_typed_pexp avar aenv env (H x) env'
+                  well_typed_pexp aenv env (H x) env'
     | h_had : forall env env' x, Env.MapsTo x Had env -> Env.Equal env' (Env.add x Nor env) ->  
-                                   well_typed_pexp avar aenv env (H x) env'
-    | pcu_nor : forall env p e, Env.MapsTo (fst p) Nor env -> exp_fresh aenv p e -> exp_neu avar e ->
-                       well_typed_pexp avar aenv env e env -> well_typed_pexp avar aenv env (CU p e) env
-    | pe_seq : forall env env' env'' e1 e2, well_typed_pexp avar aenv env e1 env' -> 
-                 well_typed_pexp avar aenv env' e2 env'' -> well_typed_pexp avar aenv env (e1 ; e2) env''.
+                                   well_typed_pexp aenv env (H x) env'
+    | pcu_nor : forall env p e, Env.MapsTo (fst p) Nor env -> exp_fresh aenv p e -> exp_neu (get_vars e) e ->
+                       well_typed_pexp aenv env e env -> well_typed_pexp aenv env (CU p e) env
+    | pe_seq : forall env env' env'' e1 e2, well_typed_pexp aenv env e1 env' -> 
+                 well_typed_pexp aenv env' e2 env'' -> well_typed_pexp aenv env (e1 ; e2) env''.
 
 Inductive exp_WF (aenv:var -> nat): exp -> Prop :=
       | skip_wf : forall p, snd p < aenv (fst p) -> exp_WF aenv (SKIP p)
@@ -403,24 +407,6 @@ Inductive exp_WF (aenv:var -> nat): exp -> Prop :=
       | qft_wf : forall x, 0 < aenv x -> exp_WF aenv (QFT x)
       | rqft_wf : forall x, 0 < aenv x -> exp_WF aenv (RQFT x)
       | h_wf : forall x, 0 < aenv x -> exp_WF aenv (H x).
-
-Fixpoint get_vars e : list var :=
-    match e with SKIP p => [(fst p)]
-              | X p => [(fst p)]
-              | CU p e => (fst p)::(get_vars e)
-              | HCNOT p1 p2 => ((fst p1)::(fst p2)::[])
-              | RZ q p => ((fst p)::[])
-              | RRZ q p => ((fst p)::[])
-              | SR n x => (x::[])
-              | SRR n x => (x::[])
-              | Lshift x => (x::[])
-              | Rshift x => (x::[])
-              | Rev x => (x::[])
-              | QFT x => (x::[])
-              | RQFT x => (x::[])
-              | H x => (x::[])
-              | Seq e1 e2 => get_vars e1 ++ (get_vars e2)
-   end.
 
 Fixpoint init_v (n:nat) (x:var) (M: nat -> bool) :=
       match n with 0 => (SKIP (x,0))
@@ -1518,7 +1504,7 @@ Proof.
  rewrite IHn. easy. easy.
 Qed.
 
-Lemma qft_start_nor_modes : forall avars aenv tenv tenv' x f, well_typed_pexp avars aenv tenv (QFT x) tenv'
+Lemma qft_start_nor_modes : forall aenv tenv tenv' x f, well_typed_pexp aenv tenv (QFT x) tenv'
         -> right_mode_env aenv tenv f -> nor_modes f x (aenv x).
 Proof.
   intros. inv H0. unfold right_mode_env in H1.
@@ -1868,99 +1854,89 @@ Proof.
   simpl in *. apply H1. easy. easy.
 Qed.
 
-Lemma well_typed_right_mode_pexp : forall e avars aenv tenv tenv' f, 
-        (forall u, In u (get_vars e) -> In u avars) ->
-        well_typed_pexp avars aenv tenv e tenv'
+Lemma well_typed_right_mode_pexp : forall e aenv tenv tenv' f, 
+        well_typed_pexp aenv tenv e tenv'
           -> right_mode_env aenv tenv f -> right_mode_env aenv tenv' (exp_sem aenv e f).
 Proof.
   induction e; intros.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1. inv H3.
-  specialize (IHe avars aenv tenv' tenv' f).
-  apply IHe in H10; try easy.
+  inv H0. inv H2.
+  specialize (IHe aenv tenv' tenv' f).
+  apply IHe in H9; try easy.
   unfold right_mode_env in *.
   intros.
   simpl.
   destruct (get_cua (f p)) eqn:eq1.
-  apply H10; try easy.
-  apply H2; try easy.
+  apply H9; try easy.
+  apply H1; try easy.
   intros.
-  simpl in H0.
-  apply H0. right; easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  inv H1.
+  inv H0.
   apply well_typed_right_mode_exp; try easy.
-  simpl. inv H1. inv H3. unfold turn_qft.
+  simpl. inv H0. inv H2. unfold turn_qft.
   unfold right_mode_env in *. intros.
   destruct p. simpl in *.
   bdestruct (x =? v). subst.
-  apply mapsto_equal with (s2 := (Env.add v (Phi (aenv v)) tenv)) in H3; try easy.
-  apply mapsto_add1 in H3. subst.
+  apply mapsto_equal with (s2 := (Env.add v (Phi (aenv v)) tenv)) in H2; try easy.
+  apply mapsto_add1 in H2. subst.
   apply assign_r_right_mode. lia.
-  intros. apply H2. easy. easy.
+  intros. apply H1. easy. easy.
   apply assign_r_right_mode_out; try lia.
-  apply H2. easy. simpl.
-  apply mapsto_equal with (s2 := (Env.add x (Phi (aenv x)) tenv)) in H3; try easy.
-  apply Env.add_3 in H3; try lia. easy.
+  apply H1. easy. simpl.
+  apply mapsto_equal with (s2 := (Env.add x (Phi (aenv x)) tenv)) in H2; try easy.
+  apply Env.add_3 in H2; try lia. easy.
   simpl.
-  inv H1. inv H3. unfold turn_rqft.
+  inv H0. inv H2. unfold turn_rqft.
   unfold right_mode_env in *. intros.
   destruct p. simpl in *.
   bdestruct (x =? v). subst.
-  apply mapsto_equal with (s2 := (Env.add v Nor tenv)) in H3; try easy.
-  apply mapsto_add1 in H3. subst.
+  apply mapsto_equal with (s2 := (Env.add v Nor tenv)) in H2; try easy.
+  apply mapsto_add1 in H2. subst.
   apply assign_seq_right_mode. lia.
-  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H3; try easy.
-  apply Env.add_3 in H3; try lia.
+  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H2; try easy.
+  apply Env.add_3 in H2; try lia.
   apply assign_seq_right_mode_out; try lia.
-  apply H2. easy. easy.
+  apply H1. easy. easy.
   simpl.
-  inv H1. inv H3.
+  inv H0. inv H2.
   unfold right_mode_env in *. intros.
   destruct p. simpl in *.
   bdestruct (x =? v). subst.
-  apply mapsto_equal with (s2 := (Env.add v Had tenv)) in H3; try easy.
-  apply mapsto_add1 in H3. subst.
-  apply h_sem_right_mode_nor. lia. apply H2. easy. easy.
-  apply mapsto_equal with (s2 := (Env.add x Had tenv)) in H3; try easy.
-  apply Env.add_3 in H3; try lia.
-  apply h_sem_right_mode_out. lia. apply H2. easy. easy.
+  apply mapsto_equal with (s2 := (Env.add v Had tenv)) in H2; try easy.
+  apply mapsto_add1 in H2. subst.
+  apply h_sem_right_mode_nor. lia. apply H1. easy. easy.
+  apply mapsto_equal with (s2 := (Env.add x Had tenv)) in H2; try easy.
+  apply Env.add_3 in H2; try lia.
+  apply h_sem_right_mode_out. lia. apply H1. easy. easy.
   unfold right_mode_env in *. intros.
   destruct p. simpl in *.
   bdestruct (x =? v). subst.
-  apply mapsto_equal with (s2 := (Env.add v Nor tenv)) in H3; try easy.
-  apply mapsto_add1 in H3. subst.
-  apply h_sem_right_mode_had. lia. apply H2; easy.
-  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H3; try easy.
-  apply Env.add_3 in H3; try lia.
-  apply h_sem_right_mode_out. lia. apply H2; easy.
+  apply mapsto_equal with (s2 := (Env.add v Nor tenv)) in H2; try easy.
+  apply mapsto_add1 in H2. subst.
+  apply h_sem_right_mode_had. lia. apply H1; easy.
+  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H2; try easy.
+  apply Env.add_3 in H2; try lia.
+  apply h_sem_right_mode_out. lia. apply H1; easy.
   simpl.
-  inv H1. inv H3.
-  simpl in H0.
-  assert ((forall u : var, In u (get_vars e1) -> In u avars)).
-  intros. apply H0.
-  apply in_or_app. left. easy.
-  specialize (IHe1 avars aenv tenv env' f H1 H6 H2).
-  assert ((forall u : var, In u (get_vars e2) -> In u avars)). intros.
-  apply H0.
-  apply in_or_app. right. easy.
-  specialize (IHe2 avars aenv env' tenv' (exp_sem aenv e1 f) H3 H8 IHe1).
+  inv H0. inv H2.
+  specialize (IHe1 aenv tenv env' f H5 H1).
+  specialize (IHe2 aenv env' tenv' (exp_sem aenv e1 f) H7 IHe1).
   easy.
 Qed.
 
@@ -2074,6 +2050,7 @@ Proof.
   apply IHe1; try easy.
 Qed.
 
+(*
 Lemma neu_inv_exp :
   forall l p,
     exp_neu l p ->
@@ -2090,6 +2067,7 @@ Proof.
   constructor. inv H0.
   apply IHp2. easy. apply IHp1. inv H0. easy.
 Qed.
+*)
 
 Lemma typed_inv_exp :
   forall tenv p,
@@ -2111,10 +2089,22 @@ Proof.
   inv H0. inv H0. inv H0.
 Qed.
 
+Lemma inv_get_vars : forall e x, In x (get_vars (inv_exp e)) -> In x (get_vars e).
+Proof.
+  induction e; intros; simpl; try easy.
+  simpl in H0. destruct H0. left. easy.
+  right. apply IHe. easy.
+  simpl in H0.
+  apply in_or_app.
+  apply in_app_or in H0.
+  destruct H0. right. apply IHe2. easy.
+  left. apply IHe1. easy.
+Qed.
+
 Lemma typed_inv_pexp :
-  forall p avars aenv tenv tenv',
-    well_typed_pexp avars aenv tenv p tenv' ->
-    well_typed_pexp avars aenv tenv' (inv_exp p) tenv.
+  forall p aenv tenv tenv',
+    well_typed_pexp aenv tenv p tenv' ->
+    well_typed_pexp aenv tenv' (inv_exp p) tenv.
 Proof.
   induction p; intros; simpl; try assumption.
   inv H0. constructor. easy.
@@ -2122,7 +2112,11 @@ Proof.
   inv H0. inv H1.
   apply pcu_nor; try easy.
   apply fresh_inv_exp. easy.
-  apply neu_inv_exp.  easy.
+  unfold exp_neu. intros.
+  apply neu_l_inv_exp.
+  unfold exp_neu_prop. intros. simpl in *. lia.
+  unfold exp_neu in H6.
+  apply H6. apply inv_get_vars. easy.
   apply IHp. easy.
   inv H0. constructor.
   apply typed_inv_exp in H1. simpl in H1. easy.
@@ -2426,7 +2420,7 @@ Proof.
  rewrite IHm; try easy. lia.
 Qed.
 
-Lemma rqft_start_phi_modes : forall avars aenv tenv tenv' x f, well_typed_pexp avars aenv tenv (RQFT x) tenv'
+Lemma rqft_start_phi_modes : forall aenv tenv tenv' x f, well_typed_pexp aenv tenv (RQFT x) tenv'
         -> right_mode_env aenv tenv f -> phi_modes f x (aenv x).
 Proof.
   intros. inv H0. inv H2.
@@ -2637,10 +2631,8 @@ Proof.
 Qed.
 
 Lemma qft_uniform_exp_trans : 
-    forall e f avars aenv tenv tenv', qft_uniform aenv tenv f -> well_typed_pexp avars aenv tenv e tenv'
-            -> right_mode_env aenv tenv f -> 
-                  (forall u, In u (get_vars e) -> In u avars)
-                    -> qft_uniform aenv tenv' (exp_sem aenv e f).
+    forall e f aenv tenv tenv', qft_uniform aenv tenv f -> well_typed_pexp aenv tenv e tenv'
+            -> right_mode_env aenv tenv f -> qft_uniform aenv tenv' (exp_sem aenv e f).
 Proof.
   induction e; intros; simpl.
   inv H1. easy.
@@ -2648,23 +2640,22 @@ Proof.
   unfold qft_uniform in *. intros.
   destruct p.
   bdestruct (x =? v). subst.
-  simpl in *. inv H4.
+  simpl in *. inv H3.
   apply mapsto_always_same with (v2:=Nor) in H1; try easy.
   apply mapsto_always_same with (v2:=Had) in H1; try easy.
   simpl in *.
   unfold get_snd_r,get_r_qft in *.
   repeat rewrite eupdate_index_neq by iner_p.
   rewrite H0; try easy.
-  inv H1. inv H4.
+  inv H1. inv H3.
   destruct (get_cua (f p)) eqn:eq1.
-  apply IHe with (avars := avars) (tenv := tenv'); try easy.
-  intros. apply H3. simpl. right. easy.
+  apply IHe with (tenv := tenv'); try easy.
   easy.
   inv H1.
   unfold qft_uniform in *. intros.
   destruct p.
   bdestruct (x =? v). subst.
-  inv H4. simpl in *.
+  inv H3. simpl in *.
   apply mapsto_always_same with (v2:=Nor) in H1; try easy.
   apply mapsto_always_same with (v2:=Had) in H1; try easy.
   unfold get_snd_r,get_r_qft in *.
@@ -2674,7 +2665,7 @@ Proof.
   unfold qft_uniform in *. intros.
   destruct p.
   bdestruct (x =? v). subst.
-  inv H4.
+  inv H3.
   apply mapsto_always_same with (v2:=Nor) in H1; try easy.
   apply mapsto_always_same with (v2:=Had) in H1; try easy.
   unfold get_snd_r,get_r_qft in *.
@@ -2686,34 +2677,34 @@ Proof.
   bdestruct (x =? x0). subst.
   bdestruct (i <? S q).
   rewrite qft_uniform_sr_rotate. easy. lia.
-  inv H4.
+  inv H3.
   apply mapsto_always_same with (v2:=(Phi n)) in H1; try easy.
   inv H1.
   unfold right_mode_env in H2.
   unfold phi_modes. intros.
   specialize (H2 (Phi (aenv x0)) (x0,i0)).
   simpl in H2. assert (i0 < aenv x0) by lia.
-  apply H2 in H4; try easy.
-  inv H4. unfold phi_mode.
+  apply H2 in H3; try easy.
+  inv H3. unfold phi_mode.
   assert ((f (@pair Env.key nat x0 i0)) = (f (@pair var nat x0 i0))) by easy.
-  rewrite H4 in *. rewrite <- H9. lia.
+  rewrite H3 in *. rewrite <- H8. lia.
   rewrite H0; try easy.
   rewrite sr_rotate'_get_snd_r_ge; try lia.
   rewrite H0; try easy.
   unfold lshift_fun.
   apply functional_extensionality. intros.
   unfold get_r_qft.
-  inv H4.
+  inv H3.
   apply mapsto_always_same with (v2:=(Phi n)) in H1; try easy.
   inv H1.
   rewrite sr_rotate'_lt_1; try lia.
   unfold right_mode_env in H2.
   specialize (H2 (Phi (aenv x0)) (x0,0)).
   simpl in *.
-  apply H2 in H10.
-  inv H10.
+  apply H2 in H9.
+  inv H9.
   assert ((f (@pair Env.key nat x0 0)) = (f (@pair var nat x0 0))) by easy.
-  rewrite H1 in *. rewrite <- H7.
+  rewrite H1 in *. rewrite <- H6.
   unfold times_rotate, rotate,addto.
   bdestruct (x + i <? S q). lia. easy. simpl. lia.
   rewrite sr_rotate'_get_snd_r_out; try lia.
@@ -2723,7 +2714,7 @@ Proof.
   unfold get_r_qft.
   rewrite sr_rotate'_irrelevant; try lia. easy.
   iner_p.
-  inv H1. inv H4.
+  inv H1. inv H3.
   unfold qft_uniform in *. intros.
   unfold srr_rotate.
   bdestruct (x =? x0). subst.
@@ -2735,10 +2726,10 @@ Proof.
   unfold phi_modes. intros.
   specialize (H2 (Phi (aenv x0)) (x0,i0)).
   simpl in H2. assert (i0 < aenv x0) by lia.
-  apply H2 in H6; try easy.
-  inv H6. unfold phi_mode.
+  apply H2 in H5; try easy.
+  inv H5. unfold phi_mode.
   assert ((f (@pair Env.key nat x0 i0)) = (f (@pair var nat x0 i0))) by easy.
-  rewrite H6 in *. rewrite <- H11. lia.
+  rewrite H5 in *. rewrite <- H10. lia.
   rewrite H0; try easy.
   rewrite srr_rotate'_get_snd_r_ge; try lia.
   rewrite H0; try easy.
@@ -2750,10 +2741,10 @@ Proof.
   rewrite srr_rotate'_lt_1; try lia.
   unfold right_mode_env in H2.
   specialize (H2 (Phi (aenv x0)) (x0,0)).
-  apply H2 in H7.
-  inv H7.
+  apply H2 in H6.
+  inv H6.
   assert ((f (@pair Env.key nat x0 0)) = (f (@pair var nat x0 0))) by easy.
-  rewrite H1 in *. rewrite <- H9.
+  rewrite H1 in *. rewrite <- H8.
   unfold times_r_rotate, r_rotate,addto_n.
   bdestruct (x + i <? S q - 0). lia. easy. simpl. lia.
   rewrite srr_rotate'_get_snd_r_out; try lia.
@@ -2763,10 +2754,10 @@ Proof.
   unfold get_r_qft.
   rewrite srr_rotate'_irrelevant; try lia. easy.
   iner_p.
-  inv H1. inv H4.
+  inv H1. inv H3.
   unfold qft_uniform in *. intros.
   bdestruct (p1 ==? (x,i)). subst.
-  simpl in H8.
+  simpl in H7.
   apply mapsto_always_same with (v2:=Had) in H1; try easy.
   unfold get_snd_r in *.
   rewrite eupdate_index_neq by iner_p.
@@ -2776,34 +2767,34 @@ Proof.
   apply mapsto_always_same with (v2:=Had) in H1; try easy.
   unfold get_r_qft.
   rewrite eupdate_index_neq by iner_p. easy.
-  inv H1. inv H4.
+  inv H1. inv H3.
   unfold qft_uniform in *.
   intros.
   bdestruct (x0 =? x). subst.
   apply mapsto_always_same with (v2:=Nor) in H1; try easy.
   assert (get_snd_r (lshift f x (aenv x)) (x0, i) = get_snd_r f (x0,i)).
   unfold get_snd_r,lshift. rewrite lshift'_irrelevant. easy. easy.
-  rewrite H7. rewrite H0.
+  rewrite H6. rewrite H0.
   assert ((get_r_qft (lshift f x (aenv x)) x0) = get_r_qft f x0).
   unfold get_r_qft,lshift.
   rewrite lshift'_irrelevant. easy. easy.
-  rewrite H8. easy. 1-2:easy.
+  rewrite H7. easy. 1-2:easy.
   unfold qft_uniform in *.
   intros.
   bdestruct (x0 =? x). subst.
   apply mapsto_always_same with (v2:=Had) in H1; try easy.
   assert (get_snd_r (lshift f x (aenv x)) (x0, i) = get_snd_r f (x0,i)).
   unfold get_snd_r,lshift. rewrite lshift'_irrelevant. easy. easy.
-  rewrite H7. rewrite H0.
+  rewrite H6. rewrite H0.
   assert ((get_r_qft (lshift f x (aenv x)) x0) = get_r_qft f x0).
   unfold get_r_qft,lshift.
   rewrite lshift'_irrelevant. easy. easy.
-  rewrite H8. easy. 1-2:easy.
+  rewrite H7. easy. 1-2:easy.
   unfold qft_uniform in *.
   intros.
-  bdestruct (x0 =? x). subst. inv H1. inv H6.
-  apply mapsto_always_same with (v2:=Nor) in H4; try easy.
-  apply mapsto_always_same with (v2:=Had) in H4; try easy.
+  bdestruct (x0 =? x). subst. inv H1. inv H5.
+  apply mapsto_always_same with (v2:=Nor) in H3; try easy.
+  apply mapsto_always_same with (v2:=Had) in H3; try easy.
   unfold get_snd_r, rshift,get_r_qft.
   repeat rewrite rshift'_irrelevant; try easy.
   unfold get_snd_r,get_r_qft in H0.
@@ -2812,14 +2803,14 @@ Proof.
   unfold qft_uniform in *.
   intros.
   bdestruct (x0 =? x). subst.
-  inv H1. inv H6.
-  apply mapsto_always_same with (v2:=Nor) in H4; try easy.
-  apply mapsto_always_same with (v2:=Had) in H4; try easy.
+  inv H1. inv H5.
+  apply mapsto_always_same with (v2:=Nor) in H3; try easy.
+  apply mapsto_always_same with (v2:=Had) in H3; try easy.
   unfold get_snd_r,reverse,get_r_qft in *.
   simpl in *.
   bdestruct (x0 =? x). lia. simpl.
   rewrite H0. easy. inv H1. easy. easy.
-  inv H1. inv H4.
+  inv H1. inv H3.
   unfold qft_uniform in *. intros.
   bdestruct (x0 =? x). subst. 
   unfold turn_qft,get_snd_r.
@@ -2831,22 +2822,22 @@ Proof.
   specialize (H2 Nor (x,i)) as eq1. simpl in eq1. 
   specialize (H2 Nor (x,0)) as eq2. simpl in eq2.
   assert (0 < aenv x) by lia.
-  specialize (eq1 H4 H5). specialize (eq2 H6 H5).
+  specialize (eq1 H3 H4). specialize (eq2 H5 H4).
   inv eq1. inv eq2.
   rewrite lshift_fun_0. easy.
   apply mapsto_equal with (s2 := (Env.add x (Phi (aenv x)) tenv)) in H1; try easy.
   apply Env.add_3 in H1 ; try lia. 
   assert (get_snd_r (turn_qft f x (aenv x)) (x0, i) = get_snd_r f (x0, i)).
   unfold get_snd_r,turn_qft.
-  rewrite assign_r_out; try easy. rewrite H8.
+  rewrite assign_r_out; try easy. rewrite H7.
   rewrite H0; try easy.
   unfold get_r_qft,turn_qft.
   rewrite assign_r_out; try easy.
   unfold qft_uniform in *. intros.
-  inv H1. inv H6. 
+  inv H1. inv H5. 
   bdestruct (x =? x0). subst.
-  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H9; try easy.
-  apply mapsto_add1 in H9. inv H9.
+  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H8; try easy.
+  apply mapsto_add1 in H8. inv H8.
   unfold turn_rqft.
   unfold get_snd_r in *.
   rewrite assign_seq_out_1.
@@ -2856,31 +2847,28 @@ Proof.
   rewrite assign_seq_out_1 by lia. easy.
   rewrite assign_seq_out_1 by lia. easy.
   rewrite assign_seq_out_1 by lia. easy.
-  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H4.
-  apply Env.add_3 in H4. easy. lia. easy. lia.
+  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H3.
+  apply Env.add_3 in H3. easy. lia. easy. lia.
   unfold qft_uniform in *. intros.
   bdestruct (x =? x0). subst.
-  inv H1. inv H6.
-  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H9; try easy.
-  apply mapsto_add1 in H9. inv H9.
-  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H9; try easy.
-  apply mapsto_add1 in H9. inv H9.
+  inv H1. inv H5.
+  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H8; try easy.
+  apply mapsto_add1 in H8. inv H8.
+  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H8; try easy.
+  apply mapsto_add1 in H8. inv H8.
   unfold get_snd_r in *.
   rewrite h_sem_out by easy. rewrite H0; try easy.
   unfold get_r_qft.
   rewrite h_sem_out by easy. easy.
-  inv H1. inv H7.
-  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H10; try easy.
-  apply Env.add_3 in H10. easy. lia.
-  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H10; try easy.
-  apply Env.add_3 in H10. easy. lia.
-  inv H1. inv H4.
-  assert ((forall u : var, In u (get_vars e1) -> In u avars)). intros.
-  apply H3. simpl. apply in_or_app. left. easy.
-  specialize (IHe1 f avars aenv tenv env' H0 H7 H2 H1).
-  apply well_typed_right_mode_pexp with (avars := avars) (e := e1) (tenv' := env') in H2; try easy.
-  specialize (IHe2 (exp_sem aenv e1 f) avars aenv env' tenv' IHe1 H9). apply IHe2; try easy.
-  intros. apply H3. simpl. apply in_or_app. right. easy.
+  inv H1. inv H6.
+  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H9; try easy.
+  apply Env.add_3 in H9. easy. lia.
+  apply mapsto_equal with (k := x0) (v:= (Phi (aenv x0))) in H9; try easy.
+  apply Env.add_3 in H9. easy. lia.
+  inv H1. inv H3.
+  specialize (IHe1 f aenv tenv env' H0 H6 H2).
+  apply well_typed_right_mode_pexp with (e := e1) (tenv' := env') in H2; try easy.
+  specialize (IHe2 (exp_sem aenv e1 f) aenv env' tenv' IHe1). apply IHe2; try easy.
 Qed.
 
 Lemma qft_uniform_put_cus_same : 
@@ -2939,9 +2927,8 @@ Definition qft_gt (aenv: var -> nat) (tenv:env) (f:posi -> val) :=
    forall x, Env.MapsTo x (Phi (aenv x)) tenv -> (forall i, 0 < (aenv x) <= i -> get_r_qft f x i = false).
 
 Lemma qft_gt_exp_trans : 
-    forall e f avars aenv tenv tenv', qft_gt aenv tenv f -> well_typed_pexp avars aenv tenv e tenv'
-            -> right_mode_env aenv tenv f -> (forall u, In u (get_vars e) -> In u avars)
-            -> qft_gt aenv tenv' (exp_sem aenv e f).
+    forall e f aenv tenv tenv', qft_gt aenv tenv f -> well_typed_pexp aenv tenv e tenv'
+            -> right_mode_env aenv tenv f -> qft_gt aenv tenv' (exp_sem aenv e f).
 Proof.
   induction e; intros; simpl.
   inv H1. easy.
@@ -2949,23 +2936,22 @@ Proof.
   unfold get_r_qft in *.
   bdestruct (p ==? (x,0)).
   subst.
-  inv H1. inv H6. simpl in *.
-  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H8. inv H8. easy.
-  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H8. inv H8. easy.
+  inv H1. inv H5. simpl in *.
+  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H7. inv H7. easy.
+  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H7. inv H7. easy.
   rewrite eupdate_index_neq by iner_p.
   rewrite H0; try easy.
   inv H1. easy.
-  inv H1. inv H4.
-  destruct (get_cua (f p)). apply IHe with (avars := avars) (tenv := tenv') (tenv' := tenv') ; try easy.
-  intros. apply H3. simpl. right. easy.
+  inv H1. inv H3.
+  destruct (get_cua (f p)). apply IHe with (tenv := tenv') (tenv' := tenv') ; try easy.
   easy.
   unfold qft_gt in *. intros.
   unfold get_r_qft in *.
   bdestruct (p ==? (x,0)).
   subst.
-  inv H1. inv H6. simpl in H8.
-  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H8. inv H8. easy.
-  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H8. inv H8. easy.
+  inv H1. inv H5. simpl in H7.
+  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H7. inv H7. easy.
+  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H7. inv H7. easy.
   rewrite eupdate_index_neq by iner_p.
   rewrite H0; try easy.
   inv H1. easy.
@@ -2973,9 +2959,9 @@ Proof.
   unfold get_r_qft in *.
   bdestruct (p ==? (x,0)).
   subst.
-  inv H1. inv H6. simpl in H8.
-  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H8. inv H8. easy.
-  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H8. inv H8. easy.
+  inv H1. inv H5. simpl in H7.
+  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H7. inv H7. easy.
+  apply mapsto_always_same with (v1 := (Phi (aenv x))) in H7. inv H7. easy.
   rewrite eupdate_index_neq by iner_p.
   rewrite H0; try easy.
   inv H1. easy.
@@ -2984,16 +2970,16 @@ Proof.
   bdestruct (x =? x0). subst.
   unfold sr_rotate.
   rewrite sr_rotate'_lt_1; try lia.
-  inv H1. inv H6.
-  apply mapsto_always_same with (v1 := (Phi (aenv x0))) in H9. inv H9.
-  specialize (H0 x0 H4 i H5).
+  inv H1. inv H5.
+  apply mapsto_always_same with (v1 := (Phi (aenv x0))) in H8. inv H8.
+  specialize (H0 x0 H3 i H4).
   unfold right_mode_env in H2.
   specialize (H2 (Phi (aenv x0)) (x0,0)). simpl in H2.
-  apply H2 in H4; try lia. inv H4.
+  apply H2 in H3; try lia. inv H3.
   unfold times_rotate.
   assert ((f (@pair Env.key nat x0 O)) = (f (@pair var nat x0 O))) by easy.
   rewrite H1 in *.
-  rewrite <- H7 in *. unfold rotate,addto.
+  rewrite <- H6 in *. unfold rotate,addto.
   bdestruct (i <? S q - 0). lia. easy. easy.
   unfold sr_rotate.
   rewrite sr_rotate'_irrelevant; try easy.
@@ -3004,34 +2990,34 @@ Proof.
   bdestruct (x =? x0). subst.
   unfold srr_rotate.
   rewrite srr_rotate'_lt_1; try lia.
-  inv H1. inv H6.
-  apply mapsto_always_same with (v1 := (Phi (aenv x0))) in H9. inv H9.
-  specialize (H0 x0 H4 i H5).
+  inv H1. inv H5.
+  apply mapsto_always_same with (v1 := (Phi (aenv x0))) in H8. inv H8.
+  specialize (H0 x0 H3 i H4).
   unfold right_mode_env in H2.
   specialize (H2 (Phi (aenv x0)) (x0,0)). simpl in H2.
-  apply H2 in H4; try lia. inv H4.
+  apply H2 in H3; try lia. inv H3.
   unfold times_r_rotate.
   assert ((f (@pair Env.key nat x0 O)) = (f (@pair var nat x0 O))) by easy.
   rewrite H1 in *.
-  rewrite <- H7 in *. unfold r_rotate,addto_n.
+  rewrite <- H6 in *. unfold r_rotate,addto_n.
   bdestruct (i <? S q - 0). lia. easy. easy.
   unfold srr_rotate.
   rewrite srr_rotate'_irrelevant; try easy.
   rewrite H0; try easy.
   inv H1. easy. simpl. lia.
   unfold qft_gt in *. intros.
-  inv H1. inv H6. destruct p1.
-  simpl in H10. bdestruct (x =? v). subst.
-  apply mapsto_always_same with (v1 := (Phi (aenv v))) in H10. inv H10. easy.
+  inv H1. inv H5. destruct p1.
+  simpl in H9. bdestruct (x =? v). subst.
+  apply mapsto_always_same with (v1 := (Phi (aenv v))) in H9. inv H9. easy.
   unfold get_r_qft in *.
   rewrite eupdate_index_neq by iner_p.
   rewrite H0; try easy.
   unfold qft_gt in *.
   intros.
   bdestruct (x0 =? x). subst.
-  inv H1. inv H6.
-  apply mapsto_always_same with (v2:=Nor) in H4; try easy.
-  apply mapsto_always_same with (v2:=Had) in H4; try easy.
+  inv H1. inv H5.
+  apply mapsto_always_same with (v2:=Nor) in H3; try easy.
+  apply mapsto_always_same with (v2:=Had) in H3; try easy.
   unfold get_r_qft in *.
   unfold lshift. rewrite lshift'_irrelevant by iner_p.
   rewrite H0 ; try easy.
@@ -3039,9 +3025,9 @@ Proof.
   unfold qft_gt in *.
   intros.
   bdestruct (x0 =? x). subst.
-  inv H1. inv H6.
-  apply mapsto_always_same with (v2:=Nor) in H4; try easy.
-  apply mapsto_always_same with (v2:=Had) in H4; try easy.
+  inv H1. inv H5.
+  apply mapsto_always_same with (v2:=Nor) in H3; try easy.
+  apply mapsto_always_same with (v2:=Had) in H3; try easy.
   unfold get_r_qft in *.
   unfold rshift. rewrite rshift'_irrelevant by iner_p.
   rewrite H0 ; try easy.
@@ -3049,14 +3035,14 @@ Proof.
   unfold qft_gt in *.
   intros.
   bdestruct (x0 =? x). subst.
-  inv H1. inv H6.
-  apply mapsto_always_same with (v2:=Nor) in H4; try easy.
-  apply mapsto_always_same with (v2:=Had) in H4; try easy.
+  inv H1. inv H5.
+  apply mapsto_always_same with (v2:=Nor) in H3; try easy.
+  apply mapsto_always_same with (v2:=Had) in H3; try easy.
   unfold get_snd_r,reverse,get_r_qft in *.
   simpl in *.
   bdestruct (x0 =? x). lia. simpl.
   rewrite H0. easy. inv H1. easy. easy.
-  inv H1. inv H4.
+  inv H1. inv H3.
   unfold qft_gt in *. intros.
   bdestruct (x0 =? x). subst. 
   unfold turn_qft,get_r_qft in *.
@@ -3064,14 +3050,14 @@ Proof.
   rewrite lshift_fun_0.
   unfold up_qft.
   unfold right_mode_env in H2. specialize (H2 Nor (x,0)).
-  simpl in H2. destruct H4. apply H2 in H4; try easy.
-  inv H4. unfold get_cus. bdestruct (i <? aenv x). lia. easy.
+  simpl in H2. destruct H3. apply H2 in H3; try easy.
+  inv H3. unfold get_cus. bdestruct (i <? aenv x). lia. easy.
   unfold get_r_qft,turn_qft in *.
   rewrite assign_r_out.
   rewrite H0; try easy.
   apply mapsto_equal with (s2 := (Env.add x (Phi (aenv x)) tenv)) in H1; try easy.
   apply Env.add_3 in H1. easy. lia. easy.
-  inv H1. inv H4.
+  inv H1. inv H3.
   unfold qft_gt in *. intros.
   unfold turn_rqft,get_r_qft in *.
   unfold right_mode_env in H2.
@@ -3096,29 +3082,26 @@ Proof.
   apply Env.add_3 in H1. easy. lia. simpl. lia.
   unfold qft_gt in *. intros.
   bdestruct (x0 =? x). subst.
-  inv H1. inv H6.
-  apply mapsto_always_same with (v2:=Nor) in H4; try easy.
-  apply mapsto_always_same with (v2:=Had) in H4; try easy.
+  inv H1. inv H5.
+  apply mapsto_always_same with (v2:=Nor) in H3; try easy.
+  apply mapsto_always_same with (v2:=Had) in H3; try easy.
   unfold get_r_qft in *.
-  apply EnvFacts.Equal_sym in H9.
+  apply EnvFacts.Equal_sym in H8.
   apply mapsto_equal with (s1 := (Env.add x Had tenv)).
   apply Env.add_1. easy. easy.
-  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H4; try easy.
-  apply mapsto_add1 in H4. inv H4.
+  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H3; try easy.
+  apply mapsto_add1 in H3. inv H3.
   unfold get_r_qft in *.
   rewrite h_sem_out by lia. rewrite H0; try easy.
-  inv H1. inv H7.
-  apply mapsto_equal with (s2 := (Env.add x Had tenv)) in H4; try easy.
-  apply Env.add_3 in H4. easy. lia.
-  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H4; try easy.
-  apply Env.add_3 in H4. easy. lia.
-  assert ((forall u : var, In u (get_vars e1) -> In u avars)).
-  intros. apply H3. simpl. apply in_or_app. left. easy.
-  inv H1. inv H5.
-  specialize (IHe1 f avars aenv tenv env' H0 H8 H2 H4).
-  apply IHe2 with (avars := avars) (tenv:=env') (tenv' := tenv') ; try easy.
-  apply well_typed_right_mode_pexp with (avars := avars) (tenv:=tenv); easy.
-  intros. apply H3. simpl. apply in_or_app. right. easy.
+  inv H1. inv H6.
+  apply mapsto_equal with (s2 := (Env.add x Had tenv)) in H3; try easy.
+  apply Env.add_3 in H3. easy. lia.
+  apply mapsto_equal with (s2 := (Env.add x Nor tenv)) in H3; try easy.
+  apply Env.add_3 in H3. easy. lia.
+  inv H1. inv H3.
+  specialize (IHe1 f aenv tenv env' H0 H6 H2).
+  apply IHe2 with (tenv:=env') (tenv' := tenv') ; try easy.
+  apply well_typed_right_mode_pexp with (tenv:=tenv); easy.
 Qed.
 
 Lemma qft_gt_put_cus_same : 
@@ -3140,9 +3123,8 @@ Proof.
 Qed.
 
 Lemma inv_exp_correct_rev :
-  forall e tenv tenv' avars aenv f,
-   (forall u, In u (get_vars e) -> In u avars) ->
-    well_typed_pexp avars aenv tenv e tenv' -> right_mode_env aenv tenv f ->
+  forall e tenv tenv' aenv f,
+    well_typed_pexp aenv tenv e tenv' -> right_mode_env aenv tenv f ->
     qft_uniform aenv tenv f -> qft_gt aenv tenv f -> exp_sem aenv (e; inv_exp e) f = f.
 Proof.
   induction e; intros.
@@ -3155,16 +3137,15 @@ Proof.
     rewrite eupdate_twice_eq.
     rewrite exchange_twice_same.
     rewrite eupdate_same. easy. easy.
-    rewrite H5. easy.
-  - specialize (typed_inv_pexp (CU p e) avars aenv tenv tenv' H1) as eq1.
+    rewrite H4. easy.
+  - specialize (typed_inv_pexp (CU p e) aenv tenv tenv' H0) as eq1.
     simpl in eq1.
     assert (inv_exp (CU p e) = CU p (inv_exp e)). simpl. easy.
-    rewrite H5.
+    rewrite H4.
     destruct (get_cua (f p)) eqn:eq3.
     rewrite <- two_cu_same.
-    apply IHe with (tenv := tenv) (tenv' := tenv') (avars := avars); try easy.
-    intros. apply H0.
-    simpl. right. easy. inv H1. inv H6. easy. easy. inv H1. inv H6. easy.
+    apply IHe with (tenv := tenv) (tenv' := tenv'); try easy.
+    inv H0. inv H5. easy. easy. inv H0. inv H5. easy.
     simpl. rewrite eq3. rewrite eq3. easy.
   - simpl.
     assert ((f [p |-> times_rotate (f p) q])
@@ -3178,7 +3159,7 @@ Proof.
     rewrite eupdate_index_eq.
     rewrite times_rotate_same. easy.
     rewrite eupdate_index_neq. easy. nor_sym.
-    rewrite H5. easy.
+    rewrite H4. easy.
   - simpl.
     assert ((f [p |-> times_r_rotate (f p) q])
                   [p |-> times_rotate ((f [p |-> times_r_rotate (f p) q]) p) q] = f).
@@ -3191,7 +3172,7 @@ Proof.
     rewrite eupdate_index_eq.
     rewrite times_rotate_r_same. easy.
     rewrite eupdate_index_neq. easy. nor_sym.
-    rewrite H5. easy.
+    rewrite H4. easy.
   - simpl.
     unfold sr_rotate,srr_rotate.
     rewrite srr_rotate_rotate. easy.
@@ -3202,7 +3183,7 @@ Proof.
     rewrite eupdate_twice_eq.
     rewrite eupdate_same. easy.
     rewrite eupdate_index_eq.
-    inv H1. inv H5. rewrite eupdate_index_neq by easy.
+    inv H0. inv H4. rewrite eupdate_index_neq by easy.
     rewrite hexchange_twice_same. easy.
  - simpl.
    rewrite rl_shift_same. easy.
@@ -3216,11 +3197,11 @@ Proof.
    bdestruct (x =? v). subst.
    bdestruct (n <? aenv v).
    rewrite assign_seq_covers; try easy.
-   eapply qft_start_nor_modes. apply H1. easy.
+   eapply qft_start_nor_modes. apply H0. easy.
    unfold get_r_qft.
    rewrite assign_r_same_0 with (size := (aenv v)); try lia.
    rewrite get_cus_cua. easy. lia.
-   eapply qft_start_nor_modes. apply H1. easy.
+   eapply qft_start_nor_modes. apply H0. easy.
    rewrite assign_seq_ge by lia.
    rewrite assign_r_ge by lia. easy.
    rewrite assign_seq_out by iner_p.
@@ -3231,9 +3212,9 @@ Proof.
    bdestruct (x =? v). subst.
    bdestruct (n <? aenv v).
    rewrite assign_r_covers; try easy.
-   eapply rqft_start_phi_modes. apply H1. easy.
-   unfold qft_uniform in H3.
-   inv H1. inv H6. rewrite H3; try easy.
+   eapply rqft_start_phi_modes. apply H0. easy.
+   unfold qft_uniform in H2.
+   inv H0. inv H5. rewrite H2; try easy.
    unfold qft_gt in H4. 
    assert ((get_cus (aenv v) (assign_seq f v (get_r_qft f v) (aenv v)) v)
            = (get_r_qft f v)).
@@ -3243,73 +3224,54 @@ Proof.
    rewrite assign_seq_lt; try lia.
    unfold get_cua. easy.
    unfold get_cus. bdestruct (x <? aenv v). lia.
-   rewrite H4; try easy. lia.
-   rewrite H1. easy.
+   rewrite H3; try easy. lia.
+   rewrite H0. easy.
    rewrite assign_r_ge; try lia.
    rewrite assign_seq_ge; try lia. easy.
    rewrite assign_r_out by iner_p.
    rewrite assign_seq_out by iner_p. easy.
  - simpl.
-   inv H1.
+   inv H0.
    rewrite had_twice_same with (t := Nor). easy. intros. 
-   unfold right_mode_env in H2. apply H2. easy. easy.
+   unfold right_mode_env in H1. apply H1. easy. easy.
    rewrite had_twice_same with (t := Nor). easy. intros. 
-   unfold right_mode_env in H2. apply H2. easy. easy.
+   unfold right_mode_env in H1. apply H1. easy. easy.
    rewrite had_twice_same with (t := Had). easy. intros. 
-   unfold right_mode_env in H2. apply H2. easy. easy.
+   unfold right_mode_env in H1. apply H1. easy. easy.
  - assert (inv_exp (e1; e2) = inv_exp e2; inv_exp e1). simpl. easy.
-   rewrite H5.
+   rewrite H4.
    rewrite pexp_sem_assoc.
    assert (exp_sem aenv (e1; (e2; (inv_exp e2; inv_exp e1))) f
              = exp_sem aenv (e2 ; (inv_exp e2 ; inv_exp e1)) (exp_sem aenv (e1) f)).
    simpl. easy.
-   rewrite H6.
+   rewrite H5.
    rewrite <- pexp_sem_assoc.
    assert ( forall f', exp_sem aenv ((e2; inv_exp e2); inv_exp e1) f'
             = exp_sem aenv (inv_exp e1) (exp_sem aenv ((e2; inv_exp e2)) f')).
    intros. simpl. easy.
-   rewrite H7.
-   inv H1. inv H8.
-   rewrite (IHe2 env' tenv' avars aenv).
+   rewrite H6.
+   inv H0. inv H7.
+   rewrite (IHe2 env' tenv' aenv).
    assert (exp_sem aenv (inv_exp e1) (exp_sem aenv e1 f) = exp_sem aenv (e1 ; inv_exp e1) f).
    simpl. easy.
-   rewrite H1.
-   rewrite (IHe1 tenv env' avars). easy.
-   intros. apply H0. simpl. apply in_or_app. left. easy.
-   1-4:easy.
-   intros. apply H0. simpl. apply in_or_app. right. easy. easy.
-   apply well_typed_right_mode_pexp with (tenv := tenv) (tenv' := env') (avars := avars).
-   intros. apply H0. simpl. apply in_or_app. left. easy. easy. easy.
-   apply qft_uniform_exp_trans with (tenv := tenv) (avars := avars); try easy.
-   intros. apply H0. simpl. apply in_or_app. left. easy.
-   apply qft_gt_exp_trans with (tenv := tenv) (avars := avars); try easy.
-   intros. apply H0. simpl. apply in_or_app. left. easy.
-Qed.
-
-Lemma inv_get_vars : forall e x, In x (get_vars (inv_exp e)) -> In x (get_vars e).
-Proof.
-  induction e; intros; simpl; try easy.
-  simpl in H0. destruct H0. left. easy.
-  right. apply IHe. easy.
-  simpl in H0.
-  apply in_or_app.
-  apply in_app_or in H0.
-  destruct H0. right. apply IHe2. easy.
-  left. apply IHe1. easy.
+   rewrite H0.
+   rewrite (IHe1 tenv env'). easy.
+   1-5:easy.
+   apply well_typed_right_mode_pexp with (tenv := tenv) (tenv' := env'). easy. easy.
+   apply qft_uniform_exp_trans with (tenv := tenv); try easy.
+   apply qft_gt_exp_trans with (tenv := tenv); try easy.
 Qed.
 
 Lemma inv_exp_correct :
-  forall e tenv tenv' avars aenv f,
-   (forall u, In u (get_vars e) -> In u avars) ->
-    well_typed_pexp avars aenv tenv e tenv' -> right_mode_env aenv tenv' f ->
+  forall e tenv tenv' aenv f,
+    well_typed_pexp aenv tenv e tenv' -> right_mode_env aenv tenv' f ->
     qft_uniform aenv tenv' f -> qft_gt aenv tenv' f -> exp_sem aenv (inv_exp e;e) f = f.
 Proof.
   intros.
   assert ((inv_exp e;e) = inv_exp e; inv_exp (inv_exp e)).
   rewrite inv_exp_involutive. easy.
-  rewrite H5.
-  apply (inv_exp_correct_rev (inv_exp e) tenv' tenv avars aenv).
-  intros. apply H0. apply inv_get_vars. easy.
+  rewrite H4.
+  apply (inv_exp_correct_rev (inv_exp e) tenv' tenv aenv).
   apply typed_inv_pexp. easy.
   1-3:assumption.
 Qed.
@@ -3322,15 +3284,14 @@ Proof.
 Qed.
 
 Lemma inv_pexp_reverse :
-  forall (tenv tenv':env) avars (aenv: var -> nat) e f g,
-   (forall u, In u (get_vars e) -> In u avars) ->
-    well_typed_pexp avars aenv tenv e tenv' -> right_mode_env aenv tenv f ->
+  forall (tenv tenv':env) (aenv: var -> nat) e f g,
+    well_typed_pexp aenv tenv e tenv' -> right_mode_env aenv tenv f ->
     qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
     exp_sem aenv e f = g ->
     exp_sem aenv (inv_exp e) g = f.
 Proof.
   intros. 
-  specialize (inv_exp_correct_rev e tenv tenv' avars aenv f H0 H1 H2 H3 H4) as G.
+  specialize (inv_exp_correct_rev e tenv tenv' aenv f H0 H1 H2 H3) as G.
   simpl in G.
   subst. easy.
 Qed.
@@ -3741,9 +3702,8 @@ Proof.
 Qed.
 
 Lemma inv_pexp_reverse_1 :
-  forall (tenv tenv':env) avars (aenv: var -> nat) e f g c v,
-   (forall u, In u (get_vars e) -> In u avars) ->
-    well_typed_pexp avars aenv tenv e  tenv' -> right_mode_env aenv tenv f ->
+  forall (tenv tenv':env) (aenv: var -> nat) e f g c v,
+    well_typed_pexp aenv tenv e  tenv' -> right_mode_env aenv tenv f ->
     qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
     exp_fresh aenv c e ->
     exp_sem aenv e f = g ->
@@ -3751,9 +3711,9 @@ Lemma inv_pexp_reverse_1 :
 Proof.
   intros. 
   Check inv_pexp_reverse.
-  specialize (inv_pexp_reverse tenv tenv' avars aenv e f g H0 H1 H2 H3 H4) as G.
+  specialize (inv_pexp_reverse tenv tenv' aenv e f g H0 H1 H2 H3) as G.
   apply functional_extensionality; intros.
-  bdestruct (x ==? c). rewrite H7 in *.
+  bdestruct (x ==? c). rewrite H6 in *.
   rewrite efresh_exp_sem_out. rewrite G. easy. easy.
   apply fresh_inv_exp. easy.
   rewrite efresh_exp_sem_out. rewrite G. easy. easy.
@@ -6086,6 +6046,78 @@ Proof.
   inv H0.
 Admitted.
 
+
+
+Lemma in_list_x : forall (l:list nat) x, In x l \/ ~ In x l.
+Proof.
+  induction l; intros. simpl.
+  right. easy.
+  simpl.
+  bdestruct (a =? x). subst. left. left. easy.
+  specialize (IHl x). destruct IHl.
+  left. right. easy.
+  right.
+  simpl.
+  apply and_not_or. split. easy. easy.
+Qed.
+
+Lemma trans_finnite_no_in : forall e vs avars dim avs,
+      (forall u, In u (get_vars e) -> In u avars) ->
+     (forall x, ~ In x avars -> snd (fst (trans_exp vs dim e avs)) x = vs x).
+Proof.
+  induction e; intros; simpl in *; try easy.
+  destruct (trans_exp vs dim e avs). destruct p0.
+  simpl in *. easy.
+  unfold trans_lshift.
+  destruct (vs x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). subst.
+  specialize (H0 x). 
+  assert (x = x \/ False). left. easy. apply H0 in H2. contradiction. easy.
+  unfold trans_rshift.
+  destruct (vs x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). subst.
+  specialize (H0 x). 
+  assert (x = x \/ False). left. easy. apply H0 in H2. contradiction. easy.
+  unfold trans_rev.
+  destruct (vs x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). subst.
+  specialize (H0 x). 
+  assert (x = x \/ False). left. easy. apply H0 in H2. contradiction. easy.
+  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
+  destruct (trans_exp v dim e2 p0 ) eqn:eq2. destruct p.
+  simpl in *.
+  assert ((forall u : var, In u (get_vars e1) -> In u avars0)).
+  intros. apply H0. apply in_or_app. left. easy.
+  specialize (IHe1 vs avars0 dim avs H2 x H1).
+  rewrite eq1 in IHe1. simpl in IHe1.
+  assert ((forall u : var, In u (get_vars e2) -> In u avars0)).
+  intros. apply H0. apply in_or_app. right. easy.
+  specialize (IHe2 v avars0 dim p0 H3 x).
+  apply IHe2 in H1.
+  rewrite eq2 in H1. simpl in H1. rewrite IHe1 in H1. easy.
+Qed.
+
+Lemma neu_trans_state : forall e vs dim avs, exp_neu (get_vars e) e -> snd (fst (trans_exp vs dim e avs)) = vs.
+Proof.
+  intros.
+  unfold exp_neu in H0.
+  apply functional_extensionality. intros.
+  specialize (in_list_x (get_vars e) x) as eq1.
+  destruct eq1.
+  apply H0 in H1.
+  apply neu_l_trans_state with (vs := vs) (dim := dim) (avs:=avs) in H1. easy.
+  specialize (trans_finnite_no_in e vs (get_vars e) dim avs) as eq1.
+  assert (forall u : var, In u (get_vars e) -> In u (get_vars e)).
+  intros. easy.
+  specialize (eq1 H2 x H1). easy.
+Qed.
+
+Lemma neu_trans_state_avs : forall e vs dim avs, exp_neu (get_vars e) e -> snd  (trans_exp vs dim e avs) = avs.
+Proof.
+  intros.
+Admitted.
+
+
 (*
 Lemma neu_trans_state : forall e vs dim avs, exp_neu (get_vars e) e 
                    -> snd (fst (trans_exp vs dim e avs)) = vs.
@@ -6577,78 +6609,74 @@ Proof.
   specialize (H2 (x,n)). apply H2. simpl. lia.
 Qed.
 
-Lemma trans_exp_uc_well_typed : forall e dim avars vs avs tenv tenv',
-        (forall u, In u (get_vars e) -> In u avars) ->
+Lemma trans_exp_uc_well_typed : forall e dim vs avs tenv tenv',
      vars_start_diff vs -> vars_finite_bij vs ->
-       vars_sparse vs -> well_typed_pexp avars (size_env vs) tenv e tenv' -> exp_WF (size_env vs) e ->
+       vars_sparse vs -> well_typed_pexp (size_env vs) tenv e tenv' -> exp_WF (size_env vs) e ->
             exp_com_WF vs dim ->  @uc_well_typed _ dim (fst (fst (trans_exp vs dim e avs))).
 Proof.
   induction e; intros.
-  constructor. apply H6. inv H5. unfold size_env in H8. easy.
-  constructor. apply H6. inv H5. unfold size_env in H8. easy.
+  constructor. apply H5. inv H4. unfold size_env in H7. easy.
+  constructor. apply H5. inv H4. unfold size_env in H7. easy.
   simpl in *.
   destruct (trans_exp vs dim e avs) eqn:eq1. destruct p0. simpl.
   apply uc_well_typed_control.
-  split. apply H6. inv H5. unfold size_env in *. easy.
+  split. apply H5. inv H4. unfold size_env in *. easy.
   split. 
   assert (b = (fst (fst (trans_exp vs dim e avs)))).
   rewrite eq1. easy.
-  rewrite H7.
-  apply fresh_is_fresh; try assumption. inv H4. inv H8. easy.
-  inv H5. easy. inv H5. unfold size_env in H10. easy.
+  rewrite H6.
+  apply fresh_is_fresh; try assumption. inv H3. inv H7. easy.
+  inv H4. easy. inv H4. unfold size_env in H9. easy.
   assert (b = (fst (fst (trans_exp vs dim e avs)))).
   rewrite eq1. easy.
-  rewrite H7.
-  apply IHe with (avars := avars0) (tenv:=tenv) (tenv':=tenv'); try easy.
-  intros. apply H0. right. easy.
-  inv H4. inv H8. easy. inv H5. easy.
-  constructor. apply H6. inv H5. unfold size_env in H8. easy.
-  constructor. apply H6. inv H5. unfold size_env in H8. easy.
+  rewrite H6.
+  apply IHe with (tenv:=tenv) (tenv':=tenv'); try easy.
+  inv H3. inv H7. easy. inv H4. easy.
+  constructor. apply H5. inv H4. unfold size_env in H7. easy.
+  constructor. apply H5. inv H4. unfold size_env in H7. easy.
   simpl. unfold gen_sr_gate.
   apply gen_sr_gate_uc_well_typed; try easy.
-  inv H5. easy.
+  inv H4. easy.
   simpl. unfold gen_srr_gate.
   apply gen_srr_gate_uc_well_typed; try easy.
-  inv H5. easy.
-  simpl. inv H5.
-  constructor. apply H6. easy.
-  apply H6. easy.
+  inv H4. easy.
+  simpl. inv H4.
+  constructor. apply H5. easy.
+  apply H5. easy.
   apply find_pos_prop; try assumption.
-  inv H4. inv H5. easy.
+  inv H3. inv H4. easy.
   simpl. constructor.
   assert (start vs x + vmap vs x 0 = find_pos vs (x,0)). easy.
-  rewrite H7. apply H6. inv H5. unfold size_env in H9. easy.
+  rewrite H6. apply H5. inv H4. unfold size_env in H8. easy.
   simpl. constructor.
   assert (start vs x + vmap vs x 0 = find_pos vs (x,0)). easy.
-  rewrite H7. apply H6. inv H5. unfold size_env in H9. easy.
+  rewrite H6. apply H5. inv H4. unfold size_env in H8. easy.
   simpl. constructor.
   assert (start vs x + vmap vs x 0 = find_pos vs (x,0)). easy.
-  rewrite H7. apply H6. inv H5. unfold size_env in H9. easy.
-  simpl. unfold trans_qft. inv H5. inv H4. inv H5.
+  rewrite H6. apply H5. inv H4. unfold size_env in H8. easy.
+  simpl. unfold trans_qft. inv H4. inv H3. inv H4.
   apply gen_qft_gate_uc_well_typed; try easy.
-  simpl. unfold trans_rqft. inv H5. inv H4. inv H5.
+  simpl. unfold trans_rqft. inv H4. inv H3. inv H4.
   rewrite <- uc_well_typed_invert.
   apply gen_qft_gate_uc_well_typed; try easy.
   simpl. unfold trans_h.
-  apply h_gate_uc_well_typed. inv H5. unfold size_env in H8. lia. easy.
+  apply h_gate_uc_well_typed. inv H4. unfold size_env in H7. lia. easy.
   simpl.
-  inv H4. inv H7. inv H5.
+  inv H3. inv H6. inv H4.
   destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
   destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p.
   constructor.
   assert ((fst (fst (trans_exp vs dim e1 avs))) = b). rewrite eq1. easy.
-  rewrite <- H4.
-  apply IHe1 with (avars := avars0) (tenv := tenv) (tenv' := env'); try easy.
-  intros. apply H0. simpl. apply in_or_app. left. easy.
+  rewrite <- H3.
+  apply IHe1 with (tenv := tenv) (tenv' := env'); try easy.
   assert ((fst (fst (trans_exp v dim e2 p0))) = b0). rewrite eq2. easy.
-  rewrite <- H4.
-  apply IHe2 with (avars := avars0) (tenv := env') (tenv' := tenv'); try easy.
-  intros. apply H0. simpl. apply in_or_app. right. easy.
+  rewrite <- H3.
+  apply IHe2 with  (tenv := env') (tenv' := tenv'); try easy.
   eapply vars_start_diff_vs_same. rewrite eq1. easy. easy.
   eapply vars_finite_bij_vs_same. rewrite eq1. easy. easy.
   eapply vars_sparse_vs_same. rewrite eq1. easy. easy.
-  erewrite size_env_vs_same. apply H12. rewrite eq1. easy.
-  eapply wf_vs_same. apply H9. rewrite eq1. easy.
+  erewrite size_env_vs_same. apply H11. rewrite eq1. easy.
+  eapply wf_vs_same. apply H8. rewrite eq1. easy.
   eapply exp_com_WF_vs_same. rewrite eq1. easy. easy.
 Qed.
 
@@ -6770,23 +6798,12 @@ Qed.
 Local Opaque SQIR.ID SQIR.CNOT SQIR.X SQIR.Rz. 
 
 Lemma trans_exp_cu_eval : forall vs avs dim p e, 
-          vars_start_diff vs -> vars_finite_bij vs -> vars_sparse vs ->
-                 exp_fwf (size_env vs) (CU p e) ->
-                 exp_WF vs (CU p e) -> exp_com_WF vs dim ->
                  (uc_eval (fst (fst (trans_exp vs dim (CU p e) avs)))) = 
                     (uc_eval (control (find_pos vs p) (fst (fst (trans_exp vs dim e avs))))).
 Proof.
   intros.
-  specialize (trans_exp_cu vs avs dim p e) as eq1.
-  destruct eq1.
-  destruct H6. destruct H6. subst. rewrite H7.
-  simpl.
-  rewrite uc_cnot_control. easy.
-  inv H4. apply H5. easy.
-  inv H4. inv H11. apply H5. easy.
-  inv H3. inv H9. inv H4. inv H12. 
-  apply find_pos_prop; try assumption.
-  rewrite H6. easy.
+  simpl. destruct (trans_exp vs dim e avs) eqn:eq1. destruct p0.
+  simpl. easy.
 Qed.
 
 Lemma turn_angle_add_same : forall n r q, q < n ->
@@ -6977,42 +6994,41 @@ Proof.
 Qed.
 
 Lemma trans_exp_sem :
-  forall dim e f tenv rmax vs (avs : nat -> posi) l l',
+  forall dim e f tenv tenv' rmax vs (avs : nat -> posi),
     vars_start_diff vs ->
     vars_finite_bij vs ->
     vars_sparse vs ->
     vars_anti_same vs ->
-    exp_WF vs e ->
+    exp_WF (size_env vs) e ->
     exp_com_WF vs dim ->
     exp_com_gt vs avs dim ->
-    well_typed_exp tenv e ->
+    well_typed_pexp (size_env vs) tenv e tenv' ->
     right_mode_env (size_env vs) tenv f ->
     avs_prop vs avs dim -> 
     exp_rmax rmax e ->
-    exp_neu l e l' ->
     dim > 0 ->
     (uc_eval (fst (fst (trans_exp vs dim e avs)))) × (vkron dim (trans_state avs rmax f)) 
                 =  vkron dim (trans_state (snd (trans_exp vs dim e avs)) rmax (exp_sem (size_env vs) e f)).
 Proof.
   intros dim e. induction e; intros.
   - simpl. rewrite denote_ID_1. Msimpl. easy.
-    apply H6. inv H5. easy.
+    apply H5. inv H4. unfold size_env in *. easy.
   - simpl.
     rewrite vkron_X. 
     assert (vkron dim (trans_state avs rmax (f [p |-> exchange (f p)])) = 
                    vkron dim (update (trans_state avs rmax f)
                         (find_pos vs p) (compile_val (exchange (f p)) rmax))).
     erewrite vkron_eq. reflexivity. intros.
-    apply (trans_state_update dim). inv H5. easy.
+    apply (trans_state_update dim). inv H4. easy.
     apply vs_avs_bij_l with (dim := dim); try easy.
     apply vs_avs_bij_r with (dim := dim); try easy. easy.
-    rewrite H14.  rewrite vkron_split_up.
+    rewrite H12.  rewrite vkron_split_up.
     assert ((σx × trans_state avs rmax f (find_pos vs p))
                  = compile_val (exchange (f p)) rmax).
     { unfold trans_state.
-      inv H5. rewrite vs_avs_bij_l with (dim := dim); try easy.
-      inv H8. unfold right_mode_env in H9.
-      apply (H9 Nor) in H17. inv H17.
+      inv H4. rewrite vs_avs_bij_l with (dim := dim); try easy.
+      inv H7. inv H4. unfold right_mode_env in H8.
+      apply (H8 Nor) in H14. inv H14.
       unfold exchange. 
       unfold compile_val.
       distribute_scale.
@@ -7020,96 +7036,97 @@ Proof.
       autorewrite with ket_db. easy.
       simpl.
       autorewrite with ket_db. easy. easy.
-      apply (H9 Had) in H17.
-      inv H17. 
+      apply (H8 Had) in H14.
+      inv H14. 
       unfold exchange.
       unfold compile_val.
       distribute_scale.
       autorewrite with ket_db.
       rewrite Mplus_comm. easy. easy.
       }
-    rewrite H15. easy.
+    rewrite H13. easy.
     intros.
     auto with wf_db.
     auto with wf_db.
-    apply H6. inv H5. assumption.
-    apply H6. inv H5. assumption.
+    apply H5. inv H4. assumption.
+    apply H5. inv H4. assumption.
     auto with wf_db.
   - rewrite trans_exp_cu_eval by assumption.
     assert ((snd (trans_exp vs dim (CU p e) avs)) = avs).
-    specialize (trans_exp_cu vs avs dim p e) as eq1. destruct eq1.
-    destruct H14. destruct H14. rewrite H15. easy. rewrite H14. easy.
-    rewrite H14. clear H14.
+    simpl. destruct (trans_exp vs dim e avs) eqn:eq1. destruct p0. simpl. easy.
+    rewrite H12. clear H12.
     rewrite control_correct.
     simpl. 
     assert (exists r', (trans_state avs rmax f) (find_pos vs p) = r' .* (ket (Nat.b2n (get_cua (f p))))).
-    inv H4. inv H5.
+    inv H4.
     unfold trans_state. 
     rewrite vs_avs_bij_l with (dim := dim); try easy.
-    inv H8. apply (H9 Nor) in H18; try easy. inv H18.
+    inv H7. inv H4. apply (H8 Nor) in H14; try easy. inv H14.
     unfold compile_val,get_cua.
     exists (Cexp (2 * PI * turn_angle r rmax)). 
     easy.
-    destruct H14.
-    assert ((snd (trans_exp vs dim e avs)) = avs) as eq3.
-    inv H12. rewrite neu_trans_state with (l := l') ; try easy. 
+    destruct H12. inv H7. inv H13.
+    inv H10.
     rewrite Mmult_plus_distr_r.
     rewrite Mmult_assoc.
-    specialize (IHe f tenv rmax vs avs).
-    inv H4. inv H5. inv H8. apply (H9 Nor) in H19 as eq1.
-    rewrite IHe with (l := l) (l' := l') ; try easy.
+    inv H4. 
+    specialize (IHe f tenv' tenv' rmax vs avs H0 H1 H2 H3 H17 H5 H6 H20 H8 H9 H14 H11).
+    rewrite IHe.
     destruct (get_cua (f p)) eqn:eq2.
     erewrite vkron_proj_neq.
-    rewrite vkron_proj_eq with (r := x). rewrite eq3.
-    Msimpl. easy. auto with wf_db. apply H6. easy. rewrite eq3.
+    rewrite vkron_proj_eq with (r := x).
+    rewrite neu_trans_state_avs; try easy.
+    Msimpl. easy. auto with wf_db. apply H5. easy.
+    rewrite neu_trans_state_avs; try easy.
     unfold trans_state in *. rewrite efresh_exp_sem_irrelevant. easy.
     rewrite vs_avs_bij_l with (dim := dim); try easy.
     auto with wf_db.
-    apply H6; easy. rewrite H14. reflexivity. easy.
+    apply H5; easy. rewrite H12. reflexivity. easy.
     rewrite vkron_proj_eq with (r := x).
     rewrite vkron_proj_neq with (r := x) (b := false). Msimpl. easy.
     auto with wf_db.
-    apply H6. easy. rewrite eq3.
+    apply H5. easy.
+    rewrite neu_trans_state_avs; try easy.
     unfold trans_state in *. rewrite efresh_exp_sem_irrelevant. easy.
     rewrite vs_avs_bij_l with (dim := dim); try easy. easy.
     auto with wf_db.
-    apply H6; easy. rewrite H14. reflexivity. inv H11. easy.
-    inv H12. easy. easy.
+    apply H5; easy. rewrite H12. reflexivity. 
     apply fresh_is_fresh; try easy.
-    inv H4. easy. inv H5. easy. inv H5. easy.
-    apply trans_exp_uc_well_typed; try easy. inv H4. easy. inv H5. easy.
+    inv H7. inv H12. easy. inv H4. easy. inv H4. unfold size_env in H14. easy.
+    inv H7. inv H12.
+    apply trans_exp_uc_well_typed with (tenv:=tenv') (tenv':=tenv'); try easy. inv H4. easy.
   - simpl.
     rewrite vkron_Rz. 
     assert (vkron dim (trans_state avs rmax (f [p |-> times_rotate (f p) q])) = 
                    vkron dim (update (trans_state avs rmax f)
                         (find_pos vs p) (compile_val (times_rotate (f p) q) rmax))).
     erewrite vkron_eq. reflexivity. intros.
-    apply (trans_state_update dim). inv H5. easy.
+    apply (trans_state_update dim). inv H4. easy.
     apply vs_avs_bij_l with (dim := dim); try easy.
     apply vs_avs_bij_r with (dim := dim); try easy. easy.
-    rewrite H14.  rewrite vkron_split_up.
+    rewrite H12.  rewrite vkron_split_up.
     assert ((phase_shift (rz_ang q) × trans_state avs rmax f (find_pos vs p))
                  = compile_val (times_rotate (f p) q) rmax).
     { unfold trans_state.
-      inv H5.
+      inv H4.
       rewrite vs_avs_bij_l with (dim := dim); try easy.
-      inv H8. apply (H9 Nor) in H17; try easy. inv H17. 
+      inv H7. inv H4. apply (H8 Nor) in H15; try easy. inv H15. 
       unfold times_rotate. destruct b.
       unfold compile_val.
       distribute_scale.
       rewrite phase_shift_on_basis_state.
       distribute_scale.
       rewrite <- Cexp_add. simpl. rewrite Rmult_1_l.
-      inv H11. rewrite turn_angle_add_same. easy. easy.
+      inv H10. rewrite turn_angle_add_same. easy. easy.
       unfold compile_val.
       distribute_scale.
       rewrite phase_shift_on_basis_state.
       distribute_scale. simpl. 
       rewrite <- Cexp_add. simpl.
       autorewrite with R_db. easy.
-      apply (H9 Had) in H17. inv H17. 
+      apply (H8 Had) in H15. inv H15. 
       unfold compile_val,times_rotate. unfold rz_ang,z_phase.
-      assert ((2 * PI / 2 ^ 1)%R = PI) by lra. rewrite H15.
+      assert ((2 * PI / 2 ^ 1)%R = PI) by lra. rewrite H13.
       rewrite phase_pi. destruct b1. destruct b2.
       distribute_scale. gridify.
       rewrite Z_0_bit. rewrite Z_1_bit. easy.
@@ -7117,7 +7134,7 @@ Proof.
       rewrite Z_0_bit. rewrite Z_1_bit.
       rewrite Mscale_assoc.
       assert (((-1)%R * (-1)%R)%C = C1) by lca.
-      rewrite H17. Msimpl. easy.
+      rewrite H14. Msimpl. easy.
       destruct b2.
       distribute_scale. gridify. distribute_scale.
       rewrite Z_0_bit. rewrite Z_1_bit. easy.
@@ -7126,14 +7143,14 @@ Proof.
       rewrite Z_0_bit. rewrite Z_1_bit. 
       rewrite Mscale_assoc.
       assert (((-1)%R * (-1)%R)%C = C1) by lca.
-      rewrite H17. Msimpl. easy. easy.
+      rewrite H14. Msimpl. easy. easy.
       }
-    rewrite H15. easy.
+    rewrite H13. easy.
     intros.
     auto with wf_db.
     auto with wf_db.
-    apply H6. inv H5. assumption.
-    apply H6. inv H5. assumption.
+    apply H5. inv H4. assumption.
+    apply H5. inv H4. assumption.
     auto with wf_db.
   - simpl.
     rewrite vkron_Rz. 
@@ -7141,33 +7158,33 @@ Proof.
                    vkron dim (update (trans_state avs rmax f)
                         (find_pos vs p) (compile_val (times_r_rotate (f p) q) rmax))).
     erewrite vkron_eq. reflexivity. intros.
-    apply (trans_state_update dim). inv H5. easy.
+    apply (trans_state_update dim). inv H4. easy.
     apply vs_avs_bij_l with (dim := dim); try easy.
     apply vs_avs_bij_r with (dim := dim); try easy. easy.
-    rewrite H14.  rewrite vkron_split_up.
+    rewrite H12.  rewrite vkron_split_up.
     assert ((phase_shift (rrz_ang q) × trans_state avs rmax f (find_pos vs p))
                  = compile_val (times_r_rotate (f p) q) rmax).
     { unfold trans_state.
-      inv H5.
+      inv H4.
       rewrite vs_avs_bij_l with (dim := dim); try easy.
-      inv H8. apply (H9 Nor) in H17.
-      inv H17.
+      inv H7. inv H4. apply (H8 Nor) in H15.
+      inv H15.
       unfold times_r_rotate. destruct b. 
       unfold compile_val.
       distribute_scale.
       rewrite phase_shift_on_basis_state.
       distribute_scale.
       rewrite <- Cexp_add. simpl. rewrite Rmult_1_l.
-      inv H11. rewrite turn_angle_add_r_same. easy. easy.
+      inv H10. rewrite turn_angle_add_r_same. easy. easy.
       unfold compile_val.
       distribute_scale.
       rewrite phase_shift_on_basis_state.
       distribute_scale. simpl. 
       rewrite <- Cexp_add. simpl.
       autorewrite with R_db. easy. easy.
-      apply (H9 Had) in H17. inv H17.
+      apply (H8 Had) in H15. inv H15.
       unfold compile_val,times_r_rotate. unfold rrz_ang,z_phase.
-      assert ((2 * PI - 2 * PI / 2 ^ 1)%R = PI) by lra. rewrite H15.
+      assert ((2 * PI - 2 * PI / 2 ^ 1)%R = PI) by lra. rewrite H13.
       rewrite phase_pi. destruct b1. destruct b2.
       distribute_scale. gridify.
       rewrite Z_0_bit. rewrite Z_1_bit. easy.
@@ -7175,7 +7192,7 @@ Proof.
       rewrite Z_0_bit. rewrite Z_1_bit.
       rewrite Mscale_assoc.
       assert (((-1)%R * (-1)%R)%C = C1) by lca.
-      rewrite H17. Msimpl. easy.
+      rewrite H14. Msimpl. easy.
       destruct b2.
       distribute_scale. gridify. distribute_scale.
       rewrite Z_0_bit. rewrite Z_1_bit. easy.
@@ -7184,34 +7201,32 @@ Proof.
       rewrite Z_0_bit. rewrite Z_1_bit. 
       rewrite Mscale_assoc.
       assert (((-1)%R * (-1)%R)%C = C1) by lca.
-      rewrite H17. Msimpl. easy. easy.
+      rewrite H14. Msimpl. easy. easy.
       }
-    rewrite H15. easy.
+    rewrite H13. easy.
     intros.
     auto with wf_db.
     auto with wf_db.
-    apply H6. inv H5. assumption.
-    apply H6. inv H5. assumption.
+    apply H5. inv H4. assumption.
+    apply H5. inv H4. assumption.
     auto with wf_db.
   - Local Opaque gen_sr_gate. simpl.
     Local Transparent gen_sr_gate. unfold gen_sr_gate,sr_rotate.
-    inv H8. inv H5. inv H4. inv H11.
-    rewrite gen_sr_gate_eval with (asize := n) (tenv := tenv); try easy.
+    inv H7. inv H12. inv H4. inv H10.
+    rewrite gen_sr_gate_eval with (asize := n) (tenv := tenv'); try easy.
     apply vs_avs_bij_l with (dim := dim); try easy.
     apply vs_avs_bij_r with (dim := dim); try easy.
   - Local Opaque gen_srr_gate. simpl.
     Local Transparent gen_srr_gate. unfold gen_srr_gate,srr_rotate.
-    inv H8. inv H5. inv H4. inv H11.
-    rewrite gen_srr_gate_eval with (asize := n) (tenv := tenv); try easy.
+    inv H7. inv H12. inv H4. inv H10.
+    rewrite gen_srr_gate_eval with (asize := n) (tenv := tenv'); try easy.
     apply vs_avs_bij_l with (dim := dim); try easy.
     apply vs_avs_bij_r with (dim := dim); try easy.
-  - 
-(*
-simpl. inv H4. inv H5.
+  - simpl. inv H4.
     rewrite uc_cnot_control; try easy.
-    rewrite control_correct. inv H6.
-    apply (H7 Had) in H16 as eq1.
-    apply (H7 Had) in H17 as eq2. inv eq1. inv eq2.
+    rewrite control_correct. inv H7. inv H4.
+    apply (H8 Had) in H17 as eq1.
+    apply (H8 Had) in H18 as eq2. inv eq1. inv eq2.
     unfold hexchange.
     rewrite Mmult_plus_distr_r.
     rewrite Mmult_assoc.
@@ -7223,14 +7238,16 @@ simpl. inv H4. inv H5.
                    vkron dim (update (trans_state avs rmax f)
                         (find_pos vs p2) (compile_val (exchange (f p2)) rmax))).
     erewrite vkron_eq. reflexivity. intros.
-    apply (trans_state_update dim). easy. assumption. assumption. lia.
+    apply (trans_state_update dim). easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy. easy.
     rewrite H19.  rewrite vkron_split_up.
     assert ((σx × trans_state avs rmax f (find_pos vs p2))
                  = compile_val (exchange (f p2)) rmax).
     { unfold trans_state.
-      rewrite H8 by assumption.
+      rewrite vs_avs_bij_l with (dim := dim); try easy.
       unfold exchange.
-      rewrite <- H6. 
+      rewrite <- H12. 
       unfold compile_val.
       distribute_scale.
       autorewrite with ket_db. rewrite Mplus_comm. easy.
@@ -7244,8 +7261,7 @@ simpl. inv H4. inv H5.
     rewrite H19. clear H19.
     destruct (eqb b0 b3) eqn:eq1.
     apply Bool.eqb_prop in eq1.
-    rewrite <- H6. unfold exchange. subst.
-    rewrite H6. rewrite H3.
+    rewrite <- H12. unfold exchange. subst.
     rewrite eupdate_same by easy.
     rewrite eupdate_same by easy.
     rewrite <- Mmult_plus_distr_r.
@@ -7254,11 +7270,13 @@ simpl. inv H4. inv H5.
     Msimpl. easy.
     apply H5. easy.
     apply eqb_false_iff in eq1.
-    rewrite <- H6. unfold exchange.
+    unfold exchange. rewrite <- H12.
     rewrite (vkron_split dim (find_pos vs p1)).
-    assert (trans_state avs rmax f (find_pos vs p1) = Cexp ((turn_angle r rmax)) .*
+    assert (trans_state avs rmax f (find_pos vs p1) = Cexp (2 * PI * (turn_angle r rmax)) .*
                               ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)).
-    unfold trans_state,compile_val. rewrite H8; try easy. rewrite <- H3. easy.
+    unfold trans_state,compile_val.
+    rewrite vs_avs_bij_l with (dim := dim); try easy.
+    rewrite <- H4. easy.
     rewrite H19.
     distribute_scale.
     distribute_plus.
@@ -7272,14 +7290,15 @@ simpl. inv H4. inv H5.
     unfold proj,pad.
     assert (∣1⟩ = ket (Nat.b2n true)). autorewrite with ket_db. simpl. easy. rewrite H20.
     gridify.
-    assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H16.
+    assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H14.
     autorewrite with ket_db. easy.
     rewrite H20. clear H20. Msimpl.
     rewrite (vkron_split dim (find_pos vs p1) (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]))).
-    assert (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]) (find_pos vs p1) = Cexp ((turn_angle r rmax)) .*
+    assert (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]) (find_pos vs p1) = Cexp (2 * PI * (turn_angle r rmax)) .*
                               ((RtoC ((z_phase b1))) .* ∣0⟩ .+ (RtoC ((z_phase b2))) .* ∣1⟩)).
-    unfold trans_state,compile_val. rewrite H8; try easy.
-    rewrite eupdate_index_neq by iner_p. rewrite <- H3. easy.
+    unfold trans_state,compile_val.
+    rewrite vs_avs_bij_l with (dim := dim); try easy.
+    rewrite eupdate_index_neq by iner_p. rewrite <- H4. easy.
     rewrite H20. clear H20.
     distribute_scale.
     distribute_plus.
@@ -7296,44 +7315,48 @@ simpl. inv H4. inv H5.
     unfold proj,pad.
     assert (∣0⟩ = ket (Nat.b2n false)). autorewrite with ket_db. simpl. easy. rewrite H20.
     gridify.
-    assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H16.
+    assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H14.
     autorewrite with ket_db. easy.
     rewrite H20. clear H20. Msimpl.
-
     admit.
     auto with wf_db.
     apply H5. easy.
     auto with wf_db.
     apply H5. easy.
     1-2:easy.
-    assert (SQIR.X (find_pos vs p2) = trans_exp vs dim (X p2)) by easy.
-    rewrite H3.
-    apply fresh_is_fresh; try easy. constructor. easy. constructor. easy.
-    assert (SQIR.X (find_pos vs p2) = trans_exp vs dim (X p2)) by easy. rewrite H3.
-    apply trans_exp_uc_well_typed; try easy. constructor. constructor. easy.
+    assert (SQIR.X (find_pos vs p2) = fst (fst (trans_exp vs dim (X p2) avs))) by easy.
+    rewrite H4.
+    apply fresh_is_fresh; try easy. constructor. inv H7. inv H12. easy. constructor. easy.
+    assert (SQIR.X (find_pos vs p2) = fst (fst (trans_exp vs dim (X p2) avs))) by easy.
+    rewrite H4. inv H7. inv H12.
+    apply trans_exp_uc_well_typed with (tenv:=tenv') (tenv':=tenv'); try easy. constructor.
+    apply x_had. easy. constructor. easy. 
     apply H5. easy. apply H5. easy.
-    apply find_pos_prop; try easy.
-*) admit.
+    apply find_pos_prop; try easy. inv H7. inv H4. easy.
   - simpl. rewrite denote_ID_1. Msimpl. unfold size_env. 
     rewrite <- lshift_avs_lshift_same; try easy.
-    inv H5. easy. unfold exp_com_WF,find_pos in H6.
-    specialize (H6 (x,0)). simpl in H6. apply H6. inv H5. easy.
+    inv H4. easy. unfold exp_com_WF,find_pos in H5.
+    specialize (H5 (x,0)). simpl in H5. apply H5. inv H4. easy.
   - simpl. rewrite denote_ID_1. Msimpl. unfold size_env. rewrite <- rshift_avs_rshift_same; try easy.
-    inv H5. easy. unfold exp_com_WF,find_pos in H6.
-    specialize (H6 (x,0)). simpl in H6. apply H6. inv H5. easy.
+    inv H4. easy. unfold exp_com_WF,find_pos in H5.
+    specialize (H5 (x,0)). simpl in H5. apply H5. inv H4. easy.
   - simpl. rewrite denote_ID_1. Msimpl. unfold size_env. rewrite <- rev_avs_rev_same; try easy.
-    inv H5. easy. unfold exp_com_WF,find_pos in H6.
-    specialize (H6 (x,0)). simpl in H6. apply H6. inv H5. easy.
+    inv H4. easy. unfold exp_com_WF,find_pos in H4.
+    specialize (H5 (x,0)). simpl in H5. apply H5. inv H4. easy.
+  - admit.
+  - admit.
+  - admit.
   - simpl.
     destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
-    destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p. simpl. inv H4. inv H5. inv H8. inv H11.
+    destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p. simpl. inv H4. inv H7. inv H4.
+    inv H10.
     rewrite Mmult_assoc.
     assert (b = fst (fst (trans_exp vs dim e1 avs))). rewrite eq1. easy.
-    rewrite H4. inv H12.
-    rewrite (IHe1 f tenv) with (l := l) (l' := l'0); try easy.
+    rewrite H4.
+    rewrite (IHe1 f tenv) with (tenv':=env'); try easy.
     assert (b0 = fst (fst (trans_exp v dim e2 p0))). rewrite eq2. easy.
-    rewrite H4. rewrite eq1. simpl.
-    rewrite (IHe2 (exp_sem (size_env vs) e1 f) tenv) with (l := l'0) (l' := l'); try easy.
+    rewrite H7. rewrite eq1. simpl.
+    rewrite (IHe2 (exp_sem (size_env vs) e1 f) env' tenv'); try easy.
     rewrite eq2. simpl.
     rewrite (size_env_vs_same vs v e1 dim avs). easy.
     rewrite eq1. easy.
@@ -7347,70 +7370,18 @@ simpl. inv H4. inv H5.
     rewrite eq1. easy. easy.
     erewrite size_env_vs_same with (vs := vs); try easy.
     rewrite eq1. easy.
-    apply (wf_vs_same e2 e1 avs dim vs v). easy.
-    rewrite eq1. easy.
     apply (exp_com_WF_vs_same e1 dim avs vs v).
     rewrite eq1. easy. easy.
     apply (exp_com_gt_vs_same e1 dim vs v avs p0).
     rewrite eq1. easy. rewrite eq1. easy. easy.
     rewrite (size_env_vs_same vs v e1 dim avs); try easy.
-    apply well_typed_right_mode_exp; try easy.
+    rewrite eq1. easy.
+    rewrite size_env_vs_same with (vs := vs) (e:=e1) (dim := dim) (avs := avs).
+    apply well_typed_right_mode_pexp with (tenv := tenv); try easy.
     rewrite eq1. easy.
     apply (avs_prop_vs_same e1 dim vs v avs p0).
     rewrite eq1. easy. rewrite eq1. easy. easy.
     easy. easy.
-Admitted.
-
-
-        
-
-(*
-Inductive pexp := SExp (s:sexp) | QFT (x:var) | RQFT (x:var)
-               | H (x:var) | PSeq (p1:pexp) (p2:pexp).
-(f : vars) (dim:nat) (exp:sexp) (avs: nat -> posi) :
-*)
-
-Fixpoint trans_pexp (vs:vars) (dim:nat) (exp:pexp) (avs: nat -> posi) :=
-     match exp with Exp s => (trans_exp vs dim s avs)
-                 | QFT x => (trans_qft vs dim x, vs, avs)
-                 | RQFT x => (trans_rqft vs dim x, vs, avs)
-                 | H x => (trans_h vs dim x, vs, avs)
-                 | PCU p e1 => match trans_pexp vs dim e1 avs with (e1', vs',avs')
-                              => (control (find_pos vs p) e1', vs, avs) end
-                 | PSeq e1 e2 =>  
-                         match trans_pexp vs dim e1 avs with (e1',vs',avs') => 
-                             match trans_pexp vs' dim e2 avs' with (e2',vs'',avs'') => 
-                                        (SQIR.useq e1' e2', vs'', avs'')
-                             end
-                            end
-     end.
-
-
-
-Inductive pexp_WF : vars -> nat -> pexp -> Prop :=
-      | qft_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (QFT x)
-      | rqft_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (RQFT x)
-      | h_wf : forall vs rs x, 0 < vsize vs x -> pexp_WF vs rs (H x)
-      | sexp_wf : forall vs rs e, exp_WF vs e -> exp_rmax rs e -> pexp_WF vs rs (Exp e)
-      | fseq_wf : forall vs rs e1 e2, pexp_WF vs rs e1 -> pexp_WF vs rs e2 -> pexp_WF vs rs (PSeq e1 e2).
-
-Lemma trans_pexp_sem :
-  forall dim (e:pexp) f env env' rmax vs (avs : nat -> posi) l l',
-    vars_start_diff vs ->
-    vars_finite_bij vs ->
-    vars_sparse vs ->
-    vars_anti_same vs ->
-    pexp_WF vs rmax e ->
-    exp_com_WF vs dim ->
-    exp_com_gt vs avs dim ->
-    well_typed_pexp (size_env vs) l env e l' env' ->
-    right_mode_env (size_env vs) env f ->
-    avs_prop vs avs dim ->
-    dim > 0 ->
-    (uc_eval (fst (fst (trans_pexp vs dim e avs)))) × (vkron dim (trans_state avs rmax f)) 
-         = vkron dim (trans_state (snd (trans_pexp vs dim e avs)) rmax (prog_sem (size_env vs) e f)).
-Proof.
-  intros dim e. induction e; intros; simpl.
 Admitted.
 
 (* some useful gates. *)
@@ -7418,6 +7389,7 @@ Definition CNOT (x y : posi) := CU x (X y).
 Definition SWAP (x y : posi) := if (x ==? y) then (SKIP x) else (CNOT x y; CNOT y x; CNOT x y).
 Definition CCX (x y z : posi) := CU x (CNOT y z).
 
+(*
 Lemma cnot_fwf : forall x y aenv, x<> y -> exp_fwf aenv (CNOT x y).
 Proof.
   intros.
@@ -7449,7 +7421,7 @@ Proof.
   easy.
   constructor.
 Qed.
-
+*)
 
 (* Proofs of semantics. *)
 Lemma cnot_sem : forall f x y aenv, nor_mode f x -> nor_mode f y -> 
