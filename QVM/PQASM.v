@@ -2871,6 +2871,88 @@ Proof.
   specialize (IHe2 (exp_sem aenv e1 f) aenv env' tenv' IHe1). apply IHe2; try easy.
 Qed.
 
+Lemma qft_uniform_put_cu_same : 
+    forall f c v aenv tenv, qft_uniform aenv tenv f 
+                 -> qft_uniform aenv tenv (f[c |-> put_cu (f c) v]).
+Proof.
+ intros. unfold qft_uniform in *.
+ intros. 
+ destruct c.
+ unfold get_snd_r,get_r_qft in *.
+ bdestruct ((v0, n) ==? (x,i)). inv H3. 
+ rewrite eupdate_index_eq.
+ specialize (H0 x H1 i H2).
+ unfold put_cu.
+ destruct (f (x,i)) eqn:eq1.
+ assert ((@pair Env.key nat x i) = (@pair var nat x i)) by easy.
+ rewrite H3 in *.
+ rewrite eq1 in *.
+ bdestruct (i =? 0). subst.
+ rewrite eupdate_index_eq.
+ rewrite eq1 in H0. easy.
+ rewrite eupdate_index_neq. easy. iner_p.
+ assert ((@pair Env.key nat x i) = (@pair var nat x i)) by easy.
+ rewrite H3 in *. 
+ rewrite eq1 in *.
+ bdestruct (i =? 0). subst.
+ rewrite eupdate_index_eq.
+ rewrite eq1 in H0. easy.
+ rewrite eupdate_index_neq. easy. iner_p.
+ assert ((@pair Env.key nat x i) = (@pair var nat x i)) by easy.
+ rewrite H3 in *.
+ rewrite eq1 in *.
+ bdestruct (i =? 0). rewrite H4 in *.
+ rewrite eupdate_index_eq.
+ rewrite eq1 in H0. easy.
+ rewrite eupdate_index_neq. easy. iner_p.
+ rewrite eupdate_index_neq.
+ specialize (H0 x H1 i H2). 
+ bdestruct ((v0, n) ==? (x,0)). inv H4.
+ rewrite eupdate_index_eq.
+ unfold put_cu. 
+ destruct (f (x,0)) eqn:eq1.
+ assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy.
+ rewrite H4 in *. 
+ rewrite eq1 in *. easy.
+ assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy.
+ rewrite H4 in *. 
+ rewrite eq1 in *. easy.
+ assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy.
+ rewrite H4 in *. 
+ rewrite eq1 in *. easy.
+ rewrite eupdate_index_neq.
+ apply H0. easy. easy.
+Qed.
+
+Lemma qft_uniform_put_cu_same_1 : 
+    forall f c1 c2 v1 v2 aenv tenv, qft_uniform aenv tenv f -> Env.MapsTo (fst c1) Nor tenv -> Env.MapsTo (fst c2) Nor tenv
+                 -> qft_uniform aenv tenv (f[c2 |-> put_cu (f c2) v2][c1 |-> put_cu (f c1) v1]).
+Proof.
+ intros. unfold qft_uniform in *.
+ intros. 
+ unfold get_snd_r,get_r_qft in *.
+ destruct c1. destruct c2.
+ bdestruct ((k,n) ==? (k0,n0)). inv H5.
+ rewrite eupdate_twice_eq.
+ specialize (qft_uniform_put_cu_same f (k0,n0) v1 aenv tenv) as eq1.
+ apply eq1 in H0. unfold qft_uniform in H0.
+ specialize (H0 x H3 i H4). easy.
+ bdestruct ((k,n) ==? (x,i)). inv H6.
+ simpl in *.
+ apply mapsto_always_same with (v1 := Nor) in H3; try easy.
+ rewrite eupdate_index_neq by iner_p.
+ bdestruct ((k,n) ==? (x,0)). inv H7.
+ apply mapsto_always_same with (v1 := Nor) in H3; try easy.
+ bdestruct ((k0,n0) ==? (x,i)). inv H8.
+ apply mapsto_always_same with (v1 := Nor) in H3; try easy.
+ rewrite eupdate_index_neq by iner_p.
+ rewrite eupdate_index_neq by iner_p.
+ bdestruct ((k0,n0) ==? (x,0)). inv H9.
+ apply mapsto_always_same with (v1 := Nor) in H3; try easy.
+ rewrite eupdate_index_neq by iner_p.
+ apply H0; try easy.
+Qed.
+
 Lemma qft_uniform_put_cus_same : 
     forall f x g n aenv tenv, qft_uniform aenv tenv f -> right_mode_env aenv tenv f 
                  -> qft_uniform aenv tenv (put_cus f x g n).
@@ -3102,6 +3184,51 @@ Proof.
   specialize (IHe1 f aenv tenv env' H0 H6 H2).
   apply IHe2 with (tenv:=env') (tenv' := tenv') ; try easy.
   apply well_typed_right_mode_pexp with (tenv:=tenv); easy.
+Qed.
+
+Lemma qft_gt_put_cu_same : 
+    forall f c v aenv tenv, qft_gt aenv tenv f
+                 -> qft_gt aenv tenv (f[c |-> put_cu (f c) v]).
+Proof.
+  intros. 
+  unfold qft_gt in *. intros.
+  unfold put_cu,get_r_qft in *.
+  destruct c.
+  simpl in *.
+  specialize (H0 x H1 i H2).
+  bdestruct ((v0, n) ==? (x,0)). inv H3.
+  rewrite eupdate_index_eq.
+  destruct (f (x,0)) eqn:eq1.
+  assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy. 
+  rewrite H3 in *. rewrite eq1 in *. easy.
+  assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy. 
+  rewrite H3 in *. rewrite eq1 in *. easy.
+  assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy. 
+  rewrite H3 in *. rewrite eq1 in *. easy.
+  rewrite eupdate_index_neq. apply H0. easy.
+Qed.
+
+Lemma qft_gt_put_cu_same_1 : 
+    forall f f' c v aenv tenv, qft_gt aenv tenv f -> nor_mode f' c
+                 -> qft_gt aenv tenv (f[c |-> put_cu (f' c) v]).
+Proof.
+  intros. 
+  unfold qft_gt in *. intros.
+  unfold put_cu,get_r_qft in *.
+  destruct c.
+  simpl in *.
+  specialize (H0 x H2 i H3).
+  bdestruct ((v0, n) ==? (x,0)). inv H4.
+  rewrite eupdate_index_eq.
+  unfold nor_mode in H1.
+  destruct (f' (x,0)) eqn:eq1.
+  assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy. 
+  rewrite H4 in *. rewrite eq1 in *. easy.
+  assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy. 
+  rewrite H4 in *. rewrite eq1 in *. easy.
+  assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy. 
+  rewrite H4 in *. rewrite eq1 in *. easy.
+  rewrite eupdate_index_neq. apply H0. easy.
 Qed.
 
 Lemma qft_gt_put_cus_same : 
@@ -6212,6 +6339,20 @@ Proof.
   Msimpl. easy.
 Qed.
 
+Lemma vkron_H : forall (n i : nat) (f : nat -> Vector 2),
+  i < n ->
+  (forall j, WF_Matrix (f j))  ->
+  (uc_eval (SQIR.H i)) × (vkron n f) 
+      = vkron i f ⊗ (hadamard × f i) ⊗ vkron (n - (i + 1)) (shift f (i + 1)).
+Proof.
+  intros.
+  autorewrite with eval_db.
+  rewrite (vkron_split n i f H1 H0). 
+  simpl; replace (n - 1 - i) with (n - (i + 1)) by lia.
+  repad. 
+  Msimpl. easy.
+Qed.
+
 Lemma is_fresh_sr_gates : forall m n size x dim vs, 0 < n -> m <= n -> m <= size
        -> n < vsize vs x -> vars_finite_bij vs
        -> is_fresh (find_pos vs (x,n)) (gen_sr_gate' vs dim x m size).
@@ -6914,7 +7055,6 @@ Proof.
   apply (trans_state_update dim). simpl. lia. easy. assumption. assumption.
   rewrite H8.
   rewrite vkron_split_up.
-  Check rz_ang_trans_sem.
   replace ((start vs x + vmap vs x n)) with (find_pos vs (x,n)) by easy.
   rewrite (rz_ang_trans_sem vs dim avs tenv (size - n) rmax 
       (sr_rotate' f x n size) (x,n) asize); (try lia; try easy).
@@ -6992,6 +7132,75 @@ Proof.
   apply H1. simpl. lia.
   auto with wf_db. 
 Qed.
+
+(*
+Lemma gen_controlled_rot_eval : forall n i m size dim vs avs rmax f g x,
+    exp_com_WF vs dim -> n < vsize vs x ->
+    nor_modes f x size ->
+    (get_cus size f x) = g ->
+    avs_prop vs avs dim -> 
+    vars_sparse vs ->
+    vars_anti_same vs ->
+    uc_eval (controlled_rotations_gen vs dim x n m) 
+   × (vkron (find_pos vs (x,n)) (trans_state avs rmax (assign_r f x g i))
+   ⊗ (hadamard × trans_state avs rmax f (find_pos vs (x,m)))
+   ⊗ vkron (dim - (find_pos vs (x,n)) + 1)
+         (shift (trans_state avs rmax (assign_r f x g i)) (find_pos vs (x,n) + 1)))
+    = (vkron (find_pos vs (x,n)) (trans_state avs rmax (assign_r f x g i))) 
+       ⊗ (trans_state avs rmax f (find_pos vs (x,m))) 
+       ⊗ vkron (dim - (find_pos vs (x,n)) + 1)
+         (shift (trans_state avs rmax (assign_r f x g i)) (find_pos vs (x,n) + 1)).
+*)
+
+Lemma gen_qft_gate_eval : forall n size tenv f g vs avs dim rmax x, n <= size ->
+    exp_com_WF vs dim -> n < vsize vs x -> size < rmax -> Env.MapsTo x Nor tenv ->
+    right_mode_env (size_env vs) tenv f ->
+    (get_cus (vsize vs x) f x) = g ->
+    avs_prop vs avs dim -> 
+    vars_sparse vs ->
+    vars_anti_same vs ->
+    uc_eval (QFT_gen vs dim x n size) × vkron dim (trans_state avs rmax f)
+    = vkron dim (trans_state avs rmax (assign_r f x g n)).
+Proof.
+  induction n; intros; simpl.
+  rewrite denote_ID_1. Msimpl. easy.
+  assert (find_pos vs (x,0) < dim). apply H1. easy.
+  unfold find_pos in *. easy.
+  rewrite Mmult_assoc.
+  rewrite IHn with (tenv := tenv) (g:=g).
+  assert (vkron dim (trans_state avs rmax
+                ((assign_r f x g n) [(x, n) |-> up_qft (f (x, n)) (lshift_fun g n)])) = 
+          vkron dim (update (trans_state avs rmax (assign_r f x g n))
+                        (find_pos vs (x, n)) (compile_val (up_qft (f (x, n)) (lshift_fun g n)) rmax))).
+  erewrite vkron_eq. reflexivity. intros.
+  apply (trans_state_update dim). simpl. lia.
+  apply vs_avs_bij_l with (dim := dim); try easy.
+  apply vs_avs_bij_r with (dim := dim); try easy. easy.
+  rewrite H10.
+  unfold up_qft.
+  rewrite Mmult_assoc.
+  rewrite vkron_H.
+  assert (trans_state avs rmax (assign_r f x g n) (start vs x + vmap vs x n)
+     = trans_state avs rmax f (find_pos vs (x,n))).
+  unfold trans_state.
+  assert ((start vs x + vmap vs x n) = find_pos vs (x,n)).
+  unfold find_pos. easy. rewrite H11.
+  rewrite vs_avs_bij_l with (dim := dim); try easy.
+  rewrite assign_r_ge by lia. easy.
+  simpl. lia.
+  rewrite H11. clear H11.
+  assert (nor_modes f x (vsize vs x)).
+  unfold nor_modes.
+  intros.
+  unfold nor_mode.
+  unfold right_mode_env in H5.
+  specialize (H5 Nor (x,i)). simpl in H5.
+  unfold size_env in H5. apply H5 in H11. inv H11. easy. easy.
+  unfold nor_modes in H11.
+  specialize (H11 n).
+  assert (n < vsize vs x). lia. apply H11 in H12.
+  unfold nor_mode in H12. destruct (f (x,n)).
+Admitted.
 
 Lemma trans_exp_sem :
   forall dim e f tenv tenv' rmax vs (avs : nat -> posi),
@@ -7343,7 +7552,8 @@ Proof.
   - simpl. rewrite denote_ID_1. Msimpl. unfold size_env. rewrite <- rev_avs_rev_same; try easy.
     inv H4. easy. unfold exp_com_WF,find_pos in H4.
     specialize (H5 (x,0)). simpl in H5. apply H5. inv H4. easy.
-  - admit.
+  - simpl.
+    unfold trans_qft,turn_qft. admit.
   - admit.
   - admit.
   - simpl.
@@ -7537,3 +7747,45 @@ Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0)
     end.
 
 Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
+
+Lemma cnot_wt_nor : forall aenv env x y, x <> y -> Env.MapsTo (fst x) Nor env -> 
+                   Env.MapsTo (fst y) Nor env -> well_typed_pexp aenv env (CNOT x y) env.
+Proof.
+  intros. unfold CNOT.
+  apply pcu_nor. easy. constructor. easy.
+  unfold exp_neu. intros. constructor.
+  constructor. constructor. easy.
+Qed.
+
+Lemma cnot_wt_had : forall aenv env x y, x <> y -> Env.MapsTo (fst x) Nor env -> 
+                   Env.MapsTo (fst y) Had env -> well_typed_pexp aenv env (CNOT x y) env.
+Proof.
+  intros. unfold CNOT.
+  apply pcu_nor. easy. constructor. easy.
+  unfold exp_neu. intros. constructor.
+  constructor. apply x_had. easy.
+Qed.
+
+Lemma ccx_wt_nor : forall aenv env x y z, x <> y -> y <> z -> z <> x -> Env.MapsTo (fst x) Nor env -> 
+                   Env.MapsTo (fst y) Nor env -> Env.MapsTo (fst z) Nor env
+                   -> well_typed_pexp aenv env (CCX x y z) env.
+Proof.
+  intros. unfold CCX.
+  apply pcu_nor. easy. constructor. easy.
+  constructor. iner_p.
+  unfold exp_neu. intros. constructor.
+  apply cnot_wt_nor. easy. easy. easy.
+Qed.
+
+Lemma swap_wt_nor : forall aenv env x y, x <> y -> Env.MapsTo (fst x) Nor env -> 
+                   Env.MapsTo (fst y) Nor env -> well_typed_pexp aenv env (SWAP x y) env.
+Proof.
+  intros. unfold SWAP.
+  bdestruct (x ==? y). subst. constructor. constructor.
+  apply pe_seq with (env' := env0).
+  apply pe_seq with (env' := env0).
+  apply cnot_wt_nor. easy. easy. easy.
+  apply cnot_wt_nor. iner_p. easy. easy.
+  apply cnot_wt_nor. easy. easy. easy.
+Qed.
+

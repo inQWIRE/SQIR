@@ -980,3 +980,179 @@ Ltac bt_simpl := repeat (try rewrite xorb_false_r; try rewrite xorb_false_l;
             try rewrite andb_true_r; try rewrite andb_true_l;
             try rewrite xorb_andb_distr_l; try rewrite xorb_andb_distr_r;
             try rewrite andb_diag).
+
+Lemma msm_eq1 :
+  forall n i c f g,
+    S i < n ->
+    msma i c f g i ⊕ msma i c f g (S i) = msma (S i) c f g i.
+Proof.
+  intros. unfold msma. IfExpSimpl. easy.
+Qed.
+
+Lemma msm_eq2 :
+  forall n i c f g,
+    S i < n ->
+    msmb i c f g (S i) ⊕ msma i c f g (S i) = msmb (S i) c f g (S i).
+Proof.
+  intros. unfold msma. unfold msmb. IfExpSimpl. btauto.
+Qed.
+       
+
+Lemma msm_eq3 :
+  forall n i c f g,
+    S i < n ->
+    majb (msma i c f g (S i)) (msmb i c f g (S i)) (msma i c f g i) = msma (S i) c f g (S i).
+Proof.
+  intros. unfold msma. unfold msmb. IfExpSimpl.
+  simpl. unfold majb. easy.
+Qed.
+
+
+Lemma pow2_predn :
+  forall n x,
+    x < 2^(n-1) -> x < 2^n.
+Proof.
+  intros. destruct n. simpl in *. lia.
+  simpl in *. rewrite Nat.sub_0_r in H. lia.
+Qed.
+
+Lemma carry_leb_equiv_true :
+  forall n x y,
+    0 < n ->
+    x < 2^(n-1) ->
+    y < 2^(n-1) ->
+    x <= y ->
+    carry true n (nat2fb (2^n - 1 - x)) (nat2fb y) = true.
+Proof.
+  intros. unfold nat2fb. specialize (carry_add_eq_carry1 n (N.of_nat (2 ^ n - 1 - x)) (N.of_nat y)) as G.
+  do 2 apply xorb_move_l_r_2 in G. rewrite G.
+  do 2 (pattern N2fb at 1; rewrite N2fb_Ntestbit).
+  rewrite Ntestbit_lt_pow2n.
+  2:{ replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. apply pow2_predn in H1. lia.
+  }
+  rewrite Ntestbit_lt_pow2n.
+  2:{ replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+      assert (0 < 2^n) by (apply pow_positive; easy). lia.
+  }
+  replace 1%N with (N.of_nat 1) by easy. do 2 rewrite <- Nnat.Nat2N.inj_add.
+  rewrite N2fb_Ntestbit. rewrite Ntestbit_in_pow2n_pow2Sn. btauto.
+  split.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+  replace (2^n) with (2^(n-1) + 2^(n-1)). lia.
+  destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+  rewrite <- Nnat.Nat2N.inj_succ.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+  replace (2^(S n)) with (2^n + 2^n) by (simpl; lia).
+  replace (2^n) with (2^(n-1) + 2^(n-1)). lia.
+  destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+Qed.
+
+Lemma carry_leb_equiv_false :
+  forall n x y,
+    0 < n ->
+    x < 2^(n-1) ->
+    y < 2^(n-1) ->
+    x > y ->
+    carry true n (nat2fb (2^n - 1 - x)) (nat2fb y) = false.
+Proof.
+  intros. unfold nat2fb. specialize (carry_add_eq_carry1 n (N.of_nat (2 ^ n - 1 - x)) (N.of_nat y)) as G.
+  do 2 apply xorb_move_l_r_2 in G. rewrite G.
+  do 2 (pattern N2fb at 1; rewrite N2fb_Ntestbit).
+  rewrite Ntestbit_lt_pow2n.
+  2:{ replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. apply pow2_predn in H1. lia.
+  }
+  rewrite Ntestbit_lt_pow2n.
+  2:{ replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+      assert (0 < 2^n) by (apply pow_positive; easy). lia.
+  }
+  replace 1%N with (N.of_nat 1) by easy. do 2 rewrite <- Nnat.Nat2N.inj_add.
+  rewrite N2fb_Ntestbit. rewrite Ntestbit_lt_pow2n. btauto.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow.
+  replace (2^n) with (2^(n-1) + 2^(n-1)). lia.
+  destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
+Qed.
+
+Lemma carry_leb_equiv :
+  forall n x y,
+    0 < n ->
+    x < 2^(n-1) ->
+    y < 2^(n-1) ->
+    carry true n (nat2fb (2^n - 1 - x)) (nat2fb y) = (x <=? y).
+Proof.
+  intros. bdestruct (x <=? y). apply carry_leb_equiv_true; easy. apply carry_leb_equiv_false; easy.
+Qed.
+
+Lemma pow2_low_bit_false : forall n i, i < n -> nat2fb (2^n) i = false.
+Proof.
+ intros. unfold nat2fb.
+ rewrite N2fb_Ntestbit.
+ assert (N.of_nat i < N.of_nat n)%N.
+ lia.
+ specialize (N.mul_pow2_bits_low 1 (N.of_nat n) (N.of_nat i) H0) as eq1.
+ assert (1 * 2 ^ N.of_nat n = 2 ^ N.of_nat n)%N by lia.
+ rewrite H1 in eq1.
+ assert (2%N = (N.of_nat 2)) by easy. rewrite H2 in eq1.
+ rewrite Nofnat_pow.
+ rewrite eq1. easy.
+Qed.
+
+Local Transparent carry.
+Lemma carry_false_lt: forall n f g,
+    (forall i, i <= n -> g i = false) -> 
+    carry false n f g = false.
+Proof.
+  induction n;intros.
+  simpl. easy.
+  simpl.
+  rewrite IHn.
+  rewrite H by lia. btauto.
+  intros. rewrite H. easy. lia.
+Qed.
+
+
+Lemma low_bit_same : forall n x, 0 < n -> x < 2^n -> 
+    (forall i, i < n -> nat2fb (x + 2^n) i = nat2fb x i).
+Proof.
+  intros.
+  rewrite <- sumfb_correct_carry0.
+  unfold sumfb.
+  rewrite pow2_low_bit_false by easy. bt_simpl.
+  rewrite carry_false_lt. btauto.
+  intros.
+  apply pow2_low_bit_false. lia.
+Qed.
+
+Lemma carry_low_bit_same : forall m b n x g, m <= n -> 0 < n -> x < 2^n -> 
+    carry b m (nat2fb (x + 2^n)) g = carry b m (nat2fb x) g.
+Proof.
+  induction m;intros. simpl. easy.
+  simpl.
+  rewrite IHm by lia.
+  rewrite low_bit_same by lia. easy.
+Qed.
+
+
+
+Lemma majb_carry_s_eq : forall n x y, 0 < n -> x < 2^n -> y < 2^n ->
+      majb true false (carry true n (nat2fb (2^n - 1 - x)) (nat2fb y)) 
+       = carry true (S n) (nat2fb ((2^n - 1 - x) + 2^n)) (nat2fb y).
+Proof.
+  intros. simpl. unfold majb.
+  assert (nat2fb (2 ^ n - 1 - x + 2 ^ n) n = true).
+  unfold nat2fb. rewrite N2fb_Ntestbit.
+  rewrite Ntestbit_in_pow2n_pow2Sn. easy.
+  split. 
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. lia.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nnat.Nat2N.inj_succ. 
+  rewrite <- Nofnat_pow.
+  rewrite Nat.pow_succ_r. lia. lia.
+  rewrite H2.
+  assert (nat2fb y n = false).
+  unfold nat2fb. rewrite N2fb_Ntestbit.
+  rewrite Ntestbit_lt_pow2n. easy.
+  replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. lia.
+  rewrite H3. rewrite carry_low_bit_same. easy.
+  easy. lia. lia.
+Qed.
+
+Local Opaque carry.
