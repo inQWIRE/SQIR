@@ -256,7 +256,7 @@ Lemma rz_adder_well_typed : forall n x size M aenv tenv, n <= size -> size = aen
            Env.MapsTo x (Phi (aenv x)) tenv -> well_typed_pexp aenv tenv (rz_adder' x n size M) tenv.
 Proof.
  induction n; intros; simpl.
- constructor. constructor.
+ constructor. constructor. 
  apply pe_seq with (env' := tenv).
  apply IHn; try easy. lia.
  destruct (M n).
@@ -745,6 +745,24 @@ Proof.
   induction m;intros; simpl. constructor.
   constructor. apply IHm.
   destruct (M m).  constructor. constructor.
+Qed.
+
+Lemma escope_inv : forall e y n aenv,
+         exp_scope aenv y n e -> exp_scope aenv y n (inv_exp e).
+Proof.
+  induction e;intros; simpl.
+  constructor. constructor. constructor.
+  inv H. apply IHe. easy. 
+  1-5:constructor.
+  inv H. constructor. easy.
+  apply rshift_scope_nhit. easy.
+  inv H. constructor. easy.
+  apply lshift_scope_nhit. easy.
+  inv H. constructor. easy.
+  apply rev_scope_nhit. easy.
+  inv H. inv H. inv H.
+  inv H. constructor.
+  apply IHe2. easy. apply IHe1. easy.
 Qed.
 
 Lemma sr_rotate'_phi_modes : forall n size f x y m, phi_modes f y m -> phi_modes (sr_rotate' f x n size) y m.
@@ -2387,6 +2405,41 @@ Proof.
  lia.
 Qed.
 
+Lemma rz_sub_inv_r : forall n size i x M aenv tenv f, n <= size -> i < size -> aenv x = size
+       -> Env.MapsTo x (Phi (aenv x)) tenv -> right_mode_env aenv tenv f ->
+      get_r (exp_sem aenv (inv_exp (rz_sub' x n size M)) f (x,i)) = get_r (f (x,i)).
+Proof.
+ induction n; intros; simpl.
+ easy.
+ assert (phi_modes (exp_sem aenv (inv_exp (rz_sub' x n size M)) f) x size).
+ apply phi_modes_exp.
+ apply exp_scope_inv_exp. apply escope_rz_sub.
+ assert (phi_modes f x size).
+ rewrite <- H1.
+ apply type_phi_modes with (env := tenv).
+ easy. easy. easy.
+ destruct (M n). simpl.
+ rewrite IHn with (tenv := tenv); try easy.
+ unfold get_r.
+ unfold sr_rotate.
+ bdestruct (i <? (S (size - S n))).
+ rewrite sr_rotate'_lt_1; try lia.
+ unfold times_rotate.
+ assert (phi_modes f x size).
+ rewrite <- H1.
+ apply type_phi_modes with (env := tenv). easy. easy.
+ unfold phi_modes in H6. apply H6 in H0. unfold phi_mode in H0.
+ destruct (f (@pair var nat x i)) eqn:eq1. easy. easy.
+ assert ( (@pair Env.key nat x i)  =  (@pair var nat x i)) by easy.
+ rewrite H7 in *. rewrite eq1. easy.
+ rewrite sr_rotate'_ge. easy. simpl. lia. lia. 
+ assert (right_mode_env aenv tenv (exp_sem aenv (SR (size - S n) x) f)).
+ apply well_typed_right_mode_pexp with (tenv := tenv).
+ constructor. apply sr_phi with (n := aenv x). easy. lia. easy.
+ simpl in H5. easy.
+ simpl. rewrite IHn with (tenv := tenv); try easy. lia.
+Qed.
+
 Lemma one_cu_adder_r : forall size i x c M aenv tenv f, i < size -> aenv x = size
       -> snd c < aenv (fst c)-> Env.MapsTo x (Phi (aenv x)) tenv 
       -> Env.MapsTo (fst c) Nor tenv -> right_mode_env aenv tenv f ->
@@ -2453,6 +2506,22 @@ Proof.
   rewrite eupdate_index_neq. easy. easy. easy. easy. easy.
 Qed.
 
+Lemma x_r : forall p1 p3 aenv tenv f, snd p1 < aenv (fst p1) ->
+          Env.MapsTo (fst p1) Nor tenv -> right_mode_env aenv tenv f ->
+          get_r (exp_sem aenv (X p1) f p3) = get_r (f p3).
+Proof.
+  intros; simpl.
+  bdestruct (p1 ==? p3). subst.
+  rewrite eupdate_index_eq.
+  unfold exchange.
+  unfold get_r.
+  assert (nor_mode f p3).
+  apply type_nor_mode with (aenv := aenv) (env := tenv); try easy.
+  unfold nor_mode in H2.
+  destruct (f p3). easy. easy. easy.
+  rewrite eupdate_index_neq. easy. easy.
+Qed.
+
 Lemma qft_cu_r : forall i size x c aenv tenv f, i < size -> aenv x = size ->
       fst c <> x -> snd c < aenv (fst c)-> Env.MapsTo x (Phi (aenv x)) tenv 
       -> Env.MapsTo (fst c) Nor tenv -> right_mode_env aenv tenv f ->
@@ -2478,6 +2547,58 @@ Proof.
   apply cnot_wt_nor. destruct c. iner_p.
   simpl. apply Env.add_1. easy.
   apply Env.add_2. iner_p. easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply rqft_phi. easy. easy. easy.
+Qed.
+
+Lemma qft_acu_r : forall i size x c aenv tenv f, i < size -> aenv x = size ->
+      fst c <> x -> snd c < aenv (fst c)-> Env.MapsTo x (Phi (aenv x)) tenv 
+      -> Env.MapsTo (fst c) Nor tenv -> right_mode_env aenv tenv f ->
+      get_r (exp_sem aenv (qft_acu x c) f (x,i)) = get_r (f (x,i)).
+Proof.
+  intros.
+  unfold qft_acu.
+  assert ((exp_sem aenv ((RQFT x; ((X (@pair var nat x 0); CNOT (@pair var nat x 0) c); X (@pair var nat x 0))); QFT x) f)
+    = exp_sem aenv (QFT x) (exp_sem aenv (X (@pair var nat x 0))
+       (exp_sem aenv (CNOT (@pair var nat x 0) c)
+             (exp_sem aenv (X (@pair var nat x 0)) (exp_sem aenv (RQFT x) f))))).
+  simpl. easy.
+  rewrite H6.
+  rewrite qft_r with (size := size) (tenv := Env.add x Nor tenv); try easy.
+  rewrite x_r with (tenv := Env.add x Nor tenv); try easy.
+  rewrite cnot_r with (tenv := Env.add x Nor tenv); try easy.
+  rewrite x_r with (tenv := Env.add x Nor tenv); try easy.
+  rewrite rqft_r with (size := size) (tenv := tenv); try easy.
+  simpl. lia. simpl. apply Env.add_1. easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply rqft_phi. easy. easy. easy. destruct c. iner_p.
+  destruct c. iner_p.
+  simpl. lia. simpl. apply Env.add_1. easy.
+  apply well_typed_right_mode_pexp with (tenv := (Env.add x Nor tenv)).
+  constructor. constructor. simpl. apply Env.add_1. easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply rqft_phi. easy. easy. easy.
+  simpl. lia. simpl. apply Env.add_1. easy.
+  apply well_typed_right_mode_pexp with (tenv := (Env.add x Nor tenv)).
+  apply cnot_wt_nor. destruct c. iner_p.
+  simpl. apply Env.add_1. easy.
+  apply Env.add_2. iner_p. easy.
+  apply well_typed_right_mode_pexp with (tenv := (Env.add x Nor tenv)).
+  constructor. constructor.
+  simpl. apply Env.add_1. easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply rqft_phi. easy. easy. easy.
+  apply Env.add_1. easy.
+  apply well_typed_right_mode_pexp with (tenv := (Env.add x Nor tenv)).
+  constructor. constructor.
+  simpl. apply Env.add_1. easy.
+  apply well_typed_right_mode_pexp with (tenv := (Env.add x Nor tenv)).
+  apply cnot_wt_nor. destruct c. iner_p.
+  simpl. apply Env.add_1. easy.
+  apply Env.add_2. iner_p. easy.
+  apply well_typed_right_mode_pexp with (tenv := (Env.add x Nor tenv)).
+  constructor. constructor.
+  simpl. apply Env.add_1. easy.
   apply well_typed_right_mode_pexp with (tenv := tenv).
   apply rqft_phi. easy. easy. easy.
 Qed.
@@ -2526,22 +2647,115 @@ Proof.
   apply rz_sub_well_typed; try easy.
   apply well_typed_right_mode_pexp with (tenv := tenv).
   apply rz_adder_well_typed; try easy. easy.
- Local Opaque rz_sub rz_adder qft_cu.
+ Local Opaque rz_sub rz_adder qft_cu mod_adder_half one_cu_adder.
 Qed.
 
+Lemma clean_hbit_r : forall size i x c M aenv tenv f, i < size
+      -> aenv x = size -> snd c < aenv (fst c) ->
+        fst c <> x -> Env.MapsTo x (Phi (aenv x)) tenv
+       -> Env.MapsTo (fst c) Nor tenv -> right_mode_env aenv tenv f ->
+      get_r (exp_sem aenv (clean_hbit x size c M) f (x,i)) = get_r (f (x,i)).
+Proof.
+  intros. unfold clean_hbit.
+  assert ( exp_sem aenv ((rz_sub x size M; qft_acu x c); inv_exp (rz_sub x size M)) f
+    = exp_sem aenv (inv_exp (rz_sub x size M)) (exp_sem aenv (qft_acu x c)
+            (exp_sem aenv ((rz_sub x size M)) f))).
+  simpl. easy.
+  rewrite H6. clear H6.
+  Local Transparent rz_sub. 
+  unfold rz_sub.
+  rewrite rz_sub_inv_r with (tenv := tenv); try easy.
+  rewrite qft_acu_r with (size := size) (tenv := tenv); try easy.
+  rewrite rz_sub_r with (tenv := tenv); try easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply rz_sub_well_typed; try easy. easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  unfold qft_acu.
+ apply pe_seq with (env' := Env.add x Nor tenv).
+ apply pe_seq with (env' := Env.add x Nor tenv).
+ apply rqft_phi. easy. easy.
+ apply pe_seq with (env' := Env.add x Nor tenv).
+ apply pe_seq with (env' := Env.add x Nor tenv).
+ constructor. constructor. simpl. apply Env.add_1. easy.
+ apply cnot_wt_nor. destruct c. iner_p.
+ simpl. apply Env.add_1. easy.
+ apply Env.add_2. iner_p. easy.
+ constructor. constructor. simpl. apply Env.add_1. easy.
+ apply qft_nor. apply Env.add_1. easy.
+ apply EnvFacts.Equal_mapsto_iff.
+ intros. split. intros.
+ bdestruct (k =? x). subst.
+ apply mapsto_always_same with (v2 := e) in H3. subst.
+ apply Env.add_1. easy. easy.
+ apply Env.add_2. lia. apply Env.add_2. lia. easy.
+ intros.
+ bdestruct (k =? x). subst. 
+ apply mapsto_add1 in H6. subst. easy.
+ apply Env.add_3 in H6. apply Env.add_3 in H6. easy. lia. lia.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply rz_sub_well_typed; try easy. easy.
+  Local Opaque rz_sub.
+Qed.
 
-Lemma rz_modmult_half_r : forall i size y f x c A M aenv, i < size ->
-         nor_modes f x (size) -> nor_modes f y (size) -> aenv y = size ->
-          nor_mode f c -> fst c <> x -> fst c <> y -> x <> y ->
+Lemma rz_modmult'_r: forall n size i  y x c A M aenv tenv f, n <= size -> i < size
+      -> aenv x = size -> aenv y = size -> snd c < aenv (fst c) ->
+        fst c <> x -> y <> x -> fst c <> y -> Env.MapsTo y (Phi (aenv y)) tenv
+       -> Env.MapsTo x Nor tenv -> Env.MapsTo (fst c) Nor tenv -> right_mode_env aenv tenv f ->
+      get_r (exp_sem aenv (rz_modmult' y x n size c A M) f (y,i)) = get_r (f (y,i)).
+Proof.
+  Local Transparent rz_modmult'.
+  Local Opaque mod_adder_half clean_hbit.
+  induction n; intros. simpl. easy.
+  simpl.
+  destruct (get_cua
+       (exp_sem aenv (rz_modmult' y x n size c A M) f
+          (@pair var nat x (size - S n)))) eqn:eq1.
+  simpl.
+  rewrite clean_hbit_r with (tenv := tenv); try easy.
+  rewrite mod_adder_half_r with (tenv := tenv); try easy.
+  rewrite IHn with (tenv := tenv); try easy.
+  lia.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply rz_modmult'_well_typed; try easy. lia. lia. easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply mod_adder_half_well_typed; try easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply rz_modmult'_well_typed; try easy. lia. lia. easy.
+  rewrite IHn with (tenv := tenv); try easy.
+  lia.
+  Local Opaque rz_modmult'.
+Qed.
+
+Lemma rz_modmult_half_r : forall i size y x c A M aenv tenv f, i < size
+      -> aenv x = size -> aenv y = size -> snd c < aenv (fst c) ->
+        fst c <> x -> y <> x -> fst c <> y -> Env.MapsTo y Nor tenv
+       -> Env.MapsTo x Nor tenv -> Env.MapsTo (fst c) Nor tenv -> right_mode_env aenv tenv f ->
             get_r ((exp_sem aenv 
                  (rz_modmult_half y x (size) c A M) f) (y,i)) = get_r (f (y,i)).
 Proof.
   intros.
   unfold rz_modmult_half in *.
-  simpl.
-  unfold turn_rqft.
-  rewrite assign_seq_lt;try easy.
-Admitted.
+  assert ((exp_sem aenv ((QFT y; rz_modmult' y x size size c A M); RQFT y) f)
+      = exp_sem aenv (RQFT y) (exp_sem aenv (rz_modmult' y x size size c A M) (exp_sem aenv (QFT y) f))).
+  simpl. easy.
+  rewrite H10. clear H10.
+  rewrite rqft_r with (size := size) (tenv := Env.add y (Phi (aenv y)) tenv); try easy.
+  rewrite rz_modmult'_r with (tenv := Env.add y  (Phi (aenv y)) tenv); try easy.
+  rewrite qft_r with (size := size) (tenv := tenv); try easy.
+  apply Env.add_1. easy.
+  apply Env.add_2. easy. easy.
+  apply Env.add_2. iner_p. easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply qft_nor. easy. easy. easy.
+  apply Env.add_1. easy.
+  apply well_typed_right_mode_pexp with (tenv := (Env.add y (Phi (aenv y)) tenv)).
+  apply rz_modmult'_well_typed; try easy. lia.
+  apply Env.add_1. easy.
+  apply Env.add_2. easy. easy.
+  apply Env.add_2. iner_p. easy.
+  apply well_typed_right_mode_pexp with (tenv := tenv).
+  apply qft_nor. easy. easy. easy.
+Qed.
 
 Lemma rz_modmult_half_x_cus: forall size y c A M aenv f x,
             fst c <> x -> fst c <> y -> x <> y -> 
@@ -2592,10 +2806,11 @@ Proof.
   unfold put_cu.
   destruct (f (@pair var nat y n)) eqn:eq2.
   assert (get_r (exp_sem aenv (rz_modmult_half y x (S size) c A M) f (@pair var nat y n)) = r).
-  rewrite rz_modmult_half_r; try easy. rewrite eq2. unfold get_r. easy.
-  apply type_nor_mode with (aenv:=aenv) (env := tenv); try easy.
-  unfold nor_modes in H19.
-  specialize (H19 n H18). unfold nor_mode in H19.
+  rewrite rz_modmult_half_r with (tenv := tenv); try easy.
+  assert ( (@pair Env.key nat y n)  =  (@pair var nat y n)) by easy.
+  rewrite H20 in *.
+  rewrite eq2. unfold get_r. easy. lia.
+  unfold nor_modes in H19. apply H19 in H18. unfold nor_mode in H18.
   destruct (exp_sem aenv (rz_modmult_half y x (S size) c A M) f (@pair var nat y n)).
   unfold get_cua. unfold get_r in H20. subst. easy. lia. lia. lia. lia.
   rewrite put_cus_neq_2; try lia.
