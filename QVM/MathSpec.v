@@ -1156,3 +1156,236 @@ Proof.
 Qed.
 
 Local Opaque carry.
+
+
+
+Fixpoint natsum n (f : nat -> nat) :=
+  match n with
+  | 0 => 0
+  | S n' => f n' + natsum n' f
+  end.
+
+Lemma natsum_mod :
+  forall n f M,
+    M <> 0 ->
+    (natsum n f) mod M = natsum n (fun i => f i mod M) mod M.
+Proof.
+  induction n; intros. easy.
+  simpl. rewrite Nat.add_mod by easy. rewrite IHn by easy. 
+  rewrite <- Nat.add_mod by easy. rewrite Nat.add_mod_idemp_l by easy. easy.
+Qed.
+
+Lemma parity_decompose :
+  forall n, exists k, n = 2 * k \/ n = 2 * k + 1.
+Proof.
+  induction n. exists 0. lia. 
+  destruct IHn as [k [H | H]]. exists k. lia. exists (S k). lia.
+Qed.
+
+Lemma Natodd_Ntestbit_even :
+  forall k, Nat.odd (2 * k) = N.testbit (N.of_nat (2 * k)) 0.
+Proof.
+  induction k. easy.
+  replace (2 * (S k)) with (S (S (2 * k))) by lia.
+  rewrite Nat.odd_succ_succ. rewrite IHk.
+  do 2 rewrite N.bit0_odd.
+  replace (N.of_nat (S (S (2 * k)))) 
+   with (N.succ (N.succ (N.of_nat (2 * k)))) by lia.
+   rewrite N.odd_succ_succ. easy.
+Qed.
+
+Lemma Natodd_Ntestbit_odd :
+  forall k, Nat.odd (2 * k + 1) = N.testbit (N.of_nat (2 * k + 1)) 0.
+Proof.
+  induction k. easy.
+  replace (2 * (S k) + 1) with (S (S (2 * k + 1))) by lia.
+  rewrite Nat.odd_succ_succ. rewrite IHk.
+  do 2 rewrite N.bit0_odd.
+  replace (N.of_nat (S (S (2 * k + 1)))) 
+     with (N.succ (N.succ (N.of_nat (2 * k + 1)))) by lia.
+  rewrite N.odd_succ_succ. easy.
+Qed.
+
+Lemma nat_is_odd_testbit:
+  forall n, N.testbit (N.of_nat n) 0 = true -> Nat.odd n = true.
+Proof.
+  intros.
+  specialize (parity_decompose n) as [k [Hk | Hk]]; subst.
+  rewrite Natodd_Ntestbit_even.
+  assumption.
+  rewrite Natodd_Ntestbit_odd.
+  assumption.
+Qed.
+
+Lemma nat_is_even_testbit:
+  forall n, N.testbit (N.of_nat n) 0 = false -> Nat.even n = true.
+Proof.
+  intros.
+  assert (Nat.odd n = false).
+  specialize (parity_decompose n) as [k [Hk | Hk]]; subst.
+  rewrite Natodd_Ntestbit_even.
+  assumption.
+  rewrite Natodd_Ntestbit_odd.
+  assumption.
+  unfold Nat.odd in H0.
+  apply negb_false_iff in H0.
+  assumption.
+Qed.
+
+Lemma Nattestbit_Ntestbit :
+  forall m n,
+    Nat.testbit n m = N.testbit (N.of_nat n) (N.of_nat m).
+Proof.
+  induction m; intros. simpl. specialize (parity_decompose n) as [k [Hk | Hk]]; subst.
+   apply Natodd_Ntestbit_even. apply Natodd_Ntestbit_odd.
+  remember (N.of_nat (S m)) as NSm. simpl. rewrite IHm. rewrite Nnat.Nat2N.inj_div2.
+   rewrite <- N.testbit_succ_r_div2 by lia. subst. rewrite Nnat.Nat2N.inj_succ. easy.
+Qed.  
+
+Definition bindecomp n x := natsum n (fun i => Nat.b2n ((nat2fb x) i) * 2^i).
+
+Lemma bindecomp_spec :
+  forall n x,
+    bindecomp n x = x mod 2^n.
+Proof.
+  unfold bindecomp. induction n; intros. easy.
+  simpl. rewrite IHn. unfold nat2fb. rewrite N2fb_Ntestbit. rewrite <- Nattestbit_Ntestbit.
+  rewrite Nat.testbit_spec'. replace (2 ^ n + (2 ^ n + 0)) with ((2 ^ n) * 2) by lia. 
+  rewrite Nat.mod_mul_r. lia. apply Nat.pow_nonzero. easy. easy.
+Qed.
+
+Lemma bindecomp_seq :
+  forall n x, bindecomp (S n) x = bindecomp n x + Nat.b2n ((nat2fb x) n) * 2^n.
+Proof.
+ intros.
+ unfold bindecomp.
+ simpl. lia.
+Qed.
+
+Lemma f_num_nat2fb : forall n f, (forall i, i >= n -> f i = false) -> (exists x, f = nat2fb x).
+Proof.
+  intros.
+  specialize (f_num_0 f n) as eq1.
+  destruct eq1.
+  assert (f = cut_n f n).
+  unfold cut_n.
+  apply functional_extensionality; intro.
+  bdestruct (x0 <? n). easy.
+  rewrite H. easy. easy.
+  exists x. rewrite H1. easy.
+Qed.
+
+Lemma add_to_sem : forall n q r, 0 < q <= n ->
+                 (forall i , i >= n -> r i = false) ->
+                 (addto r q) = cut_n (fbrev n (sumfb false (fbrev n r) (nat2fb (2^(n-q))))) n.
+Proof.
+  intros. unfold cut_n,addto,fbrev.
+  apply functional_extensionality; intro.
+  bdestruct (x <? q).
+  bdestruct (x <? n).
+Admitted. 
+
+Lemma add_to_n_sem : forall n q r, 0 < q <= n ->
+                 (forall i , i >= n -> r i = false) ->
+                 (addto_n r q) = cut_n (fbrev n (sumfb false (fbrev n r) (nat2fb (2^n - 2^(n-q))))) n.
+Proof.
+  intros. unfold addto_n.
+  apply functional_extensionality; intro.
+  bdestruct (x <? q).
+  rewrite negatem_arith.
+  assert ((forall i : nat, i >= n -> fbrev q r i = false)).
+  intros. unfold fbrev.
+  bdestruct (i <? q). lia. rewrite H0. easy. lia.
+  specialize (f_num_nat2fb n (fbrev q r) H2) as eq1.
+  destruct eq1.
+  rewrite H3.
+  rewrite cut_n_mod.
+  assert (2 ^ q <> 0).
+  apply Nat.pow_nonzero. lia.
+  rewrite sumfb_correct_carry0.
+  assert ((2 ^ q - 1 - 0) = ((2 ^ q -1) mod 2^q)).
+  rewrite Nat.mod_small by lia.
+  lia. rewrite H5.
+  rewrite cut_n_fbrev_flip.
+  rewrite cut_n_mod.
+  rewrite <- Nat.add_mod by lia.
+  assert (forall i : nat, i >= n -> fbrev n r i = false).
+  intros. unfold fbrev.
+  bdestruct (i <? n). lia. rewrite H0. easy. lia.
+  specialize (f_num_nat2fb n (fbrev n r) H6) as eq2.
+  destruct eq2.
+  rewrite H7.
+  rewrite sumfb_correct_carry0.
+  rewrite cut_n_fbrev_flip.
+  rewrite cut_n_mod.
+  Check Nat.add_mod.
+Admitted. 
+
+Lemma sumfb_assoc : forall f g h n, 
+          (forall i, i >= n -> f i = false) -> (forall i, i >= n -> g i = false) 
+             -> (forall i, i >= n -> h i = false) ->
+         sumfb false f (sumfb false g h) = sumfb false (sumfb false f g) h. 
+Proof.
+  intros.
+  rewrite <- (cut_n_eq n f).
+  rewrite <- (cut_n_eq n g).
+  rewrite <- (cut_n_eq n h).
+  specialize (f_num_0 f n) as eq1.
+  specialize (f_num_0 g n) as eq2.
+  specialize (f_num_0 h n) as eq3.
+  destruct eq1. destruct eq2. destruct eq3.
+  rewrite H2. rewrite H3. rewrite H4.
+  repeat rewrite sumfb_correct_carry0.
+  rewrite plus_assoc. easy.
+  easy. easy. easy.
+Qed.
+
+
+Lemma highbit_means_lt : forall size X M, X < 2^ S size -> M < 2^size -> X < 2 * M 
+         -> fbrev (S size) (nat2fb ((X + 2^S size - M) mod 2^S size)) 0 = (X <? M).
+Proof.
+  intros. unfold fbrev.
+  bdestruct (0 <? size). simpl.
+  assert ((size - 0 - 0) = size) by lia. rewrite H3.
+  unfold nat2fb.
+  rewrite N2fb_Ntestbit.
+  bdestruct (X <? M).
+  apply Ntestbit_in_pow2n_pow2Sn.
+  assert ((2 ^ size + (2 ^ size + 0)) = 2^ S size). simpl. easy.
+  rewrite H5.
+  split.
+  assert (2^size <= (X + 2 ^ S size - M) mod 2 ^ S size).
+  assert ((X + 2 ^ S size - M) = 2^S size - (M - X)) by lia.
+  rewrite H6.
+  assert ((2 ^ S size - (M - X)) < 2 ^ S size) by lia.
+  rewrite Nat.mod_small by lia.
+  assert (M - X < 2^size) by lia. lia.
+  assert (N.of_nat(2 ^ size) <= N.of_nat ((X + 2 ^ S size - M) mod 2 ^ S size))%N by lia.
+  simpl in *. rewrite Nofnat_pow in H7. simpl in H7. lia.
+  assert ((X + 2 ^ S size - M) mod 2 ^ S size < 2 ^ S size).
+  apply Nat.mod_upper_bound. lia.
+  assert (N.of_nat ((X + 2 ^ S size - M) mod 2 ^ S size) < N.of_nat (2 ^ S size))%N by lia.
+  rewrite Nofnat_pow in H7. 
+  assert (N.of_nat (S size) = N.succ (N.of_nat size)) by lia.
+  rewrite H8 in H7. simpl in *. lia.
+  apply Ntestbit_lt_pow2n.
+  assert ((2 ^ size + (2 ^ size + 0)) = 2^ S size). simpl. easy.
+  rewrite H5. clear H5.
+  assert ((X + 2 ^ S size - M) mod 2 ^ S size < 2 ^ size).
+  assert ((X + 2 ^ S size - M) = 2 ^ S size + (X - M)) by lia.
+  rewrite H5. clear H5.
+  assert (2^ size <> 0).
+  apply Nat.pow_nonzero. lia.
+  rewrite Nat.add_mod by (simpl;lia).
+  rewrite Nat.mod_same by (simpl;lia).
+  rewrite plus_0_l.
+  rewrite Nat.mod_mod by (simpl;lia).
+  rewrite Nat.mod_small by (simpl;lia).
+  simpl. lia.
+  assert (N.of_nat ((X + 2 ^ S size - M) mod 2 ^ S size) < N.of_nat (2 ^ size))%N by lia.
+  rewrite Nofnat_pow in H6. 
+  simpl in *. lia. 
+  bdestruct (0 <? S size).
+  assert (size = 0) by lia. subst. simpl in *. lia.
+  lia.
+Qed.

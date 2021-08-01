@@ -232,7 +232,7 @@ Inductive exp_neu_l (x:var) : list sexp -> exp ->  list sexp -> Prop :=
       | x_neul : forall l p,  exp_neu_l x l (X p) l
       | sr_neul : forall l y n, exp_neu_l x l (SR n y) l
       | srr_neul : forall l y n, exp_neu_l x l (SRR n y) l
-      | cu_neul : forall l p e, exp_neu_l x l (CU p e) l
+      | cu_neul : forall l p e, exp_neu_l x [] e [] -> exp_neu_l x l (CU p e) l
       | hcnot_neul : forall l p1 p2, exp_neu_l x l (HCNOT p1 p2) l
       | rz_neul : forall l p q, exp_neu_l x l (RZ q p) l
       | rrz_neul : forall l p q, exp_neu_l x l (RRZ q p) l
@@ -1989,6 +1989,8 @@ Lemma neu_l_inv_exp :
 Proof.
   induction e; intros; simpl.
   1-8: inv H1 ; constructor.
+  apply IHe. unfold exp_neu_prop. intros.
+  simpl in H1. lia. easy.
   specialize (exp_neu_t_prop (Lshift x) x0 l l' H1 H0) as eq1.
   inv H1.
   destruct l'.
@@ -2383,6 +2385,32 @@ Definition phi_mode (f : posi -> val)  (x:posi) : Prop :=
 
 Definition phi_modes (f:posi -> val) (x:var) (n:nat) :=
       forall i, i < n -> phi_mode f (x,i).
+
+Lemma type_phi_mode :  forall f aenv env p, 
+    Env.MapsTo (fst p) (Phi (aenv (fst p))) env 
+          -> snd p < aenv (fst p) -> right_mode_env aenv env f -> phi_mode f p.
+Proof.
+ intros. unfold right_mode_env in *.
+ destruct p. simpl in H0. 
+ apply (H2 (Phi (aenv k))) in H1 ; try easy.
+ inv H1. unfold phi_mode.
+ rewrite <- H5. easy.
+Qed.
+
+
+Lemma type_phi_modes :  forall f aenv env x, 
+    Env.MapsTo x (Phi (aenv x)) env -> right_mode_env aenv env f -> phi_modes f x (aenv x).
+Proof.
+ intros. unfold right_mode_env in *.
+ unfold phi_modes. intros.
+ specialize (H1 (Phi (aenv x)) (x,i)).
+ simpl in H1. apply H1 in H2; try easy.
+ inv H2. unfold phi_mode.
+ assert ((@pair var nat x i) = (@pair Env.key nat x i)) by easy.
+ rewrite H2 in *.
+ rewrite <- H5. easy.
+Qed.
+
 
 Definition get_snd_r (f:posi -> val) (p:posi) :=
     match (f p) with qval rc r => r | _ => allfalse end.
@@ -7774,6 +7802,7 @@ Proof.
   apply pcu_nor. easy. constructor. easy.
   constructor. iner_p.
   unfold exp_neu. intros. constructor.
+  constructor.
   apply cnot_wt_nor. easy. easy. easy.
 Qed.
 
@@ -7789,3 +7818,237 @@ Proof.
   apply cnot_wt_nor. easy. easy. easy.
 Qed.
 
+
+Lemma sr_phi_mode : forall p1 x m f aenv, phi_mode f p1 -> phi_mode (exp_sem aenv (SR m x) f) p1.
+Proof.
+  intros. unfold phi_mode in *. 
+  destruct p1. simpl.
+  unfold sr_rotate.
+  bdestruct (x =? v). subst.
+  bdestruct (n <? S m).
+  rewrite sr_rotate'_lt_1 by lia.
+  destruct (f (v,n)) eqn:eq1.
+  easy. easy.
+  unfold times_rotate. easy.
+  rewrite sr_rotate'_ge. easy. simpl. lia.
+  rewrite sr_rotate'_irrelevant. easy. simpl. lia.
+Qed.
+
+Lemma sr_phi_modes : forall x y n m f aenv, phi_modes f x n -> phi_modes (exp_sem aenv (SR m y) f) x n.
+Proof.
+  intros. unfold phi_modes in *. 
+  intros.
+  apply H0 in H1.
+  apply sr_phi_mode. easy.
+Qed.
+
+Lemma srr_phi_mode : forall p1 x m f aenv, phi_mode f p1 -> phi_mode (exp_sem aenv (SRR m x) f) p1.
+Proof.
+  intros. unfold phi_mode in *. 
+  destruct p1. simpl.
+  unfold srr_rotate.
+  bdestruct (x =? v). subst.
+  bdestruct (n <? S m).
+  rewrite srr_rotate'_lt_1 by lia.
+  destruct (f (v,n)) eqn:eq1.
+  easy. easy.
+  unfold times_r_rotate. easy.
+  rewrite srr_rotate'_ge. easy. simpl. lia.
+  rewrite srr_rotate'_irrelevant. easy. simpl. lia.
+Qed.
+
+Lemma srr_phi_modes : forall x y n m f aenv, phi_modes f x n -> phi_modes (exp_sem aenv (SRR m y) f) x n.
+Proof.
+  intros. unfold phi_modes in *. 
+  intros.
+  apply H0 in H1.
+  apply srr_phi_mode. easy.
+Qed.
+
+Definition get_phi_r (v:val) := match v with qval r1 r2 => r2 | _ => allfalse end.
+
+Lemma sr_rotate_get_r : forall n size f x, 0 < n <= size -> get_r_qft (sr_rotate' f x n size) x
+                 = get_phi_r (times_rotate (f (x,0)) size).
+Proof.
+  induction n;intros; simpl. lia.
+  unfold get_r_qft.
+  bdestruct (n =? 0). subst. 
+  rewrite eupdate_index_eq.
+  unfold get_phi_r.
+  assert (size - 0=size) by lia. rewrite H1. easy.
+  rewrite eupdate_index_neq by iner_p.
+  unfold get_r_qft in IHn. rewrite IHn. easy. lia.
+Qed.
+
+Lemma sr_rotate'_phi : forall m n size f x, m <= n <= size -> phi_modes f x size
+             -> phi_modes ((sr_rotate' f x m n)) x size.
+Proof.
+  induction m; intros ; simpl; try easy.
+  unfold phi_modes in *. intros.
+  unfold phi_mode in *. 
+  bdestruct (m =? i). subst.
+  rewrite eupdate_index_eq.
+  unfold times_rotate.
+  apply H1 in H2. destruct (f (x,i)) eqn:eq1. lia. lia. lia.
+  rewrite eupdate_index_neq by iner_p.
+  apply IHm with (size := size). lia. easy. lia.
+Qed.
+
+Lemma srr_rotate_get_r : forall n size f x, 0 < n <= size -> get_r_qft (srr_rotate' f x n size) x
+                 = get_phi_r (times_r_rotate (f (x,0)) size).
+Proof.
+  induction n;intros; simpl. lia.
+  unfold get_r_qft.
+  bdestruct (n =? 0). subst. 
+  rewrite eupdate_index_eq.
+  unfold get_phi_r.
+  assert (size - 0=size) by lia. rewrite H1. easy.
+  rewrite eupdate_index_neq by iner_p.
+  unfold get_r_qft in IHn. rewrite IHn. easy. lia.
+Qed.
+
+Lemma srr_rotate'_phi : forall m n size f x, m <= n <= size -> phi_modes f x size
+             -> phi_modes ((srr_rotate' f x m n)) x size.
+Proof.
+  induction m; intros ; simpl; try easy.
+  unfold phi_modes in *. intros.
+  unfold phi_mode in *. 
+  bdestruct (m =? i). subst.
+  rewrite eupdate_index_eq.
+  unfold times_r_rotate.
+  apply H1 in H2. destruct (f (x,i)) eqn:eq1. lia. lia. lia.
+  rewrite eupdate_index_neq by iner_p.
+  apply IHm with (size := size). lia. easy. lia.
+Qed.
+
+Lemma get_r_qft_out : forall x c v f, fst c <> x -> get_r_qft (f[c |-> v]) x = get_r_qft f x.
+Proof.
+  intros. unfold get_r_qft.
+  destruct c.
+  rewrite eupdate_index_neq by iner_p. easy.
+Qed.
+
+Lemma env_eq_well_typed : forall e tenv tenv', Env.Equal tenv tenv' 
+                 -> well_typed_exp tenv e -> well_typed_exp tenv' e.
+Proof.
+ intros.
+ induction H1. constructor.
+ constructor.
+ eapply mapsto_equal. apply H1. easy.
+ apply x_had.
+ eapply mapsto_equal. apply H1. easy.
+ constructor. easy.
+ eapply mapsto_equal. apply H2. easy.
+ eapply mapsto_equal. apply H3. easy.
+ constructor. eapply mapsto_equal.
+ apply H1. easy.
+ apply rz_had. eapply mapsto_equal.
+ apply H1. easy.
+ constructor. eapply mapsto_equal.
+ apply H1. easy.
+ apply rrz_had. eapply mapsto_equal.
+ apply H1. easy.
+ apply sr_phi with (n := n). 
+ eapply mapsto_equal. apply H1. easy. easy.
+ apply srr_phi with (n:=n).
+ eapply mapsto_equal. apply H1. easy. easy.
+ constructor.
+ eapply mapsto_equal. apply H1. easy.
+ apply lshift_had.
+ eapply mapsto_equal. apply H1. easy.
+ constructor.
+ eapply mapsto_equal. apply H1. easy.
+ apply rshift_had.
+ eapply mapsto_equal. apply H1. easy.
+ constructor.
+ eapply mapsto_equal. apply H1. easy.
+ apply rev_had.
+ eapply mapsto_equal. apply H1. easy.
+Qed.
+
+Lemma env_eq_right_mode : forall tenv tenv' aenv f, Env.Equal tenv tenv'
+          -> right_mode_env aenv tenv f -> right_mode_env aenv tenv' f.
+Proof.
+  intros.
+  unfold right_mode_env in *. intros.
+  specialize (H1 t p H2).
+  apply mapsto_equal with (s2 := tenv) in H3. apply H1. easy.
+  apply EnvFacts.Equal_sym. easy.
+Qed.
+
+
+Lemma put_cu_get_r : forall c f b, nor_mode f c -> put_cu (f c) b = nval b (get_r (f c)).
+Proof.
+  intros.
+  unfold put_cu, get_r.
+  unfold nor_mode in H0.
+  destruct (f c). easy. lia. lia.
+Qed.
+
+Lemma nor_to_phi_modes: forall x size aenv f, aenv x >= size ->
+        nor_modes f x size -> phi_modes (exp_sem aenv (QFT x) f) x size.
+Proof.
+  intros.
+  unfold phi_modes, nor_modes in *.
+  intros.
+  simpl.
+  unfold turn_qft.
+  unfold phi_mode.
+  specialize (H1 i H2). unfold nor_mode in H1.
+  bdestruct (i <? aenv x).
+  rewrite assign_r_lt by lia.
+  unfold up_qft.
+  destruct (f (x,i)); try easy. lia.
+Qed.
+
+Lemma phi_to_nor_modes: forall x size aenv f, aenv x >= size ->
+        phi_modes f x size -> nor_modes (exp_sem aenv (RQFT x) f) x size.
+Proof.
+  intros.
+  unfold phi_modes, nor_modes in *.
+  intros.
+  simpl.
+  unfold turn_rqft.
+  unfold nor_mode.
+  specialize (H1 i H2). unfold nor_mode in H1.
+  bdestruct (i <? aenv x).
+  rewrite assign_seq_lt by lia. easy. lia.
+Qed.
+
+Lemma get_cus_qft_out : forall n x y f aenv,
+          x <> y -> (get_cus n (exp_sem aenv (QFT y) f) x) = get_cus n f x.
+Proof.
+  intros.
+  unfold get_cus.
+  apply functional_extensionality; intro.
+  bdestruct (x0 <? n).
+  rewrite efresh_exp_sem_irrelevant. easy.
+  constructor. unfold or_not_eq. left. easy. easy.
+Qed.
+
+Lemma get_cus_assign_seq_aux : forall n i size x f g, i < n <= size ->
+      get_cus size (assign_seq f x g n) x i = g i.
+Proof.
+  induction n; intros; unfold get_cus in *; simpl.
+  lia.
+  specialize (IHn i size x f g).
+  bdestruct (i <? size).
+  bdestruct (i =? n). subst.
+  rewrite eupdate_index_eq. easy.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn. easy. lia.
+  lia.
+Qed.
+
+Lemma get_cus_assign_seq : forall size x f g,
+      (get_cus size (assign_seq f x g size) x) = cut_n g size.
+Proof.
+  intros.
+  apply functional_extensionality; intro.
+  unfold cut_n.
+  bdestruct (x0 <? size).
+  rewrite get_cus_assign_seq_aux.
+  easy. lia.
+  unfold get_cus.
+  bdestruct (x0 <? size). lia. easy.
+Qed.
