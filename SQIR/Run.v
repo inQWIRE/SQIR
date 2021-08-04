@@ -65,12 +65,71 @@ Proof.
   intros.
   inversion H; subst.
   inversion H0; subst.
-  destruct (total_order_T r0 r1) as [[L | E] | G] .
-  assert (~ (P r0)). apply H7. lra.
-  assert ((P r1)). apply H2.
-(* bit tricky in current form *)
-Admitted.  
-  
+  destruct (total_order_T r0 r3) as [[L03 | E03] | G03]; try lra.
+  2: {
+    destruct (total_order_T r1 r4) as [[L14 | E14] | G14]; try lra.
+    remember ((r1 + r4) / 2)%R as r14.
+    assert (r1 < r14 < r4)%R by lra.
+    destruct (total_order_T r0 r14) as [[L | E] | G]; try lra.
+    + assert (P r14) by (apply H6; lra).
+      assert (~ P r14) by (apply H4; lra).
+      easy.
+    + remember ((r14 + r4) / 2)%R as r144.
+      assert (r14 < r144 < r4)%R by lra.
+      assert (P r144) by (apply H6; lra).
+      assert (~ P r144) by (apply H4; lra).
+      easy.
+    + assert (P r14) by (apply H6; lra).
+      assert (~ P r14) by (apply H3; lra).
+      easy.
+  }
+  destruct (total_order_T r0 r1) as [[L01 | E01] | G01].
+  - destruct (total_order_T r1 r3) as [[L13 | E13] | G13].
+    + remember ((r0 + r1) / 2)%R as r01.
+      assert (r0 < r01 < r1)%R by lra.
+      assert (P r01) by (apply H2; lra).
+      assert (~ P r01) by (apply H7; lra).
+      easy.
+    + remember ((r0 + r1) / 2)%R as r01.
+      assert (r0 < r01 < r1)%R by lra.
+      assert (P r01) by (apply H2; lra).
+      assert (~ P r01) by (apply H7; lra).
+      easy.
+    + remember ((r0 + r3) / 2)%R as r03.
+      assert (r0 < r03 < r3)%R by lra.
+      assert (P r03) by (apply H2; lra).
+      assert (~ P r03) by (apply H7; lra).
+      easy.
+  - destruct (total_order_T r3 r4) as [[L34 | E34] | G34]; try lra.
+    + remember ((r3 + r4) / 2)%R as r34.
+      assert (r3 < r34 < r4)%R by lra.
+      assert (P r34) by (apply H6; lra).
+      assert (~ P r34) by (apply H4; lra).
+      easy.
+    + remember ((r3 + r4) / 2)%R as r43.
+      assert (r4 < r43 < r3)%R by lra.
+      assert (P r43) by (apply H2; lra).
+      assert (~ P r43) by (apply H8; lra).
+      easy.
+  - destruct (total_order_T r0 r4) as [[L04 | E04] | G04].
+    + remember ((r0 + r1) / 2)%R as r10.
+      assert (r1 < r10 < r0)%R by lra.
+      assert (P r10) by (apply H6; lra).
+      assert (~ P r10) by (apply H3; lra).
+      easy.
+    + remember ((r0 + r1) / 2)%R as r10.
+      assert (r1 < r10 < r0)%R by lra.
+      assert (P r10) by (apply H6; lra).
+      assert (~ P r10) by (apply H3; lra).
+      easy.
+    + remember ((r0 + r3) / 2)%R as r03.
+      assert (r0 < r03 < r3)%R by lra.
+      assert (P r03) by (apply H2; lra).
+      assert (~ P r03) by (apply H8; lra).
+      easy.
+Qed.
+
+
 (* Generalizes the lemma below *)
 Lemma max_interval_size : forall k l,
     (k < length l)%nat ->
