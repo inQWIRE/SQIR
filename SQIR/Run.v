@@ -2,7 +2,12 @@ Require Import UnitarySem.
 Require Import VectorStates.
 (* Require Import Coq.Lists.Streams. *)
 
-(* Parameter rng : Stream R. *)
+(* Parameter rng : nat -> R. *)
+
+(* Somewhere need an axiom saying
+   a <> b
+   rng a ⟂ rng b *)
+
 
 (* MOVE TO: Matrix.v *)
 Fixpoint vec_to_list {n : nat} (v : Vector n) :=
@@ -28,19 +33,31 @@ Definition Cnorm2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
 Definition Cnorm (c : C) : R := √ (Cnorm2 c).
 Lemma Cnorm2_ge_0 : forall c, 0 <= Cnorm2 c.
 Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_0. Qed.
-  
+
+(* r ∈ [0,1) *)
 Fixpoint sample (l : list R) (r : R) : nat :=
   match l with
-  | nil    => 0
+  | nil    => 0 (* error case *)
   | x :: l' => if Rle_lt_dec r x then 0 else S (sample l' (r-x))
   end.
 
 (* Returns a nat, could also return the basis vector *)
 (* Could provide input explicitly instead of assuming all zero *)
+(* rnd is assumed to be a random input in [0,1] *)
 Definition run_ucom_all {dim} (c : base_ucom dim) (rnd : R) : nat :=
   let v := (uc_eval c) × basis_vector (2^dim) 0 in
   let l := map Cnorm2 (vec_to_list v) in
   sample l rnd.
+
+(* Example : *)
+(* v = [.2, .3, .4, .1] *)
+(* 1st outcome = [0,.2) *)
+(* 2nd outcome = [.2,.5) *)
+(* 3rd outcome = [.5,.9) *)
+(* 4th outcome = [.9,1) *)
+
+(* (run_ucom_all .6 = 2 (third element) *)
+(* (run_ucom_all .8 = 2 (third element) *)
 
 Definition pr_run_outcome {dim} (c : base_ucom dim) (n : nat) : R :=
   let v := (uc_eval c) × basis_vector (2^dim) 0 in
@@ -165,7 +182,7 @@ Proof.
 Qed.      
   
 (* Need to connect run-based definition to eay one. *)
-Lemma pr_run_outcome_eq : forall dim (c : base_ucom dim) n,
+Lemma pr_run_outcome_eq_aux : forall dim (c : base_ucom dim) n,
   (n < 2^dim)%nat ->
   max_interval (fun x : R => run_ucom_all c x = n) (pr_run_outcome c n).
 Proof.
@@ -183,16 +200,91 @@ Proof.
 Qed.    
 
 (* I prefer this definition, but it needs the uniqueness proof above. *)
-Lemma pr_run_outcome_eq' : forall dim (c : base_ucom dim) n r,
+Lemma pr_run_outcome_eq : forall dim (c : base_ucom dim) n r,
   (n < 2^dim)%nat ->
   pr_run_outcome c n = r <-> max_interval (fun x => run_ucom_all c x = n) r.
 Proof.
   split; intros.
   - rewrite <- H0.
-    apply pr_run_outcome_eq.
+    apply pr_run_outcome_eq_aux.
     easy.
   - eapply max_interval_unique.
-    apply pr_run_outcome_eq; trivial.
+    apply pr_run_outcome_eq_aux; trivial.
     easy.
 Qed.
-    
+
+(** ** Generalizing to measuring the first n qubits  *)
+
+(* Uniform sampling from 0 to n *)
+Definition uniform (n : nat) (rnd : R) :=
+  sample (repeat (1/ INR n)%R n). 
+
+(* TODO: Need a notion of total interval based on max_interval above 
+   for describing the probability of choosing a valid `a` *)
+
+
+Fixpoint sum_width (l : list R) (width segs : nat) : list R :=
+  match segs with
+  | 0 => []
+  | S segs' => fold_left Rplus (firstn width l) 0 :: sum_width (skipn width l) width segs'
+  end.
+
+Eval simpl in (sum_width (1 :: 3 :: 4 :: 6 :: 2 :: 1 :: 5 :: 2 :: 1 :: 5 :: 2 :: 8 :: []) 3 4). 
+
+(* Feel free to replace sum_width with more elegant algebraic function *)
+Definition run_ucom_part (qubits anc : nat) (c : base_ucom (qubits+anc)) (rnd : R) : nat :=
+  let v := (uc_eval c) × basis_vector (2^(qubits+anc)) 0 in
+  let l := map Cnorm2 (vec_to_list v) in
+  let l' := sum_width l (2^qubits) (2^anc) in
+  sample l' rnd.
+
+Definition pr_run_part_outcome (qubits anc : nat) (c : base_ucom (qubits + anc)) (n : nat) : R := 
+  let v := uc_eval c × basis_vector (2 ^ (qubits + anc)) 0 in
+  let l := map Cnorm2 (vec_to_list v) in
+  let l' := sum_width l (2^qubits) (2^anc) in
+  nth n l' 0.
+
+(* TODO: Fix up. Should also follow pretty easily from max_interval_size 
+Lemma pr_run_part_outcome_eq_aux : forall qubits anc (c : base_ucom (qubits + anc)) n,
+  (n < 2^(qubits + anc))%nat ->
+  max_interval (fun x : R => run_ucom_part qubits anc c x = n) (pr_run_part_outcome qubits anc c n).
+Proof.
+  intros.
+  apply max_interval_size.
+  rewrite map_length, vec_to_list_length; easy.
+  remember (vec_to_list (uc_eval c × basis_vector (2 ^ (qubits + anc)) 0)) as l. clear Heql.
+  apply Forall_nth; intros.
+  gen l. induction i; intros.
+  - destruct l. simpl in H0; lia.
+    simpl. apply Cnorm2_ge_0.
+  - destruct l; simpl in H0; try lia.
+    apply IHi.
+    lia.
+Qed.    
+
+Lemma pr_run_part_outcome_eq : forall qubits anc (c : base_ucom (qubits + anc)) n r,
+  (n < 2^(qubits+anc))%nat ->
+  pr_run_part_outcome qubits anc c n = r <-> max_interval (fun x => run_ucom_part qubits anc c x = n) r.
+Proof.
+  split; intros.
+  - rewrite <- H0.
+    apply pr_run_part_outcome_eq_aux.
+    easy.
+  - eapply max_interval_unique.
+    apply pr_run_outcome_eq_aux; trivial.
+    easy.
+Qed.
+*)
+
+(* Original axiom *)
+(* Axiom #1 - we will want some axiom that says that run_ucom_part returns
+   outputs in accordance with the distribution of uc_eval.
+   
+   Below is an attempt, but I don't think it's what we want for shor_OF_correct. -KH *)
+(*
+Axiom run_circuit_correct : forall m n (u : ucom U) x,
+  let v := @Mmult _ _ 1 (uc_eval (m + n) u) (basis_vector (2 ^ (m + n)) 0) in
+  cond_prob_value_sats_pred 
+      (2 ^ m) (fun x0 => x0 =? x) (fun x0 => x0 =? run_circuit (m + n) m u)
+  = prob_meas_outcome m n v x.
+ *)

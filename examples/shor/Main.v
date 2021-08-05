@@ -21,22 +21,6 @@ Definition shor_circuit (a N : nat) := AltShor.shor_circuit a N.
 (* Continued fraction expansion *)
 Definition cont_frac_exp (a N o : nat) := Shor.OF_post a N o (n N).
 
-(* (run_circuit dim n circ) will produce the result of running circ on the dim-qubit 
-   zero state and measuring the first n qubits.
-
-   run_circuit will be extracted to a function that calls the ddsim simulator
-   and chooses a measurement result based on 10000 trials. We use multiple 
-   trials to cheat a little, so we can "re-run" the circuit without additional 
-   simulation.
-
-   TODO: we should have some correctness axiom for run_circuit that says that
-   it behaves identically to our uc_eval function.  *)
-(* RNR: This would be an axiom? Why is that helpful, if run_circuit isn't verified?
-   
-   Also 'We use multiple trials to cheat a little' is unclear. *)
-
-Parameter run_circuit : nat -> nat -> ucom U -> nat.
-
 (* given r = ord(a,N), try to find a factor of N (based on Shor.Factor_post) *)
 Definition factor (a N r : nat) := 
   let cand1 := Nat.gcd (a ^ (r / 2) - 1) N in
@@ -60,7 +44,7 @@ Definition end_to_end_shors a N :=
   let n := n N in
   let k := k N in
   let circ := shor_circuit a N in
-  let x := run_circuit (n + k) n circ in
+  let x := run_ucom_part n k circ rnd in
   let r := cont_frac_exp a N x in
   factor a N r.
 
@@ -84,21 +68,11 @@ Definition prob_value_sats_pred Nmax f : R :=
 (* The probability that a number < Nmax satisfies predicate f, given that
    it satisfies predicate g (i.e. the # of values that satisfy f & g divided 
    by the # of values that satisfy g) *)
-Definition cond_prob_value_sats_pred Nmax f g : R :=
+Definition cond_prob_value_sats_pred Nmax (f g : nat -> bool) : R :=
   prob_value_sats_pred Nmax (fun x => f x && g x) / prob_value_sats_pred Nmax g.
 
 
 (** Correctness properties for Shor's **)
-
-(* Axiom #1 - we will want some axiom that says that run_circuit returns
-   outputs in accordance with the distribution of uc_eval.
-   
-   Below is an attempt, but I don't think it's what we want for shor_OF_correct. -KH *)
-Axiom run_circuit_correct : forall m n (u : ucom U) x,
-  let v := @Mmult _ _ 1 (uc_eval (m + n) u) (basis_vector (2 ^ (m + n)) 0) in
-  cond_prob_value_sats_pred 
-      (2 ^ m) (fun x0 => x0 =? x) (fun x0 => x0 =? run_circuit (m + n) m u)
-    = prob_meas_outcome m n v x.
 
 (* Fact #1 - the probability that run_circuit returns ord(a,N) is at least 
    κ / (Nat.log2 N)^4 where κ is about 0.055 (see Shor.v).
@@ -316,4 +290,7 @@ Admitted.
 
 Given a < N s.t. a and N are coprime, there is at least a 1/2 * κ / (Nat.log2 N)^4
 probability that Shor's algorithm returns a non-trivial factor of N. *)
+
+Lemma end_to_end_shors_probability :
+  
 
