@@ -74,14 +74,16 @@ Proof.
   simpl. rewrite IHu1, IHu2. easy.
 Qed.
 
-(* Can be extended to C4X, CSWAP. But it is not used in Shor's so ignored here. *)
 Fixpoint bcgcount (c : bccom) : nat :=
   match c with
   | bcseq c1 c2 => (bcgcount c1) + (bcgcount c2)
   | bccont n (bcskip) => 1
+  | bccont n1 (bccont n2 (bcskip)) => 5
+  | bccont n (bcswap q1 q2) => 1
   | bccont n (bcx q) => 1
   | bccont n1 (bccont n2 (bcx q)) => 1
   | bccont n1 (bccont n2 (bccont n3 (bcx q))) => 1
+  | bccont n1 (bccont n2 (bccont n3 (bccont n4 (bcx q)))) => 1
   | bccont _ c => gcCC4X * (bcgcount c)
   | _ => 1
   end.
@@ -96,7 +98,7 @@ Proof.
   }
   induction c; intros; simpl; try lia.
   remember (bcgcount c) as f.
-  do 2 (destruct c; try easy; try (simpl in *; nia)).
+  do 3 (destruct c; try easy; try (simpl in *; nia)).
 Qed.
 
 Lemma ugcount_leq_bcgcount :
@@ -129,9 +131,19 @@ Proof.
        nia.
        Local Opaque gcCC4X. simpl. lia. Local Transparent gcCC4X.
   }
-  replace (bc2ucom (bccont n (bccont n0 (bccont n1 (bccont n2 c))))) with (control n (bc2ucom (bccont n0 (bccont n1 (bccont n2 c))))) by easy.
-  specialize (ugcount_control (bc2ucom (bccont n0 (bccont n1 (bccont n2 c)))) n) as G.
-  replace (bcgcount (bccont n (bccont n0 (bccont n1 (bccont n2 c))))) with (gcCC4X * bcgcount (bccont n0 (bccont n1 (bccont n2 c)))).
+  destruct c.
+  Local Opaque gcCC4X. simpl in *. Local Transparent gcCC4X. unfold gcCC4X. nia.
+  Local Opaque gcCC4X. simpl in *. Local Transparent gcCC4X. unfold gcCC4X. nia.
+  Local Opaque gcCC4X. simpl in *. Local Transparent gcCC4X. unfold gcCC4X. nia.
+  2: { replace (bc2ucom (bccont n (bccont n0 (bccont n1 (bccont n2 (c1; c2)%bccom))))) with (control n (bc2ucom (bccont n0 (bccont n1 (bccont n2 (c1; c2)%bccom))))) by easy.
+       specialize (ugcount_control (bc2ucom (bccont n0 (bccont n1 (bccont n2 (c1; c2)%bccom)))) n) as G.
+       replace (bcgcount (bccont n (bccont n0 (bccont n1 (bccont n2 (c1; c2)%bccom))))) with (gcCC4X * bcgcount (bccont n0 (bccont n1 (bccont n2 (c1; c2)%bccom)))).
+       nia.
+       Local Opaque gcCC4X. simpl. lia. Local Transparent gcCC4X.
+  }
+  replace (bc2ucom (bccont n (bccont n0 (bccont n1 (bccont n2 (bccont n3 c)))))) with (control n (bc2ucom (bccont n0 (bccont n1 (bccont n2 (bccont n3 c)))))) by easy.
+  specialize (ugcount_control (bc2ucom (bccont n0 (bccont n1 (bccont n2 (bccont n3 c))))) n) as G.
+  replace (bcgcount (bccont n (bccont n0 (bccont n1 (bccont n2 (bccont n3 c)))))) with (gcCC4X * bcgcount (bccont n0 (bccont n1 (bccont n2 (bccont n3 c))))).
   nia.
   Local Opaque gcCC4X. easy.
 Qed.
@@ -184,13 +196,13 @@ Proof.
     destruct (bcelim c) eqn:E;
       try (simpl; rewrite E; simpl;
            remember (bcgcount c) as f;
-           do 10 (destruct c; simpl; try nia; try easy)).
+           do 10 (destruct c; simpl; try (inversion E); try nia)).
     + simpl. rewrite E. simpl in *.
       remember (bcgcount b) as fb.
       remember (bcgcount c) as fc.
-      do 5 (try (destruct b); try (destruct c); try easy; try (simpl in *; nia)).
+      do 5 (try (destruct b); try (destruct c); try (inversion E); try (simpl in *; nia)).
     + simpl. rewrite E. simpl in *.
-      do 4 (destruct c; try easy; try (simpl in *; nia)).
+      do 4 (destruct c; try (inversion E); try (simpl in *; nia)).
   - simpl.
     destruct (bcelim c1) eqn:E1;
       destruct (bcelim c2) eqn:E2;
@@ -201,7 +213,7 @@ Lemma bcgcount_bcinv :
   forall c, bcgcount (bcinv c) = bcgcount c.
 Proof.
   induction c; simpl; try lia.
-  do 3 (destruct c; try easy; try (simpl in *; nia)).
+  do 4 (destruct c; try easy; try (simpl in *; nia)).
 Qed.
 
 Local Opaque gcCC4X.
@@ -210,6 +222,15 @@ Lemma bcgcount_map_bccom :
 Proof.
   induction c; intros; try (simpl; lia).
   - simpl. rewrite IHc. remember (bcgcount c) as C.
-    do 3 (destruct c; simpl in *; try easy).
+    do 4 (destruct c; simpl in *; try easy).
   - simpl. rewrite IHc1, IHc2. easy.
+Qed.
+
+Lemma bcgcount_bygatectrl_map_bccom :
+  forall c f q, bcgcount (bygatectrl q (map_bccom f c)) = bcgcount (bygatectrl q c).
+Proof.
+  intros. induction c; try (simpl; lia).
+  simpl.
+  rewrite bcgcount_map_bccom. remember (bcgcount c) as C.
+  do 4 (destruct c; simpl in *; try lia).
 Qed.
