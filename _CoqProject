@@ -17,3 +17,4 @@ SQIR/VectorStates.v
 SQIR/UnitaryOps.v
 SQIR/Equivalences.v
 SQIR/RCIR.v
+SQIR/Run.v

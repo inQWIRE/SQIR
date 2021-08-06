@@ -30,11 +30,23 @@ Proof. intros. apply vec_to_list_length_aux. Qed.
   
 (* MOVE TO: Complex.v *)
 Definition Cnorm2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
-Definition Cnorm (c : C) : R := √ (Cnorm2 c).
+Definition Cnorm (c : C) : R := √ (Cnorm2 c). (* <- already in Complex.v - called Cmod. -KH *)
 Lemma Cnorm2_ge_0 : forall c, 0 <= Cnorm2 c.
 Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_0. Qed.
 
-(* r ∈ [0,1) *)
+
+(* Choose an index in the list l based on random number r ∈ [0,1).
+   
+   Example: Say that the input list is l = [.2, .3, .4, .1] (which might correspond
+   to the probabilities of measuring the outcomes 00, 01, 10, 11). Then this
+   function will return:
+    * 0 for r ∈ [0, .2)
+    * 1 for r ∈ [.2, .5)
+    * 2 for r ∈ [.5, .9)
+    * 3 for r ∈ [.9, 1) 
+
+   The probability of getting a particular outcome is the size of this interval.
+   (See max_interval below.) *)
 Fixpoint sample (l : list R) (r : R) : nat :=
   match l with
   | nil    => 0 (* error case *)
@@ -48,16 +60,6 @@ Definition run_ucom_all {dim} (c : base_ucom dim) (rnd : R) : nat :=
   let v := (uc_eval c) × basis_vector (2^dim) 0 in
   let l := map Cnorm2 (vec_to_list v) in
   sample l rnd.
-
-(* Example : *)
-(* v = [.2, .3, .4, .1] *)
-(* 1st outcome = [0,.2) *)
-(* 2nd outcome = [.2,.5) *)
-(* 3rd outcome = [.5,.9) *)
-(* 4th outcome = [.9,1) *)
-
-(* (run_ucom_all .6 = 2 (third element) *)
-(* (run_ucom_all .8 = 2 (third element) *)
 
 Definition pr_run_outcome {dim} (c : base_ucom dim) (n : nat) : R :=
   let v := (uc_eval c) × basis_vector (2^dim) 0 in
