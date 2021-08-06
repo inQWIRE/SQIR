@@ -224,6 +224,49 @@ Definition uniform (n : nat) (rnd : R) :=
 (* TODO: Need a notion of total interval based on max_interval above 
    for describing the probability of choosing a valid `a` *)
 
+(* Using a single predicate and dividers: *)
+Inductive max_interval_disjoint (P : R -> Prop) (rl rr : R) : R -> Prop :=
+| MaxConsec : forall r1 r2, rl <= r1 <= r2 /\ r2 <= rr ->
+            (forall r, r1 < r < r2 -> P r) ->               
+            (forall r, rl <= r < r1 -> ~ P r) ->
+            (forall r, r2 < r <= rr -> ~ P r) ->
+            max_interval_disjoint P rl rr (r2 - r1)%R
+| MaxSplit : forall rm r1 r2, rl < rm < rr -> 
+                   ~ P rm ->
+                   max_interval_disjoint P rl rm r1 ->
+                   max_interval_disjoint P rm rr r2 ->
+                   max_interval_disjoint P rl rr (r1 + r2).
+
+(* Using a list of predicates *)
+(* Doesn't imply disjointness. *)
+Inductive max_interval_sum : list (R -> Prop) -> R -> Prop :=
+| MaxEmpty : max_interval_sum [] 0 (* could remove this case to simplify *)
+| MaxSing : forall P r, max_interval P r -> max_interval_sum [P] r 
+| MaxMult : forall L P r1 r2, max_interval P r1 -> max_interval_sum L r2 ->
+                         max_interval_sum (P :: L) (r1 + r2).
+
+(* TODO: Uniqueness proofs for max_interval_disjoint and max_interval_sum *)
+Lemma max_interval_disjoint_unique : forall rl rr r1 r2 P,
+    max_interval_disjoint P rl rr r1 ->
+    max_interval_disjoint P rl rr r2 ->
+    r1 = r2.
+Admitted.
+
+Lemma max_interval_sum_unique : forall L r1 r2,
+    max_interval_sum L r1 ->
+    max_interval_sum L r2 ->
+    r1 = r2.
+Proof.
+  induction L; intros. inversion H. inversion H0. easy.
+  inversion H; inversion H0; subst.
+  - apply max_interval_unique with a; easy.
+  - inversion H9. rewrite Rplus_0_r.
+    apply max_interval_unique with a; easy.
+  - inversion H5. rewrite Rplus_0_r.
+    apply max_interval_unique with a; easy.
+  - rewrite (max_interval_unique r0 r4 a); trivial.
+    rewrite (IHL r3 r5); easy.
+Qed.
 
 Fixpoint sum_width (l : list R) (width segs : nat) : list R :=
   match segs with

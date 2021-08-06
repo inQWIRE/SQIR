@@ -2,6 +2,7 @@ Require Import Shor.
 Require Import euler.Primes.
 Require Import AltGateSet.
 Require Import AltShor.
+Require Import Run.
 
 (* The definitions and proofs in this file are largely wrappers around definitions
    and proofs in other files. At some point, I might clean up the code in the 
@@ -41,11 +42,16 @@ Definition factor (a N r : nat) :=
   1/polylog(N), as shown in shor_OF_correct. The probability that factor
   returns a factor of N (given the correct order) is at least 1/2, as shown
   in shor_factor_correct. *)
-Definition end_to_end_shors a N :=
+
+Print U.
+Print ucom.
+Search ucom base_ucom.
+
+Definition end_to_end_shors a N rnd :=
   let n := n N in
   let k := k N in
   let circ := shor_circuit a N in
-  let x := run_ucom_part n k circ rnd in
+  let x := run_ucom_part n k (to_base_ucom (n+k) circ) rnd in
   let r := cont_frac_exp a N x in
   factor a N r.
 
@@ -81,16 +87,19 @@ Definition cond_prob_value_sats_pred Nmax (f g : nat -> bool) : R :=
    This is awkward because I describe "the probability that run_circuit +
    cont_frac_exp returns ord(a,N)" using cond_prob_value_sats_pred. I'm pretty
    such that the axiom above won't let me prove this... suggestions? -KH *)
+(* TODO: Revise this. *)
+(*
 Lemma shor_OF_correct : forall (a N : nat),
   (0 < a < N)%nat ->
   (Nat.gcd a N = 1)%nat ->
   cond_prob_value_sats_pred 
       (2 ^ n N)
       (fun x => x =? ord a N)
-      (fun x => x =? cont_frac_exp a N (run_circuit (n N + k N) (n N) (shor_circuit a N)))
+      (fun x => x =? cont_frac_exp a N (run_ucom_part (n N + k N) (n N) (shor_circuit a N)))
     >= κ / INR (Nat.log2 N)^4.
 Proof.
 Admitted.
+ *)
 
 (* Fact #2 - Assuming that N has the form (p ^ k * q) for prime p > 2, k > 0, 
    q > 2, and p ^ k coprime to q...
@@ -117,12 +126,13 @@ Require Import Wf.
 
 Local Open Scope nat_scope.
 
-(*
+(* TODO: Develop this, use Prime as main definition of primality.
+   (Prime shouldn't be defined in terms of a primality checker.
 Definition divides (a b : nat) := exists n, a * n = b. 
 
 Infix "|" := divides (at level 30).
 
-Definition Prime (p : nat) := p <> 0 /\ forall a, a | p -> a = 1 \/ a = p.
+Definition Prime (p : nat) := p > 1 /\ forall a, a | p -> a = 1 \/ a = p.
 
 Definition Composite (n : nat) := exists a b, a > 1 /\ b > 1 /\ a * b = n.
  *)
@@ -211,15 +221,18 @@ Qed.
 End Primes.
 
 (* Can replace with conditions above using simplify_primality. *)
-Lemma shor_factor_correct : forall p k q N a,
-  (k <> 0)%nat -> prime p -> (p > 2)%nat -> (q > 2)%nat -> coprime (p ^ k) q ->
-  N = (p ^ k * q)%nat ->
+Lemma shor_factor_correct : forall (* p k q *) N a,
+(*  (k <> 0)%nat -> prime p -> (p > 2)%nat -> (q > 2)%nat -> coprime (p ^ k) q ->
+  N = (p ^ k * q)%nat -> *)
+  ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
   coprime a N -> 
   let is_a_factor x := nontrivial_factor (a ^ k1 a N) N || 
                          nontrivial_factor (a ^ k2 a N) N in
   cond_prob_value_sats_pred N is_a_factor (fun a => Nat.gcd a N =? 1) >= 1/2.
 Proof.
   intros.
+  apply simplify_primality in H; trivial. clear H0 H1.
+  destruct H as [p [k [q [H0 [H1 [H3 [H4 [H5 H6]]]]]]]].
   unfold cond_prob_value_sats_pred.
   apply Rle_ge.
   apply Generic_proof.Rdiv_ge_mult_pos.
