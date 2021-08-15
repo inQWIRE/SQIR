@@ -1629,6 +1629,27 @@ Proof.
   apply nor_mode_up. destruct c. iner_p. apply H3. easy.
 Qed.
 
+Lemma negations_aux_1 :
+  forall n x c v S v' r aenv,
+    0 < n -> fst c <> x ->
+    v < 2^n ->
+    v' = nval false r -> nor_modes S x n ->
+    get_cus n S x = nat2fb v -> S c = v' ->
+    exp_sem aenv (X c; negator0 n x) S = (reg_push (S[c |-> nval true r]) x (2^n - 1 - v) n).
+Proof.
+  intros; subst. simpl.
+  rewrite H5. unfold exchange. simpl.
+  assert (reg_push (S [c |-> nval true r]) x v n = (S [c |-> nval true r])).
+  apply put_cus_same.
+  unfold nor_modes. intros. nor_mode_simpl. destruct c. iner_p. apply H3. easy.
+  rewrite get_cus_up; try easy.
+  rewrite <- H2.
+  rewrite (negator0_sem n) ; try easy.
+  unfold reg_push.
+  rewrite put_cus_twice_eq. easy.
+  unfold nor_modes. intros. nor_mode_simpl. destruct c. iner_p. apply H3. easy.
+Qed.
+
 Lemma reg_push_update_flip : forall n f g x c v, fst c <> x 
          -> reg_push (f[c |-> v]) x g n = (reg_push f x g n)[c |-> v].
 Proof.
@@ -1853,6 +1874,109 @@ Proof.
   unfold nor_modes. intros.
   apply nor_mode_cus_eq. apply nor_mode_up; iner_p.
   apply V3. easy.
+Qed.
+
+Lemma comparator01_correct_1 :
+  forall tenv aenv n x y c1 c2 v1 v2 f f',
+    0 < n ->  n = aenv x -> n = aenv y -> snd c1 < aenv (fst c1) -> snd c2 < aenv (fst c2) ->
+    v1 < 2^n -> v2 < 2^n -> no_equal x y c1 c2 -> Env.MapsTo (fst c2) Nor tenv -> Env.MapsTo (fst c1) Nor tenv -> 
+    Env.MapsTo x Nor tenv -> Env.MapsTo y Nor tenv -> right_mode_env aenv tenv f -> right_mode_env aenv tenv f' ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f -> 
+    get_cus n f x = nat2fb v1 -> get_cus n f y = nat2fb v2 -> get_cua (f c1) = false -> get_cua (f c2) = false ->
+    get_r (f c2) = get_r (f' c2) ->
+    exp_sem aenv (comparator01 n x y c1 c2) f = f[c2 |-> put_cu (f' c2) (¬(v1 <=? v2))].
+Proof.
+  intros.
+  unfold comparator01. remember ((X c1; negator0 n x)) as negations. simpl. rewrite Heqnegations in *.
+  unfold no_equal in *.
+  destruct H6 as [X1 [X2 [X3 [X4 [X5 X6]]]]].
+  assert (nor_mode f c1) as V1. 
+  apply type_nor_mode with (aenv := aenv) (env := tenv); try easy.
+  assert (nor_mode f c2) as V2. 
+  apply type_nor_mode with (aenv := aenv) (env := tenv); try easy.
+  assert (nor_modes f x (aenv x)) as V3.
+  apply type_nor_modes with (aenv := aenv) (env := tenv); try easy.
+  rewrite <- H0 in V3.
+  assert (nor_modes f y (aenv y)) as V4.
+  apply type_nor_modes with (aenv := aenv) (env := tenv); try easy.
+  rewrite <- H1 in V4.
+  rewrite negations_aux_1 with (v := v1) (v' := f c1) (r := get_r (f c1)); try easy.
+  rewrite highb01_correct with (tenv := tenv) (aenv := aenv); try easy.
+  unfold reg_push.
+  rewrite put_cus_neq_1 by iner_p.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite put_cus_neq_1 by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_mod.
+  rewrite Nat.mod_small by lia.
+  unfold get_cua.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite get_cus_up by iner_p.
+  rewrite H16.
+  rewrite majb_carry_s_eq.
+  specialize (carry_leb_equiv (n+1) v1 v2) as eq2.
+  assert (n+1 -1 = n) by lia.
+  rewrite H6 in eq2. clear H6.
+  assert ((n + 1) = S n) by lia.
+  rewrite H6 in eq2. clear H6. 
+  rewrite Nat.pow_succ_r in eq2.
+  assert (2 * 2 ^ n - 1 - v1 = 2 ^ n - 1 - v1 + 2 ^ n) by lia.
+  rewrite H6 in eq2. rewrite eq2.
+  bt_simpl.
+  erewrite inv_pexp_reverse. easy.
+  apply pe_seq with (env' := tenv).
+  constructor. constructor. easy.
+  apply negator0_wt. easy.
+  apply right_mode_exp_up_same_1; try easy.
+  apply H12 in H7. unfold nor_mode. inv H7. easy. easy.
+  apply qft_uniform_put_cu_same_2; try easy.
+  apply qft_gt_put_cu_same_1; try easy.
+  apply H12 in H7. unfold nor_mode. inv H7. easy. easy.
+  rewrite negations_aux_1 with (v := v1) (v' := f c1) (r := get_r (f c1)); try easy.
+  rewrite eupdate_twice_neq by iner_p.
+  rewrite reg_push_update_flip by iner_p.
+  unfold reg_push.
+  assert (nor_mode f' c2).
+  apply H12 in H7. unfold nor_mode. inv H7. easy. easy.
+  unfold nor_mode,put_cu,get_r in *.
+  destruct (f c2). destruct (f' c2). subst. easy. easy. easy. easy. easy. iner_p.
+  unfold nor_mode,get_r,get_cua in *.
+  destruct (f c1). subst. easy. easy. easy.  
+  unfold nor_modes. intros. nor_mode_simpl. apply V3. easy. 
+  rewrite get_cus_up by iner_p. easy.
+  rewrite eupdate_index_neq by iner_p. easy.
+  1-7:lia. 
+  unfold nor_modes. intros. nor_mode_simpl. apply V3. easy. 
+  unfold reg_push.
+  apply right_mode_exp_put_cus_same.
+  assert (nval true (get_r (f c1)) = put_cu (f c1) true).
+  unfold nor_mode,get_r,put_cu in *.
+  destruct (f c1). subst. easy. easy. easy.
+  rewrite H6.  
+  apply right_mode_exp_up_same_1; try easy.
+  apply qft_uniform_put_cus_same.
+  assert (nval true (get_r (f c1)) = put_cu (f c1) true).
+  unfold nor_mode,get_r,put_cu in *.
+  destruct (f c1). subst. easy. easy. easy.
+  rewrite H6.  
+  apply qft_uniform_put_cu_same; try easy.
+  assert (nval true (get_r (f c1)) = put_cu (f c1) true).
+  unfold nor_mode,get_r,put_cu in *.
+  destruct (f c1). subst. easy. easy. easy.
+  rewrite H6.  
+  apply right_mode_exp_up_same_1; try easy.
+  apply qft_gt_put_cus_same.
+  assert (nval true (get_r (f c1)) = put_cu (f c1) true).
+  unfold nor_mode,get_r,put_cu in *.
+  destruct (f c1). subst. easy. easy. easy. rewrite H6.
+  apply qft_gt_put_cu_same. easy.
+  unfold nor_modes. intros. apply nor_mode_up; iner_p. apply V3. easy.
+  unfold reg_push.
+  rewrite put_cus_neq_1 by iner_p.
+  rewrite eupdate_index_neq by iner_p. easy. iner_p. 
+  unfold nor_mode,get_r,get_cua in *.
+  destruct (f c1). subst. easy. easy. easy.
 Qed.
 
 Lemma comparator01_correct_true :

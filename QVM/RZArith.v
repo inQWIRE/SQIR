@@ -619,8 +619,8 @@ Lemma rz_compare_sem : forall size f c x A M aenv tenv,
             aenv x = S size -> fst c <> x -> Env.MapsTo x (Phi (aenv x)) tenv -> 
             Env.MapsTo (fst c) Nor tenv -> get_cua (f c) = false -> snd c < aenv (fst c)
             -> M < 2^size -> A < 2^S size -> A < 2*M -> get_cua (f c) = false 
-            -> right_mode_env aenv tenv f -> qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
-               M < 2^size -> A < 2^size -> fbrev (S size) (get_r_qft f x) = nat2fb A ->
+            -> right_mode_env aenv tenv f -> qft_uniform aenv tenv f -> qft_gt aenv tenv f
+             -> fbrev (S size) (get_r_qft f x) = nat2fb A ->
                      exp_sem aenv (rz_compare x (S size) c M) f = f[c|-> put_cu (f c) (A <? M)].
 Proof.
   intros. unfold rz_compare. unfold rz_compare_half in *. 
@@ -651,7 +651,7 @@ Proof.
   rewrite H3.
   unfold get_cua. bt_simpl.
   unfold fbrev. bdestruct (0 <? S size). simpl.
-  assert ((size - 0 - 0) = size) by lia. rewrite H16.
+  assert ((size - 0 - 0) = size) by lia. rewrite H14.
   assert ((nat2fb ((A + (2 ^ size + (2 ^ size + 0)) - M)
                 mod (2 ^ size + (2 ^ size + 0))) size) = (A <? M)).
   unfold nat2fb.
@@ -659,28 +659,28 @@ Proof.
   bdestruct (A <? M).
   apply Ntestbit_in_pow2n_pow2Sn.
   assert ((2 ^ size + (2 ^ size + 0)) = 2^ S size). simpl. easy.
-  rewrite H18.
+  rewrite H16.
   split.
   assert (2^size <= (A + 2 ^ S size - M) mod 2 ^ S size).
   assert ((A + 2 ^ S size - M) = 2^S size - (M - A)) by lia.
-  rewrite H19.
+  rewrite H17.
   assert ((2 ^ S size - (M - A)) < 2 ^ S size) by lia.
   rewrite Nat.mod_small by lia.
   assert (M - A < 2^size) by lia. lia.
   assert (N.of_nat(2 ^ size) <= N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size))%N by lia.
-  simpl in *. rewrite Nofnat_pow in H20. simpl in H20. lia.
+  simpl in *. rewrite Nofnat_pow in H18. simpl in H18. lia.
   assert ((A + 2 ^ S size - M) mod 2 ^ S size < 2 ^ S size).
   apply Nat.mod_upper_bound. lia.
   assert (N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size) < N.of_nat (2 ^ S size))%N by lia.
-  rewrite Nofnat_pow in H20. 
+  rewrite Nofnat_pow in H18. 
   assert (N.of_nat (S size) = N.succ (N.of_nat size)) by lia.
-  rewrite H21 in H20. simpl in *. lia.
+  rewrite H19 in H18. simpl in *. lia.
   apply Ntestbit_lt_pow2n.
   assert ((2 ^ size + (2 ^ size + 0)) = 2^ S size). simpl. easy.
-  rewrite H18. clear H18.
+  rewrite H16. clear H16.
   assert ((A + 2 ^ S size - M) mod 2 ^ S size < 2 ^ size).
   assert ((A + 2 ^ S size - M) = 2 ^ S size + (A - M)) by lia.
-  rewrite H18. clear H18.
+  rewrite H16. clear H16.
   assert (2^ size <> 0).
   apply Nat.pow_nonzero. lia.
   rewrite Nat.add_mod by (simpl;lia).
@@ -690,8 +690,8 @@ Proof.
   rewrite Nat.mod_small by (simpl;lia).
   simpl. lia.
   assert (N.of_nat ((A + 2 ^ S size - M) mod 2 ^ S size) < N.of_nat (2 ^ size))%N by lia.
-  rewrite Nofnat_pow in H19. 
-  simpl in *. lia. rewrite H17. easy. lia.
+  rewrite Nofnat_pow in H17. 
+  simpl in *. lia. rewrite H15. easy. lia.
   apply efresh_rz_sub; try easy. simpl. lia.
   subst. 
   apply pe_seq with (env' := tenv).

@@ -4,6 +4,8 @@ Require Import SQIR.
 Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat. 
 Require Import Dirac.
 Require Import QPE.
+Require Import BasicUtility.
+Require Import MathSpec.
 Require Import PQASM.
 Require Import CLArith.
 Require Import RZArith.
@@ -310,7 +312,74 @@ Proof.
   assumption. 
 Qed.
 
-Hint Resolve flag_eq_reflect aty_eq_reflect qty_eq_reflect qdty_eq_reflect bty_eq_reflect typ_eq_reflect : bdestruct.
+Inductive qop := nadd | nsub | nmul | fadd | fsub | fmul | qxor | ndiv | nmod | nfac | fdiv
+                  | fndiv.
+
+Definition qop_eq  (t1 t2:qop) : bool := 
+   match (t1,t2) with (nadd,nadd) => true
+                    | (nsub,nsub) => true
+                    | (nmul,nmul) => true
+                    | (fadd,fadd) => true
+                    | (fsub,fsub) => true
+                    | (fmul,fmul) => true
+                    | (qxor,qxor) => true
+                    | (ndiv,ndiv) => true
+                    | (nmod,nmod) => true
+                    | (nfac,nfac) => true
+                    | (fdiv,fdiv) => true
+                    | (fndiv,fndiv) => true
+                    | _ => false
+   end.
+
+Notation "i '=op=' j" := (qop_eq i j) (at level 50).
+
+Lemma qop_eqb_eq : forall a b, a =op= b = true -> a = b.
+Proof.
+ intros. unfold qop_eq in H.
+ destruct a. destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+Qed.
+
+Lemma qop_eqb_neq : forall a b, a =op= b = false -> a <> b.
+Proof.
+ intros. unfold qop_eq in H.
+ destruct a. destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+ destruct b. 1-12:easy.
+Qed.
+
+Lemma qop_eq_reflect : forall r1 r2, reflect (r1 = r2) (qop_eq r1 r2). 
+Proof.
+  intros.
+  destruct (r1 =op= r2) eqn:eq1.
+  apply  ReflectT.
+  apply qop_eqb_eq in eq1.
+  assumption. 
+  constructor. 
+  apply qop_eqb_neq in eq1.
+  assumption. 
+Qed.
+
+Hint Resolve flag_eq_reflect aty_eq_reflect qty_eq_reflect qdty_eq_reflect bty_eq_reflect typ_eq_reflect qop_eq_reflect : bdestruct.
 
 (* Make maps in Coq. *)
 Module QvarType <: OrderedType.
@@ -520,7 +589,7 @@ End QvarNatType.
 
 (* Basic element is a Var or a number. Number is represented as bitstring. *)
 Inductive factor := Var (v:qvar)
-                 | Num (n:nat -> bool).
+                 | Num (t:btype) (n:nat -> bool).
      (* the first m in Num represents the number of bits.
       a value is represented as a natural number x. it means x / 2^m where m is the number of denominator. *)
 
@@ -532,47 +601,43 @@ Inductive cfac := Index (x:qvar) (v:factor) | Nor (v:factor).
    for qadd/qsub, x and y are both float numbers. For mult, x is a natural number while y is a float.
    for comparator operations, both are floats. *)
 
-Inductive cexp := clt (t:btype) (x:cfac) (y:cfac)
-                  | ceq (t:btype) (x:cfac) (y:cfac)
+Inductive cexp := clt (x:cfac) (y:cfac)
+                  | ceq (x:cfac) (y:cfac)
                   | iseven (x:cfac).
+
+
+(*x := y/n where x,n are a nat *)
+(* x := y mod n where x,n are a nat *)
+(* x := n! where x is a nat & n is  nat *)
+(* x := x / n where n is a natural number, x is a float. *)
+(* x := y - z all natural and C type *)
+(* x := y + z all natural and C type *)
+(* x := y - z all natural and C type *)
+(* x := y + z all natural and C type *)
+(* x := y * z all natural and C type *)
+(* z = x/v where x and v are natural numbers, z is float
+                           x and v are both integers, but the final result in z must be a float < 1 *)
 
 Inductive qexp :=
                   qinv (x:cfac)
-                | call (f:fvar) (v: cfac)
+                | call (v:cfac) (f:fvar) (args: list cfac)
                 | qif (c:cexp) (e1:qexp) (e2:qexp)
                 | qfor (x:var) (n:cfac) (e:qexp)
                 | qseq (q1:qexp) (q2:qexp)
                 | skip
-                | init (x:cfac) (v:cfac)  
-                | nadd (v:cfac) (x:cfac) 
-                | nsub (v:cfac) (x:cfac)
-                | nmul (x:cfac) (y:cfac) (z:cfac)
-               (* | nqmul (f:flag) (v1:cfac) (v2:cfac) (z:cfac) *)
-                | fadd (v:cfac) (x:cfac) 
-                | fsub (v:cfac) (x:cfac)
-                | fmul (v1:cfac) (v2:cfac) (z:cfac)
-                | qxor (v:cfac) (x:cfac)
-                | slrot (x:cfac)
-                | ndiv (x:cfac) (y:cfac) (v:cfac) (*x := y/n where x,n are a nat *)
-                | nmod (x:cfac) (y:cfac) (v:cfac) (* x := y mod n where x,n are a nat *)
-                | nfac (x:cfac) (v:cfac) (* x := n! where x is a nat & n is  nat *)
-                | fdiv (x:cfac) (v:cfac) (* x := x / n where n is a natural number, x is a float. *)
-                | ncsub (x:cfac) (y:cfac) (z:cfac) (* x := y - z all natural and C type *)
-                | ncadd (x:cfac) (y:cfac) (z:cfac) (* x := y + z all natural and C type *)
-                | fcsub (x:cfac) (y:cfac) (z:cfac) (* x := y - z all natural and C type *)
-                | fcadd (x:cfac) (y:cfac) (z:cfac) (* x := y + z all natural and C type *)
-                | ncmul (x:cfac) (y:cfac) (z:cfac) (* x := y * z all natural and C type *)
-                | fndiv (x:cfac) (v:cfac) (z:cfac). (* z = x/v where x and v are natural numbers, z is float
-                           x and v are both integers, but the final result in z must be a float < 1 *)
+                | init (x:cfac) (v:cfac)
+                | slrot (x:cfac) (* static rotation. *)
+                | unary (x:cfac) (aop:qop) (v:cfac) 
+                | binapp (x:cfac) (aop:qop) (v1:cfac) (v2:cfac).
 
 (*functions will do automatic inverse computation after a function is returned.
   for each ret statement, there is a list of pairs of vars, and the left one is the global variables to return,
    while the left one is the local variables. after a function call is returned,
     it will store all the local variables to their correponding global variables, and then reverse the computation.  *)
 
-Notation "p1 ;;; p2" := (qseq p1 p2) (at level 50) : exp_scope.
+Notation "p1 ;; p2" := (qseq p1 p2) (at level 50) : exp_scope.
 
-Definition func : Type := ( fvar * list (typ * var) * qexp * cfac).
+Definition func : Type := ( fvar * list (atype * btype * var) * list (typ * var) * qexp * cfac).
     (* a function is a fun name, a starting block label, and a list of blocks, and the returned variable. *)
 
 Definition prog : Type := (nat * list (typ * var) * list func * fvar * var). 
@@ -640,44 +705,39 @@ Qed.
 (*Function map consists with an argument list, an expression, a type environment for function body and return type. *)
 Module FEnv := FMapList.Make Nat_as_OT.
 Module FEnvFacts := FMapFacts.Facts (FEnv).
-Definition fenv := FEnv.t (list (typ * var) * qexp * benv * cfac).
-Definition fenv_empty := @FEnv.empty (list (typ * var) * qexp * benv * cfac).
+Definition fenv := FEnv.t (list (atype * btype * var) * list (typ * var) * qexp * benv * cfac).
+Definition fenv_empty := @FEnv.empty (list (atype * btype * var) * list (typ * var) * qexp * benv * cfac).
 
 Definition bind {A B} (a : option A) f : option B := 
   match a with None => None | Some a => f a end.
 Definition ret {A} (a : A) := Some a.
 Notation "'do' X '<-' A '@' B" := (bind A (fun X => B)) (at level 200, X ident, A at level 100, B at level 200).
 
-Definition typ_factor (bv:benv) (t:btype) (fc:factor) :=
+Definition typ_factor (bv:benv) (fc:factor) :=
    match fc with Var x => do re <- BEnv.find x bv @
     match re with TArray x y n => None
-            | TNor x y => if (y =b= t) then Some (x,y) else None
+            | TNor x y => Some (x,y)
    end
-            | Num n => Some (C,t)
+            | Num t n => Some (C,t)
   end.
 
-Definition typ_factor_full (bv:benv) (a:atype) (t:btype) (fc:factor) :=
+Definition typ_factor_full (bv:benv) (a:atype) (b:btype) (fc:factor) :=
    match fc with Var x => do re <- BEnv.find x bv @
     match re with TArray x y n => None
-            | TNor x y => if (a =a= x) && (y =b= t) then Some (x,y) else None
+            | TNor x y => if (a =a= x) && (y =b= b) then Some (x,y) else None
    end
-            | Num n => if a =a= C then Some (C,t) else None
+            | Num t n => if (a =a= C) && (b =b= t) then Some (C,t) else None
   end.
 
-Definition type_factor (bv:benv) (t:btype) (fc:cfac) :=
+Definition type_factor (bv:benv) (fc:cfac) :=
    match fc with Index x ic =>
        do re <- BEnv.find x bv @ 
              match re with TArray a b n =>
-                  if (b =b= t) then 
-                       do ta <- typ_factor_full bv C Nat ic @ Some (a,t)
-                  else None
-
+                       do ta <- typ_factor_full bv C Nat ic @ Some (a,b)
                     | TNor x y => None
              end
-               | Nor c => typ_factor bv t c
+               | Nor c => typ_factor bv c
    end.
-
-
 
 Definition type_factor_full (bv:benv) (a:atype) (t:btype) (fc:cfac) :=
    match fc with Index x ic =>
@@ -693,20 +753,28 @@ Definition type_factor_full (bv:benv) (a:atype) (t:btype) (fc:cfac) :=
    end.
 
 (* C \subseteq Q *)
+Definition meet_atype (a1 a2: atype) := 
+       match a1 with Q => Q | C => a2 end.
+
+Definition meet_btype (b1 b2: btype) := 
+             if b1 =b= b2 then Some b1 else None.
+
 Definition meet_type (t1 t2 : (atype * btype)) := 
-          match t1 with (Q,b) => (Q,b)
-               | (C,b) => match t2 with (Q,b2) => (Q,b) | _ => (C,b) end end.
+          match t1 with (a1,b1) =>
+            match  t2 with (a2,b2) => 
+                do bty <- meet_btype b1 b2 @ ret (meet_atype a1 a2, bty)
+            end
+          end.
 
 
 Definition type_cexp (benv:benv) (c:cexp) := 
-   match c with clt b x y => 
-             do re1 <- type_factor benv b x @
-                do re2 <- type_factor benv b y @ ret (meet_type re1 re2)
-            | ceq b x y => 
-             do re1 <- type_factor benv b x @
-                do re2 <- type_factor benv b y @ ret (meet_type re1 re2)
-            | iseven x => match type_factor benv Nat x with Some (C,Nat) => Some (C, Nat) | _ => None end
-          
+   match c with clt x y => 
+             do re1 <- type_factor benv x @
+                do re2 <- type_factor benv y @ (meet_type re1 re2)
+            | ceq x y => 
+             do re1 <- type_factor benv x @
+                do re2 <- type_factor benv y @ (meet_type re1 re2)
+            | iseven x => type_factor_full benv C Nat x
    end.
 (*
 a_nat2fb is to turn a nat-> bool value to nat. 
@@ -715,6 +783,14 @@ Fixpoint a_nat2fb (f:nat->bool) (n:nat) :=
              match n with 0 => 0
                        | S m => (2^m * (Nat.b2n (f m))) + a_nat2fb f m
              end.  
+
+Lemma a_nat2fb_scope : forall n f, a_nat2fb f n < 2^n.
+Proof.
+  induction n;intros;simpl. lia.
+  specialize (IHn f).
+  destruct (f n). simpl. lia.
+  simpl. lia.
+Qed.
 
 (*
 Definition allow_inv (e:qexp) : bool :=
@@ -736,7 +812,7 @@ Definition is_c (t:typ) : bool :=
 
 Definition get_var (c:cfac) : option qvar :=
    match c with Nor (Var x) => Some x
-             | Nor (Num x) => None
+             | Nor (Num b x) => None
              | Index x y => Some x
    end.
 
@@ -763,7 +839,7 @@ Definition sub_nor (t1 t2:(atype * btype)) :=
    assignment variables are different from the arguments. *)
 Definition fresh_loop_fac (x:var) (fc:factor) :=
    match fc with Var y => if y =q= (L x) then false else true
-             | Num b => true
+             | Num t b => true
    end.
 
 Definition fresh_loop_cfac (x:var) (fc:cfac) :=
@@ -774,26 +850,11 @@ Definition fresh_loop_cfac (x:var) (fc:cfac) :=
 Fixpoint fresh_loop_c (x:var) (e:qexp) :=
    match e with skip => true
              | init y v => fresh_loop_cfac x y
-             | nadd y v => fresh_loop_cfac x y
-             | nsub y v => fresh_loop_cfac x y
-             | nmul y z v => fresh_loop_cfac x y
-             | fadd y v => fresh_loop_cfac x y
-             | fsub y v => fresh_loop_cfac x y
-             | fmul y z v => fresh_loop_cfac x y
-             | qxor y v => fresh_loop_cfac x y
+             | unary y op v => fresh_loop_cfac x y
+             | binapp y op z v => fresh_loop_cfac x y
              | slrot y => fresh_loop_cfac x y
-             | ndiv y z v => fresh_loop_cfac x y
-             | nmod y z v => fresh_loop_cfac x y
-             | fdiv y z => fresh_loop_cfac x y
-             | nfac y z => fresh_loop_cfac x y
-             | ncsub y z v => fresh_loop_cfac x y
-             | ncadd y z v => fresh_loop_cfac x y
-             | fcsub y z v => fresh_loop_cfac x y
-             | fcadd y z v => fresh_loop_cfac x y
-             | ncmul y z v => fresh_loop_cfac x y
-             | fndiv y z v => fresh_loop_cfac x y
              | qinv y => fresh_loop_cfac x y
-             | call f y => fresh_loop_cfac x y
+             | call y f vs => fresh_loop_cfac x y
              | qif ce e1 e2 => (fresh_loop_c x e1) && (fresh_loop_c x e2)
              | qfor y n e => (fresh_loop_cfac x n) && (if x =? y then true else fresh_loop_c x e)
              | qseq e1 e2 => (fresh_loop_c x e1) && (fresh_loop_c x e2)
@@ -804,26 +865,11 @@ Fixpoint fresh_loop_c (x:var) (e:qexp) :=
 Fixpoint no_rot (e:qexp) :=
    match e with skip => true
              | init y v => true
-             | nadd y v => true
-             | nsub y v => true
-             | nmul y z v => true
-             | fadd y v => true
-             | fsub y v => true
-             | fmul y z v => true
-             | qxor y v => true
+             | unary y op v => true
+             | binapp y op z v => true
              | slrot y => false
-             | ndiv y z v => true
-             | nmod y z v => true
-             | fdiv y z => true
-             | nfac y z => true
-             | ncsub y z v => true
-             | ncadd y z v => true
-             | fcsub y z v => true
-             | fcadd y z v => true
-             | ncmul y z v => true
-             | fndiv y z v => true
              | qinv y => true
-             | call f y => true
+             | call y f vs => true
              | qif ce e1 e2 => (no_rot e1) && (no_rot e2)
              | qfor y n e => no_rot e
              | qseq e1 e2 => (no_rot e1) && (no_rot e2)
@@ -834,7 +880,7 @@ Definition is_q_fac (bv:benv) (c:factor) :=
     match c with Var x => match BEnv.find x bv with None => false
                               | Some t => is_q t
                           end
-             | Num x => false
+             | Num b x => false
     end.
 
 Definition is_q_cfac (bv:benv) (c:cfac) :=
@@ -848,31 +894,55 @@ Definition is_q_cfac (bv:benv) (c:cfac) :=
 (* Checks if an expression in if-branch has a C mode assigment. *)
 Fixpoint has_c_exp (bv:benv) (e:qexp) :=
    match e with skip => false
-             | init y v => false
-             | nadd y v => false
-             | nsub y v => false
-             | nmul y z v => false
-             | fadd y v => false
-             | fsub y v => false
-             | fmul y z v => false
-             | qxor y v => ¬ (is_q_cfac bv y)
+             | init y v => ¬ (is_q_cfac bv y)
+             | unary y op v => ¬ (is_q_cfac bv y)
              | slrot y => ¬ (is_q_cfac bv y)
-             | ndiv y z v => true
-             | nmod y z v => true
-             | fdiv y z => true
-             | nfac y z => true
-             | ncsub y z v => true
-             | ncadd y z v => true
-             | fcsub y z v => true
-             | fcadd y z v => true
-             | ncmul y z v => true
-             | fndiv y z v => true
+             | binapp y op z v => ¬ (is_q_cfac bv y)
              | qinv y => false
-             | call f y => ¬ (is_q_cfac bv y)
+             | call y f vs => ¬ (is_q_cfac bv y)
              | qif ce e1 e2 => (has_c_exp bv e1) && (has_c_exp bv e2)
              | qfor y n e => has_c_exp bv e
              | qseq e1 e2 => has_c_exp bv e1 && has_c_exp bv e2
    end.
+
+Fixpoint type_factors_full (bv:benv) (tvl : list (atype * btype * var)) (fc: list cfac) :=
+   match fc with [] => match tvl with [] => Some bv | _ => None end
+         | (fc::fcl) => match tvl with [] => None
+           | ((a,b,v)::tvl') => 
+                  do re <- type_factor_full bv a b fc @ type_factors_full bv tvl' fcl
+                         end
+   end.
+
+Definition check_fst_type (x:qop) (t : btype) :=
+   match x with nadd | nsub | nmul | ndiv | nmod | nfac => (Nat =b= t)
+              | fadd | fsub | fmul | fdiv | fndiv => (FixedP =b= t)
+              | qxor => true
+   end.
+
+Definition check_snd_type (x:qop) (t : btype) :=
+   match x with nadd | nsub | nmul | ndiv | nmod | nfac | fdiv => (Nat =b= t)
+              | fadd | fsub | fmul | fndiv => (FixedP =b= t)
+              | qxor => true
+   end.
+
+Definition check_trd_type (x:qop) (t : btype) :=
+   match x with nadd | nsub | nmul | ndiv | nmod | nfac | fdiv | fndiv => (Nat =b= t)
+              | fadd | fsub | fmul  => (FixedP =b= t)
+              | qxor => true
+   end.
+
+Definition is_unary (x:qop) := 
+   match x with nadd | nsub | qxor | nfac | fdiv | fadd | fsub => true
+            | _ => false
+   end.
+
+Definition is_bin (x:qop) := 
+   match x with nadd | nsub | nmul | nfac | fadd | fsub | fmul | ndiv | nmod | fndiv => true
+            | _ => false
+   end.
+
+Definition get_unary_type (x:qop) (t:btype) :=
+    match x with fdiv => Nat | _ => t end.
 
 (* Typing rule for statements. *)
 Fixpoint type_qexp (fv:fenv) (bv:benv) (e:qexp):=
@@ -880,128 +950,38 @@ Fixpoint type_qexp (fv:fenv) (bv:benv) (e:qexp):=
              | init x v => 
                do core <- get_var x @ 
                   do c <- BEnv.find core bv @
-                    do re <- type_factor bv (get_ct c) v @
-                 if is_q c then ret bv else None
-
-             | nadd x y => 
-             do re1 <- type_factor bv Nat y @
-                do re2 <- type_factor_full bv Q Nat x @ 
-                   do core <- get_var x @
-                    do old <- BEnv.find core bv @ ret bv
-
-             | nsub x y => 
-             do re1 <- type_factor bv Nat y @
-                do re2 <- type_factor_full bv Q Nat x @ 
-                   do core <- get_var x @
-                    do old <- BEnv.find core bv @ ret bv
-
-             | nmul x y z => 
-             do re1 <- type_factor_full bv Q Nat x @
-                do re2 <- type_factor bv Nat y @ 
-                 do re3 <- type_factor bv Nat z @
-                   do core <- get_var x @
-                    do old <- BEnv.find core bv @ ret bv
-
-             | fadd x y => 
-             do re1 <- type_factor bv FixedP y @
-                do re2 <- type_factor_full bv Q FixedP x @ 
-                   do core <- get_var x @
-                    do old <- BEnv.find core bv @ ret bv
-
-             | fsub x y => 
-             do re1 <- type_factor bv FixedP y @
-                do re2 <- type_factor_full bv Q FixedP x @ 
-                   do core <- get_var x @
-                    do old <- BEnv.find core bv @ ret bv
-
-             | fmul x y z => 
-             do re1 <- type_factor_full bv Q FixedP x @
-                do re2 <- type_factor bv FixedP y @ 
-                 do re3 <- type_factor bv FixedP z @
-                   do core <- get_var x @
-                    do old <- BEnv.find core bv @ ret bv
-
-             | qxor x y => 
-                   do core <- get_var x @
-                    do old <- BEnv.find core bv @ 
-                     do re <- type_factor bv (get_ct old) y @ ret bv
+                    do re <- type_factor bv v @ ret bv
 
              | slrot x =>
                    do core <- get_var x @
                     do old <- BEnv.find core bv @ ret bv
 
-             | qinv x => 
+             | unary x op y => 
+               do re1 <- type_factor bv x @
+                do re2 <- type_factor bv y @ 
                    do core <- get_var x @
-                    do old <- BEnv.find core bv @ 
-                     if is_q old then ret bv else None
+                        if is_unary op && check_fst_type op (snd re1)
+                                  && check_snd_type op (snd re2) then ret bv else None
 
-             | ndiv x y v => 
-             do re1 <- type_factor bv Nat x @
-                do re2 <- type_factor bv Nat y @ 
-                  do re3 <- type_factor bv Nat v @ 
-                       if (fst re3 =a= C) then ret bv else None
+             | binapp x op y z => 
+               do re1 <- type_factor bv x @
+                do re2 <- type_factor bv y @ 
+                 do re3 <- type_factor bv z @
+                   do core <- get_var x @
+                        if is_bin op && check_fst_type op (snd re1)
+                          && check_snd_type op (snd re2)
+                          && check_trd_type op (snd re3) then ret bv else None
+                    
 
-             | nmod x y v => 
-             do re1 <- type_factor bv Nat x @
-                do re2 <- type_factor bv Nat y @ 
-                  do re3 <- type_factor bv Nat v @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) && (fst re3 =a= C) then ret bv else None
 
-             | nfac x y => 
-             do re1 <- type_factor bv Nat x @
-                do re2 <- type_factor bv Nat y @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) then ret bv else None
-
-             | fdiv x y => 
-             do re1 <- type_factor bv FixedP x @
-                do re2 <- type_factor bv Nat y @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) then ret bv else None
-
-             | fndiv x y z => 
-             do re1 <- type_factor bv FixedP x @
-                do re2 <- type_factor bv Nat y @ 
-                  do re3 <- type_factor bv Nat z @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) && (fst re3 =a= C) then ret bv else None
-
-             | ncadd x y z => 
-             do re1 <- type_factor bv Nat x @
-                do re2 <- type_factor bv Nat y @ 
-                  do re3 <- type_factor bv Nat z @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) && (fst re3 =a= C) then ret bv else None
-
-             | ncsub x y z => 
-             do re1 <- type_factor bv Nat x @
-                do re2 <- type_factor bv Nat y @ 
-                  do re3 <- type_factor bv Nat z @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) && (fst re3 =a= C) then ret bv else None
-
-             | ncmul x y z => 
-             do re1 <- type_factor bv Nat x @
-                do re2 <- type_factor bv Nat y @ 
-                  do re3 <- type_factor bv Nat z @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) && (fst re3 =a= C) then ret bv else None
-
-             | fcadd x y z => 
-             do re1 <- type_factor bv FixedP x @
-                do re2 <- type_factor bv FixedP y @ 
-                  do re3 <- type_factor bv FixedP z @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) && (fst re3 =a= C) then ret bv else None
-
-             | fcsub x y z => 
-             do re1 <- type_factor bv FixedP x @
-                do re2 <- type_factor bv FixedP y @ 
-                  do re3 <- type_factor bv FixedP z @ 
-                       if (fst re1 =a= C) && (fst re2 =a= C) && (fst re3 =a= C) then ret bv else None
-
-              | call f x => 
+              | call x f vs => 
                  do ref <- FEnv.find f fv @
-                   match ref with (tvl,e,fbenv, rx) =>
-                    do rxv <- get_var rx @
-                        do re1 <- BEnv.find rxv fbenv @
+                   match ref with (tvl,tcl,e,fbenv, rx) =>
+                    do res <- type_factors_full bv tvl vs @
+                     do rxv <- type_factor fbenv rx @
                           do core <- get_var x @
-                           do old <- BEnv.find core bv @
-                            if (is_q re1) && (is_q old) && ((get_ct re1) =b= (get_ct old)) then ret bv
-                              else if (is_c re1) && ((get_ct re1) =b= (get_ct old)) then ret bv else None
+                           do old <- type_factor bv x @
+                              do new_type <- meet_type rxv old @ ret bv
                    end
 
               | qif ce e1 e2 => 
@@ -1009,14 +989,14 @@ Fixpoint type_qexp (fv:fenv) (bv:benv) (e:qexp):=
                    do bv' <- type_qexp fv bv e1 @
                     if no_rot e1 && no_rot e2 then 
                       if (fst rce =a= C) then 
-                       type_qexp fv bv' e2 
+                       type_qexp fv bv e2 
                       else if (fst rce =a= Q) && (¬ (has_c_exp bv e1)) && (¬ (has_c_exp bv e2)) then
-                       type_qexp fv bv' e2 
+                       type_qexp fv bv e2 
                       else None
                    else None
 
               | qseq e1 e2 => 
-                 do bv' <- type_qexp fv bv e1 @ type_qexp fv bv' e2
+                 do bv <- type_qexp fv bv e1 @ type_qexp fv bv e2
 
               | qfor x n e => 
                 do re1 <- BEnv.find (L x) bv @
@@ -1026,8 +1006,9 @@ Fixpoint type_qexp (fv:fenv) (bv:benv) (e:qexp):=
                      type_qexp fv (BEnv.add (L x) (TNor C Nat) bv) e else None
                  else None
 
+     | _ => None
+   end.
 
-end.
 
 Definition no_zero (t:typ) := match t with TArray x y n => if n =? 0 then false else true 
                 | TNor x y => true 
@@ -1040,14 +1021,21 @@ Fixpoint gen_env (l:list (typ * var)) (bv:benv) : option benv :=
                     if no_zero t then Some (BEnv.add (L x) t new_env) else None
    end.
 
+Fixpoint gen_env_l (l:list (atype * btype * var)) (bv:benv) : option benv := 
+   match l with [] => Some bv
+             | ((a,t,x)::xl) => 
+                  do new_env <- gen_env_l xl bv @ Some (BEnv.add (L x) (TNor a t) new_env)
+   end.
+
 Fixpoint type_funs (benv:benv) (fv:fenv) (l:list func) : option fenv :=
      match l with [] => Some fv
-              | ((f,l,e,rx)::fs) => 
-               do benv' <- gen_env l benv @
-                 do benv'' <- type_qexp fv benv' e @
+              | ((f,tvl,l,e,rx)::fs) => 
+              do benv' <- gen_env_l tvl benv @
+               do benv'' <- gen_env l benv' @
+                 do benv''' <- type_qexp fv benv'' e @
                    do core <- get_var rx @
-                     do old <- BEnv.find core benv'' @
-                     type_funs benv (FEnv.add f ((l,e,benv',rx)) fv) fs
+                     do old <- BEnv.find core benv''' @
+                     type_funs benv (FEnv.add f ((tvl,l,e,benv'',rx)) fv) fs
      end.
 
 Fixpoint gen_genv (l:list (typ * var)) : option benv := 
@@ -1065,13 +1053,15 @@ Definition type_prog (p:prog) : option fenv :=
             do block <- FEnv.find main fv @ 
               do re <- BEnv.find (G rx) bv @
               match block with (tvl,e,fbenv, x) =>
-                 do re1 <- type_factor fbenv (get_ct re) x @ ret fv
+                 do re1 <- type_factor fbenv x @ ret fv
               end
    end.
 
 (* Well-type checks for inv.
    inv must have a previous defined statement,
    and nested inv must match one-by-one with a predecessor *)
+
+(*
 Definition qvar_eq_fac (c:cfac) (x:qvar) :=
     match get_var c with None => false
             | Some y => x =q= y
@@ -1348,7 +1338,7 @@ Fixpoint well_formed_inv (l:list qexp) (e:qexp) (size:nat) :=
                                   do re <- back_track_inv_nor l yv ([]) 0 @ Some ((qinv y)::l)
                          end
    end.
-
+*)
 (*The semantics of QLLVM.
    A store is impelemented as a a list of history values, and the top in the list is the current value.
    We kept history values to do inv. *)
@@ -1359,52 +1349,53 @@ Definition empty_store := @Store.empty (list (nat -> bool)).
 
 Inductive value {A:Type} := Value (x:A) | Error.
 
-Definition sem_factor (size:nat) (r:store) (b:btype) (fc:factor) := 
+Definition sem_factor (size:nat) (r:store) (fc:factor) := 
    match fc with Var x => do vals <- (Store.find (x,0) r) @ (hd_error vals)
-            | Num n => match b with Bl => Some ( (cut_n n 1))
-                                 | Nat => Some (  (cut_n n size))
-                                 | FixedP => Some (fbrev size (cut_n n size))
-                       end
+            | Num b n => if b =b= Bl then Some ( (cut_n n 1))
+                         else if b =b= Nat then Some (  (cut_n n size))
+                          else Some (fbrev size (cut_n n size))
    end.
 
-Definition sem_cfac (smap:qvar -> nat) (size:nat) (store:store) (b:btype) (fc:cfac)
+Definition sem_cfac (smap:qvar -> nat) (size:nat) (store:store) (fc:cfac)
  : option (@value (nat -> bool)) :=
-    match fc with Index x n => do v <- (sem_factor size store Nat n) @
+    match fc with Index x n => do v <- (sem_factor size store n) @
                           if (a_nat2fb v size) <? smap x then
                                do l <- Store.find (x,a_nat2fb v size) store @
                                    do val <- (hd_error l) @ Some (Value val)
                           else Some Error
-               | Nor x => do val <- sem_factor size store b x @ Some (Value val)
+               | Nor x => do val <- sem_factor size store x @ Some (Value val)
     end.
 
-Definition sem_cexp (smap:qvar -> nat) (size:nat) (store:store) (ce:cexp) : option (@value bool) :=
-           match ce with clt b x y => 
-            do v1 <- (sem_cfac smap size store b x) @
-            do v2 <- (sem_cfac smap size store b y) @
+Definition get_size (size:nat) (t:btype) := if t =b= Bl then 1 else size.
+
+Definition sem_cexp (smap:qvar -> nat) (bv:benv) (size:nat) (store:store) (ce:cexp) : option (@value bool) :=
+           match ce with clt x y => 
+            do t <- type_factor bv x @
+            do v1 <- (sem_cfac smap size store x) @
+            do v2 <- (sem_cfac smap size store y) @
             match v1 with (Value v1') => 
-             match v2 with (Value v2') =>
-               match b with Bl => Some (Value (a_nat2fb v1' 1 <? a_nat2fb v2' 1))
-                       | _ => Some (Value (a_nat2fb v1' size <? a_nat2fb v2' size))
-               end
+             match v2 with (Value v2') => Some 
+                      (Value (a_nat2fb v1' (get_size size (snd t)) <? a_nat2fb v2' (get_size size (snd t))))
                 | _ => Some Error
                  end
             | _ => Some Error
             end
-          | ceq b x y => 
-            do v1 <- (sem_cfac smap size store b x) @
-            do v2 <- (sem_cfac smap size store b y) @
+          | ceq x y => 
+            do t <- type_factor bv x @
+            do v1 <- (sem_cfac smap size store x) @
+            do v2 <- (sem_cfac smap size store y) @
             match v1 with (Value v1') => 
              match v2 with (Value v2') =>
-             match b with Bl => Some (Value (a_nat2fb v1' 1 =? a_nat2fb v2' 1))
-                         | _ => Some (Value (a_nat2fb v1' size =? a_nat2fb v2' size))
-             end
+                  Some (Value (a_nat2fb v1' (get_size size (snd t)) =? a_nat2fb v2' (get_size size (snd t))))
                 | _ => Some Error
                  end
             | _ => Some Error
             end
          | iseven x =>
-            do v1 <- (sem_cfac smap size store Nat x) @ 
-              match v1 with Value v1' => Some (Value ((a_nat2fb v1' size) mod 2 =? 0)) 
+           do t <- type_factor bv x @
+            do v1 <- (sem_cfac smap size store x) @ 
+              match v1 with Value v1' => 
+                   Some (Value ((a_nat2fb v1' (get_size size (snd t))) mod 2 =? 0)) 
                           | _ => Some Error
               end
           end.
@@ -1416,7 +1407,7 @@ Definition bv_store_gt_0 (smap : qvar -> nat) (bv:benv) :=
          forall x, BEnv.In x bv -> 0 < smap x.
 
 
-(* Type Progesss theorem *)
+(* Type Progesss theorem 
 Lemma factor_progress: forall e smap size bv st t t', typ_factor bv t e = Some t' ->
         bv_store_sub smap bv st -> bv_store_gt_0 smap bv
          -> (exists v, sem_factor size st t e = Some v).
@@ -1603,7 +1594,7 @@ Proof.
         end =? 0))). easy.
   exists Error. easy. inv H. inv H. inv H. inv H.
 Qed.
-
+*)
 
 Definition bin_xor (f1 f2:nat -> bool) (size:nat) :=
   cut_n (fun x => xorb (f1 x) (f2 x)) size.
@@ -1727,15 +1718,1837 @@ Proof.
  destruct (init_store r l) eqn:eq2. inv H0. inv H0.
 Qed.
 
+(* When compiling scrath space, we genearte two extra for ancilla qubits in addition.  *)
+Definition ac_size (size:nat) := S (S size).
+
+(*
+Definition find_factor_type (benv:benv) (fc:factor) : option atype :=
+    match fc with (Var (L x)) => BEnv.find x benv
+                | (Var (G x)) => Some Q
+                | Num n => Some C
+    end.
+*)
+Lemma xor_not : forall a b, xorb (a<?b) (b<?a) = false -> a = b.
+Proof.
+  intros.
+  bdestruct (a <? b).
+  bdestruct (b <? a). lia. simpl in H. inv H.
+  bdestruct (b <? a). simpl in H. inv H.
+  lia.
+Qed.
+
+(* cstore is to store the current value for C-mode variables/constants. *)
+Definition cstore : Type := Store.t ((nat -> bool)).
+Definition empty_cstore := @Store.empty ((nat -> bool)).
+
+Lemma store_mapsto_always_same {A:Type} : forall k v1 v2 s,
+           @Store.MapsTo A k v1 s ->
+            @Store.MapsTo A k v2 s -> 
+                       v1 = v2.
+Proof.
+     intros.
+     apply Store.find_1 in H.
+     apply Store.find_1 in H0.
+     rewrite H in H0.
+     injection H0.
+     easy.
+Qed.
+
+Definition make_value (size:nat) (b:btype) (c: option (nat -> bool)) :=
+  do cv <- c @
+      match b with Bl => Some ((cut_n cv 1))
+                | Nat => Some ((cut_n cv size))
+                | FixedP => Some ((fbrev size (cut_n cv size)))
+      end.
+
+(* Partially evaluate a factor by cstore. *)
+Definition par_eval_fc (bv:benv) (size:nat) (r:cstore) (fc:factor) := 
+   match fc with Var x => do re <- BEnv.find x bv @ if is_q re then None else (Store.find (x,0) r)
+            | Num t n => make_value size t (Some n)
+   end.
+
+Definition make_value_t (size:nat) (b:btype) (c: option (nat -> bool)) :=
+  do cv <- c @
+      match b with Bl => Some (Value (cut_n cv 1))
+                | Nat => Some (Value (cut_n cv size))
+                | FixedP => Some (Value (fbrev size (cut_n cv size)))
+      end.
+
+(* Partially evaluate a factor. *)
+Definition par_eval_cfac (smap : qvar -> nat) (bv:benv) (size:nat) (r:cstore) (fc:cfac) := 
+   match fc with Nor x => do v <- par_eval_fc bv size r x @ Some (Value v)
+        | Index x n => do v <- par_eval_fc bv size r n @
+                              if a_nat2fb v size <? smap x then
+                               (do re <- BEnv.find x bv @ if is_q re then None
+                      else do val <- (Store.find (x,a_nat2fb v size) r) @ Some (Value val)) else None
+   end.
+
+(* Partially evaluate a factor but also checks array index. *)
+Definition par_eval_cfac_check (smap : qvar -> nat) (bv:benv) (size:nat) (r:cstore) (fc:cfac) := 
+   match fc with Nor x => do val <- par_eval_fc bv size r x @ Some (Value val)
+        | Index x n => do v <- par_eval_fc bv size r n @
+                              if a_nat2fb v size <? smap x then
+                               (do re <- BEnv.find x bv @ if is_q re then None else 
+                  do val <- (Store.find (x,a_nat2fb v size) r) @ Some (Value val)) else Some Error
+   end.
+
+(* Partially find an indexed-variable.
+   Every variable has the form (x,n) where x is the variable and n is the indexed.
+   For Nor variable, n is always 0. *)
+Definition par_find_var (bv:benv) (size:nat)  (r:cstore) (fc:cfac) :=
+       match fc with Nor (Var x) => Some (x,0)
+                  | Nor (Num t x) => None
+                  | Index x n => do val <- par_eval_fc bv size r n @ Some (x,a_nat2fb val size)
+       end.
+
+(* Partially find an indexed-variable with array bound checks. *)
+Definition par_find_var_check (smap:qvar -> nat) (bv:benv) (size:nat)  (r:cstore) (fc:cfac) :=
+       match fc with Nor (Var x) => Some (Value (x,0))
+                  | Nor (Num t x) => None
+                  | Index x n => do val <- par_eval_fc bv size r n @
+                      if a_nat2fb val size <? smap x then Some (Value (x,a_nat2fb val size)) else Some Error
+       end.
+
+(* Check if two variables are equal *)
+Definition qvar_eq (bv:benv) (size:nat)  (r:cstore) (x y: cfac) := 
+        match par_find_var bv size r x with None => false
+                    | Some a => match par_find_var bv size r y with None => false
+                         | Some b => (a =qd= b)
+                                end
+        end.
+
+(* Circuit generation for <. *)
+Definition clt_circuit_two (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
+                        (x y :(qvar*nat)) (stack: var) (sn:nat) :=
+            if f =fl= Classic then
+              (comparator01 (get_size size b) (vmap y) (vmap x) (stack,S sn) (stack, sn))
+            else (comparator01 (get_size size b) (vmap y) (vmap x) (stack,S sn) (stack, sn)).
+
+
+Definition clt_circuit_left (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
+                        (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
+            if f =fl= Classic then
+              (init_v (get_size size b) (temp) y;
+                    comparator01 (get_size size b) (temp) (vmap x) (stack,S sn) (stack, sn);
+                    inv_exp (init_v (get_size size b) (temp) y))
+            else (init_v (get_size size b) (temp) y;
+                    comparator01 (get_size size b) temp (vmap x) (stack,S sn) (stack, sn);
+                    inv_exp (init_v (get_size size b) (temp) y)).
+
+Definition clt_circuit_right (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
+                        (x:(nat->bool)) (y :(qvar*nat))  (stack temp: var) (sn:nat) :=
+            if f =fl= Classic then
+               (init_v (get_size size b) (temp) x;
+                    comparator01 (get_size size b) (vmap y) temp (stack,S sn) (stack, sn);
+                    inv_exp (init_v (get_size size b) (temp) x))
+            else (init_v (get_size size b) (temp) x;
+                    comparator01 (get_size size b) (vmap y) temp (stack,S sn) (stack, sn);
+                    inv_exp (init_v (get_size size b) (temp) x)).
+
+(* Different cases in < *)
+Definition gen_clt_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (size:nat)  (f:flag)
+                (r:cstore) (stack temp:var) (sn:nat) (x y: cfac)
+                                      : option (@value (option exp * nat * option bool)) := 
+     do t1 <- type_factor bv x @
+         do t2 <- type_factor bv y @
+            if (fst t1 =a= Q) && (fst t2 =a= C) then
+               match par_find_var_check smap bv size r x with Some (Value vx) =>
+                   do t2v <- par_eval_cfac_check smap bv size r y @
+                     match t2v with Value t2v' =>
+                      Some (Value (Some (clt_circuit_left size f (snd t1) vmap vx t2v' stack temp sn),S sn,None))
+                        | _ => Some Error
+                     end
+                   | None => None
+                   | a => Some Error
+               end
+           else if (fst t1 =a= Q) && (fst t2 =a= Q) then
+              do vxv <- par_find_var_check smap bv size r x @
+                do vyv <- par_find_var_check smap bv size r y @
+                 match vxv with Value vx => match vyv with Value vy => 
+                    Some (Value (Some (clt_circuit_two size f (snd t1) vmap vx vy stack sn),S sn,None))
+                              | _ => Some Error
+                       end
+                   | _ => Some Error
+                 end
+           else if (fst t1 =a= C) && (fst t2 =a= Q) then
+               match par_find_var_check smap bv size r y with Some (Value vy) =>
+                   do t1v <- par_eval_cfac_check smap bv size r x @
+                    match t1v with Value t1v' =>
+                      Some (Value (Some (clt_circuit_right size f (snd t1) vmap t1v' vy stack temp sn),S sn,None))
+                      | _ => Some Error
+                    end
+                   | None => None
+                   | a => Some Error
+               end
+          else  do t1v <- par_eval_cfac_check smap bv size r x @
+                   do t2v <- par_eval_cfac_check smap bv size r y @ 
+                    match t1v with Value t1v' => match t2v with Value t2v' =>
+                      Some (Value (None, sn, Some ((a_nat2fb t1v' (get_size size (snd t1)) <? a_nat2fb t2v' (get_size size (snd t2))))))
+                       | _ => Some Error end | _ => Some Error
+                    end.
+
+(* compare x =? y *)
+Definition ceq_circuit_two (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
+                        (x y :(qvar*nat)) (stack: var) (sn:nat) :=
+           (if f =fl= Classic then
+                        (comparator01 (get_size size b) (vmap y) (vmap x) (stack,S sn)
+                                    (stack,sn); 
+                        comparator01 (get_size size b) (vmap x) (vmap y) (stack,S sn)
+                                    (stack,sn); X (stack,sn))
+                 else rz_full_comparator (vmap x) (get_size size b) (stack,sn) (vmap y)
+                      ; rz_full_comparator (vmap y) (get_size size b) (stack,sn) (vmap x);
+                        (X (stack, sn))).
+
+Definition ceq_circuit_left (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
+                        (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
+            if f =fl= Classic then
+               (init_v (get_size size b) (temp) y;
+                    comparator01 (get_size size b) (vmap x) (temp) (stack,S sn) (stack, sn);
+                    comparator01 (get_size size b) (temp) (vmap x) (stack,S sn) (stack, sn);
+                    (X (stack,sn));
+                    init_v (get_size size b) (temp) y)
+            else  (init_v (get_size size b) (temp) y);
+                 rz_comparator (vmap x) (get_size size b) (stack, sn) (a_nat2fb y (get_size size b));
+                rz_full_comparator (temp) (get_size size b) (stack, sn) (vmap x) ;
+                 (X (stack,sn);init_v (get_size size b) (temp) y).
+
+Definition ceq_circuit_right (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
+                        (x:(nat->bool)) (y :(qvar*nat))  (stack temp: var) (sn:nat) :=
+            if f =fl= Classic then
+               (init_v (get_size size b) (temp) x;
+                    comparator01 (get_size size b) (temp) (vmap y) (stack,S sn) (stack, sn);
+                    comparator01 (get_size size b) (vmap y) (temp) (stack,S sn) (stack, sn);
+                    (X (stack,sn));
+                    init_v (get_size size b) (temp) x)
+            else (init_v (get_size size b) (temp) x);
+                rz_full_comparator (temp) (get_size size b) (stack, sn)  (vmap y);
+                rz_comparator (vmap y) (get_size size b) (stack, sn) (a_nat2fb x (get_size size b));
+                        ((X (stack,sn));init_v (get_size size b) (temp) x).
+
+
+Definition gen_ceq_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (size:nat)  (f:flag)
+                (r:cstore) (stack temp:var) (sn:nat) (x y: cfac)
+                                      : option (@value (option exp * nat * option bool)) := 
+     do t1 <- type_factor bv x @
+         do t2 <- type_factor bv y @
+            if (fst t1 =a= Q) && (fst t2 =a= C) then
+               match par_find_var_check smap bv size r x with Some (Value vx) =>
+                   do t2v <- par_eval_cfac_check smap bv size r y @
+                    match t2v with Value t2v' =>
+                      Some (Value (Some (ceq_circuit_left size f (snd t1) vmap vx t2v' stack temp sn),S sn,None))
+                     | _ => Some Error
+                    end
+                   | None => None
+                   | a => Some Error
+               end
+           else if (fst t1 =a= Q) && (fst t2 =a= Q) then
+              do vxv <- par_find_var_check smap bv size r x @
+                do vyv <- par_find_var_check smap bv size r y @
+                 match vxv with Value vx => match vyv with Value vy => 
+                    Some (Value (Some (ceq_circuit_two size f  (snd t1) vmap vx vy stack sn),S sn,None))
+                              | _ => Some Error
+                       end
+                   | _ => Some Error
+                 end
+           else if (fst t1 =a= C) && (fst t2 =a= Q) then
+               match par_find_var_check smap bv size r y with Some (Value vy) =>
+                   do t1v <- par_eval_cfac_check smap bv size r x @
+                    match t1v with Value t1v' =>
+                      Some (Value (Some (ceq_circuit_right size f  (snd t1) vmap t1v' vy stack temp sn),S sn,None))
+                     | _ => Some Error
+                    end
+                   | None => None
+                   | a => Some Error
+               end
+          else  do t1v <- par_eval_cfac_check smap bv size r x @
+                   do t2v <- par_eval_cfac_check smap bv size r y @ 
+                     match t1v with Value t1v' => match t2v with Value t2v' =>
+                      Some (Value (None, sn, Some ((a_nat2fb t1v' size =? a_nat2fb t2v' size))))
+                          | _ => Some Error end | _ => Some Error end.
+
+(*Proofs of compilation correctness for cexp. *)
+
+Lemma a_nat2fb_small : forall n f, a_nat2fb f n < 2^n.
+Proof.
+  intros.
+  induction n;simpl.
+  lia.
+  destruct (f n). simpl. lia. simpl. lia.
+Qed.
+
+Lemma nat2fb_a_nat2fb' : forall n m f, m <= n -> (forall i, m <= i -> f i = false)
+             -> nat2fb (a_nat2fb f n) = f.
+Proof.
+  induction n; intros; unfold nat2fb; simpl.
+  apply functional_extensionality.
+  intros. rewrite H0. easy. lia.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x =? n). subst.
+Admitted.
+
+Lemma nat2fb_a_nat2fb : forall n f, (forall i, n <= i -> f i = false)
+             -> nat2fb (a_nat2fb f n) = f.
+Proof.
+  intros. rewrite nat2fb_a_nat2fb' with (m := n). easy. lia. easy.
+Qed.
+
+Lemma a_nat2fb_cut_n : forall n f, nat2fb (a_nat2fb f n) = cut_n f n.
+Proof.
+Admitted.
+
+Definition is_bl (t:option typ) : bool :=
+ match t with Some (TNor a Bl) => true
+            | Some (TArray a Bl x) => true
+            | _ => false
+ end.
+
+Definition is_qtt (t:option typ) : Prop :=
+ match t with Some (TNor Q b) => True
+            | Some (TArray Q b x) => True
+            | _ => False
+ end.
+
+(* This definition compiles conditional expressions. *)
+Definition compile_cexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
+                 (bv:benv) (f:flag) (r:cstore) (stack temp:var) (sn:nat) (e:cexp)
+                                      : option (@value (option exp * nat * option bool)) := 
+   match e with clt x y => 
+                    if  ¬ (qvar_eq bv size r x y) then 
+                                      gen_clt_c smap vmap bv size f r stack temp sn x y
+                                     else None
+         | ceq x y =>  
+                        if  ¬ (qvar_eq bv size r x y) then 
+                                      gen_ceq_c smap vmap bv size f r stack temp sn x y
+                                     else None
+         | iseven x => do t1 <- type_factor bv x @ if fst t1 =a= Q then None else 
+                           do t2v <- par_eval_cfac_check smap bv size r x @
+                        match t2v with Value t2v' =>
+                              if (a_nat2fb t2v' size) mod 2 =? 0 then Some (Value (None, sn, Some true))
+                                        else Some (Value (None,sn,Some (false)))
+                            | Error => Some Error
+                        end
+   end.
+
+(* Set up theorem assumptions for cexp. 
+Definition cexp_set_up (ce:cexp) (sl size:nat) (stack:var)
+          (sn:nat) (vmap : (qvar*nat) -> var) (r:cstore) (bv:benv) (f:posi -> val) (aenv:var -> nat) (tenv:PQASM.env) :=
+  match ce with clt x y => 
+   match type_factor bv x with None => True
+       | Some t => 
+     match par_find_var bv (get_size size (snd t)) r x with None => True
+                     | Some vx => 
+        match par_find_var bv (get_size size (snd t)) r y with None => True
+                         | Some vy => 
+             ((vmap vx) <> (vmap vy) /\ (vmap vx) <> stack
+                /\ (vmap vy) <> stack /\
+                Store.In vx r /\ Store.In vy r /\ Env.MapsTo (vmap vx) PQASM.Nor tenv /\
+               Env.MapsTo (vmap vy) PQASM.Nor tenv /\ Env.MapsTo (stack) PQASM.Nor tenv
+           /\ qft_uniform aenv tenv f /\ qft_gt aenv tenv f 
+           /\ right_mode_env aenv tenv f)
+        end
+      end
+   end
+       | ceq x y => 
+   match type_factor bv x with None => True
+       | Some t => 
+     match par_find_var bv (get_size size (snd t)) r x with None => True
+                     | Some vx => 
+        match par_find_var bv (get_size size (snd t)) r y with None => True
+                         | Some vy => 
+             ((vmap vx) <> (vmap vy) /\ (vmap vx) <> stack
+                /\ (vmap vy) <> stack /\  Store.In vx r /\ Store.In vy r /\
+               Env.MapsTo (vmap vx) PQASM.Nor tenv /\
+               Env.MapsTo (vmap vy) PQASM.Nor tenv /\ Env.MapsTo (stack) PQASM.Nor tenv
+           /\ qft_uniform aenv tenv f /\ qft_gt aenv tenv f 
+           /\ right_mode_env aenv tenv f)
+         end
+     end
+    end
+        | iseven x => True
+  end.
+*)
+
+Definition store_typed (r:store) (bv:benv) (size:nat) : Prop :=
+   forall x vl v, Store.MapsTo x vl r -> In v vl ->
+           (forall i, (if is_bl (BEnv.find (fst x) bv) then 1 else size) <= i -> v i = false).
+
+Definition store_match_q (r:store) (f:posi -> val)
+           (bv:benv) (vmap : (qvar*nat) -> var) (aenv:var -> nat) : Prop := 
+  forall x v vl, Store.MapsTo x (v::vl) r -> (BEnv.find (fst x) bv) <> None ->
+         is_qtt (BEnv.find (fst x) bv) -> 
+            get_cus (aenv (vmap x)) f (vmap x) = cut_n v (aenv (vmap x)).
+
+Definition store_match_st (sl sn:nat) (stack:var) (f:posi -> val)
+             (vmap : (qvar*nat) -> var) : Prop := 
+          forall i, sn <= i -> get_cus sl f (stack) i = false.
+
+Definition aenv_match (stack temp:var) (size:nat) (bv:benv) (aenv: var -> nat) (vmap : (qvar*nat) -> var) : Prop := 
+          forall x, vmap x <> stack -> vmap x <> temp -> aenv (vmap x) = (if is_bl (BEnv.find (fst x) bv) then 1 else size).
+
+(*
+Definition no_equal_stack (temp stack:var) (ce:cexp) (size:nat) (bv:benv) (r:cstore) :=
+    match ce with clt x y => 
+     match par_find_var bv size r x with None => 
+             match par_find_var bv size r y with None => True
+                       | Some vy => fst vy <> G stack /\ fst vy <> G temp
+             end
+                     | Some vx => 
+        match par_find_var bv size r y with None => fst vx <> G stack /\ fst vx <> G temp
+                    | Some vy => fst vx <> G stack /\ fst vy <> G stack /\ fst vx <> G temp /\ fst vy <> G temp
+        end
+     end
+      | ceq x y => 
+     match par_find_var bv size r x with None => 
+             match par_find_var bv size r y with None => True
+                       | Some vy => fst vy <> G stack /\ fst vy <> G temp
+             end
+                     | Some vx => 
+        match par_find_var bv size r y with None => fst vx <> G stack
+                    | Some vy => fst vx <> G stack /\ fst vy <> G stack /\ fst vx <> G temp /\ fst vy <> G temp
+        end
+      end
+      | iseven x => True
+   end.
+*)
+(* Defining the equivalence relation between (cstore, circuit-run) and semantics store in QIMP. *)
+Definition cstore_store_match (smap : qvar -> nat) (s:store) (r:cstore) (bv:benv) :=
+       forall x i v vl t, i < smap x -> Store.MapsTo (x,i) (v::vl) s -> 
+                    BEnv.MapsTo x t bv -> ~ is_qtt (Some t) -> Store.MapsTo (x,i) v r.
+
+Lemma a_nat2fb_cut_same' : forall size m v, size <= m -> a_nat2fb (cut_n v m) size = a_nat2fb v size.
+Proof.
+ induction size;intros;simpl. easy.
+ simpl.
+ rewrite IHsize by lia.
+ unfold cut_n.
+ bdestruct (size <? m). easy. lia.
+Qed.
+
+Lemma a_nat2fb_cut_same : forall size v, a_nat2fb (cut_n v size) size = a_nat2fb v size.
+Proof.
+ intros. rewrite a_nat2fb_cut_same' by lia. easy.
+Qed.
+
+
+Lemma factor_type_c : forall v b bv p, typ_factor_full bv C b v = Some p -> fst p = C.
+Proof.
+  intros.
+  unfold typ_factor_full in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *. destruct t. inv H. destruct a.
+  bdestruct (b0 =b= b). simpl in *. inv H. easy.
+  simpl in *. inv H. simpl in *. inv H.
+  simpl in *. inv H.
+  bdestruct (C =a= C).
+  bdestruct (b =b= t). simpl in *. inv H. easy.
+  simpl in *. inv H. simpl in *. inv H. 
+Qed.
+
+Definition get_var_factor (x:factor) :=
+   match x with Var v => [v]
+                  | Num t v => []
+   end.
+
+Definition get_var_cfac (x:cfac) :=
+    match x with Index x v => (x:: get_var_factor v)
+               | Nor v => get_var_factor v
+    end.
+
+Definition get_var_cexp (x:cexp) :=
+   match x with clt x y => get_var_cfac x ++ get_var_cfac y
+              | ceq x y => get_var_cfac x ++ get_var_cfac y
+              | iseven x => get_var_cfac x
+   end.
+
+Definition not_stack (stack temp:var) (vmap : (qvar*nat) -> var) (smap:qvar -> nat) (l:list qvar)
+             := forall x, In x l -> (forall i, i < smap x -> vmap (x,i) <> stack /\ vmap (x,i) <> temp).
+
+Definition all_nor (vmap : (qvar*nat) -> var) (smap:qvar -> nat) (l:list qvar) (tenv:env)
+           := forall x, In x l -> (forall i, i < smap x -> Env.MapsTo (vmap (x,i)) PQASM.Nor tenv).
+
+Definition in_store (s:store) (smap:qvar -> nat) (l:list qvar) :=
+     forall x, In x l -> (forall i, i < smap x -> Store.In (x,i) s).
+
+Definition vmap_bij (vmap : (qvar*nat) -> var) :=
+    forall x y, x <> y -> vmap x <> vmap y.
+
+Local Opaque comparator01.
+
+Lemma mapsto_is_in : forall type bv x y, @BEnv.MapsTo type x y bv -> @BEnv.In type x bv.
+Proof.
+  intros. unfold BEnv.In,BEnv.Raw.PX.In in *. exists y. easy.
+Qed.
+
+Lemma type_factor_sem_no_none : forall x t bv smap size rh, typ_factor bv x = Some t ->
+     bv_store_gt_0 smap bv -> bv_store_sub smap bv rh -> sem_factor size rh x <> None.
+Proof.
+ intros. destruct x.
+ unfold sem_factor,typ_factor in *.
+ destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+ simpl in *. destruct t0. inv H. inv H.
+ unfold bv_store_gt_0 in *.
+ apply BEnv.find_2 in eq1.
+ apply mapsto_is_in in eq1. specialize (H0 v eq1).
+ unfold bv_store_sub in *.
+ unfold in_store in *.
+ specialize (H1 v 0 eq1 H0).
+ destruct H1. destruct H.
+ apply Store.find_1 in H.
+ assert ((@pair BEnv.key nat v O) = (@pair qvar nat v O)) by easy.
+ rewrite H2 in *. rewrite H.
+ simpl.
+ destruct x. simpl in *. lia.
+ simpl. easy.
+ simpl in *. inv H.
+ simpl.
+ destruct t0. simpl. easy. simpl. easy. simpl. easy.
+Qed.
+
+Lemma type_factor_full_sem_no_none : forall x t a b bv smap size rh, typ_factor_full bv a b x = Some t ->
+     bv_store_gt_0 smap bv -> bv_store_sub smap bv rh -> sem_factor size rh x <> None.
+Proof.
+ intros. destruct x.
+ unfold sem_factor,typ_factor_full in *.
+ destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+ simpl in *. destruct t0. inv H.
+ bdestruct ((a =a= a0)). bdestruct ((b0 =b= b)). subst. simpl in *. inv H.
+ unfold bv_store_gt_0 in *.
+ apply BEnv.find_2 in eq1.
+ apply mapsto_is_in in eq1. specialize (H0 v eq1).
+ unfold bv_store_sub in *.
+ unfold in_store in *.
+ specialize (H1 v 0 eq1 H0).
+ destruct H1. destruct H.
+ apply Store.find_1 in H.
+ assert ((@pair BEnv.key nat v O) = (@pair qvar nat v O)) by easy.
+ rewrite H2 in *. rewrite H.
+ simpl.
+ destruct x. simpl in *. lia.
+ simpl. easy.
+ simpl in *. inv H. simpl in *. inv H.
+ simpl in *. inv H.
+ simpl.
+ destruct t0. simpl. easy. simpl. easy. simpl. easy.
+Qed.
+
+Lemma type_cfac_sem_no_none : forall x t bv smap size rh, type_factor bv x = Some t ->
+    bv_store_gt_0 smap bv -> bv_store_sub smap bv rh -> sem_cfac smap size rh x <> None.
+Proof.
+ intros. destruct x.
+ unfold sem_cfac,type_factor in *.
+ destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+ simpl in *. destruct t0.
+ destruct (typ_factor_full bv C Nat v) eqn:eq2.
+ simpl in *. inv H.
+ destruct (sem_factor size rh v) eqn:eq3.
+ simpl in *. 
+ bdestruct (a_nat2fb b0 size <? smap x).
+ unfold bv_store_sub in *.
+ apply BEnv.find_2 in eq1.
+ apply mapsto_is_in in eq1.
+ specialize (H1 x (a_nat2fb b0 size) eq1 H).
+ destruct H1. destruct H1.
+ apply Store.find_1 in H1.
+ assert ((@pair BEnv.key nat x (a_nat2fb b0 size)) = (@pair qvar nat x (a_nat2fb b0 size))) by easy.
+ rewrite H3 in *.
+ rewrite H1.
+ simpl. destruct x0. simpl in *. lia.
+ simpl. easy. easy.
+ assert (sem_factor size rh v <> None).
+ apply (type_factor_full_sem_no_none v p C Nat bv smap); try easy.
+ contradiction.
+ simpl in *. inv H. inv H. simpl in *. inv H.
+ simpl in *.
+ destruct (sem_factor size rh v) eqn:eq1.
+ simpl in *. easy.
+ assert (sem_factor size rh v <> None).
+ apply (type_factor_sem_no_none v t bv smap); try easy.
+ contradiction.
+Qed.
+
+Lemma sem_factor_par_eval_same_c : forall x t bv smap size rh rl,
+    typ_factor bv x = Some t -> fst t = C -> cstore_store_match smap rh rl bv 
+     ->  bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+           par_eval_fc bv size rl x = sem_factor size rh x.
+Proof.
+  intros. destruct x.
+  unfold typ_factor,par_eval_fc,sem_factor in *.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *. destruct t0. inv H. inv H. simpl in *. subst.
+  unfold bv_store_gt_0 in *. 
+  apply BEnv.find_2 in eq1.
+  apply mapsto_is_in in eq1 as eq2.
+  specialize (H3 v eq2).
+  unfold bv_store_sub in H2. 
+  specialize (H2 v 0 eq2 H3).
+  destruct H2. destruct H.
+  destruct x. simpl in *. lia.
+  unfold cstore_store_match in H1.
+  specialize (H1 v 0 b0 x (TNor C b) H3 H eq1).
+  assert ( ~ is_qtt (Some (TNor C b))).
+  unfold is_qtt. easy.
+  apply H1 in H2.
+  apply Store.find_1 in H.
+  apply Store.find_1 in H2.
+  assert ((@pair qvar nat v O) = (@pair BEnv.key nat v O)) by easy.
+  rewrite H4 in *.
+  rewrite H. rewrite H2.
+  simpl in *. easy.
+  simpl in *. inv H.
+  unfold typ_factor,par_eval_fc,sem_factor,make_value in *.
+  simpl in *. 
+  destruct t0. bdestruct (Nat =b= Bl). inv H4.
+  bdestruct (Nat =b= Nat). easy. easy.
+  bdestruct (FixedP =b= Bl). inv H4.
+  bdestruct (FixedP =b= Nat). inv H5. easy.
+  bdestruct (Bl =b= Bl). easy. easy.
+Qed.
+
+Lemma sem_factor_full_par_eval_same_c : forall x t a b bv smap size rh rl,
+    typ_factor_full bv a b x = Some t -> fst t = C -> cstore_store_match smap rh rl bv 
+     ->  bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+           par_eval_fc bv size rl x = sem_factor size rh x.
+Proof.
+  intros. destruct x.
+  unfold typ_factor_full,par_eval_fc,sem_factor in *.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *. destruct t0. inv H.
+  bdestruct ((a =a= a0)).
+  bdestruct ((b0 =b= b)). simpl in *. inv H.
+  simpl in H0. subst.
+  unfold bv_store_gt_0 in *. 
+  apply BEnv.find_2 in eq1.
+  apply mapsto_is_in in eq1 as eq2.
+  specialize (H3 v eq2).
+  unfold bv_store_sub in H2. 
+  specialize (H2 v 0 eq2 H3).
+  destruct H2. destruct H.
+  destruct x. simpl in *. lia.
+  unfold cstore_store_match in H1.
+  specialize (H1 v 0 b0 x (TNor C b) H3 H eq1).
+  assert ( ~ is_qtt (Some (TNor C b))).
+  unfold is_qtt. easy.
+  apply H1 in H2.
+  apply Store.find_1 in H.
+  apply Store.find_1 in H2.
+  assert ((@pair qvar nat v O) = (@pair BEnv.key nat v O)) by easy.
+  rewrite H4 in *.
+  rewrite H. rewrite H2.
+  simpl in *. easy.
+  simpl in *. inv H.
+  simpl in *.  inv H. simpl in *.  inv H.
+  unfold typ_factor_full,par_eval_fc,sem_factor,make_value in *.
+  simpl in *. 
+  destruct t0. bdestruct (Nat =b= Bl). inv H4.
+  bdestruct (Nat =b= Nat). easy. easy.
+  bdestruct (FixedP =b= Bl). inv H4.
+  bdestruct (FixedP =b= Nat). inv H5. easy.
+  bdestruct (Bl =b= Bl). easy. easy.
+Qed.
+
+Lemma sem_cfac_par_eval_same_c : forall x t smap bv size rh rl,
+    type_factor bv x = Some t -> fst t = C -> cstore_store_match smap rh rl bv 
+     ->  bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+           par_eval_cfac_check smap bv size rl x = sem_cfac smap size rh x.
+Proof.
+  intros. destruct x.
+  unfold type_factor,par_eval_cfac_check,sem_cfac in *.
+  destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+  simpl in *.
+  destruct t0.
+  destruct (typ_factor_full bv C Nat v) eqn:eq2.
+  destruct (par_eval_fc bv size rl v) eqn:eq3.
+  simpl in *.
+  assert (sem_factor size rh v = Some b0).
+  rewrite <- (sem_factor_full_par_eval_same_c v p C Nat bv smap size rh rl); try easy.
+  apply (factor_type_c v Nat bv); try easy.
+  rewrite H4. simpl in *.
+  bdestruct (a_nat2fb b0 size <? smap x).
+  inv H. simpl in *. subst.
+  destruct (Store.find (elt:=list (nat -> bool)) (x, a_nat2fb b0 size) rh) eqn:eq4.
+  unfold bv_store_sub in *.
+  apply BEnv.find_2 in eq1.
+  apply mapsto_is_in in eq1 as eq5.
+  specialize (H2 x (a_nat2fb b0 size) eq5 H5).
+  destruct H2. destruct H.
+  unfold cstore_store_match in H1.
+  destruct x0. simpl in *. lia.
+  apply Store.find_2 in eq4.
+  specialize (H1 x (a_nat2fb b0 size) b1 x0 (TArray C b n) H5 H eq1).
+  assert (~ is_qtt (Some (TArray C b n))). easy.
+  apply H1 in H2.
+  apply store_mapsto_always_same with (v1 := (b1 :: x0)) in eq4; try easy.
+  destruct l. inv eq4. inv eq4.
+  apply Store.find_1 in H2. rewrite H2.
+  simpl. easy.
+  unfold bv_store_sub in *.
+  apply BEnv.find_2 in eq1.
+  apply mapsto_is_in in eq1 as eq5.
+  specialize (H2 x (a_nat2fb b0 size) eq5 H5).
+  destruct H2. destruct H.
+  apply Store.find_1 in H.
+  assert ((@pair qvar nat x (a_nat2fb b0 size)) = (@pair BEnv.key nat x (a_nat2fb b0 size))) by easy.
+  rewrite H2 in *.
+  rewrite H in eq4. inv eq4. easy.
+  simpl in *.
+  assert (sem_factor size rh v = None).
+  rewrite <- (sem_factor_full_par_eval_same_c v p C Nat bv smap size rh rl); try easy.
+  apply (factor_type_c v Nat bv); try easy.
+  rewrite H4. simpl. easy.
+  simpl in *. inv H. inv H.
+  simpl in *. inv H.
+  unfold par_eval_cfac_check,sem_cfac.
+  simpl in H.
+  rewrite sem_factor_par_eval_same_c with (t := t) (smap := smap) (rh := rh); try easy.
+Qed.
+
+Lemma type_cfac_sem_error : forall x t bv smap size rh rl, type_factor bv x = Some t ->
+    cstore_store_match smap rh rl bv -> bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+    par_find_var_check smap bv size rl x = Some Error ->
+               sem_cfac smap size rh x = Some Error.
+Proof.
+ intros. destruct x.
+ unfold sem_cfac,par_find_var_check,type_factor in *.
+ destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+ simpl in *. destruct t0.
+ destruct (typ_factor_full bv C Nat v) eqn:eq2.
+ simpl in *. inv H.
+ destruct (par_eval_fc bv size rl v) eqn:eq3.
+ rewrite (sem_factor_full_par_eval_same_c v p C Nat bv smap size rh rl) in eq3; try easy.
+ rewrite eq3.
+ simpl in *. 
+ bdestruct (a_nat2fb b0 size <? smap x). inv H3. easy.
+ apply factor_type_c in eq2. easy.
+ simpl in *. easy.
+ simpl in *. easy. easy. simpl in *. easy.
+ simpl in *. destruct v. inv H3. easy.
+Qed.
+
+Lemma type_cfac_find_var_error : forall x t bv smap size rh rl, type_factor bv x = Some t ->
+    cstore_store_match smap rh rl bv -> bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+    sem_cfac smap size rh x = Some Error ->
+    par_find_var_check smap bv size rl x = Some Error.
+Proof.
+ intros. destruct x.
+ unfold sem_cfac,par_find_var_check,type_factor in *.
+ destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+ simpl in *. destruct t0.
+ destruct (typ_factor_full bv C Nat v) eqn:eq2.
+ simpl in *. inv H.
+ destruct (sem_factor size rh v) eqn:eq3.
+ rewrite <- (sem_factor_full_par_eval_same_c v p C Nat bv smap size rh rl) in eq3; try easy.
+ rewrite eq3 in *.
+ simpl in *. 
+ bdestruct (a_nat2fb b0 size <? smap x).
+ destruct (Store.find (elt:=list (nat -> bool)) 
+        (x, a_nat2fb b0 size) rh ) eqn:eq4.
+ simpl in *. destruct l. simpl in *. easy. easy. easy. easy.
+ apply factor_type_c in eq2. easy.
+ simpl in *. easy.
+ simpl in *. easy. easy. simpl in *. easy.
+ simpl in *. destruct (sem_factor size rh v) eqn:eq1.
+ simpl in *. inv H3. easy.
+Qed.
+
+Lemma q_var_same_value : forall x xv t v smap vmap bv size rh rl f aenv,
+     store_match_q rh f bv vmap aenv ->
+     type_factor bv x = Some t -> fst t = Q -> 
+     par_find_var_check smap bv size rl x = Some (Value xv) -> 
+     sem_cfac smap size rh x = Some (Value v) -> 
+     cstore_store_match smap rh rl bv ->
+      bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+     get_cus (aenv (vmap xv)) f (vmap xv) = cut_n v (aenv (vmap xv)).
+Proof.
+  intros.
+  unfold type_factor,sem_cfac,par_find_var_check in *.
+  destruct x.
+  destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+  simpl in *.
+  destruct t0.
+  simpl in *.
+  destruct (typ_factor_full bv C Nat v0) eqn:eq2.
+  apply factor_type_c in eq2 as eq3.
+  destruct (par_eval_fc bv size rl v0) eqn:eq4.
+  simpl in *.
+  assert (sem_factor size rh v0 = Some b0).
+  rewrite <- (sem_factor_full_par_eval_same_c v0 p C Nat bv smap size rh rl); try easy.
+  rewrite H7 in *.
+  simpl in *.
+  bdestruct (a_nat2fb b0 size <? smap x).
+  inv H2.
+  destruct (Store.find (elt:=list (nat -> bool)) (x, a_nat2fb b0 size) rh) eqn:eq5.
+  destruct l. simpl in *. inv H3.
+  simpl in *. inv H3.
+  unfold store_match_q in *.
+  apply Store.find_2 in eq5.
+  apply H in eq5. easy.
+  simpl. rewrite eq1. easy.
+  simpl. rewrite eq1. unfold is_qtt.
+  inv H0. simpl in *. rewrite H1. easy.
+  simpl in *. inv H3.
+  inv H2. simpl in *. inv H2. simpl in *. inv H0.
+  inv H0. simpl in *. inv H0.
+  destruct v0. inv H2.
+  simpl in *.
+  destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq1.
+  simpl in *. destruct t0. inv H0.
+  destruct (Store.find (elt:=list (nat -> bool)) (v0, 0) rh) eqn:eq2.
+  destruct l.
+  simpl in *. inv H3.
+  simpl in *. inv H3.
+  unfold store_match_q in *.
+  apply Store.find_2 in eq2.
+  apply H in eq2. easy.
+  simpl. rewrite eq1. easy.
+  inv H0. simpl in *. rewrite H1 in *.
+  unfold is_qtt.
+  rewrite eq1. easy.
+  simpl in *. inv H3.
+  simpl in *. inv H0.
+  inv H2.
+Qed.
+
+
+Lemma clt_circuit_right_sem : forall aenv vmap tenv f b size fl x y v stack temp sn sl,
+      0 < size -> S (S sn) < sl ->
+      aenv (vmap y) = (get_size size b) ->
+      vmap y <> stack -> vmap y <> temp -> stack <> temp ->
+      aenv temp = (get_size size b) -> aenv stack = sl ->
+      get_cus (get_size size b) f (vmap y) = v ->
+      store_match_st sl sn stack f vmap ->
+      get_cus (get_size size b) f temp = nat2fb 0 ->
+      Env.MapsTo (vmap y) PQASM.Nor tenv -> Env.MapsTo stack PQASM.Nor tenv -> Env.MapsTo temp PQASM.Nor tenv ->
+      right_mode_env aenv tenv f ->  qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+      get_cua (exp_sem aenv (clt_circuit_right size fl b vmap x y stack temp sn) f (stack, sn))
+         = (a_nat2fb x (get_size size b) <? a_nat2fb v (get_size size b)).
+Proof.
+  intros. 
+  unfold clt_circuit_right.
+  bdestruct (fl =fl= Classic).
+  simpl.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb v (get_size size b))
+           (v2:= (a_nat2fb x (get_size size b))) (f':=f) ; try easy.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b))
+         (get_size size b)) [(stack, sn)
+      |-> put_cu (f (stack, sn))
+            (a_nat2fb x (get_size size b) <?
+             a_nat2fb v (get_size size b))]) = f[(stack, sn)
+      |-> put_cu (f (stack, sn))
+            (a_nat2fb x (get_size size b) <?
+             a_nat2fb v (get_size size b))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  assert ((¬ (a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b)))
+           = (a_nat2fb x (get_size size b) <? a_nat2fb v (get_size size b))).
+  bdestruct (a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b)).
+  bdestruct ((a_nat2fb x (get_size size b) <? a_nat2fb v (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb x (get_size size b) <? a_nat2fb v (get_size size b))).
+  easy. lia.
+  rewrite H18.
+  rewrite H17.
+  rewrite eupdate_index_eq.
+  apply get_put_cu.
+  unfold nor_mode.
+  unfold right_mode_env in H13.
+  specialize (H13 PQASM.Nor (stack, sn)).
+  apply H13 in H11.
+  inv H11. easy.
+  simpl. lia.
+  unfold get_size.
+  bdestruct (b =b= Bl). lia. easy.
+  simpl. lia.
+  simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite cus_get_neq by iner_p.
+  unfold store_match_st in H8.
+  specialize (H8 (S sn)).
+  assert (sn <= S sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite cus_get_neq by iner_p.
+  unfold store_match_st in H8.
+  specialize (H8 (sn)).
+  assert (sn <= sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite get_r_put_same. easy.
+  simpl.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb v (get_size size b))
+           (v2:= (a_nat2fb x (get_size size b))) (f':=f) ; try easy.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b))
+         (get_size size b)) [(stack, sn)
+      |-> put_cu (f (stack, sn))
+            (a_nat2fb x (get_size size b) <?
+             a_nat2fb v (get_size size b))]) = f[(stack, sn)
+      |-> put_cu (f (stack, sn))
+            (a_nat2fb x (get_size size b) <?
+             a_nat2fb v (get_size size b))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  assert ((¬ (a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b)))
+           = (a_nat2fb x (get_size size b) <? a_nat2fb v (get_size size b))).
+  bdestruct (a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b)).
+  bdestruct ((a_nat2fb x (get_size size b) <? a_nat2fb v (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb x (get_size size b) <? a_nat2fb v (get_size size b))).
+  easy. lia.
+  rewrite H18.
+  rewrite H17.
+  rewrite eupdate_index_eq.
+  apply get_put_cu.
+  unfold nor_mode.
+  unfold right_mode_env in H13.
+  specialize (H13 PQASM.Nor (stack, sn)).
+  apply H13 in H11.
+  inv H11. easy.
+  simpl. lia.
+  unfold get_size.
+  bdestruct (b =b= Bl). lia. easy.
+  simpl. lia.
+  simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite cus_get_neq by iner_p.
+  unfold store_match_st in H8.
+  specialize (H8 (S sn)).
+  assert (sn <= S sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite cus_get_neq by iner_p.
+  unfold store_match_st in H8.
+  specialize (H8 (sn)).
+  assert (sn <= sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite get_r_put_same. easy.
+Qed.
+
+Lemma clt_circuit_left_sem : forall aenv vmap tenv f b size fl x y v stack temp sn sl,
+      0 < size -> S (S sn) < sl ->
+      aenv (vmap y) = (get_size size b) ->
+      vmap y <> stack -> vmap y <> temp -> stack <> temp ->
+      aenv temp = (get_size size b) -> aenv stack = sl ->
+      get_cus (get_size size b) f (vmap y) = v ->
+      store_match_st sl sn stack f vmap ->
+      get_cus (get_size size b) f temp = nat2fb 0 ->
+      Env.MapsTo (vmap y) PQASM.Nor tenv -> Env.MapsTo stack PQASM.Nor tenv -> Env.MapsTo temp PQASM.Nor tenv ->
+      right_mode_env aenv tenv f ->  qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+      get_cua (exp_sem aenv (clt_circuit_left size fl b vmap y x stack temp sn) f (stack, sn))
+         = (a_nat2fb v (get_size size b) <? a_nat2fb x (get_size size b)).
+Proof.
+  intros. 
+  unfold clt_circuit_left.
+  bdestruct (fl =fl= Classic).
+  simpl.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb x (get_size size b))
+           (v2:= (a_nat2fb v (get_size size b))) (f':=f) ; try easy.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b))
+         (get_size size b)) [(stack, sn)
+      |-> put_cu (f (stack, sn))
+            (a_nat2fb v (get_size size b) <?
+             a_nat2fb x (get_size size b))]) = f[(stack, sn)
+      |-> put_cu (f (stack, sn))
+            (a_nat2fb v (get_size size b) <?
+             a_nat2fb x (get_size size b))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  assert ((¬ (a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b)))
+           = (a_nat2fb v (get_size size b) <? a_nat2fb x (get_size size b))).
+  bdestruct (a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b)).
+  bdestruct ((a_nat2fb v (get_size size b) <? a_nat2fb x (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb v (get_size size b) <? a_nat2fb x (get_size size b))).
+  easy. lia.
+  rewrite H18.
+  rewrite H17.
+  rewrite eupdate_index_eq.
+  apply get_put_cu.
+  unfold nor_mode.
+  unfold right_mode_env in H13.
+  specialize (H13 PQASM.Nor (stack, sn)).
+  apply H13 in H11.
+  inv H11. easy.
+  simpl. lia.
+  unfold get_size.
+  bdestruct (b =b= Bl). lia. easy.
+  simpl. lia.
+  simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite cus_get_neq by iner_p.
+  unfold store_match_st in H8.
+  specialize (H8 (S sn)).
+  assert (sn <= S sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite cus_get_neq by iner_p.
+  unfold store_match_st in H8.
+  specialize (H8 (sn)).
+  assert (sn <= sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite get_r_put_same. easy.
+  simpl.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb x (get_size size b))
+           (v2:= (a_nat2fb v (get_size size b))) (f':=f) ; try easy.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b))
+         (get_size size b)) [(stack, sn)
+      |-> put_cu (f (stack, sn))
+            (a_nat2fb v (get_size size b) <?
+             a_nat2fb x (get_size size b))]) = f[(stack, sn)
+      |-> put_cu (f (stack, sn))
+            (a_nat2fb v (get_size size b) <?
+             a_nat2fb x (get_size size b))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  assert ((¬ (a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b)))
+           = (a_nat2fb v (get_size size b) <? a_nat2fb x (get_size size b))).
+  bdestruct (a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b)).
+  bdestruct ((a_nat2fb v (get_size size b) <? a_nat2fb x (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb v (get_size size b) <? a_nat2fb x (get_size size b))).
+  easy. lia.
+  rewrite H18.
+  rewrite H17.
+  rewrite eupdate_index_eq.
+  apply get_put_cu.
+  unfold nor_mode.
+  unfold right_mode_env in H13.
+  specialize (H13 PQASM.Nor (stack, sn)).
+  apply H13 in H11.
+  inv H11. easy.
+  simpl. lia.
+  unfold get_size.
+  bdestruct (b =b= Bl). lia. easy.
+  simpl. lia.
+  simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite cus_get_neq by iner_p.
+  unfold store_match_st in H8.
+  specialize (H8 (S sn)).
+  assert (sn <= S sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite cus_get_neq by iner_p.
+  unfold store_match_st in H8.
+  specialize (H8 (sn)).
+  assert (sn <= sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite get_r_put_same. easy.
+Qed.
+
+Lemma clt_circuit_two_sem : forall aenv vmap tenv f b size fl x y v1 v2 stack sn sl,
+      0 < size -> S (S sn) < sl ->
+      aenv (vmap x) = (get_size size b) ->
+      aenv (vmap y) = (get_size size b) ->
+      vmap x <> vmap y -> vmap x <> stack -> vmap y <> stack ->
+      aenv stack = sl ->
+      get_cus (get_size size b) f (vmap x) = v1 ->
+      get_cus (get_size size b) f (vmap y) = v2 ->
+      store_match_st sl sn stack f vmap ->
+      Env.MapsTo (vmap x) PQASM.Nor tenv -> Env.MapsTo (vmap y) PQASM.Nor tenv -> Env.MapsTo stack PQASM.Nor tenv ->
+      right_mode_env aenv tenv f ->  qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+      get_cua (exp_sem aenv (clt_circuit_two size fl b vmap x y stack sn) f (stack, sn))
+         = (a_nat2fb v1 (get_size size b) <? a_nat2fb v2 (get_size size b)).
+Proof.
+  intros. 
+  unfold clt_circuit_two.
+  bdestruct (fl =fl= Classic).
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb v2 (get_size size b))
+           (v2:= (a_nat2fb v1 (get_size size b))) (f':=f) ; try easy.
+  assert ((¬ (a_nat2fb v2 (get_size size b) <=? a_nat2fb v1 (get_size size b)))
+           = (a_nat2fb v1 (get_size size b) <? a_nat2fb v2 (get_size size b))).
+  bdestruct (a_nat2fb  v2 (get_size size b) <=? a_nat2fb v1 (get_size size b)).
+  bdestruct ((a_nat2fb v1 (get_size size b) <? a_nat2fb v2 (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb v1 (get_size size b) <? a_nat2fb v2 (get_size size b))).
+  easy. lia.
+  rewrite H17.
+  rewrite eupdate_index_eq.
+  apply get_put_cu.
+  unfold nor_mode.
+  unfold right_mode_env in H13.
+  specialize (H13 PQASM.Nor (stack, sn)).
+  apply H13 in H12.
+  inv H12. easy.
+  simpl. lia.
+  unfold get_size.
+  bdestruct (b =b= Bl). lia. easy.
+  simpl. lia.
+  simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros. rewrite <- H8.
+  unfold get_cus.
+  bdestruct (i <? get_size size b).
+  lia. easy.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros. rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b).
+  lia. easy.
+  unfold store_match_st in H9.
+  specialize (H9 (S sn)).
+  assert (sn <= S sn) by lia. apply H9 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  unfold store_match_st in H9.
+  specialize (H9 (sn)).
+  assert (sn <= sn) by lia. apply H9 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb v2 (get_size size b))
+           (v2:= (a_nat2fb v1 (get_size size b))) (f':=f) ; try easy.
+  assert ((¬ (a_nat2fb v2 (get_size size b) <=? a_nat2fb v1 (get_size size b)))
+           = (a_nat2fb v1 (get_size size b) <? a_nat2fb v2 (get_size size b))).
+  bdestruct (a_nat2fb  v2 (get_size size b) <=? a_nat2fb v1 (get_size size b)).
+  bdestruct ((a_nat2fb v1 (get_size size b) <? a_nat2fb v2 (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb v1 (get_size size b) <? a_nat2fb v2 (get_size size b))).
+  easy. lia.
+  rewrite H17.
+  rewrite eupdate_index_eq.
+  apply get_put_cu.
+  unfold nor_mode.
+  unfold right_mode_env in H13.
+  specialize (H13 PQASM.Nor (stack, sn)).
+  apply H13 in H12.
+  inv H12. easy.
+  simpl. lia.
+  unfold get_size.
+  bdestruct (b =b= Bl). lia. easy.
+  simpl. lia.
+  simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros. rewrite <- H8.
+  unfold get_cus.
+  bdestruct (i <? get_size size b).
+  lia. easy.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros. rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b).
+  lia. easy.
+  unfold store_match_st in H9.
+  specialize (H9 (S sn)).
+  assert (sn <= S sn) by lia. apply H9 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+  unfold store_match_st in H9.
+  specialize (H9 (sn)).
+  assert (sn <= sn) by lia. apply H9 in H17.
+  rewrite get_cus_cua in H17 by lia. easy.
+Qed.
+
+Lemma aenv_match_value_cfac : forall x t xv size aenv bv smap vmap rh rl stack temp,
+       type_factor bv x = Some t -> vmap xv <> stack -> vmap xv <> temp ->
+       cstore_store_match smap rh rl bv ->  bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+       aenv_match stack temp size bv aenv vmap -> par_find_var_check smap bv size rl x = Some (Value xv) ->
+       aenv (vmap xv) = get_size size (snd t).
+Proof.
+  intros. 
+  unfold type_factor,aenv_match,par_find_var_check in *.
+  destruct x.
+  destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+  simpl in *. destruct t0.
+  destruct (typ_factor_full bv C Nat v) eqn:eq2.
+  apply factor_type_c in eq2 as eq3.
+  destruct p. simpl in *. inv H.
+  destruct (par_eval_fc bv size rl v) eqn:eq3.
+  simpl in *.
+  bdestruct (a_nat2fb b1 size <? smap x).
+  inv H6.
+  specialize (H5 (x, a_nat2fb b1 size) H0 H1).
+  rewrite H5. unfold get_size.
+  simpl in *. rewrite eq1.
+  unfold is_bl.
+  bdestruct (b =b= Bl). subst. easy. destruct b. easy. easy. easy.
+  inv H6.
+  assert (par_eval_fc bv size rl v <> None).
+  rewrite (sem_factor_full_par_eval_same_c v (C,b0) C Nat bv smap size rh); try easy.
+  easy. simpl in *. easy. inv H. simpl in *. easy.
+  unfold typ_factor in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *. destruct t0. easy. inv H. inv H6.
+  apply H5 in H1. rewrite H1.
+  unfold is_bl. simpl in *. rewrite eq1.
+  unfold get_size.
+  destruct b eqn:eq2. easy. easy. easy. easy.
+  simpl in *. inv H. easy.
+Qed.
+
+Lemma par_find_get_var : forall smap bv size rl x xv, 
+    par_find_var_check smap bv size rl x = Some (Value xv) -> (exists xvar, hd_error (get_var_cfac x) = Some xvar).
+Proof.
+  intros. unfold par_find_var_check,get_var_cfac in *.
+  destruct x.
+  exists x. easy.
+  destruct v.
+  simpl. exists v. easy.
+  easy.
+Qed.
+
+Lemma hd_list_in {A} : forall x l, hd_error l = Some x -> @In A x l.
+Proof.
+  intros. destruct l. simpl in *. easy. inv H. simpl. left. easy.
+Qed.
+
+Lemma not_eq_stack_var : forall stack temp vmap smap l bv size rl x xvar xv t, 
+         hd_error (get_var_cfac x) = Some xvar -> In xvar l -> 
+         par_find_var_check smap bv size rl x = Some (Value xv) ->
+         type_factor bv x = Some t -> bv_store_gt_0 smap bv ->
+         not_stack stack temp vmap smap l -> vmap xv <> stack.
+Proof.
+  intros.
+  unfold par_find_var_check,get_var_cfac,type_factor in *.
+  destruct x. simpl in *.
+  destruct (par_eval_fc bv size rl v) eqn:eq1.
+  simpl in *.
+  bdestruct (a_nat2fb b size <? smap x). inv H1.
+  unfold not_stack in *.
+  inv H.
+  specialize (H4 xvar H0 (a_nat2fb b size) H5).
+  easy. inv H1. simpl in *. easy.
+  unfold typ_factor in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *.
+  destruct t0. easy. inv H2.
+  unfold bv_store_gt_0 in H3.
+  specialize (H3 v).
+  unfold BEnv.In,BEnv.Raw.PX.In in H3.
+  apply BEnv.find_2 in eq1.
+  assert ((exists e : typ, BEnv.Raw.PX.MapsTo v e (BEnv.this bv))).
+  exists (TNor a b). easy. apply H3 in H2.
+  unfold not_stack in *.
+  inv H1. inv H.
+  specialize (H4 xvar H0 0). apply H4 in H2. easy.
+  simpl in *. easy. easy.
+Qed.
+
+Lemma not_eq_temp_var : forall stack temp vmap smap l bv size rl x xvar xv t, 
+         hd_error (get_var_cfac x) = Some xvar -> In xvar l -> 
+         par_find_var_check smap bv size rl x = Some (Value xv) ->
+         type_factor bv x = Some t -> bv_store_gt_0 smap bv ->
+         not_stack stack temp vmap smap l -> vmap xv <> temp.
+Proof.
+  intros.
+  unfold par_find_var_check,get_var_cfac,type_factor in *.
+  destruct x. simpl in *.
+  destruct (par_eval_fc bv size rl v) eqn:eq1.
+  simpl in *.
+  bdestruct (a_nat2fb b size <? smap x). inv H1.
+  unfold not_stack in *.
+  inv H.
+  specialize (H4 xvar H0 (a_nat2fb b size) H5).
+  easy. inv H1. simpl in *. easy.
+  unfold typ_factor in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *.
+  destruct t0. easy. inv H2.
+  unfold bv_store_gt_0 in H3.
+  specialize (H3 v).
+  unfold BEnv.In,BEnv.Raw.PX.In in H3.
+  apply BEnv.find_2 in eq1.
+  assert ((exists e : typ, BEnv.Raw.PX.MapsTo v e (BEnv.this bv))).
+  exists (TNor a b). easy. apply H3 in H2.
+  unfold not_stack in *.
+  inv H1. inv H.
+  specialize (H4 xvar H0 0). apply H4 in H2. easy.
+  simpl in *. easy. easy.
+Qed.
+
+Lemma all_nor_var : forall vmap smap tenv l bv size rl x xvar xv t, 
+         hd_error (get_var_cfac x) = Some xvar -> In xvar l -> 
+         par_find_var_check smap bv size rl x = Some (Value xv) ->
+         type_factor bv x = Some t -> bv_store_gt_0 smap bv ->
+         all_nor vmap smap l tenv -> Env.MapsTo (vmap xv) PQASM.Nor tenv.
+Proof.
+  intros.
+  unfold par_find_var_check,get_var_cfac,type_factor in *.
+  destruct x. simpl in *.
+  destruct (par_eval_fc bv size rl v) eqn:eq1.
+  simpl in *.
+  bdestruct (a_nat2fb b size <? smap x). inv H1.
+  unfold all_nor in *.
+  inv H.
+  specialize (H4 xvar H0 (a_nat2fb b size) H5).
+  easy. inv H1. simpl in *. easy.
+  unfold typ_factor in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *.
+  destruct t0. easy. inv H2.
+  unfold bv_store_gt_0 in H3.
+  specialize (H3 v).
+  unfold BEnv.In,BEnv.Raw.PX.In in H3.
+  apply BEnv.find_2 in eq1.
+  assert ((exists e : typ, BEnv.Raw.PX.MapsTo v e (BEnv.this bv))).
+  exists (TNor a b). easy. apply H3 in H2.
+  unfold all_nor in *.
+  inv H1. inv H.
+  specialize (H4 xvar H0 0). apply H4 in H2. easy.
+  simpl in *. easy. easy.
+Qed.
+
+Lemma stored_value_typed : forall smap rh bv size x xv a b, 
+     sem_cfac smap size rh x = Some (Value xv) -> type_factor bv x = Some (a,b) ->
+     store_typed rh bv size ->
+     ( forall i : nat, i >= get_size size b -> xv i = false).
+Proof.
+  intros.
+  unfold sem_cfac,type_factor in *.
+  destruct x.
+  destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+  destruct (sem_factor size rh v) eqn:eq2.
+  simpl in *.
+  destruct t.
+  destruct (typ_factor_full bv C Nat v) eqn:eq3.
+  simpl in *.
+  bdestruct (a_nat2fb b0 size <? smap x).
+  destruct (Store.find (elt:=list (nat -> bool)) (x, a_nat2fb b0 size) rh) eqn:eq4.
+  simpl in *.
+  destruct l. simpl in *. easy. simpl in *.
+  inv H.
+  unfold store_typed in *.
+  apply Store.find_2 in eq4.
+  assert (In xv (xv::l)). simpl. left. easy.
+  specialize (H1 (x, a_nat2fb b0 size) (xv :: l) xv eq4 H).
+  apply H1.
+  unfold is_bl,get_size in *.
+  simpl in *.
+  rewrite eq1.
+  inv H0. bdestruct (b =b= Bl). subst. lia.
+  destruct b. lia. lia. easy.
+  easy. inv H. simpl in *. easy. easy.
+  simpl in *. easy. simpl in *. easy.
+  unfold typ_factor in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv ) eqn:eq1.
+  simpl in *.
+  destruct (Store.find (elt:=list (nat -> bool)) (v, 0) rh) eqn:eq2.
+  destruct l. simpl in *. easy.
+  simpl in *. inv H.
+  destruct t. easy.
+  inv H0.
+  unfold store_typed in H1.
+  apply Store.find_2 in eq2.
+  assert (In xv (xv::l)). simpl. left. easy.
+  specialize (H1 (v,0) (xv::l) xv eq2 H).
+  apply H1.
+  unfold is_bl,get_size in *.
+  simpl. rewrite eq1.
+  bdestruct (b =b= Bl). subst. lia. destruct b. lia. lia. easy.
+  easy. easy. simpl in *.
+  unfold get_size in *. inv H0. bdestruct (b =b= Bl).
+  simpl in *. inv H.
+  unfold cut_n.
+  bdestruct (i <? 1). lia. easy.
+  bdestruct (b =b= Nat). simpl in *. inv H.
+  unfold cut_n.
+  bdestruct (i <? size). lia. easy.
+  simpl in *. inv H.
+  unfold fbrev,cut_n.
+  bdestruct (i <? size). lia. easy.
+Qed.
+
+Lemma get_cus_small : forall size f x n, n <= size -> 
+        get_cus size f x = allfalse -> get_cus n f x = allfalse.
+Proof.
+  intros.
+  unfold get_cus in *.
+  apply functional_extensionality.
+  intros.
+  bdestruct (x0 <? n).
+  rewrite <- H0.
+  bdestruct (x0 <? size). easy. lia.
+  easy.
+Qed.
+
+Lemma par_find_var_check_eq : forall smap bv size rl x xv,
+   par_find_var_check smap bv size rl x = Some (Value xv) -> par_find_var bv size rl x = Some xv.
+Proof.
+  intros. unfold par_find_var_check,par_find_var in *.
+  destruct x.
+  destruct (par_eval_fc bv size rl v) eqn:eq1.
+  simpl in *.
+  bdestruct (a_nat2fb b size <? smap x).
+  inv H. easy.
+  inv H. easy.
+  destruct v. inv H. easy. easy.
+Qed.
+
+(* Main theorem for the correctness of cexp. Compilation correctness. *)
+Lemma compile_cexp_sem : forall t sl size smap vmap bv fl rh rl stack temp sn e st re f aenv tenv, 
+      type_cexp bv e = Some t ->
+      compile_cexp size smap vmap bv fl rl stack temp sn e = Some st ->
+      sem_cexp smap bv size rh e = Some re ->
+      0 < size -> S (S sn) < sl ->
+      cstore_store_match smap rh rl bv -> bv_store_sub smap bv rh -> bv_store_gt_0 smap bv ->
+      store_typed rh bv size -> store_match_q rh f bv vmap (aenv (get_size size (snd t))) ->
+      store_match_st sl sn stack f vmap ->
+      aenv_match stack temp size bv ((aenv (get_size size (snd t)))) vmap ->
+      not_stack stack temp vmap smap (get_var_cexp e) ->
+      all_nor vmap smap (get_var_cexp e) tenv -> 
+      stack <> temp -> aenv (get_size size (snd t)) temp = (get_size size (snd t))
+      -> aenv (get_size size (snd t)) stack = sl -> get_cus size f temp = nat2fb 0 ->
+      Env.MapsTo temp PQASM.Nor tenv -> Env.MapsTo stack PQASM.Nor tenv ->
+      right_mode_env (aenv (get_size size (snd t))) tenv f -> qft_uniform (aenv (get_size size (snd t))) tenv f 
+         -> qft_gt (aenv (get_size size (snd t)))  tenv f
+          -> vmap_bij vmap
+         -> (st = Error /\ re = Error) \/ (exists b, st = Value (None,sn,Some b) /\ re = Value b)
+              \/ (exists p, st = Value (Some p, S sn,None) 
+                 /\ re = (Value (get_cua (exp_sem (aenv (get_size size (snd t))) p f (stack,sn))))).
+Proof.
+  intros. destruct e.
+  simpl in *.
+  destruct (¬ (qvar_eq bv size rl x y)) eqn:eq1.
+  unfold gen_clt_c in *.
+  destruct (type_factor bv x) eqn:eq2.
+  destruct (type_factor bv y) eqn:eq3.
+  simpl in *.
+  unfold meet_type,meet_btype,meet_atype in H.
+  destruct p. destruct p0. simpl in *.
+  bdestruct (b =b= b0). simpl in H. subst.
+  destruct a eqn:eq4. unfold ret in H. 
+  bdestruct (C =a= Q). inv H15. simpl in *.
+  bdestruct (a0 =a= Q). subst.
+  destruct (sem_cfac smap size rh x) eqn:eq5.
+  destruct v. 
+  destruct (sem_cfac smap size rh y) eqn:eq6. 
+  destruct v. simpl in *. inv H1.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq7.
+  destruct v.
+  assert (par_eval_cfac_check smap bv size rl x = Some (Value x0)).
+  rewrite sem_cfac_par_eval_same_c with (t := (C, b0)) (rh := rh); try easy.
+  rewrite H1 in *.
+  simpl in *. inv H0.
+  right. right.
+  exists (clt_circuit_right size fl b0 vmap x0 x2 stack temp sn). split.
+  easy.
+  remember (aenv (get_size size (snd t)) stack) as sl.
+  assert (aenv (get_size size b0) (vmap x2) = get_size size b0) as eq8.
+  rewrite (aenv_match_value_cfac y (Q, b0) x2
+          size (aenv (get_size size b0)) bv smap vmap rh rl stack temp); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy. inv H. easy.
+  rewrite clt_circuit_right_sem with (tenv := tenv) (v := x1) (sl := sl); try easy.
+  inv H. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy. 
+  inv H. simpl in *. easy.
+  rewrite <- eq8.
+  inv H. simpl in *.
+  rewrite (q_var_same_value y x2 (Q, b0) x1 smap vmap bv size rh rl); try easy.
+  rewrite eq8. apply cut_n_eq.
+  apply (stored_value_typed smap rh bv size y x1 Q); try easy.
+  unfold nat2fb in *. simpl in *.
+  apply get_cus_small with (size := size); try easy.
+  unfold get_size. bdestruct (b0 =b= Bl). lia. lia.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  Check all_nor_var.
+  apply (all_nor_var vmap smap tenv (get_var_cfac x ++ get_var_cfac y)
+             bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy. 
+  inv H0.
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq6; try easy.
+  easy.
+  simpl in *.
+  assert (par_find_var_check smap bv size rl y = Some Error).
+  apply type_cfac_find_var_error with (t := (Q,b0)) (rh := rh); try easy.
+  rewrite H23 in *.
+  inv H1. inv H0. left. easy.
+  simpl in *. inv H1.
+  simpl in *. 
+  destruct (par_find_var_check smap bv size rl y) eqn:eq6.
+  simpl in *. destruct v.
+  assert (par_eval_cfac_check smap bv size rl x = Some Error).
+  rewrite sem_cfac_par_eval_same_c with (t := (C, b0)) (rh := rh); try easy.
+  rewrite H23 in *.
+  simpl in *.
+  destruct (sem_cfac smap size rh y). simpl in *.
+  inv H1. inv H0. left. easy.
+  easy.
+  destruct (sem_cfac smap size rh y). simpl in *. 
+  inv H1. inv H0. left. easy.
+  easy. easy.
+  simpl in *. easy.
+  simpl in *.
+  destruct a0.
+  destruct (sem_cfac smap size rh x) eqn:eq5.
+  destruct v. 
+  destruct (sem_cfac smap size rh y) eqn:eq6. 
+  destruct v. simpl in *. inv H1.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq5; try easy.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq6; try easy.
+  rewrite eq5 in *. rewrite eq6 in *. simpl in *.
+  inv H0.
+  right. 
+  left.
+  exists ((a_nat2fb x0 (get_size size b0) <?
+       a_nat2fb x1 (get_size size b0))). easy.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq5; try easy.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq6; try easy.
+  rewrite eq5 in *. rewrite eq6 in *. simpl in *.
+  inv H1. inv H0. left. easy.
+  simpl in *. easy.
+  simpl in *.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq5; try easy.
+  rewrite eq5 in *.
+  simpl in *.
+  destruct (sem_cfac smap size rh y).
+  destruct (par_eval_cfac_check smap bv size rl y).
+  simpl in *. 
+  inv H1. inv H0. left. easy.
+  simpl in *. 
+  inv H1. inv H0. left. easy.
+  simpl in *. easy. easy.
+  inv H. simpl in *.
+  destruct a0. simpl in *.
+  destruct (sem_cfac smap size rh x) eqn:eq5.
+  destruct v. 
+  destruct (sem_cfac smap size rh y) eqn:eq6. 
+  destruct v. simpl in *. inv H1.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7.
+  destruct v.
+  assert (par_eval_cfac_check smap bv size rl y = Some (Value x1)).
+  rewrite sem_cfac_par_eval_same_c with (t := (C, b0)) (rh := rh); try easy.
+  rewrite H in *.
+  simpl in *. inv H0.
+  right. right.
+  exists ((clt_circuit_left size fl b0 vmap x2 x1 stack temp sn)). split.
+  easy.
+  remember (aenv (get_size size b0) stack) as sl.
+  assert (aenv (get_size size b0) (vmap x2) = get_size size b0) as eq8.
+  Check aenv_match_value_cfac.
+  rewrite (aenv_match_value_cfac x (Q, b0) x2
+          size (aenv (get_size size b0)) bv smap vmap rh rl stack temp); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy. 
+  Check clt_circuit_left_sem.
+  rewrite clt_circuit_left_sem with (tenv := tenv) (v := x0) (sl := sl); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy. 
+  rewrite <- eq8.
+  Check q_var_same_value.
+  rewrite (q_var_same_value x x2 (Q, b0) x0 smap vmap bv size rh rl); try easy.
+  rewrite eq8. apply cut_n_eq.
+  apply (stored_value_typed smap rh bv size x x0 Q); try easy.
+  unfold nat2fb in *. simpl in *.
+  apply get_cus_small with (size := size); try easy.
+  unfold get_size. bdestruct (b0 =b= Bl). lia. lia.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  Check all_nor_var.
+  apply (all_nor_var vmap smap tenv (get_var_cfac x ++ get_var_cfac y)
+             bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy. 
+  inv H0.
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq5; try easy.
+  easy.
+  simpl in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7.
+  simpl in *. destruct v.
+  assert (par_eval_cfac_check smap bv size rl y = Some Error).
+  rewrite sem_cfac_par_eval_same_c with (t := (C, b0)) (rh := rh); try easy.
+  rewrite H in *.
+  simpl in *.
+  inv H1. inv H0. left. easy.
+  inv H1. inv H0. left. easy. easy.
+  simpl in *. easy. simpl in *.
+  assert (par_find_var_check smap bv size rl x = Some Error).
+  apply type_cfac_find_var_error with (t := (Q,b0)) (rh := rh); try easy.
+  rewrite H in *.
+  destruct (sem_cfac smap size rh y). simpl in *.
+  inv H1. inv H0. left. easy.
+  simpl in *. easy.
+  easy.
+  destruct (sem_cfac smap size rh x) eqn:eq5.
+  destruct v. 
+  destruct (sem_cfac smap size rh y) eqn:eq6. 
+  destruct v. simpl in *. inv H1.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7.
+  destruct v.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq8.
+  destruct v. simpl in *. inv H0.
+  right. right.
+  assert (aenv (get_size size b0) (vmap x2) = get_size size b0) as eq9.
+  rewrite (aenv_match_value_cfac x (Q, b0) x2
+          size (aenv (get_size size b0)) bv smap vmap rh rl stack temp); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x4 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x4 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  assert (aenv (get_size size b0) (vmap x3) = get_size size b0) as eq10.
+  rewrite (aenv_match_value_cfac y (Q, b0) x3
+          size (aenv (get_size size b0)) bv smap vmap rh rl stack temp); try easy.
+  apply par_find_get_var in eq8 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x4 x3 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq8 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x4 x3 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  exists (clt_circuit_two size fl b0 vmap x2 x3 stack sn). split. easy.
+  remember (aenv (get_size size b0) stack) as sl.
+  rewrite clt_circuit_two_sem with (tenv := tenv) (v1 := x0) (v2 := x1) (sl := sl) ; try easy.
+  unfold qvar_eq in eq1.
+  assert (par_find_var bv size rl x = Some x2).
+  apply (par_find_var_check_eq smap); try easy.
+  assert (par_find_var bv size rl y = Some x3).
+  apply (par_find_var_check_eq smap); try easy.
+  rewrite H in *. rewrite H0 in *.
+  bdestruct (x2 =qd= x3). inv eq1.
+  apply H22. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x4 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq8 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x4 x3 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  Check q_var_same_value.
+  rewrite <- eq9.
+  rewrite (q_var_same_value x x2 (Q, b0) x0 smap vmap bv size rh rl); try easy.
+  rewrite eq9. apply cut_n_eq.
+  apply (stored_value_typed smap rh bv size x x0 Q); try easy.
+  rewrite <- eq10.
+  rewrite (q_var_same_value y x3 (Q, b0) x1 smap vmap bv size rh rl); try easy.
+  rewrite eq10. apply cut_n_eq.
+  apply (stored_value_typed smap rh bv size y x1 Q); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  Check all_nor_var.
+  apply (all_nor_var vmap smap tenv (get_var_cfac x ++ get_var_cfac y)
+             bv size rl x x4 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy. 
+  apply par_find_get_var in eq8 as X1. destruct X1.
+  Check all_nor_var.
+  apply (all_nor_var vmap smap tenv (get_var_cfac x ++ get_var_cfac y)
+             bv size rl y x4 x3 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  simpl in *.
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq6; try easy.
+  simpl in *. easy.
+  simpl in *. 
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq5; try easy.
+  simpl in *. easy.
+  simpl in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7. destruct v.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq8. destruct v. simpl in *.
+  rewrite type_cfac_find_var_error with (t := (Q, b0)) (bv:=bv) (rh:=rh) in eq8; try easy.
+  simpl in *. inv H0. inv H1. left. easy.
+  simpl in *. easy.
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq5; try easy.
+  simpl in *. easy.
+  simpl in *. easy.
+  simpl in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7. destruct v. 
+  rewrite type_cfac_find_var_error with (t := (Q, b0)) (bv:=bv) (rh:=rh) in eq7; try easy.
+  simpl in *.
+  destruct (sem_cfac smap size rh y). destruct (par_find_var_check smap bv size rl y).
+  simpl in *.
+  inv H0. inv H1. left. easy.
+  simpl in *.
+  inv H0. inv H1. left. easy.
+  1-5: easy.  
+Admitted.
+
+
+
 Definition eval_var (smap : qvar -> nat) (size:nat) (r:store) (x:cfac) :=
-   match x with Index x n => do v <- (sem_factor size r Nat n) @
+   match x with Index x n => do v <- (sem_factor size r n) @
                   if a_nat2fb v size <? smap x then
                     ret (Value (x,a_nat2fb v size)) else ret Error
               | Nor (Var x) => Some (Value (x,0))
-              | Nor (Num x) => None
+              | Nor (Num b x) => None
    end.
 
 Definition l_rotate (f:nat -> bool) (n:nat) := fun i => f ((i + n - 1) mod n).
+
+Definition apply_unary (op:qop) (size:nat) (t:btype) (x:(nat -> bool)) (y:(nat -> bool)) :=
+    match op with nadd => sumfb false x y
+                | nsub => (sumfb true x (negatem size y))
+                | fadd => (fbrev size (sumfb false (fbrev size x) (fbrev size y)))
+                | fsub => (fbrev size (sumfb true (fbrev size x) (fbrev size (negatem size y))))
+                | qxor => (bin_xor x y (if t =b= Bl then 1 else size))
+                | nfac => (nat2fb (fact (a_nat2fb y size) mod 2^size))
+                | fdiv => (nat2fb (((a_nat2fb (fbrev size x) size)) / (a_nat2fb y size)))
+                | _ => nat2fb 0
+    end.
 
 (* Semantics for statments. Just like C. 
    For dealing with inv, we pop out history values. *)
@@ -1747,24 +3560,125 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
  | sem_qexp_init_error_2 : forall r t x v xn,
            eval_var smap size r x = Some (Value xn) ->
            BEnv.MapsTo (fst xn) t bv ->
-           sem_cfac smap size r (get_ct t) v = Some Error ->  
+           sem_cfac smap size r v = Some Error ->  
             sem_qexp smap fv bv size r (init x v) Error
  | sem_qexp_init_some : forall r t x v xn x_val xl val,
            eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
            BEnv.MapsTo (fst xn) t bv ->
-           sem_cfac smap size r (get_ct t) v = Some (Value val) ->  
+           sem_cfac smap size r v = Some (Value val) ->  
             sem_qexp smap fv bv size r (init x v) 
                 (Value (Store.add xn ((bin_xor x_val val (if (get_ct t) =b= Bl then 1 else size))::(x_val::xl)) r))
- | sem_qexp_nadd_error_1 : forall r x y, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (nadd x y) Error
- | sem_qexp_nadd_error_2 : forall r x v,
-           sem_cfac smap size r Nat v = Some Error ->  
-            sem_qexp smap fv bv size r (nadd x v) Error
- | sem_qexp_nadd_some : forall r x v xn x_val xl val,
+ | sem_qexp_nadd_error_1 : forall r x op y, eval_var smap size r x = Some Error ->
+         sem_qexp smap fv bv size r (unary x op y) Error
+ | sem_qexp_nadd_error_2 : forall r x op v,
+           sem_cfac smap size r v = Some Error ->  
+            sem_qexp smap fv bv size r (unary x op v) Error
+ | sem_qexp_nadd_error_3 : forall r x op v xv,
+       eval_var smap size r x = Some (Value xv) -> eval_var smap size r v = Some (Value xv) ->
+       is_q_cfac bv x = true ->
+            sem_qexp smap fv bv size r (unary x op v) Error
+ | sem_qexp_nadd_some : forall r x op v t xn x_val xl val,
+           eval_var smap size r x = Some (Value xn) ->
+            (is_q_cfac bv x = true -> eval_var smap size r v <>  Some (Value xn))
+           -> Store.MapsTo xn (x_val::xl) r
+            -> type_factor bv x = Some t ->
+           sem_cfac smap size r v = Some (Value val) ->  
+            sem_qexp smap fv bv size r (unary x op v) 
+                (Value (Store.add xn ((apply_unary op size (snd t) x_val val)::(x_val::xl)) r))
+ | sem_qexp_lrot_error : forall r x,
+           eval_var smap size r x = Some Error ->
+            sem_qexp smap fv bv size r (slrot x) Error
+
+ | sem_qexp_lrot_some : forall r t x xn x_val xl,
            eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat v = Some (Value val) ->  
-            sem_qexp smap fv bv size r (nadd x v) 
-                (Value (Store.add xn ((sumfb false x_val val)::(x_val::xl)) r))
+           BEnv.MapsTo (fst xn) t bv ->
+            sem_qexp smap fv bv size r (slrot x) 
+                (Value (Store.add xn ((l_rotate x_val (if (get_ct t) =b= Bl then 1 else size))::(x_val::xl)) r))
+
+ | sem_qexp_qinv_error : forall r x,
+           eval_var smap size r x = Some Error ->
+            sem_qexp smap fv bv size r (qinv x) Error
+
+ | sem_qexp_qinv_some : forall r x xn x_val xl,
+           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
+            sem_qexp smap fv bv size r (qinv x)  (Value (Store.add xn xl r))
+
+ | sem_qexp_if_error : forall r ce e1 e2, sem_cexp smap size r ce = Some Error ->
+                    sem_qexp smap fv bv size r (qif ce e1 e2) Error
+ | sem_qexp_if_t : forall r ce e1 e2 r1, sem_cexp smap size r ce = Some (Value true) ->
+                    sem_qexp smap fv bv size r e1 r1 -> 
+                    sem_qexp smap fv bv size r (qif ce e1 e2) r1
+ | sem_qexp_if_f : forall r ce e1 e2 r1, sem_cexp smap size r ce = Some (Value false) ->
+                    sem_qexp smap fv bv size r e2 r1 -> 
+                    sem_qexp smap fv bv size r (qif ce e1 e2) r1
+
+ | sem_qexp_call_error_1 : forall tvl l e fbv rx f x vs r r' r'',
+         FEnv.MapsTo f (tvl, l,e,fbv,rx) fv -> 
+         init_store r l = Some r' ->
+         sem_qexp (gen_smap_l l smap) fv fbv size r' e (Value r'') ->
+         eval_var (gen_smap_l l smap) size r'' rx = Some Error ->
+         sem_qexp smap fv bv size r (call x f vs) Error
+
+ | sem_qexp_call_error_2 : forall x f vs r,
+         eval_var smap size r x = Some Error ->
+         sem_qexp smap fv bv size r (call x f vs) Error.
+
+ | sem_qexp_call_error_3 : forall l e fbv rx x f vs r r' , FEnv.MapsTo f (tvl,l,e,fbv,rx) fv -> 
+         init_store r l = Some r' ->
+         sem_qexp (gen_smap_l l smap) fv fbv size r' e Error ->
+         sem_qexp smap fv bv size r (call x f vs) Error.
+
+ | sem_qexp_call_some : forall l e fbv rx rxn f x xn r r' r'' rxv rxl xl, FEnv.MapsTo f (l,e,fbv,rx) fv -> 
+         init_store r l = Some r' ->
+         eval_var smap size r x = Some (Value xn) ->
+         sem_qexp (gen_smap_l l smap) fv fbv size r' e (Value r'') ->
+         eval_var (gen_smap_l l smap) size r'' rx = Some (Value rxn) ->
+         Store.MapsTo rxn (rxv::rxl) r'' ->
+         Store.MapsTo xn xl r ->
+         sem_qexp smap fv bv size r (call f x) (Value (Store.add xn (rxv::xl) r))
+
+ | sem_qexp_qseq_error : forall r e1 e2,
+                sem_qexp smap fv bv size r e1 Error ->
+                  sem_qexp smap fv bv size r (qseq e1 e2) Error
+
+ | sem_qexp_qseq_some : forall r e1 e2 r' r'',
+                sem_qexp smap fv bv size r e1 (Value r') ->
+                sem_qexp smap fv bv size r' e2 r'' ->
+                  sem_qexp smap fv bv size r (qseq e1 e2) r''
+
+ | sem_qexp_for_error_1 : forall r x n e,
+                sem_cfac smap size r Nat n = Some Error ->
+                           sem_qexp smap fv bv size r (qfor x n e) Error
+
+ | sem_qexp_for_error_2 : forall r x n e nv xl,
+      sem_cfac smap size r Nat n = Some (Value nv) ->
+       Store.MapsTo (L x,0) xl r ->
+        sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb 0)::xl) r) e x (a_nat2fb nv size) Error ->
+                           sem_qexp smap fv bv size r (qfor x n e) Error
+
+ | sem_qexp_for_some : forall r x n e xl nv nv' xl' r',
+      sem_cfac smap size r Nat n = Some (Value nv) ->
+       Store.MapsTo (L x,0) xl r ->
+        sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb 0)::xl) r) e x (a_nat2fb nv size) (Value r') ->
+        Store.MapsTo (L x,0) (nv'::xl') r' ->
+                           sem_qexp smap fv bv size r (qfor x n e) (Value (Store.add (L x,0) xl' r'))
+
+with sem_for_exp (smap: qvar -> nat) (fv:fenv) (bv:benv) (size:nat): store -> qexp -> var -> nat -> @value store -> Prop :=
+  | sem_for_empty : forall r x e, sem_for_exp smap fv bv size r e x 0 (Value r)
+  | sem_for_many_error_1 : forall r x m e,
+    sem_qexp smap fv bv size r e Error  ->
+     sem_for_exp smap fv bv size r e x (S m) Error
+  | sem_for_many_error_2 : forall r x m e r' nv xl,
+    sem_qexp smap fv bv size r e (Value r')  ->
+    Store.MapsTo (L x,0) (nv::xl) r' ->
+     sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb (S (a_nat2fb nv size)))::xl) r') e x m Error ->
+       sem_for_exp smap fv bv size r e x (S m) Error
+  | sem_for_many : forall r x m e r' nv xl r'',
+    sem_qexp smap fv bv size r e (Value r')  ->
+    Store.MapsTo (L x,0) (nv::xl) r' ->
+     sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb (S (a_nat2fb nv size)))::xl) r') e x m (Value r'') ->
+       sem_for_exp smap fv bv size r e x (S m) (Value r'').
+
  | sem_qexp_nsub_error_1 : forall r x y, eval_var smap size r x = Some Error ->
          sem_qexp smap fv bv size r (nsub x y) Error
  | sem_qexp_nsub_error_2 : forall r x v,
@@ -1845,15 +3759,7 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
             sem_qexp smap fv bv size r (qxor x v) 
                 (Value (Store.add xn ((bin_xor x_val val (if (get_ct t) =b= Bl then 1 else size))::(x_val::xl)) r))
 
- | sem_qexp_lrot_error : forall r x,
-           eval_var smap size r x = Some Error ->
-            sem_qexp smap fv bv size r (slrot x) Error
 
- | sem_qexp_lrot_some : forall r t x xn x_val xl,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           BEnv.MapsTo (fst xn) t bv ->
-            sem_qexp smap fv bv size r (slrot x) 
-                (Value (Store.add xn ((l_rotate x_val (if (get_ct t) =b= Bl then 1 else size))::(x_val::xl)) r))
 
 
  | sem_qexp_nfac_error_1 : forall r x y, eval_var smap size r x = Some Error ->
@@ -2023,89 +3929,7 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
                   ((fbrev size (nat2fb ((((a_nat2fb y_val size) * 2^size) / (a_nat2fb z_val size)))))::(x_val::xl)) r))
 
 
- | sem_qexp_qinv_error : forall r x,
-           eval_var smap size r x = Some Error ->
-            sem_qexp smap fv bv size r (qinv x) Error
 
- | sem_qexp_qinv_some : forall r x xn x_val xl,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-            sem_qexp smap fv bv size r (qinv x)  (Value (Store.add xn xl r))
-
- | sem_qexp_if_error : forall r ce e1 e2, sem_cexp smap size r ce = Some Error ->
-                    sem_qexp smap fv bv size r (qif ce e1 e2) Error
- | sem_qexp_if_t : forall r ce e1 e2 r1, sem_cexp smap size r ce = Some (Value true) ->
-                    sem_qexp smap fv bv size r e1 r1 -> 
-                    sem_qexp smap fv bv size r (qif ce e1 e2) r1
- | sem_qexp_if_f : forall r ce e1 e2 r1, sem_cexp smap size r ce = Some (Value false) ->
-                    sem_qexp smap fv bv size r e2 r1 -> 
-                    sem_qexp smap fv bv size r (qif ce e1 e2) r1
-
- | sem_qexp_call_error_1 : forall l e fbv rx f x r r' r'',
-         FEnv.MapsTo f (l,e,fbv,rx) fv -> 
-         init_store r l = Some r' ->
-         sem_qexp (gen_smap_l l smap) fv fbv size r' e (Value r'') ->
-         eval_var (gen_smap_l l smap) size r'' rx = Some Error ->
-         sem_qexp smap fv bv size r (call f x) Error
-
- | sem_qexp_call_error_2 : forall f x r,
-         eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (call f x) Error
-
- | sem_qexp_call_error_3 : forall l e fbv rx f x r r' , FEnv.MapsTo f (l,e,fbv,rx) fv -> 
-         init_store r l = Some r' ->
-         sem_qexp (gen_smap_l l smap) fv fbv size r' e Error ->
-         sem_qexp smap fv bv size r (call f x) Error
-
- | sem_qexp_call_some : forall l e fbv rx rxn f x xn r r' r'' rxv rxl xl, FEnv.MapsTo f (l,e,fbv,rx) fv -> 
-         init_store r l = Some r' ->
-         eval_var smap size r x = Some (Value xn) ->
-         sem_qexp (gen_smap_l l smap) fv fbv size r' e (Value r'') ->
-         eval_var (gen_smap_l l smap) size r'' rx = Some (Value rxn) ->
-         Store.MapsTo rxn (rxv::rxl) r'' ->
-         Store.MapsTo xn xl r ->
-         sem_qexp smap fv bv size r (call f x) (Value (Store.add xn (rxv::xl) r))
-
- | sem_qexp_qseq_error : forall r e1 e2,
-                sem_qexp smap fv bv size r e1 Error ->
-                  sem_qexp smap fv bv size r (qseq e1 e2) Error
-
- | sem_qexp_qseq_some : forall r e1 e2 r' r'',
-                sem_qexp smap fv bv size r e1 (Value r') ->
-                sem_qexp smap fv bv size r' e2 r'' ->
-                  sem_qexp smap fv bv size r (qseq e1 e2) r''
-
- | sem_qexp_for_error_1 : forall r x n e,
-                sem_cfac smap size r Nat n = Some Error ->
-                           sem_qexp smap fv bv size r (qfor x n e) Error
-
- | sem_qexp_for_error_2 : forall r x n e nv xl,
-      sem_cfac smap size r Nat n = Some (Value nv) ->
-       Store.MapsTo (L x,0) xl r ->
-        sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb 0)::xl) r) e x (a_nat2fb nv size) Error ->
-                           sem_qexp smap fv bv size r (qfor x n e) Error
-
- | sem_qexp_for_some : forall r x n e xl nv nv' xl' r',
-      sem_cfac smap size r Nat n = Some (Value nv) ->
-       Store.MapsTo (L x,0) xl r ->
-        sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb 0)::xl) r) e x (a_nat2fb nv size) (Value r') ->
-        Store.MapsTo (L x,0) (nv'::xl') r' ->
-                           sem_qexp smap fv bv size r (qfor x n e) (Value (Store.add (L x,0) xl' r'))
-
-with sem_for_exp (smap: qvar -> nat) (fv:fenv) (bv:benv) (size:nat): store -> qexp -> var -> nat -> @value store -> Prop :=
-  | sem_for_empty : forall r x e, sem_for_exp smap fv bv size r e x 0 (Value r)
-  | sem_for_many_error_1 : forall r x m e,
-    sem_qexp smap fv bv size r e Error  ->
-     sem_for_exp smap fv bv size r e x (S m) Error
-  | sem_for_many_error_2 : forall r x m e r' nv xl,
-    sem_qexp smap fv bv size r e (Value r')  ->
-    Store.MapsTo (L x,0) (nv::xl) r' ->
-     sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb (S (a_nat2fb nv size)))::xl) r') e x m Error ->
-       sem_for_exp smap fv bv size r e x (S m) Error
-  | sem_for_many : forall r x m e r' nv xl r'',
-    sem_qexp smap fv bv size r e (Value r')  ->
-    Store.MapsTo (L x,0) (nv::xl) r' ->
-     sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb (S (a_nat2fb nv size)))::xl) r') e x m (Value r'') ->
-       sem_for_exp smap fv bv size r e x (S m) (Value r'').
 
 
 Fixpoint check_store_g (l:list (btype * var)) (r:store) : Prop  :=
@@ -2170,764 +3994,12 @@ Admitted.
 
 (* Compilation from MiniQASM to PQASM starts here. *)
 
-(* When compiling scrath space, we genearte two extra for ancilla qubits in addition.  *)
-Definition ac_size (size:nat) := S (S size).
-
-(*
-Definition find_factor_type (benv:benv) (fc:factor) : option atype :=
-    match fc with (Var (L x)) => BEnv.find x benv
-                | (Var (G x)) => Some Q
-                | Num n => Some C
-    end.
-*)
-Lemma xor_not : forall a b, xorb (a<?b) (b<?a) = false -> a = b.
-Proof.
-  intros.
-  bdestruct (a <? b).
-  bdestruct (b <? a). lia. simpl in H. inv H.
-  bdestruct (b <? a). simpl in H. inv H.
-  lia.
-Qed.
-
-(* cstore is to store the current value for C-mode variables/constants. *)
-Definition cstore : Type := Store.t ((nat -> bool)).
-Definition empty_cstore := @Store.empty ((nat -> bool)).
-
-Lemma store_mapsto_always_same {A:Type} : forall k v1 v2 s,
-           @Store.MapsTo A k v1 s ->
-            @Store.MapsTo A k v2 s -> 
-                       v1 = v2.
-Proof.
-     intros.
-     apply Store.find_1 in H.
-     apply Store.find_1 in H0.
-     rewrite H in H0.
-     injection H0.
-     easy.
-Qed.
-
-Definition make_value (size:nat) (b:btype) (c: option (nat -> bool)) :=
-  do cv <- c @
-      match b with Bl => Some (cut_n cv 1)
-                | Nat => Some (cut_n cv size)
-                | FixedP => Some (fbrev size (cut_n cv size))
-      end.
-
-(* Partially evaluate a factor by cstore. *)
-Definition par_eval_fc (bv:benv) (size:nat) (r:cstore) (b:btype) (fc:factor) := 
-   match fc with Var x => do re <- BEnv.find x bv @ if is_q re then None else make_value size b (Store.find (x,0) r)
-            | Num n => make_value size b (Some n)
-   end.
-
-(* Partially evaluate a factor. *)
-Definition par_eval_cfac (smap : qvar -> nat) (bv:benv) (size:nat) (r:cstore) (b:btype) (fc:cfac) := 
-   match fc with Nor x => par_eval_fc bv size r b x
-        | Index x n => do v <- par_eval_fc bv size r Nat n @
-                              if a_nat2fb v size <? smap x then
-                               (do re <- BEnv.find x bv @ if is_q re then None
-                      else make_value size b (Store.find (x,a_nat2fb v size) r)) else None
-   end.
-
-(* Partially evaluate a factor but also checks array index. *)
-Definition par_eval_cfac_check (smap : qvar -> nat) (bv:benv) (size:nat) (r:cstore) (b:btype) (fc:cfac) := 
-   match fc with Nor x => do val <- par_eval_fc bv size r b x @ Some (Value val)
-        | Index x n => do v <- par_eval_fc bv size r Nat n @
-                              if a_nat2fb v size <? smap x then
-                               (do re <- BEnv.find x bv @ if is_q re then None else 
-                  do val <- make_value size b (Store.find (x,a_nat2fb v size) r) @ Some (Value val)) else Some Error
-   end.
-
-(* Partially find an indexed-variable.
-   Every variable has the form (x,n) where x is the variable and n is the indexed.
-   For Nor variable, n is always 0. *)
-Definition par_find_var (bv:benv) (size:nat)  (r:cstore) (fc:cfac) :=
-       match fc with Nor (Var x) => Some (x,0)
-                  | Nor (Num x) => None
-                  | Index x n => do val <- par_eval_fc bv size r Nat n @ Some (x,a_nat2fb val size)
-       end.
-
-(* Partially find an indexed-variable with array bound checks. *)
-Definition par_find_var_check (smap:qvar -> nat) (bv:benv) (size:nat)  (r:cstore) (fc:cfac) :=
-       match fc with Nor (Var x) => Some (Value (x,0))
-                  | Nor (Num x) => None
-                  | Index x n => do val <- par_eval_fc bv size r Nat n @
-                      if a_nat2fb val size <? smap x then Some (Value (x,a_nat2fb val size)) else Some Error
-       end.
-
-(* Check if two variables are equal *)
-Definition qvar_eq (bv:benv) (size:nat)  (r:cstore) (x y: cfac) := 
-        match par_find_var bv size r x with None => false
-                    | Some a => match par_find_var bv size r y with None => false
-                         | Some b => (a =qd= b)
-                                end
-        end.
-
-Definition get_size (size:nat) (t:btype) := if t =b= Bl then 1 else size.
-
-(* Circuit generation for <. *)
-Definition clt_circuit_two (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
-                        (x y :(qvar*nat)) (stack: var) (sn:nat) :=
-            if f =fl= Classic then
-              Exp (comparator01 (get_size size b) (vmap x) (vmap y) (stack,S sn) (stack, sn))
-            else rz_full_comparator (vmap x) (get_size size b) (stack, sn) (vmap y).
 
 
-Definition clt_circuit_left (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
-                        (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
-            if f =fl= Classic then
-              Exp (init_v (get_size size b) (temp) y;
-                    comparator01 (get_size size b) (vmap x) (temp) (stack,S sn) (stack, sn);
-                    init_v (get_size size b) (temp) y)
-            else rz_comparator (vmap x) (get_size size b) (stack, sn) (a_nat2fb y (get_size size b)).
-
-Definition clt_circuit_right (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
-                        (x:(nat->bool)) (y :(qvar*nat))  (stack temp: var) (sn:nat) :=
-            if f =fl= Classic then
-              Exp (init_v (get_size size b) (temp) x;
-                    comparator01 (get_size size b) (temp) (vmap y) (stack,S sn) (stack, sn);
-                    init_v (get_size size b) (temp) x)
-            else Exp (init_v (get_size size b) (temp) x);;
-                rz_full_comparator (temp) (get_size size b) (stack, sn)  (vmap y);;
-                        Exp (init_v (get_size size b) (temp) x).
-
-(* Different cases in < *)
-Definition gen_clt_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (size:nat)  (f:flag)
-                (r:cstore) (b:btype) (stack temp:var) (sn:nat) (x y: cfac)
-                                      : option (@value (option pexp * nat * option bool)) := 
-     do t1 <- type_factor bv b x @
-         do t2 <- type_factor bv b y @
-            if (fst t1 =a= Q) && (fst t2 =a= C) then
-               match par_find_var_check smap bv (get_size size b) r x with Some (Value vx) =>
-                   do t2v <- par_eval_cfac_check smap bv size r b y @
-                     match t2v with Value t2v' =>
-                      Some (Value (Some (clt_circuit_left size f b vmap vx t2v' stack temp sn),S sn,None))
-                        | _ => Some Error
-                     end
-                   | None => None
-                   | a => Some Error
-               end
-           else if (fst t1 =a= Q) && (fst t2 =a= Q) then
-              do vxv <- par_find_var_check smap bv (get_size size b) r x @
-                do vyv <- par_find_var_check smap bv (get_size size b) r y @
-                 match vxv with Value vx => match vyv with Value vy => 
-                    Some (Value (Some (clt_circuit_two size f b vmap vx vy stack sn),S sn,None))
-                              | _ => Some Error
-                       end
-                   | _ => Some Error
-                 end
-           else if (fst t1 =a= C) && (fst t2 =a= Q) then
-               match par_find_var_check smap bv (get_size size b) r y with Some (Value vy) =>
-                   do t1v <- par_eval_cfac_check smap bv size r b x @
-                    match t1v with Value t1v' =>
-                      Some (Value (Some (clt_circuit_right size f b vmap t1v' vy stack temp sn),S sn,None))
-                      | _ => Some Error
-                    end
-                   | None => None
-                   | a => Some Error
-               end
-          else  do t1v <- par_eval_cfac_check smap bv size r b x @
-                   do t2v <- par_eval_cfac_check smap bv size r b y @ 
-                    match t1v with Value t1v' => match t2v with Value t2v' =>
-                      Some (Value (None, sn, Some ((a_nat2fb t1v' size <? a_nat2fb t2v' size))))
-                       | _ => Some Error end | _ => Some Error
-                    end.
-
-(* compare x =? y *)
-Definition ceq_circuit_two (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
-                        (x y :(qvar*nat)) (stack: var) (sn:nat) :=
-           (if f =fl= Classic then
-                       Exp (comparator01 (get_size size b) (vmap y) (vmap x) (stack,S sn)
-                                    (stack,sn); 
-                        comparator01 (get_size size b) (vmap x) (vmap y) (stack,S sn)
-                                    (stack,sn); X (stack,sn))
-                 else rz_full_comparator (vmap x) (get_size size b) (stack,sn) (vmap y)
-                      ;; rz_full_comparator (vmap y) (get_size size b) (stack,sn) (vmap x);;
-                       Exp (X (stack, sn))).
-
-Definition ceq_circuit_left (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
-                        (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
-            if f =fl= Classic then
-              Exp (init_v (get_size size b) (temp) y;
-                    comparator01 (get_size size b) (vmap x) (temp) (stack,S sn) (stack, sn);
-                    comparator01 (get_size size b) (temp) (vmap x) (stack,S sn) (stack, sn);
-                    (X (stack,sn));
-                    init_v (get_size size b) (temp) y)
-            else Exp (init_v (get_size size b) (temp) y);;
-                 rz_comparator (vmap x) (get_size size b) (stack, sn) (a_nat2fb y (get_size size b));;
-                rz_full_comparator (temp) (get_size size b) (stack, sn) (vmap x) ;;
-                Exp (X (stack,sn);init_v (get_size size b) (temp) y).
-
-Definition ceq_circuit_right (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
-                        (x:(nat->bool)) (y :(qvar*nat))  (stack temp: var) (sn:nat) :=
-            if f =fl= Classic then
-              Exp (init_v (get_size size b) (temp) x;
-                    comparator01 (get_size size b) (temp) (vmap y) (stack,S sn) (stack, sn);
-                    comparator01 (get_size size b) (vmap y) (temp) (stack,S sn) (stack, sn);
-                    (X (stack,sn));
-                    init_v (get_size size b) (temp) x)
-            else Exp (init_v (get_size size b) (temp) x);;
-                rz_full_comparator (temp) (get_size size b) (stack, sn)  (vmap y);;
-                rz_comparator (vmap y) (get_size size b) (stack, sn) (a_nat2fb x (get_size size b));;
-                        Exp ((X (stack,sn));init_v (get_size size b) (temp) x).
 
 
-Definition gen_ceq_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (size:nat)  (f:flag)
-                (r:cstore) (b:btype) (stack temp:var) (sn:nat) (x y: cfac)
-                                      : option (@value (option pexp * nat * option bool)) := 
-     do t1 <- type_factor bv b x @
-         do t2 <- type_factor bv b y @
-            if (fst t1 =a= Q) && (fst t2 =a= C) then
-               match par_find_var_check smap bv (get_size size b) r x with Some (Value vx) =>
-                   do t2v <- par_eval_cfac_check smap bv size r b y @
-                    match t2v with Value t2v' =>
-                      Some (Value (Some (ceq_circuit_left size f b vmap vx t2v' stack temp sn),S sn,None))
-                     | _ => Some Error
-                    end
-                   | None => None
-                   | a => Some Error
-               end
-           else if (fst t1 =a= Q) && (fst t2 =a= Q) then
-              do vxv <- par_find_var_check smap bv (get_size size b) r x @
-                do vyv <- par_find_var_check smap bv (get_size size b) r y @
-                 match vxv with Value vx => match vyv with Value vy => 
-                    Some (Value (Some (ceq_circuit_two size f b vmap vx vy stack sn),S sn,None))
-                              | _ => Some Error
-                       end
-                   | _ => Some Error
-                 end
-           else if (fst t1 =a= C) && (fst t2 =a= Q) then
-               match par_find_var_check smap bv (get_size size b) r y with Some (Value vy) =>
-                   do t1v <- par_eval_cfac_check smap bv size r b x @
-                    match t1v with Value t1v' =>
-                      Some (Value (Some (ceq_circuit_right size f b vmap t1v' vy stack temp sn),S sn,None))
-                     | _ => Some Error
-                    end
-                   | None => None
-                   | a => Some Error
-               end
-          else  do t1v <- par_eval_cfac_check smap bv size r b x @
-                   do t2v <- par_eval_cfac_check smap bv size r b y @ 
-                     match t1v with Value t1v' => match t2v with Value t2v' =>
-                      Some (Value (None, sn, Some ((a_nat2fb t1v' size =? a_nat2fb t2v' size))))
-                          | _ => Some Error end | _ => Some Error end.
-
-(* This definition compiles conditional expressions. *)
-Definition compile_cexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
-                 (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (e:cexp)
-                                      : option (@value (option pexp * nat * option bool)) := 
-   match e with clt b x y => 
-                    if  ¬ (qvar_eq bv size r x y) then 
-                                      gen_clt_c smap vmap bv size f r b temp stack sn x y
-                                     else None
-         | ceq b x y =>  
-                        if  ¬ (qvar_eq bv size r x y) then 
-                                      gen_ceq_c smap vmap bv size f r b temp stack sn x y
-                                     else None
-         | iseven x => do t1 <- type_factor bv Nat x @ if fst t1 =a= Q then None else 
-                           do t2v <- par_eval_cfac_check smap bv size r Nat x @
-                        match t2v with Value t2v' =>
-                              if (a_nat2fb t2v' size) mod 2 =? 0 then Some (Value (None, sn, Some true))
-                                        else Some (Value (None,sn,Some (false)))
-                            | Error => Some Error
-                        end
-   end.
 
 
-(*Proofs of compilation correctness for cexp. *)
-
-Lemma a_nat2fb_small : forall n f, a_nat2fb f n < 2^n.
-Proof.
-  intros.
-  induction n;simpl.
-  lia.
-  destruct (f n). simpl. lia. simpl. lia.
-Qed.
-
-Lemma nat2fb_a_nat2fb' : forall n m f, m <= n -> (forall i, m <= i -> f i = false)
-             -> nat2fb (a_nat2fb f n) = f.
-Proof.
-  induction n; intros; unfold nat2fb; simpl.
-  apply functional_extensionality.
-  intros. rewrite H0. easy. lia.
-  apply functional_extensionality.
-  intros.
-  bdestruct (x =? n). subst.
-Admitted.
-
-Lemma nat2fb_a_nat2fb : forall n f, (forall i, n <= i -> f i = false)
-             -> nat2fb (a_nat2fb f n) = f.
-Proof.
-  intros. rewrite nat2fb_a_nat2fb' with (m := n). easy. lia. easy.
-Qed.
-
-Definition is_bl (t:option typ) : bool :=
- match t with Some (TNor a Bl) => true
-            | Some (TArray a Bl x) => true
-            | _ => false
- end.
-
-Definition is_qtt (t:option typ) : Prop :=
- match t with Some (TNor Q b) => True
-            | Some (TArray Q b x) => True
-            | _ => False
- end.
-
-(* Set up theorem assumptions for cexp. *)
-Definition cexp_set_up (ce:cexp) (sl size:nat) (stack:var)
-          (sn:nat) (vmap : (qvar*nat) -> var) (r:cstore) (bv:benv) (f:posi -> val) (aenv:var -> nat) (tenv:env) :=
-  match ce with clt b x y => 
-     match par_find_var bv size r x with None => True
-                     | Some vx => 
-        match par_find_var bv size r y with None => True
-                         | Some vy => 
-             ((vmap vx) <> (vmap vy) /\ (vmap vx) <> stack
-                /\ (vmap vy) <> stack /\
-                Store.In vx r /\ Store.In vy r /\ nor_modes f (vmap vx) size /\
-               nor_modes f (vmap vy) size /\ nor_modes f (stack) (S sl)
-            /\ well_typed_exp tenv (MAJseq (if is_bl (BEnv.find (fst vx) bv) then 1 else size)
-                                    (vmap vy) (vmap vx) (stack,S sn))
-           /\ well_typed_exp tenv (X ((stack,S sn))) 
-            /\ well_typed_exp tenv (negator0 (if is_bl (BEnv.find (fst vx) bv) then 1 else size) (vmap vy))
-           /\ right_mode_env aenv tenv f)
-        end
-      end
-       | ceq b x y => 
-     match par_find_var bv size r x with None => True
-                     | Some vx => 
-        match par_find_var bv size r y with None => True
-                         | Some vy => 
-             ((vmap vx) <> (vmap vy) /\ (vmap vx) <> stack
-                /\ (vmap vy) <> stack /\  Store.In vx r /\ Store.In vy r /\
-              nor_modes f (vmap vx) size /\
-               nor_modes f (vmap vy) size /\ nor_modes f (stack) (S sl)
-            /\ well_typed_exp tenv (MAJseq (if is_bl (BEnv.find (fst vx) bv) then 1 else size)
-                        (vmap vx) (vmap vy) (stack,S sn))
-            /\ well_typed_exp tenv (MAJseq (if is_bl (BEnv.find (fst vx) bv) then 1 else size)
-                         (vmap vy) (vmap vx) (stack,S sn))
-           /\ well_typed_exp tenv (X ((stack,S sn))) 
-           /\ well_typed_exp tenv (negator0 (if is_bl (BEnv.find (fst vx) bv) then 1 else size) (vmap vx))
-                 /\ well_typed_exp tenv (negator0 (if is_bl (BEnv.find (fst vx) bv) then 1 else size) (vmap vy))
-           /\ right_mode_env aenv tenv f)
-         end
-     end
-        | iseven x => True
-  end.
-
-
-Definition store_typed (r:cstore) (bv:benv) (size:nat) (stack:var) : Prop :=
-   forall x v, fst x <> G stack -> Store.MapsTo x v r -> BEnv.find (fst x) bv <> None ->
-           (forall i, (if is_bl (BEnv.find (fst x) bv) then 1 else size) <= i -> v i = false).
-
-Definition store_match_q (stack:var) (r:store) (f:posi -> val)
-           (bv:benv) (vmap : (qvar*nat) -> var) (aenv:var -> nat) : Prop := 
-  forall x v vl, fst x <> G stack -> Store.MapsTo x (v::vl) r -> (BEnv.find (fst x) bv) <> None ->
-         is_qtt (BEnv.find (fst x) bv) -> 
-            get_cus (aenv (vmap x)) f (vmap x) = v.
-
-Definition store_match_c (stack:var) (f:posi -> val) (bv:benv)
-             (vmap : (qvar*nat) -> var) (aenv:var -> nat) : Prop := 
-  forall x, fst x <> G stack -> BEnv.find (fst x) bv <> None ->
-                    ~ is_qtt (BEnv.find (fst x) bv) -> get_cus (aenv (vmap x)) f (vmap x) = nat2fb 0.
-
-Definition store_same_c (stack:var) (rh:cstore) (rl:cstore) (bv:benv)
-             (vmap : (qvar*nat) -> var) (aenv:var -> nat) : Prop := 
-  forall x, fst x <> G stack -> BEnv.find (fst x) bv <> None ->
-                    ~ is_qtt (BEnv.find (fst x) bv) -> Store.find x rh = Store.find x rl.
-
-Definition store_match_st (sl sn:nat) (stack:var) (f:posi -> val)
-             (vmap : (qvar*nat) -> var) : Prop := 
-          forall i, sn <= i -> get_cus (S sl) f (stack) i = false.
-
-Definition aenv_match (stack:var) (size:nat) (bv:benv) (aenv: var -> nat) (vmap : (qvar*nat) -> var) : Prop := 
-          forall x, fst x <> G stack -> aenv (vmap x) = (if is_bl (BEnv.find (fst x) bv) then 1 else size).
-
-Definition no_equal_stack (temp stack:var) (ce:cexp) (size:nat) (bv:benv) (r:cstore) :=
-    match ce with clt b x y => 
-     match par_find_var bv size r x with None => 
-             match par_find_var bv size r y with None => True
-                       | Some vy => fst vy <> G stack /\ fst vy <> G temp
-             end
-                     | Some vx => 
-        match par_find_var bv size r y with None => fst vx <> G stack /\ fst vx <> G temp
-                    | Some vy => fst vx <> G stack /\ fst vy <> G stack /\ fst vx <> G temp /\ fst vy <> G temp
-        end
-     end
-      | ceq b x y => 
-     match par_find_var bv size r x with None => 
-             match par_find_var bv size r y with None => True
-                       | Some vy => fst vy <> G stack /\ fst vy <> G temp
-             end
-                     | Some vx => 
-        match par_find_var bv size r y with None => fst vx <> G stack
-                    | Some vy => fst vx <> G stack /\ fst vy <> G stack /\ fst vx <> G temp /\ fst vy <> G temp
-        end
-      end
-      | iseven x => True
-   end.
-
-(* Defining the equivalence relation between (cstore, circuit-run) and semantics store in QIMP. *)
-Definition cstore_store_match (smap : qvar -> nat) (s:store) (r:cstore) (bv:benv) :=
-       forall x i v vl t, i < smap x -> Store.MapsTo (x,i) (v::vl) s -> 
-                    BEnv.MapsTo x t bv -> ~ is_qtt (Some t) -> Store.MapsTo (x,i) v r.
-
-Lemma a_nat2fb_cut_same' : forall size m v, size <= m -> a_nat2fb (cut_n v m) size = a_nat2fb v size.
-Proof.
- induction size;intros;simpl. easy.
- simpl.
- rewrite IHsize by lia.
- unfold cut_n.
- bdestruct (size <? m). easy. lia.
-Qed.
-
-Lemma a_nat2fb_cut_same : forall size v, a_nat2fb (cut_n v size) size = a_nat2fb v size.
-Proof.
- intros. rewrite a_nat2fb_cut_same' by lia. easy.
-Qed.
-
-Lemma par_find_var_means_cfac_some : 
-   forall smap size bv s r b x t vx val, par_find_var bv size r x = Some vx ->
-       cstore_store_match smap s r bv -> bv_store_sub smap bv s -> bv_store_gt_0 smap bv ->
-     BEnv.MapsTo (fst vx) t bv -> ~ is_qtt (Some t) ->
-     sem_cfac smap size s b x = Some (Value val) -> Store.find vx r = Some val.
-Proof.
-  intros.
-  unfold par_find_var,sem_cfac in *.
-  destruct x.
-  unfold par_eval_fc,sem_factor,bind in *.
-  destruct v.
-  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
-  simpl in *.
-  destruct (is_q t0) eqn:eq2. inv H.
-  destruct (Store.find (elt:=nat -> bool) (v, 0) r) eqn:eq3.
-  destruct (Store.find (elt:=list (nat -> bool)) (v, 0) s) eqn:eq4.
-  destruct (hd_error l) eqn:eq5.
-  destruct l. simpl in eq5. inv eq5. simpl in eq5. inv eq5.
-  bdestruct (a_nat2fb b1 size <? smap x).
-  unfold cstore_store_match in H0.
-  unfold bv_store_gt_0 in H2.
-  specialize (H2 v).
-  assert (BEnv.In v bv).
-  unfold BEnv.In,BEnv.Raw.PX.In. exists t0.
-  apply BEnv.find_2. easy.
-  apply H2 in H7.
-  apply Store.find_2 in eq4.
-  apply Store.find_2 in eq3.
-  apply BEnv.find_2 in eq1.
-  assert (~ is_qtt (Some t0)).
-  unfold is_qtt,is_q in *.
-  destruct t0. destruct a. 1-2:easy. destruct a. easy. easy.
-  specialize (H0 v 0 b1 l t0 H7 eq4 eq1 H8) as eq5.
-  apply store_mapsto_always_same with (v1 := b0) in eq5; try easy. subst.
-  destruct (Store.find (elt:=list (nat -> bool))
-         (x, a_nat2fb b1 size) s) eqn:eq6.
-  destruct (hd_error l0) eqn:eq7. inv H5. destruct l0. simpl in *. inv eq7.
-  simpl in *. inv eq7.
-  inv H.
-  unfold bv_store_sub in H1. simpl in H3.
-  assert (BEnv.In x bv).
-  unfold BEnv.In,BEnv.Raw.PX.In. exists t. easy.
-  specialize (H1 x (a_nat2fb b1 size) H H6).
-  destruct H1. destruct H1. destruct x0. simpl in *. lia.
-  apply Store.find_2 in eq6.
-  apply store_mapsto_always_same with (v1 := (b0 :: x0)) in eq6; try easy.
-  inv eq6.
-  specialize (H0 x (a_nat2fb b1 size) val l0 t H6 H1 H3 H4).
-  apply Store.find_1.
-  rewrite a_nat2fb_cut_same. easy. inv H5. inv H5. inv H5. inv H5. inv H5.
-  inv H. simpl in *. inv H.
-  simpl in *. inv H.
-  bdestruct (a_nat2fb (cut_n n size) size <? smap x).
-  destruct (Store.find (elt:=list (nat -> bool))
-         (x, a_nat2fb (cut_n n size) size) s) eqn:eq1.
-  destruct (hd_error l) eqn:eq2. destruct l. simpl in *. inv eq2. inv eq2.
-  unfold cstore_store_match in H0.
-  apply Store.find_2 in eq1.
-  simpl in H3.
-  specialize (H0 x (a_nat2fb (cut_n n size) size) b0 l t H eq1 H3 H4). inv H5.
-  apply Store.find_1. easy. inv H5. inv H5. inv H5. simpl in *.
-  destruct v. inv H.
-  destruct (sem_factor size s b (Var v)) eqn:eq1. inv H5.
-  unfold sem_factor in eq1. simpl in eq1.
-  destruct (Store.find (elt:=list (nat -> bool)) (v, 0) s) eqn:eq2.
-  destruct l. simpl in eq1. inv eq1. simpl in *. inv eq1.
-  unfold bv_store_gt_0 in H2.
-  assert (BEnv.In v bv).
-  unfold BEnv.In,BEnv.Raw.PX.In. exists t. easy.
-  apply H2 in H.
-  unfold cstore_store_match in H0.
-  apply Store.find_2 in eq2.
-  specialize (H0 v 0 val l t H eq2 H3 H4).
-  apply Store.find_1. easy.
-  inv eq1. inv H5.
-  inv H.
-Qed.
-
-Lemma type_factor_means_q : forall x vx b t size bv r, type_factor bv b x = Some t -> 
-   par_find_var bv size r x = Some vx -> fst t = Q -> is_qtt (BEnv.find (fst vx) bv).
-Proof.
-  intros.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_qtt,is_q,bind in *.
-  destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
-  destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
-  destruct t0 eqn:eq4.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq5.
-  destruct t1.
-  bdestruct (b1 =b= b). inv H. inv H. inv H. inv H.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq5.
-  destruct t1.
-  bdestruct (b1 =b= b). destruct a eqn:eq6.
-  bdestruct ((b0 =b= Nat)). simpl in *. inv H.
-  destruct (Store.find (elt:=nat -> bool) (v0, 0) r) eqn:eq6.
-  simpl in H1. subst. inv H0. simpl. rewrite eq5. easy. inv H0.
-  simpl in *. inv H.
-  simpl in *. inv H. inv H. inv H. inv H. inv H0.
-  simpl in *.
-  inv H0.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq1.
-  destruct t0.
-  bdestruct (b0 =b= b). inv H. simpl in *. rewrite eq1. rewrite H1. easy.
-  inv H. inv H. inv H. simpl in *. destruct v. inv H0.
-  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
-  destruct t0. inv H.
-  bdestruct (b0 =b= b). inv H. simpl in *. rewrite eq1. rewrite H1. easy.
-  inv H. inv H. inv H0.
-Qed.
-
-Lemma type_factor_means_b : forall x vx b t size bv r, type_factor bv b x = Some t -> 
-   par_find_var bv size r x = Some vx -> is_bl (BEnv.find (fst vx) bv) = (b =b= Bl).
-Proof.
-  intros.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_bl,is_q,bind in *.
-  destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
-  destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
-  destruct t0.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq4.
-  destruct t0.
-  bdestruct (b1 =b= b). inv H. inv H. inv H. inv H.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq4.
-  destruct t0.
-  bdestruct (b1 =b= b). destruct a eqn:eq5.
-  bdestruct (b0 =b= Nat). simpl in *. inv H.
-  destruct (Store.find (v0,0) r) eqn:eq5. inv H0.
-  simpl. rewrite eq4.
-  bdestruct (b =b= Bl). rewrite H. easy. destruct b. easy. easy. easy. inv H0.
-  simpl in *. inv H. simpl in *. inv H. inv H. inv H. inv H.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq4.
-  destruct t0. inv H0. inv H0. inv H0.
-  simpl in *.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq4.
-  destruct t0.
-  bdestruct (b0 =b= b). inv H. inv H0. simpl.
-  rewrite eq4.
-  bdestruct (b =b= Bl). destruct b. easy. easy. easy.
-  destruct b. easy. easy. easy. inv H. inv H. inv H.
-  destruct v eqn:eq2. inv H0. simpl in *.
-  destruct (BEnv.find (elt:=typ) v0 bv). destruct t0.
-  inv H.
-  bdestruct (b0 =b= b).
-  bdestruct (b =b= Bl). destruct b0. subst. easy. subst. easy. subst. easy.
-  subst. destruct b. easy. easy. easy. inv H. inv H. inv H0.
-Qed.
-
-Lemma type_factor_means_q_false : forall x vx b t size bv r, type_factor bv b x = Some t -> 
-   par_find_var bv size r x = Some vx -> fst t = C -> BEnv.find (fst (vx)) bv <> None -> ~ is_qtt (BEnv.find (fst vx) bv).
-Proof.
-  intros.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_qtt,is_q,bind in *.
-  destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
-  destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
-  destruct t0.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq5.
-  destruct t0. destruct a. 
-  bdestruct (b1 =b= b). inv H. inv H. inv H0. inv H. inv H.
-  destruct (BEnv.find (elt:=typ) x0 bv ) eqn:eq5.
-  destruct t0. destruct a. 
-  bdestruct (b1 =b= b).
-  bdestruct (b0 =b= Nat). simpl in *.
-  destruct (Store.find (elt:=nat -> bool) (v0, 0) r ) eqn:eq6.
-  inv H. destruct vx. simpl in *. inv H0.
-  rewrite eq5. easy.
-  inv H0. simpl in *. inv H. inv H.
-  bdestruct (b1 =b= b). simpl in *. inv H. inv H. inv H. inv H.
-  inv H0.
-  simpl in *. inv H0.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq1.
-  destruct t0.
-  bdestruct (b0 =b= b). inv H. simpl in *.
-  rewrite eq1. rewrite H1. easy. inv H. inv H. inv H.
-  destruct v eqn:eq2. simpl in *.
-  destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3.
-  destruct t0. inv H.
-  bdestruct (b0 =b= b). inv H0. simpl.
-  rewrite eq3. inv H. simpl in *. rewrite H1. easy.
-  inv H. inv H. inv H0.
-Qed.
-
-Lemma type_factor_means_some : forall x vx b t size bv r, type_factor bv b x = Some t -> 
-   par_find_var bv size r x = Some vx -> BEnv.find (fst vx) bv <> None.
-Proof.
-  intros.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_q,bind in *.
-  destruct x eqn:eq1. destruct v eqn:eq2. simpl in *.
-  destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
-  destruct t0 eqn:eq4.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq5.
-  destruct t1.
-  bdestruct (b1 =b= b). inv H. inv H. inv H. inv H.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq5.
-  destruct t1.
-  bdestruct (b1 =b= b).
-  destruct a.
-  bdestruct (b0 =b= Nat). simpl in *.
-  destruct (Store.find (elt:=nat -> bool) (v0, 0) r) eqn:eq6.
-  inv H0. simpl. rewrite eq5. easy. inv H0.
-  simpl in *. inv H. simpl in *. inv H. inv H. inv H. inv H.
-  inv H0.
-  simpl in *.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq5.
-  destruct t0.
-  bdestruct (b0 =b= b). inv H0. simpl.
-  rewrite eq5. easy.
-  inv H. inv H. inv H.
-  destruct v eqn:eq2. simpl in *.
-  destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq3. 
-  destruct t0. inv H.
-  bdestruct (b0 =b= b).
-  inv H0. simpl. rewrite eq3. easy.
-  inv H. inv H. inv H0.
-Qed.
-
-Definition get_var_factor (x:factor) :=
-   match x with Var v => [v]
-                  | Num v => []
-   end.
-
-Definition get_var_cfac (x:cfac) :=
-    match x with Index x v => (x:: get_var_factor v)
-               | Nor v => get_var_factor v
-    end.
-
-Definition get_var_cexp (x:cexp) :=
-   match x with clt b x y => get_var_cfac x ++ get_var_cfac y
-              | ceq b x y => get_var_cfac x ++ get_var_cfac y
-              | iseven x => get_var_cfac x
-   end.
-
-Definition not_stack (stack:var) (l:list qvar) := forall x, In x l -> x <> G stack.
-
-(*
-Inductive factor := Var (v:qvar)
-                 | Num (n:nat -> bool).
-     (* the first m in Num represents the number of bits.
-      a value is represented as a natural number x. it means x / 2^m where m is the number of denominator. *)
-
-Inductive cfac := Ptr (x:var) (v:factor) | Nor (v:factor).
-*)
-
-
-Lemma par_find_var_lh : forall b x bv vmap aenv size stack rl rh t vx, type_factor bv b x = Some t
-      -> par_find_var bv size rl x = Some vx -> not_stack stack (get_var_cfac x) ->
-     store_same_c stack rh rl bv vmap aenv -> par_find_var bv size rh x = Some vx.
-Proof.
-  intros.
-  unfold store_same_c in *.
-  unfold type_factor,typ_factor,typ_factor_full,par_find_var,par_eval_fc,is_q in *.
-  destruct x eqn:eq1. destruct v eqn:eq2.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq3.
-  simpl in *. destruct t0.
-  bdestruct (b0 =b= b).
-  destruct (BEnv.find (elt:=typ) v0 bv) eqn:eq4. destruct t0.
-  inv H. destruct a0. simpl in *.
-  bdestruct (b1 =b= Nat).
-  simpl in *.
-  destruct (Store.find (elt:=nat -> bool) (v0, 0) rl) eqn:eq5.
-  inv H0.
-  rewrite <- H2 in eq5.
-  rewrite eq5. easy.
-  unfold not_stack in H1.
-  simpl.
-  apply H1. simpl.
-  right. left. easy.
-  simpl. rewrite eq4. easy.
-  unfold is_qtt.
-  simpl.
-  rewrite eq4. easy.
-  inv H0. simpl in *. inv H. simpl in *. inv H. inv H. inv H. inv H.
-  simpl in *. inv H.
-  destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq3.
-  destruct t0.
-  simpl in *.
-  bdestruct (b0 =b= b).
-  inv H. inv H0. easy. inv H.
-  simpl in *. inv H. simpl in *. inv H.
-  destruct v. easy. inv H0.
-Qed.
-
-Lemma not_stack_shrink_l : forall l1 l2 stack, not_stack stack (l1++l2) -> not_stack stack l1.
-Proof.
- intros. unfold not_stack in *.
- intros. 
- apply H.
- apply in_or_app. left. easy.
-Qed.
-
-Lemma not_stack_shrink_r : forall l1 l2 stack, not_stack stack (l1++l2) -> not_stack stack l2.
-Proof.
- intros. unfold not_stack in *.
- intros. 
- apply H.
- apply in_or_app. right. easy.
-Qed.
-
-Lemma par_find_var_get : forall size bv rl x vx, par_find_var size bv rl x = Some vx -> In (fst vx) (get_var_cfac x).
-Proof.
-  intros.
-  unfold par_find_var,get_var_cfac in *.
-  destruct x.
-  destruct (par_eval_fc size bv rl Nat v) eqn:eq1.
-  simpl in *. inv H. simpl. left. easy.
-  simpl in *. inv H.
-  unfold get_var_factor. destruct v.
-  inv H. simpl. left. easy. inv H.
-Qed.
-
-Local Opaque comparator01.
-
-(* Main theorem for the correctness of cexp. Compilation correctness. *)
-Lemma compile_cexp_sem : forall sl size smap vmap bv fl rh rl temp stack sn e st re f aenv tenv, 
-      compile_cexp size smap vmap bv fl rl temp stack sn e = Some st ->
-      sem_cexp smap size rh e = Some re -> store_typed rl bv size stack -> 
-      0 < size -> S sn < sl ->
-      cstore_store_match smap rh rl bv -> bv_store_sub smap bv rh -> bv_store_gt_0 smap bv ->
-      no_equal_stack temp stack e size bv rl ->
-      store_match_q stack rh f bv vmap aenv ->
-      store_same_c stack rl rl bv vmap aenv ->
-      store_match_c stack f bv vmap aenv ->
-      store_match_st sl sn stack f vmap ->
-      aenv_match stack size bv aenv vmap ->
-      not_stack stack (get_var_cexp e) ->
-      cexp_set_up e sl size stack sn vmap rl bv f aenv tenv
-         -> (st = Error /\ re = Error) \/ (exists b, st = Value (None,sn,Some b) /\ re = Value b)
-              \/ (exists p, st = Value (Some p, S sn,None) 
-                 /\ re = (Value (get_cua (prog_sem aenv p f (stack,sn))))).
-Proof.
-  intros. induction e.
-  simpl in *.
-  destruct (¬ (qvar_eq bv size rl x y)) eqn:eq1.
-  unfold gen_clt_c in H.
-  destruct (type_factor bv t x) eqn:eq2.
-  destruct (type_factor bv t y) eqn:eq3.
-  simpl in *.
-  destruct (par_find_var_check smap bv size rl x) eqn:eq4.
-  destruct (par_find_var_check smap bv size rl y) eqn:eq5.
-  simpl in *.
-  bdestruct (fst p =a= Q). bdestruct (fst p0 =a= C).
-  simpl in *.
-  destruct (par_eval_cfac smap bv size rl t y) eqn:eq6.
-  destruct v. destruct v0.
-  inv H.
-  right. right.
-Admitted.
 
 (* Compiler for qexp *)
 Definition fmap :Type := list (fvar * cfac * pexp * (qvar -> nat) * ((qvar*nat) -> var) * benv * cstore).

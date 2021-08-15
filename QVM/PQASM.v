@@ -410,7 +410,7 @@ Inductive exp_WF (aenv:var -> nat): exp -> Prop :=
 
 Fixpoint init_v (n:nat) (x:var) (M: nat -> bool) :=
       match n with 0 => (SKIP (x,0))
-                | S m => if M m then X (x,m) ; init_v m x M else init_v m x M
+                | S m => if M m then init_v m x M; X (x,m) else init_v m x M
       end.
 
 Inductive right_mode_val : type -> val -> Prop :=
@@ -2979,6 +2979,83 @@ Proof.
  apply mapsto_always_same with (v1 := Nor) in H3; try easy.
  rewrite eupdate_index_neq by iner_p.
  apply H0; try easy.
+Qed.
+
+
+Lemma qft_uniform_put_cu_same_2 : 
+    forall f f' c v aenv tenv, qft_uniform aenv tenv f -> Env.MapsTo (fst c) Nor tenv ->
+              right_mode_env aenv tenv f -> right_mode_env aenv tenv f'
+                 -> qft_uniform aenv tenv (f[c |-> put_cu (f' c) v]).
+Proof.
+ intros. unfold qft_uniform in *.
+ intros. 
+ destruct c.
+ unfold get_snd_r,get_r_qft in *.
+ bdestruct (k =? x). subst. 
+ bdestruct (n =? i). subst.
+ rewrite eupdate_index_eq.
+ simpl in *.
+ bdestruct (i =? 0). subst.
+ rewrite eupdate_index_eq.
+ unfold put_cu.
+ destruct (f' (x,0)) eqn:eq1. easy. easy. unfold lshift_fun.
+ apply functional_extensionality. intros. rewrite plus_0_r. easy.
+ rewrite eupdate_index_neq by iner_p.
+ assert (nor_mode f' (x,i)).
+ unfold right_mode_env in *. 
+ specialize (H3 Nor (x,i)).
+ simpl in H3. apply H3 in H1. inv H1.
+ unfold nor_mode. rewrite <- H7. easy. easy.
+ assert (nor_mode f (x,0)).
+ unfold right_mode_env in *. 
+ specialize (H2 Nor (x,0)).
+ simpl in H2. apply H2 in H1. inv H1.
+ unfold nor_mode. rewrite <- H8.  easy. lia. 
+ unfold nor_mode in *. 
+ destruct (f (x,0)) eqn:eq1.
+ assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy.
+ rewrite H9 in *.
+ rewrite eq1 in *.
+ destruct (f' (x,i)) eqn:eq2.
+ unfold put_cu. easy. easy. easy. easy. easy.
+ bdestruct (n =? 0). subst.
+ rewrite eupdate_index_eq.
+ rewrite eupdate_index_neq by iner_p.
+ assert (nor_mode f' (x,0)).
+ unfold right_mode_env in *. 
+ specialize (H3 Nor (x,0)).
+ simpl in H3. apply H3 in H1. inv H1.
+ unfold nor_mode. rewrite <- H7. easy. lia.
+ assert (nor_mode f (x,i)).
+ unfold right_mode_env in *. 
+ specialize (H2 Nor (x,i)).
+ simpl in H2. apply H2 in H1. inv H1.
+ unfold nor_mode. rewrite <- H8.  easy. lia. 
+ unfold nor_mode in *. 
+ destruct (f (x,i)) eqn:eq1.
+ destruct (f' (x,0)) eqn:eq2.
+ unfold put_cu. easy. easy. easy. easy. easy.
+ rewrite eupdate_index_neq by iner_p.
+ rewrite eupdate_index_neq by iner_p.
+ assert (nor_mode f (x,i)).
+ unfold right_mode_env in *. 
+ specialize (H2 Nor (x,i)).
+ simpl in H2. apply H2 in H1. inv H1.
+ unfold nor_mode. rewrite <- H8. easy. easy.
+ assert (nor_mode f (x,0)).
+ unfold right_mode_env in *. 
+ specialize (H2 Nor (x,0)).
+ simpl in H2. apply H2 in H1. inv H1.
+ unfold nor_mode. rewrite <- H9.  easy. lia. 
+ unfold nor_mode in *. 
+ destruct (f (x,i)) eqn:eq1.
+ destruct (f (x, 0)) eqn:eq2.
+ assert ((@pair Env.key nat x 0) = (@pair var nat x 0)) by easy.
+ rewrite H10 in *.
+ rewrite eq2 in *. easy. easy. easy. easy. easy.
+ rewrite eupdate_index_neq by iner_p.
+ rewrite eupdate_index_neq by iner_p.
+ apply H0. easy. easy.
 Qed.
 
 Lemma qft_uniform_put_cus_same : 
@@ -8052,3 +8129,153 @@ Proof.
   unfold get_cus.
   bdestruct (x0 <? size). lia. easy.
 Qed.
+
+Lemma exp_fresh_init : forall n x size M aenv, 0 < size <= n
+         -> exp_fresh aenv (x, n) (init_v size x M).
+Proof.
+  induction size;intros;simpl.
+  simpl. constructor. iner_p.
+  bdestruct (size =? 0). subst.
+  destruct (M 0).
+  constructor. simpl.
+  constructor. iner_p.
+  constructor. iner_p.
+  constructor. iner_p.
+  destruct (M size).
+  constructor. apply IHsize. lia.
+  constructor. iner_p.
+  apply IHsize. lia. 
+Qed.
+
+Lemma exp_fresh_init_1 : forall n v x size M aenv, v <> x
+         -> exp_fresh aenv (v, n) (init_v size x M).
+Proof.
+  induction size;intros;simpl.
+  simpl. constructor. iner_p.
+  destruct (M size).
+  constructor. apply IHsize. easy.
+  constructor. iner_p.
+  apply IHsize. easy.
+Qed.
+
+Lemma init_v_sem : forall n size x M f aenv tenv, get_cus size f x = nat2fb 0 -> 
+            n <= size -> size = aenv x -> Env.MapsTo x Nor tenv
+            -> right_mode_env aenv tenv f ->
+            (exp_sem aenv (init_v n x M) f) = put_cus f x (cut_n M n) size.
+Proof.
+  induction n; intros;simpl.
+  unfold put_cus,cut_n.
+  apply functional_extensionality; intro.
+  destruct x0. simpl in *.
+  bdestruct (v =? x). rewrite H5 in *.
+  bdestruct (n <? size).
+  assert (nor_modes f x (aenv x)).
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite <- H2 in H7. 
+  unfold nor_modes in H7.
+  assert (forall i, i < size -> get_cus size f x i = false).
+  intros.
+  rewrite H0. unfold nat2fb. simpl. easy.
+  unfold put_cu.
+  specialize (H7 n H6).
+  specialize (H8 n H6).
+  rewrite get_cus_cua in H8; try easy.
+  unfold get_cua,nor_mode in *.
+  destruct (f (x,n)) eqn:eq1. 
+  rewrite H8. easy. easy. easy. easy. easy.
+  unfold put_cus,cut_n.
+  apply functional_extensionality; intro.
+  destruct x0. simpl in *.
+  bdestruct (v =? x). rewrite H5 in *.
+  bdestruct (n0 <? size).
+  assert (nor_modes f x (aenv x)).
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite <- H2 in H7. 
+  unfold nor_modes in H7.
+  assert (forall i, i < size -> get_cus size f x i = false).
+  intros.
+  rewrite H0. unfold nat2fb. simpl. easy.
+  destruct (M n) eqn:eq1.
+  simpl.
+  bdestruct (n =? n0). rewrite H9 in *. 
+  rewrite eupdate_index_eq.
+  rewrite IHn with (size := size) (tenv := tenv); try easy.
+  specialize (H7 n0 H6). specialize (H8 n0 H6).
+  unfold exchange,put_cus,put_cu,nor_mode,get_cus,cut_n in *.
+  simpl in *.
+  bdestruct (x =? x).
+  bdestruct (n0 <? size).
+  bdestruct (n0 <? S n0 ).
+  bdestruct (n0 <? n0). lia.
+  destruct (f (x, n0)) eqn:eq2.
+  rewrite eq1. easy. lia. lia. lia. lia. lia. lia.
+  rewrite eupdate_index_neq; iner_p.
+  rewrite IHn with (size := size) (tenv := tenv); try easy.
+  specialize (H7 n0 H6). specialize (H8 n0 H6).
+  unfold exchange,put_cus,put_cu,nor_mode,get_cus,cut_n in *.
+  simpl in *.
+  bdestruct (x =? x).
+  bdestruct (n0 <? size).
+  bdestruct (n0 <? S n).
+  bdestruct (n0 <? n). easy. lia.
+  bdestruct (n0 <? n). lia. easy.
+  lia. lia. lia.
+  rewrite IHn with (size := size) (tenv := tenv); try easy.
+  specialize (H7 n0 H6). specialize (H8 n0 H6).
+  unfold exchange,put_cus,put_cu,nor_mode,get_cus,cut_n in *.
+  simpl in *.
+  bdestruct (x =? x).
+  bdestruct (n0 <? size).
+  bdestruct (n0 <? S n).
+  bdestruct (n0 <? n). easy.
+  assert ( n = n0) by lia. subst. rewrite eq1. easy.
+  bdestruct (n0 <? n). lia. easy.
+  bdestruct (n0 <? S n). lia. lia. lia. lia.
+  bdestruct (n =? 0). rewrite H7 in *.
+  simpl.
+  destruct (M 0). simpl. rewrite eupdate_index_neq; iner_p. easy.
+  simpl. easy.
+  rewrite efresh_exp_sem_irrelevant ; try easy.
+  destruct (M n). constructor.
+  apply exp_fresh_init. lia. constructor. iner_p.
+  apply exp_fresh_init. lia.
+  rewrite efresh_exp_sem_irrelevant ; try easy.
+  destruct (M n). constructor.
+  apply exp_fresh_init_1. lia. constructor. iner_p.
+  apply exp_fresh_init_1. lia.  
+Qed.
+
+Lemma well_typed_init_v : forall n x v aenv tenv, Env.MapsTo x Nor tenv -> well_typed_pexp aenv tenv (init_v n x v) tenv.
+Proof.
+ induction n;intros;simpl.
+ constructor. constructor.
+ destruct (v n).
+ apply pe_seq with (env' := tenv).
+ apply IHn. easy.
+ constructor. constructor. easy.
+ apply IHn. easy.
+Qed. 
+
+Lemma right_mode_up_nor : forall aenv tenv f p v, Env.MapsTo (fst p) Nor tenv -> right_mode_env aenv tenv f ->
+              right_mode_env aenv tenv (f[p |-> put_cu (f p) v]).
+Proof.
+  unfold right_mode_env in *.
+  intros.
+  bdestruct (p ==? p0).
+  subst.
+  rewrite eupdate_index_eq.
+  assert (nor_mode f p0).
+  unfold nor_mode.
+  specialize (H1 Nor p0).
+  apply H1 in H0; try easy.
+  inv H0. easy. 
+  unfold put_cu,nor_mode in *.
+  destruct (f p0) eqn:eq1.
+  apply mapsto_always_same with (v1:=Nor) in H3; try easy.
+  subst. constructor. easy. easy.
+  rewrite eupdate_index_neq; iner_p.
+  apply H1; try easy.
+Qed.
+
+
+

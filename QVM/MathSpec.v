@@ -625,7 +625,12 @@ Proof.
  bdestruct (x <? n). easy. rewrite H. easy. lia. 
 Qed.
 
-
+Lemma cut_n_twice_same : forall n f, cut_n (cut_n f n) n = cut_n f n.
+Proof.
+ intros. unfold cut_n.
+  apply functional_extensionality.
+  intros. bdestruct (x <? n). easy. easy.
+Qed.
 
 Lemma nat2fb_bound : forall n x, x < 2^n -> (forall i, i >= n -> nat2fb x i = false).
 Proof.
