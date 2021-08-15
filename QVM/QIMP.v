@@ -1890,14 +1890,15 @@ Definition gen_clt_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (
 (* compare x =? y *)
 Definition ceq_circuit_two (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
                         (x y :(qvar*nat)) (stack: var) (sn:nat) :=
-           (if f =fl= Classic then
+           if f =fl= Classic then
                         (comparator01 (get_size size b) (vmap y) (vmap x) (stack,S sn)
                                     (stack,sn); 
                         comparator01 (get_size size b) (vmap x) (vmap y) (stack,S sn)
                                     (stack,sn); X (stack,sn))
-                 else rz_full_comparator (vmap x) (get_size size b) (stack,sn) (vmap y)
-                      ; rz_full_comparator (vmap y) (get_size size b) (stack,sn) (vmap x);
-                        (X (stack, sn))).
+                 else (comparator01 (get_size size b) (vmap y) (vmap x) (stack,S sn)
+                                    (stack,sn); 
+                        comparator01 (get_size size b) (vmap x) (vmap y) (stack,S sn)
+                                    (stack,sn); X (stack,sn)).
 
 Definition ceq_circuit_left (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
                         (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
@@ -1906,11 +1907,12 @@ Definition ceq_circuit_left (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> va
                     comparator01 (get_size size b) (vmap x) (temp) (stack,S sn) (stack, sn);
                     comparator01 (get_size size b) (temp) (vmap x) (stack,S sn) (stack, sn);
                     (X (stack,sn));
-                    init_v (get_size size b) (temp) y)
-            else  (init_v (get_size size b) (temp) y);
-                 rz_comparator (vmap x) (get_size size b) (stack, sn) (a_nat2fb y (get_size size b));
-                rz_full_comparator (temp) (get_size size b) (stack, sn) (vmap x) ;
-                 (X (stack,sn);init_v (get_size size b) (temp) y).
+                    inv_exp (init_v (get_size size b) (temp) y))
+            else (init_v (get_size size b) (temp) y;
+                    comparator01 (get_size size b) (vmap x) (temp) (stack,S sn) (stack, sn);
+                    comparator01 (get_size size b) (temp) (vmap x) (stack,S sn) (stack, sn);
+                    (X (stack,sn));
+                    inv_exp (init_v (get_size size b) (temp) y)).
 
 Definition ceq_circuit_right (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> var)
                         (x:(nat->bool)) (y :(qvar*nat))  (stack temp: var) (sn:nat) :=
@@ -1919,11 +1921,12 @@ Definition ceq_circuit_right (size:nat) (f:flag) (b:btype) (vmap:(qvar*nat) -> v
                     comparator01 (get_size size b) (temp) (vmap y) (stack,S sn) (stack, sn);
                     comparator01 (get_size size b) (vmap y) (temp) (stack,S sn) (stack, sn);
                     (X (stack,sn));
-                    init_v (get_size size b) (temp) x)
-            else (init_v (get_size size b) (temp) x);
-                rz_full_comparator (temp) (get_size size b) (stack, sn)  (vmap y);
-                rz_comparator (vmap y) (get_size size b) (stack, sn) (a_nat2fb x (get_size size b));
-                        ((X (stack,sn));init_v (get_size size b) (temp) x).
+                    inv_exp (init_v (get_size size b) (temp) x))
+            else (init_v (get_size size b) (temp) x;
+                    comparator01 (get_size size b) (temp) (vmap y) (stack,S sn) (stack, sn);
+                    comparator01 (get_size size b) (vmap y) (temp) (stack,S sn) (stack, sn);
+                    (X (stack,sn));
+                    inv_exp (init_v (get_size size b) (temp) x)).
 
 
 Definition gen_ceq_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (size:nat)  (f:flag)
@@ -1963,7 +1966,7 @@ Definition gen_ceq_c (smap : qvar -> nat) (vmap: (qvar*nat) -> var)  (bv:benv) (
           else  do t1v <- par_eval_cfac_check smap bv size r x @
                    do t2v <- par_eval_cfac_check smap bv size r y @ 
                      match t1v with Value t1v' => match t2v with Value t2v' =>
-                      Some (Value (None, sn, Some ((a_nat2fb t1v' size =? a_nat2fb t2v' size))))
+                      Some (Value (None, sn, Some ((a_nat2fb t1v' (get_size size (snd t1)) =? a_nat2fb t2v' (get_size size (snd t1))))))
                           | _ => Some Error end | _ => Some Error end.
 
 (*Proofs of compilation correctness for cexp. *)
@@ -2144,6 +2147,49 @@ Proof.
   bdestruct (C =a= C).
   bdestruct (b =b= t). simpl in *. inv H. easy.
   simpl in *. inv H. simpl in *. inv H. 
+Qed.
+
+Lemma cfac_type_c : forall v bv a b p, type_factor_full bv a b v = Some p -> p = (a,b).
+Proof.
+  intros.
+  unfold type_factor_full in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+  simpl in *. destruct t.
+  bdestruct (a =a= a0).
+  bdestruct (b0 =b= b). simpl in *. 
+  destruct (typ_factor_full bv C Nat v) eqn:eq2. subst.
+  simpl in *. inv H. easy.
+  easy. simpl in *. easy. simpl in *. easy. easy. easy.
+  unfold typ_factor_full in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *. destruct t. easy. 
+  bdestruct (a =a= a0).
+  bdestruct (b0 =b= b). simpl in *.  inv H. easy.
+  simpl in *. easy. easy. easy.
+  bdestruct (a =a= C).
+  bdestruct (b =b= t). simpl in *.  inv H. easy. easy. easy.  
+Qed.
+
+Lemma type_factor_full_same : forall v bv a b p, type_factor_full bv a b v = Some p -> type_factor bv v = Some p.
+Proof.
+  intros.
+  unfold type_factor_full,type_factor in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+  simpl in *. destruct t.
+  bdestruct (a =a= a0).
+  bdestruct (b0 =b= b). simpl in *. subst. easy. 
+  simpl in *. inv H. easy. easy. easy.
+  unfold typ_factor_full,typ_factor in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *. destruct t. easy. 
+  bdestruct (a =a= a0).
+  bdestruct (b0 =b= b). subst. simpl in *. easy. easy. easy. easy.
+  bdestruct (a =a= C).
+  bdestruct (b =b= t). simpl in *. easy. easy. easy. 
 Qed.
 
 Definition get_var_factor (x:factor) :=
@@ -2683,6 +2729,411 @@ Proof.
   rewrite get_r_put_same. easy.
 Qed.
 
+Lemma ceq_circuit_right_sem : forall aenv vmap tenv f b size fl x y v stack temp sn sl,
+      0 < size -> S (S sn) < sl ->
+      aenv (vmap y) = (get_size size b) ->
+      vmap y <> stack -> vmap y <> temp -> stack <> temp ->
+      aenv temp = (get_size size b) -> aenv stack = sl ->
+      get_cus (get_size size b) f (vmap y) = v ->
+      store_match_st sl sn stack f vmap ->
+      get_cus (get_size size b) f temp = nat2fb 0 ->
+      Env.MapsTo (vmap y) PQASM.Nor tenv -> Env.MapsTo stack PQASM.Nor tenv -> Env.MapsTo temp PQASM.Nor tenv ->
+      right_mode_env aenv tenv f ->  qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+      get_cua (exp_sem aenv (ceq_circuit_right size fl b vmap x y stack temp sn) f (stack, sn))
+         = (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+Proof.
+  intros. 
+  assert (nor_modes f (vmap y) (get_size size b)) as V1.
+  rewrite <- H1.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_modes f temp (get_size size b)) as V2.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_modes f stack sl) as V3.
+  rewrite <- H6.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (get_cua (f (stack,sn)) = false) as V4.
+  unfold nor_modes,nor_mode in *.
+  specialize (V3 sn). assert (sn < sl) by lia. apply V3 in H16.
+  unfold store_match_st in *.
+  assert (sn <= sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17. easy. lia.
+  assert (get_cua (f (stack,S sn)) = false) as V5.
+  unfold nor_modes,nor_mode in *.
+  specialize (V3 (S sn)). assert (S sn < sl) by lia. apply V3 in H16.
+  unfold store_match_st in *.
+  assert (sn <= S sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17. easy. lia.
+  unfold ceq_circuit_right.
+  bdestruct (fl =fl= Classic).
+  remember ( X (stack, sn)) as xop.
+  simpl.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (x := temp) (tenv := tenv) (v1 := a_nat2fb x (get_size size b))
+           (v2:= (a_nat2fb v (get_size size b))) (f':=f) ; try easy.
+  bdestruct ((a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b))).
+  simpl.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite eupdate_same.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb v (get_size size b))
+           (v2:= (a_nat2fb x (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               ((a_nat2fb v (get_size size b) <=?
+                   a_nat2fb x (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b)) (get_size size b))
+      [(stack, sn) |-> put_cu (f (stack, sn)) (a_nat2fb v (get_size size b) <=?
+             a_nat2fb x (get_size size b))]))
+       = (f[(stack, sn) |-> put_cu (f (stack, sn)) ((a_nat2fb v (get_size size b) <=?
+             a_nat2fb x (get_size size b)))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  rewrite H18.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+  rewrite H19. 
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb v (get_size size b))). easy.
+  lia.
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b))). lia. easy.
+  apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite put_cu_cus.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  assert ((¬ (¬ (a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b)))) = 
+             ((a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b)))) by btauto.
+  rewrite H18. easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite get_r_put_same. easy.
+  rewrite <- V4. rewrite put_get_cu. easy. apply V3. lia.
+  simpl.
+  rewrite comparator01_correct_true_1 with (tenv := tenv) (v1 := a_nat2fb v (get_size size b))
+           (v2:= (a_nat2fb x (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite eupdate_twice_eq.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               (¬  (a_nat2fb v (get_size size b) <=?
+                   a_nat2fb x (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b)) (get_size size b))
+      [(stack, sn) |-> put_cu (f (stack, sn)) (¬ (a_nat2fb v (get_size size b) <=?
+             a_nat2fb x (get_size size b)))]))
+       = (f[(stack, sn) |-> put_cu (f (stack, sn)) (¬(a_nat2fb v (get_size size b) <=?
+             a_nat2fb x (get_size size b)))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  rewrite H18.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+  rewrite H19. 
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb v (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b))). easy. lia.
+  apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite put_cu_cus.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply right_mode_exp_put_cus_same; try easy.
+  apply right_mode_exp_up_same; easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_uniform_put_cu_same; try easy.
+  apply right_mode_exp_up_same; easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply qft_gt_put_cus_same; try easy.
+  apply qft_gt_put_cu_same; easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply V2. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite eupdate_index_eq. rewrite get_put_cu. easy. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite get_r_put_cu_same. easy. apply V3. lia.
+  unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. lia. simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; try easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite get_r_put_same. easy.
+  remember ( X (stack, sn)) as xop.
+  simpl.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (x := temp) (tenv := tenv) (v1 := a_nat2fb x (get_size size b))
+           (v2:= (a_nat2fb v (get_size size b))) (f':=f) ; try easy.
+  bdestruct ((a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b))).
+  simpl.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite eupdate_same.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb v (get_size size b))
+           (v2:= (a_nat2fb x (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               ((a_nat2fb v (get_size size b) <=?
+                   a_nat2fb x (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b)) (get_size size b))
+      [(stack, sn) |-> put_cu (f (stack, sn)) (a_nat2fb v (get_size size b) <=?
+             a_nat2fb x (get_size size b))]))
+       = (f[(stack, sn) |-> put_cu (f (stack, sn)) ((a_nat2fb v (get_size size b) <=?
+             a_nat2fb x (get_size size b)))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  rewrite H18.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+  rewrite H19. 
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb v (get_size size b))). easy.
+  lia.
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b))). lia. easy.
+  apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite put_cu_cus.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  assert ((¬ (¬ (a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b)))) = 
+             ((a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b)))) by btauto.
+  rewrite H18. easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite get_r_put_same. easy.
+  rewrite <- V4. rewrite put_get_cu. easy. apply V3. lia.
+  simpl.
+  rewrite comparator01_correct_true_1 with (tenv := tenv) (v1 := a_nat2fb v (get_size size b))
+           (v2:= (a_nat2fb x (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite eupdate_twice_eq.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               (¬  (a_nat2fb v (get_size size b) <=?
+                   a_nat2fb x (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b)) (get_size size b))
+      [(stack, sn) |-> put_cu (f (stack, sn)) (¬ (a_nat2fb v (get_size size b) <=?
+             a_nat2fb x (get_size size b)))]))
+       = (f[(stack, sn) |-> put_cu (f (stack, sn)) (¬(a_nat2fb v (get_size size b) <=?
+             a_nat2fb x (get_size size b)))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  rewrite H18.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+  rewrite H19. 
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb v (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b))). easy. lia.
+  apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite put_cu_cus.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply right_mode_exp_put_cus_same; try easy.
+  apply right_mode_exp_up_same; easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_uniform_put_cu_same; try easy.
+  apply right_mode_exp_up_same; easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply qft_gt_put_cus_same; try easy.
+  apply qft_gt_put_cu_same; easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply V2. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite eupdate_index_eq. rewrite get_put_cu. easy. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite get_r_put_cu_same. easy. apply V3. lia.
+  unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. lia. simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; try easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite get_r_put_same. easy.
+Qed.
+
 Lemma clt_circuit_left_sem : forall aenv vmap tenv f b size fl x y v stack temp sn sl,
       0 < size -> S (S sn) < sl ->
       aenv (vmap y) = (get_size size b) ->
@@ -2855,6 +3306,409 @@ Proof.
   rewrite get_r_put_same. easy.
 Qed.
 
+Lemma ceq_circuit_left_sem : forall aenv vmap tenv f b size fl x y v stack temp sn sl,
+      0 < size -> S (S sn) < sl ->
+      aenv (vmap y) = (get_size size b) ->
+      vmap y <> stack -> vmap y <> temp -> stack <> temp ->
+      aenv temp = (get_size size b) -> aenv stack = sl ->
+      get_cus (get_size size b) f (vmap y) = v ->
+      store_match_st sl sn stack f vmap ->
+      get_cus (get_size size b) f temp = nat2fb 0 ->
+      Env.MapsTo (vmap y) PQASM.Nor tenv -> Env.MapsTo stack PQASM.Nor tenv -> Env.MapsTo temp PQASM.Nor tenv ->
+      right_mode_env aenv tenv f ->  qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+      get_cua (exp_sem aenv (ceq_circuit_left size fl b vmap y x stack temp sn) f (stack, sn))
+         = (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+Proof.
+  intros. 
+  assert (nor_modes f (vmap y) (get_size size b)) as V1.
+  rewrite <- H1.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_modes f temp (get_size size b)) as V2.
+  rewrite <- H5.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_modes f stack sl) as V3.
+  rewrite <- H6.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (get_cua (f (stack,sn)) = false) as V4.
+  unfold nor_modes,nor_mode in *.
+  specialize (V3 sn). assert (sn < sl) by lia. apply V3 in H16.
+  unfold store_match_st in *.
+  assert (sn <= sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17. easy. lia.
+  assert (get_cua (f (stack,S sn)) = false) as V5.
+  unfold nor_modes,nor_mode in *.
+  specialize (V3 (S sn)). assert (S sn < sl) by lia. apply V3 in H16.
+  unfold store_match_st in *.
+  assert (sn <= S sn) by lia. apply H8 in H17.
+  rewrite get_cus_cua in H17. easy. lia.
+  unfold ceq_circuit_left.
+  bdestruct (fl =fl= Classic).
+  remember ( X (stack, sn)) as xop.
+  simpl.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite comparator01_correct_1 with (x := vmap y) (tenv := tenv) (v1 := a_nat2fb v (get_size size b))
+           (v2:= (a_nat2fb x (get_size size b))) (f':=f) ; try easy.
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b))).
+  simpl.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite eupdate_same.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (x := temp) (tenv := tenv) (v1 := a_nat2fb x (get_size size b))
+           (v2:= (a_nat2fb v (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               ((a_nat2fb x (get_size size b) <=?
+                   a_nat2fb v (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b)) (get_size size b))
+      [(stack, sn) |-> put_cu (f (stack, sn)) (a_nat2fb x (get_size size b) <=?
+             a_nat2fb v (get_size size b))]))
+       = (f[(stack, sn) |-> put_cu (f (stack, sn)) ((a_nat2fb x (get_size size b) <=?
+             a_nat2fb v (get_size size b)))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  rewrite H18.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+  rewrite H19. 
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb v (get_size size b))). easy.
+  lia.
+  bdestruct ((a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b))). lia. easy.
+  apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite put_cu_cus.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  assert ((¬ (¬ (a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b)))) = 
+             ((a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b)))) by btauto.
+  rewrite H18. easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite get_r_put_same. easy.
+  rewrite <- V4. rewrite put_get_cu. easy. apply V3. lia.
+  simpl.
+  rewrite comparator01_correct_true_1 with (tenv := tenv) (v1 := a_nat2fb x (get_size size b))
+           (v2:= (a_nat2fb v (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite eupdate_twice_eq.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               (¬  (a_nat2fb x (get_size size b) <=?
+                   a_nat2fb v (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b)) (get_size size b))
+      [(stack, sn) |-> put_cu (f (stack, sn)) (¬ (a_nat2fb x (get_size size b) <=?
+             a_nat2fb v (get_size size b)))]))
+       = (f[(stack, sn) |-> put_cu (f (stack, sn)) (¬(a_nat2fb x (get_size size b) <=?
+             a_nat2fb v (get_size size b)))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  rewrite H18.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+  rewrite H19. 
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb v (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b))). easy. lia.
+  apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite put_cu_cus.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply right_mode_exp_put_cus_same; try easy.
+  apply right_mode_exp_up_same; easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_uniform_put_cu_same; try easy.
+  apply right_mode_exp_up_same; easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply qft_gt_put_cus_same; try easy.
+  apply qft_gt_put_cu_same; easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply V2. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite eupdate_index_eq. rewrite get_put_cu. easy. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite get_r_put_cu_same. easy. apply V3. lia.
+  unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. lia. simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; try easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite get_r_put_same. easy.
+  remember ( X (stack, sn)) as xop.
+  simpl.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite comparator01_correct_1 with (x := vmap y) (tenv := tenv) (v1 := a_nat2fb v (get_size size b))
+           (v2:= (a_nat2fb x (get_size size b))) (f':=f) ; try easy.
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb x (get_size size b))).
+  simpl.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite eupdate_same.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (x := temp) (tenv := tenv) (v1 := a_nat2fb x (get_size size b))
+           (v2:= (a_nat2fb v (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               ((a_nat2fb x (get_size size b) <=?
+                   a_nat2fb v (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b)) (get_size size b))
+      [(stack, sn) |-> put_cu (f (stack, sn)) (a_nat2fb x (get_size size b) <=?
+             a_nat2fb v (get_size size b))]))
+       = (f[(stack, sn) |-> put_cu (f (stack, sn)) ((a_nat2fb x (get_size size b) <=?
+             a_nat2fb v (get_size size b)))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  rewrite H18.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+  rewrite H19. 
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb v (get_size size b))). easy.
+  lia.
+  bdestruct ((a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b))). lia. easy.
+  apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite put_cu_cus.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  assert ((¬ (¬ (a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b)))) = 
+             ((a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b)))) by btauto.
+  rewrite H18. easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite get_r_put_same. easy.
+  rewrite <- V4. rewrite put_get_cu. easy. apply V3. lia.
+  simpl.
+  rewrite comparator01_correct_true_1 with (tenv := tenv) (v1 := a_nat2fb x (get_size size b))
+           (v2:= (a_nat2fb v (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite eupdate_twice_eq.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               (¬  (a_nat2fb x (get_size size b) <=?
+                   a_nat2fb v (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  assert ((exp_sem aenv (inv_exp (init_v (get_size size b) temp x))
+     ((put_cus f temp (cut_n x (get_size size b)) (get_size size b))
+      [(stack, sn) |-> put_cu (f (stack, sn)) (¬ (a_nat2fb x (get_size size b) <=?
+             a_nat2fb v (get_size size b)))]))
+       = (f[(stack, sn) |-> put_cu (f (stack, sn)) (¬(a_nat2fb x (get_size size b) <=?
+             a_nat2fb v (get_size size b)))])).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply well_typed_init_v. easy.
+  apply right_mode_exp_up_same; try easy.
+  apply qft_uniform_put_cu_same. easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite init_v_sem with (size := (get_size size b)) (tenv := tenv); try easy.
+  rewrite put_cus_update_flip. easy. iner_p.
+  rewrite get_cus_up by iner_p.
+  easy.
+  apply right_mode_exp_up_same; try easy.
+  rewrite H18.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb x (get_size size b) =? a_nat2fb v (get_size size b)).
+  rewrite H19. 
+  bdestruct ((a_nat2fb v (get_size size b) <=? a_nat2fb v (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb x (get_size size b) <=? a_nat2fb v (get_size size b))). easy. lia.
+  apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply nor_mode_cus_eq.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite put_cu_cus.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply right_mode_exp_put_cus_same; try easy.
+  apply right_mode_exp_up_same; easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_uniform_put_cu_same; try easy.
+  apply right_mode_exp_up_same; easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  apply qft_gt_put_cus_same; try easy.
+  apply qft_gt_put_cu_same; easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply V2. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite eupdate_index_eq. rewrite get_put_cu. easy. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite get_r_put_cu_same. easy. apply V3. lia.
+  unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. lia. simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_put_cus_same; try easy.
+  apply qft_uniform_put_cus_same; try easy.
+  apply qft_gt_put_cus_same; try easy.
+  rewrite get_cus_put_neq by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_put_cus_cut_n.
+  rewrite cut_n_twice_same.
+  rewrite a_nat2fb_cut_n. easy. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite cus_get_neq by iner_p. easy.
+  rewrite get_r_put_same. easy.
+Qed.
+
 Lemma clt_circuit_two_sem : forall aenv vmap tenv f b size fl x y v1 v2 stack sn sl,
       0 < size -> S (S sn) < sl ->
       aenv (vmap x) = (get_size size b) ->
@@ -2963,6 +3817,284 @@ Proof.
   specialize (H9 (sn)).
   assert (sn <= sn) by lia. apply H9 in H17.
   rewrite get_cus_cua in H17 by lia. easy.
+Qed.
+
+Lemma ceq_circuit_two_sem : forall aenv vmap tenv f b size fl x y v1 v2 stack sn sl,
+      0 < size -> S (S sn) < sl ->
+      aenv (vmap x) = (get_size size b) ->
+      aenv (vmap y) = (get_size size b) ->
+      vmap x <> vmap y -> vmap x <> stack -> vmap y <> stack ->
+      aenv stack = sl ->
+      get_cus (get_size size b) f (vmap x) = v1 ->
+      get_cus (get_size size b) f (vmap y) = v2 ->
+      store_match_st sl sn stack f vmap ->
+      Env.MapsTo (vmap x) PQASM.Nor tenv -> Env.MapsTo (vmap y) PQASM.Nor tenv -> Env.MapsTo stack PQASM.Nor tenv ->
+      right_mode_env aenv tenv f ->  qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+      get_cua (exp_sem aenv (ceq_circuit_two size fl b vmap x y stack sn) f (stack, sn))
+         = (a_nat2fb v1 (get_size size b) =? a_nat2fb v2 (get_size size b)).
+Proof.
+  intros. 
+  assert (nor_modes f (vmap x) (get_size size b)) as V1.
+  rewrite <- H1.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_modes f (vmap y) (get_size size b)) as V2.
+  rewrite <- H2.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_modes f stack sl) as V3.
+  rewrite <- H6.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (get_cua (f (stack,sn)) = false) as V4.
+  unfold nor_modes,nor_mode in *.
+  specialize (V3 sn). assert (sn < sl) by lia. apply V3 in H16.
+  unfold store_match_st in *.
+  assert (sn <= sn) by lia. apply H9 in H17.
+  rewrite get_cus_cua in H17. easy. lia.
+  assert (get_cua (f (stack,S sn)) = false) as V5.
+  unfold nor_modes,nor_mode in *.
+  specialize (V3 (S sn)). assert (S sn < sl) by lia. apply V3 in H16.
+  unfold store_match_st in *.
+  assert (sn <= S sn) by lia. apply H9 in H17.
+  rewrite get_cus_cua in H17. easy. lia.
+  unfold ceq_circuit_two.
+  bdestruct (fl =fl= Classic).
+  remember ( X (stack, sn)) as xop.
+  simpl.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (x:=vmap y) (tenv := tenv) (v1 := a_nat2fb v2 (get_size size b))
+           (v2:= (a_nat2fb v1 (get_size size b))) (f':=f) ; try easy.
+  bdestruct ((a_nat2fb v2 (get_size size b) <=? a_nat2fb v1 (get_size size b))).
+  simpl.
+  rewrite eupdate_same.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb v1 (get_size size b))
+           (v2:= (a_nat2fb v2 (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               ((a_nat2fb v1 (get_size size b) <=?
+                   a_nat2fb v2 (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb v1 (get_size size b) =? a_nat2fb v2 (get_size size b)).
+  rewrite H18. 
+  bdestruct ((a_nat2fb v2 (get_size size b) <=? a_nat2fb v2 (get_size size b))). easy.
+  lia.
+  bdestruct ((a_nat2fb v1 (get_size size b) <=? a_nat2fb v2 (get_size size b))). lia. easy.
+  apply V3. lia.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite get_put_cu.
+  assert ((¬ (¬ (a_nat2fb v1 (get_size size b) <=? a_nat2fb v2 (get_size size b)))) = 
+             ((a_nat2fb v1 (get_size size b) <=? a_nat2fb v2 (get_size size b)))) by btauto.
+  rewrite H18. easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite H7. 
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite H8. 
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H8.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite <- V4. rewrite put_get_cu. easy. apply V3. lia.
+  simpl.
+  rewrite comparator01_correct_true_1 with (tenv := tenv) (v1 := a_nat2fb v1 (get_size size b))
+           (v2:= (a_nat2fb v2 (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite eupdate_twice_eq.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               (¬  (a_nat2fb v1 (get_size size b) <=?
+                   a_nat2fb v2 (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb v1 (get_size size b) =? a_nat2fb v2 (get_size size b)).
+  rewrite H18. 
+  bdestruct ((a_nat2fb v2 (get_size size b) <=? a_nat2fb v2 (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb v1 (get_size size b) <=? a_nat2fb v2 (get_size size b))). easy. lia.
+  apply V3. lia.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite get_put_cu.
+  easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_up_same; easy.
+  apply qft_uniform_put_cu_same; try easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite get_cus_up by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite H8.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H8.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite eupdate_index_neq by iner_p. easy.
+  rewrite eupdate_index_eq. rewrite get_put_cu. easy. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite get_r_put_cu_same. easy. apply V3. lia.
+  unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. lia. simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite H8.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H8.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  remember ( X (stack, sn)) as xop.
+  simpl.
+  Check comparator01_correct_1.
+  rewrite comparator01_correct_1 with (x:=vmap y) (tenv := tenv) (v1 := a_nat2fb v2 (get_size size b))
+           (v2:= (a_nat2fb v1 (get_size size b))) (f':=f) ; try easy.
+  bdestruct ((a_nat2fb v2 (get_size size b) <=? a_nat2fb v1 (get_size size b))).
+  simpl.
+  rewrite eupdate_same.
+  rewrite comparator01_correct_1 with (tenv := tenv) (v1 := a_nat2fb v1 (get_size size b))
+           (v2:= (a_nat2fb v2 (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               ((a_nat2fb v1 (get_size size b) <=?
+                   a_nat2fb v2 (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb v1 (get_size size b) =? a_nat2fb v2 (get_size size b)).
+  rewrite H18. 
+  bdestruct ((a_nat2fb v2 (get_size size b) <=? a_nat2fb v2 (get_size size b))). easy.
+  lia.
+  bdestruct ((a_nat2fb v1 (get_size size b) <=? a_nat2fb v2 (get_size size b))). lia. easy.
+  apply V3. lia.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite get_put_cu.
+  assert ((¬ (¬ (a_nat2fb v1 (get_size size b) <=? a_nat2fb v2 (get_size size b)))) = 
+             ((a_nat2fb v1 (get_size size b) <=? a_nat2fb v2 (get_size size b)))) by btauto.
+  rewrite H18. easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite H7. 
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite H8. 
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H8.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite <- V4. rewrite put_get_cu. easy. apply V3. lia.
+  simpl.
+  rewrite comparator01_correct_true_1 with (tenv := tenv) (v1 := a_nat2fb v1 (get_size size b))
+           (v2:= (a_nat2fb v2 (get_size size b))) (f':=f) ; try easy.
+  rewrite Heqxop.
+  rewrite eupdate_twice_eq.
+  rewrite x_nor_sem with (v := put_cu (f (stack, sn))
+               (¬  (a_nat2fb v1 (get_size size b) <=?
+                   a_nat2fb v2 (get_size size b)))).
+  rewrite eupdate_twice_eq.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu.
+  bdestruct (a_nat2fb v1 (get_size size b) =? a_nat2fb v2 (get_size size b)).
+  rewrite H18. 
+  bdestruct ((a_nat2fb v2 (get_size size b) <=? a_nat2fb v2 (get_size size b))). lia.
+  easy.
+  bdestruct ((a_nat2fb v1 (get_size size b) <=? a_nat2fb v2 (get_size size b))). easy. lia.
+  apply V3. lia.
+  apply nor_mode_up_1. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite put_cu_twice_eq.
+  rewrite get_put_cu.
+  easy.
+  apply V3. lia. unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. subst. lia. simpl. subst. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  apply right_mode_exp_up_same; easy.
+  apply qft_uniform_put_cu_same; try easy.
+  apply qft_gt_put_cu_same; easy.
+  rewrite get_cus_up by iner_p.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite get_cus_up by iner_p.
+  rewrite H8.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H8.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite eupdate_index_neq by iner_p. easy.
+  rewrite eupdate_index_eq. rewrite get_put_cu. easy. apply V3. lia.
+  rewrite eupdate_index_eq.
+  rewrite get_r_put_cu_same. easy. apply V3. lia.
+  unfold get_size. destruct b. simpl. lia. simpl. lia. simpl. lia.
+  simpl. lia. simpl. lia.
+  apply a_nat2fb_scope.
+  apply a_nat2fb_scope.
+  unfold no_equal.
+  split. lia. split. iner_p.
+  split. iner_p. split. iner_p. split. iner_p. iner_p.
+  rewrite H8.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H8.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
+  rewrite H7.
+  rewrite nat2fb_a_nat2fb. easy.
+  intros.
+  rewrite <- H7.
+  unfold get_cus.
+  bdestruct (i <? get_size size b). lia. easy.
 Qed.
 
 Lemma aenv_match_value_cfac : forall x t xv size aenv bv smap vmap rh rl stack temp,
@@ -3228,6 +4360,7 @@ Lemma compile_cexp_sem : forall t sl size smap vmap bv fl rh rl stack temp sn e 
                  /\ re = (Value (get_cua (exp_sem (aenv (get_size size (snd t))) p f (stack,sn))))).
 Proof.
   intros. destruct e.
+ - 
   simpl in *.
   destruct (¬ (qvar_eq bv size rl x y)) eqn:eq1.
   unfold gen_clt_c in *.
@@ -3525,8 +4658,330 @@ Proof.
   simpl in *.
   inv H0. inv H1. left. easy.
   1-5: easy.  
-Admitted.
-
+ - 
+  simpl in *.
+  destruct (¬ (qvar_eq bv size rl x y)) eqn:eq1.
+  unfold gen_ceq_c in *.
+  destruct (type_factor bv x) eqn:eq2.
+  destruct (type_factor bv y) eqn:eq3.
+  simpl in *.
+  unfold meet_type,meet_btype,meet_atype in H.
+  destruct p. destruct p0. simpl in *.
+  bdestruct (b =b= b0). simpl in H. subst.
+  destruct a eqn:eq4. unfold ret in H. inv H. simpl in *.
+  bdestruct (a0 =a= Q). subst.
+  destruct (sem_cfac smap size rh x) eqn:eq5.
+  destruct v. 
+  destruct (sem_cfac smap size rh y) eqn:eq6. 
+  destruct v. simpl in *. inv H1.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq7.
+  destruct v.
+  assert (par_eval_cfac_check smap bv size rl x = Some (Value x0)).
+  rewrite sem_cfac_par_eval_same_c with (t := (C, b0)) (rh := rh); try easy.
+  rewrite H in *.
+  simpl in *. inv H0.
+  right. right.
+  exists (ceq_circuit_right size fl b0 vmap x0 x2 stack temp sn). split.
+  easy.
+  remember (aenv (get_size size b0) stack) as sl.
+  assert (aenv (get_size size b0) (vmap x2) = get_size size b0) as eq8.
+  rewrite (aenv_match_value_cfac y (Q, b0) x2
+          size (aenv (get_size size b0)) bv smap vmap rh rl stack temp); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  rewrite ceq_circuit_right_sem with (tenv := tenv) (v := x1) (sl := sl); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy. 
+  rewrite <- eq8.
+  rewrite (q_var_same_value y x2 (Q, b0) x1 smap vmap bv size rh rl); try easy.
+  rewrite eq8. apply cut_n_eq.
+  apply (stored_value_typed smap rh bv size y x1 Q); try easy.
+  unfold nat2fb in *. simpl in *.
+  apply get_cus_small with (size := size); try easy.
+  unfold get_size. bdestruct (b0 =b= Bl). lia. lia.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  Check all_nor_var.
+  apply (all_nor_var vmap smap tenv (get_var_cfac x ++ get_var_cfac y)
+             bv size rl y x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy. 
+  inv H0.
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq6; try easy.
+  easy.
+  simpl in *.
+  assert (par_find_var_check smap bv size rl y = Some Error).
+  apply type_cfac_find_var_error with (t := (Q,b0)) (rh := rh); try easy.
+  rewrite H in *.
+  inv H1. inv H0. left. easy.
+  simpl in *. inv H1.
+  simpl in *. 
+  destruct (par_find_var_check smap bv size rl y) eqn:eq6.
+  simpl in *. destruct v.
+  assert (par_eval_cfac_check smap bv size rl x = Some Error).
+  rewrite sem_cfac_par_eval_same_c with (t := (C, b0)) (rh := rh); try easy.
+  rewrite H in *.
+  simpl in *.
+  destruct (sem_cfac smap size rh y). simpl in *.
+  inv H1. inv H0. left. easy.
+  easy.
+  destruct (sem_cfac smap size rh y). simpl in *. 
+  inv H1. inv H0. left. easy.
+  easy. easy.
+  simpl in *. easy.
+  simpl in *.
+  destruct a0.
+  destruct (sem_cfac smap size rh x) eqn:eq5.
+  destruct v. 
+  destruct (sem_cfac smap size rh y) eqn:eq6. 
+  destruct v. simpl in *. inv H1.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq5; try easy.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq6; try easy.
+  rewrite eq5 in *. rewrite eq6 in *. simpl in *.
+  inv H0.
+  right. 
+  left.
+  exists ((a_nat2fb x0 (get_size size b0) =?
+       a_nat2fb x1 (get_size size b0))). easy.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq5; try easy.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq6; try easy.
+  rewrite eq5 in *. rewrite eq6 in *. simpl in *.
+  inv H1. inv H0. left. easy.
+  simpl in *. easy.
+  simpl in *.
+  rewrite <- sem_cfac_par_eval_same_c with (t := (C, b0)) (bv := bv) (rl:=rl) in eq5; try easy.
+  rewrite eq5 in *.
+  simpl in *.
+  destruct (sem_cfac smap size rh y).
+  destruct (par_eval_cfac_check smap bv size rl y).
+  simpl in *. 
+  inv H1. inv H0. left. easy.
+  simpl in *. 
+  inv H1. inv H0. left. easy.
+  simpl in *. easy. easy.
+  inv H. simpl in *.
+  destruct a0. simpl in *.
+  destruct (sem_cfac smap size rh x) eqn:eq5.
+  destruct v. 
+  destruct (sem_cfac smap size rh y) eqn:eq6. 
+  destruct v. simpl in *. inv H1.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7.
+  destruct v.
+  assert (par_eval_cfac_check smap bv size rl y = Some (Value x1)).
+  rewrite sem_cfac_par_eval_same_c with (t := (C, b0)) (rh := rh); try easy.
+  rewrite H in *.
+  simpl in *. inv H0.
+  right. right.
+  exists ((ceq_circuit_left size fl b0 vmap x2 x1 stack temp sn)). split.
+  easy.
+  remember (aenv (get_size size b0) stack) as sl.
+  assert (aenv (get_size size b0) (vmap x2) = get_size size b0) as eq8.
+  Check aenv_match_value_cfac.
+  rewrite (aenv_match_value_cfac x (Q, b0) x2
+          size (aenv (get_size size b0)) bv smap vmap rh rl stack temp); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy. 
+  Check ceq_circuit_left_sem.
+  rewrite ceq_circuit_left_sem with (tenv := tenv) (v := x0) (sl := sl); try easy.
+  bdestruct ((a_nat2fb x0 (get_size size b0) =? a_nat2fb x1 (get_size size b0))).
+  bdestruct ((a_nat2fb x1 (get_size size b0) =? a_nat2fb x0 (get_size size b0))).
+  easy. lia.
+  bdestruct ((a_nat2fb x1 (get_size size b0) =? a_nat2fb x0 (get_size size b0))).
+  lia. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy. 
+  rewrite <- eq8.
+  Check q_var_same_value.
+  rewrite (q_var_same_value x x2 (Q, b0) x0 smap vmap bv size rh rl); try easy.
+  rewrite eq8. apply cut_n_eq.
+  apply (stored_value_typed smap rh bv size x x0 Q); try easy.
+  unfold nat2fb in *. simpl in *.
+  apply get_cus_small with (size := size); try easy.
+  unfold get_size. bdestruct (b0 =b= Bl). lia. lia.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  Check all_nor_var.
+  apply (all_nor_var vmap smap tenv (get_var_cfac x ++ get_var_cfac y)
+             bv size rl x x3 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy. 
+  inv H0.
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq5; try easy.
+  easy.
+  simpl in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7.
+  simpl in *. destruct v.
+  assert (par_eval_cfac_check smap bv size rl y = Some Error).
+  rewrite sem_cfac_par_eval_same_c with (t := (C, b0)) (rh := rh); try easy.
+  rewrite H in *.
+  simpl in *.
+  inv H1. inv H0. left. easy.
+  inv H1. inv H0. left. easy. easy.
+  simpl in *. easy. simpl in *.
+  assert (par_find_var_check smap bv size rl x = Some Error).
+  apply type_cfac_find_var_error with (t := (Q,b0)) (rh := rh); try easy.
+  rewrite H in *.
+  destruct (sem_cfac smap size rh y). simpl in *.
+  inv H1. inv H0. left. easy.
+  simpl in *. easy.
+  easy.
+  destruct (sem_cfac smap size rh x) eqn:eq5.
+  destruct v. 
+  destruct (sem_cfac smap size rh y) eqn:eq6. 
+  destruct v. simpl in *. inv H1.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7.
+  destruct v.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq8.
+  destruct v. simpl in *. inv H0.
+  right. right.
+  assert (aenv (get_size size b0) (vmap x2) = get_size size b0) as eq9.
+  rewrite (aenv_match_value_cfac x (Q, b0) x2
+          size (aenv (get_size size b0)) bv smap vmap rh rl stack temp); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x4 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x4 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  assert (aenv (get_size size b0) (vmap x3) = get_size size b0) as eq10.
+  rewrite (aenv_match_value_cfac y (Q, b0) x3
+          size (aenv (get_size size b0)) bv smap vmap rh rl stack temp); try easy.
+  apply par_find_get_var in eq8 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x4 x3 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq8 as X1. destruct X1.
+  apply (not_eq_temp_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x4 x3 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  exists (ceq_circuit_two size fl b0 vmap x2 x3 stack sn). split. easy.
+  remember (aenv (get_size size b0) stack) as sl.
+  rewrite ceq_circuit_two_sem with (tenv := tenv) (v1 := x0) (v2 := x1) (sl := sl) ; try easy.
+  unfold qvar_eq in eq1.
+  assert (par_find_var bv size rl x = Some x2).
+  apply (par_find_var_check_eq smap); try easy.
+  assert (par_find_var bv size rl y = Some x3).
+  apply (par_find_var_check_eq smap); try easy.
+  rewrite H in *. rewrite H0 in *.
+  bdestruct (x2 =qd= x3). inv eq1.
+  apply H22. easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl x x4 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy.
+  apply par_find_get_var in eq8 as X1. destruct X1.
+  apply (not_eq_stack_var stack temp vmap smap
+         (get_var_cfac x ++ get_var_cfac y) bv size rl y x4 x3 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  Check q_var_same_value.
+  rewrite <- eq9.
+  rewrite (q_var_same_value x x2 (Q, b0) x0 smap vmap bv size rh rl); try easy.
+  rewrite eq9. apply cut_n_eq.
+  apply (stored_value_typed smap rh bv size x x0 Q); try easy.
+  rewrite <- eq10.
+  rewrite (q_var_same_value y x3 (Q, b0) x1 smap vmap bv size rh rl); try easy.
+  rewrite eq10. apply cut_n_eq.
+  apply (stored_value_typed smap rh bv size y x1 Q); try easy.
+  apply par_find_get_var in eq7 as X1. destruct X1.
+  Check all_nor_var.
+  apply (all_nor_var vmap smap tenv (get_var_cfac x ++ get_var_cfac y)
+             bv size rl x x4 x2 (Q, b0)); try easy.
+  simpl. apply in_or_app. left.
+  apply hd_list_in. easy. 
+  apply par_find_get_var in eq8 as X1. destruct X1.
+  Check all_nor_var.
+  apply (all_nor_var vmap smap tenv (get_var_cfac x ++ get_var_cfac y)
+             bv size rl y x4 x3 (Q, b0)); try easy.
+  simpl. apply in_or_app. right.
+  apply hd_list_in. easy.
+  simpl in *.
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq6; try easy.
+  simpl in *. easy.
+  simpl in *. 
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq5; try easy.
+  simpl in *. easy.
+  simpl in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7. destruct v.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq8. destruct v. simpl in *.
+  rewrite type_cfac_find_var_error with (t := (Q, b0)) (bv:=bv) (rh:=rh) in eq8; try easy.
+  simpl in *. inv H0. inv H1. left. easy.
+  simpl in *. easy.
+  rewrite type_cfac_sem_error with (t := (Q, b0)) (bv:=bv) (rl:=rl) in eq5; try easy.
+  simpl in *. easy.
+  simpl in *. easy.
+  simpl in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq7. destruct v. 
+  rewrite type_cfac_find_var_error with (t := (Q, b0)) (bv:=bv) (rh:=rh) in eq7; try easy.
+  simpl in *.
+  destruct (sem_cfac smap size rh y). destruct (par_find_var_check smap bv size rl y).
+  simpl in *.
+  inv H0. inv H1. left. easy.
+  simpl in *.
+  inv H0. inv H1. left. easy.
+  1-5: easy.  
+ -
+  unfold type_cexp in *.
+  apply cfac_type_c in H as V1.
+  rewrite V1 in *. clear V1.
+  unfold compile_cexp,sem_cexp in *.
+  assert (type_factor bv x = Some (C, Nat)) as V2.
+  apply type_factor_full_same in H; easy.
+  rewrite V2 in *. simpl in *.
+  destruct (par_eval_cfac_check smap bv size rl x) eqn:eq1. destruct v.
+  rewrite sem_cfac_par_eval_same_c with (t := (C,Nat)) (rh := rh) in eq1; try easy.
+  rewrite eq1 in *. 
+  simpl in *.
+  unfold get_size in H1.
+  bdestruct (Nat =b= Bl). easy.
+  destruct (snd (Nat.divmod (a_nat2fb x0 size) 1 0 1)) eqn:eq2.
+  bdestruct (1 =? 0). lia. inv H0. inv H1.
+  right. left. exists false. easy.
+  bdestruct (0 =? 0). inv H0. inv H1.
+  right. left. exists true. easy. lia.
+  rewrite sem_cfac_par_eval_same_c with (t := (C,Nat)) (rh := rh) in eq1; try easy.
+  rewrite eq1 in *.
+  simpl in *. inv H0. inv H1. left. easy.
+  simpl in *.
+  rewrite sem_cfac_par_eval_same_c with (t := (C,Nat)) (rh := rh) in eq1; try easy.
+Qed.
 
 
 Definition eval_var (smap : qvar -> nat) (size:nat) (r:store) (x:cfac) :=

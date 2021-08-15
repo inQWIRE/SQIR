@@ -824,6 +824,15 @@ Proof.
  unfold get_r. easy. easy. easy. easy. easy.
 Qed.
 
+Lemma get_r_put_cu_same : forall (f:posi -> val) p v,
+      nor_mode f p ->
+      get_r (put_cu (f p) v) = get_r (f p).
+Proof.
+ intros.
+ unfold put_cu,nor_mode in *.
+ destruct (f p). easy. easy. easy.
+Qed.
+
 Lemma put_cu_mid_eq : forall (f g:posi -> val) a v, 
               nor_mode f a -> nor_mode g a -> get_r (f a) = get_r (g a) -> (put_cu (f a) v) = (put_cu (g a) v).
 Proof.
