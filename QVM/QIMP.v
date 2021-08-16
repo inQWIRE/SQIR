@@ -830,233 +830,6 @@ Definition get_ct (c:typ) :=
               | TNor x y => y
    end.
 
-Definition sub_nor (t1 t2:(atype * btype)) := 
-  match t1 with (a1,b1) => match t2 with (a2,b2) 
-                             => (b1 =b= b2) && (if a1 =a= C then true else a2 =a= Q)
-                           end end.
-
-(* For any Q-mode statements (the assigmment variable being Q mode) we require that the 
-   assignment variables are different from the arguments. *)
-Definition fresh_loop_fac (x:var) (fc:factor) :=
-   match fc with Var y => if y =q= (L x) then false else true
-             | Num t b => true
-   end.
-
-Definition fresh_loop_cfac (x:var) (fc:cfac) :=
-   match fc with Index y n => if y =q= (L x) then false else true
-             | Nor v => fresh_loop_fac x v
-   end.
-
-Fixpoint fresh_loop_c (x:var) (e:qexp) :=
-   match e with skip => true
-             | init y v => fresh_loop_cfac x y
-             | unary y op v => fresh_loop_cfac x y
-             | binapp y op z v => fresh_loop_cfac x y
-             | slrot y => fresh_loop_cfac x y
-             | qinv y => fresh_loop_cfac x y
-             | call y f vs => fresh_loop_cfac x y
-             | qif ce e1 e2 => (fresh_loop_c x e1) && (fresh_loop_c x e2)
-             | qfor y n e => (fresh_loop_cfac x n) && (if x =? y then true else fresh_loop_c x e)
-             | qseq e1 e2 => (fresh_loop_c x e1) && (fresh_loop_c x e2)
-   end.
-
-(* slrot is current static, so it cannot be used inside a if-condition,
-    and we plan to make it also non-static. *)
-Fixpoint no_rot (e:qexp) :=
-   match e with skip => true
-             | init y v => true
-             | unary y op v => true
-             | binapp y op z v => true
-             | slrot y => false
-             | qinv y => true
-             | call y f vs => true
-             | qif ce e1 e2 => (no_rot e1) && (no_rot e2)
-             | qfor y n e => no_rot e
-             | qseq e1 e2 => (no_rot e1) && (no_rot e2)
-   end.
-
-
-Definition is_q_fac (bv:benv) (c:factor) :=
-    match c with Var x => match BEnv.find x bv with None => false
-                              | Some t => is_q t
-                          end
-             | Num b x => false
-    end.
-
-Definition is_q_cfac (bv:benv) (c:cfac) :=
-    match c with Index x n => 
-          match BEnv.find x bv with None => false
-                    | Some t => is_q t
-          end
-              | Nor x => is_q_fac bv x
-    end.
-
-(* Checks if an expression in if-branch has a C mode assigment. *)
-Fixpoint has_c_exp (bv:benv) (e:qexp) :=
-   match e with skip => false
-             | init y v => ¬ (is_q_cfac bv y)
-             | unary y op v => ¬ (is_q_cfac bv y)
-             | slrot y => ¬ (is_q_cfac bv y)
-             | binapp y op z v => ¬ (is_q_cfac bv y)
-             | qinv y => false
-             | call y f vs => ¬ (is_q_cfac bv y)
-             | qif ce e1 e2 => (has_c_exp bv e1) && (has_c_exp bv e2)
-             | qfor y n e => has_c_exp bv e
-             | qseq e1 e2 => has_c_exp bv e1 && has_c_exp bv e2
-   end.
-
-Fixpoint type_factors_full (bv:benv) (tvl : list (atype * btype * var)) (fc: list cfac) :=
-   match fc with [] => match tvl with [] => Some bv | _ => None end
-         | (fc::fcl) => match tvl with [] => None
-           | ((a,b,v)::tvl') => 
-                  do re <- type_factor_full bv a b fc @ type_factors_full bv tvl' fcl
-                         end
-   end.
-
-Definition check_fst_type (x:qop) (t : btype) :=
-   match x with nadd | nsub | nmul | ndiv | nmod | nfac => (Nat =b= t)
-              | fadd | fsub | fmul | fdiv | fndiv => (FixedP =b= t)
-              | qxor => true
-   end.
-
-Definition check_snd_type (x:qop) (t : btype) :=
-   match x with nadd | nsub | nmul | ndiv | nmod | nfac | fdiv => (Nat =b= t)
-              | fadd | fsub | fmul | fndiv => (FixedP =b= t)
-              | qxor => true
-   end.
-
-Definition check_trd_type (x:qop) (t : btype) :=
-   match x with nadd | nsub | nmul | ndiv | nmod | nfac | fdiv | fndiv => (Nat =b= t)
-              | fadd | fsub | fmul  => (FixedP =b= t)
-              | qxor => true
-   end.
-
-Definition is_unary (x:qop) := 
-   match x with nadd | nsub | qxor | nfac | fdiv | fadd | fsub => true
-            | _ => false
-   end.
-
-Definition is_bin (x:qop) := 
-   match x with nadd | nsub | nmul | nfac | fadd | fsub | fmul | ndiv | nmod | fndiv => true
-            | _ => false
-   end.
-
-Definition get_unary_type (x:qop) (t:btype) :=
-    match x with fdiv => Nat | _ => t end.
-
-(* Typing rule for statements. *)
-Fixpoint type_qexp (fv:fenv) (bv:benv) (e:qexp):=
-   match e with skip => Some bv
-             | init x v => 
-               do core <- get_var x @ 
-                  do c <- BEnv.find core bv @
-                    do re <- type_factor bv v @ ret bv
-
-             | slrot x =>
-                   do core <- get_var x @
-                    do old <- BEnv.find core bv @ ret bv
-
-             | unary x op y => 
-               do re1 <- type_factor bv x @
-                do re2 <- type_factor bv y @ 
-                   do core <- get_var x @
-                        if is_unary op && check_fst_type op (snd re1)
-                                  && check_snd_type op (snd re2) then ret bv else None
-
-             | binapp x op y z => 
-               do re1 <- type_factor bv x @
-                do re2 <- type_factor bv y @ 
-                 do re3 <- type_factor bv z @
-                   do core <- get_var x @
-                        if is_bin op && check_fst_type op (snd re1)
-                          && check_snd_type op (snd re2)
-                          && check_trd_type op (snd re3) then ret bv else None
-                    
-
-
-              | call x f vs => 
-                 do ref <- FEnv.find f fv @
-                   match ref with (tvl,tcl,e,fbenv, rx) =>
-                    do res <- type_factors_full bv tvl vs @
-                     do rxv <- type_factor fbenv rx @
-                          do core <- get_var x @
-                           do old <- type_factor bv x @
-                              do new_type <- meet_type rxv old @ ret bv
-                   end
-
-              | qif ce e1 e2 => 
-                 do rce <- type_cexp bv ce @
-                   do bv' <- type_qexp fv bv e1 @
-                    if no_rot e1 && no_rot e2 then 
-                      if (fst rce =a= C) then 
-                       type_qexp fv bv e2 
-                      else if (fst rce =a= Q) && (¬ (has_c_exp bv e1)) && (¬ (has_c_exp bv e2)) then
-                       type_qexp fv bv e2 
-                      else None
-                   else None
-
-              | qseq e1 e2 => 
-                 do bv <- type_qexp fv bv e1 @ type_qexp fv bv e2
-
-              | qfor x n e => 
-                do re1 <- BEnv.find (L x) bv @
-                 if is_c re1 then
-                  do re2 <- type_factor_full bv C Nat n @ 
-                   if fresh_loop_c x e then
-                     type_qexp fv (BEnv.add (L x) (TNor C Nat) bv) e else None
-                 else None
-
-     | _ => None
-   end.
-
-
-Definition no_zero (t:typ) := match t with TArray x y n => if n =? 0 then false else true 
-                | TNor x y => true 
-     end.
-
-Fixpoint gen_env (l:list (typ * var)) (bv:benv) : option benv := 
-   match l with [] => Some bv
-             | ((t,x)::xl) => 
-                  do new_env <- gen_env xl bv @
-                    if no_zero t then Some (BEnv.add (L x) t new_env) else None
-   end.
-
-Fixpoint gen_env_l (l:list (atype * btype * var)) (bv:benv) : option benv := 
-   match l with [] => Some bv
-             | ((a,t,x)::xl) => 
-                  do new_env <- gen_env_l xl bv @ Some (BEnv.add (L x) (TNor a t) new_env)
-   end.
-
-Fixpoint type_funs (benv:benv) (fv:fenv) (l:list func) : option fenv :=
-     match l with [] => Some fv
-              | ((f,tvl,l,e,rx)::fs) => 
-              do benv' <- gen_env_l tvl benv @
-               do benv'' <- gen_env l benv' @
-                 do benv''' <- type_qexp fv benv'' e @
-                   do core <- get_var rx @
-                     do old <- BEnv.find core benv''' @
-                     type_funs benv (FEnv.add f ((tvl,l,e,benv'',rx)) fv) fs
-     end.
-
-Fixpoint gen_genv (l:list (typ * var)) : option benv := 
-   match l with [] => Some empty_benv
-             | ((t,x)::xl) => 
-                  do new_env <- gen_genv xl @
-                   if no_zero t then Some (BEnv.add (G x) t new_env) else None
-   end.
-
-(* A program type will return a function environment. *)
-Definition type_prog (p:prog) : option fenv :=
-   match p with (n,l,fl,main,rx) => 
-    do bv <- gen_genv l @ 
-      do fv <- type_funs bv fenv_empty fl @
-            do block <- FEnv.find main fv @ 
-              do re <- BEnv.find (G rx) bv @
-              match block with (tvl,e,fbenv, x) =>
-                 do re1 <- type_factor fbenv x @ ret fv
-              end
-   end.
-
 (* Well-type checks for inv.
    inv must have a previous defined statement,
    and nested inv must match one-by-one with a predecessor *)
@@ -1374,7 +1147,8 @@ Definition sem_cexp (smap:qvar -> nat) (bv:benv) (size:nat) (store:store) (ce:ce
             do v1 <- (sem_cfac smap size store x) @
             do v2 <- (sem_cfac smap size store y) @
             match v1 with (Value v1') => 
-             match v2 with (Value v2') => Some 
+             match v2 with (Value v2') => 
+                     Some 
                       (Value (a_nat2fb v1' (get_size size (snd t)) <? a_nat2fb v2' (get_size size (snd t))))
                 | _ => Some Error
                  end
@@ -1678,6 +1452,30 @@ Proof.
  apply IHn. easy. easy.
 Qed.
 
+Definition no_zero (t:typ) := match t with TArray x y n => if n =? 0 then false else true 
+                | TNor x y => true 
+     end.
+
+Fixpoint gen_env (l:list (typ * var)) (bv:benv) : option benv := 
+   match l with [] => Some bv
+             | ((t,x)::xl) => 
+                  do new_env <- gen_env xl bv @
+                    if no_zero t then Some (BEnv.add (L x) t new_env) else None
+   end.
+
+Fixpoint gen_env_l (l:list (atype * btype * var)) (bv:benv) : option benv := 
+   match l with [] => Some bv
+             | ((a,t,x)::xl) => 
+                  do new_env <- gen_env_l xl bv @ Some (BEnv.add (L x) (TNor a t) new_env)
+   end.
+
+Fixpoint gen_genv (l:list (typ * var)) : option benv := 
+   match l with [] => Some empty_benv
+             | ((t,x)::xl) => 
+                  do new_env <- gen_genv xl @
+                   if no_zero t then Some (BEnv.add (G x) t new_env) else None
+   end.
+
 Lemma init_store_bv_sub : forall l r r' bv bv' smap smap', init_store r l = Some r' -> 
     gen_env l bv = Some bv' -> gen_smap_l l smap = smap' -> bv_store_sub smap bv r ->
             bv_store_sub smap' bv' r'.
@@ -1810,10 +1608,12 @@ Definition par_find_var_check (smap:qvar -> nat) (bv:benv) (size:nat)  (r:cstore
        end.
 
 (* Check if two variables are equal *)
-Definition qvar_eq (bv:benv) (size:nat)  (r:cstore) (x y: cfac) := 
-        match par_find_var bv size r x with None => false
-                    | Some a => match par_find_var bv size r y with None => false
-                         | Some b => (a =qd= b)
+Definition qvar_eq (smap:qvar -> nat) (bv:benv) (size:nat)  (r:cstore) (x y: cfac) := 
+        match par_find_var_check smap bv size r x with None => None
+                    | Some Error => Some Error
+                    | Some (Value a) => match par_find_var_check smap bv size r y with None => None
+                         | Some Error => Some Error
+                         | Some (Value b) => Some (Value (a =qd= b))
                                 end
         end.
 
@@ -2017,13 +1817,17 @@ Definition compile_cexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var
                  (bv:benv) (f:flag) (r:cstore) (stack temp:var) (sn:nat) (e:cexp)
                                       : option (@value (option exp * nat * option bool)) := 
    match e with clt x y => 
-                    if  ¬ (qvar_eq bv size r x y) then 
-                                      gen_clt_c smap vmap bv size f r stack temp sn x y
-                                     else None
-         | ceq x y =>  
-                        if  ¬ (qvar_eq bv size r x y) then 
+                   match  (qvar_eq smap bv size r x y) with None => None
+                      | Some Error => Some Error
+                      | Some (Value bval) => if ¬ bval then gen_clt_c smap vmap bv size f r stack temp sn x y
+                                else Some (Value (None, sn, Some false))
+                   end
+         | ceq x y =>  match (qvar_eq smap bv size r x y) with None => None
+                           | Some Error => Some Error
+                        | Some (Value bval) =>  if ¬ bval then 
                                       gen_ceq_c smap vmap bv size f r stack temp sn x y
-                                     else None
+                                     else Some (Value (None, sn, Some true))
+                        end
          | iseven x => do t1 <- type_factor bv x @ if fst t1 =a= Q then None else 
                            do t2v <- par_eval_cfac_check smap bv size r x @
                         match t2v with Value t2v' =>
@@ -2033,44 +1837,7 @@ Definition compile_cexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var
                         end
    end.
 
-(* Set up theorem assumptions for cexp. 
-Definition cexp_set_up (ce:cexp) (sl size:nat) (stack:var)
-          (sn:nat) (vmap : (qvar*nat) -> var) (r:cstore) (bv:benv) (f:posi -> val) (aenv:var -> nat) (tenv:PQASM.env) :=
-  match ce with clt x y => 
-   match type_factor bv x with None => True
-       | Some t => 
-     match par_find_var bv (get_size size (snd t)) r x with None => True
-                     | Some vx => 
-        match par_find_var bv (get_size size (snd t)) r y with None => True
-                         | Some vy => 
-             ((vmap vx) <> (vmap vy) /\ (vmap vx) <> stack
-                /\ (vmap vy) <> stack /\
-                Store.In vx r /\ Store.In vy r /\ Env.MapsTo (vmap vx) PQASM.Nor tenv /\
-               Env.MapsTo (vmap vy) PQASM.Nor tenv /\ Env.MapsTo (stack) PQASM.Nor tenv
-           /\ qft_uniform aenv tenv f /\ qft_gt aenv tenv f 
-           /\ right_mode_env aenv tenv f)
-        end
-      end
-   end
-       | ceq x y => 
-   match type_factor bv x with None => True
-       | Some t => 
-     match par_find_var bv (get_size size (snd t)) r x with None => True
-                     | Some vx => 
-        match par_find_var bv (get_size size (snd t)) r y with None => True
-                         | Some vy => 
-             ((vmap vx) <> (vmap vy) /\ (vmap vx) <> stack
-                /\ (vmap vy) <> stack /\  Store.In vx r /\ Store.In vy r /\
-               Env.MapsTo (vmap vx) PQASM.Nor tenv /\
-               Env.MapsTo (vmap vy) PQASM.Nor tenv /\ Env.MapsTo (stack) PQASM.Nor tenv
-           /\ qft_uniform aenv tenv f /\ qft_gt aenv tenv f 
-           /\ right_mode_env aenv tenv f)
-         end
-     end
-    end
-        | iseven x => True
-  end.
-*)
+(* Set up theorem assumptions for cexp. *)
 
 Definition store_typed (r:store) (bv:benv) (size:nat) : Prop :=
    forall x vl v, Store.MapsTo x vl r -> In v vl ->
@@ -2145,6 +1912,22 @@ Proof.
   simpl in *. inv H. simpl in *. inv H.
   simpl in *. inv H.
   bdestruct (C =a= C).
+  bdestruct (b =b= t). simpl in *. inv H. easy.
+  simpl in *. inv H. simpl in *. inv H. 
+Qed.
+
+Lemma factor_type_all : forall v a b bv p, typ_factor_full bv a b v = Some p -> p = (a,b).
+Proof.
+  intros.
+  unfold typ_factor_full in *.
+  destruct v.
+  destruct (BEnv.find (elt:=typ) v bv) eqn:eq1.
+  simpl in *. destruct t. inv H. 
+  bdestruct ((a =a= a0)). subst.
+  bdestruct (b0 =b= b). simpl in *. inv H. easy.
+  simpl in *. inv H. simpl in *. inv H.
+  simpl in *. inv H.
+  bdestruct (a =a= C).
   bdestruct (b =b= t). simpl in *. inv H. easy.
   simpl in *. inv H. simpl in *. inv H. 
 Qed.
@@ -2470,6 +2253,130 @@ Proof.
  simpl in *. easy.
  simpl in *. easy. easy. simpl in *. easy.
  simpl in *. destruct v. inv H3. easy.
+Qed.
+
+Lemma type_cfac_sem_value : forall x xv t bv smap size rh rl, type_factor bv x = Some t ->
+    cstore_store_match smap rh rl bv -> bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+    par_find_var_check smap bv size rl x = Some (Value xv) ->
+              (exists v, sem_cfac smap size rh x = Some (Value v)).
+Proof.
+ intros. destruct x.
+ unfold sem_cfac,par_find_var_check,type_factor in *.
+ destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+ simpl in *. destruct t0.
+ destruct (typ_factor_full bv C Nat v) eqn:eq2.
+ simpl in *. inv H.
+ destruct (par_eval_fc bv size rl v) eqn:eq3.
+ rewrite (sem_factor_full_par_eval_same_c v p C Nat bv smap size rh rl) in eq3; try easy.
+ rewrite eq3.
+ simpl in *. 
+ bdestruct (a_nat2fb b0 size <? smap x). inv H3.
+ unfold bv_store_gt_0,bv_store_sub in *.
+ apply BEnv.find_2 in eq1.
+ assert (BEnv.In (elt:=typ) x bv).
+ unfold BEnv.In,BEnv.Raw.PX.In. exists ((TArray a b n)). easy.
+ specialize (H1 x (a_nat2fb b0 size) H3 H).
+ destruct H1. destruct H1. apply Store.find_1 in H1. 
+ destruct x0. easy. exists b1.
+ assert ((@pair BEnv.key nat x (a_nat2fb b0 size)) = (@pair qvar nat x (a_nat2fb b0 size))) by easy.
+ rewrite H5 in *.
+ rewrite H1. simpl in *. easy. easy. simpl in *.
+ apply factor_type_c in eq2. easy.
+ simpl in *. easy.
+ simpl in *. easy. easy. simpl in *. easy.
+ simpl in *. destruct v. inv H3. simpl in *.
+ destruct (BEnv.find (elt:=typ) v bv) eqn:eq1. simpl in *. destruct t0. easy.
+ unfold bv_store_gt_0,bv_store_sub in *.
+ apply BEnv.find_2 in eq1.
+ assert (BEnv.In (elt:=typ) v bv).
+ unfold BEnv.In,BEnv.Raw.PX.In. exists (TNor a b). easy.
+ apply H2 in H3 as X1. specialize (H1 v 0 H3 X1).
+ destruct H1. destruct H1. destruct x. easy. exists b0.
+ apply Store.find_1 in H1.
+ assert ((@pair BEnv.key nat v 0) = (@pair qvar nat v 0)) by easy.
+ rewrite H5 in *. rewrite H1. simpl in *. easy. easy. easy.
+Qed.
+
+Lemma type_cfac_sem_value_same : forall x y xv t t' bv smap size rh rl, type_factor bv x = Some t ->
+   type_factor bv y = Some t' ->
+    cstore_store_match smap rh rl bv -> bv_store_sub smap bv rh -> bv_store_gt_0 smap bv -> 
+    par_find_var_check smap bv size rl x = Some (Value xv) ->
+    par_find_var_check smap bv size rl y = Some (Value xv) ->
+             sem_cfac smap size rh x = sem_cfac smap size rh y.
+Proof.
+ intros. destruct x. destruct y.
+ unfold sem_cfac,par_find_var_check,type_factor in *.
+ destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+ simpl in *. destruct t0.
+ destruct (typ_factor_full bv C Nat v) eqn:eq2.
+ simpl in *. inv H.
+ destruct (BEnv.find (elt:=typ) x0 bv) eqn:eq3.
+ simpl in *. destruct t.
+ destruct (typ_factor_full bv C Nat v0) eqn:eq4.
+ simpl in *. inv H0.
+ destruct (par_eval_fc bv size rl v) eqn:eq5.
+ rewrite (sem_factor_full_par_eval_same_c v p C Nat bv smap size rh rl) in eq5; try easy.
+ rewrite eq5.
+ simpl in *. 
+ destruct (par_eval_fc bv size rl v0) eqn:eq6.
+ rewrite (sem_factor_full_par_eval_same_c v0 p0 C Nat bv smap size rh rl) in eq6; try easy.
+ rewrite eq6.
+ simpl in *. 
+ bdestruct (a_nat2fb b1 size <? smap x).
+ bdestruct (a_nat2fb b2 size <? smap x0). inv H4. inv H5. easy. inv H5. inv H4.
+ apply factor_type_c in eq4. easy. easy.
+ apply factor_type_c in eq2. easy. easy. easy. easy. easy. easy. easy. easy.
+ simpl in *.
+ destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+ simpl in *. destruct t0.
+ destruct (typ_factor_full bv C Nat v) eqn:eq2.
+ simpl in *. inv H.
+ destruct (par_eval_fc bv size rl v) eqn:eq5.
+ rewrite (sem_factor_full_par_eval_same_c v p C Nat bv smap size rh rl) in eq5; try easy.
+ rewrite eq5.
+ simpl in *. 
+ destruct v0. inv H5.
+ bdestruct (a_nat2fb b0 size <? smap x).
+ inv H4. rewrite H7 in *.
+ unfold sem_factor.
+ unfold bv_store_gt_0,bv_store_sub in *.
+ apply BEnv.find_2 in eq1.
+ assert (BEnv.In (elt:=typ) v0 bv).
+ unfold BEnv.In,BEnv.Raw.PX.In. exists (TArray a b n). easy.
+  apply H3 in H4 as X1.
+ specialize (H2 v0 0 H4 X1). destruct H2. destruct H2. destruct x. easy.
+ apply Store.find_1 in H2.
+ assert ((@pair BEnv.key nat v0 0) = (@pair qvar nat v0 0)) by easy.
+ rewrite H6 in *.
+ rewrite H2.
+ simpl. easy. easy. easy. 
+ apply factor_type_c in eq2. easy. easy. easy. easy. easy.
+ destruct y. simpl in *.
+ destruct (BEnv.find (elt:=typ) x bv) eqn:eq1.
+ simpl in *. destruct t0. 
+ destruct (typ_factor_full bv C Nat v0) eqn:eq2.
+ simpl in *. inv H.
+ destruct (par_eval_fc bv size rl v0) eqn:eq5.
+ rewrite (sem_factor_full_par_eval_same_c v0 p C Nat bv smap size rh rl) in eq5; try easy.
+ rewrite eq5.
+ simpl in *. 
+ destruct v.
+ bdestruct (a_nat2fb b0 size <? smap x). inv H4. inv H5.
+ simpl in *. rewrite H8.
+ unfold bv_store_gt_0,bv_store_sub in *.
+ apply BEnv.find_2 in eq1.
+ assert (BEnv.In (elt:=typ) v bv).
+ unfold BEnv.In,BEnv.Raw.PX.In. exists (TArray a b n). easy.
+  apply H3 in H4 as X1.
+ specialize (H2 v 0 H4 X1). destruct H2. destruct H2. destruct x. easy.
+ apply Store.find_1 in H2.
+ assert ((@pair BEnv.key nat v 0) = (@pair qvar nat v 0)) by easy.
+ rewrite H6 in *.
+ rewrite H2.
+ simpl. easy. easy. easy. 
+ apply factor_type_c in eq2. easy. easy. easy. easy. easy.
+ simpl in *.
+ destruct v. destruct v0. inv H4. inv H5. easy. easy. easy.
 Qed.
 
 Lemma type_cfac_find_var_error : forall x t bv smap size rh rl, type_factor bv x = Some t ->
@@ -4362,7 +4269,8 @@ Proof.
   intros. destruct e.
  - 
   simpl in *.
-  destruct (¬ (qvar_eq bv size rl x y)) eqn:eq1.
+  destruct (qvar_eq smap bv size rl x y) eqn:Y1.
+  destruct v as [bval| ]. destruct (¬ bval) eqn:eq1.
   unfold gen_clt_c in *.
   destruct (type_factor bv x) eqn:eq2.
   destruct (type_factor bv y) eqn:eq3.
@@ -4594,13 +4502,9 @@ Proof.
   exists (clt_circuit_two size fl b0 vmap x2 x3 stack sn). split. easy.
   remember (aenv (get_size size b0) stack) as sl.
   rewrite clt_circuit_two_sem with (tenv := tenv) (v1 := x0) (v2 := x1) (sl := sl) ; try easy.
-  unfold qvar_eq in eq1.
-  assert (par_find_var bv size rl x = Some x2).
-  apply (par_find_var_check_eq smap); try easy.
-  assert (par_find_var bv size rl y = Some x3).
-  apply (par_find_var_check_eq smap); try easy.
-  rewrite H in *. rewrite H0 in *.
-  bdestruct (x2 =qd= x3). inv eq1.
+  unfold qvar_eq in Y1.
+  rewrite eq7 in Y1. rewrite eq8 in Y1.
+  bdestruct (x2 =qd= x3). inv Y1. easy.
   apply H22. easy.
   apply par_find_get_var in eq7 as X1. destruct X1.
   apply (not_eq_stack_var stack temp vmap smap
@@ -4657,10 +4561,45 @@ Proof.
   inv H0. inv H1. left. easy.
   simpl in *.
   inv H0. inv H1. left. easy.
-  1-5: easy.  
+  1-4:easy. inv H0.
+  unfold qvar_eq in Y1.
+  destruct (type_factor bv x) eqn:eq2. destruct p.
+  destruct (type_factor bv y) eqn:eq3. destruct p. simpl in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq4. destruct v.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq5. destruct v.
+  bdestruct ((x0 =qd= x1)). subst.
+  apply type_cfac_sem_value with (t := (a,b)) (rh := rh) in eq4 as X1; try easy.
+  destruct X1.
+  rewrite H0 in *.
+  Check type_cfac_sem_value_same.
+  rewrite (type_cfac_sem_value_same x y x1 (a,b) (a0,b0) bv smap size rh rl) in H0; try easy.
+  rewrite H0 in *. 
+  simpl in *. inv H1.
+  right. left. exists false. split. easy.
+  bdestruct ((a_nat2fb x0 (get_size size b) <? a_nat2fb x0 (get_size size b))). lia. easy.
+  inv Y1. 1-7:easy.
+  unfold qvar_eq in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq1. destruct v.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq2. destruct v. easy.
+  destruct (type_factor bv x) eqn:eq3.
+  destruct (type_factor bv y) eqn:eq4.
+  apply type_cfac_sem_error with (t:= p0) (rh := rh) in eq2; try easy.
+  rewrite eq2 in *. simpl in *.
+  destruct (sem_cfac smap size rh x) eqn:eq5. simpl in *. destruct v.
+  inv H0. inv H1. left. easy.
+  inv H0. inv H1. left. easy.
+  1-4:easy.
+  destruct (type_factor bv x) eqn:eq3.
+  apply type_cfac_sem_error with (t:= p) (rh := rh) in eq1; try easy.
+  rewrite eq1 in *. simpl in *.
+  destruct (sem_cfac smap size rh y).
+  inv H0. inv H1. left. easy.
+  inv H0. inv H1. left. easy.
+  easy. easy.
  - 
   simpl in *.
-  destruct (¬ (qvar_eq bv size rl x y)) eqn:eq1.
+  destruct (qvar_eq smap bv size rl x y) eqn:Y1.
+  destruct v as [bval| ]. destruct (¬ bval) eqn:eq1.
   unfold gen_ceq_c in *.
   destruct (type_factor bv x) eqn:eq2.
   destruct (type_factor bv y) eqn:eq3.
@@ -4893,13 +4832,9 @@ Proof.
   exists (ceq_circuit_two size fl b0 vmap x2 x3 stack sn). split. easy.
   remember (aenv (get_size size b0) stack) as sl.
   rewrite ceq_circuit_two_sem with (tenv := tenv) (v1 := x0) (v2 := x1) (sl := sl) ; try easy.
-  unfold qvar_eq in eq1.
-  assert (par_find_var bv size rl x = Some x2).
-  apply (par_find_var_check_eq smap); try easy.
-  assert (par_find_var bv size rl y = Some x3).
-  apply (par_find_var_check_eq smap); try easy.
-  rewrite H in *. rewrite H0 in *.
-  bdestruct (x2 =qd= x3). inv eq1.
+  unfold qvar_eq in Y1.
+  rewrite eq7 in Y1. rewrite eq8 in Y1.
+  bdestruct (x2 =qd= x3). inv Y1. easy.
   apply H22. easy.
   apply par_find_get_var in eq7 as X1. destruct X1.
   apply (not_eq_stack_var stack temp vmap smap
@@ -4956,7 +4891,41 @@ Proof.
   inv H0. inv H1. left. easy.
   simpl in *.
   inv H0. inv H1. left. easy.
-  1-5: easy.  
+  1-4:easy. inv H0.
+  unfold qvar_eq in Y1.
+  destruct (type_factor bv x) eqn:eq2. destruct p.
+  destruct (type_factor bv y) eqn:eq3. destruct p. simpl in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq4. destruct v.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq5. destruct v.
+  bdestruct ((x0 =qd= x1)). subst.
+  apply type_cfac_sem_value with (t := (a,b)) (rh := rh) in eq4 as X1; try easy.
+  destruct X1.
+  rewrite H0 in *.
+  Check type_cfac_sem_value_same.
+  rewrite (type_cfac_sem_value_same x y x1 (a,b) (a0,b0) bv smap size rh rl) in H0; try easy.
+  rewrite H0 in *. 
+  simpl in *. inv H1.
+  right. left. exists true. split. easy.
+  bdestruct ((a_nat2fb x0 (get_size size b) =? a_nat2fb x0 (get_size size b))). easy. lia.
+  inv Y1. 1-7:easy.
+  unfold qvar_eq in *.
+  destruct (par_find_var_check smap bv size rl x) eqn:eq1. destruct v.
+  destruct (par_find_var_check smap bv size rl y) eqn:eq2. destruct v. easy.
+  destruct (type_factor bv x) eqn:eq3.
+  destruct (type_factor bv y) eqn:eq4.
+  apply type_cfac_sem_error with (t:= p0) (rh := rh) in eq2; try easy.
+  rewrite eq2 in *. simpl in *.
+  destruct (sem_cfac smap size rh x) eqn:eq5. simpl in *. destruct v.
+  inv H0. inv H1. left. easy.
+  inv H0. inv H1. left. easy.
+  1-4:easy.
+  destruct (type_factor bv x) eqn:eq3.
+  apply type_cfac_sem_error with (t:= p) (rh := rh) in eq1; try easy.
+  rewrite eq1 in *. simpl in *.
+  destruct (sem_cfac smap size rh y).
+  inv H0. inv H1. left. easy.
+  inv H0. inv H1. left. easy.
+  easy. easy.
  -
   unfold type_cexp in *.
   apply cfac_type_c in H as V1.
@@ -4983,7 +4952,213 @@ Proof.
   rewrite sem_cfac_par_eval_same_c with (t := (C,Nat)) (rh := rh) in eq1; try easy.
 Qed.
 
+(* Type system, semantics and compilation procedure for qexp. *)
 
+(* For any Q-mode statements (the assigmment variable being Q mode) we require that the 
+   assignment variables are different from the arguments. *)
+Definition fresh_loop_cfac (x:var) (fc:cfac) :=
+   match fc with  Nor (Var y) => if y =q= (L x) then false else true
+             | _ => true
+   end.
+
+Fixpoint fresh_loop_c (x:var) (e:qexp) :=
+   match e with skip => true
+             | init y v => fresh_loop_cfac x y
+             | unary y op v => fresh_loop_cfac x y
+             | binapp y op z v => fresh_loop_cfac x y
+             | slrot y => fresh_loop_cfac x y
+             | qinv y => fresh_loop_cfac x y
+             | call y f vs => fresh_loop_cfac x y
+             | qif ce e1 e2 => (fresh_loop_c x e1) && (fresh_loop_c x e2)
+             | qfor y n e => (fresh_loop_cfac x n) && (if x =? y then true else fresh_loop_c x e)
+             | qseq e1 e2 => (fresh_loop_c x e1) && (fresh_loop_c x e2)
+   end.
+
+(* slrot is current static, so it cannot be used inside a if-condition,
+    and we plan to make it also non-static. *)
+Fixpoint no_rot (e:qexp) :=
+   match e with skip => true
+             | init y v => true
+             | unary y op v => true
+             | binapp y op z v => true
+             | slrot y => false
+             | qinv y => true
+             | call y f vs => true
+             | qif ce e1 e2 => (no_rot e1) && (no_rot e2)
+             | qfor y n e => no_rot e
+             | qseq e1 e2 => (no_rot e1) && (no_rot e2)
+   end.
+
+
+Definition is_q_fac (bv:benv) (c:factor) :=
+    match c with Var x => match BEnv.find x bv with None => false
+                              | Some t => is_q t
+                          end
+             | Num b x => false
+    end.
+
+Definition is_q_cfac (bv:benv) (c:cfac) :=
+    match c with Index x n => 
+          match BEnv.find x bv with None => false
+                    | Some t => is_q t
+          end
+              | Nor x => is_q_fac bv x
+    end.
+
+(* Checks if an expression in if-branch has a C mode assigment. *)
+Fixpoint has_c_exp (bv:benv) (e:qexp) :=
+   match e with skip => false
+             | init y v => ¬ (is_q_cfac bv y)
+             | unary y op v => ¬ (is_q_cfac bv y)
+             | slrot y => ¬ (is_q_cfac bv y)
+             | binapp y op z v => ¬ (is_q_cfac bv y)
+             | qinv y => false
+             | call y f vs => ¬ (is_q_cfac bv y)
+             | qif ce e1 e2 => (has_c_exp bv e1) && (has_c_exp bv e2)
+             | qfor y n e => has_c_exp bv e
+             | qseq e1 e2 => has_c_exp bv e1 && has_c_exp bv e2
+   end.
+
+Fixpoint type_factors_full (bv:benv) (tvl : list (atype * btype * var)) (fc: list cfac) :=
+   match fc with [] => match tvl with [] => Some bv | _ => None end
+         | (fc::fcl) => match tvl with [] => None
+           | ((a,b,v)::tvl') => 
+                  do re <- type_factor_full bv a b fc @ type_factors_full bv tvl' fcl
+                         end
+   end.
+
+Definition check_fst_type (x:qop) (t : btype) :=
+   match x with nadd | nsub | nmul | ndiv | nmod | nfac => (Nat =b= t)
+              | fadd | fsub | fmul | fdiv | fndiv => (FixedP =b= t)
+              | qxor => true
+   end.
+
+Definition check_snd_type (x:qop) (t : btype) :=
+   match x with nadd | nsub | nmul | ndiv | nmod | nfac | fdiv => (Nat =b= t)
+              | fadd | fsub | fmul | fndiv => (FixedP =b= t)
+              | qxor => true
+   end.
+
+Definition check_trd_type (x:qop) (t : btype) :=
+   match x with nadd | nsub | nmul | ndiv | nmod | nfac | fdiv | fndiv => (Nat =b= t)
+              | fadd | fsub | fmul  => (FixedP =b= t)
+              | qxor => true
+   end.
+
+Definition is_unary (x:qop) := 
+   match x with nadd | nsub | qxor | nfac | fdiv | fadd | fsub => true
+            | _ => false
+   end.
+
+Definition is_bin (x:qop) := 
+   match x with nadd | nsub | nmul | nfac | fadd | fsub | fmul | ndiv | nmod | fndiv => true
+            | _ => false
+   end.
+
+Definition get_unary_type (x:qop) (t:btype) :=
+    match x with fdiv => Nat | _ => t end.
+
+
+Definition sub_atype (a1 a2 : (atype)) :=
+    if a1 =a= C then true else a2 =a= Q.
+
+Definition sub_type (t1 t2:(atype * btype)) := 
+    (snd t1 =b= snd t2) && sub_atype (fst t1) (fst t2).
+
+Definition opp_atype (a:atype) := if a =a= C then Q else C.
+
+(* Typing rule for statements. sub_nor *)
+Fixpoint type_qexp (fv:fenv) (bv:benv) (a:atype) (e:qexp):=
+   match e with skip => Some bv
+             | init x v => 
+               do core <- get_var x @ 
+                  do re1 <- type_factor bv x @
+                    do re2 <- type_factor bv v @ 
+                   if (sub_type re2 re1) && sub_atype a (fst re1) then ret bv else None
+
+             | slrot x =>
+                   do core <- get_var x @
+                    do re <- type_factor bv x @ 
+                   if a =a= C then ret bv else None
+
+             | unary x op y => 
+             do core <- get_var x @
+               do re1 <- type_factor bv x @
+                do re2 <- type_factor bv y @ 
+                        if is_unary op && check_fst_type op (snd re1)
+                                  && check_snd_type op (snd re2)
+                                 && sub_type re2 re1 && sub_atype a (fst re1) then ret bv else None
+
+             | binapp x op y z => 
+              do core <- get_var x @
+               do re1 <- type_factor bv x @
+                do re2 <- type_factor bv y @ 
+                 do re3 <- type_factor bv z @
+                        if is_bin op && check_fst_type op (snd re1)
+                          && check_snd_type op (snd re2)
+                          && check_trd_type op (snd re3)
+                          && sub_type re2 re1 && sub_atype a (fst re1) then ret bv else None
+
+              | call x f vs => 
+                 do ref <- FEnv.find f fv @
+                   match ref with (tvl,tcl,e,fbenv, rx) =>
+                    do res <- type_factors_full bv tvl vs @
+                     do rxv <- type_factor fbenv rx @
+                          do core <- get_var x @
+                           do old <- type_factor bv x @
+                              if sub_type rxv old && sub_atype a (fst old) then ret bv else None
+                   end
+
+              | qif ce e1 e2 => 
+                 do rce <- type_cexp bv ce @
+                   do bv' <- type_qexp fv bv (opp_atype (fst rce)) e1 @
+                       type_qexp fv bv (opp_atype (fst rce)) e2 
+
+              | qseq e1 e2 => 
+                 do bv <- type_qexp fv bv a e1 @ type_qexp fv bv a e2
+
+              | qfor x n e => 
+                do re1 <- BEnv.find (L x) bv @
+                 match re1 with (TNor C Nat) =>
+                  do re2 <- type_factor_full bv C Nat n @ 
+                   if fresh_loop_c x e then 
+                     type_qexp fv bv a e
+                   else None
+                     | _ => None
+                 end
+
+
+             | _ => None
+    end.
+
+
+Fixpoint type_funs (benv:benv) (fv:fenv) (l:list func) : option fenv :=
+     match l with [] => Some fv
+              | ((f,tvl,l,e,rx)::fs) => 
+              do benv' <- gen_env_l tvl benv @
+               do benv'' <- gen_env l benv' @
+                 do benv''' <- type_qexp fv benv'' C e @
+                   do core <- get_var rx @
+                     do old <- BEnv.find core benv''' @
+                     type_funs benv (FEnv.add f ((tvl,l,e,benv'',rx)) fv) fs
+     end.
+
+
+
+(* A program type will return a function environment. *)
+Definition type_prog (p:prog) : option fenv :=
+   match p with (n,l,fl,main,rx) => 
+    do bv <- gen_genv l @ 
+      do fv <- type_funs bv fenv_empty fl @
+            do block <- FEnv.find main fv @ 
+              do re <- BEnv.find (G rx) bv @
+              match block with (tvl,e,fbenv, x) =>
+                 do re1 <- type_factor fbenv x @ ret fv
+              end
+   end.
+
+
+(* The Semantics of statements. *)
 Definition eval_var (smap : qvar -> nat) (size:nat) (r:store) (x:cfac) :=
    match x with Index x n => do v <- (sem_factor size r n) @
                   if a_nat2fb v size <? smap x then
@@ -4991,6 +5166,43 @@ Definition eval_var (smap : qvar -> nat) (size:nat) (r:store) (x:cfac) :=
               | Nor (Var x) => Some (Value (x,0))
               | Nor (Num b x) => None
    end.
+
+Lemma eval_cfac_sem_error : forall x smap size rh, 
+    eval_var smap size rh x = Some Error ->
+               sem_cfac smap size rh x = Some Error.
+Proof.
+ intros. destruct x.
+ unfold sem_cfac,eval_var in *.
+ destruct (sem_factor size rh v) eqn:eq1.
+ simpl in *. bdestruct (a_nat2fb b size <? smap x).
+ inv H. easy. simpl in *. easy.
+ simpl in *. destruct v. inv H. easy.
+Qed.
+
+Lemma eval_cfac_find_var_error : forall x smap size rh,
+    sem_cfac smap size rh x = Some Error -> eval_var smap size rh x = Some Error.
+Proof.
+ intros. destruct x.
+ unfold sem_cfac,eval_var in *.
+ destruct (sem_factor size rh v) eqn:eq1.
+ simpl in *. bdestruct (a_nat2fb b size <? smap x).
+ destruct (Store.find (elt:=list (nat -> bool)) (x, a_nat2fb b size) rh) eqn:eq2.
+ simpl in *. destruct l. simpl in *. easy. simpl in *. inv H.
+ simpl in *. easy. easy.
+ simpl in *. easy.
+ simpl in *. destruct (sem_factor size rh v) eqn:eq1.
+ simpl in *. inv H. simpl in *. easy.
+Qed.
+
+Definition qvar_eq_eval (smap:qvar -> nat) (size:nat)  (r:store) (x y: cfac) := 
+        do a <- eval_var smap size r x @
+          do b <- eval_var smap size r y @ match a with Error => ret Error
+                                                     | Value av => match b with Error => ret Error
+                                                                            | _ => 
+                    | Some a => match eval_var smap size r y with None => None
+                         | Some b => (a =qd= b)
+                                end
+        end.
 
 Definition l_rotate (f:nat -> bool) (n:nat) := fun i => f ((i + n - 1) mod n).
 
@@ -5012,9 +5224,7 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
  | sem_qexp_init_error_1 : forall r x v,
            eval_var smap size r x = Some Error ->
             sem_qexp smap fv bv size r (init x v) Error
- | sem_qexp_init_error_2 : forall r t x v xn,
-           eval_var smap size r x = Some (Value xn) ->
-           BEnv.MapsTo (fst xn) t bv ->
+ | sem_qexp_init_error_2 : forall r x v,
            sem_cfac smap size r v = Some Error ->  
             sem_qexp smap fv bv size r (init x v) Error
  | sem_qexp_init_some : forall r t x v xn x_val xl val,
@@ -5022,8 +5232,8 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
            BEnv.MapsTo (fst xn) t bv ->
            sem_cfac smap size r v = Some (Value val) ->  
             sem_qexp smap fv bv size r (init x v) 
-                (Value (Store.add xn ((bin_xor x_val val (if (get_ct t) =b= Bl then 1 else size))::(x_val::xl)) r))
- | sem_qexp_nadd_error_1 : forall r x op y, eval_var smap size r x = Some Error ->
+                (Value (Store.add xn ((bin_xor x_val val (get_size size (get_ct t)))::(x_val::xl)) r))
+ | sem_qexp_unary_error_1 : forall r x op y, eval_var smap size r x = Some Error ->
          sem_qexp smap fv bv size r (unary x op y) Error
  | sem_qexp_nadd_error_2 : forall r x op v,
            sem_cfac smap size r v = Some Error ->  
@@ -5039,7 +5249,7 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
             -> type_factor bv x = Some t ->
            sem_cfac smap size r v = Some (Value val) ->  
             sem_qexp smap fv bv size r (unary x op v) 
-                (Value (Store.add xn ((apply_unary op size (snd t) x_val val)::(x_val::xl)) r))
+                (Value (Store.add xn ((apply_unary op size (snd t) x_val val)::(x_val::xl)) r)).
  | sem_qexp_lrot_error : forall r x,
            eval_var smap size r x = Some Error ->
             sem_qexp smap fv bv size r (slrot x) Error
