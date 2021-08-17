@@ -1388,6 +1388,13 @@ Definition get_type_num (t:typ) :=
            | TNor x y => 1
    end.
 
+Fixpoint init_store_args (r:store) (l:list (atype * btype * var)) (vl: list (nat -> bool)) : option store  :=
+   match l with [] => Some r
+             | ((a,b,x)::xl) => 
+          match vl with [] => None
+                 | (v::vl') => init_store_args (Store.add (L x,0) ([v]) r) xl vl'
+          end
+   end.
 
 Fixpoint init_store (r:store) (l:list (typ * var)) : option store  :=
    match l with [] => Some r
@@ -1395,6 +1402,12 @@ Fixpoint init_store (r:store) (l:list (typ * var)) : option store  :=
                    do new_store <- init_store r xl @
                              ret (init_store_n new_store (L x) (get_type_num t))
    end.
+
+Fixpoint gen_smap_args (l:list (atype * btype * var)) (smap: qvar -> nat)  :=
+  match l with [] => smap
+      | ((a,b,x)::xl) => match gen_smap_args xl smap with new_map => 
+                      (qupdate new_map (L x) 1) end
+  end.
 
 Fixpoint gen_smap_l (l:list (typ * var)) (smap: qvar -> nat)  :=
   match l with [] => smap
@@ -5051,7 +5064,7 @@ Definition is_unary (x:qop) :=
    end.
 
 Definition is_bin (x:qop) := 
-   match x with nadd | nsub | nmul | nfac | fadd | fsub | fmul | ndiv | nmod | fndiv => true
+   match x with nadd | nsub | nmul | fadd | fsub | fmul | ndiv | nmod | fndiv => true
             | _ => false
    end.
 
@@ -5198,58 +5211,52 @@ Definition qvar_eq_eval (smap:qvar -> nat) (size:nat)  (r:store) (x y: cfac) :=
         do a <- eval_var smap size r x @
           do b <- eval_var smap size r y @ match a with Error => ret Error
                                                      | Value av => match b with Error => ret Error
-                                                                            | _ => 
-                    | Some a => match eval_var smap size r y with None => None
-                         | Some b => (a =qd= b)
-                                end
-        end.
+                                                                            | Value bv => Some (Value (av =qd= bv))
+                                                                   end
+                                           end.
 
 Definition l_rotate (f:nat -> bool) (n:nat) := fun i => f ((i + n - 1) mod n).
 
 Definition apply_unary (op:qop) (size:nat) (t:btype) (x:(nat -> bool)) (y:(nat -> bool)) :=
     match op with nadd => sumfb false x y
                 | nsub => (sumfb true x (negatem size y))
-                | fadd => (fbrev size (sumfb false (fbrev size x) (fbrev size y)))
-                | fsub => (fbrev size (sumfb true (fbrev size x) (fbrev size (negatem size y))))
+                | fadd => (sumfb false x y)
+                | fsub => (sumfb true x (negatem size y))
                 | qxor => (bin_xor x y (if t =b= Bl then 1 else size))
                 | nfac => (nat2fb (fact (a_nat2fb y size) mod 2^size))
-                | fdiv => (nat2fb (((a_nat2fb (fbrev size x) size)) / (a_nat2fb y size)))
+                | fdiv => (nat2fb (((a_nat2fb x size)) / (a_nat2fb y size)))
                 | _ => nat2fb 0
     end.
+
+Definition apply_bin (op:qop) (size:nat) (t:btype) (x:(nat -> bool)) (y:(nat -> bool)) (z:(nat->bool)) :=
+    match op with nadd => sumfb false y z
+                | nsub => (sumfb true y (negatem size z))
+                | fadd => (sumfb false y z)
+                | fsub => (sumfb true y (negatem size z))
+                | nmul => (bin_xor x (nat2fb (((a_nat2fb y size) * (a_nat2fb z size)) mod 2^size)) size)
+                | ndiv => (bin_xor x (nat2fb (((a_nat2fb y size) / (a_nat2fb z size)))) size)
+                | nmod => (bin_xor x (nat2fb (((a_nat2fb y size) mod (a_nat2fb z size)))) size)
+                | fmul => (bin_xor x (nat2fb (((a_nat2fb y size) * (a_nat2fb z size)) / 2^size)) size)
+                | fndiv => (nat2fb (((a_nat2fb y size) * (a_nat2fb z size)) / 2^size))
+                | _ => nat2fb 0
+    end.
+
+Fixpoint sem_cfacs (smap:qvar -> nat) (size:nat) (store:store) (vs:list cfac) :=
+   match vs with [] => Some (Value ([]))
+              | (v::vs') => do newv <- sem_cfac smap size store v @
+                             do vsv <- sem_cfacs smap size store vs' @ 
+                              match newv with Error => Some Error
+                              | Value newv' => 
+                               match vsv with Error => Some Error
+                                          | Value vsv' => Some (Value (newv'::vsv'))
+                              end
+                              end
+   end.
 
 (* Semantics for statments. Just like C. 
    For dealing with inv, we pop out history values. *)
 Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> qexp -> @value store -> Prop :=
    sem_qexp_skip : forall r, sem_qexp smap fv bv size r skip (Value r)
- | sem_qexp_init_error_1 : forall r x v,
-           eval_var smap size r x = Some Error ->
-            sem_qexp smap fv bv size r (init x v) Error
- | sem_qexp_init_error_2 : forall r x v,
-           sem_cfac smap size r v = Some Error ->  
-            sem_qexp smap fv bv size r (init x v) Error
- | sem_qexp_init_some : forall r t x v xn x_val xl val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           BEnv.MapsTo (fst xn) t bv ->
-           sem_cfac smap size r v = Some (Value val) ->  
-            sem_qexp smap fv bv size r (init x v) 
-                (Value (Store.add xn ((bin_xor x_val val (get_size size (get_ct t)))::(x_val::xl)) r))
- | sem_qexp_unary_error_1 : forall r x op y, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (unary x op y) Error
- | sem_qexp_nadd_error_2 : forall r x op v,
-           sem_cfac smap size r v = Some Error ->  
-            sem_qexp smap fv bv size r (unary x op v) Error
- | sem_qexp_nadd_error_3 : forall r x op v xv,
-       eval_var smap size r x = Some (Value xv) -> eval_var smap size r v = Some (Value xv) ->
-       is_q_cfac bv x = true ->
-            sem_qexp smap fv bv size r (unary x op v) Error
- | sem_qexp_nadd_some : forall r x op v t xn x_val xl val,
-           eval_var smap size r x = Some (Value xn) ->
-            (is_q_cfac bv x = true -> eval_var smap size r v <>  Some (Value xn))
-           -> Store.MapsTo xn (x_val::xl) r
-            -> type_factor bv x = Some t ->
-           sem_cfac smap size r v = Some (Value val) ->  
-            sem_qexp smap fv bv size r (unary x op v) 
-                (Value (Store.add xn ((apply_unary op size (snd t) x_val val)::(x_val::xl)) r)).
  | sem_qexp_lrot_error : forall r x,
            eval_var smap size r x = Some Error ->
             sem_qexp smap fv bv size r (slrot x) Error
@@ -5259,6 +5266,82 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
            BEnv.MapsTo (fst xn) t bv ->
             sem_qexp smap fv bv size r (slrot x) 
                 (Value (Store.add xn ((l_rotate x_val (if (get_ct t) =b= Bl then 1 else size))::(x_val::xl)) r))
+ | sem_qexp_init_error_1 : forall r x v,
+           eval_var smap size r x = Some Error ->
+            sem_qexp smap fv bv size r (init x v) Error
+ | sem_qexp_init_error_2 : forall r x v,
+           sem_cfac smap size r v = Some Error ->  
+            sem_qexp smap fv bv size r (init x v) Error
+ | sem_qexp_init_error_3 : forall r x v,
+           qvar_eq_eval smap size r x v = Some Error ->  
+            sem_qexp smap fv bv size r (init x v) Error
+ | sem_qexp_init_error_4 : forall t r x v,
+           type_factor bv x = Some (Q,t) -> 
+           qvar_eq_eval smap size r x v = Some (Value true) ->  
+            sem_qexp smap fv bv size r (init x v) Error
+ | sem_qexp_init_some : forall r t x v xn x_val xl val,
+           (forall t, type_factor bv x = Some (Q,t) -> 
+           qvar_eq_eval smap size r x v = Some (Value false)) ->
+           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
+           BEnv.MapsTo (fst xn) t bv ->
+           sem_cfac smap size r v = Some (Value val) ->  
+            sem_qexp smap fv bv size r (init x v) 
+                (Value (Store.add xn ((bin_xor x_val val (get_size size (get_ct t)))::(x_val::xl)) r))
+ | sem_qexp_unary_error_1 : forall r x op y, eval_var smap size r x = Some Error ->
+         sem_qexp smap fv bv size r (unary x op y) Error
+ | sem_qexp_unary_error_2 : forall r x op v,
+           sem_cfac smap size r v = Some Error ->  
+            sem_qexp smap fv bv size r (unary x op v) Error
+ | sem_qexp_unary_error_3 : forall r x op v,
+           qvar_eq_eval smap size r x v = Some Error ->  
+            sem_qexp smap fv bv size r (unary x op v) Error
+ | sem_qexp_unary_error_4 : forall t r x op v,
+           type_factor bv x = Some (Q,t) -> 
+           qvar_eq_eval smap size r x v = Some (Value true) ->  
+            sem_qexp smap fv bv size r (unary x op v) Error
+ | sem_qexp_unary_some : forall r x op v t xn x_val xl val,
+           (forall t, type_factor bv x = Some (Q,t) -> 
+                qvar_eq_eval smap size r x v = Some (Value false)) ->
+          eval_var smap size r x = Some (Value xn)
+           -> Store.MapsTo xn (x_val::xl) r
+            -> type_factor bv x = Some t ->
+           sem_cfac smap size r v = Some (Value val) ->  
+            sem_qexp smap fv bv size r (unary x op v) 
+                (Value (Store.add xn ((apply_unary op size (snd t) x_val val)::(x_val::xl)) r))
+
+ | sem_qexp_bin_error_1 : forall r x op y z, eval_var smap size r x = Some Error ->
+         sem_qexp smap fv bv size r (binapp x op y z) Error
+ | sem_qexp_bin_error_2 : forall r x op y z,
+           sem_cfac smap size r y = Some Error ->  
+            sem_qexp smap fv bv size r (binapp x op y z) Error
+ | sem_qexp_bin_error_3 : forall r x op y z,
+           sem_cfac smap size r z = Some Error ->  
+            sem_qexp smap fv bv size r (binapp x op y z) Error
+ | sem_qexp_bin_error_4 : forall r x op y z,
+           qvar_eq_eval smap size r x y = Some Error ->  
+            sem_qexp smap fv bv size r (binapp x op y z) Error
+ | sem_qexp_bin_error_5 : forall r x op y z,
+           qvar_eq_eval smap size r x z = Some Error ->  
+            sem_qexp smap fv bv size r (binapp x op y z) Error
+ | sem_qexp_bin_error_6 : forall t r x op y z,
+           type_factor bv x = Some (Q,t) ->
+           qvar_eq_eval smap size r x y = Some (Value true) ->  
+            sem_qexp smap fv bv size r (binapp x op y z) Error
+ | sem_qexp_bin_error_7 : forall t r x op y z,
+           type_factor bv x = Some (Q,t) ->
+           qvar_eq_eval smap size r x z = Some (Value true) ->  
+            sem_qexp smap fv bv size r (binapp x op y z) Error
+ | sem_qexp_bin_some : forall r x op y z t xn x_val xl y_val z_val,
+           (forall t, type_factor bv x = Some t ->
+                qvar_eq_eval smap size r x y = Some (Value false)
+                    /\ qvar_eq_eval smap size r x z = Some (Value false)) ->
+           eval_var smap size r x = Some (Value xn)
+           -> Store.MapsTo xn (x_val::xl) r
+            -> type_factor bv x = Some t ->
+           sem_cfac smap size r y = Some (Value y_val) ->  
+           sem_cfac smap size r y = Some (Value z_val) ->  
+            sem_qexp smap fv bv size r (binapp x op y z) 
+                (Value (Store.add xn ((apply_bin op size (snd t) x_val y_val z_val)::(x_val::xl)) r))
 
  | sem_qexp_qinv_error : forall r x,
            eval_var smap size r x = Some Error ->
@@ -5268,39 +5351,50 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
            eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
             sem_qexp smap fv bv size r (qinv x)  (Value (Store.add xn xl r))
 
- | sem_qexp_if_error : forall r ce e1 e2, sem_cexp smap size r ce = Some Error ->
+ | sem_qexp_if_error : forall r ce e1 e2, sem_cexp smap bv size r ce = Some Error ->
                     sem_qexp smap fv bv size r (qif ce e1 e2) Error
- | sem_qexp_if_t : forall r ce e1 e2 r1, sem_cexp smap size r ce = Some (Value true) ->
+ | sem_qexp_if_t : forall r ce e1 e2 r1, sem_cexp smap bv size r ce = Some (Value true) ->
                     sem_qexp smap fv bv size r e1 r1 -> 
                     sem_qexp smap fv bv size r (qif ce e1 e2) r1
- | sem_qexp_if_f : forall r ce e1 e2 r1, sem_cexp smap size r ce = Some (Value false) ->
+ | sem_qexp_if_f : forall r ce e1 e2 r1, sem_cexp smap bv size r ce = Some (Value false) ->
                     sem_qexp smap fv bv size r e2 r1 -> 
                     sem_qexp smap fv bv size r (qif ce e1 e2) r1
 
- | sem_qexp_call_error_1 : forall tvl l e fbv rx f x vs r r' r'',
+ | sem_qexp_call_error_1 : forall tvl l e fbv rx f x vs r,
          FEnv.MapsTo f (tvl, l,e,fbv,rx) fv -> 
-         init_store r l = Some r' ->
-         sem_qexp (gen_smap_l l smap) fv fbv size r' e (Value r'') ->
-         eval_var (gen_smap_l l smap) size r'' rx = Some Error ->
+         sem_cfacs smap size r vs = Some Error ->
+         sem_qexp smap fv bv size r (call x f vs) Error
+ | sem_qexp_call_error_2 : forall tvl l e fbv rx f x vs vs' r r1 r2 r3,
+         FEnv.MapsTo f (tvl, l,e,fbv,rx) fv -> 
+         sem_cfacs smap size r vs = Some (Value vs') ->
+         init_store_args r tvl vs' = Some r1->
+         init_store r1 l = Some r2 ->
+         sem_qexp (gen_smap_l l (gen_smap_args tvl smap)) fv fbv size r2 e (Value r3) ->
+         eval_var (gen_smap_l l (gen_smap_args tvl smap)) size r3 rx = Some Error ->
          sem_qexp smap fv bv size r (call x f vs) Error
 
- | sem_qexp_call_error_2 : forall x f vs r,
+ | sem_qexp_call_error_3 : forall x f vs r,
          eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (call x f vs) Error.
+         sem_qexp smap fv bv size r (call x f vs) Error
 
- | sem_qexp_call_error_3 : forall l e fbv rx x f vs r r' , FEnv.MapsTo f (tvl,l,e,fbv,rx) fv -> 
-         init_store r l = Some r' ->
-         sem_qexp (gen_smap_l l smap) fv fbv size r' e Error ->
-         sem_qexp smap fv bv size r (call x f vs) Error.
+ | sem_qexp_call_error_4 : forall tvl l e fbv rx x f vs vs' r r1 r2,
+         FEnv.MapsTo f (tvl,l,e,fbv,rx) fv -> 
+         sem_cfacs smap size r vs = Some (Value vs') ->
+         init_store_args r tvl vs' = Some r1->
+         init_store r1 l = Some r2 ->
+         sem_qexp (gen_smap_l l (gen_smap_args tvl smap)) fv fbv size r2 e Error ->
+         sem_qexp smap fv bv size r (call x f vs) Error
 
- | sem_qexp_call_some : forall l e fbv rx rxn f x xn r r' r'' rxv rxl xl, FEnv.MapsTo f (l,e,fbv,rx) fv -> 
-         init_store r l = Some r' ->
+ | sem_qexp_call_some : forall tvl l e fbv rx f vs vs' x xn r r1 r2 r3 rxn xl,
+         FEnv.MapsTo f (tvl,l,e,fbv,rx) fv -> 
+         sem_cfacs smap size r vs = Some (Value vs') ->
+         init_store_args r tvl vs' = Some r1->
+         init_store r1 l = Some r2 ->
          eval_var smap size r x = Some (Value xn) ->
-         sem_qexp (gen_smap_l l smap) fv fbv size r' e (Value r'') ->
-         eval_var (gen_smap_l l smap) size r'' rx = Some (Value rxn) ->
-         Store.MapsTo rxn (rxv::rxl) r'' ->
+         sem_qexp (gen_smap_l l (gen_smap_args tvl smap)) fv fbv size r2 e (Value r3) ->
+         sem_cfac (gen_smap_l l (gen_smap_args tvl smap)) size r3 rx = Some (Value rxn) ->
          Store.MapsTo xn xl r ->
-         sem_qexp smap fv bv size r (call f x) (Value (Store.add xn (rxv::xl) r))
+         sem_qexp smap fv bv size r (call x f vs) (Value (Store.add xn (rxn::xl) r))
 
  | sem_qexp_qseq_error : forall r e1 e2,
                 sem_qexp smap fv bv size r e1 Error ->
@@ -5312,17 +5406,17 @@ Inductive sem_qexp (smap:qvar -> nat) (fv:fenv) (bv:benv) (size:nat) : store -> 
                   sem_qexp smap fv bv size r (qseq e1 e2) r''
 
  | sem_qexp_for_error_1 : forall r x n e,
-                sem_cfac smap size r Nat n = Some Error ->
+                sem_cfac smap size r n = Some Error ->
                            sem_qexp smap fv bv size r (qfor x n e) Error
 
  | sem_qexp_for_error_2 : forall r x n e nv xl,
-      sem_cfac smap size r Nat n = Some (Value nv) ->
+      sem_cfac smap size r n = Some (Value nv) ->
        Store.MapsTo (L x,0) xl r ->
         sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb 0)::xl) r) e x (a_nat2fb nv size) Error ->
                            sem_qexp smap fv bv size r (qfor x n e) Error
 
  | sem_qexp_for_some : forall r x n e xl nv nv' xl' r',
-      sem_cfac smap size r Nat n = Some (Value nv) ->
+      sem_cfac smap size r n = Some (Value nv) ->
        Store.MapsTo (L x,0) xl r ->
         sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb 0)::xl) r) e x (a_nat2fb nv size) (Value r') ->
         Store.MapsTo (L x,0) (nv'::xl') r' ->
@@ -5344,258 +5438,6 @@ with sem_for_exp (smap: qvar -> nat) (fv:fenv) (bv:benv) (size:nat): store -> qe
      sem_for_exp smap fv bv size (Store.add (L x,0) ((nat2fb (S (a_nat2fb nv size)))::xl) r') e x m (Value r'') ->
        sem_for_exp smap fv bv size r e x (S m) (Value r'').
 
- | sem_qexp_nsub_error_1 : forall r x y, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (nsub x y) Error
- | sem_qexp_nsub_error_2 : forall r x v,
-           sem_cfac smap size r Nat v = Some Error ->  
-            sem_qexp smap fv bv size r (nsub x v) Error
- | sem_qexp_nsub_some : forall r x v xn x_val xl val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat v = Some (Value val) ->  
-            sem_qexp smap fv bv size r (nsub x v) 
-                (Value (Store.add xn ((sumfb true x_val (negatem size val))::(x_val::xl)) r))
-
- | sem_qexp_nmul_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (nmul x y z) Error
- | sem_qexp_nmul_error_2 : forall r x y z,
-           sem_cfac smap size r Nat y = Some Error ->  
-            sem_qexp smap fv bv size r (nmul x y z) Error
- | sem_qexp_nmul_error_3 : forall r x y z,
-           sem_cfac smap size r Nat z = Some Error ->  
-            sem_qexp smap fv bv size r (nmul x y z) Error
- | sem_qexp_nmul_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat y = Some (Value y_val) -> 
-           sem_cfac smap size r Nat z = Some (Value z_val) ->  
-            sem_qexp smap fv bv size r (nmul x y z) 
-                (Value (Store.add xn ((bin_xor x_val
-                 (nat2fb (((a_nat2fb y_val size) * (a_nat2fb z_val size)) mod 2^size)) size)::(x_val::xl)) r))
- 
- | sem_qexp_fadd_error_1 : forall r x y, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (fadd x y) Error
- | sem_qexp_fadd_error_2 : forall r x v,
-           sem_cfac smap size r Nat v = Some Error ->  
-            sem_qexp smap fv bv size r (fadd x v) Error
- | sem_qexp_fadd_some : forall r x v xn x_val xl val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r FixedP v = Some (Value val) ->  
-            sem_qexp smap fv bv size r (fadd x v) 
-                (Value (Store.add xn ((fbrev size (sumfb false (fbrev size x_val) val))::(x_val::xl)) r))
-
- | sem_qexp_fsub_error_1 : forall r x y, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (fsub x y) Error
- | sem_qexp_fsub_error_2 : forall r x v,
-           sem_cfac smap size r Nat v = Some Error ->  
-            sem_qexp smap fv bv size r (fsub x v) Error
- | sem_qexp_fsub_some : forall r x v xn x_val xl val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r FixedP v = Some (Value val) ->  
-            sem_qexp smap fv bv size r (fsub x v) 
-                (Value (Store.add xn ((fbrev size (sumfb true (fbrev size x_val) (negatem size val)))::(x_val::xl)) r))
-
- | sem_qexp_fmul_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (fmul x y z) Error
- | sem_qexp_fmul_error_2 : forall r x y z,
-           sem_cfac smap size r FixedP y = Some Error ->  
-            sem_qexp smap fv bv size r (fmul x y z) Error
- | sem_qexp_fmul_error_3 : forall r x y z,
-           sem_cfac smap size r FixedP z = Some Error ->  
-            sem_qexp smap fv bv size r (fmul x y z) Error
- | sem_qexp_fmul_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r FixedP y = Some (Value y_val) -> 
-           sem_cfac smap size r FixedP z = Some (Value z_val) ->  
-            sem_qexp smap fv bv size r (fmul x y z) 
-                (Value (Store.add xn ((fbrev size (bin_xor (fbrev size x_val)
-                 (nat2fb (((a_nat2fb y_val size) * (a_nat2fb z_val size)) / 2^size)) size))::(x_val::xl)) r))
-
- | sem_qexp_xor_error_1 : forall r x v,
-           eval_var smap size r x = Some Error ->
-            sem_qexp smap fv bv size r (qxor x v) Error
- | sem_qexp_xor_error_2 : forall r t x v xn,
-           eval_var smap size r x = Some (Value xn) ->
-           BEnv.MapsTo (fst xn) t bv ->
-           sem_cfac smap size r (get_ct t) v = Some Error ->  
-            sem_qexp smap fv bv size r (qxor x v) Error
- | sem_qexp_xor_some : forall r t x v xn x_val xl val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           BEnv.MapsTo (fst xn) t bv ->
-           sem_cfac smap size r (get_ct t) v = Some (Value val) ->  
-            sem_qexp smap fv bv size r (qxor x v) 
-                (Value (Store.add xn ((bin_xor x_val val (if (get_ct t) =b= Bl then 1 else size))::(x_val::xl)) r))
-
-
-
-
- | sem_qexp_nfac_error_1 : forall r x y, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (nfac x y) Error
- | sem_qexp_nfac_error_2 : forall r x v,
-           sem_cfac smap size r Nat v = Some Error ->  
-            sem_qexp smap fv bv size r (nfac x v) Error
- | sem_qexp_nfac_some : forall r x v xn x_val xl val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat v = Some (Value val) ->  
-            sem_qexp smap fv bv size r (nfac x v) 
-                (Value (Store.add xn ((nat2fb (fact (a_nat2fb val size) mod 2^size))::(x_val::xl)) r))
-
- | sem_qexp_ndiv_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (ndiv x y z) Error
- | sem_qexp_ndiv_error_2 : forall r x y z,
-           sem_cfac smap size r Nat y = Some Error ->  
-            sem_qexp smap fv bv size r (ndiv x y z) Error
- | sem_qexp_ndiv_error_3 : forall r x y z,
-           sem_cfac smap size r Nat z = Some Error ->  
-            sem_qexp smap fv bv size r (ndiv x y z) Error
- | sem_qexp_ndiv_error_4 : forall r x y z z_val,
-           sem_cfac smap size r Nat z = Some (Value z_val) ->  
-           (a_nat2fb z_val size) = 0 ->
-            sem_qexp smap fv bv size r (ndiv x y z) Error
- | sem_qexp_ndiv_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat y = Some (Value y_val) -> 
-           sem_cfac smap size r Nat z = Some (Value z_val) ->  
-           (a_nat2fb z_val size) <> 0 ->
-            sem_qexp smap fv bv size r (ndiv x y z) 
-                (Value (Store.add xn ((nat2fb (((a_nat2fb y_val size) / (a_nat2fb z_val size))))::(x_val::xl)) r))
-
- | sem_qexp_nmod_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (nmod x y z) Error
- | sem_qexp_nmod_error_2 : forall r x y z,
-           sem_cfac smap size r Nat y = Some Error ->  
-            sem_qexp smap fv bv size r (nmod x y z) Error
- | sem_qexp_nmod_error_3 : forall r x y z,
-           sem_cfac smap size r Nat z = Some Error ->  
-            sem_qexp smap fv bv size r (nmod x y z) Error
- | sem_qexp_nmod_error_4 : forall r x y z z_val,
-           sem_cfac smap size r Nat z = Some (Value z_val) ->  
-           (a_nat2fb z_val size) = 0 ->
-            sem_qexp smap fv bv size r (nmod x y z) Error
- | sem_qexp_nmod_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat y = Some (Value y_val) -> 
-           sem_cfac smap size r Nat z = Some (Value z_val) ->  
-           (a_nat2fb z_val size) <> 0 ->
-            sem_qexp smap fv bv size r (nmod x y z) 
-                (Value (Store.add xn ((nat2fb (((a_nat2fb y_val size) mod (a_nat2fb z_val size))))::(x_val::xl)) r))
-
- | sem_qexp_ncadd_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (ncadd x y z) Error
- | sem_qexp_ncadd_error_2 : forall r x y z,
-           sem_cfac smap size r Nat y = Some Error ->  
-            sem_qexp smap fv bv size r (ncadd x y z) Error
- | sem_qexp_ncadd_error_3 : forall r x y z,
-           sem_cfac smap size r Nat z = Some Error ->  
-            sem_qexp smap fv bv size r (ncadd x y z) Error
- | sem_qexp_ncadd_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat y = Some (Value y_val) -> 
-           sem_cfac smap size r Nat z = Some (Value z_val) ->  
-            sem_qexp smap fv bv size r (ncadd x y z) 
-                (Value (Store.add xn ((nat2fb (((a_nat2fb y_val size) + (a_nat2fb z_val size))))::(x_val::xl)) r))
-
- | sem_qexp_ncsub_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (ncsub x y z) Error
- | sem_qexp_ncsub_error_2 : forall r x y z,
-           sem_cfac smap size r Nat y = Some Error ->  
-            sem_qexp smap fv bv size r (ncsub x y z) Error
- | sem_qexp_ncsub_error_3 : forall r x y z,
-           sem_cfac smap size r Nat z = Some Error ->  
-            sem_qexp smap fv bv size r (ncsub x y z) Error
- | sem_qexp_ncsub_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat y = Some (Value y_val) -> 
-           sem_cfac smap size r Nat z = Some (Value z_val) ->  
-            sem_qexp smap fv bv size r (ncsub x y z) 
-                (Value (Store.add xn ((nat2fb (((a_nat2fb y_val size) - (a_nat2fb z_val size))))::(x_val::xl)) r))
-
- | sem_qexp_ncmul_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (ncmul x y z) Error
- | sem_qexp_ncmul_error_2 : forall r x y z,
-           sem_cfac smap size r Nat y = Some Error ->  
-            sem_qexp smap fv bv size r (ncmul x y z) Error
- | sem_qexp_ncmul_error_3 : forall r x y z,
-           sem_cfac smap size r Nat z = Some Error ->  
-            sem_qexp smap fv bv size r (ncmul x y z) Error
- | sem_qexp_ncmul_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat y = Some (Value y_val) -> 
-           sem_cfac smap size r Nat z = Some (Value z_val) ->  
-            sem_qexp smap fv bv size r (ncmul x y z) 
-                (Value (Store.add xn ((nat2fb (((a_nat2fb y_val size) * (a_nat2fb z_val size))))::(x_val::xl)) r))
-
- | sem_qexp_fcadd_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (fcadd x y z) Error
- | sem_qexp_fcadd_error_2 : forall r x y z,
-           sem_cfac smap size r FixedP y = Some Error ->  
-            sem_qexp smap fv bv size r (fcadd x y z) Error
- | sem_qexp_fcadd_error_3 : forall r x y z,
-           sem_cfac smap size r FixedP z = Some Error ->  
-            sem_qexp smap fv bv size r (fcadd x y z) Error
- | sem_qexp_fcadd_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r FixedP y = Some (Value y_val) -> 
-           sem_cfac smap size r FixedP z = Some (Value z_val) ->  
-            sem_qexp smap fv bv size r (fcadd x y z) 
-                (Value (Store.add xn 
-                          ((fbrev size (nat2fb (((a_nat2fb y_val size) + (a_nat2fb z_val size)))))::(x_val::xl)) r))
-
-
- | sem_qexp_fcsub_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (fcsub x y z) Error
- | sem_qexp_fcsub_error_2 : forall r x y z,
-           sem_cfac smap size r FixedP y = Some Error ->  
-            sem_qexp smap fv bv size r (fcsub x y z) Error
- | sem_qexp_fcsub_error_3 : forall r x y z,
-           sem_cfac smap size r FixedP z = Some Error ->  
-            sem_qexp smap fv bv size r (fcsub x y z) Error
- | sem_qexp_fcsub_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r FixedP y = Some (Value y_val) -> 
-           sem_cfac smap size r FixedP z = Some (Value z_val) ->  
-            sem_qexp smap fv bv size r (fcsub x y z) 
-                (Value (Store.add xn ((fbrev size (nat2fb (((a_nat2fb y_val size) - (a_nat2fb z_val size)))))::(x_val::xl)) r))
-
-
- | sem_qexp_fdiv_error_1 : forall r x y, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (fdiv x y) Error
- | sem_qexp_fdiv_error_2 : forall r x v,
-           sem_cfac smap size r Nat v = Some Error ->  
-            sem_qexp smap fv bv size r (fdiv x v) Error
- | sem_qexp_fdiv_error_3 : forall r x v val,
-           sem_cfac smap size r Nat v = Some (Value val)->  
-           a_nat2fb val size = 0 ->
-            sem_qexp smap fv bv size r (fdiv x v) Error
- | sem_qexp_fdiv_some : forall r x v xn x_val xl val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r Nat v = Some (Value val) ->  
-           a_nat2fb val size <> 0 ->
-            sem_qexp smap fv bv size r (fdiv x v) 
-                (Value (Store.add xn ((nat2fb (((a_nat2fb (fbrev size x_val) size)) / (a_nat2fb val size)))::(x_val::xl)) r))
-
- | sem_qexp_fndiv_error_1 : forall r x y z, eval_var smap size r x = Some Error ->
-         sem_qexp smap fv bv size r (fndiv x y z) Error
- | sem_qexp_fndiv_error_2 : forall r x y z,
-           sem_cfac smap size r FixedP y = Some Error ->  
-            sem_qexp smap fv bv size r (fndiv x y z) Error
- | sem_qexp_fndiv_error_3 : forall r x y z,
-           sem_cfac smap size r FixedP z = Some Error ->  
-            sem_qexp smap fv bv size r (fndiv x y z) Error
- | sem_qexp_fndiv_error_4 : forall r x y z z_val,
-           sem_cfac smap size r FixedP z = Some (Value z_val) ->
-           (a_nat2fb z_val size) = 0 ->
-            sem_qexp smap fv bv size r (fndiv x y z) Error
- | sem_qexp_fndiv_some : forall r x y z xn x_val xl y_val z_val,
-           eval_var smap size r x = Some (Value xn) -> Store.MapsTo xn (x_val::xl) r ->
-           sem_cfac smap size r FixedP y = Some (Value y_val) -> 
-           sem_cfac smap size r FixedP z = Some (Value z_val) ->  
-           (a_nat2fb z_val size) <> 0 ->
-            sem_qexp smap fv bv size r (fndiv x y z) 
-                (Value (Store.add xn
-                  ((fbrev size (nat2fb ((((a_nat2fb y_val size) * 2^size) / (a_nat2fb z_val size)))))::(x_val::xl)) r))
-
-
-
-
 
 Fixpoint check_store_g (l:list (btype * var)) (r:store) : Prop  :=
    match l with [] => True
@@ -5605,20 +5447,20 @@ Fixpoint check_store_g (l:list (btype * var)) (r:store) : Prop  :=
 (* Program semantics is to evaluate the main function. *)
 Inductive sem_prog (fv:fenv) : prog -> (@value (nat -> bool)) -> Prop :=
     sem_main_error_1 : forall size gl fl main x l e bv rx r r',
-              FEnv.MapsTo main (l,e,bv,rx) fv ->
+              FEnv.MapsTo main (([]),l,e,bv,rx) fv ->
               init_store empty_store gl = Some r ->
               init_store r l = Some r' ->
               sem_qexp (gen_smap_l l (gen_smap_l gl (fun _ => 0))) fv bv size r' e Error -> 
               sem_prog fv (size,gl,fl,main,x) Error
    | sem_main_error_2 : forall size gl fl main x l e bv rx r r' r'',
-              FEnv.MapsTo main (l,e,bv,rx) fv ->
+              FEnv.MapsTo main (([]),l,e,bv,rx) fv ->
               init_store empty_store gl = Some r ->
               init_store r l = Some r' ->
               sem_qexp (gen_smap_l l (gen_smap_l gl (fun _ => 0))) fv bv size r' e (Value r'') -> 
               eval_var (gen_smap_l l (gen_smap_l gl (fun _ => 0))) size r'' rx = Some Error ->
               sem_prog fv (size,gl,fl,main,x) Error
    | sem_main_some : forall size gl fl main x l e bv rx r r' r'' rxn v vl,
-              FEnv.MapsTo main (l,e,bv,rx) fv ->
+              FEnv.MapsTo main (([]),l,e,bv,rx) fv ->
               init_store empty_store gl = Some r ->
               init_store r l = Some r' ->
               sem_qexp (gen_smap_l l (gen_smap_l gl (fun _ => 0))) fv bv size r' e (Value r'') -> 
@@ -5626,15 +5468,18 @@ Inductive sem_prog (fv:fenv) : prog -> (@value (nat -> bool)) -> Prop :=
               Store.MapsTo rxn (v::vl) r'' ->
               sem_prog fv (size,gl,fl,main,x) (Value v).
 
+(* TODO: well_formed_fv needed
 Definition well_formed_fv (fv:fenv) (r:store) (smap: qvar -> nat) :=
-        forall f l e fbv rx, FEnv.MapsTo f (l,e,fbv,rx) fv ->
-             (exists bv', type_qexp fv fbv e = Some bv') /\ 
-              (exists r', init_store r l = Some r' /\ bv_store_sub (gen_smap_l l smap) fbv r'
-                      /\ bv_store_gt_0 (gen_smap_l l smap) fbv)
+        forall f tvl l e fbv rx, FEnv.MapsTo f (tvl,l,e,fbv,rx) fv ->
+             (exists bv', type_qexp fv fbv C e = Some bv') /\ 
+              (exists vs r1 r2, init_store_args r tvl vl 
+                   init_store r l = Some r' /\ bv_store_sub (gen_smap_l l (gen_smap_args tvl smap)) fbv r'
+                      /\ bv_store_gt_0 (gen_smap_l l (gen_smap_args tvl smap)) fbv)
              /\ (forall xn, get_var rx = Some xn -> BEnv.In xn fbv).
-
+*)
 
 (* Type soundness theorem for statements. *)
+(*
 Lemma qexp_progress : forall e fv smap size bv bv' st inl, well_formed_fv fv st smap ->
         type_qexp fv bv e = Some bv' -> well_formed_inv ([]) e size = Some inl ->
         bv_store_sub smap bv st -> bv_store_gt_0 smap bv
@@ -5655,37 +5500,30 @@ Lemma qexp_preservation : forall e fv smap size bv bv' st st' inl, well_formed_f
 Proof.
   induction e; intros; simpl in *.
 Admitted.
-
+*)
 
 (* Compilation from MiniQASM to PQASM starts here. *)
 
-
-
-
-
-
-
-
 (* Compiler for qexp *)
-Definition fmap :Type := list (fvar * cfac * pexp * (qvar -> nat) * ((qvar*nat) -> var) * benv * cstore).
-Fixpoint lookup_fmap (l:fmap) (x:fvar) : option (cfac * pexp * (qvar -> nat) * ((qvar*nat) -> var) * benv * cstore) :=
+Definition fmap :Type := list (fvar * cfac * exp * (qvar -> nat) * ((qvar*nat) -> var) * benv * cstore).
+Fixpoint lookup_fmap (l:fmap) (x:fvar) : option (cfac * exp * (qvar -> nat) * ((qvar*nat) -> var) * benv * cstore) :=
    match l with [] => None
           | ((y,a,p,smap,vmap,bv,r)::xl) => if x =? y then Some (a,p,smap,vmap,bv,r) else lookup_fmap xl x
    end.
 
-Definition combine_c (e1 e2:option pexp) : option pexp :=
+Definition combine_c (e1 e2:option exp) : option exp :=
           match e1 with None => e2
                | Some e1' => match e2 with None => Some e1'
-                                        | Some e2' => Some (e1';;e2')
+                                        | Some e2' => Some (e1';e2')
                               end
           end.
 
-Definition combine_seq (e1:option pexp) (e2:option pexp) :=
+Definition combine_seq (e1:option exp) (e2:option exp) :=
    match e1 with None => e2
-        | Some e1' => match e2 with None => Some e1' | Some e2' => Some (e1' ;; e2') end
+        | Some e1' => match e2 with None => Some e1' | Some e2' => Some (e1' ; e2') end
    end.
 
-Definition deal_result (r:cstore) (re : option (option pexp * nat * option cstore)) :=
+Definition deal_result (r:cstore) (re : option (option exp * nat * option cstore)) :=
     match re with None => None
              | Some (a,b,None) => Some (a,b,r)
              | Some (a,b,Some r') => Some (a,b,r')
@@ -5693,34 +5531,34 @@ Definition deal_result (r:cstore) (re : option (option pexp * nat * option cstor
 
 (* estore is to  store the list of statements for inv functions. 
    Once we compile an inv operation, we need to locate the predesessor of the variable in inv. *)
-Definition estore : Type := Store.t (list pexp).
-Definition empty_estore := @Store.empty (list pexp).
+Definition estore : Type := Store.t (list exp).
+Definition empty_estore := @Store.empty (list exp).
 
 (* nat: x + y *)
 Definition nadd_circuit_two (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y :(qvar*nat)) (stack: var) (sn:nat) :=
             if f =fl= Classic then
-              Exp (adder01 size (vmap x) (vmap y) (stack,S sn))
+              (adder01 size (vmap x) (vmap y) (stack,S sn))
             else rz_full_adder_form (vmap x) size (vmap y).
 
 
 Definition nadd_circuit_left (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
             if f =fl= Classic then
-              Exp (init_v size (temp) y;
+              (init_v size (temp) y;
                     adder01 size (vmap x) (temp) (stack,S sn);
                     init_v size (temp) y)
             else rz_adder_form (vmap x) size y.
 
 Definition nadd_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (es:estore) (x y:cfac)
-                 : option (@value (option pexp * nat * cstore * estore)) :=
-     do t1 <- type_factor bv Nat x @
-         do t2 <- type_factor bv Nat y @
+                 : option (@value (option exp * nat * cstore * estore)) :=
+     do t1 <- type_factor bv x @
+         do t2 <- type_factor bv y @
             match par_find_var_check smap bv size r x with Some (Value vx) => 
               if (fst t1 =a= Q) && (fst t2 =a= C)
                then 
-                   do t2v <- par_eval_cfac_check smap bv size r Nat y @
+                   do t2v <- par_eval_cfac_check smap bv size r y @
                      match t2v with Value t2v' =>
                  do exps <- Store.find vx es @
                       Some (Value (Some (nadd_circuit_left size f vmap vx t2v' stack temp sn),sn,r,
@@ -5744,27 +5582,27 @@ Definition nadd_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
 Definition nsub_circuit_two (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y :(qvar*nat)) (stack: var) (sn:nat) :=
             if f =fl= Classic then
-              Exp (subtractor01 size (vmap x) (vmap y) (stack,S sn))
+              (subtractor01 size (vmap x) (vmap y) (stack,S sn))
             else rz_full_sub_form (vmap x) size (vmap y).
 
 
 Definition nsub_circuit_left (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
             if f =fl= Classic then
-              Exp (init_v size (temp) y;
+              (init_v size (temp) y;
                     subtractor01 size (vmap x) (temp) (stack,S sn);
                     init_v size (temp) y)
             else rz_sub_right (vmap x) size y.
 
 Definition nsub_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (es:estore) (x y:cfac) 
-              : option (@value (option pexp * nat * cstore * estore)) :=
-     do t1 <- type_factor bv Nat x @
-         do t2 <- type_factor bv Nat y @
+              : option (@value (option exp * nat * cstore * estore)) :=
+     do t1 <- type_factor bv  x @
+         do t2 <- type_factor bv  y @
             match par_find_var_check smap bv size r x with Some (Value vx) => 
               if (fst t1 =a= Q) && (fst t2 =a= C)
                then 
-                   do t2v <- par_eval_cfac_check smap bv size r Nat y @
+                   do t2v <- par_eval_cfac_check smap bv size r  y @
                      match t2v with Value t2v' =>
                  do exps <- Store.find vx es @
                       Some (Value (Some (nsub_circuit_left size f vmap vx t2v' stack temp sn),sn,r,
@@ -5789,31 +5627,31 @@ Definition nsub_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
 Definition fadd_circuit_two (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y :(qvar*nat)) (stack: var) (sn:nat) :=
             if f =fl= Classic then
-              Exp (Rev (vmap x);Rev (vmap y);
+              (Rev (vmap x);Rev (vmap y);
                adder01 size (vmap x) (vmap y) (stack,S sn);inv_exp (Rev (vmap x);Rev (vmap y)))
-            else Exp (Rev (vmap x);Rev (vmap y));;
-                   rz_full_adder_form (vmap x) size (vmap y);;inv_pexp (Exp (Rev (vmap x);Rev (vmap y))).
+            else (Rev (vmap x);Rev (vmap y));
+                   rz_full_adder_form (vmap x) size (vmap y);inv_exp ( (Rev (vmap x);Rev (vmap y))).
 
 
 Definition fadd_circuit_left (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
             if f =fl= Classic then
-              Exp (init_v size (temp) y;
+               (init_v size (temp) y;
                    Rev (vmap x);Rev (temp);
                     adder01 size (vmap x) (temp) (stack,S sn);
                    inv_exp (Rev (vmap x);Rev (temp));
                     init_v size (temp) y)
-            else Exp (Rev (vmap x));;rz_adder_form (vmap x) size (fbrev size y);; (inv_pexp (Exp (Rev (vmap x)))).
+            else (Rev (vmap x));rz_adder_form (vmap x) size (fbrev size y); (inv_exp ( (Rev (vmap x)))).
 
 Definition fadd_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (es:estore) (x y:cfac)
-              : option (@value (option pexp * nat * cstore * estore)) :=
-     do t1 <- type_factor bv FixedP x @
-         do t2 <- type_factor bv FixedP y @
+              : option (@value (option exp * nat * cstore * estore)) :=
+     do t1 <- type_factor bv  x @
+         do t2 <- type_factor bv  y @
             match par_find_var_check smap bv size r x with Some (Value vx) => 
               if (fst t1 =a= Q) && (fst t2 =a= C)
                then 
-                   do t2v <- par_eval_cfac_check smap bv size r FixedP y @
+                   do t2v <- par_eval_cfac_check smap bv size r y @
                     match t2v with Value t2v' => 
                  do exps <- Store.find vx es @
                       Some (Value (Some (fadd_circuit_left size f vmap vx t2v' stack temp sn),sn,r,
@@ -5837,31 +5675,31 @@ Definition fadd_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
 Definition fsub_circuit_two (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y :(qvar*nat)) (stack: var) (sn:nat) :=
             if f =fl= Classic then
-              Exp (Rev (vmap x);Rev (vmap y);
+               (Rev (vmap x);Rev (vmap y);
                subtractor01 size (vmap x) (vmap y) (stack,S sn);inv_exp (Rev (vmap x);Rev (vmap y)))
-            else Exp (Rev (vmap x);Rev (vmap y));;
-                   rz_full_sub_form (vmap x) size (vmap y);;inv_pexp (Exp (Rev (vmap x);Rev (vmap y))).
+            else (Rev (vmap x);Rev (vmap y));
+                   rz_full_sub_form (vmap x) size (vmap y);inv_exp ( (Rev (vmap x);Rev (vmap y))).
 
 
 Definition fsub_circuit_left (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x :(qvar*nat)) (y:(nat->bool)) (stack temp: var) (sn:nat) :=
             if f =fl= Classic then
-              Exp (init_v size (temp) y;
+               (init_v size (temp) y;
                    Rev (vmap x);Rev (temp);
                     subtractor01 size (vmap x) (temp) (stack,S sn);
                    inv_exp (Rev (vmap x);Rev (temp));
                     init_v size (temp) y)
-            else Exp (Rev (vmap x));;rz_sub_right (vmap x) size (fbrev size y);; (inv_pexp (Exp (Rev (vmap x)))).
+            else  (Rev (vmap x));rz_sub_right (vmap x) size (fbrev size y); (inv_exp ( (Rev (vmap x)))).
 
 Definition fsub_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (es:estore) (x y:cfac)
-              : option (@value (option pexp * nat * cstore * estore)) :=
-     do t1 <- type_factor bv FixedP x @
-         do t2 <- type_factor bv FixedP y @
+              : option (@value (option exp * nat * cstore * estore)) :=
+     do t1 <- type_factor bv  x @
+         do t2 <- type_factor bv y @
             match par_find_var_check smap bv size r x with Some (Value vx) => 
               if (fst t1 =a= Q) && (fst t2 =a= C)
                then 
-                   do t2v <- par_eval_cfac_check smap bv size r FixedP y @
+                   do t2v <- par_eval_cfac_check smap bv size r y @
                     match t2v with Value t2v' =>
                      do exps <- Store.find vx es @
                       Some (Value (Some (fsub_circuit_left size f vmap vx t2v' stack temp sn),sn,r,
@@ -5898,10 +5736,10 @@ Definition nmul_circuit_one (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
 
 Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (es:estore) (x y z:cfac)
-              : option (@value (option pexp * nat * cstore * estore)) :=
-     do t1 <- type_factor bv Nat x @
-         do t2 <- type_factor bv Nat y @
-         do t3 <- type_factor bv Nat z @
+              : option (@value (option exp * nat * cstore * estore)) :=
+     do t1 <- type_factor bv x @
+         do t2 <- type_factor bv y @
+         do t3 <- type_factor bv z @
              do vx <- par_find_var bv size r x @  
               if (fst t2 =a= Q) && (fst t3 =a= Q) then
                  do vyv <- par_find_var_check smap bv size r y @
@@ -5917,7 +5755,7 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                     end
               else if (fst t2 =a= Q) && (fst t3 =a= C) then
                  do vyv <- par_find_var_check smap bv size r y @
-                  do vzv <- par_eval_cfac_check smap bv size r Nat z @
+                  do vzv <- par_eval_cfac_check smap bv size r z @
                      match vyv with Value vy => 
                        match vzv with Value tzv => 
                      do exps <- Store.find vx es @
@@ -5929,7 +5767,7 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                     end
               else if (fst t2 =a= C) && (fst t3 =a= Q) then
                  do vzv <- par_find_var_check smap bv size r z @
-                  do vyv <- par_eval_cfac_check smap bv size r Nat y @
+                  do vyv <- par_eval_cfac_check smap bv size r y @
                      match vzv with Value vz => 
                        match vyv with Value tyv => 
                      do exps <- Store.find vx es @
@@ -5939,14 +5777,14 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                      end
                        | _ => Some Error
                     end
-              else do vyv <- par_eval_cfac_check smap bv size r Nat y @
-                    do vzv <- par_eval_cfac_check smap bv size r Nat z @
+              else do vyv <- par_eval_cfac_check smap bv size r y @
+                    do vzv <- par_eval_cfac_check smap bv size r z @
                        match vyv with Value tyv => 
                         match vzv with Value tzv => 
                      do exps <- Store.find vx es @
-                    Some (Value (Some (Exp (init_v size (vmap vx)
+                    Some (Value (Some ( (init_v size (vmap vx)
                                (nat2fb (((a_nat2fb tyv size) * (a_nat2fb tzv size)) mod 2^size)))),sn,r,
-                      Store.add vx ((Exp (init_v size (vmap vx)
+                      Store.add vx (( (init_v size (vmap vx)
                                (nat2fb (((a_nat2fb tyv size) * (a_nat2fb tzv size)) mod 2^size))))::exps) es))
                       | _ => Some Error
                      end
@@ -5957,28 +5795,28 @@ Definition nqmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
 Definition fmul_circuit_two (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y z:(qvar*nat)) (temp stack: var) (sn:nat) :=
             if f =fl= Classic then
-               Exp (Rev (vmap y); Rev (vmap z); Rev (vmap x));;
-               clf_full_mult size (vmap y) (vmap z) (vmap x) (temp) (stack,sn);;
-               (inv_pexp (Exp (Rev (vmap y); Rev (vmap z); Rev (vmap x))))
+                (Rev (vmap y); Rev (vmap z); Rev (vmap x));
+               clf_full_mult size (vmap y) (vmap z) (vmap x) (temp) (stack,sn);
+               (inv_exp ( (Rev (vmap y); Rev (vmap z); Rev (vmap x))))
             else 
-               Exp (Rev (vmap y); Rev (vmap z); Rev (vmap x));;
-               flt_full_mult size (vmap y) (vmap z) (vmap x) (temp);;
-               (inv_pexp (Exp (Rev (vmap y); Rev (vmap z); Rev (vmap x)))).
+                (Rev (vmap y); Rev (vmap z); Rev (vmap x));
+               flt_full_mult size (vmap y) (vmap z) (vmap x) (temp);
+               (inv_exp ( (Rev (vmap y); Rev (vmap z); Rev (vmap x)))).
 
 
 Definition fmul_circuit_one (size:nat) (f:flag) (vmap:(qvar*nat) -> var)
                         (x y :(qvar*nat)) (z:(nat->bool)) (stack temp: var) (sn:nat) :=
             if f =fl= Classic then
-                     Exp (cl_flt_mult size (vmap y) (vmap x) temp (stack,sn) z)
+                     (cl_flt_mult size (vmap y) (vmap x) temp (stack,sn) z)
             else flt_mult size (vmap y) (vmap x) z.
 
 
 Definition fmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (es:estore) (x y z:cfac)
-              : option (@value (option pexp * nat * cstore * estore)) :=
-     do t1 <- type_factor bv FixedP x @
-         do t2 <- type_factor bv FixedP y @
-         do t3 <- type_factor bv FixedP z @
+              : option (@value (option exp * nat * cstore * estore)) :=
+     do t1 <- type_factor bv  x @
+         do t2 <- type_factor bv  y @
+         do t3 <- type_factor bv  z @
              do vx <- par_find_var bv size r x @  
               if (fst t2 =a= Q) && (fst t3 =a= Q) then
                  do vyv <- par_find_var_check smap bv size r y @
@@ -5994,7 +5832,7 @@ Definition fmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                     end
               else if (fst t2 =a= Q) && (fst t3 =a= C) then
                  do vyv <- par_find_var_check smap bv size r y @
-                  do vzv <- par_eval_cfac_check smap bv size r FixedP z @
+                  do vzv <- par_eval_cfac_check smap bv size r  z @
                      match vyv with Value vy => 
                        match vzv with Value tzv => 
                      do exps <- Store.find vx es @
@@ -6006,7 +5844,7 @@ Definition fmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                     end
               else if (fst t2 =a= C) && (fst t3 =a= Q) then
                  do vzv <- par_find_var_check smap bv size r z @
-                  do vyv <- par_eval_cfac_check smap bv size r FixedP y @
+                  do vyv <- par_eval_cfac_check smap bv size r  y @
                      match vzv with Value vz => 
                        match vyv with Value tyv => 
                      do exps <- Store.find vx es @
@@ -6016,14 +5854,14 @@ Definition fmul_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                      end
                        | _ => Some Error
                     end
-              else do vyv <- par_eval_cfac_check smap bv size r FixedP y @
-                    do vzv <- par_eval_cfac_check smap bv size r FixedP z @
+              else do vyv <- par_eval_cfac_check smap bv size r  y @
+                    do vzv <- par_eval_cfac_check smap bv size r  z @
                        match vyv with Value tyv => 
                         match vzv with Value tzv => 
                      do exps <- Store.find vx es @
-                           Some (Value (Some (Exp (init_v size (vmap vx)
+                           Some (Value (Some ( (init_v size (vmap vx)
                                (nat2fb (((a_nat2fb tyv size) * (a_nat2fb tzv size)) mod 2^size)))),sn,r,
-                      Store.add vx ((Exp (init_v size (vmap vx)
+                      Store.add vx (( (init_v size (vmap vx)
                                (nat2fb (((a_nat2fb tyv size) * (a_nat2fb tzv size)) mod 2^size))))::exps) es))
                       | _ => Some Error
                      end
@@ -6043,29 +5881,29 @@ Fixpoint bin_xor_c (n:nat) (x : var) (y:nat->bool) : exp :=
 
 
 Definition qxor_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:benv) (r:cstore) (sn:nat) (es:estore) (x y:cfac) 
-              : option (@value (option pexp * nat * cstore * estore)) :=
+              : option (@value (option exp * nat * cstore * estore)) :=
           do vxv <- par_find_var_check smap bv size r x @
             match vxv with Value vx =>   
               do t <- BEnv.find (fst vx) bv @
                if is_q t then
-                do t2 <- type_factor bv (get_ct t) y @
+                do t2 <- type_factor bv y @
                  if fst t2 =a= Q then
                   do vyv <- par_find_var_check smap bv size r y @
                    match vyv with Value vy =>
                    do exps <- Store.find vx es @
-                     Some (Value (Some (Exp (bin_xor_q (get_size size (get_ct t)) (vmap vy) (vmap vx))),sn,r,
-                         Store.add vx ((Exp (bin_xor_q (get_size size (get_ct t)) (vmap vy) (vmap vx)))::exps) es))
+                     Some (Value (Some ( (bin_xor_q (get_size size (get_ct t)) (vmap vy) (vmap vx))),sn,r,
+                         Store.add vx (( (bin_xor_q (get_size size (get_ct t)) (vmap vy) (vmap vx)))::exps) es))
                    | _ => Some Error
                   end
-                 else do t2v <- par_eval_cfac_check smap bv size r (snd t2) y @
+                 else do t2v <- par_eval_cfac_check smap bv size r y @
                    match t2v with Value t2v' => 
                    do exps <- Store.find vx es @
-                     Some (Value (Some (Exp (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v')),sn,r,
-                              Store.add vx ((Exp (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v'))::exps) es))
+                     Some (Value (Some ( (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v')),sn,r,
+                              Store.add vx (( (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v'))::exps) es))
                     | _ => Some Error
                    end
-               else do t1v <- par_eval_cfac_check smap bv size r (get_ct t) x @
-                     do t2v <- par_eval_cfac_check smap bv size r (get_ct t) y @
+               else do t1v <- par_eval_cfac_check smap bv size r x @
+                     do t2v <- par_eval_cfac_check smap bv size r y @
                        match t1v with Value t1v' => 
                          match t2v with Value t2v' => 
                             Some (Value (None,sn, (Store.add vx (bin_xor t1v' t2v' (get_size size (get_ct t))) r),es))
@@ -6077,25 +5915,25 @@ Definition qxor_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:
 
 (* init circuit for quantum Q mode variables only. *)
 Definition init_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:benv) (r:cstore) (sn:nat) (es:estore) (x y:cfac) 
-              : option (@value (option pexp * nat * cstore * estore)) :=
+              : option (@value (option exp * nat * cstore * estore)) :=
            do vxv <- par_find_var_check smap bv size r x @
             match vxv with Value vx =>
               do t <- BEnv.find (fst vx) bv @
               if is_q t then 
-                do t2 <- type_factor bv (get_ct t) y @
+                do t2 <- type_factor bv y @
                  if fst t2 =a= Q then
                   do vyv <- par_find_var_check smap bv size r y @
                    match vyv with Value vy =>
                     do exps <- Store.find vx es @ 
-                     Some (Value (Some (Exp (bin_xor_q (get_size size (get_ct t)) (vmap vy) (vmap vx))),sn,r,
-                          Store.add vx ((Exp (bin_xor_q (get_size size (get_ct t)) (vmap vy) (vmap vx)))::exps) es))
+                     Some (Value (Some ( (bin_xor_q (get_size size (get_ct t)) (vmap vy) (vmap vx))),sn,r,
+                          Store.add vx (( (bin_xor_q (get_size size (get_ct t)) (vmap vy) (vmap vx)))::exps) es))
                    | _ => Some Error
                   end
-                 else do t2v <- par_eval_cfac_check smap bv size r (snd t2) y @
+                 else do t2v <- par_eval_cfac_check smap bv size r y @
                    match t2v with Value t2v' => 
                     do exps <- Store.find vx es @ 
-                     Some (Value (Some (Exp (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v')),sn,r,
-                      Store.add vx ((Exp (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v'))::exps) es))
+                     Some (Value (Some ( (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v')),sn,r,
+                      Store.add vx (( (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v'))::exps) es))
                     | _ => Some Error
                    end
                else None
@@ -6105,12 +5943,12 @@ Definition init_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:
 (* ndiv circuit for quantum Q/C mode variables only. *)
 Definition div_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (fl:flag) (r:cstore) (temp temp1 stack:var) (sn:nat) (es:estore) (x y:cfac) (z:nat -> bool)
-              : option (@value (option pexp * nat * cstore * estore)) :=
+              : option (@value (option exp * nat * cstore * estore)) :=
            do vxv <- par_find_var_check smap bv size r x @
             match vxv with Value vx =>
               do t <- BEnv.find (fst vx) bv @
               if is_q t then 
-                do t2 <- type_factor bv (get_ct t) y @
+                do t2 <- type_factor bv y @
                  if fst t2 =a= Q then
                   do vyv <- par_find_var_check smap bv size r y @
                    match vyv with Value vy =>
@@ -6119,19 +5957,19 @@ Definition div_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                      Some (Value (Some ((rz_div size (vmap vy) (vmap vx) temp (a_nat2fb z size))) ,sn,r,
                           Store.add vx (((rz_div size (vmap vy) (vmap vx) temp (a_nat2fb z size)))::exps) es))
                      else 
-                     Some (Value (Some (Exp (cl_div size (vmap vy) (vmap vx) temp temp1 (stack,sn) (a_nat2fb z size))),sn,r,
-                          Store.add vx (Exp ((cl_div size (vmap vy) (vmap vx) temp temp1 (stack,sn) (a_nat2fb z size)))::exps) es))
+                     Some (Value (Some ( (cl_div size (vmap vy) (vmap vx) temp temp1 (stack,sn) (a_nat2fb z size))),sn,r,
+                          Store.add vx ( ((cl_div size (vmap vy) (vmap vx) temp temp1 (stack,sn) (a_nat2fb z size)))::exps) es))
 
                    | _ => Some Error
                   end
-                 else do t2v <- par_eval_cfac_check smap bv size r (snd t2) y @
+                 else do t2v <- par_eval_cfac_check smap bv size r y @
                    match t2v with Value t2v' => 
                     do exps <- Store.find vx es @ 
-                     Some (Value (Some (Exp (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v')),sn,r,
-                      Store.add vx ((Exp (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v'))::exps) es))
+                     Some (Value (Some ( (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v')),sn,r,
+                      Store.add vx (( (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v'))::exps) es))
                     | _ => Some Error
                    end
-               else do t2v <- par_eval_cfac_check smap bv size r Nat y @
+               else do t2v <- par_eval_cfac_check smap bv size r y @
                          match t2v with Value t2v' => 
                                Some (Value ((None,sn,Store.add vx (nat2fb ((a_nat2fb t2v' size) / (a_nat2fb z size))) r,es)))
                              | _ => Some Error
@@ -6140,6 +5978,42 @@ Definition div_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                |_ => Some Error
            end.
 
+(* nmod circuit for quantum Q/C mode variables only. *)
+Definition mod_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
+                 (bv:benv) (fl:flag) (r:cstore) (temp temp1 stack:var) (sn:nat) (es:estore) (x y:cfac) (z:nat -> bool)
+              : option (@value (option exp * nat * cstore * estore)) :=
+           do vxv <- par_find_var_check smap bv size r x @
+            match vxv with Value vx =>
+              do t <- BEnv.find (fst vx) bv @
+              if is_q t then 
+                do t2 <- type_factor bv y @
+                 if fst t2 =a= Q then
+                  do vyv <- par_find_var_check smap bv size r y @
+                   match vyv with Value vy =>
+                    do exps <- Store.find vx es @ 
+                     if fl =fl= QFTA then 
+                     Some (Value (Some ((rz_moder size (vmap vy) (vmap vx) temp (a_nat2fb z size))) ,sn,r,
+                          Store.add vx (((rz_moder size (vmap vy) (vmap vx) temp (a_nat2fb z size)))::exps) es))
+                     else 
+                     Some (Value (Some ( (cl_moder size (vmap vy) (vmap vx) temp temp1 (stack,sn) (a_nat2fb z size))),sn,r,
+                          Store.add vx ( ((cl_moder size (vmap vy) (vmap vx) temp temp1 (stack,sn) (a_nat2fb z size)))::exps) es))
+
+                   | _ => Some Error
+                  end
+                 else do t2v <- par_eval_cfac_check smap bv size r y @
+                   match t2v with Value t2v' => 
+                    do exps <- Store.find vx es @ 
+                     Some (Value (Some ( (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v')),sn,r,
+                      Store.add vx (( (bin_xor_c (get_size size (get_ct t)) (vmap vx) t2v'))::exps) es))
+                    | _ => Some Error
+                   end
+               else do t2v <- par_eval_cfac_check smap bv size r y @
+                         match t2v with Value t2v' => 
+                               Some (Value ((None,sn,Store.add vx (nat2fb ((a_nat2fb t2v' size) mod (a_nat2fb z size))) r,es)))
+                             | _ => Some Error
+                         end
+               |_ => Some Error
+           end.
 
 (* Rshift operation. No circuit cost. *)
 Definition lrot_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:benv) (r:cstore) (sn:nat) (es:estore) (x:cfac) :=
@@ -6148,7 +6022,7 @@ Definition lrot_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:
           do t <- BEnv.find (fst vx) bv @
                if is_q t then
                 do exps <- Store.find vx es @
-                   Some (Value (Some (Exp (Rshift (vmap vx))), sn, r,Store.add vx ((Exp (Rshift (vmap vx)))::exps) es))
+                   Some (Value (Some ( (Rshift (vmap vx))), sn, r,Store.add vx (( (Rshift (vmap vx)))::exps) es))
                else
                 do t1v <- Store.find vx r @
                    Some (Value (None,sn, (Store.add vx (l_rotate t1v (get_size size (get_ct t))) r),es))
@@ -6156,25 +6030,154 @@ Definition lrot_c (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var) (bv:
        end.
 
 
-Definition combine_if (sv : var) (sn:nat) (p1:pexp) (e1:option pexp) (e2:option pexp) :=
+Definition combine_if (sv : var) (sn:nat) (p1:exp) (e1:option exp) (e2:option exp) :=
    match e1 with None => match e2 with None => Some p1
-           | Some e2' => Some (p1 ;; Exp (X (sv,sn));; PCU (sv,sn) e2')
+           | Some e2' => Some (p1 ; (X (sv,sn)); CU (sv,sn) e2')
                          end
-           | Some e1' => match e2 with None => Some (p1 ;; PCU (sv,sn) e1')
-                | Some e2' => Some (p1 ;; PCU (sv,sn) e1' ;; 
-                         Exp (X (sv,sn));; PCU (sv,sn) e2')
+           | Some e1' => match e2 with None => Some (p1 ; CU (sv,sn) e1')
+                | Some e2' => Some (p1 ; CU (sv,sn) e1' ;
+                          (X (sv,sn)); CU (sv,sn) e2')
                          end
     end.
+
+Definition com_unary (op:qop) (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
+                 (bv:benv) (f:flag) (r:cstore) (temp stack:var) (sn:nat) (es:estore) (x y:cfac)
+                 : option (@value (option exp * nat * cstore * estore)) :=
+   match op with nadd => do bval <- qvar_eq smap bv size r x y @
+                               match bval with Value false => (nadd_c size smap vmap bv f r temp stack sn es x y)
+                                             | _ => Some Error
+                               end
+
+               | nsub => do bval <- qvar_eq smap bv size r x y @
+                               match bval with Value false => (nsub_c size smap vmap bv f r temp stack sn es x y)
+                                             | _ => Some Error
+                               end
+
+               | qxor => do bval <- qvar_eq smap bv size r x y @
+                               match bval with Value false => (init_c size smap vmap bv r sn es x y)
+                                             | _ => Some Error
+                               end
+
+               | fadd => do bval <- qvar_eq smap bv size r x y @
+                               match bval with Value false => (fadd_c size smap vmap bv f r temp stack sn es x y)
+                                             | _ => Some Error
+                               end
+
+               | fsub => do bval <- qvar_eq smap bv size r x y @
+                               match bval with Value false => (fsub_c size smap vmap bv f r temp stack sn es x y)
+                                             | _ => Some Error
+                               end
+
+               | nfac => do t3v <- par_eval_cfac_check smap bv size r y @
+                              do vx <- par_find_var_check smap bv size r x @
+                      match t3v with Value t3v' => match vx with Value vx' =>
+                               Some (Value (None,sn,Store.add vx' (nat2fb (fact (a_nat2fb t3v' size))) r,es))
+                        | _ => Some Error end | _ => Some Error end
+
+               | fdiv => do t3v <- par_eval_cfac_check smap bv size r y @
+                              do vx <- par_find_var_check smap bv size r x @
+                      match t3v with Value t3v' => match vx with Value vx' =>
+                       do txv <- Store.find vx' r @
+                               Some (Value (None,sn,Store.add vx' 
+                            (fbrev size (nat2fb (((a_nat2fb (fbrev size txv) size)) / (a_nat2fb t3v' size)))) r,es))
+                        | _ => Some Error end | _ => Some Error end
+
+               | _ => None
+   end.
+
+
+Definition com_bin (op:qop) (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
+                 (bv:benv) (f:flag) (r:cstore) (temp temp1 stack:var) (sn:nat) (es:estore) (x y z:cfac)
+                 : option (@value (option exp * nat * cstore * estore)) :=
+   match op with nmul =>  do bval <- qvar_eq smap bv size r x y @
+                           match bval with (Value false) => 
+                               do bval1 <- (qvar_eq smap bv size r x z) @
+                           match bval1 with (Value false) => 
+                               nqmul_c size smap vmap bv f r temp stack sn es x y z
+                             | _ => Some Error
+                           end
+                             | _ => Some Error
+                           end
+               | fmul =>  do bval <- qvar_eq smap bv size r x y @
+                           match bval with (Value false) => 
+                               do bval1 <- (qvar_eq smap bv size r x z) @
+                           match bval1 with (Value false) => 
+                                   fmul_c size smap vmap bv f r temp stack sn es x y z
+                             | _ => Some Error
+                           end
+                             | _ => Some Error
+                           end
+               | ndiv => do bval <- qvar_eq smap bv size r x y @ 
+                          match bval with (Value false) => 
+                             do t2v <- par_eval_cfac_check smap bv size r z @
+                           match t2v with Value t2v' => div_c size smap vmap bv f r temp temp1 stack sn es x y t2v'
+                                     | _ => Some Error
+                           end
+                             | _ => Some Error
+                          end
+
+               | nmod => do bval <- qvar_eq smap bv size r x y @ 
+                          match bval with (Value false) => 
+                             do t2v <- par_eval_cfac_check smap bv size r z @
+                           match t2v with Value t2v' => mod_c size smap vmap bv f r temp temp1 stack sn es x y t2v'
+                                     | _ => Some Error
+                           end
+                             | _ => Some Error
+                          end
+
+           | nadd => do t2v <- par_eval_cfac_check smap bv size r y @
+                             do t3v <- par_eval_cfac_check smap bv size r z @
+                              do vx <- par_find_var_check smap bv size r x @
+                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
+                               Some (Value ((None,sn,Store.add vx' (nat2fb (((a_nat2fb t2v' size) + (a_nat2fb t3v' size)) mod 2^size)) r,es)))
+                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
+
+           | nsub => do t2v <- par_eval_cfac_check smap bv size r y @
+                             do t3v <- par_eval_cfac_check smap bv size r z @
+                              do vx <- par_find_var_check smap bv size r x @
+                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
+                               Some (Value ((None,sn,Store.add vx' (nat2fb (((a_nat2fb t2v' size) - (a_nat2fb t3v' size)) mod 2^size)) r,es)))
+                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
+
+           | fadd => do t2v <- par_eval_cfac_check smap bv size r y @
+                             do t3v <- par_eval_cfac_check smap bv size r z @
+                              do vx <- par_find_var_check smap bv size r x @
+                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
+                               Some (Value ((None,sn,Store.add vx'
+                          (fbrev size (nat2fb (((a_nat2fb (fbrev size t2v') size) + (a_nat2fb (fbrev size t3v') size)) mod 2^size))) r,es)))
+                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
+
+           | fsub => do t2v <- par_eval_cfac_check smap bv size r y @
+                             do t3v <- par_eval_cfac_check smap bv size r z @
+                              do vx <- par_find_var_check smap bv size r x @
+                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
+                               Some (Value ((None,sn,Store.add vx'
+                          (fbrev size (nat2fb (((a_nat2fb (fbrev size t2v') size) - (a_nat2fb (fbrev size t3v') size)) mod 2^size))) r,es)))
+                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
+
+           | fndiv => do t2v <- par_eval_cfac_check smap bv size r y @
+                             do t3v <- par_eval_cfac_check smap bv size r z @
+                              do vx <- par_find_var_check smap bv size r x @
+                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
+                               Some (Value ((None,sn,Store.add vx' (fbrev size (nat2fb ((((a_nat2fb t2v' size) * 2^size)
+                                      / (a_nat2fb t3v' size)) mod 2^size))) r,es)))
+                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
+
+               | _ => None
+   end.
 
 (* The main function to translate statements.
    C mode statements are evaluated, while Q mode statements are to generate circuits. *)
 Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  (bv:benv) (fl:flag) (r:cstore) (temp temp1 stack:var)
-                  (sn:nat) (fv:fmap) (es:estore) (bases:estore) (e:qexp) : option (@value (option pexp * nat * cstore * estore)) :=
-   match e with qfor x n e' => 
-     do t2v' <- par_eval_cfac_check smap bv size r Nat n @
+                  (sn:nat) (fv:fmap) (es:estore) (bases:estore) (e:qexp) : option (@value (option exp * nat * cstore * estore)) :=
+   match e with
+          | skip => Some (Value (None,sn,r,es))
+
+          | qfor x n e' => 
+     do t2v' <- par_eval_cfac_check smap bv size r n @
        match t2v' with Value t2v =>
-         let fix trans_while (r:cstore) (sn:nat) (i:nat) : option (@value (option pexp * nat * cstore * estore)) :=
+         let fix trans_while (r:cstore) (sn:nat) (i:nat) : option (@value (option exp * nat * cstore * estore)) :=
             match i with 0 => Some (Value (None,sn,r,es))
                      | S m => do re <- trans_qexp size smap vmap bv fl r temp temp1 stack sn fv bases bases e' @
                                match re with Value (cir,sn',r',es') =>
@@ -6194,11 +6197,11 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                  do vx <- par_find_var_check smap bv size r x @
                     match vx with Value vx' => 
                         do exps <- Store.find vx' es @
-                             do exp <- hd_error exps @ Some (Value (Some (inv_pexp exp),sn,r,Store.add vx' (tl exps) es))
+                             do exp <- hd_error exps @ Some (Value (Some (inv_exp exp),sn,r,Store.add vx' (tl exps) es))
                            | _ => Some Error
                     end
 
-           | call f x => match lookup_fmap fv f with None => None
+           | call x f vs => match lookup_fmap fv f with None => None
                        | Some (u,e',smap',vmap',bv',r') => 
                   do vuv <- par_find_var_check smap' bv' size r' u @
                    match vuv with Value vu =>
@@ -6208,13 +6211,13 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                          do t' <- BEnv.find (fst vx) bv @
                          if (is_q t') && (is_q t) then
                             do exps <- Store.find vx es @
-                             Some (Value (Some (e';; Exp (copyto (vmap' vu) (vmap vx) (get_size size (get_ct t)));; inv_pexp e'),sn,r,
-                               Store.add vx ((e';; Exp (copyto (vmap' vu) (vmap vx) (get_size size (get_ct t)));; inv_pexp e')::exps) es))
+                             Some (Value (Some (e';  (copyto (vmap' vu) (vmap vx) (get_size size (get_ct t))); inv_exp e'),sn,r,
+                               Store.add vx ((e';  (copyto (vmap' vu) (vmap vx) (get_size size (get_ct t))); inv_exp e')::exps) es))
                          else if (is_q t') && (is_c t) then
                             do exps <- Store.find vx es @
                              do uv <- Store.find vu r' @
-                             Some (Value (Some (Exp (init_v (get_size size (get_ct t)) (vmap vx) uv)),sn,r,
-                               Store.add vx ((Exp (init_v (get_size size (get_ct t)) (vmap vx) uv))::exps) es))
+                             Some (Value (Some ( (init_v (get_size size (get_ct t)) (vmap vx) uv)),sn,r,
+                               Store.add vx (( (init_v (get_size size (get_ct t)) (vmap vx) uv))::exps) es))
                          else do uv <- Store.find vu r' @ 
                                do xv <- Store.find vx r @  Some (Value (None,sn,Store.add vx xv r,es))
                       | _ => Some Error end
@@ -6240,107 +6243,16 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                 | _ => Some Error
                  end
 
-           | init x v => if ¬ (qvar_eq bv size r x v) then init_c size smap vmap bv r sn es x v else Some Error
-
+           | init x v => do bval <- qvar_eq smap bv size r x v @
+                                   match bval with Value false => init_c size smap vmap bv r sn es x v 
+                                                 | _ => Some Error
+                                    end
 
            | slrot x => lrot_c size smap vmap bv r sn es x
 
-           | qxor x y => if ¬ (qvar_eq bv size r x y) then init_c size smap vmap bv r sn es x y else Some Error
+           | unary x op v => com_unary op size smap vmap bv fl r temp stack sn es x v 
 
-           | nadd x y => if ¬ (qvar_eq bv size r x y) then
-                      (nadd_c size smap vmap bv fl r temp stack sn es x y) else Some Error
-
-           | nsub x y => if ¬ (qvar_eq bv size r x y) then
-                      (nsub_c size smap vmap bv fl r temp stack sn es x y) else Some Error
-
-           | nmul x y z => if ¬ (qvar_eq bv size r x z) && ¬ (qvar_eq bv size r y z) then
-                     nqmul_c size smap vmap bv fl r temp stack sn es x y z
-                  else Some Error
-
-           | fadd x y => if ¬ (qvar_eq bv size r x y) then
-                      (fadd_c size smap vmap bv fl r temp stack sn es x y) else Some Error
-
-           | fsub x y => if ¬ (qvar_eq bv size r x y) then
-                      (fsub_c size smap vmap bv fl r temp stack sn es x y) else Some Error
-
-           | fmul x y z => if ¬ (qvar_eq bv size r x z) && ¬ (qvar_eq bv size r y z) then
-                     fmul_c size smap vmap bv fl r temp stack sn es x y z
-                  else Some Error
-
-           | skip => Some (Value (None,sn,r,es))
-
-
-           | ndiv x y n => do t2v <- par_eval_cfac_check smap bv size r Nat n @
-                           match t2v with Value t2v' => div_c size smap vmap bv fl r temp temp1 stack sn es x y t2v'
-                                     | _ => Some Error
-                           end
-
-
-           | nmod x y n => do t2v <- par_eval_cfac_check smap bv size r Nat y @
-                             do t3v <- par_eval_cfac_check smap bv size r Nat n @
-                              do vx <- par_find_var_check smap bv size r x @
-                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx' (nat2fb ((a_nat2fb t2v' size) mod (a_nat2fb t3v' size))) r,es)))
-                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
-
-           | nfac x n =>  do t3v <- par_eval_cfac_check smap bv size r Nat n @
-                              do vx <- par_find_var_check smap bv size r x @
-                      match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value (None,sn,Store.add vx' (nat2fb (fact (a_nat2fb t3v' size))) r,es))
-                        | _ => Some Error end | _ => Some Error end
-
-           | fdiv x n =>  do t3v <- par_eval_cfac_check smap bv size r Nat n @
-                              do vx <- par_find_var_check smap bv size r x @
-                      match t3v with Value t3v' => match vx with Value vx' =>
-                       do txv <- Store.find vx' r @
-                               Some (Value (None,sn,Store.add vx' 
-                            (fbrev size (nat2fb (((a_nat2fb (fbrev size txv) size)) / (a_nat2fb t3v' size)))) r,es))
-                        | _ => Some Error end | _ => Some Error end
-
-           | ncadd x y n => do t2v <- par_eval_cfac_check smap bv size r Nat y @
-                             do t3v <- par_eval_cfac_check smap bv size r Nat n @
-                              do vx <- par_find_var_check smap bv size r x @
-                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx' (nat2fb (((a_nat2fb t2v' size) + (a_nat2fb t3v' size)) mod 2^size)) r,es)))
-                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
-
-           | ncsub x y n => do t2v <- par_eval_cfac_check smap bv size r Nat y @
-                             do t3v <- par_eval_cfac_check smap bv size r Nat n @
-                              do vx <- par_find_var_check smap bv size r x @
-                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx' (nat2fb (((a_nat2fb t2v' size) - (a_nat2fb t3v' size)) mod 2^size)) r,es)))
-                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
-
-           | fcadd x y n => do t2v <- par_eval_cfac_check smap bv size r FixedP y @
-                             do t3v <- par_eval_cfac_check smap bv size r FixedP n @
-                              do vx <- par_find_var_check smap bv size r x @
-                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx'
-                          (fbrev size (nat2fb (((a_nat2fb (fbrev size t2v') size) + (a_nat2fb (fbrev size t3v') size)) mod 2^size))) r,es)))
-                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
-
-           | fcsub x y n => do t2v <- par_eval_cfac_check smap bv size r FixedP y @
-                             do t3v <- par_eval_cfac_check smap bv size r FixedP n @
-                              do vx <- par_find_var_check smap bv size r x @
-                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx'
-                          (fbrev size (nat2fb (((a_nat2fb (fbrev size t2v') size) - (a_nat2fb (fbrev size t3v') size)) mod 2^size))) r,es)))
-                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
-
-           | ncmul x y n => do t2v <- par_eval_cfac_check smap bv size r Nat y @
-                             do t3v <- par_eval_cfac_check smap bv size r Nat n @
-                              do vx <- par_find_var_check smap bv size r x @
-                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx' (nat2fb (((a_nat2fb t2v' size) * (a_nat2fb t3v' size)) mod 2^size)) r,es)))
-                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
-
-           | fndiv x y n => do t2v <- par_eval_cfac_check smap bv size r Nat y @
-                             do t3v <- par_eval_cfac_check smap bv size r Nat n @
-                              do vx <- par_find_var_check smap bv size r x @
-                               match t2v with Value t2v' => match t3v with Value t3v' => match vx with Value vx' =>
-                               Some (Value ((None,sn,Store.add vx' (fbrev size (nat2fb ((((a_nat2fb t2v' size) * 2^size)
-                                      / (a_nat2fb t3v' size)) mod 2^size))) r,es)))
-                             | _ => Some Error end | _ => Some Error end | _ => Some Error end
+           | binapp x op y z => com_bin op size smap vmap bv fl r temp temp1 stack sn es x y z
 
            | qseq e1 e2 => match trans_qexp size smap vmap bv fl r temp temp1 stack sn fv es bases e1 with None => None
                     | Some (Value ( e1',sn1,store1,es1)) => 
@@ -6350,7 +6262,7 @@ Fixpoint trans_qexp (size:nat) (smap : qvar -> nat) (vmap: (qvar*nat) -> var)
                      end
                      | _ => Some Error
                  end
- end.
+   end.
 
 (*
 Definition stack (l:list (btype * var * nat)) : var :=
@@ -6458,21 +6370,21 @@ Fixpoint trans_funs (fv:fenv) (size sn:nat) (temp temp1 stack:var) (fl:flag) (r:
                   (smap: qvar -> nat) (vmap : (qvar*nat) -> var) 
             (vmaps: list ((qvar *nat)*var)) (vmap_num:nat) (fmap:fmap) (l:list func) :=
     match l with [] => Some (Value (vmaps , sn, fmap))
-            | (( f , ls , e , rx)::xl) =>
+            | (( f , tvl, ls , e , rx)::xl) =>
                  match FEnv.find f fv with None => None
-                           | Some (ls',e',bv,rx') => 
+                           | Some (tvl',ls',e',bv,rx') => 
                     match trans_qexp size 
                    (gen_smap_l ls smap) (gen_vmap_l ls vmap vmap_num)
                      bv fl (init_cstore r (ls)) temp temp1 stack 0 fmap (init_estore es ls) (init_estore es ls) e
                     with None => None
                     | Some Error => Some Error
                     | Some (Value (None,sn1,store1,es)) => 
-         trans_funs fv size sn temp temp1 stack fl r es smap vmap vmaps vmap_num ((f,rx,Exp (SKIP ((stack),0)), (gen_smap_l ls smap),
+         trans_funs fv size sn temp temp1 stack fl r es smap vmap vmaps vmap_num ((f,rx, (SKIP ((stack),0)), (gen_smap_l ls smap),
                               (gen_vmap_l ls vmap vmap_num),bv,store1)::fmap) xl
                   | Some (Value (Some e1,sn1,store1,es)) =>
         match gen_vmap_ll ls vmaps vmap_num with (vmaps',vmap_num') =>
          trans_funs fv size (Nat.max sn sn1) temp temp1 stack fl r es smap (gen_vmap_l ls vmap vmap_num)
-                 vmaps' vmap_num' ((f,rx,Exp (SKIP ((stack),0)), (gen_smap_l ls smap),
+                 vmaps' vmap_num' ((f,rx, (SKIP ((stack),0)), (gen_smap_l ls smap),
                               (gen_vmap_l ls vmap vmap_num),bv,store1)::fmap) xl
         end
 
@@ -6522,10 +6434,10 @@ Definition trans_prog' (p:prog) (flag:flag) (fv:fenv) :=
                match vx with Value vx' => 
                 do t <- BEnv.find (fst vx') bv @ 
                if is_q t then 
-                    Some (Value (vmaps,size,sn,p;;Exp 
+                    Some (Value (vmaps,size,sn,p; 
                          (copyto (vmap' vx') (vmap ((G rx'),0)) (get_size size (get_ct t)))))
                 else do vxv <- Store.find vx' r @
-                    Some (Value (([((G rx',0),vmap (G rx',0))]),size,sn,Exp (init_v (get_size size (get_ct t)) (vmap (G rx',0)) vxv)))
+                    Some (Value (([((G rx',0),vmap (G rx',0))]),size,sn,(init_v (get_size size (get_ct t)) (vmap (G rx',0)) vxv)))
                    | _ => Some Error
                end
         end
@@ -6556,7 +6468,7 @@ Definition avs_gen (size:nat) (length : nat) : nat -> posi :=
               fun x => (x / size, if (x/size) <? length+1 then x mod size else x - (x/size * (length+1))).
 
 
-Definition prog_to_sqir (p:prog) (f:flag) : option (nat * nat * pexp * vars * (nat -> posi)) :=
+Definition prog_to_sqir (p:prog) (f:flag) : option (nat * nat * exp * vars * (nat -> posi)) :=
    match trans_prog p f with Some (Value (vmaps,size,sn,p)) => 
           match gen_vars_vmap vmaps size sn with (vars,d) => 
              match avs_gen size (length vmaps) with avs =>
@@ -6568,7 +6480,7 @@ Definition prog_to_sqir (p:prog) (f:flag) : option (nat * nat * pexp * vars * (n
 
 Check prog_to_sqir.
 
-Check trans_pexp.
+Check trans_exp.
 
 (*
 Definition prog_to_sqir_real (p:prog) (f:flag) :=
