@@ -2263,6 +2263,87 @@ Qed.
 Local Opaque comparator01.
 
 (* The correctness proof of the subtractor. *)
+Lemma subtractor01_correct_fb : 
+  forall n f x y c aenv tenv ,
+    0 < n -> aenv x = n -> aenv y = n -> snd c < aenv (fst c) ->
+    Env.MapsTo x Nor tenv -> Env.MapsTo y Nor tenv -> Env.MapsTo (fst c) Nor tenv ->
+    right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    x <> y -> x <> fst c -> y <> fst c ->
+    exp_sem aenv (subtractor01 n x y c) f =
+        (put_cus f y (sumfb (¬ (get_cua (f c))) (negatem n (get_cus n f x)) (get_cus n f y)) n).
+Proof.
+  intros.
+  assert (nor_modes f x n).
+  rewrite <- H0.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_modes f y n).
+  rewrite <- H1.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_mode f c).
+  apply type_nor_mode with (env := tenv) (aenv := aenv); try easy.
+  unfold subtractor01. remember (X c) as negations. simpl.
+  rewrite Heqnegations in *.
+  rewrite x_nor_sem with (v := put_cu (f c) (¬ (get_cua (f c)))); try easy.
+  rewrite negator0_correct with (n := n); try easy.
+  rewrite adder01_correct_fb; try easy.
+  rewrite put_cus_update_flip by iner_p.
+  rewrite eupdate_index_eq.
+  rewrite get_put_cu by easy.
+  rewrite <- put_cus_update_flip by iner_p.
+  rewrite get_put_cus_cut_n.
+  rewrite get_cus_put_neq by lia.
+  rewrite get_cus_up by iner_p.
+  rewrite get_cus_up by iner_p.
+  rewrite put_cus_twice_neq by iner_p.
+  assert ((exp_sem aenv (inv_exp (negator0 n x))
+     (put_cus
+        (put_cus (f [c |-> put_cu (f c) (¬ (get_cua (f c)))]) y
+           (sumfb (¬ (get_cua (f c))) (cut_n (negatem n (get_cus n f x)) n)
+              (get_cus n f y)) n) x (negatem n (get_cus n f x)) n))
+       = (put_cus (f [c |-> put_cu (f c) (¬ (get_cua (f c)))]) y
+           (sumfb (¬ (get_cua (f c))) (cut_n (negatem n (get_cus n f x)) n)
+              (get_cus n f y)) n)).
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  apply negator0_wt. easy.
+  apply right_mode_exp_put_cus_same.
+  apply right_mode_exp_up_same ; try easy.
+  apply qft_uniform_put_cus_same.
+  apply qft_uniform_put_cu_same; try easy.
+  apply right_mode_exp_up_same ; try easy.
+  apply qft_gt_put_cus_same.
+  apply qft_gt_put_cu_same; try easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply H13. easy.
+  rewrite negator0_correct with (n := n); try easy.
+  rewrite get_cus_put_neq by lia.
+  rewrite get_cus_up by iner_p. easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply H12. easy.
+  rewrite H15.
+  rewrite put_cus_update_flip by iner_p.
+  apply inv_pexp_reverse with (tenv := tenv) (tenv' := tenv); try easy.
+  constructor. constructor. easy.
+  apply right_mode_exp_put_cus_same. easy.
+  apply qft_uniform_put_cus_same. easy. easy.
+  apply qft_gt_put_cus_same. easy.
+  easy.
+  rewrite x_nor_sem with (v :=  put_cu (f c) (¬ (get_cua (f c)))); try easy.
+  rewrite cut_n_eq. easy.
+  intros.
+  unfold negatem,get_cus.
+  bdestruct (i <? n). lia. easy.
+  destruct c. nor_mode_simpl.
+  rewrite put_cus_neq_1 by iner_p. easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply H12. easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply H12. easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply H13. easy.
+  unfold nor_mode in *. rewrite put_cus_neq_1 by iner_p.
+  rewrite eupdate_index_eq.
+  unfold put_cu.
+  destruct (f c). easy. easy. easy.
+  unfold nor_modes. intros. nor_mode_simpl. apply H12. easy.
+Qed.
+
+
 Lemma subtractor01_correct :
   forall tenv aenv n x y c1 v1 v2 f f' f'',
     0 < n -> n = aenv x -> n = aenv y -> snd c1 < aenv (fst c1) ->

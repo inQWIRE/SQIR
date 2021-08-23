@@ -632,6 +632,14 @@ Proof.
   intros. bdestruct (x <? n). easy. easy.
 Qed.
 
+Lemma cut_n_twice_small : forall n m f, n <= m -> cut_n (cut_n f m) n = cut_n f n.
+Proof.
+ intros. unfold cut_n.
+  apply functional_extensionality.
+  intros. bdestruct (x <? n). bdestruct (x <? m).  easy.
+  lia. easy.
+Qed.
+
 Lemma nat2fb_bound : forall n x, x < 2^n -> (forall i, i >= n -> nat2fb x i = false).
 Proof.
  intros. 

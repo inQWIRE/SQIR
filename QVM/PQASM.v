@@ -7857,7 +7857,7 @@ Definition findnum (x:nat) (n:nat) := findnum' n x (2^(n-1)) 0.
 
 
 Fixpoint copyto (x y:var) size := match size with 0 => SKIP (x,0) 
-                  | S m => CNOT (x,m) (y,m) ; copyto x y m
+                  | S m => copyto x y m;CNOT (x,m) (y,m)
     end.
 
 Definition div_two_spec (f:nat->bool) := fun i => f (i+1).
@@ -8286,5 +8286,270 @@ Proof.
   apply H1; try easy.
 Qed.
 
+Definition bin_xor (f1 f2:nat -> bool) (size:nat) :=
+  cut_n (fun x => xorb (f1 x) (f2 x)) size.
+
+Lemma init_v_sem_full : forall n size x M f aenv tenv, 
+            n <= size -> size = aenv x -> Env.MapsTo x Nor tenv
+            -> right_mode_env aenv tenv f ->
+            (exp_sem aenv (init_v n x M) f) = put_cus f x (bin_xor (get_cus n f x) M n) n.
+Proof.
+  induction n; intros;simpl.
+  unfold put_cus,cut_n.
+  apply functional_extensionality; intro.
+  destruct x0. simpl in *.
+  bdestruct (v =? x). easy. easy.
+  assert (n <= size) by lia.
+  specialize (IHn size x M f aenv tenv H4 H1 H2 H3).
+  apply functional_extensionality; intro.
+  assert (nor_modes f x (aenv x)).
+  apply type_nor_modes with (env := tenv); try easy.
+  rewrite <- H1 in H5. 
+  unfold nor_modes in H5.
+  destruct (M n) eqn:eq1.
+  destruct x0. simpl in *.
+  bdestruct (v =? x). subst.
+  bdestruct ( n =? n0). subst.
+  rewrite eupdate_index_eq.
+  bdestruct (n0 =? 0). subst.
+  simpl.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n,exchange,put_cu. rewrite eq1. bt_simpl.
+  rewrite get_cus_cua by lia.
+  bdestruct (0 <? 1).
+  unfold get_cua.
+  assert (0 < aenv x) by lia.
+  specialize (H5 0 H6). unfold nor_mode in *.
+  destruct (f (x, 0)) eqn:eq2.
+  assert ((@pair var nat x 0) = (@pair Env.key nat x 0)) by easy.
+  rewrite H7 in *. rewrite eq2 in *. easy.
+  assert ((@pair var nat x 0) = (@pair Env.key nat x 0)) by easy.
+  rewrite H7 in *. rewrite eq2 in *. easy.
+  assert ((@pair var nat x 0) = (@pair Env.key nat x 0)) by easy.
+  rewrite H7 in *. rewrite eq2 in *. easy. lia.
+  rewrite efresh_exp_sem_irrelevant ; try easy.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n.
+  bdestruct (n0 <? S n0).
+  rewrite eq1. bt_simpl.
+  rewrite get_cus_cua by lia.
+  assert (n0 < aenv x) by lia.
+  specialize (H5 n0 H7). unfold nor_mode,exchange,put_cu,get_cua in *.
+  destruct (f (x,n0)) eqn:eq2.
+  assert ((@pair var nat x n0) = (@pair Env.key nat x n0)) by easy.
+  rewrite H8 in *. rewrite eq2 in *.
+  easy.
+  assert ((@pair var nat x n0) = (@pair Env.key nat x n0)) by easy.
+  rewrite H8 in *. rewrite eq2 in *. easy.
+  assert ((@pair var nat x n0) = (@pair Env.key nat x n0)) by easy.
+  rewrite H8 in *. rewrite eq2 in *. easy.
+  lia.
+  apply exp_fresh_init. lia.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn.
+  bdestruct (n0 <? n).
+  unfold bin_xor,cut_n in *.
+  rewrite put_cus_eq by lia.
+  rewrite put_cus_eq by lia.
+  bdestruct (n0 <? n). bdestruct (n0 <? S n).
+  simpl.
+  rewrite get_cus_cua by lia.
+  rewrite get_cus_cua by lia. easy.
+  lia. lia.
+  rewrite put_cus_neq_2 by lia.
+  rewrite put_cus_neq_2 by lia.
+  easy.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn.
+  rewrite put_cus_neq by lia.
+  rewrite put_cus_neq by lia. easy.
+  rewrite IHn.
+  destruct x0.
+  bdestruct (v =? x). subst.
+  bdestruct (n0 <? n).
+  rewrite put_cus_eq by lia.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n in *.
+  bdestruct (n0 <? n). bdestruct (n0 <? S n).
+  rewrite get_cus_cua by lia.
+  rewrite get_cus_cua by lia. easy. lia. lia.
+  simpl.
+  bdestruct (n0 =? n). subst.
+  rewrite put_cus_neq_2 by lia.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n.
+  rewrite eq1. bt_simpl.
+  bdestruct (n <? S n).
+  rewrite get_cus_cua by lia.
+  rewrite put_get_cu; try easy.
+  apply H5. easy. lia.
+  rewrite put_cus_neq_2 by lia.
+  rewrite put_cus_neq_2 by lia. easy.
+  rewrite put_cus_neq by lia.
+  rewrite put_cus_neq by lia. easy. 
+Qed.
 
 
+Lemma well_typed_copyto_nor : forall n x v aenv tenv, x <> v -> Env.MapsTo v Nor tenv ->
+          Env.MapsTo x Nor tenv -> well_typed_pexp aenv tenv (copyto x v n) tenv.
+Proof.
+ induction n;intros;simpl.
+ constructor. constructor.
+ apply pe_seq with (env' := tenv).
+ apply IHn;easy.
+ apply pcu_nor. easy.
+ constructor. iner_p.
+ unfold exp_neu. intros. constructor.
+ constructor. constructor. easy. 
+Qed. 
+
+Lemma exp_fresh_copy : forall n x size y aenv, 0 < size <= n
+         -> exp_fresh aenv (x, n) (copyto x y size).
+Proof.
+  induction size;intros;simpl.
+  simpl. constructor. iner_p.
+  bdestruct (size =? 0). subst.
+  constructor. simpl. constructor. iner_p.
+  constructor. iner_p.
+  constructor. iner_p.
+  constructor. apply IHsize. lia.
+  constructor. iner_p.
+  constructor. iner_p.
+Qed.
+
+
+Lemma copyto_sem' : forall n size x y f aenv tenv, 
+            n <= size -> size = aenv x -> size = aenv y -> Env.MapsTo x Nor tenv -> Env.MapsTo y Nor tenv
+            -> right_mode_env aenv tenv f ->
+            (exp_sem aenv (copyto x y n) f) = put_cus f y (bin_xor (get_cus size f y) (get_cus size f x) n) n.
+Proof.
+  induction n; intros;simpl in *.
+  simpl.
+  apply functional_extensionality; intro.
+  destruct x0.
+  unfold put_cus,bin_xor.
+  simpl in *.
+  bdestruct (v =? y). easy. easy.
+  assert (nor_modes f x size).
+  rewrite H1.
+  apply type_nor_modes with (env := tenv); try easy.
+  assert (nor_modes f y size).
+  rewrite H2.
+  apply type_nor_modes with (env := tenv); try easy.
+  bdestruct (n =? 0). subst.
+  simpl.
+  destruct (get_cua (f (x, 0))) eqn:eq1.
+  assert ((@pair var nat x 0) = (@pair Env.key nat x 0)) by easy.
+  rewrite H1 in *. rewrite eq1 in *.
+  apply functional_extensionality; intro.
+  destruct x0.
+  bdestruct ((y,0) ==? (v,n)). inv H8.
+  rewrite eupdate_index_eq.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n.
+  bdestruct (0 <? 1).
+  rewrite get_cus_cua by lia.
+  rewrite get_cus_cua by lia.
+  rewrite H1. rewrite eq1. bt_simpl.
+  unfold exchange,put_cu,get_cua,nor_modes in *.
+  specialize (H7 0).
+  assert (0 < aenv x) by lia.
+  apply H7 in H9. unfold nor_mode in *.
+  destruct (f (v,0)). easy. easy. easy. lia.
+  rewrite eupdate_index_neq by iner_p.
+  bdestruct (y =? v). subst. assert (0 <> n).
+  intros R. subst. contradiction.
+  rewrite put_cus_neq_2 by lia. easy.
+  rewrite put_cus_neq by lia. easy.
+  assert ((@pair var nat x 0) = (@pair Env.key nat x 0)) by easy.
+  rewrite H1 in *. rewrite eq1 in *.
+  apply functional_extensionality; intro.
+  destruct x0.
+  bdestruct ((v,n) ==? (y,0)). inv H8.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n.
+  bdestruct (0 <? 1).
+  rewrite get_cus_cua by lia.
+  rewrite get_cus_cua by lia.
+  rewrite H1. rewrite eq1. bt_simpl.
+  rewrite put_get_cu. easy. apply H7. easy. lia.
+  bdestruct (y =? v). subst. assert (0 <> n).
+  intros R. subst. contradiction.
+  rewrite put_cus_neq_2 by lia. easy.
+  rewrite put_cus_neq by lia. easy.
+  rewrite efresh_exp_sem_irrelevant.
+  destruct (get_cua (f (x, n))) eqn:eq1.
+  assert ((@pair var nat x n) = (@pair Env.key nat x n)) by easy.
+  rewrite H9 in *. rewrite eq1 in *.
+  apply functional_extensionality; intro.
+  destruct x0.
+  bdestruct (v =? y). subst.
+  bdestruct (n0 =? n). subst.
+  rewrite eupdate_index_eq.
+  rewrite put_cus_eq by lia.
+  rewrite IHn with (size := aenv x) (tenv := tenv) ; try easy.
+  rewrite put_cus_neq_2 by lia.
+  unfold bin_xor,cut_n.
+  bdestruct (n <? S n).
+  rewrite get_cus_cua by lia.
+  rewrite get_cus_cua by lia.
+  rewrite H9. rewrite eq1. bt_simpl.
+  unfold exchange,put_cu,get_cua,nor_modes in *.
+  specialize (H7 n).
+  assert (n < aenv x) by lia.
+  apply H7 in H10. unfold nor_mode in *.
+  destruct (f (y, n)) eqn:eq2.
+  assert ((@pair var nat y n) = (@pair Env.key nat y n)) by easy.
+  rewrite H11 in *. rewrite eq2 in *. easy. 
+  assert ((@pair var nat y n) = (@pair Env.key nat y n)) by easy.
+  rewrite H11 in *. rewrite eq2 in *. easy. 
+  assert ((@pair var nat y n) = (@pair Env.key nat y n)) by easy.
+  rewrite H11 in *. rewrite eq2 in *. easy.  lia. lia.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn with (size := aenv x) (tenv := tenv) ; try easy.
+  bdestruct (n0 <? n). 
+  rewrite put_cus_eq by lia.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n.
+  bdestruct (n0 <? n). bdestruct (n0 <? S n). easy. lia.  lia.
+  rewrite put_cus_neq_2 by lia.
+  rewrite put_cus_neq_2 by lia. easy. lia.
+  rewrite eupdate_index_neq by iner_p.
+  rewrite IHn with (size := aenv x) (tenv := tenv) ; try easy.
+  rewrite put_cus_neq by lia.
+  rewrite put_cus_neq by lia. easy. lia. lia.
+  assert ((@pair var nat x n) = (@pair Env.key nat x n)) by easy.
+  rewrite H9 in *. rewrite eq1 in *.
+  rewrite IHn with (size := aenv x) (tenv := tenv) ; try easy.
+  rewrite <- H1.
+  apply functional_extensionality; intro.
+  destruct x0.
+  bdestruct (v =? y). subst.
+  bdestruct (n0 =? n). subst.
+  rewrite put_cus_neq_2 by lia.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n.
+  bdestruct (n <? S n).
+  rewrite get_cus_cua by lia.
+  rewrite get_cus_cua by lia.
+  rewrite H9. rewrite eq1. bt_simpl.
+  rewrite put_get_cu. easy. apply H7. lia. lia.
+  bdestruct (n0 <? n). 
+  rewrite put_cus_eq by lia.
+  rewrite put_cus_eq by lia.
+  unfold bin_xor,cut_n.
+  bdestruct (n0 <? n). bdestruct (n0 <? S n). easy. lia.  lia.
+  rewrite put_cus_neq_2 by lia.
+  rewrite put_cus_neq_2 by lia. easy.
+  rewrite put_cus_neq by lia.
+  rewrite put_cus_neq by lia. easy. lia. lia.
+  apply exp_fresh_copy. lia.
+Qed.
+
+Lemma copyto_sem : forall n x y f aenv tenv, 
+            n = aenv x -> n = aenv y -> Env.MapsTo x Nor tenv -> Env.MapsTo y Nor tenv
+            -> right_mode_env aenv tenv f ->
+            (exp_sem aenv (copyto x y n) f) = put_cus f y (bin_xor (get_cus n f y) (get_cus n f x) n) n.
+Proof.
+  intros. apply copyto_sem' with (tenv := tenv); try easy.
+Qed.

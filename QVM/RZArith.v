@@ -3049,9 +3049,32 @@ Definition rz_full_adder_form (x:var) (n:nat) (y:var) :=
    (Rev x; Rev y); QFT x ; rz_full_adder x n y ; 
   inv_exp ( (Rev x; Rev y); QFT x).
 
+Lemma rz_full_adder_form_correct :
+  forall n f x y aenv tenv ,
+    0 < n ->  x<> y -> aenv x = n -> aenv y = n ->
+    Env.MapsTo x Nor tenv -> Env.MapsTo y Nor tenv ->
+    right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    exp_sem aenv (rz_full_adder_form x n y) f =
+        (put_cus f x (sumfb false (get_cus n f y) (get_cus n f x)) n).
+Proof.
+Admitted.
+
+
 Definition rz_adder_form (x:var) (n:nat) (M:nat -> bool) :=
    (Rev x); QFT x; rz_adder x n M ;
   inv_exp ( (Rev x); QFT x).
+
+
+Lemma rz_adder_form_correct :
+  forall n f x M aenv tenv ,
+    0 < n -> aenv x = n -> Env.MapsTo x Nor tenv ->
+    right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    exp_sem aenv (rz_adder_form x n M) f =
+        (put_cus f x (sumfb false M (get_cus n f x)) n).
+Proof.
+Admitted.
 
 Definition vars_for_rz_adder (size:nat) := gen_vars size (x_var::[]).
 
@@ -3072,9 +3095,29 @@ Definition rz_full_sub_form (x:var) (n:nat) (y:var) :=
    (Rev x; Rev y); QFT x ; rz_full_sub x n y ; 
   inv_exp ( (Rev x; Rev y); QFT x).
 
+Lemma rz_full_sub_form_correct :
+  forall n f x y aenv tenv ,
+    0 < n ->  x<> y -> aenv x = n -> aenv y = n ->
+    Env.MapsTo x Nor tenv -> Env.MapsTo y Nor tenv ->
+    right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    exp_sem aenv (rz_full_sub_form x n y) f =
+        (put_cus f x (sumfb true (negatem n (get_cus n f y)) (get_cus n f x)) n).
+Proof.
+Admitted.
+
 (* Implementing x - M subtractor. *)
 Definition rz_sub_right (x:var) (n:nat) (M:nat -> bool) :=
    (Rev x); QFT x; rz_sub x n M ; inv_exp ( (Rev x); QFT x).
+
+Lemma rz_sub_right_sem : forall n f x M aenv tenv ,
+    0 < n -> aenv x = n -> Env.MapsTo x Nor tenv ->
+    right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    exp_sem aenv (rz_sub_right x n M) f =
+        (put_cus f x ((sumfb true (negatem n M) (get_cus n f x))) n).
+Proof.
+Admitted.
 
 (* Implementing M - x subtractor. *)
 Definition rz_sub_left (M:nat -> bool) (x:var) (n:nat) :=
