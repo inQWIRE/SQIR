@@ -280,35 +280,90 @@ Eval simpl in (sum_width (1 :: 3 :: 4 :: 6 :: 2 :: 1 :: 5 :: 2 :: 1 :: 5 :: 2 ::
 Definition run_ucom_part (qubits anc : nat) (c : base_ucom (qubits+anc)) (rnd : R) : nat :=
   let v := (uc_eval c) × basis_vector (2^(qubits+anc)) 0 in
   let l := map Cnorm2 (vec_to_list v) in
-  let l' := sum_width l (2^qubits) (2^anc) in
+  let l' := sum_width l (2^anc) (2^qubits) in
   sample l' rnd.
 
 Definition pr_run_part_outcome (qubits anc : nat) (c : base_ucom (qubits + anc)) (n : nat) : R := 
   let v := uc_eval c × basis_vector (2 ^ (qubits + anc)) 0 in
   let l := map Cnorm2 (vec_to_list v) in
-  let l' := sum_width l (2^qubits) (2^anc) in
+  let l' := sum_width l (2^anc) (2^qubits) in
   nth n l' 0.
 
-(* TODO: Fix up. Should also follow pretty easily from max_interval_size 
+(* TODO: Fix up. Should also follow pretty easily from max_interval_size  *)
+
+Lemma length_sum_width :
+  forall m l n,
+    length l = (n * m)%nat ->
+    length (sum_width l n m) = m.
+Proof.
+  induction m; intros.
+  - easy.
+  - simpl. rewrite IHm. easy. rewrite skipn_length. lia.
+Qed.
+
+Lemma fold_left_Rplus :
+  forall l r,
+    fold_left Rplus l r = (r + fold_left Rplus l 0)%R.
+Proof.
+  induction l; intros.
+  - simpl. lra.
+  - simpl. rewrite IHl. rewrite IHl with (r := (0 + a)%R). lra.
+Qed.
+
+Lemma fold_left_firstn :
+  forall n l,
+    0 <= fold_left Rplus (firstn n (map Cnorm2 l)) 0.
+Proof.
+  induction n; intros.
+  - simpl. lra.
+  - destruct l.
+    + simpl. lra.
+    + simpl. rewrite fold_left_Rplus. specialize (IHn l).
+      specialize (Cnorm2_ge_0 c) as G.
+      lra.
+Qed.
+
+Lemma skipn_map :
+  forall {A B} n (l : list A) (f : A -> B),
+    skipn n (map f l) = map f (skipn n l).
+Proof.
+  intros A B. induction n; intros.
+  - simpl. easy.
+  - destruct l. simpl. easy.
+    simpl. apply IHn.
+Qed.
+    
+Lemma nth_sum_width_Cnorm2 :
+  forall i m l n d,
+    length l = (n * m)%nat ->
+    (i < m)%nat ->
+    0 <= nth i (sum_width (map Cnorm2 l) n m) d.
+Proof.
+  induction i; intros.
+  - destruct m. lia.
+    simpl. apply fold_left_firstn.
+  - destruct m. lia.
+    simpl. rewrite skipn_map.
+    apply IHi. rewrite skipn_length. lia. lia.
+Qed.
+  
 Lemma pr_run_part_outcome_eq_aux : forall qubits anc (c : base_ucom (qubits + anc)) n,
-  (n < 2^(qubits + anc))%nat ->
+  (n < 2^qubits)%nat ->
   max_interval (fun x : R => run_ucom_part qubits anc c x = n) (pr_run_part_outcome qubits anc c n).
 Proof.
   intros.
+  remember (vec_to_list (uc_eval c × basis_vector (2 ^ (qubits + anc)) 0)) as l.
+  assert (length l = 2 ^ qubits * 2 ^ anc)%nat by (rewrite Heql; rewrite vec_to_list_length; rewrite Nat.pow_add_r; lia).
   apply max_interval_size.
-  rewrite map_length, vec_to_list_length; easy.
-  remember (vec_to_list (uc_eval c × basis_vector (2 ^ (qubits + anc)) 0)) as l. clear Heql.
+  rewrite length_sum_width. easy.
+  rewrite <- Heql. rewrite map_length. rewrite H0. lia.
   apply Forall_nth; intros.
-  gen l. induction i; intros.
-  - destruct l. simpl in H0; lia.
-    simpl. apply Cnorm2_ge_0.
-  - destruct l; simpl in H0; try lia.
-    apply IHi.
-    lia.
+  rewrite <- Heql in *. rewrite length_sum_width in H1.
+  apply nth_sum_width_Cnorm2. rewrite H0. lia. lia. rewrite map_length. lia.
 Qed.    
 
 Lemma pr_run_part_outcome_eq : forall qubits anc (c : base_ucom (qubits + anc)) n r,
-  (n < 2^(qubits+anc))%nat ->
+  (n < 2^qubits)%nat ->
   pr_run_part_outcome qubits anc c n = r <-> max_interval (fun x => run_ucom_part qubits anc c x = n) r.
 Proof.
   split; intros.
@@ -316,10 +371,9 @@ Proof.
     apply pr_run_part_outcome_eq_aux.
     easy.
   - eapply max_interval_unique.
-    apply pr_run_outcome_eq_aux; trivial.
+    apply pr_run_part_outcome_eq_aux; trivial.
     easy.
 Qed.
-*)
 
 (* Original axiom *)
 (* Axiom #1 - we will want some axiom that says that run_ucom_part returns
