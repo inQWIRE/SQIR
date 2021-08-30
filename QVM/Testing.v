@@ -1,9 +1,8 @@
-Require Import Arith NArith Vector Bvector Equality MSets OrderedTypeEx Lia.
+Require Import Arith NArith Vector Bvector Equality MSets OrderedTypeEx Lia BasicUtility VectorStates PQASM Utilities.
 From QuickChick Require Import QuickChick.
-Require Import PQASM Utilities.
 Import Vector (hd, tl).
 Import Decidability (dec).
-Import PQASM (exp(..), pexp(..), CNOT).
+Import PQASM (exp(..), CNOT).
 
 Module Nat_as_OT := Update_OT Nat_as_OT.
 (* Used for finite sets of variables *)
@@ -298,11 +297,11 @@ Definition st_equiv vars env prec (st st' : state) :=
   for_all_env (fun x => val_equiv prec (st x) (st' x)) vars env.
 
 (* Get the variables in an exp *)
-Fixpoint get_exp_vars e :=
+Fixpoint get_vars e :=
   match e with
   | SKIP p => singleton (fst p)
   | X p => singleton (fst p)
-  | CU p e' => add (fst p) (get_exp_vars e')
+  | CU p e' => add (fst p) (get_vars e')
   | RZ _ p => singleton (fst p)
   | RRZ _ p => singleton (fst p)
   | SR _ x => singleton x
@@ -311,26 +310,18 @@ Fixpoint get_exp_vars e :=
   | Lshift x => singleton x
   | Rshift x => singleton x
   | Rev x => singleton x
-  | e1; e2 => union (get_exp_vars e1) (get_exp_vars e2)
-  end.
-
-(* Get the variables in a pexp *)
-Fixpoint get_vars e : var_set :=
-  match e with
-  | Exp e' => get_exp_vars e'
   | QFT x => singleton x
   | RQFT x => singleton x
   | H x => singleton x
-  | PCU p e' => add (fst p) (get_vars e')
-  | e1;; e2 => union (get_vars e1) (get_vars e2)
+  | e1; e2 => union (get_vars e1) (get_vars e2)
   end.
 
 (* Get the maximum precision in rotations of an exp *)
-Fixpoint get_exp_prec e :=
+Fixpoint get_prec (env : f_env) e :=
   match e with
   | SKIP _ => 0
   | X _ => 0
-  | CU _ e' => get_exp_prec e'
+  | CU _ e' => get_prec env e'
   | RZ n _ => n
   | RRZ n _ => n
   | SR n _ => n
@@ -339,18 +330,10 @@ Fixpoint get_exp_prec e :=
   | Lshift _ => 0
   | Rshift _ => 0
   | Rev _ => 0
-  | e1; e2 => max (get_exp_prec e1) (get_exp_prec e2)
-  end.
-
-(* Get the maximum precision in rotations of a pexp *)
-Fixpoint get_prec (env : f_env) e :=
-  match e with
-  | Exp e' => get_exp_prec e'
   | QFT x => env x
   | RQFT x => env x
   | H _ => 0
-  | PCU _ e' => get_prec env e'
-  | e1;; e2 => max (get_prec env e1) (get_prec env e2)
+  | e1; e2 => max (get_prec env e1) (get_prec env e2)
   end.
 
 Definition ospec m n := Bvector m -> Bvector n -> Prop.
@@ -409,7 +392,7 @@ Definition ospec_n_bool_fun n f : ospec n 1 :=
 Definition is_oracle_fun x y env (f : Bvector (env x) -> Bvector (env y)) e :=
   forall vx vy,
   st_equiv (get_vars e) env (get_prec env e)
-      (prog_sem env e (x |=> vx, y |=> vy)) (x |=> vx, y |=> vy (+) f vx).
+      (exp_sem env e (x |=> vx, y |=> vy)) (x |=> vx, y |=> vy (+) f vx).
 
 Definition is_oracle x y env (s : ospec (env x) (env y)) e :=
   exists f, fun_adheres f s /\ is_oracle_fun x y env f e.
@@ -467,7 +450,7 @@ Module NotExample.
   Example not_ospec := ospec_bool_fun not_function.
 
   (* An oracle for the "not" function *)
-  Example not_oracle := Exp (X (x, 0); CNOT (x, 0) (y, 0); X (x, 0)).
+  Example not_oracle := (X (x, 0); CNOT (x, 0) (y, 0); X (x, 0)).
 
   (* The environment assumed by the "not" oracle *)
   Example not_oracle_env :=
@@ -580,15 +563,15 @@ Abort.
 
 Lemma todo :
   forall x y env f e vs dim avs,
-  let '(p, _, _) := trans_pexp vs dim e avs in
+  let '(p, _, _) := trans_exp vs dim e avs in
   S (env x) <= dim ->
   xy_first x y env vs ->
   is_oracle_bool x y env (ospec_n_bool_fun (env x) (nat_bool_to_n_bool f)) e ->
   padded_boolean_oracle (env x) p f.
 Proof.
   intros x y env f e vs dim avs.
-  destruct (trans_pexp vs dim e avs) as [[p vs'] avs'] eqn:E.
-  assert (p = fst (fst (trans_pexp vs dim e avs))) as Hp
+  destruct (trans_exp vs dim e avs) as [[p vs'] avs'] eqn:E.
+  assert (p = fst (fst (trans_exp vs dim e avs))) as Hp
                                                    by (rewrite E; reflexivity).
   intros Hd Hf [Hy H]. intros nx vy Hx. unfold pad_vector.
   remember (dim - S (env x)) as ancillae.

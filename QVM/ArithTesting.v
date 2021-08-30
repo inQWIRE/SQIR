@@ -1,6 +1,6 @@
 From Coq Require Import Arith NArith Vector Bvector.
 From QuickChick Require Import QuickChick.
-Require Import PQASM Testing RZArith CLArith.
+Require Import BasicUtility PQASM Testing RZArith CLArith.
 
 Open Scope exp_scope.
 
@@ -68,7 +68,7 @@ Module TofAdd.
   Conjecture tof_add_spec :
     forall (n : nat) (vx vy : Bvector n),
     st_equiv (get_vars (tof_add_circ n)) (tof_add_env n) (tof_add_prec n)
-      (prog_sem (fun _ => n) (tof_add_circ n) (x |=> vx, y |=> vy))
+      (exp_sem (fun _ => n) (tof_add_circ n) (x |=> vx, y |=> vy))
           (x |=> vx, y |=> vx [+] vy).
 
 End TofAdd.
@@ -84,11 +84,11 @@ Module RzAdd.
   Definition ex := 2.
 
   Definition rz_add_circ n :=
-    Exp (Rev x; Rev y);;
-    QFT x;;
-    Exp (rz_full_adder x n y);;
-    RQFT x;;
-    Exp (Rev y; Rev x).
+     (Rev x; Rev y);
+    QFT x;
+     (rz_full_adder x n y);
+    RQFT x;
+     (Rev y; Rev x).
 
   Definition rz_add_env n : f_env := fun _ => n.
 
@@ -97,7 +97,7 @@ Module RzAdd.
   Conjecture rz_add_spec :
     forall (n : nat) (vx vy : Bvector n),
     st_equiv (get_vars (rz_add_circ n)) (rz_add_env n) (rz_add_prec n)
-      (prog_sem (fun _ => n) (rz_add_circ n) (x |=> vx, y |=> vy))
+      (exp_sem (fun _ => n) (rz_add_circ n) (x |=> vx, y |=> vy))
           (x |=> vx [+] vy, y |=> vy).
 
 End RzAdd.
@@ -112,7 +112,7 @@ Module AddParam.
   Definition re := 1.
 
   Definition add_param_circ n (vm : Bvector n) :=
-    Rev x;; QFT x;; rz_adder x n (nth_or_false vm);; RQFT x;; Rev x.
+    Rev x; QFT x; rz_adder x n (nth_or_false vm); RQFT x; Rev x.
 
   Definition add_param_vars n := get_vars (add_param_circ n (Bvect_false n)).
 
@@ -124,7 +124,7 @@ Module AddParam.
   Conjecture add_param_spec :
     forall (n : nat) (vm vx vre : Bvector n),
     st_equiv (add_param_vars n) (add_param_env n) (add_param_prec n)
-      (prog_sem (add_param_env n) (add_param_circ n vm)
+      (exp_sem (add_param_env n) (add_param_circ n vm)
         (x |=> vx))
       (x |=> vx [+] vm).
 
@@ -151,7 +151,7 @@ Module RzMul.
   Conjecture rz_mul_spec :
     forall (n : nat) (vx vy vre : Bvector n),
     st_equiv (rz_mul_vars n) (rz_mul_env n) (rz_mul_prec n)
-      (prog_sem (rz_mul_env n) (rz_mul_circ n)
+      (exp_sem (rz_mul_env n) (rz_mul_circ n)
         (x |=> vx, y |=> vy, re |=> vre))
       (x |=> vx, y |=> vy, re |=> vre [+] vx [*] vy).
 
@@ -179,7 +179,7 @@ Module MulParam.
   Conjecture mul_param_spec :
     forall (n : nat) (vm vx vre : Bvector n),
     st_equiv (mul_param_vars n) (mul_param_env n) (mul_param_prec n)
-      (prog_sem (mul_param_env n) (mul_param_circ n vm)
+      (exp_sem (mul_param_env n) (mul_param_circ n vm)
         (x |=> vx, re |=> vre))
       (x |=> vx, re |=> vre [+] vx [*] vm).
 
@@ -207,7 +207,7 @@ Module TofMul.
   Conjecture tof_mul_spec :
     forall (n : nat) (vx vy vre : Bvector n),
     st_equiv (tof_mul_vars n) (tof_mul_env n) (tof_mul_prec n)
-      (prog_sem (tof_mul_env n) (tof_mul_circ n)
+      (exp_sem (tof_mul_env n) (tof_mul_circ n)
         (x |=> vx, y |=> vy, re |=> vre))
             (x |=> vx, y |=> vy, re |=> vre [+] vx [*] vy).
 
@@ -236,7 +236,7 @@ Module TofMulParam.
   Conjecture tof_mul_param_spec :
     forall (n : nat) (vm vx vre : Bvector n),
     st_equiv (tof_mul_param_vars n) (tof_mul_param_env n) (tof_mul_param_prec n)
-      (prog_sem (tof_mul_param_env n) (tof_mul_param_circ n vm)
+      (exp_sem (tof_mul_param_env n) (tof_mul_param_circ n vm)
         (x |=> vx, re |=> vre))
       (x |=> vx, re |=> vre [+] vx [*] vm).
 
@@ -267,7 +267,7 @@ Module DivMod.
     forAllShrink arbitrary shrink (fun vx : Bvector n =>
     dec2checker
     (st_equiv (div_mod_vars n) (div_mod_env n) (div_mod_prec n)
-      (prog_sem (div_mod_env n) (div_mod_circ n m)
+      (exp_sem (div_mod_env n) (div_mod_circ n m)
         (x |=> vx))
       (x |=> vx [%] m, ex |=> vx [/] m))))).
 
@@ -300,7 +300,7 @@ Module TofDivMod.
     forAllShrink arbitrary shrink (fun vx : Bvector n =>
     dec2checker
     (st_equiv (tof_div_mod_vars n) (tof_div_mod_env n) (tof_div_mod_prec n)
-      (prog_sem (tof_div_mod_env n) (tof_div_mod_circ n m)
+      (exp_sem (tof_div_mod_env n) (tof_div_mod_circ n m)
         (x |=> vx))
       (x |=> vx [%] m, ex |=> vx [/] m))))).
 

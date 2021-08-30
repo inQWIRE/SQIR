@@ -5,7 +5,7 @@ Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
 Require Import Dirac.
 Require Import QPE.
 From QuickChick Require Import QuickChick.
-Require Import PQASM.
+Require Import MathSpec BasicUtility PQASM.
 Require Import CLArith.
 Require Import RZArith.
 Require Import QIMP.
@@ -26,7 +26,7 @@ Local Open Scope nat_scope.
 Fixpoint rotate_left_n (x : qvar) n :=
   match n with
   | 0 => skip
-  | S n' => slrot (Nor (Var x));;; rotate_left_n x n'
+  | S n' => slrot (Nor (Var x));; rotate_left_n x n'
   end.
 
 Definition chacha_estore :=
@@ -35,17 +35,17 @@ Definition chacha_estore :=
 (*define example hash_function as the oracle for grover's search.
   https://qibo.readthedocs.io/en/stable/tutorials/hash-grover/README.html *)
 Definition qr_qexp (a b c d : qvar) :=
-  nadd (Nor (Var a)) (Nor (Var b));;;
-  qxor (Nor (Var d)) (Nor (Var a)) ;;;
-  rotate_left_n d (32 - 16);;;
-  nadd (Nor (Var c)) (Nor (Var d));;;
-  qxor (Nor (Var b)) (Nor (Var c));;;
-  rotate_left_n b (32 - 12);;;
-  nadd (Nor (Var a)) (Nor (Var b));;;
-  qxor (Nor (Var d)) (Nor (Var a));;;
-  rotate_left_n d (32 - 8);;;
-  nadd (Nor (Var c)) (Nor (Var d));;;
-  qxor (Nor (Var b)) (Nor (Var c));;;
+  unary (Nor (Var a)) nadd (Nor (Var b));;
+  unary (Nor (Var d)) qxor (Nor (Var a)) ;;
+  rotate_left_n d (32 - 16);;
+  unary (Nor (Var c)) nadd (Nor (Var d));;
+  unary (Nor (Var b)) qxor (Nor (Var c));;
+  rotate_left_n b (32 - 12);;
+  unary (Nor (Var a)) nadd (Nor (Var b));;
+  unary (Nor (Var d)) qxor (Nor (Var a));;
+  rotate_left_n d (32 - 8);;
+  unary (Nor (Var c)) nadd (Nor (Var d));;
+  unary (Nor (Var b)) qxor (Nor (Var c));;
   rotate_left_n b (32 - 7).
 
 Open Scope bits_scope.
@@ -132,7 +132,7 @@ Definition qr_oracle_spec : Checker :=
   let vd' := bits2bvector d' in
   dec2checker
   (st_equiv (get_vars qr_pexp) qr_env (get_prec qr_env qr_pexp)
-    (prog_sem qr_env qr_pexp (a |=> va, b |=> vb, c |=> vc, d |=> vd))
+    (exp_sem qr_env qr_pexp (a |=> va, b |=> vb, c |=> vc, d |=> vd))
         (a |=> va', b |=> vb', c |=> vc', d |=> vd')))))).
 
 End QRTesting.
@@ -153,13 +153,13 @@ Definition dr_spec x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 :=
   (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15).
 
 Definition dr_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 :=
-  qr_qexp x0 x4 x8 x12;;;
-  qr_qexp x1 x5 x9 x13;;;
-  qr_qexp x2 x6 x10 x14;;;
-  qr_qexp x3 x7 x11 x15;;;
-  qr_qexp x0 x5 x10 x15;;;
-  qr_qexp x1 x6 x11 x12;;;
-  qr_qexp x2 x7 x8 x13;;;
+  qr_qexp x0 x4 x8 x12;;
+  qr_qexp x1 x5 x9 x13;;
+  qr_qexp x2 x6 x10 x14;;
+  qr_qexp x3 x7 x11 x15;;
+  qr_qexp x0 x5 x10 x15;;
+  qr_qexp x1 x6 x11 x12;;
+  qr_qexp x2 x7 x8 x13;;
   qr_qexp x3 x4 x9 x14.
 
 Module DRTesting.
@@ -186,7 +186,7 @@ Module DRTesting.
     (dr_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
              (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
 
-  Definition dr_pexp : pexp.
+  Definition dr_pexp : exp.
   Proof.
 (*
 
@@ -248,7 +248,7 @@ Module DRTesting.
     let v15' := bits2bvector x15' in
     dec2checker
     (st_equiv (get_vars dr_pexp) dr_env (get_prec dr_env dr_pexp)
-     (prog_sem dr_env dr_pexp
+     (exp_sem dr_env dr_pexp
         (0 |=> v0, 1 |=> v1, 2 |=> v2, 3 |=> v3,
          4 |=> v4, 5 |=> v5, 6 |=> v6, 7 |=> v7,
          8 |=> v8, 9 |=> v9, 10 |=> v10, 11 |=> v11,
@@ -310,7 +310,7 @@ Fixpoint chacha_qexp' n x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 :=
   match n with
   | 0 => skip
   | S n' =>
-      dr_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15;;;
+      dr_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15;;
       chacha_qexp' n' x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15
   end.
 
@@ -354,7 +354,7 @@ Module ChaChaTesting.
     (chacha_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
              (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
 
-  Definition chacha_pexp : pexp.
+  Definition chacha_pexp : exp.
   Proof.
 (*
     destruct (compile_chacha) eqn:E1.
@@ -415,7 +415,7 @@ Admitted.
     dec2checker
     (st_equiv
      (get_vars chacha_pexp) chacha_env (get_prec chacha_env chacha_pexp)
-     (prog_sem chacha_env chacha_pexp
+     (exp_sem chacha_env chacha_pexp
         (0 |=> v0, 1 |=> v1, 2 |=> v2, 3 |=> v3,
          4 |=> v4, 5 |=> v5, 6 |=> v6, 7 |=> v7,
          8 |=> v8, 9 |=> v9, 10 |=> v10, 11 |=> v11,
@@ -453,24 +453,24 @@ Definition out : qvar := G 16.
 
 Definition collision_qexp
   (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 : DWORD) :=
-  chacha_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15;;;
-  qif (ceq Nat (Nor (Var x0)) (Nor (Num (getBit v0))))
-  (qif (ceq Nat (Nor (Var x1)) (Nor (Num (getBit v1))))
-  (qif (ceq Nat (Nor (Var x2)) (Nor (Num (getBit v2))))
-  (qif (ceq Nat (Nor (Var x3)) (Nor (Num (getBit v3))))
-  (qif (ceq Nat (Nor (Var x4)) (Nor (Num (getBit v4))))
-  (qif (ceq Nat (Nor (Var x5)) (Nor (Num (getBit v5))))
-  (qif (ceq Nat (Nor (Var x6)) (Nor (Num (getBit v6))))
-  (qif (ceq Nat (Nor (Var x7)) (Nor (Num (getBit v7))))
-  (qif (ceq Nat (Nor (Var x8)) (Nor (Num (getBit v8))))
-  (qif (ceq Nat (Nor (Var x9)) (Nor (Num (getBit v9))))
-  (qif (ceq Nat (Nor (Var x10)) (Nor (Num (getBit v10))))
-  (qif (ceq Nat (Nor (Var x11)) (Nor (Num (getBit v11))))
-  (qif (ceq Nat (Nor (Var x12)) (Nor (Num (getBit v12))))
-  (qif (ceq Nat (Nor (Var x13)) (Nor (Num (getBit v13))))
-  (qif (ceq Nat (Nor (Var x14)) (Nor (Num (getBit v14))))
-  (qif (ceq Nat (Nor (Var x15)) (Nor (Num (getBit v15))))
-  (init (Nor (Var out)) (Nor (Num (fun _ => true))))
+  chacha_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15;;
+  qif (ceq (Nor (Var x0)) (Nor (Num Nat (getBit v0))))
+  (qif (ceq (Nor (Var x1)) (Nor (Num Nat (getBit v1))))
+  (qif (ceq (Nor (Var x2)) (Nor (Num Nat (getBit v2))))
+  (qif (ceq (Nor (Var x3)) (Nor (Num Nat (getBit v3))))
+  (qif (ceq (Nor (Var x4)) (Nor (Num Nat (getBit v4))))
+  (qif (ceq (Nor (Var x5)) (Nor (Num Nat (getBit v5))))
+  (qif (ceq (Nor (Var x6)) (Nor (Num Nat (getBit v6))))
+  (qif (ceq (Nor (Var x7)) (Nor (Num Nat (getBit v7))))
+  (qif (ceq (Nor (Var x8)) (Nor (Num Nat (getBit v8))))
+  (qif (ceq (Nor (Var x9)) (Nor (Num Nat (getBit v9))))
+  (qif (ceq (Nor (Var x10)) (Nor (Num Nat (getBit v10))))
+  (qif (ceq (Nor (Var x11)) (Nor (Num Nat (getBit v11))))
+  (qif (ceq (Nor (Var x12)) (Nor (Num Nat (getBit v12))))
+  (qif (ceq (Nor (Var x13)) (Nor (Num Nat (getBit v13))))
+  (qif (ceq (Nor (Var x14)) (Nor (Num Nat (getBit v14))))
+  (qif (ceq (Nor (Var x15)) (Nor (Num Nat (getBit v15))))
+  (init (Nor (Var out)) (Nor (Num Bl (fun _ => true))))
   skip) skip) skip) skip) skip) skip) skip) skip)
   skip) skip) skip) skip) skip) skip) skip) skip.
 
@@ -541,60 +541,60 @@ Definition m : var := 22.
 Definition x4 : var := 23. 
 
 Definition x_n (size:nat): func :=
-   (f1, ((TNor C Nat,n)::(TNor C Nat,m)::(TArray C Nat 5, n1)::(TArray Q FixedP 5, x3)::(TArray Q FixedP 6, x4)
+   (f1, ([]), ((TNor C Nat,n)::(TNor C Nat,m)::(TArray C Nat 5, n1)::(TArray Q FixedP 5, x3)::(TArray Q FixedP 6, x4)
          ::(TNor C FixedP,e)::[]),
-               qfor n (Nor (Num (nat2fb 5))) (
-                nmod (Nor (Var (L m))) (Nor (Var (L n))) (Nor (Num (nat2fb 2)));;;
-                qif (ceq Nat (Nor (Var (L m))) (Nor (Num (nat2fb 0)))) 
-                 (ndiv (Nor (Var (L n))) (Nor (Var (L n))) (Nor (Num (nat2fb 2)));;;
-                  ncadd (Index (L n1) (Var (L n))) (Index (L n1) (Var (L n))) (Nor (Num (nat2fb 1))))
-                 (ndiv (Nor (Var (L n))) (Nor (Var (L n))) (Nor (Num (nat2fb 2)))));;;
+               qfor n (Nor (Num Nat (nat2fb 5))) (
+                binapp (Nor (Var (L m))) nmod (Nor (Var (L n))) (Nor (Num Nat (nat2fb 2)));;
+                qif (ceq (Nor (Var (L m))) (Nor (Num Nat (nat2fb 0)))) 
+                 (binapp (Nor (Var (L n))) ndiv (Nor (Var (L n))) (Nor (Num Nat (nat2fb 2)));;
+                  binapp (Index (L n1) (Var (L n))) nadd (Index (L n1) (Var (L n))) (Nor (Num Nat (nat2fb 1))))
+                 (binapp (Nor (Var (L n))) ndiv (Nor (Var (L n))) (Nor (Num Nat (nat2fb 2)))));;
 
-               init (Index (L x3) ((Num (nat2fb 0)))) (Nor (Var (G x)));;;
-               qfor n (Nor (Num (nat2fb 5))) (
-                   qif (ceq Nat (Nor (Var (L n))) (Nor (Num (nat2fb 0))))
+               init (Index (L x3) ((Num Nat (nat2fb 0)))) (Nor (Var (G x)));;
+               qfor n (Nor (Num Nat (nat2fb 5))) (
+                   qif (ceq (Nor (Var (L n))) (Nor (Num Nat (nat2fb 0))))
                    (skip)
-                   (ncsub (Nor (Var (L m))) (Nor (Var (L n))) (Nor (Num (nat2fb 1)));;;
-                    fmul (Index (L x3) (Var (L n))) (Index (L x3) (Var (L m))) (Index (L x3) (Var (L m)))
-                    ));;;
-               qfor n (Nor (Num (nat2fb 5))) (
-                   qif (ceq Nat (Index (L n1) (Var (L n))) (Nor (Num (nat2fb 0))))
+                   (binapp (Nor (Var (L m))) nsub (Nor (Var (L n))) (Nor (Num Nat (nat2fb 1)));;
+                    binapp (Index (L x3) (Var (L n))) fmul (Index (L x3) (Var (L m))) (Index (L x3) (Var (L m)))
+                    ));;
+               qfor n (Nor (Num Nat (nat2fb 5))) (
+                   qif (ceq (Index (L n1) (Var (L n))) (Nor (Num Nat (nat2fb 0))))
                    (skip)
-                   (ncadd (Nor (Var (L m))) (Nor (Var (L n))) (Nor (Num (nat2fb 1)));;;
-                    fmul (Index (L x3) (Var (L m))) (Index (L x4) (Var (L n))) (Index (L x4) (Var (L n)))
-                    ));;;
-                init (Nor (Var (L e))) (Index (L x4) (Num (nat2fb 5)))
+                   (binapp (Nor (Var (L m))) nadd (Nor (Var (L n))) (Nor (Num Nat (nat2fb 1)));;
+                     binapp (Index (L x3) (Var (L m))) fmul (Index (L x4) (Var (L n))) (Index (L x4) (Var (L n)))
+                    ));;
+                init (Nor (Var (L e))) (Index (L x4) (Num Nat (nat2fb 5)))
 
 ,Nor (Var (L e))).
 
 Definition taylor_sin : func := 
-     (f, ((TNor C Nat, m)::(TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
+     (f, ([]), ((TNor C Nat, m)::(TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
               (TNor C Nat,g)::(TNor C Nat,n)::(TNor C Nat, xc)::(TNor C Nat,fac)
                ::(TNor C FixedP,rc)::(TNor Q FixedP,re)::[]),
-                         init (Nor (Var (L re))) (Nor (Var (G x)));;;
-                         fmul (Nor (Var (L x2))) (Nor (Var (G x))) (Nor (Var (L re)));;;
-                         fmul (Index (L x3) (Num (nat2fb 0))) (Nor (Var (L x2))) (Nor (Var (G x)));;;
-                         fmul (Index (L x3) (Num (nat2fb 1))) (Index (L x3) (Num (nat2fb 0))) (Nor (Var (L x2)));;;
-                         fmul (Index (L x3) (Num (nat2fb 2))) (Index (L x3) (Num (nat2fb 1))) (Nor (Var (L x2)));;;
-                         fmul (Index (L x3) (Num (nat2fb 3))) (Index (L x3) (Num (nat2fb 2))) (Nor (Var (L x2)));;;
-                         fmul (Index (L x3) (Num (nat2fb 4))) (Index (L x3) (Num (nat2fb 3))) (Nor (Var (L x2)));;;
-                         ncadd (Nor (Var (L n))) (Nor (Num (nat2fb 1))) (Nor (Var (L n)));;;
-                         ncadd (Nor (Var  (L xc))) (Nor (Num (nat2fb 1))) (Nor (Var  (L xc)));;;
+                         init (Nor (Var (L re))) (Nor (Var (G x)));;
+                         binapp (Nor (Var (L x2))) fmul (Nor (Var (G x))) (Nor (Var (L re)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 0))) fmul (Nor (Var (L x2))) (Nor (Var (G x)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 1))) fmul (Index (L x3) (Num Nat (nat2fb 0))) (Nor (Var (L x2)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 2))) fmul (Index (L x3) (Num Nat (nat2fb 1))) (Nor (Var (L x2)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 3))) fmul (Index (L x3) (Num Nat (nat2fb 2))) (Nor (Var (L x2)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 4))) fmul (Index (L x3) (Num Nat (nat2fb 3))) (Nor (Var (L x2)));;
+                         binapp (Nor (Var (L n))) nadd (Nor (Num Nat (nat2fb 1))) (Nor (Var (L n)));;
+                         binapp (Nor (Var  (L xc))) nadd (Nor (Num Nat (nat2fb 1))) (Nor (Var  (L xc)));;
          qfor g (Nor ((Var (L m)))) 
              (qif (iseven (Nor (Var (L g)))) 
-                      (ncadd (Nor (Var ((L n)))) (Nor (Var ((L n)))) (Nor (Num (nat2fb 2)));;;
-                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
-                       ncmul (Nor (Var (L xc))) (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
-                       fndiv (Nor (Var (L rc))) (Nor (Var (L xc))) (Nor (Var (L fac)));;;
-                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;;
-                       fsub (Nor (Var (L re))) (Nor (Var (L e)));;;
+                      (binapp (Nor (Var ((L n)))) nadd (Nor (Var ((L n)))) (Nor (Num Nat (nat2fb 2)));;
+                       unary (Nor (Var (L fac))) nfac (Nor (Var (L n)));;
+                       binapp (Nor (Var (L xc))) nmul (Nor (Num Nat (nat2fb 4))) (Nor (Var (L xc)));;
+                       binapp (Nor (Var (L rc))) fndiv (Nor (Var (L xc))) (Nor (Var (L fac)));;
+                       binapp (Nor (Var (L e))) fmul (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;
+                       unary (Nor (Var (L re))) fsub (Nor (Var (L e)));;
                        qinv ((Nor (Var (L e)))))
-                      (ncadd (Nor (Var ((L n)))) (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
-                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
-                       ncmul (Nor (Var (L xc))) (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
-                       fndiv (Nor (Var (L rc))) (Nor (Var (L xc))) (Nor (Var (L fac)));;;
-                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;;
-                       fadd (Nor (Var (L re))) (Nor (Var (L e)));;;
+                      (binapp (Nor (Var ((L n)))) nadd (Nor (Num Nat (nat2fb 2))) (Nor (Var ((L n))));;
+                       unary (Nor (Var (L fac))) nfac (Nor (Var (L n)));;
+                       binapp (Nor (Var (L xc))) nmul (Nor (Num Nat (nat2fb 4))) (Nor (Var (L xc)));;
+                       binapp (Nor (Var (L rc))) fndiv (Nor (Var (L xc))) (Nor (Var (L fac)));;
+                       binapp (Nor (Var (L e))) fmul (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;
+                       unary (Nor (Var (L re))) fadd (Nor (Var (L e)));;
                        qinv ((Nor (Var (L e))))))
              ,Nor (Var (L re))).
 
@@ -614,34 +614,34 @@ Definition vmapa :=
 Parameter Pi_4 : nat -> bool. (*a binary representation of PI/4 *)
 
 Definition taylor_cos : func := 
-     (f, ((TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
+     (f, ([]),((TArray Q FixedP 5,x3)::(TNor Q FixedP,x2)::(TNor Q FixedP,e)::
               (TNor C Nat,g)::(TNor C Nat,n)::(TNor C Nat, xc)::(TNor C Nat,fac)
                 ::(TNor C FixedP,rc)::(TNor Q FixedP,re)::[]),
-                         fsub (Nor (Var (G x))) (Nor (Num Pi_4)) ;;;
-                         init (Nor (Var (L re))) (Nor (Var (G x)));;;
-                         fmul (Nor (Var (L x2))) (Nor (Var (G x))) (Nor (Var (L re)));;;
-                         fmul (Index (L x3) (Num (nat2fb 0))) (Nor (Var (G x))) (Nor (Var (L x2)));;;
-                         fmul (Index (L x3) (Num (nat2fb 1))) (Nor (Var (L x2))) (Index (L x3) (Num (nat2fb 0)));;;
-                         fmul (Index (L x3) (Num (nat2fb 2))) (Nor (Var (L x2))) (Index (L x3) (Num (nat2fb 1)));;;
-                         fmul (Index (L x3) (Num (nat2fb 3))) (Nor (Var (L x2))) (Index (L x3) (Num (nat2fb 2)));;;
-                         fmul (Index (L x3) (Num (nat2fb 4))) (Nor (Var (L x2))) (Index (L x3) (Num (nat2fb 3)));;;
-                         ncadd (Nor (Var (L n))) (Nor (Var (L n))) (Nor (Num (nat2fb 1))) ;;;
-                         ncadd (Nor (Var  (L xc))) (Nor (Var  (L xc))) (Nor (Num (nat2fb 1))) ;;;
-         qfor g (Nor (Num (nat2fb 5))) 
+                         unary (Nor (Var (G x))) fsub (Nor (Num FixedP Pi_4)) ;;
+                         init (Nor (Var (L re))) (Nor (Var (G x)));;
+                         binapp (Nor (Var (L x2))) fmul (Nor (Var (G x))) (Nor (Var (L re)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 0))) fmul (Nor (Var (G x))) (Nor (Var (L x2)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 1))) fmul (Nor (Var (L x2))) (Index (L x3) (Num Nat (nat2fb 0)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 2))) fmul (Nor (Var (L x2))) (Index (L x3) (Num Nat (nat2fb 1)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 3))) fmul (Nor (Var (L x2))) (Index (L x3) (Num Nat (nat2fb 2)));;
+                         binapp (Index (L x3) (Num Nat (nat2fb 4))) fmul (Nor (Var (L x2))) (Index (L x3) (Num Nat (nat2fb 3)));;
+                         binapp (Nor (Var (L n))) nadd (Nor (Var (L n))) (Nor (Num Nat (nat2fb 1))) ;;
+                         binapp (Nor (Var  (L xc))) nadd (Nor (Var  (L xc))) (Nor (Num Nat (nat2fb 1))) ;;
+         qfor g (Nor (Num Nat (nat2fb 5))) 
              (qif (iseven (Nor (Var (L g)))) 
-                      (ncadd (Nor (Var ((L n)))) (Nor (Var ((L n)))) (Nor (Num (nat2fb 2)));;;
-                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
-                       ncmul (Nor (Var (L xc))) (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
-                       fndiv (Nor (Var (L rc))) (Nor (Var (L xc))) (Nor (Var (L fac)));;;
-                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;;
-                       fsub (Nor (Var (L re))) (Nor (Var (L e)));;;
+                      (binapp (Nor (Var ((L n)))) nadd (Nor (Var ((L n)))) (Nor (Num Nat (nat2fb 2)));;
+                       unary (Nor (Var (L fac))) nfac (Nor (Var (L n)));;
+                       binapp (Nor (Var (L xc))) nmul (Nor (Num Nat (nat2fb 4))) (Nor (Var (L xc)));;
+                       binapp (Nor (Var (L rc))) fndiv (Nor (Var (L xc))) (Nor (Var (L fac)));;
+                       binapp (Nor (Var (L e))) fmul (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;
+                       unary (Nor (Var (L re))) fsub (Nor (Var (L e)));;
                        qinv ((Nor (Var (L e)))))
-                      (ncadd (Nor (Var ((L n)))) (Nor (Num (nat2fb 2))) (Nor (Var ((L n))));;;
-                       nfac (Nor (Var (L fac))) (Nor (Var (L n)));;;
-                       ncmul (Nor (Var (L xc))) (Nor (Num (nat2fb 4))) (Nor (Var (L xc)));;;
-                       fndiv (Nor (Var (L rc))) (Nor (Var (L xc))) (Nor (Var (L fac)));;;
-                       fmul (Nor (Var (L e))) (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;;
-                       fadd (Nor (Var (L re))) (Nor (Var (L e)));;;
+                      (binapp (Nor (Var ((L n)))) nadd (Nor (Num Nat (nat2fb 2))) (Nor (Var ((L n))));;
+                       unary (Nor (Var (L fac))) nfac (Nor (Var (L n)));;
+                       binapp (Nor (Var (L xc))) nmul (Nor (Num Nat (nat2fb 4))) (Nor (Var (L xc)));;
+                       binapp (Nor (Var (L rc))) fndiv (Nor (Var (L xc))) (Nor (Var (L fac)));;
+                       binapp (Nor (Var (L e))) fmul (Nor (Var (L rc))) (Index (L x3) (Var (L g)));;
+                       unary (Nor (Var (L re))) fadd (Nor (Var (L e)));;
                        qinv ((Nor (Var (L e))))))
              ,Nor (Var (L re))).
 
@@ -650,8 +650,8 @@ Definition cos_prog (size:nat) : prog :=
 
 
 
-Definition test_fun : qexp := ndiv (Nor (Var (L x_var))) (Nor (Var (L y_var))) (Nor (Var (L z_var)))
-                           ;;; nmul (Nor (Var (L s_var))) (Nor (Var (L x_var))) (Nor (Var (L c_var))).
+Definition test_fun : qexp := binapp (Nor (Var (L x_var))) ndiv (Nor (Var (L y_var))) (Nor (Var (L z_var)))
+                           ;; binapp (Nor (Var (L s_var))) nmul (Nor (Var (L x_var))) (Nor (Var (L c_var))).
 
 
 Definition temp_var := 5. Definition temp1_var := 6. Definition stack_var := 7.
