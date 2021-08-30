@@ -7375,6 +7375,12 @@ Fixpoint lshift_fun_gen (g : nat -> bool) (i n:nat) :=
            | S m => update (lshift_fun_gen g i m) m (g (i+m))
    end.
 
+Lemma turn_angle_0 : forall rmax, turn_angle allfalse rmax = 0%R.
+Proof.
+  induction rmax; intros;simpl. easy.
+  rewrite IHrmax. lra.
+Qed.
+
 Lemma turn_angle_update_0 : forall rmax (g:nat->bool) i b,
       0 < rmax -> g i = b -> turn_angle (update allfalse 0 (g i)) rmax = (if b then (1/2)%R else 0%R).
 Proof.
@@ -8235,7 +8241,133 @@ Proof.
     assert ((find_pos vs p1 + 1 + d - S (find_pos vs p1)) = d) by lia. rewrite H16.
     autorewrite with ket_db. easy.
     rewrite H22. clear H22. Msimpl.
-    admit.
+    assert ((@Mmult (Nat.pow (S (S O)) dim) (Nat.pow (S (S O)) dim)
+          (Init.Nat.mul (Init.Nat.mul (S O) (S O)) (S O))
+          (proj (find_pos vs p1) dim false)
+      (vkron (find_pos vs p1) (trans_state avs rmax f) ⊗ ∣0⟩
+       ⊗ vkron (dim - 1 - find_pos vs p1)
+           (shift (trans_state avs rmax f) (find_pos vs p1 + 1))))
+      = (vkron (find_pos vs p1) (trans_state avs rmax f) ⊗ ∣0⟩
+       ⊗ vkron (dim - 1 - find_pos vs p1)
+           (shift (trans_state avs rmax f) (find_pos vs p1 + 1)))).
+    replace ∣0⟩ with (compile_val (nval false allfalse) rmax).
+    replace ((dim - 1 - find_pos vs p1)) with (dim - ((find_pos vs p1) + 1)) by lia.
+    rewrite <- vkron_split_eup.
+    rewrite vkron_proj_eq with (r := Cexp 0). easy.
+    intros. auto with wf_db.
+    apply H5. easy.
+    unfold trans_state.
+    rewrite vs_avs_bij_l with (dim := dim); try easy.
+    rewrite eupdate_index_eq.
+    unfold compile_val.
+    rewrite turn_angle_0.
+    rewrite Rmult_0_r. easy.
+    apply H5. easy. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy.
+    unfold compile_val.
+    rewrite turn_angle_0.
+    rewrite Rmult_0_r.
+    simpl. rewrite Cexp_0. rewrite Mscale_1_l.
+    autorewrite with ket_db. easy.
+    rewrite H22. clear H22.
+    assert ((@Mmult (Nat.pow (S (S O)) dim) (Nat.pow (S (S O)) dim)
+          (Init.Nat.mul (Init.Nat.mul (S O) (S O)) (S O))
+           (proj (find_pos vs p1) dim true)
+            (vkron (find_pos vs p1)
+                (trans_state avs rmax (f [p2 |-> hval b3 b0 r0])) ⊗ ∣1⟩
+              ⊗ vkron (dim - 1 - find_pos vs p1)
+                  (shift
+                     (trans_state avs rmax (f [p2 |-> hval b3 b0 r0]))
+                     (find_pos vs p1 + 1))))
+        = (vkron dim
+                (trans_state avs rmax ((f [p2 |-> hval b3 b0 r0])[p1 |-> nval true allfalse])))).
+    replace ∣1⟩ with (compile_val (nval true allfalse) rmax).
+    replace ((dim - 1 - find_pos vs p1)) with (dim - ((find_pos vs p1) + 1)) by lia.
+    rewrite <- vkron_split_eup.
+    rewrite vkron_proj_eq with (r := Cexp 0). easy.
+    intros. auto with wf_db.
+    apply H5. easy.
+    unfold trans_state.
+    rewrite vs_avs_bij_l with (dim := dim); try easy.
+    rewrite eupdate_index_eq.
+    unfold compile_val.
+    rewrite turn_angle_0.
+    rewrite Rmult_0_r. easy.
+    apply H5. easy. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy.
+    unfold compile_val.
+    rewrite turn_angle_0.
+    rewrite Rmult_0_r.
+    simpl. rewrite Cexp_0. rewrite Mscale_1_l.
+    autorewrite with ket_db. easy.
+    rewrite H22. clear H22.
+    rewrite eupdate_twice_neq by iner_p.
+    rewrite vkron_split_eup with (vs := vs).
+    assert (compile_val (hval b3 b0 r0) rmax
+      = (RtoC (-1)%R) .* compile_val (hval b0 b3 r0) rmax).
+    unfold compile_val.
+    destruct b0 eqn:eq2. destruct b3 eqn:eq3. easy.
+    unfold z_phase.
+    rewrite Mscale_assoc.
+    rewrite Cmult_comm with (x := RtoC (-1)%R).
+    rewrite <- Mscale_assoc with (y := RtoC (-1)%R).
+    rewrite Mscale_plus_distr_r with (x := RtoC (-1)%R).
+    rewrite Mscale_assoc.
+    rewrite Mscale_assoc.
+    assert (((-1)%R * 1%R)%C = RtoC (-1)%R) by lca.
+    rewrite H22.
+    assert (((-1)%R * (-1)%R)%C = RtoC 1%R) by lca.
+    rewrite H23. easy.
+    destruct b3.
+    unfold z_phase.
+    rewrite Mscale_assoc.
+    rewrite Cmult_comm with (x := RtoC (-1)%R).
+    rewrite <- Mscale_assoc with (y := RtoC (-1)%R).
+    rewrite Mscale_plus_distr_r with (x := RtoC (-1)%R).
+    rewrite Mscale_assoc.
+    rewrite Mscale_assoc.
+    assert (((-1)%R * 1%R)%C = RtoC (-1)%R) by lca.
+    rewrite H22.
+    assert (((-1)%R * (-1)%R)%C = RtoC 1%R) by lca.
+    rewrite H23. easy. easy.
+    rewrite H22. clear H22.
+    distribute_scale.
+    rewrite <- vkron_split_eup.
+    assert (((f [p1 |-> nval true allfalse]) [p2
+                    |-> hval b0 b3 r0]) = (f [p1 |-> nval true allfalse])).
+    rewrite eupdate_same. easy.
+    rewrite eupdate_index_neq by iner_p. rewrite <- H14. easy.
+    rewrite H22. clear H22.
+    rewrite vkron_split_eup with (vs := vs).
+    replace (compile_val (nval true allfalse) rmax) with ∣1⟩.
+    rewrite vkron_split_eup with (vs := vs).
+    unfold compile_val.
+    assert (z_phase (¬ b2) = ((-1)%R * z_phase (b2))%R).
+    unfold z_phase. destruct b2. simpl. lra. simpl. lra.
+    rewrite H22. clear H22.
+    autorewrite with RtoC_db eval_db C_db ket_db.
+    assert (RtoC (-1 * z_phase b2)%R = ((RtoC (z_phase b2)%R) * (RtoC (-1)%R))%C) by lca.
+    rewrite H22.
+    rewrite Cmult_assoc.
+    rewrite <- Mscale_assoc with (y := RtoC (-1)%R).
+    replace ((dim - 1 - find_pos vs p1)) with (dim - (find_pos vs p1 + 1)) by lia.
+    easy.
+    apply H5. easy. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy.
+    unfold compile_val. rewrite turn_angle_0. rewrite Rmult_0_r. rewrite Cexp_0.
+    Msimpl. simpl. autorewrite with ket_db. easy.
+    apply H5. easy. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy.
+    apply H5. easy. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy.
+    apply H5. easy. easy.
+    apply vs_avs_bij_l with (dim := dim); try easy.
+    apply vs_avs_bij_r with (dim := dim); try easy.
     auto with wf_db.
     apply H5. easy.
     auto with wf_db.
@@ -8340,7 +8472,15 @@ Proof.
     apply (avs_prop_vs_same e1 dim vs v avs p0).
     rewrite eq1. easy. rewrite eq1. easy. easy.
     easy. easy.
-Admitted.
+    rewrite size_env_vs_same with (vs := vs) (e:=e1) (dim := dim) (avs := avs). easy.
+    rewrite eq1. easy.
+    rewrite size_env_vs_same with (vs := vs) (e:=e1) (dim := dim) (avs := avs).
+    apply qft_uniform_exp_trans with (tenv := tenv) ; try easy.
+    rewrite eq1. easy.
+    rewrite size_env_vs_same with (vs := vs) (e:=e1) (dim := dim) (avs := avs).
+    apply qft_gt_exp_trans with (tenv := tenv) ; try easy.
+    rewrite eq1. easy.
+Qed.
 
 (* some useful gates. *)
 Definition CNOT (x y : posi) := CU x (X y).
