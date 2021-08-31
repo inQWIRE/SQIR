@@ -3193,7 +3193,7 @@ Proof.
 Qed.
 
 Local Opaque Nat.div.
-Lemma reduction_factor_order_finding :
+Lemma reduction_factor_order_finding_aux :
   forall p k q,
     k <> 0 -> prime p -> 2 < p -> 2 < q ->
     Nat.gcd (p ^ k) q = 1 ->
@@ -3319,6 +3319,92 @@ Proof.
   }
   flia H4 H5.
 Qed.
+
+Definition nontriv a N := (1 <? a) && (a <? N).
+
+Definition nontrivgcd a N := nontriv (Nat.gcd a N) N.
+
+Lemma cnttrue_true :
+  forall n, cnttrue n (fun a => true) = n.
+Proof.
+  induction n; intros; try rewrite IHi; try (simpl; lia).
+Qed.
+
+Lemma cnttrue_ltn :
+  forall n, 1 < n -> cnttrue n (fun a => nontrivgcd a n) + cnttrue n (fun a => Nat.gcd a n =? 1) = n - 1.
+Proof.
+  intros.
+  replace (n - 1) with (cnttrue n (fun a => a <? n)).
+  2:{
+    destruct n. easy.
+    simpl. rewrite Nat.ltb_irrefl.
+    replace (cnttrue n (fun a => a <? S n)) with (cnttrue n (fun a => true)).
+    rewrite cnttrue_true. lia.
+    apply cnttrue_same. intros.
+    symmetry. apply Nat.ltb_lt. lia.
+  }
+  replace (cnttrue n (fun a : nat => a <? n)) with (cnttrue n (fun a : nat => (a <? n) && (Nat.gcd a n =? 1)) + cnttrue n (fun a : nat => (a <? n) && ¬ (Nat.gcd a n =? 1))) by apply cnttrue_complement.
+  assert (forall n1 n2 n3 n4, n1 = n3 -> n2 = n4 -> n1 + n2 = n4 + n3) by (intros; lia).
+  apply H0; apply cnttrue_same; unfold nontrivgcd, nontriv; intros.
+  - bdestruct (x =? n).
+    + subst. rewrite Nat.gcd_diag, Nat.ltb_irrefl. btauto.
+    + bdestruct (Nat.gcd x n =? 1).
+      * rewrite H3. rewrite Nat.ltb_irrefl. btauto.
+      * bdestruct (x <? n); try lia.
+        assert (0 < Nat.gcd x n) by (apply Natgcd_pos; lia).
+        bdestruct (1 <? Nat.gcd x n); try lia.
+        bdestruct (Nat.gcd x n <? n); try btauto.
+        assert (Nat.gcd x n <= x).
+        { rewrite Nat.gcd_comm. apply Nat_gcd_le_r. lia.
+        }
+        lia.
+  - bdestruct (x <? n). btauto.
+    replace x with n by lia.
+    rewrite Nat.gcd_diag. bdestruct (n =? 1); lia.
+Qed.
+
+Lemma cnttrue_orb :
+  forall n f g,
+    cnttrue n (fun a => f a || g a) = cnttrue n (fun a => f a) + cnttrue n (fun a => ¬ (f a) && g a).
+Proof.
+  intros.
+  replace (cnttrue n (fun a => f a || g a)) with (cnttrue n (fun a => (f a || g a) && (f a)) + cnttrue n (fun a => (f a || g a) && (¬ (f a)))) by apply cnttrue_complement.
+  assert (forall n1 n2 n3 n4, n1 = n3 -> n2 = n4 -> n1 + n2 = n3 + n4) by (intros; lia).
+  apply H; apply cnttrue_same; intros; try btauto.
+Qed.
+    
+Lemma reduction_factor_order_finding :
+  forall p k q,
+    k <> 0 -> prime p -> 2 < p -> 2 < q ->
+    Nat.gcd (p ^ k) q = 1 ->
+    (p^k * q) - 1 <= 2 * cnttrue (p^k * q - 1) (fun a => (nontrivgcd a (p^k * q)) || ((nontrivgcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)) || nontrivgcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q))).
+Proof.
+  intros.
+  assert (p ^ k > 0) by (apply pow_positive; lia).
+  rewrite cnttrue_orb. rewrite <- cnttrue_ltn at 1 by lia.
+  specialize (reduction_factor_order_finding_aux p k q H H0 H1 H2 H3) as G.
+  assert (cnttrue (p ^ k * q) (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ((Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q)) || (Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)))) = cnttrue (p ^ k * q - 1) (fun a : nat => ¬ (nontrivgcd a (p ^ k * q)) && (nontrivgcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) || nontrivgcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)))).
+  { replace (p^k * q) with (S (p^k * q - 1)) at 1 by lia.
+    rewrite cnttrue_extend.
+    replace (S (p^k * q - 1)) with (p^k * q) by lia.
+    rewrite Nat.gcd_diag. bdestruct (p^k * q =? 1); try lia.
+    simpl. apply cnttrue_same. intros.
+    assert (¬ (nontrivgcd x (p^k * q)) = (Nat.gcd x (p^k * q) =? 1)).
+    { unfold nontrivgcd, nontriv.
+      bdestruct (Nat.gcd x (p^k * q) =? 1). rewrite H7, Nat.ltb_irrefl. btauto.
+      assert (0 < Nat.gcd x (p^k * q)) by (apply Natgcd_pos; lia).
+      assert (Nat.gcd x (p^k * q) <= x) by (rewrite Nat.gcd_comm; apply Nat_gcd_le_r; lia).
+      bdestruct (1 <? Nat.gcd x (p^k*q)); try lia.
+      bdestruct (Nat.gcd x (p^k * q) <? p^k * q); lia.
+    }
+    rewrite H7. unfold nontrivgcd, nontriv. btauto.
+  }
+  replace (cnttrue (p ^ k * q) (fun a : nat => nontrivgcd a (p ^ k * q))) with (cnttrue (p ^ k * q - 1) (fun a : nat => nontrivgcd a (p ^ k * q))). lia.
+  replace (p^k * q) with (S (p^k * q - 1)) at 2 by lia.
+  rewrite cnttrue_extend. replace (S (p^k * q - 1)) with (p^k * q) by lia.
+  unfold nontrivgcd, nontriv. rewrite Nat.gcd_diag, Nat.ltb_irrefl, andb_false_r. easy.
+Qed.
+
 Local Transparent Nat.div.
 
 (* ============================================= *)
