@@ -26,14 +26,11 @@ Qed.
 
 Lemma vec_to_list_length : forall n (v : Vector n), length (vec_to_list v) = n.
 Proof. intros. apply vec_to_list_length_aux. Qed.
-  
-  
-(* MOVE TO: Complex.v *)
-Definition Cnorm2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
-Definition Cnorm (c : C) : R := √ (Cnorm2 c). (* <- already in Complex.v - called Cmod. -KH *)
-Lemma Cnorm2_ge_0 : forall c, 0 <= Cnorm2 c.
-Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_0. Qed.
 
+(* MOVE TO: Complex.v *)
+Definition Cmod2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
+Lemma Cmod2_ge_0 : forall c, 0 <= Cmod2 c.
+Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_0. Qed.
 
 (* Choose an index in the list l based on random number r ∈ [0,1).
    
@@ -53,22 +50,48 @@ Fixpoint sample (l : list R) (r : R) : nat :=
   | x :: l' => if Rle_lt_dec r x then 0 else S (sample l' (r-x))
   end.
 
-(* Returns a nat, could also return the basis vector *)
-(* Could provide input explicitly instead of assuming all zero *)
-(* rnd is assumed to be a random input in [0,1] *)
-Definition run_ucom_all {dim} (c : base_ucom dim) (rnd : R) : nat :=
+(* Run ucom c on the zero input vector and return a list with the probabilities
+   of each measurement outcome. *)
+Definition run {dim} (c : base_ucom dim) : list R :=
   let v := (uc_eval c) × basis_vector (2^dim) 0 in
-  let l := map Cnorm2 (vec_to_list v) in
+  map Cmod2 (vec_to_list v).
+
+(* Run ucom c on the zero input vector and return the result of
+   measuring all qubits as a nat. rnd is a random input in [0,1]. *)
+Definition run_and_measure {dim} (c : base_ucom dim) (rnd : R) : nat :=
+  sample (run c) rnd.
+
+(* Probability of a particular outcome. *)
+Definition pr_outcome {dim} (c : base_ucom dim) (i : nat) : R :=
+  nth i (run c) 0.
+
+(* Add adjacent elements in l within range width, resulting in a list with 
+   segs elements. *)
+(* TODO: Replace with a more elegant algebraic definition. *)
+Fixpoint sum_width (l : list R) (width segs : nat) : list R :=
+  match segs with
+  | 0 => []
+  | S segs' => fold_left Rplus (firstn width l) 0 :: sum_width (skipn width l) width segs'
+  end.
+
+(* Example: *)
+Eval simpl in (sum_width (1 :: 3 :: 4 :: 6 :: 2 :: 1 :: 5 :: 2 :: 1 :: 5 :: 2 :: 8 :: []) 3 4).
+
+(* Same as run_and_measure, but only measures the first n qubits. *)
+Definition run_and_measure_partial (n k : nat) (c : base_ucom (n + k)) (rnd : R) : nat :=
+  let l := sum_width (run c) (2^k) (2^n) in
   sample l rnd.
 
-Definition pr_run_outcome {dim} (c : base_ucom dim) (n : nat) : R :=
-  let v := (uc_eval c) × basis_vector (2^dim) 0 in
-  let l := map Cnorm2 (vec_to_list v) in
-  nth n l 0.
+Definition pr_outcome_partial (n k : nat) (c : base_ucom (n + k)) (i : nat) : R := 
+  let l := sum_width (run c) (2^k) (2^n) in
+  nth i l 0.
 
-(* There's probably a better run-based definition. *)
-(* Not sure if we need r1 <= r2 or 0 or 1 bounds. 
-   < and <= should be equivalent for our purposes. *)
+(* The probability that distribution D satisifies predicate P is the 
+   proportion of values for rnd such that (sample D rnd) satisifes P.
+   In the simplest case, where P holds only between r1 and r2, this 
+   probability is (r2 - r1). *)
+(* TODO: Is there a better run-based definition? *)
+(* TODO: are r1 <= r2, 0 <= r1, r2 <= 1 bounds necessary? *)
 Inductive max_interval (P : R -> Prop) : R -> Prop :=
 | MI: forall r1 r2, 0 <= r1 <= r2 ->
            (forall r, r1 < r < r2 -> P r) ->               
@@ -148,8 +171,6 @@ Proof.
       easy.
 Qed.
 
-
-(* Generalizes the lemma below *)
 Lemma max_interval_size : forall k l,
     (k < length l)%nat ->
     Forall (fun x => 0 <= x) l ->
@@ -183,46 +204,127 @@ Proof.
       lia.
 Qed.      
   
-(* Need to connect run-based definition to eay one. *)
-Lemma pr_run_outcome_eq_aux : forall dim (c : base_ucom dim) n,
+(* Connect pr_outcome and run_and_measure using max_interval. *)
+Lemma pr_outcome_eq_aux : forall dim (c : base_ucom dim) n,
   (n < 2^dim)%nat ->
-  max_interval (fun x : R => run_ucom_all c x = n) (pr_run_outcome c n).
+  max_interval (fun x : R => run_and_measure c x = n) (pr_outcome c n).
 Proof.
   intros.
   apply max_interval_size.
+  unfold run.
   rewrite map_length, vec_to_list_length; easy.
+  unfold run.
   remember (vec_to_list (uc_eval c × basis_vector (2 ^ dim) 0)) as l. clear Heql.
   apply Forall_nth; intros.
   gen l. induction i; intros.
   - destruct l. simpl in H0; lia.
-    simpl. apply Cnorm2_ge_0.
+    simpl. apply Cmod2_ge_0.
   - destruct l; simpl in H0; try lia.
     apply IHi.
     lia.
 Qed.    
 
-(* I prefer this definition, but it needs the uniqueness proof above. *)
-Lemma pr_run_outcome_eq : forall dim (c : base_ucom dim) n r,
+(* I prefer this definition, but it needs the uniqueness proof above. -RNR *)
+Lemma pr_outcome_eq : forall dim (c : base_ucom dim) n r,
   (n < 2^dim)%nat ->
-  pr_run_outcome c n = r <-> max_interval (fun x => run_ucom_all c x = n) r.
+  pr_outcome c n = r <-> max_interval (fun x => run_and_measure c x = n) r.
 Proof.
   split; intros.
   - rewrite <- H0.
-    apply pr_run_outcome_eq_aux.
+    apply pr_outcome_eq_aux.
     easy.
   - eapply max_interval_unique.
-    apply pr_run_outcome_eq_aux; trivial.
+    apply pr_outcome_eq_aux; trivial.
     easy.
 Qed.
 
-(** ** Generalizing to measuring the first n qubits  *)
+Lemma length_sum_width :
+  forall m l n,
+    length l = (n * m)%nat ->
+    length (sum_width l n m) = m.
+Proof.
+  induction m; intros.
+  - easy.
+  - simpl. rewrite IHm. easy. rewrite skipn_length. lia.
+Qed.
 
-(* Uniform sampling from 0 to n *)
-Definition uniform (n : nat) (rnd : R) :=
-  sample (repeat (1/ INR n)%R n). 
+Lemma fold_left_Rplus :
+  forall l r,
+    fold_left Rplus l r = (r + fold_left Rplus l 0)%R.
+Proof.
+  induction l; intros.
+  - simpl. lra.
+  - simpl. rewrite IHl. rewrite IHl with (r := (0 + a)%R). lra.
+Qed.
 
-(* TODO: Need a notion of total interval based on max_interval above 
-   for describing the probability of choosing a valid `a` *)
+Lemma fold_left_firstn :
+  forall n l,
+    0 <= fold_left Rplus (firstn n (map Cmod2 l)) 0.
+Proof.
+  induction n; intros.
+  - simpl. lra.
+  - destruct l.
+    + simpl. lra.
+    + simpl. rewrite fold_left_Rplus. specialize (IHn l).
+      specialize (Cmod2_ge_0 c) as G.
+      lra.
+Qed.
+
+Lemma skipn_map :
+  forall {A B} n (l : list A) (f : A -> B),
+    skipn n (map f l) = map f (skipn n l).
+Proof.
+  intros A B. induction n; intros.
+  - simpl. easy.
+  - destruct l. simpl. easy.
+    simpl. apply IHn.
+Qed.
+    
+Lemma nth_sum_width_Cmod2 :
+  forall i m l n d,
+    length l = (n * m)%nat ->
+    (i < m)%nat ->
+    0 <= nth i (sum_width (map Cmod2 l) n m) d.
+Proof.
+  induction i; intros.
+  - destruct m. lia.
+    simpl. apply fold_left_firstn.
+  - destruct m. lia.
+    simpl. rewrite skipn_map.
+    apply IHi. rewrite skipn_length. lia. lia.
+Qed.
+  
+Lemma pr_outcome_partial_eq_aux : forall n k (c : base_ucom (n + k)) i,
+  (i < 2^n)%nat ->
+  max_interval (fun x : R => run_and_measure_partial n k c x = i) (pr_outcome_partial n k c i).
+Proof.
+  intros.
+  remember (vec_to_list (uc_eval c × basis_vector (2 ^ (n + k)) 0)) as l.
+  assert (length l = 2 ^ n * 2 ^ k)%nat by (rewrite Heql; rewrite vec_to_list_length; rewrite Nat.pow_add_r; lia).
+  apply max_interval_size.
+  rewrite length_sum_width. easy.
+  unfold run.
+  rewrite <- Heql. rewrite map_length. rewrite H0. lia.
+  apply Forall_nth; intros.
+  unfold run in *.
+  rewrite <- Heql in *. rewrite length_sum_width in H1.
+  apply nth_sum_width_Cmod2. rewrite H0. lia. lia. rewrite map_length. lia.
+Qed.    
+
+Lemma pr_outcome_partial_eq : forall n k (c : base_ucom (n + k)) i r,
+  (i < 2^n)%nat ->
+  pr_outcome_partial n k c i = r <-> max_interval (fun x => run_and_measure_partial n k c x = i) r.
+Proof.
+  split; intros.
+  - rewrite <- H0.
+    apply pr_outcome_partial_eq_aux.
+    easy.
+  - eapply max_interval_unique.
+    apply pr_outcome_partial_eq_aux; trivial.
+    easy.
+Qed.
+
+(* TODO: Generalize max_interval to support more types of predicates. *)
 
 (* Using a single predicate and dividers: *)
 Inductive max_interval_disjoint (P : R -> Prop) (rl rr : R) : R -> Prop :=
@@ -268,122 +370,3 @@ Proof.
     rewrite (IHL r3 r5); easy.
 Qed.
 
-Fixpoint sum_width (l : list R) (width segs : nat) : list R :=
-  match segs with
-  | 0 => []
-  | S segs' => fold_left Rplus (firstn width l) 0 :: sum_width (skipn width l) width segs'
-  end.
-
-Eval simpl in (sum_width (1 :: 3 :: 4 :: 6 :: 2 :: 1 :: 5 :: 2 :: 1 :: 5 :: 2 :: 8 :: []) 3 4). 
-
-(* Feel free to replace sum_width with more elegant algebraic function *)
-Definition run_ucom_part (qubits anc : nat) (c : base_ucom (qubits+anc)) (rnd : R) : nat :=
-  let v := (uc_eval c) × basis_vector (2^(qubits+anc)) 0 in
-  let l := map Cnorm2 (vec_to_list v) in
-  let l' := sum_width l (2^anc) (2^qubits) in
-  sample l' rnd.
-
-Definition pr_run_part_outcome (qubits anc : nat) (c : base_ucom (qubits + anc)) (n : nat) : R := 
-  let v := uc_eval c × basis_vector (2 ^ (qubits + anc)) 0 in
-  let l := map Cnorm2 (vec_to_list v) in
-  let l' := sum_width l (2^anc) (2^qubits) in
-  nth n l' 0.
-
-(* TODO: Fix up. Should also follow pretty easily from max_interval_size  *)
-
-Lemma length_sum_width :
-  forall m l n,
-    length l = (n * m)%nat ->
-    length (sum_width l n m) = m.
-Proof.
-  induction m; intros.
-  - easy.
-  - simpl. rewrite IHm. easy. rewrite skipn_length. lia.
-Qed.
-
-Lemma fold_left_Rplus :
-  forall l r,
-    fold_left Rplus l r = (r + fold_left Rplus l 0)%R.
-Proof.
-  induction l; intros.
-  - simpl. lra.
-  - simpl. rewrite IHl. rewrite IHl with (r := (0 + a)%R). lra.
-Qed.
-
-Lemma fold_left_firstn :
-  forall n l,
-    0 <= fold_left Rplus (firstn n (map Cnorm2 l)) 0.
-Proof.
-  induction n; intros.
-  - simpl. lra.
-  - destruct l.
-    + simpl. lra.
-    + simpl. rewrite fold_left_Rplus. specialize (IHn l).
-      specialize (Cnorm2_ge_0 c) as G.
-      lra.
-Qed.
-
-Lemma skipn_map :
-  forall {A B} n (l : list A) (f : A -> B),
-    skipn n (map f l) = map f (skipn n l).
-Proof.
-  intros A B. induction n; intros.
-  - simpl. easy.
-  - destruct l. simpl. easy.
-    simpl. apply IHn.
-Qed.
-    
-Lemma nth_sum_width_Cnorm2 :
-  forall i m l n d,
-    length l = (n * m)%nat ->
-    (i < m)%nat ->
-    0 <= nth i (sum_width (map Cnorm2 l) n m) d.
-Proof.
-  induction i; intros.
-  - destruct m. lia.
-    simpl. apply fold_left_firstn.
-  - destruct m. lia.
-    simpl. rewrite skipn_map.
-    apply IHi. rewrite skipn_length. lia. lia.
-Qed.
-  
-Lemma pr_run_part_outcome_eq_aux : forall qubits anc (c : base_ucom (qubits + anc)) n,
-  (n < 2^qubits)%nat ->
-  max_interval (fun x : R => run_ucom_part qubits anc c x = n) (pr_run_part_outcome qubits anc c n).
-Proof.
-  intros.
-  remember (vec_to_list (uc_eval c × basis_vector (2 ^ (qubits + anc)) 0)) as l.
-  assert (length l = 2 ^ qubits * 2 ^ anc)%nat by (rewrite Heql; rewrite vec_to_list_length; rewrite Nat.pow_add_r; lia).
-  apply max_interval_size.
-  rewrite length_sum_width. easy.
-  rewrite <- Heql. rewrite map_length. rewrite H0. lia.
-  apply Forall_nth; intros.
-  rewrite <- Heql in *. rewrite length_sum_width in H1.
-  apply nth_sum_width_Cnorm2. rewrite H0. lia. lia. rewrite map_length. lia.
-Qed.    
-
-Lemma pr_run_part_outcome_eq : forall qubits anc (c : base_ucom (qubits + anc)) n r,
-  (n < 2^qubits)%nat ->
-  pr_run_part_outcome qubits anc c n = r <-> max_interval (fun x => run_ucom_part qubits anc c x = n) r.
-Proof.
-  split; intros.
-  - rewrite <- H0.
-    apply pr_run_part_outcome_eq_aux.
-    easy.
-  - eapply max_interval_unique.
-    apply pr_run_part_outcome_eq_aux; trivial.
-    easy.
-Qed.
-
-(* Original axiom *)
-(* Axiom #1 - we will want some axiom that says that run_ucom_part returns
-   outputs in accordance with the distribution of uc_eval.
-   
-   Below is an attempt, but I don't think it's what we want for shor_OF_correct. -KH *)
-(*
-Axiom run_circuit_correct : forall m n (u : ucom U) x,
-  let v := @Mmult _ _ 1 (uc_eval (m + n) u) (basis_vector (2 ^ (m + n)) 0) in
-  cond_prob_value_sats_pred 
-      (2 ^ m) (fun x0 => x0 =? x) (fun x0 => x0 =? run_circuit (m + n) m u)
-  = prob_meas_outcome m n v x.
- *)
