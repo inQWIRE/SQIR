@@ -247,19 +247,20 @@ Admitted.
 Definition k1 a N : nat := ((ord a N) / 2) + 1.
 Definition k2 a N : nat := ((ord a N) / 2) - 1.
 Definition nontrivial_factor a b := 
-  ((a < b) /\ (1 < Nat.gcd a b) /\ (Nat.gcd a b < b))%nat.
+  ((1 < Nat.gcd a b) /\ (Nat.gcd a b < b))%nat.
 
 (* Fact #2 - Assuming that N is not prime, not even, and not a power of a prime,
    for a random choice of a, the probability that ord(a,N) can be used to find 
    a factor is at least 1/2. *) 
 Lemma shor_factor_correct : forall N r,
   ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-  let is_a_factor a x := nontrivial_factor (a ^ k1 a N) N \/
+  let is_a_factor a x := nontrivial_factor a N \/
+                         nontrivial_factor (a ^ k1 a N) N \/
                          nontrivial_factor (a ^ k2 a N) N in
    (* TODO: this should be the general version of max_interval *)
    max_interval
      (fun rnd => let a := uniform N rnd in
-              coprime a N -> is_a_factor a N )
+              is_a_factor a N )
     r ->
   r >= 1 / 2.
 Proof.
