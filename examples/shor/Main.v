@@ -270,6 +270,15 @@ Proof.
   (* we should be able to use H somehow... *)
 Admitted.
 
+(* need some relationship between (cnttrue n P) and 
+   (max_interval (fun rnd => P (unfiform n rnd))
+
+...
+
+the max_interval term should end up being (cnttrue n P) / n
+
+ *)
+
 (* Some generalization of max_interval to account for a random stream.
    Using randomness at different positions in the stream should lead to
    independent outcomes *)
