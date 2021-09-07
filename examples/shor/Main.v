@@ -1,5 +1,6 @@
 Require Import Shor.
 Require Import euler.Primes.
+Require Import euler.AltPrimes.
 Require Import AltGateSet.
 Require Import AltShor.
 Require Import Run.
@@ -59,66 +60,36 @@ Definition end_to_end_shors a N rnd :=
 Definition uniform (n : nat) (rnd : R) : nat :=
   sample (repeat (1/ INR n)%R n) rnd. 
 
-Definition OF_body a N rnd :=
+Definition shor_body a N rnd := (* same as end_to_end_shors *)
   let n := n N in
   let k := k N in
   let circ := shor_circuit a N in
   let x := run_and_measure_partial n k (to_base_ucom (n + k) circ) rnd in
   let r := cont_frac_exp a N x in
-  if modexp a r N =? 1
-  then Some r else None.
-
-Fixpoint find_order a N rnds i niter :=
-  match niter with
-  | 0 => None
-  | S niter' => 
-      match OF_body a N (rnds i) with
-      | None => find_order a N rnds (S i) niter'
-      | Some r => Some r
-      end
-  end.
-
-Definition shor_body a N rnds i niter :=
-  match find_order a N rnds i niter with
-  | Some r => factor a N r
-  | None => None
-  end.
+  factor a N r.
 
 (* N = number to factor
    rnds = random stream
    i = index into the random stream
-   niter = max number of iterations for the main Shor loop
-   niterOF = max number of iterations for the order finding inner loop *)
-Fixpoint end_to_end_shors2 N (rnds : nat -> R) i niter niterOF :=
+   niter = max number of iterations *)
+Fixpoint end_to_end_shors2 N (rnds : nat -> R) i niter :=
   match niter with
   | 0 => None
   | S niter' =>
       let a := uniform N (rnds i) in
       if Nat.gcd a N =? 1%nat
       then 
-        match shor_body a N rnds i niterOF with
-        | None => end_to_end_shors2 N rnds (S i) niter' niterOF
+        match shor_body a N (rnds (S i)) with
+        | None => end_to_end_shors2 N rnds (S (S i)) niter'
         | Some f => Some f
         end
       else (* lucky case: "a" gives us factor directly *)
         Some (Nat.gcd a N)
   end.
 (* -> the probability of success and resources used will be some function
-      of N, niter, and niterOF. *)
+      of N and niter. *)
 
 Definition coprime (a b : nat) : Prop := Nat.gcd a b = 1%nat.
-
-
-
-
-(** * Section on Prime Numbers *)
-
-(* TODO: @Yuxiang, move to Euler repo & change the defn of prime there *)
-
-(* YP: Having this part moved to Euler repo: euler/AltPrimes.v *)
-
-
-
 
 (** Correctness properties for Shor's **)
 
@@ -130,7 +101,7 @@ Lemma shor_OF_correct : forall (a N : nat) pr,
   let n := n N in
   let k := k N in
   let circ := shor_circuit a N in
-  max_interval 
+  max_interval (* urg this is _disjoint too *)
     (fun rnd => cont_frac_exp a N 
                (run_and_measure_partial n k (to_base_ucom (n + k) circ) rnd) 
              = ord a N) 
@@ -139,10 +110,11 @@ Lemma shor_OF_correct : forall (a N : nat) pr,
 Proof.
   intros a N pr Ha1 Ha2 n0 k0 circ H.
   subst n0 k0 circ.
-  (* H is not in the right form for pr_run_outcome_eq, but once we apply 
-     that we should be able to use Shor.Shor_correct_full. We'll also need
-     lemmas that relate pr_outcome and pr_outcome_partial to our 
-     probability_of_outcome and prob_partial_meas. *)
+  (* H is not in the right form for pr_run_outcome_eq
+     -- is cont_frac_exp unique? --
+     but once we apply pr_run_outcome_eq, we should be able to use 
+     Shor.Shor_correct_full. We'll also need lemmas that relate pr_outcome 
+     and pr_outcome_partial to our probability_of_outcome and prob_partial_meas. *)
 Admitted.
 
 Definition k1 a N : nat := ((ord a N) / 2) + 1.
@@ -159,27 +131,34 @@ Lemma shor_factor_correct : forall N r,
                          nontrivial_factor (a ^ k1 a N) N \/
                          nontrivial_factor (a ^ k2 a N) N in
    (* TODO: this should be the general version of max_interval *)
-   max_interval
+   max_interval_disjoint
      (fun rnd => let a := uniform N rnd in
               is_a_factor a N )
-    r ->
+    0 1 r ->
   r >= 1 / 2.
 Proof.
   intros.
   apply simplify_primality in H; trivial. clear H0 H1.
   destruct H as [p [k [q [H0 [H1 [H3 [H4 [H5 H6]]]]]]]].
   specialize (reduction_factor_order_finding p k q H0 H1 H3 H4 H5) as H.
+Print Shor_correct_full.
   (* we should be able to use H somehow... *)
 Admitted.
 
 (* need some relationship between (cnttrue n P) and 
-   (max_interval (fun rnd => P (unfiform n rnd))
+   (max_interval (fun rnd => P (uniform n rnd))
 
 ...
 
-the max_interval term should end up being (cnttrue n P) / n
+the max_interval_disjoint term should end up being (cnttrue n P) / n
 
  *)
+
+Lemma cnttrue_max_interval_disjoint : forall n P f,
+  reflect P f ->
+  max_interval_disjoint (fun rnd => P (uniform n rnd)) (cnttrue n f / n).
+Proof.
+Admitted.
 
 (* Some generalization of max_interval to account for a random stream.
    Using randomness at different positions in the stream should lead to
@@ -187,12 +166,13 @@ the max_interval term should end up being (cnttrue n P) / n
 Parameter max_interval_s : ((nat -> R) -> Prop) -> R -> Prop.
 
 (* In the end we should have something like this... *)
-Lemma end_to_end_shors_correct : forall N niter niterOF pr,
+Lemma end_to_end_shors_correct : forall N niter pr,
   ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
   max_interval_s
-     (fun rnds => match end_to_end_shors2 N rnds O niter niterOF with
-               | Some _ => True | _ => False end )
+     (fun rnds => ssrbool.isSome (end_to_end_shors2 N rnds O niter))
      pr ->
   pr >= (1 / 2) ^ niter * (κ / INR (Nat.log2 N)^4) ^ niterOF.
 Proof.
 Admitted.
+
+(* also: if e2esh returns Some x then x is a factor of N *)

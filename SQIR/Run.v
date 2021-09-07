@@ -339,34 +339,38 @@ Inductive max_interval_disjoint (P : R -> Prop) (rl rr : R) : R -> Prop :=
                    max_interval_disjoint P rm rr r2 ->
                    max_interval_disjoint P rl rr (r1 + r2).
 
-(* Using a list of predicates *)
-(* Doesn't imply disjointness. *)
-Inductive max_interval_sum : list (R -> Prop) -> R -> Prop :=
-| MaxEmpty : max_interval_sum [] 0 (* could remove this case to simplify *)
-| MaxSing : forall P r, max_interval P r -> max_interval_sum [P] r 
-| MaxMult : forall L P r1 r2, max_interval P r1 -> max_interval_sum L r2 ->
-                         max_interval_sum (P :: L) (r1 + r2).
-
 (* TODO: Uniqueness proofs for max_interval_disjoint and max_interval_sum *)
 Lemma max_interval_disjoint_unique : forall rl rr r1 r2 P,
     max_interval_disjoint P rl rr r1 ->
     max_interval_disjoint P rl rr r2 ->
     r1 = r2.
+Proof.
+  intros rl rr r1 r2 P H1 H2.
+  inversion H1; inversion H2.
+
 Admitted.
 
-Lemma max_interval_sum_unique : forall L r1 r2,
-    max_interval_sum L r1 ->
-    max_interval_sum L r2 ->
-    r1 = r2.
-Proof.
-  induction L; intros. inversion H. inversion H0. easy.
-  inversion H; inversion H0; subst.
-  - apply max_interval_unique with a; easy.
-  - inversion H9. rewrite Rplus_0_r.
-    apply max_interval_unique with a; easy.
-  - inversion H5. rewrite Rplus_0_r.
-    apply max_interval_unique with a; easy.
-  - rewrite (max_interval_unique r0 r4 a); trivial.
-    rewrite (IHL r3 r5); easy.
-Qed.
+(* The probability that an outcome satisfies boolean predicate f is the sum over
+   all pr_outcomes for which f holds. *)
+Fixpoint pr_outcome_sum' {dim} (c : base_ucom dim) (f : nat -> bool) n : R :=
+  match n with
+  | O => 0
+  | S n' => if f n' then pr_outcome c n' + pr_outcome_sum' c f n'
+           else pr_outcome_sum' c f n'
+  end.
+Definition pr_outcome_sum {dim} (c : base_ucom dim) (f : nat -> bool) : R :=
+  pr_outcome_sum' c f dim.
+
+
+(* pr_outcome_sum c f = r
+   <->
+   max_interval_disjoint (fun x => f (run_and_measure c x)) R0 R1 r
+
+
+  (n < 2^dim)%nat ->
+  pr_outcome c n = r <-> max_interval (fun x => run_and_measure c x = n) r.
+
+** ends up being an Rsum over terms in the input list
+
+ *)
 
