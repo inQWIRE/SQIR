@@ -145,7 +145,8 @@ Definition trans_rz_modmult_rev (M C Cinv size:nat) :=
 Definition trans_rz_modmult_rev_alt (M C Cinv size:nat) :=
         trans_exp (vars_for_rz size) (2*size+1) (real_rz_modmult_rev_alt M C Cinv size) (avs_for_arith size).
 Definition trans_modmult_rev (M C Cinv size:nat) :=
-        trans_exp (vars_for_cl size) (4*size+1) (real_modmult_rev M C Cinv size) (avs_for_arith size).
+        trans_exp (vars_for_cl (S (S size))) (4*(S (S size))+1)
+              (real_modmult_rev M C Cinv (S (S size))) (avs_for_arith (S (S size))).
 
 (* Trans QIMP examples. *)
 Definition trans_dmc_qft (size:nat) :=
