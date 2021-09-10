@@ -57,11 +57,7 @@ module Nat =
 
   (** val div : int -> int -> int **)
 
-  let div x y =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> y)
-      (fun y' -> fst (divmod x y' 0 y'))
-      y
+  let div = (fun m -> function 0 -> 0 | d -> m / d)
 
   (** val modulo : int -> int -> int **)
 

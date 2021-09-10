@@ -1,10 +1,13 @@
+open BasicUtility
 open Bool
 open CLArith
 open Datatypes
 open FMapList
 open Factorial
-open Nat
+open MathSpec
+open Nat0
 open PQASM
+open PeanoNat
 open Prelim
 open RZArith
 
@@ -84,6 +87,61 @@ let aty_eq t1 t2 =
 type typ =
 | TArray of atype * btype * int
 | TNor of atype * btype
+
+type qop =
+| Coq_nadd
+| Coq_nsub
+| Coq_nmul
+| Coq_fadd
+| Coq_fsub
+| Coq_fmul
+| Coq_qxor
+| Coq_ndiv
+| Coq_nmod
+| Coq_nfac
+| Coq_fdiv
+| Coq_fndiv
+
+(** val qop_eq : qop -> qop -> bool **)
+
+let qop_eq t1 t2 =
+  match t1 with
+  | Coq_nadd -> (match t2 with
+                 | Coq_nadd -> true
+                 | _ -> false)
+  | Coq_nsub -> (match t2 with
+                 | Coq_nsub -> true
+                 | _ -> false)
+  | Coq_nmul -> (match t2 with
+                 | Coq_nmul -> true
+                 | _ -> false)
+  | Coq_fadd -> (match t2 with
+                 | Coq_fadd -> true
+                 | _ -> false)
+  | Coq_fsub -> (match t2 with
+                 | Coq_fsub -> true
+                 | _ -> false)
+  | Coq_fmul -> (match t2 with
+                 | Coq_fmul -> true
+                 | _ -> false)
+  | Coq_qxor -> (match t2 with
+                 | Coq_qxor -> true
+                 | _ -> false)
+  | Coq_ndiv -> (match t2 with
+                 | Coq_ndiv -> true
+                 | _ -> false)
+  | Coq_nmod -> (match t2 with
+                 | Coq_nmod -> true
+                 | _ -> false)
+  | Coq_nfac -> (match t2 with
+                 | Coq_nfac -> true
+                 | _ -> false)
+  | Coq_fdiv -> (match t2 with
+                 | Coq_fdiv -> true
+                 | _ -> false)
+  | Coq_fndiv -> (match t2 with
+                  | Coq_fndiv -> true
+                  | _ -> false)
 
 module QvarType =
  struct
@@ -187,43 +245,28 @@ module QvarNatType =
 
 type factor =
 | Var of qvar
-| Num of (int -> bool)
+| Num of btype * (int -> bool)
 
 type cfac =
 | Index of qvar * factor
 | Nor of factor
 
 type cexp =
-| Coq_clt of btype * cfac * cfac
-| Coq_ceq of btype * cfac * cfac
+| Coq_clt of cfac * cfac
+| Coq_ceq of cfac * cfac
 | Coq_iseven of cfac
 
 type qexp =
 | Coq_qinv of cfac
-| Coq_call of fvar * cfac
+| Coq_call of cfac * fvar * cfac list
 | Coq_qif of cexp * qexp * qexp
 | Coq_qfor of var * cfac * qexp
 | Coq_qseq of qexp * qexp
 | Coq_skip
 | Coq_init of cfac * cfac
-| Coq_nadd of cfac * cfac
-| Coq_nsub of cfac * cfac
-| Coq_nmul of cfac * cfac * cfac
-| Coq_fadd of cfac * cfac
-| Coq_fsub of cfac * cfac
-| Coq_fmul of cfac * cfac * cfac
-| Coq_qxor of cfac * cfac
 | Coq_slrot of cfac
-| Coq_ndiv of cfac * cfac * cfac
-| Coq_nmod of cfac * cfac * cfac
-| Coq_nfac of cfac * cfac
-| Coq_fdiv of cfac * cfac
-| Coq_ncsub of cfac * cfac * cfac
-| Coq_ncadd of cfac * cfac * cfac
-| Coq_fcsub of cfac * cfac * cfac
-| Coq_fcadd of cfac * cfac * cfac
-| Coq_ncmul of cfac * cfac * cfac
-| Coq_fndiv of cfac * cfac * cfac
+| Coq_unary of cfac * qop * cfac
+| Coq_binapp of cfac * qop * cfac * cfac
 
 module BEnv = Make(QvarType)
 
@@ -241,40 +284,39 @@ let bind a f =
   | Some a0 -> f a0
   | None -> None
 
-(** val typ_factor : benv -> btype -> factor -> (atype * btype) option **)
+(** val typ_factor : benv -> factor -> (atype * btype) option **)
 
-let typ_factor bv t0 = function
+let typ_factor bv = function
 | Var x ->
   bind (BEnv.find x bv) (fun re ->
     match re with
     | TArray (_, _, _) -> None
-    | TNor (x0, y) -> if bty_eq y t0 then Some (x0, y) else None)
-| Num _ -> Some (C, t0)
+    | TNor (x0, y) -> Some (x0, y))
+| Num (t0, _) -> Some (C, t0)
 
 (** val typ_factor_full :
     benv -> atype -> btype -> factor -> (atype * btype) option **)
 
-let typ_factor_full bv a t0 = function
+let typ_factor_full bv a b = function
 | Var x ->
   bind (BEnv.find x bv) (fun re ->
     match re with
     | TArray (_, _, _) -> None
     | TNor (x0, y) ->
-      if (&&) (aty_eq a x0) (bty_eq y t0) then Some (x0, y) else None)
-| Num _ -> if aty_eq a C then Some (C, t0) else None
+      if (&&) (aty_eq a x0) (bty_eq y b) then Some (x0, y) else None)
+| Num (t0, _) ->
+  if (&&) (aty_eq a C) (bty_eq b t0) then Some (C, t0) else None
 
-(** val type_factor : benv -> btype -> cfac -> (atype * btype) option **)
+(** val type_factor : benv -> cfac -> (atype * btype) option **)
 
-let type_factor bv t0 = function
+let type_factor bv = function
 | Index (x, ic) ->
   bind (BEnv.find x bv) (fun re ->
     match re with
     | TArray (a, b, _) ->
-      if bty_eq b t0
-      then bind (typ_factor_full bv C Nat ic) (fun _ -> Some (a, t0))
-      else None
+      bind (typ_factor_full bv C Nat ic) (fun _ -> Some (a, b))
     | TNor (_, _) -> None)
-| Nor c -> typ_factor bv t0 c
+| Nor c -> typ_factor bv c
 
 (** val a_nat2fb : (int -> bool) -> int -> int **)
 
@@ -283,8 +325,8 @@ let rec a_nat2fb f n =
     (fun _ -> 0)
     (fun m ->
     add
-      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) m)
-        (PeanoNat.Nat.b2n (f m))) (a_nat2fb f m))
+      (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) m) (Nat.b2n (f m)))
+      (a_nat2fb f m))
     n
 
 (** val is_q : typ -> bool **)
@@ -313,6 +355,23 @@ let get_ct = function
 | TArray (_, y, _) -> y
 | TNor (_, y) -> y
 
+module Store = Make(QvarNatType)
+
+type 'a value =
+| Value of 'a
+| Error
+
+(** val get_size : int -> btype -> int **)
+
+let get_size size t0 =
+  if bty_eq t0 Bl then Pervasives.succ 0 else size
+
+(** val get_type_num : typ -> int **)
+
+let get_type_num = function
+| TArray (_, _, n) -> n
+| TNor (_, _) -> Pervasives.succ 0
+
 (** val no_zero : typ -> bool **)
 
 let no_zero = function
@@ -328,23 +387,6 @@ let rec gen_env l bv =
     let (t0, x) = p in
     bind (gen_env xl bv) (fun new_env ->
       if no_zero t0 then Some (BEnv.add (L x) t0 new_env) else None)
-
-module Store = Make(QvarNatType)
-
-type 'a value =
-| Value of 'a
-| Error
-
-(** val get_type_num : typ -> int **)
-
-let get_type_num = function
-| TArray (_, _, n) -> n
-| TNor (_, _) -> Pervasives.succ 0
-
-(** val l_rotate : (int -> bool) -> int -> int -> bool **)
-
-let l_rotate f n i =
-  f (PeanoNat.Nat.modulo (sub (add i n) (Pervasives.succ 0)) n)
 
 type cstore = (int -> bool) Store.t
 
@@ -364,41 +406,39 @@ let make_value size b c =
     | Bl -> Some (cut_n cv (Pervasives.succ 0)))
 
 (** val par_eval_fc :
-    benv -> int -> cstore -> btype -> factor -> (int -> bool) option **)
+    benv -> int -> cstore -> factor -> (int -> bool) option **)
 
-let par_eval_fc bv size r b = function
+let par_eval_fc bv size r = function
 | Var x ->
   bind (BEnv.find x bv) (fun re ->
-    if is_q re then None else make_value size b (Store.find (x, 0) r))
-| Num n -> make_value size b (Some n)
+    if is_q re then None else Store.find (x, 0) r)
+| Num (t0, n) -> make_value size t0 (Some n)
 
 (** val par_eval_cfac_check :
-    (qvar -> int) -> benv -> int -> cstore -> btype -> cfac -> (int -> bool)
-    value option **)
+    (qvar -> int) -> benv -> int -> cstore -> cfac -> (int -> bool) value
+    option **)
 
-let par_eval_cfac_check smap bv size r b = function
+let par_eval_cfac_check smap bv size r = function
 | Index (x, n) ->
-  bind (par_eval_fc bv size r Nat n) (fun v ->
-    if PeanoNat.Nat.ltb (a_nat2fb v size) (smap x)
+  bind (par_eval_fc bv size r n) (fun v ->
+    if Nat.ltb (a_nat2fb v size) (smap x)
     then bind (BEnv.find x bv) (fun re ->
            if is_q re
            then None
-           else bind
-                  (make_value size b (Store.find (x, (a_nat2fb v size)) r))
-                  (fun val0 -> Some (Value val0)))
+           else bind (Store.find (x, (a_nat2fb v size)) r) (fun val0 -> Some
+                  (Value val0)))
     else Some Error)
-| Nor x -> bind (par_eval_fc bv size r b x) (fun val0 -> Some (Value val0))
+| Nor x -> bind (par_eval_fc bv size r x) (fun val0 -> Some (Value val0))
 
 (** val par_find_var :
     benv -> int -> cstore -> cfac -> (qvar * int) option **)
 
 let par_find_var bv size r = function
 | Index (x, n) ->
-  bind (par_eval_fc bv size r Nat n) (fun val0 -> Some (x,
-    (a_nat2fb val0 size)))
+  bind (par_eval_fc bv size r n) (fun val0 -> Some (x, (a_nat2fb val0 size)))
 | Nor v -> (match v with
             | Var x -> Some (x, 0)
-            | Num _ -> None)
+            | Num (_, _) -> None)
 
 (** val par_find_var_check :
     (qvar -> int) -> benv -> int -> cstore -> cfac -> (qvar * int) value
@@ -406,284 +446,270 @@ let par_find_var bv size r = function
 
 let par_find_var_check smap bv size r = function
 | Index (x, n) ->
-  bind (par_eval_fc bv size r Nat n) (fun val0 ->
-    if PeanoNat.Nat.ltb (a_nat2fb val0 size) (smap x)
+  bind (par_eval_fc bv size r n) (fun val0 ->
+    if Nat.ltb (a_nat2fb val0 size) (smap x)
     then Some (Value (x, (a_nat2fb val0 size)))
     else Some Error)
 | Nor v -> (match v with
             | Var x -> Some (Value (x, 0))
-            | Num _ -> None)
+            | Num (_, _) -> None)
 
-(** val qvar_eq : benv -> int -> cstore -> cfac -> cfac -> bool **)
+(** val qvar_eq :
+    (qvar -> int) -> benv -> int -> cstore -> cfac -> cfac -> bool value
+    option **)
 
-let qvar_eq bv size r x y =
-  match par_find_var bv size r x with
-  | Some a ->
-    (match par_find_var bv size r y with
-     | Some b -> qdty_eq a b
-     | None -> false)
-  | None -> false
-
-(** val get_size : int -> btype -> int **)
-
-let get_size size t0 =
-  if bty_eq t0 Bl then Pervasives.succ 0 else size
+let qvar_eq smap bv size r x y =
+  match par_find_var_check smap bv size r x with
+  | Some v ->
+    (match v with
+     | Value a ->
+       (match par_find_var_check smap bv size r y with
+        | Some v0 ->
+          (match v0 with
+           | Value b -> Some (Value (qdty_eq a b))
+           | Error -> Some Error)
+        | None -> None)
+     | Error -> Some Error)
+  | None -> None
 
 (** val clt_circuit_two :
     int -> flag -> btype -> ((qvar * int) -> var) -> (qvar * int) ->
-    (qvar * int) -> var -> int -> pexp **)
+    (qvar * int) -> var -> int -> exp **)
 
-let clt_circuit_two size f b vmap x y stack sn =
-  if flag_eq f Classic
-  then Exp
-         (comparator01 (get_size size b) (vmap x) (vmap y) (stack,
-           (Pervasives.succ sn)) (stack, sn))
-  else rz_full_comparator (vmap x) (get_size size b) (stack, sn) (vmap y)
+let clt_circuit_two size _ b vmap x y stack sn =
+  comparator01 (get_size size b) (vmap y) (vmap x) (stack, (Pervasives.succ
+    sn)) (stack, sn)
 
 (** val clt_circuit_left :
     int -> flag -> btype -> ((qvar * int) -> var) -> (qvar * int) -> (int ->
-    bool) -> var -> var -> int -> pexp **)
+    bool) -> var -> var -> int -> exp **)
 
-let clt_circuit_left size f b vmap x y stack temp sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((init_v (get_size size b) temp y),
-         (comparator01 (get_size size b) (vmap x) temp (stack,
-           (Pervasives.succ sn)) (stack, sn)))),
-         (init_v (get_size size b) temp y)))
-  else rz_comparator (vmap x) (get_size size b) (stack, sn)
-         (a_nat2fb y (get_size size b))
+let clt_circuit_left size _ b vmap x y stack temp sn =
+  Seq ((Seq ((init_v (get_size size b) temp y),
+    (comparator01 (get_size size b) temp (vmap x) (stack, (Pervasives.succ
+      sn)) (stack, sn)))), (inv_exp (init_v (get_size size b) temp y)))
 
 (** val clt_circuit_right :
     int -> flag -> btype -> ((qvar * int) -> var) -> (int -> bool) ->
-    (qvar * int) -> var -> var -> int -> pexp **)
+    (qvar * int) -> var -> var -> int -> exp **)
 
-let clt_circuit_right size f b vmap x y stack temp sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((init_v (get_size size b) temp x),
-         (comparator01 (get_size size b) temp (vmap y) (stack,
-           (Pervasives.succ sn)) (stack, sn)))),
-         (init_v (get_size size b) temp x)))
-  else PSeq ((PSeq ((Exp (init_v (get_size size b) temp x)),
-         (rz_full_comparator temp (get_size size b) (stack, sn) (vmap y)))),
-         (Exp (init_v (get_size size b) temp x)))
+let clt_circuit_right size _ b vmap x y stack temp sn =
+  Seq ((Seq ((init_v (get_size size b) temp x),
+    (comparator01 (get_size size b) (vmap y) temp (stack, (Pervasives.succ
+      sn)) (stack, sn)))), (inv_exp (init_v (get_size size b) temp x)))
 
 (** val gen_clt_c :
     (qvar -> int) -> ((qvar * int) -> var) -> benv -> int -> flag -> cstore
-    -> btype -> var -> var -> int -> cfac -> cfac -> ((pexp
-    option * int) * bool option) value option **)
+    -> var -> var -> int -> cfac -> cfac -> ((exp option * int) * bool
+    option) value option **)
 
-let gen_clt_c smap vmap bv size f r b stack temp sn x y =
-  bind (type_factor bv b x) (fun t1 ->
-    bind (type_factor bv b y) (fun t2 ->
+let gen_clt_c smap vmap bv size f r stack temp sn x y =
+  bind (type_factor bv x) (fun t1 ->
+    bind (type_factor bv y) (fun t2 ->
       if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) C)
-      then (match par_find_var_check smap bv (get_size size b) r x with
+      then (match par_find_var_check smap bv size r x with
             | Some v ->
               (match v with
                | Value vx ->
-                 bind (par_eval_cfac_check smap bv size r b y) (fun t2v ->
+                 bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
                    match t2v with
                    | Value t2v' ->
                      Some (Value (((Some
-                       (clt_circuit_left size f b vmap vx t2v' stack temp sn)),
-                       (Pervasives.succ sn)), None))
+                       (clt_circuit_left size f (snd t1) vmap vx t2v' stack
+                         temp sn)), (Pervasives.succ sn)), None))
                    | Error -> Some Error)
                | Error -> Some Error)
             | None -> None)
       else if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) Q)
-           then bind (par_find_var_check smap bv (get_size size b) r x)
-                  (fun vxv ->
-                  bind (par_find_var_check smap bv (get_size size b) r y)
-                    (fun vyv ->
+           then bind (par_find_var_check smap bv size r x) (fun vxv ->
+                  bind (par_find_var_check smap bv size r y) (fun vyv ->
                     match vxv with
                     | Value vx ->
                       (match vyv with
                        | Value vy ->
                          Some (Value (((Some
-                           (clt_circuit_two size f b vmap vx vy stack sn)),
-                           (Pervasives.succ sn)), None))
+                           (clt_circuit_two size f (snd t1) vmap vx vy stack
+                             sn)), (Pervasives.succ sn)), None))
                        | Error -> Some Error)
                     | Error -> Some Error))
            else if (&&) (aty_eq (fst t1) C) (aty_eq (fst t2) Q)
-                then (match par_find_var_check smap bv (get_size size b) r y with
+                then (match par_find_var_check smap bv size r y with
                       | Some v ->
                         (match v with
                          | Value vy ->
-                           bind (par_eval_cfac_check smap bv size r b x)
+                           bind (par_eval_cfac_check smap bv size r x)
                              (fun t1v ->
                              match t1v with
                              | Value t1v' ->
                                Some (Value (((Some
-                                 (clt_circuit_right size f b vmap t1v' vy
-                                   stack temp sn)), (Pervasives.succ sn)),
+                                 (clt_circuit_right size f (snd t1) vmap t1v'
+                                   vy stack temp sn)), (Pervasives.succ sn)),
                                  None))
                              | Error -> Some Error)
                          | Error -> Some Error)
                       | None -> None)
-                else bind (par_eval_cfac_check smap bv size r b x)
-                       (fun t1v ->
-                       bind (par_eval_cfac_check smap bv size r b y)
+                else bind (par_eval_cfac_check smap bv size r x) (fun t1v ->
+                       bind (par_eval_cfac_check smap bv size r y)
                          (fun t2v ->
                          match t1v with
                          | Value t1v' ->
                            (match t2v with
                             | Value t2v' ->
                               Some (Value ((None, sn), (Some
-                                (PeanoNat.Nat.ltb (a_nat2fb t1v' size)
-                                  (a_nat2fb t2v' size)))))
+                                (Nat.ltb
+                                  (a_nat2fb t1v' (get_size size (snd t1)))
+                                  (a_nat2fb t2v' (get_size size (snd t2)))))))
                             | Error -> Some Error)
                          | Error -> Some Error))))
 
 (** val ceq_circuit_two :
     int -> flag -> btype -> ((qvar * int) -> var) -> (qvar * int) ->
-    (qvar * int) -> var -> int -> pexp **)
+    (qvar * int) -> var -> int -> exp **)
 
-let ceq_circuit_two size f b vmap x y stack sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq
-         ((comparator01 (get_size size b) (vmap y) (vmap x) (stack,
-            (Pervasives.succ sn)) (stack, sn)),
-         (comparator01 (get_size size b) (vmap x) (vmap y) (stack,
-           (Pervasives.succ sn)) (stack, sn)))), (X (stack, sn))))
-  else PSeq ((PSeq
-         ((rz_full_comparator (vmap x) (get_size size b) (stack, sn) (vmap y)),
-         (rz_full_comparator (vmap y) (get_size size b) (stack, sn) (vmap x)))),
-         (Exp (X (stack, sn))))
+let ceq_circuit_two size _ b vmap x y stack sn =
+  Seq ((Seq
+    ((comparator01 (get_size size b) (vmap y) (vmap x) (stack,
+       (Pervasives.succ sn)) (stack, sn)),
+    (comparator01 (get_size size b) (vmap x) (vmap y) (stack,
+      (Pervasives.succ sn)) (stack, sn)))), (X (stack, sn)))
 
 (** val ceq_circuit_left :
     int -> flag -> btype -> ((qvar * int) -> var) -> (qvar * int) -> (int ->
-    bool) -> var -> var -> int -> pexp **)
+    bool) -> var -> var -> int -> exp **)
 
-let ceq_circuit_left size f b vmap x y stack temp sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((Seq ((Seq ((init_v (get_size size b) temp y),
-         (comparator01 (get_size size b) (vmap x) temp (stack,
-           (Pervasives.succ sn)) (stack, sn)))),
-         (comparator01 (get_size size b) temp (vmap x) (stack,
-           (Pervasives.succ sn)) (stack, sn)))), (X (stack, sn)))),
-         (init_v (get_size size b) temp y)))
-  else PSeq ((PSeq ((PSeq ((Exp (init_v (get_size size b) temp y)),
-         (rz_comparator (vmap x) (get_size size b) (stack, sn)
-           (a_nat2fb y (get_size size b))))),
-         (rz_full_comparator temp (get_size size b) (stack, sn) (vmap x)))),
-         (Exp (Seq ((X (stack, sn)), (init_v (get_size size b) temp y)))))
+let ceq_circuit_left size _ b vmap x y stack temp sn =
+  Seq ((Seq ((Seq ((Seq ((init_v (get_size size b) temp y),
+    (comparator01 (get_size size b) (vmap x) temp (stack, (Pervasives.succ
+      sn)) (stack, sn)))),
+    (comparator01 (get_size size b) temp (vmap x) (stack, (Pervasives.succ
+      sn)) (stack, sn)))), (X (stack, sn)))),
+    (inv_exp (init_v (get_size size b) temp y)))
 
 (** val ceq_circuit_right :
     int -> flag -> btype -> ((qvar * int) -> var) -> (int -> bool) ->
-    (qvar * int) -> var -> var -> int -> pexp **)
+    (qvar * int) -> var -> var -> int -> exp **)
 
-let ceq_circuit_right size f b vmap x y stack temp sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((Seq ((Seq ((init_v (get_size size b) temp x),
-         (comparator01 (get_size size b) temp (vmap y) (stack,
-           (Pervasives.succ sn)) (stack, sn)))),
-         (comparator01 (get_size size b) (vmap y) temp (stack,
-           (Pervasives.succ sn)) (stack, sn)))), (X (stack, sn)))),
-         (init_v (get_size size b) temp x)))
-  else PSeq ((PSeq ((PSeq ((Exp (init_v (get_size size b) temp x)),
-         (rz_full_comparator temp (get_size size b) (stack, sn) (vmap y)))),
-         (rz_comparator (vmap y) (get_size size b) (stack, sn)
-           (a_nat2fb x (get_size size b))))), (Exp (Seq ((X (stack, sn)),
-         (init_v (get_size size b) temp x)))))
+let ceq_circuit_right size _ b vmap x y stack temp sn =
+  Seq ((Seq ((Seq ((Seq ((init_v (get_size size b) temp x),
+    (comparator01 (get_size size b) temp (vmap y) (stack, (Pervasives.succ
+      sn)) (stack, sn)))),
+    (comparator01 (get_size size b) (vmap y) temp (stack, (Pervasives.succ
+      sn)) (stack, sn)))), (X (stack, sn)))),
+    (inv_exp (init_v (get_size size b) temp x)))
 
 (** val gen_ceq_c :
     (qvar -> int) -> ((qvar * int) -> var) -> benv -> int -> flag -> cstore
-    -> btype -> var -> var -> int -> cfac -> cfac -> ((pexp
-    option * int) * bool option) value option **)
+    -> var -> var -> int -> cfac -> cfac -> ((exp option * int) * bool
+    option) value option **)
 
-let gen_ceq_c smap vmap bv size f r b stack temp sn x y =
-  bind (type_factor bv b x) (fun t1 ->
-    bind (type_factor bv b y) (fun t2 ->
+let gen_ceq_c smap vmap bv size f r stack temp sn x y =
+  bind (type_factor bv x) (fun t1 ->
+    bind (type_factor bv y) (fun t2 ->
       if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) C)
-      then (match par_find_var_check smap bv (get_size size b) r x with
+      then (match par_find_var_check smap bv size r x with
             | Some v ->
               (match v with
                | Value vx ->
-                 bind (par_eval_cfac_check smap bv size r b y) (fun t2v ->
+                 bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
                    match t2v with
                    | Value t2v' ->
                      Some (Value (((Some
-                       (ceq_circuit_left size f b vmap vx t2v' stack temp sn)),
-                       (Pervasives.succ sn)), None))
+                       (ceq_circuit_left size f (snd t1) vmap vx t2v' stack
+                         temp sn)), (Pervasives.succ sn)), None))
                    | Error -> Some Error)
                | Error -> Some Error)
             | None -> None)
       else if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) Q)
-           then bind (par_find_var_check smap bv (get_size size b) r x)
-                  (fun vxv ->
-                  bind (par_find_var_check smap bv (get_size size b) r y)
-                    (fun vyv ->
+           then bind (par_find_var_check smap bv size r x) (fun vxv ->
+                  bind (par_find_var_check smap bv size r y) (fun vyv ->
                     match vxv with
                     | Value vx ->
                       (match vyv with
                        | Value vy ->
                          Some (Value (((Some
-                           (ceq_circuit_two size f b vmap vx vy stack sn)),
-                           (Pervasives.succ sn)), None))
+                           (ceq_circuit_two size f (snd t1) vmap vx vy stack
+                             sn)), (Pervasives.succ sn)), None))
                        | Error -> Some Error)
                     | Error -> Some Error))
            else if (&&) (aty_eq (fst t1) C) (aty_eq (fst t2) Q)
-                then (match par_find_var_check smap bv (get_size size b) r y with
+                then (match par_find_var_check smap bv size r y with
                       | Some v ->
                         (match v with
                          | Value vy ->
-                           bind (par_eval_cfac_check smap bv size r b x)
+                           bind (par_eval_cfac_check smap bv size r x)
                              (fun t1v ->
                              match t1v with
                              | Value t1v' ->
                                Some (Value (((Some
-                                 (ceq_circuit_right size f b vmap t1v' vy
-                                   stack temp sn)), (Pervasives.succ sn)),
+                                 (ceq_circuit_right size f (snd t1) vmap t1v'
+                                   vy stack temp sn)), (Pervasives.succ sn)),
                                  None))
                              | Error -> Some Error)
                          | Error -> Some Error)
                       | None -> None)
-                else bind (par_eval_cfac_check smap bv size r b x)
-                       (fun t1v ->
-                       bind (par_eval_cfac_check smap bv size r b y)
+                else bind (par_eval_cfac_check smap bv size r x) (fun t1v ->
+                       bind (par_eval_cfac_check smap bv size r y)
                          (fun t2v ->
                          match t1v with
                          | Value t1v' ->
                            (match t2v with
                             | Value t2v' ->
                               Some (Value ((None, sn), (Some
-                                ((=) (a_nat2fb t1v' size)
-                                  (a_nat2fb t2v' size)))))
+                                ((=) (a_nat2fb t1v' (get_size size (snd t1)))
+                                  (a_nat2fb t2v' (get_size size (snd t1)))))))
                             | Error -> Some Error)
                          | Error -> Some Error))))
 
 (** val compile_cexp :
     int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> int -> cexp -> ((pexp option * int) * bool option) value
+    -> var -> var -> int -> cexp -> ((exp option * int) * bool option) value
     option **)
 
-let compile_cexp size smap vmap bv f r temp stack sn = function
-| Coq_clt (b, x, y) ->
-  if negb (qvar_eq bv size r x y)
-  then gen_clt_c smap vmap bv size f r b temp stack sn x y
-  else None
-| Coq_ceq (b, x, y) ->
-  if negb (qvar_eq bv size r x y)
-  then gen_ceq_c smap vmap bv size f r b temp stack sn x y
-  else None
+let compile_cexp size smap vmap bv f r stack temp sn = function
+| Coq_clt (x, y) ->
+  (match qvar_eq smap bv size r x y with
+   | Some v ->
+     (match v with
+      | Value bval ->
+        if negb bval
+        then gen_clt_c smap vmap bv size f r stack temp sn x y
+        else Some (Value ((None, sn), (Some false)))
+      | Error -> Some Error)
+   | None -> None)
+| Coq_ceq (x, y) ->
+  (match qvar_eq smap bv size r x y with
+   | Some v ->
+     (match v with
+      | Value bval ->
+        if negb bval
+        then gen_ceq_c smap vmap bv size f r stack temp sn x y
+        else Some (Value ((None, sn), (Some true)))
+      | Error -> Some Error)
+   | None -> None)
 | Coq_iseven x ->
-  bind (type_factor bv Nat x) (fun t1 ->
+  bind (type_factor bv x) (fun t1 ->
     if aty_eq (fst t1) Q
     then None
-    else bind (par_eval_cfac_check smap bv size r Nat x) (fun t2v ->
+    else bind (par_eval_cfac_check smap bv size r x) (fun t2v ->
            match t2v with
            | Value t2v' ->
              Some (Value ((None, sn), (Some
                ((=)
-                 (PeanoNat.Nat.modulo (a_nat2fb t2v' size) (Pervasives.succ
+                 (Nat.modulo (a_nat2fb t2v' size) (Pervasives.succ
                    (Pervasives.succ 0))) 0))))
            | Error -> Some Error))
 
+(** val l_rotate : (int -> bool) -> int -> int -> bool **)
+
+let l_rotate f n i =
+  f (Nat.modulo (sub (add i n) (Pervasives.succ 0)) n)
+
 type fmap =
-  ((((((fvar * cfac) * pexp) * (qvar -> int)) * ((qvar * int) ->
+  ((((((fvar * cfac) * exp) * (qvar -> int)) * ((qvar * int) ->
   var)) * benv) * cstore) list
 
 (** val lookup_fmap :
-    fmap -> fvar -> (((((cfac * pexp) * (qvar -> int)) * ((qvar * int) ->
+    fmap -> fvar -> (((((cfac * exp) * (qvar -> int)) * ((qvar * int) ->
     var)) * benv) * cstore) option **)
 
 let rec lookup_fmap l x =
@@ -700,290 +726,36 @@ let rec lookup_fmap l x =
     then Some (((((a, p), smap), vmap), bv), r)
     else lookup_fmap xl x
 
-(** val combine_c : pexp option -> pexp option -> pexp option **)
+(** val combine_c : exp option -> exp option -> exp option **)
 
 let combine_c e1 e2 =
   match e1 with
   | Some e1' ->
     (match e2 with
-     | Some e2' -> Some (PSeq (e1', e2'))
+     | Some e2' -> Some (Seq (e1', e2'))
      | None -> Some e1')
   | None -> e2
 
-(** val combine_seq : pexp option -> pexp option -> pexp option **)
+(** val combine_seq : exp option -> exp option -> exp option **)
 
 let combine_seq e1 e2 =
   match e1 with
   | Some e1' ->
     (match e2 with
-     | Some e2' -> Some (PSeq (e1', e2'))
+     | Some e2' -> Some (Seq (e1', e2'))
      | None -> Some e1')
   | None -> e2
 
-type estore = pexp list Store.t
+type estore = exp list Store.t
 
-(** val empty_estore : pexp list Store.t **)
+(** val empty_estore : exp list Store.t **)
 
 let empty_estore =
   Store.empty
 
-(** val nadd_circuit_two :
-    int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (qvar * int) ->
-    var -> int -> pexp **)
-
-let nadd_circuit_two size f vmap x y stack sn =
-  if flag_eq f Classic
-  then Exp (adder01 size (vmap x) (vmap y) (stack, (Pervasives.succ sn)))
-  else rz_full_adder_form (vmap x) size (vmap y)
-
-(** val nadd_circuit_left :
-    int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (int -> bool) ->
-    var -> var -> int -> pexp **)
-
-let nadd_circuit_left size f vmap x y stack temp sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((init_v size temp y),
-         (adder01 size (vmap x) temp (stack, (Pervasives.succ sn))))),
-         (init_v size temp y)))
-  else rz_adder_form (vmap x) size y
-
-(** val nadd_c :
-    int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> int -> estore -> cfac -> cfac -> (((pexp
-    option * int) * cstore) * estore) value option **)
-
-let nadd_c size smap vmap bv f r temp stack sn es x y =
-  bind (type_factor bv Nat x) (fun t1 ->
-    bind (type_factor bv Nat y) (fun t2 ->
-      match par_find_var_check smap bv size r x with
-      | Some v ->
-        (match v with
-         | Value vx ->
-           if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) C)
-           then bind (par_eval_cfac_check smap bv size r Nat y) (fun t2v ->
-                  match t2v with
-                  | Value t2v' ->
-                    bind (Store.find vx es) (fun exps -> Some (Value ((((Some
-                      (nadd_circuit_left size f vmap vx t2v' stack temp sn)),
-                      sn), r),
-                      (Store.add vx
-                        ((nadd_circuit_left size f vmap vx t2v' stack temp sn) :: exps)
-                        es))))
-                  | Error -> Some Error)
-           else if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) Q)
-                then bind (par_find_var_check smap bv size r y) (fun vyv ->
-                       match vyv with
-                       | Value vy ->
-                         bind (Store.find vx es) (fun exps -> Some (Value
-                           ((((Some
-                           (nadd_circuit_two size f vmap vx vy stack sn)),
-                           sn), r),
-                           (Store.add vx
-                             ((nadd_circuit_two size f vmap vx vy stack sn) :: exps)
-                             es))))
-                       | Error -> Some Error)
-                else None
-         | Error -> Some Error)
-      | None -> None))
-
-(** val nsub_circuit_two :
-    int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (qvar * int) ->
-    var -> int -> pexp **)
-
-let nsub_circuit_two size f vmap x y stack sn =
-  if flag_eq f Classic
-  then Exp (subtractor01 size (vmap x) (vmap y) (stack, (Pervasives.succ sn)))
-  else rz_full_sub_form (vmap x) size (vmap y)
-
-(** val nsub_circuit_left :
-    int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (int -> bool) ->
-    var -> var -> int -> pexp **)
-
-let nsub_circuit_left size f vmap x y stack temp sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((init_v size temp y),
-         (subtractor01 size (vmap x) temp (stack, (Pervasives.succ sn))))),
-         (init_v size temp y)))
-  else rz_sub_right (vmap x) size y
-
-(** val nsub_c :
-    int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> int -> estore -> cfac -> cfac -> (((pexp
-    option * int) * cstore) * estore) value option **)
-
-let nsub_c size smap vmap bv f r temp stack sn es x y =
-  bind (type_factor bv Nat x) (fun t1 ->
-    bind (type_factor bv Nat y) (fun t2 ->
-      match par_find_var_check smap bv size r x with
-      | Some v ->
-        (match v with
-         | Value vx ->
-           if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) C)
-           then bind (par_eval_cfac_check smap bv size r Nat y) (fun t2v ->
-                  match t2v with
-                  | Value t2v' ->
-                    bind (Store.find vx es) (fun exps -> Some (Value ((((Some
-                      (nsub_circuit_left size f vmap vx t2v' stack temp sn)),
-                      sn), r),
-                      (Store.add vx
-                        ((nsub_circuit_left size f vmap vx t2v' stack temp sn) :: exps)
-                        es))))
-                  | Error -> Some Error)
-           else if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) Q)
-                then bind (par_find_var_check smap bv size r y) (fun vyv ->
-                       match vyv with
-                       | Value vy ->
-                         bind (Store.find vx es) (fun exps -> Some (Value
-                           ((((Some
-                           (nsub_circuit_two size f vmap vx vy stack sn)),
-                           sn), r),
-                           (Store.add vx
-                             ((nsub_circuit_two size f vmap vx vy stack sn) :: exps)
-                             es))))
-                       | Error -> Some Error)
-                else None
-         | Error -> Some Error)
-      | None -> None))
-
-(** val fadd_circuit_two :
-    int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (qvar * int) ->
-    var -> int -> pexp **)
-
-let fadd_circuit_two size f vmap x y stack sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((Seq ((Rev (vmap x)), (Rev (vmap y)))),
-         (adder01 size (vmap x) (vmap y) (stack, (Pervasives.succ sn))))),
-         (inv_exp (Seq ((Rev (vmap x)), (Rev (vmap y)))))))
-  else PSeq ((PSeq ((Exp (Seq ((Rev (vmap x)), (Rev (vmap y))))),
-         (rz_full_adder_form (vmap x) size (vmap y)))),
-         (inv_pexp (Exp (Seq ((Rev (vmap x)), (Rev (vmap y)))))))
-
-(** val fadd_circuit_left :
-    int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (int -> bool) ->
-    var -> var -> int -> pexp **)
-
-let fadd_circuit_left size f vmap x y stack temp sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((Seq ((Seq ((Seq ((init_v size temp y), (Rev
-         (vmap x)))), (Rev temp))),
-         (adder01 size (vmap x) temp (stack, (Pervasives.succ sn))))),
-         (inv_exp (Seq ((Rev (vmap x)), (Rev temp)))))),
-         (init_v size temp y)))
-  else PSeq ((PSeq ((Exp (Rev (vmap x))),
-         (rz_adder_form (vmap x) size (fbrev size y)))),
-         (inv_pexp (Exp (Rev (vmap x)))))
-
-(** val fadd_c :
-    int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> int -> estore -> cfac -> cfac -> (((pexp
-    option * int) * cstore) * estore) value option **)
-
-let fadd_c size smap vmap bv f r temp stack sn es x y =
-  bind (type_factor bv FixedP x) (fun t1 ->
-    bind (type_factor bv FixedP y) (fun t2 ->
-      match par_find_var_check smap bv size r x with
-      | Some v ->
-        (match v with
-         | Value vx ->
-           if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) C)
-           then bind (par_eval_cfac_check smap bv size r FixedP y)
-                  (fun t2v ->
-                  match t2v with
-                  | Value t2v' ->
-                    bind (Store.find vx es) (fun exps -> Some (Value ((((Some
-                      (fadd_circuit_left size f vmap vx t2v' stack temp sn)),
-                      sn), r),
-                      (Store.add vx
-                        ((fadd_circuit_left size f vmap vx t2v' stack temp sn) :: exps)
-                        es))))
-                  | Error -> Some Error)
-           else if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) Q)
-                then bind (par_find_var_check smap bv size r y) (fun vyv ->
-                       match vyv with
-                       | Value vy ->
-                         bind (Store.find vx es) (fun exps -> Some (Value
-                           ((((Some
-                           (fadd_circuit_two size f vmap vx vy stack sn)),
-                           sn), r),
-                           (Store.add vx
-                             ((fadd_circuit_two size f vmap vx vy stack sn) :: exps)
-                             es))))
-                       | Error -> Some Error)
-                else None
-         | Error -> Some Error)
-      | None -> None))
-
-(** val fsub_circuit_two :
-    int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (qvar * int) ->
-    var -> int -> pexp **)
-
-let fsub_circuit_two size f vmap x y stack sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((Seq ((Rev (vmap x)), (Rev (vmap y)))),
-         (subtractor01 size (vmap x) (vmap y) (stack, (Pervasives.succ sn))))),
-         (inv_exp (Seq ((Rev (vmap x)), (Rev (vmap y)))))))
-  else PSeq ((PSeq ((Exp (Seq ((Rev (vmap x)), (Rev (vmap y))))),
-         (rz_full_sub_form (vmap x) size (vmap y)))),
-         (inv_pexp (Exp (Seq ((Rev (vmap x)), (Rev (vmap y)))))))
-
-(** val fsub_circuit_left :
-    int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (int -> bool) ->
-    var -> var -> int -> pexp **)
-
-let fsub_circuit_left size f vmap x y stack temp sn =
-  if flag_eq f Classic
-  then Exp (Seq ((Seq ((Seq ((Seq ((Seq ((init_v size temp y), (Rev
-         (vmap x)))), (Rev temp))),
-         (subtractor01 size (vmap x) temp (stack, (Pervasives.succ sn))))),
-         (inv_exp (Seq ((Rev (vmap x)), (Rev temp)))))),
-         (init_v size temp y)))
-  else PSeq ((PSeq ((Exp (Rev (vmap x))),
-         (rz_sub_right (vmap x) size (fbrev size y)))),
-         (inv_pexp (Exp (Rev (vmap x)))))
-
-(** val fsub_c :
-    int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> int -> estore -> cfac -> cfac -> (((pexp
-    option * int) * cstore) * estore) value option **)
-
-let fsub_c size smap vmap bv f r temp stack sn es x y =
-  bind (type_factor bv FixedP x) (fun t1 ->
-    bind (type_factor bv FixedP y) (fun t2 ->
-      match par_find_var_check smap bv size r x with
-      | Some v ->
-        (match v with
-         | Value vx ->
-           if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) C)
-           then bind (par_eval_cfac_check smap bv size r FixedP y)
-                  (fun t2v ->
-                  match t2v with
-                  | Value t2v' ->
-                    bind (Store.find vx es) (fun exps -> Some (Value ((((Some
-                      (fsub_circuit_left size f vmap vx t2v' stack temp sn)),
-                      sn), r),
-                      (Store.add vx
-                        ((fsub_circuit_left size f vmap vx t2v' stack temp sn) :: exps)
-                        es))))
-                  | Error -> Some Error)
-           else if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) Q)
-                then bind (par_find_var_check smap bv size r y) (fun vyv ->
-                       match vyv with
-                       | Value vy ->
-                         bind (Store.find vx es) (fun exps -> Some (Value
-                           ((((Some
-                           (fsub_circuit_two size f vmap vx vy stack sn)),
-                           sn), r),
-                           (Store.add vx
-                             ((fsub_circuit_two size f vmap vx vy stack sn) :: exps)
-                             es))))
-                       | Error -> Some Error)
-                else None
-         | Error -> Some Error)
-      | None -> None))
-
 (** val nmul_circuit_two :
     int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (qvar * int) ->
-    (qvar * int) -> var -> int -> pexp **)
+    (qvar * int) -> var -> int -> exp **)
 
 let nmul_circuit_two size f vmap x y z stack sn =
   if flag_eq f Classic
@@ -992,7 +764,7 @@ let nmul_circuit_two size f vmap x y z stack sn =
 
 (** val nmul_circuit_one :
     int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (qvar * int) ->
-    (int -> bool) -> var -> int -> pexp **)
+    (int -> bool) -> var -> int -> exp **)
 
 let nmul_circuit_one size f vmap x y z stack sn =
   if flag_eq f Classic
@@ -1001,13 +773,13 @@ let nmul_circuit_one size f vmap x y z stack sn =
 
 (** val nqmul_c :
     int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> int -> estore -> cfac -> cfac -> cfac -> (((pexp
+    -> var -> var -> int -> estore -> cfac -> cfac -> cfac -> (((exp
     option * int) * cstore) * estore) value option **)
 
 let nqmul_c size smap vmap bv f r _ stack sn es x y z =
-  bind (type_factor bv Nat x) (fun _ ->
-    bind (type_factor bv Nat y) (fun t2 ->
-      bind (type_factor bv Nat z) (fun t3 ->
+  bind (type_factor bv x) (fun _ ->
+    bind (type_factor bv y) (fun t2 ->
+      bind (type_factor bv z) (fun t3 ->
         bind (par_find_var bv size r x) (fun vx ->
           if (&&) (aty_eq (fst t2) Q) (aty_eq (fst t3) Q)
           then bind (par_find_var_check smap bv size r y) (fun vyv ->
@@ -1027,8 +799,7 @@ let nqmul_c size smap vmap bv f r _ stack sn es x y z =
                    | Error -> Some Error))
           else if (&&) (aty_eq (fst t2) Q) (aty_eq (fst t3) C)
                then bind (par_find_var_check smap bv size r y) (fun vyv ->
-                      bind (par_eval_cfac_check smap bv size r Nat z)
-                        (fun vzv ->
+                      bind (par_eval_cfac_check smap bv size r z) (fun vzv ->
                         match vyv with
                         | Value vy ->
                           (match vzv with
@@ -1045,7 +816,7 @@ let nqmul_c size smap vmap bv f r _ stack sn es x y z =
                else if (&&) (aty_eq (fst t2) C) (aty_eq (fst t3) Q)
                     then bind (par_find_var_check smap bv size r z)
                            (fun vzv ->
-                           bind (par_eval_cfac_check smap bv size r Nat y)
+                           bind (par_eval_cfac_check smap bv size r y)
                              (fun vyv ->
                              match vzv with
                              | Value vz ->
@@ -1060,72 +831,70 @@ let nqmul_c size smap vmap bv f r _ stack sn es x y z =
                                          tyv stack sn) :: exps) es))))
                                 | Error -> Some Error)
                              | Error -> Some Error))
-                    else bind (par_eval_cfac_check smap bv size r Nat y)
+                    else bind (par_eval_cfac_check smap bv size r y)
                            (fun vyv ->
-                           bind (par_eval_cfac_check smap bv size r Nat z)
+                           bind (par_eval_cfac_check smap bv size r z)
                              (fun vzv ->
                              match vyv with
                              | Value tyv ->
                                (match vzv with
                                 | Value tzv ->
                                   bind (Store.find vx es) (fun exps -> Some
-                                    (Value ((((Some (Exp
+                                    (Value ((((Some
                                     (init_v size (vmap vx)
                                       (nat2fb
-                                        (PeanoNat.Nat.modulo
+                                        (Nat.modulo
                                           (mul (a_nat2fb tyv size)
                                             (a_nat2fb tzv size))
-                                          (PeanoNat.Nat.pow (Pervasives.succ
-                                            (Pervasives.succ 0)) size)))))),
+                                          (Nat.pow (Pervasives.succ
+                                            (Pervasives.succ 0)) size))))),
                                     sn), r),
-                                    (Store.add vx ((Exp
-                                      (init_v size (vmap vx)
-                                        (nat2fb
-                                          (PeanoNat.Nat.modulo
-                                            (mul (a_nat2fb tyv size)
-                                              (a_nat2fb tzv size))
-                                            (PeanoNat.Nat.pow
-                                              (Pervasives.succ
-                                              (Pervasives.succ 0)) size))))) :: exps)
+                                    (Store.add vx
+                                      ((init_v size (vmap vx)
+                                         (nat2fb
+                                           (Nat.modulo
+                                             (mul (a_nat2fb tyv size)
+                                               (a_nat2fb tzv size))
+                                             (Nat.pow (Pervasives.succ
+                                               (Pervasives.succ 0)) size)))) :: exps)
                                       es))))
                                 | Error -> Some Error)
                              | Error -> Some Error))))))
 
 (** val fmul_circuit_two :
     int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (qvar * int) ->
-    (qvar * int) -> var -> var -> int -> pexp **)
+    (qvar * int) -> var -> var -> int -> exp **)
 
 let fmul_circuit_two size f vmap x y z temp stack sn =
   if flag_eq f Classic
-  then PSeq ((PSeq ((Exp (Seq ((Seq ((Rev (vmap y)), (Rev (vmap z)))), (Rev
-         (vmap x))))),
+  then Seq ((Seq ((Seq ((Seq ((Rev (vmap y)), (Rev (vmap z)))), (Rev
+         (vmap x)))),
          (clf_full_mult size (vmap y) (vmap z) (vmap x) temp (stack, sn)))),
-         (inv_pexp (Exp (Seq ((Seq ((Rev (vmap y)), (Rev (vmap z)))), (Rev
-           (vmap x)))))))
-  else PSeq ((PSeq ((Exp (Seq ((Seq ((Rev (vmap y)), (Rev (vmap z)))), (Rev
-         (vmap x))))),
-         (flt_full_mult size (vmap y) (vmap z) (vmap x) temp))),
-         (inv_pexp (Exp (Seq ((Seq ((Rev (vmap y)), (Rev (vmap z)))), (Rev
-           (vmap x)))))))
+         (inv_exp (Seq ((Seq ((Rev (vmap y)), (Rev (vmap z)))), (Rev
+           (vmap x))))))
+  else Seq ((Seq ((Seq ((Seq ((Rev (vmap y)), (Rev (vmap z)))), (Rev
+         (vmap x)))), (flt_full_mult size (vmap y) (vmap z) (vmap x) temp))),
+         (inv_exp (Seq ((Seq ((Rev (vmap y)), (Rev (vmap z)))), (Rev
+           (vmap x))))))
 
 (** val fmul_circuit_one :
     int -> flag -> ((qvar * int) -> var) -> (qvar * int) -> (qvar * int) ->
-    (int -> bool) -> var -> var -> int -> pexp **)
+    (int -> bool) -> var -> var -> int -> exp **)
 
 let fmul_circuit_one size f vmap x y z stack temp sn =
   if flag_eq f Classic
-  then Exp (cl_flt_mult size (vmap y) (vmap x) temp (stack, sn) z)
+  then cl_flt_mult size (vmap y) (vmap x) temp (stack, sn) z
   else flt_mult size (vmap y) (vmap x) z
 
 (** val fmul_c :
     int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> int -> estore -> cfac -> cfac -> cfac -> (((pexp
+    -> var -> var -> int -> estore -> cfac -> cfac -> cfac -> (((exp
     option * int) * cstore) * estore) value option **)
 
 let fmul_c size smap vmap bv f r temp stack sn es x y z =
-  bind (type_factor bv FixedP x) (fun _ ->
-    bind (type_factor bv FixedP y) (fun t2 ->
-      bind (type_factor bv FixedP z) (fun t3 ->
+  bind (type_factor bv x) (fun _ ->
+    bind (type_factor bv y) (fun t2 ->
+      bind (type_factor bv z) (fun t3 ->
         bind (par_find_var bv size r x) (fun vx ->
           if (&&) (aty_eq (fst t2) Q) (aty_eq (fst t3) Q)
           then bind (par_find_var_check smap bv size r y) (fun vyv ->
@@ -1145,8 +914,7 @@ let fmul_c size smap vmap bv f r temp stack sn es x y z =
                    | Error -> Some Error))
           else if (&&) (aty_eq (fst t2) Q) (aty_eq (fst t3) C)
                then bind (par_find_var_check smap bv size r y) (fun vyv ->
-                      bind (par_eval_cfac_check smap bv size r FixedP z)
-                        (fun vzv ->
+                      bind (par_eval_cfac_check smap bv size r z) (fun vzv ->
                         match vyv with
                         | Value vy ->
                           (match vzv with
@@ -1163,7 +931,7 @@ let fmul_c size smap vmap bv f r temp stack sn es x y z =
                else if (&&) (aty_eq (fst t2) C) (aty_eq (fst t3) Q)
                     then bind (par_find_var_check smap bv size r z)
                            (fun vzv ->
-                           bind (par_eval_cfac_check smap bv size r FixedP y)
+                           bind (par_eval_cfac_check smap bv size r y)
                              (fun vyv ->
                              match vzv with
                              | Value vz ->
@@ -1178,33 +946,32 @@ let fmul_c size smap vmap bv f r temp stack sn es x y z =
                                          tyv stack temp sn) :: exps) es))))
                                 | Error -> Some Error)
                              | Error -> Some Error))
-                    else bind (par_eval_cfac_check smap bv size r FixedP y)
+                    else bind (par_eval_cfac_check smap bv size r y)
                            (fun vyv ->
-                           bind (par_eval_cfac_check smap bv size r FixedP z)
+                           bind (par_eval_cfac_check smap bv size r z)
                              (fun vzv ->
                              match vyv with
                              | Value tyv ->
                                (match vzv with
                                 | Value tzv ->
                                   bind (Store.find vx es) (fun exps -> Some
-                                    (Value ((((Some (Exp
+                                    (Value ((((Some
                                     (init_v size (vmap vx)
                                       (nat2fb
-                                        (PeanoNat.Nat.modulo
+                                        (Nat.modulo
                                           (mul (a_nat2fb tyv size)
                                             (a_nat2fb tzv size))
-                                          (PeanoNat.Nat.pow (Pervasives.succ
-                                            (Pervasives.succ 0)) size)))))),
+                                          (Nat.pow (Pervasives.succ
+                                            (Pervasives.succ 0)) size))))),
                                     sn), r),
-                                    (Store.add vx ((Exp
-                                      (init_v size (vmap vx)
-                                        (nat2fb
-                                          (PeanoNat.Nat.modulo
-                                            (mul (a_nat2fb tyv size)
-                                              (a_nat2fb tzv size))
-                                            (PeanoNat.Nat.pow
-                                              (Pervasives.succ
-                                              (Pervasives.succ 0)) size))))) :: exps)
+                                    (Store.add vx
+                                      ((init_v size (vmap vx)
+                                         (nat2fb
+                                           (Nat.modulo
+                                             (mul (a_nat2fb tyv size)
+                                               (a_nat2fb tzv size))
+                                             (Nat.pow (Pervasives.succ
+                                               (Pervasives.succ 0)) size)))) :: exps)
                                       es))))
                                 | Error -> Some Error)
                              | Error -> Some Error))))))
@@ -1217,18 +984,9 @@ let rec bin_xor_q n x y =
     (fun m -> Seq ((coq_CNOT (x, m) (y, m)), (bin_xor_q m x y)))
     n
 
-(** val bin_xor_c : int -> var -> (int -> bool) -> exp **)
-
-let rec bin_xor_c n x y =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> SKIP (x, 0))
-    (fun m ->
-    if y m then Seq ((X (x, m)), (bin_xor_c m x y)) else bin_xor_c m x y)
-    n
-
 (** val init_c :
     int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> cstore -> int ->
-    estore -> cfac -> cfac -> (((pexp option * int) * cstore) * estore) value
+    estore -> cfac -> cfac -> (((exp option * int) * cstore) * estore) value
     option **)
 
 let init_c size smap vmap bv r sn es x y =
@@ -1237,30 +995,29 @@ let init_c size smap vmap bv r sn es x y =
     | Value vx ->
       bind (BEnv.find (fst vx) bv) (fun t0 ->
         if is_q t0
-        then bind (type_factor bv (get_ct t0) y) (fun t2 ->
+        then bind (type_factor bv y) (fun t2 ->
                if aty_eq (fst t2) Q
                then bind (par_find_var_check smap bv size r y) (fun vyv ->
                       match vyv with
                       | Value vy ->
                         bind (Store.find vx es) (fun exps -> Some (Value
-                          ((((Some (Exp
+                          ((((Some
                           (bin_xor_q (get_size size (get_ct t0)) (vmap vy)
-                            (vmap vx)))), sn), r),
-                          (Store.add vx ((Exp
-                            (bin_xor_q (get_size size (get_ct t0)) (vmap vy)
-                              (vmap vx))) :: exps) es))))
+                            (vmap vx))), sn), r),
+                          (Store.add vx
+                            ((bin_xor_q (get_size size (get_ct t0)) (vmap vy)
+                               (vmap vx)) :: exps) es))))
                       | Error -> Some Error)
-               else bind (par_eval_cfac_check smap bv size r (snd t2) y)
-                      (fun t2v ->
+               else bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
                       match t2v with
                       | Value t2v' ->
                         bind (Store.find vx es) (fun exps -> Some (Value
-                          ((((Some (Exp
-                          (bin_xor_c (get_size size (get_ct t0)) (vmap vx)
-                            t2v'))), sn), r),
-                          (Store.add vx ((Exp
-                            (bin_xor_c (get_size size (get_ct t0)) (vmap vx)
-                              t2v')) :: exps) es))))
+                          ((((Some
+                          (init_v (get_size size (get_ct t0)) (vmap vx) t2v')),
+                          sn), r),
+                          (Store.add vx
+                            ((init_v (get_size size (get_ct t0)) (vmap vx)
+                               t2v') :: exps) es))))
                       | Error -> Some Error))
         else None)
     | Error -> Some Error)
@@ -1268,7 +1025,7 @@ let init_c size smap vmap bv r sn es x y =
 (** val div_c :
     int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
     -> var -> var -> var -> int -> estore -> cfac -> cfac -> (int -> bool) ->
-    (((pexp option * int) * cstore) * estore) value option **)
+    (((exp option * int) * cstore) * estore) value option **)
 
 let div_c size smap vmap bv fl r temp temp1 stack sn es x y z =
   bind (par_find_var_check smap bv size r x) (fun vxv ->
@@ -1276,7 +1033,7 @@ let div_c size smap vmap bv fl r temp temp1 stack sn es x y z =
     | Value vx ->
       bind (BEnv.find (fst vx) bv) (fun t0 ->
         if is_q t0
-        then bind (type_factor bv (get_ct t0) y) (fun t2 ->
+        then bind (type_factor bv y) (fun t2 ->
                if aty_eq (fst t2) Q
                then bind (par_find_var_check smap bv size r y) (fun vyv ->
                       match vyv with
@@ -1289,40 +1046,93 @@ let div_c size smap vmap bv fl r temp temp1 stack sn es x y z =
                                  (Store.add vx
                                    ((rz_div size (vmap vy) (vmap vx) temp
                                       (a_nat2fb z size)) :: exps) es)))
-                          else Some (Value ((((Some (Exp
+                          else Some (Value ((((Some
                                  (cl_div size (vmap vy) (vmap vx) temp temp1
-                                   (stack, sn) (a_nat2fb z size)))), sn), r),
-                                 (Store.add vx ((Exp
-                                   (cl_div size (vmap vy) (vmap vx) temp
-                                     temp1 (stack, sn) (a_nat2fb z size))) :: exps)
+                                   (stack, sn) (a_nat2fb z size))), sn), r),
+                                 (Store.add vx
+                                   ((cl_div size (vmap vy) (vmap vx) temp
+                                      temp1 (stack, sn) (a_nat2fb z size)) :: exps)
                                    es))))
                       | Error -> Some Error)
-               else bind (par_eval_cfac_check smap bv size r (snd t2) y)
-                      (fun t2v ->
+               else bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
                       match t2v with
                       | Value t2v' ->
                         bind (Store.find vx es) (fun exps -> Some (Value
-                          ((((Some (Exp
-                          (bin_xor_c (get_size size (get_ct t0)) (vmap vx)
-                            t2v'))), sn), r),
-                          (Store.add vx ((Exp
-                            (bin_xor_c (get_size size (get_ct t0)) (vmap vx)
-                              t2v')) :: exps) es))))
+                          ((((Some
+                          (init_v (get_size size (get_ct t0)) (vmap vx) t2v')),
+                          sn), r),
+                          (Store.add vx
+                            ((init_v (get_size size (get_ct t0)) (vmap vx)
+                               t2v') :: exps) es))))
                       | Error -> Some Error))
-        else bind (par_eval_cfac_check smap bv size r Nat y) (fun t2v ->
+        else bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
+               match t2v with
+               | Value t2v' ->
+                 Some (Value (((None, sn),
+                   (Store.add vx
+                     (nat2fb (Nat.div (a_nat2fb t2v' size) (a_nat2fb z size)))
+                     r)), es))
+               | Error -> Some Error))
+    | Error -> Some Error)
+
+(** val mod_c :
+    int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
+    -> var -> var -> var -> int -> estore -> cfac -> cfac -> (int -> bool) ->
+    (((exp option * int) * cstore) * estore) value option **)
+
+let mod_c size smap vmap bv fl r temp temp1 stack sn es x y z =
+  bind (par_find_var_check smap bv size r x) (fun vxv ->
+    match vxv with
+    | Value vx ->
+      bind (BEnv.find (fst vx) bv) (fun t0 ->
+        if is_q t0
+        then bind (type_factor bv y) (fun t2 ->
+               if aty_eq (fst t2) Q
+               then bind (par_find_var_check smap bv size r y) (fun vyv ->
+                      match vyv with
+                      | Value vy ->
+                        bind (Store.find vx es) (fun exps ->
+                          if flag_eq fl QFTA
+                          then Some (Value ((((Some
+                                 (rz_moder size (vmap vy) (vmap vx) temp
+                                   (a_nat2fb z size))), sn), r),
+                                 (Store.add vx
+                                   ((rz_moder size (vmap vy) (vmap vx) temp
+                                      (a_nat2fb z size)) :: exps) es)))
+                          else Some (Value ((((Some
+                                 (cl_moder size (vmap vy) (vmap vx) temp
+                                   temp1 (stack, sn) (a_nat2fb z size))),
+                                 sn), r),
+                                 (Store.add vx
+                                   ((cl_moder size (vmap vy) (vmap vx) temp
+                                      temp1 (stack, sn) (a_nat2fb z size)) :: exps)
+                                   es))))
+                      | Error -> Some Error)
+               else bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
+                      match t2v with
+                      | Value t2v' ->
+                        bind (Store.find vx es) (fun exps -> Some (Value
+                          ((((Some
+                          (init_v (get_size size (get_ct t0)) (vmap vx) t2v')),
+                          sn), r),
+                          (Store.add vx
+                            ((init_v (get_size size (get_ct t0)) (vmap vx)
+                               t2v') :: exps) es))))
+                      | Error -> Some Error))
+        else bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
                match t2v with
                | Value t2v' ->
                  Some (Value (((None, sn),
                    (Store.add vx
                      (nat2fb
-                       (PeanoNat.Nat.div (a_nat2fb t2v' size)
-                         (a_nat2fb z size))) r)), es))
+                       (Nat.modulo (a_nat2fb t2v' size) (a_nat2fb z size))) r)),
+                   es))
                | Error -> Some Error))
     | Error -> Some Error)
 
 (** val lrot_c :
     int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> cstore -> int ->
-    estore -> cfac -> (((pexp option * int) * cstore) * pexp list Store.t)
+    estore -> cfac -> (((exp option * int) * cstore) * exp list Store.t)
     value option **)
 
 let lrot_c size smap vmap bv r sn es x =
@@ -1331,35 +1141,320 @@ let lrot_c size smap vmap bv r sn es x =
     | Value vx ->
       bind (BEnv.find (fst vx) bv) (fun t0 ->
         if is_q t0
-        then bind (Store.find vx es) (fun exps -> Some (Value ((((Some (Exp
-               (Rshift (vmap vx)))), sn), r),
-               (Store.add vx ((Exp (Rshift (vmap vx))) :: exps) es))))
+        then bind (Store.find vx es) (fun exps -> Some (Value ((((Some
+               (Rshift (vmap vx))), sn), r),
+               (Store.add vx ((Rshift (vmap vx)) :: exps) es))))
         else bind (Store.find vx r) (fun t1v -> Some (Value (((None, sn),
                (Store.add vx (l_rotate t1v (get_size size (get_ct t0))) r)),
                es))))
     | Error -> Some Error)
 
 (** val combine_if :
-    var -> int -> pexp -> pexp option -> pexp option -> pexp option **)
+    var -> int -> exp -> exp option -> exp option -> exp option **)
 
 let combine_if sv sn p1 e1 e2 =
   match e1 with
   | Some e1' ->
     (match e2 with
      | Some e2' ->
-       Some (PSeq ((PSeq ((PSeq (p1, (PCU ((sv, sn), e1')))), (Exp (X (sv,
-         sn))))), (PCU ((sv, sn), e2'))))
-     | None -> Some (PSeq (p1, (PCU ((sv, sn), e1')))))
+       Some (Seq ((Seq ((Seq (p1, (CU ((sv, sn), e1')))), (X (sv, sn)))), (CU
+         ((sv, sn), e2'))))
+     | None -> Some (Seq (p1, (CU ((sv, sn), e1')))))
   | None ->
     (match e2 with
-     | Some e2' ->
-       Some (PSeq ((PSeq (p1, (Exp (X (sv, sn))))), (PCU ((sv, sn), e2'))))
+     | Some e2' -> Some (Seq ((Seq (p1, (X (sv, sn)))), (CU ((sv, sn), e2'))))
      | None -> Some p1)
+
+(** val unary_circuit_left_core_cl :
+    qop -> int -> var -> var -> posi -> exp **)
+
+let unary_circuit_left_core_cl op size x y c =
+  match op with
+  | Coq_nadd -> adder01 size x y c
+  | Coq_nsub -> subtractor01 size x y c
+  | Coq_fadd -> adder01 size x y c
+  | Coq_fsub -> subtractor01 size x y c
+  | _ -> SKIP (x, 0)
+
+(** val unary_circuit_left :
+    qop -> btype -> int -> flag -> ((qvar * int) -> var) -> (qvar * int) ->
+    (int -> bool) -> var -> var -> int -> exp option **)
+
+let unary_circuit_left op t0 size f vmap x y stack temp sn =
+  if qop_eq op Coq_qxor
+  then Some (init_v (get_size size t0) (vmap x) y)
+  else if flag_eq f Classic
+       then Some (Seq ((Seq ((init_v size temp y),
+              (unary_circuit_left_core_cl op size temp (vmap x) (stack, sn)))),
+              (inv_exp (init_v size temp y))))
+       else (match op with
+             | Coq_nadd -> Some (rz_adder_form (vmap x) size y)
+             | Coq_nsub -> Some (rz_sub_right (vmap x) size y)
+             | Coq_fadd -> Some (rz_adder_form (vmap x) size y)
+             | Coq_fsub -> Some (rz_sub_right (vmap x) size y)
+             | _ -> None)
+
+(** val unary_circuit_two :
+    qop -> btype -> int -> flag -> ((qvar * int) -> var) -> (qvar * int) ->
+    (qvar * int) -> var -> int -> exp option **)
+
+let unary_circuit_two op t0 size f vmap x y stack sn =
+  if qop_eq op Coq_qxor
+  then Some (copyto (vmap y) (vmap x) (get_size size t0))
+  else if flag_eq f Classic
+       then (match op with
+             | Coq_nadd -> Some (adder01 size (vmap y) (vmap x) (stack, sn))
+             | Coq_nsub ->
+               Some (subtractor01 size (vmap y) (vmap x) (stack, sn))
+             | Coq_fadd -> Some (adder01 size (vmap y) (vmap x) (stack, sn))
+             | Coq_fsub ->
+               Some (subtractor01 size (vmap y) (vmap x) (stack, sn))
+             | _ -> None)
+       else (match op with
+             | Coq_nadd -> Some (rz_full_adder_form (vmap x) size (vmap y))
+             | Coq_nsub -> Some (rz_full_sub_form (vmap x) size (vmap y))
+             | Coq_fadd -> Some (rz_full_adder_form (vmap x) size (vmap y))
+             | Coq_fsub -> Some (rz_full_sub_form (vmap x) size (vmap y))
+             | _ -> None)
+
+(** val unary_c_value :
+    qop -> btype -> int -> (int -> bool) -> (int -> bool) -> (int -> bool)
+    option **)
+
+let unary_c_value op t0 size xv yv =
+  match op with
+  | Coq_nadd -> Some (cut_n (sumfb false yv xv) size)
+  | Coq_nsub -> Some (cut_n (sumfb true (negatem size yv) xv) size)
+  | Coq_fadd -> Some (cut_n (sumfb false yv xv) size)
+  | Coq_fsub -> Some (cut_n (sumfb true (negatem size yv) xv) size)
+  | Coq_qxor -> Some (bin_xor xv yv (get_size size t0))
+  | Coq_nfac ->
+    Some
+      (nat2fb
+        (Nat.modulo (fact (a_nat2fb yv size))
+          (Nat.pow (Pervasives.succ (Pervasives.succ 0)) size)))
+  | Coq_fdiv -> Some (nat2fb (Nat.div (a_nat2fb xv size) (a_nat2fb yv size)))
+  | _ -> None
+
+(** val com_unary :
+    qop -> int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag ->
+    cstore -> var -> var -> int -> estore -> cfac -> cfac -> (((exp
+    option * int) * cstore) * estore) value option **)
+
+let com_unary op size smap vmap bv f r temp stack sn es x y =
+  bind (type_factor bv x) (fun t1 ->
+    bind (type_factor bv y) (fun t2 ->
+      match par_find_var_check smap bv size r x with
+      | Some v ->
+        (match v with
+         | Value vx ->
+           if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) C)
+           then bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
+                  match t2v with
+                  | Value t2v' ->
+                    bind (Store.find vx es) (fun exps ->
+                      bind
+                        (unary_circuit_left op (snd t1) size f vmap vx t2v'
+                          stack temp sn) (fun cir -> Some (Value ((((Some
+                        cir), sn), r), (Store.add vx (cir :: exps) es)))))
+                  | Error -> Some Error)
+           else if (&&) (aty_eq (fst t1) Q) (aty_eq (fst t2) Q)
+                then bind (par_find_var_check smap bv size r y) (fun vyv ->
+                       match vyv with
+                       | Value vy ->
+                         if qdty_eq vx vy
+                         then Some Error
+                         else bind (Store.find vx es) (fun exps ->
+                                bind
+                                  (unary_circuit_two op (snd t1) size f vmap
+                                    vx vy stack sn) (fun cir -> Some (Value
+                                  ((((Some cir), sn), r),
+                                  (Store.add vx (cir :: exps) es)))))
+                       | Error -> Some Error)
+                else bind (par_eval_cfac_check smap bv size r y) (fun t3v ->
+                       bind (Store.find vx r) (fun txv ->
+                         match t3v with
+                         | Value tyv ->
+                           bind (unary_c_value op (snd t1) size txv tyv)
+                             (fun new_val -> Some (Value (((None, sn),
+                             (Store.add vx new_val r)), es)))
+                         | Error -> Some Error))
+         | Error -> Some Error)
+      | None -> None))
+
+(** val com_bin :
+    qop -> int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag ->
+    cstore -> var -> var -> var -> int -> estore -> cfac -> cfac -> cfac ->
+    (((exp option * int) * cstore) * estore) value option **)
+
+let com_bin op size smap vmap bv f r temp temp1 stack sn es x y z =
+  match op with
+  | Coq_nadd ->
+    bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
+      bind (par_eval_cfac_check smap bv size r z) (fun t3v ->
+        bind (par_find_var_check smap bv size r x) (fun vx ->
+          match t2v with
+          | Value t2v' ->
+            (match t3v with
+             | Value t3v' ->
+               (match vx with
+                | Value vx' ->
+                  Some (Value (((None, sn),
+                    (Store.add vx'
+                      (nat2fb
+                        (Nat.modulo
+                          (add (a_nat2fb t2v' size) (a_nat2fb t3v' size))
+                          (Nat.pow (Pervasives.succ (Pervasives.succ 0)) size)))
+                      r)), es))
+                | Error -> Some Error)
+             | Error -> Some Error)
+          | Error -> Some Error)))
+  | Coq_nsub ->
+    bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
+      bind (par_eval_cfac_check smap bv size r z) (fun t3v ->
+        bind (par_find_var_check smap bv size r x) (fun vx ->
+          match t2v with
+          | Value t2v' ->
+            (match t3v with
+             | Value t3v' ->
+               (match vx with
+                | Value vx' ->
+                  Some (Value (((None, sn),
+                    (Store.add vx'
+                      (nat2fb
+                        (Nat.modulo
+                          (sub (a_nat2fb t2v' size) (a_nat2fb t3v' size))
+                          (Nat.pow (Pervasives.succ (Pervasives.succ 0)) size)))
+                      r)), es))
+                | Error -> Some Error)
+             | Error -> Some Error)
+          | Error -> Some Error)))
+  | Coq_nmul ->
+    bind (qvar_eq smap bv size r x y) (fun bval ->
+      match bval with
+      | Value x0 ->
+        if x0
+        then Some Error
+        else bind (qvar_eq smap bv size r x z) (fun bval1 ->
+               match bval1 with
+               | Value x1 ->
+                 if x1
+                 then Some Error
+                 else nqmul_c size smap vmap bv f r temp stack sn es x y z
+               | Error -> Some Error)
+      | Error -> Some Error)
+  | Coq_fadd ->
+    bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
+      bind (par_eval_cfac_check smap bv size r z) (fun t3v ->
+        bind (par_find_var_check smap bv size r x) (fun vx ->
+          match t2v with
+          | Value t2v' ->
+            (match t3v with
+             | Value t3v' ->
+               (match vx with
+                | Value vx' ->
+                  Some (Value (((None, sn),
+                    (Store.add vx'
+                      (fbrev size
+                        (nat2fb
+                          (Nat.modulo
+                            (add (a_nat2fb (fbrev size t2v') size)
+                              (a_nat2fb (fbrev size t3v') size))
+                            (Nat.pow (Pervasives.succ (Pervasives.succ 0))
+                              size)))) r)), es))
+                | Error -> Some Error)
+             | Error -> Some Error)
+          | Error -> Some Error)))
+  | Coq_fsub ->
+    bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
+      bind (par_eval_cfac_check smap bv size r z) (fun t3v ->
+        bind (par_find_var_check smap bv size r x) (fun vx ->
+          match t2v with
+          | Value t2v' ->
+            (match t3v with
+             | Value t3v' ->
+               (match vx with
+                | Value vx' ->
+                  Some (Value (((None, sn),
+                    (Store.add vx'
+                      (fbrev size
+                        (nat2fb
+                          (Nat.modulo
+                            (sub (a_nat2fb (fbrev size t2v') size)
+                              (a_nat2fb (fbrev size t3v') size))
+                            (Nat.pow (Pervasives.succ (Pervasives.succ 0))
+                              size)))) r)), es))
+                | Error -> Some Error)
+             | Error -> Some Error)
+          | Error -> Some Error)))
+  | Coq_fmul ->
+    bind (qvar_eq smap bv size r x y) (fun bval ->
+      match bval with
+      | Value x0 ->
+        if x0
+        then Some Error
+        else bind (qvar_eq smap bv size r x z) (fun bval1 ->
+               match bval1 with
+               | Value x1 ->
+                 if x1
+                 then Some Error
+                 else fmul_c size smap vmap bv f r temp stack sn es x y z
+               | Error -> Some Error)
+      | Error -> Some Error)
+  | Coq_ndiv ->
+    bind (qvar_eq smap bv size r x y) (fun bval ->
+      match bval with
+      | Value x0 ->
+        if x0
+        then Some Error
+        else bind (par_eval_cfac_check smap bv size r z) (fun t2v ->
+               match t2v with
+               | Value t2v' ->
+                 div_c size smap vmap bv f r temp temp1 stack sn es x y t2v'
+               | Error -> Some Error)
+      | Error -> Some Error)
+  | Coq_nmod ->
+    bind (qvar_eq smap bv size r x y) (fun bval ->
+      match bval with
+      | Value x0 ->
+        if x0
+        then Some Error
+        else bind (par_eval_cfac_check smap bv size r z) (fun t2v ->
+               match t2v with
+               | Value t2v' ->
+                 mod_c size smap vmap bv f r temp temp1 stack sn es x y t2v'
+               | Error -> Some Error)
+      | Error -> Some Error)
+  | Coq_fndiv ->
+    bind (par_eval_cfac_check smap bv size r y) (fun t2v ->
+      bind (par_eval_cfac_check smap bv size r z) (fun t3v ->
+        bind (par_find_var_check smap bv size r x) (fun vx ->
+          match t2v with
+          | Value t2v' ->
+            (match t3v with
+             | Value t3v' ->
+               (match vx with
+                | Value vx' ->
+                  Some (Value (((None, sn),
+                    (Store.add vx'
+                      (fbrev size
+                        (nat2fb
+                          (Nat.modulo
+                            (Nat.div
+                              (mul (a_nat2fb t2v' size)
+                                (Nat.pow (Pervasives.succ (Pervasives.succ
+                                  0)) size)) (a_nat2fb t3v' size))
+                            (Nat.pow (Pervasives.succ (Pervasives.succ 0))
+                              size)))) r)), es))
+                | Error -> Some Error)
+             | Error -> Some Error)
+          | Error -> Some Error)))
+  | _ -> None
 
 (** val trans_qexp :
     int -> (qvar -> int) -> ((qvar * int) -> var) -> benv -> flag -> cstore
-    -> var -> var -> var -> int -> fmap -> estore -> estore -> qexp ->
-    (((pexp option * int) * cstore) * estore) value option **)
+    -> var -> var -> var -> int -> fmap -> estore -> estore -> qexp -> (((exp
+    option * int) * cstore) * estore) value option **)
 
 let rec trans_qexp size smap vmap bv fl r temp temp1 stack sn fv es bases = function
 | Coq_qinv x ->
@@ -1368,10 +1463,10 @@ let rec trans_qexp size smap vmap bv fl r temp temp1 stack sn fv es bases = func
     | Value vx' ->
       bind (Store.find vx' es) (fun exps ->
         bind ((fun l -> List.nth_opt l 0) exps) (fun exp0 -> Some (Value
-          ((((Some (inv_pexp exp0)), sn), r),
+          ((((Some (inv_exp exp0)), sn), r),
           (Store.add vx' (List.tl exps) es)))))
     | Error -> Some Error)
-| Coq_call (f, x) ->
+| Coq_call (x, f, _) ->
   (match lookup_fmap fv f with
    | Some p ->
      let (p0, r') = p in
@@ -1389,23 +1484,23 @@ let rec trans_qexp size smap vmap bv fl r temp temp1 stack sn fv es bases = func
                bind (BEnv.find (fst vx) bv) (fun t' ->
                  if (&&) (is_q t') (is_q t0)
                  then bind (Store.find vx es) (fun exps -> Some (Value
-                        ((((Some (PSeq ((PSeq (e', (Exp
+                        ((((Some (Seq ((Seq (e',
                         (copyto (vmap' vu) (vmap vx)
-                          (get_size size (get_ct t0)))))), (inv_pexp e')))),
+                          (get_size size (get_ct t0))))), (inv_exp e')))),
                         sn), r),
-                        (Store.add vx ((PSeq ((PSeq (e', (Exp
+                        (Store.add vx ((Seq ((Seq (e',
                           (copyto (vmap' vu) (vmap vx)
-                            (get_size size (get_ct t0)))))),
-                          (inv_pexp e'))) :: exps) es))))
+                            (get_size size (get_ct t0))))),
+                          (inv_exp e'))) :: exps) es))))
                  else if (&&) (is_q t') (is_c t0)
                       then bind (Store.find vx es) (fun exps ->
                              bind (Store.find vu r') (fun uv -> Some (Value
-                               ((((Some (Exp
+                               ((((Some
                                (init_v (get_size size (get_ct t0)) (vmap vx)
-                                 uv))), sn), r),
-                               (Store.add vx ((Exp
-                                 (init_v (get_size size (get_ct t0))
-                                   (vmap vx) uv)) :: exps) es)))))
+                                 uv)), sn), r),
+                               (Store.add vx
+                                 ((init_v (get_size size (get_ct t0))
+                                    (vmap vx) uv) :: exps) es)))))
                       else bind (Store.find vu r') (fun _ ->
                              bind (Store.find vx r) (fun xv -> Some (Value
                                (((None, sn), (Store.add vx xv r)), es)))))
@@ -1459,7 +1554,7 @@ let rec trans_qexp size smap vmap bv fl r temp temp1 stack sn fv es bases = func
           | None -> Some Error))
     | Error -> Some Error)
 | Coq_qfor (x, n, e') ->
-  bind (par_eval_cfac_check smap bv size r Nat n) (fun t2v' ->
+  bind (par_eval_cfac_check smap bv size r n) (fun t2v' ->
     match t2v' with
     | Value t2v ->
       let rec trans_while r0 sn0 i =
@@ -1510,217 +1605,16 @@ let rec trans_qexp size smap vmap bv fl r temp temp1 stack sn fv es bases = func
    | None -> None)
 | Coq_skip -> Some (Value (((None, sn), r), es))
 | Coq_init (x, v) ->
-  if negb (qvar_eq bv size r x v)
-  then init_c size smap vmap bv r sn es x v
-  else Some Error
-| Coq_nadd (x, y) ->
-  if negb (qvar_eq bv size r x y)
-  then nadd_c size smap vmap bv fl r temp stack sn es x y
-  else Some Error
-| Coq_nsub (x, y) ->
-  if negb (qvar_eq bv size r x y)
-  then nsub_c size smap vmap bv fl r temp stack sn es x y
-  else Some Error
-| Coq_nmul (x, y, z) ->
-  if (&&) (negb (qvar_eq bv size r x z)) (negb (qvar_eq bv size r y z))
-  then nqmul_c size smap vmap bv fl r temp stack sn es x y z
-  else Some Error
-| Coq_fadd (x, y) ->
-  if negb (qvar_eq bv size r x y)
-  then fadd_c size smap vmap bv fl r temp stack sn es x y
-  else Some Error
-| Coq_fsub (x, y) ->
-  if negb (qvar_eq bv size r x y)
-  then fsub_c size smap vmap bv fl r temp stack sn es x y
-  else Some Error
-| Coq_fmul (x, y, z) ->
-  if (&&) (negb (qvar_eq bv size r x z)) (negb (qvar_eq bv size r y z))
-  then fmul_c size smap vmap bv fl r temp stack sn es x y z
-  else Some Error
-| Coq_qxor (x, y) ->
-  if negb (qvar_eq bv size r x y)
-  then init_c size smap vmap bv r sn es x y
-  else Some Error
-| Coq_slrot x -> lrot_c size smap vmap bv r sn es x
-| Coq_ndiv (x, y, n) ->
-  bind (par_eval_cfac_check smap bv size r Nat n) (fun t2v ->
-    match t2v with
-    | Value t2v' ->
-      div_c size smap vmap bv fl r temp temp1 stack sn es x y t2v'
+  bind (qvar_eq smap bv size r x v) (fun bval ->
+    match bval with
+    | Value x0 ->
+      if x0 then Some Error else init_c size smap vmap bv r sn es x v
     | Error -> Some Error)
-| Coq_nmod (x, y, n) ->
-  bind (par_eval_cfac_check smap bv size r Nat y) (fun t2v ->
-    bind (par_eval_cfac_check smap bv size r Nat n) (fun t3v ->
-      bind (par_find_var_check smap bv size r x) (fun vx ->
-        match t2v with
-        | Value t2v' ->
-          (match t3v with
-           | Value t3v' ->
-             (match vx with
-              | Value vx' ->
-                Some (Value (((None, sn),
-                  (Store.add vx'
-                    (nat2fb
-                      (PeanoNat.Nat.modulo (a_nat2fb t2v' size)
-                        (a_nat2fb t3v' size))) r)), es))
-              | Error -> Some Error)
-           | Error -> Some Error)
-        | Error -> Some Error)))
-| Coq_nfac (x, n) ->
-  bind (par_eval_cfac_check smap bv size r Nat n) (fun t3v ->
-    bind (par_find_var_check smap bv size r x) (fun vx ->
-      match t3v with
-      | Value t3v' ->
-        (match vx with
-         | Value vx' ->
-           Some (Value (((None, sn),
-             (Store.add vx' (nat2fb (fact (a_nat2fb t3v' size))) r)), es))
-         | Error -> Some Error)
-      | Error -> Some Error))
-| Coq_fdiv (x, n) ->
-  bind (par_eval_cfac_check smap bv size r Nat n) (fun t3v ->
-    bind (par_find_var_check smap bv size r x) (fun vx ->
-      match t3v with
-      | Value t3v' ->
-        (match vx with
-         | Value vx' ->
-           bind (Store.find vx' r) (fun txv -> Some (Value (((None, sn),
-             (Store.add vx'
-               (fbrev size
-                 (nat2fb
-                   (PeanoNat.Nat.div (a_nat2fb (fbrev size txv) size)
-                     (a_nat2fb t3v' size)))) r)), es)))
-         | Error -> Some Error)
-      | Error -> Some Error))
-| Coq_ncsub (x, y, n) ->
-  bind (par_eval_cfac_check smap bv size r Nat y) (fun t2v ->
-    bind (par_eval_cfac_check smap bv size r Nat n) (fun t3v ->
-      bind (par_find_var_check smap bv size r x) (fun vx ->
-        match t2v with
-        | Value t2v' ->
-          (match t3v with
-           | Value t3v' ->
-             (match vx with
-              | Value vx' ->
-                Some (Value (((None, sn),
-                  (Store.add vx'
-                    (nat2fb
-                      (PeanoNat.Nat.modulo
-                        (sub (a_nat2fb t2v' size) (a_nat2fb t3v' size))
-                        (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ
-                          0)) size))) r)), es))
-              | Error -> Some Error)
-           | Error -> Some Error)
-        | Error -> Some Error)))
-| Coq_ncadd (x, y, n) ->
-  bind (par_eval_cfac_check smap bv size r Nat y) (fun t2v ->
-    bind (par_eval_cfac_check smap bv size r Nat n) (fun t3v ->
-      bind (par_find_var_check smap bv size r x) (fun vx ->
-        match t2v with
-        | Value t2v' ->
-          (match t3v with
-           | Value t3v' ->
-             (match vx with
-              | Value vx' ->
-                Some (Value (((None, sn),
-                  (Store.add vx'
-                    (nat2fb
-                      (PeanoNat.Nat.modulo
-                        (add (a_nat2fb t2v' size) (a_nat2fb t3v' size))
-                        (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ
-                          0)) size))) r)), es))
-              | Error -> Some Error)
-           | Error -> Some Error)
-        | Error -> Some Error)))
-| Coq_fcsub (x, y, n) ->
-  bind (par_eval_cfac_check smap bv size r FixedP y) (fun t2v ->
-    bind (par_eval_cfac_check smap bv size r FixedP n) (fun t3v ->
-      bind (par_find_var_check smap bv size r x) (fun vx ->
-        match t2v with
-        | Value t2v' ->
-          (match t3v with
-           | Value t3v' ->
-             (match vx with
-              | Value vx' ->
-                Some (Value (((None, sn),
-                  (Store.add vx'
-                    (fbrev size
-                      (nat2fb
-                        (PeanoNat.Nat.modulo
-                          (sub (a_nat2fb (fbrev size t2v') size)
-                            (a_nat2fb (fbrev size t3v') size))
-                          (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ
-                            0)) size)))) r)), es))
-              | Error -> Some Error)
-           | Error -> Some Error)
-        | Error -> Some Error)))
-| Coq_fcadd (x, y, n) ->
-  bind (par_eval_cfac_check smap bv size r FixedP y) (fun t2v ->
-    bind (par_eval_cfac_check smap bv size r FixedP n) (fun t3v ->
-      bind (par_find_var_check smap bv size r x) (fun vx ->
-        match t2v with
-        | Value t2v' ->
-          (match t3v with
-           | Value t3v' ->
-             (match vx with
-              | Value vx' ->
-                Some (Value (((None, sn),
-                  (Store.add vx'
-                    (fbrev size
-                      (nat2fb
-                        (PeanoNat.Nat.modulo
-                          (add (a_nat2fb (fbrev size t2v') size)
-                            (a_nat2fb (fbrev size t3v') size))
-                          (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ
-                            0)) size)))) r)), es))
-              | Error -> Some Error)
-           | Error -> Some Error)
-        | Error -> Some Error)))
-| Coq_ncmul (x, y, n) ->
-  bind (par_eval_cfac_check smap bv size r Nat y) (fun t2v ->
-    bind (par_eval_cfac_check smap bv size r Nat n) (fun t3v ->
-      bind (par_find_var_check smap bv size r x) (fun vx ->
-        match t2v with
-        | Value t2v' ->
-          (match t3v with
-           | Value t3v' ->
-             (match vx with
-              | Value vx' ->
-                Some (Value (((None, sn),
-                  (Store.add vx'
-                    (nat2fb
-                      (PeanoNat.Nat.modulo
-                        (mul (a_nat2fb t2v' size) (a_nat2fb t3v' size))
-                        (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ
-                          0)) size))) r)), es))
-              | Error -> Some Error)
-           | Error -> Some Error)
-        | Error -> Some Error)))
-| Coq_fndiv (x, y, n) ->
-  bind (par_eval_cfac_check smap bv size r Nat y) (fun t2v ->
-    bind (par_eval_cfac_check smap bv size r Nat n) (fun t3v ->
-      bind (par_find_var_check smap bv size r x) (fun vx ->
-        match t2v with
-        | Value t2v' ->
-          (match t3v with
-           | Value t3v' ->
-             (match vx with
-              | Value vx' ->
-                Some (Value (((None, sn),
-                  (Store.add vx'
-                    (fbrev size
-                      (nat2fb
-                        (PeanoNat.Nat.modulo
-                          (PeanoNat.Nat.div
-                            (mul (a_nat2fb t2v' size)
-                              (PeanoNat.Nat.pow (Pervasives.succ
-                                (Pervasives.succ 0)) size))
-                            (a_nat2fb t3v' size))
-                          (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ
-                            0)) size)))) r)), es))
-              | Error -> Some Error)
-           | Error -> Some Error)
-        | Error -> Some Error)))
+| Coq_slrot x -> lrot_c size smap vmap bv r sn es x
+| Coq_unary (x, op, v) ->
+  com_unary op size smap vmap bv fl r temp stack sn es x v
+| Coq_binapp (x, op, y, z) ->
+  com_bin op size smap vmap bv fl r temp temp1 stack sn es x y z
 
 (** val init_cstore_n : cstore -> qvar -> int -> cstore **)
 

@@ -226,8 +226,10 @@ let run_partial_eval_exp size =
                write_qasm_file ("partial-eval-cl-" ^ fname) c);
   ();;
 
-run_modmult_experiments 139 117 173;;
+run_modmult_experiments 8 7 11;;
+
+(*run_modmult_experiments 139 117 173;;
 run_adders 16 38168;;
 run_multipliers 16 38168;;
 run_div_mod 16 38168;;
-run_partial_eval_exp 16;;
+run_partial_eval_exp 16;;*)

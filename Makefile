@@ -72,7 +72,7 @@ examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo
 
 # Built by 'make qvm'
 
-QVM/PQASM.vo: QVM/PQASM.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo
+QVM/PQASM.vo: QVM/PQASM.v QVM/MathSpec.vo SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo
 	coqc $(COQ_OPTS) QVM/PQASM.v
 
 QVM/Testing.vo: QVM/Testing.v QVM/PQASM.vo examples/Utilities.vo
@@ -89,6 +89,12 @@ QVM/QIMP.vo: QVM/QIMP.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v 
 
 QVM/OracleExample.vo: QVM/OracleExample.v QVM/QIMP.vo QVM/Testing.vo
 	coqc $(COQ_OPTS) QVM/OracleExample.v
+	
+QVM/BasicUtility.vo: QVM/BasicUtility.v
+	coqc $(COQ_OPTS) QVM/BasicUtility.v
+	
+QVM/MathSpec.vo: QVM/MathSpec.v QVM/BasicUtility.vo
+	coqc $(COQ_OPTS) QVM/MathSpec.v
 
 # Built by 'make shor'
 	

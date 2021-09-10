@@ -1,6 +1,9 @@
+open BasicUtility
 open CLArith
-open Nat
+open MathSpec
+open Nat0
 open PQASM
+open PeanoNat
 
 (** val rz_adder' : var -> int -> int -> (int -> bool) -> exp **)
 
@@ -30,16 +33,16 @@ let rec rz_sub' x n size m =
 let rz_sub x n m =
   rz_sub' x n n m
 
-(** val qft_cu : var -> posi -> pexp **)
+(** val qft_cu : var -> posi -> exp **)
 
 let qft_cu x c =
-  PSeq ((PSeq ((RQFT x), (Exp (coq_CNOT (x, 0) c)))), (QFT x))
+  Seq ((Seq ((RQFT x), (coq_CNOT (x, 0) c))), (QFT x))
 
-(** val qft_acu : var -> posi -> pexp **)
+(** val qft_acu : var -> posi -> exp **)
 
 let qft_acu x c =
-  PSeq ((PSeq ((RQFT x), (Exp (Seq ((Seq ((X (x, 0)), (coq_CNOT (x, 0) c))),
-    (X (x, 0))))))), (QFT x))
+  Seq ((Seq ((RQFT x), (Seq ((Seq ((X (x, 0)), (coq_CNOT (x, 0) c))), (X (x,
+    0)))))), (QFT x))
 
 (** val one_cu_adder : var -> int -> posi -> (int -> bool) -> exp **)
 
@@ -47,50 +50,48 @@ let one_cu_adder x n c m =
   CU (c, (rz_adder x n m))
 
 (** val mod_adder_half :
-    var -> int -> posi -> (int -> bool) -> (int -> bool) -> pexp **)
+    var -> int -> posi -> (int -> bool) -> (int -> bool) -> exp **)
 
 let mod_adder_half x n c a m =
-  PSeq ((PSeq ((Exp (Seq ((rz_adder x n a), (rz_sub x n m)))),
-    (qft_cu x c))), (Exp (one_cu_adder x n c m)))
+  Seq ((Seq ((Seq ((rz_adder x n a), (rz_sub x n m))), (qft_cu x c))),
+    (one_cu_adder x n c m))
 
-(** val clean_hbit : var -> int -> posi -> (int -> bool) -> pexp **)
+(** val clean_hbit : var -> int -> posi -> (int -> bool) -> exp **)
 
 let clean_hbit x n c m =
-  PSeq ((PSeq ((Exp (rz_sub x n m)), (qft_acu x c))), (Exp
-    (inv_exp (rz_sub x n m))))
+  Seq ((Seq ((rz_sub x n m), (qft_acu x c))), (inv_exp (rz_sub x n m)))
 
 (** val mod_adder :
-    var -> int -> posi -> (int -> bool) -> (int -> bool) -> pexp **)
+    var -> int -> posi -> (int -> bool) -> (int -> bool) -> exp **)
 
 let mod_adder x n c a m =
-  PSeq ((mod_adder_half x n c a m), (clean_hbit x n c a))
+  Seq ((mod_adder_half x n c a m), (clean_hbit x n c a))
 
 (** val rz_modmult' :
-    var -> var -> int -> int -> posi -> int -> int -> pexp **)
+    var -> var -> int -> int -> posi -> int -> int -> exp **)
 
 let rec rz_modmult' y x n size c a m =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> Exp (SKIP (y, 0)))
-    (fun m0 -> PSeq ((rz_modmult' y x m0 size c a m), (PCU ((x,
-    (sub size n)),
+    (fun _ -> SKIP (y, 0))
+    (fun m0 -> Seq ((rz_modmult' y x m0 size c a m), (CU ((x, (sub size n)),
     (mod_adder y size c
       (nat2fb
-        (PeanoNat.Nat.modulo
-          (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) m0) a)
-          m)) (nat2fb m))))))
+        (Nat.modulo
+          (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) m0) a) m))
+      (nat2fb m))))))
     n
 
-(** val rz_modmult_half : var -> var -> int -> posi -> int -> int -> pexp **)
+(** val rz_modmult_half : var -> var -> int -> posi -> int -> int -> exp **)
 
 let rz_modmult_half y x size c a m =
-  PSeq ((PSeq ((QFT y), (rz_modmult' y x size size c a m))), (RQFT y))
+  Seq ((Seq ((QFT y), (rz_modmult' y x size size c a m))), (RQFT y))
 
 (** val rz_modmult_full :
-    var -> var -> int -> posi -> int -> int -> int -> pexp **)
+    var -> var -> int -> posi -> int -> int -> int -> exp **)
 
 let rz_modmult_full y x n c a ainv n0 =
-  PSeq ((rz_modmult_half y x n c a n0),
-    (inv_pexp (rz_modmult_half x y n c ainv n0)))
+  Seq ((rz_modmult_half y x n c a n0),
+    (inv_exp (rz_modmult_half x y n c ainv n0)))
 
 (** val vars_for_rz' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -107,7 +108,7 @@ let vars_for_rz size x =
          0)), id_nat), id_nat)
   else vars_for_rz' size x
 
-(** val real_rz_modmult_rev : int -> int -> int -> int -> pexp **)
+(** val real_rz_modmult_rev : int -> int -> int -> int -> exp **)
 
 let real_rz_modmult_rev m c cinv size =
   rz_modmult_full y_var x_var size (z_var, 0) c cinv m
@@ -121,12 +122,12 @@ let rec nat_mult' n size x ex m =
     (nat_mult' m0 size x ex (cut_n (times_two_spec m) size))))
     n
 
-(** val nat_mult : int -> var -> var -> (int -> bool) -> pexp **)
+(** val nat_mult : int -> var -> var -> (int -> bool) -> exp **)
 
 let nat_mult size x re m =
-  PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev re)))), (QFT re))),
-    (Exp (nat_mult' size size x re m)))), (RQFT re))),
-    (inv_pexp (Exp (Seq ((Rev x), (Rev re))))))
+  Seq ((Seq ((Seq ((Seq ((Seq ((Rev x), (Rev re))), (QFT re))),
+    (nat_mult' size size x re m))), (RQFT re))),
+    (inv_exp (Seq ((Rev x), (Rev re)))))
 
 (** val vars_for_rz_nat_m :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -134,7 +135,7 @@ let nat_mult size x re m =
 let vars_for_rz_nat_m size =
   gen_vars size (x_var :: (y_var :: []))
 
-(** val nat_mult_out : int -> (int -> bool) -> pexp **)
+(** val nat_mult_out : int -> (int -> bool) -> exp **)
 
 let nat_mult_out size m =
   nat_mult size x_var y_var m
@@ -148,12 +149,11 @@ let rec flt_mult' n size x ex m =
     (flt_mult' m0 size x ex (cut_n (div_two_spec m) size))))
     n
 
-(** val flt_mult : int -> var -> var -> (int -> bool) -> pexp **)
+(** val flt_mult : int -> var -> var -> (int -> bool) -> exp **)
 
 let flt_mult size x re m =
-  PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev re)))), (Exp
-    (flt_mult' size size x re m)))),
-    (inv_pexp (Exp (Seq ((Rev x), (Rev re))))))
+  Seq ((Seq ((Seq ((Rev x), (Rev re))), (flt_mult' size size x re m))),
+    (inv_exp (Seq ((Rev x), (Rev re)))))
 
 (** val rz_full_adder_i : int -> var -> var -> int -> int -> exp **)
 
@@ -179,12 +179,12 @@ let rec nat_full_mult' n size x y re =
     (one_cu_full_adder_i (x, (sub size n)) re y size (sub size m) m)))
     n
 
-(** val nat_full_mult : int -> var -> var -> var -> pexp **)
+(** val nat_full_mult : int -> var -> var -> var -> exp **)
 
 let nat_full_mult size x y re =
-  PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev re), (Rev x)))), (QFT re))),
-    (Exp (nat_full_mult' size size x y re)))), (RQFT re))), (Exp (Seq ((Rev
-    re), (Rev x)))))
+  Seq ((Seq ((Seq ((Seq ((Seq ((Rev re), (Rev x))), (QFT re))),
+    (nat_full_mult' size size x y re))), (RQFT re))), (Seq ((Rev re), (Rev
+    x))))
 
 (** val vars_for_rz_nat_full_m :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -192,7 +192,7 @@ let nat_full_mult size x y re =
 let vars_for_rz_nat_full_m size =
   gen_vars size (x_var :: (y_var :: (z_var :: [])))
 
-(** val nat_full_mult_out : int -> pexp **)
+(** val nat_full_mult_out : int -> exp **)
 
 let nat_full_mult_out size =
   nat_full_mult size x_var y_var z_var
@@ -234,34 +234,26 @@ let rec clean_high_flt n size y ex =
     (coq_SWAP (y, (sub size (Pervasives.succ 0))) (ex, m)))), (Lshift y)))
     n
 
-(** val flt_full_mult : int -> var -> var -> var -> var -> pexp **)
+(** val flt_full_mult : int -> var -> var -> var -> var -> exp **)
 
 let flt_full_mult size x y re ex =
-  PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Seq ((Rev re), (Rev x))), (Rev
-    y)))), (QFT re))), (Exp (Seq ((flt_full_mult_quar size x y re ex),
-    (inv_exp (clean_high_flt size size y ex))))))), (RQFT re))), (Exp (Seq
-    ((Seq ((Rev re), (Rev x))), (Rev y)))))
+  Seq ((Seq ((Seq ((Seq ((Seq ((Seq ((Rev re), (Rev x))), (Rev y))), (QFT
+    re))), (Seq ((flt_full_mult_quar size x y re ex),
+    (inv_exp (clean_high_flt size size y ex)))))), (RQFT re))), (Seq ((Seq
+    ((Rev re), (Rev x))), (Rev y))))
 
-(** val rz_comparator : var -> int -> posi -> int -> pexp **)
-
-let rz_comparator x n c m =
-  PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))), (Exp
-    (rz_sub x n (nat2fb m))))), (RQFT x))), (Exp (coq_CNOT (x, 0) c)))),
-    (inv_pexp (PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))), (Exp
-      (rz_sub x n (nat2fb m))))), (RQFT x)))))
-
-(** val rz_full_adder_form : var -> int -> var -> pexp **)
+(** val rz_full_adder_form : var -> int -> var -> exp **)
 
 let rz_full_adder_form x n y =
-  PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev y)))), (QFT x))), (Exp
-    (rz_full_adder x n y)))),
-    (inv_pexp (PSeq ((Exp (Seq ((Rev x), (Rev y)))), (QFT x)))))
+  Seq ((Seq ((Seq ((Seq ((Rev x), (Rev y))), (QFT x))),
+    (rz_full_adder x n y))),
+    (inv_exp (Seq ((Seq ((Rev x), (Rev y))), (QFT x)))))
 
-(** val rz_adder_form : var -> int -> (int -> bool) -> pexp **)
+(** val rz_adder_form : var -> int -> (int -> bool) -> exp **)
 
 let rz_adder_form x n m =
-  PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))), (Exp (rz_adder x n m)))),
-    (inv_pexp (PSeq ((Exp (Rev x)), (QFT x)))))
+  Seq ((Seq ((Seq ((Rev x), (QFT x))), (rz_adder x n m))),
+    (inv_exp (Seq ((Rev x), (QFT x)))))
 
 (** val vars_for_rz_adder :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -269,7 +261,7 @@ let rz_adder_form x n m =
 let vars_for_rz_adder size =
   gen_vars size (x_var :: [])
 
-(** val rz_adder_out : int -> (int -> bool) -> pexp **)
+(** val rz_adder_out : int -> (int -> bool) -> exp **)
 
 let rz_adder_out size m =
   rz_adder_form x_var size m
@@ -280,7 +272,7 @@ let rz_adder_out size m =
 let vars_for_rz_full_add size =
   gen_vars size (x_var :: (y_var :: []))
 
-(** val rz_full_adder_out : int -> pexp **)
+(** val rz_full_adder_out : int -> exp **)
 
 let rz_full_adder_out size =
   rz_full_adder_form x_var size y_var
@@ -293,58 +285,46 @@ let rec rz_full_sub x n y =
     (fun m -> Seq ((CU ((y, m), (SRR (m, x)))), (rz_full_sub x m y)))
     n
 
-(** val rz_full_sub_form : var -> int -> var -> pexp **)
+(** val rz_full_sub_form : var -> int -> var -> exp **)
 
 let rz_full_sub_form x n y =
-  PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev y)))), (QFT x))), (Exp
-    (rz_full_sub x n y)))),
-    (inv_pexp (PSeq ((Exp (Seq ((Rev x), (Rev y)))), (QFT x)))))
+  Seq ((Seq ((Seq ((Seq ((Rev x), (Rev y))), (QFT x))),
+    (rz_full_sub x n y))),
+    (inv_exp (Seq ((Seq ((Rev x), (Rev y))), (QFT x)))))
 
-(** val rz_sub_right : var -> int -> (int -> bool) -> pexp **)
+(** val rz_sub_right : var -> int -> (int -> bool) -> exp **)
 
 let rz_sub_right x n m =
-  PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))), (Exp (rz_sub x n m)))),
-    (inv_pexp (PSeq ((Exp (Rev x)), (QFT x)))))
+  Seq ((Seq ((Seq ((Rev x), (QFT x))), (rz_sub x n m))),
+    (inv_exp (Seq ((Rev x), (QFT x)))))
 
-(** val rz_full_comparator : var -> int -> posi -> var -> pexp **)
-
-let rz_full_comparator x n c y =
-  PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev y)))),
-    (QFT x))), (QFT y))), (Exp (rz_full_sub x n y)))), (RQFT x))), (Exp
-    (coq_CNOT (x, 0) c)))),
-    (inv_pexp (PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev y)))),
-      (QFT x))), (QFT y))), (Exp (rz_full_sub x n y)))), (RQFT x)))))
-
-(** val rz_compare_half3 : var -> int -> posi -> (int -> bool) -> pexp **)
+(** val rz_compare_half3 : var -> int -> posi -> (int -> bool) -> exp **)
 
 let rz_compare_half3 x n c m =
-  PSeq ((PSeq ((Exp (rz_sub x n m)), (RQFT x))), (Exp (coq_CNOT (x, 0) c)))
+  Seq ((Seq ((rz_sub x n m), (RQFT x))), (coq_CNOT (x, 0) c))
 
-(** val rz_moder' : int -> int -> var -> var -> (int -> bool) -> pexp **)
+(** val rz_moder' : int -> int -> var -> var -> (int -> bool) -> exp **)
 
 let rec rz_moder' i n x ex m =
   (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> Exp (SKIP (x, 0)))
-    (fun j -> PSeq ((PSeq ((PSeq ((PSeq ((rz_compare_half3 x n (ex, j) m),
-    (QFT x))), (Exp (CU ((ex, j), (rz_adder x n m)))))), (Exp (X (ex, j))))),
+    (fun _ -> SKIP (x, 0))
+    (fun j -> Seq ((Seq ((Seq ((Seq ((rz_compare_half3 x n (ex, j) m), (QFT
+    x))), (CU ((ex, j), (rz_adder x n m))))), (X (ex, j)))),
     (rz_moder' j n x ex (cut_n (div_two_spec m) n))))
     i
 
-(** val rz_moder : int -> var -> var -> var -> int -> pexp **)
+(** val rz_moder : int -> var -> var -> var -> int -> exp **)
 
 let rz_moder n x re ex m =
   let i = findnum m n in
-  PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((Exp (Seq ((Rev x), (Rev re)))), (QFT
-  x))),
+  Seq ((Seq ((Seq ((Seq ((Seq ((Seq ((Rev x), (Rev re))), (QFT x))),
   (rz_moder' (Pervasives.succ i) n x ex
-    (nat2fb
-      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
-  (Exp (copyto x re n)))),
-  (inv_pexp
+    (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
+  (copyto x re n))),
+  (inv_exp
     (rz_moder' (Pervasives.succ i) n x ex
-      (nat2fb
-        (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))),
-  (inv_pexp (PSeq ((Exp (Seq ((Rev x), (Rev re)))), (QFT x)))))
+      (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))),
+  (inv_exp (Seq ((Seq ((Rev x), (Rev re))), (QFT x)))))
 
 (** val vars_for_rz_moder :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -355,28 +335,25 @@ let vars_for_rz_moder size =
 (** val avs_for_rz_moder : int -> int -> int * int **)
 
 let avs_for_rz_moder size x =
-  ((PeanoNat.Nat.div x (Pervasives.succ size)),
-    (PeanoNat.Nat.modulo x (Pervasives.succ size)))
+  ((Nat.div x (Pervasives.succ size)), (Nat.modulo x (Pervasives.succ size)))
 
-(** val rz_moder_out : int -> int -> pexp **)
+(** val rz_moder_out : int -> int -> exp **)
 
 let rz_moder_out size =
   rz_moder (Pervasives.succ size) x_var y_var z_var
 
-(** val rz_div : int -> var -> var -> var -> int -> pexp **)
+(** val rz_div : int -> var -> var -> var -> int -> exp **)
 
 let rz_div n x re ex m =
   let i = findnum m n in
-  PSeq ((PSeq ((PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))),
+  Seq ((Seq ((Seq ((Seq ((Seq ((Rev x), (QFT x))),
   (rz_moder' (Pervasives.succ i) n x ex
-    (nat2fb
-      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
-  (Exp (copyto ex re n)))),
-  (inv_pexp
+    (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
+  (copyto ex re n))),
+  (inv_exp
     (rz_moder' (Pervasives.succ i) n x ex
-      (nat2fb
-        (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))),
-  (inv_pexp (PSeq ((Exp (Rev x)), (QFT x)))))
+      (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))),
+  (inv_exp (Seq ((Rev x), (QFT x)))))
 
 (** val vars_for_rz_div :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -387,23 +364,21 @@ let vars_for_rz_div size =
 (** val avs_for_rz_div : int -> int -> int * int **)
 
 let avs_for_rz_div size x =
-  ((PeanoNat.Nat.div x (Pervasives.succ size)),
-    (PeanoNat.Nat.modulo x (Pervasives.succ size)))
+  ((Nat.div x (Pervasives.succ size)), (Nat.modulo x (Pervasives.succ size)))
 
-(** val rz_div_out : int -> int -> pexp **)
+(** val rz_div_out : int -> int -> exp **)
 
 let rz_div_out size =
   rz_div (Pervasives.succ size) x_var y_var z_var
 
-(** val rz_div_mod : int -> var -> var -> int -> pexp **)
+(** val rz_div_mod : int -> var -> var -> int -> exp **)
 
 let rz_div_mod n x ex m =
   let i = findnum m (sub n (Pervasives.succ 0)) in
-  PSeq ((PSeq ((PSeq ((Exp (Rev x)), (QFT x))),
+  Seq ((Seq ((Seq ((Rev x), (QFT x))),
   (rz_moder' (Pervasives.succ i) n x ex
-    (nat2fb
-      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
-  (inv_pexp (PSeq ((Exp (Rev x)), (QFT x)))))
+    (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))))),
+  (inv_exp (Seq ((Rev x), (QFT x)))))
 
 (** val vars_for_rz_div_mod :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -414,10 +389,9 @@ let vars_for_rz_div_mod size =
 (** val avs_for_rz_div_mod : int -> int -> int * int **)
 
 let avs_for_rz_div_mod size x =
-  ((PeanoNat.Nat.div x (Pervasives.succ size)),
-    (PeanoNat.Nat.modulo x (Pervasives.succ size)))
+  ((Nat.div x (Pervasives.succ size)), (Nat.modulo x (Pervasives.succ size)))
 
-(** val rz_div_mod_out : int -> int -> pexp **)
+(** val rz_div_mod_out : int -> int -> exp **)
 
 let rz_div_mod_out size =
   rz_div_mod (Pervasives.succ size) x_var y_var

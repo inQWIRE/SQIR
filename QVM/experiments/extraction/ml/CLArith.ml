@@ -1,5 +1,8 @@
-open Nat
+open BasicUtility
+open MathSpec
+open Nat0
 open PQASM
+open PeanoNat
 
 (** val coq_MAJ : posi -> posi -> posi -> exp **)
 
@@ -246,10 +249,10 @@ let rec cl_nat_mult' n size x re c m =
     (if m m0 then adder_i (sub size m0) x re c m0 else SKIP (re, 0))))
     n
 
-(** val cl_nat_mult : int -> var -> var -> posi -> (int -> bool) -> pexp **)
+(** val cl_nat_mult : int -> var -> var -> posi -> (int -> bool) -> exp **)
 
 let cl_nat_mult size x re c m =
-  Exp (cl_nat_mult' size size x re c m)
+  cl_nat_mult' size size x re c m
 
 (** val vars_for_cl_nat_m' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -266,7 +269,7 @@ let vars_for_cl_nat_m size x =
          0)), id_nat), id_nat)
   else vars_for_cl_nat_m' size x
 
-(** val cl_nat_mult_out : int -> (int -> bool) -> pexp **)
+(** val cl_nat_mult_out : int -> (int -> bool) -> exp **)
 
 let cl_nat_mult_out size m =
   cl_nat_mult size x_var y_var (z_var, 0) m
@@ -302,10 +305,10 @@ let rec cl_full_mult' n size x y re c =
     (one_cu_cl_full_adder_i (y, m) x re c (sub size m) m)))
     n
 
-(** val cl_full_mult : int -> var -> var -> var -> posi -> pexp **)
+(** val cl_full_mult : int -> var -> var -> var -> posi -> exp **)
 
 let cl_full_mult size x y re c =
-  Exp (cl_full_mult' size size x y re c)
+  cl_full_mult' size size x y re c
 
 (** val vars_for_cl_nat_full_m' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -322,7 +325,7 @@ let vars_for_cl_nat_full_m size x =
          (Pervasives.succ 0)), id_nat), id_nat)
   else vars_for_cl_nat_full_m' size x
 
-(** val cl_full_mult_out : int -> pexp **)
+(** val cl_full_mult_out : int -> exp **)
 
 let cl_full_mult_out size =
   cl_full_mult size x_var y_var z_var (s_var, 0)
@@ -358,11 +361,11 @@ let rec clean_high_flt n size y ex =
     (coq_SWAP (y, 0) (ex, m)))), (Rshift y)))
     n
 
-(** val clf_full_mult : int -> var -> var -> var -> var -> posi -> pexp **)
+(** val clf_full_mult : int -> var -> var -> var -> var -> posi -> exp **)
 
 let clf_full_mult size x y re ex c =
-  Exp (Seq ((clf_full_mult_quar size x y re ex c),
-    (inv_exp (clean_high_flt size size y ex))))
+  Seq ((clf_full_mult_quar size x y re ex c),
+    (inv_exp (clean_high_flt size size y ex)))
 
 (** val cl_moder' :
     int -> int -> var -> var -> var -> posi -> (int -> bool) -> exp **)
@@ -382,13 +385,11 @@ let cl_moder n x re y ex c1 m =
   let i = findnum m n in
   Seq ((Seq
   ((cl_moder' (Pervasives.succ i) n x y ex c1
-     (nat2fb
-       (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))),
+     (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))),
   (copyto x re n))),
   (inv_exp
     (cl_moder' (Pervasives.succ i) n x y ex c1
-      (nat2fb
-        (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))
+      (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))
 
 (** val vars_for_cl_moder' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -416,13 +417,11 @@ let cl_div n x re y ex c1 m =
   let i = findnum m n in
   Seq ((Seq
   ((cl_moder' (Pervasives.succ i) n x y ex c1
-     (nat2fb
-       (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))),
+     (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))),
   (copyto ex re n))),
   (inv_exp
     (cl_moder' (Pervasives.succ i) n x y ex c1
-      (nat2fb
-        (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))
+      (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m)))))
 
 (** val vars_for_cl_div' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)
@@ -449,8 +448,7 @@ let cl_div_out size =
 let cl_div_mod n x y ex c1 m =
   let i = findnum m n in
   cl_moder' (Pervasives.succ i) n x y ex c1
-    (nat2fb
-      (mul (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))
+    (nat2fb (mul (Nat.pow (Pervasives.succ (Pervasives.succ 0)) i) m))
 
 (** val vars_for_cl_div_mod' :
     int -> int -> ((int * int) * (int -> int)) * (int -> int) **)

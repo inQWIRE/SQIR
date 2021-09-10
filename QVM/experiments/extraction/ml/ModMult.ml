@@ -1,6 +1,6 @@
 open BinNat
-open BinNums
-open Nat
+open Nat0
+open PeanoNat
 open RCIR
 
 (** val fb_push : bool -> (int -> bool) -> int -> bool **)
@@ -16,18 +16,23 @@ let fb_push b f x =
 let allfalse _ =
   false
 
-(** val pos2fb : positive -> int -> bool **)
+(** val pos2fb : int -> int -> bool **)
 
-let rec pos2fb = function
-| Coq_xI p' -> fb_push true (pos2fb p')
-| Coq_xO p' -> fb_push false (pos2fb p')
-| Coq_xH -> fb_push true allfalse
+let rec pos2fb p =
+  (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+    (fun p' -> fb_push true (pos2fb p'))
+    (fun p' -> fb_push false (pos2fb p'))
+    (fun _ -> fb_push true allfalse)
+    p
 
-(** val coq_N2fb : coq_N -> int -> bool **)
+(** val coq_N2fb : int -> int -> bool **)
 
-let coq_N2fb = function
-| N0 -> allfalse
-| Npos p -> pos2fb p
+let coq_N2fb n =
+  (fun f0 fp n -> if n=0 then f0 () else fp n)
+    (fun _ -> allfalse)
+    (fun p -> pos2fb p)
+    n
 
 (** val nat2fb : int -> int -> bool **)
 
@@ -267,8 +272,8 @@ let rec reverser' i n =
 
 let reverser n =
   reverser'
-    (PeanoNat.Nat.div (sub n (Pervasives.succ 0)) (Pervasives.succ
-      (Pervasives.succ 0))) n
+    (Nat.div (sub n (Pervasives.succ 0)) (Pervasives.succ (Pervasives.succ
+      0))) n
 
 (** val modmult_rev : int -> int -> int -> int -> bccom **)
 

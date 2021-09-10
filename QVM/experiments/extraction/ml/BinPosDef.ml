@@ -1,9 +1,8 @@
-open BinNums
 
 module Pos =
  struct
   type mask =
   | IsNul
-  | IsPos of positive
+  | IsPos of int
   | IsNeg
  end

@@ -1,4 +1,4 @@
-open Nat
+open Nat0
 
 (** val fact : int -> int **)
 

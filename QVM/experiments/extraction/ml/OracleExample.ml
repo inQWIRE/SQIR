@@ -1,14 +1,16 @@
+open BasicUtility
 open CLArith
-open Nat
+open MathSpec
+open Nat0
 open PQASM
 open QIMP
 
 (** val test_fun : qexp **)
 
 let test_fun =
-  Coq_qseq ((Coq_ndiv ((Nor (Var (L x_var))), (Nor (Var (L y_var))), (Nor
-    (Var (L z_var))))), (Coq_nmul ((Nor (Var (L s_var))), (Nor (Var (L
-    x_var))), (Nor (Var (L c_var))))))
+  Coq_qseq ((Coq_binapp ((Nor (Var (L x_var))), Coq_ndiv, (Nor (Var (L
+    y_var))), (Nor (Var (L z_var))))), (Coq_binapp ((Nor (Var (L s_var))),
+    Coq_nmul, (Nor (Var (L x_var))), (Nor (Var (L c_var))))))
 
 (** val temp_var : int **)
 
@@ -105,7 +107,7 @@ let dmc_cstore =
       (init_cstore empty_cstore var_list))
 
 (** val compile_dm_qft :
-    int -> (((pexp option * int) * cstore) * estore) value option **)
+    int -> (((exp option * int) * cstore) * estore) value option **)
 
 let compile_dm_qft size =
   trans_qexp size (fun _ -> Pervasives.succ 0) dmc_vmap dmc_benv QFTA
@@ -113,7 +115,7 @@ let compile_dm_qft size =
     test_fun
 
 (** val compile_dm_classic :
-    int -> (((pexp option * int) * cstore) * estore) value option **)
+    int -> (((exp option * int) * cstore) * estore) value option **)
 
 let compile_dm_classic size =
   trans_qexp size (fun _ -> Pervasives.succ 0) dmc_vmap dmc_benv Classic
@@ -167,7 +169,7 @@ let dmq_cstore =
     (init_cstore empty_cstore var_list_q)
 
 (** val compile_dmq_qft :
-    int -> (((pexp option * int) * cstore) * estore) value option **)
+    int -> (((exp option * int) * cstore) * estore) value option **)
 
 let compile_dmq_qft size =
   trans_qexp size (fun _ -> Pervasives.succ 0) dmq_vmap dmq_benv QFTA
@@ -175,7 +177,7 @@ let compile_dmq_qft size =
     test_fun
 
 (** val compile_dmq_classic :
-    int -> (((pexp option * int) * cstore) * estore) value option **)
+    int -> (((exp option * int) * cstore) * estore) value option **)
 
 let compile_dmq_classic size =
   trans_qexp size (fun _ -> Pervasives.succ 0) dmq_vmap dmq_benv Classic

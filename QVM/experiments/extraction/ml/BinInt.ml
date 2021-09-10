@@ -1,242 +1,223 @@
-open BinNums
 open BinPos
 open Datatypes
 
 module Z =
  struct
-  (** val double : coq_Z -> coq_Z **)
+  (** val double : int -> int **)
 
-  let double = function
-  | Z0 -> Z0
-  | Zpos p -> Zpos (Coq_xO p)
-  | Zneg p -> Zneg (Coq_xO p)
+  let double x =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 0)
+      (fun p -> ((fun p->2*p) p))
+      (fun p -> (~-) ((fun p->2*p) p))
+      x
 
-  (** val succ_double : coq_Z -> coq_Z **)
+  (** val succ_double : int -> int **)
 
-  let succ_double = function
-  | Z0 -> Zpos Coq_xH
-  | Zpos p -> Zpos (Coq_xI p)
-  | Zneg p -> Zneg (Pos.pred_double p)
+  let succ_double x =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 1)
+      (fun p -> ((fun p->1+2*p) p))
+      (fun p -> (~-) (Pos.pred_double p))
+      x
 
-  (** val pred_double : coq_Z -> coq_Z **)
+  (** val pred_double : int -> int **)
 
-  let pred_double = function
-  | Z0 -> Zneg Coq_xH
-  | Zpos p -> Zpos (Pos.pred_double p)
-  | Zneg p -> Zneg (Coq_xI p)
+  let pred_double x =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> (~-) 1)
+      (fun p -> (Pos.pred_double p))
+      (fun p -> (~-) ((fun p->1+2*p) p))
+      x
 
-  (** val pos_sub : positive -> positive -> coq_Z **)
+  (** val pos_sub : int -> int -> int **)
 
   let rec pos_sub x y =
-    match x with
-    | Coq_xI p ->
-      (match y with
-       | Coq_xI q -> double (pos_sub p q)
-       | Coq_xO q -> succ_double (pos_sub p q)
-       | Coq_xH -> Zpos (Coq_xO p))
-    | Coq_xO p ->
-      (match y with
-       | Coq_xI q -> pred_double (pos_sub p q)
-       | Coq_xO q -> double (pos_sub p q)
-       | Coq_xH -> Zpos (Pos.pred_double p))
-    | Coq_xH ->
-      (match y with
-       | Coq_xI q -> Zneg (Coq_xO q)
-       | Coq_xO q -> Zneg (Pos.pred_double q)
-       | Coq_xH -> Z0)
+    (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+      (fun p ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun q -> double (pos_sub p q))
+        (fun q -> succ_double (pos_sub p q))
+        (fun _ -> ((fun p->2*p) p))
+        y)
+      (fun p ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun q -> pred_double (pos_sub p q))
+        (fun q -> double (pos_sub p q))
+        (fun _ -> (Pos.pred_double p))
+        y)
+      (fun _ ->
+      (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+        (fun q -> (~-) ((fun p->2*p) q))
+        (fun q -> (~-) (Pos.pred_double q))
+        (fun _ -> 0)
+        y)
+      x
 
-  (** val add : coq_Z -> coq_Z -> coq_Z **)
+  (** val add : int -> int -> int **)
 
-  let add x y =
-    match x with
-    | Z0 -> y
-    | Zpos x' ->
-      (match y with
-       | Z0 -> x
-       | Zpos y' -> Zpos (Pos.add x' y')
-       | Zneg y' -> pos_sub x' y')
-    | Zneg x' ->
-      (match y with
-       | Z0 -> x
-       | Zpos y' -> pos_sub y' x'
-       | Zneg y' -> Zneg (Pos.add x' y'))
+  let add = (+)
 
-  (** val opp : coq_Z -> coq_Z **)
+  (** val opp : int -> int **)
 
-  let opp = function
-  | Z0 -> Z0
-  | Zpos x0 -> Zneg x0
-  | Zneg x0 -> Zpos x0
+  let opp = (~-)
 
-  (** val sub : coq_Z -> coq_Z -> coq_Z **)
+  (** val sub : int -> int -> int **)
 
-  let sub m n =
-    add m (opp n)
+  let sub = (-)
 
-  (** val mul : coq_Z -> coq_Z -> coq_Z **)
+  (** val mul : int -> int -> int **)
 
-  let mul x y =
-    match x with
-    | Z0 -> Z0
-    | Zpos x' ->
-      (match y with
-       | Z0 -> Z0
-       | Zpos y' -> Zpos (Pos.mul x' y')
-       | Zneg y' -> Zneg (Pos.mul x' y'))
-    | Zneg x' ->
-      (match y with
-       | Z0 -> Z0
-       | Zpos y' -> Zneg (Pos.mul x' y')
-       | Zneg y' -> Zpos (Pos.mul x' y'))
+  let mul = ( * )
 
-  (** val compare : coq_Z -> coq_Z -> comparison **)
+  (** val compare : int -> int -> comparison **)
 
-  let compare x y =
-    match x with
-    | Z0 -> (match y with
-             | Z0 -> Eq
-             | Zpos _ -> Lt
-             | Zneg _ -> Gt)
-    | Zpos x' -> (match y with
-                  | Zpos y' -> Pos.compare x' y'
-                  | _ -> Gt)
-    | Zneg x' ->
-      (match y with
-       | Zneg y' -> coq_CompOpp (Pos.compare x' y')
-       | _ -> Lt)
+  let compare = fun x y -> if x=y then Eq else if x<y then Lt else Gt
 
-  (** val sgn : coq_Z -> coq_Z **)
+  (** val sgn : int -> int **)
 
-  let sgn = function
-  | Z0 -> Z0
-  | Zpos _ -> Zpos Coq_xH
-  | Zneg _ -> Zneg Coq_xH
+  let sgn z =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 0)
+      (fun _ -> 1)
+      (fun _ -> (~-) 1)
+      z
 
-  (** val leb : coq_Z -> coq_Z -> bool **)
+  (** val leb : int -> int -> bool **)
 
   let leb x y =
     match compare x y with
     | Gt -> false
     | _ -> true
 
-  (** val ltb : coq_Z -> coq_Z -> bool **)
+  (** val ltb : int -> int -> bool **)
 
   let ltb x y =
     match compare x y with
     | Lt -> true
     | _ -> false
 
-  (** val max : coq_Z -> coq_Z -> coq_Z **)
+  (** val max : int -> int -> int **)
 
-  let max n m =
-    match compare n m with
-    | Lt -> m
-    | _ -> n
+  let max = Pervasives.max
 
-  (** val min : coq_Z -> coq_Z -> coq_Z **)
+  (** val min : int -> int -> int **)
 
-  let min n m =
-    match compare n m with
-    | Gt -> m
-    | _ -> n
+  let min = Pervasives.min
 
-  (** val abs : coq_Z -> coq_Z **)
+  (** val abs : int -> int **)
 
-  let abs = function
-  | Zneg p -> Zpos p
-  | x -> x
+  let abs = Pervasives.abs
 
-  (** val to_nat : coq_Z -> int **)
+  (** val to_nat : int -> int **)
 
-  let to_nat = function
-  | Zpos p -> Pos.to_nat p
-  | _ -> 0
+  let to_nat z =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 0)
+      (fun p -> Pos.to_nat p)
+      (fun _ -> 0)
+      z
 
-  (** val of_nat : int -> coq_Z **)
+  (** val of_nat : int -> int **)
 
   let of_nat n =
     (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> Z0)
-      (fun n0 -> Zpos (Pos.of_succ_nat n0))
+      (fun _ -> 0)
+      (fun n0 -> (Pos.of_succ_nat n0))
       n
 
-  (** val to_pos : coq_Z -> positive **)
+  (** val to_pos : int -> int **)
 
-  let to_pos = function
-  | Zpos p -> p
-  | _ -> Coq_xH
+  let to_pos z =
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> 1)
+      (fun p -> p)
+      (fun _ -> 1)
+      z
 
-  (** val pos_div_eucl : positive -> coq_Z -> coq_Z * coq_Z **)
+  (** val pos_div_eucl : int -> int -> int * int **)
 
   let rec pos_div_eucl a b =
-    match a with
-    | Coq_xI a' ->
+    (fun f2p1 f2p f1 p ->
+  if p<=1 then f1 () else if p mod 2 = 0 then f2p (p/2) else f2p1 (p/2))
+      (fun a' ->
       let (q, r) = pos_div_eucl a' b in
-      let r' = add (mul (Zpos (Coq_xO Coq_xH)) r) (Zpos Coq_xH) in
+      let r' = add (mul ((fun p->2*p) 1) r) 1 in
       if ltb r' b
-      then ((mul (Zpos (Coq_xO Coq_xH)) q), r')
-      else ((add (mul (Zpos (Coq_xO Coq_xH)) q) (Zpos Coq_xH)), (sub r' b))
-    | Coq_xO a' ->
+      then ((mul ((fun p->2*p) 1) q), r')
+      else ((add (mul ((fun p->2*p) 1) q) 1), (sub r' b)))
+      (fun a' ->
       let (q, r) = pos_div_eucl a' b in
-      let r' = mul (Zpos (Coq_xO Coq_xH)) r in
+      let r' = mul ((fun p->2*p) 1) r in
       if ltb r' b
-      then ((mul (Zpos (Coq_xO Coq_xH)) q), r')
-      else ((add (mul (Zpos (Coq_xO Coq_xH)) q) (Zpos Coq_xH)), (sub r' b))
-    | Coq_xH ->
-      if leb (Zpos (Coq_xO Coq_xH)) b
-      then (Z0, (Zpos Coq_xH))
-      else ((Zpos Coq_xH), Z0)
+      then ((mul ((fun p->2*p) 1) q), r')
+      else ((add (mul ((fun p->2*p) 1) q) 1), (sub r' b)))
+      (fun _ -> if leb ((fun p->2*p) 1) b then (0, 1) else (1, 0))
+      a
 
-  (** val div_eucl : coq_Z -> coq_Z -> coq_Z * coq_Z **)
+  (** val div_eucl : int -> int -> int * int **)
 
   let div_eucl a b =
-    match a with
-    | Z0 -> (Z0, Z0)
-    | Zpos a' ->
-      (match b with
-       | Z0 -> (Z0, Z0)
-       | Zpos _ -> pos_div_eucl a' b
-       | Zneg b' ->
-         let (q, r) = pos_div_eucl a' (Zpos b') in
-         (match r with
-          | Z0 -> ((opp q), Z0)
-          | _ -> ((opp (add q (Zpos Coq_xH))), (add b r))))
-    | Zneg a' ->
-      (match b with
-       | Z0 -> (Z0, Z0)
-       | Zpos _ ->
-         let (q, r) = pos_div_eucl a' b in
-         (match r with
-          | Z0 -> ((opp q), Z0)
-          | _ -> ((opp (add q (Zpos Coq_xH))), (sub b r)))
-       | Zneg b' -> let (q, r) = pos_div_eucl a' (Zpos b') in (q, (opp r)))
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> (0, 0))
+      (fun a' ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> (0, 0))
+        (fun _ -> pos_div_eucl a' b)
+        (fun b' ->
+        let (q, r) = pos_div_eucl a' b' in
+        ((fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+           (fun _ -> ((opp q), 0))
+           (fun _ -> ((opp (add q 1)), (add b r)))
+           (fun _ -> ((opp (add q 1)), (add b r)))
+           r))
+        b)
+      (fun a' ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> (0, 0))
+        (fun _ ->
+        let (q, r) = pos_div_eucl a' b in
+        ((fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+           (fun _ -> ((opp q), 0))
+           (fun _ -> ((opp (add q 1)), (sub b r)))
+           (fun _ -> ((opp (add q 1)), (sub b r)))
+           r))
+        (fun b' -> let (q, r) = pos_div_eucl a' b' in (q, (opp r)))
+        b)
+      a
 
-  (** val div : coq_Z -> coq_Z -> coq_Z **)
+  (** val div : int -> int -> int **)
 
   let div a b =
     let (q, _) = div_eucl a b in q
 
-  (** val ggcd : coq_Z -> coq_Z -> coq_Z * (coq_Z * coq_Z) **)
+  (** val ggcd : int -> int -> int * (int * int) **)
 
   let ggcd a b =
-    match a with
-    | Z0 -> ((abs b), (Z0, (sgn b)))
-    | Zpos a0 ->
-      (match b with
-       | Z0 -> ((abs a), ((sgn a), Z0))
-       | Zpos b0 ->
-         let (g, p) = Pos.ggcd a0 b0 in
-         let (aa, bb) = p in ((Zpos g), ((Zpos aa), (Zpos bb)))
-       | Zneg b0 ->
-         let (g, p) = Pos.ggcd a0 b0 in
-         let (aa, bb) = p in ((Zpos g), ((Zpos aa), (Zneg bb))))
-    | Zneg a0 ->
-      (match b with
-       | Z0 -> ((abs a), ((sgn a), Z0))
-       | Zpos b0 ->
-         let (g, p) = Pos.ggcd a0 b0 in
-         let (aa, bb) = p in ((Zpos g), ((Zneg aa), (Zpos bb)))
-       | Zneg b0 ->
-         let (g, p) = Pos.ggcd a0 b0 in
-         let (aa, bb) = p in ((Zpos g), ((Zneg aa), (Zneg bb))))
+    (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+      (fun _ -> ((abs b), (0, (sgn b))))
+      (fun a0 ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> ((abs a), ((sgn a), 0)))
+        (fun b0 ->
+        let (g, p) = Pos.ggcd a0 b0 in let (aa, bb) = p in (g, (aa, bb)))
+        (fun b0 ->
+        let (g, p) = Pos.ggcd a0 b0 in
+        let (aa, bb) = p in (g, (aa, ((~-) bb))))
+        b)
+      (fun a0 ->
+      (fun f0 fp fn z -> if z=0 then f0 () else if z>0 then fp z else fn (-z))
+        (fun _ -> ((abs a), ((sgn a), 0)))
+        (fun b0 ->
+        let (g, p) = Pos.ggcd a0 b0 in
+        let (aa, bb) = p in (g, (((~-) aa), bb)))
+        (fun b0 ->
+        let (g, p) = Pos.ggcd a0 b0 in
+        let (aa, bb) = p in (g, (((~-) aa), ((~-) bb))))
+        b)
+      a
  end

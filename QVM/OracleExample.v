@@ -16,9 +16,11 @@ Require Import Coq.Structures.OrderedTypeEx.
 Require Import ExtLib.Data.Monads.OptionMonad.
 Require Import ExtLib.Structures.Monads.
 
+(*
 Require Import Nat Bvector.
 From Bits Require Import bits.
 Require Import Testing.
+*)
 
 Local Open Scope exp_scope.
 Local Open Scope nat_scope.
@@ -48,6 +50,7 @@ Definition qr_qexp (a b c d : qvar) :=
   unary (Nor (Var b)) qxor (Nor (Var c));;
   rotate_left_n b (32 - 7).
 
+(*
 Open Scope bits_scope.
 
 Definition rolBn (p : DWORD) k := iter k rolB p.
@@ -503,6 +506,8 @@ Definition collision_spec
  *)
 
 End Collision.
+
+*)
 
 Open Scope list_scope.
 
