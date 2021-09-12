@@ -1,24 +1,6 @@
-# SQIR & VOQC & QVM
-
-## Running QVM
-
-First, run `make qvm` in the top level directory. This will compile our Coq proofs. Then run `./extract.sh` in the QVM/experiements directory. This will extract our Coq definitions to OCaml and compile the resulting OCaml code.
-
-Now you can run the QVM experiments with `dune exec --root extraction -- ./run_qvm.exe`. This will generate a bunch of QASM files with the following naming conventions:
-* cl-adder-N.qasm, rz-adder-N.qasm - computes (x + y) using a TOFF-based or QFT-based adder
-* rz-const-adder-N.qasm - computes (x + N) using a QFT-based adder
-* cl-mul-N.qasm, rz-mul-N.qasm - computes (x * y) using a TOFF-based or QFT-based adder
-* cl-const-mul-N.qasm, rz-const-mul-N.qasm - computes (x * N) using a TOFF-based or QFT-based adder
-* cl-mod-mul-N.qasm, rz-mod-mul-N.qasm, sqir-mod-mul-N.qasm - computes (x * N % M) using a TOFF-based adder, a QFT-based adder, or our original definition in RCIR.
-
-You can try simulating these programs with `python sanity_check.py <prog>` (requires Python 3 and `pip install qiskit jkq.ddsim`).
-
-To run these programs through VOQC, clone the [mlvoqc](https://github.com/inQWIRE/mlvoqc) repository and follow the directions there for using `voqc_cli.exe`.
-
 # SQIR
 
-
-SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
+SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC). **TODO: add something about QVM.**
 
 We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We present details on verifying SQIR programs in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), to appear at ITP 2021. The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021) of this respository. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
 
@@ -33,6 +15,7 @@ If you are interested in learning more about formal verification of quantum prog
 * [Directory Contents](#directory-contents)
   * [SQIR](#sqir)
   * [VOQC](#voqc)
+  * [QVM](#qvm)
   * [examples](#examples)
 * [Acknowledgements](#acknowledgements)
 
@@ -123,6 +106,10 @@ The rest of the files in the VOQC directory can be split into the following cate
 - Experimental extensions
   - BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
 
+### QVM
+
+TODO
+
 ### examples
 
 Examples of verifying correctness properties of quantum algorithms.
@@ -143,9 +130,11 @@ This project is the result of the efforts of many people. The primary contacts f
 * Akshaj Gaur
 * Aaron Green
 * Shih-Han Hung
+* Adrian Lehmann
 * Liyi Li
 * Yuxiang Peng
 * Kartik Singhal
 * Runzhou Tao
+* Finn Voichick
 
 This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040 and the Air Force Office of Scientific Research under Grant Number FA95502110051.

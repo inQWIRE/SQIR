@@ -19,10 +19,6 @@ CoqMakefile: Makefile _CoqProject
 invoke-coqmakefile: CoqMakefile
 	$(MAKE) --no-print-directory -f CoqMakefile $(filter-out $(KNOWNTARGETS),$(MAKECMDGOALS))
 
-invoke-coqmakefile-euler: _CoqProjectEuler
-	$(COQBIN)coq_makefile -f _CoqProjectEuler -o CoqMakefileEuler
-	$(MAKE) --no-print-directory -f CoqMakefileEuler $(filter-out $(KNOWNTARGETS),$(MAKECMDGOALS))
-
 .PHONY: invoke-coqmakefile $(KNOWNFILES)
 
 ###########################################################
@@ -35,7 +31,7 @@ all: examples voqc VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMeasure.
 
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Grover.vo examples/QPE.vo examples/Simon.vo examples/Superdense.vo examples/Teleport.vo
 
-shor: invoke-coqmakefile invoke-coqmakefile-euler examples/shor/Main.vo
+shor: invoke-coqmakefile examples/shor/Main.vo
 
 voqc: invoke-coqmakefile VOQC/Main.vo
 
