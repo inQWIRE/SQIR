@@ -12,6 +12,30 @@ Definition boolean_oracle {n} (U : base_ucom (S n)) (f : nat -> bool) :=
     @Mmult _ _ 1 (uc_eval U) (basis_vector (2 ^ n) x ⊗ ∣ y ⟩) = 
       basis_vector (2 ^ n) x ⊗ ∣ xorb y (f x) ⟩.
 
+Infix "<*>" := kron (at level 40, only parsing).
+
+Definition pad_vector {n} dim (v : Vector (2 ^ n)) : Vector (2 ^ dim) :=
+  v <*> kron_n (dim - n) qubit0.
+
+Lemma wf_pad_vector :
+  forall n dim (v : Vector (2 ^ n)),
+  (n <= dim)%nat -> WF_Matrix v -> WF_Matrix (pad_vector dim v).
+Proof.
+  intros n dim v Hn Hw. unfold pad_vector.
+  apply WF_kron; auto with wf_db.
+  rewrite Nat.pow_1_l. reflexivity.
+Qed.
+
+Definition padded_boolean_oracle {dim} n
+  (U : base_ucom dim) (f : nat -> bool) :=
+  forall x (y : bool),
+  (x < 2 ^ n)%nat ->
+  @Mmult
+      _ _ 1
+      (uc_eval U)
+      (@pad_vector (S n) dim (basis_vector (2 ^ n) x <*> ket y)) =
+    @pad_vector (S n) dim (basis_vector (2 ^ n) x <*> ket (xorb y (f x))).
+
 (* Count the number of inputs where f returns true; note that we never
    "run" this function, it's just a definition. *)
 Fixpoint count (f : nat -> bool) n : nat :=

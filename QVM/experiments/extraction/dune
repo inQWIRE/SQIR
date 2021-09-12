@@ -1,0 +1,3 @@
+(executable
+  (name run_qvm)
+  (libraries ml unix))

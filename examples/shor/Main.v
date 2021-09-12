@@ -154,6 +154,7 @@ the max_interval_disjoint term should end up being (cnttrue n P) / n
 
  *)
 
+(*
 Lemma cnttrue_max_interval_disjoint : forall n P f,
   reflect P f ->
   max_interval_disjoint (fun rnd => P (uniform n rnd)) (cnttrue n f / n).
@@ -171,8 +172,9 @@ Lemma end_to_end_shors_correct : forall N niter pr,
   max_interval_s
      (fun rnds => ssrbool.isSome (end_to_end_shors2 N rnds O niter))
      pr ->
-  pr >= (1 / 2) ^ niter * (κ / INR (Nat.log2 N)^4) ^ niterOF.
+  pr >= (1 / 2) ^ niter * (κ / INR (Nat.log2 N)^4).
 Proof.
 Admitted.
 
 (* also: if e2esh returns Some x then x is a factor of N *)
+*)
