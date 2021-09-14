@@ -32,7 +32,15 @@ Definition Cmod2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
 Lemma Cmod2_ge_0 : forall c, 0 <= Cmod2 c.
 Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_0. Qed.
 
-(* Choose an index in the list l based on random number r ∈ [0,1).
+(* We will represent a (discrete) probability distribution over [0,n) 
+   using a length n list of real numbers. We support sampling from this
+   distribution using the 'sample' function below. *)
+Definition distribution (l : list R) := 
+  (length l > 0)%nat /\ 
+  Forall (fun x => 0 <= x <= 1) l /\
+  fold_left (fun a x => a + x)%R l 0 = 1.
+
+(* Choose an element from the distribution based on random number r ∈ [0,1).
    
    Example: Say that the input list is l = [.2, .3, .4, .1] (which might correspond
    to the probabilities of measuring the outcomes 00, 01, 10, 11). Then this
@@ -42,32 +50,111 @@ Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_
     * 2 for r ∈ [.5, .9)
     * 3 for r ∈ [.9, 1) 
 
-   The probability of getting a particular outcome is the size of this interval.
-   (See max_interval below.) *)
+   The probability of getting a particular outcome is the size of the intervals of
+   r values that produce that outcome. (See r_interval below.) *)
 Fixpoint sample (l : list R) (r : R) : nat :=
   match l with
   | nil    => 0 (* error case *)
   | x :: l' => if Rle_lt_dec r x then 0 else S (sample l' (r-x))
   end.
 
-(* Run ucom c on the zero input vector and return a list with the probabilities
-   of each measurement outcome. *)
+(* Intuitively, the probability that an element satisfies boolean predicate 
+   f is the sum over all element for which f holds. *)
+(* TODO: move RSum to QWIRE to get rid of this import *)
+Require Import examples.Utilities.
+Definition pr_outcome_sum (l : list R) (f : nat -> bool) : R :=
+  Rsum (2^(length l)) (fun i => if f i then nth i l 0 else 0). 
+
+(* Mathematically, the probability that an element satisifes a (not necessarily
+   boolean) predicate is the size of the range of r-values for which the element
+   returned from "sample" satisfies the predicate. *)
+(* @Robert: Seem ok? Suggestions for a more descriptive name? Also: would it
+   be easier to use pr_outcome_sum directly? Maybe it's useful for defining 
+   independence? *)
+(* TODO: should the bounds be on r1, r2 be leq instead of lt? *)
+Inductive interval_sum (P : R -> Prop) (rl rr : R) : R -> Prop :=
+| SingleInterval : forall r1 r2, rl <= r1 <= r2 /\ r2 <= rr ->
+    (forall r, r1 < r < r2 -> P r) ->               
+    (forall r, rl <= r < r1 -> ~ P r) ->
+    (forall r, r2 < r <= rr -> ~ P r) ->
+    interval_sum P rl rr (r2 - r1)%R
+| CombineIntervals : forall rm r1 r2, rl < rm < rr -> 
+    (* ~ P rm -> *) (* @Robert: why would we want (~ P rm)? *)
+    interval_sum P rl rm r1 ->
+    interval_sum P rm rr r2 ->
+    interval_sum P rl rr (r1 + r2).
+
+Definition r_interval P r := interval_sum P R0 R1 r.
+
+(* Given our definition of sample, we can define a function to "run" a 
+   quantum program and return the result of measuring all qubits.
+
+   rnd is a random input in [0,1]. *)
 Definition run {dim} (c : base_ucom dim) : list R :=
   let v := (uc_eval c) × basis_vector (2^dim) 0 in
   map Cmod2 (vec_to_list v).
-
-(* Run ucom c on the zero input vector and return the result of
-   measuring all qubits as a nat. rnd is a random input in [0,1]. *)
 Definition run_and_measure {dim} (c : base_ucom dim) (rnd : R) : nat :=
   sample (run c) rnd.
 
-(* Probability of a particular outcome. *)
-Definition pr_outcome {dim} (c : base_ucom dim) (i : nat) : R :=
-  nth i (run c) 0.
+(* The pr_outcome_sum and r_interval definitions of probability are consistent. *)
+
+Lemma pr_outcome_sum_eq_aux : forall (l : list R) (f : nat -> bool),
+  (length l > 0)%nat -> (* probably need more constraints (e.g. l is a valid distr) *)
+  r_interval (fun rnd => f (sample l rnd) = true) (pr_outcome_sum l f).
+Proof.
+  intros l f Hl.
+  destruct l.
+  simpl in Hl.
+  lia.
+  clear Hl.
+
+  (* @Robert, @Yuxiang: feel free to try this proof... *)
+Admitted.
+
+Lemma interval_sum_unique : forall P rl rr r1 r2,
+    interval_sum P rl rr r1 ->
+    interval_sum P rl rr r2 ->
+    r1 = r2.
+Proof.
+  (* TODO: Probably true, but annoying to prove. At least some of the 
+     proof should be the same as max_interval_unique. -KH
+
+     @Robert, @Yuxiang: feel free to try this proof... *)
+Admitted.
+
+Lemma r_interval_unique : forall P r1 r2,
+    r_interval P r1 ->
+    r_interval P r2 ->
+    r1 = r2.
+Proof.
+  intros.
+  apply interval_sum_unique with (P:=P) (rl:=R0) (rr:=R1); auto. 
+Qed.
+
+(* Alternative definition that requires uniqueness. *)
+Lemma pr_outcome_sum_eq : forall f l r,
+  (length l > 0)%nat ->
+  pr_outcome_sum l f = r <-> r_interval (fun rnd => f (sample l rnd) = true) r.
+Proof.
+  split; intros.
+  - rewrite <- H0.
+    apply pr_outcome_sum_eq_aux.
+    easy.
+  - eapply r_interval_unique.
+    apply pr_outcome_sum_eq_aux; trivial.
+    easy.
+Qed.
+
+
+
+(** Old: **)
+
+(*
 
 (* Add adjacent elements in l within range width, resulting in a list with 
    segs elements. *)
-(* TODO: Replace with a more elegant algebraic definition. *)
+(* TODO: Replace with a more elegant algebraic definition. -RNR
+         But it's nice that this is computable. -KH *)
 Fixpoint sum_width (l : list R) (width segs : nat) : list R :=
   match segs with
   | 0 => []
@@ -324,8 +411,6 @@ Proof.
     easy.
 Qed.
 
-(* TODO: Generalize max_interval to support more types of predicates. *)
-
 (* Using a single predicate and dividers: *)
 Inductive max_interval_disjoint (P : R -> Prop) (rl rr : R) : R -> Prop :=
 | MaxConsec : forall r1 r2, rl <= r1 <= r2 /\ r2 <= rr ->
@@ -339,7 +424,7 @@ Inductive max_interval_disjoint (P : R -> Prop) (rl rr : R) : R -> Prop :=
                    max_interval_disjoint P rm rr r2 ->
                    max_interval_disjoint P rl rr (r1 + r2).
 
-(* TODO: Uniqueness proofs for max_interval_disjoint and max_interval_sum *)
+(* TODO: Uniqueness proof for max_interval_disjoint *)
 Lemma max_interval_disjoint_unique : forall rl rr r1 r2 P,
     max_interval_disjoint P rl rr r1 ->
     max_interval_disjoint P rl rr r2 ->
@@ -350,27 +435,4 @@ Proof.
 
 Admitted.
 
-(* The probability that an outcome satisfies boolean predicate f is the sum over
-   all pr_outcomes for which f holds. *)
-Fixpoint pr_outcome_sum' {dim} (c : base_ucom dim) (f : nat -> bool) n : R :=
-  match n with
-  | O => 0
-  | S n' => if f n' then pr_outcome c n' + pr_outcome_sum' c f n'
-           else pr_outcome_sum' c f n'
-  end.
-Definition pr_outcome_sum {dim} (c : base_ucom dim) (f : nat -> bool) : R :=
-  pr_outcome_sum' c f dim.
-
-
-(* pr_outcome_sum c f = r
-   <->
-   max_interval_disjoint (fun x => f (run_and_measure c x)) R0 R1 r
-
-
-  (n < 2^dim)%nat ->
-  pr_outcome c n = r <-> max_interval (fun x => run_and_measure c x = n) r.
-
-** ends up being an Rsum over terms in the input list
-
- *)
-
+*)
