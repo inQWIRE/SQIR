@@ -5,10 +5,6 @@ Require Import AltGateSet.
 Require Import AltShor.
 Require Import Run.
 
-(* The definitions and proofs in this file are largely wrappers around definitions
-   and proofs in other files. At some point, I might clean up the code in the 
-   other files directly so this file won't be necessary. -KH *)
-
 
 (** Coq definitions that will be extracted to OCaml **)
 
@@ -102,12 +98,40 @@ Definition k1 a N : nat := ((ord a N) / 2) + 1.
 Definition k2 a N : nat := ((ord a N) / 2) - 1.
 
 Lemma pr_outcome_sum_cnttrue : forall l u f,
+  (l < u)%nat ->
   pr_outcome_sum (uniform l u) f 
-  = (INR (cnttrue (u - l) (fun x => f (l + x)%nat)) / INR (u - l))%R.
+  = (INR (cnttrue (u - l) (fun x => f (l + x - 1)%nat)) / INR (u - l))%R.
 Proof.
-  intros l u f.
+  intros l u f H.
   unfold uniform.
-  (* shouldn't be too hard... -KH *)
+  rewrite pr_outcome_sum_append.
+  rewrite pr_outcome_sum_repeat_false.
+  rewrite Rplus_0_l.
+  remember (u - l)%nat as n.
+  assert (Hn:(n > 0)%nat) by lia.
+  clear Heqn.
+  unfold pr_outcome_sum.
+  rewrite 2 repeat_length.
+  destruct n as [| n]; try lia.
+  clear Hn.
+
+remember (INR (S n)) as k.
+clear Heqk.
+  induction n. 
+simpl.
+replace (l + 1 - 1)%nat with l by lia.
+rewrite Nat.add_0_r.
+destruct (f l); simpl; lra.
+
+rewrite Rsum_extend.
+erewrite Rsum_eq_bounded.
+rewrite IHn.
+simpl. 
+replace (l + S (S n0) - 1)%nat with (l + S n0)%nat by lia.
+destruct (f (l + S n0)%nat); try lra.
+
+(* losing motivation... will try again later. -KH *)
+
 Admitted.
 
 (* Fact #2 - Assuming that N is not prime, not even, and not a power of a prime,

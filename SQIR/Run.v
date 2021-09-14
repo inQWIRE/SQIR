@@ -63,7 +63,7 @@ Fixpoint sample (l : list R) (r : R) : nat :=
 (* TODO: move RSum to QWIRE to get rid of this import *)
 Require Import examples.Utilities.
 Definition pr_outcome_sum (l : list R) (f : nat -> bool) : R :=
-  Rsum (2^(length l)) (fun i => if f i then nth i l 0 else 0). 
+  Rsum (length l) (fun i => if f i then nth i l 0 else 0). 
 
 (* Mathematically, the probability that an element satisifes a (not necessarily
    boolean) predicate is the size of the range of r-values for which the element
@@ -143,6 +143,67 @@ Proof.
   - eapply r_interval_unique.
     apply pr_outcome_sum_eq_aux; trivial.
     easy.
+Qed.
+
+Lemma Rsum_shift : forall n (f : nat -> R),
+  Rsum (S n) f = (f O + Rsum n (fun x => f (S x)))%R.
+Proof.
+  intros n f. 
+  simpl.
+  induction n; simpl.
+  lra.
+  rewrite IHn.
+  destruct n; simpl; lra.
+Qed.
+
+Lemma pr_outcome_sum_extend : forall x l f,
+  pr_outcome_sum (x :: l) f 
+  = if f O
+    then (x + pr_outcome_sum l (fun y => f (S y)))%R
+    else pr_outcome_sum l (fun y => f (S y)).
+Proof.
+  intros x l f.
+  unfold pr_outcome_sum.
+  simpl length.
+  rewrite Rsum_shift.
+  destruct (f O); simpl.
+  reflexivity.
+  lra.
+Qed.
+
+Lemma pr_outcome_sum_append : forall l1 l2 f,
+  pr_outcome_sum (l1 ++ l2) f
+  = (pr_outcome_sum l1 f + pr_outcome_sum l2 (fun x => f (length l1 + x)%nat))%R.
+Proof.
+  intros l1 l2.
+  induction l1; intro f.
+  unfold pr_outcome_sum.
+  simpl.
+  lra.
+  simpl.
+  rewrite 2 pr_outcome_sum_extend.
+  rewrite IHl1.
+  destruct (f O); lra.
+Qed.
+
+Lemma pr_outcome_sum_repeat_false : forall n f,
+  pr_outcome_sum (repeat 0 n) f = 0.
+Proof.
+  intros n f.
+  unfold pr_outcome_sum, Rsum.
+  destruct n as [| n]; trivial.
+  simpl.
+  apply sum_eq_R0.
+  intros x Hx.
+  destruct (f x); trivial.
+  destruct x; trivial.
+  rewrite repeat_length in Hx.
+  replace n with (x + (S (n - x - 1)))%nat by lia.
+  rewrite <- repeat_combine.
+  simpl.
+  rewrite <- repeat_length with (n:=x) (x:=0) at 1.
+  rewrite nth_middle.
+  trivial.
 Qed.
 
 
