@@ -187,7 +187,10 @@ Proof.
      One iteration should succeed with probability 1/2 * κ / (Nat.log2 N)^4
      and separate iterations should be independent.
    *)
-
+  (* RNR: I think we want to define a predicate called pairwise
+     independent that says that the joint probability is equal to the
+     product of the probabilities. This might require an axiom or two
+     to fit in the right context. *)
 Admitted.
 
 
