@@ -162,50 +162,8 @@ Qed.
 
 (* What is the probability of measuring ϕ on the first m qubits given
   (m + n) qubit input ψ? *)
-Definition Rsum (n : nat) (f : nat -> R) : R :=
-  match n with
-  | O => 0
-  | S n => sum_f_R0 f n
-  end.
 Definition prob_partial_meas {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))) :=
   Rsum (2^n) (fun y => probability_of_outcome (ϕ ⊗ basis_vector (2^n) y) ψ).
-
-Lemma Rsum_eq :
-  forall n f1 f2,
-    (forall i, f1 i = f2 i) -> Rsum n f1 = Rsum n f2.
-Proof.
-  intros. induction n.
-  - easy.
-  - simpl. destruct n.
-    + simpl. apply H.
-    + simpl. simpl in IHn. rewrite IHn. rewrite H. easy.
-Qed.
-
-Lemma Rsum_eq_bounded :
-  forall n f1 f2,
-    (forall i, (i < n)%nat -> f1 i = f2 i) -> Rsum n f1 = Rsum n f2.
-Proof.
-  intros. 
-  induction n; simpl.
-  reflexivity.
-  destruct n; simpl.
-  apply H. lia.
-  simpl in IHn. rewrite IHn. 
-  rewrite H by lia. easy.
-  intros. apply H; lia.
-Qed.
-
-Lemma Rsum_Csum :
-  forall n (f : nat -> R),
-     fst (Csum (fun i => f i) n) = Rsum n f.
-Proof.
-  intros. induction n.
-  - easy.
-  - simpl. rewrite IHn. 
-    destruct n.
-    + simpl. lra.
-    + rewrite tech5. simpl. easy.
-Qed.
 
 Lemma rewrite_I_as_sum : forall m n,
   (m <= n)%nat -> 
@@ -224,6 +182,18 @@ Proof.
   bdestruct_all; simpl; try lca. 
   all: destruct m; simpl; try lca.
   all: bdestruct_all; lca.
+Qed.
+
+Lemma Rsum_Csum :
+  forall n (f : nat -> R),
+     fst (Csum (fun i => f i) n) = Rsum n f.
+Proof.
+  intros. induction n.
+  - easy.
+  - simpl. rewrite IHn. 
+    destruct n.
+    + simpl. lra.
+    + rewrite tech5. simpl. easy.
 Qed.
 
 Lemma Rsum_Msum : forall n (f : nat -> Square 1),
