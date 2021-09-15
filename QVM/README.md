@@ -1,18 +1,25 @@
 # QVM
 
-TODO: overview of QVM
+**TODO**: overview of QVM
 
-## Running QVM
+## Directory Contents
 
-First, run `make qvm` in the top level directory. This will compile our Coq proofs. Then run `./extract.sh` in the QVM/experiements directory. This will extract our Coq definitions to OCaml and compile the resulting OCaml code.
+**TODO**: summarize the files in this directory
 
-Now you can run the QVM experiments with `dune exec --root extraction -- ./run_qvm.exe`. This will generate a bunch of QASM files with the following naming conventions:
-* cl-adder-N.qasm, rz-adder-N.qasm - computes (x + y) using a TOFF-based or QFT-based adder
-* rz-const-adder-N.qasm - computes (x + N) using a QFT-based adder
-* cl-mul-N.qasm, rz-mul-N.qasm - computes (x * y) using a TOFF-based or QFT-based adder
-* cl-const-mul-N.qasm, rz-const-mul-N.qasm - computes (x * N) using a TOFF-based or QFT-based adder
-* cl-mod-mul-N.qasm, rz-mod-mul-N.qasm, sqir-mod-mul-N.qasm - computes (x * N % M) using a TOFF-based adder, a QFT-based adder, or our original definition in RCIR.
+* ArithTesting.v
+* BasicUtility.v
+* CLArith.v
+* MathSpec.v
+* OracleExample.v
+* PQASM.v
+* QIMP.v
+* RZArith.v
+* Testing.v
 
-You can try simulating these programs with `python sanity_check.py <prog>` (requires Python 3 and `pip install qiskit jkq.ddsim`).
+The `experiments` directory contains utilities for extracting QVM code & running the experiments in our paper. See the README in that directory for more information.
 
-To run these programs through VOQC, clone the [mlvoqc](https://github.com/inQWIRE/mlvoqc) repository and follow the directions there for using `voqc_cli.exe`.
+**TODO**: What are the main theorems proved (and what files are they in)? Justify all admitted facts.
+
+## Compiling & Running QVM
+
+Run `make qvm` in the top level directory to compile our Coq proofs. See the README in the experiements directory for information on how to run QVM.

@@ -1,5 +1,5 @@
 Require Coq.extraction.Extraction.
-Require Import AltGateSet2.
+Require Import AltGateSet.
 Require Import AltPQASM.
 Require Import CLArith.
 Require Import ModMult.

@@ -1,4 +1,4 @@
-open AltGateSet2
+open AltGateSet
 open BasicUtility
 open CLArith
 open MathSpec
@@ -19,6 +19,11 @@ let rz_ang n =
 let rrz_ang n =
   ( -. ) (( *. ) 2.0 Float.pi)
     (( /. ) (( *. ) 2.0 Float.pi) ((fun a b -> a ** Float.of_int b) 2.0 n))
+
+(** val coq_ID : int -> coq_U ucom **)
+
+let coq_ID q =
+  coq_U1 0.0 q
 
 (** val gen_sr_gate' : vars -> var -> int -> int -> coq_U ucom **)
 
@@ -334,9 +339,8 @@ let trans_dmq_cl size =
 (** val bc2ucom : bccom -> coq_U ucom **)
 
 let rec bc2ucom = function
-| Coq_bcskip -> coq_SKIP
+| Coq_bcskip -> coq_ID 0
 | Coq_bcx a -> coq_X a
-| Coq_bcswap (a, b) ->
-  Coq_useq ((Coq_useq ((coq_CX a b), (coq_CX b a))), (coq_CX a b))
+| Coq_bcswap (a, b) -> AltGateSet.coq_SWAP a b
 | Coq_bccont (a, bc1) -> control a (bc2ucom bc1)
 | Coq_bcseq (bc1, bc2) -> Coq_useq ((bc2ucom bc1), (bc2ucom bc2))
