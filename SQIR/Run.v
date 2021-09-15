@@ -60,6 +60,13 @@ Fixpoint sample (l : list R) (r : R) : nat :=
 
 (* Intuitively, the probability that an element satisfies boolean predicate 
    f is the sum over all element for which f holds. *)
+<<<<<<< HEAD
+(* TODO: move RSum to QWIRE to get rid of this import *)
+
+Require Import examples.Utilities.
+
+=======
+>>>>>>> 626a5c89fe671dea14d0464d60adab7b75e84593
 Definition pr_outcome_sum (l : list R) (f : nat -> bool) : R :=
   Rsum (length l) (fun i => if f i then nth i l 0 else 0). 
 
@@ -69,7 +76,9 @@ Definition pr_outcome_sum (l : list R) (f : nat -> bool) : R :=
 (* @Robert: Seem ok? Suggestions for a more descriptive name? Also: would it
    be easier to use pr_outcome_sum directly? Maybe it's useful for defining 
    independence? *)
+(* RNR: Name is okay though we could use something like probability or measure (the second has regretable ambiguity in context)? If you can use pr_outcome_sum directly, that fine, but that requires the list of probabilities. I wish I'd written down exactly why I took this approach. *) 
 (* TODO: should the bounds be on r1, r2 be leq instead of lt? *)
+(* RNR: leq and lt are identical for continuous arithmetic, so whichever is easier to work with. *)
 Inductive interval_sum (P : R -> Prop) (rl rr : R) : R -> Prop :=
 | SingleInterval : forall r1 r2, rl <= r1 <= r2 /\ r2 <= rr ->
     (forall r, r1 < r < r2 -> P r) ->               
@@ -77,11 +86,13 @@ Inductive interval_sum (P : R -> Prop) (rl rr : R) : R -> Prop :=
     (forall r, r2 < r <= rr -> ~ P r) ->
     interval_sum P rl rr (r2 - r1)%R
 | CombineIntervals : forall rm r1 r2, rl < rm < rr -> 
-    (* ~ P rm -> *) (* @Robert: why would we want (~ P rm)? *)
+  (* ~ P rm -> *) (* @Robert: why would we want (~ P rm)? *)
+                  (* RNR: Just for the uniqueness of the intervals. Either way works but I thought this made more sense. *)                               
     interval_sum P rl rm r1 ->
     interval_sum P rm rr r2 ->
     interval_sum P rl rr (r1 + r2).
 
+(* RNR: Intuition for the name? Maybe use interval_sum_01 or similar? (Alternatively, just call it probability.) *)
 Definition r_interval P r := interval_sum P R0 R1 r.
 
 (* Given our definition of sample, we can define a function to "run" a 
@@ -96,15 +107,68 @@ Definition run_and_measure {dim} (c : base_ucom dim) (rnd : R) : nat :=
 
 (* The pr_outcome_sum and r_interval definitions of probability are consistent. *)
 
+Lemma Rsum_gt_f0 : forall f k,
+  (forall n, 0 <= f n)  ->  
+  f O <= sum_f_R0 f k.
+Proof.
+  intros.
+  induction k.
+  - simpl. lra.
+  - simpl. specialize (H (S k)). lra.
+Qed.
+
+(* This should be one case for the below lemma *)
+Lemma single_interval_size : forall k l r,
+    (k < length l)%nat ->
+    Forall (fun x => 0 <= x) l ->
+    Rsum (length l) (fun i => nth i l 0) = r ->
+    interval_sum (fun rnd => sample l rnd = k) 0 r (nth k l 0).
+Proof.
+  intros.
+  gen k r.
+  induction l; intros; simpl in H; try lia.
+  inversion H0; subst.
+  destruct k; simpl.
+  - replace a with (a-0)%R by lra.
+    econstructor; intros; try lra. 
+    + split; [lra|]. clear -H4 H5. (* RNR: could just use lemma above, but requires a bit of massaging *)
+      induction (length l).
+      simpl. lra.
+      simpl.
+      bdestruct (n <? length l)%nat.
+      eapply Forall_nth with (i:=n) (d:=0) in H5. lra. easy.
+      rewrite nth_overflow by lia.
+      lra.
+    + destruct (Rle_lt_dec r (a - 0)); try lra. easy.
+    + destruct (Rle_lt_dec r (a - 0)); try lra. easy.
+(*
+  - apply lt_S_n in H.
+    specialize (IHl H4 k H).
+    inversion IHl.
+    replace (r2 - r1)%R with ((r2 + a) - (r1 + a))%R by lra.
+    constructor; intros; try lra.
+    + destruct (Rle_lt_dec r a). lra.
+      f_equal.
+      apply H5.
+      lra.
+    + destruct (Rle_lt_dec r a). lia.
+      intros F.
+      apply (H6 (r-a)%R). lra.
+      lia.
+    + destruct (Rle_lt_dec r a). lia.
+      intros F.
+      apply (H7 (r-a)%R). lra.
+      lia. *)
+Admitted. 
+
+(* RNR: Rather than length <> 0, I'd use that all entries of l are > 0, and (if needed) that they sum to 1 or some r (like above). *) 
 Lemma pr_outcome_sum_eq_aux : forall (l : list R) (f : nat -> bool),
   (length l > 0)%nat -> (* probably need more constraints (e.g. l is a valid distr) *)
   r_interval (fun rnd => f (sample l rnd) = true) (pr_outcome_sum l f).
 Proof.
-  intros l f Hl.
-  destruct l.
-  simpl in Hl.
-  lia.
-  clear Hl.
+  induction l; intros.
+  - simpl in *; lia.
+  - 
 
   (* @Robert, @Yuxiang: feel free to try this proof... *)
 Admitted.
