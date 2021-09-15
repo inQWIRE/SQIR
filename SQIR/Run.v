@@ -60,8 +60,6 @@ Fixpoint sample (l : list R) (r : R) : nat :=
 
 (* Intuitively, the probability that an element satisfies boolean predicate 
    f is the sum over all element for which f holds. *)
-(* TODO: move RSum to QWIRE to get rid of this import *)
-Require Import examples.Utilities.
 Definition pr_outcome_sum (l : list R) (f : nat -> bool) : R :=
   Rsum (length l) (fun i => if f i then nth i l 0 else 0). 
 
