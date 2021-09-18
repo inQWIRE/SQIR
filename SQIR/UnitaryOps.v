@@ -232,14 +232,20 @@ Lemma fresh_CU : forall {dim} θ ϕ λ q c t,
   q <> c -> q <> t -> @is_fresh _ dim q (CU θ ϕ λ c t).
 Proof. intros. repeat constructor; auto. Qed.
 
-Lemma fresh_CCX : forall {dim} q c1 c2 t,
-  q <> c1 -> q <> c2 -> q <> t -> @is_fresh _ dim q (CCX c1 c2 t).
-Proof. intros. repeat constructor; auto. Qed.
-
 Ltac invert_is_fresh :=
   repeat match goal with
   | H : is_fresh _ _ |- _ => inversion H; subst; clear H
   end; clear_dups.
+
+Lemma fresh_CCX : forall {dim} q c1 c2 t,
+  q <> c1 /\ q <> c2 /\ q <> t <-> @is_fresh _ dim q (CCX c1 c2 t).
+Proof. 
+  intros. split. 
+  intros [? [? ?]]. 
+  repeat constructor; auto. 
+  intro.
+  invert_is_fresh. auto. 
+Qed.
 
 Lemma fresh_control : forall {dim} q1 q2 c,
   (q1 <> q2 /\ @is_fresh _ dim q1 c) <-> @is_fresh _ dim q1 (control q2 c).
@@ -397,24 +403,38 @@ Proof.
   Msimpl_light.
   reflexivity.
 Qed.
+
+Lemma UR_a_geq_dim : forall (dim a b : nat) r r0 r1,
+  (dim <= a)%nat ->
+  uc_eval (@CU dim r r0 r1 a b) = Zero.
+Proof.
+  intros dim a b r r0 r1 H.
+  simpl. 
+  assert (uc_eval (@Rz dim ((r1 + r0) / 2) a) = Zero).
+  { autorewrite with eval_db. gridify. }
+  rewrite H0.
+  Msimpl_light.
+  reflexivity.
+Qed.
 Local Opaque CU.
 
 Hint Rewrite f_to_vec_CNOT f_to_vec_Rz f_to_vec_X using lia : f_to_vec_db.
 Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
 
-Ltac f_to_vec_simpl :=
-  repeat 
-   (autorewrite with f_to_vec_db;
-    try match goal with
-        | |- context [uc_eval (SQIR.H _) × f_to_vec _ _] =>
-              rewrite f_to_vec_H by lia
-        end;
-    distribute_scale;
-    distribute_plus;
-    try match goal with
-        | |- context [update (update (update _ ?x _) ?y _) ?z _ ] => 
-              rewrite (update_twice_neq _ x y) by lia
-        end).
+Ltac f_to_vec_simpl_body :=
+  autorewrite with f_to_vec_db;
+  try match goal with
+      | |- context [uc_eval (SQIR.H _) × f_to_vec _ _] =>
+            rewrite f_to_vec_H by lia
+      end;
+  distribute_scale;
+  distribute_plus;
+  try match goal with
+      | |- context [update (update (update _ ?x _) ?y _) ?z _ ] => 
+            rewrite (update_twice_neq _ x y) by lia
+      end.
+
+Ltac f_to_vec_simpl := repeat f_to_vec_simpl_body.
   
 Lemma f_to_vec_CCX : forall (dim a b c : nat) (f : nat -> bool),
    (a < dim)%nat -> (b < dim)%nat -> (c < dim)%nat -> a <> b -> a <> c -> b <> c ->
@@ -596,6 +616,16 @@ Proof.
     Msimpl. reflexivity.
   - apply UR_not_fresh. assumption.
   - apply CCX_not_fresh. assumption.
+Qed.
+
+Lemma control_q_geq_dim : forall {dim} q (c : base_ucom dim),
+  (dim <= q)%nat -> uc_eval (control q c) = Zero.
+Proof.
+  intros dim q c Hq.
+  induction c; try dependent destruction u; simpl.
+  - rewrite IHc1. Msimpl_light. trivial. 
+  - apply UR_a_geq_dim. assumption.
+  - apply CCX_a_geq_dim. assumption.
 Qed.
 
 (* c ≡ c' implies (uc_well_typed c <-> uc_well_typed c' *)

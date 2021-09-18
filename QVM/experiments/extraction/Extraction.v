@@ -54,4 +54,7 @@ Separate Extraction
     AltPQASM.trans_dmc_qft
     AltPQASM.trans_dmc_cl
     AltPQASM.trans_dmq_qft
-    AltPQASM.trans_dmq_cl.
+    AltPQASM.trans_dmq_cl
+    
+    (* decomposition pass *)
+    AltGateSet.decompose_CU1_and_C3X.

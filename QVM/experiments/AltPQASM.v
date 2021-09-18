@@ -64,7 +64,7 @@ Fixpoint nH (f : vars) (x:var) (n:nat) : ucom U :=
 
 Definition trans_h (f : vars) (x:var) : ucom U := nH f x (vsize f x).
 
-Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (ucom U * vars  * (nat -> posi)) :=
+Fixpoint trans_exp' (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (ucom U * vars * (nat -> posi)) :=
     match exp with
     | SKIP p => (ID (find_pos f p), f, avs)
     | X p => (AltGateSet.X (find_pos f p), f, avs)
@@ -76,18 +76,22 @@ Fixpoint trans_exp (f : vars) (dim:nat) (exp:exp) (avs: nat -> posi) : (ucom U *
     | Rshift x => (ID (find_pos f (x,0)), trans_rshift f x, rshift_avs dim f avs x)
     | Rev x => (ID (find_pos f (x,0)), trans_rev f x, rev_avs dim f avs x)
     | HCNOT p1 p2 => (AltGateSet.CX (find_pos f p1) (find_pos f p2), f, avs)
-    | CU p e1 => match trans_exp f dim e1 avs with 
+    | CU p e1 => match trans_exp' f dim e1 avs with 
                  | (e1', f',avs') => (control (find_pos f p) e1', f, avs) end
     | QFT x => (trans_qft f x, f, avs)
     | RQFT x => (trans_rqft f x, f, avs)
     | H x => (trans_h f x, f, avs)
-    | (e1 ; e2)%exp => match trans_exp f dim e1 avs with 
+    | (e1 ; e2)%exp => match trans_exp' f dim e1 avs with 
                  | (e1', f', avs') => 
-                        match trans_exp f' dim e2 avs' with 
+                        match trans_exp' f' dim e2 avs' with 
                         | (e2',f'',avs'') => (e1' >> e2', f'', avs'') end
                   end
     end.
 
+(* In the final result, we can throw away the vars and avs. 
+   -> also call eliminate_CU1 to decompose CU1 gates for later optimization *)
+Definition trans_exp f dim exp avs := 
+  decompose_CU1_and_C3X (fst (fst (trans_exp' f dim exp avs))).
 
 (* z = x + y (TOFF-based) *)
 Definition trans_cl_adder (size:nat) :=
@@ -182,7 +186,7 @@ Fixpoint bc2ucom (bc : bccom) : ucom U :=
   match bc with
   | bcskip => ID 0
   | bcx a => AltGateSet.X a
-  | bcswap a b => (AltGateSet.SWAP a b)
+  | bcswap a b => AltGateSet.SWAP a b
   | bccont a bc1 => control a (bc2ucom bc1)
   | bcseq bc1 bc2 => (bc2ucom bc1) >> (bc2ucom bc2)
   end.

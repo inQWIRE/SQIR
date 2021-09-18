@@ -1,6 +1,7 @@
 open AltGateSet
 open BasicUtility
 open CLArith
+open Datatypes
 open MathSpec
 open Nat0
 open OracleExample
@@ -100,15 +101,15 @@ let rec nH f x n =
 let trans_h f x =
   nH f x (vsize f x)
 
-(** val trans_exp :
+(** val trans_exp' :
     vars -> int -> exp -> (int -> posi) -> (coq_U ucom * vars) * (int -> posi) **)
 
-let rec trans_exp f dim exp0 avs =
+let rec trans_exp' f dim exp0 avs =
   match exp0 with
   | SKIP p -> (((coq_ID (find_pos f p)), f), avs)
   | X p -> (((coq_X (find_pos f p)), f), avs)
   | CU (p, e1) ->
-    let (p0, _) = trans_exp f dim e1 avs in
+    let (p0, _) = trans_exp' f dim e1 avs in
     let (e1', _) = p0 in (((control (find_pos f p) e1'), f), avs)
   | RZ (q, p) -> (((coq_U1 (rz_ang q) (find_pos f p)), f), avs)
   | RRZ (q, p) -> (((coq_U1 (rrz_ang q) (find_pos f p)), f), avs)
@@ -127,63 +128,65 @@ let rec trans_exp f dim exp0 avs =
   | RQFT x -> (((trans_rqft f x), f), avs)
   | H x -> (((trans_h f x), f), avs)
   | Seq (e1, e2) ->
-    let (p, avs') = trans_exp f dim e1 avs in
+    let (p, avs') = trans_exp' f dim e1 avs in
     let (e1', f') = p in
-    let (p0, avs'') = trans_exp f' dim e2 avs' in
+    let (p0, avs'') = trans_exp' f' dim e2 avs' in
     let (e2', f'') = p0 in (((Coq_useq (e1', e2')), f''), avs'')
 
-(** val trans_cl_adder : int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_exp : vars -> int -> exp -> (int -> posi) -> coq_U ucom **)
+
+let trans_exp f dim exp0 avs =
+  decompose_CU1_and_C3X (fst (fst (trans_exp' f dim exp0 avs)))
+
+(** val trans_cl_adder : int -> coq_U ucom **)
 
 let trans_cl_adder size =
   trans_exp (vars_for_adder01 size)
     (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
     (adder01_out size) (avs_for_arith size)
 
-(** val trans_cl_const_mul :
-    int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_cl_const_mul : int -> int -> coq_U ucom **)
 
 let trans_cl_const_mul size m =
   trans_exp (vars_for_cl_nat_m size)
     (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
     (cl_nat_mult_out size (nat2fb m)) (avs_for_arith size)
 
-(** val trans_cl_mul : int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_cl_mul : int -> coq_U ucom **)
 
 let trans_cl_mul size =
   trans_exp (vars_for_cl_nat_full_m size)
     (add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
       (Pervasives.succ 0)) (cl_full_mult_out size) (avs_for_arith size)
 
-(** val trans_rz_const_adder :
-    int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_rz_const_adder : int -> int -> coq_U ucom **)
 
 let trans_rz_const_adder size m =
   trans_exp (vars_for_rz_adder size) size (rz_adder_out size (nat2fb m))
     (avs_for_arith size)
 
-(** val trans_rz_adder : int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_rz_adder : int -> coq_U ucom **)
 
 let trans_rz_adder size =
   trans_exp (vars_for_rz_full_add size)
     (mul (Pervasives.succ (Pervasives.succ 0)) size) (rz_full_adder_out size)
     (avs_for_arith size)
 
-(** val trans_rz_const_mul :
-    int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_rz_const_mul : int -> int -> coq_U ucom **)
 
 let trans_rz_const_mul size m =
   trans_exp (vars_for_rz_nat_m size)
     (mul (Pervasives.succ (Pervasives.succ 0)) size)
     (nat_mult_out size (nat2fb m)) (avs_for_arith size)
 
-(** val trans_rz_mul : int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_rz_mul : int -> coq_U ucom **)
 
 let trans_rz_mul size =
   trans_exp (vars_for_rz_nat_full_m size)
     (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
     (nat_full_mult_out size) (avs_for_arith size)
 
-(** val trans_cl_mod : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_cl_mod : int -> int -> coq_U ucom **)
 
 let trans_cl_mod size m =
   trans_exp (vars_for_cl_moder size)
@@ -192,7 +195,7 @@ let trans_cl_mod size m =
         (Pervasives.succ 0)))) size) (Pervasives.succ 0))
     (cl_moder_out size m) (avs_for_arith size)
 
-(** val trans_cl_div : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_cl_div : int -> int -> coq_U ucom **)
 
 let trans_cl_div size m =
   trans_exp (vars_for_cl_div size)
@@ -201,46 +204,42 @@ let trans_cl_div size m =
         (Pervasives.succ 0)))) size) (Pervasives.succ 0)) (cl_div_out size m)
     (avs_for_arith size)
 
-(** val trans_cl_div_mod :
-    int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_cl_div_mod : int -> int -> coq_U ucom **)
 
 let trans_cl_div_mod size m =
   trans_exp (vars_for_cl_div_mod size)
     (add (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0))) size)
       (Pervasives.succ 0)) (cl_div_mod_out size m) (avs_for_arith size)
 
-(** val trans_rz_mod : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_rz_mod : int -> int -> coq_U ucom **)
 
 let trans_rz_mod size m =
   trans_exp (vars_for_rz_moder size)
     (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
       (Pervasives.succ size)) (rz_moder_out size m) (avs_for_rz_moder size)
 
-(** val trans_rz_div : int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_rz_div : int -> int -> coq_U ucom **)
 
 let trans_rz_div size m =
   trans_exp (vars_for_rz_div size)
     (mul (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
       (Pervasives.succ size)) (rz_div_out size m) (avs_for_rz_div size)
 
-(** val trans_rz_div_mod :
-    int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_rz_div_mod : int -> int -> coq_U ucom **)
 
 let trans_rz_div_mod size m =
   trans_exp (vars_for_rz_div_mod size)
     (mul (Pervasives.succ (Pervasives.succ 0)) (Pervasives.succ size))
     (rz_div_mod_out size m) (avs_for_rz_div_mod size)
 
-(** val trans_rz_modmult_rev :
-    int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_rz_modmult_rev : int -> int -> int -> int -> coq_U ucom **)
 
 let trans_rz_modmult_rev m c cinv size =
   trans_exp (vars_for_rz size)
     (add (mul (Pervasives.succ (Pervasives.succ 0)) size) (Pervasives.succ 0))
     (real_rz_modmult_rev m c cinv size) (avs_for_arith size)
 
-(** val trans_modmult_rev :
-    int -> int -> int -> int -> (coq_U ucom * vars) * (int -> posi) **)
+(** val trans_modmult_rev : int -> int -> int -> int -> coq_U ucom **)
 
 let trans_modmult_rev m c cinv size =
   trans_exp (vars_for_cl (Pervasives.succ size))
@@ -250,8 +249,7 @@ let trans_modmult_rev m c cinv size =
     (real_modmult_rev m c cinv (Pervasives.succ size))
     (avs_for_arith (Pervasives.succ size))
 
-(** val trans_dmc_qft :
-    int -> ((coq_U ucom * vars) * (int -> posi)) option **)
+(** val trans_dmc_qft : int -> coq_U ucom option **)
 
 let trans_dmc_qft size =
   match compile_dm_qft size with
@@ -271,7 +269,7 @@ let trans_dmc_qft size =
      | Error -> None)
   | None -> None
 
-(** val trans_dmc_cl : int -> ((coq_U ucom * vars) * (int -> posi)) option **)
+(** val trans_dmc_cl : int -> coq_U ucom option **)
 
 let trans_dmc_cl size =
   match compile_dm_classic size with
@@ -291,8 +289,7 @@ let trans_dmc_cl size =
      | Error -> None)
   | None -> None
 
-(** val trans_dmq_qft :
-    int -> ((coq_U ucom * vars) * (int -> posi)) option **)
+(** val trans_dmq_qft : int -> coq_U ucom option **)
 
 let trans_dmq_qft size =
   match compile_dmq_qft size with
@@ -314,7 +311,7 @@ let trans_dmq_qft size =
      | Error -> None)
   | None -> None
 
-(** val trans_dmq_cl : int -> ((coq_U ucom * vars) * (int -> posi)) option **)
+(** val trans_dmq_cl : int -> coq_U ucom option **)
 
 let trans_dmq_cl size =
   match compile_dmq_classic size with

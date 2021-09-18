@@ -17,6 +17,11 @@ type coq_U =
 | U_C3X
 | U_C4X
 
+(** val coq_R8 : float **)
+
+let coq_R8 =
+  Float.of_int ((fun p->2*p) ((fun p->2*p) ((fun p->2*p) 1)))
+
 (** val coq_X : int -> coq_U ucom **)
 
 let coq_X q =
@@ -52,10 +57,25 @@ let coq_T q =
 let coq_Tdg q =
   coq_U1 (((-.) 0.0) (( /. ) Float.pi 4.0)) q
 
+(** val coq_ID : int -> coq_U ucom **)
+
+let coq_ID q =
+  coq_U1 0.0 q
+
 (** val coq_SKIP : coq_U ucom **)
 
 let coq_SKIP =
-  coq_U1 0.0 0
+  coq_ID 0
+
+(** val coq_P8 : int -> coq_U ucom **)
+
+let coq_P8 q =
+  coq_U1 (( /. ) Float.pi coq_R8) q
+
+(** val coq_P8dg : int -> coq_U ucom **)
+
+let coq_P8dg q =
+  coq_U1 (((-.) 0.0) (( /. ) Float.pi coq_R8)) q
 
 (** val coq_CX : int -> int -> coq_U ucom **)
 
@@ -146,6 +166,22 @@ let decompose_CCX a b c =
     (coq_T c))), (coq_CX b c))), (coq_Tdg c))), (coq_CX a c))),
     (coq_CX a b))), (coq_Tdg b))), (coq_CX a b))), (coq_T a))), (coq_T b))),
     (coq_T c))), (coq_H c))
+
+(** val decompose_C3X : int -> int -> int -> int -> coq_U ucom **)
+
+let decompose_C3X a b c d =
+  Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
+    ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
+    ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
+    ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
+    ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((coq_H d),
+    (coq_P8 a))), (coq_P8 b))), (coq_P8 c))), (coq_P8 d))), (coq_CX a b))),
+    (coq_P8dg b))), (coq_CX a b))), (coq_CX b c))), (coq_P8dg c))),
+    (coq_CX a c))), (coq_P8 c))), (coq_CX b c))), (coq_P8dg c))),
+    (coq_CX a c))), (coq_CX c d))), (coq_P8dg d))), (coq_CX b d))),
+    (coq_P8 d))), (coq_CX c d))), (coq_P8dg d))), (coq_CX a d))),
+    (coq_P8 d))), (coq_CX c d))), (coq_P8dg d))), (coq_CX b d))),
+    (coq_P8 d))), (coq_CX c d))), (coq_P8dg d))), (coq_CX a d))), (coq_H d))
 
 (** val control' : int -> coq_U ucom -> int -> coq_U ucom **)
 
@@ -454,3 +490,38 @@ let rec invert = function
                     (match l3 with
                      | [] -> coq_C4X q1 q2 q3 q4 q5
                      | _ :: _ -> coq_SKIP)))))))
+
+(** val decompose_CU1_and_C3X : coq_U ucom -> coq_U ucom **)
+
+let rec decompose_CU1_and_C3X u = match u with
+| Coq_useq (u1, u2) ->
+  Coq_useq ((decompose_CU1_and_C3X u1), (decompose_CU1_and_C3X u2))
+| Coq_uapp (_, u0, l) ->
+  (match u0 with
+   | U_CU1 r ->
+     (match l with
+      | [] -> u
+      | q1 :: l0 ->
+        (match l0 with
+         | [] -> u
+         | q2 :: l1 ->
+           (match l1 with
+            | [] -> decompose_CU1 r q1 q2
+            | _ :: _ -> u)))
+   | U_C3X ->
+     (match l with
+      | [] -> u
+      | q1 :: l0 ->
+        (match l0 with
+         | [] -> u
+         | q2 :: l1 ->
+           (match l1 with
+            | [] -> u
+            | q3 :: l2 ->
+              (match l2 with
+               | [] -> u
+               | q4 :: l3 ->
+                 (match l3 with
+                  | [] -> decompose_C3X q1 q2 q3 q4
+                  | _ :: _ -> u)))))
+   | _ -> u)
