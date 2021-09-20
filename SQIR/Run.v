@@ -94,9 +94,9 @@ Inductive interval_sum (P : R -> Prop) (rl rr : R) : R -> Prop :=
     (forall r, rl < r < r1 -> ~ P r) ->
     (forall r, r2 < r < rr -> ~ P r) ->
     interval_sum P rl rr (r2 - r1)%R
+(* We could add [~ P rm] to this case to guarantee unique intervals,
+   but still no proof uniqueness *) 
 | CombineIntervals : forall rm r1 r2, rl <= rm <= rr -> 
-  (* ~ P rm -> *) (* @Robert: why would we want (~ P rm)? *)
-                  (* RNR: Just for the uniqueness of the intervals. Either way works but I thought this made more sense. *)                               
     interval_sum P rl rm r1 ->
     interval_sum P rm rr r2 ->
     interval_sum P rl rr (r1 + r2).
@@ -162,48 +162,42 @@ Lemma interval_sum_break :
                  (r = r1 + r2)%R.
 Proof.
   intros.
-  gen rm.
   induction H.
   - intros.
     destruct (Rle_lt_dec rm r1); [| destruct (Rlt_le_dec rm r2)]. 
     + exists (rm - rm)%R, (r2 - r1)%R.
-      split.
+      repeat split; try lra.
       * apply SingleInterval; intros; auto; try lra.
-        apply H1; lra.
-      * split; try lra.
-        apply SingleInterval; intros; auto; try lra.
-        apply H1; lra.
+        apply H2; lra.
+      * apply SingleInterval; intros; auto; try lra.
+        apply H2; lra.
     + exists (rm - r1)%R, (r2 - rm)%R.
-      split.
+      repeat split; try lra.
       * apply SingleInterval; intros; auto; try lra.
-        apply H0; lra.
-      * split; try lra.       
-        apply SingleInterval; intros; auto; try lra.
-        apply H0; lra.
+        apply H1; lra.
+      * apply SingleInterval; intros; auto; try lra.
+        apply H1; lra.
     + exists (r2 - r1)%R, (rm - rm)%R.
-      split.
+      repeat split; try lra.
       * apply SingleInterval; intros; auto; try lra.
-        apply H2; lra.
-      * split; try lra.
-        apply SingleInterval; intros; auto; try lra.
-        apply H2; lra.
+        apply H3; lra.
+      * apply SingleInterval; intros; auto; try lra.
+        apply H3; lra.
   - intros.
-    specialize (IHinterval_sum1 rm0). (* ungeneralize rm if this works *)
-    specialize (IHinterval_sum2 rm0).
-    destruct (Rtotal_order rm rm0) as [L1 | [L2 | L3]].
+    destruct (Rtotal_order rm0 rm) as [L1 | [L2 | L3]].
     + clear IHinterval_sum1.
       destruct IHinterval_sum2 as [x1 [x2 [S1 [S2 E]]]]. lra.
       subst.
       exists (r1 + x1)%R, x2.
-      split; [|split; [auto | lra]].  
-      apply CombineIntervals with rm; auto; lra.
+      repeat split; auto; try lra.
+      apply CombineIntervals with rm0; auto; lra.
     + subst. eauto.
     + clear IHinterval_sum2.
       destruct IHinterval_sum1 as [x1 [x2 [S1 [S2 E]]]]. lra.
       subst.
       exists x1, (x2 + r2)%R.
-      split; [auto |split; [ | lra]].  
-      apply CombineIntervals with rm; auto; lra.
+      repeat split; auto; try lra.
+      apply CombineIntervals with rm0; auto; lra.
 Qed.
       
 Lemma interval_sum_unique : forall P rl rr r1 r2,
@@ -373,8 +367,7 @@ Proof.
         lra.
 Qed.
 
-
-(* RNR: Intuition for the name? Maybe use interval_sum_01 or similar? (Alternatively, just call it probability.) *)
+(* Mathematical measure of P on the interval (0,1) *) 
 Definition pr_P P r := interval_sum P 0%R 1%R r.
 
 (* Given our definition of sample, we can define a function to "run" a 
