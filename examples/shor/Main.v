@@ -41,7 +41,6 @@ Definition factor (a N r : nat) :=
 
   The probability of success (returning Some) and the resources (aka qubits and 
   gates) used is a function of N and niter (see proofs below). *)
-(* @Yuxiang: does the new definition of end_to_end_shors look correct? *)
 
 (* Uniform sampling in the range [lower, upper) *)
 Definition uniform (lower upper : nat) : list R :=
@@ -74,6 +73,190 @@ Definition coprime (a b : nat) : Prop := Nat.gcd a b = 1%nat.
 
 (** Correctness properties for Shor's **)
 
+Lemma nth_vec_to_list : forall {m n} (v : Vector n) x,
+  (x < m)%nat -> nth x (@vec_to_list m v) 0 = v x O.
+Proof.
+(* Actually, this isn't true. vec_to_list has its indices reversed
+   compared to v (i.e., vec_to_list produces v 2 0 :: v 1 0 :: v 0 0 
+   instead of v 0 0 :: v 1 0 :: v 2 0). Would it be too much trouble to 
+   update vec_to_list to use the same ordering? -KH *)
+Admitted.
+
+Lemma nth_run_probability_of_outcome : forall n (c : base_ucom n) x,
+  (x < 2 ^ n)%nat ->
+  nth x (run c) 0 
+    = probability_of_outcome 
+        (basis_vector (2^n) x) 
+        (UnitarySem.uc_eval c × basis_vector (2^n) 0).
+Proof.
+  intros n c x Hx.
+  unfold run, probability_of_outcome.
+  rewrite nth_indep with (d':=Cmod2 0).
+  rewrite map_nth.
+  remember (UnitarySem.uc_eval c × basis_vector (2 ^ n) 0) as ψ.
+  rewrite nth_vec_to_list by assumption.
+  rewrite (basis_vector_decomp ψ) at 2.
+  rewrite Mmult_vsum_distr_l.
+  symmetry.
+  erewrite vsum_unique.
+  2 : { exists x. split. assumption. 
+        split.
+        rewrite Mscale_mult_dist_r.
+        rewrite basis_vector_product_eq.
+        reflexivity. assumption.
+        intros y Hy Hxy.
+        rewrite Mscale_mult_dist_r.
+        rewrite basis_vector_product_neq by auto.
+        lma. }
+  unfold Cmod, Cmod2.
+  rewrite pow2_sqrt.
+  unfold I, scale.
+  simpl.
+  lra.
+  apply Rplus_le_le_0_compat; apply pow2_ge_0.
+  subst. 
+  apply WF_mult.
+  apply WF_uc_eval.
+  apply basis_vector_WF.
+  apply pow_positive. lia.
+  rewrite map_length.  
+  rewrite vec_to_list_length.
+  assumption.
+Qed.
+
+(* Return the first m bits of x as an int. *)
+Definition first_m m n x := 
+  funbool_to_nat m (nat_to_funbool (m + n) x).
+
+(* Annoying fact about binary representation -- easier with a different
+   definition of first_m? -KH *)
+Lemma simplify_first_m : forall m n x y,
+  (x < 2 ^ m)%nat ->
+  (y < 2 ^ n)%nat ->
+  first_m m n (x * 2 ^ n + y) = x.
+Proof.
+  intros m n x y Hx Hy.
+  unfold first_m.
+Admitted.
+
+Lemma Rsum_plus_range : forall m n f,
+  Rsum (m + n) f = (Rsum m f + Rsum n (fun x => f (x + m)%nat))%R.
+Proof.
+  intros m n f.
+  induction n.
+  simpl. 
+  rewrite Nat.add_0_r. 
+  lra.
+  replace (m + S n0)%nat with (S (m + n0)) by lia. 
+  rewrite 2 Rsum_extend.
+  rewrite IHn.
+  rewrite Nat.add_comm.
+  lra.
+Qed.
+
+Lemma Rsum_twice : forall n f,
+  Rsum (2 * n) f = (Rsum n f + Rsum n (fun x => f (x + n)%nat))%R.
+Proof.
+  intros n f. replace (2 * n)%nat with (n + n)%nat by lia. apply Rsum_plus_range.
+Qed.
+
+Lemma Rsum_plus: forall n f g,
+  Rsum n (fun x => (f x + g x)%R) = ((Rsum n f) + (Rsum n g))%R.
+Proof.
+  intros n f g.
+  induction n.
+  simpl. lra.
+  repeat rewrite Rsum_extend.
+  rewrite IHn. lra.
+Qed.
+
+Lemma nested_Rsum : forall m n f,
+  Rsum (2 ^ (m + n)) f 
+    = Rsum (2 ^ m) (fun x => Rsum (2 ^ n) (fun y => f (x * 2 ^ n + y)%nat)).
+Proof.
+  intros m n.
+  replace (2 ^ (m + n))%nat with (2 ^ n * 2 ^ m)%nat by unify_pows_two.
+  induction m; intro f.
+  simpl.
+  rewrite Nat.mul_1_r.
+  reflexivity.
+  replace (2 ^ n * 2 ^ S m)%nat with (2 * (2 ^ n * 2 ^ m))%nat by unify_pows_two.
+  replace (2 ^ S m)%nat with (2 * 2 ^ m)%nat by unify_pows_two.
+  rewrite 2 Rsum_twice.
+  rewrite 2 IHm.
+  apply f_equal2; try reflexivity.
+  apply Rsum_eq.
+  intro x.
+  apply Rsum_eq.
+  intro y.
+  apply f_equal.
+  lia.
+Qed.
+
+Lemma split_basis_vector : forall m n x y,
+  (x < 2 ^ m)%nat ->
+  (y < 2 ^ n)%nat ->
+  basis_vector (2 ^ (m + n)) (x * 2 ^ n + y) 
+    = basis_vector (2 ^ m) x ⊗ basis_vector (2 ^ n) y.
+Proof.
+  intros m n x y Hx Hy.
+  unfold kron, basis_vector.
+  solve_matrix.
+  bdestruct (y0 =? 0).
+  repeat rewrite andb_true_r.
+  (* pretty sure this is true; need to find the right lemmas about div and mod -KH *)
+  admit.
+  repeat rewrite andb_false_r.
+  lca.
+Admitted.
+
+Lemma Rsum_0 : forall f n, (forall x : nat, f x = 0) -> Rsum n f = 0.
+Proof.
+  intros f n Hf. 
+  induction n. reflexivity. 
+  rewrite Rsum_extend, IHn, Hf. lra.
+Qed.
+
+Lemma rewrite_pr_outcome_sum : forall n k (c : base_ucom (n + k)) f,
+  pr_outcome_sum (run c) (fun x => f (first_m n k x)) 
+  = Rsum (2 ^ n) (fun x => ((if f x then 1 else 0) *
+                         prob_partial_meas (basis_vector (2 ^ n) x) 
+                           (UnitarySem.uc_eval c × basis_vector (2 ^ (n + k)) 0))%R).
+Proof.
+  intros n k c f.
+  unfold pr_outcome_sum.
+  unfold run at 1.
+  rewrite map_length.
+  rewrite vec_to_list_length.
+  rewrite nested_Rsum.
+  apply Rsum_eq_bounded.
+  intros x Hx.
+  destruct (f x) eqn:fx.
+  rewrite Rmult_1_l.
+  erewrite Rsum_eq_bounded.
+  2: { intros y Hy. 
+       rewrite simplify_first_m by assumption.
+       rewrite fx.
+       rewrite nth_run_probability_of_outcome.
+       reflexivity.
+       replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
+       (* I'm pretty sure this is true?? -KH *)
+       admit. }
+  unfold prob_partial_meas.
+  erewrite Rsum_eq_bounded.
+  reflexivity.
+  intros y Hy. 
+  rewrite split_basis_vector by assumption.
+  replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
+  reflexivity.
+  rewrite Rmult_0_l.
+  erewrite Rsum_eq_bounded.
+  2: { intros y Hy. rewrite simplify_first_m by assumption.
+       rewrite fx. reflexivity. }
+  apply Rsum_0.
+  reflexivity.
+Admitted.
+
 (* Fact #1 - the probability that shor_body returns ord(a,N) is at least 
    κ / (Nat.log2 N)^4 where κ is about 0.055 (see Shor.Shor_correct_full). *)
 Lemma shor_body_returns_order : forall (a N : nat),
@@ -82,20 +265,54 @@ Lemma shor_body_returns_order : forall (a N : nat),
   let n := n N in
   let k := k N in
   let circ := shor_circuit a N in
-  pr_outcome_sum (* or r_interval *)
+  pr_outcome_sum 
       (run (to_base_ucom (n + k) circ))
-      (fun x => OF_post a N x n =? ord a N) 
+      (fun x => OF_post a N (first_m n k x) n =? ord a N) 
     >= κ / INR (Nat.log2 N)^4.
 Proof.
   intros a N Ha1 Ha2 n0 k0 circ.
   subst n0 k0 circ.
-  (* Should be easy to prove that pr_outcome_sum corresponds to our defn of
-     prob_partial_meas, which should mean that we can complete the proof with
-     Shor.Shor_correct_full. *)
-Admitted.
+  remember (fun x => OF_post a N x (n N) =? ord a N) as f'.
+  replace (fun x : nat => OF_post a N (first_m (n N) (k N) x) (n N) =? ord a N) 
+    with (fun x : nat => f' (first_m (n N) (k N) x)).
+  rewrite rewrite_pr_outcome_sum.
+  specialize (Shor.Shor_correct_full a N Ha1 Ha2) as H1.
+  specialize (shor_circuit_same a N) as H2.
+  unfold prob_shor_outputs in H2.
+  erewrite Rsum_eq.
+  2: { intro i. rewrite H2. reflexivity. lia. }
+  unfold probability_of_success_var in H1.
+  unfold n in *.
+  unfold k in *.
+  unfold r_found in H1.
+  subst f'.
+  apply H1.
+  subst f'.
+  reflexivity.
+Qed.
 
-Definition k1 a N : nat := ((ord a N) / 2) + 1.
-Definition k2 a N : nat := ((ord a N) / 2) - 1.
+Lemma Rsum_scale : forall n f r,
+  (r * Rsum n f = Rsum n (fun x => r * f x))%R.
+Proof.
+  intros n f r.
+  induction n.
+  simpl. lra.
+  rewrite 2 Rsum_extend.
+  rewrite <- IHn. lra.
+Qed.
+
+Lemma nth_repeat : forall n r i,
+  (i < n)%nat -> nth i (repeat r n) 0 = r.
+Proof.
+  intros n r i Hi.
+  rewrite nth_indep with (d':=r).
+  clear Hi.
+  gen i.
+  induction n; intro i; simpl; destruct i; try reflexivity.
+  apply IHn.
+  rewrite repeat_length.
+  assumption.
+Qed.
 
 Lemma pr_outcome_sum_cnttrue : forall l u f,
   (l < u)%nat ->
@@ -109,40 +326,44 @@ Proof.
   rewrite Rplus_0_l.
   remember (u - l)%nat as n.
   assert (Hn:(n > 0)%nat) by lia.
-  clear Heqn.
+  clear - Hn.
   unfold pr_outcome_sum.
   rewrite 2 repeat_length.
-  destruct n as [| n]; try lia.
+  erewrite Rsum_eq_bounded.
+  2: { intros i Hi.
+       replace  (if f (l + i)%nat then nth i (repeat (1 / INR n)%R n) 0 else 0) with
+           ((1 / INR n)%R * (if f (l + i)%nat then 1 else 0))%R.
+       reflexivity.
+       destruct (f (l + i)%nat).
+       rewrite nth_repeat by assumption.
+       lra.
+       lra. }
+  rewrite <- Rsum_scale.
+  replace (INR (cnttrue n (fun x : nat => f (l + x - 1)%nat)) / INR n)%R with (1 / INR n * INR (cnttrue n (fun x : nat => f (l + x - 1)%nat)))%R by lra.
+  apply f_equal2; try reflexivity.
   clear Hn.
-
-remember (INR (S n)) as k.
-clear Heqk.
-  induction n. 
-simpl.
-replace (l + 1 - 1)%nat with l by lia.
-rewrite Nat.add_0_r.
-destruct (f l); simpl; lra.
-
-rewrite Rsum_extend.
-erewrite Rsum_eq_bounded.
-rewrite IHn.
-simpl. 
-replace (l + S (S n0) - 1)%nat with (l + S n0)%nat by lia.
-destruct (f (l + S n0)%nat); try lra.
-
-(* losing motivation... will try again later. -KH *)
-
-Admitted.
+  induction n.
+  reflexivity.
+  rewrite Rsum_extend.
+  simpl.
+  rewrite IHn.
+  replace (l + S n0 - 1)%nat with (l + n0)%nat by lia.
+  destruct (f (l + n0)%nat); try lra. 
+  rewrite S_O_plus_INR.
+  simpl.
+  reflexivity.
+Qed.
 
 (* Fact #2 - Assuming that N is not prime, not even, and not a power of a prime,
    for a random choice of a, the probability that ord(a,N) can be used to find 
    a factor is at least 1/2. *) 
 Lemma shor_factoring_succeeds : forall N,
   ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
+  let c a := ((ord a N) / 2)%nat in
   let leads_to_factor a := nontrivgcd a N ||
-                           nontrivgcd (a ^ k1 a N) N ||
-                           nontrivgcd (a ^ k2 a N) N in
-   pr_outcome_sum (* or r_interval *)
+                           (nontrivgcd (a ^ c a - 1) N ||
+                            nontrivgcd (a ^ c a + 1) N) in
+   pr_outcome_sum
      (uniform 2 N)
      (fun x => leads_to_factor x)
    >= 1 / 2.
@@ -150,35 +371,97 @@ Proof.
   intros.
   apply simplify_primality in H; trivial. clear H0 H1.
   destruct H as [p [k [q [H0 [H1 [H3 [H4 [H5 H6]]]]]]]].
-  specialize (reduction_factor_order_finding p k q H0 H1 H3 H4 H5) as H.
-  rewrite <- H6 in *.
-  rewrite pr_outcome_sum_cnttrue.
-  (* ... -KH *)
+  assert (H :( N - 1 <= 2 * cnttrue (N - 1) leads_to_factor)%nat).
+  subst leads_to_factor N c.
+  apply reduction_factor_order_finding; auto.
+  assert (2 < N)%nat.
+  subst N. 
+  rewrite <- (Nat.mul_1_l 2).
+  apply Nat.mul_lt_mono_nonneg; try lia.
+  apply Nat.pow_gt_1; lia.
+  rewrite pr_outcome_sum_cnttrue by assumption.
+  clear - H.
+  erewrite cnttrue_same.
+  2 : { intros x Hx. replace (2 + x - 1)%nat with (x + 1)%nat by lia. reflexivity. }
+  (* almost there, though I'm a little worried about the N-1 vs N-2. -KH *)
 Admitted.
 
 Definition is_a_factor x y := exists z, (1 < z < y)%nat /\ y = (z * x)%nat.
 
-Lemma end_to_end_shors_correct : forall N rnds niter x,
-  ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-  end_to_end_shors N rnds O niter = Some x ->
-  is_a_factor x N.
+Lemma gcd_is_factor : forall x y, (1 < Nat.gcd x y < y)%nat -> is_a_factor (Nat.gcd x y) y.
 Proof.
-  (* Should be easy(?) -KH *)
+  intros x y H.
+  unfold is_a_factor.
+  (* There is probably a lemma somewhere that says this. -KH *)
 Admitted.
 
-Local Opaque uniform shor_body.
+Lemma factor_returns_factor : forall a N r x,
+  factor a N r = Some x -> is_a_factor x N.
+Proof.
+  intros a N r x H.
+  unfold factor in H.
+  remember (Nat.gcd (a ^ (r / 2) - 1) N) as k1.
+  remember (Nat.gcd (a ^ (r / 2) + 1) N) as k2.
+  bdestruct (1 <? k1); bdestruct (k1 <? N); 
+    bdestruct (1 <? k2); bdestruct (k2 <? N); 
+    simpl in H; inversion H; subst;
+    apply gcd_is_factor; auto.
+Qed.
 
-Lemma end_to_end_shors_succeeds_with_high_probability : forall N rnds niter pr,
+Lemma sample_uniform : forall l u r, (l <= sample (uniform l u) r < u)%nat.
+Proof.
+Admitted.
+
+Local Opaque uniform.
+Lemma end_to_end_shors_correct : forall N rnds i niter x,
+  (0 < N)%nat ->
+  end_to_end_shors N rnds i niter = Some x ->
+  is_a_factor x N.
+Proof.
+  intros.
+  gen i.
+  induction niter; intros.
+  inversion H0.
+  simpl in H0.
+  bdestruct (Nat.gcd (sample (uniform 2 N) (rnds i)) N =? 1).
+  destruct (shor_body (sample (uniform 2 N) (rnds i)) N (rnds (S i))) eqn:sb.
+  inversion H0; subst.
+  unfold shor_body in sb.
+  apply factor_returns_factor in sb. auto.
+  eapply IHniter. apply H0.
+  inversion H0; subst.
+  apply gcd_is_factor.
+  specialize (sample_uniform 2 N (rnds i)) as su.
+  split.
+  assert (0 < Nat.gcd (sample (uniform 2 N) (rnds i)) N)%nat.
+  apply Natgcd_pos; lia.
+  lia. 
+  rewrite Nat.gcd_comm.
+  assert (Nat.gcd N (sample (uniform 2 N) (rnds i)) <= sample (uniform 2 N) (rnds i))%nat.
+  apply Misc.Nat_gcd_le_r.
+  lia. lia.
+Qed.
+
+(* Possibly something like this to represent multiple events? -KH *)
+Inductive pr_Ps : (list (R -> Prop)) -> R -> Prop :=
+| Singleton : forall P r, pr_P P r -> pr_Ps (P :: nil) r
+| ConsCase : forall P r Ps rs, 
+    pr_P P r ->
+    pr_Ps Ps rs ->
+    pr_Ps (P :: Ps) (r * rs)%R.
+
+Lemma end_to_end_shors_succeeds_with_high_probability : forall N (rnds : nat -> R) (i : nat) niter pr,
   ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
   (niter > 0)%nat ->
-  r_interval
-     (fun rnd => ssrbool.isSome (end_to_end_shors N rnds O niter) = true)
+  pr_Ps
+     (* next line should be some list of predicates corresponding to end_to_end_shors returning true *)
+     (*(fun rnds => ssrbool.isSome (end_to_end_shors N rnds i niter) = true)*)
+     nil
      pr ->
   pr >= ((1 / 2) * (κ / INR (Nat.log2 N)^4)) ^ niter.
 Proof.
   intros.
-  destruct niter; try lia.
-  simpl in H3.
+
   (* @Robert, @Yuxiang: this is where I'm stuck :)
 
      We need some notion that: since we call sample and end_to_end_shors on 
@@ -195,3 +478,4 @@ Admitted.
 
 
 
+(* TODO: facts about end_to_end_shors resources *)
