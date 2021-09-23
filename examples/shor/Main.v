@@ -577,6 +577,7 @@ Proof.
 Qed.
 
 (* One possibility: represent multiple events using a list. *)
+(* RNR: I like this better but I feel like it needs some notion of independence? *)
 Inductive pr_Ps1 : (list (R -> Prop)) -> R -> Prop :=
 | Singleton : forall P r, pr_P P r -> pr_Ps1 (P :: nil) r
 | ConsCase : forall P r Ps rs, 
@@ -585,11 +586,13 @@ Inductive pr_Ps1 : (list (R -> Prop)) -> R -> Prop :=
     pr_Ps1 (P :: Ps) (r * rs)%R.
 
 (* Another possibility: use a single predicate that takes a random stream as input. *)
+(* RNR: What is P below? How does it connect to P1 and P2? Also, is it only for a function 
+   defined on two inputs? *)
 Inductive pr_Ps2 : ((nat -> R) -> Prop) -> R -> Prop :=
 | From_pr_P : forall P1 P2 r1 r2 (P : (nat -> R) -> Prop),
     pr_P P1 r1 ->
     pr_P P2 r2 ->
-    (forall rnds i j, i <> j -> P1 (rnds i) -> P2 (rnds j) -> P rnds) ->
+    (forall rnds i j, i <> j -> P1 (rnds i) -> P2 (rnds j) -> P rnds) -> (* RNR: Explain? *)
     pr_Ps2 P (r1 * r2)%R
 | Weaken : forall (P : (nat -> R) -> Prop) r r',
     pr_Ps2 P r ->
@@ -630,6 +633,36 @@ Proof.
   apply H2.
   (* something's gone horribly wrong here since we ended up with N=2 and a=1... *)
 Admitted.
+
+Import ListNotations.
+
+Parameter Independent : list R -> Prop. 
+
+(* This needs a base case too, I think I prefer pr_Ps1 *)
+(* Maybe we want lists of Props and Rs though? *)
+(*
+Inductive joint_pr : (R -> Prop) -> (R -> Prop) -> R -> Prop:=
+| j_pr :  forall P Q r1 r2,
+    Independent r1 r2 ->
+    pr_P P r1 ->
+    pr_P Q r2 ->
+    joint_pr P Q (r1 * r2).
+ *)
+
+Inductive joint_pr : list (R -> Prop) -> list R -> Prop:=
+| pr1 : forall P r, pr_P P r -> joint_pr (P :: nil) [r]
+| j_pr :  forall P Qs r1 rs,
+    Independent (r1 :: rs) ->
+    pr_P P r1 ->
+    joint_pr Qs rs ->
+    joint_pr (P :: Qs) ((r1 * (fold_left Rmult rs 1))%R :: nil).
+
+(* Doesn't typecheck. Could arguably combine rnds into a single r by multiplying by 10. *)
+Lemma end_to_end_shors_succeeds_with_high_probability_1_iter' : forall N (i : nat),
+  ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
+  joint_pr
+     ((fun rnds => ssrbool.isSome (end_to_end_shors N rnds i 1) = true) :: nil)
+     (((1 / 2) * (κ / INR (Nat.log2 N)^4))%R :: nil).
 
 
 (* For niter iterations, the probability of success is:
