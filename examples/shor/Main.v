@@ -58,7 +58,7 @@ Fixpoint end_to_end_shors N (rnds : nat -> R) i niter :=
   match niter with
   | 0 => None
   | S niter' =>
-      let a := sample (uniform 2 N) (rnds i) in
+      let a := sample (uniform 1 N) (rnds i) in
       if Nat.gcd a N =? 1%nat
       then 
         match shor_body a N (rnds (S i)) with
@@ -125,11 +125,10 @@ Proof.
 Qed.
 
 (* Return the first m bits of x as an int. *)
-Definition first_m m n x := 
-  funbool_to_nat m (nat_to_funbool (m + n) x).
+Definition first_m m n x :=
+  (x / 2^n) mod (2^m).
+  (*funbool_to_nat m (nat_to_funbool (m + n) x).*)
 
-(* Annoying fact about binary representation -- easier with a different
-   definition of first_m? -KH *)
 Lemma simplify_first_m : forall m n x y,
   (x < 2 ^ m)%nat ->
   (y < 2 ^ n)%nat ->
@@ -137,7 +136,12 @@ Lemma simplify_first_m : forall m n x y,
 Proof.
   intros m n x y Hx Hy.
   unfold first_m.
-Admitted.
+  assert (0 < 2^n)%nat by (apply pow_positive; lia).
+  rewrite Nat.div_add_l by lia.
+  rewrite Nat.div_small by lia.
+  rewrite Nat.mod_small by lia.
+  lia.
+Qed.
 
 Lemma Rsum_plus_range : forall m n f,
   Rsum (m + n) f = (Rsum m f + Rsum n (fun x => f (x + m)%nat))%R.
@@ -193,6 +197,22 @@ Proof.
   lia.
 Qed.
 
+Lemma divmod_decomp :
+  forall x y z r,
+    (r > 0)%nat ->
+    (z < r)%nat ->
+    (x = y * r + z <-> x / r = y /\ x mod r = z)%nat.
+Proof.
+  split; intros.
+  - split. symmetry. apply Nat.div_unique with (r := z); try lia.
+    symmetry. apply Nat.mod_unique with (q := y); try lia.
+  - destruct H1.
+    replace (y * r)%nat with (r * y)%nat by lia.
+    rewrite <- H1, <- H2.
+    apply Nat.div_mod.
+    lia.
+Qed.
+
 Lemma split_basis_vector : forall m n x y,
   (x < 2 ^ m)%nat ->
   (y < 2 ^ n)%nat ->
@@ -203,12 +223,21 @@ Proof.
   unfold kron, basis_vector.
   solve_matrix.
   bdestruct (y0 =? 0).
-  repeat rewrite andb_true_r.
-  (* pretty sure this is true; need to find the right lemmas about div and mod -KH *)
-  admit.
-  repeat rewrite andb_false_r.
-  lca.
-Admitted.
+  - repeat rewrite andb_true_r.
+    assert (2^n > 0)%nat.
+    { assert (0 < 2^n)%nat by (apply pow_positive; lia). lia.
+    }
+    specialize (divmod_decomp x0 x y (2^n)%nat H0 Hy) as G.
+    bdestruct (x0 =? x * 2 ^ n + y).
+    + apply G in H1. destruct H1.
+      rewrite H1, H2. do 2 rewrite Nat.eqb_refl. lca.
+    + bdestruct (x0 / 2 ^ n =? x); bdestruct (x0 mod 2 ^ n =? y); try lca.
+      assert ((x0 / 2 ^ n)%nat = x /\ x0 mod 2 ^ n = y) by easy.
+      apply G in H4.
+      easy.
+  - repeat rewrite andb_false_r.
+    lca.
+Qed.
 
 Lemma Rsum_0 : forall f n, (forall x : nat, f x = 0) -> Rsum n f = 0.
 Proof.
@@ -240,8 +269,8 @@ Proof.
        rewrite nth_run_probability_of_outcome.
        reflexivity.
        replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
-       (* I'm pretty sure this is true?? -KH *)
-       admit. }
+       nia.
+  }
   unfold prob_partial_meas.
   erewrite Rsum_eq_bounded.
   reflexivity.
@@ -255,7 +284,7 @@ Proof.
        rewrite fx. reflexivity. }
   apply Rsum_0.
   reflexivity.
-Admitted.
+Qed.
 
 (* Fact #1 - the probability that shor_body returns ord(a,N) is at least 
    κ / (Nat.log2 N)^4 where κ is about 0.055 (see Shor.Shor_correct_full). *)
@@ -364,7 +393,7 @@ Lemma shor_factoring_succeeds : forall N,
                            (nontrivgcd (a ^ c a - 1) N ||
                             nontrivgcd (a ^ c a + 1) N) in
    pr_outcome_sum
-     (uniform 2 N)
+     (uniform 1 N)
      (fun x => leads_to_factor x)
    >= 1 / 2.
 Proof.
@@ -379,12 +408,21 @@ Proof.
   rewrite <- (Nat.mul_1_l 2).
   apply Nat.mul_lt_mono_nonneg; try lia.
   apply Nat.pow_gt_1; lia.
-  rewrite pr_outcome_sum_cnttrue by assumption.
-  clear - H.
+  rewrite pr_outcome_sum_cnttrue by lia.
   erewrite cnttrue_same.
   2 : { intros x Hx. replace (2 + x - 1)%nat with (x + 1)%nat by lia. reflexivity. }
-  (* almost there, though I'm a little worried about the N-1 vs N-2. -KH *)
-Admitted.
+  rewrite cnttrue_same with (g := leads_to_factor).
+  apply le_INR in H. rewrite mult_INR in H. replace (INR 2) with 2 in H by easy.
+  unfold Rdiv.
+  assert (0 < INR (N - 1)).
+  { apply lt_0_INR. lia. }
+  assert (0 < / INR (N - 1)).
+  { apply Harmonic.INR_inv_pos. lia. }
+  apply Rmult_le_compat_r with (r := (/ INR (N - 1))%R) in H; try lra.
+  rewrite Rinv_r in H by lra.
+  apply Rmult_le_compat_l with (r := 2%R) in H; try lra.
+  intros. f_equal. lia.
+Qed.
 
 Definition is_a_factor x y := exists z, (1 < z < y)%nat /\ y = (z * x)%nat.
 
@@ -392,8 +430,11 @@ Lemma gcd_is_factor : forall x y, (1 < Nat.gcd x y < y)%nat -> is_a_factor (Nat.
 Proof.
   intros x y H.
   unfold is_a_factor.
-  (* There is probably a lemma somewhere that says this. -KH *)
-Admitted.
+  specialize (Nat.gcd_divide_r x y) as G. destruct G.
+  exists x0.
+  split; try lia.
+  split; nia.
+Qed.
 
 Lemma factor_returns_factor : forall a N r x,
   factor a N r = Some x -> is_a_factor x N.
@@ -408,36 +449,138 @@ Proof.
     apply gcd_is_factor; auto.
 Qed.
 
-Lemma sample_uniform : forall l u r, (l <= sample (uniform l u) r < u)%nat.
+Lemma sample_uniform_lb :
+  forall m l r,
+    0 <= r ->
+    (m <= sample (repeat 0%R m ++ l) r)%nat.
 Proof.
-Admitted.
+  induction m; intros.
+  lia. simpl.
+  destruct (Rlt_le_dec r 0). lra.
+  specialize (IHm l r H).
+  replace (r - 0)%R with r by lra.
+  lia.
+Qed.
+
+Lemma sample_boom :
+  forall l r,
+    Forall (fun x => 0 <= x) l ->
+    Rsum (length l) (fun i => nth i l 0) <= r ->
+    sample l r = length l.
+Proof.
+  induction l; intros. easy.
+  simpl. rewrite Rsum_list_extend in H0.
+  inversion H; subst.
+  specialize (Rsum_list_geq_0 l H4) as G.
+  assert (Rsum (length l) (fun i : nat => nth i l 0) <= r - a)%R by lra.
+  specialize (IHl (r - a)%R H4 H1) as T. rewrite T.
+  destruct (Rlt_le_dec r a). lra. lia.
+Qed.
+
+Lemma sample_extend :
+  forall l1 l2 r,
+    Forall (fun x => 0 <= x) l1 ->
+    Forall (fun x => 0 <= x) l2 ->
+    Rsum (length l1) (fun i => nth i l1 0) <= r ->
+    (sample (l1 ++ l2) r = (length l1) + sample l2 (r - Rsum (length l1) (fun i => nth i l1 0%R)))%nat.
+Proof.
+  induction l1; intros.
+  - simpl. f_equal. lra.
+Local Opaque Rsum.
+  - rewrite Rsum_list_extend in *. simpl.
+    inversion H; subst.
+    specialize (Rsum_list_geq_0 l1 H5) as G.
+    destruct (Rlt_le_dec r a); try lra.
+    f_equal. rewrite IHl1; try easy; try lra.
+    f_equal. f_equal. lra.
+Qed.
+Local Transparent Rsum.
+
+Lemma sample_ub :
+  forall l r, (sample l r <= length l)%nat.
+Proof.
+  induction l; intros. easy.
+  simpl. specialize (IHl (r - a)%R). destruct (Rlt_le_dec r a); lia.
+Qed.
+
+Lemma sample_ub_less :
+  forall l r, 0 <= r < Rsum (length l) (fun i => nth i l 0) -> (sample l r < length l)%nat.
+Proof.
+  induction l; intros. simpl in H. lra.
+  simpl. destruct (Rlt_le_dec r a). lia.
+  apply lt_n_S. apply IHl. rewrite Rsum_list_extend in H. lra.
+Qed.
+
+Lemma sample_lb :
+  forall l r, (0 <= sample l r)%nat.
+Proof.
+  induction l; intros. easy.
+  simpl. specialize (IHl (r - a)%R). destruct (Rlt_le_dec r a); lia.
+Qed.
+
+Lemma repeat_gt0 :
+  forall m r, 0 <= r -> Forall (fun x => 0 <= x) (repeat r m).
+Proof.
+  induction m; intros. simpl. constructor.
+  simpl. constructor. easy. apply IHm. easy.
+Qed.
+
+Lemma Rsum_repeat :
+  forall m r, (Rsum (length (repeat r m)) (fun i => nth i (repeat r m) 0) = (INR m) * r)%R.
+Proof.
+  intros. induction m. simpl. lra.
+  replace (repeat r (S m)) with (r :: repeat r m).
+  rewrite Rsum_list_extend, IHm. rewrite S_INR. lra.
+  easy.
+Qed.
+
+Lemma sample_uniform : forall l u r, (l < u)%nat -> 0 <= r < 1 -> (l <= sample (uniform l u) r < u)%nat.
+Proof.
+  intros. split.
+  - unfold uniform. apply sample_uniform_lb. easy.
+  - unfold uniform. rewrite sample_extend. rewrite repeat_length.
+    assert (T: (forall a b c, a < c -> b < c - a -> a + b < c)%nat) by (intros; lia).
+    apply T. easy.
+    replace (u - l)%nat with (length (repeat (1 / INR (u - l))%R (u - l))) at 3 by apply repeat_length.
+    apply sample_ub_less.
+    replace l with (length (repeat 0 l)) at 1 2 by apply repeat_length.
+    repeat rewrite Rsum_repeat.
+    replace (INR (u - l) * (1 / INR (u - l)))%R with (INR (u - l) * / INR (u - l))%R by lra.
+    rewrite Rinv_r. lra.
+    apply not_0_INR. lia.
+    apply repeat_gt0; lra.
+    apply repeat_gt0. unfold Rdiv. rewrite Rmult_1_l.
+    apply Rlt_le, Harmonic.INR_inv_pos. lia.
+    rewrite Rsum_repeat. lra.
+Qed.
 
 Local Opaque uniform.
 Lemma end_to_end_shors_correct : forall N rnds i niter x,
-  (0 < N)%nat ->
-  end_to_end_shors N rnds i niter = Some x ->
-  is_a_factor x N.
+    (1 < N)%nat ->
+    (forall m, 0 <= rnds m < 1) ->
+    end_to_end_shors N rnds i niter = Some x ->
+    is_a_factor x N.
 Proof.
-  intros.
+  intros N rnds i niter x H Hrnds H0.
   gen i.
   induction niter; intros.
   inversion H0.
   simpl in H0.
-  bdestruct (Nat.gcd (sample (uniform 2 N) (rnds i)) N =? 1).
-  destruct (shor_body (sample (uniform 2 N) (rnds i)) N (rnds (S i))) eqn:sb.
+  bdestruct (Nat.gcd (sample (uniform 1 N) (rnds i)) N =? 1).
+  destruct (shor_body (sample (uniform 1 N) (rnds i)) N (rnds (S i))) eqn:sb.
   inversion H0; subst.
   unfold shor_body in sb.
   apply factor_returns_factor in sb. auto.
   eapply IHniter. apply H0.
   inversion H0; subst.
   apply gcd_is_factor.
-  specialize (sample_uniform 2 N (rnds i)) as su.
+  specialize (sample_uniform 1 N (rnds i) H (Hrnds i)) as su.
   split.
-  assert (0 < Nat.gcd (sample (uniform 2 N) (rnds i)) N)%nat.
+  assert (0 < Nat.gcd (sample (uniform 1 N) (rnds i)) N)%nat.
   apply Natgcd_pos; lia.
   lia. 
   rewrite Nat.gcd_comm.
-  assert (Nat.gcd N (sample (uniform 2 N) (rnds i)) <= sample (uniform 2 N) (rnds i))%nat.
+  assert (Nat.gcd N (sample (uniform 1 N) (rnds i)) <= sample (uniform 1 N) (rnds i))%nat.
   apply Misc.Nat_gcd_le_r.
   lia. lia.
 Qed.
