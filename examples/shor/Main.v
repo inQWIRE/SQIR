@@ -73,15 +73,6 @@ Definition coprime (a b : nat) : Prop := Nat.gcd a b = 1%nat.
 
 (** Correctness properties for Shor's **)
 
-Lemma nth_vec_to_list : forall {m n} (v : Vector n) x,
-  (x < m)%nat -> nth x (@vec_to_list m v) 0 = v x O.
-Proof.
-(* Actually, this isn't true. vec_to_list has its indices reversed
-   compared to v (i.e., vec_to_list produces v 2 0 :: v 1 0 :: v 0 0 
-   instead of v 0 0 :: v 1 0 :: v 2 0). Would it be too much trouble to 
-   update vec_to_list to use the same ordering? -KH *)
-Admitted.
-
 Lemma nth_run_probability_of_outcome : forall n (c : base_ucom n) x,
   (x < 2 ^ n)%nat ->
   nth x (run c) 0 
@@ -127,7 +118,6 @@ Qed.
 (* Return the first m bits of x as an int. *)
 Definition first_m m n x :=
   (x / 2^n) mod (2^m).
-  (*funbool_to_nat m (nat_to_funbool (m + n) x).*)
 
 Lemma simplify_first_m : forall m n x y,
   (x < 2 ^ m)%nat ->
@@ -286,7 +276,7 @@ Proof.
   reflexivity.
 Qed.
 
-(* Fact #1 - the probability that shor_body returns ord(a,N) is at least 
+(* Main lemma #1 - the probability that shor_body returns ord(a,N) is at least 
    κ / (Nat.log2 N)^4 where κ is about 0.055 (see Shor.Shor_correct_full). *)
 Lemma shor_body_returns_order : forall (a N : nat),
   (0 < a < N)%nat ->
@@ -383,25 +373,26 @@ Proof.
   reflexivity.
 Qed.
 
-(* Fact #2 - Assuming that N is not prime, not even, and not a power of a prime,
+Definition leads_to_factor N a := 
+  nontrivgcd a N ||
+  (nontrivgcd (a ^ ((ord a N) / 2)%nat - 1) N ||
+   nontrivgcd (a ^ ((ord a N) / 2)%nat + 1) N).
+
+(* Main lemma #2 - Assuming that N is not prime, not even, and not a power of a prime,
    for a random choice of a, the probability that ord(a,N) can be used to find 
    a factor is at least 1/2. *) 
 Lemma shor_factoring_succeeds : forall N,
   ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-  let c a := ((ord a N) / 2)%nat in
-  let leads_to_factor a := nontrivgcd a N ||
-                           (nontrivgcd (a ^ c a - 1) N ||
-                            nontrivgcd (a ^ c a + 1) N) in
    pr_outcome_sum
      (uniform 1 N)
-     (fun x => leads_to_factor x)
+     (fun x => leads_to_factor N x)
    >= 1 / 2.
 Proof.
   intros.
   apply simplify_primality in H; trivial. clear H0 H1.
   destruct H as [p [k [q [H0 [H1 [H3 [H4 [H5 H6]]]]]]]].
-  assert (H :( N - 1 <= 2 * cnttrue (N - 1) leads_to_factor)%nat).
-  subst leads_to_factor N c.
+  assert (H :( N - 1 <= 2 * cnttrue (N - 1) (leads_to_factor N))%nat).
+  subst N.
   apply reduction_factor_order_finding; auto.
   assert (2 < N)%nat.
   subst N. 
@@ -411,7 +402,7 @@ Proof.
   rewrite pr_outcome_sum_cnttrue by lia.
   erewrite cnttrue_same.
   2 : { intros x Hx. replace (2 + x - 1)%nat with (x + 1)%nat by lia. reflexivity. }
-  rewrite cnttrue_same with (g := leads_to_factor).
+  rewrite cnttrue_same with (g := leads_to_factor N).
   apply le_INR in H. rewrite mult_INR in H. replace (INR 2) with 2 in H by easy.
   unfold Rdiv.
   assert (0 < INR (N - 1)).
@@ -585,40 +576,66 @@ Proof.
   lia. lia.
 Qed.
 
-(* Possibly something like this to represent multiple events? -KH *)
-Inductive pr_Ps : (list (R -> Prop)) -> R -> Prop :=
-| Singleton : forall P r, pr_P P r -> pr_Ps (P :: nil) r
+(* One possibility: represent multiple events using a list. *)
+Inductive pr_Ps1 : (list (R -> Prop)) -> R -> Prop :=
+| Singleton : forall P r, pr_P P r -> pr_Ps1 (P :: nil) r
 | ConsCase : forall P r Ps rs, 
     pr_P P r ->
-    pr_Ps Ps rs ->
-    pr_Ps (P :: Ps) (r * rs)%R.
+    pr_Ps1 Ps rs ->
+    pr_Ps1 (P :: Ps) (r * rs)%R.
 
-Lemma end_to_end_shors_succeeds_with_high_probability : forall N (rnds : nat -> R) (i : nat) niter pr,
-  ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-  (niter > 0)%nat ->
-  pr_Ps
-     (* next line should be some list of predicates corresponding to end_to_end_shors returning true *)
-     (*(fun rnds => ssrbool.isSome (end_to_end_shors N rnds i niter) = true)*)
-     nil
-     pr ->
-  pr >= ((1 / 2) * (κ / INR (Nat.log2 N)^4)) ^ niter.
+(* Another possibility: use a single predicate that takes a random stream as input. *)
+Inductive pr_Ps2 : ((nat -> R) -> Prop) -> R -> Prop :=
+| From_pr_P : forall P1 P2 r1 r2 (P : (nat -> R) -> Prop),
+    pr_P P1 r1 ->
+    pr_P P2 r2 ->
+    (forall rnds i j, i <> j -> P1 (rnds i) -> P2 (rnds j) -> P rnds) ->
+    pr_Ps2 P (r1 * r2)%R
+| Weaken : forall (P : (nat -> R) -> Prop) r r',
+    pr_Ps2 P r ->
+    (r' <= r)%R ->
+    pr_Ps2 P r'.
+
+Lemma pr_outcome_sum_geq_exists : forall l f r,
+  distribution l ->
+  pr_outcome_sum l f >= r ->
+  exists r0, (r0 >= r)%R /\ pr_P (fun rnd => f (sample l rnd) = true) r0.
 Proof.
-  intros.
+  intros l f r  HlHr.
+  exists (pr_outcome_sum l f).
+  split; auto.
+  apply pr_outcome_sum_eq_aux; auto.
+Qed.
 
-  (* @Robert, @Yuxiang: this is where I'm stuck :)
-
-     We need some notion that: since we call sample and end_to_end_shors on 
-     different indices of rnds, we can multiply together their probabilities.
-
-     One iteration should succeed with probability 1/2 * κ / (Nat.log2 N)^4
-     and separate iterations should be independent.
-   *)
-  (* RNR: I think we want to define a predicate called pairwise
-     independent that says that the joint probability is equal to the
-     product of the probabilities. This might require an axiom or two
-     to fit in the right context. *)
+(* For one iterations of end_to_end_shors, the probability of success is
+   (1 / 2) * (κ / INR (Nat.log2 N)^4). *)
+Local Opaque pow leads_to_factor.
+Lemma end_to_end_shors_succeeds_with_high_probability_1_iter : forall N (i : nat),
+  ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
+  pr_Ps2
+     (fun rnds => ssrbool.isSome (end_to_end_shors N rnds i 1) = true)
+     ((1 / 2) * (κ / INR (Nat.log2 N)^4))%R.
+Proof.
+  intros N i HN1 HN2 HN3.
+  specialize (shor_factoring_succeeds N) as H1.
+  specialize shor_body_returns_order as H2.
+  apply pr_outcome_sum_geq_exists in H1; auto.
+  destruct H1 as [r1 [Hr1 H1]].
+  (* how can we specialize "a" in H2?? *)
+  eapply pr_outcome_sum_geq_exists in H2; auto.
+  destruct H2 as [r2 [Hr2 H2]].
+  apply Weaken with (r:=(r1 * r2)%R).
+  eapply From_pr_P.
+  apply H1.
+  apply H2.
+  (* something's gone horribly wrong here since we ended up with N=2 and a=1... *)
 Admitted.
 
 
+(* For niter iterations, the probability of success is:
+   1 - (the probability of failing in niter consecutive iterations).
 
-(* TODO: facts about end_to_end_shors resources *)
+   Do we want to (/ can we) prove this?  *)
+
+
+(** TODO: facts about end_to_end_shors resources **)
