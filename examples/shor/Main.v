@@ -576,6 +576,53 @@ Proof.
   lia. lia.
 Qed.
 
+(*
+Fixpoint funtolist {A} n (f : nat -> A) : list A :=
+  match n with
+  | O => nil
+  | S n' => f n' :: funtolist n' f
+  end.
+Fixpoint flattenl2d n m l2d : list R :=
+  match n with
+  | O => nil
+  | S n' => funtolist m (l2d n') ++ (flattenl2d n' m l2d)
+  end.
+*)
+Fixpoint flattenfb2d n m fb2d :=
+  match n with
+  | O => allfalse
+  | S n' => fb_push_n m (fb2d n') (flattenfb2d n' m fb2d)
+  end.
+
+Fixpoint scalar_prod r l :=
+  match l with
+  | nil => nil
+  | a :: l' => (r * a)%R :: scalar_prod r l'
+  end.
+
+Fixpoint subpr a N :=
+  let n := n N in
+  let k := k N in
+  match a with
+  | O => repeat 0%R (2^n)
+  | S a' => scalar_prod (/ INR (N - 1)) (run (to_base_ucom (n + k) (shor_circuit a' N))) ++ subpr a' N
+  end.
+
+Lemma end_to_end_shors_succeeds_with_high_probability_1_iter_subpr : forall N (i : nat),
+    ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
+    let n := n N in
+    let k := k N in
+    pr_outcome_sum
+      (subpr N N)
+      (flattenfb2d N (2^(n+k)) (fun a x => if Nat.gcd a N =? 1%nat then
+                                      match factor a N (OF_post a N (first_m n k x) n) with
+                                      | Some x => true
+                                      | None => false
+                                      end
+                                    else true))
+      >= (1 / 2) * (κ / INR (Nat.log2 N)^4).
+                   
+
 (* One possibility: represent multiple events using a list. *)
 (* RNR: I like this better but I feel like it needs some notion of independence? *)
 Inductive pr_Ps1 : (list (R -> Prop)) -> R -> Prop :=
