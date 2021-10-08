@@ -6331,125 +6331,6 @@ Qed.
         l' is either a subsequence of l or l is a subsequence of l'. 
    The secord property relates l l' with avs and avs', so
    for every exp_neu_l l l', if l is lated to avs then l' is also linked to avs' in someway. *)
-Fixpoint cut_n_list {A} (n:nat) (l : list A) :=
-   match n with 0 => Some l
-             | S m => match l with [] => None
-                                 | (a::al) => cut_n_list m al
-                      end
-   end.
-
-Fixpoint get_n_list {A} (n:nat) (l : list A) :=
-   match n with 0 => Some ([])
-        | S m => match l with [] => None
-                            | (a::al) => match get_n_list m al with None => None
-                                                                  | Some l' => Some (a::l')
-                                         end
-                  end
-    end.
-
-Lemma cut_n_list_0 {A:Type} : forall (l:list A), cut_n_list 0 l = Some l.
-Proof.
- intros. simpl in *. easy.
-Qed.
-
-Lemma get_cut_n_list_same {A:Type} : forall n (l l1 l2: list A), cut_n_list n l = Some l1
-           -> get_n_list n l = Some l2 -> (l2 ++ l1) = l.
-Proof.
-  induction n; intros; simpl in *.
-  inv H0. inv H1. easy.
-  destruct l. inv H0.
-  destruct (get_n_list n l) eqn:eq1.
-  inv H1.
-  specialize (IHn l l1 l0 H0 eq1).
-  rewrite <- IHn. easy. inv H1.
-Qed.
-
-Lemma get_n_list_empty {A:Type}: forall n (l: list A), get_n_list n l = Some ([]) -> n = 0.
-Proof.
-  induction n; intros; simpl in *. easy.
-  destruct l. inv H0.
-  destruct (get_n_list n l) eqn:eq1. inv H0. inv H0.
-Qed.
-
-Lemma get_cut_n_list_same_1 {A:Type} : forall n (l l1: list A), cut_n_list n l = Some l
-   -> get_n_list n l = Some l1 -> n = 0.
-Proof.
-  intros.
-  specialize (get_cut_n_list_same n l l l1 H0) as eq1.
-  apply eq1 in H1 as eq2.
-  assert (l = ([])++l).
-  rewrite app_nil_l. easy.
-  assert (l1 ++ l = [] ++ l).
-  rewrite eq2. easy.
-  apply app_inv_tail in H3. subst.
-  apply get_n_list_empty in H1. easy.
-Qed.
-
-Lemma cut_n_list_add {A:Type} : forall n n1 (l l1 l2: list A),
-       cut_n_list n l = Some l1 -> cut_n_list n1 l1 = Some l2 -> cut_n_list (n + n1) l = Some l2.
-Proof.
-  induction n; intros;simpl.
-  rewrite cut_n_list_0 in H0. inv H0. easy.
-  simpl in *. destruct l. inv H0.
-  rewrite IHn with (l1 := l1) (l2 := l2); try easy.
-Qed.
-
-Lemma cut_n_list_sub {A:Type} : forall n n1 (l l1 l2: list A), n <= n1 ->
-       cut_n_list n l = Some l1 -> cut_n_list n1 l = Some l2 -> cut_n_list (n1-n) l1 = Some l2.
-Proof.
-  induction n; intros;simpl.
-  rewrite cut_n_list_0 in H1. inv H1.
-  assert ((n1 - 0) = n1) by lia. rewrite H1. easy.
-  destruct n1. lia. simpl in H1. simpl in H2.
-  destruct l. inv H1.
-  assert (n <= n1) by lia.
-  specialize (IHn n1 l l1 l2 H3 H1 H2).
-  assert (S n1 - S n = n1 - n) by lia. rewrite H4. easy.
-Qed.
-
-Definition exp_neu_sub_prop (l l' : list sexp) :=
-       (exists n, cut_n_list n l' = Some l \/ cut_n_list n l = Some l').
-
-Lemma exp_neu_sub_keep : forall e x l l', exp_neu_l x l e l' -> exp_neu_sub_prop l l'.
-Proof.
-  intros. unfold exp_neu_sub_prop. induction H0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 0. left. apply cut_n_list_0.
-  exists 1. right. simpl in *. easy.
-  exists 1. left. simpl in *. easy.
-  exists 0. left. apply cut_n_list_0.
-  exists 1. right. simpl in *. easy.
-  exists 1. left. simpl in *. easy.
-  exists 0. left. apply cut_n_list_0.
-  exists 1. right. simpl in *. easy.
-  exists 1. left. simpl in *. easy.
-  exists 0. left. apply cut_n_list_0.
-  destruct IHexp_neu_l1. destruct H0.
-  destruct IHexp_neu_l2. destruct H1.
-  exists (x1 + x0). left.
-  apply cut_n_list_add with (l1 := l'); try easy.
-  bdestruct (x0 <=? x1).
-  Check cut_n_list_sub.
-  specialize (cut_n_list_sub x0 x1 l' l l'' H2 H0 H1) as eq1.
-  exists (x1 - x0). right. easy.
-  assert (x1 <= x0) by lia.
-  specialize (cut_n_list_sub x1 x0 l' l'' l H3 H1 H0) as eq1.
-  exists (x0 - x1). left. easy.
-  destruct IHexp_neu_l2.
-  destruct H1. admit.
-  exists (x0 + x1).
-  right. apply cut_n_list_add with (l1 := l'); try easy.
-Admitted.
-
 Definition inter_neu_elem (s:sexp) (f:vars) (x:var) :=
    match s with Ls => trans_lshift f x
               | Rs => trans_rshift f x
@@ -6475,154 +6356,7 @@ Fixpoint inter_neu_l_anti (l :list sexp) (f:vars) (x:var) :=
     end.
 
 Definition exp_neu_trans_prop (x:var) (l l' : list sexp) (vs vs' : vars) :=
-     if length l <=? length l' then 
-       (forall n l1, cut_n_list n l' = Some l -> get_n_list n l' = Some l1 -> vs' x = (inter_neu_l l1 vs x) x)
-    else (forall n l1, cut_n_list n l = Some l' -> get_n_list n l = Some l1 -> vs' x = (inter_neu_l_anti l1 vs x) x).
-
-Lemma cut_n_l_le {A:Type} : forall n (l:list A), n <= length l -> cut_n_list n l <> None.
-Proof.
-  induction n; intros; simpl in *.
-  easy.
-  destruct l. simpl in *. lia.
-  simpl in *.
-  apply IHn. lia.
-Qed.
-
-Lemma length_gt_cut_l {A:Type}: forall (l l' : list A) n, length l <= length l' -> n <= length l' - length l -> 
-                (cut_n_list n l' <> None).
-Proof.
-  induction l;intros;simpl in *.
-  apply cut_n_l_le. lia.
-  apply IHl. lia. lia.
-Qed.
-
-Lemma cut_l_length_le {A:Type}: forall n (l l' : list A), (cut_n_list n l = Some l') -> length l' <= length l.
-Proof.
-  induction n; intros; simpl in *.
-  inv H0. easy.
-  destruct l. easy. specialize (IHn l l' H0). simpl in *. lia.
-Qed.
-
-Lemma get_n_l_le {A:Type} : forall n (l:list A), n <= length l -> get_n_list n l <> None.
-Proof.
-  induction n; intros; simpl in *.
-  easy.
-  destruct l. simpl in *. lia.
-  simpl in *.
-  destruct (get_n_list n l) eqn:eq1. easy.
-  assert (n <= length l) by lia. apply IHn in H1. easy.
-Qed.
-
-Lemma cut_n_length_le {A:Type} : forall n (l:list A), cut_n_list n l <> None -> n <= length l.
-Proof.
-  induction n; intros; simpl in *.
-  lia.
-  destruct l. easy.
-  apply IHn in H0. simpl. lia.
-Qed.
-
-Lemma get_n_list_not_none {A:Type}: forall n (l : list A),
- get_n_list n l <> None -> (exists (l1:list A), get_n_list n l = Some l1).
-Proof.
-  induction n; intros; simpl in *. exists nil. easy.
-  destruct l. easy.  destruct (get_n_list n l) eqn:eq1.
-  exists (a :: l0). easy.
-  easy.
-Qed.
-
-
-Lemma get_cut_n_list_same_2 {A:Type} : forall n (l: list A), cut_n_list n l = Some l
-   -> get_n_list n l = Some ([]).
-Proof.
-  intros.
-  assert (n <= length l). apply cut_n_length_le. rewrite H0. easy.
-  apply get_n_l_le in H1.
-  apply get_n_list_not_none in H1. destruct H1.
-  specialize (get_cut_n_list_same n l l x H0 H1) as eq1.
-  assert (l = ([])++l).
-  rewrite app_nil_l. easy.
-  assert (x ++ l = [] ++ l).
-  rewrite eq1. easy.
-  apply app_inv_tail in H3. subst. easy.
-Qed.
-
-Lemma list_sub_neq  {A:Type} : forall a (l:list A), (a::l) <> l.
-Proof.
-  intros. induction l;simpl. easy.
-  intros R. inv R. easy.
-Qed.
-
-Lemma get_cut_n_list_1_aux {A:Type} : forall n (a:A) (l : list A), 1 < n -> cut_n_list n (a::l) <> Some l.
-Proof.
-  induction n; intros; simpl. lia.
-  destruct n. lia. destruct n.
-  simpl. destruct l. easy. intros R. inv R.
-  assert (a0 :: l = l) by easy.
-  apply list_sub_neq in H1. easy.
-  assert (1 < S (S n)) by lia.
-  apply (IHn a l) in H1. simpl in *.
-  destruct l. easy. destruct l. easy.
-  intros R.
-  apply cut_l_length_le in R as eq1. simpl in *. lia.
-Qed.
-
-Lemma get_cut_n_list_1 {A:Type} : forall n (a:A) (l : list A), cut_n_list n (a::l) = Some l -> n = 1.
-Proof.
-  intros. destruct n. simpl in *. inv H0.
-  apply list_sub_neq in H2. easy.
-  bdestruct (S n =? 1). easy.
-  assert (1 < S n) by lia.
-  apply (get_cut_n_list_1_aux (S n) a l) in H2. easy.
-Qed.
-
-Lemma get_cut_n_list_n {A:Type} : forall n (l l' : list A), cut_n_list n l' = Some l -> n = length l' - length l.
-Proof.
-  induction n; intros; simpl in *.
-  inv H0. lia.
-  destruct l'. inv H0. apply cut_l_length_le in H0 as X1.
-  apply IHn in H0. simpl. destruct (length l) eqn:eq1. rewrite H0. lia.
-  rewrite H0. simpl. lia.
-Qed.
-
-Lemma cut_get_l_exists {A:Type} : forall n (l l' : list A), cut_n_list n l' = Some l -> (exists l1, get_n_list n l' = Some l1).
-Proof.
-  induction n;intros;simpl in *.
-  exists ([]). easy.
-  destruct l'. inv H0.
-  apply IHn in H0. destruct H0.
-  rewrite H0.
-  exists (a :: x). easy.
-Qed.
-
-Lemma inter_neu_l_assoc : forall (l2 l1 l: list sexp) (vs vs1 vs2:vars) (x:var),
-       l = l2++l1 -> inter_neu_l l1 vs x x = vs1 x -> inter_neu_l l2 vs1 x x = vs2 x
-         -> inter_neu_l l vs x x = vs2 x.
-Proof.
-  induction l2; intros; simpl in *.
-  subst. rewrite H1. easy.
-  remember ((inter_neu_l l2 vs1 x)) as vs'.
-  rewrite H0. simpl.
-  specialize (IHl2 l1 (l2 ++ l1) vs vs1 vs' x).
-  apply IHl2 in H1; try easy.
-  rewrite <- H2.
-  destruct a.
-  simpl.
-  unfold trans_lshift.
-  rewrite H1.
-  destruct (vs' x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x =? x). easy. lia.
-  simpl.
-  unfold trans_rshift.
-  rewrite H1.
-  destruct (vs' x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x =? x). easy. lia.
-  simpl.
-  unfold trans_rev.
-  rewrite H1.
-  destruct (vs' x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x =? x). easy. lia.
-  rewrite Heqvs'. easy.
-  Qed.
+       vs' x = inter_neu_l l' (inter_neu_l_anti l vs x) x x.
 
 Lemma shift_fun_twice_same : forall f size, shift_fun (shift_fun f (size-1) size) 1 size = f.
 Proof.
@@ -6824,6 +6558,42 @@ Proof.
   lia. lia. easy.
 Qed.
 
+Lemma inter_neu_l_out : forall l vs x x0, x <> x0 -> inter_neu_l l vs x x0 = vs x0.
+Proof.
+  induction l; intros;simpl. easy.
+  unfold inter_neu_elem.
+  destruct a.
+  unfold trans_lshift.
+  destruct (inter_neu_l l vs x x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). lia.
+  rewrite IHl; try easy.
+  unfold trans_rshift.
+  destruct (inter_neu_l l vs x x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). lia.
+  rewrite IHl; try easy.
+  unfold trans_rev.
+  destruct (inter_neu_l l vs x x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). lia.
+  rewrite IHl; try easy.
+Qed.
+
+Lemma inter_neu_l_anti_out : forall l vs x x0, x <> x0 -> inter_neu_l_anti l vs x x0 = vs x0.
+Proof.
+  induction l; intros;simpl. easy.
+  rewrite IHl; try easy.
+  unfold inter_neu_elem_anti.
+  destruct a.
+  unfold trans_rshift.
+  destruct (vs x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). lia. easy.
+  unfold trans_lshift.
+  destruct (vs x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). lia. easy.
+  unfold trans_rev.
+  destruct (vs x) eqn:eq1. destruct p. destruct p.
+  bdestruct (x0 =? x). lia. easy.
+Qed.
+
 Lemma inter_neu_anti_vars_anti_same : 
    forall l vs x, vars_anti_same vs -> vars_anti_same (inter_neu_l_anti l vs x).
 Proof.
@@ -6910,6 +6680,15 @@ Proof.
   lia. lia. easy.
 Qed.
 
+Lemma inter_neu_l_rev_same_1_gen : forall (l: list sexp) vs x,
+   vars_anti_same vs ->
+    inter_neu_l l (inter_neu_l_anti l vs x) x x = vs x.
+Proof.
+  intros.
+  remember (inter_neu_l_anti l vs x) as vs1.
+  rewrite inter_neu_l_rev_same_1 with (vs := vs). easy.
+  rewrite Heqvs1. easy. easy.
+Qed.
 
 Lemma inter_neu_l_var_same: forall l x vs vs1, vs x = vs1 x -> inter_neu_l l vs x x = inter_neu_l l vs1 x x.
 Proof.
@@ -6932,237 +6711,6 @@ Proof.
   bdestruct (x =? x). easy. lia.
 Qed.
 
-Lemma inter_neu_l_assoc_1 : forall (l2 l1 l: list sexp) (vs vs1 vs2:vars) (x:var),
-       vars_anti_same vs -> vars_anti_same vs1 ->
-       l = l2++l1 -> inter_neu_l l vs x x = vs2 x -> inter_neu_l l2 vs1 x x = vs2 x
-         -> inter_neu_l l1 vs x x = vs1 x.
-Proof.
-  induction l2; intros; simpl in *.
-  subst. rewrite H4. rewrite <- H3. apply inter_neu_l_var_same with (vs1 := vs); try easy.
-  destruct l. inv H2. inv H2.
-  assert (vars_anti_same (inter_neu_l (l2 ++ l1) vs x)) as X1.
-  apply inter_neu_l_vars_anti_same; try easy.
-  assert (vars_anti_same (inter_neu_l l2 vs1 x)) as X2.
-  apply inter_neu_l_vars_anti_same; try easy.
-  simpl in *.
-  destruct a. simpl in *.
-  specialize (IHl2 l1 (l2++l1) vs vs1 (trans_rshift vs2 x) x).
-  rewrite IHl2; try easy.
-  unfold trans_rshift. rewrite <- H3.
-  unfold trans_lshift.
-  destruct (inter_neu_l (l2 ++ l1) vs x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite shift_fun_twice_same.
-  rewrite ashift_fun_twice_same. easy.
-  unfold vars_anti_same in X1.
-  destruct (X1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  unfold trans_rshift. rewrite <- H4.
-  unfold trans_lshift.
-  destruct (inter_neu_l l2 vs1 x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite shift_fun_twice_same.
-  rewrite ashift_fun_twice_same. easy.
-  unfold vars_anti_same in X2.
-  destruct (X2 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  simpl in *.
-  specialize (IHl2 l1 (l2++l1) vs vs1 (trans_lshift vs2 x) x).
-  rewrite IHl2; try easy.
-  unfold trans_lshift. rewrite <- H3.
-  unfold trans_rshift.
-  destruct (inter_neu_l (l2 ++ l1) vs x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite shift_fun_twice_same_1.
-  rewrite ashift_fun_twice_same_1. easy.
-  unfold vars_anti_same in X1.
-  destruct (X1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  unfold trans_lshift. rewrite <- H4.
-  unfold trans_rshift.
-  destruct (inter_neu_l l2 vs1 x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite shift_fun_twice_same_1.
-  rewrite ashift_fun_twice_same_1. easy.
-  unfold vars_anti_same in X2.
-  destruct (X2 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  simpl in *.
-  specialize (IHl2 l1 (l2++l1) vs vs1 (trans_rev vs2 x) x).
-  rewrite IHl2; try easy.
-  unfold trans_rev. rewrite <- H3.
-  unfold trans_rev.
-  destruct (inter_neu_l (l2 ++ l1) vs x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite fbrev_twice_same.
-  rewrite afbrev_twice_same. easy.
-  unfold vars_anti_same in X1.
-  destruct (X1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  unfold trans_rev. rewrite <- H4.
-  unfold trans_rev.
-  destruct (inter_neu_l l2 vs1 x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite fbrev_twice_same.
-  rewrite afbrev_twice_same. easy.
-  unfold vars_anti_same in X2.
-  destruct (X2 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-Qed.
-
-Lemma inter_neu_l_anti_assoc : forall (l2 l1 l: list sexp) (vs vs1 vs2:vars) (x:var),
-       vars_anti_same vs -> vars_anti_same vs1 -> vars_anti_same vs2 ->
-       l1 = l++l2 -> inter_neu_l l1 vs x x = vs1 x -> inter_neu_l_anti l vs1 x x = vs2 x
-         -> inter_neu_l l2 vs x x = vs2 x.
-Proof.
-  intros.
-  apply inter_neu_l_rev_same_1 in H5 ; try easy.
-  apply inter_neu_l_assoc_1 with (l2 := l) (l := l1) (vs2 := vs1); try easy.
-Qed.
-
-Lemma inter_neu_l_assoc_2 : forall (l2 l1 l: list sexp) (vs vs1 vs2:vars) (x:var),
-       vars_anti_same vs -> vars_anti_same vs2 ->
-       l = l2++l1 -> inter_neu_l l vs x x = vs2 x -> inter_neu_l l1 vs x x = vs1 x
-         -> inter_neu_l l2 vs1 x x = vs2 x.
-Proof.
-  induction l2; intros; simpl in *.
-  subst. rewrite <- H4. rewrite H3. easy.
-  destruct l. inv H2. inv H2.
-  assert (vars_anti_same (inter_neu_l (l2 ++ l1) vs x)) as X1.
-  apply inter_neu_l_vars_anti_same; try easy.
-  assert (vars_anti_same (inter_neu_l l1 vs x)) as X2.
-  apply inter_neu_l_vars_anti_same; try easy.
-  simpl in *.
-  destruct a. simpl in *.
-  specialize (IHl2 l1 (l2++l1) vs vs1 (trans_rshift vs2 x) x).
-  unfold trans_lshift in *.
-  rewrite IHl2; try easy.
-  unfold trans_rshift. 
-  destruct (vs2 x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite shift_fun_twice_same_1.
-  rewrite ashift_fun_twice_same_1. easy.
-  unfold vars_anti_same in H1.
-  destruct (H1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  Check vars_anti_vs_same.
-  specialize (vars_anti_vs_same (Rshift x) 0 vs2 
-   (snd (fst (trans_exp vs2 0 (Rshift x) (fun _ => (0,0))))) (fun _ => (0,0))) as X3.
-  simpl in X3. apply X3. easy. easy.
-  unfold trans_rshift. rewrite <- H3.
-  destruct (inter_neu_l (l2 ++ l1) vs x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite shift_fun_twice_same.
-  rewrite ashift_fun_twice_same. easy.
-  unfold vars_anti_same in X1.
-  destruct (X1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  simpl in *.
-  specialize (IHl2 l1 (l2++l1) vs vs1 (trans_lshift vs2 x) x).
-  unfold trans_rshift in *.
-  rewrite IHl2; try easy.
-  unfold trans_lshift. 
-  destruct (vs2 x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite shift_fun_twice_same.
-  rewrite ashift_fun_twice_same. easy.
-  unfold vars_anti_same in H1.
-  destruct (H1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  Check vars_anti_vs_same.
-  specialize (vars_anti_vs_same (Lshift x) 0 vs2 
-   (snd (fst (trans_exp vs2 0 (Lshift x) (fun _ => (0,0))))) (fun _ => (0,0))) as X3.
-  simpl in X3. apply X3. easy. easy.
-  unfold trans_lshift. rewrite <- H3.
-  destruct (inter_neu_l (l2 ++ l1) vs x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite shift_fun_twice_same_1.
-  rewrite ashift_fun_twice_same_1. easy.
-  unfold vars_anti_same in X1.
-  destruct (X1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  simpl in *.
-  specialize (IHl2 l1 (l2++l1) vs vs1 (trans_rev vs2 x) x).
-  unfold trans_rev in *.
-  rewrite IHl2; try easy.
-  destruct (vs2 x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite fbrev_twice_same.
-  rewrite afbrev_twice_same. easy.
-  unfold vars_anti_same in H1.
-  destruct (H1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-  Check vars_anti_vs_same.
-  specialize (vars_anti_vs_same (Rev x) 0 vs2 
-   (snd (fst (trans_exp vs2 0 (Rev x) (fun _ => (0,0))))) (fun _ => (0,0))) as X3.
-  simpl in X3. apply X3. easy. easy.
-  rewrite <- H3.
-  destruct (inter_neu_l (l2 ++ l1) vs x x) eqn:eq1.
-  destruct p. destruct p.
-  bdestruct (x =? x).
-  bdestruct (x =? x).
-  rewrite fbrev_twice_same.
-  rewrite afbrev_twice_same. easy.
-  unfold vars_anti_same in X1.
-  destruct (X1 x) as [V1 [V2 [V3 [V4 [V5 V6]]]]].
-  intros. specialize (V3 i).
-  unfold vsize, avmap in *.
-  rewrite eq1 in *. simpl in *.
-  apply V3. easy. lia. lia.
-Qed.
-
 Lemma inter_neu_l_vs_same: forall l vs vs' x, vs x = vs' x -> inter_neu_l l vs x x = inter_neu_l l vs' x x.
 Proof.
   induction l; intros; simpl in *. easy.
@@ -7183,381 +6731,119 @@ Proof.
   bdestruct (x =? x). easy. lia.
 Qed.
 
-
 Lemma neu_l_trans_state : forall e l l' x (vs:vars) (dim:nat) (avs : nat -> posi),
       exp_neu_l x l e l' -> vars_anti_same vs ->
       exp_neu_trans_prop x l l' vs (snd (fst (trans_exp vs dim e avs))).
 Proof.
   induction e; intros; simpl in *.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
   destruct (trans_exp vs dim e avs) eqn:eq1. destruct p0.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  simpl.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length (Rs :: l') <=? length l'). simpl in *. lia.
-  intros.
-  apply get_cut_n_list_1 in H2. subst. simpl in *. inv H3.
-  simpl. easy.
+  simpl.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  Check vars_anti_vs_same.
+  specialize (vars_anti_vs_same (Lshift x) dim vs (trans_lshift vs x) avs) as eq1.
+  simpl in eq1.
+  apply eq1; try easy.
   unfold exp_neu_trans_prop in *.
-  bdestruct (length l <=? length (Ls :: l)).
-  intros.
-  apply get_cut_n_list_1 in H2. subst. simpl in *. inv H3.
-  simpl. easy. simpl in *. lia.
-  unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
   simpl.
   unfold trans_lshift.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  destruct (vs x) eqn:eq2. destruct p. destruct p.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  unfold exp_neu_trans_prop in *.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  unfold trans_lshift.
   destruct (vs x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x0 =? x). lia. easy. lia.
+  bdestruct (x0 =? x). lia. easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length (Ls :: l') <=? length l'). simpl in *. lia.
-  intros.
-  apply get_cut_n_list_1 in H2. subst. simpl in *. inv H3.
-  simpl. easy.
+  simpl.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  Check vars_anti_vs_same.
+  specialize (vars_anti_vs_same (Rshift x) dim vs (trans_rshift vs x) avs) as eq1.
+  simpl in eq1.
+  apply eq1; try easy.
   unfold exp_neu_trans_prop in *.
-  bdestruct (length l <=? length (Rs :: l)).
-  intros.
-  apply get_cut_n_list_1 in H2. subst. simpl in *. inv H3.
-  simpl. easy. simpl in *. lia.
-  unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
   simpl.
   unfold trans_rshift.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  destruct (vs x) eqn:eq2. destruct p. destruct p.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  unfold exp_neu_trans_prop in *.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  unfold trans_rshift.
   destruct (vs x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x0 =? x). lia. easy. lia.
+  bdestruct (x0 =? x). lia. easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length (Re :: l') <=? length l'). simpl in *. lia.
-  intros.
-  apply get_cut_n_list_1 in H2. subst. simpl in *. inv H3.
-  simpl. easy.
+  simpl.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  Check vars_anti_vs_same.
+  specialize (vars_anti_vs_same (Rev x) dim vs (trans_rev vs x) avs) as eq1.
+  simpl in eq1.
+  apply eq1; try easy.
   unfold exp_neu_trans_prop in *.
-  bdestruct (length l <=? length (Re :: l)).
-  intros.
-  apply get_cut_n_list_1 in H2. subst. simpl in *. inv H3.
-  simpl. easy. simpl in *. lia.
-  unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
   simpl.
   unfold trans_rev.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  destruct (vs x) eqn:eq2. destruct p. destruct p.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  unfold exp_neu_trans_prop in *.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  unfold trans_rev.
   destruct (vs x) eqn:eq1. destruct p. destruct p.
-  bdestruct (x0 =? x). lia. easy. lia.
+  bdestruct (x0 =? x). lia. easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
   inv H0. unfold exp_neu_trans_prop in *.
-  bdestruct (length l' <=? length l').
-  intros.
-  apply get_cut_n_list_same_2 in H2. rewrite H2 in *. inv H3.
-  simpl. easy. lia.
+  rewrite inter_neu_l_rev_same_1_gen; try easy.
+  inv H0.
   destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p.
   destruct (trans_exp v dim e2 p0) eqn:eq2. destruct p.
-  inv H0.
+  simpl.
   specialize (IHe1 l l'0 x vs dim avs H5 H1).
-  rewrite eq1 in *.
-  assert (vars_anti_same v) as V1.
-  specialize (vars_anti_vs_same e1 dim vs v avs) as X1.
-  apply X1. rewrite eq1. easy. easy.
-  assert (vars_anti_same v0) as V2.
-  specialize (vars_anti_vs_same e2 dim v v0 p0) as X1.
-  apply X1. rewrite eq2. easy. easy.
-  specialize (IHe2 l'0 l' x v dim p0 H7 V1).
-  rewrite eq2 in *. simpl in *.
-  unfold exp_neu_trans_prop in *.
-  bdestruct (length l <=? length l'0).
-  bdestruct (length l'0 <=? length l').
-  bdestruct (length l <=? length l'). intros.
-  apply exp_neu_sub_keep in H5 as X1.
-  unfold exp_neu_sub_prop in X1.
-  destruct X1. destruct H8.
-  apply cut_get_l_exists in H8 as X1.
-  destruct X1.
-  apply get_cut_n_list_n in H4 as X1.
-  apply get_cut_n_list_n in H8 as X2.
-  specialize (get_cut_n_list_same x0 l'0 l x1 H8 H9) as X3.
-  specialize (IHe1 x0 x1 H8 H9).
-  apply exp_neu_sub_keep in H7 as X4.
-  unfold exp_neu_sub_prop in X4.
-  destruct X4. destruct H10.
-  apply cut_get_l_exists in H10 as X4.
-  destruct X4.
-  apply get_cut_n_list_n in H10 as X4.
-  specialize (get_cut_n_list_same x2 l' l'0 x3 H10 H11) as X5.
-  specialize (IHe2 x2 x3 H10 H11).
-  rewrite IHe2.
-  specialize (get_cut_n_list_same n l' l l1 H4 H6) as X6.
-  rewrite <- X3 in X5.
-  rewrite <- X5 in X6.
-  rewrite app_assoc in X6.
-  apply app_inv_tail in X6.
-  Check inter_neu_l_assoc.
-  specialize (inter_neu_l_assoc x3 x1 l1 vs v (inter_neu_l x3 v x) x X6) as X7.
-  rewrite X7; try easy.
-  apply get_cut_n_list_n in H10 as X4.
-  assert (x2 = 0) by lia.
-  rewrite H11 in *.
-  apply cut_get_l_exists in H10 as X5. destruct X5.
-  specialize (get_cut_n_list_same 0 l'0 l' x3 H10 H12) as X6.
-  assert (l'0 = l').
-  rewrite cut_n_list_0 in H10. clear X4. inv H10. easy. rewrite H13 in *. clear H13.
-  apply get_cut_n_list_same_2 in H10 as X7.
-  specialize (IHe2 0 ([]) H10 X7).
-  simpl in *. rewrite IHe2 in *. 
-  rewrite <- X1 in *. rewrite X2 in *. rewrite H6 in *. rewrite IHe1. inv H9. easy.
-  apply get_cut_n_list_n in H8 as X1.
-  assert (x0 = 0) by lia. rewrite H9 in *. clear H9 X1.
-  assert (l = l'0). rewrite cut_n_list_0 in H8. inv H8. easy.
-  rewrite H9 in *. clear H9.
-  apply get_cut_n_list_same_2 in H8 as X1.
-  specialize (IHe1 0 ([]) H8 X1).
-  simpl in *.
-  rewrite inter_neu_l_vs_same with (vs' := v); try easy.
-  apply IHe2 with (n := n); try easy. lia.
-  bdestruct (length l <=? length l'). intros.
-  apply exp_neu_sub_keep in H5.
-  apply exp_neu_sub_keep in H7.
-  unfold exp_neu_sub_prop in *. destruct H5. destruct H7.
-  destruct H5. destruct H7.
-  apply cut_l_length_le in H7. lia.
-  apply cut_get_l_exists in H5 as X1.
-  apply cut_get_l_exists in H7 as X2.
-  destruct X1. destruct X2.
-  specialize (IHe1 x0 x2 H5 H8).
-  specialize (IHe2 x1 x3 H7 H9).
-  Check get_cut_n_list_same.
-  specialize (get_cut_n_list_same x0 l'0 l x2 H5 H8) as X1.
-  specialize (get_cut_n_list_same x1 l'0 l' x3 H7 H9) as X2.
-  specialize (get_cut_n_list_same n l' l l1 H4 H6) as X3.
-  rewrite <- X3 in X2.
-  rewrite <- X2 in X1.
-  rewrite app_assoc in X1.
-  apply app_inv_tail in X1.
-  rewrite inter_neu_l_anti_assoc with (l1 := x2) (l := x3) (l2 := l1) (vs1 := v) (vs2 := v0); try easy.
-  apply cut_l_length_le in H5. lia.
-  intros. 
-  apply exp_neu_sub_keep in H5.
-  apply exp_neu_sub_keep in H7.
-  unfold exp_neu_sub_prop in *. destruct H5. destruct H7.
-  destruct H5. destruct H7.
-  apply cut_l_length_le in H7. lia.
-  apply cut_get_l_exists in H5 as X1.
-  apply cut_get_l_exists in H7 as X2.
-  destruct X1. destruct X2.
-  specialize (IHe1 x0 x2 H5 H8).
-  specialize (IHe2 x1 x3 H7 H9).
-  specialize (get_cut_n_list_same x0 l'0 l x2 H5 H8) as X1.
-  specialize (get_cut_n_list_same x1 l'0 l' x3 H7 H9) as X2.
-  specialize (get_cut_n_list_same n l l' l1 H4 H6) as X3.
-  rewrite <- X3 in X1.
-  rewrite <- X2 in X1.
-  rewrite app_assoc in X1.
-  apply app_inv_tail in X1.
-  Check inter_neu_l_anti_assoc.
-  symmetry.
-  apply inter_neu_l_rev_same; try easy.
-  symmetry in IHe2.
-  apply inter_neu_l_rev_same_1 in IHe2 ; try easy.
-  symmetry in IHe1. symmetry in X1.
-  Check inter_neu_l_assoc_1.
-  apply inter_neu_l_assoc_1 with (l2 := x2) (l := x3) (vs2 := v); try easy.
-  apply cut_l_length_le in H5 as X1.
-  assert (length l = length l'0) by lia. clear X1.
-  destruct H7.
-  apply cut_l_length_le in H7 as X1. lia.
-  apply get_cut_n_list_n in H5 as X2.
-  assert (x0 = 0) by lia. rewrite H9 in *. clear H9. clear X2.
-  apply cut_get_l_exists in H5 as X1.
-  apply cut_get_l_exists in H7 as X2.
-  destruct X1. destruct X2.
-  assert (l = l'0).
-  rewrite cut_n_list_0 in H5. inv H5. easy. rewrite H11 in *. clear H11.
-  specialize (IHe1 0 x2 H5 H9).
-  specialize (IHe2 x1 x3 H7 H10).
-  specialize (get_cut_n_list_same 0 l'0 l'0 x2 H5 H9) as X1.
-  assert (x2 = ([])).
-  assert (x2 ++ l'0 = ([])++l'0). rewrite app_nil_l. easy.
-  apply app_inv_tail in H11. easy. rewrite H11 in *.
+  rewrite eq1 in IHe1.
   simpl in IHe1.
-  apply get_cut_n_list_n in H7. apply get_cut_n_list_n in H4. rewrite <- H7 in H4. 
-  rewrite H4 in *. rewrite H10 in H6.
-  assert (x3 = l1). inv H6. easy.
-  rewrite H12 in *.
+  assert (vars_anti_same v).
+  Check (vars_anti_vs_same).
+  specialize (vars_anti_vs_same e1 dim vs v avs) as eq3.
+  rewrite eq1 in eq3.
+  apply eq3; try easy.
+  specialize (IHe2 l'0 l' x v dim p0 H7 H0).
+  rewrite eq2 in IHe2. simpl in *.
+  unfold exp_neu_trans_prop in *.
+  remember ((inter_neu_l_anti l vs x)) as vs1.
+  symmetry.
+  apply inter_neu_l_rev_same_1.
+  rewrite Heqvs1.
   symmetry in IHe2.
-  apply inter_neu_l_rev_same_1 in IHe2; try easy.
-  rewrite IHe1 in *.
-  apply inter_neu_l_rev_same in IHe2; try easy.
-  bdestruct (length l'0 <=? length l').
-  bdestruct (length l <=? length l'). intros.
-  apply exp_neu_sub_keep in H5.
-  apply exp_neu_sub_keep in H7.
-  unfold exp_neu_sub_prop in *. destruct H5. destruct H7.
-  destruct H5.
-  apply cut_l_length_le in H5. lia.
-  destruct H7.
-  apply cut_get_l_exists in H5 as X1.
-  apply cut_get_l_exists in H7 as X2.
-  destruct X1. destruct X2.
-  specialize (IHe1 x0 x2 H5 H8).
-  specialize (IHe2 x1 x3 H7 H9).
-  Check get_cut_n_list_same.
-  specialize (get_cut_n_list_same x0 l l'0 x2 H5 H8) as X1.
-  specialize (get_cut_n_list_same x1 l' l'0 x3 H7 H9) as X2.
-  specialize (get_cut_n_list_same n l' l l1 H4 H6) as X3.
-  rewrite <- X1 in X3.
-  rewrite <- X2 in X3.
-  rewrite app_assoc in X3.
-  apply app_inv_tail in X3.
-  symmetry in IHe1.
-  apply inter_neu_l_rev_same_1 in IHe1; try easy.
-  symmetry.
-  apply inter_neu_l_assoc_2 with (l1 := x2) (l := x3) (vs := v); try easy.
-  apply cut_l_length_le in H7 as X1. lia.
-  intros.
-  apply exp_neu_sub_keep in H5.
-  apply exp_neu_sub_keep in H7.
-  unfold exp_neu_sub_prop in *. destruct H5. destruct H7.
-  destruct H5.
-  apply cut_l_length_le in H5. lia.
-  destruct H7.
-  apply cut_get_l_exists in H5 as X1.
-  apply cut_get_l_exists in H7 as X2.
-  destruct X1. destruct X2.
-  specialize (IHe1 x0 x2 H5 H8).
-  specialize (IHe2 x1 x3 H7 H9).
-  Check get_cut_n_list_same.
-  specialize (get_cut_n_list_same x0 l l'0 x2 H5 H8) as X1.
-  specialize (get_cut_n_list_same x1 l' l'0 x3 H7 H9) as X2.
-  specialize (get_cut_n_list_same n l l' l1 H4 H6) as X3.
-  rewrite <- X2 in X3.
-  rewrite <- X1 in X3.
-  rewrite app_assoc in X3.
-  apply app_inv_tail in X3.
-  symmetry in IHe1.
-  apply inter_neu_l_rev_same_1 in IHe1; try easy.
-  symmetry.
-  apply inter_neu_l_rev_same; try easy.
-  Check inter_neu_l_assoc_2.
-  apply inter_neu_l_assoc_2 with (l1 := x3) (l := x2) (vs := v); try easy.
-  apply cut_l_length_le in H7 as X1.
-  assert (length l' = length l'0) by lia.
-  apply get_cut_n_list_n in H7 as X2.
-  rewrite H8 in *. assert (x1 = 0) by lia.
-  rewrite H9 in *. clear H9.
-  assert (l'0 = l').
-  rewrite cut_n_list_0 in H7. inv H7. easy.
-  rewrite H9 in *. clear H9.
-  apply cut_get_l_exists in H5 as X3.
-  apply cut_get_l_exists in H7 as X4.
-  destruct X3. destruct X4.
-  assert (x3 = []).
-  Check get_cut_n_list_same.
-  specialize (get_cut_n_list_same 0 l' l' x3 H7 H10) as X5.
-  assert (x3 ++ l' = ([])++l').
-  rewrite  app_nil_l. easy.
-  apply app_inv_tail in H11. easy.
-  rewrite H11 in *. clear H11.
-  specialize (IHe1 x0 x2 H5 H9).
-  specialize (IHe2 0 ([]) H7 H10).
-  simpl in IHe2.
-  rewrite IHe2 in *.
-  assert (x0 = n).
-  apply get_cut_n_list_n in H5.
-  apply get_cut_n_list_n in H4. rewrite <- H4 in *. easy.
-  rewrite H11 in *.
-  rewrite H9 in *. inv H6. easy.
-  bdestruct (length l <=? length l'). lia.
-  intros.
-  symmetry.
-  apply inter_neu_l_rev_same; try easy.
-  apply exp_neu_sub_keep in H5.
-  apply exp_neu_sub_keep in H7.
-  unfold exp_neu_sub_prop in *. destruct H5. destruct H7.
-  destruct H5.
-  apply cut_l_length_le in H5. lia.
-  destruct H7.
-  apply cut_l_length_le in H7. lia.
-  apply cut_get_l_exists in H5 as X1.
-  apply cut_get_l_exists in H7 as X2.
-  destruct X1. destruct X2.
-  specialize (IHe1 x0 x2 H5 H8).
-  specialize (IHe2 x1 x3 H7 H9).
-  Check get_cut_n_list_same.
-  specialize (get_cut_n_list_same x0 l l'0 x2 H5 H8) as X1.
-  specialize (get_cut_n_list_same x1 l'0 l' x3 H7 H9) as X2.
-  specialize (get_cut_n_list_same n l l' l1 H4 H6) as X3.
-  rewrite <- X2 in X1.
-  rewrite <- X3 in X1.
-  rewrite app_assoc in X1.
-  apply app_inv_tail in X1.
-  symmetry in IHe1.
-  apply inter_neu_l_rev_same_1 in IHe1; try easy.
-  symmetry in IHe2.
-  apply inter_neu_l_rev_same_1 in IHe2; try easy.
-  Check inter_neu_l_assoc.
-  apply inter_neu_l_assoc with (l2 := x2) (l1 := x3) (vs1 := v); try easy.
-Qed.
-
-
-Lemma in_list_x : forall (l:list nat) x, In x l \/ ~ In x l.
-Proof.
-  induction l; intros. simpl.
-  right. easy.
-  simpl.
-  bdestruct (a =? x). subst. left. left. easy.
-  specialize (IHl x). destruct IHl.
-  left. right. easy.
-  right.
-  simpl.
-  apply and_not_or. split. easy. easy.
+  apply inter_neu_l_rev_same in IHe2.
+  rewrite IHe2.
+  apply inter_neu_l_rev_same.
+  rewrite IHe1.
+  subst. easy.
+  apply inter_neu_anti_vars_anti_same. easy.
+  apply inter_neu_anti_vars_anti_same. easy.
+  specialize (vars_anti_vs_same e2 dim v v0 p0) as eq3.
+  apply eq3;try easy.
+  rewrite eq2. easy.
 Qed.
 
 Lemma trans_finnite_no_in : forall e vs avars dim avs,
@@ -7607,10 +6893,7 @@ Proof.
   destruct H2.
   unfold exp_neu in *. specialize (H0 x). apply H0 in H2.
   specialize (neu_l_trans_state e ([]) ([]) x vs dim avs H2 H1) as eq1.
-  unfold exp_neu_trans_prop in *. simpl in *.
-  specialize (eq1 0 ([])).
-  assert (@cut_n_list sexp 0 ([]) = Some ([])).
-  simpl. easy. apply eq1 in H3. rewrite H3. simpl. easy. easy.
+  unfold exp_neu_trans_prop in *. simpl in *. easy.
   rewrite trans_finnite_no_in with (avars := get_vars e); try easy.
 Qed.
 
@@ -7750,18 +7033,6 @@ Proof.
   rewrite avs_out_1. easy. lia.
 Qed.
 
-
-(*
-Lemma neu_trans_state : forall e vs dim avs, exp_neu (get_vars e) e 
-                   -> snd (fst (trans_exp vs dim e avs)) = vs.
-Proof.
-  induction e; intros; simpl; try easy.
-  destruct (trans_exp vs dim e avs).
-  destruct p0.
-  simpl in *. easy.
-  inv H0.
-Qed.
-*)
 
 Local Transparent SQIR.ID SQIR.CNOT SQIR.X SQIR.Rz. 
 
