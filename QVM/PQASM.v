@@ -2061,24 +2061,6 @@ Proof.
   apply IHe1; try easy.
 Qed.
 
-(*
-Lemma neu_inv_exp :
-  forall l p,
-    exp_neu l p ->
-    exp_neu l (inv_exp p).
-Proof.
-  induction p; intros; simpl.
-  1-2:constructor.
-  constructor. inv H0.
-  intros.
-  apply H2 in H0.
-  apply neu_l_inv_exp.
-  unfold exp_neu_prop. intros. simpl in *. lia. easy.
-  1-11:constructor.
-  constructor. inv H0.
-  apply IHp2. easy. apply IHp1. inv H0. easy.
-Qed.
-*)
 
 Lemma typed_inv_exp :
   forall tenv p,
