@@ -144,8 +144,11 @@ Definition trans_modmult_rev (M C Cinv size:nat) :=
 
 (*********** Proofs ***********)
 
+Definition no_equal (x y:var) (c1 c2 : posi) : Prop := x <> y /\ x <> fst c1 /\  x <> fst c2 
+                   /\ y <> fst c1 /\ y <> fst c2 /\ c1 <> c2.
+
 Definition no_equal_5 (x y M:var) (c1 c2 : posi) : Prop := x <> y /\ x <> M /\ x <> fst c1 /\  x <> fst c2 
-                   /\ y <> M /\ y <> fst c1 /\ y <> fst c2 /\ M <> fst c1 /\ M <> fst c2 /\ fst c1 <> fst c2.
+                   /\ y <> M /\ y <> fst c1 /\ y <> fst c2 /\ M <> fst c1 /\ M <> fst c2 /\ c1 <> c2.
 
 
 Definition no_equal_5a (x y M s:var) (c1 : posi) : Prop := x <> y /\ x <> M /\ x <> s /\  x <> fst c1 
@@ -244,7 +247,7 @@ Proof.
   apply maj_wt. iner_p. iner_p. iner_p. easy. easy. easy.
 Qed.
 
-Lemma MAJseq'_fresh : forall n aenv x y c c2, fst c <> fst c2 -> y <> fst c2 -> x <> fst c2->
+Lemma MAJseq'_fresh : forall n aenv x y c c2, c <> c2 -> y <> fst c2 -> x <> fst c2->
                       exp_fresh aenv c2 (MAJseq' n x y c). 
 Proof.
  induction n;intros;simpl.
@@ -270,7 +273,7 @@ Proof.
  intros. unfold MAJseq. apply MAJseq'_wt; try easy.
 Qed.
 
-Lemma MAJseq_fresh : forall n aenv x y c c2, fst c <> fst c2 -> y <> fst c2 -> x <> fst c2->
+Lemma MAJseq_fresh : forall n aenv x y c c2, c <> c2 -> y <> fst c2 -> x <> fst c2->
                       exp_fresh aenv c2 (MAJseq n x y c). 
 Proof.
  intros. unfold MAJseq. apply MAJseq'_fresh; try easy.
@@ -292,7 +295,7 @@ Proof.
   apply IHn; try easy.
 Qed.
 
-Lemma UMAseq'_fresh : forall n aenv x y c c2, fst c <> fst c2 -> y <> fst c2 -> x <> fst c2->
+Lemma UMAseq'_fresh : forall n aenv x y c c2, c <> c2 -> y <> fst c2 -> x <> fst c2->
                       exp_fresh aenv c2 (UMAseq' n x y c). 
 Proof.
  induction n;intros;simpl.
@@ -318,7 +321,7 @@ Proof.
  intros. unfold UMAseq. apply UMAseq'_wt; try easy.
 Qed.
 
-Lemma UMAseq_fresh : forall n aenv x y c c2, fst c <> fst c2 -> y <> fst c2 -> x <> fst c2->
+Lemma UMAseq_fresh : forall n aenv x y c c2, c <> c2 -> y <> fst c2 -> x <> fst c2->
                       exp_fresh aenv c2 (UMAseq n x y c). 
 Proof.
  intros. unfold UMAseq. apply UMAseq'_fresh; try easy.
@@ -488,79 +491,6 @@ Qed.
 
 Local Transparent CNOT. Local Transparent CCX.
 
-(*
-
-Lemma majseq'_fwf : forall n x y c aenv,
-       x <> fst c -> y <> fst c -> x <> y -> exp_fwf aenv (MAJseq' n x y c).
-Proof.
-  intros.
-  induction n. simpl.
-  apply maj_fwf.
-  iner_p. iner_p. iner_p.
-  simpl.
-  constructor.
-  apply IHn.
-  apply maj_fwf.
-  1-3:iner_p.
-Qed.
-
-Lemma majseq_fwf : forall n x y c aenv,
-       x <> fst c -> y <> fst c -> x <> y -> exp_fwf aenv (MAJseq n x y c).
-Proof.
-  intros. unfold MAJseq.
-  apply majseq'_fwf; assumption.
-Qed.
-
-Lemma umaseq'_fwf : forall n x y c aenv,
-       x <> fst c -> y <> fst c -> x <> y -> exp_fwf aenv (UMAseq' n x y c).
-Proof.
-  intros.
-  induction n. simpl.
-  apply uma_fwf.
-  iner_p. iner_p. iner_p.
-  simpl.
-  constructor.
-  apply uma_fwf.   1-3:iner_p.
-  apply IHn.
-Qed.
-
-Lemma umaseq_fwf : forall n x y c aenv,
-       x <> fst c -> y <> fst c -> x <> y -> exp_fwf aenv (UMAseq n x y c).
-Proof.
-  intros. unfold UMAseq.
-  apply umaseq'_fwf; assumption.
-Qed.
-*)
-(*
-Lemma umaseq'_well_typed : forall m n tenv f x y c, m < n -> nor_modes f x n -> nor_modes f y n -> nor_mode f c
-            -> right_mode_exp tenv f (UMAseq' m x y c)  -> well_typed_exp tenv (UMAseq' m x y c).
-Proof.
-  intros.
-  induction m; simpl.
-  eapply uma_well_typed. apply H3. apply H2. lia. apply H1. lia.
-  simpl in H4. easy.
-  simpl in H4. inv H4.
-  constructor. 
-  eapply uma_well_typed. apply H1. lia. apply H2. lia. apply H1. lia. easy.
-  apply IHm. lia. easy.
-Qed.
-
-Lemma umaseq_well_typed : forall n tenv f x y c, 0 < n -> nor_modes f x n -> nor_modes f y n -> nor_mode f c
-            -> right_mode_exp tenv f (UMAseq n x y c)  -> well_typed_exp tenv (UMAseq n x y c).
-Proof.
-  intros. unfold UMAseq in *.
-  apply (umaseq'_well_typed (n-1) n tenv f); try assumption. lia.
-Qed.
-*)
-(*
-Lemma adder_fwf : forall n x y c aenv,
-       x <> fst c -> y <> fst c -> x <> y -> exp_fwf aenv (adder01 n x y c).
-Proof.
-  intros. unfold adder01. constructor.
-  apply majseq_fwf; assumption.
-  apply umaseq_fwf; assumption.
-Qed.
-*)
 Definition var_prop (f:var -> nat) (x y c : var) (n:nat) : Prop :=
       n <= (f x) /\  n <= f y /\ f c = 1.
 
@@ -1437,8 +1367,7 @@ Qed.
 
 Local Opaque CNOT. Local Opaque CCX.
 
-Definition no_equal (x y:var) (c1 c2 : posi) : Prop := x <> y /\ x <> fst c1 /\  x <> fst c2 
-                   /\ y <> fst c1 /\ y <> fst c2 /\ fst c1 <> fst c2.
+
 
 (*
 Lemma highbit_fwf : forall n x c2 aenv, fst c2 <> x -> exp_fwf aenv (highbit n x c2).
@@ -2409,7 +2338,7 @@ Proof.
 Qed.
 
 
-Lemma adder01_fresh : forall n x y c c2 aenv, x <> fst c2 -> y <> fst c2 -> fst c <> fst c2 ->
+Lemma adder01_fresh : forall n x y c c2 aenv, x <> fst c2 -> y <> fst c2 -> c <> c2 ->
     exp_fresh aenv c2 (adder01 n x y c).
 Proof.
   intros.
@@ -2422,7 +2351,7 @@ Proof.
 Qed.
 
 
-Lemma subtractor01_fresh : forall n x y c c2 aenv, x <> fst c2 -> y <> fst c2 -> fst c <> fst c2 ->
+Lemma subtractor01_fresh : forall n x y c c2 aenv, x <> fst c2 -> y <> fst c2 -> c <> c2 ->
     exp_fresh aenv c2 (subtractor01 n x y c).
 Proof.
   intros. unfold subtractor01.
