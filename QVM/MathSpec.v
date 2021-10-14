@@ -8,7 +8,7 @@ Local Open Scope nat_scope.
         in the bool function representation of a number. *)
 Lemma mod_sum_lt :
   forall x y M,
-    x < M ->
+    x < M -> 
     y < M ->
     (x + y) mod M < x <-> x + y >= M.
 Proof.
@@ -1274,6 +1274,18 @@ Proof.
  unfold bindecomp.
  simpl. lia.
 Qed.
+
+Lemma bindecomp_scope : forall n f, bindecomp n f < 2^n.
+Proof.
+  induction n;intros;simpl. rewrite bindecomp_spec.
+  assert (2 ^ 0 = 1). simpl. lia.
+  rewrite H. apply Nat.mod_upper_bound ; lia.
+  specialize (IHn f).
+  rewrite bindecomp_seq.
+  destruct ((nat2fb f n)). simpl. lia.
+  simpl. lia.
+Qed.
+
 
 Lemma f_num_nat2fb : forall n f, (forall i, i >= n -> f i = false) -> (exists x, f = nat2fb x).
 Proof.
