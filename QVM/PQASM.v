@@ -2435,7 +2435,6 @@ Proof.
  rewrite <- H5. easy.
 Qed.
 
-
 Lemma type_phi_modes :  forall f aenv env x, 
     Env.MapsTo x (Phi (aenv x)) env -> right_mode_env aenv env f -> phi_modes f x (aenv x).
 Proof.
@@ -2452,6 +2451,17 @@ Qed.
 
 Definition get_snd_r (f:posi -> val) (p:posi) :=
     match (f p) with qval rc r => r | _ => allfalse end.
+
+Lemma phi_mode_two_same : forall f g c, phi_mode f c -> phi_mode g c
+      -> get_r (f c) = get_r (g c) -> get_snd_r f c = get_snd_r g c -> f c = g c.
+Proof.
+  intros. unfold phi_mode in *.
+  destruct (f c) eqn:eq1.  easy. easy.
+  destruct (g c) eqn:eq2. easy. easy.
+  unfold get_r in *. subst.
+  unfold get_snd_r in *. rewrite eq1 in *. rewrite eq2 in *. subst. easy.
+Qed.
+
 
 Lemma assign_seq_lt : forall n i f x h, i < n -> assign_seq f x h n (x,i) = nval (h i) (get_r (f (x,i))).
 Proof.
@@ -7755,7 +7765,7 @@ Qed.
 Lemma turn_angle_add_same : forall n r q, q < n ->
        (2 * PI * turn_angle r n + rz_ang q)%R = (2 * PI *  turn_angle (rotate r q) n)%R.
 Proof.
-
+  intros. unfold rotate,addto.
 Admitted.
 
 Lemma turn_angle_add_r_same : forall n r q, q < n -> 
