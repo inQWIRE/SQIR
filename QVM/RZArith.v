@@ -3467,6 +3467,50 @@ Proof.
    easy. easy.
 Qed.
 
+Lemma put_cus_sumfb_cut : forall n f x b M g, put_cus f x (sumfb b M g) n = put_cus f x (sumfb b (cut_n M n) g) n.
+Proof.
+ intros. unfold put_cus.
+  apply functional_extensionality. intros.
+  destruct x0. simpl.
+  bdestruct (v =? x). bdestruct (n0 <? n).
+  assert ((sumfb b M g n0) = (sumfb b (cut_n M n) g n0)).
+  unfold sumfb. rewrite <- carry_cut_n; try easy.
+  unfold cut_n. bdestruct (n0 <? n). easy. lia.
+  rewrite H1. easy. easy. easy.
+Qed.
+
+Lemma rz_adder'_cut_n_equal :
+   forall n x size m M, n <= size <= m -> rz_adder' x n size M = rz_adder' x n size (cut_n M m).
+Proof.
+  induction n; intros; simpl.
+  easy.
+  rewrite IHn with ( m:= m) by lia.
+  assert (M n = cut_n M m n).
+  unfold cut_n. bdestruct (n <? m). easy. lia.
+  rewrite H0. easy.
+Qed.
+
+Lemma rz_adder_form_correct_1 :
+  forall n f x M aenv tenv ,
+    0 < n -> aenv x = n -> Env.MapsTo x Nor tenv ->
+    right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    exp_sem aenv (rz_adder_form x n M) f =
+        (put_cus f x (sumfb false M (get_cus n f x)) n).
+Proof.
+  intros.
+  assert ((rz_adder_form x n M) = (rz_adder_form x n (cut_n M n))).
+  Local Transparent rz_adder. unfold rz_adder_form,rz_adder. Local Opaque rz_adder.
+  rewrite rz_adder'_cut_n_equal with (m := n); try easy.
+  rewrite H5.
+  specialize (f_num_0 M n) as eq1. destruct eq1.
+  rewrite H6.
+  apply f_num_small in H6 as eq1.
+  rewrite rz_adder_form_correct with (tenv := tenv); try easy.
+  rewrite <- H6. rewrite <- put_cus_sumfb_cut. easy.
+Qed.
+
+
 Definition vars_for_rz_adder (size:nat) := gen_vars size (x_var::[]).
 
 Definition rz_adder_out (size:nat) (M:nat-> bool) := rz_adder_form x_var size M.
@@ -4076,6 +4120,50 @@ Proof.
    rewrite put_cus_neq by lia.
    easy. easy.
 Qed.
+
+Lemma put_cus_sumfb_neg_cut : forall n f x b M g, put_cus f x (sumfb b (negatem n M) g) n
+            = put_cus f x (sumfb b (negatem n (cut_n M n)) g) n.
+Proof.
+ intros. unfold put_cus.
+  apply functional_extensionality. intros.
+  destruct x0. simpl.
+  bdestruct (v =? x). bdestruct (n0 <? n).
+  assert ((sumfb b (negatem n M) g n0) = (sumfb b (negatem n (cut_n M n)) g n0)).
+  unfold sumfb. rewrite <- carry_cut_n_neg; try easy.
+  unfold negatem,cut_n. bdestruct (n0 <? n). easy. lia.
+  rewrite H1. easy. easy. easy.
+Qed.
+
+Lemma rz_sub'_cut_n_equal :
+   forall n x size m M, n <= size <= m -> rz_sub' x n size M = rz_sub' x n size (cut_n M m).
+Proof.
+  induction n; intros; simpl.
+  easy.
+  rewrite IHn with ( m:= m) by lia.
+  assert (M n = cut_n M m n).
+  unfold cut_n. bdestruct (n <? m). easy. lia.
+  rewrite H0. easy.
+Qed.
+
+Lemma rz_sub_right_sem_1 : forall n f x M aenv tenv ,
+    0 < n -> aenv x = n -> Env.MapsTo x Nor tenv ->
+    right_mode_env aenv tenv f ->
+    qft_uniform aenv tenv f -> qft_gt aenv tenv f ->
+    exp_sem aenv (rz_sub_right x n M) f =
+        (put_cus f x ((sumfb true (negatem n M) (get_cus n f x))) n).
+Proof.
+  intros.
+  assert ((rz_sub_right x n M) = (rz_sub_right x n (cut_n M n))).
+  Local Transparent rz_sub. unfold rz_sub_right,rz_sub. Local Opaque rz_sub.
+  rewrite rz_sub'_cut_n_equal with (m := n); try easy.
+  rewrite H5.
+  specialize (f_num_0 M n) as eq1. destruct eq1.
+  rewrite H6.
+  apply f_num_small in H6 as eq1.
+  rewrite rz_sub_right_sem with (tenv := tenv); try easy.
+  rewrite <- H6. rewrite <- put_cus_sumfb_neg_cut. easy.
+Qed.
+
 
 (* Implementing M - x subtractor. *)
 Definition rz_sub_left (M:nat -> bool) (x:var) (n:nat) :=
