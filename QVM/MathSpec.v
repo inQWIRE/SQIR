@@ -69,10 +69,11 @@ simpl in H.
 assert (x-0 = x) by lia. rewrite H0 in H. easy. 
 Qed.
 
-(* fb_push_n is the n repeatation of fb_push.
-Definition fb_push_n n f g : nat -> bool :=
-  fun i => if (i <? n) then f i else g (i - n).
-*)
+
+Fixpoint fb_push_n n f : nat -> bool :=
+   match n with 0 => f
+            | S m => fb_push false (fb_push_n m f)
+   end.
 
 (* A function to compile positive to a bool function. *)
 Fixpoint pos2fb p : nat -> bool :=
@@ -1300,51 +1301,286 @@ Proof.
   exists x. rewrite H1. easy.
 Qed.
 
+Lemma fbrev_flip {A} : forall (f g : nat -> A) m n, m < n -> (forall i, i < m -> fbrev n f i = g i)
+           -> (forall i, i < n -> i >= n - m -> f i = fbrev n g i).
+Proof.
+  intros.
+  assert (f i = fbrev n  f (n - 1 - i)).
+  unfold fbrev.
+  bdestruct (n - 1 - i <? n).
+  assert ((n - 1 - (n - 1 - i)) = i) by lia.
+  rewrite H4. easy.
+  lia.
+  rewrite H3.
+  assert (fbrev n g i = g (n - 1 - i)).
+  unfold fbrev.
+  bdestruct (i <? n). easy. lia.
+  rewrite H4.
+  rewrite H0. easy. lia.
+Qed.
+
+Lemma carry_twoton_less : forall m n g, m <= n -> carry false m g (twoton_fun n) = false.
+Proof.
+  Local Transparent carry.
+  induction m; intros; simpl.
+  easy.
+  assert (twoton_fun n m = false).
+  unfold twoton_fun.
+  bdestruct (m <? n). easy. lia.
+  rewrite H0. bt_simpl.
+  rewrite IHm. btauto. lia.
+  Local Opaque carry.
+Qed.
+
+
+Lemma sumfb_twoton : forall j i g, j < i -> sumfb false g (nat2fb (2^i)) j = g j.
+Proof.
+  intros. rewrite <- f_twoton_eq.
+  unfold sumfb.
+  assert (twoton_fun i j = false).
+  unfold twoton_fun.
+  bdestruct (j <? i). easy. lia.
+  rewrite H0. bt_simpl.
+  rewrite carry_twoton_less. btauto. lia.
+Qed.
+
+Lemma fbrev_sem {A:Type}: forall n i (r: nat -> A), i < n -> fbrev n r i = r (n - 1 - i).
+Proof.
+ intros. unfold fbrev. bdestruct (i <? n).  easy. lia.
+Qed.
+
+Lemma carry_cut_n : forall m n b M g, n < m -> carry b n M g = carry b n (cut_n M m) g.
+Proof.
+  Local Transparent carry.
+  induction n;intros.
+  simpl. easy.
+  simpl.
+  rewrite <- IHn; try lia.
+  assert (cut_n M m n = M n).
+  unfold cut_n. bdestruct (n <? m). easy. lia.
+  rewrite H0. easy.
+  Local Opaque carry.
+Qed.
+
+
+Lemma carry_add_index : forall m n f g s t, (carry false n f g) = false ->
+    (forall i, i < m -> s i = f (n + i)) -> (forall i, i < m -> t i = g (n + i)) ->
+    carry false (n + m) f g = carry false m s t.
+Proof.
+  Local Transparent carry.
+  induction m;intros.
+  simpl. rewrite plus_0_r. easy.
+  assert ((n + S m) = S (n + m)) by lia. rewrite H2. simpl.
+  rewrite IHm with (s := s) (t := t); try easy.
+  rewrite <- H0 by lia. rewrite <- H1 by lia. easy.
+  intros. rewrite H0 by lia. easy.
+  intros. rewrite H1 by lia. easy.
+  Local Opaque carry.
+Qed.
+
+Lemma carry_cut_n_neg : forall m n b M g, n < m -> carry b n (negatem m M) g = carry b n (negatem m (cut_n M m)) g.
+Proof.
+  Local Transparent carry.
+  induction n;intros.
+  simpl. easy.
+  simpl.
+  rewrite <- IHn; try lia.
+  assert (negatem m (cut_n M m) n = negatem m M n).
+  unfold negatem,cut_n. bdestruct (n <? m). easy. lia.
+  rewrite H0. easy.
+  Local Opaque carry.
+Qed.
+
+
+Lemma sumfb_lt_cut : forall n b M g m, m < n -> (sumfb b (cut_n M n) g m) = (sumfb b M g m).
+Proof.
+  intros. unfold sumfb. rewrite <- carry_cut_n.
+  assert (cut_n M n m = M m). unfold cut_n. bdestruct (m <? n). easy. lia.
+  rewrite H0. easy. easy.
+Qed.
+
 Lemma add_to_sem : forall n q r, 0 < q <= n ->
                  (forall i , i >= n -> r i = false) ->
                  (addto r q) = cut_n (fbrev n (sumfb false (fbrev n r) (nat2fb (2^(n-q))))) n.
 Proof.
-  intros. unfold cut_n,addto,fbrev.
+  intros. unfold cut_n,addto.
   apply functional_extensionality; intro.
-  bdestruct (x <? q).
+  bdestruct (x <? q). bdestruct (x <? n).
+  assert (cut_n (fbrev q (sumfb false (cut_n (fbrev q r) q) (nat2fb 1))) q x
+      = (fbrev q (sumfb false (cut_n (fbrev q r) q) (nat2fb 1))) x).
+  unfold cut_n. bdestruct (x <? q). easy. lia.
+  rewrite H3. clear H3.
+  rewrite fbrev_sem by lia.
+  rewrite fbrev_sem by lia.
+  assert (n - 1 - x = (n - q) + (q - 1 - x)) by lia.
+  rewrite H3. remember (q - 1 - x) as t.
+  assert (t < q) by lia.
+  unfold sumfb. rewrite <- f_twoton_eq.
+  assert (nat2fb 1 = twoton_fun 0).
+  assert (1 = 2^0). simpl. easy. rewrite H5.
+  rewrite f_twoton_eq. easy. rewrite H5.
+  assert (carry false t (cut_n (fbrev q r) q) (twoton_fun 0)
+     = carry false (n - q + t) (fbrev n r) (twoton_fun (n - q))).
+  rewrite carry_add_index with (s := (cut_n (fbrev q r) q)) (t := twoton_fun 0); try easy.
+  rewrite carry_twoton_less; try easy.
+  intros.
+  unfold cut_n,fbrev.
+  bdestruct (i <? q).
+  bdestruct (n - q + i <? n).
+  assert ((n - 1 - (n - q + i)) = q - 1 - i) by lia. rewrite H9. easy.
+  lia. lia. intros.
+  unfold twoton_fun.
+  bdestruct (i <? 0). lia.
+  bdestruct (i =? 0).
+  bdestruct (n - q + i <? n - q). subst. lia.
+  bdestruct (n - q + i =? n - q).  easy. lia.
+  bdestruct (n - q + i <? n - q). easy. 
+  bdestruct (n - q + i =? n - q). lia. easy.
+  rewrite H6.
+  assert (cut_n (fbrev q r) q t = fbrev n r (n - q + t)).
+  unfold cut_n, fbrev.
+  bdestruct (t <? q).
+  bdestruct (n - q + t <? n).
+  assert ((n - 1 - (n - q + t)) = q - 1 - t) by lia.
+  rewrite H9. easy. lia. lia. rewrite H7.
+  assert (twoton_fun 0 t = twoton_fun (n - q) (n - q + t)).
+  unfold twoton_fun.
+  bdestruct (t <? 0). lia.
+  bdestruct (t =? 0).
+  bdestruct (n - q + t <? n - q). lia.
+  bdestruct (n - q + t =? n - q ). easy.
+  lia.
+  bdestruct (n - q + t <? n - q). lia.
+  bdestruct (n - q + t =? n - q). lia. easy.
+  rewrite H8. easy. lia.
   bdestruct (x <? n).
-Admitted. 
+  assert (forall i, i < n - q -> (fbrev n r i = sumfb false (fbrev n r) (nat2fb (2 ^ (n - q))) i)).
+  intros. rewrite sumfb_twoton. easy. easy.
+  remember (sumfb false (fbrev n r) (nat2fb (2 ^ (n - q)))) as gf.
+  assert (n-q < n) by lia.
+  specialize (fbrev_flip r gf (n-q) n H4 H3) as eq1.
+  rewrite <- eq1; try easy. assert (n - (n-q) = q) by lia. rewrite H5. easy.
+  rewrite H0. easy. easy.
+Qed. 
+
+Lemma nat2fb_pow_n : forall n x, nat2fb (2^n * x) = (fb_push_n n (nat2fb x)).
+Proof.
+  induction n;intros. simpl. rewrite plus_0_r. easy.
+  assert ((2 ^ S n * x) = 2 * (2^n * x)). simpl. lia.
+  rewrite H.
+  rewrite <- times_two_correct. simpl.
+  rewrite IHn.
+  unfold times_two_spec,fb_push.
+  apply functional_extensionality; intro.
+  bdestruct (x0 =? 0). rewrite H0. easy.
+  destruct x0. lia.
+  assert ((S x0 - 1) = x0) by lia. rewrite H1. easy.
+Qed.
+
+Lemma fb_push_n_false : forall n m f, m < n -> fb_push_n n f m = false.
+Proof.
+  induction n; intros;simpl. lia.
+  destruct m. simpl. easy.
+  assert (m < n) by lia.
+  specialize (IHn m f H0).
+  unfold fb_push.
+  easy.
+Qed.
+
+Lemma fb_push_nsame : forall n i f, fb_push_n n f (n+i) = f i.
+Proof.
+  induction n; intros;simpl. easy. rewrite IHn. easy.
+Qed.
+
+Lemma carry_false_gen: forall n f g, 
+    (forall i, i < n -> g i = false) ->
+    carry false n f g = false.
+Proof.
+  Local Transparent carry.
+  induction n; intros.
+  simpl.
+  reflexivity.
+  simpl.
+  rewrite IHn. rewrite H by lia. btauto.
+  intros. rewrite H. easy. lia.
+Qed.
+
+Lemma sumfb_lt_gen : forall n f g m, m < n -> (forall i, i < n -> g i = false)
+                 -> (sumfb false f g m) = f m.
+Proof.
+  intros. unfold sumfb. rewrite carry_false_gen.
+  rewrite H0. btauto. lia.
+  intros. rewrite H0. easy. lia.
+Qed.
+
 
 Lemma add_to_n_sem : forall n q r, 0 < q <= n ->
                  (forall i , i >= n -> r i = false) ->
                  (addto_n r q) = cut_n (fbrev n (sumfb false (fbrev n r) (nat2fb (2^n - 2^(n-q))))) n.
 Proof.
-  intros. unfold addto_n.
+  intros. unfold cut_n,addto_n.
   apply functional_extensionality; intro.
-  bdestruct (x <? q).
-  rewrite negatem_arith.
-  assert ((forall i : nat, i >= n -> fbrev q r i = false)).
-  intros. unfold fbrev.
-  bdestruct (i <? q). lia. rewrite H0. easy. lia.
-  specialize (f_num_nat2fb n (fbrev q r) H2) as eq1.
-  destruct eq1.
+  bdestruct (x <? q). bdestruct (x <? n).
+  assert (cut_n (fbrev q (sumfb false (cut_n (fbrev q r) q) (negatem q (nat2fb 0)))) q x
+      = (fbrev q (sumfb false (cut_n (fbrev q r) q) (negatem q (nat2fb 0)))) x).
+  unfold cut_n. bdestruct (x <? q). easy. lia.
+  rewrite H3. clear H3.
+  rewrite fbrev_sem by lia.
+  rewrite fbrev_sem by lia.
+  assert (n - 1 - x = (n - q) + (q - 1 - x)) by lia.
+  rewrite H3. remember (q - 1 - x) as t.
+  assert (2^q <> 0). apply Nat.pow_nonzero. lia.
+  assert (0 < 2^q) by lia.
+  rewrite negatem_arith by lia.
+  assert ((2 ^ q - 1 - 0) = 2^q - 2^0).
+  simpl. lia. rewrite H6.
+  assert (2 ^ n - 2 ^ (n - q) = 2^(n-q) * (2^q - 2^0)).
+  simpl.
+  rewrite  mult_minus_distr_l. rewrite <- Nat.pow_add_r.
+  replace (n - q + q) with n by lia.
+  lia. rewrite H7.
+  remember ((2 ^ q - 2 ^ 0)) as A.
+  rewrite nat2fb_pow_n.
+  assert (t < q) by lia.
+  unfold sumfb.
+  assert (carry false t (cut_n (fbrev q r) q) (nat2fb A)
+     = carry false (n - q + t) (fbrev n r) (fb_push_n (n - q) (nat2fb A))).
+  rewrite carry_add_index with (s := (cut_n (fbrev q r) q)) (t := (nat2fb A)); try easy.
+  rewrite carry_false_gen; try easy.
+  intros. rewrite fb_push_n_false; try lia. easy.
+  intros.
+  unfold cut_n,fbrev.
+  bdestruct (i <? q).
+  bdestruct (n - q + i <? n).
+  assert ((n - 1 - (n - q + i)) = q - 1 - i) by lia. rewrite H12. easy.
+  lia. lia. intros.
+  rewrite fb_push_nsame. easy.
+  rewrite H9.
+  assert (cut_n (fbrev q r) q t = fbrev n r (n - q + t)).
+  unfold cut_n, fbrev.
+  bdestruct (t <? q).
+  bdestruct (n - q + t <? n).
+  assert ((n - 1 - (n - q + t)) = q - 1 - t) by lia.
+  rewrite H12. easy. lia. lia. rewrite H10.
+  assert (nat2fb A t = fb_push_n (n - q) (nat2fb A) (n - q + t)).
+  rewrite fb_push_nsame. easy.
+  rewrite H11. easy. lia.
+  bdestruct (x <? n).
+  assert (2 ^ n - 2 ^ (n - q) = 2^(n-q) * (2^q - 2^0)).
+  simpl.
+  rewrite  mult_minus_distr_l. rewrite <- Nat.pow_add_r.
+  replace (n - q + q) with n by lia. lia.
   rewrite H3.
-  rewrite cut_n_mod.
-  assert (2 ^ q <> 0).
-  apply Nat.pow_nonzero. lia.
-  rewrite sumfb_correct_carry0.
-  assert ((2 ^ q - 1 - 0) = ((2 ^ q -1) mod 2^q)).
-  rewrite Nat.mod_small by lia.
-  lia. rewrite H5.
-  rewrite cut_n_fbrev_flip.
-  rewrite cut_n_mod.
-  rewrite <- Nat.add_mod by lia.
-  assert (forall i : nat, i >= n -> fbrev n r i = false).
-  intros. unfold fbrev.
-  bdestruct (i <? n). lia. rewrite H0. easy. lia.
-  specialize (f_num_nat2fb n (fbrev n r) H6) as eq2.
-  destruct eq2.
-  rewrite H7.
-  rewrite sumfb_correct_carry0.
-  rewrite cut_n_fbrev_flip.
-  rewrite cut_n_mod.
-  Check Nat.add_mod.
-Admitted. 
+  rewrite nat2fb_pow_n.
+  assert (forall i, i < n - q -> (fbrev n r i = sumfb false (fbrev n r) (fb_push_n (n - q) (nat2fb (2 ^ q - 2 ^ 0))) i)).
+  intros. rewrite sumfb_lt_gen with (n := n-q); try easy.
+  intros. rewrite fb_push_n_false; try easy.
+  remember (sumfb false (fbrev n r) (fb_push_n (n - q) (nat2fb (2 ^ q - 2 ^ 0)))) as gf.
+  assert (n-q < n) by lia.
+  specialize (fbrev_flip r gf (n-q) n H5 H4) as eq1.
+  rewrite <- eq1; try easy. assert (n - (n-q) = q) by lia. rewrite H6. easy.
+  rewrite H0. easy. easy.
+Qed. 
 
 Lemma sumfb_assoc : forall f g h n, 
           (forall i, i >= n -> f i = false) -> (forall i, i >= n -> g i = false) 

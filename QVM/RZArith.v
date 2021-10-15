@@ -3467,17 +3467,6 @@ Proof.
    easy. easy.
 Qed.
 
-Lemma carry_cut_n : forall m n b M g, n < m -> carry b n M g = carry b n (cut_n M m) g.
-Proof.
-  induction n;intros.
-  simpl. easy.
-  simpl.
-  rewrite <- IHn; try lia.
-  assert (cut_n M m n = M n).
-  unfold cut_n. bdestruct (n <? m). easy. lia.
-  rewrite H0. easy.
-Qed.
-
 Lemma put_cus_sumfb_cut : forall n f x b M g, put_cus f x (sumfb b M g) n = put_cus f x (sumfb b (cut_n M n) g) n.
 Proof.
  intros. unfold put_cus.
@@ -4130,17 +4119,6 @@ Proof.
    rewrite Heqh.
    rewrite put_cus_neq by lia.
    easy. easy.
-Qed.
-
-Lemma carry_cut_n_neg : forall m n b M g, n < m -> carry b n (negatem m M) g = carry b n (negatem m (cut_n M m)) g.
-Proof.
-  induction n;intros.
-  simpl. easy.
-  simpl.
-  rewrite <- IHn; try lia.
-  assert (negatem m (cut_n M m) n = negatem m M n).
-  unfold negatem,cut_n. bdestruct (n <? m). easy. lia.
-  rewrite H0. easy.
 Qed.
 
 Lemma put_cus_sumfb_neg_cut : forall n f x b M g, put_cus f x (sumfb b (negatem n M) g) n
