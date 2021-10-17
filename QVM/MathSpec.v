@@ -1461,7 +1461,28 @@ Proof.
   specialize (fbrev_flip r gf (n-q) n H4 H3) as eq1.
   rewrite <- eq1; try easy. assert (n - (n-q) = q) by lia. rewrite H5. easy.
   rewrite H0. easy. easy.
-Qed. 
+Qed.
+
+
+Lemma addto_cut_n : forall r q n, q <= n -> addto (cut_n r n) q = cut_n (addto r q) n.
+Proof.
+  intros.
+  unfold addto.
+  apply functional_extensionality; intro.
+  remember (sumfb false (cut_n (fbrev q (cut_n r n)) q) (nat2fb 1)) as gf.
+  remember ((sumfb false (cut_n (fbrev q r) q) (nat2fb 1))) as gg.
+  unfold cut_n,fbrev.
+  bdestruct (x <? q). bdestruct (x <? n).
+  subst.
+  rewrite cut_n_fbrev_flip.
+  assert ((cut_n (cut_n r n) q) = cut_n r q).
+  unfold cut_n.
+  apply functional_extensionality; intro.
+  bdestruct (x0 <? q). bdestruct (x0 <? n). easy. lia. easy.
+  rewrite H2.
+  rewrite <- cut_n_fbrev_flip. easy. lia. easy.
+Qed.
+
 
 Lemma nat2fb_pow_n : forall n x, nat2fb (2^n * x) = (fb_push_n n (nat2fb x)).
 Proof.

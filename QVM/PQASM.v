@@ -7762,10 +7762,22 @@ Proof.
   simpl. easy.
 Qed.
 
+Lemma turn_angle_cut_n : forall n m r, n <= m -> turn_angle (cut_n r m) n = turn_angle r n.
+Proof.
+  induction n;intros;simpl. easy.
+  rewrite IHn by lia.
+  assert (cut_n r m n = r n).
+  unfold cut_n. bdestruct (n <? m). easy. lia. rewrite H1. easy.
+Qed.
+
 Lemma turn_angle_add_same : forall n r q, q < n ->
        (2 * PI * turn_angle r n + rz_ang q)%R = (2 * PI *  turn_angle (rotate r q) n)%R.
 Proof.
-  intros. unfold rotate,addto.
+  intros. unfold rotate.
+  replace (turn_angle (addto r q) n) with 
+    (turn_angle (cut_n (addto r q) n) n) by (apply turn_angle_cut_n; try lia).
+  rewrite <- addto_cut_n by lia.
+  rewrite add_to_sem with (n := n); try lia.
 Admitted.
 
 Lemma turn_angle_add_r_same : forall n r q, q < n -> 
