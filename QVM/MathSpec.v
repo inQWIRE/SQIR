@@ -353,7 +353,7 @@ Proof.
 Qed.
 
 
-(* Here, we define the addto / addto_n functions for angle rotation. *)
+(* Here, we define the addto /  addto_n functions for angle rotation. *)
 Definition cut_n (f:nat -> bool) (n:nat) := fun i => if i <? n then f i else allfalse i.
  
 Definition fbrev' i n (f : nat -> bool) := fun (x : nat) => 
@@ -1110,13 +1110,30 @@ Proof.
  rewrite eq1. easy.
 Qed.
 
+Lemma pow2_neg_low_bit_false : forall n size i, i < n <= size -> nat2fb (2^size - 2^n) i = false.
+Proof.
+ intros. unfold nat2fb.
+ rewrite N2fb_Ntestbit.
+ replace (2 ^ n) with (1 * 2^n) by lia.
+ assert (2 ^ size = 2^((size-n) + n)).
+ assert (size - n + n = size) by lia. rewrite H0. easy.
+ rewrite H0. rewrite Nat.pow_add_r.
+ rewrite <- mult_minus_distr_r.
+ assert (N.of_nat i < N.of_nat n)%N.
+ lia.
+ specialize (N.mul_pow2_bits_low (N.of_nat (2 ^ (size - n) - 1)) (N.of_nat n) (N.of_nat i) H1) as eq1.
+ rewrite Nat2N.inj_mul.
+ rewrite Nofnat_pow. simpl.
+ easy.
+Qed.
+
 Local Transparent carry.
 Lemma carry_false_lt: forall n f g,
-    (forall i, i <= n -> g i = false) -> 
+    (forall i, i < n -> g i = false) -> 
     carry false n f g = false.
 Proof.
   induction n;intros.
-  simpl. easy.
+  simpl. easy. 
   simpl.
   rewrite IHn.
   rewrite H by lia. btauto.
@@ -1124,7 +1141,7 @@ Proof.
 Qed.
 
 
-Lemma low_bit_same : forall n x, 0 < n -> x < 2^n -> 
+Lemma low_bit_same : forall n x, 0 < n ->
     (forall i, i < n -> nat2fb (x + 2^n) i = nat2fb x i).
 Proof.
   intros.
@@ -1136,7 +1153,19 @@ Proof.
   apply pow2_low_bit_false. lia.
 Qed.
 
-Lemma carry_low_bit_same : forall m b n x g, m <= n -> 0 < n -> x < 2^n -> 
+Lemma low_bit_same_minus : forall n size x, 0 < n <= size ->
+    (forall i, i < n -> nat2fb (x + (2 ^ size - 2 ^ n)) i = nat2fb x i).
+Proof.
+  intros.
+  rewrite <- sumfb_correct_carry0.
+  unfold sumfb.
+  rewrite pow2_neg_low_bit_false by easy. bt_simpl.
+  rewrite carry_false_lt. btauto.
+  intros.
+  apply pow2_neg_low_bit_false. lia.
+Qed.
+
+Lemma carry_low_bit_same : forall m b n x g, m <= n -> 0 < n ->
     carry b m (nat2fb (x + 2^n)) g = carry b m (nat2fb x) g.
 Proof.
   induction m;intros. simpl. easy.
@@ -1166,7 +1195,7 @@ Proof.
   rewrite Ntestbit_lt_pow2n. easy.
   replace 2%N with (N.of_nat 2) by easy. rewrite <- Nofnat_pow. lia.
   rewrite H3. rewrite carry_low_bit_same. easy.
-  easy. lia. lia.
+  easy. lia.
 Qed.
 
 Local Opaque carry.
@@ -1461,7 +1490,46 @@ Proof.
   specialize (fbrev_flip r gf (n-q) n H4 H3) as eq1.
   rewrite <- eq1; try easy. assert (n - (n-q) = q) by lia. rewrite H5. easy.
   rewrite H0. easy. easy.
-Qed. 
+Qed.
+
+Lemma addto_cut_n : forall r q n, q <= n -> addto (cut_n r n) q = cut_n (addto r q) n.
+Proof.
+  intros.
+  unfold addto.
+  apply functional_extensionality; intro.
+  remember (sumfb false (cut_n (fbrev q (cut_n r n)) q) (nat2fb 1)) as gf.
+  remember ((sumfb false (cut_n (fbrev q r) q) (nat2fb 1))) as gg.
+  unfold cut_n,fbrev.
+  bdestruct (x <? q). bdestruct (x <? n).
+  subst.
+  rewrite cut_n_fbrev_flip.
+  assert ((cut_n (cut_n r n) q) = cut_n r q).
+  unfold cut_n.
+  apply functional_extensionality; intro.
+  bdestruct (x0 <? q). bdestruct (x0 <? n). easy. lia. easy.
+  rewrite H2.
+  rewrite <- cut_n_fbrev_flip. easy. lia. easy.
+Qed.
+
+Lemma addto_r_cut_n : forall r q n, q <= n -> addto_n (cut_n r n) q = cut_n (addto_n r q) n.
+Proof.
+  intros.
+  unfold addto_n.
+  apply functional_extensionality; intro.
+  remember (fbrev q (sumfb false (cut_n (fbrev q (cut_n r n)) q) (negatem q (nat2fb 0)))) as gf.
+  remember (fbrev q (sumfb false (cut_n (fbrev q r) q) (negatem q (nat2fb 0)))) as gg.
+  unfold cut_n,fbrev.
+  bdestruct (x <? q). bdestruct (x <? n).
+  subst.
+  rewrite cut_n_fbrev_flip.
+  assert ((cut_n (cut_n r n) q) = cut_n r q).
+  unfold cut_n.
+  apply functional_extensionality; intro.
+  bdestruct (x0 <? q). bdestruct (x0 <? n). easy. lia. easy.
+  rewrite H2.
+  rewrite <- cut_n_fbrev_flip. easy. lia. easy.
+Qed.
+
 
 Lemma nat2fb_pow_n : forall n x, nat2fb (2^n * x) = (fb_push_n n (nat2fb x)).
 Proof.
