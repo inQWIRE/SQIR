@@ -4427,10 +4427,13 @@ Definition exp_com_WF (vs:vars) (dim:nat) :=
 Definition exp_com_gt (vs:vars) (avs: nat -> posi) (dim:nat) :=
     forall i, i >= dim -> vsize vs (fst (avs i)) = 0.
 
-Fixpoint turn_angle (rval :nat -> bool) (n:nat) : R :=
+
+Fixpoint turn_angle_r (rval :nat -> bool) (n:nat) (size:nat) : R :=
    match n with 0 => (0:R)
-             | S m => (if (rval m) then (1/ (2^ n)) else (0:R)) + turn_angle rval m
+             | S m => (if (rval m) then (1/ (2^ (size - m))) else (0:R)) + turn_angle_r rval m size
    end.
+Definition turn_angle (rval:nat -> bool) (n:nat) : R :=
+      turn_angle_r (fbrev n rval) n n.
 
 Definition z_phase (b:bool) : R := if b then 1%R else (-1)%R.
 
@@ -4467,26 +4470,6 @@ Qed.
 
 Hint Resolve WF_trans_state_up : wf_db.
 
-(*
-Lemma trans_exp_cu : forall vs avs dim p e, 
-       (exists p1, e = X p1 /\ 
-             trans_exp vs dim (CU p e) avs = (SQIR.CNOT (find_pos vs p) (find_pos vs p1),vs,avs))
-    \/ (trans_exp vs dim (CU p e) avs = ((control (find_pos vs p) (fst (fst (trans_exp vs dim e avs))), vs, avs))).
-Proof.
-  intros.
-  simpl in *.
-  destruct e. right. easy.
-  left.
-  exists p0. easy.
-  right. destruct (trans_exp vs dim (CU p0 e) avs) eqn:eq1.
-  destruct p1. easy.
-  right. easy. right. easy. right. easy.
-  right. easy. right. easy. right. easy.
-  right. easy. right. easy. right. simpl.
-  destruct (trans_exp vs dim e1 avs) eqn:eq1. destruct p0.
-  destruct (trans_exp v dim e2 p1) eqn:eq2. destruct p0. simpl. easy.
-Qed.
-*)
 
 Lemma find_pos_prop : forall vs p1 p2, vars_start_diff vs -> vars_finite_bij vs ->
             vars_sparse vs ->
@@ -7762,7 +7745,54 @@ Proof.
   simpl. easy.
 Qed.
 
-Lemma turn_angle_cut_n : forall n m r, n <= m -> turn_angle (cut_n r m) n = turn_angle r n.
+Lemma rotate_sn_eq : forall n r, rotate r 1 (S n) = r (S n).
+Proof.
+  intros.
+  unfold rotate,addto.
+  bdestruct (S n <? 1). lia. easy.
+Qed.
+
+(*
+Lemma trans_angle_rot_1 : forall n r, 0 < n ->
+    Cexp (2 * PI * turn_angle (rotate r 1) n) = Cexp (2 * PI * ((1/2) + turn_angle r n)%R).
+Proof.
+  induction n;intros;simpl. lia.
+  destruct n.
+  simpl.
+  destruct (r 0) eqn:eq1.
+  rewrite rotate_1_1; try easy.
+  autorewrite with R_db. rewrite Cexp_0.
+  assert ((/ 2 + / 2)%R = 1%R).
+  lra. rewrite H1.
+  autorewrite with R_db.
+  rewrite Cexp_2PI. easy.
+  rewrite rotate_1_0; try easy.
+  repeat rewrite Rplus_0_r.
+  autorewrite with R_db. easy.
+  rewrite rotate_sn_eq.
+  destruct (r (S n)).
+  rewrite Rmult_plus_distr_l.
+  rewrite Cexp_add.
+  rewrite IHn; try easy.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rmult_plus_distr_l.
+  rewrite Cexp_add.
+  rewrite Cexp_add.
+  rewrite Cexp_add. lca. lia.
+  rewrite Rmult_plus_distr_l.
+  rewrite Cexp_add.
+  rewrite IHn; try easy.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rmult_plus_distr_l.
+  rewrite Cexp_add.
+  rewrite Cexp_add.
+  rewrite Cexp_add. lca. lia.
+Qed.
+*)
+
+Lemma turn_angle_r_cut_n : forall n m size r, n <= m <= size -> turn_angle_r (cut_n r m) n size = turn_angle_r r n size.
 Proof.
   induction n;intros;simpl. easy.
   rewrite IHn by lia.
@@ -7770,21 +7800,534 @@ Proof.
   unfold cut_n. bdestruct (n <? m). easy. lia. rewrite H1. easy.
 Qed.
 
-Lemma turn_angle_add_same : forall n r q, q < n ->
-       (2 * PI * turn_angle r n + rz_ang q)%R = (2 * PI *  turn_angle (rotate r q) n)%R.
+Lemma turn_angle_r_low_bit_same :
+       forall i q n r, i <= n - q < n -> (forall i, n <= i -> r i = false) -> 
+       turn_angle_r (fbrev n r) i n = turn_angle_r (fbrev n (rotate r q)) i n.
 Proof.
+  induction i ; intros; simpl.
+  easy.
+  assert (fbrev n r i = fbrev n (rotate r q) i).
+  unfold rotate.
+  rewrite add_to_sem with (n := n); try lia.
+  rewrite cut_n_fbrev_flip.
+  rewrite fbrev_twice_same.
+  specialize (f_num_0 (fbrev n r) n) as eq1.
+  destruct eq1.
+  assert (cut_n (fbrev n r) n = fbrev n r).
+  unfold cut_n,fbrev.
+  apply functional_extensionality; intro.
+  bdestruct (x0 <? n). easy.
+  rewrite H1. easy. lia.
+  rewrite H3 in H2. rewrite H2.
+  rewrite sumfb_correct_carry0.
+  unfold cut_n.
+  bdestruct (i <? n).
+  rewrite low_bit_same. easy. lia. lia. lia.
+  intros. rewrite H1. easy. lia.
+  rewrite H2.
+  rewrite IHi with (q := q); try easy. lia.
+Qed.
+
+Lemma turn_angle_r_false_0 : forall n size r, n <= size -> (forall i, i < n -> r i = false)
+               -> turn_angle_r r n size = 0%R.
+Proof.
+  induction n; intros; simpl. easy.
+  rewrite H1 by lia. rewrite IHn; try lia. lra.
+  intros. rewrite H1 by lia. easy.
+Qed.
+
+Lemma turn_angle_r_split :
+       forall n i r size, i <= n <= size ->
+       turn_angle_r r n size = (turn_angle_r r i size + turn_angle_r (fb_push_n i (shift r i)) n size)%R.
+Proof.
+  induction n; intros; simpl.
+  assert (i = 0) by lia. subst. simpl. lra.
+  bdestruct (i =? S n). subst.
+  simpl.
+  assert (fb_push false (fb_push_n n (shift r (S n))) = fb_push_n (S n) (shift r (S n))) by easy.
+  rewrite H1.
+  rewrite fb_push_n_false by lia.
+  rewrite turn_angle_r_false_0 with (r := (fb_push_n (S n) (shift r (S n)))); try lia.
+  rewrite Rplus_0_r.
+  rewrite Rplus_0_r.
+  easy.
+  intros.
+  rewrite fb_push_n_false. easy. lia.
+  rewrite IHn with (i := i); try lia.
+  assert (fb_push_n i (shift r i) n = r n).
+  assert (fb_push_n i (shift r i) n = fb_push_n i (shift r i) (i + (n-i))).
+  assert (i + (n-i) = n) by lia. rewrite H2. easy.
+  rewrite H2.
+  rewrite fb_push_nsame.
+  unfold shift.
+  assert ((n - i + i) = n) by lia.
+  rewrite H3. easy.
+  rewrite H2. lra.
+Qed.
+
+Lemma turn_angle_fb_push: forall n size r, n <= size
+       -> (turn_angle_r (fb_push false r) n size) = (2 * turn_angle_r r (n-1) size)%R.
+Proof.
+  induction n; intros; simpl. 
+  rewrite Rmult_0_r. easy.
+  rewrite IHn by lia.
+  assert ((n - 0) = n) by lia. rewrite H1.
+  destruct (n). simpl. lra.
+  assert ((S n0 - 1)  = n0) by lia. rewrite H2. simpl.
+  destruct (r n0) eqn:eq1.
+  assert ((size - n0) = S (size- S n0)) by lia.
+  rewrite H3.
+  remember (size - S n0) as q.
+  simpl. rewrite Rmult_plus_distr_l. autorewrite with R_db trig_db.
+  rewrite Rinv_mult_distr. lra. lra.
+  apply pow_nonzero. lra.
+  rewrite Rplus_0_l.
+  rewrite Rplus_0_l. easy.
+Qed.
+
+Lemma turn_angle_fb_push_n: forall m n size r, m <= n <= size
+       -> (turn_angle_r (fb_push_n m r) n size) = (2^m * turn_angle_r r (n-m) size)%R.
+Proof.
+  induction m; intros; simpl. 
+  replace (n - 0) with n by lia. rewrite Rmult_1_l. easy.
+  rewrite turn_angle_fb_push by lia.
+  rewrite IHm by lia.
+  assert ((n - 1 - m) = n - S m) by lia.
+  rewrite H1. lra.
+Qed.
+
+Lemma turn_angle_r_fun_same : forall n size f g, n <= size -> (forall i, i < n -> f i = g i) ->
+         turn_angle_r f n size = turn_angle_r g n size.
+Proof.
+  induction n; intros; simpl. easy.
+  rewrite H1. rewrite IHn with (g := g) ; try lia. easy.
+  intros. rewrite H1. easy. lia. lia.
+Qed.
+
+Lemma fb_push_shift_anti : forall n f, shift (fb_push_n n f) n = f.
+Proof.
+  induction n; intros; simpl.
+  rewrite shift_0. easy.
+  remember (fb_push false (fb_push_n n f)) as g.
+  assert (shift g (S n) = shift (shift g 1) n).
+  unfold shift.
+  apply functional_extensionality; intro.
+  assert (x + S n = x + n + 1) by lia. rewrite H0. easy.
+  rewrite H0. subst.
+  remember (fb_push_n n f) as g.
+  assert ((shift (fb_push false g) 1) = g).
+  apply functional_extensionality; intro.
+  unfold shift,fb_push.
+  destruct (x + 1) eqn:eq1. lia.
+  assert (x = n0) by lia. rewrite H1. easy.
+  rewrite H1. subst. rewrite IHn. easy.
+Qed.
+
+Lemma nat2fb_pow_shift_n : forall n x, nat2fb (x) = (shift (nat2fb (2^n * x)) n).
+Proof.
+  induction n;intros. simpl. 
+  rewrite plus_0_r.
+  rewrite shift_0. easy.
+  assert ((2 ^ S n * x) = 2 * (2^n * x)) by (simpl;lia).
+  rewrite H0.
+  rewrite <- times_two_correct.
+  rewrite IHn.
+  remember (times_two_spec (nat2fb (2 ^ n * x))) as g.
+  assert (shift g (S n) = shift (shift g 1) n).
+  unfold shift.
+  apply functional_extensionality; intro.
+  assert (x0 + S n = x0 + n + 1) by lia. rewrite H1. easy.
+  rewrite H1. subst.
+  assert ((shift (times_two_spec (nat2fb (2 ^ n * x))) 1) = (nat2fb (2 ^ n * x))).
+  unfold shift,times_two_spec.
+  apply functional_extensionality; intro.
+  bdestruct (x0 + 1 =? 0). lia.
+  assert ((x0 + 1 - 1) = x0) by lia. rewrite H3. easy.
+  rewrite H2. easy.
+Qed.
+
+Lemma turn_angle_r_bin : forall n size x, n <= size -> 
+      turn_angle_r (nat2fb x) n size = (1 / 2^size * INR (bindecomp n x))%R.
+Proof.
+  induction n;intros;simpl.
+  lra.
+  rewrite bindecomp_seq.
+  destruct (nat2fb x n) eqn:eq1. simpl.
+  rewrite plus_0_r.
+  rewrite IHn.
+  rewrite plus_INR.
+  rewrite Rmult_plus_distr_l.
+  rewrite pow_INR.
+  assert ((IZR (Zpos (xO xH))) = (INR (S (S O)))).
+  rewrite INR_IZR_INZ.
+  rewrite <- positive_nat_Z.
+  assert ((Pos.to_nat 2) = 2) by lia.
+  rewrite H1. easy.
+  rewrite <- H1.
+  autorewrite with R_db.
+  assert (size = (size - n) + n)%nat by lia.
+  assert (/ 2 ^ size * 2 ^ n  = / 2 ^ ((size - n) + n) * 2 ^ n)%R.
+  rewrite <- H2. easy. rewrite H3.
+  rewrite pow_add.
+  rewrite Rinv_mult_distr.
+  rewrite Rmult_assoc.
+  rewrite <- Rinv_l_sym. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra. lia.
+  simpl. rewrite plus_0_r. rewrite IHn. lra. lia.
+Qed.
+
+Lemma turn_angle_r_add_1_lt : forall n size x, 0 < n <= size -> x < 2^ n - 1 ->
+    (turn_angle_r (nat2fb x) n size + 1/(2^size))%R = turn_angle_r (nat2fb (x+1)) n size.
+Proof.
+  intros.
+  rewrite turn_angle_r_bin by lia.
+  rewrite turn_angle_r_bin by lia.
+  rewrite bindecomp_spec. rewrite bindecomp_spec.
+  rewrite Nat.mod_small by lia.
+  rewrite Nat.mod_small by lia.
+  rewrite plus_INR.
+  rewrite Rmult_plus_distr_l. simpl. lra.
+Qed.
+
+Lemma turn_angle_add_same : forall n r q, q <= n ->
+       Cexp (2 * PI * turn_angle r n + rz_ang q)
+            = Cexp (2 * PI *  turn_angle (rotate r q) n).
+Proof.
+  intros.
+  bdestruct (q =? 0). subst. unfold rotate,rz_ang. simpl. rewrite addto_0.
+  rewrite Cexp_add.
+  assert ((2 * PI / 1) = 2 * PI)%R by lra.
+  rewrite H1. rewrite Cexp_2PI. lca.
+  unfold turn_angle. 
+  rewrite <- turn_angle_r_cut_n with (m := n) by lia.
+  rewrite <- turn_angle_r_cut_n with (r := (fbrev n (rotate r q))) (m := n) by lia.
+  rewrite turn_angle_r_split with (i := n - q) ; try lia.
+  rewrite turn_angle_r_split with (r := (cut_n (fbrev n (rotate r q)) n)) (i := n - q) ; try lia.
+  assert (turn_angle_r (cut_n (fbrev n (rotate r q)) n) (n - q) n
+             = turn_angle_r (cut_n (fbrev n r) n) (n - q) n).
+  rewrite cut_n_fbrev_flip.
+  rewrite cut_n_fbrev_flip.
+  assert ((cut_n (rotate r q) n) = rotate (cut_n r n) q).
+  rewrite addto_cut_n by lia. easy.
+  rewrite H2.
+  rewrite <- turn_angle_r_low_bit_same; try lia. easy.
+  intros. unfold cut_n. bdestruct (i <? n). lia. easy.
+  rewrite H2.
+  unfold rz_ang.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rmult_plus_distr_l.
+  rewrite turn_angle_fb_push_n.
+  rewrite turn_angle_fb_push_n.
+  assert ((n - (n - q)) = q) by lia. rewrite H3.
+  assert (forall i, i < q -> (shift (cut_n (fbrev n (rotate r q)) n) (n - q)) i
+           = (cut_n (sumfb false (shift (cut_n (fbrev n r) n) (n-q)) (nat2fb 1)) n) i).
   intros. unfold rotate.
-  replace (turn_angle (addto r q) n) with 
-    (turn_angle (cut_n (addto r q) n) n) by (apply turn_angle_cut_n; try lia).
+  rewrite cut_n_fbrev_flip.
   rewrite <- addto_cut_n by lia.
   rewrite add_to_sem with (n := n); try lia.
-Admitted.
+  rewrite cut_n_fbrev_flip.
+  rewrite fbrev_twice_same.
+  rewrite <- cut_n_fbrev_flip.
+  rewrite <- f_twoton_eq.
+  unfold shift,cut_n.
+  bdestruct (i + (n - q) <? n). bdestruct (i <? n).
+  unfold sumfb.
+  assert (twoton_fun (n - q) (i + (n - q))  = nat2fb 1 i).
+  assert (1 = 2^0) by (simpl; easy).
+  rewrite H7.
+  rewrite <- f_twoton_eq.
+  unfold twoton_fun.
+  bdestruct (i + (n-q) <? n-q). bdestruct (i <? 0). easy. lia.
+  bdestruct (i <? 0). lia.
+  bdestruct (i + (n-q) =? n-q). bdestruct (i =? 0). easy. lia.
+  bdestruct (i =? 0). lia. easy.
+  rewrite H7.
+  assert (forall i, i + (n-q) = (n-q) + i) by lia. rewrite H8.
+  rewrite carry_add_index with (s := (fun i0 : nat =>
+    if i0 + (n - q) <? n
+         then fbrev n r (i0 + (n - q)) else allfalse (i0 + (n - q)))) (t := nat2fb 1); try easy.
+  rewrite carry_twoton_less. easy. lia.
+  intros. rewrite H8. easy.
+  intros.
+  assert (1 = 2^0) by (simpl; easy).
+  rewrite H10.
+  rewrite <- f_twoton_eq.
+  unfold twoton_fun.
+  bdestruct (n - q + i0 <? n-q). bdestruct (i0 <? 0). easy. lia.
+  bdestruct (i0 <? 0). lia.
+  bdestruct (n - q + i0  =? n-q). bdestruct (i0 =? 0). easy. lia.
+  bdestruct (i0 =? 0). lia. easy. lia. lia.
+  intros. unfold cut_n.
+  bdestruct (i0 <? n). lia. easy.
+  rewrite turn_angle_r_fun_same with (f := (shift (cut_n (fbrev n (rotate r q)) n) (n - q)))
+    (g := cut_n (sumfb false (shift (cut_n (fbrev n r) n) (n - q)) (nat2fb 1)) n); try easy.
+  remember ((shift (cut_n (fbrev n r) n) (n - q)) ) as g.
+  rewrite turn_angle_r_cut_n with (r := (sumfb false g (nat2fb 1))) by lia.
+  assert (g = cut_n g q).
+  subst.
+  unfold shift,cut_n.
+  apply functional_extensionality; intro.
+  bdestruct (x + (n-q) <? n). bdestruct (x <? q). easy. lia.
+  bdestruct (x <? q). lia. easy.
+  rewrite H5.
+  specialize (f_num_0 g q) as eq1.
+  destruct eq1. rewrite H6.
+  rewrite sumfb_correct_carry0.
+  bdestruct (x <? 2^ q - 1).
+  rewrite <- turn_angle_r_add_1_lt ; try lia.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rmult_plus_distr_l.
+  autorewrite with R_db.
+  assert ((2 ^ (n - q) * / 2 ^ n)= / 2 ^ q)%R.
+  assert (n = (n-q) + q) by lia.
+  assert (2 ^ n = 2^((n-q)+q))%R. rewrite <- H8. easy.
+  rewrite H9.
+  rewrite pow_add.
+  rewrite Rinv_mult_distr.
+  rewrite <- Rmult_assoc.
+  rewrite Rinv_r. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  rewrite H8.
+  rewrite Rplus_assoc. easy.
+  apply f_num_small in H6.
+  assert (x = 2^q - 1) by lia. subst.
+  assert ( (2 ^ q - 1 + 1)  = 2^q) by lia.
+  rewrite H8.
+  rewrite turn_angle_r_bin by lia.
+  rewrite turn_angle_r_bin by lia.
+  rewrite bindecomp_spec.
+  rewrite bindecomp_spec.
+  rewrite Nat.mod_same.
+  simpl.
+  repeat rewrite Rmult_0_r.
+  rewrite Rplus_0_r.
+  rewrite Nat.mod_small by lia.
+  rewrite minus_INR.
+  assert ((2 ^ (n - q) * (1 / 2 ^ n * (INR (2 ^ q) - INR 1))) = / 2^q * (INR (2 ^ q) - INR 1))%R.
+  rewrite <- Rmult_assoc.
+  assert (n = n-q + q) by lia.
+  assert ((1 / 2 ^ n) = 1 / 2^(n-q+q))%R. rewrite <- H9. easy.
+  rewrite H10.
+  autorewrite with R_db.
+  rewrite pow_add.
+  rewrite Rinv_mult_distr.
+  rewrite <- Rmult_assoc.
+  rewrite Rinv_r. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  rewrite H9.
+  autorewrite with R_db.
+  rewrite Rplus_assoc.
+  rewrite Cexp_add.
+  rewrite <- Rmult_plus_distr_l.
+  assert ((/ 2 ^ q * (INR (2 ^ q) + - INR 1) + / 2 ^ q) =
+          (/ 2 ^ q * (INR (2 ^ q) + - INR 1) + / 2 ^ q * INR 1))%R.
+  simpl. lra. rewrite H10.
+  rewrite <- Rmult_plus_distr_l. simpl.
+  assert ((INR (2 ^ q) + - (1) + 1) = INR (2^q))%R by lra.
+  rewrite H11.
+  rewrite pow_INR.
+  assert ((IZR (Zpos (xO xH))) = (INR (S (S O)))).
+  rewrite INR_IZR_INZ.
+  rewrite <- positive_nat_Z.
+  assert ((Pos.to_nat 2) = 2) by lia.
+  rewrite H12. easy.
+  rewrite <- H12.
+  rewrite Rinv_l.
+  rewrite Rmult_1_r.
+  rewrite Cexp_2PI. lca.
+  apply pow_nonzero. lra.
+  assert (2 ^ q <> 0)%R.
+  apply pow_nonzero. lra. lia.
+  apply Nat.pow_nonzero. lia. lia. lia.
+Qed.
+
+Lemma turn_angle_r_low_bit_same_r :
+       forall i q n r, i <= n - q < n -> (forall i, n <= i -> r i = false) -> 
+       turn_angle_r (fbrev n r) i n = turn_angle_r (fbrev n (r_rotate r q)) i n.
+Proof.
+  induction i ; intros; simpl.
+  easy.
+  assert (fbrev n r i = fbrev n (r_rotate r q) i).
+  unfold r_rotate.
+  rewrite add_to_n_sem with (n := n); try lia.
+  rewrite cut_n_fbrev_flip.
+  rewrite fbrev_twice_same.
+  specialize (f_num_0 (fbrev n r) n) as eq1.
+  destruct eq1.
+  assert (cut_n (fbrev n r) n = fbrev n r).
+  unfold cut_n,fbrev.
+  apply functional_extensionality; intro.
+  bdestruct (x0 <? n). easy.
+  rewrite H1. easy. lia.
+  rewrite H3 in H2. rewrite H2.
+  rewrite sumfb_correct_carry0.
+  unfold cut_n.
+  bdestruct (i <? n).
+  rewrite low_bit_same_minus. easy. lia. lia. lia.
+  intros. rewrite H1. easy. lia.
+  rewrite H2.
+  rewrite IHi with (q := q); try easy. lia.
+Qed.
 
 Lemma turn_angle_add_r_same : forall n r q, q < n -> 
-          (2 * PI * turn_angle r n + rrz_ang q)%R = (2 * PI *  turn_angle (r_rotate r q) n)%R.
+          Cexp (2 * PI * turn_angle r n + rrz_ang q) = Cexp (2 * PI *  turn_angle (r_rotate r q) n).
 Proof.
-
-Admitted.
+  intros.
+  bdestruct (q =? 0). subst. unfold r_rotate,rrz_ang. simpl. rewrite addto_n_0.
+  rewrite Cexp_add.
+  assert ((2 * PI - 2 * PI / 1) = 0)%R by lra.
+  rewrite H1. rewrite Cexp_0. lca.
+  unfold turn_angle. 
+  rewrite <- turn_angle_r_cut_n with (m := n) by lia.
+  rewrite <- turn_angle_r_cut_n with (r := (fbrev n (r_rotate r q))) (m := n) by lia.
+  rewrite turn_angle_r_split with (i := n - q) ; try lia.
+  rewrite turn_angle_r_split with (r := (cut_n (fbrev n (r_rotate r q)) n)) (i := n - q) ; try lia.
+  assert (turn_angle_r (cut_n (fbrev n (r_rotate r q)) n) (n - q) n
+             = turn_angle_r (cut_n (fbrev n r) n) (n - q) n).
+  rewrite cut_n_fbrev_flip.
+  rewrite cut_n_fbrev_flip.
+  assert ((cut_n (r_rotate r q) n) = r_rotate (cut_n r n) q).
+  rewrite addto_r_cut_n by lia. easy.
+  rewrite H2.
+  rewrite <- turn_angle_r_low_bit_same_r; try lia. easy.
+  intros. unfold cut_n. bdestruct (i <? n). lia. easy.
+  rewrite H2.
+  unfold rrz_ang.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rmult_plus_distr_l.
+  rewrite turn_angle_fb_push_n.
+  rewrite turn_angle_fb_push_n.
+  assert ((n - (n - q)) = q) by lia. rewrite H3.
+  assert (forall i, i < q -> (shift (cut_n (fbrev n (r_rotate r q)) n) (n - q)) i
+           = (cut_n (sumfb false (shift (cut_n (fbrev n r) n) (n-q)) (nat2fb (2^q - 1))) n) i).
+  intros. unfold r_rotate.
+  rewrite cut_n_fbrev_flip.
+  rewrite <- addto_r_cut_n by lia.
+  rewrite add_to_n_sem with (n := n); try lia.
+  rewrite cut_n_fbrev_flip.
+  rewrite fbrev_twice_same.
+  rewrite <- cut_n_fbrev_flip.
+  assert ((2 ^ n - 2 ^ (n - q)) = 2^(n-q) * (2^q - 1)).
+  assert (2^n = 2^(n-q + q)).
+  assert (n=n-q+q) by lia. rewrite <- H5. easy.
+  rewrite H5.
+  rewrite Nat.pow_add_r.
+  rewrite mult_minus_distr_l. lia.
+  rewrite H5.
+  rewrite nat2fb_pow_n.
+  remember (cut_n (fbrev n r) n) as g.
+  unfold shift,cut_n.
+  bdestruct (i + (n - q) <? n). bdestruct (i <? n).
+  unfold sumfb.
+  replace (i + (n - q)) with ((n-q) + i) by lia.
+  rewrite fb_push_nsame.
+  rewrite carry_add_index with (s := 
+    (fun i0 : nat => g (i0 + (n - q)))) (t := (nat2fb (2 ^ q - 1))); try easy.
+  rewrite carry_false_lt; try easy.
+  intros.
+  rewrite fb_push_n_false. easy. lia.
+  intros.
+  assert ((i0 + (n - q))  = n-q+i0) by lia. rewrite H9. easy.
+  intros. rewrite fb_push_nsame. easy.
+  lia. lia.
+  intros.
+  unfold cut_n. bdestruct (i0 <? n). lia. easy.
+  rewrite turn_angle_r_fun_same with (f := (shift (cut_n (fbrev n (r_rotate r q)) n) (n - q)))
+    (g := cut_n (sumfb false (shift (cut_n (fbrev n r) n) (n - q)) (nat2fb (2 ^ q - 1))) n); try easy.
+  remember ((shift (cut_n (fbrev n r) n) (n - q)) ) as g.
+  rewrite turn_angle_r_cut_n with (r := (sumfb false g (nat2fb (2 ^ q - 1)))) by lia.
+  assert (g = cut_n g q).
+  subst.
+  unfold shift,cut_n.
+  apply functional_extensionality; intro.
+  bdestruct (x + (n-q) <? n). bdestruct (x <? q). easy. lia.
+  bdestruct (x <? q). lia. easy.
+  rewrite H5.
+  specialize (f_num_0 g q) as eq1.
+  destruct eq1. rewrite H6.
+  rewrite sumfb_correct_carry0.
+  bdestruct (x =? 0). rewrite H7 in *.
+  rewrite nat2fb_0.
+  rewrite turn_angle_r_false_0 with (r := allfalse); try lia.
+  rewrite plus_0_l. rewrite Rmult_0_r. rewrite Rmult_0_r.
+  rewrite Rplus_0_r.
+  rewrite turn_angle_r_bin by lia.
+  rewrite bindecomp_spec.
+  assert (2^q <> 0).
+  apply Nat.pow_nonzero. lia.
+  rewrite Nat.mod_small by lia.
+  rewrite minus_INR. simpl.
+  rewrite Rmult_minus_distr_l.
+  rewrite Rmult_minus_distr_l.
+  rewrite Rmult_minus_distr_l.
+  rewrite Rmult_1_r.
+  rewrite pow_INR.
+  assert ((IZR (Zpos (xO xH))) = (INR (S (S O)))).
+  rewrite INR_IZR_INZ.
+  rewrite <- positive_nat_Z.
+  assert ((Pos.to_nat 2) = 2) by lia.
+  rewrite H9. easy.
+  rewrite <- H9.
+  rewrite <- (Rmult_assoc (2 ^ (n - q))).
+  assert (2 ^ (n - q) * (1 / 2 ^ n) = / 2^ q)%R.
+  assert (n = (n-q) + q) by lia.
+  assert (2 ^ n = 2^((n-q)+q))%R. rewrite <- H10. easy.
+  rewrite H11.
+  rewrite pow_add.
+  autorewrite with R_db.
+  rewrite Rinv_mult_distr.
+  rewrite <- Rmult_assoc.
+  rewrite Rinv_r. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  rewrite H10.
+  rewrite Rinv_l.
+  autorewrite with R_db. easy.
+  apply pow_nonzero. lra. lia.
+  intros. easy.
+  assert (2^q <> 0).
+  apply Nat.pow_nonzero. lia.
+  assert ((x + (2 ^ q - 1)) = x-1+2^q) by lia.
+  rewrite H9.
+  rewrite turn_angle_r_fun_same with
+      (f := (nat2fb (x - 1 + 2 ^ q))) (g := (nat2fb (x - 1))); try lia.
+  assert (nat2fb x = nat2fb (x - 1 + 1)).
+  assert (x = x-1+1) by lia. rewrite <- H10. easy.
+  rewrite H10.
+  rewrite <- turn_angle_r_add_1_lt ; try lia.
+  rewrite Rmult_plus_distr_l.
+  rewrite Rmult_plus_distr_l.
+  autorewrite with R_db.
+  assert ((2 ^ (n - q) * / 2 ^ n)= / 2 ^ q)%R.
+  assert (n = (n-q) + q) by lia.
+  assert (2 ^ n = 2^((n-q)+q))%R. rewrite <- H11. easy.
+  rewrite H12.
+  rewrite pow_add.
+  rewrite Rinv_mult_distr.
+  rewrite <- Rmult_assoc.
+  rewrite Rinv_r. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  rewrite H11.
+  rewrite Rplus_assoc.
+  rewrite Rplus_assoc.
+  rewrite (Rplus_comm (2 * PI * / 2 ^ q)).
+  rewrite (Rplus_assoc (2 * PI)).
+  assert ((- (2 * PI * / 2 ^ q) + 2 * PI * / 2 ^ q) = 0)%R by lra.
+  rewrite H12. rewrite Rplus_0_r.
+  rewrite <- Rplus_assoc.
+  rewrite Cexp_add. rewrite Cexp_2PI. lca.
+  apply f_num_small in H6. lia.
+  apply low_bit_same. 1-4:lia.
+Qed.
 
 Lemma Z_0_bit : σz × ∣0⟩ = ∣0⟩.
 Proof.
@@ -7821,7 +8364,7 @@ Proof.
       rewrite phase_shift_on_basis_state. simpl.
       distribute_scale.
       rewrite <- Cexp_add. rewrite Rmult_1_l.
-      rewrite turn_angle_add_same. easy. easy.
+      rewrite turn_angle_add_same. easy. lia.
 Qed.
 
 Lemma rrz_ang_trans_sem : forall vs dim avs tenv q rmax f p size, 
@@ -7968,61 +8511,126 @@ Fixpoint lshift_fun_gen (g : nat -> bool) (i n:nat) :=
 
 Lemma turn_angle_0 : forall rmax, turn_angle allfalse rmax = 0%R.
 Proof.
-  induction rmax; intros;simpl. easy.
-  rewrite IHrmax. lra.
+  intros. unfold turn_angle.
+  assert (forall n, rmax <= n -> turn_angle_r (fbrev n allfalse) rmax n = 0%R).
+  induction rmax;intros;simpl. easy.
+  rewrite IHrmax by lia.
+  unfold fbrev. bdestruct (rmax <? n). simpl. lra. simpl. lra.
+  rewrite H0. easy. lia.
 Qed.
 
 Lemma turn_angle_1 : forall rmax, 0 < rmax -> turn_angle (update allfalse 0 true) rmax = (1/ 2)%R.
 Proof.
-  induction rmax;intros;simpl. lia.
-  destruct rmax.
-  rewrite update_index_eq.
-  rewrite pow_O.
-  simpl. lra.
-  assert (0 < S rmax) by lia.
-  apply IHrmax in H1.
-  rewrite update_index_neq by lia.
-  rewrite H1. simpl. lra.
+  intros. unfold turn_angle.
+  rewrite turn_angle_r_fun_same with (g := update allfalse (rmax - 1) true) ; try lia.
+  assert (forall n, rmax <= n -> turn_angle_r (update allfalse (n - 1) true) rmax n = (if rmax <? n then 0%R else (1/2)%R)).
+  induction rmax;intros;simpl. lia. 
+  bdestruct (rmax =? 0). subst. simpl.
+  bdestruct (1 <? n). rewrite update_index_neq by lia. simpl. lra.
+  assert (n = 1) by lia. rewrite H3.
+  simpl. rewrite Rmult_1_r. lra.
+  rewrite IHrmax.
+  bdestruct (rmax =? n-1). subst. rewrite update_index_eq.
+  bdestruct (n-1<?n).
+  assert ((n - (n - 1)) = 1) by lia. rewrite H4. simpl.
+  rewrite Rmult_1_r.
+  bdestruct (S (n-1) <? n). lia. lra. lia.
+  bdestruct (rmax <? n).
+  rewrite update_index_neq by lia. simpl.
+  bdestruct (S rmax <? n). lra. 1-4:lia.
+  rewrite H1. bdestruct (rmax <? rmax). lia. easy. lia.
+  intros. unfold fbrev. bdestruct (i <? rmax). 
+  bdestruct (i =? rmax-1). subst.
+  replace ((rmax - 1 - (rmax - 1))) with 0 by lia.
+  repeat rewrite update_index_eq. easy.
+  repeat rewrite update_index_neq by lia. easy. lia.
 Qed.
 
 Lemma turn_angle_update_0 : forall rmax (g:nat->bool) i b,
       0 < rmax -> g i = b -> turn_angle (update allfalse 0 (g i)) rmax = (if b then (1/2)%R else 0%R).
 Proof.
-  induction rmax; intros;simpl.
-  lia. 
-  bdestruct (rmax =? 0). subst.
-  simpl. rewrite update_index_eq. destruct (g i). lra. lra.
-  rewrite update_index_neq by lia. simpl.
-  rewrite IHrmax with (b := b); try easy. destruct b. lra. lra. lia.
+  intros.
+  unfold turn_angle. subst.
+  destruct (g i).
+  rewrite <- turn_angle_1 with (rmax := rmax). unfold turn_angle. easy. lia.
+  rewrite turn_angle_r_fun_same with (g := (fbrev rmax allfalse)) ; try lia.
+  rewrite <- turn_angle_0 with (rmax := rmax); try easy.
+  intros. unfold fbrev. bdestruct (i0 <? rmax).
+  bdestruct (rmax - 1 -i0 =? 0). rewrite H3.
+  rewrite update_index_eq. easy.
+  rewrite update_index_neq by lia. easy. lia.
 Qed.
 
 Lemma turn_angle_ge: forall n m f, n <= m -> turn_angle (update f m true) n = turn_angle f n.
 Proof.
- induction n; intros; simpl. easy.
- rewrite update_index_neq by lia.
- rewrite IHn by lia. easy.
+  intros. unfold turn_angle.
+  rewrite turn_angle_r_fun_same with (g := fbrev n f) ; try lia. easy.
+  intros. unfold fbrev.
+  bdestruct (i <? n). rewrite update_index_neq by lia. easy. lia.
 Qed.
+
 
 Lemma turn_angle_out: forall n f i j, i <= j -> S j < n -> 
      (forall t, i <= t -> f t = false) ->
     (turn_angle f n + / 2^(S j))%R = turn_angle (update f j true) n.
 Proof.
-  induction n; intros;simpl. lia.
-  bdestruct (S j =? n).
-  rewrite <- H3. simpl.
-  specialize (H2 (S j)) as eq1. assert (i <= S j) by lia. apply eq1 in H4.
-  specialize (H2 j) as eq2. assert (i <= j) by lia. apply eq2 in H5.
-  destruct (f (S j)) eqn:eq3. easy.
-  destruct (f j) eqn:eq4. easy.
-  rewrite update_index_neq by lia. rewrite eq3.
-  rewrite update_index_eq.
-  rewrite turn_angle_ge by lia. lra.
-  specialize  (H2 n) as eq1.
-  assert (i <= n) by lia. apply eq1 in H4. clear eq1.
-  destruct (f n) eqn:eq1. easy.
-  rewrite update_index_neq by lia. rewrite eq1.
-  rewrite <- IHn with (i := i) ; try easy.
-  simpl. lra. lia.
+  intros. unfold turn_angle.
+  rewrite (turn_angle_r_split n (n-i)) by lia.
+  rewrite (turn_angle_r_split n (n-i) (fbrev n (update f j true))) by lia.
+  rewrite turn_angle_r_false_0.
+  rewrite turn_angle_r_fun_same with (f := (fb_push_n (n - i) (shift (fbrev n f) (n - i))))
+             (g := (fb_push_n (n - i) (shift (fbrev n (update f j true)) (n - i)))) ; try lia.
+  rewrite turn_angle_r_fun_same with (f := (fbrev n (update f j true))) (g := twoton_fun (n-1-j)) ; try lia.
+  rewrite f_twoton_eq. rewrite turn_angle_r_bin by lia.
+  rewrite bindecomp_spec.
+  rewrite Nat.mod_small.
+  assert ((1 / 2 ^ n * INR (2 ^ (n - 1 - j)) = /2^ S j)%R).
+  autorewrite with R_db.
+  assert (n = (n - 1 - j) + S j)%nat by lia.
+  assert (/ 2 ^ n = / 2 ^ (n - 1 - j + S j))%R.
+  rewrite <- H3. easy. rewrite H4.
+  rewrite pow_add.
+  rewrite pow_INR.
+  assert ((IZR (Zpos (xO xH))) = (INR (S (S O)))).
+  rewrite INR_IZR_INZ.
+  rewrite <- positive_nat_Z.
+  assert ((Pos.to_nat 2) = 2) by lia.
+  rewrite H5. easy. rewrite <- H5.
+  rewrite Rinv_mult_distr.
+  rewrite Rmult_comm.
+  rewrite <- Rmult_assoc.
+  rewrite Rinv_r. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  apply pow_nonzero. lra.
+  rewrite H3. lra.
+  apply Nat.pow_lt_mono_r; try lia.
+  intros.
+  unfold fbrev,twoton_fun.
+  bdestruct (i0 <? n).
+  bdestruct (i0 <? n- 1 - j).
+  rewrite update_index_neq by lia. rewrite H2. easy. lia.
+  bdestruct (i0 =? n - 1 - j).
+  subst. assert ((n - 1 - (n - 1 - j)) = j) by lia.
+  rewrite H6. rewrite update_index_eq. easy.
+  rewrite update_index_neq by lia.
+  rewrite H2. easy. lia.
+  lia.
+  intros.
+  bdestruct (i0 <? n-i).
+  repeat rewrite fb_push_n_false by lia. easy.
+  assert (i0 = (n-i) + (i0 - (n-i))) by lia.
+  rewrite H5.
+  repeat rewrite fb_push_nsame.
+  unfold shift.
+  assert ((i0 - (n - i) + (n - i)) = i0) by lia.
+  rewrite H6.
+  unfold fbrev.
+  bdestruct (i0 <? n).
+  rewrite update_index_neq by lia. easy. lia. lia.
+  intros. unfold fbrev.
+  bdestruct (i0 <? n).
+  rewrite H2. easy. lia. lia.
 Qed.
 
 Lemma lshift_fun_gen_lt : forall n m i g, i < n -> lshift_fun_gen g m n i = g (m + i).
@@ -8364,52 +8972,6 @@ Proof.
   assert ((size - S n + x) = (x + (size - S n))) by lia. rewrite H5. easy.
 Qed.
 
-Lemma rotate_sn_eq : forall n r, rotate r 1 (S n) = r (S n).
-Proof.
-  intros.
-  unfold rotate,addto.
-  bdestruct (S n <? 1). lia. easy.
-Qed.
-
-
-Lemma trans_angle_rot_1 : forall n r, 0 < n ->
-    Cexp (2 * PI * turn_angle (rotate r 1) n) = Cexp (2 * PI * ((1/2) + turn_angle r n)%R).
-Proof.
-  induction n;intros;simpl. lia.
-  destruct n.
-  simpl.
-  destruct (r 0) eqn:eq1.
-  rewrite rotate_1_1; try easy.
-  autorewrite with R_db. rewrite Cexp_0.
-  assert ((/ 2 + / 2)%R = 1%R).
-  lra. rewrite H1.
-  autorewrite with R_db.
-  rewrite Cexp_2PI. easy.
-  rewrite rotate_1_0; try easy.
-  repeat rewrite Rplus_0_r.
-  autorewrite with R_db. easy.
-  rewrite rotate_sn_eq.
-  destruct (r (S n)).
-  rewrite Rmult_plus_distr_l.
-  rewrite Cexp_add.
-  rewrite IHn; try easy.
-  rewrite Rmult_plus_distr_l.
-  rewrite Rmult_plus_distr_l.
-  rewrite Rmult_plus_distr_l.
-  rewrite Cexp_add.
-  rewrite Cexp_add.
-  rewrite Cexp_add. lca. lia.
-  rewrite Rmult_plus_distr_l.
-  rewrite Cexp_add.
-  rewrite IHn; try easy.
-  rewrite Rmult_plus_distr_l.
-  rewrite Rmult_plus_distr_l.
-  rewrite Rmult_plus_distr_l.
-  rewrite Cexp_add.
-  rewrite Cexp_add.
-  rewrite Cexp_add. lca. lia.
-Qed.
-
 Lemma gen_qft_gate_eval : forall n f g vs avs dim rmax x, 
     n <= (size_env vs x) -> 0 < (size_env vs x) ->
     exp_com_WF vs dim -> nor_modes f x (size_env vs x) ->
@@ -8467,12 +9029,11 @@ Proof.
   rewrite H_spec.
   unfold z_phase. destruct b.
   simpl.
-  rewrite trans_angle_rot_1; try easy.
-  rewrite Rmult_plus_distr_l.
+  rewrite <- turn_angle_add_same; try easy.
+  unfold rz_ang.
   rewrite Cexp_add.
-  assert ((2 * PI * (1 / 2))%R = PI)%R by lra.
+  assert ((2 * PI / 2 ^ 1) = PI)%R by lra.
   rewrite H13. rewrite Cexp_PI.
-  rewrite (Cmult_comm (-1)%R (Cexp (2 * PI * turn_angle r rmax))).
   rewrite Cmult_assoc.
   rewrite <- Mscale_assoc with (y := (RtoC (-1)%R)). 
   rewrite Mscale_plus_distr_r with (x := (RtoC (-1)%R)).
@@ -8485,13 +9046,11 @@ Proof.
   rewrite Mscale_assoc.
   rewrite Cmult_comm.
   autorewrite with R_db C_db ket_db RtoC_db. easy. lia.
-  Check trans_angle_rot_1.
-  rewrite trans_angle_rot_1; try easy.
-  rewrite Rmult_plus_distr_l.
+  rewrite <- turn_angle_add_same; try easy.
+  unfold rz_ang.
   rewrite Cexp_add.
-  assert ((2 * PI * (1 / 2))%R = PI)%R by lra.
+  assert ((2 * PI / 2 ^ 1) = PI)%R by lra.
   rewrite H13. rewrite Cexp_PI. simpl.
-  rewrite (Cmult_comm (-1)%R (Cexp (2 * PI * turn_angle r rmax))).
   rewrite Cmult_assoc.
   rewrite <- Mscale_assoc with (y := (RtoC (-1)%R)). 
   rewrite Mscale_plus_distr_r with (x := (RtoC (-1)%R)).
@@ -8589,12 +9148,11 @@ Proof.
   rewrite H_spec.
   unfold z_phase. destruct b.
   simpl.
-  rewrite trans_angle_rot_1; try easy.
-  rewrite Rmult_plus_distr_l.
+  rewrite <- turn_angle_add_same; try easy.
+  unfold rz_ang.
   rewrite Cexp_add.
-  assert ((2 * PI * (1 / 2))%R = PI)%R by lra.
+  assert ((2 * PI / 2 ^ 1) = PI)%R by lra.
   rewrite H13. rewrite Cexp_PI.
-  rewrite (Cmult_comm (-1)%R (Cexp (2 * PI * turn_angle r rmax))).
   rewrite Cmult_assoc.
   rewrite <- Mscale_assoc with (y := (RtoC (-1)%R)). 
   rewrite Mscale_plus_distr_r with (x := (RtoC (-1)%R)).
@@ -8607,12 +9165,11 @@ Proof.
   rewrite Mscale_assoc.
   rewrite Cmult_comm.
   autorewrite with R_db C_db ket_db RtoC_db. easy.
-  rewrite trans_angle_rot_1; try easy.
-  rewrite Rmult_plus_distr_l.
+  rewrite <- turn_angle_add_same; try easy.
+  unfold rz_ang.
   rewrite Cexp_add.
-  assert ((2 * PI * (1 / 2))%R = PI)%R by lra.
+  assert ((2 * PI / 2 ^ 1) = PI)%R by lra.
   rewrite H13. rewrite Cexp_PI. simpl.
-  rewrite (Cmult_comm (-1)%R (Cexp (2 * PI * turn_angle r rmax))).
   rewrite Cmult_assoc.
   rewrite <- Mscale_assoc with (y := (RtoC (-1)%R)). 
   rewrite Mscale_plus_distr_r with (x := (RtoC (-1)%R)).
@@ -8725,11 +9282,12 @@ Proof.
   assert (((- / 2)%R * Cexp (2 * PI * turn_angle r rmax) +
     (- / 2)%R * Cexp (2 * PI * turn_angle r rmax))%C  = ((-1)%R * Cexp (2 * PI * turn_angle r rmax))%C) by lca.
   rewrite H15.
-  rewrite trans_angle_rot_1 by easy.
-  rewrite Rmult_plus_distr_l.
+  rewrite <- turn_angle_add_same; try easy.
+  unfold rz_ang.
   rewrite Cexp_add.
-  assert ((2 * PI * (1 / 2))%R = PI) by lra.
-  rewrite H16. rewrite Cexp_PI. easy.
+  assert ((2 * PI / 2 ^ 1) = PI)%R by lra.
+  rewrite H16. rewrite Cexp_PI.
+  rewrite Cmult_comm. easy.
   unfold z_phase. simpl.
   distribute_scale.
   autorewrite with ket_db eval_db RtoC_db.
@@ -8754,11 +9312,12 @@ Proof.
   assert ((((-1 * / 2)%R * Cexp (2 * PI * turn_angle r rmax) +
  (-1 * / 2)%R * Cexp (2 * PI * turn_angle r rmax)))%C  = ((-1)%R * Cexp (2 * PI * turn_angle r rmax))%C) by lca.
   rewrite H14.
-  rewrite trans_angle_rot_1 by easy.
-  rewrite Rmult_plus_distr_l.
+  rewrite <- turn_angle_add_same; try easy.
+  unfold rz_ang.
   rewrite Cexp_add.
-  assert ((2 * PI * (1 / 2))%R = PI) by lra.
-  rewrite H15. rewrite Cexp_PI. easy. lia.
+  assert ((2 * PI / 2 ^ 1) = PI)%R by lra.
+  rewrite H15. rewrite Cexp_PI.
+  rewrite Cmult_comm. easy. lia.
   rewrite H11. easy.
   apply H2. simpl. unfold size_env in *. lia.
   apply vs_avs_bij_l with (dim := dim); try easy.
@@ -8893,7 +9452,7 @@ Proof.
       rewrite phase_shift_on_basis_state.
       distribute_scale.
       rewrite <- Cexp_add. simpl. rewrite Rmult_1_l.
-      inv H10. rewrite turn_angle_add_same. easy. easy.
+      inv H10. rewrite turn_angle_add_same. easy. lia.
       unfold compile_val.
       distribute_scale.
       rewrite phase_shift_on_basis_state.
