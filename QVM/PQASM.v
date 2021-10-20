@@ -1863,6 +1863,7 @@ Proof.
   simpl in *. apply H1. easy. easy.
 Qed.
 
+(* Type Soundness theorem. *)
 Lemma well_typed_right_mode_pexp : forall e aenv tenv tenv' f, 
         well_typed_pexp aenv tenv e tenv'
           -> right_mode_env aenv tenv f -> right_mode_env aenv tenv' (exp_sem aenv e f).
@@ -2094,6 +2095,7 @@ Proof.
   left. apply IHe1. easy.
 Qed.
 
+(* Type Soundness on the inverse operations. *)
 Lemma typed_inv_pexp :
   forall p aenv tenv tenv',
     well_typed_pexp aenv tenv p tenv' ->
@@ -2736,6 +2738,7 @@ Proof.
  rewrite IHn. easy. lia. iner_p.
 Qed.
 
+(* Type soundness for QFT-uniformity. *)
 Lemma qft_uniform_exp_trans : 
     forall e f aenv tenv tenv', qft_uniform aenv tenv f -> well_typed_pexp aenv tenv e tenv'
             -> right_mode_env aenv tenv f -> qft_uniform aenv tenv' (exp_sem aenv e f).
@@ -7529,6 +7532,7 @@ Proof.
   specialize (H2 (x,n)). apply H2. simpl. lia.
 Qed.
 
+(* Type soundness Compilatoin Preservation. *)
 Lemma trans_exp_uc_well_typed : forall e dim vs avs tenv tenv',
      vars_start_diff vs -> vars_finite_bij vs ->
        vars_sparse vs -> well_typed_pexp (size_env vs) tenv e tenv' -> exp_WF (size_env vs) e ->
@@ -9286,6 +9290,8 @@ Proof.
   intros. auto with wf_db. lia.
 Qed.
 
+
+(* The Compilation Correctness Theorem. *)
 Lemma trans_exp_sem :
   forall dim e f tenv tenv' rmax vs (avs : nat -> posi),
     vars_start_diff vs ->
