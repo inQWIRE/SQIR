@@ -7752,46 +7752,6 @@ Proof.
   bdestruct (S n <? 1). lia. easy.
 Qed.
 
-(*
-Lemma trans_angle_rot_1 : forall n r, 0 < n ->
-    Cexp (2 * PI * turn_angle (rotate r 1) n) = Cexp (2 * PI * ((1/2) + turn_angle r n)%R).
-Proof.
-  induction n;intros;simpl. lia.
-  destruct n.
-  simpl.
-  destruct (r 0) eqn:eq1.
-  rewrite rotate_1_1; try easy.
-  autorewrite with R_db. rewrite Cexp_0.
-  assert ((/ 2 + / 2)%R = 1%R).
-  lra. rewrite H1.
-  autorewrite with R_db.
-  rewrite Cexp_2PI. easy.
-  rewrite rotate_1_0; try easy.
-  repeat rewrite Rplus_0_r.
-  autorewrite with R_db. easy.
-  rewrite rotate_sn_eq.
-  destruct (r (S n)).
-  rewrite Rmult_plus_distr_l.
-  rewrite Cexp_add.
-  rewrite IHn; try easy.
-  rewrite Rmult_plus_distr_l.
-  rewrite Rmult_plus_distr_l.
-  rewrite Rmult_plus_distr_l.
-  rewrite Cexp_add.
-  rewrite Cexp_add.
-  rewrite Cexp_add. lca. lia.
-  rewrite Rmult_plus_distr_l.
-  rewrite Cexp_add.
-  rewrite IHn; try easy.
-  rewrite Rmult_plus_distr_l.
-  rewrite Rmult_plus_distr_l.
-  rewrite Rmult_plus_distr_l.
-  rewrite Cexp_add.
-  rewrite Cexp_add.
-  rewrite Cexp_add. lca. lia.
-Qed.
-*)
-
 Lemma turn_angle_r_cut_n : forall n m size r, n <= m <= size -> turn_angle_r (cut_n r m) n size = turn_angle_r r n size.
 Proof.
   induction n;intros;simpl. easy.
