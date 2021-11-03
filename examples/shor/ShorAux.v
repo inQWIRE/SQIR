@@ -3443,13 +3443,6 @@ Proof.
     + rewrite tech5. simpl. easy.
 Qed.
 
-Lemma Rsum_extend :
-  forall n (f : nat -> R),
-    Rsum (S n) f = f n + Rsum n f.
-Proof.
-  intros. destruct n; simpl; lra.
-Qed.
-
 Lemma Csum_fst_distr :
   forall n (f : nat -> C),
     fst (Csum f n) = Rsum n (fun i => fst (f i)).

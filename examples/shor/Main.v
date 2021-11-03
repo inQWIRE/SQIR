@@ -46,32 +46,40 @@ Definition factor (a N r : nat) :=
 Definition uniform (lower upper : nat) : list R :=
   repeat 0 lower ++ repeat (1/ INR (upper - lower))%R (upper - lower).
 
-Definition shor_body a N rnd :=
+(* N   : number to factor
+   out : outcome from sampling *)
+Definition process N size_a out :=
   let n := n N in
   let k := k N in
-  let circ := shor_circuit a N in
-  let x := run_and_measure (to_base_ucom (n + k) circ) rnd in
-  let r := OF_post a N x n in
-  factor a N r.
+  let a := first_k size_a (size_a + (n + k)) out in
+  let x := last_k (n + k) (size_a + (n + k)) out in
+  (* try to factor *)
+  if Nat.gcd a N =? 1%nat
+  then factor a N (OF_post a N (first_k n (n + k) x) n)
+  else Some (Nat.gcd a N).
 
-Fixpoint end_to_end_shors N (rnds : nat -> R) i niter :=
-  match niter with
-  | 0 => None
-  | S niter' =>
-      let a := sample (uniform 1 N) (rnds i) in
-      if Nat.gcd a N =? 1%nat
-      then 
-        match shor_body a N (rnds (S i)) with
-        | None => end_to_end_shors N rnds (S (S i)) niter'
-        | Some f => Some f
-        end
-      else (* lucky case: "a" gives us factor directly *)
-        Some (Nat.gcd a N)
-  end.
+(* N   : number to factor
+   rnd : source of randomness for sampling *)
+Definition shor_body N rnd :=
+  let n := n N in
+  let k := k N in
+  (* create a distribution corresponding to choosing an 'a' and running
+     Shor's circuit with this value 
+     NOTE: we don't actually need to run the circuit in the case where a is not
+     coprime to N, but it's easier to write the code this way *)
+  let distr := join (uniform 1 N) 
+                    (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
+  (* sample from the distribution *)
+  let out := sample distr rnd in
+  (* try to factor *)
+  process N (Nat.log2_up (N - 1)) out.
 
-Definition coprime (a b : nat) : Prop := Nat.gcd a b = 1%nat.
+Definition end_to_end_shors N rnds niter :=
+  iterate rnds niter (shor_body N).
 
 (** Correctness properties for Shor's **)
+
+Definition coprime (a b : nat) : Prop := Nat.gcd a b = 1%nat.
 
 Lemma nth_run_probability_of_outcome : forall n (c : base_ucom n) x,
   (x < 2 ^ n)%nat ->
@@ -113,78 +121,6 @@ Proof.
   rewrite map_length.  
   rewrite vec_to_list_length.
   assumption.
-Qed.
-
-(* Return the first m bits of x as an int. *)
-Definition first_m m n x :=
-  (x / 2^n) mod (2^m).
-
-Lemma simplify_first_m : forall m n x y,
-  (x < 2 ^ m)%nat ->
-  (y < 2 ^ n)%nat ->
-  first_m m n (x * 2 ^ n + y) = x.
-Proof.
-  intros m n x y Hx Hy.
-  unfold first_m.
-  assert (0 < 2^n)%nat by (apply pow_positive; lia).
-  rewrite Nat.div_add_l by lia.
-  rewrite Nat.div_small by lia.
-  rewrite Nat.mod_small by lia.
-  lia.
-Qed.
-
-Lemma Rsum_plus_range : forall m n f,
-  Rsum (m + n) f = (Rsum m f + Rsum n (fun x => f (x + m)%nat))%R.
-Proof.
-  intros m n f.
-  induction n.
-  simpl. 
-  rewrite Nat.add_0_r. 
-  lra.
-  replace (m + S n0)%nat with (S (m + n0)) by lia. 
-  rewrite 2 Rsum_extend.
-  rewrite IHn.
-  rewrite Nat.add_comm.
-  lra.
-Qed.
-
-Lemma Rsum_twice : forall n f,
-  Rsum (2 * n) f = (Rsum n f + Rsum n (fun x => f (x + n)%nat))%R.
-Proof.
-  intros n f. replace (2 * n)%nat with (n + n)%nat by lia. apply Rsum_plus_range.
-Qed.
-
-Lemma Rsum_plus: forall n f g,
-  Rsum n (fun x => (f x + g x)%R) = ((Rsum n f) + (Rsum n g))%R.
-Proof.
-  intros n f g.
-  induction n.
-  simpl. lra.
-  repeat rewrite Rsum_extend.
-  rewrite IHn. lra.
-Qed.
-
-Lemma nested_Rsum : forall m n f,
-  Rsum (2 ^ (m + n)) f 
-    = Rsum (2 ^ m) (fun x => Rsum (2 ^ n) (fun y => f (x * 2 ^ n + y)%nat)).
-Proof.
-  intros m n.
-  replace (2 ^ (m + n))%nat with (2 ^ n * 2 ^ m)%nat by unify_pows_two.
-  induction m; intro f.
-  simpl.
-  rewrite Nat.mul_1_r.
-  reflexivity.
-  replace (2 ^ n * 2 ^ S m)%nat with (2 * (2 ^ n * 2 ^ m))%nat by unify_pows_two.
-  replace (2 ^ S m)%nat with (2 * 2 ^ m)%nat by unify_pows_two.
-  rewrite 2 Rsum_twice.
-  rewrite 2 IHm.
-  apply f_equal2; try reflexivity.
-  apply Rsum_eq.
-  intro x.
-  apply Rsum_eq.
-  intro y.
-  apply f_equal.
-  lia.
 Qed.
 
 Lemma divmod_decomp :
@@ -229,15 +165,8 @@ Proof.
     lca.
 Qed.
 
-Lemma Rsum_0 : forall f n, (forall x : nat, f x = 0) -> Rsum n f = 0.
-Proof.
-  intros f n Hf. 
-  induction n. reflexivity. 
-  rewrite Rsum_extend, IHn, Hf. lra.
-Qed.
-
 Lemma rewrite_pr_outcome_sum : forall n k (c : base_ucom (n + k)) f,
-  pr_outcome_sum (run c) (fun x => f (first_m n k x)) 
+  pr_outcome_sum (run c) (fun x => f (first_k n (n + k) x)) 
   = Rsum (2 ^ n) (fun x => ((if f x then 1 else 0) *
                          prob_partial_meas (basis_vector (2 ^ n) x) 
                            (UnitarySem.uc_eval c × basis_vector (2 ^ (n + k)) 0))%R).
@@ -254,7 +183,8 @@ Proof.
   rewrite Rmult_1_l.
   erewrite Rsum_eq_bounded.
   2: { intros y Hy. 
-       rewrite simplify_first_m by assumption.
+       rewrite Nat.mul_comm.
+       rewrite simplify_first_k by assumption.
        rewrite fx.
        rewrite nth_run_probability_of_outcome.
        reflexivity.
@@ -265,12 +195,13 @@ Proof.
   erewrite Rsum_eq_bounded.
   reflexivity.
   intros y Hy. 
+  rewrite Nat.mul_comm.
   rewrite split_basis_vector by assumption.
   replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
   reflexivity.
   rewrite Rmult_0_l.
   erewrite Rsum_eq_bounded.
-  2: { intros y Hy. rewrite simplify_first_m by assumption.
+  2: { intros y Hy. rewrite Nat.mul_comm. rewrite simplify_first_k by assumption.
        rewrite fx. reflexivity. }
   apply Rsum_0.
   reflexivity.
@@ -286,14 +217,14 @@ Lemma shor_body_returns_order : forall (a N : nat),
   let circ := shor_circuit a N in
   pr_outcome_sum 
       (run (to_base_ucom (n + k) circ))
-      (fun x => OF_post a N (first_m n k x) n =? ord a N) 
+      (fun x => OF_post a N (first_k n (n + k) x) n =? ord a N) 
     >= κ / INR (Nat.log2 N)^4.
 Proof.
   intros a N Ha1 Ha2 n0 k0 circ.
   subst n0 k0 circ.
   remember (fun x => OF_post a N x (n N) =? ord a N) as f'.
-  replace (fun x : nat => OF_post a N (first_m (n N) (k N) x) (n N) =? ord a N) 
-    with (fun x : nat => f' (first_m (n N) (k N) x)).
+  replace (fun x : nat => OF_post a N (first_k (n N) (n N + k N) x) (n N) =? ord a N) 
+    with (fun x : nat => f' (first_k (n N) (n N + k N) x)).
   rewrite rewrite_pr_outcome_sum.
   specialize (Shor.Shor_correct_full a N Ha1 Ha2) as H1.
   specialize (shor_circuit_same a N) as H2.
@@ -308,16 +239,6 @@ Proof.
   apply H1.
   subst f'.
   reflexivity.
-Qed.
-
-Lemma Rsum_scale : forall n f r,
-  (r * Rsum n f = Rsum n (fun x => r * f x))%R.
-Proof.
-  intros n f r.
-  induction n.
-  simpl. lra.
-  rewrite 2 Rsum_extend.
-  rewrite <- IHn. lra.
 Qed.
 
 Lemma nth_repeat : forall n r i,
@@ -546,105 +467,166 @@ Proof.
 Qed.
 
 Local Opaque uniform.
-Lemma end_to_end_shors_correct : forall N rnds i niter x,
+Lemma end_to_end_shors_correct : forall N rnds niter x,
     (1 < N)%nat ->
     (forall m, 0 <= rnds m < 1) ->
-    end_to_end_shors N rnds i niter = Some x ->
+    end_to_end_shors N rnds niter = Some x ->
     is_a_factor x N.
 Proof.
-  intros N rnds i niter x H Hrnds H0.
-  gen i.
+  intros N rnds niter x H Hrnds H0.
+  unfold end_to_end_shors in H0.
   induction niter; intros.
   inversion H0.
   simpl in H0.
-  bdestruct (Nat.gcd (sample (uniform 1 N) (rnds i)) N =? 1).
-  destruct (shor_body (sample (uniform 1 N) (rnds i)) N (rnds (S i))) eqn:sb.
+  destruct (shor_body N (rnds niter)) eqn:sb; auto.
   inversion H0; subst.
-  unfold shor_body in sb.
-  apply factor_returns_factor in sb. auto.
-  eapply IHniter. apply H0.
-  inversion H0; subst.
+  unfold shor_body, process in sb.
+  (* first, some cleanup *)
+  remember (join (uniform 1 N)
+                 (fun a : nat =>
+                    run (to_base_ucom (n N + k N) (shor_circuit a N)))) as distr.
+  remember (Nat.log2_up (N - 1)) as len.
+  remember (first_k len (len + (n N + k N)) (sample distr (rnds niter))) as a.
+  remember (last_k (n N + k N) (len + (n N + k N)) (sample distr (rnds niter))) as o.
+  (* now back to the proof... *)
+  bdestruct (Nat.gcd a N =? 1).
+  apply factor_returns_factor in sb. 
+  auto.
+  inversion sb.
   apply gcd_is_factor.
-  specialize (sample_uniform 1 N (rnds i) H (Hrnds i)) as su.
-  split.
-  assert (0 < Nat.gcd (sample (uniform 1 N) (rnds i)) N)%nat.
+  assert (0 < a < N)%nat.
+  (* this might be a little annoying because it requires showing that (first_k ...)
+     ends up with something from the uniform distirbution. Given that, we can use
+     the sample_uniform lemma. *)
+  admit.
+  assert (0 < Nat.gcd a N)%nat.
   apply Natgcd_pos; lia.
-  lia. 
+  assert (Nat.gcd a N <= a)%nat.
   rewrite Nat.gcd_comm.
-  assert (Nat.gcd N (sample (uniform 1 N) (rnds i)) <= sample (uniform 1 N) (rnds i))%nat.
   apply Misc.Nat_gcd_le_r.
-  lia. lia.
+  lia. 
+  lia.
+Admitted.
+
+Lemma geq_exists : forall a b,
+  a >= b -> exists c, a = c /\ c >= b.
+Proof. intros a b H. exists a. split; auto. Qed.
+
+Lemma length_run : forall n (c : base_ucom n),
+  length (run c) = (2 ^ n)%nat. 
+Proof.
+  intros n c.
+  unfold run.
+  rewrite map_length.
+  rewrite vec_to_list_length.
+  reflexivity.
 Qed.
 
-(*
-Fixpoint funtolist {A} n (f : nat -> A) : list A :=
-  match n with
-  | O => nil
-  | S n' => f n' :: funtolist n' f
-  end.
-Fixpoint flattenl2d n m l2d : list R :=
-  match n with
-  | O => nil
-  | S n' => funtolist m (l2d n') ++ (flattenl2d n' m l2d)
-  end.
-*)
-Fixpoint flattenfb2d n m fb2d :=
-  match n with
-  | O => allfalse
-  | S n' => fb_push_n m (fb2d n') (flattenfb2d n' m fb2d)
-  end.
+Lemma uniform_distribution : forall a b, 
+  (a < b)%nat -> distribution (uniform a b).
+Proof.
+(* shouldn't be too hard -Kesha *)
+Admitted.
 
-Fixpoint scalar_prod r l :=
-  match l with
-  | nil => nil
-  | a :: l' => (r * a)%R :: scalar_prod r l'
-  end.
+Lemma run_distribution : forall {dim} c, 
+  distribution (@run dim c).
+Proof.
+(* should be able to use the fact that uc_eval produces a unitary -Kesha *)
+Admitted.
 
-Fixpoint subpr a N :=
-  let n := n N in
-  let k := k N in
-  match a with
-  | O => repeat 0%R (2^n)
-  | S a' => scalar_prod (/ INR (N - 1)) (run (to_base_ucom (n + k) (shor_circuit a' N))) ++ subpr a' N
-  end.
-
-Lemma end_to_end_shors_succeeds_with_high_probability_1_iter_subpr : forall N (i : nat),
+Lemma shor_body_succeeds_with_high_probability' : forall N,
     ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
     let n := n N in
     let k := k N in
-    pr_outcome_sum
-      (subpr N N)
-      (flattenfb2d N (2^(n+k)) (fun a x => if Nat.gcd a N =? 1%nat then
-                                      match factor a N (OF_post a N (first_m n k x) n) with
-                                      | Some x => true
-                                      | None => false
-                                      end
-                                    else true))
+    let distr := join 
+                   (uniform 1 N) 
+                   (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
+    let un_sz := Nat.log2_up (N - 1) in
+    let f1 a := leads_to_factor N a in
+    let f2 a x := (OF_post a N (first_k n (n + k) x) n =? ord a N) ||
+                  negb (Nat.gcd a N =? 1) in
+    pr_outcome_sum distr
+      (fun z => let x := first_k un_sz (un_sz + (n + k)) z in
+             let y := last_k (n + k) (un_sz + (n + k)) z in
+             f1 x && f2 x y)
       >= (1 / 2) * (κ / INR (Nat.log2 N)^4).
-                   
+Proof.
+  intros.
+  apply pr_outcome_sum_join_geq.
+  apply uniform_distribution.
+  admit. (* implied by H, H0, H1 *)
+  admit. (* definitely true, requires a little math *)
+  apply shor_factoring_succeeds; auto.
+  intros i Hi.
+  split.
+  apply length_run.
+  subst f2.
+  specialize (run_distribution (to_base_ucom (n0 + k0) (shor_circuit i N))) as Hdist.
+  bdestruct (Nat.gcd i N =? 1).
+  eapply Rge_trans.
+  apply Rle_ge.
+  apply pr_outcome_sum_orb.
+  destruct Hdist as [Hdist _]; auto.
+  apply shor_body_returns_order.
+  admit. (* implied by H2 *)
+  unfold coprime.
+  assumption.
+  rewrite pr_outcome_sum_true.
+  destruct Hdist as [_ Hdist].
+  rewrite Hdist.
+  admit. (* requires some math *)
+  intros j Hj.
+  bdestructΩ (Nat.gcd i N =? 1).
+Admitted.
 
-(* One possibility: represent multiple events using a list. *)
-(* RNR: I like this better but I feel like it needs some notion of independence? *)
-Inductive pr_Ps1 : (list (R -> Prop)) -> R -> Prop :=
-| Singleton : forall P r, pr_P P r -> pr_Ps1 (P :: nil) r
-| ConsCase : forall P r Ps rs, 
-    pr_P P r ->
-    pr_Ps1 Ps rs ->
-    pr_Ps1 (P :: Ps) (r * rs)%R.
+Lemma shor_body_succeeds_with_high_probability : forall N,
+    ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
+    let n := n N in
+    let k := k N in
+    let distr := join 
+                   (uniform 1 N) 
+                   (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
+    pr_outcome_sum distr (fun x => isSome (process N (Nat.log2_up (N - 1)) x))
+      >= (1 / 2) * (κ / INR (Nat.log2 N)^4).
+Proof.
+  intros N HN1 HN2 HN3 n k distr.
+  assert (Hdist: distribution distr).
+  subst distr. 
+  apply distribution_join.
+  apply uniform_distribution.
+  admit. (* implied by assumptions about N *)
+  intros i Hi.
+  apply run_distribution.
+  apply Rle_ge.
+  eapply Rle_trans.
+  apply Rge_le.
+  apply shor_body_succeeds_with_high_probability'; auto.
+  apply pr_outcome_sum_implies.
+  destruct Hdist as [Hdist _]; auto.
+  simpl.
+  intros x H.
+  unfold process.
+  subst n k.
+  remember (first_k (Nat.log2_up (N - 1))
+           (Nat.log2_up (N - 1) + (Main.n N + Main.k N)) x) as a.
+  remember (last_k (Main.n N + Main.k N)
+           (Nat.log2_up (N - 1) + (Main.n N + Main.k N)) x) as y.
+  clear - H.
+  destruct (Nat.gcd a N =? 1); auto.
+  unfold factor.
+  unfold leads_to_factor, nontrivgcd, nontriv in H.
+  remember (OF_post a N (first_k (n N) (n N + k N) y) (n N)) as z.
+  clear Heqz.
+  apply andb_prop in H as [H1 H2].
+  simpl in H2.
+  rewrite orb_false_r in H2.
+  Local Opaque Nat.div.
+  bdestructΩ (z =? ord a N); subst.
+  remember (a ^ (ord a N / 2) + 1)%nat as ap1.
+  remember (a ^ (ord a N / 2) - 1)%nat as am1.
+  (* blah. I'll look at this later. -Kesha *)
+Admitted.
 
-(* Another possibility: use a single predicate that takes a random stream as input. *)
-(* RNR: What is P below? How does it connect to P1 and P2? Also, is it only for a function 
-   defined on two inputs? *)
-Inductive pr_Ps2 : ((nat -> R) -> Prop) -> R -> Prop :=
-| From_pr_P : forall P1 P2 r1 r2 (P : (nat -> R) -> Prop),
-    pr_P P1 r1 ->
-    pr_P P2 r2 ->
-    (forall rnds i j, i <> j -> P1 (rnds i) -> P2 (rnds j) -> P rnds) -> (* RNR: Explain? *)
-    pr_Ps2 P (r1 * r2)%R
-| Weaken : forall (P : (nat -> R) -> Prop) r r',
-    pr_Ps2 P r ->
-    (r' <= r)%R ->
-    pr_Ps2 P r'.
 
 Lemma pr_outcome_sum_geq_exists : forall l f r,
   distribution l ->
@@ -657,65 +639,41 @@ Proof.
   apply pr_outcome_sum_eq_aux; auto.
 Qed.
 
-(* For one iterations of end_to_end_shors, the probability of success is
-   (1 / 2) * (κ / INR (Nat.log2 N)^4). *)
+(* For n iterations of end_to_end_shors, the probability of success is
+   1 - (1 - ((1 / 2) * (κ / INR (Nat.log2 N)^4))^n). *)
 Local Opaque pow leads_to_factor.
-Lemma end_to_end_shors_succeeds_with_high_probability_1_iter : forall N (i : nat),
+Lemma end_to_end_shors_succeeds_with_high_probability : forall N niter r,
   ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-  pr_Ps2
-     (fun rnds => ssrbool.isSome (end_to_end_shors N rnds i 1) = true)
-     ((1 / 2) * (κ / INR (Nat.log2 N)^4))%R.
+  (niter > 0)%nat ->
+  pr_Ps (fun rnds => isSome (end_to_end_shors N rnds niter) = true) niter r ->
+  (r >= 1 - (1 - ((1 / 2) * (κ / INR (Nat.log2 N)^4))^niter))%R.
 Proof.
-  intros N i HN1 HN2 HN3.
-  specialize (shor_factoring_succeeds N) as H1.
-  specialize shor_body_returns_order as H2.
-  apply pr_outcome_sum_geq_exists in H1; auto.
-  destruct H1 as [r1 [Hr1 H1]].
-  (* how can we specialize "a" in H2?? *)
-  eapply pr_outcome_sum_geq_exists in H2; auto.
-  destruct H2 as [r2 [Hr2 H2]].
-  apply Weaken with (r:=(r1 * r2)%R).
-  eapply From_pr_P.
-  apply H1.
-  apply H2.
-  (* something's gone horribly wrong here since we ended up with N=2 and a=1... *)
+  intros N niter r HN1 HN2 HN3 Hniter H.
+  unfold end_to_end_shors in H.
+  specialize (shor_body_succeeds_with_high_probability N HN1 HN2 HN3) as Hbody.
+  apply pr_outcome_sum_geq_exists in Hbody.
+  destruct Hbody as [r0 [? ?]].
+  apply pr_iterate_Some with (niter0:=niter) in H1.
+  eapply pr_Ps_unique in H. (* can we rephrase the lemma to get around the need for uniqueness? -Kesha *)
+  2: apply H1.
+  subst r.
+  remember (1 / 2 * (κ / INR (Nat.log2 N) ^ 4)) as β.
+  clear H1.
+  apply Rle_ge.
+  (* pretty sure this is true -Kesha *)
+  admit.
+  assumption.
+  apply distribution_join.
+  apply uniform_distribution.
+  admit. (* implied by assumptions about N *)
+  intros i Hi.
+  apply run_distribution.
+  apply distribution_join.
+  apply uniform_distribution.
+  admit. (* implied by assumptions about N *)
+  intros i Hi.
+  apply run_distribution.
 Admitted.
 
-Import ListNotations.
 
-Parameter Independent : list R -> Prop. 
-
-(* This needs a base case too, I think I prefer pr_Ps1 *)
-(* Maybe we want lists of Props and Rs though? *)
-(*
-Inductive joint_pr : (R -> Prop) -> (R -> Prop) -> R -> Prop:=
-| j_pr :  forall P Q r1 r2,
-    Independent r1 r2 ->
-    pr_P P r1 ->
-    pr_P Q r2 ->
-    joint_pr P Q (r1 * r2).
- *)
-
-Inductive joint_pr : list (R -> Prop) -> list R -> Prop:=
-| pr1 : forall P r, pr_P P r -> joint_pr (P :: nil) [r]
-| j_pr :  forall P Qs r1 rs,
-    Independent (r1 :: rs) ->
-    pr_P P r1 ->
-    joint_pr Qs rs ->
-    joint_pr (P :: Qs) ((r1 * (fold_left Rmult rs 1))%R :: nil).
-
-(* Doesn't typecheck. Could arguably combine rnds into a single r by multiplying by 10. *)
-Lemma end_to_end_shors_succeeds_with_high_probability_1_iter' : forall N (i : nat),
-  ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-  joint_pr
-     ((fun rnds => ssrbool.isSome (end_to_end_shors N rnds i 1) = true) :: nil)
-     (((1 / 2) * (κ / INR (Nat.log2 N)^4))%R :: nil).
-
-
-(* For niter iterations, the probability of success is:
-   1 - (the probability of failing in niter consecutive iterations).
-
-   Do we want to (/ can we) prove this?  *)
-
-
-(** TODO: facts about end_to_end_shors resources **)
+(** TODO @Yuxiang: facts about end_to_end_shors resources **)

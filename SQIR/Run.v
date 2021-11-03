@@ -1,52 +1,6 @@
 Require Import UnitarySem.
 Require Import VectorStates.
 
-(* MOVE TO: Matrix.v *)
-Fixpoint vec_to_list' {nmax : nat} (n : nat) (v : Vector nmax) :=
-  match n with
-  | O    => nil
-  | S n' => v (nmax - n)%nat O :: vec_to_list' n' v
-  end.
-Definition vec_to_list {n : nat} (v : Vector n) := vec_to_list' n v.
-
-Lemma vec_to_list'_length : forall m n (v : Vector n), length (vec_to_list' m v) = m.
-Proof.
-  intros.
-  induction m; auto.
-  simpl. rewrite IHm.
-  reflexivity.
-Qed.
-
-Lemma vec_to_list_length : forall n (v : Vector n), length (vec_to_list v) = n.
-Proof. intros. apply vec_to_list'_length. Qed.
-
-Lemma nth_vec_to_list' : forall {m n} (v : Vector n) x,
-  (m <= n)%nat -> (x < m)%nat -> nth x (vec_to_list' m v) 0 = v (n - m + x)%nat O.
-Proof.
-  intros m n v x Hm.
-  gen x.
-  induction m; intros x Hx.
-  lia.
-  simpl.
-  destruct x.
-  rewrite Nat.add_0_r.
-  reflexivity.
-  rewrite IHm by lia.
-  replace (n - S m + S x)%nat with (n - m + x)%nat by lia.
-  reflexivity.
-Qed.
-
-Lemma nth_vec_to_list : forall n (v : Vector n) x,
-  (x < n)%nat -> nth x (vec_to_list v) 0 = v x O.
-Proof.
-  intros. 
-  unfold vec_to_list. 
-  rewrite nth_vec_to_list' by lia.
-  replace (n - n + x)%nat with x by lia.
-  reflexivity.
-Qed.
-
-(* MOVE TO: Complex.v *)
 Definition Cmod2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
 Lemma Cmod2_ge_0 : forall c, 0 <= Cmod2 c.
 Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_0. Qed.
@@ -55,12 +9,33 @@ Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_
    using a length n list of real numbers. We support sampling from this
    distribution using the 'sample' function below. *)
 
-Require Import examples.Utilities.
+Definition sum_over_list (l : list R) := Rsum (length l) (fun i => nth i l 0).
+
+Lemma sum_over_list_cons : forall x l,
+  sum_over_list (x :: l) = (x + sum_over_list l)%R.
+Proof.
+  intros x l.
+  unfold sum_over_list.
+  simpl length. 
+  rewrite Rsum_shift.
+  simpl nth.
+  reflexivity.
+Qed.
+
+Lemma sum_over_list_append : forall l1 l2,
+  sum_over_list (l1 ++ l2) = (sum_over_list l1 + sum_over_list l2)%R.
+Proof.
+  intros l1 l2.
+  induction l1.
+  unfold sum_over_list. 
+  simpl. lra.
+  simpl. 
+  rewrite 2 sum_over_list_cons, IHl1.
+  lra.
+Qed.
 
 Definition distribution (l : list R) := 
-  (length l > 0)%nat /\ 
-  Forall (fun x => 0 <= x) l /\
-  Rsum (length l) (fun i => nth i l 0) = 1.
+  Forall (fun x => 0 <= x) l /\ sum_over_list l = 1.
 
 (* Choose an element from the distribution based on random number r ∈ [0,1).
    
@@ -85,41 +60,178 @@ Fixpoint sample (l : list R) (r : R) : nat :=
 Definition pr_outcome_sum (l : list R) (f : nat -> bool) : R :=
   Rsum (length l) (fun i => if f i then nth i l 0 else 0).
 
-Definition pr_outcome_sum_extend_yp :
+Lemma pr_outcome_sum_extend : forall x l f,
+  pr_outcome_sum (x :: l) f 
+  = if f O
+    then (x + pr_outcome_sum l (fun y => f (S y)))%R
+    else pr_outcome_sum l (fun y => f (S y)).
+Proof.
+  intros x l f.
+  unfold pr_outcome_sum.
+  simpl length.
+  rewrite Rsum_shift.
+  destruct (f O); simpl.
+  reflexivity.
+  lra.
+Qed.
+
+Lemma pr_outcome_sum_append : forall l1 l2 f,
+  pr_outcome_sum (l1 ++ l2) f
+  = (pr_outcome_sum l1 f + pr_outcome_sum l2 (fun x => f (length l1 + x)%nat))%R.
+Proof.
+  intros l1 l2.
+  induction l1; intro f.
+  unfold pr_outcome_sum.
+  simpl.
+  lra.
+  simpl.
+  rewrite 2 pr_outcome_sum_extend.
+  rewrite IHl1.
+  destruct (f O); lra.
+Qed.
+
+Lemma pr_outcome_sum_repeat_false : forall n f,
+  pr_outcome_sum (repeat 0 n) f = 0.
+Proof.
+  intros n f.
+  unfold pr_outcome_sum, Rsum.
+  destruct n as [| n]; trivial.
+  simpl.
+  apply sum_eq_R0.
+  intros x Hx.
+  destruct (f x); trivial.
+  destruct x; trivial.
+  rewrite repeat_length in Hx.
+  replace n with (x + (S (n - x - 1)))%nat by lia.
+  rewrite <- repeat_combine.
+  simpl.
+  rewrite <- repeat_length with (n:=x) (x:=0) at 1.
+  rewrite nth_middle.
+  trivial.
+Qed.
+
+Definition pr_outcome_sum_extend' :
   forall l f a,
     (pr_outcome_sum (a :: l) f = (if (f 0%nat) then a else 0) + pr_outcome_sum l (fun i => f (S i)))%R.
 Proof.
-  intros. unfold pr_outcome_sum.
-  simpl. destruct (length l).
-  - simpl. destruct (f 0%nat); lra.
-  - rewrite decomp_sum by lia. simpl.
-    destruct (f 0%nat); lra.
+  intros.
+  rewrite pr_outcome_sum_extend.
+  destruct (f O).
+  reflexivity. lra.
 Qed.    
 
-    
+Lemma pr_outcome_sum_replace_f : forall l f1 f2,
+  (forall x, (x < length l )%nat-> f1 x = f2 x) ->
+  pr_outcome_sum l f1 = pr_outcome_sum l f2.
+Proof.
+  intros l f1 f2 H.
+  unfold pr_outcome_sum.
+  apply Rsum_eq_bounded.
+  intros.
+  rewrite H; auto.
+Qed.
+
+Lemma pr_outcome_sum_false : forall l f,
+  (forall i, (i < length l)%nat -> f i = false) ->
+  pr_outcome_sum l f = 0.
+Proof.
+  induction l; intros f Hf.
+  reflexivity.
+  rewrite pr_outcome_sum_extend.
+  rewrite Hf.
+  apply IHl.
+  intros i Hi.
+  apply Hf.
+  simpl. lia.
+  simpl. lia.
+Qed.
+
+Lemma pr_outcome_sum_true : forall l f,
+  (forall i, (i < length l)%nat -> f i = true) ->
+  pr_outcome_sum l f = sum_over_list l.
+Proof.
+  induction l; intros f Hf.
+  reflexivity.
+  rewrite pr_outcome_sum_extend.
+  rewrite Hf.
+  rewrite IHl.
+  rewrite sum_over_list_cons.
+  reflexivity.
+  intros i Hi.
+  apply Hf.
+  simpl. lia.
+  simpl. lia.
+Qed.
+
+Lemma pr_outcome_sum_negb : forall l f,
+  pr_outcome_sum l f = (sum_over_list l - pr_outcome_sum l (fun x => negb (f x)))%R.
+Proof.
+  induction l; intro f.
+  unfold pr_outcome_sum, sum_over_list.
+  simpl. lra.
+  rewrite 2 pr_outcome_sum_extend.
+  rewrite sum_over_list_cons.
+  rewrite IHl.
+  destruct (f O); simpl; lra.
+Qed.
+
+Lemma pr_outcome_sum_orb : forall l f1 f2,
+  Forall (fun x => 0 <= x) l ->
+  pr_outcome_sum l f1 <= pr_outcome_sum l (fun rnd => f1 rnd || f2 rnd).
+Proof.
+  intros l f1 f2 Hl.
+  gen f1 f2.
+  induction l; intros f1 f2. 
+  unfold pr_outcome_sum.
+  simpl. lra.
+  rewrite 2 pr_outcome_sum_extend.
+  inversion Hl; subst.
+  destruct (f1 O); simpl.
+  apply Rplus_le_compat_l.
+  apply IHl; auto.
+  destruct (f2 O); simpl.
+  rewrite <- (Rplus_0_l (pr_outcome_sum l _)).
+  apply Rplus_le_compat; auto.
+  apply IHl; auto.
+Qed.
+
+Lemma pr_outcome_sum_implies : forall l f1 f2,
+  Forall (fun x => 0 <= x) l ->
+  (forall x, f1 x = true -> f2 x = true) ->
+  (pr_outcome_sum l f1 <= pr_outcome_sum l f2)%R. 
+Proof.
+  intros l f1 f2 Hl.
+  gen f1 f2.
+  induction l; intros f1 f2 H.
+  unfold pr_outcome_sum.
+  simpl. lra.
+  rewrite 2 pr_outcome_sum_extend.
+  inversion Hl; subst.
+  destruct (f1 O) eqn:f1O.
+  apply H in f1O.
+  rewrite f1O.
+  apply Rplus_le_compat_l.
+  auto.
+  destruct (f2 O).
+  rewrite <- (Rplus_0_l (pr_outcome_sum _ _)).
+  apply Rplus_le_compat; auto.
+  auto.
+Qed.
+
 (* Mathematically, the probability that an element satisifes a (not necessarily
    boolean) predicate is the size of the range of r-values for which the element
    returned from "sample" satisfies the predicate. *)
-(* @Robert: Seem ok? Suggestions for a more descriptive name? Also: would it
-   be easier to use pr_outcome_sum directly? Maybe it's useful for defining 
-   independence? *)
-(* RNR: Name is okay though we could use something like probability or measure (the second has regretable ambiguity in context)? If you can use pr_outcome_sum directly, that fine, but that requires the list of probabilities. I wish I'd written down exactly why I took this approach. *) 
-(* TODO: should the bounds be on r1, r2 be leq instead of lt? *)
-(* RNR: leq and lt are identical for continuous arithmetic, so whichever is easier to work with. *)
-
 Inductive interval_sum (P : R -> Prop) (rl rr : R) : R -> Prop :=
 | SingleInterval : forall r1 r2, rl <= r1 <= r2 /\ r2 <= rr ->
     (forall r, r1 < r < r2 -> P r) ->               
     (forall r, rl < r < r1 -> ~ P r) ->
     (forall r, r2 < r < rr -> ~ P r) ->
     interval_sum P rl rr (r2 - r1)%R
-(* We could add [~ P rm] to this case to guarantee unique intervals,
-   but still no proof uniqueness *) 
+(* We could add [~ P rm] to this case to guarantee unique intervals *) 
 | CombineIntervals : forall rm r1 r2, rl <= rm <= rr -> 
     interval_sum P rl rm r1 ->
     interval_sum P rm rr r2 ->
     interval_sum P rl rr (r1 + r2).
-
 
 Lemma interval_sum_shift :
   forall P rl rr r a,
@@ -168,9 +280,7 @@ Proof.
   subst. replace (x - a + a)%R with x by lra. easy.
 Qed.
 
-Lemma interval_sum_gt_0 : forall P rl rr r,
-    interval_sum P rl rr r ->
-    r >= 0.
+Lemma interval_sum_gt_0 : forall P rl rr r, interval_sum P rl rr r -> r >= 0.
 Proof. intros. induction H; lra. Qed.
 
 Lemma interval_sum_break :
@@ -503,7 +613,7 @@ Proof.
     assert (interval_sum (fun rnd : R => sf (sample l rnd) = true) 0 (r - a)%R (pr_outcome_sum l sf)).
     { apply IHl. inversion H; easy. lra.
     }
-    rewrite pr_outcome_sum_extend_yp.
+    rewrite pr_outcome_sum_extend'.
     assert (interval_sum (fun rnd : R => f (sample (a :: l) rnd) = true) 0 a (if f 0%nat then a else 0)).
     { destruct (f 0%nat) eqn:E.
       - replace a with (a - 0)%R by lra.
@@ -536,7 +646,7 @@ Lemma pr_outcome_sum_eq_aux : forall (l : list R) (f : nat -> bool),
     distribution l ->
     pr_P (fun rnd => f (sample l rnd) = true) (pr_outcome_sum l f).
 Proof.
-  intros. destruct H as [H [H0 H1]]. unfold pr_P.
+  intros. destruct H as [H H0]. unfold pr_P.
   apply pr_outcome_sum_eq_aux'; easy.
 Qed.
 
@@ -563,63 +673,452 @@ Proof.
     easy.
 Qed.
 
-Lemma Rsum_shift : forall n (f : nat -> R),
-  Rsum (S n) f = (f O + Rsum n (fun x => f (S x)))%R.
+(** Joint distributions **)
+
+Fixpoint scale r l :=
+  match l with
+  | nil => nil
+  | h :: t => (r * h)%R :: scale r t
+  end.
+
+(* Combine distributions l1 and l2, where l2 may depend on the value of l1 *)
+Fixpoint join' l1 l2 n :=
+  match n with
+  | O => nil
+  | S n' => join' l1 l2 n' ++ scale (nth n' l1 0) (l2 n')
+  end.
+Definition join l1 l2 := join' l1 l2 (length l1).
+
+(* Return the first k bits of an n-bit nat x as a nat. *)
+Definition first_k k n x := (x / 2 ^ (n - k))%nat.
+
+(* Return the last k bits of an n-bit nat x as a nat. *)
+Definition last_k k n x := (x - (first_k (n - k) n x * 2 ^ k))%nat.
+
+Lemma simplify_first_k : forall m n x y,
+  (y < 2 ^ n)%nat ->
+  first_k m (m + n) (2 ^ n * x + y) = x.
 Proof.
-  intros n f. 
+  intros m n x y Hy.
+  unfold first_k. 
+  replace (m + n - m)%nat with n by lia.
+  rewrite Nat.mul_comm.
+  rewrite Nat.div_add_l. 
+  rewrite Nat.div_small by assumption. 
+  lia. 
+  apply Nat.pow_nonzero.
+  lia.
+Qed.
+
+Lemma simplify_last_k : forall m n x y,
+  (y < 2 ^ n)%nat ->
+  last_k n (m + n) (2 ^ n * x + y) = y.
+Proof.
+  intros m n x y Hy.
+  unfold last_k. 
+  replace (m + n - n)%nat with m by lia.
+  rewrite simplify_first_k by assumption.
+  lia.
+Qed.
+
+Lemma sum_over_list_scale : forall x l,
+  sum_over_list (scale x l) = (x * sum_over_list l)%R.
+Proof.
+  intros x l.
+  induction l.
+  unfold sum_over_list. 
+  simpl. lra.
   simpl.
-  induction n; simpl.
+  rewrite 2 sum_over_list_cons, IHl.
   lra.
+Qed.
+
+Lemma sum_over_list_firstn : forall n l, (n < length l)%nat ->
+  sum_over_list (firstn (S n) l) = (sum_over_list (firstn n l) + nth n l 0)%R.
+Proof.
+  intros n.
+  induction n; intros l Hn.
+  destruct l.
+  simpl in Hn.
+  lia.
+  simpl.
+  unfold sum_over_list.
+  simpl.
+  lra.
+  destruct l.
+  simpl in Hn.
+  lia.
+  destruct l.
+  simpl in Hn.
+  lia.
+  rewrite firstn_cons.
+  rewrite sum_over_list_cons.
   rewrite IHn.
-  destruct n; simpl; lra.
+  rewrite firstn_cons.
+  rewrite sum_over_list_cons.
+  simpl.
+  lra.
+  simpl in *.
+  lia.
 Qed.
 
-Lemma pr_outcome_sum_extend : forall x l f,
-  pr_outcome_sum (x :: l) f 
-  = if f O
-    then (x + pr_outcome_sum l (fun y => f (S y)))%R
-    else pr_outcome_sum l (fun y => f (S y)).
+Lemma Forall_scale_geq : forall a l,
+  (0 <= a)%R ->
+  Forall (fun x : R => 0 <= x) l -> 
+  Forall (fun x : R => 0 <= x) (scale a l).
 Proof.
-  intros x l f.
-  unfold pr_outcome_sum.
-  simpl length.
-  rewrite Rsum_shift.
-  destruct (f O); simpl.
+  intros a l Ha Hl.
+  induction l; simpl.
+  constructor.
+  inversion Hl; subst.
+  constructor.
+  apply Rmult_le_pos; auto.
+  apply IHl.
+  assumption.
+Qed.
+
+Lemma distribution_join : forall l1 l2,
+  distribution l1 ->
+  (forall i, (i < length l1)%nat -> distribution (l2 i)) ->
+  distribution (join l1 l2).
+Proof.
+  intros l1 l2 [Hl1_1 Hl1_2] Hl2.
+  assert (Hl2_1 : forall i, (i < length l1)%nat -> Forall (fun x : R => 0 <= x) (l2 i)).
+  intros i Hi.
+  specialize (Hl2 i Hi).
+  destruct Hl2; assumption.
+  assert (Hl2_2 : forall i, (i < length l1)%nat -> sum_over_list (l2 i) = 1).
+  intros i Hi.
+  specialize (Hl2 i Hi).
+  destruct Hl2; assumption.
+  clear Hl2.
+  assert (H1 : forall n, (n <= length l1)%nat -> Forall (fun x : R => 0 <= x) (join' l1 l2 n)). 
+  { clear Hl1_2 Hl2_2.
+    intros n Hn.
+    induction n; simpl.
+    constructor.
+    apply Forall_app.
+    split.
+    apply IHn. lia.
+    apply Forall_scale_geq.
+    rewrite Forall_nth in Hl1_1.
+    apply Hl1_1; auto.
+    apply Hl2_1.
+    lia. }
+  assert (H2 : forall n, (n <= length l1)%nat -> 
+    sum_over_list (join' l1 l2 n) = sum_over_list (firstn n l1)). 
+  { clear Hl1_1 Hl1_2 Hl2_1.
+    intros n Hn.
+    induction n.
+    simpl. reflexivity.
+    simpl join'.
+    rewrite sum_over_list_append.
+    rewrite IHn by lia.
+    rewrite sum_over_list_scale.
+    rewrite sum_over_list_firstn by lia.
+    rewrite (Hl2_2 n Hn). 
+    lra. }
+  split.
+  apply H1. 
+  lia.
+  unfold join.
+  rewrite H2 by lia.
+  rewrite firstn_all.
+  assumption.
+Qed.
+
+Lemma length_scale : forall a l, length (scale a l) = length l.
+Proof.
+  intros a l.
+  induction l.
   reflexivity.
-  lra.
+  simpl.
+  rewrite IHl.
+  reflexivity.
 Qed.
 
-Lemma pr_outcome_sum_append : forall l1 l2 f,
-  pr_outcome_sum (l1 ++ l2) f
-  = (pr_outcome_sum l1 f + pr_outcome_sum l2 (fun x => f (length l1 + x)%nat))%R.
+Lemma pr_outcome_sum_scale : forall a l f, 
+  pr_outcome_sum (scale a l) f = (a * pr_outcome_sum l f)%R.
 Proof.
-  intros l1 l2.
-  induction l1; intro f.
+  intros a l.
+  induction l; intro f.
   unfold pr_outcome_sum.
-  simpl.
-  lra.
-  simpl.
-  rewrite 2 pr_outcome_sum_extend.
-  rewrite IHl1.
+  simpl. lra.
+  unfold pr_outcome_sum in *.
+  simpl length.
+  rewrite 2 Rsum_shift.
+  simpl nth.
+  rewrite IHl.
   destruct (f O); lra.
 Qed.
 
-Lemma pr_outcome_sum_repeat_false : forall n f,
-  pr_outcome_sum (repeat 0 n) f = 0.
+Lemma length_join' : forall l1 l2 i n,
+  (i <= length l1)%nat ->
+  (forall i, (i < length l1)%nat -> length (l2 i) = (2 ^ n)%nat) -> 
+  length (join' l1 l2 i) = (2 ^ n * i)%nat.
 Proof.
-  intros n f.
-  unfold pr_outcome_sum, Rsum.
-  destruct n as [| n]; trivial.
+  intros l1 l2 i n Hi Hl2.
+  induction i.
+  simpl. 
+  lia. 
   simpl.
-  apply sum_eq_R0.
-  intros x Hx.
-  destruct (f x); trivial.
-  destruct x; trivial.
-  rewrite repeat_length in Hx.
-  replace n with (x + (S (n - x - 1)))%nat by lia.
-  rewrite <- repeat_combine.
-  simpl.
-  rewrite <- repeat_length with (n:=x) (x:=0) at 1.
-  rewrite nth_middle.
-  trivial.
+  rewrite app_length.
+  rewrite IHi by lia.
+  rewrite length_scale.
+  rewrite Hl2 by lia.
+  lia.
 Qed.
+
+Lemma nth_firstn : forall {A} i n (l : list A) d,
+  (i < n)%nat -> nth i (firstn n l) d = nth i l d.
+Proof.
+  intros A i n l d Hi.
+  generalize dependent n.
+  generalize dependent i.
+  induction l; intros i n Hi.
+  rewrite firstn_nil.
+  reflexivity.
+  destruct n. lia.
+  rewrite firstn_cons.
+  simpl.
+  destruct i.
+  reflexivity.
+  apply IHl.
+  lia.
+Qed.
+
+Lemma pr_outcome_sum_firstn : forall n l f, (n < length l)%nat ->
+  pr_outcome_sum (firstn (S n) l) f = 
+    ((if f n then nth n l 0 else 0) + pr_outcome_sum (firstn n l) f)%R.
+Proof.
+  intros n l f.
+  generalize dependent l.
+  induction n; intros l Hn.
+  destruct l.
+  simpl in Hn.
+  lia.
+  simpl.
+  unfold pr_outcome_sum.
+  simpl.
+  destruct (f O); lra.
+  destruct l.
+  simpl in Hn.
+  lia.
+  rewrite IHn by lia.
+  destruct l.
+  simpl in Hn.
+  lia.
+  rewrite 2 firstn_cons.
+  unfold pr_outcome_sum.
+  Local Opaque firstn.
+  simpl length.
+  rewrite 2 Rsum_extend.
+  repeat rewrite firstn_length_le.
+  assert (aux : forall a b c d, (a < 2 + d)%nat ->
+            nth a (b :: c :: firstn d l) 0 = nth a (b :: c :: l) 0).
+  { clear.
+    intros a b c d H.
+    destruct a.
+    reflexivity.
+    destruct a.
+    reflexivity.
+    simpl.
+    apply nth_firstn.
+    lia. }
+  apply f_equal2.
+  rewrite aux. reflexivity. simpl in Hn. lia.
+  apply f_equal2.
+  rewrite aux. reflexivity. simpl in Hn. lia.
+  apply Rsum_eq_bounded.
+  intros i Hi.
+  rewrite aux by lia. 
+  rewrite nth_firstn. reflexivity. lia.
+  lia.
+  simpl in Hn. lia.
+Qed.
+
+Local Transparent firstn.
+Lemma pr_outcome_sum_join_geq : forall l1 l2 f1 f2 r1 r2 m n,
+  distribution l1 ->
+  (0 <= r2)%R ->
+  pr_outcome_sum l1 f1 >= r1 ->
+  (forall i, (i <= length l1)%nat ->
+        length (l2 i) = (2 ^ n)%nat /\
+        pr_outcome_sum (l2 i) (f2 i) >= r2) -> (* note: r2 independent of i *)
+  let f1f2 z := (let x := first_k m (m + n) z in
+                 let y := last_k n (m + n) z in
+                 f1 x && f2 x y) in
+  pr_outcome_sum (join l1 l2) f1f2 >= (r1 * r2)%R.
+Proof.
+  intros l1 l2 f1 f2 r1 r2 m n Hl1dist Hr2 Hl1 Hl2 f1f2.
+  assert (forall i, (i <= length l1)%nat ->
+    pr_outcome_sum (join' l1 l2 i) f1f2 >= 
+      pr_outcome_sum (firstn i l1) f1 * r2).
+  { intros i Hi.
+    induction i.
+    unfold pr_outcome_sum.
+    simpl.
+    lra.
+    simpl join'.
+    rewrite pr_outcome_sum_append.
+    rewrite pr_outcome_sum_scale.
+    rewrite Rplus_comm.
+    erewrite pr_outcome_sum_replace_f.
+    2: { intros x Hx.
+         subst f1f2.
+         destruct (Hl2 i) as [H _].
+         lia.
+         rewrite length_join' with (n:=n).
+         rewrite H in Hx.
+         rewrite simplify_first_k by assumption.
+         rewrite simplify_last_k by assumption.
+         simpl.
+         reflexivity.
+         lia.
+         intros j Hj. 
+         destruct (Hl2 j) as [? _].
+         lia.
+         assumption. }
+    rewrite pr_outcome_sum_firstn by lia.
+    rewrite Rmult_plus_distr_r.
+    apply Rplus_ge_compat.
+    destruct (f1 i) eqn:f1i.
+    erewrite pr_outcome_sum_replace_f.
+    2: { intros x Hx. simpl. reflexivity. }
+    apply Rmult_ge_compat_l.
+    destruct Hl1dist as [Hl1dist _].
+    rewrite Forall_nth in Hl1dist. 
+    apply Rle_ge.
+    apply Hl1dist.
+    lia.
+    destruct (Hl2 i) as [_ H].
+    lia.
+    assumption.
+    rewrite Rmult_0_l.
+    apply Rle_ge.
+    apply Rmult_le_pos.
+    destruct Hl1dist as [Hl1dist _].
+    rewrite Forall_nth in Hl1dist. 
+    apply Hl1dist.
+    lia. 
+    rewrite pr_outcome_sum_false.
+    lra.
+    intros. 
+    reflexivity.
+    apply IHi.
+    lia. }
+  eapply Rge_trans.
+  apply H.
+  reflexivity.
+  rewrite firstn_all. 
+  apply Rmult_ge_compat_r.
+  lra.
+  assumption.
+Qed.
+
+(** Repeat independent runs **)
+
+(* rnds  : source of randomness for sampling
+   niter : max number of iterations
+   body  : operation to iterate *)
+Fixpoint iterate {A} (rnds : nat -> R) (niter : nat) (body : R -> option A) :=
+  match niter with
+  | 0 => None
+  | S niter' => 
+      match body (rnds niter') with
+      | Some v => Some v
+      | None => iterate rnds niter' body
+      end
+  end.
+
+(* "pr_Ps P i r" says that predicate P is true with probability r and makes 
+    i random choices from some random stream of reals. *)
+Inductive pr_Ps : ((nat -> R) -> Prop) -> nat -> R -> Prop :=
+| pr_Ps_base : pr_Ps (fun _ => True) O 1
+| pr_Ps_rec : forall P1 i r1 P2 r2 P,
+    pr_Ps P1 i r1 -> 
+    pr_P P2 r2 ->
+    (forall rnds, P rnds <-> P1 rnds /\ P2 (rnds i)) ->
+    pr_Ps P (S i) (r1 * r2).
+
+Definition isNone {A} (o : option A) := match o with None => true | _ => false end.
+Definition isSome {A} (o : option A) := match o with Some _ => true | _ => false end.
+
+Lemma pr_iterate_None : forall {A} niter (body : R -> option A) r,
+  (niter > 0)%nat ->
+  pr_P (fun rnd => isNone (body rnd) = true) r ->
+  pr_Ps (fun rnds => isNone (iterate rnds niter body) = true) niter (r ^ niter)%R.
+Proof.
+  intros A niter body r H1 H2.
+  induction niter.
+  lia.
+  clear H1.
+  destruct niter.
+  clear IHniter.
+  simpl.
+  rewrite Rmult_comm.
+  eapply pr_Ps_rec.
+  apply pr_Ps_base.
+  apply H2.
+  intro rnds.
+  simpl.
+  destruct (body (rnds O)).
+  split; intros; easy.
+  split; intros; easy.
+  remember (S niter) as niter'.
+  simpl.
+  rewrite Rmult_comm.
+  eapply pr_Ps_rec.
+  apply IHniter.
+  subst. lia.
+  apply H2.
+  intro rnds.
+  simpl.
+  destruct (body (rnds niter')).
+  split; intros; easy.
+  split; intros; easy.
+Qed.
+
+(* @Robert @Yuxiang I don't think there's any way to prove this from first 
+   principles. Are we ok with this axiom? Our alternatives are: change the definition
+   of pr_Ps to make something like this provable (possibly reuse join?), or give 
+   up on having a general statement about multiple iterations ;-;  -Kesha *)
+Axiom negate_pr_Ps : forall f i r, 
+  pr_Ps (fun rnds => f rnds = true) i r ->
+  pr_Ps (fun rnds => f rnds = false) i (1 - r)%R.
+
+(* This might be provable, I haven't thought about it very carefully. -Kesha *)
+Axiom pr_Ps_unique : forall P i r1 r2,
+    pr_Ps P i r1 ->
+    pr_Ps P i r2 ->
+    r1 = r2.
+
+Lemma pr_iterate_Some : forall {A} niter (f : nat -> option A) l r,
+  (niter > 0)%nat ->
+  distribution l ->
+  pr_P (fun rnd => isSome (f (sample l rnd)) = true) r ->
+  pr_Ps (fun rnds => isSome (iterate rnds niter (fun rnd => f (sample l rnd))) = true) niter (1 - ((1 - r) ^ niter))%R.
+Proof.
+  intros A niter f l r Hniter Hl H.
+  remember (fun rnd => f (sample l rnd)) as body.
+  replace (fun rnds => isSome (iterate rnds niter body) = true) 
+    with (fun rnds => isNone (iterate rnds niter body) = false). 
+  apply negate_pr_Ps.
+  apply pr_iterate_None; auto.
+  subst.
+  rewrite <- pr_outcome_sum_eq with (f:=(fun x => isNone (f x))) by assumption.
+  rewrite <- pr_outcome_sum_eq with (f:=(fun x => isSome (f x))) in H by assumption.
+  rewrite pr_outcome_sum_negb in H.
+  destruct Hl as [_ Hl].
+  rewrite Hl in H.
+  replace (fun x : nat => ¬ (isSome (f x))) 
+    with (fun x : nat => isNone (f x)) in H.
+  lra.
+  apply functional_extensionality.
+  intro x. 
+  destruct (f x); auto.
+  apply functional_extensionality.
+  intro x. 
+  destruct (iterate x niter body); simpl. 
+  (* umm... is this true? @Robert? -Kesha *)
+Admitted.
