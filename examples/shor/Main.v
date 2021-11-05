@@ -74,8 +74,8 @@ Definition shor_body N rnd :=
   (* try to factor *)
   process N (Nat.log2_up (N - 1)) out.
 
-Definition end_to_end_shors N rnds niter :=
-  iterate rnds niter (shor_body N).
+Definition end_to_end_shors N rnds :=
+  iterate rnds (shor_body N).
 
 (** Correctness properties for Shor's **)
 
@@ -467,12 +467,13 @@ Proof.
 Qed.
 
 Local Opaque uniform.
-Lemma end_to_end_shors_correct : forall N rnds niter x,
+Lemma end_to_end_shors_correct : forall N rnds x,
     (1 < N)%nat ->
-    (forall m, 0 <= rnds m < 1) ->
-    end_to_end_shors N rnds niter = Some x ->
+    (Forall (fun x => 0 <= x < 1) rnds) ->
+    end_to_end_shors N rnds = Some x ->
     is_a_factor x N.
 Proof.
+  (*
   intros N rnds niter x H Hrnds H0.
   unfold end_to_end_shors in H0.
   induction niter; intros.
@@ -506,6 +507,7 @@ Proof.
   apply Misc.Nat_gcd_le_r.
   lia. 
   lia.
+  *)
 Admitted.
 
 Lemma geq_exists : forall a b,
@@ -645,9 +647,10 @@ Local Opaque pow leads_to_factor.
 Lemma end_to_end_shors_succeeds_with_high_probability : forall N niter r,
   ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
   (niter > 0)%nat ->
-  pr_Ps (fun rnds => isSome (end_to_end_shors N rnds niter) = true) niter r ->
+  pr_Ps (fun rnds => isSome (end_to_end_shors N rnds) = true) niter r ->
   (r >= 1 - (1 - ((1 / 2) * (κ / INR (Nat.log2 N)^4))^niter))%R.
 Proof.
+  (*
   intros N niter r HN1 HN2 HN3 Hniter H.
   unfold end_to_end_shors in H.
   specialize (shor_body_succeeds_with_high_probability N HN1 HN2 HN3) as Hbody.
@@ -673,6 +676,7 @@ Proof.
   admit. (* implied by assumptions about N *)
   intros i Hi.
   apply run_distribution.
+   *)
 Admitted.
 
 
