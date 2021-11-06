@@ -1100,7 +1100,9 @@ Qed.
 (* constant used in correctness stmt ~ 0.055 *)
 Definition κ := 4 * exp(-2) / (PI ^ 2). 
 Lemma κgt0 : κ > 0. Proof. unfold κ. interval. Qed.
+Lemma κlt1 : κ < 1. Proof. unfold κ. interval. Qed.
 Lemma κgt120 : κ > 1/20. Proof. unfold κ. interval. Qed.
+Lemma κlt118 : κ < 1/18. Proof. unfold κ. interval. Qed.  
 
 (* The correctness specification. It succeed with prob proportional to
    1/(log N)^4, which is asymptotically small, but big enough in

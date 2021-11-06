@@ -942,7 +942,7 @@ Lemma pr_outcome_sum_join_geq : forall l1 l2 f1 f2 r1 r2 m n,
   distribution l1 ->
   (0 <= r2)%R ->
   pr_outcome_sum l1 f1 >= r1 ->
-  (forall i, (i <= length l1)%nat ->
+  (forall i, (i < length l1)%nat ->
         length (l2 i) = (2 ^ n)%nat /\
         pr_outcome_sum (l2 i) (f2 i) >= r2) -> (* note: r2 independent of i *)
   let f1f2 z := (let x := first_k m (m + n) z in
@@ -1036,6 +1036,97 @@ Inductive pr_Ps : ((list R) -> Prop) -> nat -> R -> Prop :=
 | pr_Ps_rec : forall Ps i r1 P r2,
     pr_Ps Ps i r1 ->
     pr_P P r2 ->
+    (forall rnd rnds, Ps (rnd :: rnds) <-> Ps rnds /\ P rnd) ->
+    pr_Ps Ps (S i) (r1 * r2).
+
+Lemma pr_P_same :
+  forall P1 P2 r,
+    (forall rnd, 0 <= rnd <= 1 -> P1 rnd <-> P2 rnd) ->
+    pr_P P1 r ->
+    pr_P P2 r.
+Proof.
+  unfold pr_P. intros.
+  apply interval_sum_same with (P1 := P1); assumption.
+Qed.
+
+Lemma pr_Ps_same :
+  forall i Ps1 Ps2 r,
+    (forall rnds, Ps1 rnds <-> Ps2 rnds) ->
+    pr_Ps Ps1 i r ->
+    pr_Ps Ps2 i r.
+Proof.
+  induction i; intros.
+  - inversion H0; subst.
+    rewrite H in H1 by easy.
+    constructor. assumption.
+  - inversion H0; subst.
+    apply pr_Ps_rec with (P := P); try assumption.
+    apply IHi with (Ps1 := Ps1); try assumption.
+    intros. rewrite <- H, H5, <- H. 
+    reflexivity.
+Qed.
+
+Lemma pr_Ps_nil :
+  forall i Ps r,
+    pr_Ps Ps i r ->
+    Ps nil.
+Proof.
+  induction i; intros.
+  - inversion H; easy.
+  - inversion H; subst.
+    apply IHi with (r := r1). assumption.
+Qed.
+
+Lemma pr_Ps_unique : forall Ps i r1 r2,
+  pr_Ps Ps i r1 ->
+  pr_Ps Ps i r2 ->
+  r1 = r2.
+Proof.
+  intros Ps i. gen Ps.
+  induction i; intros.
+  - inversion H; inversion H0; lra.
+  - inversion H; inversion H0; subst.
+    specialize (IHi Ps r0 r4 H2 H8).
+    apply pr_P_same with (P2 := P0) in H3.
+    specialize (pr_P_unique P0 r3 r5 H3 H9) as G.
+    subst. reflexivity.
+    intros rnd HH. split; intros.
+    + specialize (pr_Ps_nil i Ps r0 H2) as G.
+      assert (Ps nil /\ P rnd) by easy.
+      rewrite <- H5 in H4 by (simpl; lia).
+      rewrite H11 in H4 by (simpl; lia).
+      easy.
+    + specialize (pr_Ps_nil i Ps r0 H2) as G.
+      assert (Ps nil /\ P0 rnd) by easy.
+      rewrite <- H11 in H4 by (simpl; lia).
+      rewrite H5 in H4 by (simpl; lia).
+      easy.
+Qed.
+
+Definition isNone {A} (o : option A) := match o with None => true | _ => false end.
+
+Lemma pr_iterate_None :
+  forall {A} n (body : R -> option A) r,
+    pr_P (fun rnd => isNone (body rnd) = true) r ->
+    pr_Ps (fun rnds => isNone (iterate rnds body) = true) n (r ^ n)%R.
+Proof.
+  intros. induction n.
+  - constructor. reflexivity.
+  - replace (r ^ (S n))%R with (r^n * r)%R by (simpl; lra).
+    apply pr_Ps_rec with (P := (fun rnd : R => isNone (body rnd) = true)) (r2 := r) in IHn; try assumption.
+    split; intros.
+    simpl in H0. destruct (body rnd) eqn:E; try easy.
+    simpl. destruct (body rnd) eqn:E; try easy.
+Qed.
+
+
+(*
+
+Inductive pr_Ps : ((list R) -> Prop) -> nat -> R -> Prop :=
+| pr_Ps_base : forall (Ps : (list R) -> Prop), Ps nil -> pr_Ps Ps O 1
+| pr_Ps_rec : forall Ps i r1 P r2,
+    pr_Ps Ps i r1 ->
+    pr_P P r2 ->
     (forall rnd rnds, (length rnds <= i)%nat -> (Ps (rnd :: rnds) <-> Ps rnds /\ P rnd)) ->
     pr_Ps Ps (S i) (r1 * r2).
 
@@ -1120,8 +1211,7 @@ Proof.
     simpl in H1. destruct (body rnd) eqn:E; try easy.
     simpl. destruct (body rnd) eqn:E; try easy.
 Qed.
-
-
+*)
 
 (*
 Fixpoint iterate {A} (rnds : nat -> R) (niter : nat) (body : R -> option A) :=
