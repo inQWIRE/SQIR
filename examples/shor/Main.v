@@ -661,6 +661,554 @@ Qed.
 
 (* @Kesha: I am not familiar with uc_well_typed on this.
    May need help from you. *)
+
+Print uc_well_typed.
+
+Lemma uc_well_typed_alt_npar :
+  forall p q d,
+    (0 < d)%nat ->
+    (p <= d)%nat ->
+    uc_well_typed (to_base_ucom (d + q) (npar p U_H)).
+Proof.
+  induction p; intros.
+  simpl. constructor. lia.
+  simpl. destruct p. simpl. apply uc_well_typed_H. lia.
+  remember (S p) as Sp. simpl.
+  constructor. apply IHp; lia.
+  apply uc_well_typed_H. lia.
+Qed.
+
+Print ucom.
+
+Inductive ucom_well_typed {dim : nat} {U} : ucom U -> Prop :=
+| ucom_WT_seq : forall p1 p2, ucom_well_typed p1 -> ucom_well_typed p2 -> ucom_well_typed (p1 >> p2)
+| ucom_WT_app : forall n (g : U n) qs,
+    NoDup qs ->
+    Forall (fun x => x < dim)%nat qs ->
+    ucom_well_typed (uapp g qs).
+
+Ltac inv H :=
+  inversion H; subst; clear H.
+
+Lemma is_fresh_CNOT :
+  forall dim n0 n1 n2,
+    n0 <> n1 -> n0 <> n2 ->
+    @is_fresh _ dim n0 (CNOT n1 n2).
+Proof.
+  intros. Local Transparent CNOT. constructor; lia. Local Opaque CNOT.
+Qed.
+
+Lemma is_fresh_SWAP :
+  forall dim n0 n1 n2,
+    n0 <> n1 -> n0 <> n2 ->
+    @is_fresh _ dim n0 (SQIR.SWAP n1 n2).
+Proof.
+  intros. Local Transparent SQIR.SWAP. unfold SQIR.SWAP. repeat (constructor; try (apply is_fresh_CNOT; lia)). Local Opaque SQIR.SWAP.
+Qed.
+
+Lemma ucom_well_typed_uc_well_typed :
+  forall p dim,
+    (0 < dim)%nat ->
+    @ucom_well_typed dim _ p ->
+    uc_well_typed (to_base_ucom dim p).
+Proof.
+  induction p; intros.
+  - inversion H0; subst. apply IHp1 in H3. apply IHp2 in H4.
+    simpl. constructor; easy. easy. easy. 
+  - destruct u.
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      apply uc_well_typed_X. inv H0. inv H5. lia.
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      apply uc_well_typed_H. inv H0. inv H5. lia.
+    + 
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      constructor. inv H0. inv H5. subst. lia.
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      constructor. inv H0. inv H5. lia.
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      constructor. inv H0. inv H5. lia.
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      apply uc_well_typed_CNOT. inv H0. inv H5. inv H6. inv H3. apply not_in_cons in H6. lia. 
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      inv H0. inv H5. inv H6. inv H3. apply not_in_cons in H6.
+      do 5 (try constructor; try apply uc_well_typed_Rz; try apply uc_well_typed_CNOT; try inversion H; try lia).
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      apply uc_well_typed_SWAP. inv H0. inv H5. inv H6. inv H3. apply not_in_cons in H6. lia.
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      apply uc_well_typed_control.
+      inv H0. inv H5. inv H6. inv H7. inv H3. inv H9. apply not_in_cons in H3.
+      apply not_in_cons in H7. destruct H7. apply not_in_cons in H1.
+      split. lia. split. apply is_fresh_CNOT; lia. apply uc_well_typed_CNOT; lia. 
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      apply uc_well_typed_control.
+      inv H0. inv H5. inv H6. inv H7. inv H3. inv H9. apply not_in_cons in H3.
+      apply not_in_cons in H7. destruct H7. apply not_in_cons in H1.
+      split. lia. split. apply is_fresh_SWAP; lia. apply uc_well_typed_SWAP; lia.
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      inv H0. inv H5. inv H6. inv H7. inv H8. inv H3. inv H10. inv H11.
+      apply not_in_cons in H8. destruct H8. apply not_in_cons in H1. destruct H1. apply not_in_cons in H10.
+      apply not_in_cons in H3. destruct H3. apply not_in_cons in H11. apply not_in_cons in H8.
+      apply uc_well_typed_control. split. lia.
+      split. apply fresh_control. split. lia. apply is_fresh_CNOT; lia.
+      apply uc_well_typed_control. split. lia. split. apply is_fresh_CNOT; lia.
+      apply uc_well_typed_CNOT; lia.
+    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
+      inv H0. inv H5. inv H6. inv H7. inv H8. inv H3. inv H10. inv H11.
+      apply not_in_cons in H8. destruct H8. apply not_in_cons in H1. destruct H1. apply not_in_cons in H10.
+      apply not_in_cons in H3. destruct H3. apply not_in_cons in H11. apply not_in_cons in H8.
+      inv H9. destruct H8. apply not_in_cons in H9. destruct H11. apply not_in_cons in H13.
+      destruct H10. apply not_in_cons in H14. inv H12. apply not_in_cons in H19.
+      apply uc_well_typed_control. split. lia.
+      split. apply fresh_control. split. lia. apply fresh_control. split. lia. apply is_fresh_CNOT; lia.
+      apply uc_well_typed_control. split. lia.
+      split. apply fresh_control. split. lia. apply is_fresh_CNOT; lia.
+      apply uc_well_typed_control. split. lia.
+      split. apply is_fresh_CNOT; lia.
+      apply uc_well_typed_CNOT; lia.
+Qed.
+
+Lemma uc_well_typed_ucom_well_typed :
+  forall p dim,
+    (0 < dim)%nat ->
+    uc_well_typed (to_base_ucom dim p) ->
+    well_formed p ->
+    @ucom_well_typed dim _ p.
+Proof.
+  induction p; intros.
+  - inversion H0; subst.
+    inversion H1; subst.
+    constructor. apply IHp1; assumption. apply IHp2; assumption.
+  - constructor.
+    + destruct u; inversion H1; subst.
+      1-5 :
+        do 2 (destruct l; try inversion H3); repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 3 (destruct l; try inversion H3).
+      simpl in H0. apply uc_well_typed_CNOT in H0.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 3 (destruct l; try inversion H3).
+      inv H0. inv H8. apply uc_well_typed_CNOT in H10.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 3 (destruct l; try inversion H3).
+      simpl in H0. apply uc_well_typed_SWAP in H0.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 4 (destruct l; try inversion H3).
+      simpl in H0. apply uc_well_typed_CCX in H0.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      Local Transparent SQIR.SWAP.
+      do 4 (destruct l; try inversion H3).
+      simpl in H0. inversion H0; subst. apply uc_well_typed_CCX in H10.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      Local Opaque SQIR.SWAP.
+      do 5 (destruct l; try inversion H3).
+      simpl in H0.
+      apply uc_well_typed_control in H0. destruct H0. destruct H2.
+      apply fresh_control in H2. destruct H2. apply fresh_CNOT in H10.
+      apply uc_well_typed_control in H9. destruct H9. destruct H11. apply fresh_CNOT in H11.
+      apply uc_well_typed_CNOT in H12.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 6 (destruct l; try inversion H3).
+      simpl in H0.
+      apply uc_well_typed_control in H0. destruct H0. destruct H2.
+      apply fresh_control in H2. destruct H2. apply fresh_control in H11. destruct H11. apply fresh_CNOT in H12.
+      apply uc_well_typed_control in H10. destruct H10. destruct H13.
+      apply fresh_control in H13. destruct H13. apply fresh_CNOT in H15.
+      apply uc_well_typed_control in H14. destruct H14. destruct H16.
+      apply fresh_CNOT in H16.
+      apply uc_well_typed_CNOT in H17.
+      destruct H12, H15, H16, H17, H21.
+      repeat (constructor; try apply in_nil; try assumption; repeat (apply not_in_cons; split; try assumption; try apply in_nil)).
+    + destruct u; inversion H1; subst.
+      do 2 (destruct l; try inversion H3).
+      simpl in H0. apply uc_well_typed_X in H0.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 2 (destruct l; try inversion H3).
+      simpl in H0. apply uc_well_typed_H in H0.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      1-3 :
+        do 2 (destruct l; try inversion H3);
+        simpl in H0; inv H0;
+          repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 3 (destruct l; try inversion H3).
+      simpl in H0. apply uc_well_typed_CNOT in H0.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 3 (destruct l; try inversion H3).
+      inv H0. inv H8. inv H7. apply uc_well_typed_CNOT in H10.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 3 (destruct l; try inversion H3).
+      simpl in H0. apply uc_well_typed_SWAP in H0.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 4 (destruct l; try inversion H3).
+      simpl in H0. apply uc_well_typed_CCX in H0.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      Local Transparent SQIR.SWAP.
+      do 4 (destruct l; try inversion H3).
+      simpl in H0. inversion H0; subst. apply uc_well_typed_CCX in H10.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      Local Opaque SQIR.SWAP.
+      do 5 (destruct l; try inversion H3).
+      simpl in H0.
+      apply uc_well_typed_control in H0. destruct H0. destruct H2.
+      apply fresh_control in H2. destruct H2. apply fresh_CNOT in H10.
+      apply uc_well_typed_control in H9. destruct H9. destruct H11. apply fresh_CNOT in H11.
+      apply uc_well_typed_CNOT in H12.
+      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+      do 6 (destruct l; try inversion H3).
+      simpl in H0.
+      apply uc_well_typed_control in H0. destruct H0. destruct H2.
+      apply fresh_control in H2. destruct H2. apply fresh_control in H11. destruct H11. apply fresh_CNOT in H12.
+      apply uc_well_typed_control in H10. destruct H10. destruct H13.
+      apply fresh_control in H13. destruct H13. apply fresh_CNOT in H15.
+      apply uc_well_typed_control in H14. destruct H14. destruct H16.
+      apply fresh_CNOT in H16.
+      apply uc_well_typed_CNOT in H17.
+      destruct H12, H15, H16, H17, H21.
+      repeat (constructor; try assumption).
+Qed.
+
+Inductive ucom_fresh {U} : nat -> ucom U -> Prop :=
+| ucom_fresh_seq : forall n p1 p2, ucom_fresh n p1 -> ucom_fresh n p2 -> ucom_fresh n (p1 >> p2)
+| ucom_fresh_app : forall n m (g : U m) qs, ~ In n qs -> ucom_fresh n (uapp g qs).
+
+Lemma control'_fuel_exceed' :
+  forall f m q u,
+    (fuel u < m <= f)%nat ->
+    control' q u m = control' q u (S (fuel u)).
+Proof.
+  induction f; intros.
+  - lia.
+  - destruct u.
+    + destruct m. lia.
+      simpl fuel.
+      remember (S (Init.Nat.max (fuel u1) (fuel u2))) as mx.
+      simpl. simpl in H.
+      assert (S (fuel u1) <= mx)%nat by (rewrite Heqmx; apply Peano.le_n_S, Nat.le_max_l).
+      assert (S (fuel u2) <= mx)%nat by (rewrite Heqmx; apply Peano.le_n_S, Nat.le_max_r).
+      rewrite IHf. rewrite IHf with (u := u2).
+      rewrite IHf with (m := mx). rewrite IHf with (m := mx) (u := u2).
+      2-5 : lia.
+      easy.
+    + destruct m. destruct u; try (simpl in H; lia); try easy.
+      destruct u; try easy.
+      simpl in H. unfold fuel_CU1 in H.
+      do 5 (destruct m; try lia).
+      simpl. easy.
+      simpl in H. unfold fuel_CSWAP in H.
+      do 3 (destruct m; try lia).
+      simpl. easy.
+      simpl in H. unfold fuel_CCX in H.
+      do 23 (destruct m; try lia).
+      simpl. easy.
+Qed.
+
+Lemma control'_fuel_exceed :
+  forall f q u,
+    (fuel u < f)%nat ->
+    control' q u f = control q u.
+Proof.
+  intros. unfold control. apply control'_fuel_exceed' with (f := f). lia.
+Qed.
+
+Lemma control_seq :
+  forall x p1 p2,
+    control x (p1 >> p2) = control x p1 >> control x p2.
+Proof.
+  intros. unfold control.
+  remember (fuel (p1 >> p2)) as fseq.
+  remember (S (fuel p1)) as Sf1.
+  remember (S (fuel p2)) as Sf2.
+  simpl. simpl in Heqfseq.
+  assert (S (fuel p1) <= fseq)%nat by (rewrite Heqfseq; apply Peano.le_n_S, Nat.le_max_l).
+  assert (S (fuel p2) <= fseq)%nat by (rewrite Heqfseq; apply Peano.le_n_S, Nat.le_max_r).
+  repeat rewrite control'_fuel_exceed. easy.
+  1-4: lia.
+Qed.
+
+Lemma ucom_fresh_control :
+  forall p x y,
+    ucom_fresh x p ->
+    x <> y ->
+    well_formed p ->
+    ucom_fresh x (control y p).
+Proof.
+  induction p; intros.
+  - rewrite control_seq. inversion H; subst. inversion H1; subst.
+    constructor. apply IHp1; assumption. apply IHp2; assumption.
+  - unfold control.
+    destruct u; simpl; inversion H; subst; inversion H1; subst;
+      try (do 2 (destruct l; try inversion H3); apply not_in_cons in H4).
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    unfold decompose_CH.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    unfold decompose_CU2.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    unfold decompose_CU3.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    destruct l; try inversion H3. destruct H4. apply not_in_cons in H4.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    destruct l; try inversion H3. destruct H4. apply not_in_cons in H4.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    destruct l; try inversion H3. destruct H4. apply not_in_cons in H4.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    do 2 (destruct l; try inversion H3). destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H10.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    do 2 (destruct l; try inversion H3). destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H10.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    do 3 (destruct l; try inversion H3). destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H11. destruct H11. apply not_in_cons in H12.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+    do 4 (destruct l; try inversion H3). destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H12. destruct H12. apply not_in_cons in H13. destruct H13. apply not_in_cons in H14.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
+Qed.
+
+Lemma bcfresh_ucom_fresh :
+  forall p x,
+    bcfresh x p ->
+    ucom_fresh x (bc2ucom p).
+Proof.
+  induction p; intros; simpl.
+  - constructor. inversion H. apply not_in_cons; easy.
+  - constructor. inversion H. apply not_in_cons; easy.
+  - constructor. inversion H. apply not_in_cons. split. lia. apply not_in_cons; easy.
+  - inversion H; subst. apply IHp in H4.
+    apply ucom_fresh_control; try easy.
+    apply bc2ucom_WF.
+  - inversion H; subst. constructor. apply IHp1; assumption. apply IHp2; assumption.
+Qed.
+
+Lemma ucom_well_typed_control :
+  forall p dim x,
+    (x < dim)%nat ->
+    ucom_fresh x p ->
+    @ucom_well_typed dim _ p ->
+    @ucom_well_typed dim _ (control x p).
+Proof.
+  induction p; intros.
+  - inversion H1; subst.
+    inversion H0; subst.
+    rewrite control_seq. constructor.
+    apply IHp1; assumption. apply IHp2; assumption.
+  - destruct u; unfold control.
+    1-11 : simpl; inversion H0; subst; inversion H1; subst;
+      try (do 5 (destruct l; repeat (constructor; try apply in_nil; try lia; try easy))).
+    repeat (destruct l; repeat (constructor; try apply in_nil; try lia; try easy)).
+    apply not_in_cons in H4. apply not_in_cons; split; try lia; try apply in_nil.
+    inv H8. lia.
+    apply not_in_cons in H4. easy. 
+    inv H8. inv H10. lia.
+    apply not_in_cons in H4. easy. 
+    inv H8. inv H10. lia.
+    repeat (destruct l; repeat (constructor; try apply in_nil; try lia; try easy)).
+    apply not_in_cons in H4. destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H7.
+    repeat (apply not_in_cons; split; try lia; try apply in_nil).
+    inv H6. apply not_in_cons in H9. destruct H9. apply not_in_cons in H6.
+    repeat (apply not_in_cons; split; try lia; try apply in_nil).
+    inv H6. inv H10. apply not_in_cons in H7.
+    repeat (apply not_in_cons; split; try lia; try apply in_nil).
+    inv H8. lia.
+    inv H8. inv H10. inv H11. lia.
+    inv H8. inv H10. lia.
+    do 5 (destruct l; repeat (constructor; try apply in_nil; try lia; try easy)).
+    destruct l. 
+    inversion H0; subst. inversion H1; subst.
+    simpl. destruct g0.
+    1-11,13: simpl; repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+    apply not_in_cons in H4. destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H7. destruct H7. apply not_in_cons in H9. destruct H9. apply not_in_cons in H10.
+    inv H6.
+    apply not_in_cons in H13. destruct H13. apply not_in_cons in H11. destruct H11. apply not_in_cons in H12. destruct H12. apply not_in_cons in H13.
+    inv H14.
+    apply not_in_cons in H17. destruct H17. apply not_in_cons in H15. destruct H15. apply not_in_cons in H16.
+    inv H18.
+    apply not_in_cons in H20. destruct H20. apply not_in_cons in H18.
+    inv H21.
+    apply not_in_cons in H22.
+    inv H8. inv H24. inv H25. inv H26. inv H27.
+    destruct H10, H13, H16, H18, H22.
+    simpl.
+    repeat constructor; try assumption; try apply in_nil; repeat (apply not_in_cons; split; try apply in_nil; try assumption).
+Qed.
+  
+Lemma bcWT_uc_well_typed_to_base_ucom :
+  forall dim p,
+    (0 < dim)%nat ->
+    bcWT dim p ->
+    @uc_well_typed _ dim (to_base_ucom dim (bc2ucom p)).
+Proof.
+  intros. induction p.
+  - simpl. constructor. easy.
+  - simpl. apply uc_well_typed_X. inversion H0; subst. easy.
+  - simpl. apply uc_well_typed_SWAP. inversion H0; subst. easy.
+  - simpl. inversion H0. subst. apply IHp in H5.
+    apply ucom_well_typed_uc_well_typed. easy.
+    apply ucom_well_typed_control. easy.
+    apply bcfresh_ucom_fresh. easy.
+    apply uc_well_typed_ucom_well_typed. easy. easy.
+    apply bc2ucom_WF.
+  - simpl. inversion H0; subst. constructor.
+    apply IHp1; assumption.
+    apply IHp2; assumption.
+Qed.
+
+Lemma bcWT_bygatectrl :
+  forall (dim n : nat) (p : bccom),
+    (n < dim)%nat ->
+    bcfresh n p ->
+    bcWT dim p ->
+    bcWT dim (bygatectrl n p).
+Proof.
+  intros. induction p.
+  1-4 : 
+    inversion H0; subst; inversion H1; subst;
+    simpl; constructor; easy.
+  inversion H0; subst; inversion H1; subst.
+  simpl. constructor. apply IHp1; easy. apply IHp2; easy.
+Qed.
+
+Lemma bcfresh_shift :
+  forall p x s,
+    bcfresh x p ->
+    bcfresh (s + x)%nat (map_bccom (fun q => s + q)%nat p).
+Proof.
+  induction p; intros; simpl; constructor; inversion H; subst; try lia.
+  apply IHp. easy.
+  apply IHp1. easy. apply IHp2. easy.
+Qed.  
+
+Lemma bcWT_map_bccom :
+  forall p dim x,
+    (0 < dim)%nat ->
+    bcWT dim p ->
+    bcWT (x + dim) (map_bccom (fun q => x + q)%nat p).
+Proof.
+  induction p; intros;
+    try (simpl; constructor; inversion H0; subst; lia).
+  inversion H0; subst.
+  simpl. constructor. lia. apply bcfresh_shift. easy.
+  apply IHp; easy. 
+  simpl. inversion H0; subst. constructor. apply IHp1; easy. apply IHp2; easy.
+Qed.
+
+Lemma bcWT_controlled_powers' :
+  forall x f kmax dim,
+    (0 < dim)%nat ->
+    (0 < kmax)%nat ->
+    (x <= kmax)%nat ->
+    (forall i, (i < kmax)%nat -> bcWT dim (bcelim (f i))) ->
+    (forall i, (i < kmax)%nat -> bcelim (f i) <> bcskip) ->
+    bcWT (kmax + dim) (controlled_powers' (fun x => map_bccom (fun q => kmax + q)%nat (bcelim (f x))) x kmax).
+Proof.
+  induction x; intros.
+  - simpl. constructor. lia.
+  - destruct x. simpl. apply bcWT_bygatectrl. lia.
+    apply map_qubits_bcfresh. lia. apply H3. easy. 
+    apply bcWT_map_bccom. easy. apply H2. easy.
+    remember (S x) as Sx.
+    simpl. destruct Sx. lia. constructor.
+    apply IHx; try easy; try lia.
+    apply bcWT_bygatectrl. lia.
+    apply map_qubits_bcfresh. lia. apply H3. lia.
+    apply bcWT_map_bccom. easy. apply H2. easy.
+Qed.
+
+Lemma ucom_well_typed_invert :
+  forall p dim,
+    @ucom_well_typed dim _ p ->
+    well_formed p ->
+    @ucom_well_typed dim _ (invert p).
+Proof.
+  intros. induction p.
+  - simpl. inversion H; subst. inversion H0; subst. constructor. apply IHp2; easy. apply IHp1; easy.
+  - destruct u; simpl; inversion H0; subst; inversion H; subst;
+      repeat (destruct l; try inversion H2); constructor; easy.
+Qed.
+
+Lemma ucom_well_typed_reverse_qubits' :
+  forall dim x i,
+    (2 * i <= x < dim)%nat ->
+    @ucom_well_typed dim _ (reverse_qubits' x i).
+Proof.
+  intros. induction i.
+  - simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+  - destruct i. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+    remember (S i) as Si.
+    simpl. destruct Si. lia. constructor. apply IHi. lia.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+Qed.
+
+Lemma ucom_well_typed_controlled_rotations :
+  forall dim x,
+    (x < dim)%nat ->
+    @ucom_well_typed dim _ (controlled_rotations x).
+Proof.
+  intros. induction x.
+  - simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+  - destruct x. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+    destruct x. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+    remember (S (S x)) as SSx.
+    simpl. destruct SSx. lia. destruct SSx. lia. constructor. apply IHx. lia.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+Qed.
+
+Lemma not_in_map_S :
+  forall a l,
+    ~ In a l ->
+    ~ In (S a) (map S l).
+Proof.
+  intros. induction l.
+  - simpl. easy.
+  - apply not_in_cons in H. destruct H.
+    apply not_in_cons. split. lia. apply IHl. easy.
+Qed.
+
+Lemma NoDup_map_S :
+  forall l, NoDup l -> NoDup (map S l).
+Proof.
+  induction l; intros.
+  - repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+  - simpl. inversion H; subst.
+    constructor. apply not_in_map_S.
+    easy. apply IHl. easy.
+Qed.
+
+Lemma Forall_map_S :
+  forall l dim, Forall (fun x => x < dim)%nat l -> Forall (fun x => x < S dim)%nat (map S l).
+Proof.
+  induction l; intros.
+  - repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+  - simpl. inversion H; subst.
+    constructor. lia.
+    apply IHl. easy.
+Qed.
+    
+Lemma ucom_well_typed_map_qubits_S :
+  forall p dim,
+    @ucom_well_typed dim _ p ->
+    @ucom_well_typed (S dim) _ (map_qubits S p).
+Proof.
+  induction p; intros.
+  - simpl. inversion H; subst. constructor. apply IHp1; easy. apply IHp2; easy.
+  - simpl. constructor.
+    apply NoDup_map_S. inversion H. easy.
+    apply Forall_map_S. inversion H. easy.
+Qed.
+
+Lemma ucom_well_typed_QFT :
+  forall x dim,
+    (x < dim)%nat ->
+    @ucom_well_typed dim _ (QFT x).
+Proof.
+  induction x; intros.
+  - simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+  - destruct x. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+    destruct x. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+    remember (S (S x)) as SSx.
+    simpl. destruct SSx. lia. destruct SSx. lia.
+    constructor.
+    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
+    apply ucom_well_typed_controlled_rotations. lia.
+    destruct dim. lia.
+    apply ucom_well_typed_map_qubits_S. apply IHx. lia.
+Qed.
+
 Lemma uc_well_typed_shor_circuit :
   forall a N,
     (a < N)%nat ->
@@ -668,7 +1216,37 @@ Lemma uc_well_typed_shor_circuit :
     let k := k N in
     uc_well_typed (to_base_ucom (n + k) (shor_circuit a N)).
 Proof.
-Admitted.
+  intros. unfold shor_circuit.
+  unfold n in n0. unfold k, num_qubits in k0. 
+  assert (Log1 : (1 <= Nat.log2 (2 * N))%nat).
+  { specialize (Nat.log2_pos (2 * N)%nat) as G. lia.
+  }
+  assert (Log2 : (1 <= Nat.log2 (2 * N ^ 2))%nat).
+  { specialize (Nat.log2_pos (2 * N ^ 2)%nat) as G. simpl in *. nia.
+  }
+  remember (2 * N)%nat as N2.
+  remember (2 * N ^ 2)%nat as N22.
+  simpl. constructor.
+  apply uc_well_typed_X. subst.
+  lia.
+  constructor.
+  constructor. apply uc_well_typed_alt_npar. lia. lia.
+  apply bcWT_uc_well_typed_to_base_ucom. lia.
+  apply bcWT_controlled_powers'; try lia.
+  intros. apply eWT_bcWT.
+  apply bcelim_modmult_rev_neq_bcskip. apply modmult_rev_eWT. lia.
+  intros. apply bcelim_modmult_rev_neq_bcskip.
+  constructor.
+  apply ucom_well_typed_uc_well_typed. lia.
+  apply ucom_well_typed_invert.
+  apply ucom_well_typed_reverse_qubits'.
+  split. apply Nat.mul_div_le. lia. lia.
+  apply reverse_qubits_WF.
+  apply ucom_well_typed_uc_well_typed. lia.
+  apply ucom_well_typed_invert.
+  apply ucom_well_typed_QFT. lia.
+  apply QFT_WF.
+Qed.
 
 Lemma end_to_end_shors_correct : forall N rnds x,
     (1 < N)%nat ->
@@ -1002,5 +1580,3 @@ Proof.
   lia.
 Qed.
 
-
-(** TODO @Yuxiang: facts about end_to_end_shors resources **)
