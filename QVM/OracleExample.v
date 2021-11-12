@@ -50,464 +50,84 @@ Definition qr_qexp (a b c d : qvar) :=
   unary (Nor (Var b)) qxor (Nor (Var c));;
   rotate_left_n b (32 - 7).
 
-(*
-Open Scope bits_scope.
+Definition sha256_k : var := 1.
 
-Definition rolBn (p : DWORD) k := iter k rolB p.
-
-Infix "+" := addB : bits_scope.
-Infix "^" := xorB : bits_scope.
-Infix "<<<" := rolBn (at level 30, no associativity) : bits_scope.
-
-Definition qr_spec (a b c d : DWORD) : DWORD * DWORD * DWORD * DWORD :=
-  let a := a + b in
-  let d := d ^ a in
-  let d := d <<< 16 in
-  let c := c + d in
-  let b := b ^ c in
-  let b := b <<< 12 in
-  let a := a + b in
-  let d := d ^ a in
-  let d := d <<< 8 in
-  let c := c + d in
-  let b := b ^ c in
-  let b := b <<< 7 in
-  (a, b, c, d).
-
-Definition bits2bvector {n : nat} (p : BITS n) : Bvector n :=
-  n2bvector n (Z.to_N (toPosZ p)).
-
-Definition bvector2bits {n : nat} (v : Bvector n) : BITS n :=
-  fromZ (Z.of_N (bvector2n v)).
-
-Module QRTesting.
-
-Definition a : var := 0.
-Definition b : var := 1.
-Definition c : var := 2.
-Definition d : var := 3.
-Definition tmp : var := 101.
-Definition stack : var := 102.
-Definition tmp1 : var := 103.
-
-Definition qr_vmap : qvar * nat -> var :=
-  fun '(x, _) =>
-  match x with
-  | L x' => x'
-  | G x' => x'
-  end.
-
-Definition qr_benv :=
- match
-  gen_genv (cons (TNor Q Nat, a) (cons (TNor Q Nat, b) (cons (TNor Q Nat, c) (cons (TNor Q Nat, d) nil))))
-  with None => empty_benv | Some bv => bv
- end.
-
-Definition qr_smap := 
-(gen_smap_l (cons (TNor Q Nat, a) (cons (TNor Q Nat, b) (cons (TNor Q Nat, c) (cons (TNor Q Nat, d) nil)))) (fun _ => 0)).
-
-Definition qr_pexp := 
-  match
-  trans_qexp
-    32 (fun _ => 1) qr_vmap qr_benv QFTA empty_cstore tmp tmp1 stack 0 nil
-    chacha_estore chacha_estore
-    (qr_qexp (G a) (G b) (G c) (G d))
-  with
-  | Some (Value (Some p, _, _, _)) => p
-  | _ => SKIP (a, 0)
-  end.
-
-Definition qr_env : f_env := fun _ => 32.
-
-Definition qr_oracle_spec : Checker :=
-  forAllShrink arbitrary shrink (fun va =>
-  forAllShrink arbitrary shrink (fun vb =>
-  forAllShrink arbitrary shrink (fun vc =>
-  forAllShrink arbitrary shrink (fun vd =>
-  let
-    '(a', b', c', d') :=
-    qr_spec (bvector2bits va) (bvector2bits vb)
-            (bvector2bits vc) (bvector2bits vd)
-  in
-  let va' := bits2bvector a' in
-  let vb' := bits2bvector b' in
-  let vc' := bits2bvector c' in
-  let vd' := bits2bvector d' in
-  dec2checker
-  (st_equiv (get_vars qr_pexp) qr_env (get_prec qr_env qr_pexp)
-    (exp_sem qr_env qr_pexp (a |=> va, b |=> vb, c |=> vc, d |=> vd))
-        (a |=> va', b |=> vb', c |=> vc', d |=> vd')))))).
-
-End QRTesting.
-
-(*
-QuickChickWith (updMaxSuccess stdArgs 1) QRTesting.qr_oracle_spec.
- *)
-
-Definition dr_spec x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 :=
-  let '(x0, x4, x8, x12) := qr_spec x0 x4 x8 x12 in
-  let '(x1, x5, x9, x13) := qr_spec x1 x5 x9 x13 in
-  let '(x2, x6, x10, x14) := qr_spec x2 x6 x10 x14 in
-  let '(x3, x7, x11, x15) := qr_spec x3 x7 x11 x15 in
-  let '(x0, x5, x10, x15) := qr_spec x0 x5 x10 x15 in
-  let '(x1, x6, x11, x12) := qr_spec x1 x6 x11 x12 in
-  let '(x2, x7, x8, x13) := qr_spec x2 x7 x8 x13 in
-  let '(x3, x4, x9, x14) := qr_spec x3 x4 x9 x14 in
-  (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15).
-
-Definition dr_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 :=
-  qr_qexp x0 x4 x8 x12;;
-  qr_qexp x1 x5 x9 x13;;
-  qr_qexp x2 x6 x10 x14;;
-  qr_qexp x3 x7 x11 x15;;
-  qr_qexp x0 x5 x10 x15;;
-  qr_qexp x1 x6 x11 x12;;
-  qr_qexp x2 x7 x8 x13;;
-  qr_qexp x3 x4 x9 x14.
-
-Module DRTesting.
-
-  Definition tmp : var := 16.
-  Definition stack : var := 17.
-  Definition tmp1 : var := 18.
-
-  Definition dr_vmap : qvar * nat -> var :=
-    fun '(x, _) =>
-    match x with
-    | L x' => x'
-    | G x' => x'
-    end.
-
-  Definition dr_benv :=
-   match  gen_genv (map (fun x => (TNor Q Nat, x)) (seq 0 16)) with None => empty_benv | Some bv => bv end.
-
-  Definition dr_estore :=
-    init_estore_g (map (fun x => (TNor Q Nat, x)) (seq 0 16)).
-
-  Definition compile_dr :=
-    trans_qexp 32 (fun _ => 1) dr_vmap dr_benv QFTA (empty_cstore) tmp tmp1 stack 0 nil dr_estore dr_estore
-    (dr_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
-             (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
-
-  Definition dr_pexp : exp.
-  Proof.
-(*
-
-    destruct (compile_dr) eqn:E1.
-    - destruct p, p, o.
-      + apply p.
-      + discriminate.
-    - discriminate.
-  Defined.
-*)
-  Admitted.
+Definition sha256_init (sha256_k m_h:qvar) :=
+  init (Index sha256_k (Num Nat (nat2fb 0))) (Nor (Num Nat (nat2fb 1116352408)));;
+    init (Index sha256_k (Num Nat (nat2fb 1))) (Nor (Num Nat (nat2fb 1899447441)));;
+  init (Index sha256_k (Num Nat (nat2fb 2))) (Nor (Num Nat (nat2fb 3049323471)));;
+  init (Index sha256_k (Num Nat (nat2fb 3))) (Nor (Num Nat (nat2fb 3921009573)));;
+  init (Index sha256_k (Num Nat (nat2fb 4))) (Nor (Num Nat (nat2fb 961987163)));;
+  init (Index sha256_k (Num Nat (nat2fb 5))) (Nor (Num Nat (nat2fb 1508970993)));;
+  init (Index sha256_k (Num Nat (nat2fb 6))) (Nor (Num Nat (nat2fb 2453635748)));;
+  init (Index sha256_k (Num Nat (nat2fb 7))) (Nor (Num Nat (nat2fb 2870763221)));;
+  init (Index sha256_k (Num Nat (nat2fb 8))) (Nor (Num Nat (nat2fb 3624381080)));;
+  init (Index sha256_k (Num Nat (nat2fb 9))) (Nor (Num Nat (nat2fb 310598401)));;
+  init (Index sha256_k (Num Nat (nat2fb 10))) (Nor (Num Nat (nat2fb 607225278)));;
+  init (Index sha256_k (Num Nat (nat2fb 11))) (Nor (Num Nat (nat2fb 1426881987)));;
+  init (Index sha256_k (Num Nat (nat2fb 12))) (Nor (Num Nat (nat2fb 1925078388)));;
+  init (Index sha256_k (Num Nat (nat2fb 13))) (Nor (Num Nat (nat2fb 2162078206)));;
+  init (Index sha256_k (Num Nat (nat2fb 14))) (Nor (Num Nat (nat2fb 2614888103)));;
+  init (Index sha256_k (Num Nat (nat2fb 15))) (Nor (Num Nat (nat2fb 3248222580)));;
+  init (Index sha256_k (Num Nat (nat2fb 16))) (Nor (Num Nat (nat2fb 3835390401)));;
+  init (Index sha256_k (Num Nat (nat2fb 17))) (Nor (Num Nat (nat2fb 4022224774)));;
+  init (Index sha256_k (Num Nat (nat2fb 18))) (Nor (Num Nat (nat2fb 264347078)));;
+  init (Index sha256_k (Num Nat (nat2fb 19))) (Nor (Num Nat (nat2fb 604807628)));;
+  init (Index sha256_k (Num Nat (nat2fb 20))) (Nor (Num Nat (nat2fb 770255983)));;
+  init (Index sha256_k (Num Nat (nat2fb 21))) (Nor (Num Nat (nat2fb 1249150122)));;
+  init (Index sha256_k (Num Nat (nat2fb 22))) (Nor (Num Nat (nat2fb 1555081692)));;
+  init (Index sha256_k (Num Nat (nat2fb 23))) (Nor (Num Nat (nat2fb 1996064986)));;
+  init (Index sha256_k (Num Nat (nat2fb 24))) (Nor (Num Nat (nat2fb 2554220882)));;
+  init (Index sha256_k (Num Nat (nat2fb 25))) (Nor (Num Nat (nat2fb 2821834349)));;
+  init (Index sha256_k (Num Nat (nat2fb 26))) (Nor (Num Nat (nat2fb 2952996808)));;
+  init (Index sha256_k (Num Nat (nat2fb 27))) (Nor (Num Nat (nat2fb 3210313671)));;
+  init (Index sha256_k (Num Nat (nat2fb 28))) (Nor (Num Nat (nat2fb 3336571891)));;
+  init (Index sha256_k (Num Nat (nat2fb 29))) (Nor (Num Nat (nat2fb 3584528711)));;
+  init (Index sha256_k (Num Nat (nat2fb 30))) (Nor (Num Nat (nat2fb 113926993)));;
+  init (Index sha256_k (Num Nat (nat2fb 31))) (Nor (Num Nat (nat2fb 338241895)));;
+  init (Index sha256_k (Num Nat (nat2fb 32))) (Nor (Num Nat (nat2fb 666307205)));;
+  init (Index sha256_k (Num Nat (nat2fb 33))) (Nor (Num Nat (nat2fb 773529912)));;
+  init (Index sha256_k (Num Nat (nat2fb 34))) (Nor (Num Nat (nat2fb 1294757372)));;
+  init (Index sha256_k (Num Nat (nat2fb 35))) (Nor (Num Nat (nat2fb 1396182291)));;
+  init (Index sha256_k (Num Nat (nat2fb 36))) (Nor (Num Nat (nat2fb 1695183700)));;
+  init (Index sha256_k (Num Nat (nat2fb 37))) (Nor (Num Nat (nat2fb 1986661051)));;
+  init (Index sha256_k (Num Nat (nat2fb 38))) (Nor (Num Nat (nat2fb 2177026350)));;
+  init (Index sha256_k (Num Nat (nat2fb 39))) (Nor (Num Nat (nat2fb 2456956037)));;
+  init (Index sha256_k (Num Nat (nat2fb 40))) (Nor (Num Nat (nat2fb 2730485921)));;
+  init (Index sha256_k (Num Nat (nat2fb 41))) (Nor (Num Nat (nat2fb 2820302411)));;
+  init (Index sha256_k (Num Nat (nat2fb 42))) (Nor (Num Nat (nat2fb 3259730800)));;
+  init (Index sha256_k (Num Nat (nat2fb 43))) (Nor (Num Nat (nat2fb 3345764771)));;
+  init (Index sha256_k (Num Nat (nat2fb 44))) (Nor (Num Nat (nat2fb 3516065817)));;
+  init (Index sha256_k (Num Nat (nat2fb 45))) (Nor (Num Nat (nat2fb 3600352804)));;
+  init (Index sha256_k (Num Nat (nat2fb 46))) (Nor (Num Nat (nat2fb 4094571909)));;
+  init (Index sha256_k (Num Nat (nat2fb 47))) (Nor (Num Nat (nat2fb 275423344)));;
+  init (Index sha256_k (Num Nat (nat2fb 48))) (Nor (Num Nat (nat2fb 430227734)));;
+  init (Index sha256_k (Num Nat (nat2fb 49))) (Nor (Num Nat (nat2fb 506948616)));;
+  init (Index sha256_k (Num Nat (nat2fb 50))) (Nor (Num Nat (nat2fb 659060556)));;
+  init (Index sha256_k (Num Nat (nat2fb 51))) (Nor (Num Nat (nat2fb 883997877)));;
+  init (Index sha256_k (Num Nat (nat2fb 52))) (Nor (Num Nat (nat2fb 958139571)));;
+  init (Index sha256_k (Num Nat (nat2fb 53))) (Nor (Num Nat (nat2fb 1322822218)));;
+  init (Index sha256_k (Num Nat (nat2fb 54))) (Nor (Num Nat (nat2fb 1537002063)));;
+  init (Index sha256_k (Num Nat (nat2fb 55))) (Nor (Num Nat (nat2fb 1747873779)));;
+  init (Index sha256_k (Num Nat (nat2fb 56))) (Nor (Num Nat (nat2fb 1955562222)));;
+  init (Index sha256_k (Num Nat (nat2fb 57))) (Nor (Num Nat (nat2fb 2024104815)));;
+  init (Index sha256_k (Num Nat (nat2fb 58))) (Nor (Num Nat (nat2fb 2227730452)));;
+  init (Index sha256_k (Num Nat (nat2fb 59))) (Nor (Num Nat (nat2fb 2361852424)));;
+  init (Index sha256_k (Num Nat (nat2fb 60))) (Nor (Num Nat (nat2fb 2428436474)));;
+  init (Index sha256_k (Num Nat (nat2fb 61))) (Nor (Num Nat (nat2fb 2756734187)));;
+  init (Index sha256_k (Num Nat (nat2fb 62))) (Nor (Num Nat (nat2fb 3204031479)));;
+  init (Index sha256_k (Num Nat (nat2fb 63))) (Nor (Num Nat (nat2fb 3329325298)));;
+  init (Index m_h (Num Nat (nat2fb 0))) (Nor (Num Nat (nat2fb 3238371032)));;
+  init (Index m_h (Num Nat (nat2fb 1))) (Nor (Num Nat (nat2fb 914150663)));;
+  init (Index m_h (Num Nat (nat2fb 2))) (Nor (Num Nat (nat2fb 812702999)));;
+  init (Index m_h (Num Nat (nat2fb 3))) (Nor (Num Nat (nat2fb 4144912697)));;
+  init (Index m_h (Num Nat (nat2fb 4))) (Nor (Num Nat (nat2fb 4290775857)));;
+  init (Index m_h (Num Nat (nat2fb 5))) (Nor (Num Nat (nat2fb 1750603025)));;
+  init (Index m_h (Num Nat (nat2fb 6))) (Nor (Num Nat (nat2fb 1694076839)));;
+  init (Index m_h (Num Nat (nat2fb 7))) (Nor (Num Nat (nat2fb 3204075428)))
+.
 
 
-  Definition dr_env : f_env := fun _ => 32.
-
-  Definition dr_oracle_spec : Checker :=
-    forAllShrink arbitrary shrink (fun v0 =>
-    forAllShrink arbitrary shrink (fun v1 =>
-    forAllShrink arbitrary shrink (fun v2 =>
-    forAllShrink arbitrary shrink (fun v3 =>
-    forAllShrink arbitrary shrink (fun v4 =>
-    forAllShrink arbitrary shrink (fun v5 =>
-    forAllShrink arbitrary shrink (fun v6 =>
-    forAllShrink arbitrary shrink (fun v7 =>
-    forAllShrink arbitrary shrink (fun v8 =>
-    forAllShrink arbitrary shrink (fun v9 =>
-    forAllShrink arbitrary shrink (fun v10 =>
-    forAllShrink arbitrary shrink (fun v11 =>
-    forAllShrink arbitrary shrink (fun v12 =>
-    forAllShrink arbitrary shrink (fun v13 =>
-    forAllShrink arbitrary shrink (fun v14 =>
-    forAllShrink arbitrary shrink (fun v15 =>
-    let
-      '(x0', x1', x2', x3', x4', x5', x6', x7',
-        x8', x9', x10', x11', x12', x13', x14', x15') :=
-      dr_spec
-        (bvector2bits v0) (bvector2bits v1) (bvector2bits v2) (bvector2bits v3)
-        (bvector2bits v4) (bvector2bits v5) (bvector2bits v6) (bvector2bits v7)
-        (bvector2bits v8) (bvector2bits v9)
-        (bvector2bits v10) (bvector2bits v11)
-        (bvector2bits v12) (bvector2bits v13)
-        (bvector2bits v14) (bvector2bits v15)
-    in
-    let v0' := bits2bvector x0' in
-    let v1' := bits2bvector x1' in
-    let v2' := bits2bvector x2' in
-    let v3' := bits2bvector x3' in
-    let v4' := bits2bvector x4' in
-    let v5' := bits2bvector x5' in
-    let v6' := bits2bvector x6' in
-    let v7' := bits2bvector x7' in
-    let v8' := bits2bvector x8' in
-    let v9' := bits2bvector x9' in
-    let v10' := bits2bvector x10' in
-    let v11' := bits2bvector x11' in
-    let v12' := bits2bvector x12' in
-    let v13' := bits2bvector x13' in
-    let v14' := bits2bvector x14' in
-    let v15' := bits2bvector x15' in
-    dec2checker
-    (st_equiv (get_vars dr_pexp) dr_env (get_prec dr_env dr_pexp)
-     (exp_sem dr_env dr_pexp
-        (0 |=> v0, 1 |=> v1, 2 |=> v2, 3 |=> v3,
-         4 |=> v4, 5 |=> v5, 6 |=> v6, 7 |=> v7,
-         8 |=> v8, 9 |=> v9, 10 |=> v10, 11 |=> v11,
-         12 |=> v12, 13 |=> v13, 14 |=> v14, 15 |=> v15))
-     (0 |=> v0', 1 |=> v1', 2 |=> v2', 3 |=> v3',
-      4 |=> v4', 5 |=> v5', 6 |=> v6', 7 |=> v7',
-      8 |=> v8', 9 |=> v9', 10 |=> v10', 11 |=> v11',
-      12 |=> v12', 13 |=> v13', 14 |=> v14', 15 |=> v15')))))))))))))))))).
-
-  (*
-  Conjecture dr_oracle_spec :
-    forall v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15,
-    let
-      '(x0', x1', x2', x3', x4', x5', x6', x7',
-        x8', x9', x10', x11', x12', x13', x14', x15') :=
-      dr_spec
-        (bvector2bits v0) (bvector2bits v1) (bvector2bits v2) (bvector2bits v3)
-        (bvector2bits v4) (bvector2bits v5) (bvector2bits v6) (bvector2bits v7)
-        (bvector2bits v8) (bvector2bits v9)
-        (bvector2bits v10) (bvector2bits v11)
-        (bvector2bits v12) (bvector2bits v13)
-        (bvector2bits v14) (bvector2bits v15)
-  in
-  let v0' := bits2bvector x0' in
-  let v1' := bits2bvector x1' in
-  let v2' := bits2bvector x2' in
-  let v3' := bits2bvector x3' in
-  let v4' := bits2bvector x4' in
-  let v5' := bits2bvector x5' in
-  let v6' := bits2bvector x6' in
-  let v7' := bits2bvector x7' in
-  let v8' := bits2bvector x8' in
-  let v9' := bits2bvector x9' in
-  let v10' := bits2bvector x10' in
-  let v11' := bits2bvector x11' in
-  let v12' := bits2bvector x12' in
-  let v13' := bits2bvector x13' in
-  let v14' := bits2bvector x14' in
-  let v15' := bits2bvector x15' in
-  st_equiv (get_vars dr_pexp) dr_env (get_prec dr_env dr_pexp)
-  (prog_sem dr_env dr_pexp
-     (0 |=> v0, 1 |=> v1, 2 |=> v2, 3 |=> v3,
-      4 |=> v4, 5 |=> v5, 6 |=> v6, 7 |=> v7,
-      8 |=> v8, 9 |=> v9, 10 |=> v10, 11 |=> v11,
-      12 |=> v12, 13 |=> v13, 14 |=> v14, 15 |=> v15))
-  (0 |=> v0', 1 |=> v1', 2 |=> v2', 3 |=> v3',
-   4 |=> v4', 5 |=> v5', 6 |=> v6', 7 |=> v7',
-   8 |=> v8', 9 |=> v9', 10 |=> v10', 11 |=> v11',
-   12 |=> v12', 13 |=> v13', 14 |=> v14', 15 |=> v15').
-   *)
-
-End DRTesting.
-
-(*
-QuickChickWith (updMaxSuccess stdArgs 1) DRTesting.dr_oracle_spec.
- *)
-
-Fixpoint chacha_qexp' n x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 :=
-  match n with
-  | 0 => skip
-  | S n' =>
-      dr_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15;;
-      chacha_qexp' n' x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15
-  end.
-
-Definition chacha_qexp := chacha_qexp' 10.
-
-Fixpoint chacha_spec' n v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 :=
-  match n with
-  | 0 => (v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15)
-  | S n' =>
-      let
-        '(v0', v1', v2', v3', v4', v5', v6', v7',
-          v8', v9', v10', v11', v12', v13', v14', v15') :=
-        dr_spec v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-      in
-      chacha_spec' n' v0' v1' v2' v3' v4' v5' v6' v7'
-                      v8' v9' v10' v11' v12' v13' v14' v15'
-  end.
-
-Definition chacha_spec := chacha_spec' 10.
-
-Module ChaChaTesting.
-
-  Definition tmp : var := 16.
-  Definition stack : var := 17.
-  Definition tmp1 : var := 18.
-
-  Definition chacha_vmap : qvar * nat -> var :=
-    fun '(x, _) =>
-    match x with
-    | L x' => x'
-    | G x' => x'
-    end.
-
-  Definition chacha_benv := 
-   match gen_genv (map (fun x => (TNor Q Nat, x)) (seq 0 16)) with None => empty_benv | Some bv => bv end.
-
-  Definition compile_chacha :=
-    trans_qexp
-    32 (fun _ => 1) chacha_vmap chacha_benv QFTA (empty_cstore) tmp tmp1 stack 0 nil
-    chacha_estore chacha_estore
-    (chacha_qexp (G 0) (G 1) (G 2) (G 3) (G 4) (G 5) (G 6) (G 7)
-             (G 8) (G 9) (G 10) (G 11) (G 12) (G 13) (G 14) (G 15)).
-
-  Definition chacha_pexp : exp.
-  Proof.
-(*
-    destruct (compile_chacha) eqn:E1.
-    - destruct p, p, o.
-      + apply p.
-      + discriminate.
-    - discriminate.
-  Defined.
-*)
-Admitted.
-
-  Definition chacha_env : f_env := fun _ => 32.
-
-  Definition chacha_oracle_spec : Checker :=
-    forAllShrink arbitrary shrink (fun v0 =>
-    forAllShrink arbitrary shrink (fun v1 =>
-    forAllShrink arbitrary shrink (fun v2 =>
-    forAllShrink arbitrary shrink (fun v3 =>
-    forAllShrink arbitrary shrink (fun v4 =>
-    forAllShrink arbitrary shrink (fun v5 =>
-    forAllShrink arbitrary shrink (fun v6 =>
-    forAllShrink arbitrary shrink (fun v7 =>
-    forAllShrink arbitrary shrink (fun v8 =>
-    forAllShrink arbitrary shrink (fun v9 =>
-    forAllShrink arbitrary shrink (fun v10 =>
-    forAllShrink arbitrary shrink (fun v11 =>
-    forAllShrink arbitrary shrink (fun v12 =>
-    forAllShrink arbitrary shrink (fun v13 =>
-    forAllShrink arbitrary shrink (fun v14 =>
-    forAllShrink arbitrary shrink (fun v15 =>
-    let
-      '(x0', x1', x2', x3', x4', x5', x6', x7',
-        x8', x9', x10', x11', x12', x13', x14', x15') :=
-      chacha_spec
-        (bvector2bits v0) (bvector2bits v1) (bvector2bits v2) (bvector2bits v3)
-        (bvector2bits v4) (bvector2bits v5) (bvector2bits v6) (bvector2bits v7)
-        (bvector2bits v8) (bvector2bits v9)
-        (bvector2bits v10) (bvector2bits v11)
-        (bvector2bits v12) (bvector2bits v13)
-        (bvector2bits v14) (bvector2bits v15)
-    in
-    let v0' := bits2bvector x0' in
-    let v1' := bits2bvector x1' in
-    let v2' := bits2bvector x2' in
-    let v3' := bits2bvector x3' in
-    let v4' := bits2bvector x4' in
-    let v5' := bits2bvector x5' in
-    let v6' := bits2bvector x6' in
-    let v7' := bits2bvector x7' in
-    let v8' := bits2bvector x8' in
-    let v9' := bits2bvector x9' in
-    let v10' := bits2bvector x10' in
-    let v11' := bits2bvector x11' in
-    let v12' := bits2bvector x12' in
-    let v13' := bits2bvector x13' in
-    let v14' := bits2bvector x14' in
-    let v15' := bits2bvector x15' in
-    dec2checker
-    (st_equiv
-     (get_vars chacha_pexp) chacha_env (get_prec chacha_env chacha_pexp)
-     (exp_sem chacha_env chacha_pexp
-        (0 |=> v0, 1 |=> v1, 2 |=> v2, 3 |=> v3,
-         4 |=> v4, 5 |=> v5, 6 |=> v6, 7 |=> v7,
-         8 |=> v8, 9 |=> v9, 10 |=> v10, 11 |=> v11,
-         12 |=> v12, 13 |=> v13, 14 |=> v14, 15 |=> v15))
-     (0 |=> v0', 1 |=> v1', 2 |=> v2', 3 |=> v3',
-      4 |=> v4', 5 |=> v5', 6 |=> v6', 7 |=> v7',
-      8 |=> v8', 9 |=> v9', 10 |=> v10', 11 |=> v11',
-      12 |=> v12', 13 |=> v13', 14 |=> v14', 15 |=> v15')))))))))))))))))).
-
-End ChaChaTesting.
-
-(*
-QuickChickWith (updMaxSuccess stdArgs 1) ChaChaTesting.chacha_oracle_spec.
- *)
-
-Module Collision.
-
-Definition x0 : qvar := L 0.
-Definition x1 : qvar := L 1.
-Definition x2 : qvar := L 2.
-Definition x3 : qvar := L 3.
-Definition x4 : qvar := L 4.
-Definition x5 : qvar := L 5.
-Definition x6 : qvar := L 6.
-Definition x7 : qvar := L 7.
-Definition x8 : qvar := L 8.
-Definition x9 : qvar := L 9.
-Definition x10 : qvar := L 10.
-Definition x11 : qvar := L 11.
-Definition x12 : qvar := L 12.
-Definition x13 : qvar := L 13.
-Definition x14 : qvar := L 14.
-Definition x15 : qvar := L 15.
-Definition out : qvar := G 16.
-
-Definition collision_qexp
-  (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 : DWORD) :=
-  chacha_qexp x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15;;
-  qif (ceq (Nor (Var x0)) (Nor (Num Nat (getBit v0))))
-  (qif (ceq (Nor (Var x1)) (Nor (Num Nat (getBit v1))))
-  (qif (ceq (Nor (Var x2)) (Nor (Num Nat (getBit v2))))
-  (qif (ceq (Nor (Var x3)) (Nor (Num Nat (getBit v3))))
-  (qif (ceq (Nor (Var x4)) (Nor (Num Nat (getBit v4))))
-  (qif (ceq (Nor (Var x5)) (Nor (Num Nat (getBit v5))))
-  (qif (ceq (Nor (Var x6)) (Nor (Num Nat (getBit v6))))
-  (qif (ceq (Nor (Var x7)) (Nor (Num Nat (getBit v7))))
-  (qif (ceq (Nor (Var x8)) (Nor (Num Nat (getBit v8))))
-  (qif (ceq (Nor (Var x9)) (Nor (Num Nat (getBit v9))))
-  (qif (ceq (Nor (Var x10)) (Nor (Num Nat (getBit v10))))
-  (qif (ceq (Nor (Var x11)) (Nor (Num Nat (getBit v11))))
-  (qif (ceq (Nor (Var x12)) (Nor (Num Nat (getBit v12))))
-  (qif (ceq (Nor (Var x13)) (Nor (Num Nat (getBit v13))))
-  (qif (ceq (Nor (Var x14)) (Nor (Num Nat (getBit v14))))
-  (qif (ceq (Nor (Var x15)) (Nor (Num Nat (getBit v15))))
-  (init (Nor (Var out)) (Nor (Num Bl (fun _ => true))))
-  skip) skip) skip) skip) skip) skip) skip) skip)
-  skip) skip) skip) skip) skip) skip) skip) skip.
-
-(*
-Definition collision_spec
-  (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 
-  v0' v1' v2' v3' v4' v5' v6' v7' v8' v9' v10' v11' v12' v13' v14' v15' : DWORD)
-  :=
-  let
-    '(v0'', v1'', v2'', v3'', v4'', v5'', v6'', v7'',
-    v8'', v9'', v10'', v11'', v12'', v13'', v14'', v15'') :=
-    chacha_spec v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
-  in
-  eqtype.eq_op v0' v0'' &&
-  eqtype.eq_op v1' v1'' &&
-  eqtype.eq_op v2' v2'' &&
-  eqtype.eq_op v3' v3'' &&
-  eqtype.eq_op v4' v4'' &&
-  eqtype.eq_op v5' v5'' &&
-  eqtype.eq_op v6' v6'' &&
-  eqtype.eq_op v7' v7'' &&
-  eqtype.eq_op v8' v8'' &&
-  eqtype.eq_op v9' v9'' &&
-  eqtype.eq_op v10' v10'' &&
-  eqtype.eq_op v11' v11'' &&
-  eqtype.eq_op v12' v12'' &&
-  eqtype.eq_op v13' v13'' &&
-  eqtype.eq_op v14' v14'' &&
-  eqtype.eq_op v15' v15''.
- *)
-
-End Collision.
-
-*)
 
 Open Scope list_scope.
 
