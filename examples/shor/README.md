@@ -5,17 +5,19 @@ This directory contains a formalization of Shor's algorithm in SQIR.
 ## Directory Contents
 
 Main file
-* Main.v - prettified statements of correctness; just a wrapper around proofs in other files
+* Main.v - prettified statements of correctness
 
 Core formalization
 * ModMult.v - modular exponentiation, defined in RCIR
 * QPEGeneral.v - general statement of correctness for ../QPE.v
-* Shor.v
+* RCIR.v - formalization of reversible circuits
+* ResourceShor.v - proof about the resources (= gates) required for Shor's
+* Shor.v - core formalization of Shor's algorithm
 
 Utilities
-* AltGateSet.v - alternate SQIR gate set to avoid decomposing many-qubit gates; will integrate this into ../../SQIR at some point
 * AltShor.v - Shor's algorithm defined in the new gate set; proofs that the new definition is equivalent to the old (Shor.v)
-* ShorAux.v - Number theory results, reduction from fatorization to order finding, and other useful facts for Shor.v
+* Resources.v - facts about the number of gates used by various operations
+* ShorAux.v - number theory results, reduction from fatorization to order finding, and other useful facts for Shor.v
 
 ## Compilation
 
