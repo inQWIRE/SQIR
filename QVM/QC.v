@@ -133,3 +133,34 @@ Definition Shor (g:var) (f:var) (x:var) (y:var) (uf:var) (U:var) (n:nat) :=
             (R_a2 * |0> + R_b2 * |1>) tensor .... tensor (R_an * |0> + R_bn * |1>)
                     = Tensor_0^n 1/sqrt 2 (R_1*|0> + R_2*|1>) *)
 
+
+
+(*
+Quantum Walk algorithm implementation.
+
+
+First NAND quantum walk algorithm.
+*)
+
+(*
+
+Implement max T number of DW step as a control DW as CU-DW appeared in the QPE. |t> is the source of the CU.
+
+For the quantum walk step, use QRAM load instead of a quantum walk U operation. Possibly.
+ OR maybe using U as a way of analyzing the algorithm.
+
+For the defusion step, implement a data-structure as node = {type:2 qubit, state v: n: qubit, next: node).
+We load a data (a,v) as a tuple where a is the type (either left, or 3-degree or r' or r''). 
+We use CU-gate to apply different operation on t according to a. 
+If a = leaf, we do oracle application on v as (-1)^(xv) * |v>, 
+if a = 3-degree, we apply reflection on |c> (coin qubits), (-1/3 ...)
+if a = r', we apply reflection on |c> (-2/sqrt n, ...)
+
+This is implementable in the current QC.
+*)
+
+
+
+
+
+
