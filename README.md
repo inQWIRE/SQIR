@@ -10,14 +10,15 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Table of Contents
 
-* [Setup](#setup)
-* [Compilation](#compilation)
-* [Directory Contents](#directory-contents)
-  * [SQIR](#sqir)
-  * [VOQC](#voqc)
-  * [QVM](#qvm)
-  * [examples](#examples)
-* [Acknowledgements](#acknowledgements)
+- [SQIR](#sqir)
+  - [Table of Contents](#table-of-contents)
+  - [Setup](#setup)
+  - [Compilation](#compilation)
+  - [Directory Contents](#directory-contents)
+    - [SQIR](#sqir-1)
+    - [VOQC](#voqc)
+    - [examples](#examples)
+  - [Acknowledgements](#acknowledgements)
 
 ## Setup
 
@@ -105,10 +106,6 @@ The rest of the files in the VOQC directory can be split into the following cate
 
 - Experimental extensions
   - BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.
-
-### QVM
-
-TODO
 
 ### examples
 
