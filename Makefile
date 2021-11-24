@@ -1,7 +1,7 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples voqc shor qvm clean
+KNOWNTARGETS := CoqMakefile all examples voqc shor clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
@@ -27,15 +27,13 @@ invoke-coqmakefile: CoqMakefile
 
 COQ_OPTS := -R . Top
 
-all: examples voqc VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMeasure.vo VOQC/BooleanCompilation.vo shor qvm
+all: examples voqc shor VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMeasure.vo VOQC/BooleanCompilation.vo
 
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Grover.vo examples/QPE.vo examples/Simon.vo examples/Superdense.vo examples/Teleport.vo
 
 shor: invoke-coqmakefile examples/shor/Main.vo
 
 voqc: invoke-coqmakefile VOQC/Main.vo
-
-qvm : invoke-coqmakefile QVM/OracleExample.vo QVM/Testing.vo
 
 # Built by 'make examples'
 
@@ -65,32 +63,6 @@ examples/Teleport.vo: examples/Teleport.v SQIR/UnitarySem.vo SQIR/DensitySem.vo 
 
 examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo
 	coqc $(COQ_OPTS) examples/Utilities.v
-
-# Built by 'make qvm'
-
-QVM/PQASM.vo: QVM/PQASM.v QVM/MathSpec.vo SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo
-	coqc $(COQ_OPTS) QVM/PQASM.v
-
-QVM/Testing.vo: QVM/Testing.v QVM/PQASM.vo examples/Utilities.vo
-	coqc $(COQ_OPTS) QVM/Testing.v
-
-QVM/CLArith.vo: QVM/CLArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo
-	coqc $(COQ_OPTS) QVM/CLArith.v
-
-QVM/RZArith.vo: QVM/RZArith.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo
-	coqc $(COQ_OPTS) QVM/RZArith.v
-
-QVM/QIMP.vo: QVM/QIMP.v SQIR/UnitaryOps.vo SQIR/SQIR.vo externals/QWIRE/Dirac.v examples/QPE.vo QVM/PQASM.vo QVM/CLArith.vo QVM/RZArith.vo
-	coqc $(COQ_OPTS) QVM/QIMP.v
-
-QVM/OracleExample.vo: QVM/OracleExample.v QVM/QIMP.vo QVM/Testing.vo
-	coqc $(COQ_OPTS) QVM/OracleExample.v
-	
-QVM/BasicUtility.vo: QVM/BasicUtility.v
-	coqc $(COQ_OPTS) QVM/BasicUtility.v
-	
-QVM/MathSpec.vo: QVM/MathSpec.v QVM/BasicUtility.vo
-	coqc $(COQ_OPTS) QVM/MathSpec.v
 
 # Built by 'make shor'
 	

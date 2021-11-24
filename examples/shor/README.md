@@ -1,6 +1,6 @@
 # examples/shor
 
-This directory contains a formalization of Shor's algorithm in SQIR.
+This directory contains the SQIR formalization of Shor's factoring algorithm.
 
 ## Directory Contents
 
@@ -52,7 +52,7 @@ Non-trivial factor is 3.
 TODO: add text description of correctness
 
 Some assumptions introduced by extraction (see extraction/ShorExtr.v)
-* OCaml floats satisfy the same properties as Coq Real numbers. (Unfortunately this is NOT TRUE, but maybe somewhat accurate? We can try to be more specific by listing all facts we use about Real numbers... but this may be a long list. -KH)
+* OCaml floats satisfy the same properties as Coq Real numbers. (Unfortunately this is *not true*, but maybe somewhat accurate? We can try to be more specific by listing all facts we use about Real numbers... but this may be a long list. -KH)
 * The simulator we use to run Shor's returns a vector that is consistent with our uc_eval denotation function.
 * OCaml rationals satisfy the same properties as Coq rational numbers.
 * Our utility functions in Python and OCaml (e.g. for file parsing and running the simulator) do not introduce unintended behavior.

@@ -1,12 +1,12 @@
 # SQIR
 
-SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC). **TODO: add something about QVM.**
+SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
 
-We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We present details on verifying SQIR programs in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), to appear at ITP 2021. The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021) of this respository. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
+We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We present details on verifying SQIR programs in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), presented at ITP 2021. The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021) of this respository. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
 
 This repository contains our Coq formalization of SQIR and VOQC. If you are interested in running the VOQC compiler, then you should use our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)). The OCaml library is *extracted* from our Coq definitions and the Python library is a wrapper around the OCaml library.
 
-If you are interested in learning more about formal verification of quantum programs, we recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html).
+If you are interested in learning more about formal verification of quantum programs in general, we recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html).
 
 ## Table of Contents
 
@@ -39,9 +39,6 @@ opam install coq
 
 # install Interval package (optional, needed to compile proofs in examples/shor)
 opam install coq-interval
-
-# install ext-lib coq-quickchick (optional, needed for "make qvm")
-opam install coq-ext-lib coq-quickchick
 ```
 
 *Notes*:
@@ -63,8 +60,8 @@ Definition of the SQIR language.
 - DensitySem.v : Density matrix semantics for general SQIR programs.
 - Equivalences.v : Verified circuit equivalences for peephole optimizations.
 - NDSem.v : Non-deterministic semantics for general SQIR programs.
-- RCIR.v : Definition of the RCIR language, which allows writing classical circuits (see 'bccom' type).
-- SQIR.v : Definition of the SQIR language, which allows writing quantum circuits (see 'ucom' type).
+- Run.v : 
+- SQIR.v : Definition of the SQIR language (see 'ucom' and 'com').
 - UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
 - UnitarySem.v : Semantics for unitary SQIR programs.
 - VectorStates.v : Utilities for describing states as vectors.
@@ -78,25 +75,25 @@ Verified transformations of SQIR programs. The optimizations and mapping routine
 The rest of the files in the VOQC directory can be split into the following categories:
 
 - Utilities
-  - UnitaryListRepresentation.v : List representation of unitary SQIR programs; includes utilities for manipulating program lists and gate-set-independent proofs.
-  - NonUnitaryListRepresentation.v : List representation of non-unitary SQIR programs.
   - GateSet.v : Coq module for describing a quantum gate set.
-  - RzQGateSet.v : "RzQ" gate set {H, X, Rzq, CX}.
   - IBMGateSet.v : "IBM" gate set {U1, U2, U3, CX}.
+  - NonUnitaryListRepresentation.v : List representation of non-unitary SQIR programs.
+  - RzQGateSet.v : "RzQ" gate set {H, X, Rzq, CX}.
   - StandardGateSet.v : Full gate set {I, X, Y, Z, H, S, T, Sdg, Tdg, Rx, Ry, Rz, Rzq, U1, U2, U3, CX, CZ, SWAP, CCX, CCZ}.
+  - UnitaryListRepresentation.v : List representation of unitary SQIR programs; includes utilities for manipulating program lists and gate set-independent proofs.
 
 - Optimizations over unitary programs, inspired by those in [Qiskit](https://github.com/Qiskit/qiskit-terra) and [Nam et al. [2018]](https://www.nature.com/articles/s41534-018-0072-4)
+  - ChangeRotationBasis.v : Auxiliary proof for Optimize1qGates.
+  - CXCancellation.v : [CXCancellation](https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.CXCancellation.html) from Qiskit.
   - GateCancellation.v : "Single-qubit gate cancellation" and "two-qubit gate cancellation" from Nam et al.
   - HadamardReduction.v : "Hadamard reduction" from Nam et al.
   - NotPropagation.v : "Not propagation" from Nam et al.
-  - RotationMerging.v : "Rotation merging using phase polynomials" from Nam et al.
-  - CXCancellation.v : [CXCancellation](https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.CXCancellation.html) from Qiskit.
-  - ChangeRotationBasis.v : Auxiliary proof for Optimize1qGates.
   - Optimize1qGates.v : [Optimize1qGates](https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.Optimize1qGates.html) from Qiskit.
+  - RotationMerging.v : "Rotation merging using phase polynomials" from Nam et al.
 
 - Optimizations over non-unitary programs
-  - RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.
   - PropagateClassical.v : Track classical states to remove redundant measurements and CNOT operations.
+  - RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement operations.
 
 - Mapping routines
   - ConnectivityGraph.v : Utilities for describing an architecture connectivity graph. Includes graphs for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
@@ -113,6 +110,7 @@ Examples of verifying correctness properties of quantum algorithms.
 
 - Deutsch.v : Deutsch algorithm
 - DeutschJozsa.v : Deutsch-Jozsa algorithm
+- GenerlGrover.v : ??
 - GHZ.v : GHZ state preparation
 - Grover.v : Grover's algorithm (use `make grover` to compile separately)
 - QPE.v : Simplified quantum phase estimation
@@ -120,6 +118,7 @@ Examples of verifying correctness properties of quantum algorithms.
 - Simon.v : Simon's algorithm
 - Superdense.v : Superdense coding
 - Teleport.v : Quantum teleportation
+- Utilities.v :
 
 ## Acknowledgements
 

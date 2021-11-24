@@ -12,10 +12,8 @@ Definition boolean_oracle {n} (U : base_ucom (S n)) (f : nat -> bool) :=
     @Mmult _ _ 1 (uc_eval U) (basis_vector (2 ^ n) x ⊗ ∣ y ⟩) = 
       basis_vector (2 ^ n) x ⊗ ∣ xorb y (f x) ⟩.
 
-Infix "<*>" := kron (at level 40, only parsing).
-
 Definition pad_vector {n} dim (v : Vector (2 ^ n)) : Vector (2 ^ dim) :=
-  v <*> kron_n (dim - n) qubit0.
+  v ⊗ kron_n (dim - n) ∣0⟩.
 
 Lemma wf_pad_vector :
   forall n dim (v : Vector (2 ^ n)),
@@ -26,6 +24,9 @@ Proof.
   rewrite Nat.pow_1_l. reflexivity.
 Qed.
 
+(* Alternate form of boolean_oracle that uses ancilla qubits.
+   The qubits are ordered as follows: 
+     input x (n qubits) ; output y (1 qubit) ; ancillae (dim-n-1 qubits) *)
 Definition padded_boolean_oracle {dim} n
   (U : base_ucom dim) (f : nat -> bool) :=
   forall x (y : bool),
@@ -33,8 +34,8 @@ Definition padded_boolean_oracle {dim} n
   @Mmult
       _ _ 1
       (uc_eval U)
-      (@pad_vector (S n) dim (basis_vector (2 ^ n) x <*> ket y)) =
-    @pad_vector (S n) dim (basis_vector (2 ^ n) x <*> ket (xorb y (f x))).
+      (@pad_vector (S n) dim (basis_vector (2 ^ n) x ⊗ ∣ y ⟩ )) =
+    @pad_vector (S n) dim (basis_vector (2 ^ n) x ⊗ ∣ xorb y (f x) ⟩ ).
 
 (* Count the number of inputs where f returns true; note that we never
    "run" this function, it's just a definition. *)
