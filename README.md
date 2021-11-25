@@ -110,7 +110,6 @@ Examples of verifying correctness properties of quantum algorithms.
 
 - Deutsch.v : Deutsch algorithm
 - DeutschJozsa.v : Deutsch-Jozsa algorithm
-- GenerlGrover.v : ??
 - GHZ.v : GHZ state preparation
 - Grover.v : Grover's algorithm (use `make grover` to compile separately)
 - QPE.v : Simplified quantum phase estimation
@@ -119,6 +118,7 @@ Examples of verifying correctness properties of quantum algorithms.
 - Superdense.v : Superdense coding
 - Teleport.v : Quantum teleportation
 - Utilities.v :
+- Wiesner.v :
 
 ## Acknowledgements
 
