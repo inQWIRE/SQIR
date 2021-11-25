@@ -55,7 +55,7 @@ Qed.
 
 Lemma pad_ancillae :
   forall v : Vector (2 ^ (S n)),
-  pad_vector dim v = v <*> (kron_n ancillae qubit0).
+  pad_vector dim v = v ⊗ (kron_n ancillae ∣0⟩).
 Proof.
   unfold padded_boolean_oracle, pad_vector. rewrite dim_minus_Sn. reflexivity.
 Qed.
@@ -843,7 +843,7 @@ Proof. solve_matrix. Qed.
 Lemma kron_n_add_dist :
   forall n1 n2 m1 m2 (A : Matrix m1 m2),
   WF_Matrix A ->
-  kron_n (n1 + n2) A = kron_n n1 A <*> kron_n n2 A.
+  kron_n (n1 + n2) A = kron_n n1 A ⊗ kron_n n2 A.
 Proof.
   intros n1 n2 m1 m2 A H. induction n2 as [| n2 IH].
   - Msimpl. rewrite Nat.add_0_r. reflexivity.
@@ -900,7 +900,7 @@ Proof.
   rewrite kron_n_add_dist, kron_assoc; auto with wf_db.
   restore_dims. rewrite kron_assoc; auto with wf_db.
   restore_dims.
-  replace ((kron_n _ _) <*> qubit0) with (kron_n (S (ancillae)) qubit0)
+  replace ((kron_n _ _) ⊗ ∣0⟩) with (kron_n (S (ancillae)) qubit0)
                                     by reflexivity.
   replace (S ancillae) with (1 + ancillae)%nat by reflexivity.
   rewrite kron_n_add_dist; auto with wf_db.
