@@ -16,7 +16,7 @@ Core formalization
 
 Utilities
 * AltShor.v - Shor's algorithm defined in the new gate set; proofs that the new definition is equivalent to the old (Shor.v)
-* Resources.v - facts about the number of gates used by various operations
+* Resource.v - facts about the number of gates used by various operations
 * ShorAux.v - number theory results, reduction from fatorization to order finding, and other useful facts for Shor.v
 
 ## Compilation

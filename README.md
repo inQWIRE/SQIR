@@ -43,7 +43,7 @@ opam install coq-interval
 
 *Notes*:
 * Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any version of OCaml >= 4.05.0 should be fine. 
-* We require Coq version >= 8.12.0. We have tested compilation with 8.12.x and 8.13.x.
+* We require Coq version >= 8.12.0. We have tested compilation with 8.12.x, 8.13.x, and 8.14.x.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
 * If opam is not able to find coq-interval, try running `opam repo add coq-released https://coq.inria.fr/opam/released` first.
 
@@ -60,7 +60,7 @@ Definition of the SQIR language.
 - DensitySem.v : Density matrix semantics for general SQIR programs.
 - Equivalences.v : Verified circuit equivalences for peephole optimizations.
 - NDSem.v : Non-deterministic semantics for general SQIR programs.
-- Run.v : 
+- Run.v : 'run' function to describe running a quantum circuit and sampling from the output distribution.
 - SQIR.v : Definition of the SQIR language (see 'ucom' and 'com').
 - UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
 - UnitarySem.v : Semantics for unitary SQIR programs.
@@ -111,14 +111,14 @@ Examples of verifying correctness properties of quantum algorithms.
 - Deutsch.v : Deutsch algorithm
 - DeutschJozsa.v : Deutsch-Jozsa algorithm
 - GHZ.v : GHZ state preparation
-- Grover.v : Grover's algorithm (use `make grover` to compile separately)
+- Grover.v : Grover's algorithm
 - QPE.v : Simplified quantum phase estimation
 - shor/ : Shor's algorithm, including general quantum phase estimation (use `make shor` to compile separately, see the [README](examples/shor/README.md) in the shor directory for more details)
 - Simon.v : Simon's algorithm
 - Superdense.v : Superdense coding
 - Teleport.v : Quantum teleportation
-- Utilities.v :
-- Wiesner.v :
+- Utilities.v : Miscellaneous utilities used in multiple examples
+- Wiesner.v : Wiesner's [quantum money](https://en.wikipedia.org/wiki/Quantum_money), contributed by Adrian Lehmann
 
 ## Acknowledgements
 
