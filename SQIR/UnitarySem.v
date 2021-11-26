@@ -99,7 +99,7 @@ Proof.
   apply WF_ueval_cnot.
 Qed.
 
-Hint Resolve WF_pad WF_ueval_r WF_ueval_cnot WF_uc_eval : wf_db.
+#[export] Hint Resolve WF_pad WF_ueval_r WF_ueval_cnot WF_uc_eval : wf_db.
 
 (** Equivalence and Structural Rules **)
 

@@ -21,7 +21,7 @@ Proof.
   induction c; simpl; unfold Splus; auto with wf_db.
 Qed.
 
-Hint Resolve WF_c_eval : wf_db.
+#[export] Hint Resolve WF_c_eval : wf_db.
 
 Lemma c_eval_ucom : forall dim (u : base_ucom dim) ρ,
   c_eval (uc u) ρ = (uc_eval u) × ρ × (uc_eval u)†.

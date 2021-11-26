@@ -112,7 +112,7 @@ Proof.
   intros.
   destruct (f i); auto with wf_db.
 Qed.
-Hint Resolve WF_ψ WF_ψg WF_ψb : wf_db.
+#[export] Hint Resolve WF_ψ WF_ψg WF_ψb : wf_db.
 
 (* ψ can be rewritten as a sum of ψg and ψb. *)
 

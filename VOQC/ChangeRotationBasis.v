@@ -57,17 +57,17 @@ Lemma Rltb_reflect : forall (x y : R), reflect (x < y) (Rltb x y).
 Proof.
   intros x y. apply iff_reflect. symmetry. apply Rltb_lt.
 Qed.
-Hint Resolve Rltb_reflect : bdestruct.
+#[export] Hint Resolve Rltb_reflect : bdestruct.
 
 Lemma Reqb_reflect : forall (x y : R), reflect (x = y) (Reqb x y).
 Proof.
   intros x y. apply iff_reflect. symmetry. apply Reqb_eq.
 Qed.
-Hint Resolve Reqb_reflect : bdestruct.
+#[export] Hint Resolve Reqb_reflect : bdestruct.
 
 Lemma WF_y_rotation : forall θ, WF_Matrix (y_rotation θ).
 Proof. intros. show_wf. Qed.
-Hint Resolve WF_y_rotation : wf_db.
+#[export] Hint Resolve WF_y_rotation : wf_db.
 
 Ltac destruct_Rltb := 
   repeat match goal with

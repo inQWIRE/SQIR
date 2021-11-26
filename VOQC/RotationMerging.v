@@ -18,7 +18,7 @@ Module FMapFacts := FMapFacts.Facts FMap.
 
 Lemma mem_reflect : forall x s, reflect (FSet.In x s) (FSet.mem x s).
 Proof. intros x l. apply iff_reflect. apply FSetFacts.mem_iff. Qed.
-Hint Resolve mem_reflect : bdestruct.
+#[export] Hint Resolve mem_reflect : bdestruct.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
