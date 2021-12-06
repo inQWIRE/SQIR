@@ -102,13 +102,13 @@ Fixpoint exteuc (a b : nat) :=
            (q - (b / a) * p, p)
   end.
 
+Local Opaque Nat.modulo Nat.div Z.mul.
 Lemma exteuc_correct :
   forall (t a b : nat),
     (a < t)%nat ->
     let (n, m) := exteuc a b in
     a * n + b * m = Nat.gcd a b.
 Proof.
-  Local Opaque Nat.modulo Nat.div Z.mul.
   induction t; intros. lia.
   bdestruct (a <? t)%nat. apply IHt. lia.
   assert (a = t) by lia.
@@ -122,6 +122,7 @@ Proof.
   rewrite mod_Zmod in IHt by lia. rewrite Zmod_eq_full in IHt by lia.
   nia.
 Qed.
+Local Transparent Nat.modulo Nat.div Z.mul.
 
 Local Close Scope Z_scope.
 Local Open Scope nat_scope.
@@ -139,7 +140,10 @@ Lemma mul_mod_1_gcd :
     a * b mod p = 1 ->
     Nat.gcd a p = 1.
 Proof.
-  intros. bdestruct (p =? 0). subst. easy.
+  intros. bdestruct (p =? 0). 
+  subst. rewrite Nat.gcd_0_r. simpl in H. 
+  try lia. (* versions < 8.14 *)
+  try (apply mult_is_one in H as [? ?]; assumption). (* version 8.14 *)
   bdestruct (p =? 1). subst. easy.
   bdestruct (Nat.gcd a p =? 1). easy.
   destruct (Nat.gcd_divide a p). destruct H4, H3.
@@ -594,28 +598,27 @@ Proof.
 Qed.
 
 Lemma Order_N_lb :
-  forall a r N,
+  forall a r N, 0 < N ->
     Order a r N ->
     1 < N.
 Proof.
-  intros. 
-  destruct (0 <? N)%nat eqn:E.
-  - destruct (1 <? N)%nat eqn:S.
-    + apply Nat.ltb_lt in S; easy.
-    + apply Nat.ltb_ge in S. destruct H as [_ [? _]].
-      apply Nat.ltb_lt in E. replace N with 1%nat in H by lia. simpl in H. discriminate H.
-  - apply Nat.ltb_ge in E. assert (N=0) by lia. destruct H as [_ [? _]]. rewrite H0 in H. Local Transparent Nat.modulo. simpl in H. lia.
+  intros a r N E H.
+  destruct (1 <? N)%nat eqn:S.
+  - apply Nat.ltb_lt in S; easy.
+  - apply Nat.ltb_ge in S. destruct H as [_ [? _]].
+    replace N with 1%nat in H by lia. simpl in H. discriminate H.
 Qed.
 
 Lemma Order_a_nonzero :
-  forall a r N,
+  forall a r N, 0 < N ->
     Order a r N ->
     0 < a.
 Proof.
-  intros. assert (HN := H). apply Order_N_lb in HN.
+  intros a r n ? H. assert (HN := H). apply Order_N_lb in HN.
   destruct (0 <? a)%nat eqn:E.
   - apply Nat.ltb_lt in E; easy.
-  - apply Nat.ltb_ge in E. assert (a=0) by lia. destruct H as [? [? _]]. rewrite H0 in H1. rewrite Nat.pow_0_l in H1. rewrite Nat.mod_0_l in H1 by lia. lia. lia.
+  - apply Nat.ltb_ge in E. assert (a=0) by lia. destruct H as [? [? _]]. rewrite H1 in H2. rewrite Nat.pow_0_l in H2. rewrite Nat.mod_0_l in H2 by lia. lia. lia.
+  assumption.
 Qed.
 
 Lemma Order_a_inv_ex :
@@ -630,55 +633,58 @@ Proof.
 Qed.
 
 Lemma Order_rel_prime :
-  forall a r N,
+  forall a r N, 0 < N ->
     Order a r N ->
     Nat.gcd a N = 1.
 Proof.
-  intros. destruct (Order_a_inv_ex _ _ _ H) as [ainv G].
+  intros. destruct (Order_a_inv_ex _ _ _ H0) as [ainv G].
   specialize (Nat.gcd_divide a N) as [[a' Ha] [N' HN]].
   remember (Nat.gcd a N) as g. bdestruct (g =? 1). easy.
   rewrite Ha, HN in G. replace (a' * g * ainv) with (a' * ainv * g) in G by lia.
-  rewrite Nat.mul_mod_distr_r in G. specialize (natmul1 ((a' * ainv) mod N') g H0) as T. easy.
-  apply Order_N_lb in H. lia.
-  apply Order_N_lb in H. lia.
+  rewrite Nat.mul_mod_distr_r in G. specialize (natmul1 ((a' * ainv) mod N') g H1) as T. easy.
+  apply Order_N_lb in H0. lia. assumption.
+  apply Order_N_lb in H0. lia. assumption.
 Qed.
 
 Lemma Order_modinv_correct :
-  forall a r N,
+  forall a r N, 0 < N ->
     Order a r N ->
     (a * (modinv a N)) mod N = 1.
 Proof.
-  intros. specialize (Order_rel_prime _ _ _ H) as G.
-  apply Order_N_lb in H.
+  intros. specialize (Order_rel_prime _ _ _ H H0) as G.
+  apply Order_N_lb in H0.
   rewrite modinv_correct by lia. rewrite G.
   rewrite Nat.mod_small; easy.
+  assumption.
 Qed.
 
 Lemma inv_pow :
-  forall a r N a_inv x,
+  forall a r N a_inv x, 0 < N ->
     Order a r N ->
     (a * a_inv) mod N = 1 ->
     (a^x * a_inv^x) mod N = 1.
 Proof.
-  intros. assert (HN := H). apply Order_N_lb in HN. induction x.
+  intros. assert (HN := H0). apply Order_N_lb in HN. induction x.
   - simpl. apply Nat.mod_1_l. easy.
   - simpl. rewrite Nat.mul_assoc. rewrite (Nat.mul_shuffle0 a (a^x)%nat a_inv).
-    rewrite mult_assoc_reverse with (n:=(a * a_inv)%nat). rewrite <- Nat.mul_mod_idemp_l with (a:=(a * a_inv)%nat); try lia. rewrite H0. rewrite Nat.mul_1_l. apply IHx.
+    rewrite mult_assoc_reverse with (n:=(a * a_inv)%nat). rewrite <- Nat.mul_mod_idemp_l with (a:=(a * a_inv)%nat); try lia. rewrite H1. rewrite Nat.mul_1_l. apply IHx.
+  assumption.
 Qed.
 
 Lemma Pow_minus_aux :
-  forall a r N a_inv x d,
+  forall a r N a_inv x d, 0 < N ->
     Order a r N ->
     (a * a_inv) mod N = 1 ->
     a^d mod N = (a^(x + d) * a_inv^x) mod N.
 Proof.
   intros. replace (x + d)%nat with (d + x)%nat by lia. rewrite Nat.pow_add_r.
-  assert (HN := H). apply Order_N_lb in HN.
+  assert (HN := H0). apply Order_N_lb in HN.
   rewrite <- Nat.mul_assoc. rewrite <- Nat.mul_mod_idemp_r; try lia. rewrite inv_pow with (r:=r); auto. rewrite Nat.mul_1_r. easy.
+  assumption.
 Qed.
 
 Lemma Pow_minus :
-  forall a r N a_inv x1 x2,
+  forall a r N a_inv x1 x2, 0 < N ->
     Order a r N ->
     x1 <= x2 ->
     (a * a_inv) mod N = 1 ->
@@ -688,7 +694,7 @@ Proof.
 Qed.
 
 Lemma Pow_diff :
-  forall a r N x1 x2,
+  forall a r N x1 x2, 0 < N ->
     Order a r N ->
     0 <= x1 < r ->
     0 <= x2 < r ->
@@ -696,52 +702,53 @@ Lemma Pow_diff :
     a^x1 mod N <> a^x2 mod N.
 Proof.
   intros. intro.
-  assert (Ha_inv := H). apply Order_a_inv_ex in Ha_inv. destruct Ha_inv as [a_inv Ha_inv].
-  assert (HN := H). apply Order_N_lb in HN.
+  assert (Ha_inv := H0). apply Order_a_inv_ex in Ha_inv. destruct Ha_inv as [a_inv Ha_inv].
+  assert (HN := H0). apply Order_N_lb in HN.
   assert (a^(x2-x1) mod N = 1).
   rewrite Pow_minus with (r:=r) (a_inv:=a_inv); try lia; try easy.
   rewrite <- Nat.mul_mod_idemp_l; try lia.
-  rewrite <- H3. rewrite Nat.mul_mod_idemp_l; try lia.
+  rewrite <- H4. rewrite Nat.mul_mod_idemp_l; try lia.
   rewrite <- Pow_minus with (r:=r); try lia; try easy.
   rewrite Nat.sub_diag. simpl. apply Nat.mod_1_l; easy.
-  destruct H as [_ [_ Hminimal]].
+  destruct H0 as [_ [_ Hminimal]].
   specialize (Hminimal (x2 - x1)%nat) as Hcounter.
   assert (0 < x2 - x1 /\ a ^ (x2 - x1) mod N = 1)%nat by lia.
-  apply Hcounter in H. lia.
+  apply Hcounter in H0. lia.
+  assumption.
 Qed.
 
 Lemma Pow_diff_neq :
-  forall a r N x1 x2,
+  forall a r N x1 x2, 0 < N ->
     Order a r N ->
     0 <= x1 < r ->
     0 <= x2 < r ->
     x1 <> x2 ->
     a^x1 mod N <> a^x2 mod N.
 Proof.
-  intros. apply not_eq in H2. destruct H2.
+  intros. apply not_eq in H3. destruct H3.
   - apply Pow_diff with (r:=r); easy.
   - apply not_eq_sym. apply Pow_diff with (r:=r); easy.
 Qed.
 
 Lemma Pow_pos :
-  forall (a r N i : nat),
+  forall (a r N i : nat), 0 < N ->
     Order a r N ->
     a^i mod N > 0.
 Proof.
   intros. unfold gt. destruct (Nat.lt_ge_cases 0 (a ^ i mod N)). easy.
-  inversion H0.  exfalso. cut (a^r mod N = 0).
-  intros. destruct H as (Ha & Hb & Hc). lia.
+  inversion H1.  exfalso. cut (a^r mod N = 0).
+  intros. destruct H0 as (Ha & Hb & Hc). lia.
   assert (N <> 0).
-  { assert (1 < N). { apply (Order_N_lb a r _). easy. } lia. }
+  { assert (1 < N). { apply (Order_N_lb a r _); easy. } lia. }
   destruct (Nat.lt_ge_cases i r).
   - assert (r = (i + (r - i))%nat) by lia.
-    rewrite H4. rewrite -> Nat.pow_add_r. rewrite Nat.mul_mod. rewrite H2. simpl.
+    rewrite H5. rewrite -> Nat.pow_add_r. rewrite Nat.mul_mod. rewrite H3. simpl.
     apply Nat.mod_0_l.
     easy. easy.
   - assert (r = (i - (i - r))%nat) by lia.
-    rewrite H4. specialize (Order_a_inv_ex a r N H) as e. destruct e.
+    rewrite H5. specialize (Order_a_inv_ex a r N H0) as e. destruct e.
     rewrite (Pow_minus _ r _ x _ _); try easy; try lia.
-    rewrite Nat.mul_mod. rewrite H2. simpl.
+    rewrite Nat.mul_mod. rewrite H3. simpl.
     apply Nat.mod_0_l. easy. easy.
 Qed.
 
@@ -822,7 +829,7 @@ Proof.
 Qed.
 
 Lemma Order_r_lt_N :
-  forall a r N,
+  forall a r N, 0 < N ->
     Order a r N ->
     r < N.
 Proof.
@@ -830,22 +837,22 @@ Proof.
   destruct (Nat.lt_ge_cases r N). easy.
   remember (fun i => pred (a^i mod N))%nat as f.
   cut (exists i j, i <= pred r /\ j < i /\ f i = f j).
-  - intros. destruct H1 as (i & j & H1 & H2 & H3).
+  - intros. destruct H2 as (i & j & H2 & H3 & H4).
     cut (f i <> f j). easy.
     rewrite Heqf.
     assert (forall (a b : nat), a > 0 -> b > 0 -> a <> b -> pred a <> pred b).
     { intros. lia. }
-    apply H4.
-    + apply (Pow_pos _ r _ _). easy.
-    + apply (Pow_pos _ r _ _). easy.
+    apply H5.
+    + apply (Pow_pos _ r _ _); easy.
+    + apply (Pow_pos _ r _ _); easy.
     + assert (forall T (x y : T), x <> y -> y <> x) by auto.
-      apply H5. apply (Pow_diff _ r _ j i); try lia. easy.
+      apply H6. apply (Pow_diff _ r _ j i); try lia. easy.
   - apply pigeonhole. intros. subst. 
     assert (forall (a b : nat), a > 0 -> b > 0 -> a < b -> pred a < pred b) by (intros; lia).
-    apply H2. apply (Pow_pos _ r _ _); easy. destruct H. auto.
+    apply H3. apply (Pow_pos _ r _ _); easy. destruct H0. auto.
     cut (a^i mod N < N). lia.
     apply Nat.mod_upper_bound. 
-    assert (1 < N). { apply (Order_N_lb a r _). easy. } lia.
+    assert (1 < N). { apply (Order_N_lb a r _); easy. } lia.
 Qed.
 
 
@@ -1014,41 +1021,41 @@ Proof.
 Qed.
 
 Lemma Order_factor_mod1 :
-  forall a r N x,
+  forall a r N x, 0 < N ->
     Order a r N ->
     a ^ x mod N = 1 ->
     Nat.divide r x.
 Proof.
-  intros. specialize (Order_rel_prime _ _ _ H) as G.
-  assert (2 <= N) by (specialize (Order_N_lb _ _ _ H); lia).
-  destruct H as [? [? ?]].
+  intros. specialize (Order_rel_prime _ _ _ H H0) as G.
+  assert (2 <= N) by (specialize (Order_N_lb _ _ _ H H0); lia).
+  destruct H0 as [? [? ?]].
   bdestruct (x =? 0). subst. apply Nat.divide_0_r.
   assert (x >= r). {
-    apply H3. split. lia. easy.
+    apply H4. split. lia. easy.
   }
   assert (x = r * (x / r) + x mod r) by (apply Nat.div_mod; lia).
-  rewrite H6 in H0.
-  rewrite Nat.pow_add_r in H0. rewrite Nat.pow_mul_r in H0.
-  rewrite <- Nat.mul_mod_idemp_l in H0 by lia.
-  rewrite pow_mod in H0. rewrite H2 in H0. rewrite Nat.pow_1_l in H0. rewrite Nat.mod_small with (a := 1) in H0 by lia. rewrite Nat.mul_1_l in H0.
+  rewrite H7 in H1.
+  rewrite Nat.pow_add_r in H1. rewrite Nat.pow_mul_r in H1.
+  rewrite <- Nat.mul_mod_idemp_l in H1 by lia.
+  rewrite pow_mod in H1. rewrite H3 in H1. rewrite Nat.pow_1_l in H1. rewrite Nat.mod_small with (a := 1) in H1 by lia. rewrite Nat.mul_1_l in H1.
   assert (x mod r < r) by (apply Nat.mod_upper_bound; lia).
   bdestruct (0 <? x mod r).
   assert (0 < x mod r /\ a ^ (x mod r) mod N = 1) by easy.
-  apply H3 in H9. lia.
+  apply H4 in H10. lia.
   apply Nat.mod_divide; lia.
 Qed.
 
 Lemma Order_factor_φ :
-  forall a r N,
+  forall a r N, 0 < N ->
     Order a r N ->
     Nat.divide r (φ N).
 Proof.
-  intros. apply Order_factor_mod1 with (a := a) (N := N). easy.
-  assert (2 <= N) by (specialize (Order_N_lb _ _ _ H); lia).
+  intros. apply Order_factor_mod1 with (a := a) (N := N); try easy.
+  assert (2 <= N) by (specialize (Order_N_lb _ _ _ H H0); lia).
   rewrite φ_φ' by easy. replace 1 with (1 mod N) by (apply Nat.mod_small; lia).
   apply PTotient.euler_fermat_little. lia.
-  intro. subst. destruct H as [T [H _]]. rewrite Nat.pow_0_l in H by lia. rewrite Nat.mod_small in H by lia. easy.
-  apply Order_rel_prime with (r := r). easy.
+  intro. subst. destruct H0 as [T [H0 _]]. rewrite Nat.pow_0_l in H0 by lia. rewrite Nat.mod_small in H0 by lia. easy.
+  apply Order_rel_prime with (r := r); easy.
 Qed.
 
 Lemma Order_mod :
@@ -1167,16 +1174,16 @@ Proof.
 Qed.
 
 Lemma Order_not_factor :
-  forall a r N x,
+  forall a r N x, 0 < N ->
     Order a r N ->
     a ^ x mod N <> 1 ->
     ~ Nat.divide r x.
 Proof.
-  intros. intro. destruct H1 as [k ?]. subst.
-  rewrite Nat.mul_comm in H0. rewrite Nat.pow_mul_r in H0. rewrite pow_mod in H0.
-  assert (1 < N) by (eapply Order_N_lb; apply H).
-  destruct H as [_ [? _]]. rewrite H in H0. rewrite Nat.pow_1_l in H0.
-  rewrite Nat.mod_small in H0 by easy.
+  intros. intro. destruct H2 as [k ?]. subst.
+  rewrite Nat.mul_comm in H1. rewrite Nat.pow_mul_r in H1. rewrite pow_mod in H1.
+  assert (1 < N) by (eapply Order_N_lb; try apply H0; easy).
+  destruct H0 as [_ [? _]]. rewrite H0 in H1. rewrite Nat.pow_1_l in H1.
+  rewrite Nat.mod_small in H1 by easy.
   lia.
 Qed.
 
@@ -1374,12 +1381,24 @@ Lemma Order_coprime_lcm :
     Order a rq q ->
     Order a (Nat.lcm rp rq) (p * q).
 Proof.
-  intros. assert (Hpod := H0). assert (Hqod := H1).
+  intros. 
+  assert (Hq : 0 < q).
+  { bdestruct (q =? 0).
+    subst. simpl in H.
+    rewrite Nat.gcd_0_r in H. subst.
+    destruct H0 as [_ [H0 _]]. simpl in H0. easy. 
+    lia. }
+  assert (Hp : 0 < p).
+  { bdestruct (p =? 0).
+    subst. simpl in H. subst.
+    destruct H1 as [_ [H1 _]]. simpl in H1. easy. 
+    lia. }
+  assert (Hpod := H0). assert (Hqod := H1).
   destruct H0 as [Hrp0 [Hrp1 Hrp2]].
   destruct H1 as [Hrq0 [Hrq1 Hrq2]].
   split. bdestruct (Nat.lcm rp rq =? 0). rewrite Nat.lcm_eq_0 in H0. lia. lia.
-  assert (1 < p) by (apply (Order_N_lb _ _ _ Hpod)).
-  assert (1 < q) by (apply (Order_N_lb _ _ _ Hqod)).
+  assert (1 < p) by (apply (Order_N_lb _ _ _ Hp Hpod)).
+  assert (1 < q) by (apply (Order_N_lb _ _ _ Hq Hqod)).
   split.
   - rewrite CRT_1 by easy. split.
     unfold Nat.lcm. rewrite Nat.pow_mul_r. rewrite pow_mod. rewrite Hrp1.
@@ -1389,15 +1408,15 @@ Proof.
     rewrite Nat.pow_1_l. apply Nat.mod_small. easy.
   - intros. destruct H2.
     rewrite CRT_1 in H3 by easy. destruct H3.
-    apply Order_factor_mod1 with (r := rp) in H3. 2: easy.
-    apply Order_factor_mod1 with (r := rq) in H4. 2: easy.
+    apply Order_factor_mod1 with (r := rp) in H3; try easy.
+    apply Order_factor_mod1 with (r := rq) in H4; try easy.
     assert (Nat.divide (Nat.lcm rp rq) r') by (apply Nat.lcm_least; easy).
     apply Nat.divide_pos_le in H5; lia.
 Qed.
 
 Definition d2p n := pow_in_n n 2.
 
-Local Opaque Nat.modulo.
+Local Opaque Nat.div Nat.modulo.
 Lemma prime_decomp_double :
   forall a, a <> 0 -> prime_decomp (2 * a) = 2 :: prime_decomp a.
 Proof.
@@ -1413,7 +1432,7 @@ Proof.
   replace (S (S a) + (a + 1)) with (S (2 * (S a))) by lia.
   easy.
 Qed.
-Local Transparent Nat.modulo.
+Local Transparent Nat.div Nat.modulo.
 
 Lemma d2p_double :
   forall a, a <> 0 -> d2p (2 * a) = S (d2p a).
@@ -1628,34 +1647,35 @@ Proof.
   assert (0 < Nat.lcm rp rq) by (apply Natlcm_pos; easy). flia Hk H.
   rewrite Hk in Hlcm. rewrite Hlcm. rewrite Nat.div_mul by easy.
   split.
-  - intro contra. apply Order_factor_mod1 with (r := r) in contra. 2: easy.
+  - intro contra. apply Order_factor_mod1 with (r := r) in contra. 3: easy.
     destruct contra as [x Hx]. rewrite Hx in Hlcm.
     replace (x * r * 2) with (r * (x * 2)) in Hlcm by lia.
     symmetry in Hlcm. rewrite Nat.mul_id_r in Hlcm by flia H Hx.
-    flia Hlcm.
+    flia Hlcm. lia.
   - intro contra.
     apply CRT_neg1 in contra. 2: lia. destruct contra as [Cp Cq].
     assert (Hkp: a ^ k mod p <> 1) by flia Hp Cp.
-    apply Order_not_factor with (r := rp) in Hkp. 2: easy.
+    apply Order_not_factor with (r := rp) in Hkp. 3: easy.
     assert (Cp': a ^ (2 * k) mod p = 1). {
       rewrite Nat.mul_comm. rewrite Nat.pow_mul_r. rewrite pow_mod. rewrite Cp.
       replace ((p - 1) ^ 2) with (p * (p - 2) + 1) by (simpl; flia Hp).
       rewrite Nat_mod_add_l_mul_l by flia Hp.
       apply Nat.mod_small. flia Hp.
     }
-    apply Order_factor_mod1 with (r := rp) in Cp'. 2: easy.
+    apply Order_factor_mod1 with (r := rp) in Cp'. 3: easy.
     assert (Hd2prp: d2p rp = S (d2p k)) by (apply d2p_stuck; easy).    
     assert (Hkq: a ^ k mod q <> 1) by flia Hq Cq.
-    apply Order_not_factor with (r := rq) in Hkq. 2: easy.
+    apply Order_not_factor with (r := rq) in Hkq. 3: easy.
     assert (Cq': a ^ (2 * k) mod q = 1). {
       rewrite Nat.mul_comm. rewrite Nat.pow_mul_r. rewrite pow_mod. rewrite Cq.
       replace ((q - 1) ^ 2) with (q * (q - 2) + 1) by (simpl; flia Hq).
       rewrite Nat_mod_add_l_mul_l by flia Hq.
       apply Nat.mod_small. flia Hq.
     }
-    apply Order_factor_mod1 with (r := rq) in Cq'. 2: easy.
+    apply Order_factor_mod1 with (r := rq) in Cq'. 3: easy.
     assert (Hd2prq: d2p rq = S (d2p k)) by (apply d2p_stuck; easy).
     flia Hd2prp Hd2prq Hd2p.
+    all: lia.
 Qed.
 
 Lemma d2p_neq_sufficient :
@@ -1785,9 +1805,8 @@ Lemma sqr_gcd :
     Nat.gcd x p = 1.
 Proof.
   intros.
-  assert (p <> 0). {
-    intro. subst. simpl in H. easy.
-  }
+  bdestruct (p =? 0).
+  subst. simpl in *. rewrite Nat.gcd_0_r in *. lia.
   rewrite <- H0 in H.
   rewrite Nat.gcd_mod in H by easy. rewrite Nat.gcd_comm in H.
   destruct (Natgcd_sqr x p). rewrite H in H2.
@@ -2855,13 +2874,13 @@ Lemma qr_d2p_lt :
     d2p r < d2p (φ (p ^ k)).
 Proof.
   intros.
-  assert (Nat.gcd a p = 1) as Ha. apply pow_coprime_rev with k. lia. apply Order_rel_prime with r. easy.
+  assert (Nat.gcd a p = 1) as Ha. apply pow_coprime_rev with k. lia. apply Order_rel_prime with r. lia. easy.
   specialize (Euler_criterion_qr _ _ _ H H0 H1 H2 Ha H3) as G.
   apply Order_factor_mod1 with (r := r) in G.
   assert (φ (p ^ k) = 2 * (φ (p ^ k) / 2) /\ (φ (p ^ k) / 2 <> 0)) by (apply φ_odd_prime_pow; easy).
   destruct H5. rewrite H5. rewrite d2p_double. 2: easy.
   specialize (d2p_factor _ _ H6 G). flia.
-  easy.
+  lia. easy.
 Qed.
   
   
@@ -2873,14 +2892,15 @@ Lemma not_qr_d2p_eq :
     d2p r = d2p (φ (p ^ k)).
 Proof.
   intros.
-  assert (Nat.gcd a p = 1) as Ha. apply pow_coprime_rev with k. lia. apply Order_rel_prime with r. easy.
+  assert (Nat.gcd a p = 1) as Ha. apply pow_coprime_rev with k. lia. apply Order_rel_prime with r. lia. easy.
   specialize (Euler_criterion_not_qr _ _ _ H H0 H1 H2 Ha H3) as G.
   assert (φ (p ^ k) = 2 * (φ (p ^ k) / 2) /\ (φ (p ^ k) / 2 <> 0)) by (apply φ_odd_prime_pow; easy).
   destruct H5.
   assert (p ^ k > 2) by (apply prime_power_lb; easy).
   assert (a ^ (φ (p ^ k) / 2) mod p ^ k <> 1) by flia G H7.
-  specialize (Order_not_factor  _ _ _ _ H4 H8) as T.
-  specialize (Order_factor_φ _ _ _ H4) as T2.
+  assert (0 < p ^ k) by lia.
+  specialize (Order_not_factor  _ _ _ _ H9 H4 H8) as T.
+  specialize (Order_factor_φ _ _ _ H9 H4) as T2.
   rewrite H5 in T2.
   apply d2p_stuck in T2. 2: easy.
   rewrite H5. rewrite d2p_double. 2: easy.
@@ -3885,7 +3905,9 @@ Qed.
 Fixpoint modseq (n a b : nat) : list nat:=
   match n with
   | O => []
-  | S n' => b :: modseq n' (b mod a) a
+  | S n' => if a =? 0
+           then b :: modseq n' 0 0
+           else b :: modseq n' (b mod a) a
   end.
 
 Lemma modseq_generate :
@@ -3895,20 +3917,22 @@ Lemma modseq_generate :
     nth i (modseq n a b) 0 = nth i (modseq m a b) 0.
 Proof.
   intro i. induction i; intros.
-  - destruct n. lia. destruct m. lia. easy.
   - destruct n. lia. destruct m. lia. simpl.
-    destruct a. apply IHi; lia.
-    apply IHi; lia.
+    bdestruct (a =? 0); reflexivity.
+  - destruct n. lia. destruct m. lia. simpl.
+    bdestruct (a =? 0). 
+    simpl. apply IHi; lia.
+    simpl. apply IHi; lia.
 Qed.
 
 Definition nthmodseq n a b := nth n (modseq (S n) a b) 0.
 
 Lemma nthmodseq_mod :
   forall n a b,
-    a < b ->
+    0 < a < b ->
     nthmodseq (S n) a b = nthmodseq n (b mod a) a.
 Proof.
-  intros. unfold nthmodseq. reflexivity.
+  intros. unfold nthmodseq. simpl. bdestructΩ (a =? 0).
 Qed.
 
 Lemma modseq_bound :
@@ -3931,41 +3955,6 @@ Proof.
     exists (S n0). apply H2. 
 Qed.
 
-Lemma modseq_pre :
-  forall m a b,
-    a < b < m ->
-    exists n,
-      (forall i, i < n -> nthmodseq i a b > nthmodseq (S i) a b) /\
-      (forall i, i >= n -> nthmodseq i a b = 0).
-Proof.
-  intro m. induction m; intros. lia.
-  bdestruct (b <? m). apply IHm; lia. assert (b = m) by lia. clear H0.
-  destruct a.
-  - exists 1. split; intros; unfold nthmodseq. assert (i = 0) by lia. simpl. rewrite H2. lia.
-    simpl. induction i. lia. destruct i. simpl. lia. assert (S i >= 1) by lia. apply IHi in H2. simpl. apply H2.
-  - rename a into a'. remember (S a') as a. remember (b mod a) as c.
-    assert (c < a < m).
-    { specialize (Nat.mod_upper_bound b a) as G.
-      assert (GT: a <> 0) by lia. apply G in GT. lia.
-    }
-    apply IHm in H0. destruct H0 as [n [Hl Hr]].
-    exists (S n). split. intros. destruct i. unfold nthmodseq. simpl. lia.
-    do 2 rewrite nthmodseq_mod by lia. rewrite <- Heqc. apply Hl. lia.
-    intros. destruct i. lia. rewrite nthmodseq_mod by lia. rewrite <- Heqc. apply Hr. lia.
-Qed.
-
-Lemma modseq_finite :
-  forall a b,
-    a < b ->
-    exists n,
-      (forall i, i < n -> nthmodseq i a b <> 0) /\
-      (forall i, i >= n -> nthmodseq i a b = 0).
-Proof.
-  intros. specialize (modseq_pre (S b) a b) as G.
-  assert (a < b < S b) by lia. apply G in H0. destruct H0 as [n [H1 H2]].
-  exists n. split. intros. apply H1 in H0. lia. apply H2.
-Qed.
-
 Lemma nthmodseq_0_0 :
   forall n, nthmodseq n 0 0 = 0.
 Proof.
@@ -3973,11 +3962,23 @@ Proof.
   unfold nthmodseq. simpl. apply IHn.
 Qed.
 
+Lemma nthmodseq_Sn0a :
+  forall n a, nthmodseq (S n) 0 a = 0.
+Proof.
+  intros n a.
+  induction n; unfold nthmodseq. 
+  simpl. reflexivity.
+  unfold nthmodseq in IHn.
+  simpl in *. 
+  apply IHn.
+Qed.
 
 Fixpoint cfexp n a b :=
   match n with
   | O => []
-  | S n => (b / a) :: cfexp n (b mod a) a
+  | S n => if a =? 0
+          then 0 :: cfexp n 0 0
+          else (b / a) :: cfexp n (b mod a) a
   end.
 
 (*
@@ -3988,22 +3989,21 @@ Definition nthcfexp n a b := nth n (cfexp (S n) a b) 0.
 
 Lemma nthcfexp_mod :
   forall n a b,
-    a < b ->
+    0 < a < b ->
     nthcfexp (S n) a b = nthcfexp n (b mod a) a.
 Proof.
-  induction n; intros; easy.
+  induction n; intros; unfold nthcfexp; simpl; bdestructΩ (a =? 0).
 Qed.
 
-Lemma nthcfexp_0_0 :
-  forall n, nthcfexp n 0 0 = 0.
+Lemma nthcfexp_n0a :
+  forall n a, nthcfexp n 0 a = 0.
 Proof.
-  induction n; intros. easy. unfold nthcfexp. simpl. apply IHn.
-Qed.
-
-Lemma nthcfexp_Sn0a :
-  forall n a, nthcfexp (S n) 0 a = 0.
-Proof.
-  induction n; intros. easy. unfold nthcfexp. simpl. apply IHn with (a := a).
+  intros n a.
+  induction n; unfold nthcfexp. 
+  simpl. reflexivity.
+  unfold nthcfexp in IHn.
+  simpl in *. 
+  apply IHn.
 Qed.
 
 Lemma nthcfexp_neq_0_nthmodseq :
@@ -4012,13 +4012,17 @@ Lemma nthcfexp_neq_0_nthmodseq :
     nthcfexp n a b <> 0 ->
     nthmodseq (S n) a b <> 0.
 Proof.
-  induction n; intros. unfold nthcfexp in H0. simpl in H0.
+  induction n; intros. 
+  unfold nthcfexp in H0. simpl in H0.
   unfold nthmodseq. simpl.
-  bdestruct (a =? 0). rewrite H1 in H0. Local Transparent Nat.div. simpl in H0. lia. lia.
-  bdestruct (a =? 0). rewrite H1 in H0. rewrite nthcfexp_Sn0a in H0. lia.
-  assert (a > 0) by lia.
-  rewrite nthmodseq_mod by lia. apply IHn.
-  apply Nat.mod_upper_bound. easy. easy.
+  bdestruct (a =? 0). simpl in H0. lia.
+  bdestruct (b mod a =? 0); simpl; assumption.
+  bdestruct (a =? 0).
+  subst. rewrite nthcfexp_n0a in H0. lia.
+  rewrite nthmodseq_mod by lia.
+  apply IHn.
+  apply Nat.mod_upper_bound. assumption.
+  rewrite nthcfexp_mod in H0 by lia. assumption.
 Qed.
 
 Lemma nthcfexp_neq_0_nthmodseq' :
@@ -4027,11 +4031,12 @@ Lemma nthcfexp_neq_0_nthmodseq' :
     nthcfexp n a b <> 0 ->
     nthmodseq n a b <> 0.
 Proof.
-  induction n; intros. unfold nthmodseq. simpl. lia. 
-  bdestruct (a =? 0). rewrite H1 in H0. rewrite nthcfexp_Sn0a in H0. lia.
-  assert (a > 0) by lia.
+  induction n; intros. unfold nthmodseq. simpl. 
+  bdestructΩ (a =? 0).
+  bdestruct (a =? 0). rewrite H1 in H0. rewrite nthcfexp_n0a in H0. lia.
   rewrite nthmodseq_mod by lia. apply IHn.
-  apply Nat.mod_upper_bound. easy. easy.
+  apply Nat.mod_upper_bound. assumption.
+  rewrite nthcfexp_mod in H0 by lia. assumption.
 Qed.
 
 Fixpoint CF_alt (cf : list nat) (al bl : nat) :=
@@ -4044,31 +4049,35 @@ Fixpoint CF_alt (cf : list nat) (al bl : nat) :=
              end
   end.
 
-(*
-Compute (cfexp 5 2 3).
-
-Compute (CF_alt (cfexp 3 2 3) 0 1).
-*)
-
 Lemma CF_alt_invariant :
   forall n a b,
     a < b ->
     let (p, q) := CF_alt (cfexp n a b) (nthmodseq (S n) a b) (nthmodseq n a b) in
     a * q = b * p.
 Proof.
-  intro n. induction n; intros.
-  simpl. unfold nthmodseq. simpl. nia.
-  rewrite nthmodseq_mod by lia. rewrite nthmodseq_mod with (a := a) by lia.
-  simpl. destruct a. simpl. unfold nthmodseq. simpl. destruct n. lia. specialize (nthmodseq_0_0 n) as G. unfold nthmodseq in G. rewrite G. lia.
-  rename a into a'. remember (S a') as a.
-  destruct (b / a) eqn:E. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. rewrite <- E.
+  induction n; intros.
+  simpl. unfold nthmodseq. simpl. 
+  bdestruct (a =? 0); simpl. nia.
+  destruct (b mod a =? 0); simpl; lia.
+  bdestruct (a =? 0). subst. simpl.  
+  rewrite nthmodseq_Sn0a. lia. 
+  simpl. 
+  bdestruct (a =? 0). subst. simpl.
+  rewrite nthmodseq_Sn0a. lia. 
+  simpl.
+  destruct (b / a) eqn:E.
+  rewrite Nat.div_small_iff in E by assumption. lia.
   assert (b mod a < a).
   { specialize (Nat.mod_upper_bound b a) as G.
     apply G. lia.
   }
-  apply IHn in H0.
+  apply IHn in H2.
+  rewrite nthmodseq_mod by lia.
+  rewrite (nthmodseq_mod _ a) by lia.
   destruct (CF_alt (cfexp n (b mod a) a) (nthmodseq (S n) (b mod a) a) (nthmodseq n (b mod a) a)) eqn:Ecf.
-  replace (a * (b / a * n2 + n1)) with ((a * (b / a) + b mod a) * n2) by nia. rewrite <- Nat.div_mod by lia. easy.
+  rewrite <- E.
+  replace (a * (b / a * n2 + n1)) with ((a * (b / a) + b mod a) * n2) by nia. 
+  rewrite <- Nat.div_mod by lia. reflexivity.
 Qed.
 
 Lemma rel_prime_linear :
@@ -4104,8 +4113,14 @@ Proof.
   induction n; intros. simpl. easy.
   assert (nthcfexp 0 a b <> 0) by (apply H; lia).
   unfold nthcfexp in H0. simpl in H0.
-  simpl. apply Classical_Prop.and_not_or. split. easy.
-  apply IHn. intros. assert (S i < S n) by lia. apply H in H2. unfold nthcfexp in H2. simpl in H2. apply H2.
+  simpl. 
+  bdestruct (a =? 0).
+  simpl in H0. lia.
+  apply Classical_Prop.and_not_or. split. easy.
+  apply IHn. intros. assert (S i < S n) by lia. 
+  apply H in H3. unfold nthcfexp in H3. simpl in H3.
+  bdestruct (a =? 0). lia.
+  simpl in H3. apply H3.
 Qed.
 
 Lemma CF_alt_cfexp_coprime :
@@ -4144,7 +4159,9 @@ Proof.
   induction m; intros. assert (n = 0) by lia. subst. easy.
   destruct n. easy.
   simpl. rewrite <- IHm by lia. destruct n. unfold nthcfexp. simpl.
-  destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. simpl. nia.
+  bdestructΩ (a =? 0).
+  destruct (b / a) eqn:Ebda. 
+  assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. simpl. nia.
   rewrite nthcfexp_mod by lia.
   rewrite <- IHm by lia. easy.
 Qed.
@@ -4158,6 +4175,7 @@ Proof.
   induction m; intros. assert (n = 0) by lia. subst. simpl. nia.
   destruct n. simpl. nia.
   simpl. destruct n. unfold nthcfexp. simpl.
+  bdestructΩ (a =? 0).
   destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. simpl. nia.
   rewrite nthcfexp_mod by lia.
   bdestruct (nthcfexp n (b mod a) a =? 0). rewrite <- IHm by lia. easy.
@@ -4170,8 +4188,10 @@ Lemma CFp_SSn0a :
     0 < a ->
     CFp (S (S n)) 0 a = 0.
 Proof.
-  induction n; intros. easy. remember (S (S n)) as l. simpl. rewrite IHn by lia. destruct l. lia.
-  destruct l. easy. rewrite nthcfexp_mod by lia. simpl. rewrite nthcfexp_0_0. easy.
+  induction n; intros. easy. 
+  remember (S (S n)) as l. simpl. rewrite IHn by lia. destruct l. reflexivity.
+  destruct l. easy.
+  rewrite nthcfexp_n0a. simpl. reflexivity.
 Qed.
 
 Lemma CFq_SSn0a :
@@ -4179,8 +4199,10 @@ Lemma CFq_SSn0a :
     0 < a ->
     CFq (S (S n)) 0 a = 1.
 Proof.
-  induction n; intros. easy. remember (S (S n)) as l. simpl. rewrite IHn by lia. destruct l. lia.
-  destruct l. easy. rewrite nthcfexp_mod by lia. simpl. rewrite nthcfexp_0_0. easy.
+  induction n; intros. reflexivity. 
+  remember (S (S n)) as l. simpl. rewrite IHn by lia. destruct l. reflexivity.
+  destruct l. reflexivity.
+  rewrite nthcfexp_n0a. simpl. reflexivity.
 Qed.
 
 Lemma CFq0a_upper_bound :
@@ -4190,12 +4212,11 @@ Lemma CFq0a_upper_bound :
     CFq n 0 b <= b.
 Proof.
   induction m; intros. assert (n = 0) by lia. rewrite H1. simpl. lia.
-  bdestruct (n <=? m). apply IHm; easy.
+  bdestruct (n <=? m). apply IHm; assumption.
   assert (n = S m) by lia. subst. simpl.
   destruct m. lia.
-  destruct m. unfold nthcfexp. simpl. lia.
-  rewrite nthcfexp_mod by lia. replace (b mod 0) with 0 by easy.
-  rewrite nthcfexp_0_0. rewrite Nat.eqb_refl.
+  rewrite nthcfexp_n0a.
+  rewrite Nat.eqb_refl.
   apply IHm; lia.
 Qed.
 
@@ -4208,10 +4229,9 @@ Proof.
   induction m; intros. lia.
   bdestruct (n <=? m). apply IHm; easy.
   assert (n = S m) by lia. subst. simpl.
-  destruct m. easy.
-  destruct m. unfold nthcfexp. simpl. easy.
-  rewrite nthcfexp_mod by lia. replace (b mod 0) with 0 by easy.
-  rewrite nthcfexp_0_0. rewrite Nat.eqb_refl.
+  destruct m. reflexivity.
+  rewrite nthcfexp_n0a.
+  rewrite Nat.eqb_refl.
   apply IHm; lia.
 Qed.
 
@@ -4249,7 +4269,7 @@ Proof.
   apply IHn with (x := x) in H0.
   remember (CFp (S (S n)) a b) as CFpt.
   remember (CFq (S (S n)) a b) as CFqt.
-  simpl. rewrite H0.
+  simpl. bdestructΩ (a =? 0). rewrite H0.
   destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. rewrite <- Ebda. clear Ebda n0.
   rewrite HeqCFpt, HeqCFqt. clear CFpt CFqt HeqCFpt HeqCFqt.
 
@@ -4258,19 +4278,12 @@ Proof.
   - rewrite CFq_mod with (m := S n) (a := a) by lia. nia.
 Qed.
 
-Lemma nth_modseq_inc :
-  forall n a b,
-    nth (S (S n)) (modseq (S (S (S n))) a b) 0 = (nth n (modseq (S (S (S n))) a b) 0) mod (nth (S n) (modseq (S (S (S n))) a b) 0).
-Proof.
-  induction n; intros. easy.
-  remember (S (S (S n))) as x. simpl. rewrite Heqx. rewrite Heqx in IHn. rewrite IHn. easy.
-Qed.
-
 Lemma modseq_length :
   forall n a b,
     length (modseq n a b) = n.
 Proof.
-  induction n; intros. easy. simpl. rewrite IHn. easy.
+  induction n; intros. easy. simpl. 
+  bdestruct (a =? 0); simpl; rewrite IHn; reflexivity.
 Qed.
 
 Lemma nth_modseq_overflow :
@@ -4287,11 +4300,23 @@ Lemma nth_modseq_0_onestep :
     nth x (modseq n a b) 0 = 0 ->
     nth (S x) (modseq n a b) 0 = 0.
 Proof.
-  induction x; intros. destruct n. easy. simpl in H0. lia.
+  induction x; intros. 
+  destruct n. reflexivity.
+  simpl in H0. destruct (a =? 0); simpl in H0; lia.
   bdestruct (n <=? S (S x)). apply nth_modseq_overflow; easy.
   rewrite modseq_generate with (m := (S (S (S x)))) by lia.
   rewrite modseq_generate with (m := (S (S (S x)))) in H0 by lia.
-  rewrite nth_modseq_inc. rewrite H0. easy.
+  remember (S (S x)) as x'.
+  simpl in H0.
+  bdestruct (a =? 0). subst.
+  replace (nth (S (S x)) (modseq (S (S (S x))) 0 b) 0) with (nthmodseq (S (S x)) 0 b) by reflexivity.
+  rewrite nthmodseq_Sn0a. reflexivity.
+  simpl in H0.
+  apply IHx in H0.
+  rewrite Heqx' at 1.
+  simpl.
+  bdestructΩ (a =? 0).
+  apply Nat.mod_upper_bound. assumption.
 Qed.
 
 Lemma nthmodseq_0_post :
@@ -4306,18 +4331,6 @@ Proof.
   apply nth_modseq_0_onestep in H. 2:lia.
   replace (S x + n) with (S (x + n)) by lia.
   easy.
-Qed.
-
-Lemma nthcfexp_nthmodseq_eq :
-  forall n a b,
-    a < b ->
-    nthcfexp n a b = (nthmodseq n a b) / (nthmodseq (S n) a b).
-Proof.
-  induction n; intros. easy.
-  rewrite nthcfexp_mod by lia. do 2 rewrite nthmodseq_mod by lia.
-  bdestruct (a =? 0). subst. simpl. rewrite nthcfexp_0_0. do 2 rewrite nthmodseq_0_0. simpl. easy.
-  assert (b mod a < a) by (apply Nat.mod_upper_bound; easy).
-  apply IHn in H1. easy.
 Qed.
 
 Lemma nthmodseq_0_nthcfexp :
@@ -4335,12 +4348,15 @@ Lemma nthmodseq_dec :
     a < b ->
     nthmodseq n a b >= nthmodseq (S n) a b.
 Proof.
-  unfold nthmodseq.
-  destruct n; intros. simpl. lia. rewrite nth_modseq_inc.
-  rewrite modseq_generate with (n := S (S n)) (m := S (S (S n))) by lia.
-  bdestruct (nth (S n) (modseq (S (S (S n))) a b) 0 =? 0). rewrite H0. simpl. lia.
-  assert (forall p q, p < q -> q >= p) by (intros; lia).
-  apply H1. apply Nat.mod_upper_bound. easy.
+  induction n; intros.
+  unfold nthmodseq. simpl.
+  destruct (a =? 0). simpl. lia.
+  destruct (b mod a =? 0); simpl; lia.
+  bdestruct (a =? 0). subst.
+  rewrite 2 nthmodseq_Sn0a. lia.
+  rewrite 2 nthmodseq_mod by lia.
+  apply IHn.
+  apply Nat.mod_upper_bound. assumption.
 Qed.
 
 Lemma nthmodseq_neq_0_nthcfexp :
@@ -4349,14 +4365,27 @@ Lemma nthmodseq_neq_0_nthcfexp :
     nthmodseq (S n) a b <> 0 ->
     nthcfexp n a b <> 0.
 Proof.
-  induction n; intros. specialize (nthmodseq_dec 1 a b H) as G.
-  unfold nthmodseq in H0, G. simpl in H0, G. unfold nthcfexp. simpl.
-  assert (0 < a <= b) by lia. specialize (Nat.div_str_pos b a H1) as T. lia.
+  induction n; intros. 
+  unfold nthmodseq in H0.
+  unfold nthcfexp.
+  simpl in *.
+  bdestruct (a =? 0).
+  simpl in H0. lia.
+  simpl.
+  intro contra.
+  rewrite Nat.div_small_iff in contra; lia.
+  unfold nthcfexp in *.
+  remember (S n) as n'.
+  simpl.
+  bdestruct (a =? 0).
+  rewrite H1 in H0.
+  rewrite nthmodseq_Sn0a in H0. lia.
+  subst n'.
+  simpl.
+  apply IHn.
+  apply Nat.mod_upper_bound. assumption.
   rewrite nthmodseq_mod in H0 by lia.
-  bdestruct (a =? 0). rewrite H1 in H0. simpl in H0. rewrite nthmodseq_0_0 in H0. lia.
-  specialize (nthmodseq_dec (S n) a b H) as G. rewrite nthcfexp_mod by lia. 
-  assert (b mod a < a) by (apply Nat.mod_upper_bound; easy).
-  specialize (IHn (b mod a) a H2 H0). easy.
+  assumption.
 Qed.
 
 Lemma nthmodseq_0_CFp :
@@ -4371,7 +4400,8 @@ Proof.
   apply nth_modseq_0_onestep in H0. 2:lia.
   specialize (IHx (S n) a b H H0).
   replace (S x + n) with (x + S n) by lia.
-  rewrite IHx. simpl. destruct n. simpl in H1. lia.
+  rewrite IHx. simpl. destruct n. simpl in H1.
+  destruct (a =? 0); simpl in H1; lia.
   specialize (nthmodseq_0_nthcfexp n a b H H1) as G.
   rewrite G. simpl. easy.
 Qed.
@@ -4388,9 +4418,56 @@ Proof.
   apply nth_modseq_0_onestep in H0. 2:lia.
   specialize (IHx (S n) a b H H0).
   replace (S x + n) with (x + S n) by lia.
-  rewrite IHx. simpl. destruct n. simpl in H1. lia.
+  rewrite IHx. simpl. destruct n. simpl in H1. 
+  destruct (a =? 0); simpl in H1; lia.
   specialize (nthmodseq_0_nthcfexp n a b H H1) as G.
   rewrite G. simpl. easy.
+Qed.
+
+Lemma nth_modseq_inc :
+  forall n a b, a < b ->
+  nthmodseq (S n) a b <> 0 ->
+  nthmodseq (S (S n)) a b = nthmodseq n a b mod nthmodseq (S n) a b.
+Proof.
+  induction n; intros.
+  unfold nthmodseq in *.
+  simpl in *. 
+  destruct (a =? 0); simpl in *.
+  lia.
+  bdestruct (b mod a =? 0); simpl in *.
+  lia. 
+  destruct (a mod (b mod a) =? 0); reflexivity.
+  bdestruct (a =? 0). subst.
+  rewrite nthmodseq_Sn0a in H0. lia.
+  rewrite nthmodseq_mod in H0 by lia.
+  apply IHn in H0.
+  rewrite nthmodseq_mod by lia.
+  rewrite 2 (nthmodseq_mod _ a b) by lia.
+  assumption.
+  apply Nat.mod_upper_bound.
+  assumption.
+Qed.
+
+Lemma nthcfexp_nthmodseq_eq :
+  forall n a b, a < b ->
+  nthmodseq (S n) a b <> 0 ->
+  nthcfexp n a b = nthmodseq n a b / nthmodseq (S n) a b.
+Proof.
+  induction n; intros. 
+  unfold nthcfexp, nthmodseq in *.
+  simpl in *. 
+  bdestruct (a =? 0); simpl in *.
+  lia.
+  destruct (b mod a =? 0); reflexivity.
+  bdestruct (a =? 0). subst.
+  rewrite nthmodseq_Sn0a in H0. lia.
+  rewrite nthmodseq_mod in H0 by lia.
+  apply IHn in H0.
+  rewrite 2 nthmodseq_mod by lia.
+  rewrite nthcfexp_mod by lia.
+  assumption.
+  apply Nat.mod_upper_bound.
+  assumption.
 Qed.
 
 Lemma CF_ite_CFpq :
@@ -4404,20 +4481,23 @@ Proof.
   rewrite nthmodseq_0_CFp, nthmodseq_0_CFq by lia. easy.
   replace (S x + S n) with (x + S (S n)) by lia.
   rewrite <- IHx by lia.
-  replace (nthmodseq n a b mod nthmodseq (S n) a b) with (nthmodseq (S (S n)) a b).
-  2:{ unfold nthmodseq. rewrite modseq_generate with (n := S n) (m := (S (S (S n)))) by lia.
-      rewrite modseq_generate with (n := S (S n)) (m := (S (S (S n)))) by lia.
-      apply nth_modseq_inc.
-  }
-  replace (CFp (S (S n)) a b) with (nthmodseq n a b / nthmodseq (S n) a b * CFp (S n) a b + CFp n a b).
-  2:{ simpl. apply nthmodseq_neq_0_nthcfexp in H0. 2:lia. apply Nat.eqb_neq in H0. rewrite H0.
-      rewrite <- nthcfexp_nthmodseq_eq by lia. easy.
+  clear IHx.
+  bdestruct (a =? 0).
+  subst. rewrite nthmodseq_Sn0a in H0. lia.
+  rewrite <- nth_modseq_inc by assumption.
+  assert (CFp (S (S n)) a b = nthmodseq n a b / nthmodseq (S n) a b * CFp (S n) a b + CFp n a b).
+  { rewrite <- nthcfexp_nthmodseq_eq by lia. 
+    simpl. apply nthmodseq_neq_0_nthcfexp in H0. 2: lia. 
+    apply Nat.eqb_neq in H0. rewrite H0. reflexivity.
   } 
-  replace (CFq (S (S n)) a b) with (nthmodseq n a b / nthmodseq (S n) a b * CFq (S n) a b + CFq n a b).
-  2:{ simpl. apply nthmodseq_neq_0_nthcfexp in H0. 2:lia. apply Nat.eqb_neq in H0. rewrite H0.
-      rewrite <- nthcfexp_nthmodseq_eq by lia. easy.
-  }
-  easy.
+  rewrite H2.
+  assert (CFq (S (S n)) a b = nthmodseq n a b / nthmodseq (S n) a b * CFq (S n) a b + CFq n a b).
+  { rewrite <- nthcfexp_nthmodseq_eq by lia. 
+    simpl. apply nthmodseq_neq_0_nthcfexp in H0. 2: lia. 
+    apply Nat.eqb_neq in H0. rewrite H0. reflexivity.
+  } 
+  rewrite H3.
+  reflexivity.
 Qed.
 
 Lemma CF_alt_correct_full :
@@ -4441,6 +4521,8 @@ Proof.
   }
   
   remember (x * CFp (S n) a b + y * CFp (S (S n)) a b, x * CFq (S n) a b + y * CFq (S (S n)) a b) as CFtmp.
+  simpl. 
+  bdestruct (a =? 0). subst. lia.
   simpl. rewrite H1.
   destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. rewrite <- Ebda. clear Ebda n0.
   rewrite HeqCFtmp. clear CFtmp HeqCFtmp.
@@ -4492,7 +4574,7 @@ Proof.
   destruct a.
   - destruct b. (* b = 0 *) lia.
     exists 1. split. lia. split. easy. split. intros. lia. intros.
-    destruct i. easy. rewrite nthcfexp_mod by lia. simpl. apply nthcfexp_0_0.
+    destruct i. easy. rewrite nthcfexp_n0a. reflexivity.
   - rename a into a'. remember (S a') as a.
     assert (Ga: a <> 0) by lia. assert (Ga': a =? 0 = false) by (apply eqb_neq; apply Ga).
     assert (Gmod: b mod a < a < m) by (specialize (Nat.mod_upper_bound b a Ga) as G; lia).
@@ -4501,7 +4583,7 @@ Proof.
     rewrite Nat.mul_add_distr_r. rewrite Hi.
     replace (b / a * CFq n (b mod a) a * a + CFq n (b mod a) a * (b mod a)) with ((a * (b / a) + b mod a) * CFq n (b mod a) a) by lia. rewrite <- Nat.div_mod by easy. lia.
     split. intros. destruct i. unfold nthcfexp. simpl.
-    destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. lia.
+    destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. destruct (a =? 0); simpl; lia.
     rewrite nthcfexp_mod by lia. apply Hii. lia.
     intros. destruct i. lia. rewrite nthcfexp_mod by lia. apply Hiii. lia.
 Qed.
@@ -4535,7 +4617,8 @@ Proof.
   - specialize (H1 0). assert (T : 1 < S (S n)) by lia. apply H1 in T. unfold nthcfexp in T. simpl in T. lia.
   - rename a into a'. remember (S a') as a.
     bdestruct (b / a =? 1).
-    + exists 2. split. lia. split. lia. split. simpl. unfold nthcfexp. simpl. rewrite H2. simpl. easy.
+    + exists 2. split. lia. split. lia. split. simpl. unfold nthcfexp. simpl. rewrite H2. 
+      bdestruct (a =? 0); simpl; reflexivity.
       intros. bdestruct (i <? S n).
       * assert (T: forall j, S j < S n -> nthcfexp j a b <> 0).
         { intros. apply H1. lia.
@@ -4549,7 +4632,8 @@ Proof.
     + destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. rewrite <- Ebda in H2.
       assert (b / a > 1) by lia. 
       exists 1. split. lia. split. lia. split. simpl. lia.
-      intros. bdestruct (i =? 1). rewrite H5. simpl. unfold nthcfexp. simpl. rewrite Ebda. simpl. nia.
+      intros. bdestruct (i =? 1). rewrite H5. simpl. unfold nthcfexp. simpl. rewrite Ebda. 
+      bdestruct (a =? 0); simpl; lia.
       bdestruct (i <? S n).
       * assert (T: forall j, S j < S n -> nthcfexp j a b <> 0).
         { intros. apply H1. lia.
@@ -4730,7 +4814,7 @@ Proof.
   specialize (CF_tauto n a b H0 H1) as G'.
   assert (INR b <> 0)%R by (apply not_0_INR; lia).
   assert (nthmodseq (S n) a b * CFq n a b + nthmodseq n a b * CFq (S n) a b <> 0)%R.
-  { destruct n. unfold nthmodseq. simpl. lra.
+  { destruct n. unfold nthmodseq. simpl. destruct (a =? 0)%nat; simpl; lra.
     assert (nthcfexp n a b <> 0)%nat by (apply H1; lia).
     apply nthcfexp_neq_0_nthmodseq in H3. 2 : lia.
     assert ((S (S n)) > 0)%nat by lia.
@@ -4789,7 +4873,9 @@ Proof.
   specialize (CF_tauto n a b H0 H1) as G'.
   assert (INR b <> 0)%R by (apply not_0_INR; lia).
   assert (nthmodseq (S n) a b * CFq n a b + nthmodseq n a b * CFq (S n) a b <> 0)%R.
-  { destruct n. unfold nthmodseq. simpl. lra.
+  { destruct n. unfold nthmodseq. simpl. 
+    destruct (a =? 0)%nat; simpl. lra.
+    destruct (b mod a =? 0)%nat; simpl; lra.
     assert (nthcfexp n a b <> 0)%nat by (apply H1; lia).
     apply nthcfexp_neq_0_nthmodseq in H3. 2 : lia.
     assert ((S (S n)) > 0)%nat by lia.
@@ -5089,7 +5175,19 @@ Proof.
   destruct n. lia.
   exists n. split. lia.
   unfold ContinuedFraction. specialize (CF_ite_CFpq n 0 a b H0) as G.
-  unfold nthmodseq in G. simpl in G. rewrite G.
-  simpl. replace (n + 1)%nat with (S n) by lia. easy.
+  unfold nthmodseq in G. simpl in G. 
+  bdestruct (a =? 0)%nat.
+  simpl in G.
+  subst a. rewrite G.
+  simpl. replace (n + 1)%nat with (S n) by lia. assumption.
+  simpl in G.
+  bdestruct (b mod a =? 0)%nat.
+  simpl in G.
+  rewrite G.
+  simpl. replace (n + 1)%nat with (S n) by lia. assumption.
+  simpl in G.
+  rewrite G.
+  simpl. replace (n + 1)%nat with (S n) by lia. assumption.
 Qed.
+
 

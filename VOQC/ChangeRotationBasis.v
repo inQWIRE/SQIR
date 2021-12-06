@@ -922,10 +922,12 @@ Proof.
        rewrite Rsqr_sqrt by lra.
        lra. }
   unfold rm02, rm12.
-  replace θ1 with (2 * (θ1 / 2)) at 4 5 6 by lra.
-  replace θ2 with (2 * (θ2 / 2)) at 4 5 6 by lra.
+  replace θ1 with (2 * (θ1 / 2)) by lra.
+  replace θ2 with (2 * (θ2 / 2)) by lra.
   repeat rewrite sin_2a.
   repeat rewrite cos_2a.
+  replace (2 * (θ1 / 2)) with θ1 by lra.
+  replace (2 * (θ2 / 2)) with θ2 by lra.
   unfold m00, m01.
   field_simplify_eq; try nonzero.
   rewrite k1_rewrite.
@@ -1366,7 +1368,7 @@ Proof.
   lca.
   (* otherwise, we can use m11_rewrite_alt_aux *)
   field_simplify_eq; try nonzero.
-  (* too lazy to do the rewriting manually, but in general this is not good form -KHH *)
+  (* too lazy to do the rewriting manually, but in general this is not good form -KH *)
   replace (m00 θ1 ξ θ2 * Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)) * Cexp (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2)))%C
   with (- (- (m00 θ1 ξ θ2 * / √ k1 θ1 ξ θ2 * (√ k2 θ1 ξ θ2 * Cexp (atan2 (rm12 θ1 ξ θ2) (rm02 θ1 ξ θ2))))) * (m00 θ1 ξ θ2 * / √ k1 θ1 ξ θ2 * (Cexp (atan2 (rm21 θ1 ξ θ2) (rm20_minus θ1 ξ θ2)) * √ k2 θ1 ξ θ2)) * / m00 θ1 ξ θ2 * / k2 θ1 ξ θ2 * k1 θ1 ξ θ2)%C.
   rewrite <- m01_rewrite_alt by assumption.

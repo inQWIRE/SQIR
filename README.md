@@ -10,17 +10,19 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Table of Contents
 
-* [Setup](#setup)
-* [Compilation](#compilation)
-* [Directory Contents](#directory-contents)
-  * [SQIR](#sqir)
-  * [VOQC](#voqc)
-  * [examples](#examples)
-* [Acknowledgements](#acknowledgements)
+- [SQIR & VOQC](#sqir--voqc)
+  - [Table of Contents](#table-of-contents)
+  - [Setup](#setup)
+  - [Compilation](#compilation)
+  - [Directory Contents](#directory-contents)
+    - [SQIR](#sqir)
+    - [VOQC](#voqc)
+    - [examples](#examples)
+  - [Acknowledgements](#acknowledgements)
 
 ## Setup
 
-To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/) and the [Coq Interval package](http://coq-interval.gforge.inria.fr/). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **version >= 8.12.0**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
+To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/) and the [Coq Interval package](http://coq-interval.gforge.inria.fr/). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.14**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
 
 Assuming you have opam installed (following the instructions in the link above), follow the steps below to set up your environment.
 ```
@@ -40,13 +42,13 @@ opam install coq-interval
 ```
 
 *Notes*:
-* Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any version of OCaml >= 4.05.0 should be fine. 
-* We require Coq version >= 8.12.0. We have tested compilation with 8.12.x and 8.13.x.
+* Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine. 
+* We require Coq version >= 8.12. We have tested compilation with 8.12, 8.13, and 8.14.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
 
 ## Compilation
 
-Run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, `make examples` to compile proofs of correctness for example quantum algorithms (excluding those in examples/shor), and `make shor` to compile proofs about Shor's algorithm. Use `make all` to compile everything. Our proofs are resource intensive so expect `make all` to take a little while. On a Macbook Pro running Coq version 8.12.2 and OCaml version 4.11.1 compilation takes around 30 minutes.
+Run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, `make examples` to compile proofs of correctness for example quantum algorithms (excluding those in examples/shor), and `make shor` to compile proofs about Shor's algorithm. Use `make all` to compile everything. Our proofs are resource intensive so expect `make all` to take a little while. On a Macbook Pro running Coq version 8.14.0 and OCaml version 4.13.1 compilation takes around 30 minutes.
 
 ## Directory Contents
 
