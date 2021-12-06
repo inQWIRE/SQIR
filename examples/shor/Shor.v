@@ -586,7 +586,9 @@ Lemma round_k_r_2_m_nonneg :
     (0 <= round (k / r * 2 ^ m))%Z.
 Proof.
   intros. apply round_pos. destruct H0 as [Hk Hr].
-  assert (0 < r)%nat by lia. apply le_INR in Hk. simpl in Hk. apply lt_INR in Hr, H0. simpl in H0.
+  assert (0 < r)%nat by lia. apply le_INR in Hk. simpl in Hk. 
+  apply lt_INR in Hr. 
+  apply lt_INR in H0. simpl in H0.
   assert (0 <= k / r). unfold Rdiv. apply Rle_mult_inv_pos; easy. assert (0 < 2 ^ m) by nonzero.
   nra. 
 Qed.

@@ -4583,7 +4583,7 @@ Proof.
     rewrite Nat.mul_add_distr_r. rewrite Hi.
     replace (b / a * CFq n (b mod a) a * a + CFq n (b mod a) a * (b mod a)) with ((a * (b / a) + b mod a) * CFq n (b mod a) a) by lia. rewrite <- Nat.div_mod by easy. lia.
     split. intros. destruct i. unfold nthcfexp. simpl.
-    destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. destruct (a =? 0); simpl; lia.
+    destruct (b / a) eqn:Ebda. assert (G: 0 < a <= b) by lia. specialize (Nat.div_str_pos b a G) as G'. lia. destruct (a =? 0); simpl. easy. lia.
     rewrite nthcfexp_mod by lia. apply Hii. lia.
     intros. destruct i. lia. rewrite nthcfexp_mod by lia. apply Hiii. lia.
 Qed.
