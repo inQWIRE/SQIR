@@ -172,11 +172,10 @@ Definition epr00 : Vector 4 := / √ 2 .* ∣ 0, 0 ⟩ .+ / √ 2 .* ∣ 1, 1 �
 (* Alternative form of proportional for unscaled vectors. *)
 Definition proportional {m n : nat} (A B : Matrix m n) := 
   exists s, A = s .* B. 
-Infix "∝" := proportional (at level 70).
 
 Lemma teleport_correct : forall (ψ : Vector (2^1)) (ψ' : Vector (2^3)),
   WF_Matrix ψ ->
-  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> ψ' ∝ ∣ 0 , 0 ⟩ ⊗ ψ.   
+  teleport / (ψ  ⊗ ∣ 0 , 0 ⟩) ⇩ ψ' -> proportional ψ' (∣ 0 , 0 ⟩ ⊗ ψ).   
 Proof.
   intros ψ ψ' WF S.
   dependent destruction S.

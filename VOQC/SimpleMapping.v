@@ -243,7 +243,7 @@ Proof.
   bdestruct (x =? p y); bdestruct (x <? n); bdestruct (y <? n); trivial; lia.
   bdestruct (x =? p y); bdestruct (x <? n); bdestruct (y <? n); trivial; lia.
 Qed. 
-Hint Resolve perm_mat_WF : wf_db.
+#[export] Hint Resolve perm_mat_WF : wf_db.
 
 Lemma perm_mat_unitary : forall n p, 
   finite_bijection n p -> WF_Unitary (perm_mat n p).
@@ -461,7 +461,7 @@ Qed.
 
 Lemma perm_to_matrix_WF : forall n p, WF_Matrix (perm_to_matrix n p).
 Proof. intros. apply perm_mat_WF. Qed. 
-Hint Resolve perm_to_matrix_WF : wf_db.
+#[export] Hint Resolve perm_to_matrix_WF : wf_db.
 
 (** Equivalence up to qubit reordering **)
 

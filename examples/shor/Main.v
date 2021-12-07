@@ -659,11 +659,6 @@ Proof.
     apply pow_positive. lia.
 Qed.
 
-(* @Kesha: I am not familiar with uc_well_typed on this.
-   May need help from you. *)
-
-Print uc_well_typed.
-
 Lemma uc_well_typed_alt_npar :
   forall p q d,
     (0 < d)%nat ->
@@ -677,8 +672,6 @@ Proof.
   constructor. apply IHp; lia.
   apply uc_well_typed_H. lia.
 Qed.
-
-Print ucom.
 
 Inductive ucom_well_typed {dim : nat} {U} : ucom U -> Prop :=
 | ucom_WT_seq : forall p1 p2, ucom_well_typed p1 -> ucom_well_typed p2 -> ucom_well_typed (p1 >> p2)

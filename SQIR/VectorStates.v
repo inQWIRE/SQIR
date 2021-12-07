@@ -114,7 +114,7 @@ Proof.
   intros.
   induction n; simpl; try auto with wf_db.
 Qed.
-Hint Resolve f_to_vec_WF : wf_db.
+#[export] Hint Resolve f_to_vec_WF : wf_db.
 
 Lemma f_to_vec_eq : forall n f f',
   (forall i, i < n -> f i = f' i) ->
@@ -143,7 +143,7 @@ Proof.
   bdestructΩ (x =? i)%nat. reflexivity.
   bdestructΩ (y =? 0)%nat. rewrite andb_false_r. reflexivity.
 Qed.
-Hint Resolve basis_vector_WF : wf_db.
+#[export] Hint Resolve basis_vector_WF : wf_db.
 
 Lemma basis_vector_product_eq : forall d n,
   n < d -> (basis_vector d n)† × basis_vector d n = I 1.
@@ -900,7 +900,7 @@ Definition proj q dim (b : bool) := @pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†).
 
 Lemma WF_proj : forall q dim b, WF_Matrix (proj q dim b).
 Proof. intros. unfold proj, pad. bdestruct_all; destruct b; auto with wf_db. Qed.
-Hint Resolve WF_proj : wf_db.
+#[export] Hint Resolve WF_proj : wf_db.
 
 Lemma proj_sum : forall q n,
   q < n ->
@@ -1110,7 +1110,7 @@ Lemma vsum_WF : forall {d} n (f : nat -> Vector d),
   (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
   WF_Matrix (vsum n f).
 Proof. intros. unfold vsum. apply WF_Msum; auto. Qed.
-Hint Resolve vsum_WF : wf_db.
+#[export] Hint Resolve vsum_WF : wf_db.
 
 Lemma vsum_eq : forall {d} n (f f' : nat -> Vector d),
   (forall i, (i < n)%nat -> f i = f' i) -> vsum n f = vsum n f'.
@@ -1467,13 +1467,13 @@ Proof.
   induction n; simpl; auto with wf_db.
   apply WF_kron; auto. lia.
 Qed.
-Hint Resolve WF_vkron: wf_db.
+#[export] Hint Resolve WF_vkron: wf_db.
 
 Lemma WF_shift : forall m n j k (f : nat -> Matrix m n),
   (forall i, WF_Matrix (f i)) ->
   WF_Matrix (shift f j k).
 Proof. intros. apply H. Qed.
-Hint Resolve WF_shift: wf_db.
+#[export] Hint Resolve WF_shift: wf_db.
   
 Lemma vkron_extend_r : forall n f, 
   vkron n f ⊗ f n = vkron (S n) f.

@@ -31,7 +31,7 @@ Module FSetProps := FSetProperties.Properties FSet.
 
 Lemma mem_reflect : forall x s, reflect (FSet.In x s) (FSet.mem x s).
 Proof. intros x l. apply iff_reflect. apply FSetFacts.mem_iff. Qed.
-Hint Resolve mem_reflect : bdestruct.
+#[export] Hint Resolve mem_reflect : bdestruct.
 
 (* Apply an X gate to every qubits in set qs. *)
 Definition finalize {dim} qs : RzQ_ucom_l dim := 
@@ -75,7 +75,7 @@ Proof.
   intros.
   symmetry.
   simpl.
-  unfold finalize. Search FSet.fold.
+  unfold finalize.
   specialize (FSetProps.remove_fold_1 (uc_equiv_l_rel dim)) as Hfold.
   specialize (Hfold (fun q a => X q :: a)).
   simpl in Hfold.

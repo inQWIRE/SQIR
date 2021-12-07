@@ -120,7 +120,7 @@ Proof. intros []; show_wf. Qed.
 Lemma WF_ket : forall x, WF_Matrix (ket x).
 Proof. intros []; show_wf. Qed.
 
-Hint Resolve WF_bra WF_ket : wf_db.
+#[export] Hint Resolve WF_bra WF_ket : wf_db.
 
 Lemma braket_same : forall x, bra x × ket x = I 1.
 Proof. destruct x; solve_matrix. Qed.
