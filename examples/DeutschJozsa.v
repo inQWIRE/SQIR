@@ -32,17 +32,9 @@ Definition boolean_oracle {n} (U : base_ucom (S n)) (f : nat -> bool) :=
     @Mmult _ _ 1 (uc_eval U) (basis_vector (2 ^ n) x ⊗ ∣ y ⟩) = 
       basis_vector (2 ^ n) x ⊗ ∣ xorb y (f x) ⟩.
 
-(* Count the number of inputs where f returns true; note that we never
-   "run" this function, it's just a definition. *)
-Fixpoint count f n :=
-  match n with
-  | O => O
-  | S n' => f n' + count f n'
-  end.
+Definition balanced f n := n > 0 /\ count0 f (2 ^ n) = 2 ^ (n - 1).
 
-Definition balanced f n := n > 0 /\ count f (2 ^ n) = 2 ^ (n - 1).
-
-Definition constant f n := count f (2 ^ n) = 0 \/ count f (2 ^ n) = 2 ^ n.
+Definition constant f n := count0 f (2 ^ n) = 0 \/ count0 f (2 ^ n) = 2 ^ n.
 
 Local Open Scope C_scope.
 Local Open Scope R_scope.
@@ -55,8 +47,9 @@ Local Open Scope R_scope.
    constant then the expression will either be 1 or -1. *)
 Lemma Csum_of_minus_1 : forall (f : nat -> bool) n,
   (n > 0)%nat ->
-  ((Csum (fun x => (-1) ^ f(x)) n) * / INR n)%C = 1 - 2 * INR (count f n) * / INR n.
+  ((Csum (fun x => (-1) ^ f(x)) n) * / INR n)%C = 1 - 2 * INR (count0 f n) * / INR n.
 Proof.
+  unfold count0.
   intros.
   destruct n; try lia.
   clear H.
@@ -104,8 +97,9 @@ Lemma deutsch_jozsa_success_probability :
   (n > 0)%nat ->
   boolean_oracle U f ->
   @prob_partial_meas n 1 (n ⨂ ∣0⟩) (uc_eval (deutsch_jozsa U) × (S n ⨂ ∣0⟩)) =
-    (1 - 2 * INR (count f (2 ^ n)) * /2 ^ n) ^ 2.
+    (1 - 2 * INR (count0 f (2 ^ n)) * /2 ^ n) ^ 2.
 Proof.
+  unfold count0.
   intros n U f Hn H.
   unfold deutsch_jozsa.
   Opaque npar.
@@ -287,7 +281,7 @@ Definition constant' {dim : nat} {u : base_ucom (S dim)} (P : boolean u) : Prop 
 Local Transparent pow.
 Lemma deutsch_jozsa_success_probability' :
   forall {n : nat} {U : base_ucom (S n)} (P : boolean U),
-  ((∣1⟩ ⊗ n ⨂ ∣0⟩)† × (uc_eval (deutsch_jozsa' U)) × ((S n) ⨂ ∣0⟩)) 0%nat 0%nat = 
+  ((∣1⟩ ⊗ n ⨂ ∣0⟩)† × (uc_eval (deutsch_jozsa' U)) × ((S n) ⨂ ∣0⟩)) O O = 
       1 - 2 * INR (count' P) * /2 ^ n.
 Proof.
   intros.

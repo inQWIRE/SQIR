@@ -36,7 +36,7 @@ Proof.
 Qed.
 
 Lemma destruct_list_0 : forall {A} (l : list A),
-    length l = 0%nat ->
+    length l = O ->
     l = nil.
 Proof. destruct l; easy. Qed.
 

@@ -38,7 +38,7 @@ Hypothesis n_ge_2 : (n >= 2)%nat.
 
 (* Classical oracle function. *)
 Variable f : nat -> bool.
-Definition k := count f (2 ^ n).
+Definition k := count0 f (2 ^ n).
 Hypothesis f_has_both_good_and_bad_solutions : 0 < INR k < 2 ^ n. 
 
 (* SQIR program implementing oracle. *)
@@ -217,8 +217,8 @@ Proof.
   rewrite (vsum_eq _ _ (fun i => if f i then I 1 else Zero)).
   2: { intros. destruct (f i); Msimpl; auto.
        apply basis_vector_product_eq; auto. }
-  rewrite vsum_count.
-  replace (count f (2 ^ n)) with k by reflexivity.
+  rewrite vsum_count0.
+  replace (count0 f (2 ^ n)) with k by reflexivity.
   distribute_scale.
   rewrite <- RtoC_inv by nonzero.
   rewrite Cconj_R.
@@ -246,9 +246,9 @@ Proof.
   rewrite (vsum_eq _ _ (fun i => if negf f i then I 1 else Zero)).
   2: { intros. unfold negf. destruct (f i); Msimpl; auto.
        apply basis_vector_product_eq; auto. }
-  rewrite vsum_count.
-  rewrite count_negf.
-  replace (count f (2 ^ n)) with k by reflexivity.
+  rewrite vsum_count0.
+  unfold count0. rewrite count_negf.
+  replace (count f 0 (2 ^ n)) with k by reflexivity.
   distribute_scale.
   rewrite <- RtoC_inv by nonzero.
   rewrite Cconj_R.
@@ -540,15 +540,15 @@ Proof.
   replace ∣ 0 ⟩ with ∣ Nat.b2n false ⟩ by reflexivity.
   replace ∣ 1 ⟩ with ∣ Nat.b2n true ⟩ by reflexivity.
   unfold generalized_Toffoli.
-  bdestruct (count fi (n - 1) =? 0)%nat.
-  + specialize (count_zero _ _ H0) as Hf.
+  bdestruct (count0 fi (n - 1) =? 0)%nat.
+  + specialize (count_zero 0 _ _ H0) as Hf.
     rewrite 2 generalized_Toffoli_semantics_A; auto.
     2: { intros. unfold negf. 
          apply eq_true_not_negb, not_true_iff_false. 
-         apply Hf. assumption. }
+         apply Hf. lia. }
     2: { intros. unfold negf. 
          apply eq_true_not_negb, not_true_iff_false. 
-         apply Hf. assumption. }
+         apply Hf. lia. }
     simpl.
     Msimpl.
     autorewrite with ket_db.
@@ -576,7 +576,9 @@ Proof.
       rewrite Hf; auto.
       intros.
       apply Hf; lia. }
-    rewrite H1 by assumption; clear H1. 
+    rewrite H1.
+    2: { intros. apply Hf. lia. }
+    clear H1. 
     destruct (fi (n - 1)%nat); simpl; autorewrite with ket_db RtoC_db.
     field_simplify (/ 2 + / 2 * 1)%R.
     field_simplify (- / 2 + / 2 * 1)%R.
@@ -592,7 +594,7 @@ Proof.
     rewrite Mscale_plus_distr_l.
     Msimpl.
     reflexivity.
-  + specialize (count_nonzero _ _ H0) as Hf.
+  + apply count_nonzero in H0 as Hf.
     destruct Hf as [x [? ?]].
     rewrite 2 generalized_Toffoli_semantics_B; auto.
     2: { exists x. repeat split; try lia. 
@@ -641,6 +643,7 @@ Proof.
     autorewrite with R_db.
     Msimpl.
     reflexivity.
+    split. lia. assumption.
 Qed.
 Local Opaque diff.
 
@@ -871,8 +874,9 @@ Proof.
   specialize f_has_both_good_and_bad_solutions as H.
   rewrite (Rsum_eq_bounded _ _
              (fun j => if (f j) then (sin (INR (2 * i + 1) * θ) / √ INR k) ^ 2 else 0)%R).
-  assert (forall m c, Rsum m (fun i => if f i then c else 0) = INR (count f m) * c)%R.
-  { clear.
+  assert (forall m c, Rsum m (fun i => if f i then c else 0) = INR (count0 f m) * c)%R.
+  { unfold count0.
+    clear.
     intros.
     induction m; simpl.
     lra. 
@@ -881,7 +885,7 @@ Proof.
     destruct (f 0); simpl; lra.
     destruct (f (S m)); simpl; try lra. }
   rewrite H0; clear H0.
-  replace (count f (2 ^ n)) with k by reflexivity. 
+  replace (count0 f (2 ^ n)) with k by reflexivity. 
   simpl.
   field_simplify_eq; try nonzero.
   rewrite pow2_sqrt by nonzero.

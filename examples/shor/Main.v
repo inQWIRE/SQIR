@@ -5,12 +5,10 @@ Require Import AltGateSet.
 Require Import AltShor.
 Require Import Run.
 
+(* The end-to-end definition of Shor's algorithm, combining the facts from 
+   Shor.v and ShorAux.v into a digestable form. *)
 
 (** Coq definitions that will be extracted to OCaml **)
-
-(* Shor's runs on (n + k) qubits and returns the result of measuring n qubits. *)
-Definition n (N : nat) := Nat.log2 (2 * N^2).
-Definition k (N : nat) := AltShor.num_qubits (Nat.log2 (2 * N)).
 
 (* given r = ord(a,N), try to find a factor of N (based on Shor.Factor_post) *)
 Definition factor (a N r : nat) := 
@@ -42,18 +40,8 @@ Definition factor (a N r : nat) :=
   The probability of success (returning Some) and the resources (aka qubits and 
   gates) used is a function of N and niter (see proofs below). *)
 
-(* Uniform sampling in the range [lower, upper) *)
-Definition uniform (lower upper : nat) : list R :=
-  repeat 0 lower ++ repeat (1/ INR (upper - lower))%R (upper - lower).
-
 (* N   : number to factor
    out : outcome from sampling *)
-
-(* When sampling from join l1 l2 where |l1|=n |l2|=m, 
-   use the following functions to extract the result. *)
-Definition fst_join (m x : nat) := (x / m)%nat.
-Definition snd_join (m x : nat) := (x mod m)%nat.
-
 Definition process N out :=
   let n := n N in
   let k := k N in
@@ -61,7 +49,7 @@ Definition process N out :=
   let x := snd_join (2^(n + k)) out in
   (* try to factor *)
   if Nat.gcd a N =? 1%nat
-  then factor a N (OF_post a N (first_k n (n + k) x) n)
+  then factor a N (OF_post a N (fst_join (2^k) x) n)
   else Some (Nat.gcd a N).
 
 (* N   : number to factor
@@ -71,8 +59,8 @@ Definition shor_body N rnd :=
   let k := k N in
   (* create a distribution corresponding to choosing an 'a' and running
      Shor's circuit with this value 
-     NOTE: we don't actually need to run the circuit in the case where a is not
-     coprime to N, but it's easier to write the code this way *)
+     NOTE: technically, we don't need to run the circuit in the case where a is not
+     coprime to N, but it's easier to write the code this way -KH *)
   let distr := join (uniform 1 N) 
                     (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
   (* sample from the distribution *)
@@ -129,50 +117,8 @@ Proof.
   assumption.
 Qed.
 
-Lemma divmod_decomp :
-  forall x y z r,
-    (r > 0)%nat ->
-    (z < r)%nat ->
-    (x = y * r + z <-> x / r = y /\ x mod r = z)%nat.
-Proof.
-  split; intros.
-  - split. symmetry. apply Nat.div_unique with (r := z); try lia.
-    symmetry. apply Nat.mod_unique with (q := y); try lia.
-  - destruct H1.
-    replace (y * r)%nat with (r * y)%nat by lia.
-    rewrite <- H1, <- H2.
-    apply Nat.div_mod.
-    lia.
-Qed.
-
-Lemma split_basis_vector : forall m n x y,
-  (x < 2 ^ m)%nat ->
-  (y < 2 ^ n)%nat ->
-  basis_vector (2 ^ (m + n)) (x * 2 ^ n + y) 
-    = basis_vector (2 ^ m) x ⊗ basis_vector (2 ^ n) y.
-Proof.
-  intros m n x y Hx Hy.
-  unfold kron, basis_vector.
-  solve_matrix.
-  bdestruct (y0 =? 0).
-  - repeat rewrite andb_true_r.
-    assert (2^n > 0)%nat.
-    { assert (0 < 2^n)%nat by (apply pow_positive; lia). lia.
-    }
-    specialize (divmod_decomp x0 x y (2^n)%nat H0 Hy) as G.
-    bdestruct (x0 =? x * 2 ^ n + y).
-    + apply G in H1. destruct H1.
-      rewrite H1, H2. do 2 rewrite Nat.eqb_refl. lca.
-    + bdestruct (x0 / 2 ^ n =? x); bdestruct (x0 mod 2 ^ n =? y); try lca.
-      assert ((x0 / 2 ^ n)%nat = x /\ x0 mod 2 ^ n = y) by easy.
-      apply G in H4.
-      easy.
-  - repeat rewrite andb_false_r.
-    lca.
-Qed.
-
 Lemma rewrite_pr_outcome_sum : forall n k (c : base_ucom (n + k)) f,
-  pr_outcome_sum (run c) (fun x => f (first_k n (n + k) x)) 
+  pr_outcome_sum (run c) (fun x => f (fst_join (2^k) x)) 
   = Rsum (2 ^ n) (fun x => ((if f x then 1 else 0) *
                          prob_partial_meas (basis_vector (2 ^ n) x) 
                            (UnitarySem.uc_eval c × basis_vector (2 ^ (n + k)) 0))%R).
@@ -189,8 +135,7 @@ Proof.
   rewrite Rmult_1_l.
   erewrite Rsum_eq_bounded.
   2: { intros y Hy. 
-       rewrite Nat.mul_comm.
-       rewrite simplify_first_k by assumption.
+       rewrite simplify_fst by assumption.
        rewrite fx.
        rewrite nth_run_probability_of_outcome.
        reflexivity.
@@ -201,13 +146,12 @@ Proof.
   erewrite Rsum_eq_bounded.
   reflexivity.
   intros y Hy. 
-  rewrite Nat.mul_comm.
   rewrite split_basis_vector by assumption.
   replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
   reflexivity.
   rewrite Rmult_0_l.
   erewrite Rsum_eq_bounded.
-  2: { intros y Hy. rewrite Nat.mul_comm. rewrite simplify_first_k by assumption.
+  2: { intros y Hy. rewrite simplify_fst by assumption.
        rewrite fx. reflexivity. }
   apply Rsum_0.
   reflexivity.
@@ -223,21 +167,21 @@ Lemma shor_body_returns_order : forall (a N : nat),
   let circ := shor_circuit a N in
   pr_outcome_sum 
       (run (to_base_ucom (n + k) circ))
-      (fun x => OF_post a N (first_k n (n + k) x) n =? ord a N) 
+      (fun x => OF_post a N (fst_join (2^k) x) n =? ord a N) 
     >= κ / INR (Nat.log2 N)^4.
 Proof.
   intros a N Ha1 Ha2 n0 k0 circ.
   subst n0 k0 circ.
   remember (fun x => OF_post a N x (n N) =? ord a N) as f'.
-  replace (fun x : nat => OF_post a N (first_k (n N) (n N + k N) x) (n N) =? ord a N) 
-    with (fun x : nat => f' (first_k (n N) (n N + k N) x)).
+  replace (fun x : nat => OF_post a N (fst_join (2^k N) x) (n N) =? ord a N) 
+    with (fun x : nat => f' (fst_join (2^k N) x)).
   rewrite rewrite_pr_outcome_sum.
-  specialize (Shor.Shor_correct_full a N Ha1 Ha2) as H1.
-  specialize (shor_circuit_same a N) as H2.
+  specialize (Shor.Shor_correct a N Ha1 Ha2) as H1.
+  specialize (shor_circuit_same' a N) as H2.
   unfold prob_shor_outputs in H2.
   erewrite Rsum_eq.
   2: { intro i. rewrite H2. reflexivity. lia. }
-  unfold probability_of_success_var in H1.
+  unfold probability_of_success in H1.
   unfold n in *.
   unfold k in *.
   unfold r_found in H1.
@@ -260,10 +204,10 @@ Proof.
   assumption.
 Qed.
 
-Lemma pr_outcome_sum_cnttrue : forall l u f,
+Lemma pr_outcome_sum_count : forall l u f,
   (l < u)%nat ->
   pr_outcome_sum (uniform l u) f 
-  = (INR (cnttrue (u - l) (fun x => f (l + x - 1)%nat)) / INR (u - l))%R.
+  = (INR (count1 (fun x => f (l + x - 1)%nat) (u - l)) / INR (u - l))%R.
 Proof.
   intros l u f H.
   unfold uniform.
@@ -285,7 +229,7 @@ Proof.
        lra.
        lra. }
   rewrite <- Rsum_scale.
-  replace (INR (cnttrue n (fun x : nat => f (l + x - 1)%nat)) / INR n)%R with (1 / INR n * INR (cnttrue n (fun x : nat => f (l + x - 1)%nat)))%R by lra.
+  replace (INR (count1 (fun x : nat => f (l + x - 1)%nat) n) / INR n)%R with (1 / INR n * INR (count1 (fun x : nat => f (l + x - 1)%nat) n))%R by lra.
   apply f_equal2; try reflexivity.
   clear Hn.
   induction n.
@@ -293,11 +237,13 @@ Proof.
   rewrite Rsum_extend.
   simpl.
   rewrite IHn.
-  replace (l + S n0 - 1)%nat with (l + n0)%nat by lia.
-  destruct (f (l + n0)%nat); try lra. 
+  unfold count1. simpl.
+  replace (l + S n - 1)%nat with (l + n)%nat by lia.
+  destruct (f (l + n)%nat). 
   rewrite S_O_plus_INR.
   simpl.
   reflexivity.
+  simpl. lra.
 Qed.
 
 Definition leads_to_factor N a := 
@@ -318,7 +264,7 @@ Proof.
   intros.
   apply simplify_primality in H; trivial. clear H0 H1.
   destruct H as [p [k [q [H0 [H1 [H3 [H4 [H5 H6]]]]]]]].
-  assert (H :( N - 1 <= 2 * cnttrue (N - 1) (leads_to_factor N))%nat).
+  assert (H :( N - 1 <= 2 * count1 (leads_to_factor N) (N - 1))%nat).
   subst N.
   apply reduction_factor_order_finding; auto.
   assert (2 < N)%nat.
@@ -326,10 +272,10 @@ Proof.
   rewrite <- (Nat.mul_1_l 2).
   apply Nat.mul_lt_mono_nonneg; try lia.
   apply Nat.pow_gt_1; lia.
-  rewrite pr_outcome_sum_cnttrue by lia.
-  erewrite cnttrue_same.
+  rewrite pr_outcome_sum_count by lia.
+  unfold count1 in *. erewrite count_eq.
   2 : { intros x Hx. replace (2 + x - 1)%nat with (x + 1)%nat by lia. reflexivity. }
-  rewrite cnttrue_same with (g := leads_to_factor N).
+  rewrite count_eq with (g := leads_to_factor N).
   apply le_INR in H. rewrite mult_INR in H. replace (INR 2) with 2 in H by easy.
   unfold Rdiv.
   assert (0 < INR (N - 1)).
@@ -367,880 +313,6 @@ Proof.
     apply gcd_is_factor; auto.
 Qed.
 
-Lemma sample_uniform_lb :
-  forall m l r,
-    0 <= r ->
-    (m <= sample (repeat 0%R m ++ l) r)%nat.
-Proof.
-  induction m; intros.
-  lia. simpl.
-  destruct (Rlt_le_dec r 0). lra.
-  specialize (IHm l r H).
-  replace (r - 0)%R with r by lra.
-  lia.
-Qed.
-
-Lemma sample_boom :
-  forall l r,
-    Forall (fun x => 0 <= x) l ->
-    Rsum (length l) (fun i => nth i l 0) <= r ->
-    sample l r = length l.
-Proof.
-  induction l; intros. easy.
-  simpl. rewrite Rsum_list_extend in H0.
-  inversion H; subst.
-  specialize (Rsum_list_geq_0 l H4) as G.
-  assert (Rsum (length l) (fun i : nat => nth i l 0) <= r - a)%R by lra.
-  specialize (IHl (r - a)%R H4 H1) as T. rewrite T.
-  destruct (Rlt_le_dec r a). lra. lia.
-Qed.
-
-Lemma sample_extend :
-  forall l1 l2 r,
-    Forall (fun x => 0 <= x) l1 ->
-    Forall (fun x => 0 <= x) l2 ->
-    Rsum (length l1) (fun i => nth i l1 0) <= r ->
-    (sample (l1 ++ l2) r = (length l1) + sample l2 (r - Rsum (length l1) (fun i => nth i l1 0%R)))%nat.
-Proof.
-  induction l1; intros.
-  - simpl. f_equal. lra.
-Local Opaque Rsum.
-  - rewrite Rsum_list_extend in *. simpl.
-    inversion H; subst.
-    specialize (Rsum_list_geq_0 l1 H5) as G.
-    destruct (Rlt_le_dec r a); try lra.
-    f_equal. rewrite IHl1; try easy; try lra.
-    f_equal. f_equal. lra.
-Qed.
-Local Transparent Rsum.
-
-Lemma sample_ub :
-  forall l r, (sample l r <= length l)%nat.
-Proof.
-  induction l; intros. easy.
-  simpl. specialize (IHl (r - a)%R). destruct (Rlt_le_dec r a); lia.
-Qed.
-
-Lemma sample_ub_less :
-  forall l r, 0 <= r < Rsum (length l) (fun i => nth i l 0) -> (sample l r < length l)%nat.
-Proof.
-  induction l; intros. simpl in H. lra.
-  simpl. destruct (Rlt_le_dec r a). lia.
-  apply lt_n_S. apply IHl. rewrite Rsum_list_extend in H. lra.
-Qed.
-
-Lemma sample_lb :
-  forall l r, (0 <= sample l r)%nat.
-Proof.
-  induction l; intros. easy.
-  simpl. specialize (IHl (r - a)%R). destruct (Rlt_le_dec r a); lia.
-Qed.
-
-Lemma repeat_gt0 :
-  forall m r, 0 <= r -> Forall (fun x => 0 <= x) (repeat r m).
-Proof.
-  induction m; intros. simpl. constructor.
-  simpl. constructor. easy. apply IHm. easy.
-Qed.
-
-Lemma Rsum_repeat :
-  forall m r, (Rsum (length (repeat r m)) (fun i => nth i (repeat r m) 0) = (INR m) * r)%R.
-Proof.
-  intros. induction m. simpl. lra.
-  replace (repeat r (S m)) with (r :: repeat r m).
-  rewrite Rsum_list_extend, IHm. rewrite S_INR. lra.
-  easy.
-Qed.
-
-Lemma sample_uniform : forall l u r, (l < u)%nat -> 0 <= r < 1 -> (l <= sample (uniform l u) r < u)%nat.
-Proof.
-  intros. split.
-  - unfold uniform. apply sample_uniform_lb. easy.
-  - unfold uniform. rewrite sample_extend. rewrite repeat_length.
-    assert (T: (forall a b c, a < c -> b < c - a -> a + b < c)%nat) by (intros; lia).
-    apply T. easy.
-    replace (u - l)%nat with (length (repeat (1 / INR (u - l))%R (u - l))) at 3 by apply repeat_length.
-    apply sample_ub_less.
-    replace l with (length (repeat 0 l)) at 1 2 by apply repeat_length.
-    repeat rewrite Rsum_repeat.
-    replace (INR (u - l) * (1 / INR (u - l)))%R with (INR (u - l) * / INR (u - l))%R by lra.
-    rewrite Rinv_r. lra.
-    apply not_0_INR. lia.
-    apply repeat_gt0; lra.
-    apply repeat_gt0. unfold Rdiv. rewrite Rmult_1_l.
-    apply Rlt_le, Harmonic.INR_inv_pos. lia.
-    rewrite Rsum_repeat. lra.
-Qed.
-
-(*Local Opaque uniform.*)
-
-Lemma scale_zero :
-  forall l, scale 0 l = repeat 0 (length l).
-Proof.
-  induction l; intros.
-  - reflexivity.
-  - simpl. rewrite IHl.
-    replace (0 * a)%R with 0 by lra.
-    reflexivity.
-Qed.
-
-Lemma join'_starting_zero :
-  forall x l1 l2,
-    join' (0 :: l1) l2 (S x) = repeat 0 (length (l2 O)) ++ join' l1 (fun i => l2 (S i)) x.
-Proof.
-  induction x; intros.
-  - simpl. rewrite scale_zero.
-    rewrite <- app_nil_end. reflexivity.
-  - remember (S x) as Sx.
-    simpl. rewrite IHx.
-    subst. simpl.
-    rewrite app_assoc. reflexivity.
-Qed.
-
-Lemma join_starting_zero :
-  forall l1 l2,
-    join (0 :: l1) l2 = repeat 0 (length (l2 O)) ++ join l1 (fun i => l2 (S i)).
-Proof.
-  intros. unfold join.
-  rewrite <- join'_starting_zero. reflexivity.
-Qed.
-
-Lemma join'_length :
-  forall x l1 l2 m,
-    (forall k, (k < x)%nat -> length (l2 k) = m) ->
-    (length (join' l1 l2 x) = x * m)%nat.
-Proof.
-  induction x; intros.
-  - reflexivity.
-  - simpl. rewrite app_length. rewrite IHx with (m := m).
-    rewrite length_scale. rewrite H. lia. lia.
-    intros. apply H. lia.
-Qed.
-
-Lemma sum_over_list_repeat :
-  forall m x,
-    (sum_over_list (repeat x m) = INR m * x)%R.
-Proof.
-  induction m; intros.
-  - simpl. unfold sum_over_list. simpl. lra.
-  - simpl. rewrite sum_over_list_cons. rewrite IHm.
-    destruct m; simpl; lra.
-Qed.
-
-Lemma distribution_uniform :
-  forall l r,
-    (l < r)%nat ->
-    distribution (uniform l r).
-Proof.
-  intros. split; unfold uniform.
-  - apply Forall_app. split; apply repeat_gt0. lra.
-    unfold Rdiv.
-    assert (0 < / INR (r - l)).
-    { apply Rinv_0_lt_compat. apply lt_0_INR. lia.
-    }
-    lra.
-  - rewrite sum_over_list_append.
-    do 2 rewrite sum_over_list_repeat.
-    unfold Rdiv.
-    replace (INR l * 0 + INR (r - l) * (1 * / INR (r - l)))%R with (INR (r - l) * / INR (r - l))%R by lra.
-    rewrite <- Rinv_r_sym. easy.
-    assert (0 < INR (r - l)) by (apply lt_0_INR; lia).
-    lra.
-Qed.
-
-Lemma length_uniform :
-  forall l r, (l <= r)%nat -> (length (uniform l r) = r)%nat.
-Proof.
-  intros. unfold uniform. rewrite app_length, repeat_length, repeat_length. lia.
-Qed.
-
-Local Opaque scale.
-Lemma sample_join_uniform :
-  forall (x m : nat) l2 rnd,
-    (1 < x)%nat ->
-    0 <= rnd < 1 ->
-    (forall k, (k < x)%nat -> length (l2 k) = m) ->
-    (forall k, (k < x)%nat -> distribution (l2 k)) ->
-    (0 < m)%nat ->
-    (1 <= fst_join m (sample (join (uniform 1 x) l2) rnd) < x)%nat.
-Proof.
-  intros. destruct x. lia. destruct x. lia.
-  remember (repeat (1 / INR (S (S x) - 1))%R (S (S x) - 1)) as unm.
-  assert ((join (uniform 1 (S (S x))) l2) = (repeat 0%R (length (l2 O)) ++ join unm (fun i : nat => l2 (S i)))).
-  { unfold uniform. rewrite <- Hequnm.
-    simpl. rewrite join_starting_zero. reflexivity.
-  }
-  assert (m <= (sample (join (uniform 1 (S (S x))) l2) rnd))%nat.
-  { rewrite H4. rewrite H1 by lia. apply sample_uniform_lb. easy.
-  }
-  assert ((sample (join (uniform 1 (S (S x))) l2) rnd) < (S (S x)) * m)%nat.
-  { replace ((S (S x)) * m)%nat with (length (join (uniform 1 (S (S x))) l2)).
-    apply sample_ub_less.
-    assert (distribution (join (uniform 1 (S (S x))) l2)).
-    { apply distribution_join. apply distribution_uniform. lia.
-      intros. apply H2. rewrite length_uniform in H6; lia.  
-    }
-    destruct H6. unfold sum_over_list in H7. rewrite H7. assumption.
-    unfold join. rewrite join'_length with (m := m). rewrite length_uniform; lia.
-    rewrite length_uniform by lia. apply H1. 
-  }
-  unfold fst_join. split.
-  apply Nat.div_le_lower_bound; lia.
-  apply Nat.div_lt_upper_bound; lia.
-Qed.
-
-Lemma length_run : forall n (c : base_ucom n),
-  length (run c) = (2 ^ n)%nat. 
-Proof.
-  intros n c.
-  unfold run.
-  rewrite map_length.
-  rewrite vec_to_list_length.
-  reflexivity.
-Qed.
-
-Lemma pos_Cmod2_list :
-  forall l, Forall (fun x => 0 <= x) (map Cmod2 l).
-Proof.
-  induction l; intros.
-  - simpl. constructor.
-  - simpl. constructor. apply Cmod2_ge_0. apply IHl.
-Qed.
-
-Lemma Cmod2_Cmod_sqr :
-  forall c, (Cmod2 c = (Cmod c)^2)%R.
-Proof.
-  intros. unfold Cmod2, Cmod. rewrite R_sqrt.pow2_sqrt. lra.
-  simpl. nra.
-Qed.
-
-Lemma sum_over_list_Cmod2_vec_to_list' :
-  forall d x l,
-    sum_over_list (map Cmod2 (@vec_to_list' x d l)) = Rsum d (fun i : nat => (Cmod (l (i + x - d)%nat 0%nat) ^ 2)%R).
-Proof.
-  induction d; intros.
-  - unfold sum_over_list. reflexivity.
-  - Local Opaque Rsum.
-    simpl. rewrite sum_over_list_cons. rewrite IHd. simpl.
-    rewrite Rsum_shift.
-    replace (0 + x - S d)%nat with (x - S d)%nat by lia.
-    rewrite Cmod2_Cmod_sqr. simpl.
-    f_equal.
-    Local Transparent Rsum.
-Qed.
-
-Lemma sum_over_list_Cmod2_vec_to_list :
-  forall d (l : Vector d),
-    sum_over_list (map Cmod2 (vec_to_list l)) = Rsum d (fun i : nat => (Cmod (l i 0%nat) ^ 2)%R).
-Proof.
-  intros. unfold vec_to_list.
-  rewrite sum_over_list_Cmod2_vec_to_list'.
-  apply Rsum_eq_bounded. intros.
-  replace (i + d - d)%nat with i by lia.
-  reflexivity.
-Qed.
-
-Lemma run_distribution :
-  forall {dim} c,
-    uc_well_typed c ->
-    distribution (@run dim c).
-Proof.
-  intros. unfold run. split.
-  - apply pos_Cmod2_list.
-  - rewrite sum_over_list_Cmod2_vec_to_list.
-    rewrite <- full_meas_equiv. rewrite Mmult_adjoint.
-    rewrite <- Mmult_assoc. rewrite Mmult_assoc with (A := (basis_vector (2 ^ dim) 0) †).
-    specialize (uc_eval_unitary dim c H) as G.
-    destruct G. rewrite H1.
-    restore_dims. rewrite Mmult_1_r.
-    rewrite basis_vector_product_eq. reflexivity.
-    apply pow_positive. lia.
-    apply WF_adjoint. apply basis_vector_WF.
-    apply pow_positive. lia.
-Qed.
-
-Lemma uc_well_typed_alt_npar :
-  forall p q d,
-    (0 < d)%nat ->
-    (p <= d)%nat ->
-    uc_well_typed (to_base_ucom (d + q) (npar p U_H)).
-Proof.
-  induction p; intros.
-  simpl. constructor. lia.
-  simpl. destruct p. simpl. apply uc_well_typed_H. lia.
-  remember (S p) as Sp. simpl.
-  constructor. apply IHp; lia.
-  apply uc_well_typed_H. lia.
-Qed.
-
-Inductive ucom_well_typed {dim : nat} {U} : ucom U -> Prop :=
-| ucom_WT_seq : forall p1 p2, ucom_well_typed p1 -> ucom_well_typed p2 -> ucom_well_typed (p1 >> p2)
-| ucom_WT_app : forall n (g : U n) qs,
-    NoDup qs ->
-    Forall (fun x => x < dim)%nat qs ->
-    ucom_well_typed (uapp g qs).
-
-Ltac inv H :=
-  inversion H; subst; clear H.
-
-Lemma is_fresh_CNOT :
-  forall dim n0 n1 n2,
-    n0 <> n1 -> n0 <> n2 ->
-    @is_fresh _ dim n0 (CNOT n1 n2).
-Proof.
-  intros. Local Transparent CNOT. constructor; lia. Local Opaque CNOT.
-Qed.
-
-Lemma is_fresh_SWAP :
-  forall dim n0 n1 n2,
-    n0 <> n1 -> n0 <> n2 ->
-    @is_fresh _ dim n0 (SQIR.SWAP n1 n2).
-Proof.
-  intros. Local Transparent SQIR.SWAP. unfold SQIR.SWAP. repeat (constructor; try (apply is_fresh_CNOT; lia)). Local Opaque SQIR.SWAP.
-Qed.
-
-Lemma ucom_well_typed_uc_well_typed :
-  forall p dim,
-    (0 < dim)%nat ->
-    @ucom_well_typed dim _ p ->
-    uc_well_typed (to_base_ucom dim p).
-Proof.
-  induction p; intros.
-  - inversion H0; subst. apply IHp1 in H3. apply IHp2 in H4.
-    simpl. constructor; easy. easy. easy. 
-  - destruct u.
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      apply uc_well_typed_X. inv H0. inv H5. lia.
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      apply uc_well_typed_H. inv H0. inv H5. lia.
-    + 
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      constructor. inv H0. inv H5. subst. lia.
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      constructor. inv H0. inv H5. lia.
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      constructor. inv H0. inv H5. lia.
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      apply uc_well_typed_CNOT. inv H0. inv H5. inv H6. inv H3. apply not_in_cons in H6. lia. 
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      inv H0. inv H5. inv H6. inv H3. apply not_in_cons in H6.
-      do 5 (try constructor; try apply uc_well_typed_Rz; try apply uc_well_typed_CNOT; try inversion H; try lia).
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      apply uc_well_typed_SWAP. inv H0. inv H5. inv H6. inv H3. apply not_in_cons in H6. lia.
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      apply uc_well_typed_control.
-      inv H0. inv H5. inv H6. inv H7. inv H3. inv H9. apply not_in_cons in H3.
-      apply not_in_cons in H7. destruct H7. apply not_in_cons in H1.
-      split. lia. split. apply is_fresh_CNOT; lia. apply uc_well_typed_CNOT; lia. 
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      apply uc_well_typed_control.
-      inv H0. inv H5. inv H6. inv H7. inv H3. inv H9. apply not_in_cons in H3.
-      apply not_in_cons in H7. destruct H7. apply not_in_cons in H1.
-      split. lia. split. apply is_fresh_SWAP; lia. apply uc_well_typed_SWAP; lia.
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      inv H0. inv H5. inv H6. inv H7. inv H8. inv H3. inv H10. inv H11.
-      apply not_in_cons in H8. destruct H8. apply not_in_cons in H1. destruct H1. apply not_in_cons in H10.
-      apply not_in_cons in H3. destruct H3. apply not_in_cons in H11. apply not_in_cons in H8.
-      apply uc_well_typed_control. split. lia.
-      split. apply fresh_control. split. lia. apply is_fresh_CNOT; lia.
-      apply uc_well_typed_control. split. lia. split. apply is_fresh_CNOT; lia.
-      apply uc_well_typed_CNOT; lia.
-    + repeat (destruct l; simpl; try (unfold SQIR.SKIP; apply uc_well_typed_ID); try lia).
-      inv H0. inv H5. inv H6. inv H7. inv H8. inv H3. inv H10. inv H11.
-      apply not_in_cons in H8. destruct H8. apply not_in_cons in H1. destruct H1. apply not_in_cons in H10.
-      apply not_in_cons in H3. destruct H3. apply not_in_cons in H11. apply not_in_cons in H8.
-      inv H9. destruct H8. apply not_in_cons in H9. destruct H11. apply not_in_cons in H13.
-      destruct H10. apply not_in_cons in H14. inv H12. apply not_in_cons in H19.
-      apply uc_well_typed_control. split. lia.
-      split. apply fresh_control. split. lia. apply fresh_control. split. lia. apply is_fresh_CNOT; lia.
-      apply uc_well_typed_control. split. lia.
-      split. apply fresh_control. split. lia. apply is_fresh_CNOT; lia.
-      apply uc_well_typed_control. split. lia.
-      split. apply is_fresh_CNOT; lia.
-      apply uc_well_typed_CNOT; lia.
-Qed.
-
-Lemma uc_well_typed_ucom_well_typed :
-  forall p dim,
-    (0 < dim)%nat ->
-    uc_well_typed (to_base_ucom dim p) ->
-    well_formed p ->
-    @ucom_well_typed dim _ p.
-Proof.
-  induction p; intros.
-  - inversion H0; subst.
-    inversion H1; subst.
-    constructor. apply IHp1; assumption. apply IHp2; assumption.
-  - constructor.
-    + destruct u; inversion H1; subst.
-      1-5 :
-        do 2 (destruct l; try inversion H3); repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 3 (destruct l; try inversion H3).
-      simpl in H0. apply uc_well_typed_CNOT in H0.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 3 (destruct l; try inversion H3).
-      inv H0. inv H8. apply uc_well_typed_CNOT in H10.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 3 (destruct l; try inversion H3).
-      simpl in H0. apply uc_well_typed_SWAP in H0.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 4 (destruct l; try inversion H3).
-      simpl in H0. apply uc_well_typed_CCX in H0.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      Local Transparent SQIR.SWAP.
-      do 4 (destruct l; try inversion H3).
-      simpl in H0. inversion H0; subst. apply uc_well_typed_CCX in H10.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      Local Opaque SQIR.SWAP.
-      do 5 (destruct l; try inversion H3).
-      simpl in H0.
-      apply uc_well_typed_control in H0. destruct H0. destruct H2.
-      apply fresh_control in H2. destruct H2. apply fresh_CNOT in H10.
-      apply uc_well_typed_control in H9. destruct H9. destruct H11. apply fresh_CNOT in H11.
-      apply uc_well_typed_CNOT in H12.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 6 (destruct l; try inversion H3).
-      simpl in H0.
-      apply uc_well_typed_control in H0. destruct H0. destruct H2.
-      apply fresh_control in H2. destruct H2. apply fresh_control in H11. destruct H11. apply fresh_CNOT in H12.
-      apply uc_well_typed_control in H10. destruct H10. destruct H13.
-      apply fresh_control in H13. destruct H13. apply fresh_CNOT in H15.
-      apply uc_well_typed_control in H14. destruct H14. destruct H16.
-      apply fresh_CNOT in H16.
-      apply uc_well_typed_CNOT in H17.
-      destruct H12, H15, H16, H17, H21.
-      repeat (constructor; try apply in_nil; try assumption; repeat (apply not_in_cons; split; try assumption; try apply in_nil)).
-    + destruct u; inversion H1; subst.
-      do 2 (destruct l; try inversion H3).
-      simpl in H0. apply uc_well_typed_X in H0.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 2 (destruct l; try inversion H3).
-      simpl in H0. apply uc_well_typed_H in H0.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      1-3 :
-        do 2 (destruct l; try inversion H3);
-        simpl in H0; inv H0;
-          repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 3 (destruct l; try inversion H3).
-      simpl in H0. apply uc_well_typed_CNOT in H0.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 3 (destruct l; try inversion H3).
-      inv H0. inv H8. inv H7. apply uc_well_typed_CNOT in H10.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 3 (destruct l; try inversion H3).
-      simpl in H0. apply uc_well_typed_SWAP in H0.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 4 (destruct l; try inversion H3).
-      simpl in H0. apply uc_well_typed_CCX in H0.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      Local Transparent SQIR.SWAP.
-      do 4 (destruct l; try inversion H3).
-      simpl in H0. inversion H0; subst. apply uc_well_typed_CCX in H10.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      Local Opaque SQIR.SWAP.
-      do 5 (destruct l; try inversion H3).
-      simpl in H0.
-      apply uc_well_typed_control in H0. destruct H0. destruct H2.
-      apply fresh_control in H2. destruct H2. apply fresh_CNOT in H10.
-      apply uc_well_typed_control in H9. destruct H9. destruct H11. apply fresh_CNOT in H11.
-      apply uc_well_typed_CNOT in H12.
-      repeat (constructor; try apply in_nil; try lia; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-      do 6 (destruct l; try inversion H3).
-      simpl in H0.
-      apply uc_well_typed_control in H0. destruct H0. destruct H2.
-      apply fresh_control in H2. destruct H2. apply fresh_control in H11. destruct H11. apply fresh_CNOT in H12.
-      apply uc_well_typed_control in H10. destruct H10. destruct H13.
-      apply fresh_control in H13. destruct H13. apply fresh_CNOT in H15.
-      apply uc_well_typed_control in H14. destruct H14. destruct H16.
-      apply fresh_CNOT in H16.
-      apply uc_well_typed_CNOT in H17.
-      destruct H12, H15, H16, H17, H21.
-      repeat (constructor; try assumption).
-Qed.
-
-Inductive ucom_fresh {U} : nat -> ucom U -> Prop :=
-| ucom_fresh_seq : forall n p1 p2, ucom_fresh n p1 -> ucom_fresh n p2 -> ucom_fresh n (p1 >> p2)
-| ucom_fresh_app : forall n m (g : U m) qs, ~ In n qs -> ucom_fresh n (uapp g qs).
-
-Lemma control'_fuel_exceed' :
-  forall f m q u,
-    (fuel u < m <= f)%nat ->
-    control' q u m = control' q u (S (fuel u)).
-Proof.
-  induction f; intros.
-  - lia.
-  - destruct u.
-    + destruct m. lia.
-      simpl fuel.
-      remember (S (Init.Nat.max (fuel u1) (fuel u2))) as mx.
-      simpl. simpl in H.
-      assert (S (fuel u1) <= mx)%nat by (rewrite Heqmx; apply Peano.le_n_S, Nat.le_max_l).
-      assert (S (fuel u2) <= mx)%nat by (rewrite Heqmx; apply Peano.le_n_S, Nat.le_max_r).
-      rewrite IHf. rewrite IHf with (u := u2).
-      rewrite IHf with (m := mx). rewrite IHf with (m := mx) (u := u2).
-      2-5 : lia.
-      easy.
-    + destruct m. destruct u; try (simpl in H; lia); try easy.
-      destruct u; try easy.
-      simpl in H. unfold fuel_CU1 in H.
-      do 5 (destruct m; try lia).
-      simpl. easy.
-      simpl in H. unfold fuel_CSWAP in H.
-      do 3 (destruct m; try lia).
-      simpl. easy.
-      simpl in H. unfold fuel_CCX in H.
-      do 23 (destruct m; try lia).
-      simpl. easy.
-Qed.
-
-Lemma control'_fuel_exceed :
-  forall f q u,
-    (fuel u < f)%nat ->
-    control' q u f = control q u.
-Proof.
-  intros. unfold control. apply control'_fuel_exceed' with (f := f). lia.
-Qed.
-
-Lemma control_seq :
-  forall x p1 p2,
-    control x (p1 >> p2) = control x p1 >> control x p2.
-Proof.
-  intros. unfold control.
-  remember (fuel (p1 >> p2)) as fseq.
-  remember (S (fuel p1)) as Sf1.
-  remember (S (fuel p2)) as Sf2.
-  simpl. simpl in Heqfseq.
-  assert (S (fuel p1) <= fseq)%nat by (rewrite Heqfseq; apply Peano.le_n_S, Nat.le_max_l).
-  assert (S (fuel p2) <= fseq)%nat by (rewrite Heqfseq; apply Peano.le_n_S, Nat.le_max_r).
-  repeat rewrite control'_fuel_exceed. easy.
-  1-4: lia.
-Qed.
-
-Lemma ucom_fresh_control :
-  forall p x y,
-    ucom_fresh x p ->
-    x <> y ->
-    well_formed p ->
-    ucom_fresh x (control y p).
-Proof.
-  induction p; intros.
-  - rewrite control_seq. inversion H; subst. inversion H1; subst.
-    constructor. apply IHp1; assumption. apply IHp2; assumption.
-  - unfold control.
-    destruct u; simpl; inversion H; subst; inversion H1; subst;
-      try (do 2 (destruct l; try inversion H3); apply not_in_cons in H4).
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    unfold decompose_CH.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    unfold decompose_CU2.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    unfold decompose_CU3.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    destruct l; try inversion H3. destruct H4. apply not_in_cons in H4.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    destruct l; try inversion H3. destruct H4. apply not_in_cons in H4.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    destruct l; try inversion H3. destruct H4. apply not_in_cons in H4.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    do 2 (destruct l; try inversion H3). destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H10.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    do 2 (destruct l; try inversion H3). destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H10.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    do 3 (destruct l; try inversion H3). destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H11. destruct H11. apply not_in_cons in H12.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-    do 4 (destruct l; try inversion H3). destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H12. destruct H12. apply not_in_cons in H13. destruct H13. apply not_in_cons in H14.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil)).
-Qed.
-
-Lemma bcfresh_ucom_fresh :
-  forall p x,
-    bcfresh x p ->
-    ucom_fresh x (bc2ucom p).
-Proof.
-  induction p; intros; simpl.
-  - constructor. inversion H. apply not_in_cons; easy.
-  - constructor. inversion H. apply not_in_cons; easy.
-  - constructor. inversion H. apply not_in_cons. split. lia. apply not_in_cons; easy.
-  - inversion H; subst. apply IHp in H4.
-    apply ucom_fresh_control; try easy.
-    apply bc2ucom_WF.
-  - inversion H; subst. constructor. apply IHp1; assumption. apply IHp2; assumption.
-Qed.
-
-Lemma ucom_well_typed_control :
-  forall p dim x,
-    (x < dim)%nat ->
-    ucom_fresh x p ->
-    @ucom_well_typed dim _ p ->
-    @ucom_well_typed dim _ (control x p).
-Proof.
-  induction p; intros.
-  - inversion H1; subst.
-    inversion H0; subst.
-    rewrite control_seq. constructor.
-    apply IHp1; assumption. apply IHp2; assumption.
-  - destruct u; unfold control.
-    1-11 : simpl; inversion H0; subst; inversion H1; subst;
-      try (do 5 (destruct l; repeat (constructor; try apply in_nil; try lia; try easy))).
-    repeat (destruct l; repeat (constructor; try apply in_nil; try lia; try easy)).
-    apply not_in_cons in H4. apply not_in_cons; split; try lia; try apply in_nil.
-    inv H8. lia.
-    apply not_in_cons in H4. easy. 
-    inv H8. inv H10. lia.
-    apply not_in_cons in H4. easy. 
-    inv H8. inv H10. lia.
-    repeat (destruct l; repeat (constructor; try apply in_nil; try lia; try easy)).
-    apply not_in_cons in H4. destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H7.
-    repeat (apply not_in_cons; split; try lia; try apply in_nil).
-    inv H6. apply not_in_cons in H9. destruct H9. apply not_in_cons in H6.
-    repeat (apply not_in_cons; split; try lia; try apply in_nil).
-    inv H6. inv H10. apply not_in_cons in H7.
-    repeat (apply not_in_cons; split; try lia; try apply in_nil).
-    inv H8. lia.
-    inv H8. inv H10. inv H11. lia.
-    inv H8. inv H10. lia.
-    do 5 (destruct l; repeat (constructor; try apply in_nil; try lia; try easy)).
-    destruct l. 
-    inversion H0; subst. inversion H1; subst.
-    simpl. destruct g0.
-    1-11,13: simpl; repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-    apply not_in_cons in H4. destruct H4. apply not_in_cons in H4. destruct H4. apply not_in_cons in H7. destruct H7. apply not_in_cons in H9. destruct H9. apply not_in_cons in H10.
-    inv H6.
-    apply not_in_cons in H13. destruct H13. apply not_in_cons in H11. destruct H11. apply not_in_cons in H12. destruct H12. apply not_in_cons in H13.
-    inv H14.
-    apply not_in_cons in H17. destruct H17. apply not_in_cons in H15. destruct H15. apply not_in_cons in H16.
-    inv H18.
-    apply not_in_cons in H20. destruct H20. apply not_in_cons in H18.
-    inv H21.
-    apply not_in_cons in H22.
-    inv H8. inv H24. inv H25. inv H26. inv H27.
-    destruct H10, H13, H16, H18, H22.
-    simpl.
-    repeat constructor; try assumption; try apply in_nil; repeat (apply not_in_cons; split; try apply in_nil; try assumption).
-Qed.
-  
-Lemma bcWT_uc_well_typed_to_base_ucom :
-  forall dim p,
-    (0 < dim)%nat ->
-    bcWT dim p ->
-    @uc_well_typed _ dim (to_base_ucom dim (bc2ucom p)).
-Proof.
-  intros. induction p.
-  - simpl. constructor. easy.
-  - simpl. apply uc_well_typed_X. inversion H0; subst. easy.
-  - simpl. apply uc_well_typed_SWAP. inversion H0; subst. easy.
-  - simpl. inversion H0. subst. apply IHp in H5.
-    apply ucom_well_typed_uc_well_typed. easy.
-    apply ucom_well_typed_control. easy.
-    apply bcfresh_ucom_fresh. easy.
-    apply uc_well_typed_ucom_well_typed. easy. easy.
-    apply bc2ucom_WF.
-  - simpl. inversion H0; subst. constructor.
-    apply IHp1; assumption.
-    apply IHp2; assumption.
-Qed.
-
-Lemma bcWT_bygatectrl :
-  forall (dim n : nat) (p : bccom),
-    (n < dim)%nat ->
-    bcfresh n p ->
-    bcWT dim p ->
-    bcWT dim (bygatectrl n p).
-Proof.
-  intros. induction p.
-  1-4 : 
-    inversion H0; subst; inversion H1; subst;
-    simpl; constructor; easy.
-  inversion H0; subst; inversion H1; subst.
-  simpl. constructor. apply IHp1; easy. apply IHp2; easy.
-Qed.
-
-Lemma bcfresh_shift :
-  forall p x s,
-    bcfresh x p ->
-    bcfresh (s + x)%nat (map_bccom (fun q => s + q)%nat p).
-Proof.
-  induction p; intros; simpl; constructor; inversion H; subst; try lia.
-  apply IHp. easy.
-  apply IHp1. easy. apply IHp2. easy.
-Qed.  
-
-Lemma bcWT_map_bccom :
-  forall p dim x,
-    (0 < dim)%nat ->
-    bcWT dim p ->
-    bcWT (x + dim) (map_bccom (fun q => x + q)%nat p).
-Proof.
-  induction p; intros;
-    try (simpl; constructor; inversion H0; subst; lia).
-  inversion H0; subst.
-  simpl. constructor. lia. apply bcfresh_shift. easy.
-  apply IHp; easy. 
-  simpl. inversion H0; subst. constructor. apply IHp1; easy. apply IHp2; easy.
-Qed.
-
-Lemma bcWT_controlled_powers' :
-  forall x f kmax dim,
-    (0 < dim)%nat ->
-    (0 < kmax)%nat ->
-    (x <= kmax)%nat ->
-    (forall i, (i < kmax)%nat -> bcWT dim (bcelim (f i))) ->
-    (forall i, (i < kmax)%nat -> bcelim (f i) <> bcskip) ->
-    bcWT (kmax + dim) (controlled_powers' (fun x => map_bccom (fun q => kmax + q)%nat (bcelim (f x))) x kmax).
-Proof.
-  induction x; intros.
-  - simpl. constructor. lia.
-  - destruct x. simpl. apply bcWT_bygatectrl. lia.
-    apply map_qubits_bcfresh. lia. apply H3. easy. 
-    apply bcWT_map_bccom. easy. apply H2. easy.
-    remember (S x) as Sx.
-    simpl. destruct Sx. lia. constructor.
-    apply IHx; try easy; try lia.
-    apply bcWT_bygatectrl. lia.
-    apply map_qubits_bcfresh. lia. apply H3. lia.
-    apply bcWT_map_bccom. easy. apply H2. easy.
-Qed.
-
-Lemma ucom_well_typed_invert :
-  forall p dim,
-    @ucom_well_typed dim _ p ->
-    well_formed p ->
-    @ucom_well_typed dim _ (invert p).
-Proof.
-  intros. induction p.
-  - simpl. inversion H; subst. inversion H0; subst. constructor. apply IHp2; easy. apply IHp1; easy.
-  - destruct u; simpl; inversion H0; subst; inversion H; subst;
-      repeat (destruct l; try inversion H2); constructor; easy.
-Qed.
-
-Lemma ucom_well_typed_reverse_qubits' :
-  forall dim x i,
-    (2 * i <= x < dim)%nat ->
-    @ucom_well_typed dim _ (reverse_qubits' x i).
-Proof.
-  intros. induction i.
-  - simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-  - destruct i. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-    remember (S i) as Si.
-    simpl. destruct Si. lia. constructor. apply IHi. lia.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-Qed.
-
-Lemma ucom_well_typed_controlled_rotations :
-  forall dim x,
-    (x < dim)%nat ->
-    @ucom_well_typed dim _ (controlled_rotations x).
-Proof.
-  intros. induction x.
-  - simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-  - destruct x. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-    destruct x. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-    remember (S (S x)) as SSx.
-    simpl. destruct SSx. lia. destruct SSx. lia. constructor. apply IHx. lia.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-Qed.
-
-Lemma not_in_map_S :
-  forall a l,
-    ~ In a l ->
-    ~ In (S a) (map S l).
-Proof.
-  intros. induction l.
-  - simpl. easy.
-  - apply not_in_cons in H. destruct H.
-    apply not_in_cons. split. lia. apply IHl. easy.
-Qed.
-
-Lemma NoDup_map_S :
-  forall l, NoDup l -> NoDup (map S l).
-Proof.
-  induction l; intros.
-  - repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-  - simpl. inversion H; subst.
-    constructor. apply not_in_map_S.
-    easy. apply IHl. easy.
-Qed.
-
-Lemma Forall_map_S :
-  forall l dim, Forall (fun x => x < dim)%nat l -> Forall (fun x => x < S dim)%nat (map S l).
-Proof.
-  induction l; intros.
-  - repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-  - simpl. inversion H; subst.
-    constructor. lia.
-    apply IHl. easy.
-Qed.
-    
-Lemma ucom_well_typed_map_qubits_S :
-  forall p dim,
-    @ucom_well_typed dim _ p ->
-    @ucom_well_typed (S dim) _ (map_qubits S p).
-Proof.
-  induction p; intros.
-  - simpl. inversion H; subst. constructor. apply IHp1; easy. apply IHp2; easy.
-  - simpl. constructor.
-    apply NoDup_map_S. inversion H. easy.
-    apply Forall_map_S. inversion H. easy.
-Qed.
-
-Lemma ucom_well_typed_QFT :
-  forall x dim,
-    (x < dim)%nat ->
-    @ucom_well_typed dim _ (QFT x).
-Proof.
-  induction x; intros.
-  - simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-  - destruct x. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-    destruct x. simpl. repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-    remember (S (S x)) as SSx.
-    simpl. destruct SSx. lia. destruct SSx. lia.
-    constructor.
-    repeat (constructor; repeat (apply not_in_cons; split; try lia; try apply in_nil); try lia; try apply in_nil).
-    apply ucom_well_typed_controlled_rotations. lia.
-    destruct dim. lia.
-    apply ucom_well_typed_map_qubits_S. apply IHx. lia.
-Qed.
-
-Lemma uc_well_typed_shor_circuit :
-  forall a N,
-    (a < N)%nat ->
-    let n := n N in
-    let k := k N in
-    uc_well_typed (to_base_ucom (n + k) (shor_circuit a N)).
-Proof.
-  intros. unfold shor_circuit.
-  unfold n in n0. unfold k, num_qubits in k0. 
-  assert (Log1 : (1 <= Nat.log2 (2 * N))%nat).
-  { specialize (Nat.log2_pos (2 * N)%nat) as G. lia.
-  }
-  assert (Log2 : (1 <= Nat.log2 (2 * N ^ 2))%nat).
-  { specialize (Nat.log2_pos (2 * N ^ 2)%nat) as G. simpl in *. nia.
-  }
-  remember (2 * N)%nat as N2.
-  remember (2 * N ^ 2)%nat as N22.
-  simpl. constructor.
-  apply uc_well_typed_X. subst.
-  lia.
-  constructor.
-  constructor. apply uc_well_typed_alt_npar. lia. lia.
-  apply bcWT_uc_well_typed_to_base_ucom. lia.
-  apply bcWT_controlled_powers'; try lia.
-  intros. apply eWT_bcWT.
-  apply bcelim_modmult_rev_neq_bcskip. apply modmult_rev_eWT. lia.
-  intros. apply bcelim_modmult_rev_neq_bcskip.
-  constructor.
-  apply ucom_well_typed_uc_well_typed. lia.
-  apply ucom_well_typed_invert.
-  apply ucom_well_typed_reverse_qubits'.
-  split. apply Nat.mul_div_le. lia. lia.
-  apply reverse_qubits_WF.
-  apply ucom_well_typed_uc_well_typed. lia.
-  apply ucom_well_typed_invert.
-  apply ucom_well_typed_QFT. lia.
-  apply QFT_WF.
-Qed.
-
 Lemma end_to_end_shors_correct : forall N rnds x,
     (1 < N)%nat ->
     (Forall (fun x => 0 <= x < 1) rnds) ->
@@ -1270,10 +342,10 @@ Proof.
   assert (1 <= a < N)%nat.
   { rewrite Heqa, Heqdistr.
     inversion Hrnds.
-    apply sample_join_uniform; try easy.
+    apply fst_join_uniform; try easy.
     intros. apply length_run.
     2: apply pow_positive; lia.
-    intros. apply run_distribution.
+    intros. apply distribution_run.
     apply uc_well_typed_shor_circuit. lia.
   }
   assert (0 < Nat.gcd a N)%nat.
@@ -1284,26 +356,6 @@ Proof.
   lia. 
   lia.
   inversion Hrnds. apply IHrnds; assumption.
-Qed.
-
-Lemma geq_exists : forall a b,
-  a >= b -> exists c, a = c /\ c >= b.
-Proof. intros a b H. exists a. split; auto. Qed.
-
-Lemma fst_join_first_k :
-  forall p q x, first_k p (p + q)%nat x = fst_join (2^q)%nat x.
-Proof.
-  intros. unfold first_k, fst_join. f_equal. f_equal. lia.
-Qed.
-
-Lemma snd_join_last_k :
-  forall p q x, last_k q (p + q)%nat x = snd_join (2^q)%nat x.
-Proof.
-  intros.
-  assert (0 < 2^q)%nat by (apply pow_positive; lia).
-  unfold last_k, first_k, snd_join. rewrite Nat.mod_eq by lia.
-  replace (p + q - (p + q - q))%nat with q by lia.
-  f_equal. lia.
 Qed.
 
 Lemma κn4in01 :
@@ -1343,13 +395,12 @@ Lemma shor_body_succeeds_with_high_probability' : forall N,
     let distr := join 
                    (uniform 1 N) 
                    (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
-    let un_sz := Nat.log2_up (N - 1) in
     let f1 a := leads_to_factor N a in
-    let f2 a x := (OF_post a N (first_k n (n + k) x) n =? ord a N) ||
+    let f2 a x := (OF_post a N (fst_join (2^k) x) n =? ord a N) ||
                   negb (Nat.gcd a N =? 1) in
     pr_outcome_sum distr
-      (fun z => let x := first_k un_sz (un_sz + (n + k)) z in
-             let y := last_k (n + k) (un_sz + (n + k)) z in
+      (fun z => let x := fst_join (2^(n + k)) z in
+             let y := snd_join (2^(n + k)) z in
              f1 x && f2 x y)
       >= (1 / 2) * (κ / INR (Nat.log2 N)^4).
 Proof.
@@ -1372,8 +423,8 @@ Proof.
   split.
   apply length_run.
   subst f2.
-  assert (Hdist : distribution (run (to_base_ucom (n0 + k0) (shor_circuit i N)))).
-  { apply run_distribution.
+  assert (Hdist : distribution (run (to_base_ucom (n + k) (shor_circuit i N)))).
+  { apply distribution_run.
     apply uc_well_typed_shor_circuit.
     rewrite length_uniform in Hi.
     lia.
@@ -1420,7 +471,7 @@ Proof.
   apply distribution_uniform.
   lia.
   intros i Hi.
-  apply run_distribution.
+  apply distribution_run.
   apply uc_well_typed_shor_circuit.
   rewrite length_uniform in Hi.
   lia.
@@ -1435,8 +486,6 @@ Proof.
   intros x H.
   unfold process.
   subst n k.
-  rewrite fst_join_first_k in H.
-  rewrite snd_join_last_k in H.
   remember (fst_join (2 ^ (n N + k N)) x) as a.
   remember (snd_join (2 ^ (n N + k N)) x) as y.
   clear - H.
@@ -1457,27 +506,6 @@ Proof.
   unfold nontrivgcd, nontriv in H1. rewrite E in H1. simpl in H1. easy.
 Qed.
 
-Lemma pr_outcome_sum_neg' :
-  forall distr f,
-    (pr_outcome_sum distr (fun x => negb (f x)) = sum_over_list distr - pr_outcome_sum distr f)%R.
-Proof.
-  induction distr; intros.
-  - unfold sum_over_list, pr_outcome_sum. simpl. lra.
-  - do 2 rewrite pr_outcome_sum_extend'.
-    rewrite IHdistr.
-    rewrite sum_over_list_cons.
-    destruct (f 0%nat); simpl; lra.
-Qed.
-
-Lemma pr_outcome_sum_neg :
-  forall distr f,
-    (pr_outcome_sum distr f = sum_over_list distr - pr_outcome_sum distr (fun x => negb (f x)))%R.
-Proof.
-  intros.
-  specialize (pr_outcome_sum_neg' distr f) as G.
-  lra.
-Qed.
-
 Lemma shor_body_fails_with_low_probability : forall N,
     ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
     let n := n N in
@@ -1494,14 +522,14 @@ Proof.
     destruct N. destruct (infinitely_many_primes 1%nat) as [p [Hp1 Hp2]].
     specialize (H1 p O Hp2). simpl in H1. lia. lia.
   }
-  rewrite pr_outcome_sum_neg.
+  rewrite pr_outcome_sum_negb.
   specialize (shor_body_succeeds_with_high_probability N H H0 H1) as G.
   assert (distribution distr).
   { apply distribution_join.
     apply distribution_uniform.
     lia.
     intros.
-    apply run_distribution.
+    apply distribution_run.
     apply uc_well_typed_shor_circuit.
     rewrite length_uniform in H2. lia.
     lia.
@@ -1509,31 +537,6 @@ Proof.
   destruct H2. rewrite H3.
   assert (forall r1 r2 r3, r2 >= r3 -> r1 - r2 <= r1 - r3)%R by (intros; lra).
   apply H4. apply G.
-Qed.
-
-Lemma pr_outcome_sum_ge_0 :
-  forall l f, Forall (fun x => 0 <= x) l -> 0 <= pr_outcome_sum l f.
-Proof.
-  induction l; intros.
-  - unfold pr_outcome_sum. simpl. lra.
-  - inversion H; subst. unfold pr_outcome_sum.
-    replace (length (a :: l)) with (S (length l)) by easy.
-    rewrite Rsum_shift. simpl.
-    specialize (IHl (fun x => f (S x)) H3).
-    unfold pr_outcome_sum in IHl.
-    destruct (f 0%nat); lra.
-Qed.
-
-Lemma pr_outcome_sum_leq_exists : forall l f r,
-  distribution l ->
-  pr_outcome_sum l f <= r ->
-  exists r0, (0 <= r0 <= r)%R /\ pr_P (fun rnd => f (sample l rnd) = true) r0.
-Proof.
-  intros l f r  HlHr.
-  exists (pr_outcome_sum l f).
-  split; auto.
-  split. apply pr_outcome_sum_ge_0. apply HlHr. auto.
-  apply pr_outcome_sum_eq_aux; auto.
 Qed.
 
 (* For n iterations of end_to_end_shors, the probability of success is
@@ -1566,7 +569,7 @@ Proof.
   apply distribution_uniform.
   lia.
   intros i Hi.
-  apply run_distribution.
+  apply distribution_run.
   apply uc_well_typed_shor_circuit.
   rewrite length_uniform in Hi.
   auto.

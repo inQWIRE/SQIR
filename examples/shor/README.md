@@ -1,6 +1,6 @@
 # examples/shor
 
-This directory contains the SQIR formalization of Shor's factoring algorithm.
+This directory contains the SQIR formalization of Shor's factoring algorithm. For questions about the code in this directory, contact Yuxiang Peng (@PicksPeng) or Kesha Hietala (@khieta).
 
 ## Directory Contents
 
@@ -11,11 +11,11 @@ Core formalization
 * ModMult.v - modular exponentiation, defined in RCIR
 * QPEGeneral.v - general statement of correctness for ../QPE.v
 * RCIR.v - formalization of reversible circuits
-* ResourceShor.v - proof about the resources (= gates) required for Shor's
+* ResourceShor.v - proof about the resources (i.e. number of gates) required for Shor's
 * Shor.v - core formalization of Shor's algorithm
 
 Utilities
-* AltShor.v - Shor's algorithm defined in the new gate set; proofs that the new definition is equivalent to the old (Shor.v)
+* AltShor.v - Shor's algorithm defined in a gate set amenable to extraction; proofs that the new definition is equivalent to the old (Shor.v)
 * Resource.v - facts about the number of gates used by various operations
 * ShorAux.v - number theory results, reduction from fatorization to order finding, and other useful facts for Shor.v
 
@@ -49,7 +49,7 @@ Non-trivial factor is 3.
 
 ## Verified Properties
 
-TODO: add text description of correctness
+TODO: add text description of correctness & point to the relevant files
 
 Some assumptions introduced by extraction (see extraction/ShorExtr.v)
 * OCaml floats satisfy the same properties as Coq Real numbers. (Unfortunately this is *not true*, but maybe somewhat accurate? We can try to be more specific by listing all facts we use about Real numbers... but this may be a long list. -KH)

@@ -839,7 +839,7 @@ Proof.
 Qed.
 
 Lemma cast_control_commute : forall d d' (c : base_ucom d) i,
-  cast (control i c) d' ≡ control i (cast c d').
+  cast (control i c) d' = control i (cast c d').
 Proof.
   intros d d' c i.
   induction c; try dependent destruction u; try reflexivity.
@@ -847,12 +847,13 @@ Proof.
 Qed.
 
 Lemma cast_niter_commute : forall d d' (c : base_ucom d) i,
-  cast (niter i c) d' ≡ niter i (cast c d').
+  cast (niter i c) d' = niter i (cast c d').
 Proof.
   intros d d' c i.
   induction i; simpl.
   reflexivity.
   destruct i; try reflexivity.
+  remember (S i) as i'.
   simpl cast. rewrite IHi. reflexivity.
 Qed.
 

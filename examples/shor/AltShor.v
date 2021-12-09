@@ -487,20 +487,18 @@ Proof.
   easy.
 Qed.
 
-Lemma shor_circuit_same : forall a N x, 
+Lemma shor_circuit_same : forall a N, 
   (0 < N)%nat ->
   let m := Nat.log2 (2 * N^2)%nat in
   let n := Nat.log2 (2 * N)%nat in
-  let anc := modmult_rev_anc n in
+  let numq := num_qubits n in
   let f := Shor.f_modmult_circuit a (modinv a N) N n in
-  prob_shor_outputs a N x = 
-    prob_partial_meas (basis_vector (2^m) x) (Shor.Shor_final_state_var m n anc f).
+  uc_eval (m + numq) (shor_circuit a N) = 
+    UnitarySem.uc_eval (SQIR.useq (SQIR.X (m + n - 1)) (QPE_var m numq f)).
 Proof.
-  intros a N x H m n anc f.
-  unfold prob_shor_outputs, run_shor_circuit.
-  subst m n anc.
-  apply f_equal.
-  unfold uc_eval, num_qubits, shor_circuit, Shor.Shor_final_state_var.
+  intros a N H m n numq f.
+  subst m n numq.
+  unfold uc_eval, num_qubits, shor_circuit.
   Local Opaque Nat.mul Nat.pow QPE QPE.QPE_var.
   simpl.
   remember (Nat.log2 (2 * N ^ 2)) as m.
@@ -514,7 +512,6 @@ Proof.
     apply Nat.pow_le_mono_l. lia.
     apply Nat.log2_pos. lia. }
   clear Heqn Heqm.
-  rewrite Mmult_assoc.
   apply f_equal2.
   apply QPE_same; auto.
   lia.
@@ -524,16 +521,81 @@ Proof.
   subst f.
   unfold f_modmult_circuit, modexp.
   rewrite bc2ucom_correct.
-  (*rewrite bc2ucom_csplit.*)
   reflexivity.
-  (*apply eWT_bcWT.
-  apply bcelim_modmult_rev_neq_bcskip.
-  apply modmult_rev_eWT; auto.*)
+  reflexivity.
+Qed.
+
+(* Shor's runs on (n + k) qubits and returns the result of measuring n qubits. *)
+Definition n (N : nat) := Nat.log2 (2 * N^2).
+Definition k (N : nat) := AltShor.num_qubits (Nat.log2 (2 * N)).
+
+Lemma uc_well_typed_shor_circuit : forall a N,
+  (a < N)%nat ->
+  let n := n N in
+  let k := k N in
+  uc_well_typed (to_base_ucom (n + k) (shor_circuit a N)).
+Proof.
+  intros.
+  subst n0 k0.
+  unfold n, k.
+  apply uc_eval_nonzero_iff.
+  specialize (shor_circuit_same a N) as Hsame. 
+  unfold uc_eval in Hsame.
+  rewrite Hsame by lia.
+  clear Hsame.
+  unfold num_qubits, modmult_rev_anc.
+  apply uc_eval_nonzero_iff.
+  constructor.
+  apply uc_well_typed_X. 
+  lia.
+  apply QPE_var_WT.
+  assert (1 <= N ^ 2)%nat.
+  rewrite <- (Nat.pow_1_l 2) at 1.
+  apply Nat.pow_le_mono_l. lia.
+  apply Nat.log2_pos. lia. 
+  intro i.
+  assert (Nat.log2 (2 * N) > 0)%nat.
+  apply Nat.log2_pos. lia.
+  apply eWT_uc_well_typed_bcelim. lia.
+  apply modmult_rev_eWT. lia.
+Qed.
+
+Lemma shor_circuit_same' : forall a N x, 
+  (0 < N)%nat ->
+  let m := Nat.log2 (2 * N^2)%nat in
+  let n := Nat.log2 (2 * N)%nat in
+  let anc := modmult_rev_anc n in
+  let f := Shor.f_modmult_circuit a (modinv a N) N n in
+  prob_shor_outputs a N x = 
+    prob_partial_meas (basis_vector (2^m) x) (Shor.Shor_final_state m n anc f).
+Proof.
+  intros a N x H m n anc f.
+  unfold prob_shor_outputs, run_shor_circuit.
+  rewrite shor_circuit_same by assumption.
+  unfold num_qubits.
+  subst m n anc.
+  remember (Nat.log2 (2 * N ^ 2)) as m.
+  remember (Nat.log2 (2 * N)) as n.
+  assert (0 < n)%nat.
+  { subst. apply Nat.log2_pos. lia. }
+  assert (0 < m)%nat.
+  { subst. 
+    assert (1 <= N ^ 2)%nat.
+    rewrite <- (Nat.pow_1_l 2) at 1.
+    apply Nat.pow_le_mono_l. lia.
+    apply Nat.log2_pos. lia. }
+  clear Heqm Heqn.
+  apply f_equal.
+  unfold Shor_final_state.
+  simpl.
+  rewrite Mmult_assoc.
   rewrite 4 basis_f_to_vec_alt.
   rewrite f_to_vec_X by lia.
   rewrite f_to_vec_merge.
-  restore_dims .
+  restore_dims.
   rewrite f_to_vec_merge.
+  apply f_equal2.
+  reflexivity.
   rewrite Nat.add_assoc.
   apply f_to_vec_eq; intros i Hi.
   bdestruct (i <? m + n).

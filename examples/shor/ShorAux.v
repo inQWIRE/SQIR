@@ -5,6 +5,7 @@ Require Export Utilities.
 Local Coercion INR : nat >-> R.
 Local Coercion Z.of_nat : nat >-> BinNums.Z.
 
+
 (* ====================== *)
 (* =   sum_f_R0 facts   = *)
 (* ====================== *)
@@ -22,9 +23,9 @@ Lemma find_decidable :
     (exists i, i <= m /\ g i = t)%nat \/ (forall i, i <= m -> g i <> t)%nat.
 Proof.
   induction m; intros.
-  - destruct (dec_eq_nat (g 0%nat) t).
-    + left. exists 0%nat. split; easy.
-    + right. intros. replace i with 0%nat by lia. easy.
+  - destruct (dec_eq_nat (g O) t).
+    + left. exists O. split; easy.
+    + right. intros. replace i with O by lia. easy.
   - destruct (IHm t g).
     + left. destruct H. exists x. destruct H. split; lia.
     + destruct (dec_eq_nat (g (S m)) t).
@@ -156,72 +157,7 @@ Proof.
   intro. rewrite H5 in H4. flia H4 H0.
 Qed.
 
-Fixpoint Nsum (n : nat) (f : nat -> nat) :=
-  match n with
-  | O => O
-  | S n' => Nsum n' f + f n'
-  end.
-
-Lemma Nsum_eq :
-  forall n f g,
-    (forall x, x < n -> f x = g x) ->
-    Nsum n f = Nsum n g.
-Proof.
-  intros. induction n. easy.
-  simpl. rewrite IHn. rewrite H. easy.
-  flia. intros. apply H. flia H0.
-Qed.
-
-Lemma Nsum_scale :
-  forall n f d,
-    Nsum n (fun i => d * f i) = d * Nsum n f.
-Proof.
-  intros. induction n. simpl. flia. 
-  simpl. rewrite IHn. flia.
-Qed.
-
-Lemma Nsum_le :
-  forall n f g,
-    (forall x, x < n -> f x <= g x) ->
-    Nsum n f <= Nsum n g.
-Proof.
-  intros. induction n. simpl. easy.
-  simpl.
-  assert (f n <= g n) by (apply H; flia).
-  assert (Nsum n f <= Nsum n g). {
-    apply IHn. intros. apply H. lia.
-  }
-  lia.
-Qed.
-
-Lemma Nsum_add :
-  forall n f g,
-    Nsum n (fun i => f i + g i) = Nsum n f + Nsum n g.
-Proof.
-  intros. induction n. easy.
-  simpl. rewrite IHn. flia.
-Qed.
-
-Lemma Nsum_delete :
-  forall n x f,
-    x < n ->
-    Nsum n (update f x 0) + f x = Nsum n f.
-Proof.
-  induction n; intros. lia.
-  simpl. bdestruct (x =? n). subst. rewrite update_index_eq.
-  rewrite Nsum_eq with (g := f). lia.
-  intros. rewrite update_index_neq. easy. lia.
-  assert (x < n) by lia. apply IHn with (f := f) in H1. rewrite <- H1.
-  rewrite update_index_neq. lia. easy.
-Qed.
-
-Lemma Nsum_zero :
-  forall n, Nsum n (fun _ => 0) = 0.
-Proof.
-  induction n. easy.
-  simpl. rewrite IHn. easy.
-Qed.
-
+(* The main use of Nsum2d (and Nsum2dmask) is the "Nsum2dmask_bijection" lemma. *)
 Fixpoint Nsum2d (n m : nat) (f : nat -> nat -> nat) :=
   match n with
   | O => O
@@ -1980,103 +1916,6 @@ Fixpoint modmul n (f : nat -> bool) N :=
            else modmul n' f N
 end.
 
-Fixpoint cnttrue n (f : nat -> bool) :=
-  match n with
-  | O => O
-  | S n' => if (f n) then S (cnttrue n' f)
-           else cnttrue n' f
-  end.
-
-Lemma cnttrue_extend :
-  forall n f, cnttrue (S n) f = if (f (S n)) then S (cnttrue n f) else cnttrue n f.
-Proof.
-  intros. easy.
-Qed.
-
-Lemma cnttrue_extend_more :
-  forall m n f, cnttrue (n + m) f = cnttrue n f + cnttrue m (fun x => f (n + x)).
-Proof.
-  induction m; intros. simpl. do 2 rewrite Nat.add_0_r. easy.
-  simpl.
-  replace (n + S m) with (S (n + m)) by flia. simpl.
-  destruct (f (S (n + m))). rewrite IHm. lia.
-  apply IHm.
-Qed.
-
-Lemma cnttrue_allfalse :
-  forall n, cnttrue n (fun _ => false) = O.
-Proof.
-  induction n; intros; simpl; try apply IHn; easy.
-Qed.
-
-Lemma cnttrue_same :
-  forall n f g,
-    (forall x, 0 < x <= n -> f x = g x) ->
-    cnttrue n f = cnttrue n g.
-Proof.
-  induction n; intros. easy.
-  assert (f (S n) = g (S n)) by (apply H; lia).
-  simpl. rewrite H0. rewrite IHn with (g := g). easy.
-  intros. apply H. lia.
-Qed.
-
-Lemma cnttrue_over_n_update :
-  forall n x f b, x > n -> cnttrue n f = cnttrue n (update f x b).
-Proof.
-  intros. apply cnttrue_same. intros.
-  rewrite update_index_neq. easy. lia.
-Qed.
-
-Lemma cnttrue_pos :
-  forall n x f, 0 < x <= n -> f x = true -> cnttrue n f > 0.
-Proof.
-  induction n; intros. lia.
-  bdestruct (x =? S n). subst. simpl. rewrite H0. lia.
-  assert (cnttrue n f > 0) by (apply IHn with (x := x); try easy; try lia).
-  simpl. destruct (f (S n)); lia.
-Qed.
-
-Lemma cnttrue_update_t :
-  forall n x f b, 0 < x <= n -> f x = true -> cnttrue n (update f x b) = if b then cnttrue n f else (cnttrue n f) - 1.
-Proof.
-  induction n; intros. lia.
-  destruct b. rewrite update_same. easy. easy.
-  bdestruct (x =? S n). subst. simpl. rewrite update_index_eq. rewrite H0.
-  rewrite <- cnttrue_over_n_update; lia.
-  simpl. rewrite update_index_neq by easy. destruct (f (S n)). rewrite IHn by (try easy; try lia).
-  assert (cnttrue n f > 0) by (apply cnttrue_pos with (x := x); try easy; try lia).
-  lia.
-  rewrite IHn. easy. lia. easy.
-Qed.
-
-Lemma cnttrue_filter_seq :
-  forall n f, cnttrue n f = length (filter f (List.seq 1 n)).
-Proof.
-  induction n; intros. easy.
-  rewrite seq_extend. rewrite filter_app. rewrite app_length.
-  rewrite <- IHn. simpl.
-  destruct (f (S n)). simpl. lia.
-  simpl. lia.
-Qed.
-
-Lemma cnttrue_Nsum_aux :
-  forall n f,
-    f 0 = false ->
-    cnttrue n f = Nsum (S n) (fun i => if f i then 1 else 0).
-Proof.
-  intros. induction n. simpl. rewrite H. easy.
-  simpl. rewrite IHn. destruct (f (S n)); simpl; lia.
-Qed.
-
-Lemma cnttrue_Nsum :
-  forall n f,
-    f 0 = false -> f n = false ->
-    cnttrue n f = Nsum n (fun i => if f i then 1 else 0).
-Proof.
-  intros. destruct n. easy.
-  simpl. rewrite H0. rewrite cnttrue_Nsum_aux; easy.
-Qed.
-
 Lemma exists_pos_dec :
   forall n f,
     {forall x, 0 < x <= n -> f x = false} + {exists x, 0 < x <= n /\ f x = true}.
@@ -2088,7 +1927,6 @@ Proof.
     + left. intros. bdestruct (x =? S n). subst. easy. apply e. lia.
     + right. destruct e. exists x. split. lia. easy.
 Qed.
-
 
 Ltac iauto := try lia; auto.
 
@@ -2152,15 +1990,6 @@ Proof.
   intro. rewrite update_index_neq. easy. lia. 
 Qed.
 
-Lemma cnttrue_update_t_false :
-  forall n x f, 0 < x <= n -> f x = true -> S (cnttrue n (update f x false)) = cnttrue n f.
-Proof.
-  intros. 
-  assert (cnttrue n f > 0) by now apply cnttrue_pos with x.
-  rewrite cnttrue_update_t; iauto.
-Qed.
-      
-
 Lemma two2one_modmul :
   forall n t f a N, (1 < N) ->
     (forall x, 0 < x <= n -> t x = true -> 0 < (f x) <= n) ->
@@ -2170,13 +1999,11 @@ Lemma two2one_modmul :
     (forall x, 0 < x <= n -> t x = true -> x <> f x) ->
     (forall x y, 0 < x <= n -> 0 < y <= n -> t x = true -> t y = true -> f x = f y -> y = x) ->
     (forall x, 0 < x <= n -> t x = true -> (x * f x) mod N = a mod N) ->
-    modmul n t N = a ^ ((cnttrue n t) / 2) mod N.
+    modmul n t N = a ^ ((count1 t n) / 2) mod N.
 Proof.
+  unfold count1.
   induction n; intros.
-  {
-    simpl. replace (0/2) with 0. simpl. rewrite Nat.mod_small. reflexivity.
-    apply H. rewrite Nat.div_small; lia.
-  }
+  { simpl. rewrite Nat.mod_small. reflexivity. apply H. }
   Local Opaque Nat.div.
   simpl. destruct (t (S n)) eqn: HtSn.
   {
@@ -2186,9 +2013,10 @@ Proof.
     assert (t (f (S n)) = true).
     { apply H1; try flia; auto.  }
     rewrite modmul_update with _ _ _ (f (S n)) by iauto.
-    rewrite <- cnttrue_update_t_false with _ (f (S n)) _ by iauto.
+    rewrite <- count_update_false with _ _ (f (S n)) _ by iauto.
     remember (update t (f (S n)) false) as t'.
-    replace (S (S (cnttrue n t')) / 2) with (1 + cnttrue n t' / 2) by now rewrite <- Nat.div_add_l by flia.
+    simpl Nat.add.
+    replace (S (S (count t' 1 n)) / 2) with (1 + count t' 1 n / 2) by now rewrite <- Nat.div_add_l by flia.
     rewrite Nat.pow_add_r. rewrite Nat.pow_1_r.
     rewrite Nat.mul_mod_idemp_r by lia.
     rewrite Nat.mul_assoc.
@@ -2571,8 +2399,6 @@ Proof.
   rewrite H5. reflexivity.
 Qed.
 
-
-
 Lemma moddiv_unique :
   forall x y a N, 1 < N -> Nat.gcd a N = 1 -> Nat.gcd x N = 1 ->
     (x * y) mod N = a mod N -> 0 < y < N -> y = moddiv x a N.
@@ -2585,7 +2411,6 @@ Proof.
   rewrite Nat.mul_mod_idemp_l by lia. rewrite Nat.mul_mod_idemp_l by lia.
   replace (x * moddiv x a N * y) with (x * y * moddiv x a N) by lia. reflexivity.
 Qed.
-
 
 Lemma moddiv_self_qr :
 forall x y a p k, 2 < p -> prime p -> k <> 0 -> Nat.gcd a (p ^ k) = 1 -> Nat.gcd x (p ^ k) = 1 ->
@@ -2612,7 +2437,6 @@ Proof.
   apply Nat.mod_small. lia.
 Qed.
 
-
 Lemma Euler_criterion_not_qr :
   forall a p k,
     k <> 0 -> prime p -> 2 < p -> a < p^k -> (Nat.gcd a p = 1) ->
@@ -2622,7 +2446,8 @@ Proof.
   intros. unfold φ, coprimes.
   assert (2 < p ^ k) by now apply prime_power_lb.
   assert (Nat.gcd a (p ^ k) = 1) by now apply pow_coprime.
-  rewrite <- cnttrue_filter_seq.
+  rewrite <- count_filter_seq.
+  replace (count (fun d : nat => Nat.gcd (p ^ k) d =? 1) 1 (p ^ k)) with (count1 (fun d : nat => Nat.gcd (p ^ k) d =? 1) (p ^ k)) by reflexivity.
   rewrite <- two2one_modmul with _ _ (fun x => moddiv x a (p ^ k)) _ _; intros. 
   rewrite Wilson_on_prime_power; iauto.
   lia.
@@ -2673,14 +2498,15 @@ Lemma Euler_criterion_qr :
 Proof.
   intros. assert (2 < p ^ k) by now apply prime_power_lb.
   assert (Nat.gcd a (p ^ k) = 1) by now apply pow_coprime.
-  unfold φ, coprimes. rewrite <- cnttrue_filter_seq.
+  unfold φ, coprimes. rewrite <- count_filter_seq.
   destruct H4 as (x0 & ? & ?).
-  rewrite <- cnttrue_update_t_false with _ x0 _; iauto.
-  rewrite <- cnttrue_update_t_false with _ (p ^ k - x0) _; iauto.
+  rewrite <- count_update_false with _ _ x0 _; iauto.
+  rewrite <- count_update_false with _ _ (p ^ k - x0) _; iauto.
   remember (update (update (fun d : nat => Nat.gcd (p ^ k) d =? 1) x0 false) (p ^ k - x0) false) as t'.
-  replace (S (S (cnttrue (p ^ k) t')) / 2) with (1 + cnttrue (p ^ k) t' / 2) by now rewrite <- Nat.div_add_l by flia.
+  replace (S (S (count t' 1 (p ^ k))) / 2) with (1 + count t' 1 (p ^ k) / 2) by now rewrite <- Nat.div_add_l by flia.
   rewrite Nat.pow_add_r. simpl. rewrite Nat.mul_1_r.
   rewrite <- Nat.mul_mod_idemp_r by lia.
+  replace (count t' 1 (p ^ k)) with (count1 t' (p ^ k)) by reflexivity.
   rewrite <- two2one_modmul with _ _ (fun x => moddiv x a (p ^ k)) _ _; intros.
   apply mul_coprime_equal with (p ^ k - 1) (p ^ k). lia.
   rewrite Nat.gcd_comm. rewrite Nat_gcd_sub_diag_l. apply Nat.gcd_1_r. lia.
@@ -2882,8 +2708,7 @@ Proof.
   specialize (d2p_factor _ _ H6 G). flia.
   lia. easy.
 Qed.
-  
-  
+
 Lemma not_qr_d2p_eq :
   forall a r p k,
     k <> 0 -> prime p -> 2 < p -> a < p^k ->
@@ -2907,7 +2732,6 @@ Proof.
   easy.
 Qed.
 
-
 Lemma qr_dec :
   forall a p, {forall x, 0 < x <= p -> x ^ 2 mod p <> a} + {exists x, 0 < x <= p /\ x ^ 2 mod p = a}.
 Proof.
@@ -2929,12 +2753,14 @@ Lemma two2one_mapping_img :
     (forall x, 0 < x <= n -> t1 x = true -> f x = f (g x)) ->
     (forall x, 0 < x <= n -> t1 x = true -> x <> g x) ->
     (forall x y, 0 < x <= n -> 0 < y <= n -> t1 x = true -> t1 y = true -> f x = f y -> y = x \/ y = g x) ->
-    cnttrue n t1 = 2 * cnttrue m t2.
+    count1 t1 n = 2 * count1 t2 m.
 Proof.
+  unfold count1.
   induction n; intros.
-  - rewrite cnttrue_same with (f := t2) (g := (fun i => false)).
-    rewrite cnttrue_allfalse. easy.
-    destruct (exists_pos_dec m t2). easy.
+  - rewrite count_eq with (f := t2) (g := (fun i => false)).
+    rewrite count_all_false. reflexivity.
+    destruct (exists_pos_dec m t2). 
+    intros. apply e. lia.
     destruct e as [a [Ha Ha']]. specialize (H1 a Ha Ha').
     destruct H1. flia H1.
   - simpl. destruct (t1 (S n)) eqn:ESn.
@@ -2942,24 +2768,25 @@ Proof.
       assert (0 < g (S n) <= S n) by (apply H2; try easy; try flia).
       assert (S n <> g (S n)) by (apply H6; try easy; try flia).
       assert (t1 (g (S n)) = true) by (apply H3; try easy; try flia).
-      assert (cnttrue n t3 + 1 = cnttrue n t1). {
-        assert (cnttrue n t1 > 0). {
-          apply cnttrue_pos with (x := g (S n)). flia H8 H9. easy.
+      assert (count t3 1 n + 1 = count t1 1 n). {
+        assert (count t1 1 n <> 0). {
+          apply count_nonzero. exists (g (S n)). split; try lia. easy.
         }
-        rewrite Heqt3. rewrite cnttrue_update_t. flia H11.
+        rewrite Heqt3. rewrite count_update. flia H11.
         flia H8 H9. easy.
       }
       rewrite <- H11.
       remember (update t2 (f (S n)) false) as t4.
       assert (0 < f (S n) <= m) by (apply H; try easy; try flia).
       assert (t2 (f (S n)) = true) by (apply H0; try easy; try flia).
-      assert (cnttrue m t4 + 1 = cnttrue m t2). {
-        assert (cnttrue m t2 > 0) by (apply cnttrue_pos with (x := f (S n)); easy).
-        rewrite Heqt4. rewrite cnttrue_update_t. flia H14.
-        easy. easy.
+      assert (count t4 1 m + 1 = count t2 1 m). {
+        assert (count t2 1 m <> 0). 
+        { apply count_nonzero. exists (f (S n)). split; try lia. easy. }
+        rewrite Heqt4. rewrite count_update. flia H14.
+        lia. easy.
       }
       rewrite <- H14.
-      rewrite (IHn m t3 t4 f g). flia.
+      rewrite (IHn m t3 t4 f g). simpl. flia.
       * intros. apply H. flia H15.
         assert (x <> (g (S n))) by (intro; rewrite H17, Heqt3, update_index_eq in H16; easy).
         rewrite Heqt3, update_index_neq in H16. easy. flia H17.
@@ -3022,7 +2849,7 @@ Proof.
         assert (t1 x = true) by (rewrite Heqt3, update_index_neq in H17; try easy; try flia H20).
         assert (t1 y = true) by (rewrite Heqt3, update_index_neq in H18; try easy; try flia H21).
         apply H7. flia H15. flia H16. easy. easy. easy.
-    + rewrite (IHn m t1 t2 f g). flia.
+    + rewrite (IHn m t1 t2 f g). simpl. flia.
       * intros; apply H; try easy; try flia H8.
       * intros; apply H0; try easy; try flia H8.
       * intros. destruct (H1 a) as [x [Hx1 [Hx2 Hx3]]]. easy. easy.
@@ -3048,8 +2875,8 @@ Qed.
 Lemma qr_half :
   forall p k,
     k <> 0 -> prime p -> 2 < p ->
-    cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1) =
-    2 * cnttrue (p^k) (fun x => (Nat.gcd x (p^k) =? 1) && qr_dec_b x (p^k)).
+    count1 (fun x => Nat.gcd x (p^k) =? 1) (p^k) =
+      2 * count1 (fun x => (Nat.gcd x (p^k) =? 1) && qr_dec_b x (p^k)) (p^k).
 Proof.
   intros.
   remember (fun x => x ^ 2 mod (p^k)) as f.
@@ -3130,57 +2957,30 @@ Proof.
     + rewrite H7. rewrite Heqf. easy.
 Qed.
 
-Lemma cnttrue_upper_bound :
-  forall n f, cnttrue n f <= n.
-Proof.
-  induction n; intros. easy.
-  simpl. destruct (f (S n)); specialize (IHn f); lia.
-Qed.
-
-Lemma cnttrue_complement :
-  forall n f g, cnttrue n (fun i => f i && g i) + cnttrue n (fun i => f i && ¬ (g i)) = cnttrue n f.
-Proof.
-  intros. induction n. easy.
-  simpl. destruct (f (S n)); simpl; destruct (g (S n)); simpl; lia.
-Qed.
-
-Lemma cnttrue_indicate :
-  forall n f g,
-    (forall x, 0 < x <= n -> f x = true -> g x = true) ->
-    cnttrue n f <= cnttrue n g.
-Proof.
-  intros. induction n. easy.
-  assert (cnttrue n f <= cnttrue n g). {
-    apply IHn. intros. apply H. lia. easy.
-  }
-  simpl. destruct (f (S n)) eqn:Efsn. apply H in Efsn. 2: lia.
-  rewrite Efsn. lia.
-  destruct (g (S n)); lia.
-Qed.
-
 Lemma not_qr_half :
   forall p k,
     k <> 0 -> prime p -> 2 < p ->
-    cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1) =
-    2 * cnttrue (p^k) (fun x => (Nat.gcd x (p^k) =? 1) && ¬ (qr_dec_b x (p^k))).
+    count1 (fun x => Nat.gcd x (p^k) =? 1) (p^k) =
+      2 * count1 (fun x => (Nat.gcd x (p^k) =? 1) && ¬ (qr_dec_b x (p^k))) (p^k).
 Proof.
   intros.
-  assert (cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1) = 2 * cnttrue (p^k) (fun x => (Nat.gcd x (p^k) =? 1) && qr_dec_b x (p^k))) by (apply qr_half; easy).
-  assert (cnttrue (p ^ k) (fun x : nat => (Nat.gcd x (p ^ k) =? 1) && qr_dec_b x (p ^ k)) + cnttrue (p ^ k) (fun x : nat => (Nat.gcd x (p ^ k) =? 1) && ¬ (qr_dec_b x (p ^ k))) = cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1)) by apply cnttrue_complement.
+  assert (count1 (fun x => Nat.gcd x (p^k) =? 1) (p^k) = 2 * count1 (fun x => (Nat.gcd x (p^k) =? 1) && qr_dec_b x (p^k)) (p^k)) by (apply qr_half; easy).
+  assert (count1 (fun x : nat => (Nat.gcd x (p ^ k) =? 1) && qr_dec_b x (p ^ k)) (p^k) + count1 (fun x : nat => (Nat.gcd x (p ^ k) =? 1) && ¬ (qr_dec_b x (p ^ k))) (p^k) = count1 (fun x => Nat.gcd x (p^k) =? 1) (p^k)) by apply count_complement.
   lia.
 Qed.
 
 Lemma d2p_half :
   forall p k d,
     k <> 0 -> prime p -> 2 < p ->
-    cnttrue (p^k) (fun x => Nat.gcd x (p^k) =? 1) <= 2 * cnttrue (p^k) (fun x => (Nat.gcd x (p^k) =? 1) && ¬ (d2p (ord x (p^k)) =? d)).
+    count1 (fun x => Nat.gcd x (p^k) =? 1) (p^k) <= 
+      2 * count1 (fun x => (Nat.gcd x (p^k) =? 1) && ¬ (d2p (ord x (p^k)) =? d)) (p^k).
 Proof.
   intros.
   assert (2 < p ^ k) by (apply prime_power_lb; easy).
   assert (forall a b, a <= b -> 2 * a <= 2 * b) by (intros; lia).
   bdestruct (d =? d2p (φ (p ^ k))).
   - rewrite qr_half by easy. apply H3.
-    apply cnttrue_indicate. intros.
+    apply count_implies. intros.
     rewrite andb_true_iff in *. destruct H6.
     split; rewrite Nat.eqb_eq in *. easy.
     rewrite <- negb_false_iff, negb_involutive.
@@ -3199,7 +2999,7 @@ Proof.
     flia H9 H11.
     easy.
   - rewrite not_qr_half by easy. apply H3.
-    apply cnttrue_indicate. intros.
+    apply count_implies. intros.
     rewrite andb_true_iff in *. destruct H6.
     split; rewrite Nat.eqb_eq in *. easy.
     rewrite <- negb_false_iff, negb_involutive.
@@ -3217,13 +3017,14 @@ Lemma reduction_factor_order_finding_aux :
   forall p k q,
     k <> 0 -> prime p -> 2 < p -> 2 < q ->
     Nat.gcd (p ^ k) q = 1 ->
-    cnttrue (p^k * q) (fun a => Nat.gcd a (p^k * q) =? 1) <= 2 * cnttrue (p^k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && (((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)))  ||  ((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q))))).
+    count1 (fun a => Nat.gcd a (p^k * q) =? 1) (p^k * q) <= 
+      2 * count1 (fun a => (Nat.gcd a (p^k * q) =? 1) && (((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)))  ||  ((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q))))) (p^k * q).
 Proof.
   intros.
   assert (pk_lb : 2 < p ^ k) by (apply prime_power_lb; easy).
-  assert (cnttrue (p ^ k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && ¬ (d2p (ord (a mod p^k) (p^k)) =? d2p (ord (a mod q) q)))
-          <= cnttrue (p ^ k * q) (fun a => (Nat.gcd a (p^k * q) =? 1) && (((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)))  ||  ((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q)))))). {
-    apply cnttrue_indicate. intros a ? ?.
+  assert (count1 (fun a => (Nat.gcd a (p^k * q) =? 1) && ¬ (d2p (ord (a mod p^k) (p^k)) =? d2p (ord (a mod q) q))) (p^k * q) 
+          <= count1 (fun a => (Nat.gcd a (p^k * q) =? 1) && (((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)))  ||  ((Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q) <? p^k * q) && (1 <? Nat.gcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q))))) (p^k * q)). {
+    apply count_implies. intros a ? ?.
     rewrite andb_true_iff in H5. destruct H5.
     rewrite H5. simpl.
     rewrite negb_true_iff in H6.
@@ -3250,12 +3051,12 @@ Proof.
     rewrite Nat.gcd_comm in H9. flia H9 H11.
     rewrite Nat.gcd_comm in H9. flia H9 H10.
   }
-  assert (cnttrue (p ^ k * q) (fun a : nat => Nat.gcd a (p ^ k * q) =? 1)
-          <= 2 * cnttrue (p ^ k * q) (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ¬ (d2p (ord (a mod p ^ k) (p ^ k)) =? d2p (ord (a mod q) q)))). {
+  assert (count1 (fun a : nat => Nat.gcd a (p ^ k * q) =? 1) (p^k * q)
+          <= 2 * count1 (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ¬ (d2p (ord (a mod p ^ k) (p ^ k)) =? d2p (ord (a mod q) q))) (p^k * q)). {
     clear H4.
     assert (G0: Nat.gcd 0 (p ^ k * q) =? 1 = false) by (rewrite Nat.eqb_neq; rewrite Nat.gcd_0_l; flia H2 pk_lb).
     assert (G1: Nat.gcd (p ^ k * q) (p ^ k * q) =? 1 = false) by (rewrite Nat.eqb_neq; rewrite Nat.gcd_diag_nonneg; flia H2 pk_lb).
-    rewrite cnttrue_Nsum by easy. rewrite cnttrue_Nsum.
+    rewrite count1_Nsum by easy. rewrite count1_Nsum.
     2 : rewrite G0; tauto. 2 : rewrite G1; tauto.
     assert (T1 : forall x : nat, x < p ^ k * q -> true = true) by (intros; easy).
     assert (T2 : forall i j : nat, i < p ^ k -> j < q -> true = true -> exists x : nat, x < p ^ k * q /\ (x mod p ^ k, x mod q) = (i, j)). {
@@ -3307,16 +3108,17 @@ Proof.
       rewrite Nat.gcd_mul_mono_l. rewrite Nat.mul_comm.
       apply natmul1. flia pk_lb.
     }
-    rewrite <- cnttrue_Nsum by easy. rewrite <- cnttrue_Nsum by (try rewrite H5; try rewrite H6; easy).
+    rewrite <- count1_Nsum by easy. rewrite <- count1_Nsum by (try rewrite H5; try rewrite H6; easy).
     bdestruct (Nat.gcd x q =? 1).
-    - rewrite cnttrue_same with (g := fun a : nat => Nat.gcd a (p ^ k) =? 1) at 1.
+    - unfold count1.
+      rewrite count_eq with (g := fun a : nat => Nat.gcd a (p ^ k) =? 1) at 1.
       2:{ intros.
           bdestruct (Nat.gcd x0 (p ^ k) =? 1).
           rewrite Nat.eqb_eq. apply gcd_crt2; try easy; try flia pk_lb H2.
           rewrite Nat.eqb_neq. intro. rewrite gcd_crt2 in H10; try easy; try flia pk_lb H2.
       }
-      pattern cnttrue at 1.
-      rewrite cnttrue_same with (g := fun a : nat => (Nat.gcd a (p ^ k) =? 1) && ¬ (d2p (ord a (p ^ k)) =? (d2p (ord x q)))).
+      pattern count at 1.
+      rewrite count_eq with (g := fun a : nat => (Nat.gcd a (p ^ k) =? 1) && ¬ (d2p (ord a (p ^ k)) =? (d2p (ord x q)))).
       2:{ intros.
           assert (forall a b c, a = b -> a && c = b && c) by (intros a b c Hab; rewrite Hab; easy).
           apply H9.
@@ -3325,17 +3127,18 @@ Proof.
           rewrite Nat.eqb_neq. intro. rewrite gcd_crt2 in H11; try easy; try flia pk_lb H2.
       }
       apply d2p_half; easy.
-    - rewrite cnttrue_same with (g := fun _ => false) at 1.
+    - unfold count1.
+      rewrite count_eq with (g := fun _ => false) at 1.
       2:{ intros. rewrite Nat.eqb_neq. intro. rewrite gcd_crt2 in H9; try easy; try flia pk_lb H2.
       }
-      pattern cnttrue at 1.
-      rewrite cnttrue_same with (g := fun _ => false).
+      pattern count at 1.
+      rewrite count_eq with (g := fun _ => false).
       2:{ intros.
           assert (forall a b, a = false -> a && b = false) by (intros a b Ha; rewrite Ha; easy).
           apply H9.
           rewrite Nat.eqb_neq. intro. rewrite gcd_crt2 in H10; try easy; try flia pk_lb H2.
       }
-      rewrite cnttrue_allfalse. easy.
+      rewrite count_all_false. easy.
   }
   flia H4 H5.
 Qed.
@@ -3344,28 +3147,23 @@ Definition nontriv a N := (1 <? a) && (a <? N).
 
 Definition nontrivgcd a N := nontriv (Nat.gcd a N) N.
 
-Lemma cnttrue_true :
-  forall n, cnttrue n (fun a => true) = n.
-Proof.
-  induction n; intros; try rewrite IHi; try (simpl; lia).
-Qed.
-
-Lemma cnttrue_ltn :
-  forall n, 1 < n -> cnttrue n (fun a => nontrivgcd a n) + cnttrue n (fun a => Nat.gcd a n =? 1) = n - 1.
+Lemma count_ltn :
+  forall n, 1 < n -> 
+  count1 (fun a => nontrivgcd a n) n + count1 (fun a => Nat.gcd a n =? 1) n = n - 1.
 Proof.
   intros.
-  replace (n - 1) with (cnttrue n (fun a => a <? n)).
+  replace (n - 1) with (count1 (fun a => a <? n) n).
   2:{
     destruct n. easy.
-    simpl. rewrite Nat.ltb_irrefl.
-    replace (cnttrue n (fun a => a <? S n)) with (cnttrue n (fun a => true)).
-    rewrite cnttrue_true. lia.
-    apply cnttrue_same. intros.
+    unfold count1. simpl. rewrite Nat.ltb_irrefl.
+    replace (count (fun a => a <? S n) 1 n) with (count (fun a => true) 1 n).
+    rewrite count_all_true. simpl. lia.
+    apply count_eq. intros.
     symmetry. apply Nat.ltb_lt. lia.
   }
-  replace (cnttrue n (fun a : nat => a <? n)) with (cnttrue n (fun a : nat => (a <? n) && (Nat.gcd a n =? 1)) + cnttrue n (fun a : nat => (a <? n) && ¬ (Nat.gcd a n =? 1))) by apply cnttrue_complement.
+  replace (count1 (fun a : nat => a <? n) n) with (count1 (fun a : nat => (a <? n) && (Nat.gcd a n =? 1)) n + count1 (fun a : nat => (a <? n) && ¬ (Nat.gcd a n =? 1)) n) by apply count_complement.
   assert (forall n1 n2 n3 n4, n1 = n3 -> n2 = n4 -> n1 + n2 = n4 + n3) by (intros; lia).
-  apply H0; apply cnttrue_same; unfold nontrivgcd, nontriv; intros.
+  apply H0; apply count_eq; unfold nontrivgcd, nontriv; intros.
   - bdestruct (x =? n).
     + subst. rewrite Nat.gcd_diag, Nat.ltb_irrefl. btauto.
     + bdestruct (Nat.gcd x n =? 1).
@@ -3382,33 +3180,25 @@ Proof.
     replace x with n by lia.
     rewrite Nat.gcd_diag. bdestruct (n =? 1); lia.
 Qed.
-
-Lemma cnttrue_orb :
-  forall n f g,
-    cnttrue n (fun a => f a || g a) = cnttrue n (fun a => f a) + cnttrue n (fun a => ¬ (f a) && g a).
-Proof.
-  intros.
-  replace (cnttrue n (fun a => f a || g a)) with (cnttrue n (fun a => (f a || g a) && (f a)) + cnttrue n (fun a => (f a || g a) && (¬ (f a)))) by apply cnttrue_complement.
-  assert (forall n1 n2 n3 n4, n1 = n3 -> n2 = n4 -> n1 + n2 = n3 + n4) by (intros; lia).
-  apply H; apply cnttrue_same; intros; try btauto.
-Qed.
     
 Lemma reduction_factor_order_finding :
   forall p k q,
     k <> 0 -> prime p -> 2 < p -> 2 < q ->
     Nat.gcd (p ^ k) q = 1 ->
-    (p^k * q) - 1 <= 2 * cnttrue (p^k * q - 1) (fun a => (nontrivgcd a (p^k * q)) || ((nontrivgcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)) || nontrivgcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q))).
+    (p^k * q) - 1 <= 2 * count1 (fun a => (nontrivgcd a (p^k * q)) || ((nontrivgcd (a ^ ((ord a (p^k * q)) / 2) - 1) (p^k * q)) || nontrivgcd (a ^ ((ord a (p^k * q)) / 2) + 1) (p^k * q))) (p^k * q - 1).
 Proof.
   intros.
   assert (p ^ k > 0) by (apply pow_positive; lia).
-  rewrite cnttrue_orb. rewrite <- cnttrue_ltn at 1 by lia.
+  unfold count1.
+  rewrite count_orb. rewrite <- count_ltn at 1 by lia.
   specialize (reduction_factor_order_finding_aux p k q H H0 H1 H2 H3) as G.
-  assert (cnttrue (p ^ k * q) (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ((Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q)) || (Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)))) = cnttrue (p ^ k * q - 1) (fun a : nat => ¬ (nontrivgcd a (p ^ k * q)) && (nontrivgcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) || nontrivgcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)))).
+  assert (count1 (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ((Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q)) || (Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)))) (p^k * q) = count1 (fun a : nat => ¬ (nontrivgcd a (p ^ k * q)) && (nontrivgcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) || nontrivgcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q))) (p^k * q - 1)).
   { replace (p^k * q) with (S (p^k * q - 1)) at 1 by lia.
-    rewrite cnttrue_extend.
+    unfold count1. rewrite count_extend.
+    simpl Nat.add. 
     replace (S (p^k * q - 1)) with (p^k * q) by lia.
     rewrite Nat.gcd_diag. bdestruct (p^k * q =? 1); try lia.
-    simpl. apply cnttrue_same. intros.
+    simpl. apply count_eq. intros.
     assert (¬ (nontrivgcd x (p^k * q)) = (Nat.gcd x (p^k * q) =? 1)).
     { unfold nontrivgcd, nontriv.
       bdestruct (Nat.gcd x (p^k * q) =? 1). rewrite H7, Nat.ltb_irrefl. btauto.
@@ -3419,50 +3209,24 @@ Proof.
     }
     rewrite H7. unfold nontrivgcd, nontriv. btauto.
   }
-  replace (cnttrue (p ^ k * q) (fun a : nat => nontrivgcd a (p ^ k * q))) with (cnttrue (p ^ k * q - 1) (fun a : nat => nontrivgcd a (p ^ k * q))). lia.
+  rewrite H5 in G. clear H5.
+  unfold count1 in *.
+  replace (count (fun a : nat => nontrivgcd a (p^k * q)) 1 (p^k * q)) with (count (fun a : nat => nontrivgcd a (p^k * q)) 1 (p^k * q - 1)). lia.
   replace (p^k * q) with (S (p^k * q - 1)) at 2 by lia.
-  rewrite cnttrue_extend. replace (S (p^k * q - 1)) with (p^k * q) by lia.
-  unfold nontrivgcd, nontriv. rewrite Nat.gcd_diag, Nat.ltb_irrefl, andb_false_r. easy.
+  rewrite count_extend. simpl Nat.add.
+  replace (S (p^k * q - 1)) with (p^k * q) by lia.
+  unfold nontrivgcd, nontriv. 
+  rewrite Nat.gcd_diag, Nat.ltb_irrefl, andb_false_r. easy.
 Qed.
 
 Local Transparent Nat.div.
 
-(* ============================================= *)
-(* =   Additional lemmas on Vsum, C and Csum   = *)
-(* ============================================= *)
-(*
-   Some of the proofs in this section should be distributed
-   to the related files.
-*)
+(* ========================================== *)
+(* =   Additional lemmas about Rsum, Csum   = *)
+(* ========================================== *)
+(* TODO: maybe move to QuantumLib *)
 
 Local Open Scope R_scope.
-Lemma Cpow_add :
-  forall (c : C) (n m : nat),
-    (c ^ (n + m) = c^n * c^m)%C.
-Proof.
-  intros. induction n. simpl. lca.
-  simpl. rewrite IHn. lca.
-Qed.
-
-Lemma Cpow_mult :
-  forall (c : C) (n m : nat),
-    (c ^ (n * m) = (c ^ n) ^ m)%C.
-Proof.
-  intros. induction m. rewrite Nat.mul_0_r. easy.
-  replace (n * (S m))%nat with (n * m + n)%nat by lia. simpl. rewrite Cpow_add. rewrite IHm. lca.
-Qed.
-
-Lemma RtoC_Rsum_Csum :
-  forall n (f : nat -> R),
-    fst (Csum f n) = Rsum n f.
-Proof.
-  intros. induction n.
-  - easy.
-  - simpl. rewrite IHn. destruct n.
-    + simpl. lra.
-    + rewrite tech5. simpl. easy.
-Qed.
-
 Lemma Csum_fst_distr :
   forall n (f : nat -> C),
     fst (Csum f n) = Rsum n (fun i => fst (f i)).
@@ -3479,8 +3243,7 @@ Lemma Rsum_geq :
 Proof.
   intros. induction n. simpl. lra.
   assert (Rsum n f >= n * A).
-  { apply IHn. intros. apply H. lia.
-  }
+  { apply IHn. intros. apply H. lia. }
   rewrite Rsum_extend. replace (S n * A) with (A + n * A).
   apply Rplus_ge_compat.
   apply H; lia. assumption.
@@ -3491,18 +3254,14 @@ Lemma Rsum_geq_0 :
   forall n (f : nat -> R),
     (forall (i : nat), (i < n)%nat -> f i >= 0) ->
     Rsum n f >= 0.
-Proof.
-  intros. specialize (Rsum_geq n f 0 H) as G. lra.
-Qed.
+Proof. intros. specialize (Rsum_geq n f 0 H) as G. lra. Qed.
 
 Lemma Rsum_nonneg_Rsum_zero :
   forall n (f : nat -> R),
     (forall (i : nat), (i < n)%nat -> f i >= 0) ->
     Rsum n f <= 0 ->
     Rsum n f = 0.
-Proof.
-  intros. specialize (Rsum_geq_0 n f H) as G. lra.
-Qed.
+Proof. intros. specialize (Rsum_geq_0 n f H) as G. lra. Qed.
 
 Lemma Rsum_nonneg_f_zero :
   forall n (f : nat -> R),
@@ -3541,27 +3300,19 @@ Proof.
   intros. apply H0 in H1. specialize (Rsqr_0_uniq (Cmod (f i))) as G. rewrite Rsqr_pow2 in G. apply G in H1. apply Cmod_eq_0. easy.
 Qed.
 
-Lemma Cmod_sqr_fst :
-  forall c : C,
-    Cmod c ^ 2 = fst (c^* * c)%C.
+Lemma Cmod_sqr_fst : forall c : C, Cmod c ^ 2 = fst (c^* * c)%C.
 Proof.
-  intros. specialize (Cmod_sqr c) as G. rewrite RtoC_pow in G. unfold RtoC in G. rewrite surjective_pairing in G. apply pair_equal_spec in G. destruct G as [G _]. easy.
+  intros.
+  specialize (Cmod_sqr c) as G. 
+  rewrite RtoC_pow in G. 
+  unfold RtoC in G. 
+  rewrite surjective_pairing in G. 
+  apply pair_equal_spec in G. 
+  destruct G as [G _]. easy.
 Qed.
 
-Lemma Cmod_R_geq_0 :
-  forall r,
-    r >= 0 ->
-    Cmod r = r.
-Proof.
-  intros. unfold Cmod. simpl. replace (r * (r * 1) + 0 * (0 * 1)) with (r * r) by nra. apply sqrt_square. lra.
-Qed.
-
-Lemma Cconj_minus_distr :
-  forall c1 c2 : C,
-    ((c1 - c2)^* = c1^* - c2^* )%C.
-Proof.
-  intros. lca.
-Qed.
+Lemma Cmod_R_geq_0 : forall r, r >= 0 -> Cmod r = r.
+Proof. intros. rewrite Cmod_R. apply Rabs_right. auto. Qed.
 
 Lemma Cplx_norm_decomp :
   forall n (u v : nat -> C),
@@ -3771,10 +3522,10 @@ Proof.
   intros. rewrite ϕ_φ_equal by lia. apply φ_lower_bound. easy.
 Qed.
 
+
 (* ============================== *)
 (* = Continued Fraction Results = *)
 (* ============================== *)
-
 
 Local Open Scope nat_scope.
 
@@ -4835,7 +4586,6 @@ Proof.
     specialize (CF_finite_aux k a b H H1) as G. lia.
 Qed.
 
-
 Local Close Scope nat_scope.
 Local Open Scope Z_scope.
 
@@ -5207,7 +4957,7 @@ Proof.
       assert (Hqn'' : (CFq i a b > 0)%nat) by (apply CFq_pos; lia). assert (Hqn' : (1 <= CFq i a b)%nat) by lia. apply le_INR in Hqn'. simpl in Hqn'. clear Hqn''.
       rewrite Rabs_extract with (x := a / b) in U by lra.
       assert (Hil : forall x : nat, (x < i -> nthcfexp x a b <> 0)%nat) by (intros; apply Hl; lia).
-      assert (Hq' : q <> 0%nat) by lia.
+      assert (Hq' : q <> O) by lia.
       specialize (CF_distance_bound i a b p q Hab Hil Hcfi Hq') as U'.
       clear Hq'. assert (Hq' : (1 <= q)%nat) by lia. apply le_INR in Hq'. simpl in Hq'.
       replace (Rabs (a / b * q - p)) with (q * (/q * Rabs (a / b * q - p))) in U' by (field; lra).
@@ -5233,7 +4983,7 @@ Proof.
     assert (Hqn' : (CFq i a b > 0)%nat) by (apply CFq_pos; lia).
     assert (Hqnq : (0 < CFq i a b <= q)%nat) by lia.
     specialize (ClosestFracUnique_CF (CFp i a b) (CFq i a b) p q Hqnq G) as F.
-    assert (Hil : forall x : nat, (S x < i)%nat -> nthcfexp x a b <> 0%nat) by (intros; apply Hl; lia).
+    assert (Hil : forall x : nat, (S x < i)%nat -> nthcfexp x a b <> O) by (intros; apply Hl; lia).
     assert (Hcfpq : rel_prime (CFp i a b) (CFq i a b)) by (apply CF_coprime; easy).
     assert (HINZ : Z.of_nat (CFp i a b) = Z.of_nat p /\ Z.of_nat (CFq i a b) = Z.of_nat q) by (apply rel_prime_cross_prod; try easy; try lia).
     destruct HINZ as [_ HINZ]. apply Nat2Z.inj_iff. easy.
@@ -5268,5 +5018,3 @@ Proof.
   rewrite G.
   simpl. replace (n + 1)%nat with (S n) by lia. assumption.
 Qed.
-
-

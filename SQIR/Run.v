@@ -2,14 +2,31 @@ Require Import UnitarySem.
 Require Import VectorStates.
 
 Definition Cmod2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
+
 Lemma Cmod2_ge_0 : forall c, 0 <= Cmod2 c.
-Proof. intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_0. Qed.
+Proof. 
+  intros. simpl. field_simplify. apply Rplus_le_le_0_compat; apply pow2_ge_0.
+Qed.
+
+Lemma Cmod2_Cmod_sqr : forall c, (Cmod2 c = (Cmod c)^2)%R.
+Proof.
+  intros. unfold Cmod2, Cmod. rewrite R_sqrt.pow2_sqrt. lra.
+  simpl. nra.
+Qed.
+
+
+(* ============================================ *)
+(**   Definition of probability distribution   **)
+(* ============================================ *)
 
 (* We will represent a (discrete) probability distribution over [0,n) 
    using a length n list of real numbers. We support sampling from this
    distribution using the 'sample' function below. *)
 
 Definition sum_over_list (l : list R) := Rsum (length l) (fun i => nth i l 0).
+
+Definition distribution (l : list R) := 
+  Forall (fun x => 0 <= x) l /\ sum_over_list l = 1.
 
 Lemma sum_over_list_cons : forall x l,
   sum_over_list (x :: l) = (x + sum_over_list l)%R.
@@ -34,8 +51,20 @@ Proof.
   lra.
 Qed.
 
-Definition distribution (l : list R) := 
-  Forall (fun x => 0 <= x) l /\ sum_over_list l = 1.
+Lemma sum_over_list_geq_0 : forall l,
+  Forall (fun x => 0 <= x) l ->
+  0 <= sum_over_list l.
+Proof.
+  induction l; intros.
+  - unfold sum_over_list. simpl. lra.
+  - inversion H; subst. specialize (IHl H3).
+    rewrite sum_over_list_cons. lra.
+Qed.
+
+
+(* ================================ *)
+(**   Sample from a distribution   **)
+(* ================================ *)
 
 (* Choose an element from the distribution based on random number r ∈ [0,1).
    
@@ -54,6 +83,75 @@ Fixpoint sample (l : list R) (r : R) : nat :=
   | nil    => 0 (* error case *)
   | x :: l' => if Rlt_le_dec r x then 0 else S (sample l' (r-x))
   end.
+
+Lemma sample_ub : forall l r, (sample l r <= length l)%nat.
+Proof.
+  induction l; intros. easy.
+  simpl. specialize (IHl (r - a)%R). destruct (Rlt_le_dec r a); lia.
+Qed.
+
+Lemma sample_ub_lt :  forall l r, 
+  0 <= r < sum_over_list l -> 
+  (sample l r < length l)%nat.
+Proof.
+  induction l; intros. unfold sum_over_list in H. simpl in H. lra.
+  simpl. destruct (Rlt_le_dec r a). lia.
+  apply lt_n_S. apply IHl. rewrite sum_over_list_cons in H. lra.
+Qed.
+
+Lemma sample_lb : forall l r, (0 <= sample l r)%nat.
+Proof.
+  induction l; intros. easy.
+  simpl. specialize (IHl (r - a)%R). destruct (Rlt_le_dec r a); lia.
+Qed.
+
+Lemma sample_max : forall l r,
+    Forall (fun x => 0 <= x) l ->
+    sum_over_list l <= r ->
+    sample l r = length l.
+Proof.
+  induction l; intros. easy.
+  simpl. rewrite sum_over_list_cons in H0.
+  inversion H; subst.
+  specialize (sum_over_list_geq_0 l H4) as G.
+  assert (sum_over_list l <= r - a)%R by lra.
+  specialize (IHl (r - a)%R H4 H1) as T. rewrite T.
+  destruct (Rlt_le_dec r a). lra. lia.
+Qed.
+
+Lemma sample_append : forall l1 l2 r,
+    Forall (fun x => 0 <= x) l1 ->
+    Forall (fun x => 0 <= x) l2 ->
+    sum_over_list l1 <= r ->
+    (sample (l1 ++ l2) r = (length l1) + sample l2 (r - sum_over_list l1))%nat.
+Proof.
+  induction l1; intros.
+  - simpl. f_equal. unfold sum_over_list. simpl. lra.
+  - inversion H; subst.
+    specialize (sum_over_list_geq_0 l1 H5) as G.
+    rewrite sum_over_list_cons in *.
+    simpl.
+    destruct (Rlt_le_dec r a); try lra.
+    f_equal. rewrite IHl1; try easy; try lra.
+    f_equal. f_equal. lra.
+Qed.
+
+Lemma sample_repeat_lb : forall m l r,
+    0 <= r ->
+    (m <= sample (repeat 0%R m ++ l) r)%nat.
+Proof.
+  induction m; intros.
+  lia. simpl.
+  destruct (Rlt_le_dec r 0). lra.
+  specialize (IHm l r H).
+  replace (r - 0)%R with r by lra.
+  lia.
+Qed.
+
+
+(* ======================================================================== *)
+(** Probability that a distribution satisfies a predicate (pr_outcome_sum) **)
+(* ======================================================================== *)
 
 (* Intuitively, the probability that an element satisfies boolean predicate 
    f is the sum over all element for which f holds. *)
@@ -112,7 +210,7 @@ Qed.
 
 Definition pr_outcome_sum_extend' :
   forall l f a,
-    (pr_outcome_sum (a :: l) f = (if (f 0%nat) then a else 0) + pr_outcome_sum l (fun i => f (S i)))%R.
+    (pr_outcome_sum (a :: l) f = (if (f O) then a else 0) + pr_outcome_sum l (fun i => f (S i)))%R.
 Proof.
   intros.
   rewrite pr_outcome_sum_extend.
@@ -121,7 +219,7 @@ Proof.
 Qed.    
 
 Lemma pr_outcome_sum_replace_f : forall l f1 f2,
-  (forall x, (x < length l )%nat-> f1 x = f2 x) ->
+  (forall x, (x < length l)%nat -> f1 x = f2 x) ->
   pr_outcome_sum l f1 = pr_outcome_sum l f2.
 Proof.
   intros l f1 f2 H.
@@ -218,6 +316,24 @@ Proof.
   auto.
 Qed.
 
+Lemma pr_outcome_sum_ge_0 :
+  forall l f, Forall (fun x => 0 <= x) l -> 0 <= pr_outcome_sum l f.
+Proof.
+  induction l; intros.
+  - unfold pr_outcome_sum. simpl. lra.
+  - inversion H; subst. unfold pr_outcome_sum.
+    replace (length (a :: l)) with (S (length l)) by easy.
+    rewrite Rsum_shift. simpl.
+    specialize (IHl (fun x => f (S x)) H3).
+    unfold pr_outcome_sum in IHl.
+    destruct (f O); lra.
+Qed.
+
+
+(* ================================================================== *)
+(**   Probability that a distribution satisfies a predicate (pr_P)   **)
+(* ================================================================== *)
+
 (* Mathematically, the probability that an element satisifes a (not necessarily
    boolean) predicate is the size of the range of r-values for which the element
    returned from "sample" satisfies the predicate. *)
@@ -287,8 +403,7 @@ Lemma interval_sum_break :
   forall P rl rm rr r,    
     interval_sum P rl rr r ->
     rl <= rm <= rr ->
-    exists r1 r2 : R, interval_sum P rl rm r1 /\ interval_sum P rm rr r2 /\
-                 (r = r1 + r2)%R.
+    exists r1 r2 : R, interval_sum P rl rm r1 /\ interval_sum P rm rr r2 /\ (r = r1 + r2)%R.
 Proof.
   intros.
   induction H.
@@ -328,7 +443,8 @@ Proof.
       repeat split; auto; try lra.
       apply CombineIntervals with rm0; auto; lra.
 Qed.
-      
+
+(* TODO: clean up this proof *)      
 Lemma interval_sum_unique : forall P rl rr r1 r2,
     interval_sum P rl rr r1 ->
     interval_sum P rl rr r2 ->
@@ -499,123 +615,33 @@ Qed.
 (* Mathematical measure of P on the interval (0,1) *) 
 Definition pr_P P r := interval_sum P 0%R 1%R r.
 
-(* Given our definition of sample, we can define a function to "run" a 
-   quantum program and return the result of measuring all qubits.
-
-   rnd is a random input in [0,1]. *)
-Definition run {dim} (c : base_ucom dim) : list R :=
-  let v := (uc_eval c) × basis_vector (2^dim) 0 in
-  map Cmod2 (vec_to_list v).
-Definition run_and_measure {dim} (c : base_ucom dim) (rnd : R) : nat :=
-  sample (run c) rnd.
-
-(* The pr_outcome_sum and pr_P definitions of probability are consistent. *)
-
-Lemma Rsum_gt_f0 : forall f k,
-  (forall n, 0 <= f n)  ->  
-  f O <= sum_f_R0 f k.
+Lemma pr_P_same :
+  forall P1 P2 r,
+    (forall rnd, 0 <= rnd <= 1 -> P1 rnd <-> P2 rnd) ->
+    pr_P P1 r ->
+    pr_P P2 r.
 Proof.
-  intros.
-  induction k.
-  - simpl. lra.
-  - simpl. specialize (H (S k)). lra.
+  unfold pr_P. intros.
+  apply interval_sum_same with (P1 := P1); assumption.
 Qed.
 
-Lemma Rsum_list_extend :
-  forall l a x,
-    (Rsum (length (a :: l)) (fun i => nth i (a :: l) x) = a + Rsum (length l) (fun i => nth i l x))%R.
-Proof.
-  intros. simpl.
-  destruct (length l) eqn:E.
-  - simpl. lra.
-  - rewrite decomp_sum by lia. easy.
-Qed.
-
-Lemma Rsum_list_geq_0 :
-  forall l,
-    Forall (fun x => 0 <= x) l ->
-    0 <= Rsum (length l) (fun i => nth i l 0).
-Proof.
-  induction l; intros.
-  - simpl. lra.
-  - inversion H; subst. specialize (IHl H3).
-    rewrite Rsum_list_extend. lra.
-Qed.
-
-
-(* This should be one case for the below lemma *)
-Lemma single_interval_size : forall k l r,
-    (k < length l)%nat ->
-    Forall (fun x => 0 <= x) l ->
-    Rsum (length l) (fun i => nth i l 0) = r ->
-    interval_sum (fun rnd => sample l rnd = k) 0 r (nth k l 0).
-Proof.
-  intros.
-  gen k r.
-  induction l; intros; simpl in H; try lia.
-  inversion H0; subst.
-  destruct k; simpl.
-  - replace a with (a-0)%R by lra.
-    econstructor; intros; try lra. 
-    + split; [lra|]. clear -H4 H5. (* RNR: could just use lemma above, but requires a bit of massaging *)
-      induction (length l).
-      simpl. lra.
-      simpl.
-      bdestruct (n <? length l)%nat.
-      eapply Forall_nth with (i:=n) (d:=0) in H5. lra. easy.
-      rewrite nth_overflow by lia.
-      lra.
-    + destruct (Rlt_le_dec r (a - 0)); try lra. easy.
-    + destruct (Rlt_le_dec r (a - 0)); try lra. easy.
-  - apply lt_S_n in H.
-    replace (sum_f_R0 (fun i : nat => match i with
-                                 | 0%nat => a
-                                 | S m => nth m l 0
-                                 end) (length l)) with (Rsum (length (a :: l)) (fun i : nat => nth i (a :: l) 0)) by easy.
-    remember (Rsum (length (a :: l)) (fun i : nat => nth i (a :: l) 0)) as r.
-    assert (Rsum (length l) (fun i : nat => nth i l 0) = r - a)%R.
-    { rewrite Rsum_list_extend in Heqr. lra.
-    }
-    specialize (IHl H5 k H (r - a)%R H1).
-    replace (nth k l 0) with (0 + (nth k l 0))%R by lra.
-    assert (0 <= r - a).
-    { rewrite <- H1. apply Rsum_list_geq_0. easy.
-    }
-    apply CombineIntervals with (rm := a); try lra.
-    * replace 0%R with (0 - 0)%R by lra.
-      constructor; intros; try lra.
-      ** destruct (Rlt_le_dec r0 a). lia. lra.
-    * remember (fun rnd => (sample l rnd) = k) as P.
-      remember (fun x => P (x - a)%R) as P'.
-      apply interval_sum_same with (P1 := P').
-      ** replace a with (0 + a)%R by lra.
-         replace r with ((r - a) + a)%R by lra.
-         rewrite HeqP'. apply interval_sum_shift with (a := a).
-         easy.
-      ** intros. rewrite HeqP'. split.
-         *** intros. rewrite HeqP in H6.
-             destruct (Rlt_le_dec x a); try lra. lia.
-         *** intros. destruct (Rlt_le_dec x a); try lra.
-             rewrite HeqP. lia.
-Qed.
-
-(* RNR: Rather than length <> 0, I'd use that all entries of l are > 0, and (if needed) that they sum to 1 or some r (like above). *) 
 Lemma pr_outcome_sum_eq_aux' : forall (l : list R) (f : nat -> bool) r,
     Forall (fun x => 0 <= x) l ->
-    Rsum (length l) (fun i => nth i l 0) = r ->
+    sum_over_list l = r ->
     interval_sum  (fun rnd => f (sample l rnd) = true) 0 r (pr_outcome_sum l f).
 Proof.
   induction l; intros.
-  - simpl in *. subst. unfold pr_outcome_sum. simpl.
+  - unfold sum_over_list in *.
+    simpl in *. subst. unfold pr_outcome_sum. simpl.
     replace 0 with (0 - 0)%R by lra. constructor; try intros; try lra.
-  - rewrite Rsum_list_extend in H0.
+  - rewrite sum_over_list_cons in H0.
     remember (fun i => f (S i)) as sf.
     assert (interval_sum (fun rnd : R => sf (sample l rnd) = true) 0 (r - a)%R (pr_outcome_sum l sf)).
     { apply IHl. inversion H; easy. lra.
     }
     rewrite pr_outcome_sum_extend'.
-    assert (interval_sum (fun rnd : R => f (sample (a :: l) rnd) = true) 0 a (if f 0%nat then a else 0)).
-    { destruct (f 0%nat) eqn:E.
+    assert (interval_sum (fun rnd : R => f (sample (a :: l) rnd) = true) 0 a (if f O then a else 0)).
+    { destruct (f O) eqn:E.
       - replace a with (a - 0)%R by lra.
         constructor;
           try (inversion H; lra);
@@ -638,16 +664,29 @@ Proof.
     rewrite Heqsf in H3.
     apply CombineIntervals with (rm := a); try easy.
     inversion H.
-    assert (0 <= Rsum (length l) (fun i : nat => nth i l 0)) by (apply Rsum_list_geq_0; easy).
+    assert (0 <= sum_over_list l) by (apply sum_over_list_geq_0; easy).
     lra.
 Qed.
 
+(* The pr_outcome_sum and pr_P definitions of probability are consistent. *)
 Lemma pr_outcome_sum_eq_aux : forall (l : list R) (f : nat -> bool),
     distribution l ->
     pr_P (fun rnd => f (sample l rnd) = true) (pr_outcome_sum l f).
 Proof.
   intros. destruct H as [H H0]. unfold pr_P.
   apply pr_outcome_sum_eq_aux'; easy.
+Qed.
+
+Lemma pr_outcome_sum_leq_exists : forall l f r,
+  distribution l ->
+  pr_outcome_sum l f <= r ->
+  exists r0, (0 <= r0 <= r)%R /\ pr_P (fun rnd => f (sample l rnd) = true) r0.
+Proof.
+  intros l f r  HlHr.
+  exists (pr_outcome_sum l f).
+  split; auto.
+  split. apply pr_outcome_sum_ge_0. apply HlHr. auto.
+  apply pr_outcome_sum_eq_aux; auto.
 Qed.
 
 Lemma pr_P_unique : forall P r1 r2,
@@ -673,7 +712,161 @@ Proof.
     easy.
 Qed.
 
-(** Joint distributions **)
+
+(* ======================================================= *)
+(**   Distribution created by running a quantum circuit   **)
+(* ======================================================= *)
+
+(* Given our definition of sample, we can define a function to "run" a 
+   quantum program and return the result of measuring all qubits.
+
+   rnd is a random input in [0,1]. *)
+Definition run {dim} (c : base_ucom dim) : list R :=
+  let v := (uc_eval c) × basis_vector (2^dim) 0 in
+  map Cmod2 (vec_to_list v).
+
+Definition run_and_measure {dim} (c : base_ucom dim) (rnd : R) : nat :=
+  sample (run c) rnd.
+
+Lemma pos_Cmod2_list :
+  forall l, Forall (fun x => 0 <= x) (map Cmod2 l).
+Proof.
+  induction l; intros.
+  - simpl. constructor.
+  - simpl. constructor. apply Cmod2_ge_0. apply IHl.
+Qed.
+
+Local Opaque Rsum.
+Lemma sum_over_list_Cmod2_vec_to_list' : forall d x l,
+  sum_over_list (map Cmod2 (@vec_to_list' x d l)) = 
+    Rsum d (fun i : nat => (Cmod (l (i + x - d)%nat O) ^ 2)%R).
+Proof.
+  induction d; intros.
+  - unfold sum_over_list. reflexivity.
+  - simpl. rewrite sum_over_list_cons. rewrite IHd. simpl.
+    rewrite Rsum_shift.
+    replace (0 + x - S d)%nat with (x - S d)%nat by lia.
+    rewrite Cmod2_Cmod_sqr. simpl.
+    f_equal.
+Qed.
+Local Transparent Rsum.
+
+Lemma sum_over_list_Cmod2_vec_to_list :
+  forall d (l : Vector d),
+    sum_over_list (map Cmod2 (vec_to_list l)) = 
+      Rsum d (fun i : nat => (Cmod (l i O) ^ 2)%R).
+Proof.
+  intros. unfold vec_to_list.
+  rewrite sum_over_list_Cmod2_vec_to_list'.
+  apply Rsum_eq_bounded. intros.
+  replace (i + d - d)%nat with i by lia.
+  reflexivity.
+Qed.
+
+Lemma distribution_run : forall {dim} c,
+    uc_well_typed c ->
+    distribution (@run dim c).
+Proof.
+  intros. unfold run. split.
+  - apply pos_Cmod2_list.
+  - rewrite sum_over_list_Cmod2_vec_to_list.
+    rewrite <- rewrite_norm. rewrite Mmult_adjoint.
+    rewrite <- Mmult_assoc. 
+    rewrite Mmult_assoc with (A := (basis_vector (2 ^ dim) 0) †).
+    specialize (uc_eval_unitary dim c H) as G.
+    destruct G. rewrite H1.
+    restore_dims. rewrite Mmult_1_r.
+    rewrite basis_vector_product_eq. reflexivity.
+    apply pow_positive. lia.
+    apply WF_adjoint. apply basis_vector_WF.
+    apply pow_positive. lia.
+Qed.
+
+Lemma length_run : forall n (c : base_ucom n),
+  length (run c) = (2 ^ n)%nat. 
+Proof.
+  intros n c.
+  unfold run.
+  rewrite map_length.
+  rewrite vec_to_list_length.
+  reflexivity.
+Qed.
+
+
+(* ========================== *)
+(**   Uniform distribution   **)
+(* ========================== *)
+
+(* Uniform sampling in the range [lower, upper) *)
+Definition uniform (lower upper : nat) : list R :=
+  repeat 0 lower ++ repeat (1/ INR (upper - lower))%R (upper - lower).
+
+Lemma repeat_gt0 : forall m r, 0 <= r -> Forall (fun x => 0 <= x) (repeat r m).
+Proof.
+  induction m; intros. simpl. constructor.
+  simpl. constructor. easy. apply IHm. easy.
+Qed.
+
+Lemma sum_over_list_repeat : forall m x, (sum_over_list (repeat x m) = INR m * x)%R.
+Proof.
+  induction m; intros.
+  - simpl. unfold sum_over_list. simpl. lra.
+  - simpl. rewrite sum_over_list_cons. rewrite IHm.
+    destruct m; simpl; lra.
+Qed.
+
+Lemma sample_uniform : forall l u r, 
+  (l < u)%nat -> 0 <= r < 1 -> (l <= sample (uniform l u) r < u)%nat.
+Proof.
+  intros. split.
+  - unfold uniform. apply sample_repeat_lb. easy.
+  - unfold uniform. rewrite sample_append. rewrite repeat_length.
+    assert (T: (forall a b c, a < c -> b < c - a -> a + b < c)%nat) by (intros; lia).
+    apply T. easy.
+    replace (u - l)%nat 
+      with (length (repeat (1 / INR (u - l))%R (u - l))) at 3 by apply repeat_length.
+    apply sample_ub_lt.
+    replace l with (length (repeat 0 l)) at 1 2 by apply repeat_length.
+    repeat rewrite sum_over_list_repeat.
+    replace (INR (u - l) * (1 / INR (u - l)))%R 
+      with (INR (u - l) * / INR (u - l))%R by lra.
+    rewrite Rinv_r. lra.
+    apply not_0_INR. lia.
+    apply repeat_gt0; lra.
+    apply repeat_gt0. unfold Rdiv. rewrite Rmult_1_l.
+    apply Rlt_le. apply Rinv_0_lt_compat. apply lt_0_INR. lia.
+    rewrite sum_over_list_repeat. lra.
+Qed.
+
+Lemma distribution_uniform : forall l r,
+  (l < r)%nat ->
+  distribution (uniform l r).
+Proof.
+  intros. split; unfold uniform.
+  - apply Forall_app. split; apply repeat_gt0. lra.
+    unfold Rdiv.
+    assert (0 < / INR (r - l)).
+    { apply Rinv_0_lt_compat. apply lt_0_INR. lia. }
+    lra.
+  - rewrite sum_over_list_append.
+    do 2 rewrite sum_over_list_repeat.
+    unfold Rdiv.
+    replace (INR l * 0 + INR (r - l) * (1 * / INR (r - l)))%R 
+      with (INR (r - l) * / INR (r - l))%R by lra.
+    rewrite <- Rinv_r_sym. easy.
+    assert (0 < INR (r - l)) by (apply lt_0_INR; lia).
+    lra.
+Qed.
+
+Lemma length_uniform : forall l r, (l <= r)%nat -> (length (uniform l r) = r)%nat.
+Proof.
+  intros. unfold uniform. rewrite app_length, repeat_length, repeat_length. lia.
+Qed.
+
+
+(* ======================== *)
+(**   Joint distribution   **)
+(* ======================== *)
 
 Fixpoint scale r l :=
   match l with
@@ -689,20 +882,17 @@ Fixpoint join' l1 l2 n :=
   end.
 Definition join l1 l2 := join' l1 l2 (length l1).
 
-(* Return the first k bits of an n-bit nat x as a nat. *)
-Definition first_k k n x := (x / 2 ^ (n - k))%nat.
+(* When sampling from (join l1 l2) where |l1|=n and |l2|=m, 
+   you can use the following functions to extract the result. *)
+ Definition fst_join (m x : nat) := (x / m)%nat.
+ Definition snd_join (m x : nat) := (x mod m)%nat.
 
-(* Return the last k bits of an n-bit nat x as a nat. *)
-Definition last_k k n x := (x - (first_k (n - k) n x * 2 ^ k))%nat.
-
-Lemma simplify_first_k : forall m n x y,
+Lemma simplify_fst : forall n x y,
   (y < 2 ^ n)%nat ->
-  first_k m (m + n) (2 ^ n * x + y) = x.
+  fst_join (2 ^ n) (x * 2 ^ n + y) = x.
 Proof.
-  intros m n x y Hy.
-  unfold first_k. 
-  replace (m + n - m)%nat with n by lia.
-  rewrite Nat.mul_comm.
+  intros n x y Hy.
+  unfold fst_join. 
   rewrite Nat.div_add_l. 
   rewrite Nat.div_small by assumption. 
   lia. 
@@ -710,14 +900,17 @@ Proof.
   lia.
 Qed.
 
-Lemma simplify_last_k : forall m n x y,
+Lemma simplify_snd : forall n x y,
   (y < 2 ^ n)%nat ->
-  last_k n (m + n) (2 ^ n * x + y) = y.
+  snd_join (2 ^ n) (x * 2 ^ n + y) = y.
 Proof.
-  intros m n x y Hy.
-  unfold last_k. 
-  replace (m + n - n)%nat with m by lia.
-  rewrite simplify_first_k by assumption.
+  intros n x y Hy.
+  unfold snd_join. 
+  rewrite Nat.add_comm.
+  rewrite Nat.mod_add.
+  apply Nat.mod_small. 
+  assumption.
+  apply Nat.pow_nonzero.
   lia.
 Qed.
 
@@ -852,21 +1045,15 @@ Proof.
   destruct (f O); lra.
 Qed.
 
-Lemma length_join' : forall l1 l2 i n,
-  (i <= length l1)%nat ->
-  (forall i, (i < length l1)%nat -> length (l2 i) = (2 ^ n)%nat) -> 
-  length (join' l1 l2 i) = (2 ^ n * i)%nat.
+Lemma length_join' : forall x l1 l2 m,
+  (forall k, (k < x)%nat -> length (l2 k) = m) ->
+  (length (join' l1 l2 x) = x * m)%nat.
 Proof.
-  intros l1 l2 i n Hi Hl2.
-  induction i.
-  simpl. 
-  lia. 
-  simpl.
-  rewrite app_length.
-  rewrite IHi by lia.
-  rewrite length_scale.
-  rewrite Hl2 by lia.
-  lia.
+  induction x; intros.
+  - reflexivity.
+  - simpl. rewrite app_length. rewrite IHx with (m := m).
+    rewrite length_scale. rewrite H. lia. lia.
+    intros. apply H. lia.
 Qed.
 
 Lemma nth_firstn : forall {A} i n (l : list A) d,
@@ -887,7 +1074,8 @@ Proof.
   lia.
 Qed.
 
-Lemma pr_outcome_sum_firstn : forall n l f, (n < length l)%nat ->
+Lemma pr_outcome_sum_firstn : forall n l f, 
+  (n < length l)%nat ->
   pr_outcome_sum (firstn (S n) l) f = 
     ((if f n then nth n l 0 else 0) + pr_outcome_sum (firstn n l) f)%R.
 Proof.
@@ -937,20 +1125,23 @@ Proof.
   simpl in Hn. lia.
 Qed.
 
+(* If the probability of f1 in distr1(=l1) is r1 and the probability of 
+   f2 in distr2(=l2) is r2, then the probability of f1&f2 in (join l1 l2)
+   is r1 * r2. *)
 Local Transparent firstn.
-Lemma pr_outcome_sum_join_geq : forall l1 l2 f1 f2 r1 r2 m n,
+Lemma pr_outcome_sum_join_geq : forall l1 l2 f1 f2 r1 r2 n,
   distribution l1 ->
   (0 <= r2)%R ->
   pr_outcome_sum l1 f1 >= r1 ->
   (forall i, (i < length l1)%nat ->
         length (l2 i) = (2 ^ n)%nat /\
         pr_outcome_sum (l2 i) (f2 i) >= r2) -> (* note: r2 independent of i *)
-  let f1f2 z := (let x := first_k m (m + n) z in
-                 let y := last_k n (m + n) z in
+  let f1f2 z := (let x := fst_join (2 ^ n) z in
+                 let y := snd_join (2 ^ n) z in
                  f1 x && f2 x y) in
   pr_outcome_sum (join l1 l2) f1f2 >= (r1 * r2)%R.
 Proof.
-  intros l1 l2 f1 f2 r1 r2 m n Hl1dist Hr2 Hl1 Hl2 f1f2.
+  intros l1 l2 f1 f2 r1 r2 n Hl1dist Hr2 Hl1 Hl2 f1f2.
   assert (forall i, (i <= length l1)%nat ->
     pr_outcome_sum (join' l1 l2 i) f1f2 >= 
       pr_outcome_sum (firstn i l1) f1 * r2).
@@ -968,13 +1159,12 @@ Proof.
          subst f1f2.
          destruct (Hl2 i) as [H _].
          lia.
-         rewrite length_join' with (n:=n).
+         rewrite length_join' with (m:=(2^n)%nat).
          rewrite H in Hx.
-         rewrite simplify_first_k by assumption.
-         rewrite simplify_last_k by assumption.
+         rewrite simplify_fst by assumption.
+         rewrite simplify_snd by assumption.
          simpl.
          reflexivity.
-         lia.
          intros j Hj. 
          destruct (Hl2 j) as [? _].
          lia.
@@ -1016,7 +1206,71 @@ Proof.
   assumption.
 Qed.
 
-(** Repeat independent runs **)
+Lemma scale_zero : forall l, scale 0 l = repeat 0 (length l).
+Proof.
+  induction l; intros.
+  - reflexivity.
+  - simpl. rewrite IHl.
+    replace (0 * a)%R with 0 by lra.
+    reflexivity.
+Qed.
+
+Lemma join'_starting_zero :  forall x l1 l2,
+  join' (0 :: l1) l2 (S x) = repeat 0 (length (l2 O)) ++ join' l1 (fun i => l2 (S i)) x.
+Proof.
+  induction x; intros.
+  - simpl. rewrite scale_zero.
+    rewrite <- app_nil_end. reflexivity.
+  - remember (S x) as Sx.
+    simpl. rewrite IHx.
+    subst. simpl.
+    rewrite app_assoc. reflexivity.
+Qed.
+
+Lemma join_starting_zero : forall l1 l2,
+  join (0 :: l1) l2 = repeat 0 (length (l2 O)) ++ join l1 (fun i => l2 (S i)).
+Proof.
+  intros. unfold join.
+  rewrite <- join'_starting_zero. reflexivity.
+Qed.
+
+Local Opaque scale.
+Lemma fst_join_uniform : forall (x m : nat) l2 rnd,
+  (1 < x)%nat ->
+  0 <= rnd < 1 ->
+  (forall k, (k < x)%nat -> length (l2 k) = m) ->
+  (forall k, (k < x)%nat -> distribution (l2 k)) ->
+  (0 < m)%nat ->
+  (1 <= fst_join m (sample (join (uniform 1 x) l2) rnd) < x)%nat.
+Proof.
+  intros. destruct x. lia. destruct x. lia.
+  remember (repeat (1 / INR (S (S x) - 1))%R (S (S x) - 1)) as unm.
+  assert ((join (uniform 1 (S (S x))) l2) = (repeat 0%R (length (l2 O)) ++ join unm (fun i : nat => l2 (S i)))).
+  { unfold uniform. rewrite <- Hequnm.
+    simpl. rewrite join_starting_zero. reflexivity.
+  }
+  assert (m <= (sample (join (uniform 1 (S (S x))) l2) rnd))%nat.
+  { rewrite H4. rewrite H1 by lia. apply sample_repeat_lb. easy. }
+  assert ((sample (join (uniform 1 (S (S x))) l2) rnd) < (S (S x)) * m)%nat.
+  { replace ((S (S x)) * m)%nat with (length (join (uniform 1 (S (S x))) l2)).
+    apply sample_ub_lt.
+    assert (distribution (join (uniform 1 (S (S x))) l2)).
+    { apply distribution_join. apply distribution_uniform. lia.
+      intros. apply H2. rewrite length_uniform in H6; lia.  
+    }
+    destruct H6. rewrite H7. assumption.
+    unfold join. rewrite length_join' with (m := m). rewrite length_uniform; lia.
+    rewrite length_uniform by lia. apply H1. 
+  }
+  unfold fst_join. split.
+  apply Nat.div_le_lower_bound; lia.
+  apply Nat.div_lt_upper_bound; lia.
+Qed.
+
+
+(* ============================= *)
+(**   Repeat independent runs   **)
+(* ============================= *)
 
 (* rnds  : source of randomness for sampling
    niter : max number of iterations
@@ -1038,16 +1292,6 @@ Inductive pr_Ps : ((list R) -> Prop) -> nat -> R -> Prop :=
     pr_P P r2 ->
     (forall rnd rnds, Ps (rnd :: rnds) <-> Ps rnds /\ P rnd) ->
     pr_Ps Ps (S i) (r1 * r2).
-
-Lemma pr_P_same :
-  forall P1 P2 r,
-    (forall rnd, 0 <= rnd <= 1 -> P1 rnd <-> P2 rnd) ->
-    pr_P P1 r ->
-    pr_P P2 r.
-Proof.
-  unfold pr_P. intros.
-  apply interval_sum_same with (P1 := P1); assumption.
-Qed.
 
 Lemma pr_Ps_same :
   forall i Ps1 Ps2 r,
