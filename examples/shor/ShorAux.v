@@ -3178,7 +3178,7 @@ Proof.
         lia.
   - bdestruct (x <? n). btauto.
     replace x with n by lia.
-    rewrite Nat.gcd_diag. bdestruct (n =? 1); lia.
+    rewrite Nat.gcd_diag. bdestruct (n =? 1); try easy; lia.
 Qed.
     
 Lemma reduction_factor_order_finding :
@@ -3205,7 +3205,7 @@ Proof.
       assert (0 < Nat.gcd x (p^k * q)) by (apply Natgcd_pos; lia).
       assert (Nat.gcd x (p^k * q) <= x) by (rewrite Nat.gcd_comm; apply Nat_gcd_le_r; lia).
       bdestruct (1 <? Nat.gcd x (p^k*q)); try lia.
-      bdestruct (Nat.gcd x (p^k * q) <? p^k * q); lia.
+      bdestruct (Nat.gcd x (p^k * q) <? p^k * q); try easy; lia.
     }
     rewrite H7. unfold nontrivgcd, nontriv. btauto.
   }

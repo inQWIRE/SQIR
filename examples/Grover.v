@@ -940,8 +940,9 @@ Proof.
   replace (2 * 2 ^ ancillae)%nat with (2 ^ S ancillae)%nat by reflexivity.
   rewrite Nat.pow_1_l.
   rewrite (@partial_meas_tensor n (S ancillae)); restore_dims.
-  2: auto with wf_db.
-  2: { rewrite kron_adjoint, kron_mixed_product, minus_norm_1, kron_n_adjoint;
+  2: { split. apply WF_kron; auto with wf_db. rewrite Nat.pow_1_l. lia.
+       restore_dims. 
+       rewrite kron_adjoint, kron_mixed_product, minus_norm_1, kron_n_adjoint;
        auto with wf_db.
        Msimpl. restore_dims. rewrite kron_n_mult, Mmult00.
        clear. induction ancillae; try reflexivity. simpl. Msimpl. assumption. }

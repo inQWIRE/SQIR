@@ -152,8 +152,7 @@ Proof.
   specialize (@partial_meas_tensor n 1) as H1.
   repeat rewrite Nat.pow_1_r in H1.
   rewrite H1; clear H1.
-  2: auto with wf_db.
-  2: solve_matrix.
+  2:{ split. auto with wf_db. apply bra1ket1. }
   unfold probability_of_outcome.
   distribute_scale.
   rewrite Mmult_vsum_distr_l.

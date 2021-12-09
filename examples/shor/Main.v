@@ -446,7 +446,9 @@ Proof.
   rewrite Hdist.
   lra.
   intros j Hj.
-  bdestructΩ (Nat.gcd i N =? 1).
+  bdestruct (Nat.gcd i N =? 1).
+  easy.
+  simpl. rewrite orb_true_r. reflexivity.
 Qed.
 
 Lemma shor_body_succeeds_with_high_probability : forall N,
