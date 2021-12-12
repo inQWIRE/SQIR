@@ -42,7 +42,7 @@ examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo 
 
 shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/AltShor.vo
 
-voqc: invoke-coqmakefile $(VOQC)/Main.vo
+voqc: invoke-coqmakefile $(VOQC)/Main.vo $(VOQC)/Mapper.vo
 
 # Built by 'make examples'
 
@@ -151,6 +151,9 @@ VOQC/StandardGateSet.vo: $(VOQC)/StandardGateSet.v $(VOQC)/IBMGateSet.vo $(VOQC)
 
 VOQC/Main.vo: $(VOQC)/Main.v $(VOQC)/CXCancellation.vo $(VOQC)/GateCancellation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/NotPropagation.vo $(VOQC)/Optimize1qGates.vo $(VOQC)/RotationMerging.vo $(VOQC)/RzQGateSet.vo $(VOQC)/SimpleMapping.vo $(VOQC)/StandardGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/Main.v
+
+VOQC/Mapper.vo: $(VOQC)/Mapper.v $(SQIR)/VectorStates.vo $(VOQC)/ConnectivityGraph.vo $(VOQC)/StandardGateSet.vo
+	coqc $(COQ_OPTS) $(VOQC)/Mapper.v
 
 # Misc. files built by 'make all'
 
