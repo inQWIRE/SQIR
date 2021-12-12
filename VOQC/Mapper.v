@@ -55,6 +55,34 @@ Fixpoint first_layer {dim} (l : standard_ucom_l dim) (la : layer): layer :=
   | _ :: t => first_layer t la
   end.
 
+Fixpoint rest_log_qubits {dim} (l : standard_ucom_l dim) (la : layer) (ls : list nat) : list nat :=
+  match l with
+  | [] => ls
+  | App1 _ n1 :: t =>
+    if (orb (orb (elem_in n1 (fst_tuple la)) (elem_in n1 (snd_tuple la))) (elem_in n1 ls))
+    then rest_log_qubits t la ls
+    else rest_log_qubits t la (n1::ls)
+  | App2 _ n1 n2 :: t =>
+    let new_ls := if (orb (orb (elem_in n1 (fst_tuple la)) (elem_in n1 (snd_tuple la))) (elem_in n1 ls))
+                 then if (orb (orb (elem_in n2 (fst_tuple la)) (elem_in n2 (snd_tuple la))) (elem_in n2 ls))
+                      then ls
+                      else n2 :: ls
+                 else if (orb (orb (elem_in n2 (fst_tuple la)) (elem_in n2 (snd_tuple la))) (elem_in n2 ls))
+                      then n1 ::ls
+                      else n1 :: n2 :: ls
+    in
+    rest_log_qubits t la ls
+  | _ :: t => rest_log_qubits t la ls
+  end.
+
+Fixpoint lst_N2lst_NN (l : list nat) : layer :=
+  match l with
+  | [] => []
+  | x :: [] => (x,x) :: []
+  |x :: y :: t => (x, y) :: lst_N2lst_NN t
+  end.
+
+
 Fixpoint qmapper dim (mat : matching) (la : layer) : qmap dim :=
   match la with
   | [] =>
@@ -64,9 +92,14 @@ Fixpoint qmapper dim (mat : matching) (la : layer) : qmap dim :=
   | [(q1, q2)] =>
     match (hd (0,0) mat) with
     | (v1, v2) =>
-      let m1 q := if q =? q1 then v1 else v2 in
-      let m2 q := if q =? v1 then q1 else q2 in
-      (m1, m2)
+      if q1 =? q2 then
+        let m1 q := v1 in
+        let m2 q := q1 in
+        (m1, m2)
+      else
+        let m1 q := if q =? q1 then v1 else v2 in
+        let m2 q := if q =? v1 then q1 else q2 in
+        (m1, m2)
     end
   | ((q1, q2) :: t) =>
     match (qmapper dim (tl mat) t) with
@@ -85,7 +118,10 @@ Fixpoint qmapper dim (mat : matching) (la : layer) : qmap dim :=
   end.
 
 Definition initial_qmap {dim} (l : standard_ucom_l dim) (mat : matching) : qmap dim :=
-  qmapper dim mat (first_layer l []).
+  let fst_l := first_layer l [] in
+  let full_layer := fst_l ++ (lst_N2lst_NN (rest_log_qubits l fst_l [])) in 
+  qmapper dim mat full_layer.
+
 
 (****************end of mapper via matching******************)
 
@@ -276,6 +312,9 @@ Compute (layout_to_list 5 (trivial_layout 5)).
 Compute (layout_to_list 5 test_layout).
 Compute (layout_to_list 5 (list_to_layout (0 :: 1 :: 2 :: 3 :: 4 :: []))).
 Compute (layout_to_list 5 (list_to_layout (3 :: 4 :: 1 :: 2 :: 0 :: []))).
+
+Compute (layout_to_list 6 (qmapper 6 ((1,2)::(3,4)::(5,6)::[]) ((1,2)::(3,4)::(5,6)::[]))).
+
 
 (* The trivial layout is always well formed. *)
 Lemma trivial_layout_well_formed : forall dim,
