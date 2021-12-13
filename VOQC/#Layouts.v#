@@ -1,12 +1,7 @@
 Require Import QWIRE.Prelim.
 Require Import VectorStates.
-Require Export ConnectivityGraph.
-Require Export StandardGateSet.
-From Coq Require Import Lists.List.
-
 
 Local Close Scope R_scope.
-Local Close Scope Q_scope.
 
 (** Definition of layouts for mapping. **)
 
@@ -34,95 +29,20 @@ Definition phys2log {dim} (m : qmap dim) q :=
   | (_, m) => m q
   end.
 
-
-(*********** begin mapper via matching *************)
-Definition matching : Type := list (nat*nat).
-Definition layer : Type := list (nat*nat).
-
-Definition fst_tuple (l : list (nat*nat)) : list nat := map fst l.
-Definition snd_tuple (l : list (nat*nat)) : list nat := map snd l.
-Fixpoint elem_in (a : nat)(l : list nat) : bool :=
-  match l with
-  | [] => false
-  | h :: t => if a =? h then true else elem_in a t
+(* Swap the logical qubits associated with physical qubits phys1 and phys2. *)
+Definition swap_in_map {dim} (m : qmap dim) phys1 phys2 : qmap dim :=
+  match m with
+  | (m1, m2) => 
+      let log1 := m2 phys1 in
+      let log2 := m2 phys2 in
+      let m1' q := if q =? log1 then phys2
+                   else if q =? log2 then phys1 
+                   else m1 q in
+      let m2' q := if q =? phys1 then log2 
+                   else if q =? phys2 then log1 
+                   else m2 q in
+      (m1', m2')
   end.
-
-Fixpoint first_layer {dim} (l : standard_ucom_l dim) (la : layer): layer :=
-  match l with
-  | [] => la
-  | App2 U_CX n1 n2 :: t => if (orb (elem_in n1 (fst_tuple la)) (elem_in n2 (snd_tuple la))) then la
-                          else (first_layer t ((n1, n2)::la))
-  | _ :: t => first_layer t la
-  end.
-
-Fixpoint rest_log_qubits {dim} (l : standard_ucom_l dim) (la : layer) (ls : list nat) : list nat :=
-  match l with
-  | [] => ls
-  | App1 _ n1 :: t =>
-    if (orb (orb (elem_in n1 (fst_tuple la)) (elem_in n1 (snd_tuple la))) (elem_in n1 ls))
-    then rest_log_qubits t la ls
-    else rest_log_qubits t la (n1::ls)
-  | App2 _ n1 n2 :: t =>
-    let new_ls := if (orb (orb (elem_in n1 (fst_tuple la)) (elem_in n1 (snd_tuple la))) (elem_in n1 ls))
-                 then if (orb (orb (elem_in n2 (fst_tuple la)) (elem_in n2 (snd_tuple la))) (elem_in n2 ls))
-                      then ls
-                      else n2 :: ls
-                 else if (orb (orb (elem_in n2 (fst_tuple la)) (elem_in n2 (snd_tuple la))) (elem_in n2 ls))
-                      then n1 ::ls
-                      else n1 :: n2 :: ls
-    in
-    rest_log_qubits t la ls
-  | _ :: t => rest_log_qubits t la ls
-  end.
-
-Fixpoint lst_N2lst_NN (l : list nat) : layer :=
-  match l with
-  | [] => []
-  | x :: [] => (x,x) :: []
-  | x :: y :: t => (x, y) :: lst_N2lst_NN t
-  end.
-
-
-Fixpoint qmapper dim (mat : matching) (la : layer) : qmap dim :=
-  match la with
-  | [] =>
-    let m1 q := (S dim) in
-    let m2 q := (S dim) in
-    (m1, m2)
-  | [(q1, q2)] =>
-    match (hd (0,0) mat) with
-    | (v1, v2) =>
-      if q1 =? q2 then
-        let m1 q := v1 in
-        let m2 q := q1 in
-        (m1, m2)
-      else
-        let m1 q := if q =? q1 then v1 else v2 in
-        let m2 q := if q =? v1 then q1 else q2 in
-        (m1, m2)
-    end
-  | ((q1, q2) :: t) =>
-    match (qmapper dim (tl mat) t) with
-    | (m1, m2) =>
-      match (hd (0,0) mat) with
-      | (v1, v2) =>
-        let m1' q := if q =? q1 then v1
-                     else if q =? q2 then v2
-                          else m1 q in
-        let m2' q := if q =? v1 then q1
-                     else if q =? v2 then q2
-                          else m2 q in
-        (m1', m2')
-      end
-    end
-  end.
-
-Definition initial_qmap {dim} (l : standard_ucom_l dim) (mat : matching) : qmap dim :=
-  let fst_l := first_layer l [] in
-  let full_layer := fst_l ++ (lst_N2lst_NN (rest_log_qubits l fst_l [])) in 
-  qmapper dim mat full_layer.
-
-(****************end of mapper via matching******************)
 
 Definition layout_well_formed dim (m : qmap dim) := 
   forall x, x < dim ->
@@ -193,25 +113,37 @@ Proof.
   intros x Hx.
   specialize (WF x Hx) as [? [? [? ?]]].
   auto.
-Qed.
+Qed.  
 
-(**************** Proof qmapper well formed ************************)
-Inductive matching_well_typed : matching -> Prop :=
-| mat_nil : matching_well_typed nil
-| mat_ind : forall n1 n2 l, n1 <> n2 -> not (In n1 (fst_tuple l)) -> not (In n1 (snd_tuple l)) -> not (In n2 (fst_tuple l)) -> not (In n2 (snd_tuple l)) -> matching_well_typed l -> matching_well_typed ((n1,n2)::l).
-
-Inductive layer_well_typed : nat -> layer -> Prop :=
-| la_nil dim : layer_well_typed dim nil
-| la_single dim : forall n1 n2, n1 < dim -> n2 < dim -> layer_well_typed dim ((n1, n2)::[])
-| la_ind dim : forall n1 n2 l, n1 < dim -> n2 < dim -> n1 <> n2 -> not (In n1 (fst_tuple l)) -> not (In n1 (snd_tuple l)) -> not (In n2 (fst_tuple l)) -> not (In n2 (snd_tuple l)) -> layer_well_typed dim l -> layer_well_typed dim ((n1,n2)::l).
-
-Lemma qmapper_well_formed : forall {dim} (mat : matching) (la : layer),
-    matching_well_typed mat -> layer_well_typed dim la ->
-    layout_well_formed dim (qmapper dim mat la).
+Lemma swap_in_map_well_formed : forall {dim} (m : qmap dim) n1 n2,
+  n1 < dim -> n2 < dim -> layout_well_formed dim m -> 
+  layout_well_formed dim (swap_in_map m n1 n2).
 Proof.
-  unfold layout_well_formed, qmapper, log2phys, phys2log.
-  intros. destruct la. Admitted. 
-(**************** Proof End  ************************)
+  unfold layout_well_formed, swap_in_map, log2phys, phys2log.
+  intros dim m n1 n2 Hn1 Hn2.
+  destruct m as [m1 m2]
+  intros H x Hx.
+  destruct (H x Hx) as [? [? [? ?]]].
+  destruct (H n1 Hn1) as [? [? [? ?]]].
+  destruct (H n2 Hn2) as [? [? [? ?]]].
+  repeat split.
+  - bdestruct_all; auto.
+  - bdestruct_all; auto.
+  - bdestruct (x =? m2 n1); bdestruct (x =? m2 n2); subst; auto.
+    all: bdestruct_all; subst; auto.
+    symmetry in H2. contradiction.
+    symmetry in H2. contradiction.
+  - bdestruct (x =? n1); bdestruct (x =? n2); bdestruct_all; subst; auto. 
+    assert (m1 (m2 n2) = m1 (m2 n1)) by auto.
+    rewrite H3, H11 in H12.
+    symmetry in H12. contradiction.
+    assert (m1 (m2 x) = m1 (m2 n1)) by auto.
+    rewrite H3, H7 in H15.
+    contradiction.
+    assert (m1 (m2 x) = m1 (m2 n2)) by auto.
+    rewrite H3, H11 in H16.
+    contradiction.
+Qed.
 
 (* Represent a layout as a list where element l at index p indicates that
    logical qubit l is stored at physcial qubit p. (Makes printing nicer.)  *)
@@ -253,9 +185,10 @@ Definition test_layout : qmap 5 :=
                               else 0 in
   (l2p, p2l).
 
-
-Compute (layout_to_list 6 (qmapper 6 ((1,2)::(3,4)::(5,6)::[]) ((1,2)::(3,4)::(5,6)::[]))).
-
+Compute (layout_to_list 5 (trivial_layout 5)).
+Compute (layout_to_list 5 test_layout).
+Compute (layout_to_list 5 (list_to_layout (0 :: 1 :: 2 :: 3 :: 4 :: []))).
+Compute (layout_to_list 5 (list_to_layout (3 :: 4 :: 1 :: 2 :: 0 :: []))).
 
 (* The trivial layout is always well formed. *)
 Lemma trivial_layout_well_formed : forall dim,
