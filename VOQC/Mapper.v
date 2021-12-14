@@ -86,8 +86,8 @@ Fixpoint lst_N2lst_NN (l : list nat) : layer :=
 Fixpoint qmapper dim (mat : matching) (la : layer) : qmap dim :=
   match la with
   | [] =>
-    let m1 q := (S dim) in
-    let m2 q := (S dim) in
+    let m1 q := 0 in
+    let m2 q := 0 in
     (m1, m2)
   | [(q1, q2)] =>
     match (hd (0,0) mat) with
@@ -201,16 +201,38 @@ Inductive matching_well_typed : matching -> Prop :=
 | mat_ind : forall n1 n2 l, n1 <> n2 -> not (In n1 (fst_tuple l)) -> not (In n1 (snd_tuple l)) -> not (In n2 (fst_tuple l)) -> not (In n2 (snd_tuple l)) -> matching_well_typed l -> matching_well_typed ((n1,n2)::l).
 
 Inductive layer_well_typed : nat -> layer -> Prop :=
-| la_nil dim : layer_well_typed dim nil
+| la_nil dim : layer_well_typed dim []
 | la_single dim : forall n1 n2, n1 < dim -> n2 < dim -> layer_well_typed dim ((n1, n2)::[])
 | la_ind dim : forall n1 n2 l, n1 < dim -> n2 < dim -> n1 <> n2 -> not (In n1 (fst_tuple l)) -> not (In n1 (snd_tuple l)) -> not (In n2 (fst_tuple l)) -> not (In n2 (snd_tuple l)) -> layer_well_typed dim l -> layer_well_typed dim ((n1,n2)::l).
 
+
+Lemma sx_gt_zero : forall x:nat, 0 < S x.
+Proof.
+  intros x. 
+  destruct (zerop (S x)).
+  discriminate.
+  assumption.
+Qed.
+
+Theorem False_implies_nonsense : forall x:nat, False -> 0 = S x.
+Proof.
+  intros.
+  inversion H. Qed.
+
+
 Lemma qmapper_well_formed : forall {dim} (mat : matching) (la : layer),
-    matching_well_typed mat -> layer_well_typed dim la ->
+     la <> [] ->
     layout_well_formed dim (qmapper dim mat la).
 Proof.
   unfold layout_well_formed, qmapper, log2phys, phys2log.
-  intros. destruct la. Admitted. 
+  intros. induction la.
+  split; destruct x.
+  assumption. inversion H0. apply sx_gt_zero. apply sx_gt_zero.
+  split. apply H0. split; reflexivity.
+  split. inversion H0. apply sx_gt_zero. apply sx_gt_zero.
+  split. compute in H; apply False_implies_nonsense; apply H; reflexivity.
+  compute in H; apply False_implies_nonsense; apply H; reflexivity.
+  destruct IHla. Admitted.
 (**************** Proof End  ************************)
 
 (* Represent a layout as a list where element l at index p indicates that
