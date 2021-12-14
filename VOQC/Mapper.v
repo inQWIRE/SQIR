@@ -37,10 +37,11 @@ Definition phys2log {dim} (m : qmap dim) q :=
 
 (*********** begin mapper via matching *************)
 Definition matching : Type := list (nat*nat).
-Definition layer : Type := list (nat*nat).
+Definition layer : Type := list nat.
 
 Definition fst_tuple (l : list (nat*nat)) : list nat := map fst l.
 Definition snd_tuple (l : list (nat*nat)) : list nat := map snd l.
+
 Fixpoint elem_in (a : nat)(l : list nat) : bool :=
   match l with
   | [] => false
@@ -50,8 +51,8 @@ Fixpoint elem_in (a : nat)(l : list nat) : bool :=
 Fixpoint first_layer {dim} (l : standard_ucom_l dim) (la : layer): layer :=
   match l with
   | [] => la
-  | App2 U_CX n1 n2 :: t => if (orb (elem_in n1 (fst_tuple la)) (elem_in n2 (snd_tuple la))) then la
-                          else (first_layer t ((n1, n2)::la))
+  | App2 U_CX n1 n2 :: t => if (orb (elem_in n1 la) (elem_in n2 la)) then la
+                          else (first_layer t (n1::n2::la))
   | _ :: t => first_layer t la
   end.
 
@@ -59,15 +60,15 @@ Fixpoint rest_log_qubits {dim} (l : standard_ucom_l dim) (la : layer) (ls : list
   match l with
   | [] => ls
   | App1 _ n1 :: t =>
-    if (orb (orb (elem_in n1 (fst_tuple la)) (elem_in n1 (snd_tuple la))) (elem_in n1 ls))
+    if (orb (elem_in n1 la) (elem_in n1 ls))
     then rest_log_qubits t la ls
     else rest_log_qubits t la (n1::ls)
   | App2 _ n1 n2 :: t =>
-    let new_ls := if (orb (orb (elem_in n1 (fst_tuple la)) (elem_in n1 (snd_tuple la))) (elem_in n1 ls))
-                 then if (orb (orb (elem_in n2 (fst_tuple la)) (elem_in n2 (snd_tuple la))) (elem_in n2 ls))
-                      then ls
-                      else n2 :: ls
-                 else if (orb (orb (elem_in n2 (fst_tuple la)) (elem_in n2 (snd_tuple la))) (elem_in n2 ls))
+    let new_ls := if (orb (elem_in n1 la) (elem_in n1 ls))
+                  then if (orb (elem_in n2 la) (elem_in n2 ls))
+                       then ls
+                       else n2 :: ls
+                  else if (orb (elem_in n2 la) (elem_in n2 ls))
                       then n1 ::ls
                       else n1 :: n2 :: ls
     in
@@ -75,52 +76,36 @@ Fixpoint rest_log_qubits {dim} (l : standard_ucom_l dim) (la : layer) (ls : list
   | _ :: t => rest_log_qubits t la ls
   end.
 
-Fixpoint lst_N2lst_NN (l : list nat) : layer :=
-  match l with
-  | [] => []
-  | x :: [] => (x,x) :: []
-  | x :: y :: t => (x, y) :: lst_N2lst_NN t
-  end.
-
-
-Fixpoint qmapper dim (mat : matching) (la : layer) : qmap dim :=
+Fixpoint qmapper dim (m : qmap dim) (mat : matching) (la : layer) : qmap dim :=
   match la with
-  | [] =>
-    let m1 q := 0 in
-    let m2 q := 0 in
-    (m1, m2)
-  | [(q1, q2)] =>
-    match (hd (0,0) mat) with
-    | (v1, v2) =>
-      if q1 =? q2 then
-        let m1 q := v1 in
-        let m2 q := q1 in
+  | [] => m
+  | q1 :: [] =>
+    match mat with
+    | [] => m
+    | h :: t =>
+        let m1 q := (fst h) in
+        let m2 q := (snd h) in
         (m1, m2)
-      else
-        let m1 q := if q =? q1 then v1 else v2 in
-        let m2 q := if q =? v1 then q1 else q2 in
-        (m1, m2)
-    end
-  | ((q1, q2) :: t) =>
-    match (qmapper dim (tl mat) t) with
-    | (m1, m2) =>
-      match (hd (0,0) mat) with
-      | (v1, v2) =>
-        let m1' q := if q =? q1 then v1
-                     else if q =? q2 then v2
-                          else m1 q in
-        let m2' q := if q =? v1 then q1
-                     else if q =? v2 then q2
-                          else m2 q in
+        end
+  | q1 :: q2 :: t =>
+    match mat with
+    | [] => m
+    | h :: t =>
+      let (m1, m2) := qmapper dim m t la in 
+      let m1' q := if q =? q1 then (fst h)
+                   else if q =? q2 then (snd h)
+                        else m1 q in
+      let m2' q := if q =? (fst h) then q1
+                   else if q =? (snd h) then q2
+                        else m2 q in
         (m1', m2')
       end
-    end
-  end.
+    end.
 
-Definition initial_qmap {dim} (l : standard_ucom_l dim) (mat : matching) : qmap dim :=
+Definition initial_qmap {dim} (l : standard_ucom_l dim) (mat : matching) (m : qmap dim): qmap dim :=
   let fst_l := first_layer l [] in
-  let full_layer := fst_l ++ (lst_N2lst_NN (rest_log_qubits l fst_l [])) in 
-  qmapper dim mat full_layer.
+  let full_layer := fst_l ++ (rest_log_qubits l fst_l []) in 
+  qmapper dim m mat full_layer.
 
 (****************end of mapper via matching******************)
 
@@ -196,43 +181,58 @@ Proof.
 Qed.
 
 (**************** Proof qmapper well formed ************************)
-Inductive matching_well_typed : matching -> Prop :=
-| mat_nil : matching_well_typed nil
-| mat_ind : forall n1 n2 l, n1 <> n2 -> not (In n1 (fst_tuple l)) -> not (In n1 (snd_tuple l)) -> not (In n2 (fst_tuple l)) -> not (In n2 (snd_tuple l)) -> matching_well_typed l -> matching_well_typed ((n1,n2)::l).
+Inductive matching_well_typed : nat -> matching -> Prop :=
+| mat_nil dim : matching_well_typed dim nil
+| mat_ind dim : forall p l, (fst p) < dim -> (snd p) < dim -> (fst p) <> (snd p) -> not (In (fst p) (fst_tuple l)) -> not (In (fst p) (snd_tuple l)) -> not (In (snd p) (fst_tuple l)) -> not (In (snd p) (snd_tuple l)) -> matching_well_typed dim l -> matching_well_typed dim (p::l).
 
 Inductive layer_well_typed : nat -> layer -> Prop :=
 | la_nil dim : layer_well_typed dim []
-| la_single dim : forall n1 n2, n1 < dim -> n2 < dim -> layer_well_typed dim ((n1, n2)::[])
-| la_ind dim : forall n1 n2 l, n1 < dim -> n2 < dim -> n1 <> n2 -> not (In n1 (fst_tuple l)) -> not (In n1 (snd_tuple l)) -> not (In n2 (fst_tuple l)) -> not (In n2 (snd_tuple l)) -> layer_well_typed dim l -> layer_well_typed dim ((n1,n2)::l).
+| la_inductive dim : forall n l, n < dim -> not (In n l) -> layer_well_typed dim l -> layer_well_typed dim (n :: l).
+  
 
-
-Lemma sx_gt_zero : forall x:nat, 0 < S x.
-Proof.
-  intros x. 
-  destruct (zerop (S x)).
-  discriminate.
-  assumption.
-Qed.
-
-Theorem False_implies_nonsense : forall x:nat, False -> 0 = S x.
-Proof.
-  intros.
-  inversion H. Qed.
-
-
-Lemma qmapper_well_formed : forall {dim} (mat : matching) (la : layer),
-     la <> [] ->
-    layout_well_formed dim (qmapper dim mat la).
+Lemma qmapper_well_formed : forall {dim} (m : qmap dim) (mat : matching) (la : layer),
+    matching_well_typed dim mat ->
+    layer_well_typed dim la ->
+    layout_well_formed dim m ->
+    layout_well_formed dim (qmapper dim m mat la).
 Proof.
   unfold layout_well_formed, qmapper, log2phys, phys2log.
-  intros. induction la.
-  split; destruct x.
-  assumption. inversion H0. apply sx_gt_zero. apply sx_gt_zero.
-  split. apply H0. split; reflexivity.
-  split. inversion H0. apply sx_gt_zero. apply sx_gt_zero.
-  split. compute in H; apply False_implies_nonsense; apply H; reflexivity.
-  compute in H; apply False_implies_nonsense; apply H; reflexivity.
-  destruct IHla. Admitted.
+  intros dim m mat la Hmat Hla. destruct m as [m1 m2]. intros.
+  destruct (H x H0) as [? [? [? ?]]].
+  induction la. induction mat. auto. auto.
+  destruct IHla as [? [? [? ?]]].
+  inversion Hla. auto. split. simpl. Admitted.
+  
+
+
+
+(*
+
+
+  bdestruct_all. auto. auto. auto.
+  destruct la. induction mat. simpl. auto. simpl. inversion Hmat. auto.
+  destruct la. induction mat. simpl. auto. simpl. bdestruct_all. auto. auto. auto. destruct la. induction mat. simpl. auto. simpl.
+  
+  destruct la. inversion Hmat. compute. auto.
+  simpl. bdestruct_all. auto. auto. auto.
+  destruct la. inversion Hmat. compute. auto.
+  simpl. destruct l.
+  simpl. bdestruct_all. auto. auto. auto.
+  simpl. bdestruct_all. auto. auto. inversion H16. auto.
+  simpl. destruct la. inversion Hmat. compute. auto.
+  simpl. destruct l. simpl.
+  bdestruct_all. auto. auto. auto.
+  simpl. bdestruct_all. auto. auto. inversion H16. auto.
+  inversion H16. auto. auto.
+  simpl. destruct la. inversion Hmat. compute. auto. simpl.
+  destruct l. simpl. bdestruct_all. auto. auto. auto.
+  simpl. destruct l. simpl. bdestruct_all. auto. auto.
+  inversion H16. auto. inversion H16. auto. auto.
+  simpl. bdestruct_all. auto. auto. inversion H16. auto.
+  inversion H16. auto. inversion H16. inversion H33. apply H36
+*)
+  
+
 (**************** Proof End  ************************)
 
 (* Represent a layout as a list where element l at index p indicates that
