@@ -197,17 +197,32 @@ Lemma qmapper_well_formed : forall dim (m : qmap dim) (mat : matching) (la : lay
     layout_well_formed dim (qmapper dim m mat la).
 Proof.
   unfold layout_well_formed, log2phys, phys2log.
-  intros dim m mat la Hmat Hla. destruct m as [m1 m2].
-  intros H x Hx. destruct (H x Hx) as [? [? [? ?]]].
-  induction la. repeat split.
-  destruct mat; simpl. auto. simpl. auto.
-  destruct mat. simpl. auto. simpl. auto.
-  destruct mat. simpl. auto. simpl. auto.
-  destruct mat. simpl. auto. simpl. auto.
-  destruct IHla as [? [? [? ?]]].
-  inversion Hla. auto.
-  destruct mat. 
-  repeat split. Admitted.
+  intros dim m mat la Hmat Hla. 
+  destruct m as [m1 m2].
+  intros H x Hx. 
+  destruct (H x Hx) as [? [? [? ?]]].
+  induction mat. 
+  - (* first base case *)
+    repeat split.
+    do 2 (destruct la; simpl; auto).
+    do 2 (destruct la; simpl; auto).
+    do 2 (destruct la; simpl; auto).
+    do 2 (destruct la; simpl; auto).
+  - destruct la.
+    simpl. apply H. auto.
+    destruct la; simpl.
+    + (* second base case *)
+      inversion Hmat; subst.
+      (* you should have everything you need here, it just requires a bunch of destructs *)
+      bdestruct (x =? n).
+      split. auto.
+      (* hint: try looking at what the tactic bdestruct_all does *)
+      admit.
+      admit.
+   + destruct IHmat as [? [? [? ?]]].
+     inversion Hmat. auto.
+     (* you should have everything you need here, it's just a little annoying :) *)
+Admitted.
     
 
 (**************** Proof End  ************************)
