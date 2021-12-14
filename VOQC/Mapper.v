@@ -83,24 +83,24 @@ Fixpoint qmapper dim (m : qmap dim) (mat : matching) (la : layer) : qmap dim :=
     match mat with
     | [] => m
     | h :: t =>
-        let m1 q := (fst h) in
-        let m2 q := (snd h) in
+        let m1 q := if q =? q1 then (fst h) else (fst m) q in
+        let m2 q := if q =? (fst h) then q1 else (snd m) q in
         (m1, m2)
         end
   | q1 :: q2 :: t =>
     match mat with
     | [] => m
     | h :: t =>
-      let (m1, m2) := qmapper dim m t la in 
       let m1' q := if q =? q1 then (fst h)
                    else if q =? q2 then (snd h)
-                        else m1 q in
+                        else (fst (qmapper dim m t la)) q in
       let m2' q := if q =? (fst h) then q1
                    else if q =? (snd h) then q2
-                        else m2 q in
+                        else (snd ( qmapper dim m t la)) q in
         (m1', m2')
       end
     end.
+
 
 Definition initial_qmap {dim} (l : standard_ucom_l dim) (mat : matching) (m : qmap dim): qmap dim :=
   let fst_l := first_layer l [] in
@@ -188,25 +188,86 @@ Inductive matching_well_typed : nat -> matching -> Prop :=
 Inductive layer_well_typed : nat -> layer -> Prop :=
 | la_nil dim : layer_well_typed dim []
 | la_inductive dim : forall n l, n < dim -> not (In n l) -> layer_well_typed dim l -> layer_well_typed dim (n :: l).
-  
 
-Lemma qmapper_well_formed : forall {dim} (m : qmap dim) (mat : matching) (la : layer),
+
+Lemma qmapper_well_formed : forall dim (m : qmap dim) (mat : matching) (la : layer),
     matching_well_typed dim mat ->
     layer_well_typed dim la ->
     layout_well_formed dim m ->
     layout_well_formed dim (qmapper dim m mat la).
 Proof.
-  unfold layout_well_formed, qmapper, log2phys, phys2log.
-  intros dim m mat la Hmat Hla. destruct m as [m1 m2]. intros.
-  destruct (H x H0) as [? [? [? ?]]].
-  induction la. induction mat. auto. auto.
+  unfold layout_well_formed, log2phys, phys2log.
+  intros dim m mat la Hmat Hla. destruct m as [m1 m2].
+  intros H x Hx. destruct (H x Hx) as [? [? [? ?]]].
+  induction la. repeat split.
+  repeat destruct mat; simpl; auto; simpl; auto.
+  destruct mat. simpl. auto. simpl. auto.
+  destruct mat. simpl.
+
+
+
+
+
+
+
+
+  
+  
+  split. simpl. auto.
+  split. simpl. auto. simpl. auto.
+  split. simpl. auto.
+  split. simpl. auto. simpl. auto.
+  destruct IHla as [? [? [? ?]]]. inversion Hla. auto.
+  destruct mat. split.
+  destruct la. simpl. auto. simpl. auto.
+  split. destruct la. simpl. auto. simpl. auto.
+  split. destruct la. simpl. auto. simpl. auto.
+  destruct la. simpl. auto. simpl. auto.
+
+  destruct la. split. simpl. inversion Hmat. auto.
+  split. simpl. inversion Hla. auto.
+  split. simpl
+
+
+(*  
+  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
+  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
+  destruct mat.
+  split.
+  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
+  split.
+  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
+  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
+  simpl in HeqQ. split;  apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
+  apply IHla. inversion Hla. auto.
+  destruct la destruct mat. simpl. simpl in HeqQ. auto.
+  simpl. simpl in HeqQ. 
+   destruct mat. simpl. auto. auto.
+  destruct mat. simpl. auto. auto.
+  destruct IHla as [? [? [? ?]]]. inversion Hla. auto. 
+  split. destruct mat. destruct la. simpl. auto. simpl. auto.
+  destruct la. simpl. inversion Hmat. auto.
+  inversion Hla. inversion H14. inversion Hmat.
+  simpl. bdestruct_all. auto. auto.
+
+
+
+
+  induction mat. auto. auto.
+  split. induction mat. auto. auto.
+  split. induction mat. auto. auto.
+  induction mat. auto. auto.
+  split. induction mat. destruct IHla.
+  inversion Hla. auto. destruct la. auto. auto.
+  destruct IHla. inversion Hla. auto. destruct IHmat. inversion Hmat. auto.
+  intros. destruct H6 as [? [? ?]].
+  split. destruct la. destruct mat. auto. auto. apply H5.
+
+  
+  simpl. destruct la. inversion Hmat. auto. 
   destruct IHla as [? [? [? ?]]].
   inversion Hla. auto. split. simpl. Admitted.
-  
-
-
-
-(*
+ 
 
 
   bdestruct_all. auto. auto. auto.
