@@ -219,7 +219,8 @@ Proof.
       (* hint: try looking at what the tactic bdestruct_all does *)
       admit.
       admit.
-   + destruct IHmat as [? [? [? ?]]].
+   + (* inductive case *)
+     destruct IHmat as [? [? [? ?]]].
      inversion Hmat. auto.
      (* you should have everything you need here, it's just a little annoying :) *)
 Admitted.
