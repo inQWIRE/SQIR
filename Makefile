@@ -40,7 +40,9 @@ all: examples voqc shor $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBef
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Grover.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo $(examples)/Wiesner.vo
 
-shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/AltShor.vo
+$(examples)/shor/AltShor.vo: invoke-coqmakefile-euler
+
+shor: invoke-coqmakefile $(examples)/shor/AltShor.vo
 
 voqc: invoke-coqmakefile $(VOQC)/Main.vo
 
