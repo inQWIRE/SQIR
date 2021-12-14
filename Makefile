@@ -80,7 +80,7 @@ examples/Wiesner.vo: $(examples)/Wiesner.v $(SQIR)/UnitaryOps.vo $(examples)/Uti
 
 examples/shor/AltGateSet.vo: $(examples)/shor/AltGateSet.v $(SQIR)/UnitaryOps.vo $(SQIR)/RCIR.vo
 	coqc $(COQ_OPTS) $(examples)/shor/AltGateSet.v
-	
+
 examples/shor/AltShor.vo: $(examples)/shor/AltShor.v $(examples)/shor/AltGateSet.vo $(examples)/shor/Shor.vo
 	coqc $(COQ_OPTS) $(examples)/shor/AltShor.v
 
@@ -92,7 +92,7 @@ examples/shor/QPEGeneral.vo: $(examples)/shor/QPEGeneral.v $(examples)/QPE.vo $(
 
 examples/shor/Shor.vo: $(examples)/shor/Shor.v $(examples)/shor/QPEGeneral.vo $(examples)/shor/ModMult.vo $(examples)/shor/ShorAux.vo
 	coqc $(COQ_OPTS) $(examples)/shor/Shor.v
-	
+
 examples/shor/ShorAux.vo: $(examples)/shor/ShorAux.v $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/shor/ShorAux.v
 
@@ -139,7 +139,7 @@ VOQC/Optimize1qGates.vo: $(VOQC)/Optimize1qGates.v $(VOQC)/IBMGateSet.vo $(VOQC)
 
 VOQC/RotationMerging.vo: $(VOQC)/RotationMerging.v $(VOQC)/RzQGateSet.vo $(SQIR)/UnitaryOps.vo $(VOQC)/MappingConstraints.vo
 	coqc $(COQ_OPTS) $(VOQC)/RotationMerging.v
-	
+
 VOQC/RzQGateSet.vo: $(VOQC)/RzQGateSet.v $(VOQC)/UnitaryListRepresentation.vo $(VOQC)/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) $(VOQC)/RzQGateSet.v
 
@@ -168,5 +168,5 @@ clean:
 	rm -rf CoqMakefile CoqMakefile.conf */*/*.vo* */*/*.glob */*/*.aux */*.vo* */*.glob */*.aux .lia.cache
 
 # This should be the last rule, to handle any targets not declared above
-#%: invoke-coqmakefile
-#	@true
+%: invoke-coqmakefile
+	@true

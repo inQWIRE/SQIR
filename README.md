@@ -38,11 +38,12 @@ eval $(opam env)
 opam install coq
 
 # install Interval package (optional, needed to compile proofs in examples/shor)
+opam repo add coq-released https://coq.inria.fr/opam/released
 opam install coq-interval
 ```
 
 *Notes*:
-* Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine. 
+* Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine.
 * We require Coq version >= 8.12. We have tested compilation with 8.12, 8.13, and 8.14.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
 
@@ -97,7 +98,7 @@ The rest of the files in the VOQC directory can be split into the following cate
 - Mapping routines
   - ConnectivityGraph.v : Utilities for describing an architecture connectivity graph. Includes graphs for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
   - Layouts.v : Utilities for describing a physical <-> logical qubit mapping.
-  - MappingConstraints.v : Utilities for describing a program that satisfies architecture constraints. 
+  - MappingConstraints.v : Utilities for describing a program that satisfies architecture constraints.
   - SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
 
 - Experimental extensions
