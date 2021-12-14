@@ -200,99 +200,15 @@ Proof.
   intros dim m mat la Hmat Hla. destruct m as [m1 m2].
   intros H x Hx. destruct (H x Hx) as [? [? [? ?]]].
   induction la. repeat split.
-  repeat destruct mat; simpl; auto; simpl; auto.
+  destruct mat; simpl. auto. simpl. auto.
   destruct mat. simpl. auto. simpl. auto.
-  destruct mat. simpl.
-
-
-
-
-
-
-
-
-  
-  
-  split. simpl. auto.
-  split. simpl. auto. simpl. auto.
-  split. simpl. auto.
-  split. simpl. auto. simpl. auto.
-  destruct IHla as [? [? [? ?]]]. inversion Hla. auto.
-  destruct mat. split.
-  destruct la. simpl. auto. simpl. auto.
-  split. destruct la. simpl. auto. simpl. auto.
-  split. destruct la. simpl. auto. simpl. auto.
-  destruct la. simpl. auto. simpl. auto.
-
-  destruct la. split. simpl. inversion Hmat. auto.
-  split. simpl. inversion Hla. auto.
-  split. simpl
-
-
-(*  
-  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
-  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
-  destruct mat.
-  split.
-  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
-  split.
-  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
-  simpl in HeqQ; apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
-  simpl in HeqQ. split;  apply NN_helper in HeqQ; destruct HeqQ; subst; auto.
-  apply IHla. inversion Hla. auto.
-  destruct la destruct mat. simpl. simpl in HeqQ. auto.
-  simpl. simpl in HeqQ. 
-   destruct mat. simpl. auto. auto.
-  destruct mat. simpl. auto. auto.
-  destruct IHla as [? [? [? ?]]]. inversion Hla. auto. 
-  split. destruct mat. destruct la. simpl. auto. simpl. auto.
-  destruct la. simpl. inversion Hmat. auto.
-  inversion Hla. inversion H14. inversion Hmat.
-  simpl. bdestruct_all. auto. auto.
-
-
-
-
-  induction mat. auto. auto.
-  split. induction mat. auto. auto.
-  split. induction mat. auto. auto.
-  induction mat. auto. auto.
-  split. induction mat. destruct IHla.
-  inversion Hla. auto. destruct la. auto. auto.
-  destruct IHla. inversion Hla. auto. destruct IHmat. inversion Hmat. auto.
-  intros. destruct H6 as [? [? ?]].
-  split. destruct la. destruct mat. auto. auto. apply H5.
-
-  
-  simpl. destruct la. inversion Hmat. auto. 
+  destruct mat. simpl. auto. simpl. auto.
+  destruct mat. simpl. auto. simpl. auto.
   destruct IHla as [? [? [? ?]]].
-  inversion Hla. auto. split. simpl. Admitted.
- 
-
-
-  bdestruct_all. auto. auto. auto.
-  destruct la. induction mat. simpl. auto. simpl. inversion Hmat. auto.
-  destruct la. induction mat. simpl. auto. simpl. bdestruct_all. auto. auto. auto. destruct la. induction mat. simpl. auto. simpl.
-  
-  destruct la. inversion Hmat. compute. auto.
-  simpl. bdestruct_all. auto. auto. auto.
-  destruct la. inversion Hmat. compute. auto.
-  simpl. destruct l.
-  simpl. bdestruct_all. auto. auto. auto.
-  simpl. bdestruct_all. auto. auto. inversion H16. auto.
-  simpl. destruct la. inversion Hmat. compute. auto.
-  simpl. destruct l. simpl.
-  bdestruct_all. auto. auto. auto.
-  simpl. bdestruct_all. auto. auto. inversion H16. auto.
-  inversion H16. auto. auto.
-  simpl. destruct la. inversion Hmat. compute. auto. simpl.
-  destruct l. simpl. bdestruct_all. auto. auto. auto.
-  simpl. destruct l. simpl. bdestruct_all. auto. auto.
-  inversion H16. auto. inversion H16. auto. auto.
-  simpl. bdestruct_all. auto. auto. inversion H16. auto.
-  inversion H16. auto. inversion H16. inversion H33. apply H36
-*)
-  
+  inversion Hla. auto.
+  destruct mat. 
+  repeat split. Admitted.
+    
 
 (**************** Proof End  ************************)
 
