@@ -37,7 +37,7 @@ Definition phys2log {dim} (m : qmap dim) q :=
 
 (*********** begin mapper via matching *************)
 Definition matching : Type := list (nat*nat).
-Definition layer : Type := list nat.
+Definition layer : Type := list (nat*nat).
 
 Definition fst_tuple (l : list (nat*nat)) : list nat := map fst l.
 Definition snd_tuple (l : list (nat*nat)) : list nat := map snd l.
@@ -48,11 +48,17 @@ Fixpoint elem_in (a : nat)(l : list nat) : bool :=
   | h :: t => if a =? h then true else elem_in a t
   end.
 
+Fixpoint listNN2N (l : list (nat * nat)) : list nat :=
+  match l with
+  | [] => []
+  | (a, b) :: t => a :: b :: (listNN2N t)
+  end.
+
 Fixpoint first_layer {dim} (l : standard_ucom_l dim) (la : layer): layer :=
   match l with
   | [] => la
-  | App2 U_CX n1 n2 :: t => if (orb (elem_in n1 la) (elem_in n2 la)) then la
-                          else (first_layer t (n1::n2::la))
+  | App2 U_CX n1 n2 :: t => if (orb (elem_in n1 (listNN2N la)) (elem_in n2 (listNN2N la))) then la
+                          else (first_layer t ((n1,n2)::la))
   | _ :: t => first_layer t la
   end.
 
@@ -60,15 +66,15 @@ Fixpoint rest_log_qubits {dim} (l : standard_ucom_l dim) (la : layer) (ls : list
   match l with
   | [] => ls
   | App1 _ n1 :: t =>
-    if (orb (elem_in n1 la) (elem_in n1 ls))
+    if (orb (elem_in n1 (listNN2N la)) (elem_in n1 ls))
     then rest_log_qubits t la ls
     else rest_log_qubits t la (n1::ls)
   | App2 _ n1 n2 :: t =>
-    let new_ls := if (orb (elem_in n1 la) (elem_in n1 ls))
-                  then if (orb (elem_in n2 la) (elem_in n2 ls))
+    let new_ls := if (orb (elem_in n1 (listNN2N la)) (elem_in n1 ls))
+                  then if (orb (elem_in n2 (listNN2N la)) (elem_in n2 ls))
                        then ls
                        else n2 :: ls
-                  else if (orb (elem_in n2 la) (elem_in n2 ls))
+                  else if (orb (elem_in n2 (listNN2N la)) (elem_in n2 ls))
                       then n1 ::ls
                       else n1 :: n2 :: ls
     in
@@ -79,24 +85,16 @@ Fixpoint rest_log_qubits {dim} (l : standard_ucom_l dim) (la : layer) (ls : list
 Fixpoint qmapper dim (m : qmap dim) (mat : matching) (la : layer) : qmap dim :=
   match la with
   | [] => m
-  | q1 :: [] =>
+  | q1 :: tla =>
     match mat with
     | [] => m
-    | h :: t =>
-        let m1 q := if q =? q1 then (fst h) else (fst m) q in
-        let m2 q := if q =? (fst h) then q1 else (snd m) q in
-        (m1, m2)
-        end
-  | q1 :: q2 :: t =>
-    match mat with
-    | [] => m
-    | h :: t =>
-      let m1' q := if q =? q1 then (fst h)
-                   else if q =? q2 then (snd h)
-                        else (fst (qmapper dim m t la)) q in
-      let m2' q := if q =? (fst h) then q1
-                   else if q =? (snd h) then q2
-                        else (snd ( qmapper dim m t la)) q in
+    | h :: tmat =>
+      let m1' q := if q =? (fst q1) then (fst h)
+                   else if q =? (snd q1) then (snd h)
+                        else (fst (qmapper dim m tmat tla)) q in
+      let m2' q := if q =? (fst h) then (fst q1)
+                   else if q =? (snd h) then (snd q1)
+                        else (snd ( qmapper dim m tmat tla)) q in
         (m1', m2')
       end
     end.
@@ -104,7 +102,7 @@ Fixpoint qmapper dim (m : qmap dim) (mat : matching) (la : layer) : qmap dim :=
 
 Definition initial_qmap {dim} (l : standard_ucom_l dim) (mat : matching) (m : qmap dim): qmap dim :=
   let fst_l := first_layer l [] in
-  let full_layer := fst_l ++ (rest_log_qubits l fst_l []) in 
+  let full_layer := fst_l in 
   qmapper dim m mat full_layer.
 
 (****************end of mapper via matching******************)
@@ -183,11 +181,11 @@ Qed.
 (**************** Proof qmapper well formed ************************)
 Inductive matching_well_typed : nat -> matching -> Prop :=
 | mat_nil dim : matching_well_typed dim nil
-| mat_ind dim : forall p l, (fst p) < dim -> (snd p) < dim -> (fst p) <> (snd p) -> not (In (fst p) (fst_tuple l)) -> not (In (fst p) (snd_tuple l)) -> not (In (snd p) (fst_tuple l)) -> not (In (snd p) (snd_tuple l)) -> matching_well_typed dim l -> matching_well_typed dim (p::l).
+| mat_ind dim : forall p l, (fst p) < dim -> (snd p) < dim -> (fst p) <> (snd p) -> not (In p l) -> matching_well_typed dim l -> matching_well_typed dim (p::l).
 
 Inductive layer_well_typed : nat -> layer -> Prop :=
 | la_nil dim : layer_well_typed dim []
-| la_inductive dim : forall n l, n < dim -> not (In n l) -> layer_well_typed dim l -> layer_well_typed dim (n :: l).
+| la_inductive dim : forall n l, (fst n) < dim -> (snd n) < dim -> (fst n) <> (snd n) -> not (In n l) -> layer_well_typed dim l -> layer_well_typed dim (n :: l).
 
 
 Lemma qmapper_well_formed : forall dim (m : qmap dim) (mat : matching) (la : layer),
@@ -210,93 +208,125 @@ Proof.
     do 2 (destruct la; simpl; auto).
   - destruct la.
     simpl. apply H. auto.
-    destruct la; simpl.
-    + (* second base case *)
-      inversion Hmat; subst.
-      (* you should have everything you need here, it just requires a bunch of destructs *)
-      bdestruct (x =? n).
-      split. auto.
-      (* hint: try looking at what the tactic bdestruct_all does *)
-      admit.
-      admit.
-   + (* inductive case *)
-     destruct IHmat as [? [? [? ?]]].
-     inversion Hmat. auto.
-     (* you should have everything you need here, it's just a little annoying :) *)
-Admitted.
+    destruct la. simpl.
+    destruct IHmat as [? [? [? ?]]].
+    inversion Hmat. auto.
+    bdestruct_all.
+    split. subst. rewrite <- H9. auto. 
+    split. subst. auto.
+    split. auto. auto.
+    split. inversion Hmat. auto.
+    split. subst. rewrite H12. auto.
+    split. auto. inversion Hmat. auto. symmetry. admit.
+    split. auto. inversion Hmat. auto.
+    split. inversion Hla. auto.
+    split. auto. auto.
+    split. inversion Hmat. auto.
+    split. rewrite H12. inversion Hla. auto.
+    split. auto. admit.
+    split. inversion Hmat. auto.
+    split. rewrite H13. inversion Hla. auto.
+    split. auto. admit.
+    split. inversion Hmat. auto.
+    split. destruct mat. simpl. auto. simpl. auto.
+    split. auto. destruct mat. simpl. auto. simpl. auto.
+    split. inversion Hmat. auto.
+    split. inversion Hla. auto.
+    split. admit. auto.
+    split. inversion Hmat. auto.
+    split. inversion Hla. auto.
+    split. auto. auto.
+    split. inversion Hmat. auto.
+    split. inversion Hla. auto.
+    split. auto. auto.
+    split. inversion Hmat. auto.
+    split. rewrite H13. inversion Hla. auto.
+    split. inversion Hmat. symmetry in H12. contradiction.
+    inversion Hmat. symmetry in H12. contradiction.
+    split. inversion Hmat. auto.
+    split. rewrite H14. inversion Hla. auto.
+    split. inversion Hmat. symmetry in H12. contradiction.
+    inversion Hmat. symmetry in H12. contradiction.
+    split. inversion Hmat. auto.
+    split. inversion Hmat. symmetry in H12. contradiction.
+    split. inversion Hmat; symmetry in H12; contradiction.
+    inversion Hmat; symmetry in H12; contradiction.
+    split. inversion Hmat. auto.
+    split. rewrite H14. inversion Hla. auto.
+    split. auto. admit.
+    split. inversion Hmat. auto.
+    split. rewrite H15. inversion Hla. auto.
+    split. auto. admit.
+    split.  inversion Hmat. auto.
+    split. destruct mat. simpl. auto. simpl. auto.
+    split. auto. destruct mat. simpl. auto. simpl. auto.
+    split. rewrite H11. inversion Hmat. auto.
+    split. inversion Hla. auto.
+    split. admit. auto.
+    split. rewrite H12. inversion Hmat. auto.
+    split. inversion Hla. auto.
+    split. admit. auto.
+    split. destruct mat. simpl. auto. simpl. auto.
+    split. inversion Hla. auto.
+    split. destruct mat. simpl. auto. simpl. auto. auto.
+    split. destruct mat. simpl. auto. simpl. auto.
+    split. inversion Hla. auto.
+    split. inversion Hla. symmetry in H13. contradiction.
+    inversion Hla. symmetry in H13. contradiction.
+    split. destruct mat. simpl. auto. simpl. auto.
+    split. inversion Hla. auto.
+    split. admit. auto.
+    split. rewrite H13. inversion Hmat. auto.
+    split. inversion Hla. auto.
+    split. admit. admit.
+    split. rewrite H13. inversion Hmat. auto.
+    split. inversion Hla. auto.
+    split. admit. auto.
+    split. destruct mat. simpl. auto. simpl. auto.
+    split. inversion Hla. auto.
+    split. destruct mat. simpl. auto. simpl. auto.
+    admit.
+    split. destruct mat. simpl. auto. simpl. auto.
+    split. inversion Hla. auto.
+    split. destruct mat. simpl. auto. simpl. auto. auto.
+    split. rewrite H12. inversion Hmat. auto.
+    split. rewrite H13. inversion Hla. auto.
+    admit.
+    split. rewrite H12. inversion Hmat. auto.
+    split. rewrite H14. inversion Hla. auto.
+    admit.
+    split. rewrite H12. inversion Hmat. auto.
+    split. destruct mat. simpl. auto. simpl. auto.
+    split. admit.
+    destruct mat. simpl. auto. simpl. auto.
+    split. rewrite H13. inversion Hmat. auto.
+    split. rewrite H14. inversion Hla. auto.
+    admit.
+    split. rewrite H13. inversion Hmat. auto.
+    split. rewrite H15. inversion Hla. auto.
+    admit.
+    split. rewrite H13. inversion Hmat. auto.
+    split. destruct mat. inversion Hmat. auto. inversion Hmat. auto.
+    split. admit.
+    destruct mat. simpl. auto. simpl. auto.
+    destruct mat. repeat split. auto. auto. auto. admit.
+    repeat split. auto. auto. auto. admit.
+    destruct mat. repeat split. auto. auto. auto. admit.
+    repeat split. auto. auto. auto. admit.
+    destruct mat. repeat auto. auto.
+    destruct IHmat as [? [? [? ?]]]. inversion Hmat. auto.
+    repeat split.
+    simpl. bdestruct_all. inversion Hmat. auto. inversion Hmat. auto.
+    destruct mat. simpl. auto.
+    simpl. bdestruct_all. inversion Hmat. inversion H18. auto.
+    inversion Hmat. inversion H19. auto. admit.
+    simpl. bdestruct_all. inversion Hla. auto. inversion Hla. auto.
+    destruct mat. simpl. auto.
+    simpl. bdestruct_all. inversion Hla. inversion H18. auto.
+    inversion Hla. inversion H19. auto. admit.
+    simpl. admit.
+    simpl. admit.
+    Admitted.     
     
 
 (**************** Proof End  ************************)
-
-(* Represent a layout as a list where element l at index p indicates that
-   logical qubit l is stored at physcial qubit p. (Makes printing nicer.)  *)
-Fixpoint layout_to_list' {dim} x (m : qmap dim) :=
-  match x with 
-  | O => []
-  | S x' => (layout_to_list' x' m) ++ [phys2log m x'] 
-  end.
-Definition layout_to_list dim (m : qmap dim) := 
-  layout_to_list' dim m.
-
-(* Produce a layout from its list representation. *)
-Fixpoint list_to_layout' {dim} l acc : qmap dim :=
-  match l with
-  | [] => (fun x => x, fun x => x) (* default mapping *)
-  | h :: t =>
-      let m' := @list_to_layout' dim t (S acc) in
-      (fun x => if x =? h then acc else fst m' x, 
-       fun x => if x =? acc then h else snd m' x)
-  end.
-Definition list_to_layout l : qmap (length l) := 
-  list_to_layout' l 0.
-
-(* TODO: May be useful to prove that layout_to_list and list_to_layout are inverses. *)
-
-(* Examples *)
-Definition trivial_layout dim : qmap dim :=
-  (fun x => x, fun x => x).
-Definition test_layout : qmap 5 := 
-  let l2p q := if q =? 0 then 4
-               else if q =? 1 then 2
-                    else if q =? 2 then 3
-                         else if q =? 3 then 0
-                              else 1 in
-  let p2l q := if q =? 0 then 3
-               else if q =? 1 then 4
-                    else if q =? 2 then 1
-                         else if q =? 3 then 2
-                              else 0 in
-  (l2p, p2l).
-
-
-Compute (layout_to_list 6 (qmapper 6 ((1,2)::(3,4)::(5,6)::[]) ((1,2)::(3,4)::(5,6)::[]))).
-
-
-(* The trivial layout is always well formed. *)
-Lemma trivial_layout_well_formed : forall dim,
-  layout_well_formed dim (trivial_layout dim).
-Proof.
-  intros dim.
-  unfold layout_well_formed, trivial_layout, log2phys, phys2log.
-  intros x Hx.
-  auto.
-Qed.
-
-(* Most things that are true of log2phys will be true of phys2log too -- 
-   there is not an important conceptual difference between the two functions
-   (except in the swap_in_map function). The qmap construct is largely just 
-   a way to store a function with its inverse. So it's typically fine to 
-   switch the order of log2phys and phys2log. *)
-Definition invert_layout {dim} (m : qmap dim) : qmap dim := (snd m, fst m).
-
-Lemma invert_layout_well_formed : forall {dim} (m : qmap dim),
-  layout_well_formed dim m ->
-  layout_well_formed dim (invert_layout m).
-Proof.
-  intros dim m H.
-  intros x Hx.
-  specialize (H x Hx) as [? [? [? ?]]].
-  unfold invert_layout.
-  destruct m; simpl in *.
-  repeat split; auto.
-Qed.
