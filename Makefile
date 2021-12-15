@@ -40,8 +40,6 @@ all: examples voqc shor $(VOQC)/PropagateClassical.vo $(VOQC)/RemoveZRotationBef
 
 examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo $(examples)/GHZ.vo $(examples)/Grover.vo $(examples)/QPE.vo $(examples)/Simon.vo $(examples)/Superdense.vo $(examples)/Teleport.vo $(examples)/Wiesner.vo
 
-$(examples)/shor/AltShor.vo: invoke-coqmakefile-euler
-
 shor: invoke-coqmakefile $(examples)/shor/AltShor.vo
 
 voqc: invoke-coqmakefile $(VOQC)/Main.vo
@@ -95,7 +93,7 @@ examples/shor/QPEGeneral.vo: $(examples)/shor/QPEGeneral.v $(examples)/QPE.vo $(
 examples/shor/Shor.vo: $(examples)/shor/Shor.v $(examples)/shor/QPEGeneral.vo $(examples)/shor/ModMult.vo $(examples)/shor/ShorAux.vo
 	coqc $(COQ_OPTS) $(examples)/shor/Shor.v
 
-examples/shor/ShorAux.vo: $(examples)/shor/ShorAux.v $(examples)/Utilities.vo
+examples/shor/ShorAux.vo: invoke-coqmakefile-euler $(examples)/shor/ShorAux.v $(examples)/Utilities.vo
 	coqc $(COQ_OPTS) $(examples)/shor/ShorAux.v
 
 # Built by 'make voqc'
