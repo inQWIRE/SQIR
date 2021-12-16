@@ -1,10 +1,12 @@
 # SQIR
 
-SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC).
+![Logo](logo.png)
 
-We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We present details on verifying SQIR programs in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), presented at ITP 2021. The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021) of this respository. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020.
+SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC), but we have also used it to implement verified versions of several quanutm algorithms.
 
-This repository contains our Coq formalization of SQIR and VOQC. If you are interested in running the VOQC compiler, then you should use our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)). The OCaml library is *extracted* from our Coq definitions and the Python library is a wrapper around the OCaml library.
+We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We describe the details of verifying SQIR programs in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), presented at ITP 2021. The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021) of this respository. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020, and follow-on work was presented at PLanQC 2021.
+
+This repository contains our Coq formalization of SQIR and VOQC as well as several verified quantum algorithms. If you are interested in *running the VOQC compiler*, then you should look at our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)) instead. The OCaml library is extracted from our Coq definitions and the Python library is a wrapper around the OCaml library.
 
 If you are interested in learning more about formal verification of quantum programs in general, we recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html).
 
@@ -19,6 +21,7 @@ If you are interested in learning more about formal verification of quantum prog
     - [VOQC](#voqc)
     - [examples](#examples)
   - [Acknowledgements](#acknowledgements)
+  - [Citations](#citations)
 
 ## Setup
 
@@ -38,18 +41,21 @@ eval $(opam env)
 opam install coq
 
 # install Interval package (optional, needed to compile proofs in examples/shor)
+opam repo add coq-released https://coq.inria.fr/opam/released
+opam update
 opam install coq-interval
 ```
 
 *Notes*:
-* Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine. 
+* Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine.
 * We require Coq version >= 8.12. We have tested compilation with 8.12, 8.13, and 8.14.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
-* If opam is not able to find coq-interval, try running `opam repo add coq-released https://coq.inria.fr/opam/released` and `opam update` first.
 
 ## Compilation
 
-Run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, `make examples` to compile proofs of correctness for example quantum algorithms (excluding those in examples/shor), and `make shor` to compile proofs about Shor's algorithm. Use `make all` to compile everything. Our proofs are resource intensive so expect `make all` to take a little while. On a Macbook Pro running Coq version 8.14.0 and OCaml version 4.13.1 compilation takes around 30 minutes.
+Run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, `make examples` to compile proofs of correctness for example quantum algorithms (excluding those in examples/shor), and `make shor` to compile proofs about Shor's algorithm. Use `make all` to compile everything. 
+
+Our proofs are resource intensive so expect `make all` to take a little while. If you have cores to spare, then you can speed things up by compiling with the `-j` flag (e.g. `make all -j8`). On a 2015 dual-core MacBook Pro running Coq version 8.14.0 compilation takes around 30 minutes.
 
 ## Directory Contents
 
@@ -98,7 +104,7 @@ The rest of the files in the VOQC directory can be split into the following cate
 - Mapping routines
   - ConnectivityGraph.v : Utilities for describing an architecture connectivity graph. Includes graphs for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
   - Layouts.v : Utilities for describing a physical <-> logical qubit mapping.
-  - MappingConstraints.v : Utilities for describing a program that satisfies architecture constraints. 
+  - MappingConstraints.v : Utilities for describing a program that satisfies architecture constraints.
   - SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
 
 - Experimental extensions
@@ -134,3 +140,43 @@ This project is the result of the efforts of many people. The primary contacts f
 * Finn Voichick
 
 This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040 and the Air Force Office of Scientific Research under Grant Number FA95502110051.
+
+## Citations
+
+If you use SQIR or VOQC in your work, please cite our papers.
+
+```
+@inproceedings{hietala2021verified,
+  author    = {Kesha Hietala and Robert Rand and Shih{-}Han Hung and Xiaodi Wu and Michael Hicks},
+  title     = {A verified optimizer for Quantum circuits},
+  journal   = {Proceedings of the {ACM} on Programming Languages},
+  volume    = {5},
+  number    = {{POPL}},
+  pages     = {1--29},
+  year      = {2021},
+  url       = {https://doi.org/10.1145/3434318},
+  doi       = {10.1145/3434318},
+  timestamp = {Wed, 17 Feb 2021 08:54:02 +0100}
+}
+```
+
+```
+@article{hietala2020proving,
+ author    = {Hietala, Kesha and Rand, Robert and Hung, Shih-Han and Li, Liyi and Hicks, Michael},
+ booktitle = {12th International Conference on Interactive Theorem Proving (ITP 2021)},
+ doi       = {10.4230/LIPIcs.ITP.2021.21},
+ editor    = {Cohen, Liron and Kaliszyk, Cezary},
+ isbn      = {978-3-95977-188-7},
+ issn      = {1868-8969},
+ pages     = {21:1--21:19},
+ publisher = {Schloss Dagstuhl -- Leibniz-Zentrum für Informatik},
+ series    = {Leibniz International Proceedings in Informatics (LIPIcs)},
+ title     = {Proving Quantum Programs Correct},
+ url       = {https://drops.dagstuhl.de/opus/volltexte/2021/13916},
+ urn       = {urn:nbn:de:0030-drops-139160},
+ volume    = {193},
+ year      = {2021}
+}
+```
+
+Alternatively, you can cite our repository using the information in [CITATION.cff](CITATION.cff).

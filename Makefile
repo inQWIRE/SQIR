@@ -68,7 +68,7 @@ examples/Wiesner.vo: examples/Wiesner.v SQIR/UnitaryOps.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/Wiesner.v
 
 # Built by 'make shor'
-	
+
 examples/shor/AltShor.vo: examples/shor/AltShor.v utilities/AltGateSet.vo examples/shor/Shor.vo
 	coqc $(COQ_OPTS) examples/shor/AltShor.v
 
@@ -87,7 +87,7 @@ examples/shor/RCIR.vo: examples/shor/RCIR.v SQIR/UnitaryOps.vo SQIR/VectorStates
 examples/shor/Shor.vo: examples/shor/Shor.v examples/shor/QPEGeneral.vo examples/shor/ModMult.vo examples/shor/ShorAux.vo
 	coqc $(COQ_OPTS) examples/shor/Shor.v
 	
-examples/shor/ShorAux.vo: examples/shor/ShorAux.v examples/Utilities.vo
+examples/shor/ShorAux.vo: invoke-coqmakefile-euler examples/shor/ShorAux.v examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/shor/ShorAux.v
 
 # Built by 'make voqc'
@@ -162,5 +162,5 @@ clean:
 	rm -rf CoqMakefile CoqMakefile.conf */*/*.vo* */*/*.glob */*/.*.aux */*.vo* */*.glob */.*.aux .lia.cache
 
 # This should be the last rule, to handle any targets not declared above
-#%: invoke-coqmakefile
-#	@true
+%: invoke-coqmakefile
+	@true
