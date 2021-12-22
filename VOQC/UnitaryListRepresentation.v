@@ -835,7 +835,7 @@ Proof.
     all: intros q0 Hq0.
     all: simpl; apply andb_true_intro; split.
     all: try apply Hdnr; auto.
-    all: apply negb_true_iff; repeat apply orb_false_intro; apply eqb_neq.
+    all: apply negb_true_iff; repeat apply orb_false_intro; apply Nat.eqb_neq.
     all: intro; subst. 
     all: try (rewrite Heqb in Hq0; inversion Hq0). 
     all: try (rewrite Heqb0 in Hq0; inversion Hq0). 

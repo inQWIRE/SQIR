@@ -1,5 +1,4 @@
-Require Import UnitarySem.
-Require Import QWIRE.Dirac.
+Require Import UnitaryOps.
 
 Local Open Scope nat_scope.
 Local Open Scope ucom_scope.

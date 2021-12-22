@@ -1,4 +1,3 @@
-Require Export Dirac.
 Require Export UnitaryOps.
 
 Local Open Scope ucom.
@@ -35,7 +34,7 @@ Fixpoint QFT n : base_ucom n :=
 Fixpoint reverse_qubits' dim n : base_ucom dim :=
   match n with
   | 0    => SKIP
-  | 1    => SWAP 0 (dim - 1) (* makes 0 case irrelevant *) (* could safely drop this? *)
+  | 1    => SWAP 0 (dim - 1) (* makes 0 case irrelevant *)
   | S n' => reverse_qubits' dim n' ; SWAP n' (dim - n' - 1)
   end.
 Definition reverse_qubits n := reverse_qubits' n (n/2)%nat.
@@ -252,7 +251,7 @@ Proof.
   - replace (QFT (S (S n))) with (H 0 ; controlled_rotations (S (S n)) ; cast (map_qubits S (QFT (S n))) (S (S n))) by reflexivity. 
     Local Opaque QFT controlled_rotations Nat.pow funbool_to_nat.
     simpl uc_eval.
-    repeat rewrite Mmult_assoc. 
+    repeat rewrite Mmult_assoc.
     rewrite f_to_vec_H by lia. 
     distribute_scale. distribute_plus. distribute_scale.
     rewrite 2 controlled_rotations_action_on_basis by lia.
@@ -356,11 +355,7 @@ Proof.
   rewrite (ket_decomposition ψ2) by auto.
   autorewrite with ket_db.
   repeat rewrite (Cmult_comm (ψ1 _ _)).
-  repeat rewrite Mplus_assoc.
-  apply f_equal2; try reflexivity.
-  repeat rewrite <- Mplus_assoc.
-  apply f_equal2; try reflexivity.
-  rewrite Mplus_comm. reflexivity.
+  lma.
 Qed.
 
 Lemma SWAP_symmetric : forall m n dim, (@SWAP dim m n) ≡ SWAP n m.

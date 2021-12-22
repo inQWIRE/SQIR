@@ -70,9 +70,8 @@ Definition of the SQIR language.
 - SQIR.v : Definition of the SQIR language (see 'ucom' and 'com').
 - UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
 - UnitarySem.v : Semantics for unitary SQIR programs.
-- VectorStates.v : Utilities for describing states as vectors.
 
-We also rely on several files from the [QWIRE](https://github.com/inQWIRE/QWIRE) development, which we have linked as a git submodule in the externals directory.
+We also rely on several files from the [QuantumLib](https://github.com/inQWIRE/QuantumLib) development, which we have linked as a git submodule in the externals directory.
 
 ### VOQC
 
@@ -128,16 +127,22 @@ Examples of verifying correctness properties of quantum algorithms.
 
 ## Acknowledgements
 
-This project is the result of the efforts of many people. The primary contacts for this project are Kesha Hietala (<kesha@cs.umd.edu>) and Robert Rand (<rand@uchicago.edu>). Other contributors include:
+This project is the result of the efforts of many people:
 * Akshaj Gaur
 * Aaron Green
+* Kesha Hietala
 * Shih-Han Hung
 * Adrian Lehmann
 * Liyi Li
 * Yuxiang Peng
+* Robert Rand
 * Kartik Singhal
 * Runzhou Tao
 * Finn Voichick
+
+Maintainer(s):
+* Kesha Hietala (@khieta)
+* Robert Rand (@rnrand)
 
 This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040 and the Air Force Office of Scientific Research under Grant Number FA95502110051.
 

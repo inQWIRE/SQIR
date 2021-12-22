@@ -1,6 +1,6 @@
 Require Import UnitaryOps.
 Require Import Utilities.
-Require Import Dirac.
+Require Import QuantumLib.Measurement.
 
 Open Scope ucom.
 Local Close Scope C_scope.

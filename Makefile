@@ -37,16 +37,16 @@ voqc: invoke-coqmakefile VOQC/Main.vo
 
 # Built by 'make examples'
 
-examples/Deutsch.vo: examples/Deutsch.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo externals/QWIRE/Proportional.vo
+examples/Deutsch.vo: examples/Deutsch.v SQIR/UnitarySem.vo
 	coqc $(COQ_OPTS) examples/Deutsch.v
 
-examples/DeutschJozsa.vo: examples/DeutschJozsa.v SQIR/UnitaryOps.vo examples/Utilities.vo externals/QWIRE/Dirac.vo
+examples/DeutschJozsa.vo: examples/DeutschJozsa.v SQIR/UnitaryOps.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/DeutschJozsa.v
 
-examples/GHZ.vo: examples/GHZ.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo
+examples/GHZ.vo: examples/GHZ.v SQIR/UnitarySem.vo
 	coqc $(COQ_OPTS) examples/GHZ.v
 
-examples/Grover.vo: examples/Grover.v SQIR/UnitaryOps.vo examples/Utilities.vo externals/QWIRE/Dirac.vo
+examples/Grover.vo: examples/Grover.v SQIR/UnitaryOps.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/Grover.v
 
 examples/QPE.vo: examples/QPE.v SQIR/UnitaryOps.vo
@@ -55,13 +55,13 @@ examples/QPE.vo: examples/QPE.v SQIR/UnitaryOps.vo
 examples/Simon.vo: examples/Simon.v SQIR/UnitaryOps.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/Simon.v
 
-examples/Superdense.vo: examples/Superdense.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo
+examples/Superdense.vo: examples/Superdense.v SQIR/UnitarySem.vo
 	coqc $(COQ_OPTS) examples/Superdense.v
 
-examples/Teleport.vo: examples/Teleport.v SQIR/UnitarySem.vo SQIR/DensitySem.vo SQIR/NDSem.vo externals/QWIRE/Dirac.vo externals/QWIRE/Proportional.vo
+examples/Teleport.vo: examples/Teleport.v SQIR/UnitarySem.vo SQIR/DensitySem.vo SQIR/NDSem.vo
 	coqc $(COQ_OPTS) examples/Teleport.v
 
-examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo
+examples/Utilities.vo: examples/Utilities.v
 	coqc $(COQ_OPTS) examples/Utilities.v
 
 examples/Wiesner.vo: examples/Wiesner.v SQIR/UnitaryOps.vo examples/Utilities.vo
@@ -75,19 +75,19 @@ examples/shor/AltShor.vo: examples/shor/AltShor.v utilities/AltGateSet.vo exampl
 examples/shor/Main.vo: examples/shor/Main.v examples/shor/AltShor.vo
 	coqc $(COQ_OPTS) examples/shor/Main.v
 
-examples/shor/ModMult.vo: examples/shor/ModMult.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo examples/shor/RCIR.vo
+examples/shor/ModMult.vo: examples/shor/ModMult.v SQIR/UnitaryOps.vo examples/shor/RCIR.vo
 	coqc $(COQ_OPTS) examples/shor/ModMult.v
 
 examples/shor/QPEGeneral.vo: examples/shor/QPEGeneral.v examples/QPE.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/shor/QPEGeneral.v
 
-examples/shor/RCIR.vo: examples/shor/RCIR.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo
+examples/shor/RCIR.vo: examples/shor/RCIR.v SQIR/UnitaryOps.vo
 	coqc $(COQ_OPTS) examples/shor/RCIR.v
 
 examples/shor/Shor.vo: examples/shor/Shor.v examples/shor/QPEGeneral.vo examples/shor/ModMult.vo examples/shor/ShorAux.vo
 	coqc $(COQ_OPTS) examples/shor/Shor.v
 	
-examples/shor/ShorAux.vo: invoke-coqmakefile-euler examples/shor/ShorAux.v examples/Utilities.vo
+examples/shor/ShorAux.vo: examples/shor/ShorAux.v examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/shor/ShorAux.v
 
 # Built by 'make voqc'
@@ -113,10 +113,10 @@ VOQC/HadamardReduction.vo: VOQC/HadamardReduction.v SQIR/Equivalences.vo VOQC/Rz
 VOQC/IBMGateSet.vo: VOQC/IBMGateSet.v VOQC/ChangeRotationBasis.vo VOQC/UnitaryListRepresentation.vo VOQC/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) VOQC/IBMGateSet.v
 
-VOQC/UnitaryListRepresentation.vo: VOQC/UnitaryListRepresentation.v VOQC/GateSet.vo externals/QWIRE/Proportional.vo SQIR/Equivalences.vo
+VOQC/UnitaryListRepresentation.vo: VOQC/UnitaryListRepresentation.v VOQC/GateSet.vo SQIR/Equivalences.vo
 	coqc $(COQ_OPTS) VOQC/UnitaryListRepresentation.v
 
-VOQC/Layouts.vo: VOQC/Layouts.v SQIR/VectorStates.vo
+VOQC/Layouts.vo: VOQC/Layouts.v
 	coqc $(COQ_OPTS) VOQC/Layouts.v
 
 VOQC/MappingConstraints.vo: VOQC/MappingConstraints.v VOQC/UnitaryListRepresentation.vo
@@ -154,7 +154,7 @@ VOQC/PropagateClassical.vo: VOQC/PropagateClassical.v VOQC/RzQGateSet.vo SQIR/De
 VOQC/RemoveZRotationBeforeMeasure.vo: VOQC/RemoveZRotationBeforeMeasure.v VOQC/RzQGateSet.vo SQIR/DensitySem.vo
 	coqc $(COQ_OPTS) VOQC/RemoveZRotationBeforeMeasure.v
 
-VOQC/BooleanCompilation.vo: VOQC/BooleanCompilation.v SQIR/VectorStates.vo externals/QWIRE/Dirac.vo
+VOQC/BooleanCompilation.vo: VOQC/BooleanCompilation.v
 	coqc $(COQ_OPTS) VOQC/BooleanCompilation.v
 
 # Using a custom clean target to remove files from subdirectories

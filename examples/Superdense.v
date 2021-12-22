@@ -1,5 +1,4 @@
-Require Import QWIRE.Dirac.
-Require Import UnitarySem.
+Require Import UnitaryOps.
 Local Open Scope ucom.    
 
 Definition a : nat := O.
@@ -11,7 +10,7 @@ Definition bell00_u : base_ucom 2 :=
 
 Definition encode_u (b1 b2 : bool): base_ucom 2 :=
   (if b2 then X a else SKIP);
-  (if b1 then Z a else SKIP).
+  (if b1 then SQIR.Z a else SKIP).
 
 Definition decode_u : base_ucom 2 := (* note: this is the reverse of bell00 *)
   CNOT a b;

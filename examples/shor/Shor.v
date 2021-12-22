@@ -1,6 +1,7 @@
 Require Import Reals Psatz ZArith Znumtheory Btauto.
 Require Export QPEGeneral ModMult ShorAux.
 Require Import Interval.Tactic.
+Require Import QuantumLib.Permutations.
 
 Local Close Scope R_scope.
 Local Coercion INR : nat >-> R.
@@ -433,7 +434,7 @@ Proof.
   replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two. easy.
   bdestruct (r =? 0). subst. easy.
   remember (fun i : nat => ((i + 2^k) mod r)%nat) as u.
-  assert (finite_bijection r u).
+  assert (permutation r u).
   { rewrite Hequ. 
     exists (fun i : nat => ((r - (2^k) mod r + i) mod r)).
     intros x Hx.

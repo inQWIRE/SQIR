@@ -383,7 +383,7 @@ Proof.
       simpl.
       rewrite does_not_reference_instr_Meas.
       repeat (try apply andb_true_intro; split).
-      apply negb_true_iff; apply eqb_neq; assumption.
+      apply negb_true_iff; apply Nat.eqb_neq; assumption.
       all: try assumption.
       rewrite IHl with (l1:=l6); reflexivity.
 Qed.
@@ -464,14 +464,15 @@ Proof.
     rewrite denote_SKIP in *; try assumption.
     rewrite Mmult_1_l in *; try auto with wf_db.
     remember (uc_eval (G.to_base u [q] (one_elem_list q))) as U.
-    remember (pad n dim (∣1⟩ × (∣1⟩) †)) as pad1.
-    remember (pad n dim (∣0⟩ × (∣0⟩) †)) as pad0.
+    remember (proj n dim true) as pad1.
+    remember (proj n dim false) as pad0.
     replace (super pad1 (super U ρ)) with (super U (super pad1 ρ)).
     2: { subst; clear - Hq.
          unfold super.
          repeat rewrite Mmult_assoc.
          rewrite <- 2 Mmult_adjoint.
          repeat rewrite <- Mmult_assoc.
+         unfold proj, pad_u.
          rewrite only_uses_commutes_pad1 with (qs:=[q]).
          reflexivity.
          auto with wf_db.
@@ -484,6 +485,7 @@ Proof.
          repeat rewrite Mmult_assoc.
          rewrite <- 2 Mmult_adjoint.
          repeat rewrite <- Mmult_assoc.
+         unfold proj, pad_u.
          rewrite only_uses_commutes_pad1 with (qs:=[q]).
          reflexivity.
          auto with wf_db.

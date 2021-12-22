@@ -2,6 +2,7 @@ Require Export ConnectivityGraph.
 Require Export Layouts.
 Require Export MappingConstraints.
 Require Import StandardGateSet.
+Require Import QuantumLib.Permutations.
 Import StdList.
 
 (* Simple strategy for mapping a program to a CNOT connectivity graph.
@@ -230,264 +231,11 @@ Proof.
   assumption.
 Qed.
 
-(* Permutation matrices -- could be moved elsewhere *)
-
-Definition perm_mat n (p : nat -> nat) : Square n :=
-  (fun x y => if (x =? p y) && (x <? n) && (y <? n) then C1 else C0).
-
-Lemma perm_mat_WF : forall n p, WF_Matrix (perm_mat n p).
-Proof.
-  intros n p.
-  unfold WF_Matrix, perm_mat. 
-  intros x y [H | H].
-  bdestruct (x =? p y); bdestruct (x <? n); bdestruct (y <? n); trivial; lia.
-  bdestruct (x =? p y); bdestruct (x <? n); bdestruct (y <? n); trivial; lia.
-Qed. 
-#[export] Hint Resolve perm_mat_WF : wf_db.
-
-Lemma perm_mat_unitary : forall n p, 
-  finite_bijection n p -> WF_Unitary (perm_mat n p).
-Proof.
-  intros n p [pinv Hp].
-  split.
-  apply perm_mat_WF.
-  unfold Mmult, adjoint, perm_mat, I.
-  prep_matrix_equality.
-  destruct ((x =? y) && (x <? n)) eqn:H.
-  apply andb_prop in H as [H1 H2].
-  apply Nat.eqb_eq in H1.
-  apply Nat.ltb_lt in H2.
-  subst.
-  apply Csum_unique.
-  exists (p y).
-  destruct (Hp y) as [? _]; auto.
-  split; auto.
-  split.
-  bdestruct_all; simpl; lca.
-  intros x Hx.
-  bdestruct_all; simpl; lca.
-  apply Csum_0.
-  intros z.
-  bdestruct_all; simpl; try lca.
-  subst.
-  rewrite andb_true_r in H.
-  apply beq_nat_false in H.
-  assert (pinv (p x) = pinv (p y)) by auto.
-  destruct (Hp x) as [_ [_ [H5 _]]]; auto.
-  destruct (Hp y) as [_ [_ [H6 _]]]; auto.
-  contradict H.
-  rewrite <- H5, <- H6.
-  assumption.
-Qed.
-
-Lemma perm_mat_Mmult : forall n f g,
-  finite_bijection n g ->
-  perm_mat n f × perm_mat n g = perm_mat n (f ∘ g)%prg.
-Proof.
-  intros n f g [ginv Hgbij].
-  unfold perm_mat, Mmult, compose.
-  prep_matrix_equality.
-  destruct ((x =? f (g y)) && (x <? n) && (y <? n)) eqn:H.
-  apply andb_prop in H as [H H3].
-  apply andb_prop in H as [H1 H2].
-  apply Nat.eqb_eq in H1.
-  apply Nat.ltb_lt in H2.
-  apply Nat.ltb_lt in H3.
-  subst.
-  apply Csum_unique.
-  exists (g y).
-  destruct (Hgbij y) as [? _]; auto.
-  split; auto.
-  split.
-  bdestruct_all; simpl; lca.
-  intros x Hx.
-  bdestruct_all; simpl; lca.
-  apply Csum_0.
-  intros z.
-  bdestruct_all; simpl; try lca.
-  subst.
-  rewrite 2 andb_true_r in H.
-  apply beq_nat_false in H.
-  contradiction.
-Qed.
-
-Lemma perm_mat_I : forall n f,
-  (forall x, x < n -> f x = x) ->
-  perm_mat n f = I n.
-Proof.
-  intros n f Hinv.
-  unfold perm_mat, I.
-  prep_matrix_equality.
-  bdestruct_all; simpl; try lca.
-  rewrite Hinv in H2 by assumption.
-  contradiction.
-  rewrite Hinv in H2 by assumption.
-  contradiction.
-Qed.
-
-(* Given a permutation p over n qubits, produce a permutation over 2^n indices. *)
-Definition qubit_perm_to_nat_perm n (p : nat -> nat) :=
-  fun x:nat => funbool_to_nat n ((nat_to_funbool n x) ∘ p)%prg.
-
-Lemma qubit_perm_to_nat_perm_bij : forall n p,
-  finite_bijection n p -> finite_bijection (2^n) (qubit_perm_to_nat_perm n p).
-Proof.
-  intros n p [pinv Hp].
-  unfold qubit_perm_to_nat_perm.
-  exists (fun x => funbool_to_nat n ((nat_to_funbool n x) ∘ pinv)%prg).
-  intros x Hx.
-  repeat split.
-  apply funbool_to_nat_bound.
-  apply funbool_to_nat_bound.
-  unfold compose.
-  erewrite funbool_to_nat_eq.
-  2: { intros y Hy. 
-       rewrite funbool_to_nat_inverse. 
-       destruct (Hp y) as [_ [_ [_ H]]].
-       assumption.
-       rewrite H.
-       reflexivity.
-       destruct (Hp y) as [_ [? _]]; auto. }
-  rewrite nat_to_funbool_inverse; auto.
-  unfold compose.
-  erewrite funbool_to_nat_eq.
-  2: { intros y Hy. 
-       rewrite funbool_to_nat_inverse. 
-       destruct (Hp y) as [_ [_ [H _]]].
-       assumption.
-       rewrite H.
-       reflexivity.
-       destruct (Hp y) as [? _]; auto. }
-  rewrite nat_to_funbool_inverse; auto.
-Qed.  
-
-Definition perm_to_matrix n p :=
-  perm_mat (2 ^ n) (qubit_perm_to_nat_perm n p).
- 
-Lemma perm_to_matrix_permutes_qubits : forall n p f, 
-  finite_bijection n p ->
-  perm_to_matrix n p × f_to_vec n f = f_to_vec n (fun x => f (p x)).
-Proof.
-  intros n p f [pinv Hp].
-  rewrite 2 basis_f_to_vec.
-  unfold perm_to_matrix, perm_mat, qubit_perm_to_nat_perm.
-  unfold basis_vector, Mmult, compose.
-  prep_matrix_equality.
-  destruct ((x =? funbool_to_nat n (fun x0 : nat => f (p x0))) && (y =? 0)) eqn:H.
-  apply andb_prop in H as [H1 H2].
-  rewrite Nat.eqb_eq in H1.
-  rewrite Nat.eqb_eq in H2.
-  apply Csum_unique.
-  exists (funbool_to_nat n f).
-  split.
-  apply funbool_to_nat_bound.
-  split.
-  erewrite funbool_to_nat_eq.
-  2: { intros. rewrite funbool_to_nat_inverse. reflexivity.
-  destruct (Hp x0) as [? _]; auto. }
-  specialize (funbool_to_nat_bound n f) as ?.
-  specialize (funbool_to_nat_bound n (fun x0 : nat => f (p x0))) as ?.
-  bdestruct_all; lca.
-  intros z Hz.
-  bdestructΩ (z =? funbool_to_nat n f).
-  lca.
-  apply Csum_0.
-  intros z.
-  bdestruct_all; simpl; try lca.
-  rewrite andb_true_r in H.
-  apply beq_nat_false in H.
-  subst z.
-  erewrite funbool_to_nat_eq in H2.
-  2: { intros. rewrite funbool_to_nat_inverse. reflexivity.
-  destruct (Hp x0) as [? _]; auto. }
-  contradiction.
-Qed.
-
-Lemma perm_to_matrix_unitary : forall n p, 
-  finite_bijection n p ->
-  WF_Unitary (perm_to_matrix n p).
-Proof.
-  intros.
-  apply perm_mat_unitary.
-  apply qubit_perm_to_nat_perm_bij.
-  assumption.
-Qed.
-
-Lemma qubit_perm_to_nat_perm_compose : forall n f g,
-  finite_bijection n f ->
-  (qubit_perm_to_nat_perm n f ∘ qubit_perm_to_nat_perm n g = 
-    qubit_perm_to_nat_perm n (g ∘ f))%prg.
-Proof.
-  intros n f g [finv Hbij].
-  unfold qubit_perm_to_nat_perm, compose.
-  apply functional_extensionality.
-  intro x.
-  apply funbool_to_nat_eq.
-  intros y Hy.
-  rewrite funbool_to_nat_inverse.
-  reflexivity.
-  destruct (Hbij y) as [? _]; auto.
-Qed.
-
-Lemma perm_to_matrix_Mmult : forall n f g,
-  finite_bijection n f ->
-  finite_bijection n g ->
-  perm_to_matrix n f × perm_to_matrix n g = perm_to_matrix n (g ∘ f)%prg.
-Proof.
-  intros. 
-  unfold perm_to_matrix.
-  rewrite perm_mat_Mmult.
-  rewrite qubit_perm_to_nat_perm_compose by assumption.
-  reflexivity.
-  apply qubit_perm_to_nat_perm_bij.
-  assumption.
-Qed.
-
-Lemma perm_to_matrix_I : forall n f,
-  finite_bijection n f ->
-  (forall x, x < n -> f x = x) ->
-  perm_to_matrix n f = I (2 ^ n).
-Proof.
-  intros n f g Hbij. 
-  unfold perm_to_matrix.
-  apply perm_mat_I.
-  intros x Hx.
-  unfold qubit_perm_to_nat_perm, compose. 
-  erewrite funbool_to_nat_eq.
-  2: { intros y Hy. rewrite Hbij by assumption. reflexivity. }
-  apply nat_to_funbool_inverse.
-  assumption.
-Qed.
-
-Lemma perm_to_matrix_WF : forall n p, WF_Matrix (perm_to_matrix n p).
-Proof. intros. apply perm_mat_WF. Qed. 
-#[export] Hint Resolve perm_to_matrix_WF : wf_db.
-
 (** Equivalence up to qubit reordering **)
 
 Definition uc_eq_perm (l1 l2 : standard_ucom_l dim) pin pout :=
   eval l1 = perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
 Notation "c1 ≡ c2 'with' p1 'and' p2" := (uc_eq_perm c1 c2 p1 p2) (at level 20).
-
-Lemma finite_bijection_compose : forall n f g,
-  finite_bijection n f ->
-  finite_bijection n g ->
-  finite_bijection n (f ∘ g)%prg.
-Proof.
-  intros n f g [finv Hfbij] [ginv Hgbij].
-  exists (ginv ∘ finv)%prg.
-  unfold compose.
-  intros x Hx.
-  destruct (Hgbij x) as [? [_ [? _]]]; auto.
-  destruct (Hfbij (g x)) as [? [_ [Hinv1 _]]]; auto.
-  destruct (Hfbij x) as [_ [? [_ ?]]]; auto.
-  destruct (Hgbij (finv x)) as [_ [? [_ Hinv2]]]; auto.
-  repeat split; auto.
-  rewrite Hinv1. 
-  assumption.
-  rewrite Hinv2. 
-  assumption.
-Qed.
 
 Lemma uc_eq_perm_nil : forall (m : qmap dim),
   dim > 0 ->
@@ -501,7 +249,7 @@ Proof.
   Msimpl.
   rewrite perm_to_matrix_Mmult, perm_to_matrix_I.
   reflexivity.
-  apply finite_bijection_compose.
+  apply permutation_compose.
   1,5: apply well_formed_phys2log_bij; assumption.
   1,3: apply well_formed_log2phys_bij; assumption.
   intros x Hx.
@@ -547,7 +295,7 @@ Proof.
     rewrite perm_to_matrix_permutes_qubits by assumption. 
     assert (log2phys m n < dim).
     destruct (WF n) as [? _]; auto.
-    unfold pad.
+    unfold pad_u, pad.
     bdestruct_all.
     rewrite (f_to_vec_split 0 dim n) by assumption.
     rewrite (f_to_vec_split 0 dim (log2phys m n)) by assumption.
@@ -683,13 +431,13 @@ Definition map_qubits_app {U dim} (f : nat -> nat) (g : gate_app U dim) : gate_a
 Local Transparent SQIR.ID.
 Lemma map_qubits_app_equiv_map_qubits : forall {dim} (f : nat -> nat) (g : gate_app Std_Unitary dim),
   dim > 0 ->
-  finite_bijection dim f ->
+  permutation dim f ->
   uc_eval (list_to_ucom [map_qubits_app f g]) = 
     uc_eval (map_qubits f (list_to_ucom [g])).
 Proof.
   intros dim f g Hdim [finv Hbij].
   destruct (Hbij 0) as [? _]; auto.
-  destruct g; simpl;
+  destruct g; simpl; unfold pad_u;
     rewrite I_rotation; repeat rewrite pad_id; 
     try assumption; Msimpl.
   all: erewrite <- to_base_map_commutes; reflexivity.
@@ -768,17 +516,14 @@ Proof.
     intros x Hx.
     unfold swap_in_map, log2phys; destruct m.
     bdestruct (x =? n3 a).
-    rewrite update_index_neq by assumption.
-    rewrite update_index_eq.
+    rewrite fswap_simpl2.
     subst.
     destruct (WFm a) as [_ [_ [_ ?]]]; auto.
     bdestruct (x =? n3 n).
-    rewrite update_index_eq.
+    rewrite fswap_simpl1.
     subst.
     destruct (WFm n) as [_ [_ [_ ?]]]; auto.
-    rewrite update_index_neq.
-    rewrite update_index_neq.
-    reflexivity.
+    apply fswap_neq.
     intro contra.
     subst.
     destruct (WFm x) as [_ [_ [? _]]]; auto.
@@ -851,6 +596,7 @@ Proof.
   rewrite update_twice_neq by lia.
   rewrite update_twice_eq.
   rewrite update_twice_neq by lia.
+  rewrite fswap_rewrite.
   destruct (f n); destruct (f n0); reflexivity.
 Qed.
 
@@ -915,7 +661,7 @@ Proof.
   Msimpl.
   reflexivity.
   unfold eval; auto with wf_db.
-  apply finite_bijection_compose.
+  apply permutation_compose.
   apply well_formed_phys2log_bij; assumption.
   apply well_formed_log2phys_bij; assumption.
   intros x Hx.

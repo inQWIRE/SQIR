@@ -5,7 +5,10 @@ Require Export VectorStates.
    - inversion
    - control
    - iteration
-   - parallel composition *)
+   - parallel composition 
+   
+   It also contains a definition for projecting a qubit into a classical state, which
+   is useful for defining the behavior of control. *)
 
 Local Open Scope ucom.
 
@@ -36,7 +39,7 @@ Proof.
   intros.
   induction c; try dependent destruction u; simpl.
   - Msimpl. rewrite IHc1. rewrite IHc2. reflexivity.
-  - autorewrite with eval_db.
+  - unfold pad_u, pad.
     bdestruct (n + 1 <=? dim); try apply zero_adjoint_eq.
     repeat setoid_rewrite kron_adjoint; Msimpl.
     rewrite rotation_adjoint.
@@ -56,7 +59,7 @@ Lemma invert_X : forall dim n, invert (@X dim n) ≡ X n.
 Proof.
   intros dim n.
   unfold uc_equiv. simpl. 
-  autorewrite with eval_db.
+  unfold pad_u, pad.
   gridify.
   do 2 (apply f_equal2; try reflexivity).
   unfold rotation. 
@@ -69,7 +72,7 @@ Lemma invert_H : forall dim n, invert (@H dim n) ≡ H n.
 Proof.
   intros dim n.
   unfold uc_equiv. simpl. 
-  autorewrite with eval_db.
+  unfold pad_u, pad.
   gridify.
   do 2 (apply f_equal2; try reflexivity).
   unfold rotation. 
@@ -96,63 +99,6 @@ Fixpoint control {dim} q (c : base_ucom dim) : base_ucom dim :=
   | uapp2 U_CNOT m n => CCX q m n
   | _ => SKIP
   end.
-
-(* Move to: Dirac.v *)
-(* Lemmas 3 and 4 may not be appropriate for ket db since they don't operate on kets. *)
-(* For Q_db? *)
-Lemma ket0_phase : forall ϕ, phase_shift ϕ × ket 0 = ket 0.
-Proof. intros; solve_matrix. Qed.
-
-Lemma ket1_phase : forall ϕ, phase_shift ϕ × ket 1 = Cexp ϕ .* ket 1.
-Proof. intros; solve_matrix. Qed.
-
-Lemma bra0_phase : forall ϕ, bra 0 × phase_shift ϕ = bra 0.
-Proof. intros; solve_matrix. Qed.
-
-Lemma bra1_phase : forall ϕ, bra 1 × phase_shift ϕ = Cexp ϕ .* bra 1.
-Proof. intros; solve_matrix. Qed.
-
-Hint Rewrite ket0_phase ket1_phase bra0_phase bra1_phase : ket_db.
-
-Lemma WF_bra : forall x, WF_Matrix (bra x).
-Proof. intros []; show_wf. Qed.
-
-Lemma WF_ket : forall x, WF_Matrix (ket x).
-Proof. intros []; show_wf. Qed.
-
-#[export] Hint Resolve WF_bra WF_ket : wf_db.
-
-Lemma braket_same : forall x, bra x × ket x = I 1.
-Proof. destruct x; solve_matrix. Qed.
-
-Lemma braket_diff : forall x y, (x + y = 1)%nat -> bra x × ket y = Zero.
-Proof. intros [] [] H; try lia; solve_matrix. Qed.
-
-Lemma braketbra_same : forall x y, bra x × (ket x × bra y) = bra y. 
-Proof. intros. rewrite <- Mmult_assoc, braket_same; Msimpl; easy. Qed.
-
-Lemma braketbra_diff : forall x y z, (x + y = 1)%nat -> bra x × (ket y × bra z) = Zero. 
-Proof. intros. rewrite <- Mmult_assoc, braket_diff; Msimpl; easy. Qed.
-
-Hint Rewrite braket_same braket_diff braketbra_same braketbra_diff using lia : ket_db.
-
-(* Improved group_Cexp based on group_radicals *)
-Ltac group_Cexp :=
-  repeat rewrite <- Cexp_neg;
-  repeat match goal  with
-  | _ => rewrite <- Cexp_add
-  | _ => rewrite <- Copp_mult_distr_l
-  | _ => rewrite <- Copp_mult_distr_r
-  | |- context [ ?x * ?y ] => tryif has_term Cexp x then fail 
-                            else (has_term Cexp y; rewrite (Cmult_comm x y)) 
-  | |- context [ ?x * ?y * ?z ] =>
-    tryif has_term Cexp y then fail 
-    else (has_term Cexp x; has_term Cexp z; rewrite <- (Cmult_assoc x y z)) 
-  | |- context [ ?x * (?y * ?z) ] => 
-    has_term Cexp x; has_term Cexp y; rewrite (Cmult_assoc x y z)
-  end.    
-
-Hint Rewrite <- Copp_plus_distr : C_db.
 
 Inductive is_fresh {U dim} : nat -> ucom U dim -> Prop :=
   | fresh_seq  : forall q c1 c2, is_fresh q c1 -> is_fresh q c2 -> is_fresh q (c1; c2)
@@ -270,6 +216,142 @@ Proof.
 Qed.
 Local Opaque SQIR.H X Rz CNOT.
 
+(* Project onto the space where qubit q is in classical state b.
+   TODO: possibly move to QuantumLib *)
+Definition proj q dim (b : bool) := pad_u dim q (bool_to_matrix b).
+
+Lemma WF_proj : forall q dim b, WF_Matrix (proj q dim b).
+Proof. intros. unfold proj. auto with wf_db. Qed.
+#[export] Hint Resolve WF_proj : wf_db.
+
+Lemma f_to_vec_proj_eq : forall f q n b,
+  (q < n)%nat -> f q = b -> 
+  proj q n b × (f_to_vec n f) = f_to_vec n f.
+Proof.
+  intros f q n b ? ?.
+  rewrite (f_to_vec_split 0 n q) by lia. 
+  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
+  unfold proj, pad_u, pad.
+  gridify. 
+  do 2 (apply f_equal2; try reflexivity). 
+  destruct (f q); solve_matrix.
+Qed.
+
+Lemma f_to_vec_proj_neq : forall f q n b,
+  (q < n)%nat -> f q <> b ->
+  proj q n b × (f_to_vec n f) = Zero.
+Proof.
+  intros f q n b ? H.
+  rewrite (f_to_vec_split 0 n q) by lia. 
+  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
+  unfold proj, pad_u, pad.
+  gridify. 
+  destruct (f q); destruct b; try easy; lma.
+Qed.
+
+(* We can use 'proj' to state that qubit q is in classical state b. *)
+Definition classical {dim} q b (ψ : Vector (2 ^ dim)) := proj q dim b × ψ = ψ.
+
+Lemma f_to_vec_classical : forall n q f,
+  (q < n)%nat -> classical q (f q) (f_to_vec n f).
+Proof.
+  intros n q f Hq.
+  unfold classical, proj.
+  induction n; try lia.
+  unfold pad_u, pad.
+  replace (q + 1)%nat with (S q) by lia. 
+  bdestructΩ (S q <=? S n); clear H.
+  bdestruct (q =? n).
+  - subst. replace (n - n)%nat with O by lia.
+    simpl. Msimpl_light.
+    restore_dims.
+    rewrite kron_mixed_product.
+    Msimpl_light; apply f_equal2; auto.
+    destruct (f n); solve_matrix.
+  - remember (n - q - 1)%nat as x.
+    replace (n - q)%nat with (x + 1)%nat by lia.
+    replace n with (q + 1 + x)%nat by lia.
+    replace (2 ^ (x + 1))%nat with (2 ^ x * 2)%nat by unify_pows_two.
+    rewrite <- id_kron.
+    rewrite <- kron_assoc by auto with wf_db.
+    replace (2 ^ (q + 1 + x) + (2 ^ (q + 1 + x) + 0))%nat with (2 ^ (q + 1 + x) * 2)%nat by lia.
+    repeat rewrite Nat.pow_add_r.
+    replace 1%nat with (1 * 1)%nat by lia. 
+    rewrite kron_mixed_product; simpl.
+    replace (q + 1 + x)%nat with n by lia.
+    subst.
+    Msimpl_light.
+    rewrite <- IHn at 2; try lia.
+    unfold pad_u, pad. 
+    bdestructΩ (q + 1 <=? n); clear H0.
+    replace (n - (q + 1))%nat with (n - q - 1)%nat by lia.
+    restore_dims. reflexivity.
+Qed.
+
+Lemma proj_commutes_1q_gate : forall dim u q n b,
+  q <> n ->
+  proj q dim b × ueval_r dim n u = ueval_r dim n u × proj q dim b. 
+Proof.
+  intros dim u q n b neq.
+  dependent destruction u; simpl.
+  unfold proj.
+  apply pad_A_B_commutes; auto with wf_db.
+Qed.
+
+Lemma proj_commutes_2q_gate : forall dim q n1 n2 b,
+  q <> n1 -> q <> n2 ->
+  proj q dim b × ueval_cnot dim n1 n2 = ueval_cnot dim n1 n2 × proj q dim b. 
+Proof.
+  intros dim q n1 n2 b neq1 neq2.
+  unfold proj, ueval_cnot.
+  apply pad_A_ctrl_commutes; auto with wf_db.
+Qed.
+
+Lemma proj_commutes : forall dim q1 q2 b1 b2,
+  proj q1 dim b1 × proj q2 dim b2 = proj q2 dim b2 × proj q1 dim b1.
+Proof.
+  intros dim q1 q2 b1 b2.
+  unfold proj, pad_u, pad.
+  gridify; trivial.
+  destruct b1; destruct b2; simpl; Qsimpl; reflexivity. 
+Qed.
+
+Lemma proj_twice_eq : forall dim q b,
+  proj q dim b × proj q dim b = proj q dim b.
+Proof.
+  intros dim q b.
+  unfold proj, pad_u, pad.
+  gridify.
+  destruct b; simpl; Qsimpl; reflexivity.
+Qed.
+
+Lemma proj_twice_neq : forall dim q b1 b2,
+  b1 <> b2 -> proj q dim b1 × proj q dim b2 = Zero.
+Proof.
+  intros dim q b1 b2 neq.
+  unfold proj, pad_u, pad.
+  gridify.
+  destruct b1; destruct b2; try contradiction; simpl; Qsimpl; reflexivity.
+Qed.
+
+(* TODO: possibly move to QuantumLib *)
+
+Lemma bra0_phase : forall ϕ, bra 0 × phase_shift ϕ = bra 0.
+Proof. intros; solve_matrix. Qed.
+
+Lemma bra1_phase : forall ϕ, bra 1 × phase_shift ϕ = Cexp ϕ .* bra 1.
+Proof. intros; solve_matrix. Qed.
+
+Hint Rewrite bra0_phase bra1_phase : bra_db.
+
+Lemma braketbra_same : forall x y, bra x × (ket x × bra y) = bra y. 
+Proof. intros. destruct x; destruct y; solve_matrix. Qed.
+
+Lemma braketbra_diff : forall x y z, (x + y = 1)%nat -> bra x × (ket y × bra z) = Zero. 
+Proof. intros. destruct x; destruct y; try lia; solve_matrix. Qed.
+
+Hint Rewrite braketbra_same braketbra_diff using lia : bra_db.
+
 (* Auxiliary proofs about the semantics of CU and TOFF *)
 Lemma CU_correct : forall (dim : nat) θ ϕ λ c t,
   (t < dim)%nat -> c <> t ->
@@ -278,16 +360,17 @@ Proof.
   intros.
   unfold proj; simpl.
   autorewrite with eval_db.
+  unfold pad_u, pad.
   gridify. (* slow *)
   all: clear.
-  all: autorewrite with M_db_light ket_db.
+  all: autorewrite with M_db_light ket_db bra_db.
   all: rewrite Mplus_comm;
        repeat (apply f_equal2; try reflexivity).
   (* A little messy because we need to apply trig identities; 
      goal #1 = goal #3 and goal #2 = goal #4 *)
-  - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db; try lca;
-      field_simplify_eq; try nonzero; group_Cexp.
-    + rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy.
+  - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db;
+      try lca; field_simplify_eq; try nonzero; group_Cexp.
+    + simpl. rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy.
     + rewrite Copp_mult_distr_l, Copp_mult_distr_r. 
       repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
       autorewrite with RtoC_db. rewrite Ropp_involutive.
@@ -376,7 +459,7 @@ Lemma UR_not_WT : forall (dim a b : nat) r r0 r1,
   uc_eval (@CU dim r r0 r1 a b) = Zero.
 Proof.
   intros dim a b r r0 r1 H.
-  simpl. 
+  simpl. unfold pad_u.
   assert (@pad 1 b dim (rotation (r / 2) r0 0) = Zero).
   { unfold pad. gridify. 
     assert (uc_well_typed (@uapp1 _ (b + 1 + d) (U_R r r0 r1) b)).
@@ -418,8 +501,44 @@ Proof.
 Qed.
 Local Opaque CU.
 
+Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool), (i < n)%nat ->
+  (uc_eval (X i)) × (f_to_vec n f) = f_to_vec n (update f i (¬ (f i))).
+Proof.
+  intros. rewrite denote_X. apply f_to_vec_σx. auto.
+Qed.
+
+Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
+  (i < n)%nat -> (j < n)%nat -> i <> j ->
+  (uc_eval (SQIR.CNOT i j)) × (f_to_vec n f) = f_to_vec n (update f j (f j ⊕ f i)).
+Proof.
+   intros. rewrite denote_cnot. unfold ueval_cnot. apply f_to_vec_cnot; auto.
+Qed.
+
+Lemma f_to_vec_SWAP : forall (n i j : nat) (f : nat -> bool),
+  (i < n)%nat -> (j < n)%nat -> i <> j ->
+  uc_eval (SWAP i j) × (f_to_vec n f) = f_to_vec n (fswap f i j).
+Proof.
+   intros. rewrite denote_swap_alt. apply f_to_vec_swap; auto.
+Qed.
+
+Lemma f_to_vec_Rz : forall (n i : nat) (θ : R) (f : nat -> bool),
+  (i < n)%nat ->
+  (uc_eval (SQIR.Rz θ i)) × (f_to_vec n f) = 
+    (Cexp (b2R (f i) * θ)) .* f_to_vec n f.
+Proof.
+   intros. rewrite denote_Rz. apply f_to_vec_phase_shift; auto.
+Qed.
+
+Lemma f_to_vec_H : forall (n i : nat) (f : nat -> bool),
+  (i < n)%nat ->
+  (uc_eval (SQIR.H i)) × (f_to_vec n f) 
+      = /√2 .* ((f_to_vec n (update f i false)) 
+                .+ (Cexp (b2R (f i) * PI)) .* f_to_vec n (update f i true)).
+Proof.
+   intros. rewrite denote_H. apply f_to_vec_hadamard; auto.
+Qed.
+
 Hint Rewrite f_to_vec_CNOT f_to_vec_Rz f_to_vec_X using lia : f_to_vec_db.
-Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
 
 Ltac f_to_vec_simpl_body :=
   autorewrite with f_to_vec_db;
@@ -435,7 +554,7 @@ Ltac f_to_vec_simpl_body :=
       end.
 
 Ltac f_to_vec_simpl := repeat f_to_vec_simpl_body.
-  
+
 Lemma f_to_vec_CCX : forall (dim a b c : nat) (f : nat -> bool),
    (a < dim)%nat -> (b < dim)%nat -> (c < dim)%nat -> a <> b -> a <> c -> b <> c ->
   (uc_eval (CCX a b c)) × (f_to_vec dim f) 
@@ -463,12 +582,12 @@ Qed.
 
 Lemma CCX_a_geq_dim : forall (dim a b c : nat),
   (dim <= a)%nat -> uc_eval (@CCX dim a b c) = Zero.
-Proof. 
+Proof.
   intros dim a b c H.
   unfold CCX.
   simpl.
   rewrite (denote_cnot dim a b).
-  unfold ueval_cnot, pad.
+  unfold ueval_cnot, pad_ctrl, pad.
   gridify.
 Qed.
 
@@ -519,7 +638,7 @@ Lemma CCX_correct : forall (dim : nat) a b c,
   intros dim a b c ? ? ? ? ?.
   bdestruct (a <? dim).
   2: { rewrite CCX_a_geq_dim by assumption.
-       unfold proj, pad. gridify. }
+       unfold proj, pad_u, pad. gridify. }
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
   rewrite f_to_vec_CCX by auto.
@@ -698,10 +817,9 @@ Qed.
 Lemma proj_adjoint : forall dim q b, (proj q dim b) † = proj q dim b.
 Proof.
   intros.
-  unfold proj, pad.
+  unfold proj, pad_u, pad.
   gridify.
-  Msimpl.
-  reflexivity.
+  destruct b; simpl; Msimpl; reflexivity.
 Qed.
 
 Lemma invert_control : forall dim q (u : base_ucom dim),
@@ -982,7 +1100,7 @@ Proof.
   intros.
   rewrite npar_correct by auto. 
   simpl. rewrite hadamard_rotation.
-  unfold pad. bdestruct_all.
+  unfold pad_u, pad. bdestruct_all.
   simpl I. Msimpl_light.
   reflexivity.
 Qed.

@@ -1,6 +1,6 @@
 Require Import UnitaryOps.
 Require Import Utilities.
-Require Import QWIRE.Dirac.
+Require Import QuantumLib.Measurement.
 
 (* Note: this file requires the version of Ratan in Coq >= 8.12.0 *)
 Require Import Coq.Reals.Ratan. 
@@ -339,7 +339,7 @@ Lemma proj_split : forall q b,
   (q < n - 1)%nat -> proj q n b = proj q (n - 1) b ⊗ I 2.
 Proof.
   intros.
-  unfold proj, pad.
+  unfold proj, pad_u, pad.
   bdestruct_all.
   repeat rewrite kron_assoc by auto with wf_db.
   restore_dims. 
@@ -397,6 +397,22 @@ Proof.
     intros. apply H1; lia.
     apply fresh_generalized_Toffoli'; lia.
     apply generalized_Toffoli'_WT; lia.
+Qed.
+
+Lemma proj_sum : forall q n,
+  (q < n)%nat ->
+  proj q n true .+ proj q n false = I (2 ^ n).
+Proof.
+  intros.
+  unfold proj, pad_u, pad.
+  bdestruct_all.
+  restore_dims.
+  rewrite <- kron_plus_distr_r, <- kron_plus_distr_l.
+  simpl.
+  replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
+  repeat rewrite id_kron.
+  apply f_equal.
+  unify_pows_two.
 Qed.
 
 Lemma generalized_Toffoli_semantics_B : forall m (f : nat -> bool) (b : bool),
@@ -913,7 +929,7 @@ Proof.
   rewrite <- pad_dims_r; try (apply npar_WT; lia).
   rewrite npar_correct by lia.
   simpl. rewrite hadamard_rotation.
-  unfold pad. 
+  unfold pad_u, pad. 
   bdestruct_all.
   replace (1 - (0 + 1))%nat with O by lia.
   simpl I. Msimpl.

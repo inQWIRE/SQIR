@@ -1,6 +1,5 @@
 Require Export SQIR.
-Require Export QWIRE.Quantum.
-Require Export UnitarySem.
+Require Export UnitaryOps.
 Require Import Setoid.
 
 Local Open Scope com_scope.
@@ -10,8 +9,8 @@ Fixpoint c_eval {dim} (c : base_com dim) : Superoperator (2^dim) (2^dim) :=
   | skip           => fun ρ => ρ
   | c1 ; c2        => compose_super (c_eval c2) (c_eval c1)  
   | uc u           => super (uc_eval u)
-  | meas n c1 c2   => Splus (compose_super (c_eval c1) (super (@pad 1 n dim (∣1⟩⟨1∣)))) 
-                           (compose_super (c_eval c2) (super (@pad 1 n dim (∣0⟩⟨0∣)))) 
+  | meas n c1 c2   => Splus (compose_super (c_eval c1) (super (proj n dim true))) 
+                           (compose_super (c_eval c2) (super (proj n dim false))) 
   end.
 
 Lemma WF_c_eval : forall {dim} (c : base_com dim) ρ, 
@@ -106,8 +105,8 @@ Qed.
 (** Lemmas for derived commands **)
 
 Lemma c_eval_measure : forall n dim ρ,
-    c_eval (measure n) ρ = Splus (super (@pad 1 n dim (∣0⟩⟨0∣))) 
-                                 (super (@pad 1 n dim (∣1⟩⟨1∣))) ρ.
+    c_eval (measure n) ρ = Splus (super (proj n dim false)) 
+                                 (super (proj n dim true)) ρ.
 Proof. 
   intros; simpl.
   unfold Splus.  
@@ -116,16 +115,15 @@ Proof.
 Qed.
 
 Lemma c_eval_reset : forall n dim ρ,
-    c_eval (reset n) ρ = Splus (super (@pad 1 n dim (∣0⟩⟨0∣))) 
-                               (super (@pad 1 n dim (∣0⟩⟨1∣))) ρ.
+    c_eval (reset n) ρ = Splus (super (proj n dim false)) 
+                               (super (pad_u dim n (∣0⟩⟨1∣))) ρ.
 Proof.
   intros. simpl.
-  repeat rewrite compose_super_eq.
+  rewrite compose_super_eq.
   rewrite denote_X.
-  unfold Splus, compose_super.
-  repeat rewrite pad_mult.
-  rewrite <- Mmult_assoc. 
-  restore_dims.
+  unfold Splus, compose_super, proj, pad_u.
+  rewrite pad_mult.
+  simpl. 
   Qsimpl.
   rewrite Mplus_comm.
   reflexivity.  
@@ -134,16 +132,15 @@ Qed.
 Definition c_eval_reset0 := c_eval_reset.
 
 Lemma c_eval_reset1 : forall n dim ρ,
-    c_eval (n <- 1) ρ = Splus (super (@pad 1 n dim (∣1⟩⟨0∣))) 
-                             (super (@pad 1 n dim (∣1⟩⟨1∣))) ρ.
+    c_eval (n <- 1) ρ = Splus (super (pad_u dim n (∣1⟩⟨0∣))) 
+                             (super (proj n dim true)) ρ.
 Proof.
   intros. simpl.
-  repeat rewrite compose_super_eq.
+  rewrite compose_super_eq.
   rewrite denote_X.
-  unfold Splus, compose_super.
-  repeat rewrite pad_mult.
-  rewrite <- Mmult_assoc. 
-  restore_dims.
+  unfold Splus, compose_super, proj, pad_u.
+  rewrite pad_mult.
+  simpl. 
   Qsimpl.
   rewrite Mplus_comm.
   reflexivity.  

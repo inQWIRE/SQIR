@@ -348,7 +348,7 @@ Proof.
   unfold SQIR.H, decompose_CH, uc_eval.
   simpl.
   autorewrite with eval_db.
-  gridify; trivial; autorewrite with ket_db. (* slow! *)
+  gridify; trivial; autorewrite with ket_db bra_db. (* slow! *)
   - rewrite Rminus_0_r, Rplus_0_l, Rplus_0_r.
     apply f_equal2.
     + rewrite <- Mscale_kron_dist_l.
@@ -384,9 +384,9 @@ Proof.
   repeat rewrite phase_shift_rotation.
   rewrite phase_0.
   bdestruct (b <? dim).
-  replace (pad b dim (I 2)) with (I (2 ^ dim)).
+  replace (pad_u dim b (I 2)) with (I (2 ^ dim)).
   Msimpl. reflexivity.
-  unfold pad.
+  unfold pad_u, pad.
   gridify. reflexivity.
   autorewrite with eval_db.
   gridify.
@@ -567,7 +567,7 @@ Proof.
   unfold uc_eval. simpl.
   auto 40 with wf_db.
   auto with wf_db.
-  intro f. Search SQIR.CCX.
+  intro f.
   apply uc_well_typed_CCX in HWT as [? [? [? [? [? ?]]]]].
   apply fresh_CCX in Hfr as [? [? ?]].
   rewrite f_to_vec_C3X by assumption.

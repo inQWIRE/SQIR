@@ -1,5 +1,5 @@
-Require Import QWIRE.Prelim.
-Require Import VectorStates.
+Require Import QuantumLib.VectorStates.
+Require Import QuantumLib.Permutations.
 
 Local Close Scope R_scope.
 
@@ -97,7 +97,7 @@ Qed.
 
 Lemma well_formed_log2phys_bij : forall {dim} (m : qmap dim),
   layout_well_formed dim m ->
-  finite_bijection dim (log2phys m).
+  permutation dim (log2phys m).
 Proof.
   intros dim m WF.
   exists (phys2log m).
@@ -106,7 +106,7 @@ Qed.
 
 Lemma well_formed_phys2log_bij : forall {dim} (m : qmap dim),
   layout_well_formed dim m ->
-  finite_bijection dim (phys2log m).
+  permutation dim (phys2log m).
 Proof.
   intros dim m WF.
   exists (log2phys m).

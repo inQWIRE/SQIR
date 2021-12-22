@@ -1,6 +1,8 @@
 Require Import UnitarySem.
 Require Import VectorStates.
 
+(* TODO: Move this file to QuantumLib? *)
+
 Definition Cmod2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
 
 Lemma Cmod2_ge_0 : forall c, 0 <= Cmod2 c.

@@ -67,9 +67,9 @@ Proof.
       + split. subst.  rewrite Nat.eqb_refl. easy.
         intros. assert (i <> g j). unfold not. intros. subst. apply H2 in H8. apply H7. easy.
         easy. apply INR_le. easy.
-      + replace (i  =? g j) with false. easy. symmetry. apply eqb_neq. easy.
+      + replace (i  =? g j) with false. easy. symmetry. apply Nat.eqb_neq. easy.
     - replace (sum_f_R0 (fun j : nat => if i =? g j then f (g j) else 0) m) with 0. easy.
-      symmetry. apply sum_eq_R0. intros. apply H4 in H5. rewrite eqb_neq. easy. lia.
+      symmetry. apply sum_eq_R0. intros. apply H4 in H5. bdestructΩ (i =? g n0). easy.
   }
   assert (sum_f_R0 h n <= sum_f_R0 f n).
   { apply sum_Rle. intros. apply H3. apply le_INR. easy. }
@@ -81,7 +81,7 @@ Proof.
   apply rsum_unique. exists (g i). split.
   - apply le_INR. auto. split.
   - rewrite Nat.eqb_refl. easy.
-  - intros. rewrite eqb_neq; easy.
+  - intros. bdestructΩ (j =? g i). easy.
 Qed.
 
 
@@ -4406,7 +4406,7 @@ Proof.
     exists 1. split. lia. split. easy. split. intros. lia. intros.
     destruct i. easy. rewrite nthcfexp_n0a. reflexivity.
   - rename a into a'. remember (S a') as a.
-    assert (Ga: a <> 0) by lia. assert (Ga': a =? 0 = false) by (apply eqb_neq; apply Ga).
+    assert (Ga: a <> 0) by lia. assert (Ga': a =? 0 = false) by (apply Nat.eqb_neq; apply Ga).
     assert (Gmod: b mod a < a < m) by (specialize (Nat.mod_upper_bound b a Ga) as G; lia).
     apply IHm in Gmod. destruct Gmod as [n [Hn [Hi [Hii Hiii]]]].
     exists (S n). split. lia. split. rewrite CFp_mod with (m := n) by lia. rewrite CFq_mod with (m := n) by lia.

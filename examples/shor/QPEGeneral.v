@@ -2,6 +2,7 @@ From Interval Require Import Tactic.
 Require Import Reals Psatz.
 Require Export Utilities.
 Require Export QPE.
+Require Export QuantumLib.Measurement.
 
 (* The proof of quantum phase estimation in QPE.v assumes the phase is a k-bit 
    dyadic fraction. In the general case, phase estimation does not recover 
