@@ -1,6 +1,3 @@
 [submodule "externals/euler"]
 	path = externals/euler
 	url = https://github.com/taorunz/euler.git
-[submodule "externals/QuantumLib"]
-	path = externals/QuantumLib
-	url = https://github.com/inQWIRE/QuantumLib
