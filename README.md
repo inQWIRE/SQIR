@@ -46,6 +46,8 @@ opam update
 opam install coq-interval
 ```
 
+**TODO: add notes about installing QuantumLib**
+
 *Notes*:
 * Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine.
 * We require Coq version >= 8.12. We have tested compilation with 8.12, 8.13, and 8.14.

@@ -1,5 +1,5 @@
 Require Import UnitarySem.
-Require Import Proportional.
+Require Import QuantumLib.Proportional.
 Require Import QuantumLib.VectorStates.
 
 Open Scope ucom.

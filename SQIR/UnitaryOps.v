@@ -1,5 +1,5 @@
 Require Export UnitarySem.
-Require Export VectorStates.
+Require Export QuantumLib.VectorStates.
 
 (* This file contains useful operations over unitary programs including:
    - inversion

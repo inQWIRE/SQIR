@@ -1,4 +1,4 @@
-Require Import Proportional.
+Require Import QuantumLib.Proportional.
 Require Export RzQGateSet.
 Import RzQList.
 Require Import MappingConstraints.

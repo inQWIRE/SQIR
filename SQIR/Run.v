@@ -1,5 +1,5 @@
 Require Import UnitarySem.
-Require Import VectorStates.
+Require Import QuantumLib.VectorStates.
 
 (* TODO: Move this file to QuantumLib? *)
 

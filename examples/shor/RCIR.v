@@ -1,4 +1,4 @@
-Require Import VectorStates UnitaryOps Coq.btauto.Btauto.
+Require Import QuantumLib.VectorStates UnitaryOps Coq.btauto.Btauto.
 
 (* The following belows to the RCIR file, which contains only the boolean circuit. *)
 (* Implementation Language *)

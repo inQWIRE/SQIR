@@ -1,18 +1,6 @@
 -R . Top
 #-arg -profile-ltac
 
-externals/QuantumLib/Prelim.v
-externals/QuantumLib/RealAux.v
-externals/QuantumLib/Complex.v
-externals/QuantumLib/Matrix.v
-externals/QuantumLib/VecSet.v
-externals/QuantumLib/Quantum.v
-externals/QuantumLib/Pad.v
-externals/QuantumLib/VectorStates.v
-externals/QuantumLib/Measurement.v
-externals/QuantumLib/Permutations.v
-externals/QuantumLib/Proportional.v
-
 externals/euler/Misc.v
 externals/euler/Primes.v
 externals/euler/PTotient.v

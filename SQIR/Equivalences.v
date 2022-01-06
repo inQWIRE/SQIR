@@ -1,4 +1,4 @@
-Require Export VectorStates.
+Require Export QuantumLib.VectorStates.
 Require Export UnitaryOps.
 
 Local Open Scope ucom_scope.

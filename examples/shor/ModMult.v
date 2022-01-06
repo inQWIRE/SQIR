@@ -1,4 +1,4 @@
-Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
+Require Import QuantumLib.VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
 Require Export RCIR.
 
 Local Open Scope bccom_scope.
