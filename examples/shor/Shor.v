@@ -1,6 +1,6 @@
-Require Import Reals Psatz ZArith Znumtheory Btauto.
-Require Export QPEGeneral ModMult ShorAux.
-Require Import Interval.Tactic.
+Require Import Reals Psatz ZArith Znumtheory Btauto Interval.Tactic.
+Require Export QPEGeneral ModMult.
+Require Import Interval.Tactic NumTheory EulerTotient ContFrac Reduction.
 
 Local Close Scope R_scope.
 Local Coercion INR : nat >-> R.
@@ -1060,6 +1060,35 @@ Lemma κgt0 : κ > 0. Proof. unfold κ. interval. Qed.
 Lemma κlt1 : κ < 1. Proof. unfold κ. interval. Qed.
 Lemma κgt120 : κ > 1/20. Proof. unfold κ. interval. Qed.
 Lemma κlt118 : κ < 1/18. Proof. unfold κ. interval. Qed.  
+Lemma κn4in01 :
+  forall x,
+    (1 <= x)%nat ->
+    (0 < κ / (INR x ^ 4) < 1)%R.
+Proof.
+  intros. specialize (le_INR 1 x H) as G. simpl in G.
+  specialize κgt0 as T.
+  split; unfold Rdiv.
+  - assert (0 < / (INR x ^ 4)).
+    { apply Rinv_0_lt_compat. 
+      apply pow_lt. lra.
+    }
+    nra.
+  - assert (1 <= x ^ 4)%nat.
+    { replace 1%nat with (x ^ 0)%nat at 1 by reflexivity.
+      apply Nat.pow_le_mono_r; lia.
+    }
+    assert (/ (INR x ^ 4) <= / 1).
+    { apply Rinv_le_contravar. lra. apply le_INR in H0.
+      simpl in H0. repeat rewrite mult_INR in H0. simpl in H0. simpl. lra.
+    }
+    rewrite Rinv_1 in H1.
+    assert (0 < / (INR x ^ 4)).
+    { apply Rinv_0_lt_compat. apply le_INR in H0.
+      simpl in H0. repeat rewrite mult_INR in H0. simpl in H0. simpl. lra.
+    }
+    specialize κlt1 as T'.
+    nra.
+Qed.
 
 Lemma Shor_correct_var :
     forall (a r N m n anc : nat) (u : nat -> base_ucom (n + anc)),

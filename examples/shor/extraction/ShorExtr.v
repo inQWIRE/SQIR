@@ -21,6 +21,6 @@ Extract Inlined Constant R4 => "4.0".
    extract all operations to OCaml's Z type). -KH *)
 Extract Constant modexp => "fun a x n -> Z.to_int (Z.powm (Z.of_int a) (Z.of_int x) (Z.of_int n))".
 
-Extract Constant run_circuit => "Run.run_circuit".
+(* Extract Constant run_circuit => "Run.run_circuit". *)
 
 Separate Extraction Main.end_to_end_shors.

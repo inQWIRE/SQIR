@@ -1,4 +1,8 @@
 
+type ('a, 'b) sum =
+| Coq_inl of 'a
+| Coq_inr of 'b
+
 (** val fst : ('a1 * 'a2) -> 'a1 **)
 
 let fst = function

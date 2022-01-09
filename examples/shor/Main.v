@@ -2,7 +2,7 @@ Require Import Shor.
 Require Import euler.Primes.
 Require Import euler.AltPrimes.
 Require Import AltGateSet.
-Require Import AltShor.
+Require Import AltShor Reduction.
 Require Import Run.
 
 (* The end-to-end definition of Shor's algorithm, combining the facts from 
@@ -75,88 +75,6 @@ Definition end_to_end_shors N rnds :=
 
 Definition coprime (a b : nat) : Prop := Nat.gcd a b = 1%nat.
 
-Lemma nth_run_probability_of_outcome : forall n (c : base_ucom n) x,
-  (x < 2 ^ n)%nat ->
-  nth x (run c) 0 
-    = probability_of_outcome 
-        (basis_vector (2^n) x) 
-        (UnitarySem.uc_eval c × basis_vector (2^n) 0).
-Proof.
-  intros n c x Hx.
-  unfold run, probability_of_outcome.
-  rewrite nth_indep with (d':=Cmod2 0).
-  rewrite map_nth.
-  remember (UnitarySem.uc_eval c × basis_vector (2 ^ n) 0) as ψ.
-  rewrite nth_vec_to_list by assumption.
-  rewrite (basis_vector_decomp ψ) at 2.
-  rewrite Mmult_vsum_distr_l.
-  symmetry.
-  erewrite vsum_unique.
-  2 : { exists x. split. assumption. 
-        split.
-        rewrite Mscale_mult_dist_r.
-        rewrite basis_vector_product_eq.
-        reflexivity. assumption.
-        intros y Hy Hxy.
-        rewrite Mscale_mult_dist_r.
-        rewrite basis_vector_product_neq by auto.
-        lma. }
-  unfold Cmod, Cmod2.
-  rewrite pow2_sqrt.
-  unfold I, scale.
-  simpl.
-  lra.
-  apply Rplus_le_le_0_compat; apply pow2_ge_0.
-  subst. 
-  apply WF_mult.
-  apply WF_uc_eval.
-  apply basis_vector_WF.
-  apply pow_positive. lia.
-  rewrite map_length.  
-  rewrite vec_to_list_length.
-  assumption.
-Qed.
-
-Lemma rewrite_pr_outcome_sum : forall n k (c : base_ucom (n + k)) f,
-  pr_outcome_sum (run c) (fun x => f (fst_join (2^k) x)) 
-  = Rsum (2 ^ n) (fun x => ((if f x then 1 else 0) *
-                         prob_partial_meas (basis_vector (2 ^ n) x) 
-                           (UnitarySem.uc_eval c × basis_vector (2 ^ (n + k)) 0))%R).
-Proof.
-  intros n k c f.
-  unfold pr_outcome_sum.
-  unfold run at 1.
-  rewrite map_length.
-  rewrite vec_to_list_length.
-  rewrite nested_Rsum.
-  apply Rsum_eq_bounded.
-  intros x Hx.
-  destruct (f x) eqn:fx.
-  rewrite Rmult_1_l.
-  erewrite Rsum_eq_bounded.
-  2: { intros y Hy. 
-       rewrite simplify_fst by assumption.
-       rewrite fx.
-       rewrite nth_run_probability_of_outcome.
-       reflexivity.
-       replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
-       nia.
-  }
-  unfold prob_partial_meas.
-  erewrite Rsum_eq_bounded.
-  reflexivity.
-  intros y Hy. 
-  rewrite split_basis_vector by assumption.
-  replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
-  reflexivity.
-  rewrite Rmult_0_l.
-  erewrite Rsum_eq_bounded.
-  2: { intros y Hy. rewrite simplify_fst by assumption.
-       rewrite fx. reflexivity. }
-  apply Rsum_0.
-  reflexivity.
-Qed.
-
 (* Main lemma #1 - the probability that shor_body returns ord(a,N) is at least 
    κ / (Nat.log2 N)^4 where κ is about 0.055 (see Shor.Shor_correct_full). *)
 Lemma shor_body_returns_order : forall (a N : nat),
@@ -189,61 +107,6 @@ Proof.
   apply H1.
   subst f'.
   reflexivity.
-Qed.
-
-Lemma nth_repeat : forall n r i,
-  (i < n)%nat -> nth i (repeat r n) 0 = r.
-Proof.
-  intros n r i Hi.
-  rewrite nth_indep with (d':=r).
-  clear Hi.
-  gen i.
-  induction n; intro i; simpl; destruct i; try reflexivity.
-  apply IHn.
-  rewrite repeat_length.
-  assumption.
-Qed.
-
-Lemma pr_outcome_sum_count : forall l u f,
-  (l < u)%nat ->
-  pr_outcome_sum (uniform l u) f 
-  = (INR (count1 (fun x => f (l + x - 1)%nat) (u - l)) / INR (u - l))%R.
-Proof.
-  intros l u f H.
-  unfold uniform.
-  rewrite pr_outcome_sum_append.
-  rewrite pr_outcome_sum_repeat_false.
-  rewrite Rplus_0_l.
-  remember (u - l)%nat as n.
-  assert (Hn:(n > 0)%nat) by lia.
-  clear - Hn.
-  unfold pr_outcome_sum.
-  rewrite 2 repeat_length.
-  erewrite Rsum_eq_bounded.
-  2: { intros i Hi.
-       replace  (if f (l + i)%nat then nth i (repeat (1 / INR n)%R n) 0 else 0) with
-           ((1 / INR n)%R * (if f (l + i)%nat then 1 else 0))%R.
-       reflexivity.
-       destruct (f (l + i)%nat).
-       rewrite nth_repeat by assumption.
-       lra.
-       lra. }
-  rewrite <- Rsum_scale.
-  replace (INR (count1 (fun x : nat => f (l + x - 1)%nat) n) / INR n)%R with (1 / INR n * INR (count1 (fun x : nat => f (l + x - 1)%nat) n))%R by lra.
-  apply f_equal2; try reflexivity.
-  clear Hn.
-  induction n.
-  reflexivity.
-  rewrite Rsum_extend.
-  simpl.
-  rewrite IHn.
-  unfold count1. simpl.
-  replace (l + S n - 1)%nat with (l + n)%nat by lia.
-  destruct (f (l + n)%nat). 
-  rewrite S_O_plus_INR.
-  simpl.
-  reflexivity.
-  simpl. lra.
 Qed.
 
 Definition leads_to_factor N a := 
@@ -356,36 +219,6 @@ Proof.
   lia. 
   lia.
   inversion Hrnds. apply IHrnds; assumption.
-Qed.
-
-Lemma κn4in01 :
-  forall x,
-    (1 <= x)%nat ->
-    (0 < κ / (INR x ^ 4) < 1)%R.
-Proof.
-  intros. specialize (le_INR 1 x H) as G. simpl in G.
-  specialize κgt0 as T.
-  split; unfold Rdiv.
-  - assert (0 < / (INR x ^ 4)).
-    { apply Rinv_0_lt_compat. 
-      apply pow_lt. lra.
-    }
-    nra.
-  - assert (1 <= x ^ 4)%nat.
-    { replace 1%nat with (x ^ 0)%nat at 1 by reflexivity.
-      apply Nat.pow_le_mono_r; lia.
-    }
-    assert (/ (INR x ^ 4) <= / 1).
-    { apply Rinv_le_contravar. lra. apply le_INR in H0.
-      simpl in H0. repeat rewrite mult_INR in H0. simpl in H0. simpl. lra.
-    }
-    rewrite Rinv_1 in H1.
-    assert (0 < / (INR x ^ 4)).
-    { apply Rinv_0_lt_compat. apply le_INR in H0.
-      simpl in H0. repeat rewrite mult_INR in H0. simpl in H0. simpl. lra.
-    }
-    specialize κlt1 as T'.
-    nra.
 Qed.
 
 Lemma shor_body_succeeds_with_high_probability' : forall N,

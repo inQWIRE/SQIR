@@ -1,4 +1,4 @@
-Require Import Shor.
+Require Import Shor NumTheory.
 Require Import AltGateSet.
 
 (* Redefining Shor's alg. using the new gate set *)

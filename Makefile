@@ -84,11 +84,20 @@ examples/shor/QPEGeneral.vo: examples/shor/QPEGeneral.v examples/QPE.vo examples
 examples/shor/RCIR.vo: examples/shor/RCIR.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo
 	coqc $(COQ_OPTS) examples/shor/RCIR.v
 
-examples/shor/Shor.vo: examples/shor/Shor.v examples/shor/QPEGeneral.vo examples/shor/ModMult.vo examples/shor/ShorAux.vo
+examples/shor/Shor.vo: examples/shor/Shor.v examples/shor/QPEGeneral.vo examples/shor/ModMult.vo examples/shor/ContFrac.vo examples/shor/Reduction.vo
 	coqc $(COQ_OPTS) examples/shor/Shor.v
-	
-examples/shor/ShorAux.vo: invoke-coqmakefile-euler examples/shor/ShorAux.v examples/Utilities.vo
-	coqc $(COQ_OPTS) examples/shor/ShorAux.v
+
+examples/shor/NumTheory.vo: examples/shor/NumTheory.v 
+	coqc $(COQ_OPTS) examples/shor/NumTheory.v
+
+examples/shor/EulerTotient.vo: invoke-coqmakefile-euler examples/shor/EulerTotient.v
+	coqc $(COQ_OPTS) examples/shor/EulerTotient.v
+
+examples/shor/ContFrac.vo: examples/shor/ContFrac.v
+	coqc $(COQ_OPTS) examples/shor/ContFrac.v
+
+examples/shor/Reduction.vo: invoke-coqmakefile-euler examples/shor/Reduction.v examples/shor/EulerTotient.vo examples/Utilities.vo examples/shor/NumTheory.vo
+	coqc $(COQ_OPTS) examples/shor/Reduction.v
 
 # Built by 'make voqc'
 
@@ -133,7 +142,7 @@ VOQC/Optimize1qGates.vo: VOQC/Optimize1qGates.v VOQC/IBMGateSet.vo VOQC/MappingC
 
 VOQC/RotationMerging.vo: VOQC/RotationMerging.v VOQC/RzQGateSet.vo SQIR/UnitaryOps.vo VOQC/MappingConstraints.vo
 	coqc $(COQ_OPTS) VOQC/RotationMerging.v
-	
+
 VOQC/RzQGateSet.vo: VOQC/RzQGateSet.v VOQC/UnitaryListRepresentation.vo VOQC/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) VOQC/RzQGateSet.v
 

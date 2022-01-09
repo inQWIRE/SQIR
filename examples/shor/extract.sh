@@ -19,7 +19,7 @@ rm -f ClassicalDedekindReals.ml ConstructiveCauchyReals.ml List.ml \
 # Move the remaining extracted files to the 'ml' subdirectory.
 echo "Moving generated files to ml/..."
 mv AltGateSet.ml AltShor.ml Bin*.ml Datatypes.ml Main.ml ModMult.ml  \
-   Nat.ml PeanoNat.ml RCIR.ml Shor.ml ShorAux.ml \
+   Nat.ml PeanoNat.ml RCIR.ml Shor.ml NumTheory.ml EulerTotient.ml ContFrac.ml Reduction.ml \
    ml
    
 # Build extracted code.

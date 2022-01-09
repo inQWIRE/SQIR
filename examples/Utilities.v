@@ -1,4 +1,4 @@
-Require Export VectorStates.
+Require Export VectorStates Run.
 
 Local Coercion Nat.b2n : bool >-> nat.
 
@@ -50,72 +50,6 @@ Definition integer_oracle {n} (U : base_ucom (2 * n)) (f : nat -> nat) :=
   forall (x :nat), (x < 2 ^ n)%nat -> 
     @Mmult _ _ 1 (uc_eval U) (basis_vector (2 ^ n) x ⊗ basis_vector (2 ^ n) 0) = 
       basis_vector (2 ^ n) x ⊗ ((basis_vector (2 ^ n) (f x))).
-
-
-(* ============ *)
-(**    Nsum    **)
-(* ============ *)
-(* TODO: maybe move to QuantumLib *)
-
-Fixpoint Nsum (n : nat) (f : nat -> nat) :=
-  match n with
-  | O => O
-  | S n' => (Nsum n' f + f n')%nat
-  end.
-
-Lemma Nsum_eq : forall n f g,
-  (forall x, (x < n)%nat -> f x = g x) ->
-  Nsum n f = Nsum n g.
-Proof.
-  intros. induction n. easy.
-  simpl. rewrite IHn. rewrite H. easy.
-  lia. intros. apply H. lia.
-Qed.
-
-Lemma Nsum_scale : forall n f d,
-  (Nsum n (fun i => d * f i) = d * Nsum n f)%nat.
-Proof.
-  intros. induction n. simpl. lia. 
-  simpl. rewrite IHn. lia.
-Qed.
-
-Lemma Nsum_le : forall n f g,
-  (forall x, x < n -> f x <= g x)%nat ->
-  (Nsum n f <= Nsum n g)%nat.
-Proof.
-  intros. induction n. simpl. easy.
-  simpl.
-  assert (f n <= g n)%nat.
-  { apply H. lia. }
-  assert (Nsum n f <= Nsum n g)%nat.
-  { apply IHn. intros. apply H. lia. }
-  lia.
-Qed.
-
-Lemma Nsum_add : forall n f g,
-  (Nsum n (fun i => f i + g i) = Nsum n f + Nsum n g)%nat.
-Proof.
-  intros. induction n. easy.
-  simpl. rewrite IHn. lia.
-Qed.
-
-Lemma Nsum_delete : forall n x f,
-  (x < n)%nat ->
-  (Nsum n (update f x 0) + f x = Nsum n f)%nat.
-Proof.
-  induction n; intros. lia.
-  simpl. bdestruct (x =? n). subst. rewrite update_index_eq.
-  rewrite Nsum_eq with (g := f). lia.
-  intros. rewrite update_index_neq. easy. lia.
-  assert (x < n)%nat by lia. apply IHn with (f := f) in H1. rewrite <- H1.
-  rewrite update_index_neq. lia. easy.
-Qed.
-
-Lemma Nsum_zero : forall n, Nsum n (fun _ => O) = O.
-Proof.
-  induction n. easy.
-  simpl. rewrite IHn. easy.
-Qed.
 
 
 (* ========================================== *)
@@ -325,6 +259,61 @@ Proof.
   destruct (f n); simpl; lma.
 Qed.
 
+Lemma nth_repeat : forall n r i,
+  (i < n)%nat -> nth i (repeat r n) 0 = r.
+Proof.
+  intros n r i Hi.
+  rewrite nth_indep with (d':=r).
+  clear Hi.
+  gen i.
+  induction n; intro i; simpl; destruct i; try reflexivity.
+  apply IHn.
+  rewrite repeat_length.
+  assumption.
+Qed.
+
+Lemma pr_outcome_sum_count : forall l u f,
+  (l < u)%nat ->
+  pr_outcome_sum (uniform l u) f 
+  = (INR (count1 (fun x => f (l + x - 1)%nat) (u - l)) / INR (u - l))%R.
+Proof.
+  intros l u f H.
+  unfold uniform.
+  rewrite pr_outcome_sum_append.
+  rewrite pr_outcome_sum_repeat_false.
+  rewrite Rplus_0_l.
+  remember (u - l)%nat as n.
+  assert (Hn:(n > 0)%nat) by lia.
+  clear - Hn.
+  unfold pr_outcome_sum.
+  rewrite 2 repeat_length.
+  erewrite Rsum_eq_bounded.
+  2: { intros i Hi.
+       replace  (if f (l + i)%nat then nth i (repeat (1 / INR n)%R n) 0 else 0) with
+           ((1 / INR n)%R * (if f (l + i)%nat then 1 else 0))%R.
+       reflexivity.
+       destruct (f (l + i)%nat).
+       rewrite nth_repeat by assumption.
+       lra.
+       lra. }
+  rewrite <- Rsum_scale.
+  replace (INR (count1 (fun x : nat => f (l + x - 1)%nat) n) / INR n)%R with (1 / INR n * INR (count1 (fun x : nat => f (l + x - 1)%nat) n))%R by lra.
+  apply f_equal2; try reflexivity.
+  clear Hn.
+  induction n.
+  reflexivity.
+  rewrite Rsum_extend.
+  simpl.
+  rewrite IHn.
+  unfold count1. simpl.
+  replace (l + S n - 1)%nat with (l + n)%nat by lia.
+  destruct (f (l + n)%nat). 
+  rewrite S_O_plus_INR.
+  simpl.
+  reflexivity.
+  simpl. lra.
+Qed.
+
 (* Copied from euler/Asympt.v *)
 Lemma seq_extend :
   forall n x, List.seq x (S n) = List.seq x n ++ [(x + n)%nat].
@@ -383,25 +372,6 @@ Proof.
   simpl.
   autorewrite with R_db.
   reflexivity.
-Qed.
-
-Lemma rewrite_I_as_sum : forall m n,
-  (m <= n)%nat -> 
-  I m = Msum m (fun i => (basis_vector n i) × (basis_vector n i)†).
-Proof.
-  intros.
-  induction m.
-  simpl.
-  unfold I.
-  prep_matrix_equality.
-  bdestruct_all; reflexivity.
-  simpl.
-  rewrite <- IHm by lia.
-  unfold basis_vector.
-  solve_matrix.
-  bdestruct_all; simpl; try lca. 
-  all: destruct m; simpl; try lca.
-  all: bdestruct_all; lca.
 Qed.
 
 Lemma Rsum_Msum : forall n (f : nat -> Square 1),
@@ -494,5 +464,87 @@ Proof.
   Msimpl.
   rewrite H0.
   Msimpl.
+  reflexivity.
+Qed.
+
+Lemma nth_run_probability_of_outcome : forall n (c : base_ucom n) x,
+  (x < 2 ^ n)%nat ->
+  nth x (run c) 0 
+    = probability_of_outcome 
+        (basis_vector (2^n) x) 
+        (UnitarySem.uc_eval c × basis_vector (2^n) 0).
+Proof.
+  intros n c x Hx.
+  unfold run, probability_of_outcome.
+  rewrite nth_indep with (d':=Cmod2 0).
+  rewrite map_nth.
+  remember (UnitarySem.uc_eval c × basis_vector (2 ^ n) 0) as ψ.
+  rewrite nth_vec_to_list by assumption.
+  rewrite (basis_vector_decomp ψ) at 2.
+  rewrite Mmult_vsum_distr_l.
+  symmetry.
+  erewrite vsum_unique.
+  2 : { exists x. split. assumption. 
+        split.
+        rewrite Mscale_mult_dist_r.
+        rewrite basis_vector_product_eq.
+        reflexivity. assumption.
+        intros y Hy Hxy.
+        rewrite Mscale_mult_dist_r.
+        rewrite basis_vector_product_neq by auto.
+        lma. }
+  unfold Cmod, Cmod2.
+  rewrite pow2_sqrt.
+  unfold I, scale.
+  simpl.
+  lra.
+  apply Rplus_le_le_0_compat; apply pow2_ge_0.
+  subst. 
+  apply WF_mult.
+  apply WF_uc_eval.
+  apply basis_vector_WF.
+  apply pow_positive. lia.
+  rewrite map_length.  
+  rewrite vec_to_list_length.
+  assumption.
+Qed.
+
+Lemma rewrite_pr_outcome_sum : forall n k (c : base_ucom (n + k)) f,
+  pr_outcome_sum (run c) (fun x => f (fst_join (2^k) x)) 
+  = Rsum (2 ^ n) (fun x => ((if f x then 1 else 0) *
+                         prob_partial_meas (basis_vector (2 ^ n) x) 
+                           (UnitarySem.uc_eval c × basis_vector (2 ^ (n + k)) 0))%R).
+Proof.
+  intros n k c f.
+  unfold pr_outcome_sum.
+  unfold run at 1.
+  rewrite map_length.
+  rewrite vec_to_list_length.
+  rewrite nested_Rsum.
+  apply Rsum_eq_bounded.
+  intros x Hx.
+  destruct (f x) eqn:fx.
+  rewrite Rmult_1_l.
+  erewrite Rsum_eq_bounded.
+  2: { intros y Hy. 
+       rewrite simplify_fst by assumption.
+       rewrite fx.
+       rewrite nth_run_probability_of_outcome.
+       reflexivity.
+       replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
+       nia.
+  }
+  unfold prob_partial_meas.
+  erewrite Rsum_eq_bounded.
+  reflexivity.
+  intros y Hy. 
+  rewrite split_basis_vector by assumption.
+  replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
+  reflexivity.
+  rewrite Rmult_0_l.
+  erewrite Rsum_eq_bounded.
+  2: { intros y Hy. rewrite simplify_fst by assumption.
+       rewrite fx. reflexivity. }
+  apply Rsum_0.
   reflexivity.
 Qed.

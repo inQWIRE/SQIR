@@ -1,34 +1,8 @@
 open AltGateSet
 open AltShor
 open Nat
+open Run
 open Shor
-
-(** val n : int -> int **)
-
-let n n0 =
-  PeanoNat.Nat.log2
-    (mul (Pervasives.succ (Pervasives.succ 0))
-      (PeanoNat.Nat.pow n0 (Pervasives.succ (Pervasives.succ 0))))
-
-(** val k : int -> int **)
-
-let k n0 =
-  num_qubits
-    (PeanoNat.Nat.log2 (mul (Pervasives.succ (Pervasives.succ 0)) n0))
-
-(** val shor_circuit : int -> int -> coq_U ucom **)
-
-let shor_circuit =
-  shor_circuit
-
-(** val cont_frac_exp : int -> int -> int -> int **)
-
-let cont_frac_exp a n0 o =
-  coq_OF_post a n0 o (n n0)
-
-(** val run_circuit : int -> int -> coq_U ucom -> int **)
-
-let run_circuit = Run.run_circuit
 
 (** val factor : int -> int -> int -> int option **)
 
@@ -55,11 +29,39 @@ let factor a n0 r =
        then Some cand2
        else None
 
-(** val end_to_end_shors : int -> int -> int option **)
+(** val process : int -> int -> int option **)
 
-let end_to_end_shors a n0 =
+let process n0 out =
   let n1 = n n0 in
   let k0 = k n0 in
-  let circ = shor_circuit a n0 in
-  let x = run_circuit (add n1 k0) n1 circ in
-  let r = cont_frac_exp a n0 x in factor a n0 r
+  let a =
+    fst_join
+      (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) (add n1 k0)) out
+  in
+  let x =
+    snd_join
+      (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) (add n1 k0)) out
+  in
+  if (=) (PeanoNat.Nat.gcd a n0) (Pervasives.succ 0)
+  then factor a n0
+         (coq_OF_post a n0
+           (fst_join
+             (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) k0) x)
+           n1)
+  else Some (PeanoNat.Nat.gcd a n0)
+
+(** val shor_body : int -> float -> int option **)
+
+let shor_body n0 rnd =
+  let n1 = n n0 in
+  let k0 = k n0 in
+  let distr =
+    join (uniform (Pervasives.succ 0) n0) (fun a ->
+      run (add n1 k0) (to_base_ucom (add n1 k0) (shor_circuit a n0)))
+  in
+  let out = sample distr rnd in process n0 out
+
+(** val end_to_end_shors : int -> float list -> int option **)
+
+let end_to_end_shors n0 rnds =
+  iterate rnds (shor_body n0)

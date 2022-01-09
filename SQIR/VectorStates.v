@@ -252,6 +252,26 @@ Proof.
     lca.
 Qed.
 
+Lemma rewrite_I_as_sum : forall m n,
+  (m <= n)%nat -> 
+  I m = Msum m (fun i => (basis_vector n i) × (basis_vector n i)†).
+Proof.
+  intros.
+  induction m.
+  simpl.
+  unfold I.
+  prep_matrix_equality.
+  bdestruct_all; reflexivity.
+  simpl.
+  rewrite <- IHm by lia.
+  unfold basis_vector.
+  solve_matrix.
+  bdestruct_all; simpl; try lca. 
+  all: destruct m; simpl; try lca.
+  all: bdestruct_all; lca.
+Qed.
+
+
 (* f_to_vec and basis_vector allow us to represent the same set of states.
    To prove this we need lemmas about converting between natural numbers
    and their binary representation. *)

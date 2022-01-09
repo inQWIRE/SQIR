@@ -1,6 +1,6 @@
+open ContFrac
 open Datatypes
 open Nat
-open ShorAux
 
 (** val coq_OF_post_step : int -> int -> int -> int **)
 

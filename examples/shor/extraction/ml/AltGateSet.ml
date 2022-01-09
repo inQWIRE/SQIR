@@ -1,3 +1,5 @@
+open SQIR
+open UnitaryOps
 
 type 'u ucom =
 | Coq_useq of 'u ucom * 'u ucom
@@ -16,6 +18,141 @@ type coq_U =
 | U_CSWAP
 | U_C3X
 | U_C4X
+
+(** val to_base_ucom : int -> coq_U ucom -> base_ucom **)
+
+let rec to_base_ucom dim = function
+| Coq_useq (u1, u2) ->
+  SQIR.Coq_useq ((to_base_ucom dim u1), (to_base_ucom dim u2))
+| Coq_uapp (_, g, qs) ->
+  (match g with
+   | U_X ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l -> (match l with
+                    | [] -> coq_X dim q1
+                    | _ :: _ -> coq_SKIP dim))
+   | U_H ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l -> (match l with
+                    | [] -> coq_H dim q1
+                    | _ :: _ -> coq_SKIP dim))
+   | U_U1 r1 ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_U1 dim r1 q1
+         | _ :: _ -> coq_SKIP dim))
+   | U_U2 (r1, r2) ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_U2 dim r1 r2 q1
+         | _ :: _ -> coq_SKIP dim))
+   | U_U3 (r1, r2, r3) ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_U3 dim r1 r2 r3 q1
+         | _ :: _ -> coq_SKIP dim))
+   | U_CX ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP dim
+         | q2 :: l0 ->
+           (match l0 with
+            | [] -> coq_CNOT dim q1 q2
+            | _ :: _ -> coq_SKIP dim)))
+   | U_CU1 r ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP dim
+         | q2 :: l0 ->
+           (match l0 with
+            | [] -> control dim q1 (coq_U1 dim r q2)
+            | _ :: _ -> coq_SKIP dim)))
+   | U_SWAP ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP dim
+         | q2 :: l0 ->
+           (match l0 with
+            | [] -> coq_SWAP dim q1 q2
+            | _ :: _ -> coq_SKIP dim)))
+   | U_CCX ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP dim
+         | q2 :: l0 ->
+           (match l0 with
+            | [] -> coq_SKIP dim
+            | q3 :: l1 ->
+              (match l1 with
+               | [] -> control dim q1 (coq_CNOT dim q2 q3)
+               | _ :: _ -> coq_SKIP dim))))
+   | U_CSWAP ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP dim
+         | q2 :: l0 ->
+           (match l0 with
+            | [] -> coq_SKIP dim
+            | q3 :: l1 ->
+              (match l1 with
+               | [] -> control dim q1 (coq_SWAP dim q2 q3)
+               | _ :: _ -> coq_SKIP dim))))
+   | U_C3X ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP dim
+         | q2 :: l0 ->
+           (match l0 with
+            | [] -> coq_SKIP dim
+            | q3 :: l1 ->
+              (match l1 with
+               | [] -> coq_SKIP dim
+               | q4 :: l2 ->
+                 (match l2 with
+                  | [] -> control dim q1 (control dim q2 (coq_CNOT dim q3 q4))
+                  | _ :: _ -> coq_SKIP dim)))))
+   | U_C4X ->
+     (match qs with
+      | [] -> coq_SKIP dim
+      | q1 :: l ->
+        (match l with
+         | [] -> coq_SKIP dim
+         | q2 :: l0 ->
+           (match l0 with
+            | [] -> coq_SKIP dim
+            | q3 :: l1 ->
+              (match l1 with
+               | [] -> coq_SKIP dim
+               | q4 :: l2 ->
+                 (match l2 with
+                  | [] -> coq_SKIP dim
+                  | q5 :: l3 ->
+                    (match l3 with
+                     | [] ->
+                       control dim q1
+                         (control dim q2
+                           (control dim q3 (coq_CNOT dim q4 q5)))
+                     | _ :: _ -> coq_SKIP dim)))))))
 
 (** val coq_X : int -> coq_U ucom **)
 
@@ -52,10 +189,15 @@ let coq_T q =
 let coq_Tdg q =
   coq_U1 (((-.) 0.0) (( /. ) Float.pi 4.0)) q
 
+(** val coq_ID : int -> coq_U ucom **)
+
+let coq_ID q =
+  coq_U1 0.0 q
+
 (** val coq_SKIP : coq_U ucom **)
 
 let coq_SKIP =
-  coq_U1 0.0 0
+  coq_ID 0
 
 (** val coq_CX : int -> int -> coq_U ucom **)
 
