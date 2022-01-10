@@ -5,19 +5,22 @@ This directory contains the SQIR formalization of Shor's factoring algorithm. Fo
 ## Directory Contents
 
 Main file
-* Main.v - prettified statements of correctness
+* Main.v - Prettified statements of correctness
 
 Core formalization
-* ModMult.v - modular exponentiation, defined in RCIR
-* QPEGeneral.v - general statement of correctness for ../QPE.v
-* RCIR.v - formalization of reversible circuits
-* ResourceShor.v - proof about the resources (i.e. number of gates) required for Shor's
-* Shor.v - core formalization of Shor's algorithm
+* ModMult.v - Modular exponentiation, defined in RCIR
+* QPEGeneral.v - General statement of correctness for ../QPE.v
+* RCIR.v - Formalization of reversible circuits
+* ResourceShor.v - Proof about the resources (i.e. number of gates) required for Shor's
+* Shor.v - Core formalization of Shor's algorithm
 
 Utilities
-* AltShor.v - Shor's algorithm defined in a gate set amenable to extraction; proofs that the new definition is equivalent to the old (Shor.v)
-* Resource.v - facts about the number of gates used by various operations
-* ShorAux.v - number theory results, reduction from fatorization to order finding, and other useful facts for Shor.v
+* AltShor.v - Shor's algorithm defined in a gate set amenable to extraction; proofs that the new definition is equivalent to the old (in Shor.v)
+* ContFrac.v - Results about continued fractions
+* EulerTotient.v - Re-statement of Euler's totient function from externals/euler
+* NumTheory.v - General number theory results
+* Reduction.v - Proof of the reduction from factorization to order finding
+* Resource.v - Facts about the number of gates used by different operations
 
 ## Compilation
 
