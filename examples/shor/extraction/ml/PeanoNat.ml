@@ -1,107 +1,43 @@
-open Datatypes
 
 module Nat =
  struct
-  (** val pred : int -> int **)
+  (** val pred : Z.t -> Z.t **)
 
-  let pred n =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> n)
-      (fun u -> u)
-      n
+  let pred = (fun a -> Z.max (Z.pred a) Z.zero)
 
-  (** val add : int -> int -> int **)
+  (** val sub : Z.t -> Z.t -> Z.t **)
 
-  let rec add n m =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> m)
-      (fun p -> Pervasives.succ (add p m))
-      n
+  let rec sub = (fun a b -> Z.max (Z.sub a b) Z.zero)
 
-  (** val mul : int -> int -> int **)
+  (** val pow : Z.t -> Z.t -> Z.t **)
 
-  let rec mul n m =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> 0)
-      (fun p -> add m (mul p m))
-      n
+  let rec pow = (fun a b -> Z.pow a (Z.to_int b))
 
-  (** val sub : int -> int -> int **)
-
-  let rec sub n m =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> n)
-      (fun k ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> n)
-        (fun l -> sub k l)
-        m)
-      n
-
-  (** val ltb : int -> int -> bool **)
-
-  let ltb n m =
-    (<=) (Pervasives.succ n) m
-
-  (** val pow : int -> int -> int **)
-
-  let rec pow n m =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> Pervasives.succ 0)
-      (fun m0 -> mul n (pow n m0))
-      m
-
-  (** val divmod : int -> int -> int -> int -> int * int **)
+  (** val divmod : Z.t -> Z.t -> Z.t -> Z.t -> Z.t * Z.t **)
 
   let rec divmod x y q u =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
       (fun _ -> (q, u))
       (fun x' ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ -> divmod x' y (Pervasives.succ q) y)
+      (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
+        (fun _ -> divmod x' y (Z.succ q) y)
         (fun u' -> divmod x' y q u')
         u)
       x
 
-  (** val div : int -> int -> int **)
-
-  let div x y =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> y)
-      (fun y' -> fst (divmod x y' 0 y'))
-      y
-
-  (** val modulo : int -> int -> int **)
-
-  let modulo x y =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> y)
-      (fun y' -> sub y' (snd (divmod x y' 0 y')))
-      y
-
-  (** val gcd : int -> int -> int **)
-
-  let rec gcd a b =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> b)
-      (fun a' -> gcd (modulo b (Pervasives.succ a')) (Pervasives.succ a'))
-      a
-
-  (** val log2_iter : int -> int -> int -> int -> int **)
+  (** val log2_iter : Z.t -> Z.t -> Z.t -> Z.t -> Z.t **)
 
   let rec log2_iter k p q r =
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
+    (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
       (fun _ -> p)
       (fun k' ->
-      (fun fO fS n -> if n=0 then fO () else fS (n-1))
-        (fun _ ->
-        log2_iter k' (Pervasives.succ p) (Pervasives.succ q) q)
-        (fun r' -> log2_iter k' p (Pervasives.succ q) r')
+      (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
+        (fun _ -> log2_iter k' (Z.succ p) (Z.succ q) q)
+        (fun r' -> log2_iter k' p (Z.succ q) r')
         r)
       k
 
-  (** val log2 : int -> int **)
+  (** val log2 : Z.t -> Z.t **)
 
-  let log2 n =
-    log2_iter (pred n) 0 (Pervasives.succ 0) 0
+  let log2 = fun n -> (Z.of_int (Z.log2 n))
  end

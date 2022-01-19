@@ -61,7 +61,7 @@ examples/Superdense.vo: examples/Superdense.v SQIR/UnitarySem.vo externals/QWIRE
 examples/Teleport.vo: examples/Teleport.v SQIR/UnitarySem.vo SQIR/DensitySem.vo SQIR/NDSem.vo externals/QWIRE/Dirac.vo externals/QWIRE/Proportional.vo
 	coqc $(COQ_OPTS) examples/Teleport.v
 
-examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo
+examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo SQIR/DiscreteProb.vo
 	coqc $(COQ_OPTS) examples/Utilities.v
 
 examples/Wiesner.vo: examples/Wiesner.v SQIR/UnitaryOps.vo examples/Utilities.vo
@@ -69,10 +69,10 @@ examples/Wiesner.vo: examples/Wiesner.v SQIR/UnitaryOps.vo examples/Utilities.vo
 
 # Built by 'make shor'
 
-examples/shor/AltShor.vo: examples/shor/AltShor.v utilities/AltGateSet.vo examples/shor/Shor.vo
-	coqc $(COQ_OPTS) examples/shor/AltShor.v
+examples/shor/ExtrShor.vo: examples/shor/ExtrShor.v utilities/AltGateSet.vo examples/shor/Shor.vo
+	coqc $(COQ_OPTS) examples/shor/ExtrShor.v
 
-examples/shor/Main.vo: examples/shor/Main.v examples/shor/AltShor.vo
+examples/shor/Main.vo: examples/shor/Main.v examples/shor/ExtrShor.vo
 	coqc $(COQ_OPTS) examples/shor/Main.v
 
 examples/shor/ModMult.vo: examples/shor/ModMult.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo examples/shor/RCIR.vo
@@ -90,13 +90,13 @@ examples/shor/Shor.vo: examples/shor/Shor.v examples/shor/QPEGeneral.vo examples
 examples/shor/NumTheory.vo: examples/shor/NumTheory.v 
 	coqc $(COQ_OPTS) examples/shor/NumTheory.v
 
-examples/shor/EulerTotient.vo: invoke-coqmakefile-euler examples/shor/EulerTotient.v
+examples/shor/EulerTotient.vo: examples/shor/EulerTotient.v
 	coqc $(COQ_OPTS) examples/shor/EulerTotient.v
 
 examples/shor/ContFrac.vo: examples/shor/ContFrac.v
 	coqc $(COQ_OPTS) examples/shor/ContFrac.v
 
-examples/shor/Reduction.vo: invoke-coqmakefile-euler examples/shor/Reduction.v examples/shor/EulerTotient.vo examples/Utilities.vo examples/shor/NumTheory.vo
+examples/shor/Reduction.vo: examples/shor/Reduction.v examples/shor/EulerTotient.vo examples/Utilities.vo examples/shor/NumTheory.vo
 	coqc $(COQ_OPTS) examples/shor/Reduction.v
 
 # Built by 'make voqc'

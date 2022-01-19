@@ -2,8 +2,8 @@ Require Import Shor.
 Require Import euler.Primes.
 Require Import euler.AltPrimes.
 Require Import AltGateSet.
-Require Import AltShor Reduction.
-Require Import Run.
+Require Import ExtrShor Reduction.
+Require Import DiscreteProb.
 
 (* The end-to-end definition of Shor's algorithm, combining the facts from 
    Shor.v and ShorAux.v into a digestable form. *)
@@ -40,33 +40,32 @@ Definition factor (a N r : nat) :=
   The probability of success (returning Some) and the resources (aka qubits and 
   gates) used is a function of N and niter (see proofs below). *)
 
-(* N   : number to factor
-   out : outcome from sampling *)
-Definition process N out :=
-  let n := n N in
-  let k := k N in
-  let a := fst_join (2^(n + k)) out in
-  let x := snd_join (2^(n + k)) out in
-  (* try to factor *)
-  if Nat.gcd a N =? 1%nat
-  then factor a N (OF_post a N (fst_join (2^k) x) n)
-  else Some (Nat.gcd a N).
+(* We will customize the extraction of this function to avoid extracting our
+   uc_eval function, which relies on an inefficient representation of matrices. *)
+Definition run n (c : ucom U) rnd : nat :=
+  sample (apply_u (UnitarySem.uc_eval (to_base_ucom n c))) rnd.
 
 (* N   : number to factor
    rnd : source of randomness for sampling *)
 Definition shor_body N rnd :=
-  let n := n N in
-  let k := k N in
-  (* create a distribution corresponding to choosing an 'a' and running
-     Shor's circuit with this value 
-     NOTE: technically, we don't need to run the circuit in the case where a is not
-     coprime to N, but it's easier to write the code this way -KH *)
-  let distr := join (uniform 1 N) 
-                    (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
-  (* sample from the distribution *)
-  let out := sample distr rnd in
-  (* try to factor *)
-  process N out.
+  let n := shor_output_nqs N in
+  let k := modmult_nqs N in
+  (* create a uniform distribution *)
+  let adist := uniform 1 N in
+  (* use rnd to sample from adist *)
+  let a := sample adist rnd in
+  (* do a and N share a factor? *)
+  if Nat.gcd a N =? 1%nat
+  (* if not, use a to construct a quantum circuit*)
+  then let c := shor_circuit a N in
+       (* get the leftover randomness to sample from the circuit's output *)
+       let rnd' := compute_new_rnd rnd adist a in
+       (* run the circuit *)
+       let x := run (shor_nqs N) c rnd' in
+       (* try to factor *)
+       factor a N (OF_post a N (fst k x) n)
+  else Some (Nat.gcd a N).
+  
 
 Definition end_to_end_shors N rnds :=
   iterate rnds (shor_body N).
@@ -75,24 +74,24 @@ Definition end_to_end_shors N rnds :=
 
 Definition coprime (a b : nat) : Prop := Nat.gcd a b = 1%nat.
 
-(* Main lemma #1 - the probability that shor_body returns ord(a,N) is at least 
-   κ / (Nat.log2 N)^4 where κ is about 0.055 (see Shor.Shor_correct_full). *)
+(* The probability that shor_body returns ord(a,N) is at least κ / (Nat.log2 N)^4 
+   where κ is about 0.055 (see Shor.Shor_correct_full). *)
 Lemma shor_body_returns_order : forall (a N : nat),
   (0 < a < N)%nat ->
   coprime a N ->
-  let n := n N in
-  let k := k N in
-  let circ := shor_circuit a N in
+  let n := shor_output_nqs N in
+  let k := modmult_nqs N in
+  let circ := to_base_ucom (n + k) (shor_circuit a N) in
   pr_outcome_sum 
-      (run (to_base_ucom (n + k) circ))
-      (fun x => OF_post a N (fst_join (2^k) x) n =? ord a N) 
+      (apply_u (UnitarySem.uc_eval circ))
+      (fun x => OF_post a N (fst k x) n =? ord a N) 
     >= κ / INR (Nat.log2 N)^4.
 Proof.
-  intros a N Ha1 Ha2 n0 k0 circ.
-  subst n0 k0 circ.
-  remember (fun x => OF_post a N x (n N) =? ord a N) as f'.
-  replace (fun x : nat => OF_post a N (fst_join (2^k N) x) (n N) =? ord a N) 
-    with (fun x : nat => f' (fst_join (2^k N) x)).
+  intros a N Ha1 Ha2 n k circ.
+  subst circ.
+  remember (fun x => OF_post a N x n =? ord a N) as f'.
+  replace (fun x : nat => OF_post a N (fst k x) n =? ord a N)
+    with (fun x : nat => f' (fst k x)).
   rewrite rewrite_pr_outcome_sum.
   specialize (Shor.Shor_correct a N Ha1 Ha2) as H1.
   specialize (shor_circuit_same' a N) as H2.
@@ -100,11 +99,10 @@ Proof.
   erewrite Rsum_eq.
   2: { intro i. rewrite H2. reflexivity. lia. }
   unfold probability_of_success in H1.
-  unfold n in *.
-  unfold k in *.
   unfold r_found in H1.
   subst f'.
   apply H1.
+  apply WF_uc_eval.
   subst f'.
   reflexivity.
 Qed.
@@ -114,9 +112,9 @@ Definition leads_to_factor N a :=
   (nontrivgcd (a ^ ((ord a N) / 2)%nat - 1) N ||
    nontrivgcd (a ^ ((ord a N) / 2)%nat + 1) N).
 
-(* Main lemma #2 - Assuming that N is not prime, not even, and not a power of a prime,
-   for a random choice of a, the probability that ord(a,N) can be used to find 
-   a factor is at least 1/2. *) 
+(* Assuming that N is not prime, not even, and not a power of a prime, for a
+   random choice of a, the probability that ord(a,N) can be used to find a
+   factor is at least 1/2. *) 
 Lemma shor_factoring_succeeds : forall N,
   ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
    pr_outcome_sum
@@ -189,27 +187,17 @@ Proof.
   simpl in H0.
   destruct (shor_body N rnd) eqn:sb; auto.
   inversion H0; subst.
-  unfold shor_body, process in sb.
-  (* first, some cleanup *)
-  remember (join (uniform 1 N)
-                 (fun a : nat =>
-                    run (to_base_ucom (n N + k N) (shor_circuit a N)))) as distr.
-  remember (fst_join (2^(n N + k N)) (sample distr rnd)) as a.
-  remember (snd_join (2^(n N + k N)) (sample distr rnd)) as o.
-  (* now back to the proof... *)
+  unfold shor_body in sb.
+  remember (sample (uniform 1 N) rnd) as a.
   bdestruct (Nat.gcd a N =? 1).
   apply factor_returns_factor in sb. 
   auto.
   inversion sb.
   apply gcd_is_factor.
   assert (1 <= a < N)%nat.
-  { rewrite Heqa, Heqdistr.
+  { rewrite Heqa.
     inversion Hrnds.
-    apply fst_join_uniform; try easy.
-    intros. apply length_run.
-    2: apply pow_positive; lia.
-    intros. apply distribution_run.
-    apply uc_well_typed_shor_circuit. lia.
+    apply sample_uniform; auto.
   }
   assert (0 < Nat.gcd a N)%nat.
   apply Natgcd_pos; lia.
@@ -221,19 +209,66 @@ Proof.
   inversion Hrnds. apply IHrnds; assumption.
 Qed.
 
+(* For the rest of the proof, it is convenient to use a version
+   of shor_body that explicitly constructs the joint distribution. *)
+Definition process N out :=
+  let n := shor_output_nqs N in
+  let k := modmult_nqs N in
+  let a := fst (n + k) out in
+  let x := snd (n + k) out in
+  if Nat.gcd a N =? 1%nat
+  then factor a N (OF_post a N (fst k x) n)
+  else Some (Nat.gcd a N).
+
+Definition shor_joint_distr N := 
+  join (uniform 1 N) 
+       (fun a => apply_u (uc_eval (shor_nqs N) (shor_circuit a N))).
+
+Definition shor_body_alt N rnd :=
+  let out := sample (shor_joint_distr N) rnd in
+  process N out.
+
+Lemma shor_body_alt_same : forall N rnd,
+  (1 < N)%nat ->
+  0 <= rnd < 1 ->
+  shor_body N rnd = shor_body_alt N rnd.
+Proof.
+  intros.
+  assert (Hun : distribution (uniform 1 N)).
+  apply distribution_uniform. auto.
+  destruct Hun as [Hun1 Hun2].
+  unfold shor_body, shor_body_alt, shor_joint_distr, process.
+  rewrite fst_sample_join, snd_sample_join.
+  reflexivity.
+  rewrite Hun2. auto.
+  apply Hun1.
+  intro k. apply length_apply_u.
+  intros k Hk. 
+  apply distribution_apply_u.
+  apply uc_eval_unitary.
+  apply uc_well_typed_shor_circuit.
+  rewrite length_uniform in Hk; lia.
+  lra.
+  apply Hun1.
+  intro k. apply length_apply_u.
+  intros k Hk.
+  apply distribution_apply_u.
+  apply uc_eval_unitary.
+  apply uc_well_typed_shor_circuit.
+  rewrite length_uniform in Hk; lia.
+Qed.
+
 Lemma shor_body_succeeds_with_high_probability' : forall N,
     ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-    let n := n N in
-    let k := k N in
-    let distr := join 
-                   (uniform 1 N) 
-                   (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
+    let n := shor_output_nqs N in
+    let k := modmult_nqs N in
+    let distr := shor_joint_distr N in
     let f1 a := leads_to_factor N a in
-    let f2 a x := (OF_post a N (fst_join (2^k) x) n =? ord a N) ||
+    let f2 a x := (OF_post a N (fst k x) n =? ord a N) ||
                   negb (Nat.gcd a N =? 1) in
     pr_outcome_sum distr
-      (fun z => let x := fst_join (2^(n + k)) z in
-             let y := snd_join (2^(n + k)) z in
+      (fun z => let x := fst (n + k) z in
+             let y := snd (n + k) z in
              f1 x && f2 x y)
       >= (1 / 2) * (κ / INR (Nat.log2 N)^4).
 Proof.
@@ -254,10 +289,11 @@ Proof.
   apply shor_factoring_succeeds; auto.
   intros i Hi.
   split.
-  apply length_run.
+  apply length_apply_u.
   subst f2.
-  assert (Hdist : distribution (run (to_base_ucom (n + k) (shor_circuit i N)))).
-  { apply distribution_run.
+  assert (Hdist : distribution (apply_u (UnitarySem.uc_eval (to_base_ucom (n + k) (shor_circuit i N))))).
+  { apply distribution_apply_u.
+    apply uc_eval_unitary.
     apply uc_well_typed_shor_circuit.
     rewrite length_uniform in Hi.
     lia.
@@ -276,6 +312,9 @@ Proof.
   assumption.
   rewrite pr_outcome_sum_true.
   destruct Hdist as [_ Hdist].
+  subst n k.
+  unfold uc_eval.
+  unfold shor_nqs.
   rewrite Hdist.
   lra.
   intros j Hj.
@@ -286,11 +325,9 @@ Qed.
 
 Lemma shor_body_succeeds_with_high_probability : forall N,
     ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-    let n := n N in
-    let k := k N in
-    let distr := join 
-                   (uniform 1 N) 
-                   (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
+    let n := shor_output_nqs N in
+    let k := modmult_nqs N in
+    let distr := shor_joint_distr N in
     pr_outcome_sum distr (fun x => negb (isNone (process N x)))
       >= (1 / 2) * (κ / INR (Nat.log2 N)^4).
 Proof.
@@ -306,7 +343,8 @@ Proof.
   apply distribution_uniform.
   lia.
   intros i Hi.
-  apply distribution_run.
+  apply distribution_apply_u.
+  apply uc_eval_unitary.
   apply uc_well_typed_shor_circuit.
   rewrite length_uniform in Hi.
   lia.
@@ -321,8 +359,8 @@ Proof.
   intros x H.
   unfold process.
   subst n k.
-  remember (fst_join (2 ^ (n N + k N)) x) as a.
-  remember (snd_join (2 ^ (n N + k N)) x) as y.
+  remember (fst (shor_output_nqs N + modmult_nqs N) x) as a.
+  remember (snd (shor_output_nqs N + modmult_nqs N) x) as y.
   clear - H.
   destruct (Nat.gcd a N =? 1) eqn:E; auto.
   apply beq_nat_true in E.
@@ -343,11 +381,9 @@ Qed.
 
 Lemma shor_body_fails_with_low_probability : forall N,
     ~ (prime N) -> Nat.Odd N -> (forall p k, prime p -> N <> p ^ k)%nat ->
-    let n := n N in
-    let k := k N in
-    let distr := join 
-                   (uniform 1 N) 
-                   (fun a => run (to_base_ucom (n + k) (shor_circuit a N))) in
+    let n := shor_output_nqs N in
+    let k := modmult_nqs N in
+    let distr := shor_joint_distr N in
     pr_outcome_sum distr (fun x => isNone (process N x))
       <= 1 - (1 / 2) * (κ / INR (Nat.log2 N)^4).
 Proof.
@@ -364,7 +400,8 @@ Proof.
     apply distribution_uniform.
     lia.
     intros.
-    apply distribution_run.
+    apply distribution_apply_u.
+    apply uc_eval_unitary.
     apply uc_well_typed_shor_circuit.
     rewrite length_uniform in H2. lia.
     lia.
@@ -389,6 +426,8 @@ Proof.
     specialize (HN3 p O Hp2). simpl in HN3. lia. lia.
   }
   unfold end_to_end_shors in H.
+  apply pr_Ps_same 
+    with (Ps2:=fun rnds => isNone (iterate rnds (shor_body_alt N)) = true) in H.
   specialize (shor_body_fails_with_low_probability N HN1 HN2 HN3) as Hbody.
   apply pr_outcome_sum_leq_exists in Hbody.
   destruct Hbody as [r0 [? ?]].
@@ -404,10 +443,15 @@ Proof.
   apply distribution_uniform.
   lia.
   intros i Hi.
-  apply distribution_run.
+  apply distribution_apply_u.
+  apply uc_eval_unitary.
   apply uc_well_typed_shor_circuit.
   rewrite length_uniform in Hi.
   auto.
   lia.
+  intros rnds Hrnds.
+  rewrite iterate_replace_body with (body':=shor_body_alt N); auto.
+  reflexivity.
+  intros.
+  apply shor_body_alt_same; auto.
 Qed.
-

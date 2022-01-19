@@ -44,7 +44,7 @@ Definition Shor_final_state m n anc (f : nat -> base_ucom (n + anc)) :=
    After each iteration, a classical verifier checks whether the denominator is the order.
    OF_post outputs the order r with probability at least 1/polylog(N). Otherwise, it outputs
    0 or a multiple of the order. *)
-Definition OF_post_step (step o m : nat) := snd (ContinuedFraction step o (2^m)).
+Definition OF_post_step (step o m : nat) := Datatypes.snd (ContinuedFraction step o (2^m)).
 Definition modexp a x N := a ^ x mod N. (* for easier extraction -KH *)
 Fixpoint OF_post' (step a N o m : nat) :=
   match step with

@@ -1,4 +1,4 @@
-Require Export VectorStates Run.
+Require Export VectorStates DiscreteProb.
 
 Local Coercion Nat.b2n : bool >-> nat.
 
@@ -375,7 +375,7 @@ Proof.
 Qed.
 
 Lemma Rsum_Msum : forall n (f : nat -> Square 1),
-  Rsum n (fun i : nat => fst (f i O O)) = fst (Msum n f O O).
+  Rsum n (fun i : nat => Datatypes.fst (f i O O)) = Datatypes.fst (Msum n f O O).
 Proof.
   intros.
   rewrite Msum_Csum.
@@ -467,18 +467,19 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma nth_run_probability_of_outcome : forall n (c : base_ucom n) x,
+Lemma nth_apply_u_probability_of_outcome : forall n (u : Square (2 ^ n)) x,
   (x < 2 ^ n)%nat ->
-  nth x (run c) 0 
+  WF_Matrix u ->
+  nth x (apply_u u) 0 
     = probability_of_outcome 
         (basis_vector (2^n) x) 
-        (UnitarySem.uc_eval c × basis_vector (2^n) 0).
+        (u × basis_vector (2^n) 0).
 Proof.
-  intros n c x Hx.
-  unfold run, probability_of_outcome.
+  intros n u x Hx WFu.
+  unfold apply_u, probability_of_outcome.
   rewrite nth_indep with (d':=Cmod2 0).
   rewrite map_nth.
-  remember (UnitarySem.uc_eval c × basis_vector (2 ^ n) 0) as ψ.
+  remember (u × basis_vector (2 ^ n) 0) as ψ.
   rewrite nth_vec_to_list by assumption.
   rewrite (basis_vector_decomp ψ) at 2.
   rewrite Mmult_vsum_distr_l.
@@ -501,7 +502,7 @@ Proof.
   apply Rplus_le_le_0_compat; apply pow2_ge_0.
   subst. 
   apply WF_mult.
-  apply WF_uc_eval.
+  assumption.
   apply basis_vector_WF.
   apply pow_positive. lia.
   rewrite map_length.  
@@ -509,15 +510,16 @@ Proof.
   assumption.
 Qed.
 
-Lemma rewrite_pr_outcome_sum : forall n k (c : base_ucom (n + k)) f,
-  pr_outcome_sum (run c) (fun x => f (fst_join (2^k) x)) 
+Lemma rewrite_pr_outcome_sum : forall n k (u : Square (2 ^ (n + k))) f,
+  WF_Matrix u ->
+  pr_outcome_sum (apply_u u) (fun x => f (fst k x)) 
   = Rsum (2 ^ n) (fun x => ((if f x then 1 else 0) *
                          prob_partial_meas (basis_vector (2 ^ n) x) 
-                           (UnitarySem.uc_eval c × basis_vector (2 ^ (n + k)) 0))%R).
+                           (u × basis_vector (2 ^ (n + k)) 0))%R).
 Proof.
-  intros n k c f.
+  intros n k u f WFu.
   unfold pr_outcome_sum.
-  unfold run at 1.
+  unfold apply_u at 1.
   rewrite map_length.
   rewrite vec_to_list_length.
   rewrite nested_Rsum.
@@ -529,10 +531,10 @@ Proof.
   2: { intros y Hy. 
        rewrite simplify_fst by assumption.
        rewrite fx.
-       rewrite nth_run_probability_of_outcome.
+       rewrite nth_apply_u_probability_of_outcome.
        reflexivity.
        replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
-       nia.
+       nia. assumption.
   }
   unfold prob_partial_meas.
   erewrite Rsum_eq_bounded.

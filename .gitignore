@@ -24,3 +24,6 @@ __pycache__/
 
 # Nix shell
 shell.nix
+
+# qasm files
+*.qasm

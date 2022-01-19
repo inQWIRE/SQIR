@@ -1,67 +1,47 @@
 open AltGateSet
-open AltShor
+open DiscreteProb
+open ExtrShor
 open Nat
-open Run
 open Shor
 
-(** val factor : int -> int -> int -> int option **)
+(** val factor : Z.t -> Z.t -> Z.t -> Z.t option **)
 
-let factor a n0 r =
+let factor a n r =
   let cand1 =
-    PeanoNat.Nat.gcd
-      (sub
-        (PeanoNat.Nat.pow a
-          (PeanoNat.Nat.div r (Pervasives.succ (Pervasives.succ 0))))
-        (Pervasives.succ 0)) n0
+    Z.gcd
+      (sub (PeanoNat.Nat.pow a (Z.div r (Z.succ (Z.succ Z.zero)))) (Z.succ
+        Z.zero)) n
   in
   let cand2 =
-    PeanoNat.Nat.gcd
-      (add
-        (PeanoNat.Nat.pow a
-          (PeanoNat.Nat.div r (Pervasives.succ (Pervasives.succ 0))))
-        (Pervasives.succ 0)) n0
+    Z.gcd
+      (add (PeanoNat.Nat.pow a (Z.div r (Z.succ (Z.succ Z.zero)))) (Z.succ
+        Z.zero)) n
   in
-  if (&&) (PeanoNat.Nat.ltb (Pervasives.succ 0) cand1)
-       (PeanoNat.Nat.ltb cand1 n0)
+  if (&&) (Z.lt (Z.succ Z.zero) cand1) (Z.lt cand1 n)
   then Some cand1
-  else if (&&) (PeanoNat.Nat.ltb (Pervasives.succ 0) cand2)
-            (PeanoNat.Nat.ltb cand2 n0)
+  else if (&&) (Z.lt (Z.succ Z.zero) cand2) (Z.lt cand2 n)
        then Some cand2
        else None
 
-(** val process : int -> int -> int option **)
+(** val run : Z.t -> coq_U ucom -> float -> Z.t **)
 
-let process n0 out =
-  let n1 = n n0 in
-  let k0 = k n0 in
-  let a =
-    fst_join
-      (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) (add n1 k0)) out
-  in
-  let x =
-    snd_join
-      (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) (add n1 k0)) out
-  in
-  if (=) (PeanoNat.Nat.gcd a n0) (Pervasives.succ 0)
-  then factor a n0
-         (coq_OF_post a n0
-           (fst_join
-             (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) k0) x)
-           n1)
-  else Some (PeanoNat.Nat.gcd a n0)
+let run = Run.run_circuit
 
-(** val shor_body : int -> float -> int option **)
+(** val shor_body : Z.t -> float -> Z.t option **)
 
-let shor_body n0 rnd =
-  let n1 = n n0 in
-  let k0 = k n0 in
-  let distr =
-    join (uniform (Pervasives.succ 0) n0) (fun a ->
-      run (add n1 k0) (to_base_ucom (add n1 k0) (shor_circuit a n0)))
-  in
-  let out = sample distr rnd in process n0 out
+let shor_body n rnd =
+  let n0 = shor_output_nqs n in
+  let k = modmult_nqs n in
+  let adist = uniform (Z.succ Z.zero) n in
+  let a = sample adist rnd in
+  if Z.equal (Z.gcd a n) (Z.succ Z.zero)
+  then let c = shor_circuit a n in
+       let rnd' = compute_new_rnd rnd adist a in
+       let x = run (shor_nqs n) c rnd' in
+       factor a n (coq_OF_post a n (fst k x) n0)
+  else Some (Z.gcd a n)
 
-(** val end_to_end_shors : int -> float list -> int option **)
+(** val end_to_end_shors : Z.t -> float list -> Z.t option **)
 
-let end_to_end_shors n0 rnds =
-  iterate rnds (shor_body n0)
+let end_to_end_shors n rnds =
+  iterate rnds (shor_body n)

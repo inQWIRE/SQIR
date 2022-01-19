@@ -27,8 +27,6 @@ SQIR/NDSem.v
 SQIR/VectorStates.v
 SQIR/UnitaryOps.v
 SQIR/Equivalences.v
-SQIR/Run.v
+SQIR/DiscreteProb.v
 
 utilities/AltGateSet.v
-utilities/ExtrOcamlList.v
-utilities/ExtrOcamlR.v

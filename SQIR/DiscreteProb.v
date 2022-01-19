@@ -1,5 +1,8 @@
-Require Import UnitarySem.
 Require Import VectorStates.
+
+(** This file describes some theory of discrete probability distributions.
+  Its main feature is 'apply_u', a function to describe the output distribution 
+  of running a quantum circuit. *)
 
 Definition Cmod2 (c : C) : R := fst c ^ 2 + snd c ^ 2.
 
@@ -15,18 +18,21 @@ Proof.
 Qed.
 
 
-(* ============================================ *)
-(**   Definition of probability distribution   **)
-(* ============================================ *)
+(* ========================================== *)
+(** * Definition of probability distribution **)
+(* ========================================== *)
 
-(* We will represent a (discrete) probability distribution over [0,n) 
+(** We represent a (discrete) probability distribution over [0,n) 
    using a length n list of real numbers. We support sampling from this
-   distribution using the 'sample' function below. *)
+   distribution using the 'sample' function. *)
 
 Definition sum_over_list (l : list R) := Rsum (length l) (fun i => nth i l 0).
 
 Definition distribution (l : list R) := 
   Forall (fun x => 0 <= x) l /\ sum_over_list l = 1.
+
+Lemma sum_over_list_nil : sum_over_list [] = 0.
+Proof. unfold sum_over_list. simpl. reflexivity. Qed.
 
 Lemma sum_over_list_cons : forall x l,
   sum_over_list (x :: l) = (x + sum_over_list l)%R.
@@ -63,10 +69,10 @@ Qed.
 
 
 (* ================================ *)
-(**   Sample from a distribution   **)
+(** * Sample from a distribution   **)
 (* ================================ *)
 
-(* Choose an element from the distribution based on random number r ∈ [0,1).
+(** Choose an element from the distribution based on random number r ∈ [0,1).
    
    Example: Say that the input list is l = [.2, .3, .4, .1] (which might correspond
    to the probabilities of measuring the outcomes 00, 01, 10, 11). Then this
@@ -119,14 +125,28 @@ Proof.
   destruct (Rlt_le_dec r a). lra. lia.
 Qed.
 
-Lemma sample_append : forall l1 l2 r,
+Lemma sample_append_l : forall l1 l2 r,
+    0 <= r ->
+    r < sum_over_list l1 ->
+    sample (l1 ++ l2) r = sample l1 r.
+Proof.
+  induction l1; intros.
+  - rewrite sum_over_list_nil in H0. lra.
+  - rewrite sum_over_list_cons in H0. simpl.
+    destruct (Rlt_le_dec r a).
+    reflexivity.
+    rewrite IHl1.
+    reflexivity. lra. lra.
+Qed.
+
+Lemma sample_append_r : forall l1 l2 r,
     Forall (fun x => 0 <= x) l1 ->
     Forall (fun x => 0 <= x) l2 ->
     sum_over_list l1 <= r ->
     (sample (l1 ++ l2) r = (length l1) + sample l2 (r - sum_over_list l1))%nat.
 Proof.
   induction l1; intros.
-  - simpl. f_equal. unfold sum_over_list. simpl. lra.
+  - simpl. f_equal. rewrite sum_over_list_nil. lra.
   - inversion H; subst.
     specialize (sum_over_list_geq_0 l1 H5) as G.
     rewrite sum_over_list_cons in *.
@@ -149,11 +169,11 @@ Proof.
 Qed.
 
 
-(* ======================================================================== *)
-(** Probability that a distribution satisfies a predicate (pr_outcome_sum) **)
-(* ======================================================================== *)
+(* ========================================================================= *)
+(** * Probability that a distribution satisfies a predicate (pr_outcome_sum) *)
+(* ========================================================================= *)
 
-(* Intuitively, the probability that an element satisfies boolean predicate 
+(** Intuitively, the probability that an element satisfies boolean predicate 
    f is the sum over all element for which f holds. *)
 Definition pr_outcome_sum (l : list R) (f : nat -> bool) : R :=
   Rsum (length l) (fun i => if f i then nth i l 0 else 0).
@@ -331,12 +351,12 @@ Qed.
 
 
 (* ================================================================== *)
-(**   Probability that a distribution satisfies a predicate (pr_P)   **)
+(** * Probability that a distribution satisfies a predicate (pr_P)   **)
 (* ================================================================== *)
 
-(* Mathematically, the probability that an element satisifes a (not necessarily
+(** Mathematically, the probability that an element satisifes a (not necessarily
    boolean) predicate is the size of the range of r-values for which the element
-   returned from "sample" satisfies the predicate. *)
+   returned from 'sample' satisfies the predicate. *)
 Inductive interval_sum (P : R -> Prop) (rl rr : R) : R -> Prop :=
 | SingleInterval : forall r1 r2, rl <= r1 <= r2 /\ r2 <= rr ->
     (forall r, r1 < r < r2 -> P r) ->               
@@ -367,7 +387,7 @@ Qed.
 Lemma interval_sum_same :
   forall P1 P2 rl rr r,
     interval_sum P1 rl rr r ->
-    (forall x, rl <= x <= rr -> (P1 x <-> P2 x)) ->
+    (forall x, rl <= x < rr -> (P1 x <-> P2 x)) ->
     interval_sum P2 rl rr r.
 Proof.
   intros.
@@ -612,12 +632,12 @@ Proof.
         lra.
 Qed.
 
-(* Mathematical measure of P on the interval (0,1) *) 
+(** Mathematical measure of P on the interval (0,1) *) 
 Definition pr_P P r := interval_sum P 0%R 1%R r.
 
 Lemma pr_P_same :
   forall P1 P2 r,
-    (forall rnd, 0 <= rnd <= 1 -> P1 rnd <-> P2 rnd) ->
+    (forall rnd, 0 <= rnd < 1 -> P1 rnd <-> P2 rnd) ->
     pr_P P1 r ->
     pr_P P2 r.
 Proof.
@@ -668,7 +688,7 @@ Proof.
     lra.
 Qed.
 
-(* The pr_outcome_sum and pr_P definitions of probability are consistent. *)
+(** The pr_outcome_sum and pr_P definitions of probability are consistent. *)
 Lemma pr_outcome_sum_eq_aux : forall (l : list R) (f : nat -> bool),
     distribution l ->
     pr_P (fun rnd => f (sample l rnd) = true) (pr_outcome_sum l f).
@@ -714,19 +734,16 @@ Qed.
 
 
 (* ======================================================= *)
-(**   Distribution created by running a quantum circuit   **)
+(** * Distribution created by running a quantum program   **)
 (* ======================================================= *)
 
-(* Given our definition of sample, we can define a function to "run" a 
+(** Given our definition of sample, we can define a function to apply a 
    quantum program and return the result of measuring all qubits.
 
-   rnd is a random input in [0,1]. *)
-Definition run {dim} (c : base_ucom dim) : list R :=
-  let v := (uc_eval c) × basis_vector (2^dim) 0 in
+   rnd is a random input in [0,1). *)
+Definition apply_u {dim} (u : Square (2 ^ dim)) : list R :=
+  let v := u × basis_vector (2^dim) 0 in
   map Cmod2 (vec_to_list v).
-
-Definition run_and_measure {dim} (c : base_ucom dim) (rnd : R) : nat :=
-  sample (run c) rnd.
 
 Lemma pos_Cmod2_list :
   forall l, Forall (fun x => 0 <= x) (map Cmod2 l).
@@ -763,18 +780,18 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma distribution_run : forall {dim} c,
-    uc_well_typed c ->
-    distribution (@run dim c).
+Lemma distribution_apply_u : forall {dim} u,
+    WF_Unitary u ->
+    distribution (@apply_u dim u).
 Proof.
-  intros. unfold run. split.
+  intros. unfold apply_u. split.
   - apply pos_Cmod2_list.
   - rewrite sum_over_list_Cmod2_vec_to_list.
     rewrite <- rewrite_norm. rewrite Mmult_adjoint.
     rewrite <- Mmult_assoc. 
     rewrite Mmult_assoc with (A := (basis_vector (2 ^ dim) 0) †).
-    specialize (uc_eval_unitary dim c H) as G.
-    destruct G. rewrite H1.
+    destruct H as [_ H].
+    rewrite H.
     restore_dims. rewrite Mmult_1_r.
     rewrite basis_vector_product_eq. reflexivity.
     apply pow_positive. lia.
@@ -782,11 +799,11 @@ Proof.
     apply pow_positive. lia.
 Qed.
 
-Lemma length_run : forall n (c : base_ucom n),
-  length (run c) = (2 ^ n)%nat. 
+Lemma length_apply_u : forall n (u : Square (2 ^ n)),
+  length (apply_u u) = (2 ^ n)%nat. 
 Proof.
-  intros n c.
-  unfold run.
+  intros n u.
+  unfold apply_u.
   rewrite map_length.
   rewrite vec_to_list_length.
   reflexivity.
@@ -794,10 +811,10 @@ Qed.
 
 
 (* ========================== *)
-(**   Uniform distribution   **)
+(** * Uniform distribution   **)
 (* ========================== *)
 
-(* Uniform sampling in the range [lower, upper) *)
+(** Uniform sampling in the range [lower, upper) *)
 Definition uniform (lower upper : nat) : list R :=
   repeat 0 lower ++ repeat (1/ INR (upper - lower))%R (upper - lower).
 
@@ -820,7 +837,7 @@ Lemma sample_uniform : forall l u r,
 Proof.
   intros. split.
   - unfold uniform. apply sample_repeat_lb. easy.
-  - unfold uniform. rewrite sample_append. rewrite repeat_length.
+  - unfold uniform. rewrite sample_append_r. rewrite repeat_length.
     assert (T: (forall a b c, a < c -> b < c - a -> a + b < c)%nat) by (intros; lia).
     apply T. easy.
     replace (u - l)%nat 
@@ -865,7 +882,7 @@ Qed.
 
 
 (* ======================== *)
-(**   Joint distribution   **)
+(** * Joint distributions  **)
 (* ======================== *)
 
 Fixpoint scale r l :=
@@ -874,7 +891,7 @@ Fixpoint scale r l :=
   | h :: t => (r * h)%R :: scale r t
   end.
 
-(* Combine distributions l1 and l2, where l2 may depend on the value of l1 *)
+(** Combine distributions l1 and l2, where l2 may depend on the value of l1 *)
 Fixpoint join' l1 l2 n :=
   match n with
   | O => nil
@@ -882,17 +899,55 @@ Fixpoint join' l1 l2 n :=
   end.
 Definition join l1 l2 := join' l1 l2 (length l1).
 
-(* When sampling from (join l1 l2) where |l1|=n and |l2|=m, 
-   you can use the following functions to extract the result. *)
- Definition fst_join (m x : nat) := (x / m)%nat.
- Definition snd_join (m x : nat) := (x mod m)%nat.
+(** Given a nat consisting of (n+m) bits, extract the first n or last m.
+   Example application: when sampling from (join l1 l2) where |l1|=n and 
+   |l2|=m, you can use fst and snd to split the result. *)
+(* TODO: come up with better names *)
+ Definition fst (m x : nat) := (x / 2 ^ m)%nat.
+ Definition snd (m x : nat) := (x mod 2 ^ m)%nat.
+
+Lemma fst_0 : forall m, fst m 0 = O.
+Proof.
+  intros. unfold fst. apply Nat.div_0_l. apply Nat.pow_nonzero. lia. 
+Qed.
+
+Lemma fst_plus : forall m x, fst m (2 ^ m + x) = S (fst m x).
+Proof.
+  intros. 
+  unfold fst.
+  rewrite <- (Nat.mul_1_l (2 ^ m)) at 1. 
+  rewrite Nat.div_add_l.
+  lia.
+  apply Nat.pow_nonzero. lia. 
+Qed.
+
+Lemma fst_small : forall m x, (x < 2 ^ m)%nat -> fst m x = O.
+Proof. intros. unfold fst. apply Nat.div_small. auto. Qed.
+
+Lemma snd_0 : forall m, snd m 0 = O.
+Proof.
+  intros. unfold snd. apply Nat.mod_0_l. apply Nat.pow_nonzero. lia. 
+Qed.
+
+Lemma snd_small : forall m x, (x < 2 ^ m)%nat -> snd m x = x.
+Proof. intros. unfold snd. apply Nat.mod_small. auto. Qed.
+
+Lemma snd_plus : forall m x, snd m (2 ^ m + x) = snd m x.
+Proof.
+  intros. 
+  unfold snd.
+  rewrite Nat.add_comm.
+  rewrite <- (Nat.mul_1_l (2 ^ m)) at 1. 
+  apply Nat.mod_add.
+  apply Nat.pow_nonzero. lia. 
+Qed.
 
 Lemma simplify_fst : forall n x y,
   (y < 2 ^ n)%nat ->
-  fst_join (2 ^ n) (x * 2 ^ n + y) = x.
+  fst n (x * 2 ^ n + y) = x.
 Proof.
   intros n x y Hy.
-  unfold fst_join. 
+  unfold fst. 
   rewrite Nat.div_add_l. 
   rewrite Nat.div_small by assumption. 
   lia. 
@@ -902,10 +957,10 @@ Qed.
 
 Lemma simplify_snd : forall n x y,
   (y < 2 ^ n)%nat ->
-  snd_join (2 ^ n) (x * 2 ^ n + y) = y.
+  snd n (x * 2 ^ n + y) = y.
 Proof.
   intros n x y Hy.
-  unfold snd_join. 
+  unfold snd. 
   rewrite Nat.add_comm.
   rewrite Nat.mod_add.
   apply Nat.mod_small. 
@@ -970,6 +1025,26 @@ Proof.
   assumption.
 Qed.
 
+Lemma join_geq_0 : forall l1 l2,
+  Forall (fun x : R => 0 <= x) l1 ->
+  (forall i, (i < length l1)%nat -> Forall (fun x : R => 0 <= x) (l2 i)) ->
+  Forall (fun x : R => 0 <= x) (join l1 l2).
+Proof.
+  intros l1 l2 Hl1 Hl2.
+  assert (H : forall n, (n <= length l1)%nat -> Forall (fun x : R => 0 <= x) (join' l1 l2 n)). 
+  { intros n Hn.
+    induction n; simpl.
+    constructor.
+    apply Forall_app.
+    split.
+    apply IHn. lia.
+    apply Forall_scale_geq.
+    rewrite Forall_nth in Hl1.
+    apply Hl1; auto.
+    apply Hl2. lia. }
+  apply H. lia.
+Qed.
+
 Lemma distribution_join : forall l1 l2,
   distribution l1 ->
   (forall i, (i < length l1)%nat -> distribution (l2 i)) ->
@@ -985,20 +1060,7 @@ Proof.
   specialize (Hl2 i Hi).
   destruct Hl2; assumption.
   clear Hl2.
-  assert (H1 : forall n, (n <= length l1)%nat -> Forall (fun x : R => 0 <= x) (join' l1 l2 n)). 
-  { clear Hl1_2 Hl2_2.
-    intros n Hn.
-    induction n; simpl.
-    constructor.
-    apply Forall_app.
-    split.
-    apply IHn. lia.
-    apply Forall_scale_geq.
-    rewrite Forall_nth in Hl1_1.
-    apply Hl1_1; auto.
-    apply Hl2_1.
-    lia. }
-  assert (H2 : forall n, (n <= length l1)%nat -> 
+  assert (Haux : forall n, (n <= length l1)%nat -> 
     sum_over_list (join' l1 l2 n) = sum_over_list (firstn n l1)). 
   { clear Hl1_1 Hl1_2 Hl2_1.
     intros n Hn.
@@ -1012,12 +1074,36 @@ Proof.
     rewrite (Hl2_2 n Hn). 
     lra. }
   split.
-  apply H1. 
-  lia.
+  apply join_geq_0; auto.
   unfold join.
-  rewrite H2 by lia.
+  rewrite Haux by lia.
   rewrite firstn_all.
   assumption.
+Qed.
+
+Lemma join_cons : forall x l1 l2,
+  join (x :: l1) l2 = scale x (l2 O) ++ join l1 (shift l2 1).
+Proof.
+  intros x l1 l2.
+  unfold join. 
+  simpl length.
+  assert (forall i, join' (x :: l1) l2 (S i) = 
+                 scale x (l2 0%nat) ++ join' l1 (shift l2 1) i).
+  { intros i.
+    induction i.
+    simpl.
+    rewrite app_nil_r.
+    reflexivity.
+    remember (S i) as i'.
+    rewrite Heqi' at 2.
+    simpl.
+    rewrite IHi.
+    subst.
+    rewrite app_assoc.
+    unfold shift.
+    replace (i + 1)%nat with (S i) by lia.
+    reflexivity. }
+  apply H.
 Qed.
 
 Lemma length_scale : forall a l, length (scale a l) = length l.
@@ -1028,6 +1114,158 @@ Proof.
   simpl.
   rewrite IHl.
   reflexivity.
+Qed.
+
+(** Sampling from (join l1 l2) where |l1|=n and |l2|=m and taking the first 
+    n bits of the result is the same as sampling directly from l1. *)
+Lemma fst_sample_join : forall l1 l2 rnd m,
+  0 <= rnd ->
+  Forall (fun x : R => 0 <= x) l1 ->
+  (forall k, length (l2 k) = 2 ^ m)%nat ->
+  (forall k, (k < length l1)%nat -> distribution (l2 k)) ->
+  fst m (sample (join l1 l2) rnd) = sample l1 rnd.
+Proof.
+  intros l1 l2 rnd m Hrnd Hl1 Hm Hl2.
+  gen rnd l2.
+  induction l1; intros.
+  - simpl. apply fst_0.
+  - simpl.
+    rewrite join_cons.
+    assert (Ha : sum_over_list (scale a (l2 O)) = a).
+    { rewrite sum_over_list_scale.
+      destruct (Hl2 O) as [_ Hl2O].
+      simpl. lia.
+      rewrite Hl2O. lra. }
+    destruct (Rlt_le_dec rnd a).
+    + rewrite sample_append_l; try lra.
+      apply fst_small.
+      rewrite <- (Hm O).
+      rewrite <- (length_scale a).
+      apply sample_ub_lt.
+      lra.
+    + inversion Hl1; subst.
+      rewrite sample_append_r; try lra.
+      rewrite length_scale, Hm.
+      rewrite fst_plus.
+      rewrite Ha.
+      rewrite <- IHl1 with (l2:=shift l2 1); auto.
+      lra. 
+      intro k. apply Hm.
+      intros k Hk. 
+      apply Hl2. simpl. lia.
+      apply Forall_scale_geq.
+      auto.
+      destruct (Hl2 O) as [Hl2O _].
+      simpl. lia. auto.
+      apply join_geq_0.
+      auto.
+      intros i Hi.
+      unfold shift.
+      destruct (Hl2 (i + 1)%nat) as [Hl2i _].
+      simpl. lia. auto.
+Qed.
+
+Lemma sample_scale : forall a l rnd,
+  a > 0 -> sample (scale a l) rnd = sample l (rnd / a).
+Proof.
+  intros a l rnd Ha.
+  gen rnd.
+  induction l; intro rnd.
+  - reflexivity.
+  - simpl.
+    rewrite IHl.
+    destruct (Rlt_le_dec (rnd / a) a0).
+    + apply (Rmult_lt_compat_l a) in r; try lra.
+      rewrite Rdiv_unfold in r.
+      rewrite <- Rmult_assoc in r.
+      rewrite Rinv_r_simpl_m in r by lra.
+      destruct (Rlt_le_dec rnd (a * a0)).
+      reflexivity.
+      lra.
+    + apply (Rmult_le_compat_l a) in r; try lra.
+      rewrite Rdiv_unfold in r.
+      rewrite <- Rmult_assoc in r.
+      rewrite Rinv_r_simpl_m in r by lra.
+      destruct (Rlt_le_dec rnd (a * a0)).
+      lra.
+      rewrite Rdiv_minus_distr.
+      rewrite 2 Rdiv_unfold.
+      rewrite Rinv_r_simpl_m by lra.
+      reflexivity.
+Qed.
+
+(* rnd = old random number
+   l1  = previous distribution 
+   o   = outcome when sampling from l with rnd *)
+Definition compute_new_rnd rnd l o : R := 
+  (rnd - sum_over_list (firstn o l)) / nth o l 0.
+
+(** Sampling from (join l1 l2) where |l1|=n and |l2|=m and taking the last 
+    m bits of the result is the same as sampling from l1 and, based on the
+    the outcome o, sampling from (l2 o). *)
+Lemma snd_sample_join : forall l1 l2 rnd m,
+    0 <= rnd < sum_over_list l1 ->
+    Forall (fun x : R => 0 <= x) l1 ->
+    (forall k, length (l2 k) = (2 ^ m)%nat) ->
+    (forall k, (k < length l1)%nat -> distribution (l2 k)) ->
+    let o := sample l1 rnd in
+    let rnd' := compute_new_rnd rnd l1 o in
+    snd m (sample (join l1 l2) rnd) = sample (l2 o) rnd'.
+Proof.
+  intros l1 l2 rnd m Hrnd Hl1 Hm Hl2 o rnd'.
+  gen rnd l2.
+  induction l1; intros.
+  - rewrite sum_over_list_nil in Hrnd. lra.
+  - rewrite join_cons.
+    assert (Ha : sum_over_list (scale a (l2 O)) = a).
+    { rewrite sum_over_list_scale.
+      destruct (Hl2 O) as [_ Hl2O].
+      simpl. lia.
+      rewrite Hl2O. lra. }
+    subst o rnd'.
+    simpl.
+    destruct (Rlt_le_dec rnd a).
+    + rewrite sample_append_l; try lra.
+      unfold compute_new_rnd.
+      rewrite firstn_O, sum_over_list_nil.
+      rewrite Rminus_0_r.
+      rewrite snd_small.
+      simpl.
+      apply sample_scale.
+      lra.
+      rewrite <- (Hm O).
+      rewrite <- (length_scale a).
+      apply sample_ub_lt.
+      lra.
+    + inversion Hl1; subst.
+      rewrite sample_append_r; try lra.
+      rewrite length_scale, Hm.
+      rewrite snd_plus.
+      specialize IHl1 with (l2:=shift l2 1) (rnd:=(rnd - a)%R). 
+      unfold shift in IHl1.
+      unfold compute_new_rnd in *.
+      simpl in *.
+      rewrite sum_over_list_cons.
+      remember (sample l1 (rnd - a)) as sl1.
+      remember (sum_over_list (firstn sl1 l1)) as sol.
+      replace (S sl1) with (sl1 + 1)%nat by lia.
+      replace (rnd - (a + sol))%R with (rnd - a - sol)%R by lra.
+      rewrite <- IHl1; auto.
+      rewrite Ha.
+      reflexivity.
+      rewrite sum_over_list_cons in Hrnd.
+      lra.
+      intros. apply Hl2. simpl. lia.
+      apply Forall_scale_geq.
+      auto.
+      destruct (Hl2 O) as [Hl2O _].
+      simpl. lia. auto.
+      apply join_geq_0.
+      auto.
+      intros i Hi.
+      unfold shift.
+      destruct (Hl2 (i + 1)%nat) as [Hl2i _].
+      simpl. lia. auto.
 Qed.
 
 Lemma pr_outcome_sum_scale : forall a l f, 
@@ -1125,7 +1363,7 @@ Proof.
   simpl in Hn. lia.
 Qed.
 
-(* If the probability of f1 in distr1(=l1) is r1 and the probability of 
+(** If the probability of f1 in distr1(=l1) is r1 and the probability of 
    f2 in distr2(=l2) is r2, then the probability of f1&f2 in (join l1 l2)
    is r1 * r2. *)
 Local Transparent firstn.
@@ -1136,8 +1374,8 @@ Lemma pr_outcome_sum_join_geq : forall l1 l2 f1 f2 r1 r2 n,
   (forall i, (i < length l1)%nat ->
         length (l2 i) = (2 ^ n)%nat /\
         pr_outcome_sum (l2 i) (f2 i) >= r2) -> (* note: r2 independent of i *)
-  let f1f2 z := (let x := fst_join (2 ^ n) z in
-                 let y := snd_join (2 ^ n) z in
+  let f1f2 z := (let x := fst n z in
+                 let y := snd n z in
                  f1 x && f2 x y) in
   pr_outcome_sum (join l1 l2) f1f2 >= (r1 * r2)%R.
 Proof.
@@ -1206,73 +1444,12 @@ Proof.
   assumption.
 Qed.
 
-Lemma scale_zero : forall l, scale 0 l = repeat 0 (length l).
-Proof.
-  induction l; intros.
-  - reflexivity.
-  - simpl. rewrite IHl.
-    replace (0 * a)%R with 0 by lra.
-    reflexivity.
-Qed.
-
-Lemma join'_starting_zero :  forall x l1 l2,
-  join' (0 :: l1) l2 (S x) = repeat 0 (length (l2 O)) ++ join' l1 (fun i => l2 (S i)) x.
-Proof.
-  induction x; intros.
-  - simpl. rewrite scale_zero.
-    rewrite <- app_nil_end. reflexivity.
-  - remember (S x) as Sx.
-    simpl. rewrite IHx.
-    subst. simpl.
-    rewrite app_assoc. reflexivity.
-Qed.
-
-Lemma join_starting_zero : forall l1 l2,
-  join (0 :: l1) l2 = repeat 0 (length (l2 O)) ++ join l1 (fun i => l2 (S i)).
-Proof.
-  intros. unfold join.
-  rewrite <- join'_starting_zero. reflexivity.
-Qed.
-
-Local Opaque scale.
-Lemma fst_join_uniform : forall (x m : nat) l2 rnd,
-  (1 < x)%nat ->
-  0 <= rnd < 1 ->
-  (forall k, (k < x)%nat -> length (l2 k) = m) ->
-  (forall k, (k < x)%nat -> distribution (l2 k)) ->
-  (0 < m)%nat ->
-  (1 <= fst_join m (sample (join (uniform 1 x) l2) rnd) < x)%nat.
-Proof.
-  intros. destruct x. lia. destruct x. lia.
-  remember (repeat (1 / INR (S (S x) - 1))%R (S (S x) - 1)) as unm.
-  assert ((join (uniform 1 (S (S x))) l2) = (repeat 0%R (length (l2 O)) ++ join unm (fun i : nat => l2 (S i)))).
-  { unfold uniform. rewrite <- Hequnm.
-    simpl. rewrite join_starting_zero. reflexivity.
-  }
-  assert (m <= (sample (join (uniform 1 (S (S x))) l2) rnd))%nat.
-  { rewrite H4. rewrite H1 by lia. apply sample_repeat_lb. easy. }
-  assert ((sample (join (uniform 1 (S (S x))) l2) rnd) < (S (S x)) * m)%nat.
-  { replace ((S (S x)) * m)%nat with (length (join (uniform 1 (S (S x))) l2)).
-    apply sample_ub_lt.
-    assert (distribution (join (uniform 1 (S (S x))) l2)).
-    { apply distribution_join. apply distribution_uniform. lia.
-      intros. apply H2. rewrite length_uniform in H6; lia.  
-    }
-    destruct H6. rewrite H7. assumption.
-    unfold join. rewrite length_join' with (m := m). rewrite length_uniform; lia.
-    rewrite length_uniform by lia. apply H1. 
-  }
-  unfold fst_join. split.
-  apply Nat.div_le_lower_bound; lia.
-  apply Nat.div_lt_upper_bound; lia.
-Qed.
-
 
 (* ============================= *)
-(**   Repeat independent runs   **)
+(** * Repeat independent runs   **)
 (* ============================= *)
 
-(* rnds  : source of randomness for sampling
+(** rnds  : source of randomness for sampling
    niter : max number of iterations
    body  : operation to iterate *)
 Fixpoint iterate {A} (rnds : list R) (body : R -> option A) :=
@@ -1285,17 +1462,32 @@ Fixpoint iterate {A} (rnds : list R) (body : R -> option A) :=
       end
   end.
 
+Lemma iterate_replace_body : forall {A} rnds (body body' : R -> option A),
+  Forall (fun r : R => 0 <= r < 1) rnds ->
+  (forall r, 0 <= r < 1 -> body r = body' r) ->
+  iterate rnds body = iterate rnds body'.
+Proof.
+  intros.
+  induction rnds.
+  reflexivity.
+  simpl.
+  inversion H; subst.
+  rewrite H0, IHrnds; auto.
+Qed.
+
 Inductive pr_Ps : ((list R) -> Prop) -> nat -> R -> Prop :=
 | pr_Ps_base : forall (Ps : (list R) -> Prop), Ps nil -> pr_Ps Ps O 1
 | pr_Ps_rec : forall Ps i r1 P r2,
     pr_Ps Ps i r1 ->
     pr_P P r2 ->
-    (forall rnd rnds, Ps (rnd :: rnds) <-> Ps rnds /\ P rnd) ->
+    (forall rnd rnds, 0 <= rnd < 1 ->
+                 Forall (fun r : R => 0 <= r < 1) rnds ->
+                 Ps (rnd :: rnds) <-> Ps rnds /\ P rnd) ->
     pr_Ps Ps (S i) (r1 * r2).
 
 Lemma pr_Ps_same :
   forall i Ps1 Ps2 r,
-    (forall rnds, Ps1 rnds <-> Ps2 rnds) ->
+    (forall rnds, Forall (fun r : R => 0 <= r < 1) rnds -> Ps1 rnds <-> Ps2 rnds) ->
     pr_Ps Ps1 i r ->
     pr_Ps Ps2 i r.
 Proof.
@@ -1306,7 +1498,7 @@ Proof.
   - inversion H0; subst.
     apply pr_Ps_rec with (P := P); try assumption.
     apply IHi with (Ps1 := Ps1); try assumption.
-    intros. rewrite <- H, H5, <- H. 
+    intros. rewrite <- H, H5, <- H; auto.
     reflexivity.
 Qed.
 
@@ -1337,13 +1529,13 @@ Proof.
     intros rnd HH. split; intros.
     + specialize (pr_Ps_nil i Ps r0 H2) as G.
       assert (Ps nil /\ P rnd) by easy.
-      rewrite <- H5 in H4 by (simpl; lia).
-      rewrite H11 in H4 by (simpl; lia).
+      rewrite <- H5 in H4 by (simpl; auto).
+      rewrite H11 in H4 by (simpl; auto).
       easy.
     + specialize (pr_Ps_nil i Ps r0 H2) as G.
       assert (Ps nil /\ P0 rnd) by easy.
-      rewrite <- H11 in H4 by (simpl; lia).
-      rewrite H5 in H4 by (simpl; lia).
+      rewrite <- H11 in H4 by (simpl; auto).
+      rewrite H5 in H4 by (simpl; auto).
       easy.
 Qed.
 
@@ -1359,7 +1551,7 @@ Proof.
   - replace (r ^ (S n))%R with (r^n * r)%R by (simpl; lra).
     apply pr_Ps_rec with (P := (fun rnd : R => isNone (body rnd) = true)) (r2 := r) in IHn; try assumption.
     split; intros.
-    simpl in H0. destruct (body rnd) eqn:E; try easy.
+    simpl in H2. destruct (body rnd) eqn:E; try easy.
     simpl. destruct (body rnd) eqn:E; try easy.
 Qed.
 

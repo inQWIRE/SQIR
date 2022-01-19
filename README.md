@@ -66,7 +66,7 @@ Definition of the SQIR language.
 - DensitySem.v : Density matrix semantics for general SQIR programs.
 - Equivalences.v : Verified circuit equivalences for peephole optimizations.
 - NDSem.v : Non-deterministic semantics for general SQIR programs.
-- Run.v : 'run' function to describe running a quantum circuit and sampling from the output distribution.
+- DiscreteProb.v : Utilities to describe running a quantum program and sampling from the output probability distribution.
 - SQIR.v : Definition of the SQIR language (see 'ucom' and 'com').
 - UnitaryOps.v : Utilities for manipulating unitary SQIR programs (e.g. 'invert', 'control').
 - UnitarySem.v : Semantics for unitary SQIR programs.
