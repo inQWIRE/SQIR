@@ -1,13 +1,12 @@
 
-(** val fst : ('a1 * 'a2) -> 'a1 **)
-
-let fst = function
-| (x, _) -> x
-
 (** val snd : ('a1 * 'a2) -> 'a2 **)
 
 let snd = function
 | (_, y) -> y
+
+(** val length : 'a1 list -> Z.t **)
+
+let rec length = (fun l -> Z.of_int (List.length l))
 
 type comparison =
 | Eq

@@ -1,4 +1,4 @@
-Require Export UnitaryOps.
+Require Export QuantumLib.VectorStates QuantumLib.DiscreteProb.
 
 Local Coercion Nat.b2n : bool >-> nat.
 
@@ -50,72 +50,6 @@ Definition integer_oracle {n} (U : base_ucom (2 * n)) (f : nat -> nat) :=
   forall (x :nat), (x < 2 ^ n)%nat -> 
     @Mmult _ _ 1 (uc_eval U) (basis_vector (2 ^ n) x ⊗ basis_vector (2 ^ n) 0) = 
       basis_vector (2 ^ n) x ⊗ ((basis_vector (2 ^ n) (f x))).
-
-
-(* ============ *)
-(**    Nsum    **)
-(* ============ *)
-(* TODO: maybe move to QuantumLib *)
-
-Fixpoint Nsum (n : nat) (f : nat -> nat) :=
-  match n with
-  | O => O
-  | S n' => (Nsum n' f + f n')%nat
-  end.
-
-Lemma Nsum_eq : forall n f g,
-  (forall x, (x < n)%nat -> f x = g x) ->
-  Nsum n f = Nsum n g.
-Proof.
-  intros. induction n. easy.
-  simpl. rewrite IHn. rewrite H. easy.
-  lia. intros. apply H. lia.
-Qed.
-
-Lemma Nsum_scale : forall n f d,
-  (Nsum n (fun i => d * f i) = d * Nsum n f)%nat.
-Proof.
-  intros. induction n. simpl. lia. 
-  simpl. rewrite IHn. lia.
-Qed.
-
-Lemma Nsum_le : forall n f g,
-  (forall x, x < n -> f x <= g x)%nat ->
-  (Nsum n f <= Nsum n g)%nat.
-Proof.
-  intros. induction n. simpl. easy.
-  simpl.
-  assert (f n <= g n)%nat.
-  { apply H. lia. }
-  assert (Nsum n f <= Nsum n g)%nat.
-  { apply IHn. intros. apply H. lia. }
-  lia.
-Qed.
-
-Lemma Nsum_add : forall n f g,
-  (Nsum n (fun i => f i + g i) = Nsum n f + Nsum n g)%nat.
-Proof.
-  intros. induction n. easy.
-  simpl. rewrite IHn. lia.
-Qed.
-
-Lemma Nsum_delete : forall n x f,
-  (x < n)%nat ->
-  (Nsum n (update f x 0) + f x = Nsum n f)%nat.
-Proof.
-  induction n; intros. lia.
-  simpl. bdestruct (x =? n). subst. rewrite update_index_eq.
-  rewrite Nsum_eq with (g := f). lia.
-  intros. rewrite update_index_neq. easy. lia.
-  assert (x < n)%nat by lia. apply IHn with (f := f) in H1. rewrite <- H1.
-  rewrite update_index_neq. lia. easy.
-Qed.
-
-Lemma Nsum_zero : forall n, Nsum n (fun _ => O) = O.
-Proof.
-  induction n. easy.
-  simpl. rewrite IHn. easy.
-Qed.
 
 
 (* ========================================== *)
@@ -323,6 +257,61 @@ Proof.
   simpl count.
   rewrite plus_INR.
   destruct (f n); simpl; lma.
+Qed.
+
+Lemma nth_repeat : forall n r i,
+  (i < n)%nat -> nth i (repeat r n) 0 = r.
+Proof.
+  intros n r i Hi.
+  rewrite nth_indep with (d':=r).
+  clear Hi.
+  gen i.
+  induction n; intro i; simpl; destruct i; try reflexivity.
+  apply IHn.
+  rewrite repeat_length.
+  assumption.
+Qed.
+
+Lemma pr_outcome_sum_count : forall l u f,
+  (l < u)%nat ->
+  pr_outcome_sum (uniform l u) f 
+  = (INR (count1 (fun x => f (l + x - 1)%nat) (u - l)) / INR (u - l))%R.
+Proof.
+  intros l u f H.
+  unfold uniform.
+  rewrite pr_outcome_sum_append.
+  rewrite pr_outcome_sum_repeat_false.
+  rewrite Rplus_0_l.
+  remember (u - l)%nat as n.
+  assert (Hn:(n > 0)%nat) by lia.
+  clear - Hn.
+  unfold pr_outcome_sum.
+  rewrite 2 repeat_length.
+  erewrite Rsum_eq_bounded.
+  2: { intros i Hi.
+       replace  (if f (l + i)%nat then nth i (repeat (1 / INR n)%R n) 0 else 0) with
+           ((1 / INR n)%R * (if f (l + i)%nat then 1 else 0))%R.
+       reflexivity.
+       destruct (f (l + i)%nat).
+       rewrite nth_repeat by assumption.
+       lra.
+       lra. }
+  rewrite <- Rsum_scale.
+  replace (INR (count1 (fun x : nat => f (l + x - 1)%nat) n) / INR n)%R with (1 / INR n * INR (count1 (fun x : nat => f (l + x - 1)%nat) n))%R by lra.
+  apply f_equal2; try reflexivity.
+  clear Hn.
+  induction n.
+  reflexivity.
+  rewrite Rsum_extend.
+  simpl.
+  rewrite IHn.
+  unfold count1. simpl.
+  replace (l + S n - 1)%nat with (l + n)%nat by lia.
+  destruct (f (l + n)%nat). 
+  rewrite S_O_plus_INR.
+  simpl.
+  reflexivity.
+  simpl. lra.
 Qed.
 
 (* Copied from euler/Asympt.v *)

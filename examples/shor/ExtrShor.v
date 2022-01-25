@@ -1,4 +1,4 @@
-Require Import Shor.
+Require Import Shor NumTheory.
 Require Import AltGateSet.
 
 (* Redefining Shor's alg. using the new gate set *)
@@ -53,7 +53,6 @@ Definition QPE k (f : nat -> bccom) : ucom U :=
 Definition modexp a x N := a ^ x mod N.
 Definition modmult_circuit a ainv N n i := 
   RCIR.bcelim (ModMult.modmult_rev N (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) n).
-Definition num_qubits n : nat := n + modmult_rev_anc n.
 
 (* requires 0 < a < N, gcd a N = 1 *)
 Definition shor_circuit a N := 
@@ -62,6 +61,19 @@ Definition shor_circuit a N :=
   let ainv := modinv a N in
   let f i := modmult_circuit a ainv N n i in
   X (m + n - 1) >> QPE m f.
+
+(* shor_circuit uses:
+   - Nat.log2 (2 * N^2) qubits as input to QFT
+   - Nat.log2 (2 * N) qubits as data in modular exponentiation
+   - modmult_rev_anc (Nat.log2 (2 * N)) qubits as ancilla in modular exponentiation 
+
+   The values of the first Nat.log2 (2 * N^2) qubits are inspected at the end
+   of the circuit. *)
+Definition shor_output_nqs (N : nat) : nat := Nat.log2 (2 * N^2).
+Definition modmult_data_nqs (N : nat) : nat := Nat.log2 (2 * N).
+Definition modmult_anc_nqs (N : nat) : nat := modmult_rev_anc (Nat.log2 (2 * N)).
+Definition modmult_nqs (N : nat) : nat := modmult_data_nqs N + modmult_anc_nqs N.
+Definition shor_nqs (N : nat) : nat := shor_output_nqs N + modmult_nqs N.
 
 
 (** Proofs **)
@@ -447,18 +459,13 @@ Qed.
 
 (* Compute the effect of running (shor_circuit a N) on the all-zero input state. *)
 Definition run_shor_circuit a N := 
-  let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2 (2 * N) in
-  let numq := num_qubits n in
-  @Mmult _ _ 1 (uc_eval (m+numq) (shor_circuit a N))
-               (basis_vector (2^(m+numq)) 0).
+  @Mmult _ _ 1 (uc_eval (shor_nqs N) (shor_circuit a N))
+               (basis_vector (2^(shor_nqs N)) 0).
 
 (* Returns the probability that (shor_circuit a N) outputs x. *)
 Definition prob_shor_outputs a N x := 
-  let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2 (2 * N) in
-  let numq := num_qubits n in
-  @prob_partial_meas _ numq (basis_vector (2^m) x) (run_shor_circuit a N).
+  @prob_partial_meas _ (modmult_nqs N) 
+    (basis_vector (2^(shor_output_nqs N)) x) (run_shor_circuit a N).
 
 Local Opaque genM0 modmult_full reverser bcinv.
 Lemma bcelim_modmult_rev_neq_bcskip : forall n M C Cinv,
@@ -489,16 +496,16 @@ Qed.
 
 Lemma shor_circuit_same : forall a N, 
   (0 < N)%nat ->
-  let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2 (2 * N)%nat in
-  let numq := num_qubits n in
+  let m := shor_output_nqs N in
+  let n := modmult_data_nqs N in
   let f := Shor.f_modmult_circuit a (modinv a N) N n in
-  uc_eval (m + numq) (shor_circuit a N) = 
-    UnitarySem.uc_eval (SQIR.useq (SQIR.X (m + n - 1)) (QPE_var m numq f)).
+  uc_eval (shor_nqs N) (shor_circuit a N) = 
+    UnitarySem.uc_eval (SQIR.useq (SQIR.X (m + n - 1)) (QPE_var m (modmult_nqs N) f)).
 Proof.
-  intros a N H m n numq f.
-  subst m n numq.
-  unfold uc_eval, num_qubits, shor_circuit.
+  intros a N H m n f.
+  subst m n.
+  unfold uc_eval, shor_circuit, shor_nqs, modmult_nqs.
+  unfold shor_output_nqs, modmult_data_nqs, modmult_anc_nqs in *.
   Local Opaque Nat.mul Nat.pow QPE QPE.QPE_var.
   simpl.
   remember (Nat.log2 (2 * N ^ 2)) as m.
@@ -525,28 +532,21 @@ Proof.
   reflexivity.
 Qed.
 
-(* Shor's runs on (n + k) qubits and returns the result of measuring n qubits. *)
-Definition n (N : nat) := Nat.log2 (2 * N^2).
-Definition k (N : nat) := AltShor.num_qubits (Nat.log2 (2 * N)).
-
 Lemma uc_well_typed_shor_circuit : forall a N,
   (a < N)%nat ->
-  let n := n N in
-  let k := k N in
-  uc_well_typed (to_base_ucom (n + k) (shor_circuit a N)).
+  uc_well_typed (to_base_ucom (shor_nqs N) (shor_circuit a N)).
 Proof.
   intros.
-  subst n0 k0.
-  unfold n, k.
   apply uc_eval_nonzero_iff.
   specialize (shor_circuit_same a N) as Hsame. 
   unfold uc_eval in Hsame.
   rewrite Hsame by lia.
   clear Hsame.
-  unfold num_qubits, modmult_rev_anc.
   apply uc_eval_nonzero_iff.
+  unfold shor_output_nqs, modmult_nqs, modmult_data_nqs, modmult_anc_nqs.
   constructor.
   apply uc_well_typed_X. 
+  unfold modmult_rev_anc.
   lia.
   apply QPE_var_WT.
   assert (1 <= N ^ 2)%nat.
@@ -562,9 +562,9 @@ Qed.
 
 Lemma shor_circuit_same' : forall a N x, 
   (0 < N)%nat ->
-  let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2 (2 * N)%nat in
-  let anc := modmult_rev_anc n in
+  let m := shor_output_nqs N in
+  let n := modmult_data_nqs N in
+  let anc := modmult_anc_nqs N in
   let f := Shor.f_modmult_circuit a (modinv a N) N n in
   prob_shor_outputs a N x = 
     prob_partial_meas (basis_vector (2^m) x) (Shor.Shor_final_state m n anc f).
@@ -572,8 +572,9 @@ Proof.
   intros a N x H m n anc f.
   unfold prob_shor_outputs, run_shor_circuit.
   rewrite shor_circuit_same by assumption.
-  unfold num_qubits.
   subst m n anc.
+  unfold shor_nqs, modmult_nqs.
+  unfold shor_output_nqs, modmult_data_nqs, modmult_anc_nqs in *.
   remember (Nat.log2 (2 * N ^ 2)) as m.
   remember (Nat.log2 (2 * N)) as n.
   assert (0 < n)%nat.

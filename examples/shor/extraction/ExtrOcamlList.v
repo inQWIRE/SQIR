@@ -2,7 +2,7 @@ Require Coq.extraction.Extraction.
 Require Export List.
 
 (* A few common list functions *)
-Extract Inlined Constant length => "List.length".
+Extract Constant length => "(fun l -> Z.of_int (List.length l))".
 Extract Inlined Constant app => "List.append".
 Extract Inlined Constant rev => "List.rev".
 Extract Inlined Constant rev_append => "List.rev_append".

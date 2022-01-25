@@ -65,7 +65,6 @@ Definition N2fb n : nat -> bool :=
 
 Definition nat2fb n := N2fb (N.of_nat n).
 
-
 (*********** Definitions ***********)
 
 (* This is the number of ancilla qubits ("scratch space") needed for the

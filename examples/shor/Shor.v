@@ -1,7 +1,6 @@
-Require Import Reals Psatz ZArith Znumtheory Btauto.
-Require Export QPEGeneral ModMult ShorAux.
-Require Import Interval.Tactic.
+Require Import Reals Psatz ZArith Znumtheory Btauto Interval.Tactic.
 Require Import QuantumLib.Permutations.
+Require Export QPEGeneral ModMult NumTheory EulerTotient ContFrac Reduction.
 
 Local Close Scope R_scope.
 Local Coercion INR : nat >-> R.
@@ -45,7 +44,7 @@ Definition Shor_final_state m n anc (f : nat -> base_ucom (n + anc)) :=
    After each iteration, a classical verifier checks whether the denominator is the order.
    OF_post outputs the order r with probability at least 1/polylog(N). Otherwise, it outputs
    0 or a multiple of the order. *)
-Definition OF_post_step (step o m : nat) := snd (ContinuedFraction step o (2^m)).
+Definition OF_post_step (step o m : nat) := Datatypes.snd (ContinuedFraction step o (2^m)).
 Definition modexp a x N := a ^ x mod N. (* for easier extraction -KH *)
 Fixpoint OF_post' (step a N o m : nat) :=
   match step with
@@ -1061,6 +1060,35 @@ Lemma κgt0 : κ > 0. Proof. unfold κ. interval. Qed.
 Lemma κlt1 : κ < 1. Proof. unfold κ. interval. Qed.
 Lemma κgt120 : κ > 1/20. Proof. unfold κ. interval. Qed.
 Lemma κlt118 : κ < 1/18. Proof. unfold κ. interval. Qed.  
+Lemma κn4in01 :
+  forall x,
+    (1 <= x)%nat ->
+    (0 < κ / (INR x ^ 4) < 1)%R.
+Proof.
+  intros. specialize (le_INR 1 x H) as G. simpl in G.
+  specialize κgt0 as T.
+  split; unfold Rdiv.
+  - assert (0 < / (INR x ^ 4)).
+    { apply Rinv_0_lt_compat. 
+      apply pow_lt. lra.
+    }
+    nra.
+  - assert (1 <= x ^ 4)%nat.
+    { replace 1%nat with (x ^ 0)%nat at 1 by reflexivity.
+      apply Nat.pow_le_mono_r; lia.
+    }
+    assert (/ (INR x ^ 4) <= / 1).
+    { apply Rinv_le_contravar. lra. apply le_INR in H0.
+      simpl in H0. repeat rewrite mult_INR in H0. simpl in H0. simpl. lra.
+    }
+    rewrite Rinv_1 in H1.
+    assert (0 < / (INR x ^ 4)).
+    { apply Rinv_0_lt_compat. apply le_INR in H0.
+      simpl in H0. repeat rewrite mult_INR in H0. simpl in H0. simpl. lra.
+    }
+    specialize κlt1 as T'.
+    nra.
+Qed.
 
 Lemma Shor_correct_var :
     forall (a r N m n anc : nat) (u : nat -> base_ucom (n + anc)),

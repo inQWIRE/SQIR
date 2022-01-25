@@ -1,36 +1,30 @@
+open ContFrac
 open Datatypes
 open Nat
-open ShorAux
 
-(** val coq_OF_post_step : int -> int -> int -> int **)
+(** val coq_OF_post_step : Z.t -> Z.t -> Z.t -> Z.t **)
 
 let coq_OF_post_step step o m =
   snd
     (coq_ContinuedFraction step o
-      (PeanoNat.Nat.pow (Pervasives.succ (Pervasives.succ 0)) m))
+      (PeanoNat.Nat.pow (Z.succ (Z.succ Z.zero)) m))
 
-(** val modexp : int -> int -> int -> int **)
-
-let modexp a x n =
-  PeanoNat.Nat.modulo (PeanoNat.Nat.pow a x) n
-
-(** val coq_OF_post' : int -> int -> int -> int -> int -> int **)
+(** val coq_OF_post' : Z.t -> Z.t -> Z.t -> Z.t -> Z.t -> Z.t **)
 
 let rec coq_OF_post' step a n o m =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
-    (fun _ -> 0)
+  (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
+    (fun _ -> Z.zero)
     (fun step' ->
     let pre = coq_OF_post' step' a n o m in
-    if (=) pre 0
-    then if (=) (modexp a (coq_OF_post_step step' o m) n) (Pervasives.succ 0)
+    if Z.equal pre Z.zero
+    then if Z.equal (Z.powm a (coq_OF_post_step step' o m) n) (Z.succ Z.zero)
          then coq_OF_post_step step' o m
-         else 0
+         else Z.zero
     else pre)
     step
 
-(** val coq_OF_post : int -> int -> int -> int -> int **)
+(** val coq_OF_post : Z.t -> Z.t -> Z.t -> Z.t -> Z.t **)
 
 let coq_OF_post a n o m =
   coq_OF_post'
-    (add (mul (Pervasives.succ (Pervasives.succ 0)) m) (Pervasives.succ
-      (Pervasives.succ 0))) a n o m
+    (add (mul (Z.succ (Z.succ Z.zero)) m) (Z.succ (Z.succ Z.zero))) a n o m
