@@ -1,6 +1,6 @@
 Require Import Psatz ZArith Znumtheory.
 Require Import euler.Asympt euler.Misc euler.Primes euler.Prod.
-Require Import Prelim RealAux.
+Require Import QuantumLib.Prelim QuantumLib.RealAux.
 (*Require Export Utilities.*)
 
 

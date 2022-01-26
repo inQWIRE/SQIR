@@ -25,7 +25,7 @@ invoke-coqmakefile: CoqMakefile
 ##		      Your targets here			 ##
 ###########################################################
 
-COQ_OPTS := -R . Top
+COQ_OPTS := -R SQIR Top.SQIR -R externals/euler Top.externals.euler -R utilities Top.utilities -R examples Top.examples -R VOQC Top.VOQC
 
 all: examples voqc shor VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMeasure.vo VOQC/BooleanCompilation.vo
 

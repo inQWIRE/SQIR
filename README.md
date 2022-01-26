@@ -46,7 +46,14 @@ opam update
 opam install coq-interval
 ```
 
-**TODO: add notes about installing QuantumLib**
+Now you will need to build QuantumLib. Run the following:
+```
+git submodule init
+git submodule update
+cd externals/QuantumLib
+opam pin . # reply Y when prompted
+```
+**NOTE: we plan to add QuantumLib as an opam package in the future, so we won't need this extra step**
 
 *Notes*:
 * Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine.

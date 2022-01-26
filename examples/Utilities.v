@@ -1,4 +1,5 @@
-Require Export QuantumLib.VectorStates QuantumLib.DiscreteProb.
+Require Export UnitaryOps QuantumLib.VectorStates.
+Require Import QuantumLib.DiscreteProb.
 
 Local Coercion Nat.b2n : bool >-> nat.
 

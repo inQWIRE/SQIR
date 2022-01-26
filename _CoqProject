@@ -1,4 +1,8 @@
--R . Top
+-R SQIR Top.SQIR
+-R externals/euler Top.externals.euler
+-R utilities Top.utilities
+-R examples Top.examples
+-R VOQC Top.VOQC
 #-arg -profile-ltac
 
 externals/euler/Misc.v
@@ -18,6 +22,5 @@ SQIR/UnitaryOps.v
 SQIR/DensitySem.v
 SQIR/NDSem.v
 SQIR/Equivalences.v
-SQIR/DiscreteProb.v
 
 utilities/AltGateSet.v

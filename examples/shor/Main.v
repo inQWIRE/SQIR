@@ -3,7 +3,7 @@ Require Import euler.Primes.
 Require Import euler.AltPrimes.
 Require Import AltGateSet.
 Require Import ExtrShor Reduction.
-Require Import DiscreteProb.
+Require Import QuantumLib.DiscreteProb.
 
 (* The end-to-end definition of Shor's algorithm, combining the facts from 
    Shor.v and ShorAux.v into a digestable form. *)

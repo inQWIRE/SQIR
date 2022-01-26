@@ -1,4 +1,5 @@
-Require Import Psatz ZArith Znumtheory Btauto Prelim VectorStates.
+Require Import Psatz ZArith Znumtheory Btauto.
+Require Import QuantumLib.Prelim QuantumLib.VectorStates.
 
 (* ============================= *)
 (* =   Number theory results   = *)
