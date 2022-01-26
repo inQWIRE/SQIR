@@ -42,7 +42,7 @@ examples: invoke-coqmakefile $(examples)/Deutsch.vo $(examples)/DeutschJozsa.vo 
 
 shor: invoke-coqmakefile invoke-coqmakefile-euler $(examples)/shor/AltShor.vo
 
-voqc: invoke-coqmakefile $(VOQC)/Main.vo $(VOQC)/Mapper.vo
+voqc: invoke-coqmakefile $(VOQC)/Main.vo $(VOQC)/GreedyLayout.vo $(VOQC)/SimpleMapping2.vo
 
 # Built by 'make examples'
 
@@ -152,8 +152,17 @@ VOQC/StandardGateSet.vo: $(VOQC)/StandardGateSet.v $(VOQC)/IBMGateSet.vo $(VOQC)
 VOQC/Main.vo: $(VOQC)/Main.v $(VOQC)/CXCancellation.vo $(VOQC)/GateCancellation.vo $(VOQC)/HadamardReduction.vo $(VOQC)/NotPropagation.vo $(VOQC)/Optimize1qGates.vo $(VOQC)/RotationMerging.vo $(VOQC)/RzQGateSet.vo $(VOQC)/SimpleMapping.vo $(VOQC)/StandardGateSet.vo
 	coqc $(COQ_OPTS) $(VOQC)/Main.v
 
-VOQC/Mapper.vo: $(VOQC)/Mapper.v $(SQIR)/VectorStates.vo $(VOQC)/ConnectivityGraph.vo $(VOQC)/StandardGateSet.vo
-	coqc $(COQ_OPTS) $(VOQC)/Mapper.v
+VOQC/GreedyLayout.vo: $(VOQC)/GreedyLayout.v $(SQIR)/VectorStates.vo $(VOQC)/ConnectivityGraph.vo $(VOQC)/StandardGateSet.vo
+	coqc $(COQ_OPTS) $(VOQC)/GreedyLayout.v
+
+VOQC/Layouts2.vo: $(VOQC)/Layouts2.v
+	coqc $(COQ_OPTS) $(VOQC)/Layouts2.v
+
+VOQC/MappingGateSet.vo: $(VOQC)/MappingGateSet.v $(VOQC)/UnitaryListRepresentation.vo
+	coqc $(COQ_OPTS) $(VOQC)/MappingGateSet.v
+
+VOQC/SimpleMapping2.vo: $(VOQC)/SimpleMapping2.v $(VOQC)/MappingGateSet.vo $(VOQC)/Layouts2.vo
+	coqc $(COQ_OPTS) $(VOQC)/SimpleMapping2.v
 
 # Misc. files built by 'make all'
 

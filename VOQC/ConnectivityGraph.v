@@ -256,7 +256,7 @@ Parameter get_path : nat -> nat -> list nat.
 
 Parameter is_in_graph : nat -> nat -> bool.
 
-Axiom get_path_valid : forall n1 n2, 
+Parameter get_path_valid : forall n1 n2,
   n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph dim (get_path n1 n2).
 
 End ConnectivityGraph.

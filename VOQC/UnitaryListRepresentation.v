@@ -335,6 +335,13 @@ Definition LCR {U dim} (b : gate_list U dim) (opt : gate_list U dim -> gate_list
   | _ => None
   end.
 
+Definition map_qubits_app {U dim} (f : nat -> nat) (g : gate_app U dim) : gate_app U dim :=
+  match g with
+  | App1 u n => App1 u (f n)
+  | App2 u m n => App2 u (f m) (f n)
+  | App3 u m n p => App3 u (f m) (f n) (f p)
+  end.
+
 Ltac destruct_In :=
   repeat match goal with
   | H : List.In _ _ |- _ => inversion H; clear H
@@ -1099,6 +1106,15 @@ Qed.
 
 Definition eval {dim} (l : gate_list G.U dim) := uc_eval (list_to_ucom l).
 
+Lemma eval_append : forall {dim} (l1 l2 : gate_list G.U dim),
+  eval (l1 ++ l2) = eval l2 × eval l1.
+Proof.
+  intros.
+  unfold eval.
+  rewrite list_to_ucom_append.
+  reflexivity.
+Qed.
+
 (** Equivalences over unitary lists. **)
 
 Definition uc_equiv_l {dim} (l1 l2 : gate_list G.U dim) := 
@@ -1843,6 +1859,22 @@ Proof.
     rewrite Hpl.   
     reflexivity.
 Qed.
+
+Local Transparent SQIR.ID.
+Lemma map_qubits_app_equiv_map_qubits : forall {dim} (f : nat -> nat) (g : gate_app G.U dim),
+  dim > 0 ->
+  finite_bijection dim f ->
+  uc_eval (list_to_ucom [map_qubits_app f g]) = 
+    uc_eval (map_qubits f (list_to_ucom [g])).
+Proof.
+  intros dim f g Hdim [finv Hbij].
+  destruct (Hbij 0) as [? _]; auto.
+  destruct g; simpl;
+    rewrite I_rotation; repeat rewrite pad_id; 
+    try assumption; Msimpl.
+  all: erewrite <- G.to_base_map_commutes; reflexivity.
+Qed.
+Local Opaque SQIR.ID.
 
 Ltac unfold_uc_equiv_l :=
   unfold uc_equiv_l; simpl;
