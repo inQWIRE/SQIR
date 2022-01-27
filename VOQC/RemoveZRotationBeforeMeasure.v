@@ -27,6 +27,7 @@ Proof.
   unfold c_equiv; simpl.
   intros.
   unfold compose_super, Splus, super.
+  unfold proj. simpl.
   autorewrite with eval_db.
   repad. subst. clear.
   Msimpl.
@@ -73,6 +74,7 @@ Proof.
   unfold c_equiv; simpl.
   intros.
   unfold compose_super, Splus, super.
+  unfold proj. simpl.
   autorewrite with eval_db.
   repad. subst. clear.
   Msimpl.

@@ -1,4 +1,4 @@
-Require Import VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
+Require Import QuantumLib.VectorStates UnitaryOps Coq.btauto.Btauto Coq.NArith.Nnat.
 Require Export RCIR.
 
 Local Open Scope bccom_scope.
@@ -64,7 +64,6 @@ Definition N2fb n : nat -> bool :=
   end.
 
 Definition nat2fb n := N2fb (N.of_nat n).
-
 
 (*********** Definitions ***********)
 
@@ -134,7 +133,7 @@ Definition subtractor01 n :=
    the inverse circuit of the comparator. *)
 Definition modadder21 n := 
   swapper02 n; adder01 n; swapper02 n; 
-  comparator01 n; (bccont 1 (subtractor01 n); bcx 1); 
+  comparator01 n; (bygatectrl 1 (subtractor01 n); bcx 1); 
   swapper02 n; bcinv (comparator01 n); swapper02 n.
 
 (* swapper12 swaps [x][y][z] to be [x][z][y]. *)
@@ -154,7 +153,7 @@ Fixpoint doubler1' i n :=
 Definition doubler1 n := doubler1' (n - 1) (2 + n).
 
 (* Another version of the mod adder only for computing [x][M] -> [2*x % M][M]. *)
-Definition moddoubler01 n := doubler1 n; comparator01 n; bccont 1 (subtractor01 n).
+Definition moddoubler01 n := doubler1 n; comparator01 n; bygatectrl 1 (subtractor01 n).
 
 (* Alternate version of the modulo adder to do addition [y][x] -> [y][x+y mod M]. *)
 Definition modadder12 n := swapper12 n; modadder21 n; swapper12 n.
@@ -209,7 +208,7 @@ Fixpoint reverser' i n :=
   | S i' => reverser' i' n; safe_swap i (n - 1 - i)
   end.
 Definition reverser n := reverser' ((n - 1) / 2) n.
-
+  
 Definition modmult_rev M C Cinv n := 
   bcinv (reverser n); modmult M C Cinv (S (S n)); reverser n.
 
@@ -297,8 +296,6 @@ Lemma MAJ_correct :
     a <> b -> b <> c -> a <> c ->
     bcexec (MAJ c b a) f = ((f[a |-> majb (f a) (f b) (f c)])
                               [b |-> (f b ⊕ f a)])[c |-> (f c ⊕ f a)].
-(*Admitted. 
-(* The following proof works, but too slow. Admitted when debugging. *)*)
 Proof.
   intros ? ? ? ? Hab' Hbc' Hac'. apply functional_extensionality; intro i. simpl.
   unfold update, majb. bnauto.
@@ -310,8 +307,6 @@ Lemma UMA_correct_partial :
     f' a = majb fa fb fc ->
     f' b = (fb ⊕ fa) -> f' c = (fc ⊕ fa) ->
     bcexec (UMA c b a) f' = ((f'[a |-> fa])[b |-> fa ⊕ fb ⊕ fc])[c |-> fc].
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   unfold majb. intros. apply functional_extensionality; intro i. simpl.
   unfold update. bnauto_expand (f' a :: f' b :: f' c :: (List.nil)).
@@ -621,8 +616,6 @@ Lemma MAJseq'_efresh :
     0 < n ->
     j = 1   \/   2 + i < j < 2 + n   \/  2 + n + i < j ->
     efresh j (MAJseq' i n 0).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros. simpl. repeat (try constructor; try lia).
   simpl. repeat (try constructor; try apply IHi; try lia).
@@ -682,8 +675,6 @@ Lemma MAJseq'_correct :
     0 < n -> i < n ->
     bcexec (MAJseq' i n 0) (c ` b1 ` fb_push_n n f (fb_push_n n g h)) = 
            (c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmb i c f g) h).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros.
   - simpl. rewrite MAJ_correct by lia. simpl.
@@ -719,8 +710,6 @@ Lemma UMAseq'_correct :
     0 < n -> i < n ->
     bcexec (UMAseq' i n 0) ((c ⊕ (f 0)) ` b1 ` fb_push_n n (msma i c f g) (fb_push_n n (msmc i c f g) h))
  = c ` b1 ` fb_push_n n f (fb_push_n n (sumfb c f g) h).
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros.
   - simpl. rewrite UMA_correct_partial with (fa := f 0) (fb := g 0) (fc := carry c 0 f g). 2-4 : lia.
@@ -1319,7 +1308,9 @@ Proof.
   apply swapper02_eWF.
   apply comparator01_eWF.
   assumption.
-  constructor. constructor.
+  constructor.
+  apply eWF_bygatectrl.
+  constructor.
   apply subtractor01_efresh.
   lia.
   apply subtractor01_eWF.
@@ -1344,7 +1335,9 @@ Proof.
   assumption. lia.
   apply swapper02_eWT; lia.
   apply comparator01_eWT; lia.
-  constructor. constructor. lia.
+  constructor.
+  apply eWT_bygatectrl.
+  constructor. lia.
   apply subtractor01_efresh.
   lia.
   apply subtractor01_eWT.
@@ -1405,13 +1398,16 @@ Proof.
   { replace (2^(n-1)) with (2^(n-2) + 2^(n-2)). lia.
     destruct n. lia. destruct n. lia. simpl. rewrite Nat.sub_0_r. lia.
   }
-  unfold modadder21. remember (bccont 1 (subtractor01 n); bcx 1) as csub01. simpl. subst.
+  unfold modadder21. remember (bygatectrl 1 (subtractor01 n); bcx 1) as csub01. simpl. subst.
   rewrite swapper02_correct by lia. rewrite adder01_correct_carry0 by lia.
   rewrite swapper02_correct by lia. rewrite comparator01_correct by lia.
-  replace (bcexec (bccont 1 (subtractor01 n); bcx 1)
+  replace (bcexec (bygatectrl 1 (subtractor01 n); bcx 1)
       (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f))
               with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f). 
-  2:{ simpl. bdestruct (M <=? x + y).
+  2:{ simpl.
+      rewrite bygatectrl_correct by (apply subtractor01_efresh; lia).
+      simpl.
+      bdestruct (M <=? x + y).
       - rewrite subtractor01_correct by lia.
         replace (x + y + 2^n - M) with (x + y - M + 2^n) by lia.
         rewrite reg_push_exceed with (x := x + y - M + 2 ^ n).
@@ -1876,7 +1872,8 @@ Proof.
   constructor. constructor.
   apply doubler1_eWF. 
   apply comparator01_eWF.
-  lia. 
+  lia.
+  apply eWF_bygatectrl.
   constructor. 
   apply subtractor01_efresh.
   lia. 
@@ -1892,6 +1889,7 @@ Proof.
   constructor. constructor.
   apply doubler1_eWT; lia. 
   apply comparator01_eWT;lia.
+  apply eWT_bygatectrl.
   constructor. lia. 
   apply subtractor01_efresh.
   lia. 
@@ -1919,7 +1917,10 @@ Proof.
  rewrite bcseq_correct.
  rewrite doubler1_correct; try lia.
  rewrite comparator01_correct; try lia.
- simpl. bdestruct (M <=? x + (x + 0)).
+ simpl.
+ rewrite bygatectrl_correct by (apply subtractor01_efresh; lia).
+ simpl.
+ bdestruct (M <=? x + (x + 0)).
   - rewrite subtractor01_correct; try lia.
     replace (x + (x + 0) + 2 ^ n - M) with (x + (x + 0) - M + 2^n) by lia.
     rewrite reg_push_exceed with (x := (x + (x + 0) - M + 2^n)).
@@ -2645,8 +2646,6 @@ Lemma reverser'_correct :
     0 < n ->
     i <= (n - 1) / 2 ->
     bcexec (reverser' i n) (fb_push_n n f g) = fb_push_n n (fbrev' i n f) g.
-(* Admitted.
-(* The following proof works, but too slow. Admitted when debugging. *) *)
 Proof.
   induction i; intros.
   - simpl. rewrite safe_swap_correct. 

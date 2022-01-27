@@ -1,6 +1,6 @@
 Require Import Setoid.
-Require Export QWIRE.Quantum.
-Require Export QWIRE.Proportional.
+Require Import QuantumLib.Pad.
+Require Export QuantumLib.Proportional.
 Require Export SQIR.
 
 Local Open Scope matrix_scope.
@@ -8,62 +8,16 @@ Local Open Scope ucom_scope.
 
 (* Note: all the definitions in this file are restricted to the base_ucom
    type. To define the semantics using other gate sets, you must define a
-   conversion function. See VOQC/src/RzQGateSet.v for an example. *)
+   conversion function. See VOQC/RzQGateSet.v for an example. *)
 
 (** Denotation of Unitaries **)
 
-(* Padding and lemmas *)
-Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
-  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
-
-Lemma WF_pad : forall n start dim (A : Square (2^n)),
-  WF_Matrix A ->
-  WF_Matrix (pad start dim A).
-Proof.
-  intros n start dim A WFA. unfold pad.
-  bdestruct (start + n <=? dim); auto with wf_db.
-Qed.  
-
-Lemma pad_mult : forall n dim start (A B : Square (2^n)),
-  pad start dim A × pad start dim B = pad start dim (A × B).
-Proof.
-  intros.
-  unfold pad.
-  gridify.
-  reflexivity.
-Qed.
-
-Lemma pad_id : forall n dim,
-  (n < dim)%nat -> @pad 1 n dim (I 2) = I (2 ^ dim).
-Proof. intros. unfold pad. gridify. reflexivity. Qed.
-
 Definition ueval_r (dim n : nat) (U : base_Unitary 1) : Square (2^dim) :=
   match U with
-  | U_R θ ϕ λ => @pad 1 n dim (rotation θ ϕ λ)
+  | U_R θ ϕ λ => pad_u dim n (rotation θ ϕ λ)
   end.
 
-(* Restriction: m <> n and m, n < dim *)
-
-Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
-  if (m <? n) then
-    @pad (1+(n-m-1)+1) m dim (∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ I 2)
-  else if (n <? m) then
-    @pad (1+(m-n-1)+1) n dim (σx ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ I (2^(m-n-1)) ⊗ ∣0⟩⟨0∣)
-  else
-    Zero.
-
-(* Alt formulation for consistency with pad.
-   (Can also simplify first arg of pad, at the cost of complicating WF proofs.)
-Definition ueval_cnot (dim m n: nat) : Square (2^dim) :=
-  if (m + 1 <=? n ) then
-    @pad (1+(n-(m+1))+1) m dim
-         (∣1⟩⟨1∣ ⊗ I (2^(n-(m+1))) ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I (2^(n-(m+1))) ⊗ I 2)
-  else if (n + 1 <=? m) then
-    @pad (1+(m-(n+1))+1) n dim
-         (σx ⊗ I (2^(m-(n+1))) ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ I (2^(m-(n+1))) ⊗ ∣0⟩⟨0∣)
-  else
-    Zero.
-*)
+Definition ueval_cnot (dim m n: nat) : Square (2^dim) := pad_ctrl dim m n σx.
 
 (** Denotation of ucoms **)
 
@@ -78,18 +32,10 @@ Fixpoint uc_eval {dim} (c : base_ucom dim) : Matrix (2^dim) (2^dim) :=
 (** Well-formedness **)
 
 Lemma WF_ueval_r : forall dim n U, WF_Matrix (ueval_r dim n U).
-Proof.
-  intros. dependent destruction U. apply WF_pad. apply WF_rotation.
-Qed.  
+Proof. intros. dependent destruction U. apply WF_pad. apply WF_rotation. Qed.  
   
 Lemma WF_ueval_cnot : forall dim m n, WF_Matrix (ueval_cnot dim m n). 
-Proof.
-  intros dim m n.
-  unfold ueval_cnot.
-  bdestruct (m <? n); [|bdestruct (n <? m)]; 
-    try apply WF_pad;
-    unify_pows_two; auto with wf_db.
-Qed.  
+Proof. intros dim m n. apply WF_pad_ctrl. apply WF_σx. Qed.  
 
 Lemma WF_uc_eval : forall {dim} (c : base_ucom dim), WF_Matrix (uc_eval c).
 Proof.
@@ -99,11 +45,10 @@ Proof.
   apply WF_ueval_cnot.
 Qed.
 
-#[export] Hint Resolve WF_pad WF_ueval_r WF_ueval_cnot WF_uc_eval : wf_db.
+#[export] Hint Resolve WF_ueval_r WF_ueval_cnot WF_uc_eval : wf_db.
 
 (** Equivalence and Structural Rules **)
 
-(* Precondition about typing? *)
 Definition uc_equiv {dim} (c1 c2 : base_ucom dim) := 
   uc_eval c1 = uc_eval c2.
 
@@ -225,62 +170,21 @@ Proof.
   apply useq_assoc.
 Qed.
 
-
 (** uc_eval is unitary iff well-typed **)
-
-Lemma pad_unitary : forall n (u : Square (2^n)) start dim,
-    (start + n <= dim)%nat -> 
-    WF_Unitary u ->
-    WF_Unitary (pad start dim u).
-Proof.
-  intros n u start dim B [WF U].
-  split. apply WF_pad; auto.
-  unfold pad.
-  gridify.
-  Msimpl.
-  rewrite U.
-  reflexivity.
-Qed.
   
 Lemma ueval_r_unitary : forall dim n U,
     (n < dim)%nat ->
     WF_Unitary (ueval_r dim n U).
-Proof.
-  intros. dependent destruction U.
-  apply pad_unitary. lia.
-  apply rotation_unitary. 
-Qed.  
+Proof. 
+  intros. dependent destruction U. apply pad_u_unitary. auto. apply rotation_unitary.
+Qed.
 
 Lemma ueval_cnot_unitary : forall dim m n,
     m <> n ->
     (m < dim)%nat ->
     (n < dim)%nat ->
     WF_Unitary (ueval_cnot dim m n).
-Proof.
-  intros dim m n NE Lm Ln.
-  unfold ueval_cnot, pad.
-  gridify.
-  - split.
-    + apply WF_Matrix_dim_change; try (unify_pows_two; lia).
-      apply WF_plus; auto with wf_db.
-    + Qsimpl.
-      gridify.
-      Qsimpl.
-      repeat rewrite <- kron_plus_distr_r.
-      repeat rewrite <- kron_plus_distr_l.
-      Qsimpl.
-      reflexivity.
-  - split.
-    + apply WF_Matrix_dim_change; try (unify_pows_two; lia).
-      apply WF_plus; auto with wf_db. (* shouldn't be necessary *)
-    + Msimpl.
-      gridify.
-      Qsimpl.
-      repeat rewrite <- kron_plus_distr_r.
-      repeat rewrite <- kron_plus_distr_l.
-      Qsimpl.
-      reflexivity.
-Qed.      
+Proof. intros. apply pad_ctrl_unitary; auto. apply σx_unitary. Qed.     
 
 Lemma uc_eval_unitary : forall (dim : nat) (c : base_ucom dim),
     uc_well_typed c -> WF_Unitary (uc_eval c).
@@ -317,11 +221,11 @@ Proof.
       rewrite Mmult_0_l in H.
       contradiction.
   - simpl in *.
-    unfold ueval_r, pad in H.
+    unfold pad_u, pad in H.
     bdestruct (n + 1 <=? dim); try contradiction. 
     constructor; lia.
   - simpl in *. 
-    unfold ueval_cnot, pad in H.
+    unfold ueval_cnot, pad_ctrl, pad in H.
     bdestruct (n <? n0). 
     + bdestruct (n + (1 + (n0 - n - 1) + 1) <=? dim); try contradiction.
       constructor; lia.
@@ -384,7 +288,7 @@ Proof.
       assert (@uc_well_typed _ dim (uapp1 u n)) by (constructor; assumption).
       contradict H. assumption. }
     dependent destruction u.
-    simpl; unfold pad.
+    simpl; unfold pad_u, pad.
     bdestructΩ (n + 1 <=? dim); reflexivity.
     assert (HWT: (not ((n < dim) /\ (n0 < dim) /\ (n <> n0)))%nat). 
     { intro contra.
@@ -392,7 +296,7 @@ Proof.
       assert (@uc_well_typed _ dim (uapp2 u n n0)) by (constructor; assumption).
       contradict H. assumption. }
     dependent destruction u.
-    simpl; unfold ueval_cnot, pad;
+    simpl; unfold ueval_cnot, pad_ctrl, pad;
     bdestruct (n <? n0); bdestruct (n0 <? n); try lia; try reflexivity.
     apply Classical_Prop.not_and_or in HWT.
     destruct HWT as [HWT | HWT].
@@ -465,7 +369,6 @@ Proof.
   inversion H; subst; assumption. 
 Qed.
 
-
 Lemma uc_well_typed_CNOT : forall dim m n, 
   (m < dim /\ n < dim /\ m <> n) <-> uc_well_typed (@CNOT dim m n).
 Proof. 
@@ -490,35 +393,35 @@ Qed.
 
 (* In general, we won't want to interact directly with the 'rotation' matrix. *)
 
-Lemma denote_H : forall dim n, uc_eval (H n) = @pad 1 n dim hadamard.
+Lemma denote_H : forall dim n, uc_eval (H n) = pad_u dim n hadamard.
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite hadamard_rotation.
   reflexivity.
 Qed.
 
-Lemma denote_X : forall dim n, uc_eval (X n) = @pad 1 n dim σx.
+Lemma denote_X : forall dim n, uc_eval (X n) = pad_u dim n σx.
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite pauli_x_rotation.
   reflexivity.
 Qed.
 
-Lemma denote_Y : forall dim n, uc_eval (Y n) = @pad 1 n dim σy.
+Lemma denote_Y : forall dim n, uc_eval (Y n) = pad_u dim n σy.
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite pauli_y_rotation.
   reflexivity.
 Qed.
 
-Lemma denote_Z : forall dim n, uc_eval (Z n) = @pad 1 n dim σz.
+Lemma denote_Z : forall dim n, uc_eval (Z n) = pad_u dim n σz.
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite pauli_z_rotation.
   reflexivity.
 Qed.
 
-Lemma denote_ID : forall dim n, uc_eval (ID n) = @pad 1 n dim (I 2).
+Lemma denote_ID : forall dim n, uc_eval (ID n) = pad_u dim n (I 2).
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite I_rotation.
@@ -527,18 +430,18 @@ Qed.
 
 Lemma denote_SKIP : forall dim, dim > 0 -> uc_eval SKIP = I (2 ^ dim).
 Proof.
-  intros. unfold uc_eval; simpl. 
-  unfold pad.
+  intros. unfold uc_eval; simpl.
+  unfold pad_u, pad.
   rewrite I_rotation. 
   gridify.
   reflexivity.
 Qed.
 
-Lemma denote_Rx : forall dim θ n, uc_eval (Rx θ n) = @pad 1 n dim (x_rotation θ).
+Lemma denote_Rx : forall dim θ n, uc_eval (Rx θ n) = pad_u dim n (x_rotation θ).
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite <- Rx_rotation.
-  unfold pad.
+  unfold pad_u, pad.
   gridify.
   apply f_equal2; try reflexivity.
   apply f_equal2; try reflexivity.
@@ -550,14 +453,14 @@ Proof.
   autorewrite with Cexp_db. lca.
 Qed.
 
-Lemma denote_Ry : forall dim θ n, uc_eval (Ry θ n) = @pad 1 n dim (y_rotation θ).
+Lemma denote_Ry : forall dim θ n, uc_eval (Ry θ n) = pad_u dim n (y_rotation θ).
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite Ry_rotation.
   reflexivity.
 Qed.
 
-Lemma denote_Rz : forall dim θ n, uc_eval (Rz θ n) = @pad 1 n dim (phase_shift θ).
+Lemma denote_Rz : forall dim θ n, uc_eval (Rz θ n) = pad_u dim n (phase_shift θ).
 Proof.
   intros. unfold uc_eval; simpl.
   rewrite phase_shift_rotation.
@@ -568,7 +471,6 @@ Lemma denote_cnot : forall dim m n,
   uc_eval (CNOT m n) = ueval_cnot dim m n.
 Proof. easy. Qed.
 
-(* TODO: remove *)
 Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
   if (m <? n) then
       @pad (1+(n-m-1)+1) m dim 
@@ -588,33 +490,18 @@ Definition ueval_swap (dim m n: nat) : Square (2^dim) :=
 (* auxiliary lemmas for denote_swap *)
 Lemma Mplus_swap_first_and_last : forall {m n} (A B C D : Matrix m n), 
   A .+ B .+ (C .+ D) = D .+ B .+ C .+ A.
-Proof.
-  intros. 
-  rewrite <- Mplus_assoc.
-  rewrite Mplus_comm.
-  rewrite (Mplus_comm _ _ A).
-  repeat rewrite Mplus_assoc.
-  rewrite (Mplus_comm _ _ A).
-  reflexivity.
-Qed.
+Proof. intros. lma. Qed.
 
 Lemma Mplus_swap_mid : forall {m n} (A B C D : Matrix m n), 
   A .+ B .+ C .+ D = A .+ C .+ B .+ D.
-Proof.
-  intros. 
-  rewrite 2 Mplus_assoc.
-  rewrite <- (Mplus_assoc _ _ B).
-  rewrite (Mplus_comm _ _ B).                       
-  rewrite <- 2 Mplus_assoc.
-  reflexivity.
-Qed.
+Proof. intros. lma. Qed.
 
 Lemma denote_swap : forall dim m n,
   @uc_eval dim (SWAP m n) = ueval_swap dim m n.
 Proof.
   intros.
   simpl; unfold ueval_swap. 
-  unfold ueval_cnot, pad.
+  unfold ueval_cnot, pad_ctrl, pad.
   gridify.
   - Qsimpl.
     rewrite Mplus_swap_first_and_last.
@@ -623,6 +510,14 @@ Proof.
     rewrite Mplus_swap_first_and_last.
     rewrite Mplus_swap_mid.
     reflexivity.
+Qed.
+
+Lemma denote_swap_alt : forall dim a b, uc_eval (SQIR.SWAP a b) = pad_swap dim a b.
+Proof.
+  intros. simpl.
+  repeat rewrite denote_cnot.
+  rewrite <- Mmult_assoc.
+  reflexivity.
 Qed.
 
 Lemma unfold_ueval_cnot : forall dim m n, 
@@ -637,13 +532,18 @@ Proof. easy. Qed.
 
 Lemma unfold_ueval_r : forall dim n (U : base_Unitary 1), 
   ueval_r dim n U = match U with
-                    | U_R θ ϕ λ => @pad 1 n dim (rotation θ ϕ λ)
+                    | U_R θ ϕ λ => pad_u dim n (rotation θ ϕ λ)
                     end.
 Proof. easy. Qed.
 
 Lemma unfold_pad : forall n start dim A, 
   @pad n start dim A = 
   if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
+Proof. easy. Qed.
+
+Lemma unfold_pad_u : forall dim n A, 
+  pad_u dim n A = 
+  if n + 1 <=? dim then I (2^n) ⊗ A ⊗ I (2^(dim - (n + 1))) else Zero.
 Proof. easy. Qed.
 
 Lemma unfold_ueval_swap : forall dim m n, 
@@ -664,8 +564,9 @@ Lemma unfold_ueval_swap : forall dim m n,
       Zero.
 Proof. easy. Qed.
 
-Hint Rewrite denote_H denote_X denote_Y denote_Z denote_ID denote_SKIP denote_Rx denote_Ry denote_Rz denote_cnot denote_swap unfold_ueval_r : eval_db.
-Hint Rewrite unfold_ueval_cnot unfold_pad unfold_ueval_swap : eval_db.
+Hint Rewrite denote_H denote_X denote_Y denote_Z denote_ID denote_SKIP 
+             denote_Rx denote_Ry denote_Rz denote_cnot denote_swap : eval_db.
+Hint Rewrite unfold_ueval_r unfold_ueval_cnot unfold_ueval_swap unfold_pad unfold_pad_u : eval_db.
 
 Global Opaque H X Y Z ID Rx Ry Rz CNOT SWAP.
 

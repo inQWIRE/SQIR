@@ -1,4 +1,4 @@
-Require Import Proportional.
+Require Import QuantumLib.Proportional.
 Require Export RzQGateSet.
 Import RzQList.
 Require Import MappingConstraints.
@@ -93,7 +93,7 @@ Proof.
   simpl.
   apply andb_true_intro; split; auto.
   rewrite negb_true_iff. 
-  apply eqb_neq; auto.
+  apply Nat.eqb_neq; auto.
 Qed.
 
 Lemma finalize_equal : forall {dim} qs1 qs2,
@@ -117,7 +117,7 @@ Proof.
   simpl.
   apply andb_true_intro; split; auto.
   rewrite negb_true_iff. 
-  apply eqb_neq; auto.
+  apply Nat.eqb_neq; auto.
 Qed.
 
 Lemma finalize_empty : forall {dim},
@@ -139,7 +139,7 @@ Proof.
   simpl.
   apply andb_true_intro; split; auto.
   rewrite negb_true_iff. 
-  apply eqb_neq.
+  apply Nat.eqb_neq.
   intro contra.
   subst.
   contradiction.
@@ -267,7 +267,7 @@ Proof.
         simpl.
         apply andb_true_intro; split; auto.
         rewrite negb_true_iff. 
-        apply eqb_neq; auto.
+        apply Nat.eqb_neq; auto.
         apply finalize_dnr.
         apply FSet.remove_1; auto.
         apply finalize_dnr.
@@ -291,7 +291,7 @@ Proof.
         simpl.
         apply andb_true_intro; split; auto.
         rewrite negb_true_iff. 
-        apply eqb_neq; auto.
+        apply Nat.eqb_neq; auto.
         apply finalize_dnr.
         apply FSet.remove_1; auto.
         apply finalize_dnr.

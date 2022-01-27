@@ -1,4 +1,3 @@
-Require Export Dirac.
 Require Export UnitaryOps.
 
 Local Open Scope ucom.
@@ -35,7 +34,7 @@ Fixpoint QFT n : base_ucom n :=
 Fixpoint reverse_qubits' dim n : base_ucom dim :=
   match n with
   | 0    => SKIP
-  | 1    => SWAP 0 (dim - 1) (* makes 0 case irrelevant *) (* could safely drop this? *)
+  | 1    => SWAP 0 (dim - 1) (* makes 0 case irrelevant *)
   | S n' => reverse_qubits' dim n' ; SWAP n' (dim - n' - 1)
   end.
 Definition reverse_qubits n := reverse_qubits' n (n/2)%nat.
@@ -213,7 +212,7 @@ Proof.
     rewrite Mscale_assoc.
     apply f_equal2; try reflexivity.
     rewrite <- Cexp_add.
-    replace (f (S (S n)) * f 0%nat * (2 * PI / 2 ^ (S (S n) + 1)))%R with (2 * PI * f 0%nat * f (S (S n)) * / 2 ^ (S (S n) + 1))%R by lra.
+    replace (f (S (S n)) * f O * (2 * PI / 2 ^ (S (S n) + 1)))%R with (2 * PI * f O * f (S (S n)) * / 2 ^ (S (S n) + 1))%R by lra.
     autorewrite with R_db.
     repeat rewrite Rmult_assoc.
     repeat rewrite <- Rmult_plus_distr_l.
@@ -252,7 +251,7 @@ Proof.
   - replace (QFT (S (S n))) with (H 0 ; controlled_rotations (S (S n)) ; cast (map_qubits S (QFT (S n))) (S (S n))) by reflexivity. 
     Local Opaque QFT controlled_rotations Nat.pow funbool_to_nat.
     simpl uc_eval.
-    repeat rewrite Mmult_assoc. 
+    repeat rewrite Mmult_assoc.
     rewrite f_to_vec_H by lia. 
     distribute_scale. distribute_plus. distribute_scale.
     rewrite 2 controlled_rotations_action_on_basis by lia.
@@ -296,7 +295,7 @@ Proof.
     replace (shift (update f 0 true) 1) with (shift f 1).
     2: { unfold shift. apply functional_extensionality.
          intro x. rewrite update_index_neq; auto. lia. }
-    replace (VectorStates.b2R (f 0%nat) * PI + 2 * PI * INR (funbool_to_nat n' (shift f 1)) * / (2 * 2 ^ n'))%R with (2 * PI * INR (funbool_to_nat (S n') f) * / (2 ^ S n'))%R.
+    replace (VectorStates.b2R (f O) * PI + 2 * PI * INR (funbool_to_nat n' (shift f 1)) * / (2 * 2 ^ n'))%R with (2 * PI * INR (funbool_to_nat (S n') f) * / (2 ^ S n'))%R.
     2: { Local Transparent funbool_to_nat.
          rewrite funbool_to_nat_shift with (k:=S O) by lia.
          unfold funbool_to_nat; simpl.
@@ -356,11 +355,7 @@ Proof.
   rewrite (ket_decomposition ψ2) by auto.
   autorewrite with ket_db.
   repeat rewrite (Cmult_comm (ψ1 _ _)).
-  repeat rewrite Mplus_assoc.
-  apply f_equal2; try reflexivity.
-  repeat rewrite <- Mplus_assoc.
-  apply f_equal2; try reflexivity.
-  rewrite Mplus_comm. reflexivity.
+  lma.
 Qed.
 
 Lemma SWAP_symmetric : forall m n dim, (@SWAP dim m n) ≡ SWAP n m.
@@ -933,10 +928,6 @@ Proof.
   lra.
 Qed.
 
-
-
-
-
 (* QPE_var is the variant of QPE in Shor's implementation.
    It is provided a circuit constructor f : nat -> base_ucom, which has the same effect as (fun i => niter (2^i) c) when acting on eigenstates.
 *)
@@ -985,7 +976,6 @@ Proof.
   apply map_qubits_fresh; auto.
   apply uc_well_typed_map_qubits; auto.
 Qed.
-
 
 Lemma controlled_powers_var'_action_on_basis : 
   forall k kmax n (fc : nat -> base_ucom n) (ψ : Vector (2^n)) f θ,
@@ -1041,7 +1031,6 @@ Proof.
     destruct (f (kmax - S k - 1)%nat); simpl; lra.
 Qed.
 
-
 Lemma controlled_powers_var_action_on_basis : 
   forall k n (fc : nat -> base_ucom n) (ψ : Vector (2^n)) f θ,
     (n > 0)%nat -> (k > 0)%nat ->
@@ -1093,4 +1082,56 @@ Proof.
   restore_dims.
   rewrite controlled_powers_action_on_basis with (θ := θ) by (try easy; try lia).
   rewrite controlled_powers_var_action_on_basis with (θ := θ); try easy; try lia.
+Qed.
+
+Local Transparent controlled_powers_var' SKIP ID.
+Lemma controlled_powers_var_WT : forall n (f : nat -> base_ucom n) k,
+  (k > 0)%nat -> 
+  (forall i, uc_well_typed (f i)) ->
+  uc_well_typed (controlled_powers_var 
+                  (fun x : nat => map_qubits (fun q : nat => (k + q)%nat) (f x)) k).
+Proof.
+  intros n f k Hk WT.
+  unfold controlled_powers_var.
+  assert (forall kmax, (kmax >= k)%nat -> 
+    uc_well_typed (controlled_powers_var' 
+                    (fun x : nat => map_qubits (fun q : nat => (kmax + q)%nat) (f x)) k kmax)).
+  { intros kmax Hkmax.
+    induction k. lia.
+    simpl. destruct k. 
+    rewrite cast_control_commute.
+    apply uc_well_typed_control.
+    split; [| split].
+    lia.
+    apply map_qubits_fresh. lia.
+    apply uc_well_typed_map_qubits.
+    apply WT.
+    constructor.
+    apply IHk. lia. lia.
+    rewrite cast_control_commute.
+    apply uc_well_typed_control.
+    split; [| split].
+    lia.
+    apply map_qubits_fresh. lia.
+    apply uc_well_typed_map_qubits.
+    apply WT. }
+  apply H. lia.
+Qed.
+
+Lemma QPE_var_WT : forall k n (f : nat -> base_ucom n),
+  (k > 0)%nat -> 
+  (forall i, uc_well_typed (f i)) ->
+  uc_well_typed (QPE_var k n f).
+Proof.
+  intros k n f Hk WT.
+  unfold QPE_var.
+  constructor. constructor.
+  apply typed_cast.
+  apply npar_WT.
+  auto. lia.
+  apply controlled_powers_var_WT; auto.
+  apply typed_cast.
+  rewrite <- uc_well_typed_invert.
+  apply QFT_w_reverse_WT.
+  auto. lia.
 Qed.

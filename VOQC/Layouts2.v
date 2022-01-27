@@ -1,8 +1,10 @@
-Require Import VectorStates.
-Require Export DecidableType FMapAVL FMapFacts.
+Require Import QuantumLib.Prelim QuantumLib.Permutations.
+Require Import Equalities FMapAVL FMapFacts.
+Require Import Orders OrdersAlt OrdersEx.
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
+
 
 (** * Definition of bidirectional maps *)
 
@@ -13,7 +15,7 @@ Local Close Scope R_scope.
    Our definition of BiMap is based on Coq's FMapInterface.
 *)
 
-Module Type BiMap (K V : DecidableType).
+Module Type BiMap (K V : UsualDecidableType).
 
   Definition key := K.t.
   Definition val := V.t.
@@ -55,30 +57,50 @@ Module Type BiMap (K V : DecidableType).
 
     (** Specification of add *)
     Parameter add_1 : MapsTo (add m k v) k v.
-    Parameter add_2 : ~ K.eq k1 k2 -> ~ V.eq v1 v2 -> 
+    Parameter add_2 : k1 <> k2 -> v1 <> v2 -> 
                       MapsTo m k2 v2 -> MapsTo (add m k1 v1) k2 v2.
-    Parameter add_3 : ~ K.eq k1 k2 -> ~ V.eq v1 v2 -> 
+    Parameter add_3 : k1 <> k2 -> v1 <> v2 -> 
                       MapsTo (add m k1 v1) k2 v2 -> MapsTo m k2 v2.
     
     (** Specification of remove functions *)
     Parameter remove_1 : ~ MapsTo (remove m k v) k v.
-    Parameter remove_2 : ~ K.eq k1 k2 -> ~ V.eq v1 v2 -> 
-                         MapsTo m k2 v2 -> MapsTo (remove m k1 v1) k2 v2.
+    Parameter remove_2 : k1 <> k2 -> v1 <> v2 -> MapsTo m k2 v2 -> 
+                         MapsTo (remove m k1 v1) k2 v2.
     Parameter remove_3 : MapsTo (remove m k2 v2) k1 v1 -> MapsTo m k1 v1.
+
+    (** A bimap is well-formed when lookup in one direction is consistent 
+       with the other. *)
+    Definition well_formed (m : t) : Prop := 
+      forall k v, find_val m k = Some v <-> find_key m v = Some k.
+
+    Definition In m k v := (exists v, MapsTo m k v) \/ (exists k, MapsTo m k v).
+
+    Parameter add_well_formed : well_formed m -> ~ In m k v -> 
+                                well_formed (add m k v).
+    Parameter remove_not_In : well_formed m -> MapsTo m k v -> 
+                              ~ In (remove m k v) k v.
+    Parameter remove_well_formed : well_formed m -> MapsTo m k v -> 
+                                   well_formed (remove m k v).
 
   End Spec.
 
 End BiMap.
 
+
 (** * Implementation of bidirectional maps using a pair of maps *)
 
-Module BiMapPair (KMap VMap : WS).
+Module BiMapPair (K V : UsualOrderedType).
+
+  (* FMapInterface.WSfun uses a slightly different defn of DecidableType *)
+  Module Kcompat := Backport_OT K.
+  Module Vcompat := Backport_OT V.
+
+  (* TODO: generalize this module so it takes a map type as input *)
+  Module KMap := FMapAVL.Make Kcompat.
+  Module VMap := FMapAVL.Make Vcompat.
 
   Module KMapFacts := FMapFacts.Facts KMap.
   Module VMapFacts := FMapFacts.Facts VMap.
-
-  Module K := KMap.E.
-  Module V := VMap.E.
 
   Module BM <: BiMap K V. 
 
@@ -135,7 +157,7 @@ Module BiMapPair (KMap VMap : WS).
     Qed.
 
     Lemma add_2 : forall m k1 k2 v1 v2,
-        ~ K.eq k1 k2 -> ~ V.eq v1 v2 -> MapsTo m k2 v2 -> MapsTo (add m k1 v1) k2 v2.
+        k1 <> k2 -> v1 <> v2 -> MapsTo m k2 v2 -> MapsTo (add m k1 v1) k2 v2.
     Proof.
       intros.
       unfold MapsTo, add, find_val, find_key.
@@ -150,7 +172,7 @@ Module BiMapPair (KMap VMap : WS).
     Qed.
 
     Lemma add_3 : forall m k1 k2 v1 v2, 
-        ~ K.eq k1 k2 -> ~ V.eq v1 v2 -> MapsTo (add m k1 v1) k2 v2 -> MapsTo m k2 v2.
+        k1 <> k2 -> v1 <> v2 -> MapsTo (add m k1 v1) k2 v2 -> MapsTo m k2 v2.
     Proof.
       intros.
       unfold MapsTo, add, find_val, find_key in *.
@@ -171,7 +193,7 @@ Module BiMapPair (KMap VMap : WS).
     Qed.
 
     Lemma remove_2 : forall m k1 k2 v1 v2,
-        ~ K.eq k1 k2 -> ~ V.eq v1 v2 -> MapsTo m k2 v2 -> MapsTo (remove m k1 v1) k2 v2.
+        k1 <> k2 -> v1 <> v2 -> MapsTo m k2 v2 -> MapsTo (remove m k1 v1) k2 v2.
     Proof.
       intros.
       unfold MapsTo, remove, find_val, find_key in *.
@@ -196,10 +218,98 @@ Module BiMapPair (KMap VMap : WS).
       eapply VMap.remove_3. apply H0.
     Qed.
 
+    Definition well_formed (m : t) : Prop := 
+      forall k v, find_val m k = Some v <-> find_key m v = Some k.
+
+    Definition In m k v := (exists v, MapsTo m k v) \/ (exists k, MapsTo m k v).
+
+    Lemma add_well_formed : forall m k v,
+      well_formed m -> ~ In m k v -> well_formed (add m k v).
+    Proof.
+      intros m k v WF H k' v'.
+      unfold well_formed, In, MapsTo, find_val, find_key, add in *.
+      destruct m; simpl in *.
+      apply Decidable.not_or in H as [H1 H2].
+      eapply Classical_Pred_Type.not_ex_all_not in H1.
+      eapply Classical_Pred_Type.not_ex_all_not in H2.
+      destruct (KMap.E.eq_dec k k'); destruct (VMap.E.eq_dec v v'); subst.
+      - rewrite KMapFacts.add_eq_o by auto.
+        rewrite VMapFacts.add_eq_o by auto.
+        easy.
+      - rewrite KMapFacts.add_eq_o by auto.
+        rewrite VMapFacts.add_neq_o by auto.
+        split; intro H3.
+        inversion H3.
+        contradiction.
+        contradict H1.
+        split.
+        apply WF. apply H3. apply H3.
+      - rewrite KMapFacts.add_neq_o by auto.
+        rewrite VMapFacts.add_eq_o by auto.
+        split; intro H3.
+        contradict H2.
+        split.
+        apply H3. apply WF. apply H3.
+        inversion H3.
+        contradiction.
+      - rewrite KMapFacts.add_neq_o by auto.
+        rewrite VMapFacts.add_neq_o by auto.
+        easy.
+    Qed.
+
+    Lemma remove_not_In : forall m k v,
+      well_formed m -> MapsTo m k v -> ~ In (remove m k v) k v.
+    Proof.
+      intros m k v WF [H1 H2].
+      unfold well_formed, In, MapsTo, find_val, find_key, remove in *.
+      destruct m; simpl in *.
+      apply Classical_Prop.and_not_or.
+      split; apply Classical_Pred_Type.all_not_not_ex.
+      intro v'.
+      rewrite KMapFacts.remove_eq_o by auto.
+      easy.
+      intro k'.
+      rewrite VMapFacts.remove_eq_o by auto.
+      easy.
+    Qed.
+
+    Lemma remove_well_formed : forall m k v,
+      well_formed m -> MapsTo m k v -> well_formed (remove m k v).
+    Proof.
+      intros m k v WF [H1 H2].
+      unfold well_formed, find_val, find_key, remove in *.
+      destruct m; simpl in *.
+      intros k' v'.
+      destruct (KMap.E.eq_dec k k'); destruct (VMap.E.eq_dec v v'); subst.
+      - rewrite KMapFacts.remove_eq_o by auto.
+        rewrite VMapFacts.remove_eq_o by auto.
+        easy.
+      - rewrite KMapFacts.remove_eq_o by auto.
+        rewrite VMapFacts.remove_neq_o by auto.
+        split; intro H3.
+        inversion H3.
+        apply WF in H3.
+        rewrite H1 in H3.
+        inversion H3.
+        contradiction.
+      - rewrite KMapFacts.remove_neq_o by auto.
+        rewrite VMapFacts.remove_eq_o by auto.
+        split; intro H3.
+        apply WF in H3.
+        rewrite H2 in H3.
+        inversion H3.
+        contradiction.
+        inversion H3.
+      - rewrite KMapFacts.remove_neq_o by auto.
+        rewrite VMapFacts.remove_neq_o by auto.
+        easy.
+    Qed.
+
   End BM.
   Include BM.
 
 End BiMapPair.
+
 
 (** * Layouts for mapping *)
 
@@ -208,8 +318,7 @@ End BiMapPair.
    and the values represent _physical_ qubits. We provide special names for 
    the bimap functions to make this clear. *)
 
-Module NatMap := FMapAVL.Make(Coq.Structures.OrderedTypeEx.Nat_as_OT).
-Module Layout := BiMapPair NatMap NatMap.
+Module Layout := BiMapPair Nat_as_OT Nat_as_OT.
 Import Layout.
 
 Definition layout := t.
@@ -218,21 +327,16 @@ Definition get_phys m k := match find_phys m k with Some v => v | _ => O end.
 Definition find_log := find_key.
 Definition get_log m v := match find_log m v with Some k => k | _ => O end.
 
-(** A layout is well-formed when lookup in one direction is consistent 
-   with the other. *)
-Definition layout_well_formed (l : layout) : Prop := 
-  forall lq pq, find_phys l lq = Some pq <-> find_log l pq = Some lq.
-
-(** A layout is a "bijection on n" if it is well formed and has some 
+(** A layout is bijective for n if it is well formed and has some 
    binding for every value up to n. *)
-Definition layout_bijection (n : nat) (l : layout) : Prop :=
-  layout_well_formed l /\
+Definition layout_bijective (n : nat) (l : layout) : Prop :=
+  well_formed l /\
   (forall lq, lq < n -> exists pq, find_phys l lq = Some pq /\ pq < n) /\
   forall pq, pq < n -> exists lq, find_log l pq = Some lq /\ lq < n.
 
-Lemma get_phys_bij : forall n l,
-  layout_bijection n l ->
-  finite_bijection n (get_phys l).
+Lemma get_phys_perm : forall n l,
+  layout_bijective n l ->
+  permutation n (get_phys l).
 Proof.
   intros n l H.
   exists (get_log l).
@@ -254,9 +358,9 @@ Proof.
   rewrite H2. auto.
 Qed.
 
-Lemma get_log_bij : forall n l,
-  layout_bijection n l ->
-  finite_bijection n (get_log l).
+Lemma get_log_perm : forall n l,
+  layout_bijective n l ->
+  permutation n (get_log l).
 Proof.
   intros n l H.
   exists (get_phys l).
@@ -279,7 +383,7 @@ Proof.
 Qed.
 
 Lemma get_log_phys_inv : forall n l x,
-  layout_bijection n l -> x < n ->
+  layout_bijective n l -> x < n ->
   get_log l (get_phys l x) = x.
 Proof.
   intros n l x [Hl [H1 _]] Hx.
@@ -288,12 +392,13 @@ Proof.
   destruct H1 as [pq [H2 _]].
   rewrite H2.
   apply Hl in H2.
+  unfold find_log.
   rewrite H2.
   reflexivity.
 Qed.
 
 Lemma get_phys_log_inv : forall n l x,
-  layout_bijection n l -> x < n ->
+  layout_bijective n l -> x < n ->
   get_phys l (get_log l x) = x.
 Proof.
   intros n l x [Hl [_ H1]] Hx.
@@ -302,6 +407,7 @@ Proof.
   destruct H1 as [pq [H2 _]].
   rewrite H2.
   apply Hl in H2.
+  unfold find_phys.
   rewrite H2.
   reflexivity.
 Qed.
@@ -315,7 +421,7 @@ Definition swap_log (l : layout) pq1 pq2 : layout :=
   | None, None => l
   | Some lq, None => add (remove l lq pq1) lq pq2
   | None, Some lq => add (remove l lq pq2) lq pq1
-  (* the removes aren't necessary in this case, but it makes the proof easier *)
+  (* the removes aren't necessary here, but it makes the proof easier *)
   | Some lq1, Some lq2 => 
       add (add (remove (remove l lq1 pq1) lq2 pq2) lq1 pq2) lq2 pq1
   end.
@@ -387,121 +493,77 @@ Proof.
 Qed.
 *)
 
-
-Definition In m k v := (exists v, MapsTo m k v) \/ (exists k, MapsTo m k v).
-
-
-Lemma add_well_formed : forall m k v,
-layout_well_formed m ->
+Lemma add_preserves_bij : forall dim m k v,
+v < dim ->
+layout_bijective dim m ->
 ~ In m k v -> 
-layout_well_formed (add m k v).
-Proof.
-  intros m k v Hm1 Hm2.
-  intros k' v'.
-  split; intro H.
-  apply find_2.
-Admitted.
-
-
-Lemma add_bij : forall dim m k v,
-layout_bijection dim m ->
-~ In m k v -> 
-layout_bijection dim (add m k v).
+layout_bijective dim (add m k v).
 Proof.
   intros.
-  destruct H as [? [? ?]].
-  eapply add_well_formed in H.
+  destruct H0 as [? [? ?]].
+  eapply add_well_formed in H0.
   split; [| split].
-  apply H. 
+  apply H0. 
   3: assumption.
 intros.
-bdestruct (lq =? k).
+destruct (PeanoNat.Nat.eq_dec lq k).
 subst.
 exists v.
-admit.
-specialize (H1 lq H3).
-destruct H1 as [pq [? ?]].
+split; auto.
+unfold find_phys.
+apply add_1.
+specialize (H2 lq H4).
+destruct H2 as [pq [? ?]].
 exists pq.
 split; auto.
 apply find_1.
 apply add_2; auto.
 Admitted.
 
-Lemma swap_log_bijection : forall n l pq1 pq2,
+Lemma swap_log_preserves_bij : forall n l pq1 pq2,
   pq1 < n -> pq2 < n ->
-  layout_bijection n l ->
-  layout_bijection n (swap_log l pq1 pq2).
+  layout_bijective n l ->
+  layout_bijective n (swap_log l pq1 pq2).
 Proof.
   intros n l pq1 pq2 Hpq1 Hpq2 Hl.
 
 unfold swap_log.
 destruct (find_log l pq1) eqn:H1; destruct (find_log l pq2) eqn:H2; auto.
-split.
-apply add_well_formed.
-apply add_well_formed.
-
-
-
-
-
-(*
-apply H2 in Hpq1.
-destruct Hpq1 as [lq1 [H3 H4]].
-apply H2 in Hpq2.
-destruct Hpq2 as [lq2 [H5 H6]].
-apply H1 in Hlq.
-destruct Hlq as [lp [H7 H8]].
-
-
-bdestruct (lq =? lq1).
-subst.
-exists pq2.
-split; auto.
-apply swap_log_1. auto.
-
+apply add_preserves_bij.
+auto.
+apply add_preserves_bij.
+auto.
 admit.
-
-bdestruct (lq =? lq2).
-subst.
-exists pq1.
-split; auto.
-apply swap_log_2. auto.
-
-admit.
-
-exists lp.
-split; auto.
-apply swap_log_3. 
-intro contra.
-subst.
-*)
 
 Admitted.
 
-(** Boolean predicate to check layout_bijection. *)
+
+
+(** ** Boolean predicate to check layout_bijective *)
 
 Definition eq_Some (o : option nat) (n : nat) := 
   match o with
-  | Some x => x =? n
+  | Some x => Nat.eqb x n
   | _ => false
   end.
 
-Fixpoint layout_bijection_b' dim n l :=
+Fixpoint layout_bijective_b' dim n l :=
   match n with
   | O => true
-  | S n' => 
+  | S n => 
       match find_phys l n, find_log l n with
       | Some pq, Some lq => 
-          (pq <? dim) && (lq <? dim) && 
-          eq_Some (find_log l pq) n && eq_Some (find_phys l lq) n
+          Nat.ltb pq dim && Nat.ltb lq dim && 
+          eq_Some (find_log l pq) n && eq_Some (find_phys l lq) n &&
+          layout_bijective_b' dim n l
       | _, _ => false
       end
   end. 
-Definition layout_bijection_b (n : nat) (l : layout) :=
-  layout_bijection_b' n n l.
+Definition layout_bijective_b (n : nat) (l : layout) :=
+  layout_bijective_b' n n l.
 
-Lemma layout_bijection_b_implies_layout_bijection : forall n l,
-  layout_bijection_b n l = true -> layout_bijection n l.
+Lemma layout_bijective_b_implies_layout_bijective : forall n l,
+  layout_bijective_b n l = true -> layout_bijective n l.
 Proof.
 Admitted.
 (*  intros.
@@ -541,26 +603,27 @@ Fixpoint trivial_layout n : layout :=
   | S n' => add (trivial_layout n') n' n' 
   end.
 
-Lemma layout_well_formed_empty : layout_well_formed empty.
+Lemma well_formed_empty : well_formed empty.
 Proof.
 Admitted.
 
-Lemma layout_bijection_0 : forall m, layout_well_formed m -> layout_bijection 0 m.
+Lemma layout_bijective_0 : forall m, well_formed m -> layout_bijective 0 m.
 Proof.
   split; [| split]; auto.
   intros. lia.
   intros. lia.
 Qed.
 
-Lemma trivial_layout_bijection : forall n,
-  layout_bijection n (trivial_layout n).
+Lemma trivial_layout_bijective : forall n,
+  layout_bijective n (trivial_layout n).
 Proof.
   induction n; simpl.
-  - apply layout_bijection_0.
-    apply layout_well_formed_empty.
+  - apply layout_bijective_0.
+    apply well_formed_empty.
   - destruct IHn as [? [? ?]].
     split; [| split].
     apply add_well_formed; auto.
+unfold In.
     admit. (* ~ In (trivial_layout n) n n *)
     intros.
     bdestruct (lq =? n).

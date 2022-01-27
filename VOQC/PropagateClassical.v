@@ -439,7 +439,8 @@ Proof.
     bdestruct (q =? n0).
     + (* measurement on qubit q *)
       subst. destruct b; simpl; unfold compose_super, Splus.
-      all: rewrite <- Hρ; simpl;
+      all: unfold proj, pad_u; 
+           rewrite <- Hρ; simpl;
            try rewrite double_pad with (b:=true);
            try rewrite double_pad with (b:=false);
            try rewrite double_pad01;
@@ -479,7 +480,7 @@ Proof.
         1: eapply IHn; try apply propl0; auto with wf_db.
         2: eapply IHn; try apply propl1; auto with wf_db.
         all: rewrite <- Hρ; repeat rewrite <- super_Mmult; apply f_equal2; try reflexivity.
-        all: unfold pad; destruct b; gridify.
+        all: unfold proj, pad_u, pad; destruct b; gridify.
         all: Qsimpl; reflexivity.
       * destruct (propagate_classical_through_com l q false n) eqn:propl.
         inversion res; subst.
@@ -489,7 +490,7 @@ Proof.
         1: eapply IHn; try apply propl0; auto with wf_db.
         2: eapply IHn; try apply propl1; auto with wf_db.
         all: rewrite <- Hρ; repeat rewrite <- super_Mmult; apply f_equal2; try reflexivity.
-        all: unfold pad; destruct b; gridify.
+        all: unfold proj, pad_u, pad; destruct b; gridify.
         all: Qsimpl; reflexivity.
 Qed.
 
@@ -532,7 +533,8 @@ Proof.
     bdestruct (q =? n0).
     + (* measurement on qubit q *)
       subst. destruct b; simpl; unfold compose_super, Splus.
-      all: rewrite <- Hρ; simpl;
+      all: unfold proj, pad_u; 
+           rewrite <- Hρ; simpl;
            try rewrite double_pad with (b:=true);
            try rewrite double_pad with (b:=false);
            try rewrite double_pad01;

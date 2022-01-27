@@ -1,6 +1,7 @@
 Require Export Coq.Classes.Equivalence.
 Require Export Coq.Classes.Morphisms.
 Require Export Setoid.
+Require Import QuantumLib.Permutations.
 Require Export GateSet.
 Require Export Equivalences.
 
@@ -842,7 +843,7 @@ Proof.
     all: intros q0 Hq0.
     all: simpl; apply andb_true_intro; split.
     all: try apply Hdnr; auto.
-    all: apply negb_true_iff; repeat apply orb_false_intro; apply eqb_neq.
+    all: apply negb_true_iff; repeat apply orb_false_intro; apply Nat.eqb_neq.
     all: intro; subst. 
     all: try (rewrite Heqb in Hq0; inversion Hq0). 
     all: try (rewrite Heqb0 in Hq0; inversion Hq0). 
@@ -1863,14 +1864,15 @@ Qed.
 Local Transparent SQIR.ID.
 Lemma map_qubits_app_equiv_map_qubits : forall {dim} (f : nat -> nat) (g : gate_app G.U dim),
   dim > 0 ->
-  finite_bijection dim f ->
+  permutation dim f ->
   uc_eval (list_to_ucom [map_qubits_app f g]) = 
     uc_eval (map_qubits f (list_to_ucom [g])).
 Proof.
   intros dim f g Hdim [finv Hbij].
   destruct (Hbij 0) as [? _]; auto.
   destruct g; simpl;
-    rewrite I_rotation; repeat rewrite pad_id; 
+    rewrite I_rotation; unfold pad_u;
+    repeat rewrite pad_id; 
     try assumption; Msimpl.
   all: erewrite <- G.to_base_map_commutes; reflexivity.
 Qed.

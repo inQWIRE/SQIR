@@ -1,4 +1,3 @@
-
 (**
 Wiesner's quantum money proposed by Stephen Wiesner in 1983 (https://doi.org/10.1145%2F1008908.1008920), is a quantum verification scheme that intends to encode an $n$ bit integer. 
 Given two parties, Alice and Bob, Alice will encode the n bit integer by choosing a basis such that each bit of the integer will either be encoded to quantum $\ket{1}$ in the basis $\ket{0}, \ket{1}$ or the basis $\ket{-},\ket{+}$.
@@ -12,15 +11,17 @@ In the context of money, the $n$-bit integer would be a serial number, Alice the
 While the central bank can validate bills with a given serial numbers, while the 3rd party would be unable to decode the bill to get a valid serial number to copy.
 
 In the following we will prove the correctness in case of equal bases and the probability of outcome in case of incorrect bases for the Wiesner's quantum money with n qubits.
+
+NOTE: This example was contributed by Andrian Lehmann (@adrianleh) 2021
 *)
 Require Import Lists.List.
 Import ListNotations.
-Require Import QWIRE.Dirac.
-Require Import UnitarySem.
+Require Import UnitaryOps.
 Require Import DensitySem.
 Require Import SQIR.
 Local Open Scope ucom.
 Require Import Utilities.
+Require Import QuantumLib.Measurement.
 
 Notation bit_string := (list bool).
 Notation combined_bit_string := (list (bool * bool * bool)).
@@ -33,7 +34,6 @@ Qed.
 Theorem combine_same_length: forall A B (l1 : list A) (l2 : list B) n, length l1 = n -> length l2 = n -> length (combine l1 l2) = n.
 Proof.
   intros.
-  Search (combine _ _).
   rewrite combine_length.
   rewrite H, H0.
   apply min_l.
@@ -104,6 +104,7 @@ Proof.
   intros.
   destruct base; simpl; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP.
   - rewrite Mmult_1_r.
+    unfold pad_u.
     repeat rewrite pad_mult.
     + restore_dims.
       rewrite MmultHH.
@@ -121,7 +122,8 @@ Lemma circuit'_individual_qubit_non_meas_same_base_true: forall base n i, (n > 0
 Proof.
   intros.
   destruct base; simpl; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP.
-  - repeat rewrite pad_mult.
+  - unfold pad_u.
+    repeat rewrite pad_mult.
     rewrite <- Mmult_assoc.
     restore_dims.
     rewrite MmultHHX.
@@ -147,12 +149,13 @@ Proof.
   intros.
   destruct base_a, base_b; subst; try contradiction; simpl; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP.
   - rewrite Mmult_1_l.
-    + rewrite pad_mult.
+    + unfold pad_u.
+      rewrite pad_mult.
       reflexivity.
-    + rewrite pad_mult; auto with wf_db.
+    + unfold pad_u. rewrite pad_mult; auto with wf_db.
   - assumption.
   - rewrite Mmult_1_l; auto with wf_db.
-    rewrite pad_mult.
+    unfold pad_u. rewrite pad_mult.
     reflexivity.
   - assumption.
 Qed.
@@ -353,7 +356,7 @@ Theorem circuit'_helper_growth: forall n l, (length l = S n) ->  uc_eval(circuit
 Proof.
   intros.
   replace (S (S n)) with (1+(S n))%nat.
-  - rewrite (circuit'_helper_growth_i n l 0%nat).
+  - rewrite (circuit'_helper_growth_i n l O).
     + reflexivity.
     + assumption.
   - auto.
@@ -439,10 +442,10 @@ Proof.
   unfold kron.
   intros.
   simpl.
-  remember (fst (A 0%nat 0%nat)) as a10.
-  remember (snd (A 0%nat 0%nat)) as a20.
-  remember (fst (B 0%nat 0%nat)) as b10.
-  remember (snd (B 0%nat 0%nat)) as b20.
+  remember (fst (A O O)) as a10.
+  remember (snd (A O O)) as a20.
+  remember (fst (B O O)) as b10.
+  remember (snd (B O O)) as b20.
   replace (a10 * a10)%R with (a10 ^ 2)%R by lra.
   replace (- a20 * a20)%R with (-(a20 ^ 2))%R by lra.
   replace (b10 * b10)%R with (b10 ^ 2)%R by lra.
@@ -574,7 +577,7 @@ Proof.
   (* We assert the target cases to later not have to duplicate them and have more readable code *)
   assert (probability_of_outcome (hadamard × ket 0) (ket 0) = (1/2)%R). 
   { unfold probability_of_outcome.
-    replace (((hadamard × ket 0)† × ket 0) 0%nat 0%nat) with (/ √ 2).
+    replace (((hadamard × ket 0)† × ket 0) O O) with (/ √ 2).
     replace (Cmod (/ √ 2)) with (/ √ 2)%R.
     simpl.
     R_field_simplify.
@@ -609,7 +612,7 @@ Proof.
   }
   assert (probability_of_outcome (hadamard × ket 1) (ket 1) = (1/2)%R).
   { unfold probability_of_outcome.
-    replace (((hadamard × ket 1)† × ket 1) 0%nat 0%nat) with (-/ √ 2).
+    replace (((hadamard × ket 1)† × ket 1) O O) with (-/ √ 2).
     replace (Cmod (-/ √ 2)) with (/ √ 2)%R.
     simpl.
     R_field_simplify.
@@ -648,8 +651,8 @@ Qed.
 
 Fixpoint count_diff l1 l2 :=
   match l1, l2 with
-  | [], _ => 0%nat
-  | _, [] => 0%nat
+  | [], _ => O
+  | _, [] => O
   | h1::t1, h2::t2 => if eqb h1 h2 then count_diff t1 t2 else (1 + count_diff t1 t2)%nat
   end.
 

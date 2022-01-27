@@ -1,4 +1,4 @@
-Require Import QWIRE.Prelim.
+Require Import QuantumLib.Prelim.
 
 (** Specification of CNOT connectivity graph. **)
 

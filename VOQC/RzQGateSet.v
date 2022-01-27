@@ -205,7 +205,7 @@ Proof.
   destruct Hbound as [k Hbound]. 
   destruct (Qeq_bool (bound (a + a')) 0) eqn:eq;
   unfold RzQList.uc_equiv_l, uc_equiv; simpl;
-  repeat rewrite denote_Rz; rewrite Mmult_assoc, pad_mult, phase_mul;
+  repeat rewrite denote_Rz; unfold pad_u; rewrite Mmult_assoc, pad_mult, phase_mul;
   rewrite <- Rmult_plus_distr_r, Rplus_comm, <- Qreals.Q2R_plus.
   - apply Qeq_bool_eq in eq.
     rewrite eq in Hbound. rewrite Qplus_0_l in Hbound.

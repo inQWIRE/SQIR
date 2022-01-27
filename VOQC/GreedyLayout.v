@@ -1,5 +1,5 @@
-Require Import QWIRE.Prelim.
-Require Import VectorStates.
+Require Import QuantumLib.Prelim.
+Require Import QuantumLib.VectorStates.
 Require Export ConnectivityGraph.
 Require Export StandardGateSet.
 From Coq Require Import Lists.List.

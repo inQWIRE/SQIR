@@ -1,6 +1,6 @@
 Require Import UnitaryOps.
 Require Import Utilities.
-Require Import QWIRE.Dirac.
+Require Import QuantumLib.Measurement.
 
 (* Note: this file requires the version of Ratan in Coq >= 8.12.0 *)
 Require Import Coq.Reals.Ratan. 
@@ -27,24 +27,38 @@ Local Open Scope ucom_scope.
    <https://arxiv.org/pdf/quant-ph/0301079.pdf>
 *)
 
-Module Grover.
+Section Grover.
 
 
 (** Algorithm parameters **)
 
 (* Number of input (qu)bits. *)
-Parameter n : nat.
-Axiom n_ge_2 : (n >= 2)%nat.
+Variable n : nat.
+Hypothesis n_ge_2 : (n >= 2)%nat.
 
 (* Classical oracle function. *)
-Parameter f : nat -> bool.
-Definition k := count f (2 ^ n).
-Axiom f_has_both_good_and_bad_solutions : 0 < INR k < 2 ^ n. 
+Variable f : nat -> bool.
+Definition k := count0 f (2 ^ n).
+Hypothesis f_has_both_good_and_bad_solutions : 0 < INR k < 2 ^ n. 
 
 (* SQIR program implementing oracle. *)
-Parameter Uf : base_ucom (S n).
-Axiom Uf_implements_f : boolean_oracle Uf f.
+Variable ancillae : nat.
+Definition dim := (S n + ancillae)%nat.
+Variable Uf : base_ucom dim.
+Hypothesis Uf_implements_f : padded_boolean_oracle n Uf f.
 
+Lemma dim_minus_Sn :
+  (dim - S n)%nat = ancillae.
+Proof.
+  unfold dim. lia.
+Qed.
+
+Lemma pad_ancillae :
+  forall v : Vector (2 ^ (S n)),
+  pad_vector dim v = v ⊗ (kron_n ancillae ∣0⟩).
+Proof.
+  unfold padded_boolean_oracle, pad_vector. rewrite dim_minus_Sn. reflexivity.
+Qed.
 
 (** Program definition **)
 
@@ -63,8 +77,8 @@ Definition diff : base_ucom n :=
   npar n U_X; npar n U_H.
 
 (* Grover's algorithm (iterates applying Uf and diff). *)
-Definition body := Uf ; cast diff (S n).
-Definition grover i := X n ; npar (S n) U_H ; niter i body.
+Definition body := Uf ; cast diff dim.
+Definition grover i := X n ; cast (npar (S n) U_H) dim ; niter i body.
 
 
 (** Proof **)
@@ -112,7 +126,7 @@ Proof.
   intros.
   destruct (f i); auto with wf_db.
 Qed.
-#[export] Hint Resolve WF_ψ WF_ψg WF_ψb : wf_db.
+Hint Resolve WF_ψ WF_ψg WF_ψb : wf_db.
 
 (* ψ can be rewritten as a sum of ψg and ψb. *)
 
@@ -203,8 +217,8 @@ Proof.
   rewrite (vsum_eq _ _ (fun i => if f i then I 1 else Zero)).
   2: { intros. destruct (f i); Msimpl; auto.
        apply basis_vector_product_eq; auto. }
-  rewrite vsum_count.
-  replace (count f (2 ^ n)) with k by reflexivity.
+  rewrite vsum_count0.
+  replace (count0 f (2 ^ n)) with k by reflexivity.
   distribute_scale.
   rewrite <- RtoC_inv by nonzero.
   rewrite Cconj_R.
@@ -232,9 +246,9 @@ Proof.
   rewrite (vsum_eq _ _ (fun i => if negf f i then I 1 else Zero)).
   2: { intros. unfold negf. destruct (f i); Msimpl; auto.
        apply basis_vector_product_eq; auto. }
-  rewrite vsum_count.
-  rewrite count_negf.
-  replace (count f (2 ^ n)) with k by reflexivity.
+  rewrite vsum_count0.
+  unfold count0. rewrite count_negf.
+  replace (count f 0 (2 ^ n)) with k by reflexivity.
   distribute_scale.
   rewrite <- RtoC_inv by nonzero.
   rewrite Cconj_R.
@@ -325,7 +339,7 @@ Lemma proj_split : forall q b,
   (q < n - 1)%nat -> proj q n b = proj q (n - 1) b ⊗ I 2.
 Proof.
   intros.
-  unfold proj, pad.
+  unfold proj, pad_u, pad.
   bdestruct_all.
   repeat rewrite kron_assoc by auto with wf_db.
   restore_dims. 
@@ -385,6 +399,22 @@ Proof.
     apply generalized_Toffoli'_WT; lia.
 Qed.
 
+Lemma proj_sum : forall q n,
+  (q < n)%nat ->
+  proj q n true .+ proj q n false = I (2 ^ n).
+Proof.
+  intros.
+  unfold proj, pad_u, pad.
+  bdestruct_all.
+  restore_dims.
+  rewrite <- kron_plus_distr_r, <- kron_plus_distr_l.
+  simpl.
+  replace (∣1⟩⟨1∣ .+ ∣0⟩⟨0∣) with (I 2) by solve_matrix.
+  repeat rewrite id_kron.
+  apply f_equal.
+  unify_pows_two.
+Qed.
+
 Lemma generalized_Toffoli_semantics_B : forall m (f : nat -> bool) (b : bool),
   (m <= n)%nat -> (exists i, (n - m <= i)%nat /\ (i < n - 1)%nat /\ f i = false) ->
   @Mmult _ _ 1 (uc_eval (generalized_Toffoli' m)) 
@@ -433,14 +463,15 @@ Qed.
 Lemma kron_n_σx : forall n f,
   n ⨂ σx × f_to_vec n f = f_to_vec n (negf f).
 Proof.
+  clear.
   intros n f.
-  induction n as [|n]; simpl.
+  induction n; simpl.
   Msimpl. reflexivity.
   restore_dims. 
   rewrite kron_mixed_product.
-  rewrite IHn.
+  rewrite IHn0.
   unfold negf.
-  destruct (f n); simpl; autorewrite with ket_db; reflexivity.
+  destruct (f n0); simpl; autorewrite with ket_db; reflexivity.
 Qed.
 
 (* Notice the global phase of -1 compared to the standard definition. *)
@@ -475,7 +506,7 @@ Proof.
   rewrite pauli_x_rotation.
   autorewrite with eval_db.
   bdestruct_all.
-  clear - H Hi.
+  clear - H Hi n_ge_2 f f_has_both_good_and_bad_solutions.
   replace (n - (n - 1 + 1))%nat with O by lia.
   simpl I.
   Msimpl.
@@ -525,15 +556,15 @@ Proof.
   replace ∣ 0 ⟩ with ∣ Nat.b2n false ⟩ by reflexivity.
   replace ∣ 1 ⟩ with ∣ Nat.b2n true ⟩ by reflexivity.
   unfold generalized_Toffoli.
-  bdestruct (count fi (n - 1) =? 0)%nat.
-  + specialize (count_zero _ _ H0) as Hf.
+  bdestruct (count0 fi (n - 1) =? 0)%nat.
+  + specialize (count_zero 0 _ _ H0) as Hf.
     rewrite 2 generalized_Toffoli_semantics_A; auto.
     2: { intros. unfold negf. 
          apply eq_true_not_negb, not_true_iff_false. 
-         apply Hf. assumption. }
+         apply Hf. lia. }
     2: { intros. unfold negf. 
          apply eq_true_not_negb, not_true_iff_false. 
-         apply Hf. assumption. }
+         apply Hf. lia. }
     simpl.
     Msimpl.
     autorewrite with ket_db.
@@ -561,7 +592,9 @@ Proof.
       rewrite Hf; auto.
       intros.
       apply Hf; lia. }
-    rewrite H1 by assumption; clear H1. 
+    rewrite H1.
+    2: { intros. apply Hf. lia. }
+    clear H1. 
     destruct (fi (n - 1)%nat); simpl; autorewrite with ket_db RtoC_db.
     field_simplify (/ 2 + / 2 * 1)%R.
     field_simplify (- / 2 + / 2 * 1)%R.
@@ -577,7 +610,7 @@ Proof.
     rewrite Mscale_plus_distr_l.
     Msimpl.
     reflexivity.
-  + specialize (count_nonzero _ _ H0) as Hf.
+  + apply count_nonzero in H0 as Hf.
     destruct Hf as [x [? ?]].
     rewrite 2 generalized_Toffoli_semantics_B; auto.
     2: { exists x. repeat split; try lia. 
@@ -626,6 +659,7 @@ Proof.
     autorewrite with R_db.
     Msimpl.
     reflexivity.
+    split. lia. assumption.
 Qed.
 Local Opaque diff.
 
@@ -633,50 +667,71 @@ Local Opaque diff.
 
 Local Coercion Nat.b2n : bool >-> nat.
 Lemma Uf_action_on_ψg : forall (b : bool),
-  @Mmult _ _ 1 (uc_eval Uf) (ψg ⊗ ∣ b ⟩) = ψg ⊗ ∣ negb b ⟩.
+  @Mmult _ _ 1 (uc_eval Uf) (@pad_vector (S n) dim (ψg ⊗ ∣ b ⟩)) =
+    @pad_vector (S n) dim (ψg ⊗ ∣ negb b ⟩).
 Proof.
-  intros.
+  intros. repeat rewrite pad_ancillae.
   unfold ψg.
-  distribute_scale.
+  restore_dims. distribute_scale.
   rewrite 2 kron_vsum_distr_r.
   replace (2 ^ n * 2)%nat with (2 ^ (S n))%nat by unify_pows_two.
+  rewrite Nat.pow_1_l. repeat rewrite kron_vsum_distr_r.
+  repeat rewrite Nat.mul_1_r.
+  unify_pows_two.
   rewrite Mmult_vsum_distr_l.
   apply f_equal2; auto.
   apply vsum_eq.
   intros.
   destruct (f i) eqn:fi; Msimpl.
-  rewrite Uf_implements_f by assumption.
-  destruct b; destruct (f i); simpl; easy.
+  specialize (Uf_implements_f i b H) as Hu.
+  repeat rewrite pad_ancillae in Hu.
+  rewrite fi, xorb_true_r in *.
+  unify_pows_two. rewrite Nat.add_1_r.
+  restore_dims.
+  apply Hu.
   Msimpl. reflexivity.
 Qed.
 
 Lemma Uf_action_on_ψb : forall (b : bool),
-  @Mmult _ _ 1 (uc_eval Uf) (ψb ⊗ ∣ b ⟩) = ψb ⊗ ∣ b ⟩.
+  @Mmult _ _ 1 (uc_eval Uf) (@pad_vector (S n) dim (ψb ⊗ ∣ b ⟩)) =
+    @pad_vector (S n) dim (ψb ⊗ ∣ b ⟩).
 Proof.
-  intros.
+  intros. rewrite pad_ancillae.
   unfold ψb.
-  distribute_scale.
+  restore_dims. distribute_scale.
   rewrite kron_vsum_distr_r.
   replace (2 ^ n * 2)%nat with (2 ^ (S n))%nat by unify_pows_two.
+  repeat rewrite Nat.mul_1_l. rewrite Nat.pow_1_l.
+  repeat rewrite kron_vsum_distr_r.
+  unify_pows_two. replace (S n + ancillae)%nat with dim by reflexivity.
   rewrite Mmult_vsum_distr_l.
   apply f_equal2; auto.
   apply vsum_eq.
   intros.
   destruct (f i) eqn:fi; Msimpl.
   Msimpl. reflexivity.
-  rewrite Uf_implements_f by assumption.
-  destruct b; destruct (f i); simpl; easy.
+  specialize (Uf_implements_f i b H) as Hu.
+  repeat rewrite pad_ancillae in Hu.
+  rewrite fi, xorb_false_r in *.
+  apply Hu.
 Qed.
 
 Lemma Uf_action_on_arbitrary_state : forall α β,
-  @Mmult _ _ 1 (uc_eval Uf) ((α .* ψg .+ β .* ψb) ⊗ ∣-⟩) = 
-    ((- α) .* ψg .+ β .* ψb) ⊗ ∣-⟩.
+  @Mmult _ _ 1 (uc_eval Uf)
+      (@pad_vector (S n) dim ((α .* ψg .+ β .* ψb) ⊗ ∣-⟩)) = 
+    @pad_vector (S n) dim (((- α) .* ψg .+ β .* ψb) ⊗ ∣-⟩).
 Proof.
-  intros.
-  distribute_plus.  
+  intros. repeat rewrite pad_ancillae.
+  distribute_plus.
+  restore_dims.
+  rewrite kron_plus_distr_r.
+  distribute_plus.
   distribute_scale.
   replace (∣ 0 ⟩) with (∣ false ⟩) by reflexivity.
   replace (∣ 1 ⟩) with (∣ true ⟩) by reflexivity.
+  replace (2 ^ n * 2)%nat with (2 ^ S n)%nat by (simpl; lia).
+  repeat rewrite <- pad_ancillae.
+  restore_dims.
   repeat rewrite Uf_action_on_ψg.
   repeat rewrite Uf_action_on_ψb.
   lma.
@@ -689,11 +744,12 @@ Qed.
    measurement outcome. *)
 Local Opaque Nat.mul.
 Lemma loop_body_action_on_unif_superpos : forall i,
-  @Mmult _ _ (1^n) (i ⨉ uc_eval body) (ψ ⊗ ∣-⟩) =
-    (-1)^i .* (sin (INR (2 * i + 1) * θ) .* ψg .+ 
-                cos (INR (2 * i + 1) * θ) .* ψb) ⊗ ∣-⟩.
+  @Mmult _ _ (1^n) (i ⨉ uc_eval body) (@pad_vector (S n) dim (ψ ⊗ ∣-⟩)) =
+    @pad_vector (S n) dim ((-1)^i .* (sin (INR (2 * i + 1) * θ) .* ψg .+ 
+                cos (INR (2 * i + 1) * θ) .* ψb) ⊗ ∣-⟩).
 Proof.
   intros.
+  repeat rewrite pad_ancillae.
   induction i.
   - replace (2 * 0 + 1)%nat with 1%nat by lia.
     simpl.
@@ -704,20 +760,42 @@ Proof.
   - simpl in *.
     rewrite Mmult_assoc.
     rewrite IHi; clear IHi.
-    replace (uc_eval (cast diff (S n))) with (uc_eval (cast diff (n + 1))).
-    2: { replace (S n) with (n + 1)%nat by lia. reflexivity. }
+    unfold dim.
+    replace (uc_eval (cast diff (S n + ancillae)))
+        with (uc_eval (cast diff (n + S ancillae))).
+    2: { replace (S n + ancillae)%nat with (n + S ancillae)%nat by lia.
+         reflexivity. }
     rewrite <- pad_dims_r.
     2: apply diff_WT.
-    replace (2 ^ 1)%nat with 2%nat by reflexivity.
     restore_dims.
     rewrite Mmult_assoc.
-    replace (2 ^ n * 2)%nat with (2 ^ (S n))%nat by unify_pows_two.
-    distribute_scale.
-    rewrite Uf_action_on_arbitrary_state.
     restore_dims.
     distribute_scale.
+    replace (2 ^ n * 2)%nat with (2 ^ (S n))%nat by unify_pows_two.
+    rewrite <- pad_ancillae.
+    restore_dims.
+    rewrite Uf_action_on_arbitrary_state.
+    rewrite pad_ancillae.
+    restore_dims.
+    rewrite kron_assoc; auto with wf_db.
+    rewrite Nat.pow_1_l.
+    rewrite kron_mixed_product.
+    replace (2 ^ S ancillae)%nat with (2 * 2 ^ ancillae)%nat by reflexivity.
+    rewrite <- id_kron.
+    restore_dims.
     rewrite kron_mixed_product.
     Msimpl.
+    rewrite <- kron_assoc; auto with wf_db.
+    restore_dims.
+    rewrite <- Mscale_kron_dist_l.
+    unify_pows_two. restore_dims.
+    rewrite <- Mscale_kron_dist_l.
+    rewrite <- Mscale_kron_dist_l.
+    rewrite Mscale_kron_dist_l.
+    replace (2 ^ n * 2)%nat with (2 ^ S n)%nat by (simpl; lia).
+    repeat rewrite <- pad_ancillae.
+    apply f_equal.
+    restore_dims.
     rewrite Cmult_comm.
     rewrite <- Mscale_assoc.
     rewrite <- (Mscale_kron_dist_l _ _ _ _ (-1)).
@@ -781,6 +859,17 @@ Qed.
 Lemma minus_norm_1 : ∣-⟩† × ∣-⟩ = I 1.
 Proof. solve_matrix. Qed.
 
+Lemma kron_n_add_dist :
+  forall n1 n2 m1 m2 (A : Matrix m1 m2),
+  WF_Matrix A ->
+  kron_n (n1 + n2) A = kron_n n1 A ⊗ kron_n n2 A.
+Proof.
+  intros n1 n2 m1 m2 A H. induction n2 as [| n2 IH].
+  - Msimpl. rewrite Nat.add_0_r. reflexivity.
+  - rewrite Nat.add_succ_r. cbn. rewrite IH.
+    restore_dims. apply kron_assoc; auto with wf_db.
+Qed.
+
 (* After i iterations of Grover's, the probability of measuring z where 
    f z = true is sin^2((2i + 1) * θ) where θ = asin(√(k / 2^n)).
 
@@ -788,19 +877,22 @@ Proof. solve_matrix. Qed.
    (PI / 4) * √ (2 ^ n / k). [TODO: prove this?] *)
 Lemma grover_correct : forall i,
   (* sum over all "good" solutions *)
-  Rsum (2 ^ n) (fun z => if f z 
-                      then @prob_partial_meas n 1 
-                                             (basis_vector (2 ^ n) z)
-                                             (uc_eval (grover i) × S n ⨂ ∣0⟩)
-                      else 0) = 
+  Rsum
+    (2 ^ n)
+    (fun z => if f z 
+              then @prob_partial_meas n (S ancillae)
+                (basis_vector (2 ^ n) z)
+                (uc_eval (grover i) × dim ⨂ ∣0⟩)
+              else 0) = 
     ((sin ( INR (2 * i + 1) * θ)) ^ 2)%R.
 Proof.
   intro i.
   specialize f_has_both_good_and_bad_solutions as H.
   rewrite (Rsum_eq_bounded _ _
              (fun j => if (f j) then (sin (INR (2 * i + 1) * θ) / √ INR k) ^ 2 else 0)%R).
-  assert (forall m c, Rsum m (fun i => if f i then c else 0) = INR (count f m) * c)%R.
-  { clear.
+  assert (forall m c, Rsum m (fun i => if f i then c else 0) = INR (count0 f m) * c)%R.
+  { unfold count0.
+    clear.
     intros.
     induction m; simpl.
     lra. 
@@ -809,7 +901,7 @@ Proof.
     destruct (f 0); simpl; lra.
     destruct (f (S m)); simpl; try lra. }
   rewrite H0; clear H0.
-  replace (count f (2 ^ n)) with k by reflexivity. 
+  replace (count0 f (2 ^ n)) with k by reflexivity. 
   simpl.
   field_simplify_eq; try nonzero.
   rewrite pow2_sqrt by nonzero.
@@ -817,40 +909,59 @@ Proof.
   Local Opaque pow.
   intros x Hx.
   destruct (f x) eqn:fx; auto.
-  unfold grover. 
+  unfold grover.
   Local Opaque npar.
   simpl.
   repeat rewrite Mmult_assoc.
   autorewrite with eval_db.
-  bdestruct_all.
-  replace (S n - (n + 1))%nat with O by lia.
-  simpl I.
-  Msimpl.
-  simpl. 
+  bdestruct_all; try (unfold dim in *; lia).
+  unfold dim at 3 4 5 6 7.
+  replace (S n + ancillae - (n + 1))%nat with ancillae by lia.
+  rewrite kron_n_add_dist, kron_assoc; auto with wf_db.
+  restore_dims. rewrite kron_assoc; auto with wf_db.
+  restore_dims.
+  replace ((kron_n _ _) ⊗ ∣0⟩) with (kron_n (S (ancillae)) qubit0)
+                                    by reflexivity.
+  replace (S ancillae) with (1 + ancillae)%nat by reflexivity.
+  rewrite kron_n_add_dist; auto with wf_db.
+  restore_dims. rewrite kron_mixed_product, kron_mixed_product.
+  Msimpl. restore_dims.
+  rewrite <- pad_dims_r; try (apply npar_WT; lia).
   rewrite npar_correct by lia.
-  simpl.
-  rewrite hadamard_rotation.
-  unfold pad. 
+  simpl. rewrite hadamard_rotation.
+  unfold pad_u, pad. 
   bdestruct_all.
   replace (1 - (0 + 1))%nat with O by lia.
-  simpl I.
+  simpl I. Msimpl.
+  rewrite <- kron_assoc; auto with wf_db.
+  restore_dims. repeat rewrite kron_mixed_product.
   Msimpl.
-  replace (2 * 2 ^ n)%nat with (2 ^ n * 2)%nat by unify_pows_two.
-  replace (1 * 1 ^ n)%nat with (1 ^ n * 1)%nat by lia.
-  repeat rewrite kron_mixed_product.
-  Msimpl.
-  repeat rewrite Nat.mul_1_r.
   replace (n ⨂ hadamard × n ⨂ ∣0⟩) with ψ.
   2: { rewrite H0_kron_n_spec_alt. reflexivity.
        specialize n_ge_2 as H2. lia. }
   replace (hadamard × (σx × ∣0⟩)) with ∣-⟩ by solve_matrix.
   rewrite niter_correct by lia.
+  restore_dims.
+  replace (2 ^ n * 2)%nat with (2 ^ S n)%nat by (simpl; lia).
+  rewrite <- pad_ancillae.
   unify_pows_two.
   replace (n + 1)%nat with (S n) by lia.
-  rewrite loop_body_action_on_unif_superpos.
-  rewrite (@partial_meas_tensor n 1).
-  2: auto with wf_db.
-  2: apply minus_norm_1.
+  restore_dims.
+  specialize (loop_body_action_on_unif_superpos i) as Hl.
+  rewrite Nat.pow_1_l in Hl. Set Printing Implicit. rewrite Hl.
+  rewrite pad_ancillae.
+  restore_dims.
+  rewrite kron_assoc; auto with wf_db.
+  restore_dims.
+  replace (2 * 2 ^ ancillae)%nat with (2 ^ S ancillae)%nat by reflexivity.
+  rewrite Nat.pow_1_l.
+  rewrite (@partial_meas_tensor n (S ancillae)); restore_dims.
+  2: { split. apply WF_kron; auto with wf_db. rewrite Nat.pow_1_l. lia.
+       restore_dims. 
+       rewrite kron_adjoint, kron_mixed_product, minus_norm_1, kron_n_adjoint;
+       auto with wf_db.
+       Msimpl. restore_dims. rewrite kron_n_mult, Mmult00.
+       clear. induction ancillae; try reflexivity. simpl. Msimpl. assumption. }
   unfold probability_of_outcome.
   distribute_scale.
   distribute_plus.

@@ -1,5 +1,7 @@
 Require Import UnitaryOps.
 Require Import Utilities.
+Require Import QuantumLib.Measurement.
+Require Import QuantumLib.Permutations.
 Local Open Scope ucom_scope.
 
 (** Definition of Simon's program. **)
@@ -351,7 +353,7 @@ Qed.
 
 Lemma bitwise_xor_bijective: forall (n s: nat), 
    (n > 0)%nat -> (s < 2 ^ n)%nat ->
-   finite_bijection (2 ^ n) (fun i => bitwise_xor n i s).
+   permutation (2 ^ n) (fun i => bitwise_xor n i s).
 Proof.
   intros n s Hn Hs.
   exists (fun i => bitwise_xor n i s). 
