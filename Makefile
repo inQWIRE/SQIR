@@ -33,7 +33,7 @@ examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo exampl
 
 shor: invoke-coqmakefile examples/shor/Main.vo
 
-voqc: invoke-coqmakefile VOQC/Main.vo VOQC/GreedyLayout.vo VOQC/SimpleMapping2.vo
+voqc: invoke-coqmakefile VOQC/Main.vo VOQC/GreedyLayout.vo VOQC/MappingValidation.vo
 
 # Built by 'make examples'
 
@@ -166,6 +166,9 @@ VOQC/MappingGateSet.vo: VOQC/MappingGateSet.v VOQC/UnitaryListRepresentation.vo
 
 VOQC/SimpleMapping2.vo: VOQC/SimpleMapping2.v VOQC/MappingGateSet.vo VOQC/Layouts2.vo
 	coqc $(COQ_OPTS) VOQC/SimpleMapping2.v
+
+VOQC/MappingValidation.vo: VOQC/MappingValidation.v VOQC/SimpleMapping2.vo
+	coqc $(COQ_OPTS) VOQC/MappingValidation.v
 
 # Misc. files built by 'make all'
 

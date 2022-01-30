@@ -75,6 +75,7 @@ Module Type BiMap (K V : UsualDecidableType).
 
     Definition In m k v := (exists v, MapsTo m k v) \/ (exists k, MapsTo m k v).
 
+    Parameter empty_well_formed : well_formed empty.
     Parameter add_well_formed : well_formed m -> ~ In m k v -> 
                                 well_formed (add m k v).
     Parameter remove_not_In : well_formed m -> MapsTo m k v -> 
@@ -85,7 +86,6 @@ Module Type BiMap (K V : UsualDecidableType).
   End Spec.
 
 End BiMap.
-
 
 (** * Implementation of bidirectional maps using a pair of maps *)
 
@@ -223,6 +223,17 @@ Module BiMapPair (K V : UsualOrderedType).
 
     Definition In m k v := (exists v, MapsTo m k v) \/ (exists k, MapsTo m k v).
 
+    Lemma empty_well_formed : well_formed empty.
+    Proof. 
+      unfold well_formed, find_key, find_val, empty. 
+      intros k v.
+      split; intro H.
+      rewrite KMapFacts.empty_o in H.
+      inversion H.
+      rewrite VMapFacts.empty_o in H.
+      inversion H.
+    Qed.     
+
     Lemma add_well_formed : forall m k v,
       well_formed m -> ~ In m k v -> well_formed (add m k v).
     Proof.
@@ -309,7 +320,6 @@ Module BiMapPair (K V : UsualOrderedType).
   Include BM.
 
 End BiMapPair.
-
 
 (** * Layouts for mapping *)
 
@@ -494,31 +504,106 @@ Qed.
 *)
 
 Lemma add_preserves_bij : forall dim m k v,
-v < dim ->
-layout_bijective dim m ->
-~ In m k v -> 
-layout_bijective dim (add m k v).
+  k < dim -> v < dim ->
+  well_formed m ->
+  (forall lq, lq < dim -> lq <> k -> exists pq, find_phys m lq = Some pq /\ pq < dim) ->
+  (forall pq, pq < dim -> pq <> v -> exists lq, find_log m pq = Some lq /\ lq < dim) ->
+  ~ In m k v -> 
+  layout_bijective dim (add m k v).
 Proof.
-  intros.
-  destruct H0 as [? [? ?]].
-  eapply add_well_formed in H0.
+  intros dim m k v Hk Hv WF Hbij1 Hbij2 H.
   split; [| split].
-  apply H0. 
-  3: assumption.
-intros.
-destruct (PeanoNat.Nat.eq_dec lq k).
-subst.
-exists v.
-split; auto.
-unfold find_phys.
-apply add_1.
-specialize (H2 lq H4).
-destruct H2 as [pq [? ?]].
-exists pq.
-split; auto.
-apply find_1.
-apply add_2; auto.
-Admitted.
+  - apply add_well_formed; auto.
+  - intros.
+    bdestruct (lq =? k).
+    subst.
+    exists v.
+    split; auto.
+    apply add_1.
+    specialize (Hbij1 lq H0 H1).
+    destruct Hbij1 as [pq [? ?]].
+    exists pq.
+    split; auto.
+    apply find_1.
+    assert (MapsTo m lq pq).
+    { split. assumption. apply WF. assumption. }
+    apply add_2; auto.
+    intro contra.
+    subst.
+    contradict H.
+    right.
+    exists lq.
+    assumption.
+  - intros.
+    bdestruct (pq =? v).
+    subst.
+    exists k.
+    split; auto.
+    apply add_1.
+    specialize (Hbij2 pq H0 H1).
+    destruct Hbij2 as [lq [? ?]].
+    exists lq.
+    split; auto.
+    apply find_2.
+    assert (MapsTo m lq pq).
+    { split. apply WF. assumption. assumption. }
+    apply add_2; auto.
+    intro contra.
+    subst.
+    contradict H.
+    left.
+    exists pq.
+    assumption.
+Qed.
+
+Lemma remove_preserves_bij : forall dim m k v,
+  layout_bijective dim m ->
+  MapsTo m k v ->
+  let m' := remove m k v in
+  well_formed m' /\
+  (forall lq, lq < dim -> lq <> k -> exists pq, find_phys m' lq = Some pq /\ pq < dim) /\
+  (forall pq, pq < dim -> pq <> v -> exists lq, find_log m' pq = Some lq /\ lq < dim).
+Proof.
+  intros dim m k v [WF [Hbij1 Hbij2]] H m'.
+  split; [| split].
+  - apply remove_well_formed; auto.
+  - intros.
+    specialize (Hbij1 lq H0).
+    destruct Hbij1 as [pq [? ?]].
+    exists pq.
+    split; auto.
+    apply find_1.
+    assert (MapsTo m lq pq).
+    { split. assumption. apply WF. assumption. }
+    subst m'.
+    apply remove_2; auto.
+    intro contra.
+    subst.
+    contradict H1.
+    destruct H as [_ H].
+    destruct H4 as [_ H4].
+    rewrite H in H4.
+    inversion H4.
+    reflexivity.
+  - intros.
+    specialize (Hbij2 pq H0).
+    destruct Hbij2 as [lq [? ?]].
+    exists lq.
+    split; auto.
+    apply find_2.
+    assert (MapsTo m lq pq).
+    { split. apply WF. assumption. assumption. }
+    subst m'.
+    apply remove_2; auto.
+    intro contra.
+    subst.
+    contradict H1.
+    destruct H as [H _].
+    destruct H4 as [H4 _].
+    rewrite H in H4.
+    inversion H4.
+    reflexivity.
+Qed.
 
 Lemma swap_log_preserves_bij : forall n l pq1 pq2,
   pq1 < n -> pq2 < n ->
@@ -526,17 +611,19 @@ Lemma swap_log_preserves_bij : forall n l pq1 pq2,
   layout_bijective n (swap_log l pq1 pq2).
 Proof.
   intros n l pq1 pq2 Hpq1 Hpq2 Hl.
-
 unfold swap_log.
 destruct (find_log l pq1) eqn:H1; destruct (find_log l pq2) eqn:H2; auto.
-apply add_preserves_bij.
+- apply add_preserves_bij.
+destruct Hl as [? [? ?]].
+admit. (* k0 < n *)
 auto.
-apply add_preserves_bij.
-auto.
-admit.
+apply add_well_formed.
+apply remove_well_formed.
+apply remove_well_formed.
+destruct Hl as [? _]. auto.
+split. apply Hl. assumption. assumption.
 
 Admitted.
-
 
 
 (** ** Boolean predicate to check layout_bijective *)
@@ -595,6 +682,25 @@ Admitted.
 Qed.*)
 
 
+(** ** Equality over layouts *)
+
+Definition layout_eq n m1 m2 := 
+  forall x, x < n -> get_log m1 x = get_log m2 x /\
+               get_phys m1 x = get_phys m2 x.
+
+Fixpoint layout_eqb n m1 m2 :=
+  match n with
+  | O => true
+  | S n' => (get_log m1 n' =? get_log m2 n') &&
+           (get_phys m1 n' =? get_phys m2 n') &&
+           layout_eqb n' m1 m2
+  end.
+
+Lemma layout_eq_eqb_equiv : forall n m1 m2,
+  layout_eq n m1 m2 <-> layout_eqb n m1 m2 = true.
+Proof.
+Admitted.
+
 (** ** Trivial layout *)
 
 Fixpoint trivial_layout n : layout :=
@@ -602,10 +708,6 @@ Fixpoint trivial_layout n : layout :=
   | O => empty
   | S n' => add (trivial_layout n') n' n' 
   end.
-
-Lemma well_formed_empty : well_formed empty.
-Proof.
-Admitted.
 
 Lemma layout_bijective_0 : forall m, well_formed m -> layout_bijective 0 m.
 Proof.
@@ -619,7 +721,7 @@ Lemma trivial_layout_bijective : forall n,
 Proof.
   induction n; simpl.
   - apply layout_bijective_0.
-    apply well_formed_empty.
+    apply empty_well_formed.
   - destruct IHn as [? [? ?]].
     split; [| split].
     apply add_well_formed; auto.

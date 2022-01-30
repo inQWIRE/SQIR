@@ -3,7 +3,7 @@ Require Export ConnectivityGraph.
 Require Export Layouts2.
 Require Export MappingConstraints.
 Require Import MappingGateSet.
-Require Import UnitaryListRepresentation.
+Require Export UnitaryListRepresentation.
 
 (** Simple strategy for mapping a program to a CNOT connectivity graph.
    When a CNOT occurs between non-adjacent qubits: (1) insert SWAPs to 
