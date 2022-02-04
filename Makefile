@@ -69,7 +69,7 @@ examples/Wiesner.vo: examples/Wiesner.v SQIR/UnitaryOps.vo examples/Utilities.vo
 
 # Built by 'make shor'
 
-examples/shor/ExtrShor.vo: examples/shor/ExtrShor.v utilities/AltGateSet.vo examples/shor/Shor.vo
+examples/shor/ExtrShor.vo: examples/shor/ExtrShor.v SQIR/AltGateSet.vo examples/shor/Shor.vo
 	coqc $(COQ_OPTS) examples/shor/ExtrShor.v
 
 examples/shor/Main.vo: examples/shor/Main.v examples/shor/ExtrShor.vo

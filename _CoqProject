@@ -28,5 +28,4 @@ SQIR/VectorStates.v
 SQIR/UnitaryOps.v
 SQIR/Equivalences.v
 SQIR/DiscreteProb.v
-
-utilities/AltGateSet.v
+SQIR/AltGateSet.v

@@ -1,4 +1,5 @@
-Require Export VectorStates DiscreteProb.
+Require Export VectorStates.
+Require Import DiscreteProb.
 
 Local Coercion Nat.b2n : bool >-> nat.
 
