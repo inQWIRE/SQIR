@@ -1,9 +1,6 @@
 Require Import UnitaryOps.
-Require Import RCIR.
 
-(** New version of SQIR's ucom type **)
-
-(** TODO - integrate in the SQIR directory **)
+(** TODO: replace SQIR's ucom type with the ucom type defined below **)
 
 (* Experimenting with a version of ucom that uses a list argument and no 
    dependent dim type *)
@@ -39,7 +36,7 @@ Proof.
 Qed.
 
 Lemma destruct_list_0 : forall {A} (l : list A),
-    length l = 0%nat ->
+    length l = O ->
     l = nil.
 Proof. destruct l; easy. Qed.
 
@@ -56,10 +53,8 @@ Ltac simpl_WF_alt :=
   | [H : length ?l = O |- _] => apply destruct_list_0 in H; subst
   end.
 
-(** Gate set for Shor's **)
+(** More general gate set **)
 
-(* U2 and U3 aren't used for the inputs I tried, but I'm including them
-   for full generality in the control' function. -KH *)
 Inductive U : nat -> Set :=
   | U_X : U 1
   | U_H : U 1
@@ -181,6 +176,7 @@ Local Opaque SQIR.ID SQIR.X SQIR.H SQIR.Rz SQIR.U1 SQIR.U2 SQIR.U3 SQIR.CNOT SQI
 (* Defining constants separately for easier extraction. *)
 Definition R2 : R := 2.
 Definition R4 : R := 4.
+Definition R8 : R := 8.
 
 Definition X q := uapp U_X [q].
 Definition H q := uapp U_H [q].
@@ -189,7 +185,10 @@ Definition U2 r1 r2 q := uapp (U_U2 r1 r2) [q].
 Definition U3 r1 r2 r3 q := uapp (U_U3 r1 r2 r3) [q].
 Definition T q := U1 (PI / R4) q.
 Definition Tdg q := U1 (- (PI / R4)) q.
-Definition SKIP := U1 R0 O. (* used as a dummy value *)
+Definition ID q := U1 R0 q.
+Definition SKIP := ID O. (* used as a dummy value *)
+Definition P8 q := U1 (PI / R8) q.
+Definition P8dg q := U1 (- (PI / R8)) q.
 Definition CX q1 q2 := uapp U_CX (q1 :: q2 :: List.nil).
 Definition CU1 r q1 q2 := uapp (U_CU1 r) (q1 :: q2 :: List.nil).
 Definition SWAP q1 q2 := uapp U_SWAP (q1 :: q2 :: List.nil).
@@ -221,6 +220,15 @@ Definition decompose_CCX (a b c : nat) : ucom U :=
   CX a b >> Tdg b >> CX a b >>
   T a >> T b >> T c >> H c.
 
+(* Based on https://qiskit.org/documentation/_modules/qiskit/circuit/library/standard_gates/x.html#C3XGate *)
+Definition decompose_C3X (a b c d : nat) : ucom U := 
+  H d >> P8 a >> P8 b >> P8 c >> P8 d >>
+  CX a b >> P8dg b >> CX a b >> CX b c >> P8dg c >> 
+  CX a c >> P8 c >> CX b c >> P8dg c >> CX a c >> 
+  CX c d >> P8dg d >> CX b d >> P8 d >> CX c d >> 
+  P8dg d >> CX a d >> P8 d >> CX c d >> P8dg d >> 
+  CX b d >> P8 d >> CX c d >> P8dg d >> CX a d >> H d.
+
 Fixpoint control' a (c : ucom U) (n : nat) : ucom U :=
   match n with 
   | O => SKIP (* unreachable with "fuel" below *)
@@ -242,11 +250,13 @@ Fixpoint control' a (c : ucom U) (n : nat) : ucom U :=
       | uapp U_CSWAP (b :: c :: d :: List.nil) => 
           control' a (decompose_CSWAP b c d) n'
       | uapp U_C4X (b :: c :: d :: e :: f :: List.nil) => 
+          (* TODO: more efficient to use decompose_C3X (or a new decompose_C4X)? *)
           control' a 
             (control' b (control' c (decompose_CCX d e f) n') n') n'
       | _ => SKIP (* unreachable *)
       end
   end.
+
 (* Fuel for control'. This may return a larger number than necessary (meaning that
    control' will return before consuming all its fuel), but this will always
    provide enough fuel to complete the computation (see how "fuel" is used in 
@@ -434,6 +444,169 @@ Proof.
 Qed.
 Local Opaque SQIR.CNOT.
 
+Lemma f_to_vec_C3X : forall (dim a b c d : nat) (f : nat -> bool),
+   (a < dim)%nat -> (b < dim)%nat -> (c < dim)%nat -> (d < dim)%nat -> 
+   a <> b -> a <> c -> a <> d -> b <> c -> b <> d -> c <> d ->
+  uc_eval dim (decompose_C3X a b c d) × (f_to_vec dim f) 
+      = f_to_vec dim (update f d (f d ⊕ (f a && f b && f c))).
+Proof. 
+  intros.
+  unfold uc_eval, decompose_C3X.
+  simpl.
+  repeat rewrite Mmult_assoc.
+  (* TODO: why does "repeat" get stuck here? The term doesn't seem to
+     change with more than 18 iterations. *)
+  do 18 f_to_vec_simpl_body.
+  repeat rewrite update_twice_eq.
+  repeat rewrite update_index_eq.
+  rewrite (update_twice_neq _ d b) by auto.
+  rewrite (update_twice_neq _ d c) by auto.
+  rewrite 2 update_twice_eq.
+  rewrite (update_same _ b).
+  2: destruct (f a); destruct (f b); reflexivity.
+  rewrite (update_same _ c).
+  2: destruct (f a); destruct (f b); destruct (f c); reflexivity.
+  destruct (f a) eqn:fa; destruct (f b) eqn:fb; 
+    destruct (f c) eqn:fc; destruct (f d) eqn:fd; simpl.
+  all: autorewrite with R_db C_db Cexp_db.
+  all: group_Cexp.
+  all: try match goal with 
+       | |- context [Cexp ?r] => field_simplify r
+       end; unfold R8; try lra.
+  all: autorewrite with R_db C_db Cexp_db.
+  all: group_Cexp.
+  all: try match goal with 
+       | |- context [Cexp ?r] => field_simplify r
+       end.
+  all: replace (8 * PI / 8)%R with PI by lra.
+  all: autorewrite with R_db C_db Cexp_db.
+  all: rewrite Mscale_plus_distr_r.
+  all: distribute_scale; group_radicals.
+  all: lma.
+Qed.
+
+Local Transparent SQIR.CNOT.
+Lemma fresh_CNOT : forall dim a b c, is_fresh a (@CNOT dim b c) -> a <> b /\ a <> c.
+Proof. intros ? ? ? ? H. inversion H. auto. Qed.
+Local Opaque SQIR.CNOT.
+
+Local Transparent SQIR.H SQIR.CNOT SQIR.Rz SQIR.ID.
+Lemma uc_well_typed_CCX: forall dim a b c : nat,
+  (a < dim)%nat /\ (b < dim)%nat /\ (c < dim)%nat /\ a <> b /\ a <> c /\ b <> c 
+    <-> uc_well_typed (@SQIR.CCX dim a b c).
+Proof.
+  intros dim a b c.
+  split; intro H.
+  destruct H as [? [? [? [? [? ?]]]]]. 
+  repeat constructor; assumption. 
+  invert_WT. 
+  repeat split; assumption. 
+Qed.
+Local Opaque SQIR.H SQIR.CNOT SQIR.Rz SQIR.ID.
+
+Lemma C3X_not_fresh : forall (dim a b c d : nat),
+  ~ is_fresh a (@SQIR.CCX dim b c d) -> uc_eval dim (decompose_C3X a b c d) = Zero.
+Proof.
+  intros dim a b c d H.
+  unfold uc_eval.
+  simpl.
+  assert (H0 : UnitarySem.uc_eval (@CNOT dim a b) = Zero \/ 
+               UnitarySem.uc_eval (@CNOT dim a c) = Zero \/
+               UnitarySem.uc_eval (@CNOT dim a d) = Zero).
+  { assert (H0 : a = b \/ a = c \/ a = d).
+    apply Classical_Prop.NNPP.
+    intro contra. contradict H.
+    apply fresh_CCX; repeat split; auto.
+    destruct H0 as [H0 | [H0 | H0]]; subst.
+    left. autorewrite with eval_db. gridify.
+    right. left. autorewrite with eval_db. gridify.
+    right. right. autorewrite with eval_db. gridify. }
+  destruct H0 as [H0 | [H0 | H0]]; rewrite H0; Msimpl_light; trivial.
+Qed.
+
+Lemma C3X_not_WT : forall (dim a b c d : nat),
+  ~ uc_well_typed (@SQIR.CCX dim b c d) -> uc_eval dim (decompose_C3X a b c d) = Zero.
+Proof.
+  intros dim a b c d H.
+  unfold uc_eval.
+  simpl.
+  assert (H0 : UnitarySem.uc_eval (@CNOT dim b c) = Zero \/ 
+               UnitarySem.uc_eval (@CNOT dim b d) = Zero \/ 
+               UnitarySem.uc_eval (@CNOT dim c d) = Zero).
+  { rewrite <- uc_well_typed_CCX in H.
+    autorewrite with eval_db.
+    gridify; auto. }
+  destruct H0 as [H0 | [H0 | H0]]; rewrite H0; Msimpl_light; trivial.
+Qed.
+
+Lemma C3X_a_geq_dim : forall dim a b c d : nat,
+  (dim <= a)%nat -> uc_eval dim (decompose_C3X a b c d) = Zero.
+Proof.
+  intros dim a b c d H.
+  unfold uc_eval.
+  simpl.
+  assert (H0 : UnitarySem.uc_eval (@SQIR.U1 dim (PI / R8) a) = Zero).
+  { autorewrite with eval_db. gridify. }
+  rewrite H0.
+  Msimpl_light. 
+  trivial.
+Qed.
+
+Lemma decompose_C3X_is_control_CCX : forall dim a b c d,
+  uc_eval dim (decompose_C3X a b c d) = 
+    UnitarySem.uc_eval (UnitaryOps.control a (SQIR.CCX b c d)).
+Proof.
+  intros dim a b c d.
+  bdestruct (a <? dim).
+  destruct (@is_fresh_b _ dim a (SQIR.CCX b c d)) eqn:Hfr.
+  apply is_fresh_b_equiv in Hfr.
+  destruct (@uc_well_typed_b _ dim (SQIR.CCX b c d)) eqn:HWT.
+  apply uc_well_typed_b_equiv in HWT.
+  (* in the one well-typed case, we can use f_to_vec_C3X *)
+  apply equal_on_basis_states_implies_equal. 
+  unfold uc_eval. simpl.
+  auto 40 with wf_db.
+  auto with wf_db.
+  intro f. Search SQIR.CCX.
+  apply uc_well_typed_CCX in HWT as [? [? [? [? [? ?]]]]].
+  apply fresh_CCX in Hfr as [? [? ?]].
+  rewrite f_to_vec_C3X by assumption.
+  rewrite control_correct.
+  rewrite Mmult_plus_distr_r.
+  rewrite Mmult_assoc.
+  rewrite f_to_vec_CCX by assumption.
+  destruct (f a) eqn:fa.
+  rewrite f_to_vec_proj_neq; auto.
+  rewrite f_to_vec_proj_eq; auto.
+  rewrite andb_true_l.
+  lma.
+  rewrite update_index_neq; auto.
+  rewrite fa.
+  apply diff_true_false. 
+  rewrite (f_to_vec_proj_neq _ _ _ true); auto.
+  rewrite f_to_vec_proj_eq; auto.
+  rewrite andb_false_l.
+  rewrite xorb_false_r.
+  rewrite update_same; auto.
+  lma.
+  rewrite update_index_neq; auto.
+  rewrite fa.
+  apply diff_false_true. 
+  apply fresh_CCX; auto.
+  apply uc_well_typed_CCX; repeat split; auto.
+  (* ill-typed cases *)
+  apply not_true_iff_false in HWT.
+  rewrite uc_well_typed_b_equiv in HWT.
+  rewrite control_not_WT by assumption.
+  apply C3X_not_WT. assumption.
+  apply not_true_iff_false in Hfr.
+  rewrite is_fresh_b_equiv in Hfr.
+  rewrite control_not_fresh by assumption.
+  apply C3X_not_fresh. assumption.
+  rewrite control_q_geq_dim by assumption.
+  apply C3X_a_geq_dim. assumption.
+Qed.
+
 Lemma decompose_CU1_WF : forall r x y,
   well_formed (decompose_CU1 r x y).
 Proof. intros. repeat constructor. Qed.
@@ -478,14 +651,7 @@ Qed.
 Lemma decompose_CSWAP_fresh : forall dim a b c d,
   UnitaryOps.is_fresh a (to_base_ucom dim (decompose_CSWAP b c d)) <->
   UnitaryOps.is_fresh a (UnitaryOps.control b (@SQIR.SWAP dim c d)).
-Proof.
-  intros dim a b c d.
-  split; intro H; simpl in *.
-  invert_is_fresh.
-  repeat constructor; auto.
-  invert_is_fresh.
-  repeat constructor; auto.
-Qed.
+Proof. intros. reflexivity. Qed.
 
 Lemma decompose_CCX_fresh : forall dim a b c d,
   UnitaryOps.is_fresh a (to_base_ucom dim (decompose_CCX b c d)) <->
@@ -494,8 +660,8 @@ Proof.
   intros dim a b c d.
   split; intro H; simpl in *.
   invert_is_fresh.
-  repeat constructor; auto.
-  invert_is_fresh.
+  apply fresh_CCX; auto.
+  apply fresh_CCX in H as [? [? ?]].
   repeat constructor; auto.
 Qed.
 
@@ -770,87 +936,6 @@ Lemma control_correct : forall dim a u,
     UnitarySem.uc_eval (UnitaryOps.control a (to_base_ucom dim u)).
 Proof. intros. apply control'_correct; auto. Qed.
 
-Fixpoint bc2ucom (bc : bccom) : ucom U :=
-  match bc with
-  | bcskip => SKIP
-  | bcx a => X a
-  | bcswap a b => SWAP a b
-  | bccont a bc1 => control a (bc2ucom bc1)
-  | bcseq bc1 bc2 => (bc2ucom bc1) >> (bc2ucom bc2)
-  end.
-
-Lemma bc2ucom_WF : forall bc, well_formed (bc2ucom bc).
-Proof.
-  induction bc; repeat constructor; auto.
-  simpl. unfold control. apply control'_WF.
-  assumption.
-Qed.
-
-Lemma bc2ucom_fresh : forall dim q bc,
-  is_fresh q (to_base_ucom dim (bc2ucom bc)) <->
-  @is_fresh _ dim q (RCIR.bc2ucom bc).
-Proof.
-  intros dim q bc.
-  induction bc; try reflexivity.
-  simpl.
-  destruct bc; try reflexivity.
-  rewrite <- UnitaryOps.fresh_control.
-  unfold control.
-  rewrite <- fresh_control'.
-  rewrite IHbc.
-  reflexivity.
-  lia.
-  apply bc2ucom_WF.
-  rewrite <- UnitaryOps.fresh_control.
-  unfold control.
-  rewrite <- fresh_control'.
-  rewrite IHbc.
-  reflexivity.
-  lia.
-  apply bc2ucom_WF.
-  split; intro H; inversion H; subst; simpl.
-  constructor.
-  apply IHbc1; auto.
-  apply IHbc2; auto.
-  constructor.
-  apply IHbc1; auto.
-  apply IHbc2; auto.
-Qed.
-
-Lemma bc2ucom_correct : forall dim (bc : bccom),
-  uc_eval dim (bc2ucom bc) = UnitarySem.uc_eval (RCIR.bc2ucom bc).
-Proof.
-  intros dim bc.
-  induction bc; try reflexivity.
-  simpl.
-  rewrite control_correct.
-  destruct bc; try reflexivity.
-  apply control_ucom_X.
-  apply UnitaryOps.control_cong.
-  apply IHbc.
-  apply bc2ucom_fresh. 
-  apply UnitaryOps.control_cong.
-  apply IHbc.
-  apply bc2ucom_fresh. 
-  apply bc2ucom_WF. 
-  unfold uc_eval in *. simpl.
-  rewrite IHbc1, IHbc2.
-  reflexivity.  
-Qed.
-
-Local Transparent SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
-Lemma bcfresh_is_fresh : forall {dim} q bc,
-    bcfresh q bc -> @is_fresh _ dim q (to_base_ucom dim (bc2ucom bc)).
-Proof.
-  intros dim q bc Hfr. 
-  induction bc; simpl; inversion Hfr; repeat constructor; auto.
-  unfold control.
-  apply fresh_control'. lia.
-  apply bc2ucom_WF.
-  split; auto.
-Qed.
-Local Opaque SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
-
 Fixpoint map_qubits (f : nat -> nat) (c : ucom U) : ucom U :=
   match c with
   | c1 >> c2 => map_qubits f c1 >> map_qubits f c2
@@ -1075,3 +1160,33 @@ Proof.
   apply is_fresh_invert.
 Qed.
 Local Opaque SQIR.U1 SQIR.U2 SQIR.U3 SQIR.SWAP SQIR.CNOT.
+
+(* VOQC currently doesn't support CU1, C3X, or C4X so it's useful to 
+   decompose these gates before writing out to a file.
+
+   TODO: add decomposition for C4X 
+*)
+Fixpoint decompose_CU1_and_C3X (u : ucom U) : ucom U :=
+  match u with
+  | u1 >> u2 => decompose_CU1_and_C3X u1 >> decompose_CU1_and_C3X u2
+  | uapp (U_CU1 r) (q1 :: q2 :: List.nil) => decompose_CU1 r q1 q2
+  | uapp U_C3X (q1 :: q2 :: q3 :: q4 :: List.nil) => decompose_C3X q1 q2 q3 q4
+  | _ => u
+  end.
+
+Lemma decompose_CU1_and_C3X_preserves_semantics : forall dim u,
+  uc_eval dim (decompose_CU1_and_C3X u) = uc_eval dim u.
+Proof.
+  intros dim u.
+  induction u.
+  unfold uc_eval in *.
+  simpl. 
+  rewrite IHu1, IHu2.
+  reflexivity.
+  destruct u; simpl; try reflexivity.
+  do 3 (destruct l; try reflexivity).
+  apply decompose_CU1_is_control_U1.
+  do 4 (destruct l; try reflexivity).
+  destruct l; [| reflexivity].
+  apply decompose_C3X_is_control_CCX.
+Qed.

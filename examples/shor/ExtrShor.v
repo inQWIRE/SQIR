@@ -1,4 +1,4 @@
-Require Import Shor.
+Require Import Shor NumTheory.
 Require Import AltGateSet.
 
 (* Redefining Shor's alg. using the new gate set *)
@@ -26,24 +26,24 @@ Fixpoint reverse_qubits' dim n : ucom U :=
 Definition reverse_qubits n := reverse_qubits' n (n/2)%nat.
 Definition QFT_w_reverse n := QFT n >> reverse_qubits n.
 
+Fixpoint bc2ucom (bc : bccom) : ucom U :=
+  match bc with
+  | bcskip => SKIP
+  | bcx a => X a
+  | bcswap a b => SWAP a b
+  | bccont a bc1 => control a (bc2ucom bc1)
+  | bcseq bc1 bc2 => (bc2ucom bc1) >> (bc2ucom bc2)
+  end.
+
 Fixpoint controlled_powers' (f : nat -> bccom) k kmax : bccom :=
   match k with
   | O    => bcskip
-  | S O  => bccont (kmax - 1) (f O)
+  | S O  => bygatectrl (kmax - 1) (f O)
   | S k' => bcseq (controlled_powers' f k' kmax)
-                 (bccont (kmax - k' - 1) (f k'))
+                 (bygatectrl (kmax - k' - 1) (f k'))
   end.
 Definition controlled_powers (f : nat -> bccom) k : ucom U := 
   bc2ucom (controlled_powers' f k k).
-
-Fixpoint map_bccom (f : nat -> nat) (bc : bccom) : bccom :=
-  match bc with
-  | bcskip => bcskip
-  | bcx a => bcx (f a)
-  | bcswap a b => bcswap (f a) (f b)
-  | bccont a bc1 => bccont (f a) (map_bccom f bc1)
-  | bcseq bc1 bc2 => bcseq (map_bccom f bc1) (map_bccom f bc2)
-  end.
 
 Definition QPE k (f : nat -> bccom) : ucom U :=
   npar k U_H >>
@@ -53,7 +53,6 @@ Definition QPE k (f : nat -> bccom) : ucom U :=
 Definition modexp a x N := a ^ x mod N.
 Definition modmult_circuit a ainv N n i := 
   RCIR.bcelim (ModMult.modmult_rev N (modexp a (2 ^ i) N) (modexp ainv (2 ^ i) N) n).
-Definition num_qubits n : nat := n + modmult_rev_anc n.
 
 (* requires 0 < a < N, gcd a N = 1 *)
 Definition shor_circuit a N := 
@@ -62,6 +61,19 @@ Definition shor_circuit a N :=
   let ainv := modinv a N in
   let f i := modmult_circuit a ainv N n i in
   X (m + n - 1) >> QPE m f.
+
+(* shor_circuit uses:
+   - Nat.log2 (2 * N^2) qubits as input to QFT
+   - Nat.log2 (2 * N) qubits as data in modular exponentiation
+   - modmult_rev_anc (Nat.log2 (2 * N)) qubits as ancilla in modular exponentiation 
+
+   The values of the first Nat.log2 (2 * N^2) qubits are inspected at the end
+   of the circuit. *)
+Definition shor_output_nqs (N : nat) : nat := Nat.log2 (2 * N^2).
+Definition modmult_data_nqs (N : nat) : nat := Nat.log2 (2 * N).
+Definition modmult_anc_nqs (N : nat) : nat := modmult_rev_anc (Nat.log2 (2 * N)).
+Definition modmult_nqs (N : nat) : nat := modmult_data_nqs N + modmult_anc_nqs N.
+Definition shor_nqs (N : nat) : nat := shor_output_nqs N + modmult_nqs N.
 
 
 (** Proofs **)
@@ -226,6 +238,90 @@ Qed.
 Lemma QFT_w_reverse_WF : forall n, well_formed (QFT_w_reverse n).
 Proof. constructor. apply QFT_WF. apply reverse_qubits_WF. Qed.
 
+Lemma bc2ucom_WF : forall bc, well_formed (bc2ucom bc).
+Proof.
+  induction bc; repeat constructor; auto.
+  simpl. unfold control. apply control'_WF.
+  assumption.
+Qed.
+
+Lemma bc2ucom_fresh : forall dim q bc,
+  is_fresh q (to_base_ucom dim (bc2ucom bc)) <->
+  @is_fresh _ dim q (RCIR.bc2ucom bc).
+Proof.
+  intros dim q bc.
+  induction bc; try reflexivity.
+  simpl.
+  destruct bc; try reflexivity.
+  rewrite <- UnitaryOps.fresh_control.
+  unfold control.
+  rewrite <- fresh_control'.
+  rewrite IHbc.
+  reflexivity.
+  lia.
+  apply bc2ucom_WF.
+  rewrite <- UnitaryOps.fresh_control.
+  unfold control.
+  rewrite <- fresh_control'.
+  rewrite IHbc.
+  reflexivity.
+  lia.
+  apply bc2ucom_WF.
+  split; intro H; inversion H; subst; simpl.
+  constructor.
+  apply IHbc1; auto.
+  apply IHbc2; auto.
+  constructor.
+  apply IHbc1; auto.
+  apply IHbc2; auto.
+Qed.
+
+Lemma bc2ucom_correct : forall dim (bc : bccom),
+  uc_eval dim (bc2ucom bc) = UnitarySem.uc_eval (RCIR.bc2ucom bc).
+Proof.
+  intros dim bc.
+  induction bc; try reflexivity.
+  simpl.
+  rewrite control_correct.
+  destruct bc; try reflexivity.
+  apply control_ucom_X.
+  apply UnitaryOps.control_cong.
+  apply IHbc.
+  apply bc2ucom_fresh. 
+  apply UnitaryOps.control_cong.
+  apply IHbc.
+  apply bc2ucom_fresh. 
+  apply bc2ucom_WF. 
+  unfold uc_eval in *. simpl.
+  rewrite IHbc1, IHbc2.
+  reflexivity.  
+Qed.
+
+Local Transparent SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
+Lemma bcfresh_is_fresh : forall {dim} q bc,
+    bcfresh q bc -> @is_fresh _ dim q (to_base_ucom dim (bc2ucom bc)).
+Proof.
+  intros dim q bc Hfr. 
+  induction bc; simpl; inversion Hfr; repeat constructor; auto.
+  unfold control.
+  apply fresh_control'. lia.
+  apply bc2ucom_WF.
+  split; auto.
+Qed.
+Local Opaque SQIR.X SQIR.CNOT SQIR.SWAP SQIR.U1.
+
+Lemma uc_eval_bygatectrl_correct :
+  forall c n dim, @uc_eval dim (bc2ucom (bygatectrl n c)) = @uc_eval dim (control n (bc2ucom c)).
+Proof.
+  induction c; intros;
+    try (simpl; easy).
+  rewrite bc2ucom_correct.
+  simpl. do 2 rewrite <- bc2ucom_correct. rewrite IHc1, IHc2.
+  repeat (rewrite control_correct by apply bc2ucom_WF; simpl).
+  rewrite control_correct. simpl. easy.
+  constructor; apply bc2ucom_WF.
+Qed.
+
 Lemma controlled_powers_same : forall n (f : nat -> bccom) k (f' : nat -> base_ucom n),
   (k > 0)%nat ->
   (forall i, uc_eval (k + n) (bc2ucom (f i)) = UnitarySem.uc_eval (cast (f' i) (k + n))) ->
@@ -245,7 +341,8 @@ Proof.
   { intros n f f' k kmax Hkmax Hfeq Hfr' Hfr.
     destruct k; try reflexivity.
     induction k. 
-    simpl. 
+    simpl.
+    rewrite uc_eval_bygatectrl_correct.
     rewrite control_correct.  
     rewrite cast_control_commute.
     apply control_cong.
@@ -257,19 +354,21 @@ Proof.
     apply bc2ucom_WF.
     replace (controlled_powers' f (S (S k)) kmax)
       with (bcseq (controlled_powers' f (S k) kmax)
-                  (bccont (kmax - (S k) - 1) (f (S k)))) 
+                  (bygatectrl (kmax - (S k) - 1) (f (S k)))) 
       by reflexivity.
     replace (controlled_powers_var' f' (S (S k)) kmax)
       with (controlled_powers_var' f' (S k) kmax ;
             cast (UnitaryOps.control (kmax - (S k) - 1) (f' (S k))) (kmax + n))%ucom 
       by reflexivity.
     remember (S k) as k'.
+    specialize (uc_eval_bygatectrl_correct (f k')) as G.
     unfold uc_eval in *.
     simpl in *.
     rewrite IHk.
     apply f_equal2; try reflexivity.
     specialize control_correct as aux.
     unfold uc_eval in aux.
+    rewrite G.
     rewrite aux. clear aux.
     rewrite cast_control_commute.
     apply control_cong.
@@ -306,31 +405,6 @@ Proof.
   constructor; apply bc2ucom_WF.
   destruct (bcelim bc1); destruct (bcelim bc2); try easy;
     simpl in *; try rewrite IHbc2; try rewrite IHbc1; easy.
-Qed.
-
-Lemma map_qubits_bcfresh : forall k q (bc : bccom),
-  (q < k)%nat ->
-  bcelim bc <> bcskip ->
-  bcfresh q (map_bccom (fun i : nat => (k + i)%nat) (bcelim bc)).
-Proof.
-  intros k q bc Hq H.
-  induction bc. simpl. 
-  contradict H; reflexivity.
-  1-2: simpl; constructor; lia.
-  simpl. 
-  destruct (bcelim bc) eqn:bce.
-  contradict H.
-  simpl. rewrite bce. reflexivity.
-  1-4: simpl in *; constructor; try lia; apply IHbc; easy.
-  simpl.
-  destruct (bcelim bc1) eqn:bce1; destruct (bcelim bc2) eqn:bce2.
-  contradict H.
-  simpl. rewrite bce1, bce2. reflexivity.
-  all: try (apply IHbc1; easy).
-  all: try (apply IHbc2; easy).
-  all: simpl; constructor.
-  all: try (apply IHbc1; easy).
-  all: try (apply IHbc2; easy).
 Qed.
 
 Local Opaque npar controlled_powers QFT_w_reverse QPE.QFT_w_reverse.
@@ -385,18 +459,13 @@ Qed.
 
 (* Compute the effect of running (shor_circuit a N) on the all-zero input state. *)
 Definition run_shor_circuit a N := 
-  let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2 (2 * N) in
-  let numq := num_qubits n in
-  @Mmult _ _ 1 (uc_eval (m+numq) (shor_circuit a N))
-               (basis_vector (2^(m+numq)) 0).
+  @Mmult _ _ 1 (uc_eval (shor_nqs N) (shor_circuit a N))
+               (basis_vector (2^(shor_nqs N)) 0).
 
 (* Returns the probability that (shor_circuit a N) outputs x. *)
 Definition prob_shor_outputs a N x := 
-  let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2 (2 * N) in
-  let numq := num_qubits n in
-  @prob_partial_meas _ numq (basis_vector (2^m) x) (run_shor_circuit a N).
+  @prob_partial_meas _ (modmult_nqs N) 
+    (basis_vector (2^(shor_output_nqs N)) x) (run_shor_circuit a N).
 
 Local Opaque genM0 modmult_full reverser bcinv.
 Lemma bcelim_modmult_rev_neq_bcskip : forall n M C Cinv,
@@ -425,20 +494,18 @@ Proof.
   easy.
 Qed.
 
-Lemma shor_circuit_same : forall a N x, 
+Lemma shor_circuit_same : forall a N, 
   (0 < N)%nat ->
-  let m := Nat.log2 (2 * N^2)%nat in
-  let n := Nat.log2 (2 * N)%nat in
-  let anc := modmult_rev_anc n in
+  let m := shor_output_nqs N in
+  let n := modmult_data_nqs N in
   let f := Shor.f_modmult_circuit a (modinv a N) N n in
-  prob_shor_outputs a N x = 
-    prob_partial_meas (basis_vector (2^m) x) (Shor.Shor_final_state_var m n anc f).
+  uc_eval (shor_nqs N) (shor_circuit a N) = 
+    UnitarySem.uc_eval (SQIR.useq (SQIR.X (m + n - 1)) (QPE_var m (modmult_nqs N) f)).
 Proof.
-  intros a N x H m n anc f.
-  unfold prob_shor_outputs, run_shor_circuit.
-  subst m n anc.
-  apply f_equal.
-  unfold uc_eval, num_qubits, shor_circuit, Shor.Shor_final_state_var.
+  intros a N H m n f.
+  subst m n.
+  unfold uc_eval, shor_circuit, shor_nqs, modmult_nqs.
+  unfold shor_output_nqs, modmult_data_nqs, modmult_anc_nqs in *.
   Local Opaque Nat.mul Nat.pow QPE QPE.QPE_var.
   simpl.
   remember (Nat.log2 (2 * N ^ 2)) as m.
@@ -452,7 +519,6 @@ Proof.
     apply Nat.pow_le_mono_l. lia.
     apply Nat.log2_pos. lia. }
   clear Heqn Heqm.
-  rewrite Mmult_assoc.
   apply f_equal2.
   apply QPE_same; auto.
   lia.
@@ -462,16 +528,75 @@ Proof.
   subst f.
   unfold f_modmult_circuit, modexp.
   rewrite bc2ucom_correct.
-  rewrite bc2ucom_csplit.
   reflexivity.
-  apply eWT_bcWT.
-  apply bcelim_modmult_rev_neq_bcskip.
-  apply modmult_rev_eWT; auto.
+  reflexivity.
+Qed.
+
+Lemma uc_well_typed_shor_circuit : forall a N,
+  (a < N)%nat ->
+  uc_well_typed (to_base_ucom (shor_nqs N) (shor_circuit a N)).
+Proof.
+  intros.
+  apply uc_eval_nonzero_iff.
+  specialize (shor_circuit_same a N) as Hsame. 
+  unfold uc_eval in Hsame.
+  rewrite Hsame by lia.
+  clear Hsame.
+  apply uc_eval_nonzero_iff.
+  unfold shor_output_nqs, modmult_nqs, modmult_data_nqs, modmult_anc_nqs.
+  constructor.
+  apply uc_well_typed_X. 
+  unfold modmult_rev_anc.
+  lia.
+  apply QPE_var_WT.
+  assert (1 <= N ^ 2)%nat.
+  rewrite <- (Nat.pow_1_l 2) at 1.
+  apply Nat.pow_le_mono_l. lia.
+  apply Nat.log2_pos. lia. 
+  intro i.
+  assert (Nat.log2 (2 * N) > 0)%nat.
+  apply Nat.log2_pos. lia.
+  apply eWT_uc_well_typed_bcelim. lia.
+  apply modmult_rev_eWT. lia.
+Qed.
+
+Lemma shor_circuit_same' : forall a N x, 
+  (0 < N)%nat ->
+  let m := shor_output_nqs N in
+  let n := modmult_data_nqs N in
+  let anc := modmult_anc_nqs N in
+  let f := Shor.f_modmult_circuit a (modinv a N) N n in
+  prob_shor_outputs a N x = 
+    prob_partial_meas (basis_vector (2^m) x) (Shor.Shor_final_state m n anc f).
+Proof.
+  intros a N x H m n anc f.
+  unfold prob_shor_outputs, run_shor_circuit.
+  rewrite shor_circuit_same by assumption.
+  subst m n anc.
+  unfold shor_nqs, modmult_nqs.
+  unfold shor_output_nqs, modmult_data_nqs, modmult_anc_nqs in *.
+  remember (Nat.log2 (2 * N ^ 2)) as m.
+  remember (Nat.log2 (2 * N)) as n.
+  assert (0 < n)%nat.
+  { subst. apply Nat.log2_pos. lia. }
+  assert (0 < m)%nat.
+  { subst. 
+    assert (1 <= N ^ 2)%nat.
+    rewrite <- (Nat.pow_1_l 2) at 1.
+    apply Nat.pow_le_mono_l. lia.
+    apply Nat.log2_pos. lia. }
+  clear Heqm Heqn.
+  apply f_equal.
+  unfold Shor_final_state.
+  simpl.
+  rewrite Mmult_assoc.
   rewrite 4 basis_f_to_vec_alt.
   rewrite f_to_vec_X by lia.
   rewrite f_to_vec_merge.
-  restore_dims .
+  restore_dims.
   rewrite f_to_vec_merge.
+  apply f_equal2.
+  reflexivity.
   rewrite Nat.add_assoc.
   apply f_to_vec_eq; intros i Hi.
   bdestruct (i <? m + n).

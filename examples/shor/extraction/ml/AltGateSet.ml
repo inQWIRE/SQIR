@@ -1,8 +1,8 @@
-open RCIR
+open Nat
 
 type 'u ucom =
 | Coq_useq of 'u ucom * 'u ucom
-| Coq_uapp of int * 'u * int list
+| Coq_uapp of Z.t * 'u * Z.t list
 
 type coq_U =
 | U_X
@@ -18,101 +18,104 @@ type coq_U =
 | U_C3X
 | U_C4X
 
-(** val coq_X : int -> coq_U ucom **)
+(** val coq_X : Z.t -> coq_U ucom **)
 
 let coq_X q =
-  Coq_uapp ((Pervasives.succ 0), U_X, (q :: []))
+  Coq_uapp ((Z.succ Z.zero), U_X, (q :: []))
 
-(** val coq_H : int -> coq_U ucom **)
+(** val coq_H : Z.t -> coq_U ucom **)
 
 let coq_H q =
-  Coq_uapp ((Pervasives.succ 0), U_H, (q :: []))
+  Coq_uapp ((Z.succ Z.zero), U_H, (q :: []))
 
-(** val coq_U1 : float -> int -> coq_U ucom **)
+(** val coq_U1 : float -> Z.t -> coq_U ucom **)
 
 let coq_U1 r1 q =
-  Coq_uapp ((Pervasives.succ 0), (U_U1 r1), (q :: []))
+  Coq_uapp ((Z.succ Z.zero), (U_U1 r1), (q :: []))
 
-(** val coq_U2 : float -> float -> int -> coq_U ucom **)
+(** val coq_U2 : float -> float -> Z.t -> coq_U ucom **)
 
 let coq_U2 r1 r2 q =
-  Coq_uapp ((Pervasives.succ 0), (U_U2 (r1, r2)), (q :: []))
+  Coq_uapp ((Z.succ Z.zero), (U_U2 (r1, r2)), (q :: []))
 
-(** val coq_U3 : float -> float -> float -> int -> coq_U ucom **)
+(** val coq_U3 : float -> float -> float -> Z.t -> coq_U ucom **)
 
 let coq_U3 r1 r2 r3 q =
-  Coq_uapp ((Pervasives.succ 0), (U_U3 (r1, r2, r3)), (q :: []))
+  Coq_uapp ((Z.succ Z.zero), (U_U3 (r1, r2, r3)), (q :: []))
 
-(** val coq_T : int -> coq_U ucom **)
+(** val coq_T : Z.t -> coq_U ucom **)
 
 let coq_T q =
   coq_U1 (( /. ) Float.pi 4.0) q
 
-(** val coq_Tdg : int -> coq_U ucom **)
+(** val coq_Tdg : Z.t -> coq_U ucom **)
 
 let coq_Tdg q =
   coq_U1 (((-.) 0.0) (( /. ) Float.pi 4.0)) q
 
+(** val coq_ID : Z.t -> coq_U ucom **)
+
+let coq_ID q =
+  coq_U1 0.0 q
+
 (** val coq_SKIP : coq_U ucom **)
 
 let coq_SKIP =
-  coq_U1 0.0 0
+  coq_ID Z.zero
 
-(** val coq_CX : int -> int -> coq_U ucom **)
+(** val coq_CX : Z.t -> Z.t -> coq_U ucom **)
 
 let coq_CX q1 q2 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ 0)), U_CX, (q1 :: (q2 :: [])))
+  Coq_uapp ((Z.succ (Z.succ Z.zero)), U_CX, (q1 :: (q2 :: [])))
 
-(** val coq_CU1 : float -> int -> int -> coq_U ucom **)
+(** val coq_CU1 : float -> Z.t -> Z.t -> coq_U ucom **)
 
 let coq_CU1 r q1 q2 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ 0)), (U_CU1 r),
-    (q1 :: (q2 :: [])))
+  Coq_uapp ((Z.succ (Z.succ Z.zero)), (U_CU1 r), (q1 :: (q2 :: [])))
 
-(** val coq_SWAP : int -> int -> coq_U ucom **)
+(** val coq_SWAP : Z.t -> Z.t -> coq_U ucom **)
 
 let coq_SWAP q1 q2 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ 0)), U_SWAP, (q1 :: (q2 :: [])))
+  Coq_uapp ((Z.succ (Z.succ Z.zero)), U_SWAP, (q1 :: (q2 :: [])))
 
-(** val coq_CCX : int -> int -> int -> coq_U ucom **)
+(** val coq_CCX : Z.t -> Z.t -> Z.t -> coq_U ucom **)
 
 let coq_CCX q1 q2 q3 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ (Pervasives.succ 0))), U_CCX,
+  Coq_uapp ((Z.succ (Z.succ (Z.succ Z.zero))), U_CCX,
     (q1 :: (q2 :: (q3 :: []))))
 
-(** val coq_CSWAP : int -> int -> int -> coq_U ucom **)
+(** val coq_CSWAP : Z.t -> Z.t -> Z.t -> coq_U ucom **)
 
 let coq_CSWAP q1 q2 q3 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ (Pervasives.succ 0))), U_CSWAP,
+  Coq_uapp ((Z.succ (Z.succ (Z.succ Z.zero))), U_CSWAP,
     (q1 :: (q2 :: (q3 :: []))))
 
-(** val coq_C3X : int -> int -> int -> int -> coq_U ucom **)
+(** val coq_C3X : Z.t -> Z.t -> Z.t -> Z.t -> coq_U ucom **)
 
 let coq_C3X q1 q2 q3 q4 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ 0)))), U_C3X, (q1 :: (q2 :: (q3 :: (q4 :: [])))))
+  Coq_uapp ((Z.succ (Z.succ (Z.succ (Z.succ Z.zero)))), U_C3X,
+    (q1 :: (q2 :: (q3 :: (q4 :: [])))))
 
-(** val coq_C4X : int -> int -> int -> int -> int -> coq_U ucom **)
+(** val coq_C4X : Z.t -> Z.t -> Z.t -> Z.t -> Z.t -> coq_U ucom **)
 
 let coq_C4X q1 q2 q3 q4 q5 =
-  Coq_uapp ((Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ 0))))), U_C4X,
+  Coq_uapp ((Z.succ (Z.succ (Z.succ (Z.succ (Z.succ Z.zero))))), U_C4X,
     (q1 :: (q2 :: (q3 :: (q4 :: (q5 :: []))))))
 
-(** val decompose_CH : int -> int -> coq_U ucom **)
+(** val decompose_CH : Z.t -> Z.t -> coq_U ucom **)
 
 let decompose_CH a b =
   Coq_useq ((Coq_useq ((coq_U3 (( /. ) Float.pi 4.0) 0.0 0.0 b),
     (coq_CX a b))), (coq_U3 (((-.) 0.0) (( /. ) Float.pi 4.0)) 0.0 0.0 b))
 
-(** val decompose_CU1 : float -> int -> int -> coq_U ucom **)
+(** val decompose_CU1 : float -> Z.t -> Z.t -> coq_U ucom **)
 
 let decompose_CU1 r1 a b =
   Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((coq_U1 (( /. ) r1 2.0) a),
     (coq_U1 (( /. ) r1 2.0) b))), (coq_CX a b))),
     (coq_U1 (((-.) 0.0) (( /. ) r1 2.0)) b))), (coq_CX a b))
 
-(** val decompose_CU2 : float -> float -> int -> int -> coq_U ucom **)
+(** val decompose_CU2 : float -> float -> Z.t -> Z.t -> coq_U ucom **)
 
 let decompose_CU2 r1 r2 a b =
   Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
@@ -123,7 +126,7 @@ let decompose_CU2 r1 r2 a b =
     (coq_U3 (( /. ) Float.pi 4.0) r1 0.0 b))
 
 (** val decompose_CU3 :
-    float -> float -> float -> int -> int -> coq_U ucom **)
+    float -> float -> float -> Z.t -> Z.t -> coq_U ucom **)
 
 let decompose_CU3 r1 r2 r3 a b =
   Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
@@ -133,12 +136,12 @@ let decompose_CU3 r1 r2 r3 a b =
       (( /. ) (((-.) 0.0) (( +. ) r2 r3)) 2.0) b))), (coq_CX a b))),
     (coq_U3 (( /. ) r1 2.0) r2 0.0 b))
 
-(** val decompose_CSWAP : int -> int -> int -> coq_U ucom **)
+(** val decompose_CSWAP : Z.t -> Z.t -> Z.t -> coq_U ucom **)
 
 let decompose_CSWAP a b c =
   Coq_useq ((Coq_useq ((coq_CCX a b c), (coq_CCX a c b))), (coq_CCX a b c))
 
-(** val decompose_CCX : int -> int -> int -> coq_U ucom **)
+(** val decompose_CCX : Z.t -> Z.t -> Z.t -> coq_U ucom **)
 
 let decompose_CCX a b c =
   Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq ((Coq_useq
@@ -148,10 +151,10 @@ let decompose_CCX a b c =
     (coq_CX a b))), (coq_Tdg b))), (coq_CX a b))), (coq_T a))), (coq_T b))),
     (coq_T c))), (coq_H c))
 
-(** val control' : int -> coq_U ucom -> int -> coq_U ucom **)
+(** val control' : Z.t -> coq_U ucom -> Z.t -> coq_U ucom **)
 
 let rec control' a c n =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+  (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
     (fun _ -> coq_SKIP)
     (fun n' ->
     match c with
@@ -288,66 +291,54 @@ let rec control' a c n =
                          | _ :: _ -> coq_SKIP))))))))
     n
 
-(** val fuel_CU1 : int **)
+(** val fuel_CU1 : Z.t **)
 
 let fuel_CU1 =
-  Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ 0)))
+  Z.succ (Z.succ (Z.succ (Z.succ Z.zero)))
 
-(** val fuel_CSWAP : int **)
+(** val fuel_CSWAP : Z.t **)
 
 let fuel_CSWAP =
-  Pervasives.succ (Pervasives.succ 0)
+  Z.succ (Z.succ Z.zero)
 
-(** val fuel_CCX : int **)
+(** val fuel_CCX : Z.t **)
 
 let fuel_CCX =
-  Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ (Pervasives.succ (Pervasives.succ
-    (Pervasives.succ (Pervasives.succ 0)))))))))))))))))))))
+  Z.succ (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ
+    (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ (Z.succ
+    (Z.succ (Z.succ (Z.succ (Z.succ Z.zero)))))))))))))))))))))
 
-(** val fuel : coq_U ucom -> int **)
+(** val fuel : coq_U ucom -> Z.t **)
 
 let rec fuel = function
-| Coq_useq (c1, c2) -> Pervasives.succ (Pervasives.max (fuel c1) (fuel c2))
+| Coq_useq (c1, c2) -> Z.succ (max (fuel c1) (fuel c2))
 | Coq_uapp (_, u, _) ->
   (match u with
-   | U_CU1 _ -> Pervasives.succ fuel_CU1
-   | U_CSWAP -> Pervasives.succ fuel_CSWAP
-   | U_C4X -> Pervasives.succ fuel_CCX
-   | _ -> 0)
+   | U_CU1 _ -> Z.succ fuel_CU1
+   | U_CSWAP -> Z.succ fuel_CSWAP
+   | U_C4X -> Z.succ fuel_CCX
+   | _ -> Z.zero)
 
-(** val control : int -> coq_U ucom -> coq_U ucom **)
+(** val control : Z.t -> coq_U ucom -> coq_U ucom **)
 
 let control a c =
-  control' a c (Pervasives.succ (fuel c))
+  control' a c (Z.succ (fuel c))
 
-(** val bc2ucom : bccom -> coq_U ucom **)
-
-let rec bc2ucom = function
-| Coq_bcskip -> coq_SKIP
-| Coq_bcx a -> coq_X a
-| Coq_bcswap (a, b) -> coq_SWAP a b
-| Coq_bccont (a, bc1) -> control a (bc2ucom bc1)
-| Coq_bcseq (bc1, bc2) -> Coq_useq ((bc2ucom bc1), (bc2ucom bc2))
-
-(** val map_qubits : (int -> int) -> coq_U ucom -> coq_U ucom **)
+(** val map_qubits : (Z.t -> Z.t) -> coq_U ucom -> coq_U ucom **)
 
 let rec map_qubits f = function
 | Coq_useq (c1, c2) -> Coq_useq ((map_qubits f c1), (map_qubits f c2))
 | Coq_uapp (n, g, qs) -> Coq_uapp (n, g, (List.map f qs))
 
-(** val npar : int -> coq_U -> coq_U ucom **)
+(** val npar : Z.t -> coq_U -> coq_U ucom **)
 
 let rec npar n u =
-  (fun fO fS n -> if n=0 then fO () else fS (n-1))
+  (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
     (fun _ -> coq_SKIP)
     (fun n' ->
-    (fun fO fS n -> if n=0 then fO () else fS (n-1))
-      (fun _ -> Coq_uapp ((Pervasives.succ 0), u, (0 :: [])))
-      (fun _ -> Coq_useq ((npar n' u), (Coq_uapp ((Pervasives.succ 0), u,
+    (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
+      (fun _ -> Coq_uapp ((Z.succ Z.zero), u, (Z.zero :: [])))
+      (fun _ -> Coq_useq ((npar n' u), (Coq_uapp ((Z.succ Z.zero), u,
       (n' :: [])))))
       n')
     n

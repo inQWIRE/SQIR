@@ -160,6 +160,13 @@ Proof.
   all: apply Csum_0; intro i; bdestruct_all; simpl; lca.
 Qed.
 
+Lemma basis_vector_pure_state : forall n i,
+  (i < n)%nat -> Pure_State_Vector (basis_vector n i).
+Proof.
+  intros. split. apply basis_vector_WF. easy.
+  apply basis_vector_product_eq. easy.
+Qed.
+
 Lemma basis_vector_product_neq : forall d m n,
   (m < d)%nat -> (n < d)%nat -> (m <> n)%nat -> (basis_vector d m)† × basis_vector d n = Zero.
 Proof.
@@ -203,6 +210,67 @@ Proof.
   rewrite H; trivial.
   rewrite matrix_times_basis_eq; easy.
 Qed.
+
+Lemma divmod_decomp : forall x y z r,
+    (r > 0)%nat ->
+    (z < r)%nat ->
+    (x = y * r + z <-> x / r = y /\ x mod r = z)%nat.
+Proof.
+  split; intros.
+  - split. symmetry. apply Nat.div_unique with (r := z); try lia.
+    symmetry. apply Nat.mod_unique with (q := y); try lia.
+  - destruct H1.
+    replace (y * r)%nat with (r * y)%nat by lia.
+    rewrite <- H1, <- H2.
+    apply Nat.div_mod.
+    lia.
+Qed.
+
+Lemma split_basis_vector : forall m n x y,
+  (x < 2 ^ m)%nat ->
+  (y < 2 ^ n)%nat ->
+  basis_vector (2 ^ (m + n)) (x * 2 ^ n + y) 
+    = basis_vector (2 ^ m) x ⊗ basis_vector (2 ^ n) y.
+Proof.
+  intros m n x y Hx Hy.
+  unfold kron, basis_vector.
+  solve_matrix.
+  bdestruct (y0 =? 0).
+  - repeat rewrite andb_true_r.
+    assert (2^n > 0)%nat.
+    { assert (0 < 2^n)%nat by (apply pow_positive; lia). lia.
+    }
+    specialize (divmod_decomp x0 x y (2^n)%nat H0 Hy) as G.
+    bdestruct (x0 =? x * 2 ^ n + y).
+    + apply G in H1. destruct H1.
+      rewrite H1, H2. do 2 rewrite Nat.eqb_refl. lca.
+    + bdestruct (x0 / 2 ^ n =? x); bdestruct (x0 mod 2 ^ n =? y); try lca.
+      assert ((x0 / 2 ^ n)%nat = x /\ x0 mod 2 ^ n = y) by easy.
+      apply G in H4.
+      easy.
+  - repeat rewrite andb_false_r.
+    lca.
+Qed.
+
+Lemma rewrite_I_as_sum : forall m n,
+  (m <= n)%nat -> 
+  I m = Msum m (fun i => (basis_vector n i) × (basis_vector n i)†).
+Proof.
+  intros.
+  induction m.
+  simpl.
+  unfold I.
+  prep_matrix_equality.
+  bdestruct_all; reflexivity.
+  simpl.
+  rewrite <- IHm by lia.
+  unfold basis_vector.
+  solve_matrix.
+  bdestruct_all; simpl; try lca. 
+  all: destruct m; simpl; try lca.
+  all: bdestruct_all; lca.
+Qed.
+
 
 (* f_to_vec and basis_vector allow us to represent the same set of states.
    To prove this we need lemmas about converting between natural numbers
@@ -1201,6 +1269,40 @@ Lemma vsum_diagonal :
     vsum n (fun i => vsum n (fun j => f i j)) = vsum n (fun i => f i i).
 Proof. intros. unfold vsum. apply Msum_diagonal. auto. Qed.
 
+Lemma vsum_Csum : forall {d n} (f : nat -> Vector d) x y,
+  vsum n f x y = Csum (fun i => f i x y) n.
+Proof.
+  intros d n f x y. induction n.
+  - easy.
+  - rewrite vsum_extend_r. unfold Mplus. rewrite IHn. easy.
+Qed.
+
+(* Any vector ψ can be written as a weighted sum over basis vectors. *)
+Lemma basis_vector_decomp : forall {d} (ψ : Vector d),
+  WF_Matrix ψ ->
+  ψ = vsum d (fun i => (ψ i O) .* basis_vector d i).
+Proof.
+  intros d ψ WF. 
+  do 2 (apply functional_extensionality; intros). 
+  rewrite vsum_Csum.
+  destruct (x <? d) eqn:Hx.
+  - apply Nat.ltb_lt in Hx. 
+    unfold scale. destruct x0.
+    + rewrite Csum_unique with (k:=ψ x O). easy.
+      exists x. split. easy.
+      split. unfold basis_vector. rewrite Nat.eqb_refl. simpl. lca.
+      intros. unfold basis_vector. apply eqb_neq in H. rewrite H. simpl. lca.
+    + unfold WF_Matrix in WF. rewrite WF by lia.
+      rewrite Csum_0. easy. intro.
+      unfold basis_vector. assert (S x0 <> 0)%nat by lia. apply eqb_neq in H.
+      rewrite H. rewrite andb_false_r. lca.
+  - apply Nat.ltb_ge in Hx.
+    unfold WF_Matrix in WF. rewrite WF by lia.
+    rewrite Csum_0_bounded. easy. intros. unfold scale.
+    unfold basis_vector. assert (x <> x1) by lia. apply eqb_neq in H0.
+    rewrite H0. simpl. lca.
+Qed.
+
 (* Two natural ways to split a vsum into two parts *)
 Lemma vsum_sum1 : forall d m n (f : nat -> Vector d),
   vsum (m + n) f = vsum m f .+ vsum n (shift f m).
@@ -1666,7 +1768,7 @@ Proof.
 Qed.
 Local Transparent Nat.mul Nat.div Nat.modulo.
 
-Lemma kron_n_0_is_0_vector : forall (n:nat), n ⨂ ∣0⟩ = basis_vector (2 ^ n) 0%nat.
+Lemma kron_n_0_is_0_vector : forall (n:nat), n ⨂ ∣0⟩ = basis_vector (2 ^ n) O.
 Proof.
   intros.
   induction n.
