@@ -436,6 +436,27 @@ Definition swap_log (l : layout) pq1 pq2 : layout :=
       add (add (remove (remove l lq1 pq1) lq2 pq2) lq1 pq2) lq2 pq1
   end.
 
+Lemma get_phys_swap_log_1 : forall dim m a b,
+  layout_bijective dim m ->
+  get_phys (swap_log m a b) (get_log m a) = b.
+Proof.
+  intros.
+  unfold swap_log, get_phys, find_phys, find_log.
+  destruct (Layout.find_key m a); destruct (Layout.find_key m b).
+Admitted.
+
+Lemma get_phys_swap_log_2 : forall dim m a b,
+  layout_bijective dim m ->
+  get_phys (swap_log m a b) (get_log m b) = a.
+Proof.
+Admitted.
+
+Lemma get_phys_swap_log_3 : forall dim m a b x,
+  layout_bijective dim m ->
+  x <> get_log m a -> x <> get_log m b -> get_phys (swap_log m a b) x = get_phys m x.
+Proof.
+Admitted.
+
 (*
 Lemma phys_neq_implies_log_neq : forall l lq1 lq2 pq1 pq2,
   layout_well_formed l -> 

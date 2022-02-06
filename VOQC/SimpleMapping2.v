@@ -1,9 +1,9 @@
 Require Import QuantumLib.Permutations.
+Require Export UnitaryListRepresentation.
 Require Export ConnectivityGraph.
 Require Export Layouts2.
 Require Export MappingConstraints.
-Require Import MappingGateSet.
-Require Export UnitaryListRepresentation.
+Require Import StandardGateSet MappingGateSet.
 
 (** Simple strategy for mapping a program to a CNOT connectivity graph.
    When a CNOT occurs between non-adjacent qubits: (1) insert SWAPs to 
@@ -53,18 +53,35 @@ Fixpoint simple_map {U dim} (l : ucom_l U dim) (m : layout) : (ucom_l U dim * la
   | App1 u n :: t =>
       let (t',m') := simple_map t m in
       (App1 u (get_phys m n) :: t', m')
-  | App2 U_CX n1 n2 :: t =>
+  | App2 u n1 n2 :: t =>
       let p := CG.get_path (get_phys m n1) (get_phys m n2) in
       let (swaps, m') := path_to_swaps p m in
       let mapped_cnot := 
-        swaps ++ [CNOT (get_phys m' n1) (get_phys m' n2)] in 
+        swaps ++ [App2 u (get_phys m' n1) (get_phys m' n2)] in 
       let (t',m'') := simple_map t m' in
       (mapped_cnot ++ t', m'')
-  | App2 U_SWAP n1 n2 :: t =>
-      let (t',m') := simple_map t m in
-      (SWAP (get_phys m n1) (get_phys m n2) :: t', m')
   | _ => ([], m) (* unreachable due to the gate set *)
   end.
+
+(* Finally, a "decomposition" function that ensures that the output satisfies
+   directed connectivity contraints. This function is specialized to the Std
+   gate set where we have access to a Hadamard gate. *)
+Definition H {dim} a : gate_app (Map_Unitary (Std_Unitary 1)) dim := 
+  App1 (U_U StandardGateSet.U_H) a.
+
+Definition decompose_swaps_and_cnots_aux {dim} (g : gate_app (Map_Unitary (Std_Unitary 1)) dim) : gate_list (Map_Unitary (Std_Unitary 1)) dim :=
+  match g with
+  | App2 U_CX m n => if CG.is_in_graph m n
+                    then [CNOT m n]
+                    else H n :: H m :: CNOT n m :: H n :: H m :: []
+  | App2 U_SWAP m n => if CG.is_in_graph m n
+                      then CNOT m n :: H m :: H n :: CNOT m n :: H m :: H n :: CNOT m n :: []
+                      else CNOT n m :: H n :: H m :: CNOT n m :: H n :: H m :: CNOT n m :: []
+  | g => [g]
+  end.
+
+Definition decompose_swaps_and_cnots {dim} (l : ucom_l (Std_Unitary 1) dim) :=
+  change_gate_set decompose_swaps_and_cnots_aux l.
 
 End SimpleMap.
 
@@ -313,10 +330,39 @@ Proof.
 Qed.
 
 Lemma fswap_swap_log : forall m (f : nat -> bool) a b x,
+  a < dim -> b < dim -> x < dim -> a <> b ->
+  layout_bijective dim m ->
   fswap f a b (get_phys (swap_log m a b) x) = f (get_phys m x).
 Proof.
-  intros. unfold fswap.
-Admitted.
+  intros m f a b x Ha Hb Hx Hab H.
+  bdestruct (x =? get_log m a); bdestruct (x =? get_log m b); subst.
+  - assert (get_phys m (get_log m a) = get_phys m (get_log m b)) by auto.
+    erewrite 2 get_phys_log_inv in H0.
+    contradiction.
+    apply H. apply Hb.
+    apply H. apply Ha.
+  - rewrite get_phys_swap_log_1 with (dim:=dim) by auto.
+    rewrite fswap_simpl2.
+    erewrite get_phys_log_inv.
+    reflexivity. apply H. apply Ha.
+  - rewrite get_phys_swap_log_2 with (dim:=dim) by auto.
+    rewrite fswap_simpl1.
+    erewrite get_phys_log_inv.
+    reflexivity. apply H. apply Hb.
+  - rewrite get_phys_swap_log_3 with (dim := dim) by auto.
+    rewrite fswap_neq.
+    reflexivity.
+    intro contra.
+    rewrite contra in H0.
+    erewrite get_log_phys_inv in H0.
+    contradiction.
+    apply H. apply Hx.
+    intro contra.
+    rewrite contra in H1.
+    erewrite get_log_phys_inv in H1.
+    contradiction.
+    apply H. apply Hx.
+Qed.
 
 Lemma path_to_swaps_sound : forall n1 n2 p m l m',
   dim > 0 ->
@@ -367,7 +413,7 @@ Proof.
     rewrite perm_to_matrix_permutes_qubits.
     apply f_to_vec_eq.
     intros x Hx.
-    apply fswap_swap_log.
+    apply fswap_swap_log; auto.
     apply get_phys_perm; assumption.
     apply get_phys_perm.
     apply swap_log_preserves_bij; assumption.
@@ -492,6 +538,30 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma get_phys_lt : forall m x,
+  layout_bijective dim m ->
+  x < dim ->
+  get_phys m x < dim.
+Proof.
+  intros m x Hm Hx.
+  apply get_phys_perm in Hm.
+  destruct Hm as [? Hm].
+  specialize (Hm x Hx).
+  destruct Hm as [? _].
+  assumption.
+Qed.
+
+Lemma get_phys_neq : forall m x y,
+  layout_bijective dim m ->
+  x < dim -> y < dim -> x <> y ->
+  get_phys m x <> get_phys m y.
+Proof.
+  intros m x y Hm Hx Hy Hneq.
+  apply get_phys_perm in Hm.
+  intro contra.
+  apply permutation_is_injective with (x:=x) (y:=y) in Hm; auto.
+Qed.
+
 (* Example: Consider an architecture with 3 qubits and LNN connectivity:
        0 <-> 1 <-> 2.
    Say we want to map the following program with input layout 
@@ -516,7 +586,7 @@ Lemma simple_map_sound : forall (l l' : ucom_l dim) (m m' : layout),
   layout_bijective dim m ->
   simple_map l m = (l', m') -> 
   l ≡ l' with (get_log m) and (get_phys m').
-Proof. 
+Proof.
   intros l l' m m' WT WFm H.
   generalize dependent m'.
   generalize dependent m.
@@ -541,124 +611,38 @@ Proof.
       constructor.
       apply uc_well_typed_l_implies_dim_nonzero in WT.
       assumption.
+    + destruct (path_to_swaps (CG.get_path (get_phys m n) (get_phys m n0)) m) eqn:pth.
+      destruct (simple_map l l0) eqn:res'.
+      inversion res; subst.
+      assert (pth':=pth).
+      assert (get_phys m n < CG.dim).
+      { apply get_phys_lt; assumption. }
+      assert (get_phys m n0 < CG.dim).
+      { apply get_phys_lt; assumption. }
+      assert (get_phys m n <> get_phys m n0).
+      { apply get_phys_neq; assumption. }
+      eapply path_to_swaps_bijective in pth'; auto.
+      eapply path_to_swaps_sound in pth; auto.
+      apply IHl in res'; auto.
+      rewrite (cons_to_app _ l).
+      eapply uc_eq_perm_app1. 
+      apply perm_pair_get_phys_log.
+      assumption.
+      2: apply res'.
+      replace (App2 m0 (get_phys l0 n) (get_phys l0 n0)) with (@map_qubits_app _ dim (get_phys l0) (App2 m0 n n0)) by reflexivity.
+      rewrite <- (app_nil_l [App2 m0 _ _]).
+      apply uc_eq_perm_app2. 
+      apply perm_pair_get_log_phys.
+      assumption.
+      constructor; try assumption.
+      constructor.
+      lia.
+      apply pth.
+      lia.
+      apply CG.get_path_valid; auto.
+      apply CG.get_path_valid; auto.
     + dependent destruction m0.
-      * destruct (path_to_swaps (CG.get_path (get_phys m n) (get_phys m n0)) m) eqn:pth.
-        destruct (simple_map l l0) eqn:res'.
-        inversion res; subst.
-        assert (pth':=pth).
-        assert (get_phys m n < CG.dim).
-        admit.
-        assert (get_phys m n0 < CG.dim).
-        admit.
-        assert (get_phys m n <> get_phys m n0).
-        admit.
-        eapply path_to_swaps_bijective in pth'; auto.
-        eapply path_to_swaps_sound in pth; auto.
-        apply IHl in res'; auto.
-        rewrite (cons_to_app _ l).
-        eapply uc_eq_perm_app1. 
-        apply perm_pair_get_phys_log.
-        assumption.
-        2: apply res'.
-        replace (CNOT (get_phys l0 n) (get_phys l0 n0)) with (@map_qubits_app _ dim (get_phys l0) (@CNOT (G.U 1) _ n n0)) by reflexivity.
-        rewrite <- (app_nil_l [App2 U_CX _ _]).
-        apply uc_eq_perm_app2. 
-        apply perm_pair_get_log_phys.
-        assumption.
-        constructor; try assumption.
-        constructor.
-        lia.
-        apply pth.
-        lia.
-        apply CG.get_path_valid; auto.
-        apply CG.get_path_valid; auto.
-      * destruct (simple_map l m) eqn:res'.
-        inversion res; subst.
-        apply IHl in res'; auto.
-        replace (SWAP (get_phys m n) (get_phys m n0)) with (@map_qubits_app _ dim (get_phys m) (@SWAP (G.U 1) _ n n0)) by reflexivity.
-        apply uc_eq_perm_cons_cong; auto.
-        apply perm_pair_get_log_phys.
-        assumption.
-        constructor; auto.
-        constructor.
-        apply uc_well_typed_l_implies_dim_nonzero in WT.
-        assumption.
-    + dependent destruction m0.
-Admitted.
-
-Lemma path_to_swaps_respects_undirected : forall n1 n2 p m (l : ucom_l dim) m',
-  n1 < dim -> n2 < dim ->
-  valid_path (get_phys m n1) (get_phys m n2) CG.is_in_graph dim p ->
-  layout_bijective dim m ->
-  path_to_swaps p m = (l, m') ->
-  respects_constraints_undirected CG.is_in_graph (l ++ [CNOT (get_phys m' n1) (get_phys m' n2)]).
-Proof.
-  intros n1 n2 p m l m' Hn1 Hn2 Hpath WF res.
-  generalize dependent l.
-  generalize dependent m.
-  generalize dependent n1.
-  induction p; intros n1 Hn1 m Hpath WF l res; simpl in res.
-  destruct Hpath as [H _].
-  inversion H.
-  destruct p.
-  destruct Hpath as [_ [_ [H _]]].
-  inversion H.
-  destruct p.
-  inversion res; subst. 
-  constructor. 
-  destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
-  inversion H1; subst.
-  inversion H2; subst.
-  inversion H3; subst.
-(*  inversion H7; subst.
-  assumption.
-  inversion H8.
-  inversion H7; subst.
-  assumption.
-  inversion H8.
-  constructor.
-  destruct (path_to_swaps (n :: n0 :: p) (swap_in_map m a n)) eqn:res'.
-  inversion res; subst.
-  destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
-  inversion H1; subst.
-  inversion H3; subst.
-  inversion H4; subst.
-  rewrite <- app_comm_cons.
-  apply res_und_app2; try assumption. 
-  eapply IHp; try apply res'.
-  assumption.
-  replace (log2phys (swap_in_map m (log2phys m n1) n) n1) with n.
-  replace (log2phys (swap_in_map m (log2phys m n1) n) n2) with (log2phys m n2).
-  repeat split.
-  inversion H2; subst. assumption.
-  inversion H3; subst. assumption. 
-  assumption.
-  inversion H5; subst. assumption.  
-  unfold swap_in_map. 
-  destruct m; simpl.
-  bdestruct (n2 =? n4 (n3 n1)).
-  subst.
-  inversion H5; subst.
-  contradict H12.
-  destruct (WF (n3 n1)) as [_ [_ [_ ?]]]; auto. 
-  bdestruct (n2 =? n4 n).
-  subst.
-  inversion H5; subst.
-  inversion H17; subst.
-  contradict H12.
-  destruct (WF n) as [_ [_ [_ ?]]]; auto.
-  contradict H16.
-  destruct (WF n) as [_ [_ [_ ?]]]; auto.
-  reflexivity.
-  unfold swap_in_map. 
-  destruct m; simpl.
-  bdestruct (n1 =? n4 (n3 n1)).
-  reflexivity.
-  contradict H0.
-  destruct (WF n1) as [_ [_ [? _]]]; auto.
-  apply swap_in_map_well_formed; auto.
-Qed.*)
-Admitted.
+Qed.
 
 Lemma simple_map_WT : forall (l : ucom_l dim) (m : layout) l' m',
   uc_well_typed_l l ->
@@ -678,6 +662,146 @@ Proof.
   rewrite Mmult_0_r, Mmult_0_l in res.
   contradiction.
 Qed.
+
+Lemma path_to_swaps_respects_undirected : forall n1 n2 p m (l : ucom_l dim) m' u,
+  n1 < dim -> n2 < dim ->
+  valid_path (get_phys m n1) (get_phys m n2) CG.is_in_graph dim p ->
+  layout_bijective dim m ->
+  path_to_swaps p m = (l, m') ->
+  respects_constraints_undirected CG.is_in_graph (l ++ [App2 u (get_phys m' n1) (get_phys m' n2)]).
+Proof.
+  intros n1 n2 p m l m' u Hn1 Hn2 Hpath WF res.
+  generalize dependent l.
+  generalize dependent m.
+  generalize dependent n1.
+  induction p; intros n1 Hn1 m Hpath WF l res; simpl in res.
+  destruct Hpath as [H _].
+  inversion H.
+  destruct p.
+  destruct Hpath as [_ [_ [H _]]].
+  inversion H.
+  destruct p.
+  inversion res; subst. 
+  constructor. 
+  destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
+  inversion H1; subst.
+  inversion H2; subst.
+  inversion H3; subst.
+  inversion H7; subst.
+  assumption.
+  inversion H8.
+  inversion H7; subst.
+  assumption.
+  inversion H8.
+  constructor.
+  destruct (path_to_swaps (n :: n0 :: p) (swap_log m a n)) eqn:res'.
+  inversion res; subst.
+  destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
+  inversion H1; subst.
+  inversion H3; subst.
+  inversion H4; subst.
+  rewrite <- app_comm_cons.
+  apply res_und_app2; try assumption. 
+  eapply IHp; try apply res'.
+  assumption.
+  replace (get_phys (swap_log m (get_phys m n1) n) n1) with n.
+  replace (get_phys (swap_log m (get_phys m n1) n) n2) with (get_phys m n2).
+  repeat split.
+  inversion H2; subst. assumption.
+  inversion H3; subst. assumption. 
+  assumption.
+  inversion H5; subst. assumption.
+  symmetry.
+  eapply get_phys_swap_log_3.
+  apply WF.
+  erewrite get_log_phys_inv.
+  intro contra.
+  inversion H5. subst. contradiction.
+  apply WF. assumption.
+  intro contra.
+  inversion H5. 
+  inversion H16; subst.
+  erewrite get_phys_log_inv in H19.
+  contradiction.
+  apply WF. assumption.
+  erewrite get_phys_log_inv in H20.
+  contradiction.
+  apply WF. assumption.
+  rewrite <- (get_log_phys_inv _ _ n1 WF) at 2 by assumption. 
+  erewrite get_phys_swap_log_1.
+  reflexivity. apply WF.
+  apply swap_log_preserves_bij; auto.
+Qed.
+
+Lemma simple_map_respects_undirected : forall l m (l' : ucom_l dim) m',
+  uc_well_typed_l l ->
+  layout_bijective dim m ->
+  simple_map l m = (l', m') ->
+  respects_constraints_undirected CG.is_in_graph l'.
+Proof.
+  intros l m l' m' WT WFm H.
+  generalize dependent m'.
+  generalize dependent m.
+  generalize dependent l'.
+  induction l; intros l' m WFm m' res; simpl in res.
+  - inversion res; subst. constructor.
+  - destruct a; inversion WT; subst.
+    + destruct (simple_map l m) eqn:res'.
+      inversion res; subst.
+      constructor.
+      eapply IHl. assumption. apply WFm. apply res'.
+    + destruct (path_to_swaps (CG.get_path (get_phys m n) (get_phys m n0)) m) eqn:pth.
+      destruct (simple_map l l0) eqn:res'.
+      inversion res; subst.
+      apply respects_constraints_undirected_app.
+      eapply path_to_swaps_respects_undirected; auto.
+      2: apply WFm.
+      2: apply pth.
+      apply CG.get_path_valid.
+      apply get_phys_lt; auto.
+      apply get_phys_lt; auto.
+      apply get_phys_neq; auto.
+      eapply IHl. 
+      assumption.
+      2: apply res'.
+      eapply path_to_swaps_bijective.
+      2: apply WFm.
+      2: apply pth.
+      apply CG.get_path_valid.
+      apply get_phys_lt; auto.
+      apply get_phys_lt; auto.
+      apply get_phys_neq; auto.
+    + dependent destruction m0.
+Qed.
+
+Lemma decompose_swaps_and_cnots_respects_directed : forall (l : gate_list (Map_Unitary (Std_Unitary 1)) dim),
+  respects_constraints_undirected CG.is_in_graph l ->
+  respects_constraints_directed CG.is_in_graph U_CX (decompose_swaps_and_cnots l).
+Proof.
+  intros l H.
+  unfold decompose_swaps_and_cnots.
+  induction l.
+  rewrite change_gate_set_nil.
+  constructor.
+  rewrite change_gate_set_cons.
+  inversion H; subst.
+  simpl. constructor.
+  apply IHl. assumption.
+  apply respects_constraints_directed_app.
+  dependent destruction u; simpl.
+  destruct (CG.is_in_graph n1 n2) eqn:?.
+  constructor. assumption. constructor.
+  destruct H3; try easy.
+  repeat constructor.
+  assumption.
+  destruct (CG.is_in_graph n1 n2) eqn:?.
+  repeat constructor; assumption.
+  destruct H3; try easy.
+  repeat constructor; assumption.
+  apply IHl. assumption.
+Qed.
+
+(** Equality up to a global phase **)
 
 Definition uc_cong_perm (l1 l2 : ucom_l dim) pin pout :=
   eval l1 ∝ perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
