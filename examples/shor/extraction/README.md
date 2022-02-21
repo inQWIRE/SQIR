@@ -12,7 +12,7 @@ Our choices for extraction introduce the following assumptions:
 * The simulator we use to run Shor's order finding circuit returns a measurement value that is consistent with the probability distribution produced by our uc_eval denotation function.
 * Our utility functions in Python and OCaml for file parsing and I/O do not introduce unintended behavior.
 
-## TODOs
+## Room for Improvement
 
 * Extracting nat, Z, Pos, and N to OCaml's Z is a little hacky. It would be better to use Coq's BinNums definitions of Z, Pos, and N everywhere and then extract these representations directly. Note that we need to avoid extracting Coq's nat type because it is a unary representation and will almost always result in stack overflows in our use case.
 * Our OCaml code should check that the precondtions of Shor's hold, i.e. the input N is not even, not prime, and not a prime power.
