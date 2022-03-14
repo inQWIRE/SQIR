@@ -1,4 +1,5 @@
 Require Coq.extraction.Extraction.
+Require Import DiscreteProb.
 Require Import Shor.
 Require Import Main.
 
@@ -32,7 +33,7 @@ Extract Constant sample => "
     match l with
     | [] -> Z.zero
     | x :: l' ->
-      if r < x then Z.zero else Z.succ (aux l' (r - x)) in
+      if r < x then Z.zero else Z.succ (aux l' (r -. x)) in
   fun l r -> 
   let x = aux l r in
   (Printf.printf ""Random sampling selected a = %d\n%!"" (Z.to_int x); x)".
