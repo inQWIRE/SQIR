@@ -93,7 +93,7 @@ The rest of the files in the VOQC directory can be split into the following cate
   - IBMGateSet.v : "IBM" gate set {U1, U2, U3, CX}.
   - NonUnitaryListRepresentation.v : List representation of non-unitary SQIR programs.
   - RzQGateSet.v : "RzQ" gate set {H, X, Rzq, CX}.
-  - StandardGateSet.v : Full gate set {I, X, Y, Z, H, S, T, Sdg, Tdg, Rx, Ry, Rz, Rzq, U1, U2, U3, CX, CZ, SWAP, CCX, CCZ}.
+  - FullGateSet.v : Full gate set {I, X, Y, Z, H, S, T, Sdg, Tdg, Rx, Ry, Rz, Rzq, U1, U2, U3, CX, CZ, SWAP, CCX, CCZ}.
   - UnitaryListRepresentation.v : List representation of unitary SQIR programs; includes utilities for manipulating program lists and gate set-independent proofs.
 
 - Optimizations over unitary programs, inspired by those in [Qiskit](https://github.com/Qiskit/qiskit-terra) and [Nam et al. [2018]](https://www.nature.com/articles/s41534-018-0072-4)

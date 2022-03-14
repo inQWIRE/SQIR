@@ -5,14 +5,26 @@ Require Export UnitaryListRepresentation.
    We distinguish between CX and SWAP (which can be implemented using three
    CXs) to facilitate translation validation. *)
 
-Inductive Map_Unitary (u : Set) : nat -> Set := 
-  | U_U        : u -> Map_Unitary u 1 
-  | U_CX       : Map_Unitary u 2
-  | U_SWAP     : Map_Unitary u 2.
+Inductive Map_Unitary (U : Set) : nat -> Set := 
+  | UMap_U        : U -> Map_Unitary U 1 
+  | UMap_CNOT     : Map_Unitary U 2
+  | UMap_SWAP     : Map_Unitary U 2.
 
-Arguments U_U {u}.
-Arguments U_CX {u}.
-Arguments U_SWAP {u}.
+Arguments UMap_U {U}.
+Arguments UMap_CNOT {U}.
+Arguments UMap_SWAP {U}.
+
+Definition UM {U dim} u a : gate_app (Map_Unitary U) dim := App1 (UMap_U u) a.
+Definition CNOT {U dim} a b : gate_app (Map_Unitary U) dim := App2 UMap_CNOT a b.
+Definition SWAP {U dim} a b : gate_app (Map_Unitary U) dim := App2 UMap_SWAP a b.
+Definition map_ucom_l (U : Set) dim := gate_list (Map_Unitary U) dim.
+
+Definition match_gate {U : Set} {n} (match_gate : U -> U -> bool) (u u' : Map_Unitary U n) : bool :=
+  match u, u' with
+  | UMap_U u1, UMap_U u2 => match_gate u1 u2
+  | UMap_CNOT, UMap_CNOT | UMap_SWAP, UMap_SWAP => true
+  | _, _ => false
+  end.
 
 Module MappingGateSet (G : GateSet) <: GateSet.
 
@@ -20,9 +32,9 @@ Definition U := Map_Unitary (G.U 1).
 
 Definition to_base {n dim} (u : U n) (qs : list nat) (pf : List.length qs = n) :=
   match u with
-  | U_U u  => let q := List.nth O qs O in G.to_base u [q] (one_elem_list q)
-  | U_CX   => @SQIR.CNOT dim (List.nth O qs O) (List.nth (S O) qs O)
-  | U_SWAP => @SQIR.SWAP dim (List.nth O qs O) (List.nth (S O) qs O)
+  | UMap_U u  => let q := List.nth O qs O in G.to_base u [q] (one_elem_list q)
+  | UMap_CNOT => @SQIR.CNOT dim (List.nth O qs O) (List.nth (S O) qs O)
+  | UMap_SWAP => @SQIR.SWAP dim (List.nth O qs O) (List.nth (S O) qs O)
   end.
 
 Local Transparent SQIR.CNOT SQIR.SWAP.
@@ -96,20 +108,23 @@ Qed.
 
 Local Opaque SQIR.CNOT SQIR.SWAP.
 
-Definition match_gate {n} (u u' : U n) : bool :=
-  match u, u' with
-  | U_U u1, U_U u2 => G.match_gate u1 u2
-  | U_CX, U_CX | U_SWAP, U_SWAP => true
-  | _, _ => false
-  end.
+Definition match_gate {n} (u u' : U n) : bool := match_gate G.match_gate u u'.
 
-Lemma match_gate_implies_eq : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
+Lemma match_gate_refl : forall {n} (u : U n), match_gate u u = true.
+Proof. 
+  intros. 
+  dependent destruction u; simpl; auto. 
+  apply G.match_gate_refl.
+Qed.
+
+Lemma match_gate_implies_equiv : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
   match_gate u u' = true -> uc_equiv (@to_base n dim u qs pf) (to_base u' qs pf).
 Proof.
   intros.
   dependent destruction u; dependent destruction u'.
   all: inversion H; try reflexivity.
-  apply G.match_gate_implies_eq. auto.
+  apply G.match_gate_implies_equiv. auto.
 Qed.
 
 End MappingGateSet.
+

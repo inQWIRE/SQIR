@@ -84,7 +84,18 @@ Definition match_gate {n} (u u' : U n) : bool :=
   | _, _ => false
   end.
 
-Lemma match_gate_implies_eq : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
+Lemma match_gate_refl : forall {n} (u : U n), match_gate u u = true.
+Proof. 
+  intros. 
+  dependent destruction u; simpl; auto.
+  apply Reqb_eq; auto.
+  apply andb_true_iff.
+  split; apply Reqb_eq; auto.
+  apply andb_true_iff.
+  split; [apply andb_true_iff; split |]; apply Reqb_eq; auto.
+Qed.
+
+Lemma match_gate_implies_equiv : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
   match_gate u u' = true -> uc_equiv (@to_base n dim u qs pf) (to_base u' qs pf).
 Proof.
   intros.
@@ -118,7 +129,7 @@ Definition CNOT {dim} q1 q2 := @App2 _ dim UIBM_CNOT q1 q2.
 Definition IBM_ucom dim := ucom IBM_Unitary dim.
 Definition IBM_ucom_l dim := gate_list IBM_Unitary dim.
 
-(* Some more complicated gate decompositions - used in StandardGateSet.v *)
+(* Some more complicated gate decompositions - used in FullGateSet.v *)
 Definition H {dim} q := @App1 _ dim (UIBM_U2 0 PI) q.
 Definition X {dim} q := @App1 _ dim (UIBM_U3 PI 0 PI) q.
 Definition Rz {dim} a q := @App1 _ dim (UIBM_U1 a) q.

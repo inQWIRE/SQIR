@@ -1444,7 +1444,7 @@ Proof.
     destruct (next_single_qubit_gate l n) eqn:nsqg; try discriminate.
     repeat destruct p.
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
-    eapply G.match_gate_implies_eq in mg; simpl.
+    eapply G.match_gate_implies_equiv in mg; simpl.
     rewrite <- (IHpfx _ _ H). 
     rewrite (nsqg_commutes _ _ _ _ _ nsqg).
     rewrite app_comm_cons, (cons_to_app _ g0).
@@ -1457,7 +1457,7 @@ Proof.
     bdestruct (n =? n1); bdestruct (n0 =? n2); 
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
     subst. simpl in *.
-    eapply G.match_gate_implies_eq in mg.
+    eapply G.match_gate_implies_equiv in mg.
     rewrite <- (IHpfx _ _ H). 
     specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng) as dnr.
     apply next_gate_preserves_structure in ng.
@@ -1485,7 +1485,7 @@ Proof.
     destruct (next_single_qubit_gate l n) eqn:nsqg; try discriminate.
     repeat destruct p.
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
-    eapply G.match_gate_implies_eq in mg.
+    eapply G.match_gate_implies_equiv in mg.
     simpl.
     rewrite <- (IHpfx _ _ H). 
     specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg) as dnr.
@@ -1503,7 +1503,7 @@ Proof.
     bdestruct (n =? n1); bdestruct (n0 =? n2); 
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
     subst. simpl in *.
-    eapply G.match_gate_implies_eq in mg.
+    eapply G.match_gate_implies_equiv in mg.
     rewrite <- (IHpfx _ _ H). 
     specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng) as dnr.
     apply next_gate_preserves_structure in ng.
@@ -1615,7 +1615,7 @@ Proof.
         apply Hg0; auto.
         apply_app_congruence.
         unfold uc_equiv_l; simpl.
-        eapply G.match_gate_implies_eq in mg.
+        eapply G.match_gate_implies_equiv in mg.
         rewrite mg; reflexivity.
         intros q Hq.
         rewrite rev_append_rev.
@@ -1711,7 +1711,7 @@ Proof.
         rewrite (app_assoc _ _ g1).
         rewrite <- does_not_reference_commutes_app2; auto.
         apply_app_congruence. 
-        eapply G.match_gate_implies_eq in H3.
+        eapply G.match_gate_implies_equiv in H3.
         unfold uc_equiv_l; simpl; rewrite H3; reflexivity.
         apply dnr. bdestructΩ (n2 =? n2); auto.
         apply dnr. bdestructΩ (n3 =? n3); try (apply orb_true_intro; auto).

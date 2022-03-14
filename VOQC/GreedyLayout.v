@@ -1,38 +1,40 @@
-Require Import QuantumLib.Prelim.
 Require Import QuantumLib.VectorStates.
-Require Export ConnectivityGraph.
-Require Export StandardGateSet.
-From Coq Require Import Lists.List.
+Require Import SimpleMapping2.
+Require Import FullGateSet MappingGateSet.
 
 
-Local Close Scope R_scope.
-Local Close Scope Q_scope.
+(* some function for choosing a good pair of qubits *)
 
-(** Definition of layouts for mapping. **)
+(** Given a set of currently allocated qubits, choose two new qubits to 
+    allocate. In our OCaml implementation, we will choose qubits from
+    a maximal matching of the connectivity graph. It could also make 
+    sense to allocate qubits based on error rate. **)
 
-(* We will represent a layout with two functions: one that maps from
-   logical qubits to physcial qubits, and one that maps from physical
-   qubits to logical qubits. We use two functions instead of one to 
-   make lookup in either direction efficient. However, this requires
-   some extra machinery to describe well-formed layouts.
+(*
+Function to split a circuit into layers
+(parameter) Based on next layer(s) and current layout, build a swap circuit to 
+            permute and update the layout 
+Reassemble the layers with SWAPs in between
 
-   In general, the logical qubit register may be smaller than the physical
-   qubit register, so it could also make sense to have the type of phys2log
-   be (nat -> option nat). However, it makes the proof easier to use a pair
-   of (nat -> nat) functions. This just means that we need to associate 
-   every "unused" physical qubit with a fresh logical qubit.
- *)
-Definition qmap (dim : nat) : Type := (nat -> nat) * (nat -> nat).
+# of layers = CNOT depth of the circuit
+*)
 
-Definition log2phys {dim} (m : qmap dim) q :=
-  match m with
-  | (m, _) => m q
+(** A layer is a set of gates that can use the same layout. It includes
+single-qubit gates and two-qubit gates that can be performed in parallel. **)
+
+Fixpoint get_layer {U dim} (l : gate_list (Map_Unitary U) dim) (la : layer): layer :=
+
+(* get as many single-qubit gates as possible *)
+
+(* get the next two-qubit gate that doesn't conflict with the current set of qubits in use *)
+
+  match l with
+  | [] => la
+  | App2 U_CX n1 n2 :: t => if (orb (elem_in n1 (listNN2N la)) (elem_in n2 (listNN2N la))) then la
+                          else (first_layer t ((n1,n2)::la))
+  | _ :: t => first_layer t la
   end.
 
-Definition phys2log {dim} (m : qmap dim) q :=
-  match m with
-  | (_, m) => m q
-  end.
 
 
 (*********** begin mapper via matching *************)
@@ -54,14 +56,6 @@ Fixpoint listNN2N (l : list (nat * nat)) : list nat :=
   | (a, b) :: t => a :: b :: (listNN2N t)
   end.
 
-(* Find logical qubits in the first layer that two-qubit gate is applied *)
-Fixpoint first_layer {dim} (l : standard_ucom_l dim) (la : layer): layer :=
-  match l with
-  | [] => la
-  | App2 U_CX n1 n2 :: t => if (orb (elem_in n1 (listNN2N la)) (elem_in n2 (listNN2N la))) then la
-                          else (first_layer t ((n1,n2)::la))
-  | _ :: t => first_layer t la
-  end.
 
 (* Map the logical qubits in the first layer to matching *)
 Fixpoint qmapper dim (m : qmap dim) (mat : matching) (la : layer) : qmap dim :=
@@ -92,7 +86,7 @@ To test it, uncomment this part and comment qmapper function above.  *)
 first_layer function can only find logic qubits that are used by two-qubit gate
 in the first layer, we need this rest_log_qubits to find other qubits
 that are not in the first layer. *)
-Fixpoint rest_log_qubits {dim} (l : standard_ucom_l dim) (la : layer) (ls : list nat) : list nat :=
+Fixpoint rest_log_qubits {dim} (l : full_ucom_l dim) (la : layer) (ls : list nat) : list nat :=
   match l with
   | [] => ls
   | App1 _ n1 :: t =>
@@ -156,7 +150,7 @@ Fixpoint qmapper dim (mat : matching) (la : layer) : qmap dim :=
 
 (* This function takes a circuit program, l, and a matching and return the 
 initial mapping function of logic qubits and physiacal qubits. *)
-Definition initial_qmap {dim} (l : standard_ucom_l dim) (mat : matching) : qmap dim :=
+Definition initial_qmap {dim} (l : full_ucom_l dim) (mat : matching) : qmap dim :=
   let fst_l := first_layer l [] in
   let full_layer := fst_l ++ (lst_N2lst_NN (rest_log_qubits l fst_l [])) in 
   qmapper dim mat full_layer.
@@ -164,16 +158,6 @@ Definition initial_qmap {dim} (l : standard_ucom_l dim) (mat : matching) : qmap 
 ********end of original code****************)
 
 (****************end of mapper via matching******************)
-
-
-(******* Definition of layout well formed from Kesha *******)
-Definition layout_well_formed dim (m : qmap dim) := 
-  forall x, x < dim ->
-    log2phys m x < dim /\ 
-    phys2log m x < dim /\ 
-    phys2log m (log2phys m x) = x /\
-    log2phys m (phys2log m x) = x.
-(********* End of WF ***********)
 
 
 (**************** Proof qmapper well formed ************************)

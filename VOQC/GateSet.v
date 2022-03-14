@@ -70,7 +70,8 @@ Module Type GateSet.
   (* Boolean equality over gates. *)
   Parameter match_gate : forall (n : nat), U n -> U n -> bool.
   Arguments match_gate {n}.
-  Axiom match_gate_implies_eq : forall {n} (dim : nat) (u u': U n) 
+  Axiom match_gate_refl : forall {n} (u : U n), match_gate u u = true.
+  Axiom match_gate_implies_equiv : forall {n} (dim : nat) (u u': U n) 
         (qs : list nat) (pf : List.length qs = n), 
     match_gate u u' = true -> @to_base _ dim u qs pf ≡ to_base u' qs pf.
 

@@ -6,19 +6,19 @@ Require Import Optimize1qGates.
 Require Import RotationMerging.
 Require Import RzQGateSet.
 Require Import SimpleMapping.
-Require Import StandardGateSet.
-Import StdList.
+Require Import FullGateSet.
+Import FullList.
 
 Local Close Scope Q_scope.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-(* This file contains the VOQC transformations that are extracted to OCaml, 
+
+(** This file contains the VOQC transformations that are extracted to OCaml, 
    along with their correctness properties. The definitions and proofs in this 
-   file are largely wrappers around other definitions and proofs. *)
+   file are largely wrappers around other definitions and proofs. **)
 
-
-Definition circ := standard_ucom_l.
+Definition circ := full_ucom_l.
 Inductive gate_counts : Set :=
   | BuildCounts : nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> 
                   nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> gate_counts.
@@ -43,13 +43,13 @@ Definition cast_layout {dim} (la : layout dim) dim' : layout dim' := la.
 Definition check_well_typed {dim} (c : circ dim) (n : nat) :=
   uc_well_typed_l_b n (cast c n).
 Definition convert_to_ibm {dim} (c : circ dim) :=
-  StandardGateSet.convert_to_ibm c.
+  FullGateSet.convert_to_ibm c.
 Definition convert_to_rzq {dim} (c : circ dim) :=
-  StandardGateSet.convert_to_rzq c.
+  FullGateSet.convert_to_rzq c.
 Definition replace_rzq {dim} (c : circ dim) :=
-  StandardGateSet.replace_rzq c.
+  FullGateSet.replace_rzq c.
 Definition decompose_to_cnot {dim} (c : circ dim) :=
-  StandardGateSet.decompose_to_cnot c.
+  FullGateSet.decompose_to_cnot c.
 
 Lemma check_well_typed_correct : forall {dim} (c : circ dim) n,
   check_well_typed c n = true <-> uc_well_typed_l (cast c n).
@@ -57,7 +57,7 @@ Proof. intros. apply uc_well_typed_l_b_equiv. Qed.
 
 Lemma convert_to_ibm_preserves_semantics : forall {dim} (c : circ dim),
   (convert_to_ibm c =l= c)%ucom.
-Proof. intros. apply StandardGateSet.convert_to_ibm_sound. Qed.
+Proof. intros. apply FullGateSet.convert_to_ibm_sound. Qed.
 
 Ltac show_preserves_WT H :=
   eapply uc_equiv_l_implies_WT;
@@ -71,22 +71,22 @@ Lemma convert_to_ibm_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (convert_to_ibm c).
 Proof. intros dim c H. show_preserves_WT (convert_to_ibm_preserves_semantics c). Qed.
 
-Lemma convert_to_ibm_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+Lemma convert_to_ibm_preserves_mapping : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph U_CX l ->
   respects_constraints_directed is_in_graph U_CX (convert_to_ibm l).
 Proof. 
   intros. 
-  apply StandardGateSet.convert_to_ibm_preserves_mapping.
+  apply FullGateSet.convert_to_ibm_preserves_mapping.
   assumption.
 Qed.
 
 Lemma convert_to_ibm_uses_ibm_gates : forall {dim} (c : circ dim),
   forall_gates only_ibm (convert_to_ibm c).
-Proof. intros. apply StandardGateSet.convert_to_ibm_gates. Qed.
+Proof. intros. apply FullGateSet.convert_to_ibm_gates. Qed.
 
 Lemma convert_to_rzq_preserves_semantics : forall {dim} (c : circ dim),
   (convert_to_rzq c ≅l≅ c)%ucom.
-Proof. intros. apply StandardGateSet.convert_to_rzq_sound. Qed.
+Proof. intros. apply FullGateSet.convert_to_rzq_sound. Qed.
 
 Lemma convert_to_rzq_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (convert_to_rzq c).
@@ -95,43 +95,43 @@ Proof.
   show_preserves_WT_cong (convert_to_rzq_preserves_semantics c). 
 Qed.
 
-Lemma convert_to_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+Lemma convert_to_rzq_preserves_mapping : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph U_CX l ->
   respects_constraints_directed is_in_graph U_CX (convert_to_rzq l).
 Proof. 
   intros. 
-  apply StandardGateSet.convert_to_rzq_preserves_mapping.
+  apply FullGateSet.convert_to_rzq_preserves_mapping.
   assumption.
 Qed.
 
 Lemma convert_to_rzq_uses_rzq_gates : forall {dim} (c : circ dim),
   forall_gates only_rzq (convert_to_rzq c).
-Proof. intros. apply StandardGateSet.convert_to_rzq_gates. Qed.
+Proof. intros. apply FullGateSet.convert_to_rzq_gates. Qed.
 
 Lemma replace_rzq_preserves_semantics : forall {dim} (c : circ dim),
   (replace_rzq c =l= c)%ucom.
-Proof. intros. apply StandardGateSet.replace_rzq_sound. Qed.
+Proof. intros. apply FullGateSet.replace_rzq_sound. Qed.
 
 Lemma replace_rzq_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (replace_rzq c).
 Proof. intros dim c H. show_preserves_WT (replace_rzq_preserves_semantics c). Qed.
 
-Lemma replace_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+Lemma replace_rzq_preserves_mapping : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph U_CX l ->
   respects_constraints_directed is_in_graph U_CX (replace_rzq l).
 Proof. 
   intros. 
-  apply StandardGateSet.replace_rzq_preserves_mapping.
+  apply FullGateSet.replace_rzq_preserves_mapping.
   assumption.
 Qed.
 
 Lemma replace_rzq_does_not_use_rzq_gates : forall {dim} (c : circ dim),
   forall_gates no_rzq (replace_rzq c).
-Proof. intros. apply StandardGateSet.replace_rzq_gates. Qed.
+Proof. intros. apply FullGateSet.replace_rzq_gates. Qed.
 
 Lemma decompose_to_cnot_preserves_semantics : forall {dim} (c : circ dim),
   (decompose_to_cnot c =l= c)%ucom.
-Proof. intros. apply StandardGateSet.decompose_to_cnot_sound. Qed.
+Proof. intros. apply FullGateSet.decompose_to_cnot_sound. Qed.
 
 Lemma decompose_to_cnot_preserves_WT : forall {dim} (c : circ dim),
   uc_well_typed_l c -> uc_well_typed_l (decompose_to_cnot c).
@@ -142,7 +142,7 @@ Qed.
 
 Lemma decompose_to_cnot_uses_cnot_gates : forall {dim} (c : circ dim),
   forall_gates only_cnots (decompose_to_cnot c).
-Proof. intros. apply StandardGateSet.decompose_to_cnot_gates. Qed.
+Proof. intros. apply FullGateSet.decompose_to_cnot_gates. Qed.
 
 (* Functions for counting gates *)
 Definition count_I {dim} (l : circ dim) :=
@@ -245,7 +245,7 @@ Proof.
   replace (total_gate_count (a :: l0)) with (S (total_gate_count l0)) by reflexivity.
   simpl length.
   rewrite IHl0.
-  destruct a; dependent destruction s; simpl length;
+  destruct a; dependent destruction f; simpl length;
   repeat rewrite <- plus_Snm_nSm; repeat rewrite plus_Sn_m; reflexivity.
 Qed.
 
@@ -264,7 +264,7 @@ Proof.
 Qed.
 
 Lemma scale_count_correct : forall {dim} (c : circ dim) n,
-  scale_count (count_gates c) n = count_gates (StdList.niter c n).
+  scale_count (count_gates c) n = count_gates (FullList.niter c n).
 Proof.
   intros dim c n.
   induction n.
@@ -275,7 +275,7 @@ Proof.
 Qed.
 
 Lemma count_gates_lcr_correct : forall {dim} (l c r : circ dim) n,
-  count_gates_lcr (l,c,r) n = count_gates (l ++ StdList.niter c (n - 2) ++ r).
+  count_gates_lcr (l,c,r) n = count_gates (l ++ FullList.niter c (n - 2) ++ r).
 Proof.
   intros.
   rewrite app_assoc.
@@ -289,27 +289,27 @@ Qed.
 (** IBM optimizations **)
 
 Definition optimize_1q_gates {dim} (c : circ dim) : circ dim :=
-  IBM_to_standard (Optimize1qGates.optimize_1q_gates (standard_to_IBM c)).
+  IBM_to_full (Optimize1qGates.optimize_1q_gates (full_to_IBM c)).
 
 Definition cx_cancellation {dim} (c : circ dim) : circ dim :=
-  IBM_to_standard (CXCancellation.cx_cancellation (standard_to_IBM c)).
+  IBM_to_full (CXCancellation.cx_cancellation (full_to_IBM c)).
 
 Definition optimize_ibm {dim} (c : circ dim) : circ dim :=
-  IBM_to_standard 
+  IBM_to_full 
     (CXCancellation.cx_cancellation 
       (Optimize1qGates.optimize_1q_gates 
-        (standard_to_IBM c))).
+        (full_to_IBM c))).
 
 Lemma optimize_1q_gates_preserves_semantics : forall {dim} (c : circ dim),
   uc_well_typed_l c -> (optimize_1q_gates c ≅l≅ c)%ucom.
 Proof. 
   intros dim c H.
   unfold optimize_1q_gates.
-  erewrite IBM_to_standard_cong.
+  erewrite IBM_to_full_cong.
   apply uc_equiv_cong_l.
-  apply IBM_to_standard_inv.
+  apply IBM_to_full_inv.
   apply Optimize1qGates.optimize_1q_gates_sound.
-  apply StandardGateSet.standard_to_IBM_WT.
+  apply FullGateSet.full_to_IBM_WT.
   assumption.
 Qed.
 
@@ -322,10 +322,10 @@ Qed.
 
 Ltac show_preserves_mapping_ibm :=
   unfold optimize_1q_gates, cx_cancellation, optimize_ibm;
-  repeat (try apply IBM_to_standard_preserves_mapping;
+  repeat (try apply IBM_to_full_preserves_mapping;
           try apply Optimize1qGates.optimize_1q_gates_respects_constraints;
           try apply CXCancellation.cx_cancellation_respects_constraints;
-          try apply standard_to_IBM_preserves_mapping;
+          try apply full_to_IBM_preserves_mapping;
           try assumption).
 
 Lemma optimize_1q_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
@@ -338,10 +338,10 @@ Lemma cx_cancellation_preserves_semantics : forall {dim} (c : circ dim),
 Proof.
   intros dim c WT.
   unfold cx_cancellation. 
-  erewrite IBM_to_standard_equiv.
-  apply IBM_to_standard_inv.
+  erewrite IBM_to_full_equiv.
+  apply IBM_to_full_inv.
   apply CXCancellation.cx_cancellation_sound. 
-  apply StandardGateSet.standard_to_IBM_WT.
+  apply FullGateSet.full_to_IBM_WT.
   assumption.
 Qed.
 
@@ -362,21 +362,21 @@ Lemma optimize_ibm_preserves_semantics : forall {dim} (c : circ dim),
 Proof. 
   intros dim c WT.
   unfold optimize_ibm. 
-  erewrite IBM_to_standard_cong.
+  erewrite IBM_to_full_cong.
   apply uc_equiv_cong_l.
-  apply IBM_to_standard_inv.
+  apply IBM_to_full_inv.
   eapply IBMList.uc_cong_l_trans.
   apply IBMList.uc_equiv_cong_l.
   apply CXCancellation.cx_cancellation_sound. 
   eapply IBMList.uc_cong_l_implies_WT. 
   symmetry.
   apply Optimize1qGates.optimize_1q_gates_sound.
-  apply StandardGateSet.standard_to_IBM_WT.
+  apply FullGateSet.full_to_IBM_WT.
   assumption.
-  apply StandardGateSet.standard_to_IBM_WT.
+  apply FullGateSet.full_to_IBM_WT.
   assumption. 
   apply Optimize1qGates.optimize_1q_gates_sound.
-  apply StandardGateSet.standard_to_IBM_WT.
+  apply FullGateSet.full_to_IBM_WT.
   assumption.
 Qed.
 
@@ -396,19 +396,19 @@ Proof. intros. show_preserves_mapping_ibm. Qed.
 (** Nam optimizations **)
 
 Definition not_propagation {dim} (c : circ dim) : circ dim :=
-  RzQ_to_standard (NotPropagation.not_propagation (standard_to_RzQ c)).
+  RzQ_to_full (NotPropagation.not_propagation (full_to_RzQ c)).
 
 Definition hadamard_reduction {dim} (c : circ dim) : circ dim :=
-  RzQ_to_standard (HadamardReduction.hadamard_reduction (standard_to_RzQ c)).
+  RzQ_to_full (HadamardReduction.hadamard_reduction (full_to_RzQ c)).
 
 Definition cancel_single_qubit_gates {dim} (c : circ dim) : circ dim :=
-  RzQ_to_standard (GateCancellation.cancel_single_qubit_gates (standard_to_RzQ c)).
+  RzQ_to_full (GateCancellation.cancel_single_qubit_gates (full_to_RzQ c)).
 
 Definition cancel_two_qubit_gates {dim} (c : circ dim) : circ dim :=
-  RzQ_to_standard (GateCancellation.cancel_two_qubit_gates (standard_to_RzQ c)).
+  RzQ_to_full (GateCancellation.cancel_two_qubit_gates (full_to_RzQ c)).
 
 Definition merge_rotations {dim} (c : circ dim) : circ dim :=
-  RzQ_to_standard (RotationMerging.merge_rotations (standard_to_RzQ c)).
+  RzQ_to_full (RotationMerging.merge_rotations (full_to_RzQ c)).
 
 (* optimize_nam function applies our optimizations in the following order,
    as designed by Nam et al. :
@@ -421,7 +421,7 @@ Definition merge_rotations {dim} (c : circ dim) : circ dim :=
    4 - rotation merging *) 
 
 Definition optimize_nam {dim} (c : circ dim) : circ dim :=
-  RzQ_to_standard
+  RzQ_to_full
     (GateCancellation.cancel_single_qubit_gates 
       (GateCancellation.cancel_two_qubit_gates 
         (RotationMerging.merge_rotations
@@ -432,12 +432,12 @@ Definition optimize_nam {dim} (c : circ dim) : circ dim :=
                   (GateCancellation.cancel_two_qubit_gates 
                     (HadamardReduction.hadamard_reduction 
                       (NotPropagation.not_propagation 
-                        (standard_to_RzQ c))))))))))). 
+                        (full_to_RzQ c))))))))))). 
 
 (* Light version of the optimizer that excludes rotation merging
    (used for evaluating on QFT & adder programs). *)
 Definition optimize_nam_light {dim} (c : circ dim) : circ dim :=
-  RzQ_to_standard
+  RzQ_to_full
     (GateCancellation.cancel_single_qubit_gates 
       (HadamardReduction.hadamard_reduction 
         (GateCancellation.cancel_two_qubit_gates 
@@ -445,7 +445,7 @@ Definition optimize_nam_light {dim} (c : circ dim) : circ dim :=
             (GateCancellation.cancel_two_qubit_gates 
               (HadamardReduction.hadamard_reduction 
                 (NotPropagation.not_propagation 
-                  (standard_to_RzQ c)))))))).
+                  (full_to_RzQ c)))))))).
 
 (* LCR optimizer for multiple iterations. *)
 Definition optimize_nam_lcr {dim} (c : circ dim) : option (circ dim * circ dim * circ dim) :=
@@ -474,14 +474,14 @@ Qed.
 
 Ltac show_preserves_semantics_nam :=
   unfold not_propagation, hadamard_reduction, cancel_single_qubit_gates, cancel_two_qubit_gates, merge_rotations, optimize_nam, optimize_nam_light;
-  erewrite RzQ_to_standard_cong;
-  [ apply RzQ_to_standard_inv 
+  erewrite RzQ_to_full_cong;
+  [ apply RzQ_to_full_inv 
   | repeat (try rewrite NotPropagation.not_propagation_sound;
             try rewrite HadamardReduction.hadamard_reduction_sound;
             try rewrite cancel_single_qubit_gates_sound';
             try rewrite cancel_two_qubit_gates_sound';
             try rewrite merge_rotations_sound';
-            try apply StandardGateSet.standard_to_RzQ_WT;
+            try apply FullGateSet.full_to_RzQ_WT;
             try apply NotPropagation.not_propagation_WT;
             try apply HadamardReduction.hadamard_reduction_WT;
             try apply GateCancellation.cancel_single_qubit_gates_WT;
@@ -502,13 +502,13 @@ Qed.
 
 Ltac show_preserves_mapping_nam :=
   unfold not_propagation, hadamard_reduction, cancel_single_qubit_gates, cancel_two_qubit_gates, merge_rotations, optimize_nam, optimize_nam_light;
-  repeat (try apply RzQ_to_standard_preserves_mapping;
+  repeat (try apply RzQ_to_full_preserves_mapping;
           try apply NotPropagation.not_propagation_respects_constraints;
           try apply HadamardReduction.hadamard_reduction_respects_constraints;
           try apply GateCancellation.cancel_single_qubit_gates_respects_constraints;
           try apply GateCancellation.cancel_two_qubit_gates_respects_constraints;
           try apply RotationMerging.merge_rotations_respects_constraints;
-          try apply standard_to_RzQ_preserves_mapping;
+          try apply full_to_RzQ_preserves_mapping;
           try assumption).
 
 Lemma not_propagation_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
@@ -702,11 +702,11 @@ Definition check_constraints {dim} (c : circ dim) (cg : c_graph) :=
   let is_in_graph := get_is_in_graph cg in
   respects_constraints_directed_b is_in_graph (cast c n).
 
-Definition simple_map {cdim ldim} (c : circ cdim) (la : layout ldim) (cg : c_graph) :=
+Definition swap_route {cdim ldim} (c : circ cdim) (la : layout ldim) (cg : c_graph) :=
   let n := get_dim cg in
   let get_path := get_get_path cg in
   let is_in_graph := get_is_in_graph cg in
-  SimpleMapping.simple_map (cast c n) (cast_layout la n) get_path is_in_graph. 
+  SimpleMapping.swap_route (cast c n) (cast_layout la n) get_path is_in_graph. 
 
 Definition make_tenerife (_:unit) : c_graph := 
   (5, Tenerife.get_path, Tenerife.is_in_graph).
@@ -763,23 +763,23 @@ Module MappingProofs.
   Module SMP := SimpleMappingProofs CG.
   Import SMP.
 
-  Lemma simple_map_preserves_semantics : forall {cdim ldim} 
+  Lemma swap_route_preserves_semantics : forall {cdim ldim} 
         (c : circ cdim) (la : layout ldim) c' la',
     uc_well_typed_l (cast c dim) ->
     layout_well_formed dim (cast_layout la dim) ->
-    simple_map c la cg = (c', la') ->
+    swap_route c la cg = (c', la') ->
     (cast c dim) ≡ c' with (@phys2log dim (cast_layout la dim)) and (log2phys la').
-  Proof. intros. apply simple_map_sound; assumption. Qed.
+  Proof. intros. apply swap_route_sound; assumption. Qed.
 
-  Lemma simple_map_preserves_WT : forall {cdim ldim} 
+  Lemma swap_route_preserves_WT : forall {cdim ldim} 
         (c : circ cdim) (la : layout ldim) c' la',
     uc_well_typed_l (cast c dim) ->
     layout_well_formed dim (cast_layout la dim) ->
-    simple_map c la cg = (c', la') ->
+    swap_route c la cg = (c', la') ->
     uc_well_typed_l c'.
   Proof. 
     intros cdim ldim c la c' la' WT WF H. 
-    apply (simple_map_preserves_semantics _ _ _ _ WT WF) in H.
+    apply (swap_route_preserves_semantics _ _ _ _ WT WF) in H.
     unfold uc_eq_perm in H.
     apply list_to_ucom_WT. 
     apply uc_eval_nonzero_iff.
@@ -794,26 +794,26 @@ Module MappingProofs.
     contradiction.
   Qed.
 
-  Lemma simple_map_respects_constraints : forall {cdim ldim} 
+  Lemma swap_route_respects_constraints : forall {cdim ldim} 
         (c : circ cdim) (la : layout ldim) c' la',
     uc_well_typed_l (cast c dim) ->
     layout_well_formed dim (cast_layout la dim) ->
-    simple_map c la cg = (c', la') ->
+    swap_route c la cg = (c', la') ->
     respects_constraints_directed (get_is_in_graph cg) U_CX c'.
   Proof.
     intros cdim ldim c la c' la' WT WF H. 
-    apply simple_map_respects_constraints_directed in H; assumption. 
+    apply swap_route_respects_constraints_directed in H; assumption. 
   Qed.
 
-  Lemma simple_map_layout_well_formed : forall {cdim ldim} 
+  Lemma swap_route_layout_well_formed : forall {cdim ldim} 
         (c : circ cdim) (la : layout ldim) c' la',
     uc_well_typed_l (cast c dim) ->
     layout_well_formed dim (cast_layout la dim) ->
-    simple_map c la cg = (c', la') ->
+    swap_route c la cg = (c', la') ->
     layout_well_formed dim la'.
   Proof.
     intros cdim ldim c la c' la' WT WF H. 
-    apply simple_map_well_formed in H; assumption. 
+    apply swap_route_well_formed in H; assumption. 
   Qed.
 
 End MappingProofs.
@@ -857,7 +857,7 @@ Definition safe_map {cdim ldim} (c : circ cdim) (la : layout ldim) (cg : c_graph
   let get_path := get_get_path cg in
   let is_in_graph := get_is_in_graph cg in
   if check_well_typed c n && check_layout la n && check_graph cg
-  then Some (simple_map c la cg) 
+  then Some (swap_route c la cg) 
   else None.
 
 Module MappingProofs'.
@@ -905,7 +905,7 @@ Module MappingProofs'.
       simpl in H; inversion H; subst.
     apply check_well_typed_correct in HWT.
     apply check_layout_correct in HWF.
-    apply simple_map_sound; assumption. 
+    apply swap_route_sound; assumption. 
   Qed.
 
   Lemma safe_map_respects_constraints : forall c' la',
@@ -921,7 +921,7 @@ Module MappingProofs'.
       simpl in H; inversion H; subst.
     apply check_well_typed_correct in HWT.
     apply check_layout_correct in HWF.
-    eapply simple_map_respects_constraints_directed; try apply H1; assumption. 
+    eapply swap_route_respects_constraints_directed; try apply H1; assumption. 
   Qed.
 
 End MappingProofs'.
@@ -936,7 +936,7 @@ Definition optimize_then_map (c : circ 10) :=
   then 
     let c' := optimize_nam c in    (* optimization #1 *)
     let c'' := optimize_ibm c' in  (* optimization #2 *)
-    Some (simple_map c'' la gr)    (* map *)
+    Some (swap_route c'' la gr)    (* map *)
   else None.
 
 Module LNN10 <: ConnectivityGraph.
@@ -971,7 +971,7 @@ Proof.
   apply check_well_typed_correct in WT.
   rewrite cast_same in WT.
   clear H.
-  apply simple_map_sound in H1.
+  apply swap_route_sound in H1.
   all: unfold get_dim, make_lnn in *; simpl fst in *.
   apply uc_eq_perm_uc_cong_l with (l2:=cast (optimize_ibm (optimize_nam c)) 10).
   rewrite cast_same.
@@ -1002,7 +1002,7 @@ Proof.
   apply check_well_typed_correct in WT.
   rewrite cast_same in WT.
   clear H. 
-  eapply simple_map_respects_constraints_directed; try apply H1.
+  eapply swap_route_respects_constraints_directed; try apply H1.
   all: unfold get_dim, make_lnn; simpl fst.
   rewrite cast_same.
   apply optimize_ibm_preserves_WT.
@@ -1017,7 +1017,7 @@ Definition map_then_optimize (c : circ 10) :=
   let la := trivial_layout 10 in         (* trivial layout on 10 qubits *)
   if check_well_typed c 10               (* check that c is well-typed & uses <=10 qubits *)
   then 
-    let (c', la') := simple_map c la gr in  (* map *)
+    let (c', la') := swap_route c la gr in  (* map *)
     let c'' := optimize_nam c' in           (* optimization #1 *)
     let c''' := optimize_ibm c'' in         (* optimization #2 *)
     Some (c''', la') 
@@ -1033,14 +1033,14 @@ Proof.
   apply check_well_typed_correct in WT.
   rewrite cast_same in WT.
   clear H.
-  destruct (simple_map c (trivial_layout 10) (make_lnn 10)) eqn:res.
+  destruct (swap_route c (trivial_layout 10) (make_lnn 10)) eqn:res.
   inversion H1; subst; clear H1.
   assert (WTs:=res).
-  apply simple_map_WT in WTs.
-  apply simple_map_sound in res.
+  apply swap_route_WT in WTs.
+  apply swap_route_sound in res.
   all: unfold get_dim, make_lnn in *; simpl fst in *.
   rewrite cast_same, cast_layout_same in res.
-  apply uc_eq_perm_uc_cong_l_alt with (l2:=s).
+  apply uc_eq_perm_uc_cong_l_alt with (l2:=f).
   apply uc_eq_perm_implies_uc_cong_perm.
   apply res.
   rewrite optimize_ibm_preserves_semantics.
@@ -1069,9 +1069,9 @@ Proof.
   apply check_well_typed_correct in WT.
   rewrite cast_same in WT.
   clear H. 
-  destruct (simple_map c (trivial_layout 10) (make_lnn 10)) eqn:res.
+  destruct (swap_route c (trivial_layout 10) (make_lnn 10)) eqn:res.
   inversion H1; subst; clear H1.
-  apply simple_map_respects_constraints_directed in res.
+  apply swap_route_respects_constraints_directed in res.
   replace LNN10.is_in_graph with (get_is_in_graph (make_lnn 10)) by reflexivity.
   apply optimize_ibm_preserves_mapping.
   apply optimize_nam_preserves_mapping.

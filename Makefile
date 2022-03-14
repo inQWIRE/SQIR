@@ -33,7 +33,7 @@ examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo exampl
 
 shor: invoke-coqmakefile examples/shor/Main.vo
 
-voqc: invoke-coqmakefile VOQC/Main.vo VOQC/GreedyLayout.vo VOQC/MappingValidation.vo
+voqc: invoke-coqmakefile VOQC/Main.vo VOQC/MappingValidation.vo
 
 # Built by 'make examples'
 
@@ -146,28 +146,22 @@ VOQC/RotationMerging.vo: VOQC/RotationMerging.v VOQC/RzQGateSet.vo SQIR/UnitaryO
 VOQC/RzQGateSet.vo: VOQC/RzQGateSet.v VOQC/UnitaryListRepresentation.vo VOQC/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) VOQC/RzQGateSet.v
 
-VOQC/SimpleMapping.vo: VOQC/SimpleMapping.v VOQC/ConnectivityGraph.vo VOQC/Layouts.vo VOQC/MappingConstraints.vo VOQC/StandardGateSet.vo
-	coqc $(COQ_OPTS) VOQC/SimpleMapping.v
+VOQC/SwapRoute.vo: VOQC/SwapRoute.v VOQC/ConnectivityGraph.vo VOQC/Layouts.vo VOQC/MappingConstraints.vo VOQC/FullGateSet.vo
+	coqc $(COQ_OPTS) VOQC/SwapRoute.v
 
-VOQC/StandardGateSet.vo: VOQC/StandardGateSet.v VOQC/IBMGateSet.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo
-	coqc $(COQ_OPTS) VOQC/StandardGateSet.v
+VOQC/FullGateSet.vo: VOQC/FullGateSet.v VOQC/IBMGateSet.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo VOQC/MappingGateSet.vo
+	coqc $(COQ_OPTS) VOQC/FullGateSet.v
 
-VOQC/Main.vo: VOQC/Main.v VOQC/CXCancellation.vo VOQC/GateCancellation.vo VOQC/HadamardReduction.vo VOQC/NotPropagation.vo VOQC/Optimize1qGates.vo VOQC/RotationMerging.vo VOQC/RzQGateSet.vo VOQC/SimpleMapping.vo VOQC/StandardGateSet.vo
+VOQC/Main.vo: VOQC/Main.v VOQC/CXCancellation.vo VOQC/GateCancellation.vo VOQC/HadamardReduction.vo VOQC/NotPropagation.vo VOQC/Optimize1qGates.vo VOQC/RotationMerging.vo VOQC/RzQGateSet.vo VOQC/SwapRoute.vo VOQC/FullGateSet.vo
 	coqc $(COQ_OPTS) VOQC/Main.v
 
-VOQC/GreedyLayout.vo: VOQC/GreedyLayout.v VOQC/ConnectivityGraph.vo VOQC/StandardGateSet.vo
+VOQC/GreedyLayout.vo: VOQC/GreedyLayout.v VOQC/ConnectivityGraph.vo VOQC/FullGateSet.vo
 	coqc $(COQ_OPTS) VOQC/GreedyLayout.v
-
-VOQC/Layouts2.vo: VOQC/Layouts2.v
-	coqc $(COQ_OPTS) VOQC/Layouts2.v
 
 VOQC/MappingGateSet.vo: VOQC/MappingGateSet.v VOQC/UnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) VOQC/MappingGateSet.v
 
-VOQC/SimpleMapping2.vo: VOQC/SimpleMapping2.v VOQC/MappingGateSet.vo VOQC/Layouts2.vo
-	coqc $(COQ_OPTS) VOQC/SimpleMapping2.v
-
-VOQC/MappingValidation.vo: VOQC/MappingValidation.v VOQC/SimpleMapping2.vo
+VOQC/MappingValidation.vo: VOQC/MappingValidation.v VOQC/SwapRoute.vo
 	coqc $(COQ_OPTS) VOQC/MappingValidation.v
 
 # Misc. files built by 'make all'
