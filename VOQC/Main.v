@@ -727,9 +727,10 @@ Definition decompose_swaps {dim} (c : circ dim) (cg : c_graph) :=
   map_to_full (SwapRoute.decompose_swaps_and_cnots (full_to_map c) (is_in_graph cg)).
 
 Definition trivial_layout n : layout := Layouts.trivial_layout n.
-Definition list_to_layout l : option layout :=
-  if Layouts.check_list l then Some (Layouts.list_to_layout l) else None.
-Definition layout_to_list (lay : layout) n := Layouts.layout_to_list n lay.
+Definition check_list l : bool := Layouts.check_list l.
+Definition list_to_layout l : layout := Layouts.list_to_layout l.
+Definition layout_to_list (lay : layout) n : list nat := 
+  map (fun ox => match ox with Some x => x | _ => O end) (Layouts.layout_to_list n lay).
 Definition greedy_layout {dim} (c : circ dim) (cg : c_graph) : layout :=
   GreedyLayout.greedy_layout (full_to_map c) (graph_dim cg) 
                              (get_nearby_qubits cg) (qubit_ordering cg).
@@ -822,14 +823,9 @@ End MappingProofs.
 Lemma trivial_layout_well_formed : forall n, layout_bijective n (trivial_layout n).
 Proof. intros. apply Layouts.trivial_layout_bijective. Qed.
 
-Lemma list_to_layout_well_formed : forall l lay, 
-  list_to_layout l = Some lay -> layout_bijective (length l) lay.
-Proof. 
-  intros l lay H.
-  unfold list_to_layout in H.
-  destruct (check_list l) eqn:cl; inversion H.
-  subst. apply Layouts.check_list_layout_bijective. auto.
-Qed.
+Lemma list_to_layout_well_formed : forall l, 
+  check_list l = true -> layout_bijective (length l) (list_to_layout l).
+Proof. intros l H. apply Layouts.check_list_layout_bijective. auto. Qed.
 
 Lemma greedy_layout_well_formed : forall {dim} (c : circ dim) (cg : c_graph), 
   layout_bijective (graph_dim cg) (greedy_layout c cg).
