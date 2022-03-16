@@ -194,7 +194,7 @@ Definition count_3q {dim} (l : circ dim) :=
   length (filter (fun g => match g with | App3 _ _ _ _ => true | _ => false end) l).
 Definition count_total {dim} (l : circ dim) := length l.
 
-Definition count_Rzq_Clifford {dim} (l : circ dim) :=
+Definition count_rzq_clifford {dim} (l : circ dim) :=
   let f g := match g with
              | App1 (U_Rzq q) _ =>
                  let q' := RzQGateSet.bound q in
@@ -721,7 +721,10 @@ Qed.
 Definition swap_route {dim} (c : circ dim) (lay : layout) (cg : c_graph) :=
   let n := graph_dim cg in
   let (c,_) := SwapRoute.swap_route (full_to_map (cast c n)) lay (get_path cg) in
-  map_to_full (SwapRoute.decompose_swaps_and_cnots c (is_in_graph cg)). 
+  map_to_full c.
+  
+Definition decompose_swaps {dim} (c : circ dim) (cg : c_graph) :=
+  map_to_full (SwapRoute.decompose_swaps_and_cnots (full_to_map c) (is_in_graph cg)).
 
 Definition trivial_layout n : layout := Layouts.trivial_layout n.
 Definition list_to_layout l : option layout :=
@@ -772,7 +775,8 @@ Proof. Admitted.
     apply get_log_perm. assumption.
     apply get_phys_perm. admit.
     rewrite eval_full_to_map in sr.
-    
+    rewrite <- (eval_full_to_map (map_to_full m)).
+
 (* blah - will fix later *)
 Admitted.
 
@@ -795,20 +799,23 @@ Admitted.
     contradiction.
   Qed.
 
-  Lemma swap_route_respects_constraints : forall {dim} (c : circ dim) (lay : layout),
+  Lemma swap_route_respects_constraints_undirected : forall {dim} (c : circ dim) (lay : layout),
     uc_well_typed_l (cast c (graph_dim cg)) ->
     layout_bijective (graph_dim cg) lay ->
-    respects_constraints_directed (is_in_graph cg) U_CX (swap_route c lay cg).
+    respects_constraints_undirected (is_in_graph cg) (swap_route c lay cg).
   Proof.
     intros dim c lay WT WF.
     unfold swap_route.
     destruct (SwapRoute.swap_route (full_to_map (cast c (graph_dim cg))) lay (get_path cg)) eqn:sr.
-(*
-    apply decompose_swaps_and_cnots_respects_directed.
-...
-  Qed.
-*)
 Admitted.
+
+(*
+  Lemma decompose_swaps_preserves_semantics : forall {dim} (c : circ dim),
+
+  Lemma decompose_swaps_WT : forall {dim} (c : circ dim),
+
+  Lemma decompose_swaps_respects_constraints : forall {dim} (c : circ dim),
+*)
 
 End MappingProofs.
 
