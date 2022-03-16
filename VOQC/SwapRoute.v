@@ -36,10 +36,10 @@ Fixpoint path_to_swaps {U dim} p m : (map_ucom_l U dim * layout) :=
   | _ => ([], m) (* bad input - invaid path *)
   end.
 
-(* The input program references *logical* qubits, and the returned program
-   references *physical* qubits. get_path and is_in_graph_b also reference 
+(** The input program references *logical* qubits, and the returned program
+   references _physical_ qubits. get_path and is_in_graph_b also reference 
    physical qubits. The output of this is a program with SWAPs that respects
-   *undirected* connectivity constraints. *) 
+   _undirected_ connectivity constraints. *) 
 Fixpoint swap_route {U dim} (l : map_ucom_l U dim) (m : layout) (get_path : nat -> nat -> list nat) : (map_ucom_l U dim * layout) :=
   match l with
   | [] => ([],m)
@@ -56,12 +56,12 @@ Fixpoint swap_route {U dim} (l : map_ucom_l U dim) (m : layout) (get_path : nat 
   | _ => ([], m) (* unreachable due to the gate set *)
   end.
 
-(* Finally, a "decomposition" function that ensures that the output satisfies
-   directed connectivity contraints. This function is specialized to the Full
-   gate set where we have access to a Hadamard gate. *)
 Definition H {dim} a : gate_app (Map_Unitary (Full_Unitary 1)) dim := 
   App1 (UMap_U FullGateSet.U_H) a.
 
+(** Finally, a "decomposition" function that ensures that the output satisfies
+   directed connectivity contraints. This function is specialized to the Full
+   gate set where we have access to a Hadamard gate. *)
 Definition decompose_swaps_and_cnots_aux {dim} (is_in_graph : nat -> nat -> bool) (g : gate_app (Map_Unitary (Full_Unitary 1)) dim) : map_ucom_l (Full_Unitary 1) dim :=
   match g with
   | App2 UMap_CNOT m n => 
@@ -240,7 +240,9 @@ Proof.
     contradiction.
 Qed.
 
-Module SimpleMappingProofs (G : GateSet) (CG : ConnectivityGraph).
+(** ** Proofs for an arbitrary gate set & connectivity graph *)
+
+Module SwapRouteProofs (G : GateSet) (CG : ConnectivityGraph).
 
 Definition dim := CG.dim.
 Definition ucom_l dim := map_ucom_l (G.U 1) dim.
@@ -765,6 +767,29 @@ Proof.
     + dependent destruction m0.
 Qed.
 
+End SwapRouteProofs.
+
+(** ** Proofs for the "full" gate set & an arbitrary connectivity graph *)
+
+(*
+Lemma decompose_swaps_and_cnots_sound : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim),
+  MapList.uc_equiv_l (decompose_swaps_and_cnots l CG.is_in_graph) l.
+Proof.
+  intros dim l.
+  unfold decompose_to_cnot.
+  induction l.
+  - rewrite change_gate_set_nil.
+    reflexivity.
+  - rewrite change_gate_set_cons.
+    unfold FullList.uc_equiv_l in *.
+    simpl.
+    rewrite FullList.list_to_ucom_append.
+    destruct a; apply useq_congruence; try apply IHl;
+      dependent destruction f; simpl; 
+      repeat rewrite <- useq_assoc; rewrite SKIP_id_r; 
+      reflexivity.
+Qed.
+
 Lemma decompose_swaps_and_cnots_respects_directed : forall (l : map_ucom_l (Full_Unitary 1) dim),
   respects_constraints_undirected CG.is_in_graph l ->
   respects_constraints_directed CG.is_in_graph UMap_CNOT (decompose_swaps_and_cnots l CG.is_in_graph).
@@ -791,140 +816,4 @@ Proof.
   repeat constructor; assumption.
   apply IHl. assumption.
 Qed.
-
-(** Equivalence up to qubit reordering without explicit permutations **)
-Definition uc_equiv_perm (l1 l2 : ucom_l dim) := exists pin pout, 
-  permutation dim pin /\ permutation dim pout /\ l1 ≡ l2 with pin and pout.
-Infix "≡x" := uc_equiv_perm (at level 20).
-
-Lemma permutation_id : permutation dim (fun x : nat => x).
-Proof. exists (fun x : nat => x). repeat split; auto. Qed.  
-
-Lemma uc_equiv_perm_refl : forall (l1 : ucom_l dim), l1 ≡x l1.
-Proof. 
-  intros. 
-  exists (fun x => x). 
-  exists (fun x => x). 
-  repeat split.
-  apply permutation_id.
-  apply permutation_id.
-  unfold uc_equiv_perm_ex.
-  rewrite perm_to_matrix_I; auto.
-  unfold eval. Msimpl. reflexivity.
-  apply permutation_id.
-Qed.
-
-Lemma uc_equiv_perm_sym : forall (l1 l2 : ucom_l dim), l1 ≡x l2 -> l2 ≡x l1.
-Proof. 
-  intros l1 l2 H. 
-  destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
-  unfold uc_equiv_perm, uc_equiv_perm_ex in *.
-  destruct Hp1 as [p1inv Hp1].
-  destruct Hp2 as [p2inv Hp2].
-  assert (permutation dim p1inv).
-  { exists p1.
-    intros x Hx.
-    destruct (Hp1 x Hx) as [? [? [? ?]]].
-    repeat split; auto. }
-  assert (permutation dim p2inv).
-  { exists p2.
-    intros x Hx.
-    destruct (Hp2 x Hx) as [? [? [? ?]]].
-    repeat split; auto. }
-  exists p1inv.
-  exists p2inv.
-  repeat split; auto.
-  rewrite H.
-  repeat rewrite Mmult_assoc.
-  rewrite perm_to_matrix_Mmult; auto.
-  repeat rewrite <- Mmult_assoc.
-  rewrite perm_to_matrix_Mmult; auto.
-  rewrite 2 perm_to_matrix_I.
-  unfold eval. Msimpl. reflexivity.
-  apply permutation_compose; auto.
-  exists p1inv. assumption.
-  intros x Hx.
-  destruct (Hp1 x Hx) as [_ [_ [? _]]].
-  assumption.
-  apply permutation_compose; auto.
-  exists p2inv. assumption.
-  intros x Hx.
-  destruct (Hp2 x Hx) as [_ [_ [_ ?]]].
-  assumption.
-  exists p2inv. assumption.
-  exists p1inv. assumption.
-Qed.
-
-Lemma uc_equiv_perm_trans : forall (l1 l2 l3 : ucom_l dim), 
-  l1 ≡x l2 -> l2 ≡x l3 -> l1 ≡x l3.
-Proof.
-  intros l1 l2 l3 H1 H2.
-  unfold uc_equiv_perm in *.
-  destruct H1 as [p1 [p2 [Hp1 [Hp2 H1]]]].
-  destruct H2 as [p3 [p4 [Hp3 [Hp4 H2]]]].
-  unfold uc_equiv_perm_ex in *.
-  rewrite H1, H2.
-  exists (p1 ∘ p3)%prg.
-  exists (p4 ∘ p2)%prg.
-  repeat split.
-  apply permutation_compose; auto.
-  apply permutation_compose; auto.
-  rewrite <- 2 perm_to_matrix_Mmult; auto.
-  repeat rewrite Mmult_assoc.
-  reflexivity.
-Qed.
-    
-Add Parametric Relation: (ucom_l dim) (uc_equiv_perm)
-  reflexivity proved by uc_equiv_perm_refl
-  symmetry proved by uc_equiv_perm_sym
-  transitivity proved by uc_equiv_perm_trans
-  as uc_equiv_perm_rel.
-
-(** Equivalence up to qubit reordering, up to a global phase **)
-Definition uc_cong_perm (l1 l2 : ucom_l dim) := exists pin pout,
-  permutation dim pin /\ permutation dim pout /\
-  eval l1 ∝ perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
-Infix "≅x" := uc_cong_perm (at level 20).
-
-Lemma uc_equiv_perm_implies_uc_cong_perm : forall (l1 l2 : ucom_l dim),
-  l1 ≡x l2 -> l1 ≅x l2.
-Proof.
-  intros l1 l2 H.
-  destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
-  exists p1. exists p2.
-  repeat split; auto.
-  exists 0%R.
-  rewrite Cexp_0.
-  rewrite Mscale_1_l.
-  apply H.
-Qed.
-
-Lemma uc_cong_perm_uc_cong_l : forall (l1 l2 l3 : ucom_l dim),
-  (l1 ≅l≅ l2)%ucom -> l2 ≅x l3 -> l1 ≅x l3.
-Proof.
-  intros l1 l2 l3 [r1 H1] [p1 [p2 [Hp1 [Hp2 [r2 H2]]]]].
-  exists p1. exists p2.
-  repeat split; auto.
-  exists (r1 + r2)%R.
-  unfold eval in *.
-  rewrite H1, H2. 
-  distribute_scale.
-  rewrite <- Cexp_add.
-  reflexivity.
-Qed.
-
-Lemma uc_eq_perm_uc_cong_l_alt : forall (l1 l2 l3 : ucom_l dim),
-  l1 ≅x l2 -> (l2 ≅l≅ l3)%ucom -> l1 ≅x l3.
-Proof.
-  intros l1 l2 l3 [p1 [p2 [Hp1 [Hp2 [r1 H1]]]]] [r2 H2].
-  exists p1. exists p2.
-  repeat split; auto.
-  exists (r1 + r2)%R.
-  unfold eval in *.
-  rewrite H1, H2. 
-  distribute_scale.
-  rewrite <- Cexp_add.
-  reflexivity.
-Qed.
-
-End SimpleMappingProofs.
+*)

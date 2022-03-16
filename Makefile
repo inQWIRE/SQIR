@@ -33,7 +33,7 @@ examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo exampl
 
 shor: invoke-coqmakefile examples/shor/Main.vo
 
-voqc: invoke-coqmakefile VOQC/Main.vo VOQC/MappingValidation.vo
+voqc: invoke-coqmakefile VOQC/Main.vo
 
 # Built by 'make examples'
 
@@ -152,10 +152,10 @@ VOQC/SwapRoute.vo: VOQC/SwapRoute.v VOQC/ConnectivityGraph.vo VOQC/Layouts.vo VO
 VOQC/FullGateSet.vo: VOQC/FullGateSet.v VOQC/IBMGateSet.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo VOQC/MappingGateSet.vo
 	coqc $(COQ_OPTS) VOQC/FullGateSet.v
 
-VOQC/Main.vo: VOQC/Main.v VOQC/CXCancellation.vo VOQC/GateCancellation.vo VOQC/HadamardReduction.vo VOQC/NotPropagation.vo VOQC/Optimize1qGates.vo VOQC/RotationMerging.vo VOQC/RzQGateSet.vo VOQC/SwapRoute.vo VOQC/FullGateSet.vo
+VOQC/Main.vo: VOQC/Main.v VOQC/CXCancellation.vo VOQC/GateCancellation.vo VOQC/HadamardReduction.vo VOQC/NotPropagation.vo VOQC/Optimize1qGates.vo VOQC/RotationMerging.vo VOQC/RzQGateSet.vo VOQC/SwapRoute.vo VOQC/MappingValidation.vo VOQC/GreedyLayout.vo
 	coqc $(COQ_OPTS) VOQC/Main.v
 
-VOQC/GreedyLayout.vo: VOQC/GreedyLayout.v VOQC/ConnectivityGraph.vo VOQC/FullGateSet.vo
+VOQC/GreedyLayout.vo: VOQC/GreedyLayout.v VOQC/ConnectivityGraph.vo VOQC/Layout.vo VOQC/MappingGateSet.vo
 	coqc $(COQ_OPTS) VOQC/GreedyLayout.v
 
 VOQC/MappingGateSet.vo: VOQC/MappingGateSet.v VOQC/UnitaryListRepresentation.vo

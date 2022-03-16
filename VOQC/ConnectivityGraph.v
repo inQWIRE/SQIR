@@ -2,14 +2,17 @@ Require Import QuantumLib.Prelim.
 
 (** Specification of CNOT connectivity graph. **)
 
-(* For circuit mapping (SimpleMapping.v) we describe the input architecture
-   connectivity graph using two functions:
-   - get_path, which returns an undirected path between two nodes in the graph
-   - is_in_graph, which indicates whether there is a directed edge between 
-     two nodes
+(** For circuit mapping (SwapRoute.v, GreedyLayout.v) we expect an input 
+   architecture connectivity graph to provide four functions:
+   - get_path returns an undirected path between two nodes in the graph
+   - is_in_graph indicates whether there is a directed edge between two nodes
+   - qubit_ordering returns a list of all nodes, ordered by preference
+   - get_nearby returns a list of nodes near a given node, ordered by preference
    
-   Examples of get_path and is_in_graph for particular graphs can be found
-   at the end of this file. 
+   We expect these function to satisfy a few basic properties:
+   - get_path returns a valid path (see below)
+   - qubit_ordering and get_nearby return valid nodes
+   - qubit_ordering contains all of the nodes
 
    We use a loose formalism for describing paths in a graph -- a proper graph 
    library would have more precise definitions. We represent a path between n1 
@@ -25,7 +28,7 @@ Require Import QuantumLib.Prelim.
    able to remove it.
 *)
 
-(** General defns and proofs, parameterized by is_in_graph **)
+(** * General defns and proofs, parameterized by is_in_graph **)
 
 Inductive begins_with : nat -> list nat -> Prop :=
   | begins_with_cons : forall h t, begins_with h (h :: t).
@@ -245,7 +248,21 @@ Proof.
   assumption.
 Qed.
 
-(** Graph type for mapping; contains defns for get_path and is_in_graph. **)
+Lemma path_well_typed_lt : forall dim x p,
+  In x p -> path_well_typed p dim -> x < dim.
+Proof.
+  intros dim x p H1 H2.
+  induction p.
+  inversion H1.
+  inversion H1; subst.
+  inversion H2; subst; auto.
+  inversion H2; subst; auto.
+  inversion H1; subst; auto.
+  inversion H0; subst; auto.
+  inversion H3.
+Qed.
+
+(** * Graph type for mapping **)
 
 Module Type ConnectivityGraph.
 
@@ -256,14 +273,24 @@ Parameter get_path : nat -> nat -> list nat.
 
 Parameter is_in_graph : nat -> nat -> bool.
 
+Parameter qubit_ordering : list nat.
+
+Parameter get_nearby : nat -> list nat.
+
 Parameter get_path_valid : forall n1 n2,
   n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 is_in_graph dim (get_path n1 n2).
+
+Parameter qubit_ordering_complete : forall x, 
+    In x qubit_ordering <-> x < dim.
+
+Parameter get_nearby_valid : forall n,
+  n < dim -> (forall x, In x (get_nearby n) -> x < dim).
 
 End ConnectivityGraph.
 
 
 (*************************)
-(**     LNN Example     **)
+(** *    LNN Example    **)
 (*************************)
 
 Module LNN.
@@ -291,14 +318,42 @@ Definition get_path n1 n2 :=
   then move_right n1 (n2 - n1)
   else if n2 <? n1
        then move_left n1 (n1 - n2)
-       else [] (* badly-typed case, n1=n2 *).
+       else [n1] (* n1=n2 *).
 
 (* Examples *)
-Compute (get_path 2 5).
-Compute (get_path 6 1).
+Compute (get_path 2 5). (* [2; 3; 4; 5] *)
+Compute (get_path 6 1). (* [6; 5; 4; 3; 2; 1] *)
+
+Fixpoint interleave (l1 l2 : list nat) :=
+  match l1, l2 with
+  | h1 :: t1, h2 :: t2 => h1 :: h2 :: interleave t1 t2
+  | [], _ => l2
+  | _, [] => l1
+  end.
+
+(* Interior qubits have more flexibility since they have neighbors on both sides. 
+   (dim is an argument for testing.) *)
+Definition qubit_ordering dim := 
+  if dim =? 0 then []
+  else if dim =? 1 then [0]
+  else interleave (get_path (dim / 2) (dim - 1)) (get_path ((dim / 2) - 1) 0).
+
+Definition get_nearby dim n :=
+  if dim <? 2 then []
+  else if n =? 0 then get_path 1 (dim - 1)
+  else if n =? dim - 1 then get_path (dim - 2) 0
+  else interleave (get_path (n - 1) 0) (get_path (n + 1) (dim - 1)).
+
+(* Examples *)
+Compute (qubit_ordering 4).
+Compute (qubit_ordering 5).
+Compute (get_nearby 5 0).
+Compute (get_nearby 5 2).
+Compute (get_nearby 5 4).
 
 Lemma get_path_valid : forall dim n1 n2, 
-  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 (is_in_graph dim) dim (get_path n1 n2).
+  n1 < dim -> n2 < dim -> n1 <> n2 -> 
+  valid_path n1 n2 (is_in_graph dim) dim (get_path n1 n2).
 Proof.
   intros dim n1 n2 Hn1 Hn2 Hn1n2.
   unfold get_path, LNN.get_path.
@@ -312,12 +367,12 @@ Proof.
       induction dist; simpl in *.
       - intros. 
         repeat split; repeat constructor; try lia.
-        unfold is_in_graph, LNN.is_in_graph. 
+        unfold is_in_graph. 
         bdestruct_all; reflexivity.
       - intros. 
         apply valid_path_extend_path with (a:=n + 1); try lia.
         left.
-        unfold is_in_graph, LNN.is_in_graph. 
+        unfold is_in_graph. 
         bdestruct_all; reflexivity.
         replace (n + S (S dist)) with (n + 1 + (S dist)) by lia.
         apply IHdist; lia. }
@@ -332,12 +387,12 @@ Proof.
       induction dist; simpl in *.
       - intros. 
         repeat split; repeat constructor; try lia.
-        unfold is_in_graph, LNN.is_in_graph. 
+        unfold is_in_graph. 
         bdestruct_all; reflexivity.
       - intros. 
         apply valid_path_extend_path with (a:=n - 1); try lia.
         left. 
-        unfold is_in_graph, LNN.is_in_graph.
+        unfold is_in_graph.
         bdestruct_all; reflexivity.
         replace (n - S (S dist)) with (n - 1 - (S dist)) by lia.
         apply IHdist; lia. }
@@ -345,10 +400,63 @@ Proof.
     apply move_left_valid_path; lia.
 Qed.
 
+Lemma qubit_ordering_complete : forall d x, In x (qubit_ordering d) <-> x < d.
+Proof.
+  intros d x.
+  destruct d; simpl. lia.
+  destruct d; simpl. lia.
+  unfold qubit_ordering. simpl.
+  split; intro H.
+  - induction d; simpl in *. 
+    lia.
+    admit.
+  - induction d; simpl in *. 
+    lia.
+    bdestruct (x =? S (S d)).
+    subst. admit.
+    admit.
+Admitted.  
+
+Lemma get_nearby_valid : forall d n, n < d -> (forall x, In x (get_nearby d n) -> x < d).
+Proof.
+  intros d n Hn x Hx.
+  destruct d; simpl in Hx. easy.
+  destruct d; simpl in Hx. easy.
+  unfold get_nearby in Hx. 
+  destruct n; simpl in Hx.
+  destruct d.
+  simpl in Hx. lia.
+  specialize (get_path_valid (S (S (S d))) 1 (S (S d))) as H. 
+  destruct H as [_ [_ [_ [? _]]]]; try lia.
+  eapply path_well_typed_lt.
+  apply Hx. apply H.
+  bdestruct (n =? d).
+  subst. rewrite Nat.sub_0_r in Hx.
+  destruct d. simpl in Hx. lia.
+  specialize (get_path_valid (S (S (S d))) (S d) 0) as H. 
+  destruct H as [_ [_ [_ [? _]]]]; try lia.
+  eapply path_well_typed_lt.
+  apply Hx. apply H.
+  rewrite Nat.sub_0_r in Hx.
+  (* need interleave_lt *)
+Admitted.
+
+Module CG <: ConnectivityGraph.
+  Parameter dim : nat.
+  Definition get_path := get_path.
+  Definition is_in_graph := is_in_graph dim.
+  Definition qubit_ordering := qubit_ordering dim.
+  Definition get_nearby := get_nearby dim.
+  Definition get_path_valid := get_path_valid dim.
+  Definition qubit_ordering_complete := qubit_ordering_complete dim.
+  Definition get_nearby_valid := get_nearby_valid dim.
+End CG.
+
 End LNN.
 
+(*
 (*************************)
-(**   LNN Ring Example  **)
+(** * LNN Ring Example  **)
 (*************************)
 
 Module LNNRing.
@@ -546,7 +654,7 @@ Qed.
 End LNNRing.
 
 (*************************)
-(**   2D Grid Example   **)
+(** * 2D Grid Example   **)
 (*************************)
 
 Module Grid.
@@ -1057,7 +1165,7 @@ Qed.
 End Grid.
 
 (*************************)
-(**   Tenerife Example  **)
+(** * Tenerife Example  **)
 (*************************)
 
 Module Tenerife.
@@ -1128,4 +1236,4 @@ Proof.
 Qed.
 
 End Tenerife.
-
+*)

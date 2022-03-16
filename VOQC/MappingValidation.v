@@ -1,5 +1,5 @@
 Require Import QuantumLib.Permutations.
-Require Import SimpleMapping.
+Require Import SwapRoute.
 Require Import FullGateSet.
 Require Import MappingGateSet.
 
@@ -113,8 +113,8 @@ Compute (is_swap_equivalent
 
 Module MappingValidationProofs (G : GateSet) (CG : ConnectivityGraph).
 
-Module SMP := SimpleMappingProofs G CG.
-Import SMP.
+Module SRP := SwapRouteProofs G CG.
+Import SRP.
 
 (** remove_swaps preserves semantics. *)
 Lemma remove_swaps_sound : forall l l' m m',
@@ -159,7 +159,7 @@ Proof.
         apply uc_equiv_perm_ex_app1 with (p1:=get_log m) (p2:=get_phys (swap_log m n n0)). 
         apply perm_pair_get_log_phys; auto.
         unfold uc_equiv_perm_ex.
-        unfold SMP.MapList.eval. 
+        unfold MapList.eval. 
         simpl.
         rewrite denote_SKIP.
         apply equal_on_basis_states_implies_equal; auto with wf_db.
@@ -307,73 +307,6 @@ Proof.
   simpl. apply pts.
 Qed.
 
-Lemma remove_swaps_swap_log : forall (l l' : ucom_l dim) m m' n1 n2,
-  layout_bijective dim m ->
-  (n1 < dim)%nat -> (n2 < dim)%nat ->
-  remove_swaps l m = (l', m') ->
-  remove_swaps l (swap_log m n1 n2) = 
-    (map (map_qubits_app (fun n => if n =? get_log m n1 then get_log m n2 else if n =? get_log m n2 then get_log m n1 else n)) l', swap_log m' n1 n2).
-Proof.
-  intros l l' m m' n1 n2 WF Hn1 Hn2 H.
-  gen l' m m'.
-  induction l; intros l' m WF m' H; simpl in *.
-  inversion H; subst. reflexivity.
-  destruct a.
-  - destruct (remove_swaps l m) eqn:rs.
-    inversion H; subst.
-    eapply IHl in rs; auto.
-    rewrite rs. simpl.
-    do 2 (apply f_equal2; auto).
-    bdestruct (n =? n1). subst.
-    rewrite Nat.eqb_refl.
-    unfold get_log at 1.
-    rewrite find_log_swap_log_1 with (n:=dim); auto.
-    bdestruct (n =? n2). subst.
-    bdestruct (get_log m n2 =? get_log m n1).
-
-
-Search get_log.
-
-
-    eapply get_phys_neq with (m:=m) in H0; auto.
-    contradiction.
-admit. (* contradiction *)
-    rewrite Nat.eqb_refl.
-    unfold get_log at 1.
-    rewrite find_log_swap_log_2 with (n:=dim); auto.
-    bdestruct (get_log m n =? get_log m n1).
-admit. (* contradiction *)
-    bdestruct (get_log m n =? get_log m n2).
-admit. (* contradiction *)
-    unfold get_log.
-    rewrite find_log_swap_log_3 with (n:=dim); auto.
-  - dependent destruction m0.
-    + destruct (remove_swaps l m) eqn:rs.
-    inversion H; subst.
-    eapply IHl in rs; auto.
-    rewrite rs. simpl.
-    do 2 (apply f_equal2; auto).
-    bdestruct (n =? n1). subst.
-    rewrite Nat.eqb_refl.
-    unfold get_log at 1.
-    rewrite find_log_swap_log_1 with (n:=dim); auto.
-    bdestruct (n =? n2). subst.
-    bdestruct (get_log m n2 =? get_log m n1).
-admit. (* contradiction *)
-    rewrite Nat.eqb_refl.
-    unfold get_log at 1.
-    rewrite find_log_swap_log_2 with (n:=dim); auto.
-    bdestruct (get_log m n =? get_log m n1).
-admit. (* contradiction *)
-    bdestruct (get_log m n =? get_log m n2).
-admit. (* contradiction *)
-    unfold get_log.
-    rewrite find_log_swap_log_3 with (n:=dim); auto.
-
-Admitted.
-
-
-
 Lemma equalb_cons_App1 : forall g n (l1 l2 : ucom_l dim),
   equalb (App1 g n :: l1) (App1 g n :: l2) (fun n => @MapG.match_gate n) =
     equalb l1 l2 (fun n => @MapG.match_gate n).
@@ -382,10 +315,10 @@ Proof.
   unfold equalb. simpl.
   unfold next_single_qubit_gate. simpl.
   rewrite Nat.eqb_refl.
-  replace (MapG.match_gate g g) with true by admit.
+  rewrite MapG.match_gate_refl.
   rewrite app_nil_l.
   reflexivity.
-Admitted.
+Qed.
 
 Lemma equalb_cons_App2 : forall g m n (l1 l2 : ucom_l dim),
   equalb (App2 g m n :: l1) (App2 g m n :: l2) (fun n => @MapG.match_gate n) =
@@ -396,23 +329,87 @@ Proof.
   unfold next_gate. simpl.
   rewrite Nat.eqb_refl, orb_true_l.
   rewrite 2 Nat.eqb_refl. 
-  replace (MapG.match_gate g g) with true by admit.
+  rewrite MapG.match_gate_refl.
   simpl. reflexivity.
-Admitted.
+Qed.
+
+Definition decompose_swaps_u (g : gate_app (Map_Unitary (G.U 1)) dim) : ucom_l dim :=
+  match g with
+  | App2 UMap_SWAP m n => CNOT m n :: CNOT n m :: CNOT m n :: []
+  | g => [g]
+  end.
+
+Definition decompose_swaps (l : ucom_l dim) :=
+  change_gate_set decompose_swaps_u l.
+
+Definition no_swaps (g : gate_app (Map_Unitary (G.U 1)) dim) :=
+  match g with
+  | App2 UMap_SWAP _ _ => False
+  | _ => True
+  end.
+
+Lemma decompose_swaps_gates : forall (l : ucom_l dim),
+  forall_gates no_swaps (decompose_swaps l).
+Proof.
+  intro l.
+  unfold decompose_swaps.
+  induction l.
+  - rewrite change_gate_set_nil.
+    intros g H.
+    inversion H.
+  - rewrite change_gate_set_cons.
+    intros g H.
+    apply in_app_or in H as [H | H].
+    destruct a; dependent destruction m.
+    all: simpl in H; repeat destruct H as [H | H]; try rewrite <- H;
+         simpl; auto; try contradiction. 
+Qed.
+
+Lemma decompose_swaps_sound : forall (l : ucom_l dim),
+  MapList.uc_equiv_l (decompose_swaps l) l.
+Proof.
+  intro l.
+  unfold decompose_swaps.
+  induction l.
+  - rewrite change_gate_set_nil.
+    reflexivity.
+  - rewrite change_gate_set_cons.
+    unfold MapList.uc_equiv_l in *.
+    simpl.
+    rewrite MapList.list_to_ucom_append.
+    destruct a; apply useq_congruence; try apply IHl;
+      dependent destruction m; simpl; 
+      repeat rewrite <- useq_assoc; rewrite SKIP_id_r; 
+      reflexivity.
+Qed.
+
+Lemma decompose_swaps_WT : forall (l : ucom_l dim),
+  uc_well_typed_l l -> uc_well_typed_l (decompose_swaps l).
+Proof.
+  intros l WT.
+  eapply MapList.uc_equiv_l_implies_WT.
+  symmetry.
+  apply decompose_swaps_sound.
+  assumption.
+Qed.
 
 (** swap_route produces a program that passes equivalence checking. *)
+(* Note: It's possible to prove this without the no_swaps assumption,
+         but the extra assumption makes things simpler. It can be satisified
+         with a pre-processing application of decompose_swaps (above). *)
 Lemma swap_route_swap_equivalent : forall (l : ucom_l dim) (m : layout) l' m',
-  uc_well_typed_l l -> layout_bijective dim m -> 
+  uc_well_typed_l l -> layout_bijective dim m -> forall_gates no_swaps l ->
   swap_route l m CG.get_path = (l', m') -> 
   is_swap_equivalent l l' (trivial_layout dim) m (fun n => @MapG.match_gate n) = true.
 Proof.
-  induction l; intros m l' m' WT WF H; simpl in H.
+  induction l; intros m l' m' WT WF NS H; simpl in H.
   inversion H; subst.
   reflexivity.
   destruct a.
   - destruct (swap_route l m CG.get_path) eqn:sm.
     inversion H; subst.
     inversion WT; subst.
+    apply forall_gates_drop in NS.
     apply IHl in sm; auto.
     unfold is_swap_equivalent in *.
     destruct (check_swap_equivalence l m1 (trivial_layout dim) m (fun n : nat => MapG.match_gate)) eqn:cse.
@@ -437,7 +434,7 @@ Proof.
       apply CG.get_path_valid.
       apply get_phys_lt; auto.
       apply get_phys_lt; auto.
-      apply get_phys_neq; auto. }
+      apply get_phys_neq with (dim:=dim); auto. }
     apply IHl in sm; auto.
     unfold is_swap_equivalent in *.
     destruct (check_swap_equivalence l m2 (trivial_layout dim) l0 (fun n : nat => MapG.match_gate)) eqn:cse.
@@ -460,23 +457,12 @@ Proof.
       unfold CNOT.
       rewrite equalb_cons_App2.
       rewrite eq. reflexivity.
-    + eapply path_to_swaps_remove_swaps in pts.
-      rewrite <- app_assoc.
-      rewrite pts. simpl.
-      eapply remove_swaps_swap_log in rs1.
-      rewrite rs1; auto.
-      eapply remove_swaps_swap_log in rs2.
-      rewrite rs2; auto.
-
-      rewrite rs2.
-      unfold get_log at 1.
-      rewrite find_log_trivial_layout by auto.
-      unfold get_log at 1.
-      rewrite find_log_trivial_layout by auto.
-      rewrite 2 get_log_phys_inv with (n:=dim) by auto.
-      unfold CNOT.
-      rewrite equalb_cons_App2.
-      rewrite eq. reflexivity.
+    + (* impossible case since l has no SWAP gates *)
+      assert (contra : List.In (App2 UMap_SWAP n n0) (App2 UMap_SWAP n n0 :: l)).
+      left. auto.
+      apply NS in contra.
+      simpl in contra. easy.
+    + apply forall_gates_drop in NS. auto.
   - dependent destruction m0.
 Qed.
 

@@ -117,7 +117,7 @@ The rest of the files in the VOQC directory can be split into the following cate
   - ConnectivityGraph.v : Utilities for describing an architecture connectivity graph. Includes graphs for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
   - Layouts.v : Utilities for describing a physical <-> logical qubit mapping.
   - MappingConstraints.v : Utilities for describing a program that satisfies architecture constraints.
-  - SimpleMapping.v: Simple mapping for an architecture described by a directed graph.
+  - SwapRoute.v: Simple mapping for an architecture described by a directed graph.
 
 - Experimental extensions
   - BooleanCompilation.v : Compilation from boolean expressions to unitary SQIR programs.

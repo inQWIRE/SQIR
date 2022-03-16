@@ -5,7 +5,9 @@ Require Import NotPropagation.
 Require Import Optimize1qGates.
 Require Import RotationMerging.
 Require Import RzQGateSet.
-Require Import SimpleMapping.
+Require Import SwapRoute.
+Require Import MappingValidation.
+Require Import GreedyLayout.
 Require Import FullGateSet.
 Import FullList.
 
@@ -13,21 +15,20 @@ Local Close Scope Q_scope.
 Local Close Scope C_scope.
 Local Close Scope R_scope.
 
-
 (** This file contains the VOQC transformations that are extracted to OCaml, 
    along with their correctness properties. The definitions and proofs in this 
-   file are largely wrappers around other definitions and proofs. **)
+   file are largely wrappers around definitions and proofs in other files. **)
 
 Definition circ := full_ucom_l.
-Inductive gate_counts : Set :=
-  | BuildCounts : nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> 
-                  nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> nat -> gate_counts.
-Definition layout := qmap.
-Definition c_graph : Type := nat * (nat -> nat -> list nat) * (nat -> nat -> bool).
-Definition get_dim (cg : c_graph) := fst (fst cg).
-Definition get_get_path (cg : c_graph) := snd (fst cg).
-Definition get_is_in_graph (cg : c_graph) := snd cg.
-(* Cast functions change dependent types --> will be extracted to no-ops *)
+Definition layout := Layouts.layout.
+Definition c_graph : Type := nat * (nat -> nat -> list nat) * (nat -> nat -> bool) * (list nat) * (nat -> list nat).
+Definition graph_dim (cg : c_graph) := fst (fst (fst (fst cg))).
+Definition get_path (cg : c_graph) := snd (fst (fst (fst cg))).
+Definition is_in_graph (cg : c_graph) := snd (fst (fst cg)).
+Definition qubit_ordering (cg : c_graph) := snd (fst cg).
+Definition get_nearby_qubits (cg : c_graph) := snd cg.
+
+(* Cast function changes the dependent type; it will be extracted to a no-op *)
 Fixpoint cast {dim} (c : circ dim) dim' : @circ dim' := 
   match c with 
   | [] => []
@@ -35,10 +36,8 @@ Fixpoint cast {dim} (c : circ dim) dim' : @circ dim' :=
   | App2 g m n :: t => App2 g m n :: cast t dim'
   | App3 g m n p :: t => App3 g m n p :: cast t dim'
   end.
-Definition cast_layout {dim} (la : layout dim) dim' : layout dim' := la.
 
-
-(** Utility functions **)
+(** * Utility functions **)
 
 Definition check_well_typed {dim} (c : circ dim) (n : nat) :=
   uc_well_typed_l_b n (cast c n).
@@ -144,7 +143,6 @@ Lemma decompose_to_cnot_uses_cnot_gates : forall {dim} (c : circ dim),
   forall_gates only_cnots (decompose_to_cnot c).
 Proof. intros. apply FullGateSet.decompose_to_cnot_gates. Qed.
 
-(* Functions for counting gates *)
 Definition count_I {dim} (l : circ dim) :=
   length (filter (fun g => match g with | App1 U_I _ => true | _ => false end) l).
 Definition count_X {dim} (l : circ dim) :=
@@ -188,17 +186,15 @@ Definition count_CCX {dim} (l : circ dim) :=
 Definition count_CCZ {dim} (l : circ dim) :=
   length (filter (fun g => match g with | App3 U_CCZ _ _ _ => true | _ => false end) l).
 
-Definition count_gates {dim} (l : circ dim) :=
-  BuildCounts (count_I l) (count_X l) (count_Y l) (count_Z l)
-     (count_H l) (count_S l) (count_T l) (count_Sdg l) (count_Tdg l)
-     (count_Rx l) (count_Ry l) (count_Rz l) (count_Rzq l)
-     (count_U1 l) (count_U2 l) (count_U3 l)
-     (count_CX l) (count_CZ l) (count_SWAP l)
-     (count_CCX l) (count_CCZ l).
+Definition count_1q {dim} (l : circ dim) :=
+  length (filter (fun g => match g with | App1 _ _ => true | _ => false end) l).
+Definition count_2q {dim} (l : circ dim) :=
+  length (filter (fun g => match g with | App2 _ _ _ => true | _ => false end) l).
+Definition count_3q {dim} (l : circ dim) :=
+  length (filter (fun g => match g with | App3 _ _ _ _ => true | _ => false end) l).
+Definition count_total {dim} (l : circ dim) := length l.
 
-Definition total_gate_count {dim} (l : circ dim) := length l.
-
-Definition count_clifford_rzq {dim} (l : circ dim) :=
+Definition count_Rzq_Clifford {dim} (l : circ dim) :=
   let f g := match g with
              | App1 (U_Rzq q) _ =>
                  let q' := RzQGateSet.bound q in
@@ -207,86 +203,122 @@ Definition count_clifford_rzq {dim} (l : circ dim) :=
              | _ => false end in
   length (filter f l).
 
-Definition scale_count (gc : gate_counts) n0 :=
-  let (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u) := gc in
-  BuildCounts (n0*a) (n0*b) (n0*c) (n0*d) (n0*e) (n0*f) (n0*g) 
-              (n0*h) (n0*i) (n0*j) (n0*k) (n0*l) (n0*m) (n0*n) 
-              (n0*o) (n0*p) (n0*q) (n0*r) (n0*s) (n0*t) (n0*u).
+Ltac rewrite_count :=
+  symmetry; rewrite cons_to_app; rewrite filter_app, app_length; reflexivity. 
 
-Definition add_counts (gc gc' : gate_counts) :=
-  let (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u) := gc in
-  let (a',b',c',d',e',f',g',h',i',j',k',l',m',n',o',p',q',r',s',t',u') := gc' in
-  BuildCounts (a+a') (b+b') (c+c') (d+d') (e+e') (f+f') (g+g') 
-              (h+h') (i+i') (j+j') (k+k') (l+l') (m+m') (n+n') 
-              (o+o') (p+p') (q+q') (r+r') (s+s') (t+t') (u+u').
-
-Definition count_gates_lcr {dim} (lcr : circ dim * circ dim * circ dim) n :=
-  let (lc, r) := lcr in
-  let (l, c) := lc in
-  let ln := count_gates l in
-  let cn := count_gates c in
-  let rn := count_gates r in
-  add_counts (add_counts ln (scale_count cn (n - 2))) rn.
-
-Lemma count_gate_types_sums_to_total : forall {dim} (l0 : circ dim),
-  let (a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u) := count_gates l0 in
-  total_gate_count l0 = (a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u)%nat.
+Lemma count_1q_correct : forall {dim} (l : circ dim),
+  count_1q l 
+    = (count_I l + count_X l + count_Y l + count_Z l +
+       count_H l + count_S l + count_T l + count_Sdg l + count_Tdg l +
+       count_Rx l + count_Ry l + count_Rz l + count_Rzq l + 
+       count_U1 l + count_U2 l + count_U3 l)%nat.
 Proof.
-  intros dim l0.
-  destruct (count_gates l0) eqn:H.
-  inversion H; subst.
-  clear H.
-  induction l0.
+  intros dim l.
+  induction l; simpl.
   reflexivity.
-  unfold count_I, count_X, count_Y, count_Z, count_H, count_S, count_T, 
-         count_Sdg, count_Tdg, count_Rx, count_Ry, count_Rz, count_Rzq, 
-         count_U1, count_U2, count_U3, count_CX, count_CZ, count_SWAP, 
-         count_CCX, count_CCZ.
-  replace (total_gate_count (a :: l0)) with (S (total_gate_count l0)) by reflexivity.
-  simpl length.
-  rewrite IHl0.
-  destruct a; dependent destruction f; simpl length;
-  repeat rewrite <- plus_Snm_nSm; repeat rewrite plus_Sn_m; reflexivity.
+  replace (count_1q (a :: l)) with (count_1q [a] + count_1q l) 
+    by (unfold count_1q; rewrite_count).
+  replace (count_I (a :: l)) with (count_I [a] + count_I l) 
+    by (unfold count_I; rewrite_count).
+  replace (count_X (a :: l)) with (count_X [a] + count_X l) 
+    by (unfold count_X; rewrite_count).
+  replace (count_Y (a :: l)) with (count_Y [a] + count_Y l) 
+    by (unfold count_Y; rewrite_count).
+  replace (count_Z (a :: l)) with (count_Z [a] + count_Z l) 
+    by (unfold count_Z; rewrite_count).
+  replace (count_H (a :: l)) with (count_H [a] + count_H l) 
+    by (unfold count_H; rewrite_count).
+  replace (count_S (a :: l)) with (count_S [a] + count_S l) 
+    by (unfold count_S; rewrite_count).
+  replace (count_T (a :: l)) with (count_T [a] + count_T l) 
+    by (unfold count_T; rewrite_count).
+  replace (count_Sdg (a :: l)) with (count_Sdg [a] + count_Sdg l) 
+    by (unfold count_Sdg; rewrite_count).
+  replace (count_Tdg (a :: l)) with (count_Tdg [a] + count_Tdg l) 
+    by (unfold count_Tdg; rewrite_count).
+  replace (count_Rx (a :: l)) with (count_Rx [a] + count_Rx l) 
+    by (unfold count_Rx; rewrite_count).
+  replace (count_Ry (a :: l)) with (count_Ry [a] + count_Ry l) 
+    by (unfold count_Ry; rewrite_count).
+  replace (count_Rz (a :: l)) with (count_Rz [a] + count_Rz l) 
+    by (unfold count_Rz; rewrite_count).
+  replace (count_Rzq (a :: l)) with (count_Rzq [a] + count_Rzq l) 
+    by (unfold count_Rzq; rewrite_count).
+  replace (count_U1 (a :: l)) with (count_U1 [a] + count_U1 l) 
+    by (unfold count_U1; rewrite_count).
+  replace (count_U2 (a :: l)) with (count_U2 [a] + count_U2 l) 
+    by (unfold count_U2; rewrite_count).
+  replace (count_U3 (a :: l)) with (count_U3 [a] + count_U3 l) 
+    by (unfold count_U3; rewrite_count).
+  rewrite IHl. clear.
+  repeat rewrite Nat.add_assoc.
+  repeat rewrite (Nat.add_comm _ (_ [a])).
+  repeat rewrite Nat.add_assoc.
+  do 16 (apply f_equal2; auto).
+  destruct a; dependent destruction f; reflexivity.
 Qed.
 
-Lemma add_counts_correct : forall {dim} (c1 c2 : circ dim),
-  add_counts (count_gates c1) (count_gates c2) = count_gates (c1 ++ c2).
+Lemma count_2q_correct : forall {dim} (l : circ dim),
+  count_2q l 
+    = (count_CX l + count_CZ l + count_SWAP l)%nat.
 Proof.
-  intros dim c1 c2.
-  unfold count_gates, add_counts.
-  unfold count_I, count_X, count_Y, count_Z, count_H, count_S, count_T, 
-         count_Sdg, count_Tdg, count_Rx, count_Ry, count_Rz, count_Rzq, 
-         count_U1, count_U2, count_U3, count_CX, count_CZ, count_SWAP, 
-         count_CCX, count_CCZ.
-  repeat rewrite filter_app.
-  repeat rewrite app_length.
+  intros dim l.
+  induction l; simpl.
   reflexivity.
+  replace (count_2q (a :: l)) with (count_2q [a] + count_2q l) 
+    by (unfold count_2q; rewrite_count).
+  replace (count_CX (a :: l)) with (count_CX [a] + count_CX l) 
+    by (unfold count_CX; rewrite_count).
+  replace (count_CZ (a :: l)) with (count_CZ [a] + count_CZ l) 
+    by (unfold count_CZ; rewrite_count).
+  replace (count_SWAP (a :: l)) with (count_SWAP [a] + count_SWAP l) 
+    by (unfold count_SWAP; rewrite_count).
+  rewrite IHl. clear.
+  repeat rewrite Nat.add_assoc.
+  repeat rewrite (Nat.add_comm _ (_ [a])).
+  repeat rewrite Nat.add_assoc.
+  do 3 (apply f_equal2; auto).
+  destruct a; dependent destruction f; reflexivity.
 Qed.
 
-Lemma scale_count_correct : forall {dim} (c : circ dim) n,
-  scale_count (count_gates c) n = count_gates (FullList.niter c n).
+Lemma count_3q_correct : forall {dim} (l : circ dim),
+  count_3q l 
+    = (count_CCX l + count_CCZ l)%nat.
 Proof.
-  intros dim c n.
-  induction n.
+  intros dim l.
+  induction l; simpl.
   reflexivity.
-  simpl.
-  rewrite <- add_counts_correct, <- IHn.
-  reflexivity.
+  replace (count_3q (a :: l)) with (count_3q [a] + count_3q l) 
+    by (unfold count_3q; rewrite_count).
+  replace (count_CCX (a :: l)) with (count_CCX [a] + count_CCX l) 
+    by (unfold count_CCX; rewrite_count).
+  replace (count_CCZ (a :: l)) with (count_CCZ [a] + count_CCZ l) 
+    by (unfold count_CCZ; rewrite_count).
+  rewrite IHl. clear.
+  repeat rewrite Nat.add_assoc.
+  repeat rewrite (Nat.add_comm _ (_ [a])).
+  repeat rewrite Nat.add_assoc.
+  do 2 (apply f_equal2; auto).
+  destruct a; dependent destruction f; reflexivity.
 Qed.
 
-Lemma count_gates_lcr_correct : forall {dim} (l c r : circ dim) n,
-  count_gates_lcr (l,c,r) n = count_gates (l ++ FullList.niter c (n - 2) ++ r).
+Lemma count_total_correct : forall {dim} (l : circ dim),
+  count_total l = (count_1q l + count_2q l + count_3q l)%nat.
 Proof.
-  intros.
-  rewrite app_assoc.
-  unfold count_gates_lcr.
-  rewrite <- 2 add_counts_correct.
-  rewrite <- scale_count_correct.
+  intros dim l.
+  induction l; simpl.
   reflexivity.
+  replace (count_1q (a :: l)) with (count_1q [a] + count_1q l) 
+    by (unfold count_1q; rewrite_count).
+  replace (count_2q (a :: l)) with (count_2q [a] + count_2q l) 
+    by (unfold count_2q; rewrite_count).
+  replace (count_3q (a :: l)) with (count_3q [a] + count_3q l) 
+    by (unfold count_3q; rewrite_count).
+  rewrite IHl. clear.
+  destruct a; dependent destruction f; simpl; lia.
 Qed.
 
-
-(** IBM optimizations **)
+(** * IBM optimizations **)
 
 Definition optimize_1q_gates {dim} (c : circ dim) : circ dim :=
   IBM_to_full (Optimize1qGates.optimize_1q_gates (full_to_IBM c)).
@@ -329,8 +361,8 @@ Ltac show_preserves_mapping_ibm :=
           try assumption).
 
 Lemma optimize_1q_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (optimize_1q_gates c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (optimize_1q_gates c).
 Proof. intros. show_preserves_mapping_ibm. Qed.
 
 Lemma cx_cancellation_preserves_semantics : forall {dim} (c : circ dim),
@@ -353,8 +385,8 @@ Proof.
 Qed.
 
 Lemma cx_cancellation_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (cx_cancellation c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (cx_cancellation c).
 Proof. intros. show_preserves_mapping_ibm. Qed.
 
 Lemma optimize_ibm_preserves_semantics : forall {dim} (c : circ dim),
@@ -388,12 +420,11 @@ Proof.
 Qed.
 
 Lemma optimize_ibm_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (optimize_ibm c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (optimize_ibm c).
 Proof. intros. show_preserves_mapping_ibm. Qed.
 
-
-(** Nam optimizations **)
+(** * Nam optimizations **)
 
 Definition not_propagation {dim} (c : circ dim) : circ dim :=
   RzQ_to_full (NotPropagation.not_propagation (full_to_RzQ c)).
@@ -512,8 +543,8 @@ Ltac show_preserves_mapping_nam :=
           try assumption).
 
 Lemma not_propagation_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (not_propagation c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (not_propagation c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma hadamard_reduction_preserves_semantics : forall {dim} (c : circ dim),
@@ -528,8 +559,8 @@ Proof.
 Qed.
 
 Lemma hadamard_reduction_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (hadamard_reduction c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (hadamard_reduction c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma cancel_single_qubit_gates_preserves_semantics : forall {dim} (c : circ dim),
@@ -544,8 +575,8 @@ Proof.
 Qed.
 
 Lemma cancel_single_qubit_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (cancel_single_qubit_gates c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (cancel_single_qubit_gates c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma cancel_two_qubit_gates_preserves_semantics : forall {dim} (c : circ dim),
@@ -560,8 +591,8 @@ Proof.
 Qed.
 
 Lemma cancel_two_qubit_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (cancel_two_qubit_gates c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (cancel_two_qubit_gates c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma merge_rotations_preserves_semantics : forall {dim} (c : circ dim),
@@ -576,8 +607,8 @@ Proof.
 Qed.
 
 Lemma merge_rotations_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (merge_rotations c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (merge_rotations c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma optimize_nam_preserves_semantics : forall {dim} (c : circ dim),
@@ -592,8 +623,8 @@ Proof.
 Qed.
 
 Lemma optimize_nam_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (optimize_nam c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (optimize_nam c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma optimize_nam_light_preserves_semantics : forall {dim} (c : circ dim),
@@ -608,8 +639,8 @@ Proof.
 Qed.
 
 Lemma optimize_nam_light_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (optimize_nam_light c).
+  respects_constraints_directed (is_in_graph cg) U_CX c -> 
+  respects_constraints_directed (is_in_graph cg) U_CX (optimize_nam_light c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma optimize_nam_lcr_preserves_semantics : forall {dim} (c0 l c r : circ dim) n,
@@ -669,11 +700,11 @@ Proof.
 Qed.
 
 Lemma optimize_nam_lcr_preserves_mapping : forall {dim} (c0 l c r : circ dim) (cg : c_graph),
-  respects_constraints_directed (get_is_in_graph cg) U_CX c0 -> 
+  respects_constraints_directed (is_in_graph cg) U_CX c0 -> 
   optimize_nam_lcr c0 = Some (l, c, r) ->
-  respects_constraints_directed (get_is_in_graph cg) U_CX l
-    /\ respects_constraints_directed (get_is_in_graph cg) U_CX c
-    /\ respects_constraints_directed (get_is_in_graph cg) U_CX r.
+  respects_constraints_directed (is_in_graph cg) U_CX l
+    /\ respects_constraints_directed (is_in_graph cg) U_CX c
+    /\ respects_constraints_directed (is_in_graph cg) U_CX r.
 Proof. 
   intros dim c0 l c r cg Hcg H.
   eapply MappingConstraints.LCR_respects_constraints in H as [H0 [H1 H2]].
@@ -685,260 +716,184 @@ Proof.
   assumption.
 Qed.
 
+(** * Circuit mapping **)
 
-(** Mapping **)
+Definition swap_route {dim} (c : circ dim) (lay : layout) (cg : c_graph) :=
+  let n := graph_dim cg in
+  let (c,_) := SwapRoute.swap_route (full_to_map (cast c n)) lay (get_path cg) in
+  map_to_full (SwapRoute.decompose_swaps_and_cnots c (is_in_graph cg)). 
 
-Definition check_layout {dim} (la : layout dim) (n : nat) :=
-  layout_well_formed_b n (cast_layout la n).
+Definition trivial_layout n : layout := Layouts.trivial_layout n.
+Definition list_to_layout l : option layout :=
+  if Layouts.check_list l then Some (Layouts.list_to_layout l) else None.
+Definition layout_to_list (lay : layout) n := Layouts.layout_to_list n lay.
+Definition greedy_layout {dim} (c : circ dim) (cg : c_graph) : layout :=
+  GreedyLayout.greedy_layout (full_to_map c) (graph_dim cg) 
+                             (get_nearby_qubits cg) (qubit_ordering cg).
 
-Definition check_graph (cg : c_graph) : bool :=
-  let n := get_dim cg in
-  let get_path := get_get_path cg in
-  let is_in_graph := get_is_in_graph cg in
-  ConnectivityGraph.check_graph n get_path is_in_graph.
+Definition make_lnn n : c_graph := 
+  (n, LNN.get_path, LNN.is_in_graph n, LNN.qubit_ordering n, LNN.get_nearby n).
 
-Definition check_constraints {dim} (c : circ dim) (cg : c_graph) :=
-  let n := get_dim cg in
-  let is_in_graph := get_is_in_graph cg in
-  respects_constraints_directed_b is_in_graph (cast c n).
-
-Definition swap_route {cdim ldim} (c : circ cdim) (la : layout ldim) (cg : c_graph) :=
-  let n := get_dim cg in
-  let get_path := get_get_path cg in
-  let is_in_graph := get_is_in_graph cg in
-  SimpleMapping.swap_route (cast c n) (cast_layout la n) get_path is_in_graph. 
-
+(*
 Definition make_tenerife (_:unit) : c_graph := 
   (5, Tenerife.get_path, Tenerife.is_in_graph).
-Definition make_lnn n : c_graph := 
-  (n, LNN.get_path, LNN.is_in_graph n).
 Definition make_lnn_ring n : c_graph := 
   (n, LNNRing.get_path n, LNNRing.is_in_graph n).
 Definition make_grid m n : c_graph := 
   (m * n, Grid.get_path n, Grid.is_in_graph m n).
+*)
 
-Definition trivial_layout n : layout n := Layouts.trivial_layout n.
-Definition list_to_layout l : layout (length l) :=
-  Layouts.list_to_layout l.
-Definition layout_to_list {dim} (la : layout dim) n :=
-  Layouts.layout_to_list n (cast_layout la n).
+Module MappingProofs (CG : ConnectivityGraph).
 
-Lemma check_layout_correct : forall {dim} (la : layout dim) n,
-  check_layout la n = true -> layout_well_formed n (cast_layout la n).
-Proof. intros. apply layout_well_formed_b_equiv. assumption. Qed.
+  Definition cg : c_graph := 
+    (CG.dim, CG.get_path, CG.is_in_graph, CG.qubit_ordering, CG.get_nearby).
 
-Definition graph_well_formed (cg : c_graph) :=
-  let dim := get_dim cg in
-  let get_path := get_get_path cg in
-  let is_in_graph := get_is_in_graph cg in
-  forall n1 n2, n1 < dim -> n2 < dim -> n1 <> n2 -> 
-           valid_path n1 n2 is_in_graph dim (get_path n1 n2).
+  Module SRP := SwapRouteProofs FullGateSet CG.
+  Import SRP.
 
-Lemma check_graph_correct : forall (cg : c_graph),
-  check_graph cg = true -> graph_well_formed cg.
-Proof. 
-  unfold graph_well_formed. 
-  intros.
-  apply ConnectivityGraph.check_graph_correct; assumption. 
-Qed.
+Lemma eval_full_to_map : forall {dim} (c : circ dim),
+  SRP.MapList.eval (full_to_map c) = eval c.
+Proof. Admitted.
 
-Lemma check_constraints_correct : forall {dim} (c : circ dim) (cg : c_graph),
-  check_constraints c cg = true <-> 
-  respects_constraints_directed (get_is_in_graph cg) U_CX (cast c (get_dim cg)).
-Proof. intros. apply respects_constraints_directed_b_equiv. Qed.
-
-Module MappingProofs.
-
- (* Assume the existence of a c_graph that satisfies graph_well_formed *)
-  Parameter cg : c_graph.
-  Axiom cg_WF : graph_well_formed cg.
-
-  Module CG <: ConnectivityGraph.
-  Definition dim := get_dim cg.
-  Definition get_path := get_get_path cg.
-  Definition is_in_graph := get_is_in_graph cg.
-  Definition get_path_valid := cg_WF.
-  End CG.
-
-  Module SMP := SimpleMappingProofs CG.
-  Import SMP.
-
-  Lemma swap_route_preserves_semantics : forall {cdim ldim} 
-        (c : circ cdim) (la : layout ldim) c' la',
-    uc_well_typed_l (cast c dim) ->
-    layout_well_formed dim (cast_layout la dim) ->
-    swap_route c la cg = (c', la') ->
-    (cast c dim) ≡ c' with (@phys2log dim (cast_layout la dim)) and (log2phys la').
-  Proof. intros. apply swap_route_sound; assumption. Qed.
-
-  Lemma swap_route_preserves_WT : forall {cdim ldim} 
-        (c : circ cdim) (la : layout ldim) c' la',
-    uc_well_typed_l (cast c dim) ->
-    layout_well_formed dim (cast_layout la dim) ->
-    swap_route c la cg = (c', la') ->
-    uc_well_typed_l c'.
+  Lemma swap_route_preserves_semantics : forall {dim} (c : circ dim) (lay : layout),
+    uc_well_typed_l (cast c (graph_dim cg)) ->
+    layout_bijective (graph_dim cg) lay ->
+    cast c (graph_dim cg) ≡x swap_route c lay cg.
   Proof. 
-    intros cdim ldim c la c' la' WT WF H. 
-    apply (swap_route_preserves_semantics _ _ _ _ WT WF) in H.
-    unfold uc_eq_perm in H.
+    intros dim c lay WT WF.
+    unfold swap_route.
+    destruct (SwapRoute.swap_route (full_to_map (cast c (graph_dim cg))) lay (get_path cg)) eqn:sr.
+    assert (srWT:=sr).
+    apply SRP.swap_route_sound in sr; auto.
+    unfold uc_equiv_perm_ex in sr.
+    unfold uc_equiv_perm.
+    exists (get_log lay). exists (get_phys l).
+    repeat split.
+    apply get_log_perm. assumption.
+    apply get_phys_perm. admit.
+    rewrite eval_full_to_map in sr.
+    
+(* blah - will fix later *)
+Admitted.
+
+  Lemma swap_route_preserves_WT : forall {dim} (c : circ dim) (lay : layout),
+    uc_well_typed_l (cast c (graph_dim cg)) ->
+    layout_bijective (graph_dim cg) lay ->
+    uc_well_typed_l (swap_route c lay cg).
+  Proof. 
+    intros dim c lay WT WF. 
+    specialize (swap_route_preserves_semantics _ _ WT WF) as H.
+    destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
     apply list_to_ucom_WT. 
     apply uc_eval_nonzero_iff.
     apply list_to_ucom_WT in WT.
     apply uc_eval_nonzero_iff in WT.
     intro contra.
     unfold eval in H.
-    unfold dim, CG.dim in *.
     rewrite contra in H.
-    rewrite Mmult_0_r in H.
-    rewrite Mmult_0_l in H.
+    rewrite Mmult_0_r, Mmult_0_l in H.
     contradiction.
   Qed.
 
-  Lemma swap_route_respects_constraints : forall {cdim ldim} 
-        (c : circ cdim) (la : layout ldim) c' la',
-    uc_well_typed_l (cast c dim) ->
-    layout_well_formed dim (cast_layout la dim) ->
-    swap_route c la cg = (c', la') ->
-    respects_constraints_directed (get_is_in_graph cg) U_CX c'.
+  Lemma swap_route_respects_constraints : forall {dim} (c : circ dim) (lay : layout),
+    uc_well_typed_l (cast c (graph_dim cg)) ->
+    layout_bijective (graph_dim cg) lay ->
+    respects_constraints_directed (is_in_graph cg) U_CX (swap_route c lay cg).
   Proof.
-    intros cdim ldim c la c' la' WT WF H. 
-    apply swap_route_respects_constraints_directed in H; assumption. 
+    intros dim c lay WT WF.
+    unfold swap_route.
+    destruct (SwapRoute.swap_route (full_to_map (cast c (graph_dim cg))) lay (get_path cg)) eqn:sr.
+(*
+    apply decompose_swaps_and_cnots_respects_directed.
+...
   Qed.
-
-  Lemma swap_route_layout_well_formed : forall {cdim ldim} 
-        (c : circ cdim) (la : layout ldim) c' la',
-    uc_well_typed_l (cast c dim) ->
-    layout_well_formed dim (cast_layout la dim) ->
-    swap_route c la cg = (c', la') ->
-    layout_well_formed dim la'.
-  Proof.
-    intros cdim ldim c la c' la' WT WF H. 
-    apply swap_route_well_formed in H; assumption. 
-  Qed.
+*)
+Admitted.
 
 End MappingProofs.
 
-Lemma make_tenerife_well_formed : graph_well_formed (make_tenerife ()).
-Proof.
-  unfold graph_well_formed, make_tenerife.
-  intros.
-  apply Tenerife.get_path_valid; assumption.
+Lemma trivial_layout_well_formed : forall n, layout_bijective n (trivial_layout n).
+Proof. intros. apply Layouts.trivial_layout_bijective. Qed.
+
+Lemma list_to_layout_well_formed : forall l lay, 
+  list_to_layout l = Some lay -> layout_bijective (length l) lay.
+Proof. 
+  intros l lay H.
+  unfold list_to_layout in H.
+  destruct (check_list l) eqn:cl; inversion H.
+  subst. apply Layouts.check_list_layout_bijective. auto.
 Qed.
 
-Lemma make_lnn_well_formed : forall n, graph_well_formed (make_lnn n).
+Lemma greedy_layout_well_formed : forall {dim} (c : circ dim) (cg : c_graph), 
+  layout_bijective (graph_dim cg) (greedy_layout c cg).
+Proof. intros. apply GreedyLayout.greedy_layout_bijective. Qed.
+
+(** * Mapping validation **)
+
+Definition remove_swaps {dim} (c : circ dim) (lay : layout) :=
+  let (c,_) := MappingValidation.remove_swaps (full_to_map c) lay in
+  map_to_full c.
+
+Definition check_swap_equivalence {dim} (c1 c2 : circ dim) (lay1 lay2 : layout) :=
+  MappingValidation.is_swap_equivalent (full_to_map c1) (full_to_map c2) lay1 lay2
+    (fun n => @MappingGateSet.match_gate (FullGateSet.U 1) n FullGateSet.match_gate).
+
+Definition check_constraints {dim} (c : circ dim) (cg : c_graph) :=
+  MappingValidation.check_constraints (full_to_map c) (is_in_graph cg).
+
+Lemma remove_swaps_preserves_semantics : forall {dim} (c : circ dim) (lay : layout),
+  uc_well_typed_l c -> 
+  layout_bijective dim lay ->
+  remove_swaps c lay ≡x c.
+Proof. 
+  intros dim c lay WT WF. 
+  unfold remove_swaps.
+  destruct (MappingValidation.remove_swaps (full_to_map c) lay) eqn:rs.
+Admitted.
+
+Lemma remove_swaps_preserves_WT : forall {dim} (c : circ dim) (lay : layout),
+  uc_well_typed_l c -> 
+  layout_bijective dim lay ->
+  uc_well_typed_l (remove_swaps c lay).
 Proof.
-  unfold graph_well_formed, make_lnn.
-  intros.
-  apply LNN.get_path_valid; assumption.
-Qed.
+Admitted.
 
-Lemma make_lnn_ring_well_formed : forall n, graph_well_formed (make_lnn_ring n).
+Lemma check_swap_equivalence_correct : forall dim (c1 c2 : circ dim) (lay1 lay2 : layout),
+  check_swap_equivalence c1 c2 lay1 lay2 = true ->
+  c1 ≡x c2.
 Proof.
-  unfold graph_well_formed, make_lnn_ring.
-  intros.
-  apply LNNRing.get_path_valid; assumption.
-Qed.
+Admitted.
 
-Lemma make_grid_well_formed : forall m n, graph_well_formed (make_grid m n).
-Proof.
-  unfold graph_well_formed, make_grid.
-  intros.
-  apply Grid.get_path_valid; assumption.
-Qed.
+Lemma check_constraints_correct : forall dim (c : circ dim) (cg : c_graph),
+  check_constraints c cg = true ->
+  respects_constraints_directed (is_in_graph cg) U_CX (cast c (graph_dim cg)).
+Proof. 
+  intros dim c cg H. 
+Admitted.
 
-Lemma trivial_layout_well_formed : forall n, layout_well_formed n (trivial_layout n).
-Proof. intros. apply Layouts.trivial_layout_well_formed. Qed.
+(** * Examples of verified composition of transformations **)
 
-
-(** Examples of composing transformations **)
-
-Definition safe_map {cdim ldim} (c : circ cdim) (la : layout ldim) (cg : c_graph) :=
-  let n := get_dim cg in
-  let get_path := get_get_path cg in
-  let is_in_graph := get_is_in_graph cg in
-  if check_well_typed c n && check_layout la n && check_graph cg
-  then Some (swap_route c la cg) 
-  else None.
-
-Module MappingProofs'.
-
- (* Assume the existence of inputs s.t. safe_map returns Some (_,_) *)
-  Parameters cdim ldim : nat.
-  Parameter c : circ cdim.
-  Parameter la : layout ldim.
-  Parameter cg : c_graph.
-  Axiom safe_map_returns_Some : exists c' la', safe_map c la cg = Some (c', la').
-
-  Lemma cg_WF : graph_well_formed cg.
-  Proof. 
-    unfold graph_well_formed. 
-    intros n1 n2 Hn1 Hn2 Hneq.
-    specialize safe_map_returns_Some as H.
-    destruct H as [c' [la' H]].
-    unfold safe_map in H.
-    destruct (check_graph cg) eqn:Hcg.
-    apply check_graph_correct; assumption.
-    rewrite andb_false_r in H.
-    inversion H.
-  Qed.
-
-  Module CG <: ConnectivityGraph.
-  Definition dim := get_dim cg.
-  Definition get_path := get_get_path cg.
-  Definition is_in_graph := get_is_in_graph cg.
-  Definition get_path_valid := cg_WF.
-  End CG.
-
-  Module SMP := SimpleMappingProofs CG.
-  Import SMP.
-
-  Lemma safe_map_preserves_semantics : forall c' la',
-    safe_map c la cg = Some (c', la') ->
-    (* No additional assumptions! *)
-    (cast c (get_dim cg)) ≡ c' with (@phys2log dim (cast_layout la dim)) and (@log2phys dim la').
-  Proof. 
-    intros c' la' H.
-    unfold safe_map in H.
-    destruct (check_well_typed c (get_dim cg)) eqn:HWT;
-      destruct (check_layout la (get_dim cg)) eqn:HWF;
-      destruct (check_graph cg);
-      simpl in H; inversion H; subst.
-    apply check_well_typed_correct in HWT.
-    apply check_layout_correct in HWF.
-    apply swap_route_sound; assumption. 
-  Qed.
-
-  Lemma safe_map_respects_constraints : forall c' la',
-    safe_map c la cg = Some (c', la') ->
-    (* No additional assumptions! *)
-    respects_constraints_directed (get_is_in_graph cg) U_CX c'.
-  Proof. 
-    intros c' la' H.
-    unfold safe_map in H.
-    destruct (check_well_typed c (get_dim cg)) eqn:HWT;
-      destruct (check_layout la (get_dim cg)) eqn:HWF;
-      destruct (check_graph cg);
-      simpl in H; inversion H; subst.
-    apply check_well_typed_correct in HWT.
-    apply check_layout_correct in HWF.
-    eapply swap_route_respects_constraints_directed; try apply H1; assumption. 
-  Qed.
-
-End MappingProofs'.
-
-(* We require c's dim to be 10 for now - otherwise the proof is a pain.
-   We can easily remove this requirement once we remove the dimension from
-   a program's type. -KH *)
-Definition optimize_then_map (c : circ 10) :=
-  let gr := make_lnn 10 in         (* 10-qubit LNN architecture *)
-  let la := trivial_layout 10 in   (* trivial layout on 10 qubits *)
-  if check_well_typed c 10         (* check that c is well-typed & uses <=10 qubits *)
+Definition optimize_then_map {dim} (c : circ dim) :=
+  let cg := make_lnn 10 in            (* 10-qubit LNN architecture *)
+  if check_well_typed c 10            (* check c is well-typed & uses <=10 qubits *)
   then 
-    let c' := optimize_nam c in    (* optimization #1 *)
-    let c'' := optimize_ibm c' in  (* optimization #2 *)
-    Some (swap_route c'' la gr)    (* map *)
+    let lay := greedy_layout c cg in  (* greedy layout *)
+    let c1 := optimize_nam c in       (* optimization #1 *)
+    let c2 := optimize_ibm c1 in      (* optimization #2 *)
+    Some (swap_route c2 lay cg)       (* map *)
   else None.
 
+Definition map_then_optimize {dim} (c : circ dim) :=
+  let cg := make_lnn 10 in            (* 10-qubit LNN architecture *)
+  if check_well_typed c 10            (* check c is well-typed & uses <=10 qubits *)
+  then 
+    let lay := trivial_layout 10 in   (* greedy layout *)
+    let c1 := swap_route c lay cg in  (* map *)
+    let c2 := optimize_nam c1 in      (* optimization #1 *)
+    Some (optimize_ibm c2)            (* optimization #2 *)
+  else None.
+
+(*
 Module LNN10 <: ConnectivityGraph.
   Definition dim := 10.
   Definition get_path := LNN.get_path.
@@ -957,9 +912,6 @@ Proof.
   simpl. 
   destruct a; rewrite IHc; reflexivity.
 Qed.
-
-Lemma cast_layout_same : forall {dim} (la : layout dim), cast_layout la dim = la.
-Proof. intros dim la. reflexivity. Qed.
 
 Lemma optimize_then_map_preserves_semantics : forall (c : circ 10) c' la',
   optimize_then_map c = Some (c', la') -> 
@@ -1011,17 +963,6 @@ Proof.
   rewrite cast_layout_same.
   apply trivial_layout_well_formed.
 Qed.
-
-Definition map_then_optimize (c : circ 10) :=
-  let gr := make_lnn 10 in               (* 10-qubit LNN architecture *)
-  let la := trivial_layout 10 in         (* trivial layout on 10 qubits *)
-  if check_well_typed c 10               (* check that c is well-typed & uses <=10 qubits *)
-  then 
-    let (c', la') := swap_route c la gr in  (* map *)
-    let c'' := optimize_nam c' in           (* optimization #1 *)
-    let c''' := optimize_ibm c'' in         (* optimization #2 *)
-    Some (c''', la') 
-  else None.
 
 Lemma map_then_optimize_preserves_semantics : forall (c : circ 10) c' la',
   map_then_optimize c = Some (c', la') -> 
@@ -1081,3 +1022,4 @@ Proof.
   rewrite cast_layout_same.
   apply trivial_layout_well_formed.
 Qed.
+*)

@@ -22,7 +22,7 @@ Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *)
   
    To extend this gate set with new gates, you will need to modify the definitions
    in this file and any optimizations defined over the full gate set (at
-   present, these only include definitions in SimpleMapping.v and Optimize.v). **)
+   present, these only include definitions in Main.v). **)
 
 Local Open Scope R_scope.
 Local Open Scope Q_scope.

@@ -1190,7 +1190,7 @@ Proof.
   rewrite <- H; assumption.
 Qed.
 
-(* Equivalence up to a phase. *)
+(** Equivalence up to a phase. *)
 
 Definition uc_cong_l {dim} (l1 l2 : gate_list G.U dim) := 
   list_to_ucom l1 ≅ list_to_ucom l2.
@@ -1282,7 +1282,143 @@ Proof.
   reflexivity.
 Qed.
 
-(* Basic commutativity lemmas. *)
+(** Equivalence up to qubit reordering (used in circuit mapping). *)
+
+Definition uc_equiv_perm {dim} (l1 l2 : gate_list G.U dim) := exists pin pout, 
+  permutation dim pin /\ permutation dim pout /\ 
+  eval l1 = perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
+Infix "≡x" := uc_equiv_perm (at level 20).
+
+Lemma permutation_id : forall {dim}, permutation dim (fun x : nat => x).
+Proof. exists (fun x : nat => x). repeat split; auto. Qed.  
+
+Lemma uc_equiv_perm_refl : forall {dim} (l1 : gate_list G.U dim), l1 ≡x l1.
+Proof. 
+  intros. 
+  exists (fun x => x). 
+  exists (fun x => x). 
+  repeat split.
+  apply permutation_id.
+  apply permutation_id.
+  rewrite perm_to_matrix_I; auto.
+  unfold eval. Msimpl. reflexivity.
+  apply permutation_id.
+Qed.
+
+Lemma uc_equiv_perm_sym : forall {dim} (l1 l2 : gate_list G.U dim), l1 ≡x l2 -> l2 ≡x l1.
+Proof. 
+  intros dim l1 l2 H. 
+  destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
+  unfold uc_equiv_perm in *.
+  destruct Hp1 as [p1inv Hp1].
+  destruct Hp2 as [p2inv Hp2].
+  assert (permutation dim p1inv).
+  { exists p1.
+    intros x Hx.
+    destruct (Hp1 x Hx) as [? [? [? ?]]].
+    repeat split; auto. }
+  assert (permutation dim p2inv).
+  { exists p2.
+    intros x Hx.
+    destruct (Hp2 x Hx) as [? [? [? ?]]].
+    repeat split; auto. }
+  exists p1inv.
+  exists p2inv.
+  repeat split; auto.
+  rewrite H.
+  repeat rewrite Mmult_assoc.
+  rewrite perm_to_matrix_Mmult; auto.
+  repeat rewrite <- Mmult_assoc.
+  rewrite perm_to_matrix_Mmult; auto.
+  rewrite 2 perm_to_matrix_I.
+  unfold eval. Msimpl. reflexivity.
+  apply permutation_compose; auto.
+  exists p1inv. assumption.
+  intros x Hx.
+  destruct (Hp1 x Hx) as [_ [_ [? _]]].
+  assumption.
+  apply permutation_compose; auto.
+  exists p2inv. assumption.
+  intros x Hx.
+  destruct (Hp2 x Hx) as [_ [_ [_ ?]]].
+  assumption.
+  exists p2inv. assumption.
+  exists p1inv. assumption.
+Qed.
+
+Lemma uc_equiv_perm_trans : forall {dim} (l1 l2 l3 : gate_list G.U dim), 
+  l1 ≡x l2 -> l2 ≡x l3 -> l1 ≡x l3.
+Proof.
+  intros dim l1 l2 l3 H1 H2.
+  unfold uc_equiv_perm in *.
+  destruct H1 as [p1 [p2 [Hp1 [Hp2 H1]]]].
+  destruct H2 as [p3 [p4 [Hp3 [Hp4 H2]]]].
+  rewrite H1, H2.
+  exists (p1 ∘ p3)%prg.
+  exists (p4 ∘ p2)%prg.
+  repeat split.
+  apply permutation_compose; auto.
+  apply permutation_compose; auto.
+  rewrite <- 2 perm_to_matrix_Mmult; auto.
+  repeat rewrite Mmult_assoc.
+  reflexivity.
+Qed.
+
+Add Parametric Relation (dim : nat) : (gate_list G.U dim) (uc_equiv_perm)
+  reflexivity proved by uc_equiv_perm_refl
+  symmetry proved by uc_equiv_perm_sym
+  transitivity proved by uc_equiv_perm_trans
+  as uc_equiv_perm_rel.
+
+(** Equivalence up to qubit reordering, up to a global phase. **)
+
+Definition uc_cong_perm {dim} (l1 l2 : gate_list G.U dim) := exists pin pout,
+  permutation dim pin /\ permutation dim pout /\
+  eval l1 ∝ perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
+Infix "≅x" := uc_cong_perm (at level 20).
+
+Lemma uc_equiv_perm_implies_uc_cong_perm : forall {dim} (l1 l2 : gate_list G.U dim),
+  l1 ≡x l2 -> l1 ≅x l2.
+Proof.
+  intros dim l1 l2 H.
+  destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
+  exists p1. exists p2.
+  repeat split; auto.
+  exists 0%R.
+  rewrite Cexp_0.
+  rewrite Mscale_1_l.
+  apply H.
+Qed.
+
+Lemma uc_cong_perm_uc_cong_l : forall {dim} (l1 l2 l3 : gate_list G.U dim),
+  (l1 ≅l≅ l2)%ucom -> l2 ≅x l3 -> l1 ≅x l3.
+Proof.
+  intros dim l1 l2 l3 [r1 H1] [p1 [p2 [Hp1 [Hp2 [r2 H2]]]]].
+  exists p1. exists p2.
+  repeat split; auto.
+  exists (r1 + r2)%R.
+  unfold eval in *.
+  rewrite H1, H2. 
+  distribute_scale.
+  rewrite <- Cexp_add.
+  reflexivity.
+Qed.
+
+Lemma uc_eq_perm_uc_cong_l_alt : forall {dim} (l1 l2 l3 : gate_list G.U dim),
+  l1 ≅x l2 -> (l2 ≅l≅ l3)%ucom -> l1 ≅x l3.
+Proof.
+  intros dim l1 l2 l3 [p1 [p2 [Hp1 [Hp2 [r1 H1]]]]] [r2 H2].
+  exists p1. exists p2.
+  repeat split; auto.
+  exists (r1 + r2)%R.
+  unfold eval in *.
+  rewrite H1, H2. 
+  distribute_scale.
+  rewrite <- Cexp_add.
+  reflexivity.
+Qed.
+
+(** Basic commutativity lemmas. *)
 
 Lemma only_uses_commutes_uapp1 : forall {dim} (g : base_Unitary 1) (u : base_ucom dim) q qs,
   only_uses u qs ->
