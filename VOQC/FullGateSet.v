@@ -889,7 +889,7 @@ Lemma map_to_full_equiv : forall {dim} (l l' : map_ucom_l (Std_Unitary 1) dim),
 *)
 
 Lemma map_to_full_inv : forall {dim} (l : full_ucom_l dim),
-  FullList.uc_cong_l (map_to_full (full_to_map l)) l.
+  FullList.uc_equiv_l (map_to_full (full_to_map l)) l.
 Proof.
   intros dim l.
   induction l.
@@ -899,11 +899,11 @@ Proof.
   rewrite change_gate_set_app.
   rewrite IHl.
   rewrite cons_to_app.
-  FullList.apply_app_congruence_cong.
+  FullList.apply_app_congruence.
   destruct a; dependent destruction f; 
   unfold change_gate_set; simpl; try reflexivity.
-  all: unfold FullList.uc_cong_l; simpl; 
-    repeat rewrite <- uc_cong_assoc; reflexivity.
+  all: unfold FullList.uc_equiv_l; simpl;
+    repeat rewrite <- useq_assoc; reflexivity.
 Qed.
 
 Lemma full_to_map_WT : forall {dim} (l : full_ucom_l dim),

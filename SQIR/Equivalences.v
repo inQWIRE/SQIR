@@ -357,7 +357,6 @@ Proof.
       solve_matrix.
 Qed.
 
-Local Transparent SWAP.
 Lemma SWAP_extends_CNOT : forall {dim} a b c,
   a < dim -> b < dim -> c < dim ->
   a <> b -> b <> c -> a <> c ->
@@ -366,24 +365,38 @@ Proof.
   intros.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
-  unfold SWAP.
   simpl uc_eval.
-  repeat rewrite denote_cnot.
-  unfold ueval_cnot.
   repeat rewrite Mmult_assoc.
-  repeat rewrite f_to_vec_cnot by auto.
-  repeat (try rewrite update_index_eq; try rewrite update_index_neq by auto).
-  repeat rewrite (update_twice_neq _ a) by auto. 
-  repeat rewrite update_twice_eq. 
-  repeat rewrite (update_twice_neq _ b) by auto.
-  rewrite update_twice_eq. 
-  rewrite (update_same _ a).
-  rewrite (update_same _ b).
-  destruct (f a); destruct (f b); reflexivity.
+  rewrite f_to_vec_SWAP by auto.
+  rewrite 2 f_to_vec_CNOT by auto.
+  rewrite f_to_vec_SWAP by auto.
+  rewrite fswap_simpl2.
+  rewrite fswap_neq by auto.
+  apply f_to_vec_eq.
+  intros i Hi.
+  bdestruct (i =? c); subst.
+  rewrite update_index_eq.
+  rewrite fswap_neq by auto.
+  rewrite update_index_eq.
+  reflexivity.
   rewrite update_index_neq by auto.
-  destruct (f a); destruct (f b); reflexivity.
-  rewrite update_index_neq by auto.
-  destruct (f a); destruct (f b); reflexivity.
+  bdestructΩ (i =? a); bdestructΩ (i =? b); subst.
+  rewrite fswap_simpl1, update_index_neq by auto. 
+  apply fswap_simpl2. 
+  rewrite fswap_simpl2, update_index_neq by auto. 
+  apply fswap_simpl1. 
+  rewrite fswap_neq, update_index_neq by auto. 
+  apply fswap_neq; auto.
+Qed.
+
+Local Transparent SWAP.
+Lemma SWAP_symmetric : forall {dim} a b,
+  @SWAP dim a b ≡ SWAP b a.
+Proof.
+  intros dim a b.
+  unfold uc_equiv, SWAP. 
+  simpl; autorewrite with eval_db.
+  gridify; Qsimpl; lma.
 Qed.
 Local Opaque SWAP.
 

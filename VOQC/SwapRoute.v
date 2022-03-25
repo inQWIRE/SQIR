@@ -15,7 +15,7 @@ Require Import FullGateSet MappingGateSet.
    Inputs:
      - a program over logical qubits
      - an initial mapping between logical and physical qubits
-     - a CNOT connectivity graph
+     - CNOT connectivity graph information
    Outputs:
      - a program over physical qubits
      - a final mapping between logical and physical qubits
@@ -67,11 +67,13 @@ Definition decompose_swaps_and_cnots_aux {dim} (is_in_graph : nat -> nat -> bool
   | App2 UMap_CNOT m n => 
       if is_in_graph m n
       then [CNOT m n]
-      else H n :: H m :: CNOT n m :: H n :: H m :: []
+      else H m :: H n :: CNOT n m :: H m :: H n :: []
   | App2 UMap_SWAP m n => 
       if is_in_graph m n
-      then CNOT m n :: H m :: H n :: CNOT m n :: H m :: H n :: CNOT m n :: []
-      else CNOT n m :: H n :: H m :: CNOT n m :: H n :: H m :: CNOT n m :: []
+      then if is_in_graph n m
+           then CNOT m n :: CNOT n m :: CNOT m n :: []
+           else CNOT m n :: H n :: H m :: CNOT m n :: H n :: H m :: CNOT m n :: []
+      else CNOT n m :: H m :: H n :: CNOT n m :: H m :: H n :: CNOT n m :: []
   | g => [g]
   end.
 
@@ -240,11 +242,10 @@ Proof.
     contradiction.
 Qed.
 
-(** ** Proofs for an arbitrary gate set & connectivity graph *)
+(** Proofs for any gate set. *)
 
-Module SwapRouteProofs (G : GateSet) (CG : ConnectivityGraph).
+Module SwapRouteProofs (G : GateSet).
 
-Definition dim := CG.dim.
 Definition ucom_l dim := map_ucom_l (G.U 1) dim.
 
 Module MapG := MappingGateSet G.
@@ -252,16 +253,16 @@ Module MapList := UListProofs MapG.
 Import MapList.
 
 (** Equivalence up to qubit reordering w/ explicit input and output permutations **)
-Definition uc_equiv_perm_ex (l1 l2 : ucom_l dim) pin pout :=
+Definition uc_equiv_perm_ex {dim} (l1 l2 : ucom_l dim) pin pout :=
   eval l1 = perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
 Notation "c1 ≡ c2 'with' p1 'and' p2" := (uc_equiv_perm_ex c1 c2 p1 p2) (at level 20).
 
-Lemma uc_equiv_perm_ex_nil : forall p1 p2,
+Lemma uc_equiv_perm_ex_nil : forall {dim} p1 p2,
   dim > 0 ->
   perm_pair dim p1 p2 ->
-  [] ≡ [] with p1 and p2.
+  @uc_equiv_perm_ex dim [] [] p1 p2.
 Proof.
-  intros p1 p2 Hdim [? [? [? ?]]].
+  intros dim p1 p2 Hdim [? [? [? ?]]].
   unfold uc_equiv_perm_ex.
   unfold eval; simpl.
   rewrite denote_SKIP by assumption.
@@ -270,7 +271,7 @@ Proof.
   apply permutation_compose; auto.
 Qed.
 
-Lemma SWAP_well_typed : forall a b,
+Lemma SWAP_well_typed : forall dim a b,
   a < dim -> b < dim -> a <> b ->
   uc_well_typed (list_to_ucom ([@SWAP _ dim a b])).
 Proof.
@@ -282,7 +283,7 @@ Proof.
   lia.
 Qed.
 
-Lemma SWAP_semantics : forall a b,
+Lemma SWAP_semantics : forall dim a b,
   dim > 0 -> eval ([@SWAP _ dim a b]) = uc_eval (SQIR.SWAP a b).
 Proof.
   intros.
@@ -293,8 +294,8 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma path_to_swaps_bijective : forall n1 n2 p m (l : ucom_l dim) m',
-  valid_path n1 n2 CG.is_in_graph dim p ->
+Lemma path_to_swaps_bijective : forall {dim} p m (l : ucom_l dim) m',
+  path_well_typed p dim ->
   layout_bijective dim m ->
   path_to_swaps p m = (l, m') ->
   layout_bijective dim m'.
@@ -302,31 +303,23 @@ Proof.
   intros.
   generalize dependent l.
   generalize dependent m.
-  generalize dependent n1.
-  induction p; intros n1 Hpath m WFm c res; simpl in res.
+  induction p; intros m WFm c res; simpl in res.
   inversion res; subst. assumption.
   destruct p. inversion res; subst. assumption.
   destruct p. inversion res; subst. assumption.
   destruct (path_to_swaps (n :: n0 :: p) (swap_log m a n)) eqn:res'.
   inversion res; subst.
-  destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
-  inversion H1; subst.
-  inversion H4; subst.
-  eapply IHp; try apply res'.
-  repeat split.
-  inversion H2; subst. assumption.
-  inversion H3; subst. assumption.
-  assumption. 
-  inversion H5; subst. assumption.
-  apply swap_log_preserves_bij; assumption.
+  inversion H0; subst.
+  eapply IHp; try apply res'; auto.
+  apply swap_log_preserves_bij; auto.
 Qed.
 
-Lemma fswap_swap_log : forall m (f : nat -> bool) a b x,
+Lemma fswap_swap_log : forall dim m (f : nat -> bool) a b x,
   a < dim -> b < dim -> x < dim -> a <> b ->
   layout_bijective dim m ->
   fswap f a b (get_phys (swap_log m a b) x) = f (get_phys m x).
 Proof.
-  intros m f a b x Ha Hb Hx Hab H.
+  intros dim m f a b x Ha Hb Hx Hab H.
   bdestruct (x =? get_log m a); bdestruct (x =? get_log m b); subst.
   - assert (get_phys m (get_log m a) = get_phys m (get_log m b)) by auto.
     erewrite 2 get_phys_log_inv in H0.
@@ -371,39 +364,35 @@ Proof.
     contradiction.
 Qed.
 
-Lemma path_to_swaps_sound : forall n1 n2 p m l m',
+Lemma path_to_swaps_sound : forall dim p m l m',
   dim > 0 ->
-  valid_path n1 n2 CG.is_in_graph dim p ->
+  path_well_typed p dim ->
   layout_bijective dim m ->
   path_to_swaps p m = (l, m') ->
-  l ≡ [] with (get_phys m) and (get_log m').
+  @uc_equiv_perm_ex dim l [] (get_phys m) (get_log m').
 Proof.
-  intros n1 n2 p m l m' Hdim.
+  intros dim p m l m' Hdim WTp.
   generalize dependent l.
   generalize dependent m.
-  generalize dependent n1.
-  induction p; intros n1 m l Hpath WFm res; simpl in res.
-  (* invalid path cases *)
-  destruct Hpath as [H _].
-  inversion H.
+  induction p; intros m l WFm res; simpl in res.
+  inversion res; subst.
+  apply uc_equiv_perm_ex_nil; auto.
+  apply perm_pair_get_phys_log; auto.
   destruct p.
-  destruct Hpath as [_ [_ [H _]]].
-  inversion H.
+  inversion res; subst.
+  apply uc_equiv_perm_ex_nil; auto.
+  apply perm_pair_get_phys_log; auto.
   destruct p.
-  - (* base case *)
-    inversion res; subst. 
-    apply uc_equiv_perm_ex_nil; auto.
-    apply perm_pair_get_phys_log.
-    assumption.
+  inversion res; subst.
+  apply uc_equiv_perm_ex_nil; auto.
+  apply perm_pair_get_phys_log; auto.
+  inversion WTp; subst.
   - (* inductive case *)
     destruct (path_to_swaps (n :: n0 :: p) (swap_log m a n)) eqn:res'.
     inversion res; subst.  
-    destruct Hpath as [H1 [H2 [H3 [H4 H5]]]].
-    inversion H1; subst.
-    inversion H4; subst.
     assert (WFm':=res').
-    eapply path_to_swaps_bijective in WFm'.
-    eapply IHp in res'.
+    eapply path_to_swaps_bijective in WFm'; auto.
+    eapply IHp in res'; auto.
     unfold uc_equiv_perm_ex in *.
     rewrite cons_to_app. 
     rewrite eval_append, res'.
@@ -420,28 +409,24 @@ Proof.
     rewrite perm_to_matrix_permutes_qubits.
     apply f_to_vec_eq.
     intros x Hx.
-    apply fswap_swap_log; auto.
+    apply fswap_swap_log with (dim:=dim); auto.
     apply get_phys_perm; assumption.
     apply get_phys_perm.
     apply swap_log_preserves_bij; assumption.
-    eapply valid_path_subpath.
-    repeat split; try apply H2; try assumption.
     apply swap_log_preserves_bij; assumption.
-    eapply valid_path_subpath.
-    repeat split; try apply H1; try apply H2; try assumption.
     apply swap_log_preserves_bij; assumption.
 Qed.
 
 (* These uc_eq_perm_* lemmas are specific to swap_route_sound -- they help
    keep the main proof a little cleaner *)
 
-Lemma uc_equiv_perm_ex_cons_cong : forall (g : gate_app (Map_Unitary (G.U 1)) dim) (l1 l2 : ucom_l dim) p p1 p2,
+Lemma uc_equiv_perm_ex_cons_cong : forall {dim} (g : gate_app (Map_Unitary (G.U 1)) dim) (l1 l2 : ucom_l dim) p p1 p2,
   perm_pair dim p1 p2 ->
   uc_well_typed_l [g] ->
   l1 ≡ l2 with p1 and p ->
   (g :: l1) ≡ ((map_qubits_app p2 g) :: l2) with p1 and p.
 Proof.
-  intros g l1 l2 p p1 p2 Hperm WT H.
+  intros dim g l1 l2 p p1 p2 Hperm WT H.
   unfold uc_equiv_perm_ex in *.
   rewrite (cons_to_app _ l1).
   rewrite (cons_to_app _ l2).
@@ -463,12 +448,12 @@ Proof.
   assumption.
 Qed.
 
-Lemma uc_equiv_perm_ex_uc_equiv_l_app : forall (l l1 l1' l2 : ucom_l dim) p_in p_out,
+Lemma uc_equiv_perm_ex_uc_equiv_l_app : forall {dim} (l l1 l1' l2 : ucom_l dim) p_in p_out,
   uc_equiv_l l1 l1' ->
   l ≡ l1 ++ l2 with p_in and p_out ->
   l ≡ l1' ++ l2 with p_in and p_out.
 Proof.
-  intros l l1 l1' l2 p_in p_out H1 H2.
+  intros dim l l1 l1' l2 p_in p_out H1 H2.
   unfold uc_equiv_l, uc_equiv, uc_equiv_perm_ex in *.
   rewrite eval_append in *.
   unfold eval in *.
@@ -476,13 +461,13 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma uc_equiv_perm_ex_app1 : forall (l1 l1' l2 l2' : ucom_l dim) p1 p1inv p2 p3,
+Lemma uc_equiv_perm_ex_app1 : forall {dim} (l1 l1' l2 l2' : ucom_l dim) p1 p1inv p2 p3,
   perm_pair dim p1 p1inv ->
   l1 ≡ l1' with p1 and p2 ->
   l2 ≡ l2' with p2 and p3 ->
   (l1' ++ l2) ≡ l1 ++ l2' with p1inv and p3.
 Proof.
-  intros l1 l1' l2 l2' p1 p1inv p2 p3 [H1 [H2 [_ H3]]] H4 H5.
+  intros dim l1 l1' l2 l2' p1 p1inv p2 p3 [H1 [H2 [_ H3]]] H4 H5.
   unfold uc_equiv_perm_ex in *.
   rewrite 2 eval_append.
   rewrite H4, H5.
@@ -497,13 +482,13 @@ Proof.
   apply H3. auto.
 Qed.
 
-Lemma uc_equiv_perm_ex_app2 : forall (l1 l2 : ucom_l dim) (g : gate_app (Map_Unitary (G.U 1)) dim) p1 p2 p3,
+Lemma uc_equiv_perm_ex_app2 : forall {dim} (l1 l2 : ucom_l dim) (g : gate_app (Map_Unitary (G.U 1)) dim) p1 p2 p3,
   perm_pair dim p2 p3 ->
   uc_well_typed_l [g] ->
   l1 ≡ l2 with p1 and p2 ->
   (l1 ++ [map_qubits_app p3 g]) ≡ l2 ++ [g] with p1 and p2.
 Proof.
-  intros l1 l2 g p1 p2 p3 Hperm WT H.
+  intros dim l1 l2 g p1 p2 p3 Hperm WT H.
   unfold uc_equiv_perm_ex in *.
   rewrite 2 eval_append.  
   rewrite H.
@@ -523,23 +508,23 @@ Proof.
   assumption.  
 Qed.
 
-Lemma uc_equiv_perm_ex_trans_r : forall (l1 l2 l3 : ucom_l dim) p_in p_out,
+Lemma uc_equiv_perm_ex_trans_r : forall {dim} (l1 l2 l3 : ucom_l dim) p_in p_out,
   uc_equiv_l l2 l3 ->
   l1 ≡ l2 with p_in and p_out ->
   l1 ≡ l3 with p_in and p_out.
 Proof.
-  intros l1 l2 l3 p_in p_out H1 H2.
+  intros dim l1 l2 l3 p_in p_out H1 H2.
   unfold uc_equiv_l, uc_equiv, uc_equiv_perm_ex, eval in *.
   rewrite H2, H1.
   reflexivity.
 Qed.
 
-Lemma uc_equiv_perm_ex_trans_l : forall (l1 l2 l3 : ucom_l dim) p_in p_out,
+Lemma uc_equiv_perm_ex_trans_l : forall {dim} (l1 l2 l3 : ucom_l dim) p_in p_out,
   uc_equiv_l l1 l2 ->
   l2 ≡ l3 with p_in and p_out ->
   l1 ≡ l3 with p_in and p_out.
 Proof.
-  intros l1 l2 l3 p_in p_out H1 H2.
+  intros dim l1 l2 l3 p_in p_out H1 H2.
   unfold uc_equiv_l, uc_equiv, uc_equiv_perm_ex, eval in *.
   rewrite H1, H2.
   reflexivity.
@@ -564,13 +549,14 @@ Qed.
    is the inverse of the input logical->physical qubit map and permutation
    p_out=(get_phys m') is the output logical->physical qubit map.
 *)
-Lemma swap_route_sound : forall (l l' : ucom_l dim) (m m' : layout),
+Lemma swap_route_sound : forall {dim} (l l' : ucom_l dim) (m m' : layout) get_path,
   uc_well_typed_l l ->
   layout_bijective dim m ->
-  swap_route l m CG.get_path = (l', m') -> 
+  (forall n1 n2, path_well_typed (get_path n1 n2) dim) ->
+  swap_route l m get_path = (l', m') -> 
   l ≡ l' with (get_log m) and (get_phys m').
 Proof.
-  intros l l' m m' WT WFm H.
+  intros dim l l' m m' get_path WT WFm WTp H.
   generalize dependent m'.
   generalize dependent m.
   generalize dependent l'.
@@ -594,13 +580,13 @@ Proof.
       constructor.
       apply uc_well_typed_l_implies_dim_nonzero in WT.
       assumption.
-    + destruct (path_to_swaps (CG.get_path (get_phys m n) (get_phys m n0)) m) eqn:pth.
+    + destruct (path_to_swaps (get_path (get_phys m n) (get_phys m n0)) m) eqn:pth.
       destruct (swap_route l l0) eqn:res'.
       inversion res; subst.
       assert (pth':=pth).
-      assert (get_phys m n < CG.dim).
+      assert (get_phys m n < dim).
       { apply get_phys_lt; assumption. }
-      assert (get_phys m n0 < CG.dim).
+      assert (get_phys m n0 < dim).
       { apply get_phys_lt; assumption. }
       assert (get_phys m n <> get_phys m n0).
       { apply get_phys_neq with (dim:=dim); assumption. }
@@ -622,18 +608,17 @@ Proof.
       lia.
       apply pth.
       lia.
-      apply CG.get_path_valid; auto.
-      apply CG.get_path_valid; auto.
     + dependent destruction m0.
 Qed.
 
-Lemma swap_route_WT : forall (l : ucom_l dim) (m : layout) l' m',
+Lemma swap_route_WT : forall {dim} (l : ucom_l dim) (m : layout) l' m' get_path,
   uc_well_typed_l l ->
   layout_bijective dim m ->
-  swap_route l m CG.get_path = (l', m') -> 
+  (forall n1 n2, path_well_typed (get_path n1 n2) dim) ->
+  swap_route l m get_path = (l', m') -> 
   uc_well_typed_l l'.
 Proof. 
-  intros l m l' m' WT WF res.
+  intros dim l m l' m' get_path WT WF WTp res.
   apply swap_route_sound in res; auto.
   unfold uc_equiv_perm_ex, eval in res.
   apply list_to_ucom_WT. 
@@ -646,14 +631,38 @@ Proof.
   contradiction.
 Qed.
 
-Lemma path_to_swaps_respects_undirected : forall n1 n2 p m (l : ucom_l dim) m' u,
+Lemma swap_route_WF : forall {dim} (l l' : ucom_l dim) (m m' : layout) get_path,
+  layout_bijective dim m ->
+  (forall n1 n2, path_well_typed (get_path n1 n2) dim) ->
+  swap_route l m get_path = (l', m') -> 
+  layout_bijective dim m'.
+Proof.
+  intros dim l l' m m' get_path WFm WTp H.
+  generalize dependent m'.
+  generalize dependent m.
+  generalize dependent l'.
+  induction l; intros l' m WFm m' res; simpl in res.
+  - inversion res; subst. auto.
+  - destruct a.
+    + destruct (swap_route l m) eqn:res'.
+      inversion res; subst.
+      apply IHl in res'; auto.
+    + destruct (path_to_swaps (get_path (get_phys m n) (get_phys m n0)) m) eqn:pth.
+      destruct (swap_route l l0 get_path) eqn:res'.
+      inversion res; subst.
+      apply IHl in res'; auto.
+      apply path_to_swaps_bijective in pth; auto.
+    + dependent destruction m0.
+Qed.
+
+Lemma path_to_swaps_respects_undirected : forall {dim} n1 n2 p m (l : ucom_l dim) m' is_in_graph u,
   n1 < dim -> n2 < dim ->
-  valid_path (get_phys m n1) (get_phys m n2) CG.is_in_graph dim p ->
+  valid_path (get_phys m n1) (get_phys m n2) is_in_graph dim p ->
   layout_bijective dim m ->
   path_to_swaps p m = (l, m') ->
-  respects_constraints_undirected CG.is_in_graph (l ++ [App2 u (get_phys m' n1) (get_phys m' n2)]).
+  respects_constraints_undirected is_in_graph (l ++ [App2 u (get_phys m' n1) (get_phys m' n2)]).
 Proof.
-  intros n1 n2 p m l m' u Hn1 Hn2 Hpath WF res.
+  intros dim n1 n2 p m l m' is_in_graph u Hn1 Hn2 Hpath WF res.
   generalize dependent l.
   generalize dependent m.
   generalize dependent n1.
@@ -726,13 +735,14 @@ Proof.
   apply swap_log_preserves_bij; auto.
 Qed.
 
-Lemma swap_route_respects_undirected : forall l m (l' : ucom_l dim) m',
+Lemma swap_route_respects_undirected : forall {dim} l m (l' : ucom_l dim) m' get_path is_in_graph,
   uc_well_typed_l l ->
   layout_bijective dim m ->
-  swap_route l m CG.get_path = (l', m') ->
-  respects_constraints_undirected CG.is_in_graph l'.
+  get_path_valid dim get_path is_in_graph ->
+  swap_route l m get_path = (l', m') ->
+  respects_constraints_undirected is_in_graph l'.
 Proof.
-  intros l m l' m' WT WFm H.
+  intros dim l m l' m' get_path is_in_graph WT WFm Hpath H.
   generalize dependent m'.
   generalize dependent m.
   generalize dependent l'.
@@ -743,24 +753,23 @@ Proof.
       inversion res; subst.
       constructor.
       eapply IHl. assumption. apply WFm. apply res'.
-    + destruct (path_to_swaps (CG.get_path (get_phys m n) (get_phys m n0)) m) eqn:pth.
+    + destruct (path_to_swaps (get_path (get_phys m n) (get_phys m n0)) m) eqn:pth.
       destruct (swap_route l l0) eqn:res'.
       inversion res; subst.
       apply respects_constraints_undirected_app.
       eapply path_to_swaps_respects_undirected; auto.
       2: apply WFm.
       2: apply pth.
-      apply CG.get_path_valid.
+      apply Hpath.
       apply get_phys_lt; auto.
       apply get_phys_lt; auto.
       apply get_phys_neq with (dim:=dim); auto.
-      eapply IHl. 
-      assumption.
+      eapply IHl; auto.
       2: apply res'.
       eapply path_to_swaps_bijective.
       2: apply WFm.
       2: apply pth.
-      apply CG.get_path_valid.
+      apply Hpath.
       apply get_phys_lt; auto.
       apply get_phys_lt; auto.
       apply get_phys_neq with (dim:=dim); auto.
@@ -769,32 +778,58 @@ Qed.
 
 End SwapRouteProofs.
 
-(** ** Proofs for the "full" gate set & an arbitrary connectivity graph *)
+(** Proofs specialized to the Full gate set. *)
 
-(*
-Lemma decompose_swaps_and_cnots_sound : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim),
-  MapList.uc_equiv_l (decompose_swaps_and_cnots l CG.is_in_graph) l.
+Module MapFull := MappingGateSet FullGateSet.
+Module MapList := UListProofs MapFull.
+Import MapList.
+
+Lemma decompose_swaps_and_cnots_sound : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim) is_in_graph,
+  (decompose_swaps_and_cnots l is_in_graph =l= l)%ucom.
 Proof.
-  intros dim l.
-  unfold decompose_to_cnot.
+  intros dim l is_in_graph.
+  unfold decompose_swaps_and_cnots.
   induction l.
   - rewrite change_gate_set_nil.
     reflexivity.
   - rewrite change_gate_set_cons.
-    unfold FullList.uc_equiv_l in *.
+    unfold MapList.uc_equiv_l in *.
     simpl.
-    rewrite FullList.list_to_ucom_append.
+    rewrite MapList.list_to_ucom_append.
     destruct a; apply useq_congruence; try apply IHl;
-      dependent destruction f; simpl; 
-      repeat rewrite <- useq_assoc; rewrite SKIP_id_r; 
-      reflexivity.
+      dependent destruction m; simpl.
+    + rewrite SKIP_id_r. reflexivity.
+    + destruct (is_in_graph n n0); simpl.
+      rewrite SKIP_id_r. reflexivity.
+      repeat rewrite <- useq_assoc.
+      rewrite SKIP_id_r.
+      apply H_swaps_CNOT.
+    + destruct (is_in_graph n n0); simpl.
+      destruct (is_in_graph n0 n); simpl.
+      repeat rewrite <- useq_assoc.
+      rewrite SKIP_id_r. reflexivity.
+      repeat rewrite <- useq_assoc.
+      rewrite SKIP_id_r.
+      apply useq_congruence; try reflexivity.
+      repeat rewrite useq_assoc.
+      apply useq_congruence; try reflexivity.
+      repeat rewrite <- useq_assoc.
+      apply H_swaps_CNOT.
+      rewrite SWAP_symmetric.
+      repeat rewrite <- useq_assoc.
+      rewrite SKIP_id_r.
+      apply useq_congruence; try reflexivity.
+      repeat rewrite useq_assoc.
+      apply useq_congruence; try reflexivity.
+      repeat rewrite <- useq_assoc.
+      apply H_swaps_CNOT.
 Qed.
 
-Lemma decompose_swaps_and_cnots_respects_directed : forall (l : map_ucom_l (Full_Unitary 1) dim),
-  respects_constraints_undirected CG.is_in_graph l ->
-  respects_constraints_directed CG.is_in_graph UMap_CNOT (decompose_swaps_and_cnots l CG.is_in_graph).
+Lemma decompose_swaps_and_cnots_respects_directed : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim) is_in_graph,
+  respects_constraints_undirected is_in_graph l ->
+  respects_constraints_directed is_in_graph UMap_CNOT (decompose_swaps_and_cnots l is_in_graph).
 Proof.
-  intros l H.
+  intros dim l is_in_graph H.
   unfold decompose_swaps_and_cnots.
   induction l.
   rewrite change_gate_set_nil.
@@ -805,15 +840,16 @@ Proof.
   apply IHl. assumption.
   apply respects_constraints_directed_app.
   dependent destruction u; simpl.
-  destruct (CG.is_in_graph n1 n2) eqn:?.
+  destruct (is_in_graph n1 n2) eqn:?.
   constructor. assumption. constructor.
   destruct H3; try easy.
   repeat constructor.
   assumption.
-  destruct (CG.is_in_graph n1 n2) eqn:?.
+  destruct (is_in_graph n1 n2) eqn:?.
+  destruct (is_in_graph n2 n1) eqn:?.
+  repeat constructor; assumption.
   repeat constructor; assumption.
   destruct H3; try easy.
   repeat constructor; assumption.
   apply IHl. assumption.
 Qed.
-*)

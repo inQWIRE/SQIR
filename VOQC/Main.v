@@ -20,13 +20,6 @@ Local Close Scope R_scope.
    file are largely wrappers around definitions and proofs in other files. **)
 
 Definition circ := full_ucom_l.
-Definition layout := Layouts.layout.
-Definition c_graph : Type := nat * (nat -> nat -> list nat) * (nat -> nat -> bool) * (list nat) * (nat -> list nat).
-Definition graph_dim (cg : c_graph) := fst (fst (fst (fst cg))).
-Definition get_path (cg : c_graph) := snd (fst (fst (fst cg))).
-Definition is_in_graph (cg : c_graph) := snd (fst (fst cg)).
-Definition qubit_ordering (cg : c_graph) := snd (fst cg).
-Definition get_nearby_qubits (cg : c_graph) := snd cg.
 
 (* Cast function changes the dependent type; it will be extracted to a no-op *)
 Fixpoint cast {dim} (c : circ dim) dim' : @circ dim' := 
@@ -360,9 +353,9 @@ Ltac show_preserves_mapping_ibm :=
           try apply full_to_IBM_preserves_mapping;
           try assumption).
 
-Lemma optimize_1q_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (optimize_1q_gates c).
+Lemma optimize_1q_gates_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (optimize_1q_gates c).
 Proof. intros. show_preserves_mapping_ibm. Qed.
 
 Lemma cx_cancellation_preserves_semantics : forall {dim} (c : circ dim),
@@ -384,9 +377,9 @@ Proof.
   show_preserves_WT (cx_cancellation_preserves_semantics c H).
 Qed.
 
-Lemma cx_cancellation_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (cx_cancellation c).
+Lemma cx_cancellation_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (cx_cancellation c).
 Proof. intros. show_preserves_mapping_ibm. Qed.
 
 Lemma optimize_ibm_preserves_semantics : forall {dim} (c : circ dim),
@@ -419,9 +412,9 @@ Proof.
   show_preserves_WT_cong (optimize_ibm_preserves_semantics c H).
 Qed.
 
-Lemma optimize_ibm_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (optimize_ibm c).
+Lemma optimize_ibm_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (optimize_ibm c).
 Proof. intros. show_preserves_mapping_ibm. Qed.
 
 (** * Nam optimizations **)
@@ -542,9 +535,9 @@ Ltac show_preserves_mapping_nam :=
           try apply full_to_RzQ_preserves_mapping;
           try assumption).
 
-Lemma not_propagation_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (not_propagation c).
+Lemma not_propagation_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (not_propagation c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma hadamard_reduction_preserves_semantics : forall {dim} (c : circ dim),
@@ -558,9 +551,9 @@ Proof.
   show_preserves_WT_cong (hadamard_reduction_preserves_semantics c).
 Qed.
 
-Lemma hadamard_reduction_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (hadamard_reduction c).
+Lemma hadamard_reduction_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (hadamard_reduction c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma cancel_single_qubit_gates_preserves_semantics : forall {dim} (c : circ dim),
@@ -574,9 +567,9 @@ Proof.
   show_preserves_WT_cong (cancel_single_qubit_gates_preserves_semantics c H).
 Qed.
 
-Lemma cancel_single_qubit_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (cancel_single_qubit_gates c).
+Lemma cancel_single_qubit_gates_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (cancel_single_qubit_gates c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma cancel_two_qubit_gates_preserves_semantics : forall {dim} (c : circ dim),
@@ -590,9 +583,9 @@ Proof.
   show_preserves_WT_cong (cancel_two_qubit_gates_preserves_semantics c H).
 Qed.
 
-Lemma cancel_two_qubit_gates_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (cancel_two_qubit_gates c).
+Lemma cancel_two_qubit_gates_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (cancel_two_qubit_gates c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma merge_rotations_preserves_semantics : forall {dim} (c : circ dim),
@@ -606,9 +599,9 @@ Proof.
   show_preserves_WT_cong (merge_rotations_preserves_semantics c H).
 Qed.
 
-Lemma merge_rotations_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (merge_rotations c).
+Lemma merge_rotations_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (merge_rotations c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma optimize_nam_preserves_semantics : forall {dim} (c : circ dim),
@@ -622,9 +615,9 @@ Proof.
   show_preserves_WT_cong (optimize_nam_preserves_semantics c H).
 Qed.
 
-Lemma optimize_nam_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (optimize_nam c).
+Lemma optimize_nam_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (optimize_nam c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma optimize_nam_light_preserves_semantics : forall {dim} (c : circ dim),
@@ -638,9 +631,9 @@ Proof.
   show_preserves_WT_cong (optimize_nam_light_preserves_semantics c H).
 Qed.
 
-Lemma optimize_nam_light_preserves_mapping : forall {dim} (c : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c -> 
-  respects_constraints_directed (is_in_graph cg) U_CX (optimize_nam_light c).
+Lemma optimize_nam_light_preserves_mapping : forall {dim} (c : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c -> 
+  respects_constraints_directed is_in_graph U_CX (optimize_nam_light c).
 Proof. intros. show_preserves_mapping_nam. Qed.
 
 Lemma optimize_nam_lcr_preserves_semantics : forall {dim} (c0 l c r : circ dim) n,
@@ -699,12 +692,12 @@ Proof.
   assumption.
 Qed.
 
-Lemma optimize_nam_lcr_preserves_mapping : forall {dim} (c0 l c r : circ dim) (cg : c_graph),
-  respects_constraints_directed (is_in_graph cg) U_CX c0 -> 
+Lemma optimize_nam_lcr_preserves_mapping : forall {dim} (c0 l c r : circ dim) is_in_graph,
+  respects_constraints_directed is_in_graph U_CX c0 -> 
   optimize_nam_lcr c0 = Some (l, c, r) ->
-  respects_constraints_directed (is_in_graph cg) U_CX l
-    /\ respects_constraints_directed (is_in_graph cg) U_CX c
-    /\ respects_constraints_directed (is_in_graph cg) U_CX r.
+  respects_constraints_directed is_in_graph U_CX l
+    /\ respects_constraints_directed is_in_graph U_CX c
+    /\ respects_constraints_directed is_in_graph U_CX r.
 Proof. 
   intros dim c0 l c r cg Hcg H.
   eapply MappingConstraints.LCR_respects_constraints in H as [H0 [H1 H2]].
@@ -718,9 +711,21 @@ Qed.
 
 (** * Circuit mapping **)
 
-Definition swap_route {dim} (c : circ dim) (lay : layout) (cg : c_graph) :=
-  let n := graph_dim cg in
-  let (c,_) := SwapRoute.swap_route (full_to_map (cast c n)) lay (get_path cg) in
+Definition layout := Layouts.layout.
+
+Definition c_graph : Type := nat * (nat -> nat -> bool).
+Definition graph_dim (cg : c_graph) := fst cg.
+Definition is_in_graph (cg : c_graph) := snd cg.
+
+Definition ext_c_graph : Type := c_graph * (nat -> nat -> list nat) * (list nat) * (nat -> list nat).
+Definition get_c_graph (ecg : ext_c_graph) := fst (fst (fst ecg)).
+Definition get_path (ecg : ext_c_graph) := snd (fst (fst ecg)).
+Definition qubit_ordering (ecg : ext_c_graph) := snd (fst ecg).
+Definition get_nearby_qubits (ecg : ext_c_graph) := snd ecg.
+
+Definition swap_route {dim} (c : circ dim) (lay : layout) (ecg : ext_c_graph) :=
+  let n := graph_dim (get_c_graph ecg) in
+  let (c,_) := SwapRoute.swap_route (full_to_map (cast c n)) lay (get_path ecg) in
   map_to_full c.
   
 Definition decompose_swaps {dim} (c : circ dim) (cg : c_graph) :=
@@ -731,12 +736,21 @@ Definition check_list l : bool := Layouts.check_list l.
 Definition list_to_layout l : layout := Layouts.list_to_layout l.
 Definition layout_to_list (lay : layout) n : list nat := 
   map (fun ox => match ox with Some x => x | _ => O end) (Layouts.layout_to_list n lay).
-Definition greedy_layout {dim} (c : circ dim) (cg : c_graph) : layout :=
-  GreedyLayout.greedy_layout (full_to_map c) (graph_dim cg) 
-                             (get_nearby_qubits cg) (qubit_ordering cg).
+Definition greedy_layout {dim} (c : circ dim) (ecg : ext_c_graph) : layout :=
+  GreedyLayout.greedy_layout (full_to_map c) (graph_dim (get_c_graph ecg)) 
+                             (get_nearby_qubits ecg) (qubit_ordering ecg).
 
-Definition make_lnn n : c_graph := 
-  (n, LNN.get_path, LNN.is_in_graph n, LNN.qubit_ordering n, LNN.get_nearby n).
+Definition beq_tup t t' := 
+  match t, t' with
+  | (n1, n2), (n1', n2') => (n1 =? n1') && (n2 =? n2')
+  end.
+
+Definition c_graph_from_coupling_map (n : nat) (cmap : list (nat * nat)) : c_graph :=
+  (n, fun n1 n2 => existsb (beq_tup (n1, n2)) cmap).
+
+Definition lnn_c_graph n : c_graph := (n, LNN.is_in_graph n).
+Definition lnn_ext_c_graph n : ext_c_graph := 
+  (lnn_c_graph n, LNN.get_path, LNN.qubit_ordering n, LNN.get_nearby n).
 
 (*
 Definition make_tenerife (_:unit) : c_graph := 
@@ -747,68 +761,68 @@ Definition make_grid m n : c_graph :=
   (m * n, Grid.get_path n, Grid.is_in_graph m n).
 *)
 
-Module MappingProofs (CG : ConnectivityGraph).
-
-  Definition cg : c_graph := 
-    (CG.dim, CG.get_path, CG.is_in_graph, CG.qubit_ordering, CG.get_nearby).
-
-  Module SRP := SwapRouteProofs FullGateSet CG.
-  Import SRP.
+Module SRP := SwapRouteProofs FullGateSet.
+Import SRP.
 
 Lemma eval_full_to_map : forall {dim} (c : circ dim),
   SRP.MapList.eval (full_to_map c) = eval c.
 Proof. Admitted.
 
-  Lemma swap_route_preserves_semantics : forall {dim} (c : circ dim) (lay : layout),
-    uc_well_typed_l (cast c (graph_dim cg)) ->
-    layout_bijective (graph_dim cg) lay ->
-    cast c (graph_dim cg) ≡x swap_route c lay cg.
-  Proof. 
-    intros dim c lay WT WF.
-    unfold swap_route.
-    destruct (SwapRoute.swap_route (full_to_map (cast c (graph_dim cg))) lay (get_path cg)) eqn:sr.
-    assert (srWT:=sr).
-    apply SRP.swap_route_sound in sr; auto.
-    unfold uc_equiv_perm_ex in sr.
-    unfold uc_equiv_perm.
-    exists (get_log lay). exists (get_phys l).
-    repeat split.
-    apply get_log_perm. assumption.
-    apply get_phys_perm. admit.
-    rewrite eval_full_to_map in sr.
-    rewrite <- (eval_full_to_map (map_to_full m)).
+Lemma swap_route_preserves_semantics : forall {dim} (c : circ dim) (lay : layout) (ecg : ext_c_graph),
+  let n := graph_dim (get_c_graph ecg) in
+  uc_well_typed_l (cast c n) ->
+  layout_bijective n lay ->
+  cast c n ≡x swap_route c lay ecg.
+Proof. 
+  intros dim c lay ecg n WT WF.
+  subst n.
+  unfold swap_route.
+  destruct (SwapRoute.swap_route (full_to_map (cast c (graph_dim (get_c_graph ecg)))) lay (get_path ecg)) eqn:sr.
+  assert (srWF:=sr).
+  assert (srWT:=sr).
+  apply SRP.swap_route_WF in srWF; auto.
+  apply SRP.swap_route_WT in srWT; auto.
+  apply SRP.swap_route_sound in sr; auto.
+  unfold uc_equiv_perm_ex in sr.
+  unfold uc_equiv_perm.
+  exists (get_log lay). exists (get_phys l).
+  repeat split.
+  apply get_log_perm. assumption.
+  apply get_phys_perm. assumption.
 
-(* blah - will fix later *)
+  (* blah - will fix later *)
 Admitted.
 
-  Lemma swap_route_preserves_WT : forall {dim} (c : circ dim) (lay : layout),
-    uc_well_typed_l (cast c (graph_dim cg)) ->
-    layout_bijective (graph_dim cg) lay ->
-    uc_well_typed_l (swap_route c lay cg).
-  Proof. 
-    intros dim c lay WT WF. 
-    specialize (swap_route_preserves_semantics _ _ WT WF) as H.
-    destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
-    apply list_to_ucom_WT. 
-    apply uc_eval_nonzero_iff.
-    apply list_to_ucom_WT in WT.
-    apply uc_eval_nonzero_iff in WT.
-    intro contra.
-    unfold eval in H.
-    rewrite contra in H.
-    rewrite Mmult_0_r, Mmult_0_l in H.
-    contradiction.
-  Qed.
+(*
+Lemma swap_route_preserves_WT : forall {dim} (c : circ dim) (lay : layout),
+  uc_well_typed_l (cast c (graph_dim cg)) ->
+  layout_bijective (graph_dim cg) lay ->
+  uc_well_typed_l (swap_route c lay cg).
+Proof. 
+  intros dim c lay WT WF. 
+  specialize (swap_route_preserves_semantics _ _ WT WF) as H.
+  destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
+  apply list_to_ucom_WT. 
+  apply uc_eval_nonzero_iff.
+  apply list_to_ucom_WT in WT.
+  apply uc_eval_nonzero_iff in WT.
+  intro contra.
+  unfold eval in H.
+  rewrite contra in H.
+  rewrite Mmult_0_r, Mmult_0_l in H.
+  contradiction.
+Qed.
 
-  Lemma swap_route_respects_constraints_undirected : forall {dim} (c : circ dim) (lay : layout),
+Lemma swap_route_respects_constraints_undirected : forall {dim} (c : circ dim) (lay : layout),
     uc_well_typed_l (cast c (graph_dim cg)) ->
     layout_bijective (graph_dim cg) lay ->
     respects_constraints_undirected (is_in_graph cg) (swap_route c lay cg).
-  Proof.
-    intros dim c lay WT WF.
-    unfold swap_route.
-    destruct (SwapRoute.swap_route (full_to_map (cast c (graph_dim cg))) lay (get_path cg)) eqn:sr.
+Proof.
+  intros dim c lay WT WF.
+  unfold swap_route.
+  destruct (SwapRoute.swap_route (full_to_map (cast c (graph_dim cg))) lay (get_path cg)) eqn:sr.
 Admitted.
+*)
 
 (*
   Lemma decompose_swaps_preserves_semantics : forall {dim} (c : circ dim),
@@ -818,8 +832,6 @@ Admitted.
   Lemma decompose_swaps_respects_constraints : forall {dim} (c : circ dim),
 *)
 
-End MappingProofs.
-
 Lemma trivial_layout_well_formed : forall n, layout_bijective n (trivial_layout n).
 Proof. intros. apply Layouts.trivial_layout_bijective. Qed.
 
@@ -827,8 +839,8 @@ Lemma list_to_layout_well_formed : forall l,
   check_list l = true -> layout_bijective (length l) (list_to_layout l).
 Proof. intros l H. apply Layouts.check_list_layout_bijective. auto. Qed.
 
-Lemma greedy_layout_well_formed : forall {dim} (c : circ dim) (cg : c_graph), 
-  layout_bijective (graph_dim cg) (greedy_layout c cg).
+Lemma greedy_layout_well_formed : forall {dim} (c : circ dim) (ecg : ext_c_graph), 
+  layout_bijective (graph_dim (get_c_graph ecg)) (greedy_layout c ecg).
 Proof. intros. apply GreedyLayout.greedy_layout_bijective. Qed.
 
 (** * Mapping validation **)
@@ -877,23 +889,23 @@ Admitted.
 (** * Examples of verified composition of transformations **)
 
 Definition optimize_then_map {dim} (c : circ dim) :=
-  let cg := make_lnn 10 in            (* 10-qubit LNN architecture *)
-  if check_well_typed c 10            (* check c is well-typed & uses <=10 qubits *)
+  let ecg := lnn_ext_c_graph 10 in     (* 10-qubit LNN architecture *)
+  if check_well_typed c 10             (* check c is well-typed & uses <=10 qubits *)
   then 
-    let lay := greedy_layout c cg in  (* greedy layout *)
-    let c1 := optimize_nam c in       (* optimization #1 *)
-    let c2 := optimize_ibm c1 in      (* optimization #2 *)
-    Some (swap_route c2 lay cg)       (* map *)
+    let lay := greedy_layout c ecg in  (* greedy layout *)
+    let c1 := optimize_nam c in        (* optimization #1 *)
+    let c2 := optimize_ibm c1 in       (* optimization #2 *)
+    Some (swap_route c2 lay ecg)       (* map *)
   else None.
 
 Definition map_then_optimize {dim} (c : circ dim) :=
-  let cg := make_lnn 10 in            (* 10-qubit LNN architecture *)
-  if check_well_typed c 10            (* check c is well-typed & uses <=10 qubits *)
+  let ecg := lnn_ext_c_graph 10 in     (* 10-qubit LNN architecture *)
+  if check_well_typed c 10             (* check c is well-typed & uses <=10 qubits *)
   then 
-    let lay := trivial_layout 10 in   (* greedy layout *)
-    let c1 := swap_route c lay cg in  (* map *)
-    let c2 := optimize_nam c1 in      (* optimization #1 *)
-    Some (optimize_ibm c2)            (* optimization #2 *)
+    let lay := greedy_layout c ecg in  (* greedy layout *)
+    let c1 := swap_route c lay ecg in  (* map *)
+    let c2 := optimize_nam c1 in       (* optimization #1 *)
+    Some (optimize_ibm c2)             (* optimization #2 *)
   else None.
 
 (*
