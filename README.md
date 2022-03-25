@@ -102,7 +102,6 @@ The rest of the files in the VOQC directory can be split into the following cate
 
 - Optimizations over unitary programs, inspired by those in [Qiskit](https://github.com/Qiskit/qiskit-terra) and [Nam et al. [2018]](https://www.nature.com/articles/s41534-018-0072-4)
   - ChangeRotationBasis.v : Auxiliary proof for Optimize1qGates.
-  - CXCancellation.v : [CXCancellation](https://qiskit.org/documentation/stubs/qiskit.transpiler.passes.CXCancellation.html) from Qiskit.
   - GateCancellation.v : "Single-qubit gate cancellation" and "two-qubit gate cancellation" from Nam et al.
   - HadamardReduction.v : "Hadamard reduction" from Nam et al.
   - NotPropagation.v : "Not propagation" from Nam et al.

@@ -107,9 +107,6 @@ VOQC/ChangeRotationBasis.vo: VOQC/ChangeRotationBasis.v
 VOQC/ConnectivityGraph.vo: VOQC/ConnectivityGraph.v
 	coqc $(COQ_OPTS) VOQC/ConnectivityGraph.v
 
-VOQC/CXCancellation.vo: VOQC/CXCancellation.v VOQC/IBMGateSet.vo VOQC/MappingConstraints.vo
-	coqc $(COQ_OPTS) VOQC/CXCancellation.v
-
 VOQC/GateCancellation.vo: VOQC/GateCancellation.v SQIR/Equivalences.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo
 	coqc $(COQ_OPTS) VOQC/GateCancellation.v
 
@@ -152,10 +149,10 @@ VOQC/SwapRoute.vo: VOQC/SwapRoute.v VOQC/ConnectivityGraph.vo VOQC/Layouts.vo VO
 VOQC/FullGateSet.vo: VOQC/FullGateSet.v VOQC/IBMGateSet.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo VOQC/MappingGateSet.vo
 	coqc $(COQ_OPTS) VOQC/FullGateSet.v
 
-VOQC/Main.vo: VOQC/Main.v VOQC/CXCancellation.vo VOQC/GateCancellation.vo VOQC/HadamardReduction.vo VOQC/NotPropagation.vo VOQC/Optimize1qGates.vo VOQC/RotationMerging.vo VOQC/RzQGateSet.vo VOQC/SwapRoute.vo VOQC/MappingValidation.vo VOQC/GreedyLayout.vo
+VOQC/Main.vo: VOQC/Main.v VOQC/GateCancellation.vo VOQC/HadamardReduction.vo VOQC/NotPropagation.vo VOQC/Optimize1qGates.vo VOQC/RotationMerging.vo VOQC/RzQGateSet.vo VOQC/SwapRoute.vo VOQC/MappingValidation.vo VOQC/GreedyLayout.vo
 	coqc $(COQ_OPTS) VOQC/Main.v
 
-VOQC/GreedyLayout.vo: VOQC/GreedyLayout.v VOQC/ConnectivityGraph.vo VOQC/Layout.vo VOQC/MappingGateSet.vo
+VOQC/GreedyLayout.vo: VOQC/GreedyLayout.v VOQC/ConnectivityGraph.vo VOQC/Layouts.vo VOQC/MappingGateSet.vo
 	coqc $(COQ_OPTS) VOQC/GreedyLayout.v
 
 VOQC/MappingGateSet.vo: VOQC/MappingGateSet.v VOQC/UnitaryListRepresentation.vo

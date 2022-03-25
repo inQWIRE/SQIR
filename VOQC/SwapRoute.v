@@ -552,7 +552,7 @@ Qed.
 Lemma swap_route_sound : forall {dim} (l l' : ucom_l dim) (m m' : layout) get_path,
   uc_well_typed_l l ->
   layout_bijective dim m ->
-  (forall n1 n2, path_well_typed (get_path n1 n2) dim) ->
+  (forall n1 n2, n1 < dim -> n2 < dim -> n1 <> n2 -> path_well_typed (get_path n1 n2) dim) ->
   swap_route l m get_path = (l', m') -> 
   l ≡ l' with (get_log m) and (get_phys m').
 Proof.
@@ -614,7 +614,7 @@ Qed.
 Lemma swap_route_WT : forall {dim} (l : ucom_l dim) (m : layout) l' m' get_path,
   uc_well_typed_l l ->
   layout_bijective dim m ->
-  (forall n1 n2, path_well_typed (get_path n1 n2) dim) ->
+  (forall n1 n2, n1 < dim -> n2 < dim -> n1 <> n2 -> path_well_typed (get_path n1 n2) dim) ->
   swap_route l m get_path = (l', m') -> 
   uc_well_typed_l l'.
 Proof. 
@@ -632,18 +632,19 @@ Proof.
 Qed.
 
 Lemma swap_route_WF : forall {dim} (l l' : ucom_l dim) (m m' : layout) get_path,
+  uc_well_typed_l l ->
   layout_bijective dim m ->
-  (forall n1 n2, path_well_typed (get_path n1 n2) dim) ->
+  (forall n1 n2, n1 < dim -> n2 < dim -> n1 <> n2 -> path_well_typed (get_path n1 n2) dim) ->
   swap_route l m get_path = (l', m') -> 
   layout_bijective dim m'.
 Proof.
-  intros dim l l' m m' get_path WFm WTp H.
+  intros dim l l' m m' get_path WT WF WTp H.
   generalize dependent m'.
   generalize dependent m.
   generalize dependent l'.
-  induction l; intros l' m WFm m' res; simpl in res.
+  induction l; intros l' m WF m' res; simpl in res.
   - inversion res; subst. auto.
-  - destruct a.
+  - destruct a; inversion WT; subst.
     + destruct (swap_route l m) eqn:res'.
       inversion res; subst.
       apply IHl in res'; auto.
@@ -652,6 +653,10 @@ Proof.
       inversion res; subst.
       apply IHl in res'; auto.
       apply path_to_swaps_bijective in pth; auto.
+      apply WTp.
+      apply get_phys_lt; assumption.
+      apply get_phys_lt; assumption.
+      apply get_phys_neq with (dim:=dim); assumption.
     + dependent destruction m0.
 Qed.
 
