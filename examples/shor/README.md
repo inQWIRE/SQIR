@@ -1,6 +1,6 @@
 # examples/shor
 
-This directory contains the SQIR formalization of Shor's factoring algorithm. For questions about the code in this directory, contact Yuxiang Peng (@PicksPeng) or Kesha Hietala (@khieta).
+This directory contains the SQIR formalization of Shor's factoring algorithm, which is described in our paper [A Formally Certified End-to-End Implementation of Shor's Factorization Algorithm](https://arxiv.org/abs/2204.07112). For questions about the code in this directory, contact Yuxiang Peng (@PicksPeng) or Kesha Hietala (@khieta).
 
 ## Directory Contents
 
