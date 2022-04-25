@@ -134,6 +134,26 @@ Proof.
     easy.
 Qed.
 
+Lemma not_In_add : forall lay l0 l1 p0 p1,
+  l0 <> l1 -> p0 <> p1 -> ~ In lay l0 p0 -> ~ In (add lay l1 p1) l0 p0.
+Proof.
+  intros lay l0 l1 p0 p1 Hl Hp H contra.
+  contradict H.
+  destruct contra as [[l H] | [p H]].
+  left.
+  bdestruct (l =? l1). subst.
+  rewrite find_phys_add_eq in H.
+  inversion H; subst; contradiction.
+  rewrite find_phys_add_neq in H by auto.
+  exists l. apply H.
+  right.
+  bdestruct (p =? p1). subst.
+  rewrite find_log_add_eq in H.
+  inversion H; subst; contradiction.
+  rewrite find_log_add_neq in H by auto.
+  exists p. apply H.
+Qed.
+
 (** A layout is bijective for n if it is well formed and has some 
    binding for every value up to n. *)
 Definition layout_bijective (n : nat) (lay : layout) : Prop :=

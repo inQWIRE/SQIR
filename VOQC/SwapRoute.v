@@ -59,7 +59,50 @@ Fixpoint swap_route {U dim} (l : map_ucom_l U dim) (m : layout) (get_path : nat 
 Definition H {dim} a : gate_app (Map_Unitary (Full_Unitary 1)) dim := 
   App1 (UMap_U FullGateSet.U_H) a.
 
-(** Finally, a "decomposition" function that ensures that the output satisfies
+(** Decompose SWAPs when they allow cancelling CNOTs. *)
+Fixpoint cancel_cnots_with_swaps' {U dim} (l : map_ucom_l U dim) fuel acc :=
+  match fuel with
+  | O => rev_append acc l
+  | S fuel =>
+      match l with
+      | [] => rev_append acc []
+      | App2 UMap_CNOT m n :: t => 
+          match (next_two_qubit_gate t m) with
+          | Some (t1, UMap_SWAP, m', n', t2) => 
+              if (m =? m') && (n =? n') && (does_not_reference t1 n)
+              then cancel_cnots_with_swaps' (t1 ++ [CNOT n m] ++ [CNOT m n] ++ t2) fuel acc
+              else if (m =? n') && (n =? m') && (does_not_reference t1 n)
+                   then cancel_cnots_with_swaps' (t1 ++ [CNOT m' n'] ++ [CNOT n' m'] ++ t2) fuel acc
+                   else cancel_cnots_with_swaps' t fuel (CNOT m n :: acc)
+          | _ => cancel_cnots_with_swaps' t fuel (CNOT m n :: acc)
+          end
+      | App2 UMap_SWAP m n :: t =>
+          match (next_two_qubit_gate t m) with
+          | Some (t1, UMap_CNOT, m', n', t2) => 
+              if (m =? m') && (n =? n') && (does_not_reference t1 n)
+              then cancel_cnots_with_swaps' ([CNOT m n] ++ [CNOT n m] ++ t1 ++ t2) fuel acc
+              else if (m =? n') && (n =? m') && (does_not_reference t1 n)
+                   then cancel_cnots_with_swaps' ([CNOT n m] ++ [CNOT m n] ++ t1 ++ t2) fuel acc
+                   else cancel_cnots_with_swaps' t fuel (SWAP m n :: acc)
+          | _ => cancel_cnots_with_swaps' t fuel (SWAP m n :: acc)
+          end
+      | u :: t => cancel_cnots_with_swaps' t fuel (u :: acc)
+      end
+  end.
+
+(* For the fuel, we need to account for the fact that decomposing SWAPs add new gates 
+   into the list used in the recursive call *)
+Fixpoint fuel_aux {U dim} (l : map_ucom_l U dim) acc :=
+  match l with
+  | [] => acc
+  | App2 UMap_SWAP m n :: t => fuel_aux t (acc + 3)%nat
+  | _ :: t => fuel_aux t (S acc)
+  end.
+
+Definition cancel_cnots_with_swaps {U dim} (l : map_ucom_l U dim) :=
+  cancel_cnots_with_swaps' l (fuel_aux l O) [].
+
+(** Finally, decompose all SWAP gates and ensures that the output satisfies
    directed connectivity contraints. This function is specialized to the Full
    gate set where we have access to a Hadamard gate. *)
 Definition decompose_swaps_and_cnots_aux {dim} (is_in_graph : nat -> nat -> bool) (g : gate_app (Map_Unitary (Full_Unitary 1)) dim) : map_ucom_l (Full_Unitary 1) dim :=
@@ -78,7 +121,8 @@ Definition decompose_swaps_and_cnots_aux {dim} (is_in_graph : nat -> nat -> bool
   end.
 
 Definition decompose_swaps_and_cnots {dim} (l : map_ucom_l (Full_Unitary 1) dim) (is_in_graph : nat -> nat -> bool) :=
-  change_gate_set (decompose_swaps_and_cnots_aux is_in_graph) l.
+  change_gate_set 
+    (decompose_swaps_and_cnots_aux is_in_graph) (cancel_cnots_with_swaps l).
 
 (** * Proofs *)
 
@@ -781,6 +825,247 @@ Proof.
     + dependent destruction m0.
 Qed.
 
+Ltac easy_case IH := rewrite IH; simpl; rewrite <- app_assoc; reflexivity.
+
+Local Transparent SQIR.CNOT SQIR.SWAP.
+Lemma cancel_cnots_with_swaps'_sound : forall {dim} (l : ucom_l dim) fuel acc,
+  (cancel_cnots_with_swaps' l fuel acc =l= rev acc ++ l)%ucom.
+Proof.
+  intros dim l fuel acc.
+  gen l acc.
+  induction fuel; intros l acc; simpl.
+  rewrite rev_append_rev. reflexivity.
+  destruct l.
+  rewrite rev_append_rev. reflexivity.
+  destruct g; dependent destruction m.
+  easy_case IHfuel.
+  - destruct (next_two_qubit_gate l n) eqn:ntqg.
+    2: easy_case IHfuel.
+    repeat destruct p.
+    dependent destruction m.
+    easy_case IHfuel.
+    destruct ((n =? n2) && (n0 =? n1) && does_not_reference g0 n0) eqn:cond;
+      [| destruct ((n =? n1) && (n0 =? n2) && does_not_reference g0 n0) eqn:cond'];
+      try easy_case IHfuel.
+    + apply andb_prop in cond as [cond dnr].
+      apply andb_prop in cond as [cond1 cond2].
+      apply Nat.eqb_eq in cond1, cond2; subst.
+      assert ([CNOT n2 n1] ++ g0 =l= g0 ++ [CNOT n2 n1])%ucom.
+      apply does_not_reference_commutes_app2.
+      eapply ntqg_l1_does_not_reference. apply ntqg.
+      assumption.
+      rewrite IHfuel. 
+      apply ntqg_preserves_structure in ntqg.
+      rewrite ntqg.
+      rewrite cons_to_app.
+      rewrite (cons_to_app _ g).
+      rewrite (cons_to_app _ (_ ++ _)).
+      apply_app_congruence.
+      rewrite 2 app_assoc.
+      rewrite H0.
+      apply_app_congruence.
+      unfold uc_equiv_l; simpl.
+      destruct (uc_well_typed_b (@SQIR.CNOT dim n2 n1)) eqn:WTb.
+      apply uc_well_typed_b_equiv in WTb.
+      inversion WTb; subst.
+      unfold SQIR.SWAP.
+      repeat rewrite <- useq_assoc.
+      rewrite CNOT_CNOT_id by assumption.
+      rewrite SKIP_id_l.
+      reflexivity.
+      apply not_true_iff_false in WTb.
+      rewrite uc_well_typed_b_equiv in WTb.
+      apply uc_eval_zero_iff in WTb.
+      unfold uc_equiv; simpl in *.
+      rewrite WTb. Msimpl_light. reflexivity.
+    + clear cond.
+      apply andb_prop in cond' as [cond' dnr].
+      apply andb_prop in cond' as [cond1 cond2].
+      apply Nat.eqb_eq in cond1, cond2; subst.
+      assert ([CNOT n1 n2] ++ g0 =l= g0 ++ [CNOT n1 n2])%ucom.
+      apply does_not_reference_commutes_app2.
+      eapply ntqg_l1_does_not_reference. apply ntqg.
+      assumption.
+      rewrite IHfuel. 
+      apply ntqg_preserves_structure in ntqg.
+      rewrite ntqg.
+      rewrite cons_to_app.
+      rewrite (cons_to_app _ g).
+      rewrite (cons_to_app _ (_ ++ _)).
+      apply_app_congruence.
+      rewrite 2 app_assoc.
+      rewrite H0.
+      apply_app_congruence.
+      unfold uc_equiv_l; simpl.
+      destruct (uc_well_typed_b (@SQIR.CNOT dim n2 n1)) eqn:WTb.
+      apply uc_well_typed_b_equiv in WTb.
+      inversion WTb; subst.
+      rewrite SWAP_symmetric.
+      unfold SQIR.SWAP.
+      repeat rewrite <- useq_assoc.
+      rewrite CNOT_CNOT_id by auto.
+      rewrite SKIP_id_l.
+      reflexivity.
+      apply not_true_iff_false in WTb.
+      rewrite uc_well_typed_b_equiv in WTb.
+      apply uc_eval_zero_iff in WTb.
+      unfold uc_equiv; simpl in *.
+      rewrite WTb. Msimpl_light. reflexivity.
+  - destruct (next_two_qubit_gate l n) eqn:ntqg.
+    2: easy_case IHfuel.
+    repeat destruct p.
+    dependent destruction m.
+    2: easy_case IHfuel.
+    destruct ((n =? n2) && (n0 =? n1) && does_not_reference g0 n0) eqn:cond;
+      [| destruct ((n =? n1) && (n0 =? n2) && does_not_reference g0 n0) eqn:cond'];
+      try easy_case IHfuel.
+    + apply andb_prop in cond as [cond dnr].
+      apply andb_prop in cond as [cond1 cond2].
+      apply Nat.eqb_eq in cond1, cond2; subst.
+      assert ([CNOT n2 n1] ++ g0 =l= g0 ++ [CNOT n2 n1])%ucom.
+      apply does_not_reference_commutes_app2.
+      eapply ntqg_l1_does_not_reference. apply ntqg.
+      assumption.
+      rewrite IHfuel. 
+      apply ntqg_preserves_structure in ntqg.
+      rewrite ntqg.
+      rewrite cons_to_app.
+      rewrite 2 (cons_to_app _ (_ ++ _)).
+      apply_app_congruence.
+      rewrite <- H0.
+      apply_app_congruence.
+      unfold uc_equiv_l; simpl.
+      destruct (uc_well_typed_b (@SQIR.CNOT dim n2 n1)) eqn:WTb.
+      apply uc_well_typed_b_equiv in WTb.
+      inversion WTb; subst.
+      unfold SQIR.SWAP.
+      repeat rewrite useq_assoc.
+      rewrite <- (useq_assoc _ (SQIR.CNOT n2 n1) SKIP).
+      rewrite CNOT_CNOT_id by assumption.
+      rewrite SKIP_id_l.
+      reflexivity.
+      apply not_true_iff_false in WTb.
+      rewrite uc_well_typed_b_equiv in WTb.
+      apply uc_eval_zero_iff in WTb.
+      unfold uc_equiv; simpl in *.
+      rewrite WTb. Msimpl_light. reflexivity.
+    + clear cond.
+      apply andb_prop in cond' as [cond' dnr].
+      apply andb_prop in cond' as [cond1 cond2].
+      apply Nat.eqb_eq in cond1, cond2; subst.
+      assert ([CNOT n2 n1] ++ g0 =l= g0 ++ [CNOT n2 n1])%ucom.
+      apply does_not_reference_commutes_app2.
+      assumption.
+      eapply ntqg_l1_does_not_reference. apply ntqg.
+      rewrite IHfuel. 
+      apply ntqg_preserves_structure in ntqg.
+      rewrite ntqg.
+      rewrite cons_to_app.
+      rewrite 2 (cons_to_app _ (_ ++ _)).
+      apply_app_congruence.
+      rewrite <- H0.
+      apply_app_congruence.
+      unfold uc_equiv_l; simpl.
+      destruct (uc_well_typed_b (@SQIR.CNOT dim n2 n1)) eqn:WTb.
+      apply uc_well_typed_b_equiv in WTb.
+      inversion WTb; subst.
+      rewrite SWAP_symmetric.
+      unfold SQIR.SWAP.
+      repeat rewrite useq_assoc.
+      rewrite <- (useq_assoc _ (SQIR.CNOT n2 n1) SKIP).
+      rewrite CNOT_CNOT_id by auto.
+      rewrite SKIP_id_l.
+      reflexivity.
+      apply not_true_iff_false in WTb.
+      rewrite uc_well_typed_b_equiv in WTb.
+      apply uc_eval_zero_iff in WTb.
+      unfold uc_equiv; simpl in *.
+      rewrite WTb. Msimpl_light. reflexivity.
+Qed.
+Local Opaque SQIR.CNOT SQIR.SWAP.
+
+Lemma cancel_cnots_with_swaps_sound : forall {dim} (l : ucom_l dim),
+  (cancel_cnots_with_swaps l =l= l)%ucom.
+Proof.
+  intros dim l.
+  unfold cancel_cnots_with_swaps.
+  rewrite cancel_cnots_with_swaps'_sound.
+  reflexivity.
+Qed.
+
+Ltac easy_case2 IH := apply IH; auto; constructor; auto.
+
+Lemma cancel_cnots_with_swaps'_respects_undirected : forall {dim} (l : ucom_l dim) is_in_graph fuel acc,
+  respects_constraints_undirected is_in_graph acc ->
+  respects_constraints_undirected is_in_graph l ->
+  respects_constraints_undirected is_in_graph (cancel_cnots_with_swaps' l fuel acc).
+Proof.
+  intros dim l is_in_graph fuel.
+  gen l.
+  induction fuel; intros l acc Hacc Hl; simpl.
+  apply rev_append_respects_constraints_undirected; auto.
+  destruct l.
+  apply rev_append_respects_constraints_undirected; auto.
+  destruct g; dependent destruction m; inversion Hl; subst.
+  easy_case2 IHfuel.
+  - destruct (next_two_qubit_gate l n) eqn:ntqg.
+    2: easy_case2 IHfuel.
+    repeat destruct p.
+    dependent destruction m.
+    easy_case2 IHfuel.
+    destruct ((n =? n2) && (n0 =? n1) && does_not_reference g0 n0).
+    apply next_two_qubit_gate_respects_constraints_undirected 
+      with (is_in_graph0:=is_in_graph) in ntqg as [? [? _]]; auto.
+    apply IHfuel; auto.
+    apply respects_constraints_undirected_app; auto. 
+    constructor; auto.
+    apply or_comm. auto.
+    constructor; auto.
+    destruct ((n =? n1) && (n0 =? n2) && does_not_reference g0 n0) eqn:cond.
+    apply andb_prop in cond as [cond _].
+    apply andb_prop in cond as [cond1 cond2].
+    apply Nat.eqb_eq in cond1, cond2; subst.
+    apply next_two_qubit_gate_respects_constraints_undirected 
+      with (is_in_graph0:=is_in_graph) in ntqg as [? [? _]]; auto.
+    apply IHfuel; auto.
+    apply respects_constraints_undirected_app; auto. 
+    constructor; auto.
+    apply or_comm. auto.
+    constructor; auto.
+    easy_case2 IHfuel.
+  - destruct (next_two_qubit_gate l n) eqn:ntqg.
+    2: easy_case2 IHfuel.
+    repeat destruct p.
+    dependent destruction m.
+    2: easy_case2 IHfuel.
+    destruct ((n =? n2) && (n0 =? n1) && does_not_reference g0 n0).
+    apply next_two_qubit_gate_respects_constraints_undirected 
+      with (is_in_graph0:=is_in_graph) in ntqg as [? [? _]]; auto.
+    apply IHfuel; auto.
+    constructor; auto.
+    constructor.
+    apply or_comm. auto.
+    apply respects_constraints_undirected_app; auto. 
+    destruct ((n =? n1) && (n0 =? n2) && does_not_reference g0 n0).
+    apply next_two_qubit_gate_respects_constraints_undirected 
+      with (is_in_graph0:=is_in_graph) in ntqg as [? [? _]]; auto.
+    apply IHfuel; auto.
+    constructor.
+    apply or_comm. auto.
+    constructor; auto.
+    apply respects_constraints_undirected_app; auto. 
+    easy_case2 IHfuel.
+Qed.
+
+Lemma cancel_cnots_with_swaps_respects_undirected : forall {dim} (l : ucom_l dim) is_in_graph,
+  respects_constraints_undirected is_in_graph l ->
+  respects_constraints_undirected is_in_graph (cancel_cnots_with_swaps l).
+Proof.
+  intros dim l is_in_graph H.
+  apply cancel_cnots_with_swaps'_respects_undirected.
+  constructor. assumption.
+Qed.
+
 End SwapRouteProofs.
 
 (** Proofs specialized to the Full gate set. *)
@@ -789,19 +1074,28 @@ Module MapFull := MappingGateSet FullGateSet.
 Module MapList := UListProofs MapFull.
 Import MapList.
 
+Module SRPFull := SwapRouteProofs FullGateSet.
+Import SRPFull.
+
 Lemma decompose_swaps_and_cnots_sound : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim) is_in_graph,
   (decompose_swaps_and_cnots l is_in_graph =l= l)%ucom.
 Proof.
   intros dim l is_in_graph.
   unfold decompose_swaps_and_cnots.
-  induction l.
+  assert (l =l= cancel_cnots_with_swaps l)%ucom.
+  symmetry.
+  apply cancel_cnots_with_swaps_sound.
+  unfold uc_equiv_l in *.
+  rewrite H0.
+  remember (cancel_cnots_with_swaps l) as l'.
+  clear.
+  induction l'.
   - rewrite change_gate_set_nil.
     reflexivity.
   - rewrite change_gate_set_cons.
-    unfold MapList.uc_equiv_l in *.
     simpl.
-    rewrite MapList.list_to_ucom_append.
-    destruct a; apply useq_congruence; try apply IHl;
+    rewrite list_to_ucom_append.
+    destruct a; apply useq_congruence; try apply IHl';
       dependent destruction m; simpl.
     + rewrite SKIP_id_r. reflexivity.
     + destruct (is_in_graph n n0); simpl.
@@ -836,25 +1130,29 @@ Lemma decompose_swaps_and_cnots_respects_directed : forall {dim} (l : map_ucom_l
 Proof.
   intros dim l is_in_graph H.
   unfold decompose_swaps_and_cnots.
-  induction l.
+  assert (respects_constraints_undirected is_in_graph (cancel_cnots_with_swaps l)).
+  apply cancel_cnots_with_swaps_respects_undirected. auto.
+  remember (cancel_cnots_with_swaps l) as l'.
+  clear - H0.
+  induction l'.
   rewrite change_gate_set_nil.
   constructor.
   rewrite change_gate_set_cons.
-  inversion H; subst.
+  inversion H0; subst.
   simpl. constructor.
-  apply IHl. assumption.
+  apply IHl'. assumption.
   apply respects_constraints_directed_app.
   dependent destruction u; simpl.
   destruct (is_in_graph n1 n2) eqn:?.
   constructor. assumption. constructor.
-  destruct H3; try easy.
+  destruct H4; try easy.
   repeat constructor.
   assumption.
   destruct (is_in_graph n1 n2) eqn:?.
   destruct (is_in_graph n2 n1) eqn:?.
   repeat constructor; assumption.
   repeat constructor; assumption.
-  destruct H3; try easy.
+  destruct H4; try easy.
   repeat constructor; assumption.
-  apply IHl. assumption.
+  apply IHl'. assumption.
 Qed.

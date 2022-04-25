@@ -693,9 +693,8 @@ Definition check_list l : bool := Layouts.check_list l.
 Definition list_to_layout l : layout := Layouts.list_to_layout l.
 Definition layout_to_list (lay : layout) n : list nat := 
   map (fun ox => match ox with Some x => x | _ => O end) (Layouts.layout_to_list n lay).
-Definition greedy_layout {dim} (c : circ dim) (cg : c_graph) (get_nearby : nat -> list nat) (qubit_ordering : list nat) : layout :=
-  GreedyLayout.greedy_layout (full_to_map c) (graph_dim cg) 
-                             get_nearby qubit_ordering.
+Definition greedy_layout {dim} (c : circ dim) (cg : c_graph) (q_ordering : option nat -> list nat) : layout :=
+  GreedyLayout.greedy_layout (full_to_map c) (graph_dim cg) q_ordering.
 
 Definition beq_tup t t' := 
   match t, t' with
@@ -802,9 +801,11 @@ Lemma list_to_layout_well_formed : forall l,
   check_list l = true -> layout_bijective (length l) (list_to_layout l).
 Proof. intros l H. apply Layouts.check_list_layout_bijective. auto. Qed.
 
-Lemma greedy_layout_well_formed : forall {dim} (c : circ dim) (cg : c_graph) (get_nearby : nat -> list nat) (qubit_ordering : list nat), 
-  layout_bijective (graph_dim cg) (greedy_layout c cg get_nearby qubit_ordering).
-Proof. intros. apply GreedyLayout.greedy_layout_bijective. Qed.
+Lemma greedy_layout_well_formed : forall {dim} (c : circ dim) (cg : c_graph) (q_ordering : option nat -> list nat), 
+  uc_well_typed_l c ->
+  valid_q_ordering q_ordering (graph_dim cg) ->
+  layout_bijective (graph_dim cg) (greedy_layout c cg q_ordering).
+Proof. Admitted.
 
 (** * Mapping validation **)
 
@@ -851,6 +852,7 @@ Admitted.
 
 (** * Examples of verified composition of transformations **)
 
+(*
 Definition optimize_then_map {dim} (c : circ dim) :=
   let cg := make_lnn 10 in            (* 10-qubit LNN architecture *)
   if check_well_typed c 10            (* check c is well-typed & uses <=10 qubits *)
@@ -876,6 +878,7 @@ Definition map_then_optimize {dim} (c : circ dim) :=
     let c2 := optimize_nam c1 in      (* optimization #1 *)
     Some (optimize_ibm c2)            (* optimization #2 *)
   else None.
+*)
 
 (*
 
