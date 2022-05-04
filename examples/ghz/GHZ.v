@@ -1,4 +1,4 @@
-Require Import UnitarySem.
+Require Export UnitarySem.
 Require Import QWIRE.Dirac.
 
 Local Open Scope nat_scope.

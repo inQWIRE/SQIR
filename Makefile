@@ -1,7 +1,7 @@
 # Using the example from https://coq.inria.fr/refman/practical-tools/utilities.html#reusing-extending-the-generated-makefile
 
 # KNOWNTARGETS will not be passed along to CoqMakefile
-KNOWNTARGETS := CoqMakefile all examples voqc shor clean
+KNOWNTARGETS := CoqMakefile all examples voqc shor ghz clean
 
 # KNOWNFILES will not get implicit targets from the final rule, and so
 # depending on them won't invoke the submake
@@ -29,7 +29,9 @@ COQ_OPTS := -R . Top
 
 all: examples voqc shor VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMeasure.vo VOQC/BooleanCompilation.vo
 
-examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/GHZ.vo examples/Grover.vo examples/QPE.vo examples/Simon.vo examples/Superdense.vo examples/Teleport.vo examples/Wiesner.vo
+examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/Grover.vo examples/QPE.vo examples/Simon.vo examples/Superdense.vo examples/Teleport.vo examples/Wiesner.vo ghz
+
+ghz: invoke-coqmakefile examples/ghz/GHZ.vo examples/ghz/AltGHZ.vo
 
 shor: invoke-coqmakefile examples/shor/Main.vo
 
@@ -37,14 +39,17 @@ voqc: invoke-coqmakefile VOQC/Main.vo
 
 # Built by 'make examples'
 
+examples/ghz/AltGHZ.vo: examples/ghz/AltGHZ.v examples/ghz/GHZ.vo SQIR/AltGateSet.vo
+	coqc $(COQ_OPTS) examples/ghz/AltGHZ.v
+
 examples/Deutsch.vo: examples/Deutsch.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo externals/QWIRE/Proportional.vo
 	coqc $(COQ_OPTS) examples/Deutsch.v
 
 examples/DeutschJozsa.vo: examples/DeutschJozsa.v SQIR/UnitaryOps.vo examples/Utilities.vo externals/QWIRE/Dirac.vo
 	coqc $(COQ_OPTS) examples/DeutschJozsa.v
 
-examples/GHZ.vo: examples/GHZ.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo
-	coqc $(COQ_OPTS) examples/GHZ.v
+examples/ghz/GHZ.vo: examples/ghz/GHZ.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo
+	coqc $(COQ_OPTS) examples/ghz/GHZ.v
 
 examples/Grover.vo: examples/Grover.v SQIR/UnitaryOps.vo examples/Utilities.vo externals/QWIRE/Dirac.vo
 	coqc $(COQ_OPTS) examples/Grover.v
