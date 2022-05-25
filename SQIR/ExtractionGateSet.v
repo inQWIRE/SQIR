@@ -376,7 +376,7 @@ Definition decompose_CCU1 r1 (a b c : nat) : ucom U :=
   CU1 (r1/R2) a b >> CX b c >> CU1 (-r1/R2) a c >> CX b c >> CU1 (r1/R2) a c.
 
 Definition decompose_CSWAP (a b c : nat) : ucom U := 
-  CCX a b c >> CCX a c b >> CCX a b c.
+  CX c b >> CCX a b c >> CX c b.
 
 Definition decompose_CCX (a b c : nat) : ucom U := 
   H c >> CX b c >> Tdg c >> CX a c >> 
@@ -538,7 +538,15 @@ Qed.
 Lemma decompose_CSWAP_fresh : forall dim a b c d,
   is_fresh a (to_base_ucom dim (decompose_CSWAP b c d)) <->
   is_fresh a (UnitaryOps.control b (@SQIR.SWAP dim c d)).
-Proof. intros. reflexivity. Qed.
+Proof.
+  intros dim a b c d.
+  split; intro H; simpl in *.
+  invert_is_fresh.
+  apply fresh_control; repeat constructor; auto.
+  invert_is_fresh.
+  repeat constructor; auto.
+  apply fresh_control; repeat constructor; auto.
+Qed.
 
 Lemma decompose_CCX_fresh : forall dim a b c d,
   is_fresh a (to_base_ucom dim (decompose_CCX b c d)) <->
@@ -676,6 +684,8 @@ Proof.
     (* C-CSWAP *)
     apply IHn in H as [? ?].
     split; auto.
+    apply decompose_CSWAP_fresh in H1.
+    assumption.
     simpl in Hfu. rewrite fuel_CSWAP_eq. lia.
     apply decompose_CSWAP_WF.
     (* C-C4X *)
@@ -952,6 +962,7 @@ Proof.
     do 3 (destruct l; try reflexivity).
     apply CH_is_control_H.
     do 4 (destruct l; try reflexivity).
+    apply CSWAP_is_control_SWAP.
     do 4 (destruct l; try reflexivity).
     destruct l; [| reflexivity].
     apply C3X_is_control_CCX. }

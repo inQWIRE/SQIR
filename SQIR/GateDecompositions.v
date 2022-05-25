@@ -27,7 +27,7 @@ Definition CCU1 {dim} r1 (a b c : nat) : base_ucom dim :=
   CU1 (r1/2) a b ; CNOT b c ; CU1 (-r1/2) a c ; CNOT b c ; CU1 (r1/2) a c.
 
 Definition CSWAP {dim} (a b c : nat) : base_ucom dim := 
-  CCX a b c ; CCX a c b ; CCX a b c.
+  CNOT c b ; CCX a b c ; CNOT c b.
 
 (* From https://qiskit.org/documentation/_modules/qiskit/circuit/library/standard_gates/x.html#C3XGate *)
 Definition C3X {dim} (a b c d : nat) : base_ucom dim := 
@@ -181,13 +181,67 @@ Proof.
 Qed.
 Local Opaque U3.
 
+Ltac invert_WT :=
+  repeat match goal with
+  | H : uc_well_typed (UnitaryOps.control _ _)%ucom |- _ => idtac
+  | H : uc_well_typed _ |- _ => inversion H; clear H; subst
+  end.
+
+Local Transparent H CNOT Rz ID.
+Lemma uc_well_typed_CCX: forall dim a b c : nat,
+  (a < dim)%nat /\ (b < dim)%nat /\ (c < dim)%nat /\ a <> b /\ a <> c /\ b <> c 
+    <-> uc_well_typed (@CCX dim a b c).
+Proof.
+  intros dim a b c.
+  split; intro H.
+  destruct H as [? [? [? [? [? ?]]]]]. 
+  repeat constructor; assumption. 
+  invert_WT. 
+  repeat split; assumption. 
+Qed.
+Local Opaque H CNOT Rz ID CCX.
+
 Local Transparent SWAP.
 Lemma CSWAP_is_control_SWAP : forall dim a b c, @CSWAP dim a b c ≡ control a (SWAP b c).
 Proof.
   intros dim a b c.
-  unfold CSWAP, uc_equiv, SWAP.
+  destruct (@uc_well_typed_b _ dim (CCX a b c)) eqn:WT.
+  apply uc_well_typed_b_equiv in WT.
+  apply equal_on_basis_states_implies_equal; auto with wf_db.
+  intro f.
+  apply uc_well_typed_CCX in WT as [? [? [? [? [? ?]]]]].
   simpl.
+  repeat rewrite Mmult_assoc.
+  replace (control a (CNOT b c)) with (@CCX dim a b c) by reflexivity.
+  replace (control a (CNOT c b)) with (@CCX dim a c b) by reflexivity.
+  rewrite f_to_vec_CNOT by auto.
+  repeat rewrite f_to_vec_CCX by auto.
+  rewrite f_to_vec_CNOT by auto.
+  repeat rewrite update_index_eq.
+  repeat rewrite update_index_neq by auto.
+  rewrite update_index_eq.
+  repeat rewrite update_index_neq by auto.
+  rewrite update_index_eq.
+  repeat rewrite update_index_neq by auto.
+  rewrite update_twice_neq by auto.
+  rewrite update_twice_eq.
+  rewrite (update_twice_neq _ c b) by auto.
+  rewrite update_twice_eq.
+  replace ((f b ⊕ f c) ⊕ (f c ⊕ (f a && f b ⊕ f c))) 
+    with (f b ⊕ (f a && f c ⊕ (f a && f b))).
+  replace (f c ⊕ (f a && f b ⊕ f c)) 
+    with ((f c ⊕ (f a && f b)) ⊕ (f a && f b ⊕ (f a && f c ⊕ (f a && f b)))).
   reflexivity.
+  destruct (f a); destruct (f b); destruct (f c); reflexivity.
+  destruct (f a); destruct (f b); destruct (f c); reflexivity.
+  (* ill-typed case *)
+  apply not_true_iff_false in WT.
+  rewrite uc_well_typed_b_equiv in WT.
+  unfold CSWAP, uc_equiv; simpl.
+  replace (control a (CNOT b c)) with (@CCX dim a b c) by reflexivity.
+  apply uc_eval_zero_iff in WT.
+  rewrite WT.
+  Msimpl. reflexivity.
 Qed.
 Local Opaque SWAP.
 
@@ -420,26 +474,6 @@ Proof.
   all: distribute_scale; group_radicals.
   all: lma.
 Qed.
-
-Ltac invert_WT :=
-  repeat match goal with
-  | H : uc_well_typed (UnitaryOps.control _ _)%ucom |- _ => idtac
-  | H : uc_well_typed _ |- _ => inversion H; clear H; subst
-  end.
-
-Local Transparent H CNOT Rz ID.
-Lemma uc_well_typed_CCX: forall dim a b c : nat,
-  (a < dim)%nat /\ (b < dim)%nat /\ (c < dim)%nat /\ a <> b /\ a <> c /\ b <> c 
-    <-> uc_well_typed (@CCX dim a b c).
-Proof.
-  intros dim a b c.
-  split; intro H.
-  destruct H as [? [? [? [? [? ?]]]]]. 
-  repeat constructor; assumption. 
-  invert_WT. 
-  repeat split; assumption. 
-Qed.
-Local Opaque H CNOT Rz ID.
 
 Lemma C3X_not_fresh : forall (dim a b c d : nat),
   ~ is_fresh a (@CCX dim b c d) -> uc_eval (@C3X dim a b c d) = Zero.

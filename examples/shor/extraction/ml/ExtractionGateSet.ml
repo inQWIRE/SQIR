@@ -329,7 +329,7 @@ let decompose_CCU1 r1 a b c =
 (** val decompose_CSWAP : Z.t -> Z.t -> Z.t -> coq_U ucom **)
 
 let decompose_CSWAP a b c =
-  Coq_useq ((Coq_useq ((coq_CCX a b c), (coq_CCX a c b))), (coq_CCX a b c))
+  Coq_useq ((Coq_useq ((coq_CX c b), (coq_CCX a b c))), (coq_CX c b))
 
 (** val decompose_C3X : Z.t -> Z.t -> Z.t -> Z.t -> coq_U ucom **)
 
