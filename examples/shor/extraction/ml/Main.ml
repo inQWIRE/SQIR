@@ -1,6 +1,6 @@
-open AltGateSet
 open DiscreteProb
 open ExtrShor
+open ExtractionGateSet
 open Nat
 open Shor
 

@@ -1,5 +1,5 @@
 Require Import GHZ.
-Require Import AltGateSet.
+Require Import ExtractionGateSet.
 
 (** Alternate definition of GHZ used for extraction. *)
 

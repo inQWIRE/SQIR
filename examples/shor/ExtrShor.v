@@ -1,5 +1,5 @@
 Require Import Shor NumTheory.
-Require Import AltGateSet.
+Require Import ExtractionGateSet.
 
 (* Redefining Shor's alg. using the new gate set *)
 
@@ -284,7 +284,8 @@ Proof.
   simpl.
   rewrite control_correct.
   destruct bc; try reflexivity.
-  apply control_ucom_X.
+  rewrite CNOT_is_control_X.
+  reflexivity.
   apply UnitaryOps.control_cong.
   apply IHbc.
   apply bc2ucom_fresh. 

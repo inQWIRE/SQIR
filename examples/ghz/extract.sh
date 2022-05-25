@@ -21,7 +21,7 @@ rm -f Bin* ClassicalDedekindReals.ml ConstructiveCauchyReals* \
 
 # Move the remaining extracted files to the 'ml' subdirectory.
 echo "Moving generated files to ml/..."
-mv AltGateSet.ml AltGHZ.ml ml
+mv ExtractionGateSet.ml AltGHZ.ml ml
    
 # Build extracted code.
 echo "Building extracted code..."

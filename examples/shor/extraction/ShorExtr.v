@@ -41,4 +41,4 @@ Extract Constant sample => "
 (* Avoid conflicts with OCaml standard library *)
 Extraction Blacklist List.
 
-Separate Extraction Main.end_to_end_shors.
+Separate Extraction Main.end_to_end_shors ExtractionGateSet.decompose_to_voqc_gates.

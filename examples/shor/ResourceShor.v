@@ -1,4 +1,4 @@
-Require Import RCIR Psatz AltGateSet Resource ModMult ExtrShor.
+Require Import RCIR Psatz ExtractionGateSet Resource ModMult ExtrShor.
 
 Lemma bcgcount_bygatectrl_MAJ :
   forall a b c d, bcgcount (bygatectrl d (MAJ a b c)) <= 3.

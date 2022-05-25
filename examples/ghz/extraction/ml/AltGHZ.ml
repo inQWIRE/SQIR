@@ -1,4 +1,4 @@
-open AltGateSet
+open ExtractionGateSet
 
 (** val ghz : int -> coq_U ucom **)
 

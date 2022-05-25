@@ -652,7 +652,7 @@ Lemma uc_eval_CNOT_control :
   forall n m dim,
     @uc_eval dim (CNOT n m) = @uc_eval dim (control n (bc2ucom (bcx m))).
 Proof.
-  intros. rewrite denote_cnot. simpl. rewrite control_ucom_X. easy.
+  intros. rewrite CNOT_is_control_X. easy.
 Qed.
 
 Lemma bc2ucom_bcelim :

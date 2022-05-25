@@ -11,8 +11,10 @@ type coq_U =
 | U_U3 of float * float * float
 | U_CX
 | U_CU1 of float
+| U_CH
 | U_SWAP
 | U_CCX
+| U_CCU1 of float
 | U_CSWAP
 | U_C3X
 | U_C4X

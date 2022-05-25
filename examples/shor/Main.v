@@ -1,7 +1,7 @@
 Require Import Shor.
 Require Import euler.Primes.
 Require Import euler.AltPrimes.
-Require Import AltGateSet.
+Require Import ExtractionGateSet.
 Require Import ExtrShor Reduction.
 Require Import DiscreteProb.
 

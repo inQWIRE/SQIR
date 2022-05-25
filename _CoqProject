@@ -28,4 +28,5 @@ SQIR/VectorStates.v
 SQIR/UnitaryOps.v
 SQIR/Equivalences.v
 SQIR/DiscreteProb.v
-SQIR/AltGateSet.v
+SQIR/ExtractionGateSet.v
+SQIR/GateDecompositions.v

@@ -1,6 +1,6 @@
 Require Coq.extraction.Extraction.
 Require Export Reals.
-Require Import AltGateSet.
+Require Import ExtractionGateSet.
 
 (* Custom extraction from R -> OCaml float. *)
 Extract Inlined Constant R => "float".

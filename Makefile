@@ -39,7 +39,7 @@ voqc: invoke-coqmakefile VOQC/Main.vo
 
 # Built by 'make examples'
 
-examples/ghz/AltGHZ.vo: examples/ghz/AltGHZ.v examples/ghz/GHZ.vo SQIR/AltGateSet.vo
+examples/ghz/AltGHZ.vo: examples/ghz/AltGHZ.v examples/ghz/GHZ.vo SQIR/ExtractionGateSet.vo
 	coqc $(COQ_OPTS) examples/ghz/AltGHZ.v
 
 examples/Deutsch.vo: examples/Deutsch.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo externals/QWIRE/Proportional.vo
@@ -74,7 +74,7 @@ examples/Wiesner.vo: examples/Wiesner.v SQIR/UnitaryOps.vo examples/Utilities.vo
 
 # Built by 'make shor'
 
-examples/shor/ExtrShor.vo: examples/shor/ExtrShor.v SQIR/AltGateSet.vo examples/shor/Shor.vo
+examples/shor/ExtrShor.vo: examples/shor/ExtrShor.v SQIR/ExtractionGateSet.vo examples/shor/Shor.vo
 	coqc $(COQ_OPTS) examples/shor/ExtrShor.v
 
 examples/shor/Main.vo: examples/shor/Main.v examples/shor/ExtrShor.vo

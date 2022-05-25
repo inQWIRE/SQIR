@@ -1,4 +1,4 @@
-# SQIR
+# SQIR & VOQC
 
 <img align="right" src="logo.png">
 
@@ -14,12 +14,12 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Table of Contents
 
-- [SQIR](#sqir)
+- [SQIR & VOQC](#sqir--voqc)
   - [Table of Contents](#table-of-contents)
   - [Setup](#setup)
   - [Compilation](#compilation)
   - [Directory Contents](#directory-contents)
-    - [SQIR](#sqir-1)
+    - [SQIR](#sqir)
     - [externals](#externals)
     - [VOQC](#voqc)
     - [examples](#examples)
@@ -66,9 +66,10 @@ Our proofs are resource intensive so expect `make all` to take a little while. I
 
 Definition of the SQIR language.
 
-- AltGateSet.v : Alternate definition of unitary SQIR programs used for extraction (eventually this file will be merged with SQIR.v).
 - DensitySem.v : Density matrix semantics for general SQIR programs.
 - Equivalences.v : Verified circuit equivalences for peephole optimizations.
+- ExtractionGateSet.v : Expanded gate set used for extraction.
+- GateDecompositions.v : Verified optimized decompositions for CX, CU1, CU2, CU3, CCU1, CSWAP, C3X, and C4X.
 - NDSem.v : Non-deterministic semantics for general SQIR programs.
 - DiscreteProb.v : Utilities to describe running a quantum program and sampling from the output probability distribution.
 - SQIR.v : Definition of the SQIR language.
@@ -122,7 +123,7 @@ Examples of verifying correctness properties of quantum algorithms.
 
 - Deutsch.v : Deutsch algorithm
 - DeutschJozsa.v : Deutsch-Jozsa algorithm
-- GHZ.v : GHZ state preparation
+- ghz/ : GHZ state preparation
 - Grover.v : Grover's algorithm
 - QPE.v : Simplified quantum phase estimation
 - shor/ : Shor's algorithm, including general quantum phase estimation (use `make shor` to compile separately, see the [README in the shor directory](examples/shor/README.md) for more details)
