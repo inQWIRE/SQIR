@@ -8,7 +8,7 @@ echo "Extracting code..."
 coqc -R ../../.. Top ../../shor/extraction/ExtrOcamlList.v
 coqc -R ../../.. Top ../../shor/extraction/ExtrOcamlR.v
 coqc -R ../../.. Top ../../shor/extraction/ExtrOcamlNatZ.v
-coqc -R ../../.. Top ExtrGHZ.v
+coqc -R ../../.. Top Extraction.v
 
 # Remove unneeded files.
 echo "Deleting unneeded files..."
@@ -21,7 +21,7 @@ rm -f Bin* ClassicalDedekindReals.ml ConstructiveCauchyReals* \
 
 # Move the remaining extracted files to the 'ml' subdirectory.
 echo "Moving generated files to ml/..."
-mv ExtractionGateSet.ml AltGHZ.ml ml
+mv ExtractionGateSet.ml ExtrGHZ.ml ml
    
 # Build extracted code.
 echo "Building extracted code..."

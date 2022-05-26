@@ -1,5 +1,5 @@
 Require Coq.extraction.Extraction.
-Require Import AltGHZ.
+Require Import ExtrGHZ.
 
 (* Standard utilities for bools, options, etc. *)
 Require Coq.extraction.ExtrOcamlBasic.
@@ -11,4 +11,4 @@ Require Coq.extraction.ExtrOcamlNatInt.
 Require ExtrOcamlList.
 Require ExtrOcamlR.
 
-Separate Extraction AltGHZ.ghz.
+Separate Extraction ExtrGHZ.ghz.

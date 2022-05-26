@@ -31,7 +31,7 @@ all: examples voqc shor VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMea
 
 examples: invoke-coqmakefile examples/Deutsch.vo examples/DeutschJozsa.vo examples/Grover.vo examples/QPE.vo examples/Simon.vo examples/Superdense.vo examples/Teleport.vo examples/Wiesner.vo ghz
 
-ghz: invoke-coqmakefile examples/ghz/GHZ.vo examples/ghz/AltGHZ.vo
+ghz: invoke-coqmakefile examples/ghz/GHZ.vo examples/ghz/ExtrGHZ.vo
 
 shor: invoke-coqmakefile examples/shor/Main.vo
 
@@ -39,8 +39,8 @@ voqc: invoke-coqmakefile VOQC/Main.vo
 
 # Built by 'make examples'
 
-examples/ghz/AltGHZ.vo: examples/ghz/AltGHZ.v examples/ghz/GHZ.vo SQIR/ExtractionGateSet.vo
-	coqc $(COQ_OPTS) examples/ghz/AltGHZ.v
+examples/ghz/ExtrGHZ.vo: examples/ghz/ExtrGHZ.v examples/ghz/GHZ.vo SQIR/ExtractionGateSet.vo
+	coqc $(COQ_OPTS) examples/ghz/ExtrGHZ.v
 
 examples/Deutsch.vo: examples/Deutsch.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo externals/QWIRE/Proportional.vo
 	coqc $(COQ_OPTS) examples/Deutsch.v

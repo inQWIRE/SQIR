@@ -244,6 +244,15 @@ Fixpoint invert (u : ucom U) : ucom U :=
       end
   end.
 
+Lemma invert_WF : forall u, well_formed u -> well_formed (invert u).
+Proof.
+  intros u H. 
+  induction u. 
+  inversion H; subst.
+  simpl. constructor; auto.
+  destruct u; simpl_WF; constructor; reflexivity.
+Qed.
+
 Lemma is_fresh_invert : forall {dim} q (u : base_ucom dim),
   is_fresh q u <-> is_fresh q (UnitaryOps.invert u).
 Proof.

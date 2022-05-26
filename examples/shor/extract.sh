@@ -8,7 +8,7 @@ echo "Extracting code..."
 coqc -R ../../.. Top ExtrOcamlList.v
 coqc -R ../../.. Top ExtrOcamlR.v
 coqc -R ../../.. Top ExtrOcamlNatZ.v
-coqc -R ../../.. Top ShorExtr.v
+coqc -R ../../.. Top Extraction.v
 
 # Remove unneeded files.
 echo "Deleting unneeded files..."
