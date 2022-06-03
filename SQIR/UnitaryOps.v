@@ -54,6 +54,9 @@ Qed.
 
 Hint Rewrite sin_neg cos_neg : trig_db.
 
+Lemma invert_CNOT : forall dim m n, invert (@CNOT dim m n) ≡ CNOT m n.
+Proof. intros. reflexivity. Qed.
+
 Local Transparent X.
 Lemma invert_X : forall dim n, invert (@X dim n) ≡ X n.
 Proof.
@@ -79,6 +82,19 @@ Proof.
   solve_matrix; try rewrite Ropp_div; autorewrite with Cexp_db trig_db; lca.
 Qed.
 Local Opaque H.
+
+Local Transparent Rz.
+Lemma invert_Rz : forall dim n r, (invert (@Rz dim r n) ≡ Rz (- r) n)%ucom.
+Proof.
+  intros dim n r.
+  unfold uc_equiv. simpl. 
+  autorewrite with eval_db.
+  gridify.
+  do 2 (apply f_equal2; try reflexivity).
+  unfold rotation. 
+  solve_matrix; autorewrite with R_db Cexp_db trig_db; lca.
+Qed.
+Local Opaque Rz.
 
 (** Programs with arbitrary control **)
 
@@ -169,10 +185,39 @@ Proof.
     constructor; auto.
 Qed.  
 
-Local Transparent SQIR.H X Rz CNOT.
-Lemma fresh_X : forall {dim} q1 q2,
-  q1 <> q2 -> @is_fresh _ dim q1 (X q2).
-Proof. intros. constructor; auto. Qed.
+Local Transparent SQIR.H X U1 Rz CNOT.
+Lemma fresh_U1: forall dim r q1 q2, q1 <> q2 <-> is_fresh q1 (@U1 dim r q2).
+Proof. 
+  intros.
+  split; intro H.
+  constructor. auto. 
+  inversion H. auto.
+Qed.
+
+Lemma fresh_X: forall dim q1 q2, q1 <> q2 <-> is_fresh q1 (@X dim q2).
+Proof. 
+  intros.
+  split; intro H.
+  constructor. auto. 
+  inversion H. auto.
+Qed.
+
+Lemma fresh_H: forall dim q1 q2, q1 <> q2 <-> is_fresh q1 (@H dim q2).
+Proof. 
+  intros.
+  split; intro H0.
+  constructor. auto. 
+  inversion H0. auto.
+Qed.
+
+Lemma fresh_CNOT: forall dim a b c, a <> b /\ a <> c <-> is_fresh a (@CNOT dim b c).
+Proof. 
+  intros.
+  split; intro H.
+  destruct H.
+  constructor; auto. 
+  inversion H; auto.
+Qed.
 
 Lemma fresh_CU : forall {dim} θ ϕ λ q c t,
   q <> c -> q <> t -> @is_fresh _ dim q (CU θ ϕ λ c t).
@@ -214,7 +259,7 @@ Proof.
     constructor. invert_is_fresh; auto.
     constructor; invert_is_fresh; auto. 
 Qed.
-Local Opaque SQIR.H X Rz CNOT.
+Local Opaque SQIR.H X U1 Rz CNOT.
 
 (* Project onto the space where qubit q is in classical state b.
    TODO: possibly move to QuantumLib *)
@@ -787,8 +832,8 @@ Qed.
 
 (* Sanity check *)
 Local Transparent X CU.
-Lemma control_ucom_X : forall (dim : nat) c t,
-  uc_eval (control c (@X dim t)) = ueval_cnot dim c t.
+Lemma CNOT_is_control_X : forall dim c t,
+  uc_eval (@CNOT dim c t) = uc_eval (control c (X t)).
 Proof.
   intros dim c t.
   bdestruct (c <? dim).
@@ -858,6 +903,73 @@ Proof.
   rewrite invert_correct.
   rewrite proj_fresh_commutes by assumption.
   reflexivity.
+Qed.
+
+
+Lemma proj_control_true : forall {dim} q c,
+  is_fresh q c ->
+  uc_eval (control q c) × proj q dim true = proj q dim true × uc_eval c.
+Proof. 
+  intros.
+  destruct (uc_well_typed_b c) eqn:WT.
+  apply uc_well_typed_b_equiv in WT.
+  rewrite control_correct by auto.
+  rewrite Mmult_plus_distr_r.
+  rewrite proj_fresh_commutes by auto.
+  rewrite proj_twice_neq.
+  rewrite Mmult_assoc, proj_twice_eq.
+  Msimpl. reflexivity.
+  easy.
+  apply not_true_iff_false in WT.
+  rewrite uc_well_typed_b_equiv in WT.
+  rewrite control_not_WT by auto.
+  apply uc_eval_zero_iff in WT.
+  rewrite WT.
+  Msimpl. reflexivity.
+Qed.
+
+Lemma proj_control_false : forall {dim} q c,
+  is_fresh q c -> uc_well_typed c ->
+  uc_eval (control q c) × proj q dim false = proj q dim false.
+Proof.
+  intros.
+  rewrite control_correct by auto.
+  rewrite Mmult_plus_distr_r.
+  rewrite proj_fresh_commutes by auto.
+  rewrite proj_twice_eq.
+  rewrite Mmult_assoc, proj_twice_neq.
+  Msimpl. reflexivity.
+  easy.
+Qed.
+
+Lemma proj_CNOT_ctl_true : forall dim m n,
+  m <> n ->
+  uc_eval (CNOT m n) × proj m dim true = proj m dim true × uc_eval (X n).
+Proof.
+  intros dim m n H.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify; Qsimpl; reflexivity.
+Qed.
+
+Lemma proj_CNOT_ctl_false : forall dim m n,
+  (n < dim)%nat -> m <> n ->
+  uc_eval (CNOT m n) × proj m dim false = proj m dim false.
+Proof.
+  intros dim m n H1 H2.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify; Qsimpl; reflexivity.
+Qed.
+
+Lemma proj_X : forall dim q b,
+  uc_eval (X q) × proj q dim b = proj q dim (negb b) × uc_eval (X q).
+Proof. 
+  intros.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify.
+  destruct b; simpl; Qsimpl; reflexivity.
 Qed.
 
 (** n iterations of a program **)

@@ -1,6 +1,6 @@
 open Printf
 
-open AltGateSet
+open ExtractionGateSet
 open ExtrShor
 open Main
 open Run

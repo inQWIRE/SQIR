@@ -8,7 +8,7 @@ echo "Extracting code..."
 coqc -R ../../.. Top ExtrOcamlList.v
 coqc -R ../../.. Top ExtrOcamlR.v
 coqc -R ../../.. Top ExtrOcamlNatZ.v
-coqc -R ../../.. Top ShorExtr.v
+coqc -R ../../.. Top Extraction.v
 
 # Remove unneeded files.
 echo "Deleting unneeded files..."
@@ -21,7 +21,7 @@ rm -f Bin* ClassicalDedekindReals.ml ConstructiveCauchyReals.ml NumTheory.ml \
 
 # Move the remaining extracted files to the 'ml' subdirectory.
 echo "Moving generated files to ml/..."
-mv AltGateSet.ml ContFrac.ml Datatypes.ml DiscreteProb.ml ExtrShor.ml \
+mv ExtractionGateSet.ml ContFrac.ml Datatypes.ml DiscreteProb.ml ExtrShor.ml \
    List0.ml Main.ml ModMult.ml Nat.ml PeanoNat.ml RCIR.ml RealAux.ml \
    Rfunctions.ml Shor.ml \
    ml

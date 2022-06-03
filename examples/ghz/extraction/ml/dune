@@ -1,0 +1,5 @@
+(library
+  (name ml)
+  (wrapped false)
+  (flags (:standard -w -3-32-33-34-39))
+  (libraries zarith unix))

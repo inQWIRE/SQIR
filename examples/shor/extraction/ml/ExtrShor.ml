@@ -1,4 +1,4 @@
-open AltGateSet
+open ExtractionGateSet
 open ModMult
 open Nat
 open RCIR

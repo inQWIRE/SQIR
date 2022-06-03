@@ -22,4 +22,5 @@ SQIR/UnitaryOps.v
 SQIR/DensitySem.v
 SQIR/NDSem.v
 SQIR/Equivalences.v
-SQIR/AltGateSet.v
+SQIR/ExtractionGateSet.v
+SQIR/GateDecompositions.v

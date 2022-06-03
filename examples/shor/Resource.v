@@ -1,4 +1,4 @@
-Require Import RCIR Psatz AltGateSet.
+Require Import RCIR Psatz ExtractionGateSet.
 
 Open Scope nat_scope.
 Fixpoint ugcount (c : ucom U) : nat :=

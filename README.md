@@ -1,10 +1,12 @@
-# SQIR
+# SQIR & VOQC
 
 <img align="right" src="logo.png">
 
 SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum programs. Its intended use is as an intermediate representation in a **V**erified **O**ptimizer for **Q**uantum **C**ircuits (VOQC), but we have also used it to implement verified versions of several quantum algorithms.
 
-We describe SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250), presented at POPL 2021. We describe the details of verifying SQIR programs in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), presented at ITP 2021. The code corresponding to both papers can be found in the [POPL2021 branch](https://github.com/inQWIRE/SQIR/tree/POPL2021) of this repository. Preliminary versions of this work were presented at QPL 2019 and PLanQC 2020, and follow-on work was presented at PLanQC 2021.
+We first presented SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250) at POPL 2021. 
+We provide additional details of verifying SQIR programs (including QPE and Grover's) in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), presented at ITP 2021. 
+We describe a SQIR formalization of Shor's factoring algorithm in our draft [A Formally Certified End-to-End Implementation of Shor's Factorization Algorithm](https://arxiv.org/abs/2204.07112).
 
 This repository contains our Coq formalization of SQIR and VOQC as well as several verified quantum algorithms. *If you are interested in running the VOQC compiler*, then you should look at our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)) instead. The OCaml library is extracted from our Coq definitions and the Python library is a wrapper around the OCaml library.
 
@@ -12,12 +14,12 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Table of Contents
 
-- [SQIR](#sqir)
+- [SQIR & VOQC](#sqir--voqc)
   - [Table of Contents](#table-of-contents)
   - [Setup](#setup)
   - [Compilation](#compilation)
   - [Directory Contents](#directory-contents)
-    - [SQIR](#sqir-1)
+    - [SQIR](#sqir)
     - [externals](#externals)
     - [VOQC](#voqc)
     - [examples](#examples)
@@ -73,9 +75,10 @@ Our proofs are resource intensive so expect `make all` to take a little while. I
 
 Definition of the SQIR language.
 
-- AltGateSet.v : Alternate definition of unitary SQIR programs used for extraction (eventually this file will be merged with SQIR.v).
 - DensitySem.v : Density matrix semantics for general SQIR programs.
 - Equivalences.v : Verified circuit equivalences for peephole optimizations.
+- ExtractionGateSet.v : Expanded gate set used for extraction.
+- GateDecompositions.v : Verified optimized decompositions for CX, CU1, CU2, CU3, CCU1, CSWAP, C3X, and C4X.
 - NDSem.v : Non-deterministic semantics for general SQIR programs.
 - DiscreteProb.v : Utilities to describe running a quantum program and sampling from the output probability distribution.
 - SQIR.v : Definition of the SQIR language.
@@ -127,7 +130,7 @@ Examples of verifying correctness properties of quantum algorithms.
 
 - Deutsch.v : Deutsch algorithm
 - DeutschJozsa.v : Deutsch-Jozsa algorithm
-- GHZ.v : GHZ state preparation
+- ghz/ : GHZ state preparation
 - Grover.v : Grover's algorithm
 - QPE.v : Simplified quantum phase estimation
 - shor/ : Shor's algorithm, including general quantum phase estimation (use `make shor` to compile separately, see the [README in the shor directory](examples/shor/README.md) for more details)
