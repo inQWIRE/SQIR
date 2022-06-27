@@ -147,7 +147,7 @@ Definition CNOT_commute_rule4 {dim} q1 q2 (l : RzQ_ucom_l dim) :=
   | Some (l1, URzQ_H, l2) => 
       match (next_two_qubit_gate l2 q2) with
       | Some (l3, URzQ_CNOT, q1', q2', l4) => 
-          if (q2 =? q1') && ¬ (q1 =? q2') && (does_not_reference (l1 ++ l3) q1)
+          if (q2 =? q1') && (¬ (q1 =? q2')) && (does_not_reference (l1 ++ l3) q1)
           then match (next_single_qubit_gate l4 q2) with
                | Some (l5, URzQ_H, l6) => Some (l1 ++ [H q2] ++ l3 ++ [CNOT q2 q2'] ++ [H q2], l5 ++ l6)
                | _ => None
@@ -485,9 +485,8 @@ Proof.
       unfold_uc_equiv_l.
       apply CNOT_comm_CNOT_sharing_control.
     + unfold CNOT_commute_rule4 in res.
-      destruct_list_ops.
+      destruct_list_ops; simpl in res.
       destruct (does_not_reference (g0 ++ g2) q1) eqn:dnr; try discriminate.
-      simpl in res.
       destruct_list_ops.
       apply does_not_reference_app in dnr.
       apply andb_true_iff in dnr as [? ?].
@@ -1052,7 +1051,7 @@ Lemma cancel_single_qubit_gates_respects_constraints : forall {dim} (l : RzQ_uco
   respects_constraints_directed is_in_graph URzQ_CNOT (cancel_single_qubit_gates l).
 Proof.
   intros.
-  apply cancel_single_qubit_gates'_respects_constraints with (l0 := l) (acc := []) (n := (length l)) . 
+  eapply cancel_single_qubit_gates'_respects_constraints.
   assumption.
   constructor.
 Qed. 
@@ -1093,7 +1092,7 @@ Lemma cancel_two_qubit_gates_respects_constraints : forall {dim} (l : RzQ_ucom_l
   respects_constraints_directed is_in_graph URzQ_CNOT (cancel_two_qubit_gates l).
 Proof.
   intros.
-  apply cancel_two_qubit_gates'_respects_constraints with (l0 := l) (acc := []) (n := (length l)) . 
+  eapply cancel_two_qubit_gates'_respects_constraints.
   assumption.
   constructor.
 Qed. 

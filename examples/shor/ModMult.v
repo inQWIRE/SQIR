@@ -298,7 +298,12 @@ Lemma MAJ_correct :
                               [b |-> (f b ⊕ f a)])[c |-> (f c ⊕ f a)].
 Proof.
   intros ? ? ? ? Hab' Hbc' Hac'. apply functional_extensionality; intro i. simpl.
-  unfold update, majb. bnauto.
+  unfold update, majb.
+  (* unfolding 'bnauto' due to some issue w/ Coq v8.15 -KH *)
+  repeat (BreakIf; repeat EqbEq; repeat EqbRefl;
+     repeat EqbNeq; repeat Negb). 
+  all: repeat boolsub; try easy; try bsimpl.
+  bnauto.
 Qed.
 
 Lemma UMA_correct_partial :
@@ -1374,7 +1379,7 @@ Lemma mod_sum_lt_bool :
   forall x y M,
     x < M ->
     y < M ->
-    ¬ (M <=? x + y) = (x <=? (x + y) mod M).
+    (¬ (M <=? x + y)) = (x <=? (x + y) mod M).
 Proof.
   intros. bdestruct (M <=? x + y); bdestruct (x <=? (x + y) mod M); try easy.
   assert ((x + y) mod M < x) by (apply mod_sum_lt; lia). lia.
@@ -1403,7 +1408,7 @@ Proof.
   rewrite swapper02_correct by lia. rewrite comparator01_correct by lia.
   replace (bcexec (bygatectrl 1 (subtractor01 n); bcx 1)
       (false ` (M <=? x + y) ` [M ]_ n [x + y ]_ n [x ]_ n f))
-              with (false ` ¬ (M <=? x + y) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f). 
+              with (false ` (¬ (M <=? x + y)) ` [M ]_ n [(x + y) mod M]_ n [x ]_ n f). 
   2:{ simpl.
       rewrite bygatectrl_correct by (apply subtractor01_efresh; lia).
       simpl.

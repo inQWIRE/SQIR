@@ -1,3 +1,4 @@
+Require Export Utilities.
 Require Export UnitaryOps.
 
 Local Open Scope ucom.
@@ -520,7 +521,7 @@ Proof.
 Qed.
 
 Lemma Csum_geometric_series : forall (c : C) (n : nat),
-  1 - c <> 0 -> Csum (fun i => c ^ i) n = (1 - c ^ n) / (1 - c).
+  1 - c <> 0 -> Σ (fun i => c ^ i) n = (1 - c ^ n) / (1 - c).
 Proof.
   intros c n Hc.
   induction n; simpl. lca.
@@ -551,7 +552,7 @@ Qed.
 
 Lemma Csum_Cexp_nonzero : forall (z : BinInt.Z) (N : nat), 
   (IZR z <> 0) -> (- INR N < IZR z < INR N)%R ->
-  Csum (fun i => Cexp (2 * PI * IZR z / INR N) ^ i) N = 0.
+  Σ (fun i => Cexp (2 * PI * IZR z / INR N) ^ i) N = 0.
 Proof.
   intros z N Hnz [Hineq1 Hineq2].
   rewrite Csum_geometric_series.
@@ -803,7 +804,7 @@ Lemma QPE_simplify : forall k n (c : base_ucom n) (ψ : Vector (2 ^ n)) θ,
   (n > 0)%nat -> (k > 1)%nat -> uc_well_typed c -> WF_Matrix ψ ->
   (uc_eval c) × ψ = Cexp (2 * PI * θ) .* ψ ->
   @Mmult _ _ (1 * 1) (uc_eval (QPE k n c)) (k ⨂ ∣0⟩ ⊗ ψ) = 
-    (/ (2 ^ k) .* vsum (2 ^ k) (fun i : nat => (Csum (fun j => Cexp (2 * PI * (θ - INR i / 2 ^ k) * INR j)) (2 ^ k)) .* basis_vector (2 ^ k) i) ⊗ ψ).
+    (/ (2 ^ k) .* vsum (2 ^ k) (fun i : nat => (Σ (fun j => Cexp (2 * PI * (θ - INR i / 2 ^ k) * INR j)) (2 ^ k)) .* basis_vector (2 ^ k) i) ⊗ ψ).
 Proof.
   intros k n c ψ θ Hn Hk WT WF Heig.
   unfold QPE; simpl.
@@ -928,8 +929,9 @@ Proof.
   lra.
 Qed.
 
-(* QPE_var is the variant of QPE in Shor's implementation.
-   It is provided a circuit constructor f : nat -> base_ucom, which has the same effect as (fun i => niter (2^i) c) when acting on eigenstates.
+(* QPE_var is the variant of QPE used in our implementation of Shor's.
+   It takes a circuit constructor (f : nat -> base_ucom), which has the 
+   same effect as (fun i => niter (2^i) c) when acting on eigenstates.
 *)
 
 Local Transparent Nat.pow controlled_powers'.
@@ -1059,11 +1061,13 @@ Lemma QPE_var_equivalent :
     @Mmult _ _ (1 * 1) (uc_eval (QPE k n c)) (k ⨂ qubit0 ⊗ ψ) = @Mmult _ _ (1 * 1) (uc_eval (QPE_var k n f)) (k ⨂ qubit0 ⊗ ψ).
 Proof.
   assert (G: forall {n} (A B : base_ucom n), uc_eval (A; B) = uc_eval B × uc_eval A) by intuition.
-  intros. unfold QPE, QPE_var.
+  intros k n c0 f0.
+  intros.
+  unfold QPE, QPE_var.
   repeat rewrite G.
   repeat rewrite Mmult_assoc.
   bdestruct (k <=? 0). assert (k = O) by lia. subst. easy.
-  rewrite <- pad_dims_r with (c0 := npar k U_H) by (apply npar_WT; lia).
+  rewrite <- pad_dims_r with (c := npar k U_H) by (apply npar_WT; lia).
   rewrite npar_H by lia.
   replace (2 ^ (k + n))%nat with (2 ^ k * 2 ^ n)%nat by unify_pows_two. 
   replace (1 * 1)%nat with (1 ^ k * 1)%nat.
@@ -1075,7 +1079,7 @@ Proof.
   rewrite kron_vsum_distr_r.
   replace (2 ^ (k + n))%nat with (2 ^ k * 2 ^ n)%nat by unify_pows_two. 
   rewrite Mmult_vsum_distr_l.
-  rewrite Mmult_vsum_distr_l with (f0 := (fun i : nat => basis_vector (2 ^ k) i ⊗ ψ)).
+  rewrite Mmult_vsum_distr_l with (f := (fun i : nat => basis_vector (2 ^ k) i ⊗ ψ)).
   do 2 apply f_equal.
   apply vsum_eq. intros.
   rewrite basis_f_to_vec_alt by easy.

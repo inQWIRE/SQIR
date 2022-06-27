@@ -233,9 +233,10 @@ Proof.
       repeat destruct p.
       eapply IHn.
       symmetry in nsqg.
-      eapply next_single_qubit_gate_respects_constraints with (is_in_graph0:=is_in_graph) (cnot:=UIBM_CNOT) in nsqg as [? ?].
+      eapply next_single_qubit_gate_respects_constraints in nsqg as [? ?].
       constructor.
-      apply respects_constraints_directed_app; assumption.
+      apply respects_constraints_directed_app.
+      apply H1. apply H2.
       assumption.
       assumption.
       eapply IHn; try constructor; assumption.

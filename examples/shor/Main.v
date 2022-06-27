@@ -96,7 +96,7 @@ Proof.
   specialize (Shor.Shor_correct a N Ha1 Ha2) as H1.
   specialize (shor_circuit_same' a N) as H2.
   unfold prob_shor_outputs in H2.
-  erewrite Rsum_eq.
+  erewrite big_sum_eq_bounded.
   2: { intro i. rewrite H2. reflexivity. lia. }
   unfold probability_of_success in H1.
   unfold r_found in H1.

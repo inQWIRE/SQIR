@@ -6,7 +6,7 @@ SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum 
 
 We first presented SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250) at POPL 2021. 
 We provide additional details of verifying SQIR programs (including QPE and Grover's) in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), presented at ITP 2021. 
-We describe a SQIR formalization of Shor's factoring algorithm in our draft [A Formally Certified End-to-End Implementation of Shor's Factorization Algorithm](https://arxiv.org/abs/2204.07112).
+We describe our SQIR formalization of Shor's factoring algorithm in the draft [A Formally Certified End-to-End Implementation of Shor's Factorization Algorithm](https://arxiv.org/abs/2204.07112).
 
 This repository contains our Coq formalization of SQIR and VOQC as well as several verified quantum algorithms. *If you are interested in running the VOQC compiler*, then you should look at our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)) instead. The OCaml library is extracted from our Coq definitions and the Python library is a wrapper around the OCaml library.
 
@@ -28,7 +28,7 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Setup
 
-To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/) and the [Coq Interval package](http://coq-interval.gforge.inria.fr/). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.14**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
+To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/), [QuantumLib](https://github.com/inQWIRE/QuantumLib), and (optionally) the [Coq Interval package](http://coq-interval.gforge.inria.fr/). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.15**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
 
 Assuming you have opam installed (following the instructions in the link above), follow the steps below to set up your environment.
 ```
@@ -43,24 +43,18 @@ eval $(opam env)
 # install Coq -- this will take a while!
 opam install coq
 
+# install the QuantumLib library
+opam pin coq-quantumlib https://github.com/inQWIRE/QuantumLib.git
+
 # install Interval package (optional, needed to compile proofs in examples/shor)
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam update
 opam install coq-interval
 ```
 
-Now you will need to build QuantumLib. Run the following:
-```
-git submodule init
-git submodule update
-cd externals/QuantumLib
-opam pin . # reply Y when prompted
-```
-**NOTE: we plan to add QuantumLib as an opam package in the future, so we won't need this extra step**
-
 *Notes*:
 * Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine.
-* We require Coq version >= 8.12. We have tested compilation with 8.12, 8.13, and 8.14.
+* We require Coq version >= 8.12.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
 
 ## Compilation
@@ -78,7 +72,7 @@ Definition of the SQIR language.
 - DensitySem.v : Density matrix semantics for general SQIR programs.
 - Equivalences.v : Verified circuit equivalences for peephole optimizations.
 - ExtractionGateSet.v : Expanded gate set used for extraction.
-- GateDecompositions.v : Verified optimized decompositions for CX, CU1, CU2, CU3, CCU1, CSWAP, C3X, and C4X.
+- GateDecompositions.v : Verified optimized decompositions for CH, CU1, CU2, CU3, CCU1, CSWAP, C3X, and C4X.
 - NDSem.v : Non-deterministic semantics for general SQIR programs.
 - DiscreteProb.v : Utilities to describe running a quantum program and sampling from the output probability distribution.
 - SQIR.v : Definition of the SQIR language.
@@ -87,7 +81,7 @@ Definition of the SQIR language.
 
 ### externals
 
-External dependencies linked as git submodules. Currently, we depend on the definitions of matrices and complex numbers in the [QWIRE](https://github.com/inQWIRE/QWIRE) development and our proof of Shor's algorithm depends on the number theory in the [euler](https://github.com/taorunz/euler) development.
+External dependencies linked as git submodules. Currently, our proof of Shor's algorithm depends on the number theory in the [euler](https://github.com/taorunz/euler) development.
 
 ### VOQC
 

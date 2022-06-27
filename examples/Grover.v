@@ -718,8 +718,8 @@ Qed.
 
 Lemma Uf_action_on_arbitrary_state : forall α β,
   @Mmult _ _ 1 (uc_eval Uf)
-      (@pad_vector (S n) dim ((α .* ψg .+ β .* ψb) ⊗ ∣-⟩)) = 
-    @pad_vector (S n) dim (((- α) .* ψg .+ β .* ψb) ⊗ ∣-⟩).
+      (@pad_vector (S n) dim ((α .* ψg .+ β .* ψb) ⊗ ∣ - ⟩)) = 
+    @pad_vector (S n) dim (((- α) .* ψg .+ β .* ψb) ⊗ ∣ - ⟩).
 Proof.
   intros. repeat rewrite pad_ancillae.
   distribute_plus.
@@ -744,9 +744,9 @@ Qed.
    measurement outcome. *)
 Local Opaque Nat.mul.
 Lemma loop_body_action_on_unif_superpos : forall i,
-  @Mmult _ _ (1^n) (i ⨉ uc_eval body) (@pad_vector (S n) dim (ψ ⊗ ∣-⟩)) =
+  @Mmult _ _ (1^n) (i ⨉ uc_eval body) (@pad_vector (S n) dim (ψ ⊗ ∣ - ⟩)) =
     @pad_vector (S n) dim ((-1)^i .* (sin (INR (2 * i + 1) * θ) .* ψg .+ 
-                cos (INR (2 * i + 1) * θ) .* ψb) ⊗ ∣-⟩).
+                cos (INR (2 * i + 1) * θ) .* ψb) ⊗ ∣ - ⟩).
 Proof.
   intros.
   repeat rewrite pad_ancillae.
@@ -856,7 +856,7 @@ Proof.
       lra.
 Qed.
 
-Lemma minus_norm_1 : ∣-⟩† × ∣-⟩ = I 1.
+Lemma minus_norm_1 : ∣ - ⟩† × ∣ - ⟩ = I 1.
 Proof. solve_matrix. Qed.
 
 Lemma kron_n_add_dist :
@@ -877,32 +877,33 @@ Qed.
    (PI / 4) * √ (2 ^ n / k). [TODO: prove this?] *)
 Lemma grover_correct : forall i,
   (* sum over all "good" solutions *)
-  Rsum
-    (2 ^ n)
-    (fun z => if f z 
+  Σ (fun z => if f z 
               then @prob_partial_meas n (S ancillae)
                 (basis_vector (2 ^ n) z)
                 (uc_eval (grover i) × dim ⨂ ∣0⟩)
-              else 0) = 
+              else 0) 
+    (2 ^ n)
+     = 
     ((sin ( INR (2 * i + 1) * θ)) ^ 2)%R.
 Proof.
   intro i.
   specialize f_has_both_good_and_bad_solutions as H.
-  rewrite (Rsum_eq_bounded _ _
-             (fun j => if (f j) then (sin (INR (2 * i + 1) * θ) / √ INR k) ^ 2 else 0)%R).
-  assert (forall m c, Rsum m (fun i => if f i then c else 0) = INR (count0 f m) * c)%R.
+  rewrite (@big_sum_eq_bounded C) with (g:=(fun j => if (f j) then (sin (INR (2 * i + 1) * θ) / √ INR k) ^ 2 else 0)%R).
+  assert (forall m c, Σ (fun i => RtoC (if f i then c else 0)) m = INR (count0 f m) * c).
   { unfold count0.
     clear.
     intros.
     induction m; simpl.
-    lra. 
-    rewrite plus_INR, Rmult_plus_distr_r, <- IHm.
+    lca. 
+    rewrite IHm.
     destruct m; simpl.
-    destruct (f 0); simpl; lra.
-    destruct (f (S m)); simpl; try lra. }
+    destruct (f 0); simpl; lca.
+    destruct (f (S m)); simpl; try lca.
+    destruct (f m + count f 0 m)%nat; simpl; lca. }
   rewrite H0; clear H0.
   replace (count0 f (2 ^ n)) with k by reflexivity. 
-  simpl.
+  simpl. autorewrite with RtoC_db.
+  apply c_proj_eq; simpl; try lra.
   field_simplify_eq; try nonzero.
   rewrite pow2_sqrt by nonzero.
   lra.
@@ -939,7 +940,7 @@ Proof.
   replace (n ⨂ hadamard × n ⨂ ∣0⟩) with ψ.
   2: { rewrite H0_kron_n_spec_alt. reflexivity.
        specialize n_ge_2 as H2. lia. }
-  replace (hadamard × (σx × ∣0⟩)) with ∣-⟩ by solve_matrix.
+  replace (hadamard × (σx × ∣0⟩)) with ∣ - ⟩ by solve_matrix.
   rewrite niter_correct by lia.
   restore_dims.
   replace (2 ^ n * 2)%nat with (2 ^ S n)%nat by (simpl; lia).
@@ -1001,7 +1002,6 @@ Proof.
   rewrite Cmod_mult, Cmod_pow.
   rewrite <- Cexp_PI, Cmod_Cexp.
   rewrite pow1, Rmult_1_l.
-  apply RtoC_inj.
   rewrite <- RtoC_pow.
   rewrite Cmod_sqr.
   Local Transparent pow.

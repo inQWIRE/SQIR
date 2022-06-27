@@ -1279,7 +1279,7 @@ Proof.
   intros.
   generalize dependent acc.
   generalize dependent in_l. 
-  induction n; intros.
+  induction n; intros ? ? acc0 ? ?.
   - unfold merge_rotations_at_beginning in H1.
     inversion H1; subst.
     apply rev_append_respects_constraints; assumption. 
@@ -1294,24 +1294,23 @@ Proof.
       dependent destruction r;
       simpl in H1.
       * inversion H; subst.
-        apply IHn with (in_l0 := in_l) (acc0 := (App1 URzQ_H n0 :: acc));
-          try constructor; try assumption.  
+        eapply IHn with (acc := (App1 URzQ_H n0 :: acc0)).
+        apply H5. constructor; assumption. reflexivity.
       * inversion H; subst. 
-        apply IHn with (in_l0 := in_l) (acc0 := (App1 URzQ_X n0 :: acc));
-          try constructor; try assumption. 
+        eapply IHn with (acc := (App1 URzQ_X n0 :: acc0)).
+        apply H5. constructor; assumption. reflexivity.
       * destruct (merge_at_beginning in_l a0 n0) eqn: MaB.
         assert (respects_constraints_directed is_in_graph URzQ_CNOT l).
-        apply merge_at_beginning_respects_constraints
-          with (in_l0 := in_l) (out_l0 := l) (a1 := a0) (q := n0);
-          try constructor; try assumption. 
-        inversion H; subst; assumption. 
-        apply IHn with (in_l := l) (acc := acc); assumption. 
-        apply IHn with (in_l := in_l) (acc := (Rzq a0 n0 :: acc)).
+        eapply merge_at_beginning_respects_constraints.
+        2:apply MaB. 
+        inversion H; subst; assumption.
+        apply IHn with (in_l := l) (acc := acc0); assumption. 
+        apply IHn with (in_l := in_l) (acc := (Rzq a0 n0 :: acc0)).
         inversion H; subst; assumption. 
         constructor.
         assumption.
         assumption.
-      * apply IHn with (in_l := in_l) (acc := (App2 URzQ_CNOT n0 n1 :: acc));
+      * apply IHn with (in_l := in_l) (acc := (App2 URzQ_CNOT n0 n1 :: acc0));
           try constructor; try assumption .
         inversion H; subst; assumption.
         inversion H; subst. 
@@ -1328,7 +1327,7 @@ Proof.
   intros.
   generalize dependent acc.
   generalize dependent in_l. 
-  induction n; intros.
+  induction n; intros ? ? acc0 ? ?.
   - unfold merge_rotations_at_end in H1.
     inversion H1; subst.
     apply rev_append_respects_constraints; assumption. 
@@ -1343,26 +1342,24 @@ Proof.
       dependent destruction r;
       simpl in H1.
       * inversion H; subst.  
-        apply IHn with (in_l0 := in_l) (acc0 := (App1 URzQ_H n0 :: acc));
-          try constructor; try assumption. 
+        eapply IHn with (acc := (App1 URzQ_H n0 :: acc0)).
+        apply H5. constructor. assumption. reflexivity.
       * inversion H; subst. 
-        apply IHn with (in_l0 := in_l) (acc0 := (App1 URzQ_X n0 :: acc));
-          try assumption; try constructor. 
-        assumption. 
+        eapply IHn with (acc := (App1 URzQ_X n0 :: acc0)).
+        apply H5. constructor. assumption. reflexivity.
       * destruct (merge_at_end in_l a0 n0) eqn: MaB.
         assert (respects_constraints_directed is_in_graph URzQ_CNOT l).
-        apply merge_at_end_respects_constraints
-              with (in_l0 := in_l) (out_l0 := l) (a1 := a0) (q := n0).
-        inversion H; subst; assumption. 
-        assumption.
-        apply IHn with (in_l := l) (acc := acc); try assumption. 
-        apply IHn with (in_l := in_l) (acc := (Rzq a0 n0 :: acc));
+        eapply merge_at_end_respects_constraints.
+        2:apply MaB. 
+        inversion H; subst; assumption.
+        apply IHn with (in_l := l) (acc := acc0); try assumption. 
+        apply IHn with (in_l := in_l) (acc := (Rzq a0 n0 :: acc0));
           try assumption.
         inversion H; subst; assumption.
         constructor.
         assumption.
-      * apply IHn with (in_l := in_l) (acc := (App2 URzQ_CNOT n0 n1 :: acc)).
-        inversion H; subst; assumption.
+      * eapply IHn with (acc := (App2 URzQ_CNOT n0 n1 :: acc0)).
+        inversion H. apply H8.
         constructor.
         inversion H; subst. 
         assumption.
@@ -1407,7 +1404,7 @@ Proof.
     unfold rev_append_w_map in H0.
     subst; constructor. 
   - unfold RotationMerging.invert in H0.
-    eapply rev_append_w_map_invert_gate_respects_constraints with (is_in_graph0 := is_in_graph).
+    eapply rev_append_w_map_invert_gate_respects_constraints.
     apply H.
     constructor. 
     assumption.  

@@ -143,10 +143,10 @@ Proof.
    + rewrite <- app_comm_cons in H;   
    destruct a; remember (l1 ++ l2) as l; inversion H; subst.
    * apply IHl1 in H3.
-     apply res_dir_app1 with (u0 := u) (n0 := n).
+     eapply res_dir_app1.
      assumption.
    * apply IHl1 in H7.
-     apply res_dir_app2 with (n1 := n) (n2 := n0) in H7.
+     eapply res_dir_app2.
      assumption.
      assumption.
 Qed.
@@ -380,18 +380,17 @@ Proof.
   apply respects_constraints_directed_app.
   apply rev_respects_constraints.
   assumption.
-  apply try_rewrites_respects_constraints with (l':= g) (l0:= l) (rules := cancel_rules).
-  assumption.
+  eapply try_rewrites_respects_constraints.
+  apply respects_l.
   intros r Hr l0 l' Hrcdl H0.
-  apply H1 with (r := r) (l := l0); try assumption.
+  apply H1 with (r := r) (l := l0); try apply Hr; try assumption.
   assumption.
   destruct (try_rewrites2 l commute_rules) eqn:rewr2; try discriminate.
   destruct p.
   assert (respects_constraints_directed is_in_graph cnot g
           /\ respects_constraints_directed is_in_graph cnot g0). 
-  apply try_rewrites2_respects_constraints with (l0 := l) (l1:= g) (l2:= g0)
-                                                (rules := commute_rules).
-  assumption.
+  eapply try_rewrites2_respects_constraints. 
+  apply respects_l.
   intros r Hr l0 l1 l2 Hrcdl0 rls. 
   eapply H2. apply Hr. apply Hrcdl0. apply rls. apply rewr2. 
   apply IHn with (l := g0) (acc := (rev_append g acc)).

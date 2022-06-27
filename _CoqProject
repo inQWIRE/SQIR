@@ -1,6 +1,5 @@
 -R SQIR Top.SQIR
 -R externals/euler Top.externals.euler
--R utilities Top.utilities
 -R examples Top.examples
 -R VOQC Top.VOQC
 #-arg -profile-ltac

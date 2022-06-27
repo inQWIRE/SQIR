@@ -379,7 +379,7 @@ Proof.
   destruct b1; destruct b2; try contradiction; simpl; Qsimpl; reflexivity.
 Qed.
 
-(* TODO: possibly move to QuantumLib *)
+(* TODO: move to QuantumLib *)
 
 Lemma bra0_phase : forall ϕ, bra 0 × phase_shift ϕ = bra 0.
 Proof. intros; solve_matrix. Qed.

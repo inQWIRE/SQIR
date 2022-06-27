@@ -122,7 +122,7 @@ Proof.
   Msimpl. 
   rewrite Mmult_vsum_distr_l. 
   specialize (funbool_to_nat_bound k z) as Hz.
-  rewrite vsum_unique with (v:=(Csum (fun j => Cexp (2 * PI * δ) ^ j) (2 ^ k)) .* I 1).
+  rewrite vsum_unique with (v:=(Σ (fun j => Cexp (2 * PI * δ) ^ j) (2 ^ k)) .* I 1).
   2: { exists (funbool_to_nat k z).
        repeat split.  
        assumption.
@@ -130,7 +130,7 @@ Proof.
        rewrite basis_f_to_vec.
        rewrite basis_vector_product_eq by assumption.
        apply f_equal2; try reflexivity.
-       apply Csum_eq.
+       apply big_sum_eq.
        apply functional_extensionality; intro x.
        rewrite Cexp_pow.
        apply f_equal. subst θ. lra.
@@ -138,8 +138,7 @@ Proof.
        distribute_scale.
        rewrite basis_f_to_vec.
        rewrite basis_vector_product_neq; try assumption. 
-       lma.
-       apply not_eq_sym. assumption. }
+       lma. }
   unfold scale, I; simpl.  
   pose (Req_dec δ 0) as Hδ.
   destruct Hδ as [Hδz | Hδnz].

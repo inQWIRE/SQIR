@@ -1,4 +1,4 @@
-Require Import UnitaryOps.
+Require Export UnitaryOps.
 
 Local Open Scope nat_scope.
 Local Open Scope ucom_scope.

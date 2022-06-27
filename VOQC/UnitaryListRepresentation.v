@@ -1822,7 +1822,7 @@ Proof.
         apply Hl1acc. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
       + specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng2) as dnr.
         apply next_gate_preserves_structure in ng2; subst.
-        destruct (G.match_gate u u0 && (n0 =? n2) && (n1 =? n3) && ¬ (FSet.mem n0 blst) && ¬ (FSet.mem n1 blst)) eqn:cond.
+        destruct (G.match_gate u u0 && (n0 =? n2) && (n1 =? n3) && (¬ FSet.mem n0 blst) && (¬ FSet.mem n1 blst)) eqn:cond.
         apply IHn in H as [H1 H2]; simpl in *.
         rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
         rewrite <- H1, <- H2.

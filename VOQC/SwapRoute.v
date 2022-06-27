@@ -849,7 +849,7 @@ Proof.
       try easy_case IHfuel.
     + apply andb_prop in cond as [cond dnr].
       apply andb_prop in cond as [cond1 cond2].
-      apply Nat.eqb_eq in cond1, cond2; subst.
+      apply Nat.eqb_eq in cond1; apply Nat.eqb_eq in cond2; subst.
       assert ([CNOT n2 n1] ++ g0 =l= g0 ++ [CNOT n2 n1])%ucom.
       apply does_not_reference_commutes_app2.
       eapply ntqg_l1_does_not_reference. apply ntqg.
@@ -881,7 +881,7 @@ Proof.
     + clear cond.
       apply andb_prop in cond' as [cond' dnr].
       apply andb_prop in cond' as [cond1 cond2].
-      apply Nat.eqb_eq in cond1, cond2; subst.
+      apply Nat.eqb_eq in cond1; apply Nat.eqb_eq in cond2; subst.
       assert ([CNOT n1 n2] ++ g0 =l= g0 ++ [CNOT n1 n2])%ucom.
       apply does_not_reference_commutes_app2.
       eapply ntqg_l1_does_not_reference. apply ntqg.
@@ -921,7 +921,7 @@ Proof.
       try easy_case IHfuel.
     + apply andb_prop in cond as [cond dnr].
       apply andb_prop in cond as [cond1 cond2].
-      apply Nat.eqb_eq in cond1, cond2; subst.
+      apply Nat.eqb_eq in cond1; apply Nat.eqb_eq in cond2; subst.
       assert ([CNOT n2 n1] ++ g0 =l= g0 ++ [CNOT n2 n1])%ucom.
       apply does_not_reference_commutes_app2.
       eapply ntqg_l1_does_not_reference. apply ntqg.
@@ -952,7 +952,7 @@ Proof.
     + clear cond.
       apply andb_prop in cond' as [cond' dnr].
       apply andb_prop in cond' as [cond1 cond2].
-      apply Nat.eqb_eq in cond1, cond2; subst.
+      apply Nat.eqb_eq in cond1; apply Nat.eqb_eq in cond2; subst.
       assert ([CNOT n2 n1] ++ g0 =l= g0 ++ [CNOT n2 n1])%ucom.
       apply does_not_reference_commutes_app2.
       assumption.
@@ -1014,24 +1014,28 @@ Proof.
     dependent destruction m.
     easy_case2 IHfuel.
     destruct ((n =? n2) && (n0 =? n1) && does_not_reference g0 n0).
-    apply next_two_qubit_gate_respects_constraints_undirected 
-      with (is_in_graph0:=is_in_graph) in ntqg as [? [? _]]; auto.
+    eapply next_two_qubit_gate_respects_constraints_undirected 
+      in ntqg as [? [? _]]; auto.
     apply IHfuel; auto.
     apply respects_constraints_undirected_app; auto. 
+    apply H0.
     constructor; auto.
     apply or_comm. auto.
     constructor; auto.
+    auto.
     destruct ((n =? n1) && (n0 =? n2) && does_not_reference g0 n0) eqn:cond.
     apply andb_prop in cond as [cond _].
     apply andb_prop in cond as [cond1 cond2].
-    apply Nat.eqb_eq in cond1, cond2; subst.
-    apply next_two_qubit_gate_respects_constraints_undirected 
-      with (is_in_graph0:=is_in_graph) in ntqg as [? [? _]]; auto.
+    apply Nat.eqb_eq in cond1; apply Nat.eqb_eq in cond2; subst.
+    eapply next_two_qubit_gate_respects_constraints_undirected 
+      in ntqg as [? [? _]]; auto.
     apply IHfuel; auto.
     apply respects_constraints_undirected_app; auto. 
+    apply H0.
     constructor; auto.
     apply or_comm. auto.
     constructor; auto.
+    apply H6.
     easy_case2 IHfuel.
   - destruct (next_two_qubit_gate l n) eqn:ntqg.
     2: easy_case2 IHfuel.
@@ -1039,21 +1043,23 @@ Proof.
     dependent destruction m.
     2: easy_case2 IHfuel.
     destruct ((n =? n2) && (n0 =? n1) && does_not_reference g0 n0).
-    apply next_two_qubit_gate_respects_constraints_undirected 
-      with (is_in_graph0:=is_in_graph) in ntqg as [? [? _]]; auto.
+    eapply next_two_qubit_gate_respects_constraints_undirected 
+      in ntqg as [? [? _]]; auto.
     apply IHfuel; auto.
     constructor; auto.
     constructor.
     apply or_comm. auto.
     apply respects_constraints_undirected_app; auto. 
+    apply H0. apply H1. auto.
     destruct ((n =? n1) && (n0 =? n2) && does_not_reference g0 n0).
-    apply next_two_qubit_gate_respects_constraints_undirected 
-      with (is_in_graph0:=is_in_graph) in ntqg as [? [? _]]; auto.
+    eapply next_two_qubit_gate_respects_constraints_undirected 
+      in ntqg as [? [? _]]; auto.
     apply IHfuel; auto.
     constructor.
     apply or_comm. auto.
     constructor; auto.
     apply respects_constraints_undirected_app; auto. 
+    apply H0. apply H1. auto.
     easy_case2 IHfuel.
 Qed.
 

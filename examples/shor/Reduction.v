@@ -2406,14 +2406,14 @@ Proof.
   unfold count1.
   rewrite count_orb. rewrite <- count_ltn at 1 by lia.
   specialize (reduction_factor_order_finding_aux p k q H H0 H1 H2 H3) as G.
-  assert (count1 (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ((Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q)) || (Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)))) (p^k * q) = count1 (fun a : nat => ¬ (nontrivgcd a (p ^ k * q)) && (nontrivgcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) || nontrivgcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q))) (p^k * q - 1)).
+  assert (count1 (fun a : nat => (Nat.gcd a (p ^ k * q) =? 1) && ((Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q)) || (Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q) <? p ^ k * q) && (1 <? Nat.gcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q)))) (p^k * q) = count1 (fun a : nat => (¬ (nontrivgcd a (p ^ k * q))) && (nontrivgcd (a ^ (ord a (p ^ k * q) / 2) - 1) (p ^ k * q) || nontrivgcd (a ^ (ord a (p ^ k * q) / 2) + 1) (p ^ k * q))) (p^k * q - 1)).
   { replace (p^k * q) with (S (p^k * q - 1)) at 1 by lia.
     unfold count1. rewrite count_extend.
     simpl Nat.add. 
     replace (S (p^k * q - 1)) with (p^k * q) by lia.
     rewrite Nat.gcd_diag. bdestruct (p^k * q =? 1); try lia.
     simpl. apply count_eq. intros.
-    assert (¬ (nontrivgcd x (p^k * q)) = (Nat.gcd x (p^k * q) =? 1)).
+    assert ((¬ (nontrivgcd x (p^k * q))) = (Nat.gcd x (p^k * q) =? 1)).
     { unfold nontrivgcd, nontriv.
       bdestruct (Nat.gcd x (p^k * q) =? 1). rewrite H7, Nat.ltb_irrefl. btauto.
       assert (0 < Nat.gcd x (p^k * q)) by (apply Natgcd_pos; lia).

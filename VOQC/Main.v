@@ -616,13 +616,12 @@ Lemma optimize_nam_lcr_preserves_WT : forall {dim} (c0 l c r : circ dim) n,
   uc_well_typed_l l /\ uc_well_typed_l c /\ uc_well_typed_l r.
 Proof.
   intros dim c0 l c r n Hn WT H.
-  apply optimize_nam_lcr_preserves_semantics with (n0:=n) in H; try assumption.
+  eapply optimize_nam_lcr_preserves_semantics in H; try apply Hn; auto.
   apply uc_cong_l_implies_WT in H.
   apply uc_well_typed_l_app in H as [H1 H23].
   apply uc_well_typed_l_app in H23 as [H2 H3].
   repeat split; try assumption.
-  apply niter_WT_inv with (n0:=n-2).
-  lia. apply H2.
+  eapply niter_WT_inv; try apply H2. lia.
   apply niter_WT.
   assumption.
 Qed.

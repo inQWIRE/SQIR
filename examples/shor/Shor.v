@@ -62,7 +62,7 @@ Definition OF_post a N o m := OF_post' (2 * m + 2) a N o m.
    measurement result x. *)
 Definition r_found o m r a N : R := if (OF_post a N o m =? r) then 1 else 0.
 Definition probability_of_success (a r N m n anc : nat) (f : nat -> base_ucom (n + anc)) :=
-  Rsum (2^m) (fun x => r_found x m r a N * prob_partial_meas (basis_vector (2^m) x) (Shor_final_state m n anc f))%R.
+  big_sum (fun x => r_found x m r a N * prob_partial_meas (basis_vector (2^m) x) (Shor_final_state m n anc f))%R (2^m).
 
 (* Post-processing for factorization. Notice here `a` is set as input, while the real 
    implementation needs a randomized `a` from 1 < a < N such that gcd a N <> 1.
@@ -156,7 +156,7 @@ Qed.
 (* ===================================================== *)
 
 Local Open Scope R_scope.
-Lemma ω_neg_sum_zero : forall r, Csum (fun i =>  (ω_neg r ^ (i * 0))%C) r = r.
+Lemma ω_neg_sum_zero : forall r, Σ (fun i =>  (ω_neg r ^ (i * 0))%C) r = r.
 Proof.
   intros.
   apply Csum_1.
@@ -171,10 +171,10 @@ Qed.
 Lemma ω_neg_sum_nonzero :
   forall (r k : nat),
     0 < k < r -> 
-    Csum (fun i => (ω_neg r ^ (i * k))%C) r = 0.
+    Σ (fun i => (ω_neg r ^ (i * k))%C) r = 0.
 Proof.
   intros.
-  erewrite Csum_eq_bounded.
+  erewrite big_sum_eq_bounded.
   2: { intros.
        unfold ω_neg.
        rewrite Cexp_pow.
@@ -329,7 +329,8 @@ Proof.
        intros.
        rewrite ω_neg_sum_nonzero.
        lma.
-       split. apply not_eq_sym in H2. apply neq_0_lt in H2. apply lt_0_INR; assumption. apply lt_INR; assumption.
+       split. 
+       apply neq_0_lt in H2. apply lt_0_INR; assumption. apply lt_INR; assumption.
   }
   unfold basisPowerA.
   rewrite Nat.pow_0_r.
@@ -450,7 +451,7 @@ Proof.
     rewrite le_plus_minus_r. replace (r + x)%nat with (x + 1 * r)%nat by lia. rewrite Nat.mod_add by easy. apply Nat.mod_small. easy.
     specialize (Nat.mod_upper_bound (2^k)%nat r H). lia.
   }
-  rewrite vsum_reorder with (f0 := u) by easy.
+  erewrite vsum_reorder.  2: apply H1.
   rewrite Hequ. apply vsum_eq. intros. distribute_scale. apply f_equal2.
   replace (j * ((i + 2 ^ k) mod r))%nat with (((i + 2 ^ k) mod r) * j)%nat by lia.
   rewrite Cpow_mult. rewrite <- ω_neg_mod by easy. rewrite <- Cpow_mult.
@@ -635,7 +636,7 @@ Proof.
   assert (k / r <= 1 - / r).
   { assert (0 < r). assert (0 < r)%nat by lia. apply lt_0_INR; easy.
     apply Rmult_le_reg_r with (r:=r). easy.
-    rewrite Raux.Rmult_minus_distr_r. replace (k / r * r) with ((/r) * r * k) by lra. rewrite Rinv_l by lra.
+    rewrite Rmult_minus_distr_r. replace (k / r * r) with ((/r) * r * k) by lra. rewrite Rinv_l by lra.
     assert (H3 : (k + 1 <= r)%nat) by lia. apply le_INR in H3. rewrite plus_INR in H3. simpl in H3. lra.
   }
   assert (/N < /r).
@@ -730,7 +731,7 @@ Lemma full_meas_decomp :
   forall {m n} (ψ : Vector (2^(m+n))) (ϕ1 : Vector (2^m)) (ϕ2 : Vector (2^n)),
     Pure_State_Vector ϕ2 ->
     probability_of_outcome (ϕ1 ⊗ ϕ2) ψ = 
-      (Cmod (Csum (fun i => ((ϕ2 i O) .* @Mmult _ _ (1 * 1) (ψ †) (ϕ1 ⊗ (basis_vector (2^n) i))) O O) (2^n)) ^ 2)%R.
+      (Cmod (Σ (fun i => ((ϕ2 i O) .* @Mmult _ _ (1 * 1) (ψ †) (ϕ1 ⊗ (basis_vector (2^n) i))) O O) (2^n)) ^ 2)%R.
 Proof.
   intros m n ψ ϕ1 ϕ2 [HWF Hnorm]. 
   rewrite probability_of_outcome_comm. 
@@ -742,7 +743,7 @@ Proof.
   rewrite kron_vsum_distr_l.
   rewrite <- Nat.pow_add_r. 
   rewrite Mmult_vsum_distr_l.
-  rewrite vsum_Csum. apply Csum_eq. apply functional_extensionality. intros.
+  rewrite vsum_big_sum. apply big_sum_eq. apply functional_extensionality. intros.
   rewrite Mscale_kron_dist_r. rewrite <- Mscale_mult_dist_r. easy.
   rewrite <- basis_vector_decomp; easy.
 Qed.
@@ -761,7 +762,7 @@ Proof.
   assert (T: forall q w e, q = w -> w >= e -> q >= e) by (intros; lra).
   eapply T.
   2:{ unfold scale.
-      erewrite Csum_eq.
+      erewrite big_sum_eq.
       2:{ apply functional_extensionality. intros. 
           rewrite <- (Cconj_involutive (ϕ2 x O)). reflexivity. }
       apply Cplx_Cauchy. }
@@ -773,7 +774,7 @@ Proof.
   } 
   rewrite <- rewrite_norm.
   destruct H as [WF H]. rewrite H. simpl. rewrite Rmult_1_l.
-  apply Rsum_eq. intros.
+  apply big_sum_eq_bounded. intros.
   unfold probability_of_outcome.
   rewrite <- Cmod_Cconj. rewrite Cmod_adjoint. 
   rewrite Mmult_adjoint. rewrite adjoint_involutive.
@@ -1090,6 +1091,91 @@ Proof.
     nra.
 Qed.
 
+Lemma Rsum_sum_f_R0 : forall n (f : nat -> R), @big_sum R R_is_monoid f (S n) = sum_f_R0 f n.
+Proof.
+  intros.
+  induction n; simpl.
+  lra.
+  rewrite <- IHn. simpl. reflexivity.
+Qed.
+
+(* TODO: replace the following 4 lemmas with something from QuantumLib *)
+Lemma rsum_swap_order :
+  forall (m n : nat) (f : nat -> nat -> R),
+    sum_f_R0 (fun j => sum_f_R0 (fun i => f j i) m) n = sum_f_R0 (fun i => sum_f_R0 (fun j => f j i) n) m.
+Proof.
+  intros. induction n; try easy.
+  simpl. rewrite IHn. rewrite <- sum_plus. reflexivity.
+Qed.
+
+Lemma find_decidable :
+    forall (m t : nat) (g : nat -> nat),
+    (exists i, i <= m /\ g i = t)%nat \/ (forall i, i <= m -> g i <> t)%nat.
+Proof.
+  induction m; intros.
+  - destruct (dec_eq_nat (g O) t).
+    + left. exists O. split; easy.
+    + right. intros. replace i with O by lia. easy.
+  - destruct (IHm t g).
+    + left. destruct H. exists x. destruct H. split; lia.
+    + destruct (dec_eq_nat (g (S m)) t).
+      -- left. exists (S m). lia.
+      -- right. intros. inversion H1. lia. apply H. lia.
+Qed.
+
+Lemma rsum_unique :
+    forall (n : nat) (f : nat -> R) (r : R),
+    (exists (i : nat), i <= n /\ f i = r /\ (forall (j : nat), j <= n -> j <> i -> f j = 0)) ->
+    sum_f_R0 f n = r.
+Proof.
+  intros.
+  destruct H as (? & ? & ? & ?).
+  induction n. simpl. apply INR_le in H. inversion H. subst. easy.
+  simpl. destruct (S n =? x) eqn:E.
+  - apply beq_nat_true in E.
+    subst. replace (sum_f_R0 f n) with 0. lra.
+    symmetry. apply sum_eq_R0. intros. apply H1. apply le_INR. constructor. easy. lia.
+  - apply beq_nat_false in E.
+    apply INR_le in H. inversion H. lia. subst. replace (f (S n)) with 0.
+    rewrite IHn. lra. apply le_INR. easy. intros. apply H1; auto. apply Rle_trans with n; auto.
+    apply le_INR. lia. symmetry. apply H1; auto. apply Rle_refl.
+Qed.
+
+Theorem rsum_subset :
+  forall (m n : nat) (f : nat -> R)  (g : nat -> nat),
+    m < n -> (forall (i : nat), 0 <= f i) -> (forall i, i <= m -> g i <= n)%nat ->
+    (forall i j, i <= m -> j <= m -> g i = g j -> i = j)%nat ->
+    sum_f_R0 (fun i => f (g i)) m <= sum_f_R0 f n.
+Proof.
+  intros.
+  set (h := (fun (i : nat) => sum_f_R0 (fun (j : nat) => if i =? g j then f (g j) else 0) m)).
+  assert (forall (i : nat), i <= n -> h i <= f i).
+  { intros. unfold h. simpl.
+    destruct (find_decidable m i g).
+    - destruct H4 as (i0 & H4 & H5).
+      replace (sum_f_R0 (fun j : nat => if i =? g j then f (g j) else 0) m) with (f i). lra.
+      symmetry. apply rsum_unique. exists i0. split.
+      + apply le_INR. easy.
+      + split. subst.  rewrite Nat.eqb_refl. easy.
+        intros. assert (i <> g j). unfold not. intros. subst. apply H2 in H8. apply H7. easy.
+        easy. apply INR_le. easy.
+        replace (i  =? g j) with false. easy. symmetry. apply Nat.eqb_neq. easy.
+    - replace (sum_f_R0 (fun j : nat => if i =? g j then f (g j) else 0) m) with 0. easy.
+      symmetry. apply sum_eq_R0. intros. apply H4 in H5. apply Nat.eqb_neq in H5. rewrite Nat.eqb_sym. rewrite H5. easy. 
+  }
+  assert (sum_f_R0 h n <= sum_f_R0 f n).
+  { apply sum_Rle. intros. apply H3. apply le_INR. easy. }
+  apply Rle_trans with (sum_f_R0 h n); auto.
+  unfold h. rewrite rsum_swap_order.
+  replace (sum_f_R0 (fun i : nat => f (g i)) m) with 
+  (sum_f_R0 (fun i : nat => sum_f_R0 (fun j : nat => if j =? g i then f (g i) else 0) n) m).
+  apply Rle_refl. apply sum_eq. intros.
+  apply rsum_unique. exists (g i). split.
+  - apply le_INR. auto. 
+  - rewrite Nat.eqb_refl. split. easy.
+    intros. apply Nat.eqb_neq in H7. rewrite H7; easy.
+Qed.
+
 Lemma Shor_correct_var :
     forall (a r N m n anc : nat) (u : nat -> base_ucom (n + anc)),
       BasicSetting a r N m n ->
@@ -1100,13 +1186,15 @@ Proof.
   specialize (ϕ_n_over_n_lowerbound) as Heuler.
   assert (Hκ : exp(-2) > 0) by (subst; apply exp_pos).
   unfold probability_of_success, Shor_final_state.
-  intros. rename H1 into H2. assert (H1 : (r > 0)%nat) by (destruct H as [_ [[Hr _] _]]; lia).
+  intros. rename H1 into H2. 
+  assert (H1 : (r > 0)%nat) by (destruct H as [_ [[Hr _] _]]; lia).
   remember (fun x : nat =>
               r_found x m r a N *
               prob_partial_meas (basis_vector (2 ^ m) x)
                                 (uc_eval (QPE_var m (n + anc) u) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0))) as f.
-  cut (Rsum (2^m) f >= Rsum r (fun i => f (s_closest m i r))).
-  intros. eapply Rge_trans. apply H3. destruct r. inversion H1. simpl.
+  cut (big_sum f (2^m) >= big_sum (fun i => f (s_closest m i r)) r).
+  intros. eapply Rge_trans. apply H3. destruct r. inversion H1.
+  rewrite Rsum_sum_f_R0.
   set (g := (fun i : nat => (if rel_prime_dec i (S r) then 1 else 0) * prob_partial_meas (basis_vector (2 ^ m) (s_closest m i (S r)))
                                                                                     (uc_eval (QPE_var m (n + anc) u) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0)))).
   cut (forall i : nat, (i <= r)%nat -> g i <= f (s_closest m i (S r))).
@@ -1116,8 +1204,9 @@ Proof.
   rewrite <- scal_sum. unfold ϕ in Heuler.
   remember (sum_f_R0 (fun i : nat => if rel_prime_dec i (S r) then 1 else 0) r) as t.
   assert (t / (S r) >= exp(-2) / (Nat.log2 N^4)).
-  { subst. replace (sum_f_R0 (fun i : nat => if rel_prime_dec i (S r) then 1 else 0) r) with (Rsum (S r) (fun i : nat => if rel_prime_dec i (S r) then 1 else 0)).
-    destruct r. simpl. replace (1 / 1) with (1 * 1) by lra.
+  { subst.
+    rewrite <- Rsum_sum_f_R0.
+    destruct r. simpl. replace ((0 + 1) / 1) with (1 * 1) by lra.
     assert (1 <= Nat.log2 N)%nat.
     { destruct H as [HN _]. assert (2 <= N)%nat by lia.
       specialize (Nat.log2_le_mono _ _ H) as G. rewrite Nat.log2_2 in G. easy.
@@ -1140,7 +1229,6 @@ Proof.
     rewrite <- pow_INR. apply lt_INR. cut (1 <= (Nat.log2 (S r)) ^ 4)%nat. lia. eapply Nat.le_trans.
     assert (1 <= (Nat.log2 2) ^ 4)%nat. unfold Nat.log2. simpl. lia. apply H7.
     apply Nat.pow_le_mono_l. apply Nat.log2_le_mono. lia.
-    reflexivity.
   }
   unfold κ.
   repeat rewrite Rdiv_unfold. repeat rewrite Rinv_mult_distr. repeat rewrite Rdiv_unfold in H6.
@@ -1154,14 +1242,17 @@ Proof.
                                                                 (uc_eval (QPE_var m (n + anc) u) × (basis_vector (2 ^ m) 0 ⊗ basis_vector (2 ^ n) 1 ⊗ basis_vector (2 ^ anc) 0))) as fi.
     destruct (rel_prime_dec i (S r)). rewrite r_found_1 with a _ N _ _ n; try lra; try lia; try easy.
     rewrite Rmult_0_l. apply Rmult_le_pos. unfold r_found. destruct (OF_post a N (s_closest m i (S r)) m =? S r); lra.
-    subst. unfold prob_partial_meas. unfold Rsum. replace (2 ^ (n + anc))%nat with (S (pred (2 ^ (n + anc)))).
+    subst. unfold prob_partial_meas. 
+    replace (2 ^ (n + anc))%nat with (S (pred (2 ^ (n + anc)))).
+    rewrite Rsum_sum_f_R0.
     apply cond_pos_sum. intros. unfold probability_of_outcome. interval.
     simpl. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
   - replace (2 ^ m)%nat with (S (pred (2 ^ m))).
     assert (forall i, 0 <= f i).
     { intros. subst. unfold r_found, prob_partial_meas, probability_of_outcome. apply Rmult_le_pos.
       destruct (OF_post a N i m =? r); lra.
-      unfold Rsum. replace (2 ^ (n+anc))%nat with (S (pred (2 ^ (n+anc)))).
+      replace (2 ^ (n+anc))%nat with (S (pred (2 ^ (n+anc)))).
+      rewrite Rsum_sum_f_R0.
       apply cond_pos_sum. intros. interval. rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
     }
     assert (r < N)%nat.
@@ -1169,11 +1260,13 @@ Proof.
     assert (N <= N^2)%nat. rewrite <- Nat.pow_1_r at 1. apply Nat.pow_le_mono_r; try lia. 
     destruct r. 
     + (* r = 0 *)
-      apply Rle_ge. apply cond_pos_sum. apply H3.
-    + simpl. apply Rle_ge. apply rsum_subset.
+      apply Rle_ge.
+      rewrite Rsum_sum_f_R0. simpl. apply cond_pos_sum. apply H3.
+    + rewrite 2 Rsum_sum_f_R0.
+      apply Rle_ge. apply rsum_subset.
       -- destruct H. apply lt_INR. lia. 
       -- auto.
-      -- intros. assert (0 <= i < S r)%nat by lia. specialize (s_closest_ub a (S r) N m n i H H7) as G. lia. (*destruct H as (Ha & Hb & Hc & Hd). intros. lia.*)
+      -- intros. assert (0 <= i < S r)%nat by lia. specialize (s_closest_ub a (S r) N m n i H H7) as G. lia.
       -- intros. apply s_closest_injective with a (S r) N m n; try lia; auto.
          rewrite Nat.succ_pred_pos. easy. apply pow_positive. lia.
 Qed.

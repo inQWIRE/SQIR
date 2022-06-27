@@ -485,11 +485,13 @@ Proof.
     rewrite find_phys_swap_log_3 with (n:=n); auto.
     apply Hlay. auto.
     intro contra.
-    apply Hlay in H, contra.
+    apply Hlay in H.
+    apply Hlay in contra.
     rewrite H in contra.
     inversion contra. easy.
     intro contra.
-    apply Hlay in H, contra.
+    apply Hlay in H.
+    apply Hlay in contra.
     rewrite H in contra.
     inversion contra. easy.
   - bdestruct (l =? get_log lay p1). subst.
