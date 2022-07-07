@@ -245,6 +245,22 @@ Proof.
   assumption.
 Qed.
 
+Lemma check_swap_equivalence_layouts_WF : forall {dim} (l1 l2 : ucom_l dim) m1 m2 m1' m2',
+  uc_well_typed_l l1 -> uc_well_typed_l l2 ->
+  layout_bijective dim m1 -> layout_bijective dim m2 ->
+  check_swap_equivalence l1 l2 m1 m2 (fun n => @MapG.match_gate n) = Some (m1', m2') ->
+  layout_bijective dim m1' /\ layout_bijective dim m2'.
+Proof.
+  intros dim l1 l2 m1 m2 m1' m2' WT1 WT2 WF1 WF2 H.
+  unfold check_swap_equivalence in H.
+  destruct (remove_swaps l1 m1) eqn:rs1.
+  destruct (remove_swaps l2 m2) eqn:rs2.
+  destruct (equalb m m0 (fun n : nat => MapG.match_gate)); inversion H. 
+  subst.
+  apply remove_swaps_WF in rs1; auto.
+  apply remove_swaps_WF in rs2; auto.
+Qed.
+
 (** If check_swap_equivalence returns Some then l1 and l2 are equivalent programs 
     wrt to layouts m1 and m2. *)
 Lemma check_swap_equivalence_implies_equivalence : forall {dim} (l1 l2 : ucom_l dim) m1 m2 m1' m2',

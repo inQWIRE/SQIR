@@ -868,7 +868,7 @@ Proof.
   apply decompose_swaps_and_cnots_sound.
 Qed.
 
-Lemma decompose_swaps_WT : forall {dim} (c : circ dim) (cg : c_graph),
+Lemma decompose_swaps_preserves_WT : forall {dim} (c : circ dim) (cg : c_graph),
   uc_well_typed_l c ->
   uc_well_typed_l (decompose_swaps c cg).
 Proof.
@@ -1005,15 +1005,32 @@ Lemma check_swap_equivalence_correct : forall dim (c1 c2 : circ dim) (lay1 lay2 
   c1 ≡x c2.
 Proof.
   intros dim c1 c2 lay1 lay2 WT1 WT2 WF1 WF2 H.
-unfold check_swap_equivalence in H.
-unfold is_swap_equivalent in H.
-destruct (MappingValidation.check_swap_equivalence (full_to_map c1)
-          (full_to_map c2) lay1 lay2
-          (fun n : nat => MappingGateSet.match_gate match_gate)) eqn:mv.
-destruct p.
-Search MappingValidation.check_swap_equivalence.
-
-Admitted.
+  unfold check_swap_equivalence in H.
+  unfold is_swap_equivalent in H.
+  destruct (MappingValidation.check_swap_equivalence (full_to_map c1)
+                                                     (full_to_map c2) lay1 lay2
+                                                     (fun n : nat => MappingGateSet.match_gate match_gate)) eqn:mv.
+  assert (mvWF:=mv).
+  destruct p.
+  2: inversion H.
+  apply MVP.check_swap_equivalence_implies_equivalence in mv; auto.
+  apply MVP.check_swap_equivalence_layouts_WF in mvWF as [? ?]; auto.
+  unfold MVP.SRP.uc_equiv_perm_ex in mv.
+  exists (get_phys lay1 ∘ get_log lay2)%prg.
+  exists (get_phys l0 ∘ get_log l)%prg.
+  repeat split.
+  apply Permutations.permutation_compose.
+  apply get_phys_perm; auto.
+  apply get_log_perm; auto.
+  apply Permutations.permutation_compose.
+  apply get_phys_perm; auto.
+  apply get_log_perm; auto.
+  unfold eval.
+  unfold MVP.SRP.MapList.eval in mv.
+  rewrite <- 2 list_to_ucom_full_to_map in mv.
+  apply mv.
+  all: apply full_to_map_WT; assumption.
+Qed.
 
 Lemma check_constraints_correct : forall dim (c : circ dim) (cg : c_graph),
   check_constraints c cg = true ->
@@ -1050,52 +1067,91 @@ Lemma optimize_and_map_to_lnn_ring_16_preserves_semantics : forall (c : circ _) 
 Proof.
   intros c c' H.
   unfold optimize_and_map_to_lnn_ring_16 in H.
+  remember (make_lnn_ring 16) as cg.
+  remember (lnn_ring_path_finding_fun 16) as get_path.
+  remember (greedy_layout c cg (lnn_ring_qubit_ordering_fun 16)) as lay.
+  assert (Hpath : get_path_valid cg get_path).
+  { subst. apply lnn_ring_path_finding_fun_valid. }
+  clear Heqget_path.
   destruct (check_well_typed c 16) eqn:WT; inversion H.
   apply check_well_typed_correct in WT.
+  replace 16 with (graph_dim cg) in *.
   rewrite cast_same in WT.
-  clear - WT.
-Admitted.
-(*
-  apply optimize_preserves_semantics.
-  apply swap_route_sound in H1.
-  all: unfold get_dim, make_lnn in *; simpl fst in *.
-  apply uc_eq_perm_uc_cong_l with (l2:=cast (optimize_ibm (optimize_nam c)) 10).
+  assert (WF : layout_bijective (graph_dim cg) lay).
+  { subst. apply greedy_layout_well_formed. 
+    rewrite cast_same. assumption.
+    apply lnn_ring_qubit_ordering_fun_valid. }
+  clear - WT Hpath WF.
+  specialize (swap_route_preserves_semantics (optimize_nam c) lay cg get_path) as Hmap.
+  destruct Hmap as [p1 [p2 [Hp1 [Hp2 Hmap]]]]; auto.
   rewrite cast_same.
-  rewrite optimize_ibm_preserves_semantics.
-  rewrite optimize_nam_preserves_semantics.
+  apply optimize_nam_preserves_WT. auto.
+  exists p1. exists p2.
+  repeat split; auto.
+  rewrite cast_same in Hmap.
+  specialize (optimize_nam_preserves_semantics c WT) as Hnam.
+  destruct Hnam as [x Hnam].
+  assert (Haux: eval c = Cexp (- x) .* eval (optimize_nam c)).
+  { unfold eval. rewrite Hnam.
+    rewrite Mscale_assoc.
+    rewrite Cexp_mul_neg_l.
+    rewrite Mscale_1_l. auto. }
+  rewrite Haux, Hmap.
+  remember (swap_route (optimize_nam c) lay cg get_path) as c0.
+  clear Hmap Hnam Haux.
+  specialize (optimize_preserves_semantics (decompose_swaps c0 cg)) as Hopt.
+  destruct Hopt as [y Hopt].
+  apply decompose_swaps_preserves_WT.
+  subst c0. apply swap_route_preserves_WT; auto.
+  rewrite cast_same.
+  apply optimize_nam_preserves_WT; auto.
+  assert (Haux: eval (optimize (decompose_swaps c0 cg)) = Cexp y .* eval (decompose_swaps c0 cg)).
+  { unfold eval. rewrite Hopt. reflexivity. }
+  rewrite Haux.
+  clear Hopt Haux.
+  exists (- x - y)%R.
+  distribute_scale.
+  apply f_equal2.
+  rewrite <- Cexp_add.
+  field_simplify (- x - y + y)%R.
   reflexivity.
-  assumption.
-  apply optimize_nam_preserves_WT.
-  assumption.
-  rewrite cast_layout_same in H1.
-  apply uc_eq_perm_implies_uc_cong_perm.
-  apply H1.
-  rewrite cast_same.
-  apply optimize_ibm_preserves_WT.
-  apply optimize_nam_preserves_WT.
-  assumption.
-  rewrite cast_layout_same.
-  apply trivial_layout_well_formed.
+  apply f_equal2; try reflexivity.
+  apply f_equal2; try reflexivity.
+  symmetry.
+  apply decompose_swaps_preserves_semantics.
+  subst cg.
+  reflexivity.
 Qed.
 
-Lemma optimize_then_map_respects_constraints : forall (c : circ 10) c' la',
-  optimize_then_map c = Some (c', la') -> 
-  respects_constraints_directed LNN10.is_in_graph U_CX c'.
+Lemma optimize_and_map_to_lnn_ring_16_respects_constraints : forall (c : circ 16) c',
+  optimize_and_map_to_lnn_ring_16 c = Some c' -> 
+  respects_constraints_directed (is_in_graph (make_lnn_ring 16)) U_CX c'.
 Proof.
-  intros c c' la' H.
-  unfold optimize_then_map in H.
-  destruct (check_well_typed c 10) eqn:WT; inversion H.
+  intros c c' H.
+  unfold optimize_and_map_to_lnn_ring_16 in H.
+  remember (make_lnn_ring 16) as cg.
+  remember (lnn_ring_path_finding_fun 16) as get_path.
+  remember (greedy_layout c cg (lnn_ring_qubit_ordering_fun 16)) as lay.
+  assert (Hpath : get_path_valid cg get_path).
+  { subst. apply lnn_ring_path_finding_fun_valid. }
+  clear Heqget_path.
+  destruct (check_well_typed c 16) eqn:WT; inversion H.
   apply check_well_typed_correct in WT.
+  replace (graph_dim cg) with 16 in *.
   rewrite cast_same in WT.
-  clear H. 
-  eapply swap_route_respects_constraints_directed; try apply H1.
-  all: unfold get_dim, make_lnn; simpl fst.
+  assert (WF : layout_bijective 16 lay).
+  { subst. apply greedy_layout_well_formed. 
+    rewrite cast_same. assumption.
+    apply lnn_ring_qubit_ordering_fun_valid. }
+  clear - WT Hpath WF Heqcg.
+  apply optimize_preserves_mapping.
+  apply decompose_swaps_respects_constraints.
+  apply swap_route_respects_constraints_undirected; auto.
+  replace (graph_dim cg) with 16.
   rewrite cast_same.
-  apply optimize_ibm_preserves_WT.
-  apply optimize_nam_preserves_WT.
-  assumption.
-  rewrite cast_layout_same.
-  apply trivial_layout_well_formed.
+  apply optimize_nam_preserves_WT. auto.
+  subst. reflexivity.
+  replace (graph_dim cg) with 16. auto.
+  subst. reflexivity.
+  subst. reflexivity.
 Qed.
-
-*)
