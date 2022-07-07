@@ -881,13 +881,6 @@ Definition map_to_full_u {dim} (g : gate_app (Map_Unitary (Full_Unitary 1)) dim)
 Definition map_to_full {dim} (l : map_ucom_l (Full_Unitary 1) dim) : full_ucom_l dim := 
   change_gate_set map_to_full_u l.
 
-(* TODO (if needed):
-
-Lemma map_to_full_equiv : forall {dim} (l l' : map_ucom_l (Std_Unitary 1) dim),
-  MappingGateSet.MapList.uc_equiv_l l l' ->
-  FullList.uc_equiv_l (map_to_full l) (map_to_full l').
-*)
-
 Lemma map_to_full_inv : forall {dim} (l : full_ucom_l dim),
   FullList.uc_equiv_l (map_to_full (full_to_map l)) l.
 Proof.
@@ -920,6 +913,59 @@ Proof.
     simpl; repeat constructor; assumption.
   - dependent destruction u; rewrite change_gate_set_cons; 
     simpl; repeat constructor; assumption.
+Qed.
+
+Lemma map_to_full_preserves_mapping_undirected : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_undirected is_in_graph l ->
+  respects_constraints_undirected is_in_graph (map_to_full l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold map_to_full.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_undirected_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_undirected_app; auto.
+  dependent destruction u; constructor.
+  assumption. constructor. assumption. constructor.
+Qed.
+
+Lemma map_to_full_preserves_mapping_directed : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph UMap_CNOT l ->
+  respects_constraints_directed is_in_graph U_CX (map_to_full l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold map_to_full.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+Lemma full_to_map_preserves_mapping_undirected : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_undirected is_in_graph l ->
+  respects_constraints_undirected is_in_graph (full_to_map l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold full_to_map.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_undirected_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_undirected_app; auto.
+  dependent destruction u; repeat apply res_und_app2; try assumption. 
+  constructor. 
+  constructor. constructor. assumption. constructor. constructor.
+  constructor.
 Qed.
 
 (** * Check that every gate in the program satisfies some predicate **)

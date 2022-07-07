@@ -66,6 +66,61 @@ Definition valid_path n1 n2 is_in_graph dim p :=
     /\ (path_well_typed p dim)
     /\ (not_in_interior n2 p).
 
+(** A qubit ordering should contain every x < n except its (optional) argument *)
+Definition valid_q_ordering (q_ordering : option nat -> list nat) n :=
+ forall o x, match o with 
+        | None => x < n
+        | Some y => x <> y /\ x < n
+        end <-> List.In x (q_ordering o).
+
+(* Easy definition that satisfies the spec *)
+Fixpoint list_nats n o := 
+  match n with 
+  | O => [] 
+  | S n' => match o with 
+           | None => n' :: list_nats n' o
+           | Some x => if x =? n' then list_nats n' o else n' :: list_nats n' o
+           end
+  end.
+
+Lemma list_nats_is_valid_q_ordering : forall n, valid_q_ordering (list_nats n) n.
+Proof.
+  intros n o x.
+  induction n; simpl.
+  destruct o; lia.
+  bdestruct (x =? n). subst.
+  destruct o.
+  bdestruct (n0 =? n). subst.
+  split; intro H. lia.
+  apply IHn in H. lia.
+  split; intro H0. left. auto. lia.
+  split; intro H. left. auto. lia.
+  destruct o.
+  bdestruct (n0 =? n). subst.
+  split; intro H0. apply IHn. lia.
+  apply IHn in H0. lia.
+  split; intro H1. right. apply IHn. lia.
+  destruct H1 as [H1 | H1]; subst; try contradiction.
+  apply IHn in H1. lia.
+  split; intro H0. right. apply IHn. lia.
+  destruct H0 as [H0 | H0]; subst; try contradiction.
+  apply IHn in H0. lia.
+Qed.
+
+Lemma In_list_nats : forall n o x, In x (list_nats n o) -> x < n.
+Proof.
+  intros n o x.
+  induction n; simpl.
+  lia.
+  destruct o.
+  bdestruct (n0 =? n). subst.
+  intro H. apply IHn in H. lia.
+  intros [H1 | H1]. subst. lia.
+  apply IHn in H1. lia.
+  intros [H | H]. subst. lia.
+  apply IHn in H. lia.
+Qed.
+
 Lemma valid_path_subpath : forall n1 n2 is_in_graph a b p dim,
   valid_path n1 n2 is_in_graph dim (n1 :: a :: b :: p) ->
   valid_path a n2 is_in_graph dim (a :: b :: p).
@@ -260,6 +315,27 @@ Proof.
   inversion H3.
 Qed.
 
+Fixpoint interleave (l1 l2 : list nat) :=
+  match l1, l2 with
+  | h1 :: t1, h2 :: t2 => h1 :: h2 :: interleave t1 t2
+  | [], _ => l2
+  | _, [] => l1
+  end.
+
+Lemma In_interleave : forall x l1 l2, In x (interleave l1 l2) <-> In x l1 \/ In x l2.
+Proof.
+  intros x l1.
+  induction l1; simpl; intro l2.
+  split. intro. auto. intros [? | ?]; easy.
+  destruct l2; simpl.
+  split. intro. auto. intros [? | ?]; easy.
+  split; intro H.
+  rewrite IHl1 in H.
+  destruct H as [? | [? | [? | ?]]]; auto.
+  rewrite IHl1.
+  destruct H as [[? | ?] | [? | ?]]; auto.
+Qed.
+
 (*************************)
 (** *    LNN Example    **)
 (*************************)
@@ -295,31 +371,26 @@ Definition get_path n1 n2 :=
 Compute (get_path 2 5). (* [2; 3; 4; 5] *)
 Compute (get_path 6 1). (* [6; 5; 4; 3; 2; 1] *)
 
-Fixpoint interleave (l1 l2 : list nat) :=
-  match l1, l2 with
-  | h1 :: t1, h2 :: t2 => h1 :: h2 :: interleave t1 t2
-  | [], _ => l2
-  | _, [] => l1
-  end.
-
-(* Interior qubits have more flexibility since they have neighbors on both sides. *)
-Definition qubit_ordering dim := 
-  if dim =? 0 then []
-  else if dim =? 1 then [0]
-  else interleave (get_path (dim / 2) (dim - 1)) (get_path ((dim / 2) - 1) 0).
-
 Definition get_nearby dim n :=
-  if dim <? 2 then []
+  if negb (n <? dim) then list_nats dim None
+  else if dim <? 2 then []
   else if n =? 0 then get_path 1 (dim - 1)
   else if n =? dim - 1 then get_path (dim - 2) 0
   else interleave (get_path (n - 1) 0) (get_path (n + 1) (dim - 1)).
 
+(* Interior qubits have more flexibility since they have neighbors on both sides. *)
+Definition q_ordering dim o := 
+  match o with 
+  | None => if dim =? 0 then [] else (dim / 2) :: get_nearby dim (dim / 2)
+  | Some x => get_nearby dim x
+  end.
+
 (* Examples *)
-Compute (qubit_ordering 4).
-Compute (qubit_ordering 5).
-Compute (get_nearby 5 0).
-Compute (get_nearby 5 2).
-Compute (get_nearby 5 4).
+Compute (q_ordering 4 None).
+Compute (q_ordering 5 None).
+Compute (q_ordering 5 (Some 0)).
+Compute (q_ordering 5 (Some 2)).
+Compute (q_ordering 5 (Some 4)).
 
 Lemma lnn_get_path_valid : forall dim, 
   get_path_valid dim get_path (is_in_graph dim).
@@ -369,50 +440,94 @@ Proof.
     apply move_left_valid_path; lia.
 Qed.
 
-Lemma qubit_ordering_complete : forall d x, In x (qubit_ordering d) <-> x < d.
+Lemma In_get_path_case1 : forall n1 n2 x, n1 <= n2 -> In x (get_path n1 n2) <-> n1 <= x <= n2.
 Proof.
-  intros d x.
-  destruct d; simpl. lia.
-  destruct d; simpl. lia.
-  unfold qubit_ordering. simpl.
-  split; intro H.
-  - induction d; simpl in *. 
-    lia.
-    admit.
-  - induction d; simpl in *. 
-    lia.
-    bdestruct (x =? S (S d)).
-    subst. admit.
-    admit.
-Admitted.  
+  intros n1 n2 x Hn1n2.
+  unfold get_path.
+  bdestruct (n1 <? n2).
+  remember (n2 - n1) as dist.
+  replace n2 with (n1 + dist) in * by lia.
+  clear Heqdist Hn1n2 n2.
+  gen n1.
+  induction dist; simpl. lia.
+  intros n Hn.
+  bdestruct (dist =? 0).
+  subst. simpl. lia.
+  split; intro Hx.
+  destruct Hx as [Hx | Hx]. lia.
+  apply IHdist in Hx. lia. lia.
+  bdestruct (x =? n). auto.
+  right. apply IHdist. lia. lia.
+  bdestructΩ (n2 <? n1).
+Qed.
 
-Lemma get_nearby_valid : forall d n, n < d -> (forall x, In x (get_nearby d n) -> x < d).
+Lemma In_get_path_case2 : forall n1 n2 x, n2 <= n1 -> In x (get_path n1 n2) <-> n2 <= x <= n1.
 Proof.
-  intros d n Hn x Hx.
-  destruct d; simpl in Hx. easy.
-  destruct d; simpl in Hx. easy.
-  unfold get_nearby in Hx. 
-  destruct n; simpl in Hx.
-  destruct d.
-  simpl in Hx. lia.
-  specialize (lnn_get_path_valid (S (S (S d))) 1 (S (S d))) as H. 
-  destruct H as [_ [_ [_ [? _]]]]; try lia.
-  eapply path_well_typed_lt.
-  apply Hx. apply H.
-  bdestruct (n =? d).
-  subst. rewrite Nat.sub_0_r in Hx.
-  destruct d. simpl in Hx. lia.
-  specialize (lnn_get_path_valid (S (S (S d))) (S d) 0) as H. 
-  destruct H as [_ [_ [_ [? _]]]]; try lia.
-  eapply path_well_typed_lt.
-  apply Hx. apply H.
-  rewrite Nat.sub_0_r in Hx.
-  (* need interleave_lt *)
-Admitted.
+  intros n1 n2 x Hn1n2.
+  unfold get_path.
+  bdestructΩ (n1 <? n2).
+  bdestructΩ (n2 <? n1).
+  remember (n1 - n2) as dist.
+  replace n1 with (n2 + dist) in * by lia.
+  clear Heqdist Hn1n2 n1 H.
+  gen n2.
+  induction dist; simpl. lia.
+  intros n Hn.
+  bdestruct (dist =? 0).
+  subst. simpl. lia.
+  split; intro Hx.
+  destruct Hx as [Hx | Hx]. lia.
+  replace (n + S dist - 1) with (n + dist) in Hx by lia.
+  apply IHdist in Hx. lia. lia.
+  bdestruct (x =? n + S dist). auto.
+  right. 
+  replace (n + S dist - 1) with (n + dist) by lia.
+  apply IHdist. lia. lia.
+Qed.
+
+Lemma get_nearby_valid : forall d n x, x <> n /\ x < d <-> In x (get_nearby d n).
+Proof.
+  intros d n x.
+  unfold get_nearby.
+  bdestruct (n <? d); simpl.
+  bdestruct (d <? 2); simpl. lia.
+  bdestruct (n =? 0).
+  subst. 
+  rewrite In_get_path_case1; lia.
+  bdestruct (n =? d - 1).
+  subst. 
+  rewrite In_get_path_case2; lia.
+  rewrite In_interleave.
+  rewrite In_get_path_case2 by lia.
+  rewrite In_get_path_case1 by lia.
+  lia.
+  specialize (list_nats_is_valid_q_ordering d None) as Hlist.
+  simpl in Hlist.
+  split; intro Hx.
+  destruct Hx.
+  apply Hlist. auto.
+  split.
+  apply In_list_nats in Hx. lia.
+  apply Hlist. auto.
+Qed.
+
+Local Opaque Nat.div.
+Lemma lnn_q_ordering_valid : forall d, valid_q_ordering (q_ordering d) d.
+Proof.
+  intros d o x.
+  destruct o; simpl.
+  apply get_nearby_valid.
+  bdestruct (d =? 0); simpl. lia.
+  rewrite <- get_nearby_valid.
+  split.
+  intro H1. lia.
+  intros [H1 | [H1 H2]].
+  subst x. apply Nat.div_lt; lia.
+  lia.
+Qed.  
 
 End LNN.
 
-(*
 (*************************)
 (** * LNN Ring Example  **)
 (*************************)
@@ -450,7 +565,7 @@ Definition get_path dim n1 n2 :=
               if dist_cw <? dist_ccw 
               then move_cw dim n1 dist_cw
               else move_ccw dim n1 dist_ccw
-       else [] (* badly-typed case, n1=n2 *).
+       else [n1] (* n1=n2 *).
 
 (* Examples *)
 Compute (get_path 8 2 5).
@@ -458,8 +573,30 @@ Compute (get_path 8 6 1).
 Compute (get_path 8 6 3).
 Compute (get_path 8 2 7).
 
+Definition get_nearby dim n :=
+  if negb (n <? dim) then list_nats dim None
+  else if dim <? 2 then []
+  else let midlo := (n + ((dim - 1) / 2)) mod dim in
+       let midhi := (n + ((dim + 1) / 2)) mod dim in
+       interleave (get_path dim ((dim + n - 1) mod dim) midhi) 
+                  (get_path dim ((n + 1) mod dim) midlo).
+
+Definition q_ordering dim o := 
+  match o with 
+  | None => if dim =? 0 then [] else 0 :: get_nearby dim 0
+  | Some x => get_nearby dim x
+  end.
+
+(* Examples *)
+Compute (q_ordering 5 None).
+Compute (q_ordering 6 None).
+Compute (q_ordering 5 (Some 1)).
+Compute (q_ordering 5 (Some 3)).
+Compute (q_ordering 5 (Some 4)).
+Compute (q_ordering 6 (Some 2)).
+
 (* TODO: Proof is a little gross because of mod. Is there an 'lia' for expressions
-   involving mod? If not, we should try to make something. *)
+   involving mod? If not, we should try to make something. -KH *)
 
 Lemma move_cw_valid_path : forall dim n dist,
   0 < dist -> dist < dim -> n < dim ->
@@ -577,8 +714,8 @@ Proof.
     apply Nat.mod_upper_bound; lia.
 Qed.
 
-Lemma get_path_valid : forall dim n1 n2, 
-  n1 < dim -> n2 < dim -> n1 <> n2 -> valid_path n1 n2 (is_in_graph dim) dim (get_path dim n1 n2).
+Lemma lnn_ring_get_path_valid : forall dim, 
+   get_path_valid dim (get_path dim) (is_in_graph dim).
 Proof.
   intros dim n1 n2 Hn1 Hn2 Hn1n2.
   unfold get_path.
@@ -607,6 +744,71 @@ Proof.
          rewrite Nat.add_0_l.  
          rewrite Nat.mod_small; lia. }
     apply move_ccw_valid_path; lia.
+Qed.
+
+(*
+Lemma In_get_path_case1 : forall n1 n2 x, 
+  n1 <= n2 ->
+  In x (get_path d n1 n2) <-> n1 <= x <= n2.
+
+Lemma In_get_path_case2 : forall n1 n2 x, 
+  n2 <= n1 ->
+  In x (get_path d n1 n2) <-> n1 <= x <= n2.
+
+Cases of get_path n1 n2:
+depends on which direction (cw, ccw) is shorter.
+
+
+
+
+*)
+
+(* Final goal:
+
+  x <> n /\ x < d <->
+  In x (get_path d ((d + n - 1) mod d) ((n + (d + 1) / 2) mod d)) \/
+  In x (get_path d ((n + 1) mod d) ((n + (d - 1) / 2) mod d))
+
+*)
+
+Local Opaque Nat.div.
+Lemma get_nearby_valid : forall d n x, x <> n /\ x < d <-> In x (get_nearby d n).
+Proof.
+  intros d n x.
+  unfold get_nearby.
+  bdestruct (n <? d); simpl.
+  bdestruct (d <? 2); simpl. lia.
+
+remember ((n + (d - 1) / 2) mod d) as midlo.
+remember ((n + (d + 1) / 2) mod d) as midhi.
+remember ((d + n - 1) mod d) as nm1.
+remember ((n + 1) mod d) as np1.
+
+  rewrite In_interleave.
+
+unfold get_path.
+
+
+  (* need some In_get_path lemmas *)
+  admit.
+
+  specialize (list_nats_is_valid_q_ordering d None) as Hlist.
+  simpl in Hlist.
+  split; intro Hx.
+  destruct Hx.
+  apply Hlist. auto.
+  split.
+  apply In_list_nats in Hx. lia.
+  apply Hlist. auto.
+Admitted.
+
+Lemma lnn_ring_q_ordering_valid : forall d, valid_q_ordering (q_ordering d) d.
+Proof.
+  intros d o x.
+  destruct o; simpl.
+  apply get_nearby_valid.
+  bdestruct (d =? 0); simpl. lia.
+  rewrite <- get_nearby_valid. lia.
 Qed.
 
 End LNNRing.
@@ -1111,15 +1313,13 @@ Proof.
   - (* badly-typed case *)
     contradict Hn1n2.
     unfold col, row in *.
-    do 2 rewrite Nat.mod_eq in H4; try lia;
-    (* Coq v8.10 solves early again... *)
+    do 2 rewrite Nat.mod_eq in H4; lia. (*try lia;
     try (rewrite H5 in H4;
          rewrite <- (Nat.sub_add (numCols * (n2 / numCols)) n1);
          [ rewrite H4; rewrite Nat.sub_add; 
            [ reflexivity | rewrite Nat.mul_div_le; lia]
-         | rewrite <- H5; rewrite Nat.mul_div_le; lia ]). 
+         | rewrite <- H5; rewrite Nat.mul_div_le; lia ]). *)
 Qed.
 
 End Grid.
 
-*)

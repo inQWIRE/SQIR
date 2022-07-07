@@ -234,6 +234,17 @@ Proof.
     + dependent destruction m0.
 Qed.
 
+Lemma remove_swaps_WF : forall {dim} (l l' : ucom_l dim) m m',
+  uc_well_typed_l l ->
+  layout_bijective dim m ->
+  remove_swaps l m = (l', m') ->
+  layout_bijective dim m'.
+Proof.
+  intros dim l l' m m' WT WF H.
+  specialize (remove_swaps'_bijective l l' m m' [] WT WF H) as H0.
+  assumption.
+Qed.
+
 (** If check_swap_equivalence returns Some then l1 and l2 are equivalent programs 
     wrt to layouts m1 and m2. *)
 Lemma check_swap_equivalence_implies_equivalence : forall {dim} (l1 l2 : ucom_l dim) m1 m2 m1' m2',
