@@ -6,9 +6,9 @@ SQIR is a **S**mall **Q**uantum **I**ntermediate **R**epresentation for quantum 
 
 We first presented SQIR and its use in VOQC in our paper [A Verified Optimizer for Quantum Circuits](https://arxiv.org/abs/1912.02250) at POPL 2021. 
 We provide additional details of verifying SQIR programs (including QPE and Grover's) in our paper [Proving Quantum Programs Correct](https://arxiv.org/abs/2010.01240), presented at ITP 2021. 
-We describe our SQIR formalization of Shor's factoring algorithm in the draft [A Formally Certified End-to-End Implementation of Shor's Factorization Algorithm](https://arxiv.org/abs/2204.07112).
+We describe a SQIR formalization of Shor's factoring algorithm in our draft [A Formally Certified End-to-End Implementation of Shor's Factorization Algorithm](https://arxiv.org/abs/2204.07112).
 
-This repository contains our Coq formalization of SQIR and VOQC as well as several verified quantum algorithms. *If you are interested in running the VOQC compiler*, then you should look at our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)) instead. The OCaml library is extracted from our Coq definitions and the Python library is a wrapper around the OCaml library.
+This repository contains our Coq formalization of SQIR and VOQC as well as several verified quantum algorithms. If you are interested in running the VOQC compiler, then you should look at our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)) instead. The OCaml library is extracted from our Coq definitions and the Python library is a wrapper around the OCaml library.
 
 If you are interested in learning more about formal verification of quantum programs in general, we recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html).
 
@@ -37,7 +37,7 @@ opam init
 eval $(opam env)
 
 # install some version of the OCaml compiler in a switch named "voqc"
-opam switch create voqc 4.12.0
+opam switch create voqc 4.13.1
 eval $(opam env)
 
 # install Coq -- this will take a while!
@@ -53,15 +53,15 @@ opam install coq-interval
 ```
 
 *Notes*:
-* Depending on your system, you may need to replace 4.12.0 in the instructions above with something like "ocaml-base-compiler.4.12.0". Any recent version of OCaml should be fine.
+* Depending on your system, you may need to replace 4.13.1 in the instructions above with something like "ocaml-base-compiler.4.13.1". Any recent version of OCaml should be fine.
 * We require Coq version >= 8.12.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
 
 ## Compilation
 
-Run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, `make examples` to compile proofs of correctness for quantum algorithms (excluding those in examples/shor), and `make shor` to compile proofs about Shor's algorithm. Use `make all` to compile everything. 
+After following the setup directions above, you can run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, `make examples` to compile proofs of correctness for quantum algorithms (excluding those in examples/shor), and `make shor` to compile proofs about Shor's algorithm. Use `make all` to compile everything. 
 
-Our proofs are resource intensive so expect `make all` to take a little while. If you have cores to spare, then you can speed things up by compiling with the `-j` flag (e.g., `make all -j8`). On a 2015 dual-core MacBook Pro running Coq version 8.14.0 compilation takes around 30 minutes.
+Our proofs are resource intensive so expect `make all` to take a little while. If you have cores to spare, then you can speed things up by compiling with the `-j` flag (e.g., `make all -j8`). On a 2015 dual-core MacBook Pro running Coq version 8.15.2, compilation takes around 30 minutes.
 
 ## Directory Contents
 
@@ -110,9 +110,11 @@ The rest of the files in the VOQC directory can be split into the following cate
   - RemoveZRotationBeforeMeasure.v : Remove single-qubit z-axis rotations before measurement.
 
 - Mapping routines
-  - ConnectivityGraph.v : Utilities for describing an architecture connectivity graph. Includes graphs for linear nearest neighbor, 2D grid, and IBM Tenerife architectures.
-  - Layouts.v : Utilities for describing a physical <-> logical qubit mapping.
+  - ConnectivityGraph.v : Utilities for describing an architecture connectivity graph. Includes graphs for linear nearest neighbor and 2D grid architectures.
+  - GreedyLayout.v : Generate a layout based on the input program and architecture.
+  - Layouts.v : Utilities for describing a physical <-> logical qubit mapping (i.e., layout).
   - MappingConstraints.v : Utilities for describing a program that satisfies architecture constraints.
+  - MappingValidation.v : Check whether two programs (which differ only in SWAP placement) are equivalent.
   - SwapRoute.v: Simple mapping for an architecture described by a directed graph.
 
 - Experimental extensions
@@ -149,7 +151,7 @@ This project is the result of the efforts of many people. The primary contacts f
 * Runzhou Tao
 * Finn Voichick
 
-Maintainer(s):
+Maintainers:
 * Kesha Hietala (@khieta)
 * Robert Rand (@rnrand)
 

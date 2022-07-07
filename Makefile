@@ -109,7 +109,7 @@ examples/shor/Reduction.vo: examples/shor/Reduction.v examples/shor/EulerTotient
 VOQC/ChangeRotationBasis.vo: VOQC/ChangeRotationBasis.v
 	coqc $(COQ_OPTS) VOQC/ChangeRotationBasis.v
 
-VOQC/ConnectivityGraph.vo: VOQC/ConnectivityGraph.v
+VOQC/ConnectivityGraph.vo: VOQC/ConnectivityGraph.v VOQC/Layouts.vo
 	coqc $(COQ_OPTS) VOQC/ConnectivityGraph.v
 
 VOQC/GateCancellation.vo: VOQC/GateCancellation.v SQIR/Equivalences.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo
