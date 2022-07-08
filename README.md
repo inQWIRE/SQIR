@@ -139,6 +139,7 @@ Examples of verifying correctness properties of quantum algorithms.
 ## Acknowledgements
 
 This project is the result of the efforts of many people. The primary contacts for this project are Kesha Hietala (@khieta) and Robert Rand (@rnrand). Other contributors include:
+* Le Chang
 * Akshaj Gaur
 * Aaron Green
 * Kesha Hietala
