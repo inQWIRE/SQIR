@@ -1,4 +1,3 @@
-
 (**
 Wiesner's quantum money proposed by Stephen Wiesner in 1983 (https://doi.org/10.1145%2F1008908.1008920), is a quantum verification scheme that intends to encode an $n$ bit integer. 
 Given two parties, Alice and Bob, Alice will encode the n bit integer by choosing a basis such that each bit of the integer will either be encoded to quantum $\ket{1}$ in the basis $\ket{0}, \ket{1}$ or the basis $\ket{-},\ket{+}$.
@@ -17,12 +16,12 @@ NOTE: This example was contributed by Andrian Lehmann (@adrianleh) 2021
 *)
 Require Import Lists.List.
 Import ListNotations.
-Require Import QWIRE.Dirac.
-Require Import UnitarySem.
+Require Import UnitaryOps.
 Require Import DensitySem.
 Require Import SQIR.
 Local Open Scope ucom.
 Require Import Utilities.
+Require Import QuantumLib.Measurement.
 
 Notation bit_string := (list bool).
 Notation combined_bit_string := (list (bool * bool * bool)).
@@ -35,7 +34,6 @@ Qed.
 Theorem combine_same_length: forall A B (l1 : list A) (l2 : list B) n, length l1 = n -> length l2 = n -> length (combine l1 l2) = n.
 Proof.
   intros.
-  Search (combine _ _).
   rewrite combine_length.
   rewrite H, H0.
   apply min_l.
@@ -106,6 +104,7 @@ Proof.
   intros.
   destruct base; simpl; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP.
   - rewrite Mmult_1_r.
+    unfold pad_u.
     repeat rewrite pad_mult.
     + restore_dims.
       rewrite MmultHH.
@@ -123,7 +122,8 @@ Lemma circuit'_individual_qubit_non_meas_same_base_true: forall base n i, (n > 0
 Proof.
   intros.
   destruct base; simpl; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP.
-  - repeat rewrite pad_mult.
+  - unfold pad_u.
+    repeat rewrite pad_mult.
     rewrite <- Mmult_assoc.
     restore_dims.
     rewrite MmultHHX.
@@ -149,12 +149,13 @@ Proof.
   intros.
   destruct base_a, base_b; subst; try contradiction; simpl; try rewrite denote_H; try rewrite denote_X; try rewrite denote_SKIP.
   - rewrite Mmult_1_l.
-    + rewrite pad_mult.
+    + unfold pad_u.
+      rewrite pad_mult.
       reflexivity.
-    + rewrite pad_mult; auto with wf_db.
+    + unfold pad_u. rewrite pad_mult; auto with wf_db.
   - assumption.
   - rewrite Mmult_1_l; auto with wf_db.
-    rewrite pad_mult.
+    unfold pad_u. rewrite pad_mult.
     reflexivity.
   - assumption.
 Qed.

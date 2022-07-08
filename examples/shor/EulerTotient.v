@@ -1,7 +1,6 @@
 Require Import Psatz ZArith Znumtheory.
 Require Import euler.Asympt euler.Misc euler.Primes euler.Prod.
-Require Import Prelim RealAux.
-(*Require Export Utilities.*)
+Require Import QuantumLib.Prelim QuantumLib.RealAux QuantumLib.Summation.
 
 
 (* ==================================== *)
@@ -74,18 +73,19 @@ Qed.
 Local Open Scope R_scope.
 
 (* Euler's totient function *)
-Definition ϕ (n : nat) := Rsum n (fun x => if rel_prime_dec x n then 1 else 0).
+Definition ϕ (n : nat) := big_sum (fun x => if rel_prime_dec x n then 1 else 0) n.
 
 Lemma ϕ_φ_aux :
   forall l (n : nat),
     (n > 1)%nat ->
-    Rsum (S l) (fun x : nat => if rel_prime_dec x n then 1 else 0) =
+    big_sum (fun x : nat => if rel_prime_dec x n then 1 else 0) (S l) =
     length (filter (fun d : nat => Nat.gcd n d =? 1) (List.seq 1 l)).
 Proof.
   induction l; intros. simpl.
   specialize (not_rel_prime_0_n _ H) as G.
-  destruct (rel_prime_dec 0 n); easy.
-  rewrite Rsum_extend. rewrite IHl by easy. rewrite seq_extend. rewrite filter_app. rewrite app_length.
+  destruct (rel_prime_dec 0 n); try easy. lra.
+  rewrite <- big_sum_extend_r. 
+  rewrite IHl by easy. rewrite seq_extend. rewrite filter_app. rewrite app_length.
   destruct (rel_prime_dec (S l) n).
   - apply rel_prime_Nat_gcd in r. simpl.
     rewrite Nat.gcd_comm. apply Nat.eqb_eq in r.
@@ -98,10 +98,11 @@ Qed.
 Lemma ϕ_iter_inc :
   forall (n : nat),
     (n > 1)%nat ->
-    Rsum (S n) (fun x => if rel_prime_dec x n then 1 else 0) = Rsum n (fun x => if rel_prime_dec x n then 1 else 0).
+    big_sum (fun x => if rel_prime_dec x n then 1 else 0) (S n) = 
+      big_sum (fun x => if rel_prime_dec x n then 1 else 0) n.
 Proof.
-  intros. rewrite Rsum_extend. specialize (not_rel_prime_n_n _ H) as G.
-  destruct (rel_prime_dec n n). easy. lra.
+  intros. rewrite <- big_sum_extend_r. specialize (not_rel_prime_n_n _ H) as G.
+  destruct (rel_prime_dec n n). easy. rewrite Rplus_0_r. reflexivity.
 Qed.
 
 Lemma ϕ_φ_equal :

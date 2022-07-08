@@ -87,7 +87,14 @@ Definition match_gate {n} (u u' : U n) : bool :=
   | _, _ => false
   end.
 
-Lemma match_gate_implies_eq : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
+Lemma match_gate_refl : forall {n} (u : U n), match_gate u u = true.
+Proof. 
+  intros. 
+  dependent destruction u; simpl; auto.
+  apply Qeq_bool_iff. reflexivity.
+Qed.
+
+Lemma match_gate_implies_equiv : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
   match_gate u u' = true -> uc_equiv (@to_base n dim u qs pf) (to_base u' qs pf).
 Proof.
   intros.
@@ -129,7 +136,7 @@ Definition RzQ_ucom_l dim := gate_list RzQ_Unitary dim.
 Definition RzQ_com dim := com RzQ_Unitary dim.
 Definition RzQ_com_l dim := com_list RzQ_Unitary dim.
 
-(* Some more complicated gate decompositions; more defined in StandardGateSet.v *)
+(* Some more complicated gate decompositions; more defined in FullGateSet.v *)
 
 Definition Y {dim} q : RzQ_ucom_l dim := PDAG q :: X q :: P q :: [].
 Definition CZ {dim} q1 q2 : RzQ_ucom_l dim := H q2 :: CNOT q1 q2 :: H q2 :: [].
@@ -205,7 +212,7 @@ Proof.
   destruct Hbound as [k Hbound]. 
   destruct (Qeq_bool (bound (a + a')) 0) eqn:eq;
   unfold RzQList.uc_equiv_l, uc_equiv; simpl;
-  repeat rewrite denote_Rz; rewrite Mmult_assoc, pad_mult, phase_mul;
+  repeat rewrite denote_Rz; unfold pad_u; rewrite Mmult_assoc, pad_mult, phase_mul;
   rewrite <- Rmult_plus_distr_r, Rplus_comm, <- Qreals.Q2R_plus.
   - apply Qeq_bool_eq in eq.
     rewrite eq in Hbound. rewrite Qplus_0_l in Hbound.

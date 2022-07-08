@@ -1,12 +1,8 @@
-Require Export UnitarySem.
+Require Import QuantumLib.VectorStates.
+Require Export UnitaryOps.
 Require Import Setoid.
 
 Local Open Scope com.
-
-(* TODO: move *)
-
-Definition norm {n} (ψ : Vector n) :=
-  sqrt (fst ((ψ† × ψ) O O)).  
 
 Reserved Notation "c '/' ψ '⇩' ψ'"
                   (at level 40, ψ at level 39).
@@ -16,14 +12,14 @@ Inductive nd_eval {dim : nat} : base_com dim -> Vector (2^dim) -> Vector (2^dim)
   | nd_uc : forall (u : base_ucom dim) (ψ : Vector (2^dim)),
       uc u / ψ ⇩ ((uc_eval u) × ψ)
   | nd_meas_t : forall (n : nat) (c1 c2 : base_com dim) (ψ ψ'' : Vector (2^dim)),
-      let ψ' := @pad 1 n dim (∣1⟩⟨1∣) × ψ in 
+      let ψ' := proj n dim true × ψ in 
       norm ψ' <> 0%R -> (* better way to say this in terms of partial trace? *)
       c1 / ψ' ⇩ ψ'' ->
       meas n c1 c2 / ψ ⇩ ψ'' 
       (* Alternatively, we could scale the output state:
            meas n c1 c2 / ψ ⇩ (scale (/(norm ψ'')) ψ'') *)
   | nd_meas_f : forall (n : nat) (c1 c2 : base_com dim) (ψ ψ'' : Vector (2^dim)),
-      let ψ' := @pad 1 n dim (∣0⟩⟨0∣) × ψ in
+      let ψ' := proj n dim false × ψ in
       norm ψ' <> 0%R ->
       c2 / ψ' ⇩ ψ'' ->
       meas n c1 c2 / ψ ⇩ ψ'' 
@@ -92,57 +88,9 @@ Proof.
     econstructor; eauto.
 Qed.
 
-Add Parametric Morphism (dim : nat) : (@seq base_Unitary dim)
+Add Parametric Morphism (dim : nat) : (@SQIR.seq base_Unitary dim)
   with signature nd_equiv ==> nd_equiv ==> nd_equiv as useq_mor.
 Proof. intros x y H x0 y0 H0. apply nd_seq_congruence; easy. Qed.
-
-Lemma double_pad_00 : forall dim q (ψ : Vector (2^dim)),
-  @pad 1 q dim ∣0⟩⟨0∣ × (@pad 1 q dim ∣0⟩⟨0∣ × ψ) = @pad 1 q dim ∣0⟩⟨0∣ × ψ.
-Proof.  
-  intros.
-  rewrite <- Mmult_assoc.
-  rewrite pad_mult.
-  repeat reduce_matrices.
-  reflexivity.
-Qed.  
-
-Lemma double_pad_01 : forall dim q (ψ : Vector (2^dim)),
-  @pad 1 q dim ∣1⟩⟨1∣ × (@pad 1 q dim ∣0⟩⟨0∣ × ψ) = Zero.
-Proof.  
-  intros.
-  unfold pad.
-  bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
-  rewrite <- Mmult_assoc. 
-  restore_dims; repeat rewrite kron_mixed_product.
-  Msimpl.
-  replace (∣1⟩⟨1∣ × ∣0⟩⟨0∣) with (@Zero 2 2) by solve_matrix.
-  repeat Msimpl_light.
-  reflexivity.
-Qed.  
-
-Lemma double_pad_10 : forall dim q (ψ : Vector (2^dim)),
-  @pad 1 q dim ∣0⟩⟨0∣ × (@pad 1 q dim ∣1⟩⟨1∣ × ψ) = Zero.
-Proof.
-  intros.
-  unfold pad.
-  bdestruct (q + 1 <=? dim); try (Msimpl_light; trivial).
-  rewrite <- Mmult_assoc. 
-  restore_dims; repeat rewrite kron_mixed_product.
-  Msimpl.
-  replace (∣0⟩⟨0∣ × ∣1⟩⟨1∣) with (@Zero 2 2) by solve_matrix.
-  repeat Msimpl_light.
-  reflexivity.
-Qed.  
-
-Lemma double_pad_11 : forall dim q (ψ : Vector (2^dim)),
-  @pad 1 q dim ∣1⟩⟨1∣ × (@pad 1 q dim ∣1⟩⟨1∣ × ψ) = @pad 1 q dim ∣1⟩⟨1∣ × ψ.
-Proof.  
-  intros.
-  rewrite <- Mmult_assoc.
-  rewrite pad_mult.
-  repeat reduce_matrices.
-  reflexivity.
-Qed.  
 
 Lemma meas_reset : forall dim q, 
   @nd_equiv dim (measure q ; reset q) (reset q).
@@ -154,29 +102,31 @@ Proof.
     dependent destruction H0;
     dependent destruction H1; 
     subst ψ' ψ'0.
-    + rewrite double_pad_11 in H0.
-      rewrite double_pad_11 in H1.
+    + rewrite <- Mmult_assoc in H0, H1.
+      rewrite proj_twice_eq in H0, H1.
       apply nd_meas_t; assumption.
     + contradict H0.
-      rewrite double_pad_10.
+      rewrite <- Mmult_assoc.
+      rewrite proj_twice_neq by easy.
       unfold norm. 
       Msimpl; simpl.
       apply sqrt_0.
     + contradict H0. 
-      rewrite double_pad_01.
+      rewrite <- Mmult_assoc.
+      rewrite proj_twice_neq by easy.
       unfold norm. 
       Msimpl; simpl.
       apply sqrt_0.
-    + rewrite double_pad_00 in H0.
-      rewrite double_pad_00 in H1.
+    + rewrite <- Mmult_assoc in H0, H1.
+      rewrite proj_twice_eq in H0, H1.
       apply nd_meas_f; assumption.
   - dependent destruction H; subst ψ'.
     + econstructor.
       apply nd_meas_t; try assumption.
       apply nd_skip.
-      apply nd_meas_t; rewrite double_pad_11; assumption.
+      apply nd_meas_t; rewrite <- Mmult_assoc; rewrite proj_twice_eq; assumption.
     + econstructor.
       apply nd_meas_f; try assumption.
       apply nd_skip.
-      apply nd_meas_f; rewrite double_pad_00; assumption.
+      apply nd_meas_f; rewrite <- Mmult_assoc; rewrite proj_twice_eq; assumption.
 Qed.

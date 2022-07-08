@@ -1,6 +1,7 @@
 Require Export Coq.Classes.Equivalence.
 Require Export Coq.Classes.Morphisms.
 Require Export Setoid.
+Require Import QuantumLib.Permutations.
 Require Export GateSet.
 Require Export Equivalences.
 
@@ -333,6 +334,13 @@ Definition LCR {U dim} (b : gate_list U dim) (opt : gate_list U dim -> gate_list
               | _ => None
               end
   | _ => None
+  end.
+
+Definition map_qubits_app {U dim} (f : nat -> nat) (g : gate_app U dim) : gate_app U dim :=
+  match g with
+  | App1 u n => App1 u (f n)
+  | App2 u m n => App2 u (f m) (f n)
+  | App3 u m n p => App3 u (f m) (f n) (f p)
   end.
 
 Ltac destruct_In :=
@@ -835,7 +843,7 @@ Proof.
     all: intros q0 Hq0.
     all: simpl; apply andb_true_intro; split.
     all: try apply Hdnr; auto.
-    all: apply negb_true_iff; repeat apply orb_false_intro; apply eqb_neq.
+    all: apply negb_true_iff; repeat apply orb_false_intro; apply Nat.eqb_neq.
     all: intro; subst. 
     all: try (rewrite Heqb in Hq0; inversion Hq0). 
     all: try (rewrite Heqb0 in Hq0; inversion Hq0). 
@@ -1099,6 +1107,15 @@ Qed.
 
 Definition eval {dim} (l : gate_list G.U dim) := uc_eval (list_to_ucom l).
 
+Lemma eval_append : forall {dim} (l1 l2 : gate_list G.U dim),
+  eval (l1 ++ l2) = eval l2 × eval l1.
+Proof.
+  intros.
+  unfold eval.
+  rewrite list_to_ucom_append.
+  reflexivity.
+Qed.
+
 (** Equivalences over unitary lists. **)
 
 Definition uc_equiv_l {dim} (l1 l2 : gate_list G.U dim) := 
@@ -1173,7 +1190,7 @@ Proof.
   rewrite <- H; assumption.
 Qed.
 
-(* Equivalence up to a phase. *)
+(** Equivalence up to a phase. *)
 
 Definition uc_cong_l {dim} (l1 l2 : gate_list G.U dim) := 
   list_to_ucom l1 ≅ list_to_ucom l2.
@@ -1265,7 +1282,143 @@ Proof.
   reflexivity.
 Qed.
 
-(* Basic commutativity lemmas. *)
+(** Equivalence up to qubit reordering (used in circuit mapping). *)
+
+Definition uc_equiv_perm {dim} (l1 l2 : gate_list G.U dim) := exists pin pout, 
+  permutation dim pin /\ permutation dim pout /\ 
+  eval l1 = perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
+Infix "≡x" := uc_equiv_perm (at level 20).
+
+Lemma permutation_id : forall {dim}, permutation dim (fun x : nat => x).
+Proof. exists (fun x : nat => x). repeat split; auto. Qed.  
+
+Lemma uc_equiv_perm_refl : forall {dim} (l1 : gate_list G.U dim), l1 ≡x l1.
+Proof. 
+  intros. 
+  exists (fun x => x). 
+  exists (fun x => x). 
+  repeat split.
+  apply permutation_id.
+  apply permutation_id.
+  rewrite perm_to_matrix_I; auto.
+  unfold eval. Msimpl. reflexivity.
+  apply permutation_id.
+Qed.
+
+Lemma uc_equiv_perm_sym : forall {dim} (l1 l2 : gate_list G.U dim), l1 ≡x l2 -> l2 ≡x l1.
+Proof. 
+  intros dim l1 l2 H. 
+  destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
+  unfold uc_equiv_perm in *.
+  destruct Hp1 as [p1inv Hp1].
+  destruct Hp2 as [p2inv Hp2].
+  assert (permutation dim p1inv).
+  { exists p1.
+    intros x Hx.
+    destruct (Hp1 x Hx) as [? [? [? ?]]].
+    repeat split; auto. }
+  assert (permutation dim p2inv).
+  { exists p2.
+    intros x Hx.
+    destruct (Hp2 x Hx) as [? [? [? ?]]].
+    repeat split; auto. }
+  exists p1inv.
+  exists p2inv.
+  repeat split; auto.
+  rewrite H.
+  repeat rewrite Mmult_assoc.
+  rewrite perm_to_matrix_Mmult; auto.
+  repeat rewrite <- Mmult_assoc.
+  rewrite perm_to_matrix_Mmult; auto.
+  rewrite 2 perm_to_matrix_I.
+  unfold eval. Msimpl. reflexivity.
+  apply permutation_compose; auto.
+  exists p1inv. assumption.
+  intros x Hx.
+  destruct (Hp1 x Hx) as [_ [_ [? _]]].
+  assumption.
+  apply permutation_compose; auto.
+  exists p2inv. assumption.
+  intros x Hx.
+  destruct (Hp2 x Hx) as [_ [_ [_ ?]]].
+  assumption.
+  exists p2inv. assumption.
+  exists p1inv. assumption.
+Qed.
+
+Lemma uc_equiv_perm_trans : forall {dim} (l1 l2 l3 : gate_list G.U dim), 
+  l1 ≡x l2 -> l2 ≡x l3 -> l1 ≡x l3.
+Proof.
+  intros dim l1 l2 l3 H1 H2.
+  unfold uc_equiv_perm in *.
+  destruct H1 as [p1 [p2 [Hp1 [Hp2 H1]]]].
+  destruct H2 as [p3 [p4 [Hp3 [Hp4 H2]]]].
+  rewrite H1, H2.
+  exists (p1 ∘ p3)%prg.
+  exists (p4 ∘ p2)%prg.
+  repeat split.
+  apply permutation_compose; auto.
+  apply permutation_compose; auto.
+  rewrite <- 2 perm_to_matrix_Mmult; auto.
+  repeat rewrite Mmult_assoc.
+  reflexivity.
+Qed.
+
+Add Parametric Relation (dim : nat) : (gate_list G.U dim) (uc_equiv_perm)
+  reflexivity proved by uc_equiv_perm_refl
+  symmetry proved by uc_equiv_perm_sym
+  transitivity proved by uc_equiv_perm_trans
+  as uc_equiv_perm_rel.
+
+(** Equivalence up to qubit reordering, up to a global phase. **)
+
+Definition uc_cong_perm {dim} (l1 l2 : gate_list G.U dim) := exists pin pout,
+  permutation dim pin /\ permutation dim pout /\
+  eval l1 ∝ perm_to_matrix dim pout × eval l2 × perm_to_matrix dim pin.
+Infix "≅x" := uc_cong_perm (at level 20).
+
+Lemma uc_equiv_perm_implies_uc_cong_perm : forall {dim} (l1 l2 : gate_list G.U dim),
+  l1 ≡x l2 -> l1 ≅x l2.
+Proof.
+  intros dim l1 l2 H.
+  destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
+  exists p1. exists p2.
+  repeat split; auto.
+  exists 0%R.
+  rewrite Cexp_0.
+  rewrite Mscale_1_l.
+  apply H.
+Qed.
+
+Lemma uc_cong_perm_uc_cong_l : forall {dim} (l1 l2 l3 : gate_list G.U dim),
+  (l1 ≅l≅ l2)%ucom -> l2 ≅x l3 -> l1 ≅x l3.
+Proof.
+  intros dim l1 l2 l3 [r1 H1] [p1 [p2 [Hp1 [Hp2 [r2 H2]]]]].
+  exists p1. exists p2.
+  repeat split; auto.
+  exists (r1 + r2)%R.
+  unfold eval in *.
+  rewrite H1, H2. 
+  distribute_scale.
+  rewrite <- Cexp_add.
+  reflexivity.
+Qed.
+
+Lemma uc_eq_perm_uc_cong_l_alt : forall {dim} (l1 l2 l3 : gate_list G.U dim),
+  l1 ≅x l2 -> (l2 ≅l≅ l3)%ucom -> l1 ≅x l3.
+Proof.
+  intros dim l1 l2 l3 [p1 [p2 [Hp1 [Hp2 [r1 H1]]]]] [r2 H2].
+  exists p1. exists p2.
+  repeat split; auto.
+  exists (r1 + r2)%R.
+  unfold eval in *.
+  rewrite H1, H2. 
+  distribute_scale.
+  rewrite <- Cexp_add.
+  reflexivity.
+Qed.
+
+(** Basic commutativity lemmas. *)
 
 Lemma only_uses_commutes_uapp1 : forall {dim} (g : base_Unitary 1) (u : base_ucom dim) q qs,
   only_uses u qs ->
@@ -1427,7 +1580,7 @@ Proof.
     destruct (next_single_qubit_gate l n) eqn:nsqg; try discriminate.
     repeat destruct p.
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
-    eapply G.match_gate_implies_eq in mg; simpl.
+    eapply G.match_gate_implies_equiv in mg; simpl.
     rewrite <- (IHpfx _ _ H). 
     rewrite (nsqg_commutes _ _ _ _ _ nsqg).
     rewrite app_comm_cons, (cons_to_app _ g0).
@@ -1440,7 +1593,7 @@ Proof.
     bdestruct (n =? n1); bdestruct (n0 =? n2); 
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
     subst. simpl in *.
-    eapply G.match_gate_implies_eq in mg.
+    eapply G.match_gate_implies_equiv in mg.
     rewrite <- (IHpfx _ _ H). 
     specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng) as dnr.
     apply next_gate_preserves_structure in ng.
@@ -1468,7 +1621,7 @@ Proof.
     destruct (next_single_qubit_gate l n) eqn:nsqg; try discriminate.
     repeat destruct p.
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
-    eapply G.match_gate_implies_eq in mg.
+    eapply G.match_gate_implies_equiv in mg.
     simpl.
     rewrite <- (IHpfx _ _ H). 
     specialize (nsqg_l1_does_not_reference _ _ _ _ _ nsqg) as dnr.
@@ -1486,7 +1639,7 @@ Proof.
     bdestruct (n =? n1); bdestruct (n0 =? n2); 
     destruct (G.match_gate u u0) eqn:mg; try discriminate.
     subst. simpl in *.
-    eapply G.match_gate_implies_eq in mg.
+    eapply G.match_gate_implies_equiv in mg.
     rewrite <- (IHpfx _ _ H). 
     specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng) as dnr.
     apply next_gate_preserves_structure in ng.
@@ -1598,7 +1751,7 @@ Proof.
         apply Hg0; auto.
         apply_app_congruence.
         unfold uc_equiv_l; simpl.
-        eapply G.match_gate_implies_eq in mg.
+        eapply G.match_gate_implies_equiv in mg.
         rewrite mg; reflexivity.
         intros q Hq.
         rewrite rev_append_rev.
@@ -1669,7 +1822,7 @@ Proof.
         apply Hl1acc. apply negb_true_iff. apply FSetFacts.not_mem_iff. auto.
       + specialize (next_gate_l1_does_not_reference _ _ _ _ _ ng2) as dnr.
         apply next_gate_preserves_structure in ng2; subst.
-        destruct (G.match_gate u u0 && (n0 =? n2) && (n1 =? n3) && ¬ (FSet.mem n0 blst) && ¬ (FSet.mem n1 blst)) eqn:cond.
+        destruct (G.match_gate u u0 && (n0 =? n2) && (n1 =? n3) && (¬ FSet.mem n0 blst) && (¬ FSet.mem n1 blst)) eqn:cond.
         apply IHn in H as [H1 H2]; simpl in *.
         rewrite rev_append_rev, rev_app_distr, rev_involutive in H1.
         rewrite <- H1, <- H2.
@@ -1694,7 +1847,7 @@ Proof.
         rewrite (app_assoc _ _ g1).
         rewrite <- does_not_reference_commutes_app2; auto.
         apply_app_congruence. 
-        eapply G.match_gate_implies_eq in H3.
+        eapply G.match_gate_implies_equiv in H3.
         unfold uc_equiv_l; simpl; rewrite H3; reflexivity.
         apply dnr. bdestructΩ (n2 =? n2); auto.
         apply dnr. bdestructΩ (n3 =? n3); try (apply orb_true_intro; auto).
@@ -1843,6 +1996,23 @@ Proof.
     rewrite Hpl.   
     reflexivity.
 Qed.
+
+Local Transparent SQIR.ID.
+Lemma map_qubits_app_equiv_map_qubits : forall {dim} (f : nat -> nat) (g : gate_app G.U dim),
+  dim > 0 ->
+  permutation dim f ->
+  uc_eval (list_to_ucom [map_qubits_app f g]) = 
+    uc_eval (map_qubits f (list_to_ucom [g])).
+Proof.
+  intros dim f g Hdim [finv Hbij].
+  destruct (Hbij 0) as [? _]; auto.
+  destruct g; simpl;
+    rewrite I_rotation; unfold pad_u;
+    repeat rewrite pad_id; 
+    try assumption; Msimpl.
+  all: erewrite <- G.to_base_map_commutes; reflexivity.
+Qed.
+Local Opaque SQIR.ID.
 
 Ltac unfold_uc_equiv_l :=
   unfold uc_equiv_l; simpl;

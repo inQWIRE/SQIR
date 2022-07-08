@@ -1,5 +1,6 @@
-Require Export VectorStates.
-Require Import DiscreteProb.
+Require Export UnitaryOps QuantumLib.VectorStates.
+Require Import QuantumLib.Summation.
+Require Import QuantumLib.DiscreteProb.
 
 Local Coercion Nat.b2n : bool >-> nat.
 
@@ -214,7 +215,7 @@ Qed.
 
 Lemma count_orb : forall a b f g,
   count (fun i => f i || g i) a b = 
-    (count f a b + count (fun i => ¬ (f i) && g i)  a b)%nat.
+    (count f a b + count (fun i => (¬ (f i)) && g i)  a b)%nat.
 Proof.
   intros.
   rewrite <- count_complement with (g:=f).
@@ -260,10 +261,10 @@ Proof.
   destruct (f n); simpl; lma.
 Qed.
 
-Lemma nth_repeat : forall n r i,
+Lemma nth_repeat : forall (n i : nat) (r : R),
   (i < n)%nat -> nth i (repeat r n) 0 = r.
 Proof.
-  intros n r i Hi.
+  intros n i r Hi.
   rewrite nth_indep with (d':=r).
   clear Hi.
   gen i.
@@ -288,32 +289,32 @@ Proof.
   clear - Hn.
   unfold pr_outcome_sum.
   rewrite 2 repeat_length.
-  erewrite Rsum_eq_bounded.
-  2: { intros i Hi.
-       replace  (if f (l + i)%nat then nth i (repeat (1 / INR n)%R n) 0 else 0) with
-           ((1 / INR n)%R * (if f (l + i)%nat then 1 else 0))%R.
-       reflexivity.
-       destruct (f (l + i)%nat).
-       rewrite nth_repeat by assumption.
-       lra.
-       lra. }
-  rewrite <- Rsum_scale.
+  rewrite big_sum_eq_bounded with (g:=fun i => ((1 / INR n)%R ⋅ (if f (l + i)%nat then 1 else 0))%R).
+  rewrite <- big_sum_scale_l.
   replace (INR (count1 (fun x : nat => f (l + x - 1)%nat) n) / INR n)%R with (1 / INR n * INR (count1 (fun x : nat => f (l + x - 1)%nat) n))%R by lra.
   apply f_equal2; try reflexivity.
   clear Hn.
   induction n.
   reflexivity.
-  rewrite Rsum_extend.
+  rewrite <- big_sum_extend_r.
   simpl.
   rewrite IHn.
   unfold count1. simpl.
   replace (l + S n - 1)%nat with (l + n)%nat by lia.
   destruct (f (l + n)%nat). 
   rewrite S_O_plus_INR.
-  simpl.
-  reflexivity.
   simpl. lra.
+  simpl. lra.
+  intros i Hi. 
+  destruct (f (l + i)%nat).
+  rewrite nth_repeat by assumption.
+  unfold Vscale. simpl. lra.
+  unfold Vscale. simpl. lra.
 Qed.
+
+(* ======================================== *)
+(**         Other misc. utilities          **)
+(* ======================================== *)
 
 (* Copied from euler/Asympt.v *)
 Lemma seq_extend :
@@ -336,218 +337,32 @@ Proof.
   simpl. lia.
 Qed.
 
-
-(* ============================== *)
-(**    Measurement predicates    **)
-(* ============================== *)
-
-(* What is the probability of outcome ϕ given input ψ? *)
-Definition probability_of_outcome {n} (ϕ ψ : Vector n) : R :=
-  let c := (ϕ† × ψ) O O in
-  (Cmod c) ^ 2.
-
-(* What is the probability of measuring ϕ on the first m qubits given
-  (m + n) qubit input ψ? *)
-Definition prob_partial_meas {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))) :=
-  Rsum (2^n) (fun y => probability_of_outcome (ϕ ⊗ basis_vector (2^n) y) ψ).
-
-Lemma probability_of_outcome_comm : forall {d} (ϕ ψ : Vector d),
-  probability_of_outcome ϕ ψ = probability_of_outcome ψ ϕ.
-Proof.
-  intros d ψ ϕ. unfold probability_of_outcome.
-  replace (ϕ † × ψ) with (ϕ † × ψ ††) by (rewrite adjoint_involutive; easy).
-  rewrite <- Mmult_adjoint.
-  unfold adjoint.
-  rewrite Cmod_Cconj.
-  reflexivity.
-Qed.
-
-Lemma probability_of_outcome_is_norm : forall {d} (ϕ ψ : Vector d),
-  probability_of_outcome ϕ ψ = ((norm (ϕ† × ψ)) ^ 2)%R.
-Proof.
-  intros d ψ ϕ.
-  unfold probability_of_outcome, Cmod, norm.
-  apply f_equal2; try reflexivity.
-  apply f_equal.
-  unfold Mmult, adjoint.
-  simpl.
-  autorewrite with R_db.
-  reflexivity.
-Qed.
-
-Lemma Rsum_Msum : forall n (f : nat -> Square 1),
-  Rsum n (fun i : nat => Datatypes.fst (f i O O)) = Datatypes.fst (Msum n f O O).
+Lemma Csum_1 : forall f n, (forall x, f x = C1) -> Σ f n = INR n. 
 Proof.
   intros.
-  rewrite Msum_Csum.
-  rewrite <- Rsum_Csum.
-  induction n; simpl.
-  reflexivity.
+  induction n.
+  - reflexivity.
+  - simpl.
+    rewrite IHn, H. 
+    destruct n; lca.    
+Qed.
+
+Lemma times_n_C : forall (c : C) n, times_n c n = (INR n * c)%C.
+Proof.
+  intros c n. 
+  induction n; simpl. 
+  lca. 
   rewrite IHn.
-  reflexivity.
+  destruct n; lca.
 Qed.
 
-Lemma prob_partial_meas_alt : 
-  forall {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))),
-  @prob_partial_meas m n ϕ ψ = ((norm ((ϕ ⊗ I (2 ^ n))† × ψ)) ^ 2)%R.
+Lemma Csum_mult_l : forall (c : C) f n, (c * Σ f n)%C = Σ (fun x => c * f x) n.
 Proof.
-  intros.
-  unfold prob_partial_meas.
-  erewrite Rsum_eq.
-  2: { intros.
-       rewrite probability_of_outcome_is_norm.
-       unfold norm.
-       rewrite pow2_sqrt.
-       restore_dims.
-       distribute_adjoint.
-       Msimpl.
-       repeat rewrite Mmult_assoc.
-       restore_dims.
-       rewrite <- (Mmult_assoc (ϕ ⊗ _)).
-       rewrite kron_mixed_product.
-       unify_pows_two.
-       rewrite <- Mmult_assoc.
-       reflexivity. 
-       apply inner_product_ge_0. }  
-  rewrite rewrite_I_as_sum by lia.
-  rewrite kron_Msum_distr_l.
-  rewrite Msum_adjoint.
-  erewrite Msum_eq_bounded.
-  2: { intros. distribute_adjoint. reflexivity. }
-  rewrite Mmult_Msum_distr_r.
-  unfold norm.
-  rewrite pow2_sqrt.
-  2: apply inner_product_ge_0.
-  rewrite Msum_adjoint, Mmult_Msum_distr_l.
-  erewrite Msum_eq_bounded.
-  2: { intros.
-      rewrite Mmult_Msum_distr_r. 
-      erewrite Msum_eq_bounded.
-      2: { intros.
-           distribute_adjoint.
-           Msimpl.
-           repeat rewrite Mmult_assoc.
-           restore_dims.
-           rewrite <- (Mmult_assoc (ϕ ⊗ _)).
-           rewrite kron_mixed_product.
-           repeat rewrite Mmult_assoc.
-           rewrite <- (Mmult_assoc (_†)).
-           reflexivity. } 
-     reflexivity. }
-  rewrite Msum_diagonal.
-  2: { intros. rewrite basis_vector_product_neq by auto.
-       do 2 Msimpl. reflexivity. }
-  erewrite Msum_eq_bounded.
-  2: { intros. rewrite basis_vector_product_eq by assumption.
-       Msimpl. unify_pows_two.
-       repeat rewrite <- Mmult_assoc.
-       reflexivity. }
-  remember (fun i : nat => ψ† × (ϕ × ϕ† ⊗ (basis_vector (2 ^ n) i × (basis_vector (2 ^ n) i) †)) × ψ) as f.
-  erewrite Rsum_eq.
-  2: { intros.
-       replace (ψ† × (ϕ × ϕ† ⊗ (basis_vector (2 ^ n) i × (basis_vector (2 ^ n) i) †)) × ψ) with (f i) by (subst; reflexivity).
-       reflexivity. }
-  apply Rsum_Msum.
-Qed.
-
-Lemma partial_meas_tensor : 
-  forall {m n} (ϕ : Vector (2^m)) (ψ1 : Vector (2^m)) (ψ2 : Vector (2^n)),
-  Pure_State_Vector ψ2 ->
-  @prob_partial_meas m n ϕ (ψ1 ⊗ ψ2) = probability_of_outcome ϕ ψ1.
-Proof.
-  intros ? ? ? ? ? [H H0].
-  rewrite prob_partial_meas_alt.
-  rewrite probability_of_outcome_is_norm.
-  unfold norm.
-  apply f_equal2; try reflexivity.
-  do 2 apply f_equal.
-  distribute_adjoint.
-  Msimpl.
-  rewrite H0.
-  Msimpl.
-  reflexivity.
-Qed.
-
-Lemma nth_apply_u_probability_of_outcome : forall n (u : Square (2 ^ n)) x,
-  (x < 2 ^ n)%nat ->
-  WF_Matrix u ->
-  nth x (apply_u u) 0 
-    = probability_of_outcome 
-        (basis_vector (2^n) x) 
-        (u × basis_vector (2^n) 0).
-Proof.
-  intros n u x Hx WFu.
-  unfold apply_u, probability_of_outcome.
-  rewrite nth_indep with (d':=Cmod2 0).
-  rewrite map_nth.
-  remember (u × basis_vector (2 ^ n) 0) as ψ.
-  rewrite nth_vec_to_list by assumption.
-  rewrite (basis_vector_decomp ψ) at 2.
-  rewrite Mmult_vsum_distr_l.
-  symmetry.
-  erewrite vsum_unique.
-  2 : { exists x. split. assumption. 
-        split.
-        rewrite Mscale_mult_dist_r.
-        rewrite basis_vector_product_eq.
-        reflexivity. assumption.
-        intros y Hy Hxy.
-        rewrite Mscale_mult_dist_r.
-        rewrite basis_vector_product_neq by auto.
-        lma. }
-  unfold Cmod, Cmod2.
-  rewrite pow2_sqrt.
-  unfold I, scale.
-  simpl.
-  lra.
-  apply Rplus_le_le_0_compat; apply pow2_ge_0.
-  subst. 
-  apply WF_mult.
-  assumption.
-  apply basis_vector_WF.
-  apply pow_positive. lia.
-  rewrite map_length.  
-  rewrite vec_to_list_length.
-  assumption.
-Qed.
-
-Lemma rewrite_pr_outcome_sum : forall n k (u : Square (2 ^ (n + k))) f,
-  WF_Matrix u ->
-  pr_outcome_sum (apply_u u) (fun x => f (fst k x)) 
-  = Rsum (2 ^ n) (fun x => ((if f x then 1 else 0) *
-                         prob_partial_meas (basis_vector (2 ^ n) x) 
-                           (u × basis_vector (2 ^ (n + k)) 0))%R).
-Proof.
-  intros n k u f WFu.
-  unfold pr_outcome_sum.
-  unfold apply_u at 1.
-  rewrite map_length.
-  rewrite vec_to_list_length.
-  rewrite nested_Rsum.
-  apply Rsum_eq_bounded.
-  intros x Hx.
-  destruct (f x) eqn:fx.
-  rewrite Rmult_1_l.
-  erewrite Rsum_eq_bounded.
-  2: { intros y Hy. 
-       rewrite simplify_fst by assumption.
-       rewrite fx.
-       rewrite nth_apply_u_probability_of_outcome.
-       reflexivity.
-       replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
-       nia. assumption.
-  }
-  unfold prob_partial_meas.
-  erewrite Rsum_eq_bounded.
-  reflexivity.
-  intros y Hy. 
-  rewrite split_basis_vector by assumption.
-  replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
-  reflexivity.
-  rewrite Rmult_0_l.
-  erewrite Rsum_eq_bounded.
-  2: { intros y Hy. rewrite simplify_fst by assumption.
-       rewrite fx. reflexivity. }
-  apply Rsum_0.
-  reflexivity.
+  intros c f n.
+  induction n.
+  + simpl; lca.
+  + simpl.
+    rewrite Cmult_plus_distr_l.
+    rewrite IHn.
+    reflexivity.
 Qed.

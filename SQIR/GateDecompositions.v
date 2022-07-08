@@ -117,7 +117,7 @@ Proof.
   unfold H, CH, uc_equiv.
   simpl.
   autorewrite with eval_db.
-  gridify; trivial; autorewrite with ket_db. (* slow! *)
+  gridify; trivial; autorewrite with ket_db bra_db. (* slow! *)
   - rewrite Rminus_0_r, Rplus_0_l, Rplus_0_r.
     apply f_equal2.
     + rewrite <- Mscale_kron_dist_l.
@@ -147,11 +147,10 @@ Proof.
   repeat rewrite phase_shift_rotation.
   rewrite phase_0.
   bdestruct (b <? dim).
-  replace (pad b dim (I 2)) with (I (2 ^ dim)).
+  unfold pad_u.
+  rewrite pad_id by assumption.
   Msimpl. reflexivity.
-  unfold pad.
-  gridify. reflexivity.
-  autorewrite with eval_db.
+  unfold pad_u, pad.
   gridify.
 Qed.
 Local Opaque Rz U1.
@@ -582,6 +581,10 @@ Definition phase_func (a b c d : bool) : R :=
     else if d then (3 * PI / 2)%R else (PI / 2)%R
   else 0.
 
+(* Not included in older versions of Coq (e.g., 8.12) *)
+Lemma IZR_NEG : forall p, IZR (Zneg p) = Ropp (IZR (Zpos p)).
+Proof. reflexivity. Qed.
+
 Lemma f_to_vec_RC3X : forall (dim a b c d : nat) (f : nat -> bool),
    (a < dim)%nat -> (b < dim)%nat -> (c < dim)%nat -> (d < dim)%nat -> 
    a <> b -> a <> c -> a <> d -> b <> c -> b <> d -> c <> d ->
@@ -790,7 +793,9 @@ Proof.
   repeat commute_proj.
   specialize (@H_H_id dim) as Hr.
   unfold uc_equiv in Hr; simpl in Hr.
-  rewrite Hr, denote_ID, pad_id by assumption.
+  rewrite Hr, denote_ID.
+  unfold pad_u. 
+  rewrite pad_id by assumption.
   Msimpl. reflexivity.
 Qed.
 
@@ -975,7 +980,8 @@ Proof.
     apply f_equal2; auto.
     repeat rewrite <- (Mmult_assoc (uc_eval (X _))). 
     repeat rewrite Hr1.
-    repeat rewrite denote_ID, pad_id by auto.
+    repeat rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     repeat rewrite <- (Mmult_assoc (uc_eval (RTX _ _))).
     repeat rewrite Hr2.
@@ -993,7 +999,8 @@ Proof.
     apply f_equal2; auto.
     repeat rewrite <- (Mmult_assoc (uc_eval (X _))). 
     repeat rewrite Hr1.
-    repeat rewrite denote_ID, pad_id by auto.
+    repeat rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     repeat rewrite Mmult_assoc.
     rewrite <- (Mmult_assoc (uc_eval (X _))).
@@ -1004,7 +1011,8 @@ Proof.
     rewrite (Mmult_assoc _ (uc_eval (X _))).
     rewrite <- (Mmult_assoc (uc_eval (X _))).
     rewrite Hr1.
-    rewrite denote_ID, pad_id by auto.
+    rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     repeat rewrite <- (Mmult_assoc (uc_eval (RTX _ _))).
     repeat rewrite Hr2.
@@ -1012,7 +1020,8 @@ Proof.
     rewrite Hr2.
     field_simplify (PI / 8 + PI / 8 + (- PI / 8 + - PI / 8))%R.
     replace (0 / 8)%R with 0 by lra.
-    rewrite RTX_0, denote_ID, pad_id by auto.
+    rewrite RTX_0, denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl. reflexivity.
   - (* b1 = true, b2 = false, b3 = true *)
     repeat commute_proj2.
@@ -1025,7 +1034,7 @@ Proof.
     repeat rewrite <- (Mmult_assoc (uc_eval (X _))). 
     repeat rewrite Hr1.
     repeat rewrite denote_ID.
-    repeat rewrite pad_id by lia.
+    unfold pad_u. repeat rewrite pad_id by lia.
     Msimpl.
     repeat rewrite Mmult_assoc.
     rewrite <- (Mmult_assoc (uc_eval (X _))).
@@ -1033,7 +1042,8 @@ Proof.
     rewrite (Mmult_assoc _ (uc_eval (X _))).
     rewrite <- (Mmult_assoc (uc_eval (X _))).
     rewrite Hr1.
-    rewrite denote_ID, pad_id by auto.
+    rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     repeat rewrite <- (Mmult_assoc (uc_eval (RTX _ _))).
     repeat rewrite Hr2.
@@ -1041,7 +1051,8 @@ Proof.
     rewrite Hr2.
     field_simplify (PI / 8 + - PI / 8 + (- PI / 8 + PI / 8))%R.
     replace (0 / 8)%R with 0 by lra.
-    rewrite RTX_0, denote_ID, pad_id by auto.
+    rewrite RTX_0, denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl. reflexivity.
   - (* b1 = true, b2 = false, b3 = false *)
     repeat commute_proj2.
@@ -1065,7 +1076,8 @@ Proof.
     rewrite (Mmult_assoc _ (uc_eval (X _))).
     rewrite <- (Mmult_assoc (uc_eval (X _))).
     rewrite Hr1.
-    repeat rewrite denote_ID, pad_id by auto.
+    repeat rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     repeat rewrite <- (Mmult_assoc (uc_eval (RTX _ _))).
     repeat rewrite Hr2.
@@ -1073,7 +1085,8 @@ Proof.
     rewrite Hr2.
     field_simplify (PI / 8 + - PI / 8 + (PI / 8 + - PI / 8))%R.
     replace (0 / 8)%R with 0 by lra.
-    rewrite RTX_0, denote_ID, pad_id by auto.
+    rewrite RTX_0, denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl. reflexivity.
   - (* b1 = false, b2 = true, b3 = true *)
     repeat commute_proj2.
@@ -1085,13 +1098,12 @@ Proof.
     apply f_equal2; auto.
     repeat rewrite <- (Mmult_assoc (uc_eval (X _))). 
     repeat rewrite Hr1.
-    repeat rewrite denote_ID, pad_id by auto.
-    Msimpl.
     repeat rewrite <- (Mmult_assoc (uc_eval (RTX _ _))).
     repeat rewrite Hr2.
     replace (- PI / 8 + PI / 8)%R with 0 by lra.
     repeat rewrite RTX_0.
-    repeat rewrite denote_ID, pad_id by auto.
+    repeat rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     reflexivity.
   - (* b1 = false, b2 = true, b3 = false *)
@@ -1106,11 +1118,13 @@ Proof.
     repeat rewrite Hr2.
     replace (- PI / 8 + PI / 8)%R with 0 by lra.
     repeat rewrite RTX_0.
-    repeat rewrite denote_ID, pad_id by auto.
+    repeat rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     repeat rewrite <- (Mmult_assoc (uc_eval (X _))). 
     repeat rewrite Hr1.
-    repeat rewrite denote_ID, pad_id by auto.
+    repeat rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     reflexivity.
   - (* b1 = false, b2 = false, b3 = true *)
@@ -1125,7 +1139,8 @@ Proof.
     repeat rewrite Hr2.
     replace (- PI / 8 + PI / 8)%R with 0 by lra.
     repeat rewrite RTX_0.
-    repeat rewrite denote_ID, pad_id by auto.
+    repeat rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     reflexivity.
   - (* b1 = false, b2 = false, b3 = false *)
@@ -1343,7 +1358,8 @@ Proof.
     rewrite <- (Mmult_assoc (uc_eval (RTX _ _))), Hr2.
     replace (- PI / 2 + PI / 2)%R with 0 by lra.
     rewrite RTX_0.
-    rewrite denote_ID, pad_id by auto.
+    rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     rewrite xorb_false_r.
     rewrite (update_same _ e) by auto.
@@ -1397,7 +1413,8 @@ Proof.
     rewrite <- (Mmult_assoc (uc_eval (RTX _ _))), Hr2.
     replace (PI / 2 + - PI / 2)%R with 0 by lra.
     rewrite RTX_0.
-    rewrite denote_ID, pad_id by auto.
+    rewrite denote_ID.
+    unfold pad_u. repeat rewrite pad_id by auto.
     Msimpl.
     rewrite f_to_vec_invert_RC3X by auto.
     distribute_scale.

@@ -1,12 +1,11 @@
-Require UnitarySem.
+Require UnitaryOps.
 Require DensitySem.
 Require NDSem.
-Require Import QWIRE.Dirac.
 
 (** Unitary Teleportation Circuit and Proof **)
 Module UTeleport.
 
-Import UnitarySem.
+Import UnitaryOps.
 
 Open Scope ucom.
 
@@ -114,6 +113,7 @@ Proof.
   repeat rewrite compose_super_assoc.
   rewrite compose_super_eq. 
   unfold compose_super.
+  unfold proj.
   autorewrite with eval_db; simpl.
   Msimpl_light.
   replace (I 4) with (I 2 ⊗ I 2).
@@ -149,7 +149,7 @@ End DensityTeleport.
 (** Non-unitary teleport, proof with non-deterministic semantics **)
 Module NDTeleport.
 
-Import UnitarySem.
+Import UnitaryOps.
 Import NDSem.
 Import Proportional.
 
@@ -243,7 +243,7 @@ Proof.
     evar (ψ'pad : Vector (2^3)).
     assert(Epad : ψ' = ψ'pad).
     { subst ψ'.
-      unfold pad; simpl.
+      unfold proj, pad_u, pad; simpl.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
       restore_dims.
@@ -261,7 +261,7 @@ Proof.
       evar (ψ'pad : Vector (2^3)).
       assert(Epad : ψ' = ψ'pad).
       { subst ψ'.
-        unfold pad; simpl.
+        unfold proj, pad_u, pad; simpl.
         replace 4%nat with (2 * 2)%nat by reflexivity.
         rewrite <- id_kron.
         repeat rewrite <- kron_assoc by auto with wf_db.
@@ -300,7 +300,7 @@ Proof.
       repeat match goal with
       | H : _ / _ ⇩ _ |- _ => dependent destruction H
       end.
-      all: simpl; autorewrite with eval_db; simpl.
+      all: unfold proj; simpl; autorewrite with eval_db; simpl.
       all: replace 4%nat with (2 * 2)%nat by reflexivity;
            rewrite <- id_kron;
            repeat rewrite <- kron_assoc by auto with wf_db;
@@ -325,7 +325,7 @@ Proof.
       evar (ψ'pad : Vector (2^3)).
       assert(Epad : ψ' = ψ'pad).
       { subst ψ'.
-        unfold pad; simpl.
+        unfold proj, pad_u, pad; simpl.
         replace 4%nat with (2 * 2)%nat by reflexivity.
         rewrite <- id_kron.
         repeat rewrite <- kron_assoc by auto with wf_db.
@@ -364,7 +364,7 @@ Proof.
       repeat match goal with
       | H : _ / _ ⇩ _ |- _ => dependent destruction H
       end.
-      all: simpl; autorewrite with eval_db; simpl.
+      all: unfold proj; simpl; autorewrite with eval_db; simpl.
       all: replace 4%nat with (2 * 2)%nat by reflexivity;
            rewrite <- id_kron;
            repeat rewrite <- kron_assoc by auto with wf_db;
@@ -393,7 +393,7 @@ Proof.
     evar (ψ'pad : Vector (2^3)).
     assert(Epad : ψ' = ψ'pad).
     { subst ψ'.
-      unfold pad; simpl.
+      unfold proj, pad_u, pad; simpl.
       repeat rewrite Mmult_plus_distr_l.
       repeat rewrite Mscale_mult_dist_r. 
       restore_dims.
@@ -411,7 +411,7 @@ Proof.
       evar (ψ'pad : Vector (2^3)).
       assert(Epad : ψ' = ψ'pad).
       { subst ψ'.
-        unfold pad; simpl.
+        unfold proj, pad_u, pad; simpl.
         replace 4%nat with (2 * 2)%nat by reflexivity.
         rewrite <- id_kron.
         repeat rewrite <- kron_assoc by auto with wf_db.
@@ -450,7 +450,7 @@ Proof.
       repeat match goal with
       | H : _ / _ ⇩ _ |- _ => dependent destruction H
       end.
-      all: simpl; autorewrite with eval_db; simpl.
+      all: unfold proj; simpl; autorewrite with eval_db; simpl.
       all: replace 4%nat with (2 * 2)%nat by reflexivity;
            rewrite <- id_kron;
            repeat rewrite <- kron_assoc by auto with wf_db;
@@ -476,12 +476,12 @@ Proof.
       replace (σz × ∣ 1 ⟩) with (- 1 .* ∣ 1 ⟩) by solve_matrix.
       rewrite (ket_decomposition ψ WF).
       exists (/ 2).
-      solve_matrix.      
+      solve_matrix.   
     + (* measured q = 0 *)
       evar (ψ'pad : Vector (2^3)).
       assert(Epad : ψ' = ψ'pad).
       { subst ψ'.
-        unfold pad; simpl.
+        unfold proj, pad_u, pad; simpl.
         replace 4%nat with (2 * 2)%nat by reflexivity.
         rewrite <- id_kron.
         repeat rewrite <- kron_assoc by auto with wf_db.
@@ -520,7 +520,7 @@ Proof.
       repeat match goal with
       | H : _ / _ ⇩ _ |- _ => dependent destruction H
       end.
-      all: simpl; autorewrite with eval_db; simpl.
+      all: unfold proj; simpl; autorewrite with eval_db; simpl.
       all: replace 4%nat with (2 * 2)%nat by reflexivity;
            rewrite <- id_kron;
            repeat rewrite <- kron_assoc by auto with wf_db;

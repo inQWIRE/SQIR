@@ -1,4 +1,4 @@
-Require Import Psatz ZArith Znumtheory Reals Prelim.
+Require Import Psatz ZArith Znumtheory Reals QuantumLib.Prelim.
 (* ============================== *)
 (* = Continued Fraction Results = *)
 (* ============================== *)
@@ -884,7 +884,7 @@ Proof.
     exists 1. split. lia. split. easy. split. intros. lia. intros.
     destruct i. easy. rewrite nthcfexp_n0a. reflexivity.
   - rename a into a'. remember (S a') as a.
-    assert (Ga: a <> 0) by lia. assert (Ga': a =? 0 = false) by (apply eqb_neq; apply Ga).
+    assert (Ga: a <> 0) by lia. assert (Ga': a =? 0 = false) by (apply Nat.eqb_neq; apply Ga).
     assert (Gmod: b mod a < a < m) by (specialize (Nat.mod_upper_bound b a Ga) as G; lia).
     apply IHm in Gmod. destruct Gmod as [n [Hn [Hi [Hii Hiii]]]].
     exists (S n). split. lia. split. rewrite CFp_mod with (m := n) by lia. rewrite CFq_mod with (m := n) by lia.

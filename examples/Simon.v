@@ -1,5 +1,7 @@
 Require Import UnitaryOps.
 Require Import Utilities.
+Require Import QuantumLib.Measurement.
+Require Import QuantumLib.Permutations.
 Local Open Scope ucom_scope.
 
 (** Definition of Simon's program. **)
@@ -135,7 +137,7 @@ Lemma norm_vsum : forall n d c f,
   (forall x y, (x < n)%nat -> (y < n)%nat ->   (* f is injective *)
           f x = f y -> x = y) -> 
   norm (vsum n (fun i : nat => (c i) .* basis_vector d (f i))) = 
-    √ (fst (Csum (fun i => ((c i) ^* * c i)%C) n)).
+    √ (fst (Σ (fun i => ((c i) ^* * c i)%C) n)).
 Proof.
   intros n d c f ? ? ?.
   unfold norm.
@@ -167,11 +169,11 @@ Theorem simon_zero : forall {n : nat} (U : base_ucom (2 * n)) f x,
                           (uc_eval (simon U) × (2 * n) ⨂ ∣0⟩)
    = 1 /2 ^ n.
 Proof.
-  intros. 
+  intros n U f0. intros.
   rewrite prob_partial_meas_alt.
   distribute_adjoint.
   Msimpl.
-  erewrite simon_simplify with (f0:=f); auto.
+  erewrite simon_simplify with (f:=f0); auto.
   rewrite Nat.mul_1_l.
   rewrite norm_scale.
   rewrite norm_vsum; auto.
@@ -351,7 +353,7 @@ Qed.
 
 Lemma bitwise_xor_bijective: forall (n s: nat), 
    (n > 0)%nat -> (s < 2 ^ n)%nat ->
-   finite_bijection (2 ^ n) (fun i => bitwise_xor n i s).
+   permutation (2 ^ n) (fun i => bitwise_xor n i s).
 Proof.
   intros n s Hn Hs.
   exists (fun i => bitwise_xor n i s). 
@@ -372,8 +374,8 @@ Lemma bitwise_xor_vsum_reorder: forall (n m s :nat) (f:nat -> nat) a,
   vsum (2 ^ n) (fun i : nat => (a i) .* basis_vector m (f (bitwise_xor n i s))) =
   vsum (2 ^ n) (fun i : nat => (a (bitwise_xor n i s)) .* basis_vector m (f i)).
 Proof.
-  intros.
-  rewrite vsum_reorder with (f0:= (fun i => bitwise_xor n i s)).
+  intros n m s f0. intros.
+  rewrite vsum_reorder with (f:= (fun i => bitwise_xor n i s)).
   erewrite vsum_eq.
   2: { intros.
        rewrite (bitwise_xor_comm _ (bitwise_xor _ _ _)).
@@ -490,16 +492,16 @@ Theorem simon_nonzero_A : forall {n : nat} (U : base_ucom (2 * n)) f x s,
                           (uc_eval (simon U) × (2 * n) ⨂ ∣0⟩)
    = 1 /2 ^ (n - 1).
 Proof.
-  intros. 
+  intros n U f0 x s. intros. 
   rewrite prob_partial_meas_alt.
   distribute_adjoint.
   Msimpl.
-  rewrite simon_simplify with (f0:=f); auto.
+  rewrite simon_simplify with (f:=f0); auto.
   rewrite Nat.mul_1_l.
   rewrite norm_scale.
   rewrite norm_vsum_rewrite with (s:=s) by assumption.
   rewrite norm_vsum.
-  erewrite Csum_eq_bounded.
+  erewrite big_sum_eq_bounded.
   2: { intros i Hi.
        replace (product (nat_to_funbool n i) (nat_to_funbool n x) n) 
          with (bitwise_product n i x) by reflexivity.
@@ -515,7 +517,8 @@ Proof.
        replace (((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b) * ((-1) ^ Nat.b2n b + (-1) ^ Nat.b2n b)) with (2 ^ 2).
        reflexivity.
        destruct b; simpl; lra. }
-  rewrite Csum_constant.
+  rewrite big_sum_constant.
+  rewrite times_n_C.
   simpl.
   rewrite RtoC_pow.
   rewrite <- RtoC_inv by nonzero.
@@ -553,16 +556,16 @@ Theorem simon_nonzero_B : forall {n : nat} (U : base_ucom (2 * n)) f x s,
                           (uc_eval (simon U) × (2 * n) ⨂ ∣0⟩)
    = 0.
 Proof.
-  intros. 
+  intros n U f0 x s. intros. 
   rewrite prob_partial_meas_alt.
   distribute_adjoint.
   Msimpl.
-  rewrite simon_simplify with (f0:=f); auto.
+  rewrite simon_simplify with (f:=f0); auto.
   rewrite Nat.mul_1_l.
   rewrite norm_scale.
   rewrite norm_vsum_rewrite with (s:=s) by assumption.
   rewrite norm_vsum.
-  erewrite Csum_0.
+  erewrite big_sum_0.
   2: { intro i.
        replace (product (nat_to_funbool n i) (nat_to_funbool n x) n) 
          with (bitwise_product n i x) by reflexivity.

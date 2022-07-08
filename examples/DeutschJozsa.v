@@ -1,6 +1,6 @@
 Require Import UnitaryOps.
 Require Import Utilities.
-Require Import Dirac.
+Require Import QuantumLib.Measurement.
 
 Open Scope ucom.
 Local Close Scope C_scope.
@@ -45,9 +45,9 @@ Local Open Scope R_scope.
        ∑ (-1)^(f x) / n = 1 - 2 * count f / n.
    Note that if f is balanced, then this expression will be zero. If f is
    constant then the expression will either be 1 or -1. *)
-Lemma Csum_of_minus_1 : forall (f : nat -> bool) n,
+Lemma sum_of_minus_1 : forall (f : nat -> bool) n,
   (n > 0)%nat ->
-  ((Csum (fun x => (-1) ^ f(x)) n) * / INR n)%C = 1 - 2 * INR (count0 f n) * / INR n.
+  ((Σ (fun x => (-1) ^ f(x)) n) * / INR n)%C = 1 - 2 * INR (count0 f n) * / INR n.
 Proof.
   unfold count0.
   intros.
@@ -56,11 +56,10 @@ Proof.
   induction n.
   simpl.
   destruct (f O); simpl; lca.
-  simpl Csum in *.
+  repeat rewrite <- big_sum_extend_r in *.
   simpl count in *. 
-  remember (Csum (fun x : nat => (-1) ^ f x) n)%C as sum.
-  remember (count (fun x : nat => f x) n) as  cnt.
-  clear Heqsum Heqcnt.
+  remember (Σ (fun x : nat => (-1) ^ f x) n)%C as sum.
+  clear Heqsum.
   rewrite Cmult_plus_distr_r.
   rewrite <- (Cmult_1_r (_ * / _)).
   rewrite <- (Cinv_r (INR (S n))).
@@ -110,14 +109,13 @@ Proof.
   bdestruct_all.
   replace (S n - (n + 1))%nat with O by lia.
   simpl I.
-  Msimpl_light.
-  Transparent npar.
+  Transparent npar. 
   simpl.
   restore_dims. 
   repeat (rewrite Mmult_assoc; restore_dims).
-  Qsimpl. 
+  Qsimpl. Qsimpl.
   rewrite H0_kron_n_spec_alt by auto.
-  replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.
+  replace (hadamard × ∣1⟩) with ∣ - ⟩ by solve_matrix.
   restore_dims. 
   distribute_scale. 
   rewrite kron_vsum_distr_r.
@@ -128,7 +126,7 @@ Proof.
        restore_dims.
        distribute_plus.
        distribute_scale.
-       unfold boolean_oracle in H. 
+       unfold boolean_oracle in H.
        repeat rewrite Nat.mul_1_r.
        replace (2 ^ S n)%nat with (2 ^ n * 2)%nat in * by unify_pows_two.
        replace ∣ 0 ⟩ with ∣ Nat.b2n false ⟩ by reflexivity.
@@ -141,8 +139,8 @@ Proof.
        rewrite <- kron_plus_distr_l.
        rewrite <- 2 Mscale_mult_dist_r. 
        rewrite <- Mmult_plus_distr_l.
-       replace (/√ 2 .* ∣ false ⊕ f i ⟩ .+ (- /√ 2) .* ∣ true ⊕ f i ⟩) with ((-1)^(f i) .* ∣-⟩). 
-       distribute_scale.
+       replace (/ √ 2 .* ∣ false ⊕ f i ⟩ .+ - / √ 2 .* ∣ true ⊕ f i ⟩) with ((-1)^(f i) .* ∣ - ⟩). 
+       distribute_scale. 
        rewrite Hminus_spec.
        rewrite <- Mscale_kron_dist_l.
        reflexivity.
@@ -192,7 +190,7 @@ Proof.
   rewrite sqrt_def.
   rewrite Cmult_comm. 
   replace (2 ^ n)%R with (INR (2 ^ n)).
-  rewrite Csum_of_minus_1.
+  rewrite sum_of_minus_1.
   rewrite Cmod_R.
   rewrite <- 2 Rsqr_pow2.
   rewrite <- Rsqr_abs.
@@ -220,16 +218,16 @@ Theorem deutsch_jozsa_correct :
   (n > 0)%nat -> boolean_oracle U f -> 
   (constant f n -> accept U) /\ (balanced f n -> reject U).
 Proof.
-  intros n f U Hn Hb. 
+  intros n f0 U Hn Hb. 
   unfold accept, reject.
   split; intro H.
-  - rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
+  - rewrite deutsch_jozsa_success_probability with (f:=f0); auto.
     unfold constant in H.
     destruct H; rewrite H; simpl; try lra.
     replace (INR (2 ^ n)) with (2 ^ n).
     field. nonzero.
     rewrite pow_INR. reflexivity.
-  - rewrite deutsch_jozsa_success_probability with (f0:=f); auto.
+  - rewrite deutsch_jozsa_success_probability with (f:=f0); auto.
     destruct H as [_ H].
     rewrite H; simpl; try lra.
     replace (INR (2 ^ (n - 1))) with (2 ^ n / 2).
@@ -301,7 +299,7 @@ Proof.
   repeat rewrite Mmult_assoc.
   restore_dims.
   Qsimpl.
-  replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.
+  replace (hadamard × ∣1⟩) with ∣ - ⟩ by solve_matrix.
   rewrite H0_kron_n_spec.
   rewrite <- Mmult_assoc. 
   Qsimpl. 
@@ -309,19 +307,19 @@ Proof.
   rewrite <- kron_n_adjoint by auto with wf_db.
   repeat rewrite <- Mmult_adjoint.
   rewrite H0_kron_n_spec. 
-  replace (hadamard × ∣1⟩) with ∣-⟩ by solve_matrix.
+  replace (hadamard × ∣1⟩) with ∣ - ⟩ by solve_matrix.
   rewrite <- kron_adjoint.
   (* interesting part of the proof that looks at the structure of P *)
   induction n; dependent destruction P.
   - simpl. rewrite u0. clear.
     rewrite denote_SKIP; try lia.
     Msimpl_light. restore_dims.
-    replace (∣-⟩† × ∣-⟩) with (I 1) by solve_matrix.
+    replace (∣ - ⟩† × ∣ - ⟩) with (I 1) by solve_matrix.
     lca.
   - simpl. rewrite u0. clear.
     autorewrite with eval_db; simpl.
     Msimpl_light. restore_dims.
-    replace (∣-⟩† × (σx × ∣-⟩)) with (-1 .* I 1) by solve_matrix.
+    replace (∣ - ⟩† × (σx × ∣ - ⟩)) with (-1 .* I 1) by solve_matrix.
     lca.
   - simpl. rewrite e.
     restore_dims.
@@ -332,8 +330,8 @@ Proof.
     restore_dims.
     rewrite Mmult_plus_distr_l.
     repeat rewrite kron_mixed_product.
-    replace ((∣+⟩) † × (∣0⟩⟨0∣ × ∣+⟩)) with ((1/2)%R .* I 1) by solve_matrix.
-    replace ((∣+⟩) † × (∣1⟩⟨1∣ × ∣+⟩)) with ((1/2)%R .* I 1) by solve_matrix.
+    replace ((∣+⟩) † × (∣0⟩⟨0∣ × ∣+⟩)) with ((1/2)%R .* I 1).
+    replace ((∣+⟩) † × (∣1⟩⟨1∣ × ∣+⟩)) with ((1/2)%R .* I 1).
     repeat rewrite Mscale_kron_dist_r.
     rewrite <- Mscale_plus_distr_r.
     Msimpl_light. restore_dims.
@@ -346,6 +344,8 @@ Proof.
     rewrite plus_INR.
     field_simplify_eq; trivial. 
     nonzero.
+    unfold xbasis_plus. solve_matrix.
+    unfold xbasis_plus. solve_matrix.
 Qed.
 
 (* accept := probability of measuring ∣0...0⟩ in the last n qubits is 1 *)

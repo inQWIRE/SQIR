@@ -25,7 +25,7 @@ invoke-coqmakefile: CoqMakefile
 ##		      Your targets here			 ##
 ###########################################################
 
-COQ_OPTS := -R . Top
+COQ_OPTS := -R SQIR Top.SQIR -R externals/euler Top.externals.euler -R examples Top.examples -R VOQC Top.VOQC
 
 all: examples voqc shor VOQC/PropagateClassical.vo VOQC/RemoveZRotationBeforeMeasure.vo VOQC/BooleanCompilation.vo
 
@@ -42,31 +42,31 @@ voqc: invoke-coqmakefile VOQC/Main.vo
 examples/ghz/ExtrGHZ.vo: examples/ghz/ExtrGHZ.v examples/ghz/GHZ.vo SQIR/ExtractionGateSet.vo
 	coqc $(COQ_OPTS) examples/ghz/ExtrGHZ.v
 
-examples/Deutsch.vo: examples/Deutsch.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo externals/QWIRE/Proportional.vo
+examples/Deutsch.vo: examples/Deutsch.v SQIR/UnitarySem.vo
 	coqc $(COQ_OPTS) examples/Deutsch.v
 
-examples/DeutschJozsa.vo: examples/DeutschJozsa.v SQIR/UnitaryOps.vo examples/Utilities.vo externals/QWIRE/Dirac.vo
+examples/DeutschJozsa.vo: examples/DeutschJozsa.v SQIR/UnitaryOps.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/DeutschJozsa.v
 
-examples/ghz/GHZ.vo: examples/ghz/GHZ.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo
+examples/ghz/GHZ.vo: examples/ghz/GHZ.v SQIR/UnitarySem.vo
 	coqc $(COQ_OPTS) examples/ghz/GHZ.v
 
-examples/Grover.vo: examples/Grover.v SQIR/UnitaryOps.vo examples/Utilities.vo externals/QWIRE/Dirac.vo
+examples/Grover.vo: examples/Grover.v SQIR/UnitaryOps.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/Grover.v
 
-examples/QPE.vo: examples/QPE.v SQIR/UnitaryOps.vo
+examples/QPE.vo: examples/QPE.v SQIR/UnitaryOps.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/QPE.v
 
 examples/Simon.vo: examples/Simon.v SQIR/UnitaryOps.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/Simon.v
 
-examples/Superdense.vo: examples/Superdense.v SQIR/UnitarySem.vo externals/QWIRE/Dirac.vo
+examples/Superdense.vo: examples/Superdense.v SQIR/UnitarySem.vo
 	coqc $(COQ_OPTS) examples/Superdense.v
 
-examples/Teleport.vo: examples/Teleport.v SQIR/UnitarySem.vo SQIR/DensitySem.vo SQIR/NDSem.vo externals/QWIRE/Dirac.vo externals/QWIRE/Proportional.vo
+examples/Teleport.vo: examples/Teleport.v SQIR/UnitarySem.vo SQIR/DensitySem.vo SQIR/NDSem.vo
 	coqc $(COQ_OPTS) examples/Teleport.v
 
-examples/Utilities.vo: examples/Utilities.v SQIR/VectorStates.vo SQIR/DiscreteProb.vo
+examples/Utilities.vo: examples/Utilities.v
 	coqc $(COQ_OPTS) examples/Utilities.v
 
 examples/Wiesner.vo: examples/Wiesner.v SQIR/UnitaryOps.vo examples/Utilities.vo
@@ -80,13 +80,13 @@ examples/shor/ExtrShor.vo: examples/shor/ExtrShor.v SQIR/ExtractionGateSet.vo ex
 examples/shor/Main.vo: examples/shor/Main.v examples/shor/ExtrShor.vo
 	coqc $(COQ_OPTS) examples/shor/Main.v
 
-examples/shor/ModMult.vo: examples/shor/ModMult.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo examples/shor/RCIR.vo
+examples/shor/ModMult.vo: examples/shor/ModMult.v SQIR/UnitaryOps.vo examples/shor/RCIR.vo
 	coqc $(COQ_OPTS) examples/shor/ModMult.v
 
 examples/shor/QPEGeneral.vo: examples/shor/QPEGeneral.v examples/QPE.vo examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/shor/QPEGeneral.v
 
-examples/shor/RCIR.vo: examples/shor/RCIR.v SQIR/UnitaryOps.vo SQIR/VectorStates.vo
+examples/shor/RCIR.vo: examples/shor/RCIR.v SQIR/UnitaryOps.vo
 	coqc $(COQ_OPTS) examples/shor/RCIR.v
 
 examples/shor/Shor.vo: examples/shor/Shor.v examples/shor/QPEGeneral.vo examples/shor/ModMult.vo examples/shor/ContFrac.vo examples/shor/Reduction.vo
@@ -109,11 +109,8 @@ examples/shor/Reduction.vo: examples/shor/Reduction.v examples/shor/EulerTotient
 VOQC/ChangeRotationBasis.vo: VOQC/ChangeRotationBasis.v
 	coqc $(COQ_OPTS) VOQC/ChangeRotationBasis.v
 
-VOQC/ConnectivityGraph.vo: VOQC/ConnectivityGraph.v
+VOQC/ConnectivityGraph.vo: VOQC/ConnectivityGraph.v VOQC/Layouts.vo
 	coqc $(COQ_OPTS) VOQC/ConnectivityGraph.v
-
-VOQC/CXCancellation.vo: VOQC/CXCancellation.v VOQC/IBMGateSet.vo VOQC/MappingConstraints.vo
-	coqc $(COQ_OPTS) VOQC/CXCancellation.v
 
 VOQC/GateCancellation.vo: VOQC/GateCancellation.v SQIR/Equivalences.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo
 	coqc $(COQ_OPTS) VOQC/GateCancellation.v
@@ -127,10 +124,10 @@ VOQC/HadamardReduction.vo: VOQC/HadamardReduction.v SQIR/Equivalences.vo VOQC/Rz
 VOQC/IBMGateSet.vo: VOQC/IBMGateSet.v VOQC/ChangeRotationBasis.vo VOQC/UnitaryListRepresentation.vo VOQC/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) VOQC/IBMGateSet.v
 
-VOQC/UnitaryListRepresentation.vo: VOQC/UnitaryListRepresentation.v VOQC/GateSet.vo externals/QWIRE/Proportional.vo SQIR/Equivalences.vo
+VOQC/UnitaryListRepresentation.vo: VOQC/UnitaryListRepresentation.v VOQC/GateSet.vo SQIR/Equivalences.vo
 	coqc $(COQ_OPTS) VOQC/UnitaryListRepresentation.v
 
-VOQC/Layouts.vo: VOQC/Layouts.v SQIR/VectorStates.vo
+VOQC/Layouts.vo: VOQC/Layouts.v
 	coqc $(COQ_OPTS) VOQC/Layouts.v
 
 VOQC/MappingConstraints.vo: VOQC/MappingConstraints.v VOQC/UnitaryListRepresentation.vo
@@ -151,14 +148,23 @@ VOQC/RotationMerging.vo: VOQC/RotationMerging.v VOQC/RzQGateSet.vo SQIR/UnitaryO
 VOQC/RzQGateSet.vo: VOQC/RzQGateSet.v VOQC/UnitaryListRepresentation.vo VOQC/NonUnitaryListRepresentation.vo
 	coqc $(COQ_OPTS) VOQC/RzQGateSet.v
 
-VOQC/SimpleMapping.vo: VOQC/SimpleMapping.v VOQC/ConnectivityGraph.vo VOQC/Layouts.vo VOQC/MappingConstraints.vo VOQC/StandardGateSet.vo
-	coqc $(COQ_OPTS) VOQC/SimpleMapping.v
+VOQC/SwapRoute.vo: VOQC/SwapRoute.v VOQC/ConnectivityGraph.vo VOQC/Layouts.vo VOQC/MappingConstraints.vo VOQC/FullGateSet.vo
+	coqc $(COQ_OPTS) VOQC/SwapRoute.v
 
-VOQC/StandardGateSet.vo: VOQC/StandardGateSet.v VOQC/IBMGateSet.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo
-	coqc $(COQ_OPTS) VOQC/StandardGateSet.v
+VOQC/FullGateSet.vo: VOQC/FullGateSet.v VOQC/IBMGateSet.vo VOQC/RzQGateSet.vo VOQC/MappingConstraints.vo VOQC/MappingGateSet.vo
+	coqc $(COQ_OPTS) VOQC/FullGateSet.v
 
-VOQC/Main.vo: VOQC/Main.v VOQC/CXCancellation.vo VOQC/GateCancellation.vo VOQC/HadamardReduction.vo VOQC/NotPropagation.vo VOQC/Optimize1qGates.vo VOQC/RotationMerging.vo VOQC/RzQGateSet.vo VOQC/SimpleMapping.vo VOQC/StandardGateSet.vo
+VOQC/Main.vo: VOQC/Main.v VOQC/GateCancellation.vo VOQC/HadamardReduction.vo VOQC/NotPropagation.vo VOQC/Optimize1qGates.vo VOQC/RotationMerging.vo VOQC/RzQGateSet.vo VOQC/SwapRoute.vo VOQC/MappingValidation.vo VOQC/GreedyLayout.vo
 	coqc $(COQ_OPTS) VOQC/Main.v
+
+VOQC/GreedyLayout.vo: VOQC/GreedyLayout.v VOQC/ConnectivityGraph.vo VOQC/Layouts.vo VOQC/MappingGateSet.vo
+	coqc $(COQ_OPTS) VOQC/GreedyLayout.v
+
+VOQC/MappingGateSet.vo: VOQC/MappingGateSet.v VOQC/UnitaryListRepresentation.vo
+	coqc $(COQ_OPTS) VOQC/MappingGateSet.v
+
+VOQC/MappingValidation.vo: VOQC/MappingValidation.v VOQC/SwapRoute.vo
+	coqc $(COQ_OPTS) VOQC/MappingValidation.v
 
 # Misc. files built by 'make all'
 
@@ -168,7 +174,7 @@ VOQC/PropagateClassical.vo: VOQC/PropagateClassical.v VOQC/RzQGateSet.vo SQIR/De
 VOQC/RemoveZRotationBeforeMeasure.vo: VOQC/RemoveZRotationBeforeMeasure.v VOQC/RzQGateSet.vo SQIR/DensitySem.vo
 	coqc $(COQ_OPTS) VOQC/RemoveZRotationBeforeMeasure.v
 
-VOQC/BooleanCompilation.vo: VOQC/BooleanCompilation.v SQIR/VectorStates.vo externals/QWIRE/Dirac.vo
+VOQC/BooleanCompilation.vo: VOQC/BooleanCompilation.v
 	coqc $(COQ_OPTS) VOQC/BooleanCompilation.v
 
 # Using a custom clean target to remove files from subdirectories

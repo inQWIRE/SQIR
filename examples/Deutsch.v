@@ -1,6 +1,6 @@
 Require Import UnitarySem.
-Require Import Proportional.
-Require Import QWIRE.Dirac.
+Require Import QuantumLib.Proportional.
+Require Import QuantumLib.VectorStates.
 
 Open Scope ucom.
 

@@ -1,4 +1,4 @@
-Require Export VectorStates.
+Require Export QuantumLib.VectorStates.
 Require Export UnitaryOps.
 
 Local Open Scope ucom_scope.
@@ -49,7 +49,6 @@ Proof.
     rewrite WT.
     Msimpl_light; reflexivity.
 Qed.
-
 
 Lemma SKIP_id_l_cong : forall {dim} (c : base_ucom dim), SKIP; c ≅ c.
 Proof.
@@ -128,11 +127,10 @@ Proof.
   intros.
   unfold uc_equiv; simpl.
   dependent destruction U; dependent destruction V.
-  autorewrite with eval_db.
-  gridify; reflexivity.
+  unfold ueval_r.
+  apply pad_A_B_commutes; auto with wf_db.
 Qed.
 
-(* A bit slow, due to six valid subcases *)
 Lemma U_CNOT_comm : forall {dim} (q n1 n2 : nat) (U : base_Unitary 1),
   q <> n1 ->
   q <> n2 ->
@@ -141,8 +139,9 @@ Proof.
   intros.
   unfold uc_equiv; simpl.
   dependent destruction U.
-  autorewrite with eval_db.
-  gridify; reflexivity.
+  rewrite denote_cnot.
+  unfold ueval_cnot, ueval_r.
+  rewrite pad_A_ctrl_commutes; auto with wf_db.
 Qed.
 
 Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
@@ -151,39 +150,12 @@ Lemma CNOT_CNOT_comm : forall {dim} (n1 n2 n1' n2' : nat),
 Proof.
   intros.
   unfold uc_equiv; simpl.
-  (* We can finish the proof using gridify, but it's painfully slow.
-  autorewrite with eval_db.
-  gridify; reflexivity. *)
-  specialize (bool_dec ((n1 <? dim) && (n2 <? dim) && negb (n1 =? n2) && (n1' <? dim) && (n2' <? dim) && negb (n1' =? n2')) true) as WT.
-  destruct WT.
-  repeat match goal with
-  | H : _ && _ = true |- _ => apply andb_prop in H as [? ?]
-  | H : _ <? _ = true |- _ => apply Nat.ltb_lt in H
-  | H : _ =? _ = false |- _ => apply beq_nat_false in H 
-  | H : negb _ = true |- _ => apply negb_true_iff in H
-  end. 
-  apply equal_on_basis_states_implies_equal; auto with wf_db.
-  intro f.
-  repeat rewrite Mmult_assoc.
-  repeat rewrite f_to_vec_CNOT by auto.
-  repeat rewrite update_index_neq by auto.
-  rewrite update_twice_neq by auto.
-  reflexivity.
-  (* manual handling for badly typed cases *)
-  autorewrite with eval_db.
-  bdestruct_all.
-  all: repeat rewrite Mmult_0_l; repeat rewrite Mmult_0_r; trivial. 
-  (* this is slow too, but much better than gridify *)
-  all: bdestruct (n1 <? dim); try lia.
-  all: bdestruct (n2 <? dim); try lia. 
-  all: bdestruct (n1' <? dim); try lia.
-  all: bdestruct (n2' <? dim); try lia.
-  all: bdestruct (n1 =? n2); try lia.
-  all: bdestruct (n1' =? n2'); try lia.
-  all: contradict n; reflexivity.
+  rewrite 2 denote_cnot.
+  unfold ueval_cnot.
+  rewrite pad_ctrl_ctrl_commutes; auto with wf_db.
 Qed.
 
-Lemma H_comm_Z : forall {dim} q, @H dim q; Z q ≡ X q; H q.
+Lemma H_comm_Z : forall {dim} q, @H dim q; SQIR.Z q ≡ X q; H q.
 Proof.
   intros. 
   unfold uc_equiv.
@@ -385,7 +357,6 @@ Proof.
       solve_matrix.
 Qed.
 
-Local Transparent SWAP.
 Lemma SWAP_extends_CNOT : forall {dim} a b c,
   a < dim -> b < dim -> c < dim ->
   a <> b -> b <> c -> a <> c ->
@@ -394,21 +365,100 @@ Proof.
   intros.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
-  unfold SWAP.
   simpl uc_eval.
   repeat rewrite Mmult_assoc.
-  repeat rewrite f_to_vec_CNOT by auto.
-  repeat (try rewrite update_index_eq; try rewrite update_index_neq by auto).
-  repeat rewrite (update_twice_neq _ a) by auto. 
-  repeat rewrite update_twice_eq. 
-  repeat rewrite (update_twice_neq _ b) by auto.
-  rewrite update_twice_eq. 
-  rewrite (update_same _ a).
-  rewrite (update_same _ b).
-  destruct (f a); destruct (f b); reflexivity.
+  rewrite f_to_vec_SWAP by auto.
+  rewrite 2 f_to_vec_CNOT by auto.
+  rewrite f_to_vec_SWAP by auto.
+  rewrite fswap_simpl2.
+  rewrite fswap_neq by auto.
+  apply f_to_vec_eq.
+  intros i Hi.
+  bdestruct (i =? c); subst.
+  rewrite update_index_eq.
+  rewrite fswap_neq by auto.
+  rewrite update_index_eq.
+  reflexivity.
   rewrite update_index_neq by auto.
-  destruct (f a); destruct (f b); reflexivity.
-  rewrite update_index_neq by auto.
-  destruct (f a); destruct (f b); reflexivity.
+  bdestructΩ (i =? a); bdestructΩ (i =? b); subst.
+  rewrite fswap_simpl1, update_index_neq by auto. 
+  apply fswap_simpl2. 
+  rewrite fswap_simpl2, update_index_neq by auto. 
+  apply fswap_simpl1. 
+  rewrite fswap_neq, update_index_neq by auto. 
+  apply fswap_neq; auto.
+Qed.
+
+Local Transparent SWAP.
+Lemma SWAP_symmetric : forall {dim} a b,
+  @SWAP dim a b ≡ SWAP b a.
+Proof.
+  intros dim a b.
+  unfold uc_equiv, SWAP. 
+  simpl; autorewrite with eval_db.
+  gridify; Qsimpl; lma.
 Qed.
 Local Opaque SWAP.
+
+Lemma proj_Rz_comm : forall dim q n b k,
+  proj q dim b × uc_eval (SQIR.Rz k n) = uc_eval (SQIR.Rz k n) × proj q dim b. 
+Proof.
+  intros dim q n b k.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify; trivial.
+  apply f_equal2; trivial.
+  apply f_equal2; trivial.
+  destruct b; solve_matrix.
+Qed.
+
+Lemma proj_Rz : forall dim q b θ,
+  uc_eval (SQIR.Rz θ q) × proj q dim b = Cexp (b2R b * θ) .* proj q dim b. 
+Proof.
+  intros dim q b θ.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify.
+  rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
+  apply f_equal2; trivial.
+  apply f_equal2; trivial.
+  destruct b; solve_matrix.
+  rewrite Rmult_1_l. reflexivity.
+  rewrite Rmult_0_l, Cexp_0. reflexivity.
+Qed.
+
+Lemma proj_CNOT_control : forall dim q m n b,
+  (q <> n \/ m = n) ->
+  proj q dim b × uc_eval (SQIR.CNOT m n) = uc_eval (SQIR.CNOT m n) × proj q dim b.
+Proof.
+  intros dim q m n b H.
+  destruct H.
+  bdestruct (m =? n).
+  (* badly typed case *)
+  1,3: subst; replace (uc_eval (SQIR.CNOT n n)) with (@Zero (2 ^ dim) (2 ^ dim));
+       Msimpl_light; try reflexivity.
+  1,2: autorewrite with eval_db; bdestructΩ (n <? n); reflexivity.
+  bdestruct (q =? m).
+  (* q = control *)
+  subst. unfold proj.
+  autorewrite with eval_db.
+  gridify.
+  destruct b; simpl; Qsimpl; reflexivity.
+  destruct b; simpl; Qsimpl; reflexivity.
+  (* disjoint qubits *)
+  bdestructΩ (q =? n).
+  apply proj_commutes_2q_gate; assumption.
+Qed.
+
+Lemma proj_CNOT_target : forall dim f q n,
+  proj q dim ((f q) ⊕ (f n)) × proj n dim (f n) × uc_eval (SQIR.CNOT n q) = proj n dim (f n) × uc_eval (SQIR.CNOT n q) × proj q dim (f q).
+Proof.
+  intros dim f q n.
+  unfold proj.
+  autorewrite with eval_db.
+  gridify. (* slow! *)
+  all: try (destruct (f n); destruct (f (n + 1 + d)%nat));        
+       try (destruct (f q); destruct (f (q + 1 + d)%nat));   
+       auto with wf_db.
+  all: simpl; Qsimpl; reflexivity.
+Qed.

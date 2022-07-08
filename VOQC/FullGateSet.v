@@ -3,25 +3,26 @@ Require Export QArith.
 
 (* Other gate sets *)
 Require Import IBMGateSet.
+Require Import MappingGateSet.
 Require Import RzQGateSet.
 Require Import MappingConstraints.
 
 Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *) 
 
-(* This gate set is intended to be the "standard" gate set that contains every gate
+(** This gate set is intended to be the "full" gate set that contains every gate
    we could ever want. Optimizations are not defined directly over this set.
    Instead, we define optimizations over specialized sets (e.g. RzQ, IBM) and 
    provide translations from this set to those sets.
 
    The value of having a gate set that contains everything is that it removes
    some opportunities for error in the OpenQASM -> SQIR parser. For instance,
-   the parser can directly translate "T" to the T gate in the standard gate set
+   the parser can directly translate "T" to the T gate in the full gate set
    rather than the Rz(PI/4) gate in the RzQ gate set. This is even more important
    for gates like CCX that have complicated translations to other gate sets.
   
    To extend this gate set with new gates, you will need to modify the definitions
-   in this file and any optimizations defined over the standard gate set (at
-   present, these only include definitions in SimpleMapping.v and Optimize.v). *)
+   in this file and any optimizations defined over the full gate set (at
+   present, these only include definitions in Main.v). **)
 
 Local Open Scope R_scope.
 Local Open Scope Q_scope.
@@ -39,31 +40,31 @@ Ltac simpl_Reqb_and_Qeqb :=
       apply RMicromega.Q2R_m in H; rewrite H
   end.
 
-Module StandardGateSet <: GateSet.
+Module FullGateSet <: GateSet.
 
-Inductive Std_Unitary : nat -> Set := 
-  | U_I                           : Std_Unitary 1 
-  | U_X                           : Std_Unitary 1
-  | U_Y                           : Std_Unitary 1 
-  | U_Z                           : Std_Unitary 1
-  | U_H                           : Std_Unitary 1 
-  | U_S                           : Std_Unitary 1
-  | U_T                           : Std_Unitary 1 
-  | U_Sdg                         : Std_Unitary 1
-  | U_Tdg                         : Std_Unitary 1 
-  | U_Rx (r : R)                  : Std_Unitary 1
-  | U_Ry (r : R)                  : Std_Unitary 1 
-  | U_Rz (r : R)                  : Std_Unitary 1
-  | U_Rzq (q : Q)                 : Std_Unitary 1
-  | U_U1 (r : R)                  : Std_Unitary 1
-  | U_U2 (r : R) (r : R)          : Std_Unitary 1 
-  | U_U3 (r : R) (r : R) (r : R)  : Std_Unitary 1
-  | U_CX                          : Std_Unitary 2
-  | U_CZ                          : Std_Unitary 2
-  | U_SWAP                        : Std_Unitary 2
-  | U_CCX                         : Std_Unitary 3
-  | U_CCZ                         : Std_Unitary 3.
-Definition U := Std_Unitary.
+Inductive Full_Unitary : nat -> Set := 
+  | U_I                           : Full_Unitary 1 
+  | U_X                           : Full_Unitary 1
+  | U_Y                           : Full_Unitary 1 
+  | U_Z                           : Full_Unitary 1
+  | U_H                           : Full_Unitary 1 
+  | U_S                           : Full_Unitary 1
+  | U_T                           : Full_Unitary 1 
+  | U_Sdg                         : Full_Unitary 1
+  | U_Tdg                         : Full_Unitary 1 
+  | U_Rx (r : R)                  : Full_Unitary 1
+  | U_Ry (r : R)                  : Full_Unitary 1 
+  | U_Rz (r : R)                  : Full_Unitary 1
+  | U_Rzq (q : Q)                 : Full_Unitary 1
+  | U_U1 (r : R)                  : Full_Unitary 1
+  | U_U2 (r : R) (r : R)          : Full_Unitary 1 
+  | U_U3 (r : R) (r : R) (r : R)  : Full_Unitary 1
+  | U_CX                          : Full_Unitary 2
+  | U_CZ                          : Full_Unitary 2
+  | U_SWAP                        : Full_Unitary 2
+  | U_CCX                         : Full_Unitary 3
+  | U_CCZ                         : Full_Unitary 3.
+Definition U := Full_Unitary.
 
 (* Used for proofs -- not extracted to OCaml, so efficiency isn't a concern *)
 Definition to_base {n dim} (u : U n) (qs : list nat) (pf : List.length qs = n) :=
@@ -196,7 +197,22 @@ Definition match_gate {n} (u u' : U n) : bool :=
   | _, _ => false
   end.
 
-Lemma match_gate_implies_eq : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
+Lemma match_gate_refl : forall {n} (u : U n), match_gate u u = true.
+Proof. 
+  intros. 
+  dependent destruction u; simpl; auto.
+  apply Reqb_eq; auto.
+  apply Reqb_eq; auto.
+  apply Reqb_eq; auto.
+  apply Qeq_bool_iff; reflexivity.
+  apply Reqb_eq; auto.
+  apply andb_true_iff.
+  split; apply Reqb_eq; auto.
+  apply andb_true_iff.
+  split; [apply andb_true_iff; split |]; apply Reqb_eq; auto.
+Qed.
+
+Lemma match_gate_implies_equiv : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
   match_gate u u' = true -> uc_equiv (@to_base n dim u qs pf) (to_base u' qs pf).
 Proof.
   intros.
@@ -204,13 +220,15 @@ Proof.
   all: inversion H; simpl; simpl_Reqb_and_Qeqb; reflexivity.
 Qed.
 
-End StandardGateSet.
-Export StandardGateSet.
+End FullGateSet.
+Export FullGateSet.
 
-Module StdList := UListProofs StandardGateSet.
+Module FullList := UListProofs FullGateSet.
 
-Definition standard_ucom dim := ucom Std_Unitary dim.
-Definition standard_ucom_l dim := gate_list Std_Unitary dim.
+Definition full_ucom dim := ucom Full_Unitary dim.
+Definition full_ucom_l dim := gate_list Full_Unitary dim.
+
+(** Some useful gate decompositions **)
 
 Lemma Cexp_plus_PI2 : forall x, Cexp (x + PI/2) = (Ci * Cexp x)%C.
 Proof. intros. autorewrite with Cexp_db. lca. Qed.
@@ -316,7 +334,7 @@ Proof.
   reflexivity.
 Qed.
 
-(** Convert from the full gate set into other sets. **)
+(** * Function to convert between gate sets **)
 
 Local Open Scope Z_scope.
 
@@ -377,9 +395,9 @@ Proof.
   reflexivity.
 Qed.
 
-(** IBM gate set **)
+(** * IBM gate set **)
 
-Definition standard_to_IBM_u {dim} (g : gate_app Std_Unitary dim) : IBM_ucom_l dim :=
+Definition full_to_IBM_u {dim} (g : gate_app Full_Unitary dim) : IBM_ucom_l dim :=
   match g with
   | App1 U_I m              => [IBMGateSet.Rz 0 m]
   | App1 U_X m              => [IBMGateSet.X m]
@@ -405,7 +423,7 @@ Definition standard_to_IBM_u {dim} (g : gate_app Std_Unitary dim) : IBM_ucom_l d
   | _ => [] (* unreachable *)
   end.
 
-Definition IBM_to_standard_u {dim} (g : gate_app IBM_Unitary dim) : standard_ucom_l dim :=
+Definition IBM_to_full_u {dim} (g : gate_app IBM_Unitary dim) : full_ucom_l dim :=
   match g with
   | App1 (UIBM_U1 a) m      => [App1 (U_U1 a) m]
   | App1 (UIBM_U2 a b) m    => [App1 (U_U2 a b) m]
@@ -414,15 +432,15 @@ Definition IBM_to_standard_u {dim} (g : gate_app IBM_Unitary dim) : standard_uco
   | _ => [] (* unreachable *)
   end.
 
-Definition standard_to_IBM {dim} (l : standard_ucom_l dim) : IBM_ucom_l dim := 
-  change_gate_set standard_to_IBM_u l.
+Definition full_to_IBM {dim} (l : full_ucom_l dim) : IBM_ucom_l dim := 
+  change_gate_set full_to_IBM_u l.
 
-Definition IBM_to_standard {dim} (l : IBM_ucom_l dim) : standard_ucom_l dim := 
-  change_gate_set IBM_to_standard_u l.
+Definition IBM_to_full {dim} (l : IBM_ucom_l dim) : full_ucom_l dim := 
+  change_gate_set IBM_to_full_u l.
 
 Lemma IBM_to_base1 : forall {dim} (u : IBM_Unitary 1) n,
   IBMGateSet.to_base u [n] (one_elem_list n) ≡ 
-    StdList.list_to_ucom (IBM_to_standard_u (@App1 _ dim u n)).
+    FullList.list_to_ucom (IBM_to_full_u (@App1 _ dim u n)).
 Proof.
   intros dim u n.
   dependent destruction u; simpl; rewrite SKIP_id_r; reflexivity.
@@ -430,22 +448,22 @@ Qed.
 
 Lemma IBM_to_base2 : forall {dim} (u : IBM_Unitary 2) m n,
   IBMGateSet.to_base u (m :: n :: []) (two_elem_list m n) ≡ 
-    StdList.list_to_ucom (IBM_to_standard_u (@App2 _ dim u m n)).
+    FullList.list_to_ucom (IBM_to_full_u (@App2 _ dim u m n)).
 Proof.
   intros dim u m n.
   dependent destruction u; simpl; rewrite SKIP_id_r; reflexivity.
 Qed.
 
 Lemma IBM_list_to_ucom : forall {dim} (l : IBM_ucom_l dim),
-  IBMList.list_to_ucom l ≡ StdList.list_to_ucom (IBM_to_standard l).
+  IBMList.list_to_ucom l ≡ FullList.list_to_ucom (IBM_to_full l).
 Proof.
   intros.
   induction l.
   reflexivity.
   simpl.
-  unfold IBM_to_standard. 
+  unfold IBM_to_full. 
   rewrite change_gate_set_cons.
-  rewrite StdList.list_to_ucom_append.
+  rewrite FullList.list_to_ucom_append.
   destruct a.
   rewrite IBM_to_base1, IHl.
   reflexivity.
@@ -454,53 +472,53 @@ Proof.
   dependent destruction i.
 Qed.
 
-Lemma IBM_to_standard_equiv : forall {dim} (l l' : IBM_ucom_l dim),
+Lemma IBM_to_full_equiv : forall {dim} (l l' : IBM_ucom_l dim),
   IBMGateSet.IBMList.uc_equiv_l l l' ->
-  StdList.uc_equiv_l (IBM_to_standard l) (IBM_to_standard l').
+  FullList.uc_equiv_l (IBM_to_full l) (IBM_to_full l').
 Proof.
   intros dim l l' H.
-  unfold StdList.uc_equiv_l.
+  unfold FullList.uc_equiv_l.
   unfold IBMGateSet.IBMList.uc_equiv_l in H.
   rewrite 2 IBM_list_to_ucom in H.
   assumption.
 Qed.
 
-Lemma IBM_to_standard_cong : forall {dim} (l l' : IBM_ucom_l dim),
+Lemma IBM_to_full_cong : forall {dim} (l l' : IBM_ucom_l dim),
   IBMGateSet.IBMList.uc_cong_l l l' ->
-  StdList.uc_cong_l (IBM_to_standard l) (IBM_to_standard l').
+  FullList.uc_cong_l (IBM_to_full l) (IBM_to_full l').
 Proof.
   intros dim l l' H.
-  unfold StdList.uc_equiv_l.
+  unfold FullList.uc_equiv_l.
   unfold IBMGateSet.IBMList.uc_cong_l in H.
   unfold uc_cong in H.
   rewrite 2 IBM_list_to_ucom in H.
   assumption.
 Qed.
 
-Lemma IBM_to_standard_inv : forall {dim} (l : standard_ucom_l dim),
-  StdList.uc_equiv_l (IBM_to_standard (standard_to_IBM l)) l.
+Lemma IBM_to_full_inv : forall {dim} (l : full_ucom_l dim),
+  FullList.uc_equiv_l (IBM_to_full (full_to_IBM l)) l.
 Proof.
   intros dim l.
   induction l.
   reflexivity.
-  unfold standard_to_IBM, IBM_to_standard.
+  unfold full_to_IBM, IBM_to_full.
   rewrite change_gate_set_cons.
   rewrite change_gate_set_app.
   rewrite IHl.
   rewrite cons_to_app.
-  StdList.apply_app_congruence.
-  destruct a; dependent destruction s; 
+  FullList.apply_app_congruence.
+  destruct a; dependent destruction f; 
   unfold change_gate_set; simpl; try reflexivity.
-  all: unfold StdList.uc_equiv_l; simpl;
+  all: unfold FullList.uc_equiv_l; simpl;
        repeat rewrite <- useq_assoc; reflexivity.
 Qed.
 
-Lemma standard_to_IBM_WT : forall {dim} (l : standard_ucom_l dim),
+Lemma full_to_IBM_WT : forall {dim} (l : full_ucom_l dim),
   uc_well_typed_l l ->
-  uc_well_typed_l (standard_to_IBM l).
+  uc_well_typed_l (full_to_IBM l).
 Proof.
   intros dim l WT.
-  unfold standard_to_IBM.
+  unfold full_to_IBM.
   induction WT.
   - constructor. assumption.
   - dependent destruction u; rewrite change_gate_set_cons; 
@@ -511,7 +529,41 @@ Proof.
     simpl; repeat constructor; assumption.
 Qed.
 
-(** RzQ gate set **)
+Lemma full_to_IBM_preserves_mapping : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph UIBM_CNOT (full_to_IBM l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold full_to_IBM.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+Lemma IBM_to_full_preserves_mapping : forall {dim} (l : IBM_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph UIBM_CNOT l ->
+  respects_constraints_directed is_in_graph U_CX (IBM_to_full l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold IBM_to_full.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+(** * RzQ gate set **)
 
 (* A perfect real -> rational function DOES NOT exist because some real
    numbers are irrational. However, I am going to assert such a function
@@ -532,7 +584,7 @@ Definition U3 {dim} a b c q : RzQ_ucom_l dim :=
   Rzq (R2Q_PI (c - (PI/2))) q :: H q :: Rzq (R2Q_PI a) q :: 
   H q :: Rzq (R2Q_PI (b + (PI/2))) q :: [].
 
-Definition standard_to_RzQ_u {dim} (g : gate_app Std_Unitary dim) : RzQ_ucom_l dim :=
+Definition full_to_RzQ_u {dim} (g : gate_app Full_Unitary dim) : RzQ_ucom_l dim :=
   match g with
   | App1 U_I m              => [Rzq zero_Q m]
   | App1 U_X m              => [RzQGateSet.X m]
@@ -558,7 +610,7 @@ Definition standard_to_RzQ_u {dim} (g : gate_app Std_Unitary dim) : RzQ_ucom_l d
   | _ => [] (* unreachable *)
   end.
 
-Definition RzQ_to_standard_u {dim} (g : gate_app RzQ_Unitary dim) : standard_ucom_l dim :=
+Definition RzQ_to_full_u {dim} (g : gate_app RzQ_Unitary dim) : full_ucom_l dim :=
   match g with
   | App1 URzQ_H m       => [App1 U_H m]
   | App1 URzQ_X m       => [App1 U_X m]
@@ -567,15 +619,15 @@ Definition RzQ_to_standard_u {dim} (g : gate_app RzQ_Unitary dim) : standard_uco
   | _ => [] (* unreachable *)
   end.
 
-Definition standard_to_RzQ {dim} (l : standard_ucom_l dim) : RzQ_ucom_l dim := 
-  change_gate_set standard_to_RzQ_u l.
+Definition full_to_RzQ {dim} (l : full_ucom_l dim) : RzQ_ucom_l dim := 
+  change_gate_set full_to_RzQ_u l.
 
-Definition RzQ_to_standard {dim} (l : RzQ_ucom_l dim) : standard_ucom_l dim := 
-  change_gate_set RzQ_to_standard_u l.
+Definition RzQ_to_full {dim} (l : RzQ_ucom_l dim) : full_ucom_l dim := 
+  change_gate_set RzQ_to_full_u l.
 
 Lemma RzQ_to_base1 : forall {dim} (u : RzQ_Unitary 1) n,
   RzQGateSet.to_base u [n] (one_elem_list n) ≡ 
-    StdList.list_to_ucom (RzQ_to_standard_u (@App1 _ dim u n)).
+    FullList.list_to_ucom (RzQ_to_full_u (@App1 _ dim u n)).
 Proof.
   intros dim u n.
   dependent destruction u; simpl; rewrite SKIP_id_r; reflexivity.
@@ -583,22 +635,22 @@ Qed.
 
 Lemma RzQ_to_base2 : forall {dim} (u : RzQ_Unitary 2) m n,
   RzQGateSet.to_base u (m :: n :: []) (two_elem_list m n) ≡ 
-    StdList.list_to_ucom (RzQ_to_standard_u (@App2 _ dim u m n)).
+    FullList.list_to_ucom (RzQ_to_full_u (@App2 _ dim u m n)).
 Proof.
   intros dim u m n.
   dependent destruction u; simpl; rewrite SKIP_id_r; reflexivity.
 Qed.
 
 Lemma RzQ_list_to_ucom : forall {dim} (l : RzQ_ucom_l dim),
-  RzQList.list_to_ucom l ≡ StdList.list_to_ucom (RzQ_to_standard l).
+  RzQList.list_to_ucom l ≡ FullList.list_to_ucom (RzQ_to_full l).
 Proof.
   intros.
   induction l.
   reflexivity.
   simpl.
-  unfold RzQ_to_standard. 
+  unfold RzQ_to_full. 
   rewrite change_gate_set_cons.
-  rewrite StdList.list_to_ucom_append.
+  rewrite FullList.list_to_ucom_append.
   destruct a.
   rewrite RzQ_to_base1, IHl.
   reflexivity.
@@ -607,23 +659,23 @@ Proof.
   dependent destruction r.
 Qed.
 
-Lemma RzQ_to_standard_equiv : forall {dim} (l l' : RzQ_ucom_l dim),
+Lemma RzQ_to_full_equiv : forall {dim} (l l' : RzQ_ucom_l dim),
   RzQGateSet.RzQList.uc_equiv_l l l' ->
-  StdList.uc_equiv_l (RzQ_to_standard l) (RzQ_to_standard l').
+  FullList.uc_equiv_l (RzQ_to_full l) (RzQ_to_full l').
 Proof.
   intros dim l l' H.
-  unfold StdList.uc_equiv_l.
+  unfold FullList.uc_equiv_l.
   unfold RzQGateSet.RzQList.uc_equiv_l in H.
   rewrite 2 RzQ_list_to_ucom in H.
   assumption.
 Qed.
 
-Lemma RzQ_to_standard_cong : forall {dim} (l l' : RzQ_ucom_l dim),
+Lemma RzQ_to_full_cong : forall {dim} (l l' : RzQ_ucom_l dim),
   RzQGateSet.RzQList.uc_cong_l l l' ->
-  StdList.uc_cong_l (RzQ_to_standard l) (RzQ_to_standard l').
+  FullList.uc_cong_l (RzQ_to_full l) (RzQ_to_full l').
 Proof.
   intros dim l l' H.
-  unfold StdList.uc_equiv_l.
+  unfold FullList.uc_equiv_l.
   unfold RzQGateSet.RzQList.uc_cong_l in H.
   unfold uc_cong in H.
   rewrite 2 RzQ_list_to_ucom in H.
@@ -682,21 +734,21 @@ Qed.
 Lemma Q2R_1_PI : Q2R 1 * PI = PI.
 Proof. unfold Q2R; simpl. lra. Qed.
 
-Lemma RzQ_to_standard_inv : forall {dim} (l : standard_ucom_l dim),
-  StdList.uc_cong_l (RzQ_to_standard (standard_to_RzQ l)) l.
+Lemma RzQ_to_full_inv : forall {dim} (l : full_ucom_l dim),
+  FullList.uc_cong_l (RzQ_to_full (full_to_RzQ l)) l.
 Proof.
   intros dim l.
   induction l.
   reflexivity.
-  unfold standard_to_RzQ, RzQ_to_standard.
+  unfold full_to_RzQ, RzQ_to_full.
   rewrite change_gate_set_cons.
   rewrite change_gate_set_app.
   rewrite IHl.
   rewrite cons_to_app.
-  StdList.apply_app_congruence_cong.
-  destruct a; dependent destruction s; 
+  FullList.apply_app_congruence_cong.
+  destruct a; dependent destruction f; 
   unfold change_gate_set; simpl; try reflexivity.
-  all: unfold StdList.uc_cong_l; simpl; repeat rewrite <- uc_cong_assoc.
+  all: unfold FullList.uc_cong_l; simpl; repeat rewrite <- uc_cong_assoc.
   all: unfold one_Q, half_Q, three_halves_Q, quarter_Q, seven_quarters_Q.
   all: try (apply uc_equiv_cong;
             repeat rewrite Q2R_1_2_PI; repeat rewrite Q2R_3_2_PI;
@@ -739,12 +791,12 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma standard_to_RzQ_WT : forall {dim} (l : standard_ucom_l dim),
+Lemma full_to_RzQ_WT : forall {dim} (l : full_ucom_l dim),
   uc_well_typed_l l ->
-  uc_well_typed_l (standard_to_RzQ l).
+  uc_well_typed_l (full_to_RzQ l).
 Proof.
   intros dim l WT.
-  unfold standard_to_RzQ.
+  unfold full_to_RzQ.
   induction WT.
   - constructor. assumption.
   - dependent destruction u; rewrite change_gate_set_cons; 
@@ -755,7 +807,168 @@ Proof.
     simpl; repeat constructor; assumption.
 Qed.
 
-(* Every gate in the program satisfies some predicate p. *)
+Lemma full_to_RzQ_preserves_mapping : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph URzQ_CNOT (full_to_RzQ l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold full_to_RzQ.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+Lemma RzQ_to_full_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph URzQ_CNOT l ->
+  respects_constraints_directed is_in_graph U_CX (RzQ_to_full l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold RzQ_to_full.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+(** * Mapping gate set **)
+
+Definition decompose_to_cnot_and_swap_u {dim} (g : gate_app Full_Unitary dim) : full_ucom_l dim :=
+  match g with
+  | App2 U_CZ m n     => App1 U_H n :: App2 U_CX m n :: App1 U_H n :: []
+  | App3 U_CCX m n p  => App1 U_H p :: App2 U_CX n p :: App1 U_Tdg p :: 
+                        App2 U_CX m p :: App1 U_T p :: App2 U_CX n p :: 
+                        App1 U_Tdg p :: App2 U_CX m p :: App2 U_CX m n :: 
+                        App1 U_Tdg n :: App2 U_CX m n :: App1 U_T m :: 
+                        App1 U_T n :: App1 U_T p :: App1 U_H p :: [] 
+  | App3 U_CCZ m n p  => App2 U_CX n p :: App1 U_Tdg p :: 
+                        App2 U_CX m p :: App1 U_T p :: App2 U_CX n p :: 
+                        App1 U_Tdg p :: App2 U_CX m p :: App2 U_CX m n :: 
+                        App1 U_Tdg n :: App2 U_CX m n :: App1 U_T m :: 
+                        App1 U_T n :: App1 U_T p :: []
+  | g => [g]
+  end.
+
+Definition full_to_map_u {dim} (g : gate_app Full_Unitary dim) : gate_app (Map_Unitary (Full_Unitary 1)) dim :=
+  match g with
+  | App1 u m         => App1 (UMap_U u) m
+  | App2 U_CX m n    => App2 UMap_CNOT m n
+  | App2 U_SWAP m n  => App2 UMap_SWAP m n
+  | _ => App1 (UMap_U U_I) 0 (* unreachable *)
+  end.
+
+Definition full_to_map {dim} (l : full_ucom_l dim) : map_ucom_l (Full_Unitary 1) dim := 
+  change_gate_set (fun g => map full_to_map_u (decompose_to_cnot_and_swap_u g)) l.
+
+Definition map_to_full_u {dim} (g : gate_app (Map_Unitary (Full_Unitary 1)) dim) : full_ucom_l dim :=
+  match g with
+  | App1 (UMap_U u) m    => [App1 u m]
+  | App2 UMap_CNOT m n   => [App2 U_CX m n]
+  | App2 UMap_SWAP m n   => [App2 U_SWAP m n]
+  | _ => [] (* unreachable *)
+  end.
+
+Definition map_to_full {dim} (l : map_ucom_l (Full_Unitary 1) dim) : full_ucom_l dim := 
+  change_gate_set map_to_full_u l.
+
+Lemma map_to_full_inv : forall {dim} (l : full_ucom_l dim),
+  FullList.uc_equiv_l (map_to_full (full_to_map l)) l.
+Proof.
+  intros dim l.
+  induction l.
+  reflexivity.
+  unfold full_to_map, map_to_full.
+  rewrite change_gate_set_cons.
+  rewrite change_gate_set_app.
+  rewrite IHl.
+  rewrite cons_to_app.
+  FullList.apply_app_congruence.
+  destruct a; dependent destruction f; 
+  unfold change_gate_set; simpl; try reflexivity.
+  all: unfold FullList.uc_equiv_l; simpl;
+    repeat rewrite <- useq_assoc; reflexivity.
+Qed.
+
+Lemma full_to_map_WT : forall {dim} (l : full_ucom_l dim),
+  uc_well_typed_l l ->
+  uc_well_typed_l (full_to_map l).
+Proof.
+  intros dim l WT.
+  unfold full_to_map.
+  induction WT.
+  - constructor. assumption.
+  - dependent destruction u; rewrite change_gate_set_cons; 
+    simpl; repeat constructor; assumption.
+  - dependent destruction u; rewrite change_gate_set_cons; 
+    simpl; repeat constructor; assumption.
+  - dependent destruction u; rewrite change_gate_set_cons; 
+    simpl; repeat constructor; assumption.
+Qed.
+
+Lemma map_to_full_preserves_mapping_undirected : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_undirected is_in_graph l ->
+  respects_constraints_undirected is_in_graph (map_to_full l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold map_to_full.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_undirected_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_undirected_app; auto.
+  dependent destruction u; constructor.
+  assumption. constructor. assumption. constructor.
+Qed.
+
+Lemma map_to_full_preserves_mapping_directed : forall {dim} (l : map_ucom_l (Full_Unitary 1) dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph UMap_CNOT l ->
+  respects_constraints_directed is_in_graph U_CX (map_to_full l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold map_to_full.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_directed_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_directed_app; auto.
+  repeat constructor.
+  assumption.
+Qed.
+
+Lemma full_to_map_preserves_mapping_undirected : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_undirected is_in_graph l ->
+  respects_constraints_undirected is_in_graph (full_to_map l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold full_to_map.
+  induction l.
+  constructor.
+  rewrite change_gate_set_cons. 
+  inversion H; subst.
+  apply respects_constraints_undirected_app; auto.
+  dependent destruction u; repeat constructor.
+  apply respects_constraints_undirected_app; auto.
+  dependent destruction u; repeat apply res_und_app2; try assumption. 
+  constructor. 
+  constructor. constructor. assumption. constructor. constructor.
+  constructor.
+Qed.
+
+(** * Check that every gate in the program satisfies some predicate **)
 
 Definition forall_gates {U : nat -> Set} {dim} (p : gate_app U dim -> Prop) (l : gate_list U dim) :=
   forall g, In g l -> p g.
@@ -792,8 +1005,10 @@ Proof.
   apply in_app_or in Hg as [Hg | Hg]; auto.
 Qed.
 
-(* Transform program in the standard gate set to only use CNOT + 1q gates *)
-Definition decompose_to_cnot_u {dim} (g : gate_app Std_Unitary dim) : standard_ucom_l dim :=
+(** * Other gate set conversions **)
+
+(* Transform program in the full gate set to only use CNOT + 1q gates *)
+Definition decompose_to_cnot_u {dim} (g : gate_app Full_Unitary dim) : full_ucom_l dim :=
   match g with
   | App2 U_CZ m n     => App1 U_H n :: App2 U_CX m n :: App1 U_H n :: []
   | App2 U_SWAP m n   => App2 U_CX m n :: App2 U_CX n m :: App2 U_CX m n :: []
@@ -810,24 +1025,16 @@ Definition decompose_to_cnot_u {dim} (g : gate_app Std_Unitary dim) : standard_u
   | g => [g]
   end.
 
-Definition decompose_to_cnot {dim} (l : standard_ucom_l dim) :=
+Definition decompose_to_cnot {dim} (l : full_ucom_l dim) :=
   change_gate_set decompose_to_cnot_u l.
 
-Definition only_cnots {dim} (g : gate_app Std_Unitary dim) :=
+Definition only_cnots {dim} (g : gate_app Full_Unitary dim) :=
   match g with
   | App2 U_CZ _ _ | App2 U_SWAP _ _ | App3 U_CCX _ _ _ | App3 U_CCZ _ _ _ => False
   | _ => True
   end.
 
-(* Tactic for eliminating impossible cases, like a U_CZ gate in a program
-   that satisfies forall_gates only_cnots *)
-Ltac impossible_gate :=
-  match goal with
-  | H : forall_gates ?p (?g :: _) |- _ => 
-      assert (p g) by (apply H; left; reflexivity); contradiction
-  end.
-
-Lemma decompose_to_cnot_gates : forall {dim} (l : standard_ucom_l dim),
+Lemma decompose_to_cnot_gates : forall {dim} (l : full_ucom_l dim),
   forall_gates only_cnots (decompose_to_cnot l).
 Proof.
   intros dim l.
@@ -839,13 +1046,13 @@ Proof.
   - rewrite change_gate_set_cons.
     intros g H.
     apply in_app_or in H as [H | H].
-    destruct a; dependent destruction s.
+    destruct a; dependent destruction f.
     all: simpl in H; repeat destruct H as [H | H]; try rewrite <- H; 
          simpl; auto; try contradiction. 
 Qed.
 
-Lemma decompose_to_cnot_sound : forall {dim} (l : standard_ucom_l dim),
-  StdList.uc_equiv_l (decompose_to_cnot l) l.
+Lemma decompose_to_cnot_sound : forall {dim} (l : full_ucom_l dim),
+  FullList.uc_equiv_l (decompose_to_cnot l) l.
 Proof.
   intros dim l.
   unfold decompose_to_cnot.
@@ -853,40 +1060,40 @@ Proof.
   - rewrite change_gate_set_nil.
     reflexivity.
   - rewrite change_gate_set_cons.
-    unfold StdList.uc_equiv_l in *.
+    unfold FullList.uc_equiv_l in *.
     simpl.
-    rewrite StdList.list_to_ucom_append.
+    rewrite FullList.list_to_ucom_append.
     destruct a; apply useq_congruence; try apply IHl;
-      dependent destruction s; simpl; 
+      dependent destruction f; simpl; 
       repeat rewrite <- useq_assoc; rewrite SKIP_id_r; 
       reflexivity.
 Qed.
 
-Lemma decompose_to_cnot_WT : forall {dim} (l : standard_ucom_l dim),
+Lemma decompose_to_cnot_WT : forall {dim} (l : full_ucom_l dim),
   uc_well_typed_l l -> uc_well_typed_l (decompose_to_cnot l).
 Proof.
   intros dim l WT.
-  eapply StdList.uc_equiv_l_implies_WT.
+  eapply FullList.uc_equiv_l_implies_WT.
   symmetry.
   apply decompose_to_cnot_sound.
   assumption.
 Qed.
 
-Definition convert_to_ibm {dim} (l : standard_ucom_l dim) : standard_ucom_l dim := 
-  IBM_to_standard (standard_to_IBM l).
+Definition convert_to_ibm {dim} (l : full_ucom_l dim) : full_ucom_l dim := 
+  IBM_to_full (full_to_IBM l).
 
-Definition only_ibm {dim} (g : gate_app Std_Unitary dim) :=
+Definition only_ibm {dim} (g : gate_app Full_Unitary dim) :=
   match g with
   | App1 (U_U1 _) _ | App1 (U_U2 _ _) _ | App1 (U_U3 _ _ _) _ | App2 U_CX _ _ => True
   | _ => False
   end.
 
-Lemma convert_to_ibm_gates : forall {dim} (l : standard_ucom_l dim),
+Lemma convert_to_ibm_gates : forall {dim} (l : full_ucom_l dim),
   forall_gates only_ibm (convert_to_ibm l).
 Proof.
   intro dim.
-  assert (H : forall (l : IBM_ucom_l dim), forall_gates only_ibm (IBM_to_standard l)).
-  { unfold IBM_to_standard.
+  assert (H : forall (l : IBM_ucom_l dim), forall_gates only_ibm (IBM_to_full l)).
+  { unfold IBM_to_full.
     induction l.
     - rewrite change_gate_set_nil.
       intros g H.
@@ -901,25 +1108,36 @@ Proof.
   apply H.  
 Qed.
 
-Lemma convert_to_ibm_sound : forall {dim} (l : standard_ucom_l dim),
-  StdList.uc_equiv_l (convert_to_ibm l) l.
-Proof. intros. apply IBM_to_standard_inv. Qed.
+Lemma convert_to_ibm_sound : forall {dim} (l : full_ucom_l dim),
+  FullList.uc_equiv_l (convert_to_ibm l) l.
+Proof. intros. apply IBM_to_full_inv. Qed.
 
-Definition convert_to_rzq {dim} (l : standard_ucom_l dim) : standard_ucom_l dim := 
-  RzQ_to_standard (standard_to_RzQ l).
+Lemma convert_to_ibm_preserves_mapping : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph U_CX (convert_to_ibm l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold convert_to_ibm.
+  apply IBM_to_full_preserves_mapping.
+  apply full_to_IBM_preserves_mapping.
+  assumption.
+Qed.
 
-Definition only_rzq {dim} (g : gate_app Std_Unitary dim) :=
+Definition convert_to_rzq {dim} (l : full_ucom_l dim) : full_ucom_l dim := 
+  RzQ_to_full (full_to_RzQ l).
+
+Definition only_rzq {dim} (g : gate_app Full_Unitary dim) :=
   match g with
   | App1 U_H _ | App1 U_X _ | App1 (U_Rzq _) _ | App2 U_CX _ _ => True
   | _ => False
   end.
 
-Lemma convert_to_rzq_gates : forall {dim} (l : standard_ucom_l dim),
+Lemma convert_to_rzq_gates : forall {dim} (l : full_ucom_l dim),
   forall_gates only_rzq (convert_to_rzq l).
 Proof.
   intro dim.
-  assert (H : forall (l : RzQ_ucom_l dim), forall_gates only_rzq (RzQ_to_standard l)).
-  { unfold RzQ_to_standard.
+  assert (H : forall (l : RzQ_ucom_l dim), forall_gates only_rzq (RzQ_to_full l)).
+  { unfold RzQ_to_full.
     induction l.
     - rewrite change_gate_set_nil.
       intros g H.
@@ -934,12 +1152,23 @@ Proof.
   apply H.  
 Qed.
 
-Lemma convert_to_rzq_sound : forall {dim} (l : standard_ucom_l dim),
-  StdList.uc_cong_l (convert_to_rzq l) l.
-Proof. intros. apply RzQ_to_standard_inv. Qed.
+Lemma convert_to_rzq_sound : forall {dim} (l : full_ucom_l dim),
+  FullList.uc_cong_l (convert_to_rzq l) l.
+Proof. intros. apply RzQ_to_full_inv. Qed.
+
+Lemma convert_to_rzq_preserves_mapping : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_directed is_in_graph U_CX l ->
+  respects_constraints_directed is_in_graph U_CX (convert_to_rzq l).
+Proof.
+  intros dim l is_in_graph H.
+  unfold convert_to_rzq.
+  apply RzQ_to_full_preserves_mapping.
+  apply full_to_RzQ_preserves_mapping.
+  assumption.
+Qed.
 
 (* Replace Rzq gates with I, Z, S, Sdg, T, Tdg, or Rz gates. *)
-Definition replace_rzq_u {dim} (g : gate_app Std_Unitary dim) : standard_ucom_l dim :=
+Definition replace_rzq_u {dim} (g : gate_app Full_Unitary dim) : full_ucom_l dim :=
   match g with
   | App1 (U_Rzq q) m => 
       if Qeq_bool q zero_Q then [App1 U_I m]
@@ -952,10 +1181,10 @@ Definition replace_rzq_u {dim} (g : gate_app Std_Unitary dim) : standard_ucom_l 
   | g => [g]
   end.
 
-Definition replace_rzq {dim} (l : standard_ucom_l dim) :=
+Definition replace_rzq {dim} (l : full_ucom_l dim) :=
   change_gate_set replace_rzq_u l.
 
-Definition no_rzq {dim} (g : gate_app Std_Unitary dim) :=
+Definition no_rzq {dim} (g : gate_app Full_Unitary dim) :=
   match g with
   | App1 (U_Rzq _) _ => False
   | _ => True
@@ -972,7 +1201,7 @@ Ltac destruct_Qeq_bool :=
   | H : (_ == _)%Q |- _ => apply Qeq_eqR in H; try rewrite H
   end.
 
-Lemma replace_rzq_gates : forall {dim} (l : standard_ucom_l dim),
+Lemma replace_rzq_gates : forall {dim} (l : full_ucom_l dim),
   forall_gates no_rzq (replace_rzq l).
 Proof.
   intros dim l.
@@ -984,15 +1213,15 @@ Proof.
   - rewrite change_gate_set_cons.
     intros g H.
     apply in_app_or in H as [H | H].
-    destruct a; dependent destruction s.
+    destruct a; dependent destruction f.
     all: simpl in H.
     all: destruct_Qeq_bool.
     all: repeat destruct H as [H | H]; try rewrite <- H.
     all: simpl; auto; try contradiction.
 Qed.
 
-Lemma replace_rzq_sound : forall {dim} (l : standard_ucom_l dim),
-  StdList.uc_equiv_l (replace_rzq l) l.
+Lemma replace_rzq_sound : forall {dim} (l : full_ucom_l dim),
+  FullList.uc_equiv_l (replace_rzq l) l.
 Proof.
   intros dim l.
   unfold replace_rzq.
@@ -1000,11 +1229,11 @@ Proof.
   - rewrite change_gate_set_nil.
     reflexivity.
   - rewrite change_gate_set_cons.
-    unfold StdList.uc_equiv_l in *.
+    unfold FullList.uc_equiv_l in *.
     simpl.
-    rewrite StdList.list_to_ucom_append.
+    rewrite FullList.list_to_ucom_append.
     destruct a; apply useq_congruence; try apply IHl;
-      dependent destruction s; simpl;
+      dependent destruction f; simpl;
       repeat rewrite <- useq_assoc; try rewrite SKIP_id_r; try reflexivity.
     destruct_Qeq_bool; simpl; rewrite SKIP_id_r.
     unfold zero_Q.
@@ -1034,97 +1263,7 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma standard_to_IBM_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
-  respects_constraints_directed is_in_graph U_CX l ->
-  respects_constraints_directed is_in_graph UIBM_CNOT (standard_to_IBM l).
-Proof.
-  intros dim l is_in_graph H.
-  unfold standard_to_IBM.
-  induction l.
-  constructor.
-  rewrite change_gate_set_cons. 
-  inversion H; subst.
-  apply respects_constraints_directed_app; auto.
-  dependent destruction u; repeat constructor.
-  apply respects_constraints_directed_app; auto.
-  repeat constructor.
-  assumption.
-Qed.
-
-Lemma IBM_to_standard_preserves_mapping : forall {dim} (l : IBM_ucom_l dim) (is_in_graph : nat -> nat -> bool),
-  respects_constraints_directed is_in_graph UIBM_CNOT l ->
-  respects_constraints_directed is_in_graph U_CX (IBM_to_standard l).
-Proof.
-  intros dim l is_in_graph H.
-  unfold IBM_to_standard.
-  induction l.
-  constructor.
-  rewrite change_gate_set_cons. 
-  inversion H; subst.
-  apply respects_constraints_directed_app; auto.
-  dependent destruction u; repeat constructor.
-  apply respects_constraints_directed_app; auto.
-  repeat constructor.
-  assumption.
-Qed.
-
-Lemma standard_to_RzQ_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
-  respects_constraints_directed is_in_graph U_CX l ->
-  respects_constraints_directed is_in_graph URzQ_CNOT (standard_to_RzQ l).
-Proof.
-  intros dim l is_in_graph H.
-  unfold standard_to_RzQ.
-  induction l.
-  constructor.
-  rewrite change_gate_set_cons. 
-  inversion H; subst.
-  apply respects_constraints_directed_app; auto.
-  dependent destruction u; repeat constructor.
-  apply respects_constraints_directed_app; auto.
-  repeat constructor.
-  assumption.
-Qed.
-
-Lemma RzQ_to_standard_preserves_mapping : forall {dim} (l : RzQ_ucom_l dim) (is_in_graph : nat -> nat -> bool),
-  respects_constraints_directed is_in_graph URzQ_CNOT l ->
-  respects_constraints_directed is_in_graph U_CX (RzQ_to_standard l).
-Proof.
-  intros dim l is_in_graph H.
-  unfold RzQ_to_standard.
-  induction l.
-  constructor.
-  rewrite change_gate_set_cons. 
-  inversion H; subst.
-  apply respects_constraints_directed_app; auto.
-  dependent destruction u; repeat constructor.
-  apply respects_constraints_directed_app; auto.
-  repeat constructor.
-  assumption.
-Qed.
-
-Lemma convert_to_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
-  respects_constraints_directed is_in_graph U_CX l ->
-  respects_constraints_directed is_in_graph U_CX (convert_to_rzq l).
-Proof.
-  intros dim l is_in_graph H.
-  unfold convert_to_rzq.
-  apply RzQ_to_standard_preserves_mapping.
-  apply standard_to_RzQ_preserves_mapping.
-  assumption.
-Qed.
-
-Lemma convert_to_ibm_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
-  respects_constraints_directed is_in_graph U_CX l ->
-  respects_constraints_directed is_in_graph U_CX (convert_to_ibm l).
-Proof.
-  intros dim l is_in_graph H.
-  unfold convert_to_ibm.
-  apply IBM_to_standard_preserves_mapping.
-  apply standard_to_IBM_preserves_mapping.
-  assumption.
-Qed.
-
-Lemma replace_rzq_preserves_mapping : forall {dim} (l : standard_ucom_l dim) (is_in_graph : nat -> nat -> bool),
+Lemma replace_rzq_preserves_mapping : forall {dim} (l : full_ucom_l dim) (is_in_graph : nat -> nat -> bool),
   respects_constraints_directed is_in_graph U_CX l ->
   respects_constraints_directed is_in_graph U_CX (replace_rzq l).
 Proof.

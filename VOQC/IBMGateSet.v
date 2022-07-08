@@ -84,7 +84,18 @@ Definition match_gate {n} (u u' : U n) : bool :=
   | _, _ => false
   end.
 
-Lemma match_gate_implies_eq : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
+Lemma match_gate_refl : forall {n} (u : U n), match_gate u u = true.
+Proof. 
+  intros. 
+  dependent destruction u; simpl; auto.
+  apply Reqb_eq; auto.
+  apply andb_true_iff.
+  split; apply Reqb_eq; auto.
+  apply andb_true_iff.
+  split; [apply andb_true_iff; split |]; apply Reqb_eq; auto.
+Qed.
+
+Lemma match_gate_implies_equiv : forall {n} dim (u u' : U n) (qs : list nat) (pf : List.length qs = n), 
   match_gate u u' = true -> uc_equiv (@to_base n dim u qs pf) (to_base u' qs pf).
 Proof.
   intros.
@@ -118,7 +129,7 @@ Definition CNOT {dim} q1 q2 := @App2 _ dim UIBM_CNOT q1 q2.
 Definition IBM_ucom dim := ucom IBM_Unitary dim.
 Definition IBM_ucom_l dim := gate_list IBM_Unitary dim.
 
-(* Some more complicated gate decompositions - used in StandardGateSet.v *)
+(* Some more complicated gate decompositions - used in FullGateSet.v *)
 Definition H {dim} q := @App1 _ dim (UIBM_U2 0 PI) q.
 Definition X {dim} q := @App1 _ dim (UIBM_U3 PI 0 PI) q.
 Definition Rz {dim} a q := @App1 _ dim (UIBM_U1 a) q.
@@ -250,6 +261,7 @@ Proof.
     replace (- (cos ((a + b') * / 2) * sin ((a + b') * / 2))) 
       with (- sin (2 * ((a + b') / 2)) / 2).
     replace (2 * ((a + b') / 2)) with (a + b') by lra.
+    rewrite (Rplus_comm b'). 
     lca.
     rewrite sin_2a. lra.
     rewrite cos_2a_sin. lra.
@@ -258,14 +270,13 @@ Proof.
   - replace ((a + b' - PI) / 2 + (b + PI / 2)) with ((a + b') / 2 + b) by lra.
     replace ((PI - (a + b')) / 2) with (PI / 2 - (a + b') / 2) by lra.
     rewrite <- 2 Cmult_assoc, (Cmult_comm (cos _)).
-    rewrite <- Cmult_plus_distr_r.
     unfold Cexp.
     rewrite sin_shift.
     unfold Cplus, Cmult; simpl; autorewrite with R_db.
     replace (PI * / 2 * / 2) with (PI / 4) by lra.
     rewrite cos_PI4, sin_PI4.
     replace ((1 / √ 2) * (1 / √ 2))%R with (1 / 2)%R.
-    rewrite Rplus_assoc, (Rplus_comm b b'), <- Rplus_assoc.
+    rewrite <- Rplus_assoc, (Rplus_comm b' a).
     rewrite 2 (cos_plus _ b).
     rewrite 2 (sin_plus _ b).
     repeat rewrite Rminus_unfold.
@@ -289,15 +300,14 @@ Proof.
     nonzero.
   - replace ((a + b' - PI) / 2 + (a' + PI / 2)) with ((a + b') / 2 + a') by lra.
     replace ((PI - (a + b')) / 2) with (PI / 2 - (a + b') / 2) by lra.
-    rewrite <- 2 Cmult_assoc, (Cmult_comm (cos _)).
-    rewrite <- Cmult_plus_distr_r.
     unfold Cexp.
     rewrite sin_shift.
     unfold Cplus, Cmult; simpl; autorewrite with R_db.
     replace (PI * / 2 * / 2) with (PI / 4) by lra.
     rewrite cos_PI4, sin_PI4.
+    repeat rewrite Rmult_assoc.
     replace ((1 / √ 2) * (1 / √ 2))%R with (1 / 2)%R.
-    rewrite (Rplus_comm a' b'), <- Rplus_assoc.
+    rewrite (Rplus_comm _ a), (Rplus_comm a' b'), <- Rplus_assoc.
     rewrite 2 (cos_plus _ a').
     rewrite 2 (sin_plus _ a').
     repeat rewrite Rminus_unfold.
@@ -332,7 +342,7 @@ Proof.
     rewrite cos_PI4, sin_PI4.
     repeat rewrite Rmult_assoc.
     replace ((1 / √ 2) * (1 / √ 2))%R with (1 / 2)%R.
-    replace (a + (b + (a' + b'))) with (a + b' + (a' + b)) by lra.
+    replace (a' + (b' + (a + b))) with (a + b' + (a' + b)) by lra.
     rewrite 2 (cos_plus _ (a' + b)).
     rewrite 2 (sin_plus _ (a' + b)).
     repeat rewrite Rminus_unfold.
@@ -345,7 +355,6 @@ Proof.
     replace (cos (a * / 2 + b' * / 2) * sin (a * / 2 + b' * / 2))
       with (sin (2 * ((a + b') / 2)) / 2).
     replace (2 * ((a + b') / 2)) with (a + b') by lra.
-    rewrite (Rplus_comm b a'). 
     lca.
     rewrite sin_2a. 
     replace (a * / 2 + b' * / 2) with ((a + b') / 2) by lra.

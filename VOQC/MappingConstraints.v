@@ -41,6 +41,75 @@ Proof.
   constructor; auto.
 Qed.
 
+Lemma respects_constraints_undirected_app_split : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph,
+  respects_constraints_undirected is_in_graph (l1 ++ l2) ->
+  respects_constraints_undirected is_in_graph l2 /\
+  respects_constraints_undirected is_in_graph l1.
+Proof.
+  intros U dim l1 l2 is_in_graph H.
+  split.
+  - induction l1.
+    simpl in H.
+    assumption.
+    rewrite <- app_comm_cons in H.
+    destruct a; remember (l1 ++ l2) as l; inversion H; subst;
+      try (apply IHl1 in H2); auto.
+  - induction l1.
+    constructor.
+    rewrite <- app_comm_cons in H;   
+      destruct a; remember (l1 ++ l2) as l; inversion H; subst.
+    constructor; auto.
+    constructor; auto.
+Qed.
+
+Lemma rev_respects_constraints_undirected:
+  forall {U dim} (l : gate_list U dim) (is_in_graph : nat -> nat -> bool),
+    respects_constraints_undirected is_in_graph l ->
+    respects_constraints_undirected is_in_graph (rev l).
+Proof.
+  intros.
+  induction l; simpl; auto.
+  destruct a; inversion H; subst.
+  apply respects_constraints_undirected_app; auto.
+  constructor. constructor.
+  apply respects_constraints_undirected_app; auto.
+  constructor. auto. constructor.
+Qed. 
+
+Lemma rev_append_respects_constraints_undirected:
+  forall {U dim} (l1 l2 : gate_list U dim) (is_in_graph : nat -> nat -> bool),
+    respects_constraints_undirected is_in_graph l1 ->
+    respects_constraints_undirected is_in_graph l2 ->
+    respects_constraints_undirected is_in_graph (rev_append l1 l2).
+Proof.
+  intros.
+  rewrite rev_append_rev.
+  apply respects_constraints_undirected_app.
+  apply rev_respects_constraints_undirected.
+  assumption.
+  assumption.
+Qed.
+
+Lemma next_two_qubit_gate_respects_constraints_undirected:
+  forall {U dim} (l l1 l2: gate_list U dim) g (q q1 q2 : nat) (is_in_graph : nat -> nat -> bool),
+  respects_constraints_undirected is_in_graph l ->
+  next_two_qubit_gate l q = Some (l1, g, q1, q2, l2) ->
+  respects_constraints_undirected is_in_graph l1
+    /\ respects_constraints_undirected is_in_graph l2 /\ 
+      (is_in_graph q1 q2 = true \/ is_in_graph q2 q1 = true).
+Proof.
+  intros.
+  apply ntqg_preserves_structure in H0. 
+  rewrite H0 in H. 
+  eapply respects_constraints_undirected_app_split in H.
+  destruct H as [rcdapp rcdl1].
+  eapply respects_constraints_undirected_app_split in rcdapp.
+  destruct rcdapp as [rcdl2 rcdapp2].
+  repeat split; auto.
+  inversion rcdapp2; subst.
+  assumption.
+Qed.
+
 Lemma respects_constraints_directed_app : forall {U dim} (l1 l2 : gate_list U dim) is_in_graph cnot,
   respects_constraints_directed is_in_graph cnot l1 ->
   respects_constraints_directed is_in_graph cnot l2 ->
@@ -74,10 +143,10 @@ Proof.
    + rewrite <- app_comm_cons in H;   
    destruct a; remember (l1 ++ l2) as l; inversion H; subst.
    * apply IHl1 in H3.
-     apply res_dir_app1 with (u0 := u) (n0 := n).
+     eapply res_dir_app1.
      assumption.
    * apply IHl1 in H7.
-     apply res_dir_app2 with (n1 := n) (n2 := n0) in H7.
+     eapply res_dir_app2.
      assumption.
      assumption.
 Qed.
@@ -311,18 +380,17 @@ Proof.
   apply respects_constraints_directed_app.
   apply rev_respects_constraints.
   assumption.
-  apply try_rewrites_respects_constraints with (l':= g) (l0:= l) (rules := cancel_rules).
-  assumption.
+  eapply try_rewrites_respects_constraints.
+  apply respects_l.
   intros r Hr l0 l' Hrcdl H0.
-  apply H1 with (r := r) (l := l0); try assumption.
+  apply H1 with (r := r) (l := l0); try apply Hr; try assumption.
   assumption.
   destruct (try_rewrites2 l commute_rules) eqn:rewr2; try discriminate.
   destruct p.
   assert (respects_constraints_directed is_in_graph cnot g
           /\ respects_constraints_directed is_in_graph cnot g0). 
-  apply try_rewrites2_respects_constraints with (l0 := l) (l1:= g) (l2:= g0)
-                                                (rules := commute_rules).
-  assumption.
+  eapply try_rewrites2_respects_constraints. 
+  apply respects_l.
   intros r Hr l0 l1 l2 Hrcdl0 rls. 
   eapply H2. apply Hr. apply Hrcdl0. apply rls. apply rewr2. 
   apply IHn with (l := g0) (acc := (rev_append g acc)).

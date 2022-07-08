@@ -1,7 +1,7 @@
 Require Export Reals.ROrderedType.
 Require Export Reals.Ratan.
-Require Import QWIRE.Quantum.
-Require Import QWIRE.Proportional.
+Require Import QuantumLib.Quantum.
+Require Import QuantumLib.Proportional.
 
 Local Open Scope R_scope.
 
