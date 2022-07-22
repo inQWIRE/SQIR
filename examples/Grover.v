@@ -85,23 +85,23 @@ Definition grover i := X n ; cast (npar (S n) U_H) dim ; niter i body.
 
 (* Uniform superposition. *)
 Definition ψ := 
-  / √ (2 ^ n) .* vsum (2 ^ n) (fun k : nat => basis_vector (2 ^ n) k).
+  / √ (2 ^ n) .* big_sum (fun k : nat => basis_vector (2 ^ n) k) (2 ^ n).
 
 (* The "good" subspace satisfying f. *)
 Definition ψg := 
   / (√ INR k) .*
-  vsum (2 ^ n) 
-       (fun k => if f k 
-              then (basis_vector (2 ^ n) k)
-              else Zero).
+  big_sum (fun k => if f k 
+                 then (basis_vector (2 ^ n) k)
+                 else Zero)
+          (2 ^ n).
 
 (* The "bad" subspace not satisfying f. *)
 Definition ψb := 
   / (√ (2 ^ n - INR k)) .*
-  vsum (2 ^ n) 
-       (fun k => if f k 
-              then Zero
-              else (basis_vector (2 ^ n) k)).
+  big_sum (fun k => if f k 
+                 then Zero
+                 else (basis_vector (2 ^ n) k))
+          (2 ^ n).
 
 Lemma WF_ψ : WF_Matrix ψ.
 Proof.
@@ -113,7 +113,7 @@ Lemma WF_ψg : WF_Matrix ψg.
 Proof.
   unfold ψg.
   apply WF_scale.
-  apply vsum_WF.
+  apply WF_Msum.
   intros.
   destruct (f i); auto with wf_db.
 Qed.
@@ -122,7 +122,7 @@ Lemma WF_ψb : WF_Matrix ψb.
 Proof.
   unfold ψb.
   apply WF_scale.
-  apply vsum_WF.
+  apply WF_Msum.
   intros.
   destruct (f i); auto with wf_db.
 Qed.
@@ -154,7 +154,11 @@ Proof.
   apply f_equal2.
   autorewrite with R_db.
   reflexivity.
-  rewrite <- vsum_plus.
+
+(* should be able to use <- big_sum_plus here *)
+Set Printing All.
+  rewrite <- (@big_sum_plus (Matrix _ _) (M_is_monoid _ _) (M_is_group _ _) (M_is_comm_group _ _)).
+
   apply vsum_eq.
   intros.
   destruct (f i); lma.

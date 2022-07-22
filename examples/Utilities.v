@@ -248,14 +248,14 @@ Proof.
 Qed.
 
 Lemma vsum_count0 : forall n (f : nat -> bool),
-  vsum n (fun i : nat => if f i then I 1 else Zero) = 
+  big_sum (fun i : nat => if f i then I 1 else Zero) n = 
     INR (count0 f n) .* I 1.
 Proof.
   unfold count0.
   intros.
   induction n. 
   lma.
-  rewrite vsum_extend_r, IHn.
+  rewrite <- big_sum_extend_r, IHn.
   simpl count.
   rewrite plus_INR.
   destruct (f n); simpl; lma.

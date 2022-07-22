@@ -88,6 +88,16 @@ Proof.
   bdestruct_all; reflexivity.
 Qed.
 
+
+Lemma Mscale_Msum_distr_r : forall {d1 d2} n (c : C) (f : nat -> Matrix d1 d2),
+  big_sum (fun i => c .* (f i)) n = c .* big_sum f n.
+Proof.
+  intros d1 d2 n c f.
+  induction n; simpl. lma.
+  rewrite Mscale_plus_distr_r, IHn. reflexivity.
+Qed.
+
+
 (* In the Deutsch Jozsa problem we care about the probability of measuring ∣0...0⟩
    in the first n qubits (the last qubit always ends up in the ∣1⟩ state). *)
 Local Opaque pow.
@@ -118,10 +128,10 @@ Proof.
   replace (hadamard × ∣1⟩) with ∣ - ⟩ by solve_matrix.
   restore_dims. 
   distribute_scale. 
-  rewrite kron_vsum_distr_r.
+  rewrite kron_Msum_distr_r.
   replace (2 ^ S n)%nat with (2 ^ n * 2)%nat by unify_pows_two.
-  rewrite 2 Mmult_vsum_distr_l. 
-  erewrite vsum_eq.  
+  rewrite 2 Mmult_Msum_distr_l. 
+  erewrite big_sum_eq_bounded.  
   2: { intros i Hi.
        restore_dims.
        distribute_plus.
@@ -145,22 +155,22 @@ Proof.
        rewrite <- Mscale_kron_dist_l.
        reflexivity.
        destruct (f i); simpl; lma. }
-  rewrite <- kron_vsum_distr_r.
+  rewrite <- kron_Msum_distr_r.
   rewrite <- Mscale_kron_dist_l.
   specialize (@partial_meas_tensor n 1) as H1.
   repeat rewrite Nat.pow_1_r in H1.
   rewrite H1; clear H1.
   2:{ split. auto with wf_db. apply bra1ket1. }
-  unfold probability_of_outcome.
+  unfold probability_of_outcome, inner_product.
   distribute_scale.
-  rewrite Mmult_vsum_distr_l.
-  erewrite vsum_eq.
+  rewrite Mmult_Msum_distr_l.
+  erewrite big_sum_eq_bounded.
   2: { intros i Hi.
        rewrite basis_f_to_vec_alt by assumption.
        rewrite H_kron_n_spec by assumption.
        distribute_scale.
-       rewrite Mmult_vsum_distr_l.
-       erewrite vsum_unique. 
+       rewrite Mmult_Msum_distr_l.
+       erewrite big_sum_unique. 
        2: { exists O. 
             rewrite kron_n_0_is_0_vector.
             split; [lia | split].
@@ -179,8 +189,7 @@ Proof.
        rewrite Cmult_comm.
        rewrite <- Mscale_assoc.
        reflexivity. }
-  rewrite <- Mscale_vsum_distr_r.
-  rewrite Mscale_vsum_distr_l.
+  rewrite Mscale_Msum_distr_r, Mscale_Msum_distr_l.
   restore_dims.
   distribute_scale.
   unfold scale, I; simpl.
@@ -368,6 +377,7 @@ Proof.
   unfold accept', probability_of_outcome. 
   apply RtoC_inj.
   rewrite <- RtoC_pow, Cmod_sqr.  
+  unfold inner_product.
   restore_dims.
   rewrite <- Mmult_assoc.
   rewrite (deutsch_jozsa_success_probability' P). 
@@ -388,7 +398,8 @@ Proof.
   intros n U P [H1 H2].
   unfold reject', probability_of_outcome. 
   apply RtoC_inj.
-  rewrite <- RtoC_pow, Cmod_sqr.  
+  rewrite <- RtoC_pow, Cmod_sqr.
+  unfold inner_product.
   restore_dims.
   rewrite <- Mmult_assoc.
   rewrite (deutsch_jozsa_success_probability' P).
