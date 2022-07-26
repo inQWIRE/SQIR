@@ -44,7 +44,7 @@ let run_circuit n c _ =
   (* simulate circuit using run_circuit.py *)
   let _ = printf "Simulating circuit, this will take a little while...\n%!" in
   let start = Unix.gettimeofday () in
-  let inc = Unix.open_process_in "python3.9 run_circuit.py shor.qasm" in
+  let inc = Unix.open_process_in "python run_circuit.py shor.qasm" in
   (* read measurement outcome from console *)
   try 
     let line = input_line inc in
