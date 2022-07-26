@@ -88,16 +88,6 @@ Proof.
   bdestruct_all; reflexivity.
 Qed.
 
-
-Lemma Mscale_Msum_distr_r : forall {d1 d2} n (c : C) (f : nat -> Matrix d1 d2),
-  big_sum (fun i => c .* (f i)) n = c .* big_sum f n.
-Proof.
-  intros d1 d2 n c f.
-  induction n; simpl. lma.
-  rewrite Mscale_plus_distr_r, IHn. reflexivity.
-Qed.
-
-
 (* In the Deutsch Jozsa problem we care about the probability of measuring ∣0...0⟩
    in the first n qubits (the last qubit always ends up in the ∣1⟩ state). *)
 Local Opaque pow.

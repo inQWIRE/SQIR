@@ -114,15 +114,15 @@ Lemma QPE_semantics_full : forall k n (c : base_ucom n) z (ψ : Vector (2 ^ n)) 
 Proof.
   intros k n c z ψ δ Hn Hk WT [WFM PS] [Hδlt Hδgt] θ Heig.
   rewrite QPE_simplify with (θ := θ) by assumption.
-  unfold probability_of_outcome.
+  unfold probability_of_outcome, inner_product.
   restore_dims. rewrite kron_adjoint.
   distribute_scale.
   rewrite kron_mixed_product.
   rewrite PS.
   Msimpl. 
-  rewrite Mmult_vsum_distr_l. 
+  rewrite Mmult_Msum_distr_l. 
   specialize (funbool_to_nat_bound k z) as Hz.
-  rewrite vsum_unique with (v:=(Σ (fun j => Cexp (2 * PI * δ) ^ j) (2 ^ k)) .* I 1).
+  rewrite (big_sum_unique ((Σ (fun j => Cexp (2 * PI * δ) ^ j) (2 ^ k)) .* I 1)).
   2: { exists (funbool_to_nat k z).
        repeat split.  
        assumption.

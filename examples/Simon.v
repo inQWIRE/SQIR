@@ -50,10 +50,11 @@ Lemma simon_simplify : forall {n : nat} (U : base_ucom (2 * n)) f x,
    integer_oracle U f ->
    (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
    @Mmult _ _ (1 ^ (2 * n))%nat ((basis_vector (2 ^ n) x)† ⊗ I (2 ^ n)) ((uc_eval (simon U)) × ((2 * n) ⨂ ∣0⟩)) = 
-   / 2 ^ n .* vsum (2 ^ n) 
+   / 2 ^ n .* big_sum
                 (fun i => (-1) 
                    ^ Nat.b2n (product (nat_to_funbool n i) (nat_to_funbool n x) n)
-                  .* basis_vector (2 ^ n) (f i)).
+                  .* basis_vector (2 ^ n) (f i))
+                (2 ^ n).
 Proof.
   intros.
   unfold simon.
@@ -76,21 +77,22 @@ Proof.
   restore_dims.
   distribute_scale.
   replace (1 ^ n)%nat with 1%nat.
-  rewrite kron_vsum_distr_r.
+  rewrite kron_Msum_distr_r.
   replace (2 ^ (2 * n))%nat with  (2 ^ n * 2 ^ n)%nat.
-  repeat rewrite Mmult_vsum_distr_l.
+  repeat rewrite Mmult_Msum_distr_l.
   rewrite kron_n_0_is_0_vector.
-  erewrite vsum_eq.
+  erewrite big_sum_eq_bounded.
   2: { intros i Hi. 
        unfold integer_oracle in H1.
        replace ((2 ^ n) * (2 ^ n))%nat with (2 ^ (2 * n))%nat. 
+       replace (1 * 1)%nat with 1%nat by lia.
        rewrite (H1 i) by assumption.
        Qsimpl.
        replace (basis_vector (2 ^ n) i) with (f_to_vec n (nat_to_funbool n i)). 
        rewrite H_kron_n_spec by assumption. 
        distribute_scale.
-       rewrite Mmult_vsum_distr_l.
-       erewrite vsum_unique.
+       rewrite Mmult_Msum_distr_l.
+       erewrite big_sum_unique.
        2:{ exists x.
            split; [assumption | split].
            distribute_scale. 
@@ -108,8 +110,8 @@ Proof.
        reflexivity.
        unify_pows_two. }
   repeat rewrite Nat.mul_1_l.
-  rewrite 2 Mscale_vsum_distr_r. 
-  apply vsum_eq. 
+  rewrite <- 2 Mscale_Msum_distr_r. 
+  apply big_sum_eq_bounded. 
   intros i Hi. 
   distribute_scale.
   apply f_equal2; try reflexivity.
@@ -136,21 +138,21 @@ Lemma norm_vsum : forall n d c f,
   (forall x, (x < n)%nat -> (f x < d)%nat) ->  (* f is bounded *)
   (forall x y, (x < n)%nat -> (y < n)%nat ->   (* f is injective *)
           f x = f y -> x = y) -> 
-  norm (vsum n (fun i : nat => (c i) .* basis_vector d (f i))) = 
+  norm (big_sum (fun i : nat => (c i) .* basis_vector d (f i)) n) = 
     √ (fst (Σ (fun i => ((c i) ^* * c i)%C) n)).
 Proof.
   intros n d c f ? ? ?.
   unfold norm.
-  rewrite Mmult_adj_vsum_distr_l.
-  erewrite vsum_eq.
-  2: { intros. rewrite Mmult_vsum_distr_l. reflexivity. }
-  rewrite vsum_diagonal.
-  erewrite vsum_eq.
+  rewrite Msum_adjoint, Mmult_Msum_distr_r.
+  erewrite big_sum_eq_bounded.
+  2: { intros. rewrite Mmult_Msum_distr_l. reflexivity. }
+  rewrite big_sum_diagonal.
+  erewrite big_sum_eq_bounded.
   2: { intros. 
        distribute_adjoint. distribute_scale. 
        rewrite basis_vector_product_eq; auto. 
        reflexivity. }
-  rewrite Mscale_vsum_distr_l.
+  rewrite Mscale_Msum_distr_l.
   unfold scale, I; simpl.
   autorewrite with R_db.
   reflexivity.
@@ -371,12 +373,12 @@ Qed.
 
 Lemma bitwise_xor_vsum_reorder: forall (n m s :nat) (f:nat -> nat) a, 
   (n > 0)%nat -> (s > 0)%nat -> (s < 2 ^ n)%nat ->
-  vsum (2 ^ n) (fun i : nat => (a i) .* basis_vector m (f (bitwise_xor n i s))) =
-  vsum (2 ^ n) (fun i : nat => (a (bitwise_xor n i s)) .* basis_vector m (f i)).
+  big_sum (fun i : nat => (a i) .* basis_vector m (f (bitwise_xor n i s))) (2 ^ n) =
+  big_sum (fun i : nat => (a (bitwise_xor n i s)) .* basis_vector m (f i)) (2 ^ n).
 Proof.
   intros n m s f0. intros.
   rewrite vsum_reorder with (f:= (fun i => bitwise_xor n i s)).
-  erewrite vsum_eq.
+  erewrite big_sum_eq_bounded.
   2: { intros.
        rewrite (bitwise_xor_comm _ (bitwise_xor _ _ _)).
        rewrite (bitwise_xor_comm _ _ s) at 2.
@@ -392,21 +394,21 @@ Lemma vsum_to_injective : forall n s f a,
   (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
   (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
        f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
-  vsum (2 ^ n) (fun i : nat => 
+  big_sum (fun i : nat => 
                (a i + a (bitwise_xor n i s)) .* 
-                  (basis_vector (2 * 2 ^ n) ((to_injective n s f) i))) =
-    (∣0⟩ .+ ∣1⟩) ⊗ vsum (2 ^ n) (fun i : nat => a i .* basis_vector (2 ^ n) (f i)).
+                  (basis_vector (2 * 2 ^ n) ((to_injective n s f) i))) (2 ^ n) =
+    (∣0⟩ .+ ∣1⟩) ⊗ big_sum (fun i : nat => a i .* basis_vector (2 ^ n) (f i)) (2 ^ n).
 Proof.
   intros.
-  erewrite vsum_eq.
+  erewrite big_sum_eq_bounded.
   2: { intros.
        rewrite -> Mscale_plus_distr_l.
        reflexivity. }
-  rewrite vsum_plus.
+  rewrite Msum_plus.
   rewrite <- bitwise_xor_vsum_reorder; auto.
-  rewrite <- vsum_plus.
-  erewrite vsum_eq.
-  2: { intros.
+  rewrite <- Msum_plus.
+  erewrite big_sum_eq_bounded.
+  2: { intros i Hi.
        rewrite <- Mscale_plus_distr_r.
        unfold to_injective.
        rewrite <- bitwise_xor_assoc, bitwise_xor_eq.
@@ -445,7 +447,7 @@ Proof.
        apply bitwise_xor_0_l.
        1,2: assumption. 
        apply bitwise_xor_bound. }
-  rewrite <- kron_vsum_distr_l.
+  rewrite <- kron_Msum_distr_l.
   reflexivity.
 Qed.
 
@@ -454,11 +456,11 @@ Lemma norm_vsum_rewrite: forall (n s:nat) (f:nat -> nat) a,
   (forall x, (x < 2 ^ n)%nat -> (f x < 2 ^ n)%nat) ->
   (forall x y, (x < 2 ^ n)%nat -> (y < 2 ^ n)%nat -> 
        f x = f y <-> (bitwise_xor n x y = s \/ x = y)) ->
-  norm (vsum (2 ^ n) (fun i : nat => (a i) .* (basis_vector (2 ^ n) (f i)))) = 
+  norm (big_sum (fun i : nat => (a i) .* (basis_vector (2 ^ n) (f i))) (2 ^ n)) = 
     (sqrt (1 / 2)) * 
-       norm (vsum (2 ^ n) (fun i : nat => 
+       norm (big_sum (fun i : nat => 
                (a i + a (bitwise_xor n i s)) .* 
-                 (basis_vector (2 * 2 ^ n) ((to_injective n s f) i)))).
+                 (basis_vector (2 * 2 ^ n) ((to_injective n s f) i))) (2 ^ n)).
 Proof.
   intros. 
   rewrite vsum_to_injective by assumption.

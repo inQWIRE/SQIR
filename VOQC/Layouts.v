@@ -1,4 +1,4 @@
-Require Import QuantumLib.Prelim QuantumLib.Permutations.
+Require Import QuantumLib.Prelim QuantumLib.Permutations QuantumLib.Summation.
 Require Import FMapAVL FMapFacts.
 
 Local Close Scope C_scope.
@@ -682,9 +682,8 @@ Definition list_to_layout l : layout :=
   list_to_layout' l 0.
 
 (** Examples *)
-
 Definition test_layout : layout := 
-  add (add (add (add (add empty 4 1) 3 0) 2 3) 1 2) 0 4.
+  add (add (add (add (add empty 4 1) 3 0) 2 3) 1%nat 2) 0 4.
 
 (* Expected output: [Some 3; Some 4; Some 1; Some 2; Some 0] *)
 Compute (layout_to_list 5 test_layout).
@@ -759,7 +758,7 @@ Proof.
   induction l; intros.
   simpl.
   rewrite find_log_empty.
-  destruct (x - i); reflexivity.
+  destruct (x - i)%nat; reflexivity.
   simpl.
   bdestruct (i =? x). subst.
   rewrite find_log_add_eq.
@@ -767,7 +766,7 @@ Proof.
   reflexivity.
   rewrite find_log_add_neq by auto.
   rewrite IHl by lia.
-  replace (x - i) with (S (x - S i)) by lia.
+  replace (x - i)%nat with (S (x - S i))%nat by lia.
   reflexivity.
 Qed.
 
@@ -869,16 +868,15 @@ Qed.
 
 Lemma count_occ_bounded : forall l n,
   (forall x : nat, List.In x l -> x < n) ->
-  Nsum n (fun x => count_occ Nat.eq_dec l x) = length l.
+  big_sum (fun x => count_occ Nat.eq_dec l x) n = length l.
 Proof.
   induction l; intros n H.
-  simpl. rewrite Nsum_zero.
-  reflexivity.
-  simpl.
+  simpl. rewrite big_sum_0; auto.
   assert (H0 : forall x : nat, List.In x l -> x < n).
   { intros. apply H. simpl. right. auto. }
   apply IHl in H0.
   clear IHl.
+  simpl.
   rewrite <- H0.
   assert (Ha : a < n).
   apply H. left. auto.
@@ -891,21 +889,13 @@ Proof.
   destruct (Nat.eq_dec n n); try lia.
   rewrite <- Nat.add_succ_r.
   apply f_equal2; auto.
-  apply Nsum_eq.
+  apply big_sum_eq_bounded.
   intros x Hx.
   destruct (Nat.eq_dec n x); lia.
   rewrite IHn by lia.
   rewrite <- Nat.add_succ_l.
   apply f_equal2; auto.
   destruct (Nat.eq_dec a n); lia.
-Qed.
-
-Lemma Nsum_const : forall a n, Nsum n (fun _ => a) = n * a.
-Proof.
-  intros a n.
-  induction n.
-  reflexivity.
-  simpl. rewrite IHn. lia.
 Qed.
 
 Lemma list_bounded_no_dups : forall l x,
@@ -929,13 +919,15 @@ Proof.
     subst. clear IHn Hx.
     rewrite contra. clear contra.
     rewrite Nat.add_0_r.
-    assert (Nsum n (fun x : nat => count_occ Nat.eq_dec l x) <= Nsum n (fun _ => 1)).
+    assert (big_sum (fun x : nat => count_occ Nat.eq_dec l x) n <= big_sum (fun _ => 1%nat) n).
     apply Nsum_le.
     intros x Hx. apply ND.
-    rewrite Nsum_const in H.
+    rewrite big_sum_constant in H.
+    rewrite times_n_nat in H.
     lia.
     specialize (ND n).
     lia. }
+  simpl in H.
   lia.
 Qed.
 

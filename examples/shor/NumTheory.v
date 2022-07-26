@@ -1,5 +1,6 @@
 Require Import Psatz ZArith Znumtheory Btauto.
 Require Import QuantumLib.Prelim QuantumLib.VectorStates.
+Require Import Utilities.
 
 (* ============================= *)
 (* =   Number theory results   = *)
@@ -76,11 +77,11 @@ Qed.
 
 Lemma Nsum_delete : forall n x f,
   (x < n)%nat ->
-  (Nsum n (update f x 0) + f x = Nsum n f)%nat.
+  (big_sum (update f x 0) n + f x = big_sum f n)%nat.
 Proof.
   induction n; intros. lia.
   simpl. bdestruct (x =? n). subst. rewrite update_index_eq.
-  rewrite Nsum_eq with (g := f). lia.
+  rewrite (big_sum_eq_bounded _ f). lia.
   intros. rewrite update_index_neq. easy. lia.
   assert (x < n)%nat by lia. apply IHn with (f := f) in H1. rewrite <- H1.
   rewrite update_index_neq. lia. easy.
@@ -90,7 +91,7 @@ Qed.
 Fixpoint Nsum2d (n m : nat) (f : nat -> nat -> nat) :=
   match n with
   | O => O
-  | S n' => Nsum2d n' m f + Nsum m (fun i => f n' i)
+  | S n' => Nsum2d n' m f + big_sum (fun i => f n' i) m
   end.
 
 Lemma Nsum2d_eq :
@@ -99,7 +100,7 @@ Lemma Nsum2d_eq :
     Nsum2d n m f = Nsum2d n m g.
 Proof.
   intros. induction n. easy.
-  simpl. rewrite Nsum_eq with (g := (fun i : nat => g n i)).
+  simpl. rewrite (big_sum_eq_bounded _ (fun i : nat => g n i)).
   rewrite IHn. lia.
   intros. apply H; lia.
   intros. apply H; lia.
@@ -111,8 +112,8 @@ Lemma Nsum2d_allzero :
     Nsum2d n m f = 0.
 Proof.
   intros. induction n. easy.
-  simpl. rewrite IHn. rewrite Nsum_eq with (g := (fun _ => 0)).
-  rewrite Nsum_zero. lia.
+  simpl. rewrite IHn. rewrite (big_sum_eq_bounded _ (fun _ => 0)).
+  rewrite big_sum_0; auto.
   intros. apply H; lia.
   intros. apply H; lia.
 Qed.
@@ -122,14 +123,15 @@ Lemma Nsum2d_scale :
     Nsum2d n m (fun i j => d * f i j) = d * Nsum2d n m f.
 Proof.
   intros. induction n. simpl. flia.
-  simpl. rewrite IHn. rewrite Nsum_scale. 
+  simpl. rewrite IHn. 
   rewrite Nat.mul_add_distr_l.
+  rewrite Nsum_scale. 
   reflexivity.
 Qed.
 
 Lemma Nsum2d_eq_d2 :
   forall n m f d,
-    (forall x, Nsum m (fun i => f x i) = d) ->
+    (forall x, big_sum (fun i => f x i) m = d) ->
     Nsum2d n m f = n * d.
 Proof.
   induction n; intros. easy.
@@ -147,13 +149,13 @@ Proof.
   assert (Nsum2d n m f <= Nsum2d n m g). {
     apply IHn. intros. apply H; lia.
   }
-  assert (Nsum m (f n) <= Nsum m (g n)). {
+  assert (big_sum (f n) m <= big_sum (g n) m). {
     apply Nsum_le. intros. apply H; lia.
   }
   apply Nat.add_le_mono; assumption.
 Qed.
 
-Definition Nsum2d' n m f := Nsum n (fun i => Nsum m (fun j => f i j)).
+Definition Nsum2d' n m (f : nat -> nat -> nat) := big_sum (fun i => big_sum (fun j => f i j) m) n.
 
 Lemma Nsum2d'_Nsum2d :
   forall n m f,
@@ -168,8 +170,8 @@ Lemma Nsum2d_swap_order :
     Nsum2d n m f = Nsum2d m n (fun i j => f j i).
 Proof.
   intros. do 2 rewrite <- Nsum2d'_Nsum2d.
-  induction n; unfold Nsum2d' in *. simpl. rewrite Nsum_zero. easy.
-  simpl. rewrite IHn. rewrite Nsum_add. reflexivity.
+  induction n; unfold Nsum2d' in *. simpl. rewrite big_sum_0; easy.
+  simpl. rewrite IHn. symmetry. apply Nsum_add.
 Qed.
 
 Definition Nsum2dmask n m f (t : nat -> nat -> bool) := Nsum2d n m (fun i j => if t i j then f i j else 0).
@@ -206,7 +208,7 @@ Lemma Nsum2dmask_delete_d2 :
 Proof.
   intros. unfold Nsum2dmask. simpl.
   rewrite Nsum2d_eq with (g := (fun i j : nat => if t i j then f i j else 0)).
-  rewrite Nsum_eq with (f := (fun i : nat => if upd2d t n y false n i then f n i else 0)) (g := update (fun i : nat => if t n i then f n i else 0) y 0).
+  rewrite (big_sum_eq_bounded (fun i : nat => if upd2d t n y false n i then f n i else 0) (update (fun i : nat => if t n i then f n i else 0) y 0)).
   rewrite plus_assoc_reverse. rewrite Nsum_delete. easy.
   easy.
   intros. bdestruct (y =? x). subst. rewrite upd2d_eq. rewrite update_index_eq. easy.
@@ -224,8 +226,8 @@ Proof.
   assert (x < n) by lia.
   unfold Nsum2dmask in *. simpl.
   assert (forall a b c, a + b + c = (a + c) + b) by (intros; lia).
-  rewrite H3. rewrite IHn by easy. rewrite Nsum_eq with (g := (fun i : nat => if t n i then f n i else 0)).
-  easy.
+  rewrite H3. rewrite IHn by easy. 
+  rewrite (big_sum_eq_bounded _ (fun i : nat => if t n i then f n i else 0)); auto.
   intros. rewrite upd2d_neq by lia. easy.
 Qed.
 
@@ -235,7 +237,9 @@ Lemma Nsum2dmask_allfalse :
     Nsum2dmask n m f t = 0.
 Proof.
   intros. unfold Nsum2dmask. induction n. easy.
-  simpl. rewrite IHn. rewrite Nsum_eq with (g := fun _ => 0). rewrite Nsum_zero. easy.
+  simpl. rewrite IHn. 
+  rewrite (big_sum_eq_bounded _ (fun _ => 0)). 
+  rewrite big_sum_constant. rewrite times_n_nat. easy.
   intros. rewrite H. easy. lia. easy.
   intros. apply H. lia. easy.
 Qed.
@@ -254,7 +258,7 @@ Lemma Nsum2dmask_bijection :
     (forall x, x < n -> let (i, j) := map x in i < p /\ j < q) ->
     (forall x, x < n -> let (i, j) := map x in f x = g i j) ->
     (forall x y, x < n -> y < n -> x <> y -> map x <> map y) ->
-    Nsum n f = Nsum2dmask p q g t.
+    big_sum f n = Nsum2dmask p q g t.
 Proof.
   induction n; intros.
   - assert (forall x y, x < p -> y < q -> t x y = false). {
@@ -308,14 +312,14 @@ Lemma Nsum2d_Nsum2dmask :
 Proof.
   induction n; intros. easy.
   unfold Nsum2dmask in *. simpl. rewrite IHn with (t := t).
-  symmetry. rewrite Nsum_eq with (g := (fun i : nat => f n i)). easy.
+  symmetry. rewrite (big_sum_eq_bounded _ (fun i : nat => f n i)). easy.
   intros. rewrite H by lia. easy.
   intros. apply H; lia.
 Qed.
 
 Lemma Nsum_Nsum2d :
   forall n f,
-    Nsum n f = Nsum2d 1 n (fun _ i => f i).
+    big_sum f n = Nsum2d 1 n (fun _ i => f i).
 Proof.
   intros. easy.
 Qed.
@@ -386,10 +390,10 @@ Proof.
 Qed.
 
 Lemma Nsum_coprime_linear :
-  forall p f a b,
+  forall p (f : nat -> nat) a b,
     a < p -> b < p -> 1 < p ->
     Nat.gcd a p = 1 ->
-    Nsum p (fun i => f ((i * a + b) mod p)) = Nsum p f.
+    big_sum (fun i => f ((i * a + b) mod p)%nat) p = big_sum f p.
 Proof.
   intros. rewrite Nsum_Nsum2d, Nsum2d_Nsum2dmask with (t := (fun _ _ => true)).
   2: intros; easy.

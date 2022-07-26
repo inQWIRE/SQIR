@@ -92,7 +92,7 @@ examples/shor/RCIR.vo: examples/shor/RCIR.v SQIR/UnitaryOps.vo
 examples/shor/Shor.vo: examples/shor/Shor.v examples/shor/QPEGeneral.vo examples/shor/ModMult.vo examples/shor/ContFrac.vo examples/shor/Reduction.vo
 	coqc $(COQ_OPTS) examples/shor/Shor.v
 
-examples/shor/NumTheory.vo: examples/shor/NumTheory.v 
+examples/shor/NumTheory.vo: examples/shor/NumTheory.v examples/Utilities.vo
 	coqc $(COQ_OPTS) examples/shor/NumTheory.v
 
 examples/shor/EulerTotient.vo: examples/shor/EulerTotient.v

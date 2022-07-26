@@ -22,7 +22,7 @@ Definition BasicSetting (a r N m n : nat) :=
 Definition basisPowerA (a r N n : nat) := basis_vector (2^n) (a^r mod N).
 Definition ω_neg (r : nat) := Cexp (-2 * PI / r)%R.
 Definition ψ (a r N j n : nat) :=
-  (1 / (√ r)%R) .* vsum r (fun x => (ω_neg r)^(j * x) .* (basisPowerA a x N n)).
+  (1 / (√ r)%R) .* big_sum (fun x => (ω_neg r)^(j * x) .* (basisPowerA a x N n)) r.
 
 (* Specification of the circuit implementing multiplication by a modulo N. *)
 Definition MultiplyCircuitProperty (a N n anc : nat) (c : base_ucom (n + anc)) : Prop :=
@@ -233,7 +233,7 @@ Lemma ψ_WF_matrix :
     BasicSetting a r N m n ->
     WF_Matrix (ψ a r N j n).
 Proof.
-  intros. unfold ψ. apply WF_scale. apply vsum_WF. intros. apply WF_scale. unfold basisPowerA. apply basis_vector_WF.
+  intros. unfold ψ. apply WF_scale. apply WF_Msum. intros. apply WF_scale. unfold basisPowerA. apply basis_vector_WF.
   assert (0 <= a^i mod N < N)%nat.
   { apply Nat.mod_bound_pos. lia.
     destruct H as [? [HOrder _]]. apply Order_N_lb in HOrder. lia. lia.
@@ -258,20 +258,23 @@ Proof.
   intros. split.
   - apply ψ_WF_matrix with (m := m); easy.
   - unfold ψ. rewrite Mscale_adj. rewrite Mscale_mult_dist_l. rewrite Mscale_mult_dist_r.
-    rewrite Mmult_vsum_distr_l.
-
-    replace (fun i : nat => (vsum r (fun x : nat => ω_neg r ^ (j * x) .* basisPowerA a x N n)) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)) with (fun i : nat => (vsum r (fun x : nat => (ω_neg r ^ (j * x) .* basisPowerA a x N n) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)))).
-    2:{ apply functional_extensionality. intro. symmetry. apply Mmult_adj_vsum_distr_l.
+    rewrite Mmult_Msum_distr_l.
+    replace (fun i : nat => (big_sum (fun x : nat => ω_neg r ^ (j * x) .* basisPowerA a x N n) r) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)) with (fun i : nat => (big_sum (fun x : nat => (ω_neg r ^ (j * x) .* basisPowerA a x N n) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)) r)).
+    2:{ apply functional_extensionality. intro. symmetry. 
+        rewrite Msum_adjoint, Mmult_Msum_distr_r. 
+        reflexivity.
     }
-    replace (fun i : nat => vsum r (fun x : nat => (ω_neg r ^ (j * x) .* basisPowerA a x N n) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n))) with (fun i : nat => vsum r (fun x : nat => ((ω_neg r ^ (j * x))^* * ω_neg r ^ (j * i)) .* ((basisPowerA a x N n) † × basisPowerA a i N n))).
-    2:{ apply functional_extensionality. intro. apply vsum_eq. intros.
+    replace (fun i : nat => big_sum (fun x : nat => (ω_neg r ^ (j * x) .* basisPowerA a x N n) † × (ω_neg r ^ (j * i) .* basisPowerA a i N n)) r) with (fun i : nat => big_sum (fun x : nat => ((ω_neg r ^ (j * x))^* * ω_neg r ^ (j * i)) .* ((basisPowerA a x N n) † × basisPowerA a i N n)) r).
+    2:{ apply functional_extensionality. intro. 
+        apply big_sum_eq_bounded. 
+        intros i Hi.
         rewrite Mscale_adj. rewrite Mscale_mult_dist_r.
         rewrite Mscale_mult_dist_l. rewrite Mscale_assoc.
         replace ((ω_neg r ^ (j * i)) ^* * ω_neg r ^ (j * x))%C with (ω_neg r ^ (j * x) * (ω_neg r ^ (j * i)) ^* )%C by lca.
         easy.
     }
     specialize (Pow_mod_ub a r N m n H) as Hpmub.
-    rewrite vsum_diagonal.
+    rewrite big_sum_diagonal.
     2:{ rename j into x. intros. unfold basisPowerA.
         rewrite basis_vector_product_neq. Msimpl. easy.
         apply Hpmub. apply Hpmub.
@@ -286,7 +289,7 @@ Proof.
         rewrite basis_vector_product_eq by (apply Hpmub).
         simpl. do 2 rewrite Cmult_1_r. Msimpl. easy.
     } 
-    rewrite vsum_constant.
+    rewrite Msum_constant.
     do 2 rewrite Mscale_assoc.    
     destruct H as [_ [[Hr _] _]]. apply lt_INR in Hr. simpl in Hr.
     rewrite <- RtoC_div by nonzero.
@@ -311,17 +314,17 @@ Qed.
 Lemma sum_of_ψ_is_one :
   forall a r N m n : nat,
     BasicSetting a r N m n ->
-    (1 / √r) .* vsum r (fun j => ψ a r N j n) = basis_vector (2^n) 1.
+    (1 / √r) .* big_sum (fun j => ψ a r N j n) r = basis_vector (2^n) 1.
 Proof.
   intros.
   destruct H as [? [[? _] _]]. (* we only need a few parts of H *)
   unfold ψ.
-  rewrite <- Mscale_vsum_distr_r.
+  rewrite Mscale_Msum_distr_r.
   rewrite Mscale_assoc.
-  rewrite vsum_swap_order.
-  erewrite vsum_eq.
-  2: { intros. rewrite Mscale_vsum_distr_l. reflexivity. }
-  erewrite vsum_unique.
+  rewrite big_sum_swap_order.
+  erewrite big_sum_eq_bounded.
+  2: { intros. rewrite Mscale_Msum_distr_l. reflexivity. }
+  erewrite big_sum_unique.
   2: { exists O.
        split. assumption.
        split.
@@ -354,50 +357,53 @@ Lemma MC_eigenvalue :
 Proof.
   intros. unfold ψ. 
   unfold BasicSetting in H. destruct H as [Ha [HOrder [HN1 HN2]]].
-  distribute_scale. rewrite kron_vsum_distr_r.
+  distribute_scale. rewrite kron_Msum_distr_r.
   replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
-  rewrite Mmult_vsum_distr_l.
+  rewrite Mmult_Msum_distr_l.
   unfold MultiplyCircuitProperty in H0. remember (uc_eval c) as U.
   replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two.
-  replace (vsum r (fun i : nat => U × (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0))) 
-    with (vsum r (fun i : nat => (ω_neg r ^ (j * i) .* basisPowerA a (i+1) N n ⊗ basis_vector (2^anc) 0))).
+  replace (big_sum (fun i : nat => U × (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0)) r) 
+    with (big_sum (fun i : nat => (ω_neg r ^ (j * i) .* basisPowerA a (i+1) N n ⊗ basis_vector (2^anc) 0)) r).
   2:{
     replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
-    apply vsum_eq. intros. distribute_scale. rewrite Mscale_mult_dist_r.
+    apply big_sum_eq_bounded. intros. distribute_scale. rewrite Mscale_mult_dist_r.
     unfold basisPowerA. restore_dims. rewrite H0. rewrite Nat.add_1_r. simpl. rewrite Nat.mul_mod_idemp_r. easy.
     (* N <> 0 *)
     destruct Ha. unfold not. intros. rewrite H3 in H2. easy.
     (* 0 <= a^i mod N < N *)
     apply Nat.mod_bound_pos. apply Nat.le_0_l. apply Nat.lt_trans with a. easy. easy. 
   }
-  replace (vsum r (fun i : nat => ω_neg r ^ (j * i) .* basisPowerA a (i + 1) N n ⊗ basis_vector (2^anc) 0))
-    with (vsum r (fun i : nat => Cexp (2 * PI * j / r) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0))).
-  rewrite <- Mscale_vsum_distr_r. restore_dims. rewrite Mscale_assoc. apply f_equal2. lca.
+  replace (big_sum (fun i : nat => ω_neg r ^ (j * i) .* basisPowerA a (i + 1) N n ⊗ basis_vector (2^anc) 0) r)
+    with (big_sum (fun i : nat => Cexp (2 * PI * j / r) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0)) r).
+  rewrite Mscale_Msum_distr_r. restore_dims. rewrite Mscale_assoc. apply f_equal2. lca.
   replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two. easy.
   destruct r. easy. 
-  rewrite vsum_extend_l. rewrite vsum_extend_r. rewrite Mplus_comm.
-  unfold shift.
-  assert (forall t (A B C D : Vector t), A = B -> C = D -> A .+ C = B .+ D).
-  { intros. rewrite H. rewrite H1. easy. }
-  apply H.   
-  - apply vsum_eq. intros. distribute_scale. unfold ω_neg. rewrite Cexp_pow. rewrite Cexp_pow.
-    rewrite <- Cexp_add. 
-    replace (2 * PI * j / S r + -2 * PI / S r * (j * (i + 1))%nat) with (-2 * PI / S r * (j * i)%nat).
-    easy. repeat rewrite mult_INR. rewrite plus_INR. simpl. lra.
-  - unfold basisPowerA. remember (S r) as r'. unfold ω_neg. simpl. destruct HOrder as [Hr [HO1 HO2]].
-    rewrite Nat.add_1_r. rewrite <- Heqr'. rewrite HO1. rewrite Nat.mod_small.
+  rewrite <- big_sum_extend_l. rewrite <- big_sum_extend_r.
+  remember (S r) as Sr.
+  simpl. rewrite Mplus_comm.
+  apply f_equal2.  
+  - apply big_sum_eq_bounded. intros i Hi. 
+    distribute_scale. unfold ω_neg. rewrite Cexp_pow. rewrite Cexp_pow.
+    rewrite Mscale_assoc.
+    rewrite <- Cexp_add.
+    replace (S i) with (i + 1)%nat by lia. 
+    replace (2 * PI * j / Sr + -2 * PI / Sr * (j * (i + 1))%nat) with (-2 * PI / Sr * (j * i)%nat).
+    reflexivity. 
+    subst Sr. repeat rewrite mult_INR. rewrite plus_INR. simpl. lra.
+  - unfold basisPowerA. unfold ω_neg. simpl. destruct HOrder as [Hr [HO1 HO2]].
+    rewrite Nat.add_1_r. rewrite <- HeqSr. rewrite HO1. rewrite Nat.mod_small.
     distribute_scale. rewrite Mscale_assoc. repeat rewrite Cexp_pow. rewrite <- Cexp_add.
-    rewrite <- (Cmult_1_l (Cexp (-2 * PI / r' * (j * r)%nat))). replace 1 with (1^j). rewrite <- RtoC_pow. 
+    rewrite <- (Cmult_1_l (Cexp (-2 * PI / Sr * (j * r)%nat))). replace 1 with (1^j). rewrite <- RtoC_pow. 
     rewrite <- Cexp_2PI. rewrite Cexp_pow. rewrite <- Cexp_add. repeat rewrite mult_INR.  simpl.
-    replace (2 * PI * j / r' + -2 * PI / r' * (j * 0)) with (2 * PI * j + -2 * PI / r' * (j * r)).
-    easy. simpl. rewrite Heqr'. rewrite <- Nat.add_1_r. repeat rewrite plus_INR. repeat rewrite Rdiv_unfold. simpl.
+    replace (2 * PI * j / Sr + -2 * PI / Sr * (j * 0)) with (2 * PI * j + -2 * PI / Sr * (j * r)).
+    easy. simpl. rewrite HeqSr. rewrite <- Nat.add_1_r. repeat rewrite plus_INR. repeat rewrite Rdiv_unfold. simpl.
     repeat rewrite Rmult_0_r. rewrite Rplus_0_r. replace (-2 * PI) with (2 * PI * -1) by lra. 
     repeat rewrite Rmult_assoc.
     repeat rewrite <- Rmult_plus_distr_l.
     replace (j + -1 * (/ (r + 1) * (j * r))) with (j * / (r + 1)). easy.
     rewrite <- (Rmult_1_r j) at 2. rewrite <- (Rinv_r (r+1)) at 2.
     rewrite Rmult_comm. lra. 
-    + replace (r+1) with (r+1%nat). rewrite <- plus_INR. rewrite Nat.add_1_r. rewrite <- Heqr'.
+    + replace (r+1) with (r+1%nat). rewrite <- plus_INR. rewrite Nat.add_1_r. rewrite <- HeqSr.
       apply lt_0_INR in Hr. apply Rlt_dichotomy_converse. right. easy. easy.
     + apply pow1.
     + destruct N. easy. destruct N. easy. lia. 
@@ -411,26 +417,27 @@ Lemma MMI_eigen :
 Proof.
   intros. unfold ψ. 
   unfold BasicSetting in H. destruct H as [Ha [HOrder [HN1 HN2]]].
-  distribute_scale. rewrite kron_vsum_distr_r.
+  distribute_scale. rewrite kron_Msum_distr_r.
   replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
-  rewrite Mmult_vsum_distr_l.
+  rewrite Mmult_Msum_distr_l.
   unfold ModMulImpl, MultiplyCircuitProperty in H0. 
   specialize (H0 k). remember (uc_eval (f k)) as U.
   replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two.
-  replace (vsum r (fun i : nat => U × (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0))) 
-    with (vsum r (fun i : nat => (ω_neg r ^ (j * i) .* basisPowerA a (i+(2^k)) N n ⊗ basis_vector (2^anc) 0))).
+  replace (big_sum (fun i : nat => U × (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0)) r) 
+    with (big_sum (fun i : nat => (ω_neg r ^ (j * i) .* basisPowerA a (i+(2^k)) N n ⊗ basis_vector (2^anc) 0)) r).
   2:{
     replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
-    apply vsum_eq. intros. distribute_scale. rewrite Mscale_mult_dist_r.
+    apply big_sum_eq_bounded. intros i Hi. 
+    distribute_scale. rewrite Mscale_mult_dist_r.
     unfold basisPowerA. restore_dims. rewrite H0. rewrite Nat.pow_add_r. rewrite Nat.mul_mod_idemp_r. rewrite Nat.mul_comm with (n := (a ^ i)%nat). easy.
     (* N <> 0 *)
     destruct Ha. unfold not. intros. lia.
     (* 0 <= a^i mod N < N *)
     apply Nat.mod_bound_pos. apply Nat.le_0_l. apply Nat.lt_trans with a. easy. easy. 
   }
-  replace (vsum r (fun i : nat => ω_neg r ^ (j * i) .* basisPowerA a (i + 2^k) N n ⊗ basis_vector (2^anc) 0))
-    with (vsum r (fun i : nat => Cexp (2 * PI * j / r * INR (2^k)) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0))).
-  rewrite <- Mscale_vsum_distr_r. restore_dims. rewrite Mscale_assoc. apply f_equal2. lca.
+  replace (big_sum (fun i : nat => ω_neg r ^ (j * i) .* basisPowerA a (i + 2^k) N n ⊗ basis_vector (2^anc) 0) r)
+    with (big_sum (fun i : nat => Cexp (2 * PI * j / r * INR (2^k)) .* (ω_neg r ^ (j * i) .* basisPowerA a i N n ⊗ basis_vector (2^anc) 0)) r).
+  rewrite Mscale_Msum_distr_r. restore_dims. rewrite Mscale_assoc. apply f_equal2. lca.
   replace (2^n * 2^anc)%nat with (2^(n+anc))%nat by unify_pows_two. easy.
   bdestruct (r =? 0). subst. easy.
   remember (fun i : nat => ((i + 2^k) mod r)%nat) as u.
@@ -452,7 +459,7 @@ Proof.
     specialize (Nat.mod_upper_bound (2^k)%nat r H). lia.
   }
   erewrite vsum_reorder.  2: apply H1.
-  rewrite Hequ. apply vsum_eq. intros. distribute_scale. apply f_equal2.
+  rewrite Hequ. apply big_sum_eq_bounded. intros i Hi. distribute_scale. apply f_equal2.
   replace (j * ((i + 2 ^ k) mod r))%nat with (((i + 2 ^ k) mod r) * j)%nat by lia.
   rewrite Cpow_mult. rewrite <- ω_neg_mod by easy. rewrite <- Cpow_mult.
   replace ((i + 2^k) * j)%nat with (j * 2^k + j * i)%nat by lia.
@@ -471,16 +478,15 @@ Lemma ψ_perp :
     (ψ a r N i n) † × (ψ a r N j n) = Zero.
 Proof.
   intros. unfold ψ. rewrite Mscale_adj. distribute_scale. rewrite <- Cmod_sqr.
-  rewrite Mmult_adj_vsum_distr_l. erewrite vsum_eq.
-  2:{ intros. apply Mmult_vsum_distr_l.
-  }
-  rewrite vsum_diagonal.
+  rewrite Msum_adjoint, Mmult_Msum_distr_r. erewrite big_sum_eq_bounded.
+  2:{ intros. apply Mmult_Msum_distr_l. }
+  rewrite big_sum_diagonal.
   2:{ intros. rewrite Mscale_adj. distribute_scale. unfold basisPowerA. rewrite basis_vector_product_neq. Msimpl. easy. apply Pow_mod_ub with (r:=r) (m:=m); easy. apply Pow_mod_ub with (r:=r) (m:=m); easy. apply Pow_diff_neq with (r:=r); try lia. 
       destruct H as [? _]. lia. 
       destruct H as [_ [? _]]. assumption.
   }
-  erewrite vsum_eq.
-  2:{ intros. rewrite Mscale_adj. distribute_scale. unfold basisPowerA. rewrite basis_vector_product_eq by (apply Pow_mod_ub with (r:=r) (m:=m); easy).
+  erewrite big_sum_eq_bounded.
+  2:{ intros i0 Hi0. rewrite Mscale_adj. distribute_scale. unfold basisPowerA. rewrite basis_vector_product_eq by (apply Pow_mod_ub with (r:=r) (m:=m); easy).
       rewrite ω_neg_cancel by nia.
       replace (j * i0 - i * i0)%nat with (i0 * (j - i))%nat.
       reflexivity. 
@@ -488,7 +494,7 @@ Proof.
       rewrite Nat.mul_sub_distr_r.
       reflexivity.
   }
-  rewrite Mscale_vsum_distr_l. rewrite ω_neg_sum_nonzero. Msimpl. easy.
+  rewrite Mscale_Msum_distr_l. rewrite ω_neg_sum_nonzero. Msimpl. easy.
   assert (0 < j - i < r)%nat by lia. destruct H1 as [Hl Hr]. apply lt_INR in Hl. apply lt_INR in Hr. simpl in Hl. lra.
 Qed.
 
@@ -727,6 +733,14 @@ Proof.
   rewrite kron_n_0_is_0_vector. apply MC_eigenvalue with (m:=m); easy.
 Qed.
 
+Lemma vsum_big_sum : forall {d n} (f : nat -> Vector d) x y,
+  big_sum f n x y = big_sum (fun i => f i x y) n.
+Proof.
+  intros d n f x y. induction n.
+  - easy.
+  - rewrite <- big_sum_extend_r. simpl. unfold Mplus. rewrite IHn. easy.
+Qed.
+
 Lemma full_meas_decomp : 
   forall {m n} (ψ : Vector (2^(m+n))) (ϕ1 : Vector (2^m)) (ϕ2 : Vector (2^n)),
     Pure_State_Vector ϕ2 ->
@@ -735,14 +749,14 @@ Lemma full_meas_decomp :
 Proof.
   intros m n ψ ϕ1 ϕ2 [HWF Hnorm]. 
   rewrite probability_of_outcome_comm. 
-  unfold probability_of_outcome.
+  unfold probability_of_outcome, inner_product.
   assert (T: forall x y, x = y -> (Cmod x ^ 2 = Cmod y ^ 2)%R).
   { intros. rewrite H. easy. }
   apply T. clear T.
-  replace (ϕ1 ⊗ ϕ2) with (ϕ1 ⊗ vsum (2^n) (fun i => (ϕ2 i O) .* basis_vector (2^n) i)).
-  rewrite kron_vsum_distr_l.
+  replace (ϕ1 ⊗ ϕ2) with (ϕ1 ⊗ big_sum (fun i => (ϕ2 i O) .* basis_vector (2^n) i) (2^n)).
+  rewrite kron_Msum_distr_l.
   rewrite <- Nat.pow_add_r. 
-  rewrite Mmult_vsum_distr_l.
+  rewrite Mmult_Msum_distr_l.
   rewrite vsum_big_sum. apply big_sum_eq. apply functional_extensionality. intros.
   rewrite Mscale_kron_dist_r. rewrite <- Mscale_mult_dist_r. easy.
   rewrite <- basis_vector_decomp; easy.
@@ -775,7 +789,7 @@ Proof.
   rewrite <- rewrite_norm.
   destruct H as [WF H]. rewrite H. simpl. rewrite Rmult_1_l.
   apply big_sum_eq_bounded. intros.
-  unfold probability_of_outcome.
+  unfold probability_of_outcome, inner_product.
   rewrite <- Cmod_Cconj. rewrite Cmod_adjoint. 
   rewrite Mmult_adjoint. rewrite adjoint_involutive.
   unfold pow.
@@ -793,18 +807,18 @@ Lemma QPE_MC_correct :
 Proof.
   intros. rewrite <- kron_n_0_is_0_vector.
   rewrite <- (sum_of_ψ_is_one a r N m) by easy.
-  rewrite Mscale_kron_dist_r. rewrite kron_vsum_distr_l. rewrite <- Nat.pow_add_r.
-  simpl. distribute_scale. rewrite kron_vsum_distr_r.
+  rewrite Mscale_kron_dist_r. rewrite kron_Msum_distr_l. rewrite <- Nat.pow_add_r.
+  simpl. distribute_scale. rewrite kron_Msum_distr_r.
   replace (2^(m+n)*2^anc)%nat with (2^(m + (n+anc)))%nat by unify_pows_two.
-  rewrite Mmult_vsum_distr_l.
+  rewrite Mmult_Msum_distr_l.
   eapply Rge_trans. apply partial_meas_prob_ge_full_meas.
   replace (2^(n+anc))%nat with (2^n * 2^anc)%nat by unify_pows_two.
   apply ψ_basis_vector_pure_state with (m := m) (j := k). apply H. apply pow_positive. lia.
-  unfold probability_of_outcome.
+  unfold probability_of_outcome, inner_product.
   restore_dims. distribute_scale.
-  rewrite kron_adjoint. do 2 rewrite Nat.pow_add_r. rewrite Mmult_vsum_distr_l.
-  erewrite vsum_unique.
-  2:{ exists k. split. lia. split. reflexivity. intros.
+  rewrite kron_adjoint. do 2 rewrite Nat.pow_add_r. rewrite Mmult_Msum_distr_l.
+  erewrite big_sum_unique.
+  2:{ exists k. split. lia. split. reflexivity. intros j ? ?.
       assert (T: forall {o m n} (A : Matrix o m) (B C : Matrix m n), B = C -> A × B = A × C) by (intros o m0 n0 A B C HT; rewrite HT; easy).
       erewrite T.
       2:{ rewrite <- Nat.pow_add_r.
@@ -856,11 +870,11 @@ Proof.
   Local Opaque QPE_var pow.
   intros. remember (f O) as c.
   rewrite <- (sum_of_ψ_is_one a r N m) by easy.
-  distribute_scale. rewrite kron_vsum_distr_l. rewrite <- Nat.pow_add_r.
-  simpl. distribute_scale. rewrite kron_vsum_distr_r.
+  distribute_scale. rewrite kron_Msum_distr_l. rewrite <- Nat.pow_add_r.
+  simpl. distribute_scale. rewrite kron_Msum_distr_r.
   replace (2^(m+n)*2^anc)%nat with (2^(m + (n+anc)))%nat by unify_pows_two.
-  rewrite Mmult_vsum_distr_l.
-  erewrite vsum_eq.
+  rewrite Mmult_Msum_distr_l.
+  erewrite big_sum_eq_bounded.
   2:{ intros j Hj. restore_dims.
       rewrite kron_assoc.
       2, 4 : apply basis_vector_WF; apply pow_positive; easy.
@@ -886,12 +900,12 @@ Proof.
   }
   specialize (QPE_MC_correct a r N k m n anc c H Hc H3 H2).
   rewrite <- (sum_of_ψ_is_one a r N m) by easy.
-  distribute_scale. rewrite kron_vsum_distr_l. rewrite <- Nat.pow_add_r.
-  simpl. distribute_scale. rewrite kron_vsum_distr_r.
+  distribute_scale. rewrite kron_Msum_distr_l. rewrite <- Nat.pow_add_r.
+  simpl. distribute_scale. rewrite kron_Msum_distr_r.
   replace (2^(m+n)*2^anc)%nat with (2^(m + (n+anc)))%nat by unify_pows_two.
-  rewrite Mmult_vsum_distr_l.
+  rewrite Mmult_Msum_distr_l.
   rewrite kron_n_0_is_0_vector.
-  erewrite vsum_eq.
+  erewrite big_sum_eq_bounded.
   2:{ intros. restore_dims. rewrite kron_assoc.
       2, 4 : apply basis_vector_WF; apply pow_positive; easy.
       2 : apply ψ_WF_matrix with (m := m); easy.

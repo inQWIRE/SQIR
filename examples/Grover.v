@@ -154,13 +154,9 @@ Proof.
   apply f_equal2.
   autorewrite with R_db.
   reflexivity.
-
-(* should be able to use <- big_sum_plus here *)
-Set Printing All.
-  rewrite <- (@big_sum_plus (Matrix _ _) (M_is_monoid _ _) (M_is_group _ _) (M_is_comm_group _ _)).
-
-  apply vsum_eq.
-  intros.
+  rewrite <- Msum_plus.
+  apply big_sum_eq_bounded.
+  intros i Hi.
   destruct (f i); lma.
   all: autorewrite with R_db.
   all: try (apply Rlt_le; nonzero).
@@ -187,11 +183,11 @@ Proof.
   unfold ψg, ψb.
   rewrite Mscale_adj.
   distribute_scale.
-  rewrite Mmult_adj_vsum_distr_l.
-  erewrite vsum_eq.
-  2: { intros. rewrite Mmult_vsum_distr_l. reflexivity. }
-  rewrite vsum_diagonal.
-  rewrite vsum_0.
+  rewrite Msum_adjoint, Mmult_Msum_distr_r.
+  erewrite big_sum_eq_bounded.
+  2: { intros. rewrite Mmult_Msum_distr_l. reflexivity. }
+  rewrite big_sum_diagonal.
+  rewrite big_sum_0.
   lma.
   intros.
   destruct (f x); Msimpl; reflexivity.
@@ -214,12 +210,12 @@ Proof.
   unfold ψg.
   rewrite Mscale_adj.
   distribute_scale.
-  rewrite Mmult_adj_vsum_distr_l.
-  erewrite vsum_eq.
-  2: { intros. rewrite Mmult_vsum_distr_l. reflexivity. }
-  rewrite vsum_diagonal.
-  rewrite (vsum_eq _ _ (fun i => if f i then I 1 else Zero)).
-  2: { intros. destruct (f i); Msimpl; auto.
+  rewrite Msum_adjoint, Mmult_Msum_distr_r.
+  erewrite big_sum_eq_bounded.
+  2: { intros. rewrite Mmult_Msum_distr_l. reflexivity. }
+  rewrite big_sum_diagonal.
+  rewrite (big_sum_eq_bounded _ (fun i => if f i then I 1 else Zero)).
+  2: { intros i Hi. destruct (f i); Msimpl; auto.
        apply basis_vector_product_eq; auto. }
   rewrite vsum_count0.
   replace (count0 f (2 ^ n)) with k by reflexivity.
@@ -243,12 +239,12 @@ Proof.
   unfold ψb.
   rewrite Mscale_adj.
   distribute_scale.
-  rewrite Mmult_adj_vsum_distr_l.
-  erewrite vsum_eq.
-  2: { intros. rewrite Mmult_vsum_distr_l. reflexivity. }
-  rewrite vsum_diagonal.
-  rewrite (vsum_eq _ _ (fun i => if negf f i then I 1 else Zero)).
-  2: { intros. unfold negf. destruct (f i); Msimpl; auto.
+  rewrite Msum_adjoint, Mmult_Msum_distr_r.
+  erewrite big_sum_eq_bounded.
+  2: { intros. rewrite Mmult_Msum_distr_l. reflexivity. }
+  rewrite big_sum_diagonal.
+  rewrite (big_sum_eq_bounded _ (fun i => if negf f i then I 1 else Zero)).
+  2: { intros i Hi. unfold negf. destruct (f i); Msimpl; auto.
        apply basis_vector_product_eq; auto. }
   rewrite vsum_count0.
   unfold count0. rewrite count_negf.
@@ -677,17 +673,19 @@ Proof.
   intros. repeat rewrite pad_ancillae.
   unfold ψg.
   restore_dims. distribute_scale.
-  rewrite 2 kron_vsum_distr_r.
+  rewrite 2 kron_Msum_distr_r.
   replace (2 ^ n * 2)%nat with (2 ^ (S n))%nat by unify_pows_two.
-  rewrite Nat.pow_1_l. repeat rewrite kron_vsum_distr_r.
+  rewrite Nat.pow_1_l. 
+  restore_dims.
+  repeat rewrite kron_Msum_distr_r.
   repeat rewrite Nat.mul_1_r.
   unify_pows_two.
-  rewrite Mmult_vsum_distr_l.
+  rewrite Mmult_Msum_distr_l.
   apply f_equal2; auto.
-  apply vsum_eq.
-  intros.
+  apply big_sum_eq_bounded.
+  intros i Hi.
   destruct (f i) eqn:fi; Msimpl.
-  specialize (Uf_implements_f i b H) as Hu.
+  specialize (Uf_implements_f i b Hi) as Hu.
   repeat rewrite pad_ancillae in Hu.
   rewrite fi, xorb_true_r in *.
   unify_pows_two. rewrite Nat.add_1_r.
@@ -703,18 +701,18 @@ Proof.
   intros. rewrite pad_ancillae.
   unfold ψb.
   restore_dims. distribute_scale.
-  rewrite kron_vsum_distr_r.
+  rewrite kron_Msum_distr_r.
   replace (2 ^ n * 2)%nat with (2 ^ (S n))%nat by unify_pows_two.
   repeat rewrite Nat.mul_1_l. rewrite Nat.pow_1_l.
-  repeat rewrite kron_vsum_distr_r.
+  repeat rewrite kron_Msum_distr_r.
   unify_pows_two. replace (S n + ancillae)%nat with dim by reflexivity.
-  rewrite Mmult_vsum_distr_l.
+  rewrite Mmult_Msum_distr_l.
   apply f_equal2; auto.
-  apply vsum_eq.
-  intros.
+  apply big_sum_eq_bounded.
+  intros i Hi.
   destruct (f i) eqn:fi; Msimpl.
   Msimpl. reflexivity.
-  specialize (Uf_implements_f i b H) as Hu.
+  specialize (Uf_implements_f i b Hi) as Hu.
   repeat rewrite pad_ancillae in Hu.
   rewrite fi, xorb_false_r in *.
   apply Hu.
@@ -929,7 +927,7 @@ Proof.
                                     by reflexivity.
   replace (S ancillae) with (1 + ancillae)%nat by reflexivity.
   rewrite kron_n_add_dist; auto with wf_db.
-  restore_dims. rewrite kron_mixed_product, kron_mixed_product.
+  restore_dims. rewrite 2 kron_mixed_product.
   Msimpl. restore_dims.
   rewrite <- pad_dims_r; try (apply npar_WT; lia).
   rewrite npar_correct by lia.
@@ -953,7 +951,7 @@ Proof.
   replace (n + 1)%nat with (S n) by lia.
   restore_dims.
   specialize (loop_body_action_on_unif_superpos i) as Hl.
-  rewrite Nat.pow_1_l in Hl. Set Printing Implicit. rewrite Hl.
+  rewrite Nat.pow_1_l in Hl. rewrite Hl.
   rewrite pad_ancillae.
   restore_dims.
   rewrite kron_assoc; auto with wf_db.
@@ -967,21 +965,21 @@ Proof.
        auto with wf_db.
        Msimpl. restore_dims. rewrite kron_n_mult, Mmult00.
        clear. induction ancillae; try reflexivity. simpl. Msimpl. assumption. }
-  unfold probability_of_outcome.
+  unfold probability_of_outcome, inner_product.
   distribute_scale.
   distribute_plus.
   distribute_scale.
   assert ((basis_vector (2 ^ n) x) † × ψg = / √ INR k .* I 1).
   { unfold ψg.
     distribute_scale.
-    rewrite Mmult_vsum_distr_l.
-    erewrite vsum_unique.
+    rewrite Mmult_Msum_distr_l.
+    erewrite big_sum_unique.
     reflexivity.
     exists x.
     repeat split; auto.
     rewrite fx.
     apply basis_vector_product_eq; auto.
-    intros.
+    intros j Hj ?.
     destruct (f j).
     apply basis_vector_product_neq; auto.
     Msimpl. reflexivity. }
@@ -989,8 +987,8 @@ Proof.
   assert ((basis_vector (2 ^ n) x) † × ψb = Zero).
   { unfold ψb.
     distribute_scale.
-    rewrite Mmult_vsum_distr_l.
-    rewrite vsum_0.
+    rewrite Mmult_Msum_distr_l.
+    rewrite big_sum_0_bounded.
     lma.
     intros.
     destruct (f x0) eqn:fx0.
@@ -999,7 +997,7 @@ Proof.
     intro contra; subst.
     rewrite fx in fx0. 
     easy. } 
-    rewrite H2; clear H2.
+  rewrite H2; clear H2.
   Msimpl.
   unfold I, scale; simpl.
   autorewrite with R_db C_db.

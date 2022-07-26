@@ -576,7 +576,7 @@ Proof.
   intros.
   (* We assert the target cases to later not have to duplicate them and have more readable code *)
   assert (probability_of_outcome (hadamard × ket 0) (ket 0) = (1/2)%R). 
-  { unfold probability_of_outcome.
+  { unfold probability_of_outcome, inner_product.
     replace (((hadamard × ket 0)† × ket 0) O O) with (/ √ 2).
     replace (Cmod (/ √ 2)) with (/ √ 2)%R.
     simpl.
@@ -611,7 +611,7 @@ Proof.
     solve_matrix.
   }
   assert (probability_of_outcome (hadamard × ket 1) (ket 1) = (1/2)%R).
-  { unfold probability_of_outcome.
+  { unfold probability_of_outcome, inner_product.
     replace (((hadamard × ket 1)† × ket 1) O O) with (-/ √ 2).
     replace (Cmod (-/ √ 2)) with (/ √ 2)%R.
     simpl.

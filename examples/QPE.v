@@ -494,7 +494,7 @@ Qed.
 Lemma QFT_w_reverse_semantics : forall n (f : nat -> bool),
   (n > 1)%nat ->
   uc_eval (QFT_w_reverse n) × (f_to_vec n f) = 
-    / √(2 ^ n) .* vsum (2^n) (fun k => Cexp (2 * PI * INR (funbool_to_nat n f * k) / (2 ^ n)) .* basis_vector (2^n) k).
+    / √(2 ^ n) .* big_sum (fun k => Cexp (2 * PI * INR (funbool_to_nat n f * k) / (2 ^ n)) .* basis_vector (2^n) k) (2^n).
 Proof.
   intros n f Hn.
   unfold QFT_w_reverse; simpl.
@@ -505,7 +505,7 @@ Proof.
   apply f_equal2; try reflexivity.
   remember (2 * PI * INR (funbool_to_nat n f) / 2 ^ n)%R as c.
   rewrite (vkron_eq _ _ (fun k : nat => ∣0⟩ .+ Cexp (c * 2 ^ (n - k - 1)) .* ∣1⟩)).
-  rewrite (vsum_eq _ _ (fun k : nat => Cexp (c * INR k) .* basis_vector (2 ^ n) k)).
+  rewrite (big_sum_eq_bounded _ (fun k : nat => Cexp (c * INR k) .* basis_vector (2 ^ n) k)).
   apply vkron_to_vsum1. lia.
   intros i Hi.
   subst. apply f_equal2; try reflexivity. apply f_equal. 
@@ -594,7 +594,7 @@ Qed.
 Lemma QFT_w_reverse_semantics_inverse : forall n (f : nat -> bool),
   (n > 1)%nat ->
   uc_eval (invert (QFT_w_reverse n)) × f_to_vec n f = 
-    (/ √(2 ^ n) .* vsum (2^n) (fun k => Cexp (- 2 * PI * INR (funbool_to_nat n f * k) / (2 ^ n)) .* basis_vector (2^n) k)).
+    (/ √(2 ^ n) .* big_sum (fun k => Cexp (- 2 * PI * INR (funbool_to_nat n f * k) / (2 ^ n)) .* basis_vector (2^n) k) (2^n)).
 Proof.
   intros n f Hn.
   rewrite <- invert_correct. 
@@ -604,15 +604,15 @@ Proof.
   rewrite <- WFU.
   rewrite Mmult_assoc.
   apply f_equal2; try reflexivity.
-  distribute_scale. rewrite Mmult_vsum_distr_l.
-  erewrite vsum_eq.
+  distribute_scale. rewrite Mmult_Msum_distr_l.
+  erewrite big_sum_eq_bounded.
   2: { intros i Hi.
        distribute_scale.
        rewrite basis_f_to_vec_alt by auto.
        rewrite QFT_w_reverse_semantics by auto.
        rewrite Mscale_assoc.
-       rewrite Mscale_vsum_distr_r.
-       erewrite vsum_eq.
+       rewrite <- Mscale_Msum_distr_r.
+       erewrite big_sum_eq_bounded.
        2: { intros i0 Hi0.
             rewrite Mscale_assoc. 
             rewrite (Cmult_comm _ (/ _)).
@@ -622,10 +622,10 @@ Proof.
             reflexivity.
             repeat rewrite mult_INR; lra. }
        reflexivity. }
-  rewrite vsum_swap_order.
-  rewrite (vsum_eq _ _ (fun i => / √ (2 ^ n) .* (if i =? funbool_to_nat n f then (2 ^ n) .* basis_vector (2 ^ n) i else Zero))).
+  rewrite big_sum_swap_order.
+  rewrite (big_sum_eq_bounded _ (fun i => / √ (2 ^ n) .* (if i =? funbool_to_nat n f then (2 ^ n) .* basis_vector (2 ^ n) i else Zero))).
   2: { intros i Hi.
-       rewrite Mscale_vsum_distr_l.
+       rewrite Mscale_Msum_distr_l.
        rewrite <- Csum_mult_l.
        rewrite <- Mscale_assoc.
        apply f_equal2; try reflexivity.
@@ -635,7 +635,7 @@ Proof.
        rewrite pow_INR; simpl. replace (1 + 1)%R with 2%R by lra. 
        rewrite <- RtoC_pow. reflexivity.
        intro x.
-       rewrite <- Cexp_0. apply f_equal. lra.
+       simpl. rewrite <- Cexp_0. apply f_equal. lra.
        replace (fun x : nat => Cexp (2 * PI * (INR i - INR (funbool_to_nat n f)) / 2 ^ n * INR x)) with (fun x => Cexp (2 * PI * (IZR (Z.of_nat i - Z.of_nat (funbool_to_nat n f))) / INR (2 ^ n)) ^ x).
        rewrite Csum_Cexp_nonzero. Msimpl. reflexivity.
        rewrite minus_IZR. rewrite <- 2 INR_IZR_INZ. 
@@ -655,9 +655,9 @@ Proof.
        rewrite minus_IZR. rewrite <- 2 INR_IZR_INZ.
        rewrite pow_INR.
        reflexivity. }
-  rewrite <- Mscale_vsum_distr_r.
+  rewrite Mscale_Msum_distr_r.
   rewrite Mscale_assoc.
-  replace (vsum (2 ^ n) (fun i : nat => if i =? funbool_to_nat n f then (2 ^ n) .* basis_vector (2 ^ n) i else Zero)) with (2 ^ n .* basis_vector (2 ^ n) (funbool_to_nat n f)).
+  replace (big_sum (fun i : nat => if i =? funbool_to_nat n f then (2 ^ n) .* basis_vector (2 ^ n) i else Zero) (2 ^ n)) with (2 ^ n .* basis_vector (2 ^ n) (funbool_to_nat n f)).
   rewrite basis_f_to_vec.
   rewrite Mscale_assoc.
   rewrite <- (Mscale_1_l _ _ (basis_vector _ _)) at 1.
@@ -666,7 +666,7 @@ Proof.
   rewrite Csqrt_sqrt. rewrite RtoC_pow. reflexivity.
   rewrite pow_IZR. apply IZR_le. apply Z.pow_nonneg. lia.
   specialize (funbool_to_nat_bound n f) as ?.
-  erewrite vsum_unique. 
+  erewrite big_sum_unique. 
   reflexivity.
   exists (funbool_to_nat n f).
   repeat split.
@@ -804,7 +804,7 @@ Lemma QPE_simplify : forall k n (c : base_ucom n) (ψ : Vector (2 ^ n)) θ,
   (n > 0)%nat -> (k > 1)%nat -> uc_well_typed c -> WF_Matrix ψ ->
   (uc_eval c) × ψ = Cexp (2 * PI * θ) .* ψ ->
   @Mmult _ _ (1 * 1) (uc_eval (QPE k n c)) (k ⨂ ∣0⟩ ⊗ ψ) = 
-    (/ (2 ^ k) .* vsum (2 ^ k) (fun i : nat => (Σ (fun j => Cexp (2 * PI * (θ - INR i / 2 ^ k) * INR j)) (2 ^ k)) .* basis_vector (2 ^ k) i) ⊗ ψ).
+    (/ (2 ^ k) .* big_sum (fun i : nat => (Σ (fun j => Cexp (2 * PI * (θ - INR i / 2 ^ k) * INR j)) (2 ^ k)) .* basis_vector (2 ^ k) i) (2 ^ k) ⊗ ψ).
 Proof.
   intros k n c ψ θ Hn Hk WT WF Heig.
   unfold QPE; simpl.
@@ -818,16 +818,16 @@ Proof.
   Msimpl. 
   rewrite H0_kron_n_spec_alt by lia.
   restore_dims. distribute_scale.
-  rewrite kron_vsum_distr_r.
+  rewrite kron_Msum_distr_r.
   replace (2 ^ (k + n))%nat with (2 ^ k * 2 ^ n)%nat by unify_pows_two. 
-  rewrite Mmult_vsum_distr_l.
-  erewrite vsum_eq.
+  rewrite Mmult_Msum_distr_l.
+  erewrite big_sum_eq_bounded.
   2: { intros i Hi.
        rewrite basis_f_to_vec_alt by auto. restore_dims.
        erewrite controlled_powers_action_on_basis; try apply Heig; auto; try lia. 
        rewrite nat_to_funbool_inverse by auto. reflexivity. }
-  rewrite Mmult_vsum_distr_l.
-  erewrite vsum_eq.
+  rewrite Mmult_Msum_distr_l.
+  erewrite big_sum_eq_bounded.
   2: { intros i Hi.
        rewrite Mscale_mult_dist_r.
        rewrite kron_mixed_product.
@@ -837,8 +837,8 @@ Proof.
        rewrite (Cmult_comm _ (/ _)).
        rewrite <- Mscale_assoc.
        rewrite <- Mscale_kron_dist_l.
-       rewrite Mscale_vsum_distr_r.       
-       erewrite vsum_eq.
+       rewrite <- Mscale_Msum_distr_r.       
+       erewrite big_sum_eq_bounded.
        2: { intros i0 Hi0.
             rewrite Mscale_assoc. 
             rewrite <- Cexp_add.
@@ -848,13 +848,13 @@ Proof.
             repeat rewrite mult_INR; lra. }
        rewrite <- Mscale_kron_dist_l.
        reflexivity. }
-  rewrite <- kron_vsum_distr_r.
-  rewrite <- Mscale_vsum_distr_r. 
+  rewrite <- kron_Msum_distr_r.
+  rewrite Mscale_Msum_distr_r. 
   distribute_scale.
-  rewrite vsum_swap_order.
-  erewrite vsum_eq.
+  rewrite big_sum_swap_order.
+  erewrite big_sum_eq_bounded.
   2: { intros i Hi.
-       rewrite Mscale_vsum_distr_l.
+       rewrite Mscale_Msum_distr_l.
        reflexivity. }
   replace (/ √ (2 ^ k) * / √ (2 ^ k)) with (/ 2 ^ k).
   reflexivity.
@@ -884,9 +884,9 @@ Lemma QPE_semantics_simplified : forall k n (c : base_ucom n) z (ψ : Vector (2 
 Proof.
   intros k n c z ψ Hn Hk WT WF θ Heig.
   rewrite QPE_simplify with (θ := θ) by assumption.
-  rewrite (vsum_eq _ _ (fun i => if i =? funbool_to_nat k z then (2 ^ k) .* basis_vector (2 ^ k) i else Zero)).
+  rewrite (big_sum_eq_bounded _ (fun i => if i =? funbool_to_nat k z then (2 ^ k) .* basis_vector (2 ^ k) i else Zero)).
   specialize (funbool_to_nat_bound k z) as Hz.
-  rewrite vsum_unique with (v:=2 ^ k .* basis_vector (2 ^ k) (funbool_to_nat k z)). 
+  rewrite (big_sum_unique (2 ^ k .* basis_vector (2 ^ k) (funbool_to_nat k z))). 
   distribute_scale. 
   replace (/ 2 ^ k * 2 ^ k) with C1.
   rewrite Mscale_1_l.
@@ -903,7 +903,7 @@ Proof.
   rewrite RtoC_pow, pow_INR; simpl. reflexivity.
   intro x.
   subst i θ.
-  rewrite <- Cexp_0.
+  simpl. rewrite <- Cexp_0.
   apply f_equal. lra.
   replace (fun j => Cexp (2 * PI * (θ - INR i / 2 ^ k) * INR j)) with (fun j => Cexp (2 * PI * IZR (Z.of_nat (funbool_to_nat k z) - Z.of_nat i) / INR (2 ^ k)) ^ j).
   rewrite Csum_Cexp_nonzero.
@@ -1076,12 +1076,12 @@ Proof.
   Msimpl.
   rewrite H0_kron_n_spec_alt by lia.
   restore_dims. distribute_scale.
-  rewrite kron_vsum_distr_r.
+  rewrite kron_Msum_distr_r.
   replace (2 ^ (k + n))%nat with (2 ^ k * 2 ^ n)%nat by unify_pows_two. 
-  rewrite Mmult_vsum_distr_l.
-  rewrite Mmult_vsum_distr_l with (f := (fun i : nat => basis_vector (2 ^ k) i ⊗ ψ)).
+  rewrite Mmult_Msum_distr_l.
+  rewrite Mmult_Msum_distr_l with (f := (fun i : nat => basis_vector (2 ^ k) i ⊗ ψ)).
   do 2 apply f_equal.
-  apply vsum_eq. intros.
+  apply big_sum_eq_bounded. intros.
   rewrite basis_f_to_vec_alt by easy.
   restore_dims.
   rewrite controlled_powers_action_on_basis with (θ := θ) by (try easy; try lia).

@@ -171,7 +171,7 @@ Proof.
   lia.
 Qed.
 
-Lemma count0_Nsum : forall n f, count0 f n = Nsum n (fun i => if f i then S O else O).
+Lemma count0_Nsum : forall n f, count0 f n = big_sum (fun i => if f i then S O else O) n.
 Proof.
   unfold count0.
   intros. induction n. reflexivity. 
@@ -181,11 +181,11 @@ Qed.
 Lemma count1_Nsum : forall n f,
   f O = false -> 
   f n = false ->
-  count1 f n = Nsum n (fun i => if f i then S O else O).
+  count1 f n = big_sum (fun i => if f i then S O else O) n.
 Proof.
   unfold count1.
   intros n f HO Hn. 
-  assert (H : count f 1 n = Nsum (S n) (fun i => if f i then S O else O)).
+  assert (H : count f 1 n = big_sum (fun i => if f i then S O else O) (S n)).
   { clear Hn.
     induction n. simpl. rewrite HO. reflexivity.
     simpl. rewrite IHn. destruct (f (S n)); simpl; lia. }
@@ -337,7 +337,8 @@ Proof.
   simpl. lia.
 Qed.
 
-Lemma Csum_1 : forall f n, (forall x, f x = C1) -> Σ f n = INR n. 
+Lemma Csum_1 : forall f n, (forall x, f x = 1%C) -> 
+  @big_sum Complex.C C_is_monoid f n = INR n. 
 Proof.
   intros.
   induction n.
@@ -347,7 +348,7 @@ Proof.
     destruct n; lca.    
 Qed.
 
-Lemma times_n_C : forall (c : C) n, times_n c n = (INR n * c)%C.
+Lemma times_n_C : forall (c : Complex.C) n, times_n c n = (INR n * c)%C.
 Proof.
   intros c n. 
   induction n; simpl. 
@@ -356,7 +357,7 @@ Proof.
   destruct n; lca.
 Qed.
 
-Lemma Csum_mult_l : forall (c : C) f n, (c * Σ f n)%C = Σ (fun x => c * f x) n.
+Lemma Csum_mult_l : forall (c : Complex.C) f n, (c * Σ f n)%C = Σ (fun x => c * f x) n.
 Proof.
   intros c f n.
   induction n.
@@ -365,4 +366,18 @@ Proof.
     rewrite Cmult_plus_distr_l.
     rewrite IHn.
     reflexivity.
+Qed.
+
+Lemma Nsum_scale : forall n f d,
+  (big_sum (fun i => d * f i) n = d * big_sum f n)%nat.
+Proof.
+  intros. induction n. simpl. lia. 
+  simpl. rewrite IHn. lia.
+Qed.
+
+Lemma Nsum_add : forall n f g,
+  (big_sum (fun i => f i + g i) n = big_sum f n + big_sum g n)%nat.
+Proof.
+  intros. induction n. easy.
+  simpl. rewrite IHn. lia.
 Qed.
