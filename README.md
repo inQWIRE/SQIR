@@ -28,7 +28,7 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Setup
 
-To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/), [QuantumLib](https://github.com/inQWIRE/QuantumLib), and (optionally) the [Coq Interval package](http://coq-interval.gforge.inria.fr/). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.15**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
+To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/), [QuantumLib](https://github.com/inQWIRE/QuantumLib) (version 1.1.0), and the [Coq Interval package](http://coq-interval.gforge.inria.fr/). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.15**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
 
 Assuming you have opam installed (following the instructions in the link above), follow the steps below to set up your environment.
 ```
@@ -44,11 +44,11 @@ eval $(opam env)
 opam install coq
 
 # install the QuantumLib library
-opam pin coq-quantumlib https://github.com/inQWIRE/QuantumLib.git
-
-# install Interval package (optional, needed to compile proofs in examples/shor)
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam update
+opam install coq-quantumlib.1.1.0
+
+# install Interval package (optional, needed to compile proofs in examples/shor)
 opam install coq-interval
 ```
 
