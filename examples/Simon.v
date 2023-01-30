@@ -1,4 +1,4 @@
-Require Import UnitaryOps.
+Require Import SQIR.UnitaryOps.
 Require Import Utilities.
 Require Import QuantumLib.Measurement.
 Require Import QuantumLib.Permutations.

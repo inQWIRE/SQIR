@@ -1,4 +1,4 @@
-Require Export UnitaryOps QuantumLib.VectorStates.
+Require Export SQIR.UnitaryOps QuantumLib.VectorStates.
 Require Import QuantumLib.Summation.
 Require Import QuantumLib.DiscreteProb.
 

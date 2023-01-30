@@ -1,4 +1,4 @@
-Require Import UnitaryOps.
+Require Import SQIR.UnitaryOps.
 Require Export RzQGateSet.
 Require Import FSets.FSetAVL.
 Require Import FSets.FSetFacts.

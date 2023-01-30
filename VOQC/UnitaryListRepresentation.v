@@ -3,7 +3,7 @@ Require Export Coq.Classes.Morphisms.
 Require Export Setoid.
 Require Import QuantumLib.Permutations.
 Require Export GateSet.
-Require Export Equivalences.
+Require Export SQIR.Equivalences.
 
 (* Used in get_matching_prefix. *)
 Require Import FSets.FSetAVL.

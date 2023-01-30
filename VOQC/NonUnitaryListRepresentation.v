@@ -1,5 +1,5 @@
 Require Export UnitaryListRepresentation.
-Require Export DensitySem. 
+Require Export SQIR.DensitySem. 
 
 Local Open Scope com_scope.
 Local Close Scope R_scope.

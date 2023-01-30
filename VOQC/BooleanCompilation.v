@@ -1,4 +1,4 @@
-Require Import UnitaryOps.
+Require Import SQIR.UnitaryOps.
 Open Scope ucom.
 
 (*********************************)

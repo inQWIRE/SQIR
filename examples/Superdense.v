@@ -1,4 +1,4 @@
-Require Import UnitaryOps.
+Require Import SQIR.UnitaryOps.
 Local Open Scope ucom.    
 
 Definition a : nat := O.
