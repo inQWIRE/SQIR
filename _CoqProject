@@ -1,5 +1,5 @@
--R /build/default/SQIR Top.SQIR
--R /build/default/examples Top.examples
--R /build/default/VOQC Top.VOQC
--R externals/euler Top.externals.euler
-#-arg -profile-ltac
+-R _build/default/SQIR SQIR
+-R _build/default/examples/examples Examples
+-R _build/default/examples/shor Shor
+-R _build/default/VOQC VOQC
+-R _build/default/examples/shor/externals/euler externals.euler

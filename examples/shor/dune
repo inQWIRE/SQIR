@@ -1,3 +1,5 @@
+(include_subdirs qualified)
+
 (coq.theory
-  (name shor)
-  (theories SQIR examples))
+  (name Shor)
+  (theories SQIR Examples))

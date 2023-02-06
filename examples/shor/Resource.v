@@ -1,4 +1,4 @@
-Require Import RCIR Psatz ExtractionGateSet.
+Require Import RCIR Psatz SQIR.ExtractionGateSet.
 
 Open Scope nat_scope.
 Fixpoint ugcount (c : ucom U) : nat :=
@@ -20,12 +20,14 @@ Proof.
     rewrite IHc1, IHc2 by (subst; simpl; lia).
     easy.
   - simpl in H. destruct u, f; try lia; try easy.
-    + simpl. simpl in H. unfold fuel_CU1 in H.
+    + simpl. simpl in H. unfold fuel_CH in H.
+      do 3 (destruct f; try lia). easy.
+    + simpl. simpl in H. unfold fuel_CCU1 in H.
       do 5 (destruct f; try lia). easy.
     + simpl. simpl in H. unfold fuel_CSWAP in H.
       do 3 (destruct f; try lia). easy.
-    + simpl. simpl in H. unfold fuel_CCX in H.
-      do 23 (destruct f; try lia). easy.
+    + simpl. simpl in H. unfold fuel_C4X in H.
+      do 22 (destruct f; try lia). easy.
 Qed.
 
 Definition gcCC4X := 191.
