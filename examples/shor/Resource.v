@@ -1,4 +1,4 @@
-Require Import RCIR Psatz SQIR.ExtractionGateSet.
+Require Import RCIR Psatz SQIR.ExtractionGateSet ExtrShor.
 
 Open Scope nat_scope.
 Fixpoint ugcount (c : ucom U) : nat :=

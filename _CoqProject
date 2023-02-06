@@ -2,4 +2,4 @@
 -R _build/default/examples/examples Examples
 -R _build/default/examples/shor Shor
 -R _build/default/VOQC VOQC
--R _build/default/examples/shor/externals/euler externals.euler
+-R _build/default/examples/shor/externals/euler Shor.externals.euler
