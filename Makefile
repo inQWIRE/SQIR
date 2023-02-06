@@ -1,6 +1,8 @@
 .DEFAULT_GOAL := sqir
 
 all:
+	git submodule init;
+	git submodule update;
 	@dune build
 
 sqir:
@@ -10,11 +12,11 @@ voqc:
 	@dune build VOQC
 
 examples:
-	git submodule init;
-	git submodule sync;
 	@dune build examples
 
 shor:
+	git submodule init;
+	git submodule update;
 	@dune build shor
 
 clean:
