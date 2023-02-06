@@ -1,0 +1,3 @@
+(coq.theory
+  (name shor)
+  (theories SQIR examples))

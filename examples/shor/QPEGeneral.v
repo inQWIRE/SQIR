@@ -1,6 +1,6 @@
 From Interval Require Import Tactic.
 Require Import Reals Psatz.
-Require Export Utilities.
+Require Export SQIR.Utilities.
 Require Export QPE.
 Require Export QuantumLib.Measurement.
 

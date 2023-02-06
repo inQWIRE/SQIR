@@ -1,6 +1,6 @@
 Require Import Psatz ZArith Znumtheory Btauto.
 Require Import QuantumLib.Prelim QuantumLib.VectorStates.
-Require Import Utilities.
+Require Import SQIR.Utilities.
 
 (* ============================= *)
 (* =   Number theory results   = *)

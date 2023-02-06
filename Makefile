@@ -10,6 +10,8 @@ voqc:
 	@dune build VOQC
 
 examples:
+	git submodule init;
+	git submodule sync;
 	@dune build examples
 
 shor:

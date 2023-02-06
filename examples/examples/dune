@@ -1,6 +1,5 @@
-
 (include_subdirs no)
 
 (coq.theory
   (name examples)
-  (theories SQIR))
+  (theories SQIR ghz))
