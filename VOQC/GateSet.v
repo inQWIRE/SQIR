@@ -1,4 +1,4 @@
-Require Export UnitaryOps.
+Require Export SQIR.UnitaryOps.
 
 Local Open Scope ucom_scope.
 Local Close Scope R_scope.

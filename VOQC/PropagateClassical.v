@@ -1,4 +1,4 @@
-Require Import DensitySem.
+Require Import SQIR.DensitySem.
 Require Import RzQGateSet.
 Require Import Coq.Reals.ROrderedType.
 

@@ -1,4 +1,4 @@
-Require Import DensitySem.
+Require Import SQIR.DensitySem.
 Require Import RzQGateSet.
 
 Import Qreals. (* Coq version < 8.13.0 has Q2R defined in Qreals *) 

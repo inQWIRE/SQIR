@@ -1,5 +1,5 @@
 Require Export Utilities.
-Require Export UnitaryOps.
+Require Export SQIR.UnitaryOps.
 
 Local Open Scope ucom.
 

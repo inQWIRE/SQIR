@@ -1,4 +1,4 @@
-Require Import RCIR Psatz ExtractionGateSet Resource ModMult ExtrShor.
+Require Import RCIR Psatz SQIR.ExtractionGateSet Resource ModMult ExtrShor NumTheory.
 
 Lemma bcgcount_bygatectrl_MAJ :
   forall a b c d, bcgcount (bygatectrl d (MAJ a b c)) <= 3.
@@ -802,13 +802,13 @@ Proof.
   specialize (ugcount_npar m U_H H0) as G1.
   specialize (ugcount_reverse_qubits m) as G2.
   specialize (ugcount_QFT m H0) as G3.
-  remember (fun x : nat => map_bccom (fun q : nat => m + q) (modmult_circuit a (ShorAux.modinv a N) N n x)) as f.
+  remember (fun x : nat => map_bccom (fun q : nat => m + q) (modmult_circuit a (modinv a N) N n x)) as f.
   assert (forall i q, i < m -> bcgcount (bygatectrl q (f i)) <= rhs). {
     intros. rewrite Heqf, bcgcount_bygatectrl_map_bccom.
     unfold modmult_circuit.
-    specialize (bcgcount_bcelim (bygatectrl q (modmult_rev N (modexp a (PeanoNat.Nat.pow 2 i) N) (modexp (ShorAux.modinv a N) (PeanoNat.Nat.pow 2 i) N) n))) as G4.
-    specialize (bcgcount_bygatectrl_modmult_rev N (modexp a (PeanoNat.Nat.pow 2 i) N) (modexp (ShorAux.modinv a N) (PeanoNat.Nat.pow 2 i) N) n q H1) as G5.
-    specialize (bcgcount_bygatectrl_bcelim (modmult_rev N (modexp a (PeanoNat.Nat.pow 2 i) N) (modexp (ShorAux.modinv a N) (PeanoNat.Nat.pow 2 i) N) n) q) as G6.
+    specialize (bcgcount_bcelim (bygatectrl q (modmult_rev N (modexp a (PeanoNat.Nat.pow 2 i) N) (modexp (modinv a N) (PeanoNat.Nat.pow 2 i) N) n))) as G4.
+    specialize (bcgcount_bygatectrl_modmult_rev N (modexp a (PeanoNat.Nat.pow 2 i) N) (modexp (modinv a N) (PeanoNat.Nat.pow 2 i) N) n q H1) as G5.
+    specialize (bcgcount_bygatectrl_bcelim (modmult_rev N (modexp a (PeanoNat.Nat.pow 2 i) N) (modexp (modinv a N) (PeanoNat.Nat.pow 2 i) N) n) q) as G6.
     lia.
   }
   unfold controlled_powers.

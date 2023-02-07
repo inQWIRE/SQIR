@@ -1,4 +1,4 @@
-Require Import UnitarySem.
+Require Import SQIR.UnitarySem.
 Require Export RzQGateSet.
 Require Import List.
 Require Import MappingConstraints.

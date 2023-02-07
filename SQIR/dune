@@ -1,0 +1,3 @@
+(coq.theory
+  (name SQIR)
+  (package coq-sqir))
