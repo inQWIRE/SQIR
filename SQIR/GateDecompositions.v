@@ -234,6 +234,7 @@ Proof.
   bdestruct_all.
   all: repeat Msimpl; reflexivity.
 Qed.
+Local Opaque CCX CCZ.
 
 Local Transparent SWAP.
 Lemma CSWAP_is_control_SWAP : forall dim a b c, @CSWAP dim a b c ≡ control a (SWAP b c).
