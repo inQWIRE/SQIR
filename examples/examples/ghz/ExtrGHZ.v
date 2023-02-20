@@ -1,5 +1,5 @@
 Require Import GHZ.
-Require Import ExtractionGateSet.
+Require Import SQIR.ExtractionGateSet.
 
 (** Alternate definition of GHZ used for extraction. *)
 

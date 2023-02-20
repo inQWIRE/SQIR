@@ -1,7 +1,7 @@
 From Interval Require Import Tactic.
 Require Import Reals Psatz.
-Require Export Utilities.
-Require Export QPE.
+Require Export Examples.Utilities.
+Require Export Examples.QPE.
 Require Export QuantumLib.Measurement.
 
 (* The proof of quantum phase estimation in QPE.v assumes the phase is a k-bit 

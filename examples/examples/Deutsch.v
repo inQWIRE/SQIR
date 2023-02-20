@@ -1,4 +1,4 @@
-Require Import UnitarySem.
+Require Import SQIR.UnitarySem.
 Require Import QuantumLib.Proportional.
 Require Import QuantumLib.VectorStates.
 

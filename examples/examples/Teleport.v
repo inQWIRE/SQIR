@@ -1,6 +1,6 @@
-Require UnitaryOps.
-Require DensitySem.
-Require NDSem.
+Require SQIR.UnitaryOps.
+Require SQIR.DensitySem.
+Require SQIR.NDSem.
 
 (** Unitary Teleportation Circuit and Proof **)
 Module UTeleport.

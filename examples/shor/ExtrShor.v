@@ -1,5 +1,5 @@
 Require Import Shor NumTheory.
-Require Import ExtractionGateSet.
+Require Import SQIR.ExtractionGateSet.
 
 (* Redefining Shor's alg. using the new gate set *)
 

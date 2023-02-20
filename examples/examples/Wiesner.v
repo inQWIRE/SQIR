@@ -16,9 +16,9 @@ NOTE: This example was contributed by Andrian Lehmann (@adrianleh) 2021
 *)
 Require Import Lists.List.
 Import ListNotations.
-Require Import UnitaryOps.
-Require Import DensitySem.
-Require Import SQIR.
+Require Import SQIR.UnitaryOps.
+Require Import SQIR.DensitySem.
+Require Import SQIR.SQIR.
 Local Open Scope ucom.
 Require Import Utilities.
 Require Import QuantumLib.Measurement.

@@ -18,6 +18,7 @@ If you are interested in learning more about formal verification of quantum prog
   - [Table of Contents](#table-of-contents)
   - [Setup](#setup)
   - [Compilation](#compilation)
+  - [Using With Other Projects]()
   - [Directory Contents](#directory-contents)
     - [SQIR](#sqir)
     - [externals](#externals)
@@ -43,6 +44,9 @@ eval $(opam env)
 # install Coq -- this will take a while!
 opam install coq
 
+# install dune 
+opam install dune
+
 # install the QuantumLib library
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam update
@@ -62,6 +66,16 @@ opam install coq-interval
 After following the setup directions above, you can run `make` to compile the core files of SQIR, `make voqc` to compile proofs about VOQC, `make examples` to compile proofs of correctness for quantum algorithms (excluding those in examples/shor), and `make shor` to compile proofs about Shor's algorithm. Use `make all` to compile everything. 
 
 Our proofs are resource intensive so expect `make all` to take a little while. If you have cores to spare, then you can speed things up by compiling with the `-j` flag (e.g., `make all -j8`). On a 2015 dual-core MacBook Pro running Coq version 8.15.2, compilation takes around 30 minutes.
+
+## Using With Other Projects
+
+To install SQIR, run 
+```opam pin coq-sqir htts://github.com/inQWIRE/SQIR.git```
+
+To pull subsequent updates, run `opam install coq-sqir`. 
+
+To import SQIR files, use 
+```Require Import SQIR.FILENAME```
 
 ## Directory Contents
 
