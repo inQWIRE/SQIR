@@ -200,6 +200,42 @@ Proof.
 Qed.
 Local Opaque H CNOT Rz ID CCX.
 
+Local Transparent CNOT Rz ID.
+Lemma uc_well_typed_CCZ: forall dim a b c: nat,
+  (a < dim)%nat /\ (b < dim)%nat /\ (c < dim)%nat /\ a <> b /\ a <> c /\ b <> c
+    <-> uc_well_typed (@CCZ dim a b c).
+Proof.
+  intros dim a b c.
+  split; intros H.
+  destruct H as [? [? [? [? [? ?]]]]].
+  repeat constructor; assumption. 
+  invert_WT. 
+  repeat split; assumption.
+Qed.
+Local Opaque CNOT Rz ID.
+
+Local Transparent CCX CCZ.
+Lemma CCZ_is_H_CCX_H  : forall dim a b c, 
+  @CCZ dim a b c ≡ H c; CCX a b c; H c.
+Proof.
+  intros dim a b c.
+  unfold CCX.
+  repeat rewrite useq_assoc.
+  rewrite <- (useq_assoc (H c) (H c)).
+  rewrite H_H_id.
+  bdestruct (c <? dim).
+  rewrite ID_equiv_SKIP by auto.
+  rewrite SKIP_id_l, SKIP_id_r.
+  unfold CCZ.
+  repeat rewrite useq_assoc.
+  reflexivity.
+  unfold uc_equiv; simpl.
+  autorewrite with eval_db.
+  bdestruct_all.
+  all: repeat rewrite Mmult_0_r; reflexivity.
+Qed.
+Local Opaque CCX CCZ.
+
 Local Transparent SWAP.
 Lemma CSWAP_is_control_SWAP : forall dim a b c, @CSWAP dim a b c ≡ control a (SWAP b c).
 Proof.
