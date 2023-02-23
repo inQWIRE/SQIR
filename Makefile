@@ -5,13 +5,13 @@ all:
 	git submodule update;
 	@dune build
 
-sqir:
+sqir: FORCE
 	@dune build SQIR
 
-voqc:
+voqc: FORCE
 	@dune build VOQC
 
-examples:
+examples: FORCE
 	@dune build examples
 
 shor:
@@ -35,3 +35,4 @@ doc: all
 	cd _build/default && coqdoc -g --utf8 --toc --no-lib-name -d ../../docs -R . SQIR $(FILES)
 
 .PHONY: all clean install uninstall doc
+FORCE:
