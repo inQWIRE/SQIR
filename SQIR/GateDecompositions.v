@@ -215,8 +215,8 @@ Qed.
 Local Opaque CNOT Rz ID.
 
 Local Transparent CCX CCZ.
-Lemma CCZ_is_CCX_plus_hadamards : forall dim a b c, 
-  @H dim c; CCX a b c; H c ≡ CCZ a b c.
+Lemma CCZ_is_H_CCX_H  : forall dim a b c, 
+  @CCZ dim a b c ≡ H c; CCX a b c; H c.
 Proof.
   intros dim a b c.
   unfold CCX.
@@ -232,7 +232,7 @@ Proof.
   unfold uc_equiv; simpl.
   autorewrite with eval_db.
   bdestruct_all.
-  all: repeat Msimpl; reflexivity.
+  all: repeat rewrite Mmult_0_r; reflexivity.
 Qed.
 Local Opaque CCX CCZ.
 
