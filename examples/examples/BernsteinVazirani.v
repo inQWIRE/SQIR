@@ -24,11 +24,6 @@ Definition bernstein_vazirani {n} (U : base_ucom n) : base_ucom n :=
 
 (* Definition of the function the oracle will implement *)
 (* This is f(s, x) = s . x mod 2 *)
-Definition bitwise_xor n x y := 
-  let n1f := nat_to_funbool n x in
-  let n2f := nat_to_funbool n y in
-  funbool_to_nat n (fun i => xorb (n1f i) (n2f i)).
-
 Definition bitwise_product n x y :=
   Nat.b2n (product (nat_to_funbool n x) (nat_to_funbool n y) n).
 
