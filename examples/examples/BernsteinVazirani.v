@@ -87,9 +87,8 @@ Proof.
         induction a.
         simpl; repeat rewrite Cmult_1_r; reflexivity.
         simpl.
-        replace (/ √ (2 ^ n) * (-1 * (-1) ^ a) * (-1 * (-1) ^ a))%C with (/ √ (2 ^ n) * (-1) ^ a * (-1) ^ a)%C.
+        replace (/ √ (2 ^ n) * (-1 * (-1) ^ a) * (-1 * (-1) ^ a))%C with (/ √ (2 ^ n) * (-1) ^ a * (-1) ^ a)%C by lca.
         rewrite IHa; reflexivity.
-        lca.
         rewrite (H3 (product (nat_to_funbool n x) (nat_to_funbool n s) n)).
         reflexivity. }
     unfold I, scale.
