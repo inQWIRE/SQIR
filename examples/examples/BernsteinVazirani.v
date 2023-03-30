@@ -101,7 +101,7 @@ Proof.
     replace (INR (2 ^ n)) with (2 ^ n)%R.
     2: { rewrite pow_INR; reflexivity. }
     assert (/ √ (2 ^ n) * / √ (2 ^ n) = / (2 ^ n)).
-    rewrite <- sqrt_inv.
+    rewrite <- sqrt_inv; try nonzero. (* for compatibility with RealAux and Coq <8.16 *)
     rewrite sqrt_sqrt.
     reflexivity.
     constructor; apply Rinv_0_lt_compat; nonzero.
