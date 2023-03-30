@@ -52,60 +52,46 @@ Proof.
         unfold phase_oracle in H1.
         rewrite (H1 x) by assumption.
         distribute_scale.
-        reflexivity.
-    }
+        reflexivity. }
     unfold probability_of_outcome, inner_product.
     distribute_scale.
     rewrite Mmult_Msum_distr_l.
-    erewrite big_sum_eq_bounded.
+    erewrite big_sum_eq_bounded.   
     2: { intros.
         replace (basis_vector (2 ^ n) x) with (f_to_vec n (nat_to_funbool n x)).
-        2: { rewrite basis_f_to_vec_alt by assumption; reflexivity. }
-        rewrite H_kron_n_spec by assumption.
-        distribute_scale.
-        rewrite Cmult_comm.
-        rewrite Mmult_Msum_distr_l.
-        erewrite big_sum_unique.
-        2: { exists s. 
-            split; [lia | split].
-            distribute_scale. 
-            rewrite basis_vector_product_eq by lia.
-            reflexivity.
-            intros j ? ?.
-            distribute_scale. 
-            rewrite basis_vector_product_neq by lia.
-            lma. }
-        distribute_scale.
-        unfold bitwise_product.
-        reflexivity.
-    }
+        - rewrite H_kron_n_spec by assumption.
+          distribute_scale.
+          rewrite Cmult_comm.
+          rewrite Mmult_Msum_distr_l.
+          erewrite big_sum_unique.
+          2: { exists s. 
+              split; [lia | split].
+              distribute_scale. 
+              rewrite basis_vector_product_eq by lia.
+              reflexivity.
+              intros j ? ?.
+              distribute_scale. 
+              rewrite basis_vector_product_neq by lia.
+              lma. }
+          distribute_scale.
+          unfold bitwise_product.
+          reflexivity. 
+        - rewrite basis_f_to_vec_alt by assumption; reflexivity. }
     rewrite Mscale_Msum_distr_l.
     rewrite Mscale_assoc.
     erewrite big_sum_eq_bounded.
     2: { intros.
         rewrite product_comm.
         assert (forall a, (/ √ (2 ^ n) * (-1) ^ a * (-1) ^ a)%C = (/ √ (2 ^ n))%C).
-        1: { intros.
-            induction a.
-            simpl; repeat rewrite Cmult_1_r; reflexivity.
-            simpl.
-            replace (/ √ (2 ^ n) * (-1 * (-1) ^ a) * (-1 * (-1) ^ a))%C with (/ √ (2 ^ n) * (-1) ^ a * (-1) ^ a)%C.
-            rewrite IHa; reflexivity.
-            repeat rewrite Cmult_assoc.
-            rewrite (Cmult_comm (/ √ (2 ^ n) * -1 * (-1) ^ a )).
-            repeat rewrite Cmult_assoc.
-            rewrite (Cmult_comm (-1 * / √ (2 ^ n) )).
-            repeat rewrite Cmult_assoc.
-            replace (-1 * -1)%C with C1.
-            rewrite Cmult_1_l; reflexivity.
-            unfold C1, Cmult; simpl.
-            repeat rewrite Rmult_0_l; rewrite Rmult_0_r, Rplus_0_l.
-            unfold Rminus; rewrite Ropp_0, Rplus_0_r.
-            field_simplify (-1 * -1)%R; reflexivity.
-        }
+        intros.
+        induction a.
+        simpl; repeat rewrite Cmult_1_r; reflexivity.
+        simpl.
+        replace (/ √ (2 ^ n) * (-1 * (-1) ^ a) * (-1 * (-1) ^ a))%C with (/ √ (2 ^ n) * (-1) ^ a * (-1) ^ a)%C.
+        rewrite IHa; reflexivity.
+        lca.
         rewrite (H3 (product (nat_to_funbool n x) (nat_to_funbool n s) n)).
-        reflexivity.
-    }
+        reflexivity. }
     unfold I, scale.
     simpl.
     rewrite Cmult_1_r, Rmult_1_r.
@@ -118,24 +104,17 @@ Proof.
     assert (/ √ (2 ^ n) * / √ (2 ^ n) = / (2 ^ n)).
     rewrite <- sqrt_inv.
     rewrite sqrt_sqrt.
-    reflexivity. 
-    2: { repeat rewrite <- Rmult_assoc.
-        rewrite Rmult_comm.
-        repeat rewrite <- Rmult_assoc.
-        rewrite H2.
-        rewrite Rmult_comm.
-        repeat rewrite <- Rmult_assoc.
-        rewrite Rmult_comm.
-        repeat rewrite <- Rmult_assoc.
-        rewrite Rmult_comm.
-        repeat rewrite <- Rmult_assoc.
-        rewrite H2.
-        field_simplify (/ 2 ^ n * 2 ^ n * / 2 ^ n * 2 ^ n)%R.
-        rewrite Cmod_1; reflexivity.
-        nonzero.
-    }
-    constructor.
-    apply Rinv_0_lt_compat.
+    reflexivity.
+    constructor; apply Rinv_0_lt_compat; nonzero.
+    repeat rewrite <- Rmult_assoc.
+    rewrite Rmult_comm.
+    repeat rewrite <- Rmult_assoc.
+    rewrite H2.
+    do 3 ( rewrite Rmult_comm;
+           repeat rewrite <- Rmult_assoc).
+    rewrite H2.
+    field_simplify (/ 2 ^ n * 2 ^ n * / 2 ^ n * 2 ^ n)%R.
+    rewrite Cmod_1; reflexivity.
     nonzero.
 Qed.
     
