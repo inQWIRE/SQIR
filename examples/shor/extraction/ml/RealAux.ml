@@ -1,9 +1,6 @@
-open Rfunctions
+open Summation
 
-(** val coq_Rsum : Z.t -> (Z.t -> float) -> float **)
+(** val coq_R_is_monoid : float coq_Monoid **)
 
-let coq_Rsum n f =
-  (fun fO fS n -> if Z.equal n Z.zero then fO () else fS (Z.pred n))
-    (fun _ -> Z.to_float Z.zero)
-    (fun n0 -> sum_f_R0 f n0)
-    n
+let coq_R_is_monoid =
+  { coq_Gzero = (Z.to_float Z.zero); coq_Gplus = ( +. ) }
