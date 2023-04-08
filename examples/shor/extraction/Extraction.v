@@ -1,5 +1,5 @@
 Require Coq.extraction.Extraction.
-Require Import DiscreteProb.
+Require Import QuantumLib.DiscreteProb.
 Require Import Shor.
 Require Import Main.
 

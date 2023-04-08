@@ -16,7 +16,7 @@ Core formalization
 
 Utilities
 * ContFrac.v - Results about continued fractions.
-* EulerTotient.v - Re-statement of Euler's totient function from externals/euler.
+* EulerTotient.v - Re-statement of Euler's totient function from the [coq-euler](https://github.com/taorunz/euler) library.
 * ExtrShor.v - Shor's algorithm defined in a gate set amenable to extraction; proofs that the new definition is equivalent to the original.
 * NumTheory.v - General number theory results.
 * Reduction.v - Proof of the reduction from factorization to order finding.
@@ -30,16 +30,17 @@ Compiling the extracted code requires dune and zarith (`opam install dune zarith
 
 Our extracted code uses the [ddsim simulator](https://github.com/iic-jku/ddsim) (through its Qiskit interface) to execute Shor's order finding circuit so running our extracted code requires **Python version >= 3.6, qiskit, and ddsim**. Once you have a suitable version of Python, you can install the latter two with `pip install qiskit jkq.ddsim`. If you run into trouble with your Python environment, then consider using anaconda per [these directions for installing Qiskit](https://qiskit.org/documentation/getting_started.html). 
 
-To test your Python setup, run `python run_circuit.py test.qasm`. You should see the output 7, which corresponds to measuring '111'. Our OCaml code runs this command with a generated order finding circuit as input. If you find that you need to run a different command on your system (e.g., `python3.9 ...`), then you can modify line 45 of [extraction/ml/Run.ml](extraction/ml/Run.ml).
+To test your Python setup, run `python run_circuit.py test.qasm`. You should see the output 7, which corresponds to measuring '111'. Our OCaml code runs this command with a generated order finding circuit as input. If you find that you need to run a different command on your system (e.g., `python3.9 ...`), then you can modify line 47 of [extraction/ml/Run.ml](extraction/ml/Run.ml).
 
 ### Extraction to OCaml
 
-The first step is to compile the Coq code. You can do this by running `make shor` in the top-level (`../..`) directory. The next step is to extract the compiled Coq code to OCaml by running `./extract.sh` in the current directory. This will produce a bunch of .ml files in `extraction/ml` and compile them into an executable in `extraction/_build`.
+You can compile the Coq code and extracted OCaml code in the `extraction/` directory by running `make shor` in the top-level (`../..`) directory.
+
+The code in the `extraction/` directory was generated using the `./extract.sh` script. You can re-generate and re-build the extracted code using this script. Note that it was last tested with Coq version 8.15.2. Other versions of Coq will likely require modifications.
 
 If you are on MacOS, you may see the following warnings:
 ```
 ld: warning: directory not found for option '-L/opt/local/lib'
-ld: warning: directory not found for option '-L/opt/homebrew/lib'
 ```
 This is caused by our use of zarith, and seems to be safe to ignore.
 

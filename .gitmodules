@@ -1,3 +1,0 @@
-[submodule "examples/shor/externals/euler"]
-	path = examples/shor/externals/euler
-	url = git@github.com:taorunz/euler.git

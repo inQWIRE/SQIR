@@ -2,4 +2,4 @@
 
 (coq.theory
   (name Examples)
-  (theories SQIR ghz))
+  (theories SQIR))

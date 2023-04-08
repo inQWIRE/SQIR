@@ -5,10 +5,10 @@ cd extraction
 
 # Perform extraction.
 echo "Extracting code..."
-coqc -R ../../.. Top ../../shor/extraction/ExtrOcamlList.v
-coqc -R ../../.. Top ../../shor/extraction/ExtrOcamlR.v
-coqc -R ../../.. Top ../../shor/extraction/ExtrOcamlNatZ.v
-coqc -R ../../.. Top Extraction.v
+coqc ExtrOcamlList.v
+coqc ExtrOcamlNatZ.v
+coqc -R ../../../_build/default/SQIR SQIR ExtrOcamlR.v
+coqc -R ../../../_build/default/SQIR SQIR -R ../../../_build/default/examples/ghz ghz Extraction.v
 
 # Remove unneeded files.
 echo "Deleting unneeded files..."
