@@ -108,15 +108,21 @@ Proof.
     + contradict H0.
       rewrite <- Mmult_assoc.
       rewrite proj_twice_neq by easy.
-      unfold norm. 
-      Msimpl; simpl.
-      apply sqrt_0.
+      try Msimpl.
+      try (
+        unfold norm; 
+        Msimpl; simpl;
+        apply sqrt_0
+      ).
+      try apply norm_zero_iff_zero. try apply WF_Zero. try easy.
     + contradict H0. 
       rewrite <- Mmult_assoc.
       rewrite proj_twice_neq by easy.
       unfold norm. 
       Msimpl; simpl.
-      apply sqrt_0.
+      try apply sqrt_0.
+      try apply norm_zero_iff_zero. try apply WF_Zero.
+      try easy.
     + rewrite <- Mmult_assoc in H0, H1.
       rewrite proj_twice_eq in H0, H1.
       apply nd_meas_f; assumption.

@@ -1,5 +1,6 @@
 Require Export QuantumLib.VectorStates.
 Require Export UnitaryOps.
+Require Export SQIR.
 
 Local Open Scope ucom_scope.
 Local Close Scope C_scope.
