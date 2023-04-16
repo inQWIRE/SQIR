@@ -1158,7 +1158,10 @@ Proof.
   rewrite invert_alt.
   Local Transparent ID.
   induction l; simpl.
-  rewrite Ropp_0. reflexivity.
+  replace (uc_eval SKIP) with ((@uc_eval dim SKIP) †).
+  apply invert_correct.
+  autorewrite with eval_db.
+  apply id_adjoint_eq. easy.
   Local Opaque ID Z.sub. 
   destruct a as [u | u | u]; dependent destruction u; unfold invert; simpl.
   all: rewrite map_app, list_to_ucom_append; simpl.

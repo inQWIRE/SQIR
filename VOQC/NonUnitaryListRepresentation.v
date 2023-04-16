@@ -176,7 +176,7 @@ Proof.
   - induction l2; try rewrite IHl2; reflexivity.
 Qed.
 Global Opaque instr_to_com.
-Hint Rewrite instr_to_com_UC instr_to_com_Meas.
+#[export] Hint Rewrite instr_to_com_UC instr_to_com_Meas.
 
 Lemma list_to_com_append : forall {dim} (l1 l2 : com_list G.U dim),
   list_to_com (l1 ++ l2) ≡ list_to_com l1 ; list_to_com l2.

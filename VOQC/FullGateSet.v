@@ -296,8 +296,18 @@ Proof.
   try rewrite Cexp_add;
   try rewrite Cexp_minus_PI;
   replace (PI / 2 / 2) with (PI / 4) by lra;
-  autorewrite with trig_db RtoC_db;
-  lca.
+  autorewrite with eval_db. rewrite cos_PI4.
+  apply c_proj_eq; simpl; try R_field_simplify; try easy;
+  try apply sqrt2_neq_0.
+  rewrite sin_PI4.
+  apply c_proj_eq; simpl; try R_field_simplify; try easy;
+  try apply sqrt2_neq_0.
+  rewrite sin_PI4.
+  apply c_proj_eq; simpl; try R_field_simplify; try easy;
+  try apply sqrt2_neq_0.
+  rewrite cos_PI4.
+  apply c_proj_eq; simpl; try R_field_simplify; try easy; 
+  try apply sqrt2_neq_0.
 Qed.
 
 Lemma rx_to_rz : forall dim a q,
