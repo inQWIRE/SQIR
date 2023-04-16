@@ -1,7 +1,7 @@
-(lang dune 2.8)
+(lang dune 3.7)
 (name coq-sqirvoqc)
-(version 1.1.0)
-(using coq 0.2)
+(version 1.2.0)
+(using coq 0.7)
 
 (generate_opam_files true)
 
@@ -18,8 +18,8 @@
  )
  (depends
    (coq-interval (>= 4.6.1))
-   (coq-quantumlib (>= 1.1.0))
-   (coq (>= 8.12))))
+   (coq-quantumlib (>= 1.2.0))
+   (coq (>= 8.17))))
 
 (package
  (name coq-voqc)
@@ -29,6 +29,6 @@
  )
  (depends
    (coq-interval (>= 4.6.1))
-   (coq-quantumlib (>= 1.1.0))
-   (coq-sqir (>= 1.1.0))
-   (coq (>= 8.12))))
+   (coq-quantumlib (>= 1.2.0))
+   (coq-sqir (>= 1.2.0))
+   (coq (>= 8.17))))
