@@ -3,8 +3,8 @@ opam-version: "2.0"
 version: "1.1.0"
 synopsis: "A verified optimizer for quantum compilation"
 description: """
-inQWIRE's VOQC is a Coq tool for verified
- compilation of quantum circuits, with some common gate sets
+inQWIRE's VOQC is a Coq library for verified
+ optimization of quantum circuits
 """
 maintainer: ["inQWIRE Developers"]
 authors: ["inQWIRE"]
@@ -13,7 +13,6 @@ homepage: "https://github.com/inQWIRE/SQIR"
 bug-reports: "https://github.com/inQWIRE/SQIR/issues"
 depends: [
   "dune" {>= "2.8"}
-  "coq-interval" {>= "4.6.1"}
   "coq-quantumlib" {>= "1.1.0"}
   "coq-sqir" {>= "1.1.0"}
   "coq" {>= "8.12"}
