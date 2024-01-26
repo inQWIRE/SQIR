@@ -70,7 +70,7 @@ Our proofs are resource intensive so expect `make all` to take a little while. I
 ## Using With Other Projects
 
 To install SQIR, run 
-```opam pin coq-sqir htts://github.com/inQWIRE/SQIR.git```
+```opam pin coq-sqir https://github.com/inQWIRE/SQIR.git```
 
 To pull subsequent updates, run `opam install coq-sqir`. 
 
