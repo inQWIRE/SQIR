@@ -1,4 +1,4 @@
-(lang dune 3.7)
+(lang dune 3.8)
 (name coq-sqirvoqc)
 (version 1.3.0)
 (using coq 0.7)
@@ -18,7 +18,7 @@
  (depends
    (coq-interval (>= 4.9.0))
    (coq-quantumlib (>= 1.3.0))
-   (coq (>= 8.19))))
+   (coq (>= 8.16))))
 
 (package
  (name coq-voqc)
@@ -27,7 +27,6 @@
               "\|  optimization of quantum circuits
  )
  (depends
-<<<<<<< HEAD
    (coq-interval (>= 4.9.0))
    (coq-quantumlib (>= 1.3.0))
    (coq-sqir (>= 1.3.0))
