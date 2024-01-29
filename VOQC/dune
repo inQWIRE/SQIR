@@ -1,3 +1,4 @@
 (coq.theory
   (name VOQC)
-  (package coq-voqc))
+  (package coq-voqc)
+  (theories SQIR))

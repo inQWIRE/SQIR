@@ -14,14 +14,13 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Table of Contents
 
-- [SQIR & VOQC](#sqir--voqc)
+- [SQIR \& VOQC](#sqir--voqc)
   - [Table of Contents](#table-of-contents)
   - [Setup](#setup)
   - [Compilation](#compilation)
-  - [Using With Other Projects]()
+  - [Using With Other Projects](#using-with-other-projects)
   - [Directory Contents](#directory-contents)
     - [SQIR](#sqir)
-    - [externals](#externals)
     - [VOQC](#voqc)
     - [examples](#examples)
   - [Acknowledgements](#acknowledgements)
@@ -29,7 +28,7 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Setup
 
-To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/), [QuantumLib](https://github.com/inQWIRE/QuantumLib) (version 1.1.0), and the [Coq Interval package](http://coq-interval.gforge.inria.fr/). We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.15**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
+To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/) and [QuantumLib](https://github.com/inQWIRE/QuantumLib) (version 1.1.0). In order to build the Shor proof, you will also need the [Coq Interval package](http://coq-interval.gforge.inria.fr/) and the [coq-euler](https://github.com/taorunz/euler) library. We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.16**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
 
 Assuming you have opam installed (following the instructions in the link above), follow the steps below to set up your environment.
 ```
@@ -44,16 +43,14 @@ eval $(opam env)
 # install Coq -- this will take a while!
 opam install coq
 
-# install dune 
-opam install dune
-
 # install the QuantumLib library
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam update
 opam install coq-quantumlib.1.1.0
 
-# install Interval package (optional, needed to compile proofs in examples/shor)
+# Optional, if you want to compile the proofs in examples/shor
 opam install coq-interval
+opam pin coq-euler https://github.com/taorunz/euler.git
 ```
 
 *Notes*:
@@ -93,10 +90,6 @@ Definition of the SQIR language.
 - UnitaryOps.v : Utilities for manipulating unitary SQIR programs.
 - UnitarySem.v : Semantics for unitary SQIR programs.
 
-### externals
-
-External dependencies linked as git submodules. Currently, our proof of Shor's algorithm depends on the number theory in the [euler](https://github.com/taorunz/euler) development.
-
 ### VOQC
 
 Verified transformations of SQIR programs. The optimizations and mapping routines extracted to our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) are all listed in **Main.v**. So this file is a good starting point for getting familiar with VOQC.
@@ -128,6 +121,7 @@ The rest of the files in the VOQC directory can be split into the following cate
   - GreedyLayout.v : Generate a layout based on the input program and architecture.
   - Layouts.v : Utilities for describing a physical <-> logical qubit mapping (i.e., layout).
   - MappingConstraints.v : Utilities for describing a program that satisfies architecture constraints.
+  - MappingGateSet.v : Mapping gate set U + {CX, SWAP}, where U is an arbitrary set of single-qubit gates.
   - MappingValidation.v : Check whether two programs (which differ only in SWAP placement) are equivalent.
   - SwapRoute.v: Simple mapping for an architecture described by a directed graph.
 
@@ -165,10 +159,6 @@ This project is the result of the efforts of many people. The primary contacts f
 * Kartik Singhal
 * Runzhou Tao
 * Finn Voichick
-
-Maintainers:
-* Kesha Hietala (@khieta)
-* Robert Rand (@rnrand)
 
 This project is supported by the U.S. Department of Energy, Office of Science, Office of Advanced Scientific Computing Research, Quantum Testbed Pathfinder Program under Award Number DE-SC0019040 and the Air Force Office of Scientific Research under Grant Number FA95502110051.
 

@@ -3,7 +3,7 @@ opam-version: "2.0"
 version: "1.2.0"
 synopsis: "Coq library for reasoning about quantum circuits"
 description: """
-inQWIRE's VOQC is a Coq library for reasoning
+inQWIRE's SQIR is a Coq library for reasoning
  about quantum circuits
 """
 maintainer: ["inQWIRE Developers"]
@@ -13,7 +13,6 @@ homepage: "https://github.com/inQWIRE/SQIR"
 bug-reports: "https://github.com/inQWIRE/SQIR/issues"
 depends: [
   "dune" {>= "2.8"}
-  "coq-interval" {>= "4.6.1"}
   "coq-quantumlib" {>= "1.1.0"}
   "coq" {>= "8.12"}
   "odoc" {with-doc}

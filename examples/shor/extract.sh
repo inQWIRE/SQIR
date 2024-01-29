@@ -5,10 +5,10 @@ cd extraction
 
 # Perform extraction.
 echo "Extracting code..."
-coqc -R ../../.. Top ExtrOcamlList.v
-coqc -R ../../.. Top ExtrOcamlR.v
-coqc -R ../../.. Top ExtrOcamlNatZ.v
-coqc -R ../../.. Top Extraction.v
+coqc ExtrOcamlList.v
+coqc ExtrOcamlNatZ.v
+coqc -R ../../../_build/default/SQIR SQIR ExtrOcamlR.v
+coqc -R ../../../_build/default/SQIR SQIR -R ../../../_build/default/examples/examples Examples -R ../../../_build/default/examples/shor Shor Extraction.v
 
 # Remove unneeded files.
 echo "Deleting unneeded files..."
@@ -23,7 +23,7 @@ rm -f Bin* ClassicalDedekindReals.ml ConstructiveCauchyReals.ml NumTheory.ml \
 echo "Moving generated files to ml/..."
 mv ExtractionGateSet.ml ContFrac.ml Datatypes.ml DiscreteProb.ml ExtrShor.ml \
    List0.ml Main.ml ModMult.ml Nat.ml PeanoNat.ml RCIR.ml RealAux.ml \
-   Rfunctions.ml Shor.ml \
+   Shor.ml Summation.ml \
    ml
    
 # Build extracted code.

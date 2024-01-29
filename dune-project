@@ -1,8 +1,7 @@
 (lang dune 3.7)
 (name coq-sqirvoqc)
-(version 1.2.0)
+(version 1.3.0)
 (using coq 0.7)
-
 (generate_opam_files true)
 
 (license MIT)
@@ -13,22 +12,23 @@
 (package
  (name coq-sqir)
  (synopsis "Coq library for reasoning about quantum circuits")
- (description "\| inQWIRE's VOQC is a Coq library for reasoning
+ (description "\| inQWIRE's SQIR is a Coq library for reasoning
               "\|  about quantum circuits
  )
  (depends
-   (coq-interval (>= 4.6.1))
-   (coq-quantumlib (>= 1.2.0))
-   (coq (>= 8.17))))
+   (coq-interval (>= 4.9.0))
+   (coq-quantumlib (>= 1.3.0))
+   (coq (>= 8.19))))
 
 (package
  (name coq-voqc)
  (synopsis "A verified optimizer for quantum compilation")
- (description "\| inQWIRE's VOQC is a Coq tool for verified
-              "\|  compilation of quantum circuits, with some common gate sets
+ (description "\| inQWIRE's VOQC is a Coq library for verified
+              "\|  optimization of quantum circuits
  )
  (depends
-   (coq-interval (>= 4.6.1))
-   (coq-quantumlib (>= 1.2.0))
-   (coq-sqir (>= 1.2.0))
-   (coq (>= 8.17))))
+<<<<<<< HEAD
+   (coq-interval (>= 4.9.0))
+   (coq-quantumlib (>= 1.3.0))
+   (coq-sqir (>= 1.3.0))
+   (coq (>= 8.16))))

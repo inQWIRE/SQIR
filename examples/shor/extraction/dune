@@ -1,3 +1,4 @@
 (executable
   (name run_shor)
-  (libraries ml unix))
+  (flags (:standard -w -32))
+  (libraries Shor_ml unix))

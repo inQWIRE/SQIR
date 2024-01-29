@@ -2,11 +2,12 @@ open Datatypes
 open List0
 open Nat
 open RealAux
+open Summation
 
 (** val sum_over_list : float list -> float **)
 
 let sum_over_list l =
-  coq_Rsum (length l) (fun i -> nth i l (Z.to_float Z.zero))
+  big_sum coq_R_is_monoid (fun i -> nth i l (Z.to_float Z.zero)) (length l)
 
 (** val sample : float list -> float -> Z.t **)
 
