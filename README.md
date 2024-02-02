@@ -10,7 +10,7 @@ We describe a SQIR formalization of Shor's factoring algorithm in our draft [A F
 
 This repository contains our Coq formalization of SQIR and VOQC as well as several verified quantum algorithms. If you are interested in running the VOQC compiler, then you should look at our OCaml library ([inQWIRE/mlvoqc](https://github.com/inQWIRE/mlvoqc)) or Python library ([inQWIRE/pyvoqc](https://github.com/inQWIRE/pyvoqc)) instead. The OCaml library is extracted from our Coq definitions and the Python library is a wrapper around the OCaml library.
 
-If you are interested in learning more about formal verification of quantum programs in general, we recommend Robert Rand's [Verified Quantum Computing tutorial](http://www.cs.umd.edu/~rrand/vqc/index.html).
+If you are interested in learning more about formal verification of quantum programs in general, we recommend Robert Rand's [Verified Quantum Computing tutorial](https://rand.cs.uchicago.edu/vqc/index.html).
 
 ## Table of Contents
 
@@ -67,7 +67,7 @@ Our proofs are resource intensive so expect `make all` to take a little while. I
 ## Using With Other Projects
 
 To install SQIR, run 
-```opam pin coq-sqir htts://github.com/inQWIRE/SQIR.git```
+```opam pin coq-sqir https://github.com/inQWIRE/SQIR.git```
 
 To pull subsequent updates, run `opam install coq-sqir`. 
 
