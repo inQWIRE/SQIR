@@ -131,7 +131,7 @@ Proof.
         right. split; auto.
         intro contra; destruct contra as [contra1 contra2].
         apply H2 in contra1 as [contra1 | contra1]; auto. }
-      rewrite <- FSetProps.fold_equal in H; try apply H3; auto.
+      rewrite FSetProps.fold_equal in H; try apply H3; auto.
       rewrite (FSetProps.fold_2 _ _ Hcompat Htranspose H1 H2).
       rewrite xorb_assoc.
       rewrite <- H. 
@@ -141,6 +141,22 @@ Proof.
       intro contra; destruct contra as [[contra1 | contra1] contra2];
       contradict contra2; split; auto.
       apply H2; auto.
+      { unfold compat_op in *.
+      apply proper_sym_flip_2; try easy.
+      unfold Proper.
+      unfold respectful.
+      intros.
+      unfold flip in H5.
+      subst.
+      easy.
+      }
+      {
+        unfold transpose.
+        intros.
+        unfold flip.
+        rewrite <- xorb_assoc, (xorb_comm (f y)), xorb_assoc; auto.
+      }
+      easy.
     + assert (FSet.Equal (FSet.diff (FSet.union s1' s2) (FSet.inter s1' s2)) (FSet.add x (FSet.diff (FSet.union s1 s2) (FSet.inter s1 s2)))). 
       { clear - H0 H1 H2.
         unfold FSet.Equal.
@@ -1158,7 +1174,10 @@ Proof.
   rewrite invert_alt.
   Local Transparent ID.
   induction l; simpl.
-  rewrite Ropp_0. reflexivity.
+  replace (uc_eval SKIP) with ((@uc_eval dim SKIP) †).
+  apply invert_correct.
+  autorewrite with eval_db.
+  apply id_adjoint_eq. easy.
   Local Opaque ID Z.sub. 
   destruct a as [u | u | u]; dependent destruction u; unfold invert; simpl.
   all: rewrite map_app, list_to_ucom_append; simpl.

@@ -52,7 +52,7 @@ Qed.
 
 (* A few common inverses *)
 
-Hint Rewrite sin_neg cos_neg : trig_db.
+#[export] Hint Rewrite sin_neg cos_neg : trig_db.
 
 Lemma invert_CNOT : forall dim m n, invert (@CNOT dim m n) ≡ CNOT m n.
 Proof. intros. reflexivity. Qed.
@@ -387,7 +387,7 @@ Proof. intros; solve_matrix. Qed.
 Lemma bra1_phase : forall ϕ, bra 1 × phase_shift ϕ = Cexp ϕ .* bra 1.
 Proof. intros; solve_matrix. Qed.
 
-Hint Rewrite bra0_phase bra1_phase : bra_db.
+#[export] Hint Rewrite bra0_phase bra1_phase : bra_db.
 
 Lemma braketbra_same : forall x y, bra x × (ket x × bra y) = bra y. 
 Proof. intros. destruct x; destruct y; solve_matrix. Qed.
@@ -395,7 +395,7 @@ Proof. intros. destruct x; destruct y; solve_matrix. Qed.
 Lemma braketbra_diff : forall x y z, (x + y = 1)%nat -> bra x × (ket y × bra z) = Zero. 
 Proof. intros. destruct x; destruct y; try lia; solve_matrix. Qed.
 
-Hint Rewrite braketbra_same braketbra_diff using lia : bra_db.
+#[export] Hint Rewrite braketbra_same braketbra_diff using lia : bra_db.
 
 (* Auxiliary proofs about the semantics of CU and TOFF *)
 Lemma CU_correct : forall (dim : nat) θ ϕ λ c t,
@@ -415,11 +415,25 @@ Proof.
      goal #1 = goal #3 and goal #2 = goal #4 *)
   - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db;
       try lca; field_simplify_eq; try nonzero; group_Cexp.
-    + simpl. rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy.
-    + rewrite Copp_mult_distr_l, Copp_mult_distr_r. 
-      repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
-      autorewrite with RtoC_db. rewrite Ropp_involutive.
-      setoid_rewrite sin2_cos2. rewrite Cmult_1_r.
+    + simpl. try (rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy).
+    try (
+      rewrite Cplus_comm; unfold Cplus, Cmult;
+      autorewrite with R_db; simpl;
+      setoid_rewrite sin2_cos2; easy
+    ).
+    + try (simpl; rewrite Copp_mult_distr_l, Copp_mult_distr_r; 
+      repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l;  
+      autorewrite with RtoC_db; rewrite Ropp_involutive;
+      setoid_rewrite sin2_cos2; rewrite Cmult_1_r;
+      apply f_equal; lra).
+      try (
+      simpl; repeat rewrite <- Cmult_assoc; simpl;
+      rewrite <- Cmult_plus_distr_l; 
+      unfold Cplus, Cmult;
+      autorewrite with R_db; simpl;
+      setoid_rewrite sin2_cos2; autorewrite with R_db;
+      unfold Cexp; apply f_equal2; [apply f_equal; lra|]
+      ).
       apply f_equal; lra.
   - rewrite <- Mscale_kron_dist_l.
     repeat rewrite <- Mscale_kron_dist_r.
@@ -433,9 +447,12 @@ Proof.
     + unfold Cminus.
       rewrite Copp_mult_distr_r, <- Cmult_plus_distr_l. 
       apply f_equal2; [apply f_equal; lra|].
-      autorewrite with RtoC_db.
+      try (autorewrite with RtoC_db).
+      try (rewrite <- Cminus_unfold;
+      unfold Cminus, Cmult; simpl; autorewrite with R_db;
+      apply c_proj_eq; simpl; autorewrite with R_db).
       rewrite <- Rminus_unfold, <- cos_plus.
-      apply f_equal. apply f_equal. lra.
+      apply f_equal. try apply f_equal. try lra. lra.
     + apply f_equal2; [apply f_equal; lra|].
       apply c_proj_eq; simpl; try lra.
       R_field_simplify.
@@ -453,16 +470,35 @@ Proof.
     + rewrite Copp_mult_distr_r.
       rewrite <- Cmult_plus_distr_l.
       apply f_equal2; [apply f_equal; lra|].
-      autorewrite with RtoC_db.      
-      rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus.
-      apply f_equal; apply f_equal; lra.
+      try (autorewrite with RtoC_db;
+      rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus;
+      apply f_equal; apply f_equal; lra).
+      try (
+        rewrite Cplus_comm; apply c_proj_eq; simpl; try lra;
+      autorewrite with R_db; rewrite <- Rminus_unfold;
+      rewrite <- cos_plus; apply f_equal; lra
+      ).
   - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db; try lca;
       field_simplify_eq; try nonzero; group_Cexp.
-    + rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy.
-    + rewrite Copp_mult_distr_l, Copp_mult_distr_r. 
-      repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l.  
-      autorewrite with RtoC_db. rewrite Ropp_involutive.
-      setoid_rewrite sin2_cos2. rewrite Cmult_1_r.
+    + try (rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy).
+      try (
+        simpl; rewrite Cplus_comm; unfold Cplus, Cmult;
+      autorewrite with R_db; simpl;
+      setoid_rewrite sin2_cos2; easy
+      ).
+    + try (rewrite Copp_mult_distr_l, Copp_mult_distr_r; 
+      repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l; 
+      autorewrite with RtoC_db; rewrite Ropp_involutive;
+      setoid_rewrite sin2_cos2; rewrite Cmult_1_r).
+      try (
+      simpl;
+      repeat rewrite <- Cmult_assoc; simpl;
+      rewrite <- Cmult_plus_distr_l; 
+      unfold Cplus, Cmult;
+      autorewrite with R_db; simpl;
+      setoid_rewrite sin2_cos2; autorewrite with R_db;
+      unfold Cexp; apply f_equal2; [apply f_equal; lra|] 
+      ).
       apply f_equal; lra.
   - rewrite <- 3 Mscale_kron_dist_l.
     repeat rewrite <- Mscale_kron_dist_r.
@@ -474,9 +510,15 @@ Proof.
     + unfold Cminus.
       rewrite Copp_mult_distr_r, <- Cmult_plus_distr_l. 
       apply f_equal2; [apply f_equal; lra|].
-      autorewrite with RtoC_db.
+      try (autorewrite with RtoC_db).
+      try (
+        repeat rewrite <- Cmult_assoc; simpl;
+      unfold Cplus, Cmult;
+      autorewrite with R_db; simpl;
+      apply c_proj_eq; simpl; try lra
+      ).
       rewrite <- Rminus_unfold, <- cos_plus.
-      apply f_equal. apply f_equal. lra.
+      apply f_equal. try apply f_equal. lra.
     + apply f_equal2; [apply f_equal; lra|].
       apply c_proj_eq; simpl; try lra.
       R_field_simplify.
@@ -494,9 +536,15 @@ Proof.
     + rewrite Copp_mult_distr_r.
       rewrite <- Cmult_plus_distr_l.
       apply f_equal2; [apply f_equal; lra|].
-      autorewrite with RtoC_db.      
-      rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus.
-      apply f_equal; apply f_equal; lra.
+      try (autorewrite with RtoC_db;    
+      rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus;
+      apply f_equal; apply f_equal; lra);
+      try (
+      apply c_proj_eq; simpl; try lra;
+      rewrite Rplus_comm; autorewrite with R_db;
+      rewrite <- Rminus_unfold, <- cos_plus;
+      apply f_equal; lra
+      ).
 Qed.
 
 Lemma UR_not_WT : forall (dim a b : nat) r r0 r1,
@@ -583,7 +631,7 @@ Proof.
    intros. rewrite denote_H. apply f_to_vec_hadamard; auto.
 Qed.
 
-Hint Rewrite f_to_vec_CNOT f_to_vec_Rz f_to_vec_X using lia : f_to_vec_db.
+#[export] Hint Rewrite f_to_vec_CNOT f_to_vec_Rz f_to_vec_X using lia : f_to_vec_db.
 
 Ltac f_to_vec_simpl_body :=
   autorewrite with f_to_vec_db;

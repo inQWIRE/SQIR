@@ -564,9 +564,9 @@ Lemma unfold_ueval_swap : forall dim m n,
       Zero.
 Proof. easy. Qed.
 
-Hint Rewrite denote_H denote_X denote_Y denote_Z denote_ID denote_SKIP 
+#[export] Hint Rewrite denote_H denote_X denote_Y denote_Z denote_ID denote_SKIP 
              denote_Rx denote_Ry denote_Rz denote_cnot denote_swap : eval_db.
-Hint Rewrite unfold_ueval_r unfold_ueval_cnot unfold_ueval_swap unfold_pad unfold_pad_u : eval_db.
+#[export] Hint Rewrite unfold_ueval_r unfold_ueval_cnot unfold_ueval_swap unfold_pad unfold_pad_u : eval_db.
 
 Global Opaque H X Y Z ID Rx Ry Rz CNOT SWAP.
 

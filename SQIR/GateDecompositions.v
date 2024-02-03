@@ -68,7 +68,7 @@ Definition C4X {dim} (a b c d e : nat) : base_ucom dim :=
   invert (RC3X a b c d) ;
   C3SQRTX a b c e.
 
-Hint Rewrite <- RtoC_minus : RtoC_db.
+#[export] Hint Rewrite <- RtoC_minus : RtoC_db.
 
 Local Transparent H U3.
 Lemma CH_is_control_H : forall dim a b, @CH dim a b ≡ control a (H b).
@@ -97,6 +97,13 @@ Proof.
                   Ci * Ci * cos (PI / 2 / 2 / 2) * cos (PI / 2 / 2 / 2))
          with (- (cos (PI / 2 / 2 / 2) * cos (PI / 2 / 2 / 2) - 
                  sin (PI / 2 / 2 / 2) * sin (PI / 2 / 2 / 2))) by lca.
+    all: autorewrite with RtoC_db; apply c_proj_eq; simpl; autorewrite with R_db;
+    try rewrite <- Rminus_unfold; try rewrite <- cos_2a; try rewrite <- sin_2a;
+    replace (2 * (PI * / 4 * / 2))%R with (PI * / 4)%R by lra;
+    replace (2 * (PI * / 2 * / 2 * / 2))%R with (PI * / 4)%R by lra;
+    try symmetry; try apply sin_cos_PI4; try reflexivity; 
+    try rewrite Ropp_eq_compat with (cos (PI * / 4)) (sin (PI * / 4));
+    try reflexivity; try symmetry; try apply sin_cos_PI4; try reflexivity.
     all: autorewrite with RtoC_db; rewrite <- sin_2a; rewrite <- cos_2a;
          replace (2 * (PI / 4 / 2))%R with (PI / 4)%R by lra;
          replace (2 * (PI / 2 / 2 / 2))%R with (PI / 4)%R by lra;
@@ -107,12 +114,8 @@ Proof.
   { assert (aux: forall x, (x * x = x²)%R) by (unfold Rsqr; reflexivity).
     solve_matrix; repeat rewrite RIneq.Ropp_div; autorewrite with Cexp_db trig_db; 
       repeat rewrite RtoC_opp; field_simplify_eq; try nonzero; 
-      autorewrite with RtoC_db; repeat rewrite aux.
-    rewrite 2 (Rplus_comm ((cos _)²)).
-    rewrite 2 sin2_cos2.
-    reflexivity.
-    rewrite 2 sin2_cos2.
-    reflexivity. }
+    autorewrite with RtoC_db; repeat rewrite aux;
+    replace (PI / 2 / 2 / 2)%R with (PI / 4 / 2)%R by lra; reflexivity. }
   intros dim a b.
   unfold H, CH, uc_equiv.
   simpl.

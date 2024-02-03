@@ -442,7 +442,7 @@ Ltac simpl_dnr :=
   | H : _ && _ = true |- _ =>
       apply andb_true_iff in H as [? ?]
   | H : (_ =? _)%nat = false |- _ => 
-      apply beq_nat_false in H
+      apply Nat.eqb_neq in H
   end.
 
 Lemma does_not_reference_rev : forall {U dim} (l : gate_list U dim) q,

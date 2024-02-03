@@ -920,7 +920,21 @@ Proof.
        rewrite sqrt_Rsqr by lra.
        rewrite <- Rsqr_pow2.
        rewrite Rsqr_sqrt by lra.
-       lra. }
+       repeat rewrite Rmult_assoc.
+       autorewrite with R_db.
+       replace (-2) with (-(2)) by lra.
+       rewrite Ropp_mult_distr_l_reverse.
+       repeat rewrite Rmult_assoc.
+       rewrite <- Ropp_eq_compat with (k2 θ1 ξ θ2 * (√ k1 θ1 ξ θ2 ^ 4 * 2 ^ 2)) (2 * (k1 θ1 ξ θ2 * (k2 θ1 ξ θ2 * (√ k1 θ1 ξ θ2 ^ 2 * 2)))).
+       reflexivity.
+       simpl.
+       repeat rewrite Rmult_1_r.
+       rewrite Rmult_comm.
+       autorewrite with R_db.
+       repeat rewrite <- Rmult_assoc.
+       rewrite sqrt_def.
+       lra. apply Rlt_le; easy.
+       }
   unfold rm02, rm12.
   replace θ1 with (2 * (θ1 / 2)) by lra.
   replace θ2 with (2 * (θ2 / 2)) by lra.
@@ -1215,7 +1229,7 @@ Proof.
     repeat rewrite <- Cmult_assoc.
     rewrite (Cmult_assoc (√ _)).
     autorewrite with RtoC_db.
-    rewrite sqrt_def by lra.
+    rewrite Csqrt_sqrt by lra.
     apply m01_rewrite_alt_aux2; assumption.
   - rewrite Cexp_PI2_minus.
     autorewrite with C_db.
@@ -1239,7 +1253,7 @@ Proof.
     repeat rewrite <- Cmult_assoc.
     rewrite (Cmult_assoc (√ _)).
     autorewrite with RtoC_db.
-    rewrite sqrt_def by lra.
+    rewrite Csqrt_sqrt by lra.
     apply m01_rewrite_alt_aux2; assumption.
   - (* rm12 = 0 and rm02 = 0 forces k2 = 0, which is a contradiction *)
     assert (H: k2 θ1 ξ θ2 = 0). 
@@ -1380,7 +1394,7 @@ Proof.
   rewrite <- (Cmult_assoc (m00 _ _ _) (√ k2 _ _ _)).
   rewrite <- (Cmult_assoc (m00 _ _ _) (√ k1 _ _ _)).
   autorewrite with RtoC_db.
-  rewrite 2 sqrt_def by lra.
+  rewrite 2 Csqrt_sqrt by lra.
   lca.
   repeat split; try assumption; nonzero.
 Qed.
@@ -1402,8 +1416,8 @@ Lemma minus_1_plus_1 : -1 + 1 = 0.
 Proof. lra. Qed.
 Lemma one_plus_minus_1 : 1 + -1 = 0.
 Proof. lra. Qed.
-Hint Rewrite minus_1_plus_1 one_plus_minus_1 : R_db.
-Hint Rewrite atan_0 atan_opp : trig_db.
+#[export] Hint Rewrite minus_1_plus_1 one_plus_minus_1 : R_db.
+#[export] Hint Rewrite atan_0 atan_opp : trig_db.
 
 (* The proof is split into 3 main cases, each with various subcases, depending 
    on the values of θ1 ξ θ2. In general, different parameters lead to different

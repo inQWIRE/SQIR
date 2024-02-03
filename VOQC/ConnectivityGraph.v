@@ -249,8 +249,8 @@ Ltac destruct_bool_goals :=
   | H : _ && _ = true |- _ => apply andb_prop in H as [? ?]
   | H : _ || _ = true |- _ => apply orb_prop in H
   | H : _ <? _ = true |- _ => apply Nat.ltb_lt in H
-  | H : _ =? _ = false |- _ => apply beq_nat_false in H 
-  | H : _ =? _ = true |- _ => apply beq_nat_true in H 
+  | H : _ =? _ = false |- _ => apply Nat.eqb_neq in H 
+  | H : _ =? _ = true |- _ => apply Nat.eqb_eq in H 
   | H : negb _ = true |- _ => apply negb_true_iff in H
   end.
 

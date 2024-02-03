@@ -1,8 +1,7 @@
-(lang dune 2.8)
-(name coq-sqir-voqc)
-(version 1.1.0)
-(using coq 0.2)
-
+(lang dune 3.8)
+(name coq-sqirvoqc)
+(version 1.3.0)
+(using coq 0.7)
 (generate_opam_files true)
 
 (license MIT)
@@ -17,8 +16,9 @@
               "\|  about quantum circuits
  )
  (depends
-   (coq-quantumlib (>= 1.1.0))
-   (coq (>= 8.12))))
+   (coq-interval (>= 4.9.0))
+   (coq-quantumlib (>= 1.3.0))
+   (coq (>= 8.16))))
 
 (package
  (name coq-voqc)
@@ -27,6 +27,7 @@
               "\|  optimization of quantum circuits
  )
  (depends
-   (coq-quantumlib (>= 1.1.0))
-   (coq-sqir (>= 1.1.0))
-   (coq (>= 8.12))))
+   (coq-interval (>= 4.9.0))
+   (coq-quantumlib (>= 1.3.0))
+   (coq-sqir (>= 1.3.0))
+   (coq (>= 8.16))))
