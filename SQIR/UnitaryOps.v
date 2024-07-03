@@ -416,25 +416,11 @@ Proof.
   - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db;
       try lca; field_simplify_eq; try nonzero; group_Cexp.
     + simpl. try (rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy).
-    try (
-      rewrite Cplus_comm; unfold Cplus, Cmult;
-      autorewrite with R_db; simpl;
-      setoid_rewrite sin2_cos2; easy
-    ).
     + try (simpl; rewrite Copp_mult_distr_l, Copp_mult_distr_r; 
       repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l;  
       autorewrite with RtoC_db; rewrite Ropp_involutive;
       setoid_rewrite sin2_cos2; rewrite Cmult_1_r;
       apply f_equal; lra).
-      try (
-      simpl; repeat rewrite <- Cmult_assoc; simpl;
-      rewrite <- Cmult_plus_distr_l; 
-      unfold Cplus, Cmult;
-      autorewrite with R_db; simpl;
-      setoid_rewrite sin2_cos2; autorewrite with R_db;
-      unfold Cexp; apply f_equal2; [apply f_equal; lra|]
-      ).
-      apply f_equal; lra.
   - rewrite <- Mscale_kron_dist_l.
     repeat rewrite <- Mscale_kron_dist_r.
     repeat (apply f_equal2; try reflexivity).
@@ -452,7 +438,7 @@ Proof.
       unfold Cminus, Cmult; simpl; autorewrite with R_db;
       apply c_proj_eq; simpl; autorewrite with R_db).
       rewrite <- Rminus_unfold, <- cos_plus.
-      apply f_equal. try apply f_equal. try lra. lra.
+      apply f_equal. try apply f_equal. try lra. 
     + apply f_equal2; [apply f_equal; lra|].
       apply c_proj_eq; simpl; try lra.
       R_field_simplify.
@@ -473,19 +459,9 @@ Proof.
       try (autorewrite with RtoC_db;
       rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus;
       apply f_equal; apply f_equal; lra).
-      try (
-        rewrite Cplus_comm; apply c_proj_eq; simpl; try lra;
-      autorewrite with R_db; rewrite <- Rminus_unfold;
-      rewrite <- cos_plus; apply f_equal; lra
-      ).
   - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db; try lca;
       field_simplify_eq; try nonzero; group_Cexp.
     + try (rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy).
-      try (
-        simpl; rewrite Cplus_comm; unfold Cplus, Cmult;
-      autorewrite with R_db; simpl;
-      setoid_rewrite sin2_cos2; easy
-      ).
     + try (rewrite Copp_mult_distr_l, Copp_mult_distr_r; 
       repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l; 
       autorewrite with RtoC_db; rewrite Ropp_involutive;

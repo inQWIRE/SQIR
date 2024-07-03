@@ -1,0 +1,4 @@
+(coq.theory
+  (name error-correction)
+  (theories SQIR))
+
