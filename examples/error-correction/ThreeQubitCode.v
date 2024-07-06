@@ -7,7 +7,7 @@ Open Scope ucom.
 
 Definition Toffoli_false_fst {dim} (a b c : nat) : base_ucom dim :=
   X a;
-CCX a b c;
+  CCX a b c;
   X a.
 
 
@@ -21,17 +21,17 @@ Definition encode : base_ucom dim :=
 
 Theorem encode_correct : forall (α β : C),
   (@uc_eval dim encode) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ∣0,0,0,0⟩ )
-= α .*∣0,0,0,0,0⟩ .+ β .* ∣1,1,1,0,0⟩.
+  = α .*∣0,0,0,0,0⟩ .+ β .* ∣1,1,1,0,0⟩.
 Proof.
   intros.
   simpl.
   autorewrite with eval_db; simpl.
   Qsimpl.
-replace (I 8) with (I 2 ⊗ I 2 ⊗ I 2).
+  replace (I 8) with (I 2 ⊗ I 2 ⊗ I 2).
   replace (I 4) with (I 2 ⊗ I 2).
   2,3: repeat rewrite id_kron; easy. 
   repeat (distribute_plus;
-repeat rewrite <- kron_assoc by auto with wf_db;
+          repeat rewrite <- kron_assoc by auto with wf_db;
           restore_dims).
   repeat rewrite kron_mixed_product.
   Qsimpl.
@@ -41,8 +41,8 @@ Qed.
 
 Inductive error : Set :=
   | NoError
-| BitFlip0
-| BitFlip1
+  | BitFlip0
+  | BitFlip1
   | BitFlip2.
 
 Definition apply_error (e : error) : base_ucom dim :=
@@ -95,8 +95,8 @@ Proof.
 Qed.
 
 Definition error_recover_correct (e : error) : forall (α β : C),
-  (@uc_eval dim (apply_error e; recover)) × (α .* ∣0,0,0,0,0⟩ .+ β .* ∣1,1,1,0,0⟩) =
-  (α .* ∣0,0,0⟩ .+ β .* ∣1,1,1⟩) ⊗ (error_syndrome e).
+  (@uc_eval dim (apply_error e; recover)) × (α .* ∣0,0,0,0,0⟩ .+ β .* ∣1,1,1,0,0⟩)
+  = (α .* ∣0,0,0⟩ .+ β .* ∣1,1,1⟩) ⊗ (error_syndrome e).
 Proof.
   intros.
   destruct e.
@@ -233,8 +233,8 @@ Proof.
 Qed.
 
 Definition error_recover_correct (e : error) : forall (α β : C),
-  (@uc_eval dim (apply_error e; recover)) × (α .* ∣+⟩ ⊗ ∣+⟩ ⊗ ∣+⟩ ⊗ ∣0,0⟩ .+ β .* ∣-⟩ ⊗ ∣-⟩ ⊗ ∣-⟩ ⊗ ∣0,0⟩) =
-  (α .* ∣0,0,0⟩ .+ β .* ∣1,1,1⟩) ⊗ (error_syndrome e).
+  (@uc_eval dim (apply_error e; recover)) × (α .* ∣+⟩ ⊗ ∣+⟩ ⊗ ∣+⟩ ⊗ ∣0,0⟩ .+ β .* ∣-⟩ ⊗ ∣-⟩ ⊗ ∣-⟩ ⊗ ∣0,0⟩)
+  = (α .* ∣0,0,0⟩ .+ β .* ∣1,1,1⟩) ⊗ (error_syndrome e).
 Proof.
   intros.
   destruct e.
@@ -292,7 +292,8 @@ Definition phase_flip_recover (e : error) : base_ucom dim :=
 
 
 Theorem three_code_correct (e : error) : forall (α β : C),
-  (@uc_eval dim (phase_flip_recover e) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ∣0,0,0,0⟩)) = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ∣0,0⟩ ⊗ (error_syndrome e).
+  (@uc_eval dim (phase_flip_recover e) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ∣0,0,0,0⟩))
+  = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ∣0,0⟩ ⊗ (error_syndrome e).
 Proof.
   intros.
   unfold phase_flip_recover.
