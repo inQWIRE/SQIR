@@ -1,4 +1,4 @@
 (coq.theory
-  (name error-correction)
+  (name ErrorCorrection)
   (theories SQIR))
 
