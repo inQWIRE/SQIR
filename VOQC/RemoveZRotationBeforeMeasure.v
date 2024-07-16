@@ -81,6 +81,9 @@ Proof.
   repeat rewrite Mmult_assoc.
   Msimpl.
   repeat (restore_dims; rewrite <- Mmult_assoc).
+  (* This line is extraneous with the patch to 
+     Qsimpl / Q_db in QuantumLim > 1.5.0 *)
+  replace (σx †) with σx by (symmetry; apply σx_hermitian).
   Qsimpl.
   rewrite Mplus_comm; reflexivity.
   rewrite Mplus_comm; reflexivity.
