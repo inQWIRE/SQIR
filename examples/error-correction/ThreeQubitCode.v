@@ -36,7 +36,7 @@ Proof.
   repeat rewrite kron_mixed_product.
   Qsimpl.
   autorewrite with ket_db.
-rewrite Mplus_comm; easy.
+  rewrite Mplus_comm; easy.
 Qed.
 
 Inductive error : Set :=
@@ -46,7 +46,7 @@ Inductive error : Set :=
   | BitFlip2.
 
 Definition apply_error (e : error) : base_ucom dim :=
-match e with
+  match e with
   | NoError => SKIP
   | BitFlip0 => X 0
   | BitFlip1 => X 1
