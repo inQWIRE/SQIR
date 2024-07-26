@@ -43,8 +43,8 @@ Definition encode : base_ucom dim :=
 
 Theorem encode_correct (α β : C) :
    (@uc_eval dim encode) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩ )
-   = /C2 .* (/√ 2 .* (α .* (∣0,0,0⟩ .+            ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+           ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+           ∣1,1,1⟩)))
-  .+ /C2 .* (/√ 2 .* (β .* (∣0,0,0⟩ .+  (-1)%R .* ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+ (-1)%R .* ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+ (-1)%R .* ∣1,1,1⟩))).
+   = /C2 .* (/√ 2 .* (α .* 3 ⨂ (∣0,0,0⟩ .+            ∣1,1,1⟩)))
+  .+ /C2 .* (/√ 2 .* (β .* 3 ⨂ (∣0,0,0⟩ .+  (-1)%R .* ∣1,1,1⟩))).
 Proof.
   simpl. Qsimpl.
 
@@ -60,11 +60,7 @@ Proof.
   distribute_scale.
   repeat rewrite Mscale_mult_dist_r.
   restore_dims.
-  repeat rewrite kron_assoc by (
-    repeat rewrite kron_assoc by auto with wf_db;
-    repeat (rewrite f_to_vec_merge; restore_dims);
-    auto with wf_db
-  ).
+  repeat rewrite kron_assoc by auto 10 with wf_db.
   repeat (rewrite f_to_vec_merge; restore_dims).
   repeat rewrite f_to_vec_CNOT; try lia.
   simpl update.
@@ -78,7 +74,6 @@ Proof.
   ).
   repeat rewrite Mmult_plus_distr_l.
   repeat rewrite Mscale_mult_dist_r.
-  
   
   repeat (rewrite f_to_vec_CNOT; try lia; try rewrite kron_1_l; simpl update).
   simpl. Qsimpl.
@@ -94,8 +89,8 @@ Proof.
   repeat rewrite kron_plus_distr_l.
   repeat rewrite Mplus_assoc.
   f_equal.
-  repeat rewrite Mscale_assoc.
-  - replace (α * / √ 2 * / √ 2 * / √ 2)%C with (/√ 2 * / C2 * α)%C.
+  - repeat rewrite Mscale_assoc.
+    replace (α * / √ 2 * / √ 2 * / √ 2)%C with (/√ 2 * / C2 * α)%C.
     2: {
       (* why does lca not work here? *)
       rewrite Cmult_comm.
@@ -144,6 +139,7 @@ Inductive bit_flip_error : Set :=
   | ThreeBitFlip (off₁ off₂ off₃ : block_offset).
 
 Inductive error : Set :=
+  | NoError
   | PhaseFlipError (n : block_no) (e : phase_flip_error n)
   | BitFlipError (e : bit_flip_error)
   | BothErrors (n : block_no) (e₁ : phase_flip_error n) (e₂ : bit_flip_error).
@@ -168,10 +164,10 @@ Definition apply_bit_flip_error (e : bit_flip_error) : base_ucom dim :=
 
 Definition apply_error (e : error) : base_ucom dim :=
   match e with
+  | NoError => SKIP
   | PhaseFlipError _ e => apply_phase_flip_error e
   | BitFlipError e => apply_bit_flip_error e
   | BothErrors _ e₁ e₂ => apply_phase_flip_error e₁; apply_bit_flip_error e₂
   end.
-
 
 End NineQubitCode.
