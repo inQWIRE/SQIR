@@ -1,15 +1,11 @@
 Require Export SQIR.UnitaryOps.
 Require Import QuantumLib.Measurement.
 
+Require Import Common.
+
 Module ThreeQubitCode.
 
 Open Scope ucom.
-
-Definition Toffoli_false_fst {dim} (a b c : nat) : base_ucom dim :=
-  X a;
-  CCX a b c;
-  X a.
-
 
 (* q at 0; encoding/decoding ancillae at 1 and 2; and recovery ancillae at 3 and 4. *)
 Definition dim : nat := 5.
@@ -66,8 +62,8 @@ Definition recover : base_ucom dim :=
   CNOT 0 4; CNOT 1 4;
   CNOT 1 3; CNOT 2 3;
   CNOT 3 4;
-  Toffoli_false_fst 3 4 0;
-  Toffoli_false_fst 4 3 1;
+  Common.ZCCX 3 4 0;
+  Common.ZCCX 4 3 1;
   CCX 3 4 2.
 
 Definition decode : base_ucom dim :=
@@ -278,7 +274,7 @@ Proof.
   ).
   all : simpl; Qsimpl.
   all : repeat rewrite <- kron_assoc by auto with wf_db.
-  all : reflexivity.
+  all : easy.
 Qed.
 
 (** The rest of the circuit is the same as
