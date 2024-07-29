@@ -102,11 +102,13 @@ Proof.
   all : repeat rewrite Mmult_assoc.
   all : repeat rewrite Mmult_plus_distr_l.
   all : repeat rewrite Mscale_mult_dist_r.
-  all : replace (∣0, 0, 0, 0, 0⟩) with (f_to_vec dim (fun _ => false)).
-  all : replace (∣1, 1, 1, 0, 0⟩) with (f_to_vec dim (fun n => n <? 3)).
-  10-12,14-16: (
+  all : replace (∣0, 0, 0, 0, 0⟩) with (f_to_vec dim (fun _ => false)) by (
     simpl f_to_vec;
-    Qsimpl; easy
+    Msimpl_light; easy
+  ).
+  all : replace (∣1, 1, 1, 0, 0⟩) with (f_to_vec dim (fun n => n <? 3)) by (
+    simpl f_to_vec;
+    Msimpl_light; easy
   ).
   
   all : repeat (
