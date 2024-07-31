@@ -1,12 +1,20 @@
 Require Import Vectors.Fin.
 Require Export SQIR.UnitaryOps.
 
+Require Import Common.
+
 Module NineQubitCode.
 
 Open Scope ucom.
 Open Scope nat_scope.
 
-Definition dim : nat := 9.
+(**
+  9 qubits are for encoding/decoding.
+  Following that, 2 * 3 qubits are used for bit flip syndrome analysis.
+  2 additional qubits are used phase-flip analysis.
+  This can be made more compact, but this representation makes syndrome analysis easier.
+ *)
+Definition dim : nat := 17.
 
 (** 
   Blocks
@@ -31,22 +39,28 @@ Definition encode_block (n : block_no) : base_ucom dim :=
   let q0 := proj1_sig (Fin.to_nat n) * 3 in
   let q1 := q0 + 1 in
   let q2 := q0 + 2 in
+  H q0;
   CNOT q0 q1;
   CNOT q0 q2.
 
 Definition encode : base_ucom dim :=
   CNOT 0 3; CNOT 0 6;
-  H 0; H 3; H 6;
   encode_block (@Fin.of_nat_lt 0 3 ltac:(lia));
   encode_block (@Fin.of_nat_lt 1 3 ltac:(lia));
   encode_block (@Fin.of_nat_lt 2 3 ltac:(lia)).
 
-Theorem encode_correct (α β : C) :
-   (@uc_eval dim encode) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩ )
-   = /C2 .* (/√ 2 .* (α .* 3 ⨂ (∣0,0,0⟩ .+            ∣1,1,1⟩)))
-  .+ /C2 .* (/√ 2 .* (β .* 3 ⨂ (∣0,0,0⟩ .+  (-1)%R .* ∣1,1,1⟩))).
+Definition encoded α β := (
+     /C2 .* (/√ 2 .* (α .* (3 ⨂ (∣0,0,0⟩ .+            ∣1,1,1⟩)) ⊗ 5 \otimes ∣0⟩))
+  .+ /C2 .* (/√ 2 .* (β .* (3 ⨂ (∣0,0,0⟩ .+  (-1)%R .* ∣1,1,1⟩)) ⊗ ∣0⟩))
+).
+
+Theorem encode_correct : forall (α β : C),
+   (@uc_eval dim encode) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 16 ⨂ ∣0,0⟩)
+   = encoded α β.
 Proof.
-  simpl. Qsimpl.
+  intros.
+  simpl. Msimpl_light.
+
 
   replace (∣0⟩) with (f_to_vec 1 (fun _ => false)) by lma'.
   replace (∣1⟩) with (f_to_vec 1 (fun _ => true)) by lma'.
@@ -62,21 +76,18 @@ Proof.
   restore_dims.
   repeat rewrite kron_assoc by auto 10 with wf_db.
   repeat (rewrite f_to_vec_merge; restore_dims).
-  repeat rewrite f_to_vec_CNOT; try lia.
-  simpl update.
   
-  repeat  (
-    rewrite f_to_vec_H; try lia;
-    simpl update; simpl b2R;
-    restore_dims;
+  repeat (
+    first
+    [ rewrite f_to_vec_H
+    | repeat rewrite f_to_vec_CNOT; try lia
+    ];
+    simpl update;
     repeat rewrite Mmult_plus_distr_l;
-    repeat rewrite Mscale_mult_dist_r
+    repeat rewrite Mscale_mult_dist_r;
+    restore_dims
   ).
-  repeat rewrite Mmult_plus_distr_l.
-  repeat rewrite Mscale_mult_dist_r.
-  
-  repeat (rewrite f_to_vec_CNOT; try lia; try rewrite kron_1_l; simpl update).
-  simpl. Qsimpl.
+  simpl. Msimpl_light.
 
   replace (0 * PI)%R with 0%R by lra.
   replace (1 * PI)%R with PI by lra.
@@ -132,7 +143,6 @@ Inductive phase_flip_error (n : block_no) : Set :=
   | OnePhaseFlip (off : block_offset)
   | MorePhaseFlip (e : phase_flip_error n) (off : block_offset).
 
-
 Inductive bit_flip_error : Set :=
   | OneBitFlip (n : block_no) (off : block_offset)
   | TwoBitFlip (n₁ n₂ : block_no) (h : n₁ <> n₂) (off₁ off₂ : block_offset)
@@ -169,5 +179,52 @@ Definition apply_error (e : error) : base_ucom dim :=
   | BitFlipError e => apply_bit_flip_error e
   | BothErrors _ e₁ e₂ => apply_phase_flip_error e₁; apply_bit_flip_error e₂
   end.
+
+Definition ancillae_for (e : error) : Vector (2 ^ 8) :=
+  8 ⨂ ∣0⟩.
+
+(**
+  Recover
+ *)
+Definition recover : base_ucom dim := SKIP.
+
+Theorem error_recover_correct (e : error) : forall (α β : C),
+  (@uc_eval dim (apply_error e; recover)) × encoded α β
+  = encoded α β.
+Proof.
+Admitted.
+
+
+(**
+  Decode
+ *)
+Definition decode : base_ucom dim := SKIP.
+
+
+(**
+  Full circuit 
+ *)
+
+Definition shor (e : error) : base_ucom dim :=
+  encode;
+  apply_error e;
+  recover;
+  decode.
+
+Definition shor_correct (e : error) : forall (α β : C),
+  (@uc_eval dim (shor e)) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩ )
+  = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for e.
+Proof.
+  intros.
+  Local Opaque encode.
+  simpl uc_eval.
+  repeat rewrite Mmult_assoc.
+  restore_dims.
+  rewrite (encode_correct α β).
+
+
+Admitted.
+
+
 
 End NineQubitCode.
