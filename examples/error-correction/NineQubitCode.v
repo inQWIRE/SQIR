@@ -1,4 +1,4 @@
-Require ExportSQIR.UnitaryOps.
+Require Export SQIR.UnitaryOps.
 
 Require Import Common.
 
@@ -7,7 +7,7 @@ Module NineQubitCode.
 Local Open Scope ucom.
 Local Open Scope nat_scope.
 
-Definition dim : nat := 9.
+Notation dim := 9%nat.
 
 (** 
   Blocks
@@ -27,8 +27,8 @@ Definition t_to_nat (t : up_to_three) : nat :=
 
 Definition t_eq (t₁ t₂ : up_to_three) : bool :=
   match t₁, t₂ with
-  | Zero, Zero 
-  | One, One
+  | Zero, Zero
+| One, One
   | Two, Two => true
   | _, _ => false
   end.
@@ -78,6 +78,25 @@ Notation encoded α β := (
  .+ /C2 .* (/√ 2 .* (β .* (3 ⨂ (∣0,0,0⟩ .+  (-1)%R .* ∣1,1,1⟩))))
 ).
 
+Ltac f_to_vec_simpl_light :=
+  first
+  [ rewrite f_to_vec_H
+  | rewrite f_to_vec_CCX
+  | rewrite f_to_vec_CNOT
+  ];
+  try lia;
+  simpl update;
+  do 2 (
+    repeat rewrite Mmult_plus_distr_l;
+    repeat rewrite Mscale_mult_dist_r
+  ).
+
+Ltac pull_scalars :=
+  repeat rewrite <- Mscale_plus_distr_r;
+  repeat rewrite kron_plus_distr_r;
+  repeat rewrite kron_plus_distr_l;
+  repeat rewrite Mplus_assoc.
+
 Theorem encode_correct : forall (α β : C),
    (@uc_eval dim encode) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩)
    = encoded α β.
@@ -88,8 +107,8 @@ Proof.
   replace (∣0⟩) with (f_to_vec 1 (fun _ => false)) by lma'.
   replace (∣1⟩) with (f_to_vec 1 (fun _ => true)) by lma'.
   restore_dims.
-  replace (∣0,0,0⟩) with (f_to_vec 3 (fun _ => false)) by lma'.
-  replace (∣1,1,1⟩) with (f_to_vec 3 (fun _ => true)) by lma'.
+  rewrite Common.zero_9_f_to_vec.
+  rewrite Common.nine_9_f_to_vec.
 
   repeat rewrite Mmult_assoc.
   rewrite kron_plus_distr_r.
@@ -100,16 +119,7 @@ Proof.
   repeat rewrite kron_assoc by auto 10 with wf_db.
   repeat (rewrite f_to_vec_merge; restore_dims).
   
-  repeat (
-    first
-    [ rewrite f_to_vec_H
-    | repeat rewrite f_to_vec_CNOT; try lia
-    ];
-    simpl update;
-    repeat rewrite Mmult_plus_distr_l;
-    repeat rewrite Mscale_mult_dist_r;
-    restore_dims
-  ).
+  repeat f_to_vec_simpl_light.
   simpl. Msimpl_light.
 
   replace (0 * PI)%R with 0%R by lra.
@@ -117,11 +127,8 @@ Proof.
   autorewrite with Cexp_db.
   group_radicals.
   repeat rewrite Mscale_1_l.
-  
-  repeat rewrite <- Mscale_plus_distr_r.
-  repeat rewrite kron_plus_distr_r.
-  repeat rewrite kron_plus_distr_l.
-  repeat rewrite Mplus_assoc.
+
+  pull_scalars.
   f_equal.
   - repeat rewrite Mscale_assoc.
     replace (α * / √ 2 * / √ 2 * / √ 2)%C with (/√ 2 * / C2 * α)%C.
@@ -232,7 +239,7 @@ Definition block_to_syn (b : block_no) (off : block_offset) : list nat :=
 
 Definition ancillae_for_bit_flip (e : bit_flip_error) : list nat :=
   match e with
-  | OneBitFlip n off => block_to_syn n off
+| OneBitFlip n off => block_to_syn n off
   | TwoBitFlip n₁ n₂ h off₁ off₂ => 
       match n₁ as n₁', n₂ as n₂' return n₁ = n₁' -> n₂ = n₂' -> list nat with
       | Zero, Zero
@@ -300,13 +307,12 @@ Definition decode : base_ucom dim :=
 (**
   Full circuit 
  *)
-
 Definition shor (e : error) : base_ucom dim :=
   encode;
   apply_error e;
   (* Does not use the regular:
      `encode; apply_error e; recover; decode` 
-     (because we do not recover original encoding).
+     (because we do not recover the original encoding).
      Attempting to do so requires 8 addition
      qubits (really classical bits), 2 per block
      for bit flip, and 2 for phase flip.
@@ -314,30 +320,219 @@ Definition shor (e : error) : base_ucom dim :=
   *)
   decode.
 
+Lemma inv_sqrt2_cubed : (/ √ 2 * / √ 2 * / √ 2)%C = (/ C2 * /√ 2)%C.
+Proof.
+  rewrite Cinv_sqrt2_sqrt.
+  easy.
+Qed.
+
+Ltac compute_vec :=
+    simpl uc_eval;
+    repeat rewrite Mmult_assoc; restore_dims;
+    repeat f_to_vec_simpl_light;
+    simpl;
+    replace (0 * PI)%R with 0%R by lra;
+    replace (1 * PI)%R with PI by lra;
+    autorewrite with Cexp_db;
+    repeat rewrite Mscale_1_l;
+    restore_dims;
+    autorewrite with ket_db.
+
+Ltac prep_err_compute :=
+  simpl; Msimpl_light; restore_dims;
+  rewrite Common.zero_9_f_to_vec, Common.nine_9_f_to_vec;
+  repeat (rewrite kron_plus_distr_r, kron_plus_distr_l; restore_dims);
+  repeat rewrite kron_plus_distr_r;
+  repeat rewrite Mplus_assoc;
+  repeat (rewrite Mscale_kron_dist_l; restore_dims);
+  repeat rewrite Mscale_kron_dist_r;
+  repeat (rewrite Mscale_kron_dist_l; restore_dims);
+  repeat (rewrite f_to_vec_merge; restore_dims);
+
+  repeat rewrite Mmult_plus_distr_l;
+  repeat rewrite Mscale_mult_dist_r;
+
+  repeat rewrite Mmult_plus_distr_l;
+  repeat rewrite Mscale_mult_dist_r;
+  restore_dims.
+
+
+Ltac post_compute_vec :=
+    repeat rewrite Cmult_assoc;
+    rewrite inv_sqrt2_cubed;
+    repeat rewrite <- Mscale_assoc with (y := ((-1)%R : C));
+    repeat rewrite <- Mscale_plus_distr_r;
+    repeat rewrite <- kron_assoc; auto with wf_db;
+
+    repeat rewrite Mplus_assoc;
+    repeat rewrite Mscale_plus_distr_r with (x := ((-1)%R : C));
+    repeat rewrite Mplus_assoc.
+
+Definition error_decode_correct_no_error :
+  forall (α β : C),
+  (@uc_eval dim (apply_error NoError; decode)) × (encoded α β)
+  = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for NoError.
+Proof.
+  intros. subst.
+  Local Opaque decode CCX.
+  simpl ancillae_for. Msimpl_light.
+  simpl uc_eval. restore_dims.
+  repeat rewrite denote_SKIP; try lia.
+  repeat rewrite Mmult_1_l; auto 10 with wf_db.
+  restore_dims.
+  prep_err_compute.
+  Local Transparent decode.
+
+  assert (H1 :
+    (uc_eval decode
+          × f_to_vec (3 + 3 + 3)
+              (fun x : nat =>
+               if x <? 3 + 3
+               then if x <? 3 then false else false
+               else false))
+    = (/ C2 * / √ 2 )%C .* ((∣0,0,0⟩ .+ ∣1,0,0⟩) ⊗ (
+        ∣0, 0, 0, 0, 0, 0⟩
+     .+ ∣0, 0, 0, 1, 0, 0⟩
+     .+ ∣1, 0, 0, 0, 0, 0⟩
+     .+ ∣1, 0, 0, 1, 0, 0⟩))).
+  {
+    compute_vec.
+    post_compute_vec.
+    do 2 rewrite Mplus_comm with (A := ∣ 1, 0, 0, 1, 0, 0, 0, 0, 0 ⟩).
+    do 2 rewrite Mplus_comm with (A := ∣ 1, 0, 0, 1, 0, 0, 1, 0, 0 ⟩).
+    repeat rewrite Mplus_assoc.
+    do 2 rewrite Mplus_comm with (A := ∣ 1, 0, 0, 0, 0, 0, 1, 0, 0 ⟩).
+    repeat rewrite Mplus_assoc.
+    reflexivity.
+  }
+  rewrite H1. clear H1.
+
+  assert (H2 :
+    (uc_eval decode
+              × f_to_vec (3 + 3 + 3)
+                  (fun x : nat =>
+                   if x <? 3 + 3
+                   then if x <? 3 then false else true
+                   else false))
+    = (
+      / C2 * / √ 2
+      .* (
+        (∣0, 0, 0⟩ ⊗ (∣0, 0, 0, 0, 0, 0⟩ .+ ∣0, 0, 0, 1, 0, 0⟩
+                    .+ ∣1, 0, 0, 1, 0, 0⟩ .+ (-1)%R .* ∣1, 0, 0, 0, 0, 0⟩))
+      .+ (∣1, 0, 0⟩ ⊗ ((-1)%R .* ∣1, 0, 0, 1, 0, 0⟩ .+           ∣1, 0, 0, 0, 0, 0⟩
+                   .+  (-1)%R .* ∣0, 0, 0, 1, 0, 0⟩ .+ (-1)%R .* ∣0, 0, 0, 0, 0, 0⟩))
+      )
+    )).
+  {
+    compute_vec.
+    replace ((-1)%R * / √ 2)%C with (/ √ 2 * (-1)%R)%C by apply Cmult_comm.
+    post_compute_vec.
+
+    do 2 rewrite Mplus_comm with (A := ∣ 0, 0, 0, 1, 0, 0, 1, 0, 0 ⟩).
+    repeat rewrite Mplus_assoc.
+    reflexivity.
+  }
+  rewrite H2. clear H2.
+
+  assert (H3 :
+    (uc_eval decode
+              × f_to_vec (3 + 3 + 3)
+                  (fun x : nat =>
+                   if x <? 3 + 3
+                   then if x <? 3 then true else false
+                   else false)) = 9 ⨂ ∣0⟩).
+  {
+    compute_vec.
+    repeat rewrite <- Cmult_assoc.
+    rewrite Cmult_comm with (x := ((-1)%R) : C).
+    post_compute_vec.
+    admit.
+  }
+  rewrite H3. clear H3.
+
+  assert (H4 :
+    (uc_eval decode
+              × f_to_vec (3 + 3 + 3)
+                  (fun x : nat =>
+                   if x <? 3 + 3
+                   then if x <? 3 then true else true
+                   else false)) = 9 ⨂ ∣0⟩).
+  {
+    admit.
+  }
+  rewrite H4. clear H4.
+
+  assert (H5 :
+    (uc_eval decode
+              × f_to_vec (3 + 3 + 3)
+                  (fun x : nat =>
+                   if x <? 3 + 3
+                   then if x <? 3 then false else false
+                   else true)) = 9 ⨂ ∣0⟩).
+  {
+    admit.
+  }
+  rewrite H5. clear H5.
+
+  assert (H6 :
+    (uc_eval decode
+              × f_to_vec (3 + 3 + 3)
+                  (fun x : nat =>
+                   if x <? 3 + 3
+                   then if x <? 3 then false else true
+                   else true)) = 9 ⨂ ∣0⟩).
+  {
+    admit.
+  }
+  rewrite H6. clear H6.
+
+  assert (H7 :
+    (uc_eval decode
+              × f_to_vec (3 + 3 + 3)
+                  (fun x : nat =>
+                   if x <? 3 + 3
+                   then if x <? 3 then true else false
+                   else true)) = 9 ⨂ ∣0⟩).
+  {
+    admit.
+  }
+  rewrite H7. clear H7.
+
+  assert (H8 :
+    (uc_eval decode
+              × f_to_vec (3 + 3 + 3)
+                  (fun x : nat =>
+                   if x <? 3 + 3
+                   then if x <? 3 then true else true
+                   else true)) = 9 ⨂ ∣0⟩).
+  {
+    admit.
+  }
+  rewrite H8. clear H8.
+
+  restore_dims.
+  
+Admitted.
+
+
 Definition shor_correct (e : error) : forall (α β : C),
-  (@uc_eval dim (shor e)) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩ )
+  (@uc_eval dim (shor e)) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩)
   = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for e.
 Proof.
   intros.
-  Local Opaque encode CCX.
+  Local Opaque encode decode apply_error CCX.
   simpl uc_eval.
   repeat rewrite Mmult_assoc.
   rewrite encode_correct.
-  simpl. Msimpl_light. restore_dims.
-  replace (∣0,0,0⟩) with (f_to_vec 3 (fun _ => false)) by lma'.
-  replace (∣1,1,1⟩) with (f_to_vec 3 (fun _ => true)) by lma'.
 
-  repeat rewrite Mmult_assoc.
-  rewrite kron_plus_distr_r.
-  repeat rewrite Mmult_plus_distr_l.
-  distribute_scale.
-  repeat rewrite Mscale_mult_dist_r.
-  restore_dims.
-  repeat rewrite kron_assoc by auto 10 with wf_db.
-  repeat (rewrite f_to_vec_merge; restore_dims).
-  
-  
-
+  destruct e.
+  - simpl ancillae_for.
+    specialize (error_decode_correct_no_error α β) as H.
+    simpl uc_eval in H.
+    simpl ancillae_for in H.
+    rewrite Mmult_assoc in H.
+    apply H.
+  - 
 Admitted.
 
 End NineQubitCode.
