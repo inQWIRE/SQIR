@@ -92,8 +92,7 @@ Theorem encode_block_zero :
   = / √ 2 .* (∣ 0, 0, 0 ⟩ .+ ∣ 1, 1, 1 ⟩).
 Proof.
   rewrite Common.zero_3_f_to_vec.
-  compute_vec.
-  reflexivity.
+  now compute_vec.
 Qed.
 
 
@@ -101,9 +100,8 @@ Theorem encode_block_one :
   uc_eval encode_block × ∣1,0,0⟩
   = / √ 2 .* (∣ 0, 0, 0 ⟩ .+ (-1)%R .* ∣ 1, 1, 1 ⟩).
 Proof.
-  replace (∣1,0,0⟩) with (f_to_vec 3 (fun n => n =? 0)) by lma'.
-  compute_vec.
-  reflexivity.
+  rewrite Common.one_3_f_to_vec.
+  now compute_vec.
 Qed.
 
 Theorem encode_block_well_typed :
@@ -192,12 +190,6 @@ Qed.
 Inductive phase_flip_error (n : block_no) : Set :=
   | OnePhaseFlip (off : block_offset)
   | MorePhaseFlip (e : phase_flip_error n) (off : block_offset).
-
-Fixpoint phase_flip_odd_parity {n : block_no} (e : phase_flip_error n) : bool :=
-  match e with
-  | OnePhaseFlip _ _ => true
-  | MorePhaseFlip _ e _ => negb (phase_flip_odd_parity e)
-  end.
 
 Inductive bit_flip_error : Set :=
   | OneBitFlip (n : block_no) (off : block_offset)
@@ -304,9 +296,7 @@ Lemma ancillae_for_two_phases_cancel {n}:
   forall (e : phase_flip_error n) (off₁ off₂ : block_offset),
   ancillae_for (PhaseFlipError (MorePhaseFlip n (MorePhaseFlip n e off₁) off₂))
   = ancillae_for (PhaseFlipError e).
-Proof.
-  easy.
-Qed.
+Proof. easy. Qed.
 
 Definition decode_block : base_ucom block_dim :=
   CNOT 0 1;
@@ -441,6 +431,17 @@ Ltac simplify_sums :=
         replace (A .+ B
                   .+ RtoC (-1)%R .* (A .+ RtoC (-1)%R .* B))
             with (C2 .* B) by lma
+    (* (∣ 0, 1, 1 ⟩ .+ ∣ 1, 1, 1 ⟩
+                    .+ (-1)%R
+                       .* ((-1)%R .* (∣ 0, 1, 1 ⟩ .+ (-1)%R .* ∣ 1, 1, 1 ⟩)) *)
+    | [ |- context [?A .+ ?B
+                      .+ RtoC (-1)%R .* (
+                          RtoC (-1)%R .* (?A .+ RtoC (-1)%R .* ?B))]
+      ] =>
+        replace (A .+ B
+                  .+ RtoC (-1)%R .* (
+                      RtoC (-1)%R .* (A .+ RtoC (-1)%R .* B)))
+            with (C2 .* A) by lma
   end.
 
 Ltac pull_scalars :=
@@ -557,7 +558,7 @@ Definition post_one_phase_flip (α β : C) (n : block_no) :=
   )
   | One => (
       α .* (/C2 .* (/√ 2 .* (
-          (∣0,0,0⟩ .+ ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+  (-1)%R .* ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+ ∣1,1,1⟩)))
+          (∣0,0,0⟩ .+ ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+ (-1)%R .* ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+ ∣1,1,1⟩)))
         )
    .+ β .* (/C2 .* (/√ 2 .* (
         (∣0,0,0⟩ .+ (-1)%R .* ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+ ∣1,1,1⟩) ⊗ (∣0,0,0⟩ .+ (-1)%R .* ∣1,1,1⟩)))
@@ -657,23 +658,8 @@ Proof.
   all : now rewrite Mscale_1_l.
 Qed.
 
-Lemma error_decode_correct_phase_flip_base :
-  forall (α β : C) {n} off,
-  (@uc_eval dim (apply_error (PhaseFlipError (OnePhaseFlip n off)); decode)) × (encoded α β)
-  = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for (PhaseFlipError (OnePhaseFlip n off)).
-Proof.
-  intros.
-  Local Opaque apply_error.
-  simpl uc_eval.
-  rewrite Mmult_assoc.
-  rewrite one_phase_flip_correct.
-  destruct n.
-  all : simpl ancillae_for; simpl post_one_phase_flip.
-  par : now compute_decoding.
-Qed.
-
 Theorem error_decode_correct_phase_flip :
-  forall (α β : C) {n} (e : @phase_flip_error n),
+  forall (α β : C) {n} (e : phase_flip_error n),
   (@uc_eval dim (apply_error (PhaseFlipError e); decode)) × (encoded α β)
   = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for (PhaseFlipError e).
 Proof.
@@ -690,7 +676,16 @@ Proof.
   { destruct H; assumption. }
   induction e.
   - split.
-    + apply error_decode_correct_phase_flip_base.
+    + intros.
+      Local Opaque apply_error.
+      Local Transparent decode.
+      simpl uc_eval.
+      Local Opaque decode.
+      rewrite Mmult_assoc.
+      rewrite one_phase_flip_correct.
+      destruct n.
+      all : simpl ancillae_for; simpl post_one_phase_flip.
+      par : now compute_decoding.
     + intros.
       simpl uc_eval.
       rewrite Mmult_assoc.
@@ -709,6 +704,26 @@ Proof.
       apply IHe.
 Qed.
 
+Ltac post_offset_destruct :=
+  restore_dims;
+  autorewrite with f_to_vec_3_db;
+  try repeat rewrite f_to_vec_X; try lia; simpl f_to_vec;
+  repeat rewrite kron_1_l by auto with wf_db;
+  restore_dims;
+  autorewrite with decode_block_db;
+  reorder_scalars; restore_dims;
+  repeat simplify_sums;
+  pull_scalars; restore_dims;
+  autorewrite with f_to_vec_3_db;
+  restore_dims;
+  repeat rewrite kron_assoc by auto 10 with wf_db;
+  repeat (rewrite f_to_vec_merge; restore_dims);
+  repeat Common.f_to_vec_simpl_light;
+  simpl f_to_vec; Msimpl_light;
+  repeat rewrite <- Cmult_assoc;
+  rewrite collapse_scalar; autorewrite with C_db;
+  now flatten.
+
 
 Theorem error_decode_correct_bit_flip :
   forall (α β : C) e,
@@ -716,6 +731,7 @@ Theorem error_decode_correct_bit_flip :
   = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for (BitFlipError e).
 Proof.
   intros.
+  Local Transparent decode.
   Local Opaque decode_block.
   destruct e.
   all : repeat rewrite <- Mmult_assoc.
@@ -746,25 +762,107 @@ Proof.
   all : first [destruct off | destruct off₁; destruct off₂];
     try destruct off₃; simpl uc_eval; simpl ancillae_for.
   (* slow; around ~2m *)
-  all : simpl apply_error.
-  par : restore_dims;
-  autorewrite with f_to_vec_3_db;
-  try repeat rewrite f_to_vec_X; try lia; simpl f_to_vec;
-  repeat rewrite kron_1_l by auto with wf_db;
-  restore_dims;
-  autorewrite with decode_block_db;
-  reorder_scalars; restore_dims;
-  repeat simplify_sums;
-  pull_scalars; restore_dims;
-  autorewrite with f_to_vec_3_db;
-  restore_dims;
-  repeat rewrite kron_assoc by auto 10 with wf_db;
-  repeat (rewrite f_to_vec_merge; restore_dims);
-  repeat Common.f_to_vec_simpl_light;
-  simpl f_to_vec; Msimpl_light;
-  repeat rewrite <- Cmult_assoc;
-  rewrite collapse_scalar; autorewrite with C_db;
-  now flatten.
+  par : now post_offset_destruct.
+Qed.
+
+Lemma error_decode_correct_bit_one_phase_flip :
+  forall (α β : C) e off {phase_n},
+  (@uc_eval dim (apply_error (PhaseBitErrors (OnePhaseFlip phase_n off) e); decode)) × (encoded α β)
+  = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for (PhaseBitErrors (OnePhaseFlip phase_n off) e).
+Proof.
+  intros.
+  simpl uc_eval.
+  destruct phase_n; destruct e.
+  all : repeat rewrite <- Mmult_assoc.
+  all : rewrite Mmult_plus_distr_l.
+  all : repeat rewrite Mscale_mult_dist_r.
+  all : try destruct safe_n; try destruct n.
+  all : simpl uc_eval.
+  all : simpl (_ ⨂ _).
+  all : repeat rewrite Mmult_assoc; restore_dims.
+  all : simpl apply_to_block.
+  all : try rewrite kron_1_l by auto with wf_db.
+  all : restore_dims.
+  all : repeat rewrite kron_assoc by auto 10 with wf_db.
+  all : correct_inPar ltac:(
+    try apply decode_block_well_typed
+  ).
+  all : correct_inPar ltac:(
+    try apply uc_well_typed_X;
+    first [destruct off0 | destruct off₁; destruct off₂];
+    try destruct off₃; simpl; lia 
+    || apply (@uc_well_typed_SKIP block_dim); lia
+  ).
+  all : correct_inPar ltac:(
+    try apply uc_well_typed_Z;
+    destruct off; simpl; lia 
+    || apply (@uc_well_typed_SKIP block_dim); lia
+  ).
+  all : restore_dims.
+  all : simpl (_ + _).
+  all : distribute_over_blocks.
+  all : try rewrite denote_SKIP; try lia; Msimpl_light.
+  all : repeat rewrite Mmult_assoc.
+  all : rewrite Z_block_zero, Z_block_seven.
+  all : try rewrite denote_SKIP; try lia; Msimpl_light.
+  all : repeat rewrite Mscale_mult_dist_r.
+  all : first [destruct off0 | destruct off₁; destruct off₂];
+    try destruct off₃; simpl uc_eval; simpl ancillae_for.
+  par : post_offset_destruct.
+Qed.
+
+Theorem error_decode_correct_bit_phase_flip :
+  forall (α β : C) {phase_n} (e₁ : phase_flip_error phase_n) (e₂ : bit_flip_error),
+  (@uc_eval dim (apply_error (PhaseBitErrors e₁ e₂); decode)) × (encoded α β)
+  = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for (PhaseBitErrors e₁ e₂).
+Proof.
+  Local Opaque decode.
+  intros.
+  enough (
+    (@uc_eval dim (apply_error (PhaseBitErrors e₁ e₂); decode)) × (encoded α β)
+      = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for (PhaseBitErrors e₁ e₂)
+    /\
+    forall off,
+    (@uc_eval dim (apply_error (PhaseBitErrors (MorePhaseFlip phase_n e₁ off) e₂); decode)) × (encoded α β)
+      = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for (PhaseBitErrors (MorePhaseFlip phase_n e₁ off) e₂)
+  ).
+  { destruct H; assumption. }
+  induction e₁.
+  - split.
+    + apply error_decode_correct_bit_one_phase_flip.
+    + intros.
+      unfold apply_error.
+      change (apply_phase_flip_error ?a) with (apply_error (PhaseFlipError a)).
+      change (apply_bit_flip_error ?a) with (apply_error (BitFlipError a)).
+      Local Opaque apply_error.
+      simpl uc_eval.
+      do 2 rewrite Mmult_assoc.
+      rewrite two_phase_flip_correct.
+      specialize (error_decode_correct_bit_flip α β e₂) as He.
+      simpl uc_eval in He.
+      rewrite Mmult_assoc in He.
+      Set Printing Implicit.
+      restore_dims.
+      simpl in *.
+      apply He.
+  - destruct IHe₁ as [IHe IHme].
+    split.
+    + apply IHme.
+    + intros off0.
+      Local Transparent apply_error.
+      unfold apply_error.
+      change (apply_phase_flip_error ?a) with (apply_error (PhaseFlipError a)).
+      change (apply_bit_flip_error ?a) with (apply_error (BitFlipError a)).
+      Local Opaque apply_error.
+      simpl uc_eval.
+      do 2 rewrite Mmult_assoc.
+      rewrite more_than_two_phase_flip_correct.
+      change (apply_error (@PhaseBitErrors phase_n e₁ e₂)) with (apply_error (PhaseFlipError e₁); apply_error (BitFlipError e₂)) in IHe.
+      simpl uc_eval in IHe.
+      repeat rewrite Mmult_assoc in IHe.
+      restore_dims.
+      simpl in *.
+      apply IHe.
 Qed.
 
 
@@ -795,6 +893,11 @@ Proof.
     simpl uc_eval in H.
     rewrite Mmult_assoc in H.
     apply H.
-Admitted.
+  - simpl ancillae_for.
+    specialize (error_decode_correct_bit_phase_flip α β e₁ e₂) as H.
+    simpl uc_eval in H.
+    rewrite Mmult_assoc in H.
+    apply H.
+Qed.
 
 End NineQubitCode.
