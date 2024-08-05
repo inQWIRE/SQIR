@@ -13,6 +13,104 @@ Notation block_dim := 3%nat.
 
 Local Opaque CCX.
 
+(**
+  Utilities
+  *)
+
+Ltac compute_vec :=
+  simpl uc_eval;
+  repeat rewrite Mmult_assoc; restore_dims;
+  repeat Common.f_to_vec_simpl_light;
+  simpl;
+  replace (0 * PI)%R with 0%R by lra;
+  replace (1 * PI)%R with PI by lra;
+  autorewrite with Cexp_db;
+  repeat rewrite Mscale_1_l;
+  restore_dims;
+  autorewrite with ket_db.
+
+Ltac correct_inPar well_typed :=
+  try
+  (replace (@uc_eval 9) with (@uc_eval (3 + 6)) by easy;
+   rewrite inPar_correct by well_typed);
+  try 
+  (replace (@uc_eval 6) with (@uc_eval (3 + 3)) by easy;
+   rewrite inPar_correct by well_typed);
+  restore_dims.
+
+Ltac reorder_scalars :=
+  repeat rewrite Mscale_assoc;
+  repeat rewrite Cmult_comm with (x := ((-1)%R : C));
+  repeat rewrite <- Mscale_assoc with (y := ((-1)%R : C));
+  repeat rewrite <- Mscale_plus_distr_r.
+
+Ltac normalize_kron_notation :=
+  repeat rewrite <- kron_assoc by auto 8 with wf_db;
+  try easy.
+
+Lemma inv_sqrt2_cubed : (/ √ 2 * / √ 2 * / √ 2)%C = (/ C2 * /√ 2)%C.
+Proof.
+  now rewrite Cinv_sqrt2_sqrt.
+Qed.
+
+Lemma uc_well_typed_SKIP {d} {h : 0 < d} :
+  @uc_well_typed _ d SKIP.
+Proof.
+  unfold SKIP.
+  apply uc_well_typed_ID.
+  assumption.
+Qed.
+
+Ltac simplify_sums :=
+  match goal with
+    | [ |- context [ (?A .+ ?B)
+                    .+ (?A .+ RtoC (-1)%R .* ?B) ]
+      ] => 
+      replace (A .+ B
+                .+ (A .+ RtoC (-1)%R .* B)) with (C2 .* A) by lma
+    | [ |- context [?A .+ ?B
+                      .+ RtoC (-1)%R .* (?A .+ RtoC (-1)%R .* ?B)]
+      ] =>
+        replace (A .+ B
+                  .+ RtoC (-1)%R .* (A .+ RtoC (-1)%R .* B))
+            with (C2 .* B) by lma
+    | [ |- context [?A .+ ?B
+                      .+ RtoC (-1)%R .* (
+                          RtoC (-1)%R .* (?A .+ RtoC (-1)%R .* ?B))]
+      ] =>
+        replace (A .+ B
+                  .+ RtoC (-1)%R .* (
+                      RtoC (-1)%R .* (A .+ RtoC (-1)%R .* B)))
+            with (C2 .* A) by lma
+  end.
+
+Ltac pull_scalars :=
+  distribute_scale;
+  repeat rewrite Mscale_mult_dist_r;
+  repeat rewrite Mscale_assoc.
+
+Lemma collapse_scalar :
+  (/ C2 * (/ √ 2 * (/ √ 2 * (C2 * (/ √ 2 * (C2 * (/ √ 2 * C2)))))))%C = C1.
+Proof. C_field. Qed.
+
+Ltac distribute_over_blocks :=
+  repeat rewrite kron_1_l by auto 10 with wf_db;
+  repeat rewrite kron_assoc by auto with wf_db;
+  repeat rewrite Mmult_plus_distr_l;
+  repeat rewrite Mscale_mult_dist_r;
+  repeat rewrite Mmult_assoc;
+  restore_dims;
+  repeat rewrite kron_mixed_product;
+  repeat rewrite Mmult_plus_distr_l;
+  normalize_kron_notation;
+  repeat rewrite Mscale_mult_dist_r.
+
+Ltac flatten :=
+  rewrite kron_plus_distr_r;
+  rewrite 2 Mscale_kron_dist_l;
+  rewrite ket0_equiv, ket1_equiv;
+  repeat (rewrite <- kron_assoc by auto 9 with wf_db; restore_dims).
+
 (** 
   Blocks
  *)
@@ -53,30 +151,6 @@ Definition block_no := up_to_three.
 
 (* Qubits in a single block *)
 Definition block_offset := up_to_three.
-
-Definition block_to_qubit (n : block_no) (off : block_offset) : nat :=
-  n * 3 + off.
-
-Ltac compute_vec :=
-    simpl uc_eval;
-    repeat rewrite Mmult_assoc; restore_dims;
-    repeat Common.f_to_vec_simpl_light;
-    simpl;
-    replace (0 * PI)%R with 0%R by lra;
-    replace (1 * PI)%R with PI by lra;
-    autorewrite with Cexp_db;
-    repeat rewrite Mscale_1_l;
-    restore_dims;
-    autorewrite with ket_db.
-
-Ltac correct_inPar well_typed :=
-  try
-  (replace (@uc_eval 9) with (@uc_eval (3 + 6)) by easy;
-   rewrite inPar_correct by well_typed);
-  try 
-  (replace (@uc_eval 6) with (@uc_eval (3 + 3)) by easy;
-   rewrite inPar_correct by well_typed);
-  restore_dims.
 
 (**
   Encoding
@@ -125,21 +199,6 @@ Notation encoded α β := (
  .+ β .* (/C2 .* (/√ 2 .* (3 ⨂ (∣0,0,0⟩ .+  (-1)%R .* ∣1,1,1⟩))))
 ).
 
-
-Ltac reorder_scalars :=
-  repeat rewrite Mscale_assoc;
-  repeat rewrite Cmult_comm with (x := ((-1)%R : C));
-  repeat rewrite <- Mscale_assoc with (y := ((-1)%R : C));
-  repeat rewrite <- Mscale_plus_distr_r.
-
-Ltac normalize_kron_notation :=
-  repeat rewrite <- kron_assoc by auto 8 with wf_db;
-  try easy.
-
-Lemma inv_sqrt2_cubed : (/ √ 2 * / √ 2 * / √ 2)%C = (/ C2 * /√ 2)%C.
-Proof.
-  now rewrite Cinv_sqrt2_sqrt.
-Qed.
 
 Theorem encode_correct : forall (α β : C),
    (@uc_eval dim encode) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩)
@@ -274,10 +333,10 @@ Definition ancillae_for_bit_flip (e : bit_flip_error) : list nat :=
       | One => (block_to_bit_syn Zer0 off₁) ++ (block_to_bit_syn Two off₂)
       | Two => (block_to_bit_syn Zer0 off₁) ++ (block_to_bit_syn One off₂)
       end
-      | ThreeBitFlip off₁ off₂ off₃ =>
-          (block_to_bit_syn Zer0 off₁) ++
-          (block_to_bit_syn One  off₂) ++
-          (block_to_bit_syn Two  off₃)
+  | ThreeBitFlip off₁ off₂ off₃ =>
+      (block_to_bit_syn Zer0 off₁) ++
+      (block_to_bit_syn One  off₂) ++
+      (block_to_bit_syn Two  off₃)
   end.
 
 Definition ancillae_for (e : error) : Vector (2 ^ 8) :=
@@ -298,6 +357,9 @@ Lemma ancillae_for_two_phases_cancel {n}:
   = ancillae_for (PhaseFlipError e).
 Proof. easy. Qed.
 
+(**
+  Decode
+ *)
 Definition decode_block : base_ucom block_dim :=
   CNOT 0 1;
   CNOT 0 2;
@@ -317,13 +379,11 @@ Proof.
   all : try apply uc_well_typed_Rz; lia.
 Qed.
 
-
 Lemma decode_block_zero :
   uc_eval decode_block × ∣0,0,0⟩ = / √ 2 .* (∣0,0,0⟩ .+ ∣1,0,0⟩).
 Proof.
   rewrite Common.zero_3_f_to_vec.
-  compute_vec.
-  reflexivity.
+  now compute_vec.
 Qed.
 
 Lemma decode_block_one :
@@ -386,91 +446,10 @@ Qed.
   decode_block_seven
   : decode_block_db.
 
-(**
-  Decode
- *)
 Definition decode : base_ucom dim := 
   inPar decode_block (inPar decode_block decode_block);
   CNOT 0 3; CNOT 0 6;
   CCX 6 3 0.
-
-(**
-  Full circuit 
- *)
-Definition shor (e : error) : base_ucom dim :=
-  encode;
-  apply_error e;
-  (* Does not use the regular:
-     `encode; apply_error e; recover; decode` 
-     (because we do not recover the original encoding).
-     Attempting to do so requires 8 additional
-     qubits (really classical bits), 2 per block
-     for bit flip, and 2 for phase flip.
-     This makes the following analysis rougher.
-  *)
-  decode.
-
-Lemma uc_well_typed_SKIP {d} {h : 0 < d} :
-  @uc_well_typed _ d SKIP.
-Proof.
-  unfold SKIP.
-  apply uc_well_typed_ID.
-  assumption.
-Qed.
-
-Ltac simplify_sums :=
-  match goal with
-    | [ |- context [ (?A .+ ?B)
-                    .+ (?A .+ RtoC (-1)%R .* ?B) ]
-      ] => 
-      replace (A .+ B
-                .+ (A .+ RtoC (-1)%R .* B)) with (C2 .* A) by lma
-    | [ |- context [?A .+ ?B
-                      .+ RtoC (-1)%R .* (?A .+ RtoC (-1)%R .* ?B)]
-      ] =>
-        replace (A .+ B
-                  .+ RtoC (-1)%R .* (A .+ RtoC (-1)%R .* B))
-            with (C2 .* B) by lma
-    (* (∣ 0, 1, 1 ⟩ .+ ∣ 1, 1, 1 ⟩
-                    .+ (-1)%R
-                       .* ((-1)%R .* (∣ 0, 1, 1 ⟩ .+ (-1)%R .* ∣ 1, 1, 1 ⟩)) *)
-    | [ |- context [?A .+ ?B
-                      .+ RtoC (-1)%R .* (
-                          RtoC (-1)%R .* (?A .+ RtoC (-1)%R .* ?B))]
-      ] =>
-        replace (A .+ B
-                  .+ RtoC (-1)%R .* (
-                      RtoC (-1)%R .* (A .+ RtoC (-1)%R .* B)))
-            with (C2 .* A) by lma
-  end.
-
-Ltac pull_scalars :=
-  distribute_scale;
-  repeat rewrite Mscale_mult_dist_r;
-  repeat rewrite Mscale_assoc.
-
-Lemma collapse_scalar :
-  (/ C2 * (/ √ 2 * (/ √ 2 * (C2 * (/ √ 2 * (C2 * (/ √ 2 * C2)))))))%C = C1.
-Proof. C_field. Qed.
-
-Ltac distribute_over_blocks :=
-  repeat rewrite kron_1_l by auto 10 with wf_db;
-  repeat rewrite kron_assoc by auto with wf_db;
-  repeat rewrite Mmult_plus_distr_l;
-  repeat rewrite Mscale_mult_dist_r;
-  repeat rewrite Mmult_assoc;
-  restore_dims;
-  repeat rewrite kron_mixed_product;
-  repeat rewrite Mmult_plus_distr_l;
-  normalize_kron_notation;
-  repeat rewrite Mscale_mult_dist_r.
-
-
-Ltac flatten :=
-  rewrite kron_plus_distr_r;
-  rewrite 2 Mscale_kron_dist_l;
-  rewrite ket0_equiv, ket1_equiv;
-  repeat (rewrite <- kron_assoc by auto 9 with wf_db; restore_dims).
 
 Ltac compute_decoding := 
   repeat rewrite kron_1_l by auto with wf_db;
@@ -502,6 +481,23 @@ Ltac compute_decoding :=
   autorewrite with C_db;
 
   now flatten.
+
+(**
+  Full circuit 
+ *)
+Definition shor (e : error) : base_ucom dim :=
+  encode;
+  apply_error e;
+  (* Does not use the regular:
+     `encode; apply_error e; recover; decode` 
+     (because we do not recover the original encoding).
+     Attempting to do so requires 8 additional
+     qubits (really classical bits), 2 per block
+     for bit flip, and 2 for phase flip.
+     This makes the following analysis rougher.
+  *)
+  decode.
+
 
 Theorem decode_correct :
   forall (α β : C),
@@ -723,7 +719,6 @@ Ltac post_offset_destruct :=
   repeat rewrite <- Cmult_assoc;
   rewrite collapse_scalar; autorewrite with C_db;
   now flatten.
-
 
 Theorem error_decode_correct_bit_flip :
   forall (α β : C) e,
