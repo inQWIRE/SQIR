@@ -74,6 +74,7 @@ Qed.
 Ltac f_to_vec_simpl_light :=
   first
   [ rewrite f_to_vec_H
+  | rewrite f_to_vec_X
   | rewrite f_to_vec_CCX
   | rewrite f_to_vec_CNOT
   ];

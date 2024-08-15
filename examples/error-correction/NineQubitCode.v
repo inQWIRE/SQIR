@@ -1,4 +1,5 @@
 Require Export SQIR.UnitaryOps.
+Require Export QuantumLib.Measurement.
 
 Require Import Common.
 Import Common.
@@ -33,7 +34,7 @@ Ltac correct_inPar well_typed :=
   try
   (replace (@uc_eval 9) with (@uc_eval (3 + 6)) by easy;
    rewrite inPar_correct by well_typed);
-  try 
+  try
   (replace (@uc_eval 6) with (@uc_eval (3 + 3)) by easy;
    rewrite inPar_correct by well_typed);
   restore_dims.
@@ -42,7 +43,7 @@ Ltac reorder_scalars :=
   repeat rewrite Mscale_assoc;
   repeat rewrite Cmult_comm with (x := ((-1)%R : C));
   repeat rewrite <- Mscale_assoc with (y := ((-1)%R : C));
-  repeat rewrite <- Mscale_plus_distr_r.
+repeat rewrite <- Mscale_plus_distr_r.
 
 Ltac normalize_kron_notation :=
   repeat rewrite <- kron_assoc by auto 8 with wf_db;
@@ -82,6 +83,23 @@ Ltac simplify_sums :=
                   .+ RtoC (-1)%R .* (
                       RtoC (-1)%R .* (A .+ RtoC (-1)%R .* B)))
             with (C2 .* A) by lma
+    | [ |- context [?A .+ RtoC (-1)%R .* ?B
+                  .+ (?A .+ ?B)]
+      ] => 
+        replace (A .+ RtoC (-1)%R .* B
+              .+ (A .+ B)) with (C2 .* A) by lma
+    | [ |- context [RtoC (-1)%R .* ?A .+ ?B
+                          .+ (?A .+ ?B)]
+      ] => 
+        replace (RtoC (-1)%R .* A .+ B
+                          .+ (A .+ B)) 
+                with (C2 .* B) by lma
+    | [ |- context [(?A .+ ?B
+                   .+ (RtoC (-1)%R .* ?A .+ ?B))]
+      ] =>
+        replace (A .+ B
+                   .+ (RtoC (-1)%R .* A .+ B)) 
+                 with (C2 .* B) by lma
   end.
 
 Ltac pull_scalars :=
@@ -127,24 +145,7 @@ Definition t_to_nat (t : up_to_three) : nat :=
   | Two  => 2
   end.
 
-Definition t_eq (t₁ t₂ : up_to_three) : bool :=
-  match t₁, t₂ with
-  | Zer0, Zer0
-  | One, One
-  | Two, Two => true
-  | _, _ => false
-  end.
-
 Coercion t_to_nat : up_to_three >-> nat.
-
-Definition t_of_nat (n : nat) (h : n < 3) : up_to_three.
-Proof.
-  destruct n as [| [| [| n']]].
-  - exact Zer0.
-  - exact One.
-  - exact Two.
-  - lia.
-Defined.
 
 (* Encoded blocks *)
 Definition block_no := up_to_three.
@@ -168,7 +169,6 @@ Proof.
   rewrite Common.zero_3_f_to_vec.
   now compute_vec.
 Qed.
-
 
 Theorem encode_block_one :
   uc_eval encode_block × ∣1,0,0⟩
@@ -700,12 +700,59 @@ Proof.
       apply IHe.
 Qed.
 
+Lemma X_0_block_zero :
+  @uc_eval block_dim (X 0) × ∣0,0,0⟩ = ∣1,0,0⟩.
+Proof.
+  rewrite Common.zero_3_f_to_vec.
+  now compute_vec.
+Qed.
+
+Lemma X_1_block_zero :
+  @uc_eval block_dim (X 1) × ∣0,0,0⟩ = ∣0,1,0⟩.
+Proof.
+  rewrite Common.zero_3_f_to_vec.
+  now compute_vec.
+Qed.
+
+Lemma X_2_block_zero :
+  @uc_eval block_dim (X 2) × ∣0,0,0⟩ = ∣0,0,1⟩.
+Proof.
+  rewrite Common.zero_3_f_to_vec.
+  now compute_vec.
+Qed.
+
+Lemma X_0_block_seven :
+  @uc_eval block_dim (X 0) × ∣1,1,1⟩ = ∣0,1,1⟩.
+Proof.
+  rewrite Common.seven_3_f_to_vec.
+  now compute_vec.
+Qed.
+
+Lemma X_1_block_seven :
+  @uc_eval block_dim (X 1) × ∣1,1,1⟩ = ∣1,0,1⟩.
+Proof.
+  rewrite Common.seven_3_f_to_vec.
+  now compute_vec.
+Qed.
+
+Lemma X_2_block_seven :
+  @uc_eval block_dim (X 2) × ∣1,1,1⟩ = ∣1,1,0⟩.
+Proof.
+  rewrite Common.seven_3_f_to_vec.
+  now compute_vec.
+Qed.
+
+#[export] Hint Rewrite
+  X_0_block_zero
+  X_1_block_zero
+  X_2_block_zero
+  X_0_block_seven
+  X_1_block_seven
+  X_2_block_seven
+  : X_off_block_db.
+
 Ltac post_offset_destruct :=
-  restore_dims;
-  autorewrite with f_to_vec_3_db;
-  try repeat rewrite f_to_vec_X; try lia; simpl f_to_vec;
-  repeat rewrite kron_1_l by auto with wf_db;
-  restore_dims;
+  autorewrite with X_off_block_db;
   autorewrite with decode_block_db;
   reorder_scalars; restore_dims;
   repeat simplify_sums;
@@ -801,9 +848,13 @@ Proof.
   all : rewrite Z_block_zero, Z_block_seven.
   all : try rewrite denote_SKIP; try lia; Msimpl_light.
   all : repeat rewrite Mscale_mult_dist_r.
-  all : first [destruct off0 | destruct off₁; destruct off₂];
-    try destruct off₃; simpl uc_eval; simpl ancillae_for.
-  par : post_offset_destruct.
+  all : restore_dims.
+  all : try (destruct off0; simpl uc_eval; simpl ancillae_for).
+  all : try post_offset_destruct.
+  all : destruct off₁; destruct off₂; simpl uc_eval; simpl ancillae_for.
+  1-81 : try post_offset_destruct.
+  all : try destruct off₃; simpl uc_eval; simpl ancillae_for.
+  all : now post_offset_destruct.
 Qed.
 
 Theorem error_decode_correct_bit_phase_flip :
@@ -836,7 +887,6 @@ Proof.
       specialize (error_decode_correct_bit_flip α β e₂) as He.
       simpl uc_eval in He.
       rewrite Mmult_assoc in He.
-      Set Printing Implicit.
       restore_dims.
       simpl in *.
       apply He.
@@ -861,7 +911,7 @@ Proof.
 Qed.
 
 
-Definition shor_correct (e : error) : forall (α β : C),
+Theorem shor_correct (e : error) : forall (α β : C),
   (@uc_eval dim (shor e)) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩)
   = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for e.
 Proof.
@@ -871,28 +921,336 @@ Proof.
   repeat rewrite Mmult_assoc.
   rewrite encode_correct.
 
-  destruct e.
-  - simpl ancillae_for.
-    specialize (error_decode_correct_no_error α β) as H.
+  destruct e; simpl ancillae_for.
+  - specialize (error_decode_correct_no_error α β) as H.
     simpl uc_eval in H.
     simpl ancillae_for in H.
     rewrite Mmult_assoc in H.
     apply H.
-  - simpl ancillae_for.
-    specialize (error_decode_correct_phase_flip α β e) as H.
+  - specialize (error_decode_correct_phase_flip α β e) as H.
     simpl uc_eval in H.
     rewrite Mmult_assoc in H.
     apply H.
-  - simpl ancillae_for.
-    specialize (error_decode_correct_bit_flip α β e) as H.
+  - specialize (error_decode_correct_bit_flip α β e) as H.
     simpl uc_eval in H.
     rewrite Mmult_assoc in H.
     apply H.
-  - simpl ancillae_for.
-    specialize (error_decode_correct_bit_phase_flip α β e₁ e₂) as H.
+  - specialize (error_decode_correct_bit_phase_flip α β e₁ e₂) as H.
     simpl uc_eval in H.
     rewrite Mmult_assoc in H.
     apply H.
 Qed.
+
+Lemma pauli_spans_2_by_2 : 
+  forall (M : Square 2), WF_Matrix M ->
+  exists λ₁ λ₂ λ₃ λ₄, 
+  M = λ₁ .* (I 2) .+ λ₂ .* σx .+ λ₃ .* σy .+ λ₄ .* σz.
+Proof.
+  intros.
+  exists ((M 0 0 + M 1 1) / C2)%C.
+  exists ((M 0 1 + M 1 0) / C2)%C.
+  exists (Ci * (M 0 1 - M 1 0) / C2)%C.
+  exists ((M 0 0 - M 1 1) / C2)%C.
+  solve_matrix.
+Qed.
+
+Lemma pauli_spans_unitary_2_by_2 :
+  forall (M : Square 2), WF_Unitary M ->
+  exists λ₁ λ₂ λ₃ λ₄, 
+  M = λ₁ .* (I 2) .+ λ₂ .* σx .+ λ₃ .* σy .+ λ₄ .* σz
+  /\ (Cmod λ₁ ^ 2 + Cmod λ₂ ^ 2 + Cmod λ₃ ^ 2 + Cmod λ₄ ^ 2)%C = C1.
+Proof.
+  intros ? [Hwf Hinv].
+  specialize (pauli_spans_2_by_2 M Hwf) as [λ₁ [λ₂ [λ₃ [λ₄ Heq]]]].
+  exists λ₁, λ₂, λ₃, λ₄.
+  split.
+  apply Heq.
+  rewrite Heq in Hinv.
+
+  repeat rewrite Mplus_adjoint in Hinv.
+  repeat rewrite Mscale_adj in Hinv.
+  repeat rewrite Mmult_plus_distr_l in Hinv.
+  repeat rewrite Mmult_plus_distr_r in Hinv.
+  repeat rewrite Mscale_mult_dist_r in Hinv.
+  repeat rewrite Mscale_mult_dist_l in Hinv.
+  specialize σx_unitary as [_ Hinvσx].
+  specialize σy_unitary as [_ Hinvσy].
+  specialize σz_unitary as [_ Hinvσz].
+  rewrite Hinvσx in Hinv. clear Hinvσx.
+  rewrite Hinvσy in Hinv. clear Hinvσy.
+  rewrite Hinvσz in Hinv. clear Hinvσz.
+
+  replace ((σx) †) with σx in Hinv by solve_matrix.
+  replace ((σy) †) with σy in Hinv by solve_matrix.
+  replace ((σz) †) with σz in Hinv by solve_matrix.
+
+  autorewrite with M_db M_db_light in Hinv.
+  replace (σx × σy) with (Ci .* σz) in Hinv by lma'.
+  replace (σy × σx) with (-Ci .* σz) in Hinv by lma'.
+  replace (σz × σx) with (Ci .* σy) in Hinv by lma'.
+  replace (σx × σz) with (-Ci .* σy) in Hinv by lma'.
+  replace (σy × σz) with (Ci .* σx) in Hinv by lma'.
+  replace (σz × σy) with (-Ci .* σx) in Hinv by lma'.
+  assert (H00 := Hinv).
+  assert (H11 := Hinv).
+  clear Hinv.
+  apply (f_equal (fun m => m 0 0)) in H00.
+  apply (f_equal (fun m => m 1 1)) in H11.
+  unfold scale, Mplus, I, σx, σy, σz in H00, H11; simpl in H00, H11.
+  specialize (Cplus_simplify _ _ _ _ H00 H11) as H.
+  clear H00. clear H11.
+  ring_simplify in H.
+  repeat rewrite <- Cplus_assoc in H.
+  repeat rewrite <- Cmult_assoc in H.
+  repeat rewrite <- Cmult_plus_distr_l in H.
+
+  replace (((R1 + R1)%R, (R0 + R0)%R)) with C2 in H.
+  2 :{ 
+      unfold C2.
+      apply c_proj_eq; simpl.
+      field.
+      field.
+  }
+  apply Cmult_cancel_l with (a := C2); try nonzero.
+  rewrite Cmult_1_r.
+
+  repeat rewrite <- Cmod_sqr in H.
+  rewrite Cmult_comm with (x := λ₁) in H.
+  rewrite <- Cmod_sqr in H.
+  repeat rewrite Cplus_assoc in H.
+
+  exact H.
+Qed.
+
+
+Lemma YeqiXZ :
+  σy = Ci .* σx × σz.
+Proof. solve_matrix. Qed.
+
+Definition block_to_qubit (n : block_no) (off : block_offset) : nat :=
+  n * 3 + off.
+
+Definition ancillae_for_arbitrary
+  (λ₁ λ₂ λ₃ λ₄ : C)
+  (n : block_no)
+  (off : block_offset) : Vector (2 ^ 8)
+   := (
+       λ₁ .* ancillae_for NoError
+    .+ λ₂ .* ancillae_for (BitFlipError (OneBitFlip n off))
+    .+ λ₃ * Ci .* ancillae_for (PhaseBitErrors (OnePhaseFlip n off) (OneBitFlip n off))
+    .+ λ₄ .* ancillae_for (PhaseFlipError (OnePhaseFlip n off))
+   ).
+
+Lemma Cmod_Ci : Cmod Ci = 1%R.
+Proof.
+  unfold Ci, Cmod; simpl.
+  rewrite Rmult_0_l.
+  rewrite Rplus_0_l.
+  do 2 rewrite Rmult_1_l.
+  exact sqrt_1.
+Qed.
+
+Lemma ancillae_pure_vector_cond : 
+  forall (λ₁ λ₂ λ₃ λ₄ : C) (n : block_no) (off : block_offset), 
+  (Cmod λ₁ ^ 2 + Cmod λ₂ ^ 2 + Cmod λ₃ ^ 2 + Cmod λ₄ ^ 2)%C = C1 ->
+  Pure_State_Vector (ancillae_for_arbitrary λ₁ λ₂ λ₃ λ₄ n off).
+Proof.
+  intros.
+  unfold Pure_State_Vector.
+  split.
+  1: {
+    destruct n; destruct off; unfold ancillae_for_arbitrary; simpl.
+    all : auto 18 with wf_db.
+  }
+  destruct n; destruct off.
+  all : unfold ancillae_for_arbitrary; simpl.
+  all : repeat rewrite kron_1_l by auto with wf_db.
+  all : repeat rewrite Mplus_adjoint.
+  all : repeat rewrite Mscale_adj.
+  all : restore_dims.
+  all : rewrite <- ket0_equiv, <- ket1_equiv.
+  all : repeat rewrite kron_adjoint.
+  all : repeat rewrite Mmult_plus_distr_r.
+  all : autorewrite with ket_db.
+  all : repeat rewrite Mplus_assoc.
+  all : repeat rewrite <- Mscale_plus_distr_l.
+  all : repeat rewrite <- Cmod_sqr.
+  all : rewrite Cmod_mult.
+  all : rewrite Cmod_Ci.
+  all : rewrite Rmult_1_r.
+  all : repeat rewrite Cplus_assoc.
+  all : rewrite H.
+  all : now rewrite Mscale_1_l.
+Qed.
+
+
+Theorem shor_arbitrary_correct (M : Square 2) :
+  WF_Unitary M ->
+  forall (α β : C) (n : block_no) (off : block_offset),
+  exists (φ : Vector (2^8)),
+  ( uc_eval decode
+  × pad_u dim (block_to_qubit n off) M 
+  × uc_eval encode) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩)
+  = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ φ.
+Proof.
+  intros.
+  repeat rewrite Mmult_assoc.
+  rewrite encode_correct.
+  specialize (pauli_spans_unitary_2_by_2 M H) as Hpauli.
+  destruct Hpauli as [λ₁ [λ₂ [λ₃ [λ₄ [Hpauli Hmod]]]]].
+  rewrite Hpauli.
+  exists (ancillae_for_arbitrary λ₁ λ₂ λ₃ λ₄ n off).
+  destruct n; destruct off.
+  all : cbn.
+  all : repeat rewrite kron_1_l by auto with wf_db.
+  all : try rewrite kron_1_r by auto with wf_db.
+  1 : replace (I 256) with (I 4 ⊗ I 8 ⊗ I 8) by (repeat rewrite id_kron; easy).
+  9 : replace (I 256) with (I 8 ⊗ I 8 ⊗ I 4) by (repeat rewrite id_kron; easy).
+  2 : replace (I 128) with (I 2 ⊗ I 8 ⊗ I 8) by (repeat rewrite id_kron; easy).
+  8 : replace (I 128) with (I 8 ⊗ I 8 ⊗ I 2) by (repeat rewrite id_kron; easy).
+  3,7 : replace (I 64) with (I 8 ⊗ I 8) by (repeat rewrite id_kron; easy).
+  7 : replace (I 32) with (I 8 ⊗ I 4) by (repeat rewrite id_kron; easy).
+  5 : replace (I 32) with (I 4 ⊗ I 8) by (repeat rewrite id_kron; easy).
+  6 : replace (I 16) with (I 8 ⊗ I 2) by (repeat rewrite id_kron; easy).
+  
+  all : restore_dims.
+  all : repeat rewrite kron_assoc by auto 10 with wf_db.
+  6 : replace (I 8 ⊗ I 2) with (I 2 ⊗ I 8) by (repeat rewrite id_kron; easy);
+      restore_dims. 
+  1-3 : repeat rewrite <- kron_assoc by auto 10 with wf_db.
+  5-6 : rewrite <- kron_assoc with (C := I 8) by auto 10 with wf_db.
+  6 : repeat (rewrite kron_assoc by auto 10 with wf_db; restore_dims).
+  6 : repeat rewrite <- kron_assoc with (A := I 2) by auto 10 with wf_db.
+  6 : repeat rewrite <- kron_assoc with (B := I 2) by auto 10 with wf_db.
+  7 : repeat rewrite <- kron_assoc with (A := I 4) by auto 10 with wf_db.
+
+  all : restore_dims.
+  all : do 2 rewrite Mmult_plus_distr_l.
+  all : pull_scalars; restore_dims.
+  all : repeat rewrite kron_mixed_product.
+  all : repeat rewrite Mmult_1_l by auto with wf_db.
+  all : replace (I 4) with (I 2 ⊗ I 2) by (repeat rewrite id_kron; easy).
+  all : do 2 rewrite Mmult_plus_distr_l.
+  all : rewrite Mscale_mult_dist_r.
+  all : restore_dims.
+  all : repeat (rewrite kron_assoc by auto 10 with wf_db; restore_dims).
+  all : repeat rewrite kron_mixed_product.
+  all : repeat rewrite Mmult_plus_distr_r.
+  all : repeat rewrite Mscale_mult_dist_l.
+  all : rewrite ket0_equiv, ket1_equiv.
+  all : restore_dims.
+  all : repeat rewrite Mmult_1_l by auto with wf_db.
+  all : rewrite X0_spec, X1_spec, Y0_spec, Y1_spec, Z0_spec, Z1_spec.
+  Local Transparent decode.
+  all : simpl uc_eval.
+  all : repeat rewrite Mmult_assoc by auto 10 with wf_db.
+  all : correct_inPar ltac:(apply decode_block_well_typed).
+  all : repeat rewrite kron_mixed_product.
+  all : repeat rewrite kron_plus_distr_r.
+  all : repeat rewrite kron_plus_distr_l.
+  all : repeat rewrite Mmult_plus_distr_l.
+  all : repeat rewrite Mscale_mult_dist_r.
+  all : repeat rewrite Mmult_plus_distr_l.
+  all : repeat rewrite Mscale_kron_dist_l.
+  all : repeat rewrite Mscale_mult_dist_r.
+  all : repeat rewrite Mscale_kron_dist_r.
+  all : repeat rewrite Mscale_mult_dist_r.
+  all : restore_dims.
+  all : repeat rewrite <- kron_assoc by auto 10 with wf_db.
+  all : restore_dims.
+  all : repeat rewrite Mscale_plus_distr_r with (x := ((-1)%R : C)).
+  all : repeat rewrite Mscale_assoc.
+  all : repeat rewrite Cmult_comm with (x := ((-1)%R : C)).
+  all : repeat rewrite <- Mscale_assoc.
+  all : repeat rewrite Mplus_assoc.
+  all : repeat rewrite Mplus_comm with (A := λ₁ .* _).
+  all : repeat rewrite Mplus_assoc.
+  all : do 2 rewrite <- Mscale_plus_distr_r.
+  all : repeat rewrite Mplus_comm with (A := λ₂ .* _).
+  all : repeat rewrite Mplus_assoc.
+  all : do 2 rewrite <- Mscale_plus_distr_r.
+  all : repeat rewrite Mplus_comm with (A := λ₃ .* _).
+  all : repeat rewrite Mplus_assoc.
+  all : do 2 rewrite <- Mscale_plus_distr_r.
+  all : repeat rewrite Mplus_comm with (A := λ₄ .* _).
+  all : repeat rewrite Mplus_assoc.
+  all : do 2 rewrite <- Mscale_plus_distr_r.
+  all : autorewrite with decode_block_db.
+  all : restore_dims.
+  all : replace (-Ci) with (Ci * (-1)%R)%C by lca.
+  all : reorder_scalars.
+  all : repeat rewrite <- Cmult_assoc with (y := ((-1)%R : C)).
+  all : rewrite Cmult_comm with (x := ((-1)%R : C)).
+  all : reorder_scalars.
+  all : repeat rewrite Cmult_assoc with (z := ((-1)%R : C)).
+  all : repeat rewrite <- Mscale_assoc with (y := ((-1)%R : C)).
+  all : reorder_scalars.
+  all : pull_scalars.
+  all : repeat rewrite Mscale_plus_distr_r with (x := ((-1)%R : C)).
+  all : repeat rewrite Mscale_assoc.
+  all : replace ((-1)%R * (-1)%R)%C with C1 by lca.
+  all : repeat rewrite Mscale_1_l.
+  all : restore_dims.
+  all : repeat simplify_sums.
+  all : autorewrite with f_to_vec_3_db.
+  all : distribute_scale.
+  all : distribute_plus.
+  all : repeat rewrite Mscale_mult_dist_r.
+  all : repeat rewrite Mmult_plus_distr_l.
+  all : repeat rewrite Mscale_kron_dist_r.
+  all : repeat rewrite Mscale_kron_dist_l.
+  all : repeat rewrite Mscale_kron_dist_r.
+  all : repeat rewrite kron_assoc by auto 10 with wf_db.
+  all : repeat rewrite Mscale_assoc.
+  all : repeat rewrite Mscale_mult_dist_r.
+  all : restore_dims.
+  all : repeat rewrite kron_assoc by auto 10 with wf_db.
+  all : repeat (rewrite f_to_vec_merge; restore_dims).
+  all : repeat f_to_vec_simpl_light.
+  all : simpl.
+  all : repeat rewrite kron_1_l by auto with wf_db.
+  all : repeat rewrite kron_assoc by auto with wf_db.
+  all : repeat rewrite <- Cmult_assoc.
+  all : rewrite <- Mscale_assoc with (x := α);
+        rewrite <- Mscale_assoc with (x := β).
+  all : repeat rewrite Mscale_plus_distr_r.
+  all : repeat rewrite Mscale_assoc.
+  all : repeat rewrite <- Cmult_assoc.
+  all : repeat rewrite Cmult_comm with (x := λ₁);
+        repeat rewrite Cmult_comm with (x := λ₂);
+        repeat rewrite Cmult_comm with (x := λ₃);
+        repeat rewrite Cmult_comm with (x := λ₄).
+  all : repeat rewrite Cmult_comm with (x := Ci).
+  all : repeat rewrite Cmult_assoc.
+  all : do 2 rewrite Cmult_comm with (y := λ₁);
+        do 2 rewrite Cmult_comm with (y := λ₂);
+        do 2 rewrite Cmult_comm with (y := λ₃);
+        do 2 rewrite Cmult_comm with (y := λ₄).
+  all : repeat rewrite Cmult_comm with (y := Ci).
+  all : repeat rewrite <- Cmult_assoc.
+  all : match goal with
+  | [ |- context [
+      ?λ * (?γ * (/ C2 * ?c)) .* _
+      ]
+    ] => replace (/ C2 * c)%C with (C1) by C_field
+  end.
+  all : repeat rewrite Cmult_1_r.
+  all : unfold ancillae_for_arbitrary; simpl.
+  all : repeat rewrite kron_1_l by auto with wf_db.
+  all : rewrite ket0_equiv.
+  all : repeat rewrite kron_plus_distr_l.
+  all : repeat rewrite Mscale_kron_dist_r.
+  all : repeat rewrite Mscale_plus_distr_r.
+  all : restore_dims.
+  all : repeat rewrite <- kron_assoc by auto 10 with wf_db.
+  all : repeat rewrite Mscale_assoc.
+  all : repeat rewrite Cmult_assoc.
+  all : repeat rewrite Cmult_comm with (y := α);
+        repeat rewrite Cmult_comm with (y := β).
+  all : repeat rewrite Cmult_assoc.
+  all : repeat rewrite Mplus_assoc.
+  all : reflexivity.
+Qed.
+
 
 End NineQubitCode.
