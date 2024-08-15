@@ -43,7 +43,7 @@ Ltac reorder_scalars :=
   repeat rewrite Mscale_assoc;
   repeat rewrite Cmult_comm with (x := ((-1)%R : C));
   repeat rewrite <- Mscale_assoc with (y := ((-1)%R : C));
-repeat rewrite <- Mscale_plus_distr_r.
+  repeat rewrite <- Mscale_plus_distr_r.
 
 Ltac normalize_kron_notation :=
   repeat rewrite <- kron_assoc by auto 8 with wf_db;
@@ -153,6 +153,11 @@ Definition block_no := up_to_three.
 (* Qubits in a single block *)
 Definition block_offset := up_to_three.
 
+
+Definition block_to_qubit (n : block_no) (off : block_offset) : nat :=
+  n * 3 + off.
+
+
 (**
   Encoding
  *)
@@ -163,7 +168,7 @@ Definition encode_block : base_ucom block_dim :=
   CNOT 0 2.
 
 Theorem encode_block_zero :
-  uc_eval encode_block × ∣0,0,0⟩
+  uc_eval encode_block × ∣ 0, 0, 0 ⟩
   = / √ 2 .* (∣ 0, 0, 0 ⟩ .+ ∣ 1, 1, 1 ⟩).
 Proof.
   rewrite Common.zero_3_f_to_vec.
@@ -171,7 +176,7 @@ Proof.
 Qed.
 
 Theorem encode_block_one :
-  uc_eval encode_block × ∣1,0,0⟩
+  uc_eval encode_block × ∣ 1, 0 , 0 ⟩
   = / √ 2 .* (∣ 0, 0, 0 ⟩ .+ (-1)%R .* ∣ 1, 1, 1 ⟩).
 Proof.
   rewrite Common.one_3_f_to_vec.
@@ -509,6 +514,9 @@ Proof.
   now compute_decoding.
 Qed.
 
+(**
+  Correctness
+  *)
 
 Theorem error_decode_correct_no_error :
   forall (α β : C),
@@ -911,6 +919,9 @@ Proof.
 Qed.
 
 
+(**
+  Main correctness proof for the discrete error case.
+*)
 Theorem shor_correct (e : error) : forall (α β : C),
   (@uc_eval dim (shor e)) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩)
   = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ ancillae_for e.
@@ -940,6 +951,10 @@ Proof.
     rewrite Mmult_assoc in H.
     apply H.
 Qed.
+
+(**
+  Generalized errors on single qubits
+ *)
 
 Lemma pauli_spans_2_by_2 : 
   forall (M : Square 2), WF_Matrix M ->
@@ -1027,9 +1042,6 @@ Lemma YeqiXZ :
   σy = Ci .* σx × σz.
 Proof. solve_matrix. Qed.
 
-Definition block_to_qubit (n : block_no) (off : block_offset) : nat :=
-  n * 3 + off.
-
 Definition ancillae_for_arbitrary
   (λ₁ λ₂ λ₃ λ₄ : C)
   (n : block_no)
@@ -1083,23 +1095,33 @@ Proof.
   all : now rewrite Mscale_1_l.
 Qed.
 
+Definition shor_arbitrary_unitary_matrix (M : Square 2) (n : block_no) (off : block_offset) :=
+  uc_eval decode
+  × pad_u dim (block_to_qubit n off) M 
+  × uc_eval encode.
 
+(**
+  Main correctness proof for the continuous error case.
+*)
 Theorem shor_arbitrary_correct (M : Square 2) :
   WF_Unitary M ->
   forall (α β : C) (n : block_no) (off : block_offset),
   exists (φ : Vector (2^8)),
-  ( uc_eval decode
-  × pad_u dim (block_to_qubit n off) M 
-  × uc_eval encode) × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩)
+   Pure_State_Vector φ /\
+   shor_arbitrary_unitary_matrix M n off × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩)
   = (α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ φ.
 Proof.
   intros.
+  repeat rewrite Mmult_assoc.
+  unfold shor_arbitrary_unitary_matrix.
   repeat rewrite Mmult_assoc.
   rewrite encode_correct.
   specialize (pauli_spans_unitary_2_by_2 M H) as Hpauli.
   destruct Hpauli as [λ₁ [λ₂ [λ₃ [λ₄ [Hpauli Hmod]]]]].
   rewrite Hpauli.
   exists (ancillae_for_arbitrary λ₁ λ₂ λ₃ λ₄ n off).
+  split.
+  1 : exact (ancillae_pure_vector_cond λ₁ λ₂ λ₃ λ₄ n off Hmod).
   destruct n; destruct off.
   all : cbn.
   all : repeat rewrite kron_1_l by auto with wf_db.
@@ -1252,5 +1274,27 @@ Proof.
   all : reflexivity.
 Qed.
 
+Theorem shor_arbitrary_correct_prob (M : Square 2) :
+  WF_Unitary M ->
+  forall (α β : C) (n : block_no) (off : block_offset),
+   let r := shor_arbitrary_unitary_matrix M n off × ((α .* ∣0⟩ .+ β .* ∣1⟩) ⊗ 8 ⨂ ∣0⟩) in 
+  @prob_partial_meas 1 (dim - 1) ∣0⟩ r = (Cmod α ^ 2)%R 
+  /\ @prob_partial_meas 1 (dim - 1) ∣1⟩ r = (Cmod β ^ 2)%R.
+Proof.
+  intros.
+  specialize (shor_arbitrary_correct M H α β n off) as [R [[HWFR HDag] HR]].
+  subst r.
+  rewrite HR.
+  do 2 rewrite prob_partial_meas_alt.
+  distribute_adjoint.
+  Msimpl.
+  autorewrite with ket_db.
+  do 2 rewrite norm_scale.
+  unfold norm.
+  unfold inner_product.
+  restore_dims.
+  rewrite HDag.
+  split; simpl; rewrite sqrt_1; repeat rewrite Rmult_1_r; easy.
+Qed.
 
 End NineQubitCode.
