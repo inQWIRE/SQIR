@@ -1107,6 +1107,14 @@ Qed.
 
 Definition eval {dim} (l : gate_list G.U dim) := uc_eval (list_to_ucom l).
 
+Lemma WF_eval {dim} l : WF_Matrix (@eval dim l).
+Proof.
+  unfold eval.
+  auto_wf.
+Qed.
+
+#[export] Hint Resolve WF_eval : wf_db.
+
 Lemma eval_append : forall {dim} (l1 l2 : gate_list G.U dim),
   eval (l1 ++ l2) = eval l2 × eval l1.
 Proof.
@@ -1314,27 +1322,14 @@ Proof.
   repeat split; auto with perm_db.
   rewrite H.
   rewrite <- !perm_to_matrix_transpose_eq by easy.
-  rewrite !Mmult_assoc, perm_to_matrix by auto with perm_bounded_db.
-  Search (perm_inv _ _).
-  PermutationAutomation.cleanup_perm.
-  repeat rewrite Mmult_assoc.
-  rewrite perm_to_matrix_Mmult by (intros ? ?; auto using Hp1, Hp2). auto with perm_bounded_db.
-  repeat rewrite <- Mmult_assoc.
-  rewrite perm_to_matrix_Mmult; auto with perm_bounded_db.
-  rewrite 2 perm_to_matrix_I.
-  unfold eval. Msimpl. reflexivity.
-  apply permutation_compose; auto.
-  exists p1inv. assumption.
-  intros x Hx.
-  destruct (Hp1 x Hx) as [_ [_ [? _]]].
-  assumption.
-  apply permutation_compose; auto.
-  exists p2inv. assumption.
-  intros x Hx.
-  destruct (Hp2 x Hx) as [_ [_ [_ ?]]].
-  assumption.
-  exists p2inv. assumption.
-  exists p1inv. assumption.
+  rewrite !Mmult_assoc.
+  restore_dims.
+  rewrite 2!perm_to_matrix_transpose_eq, 
+    <- perm_to_matrix_compose by auto with perm_bounded_db.
+  rewrite <- !Mmult_assoc.
+  rewrite <- perm_to_matrix_compose by auto with perm_bounded_db.
+  rewrite 2!perm_to_matrix_I by (intros; cleanup_perm_inv).
+  now Msimpl.
 Qed.
 
 Lemma uc_equiv_perm_trans : forall {dim} (l1 l2 l3 : gate_list G.U dim), 

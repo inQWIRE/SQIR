@@ -209,6 +209,8 @@ Proof.
   rewrite H. auto.
 Qed.
 
+#[export] Hint Resolve get_phys_perm get_log_perm : perm_db.
+
 Lemma get_log_phys_inv : forall n lay l,
   layout_bijective n lay -> l < n ->
   get_log lay (get_phys lay l) = l.
@@ -236,6 +238,8 @@ Proof.
   rewrite H2.
   reflexivity.
 Qed.
+
+#[export] Hint Resolve get_log_phys_inv get_phys_log_inv : perm_inv_db.
 
 Lemma get_phys_lt : forall dim m x,
   layout_bijective dim m ->
@@ -548,6 +552,8 @@ Proof.
     split; auto.
     rewrite find_log_swap_log_3 with (n:=n); auto.
 Qed.
+
+#[export] Hint Resolve swap_log_preserves_bij : perm_db.
 
 (** * Trivial layout *)
 
