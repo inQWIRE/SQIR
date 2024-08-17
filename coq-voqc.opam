@@ -12,11 +12,11 @@ license: "MIT"
 homepage: "https://github.com/inQWIRE/SQIR"
 bug-reports: "https://github.com/inQWIRE/SQIR/issues"
 depends: [
-  "dune" {>= "2.8"}
-  "coq-interval" {>= "4.6.1"}
-  "coq-quantumlib" {>= "1.1.0"}
+  "dune" {>= "3.8"}
+  "coq-interval" {>= "4.9.0"}
+  "coq-quantumlib" {>= "1.5.0"}
   "coq-sqir" {>= "1.3.0"}
-  "coq" {>= "8.12"}
+  "coq" {>= "8.16"}
   "odoc" {with-doc}
 ]
 build: [

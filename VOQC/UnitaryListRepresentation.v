@@ -1,7 +1,7 @@
 Require Export Coq.Classes.Equivalence.
 Require Export Coq.Classes.Morphisms.
 Require Export Setoid.
-Require Import QuantumLib.Permutations.
+Require Import QuantumLib.Permutations QuantumLib.PermutationAutomation.
 Require Export GateSet.
 Require Export SQIR.Equivalences.
 
@@ -1302,7 +1302,6 @@ Proof.
   apply permutation_id.
   rewrite perm_to_matrix_I; auto.
   unfold eval. Msimpl. reflexivity.
-  apply permutation_id.
 Qed.
 
 Lemma uc_equiv_perm_sym : forall {dim} (l1 l2 : gate_list G.U dim), l1 ≡x l2 -> l2 ≡x l1.
@@ -1310,26 +1309,18 @@ Proof.
   intros dim l1 l2 H. 
   destruct H as [p1 [p2 [Hp1 [Hp2 H]]]].
   unfold uc_equiv_perm in *.
-  destruct Hp1 as [p1inv Hp1].
-  destruct Hp2 as [p2inv Hp2].
-  assert (permutation dim p1inv).
-  { exists p1.
-    intros x Hx.
-    destruct (Hp1 x Hx) as [? [? [? ?]]].
-    repeat split; auto. }
-  assert (permutation dim p2inv).
-  { exists p2.
-    intros x Hx.
-    destruct (Hp2 x Hx) as [? [? [? ?]]].
-    repeat split; auto. }
-  exists p1inv.
-  exists p2inv.
-  repeat split; auto.
+  exists (perm_inv dim p1).
+  exists (perm_inv dim p2).
+  repeat split; auto with perm_db.
   rewrite H.
+  rewrite <- !perm_to_matrix_transpose_eq by easy.
+  rewrite !Mmult_assoc, perm_to_matrix by auto with perm_bounded_db.
+  Search (perm_inv _ _).
+  PermutationAutomation.cleanup_perm.
   repeat rewrite Mmult_assoc.
-  rewrite perm_to_matrix_Mmult; auto.
+  rewrite perm_to_matrix_Mmult by (intros ? ?; auto using Hp1, Hp2). auto with perm_bounded_db.
   repeat rewrite <- Mmult_assoc.
-  rewrite perm_to_matrix_Mmult; auto.
+  rewrite perm_to_matrix_Mmult; auto with perm_bounded_db.
   rewrite 2 perm_to_matrix_I.
   unfold eval. Msimpl. reflexivity.
   apply permutation_compose; auto.
@@ -1359,7 +1350,7 @@ Proof.
   repeat split.
   apply permutation_compose; auto.
   apply permutation_compose; auto.
-  rewrite <- 2 perm_to_matrix_Mmult; auto.
+  rewrite <- 2 perm_to_matrix_Mmult; auto with perm_bounded_db.
   repeat rewrite Mmult_assoc.
   reflexivity.
 Qed.

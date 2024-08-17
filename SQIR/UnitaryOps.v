@@ -45,9 +45,9 @@ Proof.
     rewrite rotation_adjoint.
     reflexivity.
   - autorewrite with eval_db.
-    gridify. 
-    Qsimpl. reflexivity.
-    Qsimpl. reflexivity.
+    gridify.
+    Msimpl. now rewrite σx_hermitian_rw.
+    Msimpl. now rewrite σx_hermitian_rw.
 Qed.
 
 (* A few common inverses *)
@@ -61,12 +61,12 @@ Local Transparent X.
 Lemma invert_X : forall dim n, invert (@X dim n) ≡ X n.
 Proof.
   intros dim n.
-  unfold uc_equiv. simpl. 
-  unfold pad_u, pad.
-  gridify.
-  do 2 (apply f_equal2; try reflexivity).
-  unfold rotation. 
-  solve_matrix; try rewrite Ropp_div; autorewrite with Cexp_db trig_db; lca.
+  unfold uc_equiv. simpl.
+  f_equal.
+  prep_matrix_equivalence.
+  unfold rotation.
+  autorewrite with R_db trig_db Cexp_db.
+  by_cell; lca.
 Qed.
 Local Opaque X.
 
@@ -74,12 +74,12 @@ Local Transparent H.
 Lemma invert_H : forall dim n, invert (@H dim n) ≡ H n.
 Proof.
   intros dim n.
-  unfold uc_equiv. simpl. 
-  unfold pad_u, pad.
-  gridify.
-  do 2 (apply f_equal2; try reflexivity).
-  unfold rotation. 
-  solve_matrix; try rewrite Ropp_div; autorewrite with Cexp_db trig_db; lca.
+  unfold uc_equiv. simpl.
+  f_equal.
+  prep_matrix_equivalence.
+  unfold rotation.
+  autorewrite with R_db trig_db Cexp_db.
+  by_cell; lca. 
 Qed.
 Local Opaque H.
 
@@ -88,11 +88,11 @@ Lemma invert_Rz : forall dim n r, (invert (@Rz dim r n) ≡ Rz (- r) n)%ucom.
 Proof.
   intros dim n r.
   unfold uc_equiv. simpl. 
-  autorewrite with eval_db.
-  gridify.
-  do 2 (apply f_equal2; try reflexivity).
-  unfold rotation. 
-  solve_matrix; autorewrite with R_db Cexp_db trig_db; lca.
+  f_equal.
+  prep_matrix_equivalence.
+  unfold rotation.
+  autorewrite with R_db trig_db Cexp_db.
+  by_cell; lca. 
 Qed.
 Local Opaque Rz.
 
@@ -277,9 +277,12 @@ Proof.
   rewrite (f_to_vec_split 0 n q) by lia. 
   replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
   unfold proj, pad_u, pad.
-  gridify. 
-  do 2 (apply f_equal2; try reflexivity). 
-  destruct (f q); solve_matrix.
+  Modulus.simplify_bools_lia_one_kernel.
+  Msimpl. 
+  do 2 (apply f_equal2; try reflexivity).
+  unfold bool_to_matrix.
+  subst.
+  destruct (f q); lma'.
 Qed.
 
 Lemma f_to_vec_proj_neq : forall f q n b,
@@ -290,8 +293,11 @@ Proof.
   rewrite (f_to_vec_split 0 n q) by lia. 
   replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
   unfold proj, pad_u, pad.
-  gridify. 
-  destruct (f q); destruct b; try easy; lma.
+  Modulus.simplify_bools_lia_one_kernel.
+  Msimpl. 
+  replace (bool_to_matrix b × ∣ Nat.b2n (f q) ⟩) with (@Zero 2 1)
+    by (destruct b, (f q); try easy; lma').
+  lma.
 Qed.
 
 (* We can use 'proj' to state that qubit q is in classical state b. *)
@@ -312,7 +318,7 @@ Proof.
     restore_dims.
     rewrite kron_mixed_product.
     Msimpl_light; apply f_equal2; auto.
-    destruct (f n); solve_matrix.
+    destruct (f n); lma'.
   - remember (n - q - 1)%nat as x.
     replace (n - q)%nat with (x + 1)%nat by lia.
     replace n with (q + 1 + x)%nat by lia.
@@ -325,7 +331,7 @@ Proof.
     rewrite kron_mixed_product; simpl.
     replace (q + 1 + x)%nat with n by lia.
     subst.
-    Msimpl_light.
+    rewrite Mmult_1_l by auto_wf.
     rewrite <- IHn at 2; try lia.
     unfold pad_u, pad. 
     bdestructΩ (q + 1 <=? n); clear H0.
@@ -357,8 +363,10 @@ Lemma proj_commutes : forall dim q1 q2 b1 b2,
 Proof.
   intros dim q1 q2 b1 b2.
   unfold proj, pad_u, pad.
+  Modulus.bdestructΩ'; [|now Msimpl_light..].
   gridify; trivial.
-  destruct b1; destruct b2; simpl; Qsimpl; reflexivity. 
+  do 2 f_equal.
+  destruct b1; destruct b2; lma.
 Qed.
 
 Lemma proj_twice_eq : forall dim q b,
@@ -366,8 +374,11 @@ Lemma proj_twice_eq : forall dim q b,
 Proof.
   intros dim q b.
   unfold proj, pad_u, pad.
-  gridify.
-  destruct b; simpl; Qsimpl; reflexivity.
+  Modulus.bdestructΩ'; [|apply Mmult_0_l].
+  restore_dims.
+  rewrite 2!kron_mixed_product, 2!Mmult_1_l by auto_wf.
+  do 2 f_equal.
+  destruct b; lma.
 Qed.
 
 Lemma proj_twice_neq : forall dim q b1 b2,
@@ -375,25 +386,29 @@ Lemma proj_twice_neq : forall dim q b1 b2,
 Proof.
   intros dim q b1 b2 neq.
   unfold proj, pad_u, pad.
-  gridify.
-  destruct b1; destruct b2; try contradiction; simpl; Qsimpl; reflexivity.
+  Modulus.bdestructΩ'; [|apply Mmult_0_l].
+  restore_dims.
+  rewrite 2!kron_mixed_product by auto_wf.
+  replace (bool_to_matrix b1 × bool_to_matrix b2) with (@Zero 2 2)
+    by (destruct b1, b2; try easy; lma).
+  now Msimpl.
 Qed.
 
 (* TODO: move to QuantumLib *)
 
 Lemma bra0_phase : forall ϕ, bra 0 × phase_shift ϕ = bra 0.
-Proof. intros; solve_matrix. Qed.
+Proof. intros; lma'. Qed.
 
 Lemma bra1_phase : forall ϕ, bra 1 × phase_shift ϕ = Cexp ϕ .* bra 1.
-Proof. intros; solve_matrix. Qed.
+Proof. intros; lma'. Qed.
 
 #[export] Hint Rewrite bra0_phase bra1_phase : bra_db.
 
 Lemma braketbra_same : forall x y, bra x × (ket x × bra y) = bra y. 
-Proof. intros. destruct x; destruct y; solve_matrix. Qed.
+Proof. intros. destruct x; destruct y; lma'. Qed.
 
 Lemma braketbra_diff : forall x y z, (x + y = 1)%nat -> bra x × (ket y × bra z) = Zero. 
-Proof. intros. destruct x; destruct y; try lia; solve_matrix. Qed.
+Proof. intros. destruct x; destruct y; try lia; lma'. Qed.
 
 #[export] Hint Rewrite braketbra_same braketbra_diff using lia : bra_db.
 
@@ -406,145 +421,114 @@ Proof.
   unfold proj; simpl.
   autorewrite with eval_db.
   unfold pad_u, pad.
+  assert (Hcase1: rotation (θ / 2) ϕ 0
+    × (rotation (- θ / 2) 0 (- (ϕ + λ) / 2)
+     × phase_shift ((λ - ϕ) / 2)) = I 2).
+  1: {
+    prep_matrix_equivalence. 
+    unfold rotation.
+    assert (Hrw : (forall c, c / 2 / 2 = c / 4)%R) by (intros; lra).
+    rewrite 2!Hrw.
+    rewrite Rplus_0_r.
+    autorewrite with R_db.
+    unfold Mmult; simpl.
+    autorewrite with trig_db.
+    generalize (sin2_cos2 (θ * / 4)).
+    rewrite 2!Rsqr_def.
+    intros.
+
+    by_cell; [unfold Cexp; autorewrite with trig_db; try lca..|].
+    Csimpl.
+    C_field.
+    rewrite <- 2!Cexp_add.
+    rewrite Cmult_comm, !Cmult_assoc.
+    autorewrite with C_db.
+    rewrite <- Cexp_add.
+    rewrite (Cmult_comm _ (Cexp _)), Cmult_assoc.
+    rewrite <- Cexp_add.
+    repeat match goal with 
+    |- context [Cexp ?a] => replace a with 0%R by lra; rewrite Cexp_0
+    end.
+    lca.
+  }
+  assert (Hcase2 : Cexp ((λ + ϕ) / 2) .* rotation (θ / 2) ϕ 0 × (σx × 
+    (rotation (- θ / 2) 0 (- (ϕ + λ) / 2) × (σx × phase_shift ((λ - ϕ) / 2))))
+    = rotation θ ϕ λ). 1:{
+      
+    prep_matrix_equivalence.
+    unfold rotation.
+    assert (Hrw : (forall c, c / 2 / 2 = c / 4)%R) by (intros; lra).
+    rewrite 2!Hrw.
+    rewrite Rplus_0_r.
+    autorewrite with R_db.
+    unfold Mmult; simpl.
+    autorewrite with trig_db.
+    unfold scale, Mmult.
+    autorewrite with Cexp_db.
+
+    by_cell; cbn.
+    Csimpl.
+    C_field.
+    rewrite <- !Cmult_assoc.
+    rewrite (Rplus_comm λ).
+    pose proof (cos_plus (θ*/4) (θ*/4)) as Hcos.
+    replace ((θ*/4)+(θ*/4))%R with (θ*/2)%R in Hcos by lra.
+    rewrite Hcos.
+    lca.
+    
+    Csimpl.
+    C_field.
+    rewrite <- !Cmult_assoc.
+    rewrite (Rplus_comm λ).
+    pose proof (sin_plus (θ*/4) (θ*/4)) as Hcos.
+    replace ((θ*/4)+(θ*/4))%R with (θ*/2)%R in Hcos by lra.
+    rewrite Hcos.
+    replace (Cexp λ) with (Cexp ((ϕ + λ) * / 2 + (λ + - ϕ) * / 2))
+      by (f_equal; lra).
+    rewrite Cexp_add.
+    lca.
+
+    Csimpl.
+    C_field.
+    rewrite <- !Cmult_assoc.
+    rewrite (Rplus_comm λ).
+    pose proof (sin_plus (θ*/4) (θ*/4)) as Hcos.
+    replace ((θ*/4)+(θ*/4))%R with (θ*/2)%R in Hcos by lra.
+    rewrite Hcos.
+    lca.
+
+    Csimpl.
+    C_field.
+    rewrite <- !Cexp_add.
+    rewrite Cmult_comm, <- !Cmult_assoc.
+    C_field.
+    rewrite <- Cexp_add.
+    repeat match goal with
+    |- context [Cexp ?a] =>
+      progress replace a%R with (ϕ + λ)%R by lra
+    end.
+    autorewrite with RtoC_db.
+    pose proof (cos_plus (θ*/4) (θ*/4)) as Hcos.
+    replace ((θ*/4)+(θ*/4))%R with (θ*/2)%R in Hcos by lra.
+    rewrite Hcos.
+    lca.
+  }
   gridify. (* slow *)
-  all: clear.
+  all: clear -Hcase1 Hcase2.
   all: autorewrite with M_db_light ket_db bra_db.
   all: rewrite Mplus_comm;
        repeat (apply f_equal2; try reflexivity).
+  
   (* A little messy because we need to apply trig identities; 
      goal #1 = goal #3 and goal #2 = goal #4 *)
-  - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db;
-      try lca; field_simplify_eq; try nonzero; group_Cexp.
-    + simpl. try (rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy).
-    try (
-      rewrite Cplus_comm; unfold Cplus, Cmult;
-      autorewrite with R_db; simpl;
-      setoid_rewrite sin2_cos2; easy
-    ).
-    + try (simpl; rewrite Copp_mult_distr_l, Copp_mult_distr_r; 
-      repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l;  
-      autorewrite with RtoC_db; rewrite Ropp_involutive;
-      setoid_rewrite sin2_cos2; rewrite Cmult_1_r;
-      apply f_equal; lra).
-      try (
-      simpl; repeat rewrite <- Cmult_assoc; simpl;
-      rewrite <- Cmult_plus_distr_l; 
-      unfold Cplus, Cmult;
-      autorewrite with R_db; simpl;
-      setoid_rewrite sin2_cos2; autorewrite with R_db;
-      unfold Cexp; apply f_equal2; [apply f_equal; lra|]
-      ).
-      apply f_equal; lra.
-  - rewrite <- Mscale_kron_dist_l.
-    repeat rewrite <- Mscale_kron_dist_r.
-    repeat (apply f_equal2; try reflexivity).
-    (* Note: These destructs shouldn't be necessary - weakness in destruct_m_eq'. 
-       The mat_equiv branch takes a more principled approach (see lma there, port). *)
-    solve_matrix; destruct x0; try destruct x0; simpl;
-    autorewrite with R_db C_db Cexp_db trig_db; try lca;
-    rewrite RtoC_opp; field_simplify_eq; try nonzero; group_Cexp;
-    repeat rewrite <- Cmult_assoc. 
-    + unfold Cminus.
-      rewrite Copp_mult_distr_r, <- Cmult_plus_distr_l. 
-      apply f_equal2; [apply f_equal; lra|].
-      try (autorewrite with RtoC_db).
-      try (rewrite <- Cminus_unfold;
-      unfold Cminus, Cmult; simpl; autorewrite with R_db;
-      apply c_proj_eq; simpl; autorewrite with R_db).
-      rewrite <- Rminus_unfold, <- cos_plus.
-      apply f_equal. try apply f_equal. try lra. lra.
-    + apply f_equal2; [apply f_equal; lra|].
-      apply c_proj_eq; simpl; try lra.
-      R_field_simplify.
-      rewrite <- sin_2a.
-      apply f_equal; lra.
-    + rewrite Copp_mult_distr_r.
-      apply f_equal2; [apply f_equal; lra|].
-      apply c_proj_eq; simpl; try lra.
-      R_field_simplify.
-      replace (-2)%R with (-(2))%R by lra.
-      repeat rewrite <- Ropp_mult_distr_l. 
-      apply f_equal.
-      rewrite <- sin_2a.
-      apply f_equal; lra.
-    + rewrite Copp_mult_distr_r.
-      rewrite <- Cmult_plus_distr_l.
-      apply f_equal2; [apply f_equal; lra|].
-      try (autorewrite with RtoC_db;
-      rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus;
-      apply f_equal; apply f_equal; lra).
-      try (
-        rewrite Cplus_comm; apply c_proj_eq; simpl; try lra;
-      autorewrite with R_db; rewrite <- Rminus_unfold;
-      rewrite <- cos_plus; apply f_equal; lra
-      ).
-  - solve_matrix; autorewrite with R_db C_db RtoC_db Cexp_db trig_db; try lca;
-      field_simplify_eq; try nonzero; group_Cexp.
-    + try (rewrite Rplus_comm; setoid_rewrite sin2_cos2; easy).
-      try (
-        simpl; rewrite Cplus_comm; unfold Cplus, Cmult;
-      autorewrite with R_db; simpl;
-      setoid_rewrite sin2_cos2; easy
-      ).
-    + try (rewrite Copp_mult_distr_l, Copp_mult_distr_r; 
-      repeat rewrite <- Cmult_assoc; rewrite <- Cmult_plus_distr_l; 
-      autorewrite with RtoC_db; rewrite Ropp_involutive;
-      setoid_rewrite sin2_cos2; rewrite Cmult_1_r).
-      try (
-      simpl;
-      repeat rewrite <- Cmult_assoc; simpl;
-      rewrite <- Cmult_plus_distr_l; 
-      unfold Cplus, Cmult;
-      autorewrite with R_db; simpl;
-      setoid_rewrite sin2_cos2; autorewrite with R_db;
-      unfold Cexp; apply f_equal2; [apply f_equal; lra|] 
-      ).
-      apply f_equal; lra.
-  - rewrite <- 3 Mscale_kron_dist_l.
-    repeat rewrite <- Mscale_kron_dist_r.
-    repeat (apply f_equal2; try reflexivity).
-    solve_matrix; destruct x; try destruct x; simpl;
-    autorewrite with R_db C_db Cexp_db trig_db; try lca;
-    try rewrite RtoC_opp; field_simplify_eq; try nonzero; group_Cexp;
-    repeat rewrite <- Cmult_assoc. 
-    + unfold Cminus.
-      rewrite Copp_mult_distr_r, <- Cmult_plus_distr_l. 
-      apply f_equal2; [apply f_equal; lra|].
-      try (autorewrite with RtoC_db).
-      try (
-        repeat rewrite <- Cmult_assoc; simpl;
-      unfold Cplus, Cmult;
-      autorewrite with R_db; simpl;
-      apply c_proj_eq; simpl; try lra
-      ).
-      rewrite <- Rminus_unfold, <- cos_plus.
-      apply f_equal. try apply f_equal. lra.
-    + apply f_equal2; [apply f_equal; lra|].
-      apply c_proj_eq; simpl; try lra.
-      R_field_simplify.
-      rewrite <- sin_2a.
-      apply f_equal; lra.
-    + rewrite Copp_mult_distr_r.
-      apply f_equal2; [apply f_equal; lra|].
-      apply c_proj_eq; simpl; try lra.
-      R_field_simplify.
-      replace (-2)%R with (-(2))%R by lra.
-      repeat rewrite <- Ropp_mult_distr_l. 
-      apply f_equal.
-      rewrite <- sin_2a.
-      apply f_equal; lra.
-    + rewrite Copp_mult_distr_r.
-      rewrite <- Cmult_plus_distr_l.
-      apply f_equal2; [apply f_equal; lra|].
-      try (autorewrite with RtoC_db;    
-      rewrite Rplus_comm; rewrite <- Rminus_unfold, <- cos_plus;
-      apply f_equal; apply f_equal; lra);
-      try (
-      apply c_proj_eq; simpl; try lra;
-      rewrite Rplus_comm; autorewrite with R_db;
-      rewrite <- Rminus_unfold, <- cos_plus;
-      apply f_equal; lra
-      ).
+  - apply Hcase1.
+  - rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r, <- Mscale_mult_dist_l.
+    do 2 f_equal. 
+    apply Hcase2.
+  - apply Hcase1.
+  - rewrite <- 3!Mscale_kron_dist_l, <- Mscale_kron_dist_r, <- Mscale_mult_dist_l.
+    do 4 f_equal. 
+    apply Hcase2.
 Qed.
 
 Lemma UR_not_WT : forall (dim a b : nat) r r0 r1,
@@ -713,10 +697,10 @@ Proof.
   simpl.
   assert (ueval_cnot dim  a b = Zero \/ ueval_cnot dim  a c = Zero).
   { assert (a = b \/ a = c).
-    apply Classical_Prop.NNPP.
+    enough (~ (a <> b /\ a <> c)) by 
+      (bdestruct (a =? b); bdestruct (a =? c); lia).
     intro contra. contradict H.
-    apply Classical_Prop.not_or_and in contra as [? ?].
-    constructor; assumption.
+    constructor; easy.
     destruct H0.
     left. autorewrite with eval_db. gridify.
     right. autorewrite with eval_db. gridify. }
@@ -1017,6 +1001,7 @@ Proof.
   unfold proj.
   autorewrite with eval_db.
   gridify.
+  do 2 f_equal.
   destruct b; simpl; Qsimpl; reflexivity.
 Qed.
 
