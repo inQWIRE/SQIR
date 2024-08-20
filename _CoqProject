@@ -1,4 +1,5 @@
 -R _build/default/SQIR SQIR
 -R _build/default/examples/examples Examples
 -R _build/default/examples/shor Shor
+-R _build/default/examples/error-correction ErrorCorrection
 -R _build/default/VOQC VOQC
