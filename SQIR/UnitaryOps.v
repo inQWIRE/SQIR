@@ -10,6 +10,61 @@ Require Export QuantumLib.VectorStates QuantumLib.Bits.
    It also contains a definition for projecting a qubit into a classical state, which
    is useful for defining the behavior of control. *)
 
+(* A few missing lemmas from QuantumLib *)
+Lemma MmultZH : σz × hadamard = hadamard × σx.
+Proof. lma'. Qed.
+
+Lemma MmultHX : hadamard × σx = σz × hadamard.
+Proof. now rewrite MmultZH. Qed.
+
+Lemma MmultXH : σx × hadamard = hadamard × σz.
+Proof. lma'. Qed.
+
+Lemma MmultHZ : hadamard × σz = σx × hadamard.
+Proof. now rewrite MmultXH. Qed.
+
+Lemma MmultHY : hadamard × σy = (- C1) .* (σy × hadamard).
+Proof. lma'. Qed.
+
+Lemma MmultYH : σy × hadamard = (- C1) .* (hadamard × σy).
+Proof. 
+  rewrite MmultHY, Mscale_assoc.
+  replace (- C1 * - C1)%C with (C1) by lca.
+  now rewrite Mscale_1_l.
+Qed.
+
+Lemma Mmult_phase_11 a : ∣1⟩⟨1∣ × phase_shift a = phase_shift a × ∣1⟩⟨1∣.
+Proof. lma'. Qed.
+
+Lemma Mmult_phase_00 a : ∣0⟩⟨0∣ × phase_shift a = phase_shift a × ∣0⟩⟨0∣.
+Proof. lma'. Qed.
+
+Lemma Mmult_phase_X_phase_X a a' : 
+  σx × phase_shift a × σx × phase_shift a' = 
+  phase_shift a' × σx × phase_shift a × σx.
+Proof. lma'. Qed.
+
+Lemma Copp_Ci : / Ci = - Ci.
+Proof. C_field. Qed.
+#[export] Hint Rewrite Copp_Ci : C_db.
+
+Lemma pad_u_mmult : forall dim b A B, WF_Matrix A -> WF_Matrix B ->
+  pad_u dim b (A × B) = pad_u dim b A × pad_u dim b B.
+Proof.
+  intros.
+  unfold pad_u, pad.
+  bdestruct_all; now Msimpl.
+Qed.
+
+Lemma sin_sin_PI8 : 
+  sin (PI / 8) * sin (PI / 8) = 
+  cos (PI / 8) * cos (PI / 8) - cos (PI / 4).
+Proof.
+  replace (PI / 4)%R with (2 * (PI / 8))%R by lra.
+  rewrite cos_2a.
+  lca.
+Qed.
+  
 Local Open Scope ucom.
 
 (** Inversion **)
@@ -358,27 +413,329 @@ Proof.
   apply pad_A_ctrl_commutes; auto with wf_db.
 Qed.
 
+(* Using f_to_vec lemmas allows us to bypass a lot of computation *)
+
+Lemma f_to_vec_proj : forall f q n b, 
+  (q < n)%nat -> 
+  proj q n b × f_to_vec n f = 
+  (if bool_dec (f q) b then C1 else C0) .* f_to_vec n f.
+Proof.
+  intros.
+  destruct (bool_dec (f q) b).
+  - rewrite f_to_vec_proj_eq by easy.
+    now Msimpl.
+  - rewrite f_to_vec_proj_neq by easy.
+    now Msimpl.
+Qed.
+
+(* FIXME: Remove these two; they're in a future version of Qlib *)
+Lemma f_to_vec_σy : forall (n i : nat) (f : nat -> bool),
+  (i < n)%nat ->
+  (pad_u n i σy) × (f_to_vec n f) = 
+  (-1)%R^(Nat.b2n (f i)) * Ci .* f_to_vec n (update f i (¬ f i)).
+Proof.
+  intros n i f Hi.
+  unfold pad_u, pad.
+  rewrite (f_to_vec_split 0 n i f Hi).
+  repad. 
+  replace (i + 1 + x - 1 - i)%nat with x by lia.
+  Msimpl.
+  rewrite Y_specb.
+  distribute_scale.
+  rewrite (f_to_vec_split 0 (i + 1 + x) i) by lia.
+  rewrite f_to_vec_update_oob by lia.
+  rewrite f_to_vec_shift_update_oob by lia.
+  rewrite update_index_eq. 
+  replace (i + 1 + x - 1 - i)%nat with x by lia.
+  easy.
+Qed.
+
+Lemma f_to_vec_σz : forall (n i : nat) (f : nat -> bool),
+  (i < n)%nat ->
+  (pad_u n i σz) × (f_to_vec n f) = 
+  (-1)%R^(Nat.b2n (f i)) .* f_to_vec n f.
+Proof.
+  intros n i f Hi.
+  unfold pad_u, pad.
+  rewrite (f_to_vec_split 0 n i f Hi).
+  repad. 
+  replace (i + 1 + x - 1 - i)%nat with x by lia.
+  Msimpl.
+  rewrite Z_specb.
+  distribute_scale.
+  reflexivity.
+Qed.
+
+
+Lemma f_to_vec_pad_u_generic : forall (n i : nat) A (f : nat -> bool),
+  (i < n)%nat -> WF_Matrix A ->
+  pad_u n i A × (f_to_vec n f) = 
+    (if f i then A 0 1 else A 0 0)%nat .* f_to_vec n (update f i false)
+    .+ (if f i then A 1 1 else A 1 0)%nat .* f_to_vec n (update f i true).
+Proof.
+  intros n i A f Hi HA.
+  unfold pad_u, pad.
+  rewrite (f_to_vec_split 0 n i f Hi).
+  repad. 
+  replace (i + 1 + x - 1 - i)%nat with x by lia.
+  Msimpl.
+  replace (A × ∣ Nat.b2n (f i) ⟩) with 
+    ((if f i then A 0 1 else A 0 0)%nat .* ∣ Nat.b2n false ⟩
+    .+ (if f i then A 1 1 else A 1 0)%nat .* ∣ Nat.b2n true ⟩)
+    by (destruct (f i); lma').
+  restore_dims.
+  distribute_plus; distribute_scale.
+  f_equal; [unify_pows_two|..];
+  (f_equal; [unify_pows_two|..]);
+  rewrite (f_to_vec_split 0 (i + 1 + x) i) by lia;
+  rewrite f_to_vec_update_oob by lia;
+  rewrite f_to_vec_shift_update_oob by lia;
+  rewrite update_index_eq;
+  do 2 f_equal; lia.
+Qed.
+
+Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool), (i < n)%nat ->
+  (uc_eval (X i)) × (f_to_vec n f) = f_to_vec n (update f i (¬ (f i))).
+Proof.
+  intros. rewrite denote_X. apply f_to_vec_σx. auto.
+Qed.
+
+Lemma f_to_vec_Y : forall (n i : nat) (f : nat -> bool), (i < n)%nat ->
+  (uc_eval (SQIR.Y i)) × (f_to_vec n f) 
+  = (-1) ^ Nat.b2n (f i) * Ci .* f_to_vec n (update f i (¬ f i)).
+Proof.
+  intros. rewrite denote_Y. apply f_to_vec_σy. auto.
+Qed.
+
+Lemma f_to_vec_Z : forall (n i : nat) (f : nat -> bool), (i < n)%nat ->
+  (uc_eval (SQIR.Z i)) × (f_to_vec n f) = (-1) ^ Nat.b2n (f i) .* f_to_vec n f.
+Proof.
+  intros. rewrite denote_Z. apply f_to_vec_σz. auto.
+Qed.
+
+Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
+  (i < n)%nat -> (j < n)%nat -> i <> j ->
+  (uc_eval (SQIR.CNOT i j)) × (f_to_vec n f) = f_to_vec n (update f j (f j ⊕ f i)).
+Proof.
+   intros. rewrite denote_cnot. unfold ueval_cnot. apply f_to_vec_cnot; auto.
+Qed.
+
+Lemma f_to_vec_SWAP : forall (n i j : nat) (f : nat -> bool),
+  (i < n)%nat -> (j < n)%nat -> i <> j ->
+  uc_eval (SWAP i j) × (f_to_vec n f) = f_to_vec n (fswap f i j).
+Proof.
+   intros. rewrite denote_swap_alt. apply f_to_vec_swap; auto.
+Qed.
+
+Lemma f_to_vec_Rz : forall (n i : nat) (θ : R) (f : nat -> bool),
+  (i < n)%nat ->
+  (uc_eval (SQIR.Rz θ i)) × (f_to_vec n f) = 
+    (Cexp (b2R (f i) * θ)) .* f_to_vec n f.
+Proof.
+   intros. rewrite denote_Rz. apply f_to_vec_phase_shift; auto.
+Qed.
+
+Lemma f_to_vec_H : forall (n i : nat) (f : nat -> bool),
+  (i < n)%nat ->
+  (uc_eval (SQIR.H i)) × (f_to_vec n f) 
+      = /√2 .* ((f_to_vec n (update f i false)) 
+                .+ (Cexp (b2R (f i) * PI)) .* f_to_vec n (update f i true)).
+Proof.
+   intros. rewrite denote_H. apply f_to_vec_hadamard; auto.
+Qed.
+
+#[export] Hint Rewrite f_to_vec_CNOT f_to_vec_SWAP f_to_vec_Rz 
+  f_to_vec_X f_to_vec_Y f_to_vec_Z using lia : f_to_vec_db.
+
+Ltac f_to_vec_simpl_body :=
+  autorewrite with f_to_vec_db;
+  try match goal with
+      | |- context [uc_eval (SQIR.H _) × f_to_vec _ _] =>
+            rewrite f_to_vec_H by lia
+      end;
+  distribute_scale;
+  distribute_plus;
+  try match goal with
+      | |- context [update (update (update _ ?x _) ?y _) ?z _ ] => 
+            rewrite (update_twice_neq _ x y) by lia
+      end.
+
+Ltac f_to_vec_simpl := repeat f_to_vec_simpl_body.
+
+Lemma Cexp_bool_mul b a : 
+  Cexp (b2R b * a) = Cexp a ^ (Nat.b2n b).
+Proof.
+  destruct b.
+  - rewrite Rmult_1_l. lca.
+  - rewrite Rmult_0_l, Cexp_0. easy.
+Qed.
+
+#[export] Hint Rewrite Cexp_bool_mul : Cexp_db.
+
+Lemma f_to_vec_CCX : forall (dim a b c : nat) (f : nat -> bool),
+   (a < dim)%nat -> (b < dim)%nat -> (c < dim)%nat -> a <> b -> a <> c -> b <> c ->
+  (uc_eval (CCX a b c)) × (f_to_vec dim f) 
+      = f_to_vec dim (update f c (f c ⊕ (f a && f b))).
+Proof. 
+  intros.
+  unfold CCX, T, TDAG.
+  simpl uc_eval.
+  repeat rewrite Mmult_assoc.
+  f_to_vec_simpl.
+  rewrite xorb_false_l, xorb_true_l.
+  rewrite (xorb_comm _ (f b)), xorb_assoc, xorb_nilpotent, xorb_false_r.
+  replace ((((¬ f b) ⊕ f a) ⊕ f b) ⊕ f a) with true by
+    (now destruct (f b), (f a)).
+  replace (((¬ f b) ⊕ f a) ⊕ f b) with (¬ f a) by 
+    (now destruct (f b), (f a)).
+  replace ((f b ⊕ (f b ⊕ f a)) ⊕ f a) with false by
+    (now destruct (f b), (f a)).
+  rewrite <- xorb_assoc, xorb_nilpotent, xorb_false_l.
+  rewrite (update_same _ b) by easy.
+  prep_matrix_equivalence.
+  intros i j Hi Hj.
+  unfold scale, Mplus.
+  C_field.
+  group_Cexp.
+  replace (b2R (f b) * - (PI / 4) + b2R (f b ⊕ f a) * (PI / 4) + 
+    b2R (f a) * - (PI / 4) + b2R (f b ⊕ f a) * - (PI / 4) + b2R (f a)*(PI/4)+ 
+    b2R (f b) * (PI / 4) + b2R false * (PI / 4))%R with 
+    (0)%R by (simpl; lra).
+  rewrite (Cexp_add _ (1 * PI)), !Rmult_1_l, Cexp_PI.
+  rewrite Rmult_0_l, Rplus_0_l, Cexp_0.
+  rewrite <- !Cplus_assoc, <- Cmult_assoc, <- Cmult_plus_distr_l.
+  assert (aux : forall b, (b2R (¬ b) = 1 - b2R b)%R) by
+    (intros b'; destruct b'; simpl; lra).
+  rewrite <- negb_xorb_l.
+  rewrite !aux.
+  replace (b2R (f b ⊕ f a) * - (PI/4) + b2R (f a)*(PI/4) + b2R (f b)*(PI/4) +
+    b2R (f c) * PI + (1 - b2R (f b)) * - (PI / 4) +
+    (1 - b2R (f b ⊕ f a)) * (PI / 4) + (1 - b2R (f a)) * - (PI / 4) +
+    (PI / 4))%R with 
+    ((2 * b2R (f c) +  b2R (f b) + b2R (f a) - b2R (f b ⊕ f a)) * (PI / 2))%R 
+    by (simpl; lra).
+  replace (2 * b2R (f c) +  b2R (f b) + b2R (f a) - b2R (f b ⊕ f a))%R
+    with (2 * (b2R (f c) + b2R (f a && f b)))%R by
+    (destruct (f a), (f b), (f c); cbn; lra).
+  rewrite Rmult_comm, <- Rmult_assoc.
+  replace (PI / 2 * 2)%R with PI by lra.
+  rewrite Rmult_comm.
+  replace (Cexp ((b2R (f c) + b2R (f a && f b)) * PI)) with 
+    (if f c ⊕ (f a && f b) then -1 : C else C1)%C by 
+    (destruct (f c), (f a && f b); cbn; autorewrite with R_db Cexp_db; 
+    try lca; symmetry; apply Cexp_2PI).
+  destruct (f c ⊕ (f a && f b)); lca.
+Qed.
+
+
+(* It is also helpful to have lemmas with the specific conditions for 
+   a gate being Zero *)
+
+Section IllTyped.
+Local Open Scope nat_scope.
+
+Lemma CNOT_ill_typed : forall {dim} n m,
+  (dim <= n \/ dim <= m \/ n = m) ->
+  @uc_eval dim (CNOT n m) = Zero.
+Proof.
+  intros dim n m H.
+  rewrite denote_cnot.
+  unfold ueval_cnot, pad_ctrl, pad.
+  now bdestruct_all.
+Qed.
+
+Lemma ID_ill_typed : forall dim q, dim <= q -> @uc_eval dim (SQIR.ID q) = Zero.
+Proof.
+  intros.
+  rewrite denote_ID.
+  unfold pad_u, pad.
+  Modulus.bdestructΩ'.
+Qed.
+
+Lemma H_ill_typed : forall dim q, dim <= q -> @uc_eval dim (H q) = Zero.
+Proof.
+  intros.
+  autorewrite with eval_db.
+  Modulus.bdestructΩ'.
+Qed.
+
+Lemma X_ill_typed : forall dim q : nat, dim <= q -> @uc_eval dim (X q) = Zero.
+Proof.
+  intros.
+  autorewrite with eval_db.
+  Modulus.bdestructΩ'.
+Qed.
+
+Lemma Y_ill_typed : forall dim q : nat, dim <= q -> @uc_eval dim (Y q) = Zero.
+Proof.
+  intros.
+  autorewrite with eval_db.
+  Modulus.bdestructΩ'.
+Qed.
+
+Lemma Z_ill_typed : forall dim q : nat, dim <= q -> 
+  @uc_eval dim (SQIR.Z q) = Zero.
+Proof.
+  intros.
+  autorewrite with eval_db.
+  Modulus.bdestructΩ'.
+Qed.
+
+Local Transparent SWAP.
+Lemma SWAP_ill_typed : forall dim a b,
+  (dim <= a \/ dim <= b \/ a = b) ->
+  @uc_eval dim (SWAP a b) = Zero.
+Proof.
+  intros.
+  simpl.
+  rewrite CNOT_ill_typed by easy.
+  now Msimpl.
+Qed.
+Local Opaque SWAP.
+
+Lemma Rz_ill_typed : forall dim a n, 
+  dim <= n -> @uc_eval dim (Rz a n) = Zero.
+Proof.
+  intros.
+  autorewrite with eval_db.
+  Modulus.bdestructΩ'.
+Qed.
+
+Lemma proj_ill_typed : forall dim q b,
+  dim <= q -> proj q dim b = Zero.
+Proof.
+  intros.
+  unfold proj, pad_u, pad.
+  Modulus.bdestructΩ'.
+Qed.
+
+End IllTyped.
+
+
 Lemma proj_commutes : forall dim q1 q2 b1 b2,
   proj q1 dim b1 × proj q2 dim b2 = proj q2 dim b2 × proj q1 dim b1.
 Proof.
   intros dim q1 q2 b1 b2.
-  unfold proj, pad_u, pad.
-  Modulus.bdestructΩ'; [|now Msimpl_light..].
-  gridify; trivial.
-  do 2 f_equal.
-  destruct b1; destruct b2; lma.
+  bdestruct (q1 <? dim); [|rewrite proj_ill_typed by lia; now Msimpl].
+  bdestruct (q2 <? dim); [|rewrite (proj_ill_typed _ q2) by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite 2!Mmult_assoc.
+  rewrite !f_to_vec_proj, !Mscale_mult_dist_r, !f_to_vec_proj by easy.
+  rewrite !Mscale_assoc.
+  now rewrite Cmult_comm.
 Qed.
 
 Lemma proj_twice_eq : forall dim q b,
   proj q dim b × proj q dim b = proj q dim b.
 Proof.
   intros dim q b.
-  unfold proj, pad_u, pad.
-  Modulus.bdestructΩ'; [|apply Mmult_0_l].
-  restore_dims.
-  rewrite 2!kron_mixed_product, 2!Mmult_1_l by auto_wf.
-  do 2 f_equal.
-  destruct b; lma.
+  bdestruct (q <? dim); [|rewrite proj_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite Mmult_assoc.
+  rewrite !f_to_vec_proj, Mscale_mult_dist_r, f_to_vec_proj by easy.
+  destruct (bool_dec (f q) b); now Msimpl.
 Qed.
 
 Lemma proj_twice_neq : forall dim q b1 b2,
@@ -418,6 +775,13 @@ Lemma CU_correct : forall (dim : nat) θ ϕ λ c t,
   uc_eval (CU θ ϕ λ c t) = proj c dim false .+ (proj c dim true) × (ueval_r dim t (U_R θ ϕ λ)).
 Proof.
   intros.
+  (* simpl.
+  bdestruct (c <? dim); 
+  [|rewrite !proj_ill_typed, CNOT_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  f_to_vec_simpl. *)
   unfold proj; simpl.
   autorewrite with eval_db.
   unfold pad_u, pad.
@@ -536,15 +900,10 @@ Lemma UR_not_WT : forall (dim a b : nat) r r0 r1,
   uc_eval (@CU dim r r0 r1 a b) = Zero.
 Proof.
   intros dim a b r r0 r1 H.
-  simpl. unfold pad_u.
-  assert (@pad 1 b dim (rotation (r / 2) r0 0) = Zero).
-  { unfold pad. gridify. 
-    assert (uc_well_typed (@uapp1 _ (b + 1 + d) (U_R r r0 r1) b)).
-    constructor; lia.
-    contradiction. }
-  rewrite H0.
-  Msimpl_light.
-  reflexivity.
+  simpl.
+  bdestruct (b <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  exfalso; apply H.
+  constructor; easy.
 Qed.
 
 Lemma UR_not_fresh : forall (dim a b : nat) r r0 r1,
@@ -552,16 +911,11 @@ Lemma UR_not_fresh : forall (dim a b : nat) r r0 r1,
   uc_eval (@CU dim r r0 r1 a b) = Zero.
 Proof.
   intros dim a b r r0 r1 H.
-  simpl. 
-  assert (uc_eval (@CNOT dim a b) = Zero).
-  { assert (a = b).
-    apply Classical_Prop.NNPP.
-    intro contra. contradict H.
-    constructor; assumption.
-    autorewrite with eval_db. gridify. }
-  rewrite H0.
-  Msimpl_light.
-  reflexivity.
+  simpl.
+  bdestruct (a =? b); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  bdestruct (b <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  exfalso; apply H.
+  constructor; easy.
 Qed.
 
 Lemma UR_a_geq_dim : forall (dim a b : nat) r r0 r1,
@@ -569,93 +923,13 @@ Lemma UR_a_geq_dim : forall (dim a b : nat) r r0 r1,
   uc_eval (@CU dim r r0 r1 a b) = Zero.
 Proof.
   intros dim a b r r0 r1 H.
-  simpl. 
-  assert (uc_eval (@Rz dim ((r1 + r0) / 2) a) = Zero).
-  { autorewrite with eval_db. gridify. }
-  rewrite H0.
-  Msimpl_light.
-  reflexivity.
+  simpl.
+  rewrite CNOT_ill_typed by lia.
+  now Msimpl.
 Qed.
 Local Opaque CU.
 
-Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool), (i < n)%nat ->
-  (uc_eval (X i)) × (f_to_vec n f) = f_to_vec n (update f i (¬ (f i))).
-Proof.
-  intros. rewrite denote_X. apply f_to_vec_σx. auto.
-Qed.
 
-Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
-  (i < n)%nat -> (j < n)%nat -> i <> j ->
-  (uc_eval (SQIR.CNOT i j)) × (f_to_vec n f) = f_to_vec n (update f j (f j ⊕ f i)).
-Proof.
-   intros. rewrite denote_cnot. unfold ueval_cnot. apply f_to_vec_cnot; auto.
-Qed.
-
-Lemma f_to_vec_SWAP : forall (n i j : nat) (f : nat -> bool),
-  (i < n)%nat -> (j < n)%nat -> i <> j ->
-  uc_eval (SWAP i j) × (f_to_vec n f) = f_to_vec n (fswap f i j).
-Proof.
-   intros. rewrite denote_swap_alt. apply f_to_vec_swap; auto.
-Qed.
-
-Lemma f_to_vec_Rz : forall (n i : nat) (θ : R) (f : nat -> bool),
-  (i < n)%nat ->
-  (uc_eval (SQIR.Rz θ i)) × (f_to_vec n f) = 
-    (Cexp (b2R (f i) * θ)) .* f_to_vec n f.
-Proof.
-   intros. rewrite denote_Rz. apply f_to_vec_phase_shift; auto.
-Qed.
-
-Lemma f_to_vec_H : forall (n i : nat) (f : nat -> bool),
-  (i < n)%nat ->
-  (uc_eval (SQIR.H i)) × (f_to_vec n f) 
-      = /√2 .* ((f_to_vec n (update f i false)) 
-                .+ (Cexp (b2R (f i) * PI)) .* f_to_vec n (update f i true)).
-Proof.
-   intros. rewrite denote_H. apply f_to_vec_hadamard; auto.
-Qed.
-
-#[export] Hint Rewrite f_to_vec_CNOT f_to_vec_Rz f_to_vec_X using lia : f_to_vec_db.
-
-Ltac f_to_vec_simpl_body :=
-  autorewrite with f_to_vec_db;
-  try match goal with
-      | |- context [uc_eval (SQIR.H _) × f_to_vec _ _] =>
-            rewrite f_to_vec_H by lia
-      end;
-  distribute_scale;
-  distribute_plus;
-  try match goal with
-      | |- context [update (update (update _ ?x _) ?y _) ?z _ ] => 
-            rewrite (update_twice_neq _ x y) by lia
-      end.
-
-Ltac f_to_vec_simpl := repeat f_to_vec_simpl_body.
-
-Lemma f_to_vec_CCX : forall (dim a b c : nat) (f : nat -> bool),
-   (a < dim)%nat -> (b < dim)%nat -> (c < dim)%nat -> a <> b -> a <> c -> b <> c ->
-  (uc_eval (CCX a b c)) × (f_to_vec dim f) 
-      = f_to_vec dim (update f c (f c ⊕ (f a && f b))).
-Proof. 
-  intros.
-  unfold CCX, T, TDAG.
-  simpl uc_eval.
-  repeat rewrite Mmult_assoc.
-  f_to_vec_simpl.
-  rewrite (update_same _ b).
-  2: destruct (f a); destruct (f b); reflexivity.
-  destruct (f a); destruct (f b); destruct (f c); simpl.
-  all: autorewrite with R_db C_db Cexp_db.
-  all: cancel_terms (Cexp (PI * / 4)).
-  all: group_Cexp.
-  all: repeat match goal with 
-       | |- context [Cexp ?r] => field_simplify r
-       end.
-  all: autorewrite with R_db C_db Cexp_db.
-  all: rewrite Mscale_plus_distr_r.
-  all: distribute_scale; group_radicals.
-  all: lma.
-Qed.
 
 Lemma CCX_a_geq_dim : forall (dim a b c : nat),
   (dim <= a)%nat -> uc_eval (@CCX dim a b c) = Zero.
@@ -663,29 +937,20 @@ Proof.
   intros dim a b c H.
   unfold CCX.
   simpl.
-  rewrite (denote_cnot dim a b).
-  unfold ueval_cnot, pad_ctrl, pad.
-  gridify.
+  rewrite CNOT_ill_typed by lia.
+  now Msimpl_light.
 Qed.
 
 Lemma CCX_not_WT : forall (dim a b c : nat),
   ~ uc_well_typed (@CNOT dim b c) -> uc_eval (@CCX dim a b c) = Zero.
 Proof.
   intros dim a b c H.
-  unfold CCX.
-  simpl.
-  assert (uc_eval (@CNOT dim b c) = Zero).
-  { autorewrite with eval_db.
-    gridify.
-    assert (uc_well_typed (@CNOT (b + (1 + d + 1) + d0) b (b + 1 + d))).
-    apply uc_well_typed_CNOT; repeat split; lia.  
-    contradiction. 
-    assert (uc_well_typed (@CNOT (c + (1 + d + 1) + d0) (c + 1 + d) c)).
-    apply uc_well_typed_CNOT; repeat split; lia.  
-    contradiction. }
-  rewrite H0.
-  Msimpl_light.
-  reflexivity.
+  destruct (ltac:(lia) : ((b < dim /\ c < dim /\ b <> c) \/ 
+    (dim <= b \/ dim <= c \/ b = c))%nat).
+  - exfalso; apply H, uc_well_typed_CNOT; easy.
+  - simpl.
+    rewrite (CNOT_ill_typed b c) by easy.
+    now Msimpl_light.
 Qed.
 
 Local Transparent CNOT.
@@ -694,17 +959,17 @@ Lemma CCX_not_fresh : forall (dim a b c : nat),
 Proof.
   intros dim a b c H.
   unfold CCX.
-  simpl.
-  assert (ueval_cnot dim  a b = Zero \/ ueval_cnot dim  a c = Zero).
-  { assert (a = b \/ a = c).
-    enough (~ (a <> b /\ a <> c)) by 
-      (bdestruct (a =? b); bdestruct (a =? c); lia).
+  cbn -[CNOT].
+  enough (Hz : @uc_eval dim (CNOT a b) = Zero 
+    \/ @uc_eval dim (CNOT a c) = Zero) by 
+    (destruct Hz as [-> | ->]; now Msimpl_light).
+  assert (H0 : a = b \/ a = c). {
+    enough (~ (a <> b /\ a <> c)) by lia.
     intro contra. contradict H.
-    constructor; easy.
-    destruct H0.
-    left. autorewrite with eval_db. gridify.
-    right. autorewrite with eval_db. gridify. }
-  destruct H0; rewrite H0; Msimpl_light; reflexivity.
+    constructor; lia.
+  }
+  destruct H0 as [-> | ->]; [left | right];
+  apply CNOT_ill_typed; lia.
 Qed.
 Local Opaque CNOT.
 Local Opaque CCX.
@@ -713,9 +978,9 @@ Lemma CCX_correct : forall (dim : nat) a b c,
   (b < dim)%nat -> (c < dim)%nat -> a <> b -> a <> c -> b <> c ->
   uc_eval (CCX a b c) = proj a dim false .+ (proj a dim true) × (ueval_cnot dim b c).
   intros dim a b c ? ? ? ? ?.
-  bdestruct (a <? dim).
-  2: { rewrite CCX_a_geq_dim by assumption.
-       unfold proj, pad_u, pad. gridify. }
+
+  bdestruct (a <? dim);
+  [|rewrite CCX_a_geq_dim, !proj_ill_typed by assumption; now Msimpl].
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
   rewrite f_to_vec_CCX by auto.
@@ -779,17 +1044,15 @@ Lemma control_not_WT : forall {dim} n (c : base_ucom dim),
 Proof.
   intros dim n c nWT.
   induction c; try dependent destruction u.
-  - assert (not (uc_well_typed c1) \/ not (uc_well_typed c2)).
-    apply Classical_Prop.not_and_or.
-    intros [contra1 contra2].
-    contradict nWT.
-    constructor; auto.
+  - rewrite <- uc_well_typed_b_equiv in nWT.
+    rewrite not_true_iff_false in nWT.
+    simpl in nWT.
+    rewrite andb_false_iff, <- !not_true_iff_false, 
+      !uc_well_typed_b_equiv in nWT.
     simpl.
-    destruct H as [H | H].
-    rewrite IHc1 by assumption.
-    Msimpl. reflexivity.
-    rewrite IHc2 by assumption.
-    Msimpl. reflexivity.
+    destruct nWT;
+    [rewrite IHc1 by auto | rewrite IHc2 by auto]; 
+    now Msimpl_light.
   - apply UR_not_WT. assumption.
   - apply CCX_not_WT. assumption.
 Qed.
@@ -799,17 +1062,14 @@ Lemma control_not_fresh : forall {dim} n (c : base_ucom dim),
 Proof.
   intros dim n c nfr.
   induction c; try dependent destruction u.
-  - assert (not (is_fresh n c1) \/ not (is_fresh n c2)).
-    apply Classical_Prop.not_and_or.
-    intros [contra1 contra2].
-    contradict nfr.
-    constructor; auto.
-    simpl.
-    destruct H as [H | H].
-    rewrite IHc1 by assumption.
-    Msimpl. reflexivity.
-    rewrite IHc2 by assumption.
-    Msimpl. reflexivity.
+  - rewrite <- is_fresh_b_equiv, not_true_iff_false in nfr.
+    simpl in nfr.
+    rewrite andb_false_iff, <- !not_true_iff_false,
+      !is_fresh_b_equiv in nfr.
+    simpl. 
+    destruct nfr;
+    [rewrite IHc1 by auto | rewrite IHc2 by auto]; 
+    now Msimpl_light.
   - apply UR_not_fresh. assumption.
   - apply CCX_not_fresh. assumption.
 Qed.
@@ -868,17 +1128,27 @@ Lemma CNOT_is_control_X : forall dim c t,
   uc_eval (@CNOT dim c t) = uc_eval (control c (X t)).
 Proof.
   intros dim c t.
-  bdestruct (c <? dim).
-  2: simpl; autorewrite with eval_db; gridify.
-  bdestruct (t <? dim).
-  2: simpl; autorewrite with eval_db; gridify.
-  bdestruct (c =? t).
-  simpl; autorewrite with eval_db; gridify.
+  bdestruct (c <? dim); 
+    [|simpl; rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (t <? dim); 
+    [|simpl; rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (c =? t);
+    [simpl; rewrite CNOT_ill_typed by lia; now Msimpl|].
   rewrite control_correct; try constructor; auto.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify.
-  all: rewrite Mplus_comm; reflexivity.
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  distribute_plus.
+  rewrite Mmult_assoc.
+  f_to_vec_simpl.
+  destruct (f c) eqn:e.
+  - rewrite f_to_vec_proj_neq, f_to_vec_proj_eq by
+      (rewrite ?update_index_neq, ?e; easy).
+    Msimpl_light.
+    now rewrite xorb_true_r.
+  - rewrite f_to_vec_proj_eq, f_to_vec_proj_neq by
+      (rewrite ?update_index_neq, ?e; easy).
+    Msimpl_light.
+    now rewrite xorb_false_r, update_same by easy.
 Qed.
 Local Opaque X CU.
 
@@ -886,17 +1156,19 @@ Lemma invert_fresh : forall dim q (u : base_ucom dim),
   is_fresh q u <-> is_fresh q (invert u).
 Proof.
   intros dim q u.
-  split; intro H.
-  induction u; try dependent destruction u; inversion H; subst; constructor; auto.
-  induction u; try dependent destruction u; inversion H; subst; constructor; auto.
+  split; intro H;
+  induction u; try dependent destruction u; 
+  inversion H; subst; constructor; auto.
 Qed.
 
 Lemma proj_adjoint : forall dim q b, (proj q dim b) † = proj q dim b.
 Proof.
   intros.
   unfold proj, pad_u, pad.
-  gridify.
-  destruct b; simpl; Msimpl; reflexivity.
+  Modulus.bdestruct_one;
+  restore_dims; 
+  distribute_adjoint; [destruct b|]; 
+  simpl; Msimpl; reflexivity.
 Qed.
 
 Lemma invert_control : forall dim q (u : base_ucom dim),
@@ -979,9 +1251,20 @@ Lemma proj_CNOT_ctl_true : forall dim m n,
   uc_eval (CNOT m n) × proj m dim true = proj m dim true × uc_eval (X n).
 Proof.
   intros dim m n H.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify; Qsimpl; reflexivity.
+  bdestruct (n <? dim); 
+    [|rewrite CNOT_ill_typed, X_ill_typed by lia; now Msimpl].
+  bdestruct (m <? dim); 
+    [|rewrite CNOT_ill_typed, proj_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  rewrite f_to_vec_proj by easy.
+  f_to_vec_simpl.
+  rewrite f_to_vec_proj by auto.
+  rewrite update_index_neq by auto.
+  destruct (f m); simpl.
+  - now rewrite xorb_true_r.
+  - now Msimpl.
 Qed.
 
 Lemma proj_CNOT_ctl_false : forall dim m n,
@@ -989,20 +1272,32 @@ Lemma proj_CNOT_ctl_false : forall dim m n,
   uc_eval (CNOT m n) × proj m dim false = proj m dim false.
 Proof.
   intros dim m n H1 H2.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify; Qsimpl; reflexivity.
+  bdestruct (m <? dim); 
+    [|rewrite CNOT_ill_typed, proj_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  rewrite f_to_vec_proj by easy.
+  f_to_vec_simpl.
+  destruct (f m); simpl.
+  - now Msimpl. 
+  - now rewrite xorb_false_r, update_same. 
 Qed.
 
 Lemma proj_X : forall dim q b,
   uc_eval (X q) × proj q dim b = proj q dim (negb b) × uc_eval (X q).
 Proof. 
-  intros.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify.
-  do 2 f_equal.
-  destruct b; simpl; Qsimpl; reflexivity.
+  intros dim q b.
+  bdestruct (q <? dim); 
+    [|rewrite X_ill_typed, proj_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  rewrite f_to_vec_proj by easy.
+  f_to_vec_simpl.
+  rewrite f_to_vec_proj by auto.
+  rewrite update_index_eq.
+  now destruct (f q), b.
 Qed.
 
 (** n iterations of a program **)
@@ -1128,7 +1423,7 @@ Proof.
   induction c; try dependent destruction u; simpl; constructor; 
   try assumption; try lia.
 Qed.
-                                                     
+
 Lemma pad_dims_r : forall {dim} (c : base_ucom dim) (k : nat),
   uc_well_typed c ->
   (uc_eval c) ⊗ I (2^k) = uc_eval (cast c (dim + k)).  
