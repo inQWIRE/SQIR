@@ -998,7 +998,7 @@ Proof.
     left.
     unfold is_in_graph.
     bdestruct_all; reflexivity.
-    rewrite plus_assoc.
+    rewrite Nat.add_assoc.
     apply IHdist; lia.
 Qed.
 

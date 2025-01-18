@@ -9,62 +9,7 @@ Require Export QuantumLib.VectorStates QuantumLib.Bits.
    
    It also contains a definition for projecting a qubit into a classical state, which
    is useful for defining the behavior of control. *)
-
-(* A few missing lemmas from QuantumLib *)
-Lemma MmultZH : σz × hadamard = hadamard × σx.
-Proof. lma'. Qed.
-
-Lemma MmultHX : hadamard × σx = σz × hadamard.
-Proof. now rewrite MmultZH. Qed.
-
-Lemma MmultXH : σx × hadamard = hadamard × σz.
-Proof. lma'. Qed.
-
-Lemma MmultHZ : hadamard × σz = σx × hadamard.
-Proof. now rewrite MmultXH. Qed.
-
-Lemma MmultHY : hadamard × σy = (- C1) .* (σy × hadamard).
-Proof. lma'. Qed.
-
-Lemma MmultYH : σy × hadamard = (- C1) .* (hadamard × σy).
-Proof. 
-  rewrite MmultHY, Mscale_assoc.
-  replace (- C1 * - C1)%C with (C1) by lca.
-  now rewrite Mscale_1_l.
-Qed.
-
-Lemma Mmult_phase_11 a : ∣1⟩⟨1∣ × phase_shift a = phase_shift a × ∣1⟩⟨1∣.
-Proof. lma'. Qed.
-
-Lemma Mmult_phase_00 a : ∣0⟩⟨0∣ × phase_shift a = phase_shift a × ∣0⟩⟨0∣.
-Proof. lma'. Qed.
-
-Lemma Mmult_phase_X_phase_X a a' : 
-  σx × phase_shift a × σx × phase_shift a' = 
-  phase_shift a' × σx × phase_shift a × σx.
-Proof. lma'. Qed.
-
-Lemma Copp_Ci : / Ci = - Ci.
-Proof. C_field. Qed.
-#[export] Hint Rewrite Copp_Ci : C_db.
-
-Lemma pad_u_mmult : forall dim b A B, WF_Matrix A -> WF_Matrix B ->
-  pad_u dim b (A × B) = pad_u dim b A × pad_u dim b B.
-Proof.
-  intros.
-  unfold pad_u, pad.
-  bdestruct_all; now Msimpl.
-Qed.
-
-Lemma sin_sin_PI8 : 
-  sin (PI / 8) * sin (PI / 8) = 
-  cos (PI / 8) * cos (PI / 8) - cos (PI / 4).
-Proof.
-  replace (PI / 4)%R with (2 * (PI / 8))%R by lra.
-  rewrite cos_2a.
-  lca.
-Qed.
-  
+ 
 Local Open Scope ucom.
 
 (** Inversion **)
@@ -427,45 +372,6 @@ Proof.
   - rewrite f_to_vec_proj_neq by easy.
     now Msimpl.
 Qed.
-
-(* FIXME: Remove these two; they're in a future version of Qlib *)
-Lemma f_to_vec_σy : forall (n i : nat) (f : nat -> bool),
-  (i < n)%nat ->
-  (pad_u n i σy) × (f_to_vec n f) = 
-  (-1)%R^(Nat.b2n (f i)) * Ci .* f_to_vec n (update f i (¬ f i)).
-Proof.
-  intros n i f Hi.
-  unfold pad_u, pad.
-  rewrite (f_to_vec_split 0 n i f Hi).
-  repad. 
-  replace (i + 1 + x - 1 - i)%nat with x by lia.
-  Msimpl.
-  rewrite Y_specb.
-  distribute_scale.
-  rewrite (f_to_vec_split 0 (i + 1 + x) i) by lia.
-  rewrite f_to_vec_update_oob by lia.
-  rewrite f_to_vec_shift_update_oob by lia.
-  rewrite update_index_eq. 
-  replace (i + 1 + x - 1 - i)%nat with x by lia.
-  easy.
-Qed.
-
-Lemma f_to_vec_σz : forall (n i : nat) (f : nat -> bool),
-  (i < n)%nat ->
-  (pad_u n i σz) × (f_to_vec n f) = 
-  (-1)%R^(Nat.b2n (f i)) .* f_to_vec n f.
-Proof.
-  intros n i f Hi.
-  unfold pad_u, pad.
-  rewrite (f_to_vec_split 0 n i f Hi).
-  repad. 
-  replace (i + 1 + x - 1 - i)%nat with x by lia.
-  Msimpl.
-  rewrite Z_specb.
-  distribute_scale.
-  reflexivity.
-Qed.
-
 
 Lemma f_to_vec_pad_u_generic : forall (n i : nat) A (f : nat -> bool),
   (i < n)%nat -> WF_Matrix A ->
