@@ -12,9 +12,9 @@ Lemma ID_equiv_SKIP : forall dim n, n < dim -> @ID dim n ≡ SKIP.
 Proof.
   intros dim n WT. 
   unfold uc_equiv.
-  autorewrite with eval_db.
-  gridify. reflexivity.
-  lia.
+  autorewrite with eval_db; [|lia].
+  bdestruct_all.
+  rewrite 2!id_kron; f_equal; unify_pows_two.
 Qed.
 
 Lemma SKIP_id_l : forall {dim} (c : base_ucom dim), SKIP; c ≡ c.
@@ -71,7 +71,7 @@ Proof.
   unfold uc_equiv.
   simpl; autorewrite with eval_db. 
   gridify.
-  replace (σx × σx) with (I 2) by solve_matrix.
+  rewrite MmultXX.
   reflexivity.
 Qed.
 
@@ -79,9 +79,9 @@ Lemma H_H_id : forall {dim} q, H q; H q ≡ @ID dim q.
 Proof. 
   intros dim q. 
   unfold uc_equiv.
-  simpl; autorewrite with eval_db. 
+  simpl; autorewrite with eval_db.
   gridify.
-  replace (hadamard × hadamard) with (I 2) by solve_matrix.
+  rewrite MmultHH.
   reflexivity.
 Qed.
 
@@ -112,13 +112,16 @@ Lemma CNOT_CNOT_id : forall {dim} m n,
 Proof. 
   intros dim m n Hm Hn Hneq. 
   unfold uc_equiv.
-  simpl; autorewrite with eval_db. 
-  2: lia.
-  gridify.
-  all: Qsimpl.
-  all: repeat rewrite <- kron_plus_distr_r;
-       repeat rewrite <- kron_plus_distr_l.
-  all: rewrite Mplus10; reflexivity.
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  simpl.
+  rewrite denote_SKIP by lia.
+  rewrite Mmult_1_l by auto_wf.
+  rewrite Mmult_assoc.
+  rewrite 2!f_to_vec_CNOT by easy.
+  rewrite update_index_eq, update_index_neq, update_twice_eq by congruence.
+  rewrite xorb_assoc, xorb_nilpotent, xorb_false_r.
+  now rewrite update_same by easy.
 Qed.
 
 Lemma U_V_comm : forall {dim} (m n : nat) (U V : base_Unitary 1),
@@ -156,51 +159,86 @@ Proof.
   rewrite pad_ctrl_ctrl_commutes; auto with wf_db.
 Qed.
 
+(* FIXME: Move *)
+
 Lemma H_comm_Z : forall {dim} q, @H dim q; SQIR.Z q ≡ X q; H q.
 Proof.
-  intros. 
+  intros.
   unfold uc_equiv.
-  simpl; autorewrite with eval_db.
-  gridify.
-  replace (σz × hadamard) with (hadamard × σx) by solve_matrix.
-  reflexivity.
+  simpl.
+  bdestruct (q <? dim); [|rewrite H_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  simpl.
+  rewrite !Mmult_assoc.
+  f_to_vec_simpl.
+  prep_matrix_equivalence.
+  unfold scale, Mplus.
+  intros i j Hi Hj.
+  cbn [Nat.b2n Cpow].
+  destruct (f q); cbn; rewrite ?Rmult_0_l, ?Rmult_1_l, ?Cexp_0, ?Cexp_PI;
+  lca.
 Qed.
 
-Local Transparent Rz.
+(* FIXME: Move *)
+
 Lemma X_comm_Rz : forall {dim} q a,
   @X dim q; Rz a q ≅ invert (Rz a q); X q.
 Proof.
   intros.
-  unfold uc_cong.
   exists a.
-  simpl; autorewrite with eval_db.
-  rewrite phase_shift_rotation.
-  gridify.
-  rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-  do 2 (apply f_equal2; trivial).
-  solve_matrix.
-  all: autorewrite with R_db C_db Cexp_db trig_db; reflexivity.
+  cbn.
+  bdestruct (q <? dim); [|rewrite X_ill_typed by lia; now Msimpl].
+  rewrite invert_Rz.
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  distribute_scale.
+  rewrite !Mmult_assoc.
+  f_to_vec_simpl.
+  rewrite <- Cexp_add.
+  f_equal.
+  f_equal.
+  destruct (f q); cbn; lra.
 Qed.
-Local Opaque Rz.
 
 Lemma X_comm_CNOT_control : forall {dim} m n,
   @X dim m; CNOT m n ≡ CNOT m n; X m; X n.
 Proof.
   intros dim m n.
-  unfold uc_equiv. 
-  simpl; autorewrite with eval_db.
-  gridify; trivial.
-  all: Qsimpl.
-  all: rewrite Mplus_comm; reflexivity.
+  unfold uc_equiv.
+  simpl.
+  bdestruct (n <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (m <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (n =? m); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  rewrite f_to_vec_CNOT by congruence.
+  rewrite !f_to_vec_X by easy.
+  rewrite !update_index_neq, update_twice_neq, update_twice_eq by congruence.
+  rewrite update_index_eq.
+  rewrite f_to_vec_CNOT by congruence.
+  rewrite update_index_eq, update_index_neq by lia.
+  rewrite update_twice_neq by congruence.
+  now rewrite negb_xorb_r.
 Qed.
 
 Lemma X_comm_CNOT_target : forall {dim} m n,
   @X dim n; CNOT m n ≡ CNOT m n; X n.
 Proof.
   intros dim m n.
-  unfold uc_equiv. 
-  simpl; autorewrite with eval_db.
-  gridify; reflexivity.
+  unfold uc_equiv.
+  simpl.
+  bdestruct (n <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (m <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (n =? m); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  rewrite f_to_vec_CNOT by congruence.
+  rewrite !f_to_vec_X, f_to_vec_CNOT by congruence.
+  rewrite !update_index_eq, update_index_neq by easy.
+  now rewrite !update_twice_eq, negb_xorb_l.
 Qed.
 
 Lemma Rz_comm_H_CNOT_H : forall {dim} a q1 q2,
@@ -208,43 +246,51 @@ Lemma Rz_comm_H_CNOT_H : forall {dim} a q1 q2,
 Proof.
   intros dim a q1 q2.
   unfold uc_equiv. 
-  simpl; autorewrite with eval_db.
-  gridify.
-  - rewrite <- (Mmult_assoc hadamard hadamard). 
-    Qsimpl.
-    rewrite <- (Mmult_assoc _ hadamard), <- (Mmult_assoc hadamard).
-    replace (hadamard × (σx × hadamard)) with σz by solve_matrix.
-    rewrite <- phase_pi, 2 phase_mul.
-    rewrite Rplus_comm.
-    reflexivity.
-  - rewrite <- (Mmult_assoc hadamard hadamard).
-    Qsimpl.
-    rewrite <- (Mmult_assoc _ hadamard), <- (Mmult_assoc hadamard).
-    replace (hadamard × (σx × hadamard)) with σz by solve_matrix.
-    rewrite <- phase_pi, 2 phase_mul.
-    rewrite Rplus_comm.
-    reflexivity.
+  simpl.
+  bdestruct (q1 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q2 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q1 =? q2); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  rewrite f_to_vec_Rz, f_to_vec_H by easy.
+  distribute_scale; distribute_plus; distribute_scale.
+  rewrite f_to_vec_CNOT, f_to_vec_H by easy.
+  rewrite update_index_eq, update_index_neq, xorb_false_l by congruence.
+  rewrite update_twice_eq.
+  distribute_scale; distribute_plus; distribute_scale.
+  rewrite 2!f_to_vec_CNOT, 3!f_to_vec_H by easy.
+  rewrite !update_index_eq, !update_index_neq, !update_twice_eq by congruence.
+  rewrite xorb_false_l, xorb_true_l.
+  distribute_scale; distribute_plus; distribute_scale.
+  rewrite !f_to_vec_Rz, !update_index_eq by easy.
+  prep_matrix_equivalence.
+  cbn [b2R].
+  unfold scale, Mplus.
+  intros i j Hi Hj.
+  C_field.
+  destruct (f q1), (f q2); cbn [b2R];
+  rewrite ?Rmult_0_l, ?Rmult_1_l, ?Cexp_0, ?Cexp_PI;
+  lca.
 Qed.
 
 Lemma Rz_comm_CNOT_Rz_CNOT : forall {dim} a a' q1 q2,
   @Rz dim a q2; CNOT q1 q2; Rz a' q2; CNOT q1 q2 ≡ CNOT q1 q2; Rz a' q2; CNOT q1 q2; Rz a q2.
 Proof.
   intros dim a a' q1 q2.
-  unfold uc_equiv. 
-  simpl; autorewrite with eval_db.
-  gridify.
-  - Qsimpl. 
-    rewrite 2 phase_mul, Rplus_comm.
-    replace (σx × (phase_shift a' × (σx × phase_shift a)))
-      with (phase_shift a × (σx × (phase_shift a' × σx))) by
-      solve_matrix.
-    reflexivity.
-  - Qsimpl.
-    rewrite 2 phase_mul, Rplus_comm.
-    replace (σx × (phase_shift a' × (σx × phase_shift a)))
-      with (phase_shift a × (σx × (phase_shift a' × σx))) by
-      solve_matrix.      
-    reflexivity.
+  unfold uc_equiv.
+  simpl.
+  bdestruct (q1 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q2 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q1 =? q2); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  f_to_vec_simpl.
+  f_equal.
+  rewrite <- 2!Cexp_add.
+  f_equal.
+  destruct (f q1), (f q2); cbn; lra.
 Qed.
 
 Lemma Rz_comm_CNOT : forall {dim} a q1 q2,
@@ -252,18 +298,15 @@ Lemma Rz_comm_CNOT : forall {dim} a q1 q2,
 Proof.
   intros dim a q1 q2.
   unfold uc_equiv. 
-  simpl; autorewrite with eval_db.
-  gridify.
-  - replace  (∣1⟩⟨1∣ × phase_shift a)
-      with (phase_shift a × ∣1⟩⟨1∣) by solve_matrix.
-    replace  (∣0⟩⟨0∣ × phase_shift a)
-      with (phase_shift a × ∣0⟩⟨0∣) by solve_matrix.
-    reflexivity.
-  - replace  (∣1⟩⟨1∣ × phase_shift a)
-      with (phase_shift a × ∣1⟩⟨1∣) by solve_matrix.
-    replace  (∣0⟩⟨0∣ × phase_shift a)
-      with (phase_shift a × ∣0⟩⟨0∣) by solve_matrix.
-    reflexivity.
+  simpl.
+  bdestruct (q1 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q2 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q1 =? q2); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  f_to_vec_simpl.
+  easy.
 Qed.
 
 Lemma CNOT_comm_CNOT_sharing_target : forall {dim} q1 q2 q3,
@@ -271,8 +314,18 @@ Lemma CNOT_comm_CNOT_sharing_target : forall {dim} q1 q2 q3,
 Proof.
   intros dim q1 q2 q3.
   unfold uc_equiv. 
-  simpl; autorewrite with eval_db.
-  gridify; reflexivity.
+  simpl.
+  bdestruct (q1 =? q2); [now subst|].
+  bdestruct (q1 <? dim); [|rewrite (CNOT_ill_typed q1) by lia; now Msimpl].
+  bdestruct (q2 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q3 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q1 =? q3); [rewrite (CNOT_ill_typed q1) by lia; now Msimpl|].
+  bdestruct (q2 =? q3); [rewrite (CNOT_ill_typed q2) by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  f_to_vec_simpl.
+  now rewrite 2!xorb_assoc, (xorb_comm (f q1)).
 Qed.
 
 Lemma CNOT_comm_CNOT_sharing_control : forall {dim} q1 q2 q3,
@@ -280,23 +333,43 @@ Lemma CNOT_comm_CNOT_sharing_control : forall {dim} q1 q2 q3,
 Proof.
   intros dim q1 q2 q3.
   unfold uc_equiv. 
-  simpl; autorewrite with eval_db.
-  gridify; Qsimpl; reflexivity.
+  simpl.
+  bdestruct (q2 =? q3); [now subst|].
+  bdestruct (q1 <? dim); [|rewrite (CNOT_ill_typed q1) by lia; now Msimpl].
+  bdestruct (q2 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q3 <? dim); [|rewrite (CNOT_ill_typed _ q3) by lia; now Msimpl].
+  bdestruct (q1 =? q3); [rewrite (CNOT_ill_typed q1 q3) by lia; now Msimpl|].
+  bdestruct (q1 =? q2); [rewrite (CNOT_ill_typed q1 q2) by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  f_to_vec_simpl.
+  now rewrite update_twice_neq by congruence.
 Qed.
 
 Lemma CNOT_comm_H_CNOT_H : forall {dim} q1 q2 q3,
   q1 <> q3 ->
   @CNOT dim q1 q2; H q2; CNOT q2 q3; H q2 ≡ H q2; CNOT q2 q3; H q2; CNOT q1 q2.
 Proof.
-  intros dim q1 q2 q3 H.
+  intros dim q1 q2 q3 H13.
   unfold uc_equiv. 
-  simpl; autorewrite with eval_db.
-  gridify; trivial. (* slow *)
-  all: replace (hadamard × (∣1⟩⟨1∣ × (hadamard × σx))) with
-         (σx × (hadamard × (∣1⟩⟨1∣ × hadamard))) by solve_matrix;
-       replace (hadamard × (∣0⟩⟨0∣ × (hadamard × σx))) with
-         (σx × (hadamard × (∣0⟩⟨0∣ × hadamard))) by solve_matrix;
-       reflexivity.
+  simpl.
+  bdestruct (q1 <? dim); [|rewrite (CNOT_ill_typed q1) by lia; now Msimpl].
+  bdestruct (q2 <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q3 <? dim); [|rewrite (CNOT_ill_typed _ q3) by lia; now Msimpl].
+  bdestruct (q1 =? q2); [rewrite (CNOT_ill_typed q1 q2) by lia; now Msimpl|].
+  bdestruct (q2 =? q3); [rewrite (CNOT_ill_typed q2 q3) by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  f_to_vec_simpl.
+  rewrite xorb_false_l, xorb_false_r, xorb_true_l, xorb_true_r.
+  prep_matrix_equivalence.
+  intros i j Hi Hj.
+  unfold scale, Mplus.
+  destruct (f q1), (f q2); cbn;
+  rewrite Rmult_0_l, Rmult_1_l, Cexp_0, Cexp_PI;
+  lca.
 Qed.
 
 Lemma H_swaps_CNOT : forall {dim} m n,
@@ -304,58 +377,45 @@ Lemma H_swaps_CNOT : forall {dim} m n,
 Proof.
   intros.
   unfold uc_equiv; simpl.
-  autorewrite with eval_db.
-  gridify; trivial. (* trivial shouldn't be necessary -RR *)
-  (* The trivial seems to be the result of autorewrite doing something weird. If
-     you have 'repeat Msimpl_light' in gridify then you don't need the trivial. -KH *)
-  - rewrite <- 2 kron_plus_distr_r.
-    apply f_equal2; trivial.
-    repeat rewrite kron_assoc by auto with wf_db.
-    restore_dims.
-    rewrite <- 2 kron_plus_distr_l.
-    apply f_equal2; trivial.
-    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by solve_matrix.
-    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
-    distribute_plus.
-    repeat rewrite <- Mplus_assoc.
-    rewrite Mplus_swap_mid.    
-    rewrite (Mplus_assoc _ _ _ (_ ⊗ (_ ⊗ ((-1)%R .* ∣1⟩⟨1∣)))).
-    repeat rewrite Mscale_kron_dist_r.
-    rewrite Mplus_comm.
-    apply f_equal2.
-    + rewrite <- Mscale_kron_dist_l.
-      rewrite <- kron_plus_distr_r.
-      apply f_equal2; trivial.
-      solve_matrix.
-    + rewrite <- kron_plus_distr_r.
-      apply f_equal2; trivial.
-      solve_matrix.
-  - rewrite <- 2 kron_plus_distr_r.
-    apply f_equal2; trivial.
-    repeat rewrite kron_assoc by auto with wf_db.
-    restore_dims.
-    rewrite <- 2 kron_plus_distr_l.
-    apply f_equal2; trivial.
-    replace (hadamard × hadamard) with (∣0⟩⟨0∣ .+ ∣1⟩⟨1∣) by (Qsimpl; easy).
-    replace (hadamard × (σx × hadamard)) with (∣0⟩⟨0∣ .+ (- 1)%R .* ∣1⟩⟨1∣) by solve_matrix.
-    distribute_plus.
-    repeat rewrite <- Mplus_assoc.
-    rewrite Mplus_swap_mid.    
-    rewrite (Mplus_assoc _ _ _ (((-1)%R .* ∣1⟩⟨1∣) ⊗ _)).
-    rewrite Mplus_comm.
-    apply f_equal2.
-    + rewrite Mscale_kron_dist_l.
-      rewrite <- Mscale_kron_dist_r.
-      rewrite <- Mscale_kron_dist_r.
-      repeat rewrite <- kron_assoc by auto with wf_db.
-      restore_dims. 
-      rewrite <- kron_plus_distr_l.
-      apply f_equal2; trivial.
-      solve_matrix.
-    + rewrite <- 2 kron_plus_distr_l.
-      apply f_equal2; trivial.
-      apply f_equal2; trivial.
-      solve_matrix.
+  bdestruct (n <? dim); [|rewrite !CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (m <? dim); [|rewrite !CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (n =? m); [rewrite !CNOT_ill_typed by lia; now Msimpl|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  rewrite f_to_vec_H by easy.
+  distribute_scale; distribute_plus; distribute_scale.
+  rewrite 2!f_to_vec_H by easy.
+  rewrite 2!update_index_neq by congruence.
+  distribute_scale; distribute_plus; distribute_scale.
+  rewrite 4!f_to_vec_CNOT by easy.
+  rewrite update_index_neq, 5!update_index_eq,
+    update_index_neq, update_index_eq,
+    update_index_neq, update_index_eq,
+    update_index_neq, update_index_eq by easy.
+  cbn [xorb].
+  rewrite 4!f_to_vec_H by easy.
+  distribute_scale; distribute_plus; distribute_scale.
+  rewrite !update_index_eq.
+  rewrite !(update_twice_neq _ n m), !update_twice_eq by easy.
+  cbn [b2R].
+  rewrite Rmult_1_l, Rmult_0_l, Cexp_0, 2!Mscale_1_l.
+  rewrite 4!f_to_vec_H by easy.
+  rewrite !update_index_eq, !update_twice_eq.
+  cbn [b2R].
+  rewrite Rmult_1_l, Rmult_0_l, Cexp_0, 2!Mscale_1_l.
+  rewrite f_to_vec_CNOT by congruence.
+  prep_matrix_equivalence.
+  destruct (f n) eqn:efn, (f m) eqn:efm;
+  cbn [b2R xorb];
+  rewrite ?Rmult_1_l, ?Rmult_0_l, ?Cexp_0, ?Cexp_PI, ?Mscale_1_l;
+  distribute_scale;
+  rewrite (update_same _ _ _ (eq_sym efm)), !(update_twice_neq _ m n),
+    (update_same _ _ _ (eq_sym efn)) by congruence;
+  intros i j Hi Hj;
+  unfold scale, Mplus; cbn;
+  C_field;
+  lca.
 Qed.
 
 Lemma SWAP_extends_CNOT : forall {dim} a b c,
@@ -367,7 +427,7 @@ Proof.
   eapply equal_on_basis_states_implies_equal; auto with wf_db.
   intro f.
   simpl uc_eval.
-  repeat rewrite Mmult_assoc.
+  rewrite !Mmult_assoc.
   rewrite f_to_vec_SWAP by auto.
   rewrite 2 f_to_vec_CNOT by auto.
   rewrite f_to_vec_SWAP by auto.
@@ -390,42 +450,57 @@ Proof.
   apply fswap_neq; auto.
 Qed.
 
-Local Transparent SWAP.
+
 Lemma SWAP_symmetric : forall {dim} a b,
   @SWAP dim a b ≡ SWAP b a.
 Proof.
-  intros dim a b.
-  unfold uc_equiv, SWAP. 
-  simpl; autorewrite with eval_db.
-  gridify; Qsimpl; lma.
+  intros.
+  unfold uc_equiv.
+  bdestruct (a <? dim); [|rewrite !SWAP_ill_typed by lia; easy].
+  bdestruct (b <? dim); [|rewrite !SWAP_ill_typed by lia; easy].
+  bdestruct (a =? b); [rewrite !SWAP_ill_typed by lia; easy|].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite 2!f_to_vec_SWAP by auto.
+  apply f_to_vec_eq.
+  intros i Hi.
+  unfold fswap.
+  bdestruct_all; reflexivity + lia.
 Qed.
-Local Opaque SWAP.
 
 Lemma proj_Rz_comm : forall dim q n b k,
   proj q dim b × uc_eval (SQIR.Rz k n) = uc_eval (SQIR.Rz k n) × proj q dim b. 
 Proof.
   intros dim q n b k.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify; trivial.
-  apply f_equal2; trivial.
-  apply f_equal2; trivial.
-  destruct b; solve_matrix.
+  bdestruct (n <? dim); [|rewrite Rz_ill_typed by lia; now Msimpl].
+  bdestruct (q <? dim); [|rewrite proj_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite 2!Mmult_assoc.
+  rewrite f_to_vec_Rz by auto.
+  distribute_scale.
+  destruct (bool_dec b (f q)).
+  - rewrite f_to_vec_proj_eq by easy.
+    now rewrite f_to_vec_Rz.
+  - rewrite f_to_vec_proj_neq by congruence.
+    now Msimpl.
 Qed.
 
 Lemma proj_Rz : forall dim q b θ,
   uc_eval (SQIR.Rz θ q) × proj q dim b = Cexp (b2R b * θ) .* proj q dim b. 
 Proof.
   intros dim q b θ.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify.
-  rewrite <- Mscale_kron_dist_l, <- Mscale_kron_dist_r.
-  apply f_equal2; trivial.
-  apply f_equal2; trivial.
-  destruct b; solve_matrix.
-  rewrite Rmult_1_l. reflexivity.
-  rewrite Rmult_0_l, Cexp_0. reflexivity.
+  bdestruct (q <? dim); [|rewrite proj_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite Mmult_assoc.
+  distribute_scale.
+  destruct (bool_dec b (f q)).
+  - rewrite f_to_vec_proj_eq by easy.
+    rewrite f_to_vec_Rz by easy.
+    now subst.
+  - rewrite f_to_vec_proj_neq by congruence.
+    now Msimpl.
 Qed.
 
 Lemma proj_CNOT_control : forall dim q m n b,
@@ -433,33 +508,55 @@ Lemma proj_CNOT_control : forall dim q m n b,
   proj q dim b × uc_eval (SQIR.CNOT m n) = uc_eval (SQIR.CNOT m n) × proj q dim b.
 Proof.
   intros dim q m n b H.
-  destruct H.
-  bdestruct (m =? n).
-  (* badly typed case *)
-  1,3: subst; replace (uc_eval (SQIR.CNOT n n)) with (@Zero (2 ^ dim) (2 ^ dim));
-       Msimpl_light; try reflexivity.
-  1,2: autorewrite with eval_db; bdestructΩ (n <? n); reflexivity.
+  bdestruct (m =? n); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  bdestruct (n <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (m <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
   bdestruct (q =? m).
-  (* q = control *)
-  subst. unfold proj.
-  autorewrite with eval_db.
-  gridify.
-  destruct b; simpl; Qsimpl; reflexivity.
-  destruct b; simpl; Qsimpl; reflexivity.
-  (* disjoint qubits *)
-  bdestructΩ (q =? n).
-  apply proj_commutes_2q_gate; assumption.
+  - (* q = control *)
+    subst. 
+    apply equal_on_basis_states_implies_equal; [auto_wf..|].
+    intros f.
+    rewrite 2!Mmult_assoc.
+    rewrite f_to_vec_CNOT by easy.
+    destruct (bool_dec b (f m)).
+    + rewrite 2!f_to_vec_proj_eq by (rewrite ?update_index_neq; congruence).
+      now rewrite f_to_vec_CNOT by easy.
+    + rewrite 2!(f_to_vec_proj_neq) by (rewrite ?update_index_neq; congruence).
+      now Msimpl.
+  - (* disjoint qubits *)
+    bdestructΩ (q =? n).
+    apply proj_commutes_2q_gate; assumption.
 Qed.
 
 Lemma proj_CNOT_target : forall dim f q n,
   proj q dim ((f q) ⊕ (f n)) × proj n dim (f n) × uc_eval (SQIR.CNOT n q) = proj n dim (f n) × uc_eval (SQIR.CNOT n q) × proj q dim (f q).
 Proof.
   intros dim f q n.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify. (* slow! *)
-  all: try (destruct (f n); destruct (f (n + 1 + d)%nat));        
-       try (destruct (f q); destruct (f (q + 1 + d)%nat));   
-       auto with wf_db.
-  all: simpl; Qsimpl; reflexivity.
+  bdestruct (n =? q); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  bdestruct (n <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (q <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros g.
+  rewrite !Mmult_assoc.
+  rewrite f_to_vec_CNOT by easy.
+  destruct (bool_dec (f n) (g n)), (bool_dec (f q) (g q)).
+  - rewrite f_to_vec_proj_eq, (f_to_vec_proj_eq g)
+      by (rewrite ?update_index_neq; congruence).
+    rewrite f_to_vec_CNOT by easy.
+    rewrite 2!f_to_vec_proj_eq; 
+    rewrite ?update_index_eq, ?update_index_neq; congruence.
+  - rewrite (f_to_vec_proj_neq g) by congruence.
+    Msimpl.
+    rewrite f_to_vec_proj_eq by (rewrite ?update_index_neq; congruence).
+    apply f_to_vec_proj_neq; [easy|].
+    rewrite update_index_eq.
+    replace -> (f n).
+    now destruct (f q), (g q), (g n).
+  - rewrite (f_to_vec_proj_neq) by (rewrite ?update_index_neq; congruence).
+    rewrite (f_to_vec_proj_eq) by easy.
+    rewrite f_to_vec_CNOT by easy.
+    rewrite f_to_vec_proj_neq by (rewrite ?update_index_neq; congruence).
+    now Msimpl.
+  - rewrite 2!f_to_vec_proj_neq by (rewrite ?update_index_neq; congruence).
+    now Msimpl.
 Qed.

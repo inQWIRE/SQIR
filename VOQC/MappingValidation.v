@@ -165,7 +165,7 @@ Proof.
         constructor.
         apply uc_well_typed_l_implies_dim_nonzero in WT.
         assumption.
-      * apply IHl in H; auto.
+      * apply IHl in H; auto with perm_db.
         destruct H as [l0 [? ?]].
         exists l0. subst. split; auto.
         rewrite (cons_to_app _ l).
@@ -175,26 +175,21 @@ Proof.
         unfold uc_equiv_perm_ex.
         unfold MapList.eval. 
         simpl.
-        rewrite denote_SKIP.
+        rewrite denote_SKIP by lia.
         apply equal_on_basis_states_implies_equal; auto with wf_db.
         intro f.
         rewrite Mmult_assoc.
-        rewrite perm_to_matrix_permutes_qubits.
+        rewrite perm_to_matrix_permutes_qubits by auto with perm_db.
         repeat rewrite Mmult_assoc.
         rewrite f_to_vec_SWAP by assumption.
         Msimpl.
-        rewrite perm_to_matrix_permutes_qubits.
+        rewrite perm_to_matrix_permutes_qubits by auto with perm_db.
         apply f_to_vec_eq.        
         intros x Hx.
         rewrite fswap_swap_log with (dim:=dim) by assumption.
         rewrite get_log_phys_inv with (n:=dim); auto.
-        apply get_phys_perm.
-        apply swap_log_preserves_bij; auto.
-        apply get_log_perm; auto.
         apply uc_well_typed_l_implies_dim_nonzero in WT.
         assumption.
-        apply H0.
-        apply swap_log_preserves_bij; auto.
     + dependent destruction m0.
 Qed.
 
@@ -285,28 +280,16 @@ Proof.
   unfold uc_equiv_perm_ex, MapList.eval in *.
   unfold MapList.uc_equiv_l, uc_equiv in *.
   rewrite rs1, rs2, eq.
-  rewrite <- 2 perm_to_matrix_Mmult.
+  rewrite <- 2 perm_to_matrix_Mmult by auto with perm_db.
   repeat rewrite Mmult_assoc.
   apply f_equal2; try reflexivity.
   repeat rewrite <- Mmult_assoc.
   apply f_equal2; try reflexivity.
-  rewrite perm_to_matrix_Mmult.
+  rewrite perm_to_matrix_Mmult by auto with perm_db.
   repeat rewrite Mmult_assoc.
-  rewrite perm_to_matrix_Mmult.
-  rewrite 2 perm_to_matrix_I.
+  rewrite perm_to_matrix_Mmult by auto with perm_db.
+  rewrite 2 perm_to_matrix_I by eauto with perm_inv_db.
   Msimpl. reflexivity.
-  apply permutation_compose.
-  apply get_log_perm; auto.
-  apply get_phys_perm; auto.
-  intros x Hx.
-  apply get_log_phys_inv with (n:=dim); auto.
-  apply permutation_compose.
-  apply get_log_perm; auto.
-  apply get_phys_perm; auto.
-  intros x Hx.
-  apply get_log_phys_inv with (n:=dim); auto.
-  all: try apply get_log_perm; auto.
-  all: try apply get_phys_perm; auto.
   inversion H.
 Qed.
 

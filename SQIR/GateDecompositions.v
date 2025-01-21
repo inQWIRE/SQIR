@@ -73,70 +73,89 @@ Definition C4X {dim} (a b c d e : nat) : base_ucom dim :=
 Local Transparent H U3.
 Lemma CH_is_control_H : forall dim a b, @CH dim a b ≡ control a (H b).
 Proof.
-  assert (aux1 : rotation (- (PI / 4)) 0 0 × (σx × rotation (PI / 4) 0 0) =
-                 Cexp (PI / 2) .* (rotation (PI / 2 / 2) 0 0 ×
-                   (σx × (rotation (- (PI / 2) / 2) 0 (- PI / 2) × 
-                     (σx × phase_shift (PI / 2)))))).
-  { (* messy :) should make better automation -KH *)
-    solve_matrix; repeat rewrite RIneq.Ropp_div; autorewrite with Cexp_db trig_db; 
-      repeat rewrite RtoC_opp; field_simplify_eq; try nonzero.
-    replace (((R1 + R1)%R, (R0 + R0)%R) * cos (PI / 4 / 2) * sin (PI / 4 / 2)) 
-      with (2 * sin (PI / 4 / 2) * cos (PI / 4 / 2)) by lca.
-    2: replace (((- (R1 + R1))%R, (- (R0 + R0))%R) * Ci * Ci * 
-                  cos (PI / 2 / 2 / 2) * sin (PI / 2 / 2 / 2))
-         with (2 * sin (PI / 2 / 2 / 2) * cos (PI / 2 / 2 / 2)) by lca.
-    3: replace (- sin (PI / 4 / 2) * sin (PI / 4 / 2) + 
-                  cos (PI / 4 / 2) * cos (PI / 4 / 2)) 
-         with (cos (PI / 4 / 2) * cos (PI / 4 / 2) - 
-                 sin (PI / 4 / 2) * sin (PI / 4 / 2)) by lca.
-    3: replace ((R1 + R1)%R, (R0 + R0)%R) with (RtoC 2) by lca.
-    4: replace (((- (R1 + R1))%R, (- (R0 + R0))%R) * sin (PI / 4 / 2) * 
-                  cos (PI / 4 / 2)) 
-         with (- (2 * sin (PI / 4 / 2) * cos (PI / 4 / 2))) by lca.
-    4: replace (- Ci * Ci * sin (PI / 2 / 2 / 2) * sin (PI / 2 / 2 / 2) + 
-                  Ci * Ci * cos (PI / 2 / 2 / 2) * cos (PI / 2 / 2 / 2))
-         with (- (cos (PI / 2 / 2 / 2) * cos (PI / 2 / 2 / 2) - 
-                 sin (PI / 2 / 2 / 2) * sin (PI / 2 / 2 / 2))) by lca.
-    all: autorewrite with RtoC_db; apply c_proj_eq; simpl; autorewrite with R_db;
-    try rewrite <- Rminus_unfold; try rewrite <- cos_2a; try rewrite <- sin_2a;
-    replace (2 * (PI * / 4 * / 2))%R with (PI * / 4)%R by lra;
-    replace (2 * (PI * / 2 * / 2 * / 2))%R with (PI * / 4)%R by lra;
-    try symmetry; try apply sin_cos_PI4; try reflexivity; 
-    try rewrite Ropp_eq_compat with (cos (PI * / 4)) (sin (PI * / 4));
-    try reflexivity; try symmetry; try apply sin_cos_PI4; try reflexivity.
-    all: autorewrite with RtoC_db; rewrite <- sin_2a; rewrite <- cos_2a;
-         replace (2 * (PI / 4 / 2))%R with (PI / 4)%R by lra;
-         replace (2 * (PI / 2 / 2 / 2))%R with (PI / 4)%R by lra;
-         autorewrite with trig_db; reflexivity. }
-  assert (aux2 : rotation (- (PI / 4)) 0 0 × rotation (PI / 4) 0 0 =
-                 rotation (PI / 2 / 2) 0 0 × 
-                   (rotation (- (PI / 2) / 2) 0 (- PI / 2) × phase_shift (PI / 2))).
-  { assert (aux: forall x, (x * x = x²)%R) by (unfold Rsqr; reflexivity).
-    solve_matrix; repeat rewrite RIneq.Ropp_div; autorewrite with Cexp_db trig_db; 
-      repeat rewrite RtoC_opp; field_simplify_eq; try nonzero; 
-    autorewrite with RtoC_db; repeat rewrite aux;
-    replace (PI / 2 / 2 / 2)%R with (PI / 4 / 2)%R by lra; reflexivity. }
-  intros dim a b.
-  unfold H, CH, uc_equiv.
+  intros.
   simpl.
-  autorewrite with eval_db.
-  gridify; trivial; autorewrite with ket_db bra_db. (* slow! *)
-  - rewrite Rminus_0_r, Rplus_0_l, Rplus_0_r.
-    apply f_equal2.
-    + rewrite <- Mscale_kron_dist_l.
-      rewrite <- Mscale_kron_dist_r.
-      do 2 (apply f_equal2; try reflexivity).
-      apply aux1.
-    + rewrite aux2.
-      reflexivity.
-  - rewrite Rminus_0_r, Rplus_0_l, Rplus_0_r.
-    apply f_equal2.
-    + rewrite <- 3 Mscale_kron_dist_l.
-      rewrite <- Mscale_kron_dist_r.
-      do 4 (apply f_equal2; try reflexivity).
-      apply aux1.
-    + rewrite aux2.
-      reflexivity.
+  unfold uc_equiv.
+  cbn.
+  rewrite !Ry_rotation.
+  (* rewrite <- !denote_Ry. *)
+  bdestruct (a <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (b <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
+  bdestruct (a =? b); [rewrite CNOT_ill_typed by lia; now Msimpl|].
+  replace (rotation (- (PI / 2) / 2) 0 (- (0 + PI) / 2)) with
+  (rotation (- (PI / 2) / 2) 0 0 ×
+  rotation 0 0 (- (0 + PI) / 2)).
+  2: {
+    match goal with |- ?A = ?B => compute_matrix A; compute_matrix B end.
+    rewrite Rdiv_0_l, sin_0, Cexp_0, cos_0.
+    Csimpl.
+    rewrite !Rplus_0_l, Cexp_0.
+    lma'.
+  }
+  rewrite pad_u_mmult by auto_wf.
+  rewrite Ry_rotation(* , <- denote_Ry *).
+  rewrite Rplus_0_l.
+  replace (- PI / 2)%R with (- (PI / 2))%R by lra.
+  rewrite phase_shift_rotation, <- denote_Rz.
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros f.
+  rewrite !Mmult_assoc.
+  rewrite Rplus_0_r, Rminus_0_r.
+  f_to_vec_simpl.
+  rewrite Ropp_div.
+  replace (PI / 2 / 2)%R with (PI / 4)%R by lra.
+  rewrite 2!f_to_vec_pad_u_generic by (lia + auto_wf).
+  cbn.
+  rewrite Ropp_div.
+  replace (PI / 4 / 2)%R with (PI / 8)%R by lra.
+  rewrite update_index_eq.
+  distribute_plus; distribute_scale.
+  rewrite sin_neg, RtoC_opp, Copp_involutive.
+  f_to_vec_simpl.
+  rewrite xorb_false_l, xorb_true_l.
+  rewrite !f_to_vec_pad_u_generic by (lia + auto_wf).
+  cbn.
+  rewrite Ropp_div.
+  replace (PI / 4 / 2)%R with (PI / 8)%R by lra.
+  rewrite !update_index_eq.
+  rewrite !update_twice_eq.
+  rewrite !cos_neg, !sin_neg, RtoC_opp, Copp_involutive.
+  rewrite !Cexp_bool_mul.
+  autorewrite with Cexp_db C_db.
+  prep_matrix_equivalence.
+  intros i j Hi Hj.
+  unfold Mplus, scale.
+  destruct (f a), (f b); cbn; 
+  (* autorewrite with C_db; *)
+  cancel_terms 1;
+  rewrite <- ?Copp_mult_distr_r, <- ?Copp_mult_distr_l.
+  - rewrite !Cmult_assoc.
+    rewrite sin_sin_PI8.
+    rewrite <- sin_cos_PI4.
+    replace (PI / 4)%R with (2 * (PI / 8))%R by lra.
+    rewrite sin_2a.
+    lca.
+  - rewrite Ci2, <- Copp_mult_distr_l, Cmult_1_l, <- !Copp_mult_distr_r. 
+    rewrite !Cmult_assoc.
+    rewrite sin_sin_PI8.
+    rewrite <- sin_cos_PI4.
+    replace (PI / 4)%R with (2 * (PI / 8))%R by lra.
+    rewrite sin_2a.
+    lca.
+  - rewrite <- Copp_mult_distr_r.
+    rewrite !(Cmult_assoc (sin (PI / 8))).
+    rewrite sin_sin_PI8.
+    rewrite <- sin_cos_PI4.
+    replace (PI / 4)%R with (2 * (PI / 8))%R by lra.
+    rewrite sin_2a.
+    lca.
+  - rewrite <- !Copp_mult_distr_r.
+    rewrite !(Cmult_assoc (sin (PI / 8))).
+    rewrite sin_sin_PI8.
+    rewrite <- sin_cos_PI4.
+    replace (PI / 4)%R with (2 * (PI / 8))%R by lra.
+    rewrite sin_2a.
+    lca.
 Qed.
 Local Opaque H U3.
 
@@ -149,12 +168,10 @@ Proof.
   autorewrite with R_db.
   repeat rewrite phase_shift_rotation.
   rewrite phase_0.
-  bdestruct (b <? dim).
+  bdestruct (b <? dim); [|rewrite CNOT_ill_typed by lia; now Msimpl].
   unfold pad_u.
   rewrite pad_id by assumption.
   Msimpl. reflexivity.
-  unfold pad_u, pad.
-  gridify.
 Qed.
 Local Opaque Rz U1.
 
@@ -232,10 +249,11 @@ Proof.
   unfold CCZ.
   repeat rewrite useq_assoc.
   reflexivity.
-  unfold uc_equiv; simpl.
-  autorewrite with eval_db.
-  bdestruct_all.
-  all: repeat rewrite Mmult_0_r; reflexivity.
+  unfold CCZ.
+  unfold uc_equiv.
+  simpl.
+  rewrite (CNOT_ill_typed a c) by lia.
+  now Msimpl.
 Qed.
 Local Opaque CCX CCZ.
 
@@ -245,7 +263,7 @@ Proof.
   intros dim a b c.
   destruct (@uc_well_typed_b _ dim (CCX a b c)) eqn:WT.
   apply uc_well_typed_b_equiv in WT.
-  apply equal_on_basis_states_implies_equal; auto with wf_db.
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
   intro f.
   apply uc_well_typed_CCX in WT as [? [? [? [? [? ?]]]]].
   simpl.
@@ -326,71 +344,73 @@ Lemma CCU1_is_control_CU1 : forall dim r a b c,
   @CCU1 dim r a b c ≡ control a (control b (U1 r c)).
 Proof.
   intros dim r a b c.
+  unfold uc_equiv.
   (* manually handle all the ill-typed cases *)
   bdestruct (a <? dim).
-  2: { unfold CCU1, uc_equiv. simpl.
+  2: { simpl.
        rewrite CNOT_is_control_X, CU1_is_control_U1.
        repeat rewrite (control_q_geq_dim a) by auto.
-       Msimpl. reflexivity. }
+       now Msimpl_light. }
   bdestruct (b <? dim).
-  2: { unfold CCU1, uc_equiv. simpl.
-       repeat rewrite CNOT_is_control_X, CU1_is_control_U1.
+  2: { simpl.
+       rewrite CNOT_is_control_X, CU1_is_control_U1.
        repeat rewrite (control_q_geq_dim b) by auto.
        rewrite (control_not_WT _ (control _ _)).
-       Msimpl. reflexivity.
+       now Msimpl.
        intro contra.
        apply uc_well_typed_control in contra as [? [? ?]]. lia. }
   bdestruct (c <? dim).
-  2: { unfold CCU1, uc_equiv. simpl.
-       rewrite CU1_is_control_U1.
-       rewrite (control_not_WT _ (control _ _)).
-       rewrite (control_not_WT a _).
-       Msimpl. reflexivity.
-       intro contra.
-       apply uc_well_typed_Rz in contra. lia.
-       intro contra.
-       apply uc_well_typed_control in contra as [? [? contra]]. 
-       apply uc_well_typed_Rz in contra. lia. }
-  bdestruct (a =? b). subst.
-  unfold CCU1, uc_equiv. simpl.
-  repeat rewrite CU1_is_control_U1.
-  rewrite (control_not_fresh b (U1 (r / 2) b)).
-  rewrite (control_not_fresh b (control _ _)).
-  Msimpl. reflexivity.
-  intro contra.
-  apply fresh_control in contra as [? ?]. lia.
-  intro contra.
-  apply fresh_U1 in contra. lia.
-  bdestruct (a =? c). subst.
-  unfold CCU1, uc_equiv. simpl.
-  repeat rewrite CU1_is_control_U1.
-  rewrite (control_not_fresh c (U1 (r / 2) c)).
-  rewrite (control_not_fresh c (control _ _)).
-  Msimpl. reflexivity.
-  intro contra.
-  apply fresh_control in contra as [? contra]. 
-  apply fresh_U1 in contra. lia.
-  intro contra.
-  apply fresh_U1 in contra. lia.
-  bdestruct (b =? c). subst.
-  unfold CCU1, uc_equiv. simpl.
-  repeat rewrite CNOT_is_control_X.
-  rewrite (control_not_fresh c (X c)).
-  rewrite (control_not_WT _ (control _ _)).
-  Msimpl. reflexivity.
-  intro contra.
-  apply uc_well_typed_control in contra as [? [contra ?]].
-  apply fresh_U1 in contra. lia.
-  intro contra.
-  apply fresh_X in contra. lia.
+  2: { simpl.
+       rewrite CNOT_ill_typed by lia.
+       Msimpl_light.
+       symmetry.
+       apply control_not_WT.
+       intros contra.
+       apply uc_well_typed_control in contra as (? & ? & contra).
+       apply uc_well_typed_Rz in contra.
+       lia. }
+  bdestruct (a =? b). 
+  1: { subst.
+    unfold CCU1, uc_equiv. simpl.
+    repeat rewrite CU1_is_control_U1.
+    rewrite (control_not_fresh b (U1 (r / 2) b)).
+    rewrite (control_not_fresh b (control _ _)).
+    Msimpl. reflexivity.
+    intro contra.
+    apply fresh_control in contra as [? ?]. lia.
+    intro contra.
+    apply fresh_U1 in contra. lia.
+  }
+  bdestruct (a =? c). 
+  1: { subst.
+    unfold CCU1, uc_equiv. simpl.
+    repeat rewrite CU1_is_control_U1.
+    rewrite (control_not_fresh c (U1 (r / 2) c)).
+    rewrite (control_not_fresh c (control _ _)).
+    Msimpl. reflexivity.
+    intro contra.
+    apply fresh_control in contra as [? contra]. 
+    apply fresh_U1 in contra. lia.
+    intro contra.
+    apply fresh_U1 in contra. lia.
+  }
+  bdestruct (b =? c). 
+  1: {
+    simpl.
+    rewrite CNOT_ill_typed by lia.
+    Msimpl_light.
+    symmetry.
+    apply control_not_WT.
+    intros contra.
+    apply uc_well_typed_control in contra as (_ & contra & _).
+    apply fresh_U1 in contra.
+    lia.
+  }
   (* now onto the main proof... *)
-  apply equal_on_basis_states_implies_equal.
-  unfold CCU1, uc_equiv. simpl. 
-  auto 20 with wf_db.
-  auto with wf_db.
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
   intro f.
   unfold CCU1, uc_equiv. simpl.
-  repeat rewrite Mmult_assoc.
+  rewrite !Mmult_assoc.
   repeat rewrite CU1_is_control_U1.
   (* destruct on possible values of the control qubits *)
   destruct (f a) eqn:fa; destruct (f b) eqn:fb.
@@ -500,14 +520,14 @@ Proof.
   all: group_Cexp.
   all: try match goal with 
        | |- context [Cexp ?r] => field_simplify r
-       end; try lra.
+       end.
   all: autorewrite with R_db C_db Cexp_db.
   all: group_Cexp.
   all: try match goal with 
        | |- context [Cexp ?r] => field_simplify r
        end.
   all: replace (8 * PI / 8)%R with PI by lra.
-  all: autorewrite with R_db C_db Cexp_db.
+  all: autorewrite with R_db Cexp_db.
   all: rewrite Mscale_plus_distr_r.
   all: distribute_scale; group_radicals.
   all: lma.
@@ -521,14 +541,11 @@ Proof.
   assert (H0 : uc_eval (@CNOT dim a b) = Zero \/ 
                uc_eval (@CNOT dim a c) = Zero \/
                uc_eval (@CNOT dim a d) = Zero).
-  { assert (H0 : a = b \/ a = c \/ a = d).
-    apply Classical_Prop.NNPP.
-    intro contra. contradict H.
-    apply fresh_CCX; repeat split; auto.
-    destruct H0 as [H0 | [H0 | H0]]; subst.
-    left. autorewrite with eval_db. gridify.
-    right. left. autorewrite with eval_db. gridify.
-    right. right. autorewrite with eval_db. gridify. }
+  { assert (H0 : a = b \/ a = c \/ a = d) by 
+      (rewrite <- fresh_CCX in *; lia).
+    destruct H0 as [? | [? | ?]]; 
+    [left|right; left|right; right];
+    apply CNOT_ill_typed; lia. }
   destruct H0 as [H0 | [H0 | H0]]; rewrite H0; Msimpl_light; trivial.
 Qed.
 
@@ -541,8 +558,12 @@ Proof.
                UnitarySem.uc_eval (@CNOT dim b d) = Zero \/ 
                UnitarySem.uc_eval (@CNOT dim c d) = Zero).
   { rewrite <- uc_well_typed_CCX in H.
-    autorewrite with eval_db.
-    gridify; auto. }
+    bdestruct (b <? dim); [| rewrite CNOT_ill_typed by lia; auto].
+    bdestruct (c <? dim); [| rewrite CNOT_ill_typed by lia; auto].
+    bdestruct (d <? dim); [| rewrite (CNOT_ill_typed _ d) by lia; auto].
+    bdestruct (b =? d); [rewrite (CNOT_ill_typed b d) by lia; auto|].
+    bdestruct (c =? d); [rewrite (CNOT_ill_typed c d) by lia; auto|].
+    rewrite CNOT_ill_typed by lia; auto. }
   destruct H0 as [H0 | [H0 | H0]]; rewrite H0; Msimpl_light; trivial.
 Qed.
 
@@ -551,9 +572,7 @@ Lemma C3X_a_geq_dim : forall dim a b c d : nat,
 Proof.
   intros dim a b c d H.
   simpl.
-  assert (H0 : UnitarySem.uc_eval (@P8 dim a) = Zero).
-  { unfold P8. autorewrite with eval_db. gridify. }
-  rewrite H0.
+  rewrite CNOT_ill_typed by lia.
   Msimpl_light. 
   trivial.
 Qed.
@@ -832,10 +851,10 @@ Proof.
   repeat commute_proj.
   specialize (@H_H_id dim) as Hr.
   unfold uc_equiv in Hr; simpl in Hr.
-  rewrite Hr, denote_ID.
-  unfold pad_u. 
-  rewrite pad_id by assumption.
-  Msimpl. reflexivity.
+  rewrite Hr, ID_equiv_SKIP by easy.
+  rewrite denote_SKIP by lia.
+  apply Mmult_1_r.
+  auto_wf.
 Qed.
 
 Lemma f_to_vec_CRTX : forall (dim a b : nat) r (f : nat -> bool),
@@ -879,9 +898,8 @@ Proof.
   rewrite Rz_Rz_add.
   reflexivity.
   unfold uc_equiv; simpl.
-  autorewrite with eval_db. 
-  bdestruct_all.
-  Msimpl. reflexivity.
+  rewrite H_ill_typed by lia.
+  now Msimpl_light.
 Qed.
 
 Lemma RTX_PI : forall dim q, @RTX dim PI q ≡ X q.
@@ -891,13 +909,11 @@ Proof.
   rewrite H_comm_Z.
   rewrite useq_assoc.
   rewrite H_H_id.
-  bdestruct (q <? dim).
+  unfold uc_equiv.
+  simpl.
+  bdestruct (q <? dim); [|rewrite X_ill_typed by lia; now Msimpl_light].
   rewrite ID_equiv_SKIP by auto.
   apply SKIP_id_r.
-  unfold uc_equiv; simpl.
-  autorewrite with eval_db. 
-  bdestruct_all.
-  Msimpl. reflexivity.
 Qed.
 
 Lemma RTX_0 : forall dim q, @RTX dim 0 q ≡ ID q.
@@ -905,16 +921,14 @@ Proof.
   intros.
   unfold RTX.
   rewrite Rz_0_id.
-  bdestruct (q <? dim).
+  bdestruct (q <? dim);
+  [|unfold uc_equiv; simpl; 
+  rewrite H_ill_typed, ID_ill_typed by lia; now Msimpl_light].
   rewrite ID_equiv_SKIP by auto.
   rewrite SKIP_id_r.
   rewrite H_H_id.
   rewrite ID_equiv_SKIP by auto.
   reflexivity.
-  unfold uc_equiv; simpl.
-  autorewrite with eval_db. 
-  bdestruct_all.
-  Msimpl. reflexivity.
 Qed.
 
 Lemma fresh_RTX: forall dim a b r, a <> b <-> is_fresh a (@RTX dim r b).
@@ -1009,14 +1023,14 @@ Proof.
   - (* b1 = true, b2 = true, b3 = true *)
     repeat commute_proj2.
     rewrite Mmult_assoc.
-    apply f_equal2; auto.
+    apply f_equal2; [easy|].
     rewrite <- (Mmult_assoc _ (proj b _ _)).
     repeat commute_proj2.
     rewrite Mmult_assoc.
-    apply f_equal2; auto.
+    apply f_equal2; [easy|].
     rewrite <- (Mmult_assoc _ (proj c _ _)).
     repeat commute_proj2.
-    apply f_equal2; auto.
+    apply f_equal2; [easy|].
     repeat rewrite <- (Mmult_assoc (uc_eval (X _))). 
     repeat rewrite Hr1.
     repeat rewrite denote_ID.
@@ -1252,7 +1266,7 @@ Proof.
   assumption.
   destruct H2 as [_ ?].
   rewrite H2 in H1.
-  rewrite Mmult_1_l in H1; auto with wf_db.
+  rewrite Mmult_1_l in H1 by auto with wf_db.
   rewrite H1.
   distribute_scale.
   rewrite <- Cexp_add.
@@ -1535,18 +1549,12 @@ Proof.
                uc_eval (@CNOT dim a c) = Zero \/
                uc_eval (@CNOT dim a d) = Zero \/
                uc_eval (@CNOT dim a e) = Zero).
-  { assert (H0 : a = b \/ a = c \/ a = d \/ a = e).
-    apply Classical_Prop.NNPP.
-    intro contra. contradict H.
-    apply Decidable.not_or in contra as [? contra].
-    apply Decidable.not_or in contra as [? contra].
-    apply Decidable.not_or in contra as [? contra].
-    apply fresh_C3X; repeat split; auto.
-    destruct H0 as [H0 | [H0 | [H0 | H0]]]; subst.
-    left. autorewrite with eval_db. gridify.
-    right. left. autorewrite with eval_db. gridify.
-    right. right. left. autorewrite with eval_db. gridify.
-    right. right. right. autorewrite with eval_db. gridify. }
+  { assert (H0 : a = b \/ a = c \/ a = d \/ a = e)
+      by (rewrite <- fresh_C3X in H; lia).
+    destruct H0 as [H0 | [H0 | [H0 | H0]]]; 
+    match type of H0 with ?a = ?a' =>
+      rewrite (CNOT_ill_typed a a') by lia; auto
+    end. }
   destruct H0 as [H0 | [H0 | [H0 | H0]]]; rewrite H0; Msimpl_light; trivial.
 Qed.
 
@@ -1562,37 +1570,19 @@ Proof.
                uc_eval (@CNOT dim c e) = Zero \/ 
                uc_eval (@CNOT dim d e) = Zero).
   { rewrite <- uc_well_typed_C3X in H.
-    apply Classical_Prop.not_and_or in H as [H | H].
-    left.
-    autorewrite with eval_db; gridify; auto.
-    apply Classical_Prop.not_and_or in H as [H | H].
-    left.
-    autorewrite with eval_db; gridify; auto. 
-    apply Classical_Prop.not_and_or in H as [H | H].
-    right. left.
-    autorewrite with eval_db; gridify; auto.
-    apply Classical_Prop.not_and_or in H as [H | H].
-    right. right. left.
-    autorewrite with eval_db; gridify; auto.
-    apply Classical_Prop.not_and_or in H as [H | H].
-    left.
-    autorewrite with eval_db; gridify; auto. 
-    apply Classical_Prop.not_and_or in H as [H | H].
-    right. left.
-    autorewrite with eval_db; gridify; auto. 
-    apply Classical_Prop.not_and_or in H as [H | H].
-    right. right. left.
-    autorewrite with eval_db; gridify; auto. 
-    apply Classical_Prop.not_and_or in H as [H | H].
-    right. right. right. left.
-    autorewrite with eval_db; gridify; auto. 
-    apply Classical_Prop.not_and_or in H as [H | H].
-    right. right. right. right. left.
-    autorewrite with eval_db; gridify; auto. 
-    right. right. right. right. right.
-    autorewrite with eval_db; gridify; auto. }
-  destruct H0 as [H0 | [H0 | [H0 | [H0 | [H0 | H0]]]]]; 
-    rewrite H0; Msimpl_light; trivial.
+    bdestruct (b <? dim); [|rewrite (CNOT_ill_typed b) by lia; auto].
+    bdestruct (c <? dim); [|rewrite (CNOT_ill_typed c) by lia; auto].
+    bdestruct (d <? dim); [|rewrite (CNOT_ill_typed d) by lia; auto 10].
+    bdestruct (e <? dim); [|rewrite (CNOT_ill_typed _ e) by lia; auto].
+    bdestruct (b =? d); [rewrite (CNOT_ill_typed b d) by lia; auto|].
+    bdestruct (b =? e); [rewrite (CNOT_ill_typed b e) by lia; auto|].
+    bdestruct (c =? d); [rewrite (CNOT_ill_typed c d) by lia; auto|].
+    bdestruct (c =? e); [rewrite (CNOT_ill_typed c e) by lia; auto 10|].
+    bdestruct (d =? e); [rewrite (CNOT_ill_typed d e) by lia; auto 10|].
+    rewrite CNOT_ill_typed by lia.
+    auto. }
+  destruct H0 as [H0 | [H0 | [H0 | [H0 | [H0 | H0]]]]];
+  rewrite H0; Msimpl_light; trivial.
 Qed.
 
 Lemma C4X_a_geq_dim : forall dim a b c d e : nat,
@@ -1600,9 +1590,7 @@ Lemma C4X_a_geq_dim : forall dim a b c d e : nat,
 Proof.
   intros dim a b c d e H.
   simpl.
-  assert (H0 : uc_eval (@CNOT dim a c) = Zero).
-  { autorewrite with eval_db. gridify. }
-  rewrite H0.
+  rewrite (CNOT_ill_typed a) by lia.
   Msimpl_light. 
   trivial.
 Qed.
@@ -1619,7 +1607,7 @@ Proof.
   destruct (@uc_well_typed_b _ dim (C3X b c d e)) eqn:HWT.
   apply uc_well_typed_b_equiv in HWT.
   (* main proof *)
-  apply equal_on_basis_states_implies_equal; auto with wf_db.
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
   intro f.
   apply uc_well_typed_C3X in HWT as [? [? [? [? [? [? [? [? [? ?]]]]]]]]].
   apply fresh_C3X in Hfr as [? [? [? ?]]].

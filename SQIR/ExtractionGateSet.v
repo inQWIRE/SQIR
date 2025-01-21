@@ -294,13 +294,11 @@ Proof.
   unfold uc_eval. simpl.
   rewrite Ropp_0.
   apply f_equal.
-  unfold rotation.
-  solve_matrix; autorewrite with Cexp_db trig_db R_db; lca.
+  lma'; autorewrite with Cexp_db trig_db R_db; lca.
   (* U_U2 *)
   unfold uc_eval. simpl.
   apply f_equal.
-  unfold rotation.
-  solve_matrix; autorewrite with Cexp_db trig_db R_db; lca.
+  lma'; autorewrite with Cexp_db trig_db R_db; lca.
   (* U_CU1 *)
   rewrite invert_control.
   unfold uc_eval. simpl.
@@ -308,8 +306,7 @@ Proof.
   unfold uc_equiv. simpl.
   rewrite Ropp_0.
   apply f_equal.
-  unfold rotation.
-  solve_matrix; autorewrite with Cexp_db trig_db R_db; lca.
+  lma'; autorewrite with Cexp_db trig_db R_db; lca.
   split; intro; invert_is_fresh; repeat constructor; auto.
   (* U_CH *)
   rewrite invert_control.
@@ -333,8 +330,7 @@ Proof.
   unfold uc_equiv. simpl.
   rewrite Ropp_0.
   apply f_equal.
-  unfold rotation.
-  solve_matrix; autorewrite with Cexp_db trig_db R_db; lca.
+  lma'; autorewrite with Cexp_db trig_db R_db; lca.
   split; intro; invert_is_fresh; repeat constructor; auto.
   rewrite <- is_fresh_invert.
   rewrite <- 2 fresh_control.
