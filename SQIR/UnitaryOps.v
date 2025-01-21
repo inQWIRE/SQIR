@@ -1048,11 +1048,11 @@ Proof.
   f_to_vec_simpl.
   destruct (f c) eqn:e.
   - rewrite f_to_vec_proj_neq, f_to_vec_proj_eq by
-      (rewrite ?update_index_neq, ?e; easy).
+      (rewrite ?update_index_neq, ?e; congruence).
     Msimpl_light.
     now rewrite xorb_true_r.
   - rewrite f_to_vec_proj_eq, f_to_vec_proj_neq by
-      (rewrite ?update_index_neq, ?e; easy).
+      (rewrite ?update_index_neq, ?e; congruence).
     Msimpl_light.
     now rewrite xorb_false_r, update_same by easy.
 Qed.

@@ -119,7 +119,7 @@ Proof.
   rewrite Mmult_1_l by auto_wf.
   rewrite Mmult_assoc.
   rewrite 2!f_to_vec_CNOT by easy.
-  rewrite update_index_eq, update_index_neq, update_twice_eq by easy.
+  rewrite update_index_eq, update_index_neq, update_twice_eq by congruence.
   rewrite xorb_assoc, xorb_nilpotent, xorb_false_r.
   now rewrite update_same by easy.
 Qed.
@@ -213,13 +213,13 @@ Proof.
   apply equal_on_basis_states_implies_equal; [auto_wf..|].
   intros f.
   rewrite !Mmult_assoc.
-  rewrite f_to_vec_CNOT by easy.
+  rewrite f_to_vec_CNOT by congruence.
   rewrite !f_to_vec_X by easy.
-  rewrite !update_index_neq, update_twice_neq, update_twice_eq by easy.
+  rewrite !update_index_neq, update_twice_neq, update_twice_eq by congruence.
   rewrite update_index_eq.
-  rewrite f_to_vec_CNOT by easy.
+  rewrite f_to_vec_CNOT by congruence.
   rewrite update_index_eq, update_index_neq by lia.
-  rewrite update_twice_neq by easy.
+  rewrite update_twice_neq by congruence.
   now rewrite negb_xorb_r.
 Qed.
 
@@ -235,8 +235,8 @@ Proof.
   apply equal_on_basis_states_implies_equal; [auto_wf..|].
   intros f.
   rewrite !Mmult_assoc.
-  rewrite f_to_vec_CNOT by easy.
-  rewrite !f_to_vec_X, f_to_vec_CNOT by easy.
+  rewrite f_to_vec_CNOT by congruence.
+  rewrite !f_to_vec_X, f_to_vec_CNOT by congruence.
   rewrite !update_index_eq, update_index_neq by easy.
   now rewrite !update_twice_eq, negb_xorb_l.
 Qed.
@@ -256,11 +256,11 @@ Proof.
   rewrite f_to_vec_Rz, f_to_vec_H by easy.
   distribute_scale; distribute_plus; distribute_scale.
   rewrite f_to_vec_CNOT, f_to_vec_H by easy.
-  rewrite update_index_eq, update_index_neq, xorb_false_l by easy.
+  rewrite update_index_eq, update_index_neq, xorb_false_l by congruence.
   rewrite update_twice_eq.
   distribute_scale; distribute_plus; distribute_scale.
   rewrite 2!f_to_vec_CNOT, 3!f_to_vec_H by easy.
-  rewrite !update_index_eq, !update_index_neq, !update_twice_eq by easy.
+  rewrite !update_index_eq, !update_index_neq, !update_twice_eq by congruence.
   rewrite xorb_false_l, xorb_true_l.
   distribute_scale; distribute_plus; distribute_scale.
   rewrite !f_to_vec_Rz, !update_index_eq by easy.
@@ -344,7 +344,7 @@ Proof.
   intros f.
   rewrite !Mmult_assoc.
   f_to_vec_simpl.
-  now rewrite update_twice_neq by easy.
+  now rewrite update_twice_neq by congruence.
 Qed.
 
 Lemma CNOT_comm_H_CNOT_H : forall {dim} q1 q2 q3,
@@ -386,7 +386,7 @@ Proof.
   rewrite f_to_vec_H by easy.
   distribute_scale; distribute_plus; distribute_scale.
   rewrite 2!f_to_vec_H by easy.
-  rewrite 2!update_index_neq by easy.
+  rewrite 2!update_index_neq by congruence.
   distribute_scale; distribute_plus; distribute_scale.
   rewrite 4!f_to_vec_CNOT by easy.
   rewrite update_index_neq, 5!update_index_eq,
@@ -404,14 +404,14 @@ Proof.
   rewrite !update_index_eq, !update_twice_eq.
   cbn [b2R].
   rewrite Rmult_1_l, Rmult_0_l, Cexp_0, 2!Mscale_1_l.
-  rewrite f_to_vec_CNOT by easy.
+  rewrite f_to_vec_CNOT by congruence.
   prep_matrix_equivalence.
   destruct (f n) eqn:efn, (f m) eqn:efm;
   cbn [b2R xorb];
   rewrite ?Rmult_1_l, ?Rmult_0_l, ?Cexp_0, ?Cexp_PI, ?Mscale_1_l;
   distribute_scale;
   rewrite (update_same _ _ _ (eq_sym efm)), !(update_twice_neq _ m n),
-    (update_same _ _ _ (eq_sym efn)) by easy;
+    (update_same _ _ _ (eq_sym efn)) by congruence;
   intros i j Hi Hj;
   unfold scale, Mplus; cbn;
   C_field;
@@ -482,7 +482,7 @@ Proof.
   destruct (bool_dec b (f q)).
   - rewrite f_to_vec_proj_eq by easy.
     now rewrite f_to_vec_Rz.
-  - rewrite f_to_vec_proj_neq by easy.
+  - rewrite f_to_vec_proj_neq by congruence.
     now Msimpl.
 Qed.
 
@@ -499,7 +499,7 @@ Proof.
   - rewrite f_to_vec_proj_eq by easy.
     rewrite f_to_vec_Rz by easy.
     now subst.
-  - rewrite f_to_vec_proj_neq by easy.
+  - rewrite f_to_vec_proj_neq by congruence.
     now Msimpl.
 Qed.
 
@@ -519,9 +519,9 @@ Proof.
     rewrite 2!Mmult_assoc.
     rewrite f_to_vec_CNOT by easy.
     destruct (bool_dec b (f m)).
-    + rewrite 2!f_to_vec_proj_eq by (rewrite ?update_index_neq; easy).
+    + rewrite 2!f_to_vec_proj_eq by (rewrite ?update_index_neq; congruence).
       now rewrite f_to_vec_CNOT by easy.
-    + rewrite 2!(f_to_vec_proj_neq) by (rewrite ?update_index_neq; easy).
+    + rewrite 2!(f_to_vec_proj_neq) by (rewrite ?update_index_neq; congruence).
       now Msimpl.
   - (* disjoint qubits *)
     bdestructΩ (q =? n).
@@ -541,23 +541,22 @@ Proof.
   rewrite f_to_vec_CNOT by easy.
   destruct (bool_dec (f n) (g n)), (bool_dec (f q) (g q)).
   - rewrite f_to_vec_proj_eq, (f_to_vec_proj_eq g)
-      by (rewrite ?update_index_neq; easy).
+      by (rewrite ?update_index_neq; congruence).
     rewrite f_to_vec_CNOT by easy.
     rewrite 2!f_to_vec_proj_eq; 
-    rewrite ?update_index_eq, ?update_index_neq; try easy.
-    now f_equal.
-  - rewrite (f_to_vec_proj_neq g) by easy.
+    rewrite ?update_index_eq, ?update_index_neq; congruence.
+  - rewrite (f_to_vec_proj_neq g) by congruence.
     Msimpl.
-    rewrite f_to_vec_proj_eq by (rewrite ?update_index_neq; easy).
+    rewrite f_to_vec_proj_eq by (rewrite ?update_index_neq; congruence).
     apply f_to_vec_proj_neq; [easy|].
     rewrite update_index_eq.
     replace -> (f n).
     now destruct (f q), (g q), (g n).
-  - rewrite (f_to_vec_proj_neq) by (rewrite ?update_index_neq; easy).
+  - rewrite (f_to_vec_proj_neq) by (rewrite ?update_index_neq; congruence).
     rewrite (f_to_vec_proj_eq) by easy.
     rewrite f_to_vec_CNOT by easy.
-    rewrite f_to_vec_proj_neq by (rewrite ?update_index_neq; easy).
+    rewrite f_to_vec_proj_neq by (rewrite ?update_index_neq; congruence).
     now Msimpl.
-  - rewrite 2!f_to_vec_proj_neq by (rewrite ?update_index_neq; easy).
+  - rewrite 2!f_to_vec_proj_neq by (rewrite ?update_index_neq; congruence).
     now Msimpl.
 Qed.
