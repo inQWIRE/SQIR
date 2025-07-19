@@ -444,11 +444,6 @@ Proof.
     apply f_to_vec_eq.
     intros x Hx.
     apply fswap_swap_log with (dim:=dim); auto.
-    apply permutation_is_bounded, get_phys_perm; assumption.
-    apply permutation_is_bounded, get_phys_perm.
-    apply swap_log_preserves_bij; assumption.
-    apply swap_log_preserves_bij; assumption.
-    apply swap_log_preserves_bij; assumption.
 Qed.
 
 (* These uc_eq_perm_* lemmas are specific to swap_route_sound -- they help
@@ -511,7 +506,6 @@ Proof.
   Msimpl.
   reflexivity.
   unfold eval; auto with wf_db.
-  auto_perm.
 Qed.
 
 Lemma uc_equiv_perm_ex_app2 : forall {dim} (l1 l2 : ucom_l dim) (g : gate_app (Map_Unitary (G.U 1)) dim) p1 p2 p3,

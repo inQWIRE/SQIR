@@ -114,6 +114,8 @@ Module MappingValidationProofs (G : GateSet).
 Module SRP := SwapRouteProofs G.
 Import SRP.
 
+Local Hint Resolve get_phys_perm get_log_perm : perm_db.
+
 Lemma remove_swaps'_sound : forall {dim} (l l' : ucom_l dim) m m' acc,
   uc_well_typed_l l ->
   layout_bijective dim m ->
@@ -165,7 +167,7 @@ Proof.
         constructor.
         apply uc_well_typed_l_implies_dim_nonzero in WT.
         assumption.
-      * apply IHl in H; auto with perm_db.
+      * apply IHl in H; [|solve [auto using swap_log_preserves_bij with perm_db]..].
         destruct H as [l0 [? ?]].
         exists l0. subst. split; auto.
         rewrite (cons_to_app _ l).
@@ -183,14 +185,12 @@ Proof.
         repeat rewrite Mmult_assoc.
         rewrite f_to_vec_SWAP by assumption.
         Msimpl.
-        rewrite perm_to_matrix_permutes_qubits by auto with perm_db.
+        rewrite perm_to_matrix_permutes_qubits 
+          by auto using swap_log_preserves_bij with perm_db.
         apply f_to_vec_eq.        
         intros x Hx.
         rewrite fswap_swap_log with (dim:=dim) by assumption.
         rewrite get_log_phys_inv with (n:=dim); auto.
-        apply permutation_is_bounded, get_phys_perm.
-        apply swap_log_preserves_bij; auto.
-        apply permutation_is_bounded, get_log_perm; auto.
         apply uc_well_typed_l_implies_dim_nonzero in WT.
         assumption.
     + dependent destruction m0.
@@ -259,7 +259,6 @@ Proof.
   apply remove_swaps_WF in rs2; auto.
 Qed.
 
-Local Hint Resolve get_phys_perm get_log_perm : perm_db.
 
 (** If check_swap_equivalence returns Some then l1 and l2 are equivalent programs 
     wrt to layouts m1 and m2. *)

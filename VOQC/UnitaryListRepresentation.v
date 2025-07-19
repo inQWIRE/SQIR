@@ -1322,11 +1322,10 @@ Proof.
   repeat split; auto with perm_db.
   rewrite H.
   repeat rewrite Mmult_assoc.
-  rewrite <- perm_to_matrix_compose by (intros x Hx; apply Hp1, Hx).
+  rewrite <- perm_to_matrix_compose by auto_perm.  
   repeat rewrite <- Mmult_assoc.
-  rewrite <- perm_to_matrix_compose by (intros x Hx; apply Hp2, Hx).
-  rewrite 2 perm_to_matrix_I by 
-    (intros x Hx; first [apply Hp1 | apply Hp2]; apply Hx).
+  rewrite <- perm_to_matrix_compose by auto_perm.
+  rewrite 2 perm_to_matrix_I by (intros; cleanup_perm_inv).
   unfold eval. Msimpl. reflexivity.
 Qed.
 
