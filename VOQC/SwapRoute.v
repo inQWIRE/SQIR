@@ -170,7 +170,7 @@ Proof.
   - apply equal_on_basis_states_implies_equal; auto with wf_db.
     intro f.
     repeat rewrite Mmult_assoc.
-    rewrite perm_to_matrix_permutes_qubits by auto with perm_bounded_db.
+    rewrite perm_to_matrix_permutes_qubits by auto_perm.
     assert (p2 n < dim).
     { destruct H1 as [? H1].
       specialize (H1 n H5).
@@ -196,7 +196,7 @@ Proof.
         with (f_to_vec (dim - (n + 1)) (shift f0 (n + 1))).
       replace (dim - (n + 1)) with (dim - 1 - n) by lia.
       rewrite <- f_to_vec_split by auto.
-      rewrite perm_to_matrix_permutes_qubits by auto with perm_bounded_db.
+      rewrite perm_to_matrix_permutes_qubits by auto_perm.
       remember (update (fun x : nat => f (p1 x)) (p2 n) false) as f0'.
       replace (f_to_vec dim (fun x : nat => f0 (p1 x))) with (f_to_vec dim f0').
       rewrite (f_to_vec_split 0 dim (p2 n)) by auto.
@@ -223,7 +223,7 @@ Proof.
         with (f_to_vec (dim - (n + 1)) (shift f1 (n + 1))).
       replace (dim - (n + 1)) with (dim - 1 - n) by lia.
       rewrite <- f_to_vec_split by auto.
-      rewrite perm_to_matrix_permutes_qubits by auto with perm_bounded_db.
+      rewrite perm_to_matrix_permutes_qubits by auto_perm.
       remember (update (fun x : nat => f (p1 x)) (p2 n) true) as f1'.
       replace (f_to_vec dim (fun x : nat => f1 (p1 x))) with (f_to_vec dim f1').
       rewrite (f_to_vec_split 0 dim (p2 n)) by auto.
@@ -246,10 +246,10 @@ Proof.
   - apply equal_on_basis_states_implies_equal; auto with wf_db.
     intro f.
     repeat rewrite Mmult_assoc.
-    rewrite perm_to_matrix_permutes_qubits by auto with perm_bounded_db.
+    rewrite perm_to_matrix_permutes_qubits by auto_perm.
     replace (ueval_cnot dim n n0) with (uc_eval (@SQIR.CNOT dim n n0)) by reflexivity.
     rewrite f_to_vec_CNOT by assumption.
-    rewrite perm_to_matrix_permutes_qubits by auto with perm_bounded_db.
+    rewrite perm_to_matrix_permutes_qubits by auto_perm.
     replace (ueval_cnot dim (p2 n) (p2 n0)) 
       with (uc_eval (@SQIR.CNOT dim (p2 n) (p2 n0))) by reflexivity.
     assert (p2 n < dim).
@@ -303,7 +303,7 @@ Proof.
   unfold eval; simpl.
   rewrite denote_SKIP by assumption.
   Msimpl.
-  rewrite perm_to_matrix_Mmult, perm_to_matrix_I; auto.
+  rewrite <- perm_to_matrix_compose, perm_to_matrix_I; auto_perm.
 Qed.
 
 Lemma SWAP_well_typed : forall dim a b,
@@ -444,6 +444,11 @@ Proof.
     apply f_to_vec_eq.
     intros x Hx.
     apply fswap_swap_log with (dim:=dim); auto.
+    apply permutation_is_bounded, get_phys_perm; assumption.
+    apply permutation_is_bounded, get_phys_perm.
+    apply swap_log_preserves_bij; assumption.
+    apply swap_log_preserves_bij; assumption.
+    apply swap_log_preserves_bij; assumption.
 Qed.
 
 (* These uc_eq_perm_* lemmas are specific to swap_route_sound -- they help
@@ -505,7 +510,8 @@ Proof.
   rewrite (perm_to_matrix_I _ (p1inv ∘ p1)%prg).
   Msimpl.
   reflexivity.
-  auto.
+  unfold eval; auto with wf_db.
+  auto_perm.
 Qed.
 
 Lemma uc_equiv_perm_ex_app2 : forall {dim} (l1 l2 : ucom_l dim) (g : gate_app (Map_Unitary (G.U 1)) dim) p1 p2 p3,

@@ -1158,7 +1158,7 @@ Proof.
       rewrite (Nat.mul_comm (n1 / numCols)).
       rewrite (Nat.mul_comm (n2 / numCols)).
       assert (numCols * (n1 / numCols) < numCols * (n2 / numCols)).
-      { apply mult_lt_compat_l; assumption. }
+      { nia. }
       remember (numCols * (n1 / numCols)) as x.
       remember (numCols * (n2 / numCols)) as y.
       clear - Haux1 Haux2 H1 H2.
@@ -1183,7 +1183,7 @@ Proof.
       rewrite (Nat.mul_comm (n1 / numCols)).
       rewrite (Nat.mul_comm (n2 / numCols)).
       assert (numCols * (n1 / numCols) <= numCols * (n2 / numCols)).
-      { apply mult_le_compat_l; lia. }
+      { nia. }
       remember (numCols * (n1 / numCols)) as x.
       remember (numCols * (n2 / numCols)) as y.
       clear - Haux1 Haux2 H2 H3.
@@ -1202,7 +1202,7 @@ Proof.
       rewrite (Nat.mul_comm (n1 / numCols)).
       rewrite (Nat.mul_comm (n2 / numCols)).
       assert (numCols * (n1 / numCols) < numCols * (n2 / numCols)).
-      { apply mult_lt_compat_l; assumption. }
+      { nia. }
       remember (numCols * (n1 / numCols)) as x.
       remember (numCols * (n2 / numCols)) as y.
       clear - Haux1 Haux2 H1 H4.
@@ -1223,7 +1223,7 @@ Proof.
       (* In Coq v8.10, the goal is solved by the previous line. *)
       try (rewrite Nat.add_sub_assoc; try assumption; 
            assert (numCols * (n2 / numCols) < numCols * (n1 / numCols));
-           [ apply mult_lt_compat_l; assumption 
+           [ nia 
            |  remember (numCols * (n1 / numCols)) as x;
               remember (numCols * (n2 / numCols)) as y;
               clear - Haux1 Haux2 H0 H1;
@@ -1270,7 +1270,7 @@ Proof.
       rewrite (Nat.mul_comm (n1 / numCols)).
       rewrite (Nat.mul_comm (n2 / numCols)).
       assert (numCols * (n2 / numCols) <= numCols * (n1 / numCols)).
-      { apply mult_le_compat_l; lia. }
+      { nia. }
       remember (numCols * (n1 / numCols)) as x.
       remember (numCols * (n2 / numCols)) as y.
       clear - Haux1 Haux2 H1 H2.

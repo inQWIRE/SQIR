@@ -1321,15 +1321,13 @@ Proof.
   exists (perm_inv dim p2).
   repeat split; auto with perm_db.
   rewrite H.
-  rewrite <- !perm_to_matrix_transpose_eq by easy.
-  rewrite !Mmult_assoc.
-  restore_dims.
-  rewrite 2!perm_to_matrix_transpose_eq, 
-    <- perm_to_matrix_compose by auto with perm_bounded_db.
-  rewrite <- !Mmult_assoc.
-  rewrite <- perm_to_matrix_compose by auto with perm_bounded_db.
-  rewrite 2!perm_to_matrix_I by (intros; cleanup_perm_inv).
-  now Msimpl.
+  repeat rewrite Mmult_assoc.
+  rewrite <- perm_to_matrix_compose by (intros x Hx; apply Hp1, Hx).
+  repeat rewrite <- Mmult_assoc.
+  rewrite <- perm_to_matrix_compose by (intros x Hx; apply Hp2, Hx).
+  rewrite 2 perm_to_matrix_I by 
+    (intros x Hx; first [apply Hp1 | apply Hp2]; apply Hx).
+  unfold eval. Msimpl. reflexivity.
 Qed.
 
 Lemma uc_equiv_perm_trans : forall {dim} (l1 l2 l3 : gate_list G.U dim), 
@@ -1342,10 +1340,8 @@ Proof.
   rewrite H1, H2.
   exists (p1 ∘ p3)%prg.
   exists (p4 ∘ p2)%prg.
-  repeat split.
-  apply permutation_compose; auto.
-  apply permutation_compose; auto.
-  rewrite <- 2 perm_to_matrix_Mmult; auto with perm_bounded_db.
+  repeat split; [solve [auto using permutation_compose]..|].
+  rewrite 2 perm_to_matrix_compose; auto using permutation_is_bounded.
   repeat rewrite Mmult_assoc.
   reflexivity.
 Qed.

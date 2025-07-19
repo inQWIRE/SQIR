@@ -17,7 +17,7 @@
  )
  (depends
    (coq-interval (>= 4.9.0))
-   (coq-quantumlib (>= 1.5.0))
+   (coq-quantumlib (>= 1.7.0))
    (coq (>= 8.16))))
 
 (package
@@ -28,6 +28,6 @@
  )
  (depends
    (coq-interval (>= 4.9.0))
-   (coq-quantumlib (>= 1.5.0))
+   (coq-quantumlib (>= 1.7.0))
    (coq-sqir (>= 1.3.0))
    (coq (>= 8.16))))
