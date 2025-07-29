@@ -28,7 +28,7 @@ If you are interested in learning more about formal verification of quantum prog
 
 ## Setup
 
-To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/) and [QuantumLib](https://github.com/inQWIRE/QuantumLib) (version 1.1.0). In order to build the Shor proof, you will also need the [Coq Interval package](http://coq-interval.gforge.inria.fr/) and the [coq-euler](https://github.com/taorunz/euler) library. We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.12-8.16**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
+To compile SQIR and VOQC, you will need [Coq](https://coq.inria.fr/) and [QuantumLib](https://github.com/inQWIRE/QuantumLib) (version 1.7.0). In order to build the Shor proof, you will also need the [Coq Interval package](http://coq-interval.gforge.inria.fr/) and the [coq-euler](https://github.com/taorunz/euler) library. We strongly recommend using [opam](https://opam.ocaml.org/doc/Install.html) to install Coq and `opam switch` to manage Coq versions. We currently support Coq **versions 8.16-8.20**. If you run into errors when compiling our proofs, first check your version of Coq (`coqc -v`).
 
 Assuming you have opam installed (following the instructions in the link above), follow the steps below to set up your environment.
 ```
@@ -46,7 +46,7 @@ opam install coq
 # install the QuantumLib library
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam update
-opam install coq-quantumlib.1.1.0
+opam install coq-quantumlib.1.7.0
 
 # Optional, if you want to compile the proofs in examples/shor
 opam install coq-interval
@@ -55,7 +55,7 @@ opam pin coq-euler https://github.com/taorunz/euler.git
 
 *Notes*:
 * Depending on your system, you may need to replace 4.13.1 in the instructions above with something like "ocaml-base-compiler.4.13.1". Any recent version of OCaml should be fine.
-* We require Coq version >= 8.12.
+* We require Coq version >= 8.16.
 * opam error messages and warnings are typically informative, so if you run into trouble then make sure you read the console output.
 
 ## Compilation
