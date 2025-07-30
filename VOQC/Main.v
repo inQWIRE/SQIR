@@ -997,6 +997,13 @@ Proof.
   contradiction.
 Qed.
 
+Section with_permutations. 
+
+Import Permutations. 
+
+Local Hint Resolve get_phys_perm get_log_perm : perm_db.
+
+
 Lemma check_swap_equivalence_correct : forall dim (c1 c2 : circ dim) (lay1 lay2 : layout),
   uc_well_typed_l c1 ->
   uc_well_typed_l c2 ->
@@ -1013,20 +1020,22 @@ Proof.
     (fun n : nat => MappingGateSet.match_gate match_gate)) eqn:mv.
   assert (mvWF:=mv).
   destruct p.
-  2: inversion H.
-  apply MVP.check_swap_equivalence_implies_equivalence in mv; 
-    auto using full_to_map_WT.
-  apply MVP.check_swap_equivalence_layouts_WF in mvWF as [? ?]; 
-    auto using full_to_map_WT.
+  2: { inversion H. }
+  apply MVP.check_swap_equivalence_implies_equivalence in mv;
+    [|solve [auto using full_to_map_WT]..].
+  apply MVP.check_swap_equivalence_layouts_WF in mvWF as [? ?];
+    [|solve [auto using full_to_map_WT]..].
   unfold MVP.SRP.uc_equiv_perm_ex in mv.
   exists (get_phys lay1 ∘ get_log lay2)%prg.
   exists (get_phys l0 ∘ get_log l)%prg.
-  repeat split; [auto with perm_db..|].
+  repeat split; [PermutationAutomation.auto_perm..|].
   unfold eval.
   unfold MVP.SRP.MapList.eval in mv.
   rewrite <- 2 list_to_ucom_full_to_map in mv.
   apply mv.
 Qed.
+
+End with_permutations.
 
 Lemma check_constraints_correct : forall dim (c : circ dim) (cg : c_graph),
   check_constraints c cg = true ->

@@ -1,6 +1,6 @@
 (lang dune 3.8)
 (name coq-sqirvoqc)
-(version 1.3.1)
+(version 1.4.0)
 (using coq 0.7)
 (generate_opam_files true)
 
@@ -17,7 +17,7 @@
  )
  (depends
    (coq-interval (>= 4.9.0))
-   (coq-quantumlib (>= 1.5.0))
+   (coq-quantumlib (>= 1.7.0))
    (coq (>= 8.16))))
 
 (package
@@ -28,6 +28,6 @@
  )
  (depends
    (coq-interval (>= 4.9.0))
-   (coq-quantumlib (>= 1.5.0))
-   (coq-sqir (>= 1.3.0))
+   (coq-quantumlib (>= 1.7.0))
+   (coq-sqir (>= 1.4.0))
    (coq (>= 8.16))))

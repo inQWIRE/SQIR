@@ -114,6 +114,8 @@ Module MappingValidationProofs (G : GateSet).
 Module SRP := SwapRouteProofs G.
 Import SRP.
 
+Local Hint Resolve get_phys_perm get_log_perm : perm_db.
+
 Lemma remove_swaps'_sound : forall {dim} (l l' : ucom_l dim) m m' acc,
   uc_well_typed_l l ->
   layout_bijective dim m ->
@@ -165,7 +167,7 @@ Proof.
         constructor.
         apply uc_well_typed_l_implies_dim_nonzero in WT.
         assumption.
-      * apply IHl in H; auto with perm_db.
+      * apply IHl in H; [|solve [auto using swap_log_preserves_bij with perm_db]..].
         destruct H as [l0 [? ?]].
         exists l0. subst. split; auto.
         rewrite (cons_to_app _ l).
@@ -183,7 +185,8 @@ Proof.
         repeat rewrite Mmult_assoc.
         rewrite f_to_vec_SWAP by assumption.
         Msimpl.
-        rewrite perm_to_matrix_permutes_qubits by auto with perm_db.
+        rewrite perm_to_matrix_permutes_qubits 
+          by auto using swap_log_preserves_bij with perm_db.
         apply f_to_vec_eq.        
         intros x Hx.
         rewrite fswap_swap_log with (dim:=dim) by assumption.
@@ -256,6 +259,7 @@ Proof.
   apply remove_swaps_WF in rs2; auto.
 Qed.
 
+
 (** If check_swap_equivalence returns Some then l1 and l2 are equivalent programs 
     wrt to layouts m1 and m2. *)
 Lemma check_swap_equivalence_implies_equivalence : forall {dim} (l1 l2 : ucom_l dim) m1 m2 m1' m2',
@@ -275,22 +279,23 @@ Proof.
   apply remove_swaps'_bijective in rs1'; auto.
   apply remove_swaps'_bijective in rs2'; auto.
   destruct (equalb m m0 (fun n : nat => MapG.match_gate)) eqn:eq.
-  inversion H; subst.
-  apply MapList.equalb_correct in eq.
-  unfold uc_equiv_perm_ex, MapList.eval in *.
-  unfold MapList.uc_equiv_l, uc_equiv in *.
-  rewrite rs1, rs2, eq.
-  rewrite <- 2 perm_to_matrix_Mmult by auto with perm_db.
-  repeat rewrite Mmult_assoc.
-  apply f_equal2; try reflexivity.
-  repeat rewrite <- Mmult_assoc.
-  apply f_equal2; try reflexivity.
-  rewrite perm_to_matrix_Mmult by auto with perm_db.
-  repeat rewrite Mmult_assoc.
-  rewrite perm_to_matrix_Mmult by auto with perm_db.
-  rewrite 2 perm_to_matrix_I by eauto with perm_inv_db.
-  Msimpl. reflexivity.
-  inversion H.
+  - inversion H; subst.
+    apply MapList.equalb_correct in eq.
+    unfold uc_equiv_perm_ex, MapList.eval in *.
+    unfold MapList.uc_equiv_l, uc_equiv in *.
+    rewrite rs1, rs2, eq.
+    rewrite 2 perm_to_matrix_compose by auto_perm.
+    repeat rewrite Mmult_assoc.
+    apply f_equal2; try reflexivity.
+    repeat rewrite <- Mmult_assoc.
+    apply f_equal2; try reflexivity.
+    rewrite <- perm_to_matrix_compose by auto_perm.
+    repeat rewrite Mmult_assoc.
+    rewrite <- perm_to_matrix_compose by auto_perm.
+    rewrite 2 perm_to_matrix_I by 
+      (intros; apply get_log_phys_inv with (n:=dim); auto).
+    Msimpl. reflexivity.
+  - inversion H.
 Qed.
 
 Lemma check_constraints_implies_respect_constraints : forall {dim} (l : ucom_l dim) is_in_graph,
