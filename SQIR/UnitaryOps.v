@@ -1,4 +1,4 @@
-Require Export UnitarySem.
+From SQIR Require Export UnitarySem.
 Require Export QuantumLib.VectorStates QuantumLib.Bits.
 
 (* This file contains useful operations over unitary programs including:

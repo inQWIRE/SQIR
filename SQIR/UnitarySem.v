@@ -1,7 +1,7 @@
 Require Import Setoid.
 Require Import QuantumLib.Pad.
 Require Export QuantumLib.Proportional.
-Require Export SQIR.
+From SQIR Require Export SQIR.
 
 Local Open Scope matrix_scope.
 Local Open Scope ucom_scope.
